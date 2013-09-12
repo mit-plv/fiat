@@ -179,18 +179,6 @@ Definition add (s : multiset) (n : nat) : multiset
 
 Require Import Min Max List.
 
-Fixpoint foldl A B (f : A -> B -> A) (x : A) (l : list B) : A
-  := match l with
-       | nil => x
-       | cons y ys => foldl f (f x y) ys
-     end.
-
-Fixpoint foldr A B (f : A -> B -> B) (x : B) (l : list A) : B
-  := match l with
-       | nil => x
-       | cons y ys => f y (foldr f x ys)
-     end.
-
 Fixpoint make_specs (spec_list : list (string * methodSpec))
   := fun s
      => match spec_list with
@@ -244,7 +232,7 @@ Definition NatBinOp
                                          (forall v, m v = count_occ eq_nat_dec l v)
                                          /\ match l with
                                               | nil => True
-                                              | cons x xs => n = foldr op x xs
+                                              | cons x xs => n = fold_right op x xs
                                             end))
                       ::common_multiset_specs)
     |}.
@@ -378,7 +366,7 @@ Section def_NatBinOpI.
                        (forall v, m v = count_occ eq_nat_dec l v)
                        /\ match l with
                             | nil => n = None
-                            | cons x xs => n = Some (foldr op x xs)
+                            | cons x xs => n = Some (fold_right op x xs)
                           end;
         MethodBodies := fun s =>
                           if string_dec s "add"
