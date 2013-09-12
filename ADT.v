@@ -1,5 +1,6 @@
 Require Import String Omega.
 
+Generalizable All Variables.
 Set Implicit Arguments.
 
 
@@ -168,34 +169,113 @@ Section paired.
 End paired.
 
 
-(** * An example, composing "min" and "max" calculators for nat sets *)
+(** * An example, composing binary commutative associative calculators for computable nat multisets *)
 
-Definition set := nat -> Prop.
-Definition add (s : set) (n : nat) : set := fun m => m = n \/ s m.
+Definition multiset := nat -> nat.
+Definition add (s : multiset) (n : nat) : multiset
+  := fun m => if eq_nat_dec n m
+              then S (s m)
+              else s m.
 
-Require Import Min Max.
+Require Import Min Max List.
 
-Definition NatLower : ADT := {|
-  Model := set;
-  MethodSpecs := fun s =>
-    if string_dec s "add"
-      then fun d x d' y => y = 0
-        /\ exists m : set, d = Dyn m /\ d' = Dyn (add m x)
-      else if string_dec s "lowerBound"
-        then fun d _ d' n => exists m : set, d = Dyn m /\ d = d' /\ forall v, m v -> n <= v
-        else fun _ _ _ _ => True
-|}.
+Fixpoint foldl A B (f : A -> B -> A) (x : A) (l : list B) : A
+  := match l with
+       | nil => x
+       | cons y ys => foldl f (f x y) ys
+     end.
 
-Definition NatUpper : ADT := {|
-  Model := set;
-  MethodSpecs := fun s =>
-    if string_dec s "add"
-      then fun d x d' y => y = 0
-        /\ exists m : set, d = Dyn m /\ d' = Dyn (add m x)
-      else if string_dec s "upperBound"
-        then fun d _ d' n => exists m : set, d = Dyn m /\ d = d' /\ forall v, m v -> n >= v
-        else fun _ _ _ _ => True
-|}.
+Fixpoint foldr A B (f : A -> B -> B) (x : B) (l : list A) : B
+  := match l with
+       | nil => x
+       | cons y ys => f y (foldr f x ys)
+     end.
+
+Fixpoint make_specs (spec_list : list (string * methodSpec))
+  := fun s
+     => match spec_list with
+          | cons spec specs
+            => if string_dec s (fst spec)
+               then snd spec
+               else make_specs specs s
+          | nil => fun _ _ _ _ => True
+        end.
+
+Arguments make_specs / .
+
+Definition common_multiset_specs : list (string * methodSpec)
+  := ("add"%string,
+      fun d x d' y
+      => y = 0
+         /\ (exists m : multiset, d = Dyn m /\ d' = Dyn (add m x)))::nil.
+
+Arguments common_multiset_specs / .
+
+Definition make_accessor
+           (model : Type) (f : nat -> model -> nat -> Prop)
+: methodSpec
+  := fun d n d' n'
+     => exists m : model,
+          d = Dyn m /\ d = d'
+          /\ f n m n'.
+
+Arguments make_accessor / .
+
+Coercion sumbooltobool A B : {A} + {B} -> bool := fun x => if x then true else false.
+
+Infix "<=" := le_dec : bool_scope.
+Infix "<" := lt_dec : bool_scope.
+Infix ">=" := ge_dec : bool_scope.
+Infix ">" := gt_dec : bool_scope.
+Infix "->" := implb : bool_scope.
+
+Definition NatBinOp
+           (opname : string)
+           (op : nat -> nat -> nat)
+           (is_assoc : forall x y z, op x (op y z) = op (op x y) z)
+           (is_comm : forall x y, op x y = op y x)
+: ADT
+  := {|
+      Model := multiset;
+      MethodSpecs :=
+        make_specs ((opname,
+                     make_accessor (fun _ (m : multiset) n
+                                    => exists l : list nat,
+                                         (forall v, m v = count_occ eq_nat_dec l v)
+                                         /\ match l with
+                                              | nil => True
+                                              | cons x xs => n = foldr op x xs
+                                            end))
+                      ::common_multiset_specs)
+    |}.
+
+Local Ltac rewrite_hyp' :=
+  match goal with
+    | [ H : _ |- _ ] => rewrite H
+  end.
+
+Require Import Omega.
+
+Local Obligation Tactic :=
+  eauto with arith;
+  try solve [ repeat match goal with
+                       | _ => progress (simpl; rewrite_hyp'; trivial)
+                       | [ |- _ -> _ ] => let x := fresh in intro x; induction x; trivial
+                     end
+            | intros; omega ].
+
+Program Definition NatLower : ADT
+  := NatBinOp "lowerBound" min _ _.
+
+Program Definition NatUpper : ADT
+  := NatBinOp "upperBound" max _ _.
+
+Program Definition NatSum : ADT
+  := NatBinOp "sum" plus _ _.
+
+Program Definition NatProd : ADT
+  := NatBinOp "prod" mult _ _.
+
 
 Hint Immediate le_min_l le_min_r le_max_l le_max_r.
 
@@ -213,41 +293,148 @@ Qed.
 
 Hint Resolve min_trans max_trans.
 
-Definition NatLowerI : ADTimpl NatLower.
-  refine {|
-    State := nat;
-    RepInv := fun (m : Model NatLower) n => forall v, m v -> n <= v;
-    MethodBodies := fun s =>
-      if string_dec s "add"
-        then fun bound x => (min bound x, 0)
-        else if string_dec s "lowerBound"
-          then fun bound _ => (bound, bound)
-          else fun bound _ => (bound, 0)
-  |};
-  abstract (simpl; intro;
-    repeat match goal with
-             | [ |- context[if ?E then _ else _ ] ] => destruct E
-           end; unfold methodCorrect; simpl; intuition eauto; repeat esplit; eauto;
-    unfold add; simpl; intuition (subst; eauto)).
-Defined.
+Require Import FunctionalExtensionality.
 
-Definition NatUpperI : ADTimpl NatUpper.
-  refine {|
-    State := nat;
-    RepInv := fun (m : Model NatUpper) n => forall v, m v -> n >= v;
-    MethodBodies := fun s =>
-      if string_dec s "add"
-        then fun bound x => (max bound x, 0)
-        else if string_dec s "upperBound"
-          then fun bound _ => (bound, bound)
-          else fun bound _ => (bound, 0)
-  |};
-  abstract (simpl; intro;
+Arguments add _ _ _ / .
+
+
+Section def_NatBinOpI.
+
+  Local Ltac induction_list_then tac :=
+    lazymatch goal with
+      | [ l : list _ |- _ ]
+        => repeat match goal with
+                    | [ H : appcontext[l] |- _ ] => clear H
+                  end;
+          induction l; tac
+    end.
+
+  Local Ltac manipulate_op op_assoc op_comm :=
+    match goal with
+      | _ => reflexivity
+      | _ => progress simpl in *
+      | _ => apply op_comm
+      | _ => rewrite <- ?op_assoc; revert op_assoc op_comm; rewrite_hyp'; intros
+      | _ => rewrite ?op_assoc; revert op_assoc op_comm; rewrite_hyp'; intros
+      | _ => rewrite <- ?op_assoc; f_equal; []
+      | _ => rewrite ?op_assoc; f_equal; []
+      | _ => apply op_comm
+    end.
+
+  Local Ltac deep_manipulate_op op op_assoc op_comm can_comm_tac :=
     repeat match goal with
-             | [ |- context[if ?E then _ else _ ] ] => destruct E
-           end; unfold methodCorrect; simpl; intuition eauto; repeat esplit; eauto;
-    unfold add; simpl; intuition (subst; eauto)).
-Defined.
+             | _ => progress repeat manipulate_op op_assoc op_comm
+             | [ |- appcontext[op ?a ?b] ]
+               => can_comm_tac a b;
+                 rewrite (op_comm a b);
+                 let new_can_comm_tac :=
+                     fun x y =>
+                       can_comm_tac x y;
+                       try (unify x a;
+                            unify y b;
+                            fail 1 "Cannot commute" a "and" b "again")
+                 in deep_manipulate_op op op_assoc op_comm new_can_comm_tac
+           end.
+
+  Local Ltac solve_after_induction_list op op_assoc op_comm :=
+    solve [ deep_manipulate_op op op_assoc op_comm ltac:(fun a b => idtac) ].
+
+
+  Local Ltac t :=
+    repeat match goal with
+             | _ => assumption
+             | _ => intro
+             | _ => progress simpl in *
+             | [ |- appcontext[if string_dec ?A ?B then _ else _ ] ]
+               => destruct (string_dec A B)
+             | _ => progress subst
+             | [ H : ex _ |- _ ] => destruct H
+             | [ H : and _ _ |- _ ] => destruct H
+             | _ => split
+             | [ H : option _ |- _ ] => destruct H
+             | [ H : _ |- _ ] => solve [ inversion H ]
+             | [ |- appcontext[match ?x with _ => _ end] ] => destruct x
+             | [ H : appcontext[match ?x with _ => _ end] |- _  ] => destruct x
+             | [ H : Some _ = Some _ |- _ ] => inversion H; clear H
+             | _ => progress f_equal; []
+             | _ => apply functional_extensionality_dep; intro
+             | _ => progress intuition
+             | _ => repeat esplit; reflexivity
+             | [ H : _ |- _ ] => rewrite H; try (rewrite H; fail 1)
+           end.
+
+  Local Ltac t' op op_assoc op_comm :=
+    repeat first [ progress t
+                 | progress induction_list_then ltac:(solve_after_induction_list op op_assoc op_comm) ].
+
+  Definition NatBinOpI (default_val : nat) opname (H : if string_dec opname "add"%string then False else True)
+  : `(ADTimpl (@NatBinOp opname op op_assoc op_comm)).
+  Proof.
+    intros.
+    refine {|
+        State := option nat;
+        RepInv := fun (m : Model (NatBinOp opname op op_assoc op_comm)) n
+                  => exists l : list nat,
+                       (forall v, m v = count_occ eq_nat_dec l v)
+                       /\ match l with
+                            | nil => n = None
+                            | cons x xs => n = Some (foldr op x xs)
+                          end;
+        MethodBodies := fun s =>
+                          if string_dec s "add"
+                          then fun val x => (match val with
+                                               | None => Some x
+                                               | Some x' => Some (op x x')
+                                             end,
+                                             0)
+                          else if string_dec s opname
+                               then fun val _ => (val,
+                                                  match val with
+                                                    | None => default_val
+                                                    | Some x => x
+                                                  end)
+                               else fun val _ => (val, 0)
+      |}.
+    intro name.
+    simpl.
+    destruct (string_dec name "add"%string) as [Hadd | Hadd];
+      [ intros m [n|] [l [H0 H1]] x;
+        (exists (add m x));
+        repeat split;
+        try (exists (x::l));
+        abstract t' op op_assoc op_comm
+      | destruct (string_dec name opname) as [Hop | Hop];
+        [ intros m [n|] [l [H0 H1]] x;
+          repeat (split || exists m || exists l);
+          abstract t' op op_assoc op_comm
+        | intros m [n|] [l [H0 H1]] x;
+          [ repeat split;
+            try (exists (add (fun _ => 0) n));
+            repeat split;
+            try (exists (n::nil));
+            abstract (repeat split)
+          | repeat split;
+            try (exists m);
+            repeat split;
+            try (exists l);
+            abstract (repeat split; assumption) ]
+      ]].
+  Defined.
+End def_NatBinOpI.
+
+Definition NatLowerI : ADTimpl NatLower
+  := NatBinOpI 0 "lowerBound" I _ _ _.
+
+Definition NatUpperI : ADTimpl NatUpper
+  := NatBinOpI 0 "upperBound" I _ _ _.
+
+Definition NatSumI : ADTimpl NatSum
+  := NatBinOpI 0 "sum" I _ _ _.
+
+Definition NatProdI : ADTimpl NatProd
+  := NatBinOpI 1 "prod" I _ _ _.
+
+Local Open Scope string_scope.
 
 Definition NatLowerUpper_sortOf (s : string) :=
   if string_dec s "add"
@@ -260,17 +447,48 @@ Definition NatLowerUpper_sortOf (s : string) :=
 
 Definition NatLowerUpper : ADT := pairedADT NatLower NatUpper NatLowerUpper_sortOf.
 
+Local Ltac pair_I_tac :=
+  intros;
+  repeat match goal with
+           | [ |- context[if ?E then _ else _ ] ] => destruct E; subst
+         end;
+  simpl; unfold mutator, observer; simpl; firstorder.
+
 Definition NatLowerUpperI : ADTimpl NatLowerUpper.
   refine (pairedImpl NatLowerUpper_sortOf NatLowerI NatUpperI _);
-    abstract (unfold NatLowerUpper_sortOf; intros;
-      repeat match goal with
-               | [ |- context[if ?E then _ else _ ] ] => destruct E; subst
-             end; simpl; unfold mutator, observer; simpl; firstorder).
+  unfold NatLowerUpper_sortOf;
+  abstract pair_I_tac.
 Defined.
 
-Definition s0 : State NatLowerUpperI := (10, 100).
+Definition s0 : State NatLowerUpperI := (Some 10, Some 100).
 Definition s1 := fst (MethodBodies NatLowerUpperI "add" s0 2).
 Definition s2 := fst (MethodBodies NatLowerUpperI "add" s1 105).
 
 Eval compute in snd (MethodBodies NatLowerUpperI "lowerBound" s2 0).
 Eval compute in snd (MethodBodies NatLowerUpperI "upperBound" s2 0).
+
+
+
+Definition NatSumProd_sortOf (s : string) :=
+  if string_dec s "add"
+  then Mutator
+  else if string_dec s "sum"
+       then ObserverA
+       else if string_dec s "prod"
+            then ObserverB
+            else Dummy.
+
+Definition NatSumProd : ADT := pairedADT NatSum NatProd NatSumProd_sortOf.
+
+Definition NatSumProdI : ADTimpl NatSumProd.
+  refine (pairedImpl NatSumProd_sortOf NatSumI NatProdI _);
+  unfold NatSumProd_sortOf;
+  abstract pair_I_tac.
+Defined.
+
+Definition s0' : State NatSumProdI := (Some 10, Some 100).
+Definition s1' := fst (MethodBodies NatSumProdI "add" s0' 2).
+Definition s2' := fst (MethodBodies NatSumProdI "add" s1' 105).
+
+Eval compute in snd (MethodBodies NatSumProdI "sum" s2' 0).
+Eval compute in snd (MethodBodies NatSumProdI "prod" s2' 0).
