@@ -3,6 +3,10 @@ In General:
 * Make a targeted-examples file of examples we want to target with
   this system.
 
+Targeted examples:
+
+* Generalize column constraints to arbitrary propositions, see if we
+  can erase them at compile time?
 
 
 For Jason Gross:
