@@ -8,7 +8,19 @@ Targeted examples:
 * Generalize column constraints to arbitrary propositions, see if we
   can erase them at compile time?
 
+Notes/Ideas:
+
+* Perhaps all queries are secretly either views
 
 For Jason Gross:
 
-* Read SQL Tutorial
+* Implement pairing combinator where both models are the same (don't
+  take the cartesian product)
+
+* Copy examples to use the new pairing combinator
+
+* Make the buliding-block impls polymorphic in the method names
+
+* Automate pairing of existing impls to get a particular impl
+  (consider using dependent types to force a sorted list of (name,
+  spec), so that we have canonicity)
