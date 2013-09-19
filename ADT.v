@@ -64,8 +64,10 @@ Record ADTimpl (A : ADT) := {
 (** * A simple pairing combinator *)
 
 (** When does a method spec force no state mutation? *)
+(** We require that the path between the before/after models be refl,
+    because this allows us to not need UIP. *)
 Definition observer (ms : methodSpec) :=
-  forall m x m' y, ms m x m' y
+  forall T (m m' : T) x y, ms (Dyn m) x (Dyn m') y
     -> m = m'.
 
 (** When is a method not returning any data, but probably instead just causing side effects? *)
@@ -121,7 +123,7 @@ Section paired.
   Variable Ai : ADTimpl A.
   Variable Bi : ADTimpl B.
 
-  Hint Extern 1 (@ex (_ * _) _) => eexists (_, _).
+  Local Hint Extern 1 (@ex (_ * _) _) => eexists (_, _).
 
   Hypothesis sortOf_accurate : forall name, methodSort_accurate (sortOf name) name.
 
@@ -168,6 +170,111 @@ Section paired.
   Defined.
 End paired.
 
+
+
+Section prod.
+  Variable model : Type.
+  Variables ASpec BSpec : string -> methodSpec.
+
+  Let A := {| Model := model; MethodSpecs := ASpec |}.
+  Let B := {| Model := model; MethodSpecs := BSpec |}.
+
+  (** Let's compose these two ADTs. *)
+
+  (** Require client code to classify the methods for us. *)
+  Variable sortOf : string -> methodSort.
+
+  (** The composed ADT, which doesn't duplicate models *)
+  Definition prodADT := {|
+    Model := model;
+    MethodSpecs := fun name => match sortOf name with
+                                 | ObserverA => fun m x m' y =>
+                                   exists (m0 : model) (m'0 : model),
+                                     m = Dyn m0 /\ m' = Dyn m'0
+                                     /\ MethodSpecs A name (Dyn m0) x (Dyn m'0) y
+                                 | ObserverB => fun m x m' y =>
+                                   exists (m0 : model) (m'0 : model),
+                                     m = Dyn m0 /\ m' = Dyn m'0
+                                     /\ MethodSpecs B name (Dyn m0) x (Dyn m'0) y
+                                 | Mutator => fun m x m' y =>
+                                   exists (m0 : model) (m'0 : model),
+                                     m = Dyn m0 /\ m' = Dyn m'0
+                                     /\ MethodSpecs A name (Dyn m0) x (Dyn m'0) y
+                                     /\ MethodSpecs B name (Dyn m0) x (Dyn m'0) y
+                                 | _ => fun _ _ _ _ => True
+                               end
+  |}.
+
+  (** Now we show how to implement it. *)
+  Variable Ai : ADTimpl A.
+  Variable Bi : ADTimpl B.
+
+  Local Hint Extern 1 (@ex (_ * _) _) => eexists (_, _).
+
+  Hypothesis sortOf_accurate : forall name, methodSort_accurate A B (sortOf name) name.
+
+  Definition methods_match_mutation name
+    := forall (m m' m'' : model) x y y',
+         ASpec name (Dyn m) x (Dyn m') y
+         -> BSpec name (Dyn m) x (Dyn m'') y'
+         -> m' = m''.
+
+  Hypothesis mutators_match
+  : forall name,
+      match sortOf name with
+        | Mutator => methods_match_mutation name
+        | _ => True
+      end.
+
+  Local Hint Extern 1 => symmetry.
+
+  Local Ltac fin_tac :=
+    match goal with
+      | [ H : RepInv ?i ?m ?s |- RepInv ?i ?m' ?s ] => replace m' with m; eauto
+      | [ H : ?spec ?name ?d1 ?x (Dyn ?d2) ?n |- ?spec ?name ?d1 ?x (Dyn ?d2') ?n' ]
+        => replace n' with n; eauto;
+           replace d2' with d2; eauto
+    end.
+
+  Definition prodImpl : ADTimpl prodADT.
+    refine {|
+      State := State Ai * State Bi;
+      RepInv := fun (m : Model prodADT) s => RepInv Ai m (fst s)
+        /\ RepInv Bi m (snd s);
+      MethodBodies := fun name => match sortOf name as s with
+                                    | ObserverA => fun s x =>
+                                      let (s', y) := MethodBodies Ai name (fst s) x in
+                                        ((s', snd s), y)
+                                    | ObserverB => fun s x =>
+                                      let (s', y) := MethodBodies Bi name (snd s) x in
+                                        ((fst s, s'), y)
+                                    | Mutator => fun s x =>
+                                      let (s1, _) := MethodBodies Ai name (fst s) x in
+                                        let (s2, _) := MethodBodies Bi name (snd s) x in
+                                          ((s1, s2), 0)
+                                    | Dummy => fun s _ => (s, 0)
+                                  end
+    |}.
+
+    simpl; intros name m s H x.
+    generalize (sortOf_accurate name).
+    generalize (mutators_match name).
+    destruct (sortOf name); simpl; unfold observer, mutator, methodCorrect, methods_match_mutation;
+      (simpl; intuition; simpl in *);
+      match goal with
+        | [ H1 : RepInv Ai m (fst s), H2 : RepInv Bi m (snd s) |- _ ]
+          => specialize (MethodsCorrect Ai name m (fst s) H1 x);
+            specialize (MethodsCorrect Bi name m (snd s) H2 x)
+      end;
+      repeat destruct MethodBodies;
+      intros;
+      firstorder;
+      simpl in *;
+      try solve [ repeat esplit; (eassumption || fin_tac)
+                | repeat esplit; [ eassumption | | ]; fin_tac
+                | repeat esplit; [ | eassumption | ]; fin_tac ].
+  Defined.
+End prod.
 
 (** * An example, composing binary commutative associative calculators for computable nat multisets *)
 
@@ -433,7 +540,8 @@ Definition NatLowerUpper_sortOf (s : string) :=
         then ObserverB
         else Dummy.
 
-Definition NatLowerUpper : ADT := pairedADT NatLower NatUpper NatLowerUpper_sortOf.
+Definition NatLowerUpperPair : ADT := pairedADT NatLower NatUpper NatLowerUpper_sortOf.
+Definition NatLowerUpperProd : ADT := prodADT (Model NatLower) (MethodSpecs NatLower) (MethodSpecs NatUpper) NatLowerUpper_sortOf.
 
 Local Ltac pair_I_tac :=
   intros;
@@ -442,18 +550,27 @@ Local Ltac pair_I_tac :=
          end;
   simpl; unfold mutator, observer; simpl; firstorder.
 
-Definition NatLowerUpperI : ADTimpl NatLowerUpper.
+Definition NatLowerUpperPairI : ADTimpl NatLowerUpperPair.
   refine (pairedImpl NatLowerUpper_sortOf NatLowerI NatUpperI _);
-  unfold NatLowerUpper_sortOf;
-  abstract pair_I_tac.
+  unfold NatLowerUpper_sortOf.
+  intro name.
+  destruct (string_dec name "add");
+    [ | destruct (string_dec name "lowerBound");
+      [ | destruct (string_dec name "upperBound") ]];
+    simpl;
+    subst;
+    simpl;
+    try solve [ pair_I_tac ].
+  admit.
+  admit.
 Defined.
 
-Definition s0 : State NatLowerUpperI := (Some 10, Some 100).
-Definition s1 := fst (MethodBodies NatLowerUpperI "add" s0 2).
-Definition s2 := fst (MethodBodies NatLowerUpperI "add" s1 105).
+Definition s0 : State NatLowerUpperPairI := (Some 10, Some 100).
+Definition s1 := fst (MethodBodies NatLowerUpperPairI "add" s0 2).
+Definition s2 := fst (MethodBodies NatLowerUpperPairI "add" s1 105).
 
-Eval compute in snd (MethodBodies NatLowerUpperI "lowerBound" s2 0).
-Eval compute in snd (MethodBodies NatLowerUpperI "upperBound" s2 0).
+Eval compute in snd (MethodBodies NatLowerUpperPairI "lowerBound" s2 0).
+Eval compute in snd (MethodBodies NatLowerUpperPairI "upperBound" s2 0).
 
 
 
