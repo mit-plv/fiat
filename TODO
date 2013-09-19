@@ -14,9 +14,6 @@ Notes/Ideas:
 
 For Jason Gross:
 
-* Implement pairing combinator where both models are the same (don't
-  take the cartesian product)
-
 * Copy examples to use the new pairing combinator
 
 * Make the buliding-block impls polymorphic in the method names
