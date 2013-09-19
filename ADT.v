@@ -6,17 +6,11 @@ Set Implicit Arguments.
 
 (** * Basic ADT definitions *)
 
-(** To avoid wallowing in dependent types, we'll use this guy often. *)
-Record dyn := Dyn {
-  Ty : Type;
-  Va : Ty
-}.
-
 (** Hoare logic-style total correctness specification of a method *)
-Definition methodSpec :=
-  dyn    (* Initial model *)
+Definition methodSpec (Ty : Type) :=
+  Ty    (* Initial model *)
   -> nat (* Actual argument*)
-  -> dyn (* Final model *)
+  -> Ty (* Final model *)
   -> nat (* Return value *)
   -> Prop.
 
@@ -25,7 +19,7 @@ Record ADT := {
   Model : Type;
   (** The way we model state mathematically *)
 
-  MethodSpecs : string -> methodSpec
+  MethodSpecs : string -> methodSpec Model
   (** A specification for each method *)
 }.
 
@@ -35,14 +29,14 @@ Definition methodTypeD (State : Type) :=
   State -> nat -> State * nat.
 
 (** Usual Hoare logic notion of implementating a method spec *)
-Definition methodCorrect (ms : methodSpec) (Model State : Type)
+Definition methodCorrect (Model State : Type) (ms : methodSpec Model)
   (RepInv : Model -> State -> Prop)
   (mb : methodTypeD State) :=
   forall m s, RepInv m s
     -> forall x,
       let (s', y) := mb s x in
         exists m', RepInv m' s'
-          /\ ms (Dyn m) x (Dyn m') y.
+          /\ ms m x m' y.
 
 (** One implementation of an ADT *)
 Record ADTimpl (A : ADT) := {
@@ -64,14 +58,12 @@ Record ADTimpl (A : ADT) := {
 (** * A simple pairing combinator *)
 
 (** When does a method spec force no state mutation? *)
-(** We require that the path between the before/after models be refl,
-    because this allows us to not need UIP. *)
-Definition observer (ms : methodSpec) :=
-  forall T (m m' : T) x y, ms (Dyn m) x (Dyn m') y
+Definition observer Model (ms : methodSpec Model) :=
+  forall m x m' y, ms m x m' y
     -> m = m'.
 
 (** When is a method not returning any data, but probably instead just causing side effects? *)
-Definition mutator (ms : methodSpec) :=
+Definition mutator Model (ms : methodSpec Model) :=
   forall m x m' y, ms m x m' y
     -> y = 0.
 
@@ -99,25 +91,23 @@ Section paired.
   Variable sortOf : string -> methodSort.
 
   (** The composed ADT *)
-  Definition pairedADT := {|
-    Model := Model A * Model B;
-    MethodSpecs := fun name => match sortOf name with
-                                 | ObserverA => fun m x m' y =>
-                                   exists (m1 : Model A) (m2 : Model B), m = Dyn (m1, m2)
-                                     /\ exists (m1' : Model A), m' = Dyn (m1', m2)
-                                       /\ MethodSpecs A name (Dyn m1) x (Dyn m1') y
-                                 | ObserverB => fun m x m' y =>
-                                   exists (m1 : Model A) (m2 : Model B), m = Dyn (m1, m2)
-                                     /\ exists (m2' : Model B), m' = Dyn (m1, m2')
-                                       /\ MethodSpecs B name (Dyn m2) x (Dyn m2') y
-                                 | Mutator => fun m x m' y =>
-                                   exists (m1 : Model A) (m2 : Model B), m = Dyn (m1, m2)
-                                     /\ exists (m1' : Model A) (m2' : Model B), m' = Dyn (m1', m2')
-                                       /\ MethodSpecs A name (Dyn m1) x (Dyn m1') y
-                                       /\ MethodSpecs B name (Dyn m2) x (Dyn m2') y
-                                 | _ => fun _ _ _ _ => True
-                               end
-  |}.
+  Definition pairedADT :=
+    {|
+      Model := Model A * Model B;
+      MethodSpecs := fun name => match sortOf name with
+                                   | ObserverA
+                                     => fun m x m' y
+                                        => MethodSpecs A name (fst m) x (fst m') y
+                                   | ObserverB
+                                     => fun m x m' y
+                                        => MethodSpecs B name (snd m) x (snd m') y
+                                   | Mutator
+                                     => fun m x m' y
+                                        => MethodSpecs A name (fst m) x (fst m') y
+                                           /\ MethodSpecs B name (snd m) x (snd m') y
+                                   | _ => fun _ _ _ _ => True
+                                 end
+    |}.
 
   (** Now we show how to implement it. *)
   Variable Ai : ADTimpl A.
@@ -147,26 +137,27 @@ Section paired.
                                   end
     |}.
 
-    simpl; intros.
+    simpl; intros name.
     generalize (sortOf_accurate name).
     destruct (sortOf name); simpl; unfold observer, mutator, methodCorrect;
-      (simpl; intuition; simpl in *).
+    (simpl; intuition; simpl in *).
 
-    specialize (MethodsCorrect Ai name a (fst s) H1 x); simpl; intuition.
-    destruct MethodBodies; firstorder eauto 10.
+    - specialize (MethodsCorrect Ai name a (fst s) H1 x); simpl; intuition.
+      destruct MethodBodies; firstorder eauto 10.
 
-    specialize (MethodsCorrect Bi name b (snd s) H2 x); simpl; intuition.
-    destruct MethodBodies; firstorder eauto 10.
+    - specialize (MethodsCorrect Bi name b (snd s) H2 x); simpl; intuition.
+      destruct MethodBodies; firstorder eauto 10.
 
-    specialize (MethodsCorrect Ai name a (fst s) H2 x); simpl; intuition.
-    destruct MethodBodies; firstorder.
-    specialize (MethodsCorrect Bi name b (snd s) H3 x); simpl; intuition.
-    destruct MethodBodies; firstorder.
-    repeat esplit; simpl; eauto.
-    replace 0 with n; eauto.
-    replace 0 with n0; eauto.
+    - specialize (MethodsCorrect Ai name a (fst s) H2 x); simpl; intuition.
+      destruct MethodBodies; firstorder.
+      specialize (MethodsCorrect Bi name b (snd s) H3 x); simpl; intuition.
+      destruct MethodBodies; firstorder.
+      eexists (_, _); simpl.
+      repeat esplit; simpl; eauto.
+      replace 0 with n; eauto.
+      replace 0 with n0; eauto.
 
-    eauto.
+    - eauto.
   Defined.
 End paired.
 
@@ -174,7 +165,7 @@ End paired.
 
 Section prod.
   Variable model : Type.
-  Variables ASpec BSpec : string -> methodSpec.
+  Variables ASpec BSpec : string -> methodSpec model.
 
   Let A := {| Model := model; MethodSpecs := ASpec |}.
   Let B := {| Model := model; MethodSpecs := BSpec |}.
@@ -185,25 +176,18 @@ Section prod.
   Variable sortOf : string -> methodSort.
 
   (** The composed ADT, which doesn't duplicate models *)
-  Definition prodADT := {|
-    Model := model;
-    MethodSpecs := fun name => match sortOf name with
-                                 | ObserverA => fun m x m' y =>
-                                   exists (m0 : model) (m'0 : model),
-                                     m = Dyn m0 /\ m' = Dyn m'0
-                                     /\ MethodSpecs A name (Dyn m0) x (Dyn m'0) y
-                                 | ObserverB => fun m x m' y =>
-                                   exists (m0 : model) (m'0 : model),
-                                     m = Dyn m0 /\ m' = Dyn m'0
-                                     /\ MethodSpecs B name (Dyn m0) x (Dyn m'0) y
-                                 | Mutator => fun m x m' y =>
-                                   exists (m0 : model) (m'0 : model),
-                                     m = Dyn m0 /\ m' = Dyn m'0
-                                     /\ MethodSpecs A name (Dyn m0) x (Dyn m'0) y
-                                     /\ MethodSpecs B name (Dyn m0) x (Dyn m'0) y
-                                 | _ => fun _ _ _ _ => True
-                               end
-  |}.
+  Definition prodADT :=
+    {|
+      Model := model;
+      MethodSpecs := fun name => match sortOf name with
+                                   | ObserverA => MethodSpecs A name
+                                   | ObserverB => MethodSpecs B name
+                                   | Mutator => fun m x m' y =>
+                                                  MethodSpecs A name m x m' y
+                                                  /\ MethodSpecs B name m x m' y
+                                   | _ => fun _ _ _ _ => True
+                                 end
+    |}.
 
   (** Now we show how to implement it. *)
   Variable Ai : ADTimpl A.
@@ -214,9 +198,9 @@ Section prod.
   Hypothesis sortOf_accurate : forall name, methodSort_accurate A B (sortOf name) name.
 
   Definition methods_match_mutation name
-    := forall (m m' m'' : model) x y y',
-         ASpec name (Dyn m) x (Dyn m') y
-         -> BSpec name (Dyn m) x (Dyn m'') y'
+    := forall m x m' m'' x' x'',
+         ASpec name m x m' x'
+         -> BSpec name m x m'' x''
          -> m' = m''.
 
   Hypothesis mutators_match
@@ -231,7 +215,7 @@ Section prod.
   Local Ltac fin_tac :=
     match goal with
       | [ H : RepInv ?i ?m ?s |- RepInv ?i ?m' ?s ] => replace m' with m; eauto
-      | [ H : ?spec ?name ?d1 ?x (Dyn ?d2) ?n |- ?spec ?name ?d1 ?x (Dyn ?d2') ?n' ]
+      | [ H : ?spec ?name ?d1 ?x ?d2 ?n |- ?spec ?name ?d1 ?x ?d2' ?n' ]
         => replace n' with n; eauto;
            replace d2' with d2; eauto
     end.
@@ -286,7 +270,7 @@ Definition add (s : multiset) (n : nat) : multiset
 
 Require Import Min Max List.
 
-Fixpoint make_specs (spec_list : list (string * methodSpec))
+Fixpoint make_specs model (spec_list : list (string * methodSpec model))
   := fun s
      => match spec_list with
           | cons spec specs
@@ -298,21 +282,20 @@ Fixpoint make_specs (spec_list : list (string * methodSpec))
 
 Arguments make_specs / .
 
-Definition common_multiset_specs : list (string * methodSpec)
+Definition common_multiset_specs : list (string * methodSpec multiset)
   := ("add"%string,
       fun d x d' y
       => y = 0
-         /\ (exists m : multiset, d = Dyn m /\ d' = Dyn (add m x)))::nil.
+         /\ d' = add d x)::nil.
 
 Arguments common_multiset_specs / .
 
 Definition make_accessor
            (model : Type) (f : nat -> model -> nat -> Prop)
-: methodSpec
+: methodSpec model
   := fun d n d' n'
-     => exists m : model,
-          d = Dyn m /\ d = d'
-          /\ f n m n'.
+     => d = d'
+        /\ f n d n'.
 
 Arguments make_accessor / .
 
@@ -541,36 +524,43 @@ Definition NatLowerUpper_sortOf (s : string) :=
         else Dummy.
 
 Definition NatLowerUpperPair : ADT := pairedADT NatLower NatUpper NatLowerUpper_sortOf.
-Definition NatLowerUpperProd : ADT := prodADT (Model NatLower) (MethodSpecs NatLower) (MethodSpecs NatUpper) NatLowerUpper_sortOf.
+Definition NatLowerUpperProd : ADT := prodADT (MethodSpecs NatLower) (MethodSpecs NatUpper) NatLowerUpper_sortOf.
 
 Local Ltac pair_I_tac :=
-  intros;
   repeat match goal with
+           | _ => intro
+           | _ => progress simpl in *
            | [ |- context[if ?E then _ else _ ] ] => destruct E; subst
          end;
-  simpl; unfold mutator, observer; simpl; firstorder.
+  simpl; unfold mutator, observer; simpl; instantiate; firstorder (subst; eauto).
 
 Definition NatLowerUpperPairI : ADTimpl NatLowerUpperPair.
   refine (pairedImpl NatLowerUpper_sortOf NatLowerI NatUpperI _);
   unfold NatLowerUpper_sortOf.
-  intro name.
-  destruct (string_dec name "add");
-    [ | destruct (string_dec name "lowerBound");
-      [ | destruct (string_dec name "upperBound") ]];
-    simpl;
-    subst;
-    simpl;
-    try solve [ pair_I_tac ].
-  admit.
-  admit.
+  abstract pair_I_tac.
 Defined.
 
-Definition s0 : State NatLowerUpperPairI := (Some 10, Some 100).
-Definition s1 := fst (MethodBodies NatLowerUpperPairI "add" s0 2).
-Definition s2 := fst (MethodBodies NatLowerUpperPairI "add" s1 105).
+Definition NatLowerUpperProdI : ADTimpl NatLowerUpperProd.
+  refine (prodImpl NatLowerUpper_sortOf NatLowerI NatUpperI _ _);
+  unfold NatLowerUpper_sortOf;
+  abstract pair_I_tac.
+Defined.
 
-Eval compute in snd (MethodBodies NatLowerUpperPairI "lowerBound" s2 0).
-Eval compute in snd (MethodBodies NatLowerUpperPairI "upperBound" s2 0).
+
+
+Definition s0pair : State NatLowerUpperPairI := (Some 10, Some 100).
+Definition s1pair := fst (MethodBodies NatLowerUpperPairI "add" s0pair 2).
+Definition s2pair := fst (MethodBodies NatLowerUpperPairI "add" s1pair 105).
+
+Eval compute in snd (MethodBodies NatLowerUpperPairI "lowerBound" s2pair 0).
+Eval compute in snd (MethodBodies NatLowerUpperPairI "upperBound" s2pair 0).
+
+Definition s0prod : State NatLowerUpperProdI := (Some 10, Some 100).
+Definition s1prod := fst (MethodBodies NatLowerUpperProdI "add" s0prod 2).
+Definition s2prod := fst (MethodBodies NatLowerUpperProdI "add" s1prod 105).
+
+Eval compute in snd (MethodBodies NatLowerUpperProdI "lowerBound" s2prod 0).
+Eval compute in snd (MethodBodies NatLowerUpperProdI "upperBound" s2prod 0).
 
 
 
@@ -583,17 +573,31 @@ Definition NatSumProd_sortOf (s : string) :=
             then ObserverB
             else Dummy.
 
-Definition NatSumProd : ADT := pairedADT NatSum NatProd NatSumProd_sortOf.
+Definition NatSumProdPair : ADT := pairedADT NatSum NatProd NatSumProd_sortOf.
+Definition NatSumProdProd : ADT := prodADT (MethodSpecs NatSum) (MethodSpecs NatProd) NatSumProd_sortOf.
 
-Definition NatSumProdI : ADTimpl NatSumProd.
+Definition NatSumProdPairI : ADTimpl NatSumProdPair.
   refine (pairedImpl NatSumProd_sortOf NatSumI NatProdI _);
   unfold NatSumProd_sortOf;
   abstract pair_I_tac.
 Defined.
 
-Definition s0' : State NatSumProdI := (Some 10, Some 100).
-Definition s1' := fst (MethodBodies NatSumProdI "add" s0' 2).
-Definition s2' := fst (MethodBodies NatSumProdI "add" s1' 105).
+Definition NatSumProdProdI : ADTimpl NatSumProdProd.
+  refine (prodImpl NatSumProd_sortOf NatSumI NatProdI _ _);
+  unfold NatSumProd_sortOf;
+  abstract pair_I_tac.
+Defined.
 
-Eval compute in snd (MethodBodies NatSumProdI "sum" s2' 0).
-Eval compute in snd (MethodBodies NatSumProdI "prod" s2' 0).
+Definition s0'pair : State NatSumProdPairI := (Some 10, Some 100).
+Definition s1'pair := fst (MethodBodies NatSumProdPairI "add" s0'pair 2).
+Definition s2'pair := fst (MethodBodies NatSumProdPairI "add" s1'pair 105).
+
+Eval compute in snd (MethodBodies NatSumProdPairI "sum" s2'pair 0).
+Eval compute in snd (MethodBodies NatSumProdPairI "prod" s2'pair 0).
+
+Definition s0'prod : State NatSumProdProdI := (Some 10, Some 100).
+Definition s1'prod := fst (MethodBodies NatSumProdProdI "add" s0'prod 2).
+Definition s2'prod := fst (MethodBodies NatSumProdProdI "add" s1'prod 105).
+
+Eval compute in snd (MethodBodies NatSumProdProdI "sum" s2'prod 0).
+Eval compute in snd (MethodBodies NatSumProdProdI "prod" s2'prod 0).
