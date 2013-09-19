@@ -17,3 +17,9 @@ For Jason Gross:
 * Automate pairing of existing impls to get a particular impl
   (consider using dependent types to force a sorted list of (name,
   spec), so that we have canonicity)
+
+* Use the type inference rule:
+
+  impl(m1)    Mut(m) ⊆ Mut(m1)   Obs(m1) ∩ Obs(m) ≠ ∅  impl(Mut(m) ∪ (Obs(m) - Obs(m1)))
+------------------------------------------------------------------------------------------
+                        impl(m)
