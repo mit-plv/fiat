@@ -282,8 +282,8 @@ Fixpoint make_specs model (spec_list : list (string * methodSpec model))
 
 Arguments make_specs / .
 
-Definition common_multiset_specs : list (string * methodSpec multiset)
-  := ("add"%string,
+Definition common_multiset_specs (addname : string) : list (string * methodSpec multiset)
+  := (addname,
       fun d x d' y
       => y = 0
          /\ d' = add d x)::nil.
@@ -308,6 +308,7 @@ Infix ">" := gt_dec : bool_scope.
 Infix "->" := implb : bool_scope.
 
 Definition NatBinOp
+           (addname : string)
            (opname : string)
            (op : nat -> nat -> nat)
            (is_assoc : forall x y z, op x (op y z) = op (op x y) z)
@@ -324,7 +325,7 @@ Definition NatBinOp
                                               | nil => True
                                               | cons x xs => n = fold_right op x xs
                                             end))
-                      ::common_multiset_specs)
+                      ::common_multiset_specs addname)
     |}.
 
 Local Ltac rewrite_hyp' :=
@@ -342,17 +343,17 @@ Local Obligation Tactic :=
                      end
             | intros; omega ].
 
-Program Definition NatLower : ADT
-  := NatBinOp "lowerBound" min _ _.
+Program Definition NatLower addName lowerBoundName : ADT
+  := NatBinOp addName lowerBoundName min _ _.
 
-Program Definition NatUpper : ADT
-  := NatBinOp "upperBound" max _ _.
+Program Definition NatUpper addName upperBoundName : ADT
+  := NatBinOp addName upperBoundName max _ _.
 
-Program Definition NatSum : ADT
-  := NatBinOp "sum" plus _ _.
+Program Definition NatSum addName sumName : ADT
+  := NatBinOp addName sumName plus _ _.
 
-Program Definition NatProd : ADT
-  := NatBinOp "prod" mult _ _.
+Program Definition NatProd addName prodName : ADT
+  := NatBinOp addName prodName mult _ _.
 
 
 Hint Immediate le_min_l le_min_r le_max_l le_max_r.
@@ -445,13 +446,13 @@ Section def_NatBinOpI.
     repeat first [ progress t
                  | progress induction_list_then ltac:(solve_after_induction_list op op_assoc op_comm) ].
 
-  Definition NatBinOpI (default_val : nat) opname (H : if string_dec opname "add"%string then False else True)
-  : `(ADTimpl (@NatBinOp opname op op_assoc op_comm)).
+  Definition NatBinOpI (default_val : nat) addname opname (H : if string_dec addname opname then False else True)
+  : `(ADTimpl (@NatBinOp addname opname op op_assoc op_comm)).
   Proof.
     intros.
     refine {|
         State := option nat;
-        RepInv := fun (m : Model (NatBinOp opname op op_assoc op_comm)) n
+        RepInv := fun (m : Model (NatBinOp addname opname op op_assoc op_comm)) n
                   => exists l : list nat,
                        (forall v, m v = count_occ eq_nat_dec l v)
                        /\ match l with
@@ -459,7 +460,7 @@ Section def_NatBinOpI.
                             | cons x xs => n = Some (fold_right op x xs)
                           end;
         MethodBodies := fun s =>
-                          if string_dec s "add"
+                          if string_dec s addname
                           then fun val x => (match val with
                                                | None => Some x
                                                | Some x' => Some (op x x')
@@ -475,42 +476,49 @@ Section def_NatBinOpI.
       |}.
     intro name.
     simpl.
-    destruct (string_dec name "add"%string) as [Hadd | Hadd];
-      [ intros m [n|] [l [H0 H1]] x;
-        (exists (add m x));
-        repeat split;
-        try (exists (x::l));
-        abstract t' op op_assoc op_comm
-      | destruct (string_dec name opname) as [Hop | Hop];
-        [ intros m [n|] [l [H0 H1]] x;
-          repeat (split || exists m || exists l);
-          abstract t' op op_assoc op_comm
-        | intros m [n|] [l [H0 H1]] x;
-          [ repeat split;
-            try (exists (add (fun _ => 0) n));
-            repeat split;
-            try (exists (n::nil));
-            abstract (repeat split)
-          | repeat split;
-            try (exists m);
-            repeat split;
-            try (exists l);
-            abstract (repeat split; assumption) ]
-      ]].
+    repeat match goal with
+             | [ H : False |- _ ] => destruct H
+             | [ H : ?x <> ?x |- _ ] => destruct (H eq_refl)
+             | [ H : ?x = ?x -> False |- _ ] => destruct (H eq_refl)
+             | [ |- appcontext[if ?E then _ else _] ] => let H := fresh "H'0" in
+                                                         destruct E as [H|H]; subst
+             | [ H : appcontext[if ?E then _ else _] |- _ ] => let H := fresh "H'0" in
+                                                               destruct E as [H|H]; subst
+           end;
+      try solve [intros m [n|] [l [H0 H1]] x;
+                  (exists (add m x));
+                  repeat split;
+                  try (exists (x::l));
+                  abstract t' op op_assoc op_comm
+                | intros m [n|] [l [H0 H1]] x;
+                  repeat (split || exists m || exists l);
+                  abstract t' op op_assoc op_comm
+                | intros m [n|] [l [H0 H1]] x;
+                  [ repeat split;
+                    try (exists (add (fun _ => 0) n));
+                    repeat split;
+                    try (exists (n::nil));
+                    abstract (repeat split)
+                  | repeat split;
+                    try (exists m);
+                    repeat split;
+                    try (exists l);
+                    abstract (repeat split; assumption) ]
+                ].
   Defined.
 End def_NatBinOpI.
 
-Definition NatLowerI : ADTimpl NatLower
-  := NatBinOpI 0 "lowerBound" I _ _ _.
+Definition NatLowerI addName lowerBoundName H : ADTimpl (NatLower addName lowerBoundName)
+  := NatBinOpI 0 addName lowerBoundName H _ _ _.
 
-Definition NatUpperI : ADTimpl NatUpper
-  := NatBinOpI 0 "upperBound" I _ _ _.
+Definition NatUpperI addName upperBoundName H : ADTimpl (NatUpper addName upperBoundName)
+  := NatBinOpI 0 addName upperBoundName H _ _ _.
 
-Definition NatSumI : ADTimpl NatSum
-  := NatBinOpI 0 "sum" I _ _ _.
+Definition NatSumI addName sumName H : ADTimpl (NatSum addName sumName)
+  := NatBinOpI 0 addName sumName H  _ _ _.
 
-Definition NatProdI : ADTimpl NatProd
-  := NatBinOpI 1 "prod" I _ _ _.
+Definition NatProdI addName prodName H : ADTimpl (NatProd addName prodName)
+  := NatBinOpI 1 addName prodName H _ _ _.
 
 Local Open Scope string_scope.
 
@@ -523,8 +531,14 @@ Definition NatLowerUpper_sortOf (s : string) :=
         then ObserverB
         else Dummy.
 
-Definition NatLowerUpperPair : ADT := pairedADT NatLower NatUpper NatLowerUpper_sortOf.
-Definition NatLowerUpperProd : ADT := prodADT (MethodSpecs NatLower) (MethodSpecs NatUpper) NatLowerUpper_sortOf.
+Definition NatLowerUpperPair : ADT
+  := pairedADT (NatLower "add" "lowerBound")
+               (NatUpper "add" "upperBound")
+               NatLowerUpper_sortOf.
+Definition NatLowerUpperProd : ADT
+  := prodADT (MethodSpecs (NatLower "add" "lowerBound"))
+             (MethodSpecs (NatUpper "add" "upperBound"))
+             NatLowerUpper_sortOf.
 
 Local Ltac pair_I_tac :=
   repeat match goal with
@@ -535,13 +549,20 @@ Local Ltac pair_I_tac :=
   simpl; unfold mutator, observer; simpl; instantiate; firstorder (subst; eauto).
 
 Definition NatLowerUpperPairI : ADTimpl NatLowerUpperPair.
-  refine (pairedImpl NatLowerUpper_sortOf NatLowerI NatUpperI _);
+  refine (pairedImpl NatLowerUpper_sortOf
+                     (NatLowerI "add" "lowerBound" I)
+                     (NatUpperI "add" "upperBound" I)
+                     _);
   unfold NatLowerUpper_sortOf.
   abstract pair_I_tac.
 Defined.
 
 Definition NatLowerUpperProdI : ADTimpl NatLowerUpperProd.
-  refine (prodImpl NatLowerUpper_sortOf NatLowerI NatUpperI _ _);
+  refine (prodImpl NatLowerUpper_sortOf
+                   (NatLowerI "add" "lowerBound" I)
+                   (NatUpperI "add" "upperBound" I)
+                   _
+                   _);
   unfold NatLowerUpper_sortOf;
   abstract pair_I_tac.
 Defined.
@@ -573,17 +594,30 @@ Definition NatSumProd_sortOf (s : string) :=
             then ObserverB
             else Dummy.
 
-Definition NatSumProdPair : ADT := pairedADT NatSum NatProd NatSumProd_sortOf.
-Definition NatSumProdProd : ADT := prodADT (MethodSpecs NatSum) (MethodSpecs NatProd) NatSumProd_sortOf.
+Definition NatSumProdPair : ADT
+  := pairedADT (NatSum "add" "sum")
+               (NatProd "add" "prod")
+               NatSumProd_sortOf.
+Definition NatSumProdProd : ADT
+  := prodADT (MethodSpecs (NatSum "add" "sum"))
+             (MethodSpecs (NatProd "add" "prod"))
+             NatSumProd_sortOf.
 
 Definition NatSumProdPairI : ADTimpl NatSumProdPair.
-  refine (pairedImpl NatSumProd_sortOf NatSumI NatProdI _);
+  refine (pairedImpl NatSumProd_sortOf
+                     (NatSumI "add" "sum" I)
+                     (NatProdI "add" "prod" I)
+                     _);
   unfold NatSumProd_sortOf;
   abstract pair_I_tac.
 Defined.
 
 Definition NatSumProdProdI : ADTimpl NatSumProdProd.
-  refine (prodImpl NatSumProd_sortOf NatSumI NatProdI _ _);
+  refine (prodImpl NatSumProd_sortOf
+                   (NatSumI "add" "sum" I)
+                   (NatProdI "add" "prod" I)
+                   _
+                   _);
   unfold NatSumProd_sortOf;
   abstract pair_I_tac.
 Defined.

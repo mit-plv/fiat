@@ -14,8 +14,6 @@ Notes/Ideas:
 
 For Jason Gross:
 
-* Make the buliding-block impls polymorphic in the method names
-
 * Automate pairing of existing impls to get a particular impl
   (consider using dependent types to force a sorted list of (name,
   spec), so that we have canonicity)
