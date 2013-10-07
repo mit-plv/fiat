@@ -23,3 +23,42 @@ For Jason Gross:
   impl(m1)    Mut(m) ⊆ Mut(m1)   Obs(m1) ∩ Obs(m) ≠ ∅  impl(Mut(m) ∪ (Obs(m) - Obs(m1)))
 ------------------------------------------------------------------------------------------
                         impl(m)
+
+
+In InternalADT.v:
+
+* Implement the other product adt using indexing types
+
+* Write a galina converter from these internal ADTs and ADTimps to the
+  external ones talking about functions from string.  (And write Ltac
+  to infer the appropriate arguments.  ([quote] might help here? to
+  turn a bunch of nested if expressions into a tree of units))
+
+* Finish up the example of NatSumProd by hand
+
+* Decide whether to use backward reasoning directly from the inference
+  rule (with custom Ltac to smooth the initial transitions), or
+  forward reasoning where we brute-force generate all ADTs with the
+  appropriate number of methods, and then check to see which work.
+  (I'm inclined towards the former.)
+
+* If the former, then:
+
+  - Write the galina code that goes from <impl of product spec> to
+    <impl of arbitrary equivalent spec>, to be used for peeling off
+    leaves of the tree according the the inference rule from a while
+    ago (also in the TODO file) (and write Ltac to infer the arguments
+    the other way) (Note that ~all of the inference rule is given
+    automatically by the way the indexing types are set up for the
+    pairing combinators.  There will probably bit a bit of trickiness
+    in figuring out how to automate the forgetting of methods, but I
+    think it will be doable.)
+
+  - Write the automation to go from <iterated product spec> to <impl
+    of said spec> (typeclass automation; or [eauto] with the
+    appropriate [Hint Resolve]s can probably entirely take care of
+    this one)
+
+  - Write fully automated examples going from the external (function
+    from string) specs in the ADT.v examples to impls of them, going
+    through the internal ADTs.
