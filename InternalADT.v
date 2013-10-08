@@ -46,7 +46,8 @@ Definition methodTypeD (State : Type) :=
   State -> nat -> State * nat.
 
 (** Usual Hoare logic notion of implementating a mutator method spec *)
-Definition mutatorMethodCorrect (Model State : Type) (ms : mutatorMethodSpec Model)
+Definition mutatorMethodCorrect (Model State : Type)
+           (ms : mutatorMethodSpec Model)
            (RepInv : Model -> State -> Prop)
            (mb : methodTypeD State)
   := forall m s,
@@ -57,7 +58,8 @@ Definition mutatorMethodCorrect (Model State : Type) (ms : mutatorMethodSpec Mod
                        /\ ms m x m'
                        /\ (snd s'y) = 0.
 
-Definition observerMethodCorrect (Model State : Type) (ms : observerMethodSpec Model)
+Definition observerMethodCorrect (Model State : Type)
+           (ms : observerMethodSpec Model)
            (RepInv : Model -> State -> Prop)
            (mb : methodTypeD State)
   := forall m s,
@@ -82,14 +84,16 @@ Record ADTimpl (A : ADT) :=
     ObserverMethodBodies : ObserverIndex A -> methodTypeD State;
     (** An implementation of each observer method *)
 
-    MutatorMethodsCorrect : forall idx, mutatorMethodCorrect (MutatorMethodSpecs A idx)
-                                                             RepInv
-                                                             (MutatorMethodBodies idx);
+    MutatorMethodsCorrect : forall idx, mutatorMethodCorrect
+                                          (MutatorMethodSpecs A idx)
+                                          RepInv
+                                          (MutatorMethodBodies idx);
     (** All mutator methods satisfy their specs. *)
 
-    ObserverMethodsCorrect : forall idx, observerMethodCorrect (ObserverMethodSpecs A idx)
-                                                               RepInv
-                                                               (ObserverMethodBodies idx)
+    ObserverMethodsCorrect : forall idx, observerMethodCorrect
+                                           (ObserverMethodSpecs A idx)
+                                           RepInv
+                                           (ObserverMethodBodies idx)
     (** All observer methods satisfy their specs. *)
   }.
 
@@ -106,18 +110,20 @@ Section paired.
   Variable observerMap : observerIndex -> ObserverIndex A + ObserverIndex B.
 
   (** The composed ADT *)
-  Program Definition pairedADT :=
+  Definition pairedADT :=
     {|
       Model := Model A * Model B;
       MutatorIndex := mutatorIndex;
       ObserverIndex := observerIndex;
-      MutatorMethodSpecs idx := let s := mutatorMap idx in
-                                fun m x m' => MutatorMethodSpecs A (fst s) (fst m) x (fst m')
-                                              /\ MutatorMethodSpecs B (snd s) (snd m) x (snd m');
-      ObserverMethodSpecs idx := fun m => match observerMap idx with
-                                            | inl idx' => ObserverMethodSpecs A idx' (fst m)
-                                            | inr idx' => ObserverMethodSpecs B idx' (snd m)
-                                          end
+      MutatorMethodSpecs idx :=
+        let s := mutatorMap idx in
+        fun m x m' => MutatorMethodSpecs A (fst s) (fst m) x (fst m')
+                      /\ MutatorMethodSpecs B (snd s) (snd m) x (snd m');
+      ObserverMethodSpecs idx :=
+        fun m x y => match observerMap idx with
+                       | inl idx' => ObserverMethodSpecs A idx' (fst m) x y
+                       | inr idx' => ObserverMethodSpecs B idx' (snd m) x y
+                     end
     |}.
 
   (** Now we show how to implement it. *)
@@ -128,17 +134,24 @@ Section paired.
   Proof.
     refine {|
         State := State Ai * State Bi;
-        RepInv := fun (m : Model pairedADT) s => RepInv Ai (fst m) (fst s)
-                                                 /\ RepInv Bi (snd m) (snd s);
-        MutatorMethodBodies name := fun s x => ((fst (MutatorMethodBodies Ai (fst (mutatorMap name)) (fst s) x),
-                                                 fst (MutatorMethodBodies Bi (snd (mutatorMap name)) (snd s) x)),
-                                                0);
-        ObserverMethodBodies name := fun s x => match observerMap name with
-                                                  | inl name' => let sy := ObserverMethodBodies Ai name' (fst s) x in
-                                                                 ((fst sy, snd s), snd sy)
-                                                  | inr name' => let sy := ObserverMethodBodies Bi name' (snd s) x in
-                                                                 ((fst s, fst sy), snd sy)
-                                                end
+        RepInv := fun (m : Model pairedADT) s
+                  => RepInv Ai (fst m) (fst s)
+                     /\ RepInv Bi (snd m) (snd s);
+        MutatorMethodBodies name :=
+          fun s x
+          => ((fst (MutatorMethodBodies Ai (fst (mutatorMap name)) (fst s) x),
+               fst (MutatorMethodBodies Bi (snd (mutatorMap name)) (snd s) x)),
+              0);
+        ObserverMethodBodies name :=
+          fun s x
+          => match observerMap name with
+               | inl name'
+                 => let sy := ObserverMethodBodies Ai name' (fst s) x in
+                    ((fst sy, snd s), snd sy)
+               | inr name'
+                 => let sy := ObserverMethodBodies Bi name' (snd s) x in
+                    ((fst s, fst sy), snd sy)
+             end
       |};
     repeat match goal with
              | _ => intro
@@ -160,14 +173,20 @@ Section paired.
   Defined.
 End paired.
 
-(*
-
 Section prod.
   Variable model : Type.
-  Variables ASpec BSpec : string -> methodSpec model.
+  Variables AMutIndex BMutIndex AObsIndex BObsIndex : Type.
+  Variable AMutSpec : AMutIndex -> mutatorMethodSpec model.
+  Variable BMutSpec : BMutIndex -> mutatorMethodSpec model.
+  Variable AObsSpec : AObsIndex -> observerMethodSpec model.
+  Variable BObsSpec : BObsIndex -> observerMethodSpec model.
 
-  Let A := {| Model := model; MethodSpecs := ASpec |}.
-  Let B := {| Model := model; MethodSpecs := BSpec |}.
+  Let A := {| Model := model;
+              MutatorMethodSpecs := AMutSpec;
+              ObserverMethodSpecs := AObsSpec |}.
+  Let B := {| Model := model;
+              MutatorMethodSpecs := BMutSpec;
+              ObserverMethodSpecs := BObsSpec |}.
 
   Variable mutatorIndex : Type.
   Variable observerIndex : Type.
@@ -175,22 +194,18 @@ Section prod.
   Variable observerMap : observerIndex -> ObserverIndex A + ObserverIndex B.
 
   (** Let's compose these two ADTs. *)
-
-  (** Require client code to classify the methods for us. *)
-  Variable sortOf : string -> methodSort.
-
   (** The composed ADT, which doesn't duplicate models *)
   Definition prodADT :=
     {|
       Model := model;
-      MethodSpecs := fun name => match sortOf name with
-                                   | ObserverA => MethodSpecs A name
-                                   | ObserverB => MethodSpecs B name
-                                   | Mutator => fun m x m' y =>
-                                                  MethodSpecs A name m x m' y
-                                                  /\ MethodSpecs B name m x m' y
-                                   | _ => fun _ _ _ _ => True
-                                 end
+      MutatorMethodSpecs idx :=
+        fun m x m' => MutatorMethodSpecs A (fst (mutatorMap idx)) m x m'
+                      /\ MutatorMethodSpecs B (snd (mutatorMap idx)) m x m';
+      ObserverMethodSpecs idx :=
+        fun m x y => match observerMap idx with
+                       | inl idx' => ObserverMethodSpecs A idx' m x y
+                       | inr idx' => ObserverMethodSpecs B idx' m x y
+                     end
     |}.
 
   (** Now we show how to implement it. *)
@@ -199,71 +214,65 @@ Section prod.
 
   Local Hint Extern 1 (@ex (_ * _) _) => eexists (_, _).
 
-  Hypothesis sortOf_accurate : forall name, methodSort_accurate A B (sortOf name) name.
-
-  Definition methods_match_mutation name
-    := forall m x m' m'' x' x'',
-         ASpec name m x m' x'
-         -> BSpec name m x m'' x''
-         -> m' = m''.
-
   Hypothesis mutators_match
-  : forall name,
-      match sortOf name with
-        | Mutator => methods_match_mutation name
-        | _ => True
-      end.
+  : forall idx,
+      forall m x m' m'',
+        AMutSpec (fst (mutatorMap idx)) m x m'
+        -> BMutSpec (snd (mutatorMap idx)) m x m''
+        -> m' = m''.
 
   Local Hint Extern 1 => symmetry.
-
-  Local Ltac fin_tac :=
-    match goal with
-      | [ H : RepInv ?i ?m ?s |- RepInv ?i ?m' ?s ] => replace m' with m; eauto
-      | [ H : ?spec ?name ?d1 ?x ?d2 ?n |- ?spec ?name ?d1 ?x ?d2' ?n' ]
-        => replace n' with n; eauto;
-           replace d2' with d2; eauto
-    end.
 
   Definition prodImpl : ADTimpl prodADT.
     refine {|
       State := State Ai * State Bi;
-      RepInv := fun (m : Model prodADT) s => RepInv Ai m (fst s)
-        /\ RepInv Bi m (snd s);
-      MethodBodies := fun name => match sortOf name as s with
-                                    | ObserverA => fun s x =>
-                                      let (s', y) := MethodBodies Ai name (fst s) x in
-                                        ((s', snd s), y)
-                                    | ObserverB => fun s x =>
-                                      let (s', y) := MethodBodies Bi name (snd s) x in
-                                        ((fst s, s'), y)
-                                    | Mutator => fun s x =>
-                                      let (s1, _) := MethodBodies Ai name (fst s) x in
-                                        let (s2, _) := MethodBodies Bi name (snd s) x in
-                                          ((s1, s2), 0)
-                                    | Dummy => fun s _ => (s, 0)
-                                  end
-    |}.
-
-    simpl; intros name m s H x.
-    generalize (sortOf_accurate name).
-    generalize (mutators_match name).
-    destruct (sortOf name); simpl; unfold observer, mutator, methodCorrect, methods_match_mutation;
-      (simpl; intuition; simpl in * );
-      match goal with
-        | [ H1 : RepInv Ai m (fst s), H2 : RepInv Bi m (snd s) |- _ ]
-          => specialize (MethodsCorrect Ai name m (fst s) H1 x);
-            specialize (MethodsCorrect Bi name m (snd s) H2 x)
-      end;
-      repeat destruct MethodBodies;
-      intros;
-      firstorder;
-      simpl in *;
-      try solve [ repeat esplit; (eassumption || fin_tac)
-                | repeat esplit; [ eassumption | | ]; fin_tac
-                | repeat esplit; [ | eassumption | ]; fin_tac ].
+      RepInv := fun (m : Model prodADT) s
+                => RepInv Ai m (fst s)
+                   /\ RepInv Bi m (snd s);
+      MutatorMethodBodies idx :=
+        fun s x =>
+          let s1 := fst (MutatorMethodBodies Ai (fst (mutatorMap idx)) (fst s) x) in
+          let s2 := fst (MutatorMethodBodies Bi (snd (mutatorMap idx)) (snd s) x) in
+          ((s1, s2), 0);
+      ObserverMethodBodies idx :=
+        match observerMap idx with
+          | inl idx' =>
+            fun s x =>
+              let s'y := ObserverMethodBodies Ai idx' (fst s) x in
+              ((fst s'y, snd s), snd s'y)
+          | inr idx' =>
+            fun s x =>
+              let s'y := ObserverMethodBodies Bi idx' (snd s) x in
+              ((fst s, fst s'y), snd s'y)
+        end
+      |};
+    intro idx;
+    try (assert (MM := mutators_match idx));
+    repeat intro;
+    simpl in *;
+    match goal with
+      | [ |- appcontext[mutatorMap ?idx] ]
+        => destruct (mutatorMap idx); clear idx
+      | [ |- appcontext[observerMap ?idx] ]
+        => destruct (observerMap idx); clear idx
+    end;
+    simpl in *;
+    repeat split;
+    try first [ apply (ObserverMethodsCorrect Ai)
+              | apply (ObserverMethodsCorrect Bi) ];
+    simpl in *; intuition.
+    edestruct (MutatorMethodsCorrect Ai); try eassumption.
+    edestruct (MutatorMethodsCorrect Bi); try eassumption.
+    simpl in *.
+    intuition.
+    match goal with
+      | [ AM : AMutSpec _ _ _ _, BM : BMutSpec _ _ _ _ |- _ ]
+        => specialize (MM _ _ _ _ AM BM); subst
+    end.
+    repeat esplit; eassumption.
   Defined.
 End prod.
-*)
+
 (** * An example, composing binary commutative associative calculators for computable nat multisets *)
 
 Definition multiset := nat -> nat.
@@ -510,27 +519,77 @@ Definition NatSumProd_spec : ADT
   := {| Model := multiset * multiset;
         MutatorIndex := unit;
         ObserverIndex := unit + unit;
-        MutatorMethodSpecs u m x m' := (forall k, (fst m') k = (add (fst m) x) k)
-                                       /\ (forall k, (snd m') k = (add (snd m) x) k);
-        ObserverMethodSpecs u m x n := match u with
-                                         | inl _ => exists l : list nat,
-                                                      (forall v, (fst m) v = count_occ eq_nat_dec l v)
-                                                      /\ match l with
-                                                           | nil => n = 0
-                                                           | cons z zs => n = fold_right plus z zs
-                                                         end
-                                         | inr _ => exists l : list nat,
-                                                      (forall v, (snd m) v = count_occ eq_nat_dec l v)
-                                                      /\ match l with
-                                                           | nil => n = 1
-                                                           | cons z zs => n = fold_right mult z zs
-                                                         end
-                                       end
+        MutatorMethodSpecs u m x m' :=
+          (forall k, (fst m') k = (add (fst m) x) k)
+          /\ (forall k, (snd m') k = (add (snd m) x) k);
+        ObserverMethodSpecs u m x n :=
+          match u with
+            | inl _ => exists l : list nat,
+                         (forall v, (fst m) v = count_occ eq_nat_dec l v)
+                         /\ match l with
+                              | nil => n = 0
+                              | cons z zs => n = fold_right plus z zs
+                            end
+            | inr _ => exists l : list nat,
+                         (forall v, (snd m) v = count_occ eq_nat_dec l v)
+                         /\ match l with
+                              | nil => n = 1
+                              | cons z zs => n = fold_right mult z zs
+                            end
+          end
      |}.
 
+Existing Class ADTimpl.
+Hint Extern 1 (ADTimpl _) => eapply NatLowerI : typeclass_instances.
+Hint Extern 1 (ADTimpl _) => eapply NatUpperI : typeclass_instances.
+Hint Extern 1 (ADTimpl _) => eapply NatSumI : typeclass_instances.
+Hint Extern 1 (ADTimpl _) => eapply NatProdI : typeclass_instances.
+Hint Extern 2 (ADTimpl _) => eapply pairedImpl : typeclass_instances.
+
+Typeclasses eauto := debug.
 Goal ADTimpl NatSumProd_spec.
-Print pairedImpl.
-eapply pairedImpl.
+unfold NatSumProd_spec.
+let f := lazymatch goal with |- ADTimpl {| MutatorMethodSpecs := ?f |} => constr:(f) end in
+let f' := constr:(fun idx ma mb x m'a m'b => f idx (ma, mb) x (m'a, m'b)) in
+let f'' := (eval simpl in f') in
+let f0f1 := lazymatch f'' with
+              | (fun idx ma mb x m'a m'b => @?f0 idx ma x m'a /\ @?f1 idx mb x m'b)
+                => constr:((f0, f1))
+            end in
+let AMutatorMethodSpecs := constr:(fst f0f1) in
+let BMutatorMethodSpecs := constr:(snd f0f1) in
+let fObs := match goal with |- ADTimpl {| ObserverMethodSpecs := ?f |} => constr:(f) end in
+let f'Obs := constr:(fun idx ma mb x y => fObs idx (ma, mb) x y) in
+let f''Obs := (eval simpl in f'Obs) in
+let f0f1Obs := lazymatch f''Obs with
+                 | (fun idx ma mb x y =>
+                      match idx with
+                        | inl idx' => @?f0 ma x y idx'
+                        | inr idx' => @?f1 mb x y idx'
+                      end)
+                   => constr:((f0, f1))
+               end in
+let AObserverMethodSpecs := constr:(fst f0f1Obs) in
+let BObserverMethodSpecs := constr:(snd f0f1Obs) in
+lazymatch goal with
+  | [ |- ADTimpl
+           {|
+             Model := ?AModel * ?BModel;
+             MutatorIndex := ?mutatorIndex;
+             ObserverIndex := ?observerIndex
+           |} ]
+    => pose proof (@pairedImpl
+                     (@Build_ADT AModel _ _ AMutatorMethodSpecs (fun idx' ma x y => AObserverMethodSpecs ma x y idx'))
+                     (@Build_ADT BModel _ _ BMutatorMethodSpecs (fun idx' mb x y => BObserverMethodSpecs mb x y idx'))
+                     mutatorIndex
+                     observerIndex
+                     (fun x => (x, x))
+                     (fun x => x));
+      unfold pairedADT in *; simpl in *
+end.
+    eapply X;
+    eauto with typeclass_instances.
+Defined.
 
 Definition NatLowerUpper_sortOf (s : string) :=
   if string_dec s "add"
