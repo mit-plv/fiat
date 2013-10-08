@@ -319,7 +319,7 @@ Infix "<=" := le_dec : bool_scope.
 Infix "<" := lt_dec : bool_scope.
 Infix ">=" := ge_dec : bool_scope.
 Infix ">" := gt_dec : bool_scope.
-Infix "->" := implb : bool_scope.
+(*Infix "->" := implb : bool_scope.*)
 
 Definition NatBinOp
            (op : nat -> nat -> nat)
@@ -546,8 +546,97 @@ Hint Extern 1 (ADTimpl _) => eapply NatSumI : typeclass_instances.
 Hint Extern 1 (ADTimpl _) => eapply NatProdI : typeclass_instances.
 Hint Extern 2 (ADTimpl _) => eapply pairedImpl : typeclass_instances.
 
+Record refine (from to : ADT) := {
+  MakeImpl : ADTimpl from -> ADTimpl to;
+  MapMutator : MutatorIndex to -> option (MutatorIndex from);
+  MapObserver : ObserverIndex to -> option (ObserverIndex from)
+}.
+
+Definition empty := {|
+  Model := unit;
+  MutatorIndex := Empty_set;
+  ObserverIndex := Empty_set;
+
+  MutatorMethodSpecs := fun x : Empty_set => match x with end;
+  ObserverMethodSpecs := fun x : Empty_set => match x with end
+|}.
+
+Definition emptyI : ADTimpl empty := {|
+    State := unit;
+    RepInv := fun _ _ => True;
+    MutatorMethodBodies := fun x : MutatorIndex empty => match x with end;
+    ObserverMethodBodies := fun x : Empty_set => match x with end;
+    MutatorMethodsCorrect := fun x : Empty_set => match x with end;
+    ObserverMethodsCorrect := fun x : Empty_set => match x with end
+|}.
+
+
+Definition ADTimpl' (to : ADT) := refine empty to.
+
+Theorem finish : forall to (ai' : ADTimpl' to), ADTimpl to.
+  destruct 1; eauto using emptyI.
+Defined.
+
+Definition easy from : refine from from := {|
+  MakeImpl := fun x => x;
+  MapMutator := fun x => Some x;
+  MapObserver := fun x => Some x
+|}.
+
+Section refinePaired.
+  Variables A B : ADT.
+
+  Variable mutatorIndex : Type.
+  Variable observerIndex : Type.
+  Variable mutatorMap : mutatorIndex -> MutatorIndex A * MutatorIndex B.
+  Variable observerMap : observerIndex -> ObserverIndex A + ObserverIndex B.
+
+  Variable Ai : ADTimpl A.
+  Variable Bi : ADTimpl B.
+
+  Theorem refinePaired : forall from new to,
+    refine (pairedADT from new) to
+    -> refine from to.
+
+Section pairedAlgorithmic.
+  Variables A B : ADT.
+
+  Variable mutatorIndex : Type.
+  Variable observerIndex : Type.
+  Variable mutatorMap : mutatorIndex -> MutatorIndex A * MutatorIndex B.
+  Variable observerMap : observerIndex -> ObserverIndex A + ObserverIndex B.
+
+  (** The composed ADT *)
+  Definition pairedADT :=
+    {|
+      Model := Model A * Model B;
+      MutatorIndex := mutatorIndex;
+      ObserverIndex := observerIndex;
+      MutatorMethodSpecs idx :=
+        let s := mutatorMap idx in
+        fun m x m' => MutatorMethodSpecs A (fst s) (fst m) x (fst m')
+                      /\ MutatorMethodSpecs B (snd s) (snd m) x (snd m');
+      ObserverMethodSpecs idx :=
+        fun m x y => match observerMap idx with
+                       | inl idx' => ObserverMethodSpecs A idx' (fst m) x y
+                       | inr idx' => ObserverMethodSpecs B idx' (snd m) x y
+                     end
+    |}.
+
+  (** Now we show how to implement it. *)
+  Variable Ai : ADTimpl A.
+  Variable Bi : ADTimpl B.
+    ADTimpl a1
+    -> ADTimpl a2
+    -> ADTimpl a.
+
+
 Typeclasses eauto := debug.
 Goal ADTimpl NatSumProd_spec.
+  unfold NatSumProd_spec.
+  
+
+
 unfold NatSumProd_spec.
 let f := lazymatch goal with |- ADTimpl {| MutatorMethodSpecs := ?f |} => constr:(f) end in
 let f' := constr:(fun idx ma mb x m'a m'b => f idx (ma, mb) x (m'a, m'b)) in
