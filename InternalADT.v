@@ -837,32 +837,159 @@ Section prodPartial.
   Defined.
 End prodPartial.
 
-Lemma add_component A B (Aimpl : PartialADTimpl A) (Bimpl : ADTimpl B)
-      Adistinguished_observer_index
-      (Aidx := Adistinguished_observer_index)
-      (Aidx_is_not_yet_implemented : PObserverMethodBodies Aimpl Aidx = None)
-      Bdistinguished_observer_index
-  Definition refinePaired to (newI : ADTimpl new)
-  : refine (pairedADT from new mutatorMap observerMap) to
-    -> refine from to
-    := fun r =>
-         {| MakeImpl fromI := MakeImpl r (pairedImpl _ _ fromI newI);
-            MapMutator toIndex :=
-              match MapMutator r toIndex with
-                | None => None
-                | Some idx => Some (fst (mutatorMap idx))
-              end;
-            MapObserver toIndex :=
-              match MapObserver r toIndex with
-                | None => None
-                | Some idx => match observerMap idx with
-                                | inl idx' => Some idx'
-                                | inr idx' => None
-                              end
-              end
-         |}.
-End refinePaired.
 
+Lemma add_component A B (Bimpl : ADTimpl B) later
+  (Is : ObserverIndex A -> ObserverIndex B + later)
+  (unlater : later -> ObserverIndex A)
+  (Ms : MutatorIndex A -> MutatorIndex B)
+  (AtoB : Model A -> Model B)
+  (BtoA : Model A -> Model B -> Model A)
+  (Htos : forall m m', AtoB (BtoA m m') = m')
+  (mutators_match : forall idx,
+    forall m x m' m'',
+      MutatorMethodSpecs A idx m x m'
+      -> MutatorMethodSpecs B (Ms idx) (AtoB m) x m''
+      -> m' = BtoA m m'')
+  (observers_match : forall idx,
+    match Is idx with
+      | inr _ => True
+      | inl idx' =>
+        forall m x y,
+          ObserverMethodSpecs A idx m x y
+          <-> ObserverMethodSpecs B idx' (AtoB m) x y
+    end)
+  (almost_adjunction : forall idx l, Is idx = inr l -> idx = unlater l)
+  : PartialADTimpl {| Model := Model A;
+    MutatorIndex := MutatorIndex A;
+    ObserverIndex := later;
+    MutatorMethodSpecs := MutatorMethodSpecs A;
+    ObserverMethodSpecs i := ObserverMethodSpecs A (unlater i)
+  |}
+  -> PartialADTimpl A.
+Proof.
+  intro Aimpl.
+  refine {|
+    PState := PState Aimpl * State Bimpl;
+    PRepInv := (fun (m : Model A) s
+      => PRepInv Aimpl m (fst s)
+      /\ RepInv Bimpl (AtoB m) (snd s));
+    PMutatorMethodBodies idx :=
+    (fun s x =>
+      let s1 := fst (PMutatorMethodBodies Aimpl idx (fst s) x) in
+        let s2 := fst (MutatorMethodBodies Bimpl (Ms idx) (snd s) x) in
+          ((s1, s2), 0));
+    PObserverMethodBodies Aidx :=
+    (match Is Aidx with
+       | inl o0 => Some
+         (fun ab x =>
+           (fst ab, fst (ObserverMethodBodies Bimpl o0 (snd ab) x),
+             snd (ObserverMethodBodies Bimpl o0 (snd ab) x)))
+       | inr l =>
+         match PObserverMethodBodies Aimpl l with
+           | Some m =>
+             Some
+             (fun ab x =>
+               (fst (m (fst ab) x), snd ab, snd (m (fst ab) x)))
+           | None => None
+         end
+     end)
+  |};
+  intro idx;
+    try (assert (MM := mutators_match idx));
+      repeat intro;
+        simpl in *. 
+  split_and.
+  edestruct (PMutatorMethodsCorrect Aimpl); try eassumption.
+  edestruct (MutatorMethodsCorrect Bimpl); try eassumption.
+  split_and; simpl in *.
+  specialize (MM _ _ _ _ H H2); subst.
+  repeat esplit; try eassumption.
+  rewrite Htos; assumption.
+
+  specialize (observers_match idx);
+    revert observers_match;
+      case_eq (Is idx);
+        intro;
+          hnf; simpl; intuition;
+            match goal with
+              | [ |- appcontext[PObserverMethodBodies ?i ?idx] ]
+                => pose proof (PObserverMethodsCorrect i idx)
+              | [ |- appcontext[ObserverMethodBodies ?i ?idx] ]
+                => pose proof (ObserverMethodsCorrect i idx)
+            end;
+            unfold observerMethodCorrect in *;
+              split_and;
+              split_iff;
+              simpl in *;
+                intuition.
+  revert H0.
+  case_eq (PObserverMethodBodies Aimpl l);
+    intros; simpl in *; split_and; intuition.
+  specialize (H5 _ _ H3 x).
+  erewrite <- almost_adjunction in H5 by eassumption.
+  assumption.
+Defined.
+
+Lemma no_observers (A : ADT) (Hreally : ObserverIndex A -> False)
+  (Himplementable : forall idx m x,
+    exists m', MutatorMethodSpecs A idx m x m')
+  : PartialADTimpl A.
+  refine {| PState := unit;
+    PRepInv := fun _ _ => True;
+    PMutatorMethodBodies := fun _ _ _ => (tt, 0);
+    PObserverMethodBodies := fun _ => None
+  |}; auto.
+
+  intro.
+  hnf; simpl; intros.
+  edestruct Himplementable.
+  eauto.
+Defined.
+
+Goal PartialADTimpl NatSumProd_spec.
+  pose proof (add_component NatSumProd_spec
+    (NatSumI 0)
+    (later := unit)).
+
+  eapply (add_component NatSumProd_spec
+    (NatSumI 0)
+    (later := unit)
+    (fun x => x)
+    (fun x => inr x)
+    (fun x => x) (fun x => x) (fun _ x => x));
+  auto.
+
+  destruct idx; simpl.
+  intros.
+  Require Import FunctionalExtensionality.
+  extensionality n.
+  rewrite H, H0; auto.
+
+  destruct idx; intuition.
+
+  let A := match goal with |- PartialADTimpl ?A => constr:(A) end in
+  eapply (add_component A
+    (NatProdI 1) (later := Empty_set)
+    (fun x => inl x)
+    (fun x => match x with end)
+    (fun x => x)
+    (fun x => x) (fun _ x => x));
+  simpl; auto.
+
+  intros.
+  extensionality n.
+  rewrite H, H0; auto.
+
+  tauto.
+  destruct l.
+
+  apply no_observers; simpl; intros.
+
+  destruct H.
+  exists (fun k => if eq_nat_dec x k then S (m k) else m k).
+  auto.
+Defined.
+  
 
 Existing Class ADTimpl.
 Hint Extern 1 (ADTimpl _) => eapply NatLowerI : typeclass_instances.
