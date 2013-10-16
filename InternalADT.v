@@ -3,6 +3,34 @@ Require Import String Omega List.
 Generalizable All Variables.
 Set Implicit Arguments.
 
+(* Coq's build in tactics don't work so well with things like [iff]
+   so split them up into multiple hypotheses *)
+Ltac split_in_context ident funl funr :=
+  repeat match goal with
+           | [ H : context p [ident] |- _ ] =>
+             let H0 := context p[funl] in let H0' := eval simpl in H0 in assert H0' by (apply H);
+               let H1 := context p[funr] in let H1' := eval simpl in H1 in assert H1' by (apply H);
+                 clear H
+         end.
+
+Ltac split_iff := split_in_context iff (fun a b : Prop => a -> b) (fun a b : Prop => b -> a).
+
+Ltac split_and' :=
+  repeat match goal with
+           | [ H : ?a /\ ?b |- _ ] => let H0 := fresh in let H1 := fresh in
+             assert (H0 := fst H); assert (H1 := snd H); clear H
+         end.
+Ltac split_and := split_and'; split_in_context and (fun a b : Type => a) (fun a b : Type => b).
+
+(* [pose proof defn], but only if no hypothesis of the same type exists.
+   most useful for proofs of a proposition *)
+Ltac unique_pose defn :=
+  let T := type of defn in
+    match goal with
+      | [ H : T |- _ ] => fail 1
+      | _ => pose proof defn
+    end.
+
 
 (** * Basic ADT definitions *)
 
@@ -629,11 +657,212 @@ Coercion PartialADTimpl_of_ADTimpl A (impl : ADTimpl A)
       PObserverMethodsCorrect := ObserverMethodsCorrect impl
     |}.
 
+
+Section pairedPartial.
+  Variables A B : ADT.
+  (** Let's compose these two ADTs. *)
+
+  Variable mutatorIndex : Type.
+  Variable observerIndex : Type.
+  Variable mutatorMap : mutatorIndex -> MutatorIndex A * MutatorIndex B.
+  Variable observerMap : observerIndex -> ObserverIndex A + ObserverIndex B.
+
+  (** Now we show how to implement it. *)
+  Variable Ai : PartialADTimpl A.
+  Variable Bi : PartialADTimpl B.
+
+  Definition pairedPartialImpl
+  : PartialADTimpl (pairedADT A B mutatorMap observerMap).
+  Proof.
+    refine {|
+        PState := PState Ai * PState Bi;
+        PRepInv := fun (m : Model (pairedADT A B mutatorMap observerMap)) s
+                   => PRepInv Ai (fst m) (fst s)
+                      /\ PRepInv Bi (snd m) (snd s);
+        PMutatorMethodBodies name :=
+          fun s x
+          => ((fst (PMutatorMethodBodies Ai (fst (mutatorMap name)) (fst s) x),
+               fst (PMutatorMethodBodies Bi (snd (mutatorMap name)) (snd s) x)),
+              0);
+        PObserverMethodBodies name :=
+          match observerMap name with
+            | inl name'
+              => match PObserverMethodBodies Ai name' with
+                   | Some body => Some (fun s x
+                                        => let sy := body (fst s) x in
+                                           ((fst sy, snd s), snd sy))
+                   | None => None
+                 end
+            | inr name'
+              => match PObserverMethodBodies Bi name' with
+                   | Some body => Some (fun s x
+                                        => let sy := body (snd s) x in
+                                           ((fst s, fst sy), snd sy))
+                   | None => None
+                 end
+          end
+      |};
+    repeat match goal with
+             | _ => intro
+             | _ => progress simpl in *
+             | [ idx : mutatorIndex, H : PRepInv Ai _ _ /\ PRepInv Bi _ _, x : nat |- _ ]
+               => generalize (PMutatorMethodsCorrect Ai (fst (mutatorMap idx)) _ _ (proj1 H) x);
+                 generalize (PMutatorMethodsCorrect Bi (snd (mutatorMap idx)) _ _ (proj2 H) x);
+                 destruct (mutatorMap idx), H; simpl in *;
+                 clear idx;
+                 progress repeat destruct PMutatorMethodBodies;
+                 simpl in *;
+                 firstorder; subst
+             | [ idx : ObserverIndex _ |- appcontext[PRepInv ?Ai] ]
+               => unique_pose (PObserverMethodsCorrect Ai idx)
+             | [ |- appcontext[match PObserverMethodBodies ?i ?name with _ => _ end] ]
+               => destruct (PObserverMethodBodies i name);
+                 simpl in *;
+                 unfold observerMethodCorrect in *;
+                 split_and;
+                 intros;
+                 split;
+                 try solve [ intuition ]
+             | [ idx : observerIndex |- _ ]
+               => destruct (observerMap idx) as [idx'|idx']; clear idx
+             | _ => eexists (_, _)
+             | _ => progress (repeat esplit; try eassumption)
+             | _ => apply PObserverMethodsCorrect
+             | _ => progress firstorder intuition
+           end.
+  Defined.
+End pairedPartial.
+
+Section prodPartial.
+  Variable model : Type.
+  Variables AMutIndex BMutIndex AObsIndex BObsIndex : Type.
+  Variable AMutSpec : AMutIndex -> mutatorMethodSpec model.
+  Variable BMutSpec : BMutIndex -> mutatorMethodSpec model.
+  Variable AObsSpec : AObsIndex -> observerMethodSpec model.
+  Variable BObsSpec : BObsIndex -> observerMethodSpec model.
+
+  Let A := {| Model := model;
+              MutatorMethodSpecs := AMutSpec;
+              ObserverMethodSpecs := AObsSpec |}.
+  Let B := {| Model := model;
+              MutatorMethodSpecs := BMutSpec;
+              ObserverMethodSpecs := BObsSpec |}.
+
+  Variable mutatorIndex : Type.
+  Variable observerIndex : Type.
+  Variable mutatorMap : mutatorIndex -> MutatorIndex A * MutatorIndex B.
+  Variable observerMap : observerIndex -> ObserverIndex A + ObserverIndex B.
+
+  Local Notation prodADT := (prodADT AMutSpec BMutSpec
+                                     AObsSpec BObsSpec
+                                     mutatorMap
+                                     observerMap).
+
+  (** Now we show how to implement it. *)
+  Variable Ai : PartialADTimpl A.
+  Variable Bi : PartialADTimpl B.
+
+  Local Hint Extern 1 (@ex (_ * _) _) => eexists (_, _).
+
+  Hypothesis mutators_match
+  : forall idx,
+      forall m x m' m'',
+        AMutSpec (fst (mutatorMap idx)) m x m'
+        -> BMutSpec (snd (mutatorMap idx)) m x m''
+        -> m' = m''.
+
+  Local Hint Extern 1 => symmetry.
+
+  Definition prodPartialImpl : PartialADTimpl prodADT.
+  Proof.
+    refine {|
+        PState := PState Ai * PState Bi;
+        PRepInv := fun (m : Model prodADT) s
+                   => PRepInv Ai m (fst s)
+                      /\ PRepInv Bi m (snd s);
+        PMutatorMethodBodies idx :=
+          fun s x =>
+            let s1 := fst (PMutatorMethodBodies Ai (fst (mutatorMap idx)) (fst s) x) in
+            let s2 := fst (PMutatorMethodBodies Bi (snd (mutatorMap idx)) (snd s) x) in
+            ((s1, s2), 0);
+        PObserverMethodBodies idx :=
+          match observerMap idx with
+            | inl idx' =>
+              match PObserverMethodBodies Ai idx' with
+                | Some body => Some (fun s x =>
+                                       let s'y := body (fst s) x in
+                                       ((fst s'y, snd s), snd s'y))
+                | None => None
+              end
+            | inr idx' =>
+              match PObserverMethodBodies Bi idx' with
+                | Some body => Some (fun s x =>
+                                       let s'y := body (snd s) x in
+                                       ((fst s, fst s'y), snd s'y))
+                | None => None
+              end
+          end
+      |};
+    intro idx;
+    try (assert (MM := mutators_match idx));
+    repeat intro;
+    simpl in *;
+    match goal with
+      | [ |- appcontext[mutatorMap ?idx] ]
+        => destruct (mutatorMap idx); clear idx
+      | [ |- appcontext[observerMap ?idx] ]
+        => destruct (observerMap idx); clear idx
+    end;
+    simpl in *;
+    repeat split;
+    try match goal with
+          | [ |- appcontext[PObserverMethodBodies ?i ?idx] ]
+            => pose proof (PObserverMethodsCorrect i idx);
+              destruct (PObserverMethodBodies i idx)
+        end;
+    simpl in *;
+    unfold observerMethodCorrect in *;
+    split_and;
+    simpl in *;
+    intuition.
+    - edestruct (PMutatorMethodsCorrect Ai); try eassumption.
+      edestruct (PMutatorMethodsCorrect Bi); try eassumption.
+      simpl in *.
+      intuition.
+      match goal with
+        | [ AM : AMutSpec _ _ _ _, BM : BMutSpec _ _ _ _ |- _ ]
+          => specialize (MM _ _ _ _ AM BM); subst
+      end.
+      repeat esplit; eassumption.
+  Defined.
+End prodPartial.
+
 Lemma add_component A B (Aimpl : PartialADTimpl A) (Bimpl : ADTimpl B)
       Adistinguished_observer_index
       (Aidx := Adistinguished_observer_index)
       (Aidx_is_not_yet_implemented : PObserverMethodBodies Aimpl Aidx = None)
       Bdistinguished_observer_index
+  Definition refinePaired to (newI : ADTimpl new)
+  : refine (pairedADT from new mutatorMap observerMap) to
+    -> refine from to
+    := fun r =>
+         {| MakeImpl fromI := MakeImpl r (pairedImpl _ _ fromI newI);
+            MapMutator toIndex :=
+              match MapMutator r toIndex with
+                | None => None
+                | Some idx => Some (fst (mutatorMap idx))
+              end;
+            MapObserver toIndex :=
+              match MapObserver r toIndex with
+                | None => None
+                | Some idx => match observerMap idx with
+                                | inl idx' => Some idx'
+                                | inr idx' => None
+                              end
+              end
+         |}.
+End refinePaired.
+
 
 Existing Class ADTimpl.
 Hint Extern 1 (ADTimpl _) => eapply NatLowerI : typeclass_instances.
