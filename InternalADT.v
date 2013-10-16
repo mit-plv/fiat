@@ -282,6 +282,15 @@ Definition add (s : multiset) (n : nat) : multiset
               else s m.
 
 Require Import Min Max List.
+
+Coercion sumbooltobool A B : {A} + {B} -> bool := fun x => if x then true else false.
+
+Infix "<=" := le_dec : bool_scope.
+Infix "<" := lt_dec : bool_scope.
+Infix ">=" := ge_dec : bool_scope.
+Infix ">" := gt_dec : bool_scope.
+(*Infix "->" := implb : bool_scope.*)
+
 (*
 Fixpoint make_specs model (spec_list : list (string * methodSpec model))
   := fun s
@@ -313,13 +322,22 @@ Definition make_accessor
 Arguments make_accessor / .
 *)
 
-Coercion sumbooltobool A B : {A} + {B} -> bool := fun x => if x then true else false.
 
-Infix "<=" := le_dec : bool_scope.
-Infix "<" := lt_dec : bool_scope.
-Infix ">=" := ge_dec : bool_scope.
-Infix ">" := gt_dec : bool_scope.
-(*Infix "->" := implb : bool_scope.*)
+Definition add_spec : mutatorMethodSpec multiset
+  := fun m x m' => forall k, m' k = (add m x) k.
+
+Arguments add_spec / .
+
+Definition bin_op_spec (op : nat -> nat -> nat) (default_value : nat)
+: observerMethodSpec multiset
+  := fun m x n => exists l : list nat,
+                    (forall v, m v = count_occ eq_nat_dec l v)
+                    /\ match l with
+                         | nil => n = default_value
+                         | cons z zs => n = fold_right op z zs
+                       end.
+
+Arguments bin_op_spec / .
 
 Definition NatBinOp
            (op : nat -> nat -> nat)
@@ -331,13 +349,8 @@ Definition NatBinOp
       Model := multiset;
       MutatorIndex := unit;
       ObserverIndex := unit;
-      MutatorMethodSpecs u m x m' := forall k, m' k = (add m x) k;
-      ObserverMethodSpecs u m x n := exists l : list nat,
-                                       (forall v, m v = count_occ eq_nat_dec l v)
-                                       /\ match l with
-                                            | nil => n = default_value
-                                            | cons z zs => n = fold_right op z zs
-                                          end
+      MutatorMethodSpecs u := add_spec;
+      ObserverMethodSpecs u := bin_op_spec op default_value
     |}.
 
 Local Ltac rewrite_hyp' :=
@@ -516,28 +529,111 @@ Definition NatProdI default_val : ADTimpl (NatProd default_val)
 Local Open Scope string_scope.
 
 Definition NatSumProd_spec : ADT
-  := {| Model := multiset * multiset;
+  := {| Model := multiset;
         MutatorIndex := unit;
         ObserverIndex := unit + unit;
-        MutatorMethodSpecs u m x m' :=
-          (forall k, (fst m') k = (add (fst m) x) k)
-          /\ (forall k, (snd m') k = (add (snd m) x) k);
+        MutatorMethodSpecs u := add_spec;
         ObserverMethodSpecs u m x n :=
           match u with
-            | inl _ => exists l : list nat,
-                         (forall v, (fst m) v = count_occ eq_nat_dec l v)
-                         /\ match l with
-                              | nil => n = 0
-                              | cons z zs => n = fold_right plus z zs
-                            end
-            | inr _ => exists l : list nat,
-                         (forall v, (snd m) v = count_occ eq_nat_dec l v)
-                         /\ match l with
-                              | nil => n = 1
-                              | cons z zs => n = fold_right mult z zs
-                            end
+            | inl _ => bin_op_spec plus 0 m x n
+            | inr _ => bin_op_spec mult 1 m x n
           end
      |}.
+
+Record PartialADTimpl (A : ADT) :=
+  {
+    PState : Type;
+    (** Real state type in Gallina *)
+
+    PRepInv : Model A -> PState -> Prop;
+    (** Relationship between abstract (specification) and concrete (implementation) states *)
+
+    PMutatorMethodBodies : MutatorIndex A -> methodTypeD PState;
+    (** An implementation of each mutator method *)
+
+    PObserverMethodBodies : ObserverIndex A -> option (methodTypeD PState);
+    (** An implementation of each observer method *)
+
+    PMutatorMethodsCorrect : forall idx, mutatorMethodCorrect
+                                           (MutatorMethodSpecs A idx)
+                                           PRepInv
+                                           (PMutatorMethodBodies idx);
+    (** All mutator methods satisfy their specs. *)
+
+    PObserverMethodsCorrect : forall idx, match PObserverMethodBodies idx with
+                                            | Some body => observerMethodCorrect
+                                                             (ObserverMethodSpecs A idx)
+                                                             PRepInv
+                                                             body
+                                            | None => True
+                                          end
+    (** All observer methods satisfy their specs. *)
+  }.
+
+Definition IsFull_PartialADTimpl A (impl : PartialADTimpl A)
+  := forall idx, PObserverMethodBodies impl idx <> None.
+
+Definition ADTimpl_of_PartialADTimpl A impl (H : @IsFull_PartialADTimpl A impl)
+: ADTimpl A
+  := {|
+      State := PState impl;
+      RepInv := PRepInv impl;
+      MutatorMethodBodies := PMutatorMethodBodies impl;
+      ObserverMethodBodies := (fun idx : ObserverIndex A
+                               => match PObserverMethodBodies impl idx
+                                        as b
+                                        return b <> None -> _
+                                  with
+                                    | Some body => fun _ => body
+                                    | None => fun x : None <> None
+                                              => match x eq_refl with end
+                                  end (H idx));
+      MutatorMethodsCorrect := PMutatorMethodsCorrect impl;
+      ObserverMethodsCorrect := (fun idx : ObserverIndex A =>
+                                   match
+                                     PObserverMethodBodies impl idx as b
+                                     return
+                                     (forall n : b <> None,
+                                        match b with
+                                          | Some body =>
+                                            observerMethodCorrect
+                                              (ObserverMethodSpecs A idx)
+                                              (PRepInv impl)
+                                              body
+                                          | None => True
+                                        end ->
+                                        observerMethodCorrect
+                                          (ObserverMethodSpecs A idx)
+                                          (PRepInv impl)
+                                          (match b with
+                                             | Some body => fun _ => body
+                                             | None => _
+                                           end n))
+                                   with
+                                     | Some m => fun _ corr => corr
+                                     | None => fun x : None <> None =>
+                                                 match x eq_refl with end
+                                   end
+                                     (H idx)
+                                     (PObserverMethodsCorrect impl idx))
+    |}.
+
+Coercion PartialADTimpl_of_ADTimpl A (impl : ADTimpl A)
+: PartialADTimpl A
+  := {|
+      PState := State impl;
+      PRepInv := RepInv impl;
+      PMutatorMethodBodies := MutatorMethodBodies impl;
+      PObserverMethodBodies idx := Some (ObserverMethodBodies impl idx);
+      PMutatorMethodsCorrect := MutatorMethodsCorrect impl;
+      PObserverMethodsCorrect := ObserverMethodsCorrect impl
+    |}.
+
+Lemma add_component A B (Aimpl : PartialADTimpl A) (Bimpl : ADTimpl B)
+      Adistinguished_observer_index
+      (Aidx := Adistinguished_observer_index)
+      (Aidx_is_not_yet_implemented : PObserverMethodBodies Aimpl Aidx = None)
+      Bdistinguished_observer_index
 
 Existing Class ADTimpl.
 Hint Extern 1 (ADTimpl _) => eapply NatLowerI : typeclass_instances.
@@ -546,29 +642,32 @@ Hint Extern 1 (ADTimpl _) => eapply NatSumI : typeclass_instances.
 Hint Extern 1 (ADTimpl _) => eapply NatProdI : typeclass_instances.
 Hint Extern 2 (ADTimpl _) => eapply pairedImpl : typeclass_instances.
 
-Record refine (from to : ADT) := {
-  MakeImpl : ADTimpl from -> ADTimpl to;
-  MapMutator : MutatorIndex to -> option (MutatorIndex from);
-  MapObserver : ObserverIndex to -> option (ObserverIndex from)
-}.
+Record refine (from to : ADT) :=
+  {
+    MakeImpl : ADTimpl from -> ADTimpl to;
+    MapMutator : MutatorIndex to -> option (MutatorIndex from);
+    MapObserver : ObserverIndex to -> option (ObserverIndex from)
+  }.
 
-Definition empty := {|
-  Model := unit;
-  MutatorIndex := Empty_set;
-  ObserverIndex := Empty_set;
+Definition empty :=
+  {|
+    Model := unit;
+    MutatorIndex := Empty_set;
+    ObserverIndex := Empty_set;
 
-  MutatorMethodSpecs := fun x : Empty_set => match x with end;
-  ObserverMethodSpecs := fun x : Empty_set => match x with end
-|}.
+    MutatorMethodSpecs := fun x : Empty_set => match x with end;
+    ObserverMethodSpecs := fun x : Empty_set => match x with end
+  |}.
 
-Definition emptyI : ADTimpl empty := {|
+Definition emptyI : ADTimpl empty :=
+  {|
     State := unit;
     RepInv := fun _ _ => True;
     MutatorMethodBodies := fun x : MutatorIndex empty => match x with end;
     ObserverMethodBodies := fun x : Empty_set => match x with end;
     MutatorMethodsCorrect := fun x : Empty_set => match x with end;
     ObserverMethodsCorrect := fun x : Empty_set => match x with end
-|}.
+  |}.
 
 
 Definition ADTimpl' (to : ADT) := refine empty to.
@@ -577,26 +676,48 @@ Theorem finish : forall to (ai' : ADTimpl' to), ADTimpl to.
   destruct 1; eauto using emptyI.
 Defined.
 
-Definition easy from : refine from from := {|
-  MakeImpl := fun x => x;
-  MapMutator := fun x => Some x;
-  MapObserver := fun x => Some x
-|}.
+Definition easy from : refine from from :=
+  {|
+    MakeImpl := fun x => x;
+    MapMutator := fun x => Some x;
+    MapObserver := fun x => Some x
+  |}.
 
 Section refinePaired.
-  Variables A B : ADT.
+  Variables from new : ADT.
 
   Variable mutatorIndex : Type.
   Variable observerIndex : Type.
-  Variable mutatorMap : mutatorIndex -> MutatorIndex A * MutatorIndex B.
-  Variable observerMap : observerIndex -> ObserverIndex A + ObserverIndex B.
+  Variable mutatorMap : mutatorIndex -> MutatorIndex from * MutatorIndex new.
+  Variable observerMap : observerIndex -> ObserverIndex from + ObserverIndex new.
 
-  Variable Ai : ADTimpl A.
-  Variable Bi : ADTimpl B.
+  Definition refinePaired to (newI : ADTimpl new)
+  : refine (pairedADT from new mutatorMap observerMap) to
+    -> refine from to
+    := fun r =>
+         {| MakeImpl fromI := MakeImpl r (pairedImpl _ _ fromI newI);
+            MapMutator toIndex :=
+              match MapMutator r toIndex with
+                | None => None
+                | Some idx => Some (fst (mutatorMap idx))
+              end;
+            MapObserver toIndex :=
+              match MapObserver r toIndex with
+                | None => None
+                | Some idx => match observerMap idx with
+                                | inl idx' => Some idx'
+                                | inr idx' => None
+                              end
+              end
+         |}.
+End refinePaired.
 
-  Theorem refinePaired : forall from new to,
-    refine (pairedADT from new) to
-    -> refine from to.
+Goal ADTimpl NatSumProd_spec.
+Proof.
+  eapply finish.
+  unfold NatSumProd_spec.
+  eapply refinePaired.
+
 
 Section pairedAlgorithmic.
   Variables A B : ADT.
@@ -634,7 +755,7 @@ Section pairedAlgorithmic.
 Typeclasses eauto := debug.
 Goal ADTimpl NatSumProd_spec.
   unfold NatSumProd_spec.
-  
+
 
 
 unfold NatSumProd_spec.
