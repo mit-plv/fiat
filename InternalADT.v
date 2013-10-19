@@ -961,13 +961,16 @@ Lemma add_component A B (Bimpl : ADTimpl B) later
   (unlater : later -> ObserverIndex A)
   (Ms : MutatorIndex A -> MutatorIndex B)
   (AtoB : Model A -> Model B)
-  (BtoA : Model A -> Model B -> Model A)
-  (Htos : forall m m', AtoB (BtoA m m') = m')
   (mutators_match : forall idx,
     forall m x m',
       MutatorMethodSpecs B (Ms idx) (AtoB m) x m'
       -> exists m'', m' = AtoB m''
                      /\ MutatorMethodSpecs A idx m x m'')
+  (mutators_match_hammer : forall idx,
+    forall m x m' m'',
+      MutatorMethodSpecs B (Ms idx) (AtoB m) x m'
+      -> MutatorMethodSpecs A idx m x m''
+      -> m' = AtoB m'')
   (observers_match : forall idx,
     match Is idx with
       | inr _ => True
@@ -1011,110 +1014,25 @@ Proof.
               g h
               ABimpl);
     simpl in *;
-    try solve [ intuition ].
-  - intros idx m x [m'A m'B] ?; simpl in *.
-    intuition.
-    f_equal.
-    move mutators_match at bottom.
-
-    specialize (mutators_match _ _ _ _
-    esplit; intuition eauto.
-    move Htos at bottom.
-    move mutators_match at bottom.
-    erewrite (mutators_match _ m'A _ m'A) at 2; try eassumption.
-
-
-  - intros.
-    specialize (observers_match idx).
-    repeat match goal with
-             | [ H : appcontext[Is idx] |- _ ] => revert H
-           end.
-    case_eq (Is idx);
-      intros;
-      split_iff;
-      rewrite ?Htos' in *;
-      intuition.
-    erewrite <- almost_adjunction in * by eassumption; trivial.
-  - intros idx m x [m'A m'B] ?; simpl in *.
-    intuition.
-    f_equal.
-    move mutators_match at bottom.
-    specialize (
-    move Htos at bottom.
-    move mutators_match at bottom.
-    erewrite (mutators_match _ m'A _ m'A) at 2; try eassumption.
-
-
-
-    symmetry; eapply mutators_match; try eassumption.
-
-
-    rewrite <- (Htos m m0).
-
-    f_equal.
-
-
- a). Aimpl Bimpl') as ABimpl.
-  refine {|
-    PState := PState Aimpl * State Bimpl;
-    PRepInv := (fun (m : Model A) s
-      => PRepInv Aimpl m (fst s)
-      /\ RepInv Bimpl (AtoB m) (snd s));
-    PMutatorMethodBodies idx :=
-    (fun s x =>
-      let s1 := fst (PMutatorMethodBodies Aimpl idx (fst s) x) in
-        let s2 := fst (MutatorMethodBodies Bimpl (Ms idx) (snd s) x) in
-          ((s1, s2), 0));
-    PObserverMethodBodies Aidx :=
-    (match Is Aidx with
-       | inl o0 => Some
-         (fun ab x =>
-           (fst ab, fst (ObserverMethodBodies Bimpl o0 (snd ab) x),
-             snd (ObserverMethodBodies Bimpl o0 (snd ab) x)))
-       | inr l =>
-         match PObserverMethodBodies Aimpl l with
-           | Some m =>
-             Some
-             (fun ab x =>
-               (fst (m (fst ab) x), snd ab, snd (m (fst ab) x)))
-           | None => None
-         end
-     end)
-  |};
-  intro idx;
-    try (assert (MM := mutators_match idx));
-      repeat intro;
-        simpl in *.
-  split_and.
-  edestruct (PMutatorMethodsCorrect Aimpl); try eassumption.
-  edestruct (MutatorMethodsCorrect Bimpl); try eassumption.
-  split_and; simpl in *.
-  specialize (MM _ _ _ _ H H2); subst.
-  repeat esplit; try eassumption.
-  rewrite Htos; assumption.
-
-  specialize (observers_match idx);
-    revert observers_match;
-      case_eq (Is idx);
-        intro;
-          hnf; simpl; intuition;
-            match goal with
-              | [ |- appcontext[PObserverMethodBodies ?i ?idx] ]
-                => pose proof (PObserverMethodsCorrect i idx)
-              | [ |- appcontext[ObserverMethodBodies ?i ?idx] ]
-                => pose proof (ObserverMethodsCorrect i idx)
-            end;
-            unfold observerMethodCorrect in *;
-              split_and;
+    try solve [ intuition ];
+    [
+    | solve [ intros idx; intros;
+              specialize (observers_match idx);
+              repeat match goal with
+                       | [ H : appcontext[Is idx] |- _ ] => revert H
+                     end;
+              case_eq (Is idx);
+              intros;
               split_iff;
-              simpl in *;
-                intuition.
-  revert H0.
-  case_eq (PObserverMethodBodies Aimpl l);
-    intros; simpl in *; split_and; intuition.
-  specialize (H5 _ _ H3 x).
-  erewrite <- almost_adjunction in H5 by eassumption.
-  assumption.
+              rewrite ?Htos' in *;
+              intuition;
+              erewrite <- almost_adjunction in * by eassumption; trivial
+            ] ].
+  - intros idx m x [m'A m'B] ?; simpl in *.
+    intuition.
+    f_equal.
+    esplit; intuition eauto; f_equal.
+    eapply mutators_match_hammer; try eassumption.
 Defined.
 
 Lemma no_observers (A : ADT) (Hreally : ObserverIndex A -> False)
@@ -1134,6 +1052,7 @@ Lemma no_observers (A : ADT) (Hreally : ObserverIndex A -> False)
 Defined.
 
 Goal PartialADTimpl NatSumProd_spec.
+Proof.
   pose proof (add_component NatSumProd_spec
     (NatSumI 0)
     (later := unit)).
@@ -1143,38 +1062,42 @@ Goal PartialADTimpl NatSumProd_spec.
     (later := unit)
     (fun x => x)
     (fun x => inr x)
-    (fun x => x) (fun x => x) (fun _ x => x));
+    (fun x => x) (fun x => x));
   auto.
+  - simpl.
+    simpl; intros.
+    eexists; repeat esplit; trivial.
+  - destruct idx; simpl.
+    intros.
+    Require Import FunctionalExtensionality.
+    extensionality n.
+    rewrite H, H0; auto.
 
-  destruct idx; simpl.
-  intros.
-  Require Import FunctionalExtensionality.
-  extensionality n.
-  rewrite H, H0; auto.
+  - destruct idx; intuition.
 
-  destruct idx; intuition.
+  - let A := match goal with |- PartialADTimpl ?A => constr:(A) end in
+    eapply (add_component A
+                          (NatProdI 1) (later := Empty_set)
+                          (fun x => inl x)
+                          (fun x => match x with end)
+                          (fun x => x)
+                          (fun x => x));
+      simpl; auto.
+    + simpl.
+      simpl; intros.
+      eexists; repeat esplit; trivial.
+    + intros.
+      Require Import FunctionalExtensionality.
+      extensionality n.
+      rewrite H, H0; auto.
 
-  let A := match goal with |- PartialADTimpl ?A => constr:(A) end in
-  eapply (add_component A
-    (NatProdI 1) (later := Empty_set)
-    (fun x => inl x)
-    (fun x => match x with end)
-    (fun x => x)
-    (fun x => x) (fun _ x => x));
-  simpl; auto.
+    + tauto.
+    + destruct l.
 
-  intros.
-  extensionality n.
-  rewrite H, H0; auto.
-
-  tauto.
-  destruct l.
-
-  apply no_observers; simpl; intros.
-
-  destruct H.
-  exists (fun k => if eq_nat_dec x k then S (m k) else m k).
-  auto.
+    + apply no_observers; simpl; intros.
+      destruct H.
+      exists (fun k => if eq_nat_dec x k then S (m k) else m k).
+      auto.
 Defined.
 
 
