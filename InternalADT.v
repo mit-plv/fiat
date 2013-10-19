@@ -301,6 +301,63 @@ Section prod.
   Defined.
 End prod.
 
+(** A transformation (approximately, injection) from one ADT to another *)
+
+Section inj.
+  Variables A B : ADT.
+  (** Let's compose these two ADTs. *)
+
+  Variable BtoA : Model B -> Model A.
+  Variable mutatorMap : MutatorIndex B -> MutatorIndex A.
+  Variable observerMap : ObserverIndex B -> ObserverIndex A.
+  Hypothesis mutatorSpecMap
+  : forall idx m x m',
+      MutatorMethodSpecs A (mutatorMap idx) (BtoA m) x m'
+      -> exists m'',
+           m' = BtoA m''
+           /\ MutatorMethodSpecs B idx m x m''.
+  Hypothesis observerSpecMap
+  : forall idx m x y,
+      ObserverMethodSpecs A (observerMap idx) (BtoA m) x y
+      -> ObserverMethodSpecs B idx m x y.
+
+  Variable Ai : ADTimpl A.
+
+  Definition injImpl : ADTimpl B.
+  Proof.
+    refine {|
+        State := State Ai;
+        RepInv := fun (m : Model B) s
+                  => RepInv Ai (BtoA m) s;
+        MutatorMethodBodies name := MutatorMethodBodies Ai (mutatorMap name);
+        ObserverMethodBodies name := ObserverMethodBodies Ai (observerMap name)
+      |};
+    intro idx;
+    let H := fresh in
+    first [ assert (H := MutatorMethodsCorrect Ai (mutatorMap idx))
+          | assert (H := ObserverMethodsCorrect Ai (observerMap idx)) ];
+      let inv := fresh in
+      let x := fresh in
+      intros ? ? inv x;
+        specialize (H _ _ inv x);
+        simpl in *;
+        intuition;
+        let m := fresh "m" in
+        destruct H as [m H];
+          split_and.
+    let H0 := match goal with
+                | [ H : _ |- _ ] => constr:(@mutatorSpecMap _ _ _ _ H)
+              end in
+    let m := fresh "m" in
+    destruct H0 as [m ?];
+      split_and;
+      exists m;
+      subst;
+      intuition.
+   Defined.
+End inj.
+
+
 (** * An example, composing binary commutative associative calculators for computable nat multisets *)
 
 Definition multiset := nat -> nat.
@@ -838,6 +895,67 @@ Section prodPartial.
 End prodPartial.
 
 
+(** A transformation (approximately, injection) from one ADT to another *)
+
+Section injPartial.
+  Variables A B : ADT.
+  (** Let's compose these two ADTs. *)
+
+  Variable AtoB : Model A -> Model B.
+  Variable BtoA : Model B -> Model A.
+  Variable mutatorMap : MutatorIndex B -> MutatorIndex A.
+  Variable observerMap : ObserverIndex B -> ObserverIndex A.
+  Hypothesis mutatorSpecMap
+  : forall idx m x m',
+      MutatorMethodSpecs A (mutatorMap idx) (BtoA m) x m'
+      -> exists m'',
+           m' = BtoA m''
+           /\ MutatorMethodSpecs B idx m x m''.
+  Hypothesis observerSpecMap
+  : forall idx m x y,
+      ObserverMethodSpecs A (observerMap idx) (BtoA m) x y
+      -> ObserverMethodSpecs B idx m x y.
+
+
+  Variable Ai : PartialADTimpl A.
+
+  Definition injPartialImpl : PartialADTimpl B.
+  Proof.
+    refine {|
+        PState := PState Ai;
+        PRepInv := fun (m : Model B) s
+                  => PRepInv Ai (BtoA m) s;
+        PMutatorMethodBodies name := PMutatorMethodBodies Ai (mutatorMap name);
+        PObserverMethodBodies name := PObserverMethodBodies Ai (observerMap name)
+      |};
+    intro idx;
+    let H := fresh in
+    first [ assert (H := PMutatorMethodsCorrect Ai (mutatorMap idx))
+          | assert (H := PObserverMethodsCorrect Ai (observerMap idx));
+            edestruct PObserverMethodBodies; trivial ];
+      let inv := fresh in
+      let x := fresh in
+      intros ? ? inv x;
+        specialize (H _ _ inv x);
+        simpl in *;
+        intuition;
+        let m := fresh "m" in
+        destruct H as [m H];
+          split_and.
+    let H0 := match goal with
+                | [ H : _ |- _ ] => constr:(@mutatorSpecMap _ _ _ _ H)
+              end in
+    let m := fresh "m" in
+    destruct H0 as [m ?];
+      split_and;
+      exists m;
+      subst;
+      intuition.
+  Defined.
+End injPartial.
+
+
+(** Notes: it should be m' = BtoA m' m'' in mutators_match; actually we probably want [mutators_match : forall idx m x m', MutatorMethodSpecs B (Ms idx) (AtoB m) x m' -> exists m'', AtoB m'' = m'] *)
 Lemma add_component A B (Bimpl : ADTimpl B) later
   (Is : ObserverIndex A -> ObserverIndex B + later)
   (unlater : later -> ObserverIndex A)
@@ -846,10 +964,10 @@ Lemma add_component A B (Bimpl : ADTimpl B) later
   (BtoA : Model A -> Model B -> Model A)
   (Htos : forall m m', AtoB (BtoA m m') = m')
   (mutators_match : forall idx,
-    forall m x m' m'',
-      MutatorMethodSpecs A idx m x m'
-      -> MutatorMethodSpecs B (Ms idx) (AtoB m) x m''
-      -> m' = BtoA m m'')
+    forall m x m',
+      MutatorMethodSpecs B (Ms idx) (AtoB m) x m'
+      -> exists m'', m' = AtoB m''
+                     /\ MutatorMethodSpecs A idx m x m'')
   (observers_match : forall idx,
     match Is idx with
       | inr _ => True
@@ -868,6 +986,75 @@ Lemma add_component A B (Bimpl : ADTimpl B) later
   -> PartialADTimpl A.
 Proof.
   intro Aimpl.
+  pose (Bimpl : PartialADTimpl _) as Bimpl'.
+  Print Implicit injPartialImpl.
+  let A' := match type of Aimpl with PartialADTimpl ?A' => constr:(A') end in
+  pose (@pairedPartialImpl
+          A' B
+          (MutatorIndex A)
+          (ObserverIndex A)
+          (fun idx => (idx, Ms idx))
+          (fun idx => match Is idx with
+                        | inl idx' => inr idx'
+                        | inr idx' => inl idx'
+                      end)
+          Aimpl
+          Bimpl')
+    as ABimpl;
+    let AB := match type of ABimpl with PartialADTimpl ?AB => constr:(AB) end in
+    apply (fun g h =>
+            @injPartialImpl
+              AB A
+              (fun a => (a, AtoB a))
+              (fun x => x)
+              (fun x => x)
+              g h
+              ABimpl);
+    simpl in *;
+    try solve [ intuition ].
+  - intros idx m x [m'A m'B] ?; simpl in *.
+    intuition.
+    f_equal.
+    move mutators_match at bottom.
+
+    specialize (mutators_match _ _ _ _
+    esplit; intuition eauto.
+    move Htos at bottom.
+    move mutators_match at bottom.
+    erewrite (mutators_match _ m'A _ m'A) at 2; try eassumption.
+
+
+  - intros.
+    specialize (observers_match idx).
+    repeat match goal with
+             | [ H : appcontext[Is idx] |- _ ] => revert H
+           end.
+    case_eq (Is idx);
+      intros;
+      split_iff;
+      rewrite ?Htos' in *;
+      intuition.
+    erewrite <- almost_adjunction in * by eassumption; trivial.
+  - intros idx m x [m'A m'B] ?; simpl in *.
+    intuition.
+    f_equal.
+    move mutators_match at bottom.
+    specialize (
+    move Htos at bottom.
+    move mutators_match at bottom.
+    erewrite (mutators_match _ m'A _ m'A) at 2; try eassumption.
+
+
+
+    symmetry; eapply mutators_match; try eassumption.
+
+
+    rewrite <- (Htos m m0).
+
+    f_equal.
+
+
+ a). Aimpl Bimpl') as ABimpl.
   refine {|
     PState := PState Aimpl * State Bimpl;
     PRepInv := (fun (m : Model A) s
@@ -897,7 +1084,7 @@ Proof.
   intro idx;
     try (assert (MM := mutators_match idx));
       repeat intro;
-        simpl in *. 
+        simpl in *.
   split_and.
   edestruct (PMutatorMethodsCorrect Aimpl); try eassumption.
   edestruct (MutatorMethodsCorrect Bimpl); try eassumption.
@@ -989,7 +1176,7 @@ Goal PartialADTimpl NatSumProd_spec.
   exists (fun k => if eq_nat_dec x k then S (m k) else m k).
   auto.
 Defined.
-  
+
 
 Existing Class ADTimpl.
 Hint Extern 1 (ADTimpl _) => eapply NatLowerI : typeclass_instances.
