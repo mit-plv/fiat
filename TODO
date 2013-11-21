@@ -14,6 +14,10 @@ Notes/Ideas:
 
 For Jason Gross:
 
+* Look into SAT solvers, try to implement a simple one in Coq
+
+  * Iteratively use adt-synthesis to replace various bits of the algorithm.
+
 * Automate pairing of existing impls to get a particular impl
   (consider using dependent types to force a sorted list of (name,
   spec), so that we have canonicity)
