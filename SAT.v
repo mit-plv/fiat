@@ -1,10 +1,105 @@
-Require Import List Ensembles.
+Require Import List Ensembles String.
 
 Set Asymmetric Patterns.
 Set Implicit Arguments.
 Set Universe Polymorphism.
 Generalizable All Variables.
 
+
+Delimit Scope comp_scope with comp.
+Create HintDb comp discriminated.
+
+Section funcs.
+  Variable funcs : string -> Type * Type.
+  Inductive Comp : Type -> Type :=
+  | Return : forall A, A -> Comp A
+  | Bind : forall A B, Comp A -> (A -> Comp B) -> Comp B
+  | Call : forall x, fst (funcs x) -> Comp (snd (funcs x))
+  | Pick : forall A, Ensemble A -> Comp A.
+
+  Bind Scope comp_scope with Comp.
+  Global Arguments Bind A%type B%type _%comp _.
+
+  Notation "x >>= y" := (Bind x y) (at level 60, no associativity) : comp_scope.
+  Notation "x <- y ; z" := (Bind y (fun x => z)) (at level 70, right associativity) : comp_scope.
+  Notation "x ;; z" := (Bind x (fun _ => z)) (at level 70, right associativity) : comp_scope.
+  Notation "f [[ x ]]" := (@Call f x) (at level 40) : comp_scope.
+  Notation "{ x  |  P }" := (@Pick _ (fun x => P)) : comp_scope.
+  Notation "{ x : A  |  P }" := (@Pick A (fun x => P)) : comp_scope.
+
+  Inductive formula (vars : Type) :=
+  | Atomic : vars -> formula vars
+  | And : formula vars -> formula vars -> formula vars
+  | Not : formula vars -> formula vars.
+
+  Fixpoint get_vars vars (f : formula vars) : list vars :=
+    match f with
+      | Atomic x => x::nil
+      | And x y => get_vars x ++ get_vars y
+      | Not x => get_vars x
+    end.
+
+  Fixpoint subst_vars vars (bool_map : vars -> vars + bool) (f : formula vars)
+  : formula vars + bool
+    := match f with
+         | Atomic x => match bool_map x with
+                         | inl x' => inl (Atomic x')
+                         | inr b => inr b
+                       end
+         | And x y => match subst_vars bool_map x, subst_vars bool_map y with
+                        | inl x', inl y' => inl (And x' y')
+                        | inr true, y' => y'
+                        | inr false, _ => inr false
+                        | x', inr true => x'
+                        | _, inr false => inr false
+                      end
+         | Not x => match subst_vars bool_map x with
+                      | inl x' => inl (Not x')
+                      | inr b => inr (negb b)
+                    end
+       end.
+
+  Definition sat (sat_func : forall var (f : formula var), Comp bool) var (f : formula var) : Comp bool :=
+    (x0 <- { x0 : { x0 : var & (forall x0', {x0 = x0'} + {x0 <> x0'}) }
+           | List.In (projT1 x0) (get_vars f) };
+     let x0_val := projT1 x0 in
+     let dec_eq_x0 := projT2 x0 in
+     let bool_map_t v := if dec_eq_x0 v then inr true else inl v in
+     let bool_map_f v := if dec_eq_x0 v then inr true else inl v in
+     let formula_t := subst_vars bool_map_t f in
+     let formula_f := subst_vars bool_map_f f in
+     match formula_t, formula_f with
+       | inl f_t, inl f_f => t_comp <- sat_func _ f_t;
+       f_comp <- sat_func _ f_f;
+       Return (orb t_comp f_comp)
+       | inr true, _ => Return true
+       | _, inr true => Return true
+       | inr false, inr false => Return false
+       | inr false, inl f_f => sat_func _ f_f
+       | inl f_t, inr false => sat_func _ f_t
+     end)%comp.
+
+  Inductive computes_to (denote_funcs : forall name, fst (funcs name) -> Comp (snd (funcs name)))
+  : forall A, Comp A -> A -> Type :=
+  | ReturnComputes : forall A v, @computes_to denote_funcs A (Return v) v
+  | BindComputes : forall A B comp_a f comp_a_value comp_b_value,
+                     @computes_to denote_funcs A comp_a comp_a_value
+                     -> @computes_to denote_funcs B (f comp_a_value) comp_b_value
+                     -> @computes_to denote_funcs B (Bind comp_a f) comp_b_value
+  | PickComputes : forall A (P : Ensemble A) v, P v -> @computes_to denote_funcs A (Pick P) v
+  | CallComputes : forall name (input : fst (funcs name)) (output_v : snd (funcs name)),
+                     @computes_to denote_funcs _ (denote_funcs name input) output_v
+                     -> @computes_to denote_funcs _ (Call name input) output_v.
+
+
+End funcs.
+
+  Notation "x >>= y" := (Bind x y) (at level 60, no associativity) : comp_scope.
+  Notation "x <- y ; z" := (Bind y (fun x => z)) (at level 70, right associativity) : comp_scope.
+  Notation "x ;; z" := (Bind x (fun _ => z)) (at level 70, right associativity) : comp_scope.
+  Notation "f [[ x ]]" := (@Call _ f x) (at level 40) : comp_scope.
+  Notation "{ x  |  P }" := (@Pick _ _ (fun x => P)) : comp_scope.
+  Notation "{ x : A  |  P }" := (@Pick _ A (fun x => P)) : comp_scope.
 Inductive Elem T : list T -> Type :=
 | First : forall x l, Elem (x::l)
 | Next : forall x l, Elem l -> Elem (x::l).
@@ -57,8 +152,8 @@ Proof.
 
 Fixpoint elem_of_inT A x l (i : @InT A x l) : Elem l
   := match i in (InT _ l0) return (Elem l0) with
-       | @InFirst _ x l0 => First x l0
-       | @InNext _ x y l0 i0 => Next y (@elem_of_inT A x l0 i0)
+       | InFirst x l0 => First x l0
+       | InNext x y l0 i0 => Next y (@elem_of_inT A x l0 i0)
      end.
 (*
 Fixpoint inT_app A (l1 l2 : list A) x (e : (InT x l1) + (InT x l2)) : InT x (l1 ++ l2).
@@ -154,13 +249,19 @@ Section simple_sat_solver.
   Section list.
     Variable tag : Type.
 
-    Fixpoint map_of_list X (vars : list tag) (l : list X) (default : X) (i : Elem vars) : X
+    Fixpoint map_of_list X
+             (vars : list tag)
+             (l : list X)
+             (default : X)
+             (i : Elem vars)
+    : X
       := match i with
            | First _ _ => match l with
                             | nil => default
                             | x0 :: _ => x0
                           end
-           | @Next _ _ l0 i0 => @map_of_list X l0 (tl l) default i0
+           | Next x l0 i0 =>
+ @map_of_list X l0 (tl l) default i0
          end.
 
     Fixpoint solve_cnf_formula (vars : list tag) (t : cnf_formula (Elem vars))
