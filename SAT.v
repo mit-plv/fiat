@@ -69,9 +69,10 @@ Section funcs.
      let formula_t := subst_vars bool_map_t f in
      let formula_f := subst_vars bool_map_f f in
      match formula_t, formula_f with
-       | inl f_t, inl f_f => t_comp <- sat_func _ f_t;
-       f_comp <- sat_func _ f_f;
-       Return (orb t_comp f_comp)
+       | inl f_t, inl f_f =>
+         (t_comp <- sat_func _ f_t;
+          f_comp <- sat_func _ f_f;
+          Return (orb t_comp f_comp))
        | inr true, _ => Return true
        | _, inr true => Return true
        | inr false, inr false => Return false
