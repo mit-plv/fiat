@@ -6,8 +6,32 @@ Set Universe Polymorphism.
 Generalizable All Variables.
 
 
+Delimit Scope monad_scope with monad.
 Delimit Scope comp_scope with comp.
-Create HintDb comp discriminated.
+
+(* Copying from http://coq.inria.fr/pylons/contribs/files/lc/v8.4/lc.Monad.html *)
+Class Monad (carrier : Type -> Type) :=
+  { bind : forall X Y,
+             carrier X -> (X -> carrier Y) -> carrier Y;
+    unit : forall X, X -> carrier X;
+    bind_bind :
+      forall X Y Z
+             (f : X -> carrier Y) (g : Y -> carrier Z)
+             (x : carrier X),
+        bind (bind x f) g =
+        bind x (fun u => bind (f u) g);
+    bind_unit : forall X Y (f : X -> carrier Y) (x : X),
+                  bind (unit x) f = f x;
+    unit_bind : forall X (x : carrier X),
+                  bind x (@unit X) = x
+  }.
+
+Arguments bind _ _ _%type _%type _ _%monad.
+
+Notation "x >>= y" := (bind x y) (at level 42, right associativity) : monad_scope.
+Notation "x <- y ; z" := (bind y (fun x => z)) (at level 42, right associativity) : monad_scope.
+Notation "x ;; z" := (bind x (fun _ => z)) (at level 42, right associativity) : monad_scope.
+Notation "'return' x" := (unit x) (at level 40, no associativity) : monad_scope.
 
 Module open_only.
   Section funcs.
@@ -21,10 +45,10 @@ Module open_only.
     Bind Scope comp_scope with Comp.
     Global Arguments Bind A%type B%type _%comp _.
 
-    Notation "x >>= y" := (Bind x y) (at level 60, no associativity) : comp_scope.
-    Notation "x <- y ; z" := (Bind y (fun x => z)) (at level 70, right associativity) : comp_scope.
-    Notation "x ;; z" := (Bind x (fun _ => z)) (at level 70, right associativity) : comp_scope.
-    Notation "f [[ x ]]" := (@Call f x) (at level 40) : comp_scope.
+    Notation "x >>= y" := (Bind x y) : comp_scope.
+    Notation "x <- y ; z" := (Bind y (fun x => z)) : comp_scope.
+    Notation "x ;; z" := (Bind x (fun _ => z)) : comp_scope.
+    Notation "f [[ x ]]" := (@Call f x) (at level 35) : comp_scope.
     Notation "{ x  |  P }" := (@Pick _ (fun x => P)) : comp_scope.
     Notation "{ x : A  |  P }" := (@Pick A (fun x => P)) : comp_scope.
 
@@ -120,10 +144,10 @@ Module maybe_closed.
     Bind Scope comp_scope with Comp.
     Global Arguments Bind A%type B%type _%comp _.
 
-    Notation "x >>= y" := (Bind x y) (at level 60, no associativity) : comp_scope.
-    Notation "x <- y ; z" := (Bind y (fun x => z)) (at level 70, right associativity) : comp_scope.
-    Notation "x ;; z" := (Bind x (fun _ => z)) (at level 70, right associativity) : comp_scope.
-    Notation "f [[ x ]]" := (@Call f x) (at level 40) : comp_scope.
+    Notation "x >>= y" := (Bind x y) : comp_scope.
+    Notation "x <- y ; z" := (Bind y (fun x => z)) : comp_scope.
+    Notation "x ;; z" := (Bind x (fun _ => z)) : comp_scope.
+    Notation "f [[ x ]]" := (@Call f x) (at level 35) : comp_scope.
     Notation "{ x  |  P }" := (@Pick _ (fun x => P)) : comp_scope.
     Notation "{ x : A  |  P }" := (@Pick A (fun x => P)) : comp_scope.
 
