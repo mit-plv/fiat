@@ -6,9 +6,13 @@ Set Implicit Arguments.
 Set Universe Polymorphism.
 Generalizable All Variables.
 
+Reserved Notation "x >>= y" (at level 42, right associativity).
+Reserved Notation "x <- y ; z" (at level 42, right associativity).
+Reserved Notation "x ;; z" (at level 42, right associativity).
+Reserved Notation "'return' x" (at level 40, no associativity).
 
-Delimit Scope monad_scope with monad.
 Delimit Scope comp_scope with comp.
+(*Delimit Scope monad_scope with monad.
 
 (* Copying from http://coq.inria.fr/pylons/contribs/files/lc/v8.4/lc.Monad.html *)
 Class Monad (carrier : Type -> Type) :=
@@ -32,7 +36,7 @@ Arguments bind _ _ _%type _%type _ _%monad.
 Notation "x >>= y" := (bind x y) (at level 42, right associativity) : monad_scope.
 Notation "x <- y ; z" := (bind y (fun x => z)) (at level 42, right associativity) : monad_scope.
 Notation "x ;; z" := (bind x (fun _ => z)) (at level 42, right associativity) : monad_scope.
-Notation "'return' x" := (unit x) (at level 40, no associativity) : monad_scope.
+Notation "'return' x" := (unit x) (at level 40, no associativity) : monad_scope.*)
 
 Section funcs.
   Variable funcs : string -> Type * Type.
@@ -55,8 +59,9 @@ Section funcs.
   Definition Or : Comp bool -> Comp bool -> Comp bool
     := fun c1 c2 =>
          (b1 <- c1;
-          b2 <- c2;
-          Return (orb b1 b2))%comp.
+          if b1
+          then Return true
+          else c2)%comp.
 
   Inductive formula (vars : Type) :=
   | Atomic : vars -> formula vars
@@ -123,14 +128,7 @@ Section funcs.
   | PickComputes : forall A (P : Ensemble A) v, P v -> @computes_to denote_funcs A (Pick P) v
   | CallComputes : forall name (input : fst (funcs name)) (output_v : snd (funcs name)),
                      @computes_to denote_funcs _ (denote_funcs name input) output_v
-                     -> @computes_to denote_funcs _ (Call name input) output_v
-  | Or1Computes : forall f1 f2, @computes_to denote_funcs _ f1 true
-                                -> @computes_to denote_funcs _ (Or f1 f2) true
-  | Or2Computes : forall f1 f2, @computes_to denote_funcs _ f2 true
-                                -> @computes_to denote_funcs _ (Or f1 f2) true
-  | OrFalseComputes : forall f1 f2, @computes_to denote_funcs _ f1 false
-                                    -> @computes_to denote_funcs _ f2 false
-                                    -> @computes_to denote_funcs _ (Or f1 f2) false.
+                     -> @computes_to denote_funcs _ (Call name input) output_v.
 
 
   Section monad.
