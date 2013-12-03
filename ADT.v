@@ -305,7 +305,7 @@ Infix "<=" := le_dec : bool_scope.
 Infix "<" := lt_dec : bool_scope.
 Infix ">=" := ge_dec : bool_scope.
 Infix ">" := gt_dec : bool_scope.
-Infix "->" := implb : bool_scope.
+Infix "->" := implb (at level 99, right associativity) : bool_scope.
 
 Definition NatBinOp
            (addname : string)

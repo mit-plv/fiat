@@ -1,0 +1,34 @@
+This repository holds experimental work on synthesizing ADTs using Coq
+8.4pl2.  Each file is independent, and the most recent work tends to
+be at the top.  If the entire file does not compile, the most recent
+work is contained in the first compiling segment.  (Eventually, the
+rest should be removed or commented out, once we care more about
+progress in a particular direction than figuring out what direction to
+go in.)
+
+Attempt 3:
+ - SAT.v
+   * Attempt at implementing a SAT solver using a monadic functional
+     language
+   * further down is a previous attempt using dependent types
+
+Attempt 2:
+ - InternalADT.v
+   * implements ADT combinators based on ADTs using arbitrary indexing
+     types
+   * uses sums of units in practice
+   * contains aborted automation attempt from an earlier version of
+     the file at the bottom
+
+Attempt 1:
+ - ADT.v
+   * implements ADT combinators based on ADTs using [string]s as the
+     indexing type for methods
+ - ListADT.v
+   * aborted attempt to use lists rather than strings as the indexing
+     type for methods
+
+Attempt 0:
+ - combinators.v
+   * implements very basic ADT combinators based on higher order
+     functions
