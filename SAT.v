@@ -53,6 +53,13 @@ Module open_only.
     Notation "{ x  |  P }" := (@Pick _ (fun x => P)) : comp_scope.
     Notation "{ x : A  |  P }" := (@Pick A (fun x => P)) : comp_scope.
 
+    (*     Definition Or : Comp bool -> Comp bool -> Comp bool
+      := fun c1 c2 =>
+           (b1 <- c1;
+            b2 <- c2;
+            Return (orb b1 b2))%comp.
+*)
+
     Inductive formula (vars : Type) :=
     | Atomic : vars -> formula vars
     | And : formula vars -> formula vars -> formula vars
@@ -176,7 +183,6 @@ Module maybe_closed.
     Variable funcs : string -> Type * Type.
     Inductive Comp : Type -> Type :=
     | Return : forall A, A -> Comp A
-    | Or : Comp bool -> Comp bool -> Comp bool
     | Bind : forall A B, Comp A -> (A -> Comp B) -> Comp B
     | Call : forall x, fst (funcs x) -> Comp (snd (funcs x))
     | Pick : forall A, Ensemble A -> Comp A.
@@ -190,6 +196,12 @@ Module maybe_closed.
     Notation "f [[ x ]]" := (@Call f x) (at level 35) : comp_scope.
     Notation "{ x  |  P }" := (@Pick _ (fun x => P)) : comp_scope.
     Notation "{ x : A  |  P }" := (@Pick A (fun x => P)) : comp_scope.
+
+    Definition Or : Comp bool -> Comp bool -> Comp bool
+      := fun c1 c2 =>
+           (b1 <- c1;
+            b2 <- c2;
+            Return (orb b1 b2))%comp.
 
     Inductive formula (vars : Type) :=
     | Atomic : vars -> formula vars
@@ -217,7 +229,6 @@ Module maybe_closed.
     Definition is_satisfiable vars (f : formula vars) : Prop
       := exists bool_map, denote_formula bool_map f = true.
 
-    (** Do we really need to keep closed formulas as either [TrueF] or [Not TrueF]? *)
     Fixpoint subst_vars vars (bool_map : vars -> vars + bool) (f : formula vars)
     : formula vars
       := match f with
@@ -226,17 +237,8 @@ Module maybe_closed.
                            | inl x' => Atomic x'
                            | inr b => if b then TrueF _ else Not (TrueF _)
                          end
-           | And x y => match subst_vars bool_map x, subst_vars bool_map y with
-                          | TrueF, y' => y'
-                          | x', TrueF => x'
-                          | Not TrueF, _ => Not (TrueF _)
-                          | _, Not TrueF => Not (TrueF _)
-                          | x', y' => And x' y'
-                        end
-           | Not x => match subst_vars bool_map x with
-                        | Not TrueF => TrueF _
-                        | x' => Not x'
-                      end
+           | And x y => And (subst_vars bool_map x) (subst_vars bool_map y)
+           | Not x => Not (subst_vars bool_map x)
          end.
 
     Definition sat var (dec_eq_vars : forall x y : var, {x = y} + {x <> y})
