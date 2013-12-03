@@ -1,4 +1,5 @@
 Require Import List Ensembles String.
+Require Import JMeq ProofIrrelevance.
 
 Set Asymmetric Patterns.
 Set Implicit Arguments.
@@ -128,6 +129,45 @@ Module open_only.
     | CallComputes : forall name (input : fst (funcs name)) (output_v : snd (funcs name)),
                        @computes_to denote_funcs _ (denote_funcs name input) output_v
                        -> @computes_to denote_funcs _ (Call name input) output_v.
+
+    Section monad.
+      Variable denote_funcs : forall name, fst (funcs name) -> Comp (snd (funcs name)).
+
+      Local Ltac t :=
+        split;
+        intro;
+        repeat match goal with
+                 | [ H : _ |- _ ]
+                   => inversion H; clear H; subst; [];
+                      repeat match goal with
+                               | [ H : _ |- _ ] => apply inj_pair2 in H; subst
+                             end
+               end;
+        repeat first [ eassumption
+                     | solve [ constructor ]
+                     | eapply BindComputes; (eassumption || (try eassumption; [])) ].
+
+      Lemma bind_bind X Y Z (f : X -> Comp Y) (g : Y -> Comp Z) x v
+      : computes_to denote_funcs (Bind (Bind x f) g) v
+        <-> computes_to denote_funcs (Bind x (fun u => Bind (f u) g)) v.
+      Proof.
+        t.
+      Qed.
+
+      Lemma bind_unit X Y (f : X -> Comp Y) x v
+      : computes_to denote_funcs (Bind (Return x) f) v
+        <-> computes_to denote_funcs (f x) v.
+      Proof.
+        t.
+      Qed.
+
+      Lemma unit_bind X (x : Comp X) v
+      : computes_to denote_funcs (Bind x (@Return X)) v
+        <-> computes_to denote_funcs x v.
+      Proof.
+        t.
+      Qed.
+    End monad.
   End funcs.
 End open_only.
 
@@ -234,6 +274,46 @@ Module maybe_closed.
     | OrFalseComputes : forall f1 f2, @computes_to denote_funcs _ f1 false
                                       -> @computes_to denote_funcs _ f2 false
                                       -> @computes_to denote_funcs _ (Or f1 f2) false.
+
+
+    Section monad.
+      Variable denote_funcs : forall name, fst (funcs name) -> Comp (snd (funcs name)).
+
+      Local Ltac t :=
+        split;
+        intro;
+        repeat match goal with
+                 | [ H : _ |- _ ]
+                   => inversion H; clear H; subst; [];
+                      repeat match goal with
+                               | [ H : _ |- _ ] => apply inj_pair2 in H; subst
+                             end
+               end;
+        repeat first [ eassumption
+                     | solve [ constructor ]
+                     | eapply BindComputes; (eassumption || (try eassumption; [])) ].
+
+      Lemma bind_bind X Y Z (f : X -> Comp Y) (g : Y -> Comp Z) x v
+      : computes_to denote_funcs (Bind (Bind x f) g) v
+        <-> computes_to denote_funcs (Bind x (fun u => Bind (f u) g)) v.
+      Proof.
+        t.
+      Qed.
+
+      Lemma bind_unit X Y (f : X -> Comp Y) x v
+      : computes_to denote_funcs (Bind (Return x) f) v
+        <-> computes_to denote_funcs (f x) v.
+      Proof.
+        t.
+      Qed.
+
+      Lemma unit_bind X (x : Comp X) v
+      : computes_to denote_funcs (Bind x (@Return X)) v
+        <-> computes_to denote_funcs x v.
+      Proof.
+        t.
+      Qed.
+    End monad.
   End funcs.
 End maybe_closed.
 
