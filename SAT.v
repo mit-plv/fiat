@@ -1,4 +1,4 @@
-Require Import List Ensembles String Setoid RelationClasses Morphisms Morphisms_Prop Program Equivalence.
+Require Import List Ensembles String Setoid RelationClasses Morphisms Morphisms_Prop Program Equivalence Min Max.
 Require Import JMeq ProofIrrelevance.
 
 Set Implicit Arguments.
@@ -366,33 +366,25 @@ Section min_max_funcs.
 
   Theorem refine_is_minimum : pointwise_relation _ (refine denote_funcs) is_minimum0 is_minimum1.
   Proof.
-    apply is_op_0_1.
+    apply is_op_0_1; eauto.
+    apply min_comm.
+    intros; symmetry; apply min_assoc.
+    intros n m; destruct (min_dec n m); intuition.
+    intros n m; eapply min_glb_r; reflexivity.
+    intros n m; eapply min_glb_l; reflexivity.
+    compute; intros; etransitivity; eauto.
   Qed.
 
   Theorem refine_is_maximum : pointwise_relation _ (refine denote_funcs) is_maximum0 is_maximum1.
   Proof.
-    apply is_op_0_1.
+    apply is_op_0_1; eauto.
+    apply max_comm.
+    intros; symmetry; apply max_assoc.
+    intros n m; destruct (max_dec n m); intuition.
+    intros n m; eapply max_lub_r; reflexivity.
+    intros n m; eapply max_lub_l; reflexivity.
+    compute; intros; etransitivity; eauto.
   Qed.
-
-  (*Theorem refine_is_minimum' : pointwise_relation _ (refine denote_funcs)
-    (fun l => { x : nat | is_op le (eq 0) l x }%comp)
-    (fun l => (ret (match l with
-                      | nil => 0
-                      | x::xs => fold_left min xs x
-                    end))%comp).
-  Proof.
-    exact refine_is_minimum.
-  Qed.
-
-  Theorem refine_is_maximum' : pointwise_relation _ (refine denote_funcs)
-    (fun l => { x : nat | is_op ge (eq 0) l x }%comp)
-    (fun l => (ret (match l with
-                      | nil => 0
-                      | x::xs => fold_left max xs x
-                    end))%comp).
-  Proof.
-    exact refine_is_maximum.
-  Qed.*)
 
   Theorem refine_is_minimum' l : refine denote_funcs
     { x : nat | is_op le (eq 0) l x }%comp
