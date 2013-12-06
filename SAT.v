@@ -250,6 +250,7 @@ Section op_funcs.
 
   Variable concrete_op : nat -> nat -> nat.
   Variable concrete_on_empty : nat.
+  Hypothesis on_empty_concrete_on_empty : on_empty concrete_on_empty.
   Hypothesis concrete_op_returns_arg : forall n m,
     concrete_op n m = n \/ concrete_op n m = m.
   Hypothesis concrete_op_preserves_op1 : forall n m,
@@ -262,66 +263,68 @@ Section op_funcs.
   Definition is_op1 (l : list nat) : Comp funcs (nat : Type) :=
     (ret (match l with
             | nil => concrete_on_empty
-            | x::xs => fold_left concrete_op xs x
+            | x::xs => fold_right concrete_op x xs
           end))%comp.
 
-  Lemma fold_left_concrete_op_preserves_op l
+  Lemma fold_right_concrete_op_preserves_op l
     : forall acc,
-      op (fold_left concrete_op l acc) acc.
+      op (fold_right concrete_op acc l) acc.
   Proof.
     induction l; simpl; eauto.
   Qed.
 
-  Hint Resolve fold_left_concrete_op_preserves_op.
+  Hint Resolve fold_right_concrete_op_preserves_op.
 
-  Lemma fold_left_concrete_op_returns_in l
+  Local Hint Constructors or.
+
+  Lemma fold_right_concrete_op_returns_in l
     : forall acc,
-      acc = fold_left concrete_op l acc
-      \/ List.In (fold_left concrete_op l acc) l.
+      acc = fold_right concrete_op acc l
+      \/ List.In (fold_right concrete_op acc l) l.
   Proof.
     induction l; simpl; eauto.
     intro acc.
-    specialize (IHl (concrete_op acc a)).
-    destruct IHl; try solve [ intuition eauto ].
-    destruct (concrete_op_returns_arg acc a); intuition eauto;
-      first [ left; congruence
-        | right; left; congruence ].
+    destruct (IHl acc) as [ IH1' | IH1' ];
+      try rewrite <- IH1';
+      edestruct concrete_op_returns_arg as [H|H];
+      erewrite H;
+      eauto.
   Qed.
 
-  Hint Resolve fold_left_concrete_op_returns_in.
+  Hint Resolve fold_right_concrete_op_returns_in.
 
-  (*Lemma op_works l
-    : forall acc,
-      let v := (match l with
-                  | nil => acc
-                  | x::xs => fold_left concrete_op xs x
-                end) in
-        Forall (fun n => op v n) l /\ (l <> nil -> List.In v l).
+  Lemma op_works l
+  : Forall (fun n => match l with
+                       | [] => True
+                       | v::l => op (fold_right concrete_op v l) n
+                     end)
+           l.
   Proof.
-    induction l; simpl;
-      intuition eauto.
-    specialize (IHl (concrete_op acc a)); intuition eauto.
-    destruct (fold_left_concrete_op_returns_in l (concrete_op acc a)); intuition eauto.
-
-
-    constructor; eauto.
-
-
-    apply concrete_op_preserves_
-/    intuition.
-    con
-    constructor.
-
-    split; [ | intuition ].
-    inversion 1.
-    revert concrete_on_empty.*)
+    induction l; trivial.
+    constructor; [ apply fold_right_concrete_op_preserves_op | ].
+    destruct l; simpl in *; trivial.
+    inversion_clear IHl.
+    constructor;
+      eauto.
+    eapply Forall_impl; [ | eassumption ]; instantiate; simpl.
+    intros.
+    etransitivity; [ | eassumption ].
+    admit.
+  Qed.
 
   Theorem is_op_0_1
     : pointwise_relation _ (refine denote_funcs) is_op0 is_op1.
   Proof.
     intros l v old_hyp.
+    unfold is_op1, is_op0 in *.
     apply computes_to_inv in old_hyp.
-  Admitted.
+    subst.
+    constructor.
+    destruct l; simpl.
+    - hnf; simpl; intuition.
+    - split; [ | left; apply fold_right_concrete_op_returns_in ].
+      apply (op_works (_::_)).
+  Qed.
 End op_funcs.
 
 Create HintDb op discriminated.
