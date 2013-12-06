@@ -30,7 +30,12 @@ Ltac destruct_ex :=
            | [ H : ex _ |- _ ] => destruct H; intuition
          end.
 
-SearchAbout pointwise_relation.
+Hint Extern 0 => apply reflexivity : typeclass_instances.
+
+Ltac set_evars :=
+  repeat match goal with
+           | [ |- appcontext[?E] ] => is_evar E; let H := fresh in set (H := E)
+         end.
 
 Instance pointwise_refl A B (eqB : relation B) `{Reflexive _ eqB} : Reflexive (pointwise_relation A eqB).
 Proof.
@@ -369,13 +374,6 @@ Section min_max_funcs.
              | [ H : _ |- _ ] => apply computes_to_inv in H
            end.
   Qed.
-
-  Hint Extern 0 => apply reflexivity : typeclass_instances.
-
-  Ltac set_evars :=
-    repeat match goal with
-             | [ |- appcontext[?E] ] => is_evar E; let H := fresh in set (H := E)
-           end.
 
   Definition is_min_max1 : { f : list nat -> Comp funcs (nat * nat)
     | forall l, refine denote_funcs (is_min_max0 l) (f l) }.
