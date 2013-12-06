@@ -1,9 +1,7 @@
-Require Import List Ensembles String Setoid RelationClasses.
+Require Import List Ensembles String Setoid RelationClasses Morphisms Morphisms_Prop Program.
 Require Import JMeq ProofIrrelevance.
 
-Set Asymmetric Patterns.
 Set Implicit Arguments.
-Set Universe Polymorphism.
 Generalizable All Variables.
 
 Reserved Notation "x >>= y" (at level 42, right associativity).
@@ -31,6 +29,21 @@ Ltac destruct_ex :=
   repeat match goal with
            | [ H : ex _ |- _ ] => destruct H; intuition
          end.
+
+Instance pointwise_refl A B (eqB : relation B) `{Reflexive _ eqB} : Reflexive (pointwise_relation A eqB).
+Proof.
+  compute in *; auto.
+Defined.
+
+Instance pointwise_sym A B (eqB : relation B) `{Symmetric _ eqB} : Symmetric (pointwise_relation A eqB).
+Proof.
+  compute in *; auto.
+Defined.
+
+Instance pointwise_transitive A B (eqB : relation B) `{Transitive _ eqB} : Transitive (pointwise_relation A eqB).
+Proof.
+  compute in *; eauto.
+Defined.
 
 Section formulas.
   Inductive formula (vars : Type) :=
@@ -127,8 +140,7 @@ Section funcs.
   (** The old program might be non-deterministic, and the new program
       less so.  This means we want to say that if [new] can compute to
       [v], then [old] should be able to compute to [v], too. *)
-  Definition refine A (old new : Comp A) := forall v, computes_to new v -> computes_to old v.
-  Definition refine1 A X (old new : X -> Comp A) := forall x, refine (old x) (new x).
+  Definition refine {A} (old new : Comp A) := forall v, computes_to new v -> computes_to old v.
 
   Global Instance refine_refl A : Reflexive (@refine A)
     := fun _ _ x => x.
@@ -137,16 +149,6 @@ Section funcs.
     repeat intro.
     unfold refine in *.
     eauto.
-  Qed.
-
-  Global Instance refine1_refl A B : Reflexive (@refine1 A B)
-    := fun _ _ _ x => x.
-  Global Instance refine1_trans A B : Transitive (@refine1 A B).
-  Proof.
-    unfold refine1 in *.
-    intro.
-    intuition eauto.
-    eapply transitivity; eauto.
   Qed.
 
   Section monad.
@@ -202,21 +204,32 @@ Add Parametric Relation funcs denote_funcs A : (Comp funcs A) (@refine funcs den
   transitivity proved by (@refine_trans funcs denote_funcs A)
     as refine_rel.
 
-Add Parametric Relation funcs denote_funcs A B : (B -> Comp funcs A) (@refine1 funcs denote_funcs A B)
-  reflexivity proved by (@refine1_refl funcs denote_funcs A B)
-  transitivity proved by (@refine1_trans funcs denote_funcs A B)
-    as refine1_rel.
-
 Add Parametric Morphism funcs denote_funcs A B : (@Bind funcs A B)
-  with signature (@refine funcs denote_funcs A) ==> (@refine1 funcs denote_funcs B A) ==> (@refine funcs denote_funcs B)
+  with signature (@refine funcs denote_funcs A) ==> (pointwise_relation _ (@refine funcs denote_funcs B)) ==> (@refine funcs denote_funcs B)
     as refine_bind.
 Proof.
   intros.
-  unfold refine1, refine in *.
+  unfold pointwise_relation, refine in *.
   intros.
   repeat (repeat apply_in_hyp_no_match computes_to_inv;
     destruct_ex).
   eauto.
+Qed.
+
+Add Parametric Morphism A (R : relation A) `{Transitive A R} : R
+  with signature R --> R ++> impl
+    as trans_rel_mor.
+Proof.
+  repeat intro; unfold Transitive in *.
+  intros; intuition eauto.
+Qed.
+
+Add Parametric Morphism A (R : relation A) `{Transitive A R} : R
+  with signature R ++> R --> flip impl
+    as trans_rel_mor_flip.
+Proof.
+  repeat intro; unfold Transitive in *.
+  intros; intuition eauto.
 Qed.
 
 Section op_funcs.
@@ -301,7 +314,7 @@ Section op_funcs.
     revert concrete_on_empty.*)
 
   Theorem is_op_0_1
-    : refine1 denote_funcs is_op0 is_op1.
+    : pointwise_relation _ (refine denote_funcs) is_op0 is_op1.
   Proof.
     intros l v old_hyp.
     apply computes_to_inv in old_hyp.
@@ -327,12 +340,12 @@ Section min_max_funcs.
   Definition is_minimum1 : list nat -> Comp funcs nat := is_op1 funcs min 0.
   Definition is_maximum1 : list nat -> Comp funcs nat := is_op1 funcs max 0.
 
-  Theorem refine_is_minimum : refine1 denote_funcs is_minimum0 is_minimum1.
+  Theorem refine_is_minimum : pointwise_relation _ (refine denote_funcs) is_minimum0 is_minimum1.
   Proof.
     apply is_op_0_1.
   Qed.
 
-  Theorem refine_is_maximum : refine1 denote_funcs is_maximum0 is_maximum1.
+  Theorem refine_is_maximum : pointwise_relation _ (refine denote_funcs) is_maximum0 is_maximum1.
   Proof.
     apply is_op_0_1.
   Qed.
@@ -356,48 +369,34 @@ Section min_max_funcs.
              | [ H : (_, _) = (_, _) |- _ ] => inversion_clear H
            end.
   Qed.
+
+  Hint Extern 0 => apply reflexivity : typeclass_instances.
   
   Definition is_min_max1 : { f : list nat -> Comp funcs (nat * nat) 
     | forall l, refine denote_funcs (is_min_max0 l) (f l) }.
   Proof.
     eexists.
     intros.
-    unfold is_min_max0.
+    unfold is_min_max0, is_min_max.
+    (** TODO(jgross): get setoid_rewrite to know about covariant/contravariant relations *)
+    (*Typeclasses eauto := debug.
+    Print Ltac proper_subrelation.
+    Print apply_subrelation.
+    Print subrelation_proper.
+    setoid_rewrite refine_pick_pair.*)
     etransitivity.
     apply refine_pick_pair.
-    rewrite (@refine_is_minimum l).
-    rewrite refi
-    
-          
-        
-    match goal with
-      | [ 
-    intros (
-    refine (proj1_sig 
-  
-  Definition is_minimum0 (l : list nat) : Comp funcs nat :=
-    is_op0
-      { x : nat
-      | is_op l x }%comp.
-
-  Variable concrete_op : nat -> nat -> nat.
-  Variable concrete_on_empty : nat.
-  Hypothesis concrete_op_returns_arg : forall n m,
-    concrete_op n m = n \/ concrete_op n m = m.
-  Hypothesis concrete_op_preserves_op1 : forall n m,
-    op (concrete_op n m) m.
-  Hypothesis concrete_op_preserves_op2 : forall n m,
-    op (concrete_op n m) n.
-  Hypothesis op_refl : Reflexive op.
-  Hypothesis op_trans : Transitive op.
-
-  Definition is_op1 (l : list nat) : Comp funcs (nat : Type) :=
-    (ret (match l with
-            | nil => concrete_on_empty
-            | x::xs => fold_left concrete_op xs x
-          end))%comp.
-
-  
+    let final := match goal with |- refine _ _ ?x => constr:(x) end in
+    change (refine denote_funcs
+      (a <- is_minimum0 l;
+        b <- is_maximum0 l;
+        ret (a, b))%comp
+      final).
+    rewrite refine_is_minimum.
+    setoid_rewrite refine_is_maximum.
+    exact (reflexivity _).
+  Defined.
+End min_max_funcs.
     
 
 Section sat_funcs.
@@ -424,4 +423,4 @@ Section sat_funcs.
          let formula_f := subst_vars bool_map_f f in
          Or (call "sat" from funcs [[ formula_t ]]) (call "sat" from funcs [[ formula_f ]])
      end)%comp.
-End funcs.
+End sat_funcs.
