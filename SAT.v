@@ -250,6 +250,8 @@ Section op_funcs.
 
   Variable concrete_op : nat -> nat -> nat.
   Variable concrete_on_empty : nat.
+  Hypothesis concrete_op_commutes : forall x y, concrete_op x y = concrete_op y x.
+  Hypothesis concrete_op_assoc : forall x y z, concrete_op (concrete_op x y) z = concrete_op x (concrete_op y z).
   Hypothesis on_empty_concrete_on_empty : on_empty concrete_on_empty.
   Hypothesis concrete_op_returns_arg : forall n m,
     concrete_op n m = n \/ concrete_op n m = m.
@@ -263,24 +265,24 @@ Section op_funcs.
   Definition is_op1 (l : list nat) : Comp funcs (nat : Type) :=
     (ret (match l with
             | nil => concrete_on_empty
-            | x::xs => fold_right concrete_op x xs
+            | x::xs => fold_left concrete_op xs x
           end))%comp.
 
-  Lemma fold_right_concrete_op_preserves_op l
+  Lemma fold_left_concrete_op_preserves_op l
     : forall acc,
-      op (fold_right concrete_op acc l) acc.
+      op (fold_left concrete_op l acc) acc.
   Proof.
     induction l; simpl; eauto.
   Qed.
 
-  Hint Resolve fold_right_concrete_op_preserves_op.
+  Hint Resolve fold_left_concrete_op_preserves_op.
 
   Local Hint Constructors or.
 
-  Lemma fold_right_concrete_op_returns_in l
+  Lemma fold_left_concrete_op_returns_in l
     : forall acc,
-      acc = fold_right concrete_op acc l
-      \/ List.In (fold_right concrete_op acc l) l.
+      acc = fold_left concrete_op l acc
+      \/ List.In (fold_left concrete_op l acc) l.
   Proof.
     induction l; simpl; eauto.
     intro acc.
@@ -291,25 +293,35 @@ Section op_funcs.
       eauto.
   Qed.
 
-  Hint Resolve fold_right_concrete_op_returns_in.
+  Hint Resolve fold_left_concrete_op_returns_in.
+
+  Lemma fold_left_concrete_op_commutes l
+  : forall a n, fold_left concrete_op l (concrete_op a n) = concrete_op (fold_left concrete_op l n) a.
+  Proof.
+    induction l; simpl; trivial.
+    intros.
+    rewrite <- IHl.
+    f_equal.
+    auto.
+  Qed.
 
   Lemma op_works l
   : Forall (fun n => match l with
                        | [] => True
-                       | v::l => op (fold_right concrete_op v l) n
+                       | v::l => op (fold_left concrete_op l v) n
                      end)
            l.
   Proof.
     induction l; trivial.
-    constructor; [ apply fold_right_concrete_op_preserves_op | ].
+    constructor; [ apply fold_left_concrete_op_preserves_op | ].
     destruct l; simpl in *; trivial.
     inversion_clear IHl.
     constructor;
       eauto.
     eapply Forall_impl; [ | eassumption ]; instantiate; simpl.
     intros.
-    etransitivity; [ | eassumption ].
-    admit.
+    rewrite fold_left_concrete_op_commutes.
+    etransitivity; [ | eassumption ]; eauto.
   Qed.
 
   Theorem is_op_0_1
@@ -322,7 +334,7 @@ Section op_funcs.
     constructor.
     destruct l; simpl.
     - hnf; simpl; intuition.
-    - split; [ | left; apply fold_right_concrete_op_returns_in ].
+    - split; [ | left; apply fold_left_concrete_op_returns_in ].
       apply (op_works (_::_)).
   Qed.
 End op_funcs.
