@@ -1,4 +1,4 @@
-Require Import List Ensembles String Setoid RelationClasses Morphisms Morphisms_Prop Program.
+Require Import List Ensembles String Setoid RelationClasses Morphisms Morphisms_Prop Program Equivalence.
 Require Import JMeq ProofIrrelevance.
 
 Set Implicit Arguments.
@@ -22,13 +22,15 @@ Ltac apply_in_hyp_no_match lem :=
       match type of H with
         | appcontext[match _ with _ => _ end] => fail 1
         | _ => idtac
-      end      
+      end
   end.
 
 Ltac destruct_ex :=
   repeat match goal with
            | [ H : ex _ |- _ ] => destruct H; intuition
          end.
+
+SearchAbout pointwise_relation.
 
 Instance pointwise_refl A B (eqB : relation B) `{Reflexive _ eqB} : Reflexive (pointwise_relation A eqB).
 Proof.
@@ -142,13 +144,9 @@ Section funcs.
       [v], then [old] should be able to compute to [v], too. *)
   Definition refine {A} (old new : Comp A) := forall v, computes_to new v -> computes_to old v.
 
-  Global Instance refine_refl A : Reflexive (@refine A)
-    := fun _ _ x => x.
-  Global Instance refine_trans A : Transitive (@refine A).
+  Global Instance refine_PreOrder A : PreOrder (@refine A).
   Proof.
-    repeat intro.
-    unfold refine in *.
-    eauto.
+    split; compute in *; eauto.
   Qed.
 
   Section monad.
@@ -200,8 +198,8 @@ Notation "{ x : A  |  P }" := (@Pick _ A (fun x => P)) : comp_scope.
 Notation ret := (Return _).
 
 Add Parametric Relation funcs denote_funcs A : (Comp funcs A) (@refine funcs denote_funcs A)
-  reflexivity proved by (@refine_refl funcs denote_funcs A)
-  transitivity proved by (@refine_trans funcs denote_funcs A)
+  reflexivity proved by reflexivity
+  transitivity proved by transitivity
     as refine_rel.
 
 Add Parametric Morphism funcs denote_funcs A B : (@Bind funcs A B)
@@ -216,7 +214,7 @@ Proof.
   eauto.
 Qed.
 
-Add Parametric Morphism A (R : relation A) `{Transitive A R} : R
+(**Add Parametric Morphism A (R : relation A) `{Transitive A R} : R
   with signature R --> R ++> impl
     as trans_rel_mor.
 Proof.
@@ -230,12 +228,12 @@ Add Parametric Morphism A (R : relation A) `{Transitive A R} : R
 Proof.
   repeat intro; unfold Transitive in *.
   intros; intuition eauto.
-Qed.
+Qed.*)
 
 Section op_funcs.
   Variable op : nat -> nat -> Prop.
   Variable on_empty : nat -> Prop.
-  Definition is_op (l : list nat) (v : nat) 
+  Definition is_op (l : list nat) (v : nat)
     := Forall (fun n => op v n) l /\ (List.In v l \/ (l = nil /\ on_empty v)).
 
   Variable funcs : string -> Type * Type.
@@ -299,16 +297,16 @@ Section op_funcs.
       intuition eauto.
     specialize (IHl (concrete_op acc a)); intuition eauto.
     destruct (fold_left_concrete_op_returns_in l (concrete_op acc a)); intuition eauto.
-    
-    
+
+
     constructor; eauto.
-    
-    
+
+
     apply concrete_op_preserves_
 /    intuition.
     con
     constructor.
-    
+
     split; [ | intuition ].
     inversion 1.
     revert concrete_on_empty.*)
@@ -321,6 +319,10 @@ Section op_funcs.
   Admitted.
 End op_funcs.
 
+Create HintDb op discriminated.
+
+Hint Unfold is_op0 is_op1 : op.
+
 Section min_max_funcs.
   Definition is_minimum := is_op le (eq 0).
   Definition is_maximum := is_op ge (eq 0).
@@ -330,15 +332,17 @@ Section min_max_funcs.
   Variable funcs : string -> Type * Type.
   Variable denote_funcs : forall name, fst (funcs name) -> Comp funcs (snd (funcs name)).
 
-  Definition is_min_max0 (l : list nat) : Comp funcs (nat * nat) := 
+  Definition is_min_max0 (l : list nat) : Comp funcs (nat * nat) :=
     { x : _
       | is_min_max l x }%comp.
 
-  Definition is_minimum0 : list nat -> Comp funcs nat := is_op0 le (eq 0) funcs.
-  Definition is_maximum0 : list nat -> Comp funcs nat := is_op0 ge (eq 0) funcs.
+  Definition is_minimum0 := (is_op0 le (eq 0) funcs : list nat -> Comp funcs nat).
+  Definition is_maximum0 := (is_op0 ge (eq 0) funcs : list nat -> Comp funcs nat).
 
-  Definition is_minimum1 : list nat -> Comp funcs nat := is_op1 funcs min 0.
-  Definition is_maximum1 : list nat -> Comp funcs nat := is_op1 funcs max 0.
+  Definition is_minimum1 := (is_op1 funcs min 0 : list nat -> Comp funcs nat).
+  Definition is_maximum1 := (is_op1 funcs max 0 : list nat -> Comp funcs nat).
+
+  Hint Unfold is_minimum is_maximum is_min_max is_min_max0 is_minimum0 is_maximum0 is_minimum1 is_maximum1 : op.
 
   Theorem refine_is_minimum : pointwise_relation _ (refine denote_funcs) is_minimum0 is_minimum1.
   Proof.
@@ -358,34 +362,29 @@ Section min_max_funcs.
         ret (a, b))%comp.
   Proof.
     intros (a, b) H.
-    apply computes_to_inv in H.
-    destruct H as [ av [ H1 H2 ] ].
-    apply computes_to_inv in H1.
-    apply computes_to_inv in H2.
-    destruct H2 as [ bv [ H2 H3 ] ].
     repeat match goal with
              | _ => constructor; tauto
-             | [ H : _ |- _ ] => apply computes_to_inv in H
+             | _ => progress destruct_ex
              | [ H : (_, _) = (_, _) |- _ ] => inversion_clear H
+             | [ H : _ |- _ ] => apply computes_to_inv in H
            end.
   Qed.
 
   Hint Extern 0 => apply reflexivity : typeclass_instances.
-  
-  Definition is_min_max1 : { f : list nat -> Comp funcs (nat * nat) 
+
+  Ltac set_evars :=
+    repeat match goal with
+             | [ |- appcontext[?E] ] => is_evar E; let H := fresh in set (H := E)
+           end.
+
+  Definition is_min_max1 : { f : list nat -> Comp funcs (nat * nat)
     | forall l, refine denote_funcs (is_min_max0 l) (f l) }.
   Proof.
     eexists.
     intros.
-    unfold is_min_max0, is_min_max.
-    (** TODO(jgross): get setoid_rewrite to know about covariant/contravariant relations *)
-    (*Typeclasses eauto := debug.
-    Print Ltac proper_subrelation.
-    Print apply_subrelation.
-    Print subrelation_proper.
-    setoid_rewrite refine_pick_pair.*)
-    etransitivity.
-    apply refine_pick_pair.
+    autounfold with op.
+    set_evars.
+    rewrite refine_pick_pair.
     let final := match goal with |- refine _ _ ?x => constr:(x) end in
     change (refine denote_funcs
       (a <- is_minimum0 l;
@@ -397,7 +396,7 @@ Section min_max_funcs.
     exact (reflexivity _).
   Defined.
 End min_max_funcs.
-    
+
 
 Section sat_funcs.
   Variable var : Type.
