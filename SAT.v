@@ -359,6 +359,46 @@ Section min_max_funcs.
     apply is_op_0_1.
   Qed.
 
+  (*Theorem refine_is_minimum' : pointwise_relation _ (refine denote_funcs)
+    (fun l => { x : nat | is_op le (eq 0) l x }%comp)
+    (fun l => (ret (match l with
+                      | nil => 0
+                      | x::xs => fold_left min xs x
+                    end))%comp).
+  Proof.
+    exact refine_is_minimum.
+  Qed.
+
+  Theorem refine_is_maximum' : pointwise_relation _ (refine denote_funcs)
+    (fun l => { x : nat | is_op ge (eq 0) l x }%comp)
+    (fun l => (ret (match l with
+                      | nil => 0
+                      | x::xs => fold_left max xs x
+                    end))%comp).
+  Proof.
+    exact refine_is_maximum.
+  Qed.*)
+
+  Theorem refine_is_minimum' l : refine denote_funcs
+    { x : nat | is_op le (eq 0) l x }%comp
+    (ret (match l with
+            | nil => 0
+            | x::xs => fold_left min xs x
+          end))%comp.
+  Proof.
+    apply refine_is_minimum.
+  Qed.
+
+  Theorem refine_is_maximum' l : refine denote_funcs
+    { x : nat | is_op ge (eq 0) l x }%comp
+    (ret (match l with
+            | nil => 0
+            | x::xs => fold_left max xs x
+          end))%comp.
+  Proof.
+    apply refine_is_maximum.
+  Qed.
+
   Lemma refine_pick_pair A B (PA : A -> Prop) (PB : B -> Prop)
     : refine denote_funcs
       { x : A * B | PA (fst x) /\ PB (snd x) }%comp
@@ -380,17 +420,11 @@ Section min_max_funcs.
   Proof.
     eexists.
     intros.
-    autounfold with op.
+    repeat autounfold with op.
     set_evars.
     rewrite refine_pick_pair.
-    let final := match goal with |- refine _ _ ?x => constr:(x) end in
-    change (refine denote_funcs
-      (a <- is_minimum0 l;
-        b <- is_maximum0 l;
-        ret (a, b))%comp
-      final).
-    rewrite refine_is_minimum.
-    setoid_rewrite refine_is_maximum.
+    rewrite refine_is_minimum'.
+    setoid_rewrite refine_is_maximum'.
     exact (reflexivity _).
   Defined.
 End min_max_funcs.
