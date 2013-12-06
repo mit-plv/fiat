@@ -219,21 +219,26 @@ Proof.
   eauto.
 Qed.
 
-(**Add Parametric Morphism A (R : relation A) `{Transitive A R} : R
-  with signature R --> R ++> impl
-    as trans_rel_mor.
-Proof.
-  repeat intro; unfold Transitive in *.
-  intros; intuition eauto.
-Qed.
+Section general_refine_lemmas.
+  Variable funcs : string -> Type * Type.
+  Variable denote_funcs : forall name, fst (funcs name) -> Comp funcs (snd (funcs name)).
 
-Add Parametric Morphism A (R : relation A) `{Transitive A R} : R
-  with signature R ++> R --> flip impl
-    as trans_rel_mor_flip.
-Proof.
-  repeat intro; unfold Transitive in *.
-  intros; intuition eauto.
-Qed.*)
+  Lemma refine_pick_pair A B (PA : A -> Prop) (PB : B -> Prop)
+  : refine denote_funcs
+           { x : A * B | PA (fst x) /\ PB (snd x) }%comp
+           (a <- { a : A | PA a };
+            b <- { b : B | PB b };
+            ret (a, b))%comp.
+  Proof.
+    intros (a, b) H.
+    repeat match goal with
+             | _ => constructor; tauto
+             | _ => progress destruct_ex
+             | [ H : (_, _) = (_, _) |- _ ] => inversion_clear H
+             | [ H : _ |- _ ] => apply computes_to_inv in H
+           end.
+  Qed.
+End general_refine_lemmas.
 
 Section op_funcs.
   Variable op : nat -> nat -> Prop.
@@ -337,6 +342,18 @@ Section op_funcs.
     - split; [ | left; apply fold_left_concrete_op_returns_in ].
       apply (op_works (_::_)).
   Qed.
+
+  Theorem is_op_0_1' l
+    : refine denote_funcs
+             { x : nat
+             | is_op l x }%comp
+             (ret (match l with
+                     | nil => concrete_on_empty
+                     | x::xs => fold_left concrete_op xs x
+                   end))%comp.
+  Proof.
+    apply is_op_0_1.
+  Qed.
 End op_funcs.
 
 Create HintDb op discriminated.
@@ -344,98 +361,41 @@ Create HintDb op discriminated.
 Hint Unfold is_op0 is_op1 : op.
 
 Section min_max_funcs.
-  Definition is_minimum := is_op le (eq 0).
-  Definition is_maximum := is_op ge (eq 0).
-  Definition is_min_max l (min_max : nat * nat) :=
-    is_minimum l (fst min_max) /\ is_maximum l (snd min_max).
+  Notation is_minimum := (is_op le (eq 0)).
+  Notation is_maximum := (is_op ge (eq 0)).
+  Notation is_min_max l min_max :=
+    (is_minimum l (fst (min_max : nat * nat)) /\ is_maximum l (snd min_max)).
 
   Variable funcs : string -> Type * Type.
   Variable denote_funcs : forall name, fst (funcs name) -> Comp funcs (snd (funcs name)).
 
-  Definition is_min_max0 (l : list nat) : Comp funcs (nat * nat) :=
-    { x : _
-      | is_min_max l x }%comp.
+  Hint Resolve min_comm max_comm min_assoc max_assoc.
+  Hint Extern 0 => edestruct max_dec; solve [ left; eassumption | right; eassumption ].
+  Hint Extern 0 => edestruct min_dec; solve [ left; eassumption | right; eassumption ].
+  Hint Extern 0 => eapply min_glb_r; reflexivity.
+  Hint Extern 0 => eapply min_glb_l; reflexivity.
+  Hint Extern 0 => eapply max_lub_r; reflexivity.
+  Hint Extern 0 => eapply max_lub_l; reflexivity.
+  Hint Extern 0 => solve [ constructor ].
+  Hint Extern 0 => compute; intros; etransitivity; eassumption.
 
-  Definition is_minimum0 := (is_op0 le (eq 0) funcs : list nat -> Comp funcs nat).
-  Definition is_maximum0 := (is_op0 ge (eq 0) funcs : list nat -> Comp funcs nat).
-
-  Definition is_minimum1 := (is_op1 funcs min 0 : list nat -> Comp funcs nat).
-  Definition is_maximum1 := (is_op1 funcs max 0 : list nat -> Comp funcs nat).
-
-  Hint Unfold is_minimum is_maximum is_min_max is_min_max0 is_minimum0 is_maximum0 is_minimum1 is_maximum1 : op.
-
-  Theorem refine_is_minimum : pointwise_relation _ (refine denote_funcs) is_minimum0 is_minimum1.
-  Proof.
-    apply is_op_0_1; eauto.
-    apply min_comm.
-    intros; symmetry; apply min_assoc.
-    intros n m; destruct (min_dec n m); intuition.
-    intros n m; eapply min_glb_r; reflexivity.
-    intros n m; eapply min_glb_l; reflexivity.
-    compute; intros; etransitivity; eauto.
-  Qed.
-
-  Theorem refine_is_maximum : pointwise_relation _ (refine denote_funcs) is_maximum0 is_maximum1.
-  Proof.
-    apply is_op_0_1; eauto.
-    apply max_comm.
-    intros; symmetry; apply max_assoc.
-    intros n m; destruct (max_dec n m); intuition.
-    intros n m; eapply max_lub_r; reflexivity.
-    intros n m; eapply max_lub_l; reflexivity.
-    compute; intros; etransitivity; eauto.
-  Qed.
-
-  Theorem refine_is_minimum' l : refine denote_funcs
-    { x : nat | is_op le (eq 0) l x }%comp
-    (ret (match l with
-            | nil => 0
-            | x::xs => fold_left min xs x
-          end))%comp.
-  Proof.
-    apply refine_is_minimum.
-  Qed.
-
-  Theorem refine_is_maximum' l : refine denote_funcs
-    { x : nat | is_op ge (eq 0) l x }%comp
-    (ret (match l with
-            | nil => 0
-            | x::xs => fold_left max xs x
-          end))%comp.
-  Proof.
-    apply refine_is_maximum.
-  Qed.
-
-  Lemma refine_pick_pair A B (PA : A -> Prop) (PB : B -> Prop)
-    : refine denote_funcs
-      { x : A * B | PA (fst x) /\ PB (snd x) }%comp
-      (a <- { a : A | PA a };
-        b <- { b : B | PB b };
-        ret (a, b))%comp.
-  Proof.
-    intros (a, b) H.
-    repeat match goal with
-             | _ => constructor; tauto
-             | _ => progress destruct_ex
-             | [ H : (_, _) = (_, _) |- _ ] => inversion_clear H
-             | [ H : _ |- _ ] => apply computes_to_inv in H
-           end.
-  Qed.
+  Program Definition refine_is_minimum l : refine denote_funcs _ _
+    := @is_op_0_1' le (eq 0) funcs denote_funcs min 0 _ _ _ _ _ _ _ _ l.
+  Program Definition refine_is_maximum l : refine denote_funcs _ _
+    := @is_op_0_1' ge (eq 0) funcs denote_funcs max 0 _ _ _ _ _ _ _ _ l.
 
   Definition is_min_max1 : { f : list nat -> Comp funcs (nat * nat)
-    | forall l, refine denote_funcs (is_min_max0 l) (f l) }.
+    | forall l, refine denote_funcs { x : _ | is_min_max l x }%comp (f l) }.
   Proof.
     eexists.
     intros.
-    repeat autounfold with op.
     set_evars.
-    rewrite refine_pick_pair.
-    rewrite refine_is_minimum'.
-    setoid_rewrite refine_is_maximum'.
+    setoid_rewrite refine_pick_pair.
+    setoid_rewrite refine_is_minimum.
+    setoid_rewrite refine_is_maximum.
     exact (reflexivity _).
   Defined.
 End min_max_funcs.
-
 
 Section sat_funcs.
   Variable var : Type.
