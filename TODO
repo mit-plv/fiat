@@ -5,6 +5,9 @@ In General:
 
 Targeted examples:
 
+* Dijkstra's algorithm (verifying the interesting parts while holding
+   the picking method abstract)
+
 * Generalize column constraints to arbitrary propositions, see if we
   can erase them at compile time?
 
@@ -13,6 +16,9 @@ Notes/Ideas:
 * Perhaps all queries are secretly either views
 
 For Jason Gross:
+
+* Look into various interesting algorithms, try to find one where
+   refinement is useful in constructing implementations
 
 * Look into SAT solvers, try to implement a simple one in Coq
 
