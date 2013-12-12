@@ -1,36 +1,8 @@
 Require Import String Omega List.
+Require Import Common.
 
 Generalizable All Variables.
 Set Implicit Arguments.
-
-(* Coq's build in tactics don't work so well with things like [iff]
-   so split them up into multiple hypotheses *)
-Ltac split_in_context ident funl funr :=
-  repeat match goal with
-           | [ H : context p [ident] |- _ ] =>
-             let H0 := context p[funl] in let H0' := eval simpl in H0 in assert H0' by (apply H);
-               let H1 := context p[funr] in let H1' := eval simpl in H1 in assert H1' by (apply H);
-                 clear H
-         end.
-
-Ltac split_iff := split_in_context iff (fun a b : Prop => a -> b) (fun a b : Prop => b -> a).
-
-Ltac split_and' :=
-  repeat match goal with
-           | [ H : ?a /\ ?b |- _ ] => let H0 := fresh in let H1 := fresh in
-             assert (H0 := fst H); assert (H1 := snd H); clear H
-         end.
-Ltac split_and := split_and'; split_in_context and (fun a b : Type => a) (fun a b : Type => b).
-
-(* [pose proof defn], but only if no hypothesis of the same type exists.
-   most useful for proofs of a proposition *)
-Ltac unique_pose defn :=
-  let T := type of defn in
-    match goal with
-      | [ H : T |- _ ] => fail 1
-      | _ => pose proof defn
-    end.
-
 
 (** * Basic ADT definitions *)
 
