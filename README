@@ -6,11 +6,14 @@ rest should be removed or commented out, once we care more about
 progress in a particular direction than figuring out what direction to
 go in.)
 
+Attempt 4:
+ - ComputationalADT.v
+   * Attempt at including [Comp] type into ADTs
+
 Attempt 3:
  - SAT.v
-   * Attempt at implementing a SAT solver using a monadic functional
-     language
-   * further down is a previous attempt using dependent types
+   * Attempt at implementing a SAT solver and some refinement using a
+     monadic functional language
 
 Attempt 2:
  - InternalADT.v

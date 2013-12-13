@@ -1,6 +1,7 @@
 MODULES    := \
 	Common \
-	Computation
+	Computation \
+	ComputationalADT
 
 VS         := $(MODULES:%=%.v)
 VDS	   := $(MODULES:%=%.v.d)
@@ -49,7 +50,7 @@ html: Makefile.coq
 #	@echo
 
 Makefile.coq: Makefile $(VS)
-	coq_makefile $(VS) -R . Synthesis COQC = " $(SILENCE_COQC)\$$(TIMER) \"\$$(COQBIN)coqc\"" COQDEP = " $(SILENCE_COQDEP)\"\$$(COQBIN)coqdep\" -c" COQDOCFLAGS = "$(COQDOCFLAGS)" -arg -dont-load-proofs -o Makefile.coq
+	coq_makefile $(VS) COQC = " $(SILENCE_COQC)\$$(TIMER) \"\$$(COQBIN)coqc\"" COQDEP = " $(SILENCE_COQDEP)\"\$$(COQBIN)coqdep\" -c" COQDOCFLAGS = "$(COQDOCFLAGS)" -arg -dont-load-proofs -o Makefile.coq
 
 clean:: Makefile.coq
 	$(MAKE) -f Makefile.coq clean
