@@ -111,6 +111,21 @@ End funcs.
 
 Hint Constructors computes_to.
 
+Ltac inversion_computes_to :=
+  repeat match goal with
+           | _ => progress destruct_ex
+           | _ => progress split_and
+           | [ H : computes_to _ _ _ |- _ ]
+             => let H' := fresh in
+                pose proof (computes_to_inv H) as H';
+                  clear H;
+                  cbv beta iota in H';
+                  match type of H' with
+                    | appcontext[match _ with _ => _ end] => fail 1
+                    | _ => idtac
+                  end
+         end.
+
 Notation "x >>= y" := (Bind x y) : comp_scope.
 Notation "x <- y ; z" := (Bind y (fun x => z)) : comp_scope.
 Notation "x ;; z" := (Bind x (fun _ => z)) : comp_scope.
