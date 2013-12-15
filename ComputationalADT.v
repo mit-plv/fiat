@@ -295,7 +295,7 @@ Section prod.
          end.
       destruct_ex.
       intuition.
-inversion_computes_to.
+(*inversion_computes_to.
     simpl in *;
     repeat split;
     try first [ apply (ObserverMethodsCorrect Ai)
