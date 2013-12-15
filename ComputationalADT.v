@@ -193,7 +193,7 @@ Section paired.
       ).
   Defined.
 End paired.
-(*
+
 Section prod.
   Variable model : Type.
   Variables AMutIndex BMutIndex AObsIndex BObsIndex : Type.
@@ -230,10 +230,13 @@ Section prod.
     |}.
 
   (** Now we show how to implement it. *)
-  Variable Ai : ADTimpl A.
-  Variable Bi : ADTimpl B.
+  Variable funcs : string -> Type * Type.
+  Variable denote_funcs : forall name, fst (funcs name)
+                                       -> Comp funcs (snd (funcs name)).
+  Variable Ai : ADTimpl A denote_funcs.
+  Variable Bi : ADTimpl B denote_funcs.
 
-  Local Hint Extern 1 (@ex (_ * _) _) => eexists (_, _).
+  (*Local Hint Extern 1 (@ex (_ * _) _) => eexists (_, _).*)
 
   Hypothesis mutators_match
   : forall idx,
@@ -244,7 +247,7 @@ Section prod.
 
   Local Hint Extern 1 => symmetry.
 
-  Definition prodImpl : ADTimpl prodADT.
+  Definition prodImpl : ADTimpl prodADT denote_funcs.
     refine {|
       State := State Ai * State Bi;
       RepInv := fun (m : Model prodADT) s
@@ -252,19 +255,19 @@ Section prod.
                    /\ RepInv Bi m (snd s);
       MutatorMethodBodies idx :=
         fun s x =>
-          let s1 := fst (MutatorMethodBodies Ai (fst (mutatorMap idx)) (fst s) x) in
-          let s2 := fst (MutatorMethodBodies Bi (snd (mutatorMap idx)) (snd s) x) in
-          ((s1, s2), 0);
+          (s1 <- MutatorMethodBodies Ai (fst (mutatorMap idx)) (fst s) x;
+           s2 <- MutatorMethodBodies Bi (snd (mutatorMap idx)) (snd s) x;
+           ret ((fst s1, fst s2), 0))%comp;
       ObserverMethodBodies idx :=
         match observerMap idx with
           | inl idx' =>
             fun s x =>
-              let s'y := ObserverMethodBodies Ai idx' (fst s) x in
-              ((fst s'y, snd s), snd s'y)
+              (s'y <- ObserverMethodBodies Ai idx' (fst s) x;
+               ret ((fst s'y, snd s), snd s'y))%comp
           | inr idx' =>
             fun s x =>
-              let s'y := ObserverMethodBodies Bi idx' (snd s) x in
-              ((fst s, fst s'y), snd s'y)
+              (s'y <- ObserverMethodBodies Bi idx' (snd s) x;
+               ret ((fst s, fst s'y), snd s'y))%comp
         end
       |};
     intro idx;
@@ -276,7 +279,23 @@ Section prod.
         => destruct (mutatorMap idx); clear idx
       | [ |- appcontext[observerMap ?idx] ]
         => destruct (observerMap idx); clear idx
-    end;
+    end.
+      repeat match goal with
+           | _ => progress destruct_ex; fail 1
+           | _ => progress split_and
+           | [ H : computes_to _ _ _ |- _ ]
+             => let H' := fresh in
+                pose proof (computes_to_inv H) as H';
+                  clear H;
+                  cbv beta iota in H';
+                  match type of H' with
+                    | appcontext[match _ with _ => _ end] => fail 1
+                    | _ => idtac
+                  end
+         end.
+      destruct_ex.
+      intuition.
+inversion_computes_to.
     simpl in *;
     repeat split;
     try first [ apply (ObserverMethodsCorrect Ai)

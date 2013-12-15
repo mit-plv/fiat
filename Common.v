@@ -47,7 +47,7 @@ Ltac unique_pose defn :=
 
 Ltac destruct_ex :=
   repeat match goal with
-           | [ H : ex _ |- _ ] => destruct H; intuition
+           | [ H : ex _ |- _ ] => destruct H
          end.
 
 Hint Extern 0 => apply reflexivity : typeclass_instances.

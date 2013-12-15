@@ -147,7 +147,8 @@ Proof.
   unfold pointwise_relation, refine in *.
   intros.
   repeat (repeat apply_in_hyp_no_match computes_to_inv;
-    destruct_ex).
+    destruct_ex;
+    intuition).
   eauto.
 Qed.
 
@@ -166,6 +167,7 @@ Section general_refine_lemmas.
     repeat match goal with
              | _ => constructor; tauto
              | _ => progress destruct_ex
+             | _ => progress intuition
              | [ H : (_, _) = (_, _) |- _ ] => inversion_clear H
              | [ H : _ |- _ ] => apply computes_to_inv in H
            end.
