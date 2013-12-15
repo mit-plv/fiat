@@ -106,7 +106,7 @@ Record ADTimpl (A : ADT) funcs denote_funcs :=
 
 
 (** * A simple pairing combinator *)
-(*
+
 Section paired.
   Variables A B : ADT.
   (** Let's compose these two ADTs. *)
@@ -134,10 +134,12 @@ Section paired.
     |}.
 
   (** Now we show how to implement it. *)
-  Variable Ai : ADTimpl A.
-  Variable Bi : ADTimpl B.
+  Variable funcs : string -> Type * Type.
+  Variable denote_funcs : forall name, fst (funcs name) -> Comp funcs (snd (funcs name)).
+  Variable Ai : ADTimpl A denote_funcs.
+  Variable Bi : ADTimpl B denote_funcs.
 
-  Definition pairedImpl : ADTimpl pairedADT.
+  Definition pairedImpl : ADTimpl pairedADT denote_funcs.
   Proof.
     refine {|
         State := State Ai * State Bi;
@@ -146,40 +148,52 @@ Section paired.
                      /\ RepInv Bi (snd m) (snd s);
         MutatorMethodBodies name :=
           fun s x
-          => ((fst (MutatorMethodBodies Ai (fst (mutatorMap name)) (fst s) x),
-               fst (MutatorMethodBodies Bi (snd (mutatorMap name)) (snd s) x)),
-              0);
+          => (x'1 <- MutatorMethodBodies Ai (fst (mutatorMap name)) (fst s) x;
+              x'2 <- MutatorMethodBodies Bi (snd (mutatorMap name)) (snd s) x;
+              ret ((fst x'1, fst x'2), 0))%comp;
         ObserverMethodBodies name :=
           fun s x
           => match observerMap name with
                | inl name'
                  => let sy := ObserverMethodBodies Ai name' (fst s) x in
-                    ((fst sy, snd s), snd sy)
+                    (sy' <- sy;
+                     ret ((fst sy', snd s), snd sy'))%comp
                | inr name'
                  => let sy := ObserverMethodBodies Bi name' (snd s) x in
-                    ((fst s, fst sy), snd sy)
+                    (sy' <- sy;
+                     ret ((fst s, fst sy'), snd sy'))%comp
              end
       |};
-    repeat match goal with
-             | _ => intro
-             | _ => progress simpl in *
-             | [ idx : mutatorIndex, H : RepInv Ai _ _ /\ RepInv Bi _ _, x : nat |- _ ]
-               => generalize (MutatorMethodsCorrect Ai (fst (mutatorMap idx)) _ _ (proj1 H) x);
-                 generalize (MutatorMethodsCorrect Bi (snd (mutatorMap idx)) _ _ (proj2 H) x);
-                 destruct (mutatorMap idx), H; simpl in *;
-                 clear idx;
-                 progress repeat destruct MutatorMethodBodies;
-                 firstorder; subst
-             | [ idx : observerIndex |- _ ]
-               => destruct (observerMap idx) as [idx'|idx']; clear idx
-             | _ => eexists (_, _)
-             | _ => progress (repeat esplit; try eassumption)
-             | _ => apply ObserverMethodsCorrect
-             | _ => progress firstorder intuition
-           end.
+    abstract (
+        repeat match goal with
+                 | _ => intro
+                 | _ => progress simpl in *
+                 | _ => progress inversion_computes_to
+                 | _ => progress subst
+                 | [ H : computes_to _ _ _, H' : forall _, computes_to _ _ _ -> _ |- _ ]
+                   => (specialize (H' _ H); clear H)
+                 | [ idx : mutatorIndex, HA : RepInv Ai _ _, HB : RepInv Bi _ _, x : nat |- _ ]
+                   => (generalize (MutatorMethodsCorrect Ai (fst (mutatorMap idx)) _ _ HA x);
+                       generalize (MutatorMethodsCorrect Bi (snd (mutatorMap idx)) _ _ HB x);
+                       destruct (mutatorMap idx);
+                       simpl in *;
+                         clear idx)
+                 | [ idx : observerIndex |- _ ]
+                   => (destruct (observerMap idx) as [idx'|idx']; clear idx)
+                 | _ => eexists (_, _)
+                 | _ => progress (repeat esplit; try eassumption)
+                 | _ => (eapply ObserverMethodsCorrect;
+                         try match goal with
+                               | [ |- computes_to _ _ _ ] => eassumption
+                             end;
+                         instantiate;
+                         eassumption)
+                 | _ => progress firstorder intuition
+               end
+      ).
   Defined.
 End paired.
-
+(*
 Section prod.
   Variable model : Type.
   Variables AMutIndex BMutIndex AObsIndex BObsIndex : Type.
