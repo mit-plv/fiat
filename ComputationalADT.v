@@ -1327,3 +1327,4 @@ Arguments make_accessor / .
       Eval compute in snd (MethodBodies NatSumProdProdI "prod" s2'prod 0).
       *)
 *)
+End comp_env.

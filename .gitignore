@@ -4,3 +4,4 @@
 *.v.d
 *.glob
 Makefile.coq
+time-worked
