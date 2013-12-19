@@ -11,14 +11,14 @@ Definition mutatorMethodSpec (Ty : Type) :=
   Ty    (* Initial model *)
   -> nat (* Actual argument*)
   -> Ty (* Final model *)
-(*  -> nat (* Return value *) *)
+  (*  -> nat (* Return value *) *)
   -> Prop.
 
 (** Hoare logic-style total correctness specification of an obeserver method *)
 Definition observerMethodSpec (Ty : Type) :=
   Ty    (* Initial model *)
   -> nat (* Actual argument*)
-(*  -> Ty (* Final model *) *)
+  (*  -> Ty (* Final model *) *)
   -> nat (* Return value *)
   -> Prop.
 
@@ -38,7 +38,7 @@ Record ADT :=
     (** A specification for each mutator method *)
 
     ObserverMethodSpecs : ObserverIndex -> observerMethodSpec Model
-    (** A specification for each observer method *)
+  (** A specification for each observer method *)
   }.
 
 (** Implementation type of a method *)
@@ -58,8 +58,8 @@ Definition mutatorMethodCorrect (Model State : Type) funcs denote_funcs
             forall s'y_value,
               computes_to denote_funcs s'y s'y_value
               -> exists m', RepInv m' (fst s'y_value)
-                       /\ ms m x m'
-                       /\ (snd s'y_value) = 0.
+                            /\ ms m x m'
+                            /\ (snd s'y_value) = 0.
 
 Definition observerMethodCorrect (Model State : Type) funcs denote_funcs
            (ms : observerMethodSpec Model)
@@ -101,9 +101,39 @@ Record ADTimpl (A : ADT) funcs denote_funcs :=
                                            (ObserverMethodSpecs A idx)
                                            RepInv
                                            (ObserverMethodBodies idx)
-    (** All observer methods satisfy their specs. *)
+  (** All observer methods satisfy their specs. *)
   }.
 
+Ltac get_mut_spec_of_impl Ai :=
+  let A := match type of Ai with ADTimpl ?A _ => constr:(A) end in
+  let AMutSpec' := constr:(MutatorMethodSpecs A) in
+  let AMutSpec := (eval simpl in AMutSpec') in
+  match goal with
+    | [ H : AMutSpec _ _ _ _ |- _ ] => constr:(H)
+  end.
+Ltac impl_has_mut_spec Ai := idtac; get_mut_spec_of_impl Ai.
+
+Ltac impl_t' :=
+  repeat match goal with
+           | _ => eassumption
+           | _ => intro
+           | _ => progress simpl in *
+           | _ => progress split_and
+           | _ => progress inversion_computes_to
+           | _ => progress subst
+           | _ => split
+           | _ => progress destruct_sum_in_match
+           | [ Ai : ADTimpl _ _ |- _ ] => eapply (ObserverMethodsCorrect Ai)
+           | [ Ai : ADTimpl _ _ |- _ ]
+             => (not_tac (impl_has_mut_spec Ai));
+               edestruct (MutatorMethodsCorrect Ai); try eassumption; [];
+               instantiate
+           | _ => progress apply_hyp
+         end.
+
+Ltac impl_t := repeat first [ progress impl_t'
+                            | eexists (_, _)
+                            | esplit ].
 
 (** * A simple pairing combinator *)
 
@@ -164,33 +194,7 @@ Section paired.
                      ret ((fst s, fst sy'), snd sy'))%comp
              end
       |};
-    abstract (
-        repeat match goal with
-                 | _ => intro
-                 | _ => progress simpl in *
-                 | _ => progress inversion_computes_to
-                 | _ => progress subst
-                 | [ H : computes_to _ _ _, H' : forall _, computes_to _ _ _ -> _ |- _ ]
-                   => (specialize (H' _ H); clear H)
-                 | [ idx : mutatorIndex, HA : RepInv Ai _ _, HB : RepInv Bi _ _, x : nat |- _ ]
-                   => (generalize (MutatorMethodsCorrect Ai (fst (mutatorMap idx)) _ _ HA x);
-                       generalize (MutatorMethodsCorrect Bi (snd (mutatorMap idx)) _ _ HB x);
-                       destruct (mutatorMap idx);
-                       simpl in *;
-                         clear idx)
-                 | [ idx : observerIndex |- _ ]
-                   => (destruct (observerMap idx) as [idx'|idx']; clear idx)
-                 | _ => eexists (_, _)
-                 | _ => progress (repeat esplit; try eassumption)
-                 | _ => (eapply ObserverMethodsCorrect;
-                         try match goal with
-                               | [ |- computes_to _ _ _ ] => eassumption
-                             end;
-                         instantiate;
-                         eassumption)
-                 | _ => progress firstorder intuition
-               end
-      ).
+    abstract impl_t.
   Defined.
 End paired.
 
@@ -240,76 +244,46 @@ Section prod.
 
   Hypothesis mutators_match
   : forall idx,
-      forall m x m' m'',
-        AMutSpec (fst (mutatorMap idx)) m x m'
-        -> BMutSpec (snd (mutatorMap idx)) m x m''
-        -> m' = m''.
+    forall m x m' m'',
+      AMutSpec (fst (mutatorMap idx)) m x m'
+      -> BMutSpec (snd (mutatorMap idx)) m x m''
+      -> m' = m''.
 
-  Local Hint Extern 1 => symmetry.
+  Local Hint Extern 1 => apply symmetry.
 
   Definition prodImpl : ADTimpl prodADT denote_funcs.
     refine {|
-      State := State Ai * State Bi;
-      RepInv := fun (m : Model prodADT) s
-                => RepInv Ai m (fst s)
-                   /\ RepInv Bi m (snd s);
-      MutatorMethodBodies idx :=
-        fun s x =>
-          (s1 <- MutatorMethodBodies Ai (fst (mutatorMap idx)) (fst s) x;
-           s2 <- MutatorMethodBodies Bi (snd (mutatorMap idx)) (snd s) x;
-           ret ((fst s1, fst s2), 0))%comp;
-      ObserverMethodBodies idx :=
-        match observerMap idx with
-          | inl idx' =>
-            fun s x =>
-              (s'y <- ObserverMethodBodies Ai idx' (fst s) x;
-               ret ((fst s'y, snd s), snd s'y))%comp
-          | inr idx' =>
-            fun s x =>
-              (s'y <- ObserverMethodBodies Bi idx' (snd s) x;
-               ret ((fst s, fst s'y), snd s'y))%comp
-        end
+        State := State Ai * State Bi;
+        RepInv := fun (m : Model prodADT) s
+                  => RepInv Ai m (fst s)
+                     /\ RepInv Bi m (snd s);
+        MutatorMethodBodies idx :=
+          fun s x =>
+            (s1 <- MutatorMethodBodies Ai (fst (mutatorMap idx)) (fst s) x;
+             s2 <- MutatorMethodBodies Bi (snd (mutatorMap idx)) (snd s) x;
+             ret ((fst s1, fst s2), 0))%comp;
+        ObserverMethodBodies idx :=
+          match observerMap idx with
+            | inl idx' =>
+              fun s x =>
+                (s'y <- ObserverMethodBodies Ai idx' (fst s) x;
+                 ret ((fst s'y, snd s), snd s'y))%comp
+            | inr idx' =>
+              fun s x =>
+                (s'y <- ObserverMethodBodies Bi idx' (snd s) x;
+                 ret ((fst s, fst s'y), snd s'y))%comp
+          end
       |};
-    intro idx;
-    try (assert (MM := mutators_match idx));
-    repeat intro;
-    simpl in *;
-    match goal with
-      | [ |- appcontext[mutatorMap ?idx] ]
-        => destruct (mutatorMap idx); clear idx
-      | [ |- appcontext[observerMap ?idx] ]
-        => destruct (observerMap idx); clear idx
-    end.
-      repeat match goal with
-           | _ => progress destruct_ex; fail 1
-           | _ => progress split_and
-           | [ H : computes_to _ _ _ |- _ ]
-             => let H' := fresh in
-                pose proof (computes_to_inv H) as H';
-                  clear H;
-                  cbv beta iota in H';
-                  match type of H' with
-                    | appcontext[match _ with _ => _ end] => fail 1
-                    | _ => idtac
-                  end
-         end.
-      destruct_ex.
-      intuition.
-(*inversion_computes_to.
-    simpl in *;
-    repeat split;
-    try first [ apply (ObserverMethodsCorrect Ai)
-              | apply (ObserverMethodsCorrect Bi) ];
-    simpl in *; intuition.
-    edestruct (MutatorMethodsCorrect Ai); try eassumption.
-    edestruct (MutatorMethodsCorrect Bi); try eassumption.
-    simpl in *.
-    intuition.
-    match goal with
-      | [ AM : AMutSpec _ _ _ _, BM : BMutSpec _ _ _ _ |- _ ]
-        => specialize (MM _ _ _ _ AM BM); subst
-    end.
-    repeat esplit; eassumption.
+    abstract (
+        intro idx;
+        try (assert (MM := mutators_match idx));
+        impl_t';
+        match goal with
+          | [ AM : AMutSpec _ _ _ _, BM : BMutSpec _ _ _ _ |- _ ]
+            => specialize (MM _ _ _ _ AM BM); subst
+        end;
+        impl_t
+      ).
   Defined.
 End prod.
 
@@ -333,9 +307,11 @@ Section inj.
       ObserverMethodSpecs A (observerMap idx) (BtoA m) x y
       -> ObserverMethodSpecs B idx m x y.
 
-  Variable Ai : ADTimpl A.
+  Variable funcs : string -> Type * Type.
+  Variable denote_funcs : forall name, fst (funcs name) -> Comp funcs (snd (funcs name)).
+  Variable Ai : ADTimpl A denote_funcs.
 
-  Definition injImpl : ADTimpl B.
+  Definition injImpl : ADTimpl B denote_funcs.
   Proof.
     refine {|
         State := State Ai;
@@ -344,29 +320,12 @@ Section inj.
         MutatorMethodBodies name := MutatorMethodBodies Ai (mutatorMap name);
         ObserverMethodBodies name := ObserverMethodBodies Ai (observerMap name)
       |};
-    intro idx;
-    let H := fresh in
-    first [ assert (H := MutatorMethodsCorrect Ai (mutatorMap idx))
-          | assert (H := ObserverMethodsCorrect Ai (observerMap idx)) ];
-      let inv := fresh in
-      let x := fresh in
-      intros ? ? inv x;
-        specialize (H _ _ inv x);
-        simpl in *;
-        intuition;
-        let m := fresh "m" in
-        destruct H as [m H];
-          split_and.
-    let H0 := match goal with
-                | [ H : _ |- _ ] => constr:(@mutatorSpecMap _ _ _ _ H)
-              end in
-    let m := fresh "m" in
-    destruct H0 as [m ?];
-      split_and;
-      exists m;
-      subst;
-      intuition.
-   Defined.
+    abstract (
+        impl_t';
+        edestruct mutatorSpecMap; try eassumption;
+        impl_t
+      ).
+  Defined.
 End inj.
 
 
@@ -417,7 +376,7 @@ Definition make_accessor
         /\ f n d n'.
 
 Arguments make_accessor / .
-*)
+     *)
 
 
 Definition add_spec : mutatorMethodSpec multiset
@@ -494,7 +453,7 @@ Hint Resolve min_trans max_trans.
 
 Arguments add _ _ _ / .
 
-
+(*
 Section def_NatBinOpI.
 
   Local Ltac induction_list_then tac :=
@@ -664,7 +623,7 @@ Record PartialADTimpl (A : ADT) :=
                                                              body
                                             | None => True
                                           end
-    (** All observer methods satisfy their specs. *)
+  (** All observer methods satisfy their specs. *)
   }.
 
 Definition IsFull_PartialADTimpl A (impl : PartialADTimpl A)
@@ -1039,7 +998,7 @@ Proof.
               rewrite ?Htos' in *;
               intuition;
               erewrite <- almost_adjunction in * by eassumption; trivial
-            ] ].
+    ] ].
   - intros idx m x [m'A m'B] ?; simpl in *.
     intuition.
     f_equal.
@@ -1392,4 +1351,4 @@ Definition s2'prod := fst (MethodBodies NatSumProdProdI "add" s1'prod 105).
 
 Eval compute in snd (MethodBodies NatSumProdProdI "sum" s2'prod 0).
 Eval compute in snd (MethodBodies NatSumProdProdI "prod" s2'prod 0).
-*)
+     *)
