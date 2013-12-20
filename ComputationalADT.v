@@ -1,5 +1,6 @@
 Require Import String Omega List.
 Require Import Common Computation.
+Require Import FunctionalExtensionality.
 
 Generalizable All Variables.
 Set Implicit Arguments.
@@ -39,6 +40,20 @@ Ltac generic_impl_t ADTimpl MutatorMethodSpecs ObserverMethodsCorrect MutatorMet
                | eexists (_, _)
                | esplit
                | progress eapply_hyp' ].
+
+Ltac solve_partial_impl_to_impl' :=
+  match goal with
+    | [ |- _ <> None ] => simpl; exact (@Some_ne_None _ _)
+    | [ |- None <> _ ] => simpl; exact (@None_ne_Some _ _)
+    | [ |- forall x : unit, @?P x ] => refine (@unit_rect P _)
+    | [ |- forall x : sum ?A ?B, @?P x ] => refine (@sum_rect A B P _ _)
+    | _ => progress hnf
+    | [ |- forall x : ?T, @?P x ]
+      => let T' := (eval hnf in T) in
+         progress change (forall x : T', P x)
+  end.
+
+Ltac solve_partial_impl_to_impl := repeat solve_partial_impl_to_impl'.
 
 (** * Basic ADT definitions *)
 Section comp_env.
@@ -631,10 +646,13 @@ Arguments make_accessor / .
     (** All observer methods satisfy their specs. *)
     }.
 
-  Definition IsFull_PartialADTimpl A (impl : PartialADTimpl A)
-    := forall idx, PObserverMethodBodies impl idx <> None.
+  Class IsFull_PartialADTimpl A (impl : PartialADTimpl A)
+    := full_partial_ADT_impl_has_no_nones
+       : forall idx, PObserverMethodBodies impl idx <> None.
 
-  Definition ADTimpl_of_PartialADTimpl A impl (H : @IsFull_PartialADTimpl A impl)
+  Hint Extern 1 (IsFull_PartialADTimpl _) => progress solve_partial_impl_to_impl : typeclass_instances.
+
+  Definition ADTimpl_of_PartialADTimpl A impl `{H : @IsFull_PartialADTimpl A impl}
   : ADTimpl A
     := {|
         State := PState impl;
@@ -678,6 +696,8 @@ Arguments make_accessor / .
                                        (H idx)
                                        (PObserverMethodsCorrect impl idx))
       |}.
+
+  Global Arguments ADTimpl_of_PartialADTimpl [A] impl {H}.
 
   Coercion PartialADTimpl_of_ADTimpl A (impl : @ADTimpl A)
   : PartialADTimpl A
@@ -936,7 +956,6 @@ Arguments make_accessor / .
   Proof.
     intro Aimpl.
     pose (Bimpl : PartialADTimpl _) as Bimpl'.
-    Print Implicit injPartialImpl.
     let A' := match type of Aimpl with PartialADTimpl ?A' => constr:(A') end in
     pose (@pairedPartialImpl
             A' B
@@ -996,54 +1015,40 @@ Arguments make_accessor / .
     repeat esplit; eassumption.
   Defined.
 
-  Goal PartialADTimpl NatSumProd_spec.
-  Proof.
-    pose proof (add_component NatSumProd_spec
-                              (NatSumI 0)
-                              (later := unit)).
+  Local Ltac nat_sum_prod_pi_t :=
+    repeat match goal with
+             | _ => intro
+             | _ => eassumption
+             | _ => esplit
+             | _ => apply functional_extensionality_dep; intro
+             | _ => rewrite_hyp; exact eq_refl
+             | _ => progress destruct_sum_in_match
+             | _ => progress destruct_head_hnf Empty_set
+           end.
 
+  Definition NatSumProdPI : PartialADTimpl NatSumProd_spec.
+  Proof.
     eapply (add_component NatSumProd_spec
                           (NatSumI 0)
                           (later := unit)
                           (fun x => x)
                           (fun x => inr x)
                           (fun x => x) (fun x => x));
-      auto.
-    - simpl.
-      simpl; intros.
-      eexists; repeat esplit; trivial.
-    - destruct idx; simpl.
-      intros.
-      Require Import FunctionalExtensionality.
-      extensionality n.
-      rewrite H, H0; auto.
-
-    - destruct idx; intuition.
-
-    - let A := match goal with |- PartialADTimpl ?A => constr:(A) end in
-      eapply (add_component A
-                            (NatProdI 1) (later := Empty_set)
-                            (fun x => inl x)
-                            (fun x => match x with end)
-                            (fun x => x)
-                            (fun x => x));
-        simpl; auto.
-      + simpl.
-        simpl; intros.
-        eexists; repeat esplit; trivial.
-      + intros.
-        Require Import FunctionalExtensionality.
-        extensionality n.
-        rewrite H, H0; auto.
-
-      + tauto.
-      + destruct l.
-
-      + apply no_observers; simpl; intros.
-        destruct H.
-        exists (fun k => if eq_nat_dec x k then S (m k) else m k).
-        auto.
+    try solve [ nat_sum_prod_pi_t ]; [].
+    let A := match goal with |- PartialADTimpl ?A => constr:(A) end in
+    eapply (add_component A
+                          (NatProdI 1) (later := Empty_set)
+                          (fun x => inl x)
+                          (fun x => match x with end)
+                          (fun x => x)
+                          (fun x => x));
+    try solve [ nat_sum_prod_pi_t ]; []; simpl.
+    apply no_observers; simpl;
+    solve [ nat_sum_prod_pi_t ].
   Defined.
+
+  Definition NatSumProdI : ADTimpl NatSumProd_spec
+    := ADTimpl_of_PartialADTimpl NatSumProdPI.
 
 (*
   Existing Class ADTimpl.

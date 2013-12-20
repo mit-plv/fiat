@@ -156,3 +156,13 @@ Instance pointwise_transitive A B (eqB : relation B) `{Transitive _ eqB} : Trans
 Proof.
   compute in *; eauto.
 Defined.
+
+Lemma Some_ne_None {T} {x : T} : Some x <> None.
+Proof.
+  congruence.
+Qed.
+
+Lemma None_ne_Some {T} {x : T} : None <> Some x.
+Proof.
+  congruence.
+Qed.
