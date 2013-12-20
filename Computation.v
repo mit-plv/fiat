@@ -4,7 +4,6 @@ Require Import Common.
 Reserved Notation "x >>= y" (at level 42, right associativity).
 Reserved Notation "x <- y ; z" (at level 42, right associativity).
 Reserved Notation "x ;; z" (at level 42, right associativity).
-Reserved Notation "f [[ x ]]" (at level 35).
 Reserved Notation "'call' f 'from' funcs [[ x ]]" (at level 35).
 
 Delimit Scope comp_scope with comp.
@@ -20,12 +19,11 @@ Section funcs.
   Bind Scope comp_scope with Comp.
   Global Arguments Bind A%type B%type _%comp _.
 
-  Notation "x >>= y" := (Bind x y) : comp_scope.
-  Notation "x <- y ; z" := (Bind y (fun x => z)) : comp_scope.
-  Notation "x ;; z" := (Bind x (fun _ => z)) : comp_scope.
-  Notation "f [[ x ]]" := (@Call f x) : comp_scope.
-  Notation "{ x  |  P }" := (@Pick _ (fun x => P)) : comp_scope.
-  Notation "{ x : A  |  P }" := (@Pick A (fun x => P)) : comp_scope.
+  Local Notation "x >>= y" := (Bind x y) : comp_scope.
+  Local Notation "x <- y ; z" := (Bind y (fun x => z)) : comp_scope.
+  Local Notation "x ;; z" := (Bind x (fun _ => z)) : comp_scope.
+  Local Notation "{ x  |  P }" := (@Pick _ (fun x => P)) : comp_scope.
+  Local Notation "{ x : A  |  P }" := (@Pick A (fun x => P)) : comp_scope.
 
   Definition Or : Comp bool -> Comp bool -> Comp bool
     := fun c1 c2 =>

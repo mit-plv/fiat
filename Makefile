@@ -4,7 +4,8 @@ MODULES    := \
 	ADT \
 	ADTImplementation \
 	ADTPartialImplementation \
-	ADTExamples
+	ADTExamples \
+	ComputationExamples
 
 VS         := $(MODULES:%=%.v)
 VDS	   := $(MODULES:%=%.v.d)
