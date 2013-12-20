@@ -1,7 +1,10 @@
 MODULES    := \
 	Common \
 	Computation \
-	ComputationalADT
+	ADT \
+	ADTImplementation \
+	ADTPartialImplementation \
+	ADTExamples
 
 VS         := $(MODULES:%=%.v)
 VDS	   := $(MODULES:%=%.v.d)

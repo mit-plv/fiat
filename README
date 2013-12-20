@@ -1,17 +1,19 @@
 This repository holds experimental work on synthesizing ADTs using Coq
-8.4pl2.  Each file is independent, and the most recent work tends to
-be at the top.  If the entire file does not compile, the most recent
-work is contained in the first compiling segment.  (Eventually, the
-rest should be removed or commented out, once we care more about
-progress in a particular direction than figuring out what direction to
-go in.)
+8.4pl2.  Files are compiled using the included Makefile.
+
+Attempt 5:
+ - Reorganize files to split up componets
+  * Common.v - common tactics and definitions and lemmas
+  * ADT.v - definition of an ADT using [Comp]
+  * PartialADT.v - definition of an ADT which might be missing some implementations
+  * ADTExamples.v - a few examples of program refinement
+
+The attempts below refer to files in commit
+1a189325e0522abd0f43e2d309eb9d1d75c2970a and before.
 
 Attempt 4:
  - ComputationalADT.v
    * Attempt at including [Comp] type into ADTs
-
-The attempts below refer to files in commit
-1a189325e0522abd0f43e2d309eb9d1d75c2970a and before.
 
 Attempt 3:
  - SAT.v
