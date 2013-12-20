@@ -298,24 +298,21 @@ Arguments make_accessor / .
            end.
 
   Definition NatSumProdPI : PartialADTimpl NatSumProd_spec.
-  Proof.
+  Proof with try solve [ nat_sum_prod_pi_t ]; simpl.
     eapply (add_component NatSumProd_spec
                           (NatSumI 0)
                           (later := unit)
                           (fun x => x)
                           (fun x => inr x)
-                          (fun x => x) (fun x => x));
-    try solve [ nat_sum_prod_pi_t ]; [].
+                          (fun x => x) (fun x => x))...
     let A := match goal with |- PartialADTimpl ?A => constr:(A) end in
     eapply (add_component A
                           (NatProdI 1) (later := Empty_set)
                           (fun x => inl x)
                           (fun x => match x with end)
                           (fun x => x)
-                          (fun x => x));
-    try solve [ nat_sum_prod_pi_t ]; []; simpl.
-    apply no_observers; simpl;
-    solve [ nat_sum_prod_pi_t ].
+                          (fun x => x))...
+    apply no_observers...
   Defined.
 
   Definition NatSumProdI : ADTimpl NatSumProd_spec
