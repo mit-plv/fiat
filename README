@@ -10,6 +10,9 @@ Attempt 4:
  - ComputationalADT.v
    * Attempt at including [Comp] type into ADTs
 
+The attempts below refer to files in commit
+1a189325e0522abd0f43e2d309eb9d1d75c2970a and before.
+
 Attempt 3:
  - SAT.v
    * Attempt at implementing a SAT solver and some refinement using a
