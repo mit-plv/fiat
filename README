@@ -7,6 +7,7 @@ Attempt 5:
   * ADT.v - definition of an ADT using [Comp]
   * PartialADT.v - definition of an ADT which might be missing some implementations
   * ADTExamples.v - a few examples of program refinement
+  * ComputationExamples.v - a few examples of program refinement not using ADTs
 
 The attempts below refer to files in commit
 1a189325e0522abd0f43e2d309eb9d1d75c2970a and before.
