@@ -231,17 +231,17 @@ Arguments make_accessor / .
         |};
         intros [];
         solve [ (intros m [n|] [l [H0 H1] ] x ? ?);
-                inversion_computes_to; subst; simpl in *;
+                inversion_by computes_to_inv; subst; simpl in *;
                 (exists (add m x));
                 repeat split;
                 try (exists (x::l));
                 abstract t' op op_assoc op_comm
               | intros m [n|] [l [H0 H1] ] x ? ?;
-                       inversion_computes_to; subst; simpl in *;
+                       inversion_by computes_to_inv; subst; simpl in *;
                 repeat (split || exists m || exists l);
                 abstract t' op op_assoc op_comm
               | intros m [n|] [l [H0 H1] ] x ? ?;
-                       inversion_computes_to; subst; simpl in *;
+                       inversion_by computes_to_inv; subst; simpl in *;
                 [ repeat split;
                   try (exists (add (fun _ => 0) n));
                   repeat split;

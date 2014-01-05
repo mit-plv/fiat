@@ -59,6 +59,32 @@ Section funcs.
     destruct 1; eauto.
   Qed.
 
+  (** A [Comp] is maximally computational if it could be written without [Pick] *)
+  Inductive is_computational : forall A, Comp A -> Prop :=
+  | Return_is_computational : forall A (x : A), is_computational (Return x)
+  | Call_is_computational : forall f x,
+                              is_computational (@denote_funcs f x)
+                              -> is_computational (@Call f x)
+  | Bind_is_computational : forall A B (cA : Comp A) (f : A -> Comp B),
+                              is_computational cA
+                              -> (forall a,
+                                    computes_to cA a -> is_computational (f a))
+                              -> is_computational (Bind cA f).
+
+  Theorem is_computational_inv A (c : Comp A)
+  : is_computational c
+    -> match c with
+         | Return _ _ => True
+         | Bind _ _ x f => is_computational x
+                           /\ forall v, computes_to x v
+                                        -> is_computational (f v)
+         | Call name input => is_computational (denote_funcs name input)
+         | Pick _ _ => False
+       end.
+  Proof.
+    destruct 1; eauto.
+  Qed.
+
   (** The old program might be non-deterministic, and the new program
       less so.  This means we want to say that if [new] can compute to
       [v], then [old] should be able to compute to [v], too. *)
@@ -109,20 +135,10 @@ End funcs.
 
 Hint Constructors computes_to.
 
-Ltac inversion_computes_to :=
-  repeat match goal with
-           | _ => progress destruct_ex
-           | _ => progress split_and
-           | [ H : computes_to _ _ _ |- _ ]
-             => let H' := fresh in
-                pose proof (computes_to_inv H) as H';
-                  clear H;
-                  cbv beta iota in H';
-                  match type of H' with
-                    | appcontext[match _ with _ => _ end] => fail 1
-                    | _ => idtac
-                  end
-         end.
+Ltac inversion_by rule :=
+  progress repeat first [ progress destruct_ex
+                        | progress split_and
+                        | apply_in_hyp_no_cbv_match rule ].
 
 Notation "x >>= y" := (Bind x y) : comp_scope.
 Notation "x <- y ; z" := (Bind y (fun x => z)) : comp_scope.
@@ -144,9 +160,7 @@ Proof.
   intros.
   unfold pointwise_relation, refine in *.
   intros.
-  repeat (repeat apply_in_hyp_no_match computes_to_inv;
-    destruct_ex;
-    intuition).
+  inversion_by computes_to_inv.
   eauto.
 Qed.
 

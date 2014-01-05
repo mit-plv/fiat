@@ -19,7 +19,7 @@ Ltac generic_impl_t'' ADTimpl MutatorMethodSpecs ObserverMethodsCorrect MutatorM
     | _ => intro
     | _ => progress simpl in *
     | _ => progress split_and
-    | _ => progress inversion_computes_to
+    | _ => progress inversion_by computes_to_inv
     | _ => progress subst
     | _ => split
     | _ => progress destruct_sum_in_match

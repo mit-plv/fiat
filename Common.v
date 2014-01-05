@@ -33,6 +33,17 @@ Ltac apply_in_hyp_no_match lem :=
       end
   end.
 
+Ltac apply_in_hyp_no_cbv_match lem :=
+  match goal with
+    | [ H : _ |- _ ]
+      => apply lem in H;
+        cbv beta iota in H;
+        match type of H with
+          | appcontext[match _ with _ => _ end] => fail 1
+          | _ => idtac
+        end
+  end.
+
 (* Coq's build in tactics don't work so well with things like [iff]
    so split them up into multiple hypotheses *)
 Ltac split_in_context ident funl funr :=

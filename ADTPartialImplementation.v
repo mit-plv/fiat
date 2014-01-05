@@ -430,7 +430,7 @@ Section comp_env.
               PObserverMethodBodies := fun _ => None
            |}; auto.
     repeat intro; simpl in *.
-    inversion_computes_to; subst; simpl.
+    inversion_by computes_to_inv; subst; simpl.
     edestruct Himplementable.
     repeat esplit; eassumption.
   Defined.
