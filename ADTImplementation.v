@@ -79,6 +79,14 @@ Section comp_env.
     (** All observer methods satisfy their specs. *)
     }.
 
+  Definition ADTimpl_is_computational A (Ai : ADTimpl A) : Prop
+    := (forall i s x,
+          (exists m, RepInv Ai m s)
+          -> is_computational denote_funcs (MutatorMethodBodies Ai i s x))
+       /\ (forall i s x,
+             (exists m, RepInv Ai m s)
+             -> is_computational denote_funcs (ObserverMethodBodies Ai i s x)).
+
   Ltac impl_t'' := generic_impl_t'' ADTimpl MutatorMethodSpecs ObserverMethodsCorrect MutatorMethodsCorrect.
   Ltac impl_t' := generic_impl_t' ADTimpl MutatorMethodSpecs ObserverMethodsCorrect MutatorMethodsCorrect.
   Ltac impl_t := generic_impl_t ADTimpl MutatorMethodSpecs ObserverMethodsCorrect MutatorMethodsCorrect.
@@ -268,4 +276,46 @@ Section comp_env.
         ).
     Defined.
   End inj.
+
+
+  (** Every spec is trivially implementable using [Pick]. *)
+  Section pick.
+    Variables A : ADT.
+    Variable state : Type.
+    Variable rep_inv : Model A -> state -> Prop.
+
+    Definition pickImpl : ADTimpl A.
+    Proof.
+      refine {|
+          State := state;
+          RepInv := rep_inv;
+          MutatorMethodBodies idx :=
+            fun s x
+            => (s' <- { s' : state
+                      | forall m,
+                          rep_inv m s
+                          -> exists m',
+                               rep_inv m' s'
+                               /\ MutatorMethodSpecs A idx m x m' };
+                ret (s', 0))%comp;
+          ObserverMethodBodies idx :=
+            fun s x
+            => (x' <- { x' : nat | forall m,
+                                     rep_inv m s ->
+                                     ObserverMethodSpecs A idx m x x' };
+                ret (s, x'))%comp
+        |};
+      abstract (
+          repeat intro; simpl;
+          inversion_by computes_to_inv; subst; simpl;
+          eauto;
+          match goal with
+            | [ H : forall m : Model A, rep_inv _ _ -> exists m' : Model A, _ |- _ ]
+              => edestruct H; try eassumption; [];
+            split_and;
+            repeat esplit; eassumption
+          end
+        ).
+    Defined.
+  End pick.
 End comp_env.
