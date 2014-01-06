@@ -132,7 +132,7 @@ Section op_funcs.
   Qed.
 
   Theorem is_op_0_1
-    : pointwise_relation _ (refine denote_funcs) is_op0 is_op1.
+    : pointwise_relation _ (refine denote_funcs denote_funcs) is_op0 is_op1.
   Proof.
     intros l v old_hyp.
     unfold is_op1, is_op0 in *.
@@ -146,7 +146,7 @@ Section op_funcs.
   Qed.
 
   Theorem is_op_0_1' l
-    : refine denote_funcs
+    : refine denote_funcs denote_funcs
              { x : nat
              | is_op l x }%comp
              (ret (match l with
@@ -181,13 +181,13 @@ Section min_max_funcs.
   Hint Extern 0 => solve [ constructor ].
   Hint Extern 0 => compute; intros; etransitivity; eassumption.
 
-  Program Definition refine_is_minimum l : refine denote_funcs _ _
+  Program Definition refine_is_minimum l : refine denote_funcs denote_funcs _ _
     := @is_op_0_1' le (eq 0) funcs denote_funcs min 0 _ _ _ _ _ _ _ _ l.
-  Program Definition refine_is_maximum l : refine denote_funcs _ _
+  Program Definition refine_is_maximum l : refine denote_funcs denote_funcs _ _
     := @is_op_0_1' ge (eq 0) funcs denote_funcs max 0 _ _ _ _ _ _ _ _ l.
 
   Definition is_min_max1 : { f : list nat -> Comp funcs (nat * nat)
-    | forall l, refine denote_funcs { x : _ | is_min_max l x }%comp (f l) }.
+    | forall l, refine denote_funcs denote_funcs { x : _ | is_min_max l x }%comp (f l) }.
   Proof.
     eexists.
     intros.
@@ -252,7 +252,7 @@ Section sat_funcs.
          Or (call "sat" from funcs [[ formula_t ]]) (call "sat" from funcs [[ formula_f ]])
      end)%comp.
 
-  Lemma sat_0_1 denote_funcs f : refine denote_funcs (sat0 funcs f) (sat1 f).
+  Lemma sat_0_1 denote_funcs f : refine denote_funcs denote_funcs (sat0 funcs f) (sat1 f).
   Proof.
     unfold sat0.
   Admitted.

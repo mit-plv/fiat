@@ -13,7 +13,7 @@ Ltac get_mut_spec_of_generic_impl ADTimpl MutatorMethodSpecs Ai :=
   end.
 Ltac generic_impl_has_mut_spec ADTimpl MutatorMethodSpecs Ai := idtac; get_mut_spec_of_generic_impl ADTimpl MutatorMethodSpecs Ai.
 
-Ltac generic_impl_t'' ADTimpl MutatorMethodSpecs ObserverMethodsCorrect MutatorMethodsCorrect :=
+Ltac generic_impl_t'' ADTimpl MutatorMethodSpecs ObserverMethodsCorrect MutatorMethodsCorrect after_mut :=
   match goal with
     | _ => eassumption
     | _ => intro
@@ -26,60 +26,59 @@ Ltac generic_impl_t'' ADTimpl MutatorMethodSpecs ObserverMethodsCorrect MutatorM
     | [ Ai : ADTimpl ?A |- _ ] => eapply (@ObserverMethodsCorrect A Ai)
     | [ Ai : ADTimpl ?A |- _ ]
       => (not_tac (generic_impl_has_mut_spec ADTimpl MutatorMethodSpecs Ai));
-        edestruct (@MutatorMethodsCorrect A Ai); try eassumption; [];
+        edestruct (@MutatorMethodsCorrect A Ai); try after_mut; try eassumption; [];
         instantiate
     | _ => progress apply_hyp
   end.
 
-Ltac generic_impl_t' ADTimpl MutatorMethodSpecs ObserverMethodsCorrect MutatorMethodsCorrect :=
-  repeat generic_impl_t'' ADTimpl MutatorMethodSpecs ObserverMethodsCorrect MutatorMethodsCorrect.
+Ltac generic_impl_t' ADTimpl MutatorMethodSpecs ObserverMethodsCorrect MutatorMethodsCorrect after_mut :=
+  repeat generic_impl_t'' ADTimpl MutatorMethodSpecs ObserverMethodsCorrect MutatorMethodsCorrect after_mut.
 
-Ltac generic_impl_t ADTimpl MutatorMethodSpecs ObserverMethodsCorrect MutatorMethodsCorrect :=
-  repeat first [ progress generic_impl_t' ADTimpl MutatorMethodSpecs ObserverMethodsCorrect MutatorMethodsCorrect
+Ltac generic_impl_t ADTimpl MutatorMethodSpecs ObserverMethodsCorrect MutatorMethodsCorrect after_mut :=
+  repeat first [ progress generic_impl_t' ADTimpl MutatorMethodSpecs ObserverMethodsCorrect MutatorMethodsCorrect after_mut
                | eexists (_, _)
                | esplit
                | progress eapply_hyp' ].
 
 (** * Basic ADT definitions *)
 Section comp_env.
-  (** We have one ambiant [funcs] and [denote_funcs] around for everything. *)
+  (** We have one ambiant [funcs] around for everything. *)
   Variable funcs : string -> Type * Type.
-  Variable denote_funcs : forall name, fst (funcs name) -> Comp funcs (snd (funcs name)).
-
-  (** We set up some notations so we don't need to think about [funcs] and [denote_funcs]. *)
-  Local Notation methodTypeD := (methodTypeD funcs).
-  Local Notation mutatorMethodCorrect := (@mutatorMethodCorrect funcs denote_funcs).
-  Local Notation observerMethodCorrect := (@observerMethodCorrect funcs denote_funcs).
 
   (** One implementation of an ADT *)
-  Record ADTimpl (A : ADT) :=
-    {
-      State : Type;
-      (** Real state type in Gallina *)
+  Record ADTimpl
+         (denote_funcs : forall name, fst (funcs name) -> Comp funcs (snd (funcs name)))
+         (A : ADT)
+    :=
+      {
+        State : Type;
+        (** Real state type in Gallina *)
 
-      RepInv : Model A -> State -> Prop;
-      (** Relationship between abstract (specification) and concrete (implementation) states *)
+        RepInv : Model A -> State -> Prop;
+        (** Relationship between abstract (specification) and concrete (implementation) states *)
 
-      MutatorMethodBodies : MutatorIndex A -> methodTypeD State;
-      (** An implementation of each mutator method *)
+        MutatorMethodBodies : MutatorIndex A -> methodTypeD funcs State;
+        (** An implementation of each mutator method *)
 
-      ObserverMethodBodies : ObserverIndex A -> methodTypeD State;
-      (** An implementation of each observer method *)
+        ObserverMethodBodies : ObserverIndex A -> methodTypeD funcs State;
+        (** An implementation of each observer method *)
 
-      MutatorMethodsCorrect : forall idx, mutatorMethodCorrect
-                                            (MutatorMethodSpecs A idx)
-                                            RepInv
-                                            (MutatorMethodBodies idx);
-      (** All mutator methods satisfy their specs. *)
+        MutatorMethodsCorrect : forall idx, mutatorMethodCorrect
+                                              denote_funcs
+                                              (MutatorMethodSpecs A idx)
+                                              RepInv
+                                              (MutatorMethodBodies idx);
+        (** All mutator methods satisfy their specs. *)
 
-      ObserverMethodsCorrect : forall idx, observerMethodCorrect
-                                             (ObserverMethodSpecs A idx)
-                                             RepInv
-                                             (ObserverMethodBodies idx)
-    (** All observer methods satisfy their specs. *)
-    }.
+        ObserverMethodsCorrect : forall idx, observerMethodCorrect
+                                               denote_funcs
+                                               (ObserverMethodSpecs A idx)
+                                               RepInv
+                                               (ObserverMethodBodies idx)
+      (** All observer methods satisfy their specs. *)
+      }.
 
-  Definition ADTimpl_is_computational A (Ai : ADTimpl A) : Prop
+  Definition ADTimpl_is_computational denote_funcs A (Ai : ADTimpl denote_funcs A) : Prop
     := (forall i s x,
           (exists m, RepInv Ai m s)
           -> is_computational denote_funcs (MutatorMethodBodies Ai i s x))
@@ -87,13 +86,14 @@ Section comp_env.
              (exists m, RepInv Ai m s)
              -> is_computational denote_funcs (ObserverMethodBodies Ai i s x)).
 
-  Ltac impl_t'' := generic_impl_t'' ADTimpl MutatorMethodSpecs ObserverMethodsCorrect MutatorMethodsCorrect.
-  Ltac impl_t' := generic_impl_t' ADTimpl MutatorMethodSpecs ObserverMethodsCorrect MutatorMethodsCorrect.
-  Ltac impl_t := generic_impl_t ADTimpl MutatorMethodSpecs ObserverMethodsCorrect MutatorMethodsCorrect.
+  Ltac impl_t'' denote_funcs := generic_impl_t'' (@ADTimpl denote_funcs) MutatorMethodSpecs (@ObserverMethodsCorrect denote_funcs) (@MutatorMethodsCorrect denote_funcs).
+  Ltac impl_t' denote_funcs := generic_impl_t' (@ADTimpl denote_funcs) MutatorMethodSpecs (@ObserverMethodsCorrect denote_funcs) (@MutatorMethodsCorrect denote_funcs).
+  Ltac impl_t denote_funcs := generic_impl_t (@ADTimpl denote_funcs) MutatorMethodSpecs (@ObserverMethodsCorrect denote_funcs) (@MutatorMethodsCorrect denote_funcs).
 
   (** * A simple pairing combinator *)
 
   Section paired.
+    Variable denote_funcs : forall name, fst (funcs name) -> Comp funcs (snd (funcs name)).
     Variables A B : ADT.
     (** Let's compose these two ADTs. *)
 
@@ -120,10 +120,10 @@ Section comp_env.
       |}.
 
     (** Now we show how to implement it. *)
-    Variable Ai : ADTimpl A.
-    Variable Bi : ADTimpl B.
+    Variable Ai : ADTimpl denote_funcs A.
+    Variable Bi : ADTimpl denote_funcs B.
 
-    Definition pairedImpl : ADTimpl pairedADT.
+    Definition pairedImpl : ADTimpl denote_funcs pairedADT.
     Proof.
       refine {|
           State := State Ai * State Bi;
@@ -148,11 +148,12 @@ Section comp_env.
                        ret ((fst s, fst sy'), snd sy'))%comp
                end
         |};
-      abstract impl_t.
+      abstract impl_t denote_funcs idtac.
     Defined.
   End paired.
 
   Section prod.
+    Variable denote_funcs : forall name, fst (funcs name) -> Comp funcs (snd (funcs name)).
     Variable model : Type.
     Variables AMutIndex BMutIndex AObsIndex BObsIndex : Type.
     Variable AMutSpec : AMutIndex -> mutatorMethodSpec model.
@@ -188,8 +189,8 @@ Section comp_env.
       |}.
 
     (** Now we show how to implement it. *)
-    Variable Ai : ADTimpl A.
-    Variable Bi : ADTimpl B.
+    Variable Ai : ADTimpl denote_funcs A.
+    Variable Bi : ADTimpl denote_funcs B.
 
     (*Local Hint Extern 1 (@ex (_ * _) _) => eexists (_, _).*)
 
@@ -202,7 +203,7 @@ Section comp_env.
 
     Local Hint Extern 1 => apply symmetry.
 
-    Definition prodImpl : ADTimpl prodADT.
+    Definition prodImpl : ADTimpl denote_funcs prodADT.
       refine {|
           State := State Ai * State Bi;
           RepInv := fun (m : Model prodADT) s
@@ -228,12 +229,12 @@ Section comp_env.
       abstract (
           intro idx;
           try (assert (MM := mutators_match idx));
-          impl_t';
+          impl_t' denote_funcs idtac;
           match goal with
             | [ AM : AMutSpec _ _ _ _, BM : BMutSpec _ _ _ _ |- _ ]
               => specialize (MM _ _ _ _ AM BM); subst
           end;
-          impl_t
+          impl_t denote_funcs idtac
         ).
     Defined.
   End prod.
@@ -241,6 +242,8 @@ Section comp_env.
   (** A transformation (approximately, injection) from one ADT to another *)
 
   Section inj.
+    Variable denote_funcs : forall name, fst (funcs name) -> Comp funcs (snd (funcs name)).
+
     Variables A B : ADT.
     (** Let's compose these two ADTs. *)
 
@@ -258,9 +261,9 @@ Section comp_env.
         ObserverMethodSpecs A (observerMap idx) (BtoA m) x y
         -> ObserverMethodSpecs B idx m x y.
 
-    Variable Ai : ADTimpl A.
+    Variable Ai : ADTimpl denote_funcs A.
 
-    Definition injImpl : ADTimpl B.
+    Definition injImpl : ADTimpl denote_funcs B.
     Proof.
       refine {|
           State := State Ai;
@@ -270,9 +273,9 @@ Section comp_env.
           ObserverMethodBodies name := ObserverMethodBodies Ai (observerMap name)
         |};
       abstract (
-          impl_t';
+          impl_t' denote_funcs idtac;
           edestruct mutatorSpecMap; try eassumption;
-          impl_t
+          impl_t denote_funcs idtac
         ).
     Defined.
   End inj.
@@ -280,11 +283,13 @@ Section comp_env.
 
   (** Every spec is trivially implementable using [Pick]. *)
   Section pick.
+    Variable denote_funcs : forall name, fst (funcs name) -> Comp funcs (snd (funcs name)).
+
     Variables A : ADT.
     Variable state : Type.
     Variable rep_inv : Model A -> state -> Prop.
 
-    Definition pickImpl : ADTimpl A.
+    Definition pickImpl : ADTimpl denote_funcs A.
     Proof.
       refine {|
           State := state;
@@ -318,4 +323,40 @@ Section comp_env.
         ).
     Defined.
   End pick.
+
+
+  (** We can [refine] the computations of an implementation *)
+
+  Section inj_by_refine.
+    Variables old_denote_funcs new_denote_funcs
+    : forall name, fst (funcs name) -> Comp funcs (snd (funcs name)).
+
+    Variable A : ADT.
+    Variable Ai : ADTimpl old_denote_funcs A.
+
+    Variable new_mutators : MutatorIndex A -> methodTypeD funcs (State Ai).
+    Variable new_observers : ObserverIndex A -> methodTypeD funcs (State Ai).
+
+    Hypothesis mutator_refinement
+    : forall idx s x,
+        refine old_denote_funcs new_denote_funcs
+               (MutatorMethodBodies Ai idx s x)
+               (new_mutators idx s x).
+    Hypothesis observer_refinement
+    : forall idx s x,
+        refine old_denote_funcs new_denote_funcs
+               (ObserverMethodBodies Ai idx s x)
+               (new_observers idx s x).
+
+    Definition inj_refine_Impl : ADTimpl new_denote_funcs A.
+    Proof.
+      refine {|
+          State := State Ai;
+          RepInv := RepInv Ai;
+          MutatorMethodBodies := new_mutators;
+          ObserverMethodBodies := new_observers
+        |};
+      abstract impl_t old_denote_funcs ltac:(eapply mutator_refinement).
+    Defined.
+  End inj_by_refine.
 End comp_env.

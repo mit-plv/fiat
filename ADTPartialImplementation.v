@@ -132,9 +132,9 @@ Section comp_env.
 
   Global Arguments ADTimpl_of_PartialADTimpl [A] impl {H}.
 
-  Ltac p_impl_t'' := generic_impl_t'' PartialADTimpl MutatorMethodSpecs (@PObserverMethodsCorrect funcs denote_funcs) (@PMutatorMethodsCorrect funcs denote_funcs).
-  Ltac p_impl_t' := generic_impl_t' PartialADTimpl MutatorMethodSpecs (@PObserverMethodsCorrect funcs denote_funcs) (@PMutatorMethodsCorrect funcs denote_funcs).
-  Ltac p_impl_t := generic_impl_t PartialADTimpl MutatorMethodSpecs (@PObserverMethodsCorrect funcs denote_funcs) (@PMutatorMethodsCorrect funcs denote_funcs).
+  Ltac p_impl_t'' := generic_impl_t'' PartialADTimpl MutatorMethodSpecs (@PObserverMethodsCorrect funcs denote_funcs) (@PMutatorMethodsCorrect funcs denote_funcs) idtac.
+  Ltac p_impl_t' := generic_impl_t' PartialADTimpl MutatorMethodSpecs (@PObserverMethodsCorrect funcs denote_funcs) (@PMutatorMethodsCorrect funcs denote_funcs) idtac.
+  Ltac p_impl_t := generic_impl_t PartialADTimpl MutatorMethodSpecs (@PObserverMethodsCorrect funcs denote_funcs) (@PMutatorMethodsCorrect funcs denote_funcs) idtac.
 
   Section pairedPartial.
     Variables A B : ADT.
