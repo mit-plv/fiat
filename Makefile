@@ -3,7 +3,6 @@ MODULES    := \
 	Computation \
 	ADT \
 	ADTImplementation \
-	ADTPartialImplementation \
 	ADTExamples \
 	ComputationExamples
 

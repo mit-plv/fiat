@@ -1,6 +1,6 @@
 Require Import String Omega.
 Require Import FunctionalExtensionality.
-Require Export ADT ADTImplementation ADTPartialImplementation.
+Require Export ADT ADTImplementation.
 
 Generalizable All Variables.
 Set Implicit Arguments.
@@ -16,7 +16,6 @@ Section comp_env.
   Local Notation mutatorMethodCorrect := (@mutatorMethodCorrect funcs denote_funcs).
   Local Notation observerMethodCorrect := (@observerMethodCorrect funcs denote_funcs).
   Local Notation ADTimpl := (@ADTimpl funcs denote_funcs).
-  Local Notation PartialADTimpl := (@PartialADTimpl funcs denote_funcs).
 
   (** * An example, composing binary commutative associative calculators for computable nat multisets *)
 
@@ -285,36 +284,4 @@ Arguments make_accessor / .
               | inr _ => bin_op_spec mult 1 m x n
             end
        |}.
-
-  Local Ltac nat_sum_prod_pi_t :=
-    repeat match goal with
-             | _ => intro
-             | _ => eassumption
-             | _ => esplit
-             | _ => apply functional_extensionality_dep; intro
-             | _ => rewrite_hyp; exact eq_refl
-             | _ => progress destruct_sum_in_match
-             | _ => progress destruct_head_hnf Empty_set
-           end.
-
-  Definition NatSumProdPI : PartialADTimpl NatSumProd_spec.
-  Proof with try solve [ nat_sum_prod_pi_t ]; simpl.
-    eapply (add_component NatSumProd_spec
-                          (NatSumI 0)
-                          (later := unit)
-                          (fun x => x)
-                          (fun x => inr x)
-                          (fun x => x) (fun x => x))...
-    let A := match goal with |- PartialADTimpl ?A => constr:(A) end in
-    eapply (add_component A
-                          (NatProdI 1) (later := Empty_set)
-                          (fun x => inl x)
-                          (fun x => match x with end)
-                          (fun x => x)
-                          (fun x => x))...
-    apply no_observers...
-  Defined.
-
-  Definition NatSumProdI : ADTimpl NatSumProd_spec
-    := ADTimpl_of_PartialADTimpl NatSumProdPI.
 End comp_env.
