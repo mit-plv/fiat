@@ -2,8 +2,6 @@ MODULES    := \
 	Common \
 	Computation \
 	ADT \
-	ADTImplementation \
-	ADTExamples \
 	ComputationExamples
 
 VS         := $(MODULES:%=%.v)

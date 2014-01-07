@@ -17,9 +17,6 @@ Notes/Ideas:
 
 For Ben Delaware:
 
-* Rewrite [ADT] in ADT.v to be a non-deterministic [Comp]
-  implementation rather than a function to [Prop]
-
 * Port the silly "implementation by [Pick]" to new [ADT], from
   ADTImplementation.v
 
