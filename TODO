@@ -17,7 +17,26 @@ Notes/Ideas:
 
 For Ben Delaware:
 
-*
+* Rewrite [ADT] in ADT.v to be a non-deterministic [Comp]
+  implementation rather than a function to [Prop]
+
+* Port the silly "implementation by [Pick]" to new [ADT], from
+  ADTImplementation.v
+
+* Define a notion of refinement of methods of an ADT, which allows
+  changing the [Model]
+
+* Define a notion of refinement of an entire ADT, using above notion
+  of refinement
+
+* Port min/max/sum/prod examples from ADTExamples.v to use [ADT]
+  rather than [ADTimpl], refining the computational versions from the
+  "implementation by [Pick]"
+
+* Make a "return the min plus the max" example, which demos refinement
+  adding new methods to an ADT
+
+* Look into other examples?
 
 For Jason Gross:
 
