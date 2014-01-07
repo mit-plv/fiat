@@ -17,9 +17,6 @@ Notes/Ideas:
 
 For Ben Delaware:
 
-* Port the silly "implementation by [Pick]" to new [ADT], from
-  ADTImplementation.v
-
 * Define a notion of refinement of methods of an ADT, which allows
   changing the [Model]
 
