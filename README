@@ -1,6 +1,10 @@
 This repository holds experimental work on synthesizing ADTs using Coq
 8.4pl2.  Files are compiled using the included Makefile.
 
+Attempt 6:
+ - Combine implementations into a single ADT.v, use [Comp] rather than
+   having a separate spec and implementations
+
 Attempt 5:
  - Reorganize files to split up componets
   * Common.v - common tactics and definitions and lemmas
