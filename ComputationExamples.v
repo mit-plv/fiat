@@ -7,10 +7,7 @@ Section op_funcs.
   Definition is_op (l : list nat) (v : nat)
     := Forall (fun n => op v n) l /\ (List.In v l \/ (l = nil /\ on_empty v)).
 
-  Variable funcs : string -> Type * Type.
-  Variable denote_funcs : forall name, fst (funcs name) -> Comp funcs (snd (funcs name)).
-
-  Definition is_op0 (l : list nat) : Comp funcs nat :=
+  Definition is_op0 (l : list nat) : Comp nat :=
     { x : nat
       | is_op l x }%comp.
 
@@ -28,7 +25,7 @@ Section op_funcs.
   Hypothesis op_refl : Reflexive op.
   Hypothesis op_trans : Transitive op.
 
-  Definition is_op1 (l : list nat) : Comp funcs (nat : Type) :=
+  Definition is_op1 (l : list nat) : Comp (nat : Type) :=
     (ret (match l with
             | nil => concrete_on_empty
             | x::xs => fold_left concrete_op xs x
@@ -91,7 +88,7 @@ Section op_funcs.
   Qed.
 
   Theorem is_op_0_1
-    : pointwise_relation _ (refine denote_funcs denote_funcs) is_op0 is_op1.
+    : pointwise_relation _ (refine) is_op0 is_op1.
   Proof.
     intros l v old_hyp.
     unfold is_op1, is_op0 in *.
@@ -105,7 +102,7 @@ Section op_funcs.
   Qed.
 
   Theorem is_op_0_1' l
-    : refine denote_funcs denote_funcs
+    : refine
              { x : nat
              | is_op l x }%comp
              (ret (match l with
@@ -127,9 +124,6 @@ Section min_max_funcs.
   Notation is_min_max l min_max :=
     (is_minimum l (fst (min_max : nat * nat)) /\ is_maximum l (snd min_max)).
 
-  Variable funcs : string -> Type * Type.
-  Variable denote_funcs : forall name, fst (funcs name) -> Comp funcs (snd (funcs name)).
-
   Hint Resolve min_comm max_comm min_assoc max_assoc.
   Hint Extern 0 => edestruct max_dec; solve [ left; eassumption | right; eassumption ].
   Hint Extern 0 => edestruct min_dec; solve [ left; eassumption | right; eassumption ].
@@ -140,13 +134,13 @@ Section min_max_funcs.
   Hint Extern 0 => solve [ constructor ].
   Hint Extern 0 => compute; intros; etransitivity; eassumption.
 
-  Program Definition refine_is_minimum l : refine denote_funcs denote_funcs _ _
-    := @is_op_0_1' le (eq 0) funcs denote_funcs min 0 _ _ _ _ _ _ _ _ l.
-  Program Definition refine_is_maximum l : refine denote_funcs denote_funcs _ _
-    := @is_op_0_1' ge (eq 0) funcs denote_funcs max 0 _ _ _ _ _ _ _ _ l.
+  Program Definition refine_is_minimum l : refine _ _
+    := @is_op_0_1' le (eq 0) min 0 _ _ _ _ _ _ _ _ l.
+  Program Definition refine_is_maximum l : refine _ _
+    := @is_op_0_1' ge (eq 0) max 0 _ _ _ _ _ _ _ _ l.
 
-  Definition is_min_max1 : { f : list nat -> Comp funcs (nat * nat)
-    | forall l, refine denote_funcs denote_funcs { x : _ | is_min_max l x }%comp (f l) }.
+  Definition is_min_max1 : { f : list nat -> Comp (nat * nat)
+    | forall l, refine { x : _ | is_min_max l x }%comp (f l) }.
   Proof.
     eexists.
     intros.

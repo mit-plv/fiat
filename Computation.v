@@ -8,12 +8,10 @@ Reserved Notation "'call' f 'from' funcs [[ x ]]" (at level 35).
 
 Delimit Scope comp_scope with comp.
 
-Section funcs.
-  Variable funcs : string -> Type * Type.
+Section comp.
   Inductive Comp : Type -> Type :=
   | Return : forall A, A -> Comp A
   | Bind : forall A B, Comp A -> (A -> Comp B) -> Comp B
-  | Call : forall x, fst (funcs x) -> Comp (snd (funcs x))
   | Pick : forall A, Ensemble A -> Comp A.
 
   Bind Scope comp_scope with Comp.
@@ -32,9 +30,7 @@ Section funcs.
           then Return true
           else c2)%comp.
 
-  Section single_denote.
-    Variable denote_funcs : forall name, fst (funcs name) -> Comp (snd (funcs name)).
-
+  Section computes_to.
     Inductive computes_to
     : forall A : Type, Comp A -> A -> Prop :=
     | ReturnComputes : forall A v, @computes_to A (Return v) v
@@ -42,10 +38,7 @@ Section funcs.
                        @computes_to A comp_a comp_a_value
                        -> @computes_to B (f comp_a_value) comp_b_value
                        -> @computes_to B (Bind comp_a f) comp_b_value
-    | PickComputes : forall A (P : Ensemble A) v, P v -> @computes_to A (Pick P) v
-    | CallComputes : forall name (input : fst (funcs name)) (output_v : snd (funcs name)),
-                       @computes_to _ (denote_funcs name input) output_v
-                       -> @computes_to _ (Call name input) output_v.
+    | PickComputes : forall A (P : Ensemble A) v, P v -> @computes_to A (Pick P) v.
 
     Theorem computes_to_inv A (c : Comp A) v
     : computes_to c v -> match c with
@@ -53,19 +46,17 @@ Section funcs.
                            | Bind _ _ x f => fun v => exists comp_a_value,
                                                         computes_to x comp_a_value
                                                         /\ computes_to (f comp_a_value) v
-                           | Call name input => computes_to (denote_funcs name input)
                            | Pick _ P => P
                          end v.
     Proof.
       destruct 1; eauto.
     Qed.
+  End computes_to.
 
+  Section is_computational.
     (** A [Comp] is maximally computational if it could be written without [Pick] *)
     Inductive is_computational : forall A, Comp A -> Prop :=
     | Return_is_computational : forall A (x : A), is_computational (Return x)
-    | Call_is_computational : forall f x,
-                                is_computational (@denote_funcs f x)
-                                -> is_computational (@Call f x)
     | Bind_is_computational : forall A B (cA : Comp A) (f : A -> Comp B),
                                 is_computational cA
                                 -> (forall a,
@@ -79,64 +70,62 @@ Section funcs.
            | Bind _ _ x f => is_computational x
                              /\ forall v, computes_to x v
                                           -> is_computational (f v)
-           | Call name input => is_computational (denote_funcs name input)
            | Pick _ _ => False
          end.
     Proof.
       destruct 1; eauto.
     Qed.
+  End is_computational.
 
-    Section monad.
-      Local Ltac t :=
-        split;
-        intro;
-        repeat match goal with
-                 | [ H : _ |- _ ]
-                   => inversion H; clear H; subst; [];
-                      repeat match goal with
-                               | [ H : _ |- _ ] => apply inj_pair2 in H; subst
-                             end
-               end;
-        repeat first [ eassumption
-                     | solve [ constructor ]
-                     | eapply BindComputes; (eassumption || (try eassumption; [])) ].
+  Section monad.
+    Local Ltac t :=
+      split;
+      intro;
+      repeat match goal with
+               | [ H : _ |- _ ]
+                 => inversion H; clear H; subst; [];
+                    repeat match goal with
+                             | [ H : _ |- _ ] => apply inj_pair2 in H; subst
+                           end
+             end;
+      repeat first [ eassumption
+                   | solve [ constructor ]
+                   | eapply BindComputes; (eassumption || (try eassumption; [])) ].
 
-      Lemma bind_bind X Y Z (f : X -> Comp Y) (g : Y -> Comp Z) x v
-      : computes_to (Bind (Bind x f) g) v
-        <-> computes_to (Bind x (fun u => Bind (f u) g)) v.
-      Proof.
-        t.
-      Qed.
+    Lemma bind_bind X Y Z (f : X -> Comp Y) (g : Y -> Comp Z) x v
+    : computes_to (Bind (Bind x f) g) v
+      <-> computes_to (Bind x (fun u => Bind (f u) g)) v.
+    Proof.
+      t.
+    Qed.
 
-      Lemma bind_unit X Y (f : X -> Comp Y) x v
-      : computes_to (Bind (Return x) f) v
-        <-> computes_to (f x) v.
-      Proof.
-        t.
-      Qed.
+    Lemma bind_unit X Y (f : X -> Comp Y) x v
+    : computes_to (Bind (Return x) f) v
+      <-> computes_to (f x) v.
+    Proof.
+      t.
+    Qed.
 
-      Lemma unit_bind X (x : Comp X) v
-      : computes_to (Bind x (@Return X)) v
-        <-> computes_to x v.
-      Proof.
-        t.
-      Qed.
-    End monad.
-  End single_denote.
+    Lemma unit_bind X (x : Comp X) v
+    : computes_to (Bind x (@Return X)) v
+      <-> computes_to x v.
+    Proof.
+      t.
+    Qed.
+  End monad.
 
   (** The old program might be non-deterministic, and the new program
       less so.  This means we want to say that if [new] can compute to
       [v], then [old] should be able to compute to [v], too. *)
-  Definition refine old_denote_funcs new_denote_funcs {A} (old new : Comp A)
-    := forall v, computes_to new_denote_funcs new v
-                 -> computes_to old_denote_funcs old v.
+  Definition refine {A} (old new : Comp A)
+    := forall v, computes_to new v -> computes_to old v.
 
-  Global Instance refine_PreOrder denote_funcs A
-  : PreOrder (@refine denote_funcs denote_funcs A).
+  Global Instance refine_PreOrder A
+  : PreOrder (@refine A).
   Proof.
     split; compute in *; eauto.
   Qed.
-End funcs.
+End comp.
 
 Hint Constructors computes_to.
 
@@ -148,21 +137,20 @@ Ltac inversion_by rule :=
 Notation "x >>= y" := (Bind x y) : comp_scope.
 Notation "x <- y ; z" := (Bind y (fun x => z)) : comp_scope.
 Notation "x ;; z" := (Bind x (fun _ => z)) : comp_scope.
-Notation "'call' f 'from' funcs [[ x ]]" := (@Call funcs f x) : comp_scope.
-Notation "{ x  |  P }" := (@Pick _ _ (fun x => P)) : comp_scope.
-Notation "{ x : A  |  P }" := (@Pick _ A (fun x => P)) : comp_scope.
-Notation ret := (Return _).
+Notation "{ x  |  P }" := (@Pick _ (fun x => P)) : comp_scope.
+Notation "{ x : A  |  P }" := (@Pick A%type (fun x => P)) : comp_scope.
+Notation ret := Return.
 
-Add Parametric Relation funcs denote_funcs A : (Comp funcs A) (@refine funcs denote_funcs denote_funcs A)
+Add Parametric Relation A : (Comp A) (@refine A)
   reflexivity proved by reflexivity
   transitivity proved by transitivity
     as refine_rel.
 
-Add Parametric Morphism funcs denote_funcs A B : (@Bind funcs A B)
+Add Parametric Morphism A B : (@Bind A B)
   with signature
-  (@refine funcs denote_funcs denote_funcs A)
-    ==> (pointwise_relation _ (@refine funcs denote_funcs denote_funcs B))
-    ==> (@refine funcs denote_funcs denote_funcs B)
+  (@refine A)
+    ==> (pointwise_relation _ (@refine B))
+    ==> (@refine B)
     as refine_bind.
 Proof.
   intros.
@@ -173,11 +161,8 @@ Proof.
 Qed.
 
 Section general_refine_lemmas.
-  Variable funcs : string -> Type * Type.
-
-  Lemma refine_pick_pair denote_funcs A B (PA : A -> Prop) (PB : B -> Prop)
-  : refine (funcs := funcs) denote_funcs denote_funcs
-           { x : A * B | PA (fst x) /\ PB (snd x) }%comp
+  Lemma refine_pick_pair A B (PA : A -> Prop) (PB : B -> Prop)
+  : refine { x : A * B | PA (fst x) /\ PB (snd x) }%comp
            (a <- { a : A | PA a };
             b <- { b : B | PB b };
             ret (a, b))%comp.

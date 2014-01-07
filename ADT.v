@@ -40,38 +40,38 @@ Record ADT :=
   }.
 
 (** Implementation type of a method *)
-Definition methodTypeD funcs (State : Type) :=
-  State -> nat -> Comp funcs (State * nat).
+Definition methodTypeD (State : Type) :=
+  State -> nat -> Comp (State * nat).
 
 (** Usual Hoare logic notion of implementating a mutator method spec *)
 
 Definition mutatorMethodCorrect
-           funcs denote_funcs
+
            (Model State : Type)
            (ms : mutatorMethodSpec Model)
            (RepInv : Model -> State -> Prop)
-           (mb : methodTypeD funcs State)
+           (mb : methodTypeD State)
   := forall m s,
        RepInv m s
        -> forall x,
             let s'y := mb s x in
             forall s'y_value,
-              @computes_to funcs denote_funcs _ s'y s'y_value
+              @computes_to _ s'y s'y_value
               -> exists m', RepInv m' (fst s'y_value)
                             /\ ms m x m'
                             /\ (snd s'y_value) = 0.
 
 Definition observerMethodCorrect
-           funcs denote_funcs
+
            (Model State : Type)
            (ms : observerMethodSpec Model)
            (RepInv : Model -> State -> Prop)
-           (mb : methodTypeD funcs State)
+           (mb : methodTypeD State)
   := forall m s,
        RepInv m s
        -> forall x,
             let s'y := mb s x in
             forall s'y_value,
-              @computes_to funcs denote_funcs _ s'y s'y_value
+              @computes_to _ s'y s'y_value
               -> RepInv m (fst s'y_value)
                  /\ ms m x (snd s'y_value).

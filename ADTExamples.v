@@ -7,16 +7,6 @@ Set Implicit Arguments.
 
 (** * Basic ADT definitions *)
 Section comp_env.
-  (** We have one ambiant [funcs] and [denote_funcs] around for everything. *)
-  Variable funcs : string -> Type * Type.
-  Variable denote_funcs : forall name, fst (funcs name) -> Comp funcs (snd (funcs name)).
-
-  (** We set up some notations so we don't need to think about [funcs] and [denote_funcs]. *)
-  Local Notation methodTypeD := (methodTypeD funcs).
-  Local Notation mutatorMethodCorrect := (@mutatorMethodCorrect funcs denote_funcs).
-  Local Notation observerMethodCorrect := (@observerMethodCorrect funcs denote_funcs).
-  Local Notation ADTimpl := (@ADTimpl funcs denote_funcs).
-
   (** * An example, composing binary commutative associative calculators for computable nat multisets *)
 
   Definition multiset := nat -> nat.
