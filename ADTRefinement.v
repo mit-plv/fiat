@@ -42,3 +42,27 @@ Section pick.
     |}.
   
 End pick.
+
+Inductive refineADT : ADT -> ADT -> Prop := 
+  | refinesADT : 
+      forall oldModel newModel 
+             (*  Relationship between old and new (at least as concrete) model *)
+             (RepInv : oldModel -> newModel -> Prop) 
+             mutatorMethodIndex observerMethodIndex
+             (* Assumes indices are the same, we alternatively establish 
+              that there is an injection from old indices to new indices. *)
+             (oldMutatorMethods : mutatorMethodIndex -> mutatorMethodType oldModel)
+             (newMutatorMethods : mutatorMethodIndex -> mutatorMethodType newModel)
+             (oldObserverMethods : observerMethodIndex -> observerMethodType oldModel)
+             (newObserverMethods : observerMethodIndex -> observerMethodType newModel),
+        (* Need to specify that each mutator is a refinement 
+           This should correspond to lifting [RepInv] to [Comp].
+        (forall idx om nm n a, 
+           RepInv om nm -> 
+           refine (newMutatorMethods idx nm n) (oldMutatorMethods idx om n)) -> *)
+        (* Each observer is a refinement *)
+        (forall idx om nm n, 
+           RepInv om nm -> 
+           refine (newObserverMethods idx nm n) (oldObserverMethods idx om n)) -> 
+        refineADT (Build_ADT newMutatorMethods newObserverMethods)
+                  (Build_ADT oldMutatorMethods oldObserverMethods).
