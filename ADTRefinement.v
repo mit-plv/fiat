@@ -43,26 +43,50 @@ Section pick.
   
 End pick.
 
-Inductive refineADT : ADT -> ADT -> Prop := 
+Section ADTRefinement.
+
+  Variables (oldModel newModel : Type). (* Old and new model *)
+  Variable absNewModel : newModel -> oldModel -> Prop.  
+  (* Abstraction relation from new to old models *)
+  (* Intuitively, there should be an injection (abstraction function) 
+     from new to old models, but we'll omit that for now. *)
+
+  (* Assumes indices are the same, we alternatively establish 
+    that there is an injection from old indices to new indices. *)
+
+  Variable observerMethodIndex : Type. (* Observer Method Index Type *)
+  Variable mutatorMethodIndex : Type. (* Mutator Method Index Type *)
+
+  Variable oldObserverMethods : observerMethodIndex -> observerMethodType oldModel.
+  Variable newObserverMethods : observerMethodIndex -> observerMethodType newModel.
+  Variable oldMutatorMethods : mutatorMethodIndex -> mutatorMethodType oldModel.
+  Variable newMutatorMethods : mutatorMethodIndex -> mutatorMethodType newModel.
+
+  (* Refinement of an observer method *)
+  Definition refineObserver 
+             (newObserver : observerMethodType newModel) 
+             (oldObserver : observerMethodType oldModel) :=
+      forall nm om n, 
+        absNewModel nm om -> 
+        refine (newObserver nm n) (oldObserver om n).
+  
+  (* Refinement of a mutator method *)
+  Definition refineMutator 
+             (newMutator : mutatorMethodType newModel)
+             (oldMutator : mutatorMethodType oldModel) :=
+    forall nm om n, 
+      absNewModel nm om -> 
+      forall nm', 
+        computes_to (newMutator nm n) nm' -> (* For any mutated new model *)
+        exists om',                           
+          computes_to (oldMutator om n) om' /\ (* There exists a mutated old model *)
+          absNewModel nm' om'.  (* which is a valid abstraction of the mutated new model *)
+  
+  Inductive refineADT : ADT -> ADT -> Prop := 
   | refinesADT : 
-      forall oldModel newModel 
-             (*  Relationship between old and new (at least as concrete) model *)
-             (RepInv : oldModel -> newModel -> Prop) 
-             mutatorMethodIndex observerMethodIndex
-             (* Assumes indices are the same, we alternatively establish 
-              that there is an injection from old indices to new indices. *)
-             (oldMutatorMethods : mutatorMethodIndex -> mutatorMethodType oldModel)
-             (newMutatorMethods : mutatorMethodIndex -> mutatorMethodType newModel)
-             (oldObserverMethods : observerMethodIndex -> observerMethodType oldModel)
-             (newObserverMethods : observerMethodIndex -> observerMethodType newModel),
-        (* Need to specify that each mutator is a refinement 
-           This should correspond to lifting [RepInv] to [Comp].
-        (forall idx om nm n a, 
-           RepInv om nm -> 
-           refine (newMutatorMethods idx nm n) (oldMutatorMethods idx om n)) -> *)
-        (* Each observer is a refinement *)
-        (forall idx om nm n, 
-           RepInv om nm -> 
-           refine (newObserverMethods idx nm n) (oldObserverMethods idx om n)) -> 
-        refineADT (Build_ADT newMutatorMethods newObserverMethods)
-                  (Build_ADT oldMutatorMethods oldObserverMethods).
+      (forall idx, refineObserver (newObserverMethods idx) (oldObserverMethods idx)) -> 
+      (forall idx, refineMutator (newMutatorMethods idx) (oldMutatorMethods idx)) -> 
+      refineADT (Build_ADT newMutatorMethods newObserverMethods)
+                (Build_ADT oldMutatorMethods oldObserverMethods).
+
+End ADTRefinement.

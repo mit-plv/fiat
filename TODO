@@ -17,12 +17,6 @@ Notes/Ideas:
 
 For Ben Delaware:
 
-* Define a notion of refinement of methods of an ADT, which allows
-  changing the [Model]
-
-* Define a notion of refinement of an entire ADT, using above notion
-  of refinement
-
 * Port min/max/sum/prod examples from ADTExamples.v to use [ADT]
   rather than [ADTimpl], refining the computational versions from the
   "implementation by [Pick]"
