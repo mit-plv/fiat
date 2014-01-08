@@ -1,6 +1,6 @@
 Require Import String Omega.
 Require Import FunctionalExtensionality.
-Require Export ADT ADTImplementation.
+Require Export ADT ADTRefinement.
 
 Generalizable All Variables.
 Set Implicit Arguments.
@@ -23,39 +23,6 @@ Section comp_env.
   Infix "<" := lt_dec : bool_scope.
   Infix ">=" := ge_dec : bool_scope.
   Infix ">" := gt_dec : bool_scope.
-  (*Infix "->" := implb : bool_scope.*)
-
-  (*
-Fixpoint make_specs model (spec_list : list (string * methodSpec model))
-  := fun s
-     => match spec_list with
-          | cons spec specs
-            => if string_dec s (fst spec)
-               then snd spec
-               else make_specs specs s
-          | nil => fun _ _ _ _ => True
-        end.
-
-Arguments make_specs / .
-
-Definition common_multiset_specs (addname : string) : list (string * methodSpec multiset)
-  := (addname,
-      fun d x d' y
-      => y = 0
-         /\ d' = add d x)::nil.
-
-Arguments common_multiset_specs / .
-
-Definition make_accessor
-           (model : Type) (f : nat -> model -> nat -> Prop)
-: methodSpec model
-  := fun d n d' n'
-     => d = d'
-        /\ f n d n'.
-
-Arguments make_accessor / .
-   *)
-
 
   Definition add_spec : mutatorMethodSpec multiset
     := fun m x m' => forall k, m' k = (add m x) k.
@@ -73,19 +40,13 @@ Arguments make_accessor / .
 
   Arguments bin_op_spec / .
 
-  Definition NatBinOp
+  Definition NatBinOpSpec
              (op : nat -> nat -> nat)
              (is_assoc : forall x y z, op x (op y z) = op (op x y) z)
              (is_comm : forall x y, op x y = op y x)
              (default_value : nat)
   : ADT
-    := {|
-        Model := multiset;
-        MutatorIndex := unit;
-        ObserverIndex := unit;
-        MutatorMethodSpecs u := add_spec;
-        ObserverMethodSpecs u := bin_op_spec op default_value
-      |}.
+    := pickImpl (fun _ : unit => add_spec) (fun _ : unit => bin_op_spec op default_value).
 
   Local Obligation Tactic :=
     eauto with arith;
@@ -96,17 +57,16 @@ Arguments make_accessor / .
               | intros; omega ].
 
   Program Definition NatLower default_value : ADT
-    := NatBinOp min _ _ default_value.
+    := NatBinOpSpec min _ _ default_value.
 
   Program Definition NatUpper default_value : ADT
-    := NatBinOp max _ _ default_value.
+    := NatBinOpSpec max _ _ default_value.
 
   Program Definition NatSum default_value : ADT
-    := NatBinOp plus _ _ default_value.
+    := NatBinOpSpec plus _ _ default_value.
 
   Program Definition NatProd default_value : ADT
-    := NatBinOp mult _ _ default_value.
-
+    := NatBinOpSpec mult _ _ default_value.
 
   Hint Immediate le_min_l le_min_r le_max_l le_max_r.
 
@@ -194,25 +154,32 @@ Arguments make_accessor / .
       repeat first [ progress t
                    | progress induction_list_then ltac:(solve_after_induction_list op op_assoc op_comm) ].
 
-    Definition NatBinOpI
-    : `(ADTimpl (@NatBinOp op op_assoc op_comm default_value)).
+    Definition NatBinOpImpl op is_assoc is_comm default_value :  
+      { impl : ADT | refineADT impl (NatBinOpSpec op is_assoc is_comm default_value)}.
+    Proof.
+      eexists.
+      set_evars.
+
+      set_evars.
+
+    | forall l, refineADT { x : _ | is_min_max l x }%comp (f l) }.
+    Proof.
+
+    Definition NatBinOpImpl
+               (op : nat -> nat -> nat)
+               (is_assoc : forall x y z, op x (op y z) = op (op x y) z)
+               (is_comm : forall x y, op x y = op y x)
+               (default_value : nat) : ADT.
     Proof.
       intros.
       refine {|
-          State := option nat;
-          RepInv := fun (m : Model (NatBinOp op op_assoc op_comm default_value)) n
-                    => exists l : list nat,
-                         (forall v, m v = count_occ eq_nat_dec l v)
-                         /\ match l with
-                              | nil => n = None
-                              | cons x xs => n = Some (fold_right op x xs)
-                            end;
-          MutatorMethodBodies u val x := (ret (match val with
+          Model := option nat;
+          MutatorMethods u val x := (ret (match val with
                                                  | None => Some x
                                                  | Some x' => Some (op x x')
                                                end,
                                                0))%comp;
-          ObserverMethodBodies u val x := (ret (val,
+          ObserverMethods u val x := (ret (val,
                                                 match val with
                                                   | None => default_value
                                                   | Some x => x

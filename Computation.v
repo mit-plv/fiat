@@ -146,6 +146,8 @@ Add Parametric Relation A : (Comp A) (@refine A)
   transitivity proved by transitivity
     as refine_rel.
 
+Print pointwise_relation.
+
 Add Parametric Morphism A B : (@Bind A B)
   with signature
   (@refine A)
