@@ -2,11 +2,12 @@ Require Import String Ensembles.
 Require Import Common.
 
 Reserved Notation "x >>= y" (at level 42, right associativity).
-Reserved Notation "x <- y ; z" (at level 42, right associativity).
-Reserved Notation "x ;; z" (at level 42, right associativity).
+(*Reserved Notation "x <- y ; z" (at level 42, right associativity).
+Reserved Notation "x ;; z" (at level 42, right associativity).*)
 Reserved Notation "'call' f 'from' funcs [[ x ]]" (at level 35).
 
 Delimit Scope comp_scope with comp.
+Delimit Scope long_comp_scope with long_comp.
 
 Inductive Comp : Type -> Type :=
 | Return : forall A, A -> Comp A
@@ -16,12 +17,22 @@ Inductive Comp : Type -> Type :=
 Bind Scope comp_scope with Comp.
 Arguments Bind A%type B%type _%comp _.
 
-Notation "x >>= y" := (Bind x y) : comp_scope.
-Notation "x <- y ; z" := (Bind y (fun x => z)) : comp_scope.
-Notation "x ;; z" := (Bind x (fun _ => z)) : comp_scope.
+(*Notation "x >>= y" := (Bind x%comp y%comp) : comp_scope.
+Notation "x <- y ; z" := (Bind y%comp (fun x => z%comp)) : comp_scope.
+Notation "x ;; z" := (Bind x%comp (fun _ => z%comp)) : comp_scope.
+Notation "{ x  |  P }" := (@Pick _ (fun x => P)) : comp_scope.
+Notation "{ x : A  |  P }" := (@Pick A%type (fun x => P)) : comp_scope.*)
+Notation ret := Return.
+
+Notation "x >>= y" := (Bind x%comp y%comp) : comp_scope.
+Notation "x <- y ; z" := (Bind y%comp (fun x => z%comp))
+                           (at level 42, right associativity,
+                            format "'[v' x  <-  y ; '/' z ']'") : comp_scope.
+Notation "x ;; z" := (Bind x%comp (fun _ => z%comp))
+                       (at level 42, right associativity,
+                        format "'[v' x ;; '/' z ']'") : comp_scope.
 Notation "{ x  |  P }" := (@Pick _ (fun x => P)) : comp_scope.
 Notation "{ x : A  |  P }" := (@Pick A%type (fun x => P)) : comp_scope.
-Notation ret := Return.
 
 Section comp.
   Definition List A B (f : A -> B) : Comp A -> Comp B
@@ -219,3 +230,19 @@ Section general_refine_lemmas.
            end.
   Qed.
 End general_refine_lemmas.
+
+Create HintDb refine_monad discriminated.
+
+Hint Rewrite refine_bind_bind refine_bind_unit refine_unit_bind : refine_monad.
+Hint Rewrite <- refine_bind_bind' refine_bind_unit' refine_unit_bind' : refine_monad.
+
+Ltac interleave_autorewrite_refine_monad_with tac :=
+  repeat first [ reflexivity
+               | progress tac
+               | progress autorewrite with refine_monad
+               | rewrite refine_bind_bind'; progress tac
+               | rewrite refine_bind_unit'; progress tac
+               | rewrite refine_unit_bind'; progress tac
+               | rewrite <- refine_bind_bind; progress tac
+               | rewrite <- refine_bind_unit; progress tac
+               | rewrite <- refine_unit_bind; progress tac ].

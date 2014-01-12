@@ -141,6 +141,11 @@ Ltac rewrite_hyp := repeat rewrite_hyp'.
 Ltac rewrite_rev_hyp' := do_with_hyp ltac:(fun H => rewrite <- H).
 Ltac rewrite_rev_hyp := repeat rewrite_rev_hyp'.
 
+Ltac setoid_rewrite_hyp' := do_with_hyp ltac:(fun H => setoid_rewrite H).
+Ltac setoid_rewrite_hyp := repeat setoid_rewrite_hyp'.
+Ltac setoid_rewrite_rev_hyp' := do_with_hyp ltac:(fun H => setoid_rewrite <- H).
+Ltac setoid_rewrite_rev_hyp := repeat setoid_rewrite_rev_hyp'.
+
 Ltac apply_hyp' := do_with_hyp ltac:(fun H => apply H).
 Ltac apply_hyp := repeat apply_hyp'.
 Ltac eapply_hyp' := do_with_hyp ltac:(fun H => eapply H).
