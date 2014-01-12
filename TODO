@@ -33,5 +33,8 @@ For Ben Delaware:
 
 For Jason Gross:
 
+* Add a parametric relation which takes advantage of [bind_bind], so
+  we don't need [interleave_autorewrite_refine_monad_with]
+
 * Look into various interesting algorithms, try to find one where
    refinement is useful in constructing implementations
