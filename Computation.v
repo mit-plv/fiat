@@ -8,20 +8,25 @@ Reserved Notation "'call' f 'from' funcs [[ x ]]" (at level 35).
 
 Delimit Scope comp_scope with comp.
 
+Inductive Comp : Type -> Type :=
+| Return : forall A, A -> Comp A
+| Bind : forall A B, Comp A -> (A -> Comp B) -> Comp B
+| Pick : forall A, Ensemble A -> Comp A.
+
+Bind Scope comp_scope with Comp.
+Arguments Bind A%type B%type _%comp _.
+
+Notation "x >>= y" := (Bind x y) : comp_scope.
+Notation "x <- y ; z" := (Bind y (fun x => z)) : comp_scope.
+Notation "x ;; z" := (Bind x (fun _ => z)) : comp_scope.
+Notation "{ x  |  P }" := (@Pick _ (fun x => P)) : comp_scope.
+Notation "{ x : A  |  P }" := (@Pick A%type (fun x => P)) : comp_scope.
+Notation ret := Return.
+
 Section comp.
-  Inductive Comp : Type -> Type :=
-  | Return : forall A, A -> Comp A
-  | Bind : forall A B, Comp A -> (A -> Comp B) -> Comp B
-  | Pick : forall A, Ensemble A -> Comp A.
-
-  Bind Scope comp_scope with Comp.
-  Global Arguments Bind A%type B%type _%comp _.
-
-  Local Notation "x >>= y" := (Bind x y) : comp_scope.
-  Local Notation "x <- y ; z" := (Bind y (fun x => z)) : comp_scope.
-  Local Notation "x ;; z" := (Bind x (fun _ => z)) : comp_scope.
-  Local Notation "{ x  |  P }" := (@Pick _ (fun x => P)) : comp_scope.
-  Local Notation "{ x : A  |  P }" := (@Pick A (fun x => P)) : comp_scope.
+  Definition List A B (f : A -> B) : Comp A -> Comp B
+    := fun x => (x' <- x;
+                 Return (f x'))%comp.
 
   Definition Or : Comp bool -> Comp bool -> Comp bool
     := fun c1 c2 =>
@@ -125,6 +130,50 @@ Section comp.
   Proof.
     split; compute in *; eauto.
   Qed.
+
+  Section monad_refine.
+    Lemma refine_bind_bind X Y Z (f : X -> Comp Y) (g : Y -> Comp Z) x
+    : refine (Bind (Bind x f) g)
+             (Bind x (fun u => Bind (f u) g)).
+    Proof.
+      intro; apply bind_bind.
+    Qed.
+
+    Lemma refine_bind_bind' X Y Z (f : X -> Comp Y) (g : Y -> Comp Z) x
+    : refine (Bind x (fun u => Bind (f u) g))
+             (Bind (Bind x f) g).
+    Proof.
+      intro; apply bind_bind.
+    Qed.
+
+    Lemma refine_bind_unit X Y (f : X -> Comp Y) x
+    : refine (Bind (Return x) f)
+             (f x).
+    Proof.
+      intro; apply bind_unit.
+    Qed.
+
+    Lemma refine_bind_unit' X Y (f : X -> Comp Y) x
+    : refine (f x)
+             (Bind (Return x) f).
+    Proof.
+      intro; apply bind_unit.
+    Qed.
+
+    Lemma refine_unit_bind X (x : Comp X)
+    : refine (Bind x (@Return X))
+             x.
+    Proof.
+      intro; apply unit_bind.
+    Qed.
+
+    Lemma refine_unit_bind' X (x : Comp X)
+    : refine x
+             (Bind x (@Return X)).
+    Proof.
+      intro; apply unit_bind.
+    Qed.
+  End monad_refine.
 End comp.
 
 Hint Constructors computes_to.
@@ -134,19 +183,10 @@ Ltac inversion_by rule :=
                         | progress split_and
                         | apply_in_hyp_no_cbv_match rule ].
 
-Notation "x >>= y" := (Bind x y) : comp_scope.
-Notation "x <- y ; z" := (Bind y (fun x => z)) : comp_scope.
-Notation "x ;; z" := (Bind x (fun _ => z)) : comp_scope.
-Notation "{ x  |  P }" := (@Pick _ (fun x => P)) : comp_scope.
-Notation "{ x : A  |  P }" := (@Pick A%type (fun x => P)) : comp_scope.
-Notation ret := Return.
-
 Add Parametric Relation A : (Comp A) (@refine A)
   reflexivity proved by reflexivity
   transitivity proved by transitivity
     as refine_rel.
-
-Print pointwise_relation.
 
 Add Parametric Morphism A B : (@Bind A B)
   with signature
