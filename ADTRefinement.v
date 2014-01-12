@@ -122,7 +122,7 @@ Proof.
   destruct 1; simpl; eauto 10.
 Qed.
 
-Section MethodPreOrders.
+Section PreOrders.
 
   Variables (oldModel newModel : Type). (* Old and new model *)
   Variable absNewModel : newModel -> oldModel -> Prop.  
@@ -168,7 +168,6 @@ Section MethodPreOrders.
                           (abs := id); eauto; reflexivity.
     intros x y z Rxy Ryz; destruct Rxy.    
     destruct z; inversion_by refineADT_inv.
-    compute in *.
     econstructor 1 with (absNewModel := fun x' z => x (abs0 x') z)
                           (mapMutatorIndex := compose mapMutatorIndex x2)
                           (mapObserverIndex := compose mapObserverIndex x1)
@@ -176,6 +175,4 @@ Section MethodPreOrders.
       eauto; compute in *; eauto.
   Qed.
 
-End comp.
-
-Hint Constructors computes_to
+End PreOrders.
