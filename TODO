@@ -3,7 +3,12 @@ In General:
 * Make a targeted-examples file of examples we want to target with
   this system.
 
+* Consider having mutators, observers, _and constructors_.
+
 Targeted examples:
+
+* Refinement from "pick arbitrary element of orderless multiset" to
+  "pick most recently inserted element of multiset"
 
 * Dijkstra's algorithm (verifying the interesting parts while holding
    the picking method abstract)
