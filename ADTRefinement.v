@@ -174,3 +174,26 @@ Qed.
     But, alas, Matthieu is still working on those.  So the rewrite
     machinery won't work very well when we're switching models, and
     we'll instead have to use [etransitivity] and [apply] things. *)
+
+(** If you mutate and then observe, you can do it before or after
+    refinement.  I'm not actually sure this isn't obvious.  *)
+Lemma ADTRefinementOk
+      (old new : ADT)
+      (new_initial_value : Comp (Model new))
+      abs mutatorMap observerMap H H'
+      (ref : refineADT old new
+       := @refinesADT old new abs mutatorMap observerMap H H')
+      mutIdx obsIdx n n'
+: refine (v0 <- new_initial_value;
+          v <- abs v0;
+          v' <- MutatorMethods old mutIdx v n;
+          ObserverMethods old obsIdx v' n')
+         (v <- new_initial_value;
+          v' <- MutatorMethods new (mutatorMap mutIdx) v n;
+          ObserverMethods new (observerMap obsIdx) v' n').
+Proof.
+  simpl in *.
+  apply refine_bind; [ reflexivity | ].
+  intro.
+  interleave_autorewrite_refine_monad_with setoid_rewrite_hyp.
+Qed.
