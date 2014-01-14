@@ -154,6 +154,25 @@ Proof.
     auto.
 Qed.
 
+(* Given an abstraction function, we can transform the model of a pickImpl ADT. *)
+
+Theorem refines_model_pickImpl
+        newModel oldModel
+        (abs : newModel -> oldModel)
+        MutatorIndex ObserverIndex
+        ObserverSpec MutatorSpec : 
+  refineADT 
+    (@pickImpl oldModel MutatorIndex ObserverIndex MutatorSpec ObserverSpec)
+    (@pickImpl newModel MutatorIndex ObserverIndex 
+               (fun idx nm n nm' => MutatorSpec idx (abs nm) n (abs nm'))
+               (fun idx nm => ObserverSpec idx (abs nm))).
+Proof.
+  econstructor 1 with (abs := fun nm => Return (abs nm))
+                        (mutatorMap := @id MutatorIndex)
+                        (observerMap := @id ObserverIndex);
+  compute; intros; inversion_by computes_to_inv; subst; eauto.
+Qed.
+
 (** If we had dependent setoid relations in [Type], then we could write
 
 <<
@@ -177,6 +196,7 @@ Qed.
 
 (** If you mutate and then observe, you can do it before or after
     refinement.  I'm not actually sure this isn't obvious.  *)
+
 Lemma ADTRefinementOk
       (old new : ADT)
       (new_initial_value : Comp (Model new))

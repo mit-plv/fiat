@@ -3,7 +3,8 @@ MODULES    := \
 	Computation \
 	ADT \
 	ADTRefinement \
-	ComputationExamples
+	ComputationExamples \
+	ADTExamples
 
 VS         := $(MODULES:%=%.v)
 VDS	   := $(MODULES:%=%.v.d)
