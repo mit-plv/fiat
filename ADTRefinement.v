@@ -198,54 +198,71 @@ Qed.
 
 Open Scope comp_scope.
 
-Theorem refines_model_cacheObserver
-        model
-        observerIndex
-        mutatorIndex
-        (observers : observerIndex -> observerMethodType model)
-        mutators
-        (ObserverIndex_eq : forall idx idx' : observerIndex,
+Theorem refines_cached_Observer adt
+        (ObserverIndex_eq : forall idx idx' : ObserverIndex adt,
                                {idx = idx'} + {idx <> idx'})
-        (cachedIndex : observerIndex) (* Index of the Observer to Cache *)
-        (cached_func : model -> nat -> nat)
+        (cachedIndex : ObserverIndex adt) (* Index of the Observer to Cache *)
+        (cached_func : Model adt -> nat -> nat)
         (refines_cached : forall om n,
-                            refine (observers cachedIndex om n)
+                            refine (ObserverMethods adt cachedIndex om n)
                                    (ret (cached_func om n)))
 
 :
-  refineADT {|Model := model;
-            ObserverIndex := observerIndex;
-            MutatorIndex := mutatorIndex;
-            MutatorMethods := mutators;
-            ObserverMethods := observers|}
-              {| Model := {om : model * (nat -> nat) |
-                           forall n, refine (observers cachedIndex (fst om) n) (ret (snd om n))};
-                 MutatorIndex := mutatorIndex;
-                 ObserverIndex := observerIndex;
-                 ObserverMethods idx nm n :=
+  refineADT adt
+            {| Model := {om : (Model adt) * (nat -> nat) |
+                         forall n, refine (ObserverMethods adt cachedIndex (fst om) n) (ret (snd om n))};
+               MutatorIndex := MutatorIndex adt;
+               ObserverIndex := ObserverIndex adt;
+               ObserverMethods idx nm n :=
                    if (ObserverIndex_eq idx cachedIndex) then
                      ret ((snd (proj1_sig nm)) n)
                    else
-                     observers idx (fst (proj1_sig nm)) n;
+                     ObserverMethods adt idx (fst (proj1_sig nm)) n;
                  MutatorMethods idx nm n :=
-                   origModel <- (mutators idx (fst (proj1_sig nm)) n);
+                   origModel <- (MutatorMethods adt idx (fst (proj1_sig nm)) n);
                      ret (exist
-                            (fun om => forall n, refine (observers cachedIndex (fst om) n) (ret (snd om n)))
+                            (fun om => forall n, refine (ObserverMethods adt cachedIndex (fst om) n) (ret (snd om n)))
                             (origModel, cached_func origModel)
                             (refines_cached origModel))|}.
 Proof.
+  destruct adt;
   econstructor 1 with
-  (abs := fun om : {om | forall n, refine (observers cachedIndex (fst om) n) (ret (snd om n))} =>
+  (abs := fun om : {om | forall n, refine (ObserverMethods cachedIndex (fst om) n) (ret (snd om n))} =>
             ret (fst (proj1_sig om)))
-    (mutatorMap := @id mutatorIndex)
-    (observerMap := @id observerIndex); simpl; intros.
-  - autorewrite with refine_monad; rewrite refineEquiv_under_bind with (g := @Return _); 
+    (mutatorMap := @id MutatorIndex)
+    (observerMap := @id ObserverIndex); simpl; intros.
+  - autorewrite with refine_monad; rewrite refineEquiv_under_bind with (g := @Return _);
     intros; autorewrite with refine_monad; reflexivity.
   - autorewrite with refine_monad; find_if_inside;
     [ destruct new_state; subst; auto
       | reflexivity].
 Qed.
 
+Theorem refines_cached_computational_Observer adt
+        (ObserverIndex_eq : forall idx idx' : ObserverIndex adt,
+                               {idx = idx'} + {idx <> idx'})
+        (cachedIndex : ObserverIndex adt) (* Index of the Observer to Cache *)
+        (computational_Index : forall om n, is_computational (ObserverMethods adt cachedIndex om n))
+:
+  refineADT adt
+  {| Model := {om : (Model adt) * (nat -> nat) |
+               forall n, refine (ObserverMethods adt cachedIndex (fst om) n) (ret (snd om n))};
+     MutatorIndex := MutatorIndex adt;
+     ObserverIndex := ObserverIndex adt;
+     ObserverMethods idx nm n :=
+       if (ObserverIndex_eq idx cachedIndex) then
+                     ret ((snd (proj1_sig nm)) n)
+       else
+         ObserverMethods adt idx (fst (proj1_sig nm)) n;
+     MutatorMethods idx nm n :=
+                   origModel <- (MutatorMethods adt idx (fst (proj1_sig nm)) n);
+     ret (exist
+            (fun om => forall n, refine (ObserverMethods adt cachedIndex (fst om) n) (ret (snd om n)))
+            (origModel, fun n => proj1_sig (is_computational_val (computational_Index origModel n)))
+            (fun n => refine_is_computational (computational_Index origModel n))) |}. 
+Proof.
+  apply refines_cached_Observer.
+Qed.
 
 (** If you mutate and then observe, you can do it before or after
     refinement.  I'm not actually sure this isn't obvious.  *)

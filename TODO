@@ -22,9 +22,10 @@ Notes/Ideas:
 
 For Ben Delaware:
 
-* Port min/max/sum/prod examples from ADTExamples.v to use [ADT]
-  rather than [ADTimpl], refining the computational versions from the
-  "implementation by [Pick]"
+* Clean up the caching refinement in ADTRefinement.
+
+* Improve the behavior of [add] to avoid extraneous computation in the
+cached version.
 
 * Make a "return the min plus the max" example, which demos refinement
   adding new methods to an ADT

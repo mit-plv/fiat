@@ -91,6 +91,19 @@ Section comp.
     Proof.
       destruct 1; eauto.
     Qed.
+
+    (* It's possible to extract the value from a fully detiministic computation *)
+    Definition is_computational_val A (c : Comp A)
+    : is_computational c -> {a | computes_to c a }.
+    Proof.
+      intros H; induction c; apply is_computational_inv in H; intuition.
+      - eexists; constructor.
+      - destruct X0.
+        exists (proj1_sig (X _ (H1 _ c1))).
+      econstructor; eauto.
+      exact (proj2_sig (X _ (H1 _ c1))).
+    Defined.
+
   End is_computational.
 
   Section monad.
@@ -265,6 +278,15 @@ Proof.
 Qed.
 
 Section general_refine_lemmas.
+
+  Lemma refine_is_computational A
+  : forall (c : Comp A) (CompC : is_computational c),
+      refine c (ret ((proj1_sig (is_computational_val CompC)))).
+  Proof.
+    unfold refine; intros; rewrite (computes_to_inv H);
+    apply (proj2_sig _).
+  Qed.
+
   Lemma refine_pick_pair A B (PA : A -> Prop) (PB : B -> Prop)
   : refine { x : A * B | PA (fst x) /\ PB (snd x) }%comp
            (a <- { a : A | PA a };

@@ -61,10 +61,10 @@ Section BinOpImpl.
   Arguments add_impl / .
 
   Definition bin_op_impl : observerMethodType (list nat)
-    := fun m _ => match m with
-                    | [] => ret defaultValue  (* Only return default if collection is empty *)
-                    | a :: m' => ret (fold_left op m' a)
-                  end.
+    := fun m _ => ret (match m with
+                    | [] => defaultValue  (* Only return default if collection is empty *)
+                    | a :: m' => (fold_left op m' a)
+                  end).
 
   Arguments bin_op_impl / .
 
@@ -175,7 +175,7 @@ Section BinOpRefine.
     intros v old_hyp.
     apply computes_to_inv in old_hyp; simpl in old_hyp; subst.
     constructor; simpl; auto.
-    destruct m; simpl in old_hyp; subst; intuition.
+    destruct m; subst; intuition.
     right; revert n0; induction m; simpl; [intuition; (find_if_inside; substs; intuition) | intuition].
     - repeat (find_if_inside; substs; intuition).
       destruct (op_returns_arg n0 a); rewrite H in *|-*; eauto.
@@ -282,12 +282,23 @@ Section ImplExamples.
     { Rep : ADT
     | refineADT NatLower Rep }.
   Proof.
-    eexists; eapply refines_NatBinOp with
+    eexists.
+    unfold NatLower.
+    rewrite refines_NatBinOp with
              (op := min)
-               (defaultValue := defaultValue); t.
+               (defaultValue := defaultValue),
+             refines_cached_computational_Observer
+             with
+             (adt := NatBinOpImpl min defaultValue)
+      (cachedIndex := tt); t.
     rewrite min_assoc; auto.
     edestruct min_dec; eauto.
+    Grab Existential Variables.
+    simpl; unfold bin_op_impl; econstructor.
+    intros; destruct idx; destruct idx'; auto.
   Defined.
+
+  Eval simpl in (proj1_sig (MinCollection 0)).
 
   Require Import Max.
 
