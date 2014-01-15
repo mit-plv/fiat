@@ -21,7 +21,7 @@ Section op_funcs.
   Hypothesis concrete_op_preserves_op1 : forall n m,
     op (concrete_op n m) m.
   Hypothesis concrete_op_preserves_op2 : forall n m,
-    op (concrete_op n m) n. 
+    op (concrete_op n m) n.
   Hypothesis op_refl : Reflexive op.
   Hypothesis op_trans : Transitive op.
 
@@ -136,7 +136,6 @@ Section min_max_funcs.
 
   Program Definition refine_is_minimum l : refine _ _
     := @is_op_0_1' le (eq 0) min 0 _ _ _ _ _ _ _ _ l.
-  Print refine_is_minimum.
 
   Program Definition refine_is_maximum l : refine _ _
     := @is_op_0_1' ge (eq 0) max 0 _ _ _ _ _ _ _ _ l.

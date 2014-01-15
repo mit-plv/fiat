@@ -15,7 +15,7 @@ Section BinOpSpec.
                 else s m.
 
   Global Arguments add s n / m.
-  
+
   (* Specification for adding an element *)
   Definition add_spec : mutatorMethodSpec multiset
     := fun m x m' => forall k, m' k = (add m x) k.
@@ -28,7 +28,7 @@ Section BinOpSpec.
   (* Specification for counting occurences of an element *)
   Definition count_spec : observerMethodSpec multiset
     := fun m x n => n = m x.
-  
+
   Arguments count_spec / .
 
   (* Specification for calculating op. *)
@@ -42,20 +42,20 @@ Section BinOpSpec.
 
   Definition NatBinOpSpec
   : ADT
-    := pickImpl (fun _ : unit => add_spec) 
+    := pickImpl (fun _ : unit => add_spec)
                 (fun _ : unit => bin_op_spec).
 
 End BinOpSpec.
 
-Definition NatLower : ADT 
+Definition NatLower : ADT
   := NatBinOpSpec le (fun n => True).  (* Spec for collection with lower bound. *)
 
-Definition NatUpper 
+Definition NatUpper
 : ADT := NatBinOpSpec ge (fun n => True).  (* Spec for collection with upper bound. *)
 
-Section BinOpImpl. 
+Section BinOpImpl.
   (* Implementation of comparisions over a collection implemented as a list. *)
-  
+
   Require Import List.
 
   Variable op : nat -> nat -> nat.
@@ -66,16 +66,16 @@ Section BinOpImpl.
 
   Arguments add_impl / .
 
-  Definition bin_op_impl : observerMethodType (list nat) 
-    := fun m _ => match m with 
+  Definition bin_op_impl : observerMethodType (list nat)
+    := fun m _ => match m with
                     | [] => ret defaultValue  (* Only return default if collection is empty *)
                     | a :: m' => ret (fold_left op m' a)
                   end.
-                    
+
   Arguments bin_op_impl / .
 
-  Definition NatBinOpImpl 
-  : ADT 
+  Definition NatBinOpImpl
+  : ADT
     := {| Model := list nat;
           MutatorIndex := unit;
           ObserverIndex := unit;
@@ -83,7 +83,7 @@ Section BinOpImpl.
           ObserverMethods := fun _ => bin_op_impl
        |}.
 
-End BinOpImpl.  
+End BinOpImpl.
 
 Section BinOpRefine.
 
@@ -91,7 +91,7 @@ Section BinOpRefine.
   Variable defaultSpec : nat -> Prop.
 
   Variable op : nat -> nat -> nat.
-  Variable defaultValue : nat. 
+  Variable defaultValue : nat.
 
   Hypothesis op_commutes : forall x y, op x y = op y x.
   Hypothesis op_assoc : forall x y z, op (op x y) z = op x (op y z).
@@ -101,7 +101,7 @@ Section BinOpRefine.
   Hypothesis op_preserves_op1 : forall n m,
     opSpec (op n m) m.
   Hypothesis op_preserves_op2 : forall n m,
-    opSpec (op n m) n. 
+    opSpec (op n m) n.
   Hypothesis op_refl : Reflexive opSpec.
   Hypothesis op_trans : Transitive opSpec.
 
@@ -120,10 +120,10 @@ Section BinOpRefine.
   Proof.
     eauto.
   Qed.
-  
+
   Hint Resolve fold_left_op_preserves_opSpec'.
-  
-  Lemma fold_left_op_In_preserves_opSpec : 
+
+  Lemma fold_left_op_In_preserves_opSpec :
     forall m n' a,
       In n' m -> opSpec (fold_left op m a) n'.
   Proof.
@@ -134,7 +134,7 @@ Section BinOpRefine.
 
   Hint Resolve fold_left_op_In_preserves_opSpec.
 
-  Lemma fold_left_discards_less_oppy : 
+  Lemma fold_left_discards_less_oppy :
     forall m a, a <> fold_left op m a -> exists a', In (fold_left op m a) m /\ op a a' = a'.
   Proof.
     induction m; simpl; intuition.
@@ -145,7 +145,7 @@ Section BinOpRefine.
     rewrite <- H3, <- op_assoc, H0; auto.
   Qed.
 
-  Lemma fold_left_constains_more_oppy : 
+  Lemma fold_left_constains_more_oppy :
     forall m a, a <> fold_left op m a -> count_occ eq_nat_dec m (fold_left op m a) > 0.
   Proof.
     intros m a neq; destruct (fold_left_discards_less_oppy m neq) as [a' [In_a' op_a] ].
@@ -159,7 +159,7 @@ Section BinOpRefine.
   Arguments absList2Multiset l / n .
   Arguments add_spec m x m' /.
 
-  Theorem refine_add_impl m n : 
+  Theorem refine_add_impl m n :
   refine {m' : list nat |
           add_spec (absList2Multiset m) n (absList2Multiset m')}
          (add_impl m n).
@@ -180,10 +180,10 @@ Section BinOpRefine.
     end.
 
   Ltac substs :=
-    repeat (match goal with H: ?x = ?y |- _ => 
+    repeat (match goal with H: ?x = ?y |- _ =>
             first [ subst x | subst y ] end).
 
-  Theorem refine_bin_op_impl m n : 
+  Theorem refine_bin_op_impl m n :
   refine {m' : nat |
           bin_op_spec opSpec defaultSpec (absList2Multiset m) n m'}
          (bin_op_impl op defaultValue m n).
@@ -201,14 +201,13 @@ Section BinOpRefine.
       find_if_inside; intuition.
       destruct (IHm a) as [_ IHm']; specialize (IHm' n'); simpl in IHm';
       find_if_inside; intuition.
-  Qed.      
-      
-  Lemma refines_NatBinOp 
+  Qed.
+
+  Lemma refines_NatBinOp
   : refineADT (NatBinOpSpec opSpec defaultSpec) (NatBinOpImpl op defaultValue).
   Proof.
-    etransitivity.
-    eapply refines_model_pickImpl with 
-    (abs := absList2Multiset).
+    unfold NatBinOpSpec.
+    rewrite (refines_model_pickImpl absList2Multiset).
     econstructor 1 with (abs := @Return (list nat))
                           (mutatorMap := @id unit)
                           (observerMap := @id unit); simpl; intros.
@@ -218,7 +217,7 @@ Section BinOpRefine.
 
 End BinOpRefine.
 
-Section ImplExamples. 
+Section ImplExamples.
 
   Local Ltac induction_list_then tac :=
     lazymatch goal with
@@ -285,23 +284,23 @@ Section ImplExamples.
     repeat first [ progress t
                  | progress induction_list_then ltac:(solve_after_induction_list op op_assoc op_comm) ].
 
-  Require Import Min.        
+  Require Import Min.
 
   Lemma min_trans : forall n m v,
                       n <= v
                       -> min n m <= v.
     intros; destruct (min_spec n m); omega.
   Qed.
-  
+
   Hint Resolve min_trans.
 
   Definition MinCollection (defaultValue : nat) :
     { Rep : ADT
     | refineADT NatLower Rep }.
   Proof.
-    eexists; eapply refines_NatBinOp with 
+    eexists; eapply refines_NatBinOp with
              (op := min)
-               (defaultValue := defaultValue); t.    
+               (defaultValue := defaultValue); t.
     rewrite min_assoc; auto.
     edestruct min_dec; eauto.
   Defined.
@@ -320,9 +319,9 @@ Section ImplExamples.
     { Rep : ADT
     | refineADT NatUpper Rep }.
   Proof.
-    eexists; eapply refines_NatBinOp with 
+    eexists; eapply refines_NatBinOp with
              (op := max)
-               (defaultValue := defaultValue); t.    
+               (defaultValue := defaultValue); t.
     rewrite max_assoc; auto.
     edestruct max_dec; eauto.
   Defined.
@@ -461,7 +460,7 @@ End ImplExamples.
 
 (*       Print ADT. *)
 (*       intros []. *)
-                                        
+
 (*       refine {| *)
 (*           Model := option (nat * nat); *)
 (*           MutatorMethods u val x := (ret (match val with *)

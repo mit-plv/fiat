@@ -136,53 +136,42 @@ Section comp.
   Definition refine {A} (old new : Comp A)
     := forall v, computes_to new v -> computes_to old v.
 
+  (** Define a symmetrized version of [refine] for ease of rewriting *)
+  Definition refineEquiv {A} (old new : Comp A)
+    := refine old new /\ refine new old.
+
   Global Instance refine_PreOrder A
   : PreOrder (@refine A).
   Proof.
     split; compute in *; eauto.
   Qed.
 
+  Global Instance refineEquiv_Equivalence A
+  : Equivalence (@refineEquiv A).
+  Proof.
+    repeat (split || intro); compute in *; split_and; eauto.
+  Qed.
+
   Section monad_refine.
-    Lemma refine_bind_bind X Y Z (f : X -> Comp Y) (g : Y -> Comp Z) x
-    : refine (Bind (Bind x f) g)
-             (Bind x (fun u => Bind (f u) g)).
+    Lemma refineEquiv_bind_bind X Y Z (f : X -> Comp Y) (g : Y -> Comp Z) x
+    : refineEquiv (Bind (Bind x f) g)
+                  (Bind x (fun u => Bind (f u) g)).
     Proof.
-      intro; apply bind_bind.
+      split; intro; apply bind_bind.
     Qed.
 
-    Lemma refine_bind_bind' X Y Z (f : X -> Comp Y) (g : Y -> Comp Z) x
-    : refine (Bind x (fun u => Bind (f u) g))
-             (Bind (Bind x f) g).
+    Lemma refineEquiv_bind_unit X Y (f : X -> Comp Y) x
+    : refineEquiv (Bind (Return x) f)
+                  (f x).
     Proof.
-      intro; apply bind_bind.
+      split; intro; apply bind_unit.
     Qed.
 
-    Lemma refine_bind_unit X Y (f : X -> Comp Y) x
-    : refine (Bind (Return x) f)
-             (f x).
+    Lemma refineEquiv_unit_bind X (x : Comp X)
+    : refineEquiv (Bind x (@Return X))
+                  x.
     Proof.
-      intro; apply bind_unit.
-    Qed.
-
-    Lemma refine_bind_unit' X Y (f : X -> Comp Y) x
-    : refine (f x)
-             (Bind (Return x) f).
-    Proof.
-      intro; apply bind_unit.
-    Qed.
-
-    Lemma refine_unit_bind X (x : Comp X)
-    : refine (Bind x (@Return X))
-             x.
-    Proof.
-      intro; apply unit_bind.
-    Qed.
-
-    Lemma refine_unit_bind' X (x : Comp X)
-    : refine x
-             (Bind x (@Return X)).
-    Proof.
-      intro; apply unit_bind.
+      split; intro; apply unit_bind.
     Qed.
   End monad_refine.
 End comp.
@@ -199,6 +188,22 @@ Add Parametric Relation A : (Comp A) (@refine A)
   transitivity proved by transitivity
     as refine_rel.
 
+Add Parametric Relation A : (Comp A) (@refineEquiv A)
+  reflexivity proved by reflexivity
+  symmetry proved by symmetry
+  transitivity proved by transitivity
+    as refineEquiv_rel.
+
+Add Parametric Morphism A : (@refine A)
+  with signature
+  (@refineEquiv A) --> (@refineEquiv A) ++> impl
+    as refine_refine.
+Proof.
+  unfold impl.
+  intros.
+  repeat (eapply_hyp || etransitivity).
+Qed.
+
 Add Parametric Morphism A B : (@Bind A B)
   with signature
   (@refine A)
@@ -211,6 +216,34 @@ Proof.
   intros.
   inversion_by computes_to_inv.
   eauto.
+Qed.
+
+Add Parametric Morphism A B : (@Bind A B)
+  with signature
+  (@refineEquiv A)
+    ==> (pointwise_relation _ (@refineEquiv B))
+    ==> (@refineEquiv B)
+    as refineEquiv_bind.
+Proof.
+  intros.
+  unfold pointwise_relation, refineEquiv, refine in *.
+  split_and.
+  split; intros;
+  inversion_by computes_to_inv;
+  eauto.
+Qed.
+
+Add Parametric Morphism A B : (@Bind A B)
+  with signature
+  (@refineEquiv A)
+    ==> (pointwise_relation _ (@refineEquiv B))
+    ==> (@refine B)
+    as refineEquiv_refine_bind.
+Proof.
+  intros.
+  refine (proj1 (_ : refineEquiv _ _)).
+  setoid_rewrite_hyp.
+  reflexivity.
 Qed.
 
 Section general_refine_lemmas.
@@ -233,16 +266,20 @@ End general_refine_lemmas.
 
 Create HintDb refine_monad discriminated.
 
-Hint Rewrite refine_bind_bind refine_bind_unit refine_unit_bind : refine_monad.
-Hint Rewrite <- refine_bind_bind' refine_bind_unit' refine_unit_bind' : refine_monad.
+(*Hint Rewrite refine_bind_bind refine_bind_unit refine_unit_bind : refine_monad.
+Hint Rewrite <- refine_bind_bind' refine_bind_unit' refine_unit_bind' : refine_monad.*)
+Hint Rewrite refineEquiv_bind_bind refineEquiv_bind_unit refineEquiv_unit_bind : refine_monad.
 
 Ltac interleave_autorewrite_refine_monad_with tac :=
   repeat first [ reflexivity
                | progress tac
                | progress autorewrite with refine_monad
-               | rewrite refine_bind_bind'; progress tac
+               (*| rewrite refine_bind_bind'; progress tac
                | rewrite refine_bind_unit'; progress tac
                | rewrite refine_unit_bind'; progress tac
                | rewrite <- refine_bind_bind; progress tac
                | rewrite <- refine_bind_unit; progress tac
-               | rewrite <- refine_unit_bind; progress tac ].
+               | rewrite <- refine_unit_bind; progress tac ]*)
+               | rewrite <- !refineEquiv_bind_bind; progress tac
+               | rewrite <- !refineEquiv_bind_unit; progress tac
+               | rewrite <- !refineEquiv_unit_bind; progress tac ].
