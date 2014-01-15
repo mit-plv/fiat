@@ -182,3 +182,13 @@ Lemma None_ne_Some {T} {x : T} : None <> Some x.
 Proof.
   congruence.
 Qed.
+
+Ltac find_if_inside :=
+  match goal with
+    | [ |- context[if ?X then _ else _] ] => destruct X
+    | [ H : context[if ?X then _ else _] |- _ ]=> destruct X
+  end.
+
+Ltac substs :=
+  repeat (match goal with H: ?x = ?y |- _ =>
+                          first [ subst x | subst y ] end).

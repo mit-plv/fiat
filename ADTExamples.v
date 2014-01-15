@@ -167,16 +167,6 @@ Section BinOpRefine.
 
   Arguments bin_op_spec opSpec defaultSpec m x n /.
 
-  Ltac find_if_inside :=
-    match goal with
-      | [ |- context[if ?X then _ else _] ] => destruct X
-      | [ H : context[if ?X then _ else _] |- _ ]=> destruct X
-    end.
-
-  Ltac substs :=
-    repeat (match goal with H: ?x = ?y |- _ =>
-            first [ subst x | subst y ] end).
-
   Theorem refine_bin_op_impl m n :
   refine {m' : nat |
           bin_op_spec opSpec defaultSpec (absList2Multiset m) n m'}
@@ -298,7 +288,7 @@ Section ImplExamples.
     rewrite min_assoc; auto.
     edestruct min_dec; eauto.
   Defined.
-  
+
   Require Import Max.
 
   Lemma max_trans : forall n m v,

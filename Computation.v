@@ -128,6 +128,14 @@ Section comp.
     Proof.
       t.
     Qed.
+
+    Lemma computes_under_bind X Y (f g : X -> Comp Y) x
+    : (forall x v, computes_to (f x) v <-> computes_to (g x) v) ->
+      (forall v, computes_to (Bind x f) v <-> computes_to (Bind x g) v).
+    Proof.
+      t; split_iff; eauto.
+    Qed.
+
   End monad.
 
   (** The old program might be non-deterministic, and the new program
@@ -173,6 +181,16 @@ Section comp.
     Proof.
       split; intro; apply unit_bind.
     Qed.
+
+    Lemma refineEquiv_under_bind X Y (f g : X -> Comp Y) x
+          (eqv_f_g : forall x, refineEquiv (f x) (g x))
+    : refineEquiv (Bind x f)
+                  (Bind x g).
+      Proof.
+        split; unfold refine; intros; eapply computes_under_bind;
+        eauto; split; eapply eqv_f_g.
+      Qed.
+
   End monad_refine.
 End comp.
 
@@ -269,6 +287,8 @@ Create HintDb refine_monad discriminated.
 (*Hint Rewrite refine_bind_bind refine_bind_unit refine_unit_bind : refine_monad.
 Hint Rewrite <- refine_bind_bind' refine_bind_unit' refine_unit_bind' : refine_monad.*)
 Hint Rewrite refineEquiv_bind_bind refineEquiv_bind_unit refineEquiv_unit_bind : refine_monad.
+(* Ideally we would throw refineEquiv_under_bind in here as well, but it gets stuck *)
+
 
 Ltac interleave_autorewrite_refine_monad_with tac :=
   repeat first [ reflexivity
@@ -282,4 +302,5 @@ Ltac interleave_autorewrite_refine_monad_with tac :=
                | rewrite <- refine_unit_bind; progress tac ]*)
                | rewrite <- !refineEquiv_bind_bind; progress tac
                | rewrite <- !refineEquiv_bind_unit; progress tac
-               | rewrite <- !refineEquiv_unit_bind; progress tac ].
+               | rewrite <- !refineEquiv_unit_bind; progress tac
+               (*| rewrite <- !refineEquiv_under_bind; progress tac *)].
