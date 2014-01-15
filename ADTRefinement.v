@@ -259,6 +259,25 @@ Qed.
     machinery won't work very well when we're switching models, and
     we'll instead have to use [etransitivity] and [apply] things. *)
 
+(* Given an abstraction function, we can transform the model of a pickImpl ADT. *)
+
+Theorem refines_model_pickImpl
+        newModel oldModel
+        (abs : newModel -> oldModel)
+        MutatorIndex ObserverIndex
+        ObserverSpec MutatorSpec :
+  refineADT
+    (@pickImpl oldModel MutatorIndex ObserverIndex MutatorSpec ObserverSpec)
+    (@pickImpl newModel MutatorIndex ObserverIndex
+               (fun idx nm n nm' => MutatorSpec idx (abs nm) n (abs nm'))
+               (fun idx nm => ObserverSpec idx (abs nm))).
+Proof.
+  econstructor 1 with (abs := fun nm => Return (abs nm))
+                        (mutatorMap := @id MutatorIndex)
+                        (observerMap := @id ObserverIndex);
+  compute; intros; inversion_by computes_to_inv; subst; eauto.
+Qed.
+
 (** If you mutate and then observe, you can do it before or after
     refinement.  I'm not actually sure this isn't obvious.  *)
 
