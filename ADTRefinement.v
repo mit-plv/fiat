@@ -130,7 +130,7 @@ Proof.
     (abs := fun z => (z' <- abs' z; abs z')%comp)
     (mutatorMap := mutMap' ∘ mutMap)
     (observerMap := obsMap' ∘ obsMap);
-    unfold id, compose; simpl in *; intros;
+    unfold id, compose; simpl in *; intros.
     interleave_autorewrite_refine_monad_with setoid_rewrite_hyp.
 Qed.
 
@@ -173,6 +173,71 @@ Proof.
   compute; intros; inversion_by computes_to_inv; subst; eauto.
 Qed.
 
+(* We can cache an observer value by refining the model and the mutators. *)
+
+Lemma refine_refl : forall c : Comp nat, refine c c.
+Proof.
+  compute; auto.
+Qed.
+  
+Set Printing Universes.
+
+Theorem refines_model_cacheObserver 
+        model 
+        observerIndex
+        mutatorIndex
+        observers 
+        mutators
+        (ObserverIndex_eq : forall idx idx' : observerIndex,
+                               {idx = idx'} + {idx <> idx'})
+        (cachedIndex : observerIndex) (* Index of the Observer to Cache *)
+:
+  refineADT {|Model := model;
+            ObserverIndex := observerIndex;
+            MutatorIndex := mutatorIndex;
+            MutatorMethods := mutators;
+            ObserverMethods := observers|} (
+              {| Model := {om : model & 
+                                      {cached_n : nat -> Comp nat | 
+                                       forall n, 
+                                         observers cachedIndex om n = 
+                                                (cached_n n)}};
+                 MutatorIndex := mutatorIndex;
+                 ObserverIndex := observerIndex;
+                 ObserverMethods idx nm n := 
+                   if (ObserverIndex_eq idx cachedIndex) then
+                     proj1_sig (projT2 nm) n 
+                   else
+                     observers idx (projT1 nm) n;
+                 MutatorMethods idx nm n := 
+                   Bind (mutators idx (projT1 nm) n)
+                        (fun origModel : model => 
+                           Return (existT _ origModel 
+                                       (exist (fun obs => 
+                                                 forall n,  (observers cachedIndex origModel n) = 
+                                                        (obs n))
+                                              (observers cachedIndex origModel)
+                                              (fun n => @eq_refl _ (observers cachedIndex origModel n))))) |} ).
+Proof.
+  assert (model).
+  Focus 2.
+  simpl.
+  Check (Return (existT (fun om => {cached_n : nat -> Comp nat | 
+                                       forall n, 
+                                         observers  cachedIndex om n = 
+                                                (cached_n n)} ) X
+                                       (exist (fun obs => 
+                                                 forall n,  (observers cachedIndex X n) = 
+                                                        (obs n))
+                                              (observers cachedIndex X)
+                                              (fun n => @eq_refl _ (observers cachedIndex X n))))).
+  eapply refinesADT. with (abs := projT1)
+  (mutatorMap := @id _)
+  (observerMap := @id _).
+
+                                                               
+                                                                  
+        
 (** If we had dependent setoid relations in [Type], then we could write
 
 <<

@@ -25,12 +25,6 @@ Section BinOpSpec.
   Variable opSpec : nat -> nat -> Prop.
   Variable defaultSpec : nat -> Prop.
 
-  (* Specification for counting occurences of an element *)
-  Definition count_spec : observerMethodSpec multiset
-    := fun m x n => n = m x.
-  
-  Arguments count_spec / .
-
   (* Specification for calculating op. *)
 
   Definition bin_op_spec
@@ -305,7 +299,7 @@ Section ImplExamples.
     rewrite min_assoc; auto.
     edestruct min_dec; eauto.
   Defined.
-
+  
   Require Import Max.
 
   Lemma max_trans : forall n m v,
@@ -328,6 +322,9 @@ Section ImplExamples.
   Defined.
 
 End ImplExamples.
+
+
+
 
 (* Definition NatLower : ADT  *)
 (*   := NatBinOpSpec le (fun n => n = 0).  (* Spec for collection with lower bound. *) *)
