@@ -26,10 +26,10 @@ Notation ret := Return.
 
 Notation "x >>= y" := (Bind x%comp y%comp) : comp_scope.
 Notation "x <- y ; z" := (Bind y%comp (fun x => z%comp))
-                           (at level 42, right associativity,
+                           (at level 81, right associativity,
                             format "'[v' x  <-  y ; '/' z ']'") : comp_scope.
 Notation "x ;; z" := (Bind x%comp (fun _ => z%comp))
-                       (at level 42, right associativity,
+                       (at level 81, right associativity,
                         format "'[v' x ;; '/' z ']'") : comp_scope.
 Notation "{ x  |  P }" := (@Pick _ (fun x => P)) : comp_scope.
 Notation "{ x : A  |  P }" := (@Pick A%type (fun x => P)) : comp_scope.
@@ -92,18 +92,56 @@ Section comp.
       destruct 1; eauto.
     Qed.
 
-    (* It's possible to extract the value from a fully detiministic computation *)
-    Definition is_computational_val A (c : Comp A)
-    : is_computational c -> {a | computes_to c a }.
+    (** It's possible to extract the value from a fully detiministic computation *)
+    Fixpoint is_computational_unique_val A (c : Comp A)
+    : is_computational c -> { a | unique (computes_to c) a }.
     Proof.
-      intros H; induction c; apply is_computational_inv in H; intuition.
-      - eexists; constructor.
-      - destruct X0.
-        exists (proj1_sig (X _ (H1 _ c1))).
-      econstructor; eauto.
-      exact (proj2_sig (X _ (H1 _ c1))).
+      refine match c as c return is_computational c -> { a | unique (computes_to c) a } with
+               | Return T x => fun _ => existT (unique (computes_to (ret x)))
+                                               x
+                                               _
+               | Pick _ _ => fun H => match is_computational_inv H with end
+               | Bind _ _ x f
+                 => fun H
+                    => let H' := is_computational_inv H in
+                       let xv := @is_computational_unique_val _ _ (proj1 H') in
+                       let fxv := @is_computational_unique_val _ _ (proj2 H' _ (proj1 (proj2_sig xv))) in
+                       exist (unique (computes_to _))
+                             (proj1_sig fxv)
+                             _
+             end;
+      clearbodies;
+      clear is_computational_unique_val;
+      [ abstract (repeat econstructor; intros; inversion_by computes_to_inv; eauto)
+      | abstract (
+            simpl in *;
+            unfold unique in *;
+            destruct_sig;
+            repeat econstructor;
+            intros;
+            eauto;
+            inversion_by computes_to_inv;
+            apply_hyp;
+            do_with_hyp ltac:(fun H => erewrite H by eassumption);
+            eassumption
+          ) ].
     Defined.
 
+    Definition is_computational_val A (c : Comp A) (H : is_computational c) : A
+      := proj1_sig (@is_computational_unique_val A c H).
+    Definition is_computational_val_computes_to A (c : Comp A) (H : is_computational c) : computes_to c (is_computational_val H)
+      := proj1 (proj2_sig (@is_computational_unique_val A c H)).
+    Definition is_computational_val_unique A (c : Comp A) (H : is_computational c)
+    : forall x, computes_to c x -> is_computational_val H = x
+      := proj2 (proj2_sig (@is_computational_unique_val A c H)).
+    Definition is_computational_val_all_eq A (c : Comp A) (H : is_computational c)
+    : forall x y, computes_to c x -> computes_to c y -> x = y.
+    Proof.
+      intros.
+      transitivity (@is_computational_val A c H); [ symmetry | ];
+      apply is_computational_val_unique;
+      assumption.
+    Qed.
   End is_computational.
 
   Section monad.
@@ -209,11 +247,6 @@ End comp.
 
 Hint Constructors computes_to.
 
-Ltac inversion_by rule :=
-  progress repeat first [ progress destruct_ex
-                        | progress split_and
-                        | apply_in_hyp_no_cbv_match rule ].
-
 Add Parametric Relation A : (Comp A) (@refine A)
   reflexivity proved by reflexivity
   transitivity proved by transitivity
@@ -279,13 +312,25 @@ Qed.
 
 Section general_refine_lemmas.
 
-  Lemma refine_is_computational A
-  : forall (c : Comp A) (CompC : is_computational c),
-      refine c (ret ((proj1_sig (is_computational_val CompC)))).
+  Lemma refineEquiv_is_computational A (c : Comp A) (CompC : is_computational c)
+  : refineEquiv c (ret (is_computational_val CompC)).
   Proof.
-    unfold refine; intros; rewrite (computes_to_inv H);
-    apply (proj2_sig _).
+    unfold refineEquiv, refine.
+    pose proof (is_computational_val_computes_to CompC).
+    repeat (intro || split);
+    try inversion_by computes_to_inv; subst; trivial.
+    erewrite is_computational_val_unique; eauto.
   Qed.
+
+  Lemma refine_pick A (P : A -> Prop) c (H : forall x, computes_to c x -> P x)
+  : refine { x : A | P x }%comp
+           c.
+  Proof.
+    repeat intro;
+    specialize_all_ways;
+    econstructor;
+    trivial.
+  Defined.
 
   Lemma refine_pick_pair A B (PA : A -> Prop) (PB : B -> Prop)
   : refine { x : A * B | PA (fst x) /\ PB (snd x) }%comp
@@ -293,14 +338,10 @@ Section general_refine_lemmas.
             b <- { b : B | PB b };
             ret (a, b))%comp.
   Proof.
-    intros (a, b) H.
-    repeat match goal with
-             | _ => constructor; tauto
-             | _ => progress destruct_ex
-             | _ => progress intuition
-             | [ H : (_, _) = (_, _) |- _ ] => inversion_clear H
-             | [ H : _ |- _ ] => apply computes_to_inv in H
-           end.
+    apply refine_pick.
+    intro x.
+    repeat constructor;
+    inversion_by computes_to_inv; subst; trivial.
   Qed.
 End general_refine_lemmas.
 

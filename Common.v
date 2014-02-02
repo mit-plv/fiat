@@ -3,21 +3,188 @@ Require Export Setoid RelationClasses Program Morphisms.
 Global Set Implicit Arguments.
 Global Generalizable All Variables.
 
-(* fail if [tac] succeeds, do nothing otherwise *)
-Tactic Notation "not_tac" tactic(tac) := (tac; fail 1) || idtac.
+(** fail if [tac] succeeds, do nothing otherwise *)
+Tactic Notation (at level 3) "not" tactic(tac) := (tac; fail 1) || idtac.
 
-(* fail if [tac] fails, but don't actually execute [tac] *)
-Tactic Notation "test_tac" tactic(tac) := not_tac (not_tac tac).
+(** fail if [tac] fails, but don't actually execute [tac] *)
+Tactic Notation (at level 3) "test" tactic(tac) := not (not tac).
 
-(* fail if [x] is a function application, a dependent product ([fun _ => _]),
-   or a sigma type ([forall _, _]) *)
+(** fail if [x] is a function application, a dependent product ([fun _
+    => _]), or a sigma type ([forall _, _]) *)
 Ltac atomic x :=
   match x with
-    | ?f _ => fail 1 x "is not atomic"
-    | (fun _ => _) => fail 1 x "is not atomic"
-    | forall _, _ => fail 1 x "is not atomic"
+    | ?f _ => fail 1 x "is not atomic (application)"
+    | (fun _ => _) => fail 1 x "is not atomic (fun)"
+    | forall _, _ => fail 1 x "is not atomic (forall)"
+    | _ => is_fix x; fail 1 x "is not atomic (fix)"
     | _ => idtac
   end.
+
+(* [pose proof defn], but only if no hypothesis of the same type exists.
+   most useful for proofs of a proposition *)
+Tactic Notation "unique" "pose" "proof" constr(defn) :=
+  let T := type of defn in
+  match goal with
+    | [ H : T |- _ ] => fail 1
+    | _ => pose proof defn
+  end.
+
+(** [pose defn], but only if that hypothesis doesn't exist *)
+Tactic Notation "unique" "pose" constr(defn) :=
+  match goal with
+    | [ H := defn |- _ ] => fail 1
+    | _ => pose defn
+  end.
+
+(** check's if the given hypothesis has a body, i.e., if [clearbody]
+    could ever succeed.  We can't just do [test_tac (clearbody H)],
+    because maybe the correctness of the proof depends on the body of
+    H *)
+Tactic Notation "has" "body" hyp(H) :=
+  test (let H' := fresh in pose H as H'; unfold H in H').
+
+(** find the head of the given expression *)
+Ltac head expr :=
+  match expr with
+    | ?f _ => head f
+    | _ => expr
+  end.
+
+Ltac head_hnf expr := let expr' := eval hnf in expr in head expr'.
+
+(** call [tac H], but first [simpl]ify [H].
+    This tactic leaves behind the simplified hypothesis. *)
+Ltac simpl_do tac H :=
+  let H' := fresh in pose H as H'; simpl; simpl in H'; tac H'.
+
+(** clear the left-over hypothesis after [simpl_do]ing it *)
+Ltac simpl_do_clear tac H := simpl_do ltac:(fun H => tac H; try clear H) H.
+
+Ltac simpl_rewrite term := simpl_do_clear ltac:(fun H => rewrite H) term.
+Ltac simpl_rewrite_rev term := simpl_do_clear ltac:(fun H => rewrite <- H) term.
+Tactic Notation "simpl" "rewrite" open_constr(term) := simpl_rewrite term.
+Tactic Notation "simpl" "rewrite" "->" open_constr(term) := simpl_rewrite term.
+Tactic Notation "simpl" "rewrite" "<-" open_constr(term) := simpl_rewrite_rev term.
+
+Ltac do_with_hyp tac :=
+  match goal with
+    | [ H : _ |- _ ] => tac H
+  end.
+
+Ltac rewrite_hyp' := do_with_hyp ltac:(fun H => rewrite H).
+Ltac rewrite_hyp := repeat rewrite_hyp'.
+Ltac rewrite_rev_hyp' := do_with_hyp ltac:(fun H => rewrite <- H).
+Ltac rewrite_rev_hyp := repeat rewrite_rev_hyp'.
+
+Ltac apply_hyp' := do_with_hyp ltac:(fun H => apply H).
+Ltac apply_hyp := repeat apply_hyp'.
+Ltac eapply_hyp' := do_with_hyp ltac:(fun H => eapply H).
+Ltac eapply_hyp := repeat eapply_hyp'.
+
+(** solve simple setiod goals that can be solved by [transitivity] *)
+Ltac simpl_transitivity :=
+  try solve [ match goal with
+                | [ _ : ?Rel ?a ?b, _ : ?Rel ?b ?c |- ?Rel ?a ?c ] => transitivity b; assumption
+              end ].
+
+(** given a [matcher] that succeeds on some hypotheses and fails on
+    others, destruct any matching hypotheses, and then execute [tac]
+    after each [destruct].
+
+    The [tac] part exists so that you can, e.g., [simpl in *], to
+    speed things up. *)
+Ltac destruct_all_matches_then matcher tac :=
+  repeat match goal with
+           | [ H : ?T |- _ ] => matcher T; destruct H; tac
+         end.
+
+Ltac destruct_all_matches matcher := destruct_all_matches_then matcher ltac:(simpl in *).
+Ltac destruct_all_matches' matcher := destruct_all_matches_then matcher idtac.
+
+(* matches anything whose type has a [T] in it *)
+Ltac destruct_type_matcher T HT :=
+  match HT with
+    | context[T] => idtac
+  end.
+Ltac destruct_type T := destruct_all_matches ltac:(destruct_type_matcher T).
+Ltac destruct_type' T := destruct_all_matches' ltac:(destruct_type_matcher T).
+
+Ltac destruct_head_matcher T HT :=
+  match head HT with
+    | T => idtac
+  end.
+Ltac destruct_head T := destruct_all_matches ltac:(destruct_head_matcher T).
+Ltac destruct_head' T := destruct_all_matches' ltac:(destruct_head_matcher T).
+
+Ltac destruct_head_hnf_matcher T HT :=
+  match head_hnf HT with
+    | T => idtac
+  end.
+Ltac destruct_head_hnf T := destruct_all_matches ltac:(destruct_head_hnf_matcher T).
+Ltac destruct_head_hnf' T := destruct_all_matches' ltac:(destruct_head_hnf_matcher T).
+
+Ltac destruct_sig_matcher HT :=
+  match eval hnf in HT with
+    | ex _ => idtac
+    | ex2 _ _ => idtac
+    | sig _ => idtac
+    | sig2 _ _ => idtac
+    | sigT _ => idtac
+    | sigT2 _ _ => idtac
+    | and _ _ => idtac
+    | prod _ _ => idtac
+  end.
+Ltac destruct_sig := destruct_all_matches destruct_sig_matcher.
+Ltac destruct_sig' := destruct_all_matches' destruct_sig_matcher.
+
+Ltac destruct_all_hypotheses := destruct_all_matches ltac:(fun HT =>
+  destruct_sig_matcher HT || destruct_sig_matcher HT
+).
+
+(** if progress can be made by [exists _], but it doesn't matter what
+    fills in the [_], assume that something exists, and leave the two
+    goals of finding a member of the apropriate type, and proving that
+    all members of the appropriate type prove the goal *)
+Ltac destruct_exists' T := cut T; try (let H := fresh in intro H; exists H).
+Ltac destruct_exists := destruct_head_hnf @sigT;
+  match goal with
+(*    | [ |- @sig ?T _ ] => destruct_exists' T*)
+    | [ |- @sigT ?T _ ] => destruct_exists' T
+(*    | [ |- @sig2 ?T _ _ ] => destruct_exists' T*)
+    | [ |- @sigT2 ?T _ _ ] => destruct_exists' T
+  end.
+
+(** if the goal can be solved by repeated specialization of some
+    hypothesis with other [specialized] hypotheses, solve the goal by
+    brute force *)
+Ltac specialized_assumption tac := tac;
+  match goal with
+    | [ x : ?T, H : forall _ : ?T, _ |- _ ] => specialize (H x); specialized_assumption tac
+    | _ => assumption
+  end.
+
+(** for each hypothesis of type [H : forall _ : ?T, _], if there is
+    exactly one hypothesis of type [H' : T], do [specialize (H H')]. *)
+Ltac specialize_uniquely :=
+  repeat match goal with
+           | [ x : ?T, y : ?T, H : _ |- _ ] => test (specialize (H x)); fail 1
+           | [ x : ?T, H : _ |- _ ] => specialize (H x)
+         end.
+
+(** specialize all hypotheses of type [forall _ : ?T, _] with
+    appropriately typed hypotheses *)
+Ltac specialize_all_ways_forall :=
+  repeat match goal with
+           | [ x : ?T, H : forall _ : ?T, _ |- _ ] => unique pose proof (H x)
+         end.
+
+(** try to specialize all hypotheses with all other hypotheses.  This
+    includes [specialize (H x)] where [H x] requires a coercion from
+    the type of [H] to Funclass. *)
+Ltac specialize_all_ways :=
+  repeat match goal with
+           | [ x : ?T, H : _ |- _ ] => unique pose proof (H x)
+         end.
 
 Ltac apply_in_hyp lem :=
   match goal with
@@ -63,59 +230,6 @@ Ltac split_and' :=
          end.
 Ltac split_and := split_and'; split_in_context and (fun a b : Type => a) (fun a b : Type => b).
 
-(* [pose proof defn], but only if no hypothesis of the same type exists.
-   most useful for proofs of a proposition *)
-Ltac unique_pose defn :=
-  let T := type of defn in
-    match goal with
-      | [ H : T |- _ ] => fail 1
-      | _ => pose proof defn
-    end.
-
-(* find the head of the given expression *)
-Ltac head expr :=
-  match expr with
-    | ?f _ => head f
-    | _ => expr
-  end.
-
-Ltac head_hnf expr := let expr' := eval hnf in expr in head expr'.
-
-(* given a [matcher] that succeeds on some hypotheses and fails on
-   others, destruct any matching hypotheses, and then execute [tac]
-   after each [destruct].
-
-   The [tac] part exists so that you can, e.g., [simpl in *], to
-   speed things up. *)
-Ltac destruct_all_matches_then matcher tac :=
-  repeat match goal with
-           | [ H : ?T |- _ ] => matcher T; destruct H; tac
-         end.
-
-Ltac destruct_all_matches matcher := destruct_all_matches_then matcher ltac:(simpl in *).
-Ltac destruct_all_matches' matcher := destruct_all_matches_then matcher idtac.
-
-(* matches anything whose type has a [T] in it *)
-Ltac destruct_type_matcher T HT :=
-  match HT with
-    | context[T] => idtac
-  end.
-Ltac destruct_type T := destruct_all_matches ltac:(destruct_type_matcher T).
-Ltac destruct_type' T := destruct_all_matches' ltac:(destruct_type_matcher T).
-
-Ltac destruct_head_matcher T HT :=
-  match head HT with
-    | T => idtac
-  end.
-Ltac destruct_head T := destruct_all_matches ltac:(destruct_head_matcher T).
-Ltac destruct_head' T := destruct_all_matches' ltac:(destruct_head_matcher T).
-
-Ltac destruct_head_hnf_matcher T HT :=
-  match head_hnf HT with
-    | T => idtac
-  end.
-Ltac destruct_head_hnf T := destruct_all_matches ltac:(destruct_head_hnf_matcher T).
-Ltac destruct_head_hnf' T := destruct_all_matches' ltac:(destruct_head_hnf_matcher T).
 
 Ltac destruct_sum_in_match' :=
   match goal with
@@ -131,25 +245,10 @@ Ltac destruct_ex :=
            | [ H : ex _ |- _ ] => destruct H
          end.
 
-Ltac do_with_hyp tac :=
-  match goal with
-    | [ H : _ |- _ ] => tac H
-  end.
-
-Ltac rewrite_hyp' := do_with_hyp ltac:(fun H => rewrite H).
-Ltac rewrite_hyp := repeat rewrite_hyp'.
-Ltac rewrite_rev_hyp' := do_with_hyp ltac:(fun H => rewrite <- H).
-Ltac rewrite_rev_hyp := repeat rewrite_rev_hyp'.
-
 Ltac setoid_rewrite_hyp' := do_with_hyp ltac:(fun H => setoid_rewrite H).
 Ltac setoid_rewrite_hyp := repeat setoid_rewrite_hyp'.
 Ltac setoid_rewrite_rev_hyp' := do_with_hyp ltac:(fun H => setoid_rewrite <- H).
 Ltac setoid_rewrite_rev_hyp := repeat setoid_rewrite_rev_hyp'.
-
-Ltac apply_hyp' := do_with_hyp ltac:(fun H => apply H).
-Ltac apply_hyp := repeat apply_hyp'.
-Ltac eapply_hyp' := do_with_hyp ltac:(fun H => eapply H).
-Ltac eapply_hyp := repeat eapply_hyp'.
 
 Hint Extern 0 => apply reflexivity : typeclass_instances.
 
@@ -190,5 +289,58 @@ Ltac find_if_inside :=
   end.
 
 Ltac substs :=
-  repeat (match goal with H: ?x = ?y |- _ =>
-                          first [ subst x | subst y ] end).
+  repeat match goal with
+           | [ H : ?x = ?y |- _ ]
+             => first [ subst x | subst y ]
+         end.
+
+Ltac inversion_by rule :=
+  progress repeat first [ progress destruct_ex
+                        | progress split_and
+                        | apply_in_hyp_no_cbv_match rule ].
+
+
+Class can_transform_sigma A B := do_transform_sigma : A -> B.
+
+Instance can_transform_sigT_base {A} {P : A -> Type}
+: can_transform_sigma (sigT P) (sigT P) | 0
+  := fun x => x.
+
+Instance can_transform_sig_base {A} {P : A -> Prop}
+: can_transform_sigma (sig P) (sig P) | 0
+  := fun x => x.
+
+Instance can_transform_sigT {A B B' C'}
+         `{forall x : A, can_transform_sigma (B x) (@sigT (B' x) (C' x))}
+: can_transform_sigma (forall x : A, B x)
+                (@sigT (forall x, B' x) (fun b => forall x, C' x (b x))) | 0
+  := fun f => existT
+                (fun b => forall x : A, C' x (b x))
+                (fun x => projT1 (do_transform_sigma (f x)))
+                (fun x => projT2 (do_transform_sigma (f x))).
+
+Instance can_transform_sig {A B B' C'}
+         `{forall x : A, can_transform_sigma (B x) (@sig (B' x) (C' x))}
+: can_transform_sigma (forall x : A, B x)
+                (@sig (forall x, B' x) (fun b => forall x, C' x (b x))) | 0
+  := fun f => exist
+                (fun b => forall x : A, C' x (b x))
+                (fun x => proj1_sig (do_transform_sigma (f x)))
+                (fun x => proj2_sig (do_transform_sigma (f x))).
+
+Ltac split_sig' :=
+  match goal with
+    | [ H : _ |- _ ]
+      => let H' := fresh in
+         pose proof (@do_transform_sigma _ _ _ H) as H';
+           clear H;
+           destruct H'
+  end.
+
+Ltac split_sig :=
+  repeat split_sig'.
+
+Ltac clearbodies :=
+  repeat match goal with
+           | [ H := _ |- _ ] => clearbody H
+         end.

@@ -194,7 +194,7 @@ Proof.
   compute; intros; inversion_by computes_to_inv; subst; eauto.
 Qed.
 
-(* We can cache an observer value by refining the model and the mutators. *)
+(** We can cache an observer value by refining the model and the mutators. *)
 
 Open Scope comp_scope.
 
@@ -258,8 +258,8 @@ Theorem refines_cached_computational_Observer adt
                    origModel <- (MutatorMethods adt idx (fst (proj1_sig nm)) n);
      ret (exist
             (fun om => forall n, refine (ObserverMethods adt cachedIndex (fst om) n) (ret (snd om n)))
-            (origModel, fun n => proj1_sig (is_computational_val (computational_Index origModel n)))
-            (fun n => refine_is_computational (computational_Index origModel n))) |}. 
+            (origModel, fun n => is_computational_val (computational_Index origModel n))
+            (fun n => proj1 (refineEquiv_is_computational (computational_Index origModel n)))) |}.
 Proof.
   apply refines_cached_Observer.
 Qed.
