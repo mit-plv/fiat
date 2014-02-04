@@ -22,6 +22,8 @@ Notes/Ideas:
 
 For Ben Delaware:
 
+* Automate proof of [refineADT_PreOrder].
+
 * Clean up the caching refinement in ADTRefinement.
 
 * Improve the behavior of [add] to avoid extraneous computation in the

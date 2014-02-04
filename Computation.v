@@ -67,6 +67,98 @@ Section comp.
     Proof.
       destruct 1; eauto.
     Qed.
+<<<<<<< variant A
+
+    Section CompInv.
+      (** Lifting Properties on [A] to Computations on [A] **)
+
+      (* Computation preserves invariants. *)
+      Definition computational_inv A (P : Ensemble A) c :=
+        forall v, computes_to c v -> P v.
+
+      (* Relation to assist in building proofs of compuational_inv *)
+      Inductive CompInv : forall {A : Type}, Ensemble A -> Comp A -> Prop :=
+      | Return_Inv : forall A (a : A) (P : Ensemble A),
+                       P a -> CompInv P (Return a)
+      | Bind_Inv : forall A B (PA : Ensemble A) (PB : Ensemble B) comp_a comp_f,
+                     CompInv PA comp_a ->
+                     (forall (a : A), PA a -> CompInv PB (comp_f a)) ->
+                     CompInv PB (Bind comp_a comp_f)
+      | Pick_Inv : forall A (P P' : Ensemble A),
+                     (forall a, P a -> P' a) -> CompInv P' (Pick P).
+
+      Lemma CompInv_inv A c (P : Ensemble A)
+      : CompInv P c -> match c with
+                         | Return A x => fun P => P x
+                         | Bind A B x f => fun PB => exists PA : Ensemble A,
+                                                       CompInv PA x /\
+                                                       forall b : A, PA b -> CompInv PB (f b)
+                         | Pick A P => fun P' => (forall a, P a -> P' a)
+                       end P.
+      Proof.
+        destruct 1; eauto.
+      Qed.
+
+      Arguments computational_inv A P c / .
+
+      Lemma CompInv_compuational_inv A (P : Ensemble A) c
+      : CompInv P c -> computational_inv P c.
+      Proof.
+        induction c; intros; apply_in_hyp_no_cbv_match CompInv_inv; simpl;
+        intros; apply_in_hyp_no_cbv_match computes_to_inv; subst; eauto.
+        destruct_ex; split_and; simpl in *;
+        eapply H; eauto; eapply H4; eapply IHc; eauto.
+      Qed.
+
+  End CompInv.
+
+>>>>>>> variant B
+
+    Section CompInv.
+      (** Lifting Properties on [A] to Computations on [A] **)
+
+      (* Computation preserves invariants. *)
+      Definition computational_inv A (P : Ensemble A) c :=
+        forall v, computes_to c v -> P v.
+
+      (* Relation to assist in building proofs of compuational_inv *)
+      Inductive CompInv : forall {A : Type}, Ensemble A -> Comp A -> Prop :=
+      | Return_Inv : forall A (a : A) (P : Ensemble A),
+                       P a -> CompInv P (Return a)
+      | Bind_Inv : forall A B (PA : Ensemble A) (PB : Ensemble B) comp_a comp_f,
+                     CompInv PA comp_a ->
+                     (forall (a : A), PA a -> CompInv PB (comp_f a)) ->
+                     CompInv PB (Bind comp_a comp_f)
+      | Pick_Inv : forall A (P P' : Ensemble A),
+                     (forall a, P a -> P' a) -> CompInv P' (Pick P).
+
+      Lemma CompInv_inv A c (P : Ensemble A)
+      : CompInv P c -> match c with
+                         | Return A x => fun P => P x
+                         | Bind A B x f => fun PB => exists PA : Ensemble A,
+                                                       CompInv PA x /\
+                                                       forall b : A, PA b -> CompInv PB (f b)
+                         | Pick A P => fun P' => (forall a, P a -> P' a)
+                       end P.
+      Proof.
+        destruct 1; eauto.
+      Qed.
+
+      Arguments computational_inv A P c / .
+
+      Lemma CompInv_compuational_inv A (P : Ensemble A) c
+      : CompInv P c -> computational_inv P c.
+      Proof.
+        induction c; intros; apply_in_hyp_no_cbv_match CompInv_inv; simpl;
+        intros; apply_in_hyp_no_cbv_match computes_to_inv; subst; eauto.
+        destruct_ex; split_and; simpl in *;
+        eapply H; eauto; eapply H4; eapply IHc; eauto.
+      Qed.
+
+  End CompInv.
+
+####### Ancestor
+======= end
   End computes_to.
 
   Section is_computational.
@@ -245,7 +337,10 @@ Section comp.
   End monad_refine.
 End comp.
 
-Hint Constructors computes_to.
+Ltac inversion_by rule :=
+  progress repeat first [ progress destruct_ex
+                        | progress split_and
+                        | apply_in_hyp_no_cbv_match rule ].
 
 Add Parametric Relation A : (Comp A) (@refine A)
   reflexivity proved by reflexivity
@@ -267,6 +362,8 @@ Proof.
   intros.
   repeat (eapply_hyp || etransitivity).
 Qed.
+
+Hint Constructors CompInv computes_to.
 
 Add Parametric Morphism A B : (@Bind A B)
   with signature
@@ -308,6 +405,17 @@ Proof.
   refine (proj1 (_ : refineEquiv _ _)).
   setoid_rewrite_hyp.
   reflexivity.
+Qed.
+
+Arguments impl _ _ / .
+Arguments computational_inv A P c / .
+
+Add Parametric Morphism A P : (@computational_inv A P)
+  with signature
+  (@refine A) ++> impl
+    as refineCompInv.
+Proof.
+  simpl; eauto.
 Qed.
 
 Section general_refine_lemmas.
