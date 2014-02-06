@@ -258,206 +258,212 @@ Section GeneralRefinements.
                                   {idx = idx'} + {idx <> idx'}.
 
     Notation "x == y" := (ObserverIndex_eq x y) (at level 36).
-    Record cachedObservers :=
+    Record cachedObservers := cOb
       { origRep : rep;
         observerCache : observerIndex -> option (nat -> nat)}.
 
     (* A cache is well-formed if it refines all the observer methods
-     included in the cacheSet. *)
-    Definition ValidCache (cacheSet : observerIndex -> bool) ObserverMethods
+     included in the [cachedSet]. *)
+    Definition ValidCache (cachedSet : observerIndex -> bool) ObserverMethods
                (r : cachedObservers) :=
       forall idx,
-        if cacheSet idx then
+        if cachedSet idx then
           exists func,
             observerCache r idx = Some func /\
-            forall n, refine (ObserverMethods idx r n) (ret (func n))
+            forall n, refine (ObserverMethods idx (origRep r) n) (ret (func n))
         else
           observerCache r idx = None.
     Arguments ValidCache _ ObserverMethods r / .
 
-    Variable RepInv : Ensemble rep.
-    Definition AddValidCacheInv cacheSet ObserverMethods
+    Variable RepInv : Ensemble rep. (* The old Representation Invariant *)
+    Definition AddValidCacheInv cachedSet ObserverMethods
                (r : cachedObservers) :=
-      RepInv (origRep r) /\ ValidCache cacheSet ObserverMethods r.
+      RepInv (origRep r) /\ ValidCache cachedSet ObserverMethods r.
     Arguments AddValidCacheInv _ ObserverMethods r / .
 
-    (* A value is cached by applying a function to the representation
-      built by a mutator. *)
-    Definition ReplaceCachedObv
-               {MutatorIndex}
-               (MutatorMethods : MutatorIndex -> mutatorMethodType (cachedObservers))
-               (cachedIndex : observerIndex) (* Index of the Observer to Cache *)
-               (cachedFunc : rep -> nat -> nat)
-               idx m n :=
-      om <- MutatorMethods idx m n;
-      ret (Build_cachedObservers (origRep om)
-                                 (fun idx => if (idx == cachedIndex) then
-                                               Some (cachedFunc (origRep om))
-                                             else
-                                               observerCache om idx)).
-
+    (* Inserting and removing indices from the [cachedSet] *)
     Definition insertCachedSet cachedSet cachedIndex (idx : observerIndex) : bool :=
       if (idx == cachedIndex) then
         true
       else
         cachedSet idx.
+
+    Definition removeCachedSet cachedSet cachedIndex (idx : observerIndex) : bool :=
+      if (idx == cachedIndex) then
+        false
+      else
+        cachedSet idx.
+
     Arguments insertCachedSet _ _ idx / .
+    Arguments removeCachedSet _ _ idx / .
 
-    (* Well-formed cached observer methods use the cache if it is available (naturally).
-     *)
-    Definition cachedObserverMethodsWF cachedObserverMethods :=
-      forall r idx f,
-        observerCache r idx = Some f ->
-        forall n,
-          refineEquiv (cachedObserverMethods idx r n) (ret (f n)).
-    Arguments cachedObserverMethodsWF _ / .
+    (* To implement the cache, we update an ADT's mutators to include cached
+       values, one observer index at a time. There are two cases:
 
-    (* Well-formed cached observer methods will default to the original
-       observer methods for uncached indices.
-     *)
-    Definition cachedObserverMethodsWF' ObserverMethods cachedObserverMethods :=
-      forall r idx,
-        observerCache r idx = None ->
-        forall n : nat,
-          refine (A := nat) (ObserverMethods idx r n) (cachedObserverMethods idx r n).
-    Arguments cachedObserverMethodsWF' _ _ / .
+       1. If the observer index is not already in the cache, it is cached
+          by running the old mutators with just the old cached values. *)
 
-    (* Removing a cached value from a well-formed cache will produce
-       another well-formed cache value *)
+    Definition removeCachedValue cachedIndex cachedRep
+    : cachedObservers :=
+      {| origRep := origRep cachedRep;
+         observerCache idx := if idx == cachedIndex then None else observerCache cachedRep idx |}.
+    Arguments removeCachedValue _ _ / .
+
+    Definition AddCachedValue cachedIndex cachedRep cachedFunc
+    : cachedObservers :=
+      {| origRep := origRep cachedRep;
+         observerCache idx :=
+           if idx == cachedIndex then
+             Some (cachedFunc cachedRep)
+           else observerCache cachedRep idx |}.
+    Arguments AddCachedValue _ _ _ / .
+
+    Definition AddCachedObv
+               {MutatorIndex}
+               (MutatorMethods : MutatorIndex -> mutatorMethodType cachedObservers)
+               (cachedIndex : observerIndex) (* Index of the Observer to Cache *)
+               (cachedFunc : cachedObservers -> nat -> nat)
+               idx m n :=
+      om <- MutatorMethods idx (removeCachedValue cachedIndex m) n;
+      ret (AddCachedValue cachedIndex om cachedFunc).
+
+    (* 2. If the observer index *is* already in the cache, it is recached
+          by running the old mutators and then updating the cache of the result
+          (potentially using the initial cache value). *)
+    Definition UpdateCachedObv
+               {MutatorIndex}
+               (MutatorMethods : MutatorIndex -> mutatorMethodType cachedObservers)
+               (cachedIndex : observerIndex) (* Index of the Observer to Cache *)
+               (cachedFunc : cachedObservers -> cachedObservers -> nat -> nat)
+               idx m n :=
+      om <- MutatorMethods idx m n;
+      ret (AddCachedValue cachedIndex om (cachedFunc m)).
+
+    (* [AddValidCacheInv] is preservered under several updates to the cached values. *)
+
     Lemma RemoveValidCacheInv
-    : forall cachedSet cachedIndex ObserverMethods cachedObserverMethods r,
-        cachedObserverMethodsWF cachedObserverMethods ->
-        cachedObserverMethodsWF' ObserverMethods cachedObserverMethods ->
-        AddValidCacheInv cachedSet cachedObserverMethods r ->
-        AddValidCacheInv (fun idx =>
-                            if idx == cachedIndex
-                            then false
-                            else cachedSet idx)
-                         cachedObserverMethods
-    {| origRep := origRep r;
-       observerCache idx :=
-         if idx == cachedIndex then None else observerCache r idx |}.
+    : forall cachedSet cachedIndex ObserverMethods r
+             (NInCachedSet : cachedSet cachedIndex = false),
+        AddValidCacheInv (insertCachedSet cachedSet cachedIndex) ObserverMethods r ->
+        AddValidCacheInv cachedSet
+                         ObserverMethods
+                         (removeCachedValue cachedIndex r).
     Proof.
       simpl; intros; intuition.
-      generalize (H3 idx); destruct (idx == cachedIndex);
-      find_if_inside; intuition; destruct_ex; intuition;
-      try (eexists; subst; split; eauto;
-           intros; generalize (H3 n); intros;
-           rewrite <- H; eauto; fail).
-      eexists; split; eauto; intros.
-      eapply H; simpl; eauto; find_if_inside; congruence.
+      generalize (H1 idx); destruct (idx == cachedIndex); subst; eauto;
+      try rewrite NInCachedSet; eauto.
     Qed.
     Hint Resolve RemoveValidCacheInv.
 
-    (* Removing a replaced cached value from a well-formed cache will produce
-       another well-formed cache value *)
-    Lemma ReplaceValidCacheInv
-    : forall cachedSet ObserverMethods cachedObserverMethods r
-        (refines_Observers : forall idx r n,
-                               refine (ObserverMethods idx r n) (cachedObserverMethods idx r n)),
-        AddValidCacheInv cachedSet cachedObserverMethods r ->
-        AddValidCacheInv cachedSet ObserverMethods r.
+    Lemma AddValidCacheInv'
+    : forall cachedSet cachedIndex ObserverMethods r cachedFunc
+             (NInCachedSet : cachedSet cachedIndex = false)
+             (refines_cached : forall r n,
+                                 refine (ObserverMethods cachedIndex (origRep r) n)
+                                        (ret (cachedFunc r n)))
+             (RepInvr : AddValidCacheInv cachedSet ObserverMethods r),
+        AddValidCacheInv (insertCachedSet cachedSet cachedIndex) ObserverMethods
+                         (AddCachedValue cachedIndex r cachedFunc).
     Proof.
       simpl; intros; intuition.
-      generalize (H1 idx); find_if_inside; intuition; destruct_ex; intuition;
-      try (eexists; subst; split; eauto;
-           intros; generalize (H3 n); intros;
-           rewrite <- H; eauto; fail).
+      generalize (H0 idx); intros; destruct (ObserverIndex_eq idx cachedIndex);
+      subst; eauto.
     Qed.
-    Hint Resolve ReplaceValidCacheInv.
 
-    Lemma ReplaceCacheInv
-          {MutatorIndex cachedSet}
-          cachedObserverMethods
-          ObserverMethods MutatorMethods
-          (cachedIndex : observerIndex)
-          (cachedSetIndex : cachedSet cachedIndex = true)
-          cachedFunc
-          (refines_cached : forall r n,
-                              refine (cachedObserverMethods cachedIndex r n)
-                                     (ret (cachedFunc (origRep r) n)))
-          (refines_cached' : forall r idx f,
-                              observerCache r idx = Some f ->
-                              forall n,
-                                refineEquiv (ret (f n)) (cachedObserverMethods idx r n))
-          (refines_Observers : forall idx r n,
-                                 refine (ObserverMethods idx r n) (cachedObserverMethods idx r n))
-    : (forall idx  r n, AddValidCacheInv cachedSet ObserverMethods r ->
-                        computational_inv (AddValidCacheInv cachedSet ObserverMethods)
-                                          (MutatorMethods idx r n)) ->
-      forall (idx : MutatorIndex) r n,
-        AddValidCacheInv cachedSet cachedObserverMethods r ->
-        computational_inv
-          (AddValidCacheInv cachedSet cachedObserverMethods)
-          (ReplaceCachedObv MutatorMethods cachedIndex cachedFunc
-                            idx r n).
+    Lemma UpdateValidCacheInv
+    : forall cachedSet cachedIndex ObserverMethods (r m : cachedObservers) cachedFunc
+             (InCachedSet : cachedSet cachedIndex = true)
+             (refines_cached : forall n, refine (ObserverMethods cachedIndex (origRep r) n)
+                                        (ret (cachedFunc m r n))),
+      AddValidCacheInv cachedSet ObserverMethods r ->
+      observerCache r cachedIndex = Some (cachedFunc m r) ->
+      AddValidCacheInv cachedSet ObserverMethods
+                       (AddCachedValue cachedIndex r (cachedFunc m)).
     Proof.
-      unfold ReplaceCachedObv, computational_inv; intros.
-      apply_in_hyp computes_to_inv; destruct_ex; intuition;
-      apply_in_hyp computes_to_inv; destruct_ex; subst; simpl.
-      generalize (H idx r n (ReplaceValidCacheInv _ refines_Observers H0) _ H2); simpl; intuition.
-      generalize (H4 idx0); intros.
-      destruct (ObserverIndex_eq idx0 cachedIndex); subst; eauto.
-      rewrite cachedSetIndex in *|-*; eexists; split; eauto.
-      intros.
-      eapply refines_cached'; simpl; find_if_inside; congruence.
-      find_if_inside; destruct_ex; intuition; eauto.
-      eexists; intuition; eauto.
-      rewrite refines_cached'; subst; simpl; [reflexivity | eauto].
-      simpl; find_if_inside; subst; eauto.
-      congruence.
+      simpl; intros; intuition.
+      generalize (H2 idx); intros.
+      destruct (ObserverIndex_eq idx cachedIndex); subst; eauto.
+      rewrite InCachedSet in *|-*; eauto.
     Qed.
+
+    Hint Resolve UpdateValidCacheInv.
+    Hint Resolve RemoveValidCacheInv.
+    Hint Resolve AddValidCacheInv'.
+
+    (* Both approaches to updating mutators continue to satisfy the [AddValidCacheInv]
+       invariant.
+       1. If the index is not already cached: *)
+
+    (* Removing a cached value from a well-formed cache will produce
+       another well-formed cache value *)
 
     Lemma AddCachedInv
           {MutatorIndex cachedSet}
-          cachedObserverMethods
           ObserverMethods MutatorMethods
           (cachedIndex : observerIndex)
-          (cachedSetIndex : cachedSet cachedIndex = false)
+          (NInCachedSet : cachedSet cachedIndex = false)
           cachedFunc
           (refines_cached : forall r n,
-                              refine (cachedObserverMethods cachedIndex r n)
-                                     (ret (cachedFunc (origRep r) n)))
-          (refines_cached' : forall r idx f,
-                              observerCache r idx = Some f ->
-                              forall n,
-                                refineEquiv (ret (f n)) (cachedObserverMethods idx r n))
-          (refines_Observers : forall idx r n,
-                                 refine (ObserverMethods idx r n) (cachedObserverMethods idx r n))
+                              refine (ObserverMethods cachedIndex (origRep r) n)
+                                     (ret (cachedFunc r n)))
     : (forall idx  r n, AddValidCacheInv cachedSet ObserverMethods r ->
                         computational_inv (AddValidCacheInv cachedSet ObserverMethods)
                                           (MutatorMethods idx r n)) ->
       forall (idx : MutatorIndex) r n,
-        AddValidCacheInv (insertCachedSet cachedSet cachedIndex) cachedObserverMethods r ->
+        AddValidCacheInv (insertCachedSet cachedSet cachedIndex) ObserverMethods r ->
         computational_inv
-          (AddValidCacheInv (insertCachedSet cachedSet cachedIndex) cachedObserverMethods)
-          (ReplaceCachedObv MutatorMethods cachedIndex cachedFunc
+          (AddValidCacheInv (insertCachedSet cachedSet cachedIndex) ObserverMethods)
+          (AddCachedObv MutatorMethods cachedIndex cachedFunc
                             idx r n).
     Proof.
-      unfold ReplaceCachedObv, computational_inv; intros.
+      unfold AddCachedObv, computational_inv; intros.
       apply_in_hyp computes_to_inv; destruct_ex; intuition;
-      apply_in_hyp computes_to_inv; destruct_ex; subst; simpl.
-      generalize (H idx r n (ReplaceValidCacheInv _ refines_Observers H0) _ H2); simpl; intuition.
-      generalize (H4 idx0); intros.
-      destruct (ObserverIndex_eq idx0 cachedIndex); subst; eauto.
-      rewrite cachedSetIndex in *|-*; eexists; split; eauto.
-      intros.
-      eapply refines_cached'; simpl; find_if_inside; congruence.
-      find_if_inside; destruct_ex; intuition; eauto.
-      eexists; intuition; eauto.
-      rewrite refines_cached'; subst; simpl; [reflexivity | eauto].
-      simpl; find_if_inside; subst; eauto.
-      congruence.
+      apply_in_hyp computes_to_inv; destruct_ex; subst; eauto.
+    Qed.
+
+    (* 2. If the index is already cached: *)
+
+    Lemma UpdateCachedInv
+          {MutatorIndex cachedSet}
+          ObserverMethods MutatorMethods
+          (cachedIndex : observerIndex)
+          (InCachedSet : cachedSet cachedIndex = true)
+          cachedFunc
+          (FuncEqv :
+             forall idx r n,
+               AddValidCacheInv cachedSet ObserverMethods r ->
+               computational_inv
+                 (fun r' => observerCache r' cachedIndex = Some (cachedFunc r r'))
+                 (MutatorMethods idx r n))
+          (refines_cached : forall m r n,
+                              AddValidCacheInv cachedSet ObserverMethods m ->
+                              AddValidCacheInv cachedSet ObserverMethods r ->
+                              observerCache r cachedIndex = Some (cachedFunc m r) ->
+                              refine (ObserverMethods cachedIndex (origRep r) n)
+                                     (ret (cachedFunc m r n)))
+    : (forall idx  r n, AddValidCacheInv cachedSet ObserverMethods r ->
+                        computational_inv (AddValidCacheInv cachedSet ObserverMethods)
+                                          (MutatorMethods idx r n)) ->
+      forall (idx : MutatorIndex) r n,
+        AddValidCacheInv cachedSet ObserverMethods r ->
+        computational_inv
+          (AddValidCacheInv cachedSet ObserverMethods)
+          (UpdateCachedObv MutatorMethods cachedIndex cachedFunc idx r n).
+    Proof.
+      unfold UpdateCachedObv, computational_inv; intros.
+      unfold computational_inv in FuncEqv.
+      apply_in_hyp computes_to_inv; destruct_ex; intuition;
+      apply_in_hyp computes_to_inv; destruct_ex; subst; eapply UpdateValidCacheInv; eauto.
     Qed.
 
   End addCache.
 
   Arguments ValidCache _ _ _ _ _ / .
 
+  (* Adding the empty cache to an ADT. *)
   Program Definition addCache adt : ADT :=
     {| Rep := cachedObservers (Rep adt) (ObserverIndex adt);
-       RepInv := AddValidCacheInv (RepInv adt) (fun _ => false)
-                                  (fun idx r => ObserverMethods adt idx (origRep r)) ;
+       RepInv := AddValidCacheInv (RepInv adt) (fun _ => false) (ObserverMethods adt);
        ObserverIndex := ObserverIndex adt;
        MutatorIndex := MutatorIndex adt;
        ObserverMethods idx r n :=
@@ -474,8 +480,8 @@ Section GeneralRefinements.
 
   Arguments addCache adt /.
   Arguments Rep _ /.
-  Arguments AddValidCacheInv _ _ _ _ _ _ / .
 
+  (* Adding the empty cache is a valid refinement. *)
   Lemma refines_addCache : forall adt, refineADT adt (addCache adt).
   Proof.
     intros; destruct adt; simpl; econstructor 1 with
@@ -486,47 +492,10 @@ Section GeneralRefinements.
     - intros; autorewrite with refine_monad; rewrite refineEquiv_under_bind with (g := @Return _);
       intros; autorewrite with refine_monad; reflexivity.
     - intros; autorewrite with refine_monad; unfold id; intuition.
-    - intros; inversion_by computes_to_inv; subst; intuition.
+    - unfold AddValidCacheInv; intros; inversion_by computes_to_inv; subst; intuition.
   Qed.
 
-  Definition addCachedObserver
-          {Rep ObserverIndex MutatorIndex}
-          (cachedSet : ObserverIndex -> bool)
-          (repInv : Ensemble Rep)
-          ObserverMethods
-          (ObserverIndex_eq : forall idx idx' : ObserverIndex,
-                                   {idx = idx'} + {idx <> idx'})
-          (cachedIndex : ObserverIndex)
-          (cachedObserverMethods : ObserverIndex -> observerMethodType (cachedObservers Rep ObserverIndex))
-          (MutatorMethods : MutatorIndex -> mutatorMethodType (cachedObservers Rep ObserverIndex))
-          (MutatorMethodsInv :
-             forall idx r n, AddValidCacheInv repInv cachedSet ObserverMethods r ->
-                             computational_inv (AddValidCacheInv repInv cachedSet ObserverMethods)
-                                       (MutatorMethods idx r n))
-          cachedFunc
-          refines_cached
-          refines_Observers
-          cachedObserver_OK
-  : ADT :=
-    {| Rep := cachedObservers Rep ObserverIndex;
-       RepInv := AddValidCacheInv repInv (insertCachedSet _ cachedSet cachedIndex)
-                                  cachedObserverMethods;
-       ObserverIndex := ObserverIndex;
-       MutatorIndex := MutatorIndex;
-       ObserverMethods idx r n :=
-         match observerCache r idx with
-             Some func => ret (func n)
-           | _ => cachedObserverMethods idx r n
-         end;
-       MutatorMethods idx r n :=
-         ReplaceCachedObv ObserverIndex_eq MutatorMethods cachedIndex cachedFunc idx
-                          r n;
-       MutatorMethodsInv :=
-         @ReplaceCacheInv Rep ObserverIndex ObserverIndex_eq repInv
-                          MutatorIndex cachedSet cachedObserverMethods ObserverMethods
-                          MutatorMethods cachedIndex cachedFunc refines_cached refines_Observers
-                          cachedObserver_OK MutatorMethodsInv
-    |}.
+  (* ADT which includes new cache value. *)
 
   Lemma refine_under_bind X Y (P : Ensemble X) (f g : X -> Comp Y) x y
         (compInv : computational_inv P x)
@@ -541,335 +510,307 @@ Section GeneralRefinements.
     eapply eqv_f_g; eauto.
   Qed.
 
-  Print Implicit addCachedObserver.
+  Definition addCachedObserver
+          {Rep ObserverIndex MutatorIndex}
+          (cachedSet : ObserverIndex -> bool)
+          (repInv : Ensemble Rep)
+          ObserverMethods
+          (ObserverIndex_eq : forall idx idx' : ObserverIndex,
+                                   {idx = idx'} + {idx <> idx'})
+          (cachedIndex : ObserverIndex)
+          NInCachedSet
+          (MutatorMethods : MutatorIndex -> mutatorMethodType (cachedObservers Rep ObserverIndex))
 
-  Lemma refine_ret_eq : forall (A : Type) (a a' : A),
-                          refine (ret a) (ret a') -> a = a'.
+          (MutatorMethodsInv :
+             forall idx r n, AddValidCacheInv repInv cachedSet ObserverMethods r ->
+                             computational_inv (AddValidCacheInv repInv cachedSet ObserverMethods)
+                                       (MutatorMethods idx r n))
+          cachedFunc
+          refines_cached
+  : ADT :=
+    {| Rep := cachedObservers Rep ObserverIndex;
+       RepInv := AddValidCacheInv repInv (insertCachedSet _ cachedSet cachedIndex)
+                                  ObserverMethods;
+       ObserverIndex := ObserverIndex;
+       MutatorIndex := MutatorIndex;
+       ObserverMethods idx r := ObserverMethods idx (origRep r);
+       MutatorMethods idx r n :=
+         AddCachedObv ObserverIndex_eq MutatorMethods cachedIndex cachedFunc idx
+                          r n;
+       MutatorMethodsInv :=
+         @AddCachedInv Rep ObserverIndex ObserverIndex_eq repInv
+                          MutatorIndex cachedSet ObserverMethods
+                          MutatorMethods cachedIndex NInCachedSet cachedFunc refines_cached
+                          MutatorMethodsInv
+    |}.
+
+  Hint Resolve UpdateValidCacheInv.
+  Hint Resolve RemoveValidCacheInv.
+  Hint Resolve AddValidCacheInv'.
+
+  (* [addCachedObserver] from above is a valid refinement *)
+
+  Lemma RemoveAddCachedValue
+        {Rep ObserverIndex}
+  : forall ObserverIndex_eq
+           cachedSet
+           (cachedIndex : ObserverIndex)
+           (repInv : Ensemble Rep)
+           ObserverMethods r cachedFunc
+           (NInCachedSet : cachedSet cachedIndex = false),
+          AddValidCacheInv repInv cachedSet ObserverMethods r ->
+           r = removeCachedValue ObserverIndex_eq cachedIndex
+                             (AddCachedValue ObserverIndex_eq cachedIndex r cachedFunc).
   Proof.
-    unfold refine; intros; generalize (H a' (ReturnComputes _)).
-    intros; inversion_by computes_to_inv; auto.
+    unfold removeCachedValue, AddCachedValue, AddValidCacheInv; simpl; intros; intuition.
+    destruct r; simpl; f_equal; apply functional_extensionality.
+    intros; destruct (ObserverIndex_eq x cachedIndex); subst; eauto.
+    generalize (H1 cachedIndex); rewrite NInCachedSet; auto.
   Qed.
+  Hint Resolve RemoveAddCachedValue.
 
-  Theorem refines_addCachedObserver
+  Theorem refinesAddCachedObserver
           {Rep ObserverIndex MutatorIndex}
           cachedSet
           (repInv : Ensemble Rep)
           ObserverMethods
-          cachedObserverMethods
           MutatorMethods
-          (MutatorMethodsInv :
-             forall (idx : MutatorIndex) (r : cachedObservers Rep ObserverIndex)
-                    (n : nat),
-               AddValidCacheInv cachedSet ObserverMethods repInv r ->
-               computational_inv (AddValidCacheInv cachedSet ObserverMethods repInv)
-                                 (MutatorMethods idx r n))
+          MutatorMethodsInv
           ObserverIndex_eq
           cachedIndex
+          NInCachedSet
           cachedFunc
           refines_cached
-          refines_cached'
-          refines_Observers
-  : cachedSet cachedIndex = true ->
-    refineADT {| Rep := cachedObservers Rep ObserverIndex;
-                 RepInv := AddValidCacheInv cachedSet ObserverMethods repInv;
+  : refineADT {| Rep := cachedObservers Rep ObserverIndex;
+                 RepInv := AddValidCacheInv repInv cachedSet ObserverMethods;
                   ObserverIndex := ObserverIndex;
                   MutatorIndex := MutatorIndex;
-                  ObserverMethods := cachedObserverMethods;
+                  ObserverMethods idx r := ObserverMethods idx (origRep r);
                   MutatorMethods := MutatorMethods;
                   MutatorMethodsInv := MutatorMethodsInv
                |}
-              (addCachedObserver ObserverIndex_eq cachedIndex
-                                 cachedObserverMethods MutatorMethods
-                                 MutatorMethodsInv cachedFunc
-                                 refines_cached refines_cached' refines_Observers).
+              (addCachedObserver ObserverIndex_eq cachedIndex NInCachedSet
+                                 MutatorMethods MutatorMethodsInv cachedFunc refines_cached).
   Proof.
-    idtac.
     unfold addCachedObserver.
-    econstructor 1 with (abs := fun nm : cachedObservers Rep ObserverIndex =>
-                                  if (cachedSet cachedIndex) then
-                                    ret nm
-                                  else
-                                    ret {| origRep := origRep nm;
-                                           observerCache idx :=
-                                             if ObserverIndex_eq idx cachedIndex then
-                                               None
-                                             else observerCache nm idx |})
-                          (mutatorMap := @id MutatorIndex)
-                          (observerMap := @id ObserverIndex); simpl.
-    - intros; rewrite H; autorewrite with refine_monad; unfold ReplaceCachedObv.
-      unfold insertCachedSet in H0.
-      unfold AddValidCacheInv in MutatorMethodsInv.
-      rewrite <- refineEquiv_unit_bind; apply refine_under_bind with
-                                        (P := AddValidCacheInv cachedSet ObserverMethods repInv); intros.
-      + eapply MutatorMethodsInv; simpl; intuition.
-        generalize (H2 idx0).
-        destruct (ObserverIndex_eq idx0 cachedIndex); intros; eauto.
-        subst; rewrite H.
-        destruct H0 as [func [func_eq refine_func] ]; eexists; split; eauto.
-        intros; rewrite refines_Observers; eauto.
-        find_if_inside; destruct_ex; eexists; intuition; eauto.
-        rewrite refines_Observers; eauto.
-      + eapply MutatorMethodsInv; simpl; intuition.
-        generalize (H2 idx0).
-        destruct (ObserverIndex_eq idx0 cachedIndex); intros; eauto.
-        subst; rewrite H.
-        destruct H0 as [func [func_eq refine_func] ]; eexists; split; eauto.
-        intros; rewrite refines_Observers; eauto.
-        find_if_inside; destruct_ex; eexists; intuition; eauto.
-        rewrite refines_Observers; eauto.
-      + simpl in H1; intuition; destruct x; simpl in *|-*.
-        assert (observerCache0 = fun idx0 =>
-                                   if ObserverIndex_eq idx0 cachedIndex
-                                   then Some (cachedFunc origRep0)
-                                   else observerCache0 idx0).
-        * apply functional_extensionality; intros.
-          find_if_inside; subst; eauto.
-          generalize (H4 cachedIndex); rewrite H; intros; destruct_ex;
-          intuition.
-          rewrite H5.
-          apply f_equal; apply functional_extensionality; intros.
-          generalize (refines_cached' {| origRep := origRep0; observerCache := observerCache0 |} _ _ H5 x0); intros.
-          destruct H1.
-          rewrite refines_cached in H1.
-          rewrite (refine_ret_eq H1); auto.
-        * rewrite H1 at 1; reflexivity.
-      + reflexivity.
-    - intros; rewrite H; autorewrite with refine_monad;
-      intuition; unfold insertCachedSet in H2.
-      generalize (H2 idx); simpl.
-      destruct (ObserverIndex_eq idx cachedIndex); intros; eauto.
-      subst.
-      unfold id; destruct H0 as [func [func_eq refine_func] ]; rewrite func_eq;
-      eauto.
-      generalize (refines_cached' new_state idx).
-      unfold id; destruct (observerCache new_state idx).
-      intros; rewrite H3; eauto; reflexivity.
-      intros; reflexivity.
-    - rewrite H; intros; inversion_by computes_to_inv; subst; intuition.
-      unfold insertCachedSet in H3; generalize (H3 idx); simpl.
-      destruct (ObserverIndex_eq idx cachedIndex); intros; eauto;
-      subst.
-      rewrite H; destruct_ex; eexists; intuition; eauto.
-      rewrite refines_Observers; eauto.
-      destruct (cachedSet idx); eauto.
-      destruct_ex; eexists; intuition; eauto.
-      rewrite refines_Observers; eauto.
-  Qed.
-
-  Theorem refines_addCachedObserver'
-          {Rep ObserverIndex MutatorIndex}
-          cachedSet
-          (repInv : Ensemble Rep)
-          ObserverMethods
-          cachedObserverMethods
-          MutatorMethods
-          (MutatorMethodsInv :
-             forall (idx : MutatorIndex) (r : cachedObservers Rep ObserverIndex)
-                    (n : nat),
-               AddValidCacheInv cachedSet ObserverMethods repInv r ->
-               computational_inv (AddValidCacheInv cachedSet ObserverMethods repInv)
-                                 (MutatorMethods idx r n))
-          ObserverIndex_eq
-          cachedIndex
-          cachedFunc
-          refines_cached
-          refines_cached'
-          refines_Observers
-  : cachedSet cachedIndex = false ->
-    refineADT {| Rep := cachedObservers Rep ObserverIndex;
-                 RepInv := AddValidCacheInv cachedSet ObserverMethods repInv;
-                  ObserverIndex := ObserverIndex;
-                  MutatorIndex := MutatorIndex;
-                  ObserverMethods := cachedObserverMethods;
-                  MutatorMethods := MutatorMethods;
-                  MutatorMethodsInv := MutatorMethodsInv
-               |}
-              (addCachedObserver ObserverIndex_eq cachedIndex
-                                 cachedObserverMethods MutatorMethods
-                                 MutatorMethodsInv cachedFunc
-                                 refines_cached refines_cached' refines_Observers).
-  Proof.
-    idtac.
-    unfold addCachedObserver.
-    econstructor 1 with (abs := fun nm : cachedObservers Rep ObserverIndex =>
-                                  if (cachedSet cachedIndex) then
-                                    ret nm
-                                  else
-                                    ret {| origRep := origRep nm;
-                                           observerCache idx :=
-                                             if ObserverIndex_eq idx cachedIndex then
-                                               None
-                                             else observerCache nm idx |})
-                          (mutatorMap := @id MutatorIndex)
-                          (observerMap := @id ObserverIndex); simpl.
-    - intros; rewrite H; autorewrite with refine_monad; unfold ReplaceCachedObv.
-      unfold insertCachedSet in H0.
-      unfold AddValidCacheInv in MutatorMethodsInv.
-      autorewrite with refine_monad.
-      generalize MutatorMethodsInv; simpl.
-      rewrite <- refineEquiv_unit_bind. apply refine_under_bind with
-                                        (P := AddValidCacheInv cachedSet ObserverMethods repInv); intros.
-      + eapply MutatorMethodsInv; simpl; intuition.
-        generalize (H2 idx0).
-        destruct (ObserverIndex_eq idx0 cachedIndex); intros; eauto.
-        subst; rewrite H.
-        destruct H0 as [func [func_eq refine_func] ]; eexists; split; eauto.
-        intros; rewrite refines_Observers; eauto.
-        find_if_inside; destruct_ex; eexists; intuition; eauto.
-        rewrite refines_Observers; eauto.
-      + simpl in H1; intuition; destruct x; simpl in *|-*.
-        assert (observerCache0 = fun idx0 =>
-                                   if ObserverIndex_eq idx0 cachedIndex
-                                   then Some (cachedFunc origRep0)
-                                   else observerCache0 idx0).
-        * apply functional_extensionality; intros.
-          find_if_inside; subst; eauto.
-          generalize (H4 cachedIndex); rewrite H; intros; destruct_ex;
-          intuition.
-          rewrite H5.
-          apply f_equal; apply functional_extensionality; intros.
-          generalize (refines_cached' {| origRep := origRep0; observerCache := observerCache0 |} _ _ H5 x0); intros.
-          destruct H1.
-          rewrite refines_cached in H1.
-          rewrite (refine_ret_eq H1); auto.
-        * rewrite H1 at 1; reflexivity.
-    - intros; rewrite H; autorewrite with refine_monad;
-      intuition; unfold insertCachedSet in H2.
-      generalize (H2 idx); simpl.
-      destruct (ObserverIndex_eq idx cachedIndex); intros; eauto.
-      subst.
-      unfold id; destruct H0 as [func [func_eq refine_func] ]; rewrite func_eq;
-      eauto.
-      generalize (refines_cached' new_state idx).
-      unfold id; destruct (observerCache new_state idx).
-      intros; rewrite H3; eauto; reflexivity.
-      intros; reflexivity.
-    - rewrite H; intros; inversion_by computes_to_inv; subst; intuition.
-      unfold insertCachedSet in H3; generalize (H3 idx); simpl.
-      destruct (ObserverIndex_eq idx cachedIndex); intros; eauto;
-      subst.
-      rewrite H; destruct_ex; eexists; intuition; eauto.
-      rewrite refines_Observers; eauto.
-      destruct (cachedSet idx); eauto.
-      destruct_ex; eexists; intuition; eauto.
-      rewrite refines_Observers; eauto.
-  Qed.
-
-rewrite func
-
-eexists; split; eauto.
-      intros; rewrite refines_Observers; eauto.
-      find_if_inside; destruct_ex; eexists; intuition; eauto.
-        rewrite refines_Observers; eauto.
-      unfold insertCachedSet in H0.
-      unfold insertO
-      destruct (observerCache new_state (id idx)).
-      simpl.
-      case (cachedSet cachedIndex).
-      find_if_inside; autorewrite with refine_monad.
-
-      generalize (MutatorMethodsInv idx _ n H); simpl; intros.
-      unfold refine; intros v H3; apply computes_to_inv in H3; destruct_ex; intuition.
-      apply computes_to_inv in H4; subst.
-      destruct (H0 _ H); destruct x; simpl in *.
-      assert (observerCache0 = fun idx0 : ObserverIndex =>
-                      if ObserverIndex_eq idx0 cachedIndex
-                      then Some (cachedFunc origRep0)
-                      else observerCache0 idx0).
-      apply functional_extensionality; intros.
-
-
-      setoid_replace (fun idx0 : ObserverIndex =>
-                        if ObserverIndex_eq idx0 cachedIndex
-                      then Some (cachedFunc origRep0)
-                      else observerCache0 idx0) with observerCache0.
-
-
-
-      rewrite <- refineEquiv_unit_bind; apply refine_under_bind; intros.
-      destruct x; simpl.
-      apply
-      rewrite (proj1 (refineEquiv_under_bind _ (@Return _) _ _)); autorewrite with refine_monad.
-      reflexivity.
-      intuition; split; simpl.
-      assert (observerCache0 = fun idx0 : ObserverIndex =>
-                         if ObserverIndex_eq idx0 cachedIndex
-                         then Some (cachedFunc origRep0)
-                         else observerCache0 idx0).
-      apply functional_extensionality; intros; find_if_inside.
-
-
-      intros; autorewrite with refine_monad.
-
-
-  Theorem refines_cached_Observer adt
-          (ObserverIndex_eq : forall idx idx' : ObserverIndex adt,
-                                {idx = idx'} + {idx <> idx'})
-          (cachedIndex : ObserverIndex adt) (* Index of the Observer to Cache *)
-          (cached_func : Rep adt -> nat -> nat)
-          (refines_cached : forall om n,
-                              refine (ObserverMethods adt cachedIndex om n)
-                                     (ret (cached_func om n)))
-
-  :
-    refineADT adt
-              {| Rep := {om : (Rep adt) * (nat -> nat) |
-                           forall n, refine (ObserverMethods adt cachedIndex (fst om) n) (ret (snd om n))};
-                 ObserverMethods idx nm n :=
-                   if (ObserverIndex_eq idx cachedIndex) then
-                     ret ((snd (proj1_sig nm)) n)
-                   else
-                     ObserverMethods adt idx (fst (proj1_sig nm)) n;
-                 MutatorMethods idx nm n :=
-                   origRep <- (MutatorMethods adt idx (fst (proj1_sig nm)) n);
-                 ret (exist
-                        (fun om => forall n, refine (ObserverMethods adt cachedIndex (fst om) n) (ret (snd om n)))
-                        (origRep, cached_func origRep)
-                        (refines_cached origRep))|}.
-  Proof.
-    destruct adt;
     econstructor 1 with
-    (abs := fun om : {om | forall n, refine (ObserverMethods cachedIndex (fst om) n) (ret (snd om n))} =>
-              ret (fst (proj1_sig om)))
-      (mutatorMap := @id MutatorIndex)
-      (observerMap := @id ObserverIndex); simpl; intros.
-    - autorewrite with refine_monad; rewrite refineEquiv_under_bind with (g := @Return _);
-      intros; autorewrite with refine_monad; reflexivity.
-    - autorewrite with refine_monad; find_if_inside;
-      [ destruct new_state; subst; auto
-      | reflexivity].
+    (abs := fun nm : cachedObservers Rep _ =>
+              ret (removeCachedValue ObserverIndex_eq cachedIndex nm))
+      (mutatorMap := @id MutatorIndex) (* Have to specify MutatorIndex in order to
+                                        unify- 8.5 might fix this? *)
+      (observerMap := @id ObserverIndex); simpl; unfold id; intros.
+    - unfold AddCachedObv; simpl; autorewrite with refine_monad.
+      rewrite <- refineEquiv_unit_bind.
+      apply refine_under_bind with
+      (P := AddValidCacheInv repInv cachedSet ObserverMethods); intros; eauto.
+      + eapply refineCompInv; eauto; autorewrite with refine_monad;
+        reflexivity.
+      + autorewrite with refine_monad; destruct x; simpl;
+        f_equiv; eauto.
+      + autorewrite with refine_monad; reflexivity.
+    - autorewrite with refine_monad; simpl; reflexivity.
+    - apply computes_to_inv in H0; subst; eauto.
   Qed.
 
-  Theorem refines_cached_computational_Observer adt
-          (ObserverIndex_eq : forall idx idx' : ObserverIndex adt,
-                                {idx = idx'} + {idx <> idx'})
-          (cachedIndex : ObserverIndex adt) (* Index of the Observer to Cache *)
-          (computational_Index : forall om n, is_computational (ObserverMethods adt cachedIndex om n))
-  :
-    refineADT adt
-              {| Rep := {om : (Rep adt) * (nat -> nat) |
-                           forall n, refine (ObserverMethods adt cachedIndex (fst om) n) (ret (snd om n))};
-                 MutatorIndex := MutatorIndex adt;
-                 ObserverIndex := ObserverIndex adt;
-                 ObserverMethods idx nm n :=
-                   if (ObserverIndex_eq idx cachedIndex) then
-                     ret ((snd (proj1_sig nm)) n)
-                   else
-                     ObserverMethods adt idx (fst (proj1_sig nm)) n;
-                 MutatorMethods idx nm n :=
-                   origRep <- (MutatorMethods adt idx (fst (proj1_sig nm)) n);
-                 ret (exist
-                        (fun om => forall n, refine (ObserverMethods adt cachedIndex (fst om) n) (ret (snd om n)))
-                        (origRep, fun n => proj1_sig (is_computational_val (computational_Index origRep n)))
-                        (fun n => refine_is_computational (computational_Index origRep n))) |}.
+  Lemma refine_is_computational_val
+    {Rep ObserverIndex}
+    (ObserverMethods : ObserverIndex -> Rep -> nat -> Comp nat)
+    (cachedIndex : ObserverIndex)
+    (CompCachedIndex : forall (r : cachedObservers Rep ObserverIndex)
+            n, is_computational (ObserverMethods cachedIndex (origRep r) n))
+  : forall r n, refine (ObserverMethods cachedIndex (origRep r) n)
+                       (ret (is_computational_val (CompCachedIndex r n))).
   Proof.
-    apply refines_cached_Observer.
+    unfold refine; simpl in *|-*; intros.
+    inversion_by computes_to_inv; subst.
+    apply is_computational_val_computes_to.
   Qed.
 
-(** If you mutate and then observe, you can do it before or after
-    refinement.  I'm not actually sure this isn't obvious.  *)
+  Definition refinesComputationalAddCachedObserver
+          {Rep ObserverIndex MutatorIndex}
+          cachedSet
+          (repInv : Ensemble Rep)
+          ObserverMethods
+          MutatorMethods
+          MutatorMethodsInv
+          (ObserverIndex_eq : forall idx idx' : ObserverIndex,
+                                  {idx = idx'} + {idx <> idx'})
+          (cachedIndex : ObserverIndex)
+          (NInCachedSet : cachedSet cachedIndex = false)
+          (CompCachedIndex : forall (r : cachedObservers Rep ObserverIndex)
+                  n, is_computational (ObserverMethods cachedIndex (origRep r) n))
+  : refineADT {| Rep := cachedObservers Rep ObserverIndex;
+                           RepInv := AddValidCacheInv repInv cachedSet ObserverMethods;
+                           ObserverIndex := ObserverIndex;
+                           MutatorIndex := MutatorIndex;
+                           ObserverMethods idx r := ObserverMethods idx (origRep r);
+                           MutatorMethods := MutatorMethods;
+                           MutatorMethodsInv := MutatorMethodsInv |}
+              (addCachedObserver ObserverIndex_eq cachedIndex NInCachedSet
+                                 MutatorMethods MutatorMethodsInv _
+                                 (refine_is_computational_val _ _ CompCachedIndex)).
+  Proof.
+    apply refinesAddCachedObserver.
+  Qed.
 
-Lemma ADTRefinementOk
+  (* ADT which updates an existing cached value. *)
+
+  Definition UpdateCachedObserver
+          {Rep ObserverIndex MutatorIndex}
+          (cachedSet : ObserverIndex -> bool)
+          (repInv : Ensemble Rep)
+          ObserverMethods
+          (ObserverIndex_eq : forall idx idx' : ObserverIndex,
+                                   {idx = idx'} + {idx <> idx'})
+          (cachedIndex : ObserverIndex)
+          InCachedSet
+          (MutatorMethods : MutatorIndex -> mutatorMethodType (cachedObservers Rep ObserverIndex))
+          (MutatorMethodsInv :
+             forall idx r n, AddValidCacheInv repInv cachedSet ObserverMethods r ->
+                             computational_inv (AddValidCacheInv repInv cachedSet ObserverMethods)
+                                       (MutatorMethods idx r n))
+          cachedFunc
+          refines_cached
+          FuncEqv
+  : ADT :=
+    {| Rep := cachedObservers Rep ObserverIndex;
+       RepInv := AddValidCacheInv repInv cachedSet ObserverMethods;
+       ObserverIndex := ObserverIndex;
+       MutatorIndex := MutatorIndex;
+       ObserverMethods idx r := ObserverMethods idx (origRep r);
+       MutatorMethods idx r n :=
+         UpdateCachedObv ObserverIndex_eq MutatorMethods cachedIndex cachedFunc idx
+                          r n;
+       MutatorMethodsInv :=
+         @UpdateCachedInv Rep ObserverIndex ObserverIndex_eq repInv
+                          MutatorIndex cachedSet ObserverMethods
+                          MutatorMethods cachedIndex InCachedSet cachedFunc refines_cached
+                          FuncEqv MutatorMethodsInv
+    |}.
+
+  Lemma split_computational_inv
+        X (P Q : Ensemble X) x
+        (compInvP : computational_inv P x)
+        (compInvQ : computational_inv Q x)
+        : computational_inv (fun r : X => P r /\ Q r) x.
+  Proof.
+    simpl in *|-*; eauto.
+  Qed.
+  Hint Resolve split_computational_inv.
+
+  (* [updateCachedObserver] from above is a valid refinement *)
+
+  Theorem refinesUpdateCachedObserver
+          {Rep ObserverIndex MutatorIndex}
+          cachedSet
+          (repInv : Ensemble Rep)
+          ObserverMethods
+          MutatorMethods
+          MutatorMethodsInv
+          ObserverIndex_eq
+          cachedIndex
+          InCachedSet
+          cachedFunc
+          refines_cached
+          FuncEqv
+  : refineADT {| Rep := cachedObservers Rep ObserverIndex;
+                 RepInv := AddValidCacheInv repInv cachedSet ObserverMethods;
+                  ObserverIndex := ObserverIndex;
+                  MutatorIndex := MutatorIndex;
+                  ObserverMethods idx r := ObserverMethods idx (origRep r);
+                  MutatorMethods := MutatorMethods;
+                  MutatorMethodsInv := MutatorMethodsInv
+               |}
+              (UpdateCachedObserver ObserverIndex_eq cachedIndex InCachedSet
+                                 MutatorMethods MutatorMethodsInv cachedFunc refines_cached FuncEqv).
+  Proof.
+    unfold UpdateCachedObserver.
+    econstructor 1 with
+    (abs := fun nm : cachedObservers Rep ObserverIndex => ret nm)
+      (mutatorMap := @id MutatorIndex) (* Have to specify MutatorIndex in order to
+                                        unify- 8.5 might fix this? *)
+      (observerMap := @id ObserverIndex); simpl; unfold id; intros.
+    - unfold UpdateCachedObv; simpl; autorewrite with refine_monad.
+      rewrite <- refineEquiv_unit_bind at 1.
+      apply refine_under_bind with
+      (P := fun r => AddValidCacheInv repInv cachedSet ObserverMethods r /\
+              observerCache r cachedIndex = Some (cachedFunc new_state r)); intros; eauto; try reflexivity.
+      + destruct x; unfold AddCachedValue; f_equiv; f_equal; intuition;
+        simpl in *|-*.
+        apply functional_extensionality.
+        intros; destruct (ObserverIndex_eq x cachedIndex); subst; eauto.
+    - autorewrite with refine_monad; reflexivity.
+    - apply computes_to_inv in H0; subst; eauto.
+  Qed.
+
+  (* Finally, we can always change the observers to use the cache. *)
+
+  Definition CacheObservers
+          {Rep ObserverIndex MutatorIndex}
+          (cachedSet : ObserverIndex -> bool)
+          (repInv : Ensemble Rep)
+          ObserverMethods
+          (ObserverIndex_eq : forall idx idx' : ObserverIndex,
+                                   {idx = idx'} + {idx <> idx'})
+          (MutatorMethods : MutatorIndex -> mutatorMethodType (cachedObservers Rep ObserverIndex))
+          MutatorMethodsInv
+  : ADT :=
+    {| Rep := cachedObservers Rep ObserverIndex;
+       RepInv := AddValidCacheInv repInv cachedSet ObserverMethods;
+       ObserverIndex := ObserverIndex;
+       MutatorIndex := MutatorIndex;
+       ObserverMethods idx r :=
+         match observerCache r idx with
+           | Some f => fun n => ret (f n)
+           | None => ObserverMethods idx (origRep r)
+         end;
+       MutatorMethods := MutatorMethods;
+       MutatorMethodsInv := MutatorMethodsInv
+    |}.
+
+  (* [CacheObservers] from above is a valid refinement *)
+
+  Theorem refinesCacheObservers
+          {Rep ObserverIndex MutatorIndex}
+          cachedSet
+          (repInv : Ensemble Rep)
+          ObserverMethods
+          MutatorMethods
+          MutatorMethodsInv
+          ObserverIndex_eq
+  : refineADT {| Rep := cachedObservers Rep ObserverIndex;
+                 RepInv := AddValidCacheInv repInv cachedSet ObserverMethods;
+                 ObserverIndex := ObserverIndex;
+                 MutatorIndex := MutatorIndex;
+                 ObserverMethods idx r := ObserverMethods idx (origRep r);
+                 MutatorMethods := MutatorMethods;
+                 MutatorMethodsInv := MutatorMethodsInv
+               |}
+              (CacheObservers ObserverIndex_eq MutatorMethods
+                              MutatorMethodsInv).
+  Proof.
+    econstructor 1 with
+    (abs := fun nm : cachedObservers Rep ObserverIndex => ret nm)
+      (mutatorMap := @id MutatorIndex) (* Have to specify MutatorIndex in order to
+                                        unify- 8.5 might fix this? *)
+      (observerMap := @id ObserverIndex); simpl; unfold id; intros.
+    - autorewrite with refine_monad; reflexivity.
+    - autorewrite with refine_monad; caseEq (observerCache new_state idx); try reflexivity.
+      unfold AddValidCacheInv in *|-*; intuition; simpl in *|-*.
+      generalize (H2 idx); find_if_inside; intros.
+      + destruct_ex; intuition; substss; injections; eauto.
+      + destruct_ex; intuition; substss; discriminate.
+    -  apply computes_to_inv in H0; subst; eauto.
+  Qed.
+
+(** TODO: Update this to reflect the new definition of ADT + ADT
+    Refinement *)
+
+(* If you mutate and then observe, you can do it before or after
+    refinement.  I'm not actually sure this isn't obvious.
+ *)
+
+(* Lemma ADTRefinementOk
       (old new : ADT)
       (new_initial_value : Comp (Rep new))
       abs mutatorMap observerMap H H'
@@ -888,4 +829,6 @@ Proof.
   apply refine_bind; [ reflexivity | ].
   intro.
   interleave_autorewrite_refine_monad_with setoid_rewrite_hyp.
-Qed.
+Qed. *)
+
+End GeneralRefinements.

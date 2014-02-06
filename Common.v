@@ -282,10 +282,6 @@ Proof.
   congruence.
 Qed.
 
-match goal with
-    | [ H : _ |- _] => inversion H; fail
-end
-
 Ltac find_if_inside :=
   match goal with
     | [ |- context[if ?X then _ else _] ] => destruct X
@@ -297,6 +293,20 @@ Ltac substs :=
            | [ H : ?x = ?y |- _ ]
              => first [ subst x | subst y ]
          end.
+
+Ltac substss :=
+  repeat match goal with
+           | [ H : ?x = _ ,
+                   H0 : ?x = _ |- _ ]
+             => rewrite H in H0
+         end.
+
+Ltac injections :=
+  repeat match goal with
+           | [ H : _ = _ |- _ ]
+             => injection H; intros; subst; clear H
+         end.
+
 
 Ltac inversion_by rule :=
   progress repeat first [ progress destruct_ex
@@ -349,6 +359,8 @@ Ltac clearbodies :=
            | [ H := _ |- _ ] => clearbody H
          end.
 
+Ltac caseEq x := generalize (refl_equal x); pattern x at -1; case x; intros.
+
 Axiom IsHProp : Type -> Type.
 Existing Class IsHProp.
 Instance : forall A, IsHProp (IsHProp A).
@@ -376,7 +388,7 @@ Arguments eisadj {A B} f {_} _.
 Definition apD10 {A} {B:A->Type} {f g : forall x, B x} (h:f=g)
   : forall x, f x = g x
   := fun x => match h with eq_refl => eq_refl end.
- 
+
 Class Funext :=
   { isequiv_apD10 :> forall (A : Type) (P : A -> Type) f g, IsEquiv (@apD10 A P f g) }. *)
 
@@ -392,8 +404,5 @@ Admitted.
 Record hProp := hp { hproptype :> Type ; isp : IsHProp hproptype}.
 Existing Instance isp.
 
-Instance : forall A : hProp, IsHProp A. 
-Admitted. 
-
-
-
+Instance : forall A : hProp, IsHProp A.
+Admitted.

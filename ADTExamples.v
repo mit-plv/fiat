@@ -68,9 +68,10 @@ Section BinOpImpl.
 
   Arguments bin_op_impl / .
 
-  Definition NatBinOpImpl
+  Program Definition NatBinOpImpl
   : ADT
-    := {| Model := list nat;
+    := {| Rep := list nat;
+          RepInv m := True;
           MutatorIndex := unit;
           ObserverIndex := unit;
           MutatorMethods := fun _ => add_impl;
@@ -191,12 +192,13 @@ Section BinOpRefine.
   : refineADT (NatBinOpSpec opSpec defaultSpec) (NatBinOpImpl op defaultValue).
   Proof.
     unfold NatBinOpSpec.
-    rewrite (refines_model_pickImpl absList2Multiset).
+    rewrite (refines_rep_pickImpl absList2Multiset).
     econstructor 1 with (abs := @Return (list nat))
                           (mutatorMap := @id unit)
                           (observerMap := @id unit); simpl; intros.
     interleave_autorewrite_refine_monad_with ltac:(apply refine_add_impl).
     interleave_autorewrite_refine_monad_with ltac:(apply refine_bin_op_impl).
+    auto.
   Qed.
 
 End BinOpRefine.
@@ -277,6 +279,32 @@ Section ImplExamples.
   Qed.
 
   Hint Resolve min_trans.
+  Hint Resolve min_comm.
+
+  Lemma iscomputationalNatBinOpImpl
+  : forall defaultValue
+           (r : cachedObservers (Rep (NatBinOpImpl min defaultValue)) ())
+           (n : nat),
+      is_computational
+        (ObserverMethods (NatBinOpImpl min defaultValue) () (origRep r) n).
+  Proof.
+    constructor.
+  Defined.
+
+  Lemma ObserverIndexUnit_eq : forall idx idx' : (),
+                                 {idx = idx'} + {idx <> idx'}.
+  Proof.
+    intros; destruct idx, idx'; eauto.
+  Defined.
+  Hint Resolve ObserverIndexUnit_eq.
+
+  Definition finiteDifferenceFold defaultValue (m r : cachedObservers (list nat) ()) (m'' : nat) :=
+    match origRep r, (observerCache m ()) with
+      | r' :: [], Some m' => r'
+      | r' :: _, Some m' => min (m' r') r'
+      | _, _ => defaultValue
+    end.
+  Arguments finiteDifferenceFold _ _ _ _.
 
   Definition MinCollection (defaultValue : nat) :
     { Rep : ADT
@@ -284,21 +312,78 @@ Section ImplExamples.
   Proof.
     eexists.
     unfold NatLower.
-    rewrite refines_NatBinOp with
+    apply refines_NatBinOp with
              (op := min)
-               (defaultValue := defaultValue),
-             refines_cached_computational_Observer
-             with
-             (adt := NatBinOpImpl min defaultValue)
-      (cachedIndex := tt); t.
-    rewrite min_assoc; auto.
-    edestruct min_dec; eauto.
-    Grab Existential Variables.
-    simpl; unfold bin_op_impl; econstructor.
-    intros; destruct idx; destruct idx'; auto.
+               (defaultValue := defaultValue); auto with arith.
+    + intros; rewrite min_assoc; auto.
+    + intros; edestruct min_dec; eauto.
+    + auto with typeclass_instances.
   Defined.
 
-  Eval simpl in (proj1_sig (MinCollection 0)).
+  Definition MinCollectionCached (defaultValue : nat) :
+    { Rep : ADT
+    | refineADT NatLower Rep }.
+  Proof.
+    eexists.
+    unfold NatLower.
+    erewrite refines_NatBinOp with
+             (op := min)
+               (defaultValue := defaultValue),
+             refines_addCache; auto with arith.
+    etransitivity.
+    apply refinesComputationalAddCachedObserver with
+    (cachedIndex := ())
+    (ObserverIndex_eq := ObserverIndexUnit_eq)
+    (CompCachedIndex := @iscomputationalNatBinOpImpl _).
+    simpl; etransitivity.
+    apply refinesUpdateCachedObserver with
+    (cachedIndex := ())
+      (ObserverIndex_eq := ObserverIndexUnit_eq)
+    (cachedFunc := finiteDifferenceFold defaultValue); simpl.
+    apply refinesCacheObservers with
+    (ObserverIndex_eq := ObserverIndexUnit_eq).
+    + intros; rewrite min_assoc; auto.
+    + intros; edestruct min_dec; eauto.
+    + auto with typeclass_instances.
+      Grab Existential Variables.
+    - simpl; intros.
+      unfold AddValidCacheInv, ValidCache in H, H0; intuition.
+      generalize (H4 ()) (H3 ()); simpl; intros; destruct_ex; intuition.
+      substss; injection H6; intros; rewrite H5; eauto.
+    - simpl; intros; unfold AddCachedObv, add_impl in H0.
+      rewrite bind_bind, bind_unit, bind_unit in H0.
+      inversion_by computes_to_inv; subst.
+      unfold finiteDifferenceFold, is_computational_val,
+      iscomputationalNatBinOpImpl; simpl; f_equal.
+      apply functional_extensionality; intros.
+      unfold AddValidCacheInv, ValidCache in H; intuition.
+      generalize (H1 ()); simpl; intros; destruct_ex; intuition.
+      rewrite H2.
+      unfold bin_op_impl in *|-*; simpl in *|-*.
+      unfold refine in H3; generalize (H3 n (x0 n) (ReturnComputes _)); intros.
+      apply computes_to_inv in H; rewrite H.
+      destruct (origRep r); simpl; auto.
+      clear; revert n n0; induction l; simpl; auto.
+      intros; rewrite <- IHl, min_assoc; auto.
+    - reflexivity.
+    - reflexivity.
+  Defined.
+
+  Fixpoint BuildList n :=
+    match n with
+      | 0 => []
+      | S n' => n' :: BuildList n'
+    end.
+
+  Definition MinCollectionADT :=
+    ObserverMethods (proj1_sig (MinCollection 7000)) () (BuildList 2000) 11.
+  Definition MinCollectionCachedADT :=
+    ObserverMethods (proj1_sig (MinCollectionCached 7000)) ()
+                   {| origRep := BuildList 2000;
+                      observerCache idx := Some (fun _ => 0) |} 11.
+
+  Time Eval compute in MinCollectionCachedADT.
+  Time Eval compute in MinCollectionADT.
 
   Require Import Max.
 
