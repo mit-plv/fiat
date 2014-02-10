@@ -22,12 +22,12 @@ Notes/Ideas:
 
 For Ben Delaware:
 
-* Add Notation to Mutators + Obesrvers, etc. to make refinement
-  more readable.
+* Untie Cache From Observers.
 
 * Untie Cache Refinement from non-cached implementation.
 
-* Untie Cache From Observers.
+* Add Notation to Mutators + Obesrvers, etc. to make refinement
+  more readable.
 
 * Improve the behavior of [add] to avoid extraneous computation in the
 cached version.
