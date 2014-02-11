@@ -149,6 +149,20 @@ Arguments refineMutator / .
 Arguments refineObserver / .
 Arguments absPreservesInv / .
 
+Instance refineMutator_refl rep repInv
+: Reflexive (@refineMutator rep rep repInv (@Return _)).
+Proof.
+  intro; simpl; intros.
+  autorewrite with refine_monad; reflexivity.
+Qed.
+
+Instance refineObserver_refl rep repInv
+: Reflexive (@refineObserver rep rep repInv (@Return _)).
+Proof.
+  intro; simpl; intros.
+  autorewrite with refine_monad; reflexivity.
+Qed.
+
 Global Instance refineADT_PreOrder : PreOrder refineADT.
 Proof.
   split; compute in *.
@@ -157,9 +171,9 @@ Proof.
     (abs := @Return _)
       (mutatorMap := id)
       (observerMap := id);
-      unfold id; simpl; intros;
-      autorewrite with refine_monad;
-      try reflexivity;
+      unfold id;
+      try reflexivity.
+    simpl; intros;
       inversion_by computes_to_inv; subst; eauto.
   - intros x y z
            [abs mutMap obsMap mutH obsH]
