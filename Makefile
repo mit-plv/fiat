@@ -3,6 +3,7 @@ MODULES    := \
 	Computation \
 	ADT \
 	ADTRefinement \
+	ADTCache \
 	ComputationExamples \
 	ADTExamples
 
