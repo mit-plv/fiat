@@ -219,6 +219,22 @@ Proof.
     auto; inversion_by computes_to_inv; subst; eauto.
 Qed.
 
+Add Parametric Morphism rep repInv mutIdx obsIdx ms mutInv
+  : (fun os => @Build_ADT rep repInv mutIdx obsIdx ms os mutInv)
+  with signature
+    (pointwise_relation _ (@refineObserver _ _ repInv (@Return _)))
+    ==> refineADT
+    as refineADT_Build_ADT_observer_only.
+Proof.
+  intros.
+  let A := match goal with |- refineADT ?A ?B => constr:(A) end in
+  let B := match goal with |- refineADT ?A ?B => constr:(B) end in
+  eapply (@refinesADT A B (@Return _) id id);
+    unfold id, pointwise_relation in *; simpl in *; intros;
+    auto; try inversion_by computes_to_inv; subst; eauto;
+    autorewrite with refine_monad; reflexivity.
+Qed.
+
 (** If we had dependent setoid relations in [Type], then we could write
 
 <<
