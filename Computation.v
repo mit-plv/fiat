@@ -392,6 +392,28 @@ Section general_refine_lemmas.
     trivial.
   Defined.
 
+  Lemma refine_pick_pick A (P1 P2 : A -> Prop)
+        (H : forall x, P2 x -> P1 x)
+  : refine { x : A | P1 x }%comp
+           { x : A | P2 x }%comp.
+  Proof.
+    apply refine_pick;
+    intros;
+    inversion_by computes_to_inv;
+    auto.
+  Defined.
+
+  Lemma refineEquiv_pick_pick A (P1 P2 : A -> Prop)
+        (H : forall x, P1 x <-> P2 x)
+  : refineEquiv { x : A | P1 x }%comp
+                { x : A | P2 x }%comp.
+  Proof.
+    split_iff.
+    split;
+    apply refine_pick_pick;
+    assumption.
+  Defined.
+
   Lemma refine_pick_pair A B (PA : A -> Prop) (PB : B -> Prop)
   : refine { x : A * B | PA (fst x) /\ PB (snd x) }%comp
            (a <- { a : A | PA a };
@@ -402,6 +424,71 @@ Section general_refine_lemmas.
     intro x.
     repeat constructor;
     inversion_by computes_to_inv; subst; trivial.
+  Qed.
+
+
+  Definition refineEquiv_split_ex A B (P : A -> Prop) (P' : A -> B -> Prop)
+  : refineEquiv { b | exists a, P a /\ P' a b }%comp
+                (a <- { a | P a /\ exists b, P' a b };
+                 { b | P' a b })%comp.
+  Proof.
+    split;
+    hnf; intros;
+    inversion_by computes_to_inv;
+    repeat econstructor;
+    eassumption.
+  Qed.
+
+  Definition refineEquiv_pick_contr_ret A (P : A -> Prop)
+             (x : A) (H : unique P x)
+  : refineEquiv { y | P y }
+                (ret x).
+  Proof.
+    split; hnf; intros;
+    inversion_by computes_to_inv;
+    destruct_head_hnf and;
+    specialize_all_ways; subst;
+    econstructor; assumption.
+  Qed.
+
+  Definition refineEquiv_pick_eq A (x : A)
+  : refineEquiv { y | y = x }%comp
+                (ret x).
+  Proof.
+    apply refineEquiv_pick_contr_ret; firstorder.
+  Qed.
+
+  Definition refineEquiv_pick_eq' A (x : A)
+  : refineEquiv { y | x = y }%comp
+                (ret x).
+  Proof.
+    apply refineEquiv_pick_contr_ret; firstorder.
+  Qed.
+
+  Definition refineEquiv_split_func_ex A B (P : A -> Prop) (f : A -> B)
+  : refineEquiv { b | exists a, P a /\ b = f a}%comp
+                (a <- { a | P a};
+                 ret (f a))%comp.
+  Proof.
+    repeat setoid_rewrite refineEquiv_split_ex.
+    setoid_rewrite refineEquiv_pick_eq.
+    erewrite refineEquiv_pick_pick.
+    - reflexivity.
+    - abstract (repeat (intro || esplit); intuition).
+  Qed.
+
+  Definition refineEquiv_split_func_ex2 A A' B (P : A -> Prop) (P' : A' -> Prop)
+             (f : A -> A' -> B)
+  : refineEquiv { b | exists a, P a /\ exists a', P' a' /\ b = f a a'}%comp
+                (a <- { a | P a};
+                 a' <- { a' | P' a'};
+                 ret (f a a'))%comp.
+  Proof.
+    repeat setoid_rewrite refineEquiv_split_ex.
+    setoid_rewrite refineEquiv_pick_eq.
+    split; intro; intros;
+    inversion_by computes_to_inv; subst;
+    repeat econstructor; eassumption.
   Qed.
 End general_refine_lemmas.
 
