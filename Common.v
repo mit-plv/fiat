@@ -361,6 +361,25 @@ Ltac clearbodies :=
 
 Ltac caseEq x := generalize (refl_equal x); pattern x at -1; case x; intros.
 
+(* Lifting forall and pointwise relations to multiple arguments. *)
+Definition forall_relation2 {A : Type} {B : A -> Type} {C : forall a, B a -> Type} R :=
+  forall_relation (fun a => (@forall_relation (B a) (C a) (R a))).
+Definition pointwise_relation2 {A B C : Type} (R : relation C) :=
+  pointwise_relation A (@pointwise_relation B C R).
+
+Definition forall_relation3 {A : Type} {B : A -> Type}
+           {C : forall a, B a -> Type} {D : forall a b, C a b -> Type} R :=
+  forall_relation (fun a => (@forall_relation2 (B a) (C a) (D a) (R a))).
+Definition pointwise_relation3 {A B C D : Type} (R : relation D) :=
+  pointwise_relation A (@pointwise_relation2 B C D R).
+
+Definition forall_relation4 {A : Type} {B : A -> Type}
+           {C : forall a, B a -> Type} {D : forall a b, C a b -> Type}
+           {E : forall a b c, D a b c -> Type} R :=
+  forall_relation (fun a => (@forall_relation3 (B a) (C a) (D a) (E a) (R a))).
+Definition pointwise_relation4 {A B C D E : Type} (R : relation E) :=
+  pointwise_relation A (@pointwise_relation3 B C D E R).
+
 Axiom IsHProp : Type -> Type.
 Existing Class IsHProp.
 Instance : forall A, IsHProp (IsHProp A).

@@ -186,7 +186,7 @@ Proof.
     + autorewrite with refine_monad.
       rewrite <- !refineEquiv_bind_bind, <- mutH', !refineEquiv_bind_bind; eauto.
       unfold refine; intros; inversion_by computes_to_inv.
-      econstructor; eauto. 
+      econstructor; eauto.
       eapply mutH; eauto.
     + autorewrite with refine_monad.
       rewrite <- !refineEquiv_bind_bind, <- obsH', refineEquiv_bind_bind; eauto.
@@ -200,6 +200,90 @@ Add Parametric Relation : ADT refineADT
     reflexivity proved by reflexivity
     transitivity proved by transitivity
       as refineADT_rel.
+
+(* Refining Observers is a valid ADT refinement. *)
+Add Parametric Morphism rep repInv mutIdx obsIdx ms mutInv
+  : (fun os => @Build_ADT rep repInv mutIdx obsIdx ms os mutInv)
+  with signature
+    (pointwise_relation _ (@refineObserver _ _ repInv (@Return _)))
+    ==> refineADT
+    as refineADT_Build_ADT_Observer.
+Proof.
+  intros.
+  let A := match goal with |- refineADT ?A ?B => constr:(A) end in
+  let B := match goal with |- refineADT ?A ?B => constr:(B) end in
+  eapply (@refinesADT A B (@Return _) id id);
+    unfold id, pointwise_relation in *; simpl in *; intros;
+    auto; try inversion_by computes_to_inv; subst; eauto;
+    autorewrite with refine_monad; reflexivity.
+Qed.
+
+(* Refining Mutators is also a valid ADT refinement, but it's
+   harder to express as a morphism because of the dependence of
+   [MutatorMethodsInv] on [MutatorMethods]. *)
+
+Lemma refineMutatorInv
+      {rep : Type} (repInv : Ensemble rep)
+      {mutIdx : Type}
+: forall (muts muts' : mutIdx -> mutatorMethodType rep),
+    mutatorInv repInv muts ->
+    pointwise_relation mutIdx (refineMutator repInv (@Return _)) muts muts'->
+    mutatorInv repInv muts'.
+Proof.
+  simpl; unfold pointwise_relation; intros; eapply_hyp; eauto.
+  generalize (H0 idx _ n H1).
+  setoid_rewrite refine_refine; autorewrite with refine_monad; try reflexivity; eauto.
+Qed.
+
+Hint Resolve refineMutatorInv.
+
+(* The [refineADT_Build_ADT_Mutators lemma shows that refining mutators 
+   is a valid ADT refinement; the statement hews closely to the standard
+   Parametric Morphism declaration style for future compatibility (hopefully). *)
+
+Lemma refineADT_Build_ADT_Mutators rep (repInv : Ensemble rep) mutIdx obsIdx :
+  (respectful_hetero
+     _ _ _ _
+     (pointwise_relation mutIdx (@refineMutator rep rep repInv (@Return _)))
+     (fun x y => respectful_hetero
+                   _ _ (fun _ => mutatorInv repInv x -> ADT) (fun _ => mutatorInv _ y -> ADT)
+                   (pointwise_relation obsIdx (@refineObserver rep rep repInv (@Return _)))
+                   (fun obs obs' mInv mInv' =>
+                      forall mI mI', refineADT (mInv mI) (mInv' mI'))))
+    (@Build_ADT rep repInv mutIdx obsIdx) (@Build_ADT rep repInv mutIdx obsIdx).
+Proof.
+  unfold Proper, respectful_hetero; intros.
+  let A := match goal with |- refineADT ?A ?B => constr:(A) end in
+  let B := match goal with |- refineADT ?A ?B => constr:(B) end in
+  eapply (@refinesADT A B (@Return _) id id);
+    unfold id, pointwise_relation in *; simpl in *; intros;
+    auto; inversion_by computes_to_inv; subst; eauto.
+Qed.
+
+(* [BD: I'm registering the above as a proper relation on the off-chance that the 
+   setoid machinary can take advantage of it :) ]*)
+Instance refineADT_Build_ADT_Mutators_Proper rep (repInv : Ensemble rep) mutIdx obsIdx :
+  Proper (respectful_hetero
+            _ _ _ _
+            (pointwise_relation mutIdx (@refineMutator rep rep repInv (@Return _)))
+            (fun x y => respectful_hetero
+                          _ _ (fun _ => mutatorInv repInv x -> ADT) (fun _ => mutatorInv _ y -> ADT)
+                          (pointwise_relation obsIdx (@refineObserver rep rep repInv (@Return _)))
+                          (fun obs obs' mInv mInv' =>
+                             forall mI mI', refineADT (mInv mI) (mInv' mI'))))
+         (@Build_ADT rep repInv mutIdx obsIdx).
+  Proof.
+    unfold Proper, respectful_hetero; intros.
+    let A := match goal with |- refineADT ?A ?B => constr:(A) end in
+    let B := match goal with |- refineADT ?A ?B => constr:(B) end in
+    eapply (@refinesADT A B (@Return _) id id);
+      unfold id, pointwise_relation in *; simpl in *; intros;
+      auto; inversion_by computes_to_inv; subst; eauto.
+  Qed.
+
+(* If the proof of [MutatorMethodsInv] doesn't depend on [MutatorMethods]
+   there's no problem using the existing Parametric Morphism machinery.
+   (Of course, this means that repInv is trivial.) *)
 
 Add Parametric Morphism rep repInv mutIdx obsIdx mutInv
   : (fun ms os => @Build_ADT rep repInv mutIdx obsIdx ms os (mutInv ms))
@@ -217,21 +301,6 @@ Proof.
     auto; inversion_by computes_to_inv; subst; eauto.
 Qed.
 
-Add Parametric Morphism rep repInv mutIdx obsIdx ms mutInv
-  : (fun os => @Build_ADT rep repInv mutIdx obsIdx ms os mutInv)
-  with signature
-    (pointwise_relation _ (@refineObserver _ _ repInv (@Return _)))
-    ==> refineADT
-    as refineADT_Build_ADT_observer_only.
-Proof.
-  intros.
-  let A := match goal with |- refineADT ?A ?B => constr:(A) end in
-  let B := match goal with |- refineADT ?A ?B => constr:(B) end in
-  eapply (@refinesADT A B (@Return _) id id);
-    unfold id, pointwise_relation in *; simpl in *; intros;
-    auto; try inversion_by computes_to_inv; subst; eauto;
-    autorewrite with refine_monad; reflexivity.
-Qed.
 
 (** If we had dependent setoid relations in [Type], then we could write
 
@@ -255,8 +324,6 @@ Qed.
     we'll instead have to use [etransitivity] and [apply] things. *)
 
 (* Given an abstraction function, we can transform the rep of a pickImpl ADT. *)
-
-Require Import Structures.Equalities.
 
 Section GeneralRefinements.
 
