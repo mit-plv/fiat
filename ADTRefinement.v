@@ -201,79 +201,91 @@ Add Parametric Relation : ADT refineADT
     transitivity proved by transitivity
       as refineADT_rel.
 
-(* Refining Observers is a valid ADT refinement. *)
-Add Parametric Morphism rep repInv mutIdx obsIdx ms mutInv
-  : (fun os => @Build_ADT rep repInv mutIdx obsIdx ms os mutInv)
-  with signature
-    (pointwise_relation _ (@refineObserver _ _ repInv (@Return _)))
-    ==> refineADT
-    as refineADT_Build_ADT_Observer.
-Proof.
-  intros.
-  let A := match goal with |- refineADT ?A ?B => constr:(A) end in
-  let B := match goal with |- refineADT ?A ?B => constr:(B) end in
-  eapply (@refinesADT A B (@Return _) id id);
-    unfold id, pointwise_relation in *; simpl in *; intros;
-    auto; try inversion_by computes_to_inv; subst; eauto;
-    autorewrite with refine_monad; reflexivity.
-Qed.
+Section GeneralRefinements.
 
-(* Refining Mutators is also a valid ADT refinement, but it's
+  (* Refining Observers is a valid ADT refinement. *)
+  Add Parametric Morphism rep repInv mutIdx obsIdx ms mutInv
+  : (fun os => @Build_ADT rep repInv mutIdx obsIdx ms os mutInv)
+    with signature
+    (pointwise_relation _ (@refineObserver _ _ repInv (@Return _)))
+      ==> refineADT
+      as refineADT_Build_ADT_Observer.
+  Proof.
+    intros.
+    let A := match goal with |- refineADT ?A ?B => constr:(A) end in
+    let B := match goal with |- refineADT ?A ?B => constr:(B) end in
+    eapply (@refinesADT A B (@Return _) id id);
+      unfold id, pointwise_relation in *; simpl in *; intros;
+      auto; try inversion_by computes_to_inv; subst; eauto;
+      autorewrite with refine_monad; reflexivity.
+  Qed.
+
+  (* Refining Mutators is also a valid ADT refinement, but it's
    harder to express as a morphism because of the dependence of
    [MutatorMethodsInv] on [MutatorMethods]. *)
 
-Lemma refineMutatorInv
-      {rep : Type} (repInv : Ensemble rep)
-      {mutIdx : Type}
-: forall (muts muts' : mutIdx -> mutatorMethodType rep),
-    mutatorInv repInv muts ->
-    pointwise_relation mutIdx (refineMutator repInv (@Return _)) muts muts'->
-    mutatorInv repInv muts'.
-Proof.
-  simpl; unfold pointwise_relation; intros; eapply_hyp; eauto.
-  generalize (H0 idx _ n H1).
-  setoid_rewrite refine_refine; autorewrite with refine_monad; try reflexivity; eauto.
-Qed.
+  Lemma refineMutatorInv
+        {rep : Type} (repInv : Ensemble rep)
+        {mutIdx : Type}
+  : forall (muts muts' : mutIdx -> mutatorMethodType rep),
+      mutatorInv repInv muts ->
+      pointwise_relation mutIdx (refineMutator repInv (@Return _)) muts muts'->
+      mutatorInv repInv muts'.
+  Proof.
+    simpl; unfold pointwise_relation; intros; eapply_hyp; eauto.
+    generalize (H0 idx _ n H1).
+    setoid_rewrite refine_refine; autorewrite with refine_monad; try reflexivity; eauto.
+  Qed.
 
-Hint Resolve refineMutatorInv.
+  Hint Resolve refineMutatorInv.
 
-(* The [refineADT_Build_ADT_Mutators lemma shows that refining mutators 
+  (* The [refineADT_Build_ADT_Mutators lemma shows that refining mutators
    is a valid ADT refinement; the statement hews closely to the standard
    Parametric Morphism declaration style for future compatibility (hopefully). *)
 
-Lemma refineADT_Build_ADT_Mutators rep (repInv : Ensemble rep) mutIdx obsIdx :
-  (respectful_hetero
-     _ _ _ _
-     (pointwise_relation mutIdx (@refineMutator rep rep repInv (@Return _)))
-     (fun x y => respectful_hetero
-                   _ _ (fun _ => mutatorInv repInv x -> ADT) (fun _ => mutatorInv _ y -> ADT)
-                   (pointwise_relation obsIdx (@refineObserver rep rep repInv (@Return _)))
-                   (fun obs obs' mInv mInv' =>
-                      forall mI mI', refineADT (mInv mI) (mInv' mI'))))
-    (@Build_ADT rep repInv mutIdx obsIdx) (@Build_ADT rep repInv mutIdx obsIdx).
-Proof.
-  unfold Proper, respectful_hetero; intros.
-  let A := match goal with |- refineADT ?A ?B => constr:(A) end in
-  let B := match goal with |- refineADT ?A ?B => constr:(B) end in
-  eapply (@refinesADT A B (@Return _) id id);
-    unfold id, pointwise_relation in *; simpl in *; intros;
-    auto; inversion_by computes_to_inv; subst; eauto.
-Qed.
-
-(* [BD: I'm registering the above as a proper relation on the off-chance that the 
-   setoid machinary can take advantage of it :) ]*)
-Instance refineADT_Build_ADT_Mutators_Proper rep (repInv : Ensemble rep) mutIdx obsIdx :
-  Proper (respectful_hetero
-            _ _ _ _
-            (pointwise_relation mutIdx (@refineMutator rep rep repInv (@Return _)))
-            (fun x y => respectful_hetero
-                          _ _ (fun _ => mutatorInv repInv x -> ADT) (fun _ => mutatorInv _ y -> ADT)
-                          (pointwise_relation obsIdx (@refineObserver rep rep repInv (@Return _)))
-                          (fun obs obs' mInv mInv' =>
-                             forall mI mI', refineADT (mInv mI) (mInv' mI'))))
-         (@Build_ADT rep repInv mutIdx obsIdx).
+  Lemma refineADT_Build_ADT_Mutators rep (repInv : Ensemble rep) mutIdx obsIdx obs :
+    (respectful_hetero
+       _ _ (fun x => mutatorInv repInv x -> ADT) (fun x => mutatorInv _ x -> ADT)
+       (pointwise_relation mutIdx (@refineMutator rep rep repInv (@Return _)))
+       (fun x y mInv mInv' => forall mI mI', refineADT (mInv mI) (mInv' mI')))
+      (fun mut => @Build_ADT rep repInv mutIdx obsIdx mut obs) (fun mut => @Build_ADT rep repInv mutIdx obsIdx mut obs).
   Proof.
     unfold Proper, respectful_hetero; intros.
+    let A := match goal with |- refineADT ?A ?B => constr:(A) end in
+    let B := match goal with |- refineADT ?A ?B => constr:(B) end in
+    eapply (@refinesADT A B (@Return _) id id);
+      unfold id, pointwise_relation in *; simpl in *; intros;
+      [ auto
+      | autorewrite with refine_monad; reflexivity
+      | inversion_by computes_to_inv; subst; eauto].
+  Qed.
+
+  (* [BD: I'm registering the above as a proper relation on the off-chance that the
+   setoid machinary can take advantage of it :) ]*)
+  Instance refineADT_Build_ADT_Mutators_Proper rep (repInv : Ensemble rep) mutIdx obsIdx obs :
+    Proper
+      (respectful_hetero
+         _ _ (fun x => mutatorInv repInv x -> ADT) (fun x => mutatorInv _ x -> ADT)
+         (pointwise_relation mutIdx (@refineMutator rep rep repInv (@Return _)))
+         (fun x y mInv mInv' => forall mI mI', refineADT (mInv mI) (mInv' mI')))
+      (fun mut => @Build_ADT rep repInv mutIdx obsIdx mut obs).
+  Proof.
+    apply refineADT_Build_ADT_Mutators.
+  Qed.
+
+  (* If the proof of [MutatorMethodsInv] doesn't depend on [MutatorMethods]
+   there's no problem using the existing Parametric Morphism machinery.
+   (Of course, this means that repInv is trivial.) *)
+
+  Add Parametric Morphism rep repInv mutIdx obsIdx mutInv
+  : (fun ms os => @Build_ADT rep repInv mutIdx obsIdx ms os (mutInv ms))
+      with signature
+      (pointwise_relation _ (@refineMutator _ _ repInv (@Return _)))
+        ==> (pointwise_relation _ (@refineObserver _ _ repInv (@Return _)))
+        ==> refineADT
+        as refineADT_Build_ADT_Mutators'.
+  Proof.
+    intros.
     let A := match goal with |- refineADT ?A ?B => constr:(A) end in
     let B := match goal with |- refineADT ?A ?B => constr:(B) end in
     eapply (@refinesADT A B (@Return _) id id);
@@ -281,28 +293,28 @@ Instance refineADT_Build_ADT_Mutators_Proper rep (repInv : Ensemble rep) mutIdx 
       auto; inversion_by computes_to_inv; subst; eauto.
   Qed.
 
-(* If the proof of [MutatorMethodsInv] doesn't depend on [MutatorMethods]
-   there's no problem using the existing Parametric Morphism machinery.
-   (Of course, this means that repInv is trivial.) *)
+  (* Refining observers and mutators at the same time is also a valid
+   refinement. [BD: I've come to the conclusion that smaller refinement
+   steps are better, so using the previous refinements should be the
+   preferred mode. ]*)
 
-Add Parametric Morphism rep repInv mutIdx obsIdx mutInv
-  : (fun ms os => @Build_ADT rep repInv mutIdx obsIdx ms os (mutInv ms))
-  with signature
-  (pointwise_relation _ (@refineMutator _ _ repInv (@Return _)))
-    ==> (pointwise_relation _ (@refineObserver _ _ repInv (@Return _)))
-    ==> refineADT
-    as refineADT_Build_ADT.
-Proof.
-  intros.
-  let A := match goal with |- refineADT ?A ?B => constr:(A) end in
-  let B := match goal with |- refineADT ?A ?B => constr:(B) end in
-  eapply (@refinesADT A B (@Return _) id id);
-    unfold id, pointwise_relation in *; simpl in *; intros;
-    auto; inversion_by computes_to_inv; subst; eauto.
-Qed.
+  Lemma refineADT_Build_ADT_Both rep (repInv : Ensemble rep) mutIdx obsIdx :
+    (respectful_hetero
+       _ _ _ _
+       (pointwise_relation mutIdx (@refineMutator rep rep repInv (@Return _)))
+       (fun x y => respectful_hetero
+                     _ _ (fun _ => mutatorInv repInv x -> ADT) (fun _ => mutatorInv _ y -> ADT)
+                     (pointwise_relation obsIdx (@refineObserver rep rep repInv (@Return _)))
+                     (fun obs obs' mInv mInv' =>
+                        forall mI mI', refineADT (mInv mI) (mInv' mI'))))
+      (@Build_ADT rep repInv mutIdx obsIdx) (@Build_ADT rep repInv mutIdx obsIdx).
+  Proof.
+    unfold respectful_hetero; intros.
+    rewrite refineADT_Build_ADT_Observer; eauto.
+    eapply refineADT_Build_ADT_Mutators; eauto.
+  Qed.
 
-
-(** If we had dependent setoid relations in [Type], then we could write
+  (** If we had dependent setoid relations in [Type], then we could write
 
 <<
 Add Parametric Morphism : @Build_ADT
@@ -325,8 +337,6 @@ Qed.
 
 (* Given an abstraction function, we can transform the rep of a pickImpl ADT. *)
 
-Section GeneralRefinements.
-
   Theorem refines_rep_pickImpl
           newRep oldRep
           (abs : newRep -> oldRep)
@@ -342,6 +352,139 @@ Section GeneralRefinements.
                           (mutatorMap := @id MutatorIndex)
                           (observerMap := @id ObserverIndex);
     compute; intros; inversion_by computes_to_inv; subst; eauto.
+  Qed.
+
+  (* The weakest reasonable invariant on a new representation is that 
+     the abstraction of a member satisfies the old invariant. *)
+  Definition abs_repInv {newRep oldRep : Type}
+             (abs : newRep -> Comp oldRep)
+             (repInv : Ensemble oldRep) (nr : newRep) :=
+    computational_inv repInv (abs nr).
+
+  (* Refining the representation type is a valid refinement, 
+     as long as the new methods are valid refinements and the 
+     updated the old invariant is preserved by abstraction. *)
+  
+  Lemma refineADT_Build_ADT_Rep oldRep newRep 
+        (abs : newRep -> Comp oldRep)
+        (oldRepInv : Ensemble oldRep)
+        (newRepInv : Ensemble newRep)
+        (absSafe : forall nr, newRepInv nr -> 
+                              computational_inv oldRepInv (abs nr))
+        mutIdx obsIdx :
+    (respectful_hetero
+       (mutIdx -> mutatorMethodType oldRep)
+       (mutIdx -> mutatorMethodType newRep) 
+       (fun oldMuts => (obsIdx -> observerMethodType oldRep) ->
+                 mutatorInv oldRepInv oldMuts -> ADT)
+       (fun newMuts => (obsIdx -> observerMethodType newRep) ->
+                    mutatorInv (newRepInv) newMuts -> ADT)
+       (fun oldMuts newMuts => 
+          forall mutIdx, 
+            @refineMutator oldRep newRep (newRepInv) abs 
+                           (oldMuts mutIdx)
+                           (newMuts mutIdx))
+       (fun x y => respectful_hetero
+                     (obsIdx -> observerMethodType oldRep)
+                     (obsIdx -> observerMethodType newRep)
+                     (fun _ => mutatorInv oldRepInv x -> ADT) 
+                     (fun _ => mutatorInv _ y -> ADT)
+                     (fun obs obs' => 
+                        forall obsIdx, 
+                          @refineObserver oldRep newRep (newRepInv) abs 
+                                         (obs obsIdx)
+                                         (obs' obsIdx))
+                     (fun obs obs' mInv mInv' =>
+                        forall mI mI', refineADT (mInv mI) (mInv' mI'))))
+      (@Build_ADT oldRep oldRepInv mutIdx obsIdx)
+      (@Build_ADT newRep newRepInv mutIdx obsIdx).
+  Proof.
+    unfold Proper, respectful_hetero; intros.
+    let A := match goal with |- refineADT ?A ?B => constr:(A) end in
+    let B := match goal with |- refineADT ?A ?B => constr:(B) end in
+    eapply (@refinesADT A B abs id id); 
+      unfold id, pointwise_relation in *; simpl in *; intros; eauto.
+  Qed.
+
+  (* We can always build a default implementation (computation?) for the 
+     mutators of an ADT with an updated representation using the old 
+     mutators. *)
+  Definition absMutatorMethods oldRep newRep 
+        (abs : newRep -> Comp oldRep)
+        mutIdx
+        (oldMuts : mutIdx -> mutatorMethodType oldRep) idx nr n : Comp newRep :=
+    (or' <- abs nr;  
+    {nm | refine (oldMuts idx or' n) (abs nm)})%comp.
+
+  Lemma refine_absMutatorMethods oldRep newRep 
+        newRepInv
+        (abs : newRep -> Comp oldRep)
+        mutIdx
+        (oldMuts : mutIdx -> mutatorMethodType oldRep) 
+  : forall idx, 
+      @refineMutator oldRep newRep newRepInv abs 
+                     (oldMuts idx)
+                     (absMutatorMethods abs oldMuts idx).
+  Proof.
+    unfold refineMutator, absMutatorMethods, refine; intros.
+    inversion_by computes_to_inv; econstructor; eauto.
+  Qed.
+
+  Hint Resolve refine_absMutatorMethods.
+
+  Lemma absMutatorMethodsInv 
+        oldRep newRep 
+        (abs : newRep -> Comp oldRep)
+        (oldRepInv : Ensemble oldRep)
+        mutIdx
+        (oldMuts : mutIdx -> mutatorMethodType oldRep)
+  : mutatorInv oldRepInv oldMuts -> 
+    mutatorInv (abs_repInv abs oldRepInv) (absMutatorMethods abs oldMuts).
+  Proof.
+    unfold absMutatorMethods, abs_repInv; simpl in *; intros;
+    inversion_by computes_to_inv; eauto.
+  Qed.
+  
+  (* A similar approach works for observers. *)
+    
+  Definition absObserverMethods oldRep newRep 
+        (abs : newRep -> Comp oldRep)
+        obsIdx
+        (oldObs : obsIdx -> observerMethodType oldRep) idx nr n : Comp nat :=
+    (or' <- abs nr;  
+    {n' | refine (oldObs idx or' n) (ret n')})%comp.
+
+  Lemma refine_absObserverMethods oldRep newRep 
+        newRepInv
+        (abs : newRep -> Comp oldRep)
+        obsIdx
+        (oldObs : obsIdx -> observerMethodType oldRep) 
+  : forall idx, 
+      @refineObserver oldRep newRep newRepInv abs 
+                     (oldObs idx)
+                     (absObserverMethods abs oldObs idx).
+  Proof.
+    unfold refineObserver, absObserverMethods, refine; intros.
+    inversion_by computes_to_inv; econstructor; eauto.
+  Qed.
+
+  Hint Resolve refine_absObserverMethods.
+
+  (* We can refine an ADT using the above default mutator / observer / invariant
+     implementations. *)
+
+  Lemma refineADT_Build_ADT_Rep_default oldRep newRep 
+        (abs : newRep -> Comp oldRep)
+        (oldRepInv : Ensemble oldRep)
+        mutIdx obsIdx oldMuts oldObs oldInv :
+    refineADT 
+      (@Build_ADT oldRep oldRepInv mutIdx obsIdx oldMuts oldObs oldInv)
+      (@Build_ADT newRep (abs_repInv abs oldRepInv) mutIdx obsIdx 
+                  (absMutatorMethods abs oldMuts) 
+                  (absObserverMethods abs oldObs) 
+                  (absMutatorMethodsInv oldInv)).
+  Proof.
+    eapply refineADT_Build_ADT_Rep; eauto.
   Qed.
 
 (** TODO: Update this to reflect the new definition of ADT + ADT
