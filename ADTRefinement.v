@@ -220,7 +220,7 @@ Add Parametric Relation : ADT refineADT
    knives), so I'm carrying on the naming convention with a 'Sharpened' notation
    for the dependent products. *)
 
-  Notation "'Sharpened' spec" := {adt | refineADT spec adt} (at level 35).
+  Notation Sharpened spec := {adt | refineADT spec adt}.
 
   (* A single refinement step. *)
   Definition SharpenStep adt :
