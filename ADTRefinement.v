@@ -201,6 +201,41 @@ Add Parametric Relation : ADT refineADT
     transitivity proved by transitivity
       as refineADT_rel.
 
+(* To derive an ADT interactively from a specification [spec], we can build a dependent
+   product [ {adt | refineADT spec adt} ]. The derivation flow has the form:
+   1. Apply a refinement.
+   2. Discharge any side conditions.
+   3. Repeat steps 1-2 until adt is completely specialized.
+
+   My (Ben's) current thought is that to make this as pleasant as possible,
+   the refinements used in the first step should be implemented using tactics
+   which present the user with 'nice' side conditions. (In particular, this lets us
+   be careful about not having any dangling existential variables at the end of a
+   derivation).
+
+   Aside on notation:
+   When naming these tactics, I wanted one which wasn't already used by a tactic-
+   refine, specialize, and replace were taken. The thesaurus suggested 'hone'.
+   This kind of agrees with 'BedRock' (in as much as a WhetStone is used to sharpen
+   knives), so I'm carrying on the naming convention with a 'Sharpened' notation
+   for the dependent products. *)
+
+  Notation "'Sharpened' spec" := {adt | refineADT spec adt} (at level 35).
+
+  (* A single refinement step. *)
+  Definition SharpenStep adt :
+    forall adt',
+      refineADT adt adt' ->
+      Sharpened adt' ->
+      Sharpened adt.
+  Proof.
+    intros adt' refineA SpecA';
+    eexists (proj1_sig SpecA'); rewrite refineA; exact (proj2_sig SpecA').
+  Defined.
+
+  (* A tactic for finishing a derivation. Probably needs a better name.*)
+  Tactic Notation "finish" "sharpening" := eexists; reflexivity.
+
 Section GeneralRefinements.
 
   (* Refining Observers is a valid ADT refinement. *)
@@ -250,7 +285,7 @@ Section GeneralRefinements.
        (fun x y mInv mInv' => forall mI mI', refineADT (mInv mI) (mInv' mI')))
       (fun mut => @Build_ADT rep repInv mutIdx obsIdx mut obs) (fun mut => @Build_ADT rep repInv mutIdx obsIdx mut obs).
   Proof.
-    unfold Proper, respectful_hetero; intros.
+    unfold respectful_hetero; intros.
     let A := match goal with |- refineADT ?A ?B => constr:(A) end in
     let B := match goal with |- refineADT ?A ?B => constr:(B) end in
     eapply (@refinesADT A B (@Return _) id id);
@@ -354,44 +389,46 @@ Qed.
     compute; intros; inversion_by computes_to_inv; subst; eauto.
   Qed.
 
-  (* The weakest reasonable invariant on a new representation is that 
+  (* The weakest reasonable invariant on a new representation is that
      the abstraction of a member satisfies the old invariant. *)
   Definition abs_repInv {newRep oldRep : Type}
              (abs : newRep -> Comp oldRep)
              (repInv : Ensemble oldRep) (nr : newRep) :=
     computational_inv repInv (abs nr).
 
-  (* Refining the representation type is a valid refinement, 
-     as long as the new methods are valid refinements and the 
+  Arguments abs_repInv newRep oldRep abs repInv nr / .
+
+  (* Refining the representation type is a valid refinement,
+     as long as the new methods are valid refinements and the
      updated the old invariant is preserved by abstraction. *)
-  
-  Lemma refineADT_Build_ADT_Rep oldRep newRep 
+
+  Lemma refineADT_Build_ADT_Rep oldRep newRep
         (abs : newRep -> Comp oldRep)
         (oldRepInv : Ensemble oldRep)
         (newRepInv : Ensemble newRep)
-        (absSafe : forall nr, newRepInv nr -> 
+        (absSafe : forall nr, newRepInv nr ->
                               computational_inv oldRepInv (abs nr))
         mutIdx obsIdx :
     (respectful_hetero
        (mutIdx -> mutatorMethodType oldRep)
-       (mutIdx -> mutatorMethodType newRep) 
+       (mutIdx -> mutatorMethodType newRep)
        (fun oldMuts => (obsIdx -> observerMethodType oldRep) ->
                  mutatorInv oldRepInv oldMuts -> ADT)
        (fun newMuts => (obsIdx -> observerMethodType newRep) ->
                     mutatorInv (newRepInv) newMuts -> ADT)
-       (fun oldMuts newMuts => 
-          forall mutIdx, 
-            @refineMutator oldRep newRep (newRepInv) abs 
+       (fun oldMuts newMuts =>
+          forall mutIdx,
+            @refineMutator oldRep newRep (newRepInv) abs
                            (oldMuts mutIdx)
                            (newMuts mutIdx))
        (fun x y => respectful_hetero
                      (obsIdx -> observerMethodType oldRep)
                      (obsIdx -> observerMethodType newRep)
-                     (fun _ => mutatorInv oldRepInv x -> ADT) 
+                     (fun _ => mutatorInv oldRepInv x -> ADT)
                      (fun _ => mutatorInv _ y -> ADT)
-                     (fun obs obs' => 
-                        forall obsIdx, 
-                          @refineObserver oldRep newRep (newRepInv) abs 
+                     (fun obs obs' =>
+                        forall obsIdx,
+                          @refineObserver oldRep newRep (newRepInv) abs
                                          (obs obsIdx)
                                          (obs' obsIdx))
                      (fun obs obs' mInv mInv' =>
@@ -402,27 +439,27 @@ Qed.
     unfold Proper, respectful_hetero; intros.
     let A := match goal with |- refineADT ?A ?B => constr:(A) end in
     let B := match goal with |- refineADT ?A ?B => constr:(B) end in
-    eapply (@refinesADT A B abs id id); 
+    eapply (@refinesADT A B abs id id);
       unfold id, pointwise_relation in *; simpl in *; intros; eauto.
   Qed.
 
-  (* We can always build a default implementation (computation?) for the 
-     mutators of an ADT with an updated representation using the old 
+  (* We can always build a default implementation (computation?) for the
+     mutators of an ADT with an updated representation using the old
      mutators. *)
-  Definition absMutatorMethods oldRep newRep 
+  Definition absMutatorMethods oldRep newRep
         (abs : newRep -> Comp oldRep)
         mutIdx
         (oldMuts : mutIdx -> mutatorMethodType oldRep) idx nr n : Comp newRep :=
-    (or' <- abs nr;  
+    (or' <- abs nr;
     {nm | refine (oldMuts idx or' n) (abs nm)})%comp.
 
-  Lemma refine_absMutatorMethods oldRep newRep 
+  Lemma refine_absMutatorMethods oldRep newRep
         newRepInv
         (abs : newRep -> Comp oldRep)
         mutIdx
-        (oldMuts : mutIdx -> mutatorMethodType oldRep) 
-  : forall idx, 
-      @refineMutator oldRep newRep newRepInv abs 
+        (oldMuts : mutIdx -> mutatorMethodType oldRep)
+  : forall idx,
+      @refineMutator oldRep newRep newRepInv abs
                      (oldMuts idx)
                      (absMutatorMethods abs oldMuts idx).
   Proof.
@@ -430,37 +467,40 @@ Qed.
     inversion_by computes_to_inv; econstructor; eauto.
   Qed.
 
+  (* Always unfold absMutatorMethods. *)
+  Global Arguments absMutatorMethods oldRep newRep abs mutIdx oldMuts / idx nr n.
+
   Hint Resolve refine_absMutatorMethods.
 
-  Lemma absMutatorMethodsInv 
-        oldRep newRep 
+  Lemma absMutatorMethodsInv
+        oldRep newRep
         (abs : newRep -> Comp oldRep)
         (oldRepInv : Ensemble oldRep)
         mutIdx
         (oldMuts : mutIdx -> mutatorMethodType oldRep)
-  : mutatorInv oldRepInv oldMuts -> 
+  : mutatorInv oldRepInv oldMuts ->
     mutatorInv (abs_repInv abs oldRepInv) (absMutatorMethods abs oldMuts).
   Proof.
     unfold absMutatorMethods, abs_repInv; simpl in *; intros;
     inversion_by computes_to_inv; eauto.
   Qed.
-  
+
   (* A similar approach works for observers. *)
-    
-  Definition absObserverMethods oldRep newRep 
+
+  Definition absObserverMethods oldRep newRep
         (abs : newRep -> Comp oldRep)
         obsIdx
         (oldObs : obsIdx -> observerMethodType oldRep) idx nr n : Comp nat :=
-    (or' <- abs nr;  
+    (or' <- abs nr;
     {n' | refine (oldObs idx or' n) (ret n')})%comp.
 
-  Lemma refine_absObserverMethods oldRep newRep 
+  Lemma refine_absObserverMethods oldRep newRep
         newRepInv
         (abs : newRep -> Comp oldRep)
         obsIdx
-        (oldObs : obsIdx -> observerMethodType oldRep) 
-  : forall idx, 
-      @refineObserver oldRep newRep newRepInv abs 
+        (oldObs : obsIdx -> observerMethodType oldRep)
+  : forall idx,
+      @refineObserver oldRep newRep newRepInv abs
                      (oldObs idx)
                      (absObserverMethods abs oldObs idx).
   Proof.
@@ -468,20 +508,23 @@ Qed.
     inversion_by computes_to_inv; econstructor; eauto.
   Qed.
 
+  Global Arguments absObserverMethods oldRep newRep abs obsIdx oldObs / idx nr n .
+
+
   Hint Resolve refine_absObserverMethods.
 
   (* We can refine an ADT using the above default mutator / observer / invariant
      implementations. *)
 
-  Lemma refineADT_Build_ADT_Rep_default oldRep newRep 
+  Lemma refineADT_Build_ADT_Rep_default oldRep newRep
         (abs : newRep -> Comp oldRep)
         (oldRepInv : Ensemble oldRep)
         mutIdx obsIdx oldMuts oldObs oldInv :
-    refineADT 
+    refineADT
       (@Build_ADT oldRep oldRepInv mutIdx obsIdx oldMuts oldObs oldInv)
-      (@Build_ADT newRep (abs_repInv abs oldRepInv) mutIdx obsIdx 
-                  (absMutatorMethods abs oldMuts) 
-                  (absObserverMethods abs oldObs) 
+      (@Build_ADT newRep (abs_repInv abs oldRepInv) mutIdx obsIdx
+                  (absMutatorMethods abs oldMuts)
+                  (absObserverMethods abs oldObs)
                   (absMutatorMethodsInv oldInv)).
   Proof.
     eapply refineADT_Build_ADT_Rep; eauto.
@@ -516,3 +559,75 @@ Proof.
 Qed. *)
 
 End GeneralRefinements.
+
+  (* Honing tactic for refining the mutator method with the specified index.
+     This version of the tactic develops the new mutator body interactively. *)
+  Tactic Notation "hone" "mutator" constr(mutIdx) :=
+    let A := match goal with |- Sharpened ?A => constr:(A) end in
+    let mutIdx_eq' := fresh in
+    assert (forall idx idx' : MutatorIndex A, {idx = idx'} + {idx <> idx'})
+      as mutIdx_eq' by (decide equality);
+      let RefineH := fresh in
+      assert ({mutBody | pointwise_relation _ (refineMutator (RepInv A) (@Return (Rep A)))
+                                 (MutatorMethods A)
+                                 (fun idx => if (mutIdx_eq' idx mutIdx) then
+                                               mutBody
+                                             else
+                                               MutatorMethods A idx)}) as RefineH;
+        [eexists _; let mutIdx' := fresh in
+         unfold pointwise_relation; intro mutIdx';
+         destruct (mutIdx_eq' mutIdx' mutIdx); simpl; intros; autorewrite with refine_monad; simpl;
+         [idtac | (* Replaced mutator case left to user*)
+          reflexivity] (* Otherwise, they are the same *)
+        | eapply SharpenStep;
+          [eapply (@refineADT_Build_ADT_Mutators
+                         (Rep A) (RepInv A) _ _
+                         (ObserverMethods A)
+                         (MutatorMethods A)
+                         (fun idx => if (mutIdx_eq' idx ()) then
+                                       (proj1_sig RefineH)
+                                     else
+                                       MutatorMethods A idx) (proj2_sig RefineH)
+                         (MutatorMethodsInv A)
+                         (refineMutatorInv (MutatorMethodsInv A) (proj2_sig RefineH))
+                      ); simpl
+          | idtac] ]; simpl.
+
+  (* Honing tactic for refining the mutator method with the specified index.
+     This version of the tactic takes the new implementation as an argument. *)
+  Tactic Notation "hone" "mutator" constr(mutIdx) "using" constr(mutBody) :=
+    let A := match goal with |- Sharpened ?A => constr:(A) end in
+    let mutIdx_eq' := fresh in
+    assert (forall idx idx' : MutatorIndex A, {idx = idx'} + {idx <> idx'})
+      as mutIdx_eq' by (decide equality);
+      let RefineH := fresh in
+      assert (pointwise_relation _ (refineMutator (RepInv A) (@Return (Rep A)))
+                                 (MutatorMethods A)
+                                 (fun idx => if (mutIdx_eq' idx ()) then
+                                               mutBody
+                                             else
+                                               MutatorMethods A idx)) as RefineH;
+        [let mutIdx' := fresh in
+         unfold pointwise_relation; intro mutIdx';
+         destruct (mutIdx_eq' mutIdx' ()); simpl; intros; autorewrite with refine_monad; simpl;
+         [idtac | (* Replaced mutator case left to user*)
+          reflexivity] (* Otherwise, they are the same *)
+        | eapply SharpenStep;
+          [eapply (@refineADT_Build_ADT_Mutators
+                         (Rep A) (RepInv A) _ _
+                         (ObserverMethods A)
+                         (MutatorMethods A)
+                         (fun idx => if (mutIdx_eq' idx ()) then
+                                       mutBody
+                                     else
+                                       MutatorMethods A idx) RefineH
+                         (MutatorMethodsInv A)
+                         (refineMutatorInv (MutatorMethodsInv A) RefineH)
+                      ); simpl
+          | idtac] ]; simpl.
+
+(* Honing tactic for refining the ADT representation which provides
+   default observer and mutator implementations. *)
+Tactic Notation "hone" "representation" "using" constr(absf) :=
+    eapply SharpenStep;
+    [eapply refineADT_Build_ADT_Rep_default with (abs := absf) | idtac].

@@ -242,7 +242,7 @@ Section ImplExamples.
 
   Local Ltac solve_after_induction_list op op_assoc op_comm :=
     solve [ deep_manipulate_op op op_assoc op_comm ltac:(fun a b => idtac) ].
-  
+
   Local Ltac t :=
     repeat match goal with
              | _ => assumption
@@ -283,7 +283,7 @@ Section ImplExamples.
   Lemma ObserverIndexUnit_eq : forall idx idx' : (),
                                  {idx = idx'} + {idx <> idx'}.
   Proof.
-    intros; destruct idx, idx'; eauto.
+    decide equality.
   Defined.
   Hint Resolve ObserverIndexUnit_eq.
 
@@ -301,98 +301,68 @@ Section ImplExamples.
     + intros; edestruct min_dec; eauto.
   Defined.
 
-  Arguments absMutatorMethods /.
-  Arguments absObserverMethods /.
-  Arguments abs_repInv /.
   Arguments NatLower / .
   Arguments NatBinOpSpec / .
-  Arguments pickImpl /.
-            
-            (* Still need to clean this proof up to make it readable.
+  Arguments pickImpl / .
+
+  (* Still need to clean this proof up to make it readable.
              More notation, better tactic support. *)
-  Definition MinCollectionCached (defaultValue : nat) :
-    { Rep : ADT
-    | refineADT NatLower Rep }.
+
+  Lemma min_assoc
+  : forall x y z : nat, min (min x y) z = min x (min y z).
   Proof.
-    eexists; simpl.
-    rewrite refineADT_Build_ADT_Rep_default with
-    (abs := fun x => ret (absList2Multiset x)); simpl.
-    etransitivity.
-    + eapply refineADT_Build_ADT_Mutators. (* Maybe a tactic for refining a specific mutator. *)
-      unfold pointwise_relation; simpl; intros; autorewrite with refine_monad;
-      instantiate (1 := add_impl new_state n).
+    intros; rewrite min_assoc; eauto.
+  Qed.
+  Hint Resolve min_assoc.
+
+  Lemma min_returns_arg
+  : forall n0 m : nat, min n0 m = n0 \/ min n0 m = m.
+  Proof.
+    intros; edestruct min_dec; eauto.
+  Qed.
+  Hint Resolve min_returns_arg.
+
+  Lemma min_preserves_le
+  : forall n m : nat, min n m <= m.
+  Proof.
+    intros; destruct (min_dec n m); eauto with arith.
+  Qed.
+  Hint Resolve min_preserves_le.
+
+  Definition MinCollectionCached (defaultValue : nat) :
+    Sharpened NatLower.
+  Proof.
+    (* Step 1: Update the representation. *)
+    hone representation using (fun x => ret (absList2Multiset x)).
+    (* Step 2: Update the mutator. *)
+    hone mutator () using add_impl.
+    { (* Proof that add_impl refines add_spec. *)
       rewrite <- refine_add_impl.
       intros v computes_to_v; inversion_by computes_to_inv;
       repeat econstructor; inversion_by computes_to_inv; subst; eauto.
-    + let A := match goal with |- refineADT ?A ?B => constr:(A) end in          
-      erewrite refinesReplaceAddCache
-      with (cacheSpec := fun r n => bin_op_spec le (fun _ => True) (absList2Multiset r) defaultValue n)
-             (adt :=  A)
-             (cachedIndex := ())
-             (ObserverIndex_eq := ObserverIndexUnit_eq); simpl.
-      - unfold replaceObserverCache; simpl. 
-        let A := match goal with |- refineADT ?A ?B => constr:(A) end in
-        erewrite refinesReplaceObserverCache with 
-        (adt := A)
-          (f := fun r n => ret (cachedVal r))
-          (cachedIndex := ())
-          (ObserverIndex_eq := ObserverIndexUnit_eq);
-          unfold replaceObserverCache, ValidCacheInv, AddCacheEntry; simpl.
-        * eapply refineADT_Build_ADT_Mutators. 
-          unfold pointwise_relation, add_impl; simpl; intros; autorewrite with refine_monad;
-          unfold add_impl; simpl.
-          rewrite (refine_bin_op_impl (opSpec := le) (fun _ : nat => True) (op := min) 
-                                      (defaultValue := defaultValue))
-          with (m := n :: origRep new_state)
-                 (n := defaultValue); eauto with typeclass_instances.
-          intros; rewrite min_assoc; eauto.
-          intros; edestruct min_dec; eauto.
-          edestruct min_dec; eauto with arith.
-        * intros; intuition.
-      - intros; autorewrite with refine_monad; unfold bin_op_spec in *;
+    }
+    simpl. (* Need to get rid of this simpl. *)
+    (* Step 3: Add the Cache and replace observer. *)
+    cache observer using spec (fun r => bin_op_spec le (fun _ => True) (absList2Multiset r) defaultValue).
+    { (* Proof that the cached value [cachedVal] is a refinement of the minimum observer. *)
+      intros; autorewrite with refine_monad; unfold bin_op_spec in *;
+      intuition;
+      intros v' old_hyp; inversion_by computes_to_inv; subst; constructor; intuition;
+      intros v' old_hyp; inversion_by computes_to_inv; subst; constructor;
         intuition.
-        intros v' old_hyp; inversion_by computes_to_inv; subst; constructor.
-        intros v' old_hyp; inversion_by computes_to_inv; subst; constructor;
-        intuition.
-        intros v' old_hyp; inversion_by computes_to_inv; subst; constructor.
-        intros v' old_hyp; inversion_by computes_to_inv; subst; constructor;
-        intuition.
-        Grab Existential Variables.
-      * eauto.
-      * eauto.
-      * simpl; intros; unfold bin_op_spec , bin_op_impl in *; intuition.
-        inversion_by computes_to_inv; subst; simpl; rewrite H3.
-        { destruct (origRep r); simpl; right; split.
-          find_if_inside; eauto; congruence.
-          intros; find_if_inside; omega.
-          elimtype False; generalize (H3 n0); simpl; find_if_inside; 
-          intros; eauto; omega.
-          elimtype False; generalize (H3 n0); simpl; find_if_inside; 
-          intros; eauto; omega.
-        }
-        { inversion_by computes_to_inv; subst; simpl; right;
-          intuition.
-          find_if_inside; try omega.
-          destruct r; simpl in *.
-          generalize n cachedVal n0 H2; clear; induction origRep; simpl; 
-          eauto; intros; find_if_inside; auto with arith.
-          find_if_inside; subst.
-          destruct origRep.
-          elimtype False; destruct (min_dec n cachedVal); rewrite e in *;
-          eauto.
-          eapply (IHorigRep _ n2).
-          destruct (min_dec n cachedVal); rewrite e in *; eauto.
-          simpl; find_if_inside; auto with arith; congruence.
-          eapply IHorigRep; eauto.
-          destruct (min_dec n a); rewrite e in *; eauto.
-          find_if_inside; subst; eauto.
-          eapply fold_left_op_preserves_opSpec; eauto with typeclass_instances arith.
-          eapply fold_left_op_In_preserves_opSpec; auto with typeclass_instances arith.
-          intros; edestruct min_dec; eauto.
-          revert H; clear; induction (origRep r); simpl; intros; try omega.
-          find_if_inside; eauto.
-        }
-      * simpl; eauto.
+    }
+    simpl. (* Need to get rid of this simpl too. *)
+    (* Step 5: Replace the [Pick] used to get [cachedVal] in the add implementation. *)
+    hone mutator ().
+    {
+      (* Implementation of the cache for the [add] mutator. *)
+      subst; find_if_inside; try congruence.
+      unfold add_impl; simpl; intros; autorewrite with refine_monad; unfold add_impl; simpl.
+      rewrite (refine_bin_op_impl (opSpec := le)) with (defaultValue := defaultValue)
+      (m := n :: origRep new_state); eauto with typeclass_instances.
+    }
+    (* Done with the refinements :)*)
+    simpl; finish sharpening.
   Defined.
 
   Fixpoint BuildList n :=

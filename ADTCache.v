@@ -104,6 +104,12 @@ Definition replaceObserverCache adt
      MutatorMethods := MutatorMethods adt;
      MutatorMethodsInv := MutatorMethodsInv adt |}.
 
+(* Currently think it's good practice to expand ADT building blocks. *)
+Arguments replaceObserverCache / .
+Arguments addCachedValue / .
+Arguments ValidCacheInv / .
+Arguments AddCacheEntry / .
+
 Lemma refinesReplaceObserverCache
       adt
       (ObserverIndex_eq : forall idx idx' : ObserverIndex adt, {idx = idx'} + {idx <> idx'})
@@ -123,6 +129,7 @@ Proof.
   - inversion_by computes_to_inv; subst; eauto.
 Qed.
 
+(* Combining the above two refinements to replace an observer with a cached value. *)
 Lemma refinesReplaceAddCache
       adt
       (ObserverIndex_eq : forall idx idx' : ObserverIndex adt, {idx = idx'} + {idx <> idx'})
@@ -139,3 +146,17 @@ Proof.
   eapply refinesReplaceObserverCache.
   unfold addCachedValue, ValidCacheInv; simpl; intuition.
 Qed.
+
+(* Honing tactic for replacing an observer with a cached value. *)
+Tactic Notation "cache" "observer" "using" "spec" constr(cSpec) :=
+  let A := match goal with |- Sharpened ?A => constr:(A) end in
+  let mutIdx_eq' := fresh in
+  assert (forall idx idx' : MutatorIndex A, {idx = idx'} + {idx <> idx'})
+    as mutIdx_eq' by (decide equality);
+  eapply SharpenStep;
+    [ eapply refinesReplaceAddCache
+      with (cacheSpec := cSpec)
+             (adt :=  A)
+             (cachedIndex := ())
+             (ObserverIndex_eq := mutIdx_eq'); simpl
+    | idtac]; simpl.
