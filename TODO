@@ -22,15 +22,12 @@ Notes/Ideas:
 
 For Ben Delaware:
 
-* Untie Cache From Observers.
+* Remove list from representation in min example.
 
-* Untie Cache Refinement from non-cached implementation.
+* More proof automation / finish proofs.
 
 * Add Notation to Mutators + Obesrvers, etc. to make refinement
   more readable.
-
-* Improve the behavior of [add] to avoid extraneous computation in the
-cached version.
 
 * Look into other examples?
 

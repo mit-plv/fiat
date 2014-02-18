@@ -165,7 +165,19 @@ Section BinOpRefine.
 
   Hint Resolve refine_add_impl.
 
-  Arguments bin_op_spec opSpec defaultSpec m x n /.
+  Arguments bin_op_spec opSpec defaultSpec m x n / .
+
+  Lemma bin_op_spec_add_non_empty m n o p n' :
+    bin_op_spec opSpec defaultSpec (add m o) p n' ->
+    bin_op_spec opSpec defaultSpec (add (add m o) n) p (op n' n).
+  Proof.
+    simpl; intros; right; intuition.
+    elimtype False; generalize (H1 o); find_if_inside; omega.
+    elimtype False; generalize (H1 o); find_if_inside; omega.
+    destruct (op_returns_arg n' n) as [e | e]; rewrite e;
+    find_if_inside; omega.
+    find_if_inside; subst; eauto.
+  Qed.
 
   Theorem refine_bin_op_impl m n :
   refine {m' : nat |
@@ -333,15 +345,14 @@ Section ImplExamples.
     Sharpened NatLower.
   Proof.
     (* Step 1: Update the representation. *)
-    hone representation using (fun x => ret (absList2Multiset x)).
-    (* Step 2: Update the mutator. *)
-    hone mutator () using add_impl.
+    hone representation using (fun r => ret (absList2Multiset r)).
+    (* Step 2: Refine the insert/add mutator method. *)
+    hone mutator tt using add_impl.
     { (* Proof that add_impl refines add_spec. *)
       rewrite <- refine_add_impl.
       intros v computes_to_v; inversion_by computes_to_inv;
       repeat econstructor; inversion_by computes_to_inv; subst; eauto.
     }
-    simpl. (* Need to get rid of this simpl. *)
     (* Step 3: Add the Cache and replace observer. *)
     cache observer using spec (fun r => bin_op_spec le (fun _ => True) (absList2Multiset r) defaultValue).
     { (* Proof that the cached value [cachedVal] is a refinement of the minimum observer. *)
@@ -351,19 +362,28 @@ Section ImplExamples.
       intros v' old_hyp; inversion_by computes_to_inv; subst; constructor;
         intuition.
     }
-    simpl. (* Need to get rid of this simpl too. *)
-    (* Step 5: Replace the [Pick] used to get [cachedVal] in the add implementation. *)
-    hone mutator ().
+    (* Step 4: Replace the [Pick] used to get [cachedVal] in the add implementation. *)
+    hone mutator () using (fun new_state n => ret {| origRep := n :: (origRep new_state);
+                                                     cachedVal := match (origRep new_state) with
+                                                                    | [] => n
+                                                                    | _ => min (cachedVal new_state) n
+                                                                  end |} ).
     {
-      (* Implementation of the cache for the [add] mutator. *)
       subst; find_if_inside; try congruence.
-      unfold add_impl; simpl; intros; autorewrite with refine_monad; unfold add_impl; simpl.
-      rewrite (refine_bin_op_impl (opSpec := le)) with (defaultValue := defaultValue)
-      (m := n :: origRep new_state); eauto with typeclass_instances.
+      unfold add_impl; simpl; intros; autorewrite with refine_monad.
+      intros v RetV; apply computes_to_inv in RetV; subst; econstructor; eauto.
+      constructor; intuition.
+      destruct (origRep new_state).
+      unfold bin_op_spec; simpl; right; intuition; find_if_inside; omega.
+      eapply bin_op_spec_add_non_empty; eauto with typeclass_instances.
     }
-    (* Done with the refinements :)*)
-    simpl; finish sharpening.
+    finish sharpening.
   Defined.
+
+  (* Show the term derived above as a sanity check. *)
+  Goal (forall b, proj1_sig (MinCollectionCached 0) = b).
+    simpl.
+  Abort.
 
   Fixpoint BuildList n :=
     match n with

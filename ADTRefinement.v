@@ -229,7 +229,7 @@ Add Parametric Relation : ADT refineADT
       Sharpened adt' ->
       Sharpened adt.
   Proof.
-    intros adt' refineA SpecA';
+    intros adt'za refineA SpecA';
     eexists (proj1_sig SpecA'); rewrite refineA; exact (proj2_sig SpecA').
   Defined.
 
@@ -565,15 +565,22 @@ End GeneralRefinements.
   Tactic Notation "hone" "mutator" constr(mutIdx) :=
     let A := match goal with |- Sharpened ?A => constr:(A) end in
     let mutIdx_eq' := fresh in
-    assert (forall idx idx' : MutatorIndex A, {idx = idx'} + {idx <> idx'})
+    let Rep' := eval simpl in (Rep A) in
+    let RepInv' := eval simpl in (RepInv A) in
+    let MutatorIndex' := eval simpl in (MutatorIndex A) in
+    let ObserverIndex' := eval simpl in (ObserverIndex A) in
+    let MutatorMethods' := eval simpl in (MutatorMethods A) in
+    let ObserverMethods' := eval simpl in (ObserverMethods A) in
+    let MutatorMethodsInv' := eval simpl in (MutatorMethodsInv A) in
+    assert (forall idx idx' : MutatorIndex', {idx = idx'} + {idx <> idx'})
       as mutIdx_eq' by (decide equality);
       let RefineH := fresh in
-      assert ({mutBody | pointwise_relation _ (refineMutator (RepInv A) (@Return (Rep A)))
-                                 (MutatorMethods A)
+      assert ({mutBody | pointwise_relation _ (refineMutator RepInv' (@Return Rep'))
+                                 MutatorMethods'
                                  (fun idx => if (mutIdx_eq' idx mutIdx) then
                                                mutBody
                                              else
-                                               MutatorMethods A idx)}) as RefineH;
+                                               MutatorMethods' idx)}) as RefineH;
         [eexists _; let mutIdx' := fresh in
          unfold pointwise_relation; intro mutIdx';
          destruct (mutIdx_eq' mutIdx' mutIdx); simpl; intros; autorewrite with refine_monad; simpl;
@@ -581,32 +588,41 @@ End GeneralRefinements.
           reflexivity] (* Otherwise, they are the same *)
         | eapply SharpenStep;
           [eapply (@refineADT_Build_ADT_Mutators
-                         (Rep A) (RepInv A) _ _
-                         (ObserverMethods A)
-                         (MutatorMethods A)
+                         Rep' RepInv' MutatorIndex' ObserverIndex'
+                         ObserverMethods'
+                         MutatorMethods'
                          (fun idx => if (mutIdx_eq' idx ()) then
                                        (proj1_sig RefineH)
                                      else
-                                       MutatorMethods A idx) (proj2_sig RefineH)
-                         (MutatorMethodsInv A)
-                         (refineMutatorInv (MutatorMethodsInv A) (proj2_sig RefineH))
+                                       MutatorMethods' idx) (proj2_sig RefineH)
+                         MutatorMethodsInv'
+                         (refineMutatorInv MutatorMethodsInv' (proj2_sig RefineH))
                       ); simpl
-          | idtac] ]; simpl.
+          | idtac] ]; cbv beta in *; simpl in *.
 
   (* Honing tactic for refining the mutator method with the specified index.
      This version of the tactic takes the new implementation as an argument. *)
   Tactic Notation "hone" "mutator" constr(mutIdx) "using" constr(mutBody) :=
-    let A := match goal with |- Sharpened ?A => constr:(A) end in
+    let A :=
+        match goal with
+            |- Sharpened ?A => constr:(A) end in
     let mutIdx_eq' := fresh in
-    assert (forall idx idx' : MutatorIndex A, {idx = idx'} + {idx <> idx'})
-      as mutIdx_eq' by (decide equality);
+    let Rep' := eval simpl in (Rep A) in
+    let RepInv' := eval simpl in (RepInv A) in
+    let MutatorIndex' := eval simpl in (MutatorIndex A) in
+    let ObserverIndex' := eval simpl in (ObserverIndex A) in
+    let MutatorMethods' := eval simpl in (MutatorMethods A) in
+    let ObserverMethods' := eval simpl in (ObserverMethods A) in
+    let MutatorMethodsInv' := eval simpl in (MutatorMethodsInv A) in
+      assert (forall idx idx' : MutatorIndex', {idx = idx'} + {idx <> idx'})
+        as mutIdx_eq' by (decide equality);
       let RefineH := fresh in
-      assert (pointwise_relation _ (refineMutator (RepInv A) (@Return (Rep A)))
-                                 (MutatorMethods A)
+      assert (pointwise_relation MutatorIndex' (refineMutator RepInv' (@Return Rep'))
+                                 (MutatorMethods')
                                  (fun idx => if (mutIdx_eq' idx ()) then
                                                mutBody
                                              else
-                                               MutatorMethods A idx)) as RefineH;
+                                               MutatorMethods' idx)) as RefineH;
         [let mutIdx' := fresh in
          unfold pointwise_relation; intro mutIdx';
          destruct (mutIdx_eq' mutIdx' ()); simpl; intros; autorewrite with refine_monad; simpl;
@@ -614,17 +630,17 @@ End GeneralRefinements.
           reflexivity] (* Otherwise, they are the same *)
         | eapply SharpenStep;
           [eapply (@refineADT_Build_ADT_Mutators
-                         (Rep A) (RepInv A) _ _
-                         (ObserverMethods A)
-                         (MutatorMethods A)
+                         Rep' RepInv' ObserverIndex' MutatorIndex'
+                         ObserverMethods'
+                         MutatorMethods'
                          (fun idx => if (mutIdx_eq' idx ()) then
                                        mutBody
                                      else
-                                       MutatorMethods A idx) RefineH
-                         (MutatorMethodsInv A)
-                         (refineMutatorInv (MutatorMethodsInv A) RefineH)
+                                       MutatorMethods' idx) RefineH
+                         MutatorMethodsInv'
+                         (refineMutatorInv MutatorMethodsInv' RefineH)
                       ); simpl
-          | idtac] ]; simpl.
+          | idtac] ]; cbv beta in *; simpl in *.
 
 (* Honing tactic for refining the ADT representation which provides
    default observer and mutator implementations. *)

@@ -151,12 +151,19 @@ Qed.
 Tactic Notation "cache" "observer" "using" "spec" constr(cSpec) :=
   let A := match goal with |- Sharpened ?A => constr:(A) end in
   let mutIdx_eq' := fresh in
-  assert (forall idx idx' : MutatorIndex A, {idx = idx'} + {idx <> idx'})
+  let Rep' := eval simpl in (Rep A) in
+    let RepInv' := eval simpl in (RepInv A) in
+    let MutatorIndex' := eval simpl in (MutatorIndex A) in
+    let ObserverIndex' := eval simpl in (ObserverIndex A) in
+    let MutatorMethods' := eval simpl in (MutatorMethods A) in
+    let ObserverMethods' := eval simpl in (ObserverMethods A) in
+    let MutatorMethodsInv' := eval simpl in (MutatorMethodsInv A) in
+  assert (forall idx idx' : MutatorIndex', {idx = idx'} + {idx <> idx'})
     as mutIdx_eq' by (decide equality);
   eapply SharpenStep;
     [ eapply refinesReplaceAddCache
       with (cacheSpec := cSpec)
-             (adt :=  A)
+             (adt := A)
              (cachedIndex := ())
              (ObserverIndex_eq := mutIdx_eq'); simpl
-    | idtac]; simpl.
+    | idtac]; cbv beta in *; simpl in *.
