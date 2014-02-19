@@ -147,6 +147,23 @@ Proof.
   unfold addCachedValue, ValidCacheInv; simpl; intuition.
 Qed.
 
+(* Goals with a [pick]-ed cache value bound in a return appear when
+   adding a cache to a fully deterministic mutator; we should simply
+   consider the cache values in that case. *)
+Lemma refine_pick_cache (A : Type) (m : A) cv' P :
+  refine {x | P x} (ret cv') ->
+  refine (cv <- {x : nat | P x};
+          ret {| origRep := m; cachedVal := cv |})
+         (ret {| origRep := m; cachedVal := cv' |}).
+Proof.
+  intros; rewrite <- refineEquiv_bind_unit with
+          (x := cv') (f := fun cv => ret {| origRep := m; cachedVal := cv |}).
+  apply refine_bind; eauto; reflexivity.
+Qed.
+
+Hint Resolve refine_pick_cache : cache_refinements.
+
+
 (* Honing tactic for replacing an observer with a cached value. *)
 Tactic Notation "cache" "observer" "using" "spec" constr(cSpec) :=
   let A := match goal with |- Sharpened ?A => constr:(A) end in

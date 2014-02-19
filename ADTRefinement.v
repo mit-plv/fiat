@@ -560,6 +560,19 @@ Qed. *)
 
 End GeneralRefinements.
 
+(* Goals with [refine] nested in a [pick] crop up when
+   switching representations; this simplifies them to
+   what is expected. *)
+Lemma refine_pick_refine (A B : Type) f P :
+  refine {a : A | refine {b : B | P b} (ret (f a))} {a : A | P (f a)}.
+Proof.
+  intros Ra v; constructor; intros v' Rb.
+  apply computes_to_inv in Rb; subst.
+  inversion_by computes_to_inv; econstructor; eauto.
+Qed.
+
+Hint Rewrite refine_pick_refine : refine_monad.
+
   (* Honing tactic for refining the mutator method with the specified index.
      This version of the tactic develops the new mutator body interactively. *)
   Tactic Notation "hone" "mutator" constr(mutIdx) :=
