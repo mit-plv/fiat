@@ -658,6 +658,7 @@ Section general_refine_lemmas.
   Proof.
     repeat setoid_rewrite refineBundledEquiv_split_ex.
     (** I want to just [setoid_rewrite refineBundledEquiv_pick_eq].  But I can't because things don't line up nicely, and there are no parameterized setoid relations.  :-( *)
+    setoid_rewrite refineBundledEquiv_pick_eq.
     erewrite refineEquiv_pick_pick.
     - reflexivity.
     - abstract (repeat (intro || esplit); intuition).
