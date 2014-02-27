@@ -276,6 +276,22 @@ Section BinOpRefine.
                                    cachedVal := op (cachedVal m) n |}
            end).
 
+  Lemma bin_op_spec_add
+  : forall l cv n,
+      bin_op_spec opSpec defaultSpec (absList2Multiset l) defaultValue cv -> 
+      bin_op_spec opSpec defaultSpec (absList2Multiset (n :: l))  defaultValue
+                                                       (match l with
+                                                          | nil => n
+                                                          | _ :: _ => op cv n
+                                                        end).
+  Proof.
+    destruct l; intuition.
+    right; eapply add_bin_op_empty with (n := defaultValue); simpl; intuition.
+    destruct H;
+      [ elimtype False; eapply add_not_empty
+        | right; eapply add_bin_op_nonempty]; eassumption.
+  Qed.
+
   Lemma refine_add_impl' :
     forall r n,
    refine
@@ -311,10 +327,11 @@ End BinOpRefine.
 
 Hint Resolve bin_op_spec_unique : bin_op_refinements.
 Hint Resolve refine_add_impl : bin_op_refinements.
-Hint Resolve refine_add_impl' : bin_op_refinements.
-Hint Resolve refine_bin_op_spec' : bin_op_refinements.
+Hint Resolve refine_add_impl' : bin_op_refinements. 
+Hint Resolve refine_bin_op_spec' : bin_op_refinements. 
 Hint Resolve add_bin_op_empty : bin_op_refinements.
 Hint Resolve add_bin_op_nonempty : bin_op_refinements.
+Hint Resolve bin_op_spec_add : bin_op_refinements.
 
 Section ImplExamples.
 
@@ -452,36 +469,20 @@ Section ImplExamples.
     (* Step 4: Replace the [Pick] used to get [cachedVal] in the add implementation. *)
     hone mutator () using (update_cachedOp min) under invariant
          (fun r => bin_op_spec le (fun _ => True) (absList2Multiset (origRep r)) defaultValue (cachedVal r)).
-    { unfold repInvBiR, pointwise_relation in *; intuition; subst.
-      rewrite if_unit.
-      subst; unfold add_impl, update_cachedOp; simpl.
-      destruct (origRep r_n); autorewrite with refine_monad.
-      intros v CompV; inversion_by computes_to_inv; subst; econstructor; econstructor.
-      right; eapply add_bin_op_empty with (n := defaultValue)
-                                            (defaultSpec := fun _ => True);
-      eauto with typeclass_instances; unfold empty_spec; intuition.
-      econstructor.
-      econstructor; intuition.
-      right; eapply add_bin_op_empty with (n := defaultValue)
-                                            (defaultSpec := fun _ => True);
-      eauto with typeclass_instances; unfold empty_spec; intuition.
-      intros v CompV; inversion_by computes_to_inv; subst; econstructor; econstructor.
-      unfold bin_op_spec in H6; intuition.
-      elimtype False; simpl in H3; unfold empty_spec in H3; intuition.
-      generalize (H5 n0); find_if_inside; auto with arith; omega.
-      right; eapply add_bin_op_nonempty; eauto with typeclass_instances.
-      econstructor.
-      econstructor; intuition.
-      unfold bin_op_spec in H6; intuition.
-      elimtype False; simpl in H3; unfold empty_spec in H3; intuition.
-      generalize (H5 n0); find_if_inside; auto with arith; omega.
-      simpl; right; apply add_bin_op_nonempty; eauto with typeclass_instances.
+    { unfold repInvBiR in *|-; intuition; subst.
+      subst; unfold add_impl; simpl; autorewrite with refine_monad.
+      rewrite bin_op_spec_unique with (v := match origRep r_n with 
+                                              | [] => n 
+                                              | _ => min (cachedVal r_n) n
+                                            end)
+                                        (n := defaultValue);
+        autorewrite with refine_monad; eauto 50 with cache_refinements bin_op_refinements typeclass_instances.
+      rewrite refine_pick_repInvBiR.
+      unfold update_cachedOp; destruct (origRep r_n); reflexivity.
+      simpl origRep; simpl cachedVal; autorefine.
     }
     destruct H4; congruence.
-    {
-      unfold pointwise_relation; simpl; intros; rewrite if_unit.
-      unfold repInvBiR in *; intuition; subst; reflexivity.
-    }
+    unfold pointwise_relation; simpl; intros; autorefine.
     (* Step 5: Replace the list implementing the multiset with a boolean
       flag. *)
     eapply SharpenStep.
@@ -504,17 +505,11 @@ Section ImplExamples.
      r_n = match (origRep r_o) with
              | [] => None
              | _ :: _ => Some (cachedVal r_o)
-           end); intros; eauto; try rewrite if_unit; simpl.
-    { destruct r_o; destruct origRep; simpl in *; intuition; subst;
-      unfold update_cachedOp; simpl; autorewrite with refine_monad;
-      simpl; split; intros v CompV; inversion_by computes_to_inv;
-      subst; econstructor; intuition; eauto; try discriminate.
-    }
-    { destruct r_o; destruct origRep; simpl in *; intuition; subst;
-      unfold update_cachedOp; simpl; autorewrite with refine_monad;
-      simpl; split; intros v CompV; inversion_by computes_to_inv;
-      subst; econstructor; intuition; eauto; try discriminate.
-    }
+           end); intros; eauto; try rewrite if_unit; simpl;
+     destruct r_o; destruct origRep; simpl in *; intuition; subst;
+     unfold update_cachedOp; simpl; autorewrite with refine_monad;
+     simpl; split; intros v CompV; inversion_by computes_to_inv;
+     subst; econstructor; intuition; eauto; try discriminate.
     (* Step 6: All done with the derivation. *)
     finish sharpening.
   Defined.
@@ -523,72 +518,6 @@ Section ImplExamples.
     simpl.
     unfold simplifyMutatorMethods; simpl.
   Abort.
-
-  Local Ltac induction_list_then tac :=
-    lazymatch goal with
-  | [ l : list _ |- _ ]
-    => repeat match goal with
-                | [ H : appcontext[l] |- _ ] => clear H
-              end;
-      induction l; tac
-  end.
-
-  Local Ltac manipulate_op op_assoc op_comm :=
-    match goal with
-      | _ => reflexivity
-      | _ => progress simpl in *
-      | _ => apply op_comm
-      | _ => rewrite <- ?op_assoc; revert op_assoc op_comm; rewrite_hyp'; intros
-      | _ => rewrite ?op_assoc; revert op_assoc op_comm; rewrite_hyp'; intros
-      | _ => rewrite <- ?op_assoc; f_equal; []
-      | _ => rewrite ?op_assoc; f_equal; []
-      | _ => apply op_comm
-    end.
-
-  Local Ltac deep_manipulate_op op op_assoc op_comm can_comm_tac :=
-    repeat match goal with
-             | _ => progress repeat manipulate_op op_assoc op_comm
-             | [ |- appcontext[op ?a ?b] ]
-               => can_comm_tac a b;
-                 rewrite (op_comm a b);
-                 let new_can_comm_tac :=
-                     fun x y =>
-                       can_comm_tac x y;
-                       try (unify x a;
-                            unify y b;
-                            fail 1 "Cannot commute" a "and" b "again")
-                 in deep_manipulate_op op op_assoc op_comm new_can_comm_tac
-           end.
-
-  Local Ltac solve_after_induction_list op op_assoc op_comm :=
-    solve [ deep_manipulate_op op op_assoc op_comm ltac:(fun a b => idtac) ].
-
-  Local Ltac t :=
-    repeat match goal with
-             | _ => assumption
-             | _ => intro
-             | _ => progress simpl in *
-             | [ |- appcontext[if string_dec ?A ?B then _ else _ ] ]
-               => destruct (string_dec A B)
-             | _ => progress subst
-             | [ H : ex _ |- _ ] => destruct H
-             | [ H : and _ _ |- _ ] => destruct H
-             | _ => split
-             | [ H : option _ |- _ ] => destruct H
-             | [ H : _ |- _ ] => solve [ inversion H ]
-             | [ |- appcontext[match ?x with _ => _ end] ] => destruct x
-             | [ H : appcontext[match ?x with _ => _ end] |- _  ] => destruct x
-             | [ H : Some _ = Some _ |- _ ] => inversion H; clear H
-             | _ => progress f_equal; []
-             | _ => progress intuition
-             | _ => repeat esplit; reflexivity
-             | [ H : _ |- _ ] => rewrite H; try (rewrite H; fail 1)
-           end.
-
-  Local Ltac t' op op_assoc op_comm :=
-    repeat first [ progress t
-                 | progress induction_list_then ltac:(solve_after_induction_list op op_assoc op_comm) ].
-
 
   Fixpoint BuildList n :=
     match n with
@@ -607,13 +536,38 @@ Section ImplExamples.
 
   Require Import Max.
 
+  (* Proofs of various [op] properties for [max]. *)
   Lemma max_trans : forall n m v,
-                      n >= v
-                      -> max n m >= v.
+                      n >= v ->
+                      max n m >= v.
     intros; destruct (max_spec n m); omega.
   Qed.
-
   Hint Resolve max_trans.
+
+  Lemma max_assoc
+  : forall x y z : nat, max (max x y) z = max x (max y z).
+  Proof.
+    intros; rewrite max_assoc; eauto.
+  Qed.
+  Hint Resolve max_assoc.
+
+  Lemma max_returns_arg
+  : forall n0 m : nat, max n0 m = n0 \/ max n0 m = m.
+  Proof.
+    intros; edestruct max_dec; eauto.
+  Qed.
+  Hint Resolve max_returns_arg.
+
+  Lemma max_preserves_lte
+  : forall n m : nat, max n m >= m.
+  Proof.
+    intros; destruct (max_dec n m); eauto with arith.
+  Qed.
+  Hint Resolve max_preserves_lte.
+
+  Hint Resolve max_comm.
+
+  Arguments NatUpper / .
 
   Definition MaxCollection (defaultValue : nat) :
     { Rep : ADT
@@ -621,9 +575,8 @@ Section ImplExamples.
   Proof.
     eexists; eapply refines_NatBinOp with
              (op := max)
-               (defaultValue := defaultValue); t.
-    rewrite max_assoc; auto.
-    edestruct max_dec; eauto.
+               (defaultValue := defaultValue); eauto with typeclass_instances.
+    unfold Transitive; intros; omega.
   Defined.
 
 End ImplExamples.

@@ -1,4 +1,4 @@
-Require Import Common Computation ADT Ensembles ADTRefinement.
+Require Import Common Computation ADT Ensembles ADTRefinement ADTRepInv.
 
 Generalizable All Variables.
 Set Implicit Arguments.
@@ -119,7 +119,7 @@ Lemma refinesReplaceObserverCache
                   repInv r ->
                   refine
                     (r' <- MutatorMethods adt idx r n;
-                     {r'' : Rep adt | r' = r'' /\ repInv r''})
+                     {r'' : Rep adt | repInvBiR repInv r' r''})
                     (MutatorMethods adt idx r n))
       (cachedIndex : ObserverIndex adt)
       (refines_f : forall r n, repInv r ->
@@ -127,11 +127,11 @@ Lemma refinesReplaceObserverCache
 : refineADT adt (replaceObserverCache adt ObserverIndex_eq f cachedIndex).
 Proof.
   unfold replaceObserverCache; destruct adt; simpl.
-  econstructor 1 with (BiR := fun r_o r_n : Rep => r_o = r_n /\ repInv r_n)
+  econstructor 1 with (BiR := repInvBiR repInv (rep := Rep))
                         (mutatorMap := @id MutatorIndex) (* Have to specify MutatorIndex in order to
                                         unify- 8.5 might fix this? *)
                         (observerMap := @id ObserverIndex);
-    simpl in *|-*; unfold id; intros; intuition; subst; eauto.
+    simpl in *|-*; unfold id, repInvBiR; intros; intuition; subst; eauto.
   - find_if_inside; subst; [eauto | reflexivity].
 Qed.
 
