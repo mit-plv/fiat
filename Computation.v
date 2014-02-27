@@ -35,7 +35,7 @@ Notation "{ x  |  P }" := (@Pick _ (fun x => P)) : comp_scope.
 Notation "{ x : A  |  P }" := (@Pick A%type (fun x => P)) : comp_scope.
 
 Section comp.
-  Definition List A B (f : A -> B) : Comp A -> Comp B
+  Definition Lift A B (f : A -> B) : Comp A -> Comp B
     := fun x => (x' <- x;
                  Return (f x'))%comp.
 
