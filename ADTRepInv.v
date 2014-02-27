@@ -3,19 +3,19 @@ Require Import Common Computation ADT Ensembles ADTRefinement.
 Generalizable All Variables.
 Set Implicit Arguments.
 
-(* Ignore this for now- need new text with new approach.
+(* Oftentimes in order to show that a refinement is valid, we
+   need some invariant to hold on an ADT's representation- a value
+   cached in an ADT's representation should be the result of running
+   an observer on the current state, for example.
 
-   Users may want a particular ADT representation to always satisfy some
-   invariant- a value cached in an ADT's representation should be
-   the result of running an observer on the current state, for example.
-   A simple solution to this problem is to package proofs of these
-   invariants into an ADT's representation using dependent products:
-   [ {rep | Invariant rep} ]. While conceptually simple, this forces
-   methods to be 'internally' verified- mutator methods in particular
-   have to simultaneously produce a new state /and/ a proof that
-   it satisfies the ADT's invariant. This can make derivations
-   more painful while potentially being somewhat bewildering to
-   those unfamiliar with dependent products.
+
+   One solution to this problem is to use dependent products to package
+   proofs of an invariant into an ADT's representation: [ {rep | Invariant rep} ].
+   While conceptually simple, this forces methods to be 'internally'
+   verified- mutator methods in particular have to simultaneously produce
+   a new state /and/ a proof that it satisfies the ADT's invariant.
+   This can make derivations more painful while potentially being
+   bewildering to those unfamiliar with dependent products.
 
    Dependent products introduce another wrinkle to refinement:
    since an ADT refinement can change the proof produced by a method,
@@ -32,28 +32,39 @@ Set Implicit Arguments.
    proofs aren't packaged into the representation in this approach,
    equality suffices for expressing method refinement.
 
-   This file (hopefully) enables the best of both worlds with a
-   set of definitions and tactics for producing more familiar external
-   verification derivations for ADTs which use dependent products for
-   representation invariants. *)
+   Yet another approach is to use the bisimulation relation to derive
+   an ad hoc invariant for a particular refinement step. The basic idea
+   is that the bisimulation relation relates two equal states for which
+   the invariant holds. By baking the invariant into the bisimulation
+   relation, it becomes a hypothesis to all of our refinement proofs.
+   The cost of this approach is that it requires a proof that each mutator
+   preserves the invariant on an ad hoc basis, which could leave to some
+   duplicate proofs (One way to mitigate this would be to include invariant
+   hypotheses around in the context, which we could bake into the honing
+   tactics). Otherwise, I [Ben] would argue it includes the best
+   of both worlds- there's no need to pollute the definition of [ADT]
+   with [repInv] /and/ methods don't have to bother with maintaining
+   proofs.
+
+ *)
 
 Section RepInv.
 
   Variable rep : Type.
   Variable repInv : Ensemble rep.
-  
-  (* This is the bisimulation relation we use to mimic invariants- 
+
+  (* This is the bisimulation relation we use to mimic invariants-
      the representations are always the same /and/ the invariant holds. *)
-  
+
   Definition repInvBiR (r_o r_n : rep) :=
     r_o = r_n /\ repInv r_n.
 
-  (* Refining an adt using the [repInvBiR] relation allows us to 
-   utilize [repInv] when proving method refinement. Of course, 
+  (* Refining an adt using the [repInvBiR] relation allows us to
+   utilize [repInv] when proving method refinement. Of course,
    we also have to show that mutators preserve the invariant.
-   Hopefully we can include additional information into the honing 
+   Hopefully we can include additional information into the honing
    tactics to avoid reproving invariant preservation.  *)
-  
+
   Add Parametric Morphism
       mutIdx obsIdx
   : (@Build_ADT rep mutIdx obsIdx)
@@ -66,21 +77,21 @@ Section RepInv.
     intros; eapply refineADT_Build_ADT_Rep; eauto; reflexivity.
   Qed.
 
-  Lemma refine_pick_repInvBiR : 
+  Lemma refine_pick_repInvBiR :
     forall r_o, repInv r_o ->
     refineEquiv {r_n | repInvBiR r_o r_n}
                 (ret r_o).
   Proof.
-    unfold repInvBiR; split; intros v CompV; inversion_by computes_to_inv; intuition; 
+    unfold repInvBiR; split; intros v CompV; inversion_by computes_to_inv; intuition;
     subst; econstructor; eauto.
   Qed.
 
-  Lemma refine_pick_repInvBiR' : 
+  Lemma refine_pick_repInvBiR' :
     forall r_n, repInv r_n ->
     refineEquiv {r_o | repInvBiR r_o r_n}
                 (ret r_n).
   Proof.
-    unfold repInvBiR; split; intros v CompV; inversion_by computes_to_inv; intuition; 
+    unfold repInvBiR; split; intros v CompV; inversion_by computes_to_inv; intuition;
     subst; econstructor; eauto.
   Qed.
 
@@ -119,7 +130,7 @@ Qed.
 
 (* Tactic for refining mutators under an invariant. *)
 
-Tactic Notation "hone" "mutator" constr(mutIdx) "using" constr(mutBody) 
+Tactic Notation "hone" "mutator" constr(mutIdx) "using" constr(mutBody)
        "under" "invariant" constr(repInv) :=
     let A :=
         match goal with
@@ -151,7 +162,7 @@ Tactic Notation "hone" "mutator" constr(mutIdx) "using" constr(mutBody)
                      (fun idx => if (mutIdx_eq' idx ()) then
                                    mutBody
                                  else
-                                   MutatorMethods' idx) 
+                                   MutatorMethods' idx)
                      RefineH
                      ObserverMethods'
                      ObserverMethods')

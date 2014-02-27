@@ -1,6 +1,6 @@
 Require Import String Omega.
 Require Import FunctionalExtensionality.
-Require Export ADT ADTRefinement ADTCache.
+Require Export ADT ADTRefinement ADTCache ADTRepInv.
 
 Generalizable All Variables.
 Set Implicit Arguments.
@@ -26,12 +26,22 @@ Section BinOpSpec.
   Variable defaultSpec : nat -> Prop.
 
   (* Specification for calculating op. *)
+  (* If the set [m] is empty, the default spec should hold for [n]. *)
+  Definition empty_spec (m : multiset) n :=
+    defaultSpec n /\ forall n', m n' = 0.
 
+  (* If the set [m] is not empty, [n] is the op-est thing in [m] *)
+  Definition nonempty_spec (m : multiset) n :=
+    m n > 0 /\ forall n', m n' > 0 -> opSpec n n'.
+
+  (* The observer must satisfy one of the above two behaviors,
+     depending on whether the set is empty or not. *)
   Definition bin_op_spec
   : observerMethodSpec multiset
-    := fun m _ n => (defaultSpec n /\ forall n', m n' = 0) \/ (* Either the set is empty *)
-                    (m n > 0 /\ forall n', m n' > 0 -> opSpec n n'). (* Or n is the op-est thing in the set *)
+    := fun m _ n => empty_spec m n \/ nonempty_spec m n .
 
+  Arguments empty_spec m n / .
+  Arguments nonempty_spec m n / .
   Arguments bin_op_spec / .
 
   Definition NatBinOpSpec
@@ -71,7 +81,6 @@ Section BinOpImpl.
   Program Definition NatBinOpImpl
   : ADT
     := {| Rep := list nat;
-          RepInv m := True;
           MutatorIndex := unit;
           ObserverIndex := unit;
           MutatorMethods := fun _ => add_impl;
@@ -152,7 +161,13 @@ Section BinOpRefine.
   Program Definition absList2Multiset (l : list nat) : multiset := count_occ eq_nat_dec l.
 
   Arguments absList2Multiset l / n .
-  Arguments add_spec m x m' /.
+  Arguments add_spec m x m' / .
+
+  Lemma absList2Multiset_perm m n l
+  : absList2Multiset (m :: n :: l) = absList2Multiset (n :: m :: l).
+  Proof.
+    intros; simpl; apply functional_extensionality; intros; repeat find_if_inside; auto.
+  Qed.
 
   Theorem refine_add_impl m n :
   refine {m' : list nat |
@@ -165,18 +180,44 @@ Section BinOpRefine.
 
   Hint Resolve refine_add_impl.
 
+  Arguments empty_spec defaultSpec m n / .
+  Arguments nonempty_spec opSpec m n / .
   Arguments bin_op_spec opSpec defaultSpec m x n / .
+
+  Lemma add_bin_op_nonempty :
+    forall m n o,
+      nonempty_spec opSpec m n ->
+      nonempty_spec opSpec (add m o) (op n o).
+  Proof.
+    simpl; intros; intuition;
+    find_if_inside; auto with arith; substs; eauto.
+    destruct (op_returns_arg n o) as [H' | H']; rewrite H'; congruence.
+  Qed.
+
+  Lemma add_bin_op_empty :
+    forall m n o,
+      empty_spec defaultSpec m n ->
+      nonempty_spec opSpec (add m o) o.
+  Proof.
+    simpl; intros; intuition;
+    find_if_inside; auto with arith; substs; eauto;
+    [ congruence
+      | generalize (H1 n'); omega].
+  Qed.
+
+  Lemma add_not_empty : 
+    forall m o n,
+      ~ (empty_spec defaultSpec (add m o) n).
+  Proof.
+    simpl; intuition; generalize (H1 o); find_if_inside; omega.
+  Qed.
 
   Lemma bin_op_spec_add_non_empty m n o p n' :
     bin_op_spec opSpec defaultSpec (add m o) p n' ->
     bin_op_spec opSpec defaultSpec (add (add m o) n) p (op n' n).
   Proof.
-    simpl; intros; right; intuition.
+    right; eapply add_bin_op_nonempty; eauto; simpl in *; intuition;
     elimtype False; generalize (H1 o); find_if_inside; omega.
-    elimtype False; generalize (H1 o); find_if_inside; omega.
-    destruct (op_returns_arg n' n) as [e | e]; rewrite e;
-    find_if_inside; omega.
-    find_if_inside; subst; eauto.
   Qed.
 
   Lemma bin_op_spec_unique m n n' v :
@@ -214,44 +255,274 @@ Section BinOpRefine.
   Proof.
     unfold NatBinOpSpec.
     rewrite (refines_rep_pickImpl absList2Multiset).
-    econstructor 1 with (abs := @Return (list nat))
+    econstructor 1 with (BiR := @eq (list nat))
                           (mutatorMap := @id unit)
-                          (observerMap := @id unit); simpl; intros.
+                          (observerMap := @id unit); simpl; intros; subst.
+    setoid_rewrite refineEquiv_pick_eq'; autorewrite with refine_monad;
     interleave_autorewrite_refine_monad_with ltac:(apply refine_add_impl).
     interleave_autorewrite_refine_monad_with ltac:(apply refine_bin_op_impl).
-    auto.
   Qed.
 
   (* If we are caching a bin_op_impl method, just need to op the cachedVal
      and the added value. *)
-  Definition update_cachedMin (m : @cachedRep (list nat) nat) n :=
-    match (origRep m) with
-      | [] => n
-      | _ => op (cachedVal m) n
-    end.
 
-  Lemma refine_bin_op_spec :
-    forall m n,
-      bin_op_spec opSpec defaultSpec (absList2Multiset (origRep m)) defaultValue (cachedVal m) ->
+  Definition update_cachedOp
+  : mutatorMethodType (cachedRep (list nat) nat) :=
+    fun m n =>
+      ret (match (origRep m) with
+             | [] => {| origRep := n :: [];
+                            cachedVal := n |}
+             | m' :: ms' => {| origRep := n :: m' :: ms';
+                                   cachedVal := op (cachedVal m) n |}
+           end).
+
+  Lemma refine_add_impl' :
+    forall r n,
    refine
-     {x : nat |
-     bin_op_spec opSpec defaultSpec (absList2Multiset (n :: origRep m)) defaultValue x}
-     (ret (update_cachedMin m n)).
+     {nr' : list nat |
+      forall or : multiset,
+        or = absList2Multiset r ->
+        exists or' : multiset,
+          {r' : multiset | add_spec or n r'} ↝ or' /\ or' = absList2Multiset nr'}
+     (add_impl r n).
   Proof.
-    intros; intros v RetV; apply computes_to_inv in RetV; subst; econstructor; eauto.
-    intuition; unfold update_cachedMin; destruct (origRep m).
-    - unfold bin_op_spec; simpl; right; intuition; find_if_inside; substs;
-      auto with arith; omega.
-    - eapply bin_op_spec_add_non_empty; eauto with typeclass_instances.
+    intros; econstructor; intros.
+    econstructor; split; subst; eauto.
+    econstructor; unfold add_impl in *; inversion_by computes_to_inv; subst;
+    unfold add_spec; simpl; eauto.
+  Qed.
+
+  Lemma refine_bin_op_spec' :
+    forall r v n,
+      bin_op_spec opSpec defaultSpec (absList2Multiset r) defaultValue v ->
+      refine
+        {n' : nat |
+         forall or : multiset,
+           or = absList2Multiset r ->
+           {n'0 : nat | bin_op_spec opSpec defaultSpec or n n'0} ↝ n'}
+        (ret v).
+  Proof.
+    intros; intros v' RetV; apply computes_to_inv in RetV; subst; econstructor; intros;
+    econstructor; eauto; substs;
+    intuition; destruct r; substs.
   Qed.
 
 End BinOpRefine.
 
 Hint Resolve bin_op_spec_unique : bin_op_refinements.
 Hint Resolve refine_add_impl : bin_op_refinements.
-Hint Resolve refine_bin_op_spec : bin_op_refinements.
+Hint Resolve refine_add_impl' : bin_op_refinements.
+Hint Resolve refine_bin_op_spec' : bin_op_refinements.
+Hint Resolve add_bin_op_empty : bin_op_refinements.
+Hint Resolve add_bin_op_nonempty : bin_op_refinements.
 
 Section ImplExamples.
+
+  Require Import Min.
+
+  (* Proofs of various [op] properties for [min]. *)
+  Lemma min_trans : forall n m v,
+                      n <= v ->
+                      min n m <= v.
+    intros; destruct (min_spec n m); omega.
+  Qed.
+  Hint Resolve min_trans.
+
+  Lemma min_assoc
+  : forall x y z : nat, min (min x y) z = min x (min y z).
+  Proof.
+    intros; rewrite min_assoc; eauto.
+  Qed.
+  Hint Resolve min_assoc.
+
+  Lemma min_returns_arg
+  : forall n0 m : nat, min n0 m = n0 \/ min n0 m = m.
+  Proof.
+    intros; edestruct min_dec; eauto.
+  Qed.
+  Hint Resolve min_returns_arg.
+
+  Lemma min_preserves_le
+  : forall n m : nat, min n m <= m.
+  Proof.
+    intros; destruct (min_dec n m); eauto with arith.
+  Qed.
+  Hint Resolve min_preserves_le.
+
+  Hint Resolve min_comm.
+
+  Arguments NatLower / .
+
+  (* The original MinCollection example folds min over a list
+     implementing the multiset. This is slow, of course. *)
+
+  Definition MinCollection (defaultValue : nat) :
+    { Rep : ADT
+    | refineADT NatLower Rep }.
+  Proof.
+    eexists.
+    apply refines_NatBinOp with
+             (op := min)
+               (defaultValue := defaultValue); auto with arith typeclass_instances.
+  Defined.
+
+  Arguments NatBinOpSpec / .
+  Arguments pickImpl / .
+
+  (* Still need to clean this proof up to make it readable.
+             More notation, better tactic support. *)
+
+  Ltac autorefine :=
+    unfold repInvBiR in *|-*;
+    subst; split_and; intros;
+    autorewrite with refine_monad;
+    eauto 50 with cache_refinements bin_op_refinements typeclass_instances;
+    match goal with
+        |- refine _ (ret _) => let v := fresh in
+                               let CompV := fresh in
+                               intros v CompV; apply computes_to_inv in CompV;
+                               subst; econstructor; intros
+      | _ => idtac
+    end.
+
+  Lemma if_unit (A : Type) (unit_eq : forall t t' : (), {t = t'} + {t <> t'})
+  : forall (a b : ()) (i e : A),
+      (if (unit_eq a b) then i else e) = i.
+  Proof.
+    intros; destruct a; destruct b; find_if_inside; congruence.
+  Qed.
+  Hint Rewrite if_unit : refine_monad.
+
+  (* This example derivation uses an option nat to
+   represent the minimum element of the collection,
+   updating the value each time an element is inserted. *)
+
+  Definition MinCollectionCached (defaultValue : nat) :
+    Sharpened NatLower.
+  Proof.
+    (* Step 1: Update the representation. *)
+    hone representation using (fun or (nr : option nat) =>
+                                 match nr with
+                                     | Some n => nonempty_spec le or n
+                                     | None => empty_spec (fun _ => True) or defaultValue
+                                 end).
+    (* Step 2: Refine the insert/add mutator method. *)
+    hone mutator tt using (fun r n =>
+                             ret (match r with
+                               | Some n' => Some (min n' n)
+                               | None => Some n
+                             end)).
+    autorefine.
+    unfold add_spec; eexists (add or n); destruct r_n; autorefine.
+    (* Step 3: Add the Cache and replace observer. *)
+    hone observer () using (fun (r : option nat) (n : nat) =>
+                              ret (match r with
+                                         | Some n => n
+                                         | None => defaultValue
+                                   end)).
+    autorefine.
+    destruct r_n; unfold bin_op_spec; autorefine.
+    (* Step 4: All done :). *)
+    finish sharpening.
+  Defined.
+
+  (* Show the term derived above as a sanity check. *)
+  Goal (forall b, MutatorMethods (proj1_sig (MinCollectionCached 0)) () = b).
+    simpl.
+  Abort.
+
+  (* Slightly longer derivation which first adds a cache, then
+     forgets the original list. Silly example, but it shows that
+     everything works. It's also not as automated a derivation as
+     I would like, but it's meant to be more of a proof of concept 
+     anyways. *)
+
+  Definition MinCollectionCached' (defaultValue : nat) :
+    Sharpened NatLower.
+  Proof.
+    (* Step 1: Update the representation. *)
+    hone representation using (fun or nr => or = (absList2Multiset nr)).
+    (* Step 2: Refine the insert/add mutator method. *)
+    hone mutator tt using add_impl.
+    autorefine.
+    (* Step 3: Add the Cache and replace observer. *)
+    cache observer using spec
+          (fun r => bin_op_spec le (fun _ => True) (absList2Multiset r) defaultValue).
+    autorefine.
+    (* Step 4: Replace the [Pick] used to get [cachedVal] in the add implementation. *)
+    hone mutator () using (update_cachedOp min) under invariant
+         (fun r => bin_op_spec le (fun _ => True) (absList2Multiset (origRep r)) defaultValue (cachedVal r)).
+    { unfold repInvBiR, pointwise_relation in *; intuition; subst.
+      rewrite if_unit.
+      subst; unfold add_impl, update_cachedOp; simpl.
+      destruct (origRep r_n); autorewrite with refine_monad.
+      intros v CompV; inversion_by computes_to_inv; subst; econstructor; econstructor.
+      right; eapply add_bin_op_empty with (n := defaultValue)
+                                            (defaultSpec := fun _ => True);
+      eauto with typeclass_instances; unfold empty_spec; intuition.
+      econstructor.
+      econstructor; intuition.
+      right; eapply add_bin_op_empty with (n := defaultValue)
+                                            (defaultSpec := fun _ => True);
+      eauto with typeclass_instances; unfold empty_spec; intuition.
+      intros v CompV; inversion_by computes_to_inv; subst; econstructor; econstructor.
+      unfold bin_op_spec in H6; intuition.
+      elimtype False; simpl in H3; unfold empty_spec in H3; intuition.
+      generalize (H5 n0); find_if_inside; auto with arith; omega.
+      right; eapply add_bin_op_nonempty; eauto with typeclass_instances.
+      econstructor.
+      econstructor; intuition.
+      unfold bin_op_spec in H6; intuition.
+      elimtype False; simpl in H3; unfold empty_spec in H3; intuition.
+      generalize (H5 n0); find_if_inside; auto with arith; omega.
+      simpl; right; apply add_bin_op_nonempty; eauto with typeclass_instances.
+    }
+    destruct H4; congruence.
+    {
+      unfold pointwise_relation; simpl; intros; rewrite if_unit.
+      unfold repInvBiR in *; intuition; subst; reflexivity.
+    }
+    (* Step 5: Replace the list implementing the multiset with a boolean
+      flag. *)
+    eapply SharpenStep.
+    eapply simplifyRep with
+    (oldRep := cachedRep (list nat) nat)
+      (newRep := option nat)
+    (simplifyf := fun r => match (origRep r) with
+                               | [] => None
+                               | _ :: _ => Some (cachedVal r)
+                           end)
+    (concretize := fun r => match r with
+                                | Some n => {| origRep := n :: [];
+                                               cachedVal := n |}
+                                | None  => {| origRep := [];
+                                               cachedVal := defaultValue |}
+                            end)
+    (BiR := fun (r_o : cachedRep (list nat) nat)
+                (r_n : option nat) =>
+              (origRep r_o = [] -> cachedVal r_o = defaultValue) /\
+     r_n = match (origRep r_o) with
+             | [] => None
+             | _ :: _ => Some (cachedVal r_o)
+           end); intros; eauto; try rewrite if_unit; simpl.
+    { destruct r_o; destruct origRep; simpl in *; intuition; subst;
+      unfold update_cachedOp; simpl; autorewrite with refine_monad;
+      simpl; split; intros v CompV; inversion_by computes_to_inv;
+      subst; econstructor; intuition; eauto; try discriminate.
+    }
+    { destruct r_o; destruct origRep; simpl in *; intuition; subst;
+      unfold update_cachedOp; simpl; autorewrite with refine_monad;
+      simpl; split; intros v CompV; inversion_by computes_to_inv;
+      subst; econstructor; intuition; eauto; try discriminate.
+    }
+    (* Step 6: All done with the derivation. *)
+    finish sharpening.
+  Defined.
+
+  Goal (forall b, MutatorMethods (proj1_sig (MinCollectionCached' 0)) () = b).
+    simpl.
+    unfold simplifyMutatorMethods; simpl.
+  Abort.
 
   Local Ltac induction_list_then tac :=
     lazymatch goal with
@@ -318,94 +589,6 @@ Section ImplExamples.
     repeat first [ progress t
                  | progress induction_list_then ltac:(solve_after_induction_list op op_assoc op_comm) ].
 
-  Require Import Min.
-
-  Lemma min_trans : forall n m v,
-                      n <= v
-                      -> min n m <= v.
-    intros; destruct (min_spec n m); omega.
-  Qed.
-
-  Hint Resolve min_trans.
-  Hint Resolve min_comm.
-
-  Lemma if_unit (A : Type) (unit_eq : forall t t' : (), {t = t'} + {t <> t'})
-  : forall (a b : ()) (i e : A),
-      (if (unit_eq a b) then i else e) = i.
-  Proof.
-    intros; destruct a; destruct b; find_if_inside; congruence.
-  Qed.
-
-  Arguments NatLower / .
-
-  Definition MinCollection (defaultValue : nat) :
-    { Rep : ADT
-    | refineADT NatLower Rep }.
-  Proof.
-    eexists.
-    apply refines_NatBinOp with
-             (op := min)
-               (defaultValue := defaultValue); auto with arith typeclass_instances.
-    + intros; rewrite min_assoc; auto.
-    + intros; edestruct min_dec; eauto.
-  Defined.
-
-  Arguments NatLower / .
-  Arguments NatBinOpSpec / .
-  Arguments pickImpl / .
-
-  (* Still need to clean this proof up to make it readable.
-             More notation, better tactic support. *)
-
-  Lemma min_assoc
-  : forall x y z : nat, min (min x y) z = min x (min y z).
-  Proof.
-    intros; rewrite min_assoc; eauto.
-  Qed.
-  Hint Resolve min_assoc.
-
-  Lemma min_returns_arg
-  : forall n0 m : nat, min n0 m = n0 \/ min n0 m = m.
-  Proof.
-    intros; edestruct min_dec; eauto.
-  Qed.
-  Hint Resolve min_returns_arg.
-
-  Lemma min_preserves_le
-  : forall n m : nat, min n m <= m.
-  Proof.
-    intros; destruct (min_dec n m); eauto with arith.
-  Qed.
-  Hint Resolve min_preserves_le.
-
-  Hint Rewrite if_unit : refine_monad.
-
-  Ltac autorefine := 
-    split_and; intros;
-    autorewrite with refine_monad; 
-    eauto 10 with cache_refinements bin_op_refinements typeclass_instances.
-  
-  Definition MinCollectionCached (defaultValue : nat) :
-    Sharpened NatLower.
-  Proof.
-    (* Step 1: Update the representation. *)
-    hone representation using (fun r => ret (absList2Multiset r)).
-    (* Step 2: Refine the insert/add mutator method. *)
-    hone mutator tt using add_impl. autorefine.
-    (* Step 3: Add the Cache and replace observer. *)
-    cache observer using spec (fun r => bin_op_spec le (fun _ => True) (absList2Multiset r) defaultValue).
-    autorefine.
-    (* Step 4: Replace the [Pick] used to get [cachedVal] in the add implementation. *)
-    hone mutator () using (fun new_state n => ret {| origRep := n :: (origRep new_state);
-                                                     cachedVal := update_cachedMin min new_state n |}).
-    unfold add_impl; autorefine. 
-    finish sharpening.
-  Defined.
-
-  (* Show the term derived above as a sanity check. *)
-  Goal (forall b, MutatorMethods (proj1_sig (MinCollectionCached 0)) () = b).
-    simpl.
-  Abort.
 
   Fixpoint BuildList n :=
     match n with
@@ -417,8 +600,7 @@ Section ImplExamples.
     ObserverMethods (proj1_sig (MinCollection 7000)) () (BuildList 2000) 11.
   Definition MinCollectionCachedADT :=
     ObserverMethods (proj1_sig (MinCollectionCached 7000)) ()
-                   {| origRep := BuildList 2000;
-                      cachedVal := 0 |} 11.
+                    (Some 0) 11.
 
   Time Eval compute in MinCollectionCachedADT.
   Time Eval compute in MinCollectionADT.
