@@ -32,11 +32,11 @@ Section pick.
       Rep := rep;
       MutatorIndex := mutatorMethodIndex;
       ObserverIndex := observerMethodIndex;
-      MutatorMethods idx :=
+      UnbundledMutatorMethods idx :=
         fun r x =>
           { r' : rep
           | mutatorMethodSpecs idx r x r'}%comp;
-      ObserverMethods idx :=
+      UnbundledObserverMethods idx :=
         fun r n =>
           { n' : nat
           | observerMethodSpecs idx r n n'}%comp
@@ -104,7 +104,7 @@ Section MethodRefinement.
 
 End MethodRefinement.
 
-  Notation "c ↝ v" := (computes_to c v) (at level 70).
+Notation "c ↝ v" := (computes_to c v) (at level 70).
 
 (** We map from old indices to new indices because every method that
     used to be callable should still be callable, and we don't care
