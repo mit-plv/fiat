@@ -1,6 +1,6 @@
 Require Import String Ensembles.
 Require Import Common.
-Require Import Comp.
+Require Import Computation.Core.
 
 (* [Comp] obeys the monad laws, using [computes_to] as the
    notion of equivalence. .*)

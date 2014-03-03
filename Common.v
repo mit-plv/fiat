@@ -1,4 +1,5 @@
 Require Export Setoid RelationClasses Program Morphisms.
+Require Export Notations.
 
 Global Set Implicit Arguments.
 Global Generalizable All Variables.
