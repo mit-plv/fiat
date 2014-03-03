@@ -6,74 +6,61 @@ Set Implicit Arguments.
 
 Local Open Scope type_scope.
 
-(** * Basic ADT definitions *)
-(** Type of a context *)
-Definition Build_ADTContext (rep mutIdx obsIdx : Type) : Context :=
-  {| names := mutIdx + obsIdx;
-     dom idx := rep * nat;
-     cod idx := match idx with
-                  | inl mIdx => rep
-                  | inr oIdx => nat
-                end |}.
+(** Basic ADT definitions **)
 
-(** Type of a mutator method *)
-Definition mutatorMethodTypeUnbundled (Ty mutIdx obsIdx : Type)
-           (* we give a [Context] here so typeclass resolution can pick it up *)
-           (ctx := Build_ADTContext Ty mutIdx obsIdx)
-  := Ty    (* Initial model *)
-     -> nat (* Actual argument*)
-     -> Comp Ty (* Final Model *).
+(* The domain and codomain of an ADT Context use
+   option types to signify whether the type is
+   an ADT rep. Simply parameterizing over the representation
+   type complicates the simulation relation *)
 
-(** Type of an obeserver method *)
-Definition observerMethodTypeUnbundled (Ty mutIdx obsIdx : Type)
-           (* we give a [Context] here so typeclass resolution can pick it up *)
-           (ctx := Build_ADTContext Ty mutIdx obsIdx)
-  := Ty    (* Initial model *)
-     -> nat (* Actual argument*)
-     -> Comp nat. (* Return value *)
+Definition ADTContext (names : Type)
+           (dom cod : names -> option Type)
+           (rep : Type)
+: Context:=
+  {|
+    names := names;
+    dom idx := match (dom idx) with
+                   | Some Ty => Ty
+                   | _ => rep
+               end;
+    cod idx := match (cod idx) with
+                   | Some Ty => Ty
+                   | _ => rep
+               end
+  |}.
 
-(** Type of a mutator method bundled with its context *)
-Definition mutatorMethodType (Ty : Type)
-  := Ty    (* Initial model *)
-     -> nat (* Actual argument*)
-     -> BundledComp Ty (* Final Model *).
+Definition MethodType (ctx : Context) (dom cod : Type)
+: Type := dom -> Comp (ctx := ctx) cod.
 
-(** Type of an obeserver method *)
-Definition observerMethodType (Ty : Type)
-  := Ty    (* Initial model *)
-     -> nat (* Actual argument*)
-     -> BundledComp nat. (* Return value *)
+(** Interface of an ADT. The [ADTSignature] parameter is a context
+    which contains the signatures of this ADT's methods. **)
 
-(** Interface of an ADT *)
-Record ADT :=
+Record ADT (ADTSignature : Type -> Context) :=
   {
     Rep : Type;
     (** The way we model state mathematically *)
 
-    MutatorIndex : Type;
-    (** The index set of mutators *)
-
-    ObserverIndex : Type;
-    (** The index set of observers *)
-
-    UnbundledMutatorMethods : MutatorIndex -> mutatorMethodTypeUnbundled Rep MutatorIndex ObserverIndex;
-    (** Mutator method implementations *)
-
-    UnbundledObserverMethods : ObserverIndex -> observerMethodTypeUnbundled Rep MutatorIndex ObserverIndex
-    (** Observer method implementations *)
+    Methods : forall idx : @names (ADTSignature Rep),
+                MethodType (ADTSignature Rep) (dom idx) (cod idx)
+    (** Implementations of the methods with sigatures given in
+     [ADTSignature] **)
 
   }.
 
-Definition ADTLookupContext (A : ADT) : LookupContext
-  := {| LContext := Build_ADTContext (Rep A) (MutatorIndex A) (ObserverIndex A);
-        lookup idx := match idx with
-                        | inl mIdx => fun state_value =>
-                                        UnbundledMutatorMethods A mIdx (fst state_value) (snd state_value)
-                        | inr oIdx => fun state_value =>
-                                        UnbundledObserverMethods A oIdx (fst state_value) (snd state_value)
-                      end |}.
+(* ADT bundled with its signature. *)
+Record BundledADT :=
+  { ADTSig : Type -> Context;
+    UnBundledADT : ADT ADTSig }.
 
-Definition MutatorMethods (A : ADT) (i : MutatorIndex A) : mutatorMethodType (Rep A)
-  := fun m x => ``[ UnbundledMutatorMethods A i m x with ADTLookupContext A ]``.
-Definition ObserverMethods (A : ADT) (i : ObserverIndex A) : observerMethodType (Rep A)
-  := fun m x => ``[ UnbundledObserverMethods A i m x with ADTLookupContext A ]``.
+Definition UnBundledRep (A : BundledADT) := Rep (UnBundledADT A).
+Definition UnBundledMethods (A : BundledADT) := Methods (UnBundledADT A).
+Definition UnBundledADTSig (A : BundledADT) := ADTSig A (UnBundledRep A).
+Definition UnBundledMethodNames (A : BundledADT) := @names (UnBundledADTSig A).
+
+Definition ADTLookupContext (A : BundledADT) : LookupContext
+  := {| LContext := UnBundledADTSig A;
+        lookup := UnBundledMethods A |}.
+
+Definition Method (A : BundledADT) (i : UnBundledMethodNames A) :
+  MethodType (UnBundledADTSig A) (dom i) (cod i) :=
+  fun d => ``[UnBundledMethods A i d with ADTLookupContext A ]``.
