@@ -2,7 +2,6 @@ MODULES    := \
 	Common \
 	Comp \
 	CompMonad \
-	CompMorphisms \
 	CompGeneralRefinements \
 	Computation \
 	ADT \
