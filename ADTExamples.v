@@ -1,61 +1,9 @@
 Require Import String Omega.
 Require Import FunctionalExtensionality.
-Require Export ADT ADTRefinement ADTCache ADTRepInv.
+Require Export ADT ADTRefinement ADTCache ADTRepInv ADTExamples.BinaryOperationSpec.
 
 Generalizable All Variables.
 Set Implicit Arguments.
-
-Section BinOpSpec.
-  (** Specification for comparisions over a collection **)
-
-  Definition multiset := nat -> nat.
-  Definition add (s : multiset) (n : nat) : multiset
-    := fun m => if eq_nat_dec n m
-                then S (s m)
-                else s m.
-
-  Global Arguments add s n / m.
-
-  (* Specification for adding an element *)
-  Definition add_spec : mutatorMethodSpec multiset
-    := fun m x m' => forall k, m' k = (add m x) k.
-
-  Arguments add_spec m x m' / .
-
-  Variable opSpec : nat -> nat -> Prop.
-  Variable defaultSpec : nat -> Prop.
-
-  (* Specification for calculating op. *)
-  (* If the set [m] is empty, the default spec should hold for [n]. *)
-  Definition empty_spec (m : multiset) n :=
-    defaultSpec n /\ forall n', m n' = 0.
-
-  (* If the set [m] is not empty, [n] is the op-est thing in [m] *)
-  Definition nonempty_spec (m : multiset) n :=
-    m n > 0 /\ forall n', m n' > 0 -> opSpec n n'.
-
-  (* The observer must satisfy one of the above two behaviors,
-     depending on whether the set is empty or not. *)
-  Definition bin_op_spec
-  : observerMethodSpec multiset
-    := fun m _ n => empty_spec m n \/ nonempty_spec m n .
-
-  Arguments empty_spec m n / .
-  Arguments nonempty_spec m n / .
-  Arguments bin_op_spec / .
-
-  Definition NatBinOpSpec
-  : ADT
-    := pickImpl (fun _ : unit => add_spec)
-                (fun _ : unit => bin_op_spec).
-
-End BinOpSpec.
-
-Definition NatLower : ADT
-  := NatBinOpSpec le (fun n => True).  (* Spec for collection with lower bound. *)
-
-Definition NatUpper
-: ADT := NatBinOpSpec ge (fun n => True).  (* Spec for collection with upper bound. *)
 
 Section BinOpImpl.
   (* Implementation of comparisions over a collection implemented as a list. *)
@@ -205,7 +153,7 @@ Section BinOpRefine.
       | generalize (H1 n'); omega].
   Qed.
 
-  Lemma add_not_empty : 
+  Lemma add_not_empty :
     forall m o n,
       ~ (empty_spec defaultSpec (add m o) n).
   Proof.
@@ -278,7 +226,7 @@ Section BinOpRefine.
 
   Lemma bin_op_spec_add
   : forall l cv n,
-      bin_op_spec opSpec defaultSpec (absList2Multiset l) defaultValue cv -> 
+      bin_op_spec opSpec defaultSpec (absList2Multiset l) defaultValue cv ->
       bin_op_spec opSpec defaultSpec (absList2Multiset (n :: l))  defaultValue
                                                        (match l with
                                                           | nil => n
@@ -327,8 +275,8 @@ End BinOpRefine.
 
 Hint Resolve bin_op_spec_unique : bin_op_refinements.
 Hint Resolve refine_add_impl : bin_op_refinements.
-Hint Resolve refine_add_impl' : bin_op_refinements. 
-Hint Resolve refine_bin_op_spec' : bin_op_refinements. 
+Hint Resolve refine_add_impl' : bin_op_refinements.
+Hint Resolve refine_bin_op_spec' : bin_op_refinements.
 Hint Resolve add_bin_op_empty : bin_op_refinements.
 Hint Resolve add_bin_op_nonempty : bin_op_refinements.
 Hint Resolve bin_op_spec_add : bin_op_refinements.
@@ -451,7 +399,7 @@ Section ImplExamples.
   (* Slightly longer derivation which first adds a cache, then
      forgets the original list. Silly example, but it shows that
      everything works. It's also not as automated a derivation as
-     I would like, but it's meant to be more of a proof of concept 
+     I would like, but it's meant to be more of a proof of concept
      anyways. *)
 
   Definition MinCollectionCached' (defaultValue : nat) :
@@ -471,8 +419,8 @@ Section ImplExamples.
          (fun r => bin_op_spec le (fun _ => True) (absList2Multiset (origRep r)) defaultValue (cachedVal r)).
     { unfold repInvBiR in *|-; intuition; subst.
       subst; unfold add_impl; simpl; autorewrite with refine_monad.
-      rewrite bin_op_spec_unique with (v := match origRep r_n with 
-                                              | [] => n 
+      rewrite bin_op_spec_unique with (v := match origRep r_n with
+                                              | [] => n
                                               | _ => min (cachedVal r_n) n
                                             end)
                                         (n := defaultValue);
