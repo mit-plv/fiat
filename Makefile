@@ -4,7 +4,8 @@ MODULES    := \
 	Computation/Core \
 	Computation/Monad \
 	Computation/SetoidMorphisms \
-	Computation/GeneralRefinements \
+	Computation/Refinements/General \
+	Computation/Refinements/Inline \
 	Computation \
 	ADT \
 	ADTRefinement/Specs \
