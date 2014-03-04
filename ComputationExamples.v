@@ -7,7 +7,7 @@ Section op_funcs.
   Definition is_op (l : list nat) (v : nat)
     := Forall (fun n => op v n) l /\ (List.In v l \/ (l = nil /\ on_empty v)).
 
-  Definition is_op0 (l : list nat) : Comp nat :=
+  Definition is_op0 `{Context} (l : list nat) : Comp nat :=
     { x : nat
       | is_op l x }%comp.
 
@@ -25,7 +25,7 @@ Section op_funcs.
   Hypothesis op_refl : Reflexive op.
   Hypothesis op_trans : Transitive op.
 
-  Definition is_op1 (l : list nat) : Comp (nat : Type) :=
+  Definition is_op1 `{Context} (l : list nat) : Comp (nat : Type) :=
     (ret (match l with
             | nil => concrete_on_empty
             | x::xs => fold_left concrete_op xs x
@@ -87,7 +87,7 @@ Section op_funcs.
     etransitivity; [ | eassumption ]; eauto.
   Qed.
 
-  Theorem is_op_0_1
+  Theorem is_op_0_1 `{LookupContext}
     : pointwise_relation _ (refine) is_op0 is_op1.
   Proof.
     intros l v old_hyp.
@@ -101,7 +101,7 @@ Section op_funcs.
       apply (op_works (_::_)).
   Qed.
 
-  Theorem is_op_0_1' l
+  Theorem is_op_0_1' `{LookupContext} l
     : refine
              { x : nat
              | is_op l x }%comp
@@ -134,19 +134,19 @@ Section min_max_funcs.
   Hint Extern 0 => solve [ constructor ].
   Hint Extern 0 => compute; intros; etransitivity; eassumption.
 
-  Program Definition refine_is_minimum l : refine _ _
-    := @is_op_0_1' le (eq 0) min 0 _ _ _ _ _ _ _ _ l.
+  Program Definition refine_is_minimum `{LookupContext} l : refine _ _
+    := @is_op_0_1' le (eq 0) min 0 _ _ _ _ _ _ _ _ _ l.
 
-  Program Definition refine_is_maximum l : refine _ _
-    := @is_op_0_1' ge (eq 0) max 0 _ _ _ _ _ _ _ _ l.
+  Program Definition refine_is_maximum `{LookupContext} l : refine _ _
+    := @is_op_0_1' ge (eq 0) max 0 _ _ _ _ _ _ _ _ _ l.
 
-  Definition is_min_max1 : { f : list nat -> Comp (nat * nat)
+  Definition is_min_max1 `{LookupContext} : { f : list nat -> Comp (nat * nat)
     | forall l, refine { x : _ | is_min_max l x }%comp (f l) }.
   Proof.
     eexists.
     intros.
     set_evars.
-    setoid_rewrite refine_pick_pair.
+    setoid_rewrite refineEquiv_pick_pair.
     setoid_rewrite refine_is_minimum.
     setoid_rewrite refine_is_maximum.
     exact (reflexivity _).
