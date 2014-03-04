@@ -7,6 +7,11 @@ MODULES    := \
 	Computation/GeneralRefinements \
 	Computation \
 	ADT \
+	ADTRefinement/Specs \
+	ADTRefinement/Pick \
+	ADTRefinement/Core \
+	ADTRefinement/SetoidMorphisms \
+	ADTRefinement/GeneralRefinements \
 	ADTRefinement \
 	ADTRepInv \
 	ADTCache \
