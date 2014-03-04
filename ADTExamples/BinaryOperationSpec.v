@@ -1,4 +1,5 @@
-Require Export ADT.
+Require Import Omega.
+Require Export ADT ADTRefinement.Specs ADTRefinement.Pick.
 
 Generalizable All Variables.
 Set Implicit Arguments.
