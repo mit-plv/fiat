@@ -53,17 +53,22 @@ Section GeneralRefinements.
                  (fun idx nm n nm' => MutatorSpec idx (abs nm) n (abs nm'))
                  (fun idx nm => ObserverSpec idx (abs nm))).
   Proof.
-    econstructor 1 with (BiR := fun om nm => om = (abs nm))
-                          (mutatorMap := @id MutatorIndex)
-                          (observerMap := @id ObserverIndex);
-    compute; intros;
-    [inversion_by computes_to_inv; subst; eauto
-     | inversion_by computes_to_inv; subst; eauto].
+    unfold pickImpl.
+    let B' := match goal with |- refineADT ?A ?B => constr:(B) end in
+    econstructor 1 with
+    (B := B')
+      (SiR := fun om nm => om = (abs nm))
+      (mutatorMap := @id MutatorIndex)
+      (observerMap := @id ObserverIndex);
+    compute; intros; subst.
+    apply computes_to_inv in H0; repeat econstructor; eauto.
+    apply computes_to_inv in H0; repeat econstructor; eauto.
   Qed.
 
   (* We can always build a default implementation (computation?) for the
      mutators of an ADT with an updated representation using the old
      mutators. *)
+
   Definition absMutatorMethods oldRep newRep
         (BiR : oldRep -> newRep -> Prop)
         mutIdx

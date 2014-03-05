@@ -32,11 +32,12 @@ Section MethodRefinement.
 >>  *)
 
   Definition refineMutator
-             (oldMutator : mutatorMethodType oldRep)
-             (newMutator : mutatorMethodType newRep)
+             (Dom : Type)
+             (oldMutator : mutatorMethodType oldRep Dom)
+             (newMutator : mutatorMethodType newRep Dom)
     := forall r_o r_n n, r_o ≃ r_n ->
-         refine (r_o' <- oldMutator r_o n;
-                 {r_n | r_o' ≃ r_n})
+         refineBundled `[r_o' <- oldMutator r_o n;
+                 {r_n | r_o' ≃ r_n} ]`
                 (newMutator r_n n).
 
   (** Refinement of an observer method: the computation produced by
@@ -56,31 +57,51 @@ Section MethodRefinement.
    *)
 
   Definition refineObserver
-             (oldObserver : observerMethodType oldRep)
-             (newObserver : observerMethodType newRep)
+             (Dom Cod : Type)
+             (oldObserver : observerMethodType oldRep Dom Cod)
+             (newObserver : observerMethodType newRep Dom Cod)
     := forall r_o r_n n, r_o ≃ r_n ->
-         refine (oldObserver r_o n)
+         refineBundled (oldObserver r_o n)
                 (newObserver r_n n).
 
 End MethodRefinement.
 
+Notation "c ↝ v" := (computes_to c v) (at level 70).
+
 (** We map from old indices to new indices because every method that
     used to be callable should still be callable, and we don't care
     about the other methods. *)
-Inductive refineADT (A B : ADT) : Prop :=
+
+Inductive refineADT : ADT -> ADT -> Prop :=
 | refinesADT :
-    forall BiR mutatorMap observerMap,
-      (forall idx, @refineMutator
-                     (Rep A) (Rep B)
-                     BiR
-                     (MutatorMethods A idx)
+    forall repA mutatorIndexA observerIndexA
+           B
+           mutatorMap observerMap
+           mutatorMethodsA observerMethodsA
+           SiR,
+      (forall idx : mutatorIndexA, @refineMutator
+                     repA (Rep B) SiR
+                     (MutatorDom B (mutatorMap idx))
+                     (MutatorMethods
+                        {| Rep := repA;
+                           UnbundledMutatorMethods := mutatorMethodsA;
+                           UnbundledObserverMethods := observerMethodsA
+                        |}
+                        idx)
                      (MutatorMethods B (mutatorMap idx)))
-      -> (forall idx, @refineObserver
-                     (Rep A) (Rep B)
-                     BiR
-                     (ObserverMethods A idx)
+      -> (forall idx : observerIndexA, @refineObserver
+                     repA (Rep B) SiR
+                     (ObserverDom B (observerMap idx))
+                     (ObserverCod B (observerMap idx))
+                     (ObserverMethods {| Rep := repA;
+                                         UnbundledMutatorMethods := mutatorMethodsA;
+                                         UnbundledObserverMethods := observerMethodsA
+                                      |} idx)
                      (ObserverMethods B (observerMap idx)))
-      -> refineADT A B.
+      -> refineADT {| Rep := repA;
+                      UnbundledMutatorMethods := mutatorMethodsA;
+                      UnbundledObserverMethods := observerMethodsA
+                   |} B.
 
 (** We should always just unfold [refineMutator] and [refineObserver]
     into [refine], so that we can rewrite with lemmas about [refine]. *)

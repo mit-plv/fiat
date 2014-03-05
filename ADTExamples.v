@@ -29,7 +29,7 @@ Section BinOpImpl.
   Program Definition NatBinOpImpl
   : ADT
     := {| Rep := list nat;
-          MutatorIndex := unit;
+          MutatorIndex := unit;q
           ObserverIndex := unit;
           MutatorMethods := fun _ => add_impl;
           ObserverMethods := fun _ => bin_op_impl
