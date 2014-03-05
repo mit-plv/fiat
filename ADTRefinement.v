@@ -4,17 +4,17 @@ Generalizable All Variables.
 Set Implicit Arguments.
 
 (* Specification of mutator method. *)
-Definition mutatorMethodSpec (Ty : Type) :=
+Definition mutatorMethodSpec (Ty Dom : Type) :=
   Ty    (* Initial model *)
-  -> nat (* Actual argument*)
+  -> Dom (* Actual argument*)
   -> Ty (* Final Model *)
   -> Prop.
 
 (* Specification of an observer method *)
-Definition observerMethodSpec (Ty : Type) :=
+Definition observerMethodSpec (Ty Dom Cod : Type) :=
   Ty    (* Initial model *)
-  -> nat (* Actual argument*)
-  -> nat (* Return value *)
+  -> Dom (* Actual argument*)
+  -> Cod (* Return value *)
   -> Prop.
 
 (** Every spec is trivially implementable using [Pick]. *)
@@ -22,8 +22,15 @@ Section pick.
   Variable rep : Type.
   Variable mutatorMethodIndex : Type.
   Variable observerMethodIndex : Type.
-  Variable mutatorMethodSpecs : mutatorMethodIndex -> mutatorMethodSpec rep.
-  Variable observerMethodSpecs : observerMethodIndex -> observerMethodSpec rep.
+  Variable mutatatorMethodDom : mutatorMethodIndex -> Type.
+  Variable observerMethodDom : observerMethodIndex -> Type.
+  Variable observerMethodCod : observerMethodIndex -> Type.
+
+  Variable mutatorMethodSpecs :
+    forall idx : mutatorMethodIndex, mutatorMethodSpec rep (mutatatorMethodDom idx).
+  Variable observerMethodSpecs :
+    forall idx : observerMethodIndex,
+      observerMethodSpec rep (observerMethodDom idx) (observerMethodCod idx).
 
   Local Obligation Tactic := econstructor; eauto.
 
@@ -32,14 +39,17 @@ Section pick.
       Rep := rep;
       MutatorIndex := mutatorMethodIndex;
       ObserverIndex := observerMethodIndex;
+      MutatorDom := mutatatorMethodDom;
+      ObserverDom := observerMethodDom;
+      ObserverCod := observerMethodCod;
       UnbundledMutatorMethods idx :=
         fun r x =>
           { r' : rep
-          | mutatorMethodSpecs idx r x r'}%comp;
+          | @mutatorMethodSpecs idx r x r'}%comp;
       UnbundledObserverMethods idx :=
         fun r n =>
-          { n' : nat
-          | observerMethodSpecs idx r n n'}%comp
+          { n' : observerMethodCod idx
+          | @observerMethodSpecs idx r n n'}%comp
     |}.
 
 End pick.
@@ -71,12 +81,15 @@ Section MethodRefinement.
                    new mutator
 >>  *)
 
+  Print refine.
+
   Definition refineMutator
-             (oldMutator : mutatorMethodType oldRep)
-             (newMutator : mutatorMethodType newRep)
+             (Dom : Type)
+             (oldMutator : mutatorMethodType oldRep Dom)
+             (newMutator : mutatorMethodType newRep Dom)
     := forall r_o r_n n, r_o ≃ r_n ->
-         refine (r_o' <- oldMutator r_o n;
-                 {r_n | r_o' ≃ r_n})
+         refineBundled `[r_o' <- oldMutator r_o n;
+                 {r_n | r_o' ≃ r_n} ]`
                 (newMutator r_n n).
 
   (** Refinement of an observer method: the computation produced by
@@ -96,10 +109,11 @@ Section MethodRefinement.
    *)
 
   Definition refineObserver
-             (oldObserver : observerMethodType oldRep)
-             (newObserver : observerMethodType newRep)
+             (Dom Cod : Type)
+             (oldObserver : observerMethodType oldRep Dom Cod)
+             (newObserver : observerMethodType newRep Dom Cod)
     := forall r_o r_n n, r_o ≃ r_n ->
-         refine (oldObserver r_o n)
+         refineBundled (oldObserver r_o n)
                 (newObserver r_n n).
 
 End MethodRefinement.
@@ -109,34 +123,51 @@ Notation "c ↝ v" := (computes_to c v) (at level 70).
 (** We map from old indices to new indices because every method that
     used to be callable should still be callable, and we don't care
     about the other methods. *)
-Inductive refineADT (A B : ADT) : Prop :=
+
+Inductive refineADT : ADT -> ADT -> Prop :=
 | refinesADT :
-    forall BiR mutatorMap observerMap,
-      (forall idx, @refineMutator
-                     (Rep A) (Rep B)
-                     BiR
-                     (MutatorMethods A idx)
+    forall repA mutatorIndexA observerIndexA
+           B
+           mutatorMap observerMap
+           mutatorMethodsA observerMethodsA
+           SiR,
+      (forall idx : mutatorIndexA, @refineMutator
+                     repA (Rep B) SiR
+                     (MutatorDom B (mutatorMap idx))
+                     (MutatorMethods
+                        {| Rep := repA;
+                           UnbundledMutatorMethods := mutatorMethodsA;
+                           UnbundledObserverMethods := observerMethodsA
+                        |}
+                        idx)
                      (MutatorMethods B (mutatorMap idx)))
-      -> (forall idx, @refineObserver
-                     (Rep A) (Rep B)
-                     BiR
-                     (ObserverMethods A idx)
+      -> (forall idx : observerIndexA, @refineObserver
+                     repA (Rep B) SiR
+                     (ObserverDom B (observerMap idx))
+                     (ObserverCod B (observerMap idx))
+                     (ObserverMethods {| Rep := repA;
+                                         UnbundledMutatorMethods := mutatorMethodsA;
+                                         UnbundledObserverMethods := observerMethodsA
+                                      |} idx)
                      (ObserverMethods B (observerMap idx)))
-      -> refineADT A B.
+      -> refineADT {| Rep := repA;
+                      UnbundledMutatorMethods := mutatorMethodsA;
+                      UnbundledObserverMethods := observerMethodsA
+                   |} B.
 
 (** We should always just unfold [refineMutator] and [refineObserver]
     into [refine], so that we can rewrite with lemmas about [refine]. *)
 Arguments refineMutator / .
 Arguments refineObserver / .
 
-Instance refineMutator_refl rep
-: Reflexive (@refineMutator rep rep eq).
+Instance refineMutator_refl rep Dom
+: Reflexive (@refineMutator rep rep eq Dom).
 Proof.
   intro; simpl; intros; subst; econstructor; eauto.
 Qed.
 
-Instance refineObserver_refl rep
-: Reflexive (@refineObserver rep rep eq).
+Instance refineObserver_refl rep Dom Cod
+: Reflexive (@refineObserver rep rep eq Dom Cod).
 Proof.
   intro; simpl; intros; subst; reflexivity.
 Qed.
@@ -144,26 +175,42 @@ Qed.
 Global Instance refineADT_PreOrder : PreOrder refineADT.
 Proof.
   split; compute in *.
-  - intro x.
+  - intro x; destruct x.
     econstructor 1 with
-    (BiR := eq)
-      (mutatorMap := id)
-      (observerMap := id);
+    (SiR := @eq Rep)
+      (mutatorMap := @id MutatorIndex)
+      (observerMap := @id ObserverIndex)
+      (B := {| Rep := Rep |});
       unfold id;
       try reflexivity.
-  - intros x y z
-           [BiR mutMap obsMap mutH obsH]
-           [BiR' mutMap' obsMap' mutH' obsH'].
+  - intros x y z H H'.
+    destruct H.
+    destruct H'; simpl in *.
     econstructor 1 with
-      (BiR := fun x z => exists y, BiR x y /\ BiR' y z)
-        (mutatorMap := mutMap' ∘ mutMap)
-        (observerMap := obsMap' ∘ obsMap);
+      (SiR := fun x z => exists y, SiR x y /\ SiR0 y z)
+        (mutatorMap := mutatorMap0 ∘ mutatorMap)
+        (observerMap := observerMap0 ∘ observerMap);
     unfold id, compose; simpl in *; intros.
-    + destruct_ex; intuition.
-      rewrite <- mutH', <- mutH; eauto.
-      intros r_n' Comp_n'; inversion_by computes_to_inv.
-      econstructor; eauto.
-    + destruct_ex; intuition; rewrite obsH, obsH'; eauto; reflexivity.
+    + destruct_ex; intuition; rewrite <- H1; eauto.
+      unfold MutatorMethods, UnbundledMutatorMethods in H.
+      etransitivity; 
+        [ idtac
+        | eapply (@refineBundled_bind
+                    (ADTLookupContext {| Rep := repA |})
+                    (ADTLookupContext {| Rep := repA0 |})); eapply_hyp;
+          intros; refineBundledEquiv_reflexivity_ignore_context].
+      etransitivity;
+        [idtac 
+        | eapply refineBundledEquiv_bind_bind].
+      eapply (@refineBundledEquiv_under_bind 
+              (ADTLookupContext {| Rep := repA |})).
+      constructor; unfold refine; intros.
+      apply computes_to_inv in H3; simpl in *; destruct_ex; intuition.
+      repeat econstructor; eauto.
+      apply computes_to_inv in H3; simpl in *; destruct_ex; intuition.
+      apply computes_to_inv in H6; apply computes_to_inv in H7.
+      repeat econstructor; eauto.
+    + destruct_ex; intuition; rewrite <- H2; eauto. 
 Qed.
 
 Add Parametric Relation : ADT refineADT
@@ -199,7 +246,7 @@ Add Parametric Relation : ADT refineADT
       Sharpened adt' ->
       Sharpened adt.
   Proof.
-    intros adt'za refineA SpecA';
+    intros adt' refineA SpecA';
     eexists (proj1_sig SpecA'); rewrite refineA; exact (proj2_sig SpecA').
   Defined.
 
@@ -239,32 +286,45 @@ Qed.
 
  **)
 
+  Print BundledComp.
+
   Lemma refineADT_Build_ADT_Rep oldRep newRep
         (BiR : oldRep -> newRep -> Prop)
-        mutIdx obsIdx :
+        mutIdx obsIdx 
+        mutDom obsDom obsCod
+  :
     (respectful_hetero
-       (mutIdx -> mutatorMethodType oldRep)
-       (mutIdx -> mutatorMethodType newRep)
-       (fun oldMuts => (obsIdx -> observerMethodType oldRep) -> ADT)
-       (fun newMuts => (obsIdx -> observerMethodType newRep) -> ADT)
+       (forall idx : mutIdx, mutatorMethodTypeUnbundled oldRep (mutDom idx) mutDom obsDom obsCod)
+       (forall idx : mutIdx, mutatorMethodTypeUnbundled newRep (mutDom idx) mutDom obsDom obsCod)
+       (fun oldMuts => (forall idx : obsIdx, 
+                          observerMethodType oldRep (obsDom idx) (obsCod idx))
+                          -> ADT)
+       (fun newMuts => (forall idx : obsIdx, 
+                          observerMethodType newRep (obsDom idx) (obsCod idx))
+                       -> ADT)
        (fun oldMuts newMuts =>
           forall mutIdx,
             @refineMutator oldRep newRep BiR
-                           (oldMuts mutIdx)
+                           (mutDom mutIdx)
+                           (oldMuts mutIdx )
                            (newMuts mutIdx))
        (fun x y => respectful_hetero
-                     (obsIdx -> observerMethodType oldRep)
-                     (obsIdx -> observerMethodType newRep)
+                     (forall idx : obsIdx, 
+                          observerMethodType oldRep (obsDom idx) (obsCod idx))
+                     (forall idx : obsIdx, 
+                        observerMethodType newRep (obsDom idx) (obsCod idx))
                      (fun _ => ADT)
                      (fun _ => ADT)
                      (fun obs obs' =>
                         forall obsIdx,
                           @refineObserver oldRep newRep BiR
-                                         (obs obsIdx)
-                                         (obs' obsIdx))
+                                          (obsDom obsIdx)
+                                          (obsCod obsIdx)
+                                          (obs obsIdx)
+                                          (obs' obsIdx))
                      (fun obs obs' => refineADT)))
-      (@Build_ADT oldRep mutIdx obsIdx)
-      (@Build_ADT newRep mutIdx obsIdx).
+      (@Build_ADT oldRep mutIdx obsIdx mutDom obsDom obsCod)
+      (@Build_ADT newRep mutIdx obsIdx mutDom obsDom obsCod).
   Proof.
     unfold Proper, respectful_hetero; intros.
     let A := match goal with |- refineADT ?A ?B => constr:(A) end in

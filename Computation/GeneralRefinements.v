@@ -229,4 +229,17 @@ Section general_refine_lemmas.
            (f : A -> A' -> B),
       refineEquiv _ _
     := @refineBundledEquiv_split_func_ex2 ctx1 ctx2.
+
+  (* [refine_bind] assumes a uniform context, which we don't always have.*)
+  Definition refineBundled_bind {ctx1 ctx2 : LookupContext}
+  : forall A B a a' (b : A -> @Comp ctx1 B) (b' : A -> @Comp ctx2 B),
+      refineBundled ``[a with ctx1]`` ``[a' with ctx2]``
+      -> (forall a, refineBundled ``[b a with ctx1]`` ``[b' a with ctx2]``)
+      -> refineBundled ``[(a'' <- a; b a'') with ctx1]`` ``[a'' <- a'; b' a'' with ctx2]`` .
+  Proof.
+    unfold refineBundled, refine; intros.
+    apply_in_hyp computes_to_inv; simpl in *; destruct_ex; intuition;
+    econstructor; eauto.
+  Qed.
+
 End general_refine_lemmas.

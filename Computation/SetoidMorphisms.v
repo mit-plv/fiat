@@ -86,6 +86,7 @@ Add Parametric Morphism `{LookupContext} A B
       ==> (@refineEquiv B _ _)
       as refineEquiv_bind.
 Proof.
+  idtac.
   simpl; intros.
   unfold pointwise_relation, refineEquiv, refine in *.
   split_and; simpl in *.
