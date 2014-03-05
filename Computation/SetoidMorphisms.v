@@ -39,12 +39,12 @@ Add Parametric Morphism A `{LookupContext}
     as refine_refine.
 Proof. t. Qed.
 
-(*Add Parametric Morphism A names dom cod lookup
-: (@refine A names dom cod names dom cod lookup lookup)
+Add Parametric Morphism A `{LookupContext}
+: (@refine A _ _)
   with signature
-  (@refineEquiv A names dom cod names dom cod lookup lookup) --> (@refineEquiv A names dom cod names dom cod lookup lookup) ++> impl
+  (@refineEquiv A _ _) --> (@refineEquiv A _ _) ++> impl
     as refine_refineEquiv.
-Proof. t. Qed.*)
+Proof. t. Qed.
 
 
 Add Parametric Morphism A
@@ -54,12 +54,12 @@ Add Parametric Morphism A
     as refineBundled_refineBundled.
 Proof. t. Qed.
 
-(*Add Parametric Morphism A
+Add Parametric Morphism A
 : (@refineBundled A)
   with signature
   (@refineBundledEquiv A) --> (@refineBundledEquiv A) ++> impl
     as refineBundled_refineBundledEquiv.
-Proof. t. Qed.*)
+Proof. t. Qed.
 
 Hint Constructors computes_to.
 

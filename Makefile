@@ -4,13 +4,20 @@ MODULES    := \
 	Computation/Core \
 	Computation/Monad \
 	Computation/SetoidMorphisms \
-	Computation/GeneralRefinements \
+	Computation/Refinements/General \
+	Computation/Refinements/Inline \
 	Computation \
 	ADT \
+	ADTRefinement/Specs \
+	ADTRefinement/Pick \
+	ADTRefinement/Core \
+	ADTRefinement/SetoidMorphisms \
+	ADTRefinement/GeneralRefinements \
 	ADTRefinement \
 	ADTRepInv \
 	ADTCache \
 	ComputationExamples \
+	ADTExamples/BinaryOperationSpec \
 	ADTExamples
 
 VS         := $(MODULES:%=%.v)
