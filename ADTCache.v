@@ -114,7 +114,7 @@ Proof.
   econstructor 1 with (SiR := repInvSiR repInv (rep := Rep));
     simpl in *|-*; unfold id, repInvSiR; intros; intuition; subst; eauto.
   - destruct (ObserverIndex_eq idx cachedIndex);
-    [unfold replaceObserver_obligation_1, eq_rect_r, eq_rect; 
+    [unfold replaceObserver_obligation_1, eq_rect_r, eq_rect;
       destruct e; simpl; eauto
      | reflexivity ].
 Qed.
@@ -159,13 +159,17 @@ Hint Resolve refine_pick_cache : cache_refinements.
 
 (* Honing tactic for replacing an observer with a cached value. *)
 Tactic Notation "cache" "observer" "using" "spec" constr(cSpec) :=
-  let A := match goal with |- Sharpened ?A => constr:(A) end in
-  let mutIdx_eq' := fresh in
-  let Rep' := eval simpl in (Rep A) in
-    let MutatorIndex' := eval simpl in (MutatorIndex A) in
-    let ObserverIndex' := eval simpl in (ObserverIndex A) in
+    let A :=
+        match goal with
+            |- Sharpened ?A => constr:(A) end in
+    let ASig := match type of A with
+                    ADT ?Sig => Sig
+                end in
+    let mutIdx_eq' := fresh in
+    let Rep' := eval simpl in (Rep A) in
+    let MutatorIndex' := eval simpl in (MutatorIndex ASig) in
+    let ObserverIndex' := eval simpl in (ObserverIndex ASig) in
     let MutatorMethods' := eval simpl in (MutatorMethods A) in
-    let ObserverMethods' := eval simpl in (ObserverMethods A) in
   assert (forall idx idx' : MutatorIndex', {idx = idx'} + {idx <> idx'})
     as mutIdx_eq' by (decide equality);
   eapply SharpenStep;

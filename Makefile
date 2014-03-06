@@ -20,7 +20,9 @@ MODULES    := \
 	ADTCache \
 	ComputationExamples \
 	ADTExamples/BinaryOperationSpec \
-	ADTExamples
+	ADTExamples/BinaryOperationImpl \
+	ADTExamples/BinaryOperationRefinements \
+	ADTExamples/MinCollection
 
 VS         := $(MODULES:%=%.v)
 VDS	   := $(MODULES:%=%.v.d)

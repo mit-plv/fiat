@@ -135,42 +135,29 @@ Proof.
   simpl in *; intros; intuition; subst; eauto.
 Qed.
 
-(* Tactic for refining mutators under an invariant. *)
-
 Tactic Notation "hone" "mutator" constr(mutIdx) "using" constr(mutBody)
        "under" "invariant" constr(repInv) :=
     let A :=
         match goal with
             |- Sharpened ?A => constr:(A) end in
+    let ASig := match type of A with
+                    ADT ?Sig => Sig
+                end in
     let mutIdx_eq' := fresh in
     let Rep' := eval simpl in (Rep A) in
-    let MutatorIndex' := eval simpl in (MutatorIndex A) in
-    let ObserverIndex' := eval simpl in (ObserverIndex A) in
+    let MutatorIndex' := eval simpl in (MutatorIndex ASig) in
+    let ObserverIndex' := eval simpl in (ObserverIndex ASig) in
     let MutatorMethods' := eval simpl in (MutatorMethods A) in
     let ObserverMethods' := eval simpl in (ObserverMethods A) in
       assert (forall idx idx' : MutatorIndex', {idx = idx'} + {idx <> idx'})
         as mutIdx_eq' by (decide equality);
-      let RefineH := fresh in
-      assert (pointwise_relation MutatorIndex' (refineMutator (repInvSiR repInv))
-                                 (MutatorMethods')
-                                 (fun idx => if (mutIdx_eq' idx ()) then
-                                               mutBody
-                                             else
-                                               MutatorMethods' idx)) as RefineH;
-        [let mutIdx' := fresh in
-         unfold pointwise_relation; intro mutIdx';
-         destruct (mutIdx_eq' mutIdx' ()); simpl; intros;
-         [idtac | (* Replaced mutator case left to user*)
-          subst; idtac] (* Otherwise, they are the same *)
-        | eapply SharpenStep;
-          [eapply (@refineADT_Build_ADT_RepInv
-                     Rep' repInv MutatorIndex' ObserverIndex'
-                     MutatorMethods'
-                     (fun idx => if (mutIdx_eq' idx ()) then
-                                   mutBody
-                                 else
-                                   MutatorMethods' idx)
-                     RefineH
-                     ObserverMethods'
-                     ObserverMethods')
-          | idtac] ]; cbv beta in *; simpl in *.
+      eapply SharpenStep;
+        [eapply (@refineADT_Build_ADT_RepInv Rep' repInv
+                   _
+                   _
+                   (fun idx : MutatorIndex ASig => if (mutIdx_eq' idx mutIdx) then
+                                 mutBody
+                               else
+                                 MutatorMethods' idx));
+          try instantiate (1 := ObserverMethods')
+        | idtac]; cbv beta in *; simpl in *.
