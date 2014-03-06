@@ -16,48 +16,27 @@ Proof.
   intro; simpl; intros; subst; reflexivity.
 Qed.
 
-Global Instance refineADT_PreOrder : PreOrder refineADT.
+Global Instance refineADT_PreOrder Sig : PreOrder (refineADT (Sig := Sig)).
 Proof.
   split; compute in *.
   - intro x; destruct x.
     econstructor 1 with
-    (SiR := @eq Rep)
-      (mutatorMap := @id MutatorIndex)
-      (observerMap := @id ObserverIndex)
-      (B := {| Rep := Rep |});
-      unfold id;
+    (SiR := @eq Rep);
       try reflexivity.
   - intros x y z H H'.
     destruct H.
     destruct H'; simpl in *.
     econstructor 1 with
-      (SiR := fun x z => exists y, SiR x y /\ SiR0 y z)
-        (mutatorMap := mutatorMap0 ∘ mutatorMap)
-        (observerMap := observerMap0 ∘ observerMap);
-    unfold id, compose; simpl in *; intros.
-    + destruct_ex; intuition; rewrite <- H1; eauto.
-      unfold MutatorMethods, UnbundledMutatorMethods in H.
-      etransitivity;
-        [ idtac
-        | eapply (@refineBundled_bind
-                    (ADTLookupContext {| Rep := repA |})
-                    (ADTLookupContext {| Rep := repA0 |})); eapply_hyp;
-          intros; refineBundledEquiv_reflexivity_ignore_context].
-      etransitivity;
-        [idtac
-        | eapply refineBundledEquiv_bind_bind].
-      eapply (@refineBundledEquiv_under_bind
-              (ADTLookupContext {| Rep := repA |})).
-      constructor; unfold refine; intros.
-      apply computes_to_inv in H3; simpl in *; destruct_ex; intuition.
-      repeat econstructor; eauto.
-      apply computes_to_inv in H3; simpl in *; destruct_ex; intuition.
-      apply computes_to_inv in H6; apply computes_to_inv in H7.
-      repeat econstructor; eauto.
+      (SiR := fun x z => exists y, SiR x y /\ SiR0 y z);
+      simpl in *; intros.
+    + destruct_ex; intuition; rewrite <- H1, <- H; eauto.
+      autorewrite with refine_monad; f_equiv; unfold pointwise_relation;
+      intros; econstructor; inversion_by computes_to_inv;
+      eauto.
     + destruct_ex; intuition; rewrite <- H2; eauto.
 Qed.
 
-Add Parametric Relation : ADT refineADT
+Add Parametric Relation Sig : (ADT Sig) refineADT
     reflexivity proved by reflexivity
     transitivity proved by transitivity
       as refineADT_rel.
@@ -93,54 +72,63 @@ Qed.
 
  **)
 
-Lemma refineADT_Build_ADT_Rep oldRep newRep
-        (BiR : oldRep -> newRep -> Prop)
-        mutIdx obsIdx
-        mutDom obsDom obsCod
-        (oldMuts : forall idx : mutIdx,
-                     mutatorMethodTypeUnbundled oldRep (mutDom idx) mutDom obsDom obsCod)
-        (newMuts : forall idx : mutIdx,
-                     mutatorMethodTypeUnbundled newRep (mutDom idx) mutDom obsDom obsCod)
-        (oldObs : forall idx : obsIdx,
-                    observerMethodTypeUnbundled oldRep (obsDom idx) (obsCod idx) mutDom obsDom obsCod)
-        (newObs : forall idx : obsIdx,
-                    observerMethodTypeUnbundled newRep (obsDom idx) (obsCod idx) mutDom obsDom obsCod)
-: (forall mutIdx,
-     @refineMutator oldRep newRep BiR (mutDom mutIdx)
-                    (MutatorMethods
-                       {| Rep := oldRep;
-                          UnbundledMutatorMethods := oldMuts;
-                          UnbundledObserverMethods := oldObs |} mutIdx)
-                    (MutatorMethods
-                       {| Rep := newRep;
-                          UnbundledMutatorMethods := newMuts;
-                          UnbundledObserverMethods := newObs |} mutIdx))
-  -> (forall obsIdx,
-     @refineObserver oldRep newRep BiR (obsDom obsIdx) (obsCod obsIdx)
-                    (ObserverMethods
-                       {| Rep := oldRep;
-                          UnbundledMutatorMethods := oldMuts;
-                          UnbundledObserverMethods := oldObs |} obsIdx)
-                    (ObserverMethods
-                       {| Rep := newRep;
-                          UnbundledMutatorMethods := newMuts;
-                          UnbundledObserverMethods := newObs |} obsIdx))
-  -> refineADT (@Build_ADT oldRep mutIdx obsIdx mutDom obsDom obsCod oldMuts oldObs)
-               (@Build_ADT newRep mutIdx obsIdx mutDom obsDom obsCod newMuts newObs).
-Proof.
-  intros; let A := match goal with |- refineADT ?A ?B => constr:(A) end in
-          let B := match goal with |- refineADT ?A ?B => constr:(B) end in
-          eapply (@refinesADT (Rep A) _ _ B id id _ _ BiR); eauto.
-Qed.
+Lemma refineADT_Build_ADT_Rep Sig oldRep newRep
+      (SiR : oldRep -> newRep -> Prop)
+:
+   (respectful_hetero
+      (forall idx, mutatorMethodType oldRep (MutatorDom Sig idx))
+      (forall idx, mutatorMethodType newRep (MutatorDom Sig idx))
+      (fun oldMuts =>
+         (forall idx,
+            observerMethodType oldRep (ObserverDom Sig idx) (ObserverCod Sig idx))
+         -> ADT Sig)
+      (fun newMuts =>
+         (forall idx,
+            observerMethodType newRep (ObserverDom Sig idx) (ObserverCod Sig idx))
+         -> ADT Sig)
+      (fun oldMuts newMuts =>
+         forall mutIdx,
+           @refineMutator oldRep newRep SiR
+                          _
+                          (oldMuts mutIdx)
+                          (newMuts mutIdx))
+      (fun x y => respectful_hetero
+                    (forall idx, observerMethodType oldRep _ _)
+                    (forall idx, observerMethodType newRep _ _)
+                    (fun _ => ADT Sig)
+                    (fun _ => ADT Sig)
+                    (fun obs obs' =>
+                       forall obsIdx : ObserverIndex Sig,
+                         @refineObserver oldRep newRep SiR
+                                         (ObserverDom Sig obsIdx)
+                                         (ObserverCod Sig obsIdx)
+                                        (obs obsIdx)
+                                        (obs' obsIdx))
+                    (fun obs obs' => refineADT)))
+     (@Build_ADT Sig oldRep)
+     (@Build_ADT Sig newRep).
+ Proof.
+   unfold Proper, respectful_hetero; intros.
+   let A := match goal with |- refineADT ?A ?B => constr:(A) end in
+   let B := match goal with |- refineADT ?A ?B => constr:(B) end in
+   eapply (@refinesADT Sig A B SiR);
+     unfold id, pointwise_relation in *; simpl in *; intros; eauto.
+ Qed.
+ (* Thankfully, we can register a number of different refinements
+    which follow from [refineADT_Build_ADT_Rep] as [Parametric Morphism]s. *)
 
-(* Carrying computation contexts around breaks down the Morphism structure of
-  most of our common refinements.
 
 (* Refining Observers is a valid ADT refinement. *)
-Add Parametric Morphism rep mutIdx obsIdx ms
-: (fun os => @Build_ADT rep mutIdx obsIdx ms os)
+
+ Print relation.
+Add Parametric Morphism rep Sig ms
+: (@Build_ADT Sig rep ms)
     with signature
-    (pointwise_relation _ (@refineObserver _ _ eq))
+    (fun obs obs' =>
+       forall idx, @refineObserver _ _ eq
+                                   (ObserverDom Sig idx)
+                                   (ObserverCod Sig idx)
+                                   (obs idx) (obs' idx))
       ==> refineADT
       as refineADT_Build_ADT_Observer.
 Proof.
@@ -149,10 +137,13 @@ Qed.
 
 (* Refining Mutators is also a valid ADT refinement. *)
 
-Add Parametric Morphism rep mutIdx obsIdx obs
-: (fun ms => @Build_ADT rep mutIdx obsIdx ms obs)
+Add Parametric Morphism rep Sig obs
+: (fun ms => @Build_ADT Sig rep ms obs)
     with signature
-    (pointwise_relation _ (@refineMutator _ _ eq))
+    (fun mut mut' =>
+       forall idx, @refineMutator _ _ eq
+                                   (MutatorDom Sig idx)
+                                   (mut idx) (mut' idx))
       ==> refineADT
       as refineADT_Build_ADT_Mutators.
 Proof.
@@ -164,13 +155,20 @@ Qed.
    steps are better, so using the previous refinements should be the
    preferred mode. ]*)
 
-Add Parametric Morphism rep mutIdx obsIdx
-: (fun ms os => @Build_ADT rep mutIdx obsIdx ms os)
+Add Parametric Morphism Sig rep
+: (@Build_ADT Sig rep)
     with signature
-    (pointwise_relation _ (@refineMutator _ _ eq))
-      ==> (pointwise_relation _ (@refineObserver _ _ eq))
+    (fun mut mut' =>
+       forall idx, @refineMutator _ _ eq
+                                   (MutatorDom Sig idx)
+                                   (mut idx) (mut' idx))
+      ==> (fun obs obs' =>
+       forall idx, @refineObserver _ _ eq
+                                   (ObserverDom Sig idx)
+                                   (ObserverCod Sig idx)
+                                   (obs idx) (obs' idx))
       ==> refineADT
       as refineADT_Build_ADT_Both.
 Proof.
   intros; eapply refineADT_Build_ADT_Rep; eauto; reflexivity.
-Qed. *)
+Qed.

@@ -37,7 +37,7 @@ Section monad.
   Qed.
 
   Lemma unit_bind X (x : Comp X) v
-  : (Bind x (@Return _ X)) ↝ v
+  : (Bind x (@Return X)) ↝ v
     <-> x ↝ v.
   Proof.
     t.
@@ -53,11 +53,10 @@ Section monad.
 End monad.
 
 
-(* [Comp] also obeys the monad laws using both [refineEquiv] and
-   [refineBundledEquiv] as our notions of equivalence. *)
+(* [Comp] also obeys the monad laws using both [refineEquiv] 
+   as our notions of equivalence. *)
 
 Section monad_refine.
-  Context `{ctx : LookupContext}.
 
   Lemma refineEquiv_bind_bind X Y Z (f : X -> Comp Y) (g : Y -> Comp Z) x
   : refineEquiv (Bind (Bind x f) g)
@@ -66,10 +65,6 @@ Section monad_refine.
     split; intro; apply bind_bind.
   Qed.
 
-  Definition refineBundledEquiv_bind_bind
-  : forall X Y Z f g x, refineBundledEquiv `[ _ ]` `[ _ ]`
-    := refineEquiv_bind_bind.
-
   Lemma refineEquiv_bind_unit X Y (f : X -> Comp Y) x
   : refineEquiv (Bind (Return x) f)
                 (f x).
@@ -77,20 +72,12 @@ Section monad_refine.
     split; intro; simpl; apply bind_unit.
   Qed.
 
-  Definition refineBundledEquiv_bind_unit
-  : forall X Y f x, refineBundledEquiv `[ _ ]` `[ _ ]`
-    := refineEquiv_bind_unit.
-
   Lemma refineEquiv_unit_bind X (x : Comp X)
-  : refineEquiv (Bind x (@Return _ X))
+  : refineEquiv (Bind x (@Return X))
                 x.
   Proof.
     split; intro; apply unit_bind.
   Qed.
-
-  Definition refineBundledEquiv_unit_bind
-  : forall X x, refineBundledEquiv `[ _ ]` `[ _ ]`
-    := refineEquiv_unit_bind.
 
   Lemma refineEquiv_under_bind X Y (f g : X -> Comp Y) x
         (eqv_f_g : forall x, refineEquiv (f x) (g x))
@@ -100,12 +87,6 @@ Section monad_refine.
     split; unfold refine; simpl in *; intros; eapply computes_under_bind;
     intros; eauto; split; eapply eqv_f_g.
   Qed.
-
-  Definition refineBundledEquiv_under_bind
-  : forall X Y f g x
-           (equv_f_g : forall x, refineBundledEquiv `[ _ ]` `[ _ ]`),
-      refineBundledEquiv `[ _ ]` `[ _ ]`
-    := refineEquiv_under_bind.
 
 End monad_refine.
 

@@ -8,9 +8,11 @@ MODULES    := \
 	Computation/Refinements/Inline \
 	Computation \
 	ADT \
+	ADTHide \
 	ADTRefinement/Specs \
 	ADTRefinement/Pick \
 	ADTRefinement/Core \
+	ADTRefinement/RefineHideADT \
 	ADTRefinement/SetoidMorphisms \
 	ADTRefinement/GeneralRefinements \
 	ADTRefinement \

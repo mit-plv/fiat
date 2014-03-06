@@ -1,32 +1,16 @@
 Require Import String Ensembles.
 Require Import Common.
 
-Class Context :=
-  { names : Type;
-    dom : names -> Type;
-    cod : names -> Type }.
-
-Section Comp.
-  Context {ctx : Context}.
-
-  Inductive Comp : Type -> Type :=
-  | Return : forall A, A -> Comp A
-  | Bind : forall A B, Comp A -> (A -> Comp B) -> Comp B
-  | Pick : forall A, Ensemble A -> Comp A
-  | Call : forall name : names, dom name -> Comp (cod name).
-End Comp.
+Inductive Comp : Type -> Type :=
+| Return : forall A, A -> Comp A
+| Bind : forall A B, Comp A -> (A -> Comp B) -> Comp B
+| Pick : forall A, Ensemble A -> Comp A.
 
 Bind Scope comp_scope with Comp.
-Arguments Bind {_} [A%type B%type] _%comp _.
-Arguments Call {_} name _%comp.
-Arguments Return {_} [_] _.
-Arguments Pick {_} [_] _.
+Arguments Bind [A%type B%type] _%comp _.
+Arguments Return [_] _.
+Arguments Pick [_] _.
 
-(*Notation "x >>= y" := (Bind x%comp y%comp) : comp_scope.
-Notation "x <- y ; z" := (Bind y%comp (fun x => z%comp)) : comp_scope.
-Notation "x ;; z" := (Bind x%comp (fun _ => z%comp)) : comp_scope.
-Notation "{ x  |  P }" := (@Pick _ (fun x => P)) : comp_scope.
-Notation "{ x : A  |  P }" := (@Pick A%type (fun x => P)) : comp_scope.*)
 Notation ret := Return.
 
 Notation "x >>= y" := (Bind x%comp y%comp) : comp_scope.
@@ -36,26 +20,8 @@ Notation "x <- y ; z" := (Bind y%comp (fun x => z%comp))
 Notation "x ;; z" := (Bind x%comp (fun _ => z%comp))
                        (at level 81, right associativity,
                         format "'[v' x ;; '/' z ']'") : comp_scope.
-Notation "{ x  |  P }" := (@Pick _ _ (fun x => P)) : comp_scope.
-Notation "{ x : A  |  P }" := (@Pick _ A%type (fun x => P)) : comp_scope.
-Notation "'call' f [[ x ]]" := (@Call _ f x) : comp_scope.
-
-Class LookupContext :=
-  { LContext :> Context;
-    lookup : forall name, dom name -> Comp (cod name) }.
-
-Coercion LContext : LookupContext >-> Context.
-
-Record BundledComp A :=
-  Bundle { CompContext : LookupContext;
-           Unbundle :> Comp A }.
-
-Bind Scope bundled_comp_scope with BundledComp.
-Global Open Scope bundled_comp_scope.
-
-Notation "``[ c 'with' l ]``" := (@Bundle _ l c) (only parsing) : bundled_comp_scope.
-Notation "`[ c ]`" := ``[ c with _ ]`` : bundled_comp_scope.
-Notation "``[ c 'with' l ]``" := (``[ c with l ]``)%bundled_comp : long_comp_scope.
+Notation "{ x  |  P }" := (@Pick _ (fun x => P)) : comp_scope.
+Notation "{ x : A  |  P }" := (@Pick A%type (fun x => P)) : comp_scope.
 
 Section comp.
   Definition Lift `{ctx : Context} A B (f : A -> B)
@@ -73,7 +39,6 @@ Section comp.
 End comp.
 
 Section computes_to.
-  Context `{ctx : LookupContext}.
 
   (** TODO(JasonGross): Should this be [CoInductive]? *)
   Inductive computes_to : forall A, Comp A -> A -> Prop :=
@@ -82,10 +47,7 @@ Section computes_to.
                      @computes_to A comp_a comp_a_value
                      -> @computes_to B (f comp_a_value) comp_b_value
                      -> @computes_to B (Bind comp_a f) comp_b_value
-  | PickComputes : forall A (P : Ensemble A) v, P v -> @computes_to A (Pick P) v
-  | CallComputes : forall f x fx_value,
-                     @computes_to (cod f) (@lookup _ f x) fx_value
-                     -> @computes_to _ (Call f x) fx_value.
+  | PickComputes : forall A (P : Ensemble A) v, P v -> @computes_to A (Pick P) v.
 
   Theorem computes_to_inv A (c : Comp A) v
   : computes_to c v -> match c in (Comp A) return A -> Prop with
@@ -94,8 +56,6 @@ Section computes_to.
                                                       computes_to x comp_a_value
                                                       /\ computes_to (f comp_a_value) v
                          | Pick _ P => P
-                         | Call f x => fun fx_v =>
-                                         computes_to (@lookup _ f x) fx_v
                        end v.
   Proof.
     destruct 1; eauto.
@@ -105,22 +65,15 @@ End computes_to.
 Notation "c ↝ v" := (computes_to c v).
 
 Section is_computational.
-  Context `{ctx : LookupContext}.
 
-  (** A [Comp] is maximally computational if it could be written without [Pick].  For now, we don't permit [Call] in computational things, because the halting problem. *)
+  (** A [Comp] is maximally computational if it could be written without [Pick]. *)
   Inductive is_computational : forall A, Comp A -> Prop :=
   | Return_is_computational : forall A (x : A), is_computational (Return x)
   | Bind_is_computational : forall A B (cA : Comp A) (f : A -> Comp B),
                               is_computational cA
                               -> (forall a,
-                                    @computes_to _ _ cA a -> is_computational (f a))
-                              -> is_computational (Bind cA f)
-  (*    | Call_is_computational : forall f x,
-                                is_computational x
-                                -> (forall xv,
-                                      @computes_to names dom cod lookup _ x xv
-                                      -> is_computational (@lookup f xv))
-                                -> is_computational (Call f x)*).
+                                    @computes_to _ cA a -> is_computational (f a))
+                              -> is_computational (Bind cA f).
 
   Theorem is_computational_inv A (c : Comp A)
   : is_computational c
@@ -130,9 +83,6 @@ Section is_computational.
                            /\ forall v, x ↝ v
                                         -> is_computational (f v)
          | Pick _ _ => False
-         | Call f x => False (*is_computational x
-                         /\ forall v, @computes_to names dom cod lookup _ x v
-                                      -> is_computational (@lookup f v)*)
        end.
   Proof.
     destruct 1; eauto.
@@ -155,13 +105,6 @@ Section is_computational.
                      exist (unique (computes_to _))
                            (proj1_sig fxv)
                            _
-             | Call f x => fun H => match is_computational_inv H with end(*
-                               let H' := is_computational_inv H in
-                               let xv := @is_computational_unique_val _ _ (proj1 H') in
-                               let fxv := @is_computational_unique_val _ _ (proj2 H' _ (proj1 (proj2_sig xv))) in
-                               exist (unique (computes_to _ _))
-                                     (proj1_sig fxv)
-                                     _*)
            end;
     clearbodies;
     clear is_computational_unique_val;
@@ -201,29 +144,15 @@ End is_computational.
       less so.  This means we want to say that if [new] can compute to
       [v], then [old] should be able to compute to [v], too. *)
 Definition refine {A}
-           {oldCtx newCtx : LookupContext}
-           (old : @Comp oldCtx A)
-           (new : @Comp newCtx A)
+           (old : Comp A)
+           (new : Comp A)
   := forall v, new ↝ v -> old ↝ v.
-
-Definition refineBundled {A} (old new : BundledComp A)
-  := refine old new.
-
-Global Arguments refineBundled : simpl never.
-Typeclasses Transparent refineBundled.
 
 (** Define a symmetrized version of [refine] for ease of rewriting *)
 Definition refineEquiv {A}
-           {oldCtx newCtx : LookupContext}
-           (old : @Comp oldCtx A)
-           (new : @Comp newCtx A)
+           (old : Comp A)
+           (new : Comp A)
   := refine old new /\ refine new old.
-
-Definition refineBundledEquiv {A} (old new : BundledComp A)
-  := refineEquiv old new.
-
-Global Arguments refineBundledEquiv : simpl never.
-Typeclasses Transparent refineBundledEquiv.
 
 Local Obligation Tactic := repeat first [ solve [ eauto ]
                                         | progress hnf in *
@@ -231,7 +160,5 @@ Local Obligation Tactic := repeat first [ solve [ eauto ]
                                         | split
                                         | progress split_and ].
 
-Global Program Instance refine_PreOrder A `{LookupContext} : PreOrder (@refine A _ _).
-Global Program Instance refineBundled_PreOrder A : PreOrder (@refineBundled A).
-Global Program Instance refineEquiv_Equivalence A `{LookupContext} : Equivalence (@refineEquiv A _ _).
-Global Program Instance refineBundledEquiv_Equivalence A : Equivalence (@refineBundledEquiv A).
+Global Program Instance refine_PreOrder A : PreOrder (@refine A).
+Global Program Instance refineEquiv_Equivalence A : Equivalence (@refineEquiv A).
