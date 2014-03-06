@@ -26,7 +26,9 @@ Section addCache.
 
   Definition AddCacheEntry
              {MutatorIndex}
-             (MutatorMethods : MutatorIndex -> mutatorMethodType rep)
+             {MutatorDom : MutatorIndex -> Type}
+             (MutatorMethods :
+                forall idx, mutatorMethodType rep (MutatorDom idx))
              idx r n :=
     or <- MutatorMethods idx (origRep r) n;
     cv <- {cr : cacheTyp | cacheSpec or cr };
@@ -44,26 +46,21 @@ Section addCache.
 
 End addCache.
 
-Definition addCachedValue cacheTyp adt cacheSpec
-: ADT :=
+Definition addCachedValue Sig cacheTyp adt cacheSpec
+: ADT Sig :=
   {| Rep := cachedRep (Rep adt) cacheTyp;
-     ObserverIndex := ObserverIndex adt;
-     MutatorIndex := MutatorIndex adt;
      ObserverMethods idx r := ObserverMethods adt idx (origRep r);
      MutatorMethods := AddCacheEntry cacheSpec (MutatorMethods adt)|}.
 
-Theorem refinesAddCachedValue
+Theorem refinesAddCachedValue Sig
         {cacheTyp}
         adt
         (cacheSpec : Rep adt -> cacheTyp -> Prop)
-: refineADT adt (addCachedValue adt cacheSpec).
+: @refineADT Sig adt (addCachedValue adt cacheSpec).
 Proof.
   unfold addCachedValue; destruct adt.
   econstructor 1 with
-  (BiR := fun r_o r_n => r_o = origRep r_n /\ cacheSpec (origRep r_n) (cachedVal r_n))
-    (mutatorMap := @id MutatorIndex) (* Have to specify MutatorIndex in order to
-                                        unify- 8.5 might fix this? *)
-    (observerMap := @id ObserverIndex); simpl; unfold id; unfold AddCacheEntry;
+  (SiR := fun r_o r_n => r_o = origRep r_n /\ cacheSpec (origRep r_n) (cachedVal r_n)); unfold AddCacheEntry; simpl;
   intros; autorewrite with refine_monad.
   - unfold refine; intros; inversion_by computes_to_inv; subst; eauto.
   - intros v CompV; inversion_by computes_to_inv; subst; eauto.
@@ -73,79 +70,68 @@ Qed.
 Arguments addCachedValue / .
 Arguments AddCacheEntry / .
 
-Definition replaceObserver adt
-           (ObserverIndex_eq : forall idx idx' : ObserverIndex adt, {idx = idx'} + {idx <> idx'})
-           (f : Rep adt -> nat -> Comp nat)
-           (cachedIndex : ObserverIndex adt)
-: ADT :=
+Local Obligation Tactic := intros; subst; eauto.
+
+Program Definition replaceObserver Sig adt
+           (ObserverIndex_eq : forall idx idx' : ObserverIndex Sig, {idx = idx'} + {idx <> idx'})
+           (cachedIndex : ObserverIndex Sig)
+           (f : Rep adt -> (ObserverDom Sig cachedIndex)
+                -> Comp (ObserverCod Sig cachedIndex))
+: ADT Sig :=
   {| Rep := Rep adt;
-     ObserverIndex := ObserverIndex adt;
-     MutatorIndex := MutatorIndex adt;
      ObserverMethods idx :=
        if (ObserverIndex_eq idx cachedIndex) then
-         f
+         _
        else
          ObserverMethods adt idx;
      MutatorMethods := MutatorMethods adt|}.
 
 Arguments replaceObserver / .
 
-Definition replaceObserverCache adt
-           (ObserverIndex_eq : forall idx idx' : ObserverIndex adt, {idx = idx'} + {idx <> idx'})
-           (f : Rep adt -> nat -> Comp nat)
-           (cachedIndex : ObserverIndex adt)
-: ADT :=
-  {| Rep := Rep adt;
-     ObserverIndex := ObserverIndex adt;
-     MutatorIndex := MutatorIndex adt;
-     ObserverMethods idx :=
-       if (ObserverIndex_eq idx cachedIndex) then
-         f
-       else
-         ObserverMethods adt idx;
-     MutatorMethods := MutatorMethods adt|}.
-
-(* Currently think it's good practice to expand ADT building blocks. *)
-Arguments replaceObserverCache / .
 Arguments addCachedValue / .
 Arguments AddCacheEntry / .
 
 Lemma refinesReplaceObserverCache
+      Sig
       adt
       (repInv : Ensemble (Rep adt))
-      (ObserverIndex_eq : forall idx idx' : ObserverIndex adt, {idx = idx'} + {idx <> idx'})
-      (f : Rep adt -> nat -> Comp nat)
+      (ObserverIndex_eq : forall idx idx' : ObserverIndex Sig, {idx = idx'} + {idx <> idx'})
+      (cachedIndex : ObserverIndex Sig)
+      (f : Rep adt -> (ObserverDom Sig cachedIndex)
+           -> Comp (ObserverCod Sig cachedIndex))
       (MutBiR : forall idx (r : Rep adt) n,
                   repInv r ->
                   refine
                     (r' <- MutatorMethods adt idx r n;
-                     {r'' : Rep adt | repInvBiR repInv r' r''})
+                     {r'' : Rep adt | repInvSiR repInv r' r''})
                     (MutatorMethods adt idx r n))
-      (cachedIndex : ObserverIndex adt)
-      (refines_f : forall r n, repInv r ->
-                               refine (ObserverMethods adt cachedIndex r n) (f r n))
-: refineADT adt (replaceObserverCache adt ObserverIndex_eq f cachedIndex).
+      (refines_f : forall r n,
+                     repInv r ->
+                     refine (ObserverMethods adt cachedIndex r n) (f r n))
+: refineADT adt (replaceObserver adt ObserverIndex_eq cachedIndex f).
 Proof.
-  unfold replaceObserverCache; destruct adt; simpl.
-  econstructor 1 with (BiR := repInvBiR repInv (rep := Rep))
-                        (mutatorMap := @id MutatorIndex) (* Have to specify MutatorIndex in order to
-                                        unify- 8.5 might fix this? *)
-                        (observerMap := @id ObserverIndex);
-    simpl in *|-*; unfold id, repInvBiR; intros; intuition; subst; eauto.
-  - find_if_inside; subst; [eauto | reflexivity].
+  unfold replaceObserver; destruct adt; simpl.
+  econstructor 1 with (SiR := repInvSiR repInv (rep := Rep));
+    simpl in *|-*; unfold id, repInvSiR; intros; intuition; subst; eauto.
+  - destruct (ObserverIndex_eq idx cachedIndex);
+    [unfold replaceObserver_obligation_1, eq_rect_r, eq_rect; 
+      destruct e; simpl; eauto
+     | reflexivity ].
 Qed.
 
 (* Combining the above two refinements to replace an observer with a cached value. *)
 Lemma refinesReplaceAddCache
+      Sig
       adt
-      (ObserverIndex_eq : forall idx idx' : ObserverIndex adt, {idx = idx'} + {idx <> idx'})
-      (cacheSpec : Rep adt -> nat -> Prop)
-      (cachedIndex : ObserverIndex adt)
+      (ObserverIndex_eq : forall idx idx' : ObserverIndex Sig, {idx = idx'} + {idx <> idx'})
+      (cachedIndex : ObserverIndex Sig)
+      (cacheSpec : Rep adt -> ObserverCod Sig cachedIndex -> Prop)
       (refines_f : forall r n v, cacheSpec r v ->
                                  refine (ObserverMethods adt cachedIndex r n) (ret v))
 : refineADT adt
-            (replaceObserverCache (addCachedValue adt cacheSpec)
-                                  ObserverIndex_eq (fun r _ => ret (cachedVal r)) cachedIndex).
+            (replaceObserver (addCachedValue adt cacheSpec)
+                             ObserverIndex_eq cachedIndex
+                             (fun r _ => ret (cachedVal r))).
 Proof.
   etransitivity. (* Example of where we can't rewrite? *)
   eapply refinesAddCachedValue.

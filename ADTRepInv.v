@@ -19,7 +19,7 @@ Set Implicit Arguments.
 
    Dependent products introduce another wrinkle to refinement:
    since an ADT refinement can change the proof produced by a method,
-   we can't always use equality as the bisimulation relation in
+   we can't always use equality as the simulation relation in
    [ADTrefine]. (As an example of a case where the proof changes,
    a refinement might use a cached value instead of running
    a method on the current state.)
@@ -32,10 +32,10 @@ Set Implicit Arguments.
    proofs aren't packaged into the representation in this approach,
    equality suffices for expressing method refinement.
 
-   Yet another approach is to use the bisimulation relation to derive
+   Yet another approach is to use the simulation relation to derive
    an ad hoc invariant for a particular refinement step. The basic idea
-   is that the bisimulation relation relates two equal states for which
-   the invariant holds. By baking the invariant into the bisimulation
+   is that the simulation relation relates two equal states for which
+   the invariant holds. By baking the invariant into the simulation
    relation, it becomes a hypothesis to all of our refinement proofs.
    The cost of this approach is that it requires a proof that each mutator
    preserves the invariant on an ad hoc basis, which could leave to some
@@ -53,45 +53,52 @@ Section RepInv.
   Variable rep : Type.
   Variable repInv : Ensemble rep.
 
-  (* This is the bisimulation relation we use to mimic invariants-
+  (* This is the simulation relation we use to mimic invariants-
      the representations are always the same /and/ the invariant holds. *)
 
-  Definition repInvBiR (r_o r_n : rep) :=
+  Definition repInvSiR (r_o r_n : rep) :=
     r_o = r_n /\ repInv r_n.
 
-  (* Refining an adt using the [repInvBiR] relation allows us to
+  (* Refining an adt using the [repInvSiR] relation allows us to
    utilize [repInv] when proving method refinement. Of course,
    we also have to show that mutators preserve the invariant.
    Hopefully we can include additional information into the honing
    tactics to avoid reproving invariant preservation.  *)
 
   Add Parametric Morphism
-      mutIdx obsIdx
-  : (@Build_ADT rep mutIdx obsIdx)
+      Sig
+  : (@Build_ADT Sig rep)
       with signature
-      (pointwise_relation _ (@refineMutator _ _ repInvBiR))
-        ==> (pointwise_relation _ (@refineObserver _ _ repInvBiR))
+    (fun mut mut' =>
+       forall idx, @refineMutator _ _ repInvSiR
+                                   (MutatorDom Sig idx)
+                                   (mut idx) (mut' idx))
+      ==> (fun obs obs' =>
+       forall idx, @refineObserver _ _ repInvSiR
+                                   (ObserverDom Sig idx)
+                                   (ObserverCod Sig idx)
+                                   (obs idx) (obs' idx))
         ==> refineADT
         as refineADT_Build_ADT_RepInv.
   Proof.
     intros; eapply refineADT_Build_ADT_Rep; eauto; reflexivity.
   Qed.
 
-  Lemma refine_pick_repInvBiR :
+  Lemma refine_pick_repInvSiR :
     forall r_o, repInv r_o ->
-    refineEquiv {r_n | repInvBiR r_o r_n}
+    refineEquiv {r_n | repInvSiR r_o r_n}
                 (ret r_o).
   Proof.
-    unfold repInvBiR; split; intros v CompV; inversion_by computes_to_inv; intuition;
+    unfold repInvSiR; split; intros v CompV; inversion_by computes_to_inv; intuition;
     subst; econstructor; eauto.
   Qed.
 
-  Lemma refine_pick_repInvBiR' :
+  Lemma refine_pick_repInvSiR' :
     forall r_n, repInv r_n ->
-    refineEquiv {r_o | repInvBiR r_o r_n}
+    refineEquiv {r_o | repInvSiR r_o r_n}
                 (ret r_n).
   Proof.
-    unfold repInvBiR; split; intros v CompV; inversion_by computes_to_inv; intuition;
+    unfold repInvSiR; split; intros v CompV; inversion_by computes_to_inv; intuition;
     subst; econstructor; eauto.
   Qed.
 
@@ -99,8 +106,8 @@ End RepInv.
 
 (* A more user-friendly version of [refineADT_Build_ADT_Rep]. *)
 
-Lemma refinesADTRepInv
-      adt
+Lemma refinesADTRepInv Sig
+      (adt : ADT Sig)
       (repInv : Ensemble (Rep adt))
       ObserverMethods'
       MutatorMethods'
@@ -108,14 +115,14 @@ Lemma refinesADTRepInv
                   repInv r ->
                   refine
                     (r' <- MutatorMethods adt idx r n;
-                     {r'' : Rep adt | repInvBiR repInv r' r''})
+                     {r'' : Rep adt | repInvSiR repInv r' r''})
                     (MutatorMethods' idx r n))
       (RefObv : forall idx (r : Rep adt) n,
                   repInv r ->
                   refine
                     (ObserverMethods adt idx r n)
                     (ObserverMethods' idx r n))
-      (cachedIndex : ObserverIndex adt)
+      (cachedIndex : ObserverIndex Sig)
 : refineADT adt
             {| Rep := Rep adt;
                MutatorMethods := MutatorMethods';
@@ -124,7 +131,7 @@ Lemma refinesADTRepInv
 Proof.
   destruct adt.
   eapply refineADT_Build_ADT_RepInv with
-  (repInv := repInv); unfold pointwise_relation, repInvBiR in *;
+  (repInv := repInv); unfold pointwise_relation, repInvSiR in *;
   simpl in *; intros; intuition; subst; eauto.
 Qed.
 
@@ -144,7 +151,7 @@ Tactic Notation "hone" "mutator" constr(mutIdx) "using" constr(mutBody)
       assert (forall idx idx' : MutatorIndex', {idx = idx'} + {idx <> idx'})
         as mutIdx_eq' by (decide equality);
       let RefineH := fresh in
-      assert (pointwise_relation MutatorIndex' (refineMutator (repInvBiR repInv))
+      assert (pointwise_relation MutatorIndex' (refineMutator (repInvSiR repInv))
                                  (MutatorMethods')
                                  (fun idx => if (mutIdx_eq' idx ()) then
                                                mutBody

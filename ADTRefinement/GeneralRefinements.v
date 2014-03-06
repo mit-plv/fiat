@@ -26,13 +26,13 @@ Set Implicit Arguments.
 Notation Sharpened spec := {adt | refineADT spec adt}.
 
 (* A single refinement step. *)
-Definition SharpenStep adt :
+Definition SharpenStep Sig adt :
   forall adt',
-    refineADT adt adt' ->
+    refineADT (Sig := Sig) adt adt' ->
     Sharpened adt' ->
     Sharpened adt.
 Proof.
-  intros adt'za refineA SpecA';
+  intros adt' refineA SpecA';
   eexists (proj1_sig SpecA'); rewrite refineA; exact (proj2_sig SpecA').
 Defined.
 
@@ -42,14 +42,13 @@ Tactic Notation "finish" "sharpening" := eexists; reflexivity.
 Section GeneralRefinements.
 (* Given an abstraction function, we can transform the rep of a pickImpl ADT. *)
 
-  Theorem refines_rep_pickImpl
+  Theorem refines_rep_pickImpl Sig
           newRep oldRep
           (abs : newRep -> oldRep)
-          MutatorIndex ObserverIndex
           ObserverSpec MutatorSpec :
     refineADT
-      (@pickImpl oldRep MutatorIndex ObserverIndex MutatorSpec ObserverSpec)
-      (@pickImpl newRep MutatorIndex ObserverIndex
+      (@pickImpl Sig oldRep MutatorSpec ObserverSpec)
+      (@pickImpl Sig newRep
                  (fun idx nm n nm' => MutatorSpec idx (abs nm) n (abs nm'))
                  (fun idx nm => ObserverSpec idx (abs nm))).
   Proof.
@@ -57,9 +56,7 @@ Section GeneralRefinements.
     let B' := match goal with |- refineADT ?A ?B => constr:(B) end in
     econstructor 1 with
     (B := B')
-      (SiR := fun om nm => om = (abs nm))
-      (mutatorMap := @id MutatorIndex)
-      (observerMap := @id ObserverIndex);
+      (SiR := fun om nm => om = (abs nm));
     compute; intros; subst.
     apply computes_to_inv in H0; repeat econstructor; eauto.
     apply computes_to_inv in H0; repeat econstructor; eauto.
@@ -69,73 +66,86 @@ Section GeneralRefinements.
      mutators of an ADT with an updated representation using the old
      mutators. *)
 
-  Definition absMutatorMethods oldRep newRep
-        (BiR : oldRep -> newRep -> Prop)
-        mutIdx
-        (oldMuts : mutIdx -> mutatorMethodType oldRep) idx nr n : Comp newRep :=
+  Definition absMutatorMethods Sig oldRep newRep
+        (SiR : oldRep -> newRep -> Prop)
+        (oldMuts :
+           forall idx,
+             mutatorMethodType oldRep (MutatorDom Sig idx)) idx nr n
+  : Comp newRep :=
     {nr' | forall or,
-             BiR or nr ->
+             SiR or nr ->
              exists or',
                (oldMuts idx or n) ↝ or' /\
-               BiR or' nr'}%comp.
+               SiR or' nr'}%comp.
 
-  Lemma refine_absMutatorMethods oldRep newRep
-        (BiR : oldRep -> newRep -> Prop)
-        mutIdx
-        (oldMuts : mutIdx -> mutatorMethodType oldRep)
+  Lemma refine_absMutatorMethods Sig oldRep newRep
+        (SiR : oldRep -> newRep -> Prop)
+        (oldMuts :
+           forall idx,
+             mutatorMethodType oldRep (MutatorDom Sig idx))
   : forall idx,
-      @refineMutator oldRep newRep BiR
+      @refineMutator oldRep newRep SiR
+                     _
                      (oldMuts idx)
-                     (absMutatorMethods BiR oldMuts idx).
+                     (absMutatorMethods Sig SiR oldMuts idx).
   Proof.
     unfold refineMutator, absMutatorMethods, refine; intros.
     inversion_by computes_to_inv.
-    destruct (H0 _ H) as [or' [Comp_or BiR_or''] ].
+    destruct (H0 _ H) as [or' [Comp_or SiR_or''] ].
     econstructor; eauto.
   Qed.
 
   (* Always unfold absMutatorMethods. *)
-  Global Arguments absMutatorMethods oldRep newRep BiR mutIdx oldMuts / idx nr n.
+  Global Arguments absMutatorMethods Sig oldRep newRep SiR oldMuts / idx nr n.
 
   Hint Resolve refine_absMutatorMethods.
 
   (* A similar approach works for observers. *)
 
-  Definition absObserverMethods oldRep newRep
-             (BiR : oldRep -> newRep -> Prop)
-             obsIdx
-             (oldObs : obsIdx -> observerMethodType oldRep) idx nr n : Comp nat :=
+  Definition absObserverMethods Sig oldRep newRep
+             (SiR : oldRep -> newRep -> Prop)
+             (oldObs :
+                forall idx,
+                  observerMethodType oldRep
+                                     (ObserverDom Sig idx)
+                                     (ObserverCod Sig idx))
+             idx nr n
+  : Comp (ObserverCod Sig idx) :=
     {n' | forall or,
-            BiR or nr ->
+            SiR or nr ->
             (oldObs idx or n) ↝ n'}%comp.
 
-  Lemma refine_absObserverMethods oldRep newRep
-        (BiR : oldRep -> newRep -> Prop)
-        obsIdx
-        (oldObs : obsIdx -> observerMethodType oldRep)
+  Lemma refine_absObserverMethods Sig oldRep newRep
+        (SiR : oldRep -> newRep -> Prop)
+        (oldObs :
+           forall idx,
+             observerMethodType oldRep
+                                (ObserverDom Sig idx)
+                                (ObserverCod Sig idx))
   : forall idx,
-      @refineObserver oldRep newRep BiR (oldObs idx)
-                     (absObserverMethods BiR oldObs idx).
+      @refineObserver oldRep newRep SiR _ _ (oldObs idx)
+                     (absObserverMethods Sig SiR oldObs idx).
   Proof.
     unfold refineObserver, absObserverMethods, refine; intros.
     inversion_by computes_to_inv; eauto.
   Qed.
 
-  Global Arguments absObserverMethods oldRep newRep BiR obsIdx oldObs / idx nr n .
+  Global Arguments absObserverMethods Sig oldRep newRep SiR oldObs / idx nr n .
 
   Hint Resolve refine_absObserverMethods.
 
   (* We can refine an ADT using the above default mutator and observer
      implementations. *)
 
-  Lemma refineADT_Build_ADT_Rep_default oldRep newRep
-        (BiR : oldRep -> newRep -> Prop)
-        mutIdx obsIdx oldMuts oldObs :
+  Lemma refineADT_Build_ADT_Rep_default
+        Sig oldRep newRep
+        (SiR : oldRep -> newRep -> Prop)
+        oldMuts oldObs :
     refineADT
-      (@Build_ADT oldRep mutIdx obsIdx oldMuts oldObs)
-      (@Build_ADT newRep mutIdx obsIdx
-                  (absMutatorMethods BiR oldMuts)
-                  (absObserverMethods BiR oldObs)).
+      (@Build_ADT Sig oldRep oldMuts oldObs)
+      (@Build_ADT Sig newRep
+                  (absMutatorMethods Sig SiR oldMuts)
+                  (absObserverMethods Sig SiR oldObs)).
   Proof.
     eapply refineADT_Build_ADT_Rep; eauto.
   Qed.
@@ -145,29 +155,36 @@ Section GeneralRefinements.
   (* If a representation has extraneous information (perhaps intermediate
      data introduced during refinement), simplifying the representation
      is a valid refinement. *)
+    Variable Sig : ADTSig.
 
     Variable oldRep : Type.
     Variable newRep : Type.
 
     Variable simplifyf : oldRep -> newRep.
     Variable concretize : newRep -> oldRep.
-    Variable BiR : oldRep -> newRep -> Prop.
+    Variable SiR : oldRep -> newRep -> Prop.
 
-    Notation "ro ≃ rn" := (BiR ro rn) (at level 70).
+    Notation "ro ≃ rn" := (SiR ro rn) (at level 70).
 
     Definition simplifyMutatorMethods
-               mutIdx (oldMuts : mutIdx -> mutatorMethodType oldRep)
+               (oldMuts :
+                  forall idx,
+                    mutatorMethodType oldRep (MutatorDom Sig idx))
                idx r_n n : Comp newRep :=
       (r_o' <- (oldMuts idx (concretize r_n) n);
        ret (simplifyf r_o'))%comp.
 
   Definition simplifyObserverMethods
-             obsIdx (oldObs : obsIdx -> observerMethodType oldRep)
-             idx nr n : Comp nat :=
+             (oldObs :
+                forall idx,
+                  observerMethodType oldRep
+                                     (ObserverDom Sig idx)
+                                     (ObserverCod Sig idx))
+             idx nr n : Comp (ObserverCod Sig idx) :=
     oldObs idx (concretize nr) n.
 
   Definition simplifyRep
-             mutIdx obsIdx oldMuts oldObs :
+             oldMuts oldObs :
     (forall r_n r_o,
                 (r_o ≃ r_n) ->
                 forall idx n,
@@ -181,48 +198,18 @@ Section GeneralRefinements.
                   refineEquiv (oldObs idx r_o n)
                               (oldObs idx (concretize r_n) n)) ->
     refineADT
-      (@Build_ADT oldRep mutIdx obsIdx oldMuts oldObs)
-      (@Build_ADT newRep mutIdx obsIdx
+      (@Build_ADT Sig oldRep oldMuts oldObs)
+      (@Build_ADT Sig newRep
                   (simplifyMutatorMethods oldMuts)
                   (simplifyObserverMethods oldObs)).
   Proof.
     econstructor 1 with
-    (BiR := BiR)
-      (mutatorMap := @id mutIdx)
-      (observerMap := @id obsIdx); simpl; eauto.
+    (SiR := SiR); simpl; eauto.
     - unfold simplifyMutatorMethods; intros; eapply H; eauto.
     - unfold simplifyObserverMethods; intros; eapply H0; eauto.
   Qed.
 
   End SimplifyRep.
-
-(** TODO: Update this to reflect the new definition of ADT + ADT
-    Refinement *)
-
-(* If you mutate and then observe, you can do it before or after
-    refinement.  I'm not actually sure this isn't obvious.
- *)
-
-(* Lemma ADTRefinementOk
-      (old new : ADT)
-      (new_initial_value : Comp (Rep new))
-      abs mutatorMap observerMap H H'
-      (ref : refineADT old new
-       := @refinesADT old new abs mutatorMap observerMap H H')
-      mutIdx obsIdx n n'
-: refine (v0 <- new_initial_value;
-          v <- abs v0;
-          v' <- MutatorMethods old mutIdx v n;
-          ObserverMethods old obsIdx v' n')
-         (v <- new_initial_value;
-          v' <- MutatorMethods new (mutatorMap mutIdx) v n;
-          ObserverMethods new (observerMap obsIdx) v' n').
-Proof.
-  simpl in *.
-  apply refine_bind; [ reflexivity | ].
-  intro.
-  interleave_autorewrite_refine_monad_with setoid_rewrite_hyp.
-Qed. *)
 
 End GeneralRefinements.
 
@@ -318,4 +305,4 @@ Tactic Notation "hone" "observer" constr(obsIdx) "using" constr(obsBody) :=
    default observer and mutator implementations. *)
 Tactic Notation "hone" "representation" "using" constr(BiSR) :=
     eapply SharpenStep;
-    [eapply refineADT_Build_ADT_Rep_default with (BiR := BiSR) | idtac].
+    [eapply refineADT_Build_ADT_Rep_default with (SiR := BiSR) | idtac].

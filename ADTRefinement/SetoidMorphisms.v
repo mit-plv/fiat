@@ -120,7 +120,6 @@ Lemma refineADT_Build_ADT_Rep Sig oldRep newRep
 
 (* Refining Observers is a valid ADT refinement. *)
 
- Print relation.
 Add Parametric Morphism rep Sig ms
 : (@Build_ADT Sig rep ms)
     with signature
