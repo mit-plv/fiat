@@ -18,6 +18,7 @@ MODULES    := \
 	ADTCache \
 	ComputationExamples \
 	ADTExamples/BinaryOperationSpec \
+	ADTExamples/CombineBinaryOperationsSpec \
 	ADTExamples
 
 VS         := $(MODULES:%=%.v)
