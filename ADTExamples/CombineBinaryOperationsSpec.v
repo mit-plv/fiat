@@ -25,3 +25,6 @@ Section two_op_spec.
     := pickImpl (fun _ : unit => add_spec)
                 (fun _ : unit => two_op_spec).
 End two_op_spec.
+
+Definition MinMax : ADT
+  := NatTwoBinOpSpec le (fun _ => True) ge (fun _ => True) (fun x y sum => x + y = sum).
