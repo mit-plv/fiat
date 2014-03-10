@@ -80,11 +80,11 @@ Lemma refineADT_Build_ADT_Rep Sig oldRep newRep
       (forall idx, mutatorMethodType newRep (MutatorDom Sig idx))
       (fun oldMuts =>
          (forall idx,
-            observerMethodType oldRep (ObserverDom Sig idx) (ObserverCod Sig idx))
+            observerMethodType oldRep (fst (ObserverDomCod Sig idx)) (snd (ObserverDomCod Sig idx)))
          -> ADT Sig)
       (fun newMuts =>
          (forall idx,
-            observerMethodType newRep (ObserverDom Sig idx) (ObserverCod Sig idx))
+            observerMethodType newRep (fst (ObserverDomCod Sig idx)) (snd (ObserverDomCod Sig idx)))
          -> ADT Sig)
       (fun oldMuts newMuts =>
          forall mutIdx,
@@ -100,8 +100,8 @@ Lemma refineADT_Build_ADT_Rep Sig oldRep newRep
                     (fun obs obs' =>
                        forall obsIdx : ObserverIndex Sig,
                          @refineObserver oldRep newRep SiR
-                                         (ObserverDom Sig obsIdx)
-                                         (ObserverCod Sig obsIdx)
+                                         (fst (ObserverDomCod Sig obsIdx))
+                                         (snd (ObserverDomCod Sig obsIdx))
                                         (obs obsIdx)
                                         (obs' obsIdx))
                     (fun obs obs' => refineADT)))
@@ -125,8 +125,8 @@ Add Parametric Morphism rep Sig ms
     with signature
     (fun obs obs' =>
        forall idx, @refineObserver _ _ eq
-                                   (ObserverDom Sig idx)
-                                   (ObserverCod Sig idx)
+                                   (fst (ObserverDomCod Sig idx))
+                                   (snd (ObserverDomCod Sig idx))
                                    (obs idx) (obs' idx))
       ==> refineADT
       as refineADT_Build_ADT_Observer.
@@ -163,8 +163,8 @@ Add Parametric Morphism Sig rep
                                    (mut idx) (mut' idx))
       ==> (fun obs obs' =>
        forall idx, @refineObserver _ _ eq
-                                   (ObserverDom Sig idx)
-                                   (ObserverCod Sig idx)
+                                   (fst (ObserverDomCod Sig idx))
+                                   (snd (ObserverDomCod Sig idx))
                                    (obs idx) (obs' idx))
       ==> refineADT
       as refineADT_Build_ADT_Both.

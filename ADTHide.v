@@ -21,11 +21,9 @@ Section HideADT.
     {| MutatorIndex := resMutatorIndex;
        ObserverIndex := resObserverIndex;
        MutatorDom idx := MutatorDom extSig (MutatorMap idx);
-       ObserverDom idx := ObserverDom extSig (ObserverMap idx);
-       ObserverCod idx := ObserverCod extSig (ObserverMap idx)
+       ObserverDomCod idx := ObserverDomCod extSig (ObserverMap idx)
     |}.
   (* The signature of the ADT with restricted mutator and observer indices *)
-
 
   Definition HideADT (extADT : ADT extSig) : ADT resSig :=
     match extADT with

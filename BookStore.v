@@ -1,0 +1,129 @@
+Require Import String Omega List Coq.Sets.Uniset Coq.Sets.Multiset.
+Require Import FunctionalExtensionality.
+Require Export ADT ADTRefinement ADTCache ADTRepInv Pick.
+
+Generalizable All Variables.
+Set Implicit Arguments.
+
+Section BookStoreExamples.
+
+  (* Our bookstore has two 'tables':
+     - A list of books in the inventory
+     - A list of orders that have been placed. *)
+
+  Record Book :=
+    { Author : string;
+       Title : string;
+       ISBN : nat}.
+
+  Hint Resolve string_dec.
+
+  Lemma Book_eq_dec : forall o o' : Book, {o = o'} + {o <> o'}.
+    decide equality; auto with arith.
+  Qed.
+
+  Record Order := { oISBN : nat }.
+  Coercion Build_Order : nat >-> Order.
+
+  Lemma Order_eq_dec : forall o o' : Order, {o = o'} + {o <> o'}.
+    decide equality; auto with arith.
+  Qed.
+
+  (* Our bookstore has two mutators:
+     - [PlaceOrder] : Place an order into the 'Orders' table
+     - [AddBook] : Add a book to the inventory
+
+     Our bookstore has two observers:
+     - [GetTitles] : The titles of books written by a given author
+     - [NumOrders] : The number of orders for a given author
+   *)
+
+  Inductive BookStoreMutators : Set :=
+    PlaceOrder | AddBook.
+  Inductive BookStoreObservers : Set :=
+    GetTitles | NumOrders.
+
+  (* Well, this is what we'd like to write. *)
+
+  Definition BookStoreSig : ADTSig :=
+    ADTsignature {
+        "PlaceOrder" : rep ✕ nat → rep,
+        "AddBook" : rep ✕ Book → rep ;
+        "GetTitles" : rep ✕ string → list string,
+        "NumOrders" : rep ✕ string → nat
+      }.
+
+  Definition BookStoreSig' : ADTSig :=
+    {| MutatorDom idx :=
+         match idx with
+           | PlaceOrder => nat
+           | AddBook => Book
+         end;
+       ObserverDomCod idx :=
+         match idx with
+           | GetTitles => @pair Type Type string (list string)
+           | NumOrders => @pair Type Type string nat
+         end
+    |}.
+
+  Record BookStoreRefRep :=
+    { Books : uniset Book;
+      Orders : list Order }.
+
+  Definition PlaceOrderSpec :
+    mutatorMethodSpec BookStoreRefRep (MutatorDom BookStoreSig' PlaceOrder)
+    := fun (r : BookStoreRefRep) (n : nat) (r' : BookStoreRefRep) =>
+         (* The Book tables are the same. *)
+         Books r = Books r'
+         (* If the ordered book is in the inventory (i.e. is a foreign
+            key), the updated set of orders is a subset of the
+            original set of orders. *)
+         /\
+         forall b,
+            In (Books r) b /\ ISBN b = n ->
+            Orders r' = @cons Order n (Orders r).
+
+  Definition AddBookSpec :
+    mutatorMethodSpec BookStoreRefRep (MutatorDom BookStoreSig' AddBook)
+    := fun (r : BookStoreRefRep) (b : Book) (r' : BookStoreRefRep) =>
+         (* The Order tables are the same.*)
+         Orders r = Orders r'
+         (* If the new book's ISBN isn't already in the inventory,
+            the updated set of books now includes it
+            (i.e. ISBN is a primary key). *)
+         /\
+         (forall b', ISBN b = ISBN b' -> ~ In (Books r) b') ->
+         Books r' = union (Books r) (Coq.Sets.Uniset.Singleton _ Book_eq_dec b).
+
+  Definition GetTitlesSpec :
+    observerMethodSpec BookStoreRefRep
+                       (fst (ObserverDomCod BookStoreSig' GetTitles))
+                       (snd (ObserverDomCod BookStoreSig' GetTitles))
+    := fun (r : BookStoreRefRep) (author : string) (titles : list string) =>
+         (* Every element in the returned list iff a corresponding book
+            in the original inventory. *)
+         forall title, List.In title titles <->
+                       exists b, In (Books r) b /\ Title b = title.
+
+  Inductive NumOrdersSpec
+  : BookStoreRefRep -> string -> nat -> Prop :=
+    numOrderSpec :
+      forall inventory author (l : list nat) (f : Order -> bool),
+        (* The number of orders for a *)
+        (forall o, f o = true <->
+                   exists book, In (Books inventory) book
+                              /\ ISBN book = oISBN o
+                              /\ Author book = author) ->
+        NumOrdersSpec inventory author
+                      (length (filter f (Orders inventory))).
+
+  Definition BookStorePick : ADT BookStoreSig' :=
+    pickImpl BookStoreSig'
+             (fun idx => match idx with
+                           | PlaceOrder => PlaceOrderSpec
+                           | AddBook => AddBookSpec
+                         end)
+             (fun idx => match idx with
+                           | GetTitles => GetTitlesSpec
+                           | NumOrders => NumOrdersSpec
+                         end).

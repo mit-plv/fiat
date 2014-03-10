@@ -107,10 +107,10 @@ Section GeneralRefinements.
              (oldObs :
                 forall idx,
                   observerMethodType oldRep
-                                     (ObserverDom Sig idx)
-                                     (ObserverCod Sig idx))
+                                     (fst (ObserverDomCod Sig idx))
+                                     (snd (ObserverDomCod Sig idx)))
              idx nr n
-  : Comp (ObserverCod Sig idx) :=
+  : Comp (snd (ObserverDomCod Sig idx)) :=
     {n' | forall or,
             SiR or nr ->
             (oldObs idx or n) ↝ n'}%comp.
@@ -120,8 +120,8 @@ Section GeneralRefinements.
         (oldObs :
            forall idx,
              observerMethodType oldRep
-                                (ObserverDom Sig idx)
-                                (ObserverCod Sig idx))
+                                (fst (ObserverDomCod Sig idx))
+                                (snd (ObserverDomCod Sig idx)))
   : forall idx,
       @refineObserver oldRep newRep SiR _ _ (oldObs idx)
                      (absObserverMethods Sig SiR oldObs idx).
@@ -178,9 +178,9 @@ Section GeneralRefinements.
              (oldObs :
                 forall idx,
                   observerMethodType oldRep
-                                     (ObserverDom Sig idx)
-                                     (ObserverCod Sig idx))
-             idx nr n : Comp (ObserverCod Sig idx) :=
+                                (fst (ObserverDomCod Sig idx))
+                                (snd (ObserverDomCod Sig idx)))
+             idx nr n : Comp (snd (ObserverDomCod Sig idx)) :=
     oldObs idx (concretize nr) n.
 
   Definition simplifyRep

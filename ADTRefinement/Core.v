@@ -82,8 +82,8 @@ Inductive refineADT {Sig} : ADT Sig -> ADT Sig -> Prop :=
                      (MutatorMethods B idx))
       -> (forall idx : ObserverIndex Sig, @refineObserver
                      (Rep A) (Rep B) SiR
-                     (ObserverDom Sig idx)
-                     (ObserverCod Sig idx)
+                     (fst (ObserverDomCod Sig idx))
+                     (snd (ObserverDomCod Sig idx))
                      (ObserverMethods A idx)
                      (ObserverMethods B idx))
       -> refineADT A B.

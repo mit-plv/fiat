@@ -75,8 +75,8 @@ Local Obligation Tactic := intros; subst; eauto.
 Program Definition replaceObserver Sig adt
            (ObserverIndex_eq : forall idx idx' : ObserverIndex Sig, {idx = idx'} + {idx <> idx'})
            (cachedIndex : ObserverIndex Sig)
-           (f : Rep adt -> (ObserverDom Sig cachedIndex)
-                -> Comp (ObserverCod Sig cachedIndex))
+           (f : Rep adt -> (fst (ObserverDomCod Sig cachedIndex))
+                -> Comp (snd (ObserverDomCod Sig cachedIndex)))
 : ADT Sig :=
   {| Rep := Rep adt;
      ObserverMethods idx :=
@@ -97,8 +97,8 @@ Lemma refinesReplaceObserverCache
       (repInv : Ensemble (Rep adt))
       (ObserverIndex_eq : forall idx idx' : ObserverIndex Sig, {idx = idx'} + {idx <> idx'})
       (cachedIndex : ObserverIndex Sig)
-      (f : Rep adt -> (ObserverDom Sig cachedIndex)
-           -> Comp (ObserverCod Sig cachedIndex))
+      (f : Rep adt -> (fst (ObserverDomCod Sig cachedIndex))
+           -> Comp (snd (ObserverDomCod Sig cachedIndex)))
       (MutBiR : forall idx (r : Rep adt) n,
                   repInv r ->
                   refine
@@ -125,7 +125,7 @@ Lemma refinesReplaceAddCache
       adt
       (ObserverIndex_eq : forall idx idx' : ObserverIndex Sig, {idx = idx'} + {idx <> idx'})
       (cachedIndex : ObserverIndex Sig)
-      (cacheSpec : Rep adt -> ObserverCod Sig cachedIndex -> Prop)
+      (cacheSpec : Rep adt -> snd (ObserverDomCod Sig cachedIndex) -> Prop)
       (refines_f : forall r n v, cacheSpec r v ->
                                  refine (ObserverMethods adt cachedIndex r n) (ret v))
 : refineADT adt

@@ -47,8 +47,7 @@ Section BinOpSpec.
     {| MutatorIndex := unit;
        ObserverIndex := unit;
        MutatorDom idx := nat;
-       ObserverDom idx := nat;
-       ObserverCod idx := nat
+       ObserverDomCod idx := @pair Type Type nat nat
     |}.
 
   Definition NatBinOpSpec

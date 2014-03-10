@@ -13,7 +13,7 @@ Section pick.
   Variable mutatorMethodSpecs : 
     forall idx, mutatorMethodSpec rep (MutatorDom Sig idx).
   Variable observerMethodSpecs : 
-    forall idx, observerMethodSpec rep (ObserverDom Sig idx) (ObserverCod Sig idx).
+    forall idx, observerMethodSpec rep (fst (ObserverDomCod Sig idx)) (snd (ObserverDomCod Sig idx)).
 
   Local Obligation Tactic := econstructor; eauto.
 
@@ -26,7 +26,7 @@ Section pick.
           | mutatorMethodSpecs idx r x r'}%comp;
       ObserverMethods idx :=
         fun r n =>
-          { n' : ObserverCod Sig idx 
+          { n' : snd (ObserverDomCod Sig idx) 
           | observerMethodSpecs idx r n n'}%comp
     |}.
 

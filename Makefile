@@ -8,6 +8,7 @@ MODULES    := \
 	Computation/Refinements/Inline \
 	Computation \
 	ADT \
+	ADTSig \
 	ADTHide \
 	ADTRefinement/Specs \
 	ADTRefinement/Pick \

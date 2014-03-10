@@ -75,8 +75,8 @@ Section RepInv.
                                    (mut idx) (mut' idx))
       ==> (fun obs obs' =>
        forall idx, @refineObserver _ _ repInvSiR
-                                   (ObserverDom Sig idx)
-                                   (ObserverCod Sig idx)
+                                   (fst (ObserverDomCod Sig idx))
+                                   (snd (ObserverDomCod Sig idx))
                                    (obs idx) (obs' idx))
         ==> refineADT
         as refineADT_Build_ADT_RepInv.
