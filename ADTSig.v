@@ -33,33 +33,79 @@ Record ADTSig :=
 
 Require Import List String.
 
+Record mutSig :=
+  { mutID : string;
+    mutDom : Type }.
+
+Arguments Build_mutSig mutID%string mutDom%type_scope.
+Bind Scope mutSig_scope with mutSig.
+Delimit Scope mutSig_scope with mutSig.
+
+Record obsSig :=
+  { obsID : string ;
+    obsDom : Type ;
+    obsCod : Type
+  }.
+
+Arguments Build_obsSig obsID%string obsDom%type_scope obsCod%type_scope.
+Bind Scope obsSig_scope with obsSig.
+Delimit Scope obsSig_scope with obsSig.
+
 Notation "id : 'rep' ✕ dom → cod" :=
-  (@pair string (@prod Type Type) id%string
-         (@pair Type Type dom cod))
-    (at level 60, format "id  :  'rep'  ✕  dom  →  cod" ).
+  {| obsID := id;
+     obsDom := dom;
+     obsCod := cod |}
+    (at level 60, format "id  :  'rep'  ✕  dom  →  cod" ) : obsSig_scope.
 
 Notation "id : 'rep' ✕ dom → 'rep'" :=
-  (@pair string Type id%string dom)
-    (at level 60, format "id  :  'rep'  ✕  dom  →  'rep'" ).
+  {| mutID := id;
+     mutDom := dom |}
+    (at level 60, format "id  :  'rep'  ✕  dom  →  'rep'" ) : mutSig_scope.
 
-Fixpoint mutSigMap (sig : list (string * Type)) (id : string)
-: Type :=
+Fixpoint findName (sig : list string) (id : string)
+: nat :=
   match sig with
-    | (id', ty) :: sig' => if string_dec id id' then ty else mutSigMap sig' id
-    | _ => unit
+    | id' :: sig' => if string_dec id id' then 0 else S (findName sig' id)
+    | _ => 0
   end.
 
-Fixpoint obsSigMap (sig : list (string * (Type * Type))) (id : string)
-: (Type * Type) :=
-  match sig  with
-    | (id', ty) :: sig' => if string_dec id id' then ty else obsSigMap sig' id
-    | _ => @pair Type Type unit unit
-  end.
-
-Notation "'ADTsignature' { mut1 , .. , mutn ; obs1 , .. , obsn }" :=
+Definition BuildADTSig
+           (mutSigs : list mutSig)
+           (obsSigs : list obsSig)
+: ADTSig :=
   {| MutatorIndex := string ;
      ObserverIndex := string ;
-    MutatorDom := mutSigMap (mut1 :: .. (mutn :: []) ..);
-    ObserverDomCod := obsSigMap (obs1 :: .. (obsn :: []) ..)
-  |} (at level 70,
-     format "'ADTsignature'  { '[v' '//' mut1 , '//' .. , '//' mutn ; '//' obs1 , '//' .. , '//' obsn '//'  ']' }").
+     MutatorDom idx := mutDom (nth (findName (map mutID mutSigs) idx)
+                                mutSigs {| mutID := idx;
+                                           mutDom := unit |} ) ;
+    ObserverDomCod idx := let domcod := (nth (findName (map obsID obsSigs) idx)
+                                   obsSigs {| obsID := idx;
+                                              obsDom := unit;
+                                              obsCod := unit |})
+                          in (obsDom domcod, obsCod domcod)
+  |}.
+
+Bind Scope ADTSig_scope with ADTSig.
+Delimit Scope ADTSig_scope with ADTSig.
+
+Notation "'ADTsignature' { mut1 , .. , mutn ; obs1 , .. , obsn }" :=
+  (BuildADTSig (mut1%mutSig :: .. (mutn%mutSig :: []) ..)
+              (obs1%obsSig :: .. (obsn%obsSig :: []) ..))
+    (at level 70,
+     format "'ADTsignature'  { '[v' '//' mut1 , '//' .. , '//' mutn ; '//' obs1 , '//' .. , '//' obsn '//'  ']' }") : ADTSig_scope.
+
+Local Open Scope ADTSig_scope.
+
+Definition MinCollectionSig : ADTSig :=
+  ADTsignature {
+      "Insert" : rep ✕ nat → rep ;
+      "Min" : rep ✕ unit → nat
+    }.
+
+Definition BookStoreSig : ADTSig :=
+  ADTsignature {
+      "PlaceOrder" : rep ✕ nat → rep,
+      "AddBook" : rep ✕ string → rep ;
+      "GetTitles" : rep ✕ string → list string,
+      "NumOrders" : rep ✕ string → nat
+    }.
