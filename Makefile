@@ -22,10 +22,15 @@ MODULES    := \
 	ADTCache \
 	ComputationExamples \
 	ADTExamples/BinaryOperationSpec \
+<<<<<<< HEAD
 	ADTExamples/BinaryOperationImpl \
 	ADTExamples/BinaryOperationRefinements \
 	ADTExamples/MinCollection \
 	ADTExamples/Bookstore
+=======
+	ADTExamples/CombineBinaryOperationsSpec \
+	ADTExamples
+>>>>>>> master
 
 VS         := $(MODULES:%=%.v)
 VDS	   := $(MODULES:%=%.v.d)
