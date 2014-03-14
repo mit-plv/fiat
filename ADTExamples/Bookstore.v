@@ -203,7 +203,7 @@ Definition Ref_SiR
 
 Tactic Notation "hone'" "representation" "using" constr(SiR') :=
     eapply SharpenStep;
-    [eapply refineADT_Build_ADT_Rep_default' with (SiR := SiR') | 
+    [eapply refineADT_Build_ADT_Rep_default' with (SiR := SiR') |
      compute [imap absMutDef absMutatorMethods'
                    absObsDef absObserverMethods']; simpl ].
 
