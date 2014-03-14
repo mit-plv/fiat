@@ -1,6 +1,6 @@
 Require Import String Omega List Coq.Sets.Uniset Coq.Sets.Multiset.
 Require Import FunctionalExtensionality.
-Require Export ADT ADTRefinement ADTCache ADTRepInv Pick.
+Require Export ADT ADTRefinement ADTCache ADTRepInv Pick ADTHide.
 
 Generalizable All Variables.
 Set Implicit Arguments.
@@ -61,7 +61,7 @@ Section BookStoreExamples.
     { Books : uniset Book;
       Orders : list Order }.
 
-  Definition PlaceOrderSpec 
+  Definition PlaceOrderSpec
              (r : BookStoreRefRep) (n : nat) (r' : BookStoreRefRep) :=
     (* The Book tables are the same. *)
     Books r = Books r'
@@ -73,7 +73,7 @@ Section BookStoreExamples.
       In (Books r) b /\ ISBN b = n ->
       Orders r' = @cons Order n (Orders r).
 
-  Definition AddBookSpec 
+  Definition AddBookSpec
              (r : BookStoreRefRep) (b : Book) (r' : BookStoreRefRep) :=
          (* The Order tables are the same.*)
          Orders r = Orders r'
@@ -84,7 +84,7 @@ Section BookStoreExamples.
          (forall b', ISBN b = ISBN b' -> ~ In (Books r) b') ->
          Books r' = union (Books r) (Coq.Sets.Uniset.Singleton _ Book_eq_dec b).
 
-  Definition GetTitlesSpec 
+  Definition GetTitlesSpec
              (r : BookStoreRefRep) (author : string) (titles : list string) :=
          (* Every element in the returned list iff a corresponding book
             in the original inventory. *)
@@ -115,4 +115,100 @@ Section BookStoreExamples.
                {numtitles | NumOrdersSpec r author numtitles}
          ]` .
 
+Definition absMutatorMethods' oldRep newRep
+           (SiR : oldRep -> newRep -> Prop)
+           (Dom : Type)
+           (oldMut : mutatorMethodType oldRep Dom)
+           (nr : newRep)
+           (d : Dom)
+: Comp newRep :=
+  {nr' | forall or,
+           SiR or nr ->
+           exists or', (oldMut or d) ↝ or' /\
+                       SiR or' nr'}%comp.
 
+Definition absMutDef oldRep newRep
+           (SiR : oldRep -> newRep -> Prop)
+           (Sig : mutSig)
+           (oldMut : @mutDef oldRep Sig)
+: @mutDef newRep Sig :=
+  {| mutBody := absMutatorMethods' SiR (mutBody oldMut) |}.
+
+Definition absObserverMethods' oldRep newRep
+           (SiR : oldRep -> newRep -> Prop)
+           (Dom Cod : Type)
+           (oldObs : observerMethodType oldRep Dom Cod)
+           (nr : newRep)
+           (d : Dom)
+: Comp Cod :=
+  {c' | forall or,
+          SiR or nr ->
+          (oldObs or d) ↝ c'}%comp.
+
+Definition absObsDef oldRep newRep
+           (SiR : oldRep -> newRep -> Prop)
+           (Sig : obsSig)
+           (oldMut : @obsDef oldRep Sig)
+: @obsDef newRep Sig :=
+  {| obsBody := absObserverMethods' SiR (obsBody oldMut) |}.
+
+Corollary refineADT_Build_ADT_Rep_default'
+          (oldRep newRep : Type)
+          (SiR : oldRep -> newRep -> Prop)
+          (mutSigs : list mutSig)
+          (obsSigs : list obsSig)
+          (mutDefs : ilist (@mutDef oldRep) mutSigs)
+          (obsDefs : ilist (@obsDef oldRep) obsSigs) :
+  refineADT
+    (BuildADT mutDefs obsDefs)
+    (BuildADT (imap _ (absMutDef SiR) mutDefs)
+              (imap _ (absObsDef SiR) obsDefs)).
+Proof.
+  eapply refineADT_Build_ADT_Rep with (SiR := SiR); eauto; intros.
+  unfold getMutDef.
+  destruct (In_mutIdx mutIdx) as [dom In_mutIdx].
+  rewrite In_ith with (a := {|mutID := mutIdx;
+                              mutDom := dom |})
+  (default_B :=
+     absMutDef SiR (def mutIdx `[r `: rep, _ `: ()]` : rep :=
+                      ret r )%mutDef).
+  rewrite <- ith_imap; simpl; unfold absMutatorMethods'; intros; eauto.
+  unfold refine; intros.
+  inversion_by computes_to_inv.
+  destruct (H0 _ H) as [or' [Comp_or SiR_or''] ].
+  econstructor; eauto.
+  eauto.
+  unfold mutSig_eq; find_if_inside; eauto.
+  destruct (In_obsIdx obsIdx) as [dom [cod In_obsIdx] ].
+  unfold getObsDef.
+  rewrite In_ith with (a := {|obsID := obsIdx;
+                              obsDom := dom;
+                              obsCod := cod |})
+  (default_B :=
+     absObsDef SiR (def obsIdx `[r `: rep, _ `: () ]` : () :=
+                      ret () )%obsDef); eauto.
+  rewrite <- ith_imap; simpl; unfold absObserverMethods'; intros; eauto.
+  unfold refine; intros.
+  inversion_by computes_to_inv; eauto.
+  unfold obsSig_eq; find_if_inside; eauto.
+Qed.
+
+Definition Ref_SiR
+           (or : BookStoreRefRep)
+           (nr : list Book * list Order) :=
+  List.incl (snd nr) (Orders or) /\ (* The orders in the new rep are a subset
+                                           of the orders in the old rep. *)
+  List.incl (Orders or) (snd nr) /\ (* and vice-versa. *)
+  forall b, In (Books or) b <-> List.In b (fst nr).
+
+Tactic Notation "hone'" "representation" "using" constr(SiR') :=
+    eapply SharpenStep;
+    [eapply refineADT_Build_ADT_Rep_default' with (SiR := SiR') | 
+     compute [imap absMutDef absMutatorMethods'
+                   absObsDef absObserverMethods']; simpl ].
+
+  Definition BookStore :
+    Sharpened BookStorePick.
+  Proof.
+    hone' representation using Ref_SiR.
+  Admitted.

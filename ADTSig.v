@@ -1,4 +1,4 @@
-Require Export Common Computation.
+Require Export Common Computation ilist.
 
 (** Type of a mutator method. *)
 Definition mutatorMethodType (Ty dom : Type)
@@ -62,23 +62,43 @@ Notation "id : 'rep' ✕ dom → 'rep'" :=
      mutDom := dom |}
     (at level 60, format "id  :  'rep'  ✕  dom  →  'rep'" ) : mutSig_scope.
 
-Fixpoint findName (sig : list string) (id : string)
-: nat :=
-  match sig with
-    | id' :: sig' => if string_dec id id' then 0 else S (findName sig' id)
-    | _ => 0
-  end.
+Definition mutSig_eq (mdef : mutSig) (idx : string) : bool :=
+  if string_dec (mutID mdef) idx then true else false.
+
+Definition obsSig_eq (odef : obsSig) (idx : string) : bool :=
+  if string_dec (obsID odef) idx then true else false.
+
+Class StringBound (s : string) (Bound : list string) :=
+  { sbound : In s Bound }.
+
+Instance StringBound_head (s : string) (Bound : list string)
+: StringBound s (s :: Bound).
+Proof.
+  econstructor; simpl; eauto.
+Qed.
+
+Instance StringBound_tail
+         (s s' : string) (Bound : list string)
+         {sB' : StringBound s Bound}
+: StringBound s (s' :: Bound).
+Proof.
+  econstructor; simpl; right; apply sbound.
+Qed.
+
+Record BoundedString (Bound : list string) :=
+  { bounded_s :> string;
+    s_bounded : StringBound bounded_s Bound }.
 
 Definition BuildADTSig
            (mutSigs : list mutSig)
            (obsSigs : list obsSig)
 : ADTSig :=
-  {| MutatorIndex := string ;
-     ObserverIndex := string ;
-     MutatorDom idx := mutDom (nth (findName (map mutID mutSigs) idx)
-                                mutSigs {| mutID := idx;
+  {| MutatorIndex := BoundedString (map mutID mutSigs);
+     ObserverIndex := BoundedString (map obsID obsSigs);
+     MutatorDom idx := mutDom (nth (findIndex mutSig_eq mutSigs idx)
+                                   mutSigs {| mutID := idx;
                                            mutDom := unit |} ) ;
-    ObserverDomCod idx := let domcod := (nth (findName (map obsID obsSigs) idx)
+    ObserverDomCod idx := let domcod := (nth (findIndex obsSig_eq obsSigs idx)
                                    obsSigs {| obsID := idx;
                                               obsDom := unit;
                                               obsCod := unit |})
@@ -87,6 +107,38 @@ Definition BuildADTSig
 
 Bind Scope ADTSig_scope with ADTSig.
 Delimit Scope ADTSig_scope with ADTSig.
+
+Lemma In_mutIdx :
+  forall mutSigs obsSigs
+         (mutIdx : MutatorIndex (BuildADTSig mutSigs obsSigs)),
+    exists dom,
+      List.In {| mutID := mutIdx;
+            mutDom := dom
+         |} mutSigs.
+Proof.
+  intros.
+  destruct (proj1 (in_map_iff mutID mutSigs mutIdx)
+                    (@sbound _ _ (s_bounded mutIdx)))
+           as [ [id dom] [id_eq In_dom] ]; subst.
+  exists dom; eauto; rewrite <- id_eq; eassumption.
+Qed.
+
+Lemma In_obsIdx :
+  forall mutSigs obsSigs
+         (obsIdx : ObserverIndex (BuildADTSig mutSigs obsSigs)),
+    exists dom cod,
+      List.In {| obsID := obsIdx;
+                 obsDom := dom;
+                 obsCod := cod
+              |} obsSigs.
+Proof.
+  intros.
+  destruct (proj1 (in_map_iff obsID obsSigs obsIdx)
+                    (@sbound _ _ (s_bounded obsIdx)))
+           as [ [id dom cod] [id_eq In_dom] ]; subst.
+  exists dom; exists cod; eauto; rewrite <- id_eq; eassumption.
+Qed.
+
 
 Notation "'ADTsignature' { mut1 , .. , mutn ; obs1 , .. , obsn }" :=
   (BuildADTSig (mut1%mutSig :: .. (mutn%mutSig :: []) ..)

@@ -7,6 +7,7 @@ MODULES    := \
 	Computation/Refinements/General \
 	Computation/Refinements/Inline \
 	Computation \
+	ilist \
 	ADT \
 	ADTSig \
 	ADTHide \
@@ -23,7 +24,8 @@ MODULES    := \
 	ADTExamples/BinaryOperationSpec \
 	ADTExamples/BinaryOperationImpl \
 	ADTExamples/BinaryOperationRefinements \
-	ADTExamples/MinCollection
+	ADTExamples/MinCollection \
+	ADTExamples/Bookstore
 
 VS         := $(MODULES:%=%.v)
 VDS	   := $(MODULES:%=%.v.d)

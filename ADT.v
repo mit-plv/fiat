@@ -1,4 +1,4 @@
-Require Export Common Computation ADTSig.
+Require Export Common Computation ADTSig ilist.
 Require Import Ensembles.
 
 Generalizable All Variables.
@@ -32,26 +32,25 @@ Delimit Scope ADT_scope with ADT.
 
 Require Import List String.
 
-Record mutDef {Rep : Type} :=
-  { mutDefSig :> mutSig;
-    mutBody : mutatorMethodType Rep (mutDom mutDefSig) }.
+Record mutDef {Rep : Type} (Sig : mutSig) :=
+  { mutBody : mutatorMethodType Rep (mutDom Sig) }.
 
 Notation "'def' id `[ r `: 'rep' , x `: dom ]` : 'rep' := bod" :=
-  {| mutDefSig := {| mutID := id; mutDom := dom |};
-     mutBody := (fun r x => bod) |}
+  (Build_mutDef {| mutID := id; mutDom := dom |} (fun r x => bod))
     (at level 70, format "'def'  id  `[ r  `:  'rep' ,  x  `:  dom ]`  :  'rep'  :=  '[v'   bod ']' " ) :
 mutDef_scope.
 
 Bind Scope mutDef_scope with mutDef.
 Delimit Scope mutDef_scope with mutDef.
 
-Record obsDef {Rep : Type} :=
-  { obsDefSig : obsSig;
-    obsBody : observerMethodType Rep (obsDom obsDefSig) (obsCod obsDefSig)}.
+Definition insertDef :=
+  (def "Insert" `[ r `: rep , n `: unit ]` : rep := ret (plus r 0))%mutDef.
+
+Record obsDef {Rep : Type} (Sig : obsSig) :=
+  { obsBody : observerMethodType Rep (obsDom Sig) (obsCod Sig)}.
 
 Notation "'def' id `[ r `: 'rep' , x `: dom ]` : cod := bod" :=
-  {| obsDefSig := {| obsID := id; obsDom := dom; obsCod := cod |};
-     obsBody := (fun r x => bod) |}
+  (Build_obsDef {| obsID := id; obsDom := dom; obsCod := cod |} (fun r x => bod))
     (at level 70, format "'def'  id  `[ r  `:  'rep' ,  x  `:  dom ]`  :  cod  :=  '[v'   bod ']' " ) :
 obsDef_scope.
 
@@ -63,58 +62,55 @@ Definition minDef :=
 
 Obligation Tactic := intros; simpl in *; find_if_inside; eassumption.
 
-Program Fixpoint getmut
+Definition getMutDef
         (Rep : Type)
-        (mutDefs : list (@mutDef Rep))
+        (mutSigs : list mutSig)
+        (mutDefs : ilist (@mutDef Rep) mutSigs)
         (idx : string)
 : mutatorMethodType Rep
                     (mutDom
-                       (nth (findName (map mutID (map mutDefSig mutDefs)) idx)
-                            (map mutDefSig mutDefs) (idx : rep ✕ () → rep)%mutSig)) :=
-  match mutDefs with
-    | {| mutDefSig :=
-           {| mutID := id;
-              mutDom := dom |};
-         mutBody := mdef |} :: mutDefs' => (fun IndH => _ ) (getmut mutDefs' idx)
-    | [] => fun r _ => ret r
-  end.
+                       (nth (findIndex mutSig_eq mutSigs idx)
+                            mutSigs (idx : rep ✕ () → rep)%mutSig)) :=
+  mutBody (ith mutSig_eq mutDefs idx
+              (idx : rep ✕ () → rep)%mutSig
+              {| mutBody := (fun r _ => ret r) |}).
 
-Program Fixpoint getobs
+Print obsDef.
+
+Definition getObsDef
          (Rep : Type)
-         (obsDefs : list (@obsDef Rep))
+         (obsSigs : list obsSig)
+         (obsDefs : ilist (@obsDef Rep) obsSigs)
          (idx : string)
 : observerMethodType Rep
-                     (obsDom (nth (findName (map obsID (map obsDefSig obsDefs)) idx)
-                                  (map obsDefSig obsDefs) (idx : rep ✕ () → ())%obsSig))
-                     (obsCod (nth (findName (map obsID (map obsDefSig obsDefs)) idx)
-                                  (map obsDefSig obsDefs) (idx : rep ✕ () → ())%obsSig)) :=
-  match obsDefs with
-    | {| obsDefSig :=
-           {| obsID := id;
-              obsDom := dom;
-              obsCod := cod |};
-         obsBody := mdef |} :: obsDefs' => (fun IndH => _ ) (getobs obsDefs' idx)
+                     (obsDom (nth (findIndex obsSig_eq obsSigs idx)
+                                  obsSigs (idx : rep ✕ () → ())%obsSig))
+                     (obsCod (nth (findIndex obsSig_eq obsSigs idx)
+                                  obsSigs (idx : rep ✕ () → ())%obsSig)) :=
+  obsBody (ith obsSig_eq obsDefs idx _
+               (@Build_obsDef Rep (idx : rep ✕ () → ()) (fun r _ => ret tt))).
 
-    | [] => fun r t => ret tt
-  end.
-
-Program Definition BuildADT (Rep : Type)
-           (mutDefs : list mutDef)
-           (obsDefs : list obsDef)
-: ADT (BuildADTSig (map mutDefSig mutDefs)
-                   (map obsDefSig obsDefs))
+Program Definition BuildADT
+        (Rep : Type)
+        (mutSigs : list mutSig)
+        (obsSigs : list obsSig)
+        (mutDefs : ilist (@mutDef Rep) mutSigs)
+        (obsDefs : ilist (@obsDef Rep) obsSigs)
+: ADT (BuildADTSig mutSigs obsSigs)
       := {|
           Rep := Rep;
-          MutatorMethods idx := getmut mutDefs idx;
-          ObserverMethods idx := getobs obsDefs idx
+          MutatorMethods idx := getMutDef mutDefs idx;
+          ObserverMethods idx := getObsDef obsDefs idx
           |}.
 
 Notation "'ADTRep' r `[ mut1 , .. , mutn ; obs1 , .. , obsn ]` " :=
   (@BuildADT r
-             (mut1%mutDef :: .. (mutn%mutDef :: []) ..)
-             (obs1%obsDef :: .. (obsn%obsDef :: []) ..))
-    (at level 70,
-     format "'ADTRep'  r  `[ '[v' '//' mut1 , '//' .. , '//' mutn ; '//' obs1 , '//' .. , '//' obsn '//'  ']' ]`") : ADT_scope.
+             _
+             _
+             (icons _ mut1%mutDef .. (icons _ mutn%mutDef (inil (@mutDef r))) ..)
+             (icons _ obs1%obsDef .. (icons _ obsn%obsDef (inil (@obsDef r))) ..))
+    (at level 1,
+     format "'ADTRep'  r  '/' '[hv  ' `[  mut1 , '//' .. , '//' mutn ; '//' obs1 , '//' .. , '//' obsn  ']' ]`") : ADT_scope.
 
 Local Open Scope ADT_scope.
 
@@ -125,3 +121,5 @@ Definition MinCollection : ADT MinCollectionSig :=
            def "Min" `[r `: rep , n `: unit ]` : nat :=
                ret (plus r 0)
          ]` .
+
+Print MinCollection.
