@@ -4,24 +4,28 @@ Require Export ADTRefinement.Core ADTRefinement.Specs ADTRefinement.Pick ADTRefi
 Generalizable All Variables.
 Set Implicit Arguments.
 
-(* To derive an ADT interactively from a specification [spec], we can build a dependent
-   product [ {adt | refineADT spec adt} ]. The derivation flow has the form:
+(* To derive an ADT interactively from a specification [spec], we can
+   build a dependent product [ {adt | refineADT spec adt} ]. The
+   derivation flow has the form:
+
    1. Apply a refinement.
    2. Discharge any side conditions.
    3. Repeat steps 1-2 until adt is completely specialized.
 
-   My (Ben's) current thought is that to make this as pleasant as possible,
-   the refinements used in the first step should be implemented using tactics
-   which present the user with 'nice' side conditions. (In particular, this lets us
-   be careful about not having any dangling existential variables at the end of a
+   My (Ben's) current thought is that to make this as pleasant as
+   possible, the refinements used in the first step should be
+   implemented using tactics which present the user with 'nice' side
+   conditions. (In particular, this lets us be careful about not
+   having any dangling existential variables at the end of a
    derivation).
 
    Aside on notation:
-   When naming these tactics, I wanted one which wasn't already used by a tactic-
-   refine, specialize, and replace were taken. The thesaurus suggested 'hone'.
-   This kind of agrees with 'BedRock' (in as much as a WhetStone is used to sharpen
-   knives), so I'm carrying on the naming convention with a 'Sharpened' notation
-   for the dependent products. *)
+   When naming these tactics, I wanted one which
+   wasn't already used by a tactic- refine, specialize, and replace
+   were taken. The thesaurus suggested 'hone'.  This kind of agrees
+   with 'BedRock' (in as much as a WhetStone is used to sharpen
+   knives), so I'm carrying on the naming convention with a
+   'Sharpened' notation for the dependent products. *)
 
 Notation Sharpened spec := {adt | refineADT spec adt}.
 
