@@ -7,15 +7,15 @@ Section MethodRefinement.
   Variables oldRep newRep : Type.
   (** Old and new representations **)
 
-  Variable BiR : oldRep -> newRep -> Prop.
-  (** Bisimulation Relation *)
+  Variable SiR : oldRep -> newRep -> Prop.
+  (** Simulation Relation *)
 
-  Notation "ro ≃ rn" := (BiR ro rn) (at level 70).
+  Notation "ro ≃ rn" := (SiR ro rn) (at level 70).
 
   (** Refinement of a mutator method: the values of the computation
       produced by applying a new mutator method [newMutator] to any new
-      state [r_n] related to an old state [r_o] by the bisimulation
-      relation [BiR] are related by [BiR] to some value produced by
+      state [r_n] related to an old state [r_o] by the simulation
+      relation [SiR] are related by [SiR] to some value produced by
       the corresponding old mutator on [r_o]. Related values
       are taken to related values (with the new mutator potentially
       producing more deterministic computations). That is, the
@@ -24,7 +24,7 @@ Section MethodRefinement.
                    old mutator
        old rep --------------> old rep
           |                         |
-      BiR |                         | BiR
+      SiR |                         | SiR
           ↓                         ↓
        new rep --------------> new rep
                    new mutator
@@ -41,14 +41,14 @@ Section MethodRefinement.
 
   (** Refinement of an observer method: the computation produced by
    an observer [newObserver] on any new state [r_n] related to an old
-   state [r_o] by the bisimulation relation [BiR] should be a refinement
+   state [r_o] by the simulation relation [SiR] should be a refinement
    of the computation produced by the old observer [oldObserver] on
    [r_n].  That is, the following diagram should commute:
 <<
                   old observer
        old rep --------------> ℕ
           |                      ∥
-      BiR |                      ∥ id
+      SiR |                      ∥ id
           ↓                      ∥
        new rep --------------> ℕ
                   new observer

@@ -5,3 +5,8 @@
 *.glob
 Makefile.coq
 time-worked
+/ADTExamples/.#MinPlusMax.v
+/.DS_Store
+/ADTRefinement/ExtractMethods.v
+/CompMorphisms.v
+/foo.v

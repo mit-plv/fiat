@@ -17,6 +17,7 @@ MODULES    := \
 	ADTRefinement/RefineHideADT \
 	ADTRefinement/SetoidMorphisms \
 	ADTRefinement/GeneralRefinements \
+	ADTRefinement/DelegateMethods \
 	ADTRefinement \
 	ADTRepInv \
 	ADTCache \
@@ -26,6 +27,7 @@ MODULES    := \
 	ADTExamples/BinaryOperationImpl \
 	ADTExamples/BinaryOperationRefinements \
 	ADTExamples/MinCollection \
+	ADTExamples/MinPlusMax \
 	ADTExamples/Bookstore
 
 

@@ -1,4 +1,4 @@
-Require Import Common ADT ADTRefinement.Pick ADTRefinement.Specs.
+Require Import Common String ADT ADTRefinement.Pick ADTRefinement.Specs.
 Require Import ADTExamples.BinaryOperationSpec.
 
 Section two_op_spec.
@@ -10,8 +10,9 @@ Section two_op_spec.
   Variable comb : nat -> nat -> nat -> Prop.
 
   (** The specification of combining the two binary operations via [comb]. *)
+
   Definition two_op_spec
-  : observerMethodSpec multiset
+  : observerMethodSpec multiset nat nat
     := fun m x n => exists o1,
                       bin_op_spec op1_spec op1_default_spec m x o1
                       /\ exists o2,
@@ -20,11 +21,22 @@ Section two_op_spec.
 
   Arguments two_op_spec / .
 
-  Definition NatTwoBinOpSpec
-  : ADT
-    := pickImpl (fun _ : unit => add_spec)
-                (fun _ : unit => two_op_spec).
+  Definition CombTwoOpCollectionSig comName : ADTSig :=
+    ADTsignature {
+        "Insert" : rep ✕ nat → rep ;
+        comName : rep ✕ nat → nat
+      }%ADTSig.
+
+  Definition NatTwoBinOpSpec comName
+  : ADT (CombTwoOpCollectionSig comName) :=
+    ADTRep multiset `[
+             def "Insert" `[ m `: rep , n `: nat ]` : rep :=
+               {m' | add_spec m n m'}%comp ;
+             def comName `[m `: rep , n `: nat ]` : nat :=
+                 {n' | two_op_spec m n n'}%comp
+           ]`%ADT .
+
 End two_op_spec.
 
-Definition MinMax : ADT
-  := NatTwoBinOpSpec le (fun _ => True) ge (fun _ => True) (fun x y sum => x + y = sum).
+Definition MinPlusMaxSpec : ADT (CombTwoOpCollectionSig "MinPlusMax"%string)
+  := NatTwoBinOpSpec le (fun _ => True) ge (fun _ => True) (fun x y sum => x + y = sum) _.

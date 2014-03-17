@@ -55,9 +55,28 @@ Section DelegateMethods.
     - reflexivity.
   Qed.
 
-  (* if [delegateADT] is a refinement of some Observer specification,
-       then we can replace a [Pick]ed value which satisfies that
-       property with a call to that method. *)
+End DelegateMethods.
+
+(*Section SwapDelegate.
+
+  (* Signature of the ADT doing the delegating. *)
+  Variable delegatorSig : ADTSig.
+  (* ADT doing the delegating. *)
+  Variable delegatorADT : ADT delegatorSig.
+
+
+  (* Indices of the methods that will be delegated to. *)
+  Variable delegateIndex : Type.
+  (* Domain and codomain of the new methods. *)
+  Variable delegateDomCod : delegateIndex -> Type * Type.
+
+
+  (* Reference ADT to delegate to. *)
+  Variable refDelegateADT : ADT (delegateSig delegatorSig delegateDomCod).
+  (* Implementation ADT to delegate to. *)
+  Variable implDelegateADT : ADT (delegateSig delegatorSig delegateDomCod).
+
+
 
   (* The reference representation of the specification of the ADT
      being delegated to. (A natural candidate is the representation of
@@ -86,9 +105,9 @@ Section DelegateMethods.
     refineADT (pickImpl _ delegateMutatorSpecs delegateObserverSpecs)
               delegateADT.
 
-  Definition SiR_refineADT {Sig} 
+  Definition SiR_refineADT {Sig}
              {adt1 adt2 : ADT Sig}
-             (refines_adt1_adt2 : refineADT adt1 adt2) 
+             (refines_adt1_adt2 : refineADT adt1 adt2)
   : exists SiR : Rep adt1 -> Rep adt2 -> Prop,
       forall idx : ObserverIndex Sig,
         refineObserver SiR (ObserverMethods adt1 idx)
@@ -104,12 +123,9 @@ Section DelegateMethods.
     forall (idx : delegateIndex)
            (r : Rep delegateADT)
            (x : (fst (ObserverDomCod delegateSig idx)))
-           (SiR' r' r -> 
+           (SiR' r' r ->
        delegateObserverSpecs idx r' x c -> P c
        end) ->
       refine {c | P c} (ObserverMethods delegateADT idx r x).
   Proof.
-    intros.
-    
-
-End DelegateMethods.
+    intros. *)

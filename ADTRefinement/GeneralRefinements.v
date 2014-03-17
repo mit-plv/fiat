@@ -288,3 +288,87 @@ Tactic Notation "hone" "observer" constr(obsIdx) "using" constr(obsBody) :=
 Tactic Notation "hone" "representation" "using" constr(BiSR) :=
     eapply SharpenStep;
     [eapply refineADT_Build_ADT_Rep_default with (SiR := BiSR) | idtac].
+
+Definition absMutatorMethods' oldRep newRep
+           (SiR : oldRep -> newRep -> Prop)
+           (Dom : Type)
+           (oldMut : mutatorMethodType oldRep Dom)
+           (nr : newRep)
+           (d : Dom)
+: Comp newRep :=
+  {nr' | forall or,
+           SiR or nr ->
+           exists or', (oldMut or d) ↝ or' /\
+                       SiR or' nr'}%comp.
+
+Definition absMutDef oldRep newRep
+           (SiR : oldRep -> newRep -> Prop)
+           (Sig : mutSig)
+           (oldMut : @mutDef oldRep Sig)
+: @mutDef newRep Sig :=
+  {| mutBody := absMutatorMethods' SiR (mutBody oldMut) |}.
+
+Definition absObserverMethods' oldRep newRep
+           (SiR : oldRep -> newRep -> Prop)
+           (Dom Cod : Type)
+           (oldObs : observerMethodType oldRep Dom Cod)
+           (nr : newRep)
+           (d : Dom)
+: Comp Cod :=
+  {c' | forall or,
+          SiR or nr ->
+          (oldObs or d) ↝ c'}%comp.
+
+Definition absObsDef oldRep newRep
+           (SiR : oldRep -> newRep -> Prop)
+           (Sig : obsSig)
+           (oldMut : @obsDef oldRep Sig)
+: @obsDef newRep Sig :=
+  {| obsBody := absObserverMethods' SiR (obsBody oldMut) |}.
+
+Corollary refineADT_Build_ADT_Rep_default'
+          (oldRep newRep : Type)
+          (SiR : oldRep -> newRep -> Prop)
+          (mutSigs : list mutSig)
+          (obsSigs : list obsSig)
+          (mutDefs : ilist (@mutDef oldRep) mutSigs)
+          (obsDefs : ilist (@obsDef oldRep) obsSigs) :
+  refineADT
+    (BuildADT mutDefs obsDefs)
+    (BuildADT (imap _ (absMutDef SiR) mutDefs)
+              (imap _ (absObsDef SiR) obsDefs)).
+Proof.
+  eapply refineADT_Build_ADT_Rep with (SiR := SiR); eauto; intros.
+  unfold getMutDef.
+  destruct (In_mutIdx mutIdx) as [dom In_mutIdx].
+  rewrite In_ith with (a := {|mutID := mutIdx;
+                              mutDom := dom |})
+  (default_B :=
+     absMutDef SiR (def mutIdx `[r `: rep, _ `: ()]` : rep :=
+                      ret r )%mutDef).
+  rewrite <- ith_imap; simpl; unfold absMutatorMethods'; intros; eauto.
+  unfold refine; intros.
+  inversion_by computes_to_inv.
+  destruct (H0 _ H) as [or' [Comp_or SiR_or''] ].
+  econstructor; eauto.
+  eauto.
+  unfold mutSig_eq; find_if_inside; eauto.
+  destruct (In_obsIdx obsIdx) as [dom [cod In_obsIdx] ].
+  unfold getObsDef.
+  rewrite In_ith with (a := {|obsID := obsIdx;
+                              obsDom := dom;
+                              obsCod := cod |})
+  (default_B :=
+     absObsDef SiR (def obsIdx `[r `: rep, _ `: () ]` : () :=
+                      ret () )%obsDef); eauto.
+  rewrite <- ith_imap; simpl; unfold absObserverMethods'; intros; eauto.
+  unfold refine; intros.
+  inversion_by computes_to_inv; eauto.
+  unfold obsSig_eq; find_if_inside; eauto.
+Qed.
+
+Tactic Notation "hone'" "representation" "using" constr(SiR') :=
+    eapply SharpenStep;
+    [eapply refineADT_Build_ADT_Rep_default' with (SiR := SiR') |
+     compute [imap absMutDef absMutatorMethods'
+                   absObsDef absObserverMethods']; simpl ].
