@@ -7,9 +7,9 @@ Section MinMaxExample.
 
   Definition MinMaxSig : ADTSig :=
     ADTsignature {
-        "Insert" : rep ✕ nat → rep ;
-        "Min" : rep ✕ nat → nat ,
-        "Max" : rep ✕ nat → nat
+        "Insert" : rep × nat → rep ;
+        "Min" : rep × nat → nat ,
+        "Max" : rep × nat → nat
       }%ADTSig.
 
   Definition defaultSpec : nat -> Prop := fun _ => True.
@@ -46,7 +46,7 @@ Section MinMaxExample.
   Proof.
     destruct idx; inversion s_bounded.
     simpl.
-    caseEq (obsSig_eq ("MinPlusMax" : rep ✕ nat → nat) bounded_s); eauto.
+    caseEq (obsSig_eq ("MinPlusMax" : rep × nat → nat) bounded_s); eauto.
     elimtype False.
     inversion sbound; simpl in *; subst.
     unfold obsSig_eq in H; find_if_inside; eauto; discriminate.
@@ -59,7 +59,7 @@ Section MinMaxExample.
   Proof.
     destruct idx; inversion s_bounded.
     simpl.
-    caseEq (obsSig_eq ("MinPlusMax" : rep ✕ nat → nat) bounded_s); eauto.
+    caseEq (obsSig_eq ("MinPlusMax" : rep × nat → nat) bounded_s); eauto.
     elimtype False.
     inversion sbound; simpl in *; subst.
     unfold obsSig_eq in H; find_if_inside; eauto; discriminate.

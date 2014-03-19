@@ -51,10 +51,10 @@ Section BookStoreExamples.
 
   Definition BookStoreSig : ADTSig :=
     ADTsignature {
-        "PlaceOrder" : rep ✕ nat → rep,
-        "AddBook" : rep ✕ Book → rep ;
-        "GetTitles" : rep ✕ string → list string,
-        "NumOrders" : rep ✕ string → nat
+        "PlaceOrder" : rep × nat → rep,
+        "AddBook" : rep × Book → rep ;
+        "GetTitles" : rep × string → list string,
+        "NumOrders" : rep × string → nat
       }.
 
   Record BookStoreRefRep :=

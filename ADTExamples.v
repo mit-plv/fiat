@@ -46,8 +46,8 @@ Section ImplExamples.
 
   Definition MinCollectionSig : ADTSig :=
     ADTsignature {
-        "Insert" : rep ✕ nat → rep ;
-        "Min" : rep ✕ nat → nat
+        "Insert" : rep × nat → rep ;
+        "Min" : rep × nat → nat
       }%ADTSig.
 
   (* The original MinCollection example folds min over a list

@@ -71,7 +71,7 @@ Section BuildADTRefinements.
            (mutIdx : String.string),
    mutSig_eq
      (nth (findIndex mutSig_eq mutSigs idx) mutSigs
-        ("null" : rep ✕ () → rep)%mutSig) mutIdx = true ->
+        ("null" : rep × () → rep)%mutSig) mutIdx = true ->
    mutIdx = idx.
   Proof.
     intros.
@@ -86,7 +86,7 @@ Section BuildADTRefinements.
   : forall (idx : BoundedString (map mutID mutSigs)),
       List.In
         (nth (findIndex mutSig_eq mutSigs idx) mutSigs
-             ("null" : rep ✕ () → rep)%mutSig) mutSigs.
+             ("null" : rep × () → rep)%mutSig) mutSigs.
   Proof.
     intros; destruct (In_mutIdx _ idx) as [dom In_mutIdx].
     eapply In_As; eauto.
@@ -117,7 +117,7 @@ Section BuildADTRefinements.
     try reflexivity.
     intros; unfold getMutDef.
     caseEq (mutSig_eq (nth (findIndex mutSig_eq mutSigs idx) mutSigs
-                           ("null" : rep ✕ () → rep)%mutSig) mutIdx).
+                           ("null" : rep × () → rep)%mutSig) mutIdx).
     - generalize (In_mutSigs_eq _ _ _ H0); intros; subst.
       simpl; intros; erewrite ith_replace'; eauto.
     - simpl replaceMutDef.
@@ -131,7 +131,7 @@ Section BuildADTRefinements.
            (obsIdx : String.string),
    obsSig_eq
      (nth (findIndex obsSig_eq obsSigs idx) obsSigs
-        ("null" : rep ✕ () → ())%obsSig) obsIdx = true ->
+        ("null" : rep × () → ())%obsSig) obsIdx = true ->
    obsIdx = idx.
   Proof.
     intros.
@@ -146,7 +146,7 @@ Section BuildADTRefinements.
   : forall (idx : BoundedString (map obsID obsSigs)),
       List.In
         (nth (findIndex obsSig_eq obsSigs idx) obsSigs
-             ("null" : rep ✕ () → ())%obsSig) obsSigs.
+             ("null" : rep × () → ())%obsSig) obsSigs.
   Proof.
     intros; destruct (In_obsIdx _ idx) as [dom [cod In_obsIdx] ].
     eapply In_As; eauto.
@@ -163,10 +163,10 @@ Section BuildADTRefinements.
             (obsDefs : ilist (@obsDef Rep) obsSigs)
             (idx : BoundedString (List.map obsID obsSigs))
             (newDef : obsDef (nth (findIndex obsSig_eq obsSigs idx)
-                                  obsSigs ("null" : rep ✕ () → ())%obsSig))
+                                  obsSigs ("null" : rep × () → ())%obsSig))
   : refineObserver eq
                   (obsBody (ith obsSig_eq obsDefs idx _
-                                (@Build_obsDef Rep ("null" : rep ✕ () → ()) (fun r _ => ret tt))
+                                (@Build_obsDef Rep ("null" : rep × () → ()) (fun r _ => ret tt))
                                 ))
                   (obsBody newDef)
     -> refineADT
@@ -177,7 +177,7 @@ Section BuildADTRefinements.
     try reflexivity.
     intros; unfold getObsDef.
     caseEq (obsSig_eq (nth (findIndex obsSig_eq obsSigs idx) obsSigs
-                           ("null" : rep ✕ () → ())%obsSig) obsIdx).
+                           ("null" : rep × () → ())%obsSig) obsIdx).
     - generalize (In_obsSigs_eq _ _ _ H0); intros; subst.
       simpl; intros; erewrite ith_replace'; eauto.
     - simpl replaceObsDef; erewrite ith_replace; eauto.

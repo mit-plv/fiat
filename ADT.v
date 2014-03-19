@@ -68,9 +68,9 @@ Definition getMutDef
 : mutatorMethodType Rep
                     (mutDom
                        (nth (findIndex mutSig_eq mutSigs idx)
-                            mutSigs ("null" : rep ✕ () → rep)%mutSig)) :=
+                            mutSigs ("null" : rep × () → rep)%mutSig)) :=
   mutBody (ith mutSig_eq mutDefs idx
-              ("null" : rep ✕ () → rep)%mutSig
+              ("null" : rep × () → rep)%mutSig
               {| mutBody := (fun r _ => ret r) |}).
 
 Definition getObsDef
@@ -80,11 +80,11 @@ Definition getObsDef
          (idx : string)
 : observerMethodType Rep
                      (obsDom (nth (findIndex obsSig_eq obsSigs idx)
-                                  obsSigs ("null" : rep ✕ () → ())%obsSig))
+                                  obsSigs ("null" : rep × () → ())%obsSig))
                      (obsCod (nth (findIndex obsSig_eq obsSigs idx)
-                                  obsSigs ("null" : rep ✕ () → ())%obsSig)) :=
+                                  obsSigs ("null" : rep × () → ())%obsSig)) :=
   obsBody (ith obsSig_eq obsDefs idx _
-               (@Build_obsDef Rep ("null" : rep ✕ () → ()) (fun r _ => ret tt))).
+               (@Build_obsDef Rep ("null" : rep × () → ()) (fun r _ => ret tt))).
 
 Program Definition BuildADT
         (Rep : Type)
@@ -131,28 +131,28 @@ Section ReplaceMethods.
   Definition replaceMutDef
              (idx : string)
              (newDef : mutDef (nth (findIndex mutSig_eq mutSigs idx)
-                                   mutSigs ("null" : rep ✕ () → rep)%mutSig))
+                                   mutSigs ("null" : rep × () → rep)%mutSig))
   : ilist (@mutDef Rep) mutSigs :=
     replace_index mutSig_eq mutDefs idx _ newDef.
 
   Definition ADTReplaceMutDef
              (idx : string)
              (newDef : mutDef (nth (findIndex mutSig_eq mutSigs idx)
-                                   mutSigs ("null" : rep ✕ () → rep)%mutSig))
+                                   mutSigs ("null" : rep × () → rep)%mutSig))
   : ADT (BuildADTSig mutSigs obsSigs)
     := BuildADT (replaceMutDef idx newDef) obsDefs.
 
   Definition replaceObsDef
              (idx : string)
              (newDef : obsDef (nth (findIndex obsSig_eq obsSigs idx)
-                                   obsSigs ("null" : rep ✕ () → ())%obsSig))
+                                   obsSigs ("null" : rep × () → ())%obsSig))
   : ilist (@obsDef Rep) obsSigs :=
     replace_index obsSig_eq obsDefs idx _ newDef.
 
   Definition ADTReplaceObsDef
              (idx : string)
              (newDef : obsDef (nth (findIndex obsSig_eq obsSigs idx)
-                                   obsSigs ("null" : rep ✕ () → ())%obsSig))
+                                   obsSigs ("null" : rep × () → ())%obsSig))
   : ADT (BuildADTSig mutSigs obsSigs)
       := BuildADT mutDefs (replaceObsDef idx newDef).
 

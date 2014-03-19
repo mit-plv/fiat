@@ -23,8 +23,8 @@ Section two_op_spec.
 
   Definition CombTwoOpCollectionSig comName : ADTSig :=
     ADTsignature {
-        "Insert" : rep ✕ nat → rep ;
-        comName : rep ✕ nat → nat
+        "Insert" : rep × nat → rep ;
+        comName : rep × nat → nat
       }%ADTSig.
 
   Definition NatTwoBinOpSpec comName

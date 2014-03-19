@@ -51,16 +51,16 @@ Arguments Build_obsSig obsID%string obsDom%type_scope obsCod%type_scope.
 Bind Scope obsSig_scope with obsSig.
 Delimit Scope obsSig_scope with obsSig.
 
-Notation "id : 'rep' ✕ dom → cod" :=
+Notation "id : 'rep' × dom → cod" :=
   {| obsID := id;
      obsDom := dom;
      obsCod := cod |}
-    (at level 60, format "id  :  'rep'  ✕  dom  →  cod" ) : obsSig_scope.
+    (at level 60, format "id  :  'rep'  ×  dom  →  cod" ) : obsSig_scope.
 
-Notation "id : 'rep' ✕ dom → 'rep'" :=
+Notation "id : 'rep' × dom → 'rep'" :=
   {| mutID := id;
      mutDom := dom |}
-    (at level 60, format "id  :  'rep'  ✕  dom  →  'rep'" ) : mutSig_scope.
+    (at level 60, format "id  :  'rep'  ×  dom  →  'rep'" ) : mutSig_scope.
 
 Definition mutSig_eq (mdef : mutSig) (idx : string) : bool :=
   if string_dec (mutID mdef) idx then true else false.
@@ -158,14 +158,14 @@ Local Open Scope ADTSig_scope.
 
 Definition MinCollectionSig : ADTSig :=
   ADTsignature {
-      "Insert" : rep ✕ nat → rep ;
-      "Min" : rep ✕ unit → nat
+      "Insert" : rep × nat → rep ;
+      "Min" : rep × unit → nat
     }.
 
 Definition BookStoreSig : ADTSig :=
   ADTsignature {
-      "PlaceOrder" : rep ✕ nat → rep,
-      "AddBook" : rep ✕ string → rep ;
-      "GetTitles" : rep ✕ string → list string,
-      "NumOrders" : rep ✕ string → nat
+      "PlaceOrder" : rep × nat → rep,
+      "AddBook" : rep × string → rep ;
+      "GetTitles" : rep × string → list string,
+      "NumOrders" : rep × string → nat
     }.
