@@ -66,7 +66,7 @@ Section MinMaxExample.
     eauto.
   Defined.
 
-  Definition delegateADTSiR (or : multiset) (nr : multiset * Rep MinMaxImpl) := 
+  Definition delegateADTSiR (or : multiset) (nr : multiset * Rep MinMaxImpl) :=
     or = fst nr.
 
   Ltac autorefine :=
@@ -82,7 +82,7 @@ Section MinMaxExample.
       | _ => idtac
     end.
 
-  Tactic Notation "hone''" "observer" constr(obsIdx) "using" constr(obsBod) :=
+  Tactic Notation "hone''" "observer" constr(obsIdx) "using" open_constr(obsBod) :=
     let A :=
         match goal with
             |- Sharpened ?A => constr:(A) end in
@@ -109,17 +109,22 @@ Section MinMaxExample.
     let ObserverDomCod' := eval simpl in (ObserverDomCod ASig) in
     let obsIdxB := eval simpl in
     (@Build_BoundedString (List.map obsID obsSigs) obsIdx _) in
-      apply SharpenStep with
-      (adt' := ADTReplaceObsDef mutDefs obsDefs obsIdxB 
-                                (@Build_obsDef Rep'
-                                               {| obsID := obsIdx;
-                                                  obsDom := fst (ObserverDomCod' obsIdxB);
-                                                  obsCod := snd (ObserverDomCod' obsIdxB)
-                                               |}
-                                               obsBod
-                                )); cbv beta in *; simpl in * .
+        eapply SharpenStep;
+      [ eapply (refineADT_BuildADT_ReplaceObserver_generic_ex
+                  mutDefs obsDefs obsIdxB
+                  (@Build_obsDef Rep'
+                                 {| obsID := obsIdx;
+                                    obsDom := fst (ObserverDomCod' obsIdxB);
+                                    obsCod := snd (ObserverDomCod' obsIdxB)
+                                 |}
+                                 obsBod))
+      | ];
+      cbv beta in *; simpl in * .
 
-  Tactic Notation "hone''" "mutator" constr(mutIdx) "using" constr(mutBod) :=
+  Tactic Notation "hone''" "observer" constr(obsIdx) :=
+    hone'' observer obsIdx using _.
+
+  Tactic Notation "hone''" "mutator" constr(mutIdx) "using" open_constr(mutBod) :=
     let A :=
         match goal with
             |- Sharpened ?A => constr:(A) end in
@@ -146,8 +151,8 @@ Section MinMaxExample.
     let MutatorDom' := eval simpl in (MutatorDom ASig) in
     let mutIdxB := eval simpl in
     (@Build_BoundedString (List.map mutID mutSigs) mutIdx _) in
-        apply SharpenStep with
-        (adt' := ADTReplaceMutDef mutDefs obsDefs mutIdxB 
+        eapply SharpenStep with
+        (adt' := ADTReplaceMutDef mutDefs obsDefs mutIdxB
                                   (@Build_mutDef Rep'
                                                  {| mutID := mutIdx;
                                                     mutDom := MutatorDom' mutIdxB
@@ -160,41 +165,79 @@ Section MinMaxExample.
   Definition MinPlusMaxImpl (defaultValue : nat)
   : Sharpened MinPlusMaxSpec.
   Proof.
-    (* Add a MinMax instance to the representation so we can delegate to it. *)
+    (** Add a MinMax instance to the representation so we can delegate to it. *)
     hone' representation using delegateADTSiR.
     (* Implement the Insert Mutator.  *)
-    hone'' mutator "Insert"%string using 
+    hone'' mutator "Insert"%string using
           (fun r x =>
            r1 <- MutatorMethods MinPlusMaxSpec {| bounded_s := "Insert"%string |} (fst r) x;
            r2 <- MutatorMethods MinMaxImpl {|bounded_s := "Insert"%string |} (snd r) x;
            ret (r1, r2)).
-    destruct extract_MinMaxSiR as [MinMaxSiR [refineMinMaxObs refineMinMaxMut] ].
-    eapply refineADT_BuildADT_Rep with
-    (SiR := fun (or nr : Rep MinPlusMaxSpec * Rep MinMaxImpl) =>
-              or = nr /\
-              MinMaxSiR (fst nr) (snd nr)).
-    unfold getMutDef; simpl; unfold ith_obligation_2; simpl.
-    intros mutIdx r_o r_n; find_if_inside; intros; intuition;
-    subst; simpl; autorefine.
-    unfold refine; intros; inversion_by computes_to_inv; subst;
-    econstructor.
-    econstructor; intros; subst; eexists; split.
-    econstructor; eauto.
-    instantiate (1 := (x, x0)); reflexivity.
-    econstructor; split; eauto.
-    generalize (refineMinMaxMut {| bounded_s := "Insert"%string |} _ _ n H1 _ H2);
-    simpl; unfold getMutDef; simpl; intros.
-    inversion_by computes_to_inv; unfold add_spec in *.
+    - destruct extract_MinMaxSiR as [MinMaxSiR [refineMinMaxObs refineMinMaxMut] ].
+      eapply refineADT_BuildADT_Rep with
+      (SiR := fun (or nr : Rep MinPlusMaxSpec * Rep MinMaxImpl) =>
+                or = nr /\
+                MinMaxSiR (fst nr) (snd nr)).
+      unfold getMutDef; simpl; unfold ith_obligation_2; simpl.
+      intros mutIdx r_o r_n; find_if_inside; intros; intuition;
+      subst; simpl; autorefine.
+      unfold refine; intros; inversion_by computes_to_inv; subst;
+      econstructor.
+      econstructor; intros; subst; eexists; split.
+      econstructor; eauto.
+      instantiate (1 := (x, x0)); reflexivity.
+      econstructor; split; eauto.
+      generalize (refineMinMaxMut {| bounded_s := "Insert"%string |} _ _ n H1 _ H2);
+        simpl; unfold getMutDef; simpl; intros.
+      inversion_by computes_to_inv; unfold add_spec in *.
       assert (x1 = x) by
           (apply functional_extensionality;
            intros; rewrite H0, H3; reflexivity).
       rewrite H in H4; assumption.
-      intros; unfold refineObserver; intros; intuition; subst; 
-      reflexivity. 
-    (* Implement the MinPlusMax Observer. *)
-      unfold getMutDef; simpl.
+      intros; unfold refineObserver; intros; intuition; subst;
+      reflexivity.
+    - (** Implement the MinPlusMax Observer. *)
+      hone'' observer "MinPlusMax"%string.
+      Print refineADT.
+      (** TODO: Write small manual inversion tactic to pick up hypothesis automatically *)
+      inversion_clear refineMinMax.
+      exists (fun a b => fst a = fst b /\ SiR (fst a) (snd a) /\ SiR (fst b) (snd b)).
+      unfold ith_obligation_2 in *; simpl in *.
+      repeat split; intros; simpl.
+      specialize (H {| bounded_s := "Insert" |}).
+      pose proof (H0 {| bounded_s := "Min" |}) as H0'.
+      specialize (H0 {| bounded_s := "Max" |}).
+      revert H H0 H0'.
+      simpl.
+      find_if_inside; simpl.
+      intros.
+      split_and; destruct_head prod; subst.
+      repeat (setoid_rewrite refineEquiv_bind_bind || setoid_rewrite refineEquiv_bind_unit || setoid_rewrite refineEquiv_unit_bind).
+      simpl in *.
+      eapply refine_bind; [ reflexivity | intro ].
+      (** HERE *)
+
+      admit.
+      admit.
+      admit.
+
+
       unfold two_op_spec.
-    hone'' observer "MinPlusMax"%string using 
+
+
+
+      repeat setoid_rewrite refineEquiv_bind_bind.
+      repeat setoid_rewrite
+      autorewrite with refine_monad.
+let P := match goal with |- ex ?P => constr:(P) end in
+      refine (match refineMinMax in (return ex P with
+                | @refinesADT _ _ SiR _ _ => ex_intro P SiR _
+              end).
+
+      let G := match goal with |- ?G => constr:(G) end in
+      pose (fun SiR => (@refineADT_BuildADT_ReplaceObserver_generic _ _ _ _ _ {| bounded_s := "MinPlusMax"%string |} _ _ SiR _ _: G)).
+      Print refineADT.
+      match refineMinMax return (
            (fun (r : Rep MinPlusMaxSpec * Rep MinMaxImpl)
                 n =>
               (min <- (ObserverMethods MinMaxImpl
