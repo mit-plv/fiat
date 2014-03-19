@@ -86,6 +86,9 @@ Definition getObsDef
   obsBody (ith obsSig_eq obsDefs idx _
                (@Build_obsDef Rep ("null" : rep × () → ()) (fun r _ => ret tt))).
 
+Arguments getMutDef / .
+Arguments getObsDef / .
+
 Program Definition BuildADT
         (Rep : Type)
         (mutSigs : list mutSig)
@@ -158,32 +161,32 @@ Section ReplaceMethods.
 
 End ReplaceMethods.
 
-  Arguments replaceMutDef _ _ _ _ (newDef%mutDef) / .
-  Arguments ADTReplaceMutDef _ _ _ _ _ _ (newDef%mutDef) / .
+Arguments replaceMutDef _ _ _ _ (newDef%mutDef) / .
+Arguments ADTReplaceMutDef _ _ _ _ _ _ (newDef%mutDef) / .
 
-  Arguments replaceObsDef _ _ _ _ (newDef%obsDef) / .
-  Arguments ADTReplaceObsDef _ _ _ _ _ _ (newDef%obsDef) / .
+Arguments replaceObsDef _ _ _ _ (newDef%obsDef) / .
+Arguments ADTReplaceObsDef _ _ _ _ _ _ (newDef%obsDef) / .
 
-  Definition MinCollection' :=
-    ADTReplaceObsDef
-      (icons _ (def "Insert" `[ r `: rep , n `: nat ]` : rep :=
-                  ret (plus r n))%mutDef (inil (@mutDef _)))
-      (icons _ (def "Min" `[r `: rep , n `: unit ]` : nat :=
+Definition MinCollection' :=
+  ADTReplaceObsDef
+    (icons _ (def "Insert" `[ r `: rep , n `: nat ]` : rep :=
+                ret (plus r n))%mutDef (inil (@mutDef _)))
+    (icons _ (def "Min" `[r `: rep , n `: unit ]` : nat :=
                 ret (plus r 0))%obsDef (inil (@obsDef _)))
-      "Min"%string
-      (def "Min" `[r `: rep , n `: unit ]` : nat :=
-         ret (plus 0 r)).
+    "Min"%string
+    (def "Min" `[r `: rep , n `: unit ]` : nat :=
+       ret (plus 0 r)).
 
-  Definition MinCollection'' :=
-    ADTReplaceMutDef
-      (icons _ (def "Insert" `[ r `: rep , n `: nat ]` : rep :=
-                  ret (plus r n))%mutDef (inil (@mutDef _)))
-      (icons _ (def "Min" `[r `: rep , n `: unit ]` : nat :=
-                  ret (plus r 0))%obsDef (inil (@obsDef _)))
-      "Insert"%string
-      (def "Insert" `[r `: rep , n `: nat ]` : rep :=
-         ret (r + n)).
+Definition MinCollection'' :=
+  ADTReplaceMutDef
+    (icons _ (def "Insert" `[ r `: rep , n `: nat ]` : rep :=
+                ret (plus r n))%mutDef (inil (@mutDef _)))
+    (icons _ (def "Min" `[r `: rep , n `: unit ]` : nat :=
+                ret (plus r 0))%obsDef (inil (@obsDef _)))
+    "Insert"%string
+    (def "Insert" `[r `: rep , n `: nat ]` : rep :=
+       ret (r + n)).
 
-  Goal (MinCollection'' = MinCollection').
+Goal (MinCollection'' = MinCollection').
   unfold MinCollection'', MinCollection'; simpl.
-  Abort.
+Abort.

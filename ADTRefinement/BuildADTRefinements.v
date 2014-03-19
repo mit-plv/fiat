@@ -155,6 +155,68 @@ Section BuildADTRefinements.
 
   Hint Resolve In_obsSigs.
 
+  Corollary refineADT_BuildADT_ReplaceObserver_generic_ex
+            (Rep : Type)
+            (mutSigs : list mutSig)
+            (obsSigs : list obsSig)
+            (mutDefs : ilist (@mutDef Rep) mutSigs)
+            (obsDefs : ilist (@obsDef Rep) obsSigs)
+            (idx : BoundedString (List.map obsID obsSigs))
+            (newDef : obsDef (nth (findIndex obsSig_eq obsSigs idx)
+                                  obsSigs ("null" : rep × () → ())%obsSig))
+            (SiR_hyp : exists SiR,
+                         (forall mutIdx,
+                            refineMutator SiR (getMutDef mutDefs mutIdx) (getMutDef mutDefs mutIdx))
+                         /\ (forall obsIdx,
+                               refineObserver SiR (getObsDef obsDefs obsIdx) (getObsDef obsDefs obsIdx))
+                         /\ refineObserver SiR
+                                           (obsBody (ith obsSig_eq obsDefs idx _
+                                                         (@Build_obsDef Rep ("null" : rep × () → ()) (fun r _ => ret tt))
+                                           ))
+                                           (obsBody newDef))
+  : refineADT
+      (BuildADT mutDefs obsDefs)
+      (ADTReplaceObsDef mutDefs obsDefs idx newDef).
+  Proof.
+    destruct SiR_hyp as [SiR [? [? ?] ] ].
+    intros; eapply refineADT_BuildADT_Rep with (SiR := SiR);
+    trivial.
+    intro obsIdx.
+    case_eq (obsSig_eq (nth (findIndex obsSig_eq obsSigs idx) obsSigs
+                            ("null" : rep × () → ())%obsSig) obsIdx);
+      intro H'.
+    - generalize (In_obsSigs_eq _ _ _ H'); intros; subst.
+      simpl; intros; erewrite ith_replace'; eauto.
+    - simpl replaceObsDef; simpl getObsDef; erewrite ith_replace; eauto.
+  Qed.
+
+  Corollary refineADT_BuildADT_ReplaceObserver_generic
+            (Rep : Type)
+            (mutSigs : list mutSig)
+            (obsSigs : list obsSig)
+            (mutDefs : ilist (@mutDef Rep) mutSigs)
+            (obsDefs : ilist (@obsDef Rep) obsSigs)
+            (idx : BoundedString (List.map obsID obsSigs))
+            (newDef : obsDef (nth (findIndex obsSig_eq obsSigs idx)
+                                  obsSigs ("null" : rep × () → ())%obsSig))
+            SiR
+            (SiR_reflexive_mutator : forall mutIdx,
+                                       refineMutator SiR (getMutDef mutDefs mutIdx) (getMutDef mutDefs mutIdx))
+            (SiR_reflexive_observer : forall obsIdx,
+                                        refineObserver SiR (getObsDef obsDefs obsIdx) (getObsDef obsDefs obsIdx))
+  : refineObserver SiR
+                  (obsBody (ith obsSig_eq obsDefs idx _
+                                (@Build_obsDef Rep ("null" : rep × () → ()) (fun r _ => ret tt))
+                                ))
+                  (obsBody newDef)
+    -> refineADT
+         (BuildADT mutDefs obsDefs)
+         (ADTReplaceObsDef mutDefs obsDefs idx newDef).
+  Proof.
+    intros.
+    eapply refineADT_BuildADT_ReplaceObserver_generic_ex; repeat (eassumption || esplit).
+  Qed.
+
   Corollary refineADT_BuildADT_ReplaceObserver
             (Rep : Type)
             (mutSigs : list mutSig)
@@ -173,15 +235,8 @@ Section BuildADTRefinements.
       (BuildADT mutDefs obsDefs)
       (ADTReplaceObsDef mutDefs obsDefs idx newDef).
   Proof.
-    intros; eapply refineADT_BuildADT_Rep with (SiR := eq);
-    try reflexivity.
-    intros; unfold getObsDef.
-    caseEq (obsSig_eq (nth (findIndex obsSig_eq obsSigs idx) obsSigs
-                           ("null" : rep × () → ())%obsSig) obsIdx).
-    - generalize (In_obsSigs_eq _ _ _ H0); intros; subst.
-      simpl; intros; erewrite ith_replace'; eauto.
-    - simpl replaceObsDef; erewrite ith_replace; eauto.
-      reflexivity.
+    eapply refineADT_BuildADT_ReplaceObserver_generic;
+    reflexivity.
   Qed.
 
 (*  Section SimplifyRep.
