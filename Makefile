@@ -16,7 +16,9 @@ MODULES    := \
 	ADTRefinement/Core \
 	ADTRefinement/RefineHideADT \
 	ADTRefinement/SetoidMorphisms \
+	ADTRefinement/BuildADTSetoidMorphisms \
 	ADTRefinement/GeneralRefinements \
+	ADTRefinement/BuildADTRefinements \
 	ADTRefinement/DelegateMethods \
 	ADTRefinement \
 	ADTRepInv \

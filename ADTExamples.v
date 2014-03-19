@@ -1,7 +1,8 @@
 Require Import String Omega.
 Require Import FunctionalExtensionality.
 Require Export ADT ADTRefinement ADTCache ADTRepInv ADTExamples.BinaryOperationSpec
-        ADTExamples.BinaryOperationImpl ADTExamples.BinaryOperationRefinements.
+        ADTExamples.BinaryOperationImpl ADTExamples.BinaryOperationRefinements
+        ADTRefinement.BuildADTRefinements ADTRefinement.BuildADTSetoidMorphisms.
 
 Generalizable All Variables.
 Set Implicit Arguments.
@@ -43,17 +44,45 @@ Section ImplExamples.
 
   Arguments NatLower / .
 
+  Definition MinCollectionSig : ADTSig :=
+    ADTsignature {
+        "Insert" : rep ✕ nat → rep ;
+        "Min" : rep ✕ nat → nat
+      }%ADTSig.
+
   (* The original MinCollection example folds min over a list
      implementing the multiset. This is slow, of course. *)
 
-  Definition MinCollection (defaultValue : nat) :
-    { Rep : ADT
-    | refineADT NatLower Rep }.
+  Definition defaultSpec : nat -> Prop := fun _ => True.
+
+  Definition MinCollectionSpec
+  : ADT MinCollectionSig :=
+    ADTRep multiset `[
+             def "Insert" `[ m `: rep , n `: nat ]` : rep :=
+               {m' | add_spec m n m'}%comp ;
+             def "Min" `[m `: rep , n `: nat ]` : nat :=
+                 {n' | bin_op_spec le defaultSpec m n n'}%comp
+           ]`%ADT .
+
+  Arguments MinCollectionSpec / .
+
+  Definition mslSiR (or : multiset) (nr : list nat) :=
+    or = absList2Multiset nr.
+
+  Definition MinCollection' (defaultValue : nat) :
+    { Rep : ADT MinCollectionSig
+    | refineADT MinCollectionSpec Rep }.
   Proof.
-    eexists.
-    apply refines_NatBinOp with
-             (op := min)
-               (defaultValue := defaultValue); auto with arith typeclass_instances.
+    hone' representation using mslSiR.
+    hone' observer "Min"%string using (bin_op_impl min defaultValue);
+      intros; subst.
+    unfold mslSiR.
+    rewrite refine_bin_op_spec' with (defaultValue := defaultValue).
+    unfold bin_op_impl; reflexivity.
+    admit.
+    hone' mutator "Insert"%string using add_impl.
+    admit.
+    finish sharpening.
   Defined.
 
   Arguments NatBinOpSpec / .
@@ -63,7 +92,7 @@ Section ImplExamples.
              More notation, better tactic support. *)
 
   Ltac autorefine :=
-    unfold repInvBiR in *|-*;
+    unfold repInvSiR in *|-*;
     subst; split_and; intros;
     autorewrite with refine_monad;
     eauto 50 with cache_refinements bin_op_refinements typeclass_instances;
@@ -75,50 +104,44 @@ Section ImplExamples.
       | _ => idtac
     end.
 
-  Lemma if_unit (A : Type) (unit_eq : forall t t' : (), {t = t'} + {t <> t'})
-  : forall (a b : ()) (i e : A),
-      (if (unit_eq a b) then i else e) = i.
-  Proof.
-    intros; destruct a; destruct b; find_if_inside; congruence.
-  Qed.
-  Hint Rewrite if_unit : refine_monad.
-
   (* This example derivation uses an option nat to
    represent the minimum element of the collection,
    updating the value each time an element is inserted. *)
 
   Definition MinCollectionCached (defaultValue : nat) :
-    Sharpened NatLower.
+    Sharpened MinCollectionSpec.
   Proof.
     (* Step 1: Update the representation. *)
-    hone representation using (fun or (nr : option nat) =>
+    hone' representation using (fun or (nr : option nat) =>
                                  match nr with
                                      | Some n => nonempty_spec le or n
                                      | None => empty_spec (fun _ => True) or defaultValue
                                  end).
     (* Step 2: Refine the insert/add mutator method. *)
-    hone mutator tt using (fun r n =>
+    hone' mutator "Insert"%string using (fun r n =>
                              ret (match r with
                                | Some n' => Some (min n' n)
                                | None => Some n
                              end)).
-    autorefine.
-    unfold add_spec; eexists (add or n); destruct r_n; autorefine.
+    repeat autorefine.
+    econstructor; intros;
+      unfold add_spec; eexists (add or n); destruct r_n; autorefine.
     (* Step 3: Add the Cache and replace observer. *)
-    hone observer () using (fun (r : option nat) (n : nat) =>
+    hone' observer "Min"%string using (fun (r : option nat) (n : nat) =>
                               ret (match r with
                                          | Some n => n
                                          | None => defaultValue
                                    end)).
-    autorefine.
+    repeat autorefine.
     destruct r_n; unfold bin_op_spec; autorefine.
     (* Step 4: All done :). *)
     finish sharpening.
   Defined.
 
   (* Show the term derived above as a sanity check. *)
-  Goal (forall b, MutatorMethods (proj1_sig (MinCollectionCached 0)) () = b).
-    simpl.
+  Goal (forall b, MutatorMethods (proj1_sig (MinCollectionCached 0))
+                                 {| bounded_s := "Insert"%string |} = b).
+    simpl; unfold getMutDef; simpl.
   Abort.
 
   (* Slightly longer derivation which first adds a cache, then
@@ -128,13 +151,14 @@ Section ImplExamples.
      anyways. *)
 
   Definition MinCollectionCached' (defaultValue : nat) :
-    Sharpened NatLower.
+    Sharpened MinCollectionSpec.
   Proof.
     (* Step 1: Update the representation. *)
-    hone representation using (fun or nr => or = (absList2Multiset nr)).
+    hone' representation using (fun or nr => or = (absList2Multiset nr)).
     (* Step 2: Refine the insert/add mutator method. *)
-    hone mutator tt using add_impl.
-    autorefine.
+    hone' mutator "Insert"%string using add_impl.
+    intros; subst; rewrite refine_add_impl'.
+    unfold add_impl; autorefine; auto.
     (* Step 3: Add the Cache and replace observer. *)
     cache observer using spec
           (fun r => bin_op_spec le (fun _ => True) (absList2Multiset r) defaultValue).

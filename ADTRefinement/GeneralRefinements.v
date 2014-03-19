@@ -70,73 +70,63 @@ Section GeneralRefinements.
      mutators of an ADT with an updated representation using the old
      mutators. *)
 
-  Definition absMutatorMethods Sig oldRep newRep
+  Definition absMutatorMethod oldRep newRep
         (SiR : oldRep -> newRep -> Prop)
-        (oldMuts :
-           forall idx,
-             mutatorMethodType oldRep (MutatorDom Sig idx)) idx nr n
+        (Dom : Type)
+        (oldMuts : mutatorMethodType oldRep Dom) nr n
   : Comp newRep :=
     {nr' | forall or,
              SiR or nr ->
              exists or',
-               (oldMuts idx or n) ↝ or' /\
+               (oldMuts or n) ↝ or' /\
                SiR or' nr'}%comp.
 
-  Lemma refine_absMutatorMethods Sig oldRep newRep
+  Lemma refine_absMutatorMethod oldRep newRep
         (SiR : oldRep -> newRep -> Prop)
-        (oldMuts :
-           forall idx,
-             mutatorMethodType oldRep (MutatorDom Sig idx))
-  : forall idx,
-      @refineMutator oldRep newRep SiR
-                     _
-                     (oldMuts idx)
-                     (absMutatorMethods Sig SiR oldMuts idx).
+        (Dom : Type)
+        (oldMuts : mutatorMethodType oldRep Dom)
+  : @refineMutator oldRep newRep SiR
+                   _
+                   oldMuts
+                   (absMutatorMethod SiR oldMuts).
   Proof.
-    unfold refineMutator, absMutatorMethods, refine; intros.
+    unfold refineMutator, absMutatorMethod, refine; intros.
     inversion_by computes_to_inv.
     destruct (H0 _ H) as [or' [Comp_or SiR_or''] ].
     econstructor; eauto.
   Qed.
 
   (* Always unfold absMutatorMethods. *)
-  Global Arguments absMutatorMethods Sig oldRep newRep SiR oldMuts / idx nr n.
+  Global Arguments absMutatorMethod oldRep newRep SiR Dom oldMuts / nr n.
 
-  Hint Resolve refine_absMutatorMethods.
+  Hint Resolve refine_absMutatorMethod.
 
   (* A similar approach works for observers. *)
 
-  Definition absObserverMethods Sig oldRep newRep
+  Definition absObserverMethod oldRep newRep
              (SiR : oldRep -> newRep -> Prop)
-             (oldObs :
-                forall idx,
-                  observerMethodType oldRep
-                                     (fst (ObserverDomCod Sig idx))
-                                     (snd (ObserverDomCod Sig idx)))
-             idx nr n
-  : Comp (snd (ObserverDomCod Sig idx)) :=
+             (Dom Cod : Type)
+             (oldObs : observerMethodType oldRep Dom Cod)
+             nr n
+  : Comp Cod :=
     {n' | forall or,
             SiR or nr ->
-            (oldObs idx or n) ↝ n'}%comp.
+            (oldObs or n) ↝ n'}%comp.
 
-  Lemma refine_absObserverMethods Sig oldRep newRep
+  Lemma refine_absObserverMethod oldRep newRep
         (SiR : oldRep -> newRep -> Prop)
-        (oldObs :
-           forall idx,
-             observerMethodType oldRep
-                                (fst (ObserverDomCod Sig idx))
-                                (snd (ObserverDomCod Sig idx)))
-  : forall idx,
-      @refineObserver oldRep newRep SiR _ _ (oldObs idx)
-                     (absObserverMethods Sig SiR oldObs idx).
+        (Dom Cod : Type)
+        (oldObs :observerMethodType oldRep Dom Cod)
+  : @refineObserver oldRep newRep SiR _ _ oldObs
+                     (absObserverMethod SiR oldObs).
   Proof.
-    unfold refineObserver, absObserverMethods, refine; intros.
+    unfold refineObserver, absObserverMethod, refine; intros.
     inversion_by computes_to_inv; eauto.
   Qed.
 
-  Global Arguments absObserverMethods Sig oldRep newRep SiR oldObs / idx nr n .
+  Global Arguments absObserverMethod oldRep newRep SiR Dom Cod oldObs / nr n .
 
-  Hint Resolve refine_absObserverMethods.
+  Hint Resolve refine_absObserverMethod.
 
   (* We can refine an ADT using the above default mutator and observer
      implementations. *)
@@ -148,8 +138,8 @@ Section GeneralRefinements.
     refineADT
       (@Build_ADT Sig oldRep oldMuts oldObs)
       (@Build_ADT Sig newRep
-                  (absMutatorMethods Sig SiR oldMuts)
-                  (absObserverMethods Sig SiR oldObs)).
+                  (fun idx => absMutatorMethod SiR (oldMuts idx))
+                  (fun idx => absObserverMethod SiR (oldObs idx))).
   Proof.
     eapply refineADT_Build_ADT_Rep; eauto.
   Qed.
@@ -170,22 +160,18 @@ Section GeneralRefinements.
 
     Notation "ro ≃ rn" := (SiR ro rn) (at level 70).
 
-    Definition simplifyMutatorMethods
-               (oldMuts :
-                  forall idx,
-                    mutatorMethodType oldRep (MutatorDom Sig idx))
-               idx r_n n : Comp newRep :=
-      (r_o' <- (oldMuts idx (concretize r_n) n);
+    Definition simplifyMutatorMethod
+               (Dom : Type)
+               (oldMuts : mutatorMethodType oldRep Dom)
+               r_n n : Comp newRep :=
+      (r_o' <- (oldMuts (concretize r_n) n);
        ret (simplifyf r_o'))%comp.
 
-  Definition simplifyObserverMethods
-             (oldObs :
-                forall idx,
-                  observerMethodType oldRep
-                                (fst (ObserverDomCod Sig idx))
-                                (snd (ObserverDomCod Sig idx)))
-             idx nr n : Comp (snd (ObserverDomCod Sig idx)) :=
-    oldObs idx (concretize nr) n.
+  Definition simplifyObserverMethod
+             (Dom Cod : Type)
+             (oldObs : observerMethodType oldRep Dom Cod)
+             nr n : Comp Cod :=
+    oldObs (concretize nr) n.
 
   Definition simplifyRep
              oldMuts oldObs :
@@ -204,13 +190,13 @@ Section GeneralRefinements.
     refineADT
       (@Build_ADT Sig oldRep oldMuts oldObs)
       (@Build_ADT Sig newRep
-                  (simplifyMutatorMethods oldMuts)
-                  (simplifyObserverMethods oldObs)).
+                  (fun idx => simplifyMutatorMethod (oldMuts idx))
+                  (fun idx => simplifyObserverMethod (oldObs idx))).
   Proof.
     econstructor 1 with
     (SiR := SiR); simpl; eauto.
-    - unfold simplifyMutatorMethods; intros; eapply H; eauto.
-    - unfold simplifyObserverMethods; intros; eapply H0; eauto.
+    - unfold simplifyMutatorMethod; intros; eapply H; eauto.
+    - unfold simplifyObserverMethod; intros; eapply H0; eauto.
   Qed.
 
   End SimplifyRep.
@@ -288,87 +274,3 @@ Tactic Notation "hone" "observer" constr(obsIdx) "using" constr(obsBody) :=
 Tactic Notation "hone" "representation" "using" constr(BiSR) :=
     eapply SharpenStep;
     [eapply refineADT_Build_ADT_Rep_default with (SiR := BiSR) | idtac].
-
-Definition absMutatorMethods' oldRep newRep
-           (SiR : oldRep -> newRep -> Prop)
-           (Dom : Type)
-           (oldMut : mutatorMethodType oldRep Dom)
-           (nr : newRep)
-           (d : Dom)
-: Comp newRep :=
-  {nr' | forall or,
-           SiR or nr ->
-           exists or', (oldMut or d) ↝ or' /\
-                       SiR or' nr'}%comp.
-
-Definition absMutDef oldRep newRep
-           (SiR : oldRep -> newRep -> Prop)
-           (Sig : mutSig)
-           (oldMut : @mutDef oldRep Sig)
-: @mutDef newRep Sig :=
-  {| mutBody := absMutatorMethods' SiR (mutBody oldMut) |}.
-
-Definition absObserverMethods' oldRep newRep
-           (SiR : oldRep -> newRep -> Prop)
-           (Dom Cod : Type)
-           (oldObs : observerMethodType oldRep Dom Cod)
-           (nr : newRep)
-           (d : Dom)
-: Comp Cod :=
-  {c' | forall or,
-          SiR or nr ->
-          (oldObs or d) ↝ c'}%comp.
-
-Definition absObsDef oldRep newRep
-           (SiR : oldRep -> newRep -> Prop)
-           (Sig : obsSig)
-           (oldMut : @obsDef oldRep Sig)
-: @obsDef newRep Sig :=
-  {| obsBody := absObserverMethods' SiR (obsBody oldMut) |}.
-
-Corollary refineADT_Build_ADT_Rep_default'
-          (oldRep newRep : Type)
-          (SiR : oldRep -> newRep -> Prop)
-          (mutSigs : list mutSig)
-          (obsSigs : list obsSig)
-          (mutDefs : ilist (@mutDef oldRep) mutSigs)
-          (obsDefs : ilist (@obsDef oldRep) obsSigs) :
-  refineADT
-    (BuildADT mutDefs obsDefs)
-    (BuildADT (imap _ (absMutDef SiR) mutDefs)
-              (imap _ (absObsDef SiR) obsDefs)).
-Proof.
-  eapply refineADT_Build_ADT_Rep with (SiR := SiR); eauto; intros.
-  unfold getMutDef.
-  destruct (In_mutIdx mutIdx) as [dom In_mutIdx].
-  rewrite In_ith with (a := {|mutID := mutIdx;
-                              mutDom := dom |})
-  (default_B :=
-     absMutDef SiR (def mutIdx `[r `: rep, _ `: ()]` : rep :=
-                      ret r )%mutDef).
-  rewrite <- ith_imap; simpl; unfold absMutatorMethods'; intros; eauto.
-  unfold refine; intros.
-  inversion_by computes_to_inv.
-  destruct (H0 _ H) as [or' [Comp_or SiR_or''] ].
-  econstructor; eauto.
-  eauto.
-  unfold mutSig_eq; find_if_inside; eauto.
-  destruct (In_obsIdx obsIdx) as [dom [cod In_obsIdx] ].
-  unfold getObsDef.
-  rewrite In_ith with (a := {|obsID := obsIdx;
-                              obsDom := dom;
-                              obsCod := cod |})
-  (default_B :=
-     absObsDef SiR (def obsIdx `[r `: rep, _ `: () ]` : () :=
-                      ret () )%obsDef); eauto.
-  rewrite <- ith_imap; simpl; unfold absObserverMethods'; intros; eauto.
-  unfold refine; intros.
-  inversion_by computes_to_inv; eauto.
-  unfold obsSig_eq; find_if_inside; eauto.
-Qed.
-
-Tactic Notation "hone'" "representation" "using" constr(SiR') :=
-    eapply SharpenStep;
-    [eapply refineADT_Build_ADT_Rep_default' with (SiR := SiR') |
-     compute [imap absMutDef absMutatorMethods'
-                   absObsDef absObserverMethods']; simpl ].

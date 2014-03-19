@@ -68,26 +68,34 @@ Definition mutSig_eq (mdef : mutSig) (idx : string) : bool :=
 Definition obsSig_eq (odef : obsSig) (idx : string) : bool :=
   if string_dec (obsID odef) idx then true else false.
 
-Class StringBound (s : string) (Bound : list string) :=
-  { sbound : In s Bound }.
+Section StringBound.
 
-Instance StringBound_head (s : string) (Bound : list string)
-: StringBound s (s :: Bound).
-Proof.
-  econstructor; simpl; eauto.
-Qed.
+  (* Ensuring that all of the indices are in a set
+     allows us to omit a default case (method not found)
+     for method lookups. *)
 
-Instance StringBound_tail
-         (s s' : string) (Bound : list string)
-         {sB' : StringBound s Bound}
-: StringBound s (s' :: Bound).
-Proof.
-  econstructor; simpl; right; apply sbound.
-Qed.
+  Class StringBound (s : string) (Bound : list string) :=
+    { sbound : In s Bound }.
 
-Record BoundedString (Bound : list string) :=
-  { bounded_s :> string;
-    s_bounded : StringBound bounded_s Bound }.
+  Global Instance StringBound_head (s : string) (Bound : list string)
+  : StringBound s (s :: Bound).
+  Proof.
+    econstructor; simpl; eauto.
+  Qed.
+
+  Global Instance StringBound_tail
+           (s s' : string) (Bound : list string)
+           {sB' : StringBound s Bound}
+  : StringBound s (s' :: Bound).
+  Proof.
+    econstructor; simpl; right; apply sbound.
+  Qed.
+
+  Record BoundedString (Bound : list string) :=
+    { bounded_s :> string;
+      s_bounded : StringBound bounded_s Bound }.
+
+End StringBound.
 
 Definition BuildADTSig
            (mutSigs : list mutSig)
@@ -96,10 +104,10 @@ Definition BuildADTSig
   {| MutatorIndex := BoundedString (map mutID mutSigs);
      ObserverIndex := BoundedString (map obsID obsSigs);
      MutatorDom idx := mutDom (nth (findIndex mutSig_eq mutSigs idx)
-                                   mutSigs {| mutID := idx;
-                                           mutDom := unit |} ) ;
+                                   mutSigs {| mutID := "null";
+                                              mutDom := unit |} ) ;
     ObserverDomCod idx := let domcod := (nth (findIndex obsSig_eq obsSigs idx)
-                                   obsSigs {| obsID := idx;
+                                   obsSigs {| obsID := "null";
                                               obsDom := unit;
                                               obsCod := unit |})
                           in (obsDom domcod, obsCod domcod)
@@ -109,8 +117,8 @@ Bind Scope ADTSig_scope with ADTSig.
 Delimit Scope ADTSig_scope with ADTSig.
 
 Lemma In_mutIdx :
-  forall mutSigs obsSigs
-         (mutIdx : MutatorIndex (BuildADTSig mutSigs obsSigs)),
+  forall mutSigs
+         (mutIdx : BoundedString (map mutID mutSigs)),
     exists dom,
       List.In {| mutID := mutIdx;
             mutDom := dom
@@ -124,8 +132,8 @@ Proof.
 Qed.
 
 Lemma In_obsIdx :
-  forall mutSigs obsSigs
-         (obsIdx : ObserverIndex (BuildADTSig mutSigs obsSigs)),
+  forall obsSigs
+         (obsIdx : BoundedString (map obsID obsSigs)),
     exists dom cod,
       List.In {| obsID := obsIdx;
                  obsDom := dom;
