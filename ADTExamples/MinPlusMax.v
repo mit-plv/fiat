@@ -224,6 +224,18 @@ Section MinMaxExample.
 
       unfold two_op_spec.
 
+      Definition remove_forall_eq A x B (P : A -> B -> Prop) : pointwise_relation _ impl (fun z => forall y : A, y = x -> P y z) (P x).
+      Proof.
+        repeat intro; subst; eauto.
+      Defined.
+      Definition remove_forall_eq' A x B (P : A -> B -> Prop) : pointwise_relation _ impl (P x) (fun z => forall y : A, y = x -> P y z).
+      Proof.
+        repeat intro; subst; eauto.
+      Defined.
+
+      setoid_rewrite remove_forall_eq'.
+
+
 
 
       repeat setoid_rewrite refineEquiv_bind_bind.

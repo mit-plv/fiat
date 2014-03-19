@@ -26,7 +26,7 @@ Add Parametric Morphism A
     as refine_refine.
 Proof. t. Qed.
 
-Add Parametric Morphism A 
+Add Parametric Morphism A
 : (@refine A)
   with signature
   (@refineEquiv A) --> (@refineEquiv A) ++> impl
@@ -65,4 +65,52 @@ Proof.
   split; intros;
   inversion_by computes_to_inv;
   eauto.
+Qed.
+
+Add Parametric Morphism A
+: (@Pick A)
+    with signature
+    (pointwise_relation _ (flip impl))
+      ==> (@refine A)
+      as refine_flip_impl_Pick.
+Proof.
+  simpl; intros.
+  unfold pointwise_relation, refine, impl in *; simpl in *.
+  intros.
+  inversion_by computes_to_inv.
+  eauto.
+Qed.
+
+Add Parametric Morphism A
+: (@Pick A)
+    with signature
+    (pointwise_relation _ impl)
+      ==> (flip (@refine A))
+      as refine_impl_flip_Pick.
+Proof.
+  simpl; intros.
+  unfold pointwise_relation, refine, impl in *; simpl in *.
+  intros.
+  inversion_by computes_to_inv.
+  eauto.
+Qed.
+
+
+
+Add Parametric Morphism A
+: (@Pick A)
+    with signature
+    (pointwise_relation _ iff)
+      ==> (@refineEquiv A)
+      as refineEquiv_iff_Pick.
+Proof.
+  simpl; intros.
+  unfold pointwise_relation, refine in *; simpl in *.
+  split_iff.
+  change (pointwise_relation A impl y x) in H1.
+  change (pointwise_relation A impl x y) in H0.
+  split;
+    intros;
+    setoid_rewrite_hyp';
+    reflexivity.
 Qed.
