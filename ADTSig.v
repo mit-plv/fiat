@@ -54,13 +54,11 @@ Delimit Scope obsSig_scope with obsSig.
 Notation "id : 'rep' × dom → cod" :=
   {| obsID := id;
      obsDom := dom;
-     obsCod := cod |}
-    (at level 60, format "id  :  'rep'  ×  dom  →  cod" ) : obsSig_scope.
+     obsCod := cod |} : obsSig_scope.
 
 Notation "id : 'rep' × dom → 'rep'" :=
   {| mutID := id;
-     mutDom := dom |}
-    (at level 60, format "id  :  'rep'  ×  dom  →  'rep'" ) : mutSig_scope.
+     mutDom := dom |} : mutSig_scope.
 
 Definition mutSig_eq (mdef : mutSig) (idx : string) : bool :=
   if string_dec (mutID mdef) idx then true else false.
