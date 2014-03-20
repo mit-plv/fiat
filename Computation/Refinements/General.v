@@ -11,7 +11,7 @@ Local Ltac t_refine :=
   repeat first [ progress simpl in *
                | progress eauto
                | eassumption
-               | reflexivity
+               | solve [ reflexivity ] (* [reflexivity] is broken in the presence of a [Reflexive pointwise_relation] instance.... see https://coq.inria.fr/bugs/show_bug.cgi?id=3257 *)
                | progress split_iff
                | progress inversion_by computes_to_inv
                | progress subst
@@ -28,7 +28,7 @@ Section general_refine_lemmas.
         (eqv_f_g : forall x, refine (f x) (g x))
   : refine (Bind x f) (Bind x g).
   Proof.
-    unfold refine; simpl in *; hnf; intros. 
+    unfold refine; simpl in *; hnf; intros.
     inversion_by computes_to_inv; econstructor; eauto.
     eapply eqv_f_g; eauto.
   Qed.
@@ -111,4 +111,45 @@ Section general_refine_lemmas.
                  ret (f a a')).
   Proof. t_refine. Qed.
 
+  Definition refineEquiv_split_func_ex2'
+             A A' B (P : A -> Prop) (P' : A' -> Prop)
+             (f : A -> A' -> B)
+  : refineEquiv { b | exists a, P a /\ exists a', P' a' /\ f a a' = b}
+                (a <- { a | P a};
+                 a' <- { a' | P' a'};
+                 ret (f a a')).
+  Proof. t_refine. Qed.
+
+  (** We prove some lemmas about [forall], for the benefit of setoid rewriting. *)
+  Definition remove_forall_eq A x B (P : A -> B -> Prop)
+  : pointwise_relation _ iff (fun z => forall y : A, y = x -> P y z) (P x).
+  Proof. t_refine. Qed.
+
+  Definition remove_forall_eq' A x B (P : A -> B -> Prop)
+  : pointwise_relation _ iff (fun z => forall y : A, x = y -> P y z) (P x).
+  Proof. t_refine. Qed.
+
+
+  (** These versions are around twice as fast as the [iff] versions... not sure why. *)
+  Definition remove_forall_eq0 A x B (P : A -> B -> Prop)
+  : pointwise_relation _ (flip impl) (fun z => forall y : A, y = x -> P y z) (P x).
+  Proof. t_refine. Qed.
+
+  Definition remove_forall_eq1 A x B (P : A -> B -> Prop)
+  : pointwise_relation _ impl (fun z => forall y : A, y = x -> P y z) (P x).
+  Proof. t_refine. Qed.
+
+  Definition remove_forall_eq0' A x B (P : A -> B -> Prop)
+  : pointwise_relation _ (flip impl) (fun z => forall y : A, x = y -> P y z) (P x).
+  Proof. t_refine. Qed.
+
+  Definition remove_forall_eq1' A x B (P : A -> B -> Prop)
+  : pointwise_relation _ impl (fun z => forall y : A, x = y -> P y z) (P x).
+  Proof. t_refine. Qed.
+
+  Definition refineEquiv_pick_computes_to A
+             (P : A -> Prop)
+             (c : Comp A)
+  : refineEquiv { v | c ↝ v } c.
+  Proof. t_refine. Qed.
 End general_refine_lemmas.
