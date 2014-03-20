@@ -15,33 +15,37 @@ Require Import List String.
    are parameterized by a signature that includes the
    domain (both) and codomain (just observers). *)
 
-Record mutDef {Rep : Type} (Sig : mutSig) :=
-  { mutBody :> mutatorMethodType Rep (mutDom Sig) }.
-
-Notation "'def' id `[ r `: 'rep' , x `: dom ]` : 'rep' := bod" :=
-  (Build_mutDef {| mutID := id; mutDom := dom |} (fun r x => bod%comp))
-    (at level 70, format "'def'  id  `[ r  `:  'rep' ,  x  `:  dom ]`  :  'rep'  :=  '[  '   bod ']' " ) :
-mutDef_scope.
-
-Bind Scope mutDef_scope with mutDef.
-Delimit Scope mutDef_scope with mutDef.
-
-Definition insertDef :=
-  (def "Insert" `[ r `: rep , n `: unit ]` : rep := {n | n = plus r 0})%mutDef.
-
 Record obsDef {Rep : Type} (Sig : obsSig) :=
   { obsBody :> observerMethodType Rep (obsDom Sig) (obsCod Sig)}.
 
-Notation "'def' id `[ r `: 'rep' , x `: dom ]` : cod := bod" :=
+Notation "'def' 'obs' id ( r : 'rep' , x : dom ) : cod := bod" :=
   (Build_obsDef {| obsID := id; obsDom := dom; obsCod := cod |} (fun r x => bod%comp))
-    (at level 70, format "'def'  id  `[ r  `:  'rep' ,  x  `:  dom ]`  :  cod  :=  '[  '   bod ']' " ) :
+    (no associativity, id at level 0, r at level 0, x at level 0, dom at level 0,
+     cod at level 0,
+     at level 70, format "'def'  'obs'  id  ( r  :  'rep' ,  x  :  dom )  :  cod  :=  '[  '   bod ']' " ) :
 obsDef_scope.
 
 Bind Scope obsDef_scope with obsDef.
 Delimit Scope obsDef_scope with obsDef.
 
 Definition minDef :=
-  (def "Min" `[r `: rep , n `: unit ]` : nat := ret (plus r 0))%obsDef.
+  (def obs "Min" ( r : rep , n : unit ) : nat := ret (plus r 0))%obsDef.
+
+Record mutDef {Rep : Type} (Sig : mutSig) :=
+  { mutBody :> mutatorMethodType Rep (mutDom Sig) }.
+
+Notation "'def' 'mut' id ( r : 'rep' , x : dom ) : 'rep' := bod" :=
+  (Build_mutDef {| mutID := id; mutDom := dom |} (fun r x => bod%comp))
+    (no associativity, at level 94, id at level 0, r at level 0,
+     x at level 0, dom at level 0,
+     format "'def'  'mut'  id  ( r  :  'rep' ,  x :  dom )  :  'rep'  :=  '[  '   bod ']' " ) :
+mutDef_scope.
+
+Bind Scope mutDef_scope with mutDef.
+Delimit Scope mutDef_scope with mutDef.
+
+Definition insertDef :=
+  (def mut "Insert" ( r : rep , n : unit ) : rep := {n | n = plus r 0})%mutDef.
 
 (* Lookup functions for mutator and observer definitions. Because
    method definitions are parameterized on a signature, the
@@ -99,14 +103,14 @@ Program Definition BuildADT
 
 (* Notation for ADTs built from [BuildADT]. *)
 
-Notation "'ADTRep' r `[ mut1 , .. , mutn ; obs1 , .. , obsn ]` " :=
+Notation "'ADTRep' r { mut1 , .. , mutn ; obs1 , .. , obsn } " :=
   (@BuildADT r
              _
              _
              (icons _ mut1%mutDef .. (icons _ mutn%mutDef (inil (@mutDef r))) ..)
              (icons _ obs1%obsDef .. (icons _ obsn%obsDef (inil (@obsDef r))) ..))
-    (at level 1,
-     format "'ADTRep'  r  '/' '[hv  ' `[  mut1 , '//' .. , '//' mutn ; '//' obs1 , '//' .. , '//' obsn  ']' ]`") : ADT_scope.
+    (no associativity, at level 96, r at level 0,
+     format "'ADTRep'  r  '/' '[hv  ' {  mut1 , '//' .. , '//' mutn ; '//' obs1 , '//' .. , '//' obsn  ']' }") : ADT_scope.
 
 (* Notations for method calls. *)
 Notation callObs adt idx := (ObserverMethods adt {| bstring := idx |}).

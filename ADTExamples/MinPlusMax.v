@@ -17,14 +17,14 @@ Section MinMaxExample.
 
   Definition MinMaxSpec
   : ADT MinMaxSig :=
-    ADTRep multiset `[
-             def "Insert" `[ m `: rep , n `: nat ]` : rep :=
+    ADTRep multiset {
+             def mut "Insert" ( m : rep , n : nat ) : rep :=
                {m' | add_spec m n m'}%comp ;
-             def "Min" `[m `: rep , n `: nat ]` : nat :=
+             def obs "Min" (m : rep , n : nat ) : nat :=
                  {n' | bin_op_spec le defaultSpec m n n'}%comp ,
-             def "Max" `[m `: rep , n `: nat ]` : nat :=
+             def obs "Max" (m : rep , n : nat ) : nat :=
                  {n' | bin_op_spec ge defaultSpec m n n'}%comp
-           ]`%ADT .
+           }%ADT .
 
   Variable MinMaxImpl : ADT MinMaxSig.
   Variable refineMinMax : refineADT MinMaxSpec MinMaxImpl.

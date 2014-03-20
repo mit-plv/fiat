@@ -30,6 +30,7 @@ MODULES    := \
 	ADTRefinement/Refinements/SimplifyRep \
 	ADTRefinement/Refinements \
 	ADTRefinement/BuildADTRefinements/HoneRepresentation \
+	ADTRefinement/BuildADTRefinements/SimplifyRep \
 	ADTRefinement/BuildADTRefinements \
 	ADTRefinement \
 	ADTRepInv \

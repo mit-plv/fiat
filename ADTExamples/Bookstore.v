@@ -1,6 +1,7 @@
 Require Import String Omega List Coq.Sets.Uniset Coq.Sets.Multiset.
 Require Import FunctionalExtensionality.
-Require Export Computation ADT ADTRefinement Pick ADTNotation.
+Require Export Computation ADT ADTRefinement Pick ADTNotation 
+        ADTRefinement.BuildADTRefinements.
 
 Generalizable All Variables.
 Set Implicit Arguments.
@@ -104,16 +105,16 @@ Section BookStoreExamples.
                       (length (filter f (Orders inventory))).
 
   Definition BookStorePick : ADT BookStoreSig :=
-    ADTRep BookStoreRefRep `[
-             def "PlaceOrder" `[ r `: rep , n `: nat ]` : rep :=
-               {r' | PlaceOrderSpec r n r'}%comp ,
-             def "AddBook" `[ r `: rep , b `: Book ]` : rep :=
-               {r' | AddBookSpec r b r'}%comp ;
-             def "GetTitles" `[ r `: rep , author `: string ]` : (list string) :=
-               {titles | GetTitlesSpec r author titles}%comp ,
-             def "NumOrders" `[ r `: rep , author `: string ]` : nat :=
-               {numtitles | NumOrdersSpec r author numtitles}%comp
-         ]` .
+    ADTRep BookStoreRefRep {
+             def mut "PlaceOrder" ( r : rep , n : nat ) : rep :=
+               {r' | PlaceOrderSpec r n r'},
+             def mut "AddBook" ( r : rep , b : Book ) : rep :=
+               {r' | AddBookSpec r b r'} ;
+             def obs "GetTitles" ( r : rep , author : string ) : (list string) :=
+               {titles | GetTitlesSpec r author titles} ,
+             def obs "NumOrders" ( r : rep , author : string ) : nat :=
+               {numtitles | NumOrdersSpec r author numtitles}
+         } .
 
 Definition Ref_SiR
            (or : BookStoreRefRep)
@@ -126,9 +127,7 @@ Definition Ref_SiR
   Definition BookStore :
     Sharpened BookStorePick.
   Proof.
-    hone representation using Ref_SiR.
-    simpl absMutatorMethod. unfold ith_obligation_2, ith_obligation_1.
-    simpl.
+    hone representation' using Ref_SiR.
   Admitted.
 
 End BookStoreExamples.

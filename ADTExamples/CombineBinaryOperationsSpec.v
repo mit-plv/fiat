@@ -29,12 +29,12 @@ Section two_op_spec.
 
   Definition NatTwoBinOpSpec comName
   : ADT (CombTwoOpCollectionSig comName) :=
-    ADTRep multiset `[
-             def "Insert" `[ m `: rep , n `: nat ]` : rep :=
-               {m' | add_spec m n m'}%comp ;
-             def comName `[m `: rep , n `: nat ]` : nat :=
+    ADTRep multiset {
+             def mut "Insert" ( m : rep , n : nat ) : rep :=
+               {m' | add_spec m n m'} ;
+             def obs comName (m : rep , n : nat ) : nat :=
                  {n' | two_op_spec m n n'}%comp
-           ]`%ADT .
+           }%ADT .
 
 End two_op_spec.
 

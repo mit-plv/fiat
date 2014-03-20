@@ -34,7 +34,7 @@ Section HoneRepresentation.
   : @obsDef newRep Sig :=
     {| obsBody := absObserverMethod SiR (obsBody oldMut) |}.
 
-  Corollary refineADT_BuildADT_Rep_default
+  Lemma refineADT_BuildADT_Rep_default
             (mutSigs : list mutSig)
             (obsSigs : list obsSig)
             (mutDefs : ilist (@mutDef oldRep) mutSigs)
@@ -50,7 +50,7 @@ Section HoneRepresentation.
     rewrite In_ith with (a := {| mutID := mutIdx;
                                  mutDom := dom |})
                           (default_B :=
-                             absMutDef (def "null" `[r `: rep, _ `: ()]` : rep :=
+                             absMutDef (def mut "null" (r : rep, _ : ()) : rep :=
                                               ret r )%mutDef); eauto.
     rewrite <- ith_imap; simpl; eauto.
     unfold refine; intros.
@@ -64,7 +64,7 @@ Section HoneRepresentation.
                                 obsDom := dom;
                                 obsCod := cod |})
                           (default_B :=
-                             absObsDef (def "null" `[r `: rep, _ `: () ]` : () :=
+                             absObsDef (def obs "null" (r : rep, _ : () ) : () :=
                                               ret () )%obsDef); eauto.
     rewrite <- ith_imap; simpl; intros; eauto.
     unfold refine; intros.
@@ -77,7 +77,7 @@ End HoneRepresentation.
 (* Honing tactic for refining the ADT representation which provides
    default observer and mutator implementations. *)
 
-Tactic Notation "hone" "representation" "using" constr(SiR') :=
+Tactic Notation "hone" "representation'" "using" constr(SiR') :=
   eapply SharpenStep;
   [eapply refineADT_BuildADT_Rep_default with (SiR := SiR') |
    compute [imap absMutDef absMutatorMethod
