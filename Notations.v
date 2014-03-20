@@ -1,8 +1,6 @@
 Reserved Notation "x >>= y" (at level 42, right associativity).
 (*Reserved Notation "x <- y ; z" (at level 42, right associativity).
 Reserved Notation "x ;; z" (at level 42, right associativity).*)
-Reserved Notation "'call' f 'from' funcs [[ x ]]" (at level 35).
-Reserved Notation "'call' f [[ x ]]" (at level 35).
 Reserved Infix "↝" (at level 70).
 
 Reserved Notation "id : 'rep' × dom → cod" (at level 60, format "id  :  'rep'  ×  dom  →  cod" ).
