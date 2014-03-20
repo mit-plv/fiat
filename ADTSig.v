@@ -1,4 +1,4 @@
-Require Export Common Computation ilist.
+Require Export Common Computation ADTNotation.ilist.
 
 (** Type of a mutator method. *)
 Definition mutatorMethodType (Ty dom : Type)
