@@ -58,46 +58,68 @@ Section MinMaxExample.
     end.
 
   Tactic Notation "hone''" "observer" constr(obsIdx) "using" open_constr(obsBod) :=
-    let A :=
-        match goal with
-            |- Sharpened ?A => constr:(A) end in
-    let ASig := match type of A with
-                    ADT ?Sig => Sig
-                end in
-    let mutSigs :=
-        match ASig with
-            BuildADTSig ?mutSigs _ => constr:(mutSigs) end in
-    let obsSigs :=
-        match ASig with
-            BuildADTSig _ ?obsSigs => constr:(obsSigs) end in
-    let mutDefs :=
-        match A with
-            BuildADT ?mutDefs _  => constr:(mutDefs) end in
-    let obsDefs :=
-        match A with
-            BuildADT _ ?obsDefs  => constr:(obsDefs) end in
-    let Rep' :=
-        match A with
-            @BuildADT ?Rep _ _ _ _ => constr:(Rep) end in
-    let MutatorIndex' := eval simpl in (MutatorIndex ASig) in
-    let ObserverIndex' := eval simpl in (ObserverIndex ASig) in
-    let ObserverDomCod' := eval simpl in (ObserverDomCod ASig) in
-    let obsIdxB := eval simpl in
-    (@Build_BoundedString (List.map obsID obsSigs) obsIdx _) in
-        eapply SharpenStep;
-      [ eapply (refineADT_BuildADT_ReplaceObserver
-                  mutDefs obsDefs obsIdxB
-                  (@Build_obsDef Rep'
-                                 {| obsID := obsIdx;
-                                    obsDom := fst (ObserverDomCod' obsIdxB);
-                                    obsCod := snd (ObserverDomCod' obsIdxB)
-                                 |}
-                                 obsBod))
-      | ];
-      cbv beta in *; simpl in * .
+    let A := match goal with  |- Sharpened ?A => constr:(A) end in
+    lazymatch A with
+      | @BuildADT ?Rep' ?mutSigs ?obsSigs ?mutDefs ?obsDefs
+        => let ASig := constr:(BuildADTSig mutSigs obsSigs) in
+           let MutatorIndex' := (eval simpl in (MutatorIndex ASig)) in
+           let ObserverIndex' := (eval simpl in (ObserverIndex ASig)) in
+           let ObserverDomCod' := (eval simpl in (ObserverDomCod ASig)) in
+           let obsIdxB := (eval simpl in (@Build_BoundedString (List.map obsID obsSigs) obsIdx _)) in
+           eapply SharpenStep;
+             [ eapply (refineADT_BuildADT_ReplaceObserver_generic_ex
+                         mutDefs obsDefs obsIdxB
+                         (@Build_obsDef Rep'
+                                        {| obsID := obsIdx;
+                                           obsDom := fst (ObserverDomCod' obsIdxB);
+                                           obsCod := snd (ObserverDomCod' obsIdxB)
+                                        |}
+                                        obsBod))
+             | ]
+    end;
+  cbv beta in *; simpl in * .
+
+  Tactic Notation "hone''" "∑-observer" constr(obsIdx) "using" open_constr(obsBod) :=
+    let A := match goal with  |- Sharpened ?A => constr:(A) end in
+    lazymatch A with
+      | @BuildADT ?Rep' ?mutSigs ?obsSigs ?mutDefs ?obsDefs
+        => let RepInv := match (eval hnf in Rep') with sig ?P => constr:(P) end in
+           let ASig := constr:(BuildADTSig mutSigs obsSigs) in
+           let MutatorIndex' := (eval simpl in (MutatorIndex ASig)) in
+           let ObserverIndex' := (eval simpl in (ObserverIndex ASig)) in
+           let ObserverDomCod' := (eval simpl in (ObserverDomCod ASig)) in
+           let obsIdxB := (eval simpl in (@Build_BoundedString (List.map obsID obsSigs) obsIdx _)) in
+           eapply SharpenStep;
+             [ eapply (refineADT_BuildADT_ReplaceObserver_sigma
+                         mutDefs obsDefs obsIdxB
+                         (@Build_obsDef Rep'
+                                        {| obsID := obsIdx;
+                                           obsDom := fst (ObserverDomCod' obsIdxB);
+                                           obsCod := snd (ObserverDomCod' obsIdxB)
+                                        |}
+                                        obsBod))
+             | ]
+    end;
+  cbv beta in *; simpl in * .
+
+  Tactic Notation "hone''" "∑-observer" constr(obsIdx) :=
+    hone'' ∑-observer obsIdx using _.
+
+  Tactic Notation "hone''" "observer" constr(obsIdx) "under" constr(refineADT_with_SiR) "using" open_constr(obsBod) :=
+    hone'' observer obsIdx using obsBod;
+  [ let H' := fresh "SiR" in
+    pose proof refineADT_with_SiR as H'; revert H';
+    refine (refineADT_SiR_elim _);
+    intro H';
+    exists H'
+  | ].
+
 
   Tactic Notation "hone''" "observer" constr(obsIdx) :=
     hone'' observer obsIdx using _.
+
+  Tactic Notation "hone''" "observer" constr(obsIdx) "under" constr(refineADT_with_SiR) :=
+    hone'' observer obsIdx under refineADT_with_SiR using _.
 
   Tactic Notation "hone''" "mutator" constr(mutIdx) "using" open_constr(mutBod) :=
     let A :=
@@ -135,13 +157,71 @@ Section MinMaxExample.
                                                  mutBod
                                 )); cbv beta in *; simpl in * .
 
+  Definition remove_forall_eq A x B (P : A -> B -> Prop) : pointwise_relation _ impl (fun z => forall y : A, y = x -> P y z) (P x).
+  Proof.
+    repeat intro; subst; eauto.
+  Defined.
+  Definition remove_forall_eq' A x B (P : A -> B -> Prop) : pointwise_relation _ impl (P x) (fun z => forall y : A, y = x -> P y z).
+  Proof.
+    repeat intro; subst; eauto.
+  Defined.
+  Goal forall A B (x : A) (P : _ -> _ -> Prop),
+         refine { n : B | forall y, y = x -> P y n }
+                { n : B | P x n }.
+  Proof.
+
+    intros.
+    setoid_rewrite (@remove_forall_eq' _ _ _).
+    (* Anomaly: Uncaught exception Reduction.NotConvertible. Please report. *)
+
+
   Definition MinPlusMaxImpl (defaultValue : nat)
   : Sharpened MinPlusMaxSpec.
   Proof.
     (** Add a MinMax instance to the representation so we can delegate to it. *)
     hone representation using delegateADTSiR.
     (** Implement the MinPlusMax Observer. *)
-      hone' observer "MinPlusMax"%string using
+    hone'' ∑-observer "MinPlusMax"%string.
+    intros.
+    destruct_head sig; subst.
+    unfold two_op_spec.
+    unfold delegateADTSiR; simpl.
+
+
+    intros.
+    pose proof (@remove_forall_eq' _ x _ P).
+    setoid_rewrite H.
+    repeat intro.
+    hnf in H; simpl in *.
+    inversion_by computes_to_inv.
+    econstructor.
+
+    setoid_rewrite remove_forall_eq'.
+
+
+    unfold ith_obligation_2; simpl.
+    eexists (fun x y => proj1_sig x = proj1_sig y).
+    repeat split; intros.
+    find_if_inside.
+    simpl.
+    destruct_head sig; subst.
+    repeat intro.
+    repeat (progress eauto || econstructor).
+    econstructor; try eassumption.
+    econstructor; trivial.
+    inversion_by computes_to_inv.
+    econstructor; [ | refine (PickComputes _ v _) ].
+    Print computes_to.
+    SearchAbout computes_to Pick.
+    reflexivity.
+
+    destruct refineMinMax as [SiR ? ?].
+
+    pose proof refineMinMax as H'; revert H'.
+    refine (refineADT_SiR_elim _).
+    unfold ith_obligation_2; simpl.
+    intros.
+    hone' observer "MinPlusMax"%string using
       (fun (r : {nr : multiset * Rep MinMaxImpl | MinMaxSiR (fst nr) (snd nr)}) n =>
          (min <- (callObs MinMaxImpl "Min" (snd (proj1_sig r)) n) ;
           max <- (callObs MinMaxImpl "Max" (snd (proj1_sig r)) n);
@@ -217,14 +297,6 @@ Section MinMaxExample.
 
       unfold two_op_spec.
 
-      Definition remove_forall_eq A x B (P : A -> B -> Prop) : pointwise_relation _ impl (fun z => forall y : A, y = x -> P y z) (P x).
-      Proof.
-        repeat intro; subst; eauto.
-      Defined.
-      Definition remove_forall_eq' A x B (P : A -> B -> Prop) : pointwise_relation _ impl (P x) (fun z => forall y : A, y = x -> P y z).
-      Proof.
-        repeat intro; subst; eauto.
-      Defined.
 
       setoid_rewrite remove_forall_eq'.
 
