@@ -1,6 +1,6 @@
 Require Import String Omega List Coq.Sets.Uniset Coq.Sets.Multiset.
 Require Import FunctionalExtensionality.
-Require Export ADT ADTRefinement ADTCache ADTRepInv Pick ADTHide.
+Require Export Computation ADT ADTRefinement Pick ADTNotation.
 
 Generalizable All Variables.
 Set Implicit Arguments.
@@ -106,13 +106,13 @@ Section BookStoreExamples.
   Definition BookStorePick : ADT BookStoreSig :=
     ADTRep BookStoreRefRep `[
              def "PlaceOrder" `[ r `: rep , n `: nat ]` : rep :=
-               {r' | PlaceOrderSpec r n r'} ,
+               {r' | PlaceOrderSpec r n r'}%comp ,
              def "AddBook" `[ r `: rep , b `: Book ]` : rep :=
-               {r' | AddBookSpec r b r'} ;
+               {r' | AddBookSpec r b r'}%comp ;
              def "GetTitles" `[ r `: rep , author `: string ]` : (list string) :=
-               {titles | GetTitlesSpec r author titles} ,
+               {titles | GetTitlesSpec r author titles}%comp ,
              def "NumOrders" `[ r `: rep , author `: string ]` : nat :=
-               {numtitles | NumOrdersSpec r author numtitles}
+               {numtitles | NumOrdersSpec r author numtitles}%comp
          ]` .
 
 Definition Ref_SiR
@@ -126,7 +126,9 @@ Definition Ref_SiR
   Definition BookStore :
     Sharpened BookStorePick.
   Proof.
-    hone' representation using Ref_SiR.
+    hone representation using Ref_SiR.
+    simpl absMutatorMethod. unfold ith_obligation_2, ith_obligation_1.
+    simpl.
   Admitted.
 
 End BookStoreExamples.

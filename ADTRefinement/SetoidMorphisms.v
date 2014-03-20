@@ -1,6 +1,9 @@
 Require Import Common Computation ADT Ensembles.
 Require Export ADTRefinement.Core.
 
+(* Definitions for integrating [refineADT] into the setoid
+   rewriting framework. *)
+
 Generalizable All Variables.
 Set Implicit Arguments.
 
@@ -114,9 +117,9 @@ Lemma refineADT_Build_ADT_Rep Sig oldRep newRep
    eapply (@refinesADT Sig A B SiR);
      unfold id, pointwise_relation in *; simpl in *; intros; eauto.
  Qed.
+
  (* Thankfully, we can register a number of different refinements
     which follow from [refineADT_Build_ADT_Rep] as [Parametric Morphism]s. *)
-
 
 (* Refining Observers is a valid ADT refinement. *)
 

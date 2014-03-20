@@ -1,7 +1,8 @@
-Require Import Common String ADT ADTRefinement.Specs.
+Require Import Common String ADT ADTRefinement.Specs ADTNotation.
 Require Import ADTRefinement ADTCache ADTRepInv Pick ADTHide DelegateMethods.
 Require Import ADTExamples.BinaryOperationSpec ADTExamples.CombineBinaryOperationsSpec
-        ADTRefinement.BuildADTRefinements ADTRefinement.BuildADTSetoidMorphisms.
+        ADTRefinement.BuildADTRefinements.HoneRepresentation ADTRefinement.GeneralBuildADTRefinements
+        ADTRefinement.BuildADTSetoidMorphisms.
 
 Section MinMaxExample.
 
@@ -84,7 +85,7 @@ Section MinMaxExample.
     let obsIdxB := eval simpl in
     (@Build_BoundedString (List.map obsID obsSigs) obsIdx _) in
         eapply SharpenStep;
-      [ eapply (refineADT_BuildADT_ReplaceObserver_generic_ex
+      [ eapply (refineADT_BuildADT_ReplaceObserver
                   mutDefs obsDefs obsIdxB
                   (@Build_obsDef Rep'
                                  {| obsID := obsIdx;
@@ -134,27 +135,11 @@ Section MinMaxExample.
                                                  mutBod
                                 )); cbv beta in *; simpl in * .
 
-  Definition callObs {mutSigs obsSigs}
-             (adt : ADT (BuildADTSig mutSigs obsSigs))
-             (idx : String.string) 
-             {Bound : StringBound idx (List.map obsID obsSigs)} :=
-  ObserverMethods adt {| bounded_s := idx |}.
-
-  Arguments callObs [mutSigs] [obsSigs] adt idx%string [Bound] / _ _ .
-
-  Definition callMut {mutSigs obsSigs}
-             (adt : ADT (BuildADTSig mutSigs obsSigs))
-             (idx : String.string) 
-             {Bound : StringBound idx (List.map mutID mutSigs)} :=
-  MutatorMethods adt {| bounded_s := idx |}.
-
-  Arguments callMut [mutSigs] [obsSigs] adt idx%string [Bound] / _ _ .
-
   Definition MinPlusMaxImpl (defaultValue : nat)
   : Sharpened MinPlusMaxSpec.
   Proof.
     (** Add a MinMax instance to the representation so we can delegate to it. *)
-    hone' representation using delegateADTSiR.
+    hone representation using delegateADTSiR.
     (** Implement the MinPlusMax Observer. *)
       hone' observer "MinPlusMax"%string using
       (fun (r : {nr : multiset * Rep MinMaxImpl | MinMaxSiR (fst nr) (snd nr)}) n =>
@@ -173,7 +158,7 @@ Section MinMaxExample.
       econstructor; intros; subst; econstructor.
       unfold two_op_spec; eauto.
       intros; rewrite (refineObs_m {|bounded_s := "Max" |} _ _ n SiR_m_adt); simpl; reflexivity.
-    (* TODO: Implement the Insert Mutator. *)      
+    (* TODO: Implement the Insert Mutator. *)
     hone' mutator "Insert"%string using
           (fun (r : {nr : multiset * Rep MinMaxImpl | MinMaxSiR (fst nr) (snd nr)}) x =>
              r1 <- callMut MinPlusMaxSpec "Insert" (fst (proj1_sig r)) x;

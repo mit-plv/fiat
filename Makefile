@@ -7,10 +7,15 @@ MODULES    := \
 	Computation/Refinements/General \
 	Computation/Refinements/Inline \
 	Computation \
-	ilist \
 	ADT \
 	ADTSig \
 	ADTHide \
+	ADTNotation/StringBound \
+	ADTNotation/BuildADTSig \
+	ADTNotation/ilist \
+	ADTNotation/BuildADT \
+	ADTNotation/BuildADTReplaceMethods \
+	ADTNotation \
 	ADTRefinement/Specs \
 	ADTRefinement/Pick \
 	ADTRefinement/Core \
@@ -18,8 +23,14 @@ MODULES    := \
 	ADTRefinement/SetoidMorphisms \
 	ADTRefinement/BuildADTSetoidMorphisms \
 	ADTRefinement/GeneralRefinements \
-	ADTRefinement/BuildADTRefinements \
+	ADTRefinement/GeneralBuildADTRefinements \
 	ADTRefinement/DelegateMethods \
+	ADTRefinement/Refinements/HoneRepresentation \
+	ADTRefinement/Refinements/HonePickRepresentation \
+	ADTRefinement/Refinements/SimplifyRep \
+	ADTRefinement/Refinements \
+	ADTRefinement/BuildADTRefinements/HoneRepresentation \
+	ADTRefinement/BuildADTRefinements \
 	ADTRefinement \
 	ADTRepInv \
 	ADTCache \

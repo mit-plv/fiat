@@ -1,6 +1,6 @@
 Require Import String Omega List.
 Require Import FunctionalExtensionality.
-Require Export ADT ADTRefinement ADTCache ADTRepInv ADTExamples.BinaryOperationSpec
+Require Export ADT ADTRefinement ADTCache ADTNotation ADTRepInv ADTExamples.BinaryOperationSpec
         ADTExamples.BinaryOperationImpl ADTExamples.BinaryOperationRefinements.
 
 Generalizable All Variables.
@@ -197,7 +197,7 @@ Section MinCollectionExamples.
 
   Goal (forall b, MutatorMethods (proj1_sig (MinCollectionCached' 0)) () = b).
     simpl.
-    unfold simplifyMutatorMethods; simpl.
+    unfold simplifyMutatorMethod; simpl.
   Abort.
 
   Fixpoint BuildList n :=

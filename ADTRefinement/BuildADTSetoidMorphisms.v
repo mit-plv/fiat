@@ -1,10 +1,13 @@
-Require Import Common Computation ADT Ensembles.
+Require Import ADT ADTNotation.
 Require Export ADTRefinement.Core ADTRefinement.SetoidMorphisms.
+
+(* A notation-friendly version of the setoid morphisms
+   infrastructure for ADT refinement. *)
 
 Generalizable All Variables.
 Set Implicit Arguments.
 
-Lemma refineADT_BuildADT_Rep mutSigs obsSigs oldRep newRep
+Theorem refineADT_BuildADT_Rep mutSigs obsSigs oldRep newRep
       (SiR : oldRep -> newRep -> Prop)
 : respectful_hetero _ _ _ _
       (fun oldMuts newMuts =>
