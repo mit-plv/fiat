@@ -191,40 +191,6 @@ Section BuildADTRefinements.
     eapply refineADT_BuildADT_ReplaceObserver_generic_ex; repeat (eassumption || esplit).
   Qed.
 
-  Lemma refineADT_BuildADT_ReplaceObserver_sigma
-        (RepT : Type)
-        (RepInv : RepT -> Prop)
-        `{forall x, IsHProp (RepInv x)}
-        (mutSigs : list mutSig)
-        (obsSigs : list obsSig)
-        (mutDefs : ilist (@mutDef (sig RepInv)) mutSigs)
-        (obsDefs : ilist (@obsDef (sig RepInv)) obsSigs)
-        (idx : BoundedString (List.map obsID obsSigs))
-        (newDef : obsDef (nth (findIndex obsSig_eq obsSigs idx)
-                              obsSigs ("null" : rep × () → ())%obsSig))
-  : refineObserver (fun x y => proj1_sig x = proj1_sig y)
-                   (obsBody (ith obsSig_eq obsDefs idx _
-                                 (@Build_obsDef (sig RepInv) ("null" : rep × () → ()) (fun r _ => ret tt))
-                   ))
-                   (obsBody newDef)
-    -> refineADT
-         (BuildADT mutDefs obsDefs)
-         (ADTReplaceObsDef mutDefs obsDefs idx newDef).
-  Proof.
-    intro H'.
-    eapply refineADT_BuildADT_ReplaceObserver_generic_ex.
-    eexists (fun x y => proj1_sig x = proj1_sig y).
-    repeat split; intros;
-    try solve [ eauto
-              | hnf; intros;
-                destruct_head sig; subst;
-                repeat intro;
-                match goal with
-                  | [ x : _, y : _ |- _ ] => destruct (@allpath_hprop _ _ x y)
-                end;
-                repeat (eauto || econstructor) ].
-  Qed.
-
   Lemma refineADT_BuildADT_ReplaceObserver
             (Rep : Type)
             (mutSigs : list mutSig)
@@ -249,7 +215,6 @@ Section BuildADTRefinements.
 
   Lemma refineADT_BuildADT_ReplaceObserver_eq
             (Rep : Type)
-            (SiR : Rep -> Rep -> Prop)
             (mutSigs : list mutSig)
             (obsSigs : list obsSig)
             (mutDefs : ilist (@mutDef Rep) mutSigs)
@@ -267,6 +232,30 @@ Section BuildADTRefinements.
   Proof.
     eapply refineADT_BuildADT_ReplaceObserver;
     simpl; unfold refine; intros; subst; eauto.
+  Qed.
+
+  Lemma refineADT_BuildADT_ReplaceObserver_sigma
+        (RepT : Type)
+        (RepInv : RepT -> Prop)
+        (mutSigs : list mutSig)
+        (obsSigs : list obsSig)
+        (mutDefs : ilist (@mutDef (sig RepInv)) mutSigs)
+        (obsDefs : ilist (@obsDef (sig RepInv)) obsSigs)
+        (idx : BoundedString (List.map obsID obsSigs))
+        (newDef : obsDef (nth (findIndex obsSig_eq obsSigs idx)
+                              obsSigs ("null" : rep × () → ())%obsSig))
+  : refineObserver (fun x y => proj1_sig x = proj1_sig y)
+                   (obsBody (ith obsSig_eq obsDefs idx _
+                                 (@Build_obsDef (sig RepInv) ("null" : rep × () → ()) (fun r _ => ret tt))
+                   ))
+                   (obsBody newDef)
+    -> refineADT
+         (BuildADT mutDefs obsDefs)
+         (ADTReplaceObsDef mutDefs obsDefs idx newDef).
+  Proof.
+    intro H'.
+    eapply refineADT_BuildADT_ReplaceObserver_eq.
+    simpl in *; intros; subst; eauto.
   Qed.
 
 End BuildADTRefinements.
