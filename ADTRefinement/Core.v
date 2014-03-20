@@ -71,7 +71,8 @@ Notation "c ↝ v" := (computes_to c v) (at level 70).
     used to be callable should still be callable, and we don't care
     about the other methods. *)
 
-Inductive refineADT {Sig} : ADT Sig -> ADT Sig -> Prop :=
+Inductive refineADT {Sig} :
+  ADT Sig -> ADT Sig -> Prop :=
 | refinesADT :
     forall A B SiR,
       (forall idx : MutatorIndex Sig,

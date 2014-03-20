@@ -23,7 +23,16 @@ Local Ltac t_refine :=
                | progress specialize_all_ways ].
 
 Section general_refine_lemmas.
-  
+
+  Lemma refine_under_bind X Y (f g : X -> Comp Y) x
+        (eqv_f_g : forall x, refine (f x) (g x))
+  : refine (Bind x f) (Bind x g).
+  Proof.
+    unfold refine; simpl in *; hnf; intros. 
+    inversion_by computes_to_inv; econstructor; eauto.
+    eapply eqv_f_g; eauto.
+  Qed.
+
   Lemma refineEquiv_is_computational {A} {c} (CompC : @is_computational A c)
   : @refineEquiv _ c (ret (is_computational_val CompC)).
   Proof.
@@ -61,7 +70,7 @@ Section general_refine_lemmas.
 
   Definition refineEquiv_split_ex A B
              (P : A -> Prop) (P' : A -> B -> Prop)
-  : @refineEquiv _ 
+  : @refineEquiv _
                  { b | exists a, P a /\ P' a b }%comp
                  (a <- { a | P a /\ exists b, P' a b };
                   { b | P' a b })%comp.
@@ -69,14 +78,14 @@ Section general_refine_lemmas.
 
   Definition refineEquiv_pick_contr_ret A (P : A -> Prop)
              (x : A) (H : unique P x)
-  : @refineEquiv _ 
+  : @refineEquiv _
                  { y | P y }
                  (ret x).
   Proof. t_refine. Qed.
 
-  Definition refineEquiv_pick_eq 
+  Definition refineEquiv_pick_eq
              A (x : A)
-  : @refineEquiv _ 
+  : @refineEquiv _
                  { y | y = x }%comp
                  (ret x).
   Proof. t_refine. Qed.
@@ -93,7 +102,7 @@ Section general_refine_lemmas.
                     ret (f a))%comp.
   Proof. t_refine. Qed.
 
-  Definition refineEquiv_split_func_ex2 
+  Definition refineEquiv_split_func_ex2
              A A' B (P : A -> Prop) (P' : A' -> Prop)
              (f : A -> A' -> B)
   : refineEquiv { b | exists a, P a /\ exists a', P' a' /\ b = f a a'}

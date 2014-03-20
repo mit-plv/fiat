@@ -28,46 +28,20 @@ Section MinMaxExample.
   Variable MinMaxImpl : ADT MinMaxSig.
   Variable refineMinMax : refineADT MinMaxSpec MinMaxImpl.
 
-  Lemma extract_MinMaxSiR :
+  Definition MinMaxSiR (or : multiset) (nr : Rep MinMaxImpl) :=
     exists SiR : multiset -> Rep MinMaxImpl -> Prop,
+      SiR or nr /\
       (forall idx : ObserverIndex MinMaxSig,
          refineObserver SiR (ObserverMethods MinMaxSpec idx)
                         (ObserverMethods MinMaxImpl idx)) /\
             (forall idx : MutatorIndex MinMaxSig,
                refineMutator SiR (MutatorMethods MinMaxSpec idx)
                              (MutatorMethods MinMaxImpl idx)).
-  Proof.
-    inversion refineMinMax; subst; eauto.
-  Defined.
 
-  Definition foo idx :
-    fst (ObserverDomCod (CombTwoOpCollectionSig "MinPlusMax") idx) ->
-    nat.
-  Proof.
-    destruct idx; inversion s_bounded.
-    simpl.
-    caseEq (obsSig_eq ("MinPlusMax" : rep × nat → nat) bounded_s); eauto.
-    elimtype False.
-    inversion sbound; simpl in *; subst.
-    unfold obsSig_eq in H; find_if_inside; eauto; discriminate.
-    eauto.
-  Defined.
-
-  Definition bar idx :
-    nat ->
-    snd (ObserverDomCod (CombTwoOpCollectionSig "MinPlusMax") idx).
-  Proof.
-    destruct idx; inversion s_bounded.
-    simpl.
-    caseEq (obsSig_eq ("MinPlusMax" : rep × nat → nat) bounded_s); eauto.
-    elimtype False.
-    inversion sbound; simpl in *; subst.
-    unfold obsSig_eq in H; find_if_inside; eauto; discriminate.
-    eauto.
-  Defined.
-
-  Definition delegateADTSiR (or : multiset) (nr : multiset * Rep MinMaxImpl) :=
-    or = fst nr.
+  Definition delegateADTSiR (or : multiset)
+             (nr : { nr : multiset * Rep MinMaxImpl
+                   | MinMaxSiR (fst nr) (snd nr)}) :=
+    or = fst (proj1_sig nr).
 
   Ltac autorefine :=
     unfold repInvSiR in *|-*;
@@ -160,19 +134,53 @@ Section MinMaxExample.
                                                  mutBod
                                 )); cbv beta in *; simpl in * .
 
-  Arguments delegateADTSiR or nr / .
+  Definition callObs {mutSigs obsSigs}
+             (adt : ADT (BuildADTSig mutSigs obsSigs))
+             (idx : String.string) 
+             {Bound : StringBound idx (List.map obsID obsSigs)} :=
+  ObserverMethods adt {| bounded_s := idx |}.
+
+  Arguments callObs [mutSigs] [obsSigs] adt idx%string [Bound] / _ _ .
+
+  Definition callMut {mutSigs obsSigs}
+             (adt : ADT (BuildADTSig mutSigs obsSigs))
+             (idx : String.string) 
+             {Bound : StringBound idx (List.map mutID mutSigs)} :=
+  MutatorMethods adt {| bounded_s := idx |}.
+
+  Arguments callMut [mutSigs] [obsSigs] adt idx%string [Bound] / _ _ .
 
   Definition MinPlusMaxImpl (defaultValue : nat)
   : Sharpened MinPlusMaxSpec.
   Proof.
     (** Add a MinMax instance to the representation so we can delegate to it. *)
     hone' representation using delegateADTSiR.
-    (* Implement the Insert Mutator.  *)
-    hone'' mutator "Insert"%string using
-          (fun r x =>
-           r1 <- MutatorMethods MinPlusMaxSpec {| bounded_s := "Insert"%string |} (fst r) x;
-           r2 <- MutatorMethods MinMaxImpl {|bounded_s := "Insert"%string |} (snd r) x;
-           ret (r1, r2)).
+    (** Implement the MinPlusMax Observer. *)
+      hone' observer "MinPlusMax"%string using
+      (fun (r : {nr : multiset * Rep MinMaxImpl | MinMaxSiR (fst nr) (snd nr)}) n =>
+         (min <- (callObs MinMaxImpl "Min" (snd (proj1_sig r)) n) ;
+          max <- (callObs MinMaxImpl "Max" (snd (proj1_sig r)) n);
+          ret (min + max))%comp).
+      intros; subst.
+      destruct r_n as [ [m adt] [SiR [SiR_m_adt [refineObs_m refineMut_m ] ] ] ].
+      unfold delegateADTSiR; simpl.
+      rewrite <- (refineObs_m {|bounded_s := "Min" |} _ _ n SiR_m_adt); simpl.
+      rewrite <- refine_under_bind with (f := fun min =>
+                                         (max <- {n' : nat | bin_op_spec ge defaultSpec m n n'};
+      ret (min + max))).
+      rewrite <- refineEquiv_split_func_ex2.
+      hnf; intros; inversion_by computes_to_inv; subst.
+      econstructor; intros; subst; econstructor.
+      unfold two_op_spec; eauto.
+      intros; rewrite (refineObs_m {|bounded_s := "Max" |} _ _ n SiR_m_adt); simpl; reflexivity.
+    (* TODO: Implement the Insert Mutator. *)      
+    hone' mutator "Insert"%string using
+          (fun (r : {nr : multiset * Rep MinMaxImpl | MinMaxSiR (fst nr) (snd nr)}) x =>
+             r1 <- callMut MinPlusMaxSpec "Insert" (fst (proj1_sig r)) x;
+           r2 <- callMut MinMaxImpl "Insert" (snd (proj1_sig r)) x;
+           ret (ex_intro (fun nr => MinMaxSiR (fst nr) (snd nr)) (r1, r2) _ )).
+    intros; subst.
+    simpl.
     - destruct extract_MinMaxSiR as [MinMaxSiR [refineMinMaxObs refineMinMaxMut] ].
       eapply refineADT_BuildADT_Rep with
       (SiR := fun (or nr : Rep MinPlusMaxSpec * Rep MinMaxImpl) =>
@@ -279,10 +287,10 @@ let P := match goal with |- ex ?P => constr:(P) end in
      r2 <- MutatorMethods MinMaxImpl idx (snd r) x;
                        ret (r1, r2);
      ObserverMethods := fun
-                          (idx : ObserverIndex
-                                   (CombTwoOpCollectionSig "MinPlusMax"))
-                          (r : Rep MinPlusMaxSpec * Rep MinMaxImpl)
-                          n =>
+                         (idx : ObserverIndex
+                                  (CombTwoOpCollectionSig "MinPlusMax"))
+                         (r : Rep MinPlusMaxSpec * Rep MinMaxImpl)
+                         n =>
                          (min <- (ObserverMethods MinMaxImpl
                                                   {|bounded_s := "Min"%string |} (snd r) (foo _ n));
                           max <- (ObserverMethods MinMaxImpl

@@ -79,15 +79,6 @@ Section monad_refine.
     split; intro; apply unit_bind.
   Qed.
 
-  Lemma refineEquiv_under_bind X Y (f g : X -> Comp Y) x
-        (eqv_f_g : forall x, refineEquiv (f x) (g x))
-  : refineEquiv (Bind x f)
-                (Bind x g).
-  Proof.
-    split; unfold refine; simpl in *; intros; eapply computes_under_bind;
-    intros; eauto; split; eapply eqv_f_g.
-  Qed.
-
 End monad_refine.
 
 Create HintDb refine_monad discriminated.
