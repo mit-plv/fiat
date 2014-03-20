@@ -85,7 +85,7 @@ Section MinMaxExample.
     let obsIdxB := eval simpl in
     (@Build_BoundedString (List.map obsID obsSigs) obsIdx _) in
         eapply SharpenStep;
-      [ eapply (refineADT_BuildADT_ReplaceObserver
+      [ eapply (refineADT_BuildADT_ReplaceObserver_generic_ex
                   mutDefs obsDefs obsIdxB
                   (@Build_obsDef Rep'
                                  {| obsID := obsIdx;
@@ -141,7 +141,10 @@ Section MinMaxExample.
     (** Add a MinMax instance to the representation so we can delegate to it. *)
     hone representation using delegateADTSiR.
     (** Implement the MinPlusMax Observer. *)
-      hone' observer "MinPlusMax"%string using
+    hone'' observer "MinPlusMax"%string.
+    unfold ith_obligation_2; simpl.
+    intros.
+    hone' observer "MinPlusMax"%string using
       (fun (r : {nr : multiset * Rep MinMaxImpl | MinMaxSiR (fst nr) (snd nr)}) n =>
          (min <- (callObs MinMaxImpl "Min" (snd (proj1_sig r)) n) ;
           max <- (callObs MinMaxImpl "Max" (snd (proj1_sig r)) n);
