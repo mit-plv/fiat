@@ -1,6 +1,6 @@
 Require Export Common Computation ADTSig ADT ADTNotation.ilist
         ADTNotation.BuildADTSig ADTNotation.BuildADT.
-Require Import Ensembles StringBound String List.
+Require Import Ensembles ADTNotation.StringBound String List.
 
 (* Definitions for replacing method bodies of ADTs built
    from [BuildADT] . *)
@@ -43,7 +43,7 @@ Section ReplaceMethods.
 
 End ReplaceMethods.
 
-(* Always simplify method replacement when the index and new 
+(* Always simplify method replacement when the index and new
    body are specified. *)
 
 Arguments replaceMutDef [_ _] _ idx%string newDef%mutDef / .

@@ -1,5 +1,5 @@
 Require Export Common Computation ADTSig ADT ADTNotation.ilist ADTNotation.BuildADTSig.
-Require Import Ensembles StringBound.
+Require Import Ensembles ADTNotation.StringBound.
 
 (* Notations for ADTs. *)
 
