@@ -360,6 +360,12 @@ Ltac clearbodies :=
            | [ H := _ |- _ ] => clearbody H
          end.
 
+Ltac subst_body :=
+  repeat match goal with
+           | [ H := _ |- _ ] => subst H
+         end.
+
+(** TODO: Maybe we should replace uses of this with [case_eq], which the stdlib defined for us? *)
 Ltac caseEq x := generalize (refl_equal x); pattern x at -1; case x; intros.
 
 (* Lifting forall and pointwise relations to multiple arguments. *)

@@ -147,9 +147,7 @@ Section general_refine_lemmas.
   : pointwise_relation _ impl (fun z => forall y : A, x = y -> P y z) (P x).
   Proof. t_refine. Qed.
 
-  Definition refineEquiv_pick_computes_to A
-             (P : A -> Prop)
-             (c : Comp A)
+  Definition refineEquiv_pick_computes_to A (c : Comp A)
   : refineEquiv { v | c ↝ v } c.
   Proof. t_refine. Qed.
 End general_refine_lemmas.
