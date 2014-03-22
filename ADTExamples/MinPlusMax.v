@@ -44,6 +44,16 @@ Section MinMaxExample.
                           P SiR
                           -> type_SiR P (@refinesADT _ A B SiR H0 H1).
 
+  Global Instance trunc_type_SiR {Sig A B} (P : _ -> Prop)
+         `{forall R, IsHProp (P R)}
+         rH
+  : IsHProp (@type_SiR Sig A B P rH).
+  Proof.
+    apply hprop_allpath.
+    intros x y.
+    destruct x.
+    inversion y.
+
   Definition MinMaxSiR (or : Rep MinMaxSpec) (nr : Rep MinMaxImpl) (H : refineADT MinMaxSpec MinMaxImpl) :=
     inhabited (type_SiR (fun SiR => SiR or nr) H).*)
 
@@ -128,6 +138,31 @@ Section MinMaxExample.
 
   Tactic Notation "hone''" "observer" constr(obsIdx) "under" constr(refineADT_with_SiR) :=
     hone'' observer obsIdx under refineADT_with_SiR using _.
+
+  Tactic Notation "hone''" "∑-mutator" constr(mutIdx) "using" open_constr(mutBod) :=
+    let A := match goal with  |- Sharpened ?A => constr:(A) end in
+    lazymatch A with
+      | @BuildADT ?Rep' ?mutSigs ?obsSigs ?mutDefs ?obsDefs
+        => let RepInv := lazymatch (eval hnf in Rep') with sig ?P => constr:(P) end in
+           let ASig := constr:(BuildADTSig mutSigs obsSigs) in
+           let MutatorIndex' := (eval simpl in (MutatorIndex ASig)) in
+           let MutatorDom' := (eval simpl in (MutatorDom ASig)) in
+           let mutIdxB := (eval simpl in (@Build_BoundedString (List.map mutID mutSigs) mutIdx _)) in
+           eapply SharpenStep;
+             [ eapply (refineADT_BuildADT_ReplaceMutator_eq
+                         mutDefs obsDefs mutIdxB
+                         (@Build_mutDef Rep'
+                                        {| mutID := mutIdx;
+                                           mutDom := MutatorDom' mutIdxB
+                                        |}
+                                        mutBod))
+             | ]
+    end;
+  cbv beta in *; simpl in * .
+
+  Tactic Notation "hone''" "∑-mutator" constr(mutIdx) :=
+    hone'' ∑-mutator mutIdx using _.
+
 
   Tactic Notation "hone''" "mutator" constr(mutIdx) "using" open_constr(mutBod) :=
     let A :=
@@ -216,7 +251,31 @@ Section MinMaxExample.
     (** Rewrite the "Min" and then "Max" [Pick] in the MinPlusMax Observer. *)
     dubiously specialized hone ∑-observer "MinPlusMax"%string  rewriting with observer "Min"%string.
     dubiously specialized hone ∑-observer "MinPlusMax"%string  rewriting with observer "Max"%string.
-    unfold delegateADTSiR; simpl.
+    hone'' ∑-mutator "Insert"%string.
+    { intros.
+      subst.
+      set_evars; simpl in *.
+      unfold two_op_spec.
+      unfold delegateADTSiR; simpl.
+      setoid_rewrite remove_forall_eq0.
+      setoid_rewrite remove_exists_and_eq0.
+      setoid_rewrite refineEquiv_pick_eq'.
+      autorewrite with refine_monad.
+      subst_body.
+      higher_order_2_reflexivity. }
+
+      destruct refineMinMax.
+      SearchAbout refineEquiv Pick eq.
+      setoid_rewrite refineEquiv_pick_computes_to.
+      setoid_rewrite refineEquiv_split_func_ex2'.
+      subst_body.
+      rewrite_hyp.
+      simpl in *.
+      unfold delegateADTSiR; simpl; subst.
+      set_evars.
+      lazymatch goal with |- refine _ (?f _ _) => is_evar f; set (H' := f) end.
+      setoid_rewrite remove_forall_eq0.
+      se
     (* TODO: Implement the Insert Mutator. *)
     (*** HERE *)
     (** Idea: do it the same way we split out the picks in the observer *)
