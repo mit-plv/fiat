@@ -5,7 +5,7 @@ Generalizable All Variables.
 Set Implicit Arguments.
 
 (* To derive an ADT interactively from a specification [spec], we can
-   build a dependent product [ {adt | refineADT spec adt} ]. The
+   build a dependent product [ {adt : _ & refineADT spec adt} ]. The
    derivation flow has the form:
 
    1. Apply a refinement.
@@ -27,7 +27,7 @@ Set Implicit Arguments.
    knives), so I'm carrying on the naming convention with a
    'Sharpened' notation for the dependent products. *)
 
-Notation Sharpened spec := {adt | refineADT spec adt}.
+Notation Sharpened spec := {adt : _ & refineADT spec adt}.
 
 (* A single refinement step. *)
 Definition SharpenStep Sig adt :
@@ -37,11 +37,14 @@ Definition SharpenStep Sig adt :
     Sharpened adt.
 Proof.
   intros adt' refineA SpecA';
-  eexists (proj1_sig SpecA'); rewrite refineA; exact (proj2_sig SpecA').
+  eexists (projT1 SpecA').
+  (* rewrite refineA. *)
+  eapply transitivityT; [ eassumption | ].
+  exact (projT2 SpecA').
 Defined.
 
 (* A tactic for finishing a derivation. Probably needs a better name.*)
-Tactic Notation "finish" "sharpening" := eexists; reflexivity.
+Tactic Notation "finish" "sharpening" := eexists; solve [ reflexivity | eapply reflexivityT ].
 
 (* Honing tactic for refining the observer method with the specified index.
      This version of the tactic takes the new implementation as an argument. *)

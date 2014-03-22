@@ -48,7 +48,7 @@ Section MinCollectionExamples.
 
   Definition MinCollection (defaultValue : nat) :
     { Rep : ADT NatBinOpSig
-    | refineADT NatLower Rep }.
+    & refineADT NatLower Rep }.
   Proof.
     eexists.
     apply refines_NatBinOp with
@@ -120,7 +120,7 @@ Section MinCollectionExamples.
   Defined.
 
   (* Show the term derived above as a sanity check. *)
-  Goal (forall b, MutatorMethods (proj1_sig (MinCollectionCached 0)) () = b).
+  Goal (forall b, MutatorMethods (projT1 (MinCollectionCached 0)) () = b).
     simpl.
   Abort.
 
@@ -195,7 +195,7 @@ Section MinCollectionExamples.
     finish sharpening.
   Defined.
 
-  Goal (forall b, MutatorMethods (proj1_sig (MinCollectionCached' 0)) () = b).
+  Goal (forall b, MutatorMethods (projT1 (MinCollectionCached' 0)) () = b).
     simpl.
     unfold simplifyMutatorMethod; simpl.
   Abort.
@@ -207,14 +207,15 @@ Section MinCollectionExamples.
     end.
 
   Definition MinCollectionADT :=
-    ObserverMethods (proj1_sig (MinCollection 7000)) () (BuildList 2000) 11.
+    ObserverMethods (projT1 (MinCollection 7000)) () (BuildList 2000) 11.
   Definition MinCollectionCachedADT :=
-    ObserverMethods (proj1_sig (MinCollectionCached 7000)) ()
+    ObserverMethods (projT1 (MinCollectionCached 7000)) ()
                     (Some 0) 11.
 
-  Time Eval compute in MinCollectionCachedADT.
-  Time Eval compute in MinCollectionADT.
-
+  Time Eval compute in MinCollectionCachedADT. (* Finished transaction in 0. secs (0.00599999999999u,0.s) *)
+  Time Eval compute in MinCollectionADT. (* Finished transaction in 4. secs (4.511u,0.s) *)
+  Time Eval lazy in MinCollectionCachedADT. (* Finished transaction in 0. secs (0.000999999999991u,0.s) *)
+  Time Eval lazy in MinCollectionADT. (* Finished transaction in 0. secs (0.028u,0.s) *)
 End MinCollectionExamples.
 
 

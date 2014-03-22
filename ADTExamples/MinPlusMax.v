@@ -85,7 +85,7 @@ Section MinMaxExample.
            let ObserverDomCod' := (eval simpl in (ObserverDomCod ASig)) in
            let obsIdxB := (eval simpl in (@Build_BoundedString (List.map obsID obsSigs) obsIdx _)) in
            eapply SharpenStep;
-             [ eapply (refineADT_BuildADT_ReplaceObserver_generic_ex
+             [ eapply (refineADT_BuildADT_ReplaceObserver_generic
                          mutDefs obsDefs obsIdxB
                          (@Build_obsDef Rep'
                                         {| obsID := obsIdx;
@@ -125,11 +125,12 @@ Section MinMaxExample.
 
   Tactic Notation "hone''" "observer" constr(obsIdx) "under" constr(refineADT_with_SiR) "using" open_constr(obsBod) :=
     hone'' observer obsIdx using obsBod;
-  [ let H' := fresh "SiR" in
+  [ (*let H' := fresh "SiR" in
     pose proof refineADT_with_SiR as H'; revert H';
     refine (refineADT_SiR_elim _);
     intro H';
-    exists H'
+    exists H'*)
+    exists (SiR refineADT_with_SiR)
   | ].
 
 
@@ -263,7 +264,7 @@ Section MinMaxExample.
       autorewrite with refine_monad.
       subst_body.
       higher_order_2_reflexivity. }
-
+     (*
       destruct refineMinMax.
       SearchAbout refineEquiv Pick eq.
       setoid_rewrite refineEquiv_pick_computes_to.
@@ -450,13 +451,13 @@ let P := match goal with |- ex ?P => constr:(P) end in
       simpl; unfold getObsDef; simpl; intros; inversion_by computes_to_inv; eauto.
       eexists x0; split; eauto.
       generalize (refineMinMaxObs {|bounded_s := "Max" |} _ _ _ H1 _ H2).
-      simpl; unfold getObsDef; simpl; intros; inversion_by computes_to_inv; eauto.
+      simpl; unfold getObsDef; simpl; intros; inversion_by computes_to_inv; eauto. *)
     - finish sharpening.
   Defined.
 
   (* Show the term derived above as a sanity check. *)
-  Goal (forall b, ObserverMethods (proj1_sig (MinPlusMaxImpl 0))
-                                 {| bounded_s := "MinPlusMax" |} = b).
+  Goal (forall b, ObserverMethods (projT1 (MinPlusMaxImpl 0))
+                                 {| bstring := "MinPlusMax" |} = b).
     simpl.
   Abort.
 

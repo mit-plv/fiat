@@ -69,35 +69,39 @@ Notation "c ↝ v" := (computes_to c v) (at level 70).
 
 (** We map from old indices to new indices because every method that
     used to be callable should still be callable, and we don't care
-    about the other methods. *)
+    about the other methods.  We place [refineADT] in [Type] so that
+    we can extract the simulation relation. *)
 
-Inductive refineADT {Sig} (A B : ADT Sig) : Prop :=
-| refinesADT :
-    forall SiR,
-      (forall idx : MutatorIndex Sig,
-         @refineMutator
-                     (Rep A) (Rep B) SiR
-                     (MutatorDom Sig idx)
-                     (MutatorMethods A idx)
-                     (MutatorMethods B idx))
-      -> (forall idx : ObserverIndex Sig, @refineObserver
-                     (Rep A) (Rep B) SiR
-                     (fst (ObserverDomCod Sig idx))
-                     (snd (ObserverDomCod Sig idx))
-                     (ObserverMethods A idx)
-                     (ObserverMethods B idx))
-      -> refineADT A B.
-
+Record refineADT {Sig} (A B : ADT Sig) :=
+  refinesADT {
+      SiR : _;
+      ADTRefinementPreservesMutators
+      : forall idx : MutatorIndex Sig,
+          @refineMutator
+            (Rep A) (Rep B) SiR
+            (MutatorDom Sig idx)
+            (MutatorMethods A idx)
+            (MutatorMethods B idx);
+      ADTRefinementPreservesObservers
+      : forall idx : ObserverIndex Sig,
+          @refineObserver
+            (Rep A) (Rep B) SiR
+            (fst (ObserverDomCod Sig idx))
+            (snd (ObserverDomCod Sig idx))
+            (ObserverMethods A idx)
+            (ObserverMethods B idx) }.
 (** We should always just unfold [refineMutator] and [refineObserver]
     into [refine], so that we can rewrite with lemmas about [refine]. *)
 Arguments refineMutator / .
 Arguments refineObserver / .
 
-(** If our goal is a [Prop], then we can extract the simulation relation. *)
+Notation "ro ≃ rn" := (@SiR _ _ _ _ ro rn) (at level 70).
+
+(*(** If our goal is a [Prop], then we can extract the simulation relation. *)
 Definition refineADT_SiR_elim {Sig} {A B : ADT Sig} (P : Prop)
            (H : (Rep A -> Rep B -> Prop) -> P)
            (H' : refineADT A B)
 : P
   := match H' with
        | refinesADT SiR _ _ => H SiR
-     end.
+     end.*)

@@ -133,7 +133,7 @@ Lemma refinesReplaceAddCache
                              ObserverIndex_eq cachedIndex
                              (fun r _ => ret (cachedVal r))).
 Proof.
-  etransitivity. (* Example of where we can't rewrite? *)
+  eapply transitivityT. (* Example of where we can't rewrite? *)
   eapply refinesAddCachedValue.
   eapply refinesReplaceObserverCache with (repInv := fun r => cacheSpec (origRep r) (cachedVal r));
     intros; simpl.

@@ -167,7 +167,7 @@ Section BinOpRefine.
   : refineADT (NatBinOpSpec opSpec defaultSpec) (NatBinOpImpl op defaultValue).
   Proof.
     unfold NatBinOpSpec.
-    rewrite (refines_rep_pickImpl absList2Multiset).
+    eapply transitivityT; [ apply (refines_rep_pickImpl absList2Multiset) | ].
     econstructor 1 with (SiR := @eq (list nat)); simpl; intros; subst.
     setoid_rewrite refineEquiv_pick_eq'; autorewrite with refine_monad;
     interleave_autorewrite_refine_monad_with ltac:(apply refine_add_impl).

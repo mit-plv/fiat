@@ -368,6 +368,19 @@ Ltac subst_body :=
 (** TODO: Maybe we should replace uses of this with [case_eq], which the stdlib defined for us? *)
 Ltac caseEq x := generalize (refl_equal x); pattern x at -1; case x; intros.
 
+Class ReflexiveT A (R : A -> A -> Type) :=
+  reflexivityT : forall x, R x x.
+Class TransitiveT A (R : A -> A -> Type) :=
+  transitivityT : forall x y z, R x y -> R y z -> R x z.
+Class PreOrderT A (R : A -> A -> Type) :=
+  { PreOrderT_ReflexiveT :> ReflexiveT R;
+    PreOrderT_TransitiveT :> TransitiveT R }.
+Definition respectful_heteroT A B C D
+           (R : A -> B -> Type)
+           (R' : forall (x : A) (y : B), C x -> D y -> Type)
+           (f : forall x, C x) (g : forall x, D x)
+  := forall x y, R x y -> R' x y (f x) (g y).
+
 (* Lifting forall and pointwise relations to multiple arguments. *)
 Definition forall_relation2 {A : Type} {B : A -> Type} {C : forall a, B a -> Type} R :=
   forall_relation (fun a => (@forall_relation (B a) (C a) (R a))).
