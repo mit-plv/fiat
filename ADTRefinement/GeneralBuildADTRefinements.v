@@ -99,6 +99,36 @@ Section BuildADTRefinements.
     simpl; unfold refine; intros; subst; eauto.
   Qed.
 
+  Lemma refineADT_BuildADT_ReplaceMutator_sigma
+        (RepT : Type)
+        (RepInv : RepT -> Prop)
+        `{forall x, IsHProp (RepInv x)}
+        (mutSigs : list mutSig)
+        (obsSigs : list obsSig)
+        (mutDefs : ilist (@mutDef (sig RepInv)) mutSigs)
+        (obsDefs : ilist (@obsDef (sig RepInv)) obsSigs)
+        (idx : BoundedString (List.map mutID mutSigs))
+        (newDef : mutDef (nth (findIndex mutSig_eq mutSigs idx)
+                              mutSigs _))
+  : refineMutator (fun x y => proj1_sig x = proj1_sig y)
+                  (mutBody (ith mutSig_eq mutDefs idx _
+                                {| mutBody := (fun r _ => ret r) |}))
+                  (mutBody newDef)
+    -> refineADT
+         (BuildADT mutDefs obsDefs)
+         (ADTReplaceMutDef mutDefs obsDefs idx newDef).
+  Proof.
+    intro H'.
+    eapply refineADT_BuildADT_ReplaceMutator_eq.
+    simpl in *; intros; subst; eauto.
+    etransitivity; [ | eapply_hyp; reflexivity ].
+    eapply refine_bind; [ reflexivity | intro ].
+    eapply refine_flip_impl_Pick;
+      repeat intro;
+      apply path_sig_hprop;
+      assumption.
+  Qed.
+
   Lemma In_obsSigs_eq
     (obsSigs : list obsSig)
   : forall (idx : BoundedString (map obsID obsSigs))

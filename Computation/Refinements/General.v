@@ -7,20 +7,21 @@ Require Import Computation.Core Computation.Monad Computation.SetoidMorphisms.
 
 Local Arguments impl _ _ / .
 
-Local Ltac t_refine :=
-  repeat first [ progress simpl in *
-               | progress eauto
-               | eassumption
-               | solve [ reflexivity ] (* [reflexivity] is broken in the presence of a [Reflexive pointwise_relation] instance.... see https://coq.inria.fr/bugs/show_bug.cgi?id=3257 *)
-               | progress split_iff
-               | progress inversion_by computes_to_inv
-               | progress subst
-               | intro
-               | econstructor
-               | erewrite is_computational_val_unique
-               | progress destruct_head_hnf prod
-               | progress destruct_head_hnf and
-               | progress specialize_all_ways ].
+Local Ltac t_refine' :=
+  first [ progress simpl in *
+        | progress eauto
+        | eassumption
+        | solve [ reflexivity ] (* [reflexivity] is broken in the presence of a [Reflexive pointwise_relation] instance.... see https://coq.inria.fr/bugs/show_bug.cgi?id=3257 *)
+        | progress split_iff
+        | progress inversion_by computes_to_inv
+        | progress subst
+        | intro
+        | econstructor
+        | erewrite is_computational_val_unique
+        | progress destruct_head_hnf prod
+        | progress destruct_head_hnf and
+        | progress specialize_all_ways ].
+Local Ltac t_refine := repeat t_refine'.
 
 Section general_refine_lemmas.
 
@@ -145,6 +146,33 @@ Section general_refine_lemmas.
 
   Definition remove_forall_eq1' A x B (P : A -> B -> Prop)
   : pointwise_relation _ impl (fun z => forall y : A, x = y -> P y z) (P x).
+  Proof. t_refine. Qed.
+
+  (** And now with [exists] *)
+  Definition remove_exists_and_eq A B x (P : A -> B -> Prop)
+  : pointwise_relation _ iff (fun z => exists y : A, P y z /\ y = x z) (fun z => P (x z) z).
+  Proof. t_refine. Qed.
+
+  Definition remove_exists_and_eq' A B x (P : A -> B -> Prop)
+  : pointwise_relation _ iff (fun z => exists y : A, P y z /\ x z = y) (fun z => P (x z) z).
+  Proof. t_refine. Qed.
+
+
+  (** These versions are around twice as fast as the [iff] versions... not sure why. *)
+  Definition remove_exists_and_eq0 A B x (P : A -> B -> Prop)
+  : pointwise_relation _ (flip impl) (fun z => exists y : A, P y z /\ y = x z) (fun z => P (x z) z).
+  Proof. t_refine. Qed.
+
+  Definition remove_exists_and_eq1 A B x (P : A -> B -> Prop)
+  : pointwise_relation _ impl (fun z => exists y : A, P y z /\ y = x z) (fun z => P (x z) z).
+  Proof. t_refine. Qed.
+
+  Definition remove_exists_and_eq0' A B x (P : A -> B -> Prop)
+  : pointwise_relation _ (flip impl) (fun z => exists y : A, P y z /\ x z = y) (fun z => P (x z) z).
+  Proof. t_refine. Qed.
+
+  Definition remove_exists_and_eq1' A B x (P : A -> B -> Prop)
+  : pointwise_relation _ impl (fun z => exists y : A, P y z /\ x z = y) (fun z => P (x z) z).
   Proof. t_refine. Qed.
 
   Definition refineEquiv_pick_computes_to A (c : Comp A)

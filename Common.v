@@ -432,3 +432,10 @@ Existing Instance isp.
 
 Instance : forall A : hProp, IsHProp A.
 Admitted.
+
+Lemma path_sig_hprop {A} {P : A -> Prop} `{forall x : A, IsHProp (P x)}
+      (x y : sig P)
+: proj1_sig x = proj1_sig y -> x = y.
+Proof.
+  destruct_head sig; intros; subst; f_equal; apply allpath_hprop.
+Defined.
