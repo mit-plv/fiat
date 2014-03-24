@@ -1,18 +1,18 @@
-Require Import Common Computation ADT Ensembles.
-Require Export ADTRefinement.Specs.
+Require Import Common Computation ADT.Core ADT.ADTSig Ensembles.
+Require Export ADT.Specs.
 
 Generalizable All Variables.
 Set Implicit Arguments.
 
 (** Every spec is trivially implementable using [Pick]. *)
 Section pick.
-  
+
   Variable Sig : ADTSig.
   Variable rep : Type.
 
-  Variable mutatorMethodSpecs : 
+  Variable mutatorMethodSpecs :
     forall idx, mutatorMethodSpec rep (MutatorDom Sig idx).
-  Variable observerMethodSpecs : 
+  Variable observerMethodSpecs :
     forall idx, observerMethodSpec rep (fst (ObserverDomCod Sig idx)) (snd (ObserverDomCod Sig idx)).
 
   Local Obligation Tactic := econstructor; eauto.
@@ -26,7 +26,7 @@ Section pick.
           | mutatorMethodSpecs idx r x r'}%comp;
       ObserverMethods idx :=
         fun r n =>
-          { n' : snd (ObserverDomCod Sig idx) 
+          { n' : snd (ObserverDomCod Sig idx)
           | observerMethodSpecs idx r n n'}%comp
     |}.
 

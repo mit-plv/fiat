@@ -1,6 +1,6 @@
 Require Import List Common Computation ADT Ensembles ADTNotation.
-Require Import ADTRefinement.Core ADTRefinement.Specs ADTRefinement.Pick
-        ADTRefinement.SetoidMorphisms ADTRefinement.GeneralRefinements
+Require Import ADTRefinement.Core ADTRefinement.SetoidMorphisms
+        ADTRefinement.GeneralRefinements
         ADTRefinement.Refinements.HoneRepresentation
         ADTRefinement.BuildADTSetoidMorphisms.
 
@@ -77,7 +77,7 @@ End HoneRepresentation.
 (* Honing tactic for refining the ADT representation which provides
    default observer and mutator implementations. *)
 
-Tactic Notation "hone" "representation'" "using" constr(SiR') :=
+Tactic Notation "hone" "representation'" "using" open_constr(SiR') :=
   eapply SharpenStep;
   [eapply refineADT_BuildADT_Rep_default with (SiR := SiR') |
    compute [imap absMutDef absMutatorMethod

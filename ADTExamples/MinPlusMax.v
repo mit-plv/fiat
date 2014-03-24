@@ -1,5 +1,5 @@
-Require Import Common String ADT ADTRefinement.Specs ADTNotation.
-Require Import ADTRefinement ADTCache ADTRepInv Pick ADTHide DelegateMethods.
+Require Import Common String ADT ADT.Specs ADTNotation.
+Require Import ADTRefinement ADTCache ADTRepInv ADT.Pick ADT.ADTHide ADTRefinement.Refinements.DelegateMethods.
 Require Import ADTExamples.BinaryOperationSpec ADTExamples.CombineBinaryOperationsSpec
         ADTRefinement.BuildADTRefinements.HoneRepresentation ADTRefinement.GeneralBuildADTRefinements
         ADTRefinement.BuildADTSetoidMorphisms.
@@ -288,6 +288,9 @@ Section MinMaxExample.
   Definition MinPlusMaxImpl (defaultValue : nat)
   : Sharpened MinPlusMaxSpec.
   Proof.
+    unfold MinPlusMaxSpec; simpl.
+    unfold NatTwoBinOpSpec.
+    unfold two_op_spec.
     (** Add a MinMax instance to the representation so we can delegate to it. *)
     hone representation' using delegateADTSiR.
     (** Split out the [Pick]s in the MinPlusMax Observer. *)
@@ -305,12 +308,13 @@ Section MinMaxExample.
     (** Rewrite the "Min" and then "Max" [Pick] in the MinPlusMax Observer. *)
     dubiously specialized hone ∑-observer "MinPlusMax"%string  rewriting with observer "Min"%string.
     dubiously specialized hone ∑-observer "MinPlusMax"%string  rewriting with observer "Max"%string.
+
     hone'' ∑-mutator "Insert"%string using
            (fun (r : {nr : multiset * Rep MinMaxImpl | MinMaxSiR (fst nr) (snd nr)}) x =>
               (r1 <- { v : { v | callMut MinPlusMaxSpec "Insert" (fst (proj1_sig r)) x ↝ v } | True };
                r2 <- { v : { v | callMut MinMaxImpl "Insert" (snd (proj1_sig r)) x ↝ v } | True};
                ret (exist (fun nr => MinMaxSiR (fst nr) (snd nr)) (`r1, `r2) (helper_SiR_preserved _ r1 r2) ))).
-    { intros.
+
       subst.
       unfold delegateADTSiR; simpl.
       setoid_rewrite remove_forall_eq0.

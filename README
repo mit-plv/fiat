@@ -1,5 +1,88 @@
+About:
+----------------------------------------------------------------------
 This repository holds experimental work on synthesizing ADTs using Coq
 8.4pl2.  Files are compiled using the included Makefile.
+
+Organization:
+----------------------------------------------------------------------
+
+Computation/
+- Definitions of computations and refinement that form the core of ADT
+  refinement.
+  * Core.v: core definitions of computation and refinement
+  * Monad.v: proofs that computations satisfy the monad laws
+  * SetoidMorphisms.v: setoid rewriting machinery support for refinement
+  * Refinements/General.v: general refinement lemmas
+  * Refinements/Inline.v: refinements for inlining call *OUTDATED*
+
+ADT/
+- Definition of abstract data types (ADTs).
+  * ADTSig.v: definition of ADT interfaces (signatures).
+  * Core.v: core definitions of abstract data types
+  * ADTHide.v: definitions for hiding part of an ADT interface
+  * Specs.v: definition of method specification
+  * Pick.v: definition of an ADT specification with methods implemented
+    	    /specified only using Pick
+
+ADTNotation/
+- More pleasant notations for ADTs.
+  * ilist.v: definitions of the indexed lists used in our notations
+  * StringBound.v: typeclass definition of the bounded strings our
+    		   notations use for method indices
+  * BuildADTSig.v: notation for ADT signatures
+  * BuildADT.v: notation for ADT definitions
+  * BuildADTReplaceMethods.v: functions for notation-friendly method
+    			      replacement
+
+ADTRefinement/
+- Definitions of and machinery for refining ADTs from specification
+  to implementation.
+  * Core.v: definition of ADT refinement
+  * SetoidMorphisms.v: setoid rewriting machinery for ADT refinement
+  * GeneralRefinements.v: core tactics for ADT refinements:
+    			  + taking a single refinement step
+			  + replacing a mutator
+			  + replacing an observer
+  * BuildADTSetoidMorphims.v: Notation-friendly proofs of switching
+    			      representation and method refinement
+
+ADTRefinement/Refinements/
+- Definitions and tactics for more specialized refinements.
+  * HoneRepresentation.v : switching the representation type of an ADT
+  * HonePickRepresentation.v : switching the representation type of an ADT
+    			       specified using Picks
+  * SimplifyRep.v : simplifying the representation type of an ADT
+  * RefineHideADT.v: refining ADTs with interfaces hidden using the
+    		     definitions in ADTHide.v
+  * ADTCache.v: adding a cached value to the representation of an ADT
+  * ADTRepInv.v: refining an ADT under a representation invariant
+  * DelegateMethods.v: delegating funcionality to another ADT
+
+ADTRefinement/BuildADTRefinements/
+- Definitions and tactics for notation-friendly versions of more
+  specialized refinements.
+  * HoneRepresentation.v : switching the representation type of an ADT
+  * HonePickRepresentation.v : switching the representation type of an ADT
+    			       specified using Picks
+
+ADTExamples/
+- Example derivations of ADT implementations of a specification.
+  * BinOperationSpec.v: Specification of operations on a collection
+    			with a comparator.
+  * BinOperationImpl.v: Implementations of operations specified in
+    			BinOperationsSpec.v
+  * MinCollection.v: Derivation of a collection with a minimum observer.
+  * CombineBinaryOperationsSpec.v: Specification of operations combining
+    				   operations specified in BinOperationSpec.v
+  * MinPlusMax.v : Derivation of a collection with a "minimum plus maximum"
+    		   observer.
+  * Bookstore.v : Derivation of an inventory management system for a
+    		  bookstore with SQL-like operations.
+
+History:
+----------------------------------------------------------------------
+This is a partial accounting of the previous iterations of the project.
+
 
 Attempt 6:
  - Combine implementations into a single ADT.v, use [Comp] rather than

@@ -1,6 +1,6 @@
 Require Import String Omega List Coq.Sets.Uniset Coq.Sets.Multiset.
 Require Import FunctionalExtensionality.
-Require Export Computation ADT ADTRefinement Pick ADTNotation 
+Require Export Computation ADT ADTRefinement ADT.Pick ADTNotation
         ADTRefinement.BuildADTRefinements.
 
 Generalizable All Variables.

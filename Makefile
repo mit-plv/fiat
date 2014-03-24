@@ -7,34 +7,35 @@ MODULES    := \
 	Computation/Refinements/General \
 	Computation/Refinements/Inline \
 	Computation \
+	ADT/ADTSig \
+	ADT/Core \
+	ADT/ADTHide \
+	ADT/Specs \
+	ADT/Pick \
 	ADT \
-	ADTSig \
-	ADTHide \
 	ADTNotation/StringBound \
 	ADTNotation/BuildADTSig \
 	ADTNotation/ilist \
 	ADTNotation/BuildADT \
 	ADTNotation/BuildADTReplaceMethods \
 	ADTNotation \
-	ADTRefinement/Specs \
-	ADTRefinement/Pick \
 	ADTRefinement/Core \
-	ADTRefinement/RefineHideADT \
 	ADTRefinement/SetoidMorphisms \
 	ADTRefinement/BuildADTSetoidMorphisms \
 	ADTRefinement/GeneralRefinements \
 	ADTRefinement/GeneralBuildADTRefinements \
-	ADTRefinement/DelegateMethods \
+	ADTRefinement/Refinements/DelegateMethods \
 	ADTRefinement/Refinements/HoneRepresentation \
 	ADTRefinement/Refinements/HonePickRepresentation \
 	ADTRefinement/Refinements/SimplifyRep \
+	ADTRefinement/Refinements/ADTRepInv \
+	ADTRefinement/Refinements/ADTCache \
+	ADTRefinement/Refinements/RefineHideADT \
 	ADTRefinement/Refinements \
 	ADTRefinement/BuildADTRefinements/HoneRepresentation \
 	ADTRefinement/BuildADTRefinements/SimplifyRep \
 	ADTRefinement/BuildADTRefinements \
 	ADTRefinement \
-	ADTRepInv \
-	ADTCache \
 	ComputationExamples \
 	ADTExamples/CombineBinaryOperationsSpec \
 	ADTExamples/BinaryOperationSpec \

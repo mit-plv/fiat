@@ -1,2 +1,2 @@
-Require Export ADTRefinement.Core ADTRefinement.Specs ADTRefinement.Pick ADTRefinement.SetoidMorphisms
+Require Export ADTRefinement.Core ADTRefinement.SetoidMorphisms
         ADTRefinement.GeneralRefinements ADTRefinement.Refinements.

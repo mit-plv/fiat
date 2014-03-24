@@ -1,4 +1,4 @@
-Require Import Common String ADT ADTRefinement.Pick ADTRefinement.Specs ADTNotation.
+Require Import Common String ADT ADT.Pick ADT.Specs ADTNotation.
 Require Import ADTExamples.BinaryOperationSpec.
 
 Section two_op_spec.
