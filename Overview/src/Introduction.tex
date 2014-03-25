@@ -1,0 +1,25 @@
+\begin{quote}
+\it
+  ``Every block of stone has a statue inside it and it is the task of
+  the sculptor to discover it.''
+
+  \par\raggedleft--- \textup{Michelangelo}
+
+\end{quote}
+
+\section{Introduction}
+
+The client of an Abstract Data Type (ADT) is much like a patron that
+commissions a sculpture, relying on the efforts of the ADT implementor
+to provide them with a representation and (efficient) set of
+operations meeting their specifications. The correctness of the
+client hinges on the implementation satisfying the desired
+specification. For this reason, there are a multitude of techniques
+for verifying that an ADT faithfully implementing a
+specification~\cite{foo}. \BD{Why are post-facto verification techniques
+  insufficient/unsatisfying?}
+
+This project focuses on an alternative approach: enabling ADT
+designers to interactively derive implementations of a specification
+which are correct by construction- each derived implementation is
+accompanied by an proof that it satisfies its specification.
