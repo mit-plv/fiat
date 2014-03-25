@@ -121,60 +121,6 @@ Section general_refine_lemmas.
                  ret (f a a')).
   Proof. t_refine. Qed.
 
-  (** We prove some lemmas about [forall], for the benefit of setoid rewriting. *)
-  Definition remove_forall_eq A x B (P : A -> B -> Prop)
-  : pointwise_relation _ iff (fun z => forall y : A, y = x -> P y z) (P x).
-  Proof. t_refine. Qed.
-
-  Definition remove_forall_eq' A x B (P : A -> B -> Prop)
-  : pointwise_relation _ iff (fun z => forall y : A, x = y -> P y z) (P x).
-  Proof. t_refine. Qed.
-
-
-  (** These versions are around twice as fast as the [iff] versions... not sure why. *)
-  Definition remove_forall_eq0 A x B (P : A -> B -> Prop)
-  : pointwise_relation _ (flip impl) (fun z => forall y : A, y = x -> P y z) (P x).
-  Proof. t_refine. Qed.
-
-  Definition remove_forall_eq1 A x B (P : A -> B -> Prop)
-  : pointwise_relation _ impl (fun z => forall y : A, y = x -> P y z) (P x).
-  Proof. t_refine. Qed.
-
-  Definition remove_forall_eq0' A x B (P : A -> B -> Prop)
-  : pointwise_relation _ (flip impl) (fun z => forall y : A, x = y -> P y z) (P x).
-  Proof. t_refine. Qed.
-
-  Definition remove_forall_eq1' A x B (P : A -> B -> Prop)
-  : pointwise_relation _ impl (fun z => forall y : A, x = y -> P y z) (P x).
-  Proof. t_refine. Qed.
-
-  (** And now with [exists] *)
-  Definition remove_exists_and_eq A B x (P : A -> B -> Prop)
-  : pointwise_relation _ iff (fun z => exists y : A, P y z /\ y = x z) (fun z => P (x z) z).
-  Proof. t_refine. Qed.
-
-  Definition remove_exists_and_eq' A B x (P : A -> B -> Prop)
-  : pointwise_relation _ iff (fun z => exists y : A, P y z /\ x z = y) (fun z => P (x z) z).
-  Proof. t_refine. Qed.
-
-
-  (** These versions are around twice as fast as the [iff] versions... not sure why. *)
-  Definition remove_exists_and_eq0 A B x (P : A -> B -> Prop)
-  : pointwise_relation _ (flip impl) (fun z => exists y : A, P y z /\ y = x z) (fun z => P (x z) z).
-  Proof. t_refine. Qed.
-
-  Definition remove_exists_and_eq1 A B x (P : A -> B -> Prop)
-  : pointwise_relation _ impl (fun z => exists y : A, P y z /\ y = x z) (fun z => P (x z) z).
-  Proof. t_refine. Qed.
-
-  Definition remove_exists_and_eq0' A B x (P : A -> B -> Prop)
-  : pointwise_relation _ (flip impl) (fun z => exists y : A, P y z /\ x z = y) (fun z => P (x z) z).
-  Proof. t_refine. Qed.
-
-  Definition remove_exists_and_eq1' A B x (P : A -> B -> Prop)
-  : pointwise_relation _ impl (fun z => exists y : A, P y z /\ x z = y) (fun z => P (x z) z).
-  Proof. t_refine. Qed.
-
   Definition refineEquiv_pick_computes_to A (c : Comp A)
   : refineEquiv { v | c ↝ v } c.
   Proof. t_refine. Qed.

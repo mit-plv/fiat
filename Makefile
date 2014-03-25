@@ -1,6 +1,7 @@
 MODULES    := \
 	Notations \
 	Common \
+	LogicLemmas \
 	Computation/Core \
 	Computation/Monad \
 	Computation/SetoidMorphisms \
