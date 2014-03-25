@@ -16,10 +16,11 @@ Local Ltac t_refine' :=
         | progress inversion_by computes_to_inv
         | progress subst
         | intro
-        | econstructor
-        | erewrite is_computational_val_unique
         | progress destruct_head_hnf prod
         | progress destruct_head_hnf and
+        | progress destruct_head_hnf sig
+        | econstructor
+        | erewrite is_computational_val_unique
         | progress specialize_all_ways ].
 Local Ltac t_refine := repeat t_refine'.
 
@@ -137,5 +138,12 @@ Section general_refine_lemmas.
            (x <- { x : B | Q x };
             y <- { y : { y : A | P (y, x) } | True };
             ret (exist P _ (proj2_sig y))).
+  Proof. t_refine. Qed.
+
+  Lemma split_refineEquiv_proj1_sig A B P Q
+  : refineEquiv { x : { x : A * B | P x } | Q (proj1_sig x) }
+                (x <- { x | P x /\ Q x };
+                 p <- { _ : P x | True };
+                 ret (exist P x p)).
   Proof. t_refine. Qed.
 End general_refine_lemmas.
