@@ -1,5 +1,5 @@
-Require Import Common String ADT ADTRefinement.Specs ADTNotation.
-Require Import ADTRefinement ADTCache ADTRepInv Pick ADTHide DelegateMethods.
+Require Import Common String ADT ADT.Specs ADTNotation.
+Require Import ADTRefinement ADTCache ADTRepInv ADT.Pick ADT.ADTHide ADTRefinement.Refinements.DelegateMethods.
 Require Import ADTExamples.BinaryOperationSpec ADTExamples.CombineBinaryOperationsSpec
         ADTRefinement.BuildADTRefinements.HoneRepresentation ADTRefinement.GeneralBuildADTRefinements
         ADTRefinement.BuildADTSetoidMorphisms.
@@ -310,9 +310,154 @@ Section MinMaxExample.
       end
     | ].
 
+  (*   Print refineADT_BuildADT_ReplaceMutator.
+
+  Tactic Notation "hone'" "mutator" constr(mutIdx) "using" open_constr(mutBod) :=
+    let A :=
+        match goal with
+            |- Sharpened ?A => constr:(A) end in
+    let ASig := match type of A with
+                    ADT ?Sig => Sig
+                end in
+    let mutSigs :=
+        match ASig with
+            BuildADTSig ?mutSigs _ => constr:(mutSigs) end in
+    let obsSigs :=
+        match ASig with
+            BuildADTSig _ ?obsSigs => constr:(obsSigs) end in
+    let mutDefs :=
+        match A with
+            BuildADT ?mutDefs _  => constr:(mutDefs) end in
+    let obsDefs :=
+        match A with
+            BuildADT _ ?obsDefs  => constr:(obsDefs) end in
+    let Rep' :=
+        match A with
+            @BuildADT ?Rep _ _ _ _ => constr:(Rep) end in
+    let MutatorIndex' := eval simpl in (MutatorIndex ASig) in
+    let ObserverIndex' := eval simpl in (ObserverIndex ASig) in
+    let MutatorDom' := eval simpl in (MutatorDom ASig) in
+    let mutIdxB := eval simpl in
+    (@Build_BoundedString (List.map mutID mutSigs) mutIdx _) in
+      eapply SharpenStep;
+      [eapply (@refineADT_BuildADT_ReplaceMutator_eq
+                 Rep'  _ _ mutDefs obsDefs mutIdxB
+                 (@Build_mutDef Rep'
+                                {| mutID := mutIdx;
+                                   mutDom := MutatorDom' mutIdxB
+                                |}
+                                mutBod
+                                ))
+      | idtac]; cbv beta in *; simpl in * .
+
+  Definition delegateADTSiR' (or : multiset)
+             (nr : multiset * Rep MinMaxSpec) :=
+    or = fst nr /\ fst nr = snd nr.
+
+  Definition delegateADTSiR'' (or : multiset * multiset)
+             (nr : multiset * Rep MinMaxImpl) :=
+    fst or = fst nr /\ SiR (fst nr) (snd nr).
+
+  Definition MinPlusMaxImpl' (defaultValue : nat)
+  : Sharpened MinPlusMaxSpec.
+  Proof.
+    (** Add a MinMax instance to the representation so we can delegate to it. *)
+    unfold MinPlusMaxSpec, NatTwoBinOpSpec, two_op_spec.
+    (** Split out the [Pick]s in the MinPlusMax Observer. *)
+    hone' observer "MinPlusMax"%string using _.
+    { intros; subst.
+      set_evars; simpl in *.
+      setoid_rewrite refineEquiv_split_func_ex2'.
+      (* The following three tactics are seriously inscrutable. *)
+      subst_body.
+      rewrite_hyp.
+      higher_order_2_reflexivity. }
+    hone representation' using delegateADTSiR'.
+    (** Rewrite the "Min" and then "Max" [Pick] in the MinPlusMax Observer. *)
+    unfold delegateADTSiR'.
+    hone' observer "MinPlusMax"%string using _.
+    { intros; subst.
+      set_evars; simpl in *.
+      unfold refine; intros.
+      econstructor; intros; intuition; subst.
+      replace ({a : nat | bin_op_spec ge _ (fst r_n) n a})
+      with (callObs MinMaxSpec "Max" (snd r_n) n) by (rewrite H3; reflexivity).
+      replace ({a : nat | bin_op_spec le _ (fst r_n) n a})
+      with (callObs MinMaxSpec "Min" (snd r_n) n) by (rewrite H3; reflexivity).
+      subst_body.
+      eapply H0.
+    }
+    (* Rewrite insert to use MinMaxSpec's insert. *)
+    hone' mutator "Insert"%string using
+    (fun (r : multiset * multiset) x =>
+       (r1 <- callMut MinPlusMaxSpec "Insert" (fst r) x;
+        r2 <- callMut MinMaxSpec "Insert" (snd r) x;
+        ret (r1, r2))).
+    { intros; subst.
+      unfold refine; intros; inversion_by computes_to_inv; subst;
+      econstructor.
+      unfold add_spec in *.
+      econstructor; intros; intuition; subst.
+      econstructor; split.
+      econstructor; split.
+      instantiate (1 := (x, x0)); split; simpl; eauto.
+      apply functional_extensionality; simpl; eauto.
+      apply functional_extensionality; simpl; eauto.
+      intros; rewrite H1, H0, H3; auto.
+      econstructor; eauto.
+    }
+    hone representation' using delegateADTSiR''.
+    hone' observer "MinPlusMax"%string using (fun r_n n =>
+          (a <- {n' : nat | bin_op_spec le defaultSpec (snd r_n) n n'};
+           a' <- {n' : nat | bin_op_spec ge defaultSpec (snd r_n) n n'};
+           ret (a + a')))%obsDef.
+    { unfold delegateADTSiR''; intros; subst.
+      set_evars; simpl in *.
+      unfold refine; intros.
+      econstructor; intros; intuition; subst.
+      subst_body.
+      rewrite_hyp.
+      eapply H0.
+      intros.
+      simpl
+      econstructor; split; eauto.
+      simpl.
+      split
+
+      unfold add_spec oi
+      autorefine.
+
+    econstructor; intros; try reflexivity.
+
+      subst.
+      unfold delegateADTSiR; simpl.
+      setoid_rewrite remove_forall_eq0.
+      setoid_rewrite remove_exists_and_eq0.
+      setoid_rewrite refineEquiv_pick_eq'.
+      autorewrite with refine_monad.
+      eapply refine_pick.
+      intros.
+      constructor.
+      inversion_by computes_to_inv.
+      subst; simpl.
+      destruct_head sig.
+      inversion_by computes_to_inv.
+      trivial. }
+    - finish sharpening.
+  Defined.
+
+  (* Show the term derived above as a sanity check. *)
+  Goal (forall b, ObserverMethods (projT1 (MinPlusMaxImpl 0))
+                                 {| bstring := "MinPlusMax" |} = b).
+    simpl.
+  Abort. *)
+
   Definition MinPlusMaxImpl (defaultValue : nat)
   : Sharpened MinPlusMaxSpec.
   Proof.
+    unfold MinPlusMaxSpec; simpl.
+    unfold NatTwoBinOpSpec.
+    unfold two_op_spec.
     (** Add a MinMax instance to the representation so we can delegate to it. *)
     hone representation' using delegateADTSiR.
     (** Split out the [Pick]s in the MinPlusMax Observer. *)
@@ -353,7 +498,7 @@ Section MinMaxExample.
       simpl.
       setoid_rewrite and_comm.
       setoid_rewrite exists_and_comm.
-      setoid_rewrite remove_exists_eq0.
+      setoid_rewrite remove_exists_and_eq0.
 
         split; repeat
         firstorder.
