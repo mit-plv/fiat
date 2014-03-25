@@ -87,3 +87,9 @@ Proof. firstorder. Defined.
 Lemma exists_and_assoc A B Q
 : (exists x : A, (Q x /\ B)) <-> ((exists x : A, Q x) /\ B).
 Proof. firstorder. Defined.
+
+Lemma impl_exists A P Q (H : exists x : A, impl Q (P x))
+: impl Q (exists x : A, P x).
+Proof. firstorder. Defined.
+
+Hint Resolve impl_exists : typeclass_instances.

@@ -114,3 +114,11 @@ Proof.
     setoid_rewrite_hyp';
     reflexivity.
 Qed.
+
+Add Parametric Morphism A : (@computes_to A)
+    with signature
+    @refine A --> @eq A ==> impl
+      as refine_computes_to_mor.
+Proof.
+  unfold refine, impl in *; intros; auto.
+Qed.
