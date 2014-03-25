@@ -109,22 +109,34 @@ Section general_refine_lemmas.
   : refineEquiv { v | c ↝ v } c.
   Proof. t_refine. Qed.
 
-  Lemma split_refine_fst_proj1_sig A B P Q
-  : refine { x : { x : A * B | P x } | Q (fst (proj1_sig x)) }
-           (x <- { x : A | Q x };
-            y <- { y : { y : B | P (x, y) } | True };
-            ret (exist P _ (proj2_sig y))).
+  Definition refine_pick_computes_to A (c : Comp A)
+  : refine { v | c ↝ v } c.
   Proof. t_refine. Qed.
 
-  Lemma split_refine_snd_proj1_sig A B P Q
-  : refine { x : { x : A * B | P x } | Q (snd (proj1_sig x)) }
-           (x <- { x : B | Q x };
-            y <- { y : { y : A | P (y, x) } | True };
-            ret (exist P _ (proj2_sig y))).
+  Lemma split_refineEquiv_fst_proj1_sig A B P Q
+  : refineEquiv { x : { x : A * B | P x } | Q (fst (proj1_sig x)) }
+                (x <- { x : A | Q x };
+                 y <- { y : B | P (x, y) };
+                 pf <- { pf : P (x, y) | True };
+                 ret (exist P _ pf)).
   Proof. t_refine. Qed.
 
-  Lemma split_refineEquiv_proj1_sig A B P Q
-  : refineEquiv { x : { x : A * B | P x } | Q (proj1_sig x) }
+  Definition split_refine_fst_proj1_sig A B P Q
+    := proj1 (@split_refineEquiv_fst_proj1_sig A B P Q).
+
+  Lemma split_refineEquiv_snd_proj1_sig A B P Q
+  : refineEquiv { x : { x : A * B | P x } | Q (snd (proj1_sig x)) }
+                (x <- { x : B | Q x };
+                 y <- { y : A | P (y, x) };
+                 pf <- { pf : P (y, x) | True };
+                 ret (exist P _ pf)).
+  Proof. t_refine. Qed.
+
+  Definition split_refine_snd_proj1_sig A B P Q
+    := proj1 (@split_refineEquiv_snd_proj1_sig A B P Q).
+
+  Lemma split_refineEquiv_proj1_sig A P Q
+  : refineEquiv { x : { x : A | P x } | Q (proj1_sig x) }
                 (x <- { x | P x /\ Q x };
                  p <- { _ : P x | True };
                  ret (exist P x p)).

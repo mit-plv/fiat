@@ -124,9 +124,9 @@ Proof.
 Qed.
 
 Add Parametric Morphism A B
-: (fun P => refine { x : A | exists y : B, P x y })
+: (fun P => refine { x : A | exists y : B x, P x y })
     with signature
-    pointwise_relation _ (pointwise_relation _ impl) ==> @refine A ==> impl
+    forall_relation (fun _ => pointwise_relation _ impl) ==> @refine A ==> impl
       as refine_exists_mor.
 Proof.
   unfold pointwise_relation, impl, refine in *.
@@ -138,4 +138,10 @@ Proof.
   constructor.
   destruct_head ex.
   eauto.
+Qed.
+
+Instance refine_refineEquiv_subrelation A
+: subrelation (@refineEquiv A) (@refine A).
+Proof.
+  intros ? ? [? ?]; assumption.
 Qed.
