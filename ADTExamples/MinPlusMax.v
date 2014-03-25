@@ -3,7 +3,7 @@ Require Import ADTRefinement ADTCache ADTRepInv ADT.Pick ADT.ADTHide ADTRefineme
 Require Import ADTExamples.BinaryOperationSpec ADTExamples.CombineBinaryOperationsSpec
         ADTRefinement.BuildADTRefinements.HoneRepresentation ADTRefinement.GeneralBuildADTRefinements
         ADTRefinement.BuildADTSetoidMorphisms.
-Require Import LogicLemmas.
+Require Import LogicLemmas Coq.Classes.Morphisms_Prop.
 
 Section MinMaxExample.
 
@@ -310,8 +310,6 @@ Section MinMaxExample.
       end
     | ].
 
-  (*   Print refineADT_BuildADT_ReplaceMutator.
-
   Tactic Notation "hone'" "mutator" constr(mutIdx) "using" open_constr(mutBod) :=
     let A :=
         match goal with
@@ -488,17 +486,98 @@ Section MinMaxExample.
       setoid_rewrite refineEquiv_pick_computes_to.
       subst_body.
       higher_order_2_reflexivity. }
-    hone'' =-mutator "Insert"%string.
+    hone'' mutator "Insert"%string using
+    (fun r x =>
+       (r1 <- callMut MinPlusMaxSpec "Insert" (fst r) x;
+        r2 <- callMut MinMaxImpl "Insert" (snd r) x;
+        ret (r1, r2))).
+    {
+intros; subst.
+      setoid_rewrite forall_sig_prop; simpl.
+      setoid_rewrite forall_commute.
+      setoid_rewrite remove_forall_eq0.
+      setoid_rewrite exists_sig; simpl.
+      setoid_rewrite exists_and_assoc.
+      setoid_rewrite remove_exists_and_eq0.
+      unfold MinMaxSiR.
+      unfold delegateADTSiR.
+      simpl.
+      setoid_rewrite refineEquiv_pick_eq'.
+      autorewrite with refine_monad.
+      setoid_rewrite flip_a_impl_b_impl_a.
+      setoid_rewrite remove_forall_eq0.
+      setoid_rewrite remove_exists_and_eq0.
+      setoid_rewrite split_refine_fst_proj1_sig; simpl.
+      setoid_rewrite refineEquiv_pick_computes_to.
+
+      repeat intro.
+      inversion_by computes_to_inv; subst; simpl.
+      constructor; simpl; eauto.
+      eexists.
+      econstructor; simpl; eauto.
+      econstructor; simpl; eauto.
+      econstructor; simpl; eauto.
+      unfold MinMaxSiR.
+      destruct refineMinMax.
+      unfold refineMutator in *.
+
+      econstructor.
+      eauto.
+      simpl in *.
+      unfold refine; intros; inversion_by computes_to_inv; subst;
+      econstructor.
+      unfold add_spec in *.
+      econstructor; intros; intuition; subst.
+      econstructor; split.
+      econstructor; split.
+      instantiate (1 := (x, x0)); split; simpl; eauto.
+      apply functional_extensionality; simpl; eauto.
+      apply functional_extensionality; simpl; eauto.
+      intros; rewrite H1, H0, H3; auto.
+      econstructor; eauto.
+    }
+
     { intros; subst.
       set_evars.
       setoid_rewrite forall_sig_prop; simpl.
       setoid_rewrite forall_commute.
       setoid_rewrite remove_forall_eq0.
-      setoid_rewrite exists_sig.
-      simpl.
-      setoid_rewrite and_comm.
-      setoid_rewrite exists_and_comm.
+      setoid_rewrite exists_sig; simpl.
+      setoid_rewrite exists_and_assoc.
       setoid_rewrite remove_exists_and_eq0.
+      unfold MinMaxSiR.
+      unfold delegateADTSiR.
+      simpl.
+      setoid_rewrite refineEquiv_pick_eq'.
+      autorewrite with refine_monad.
+      setoid_rewrite flip_a_impl_b_impl_a.
+      setoid_rewrite remove_forall_eq0.
+      setoid_rewrite remove_exists_and_eq0.
+      setoid_rewrite split_refine_fst_proj1_sig; simpl.
+      setoid_rewrite refineEquiv_pick_computes_to.
+      eapply refine_exists_mor.
+      intros ? ?.
+      Lemma pick_exist_computes_to A B (P : B -> Type) c v (f : A -> B)
+      : impl (computes_to (v' <- c;
+                           ret (f v'))
+                          (proj1_sig v))
+             (computes_to (v' <- c
+                           ret (proj1_sig v'))
+                          (proj1_sig v)
+              /\ computes_to (v' <- c;
+                              ret (proj2_sig v')
+      SearchAbout Pick ex.
+      SearchAbout computes_to.
+
+      subst_body.
+      reflexivity.
+      reflexivity.
+      set_evars.
+      repeat intro.
+      econstructor.
+setoid_rewrite remove_forall_eq0.
+
+      setoid_rewrite remove_exists_and_eq1.
 
         split; repeat
         firstorder.
