@@ -212,6 +212,48 @@ Section ilist_imap.
 
 End ilist_imap.
 
+Section ilist_izip.
+
+  Variable A : Type. (* The indexing type. *)
+  Variable B B' D : A -> Type. (* The three types of indexed elements. *)
+  Variable f : forall a, B a -> B' a -> D a.
+  (* The function which combines the two sets of elements. *)
+
+  Fixpoint izip (As : list A)
+           (il : ilist B As) (il' : ilist B' As)
+  : ilist D As :=
+    match As as As' return ilist B As' -> ilist B' As' -> ilist D As' with
+      | a :: As' =>
+        fun il il' =>
+          icons a (f (ilist_hd il) (ilist_hd il'))
+                (izip (ilist_tail il) (ilist_tail il'))
+      | [] => fun il il' => inil D
+    end il il'.
+
+  Variable C : Type. (* The type of comparators. *)
+  Variable AC_eq : A -> C -> bool. (* Comparision between index and comparator types. *)
+
+  Lemma ith_izip :
+    forall (As : list A)
+           (il : ilist B As)
+           (il' : ilist B' As)
+           (c : C)
+           (default_A : A)
+           (default_B : B default_A)
+           (default_B' : B' default_A),
+      ith AC_eq (izip il il') c default_A (f default_B default_B') =
+      f (ith AC_eq il c default_A default_B)
+        (ith AC_eq il' c default_A default_B').
+  Proof.
+    induction As; intros; generalize (ilist_invert il);
+    intros; destruct_ex; subst; simpl.
+    unfold ith_obligation_1; auto.
+    unfold ith_obligation_2; auto.
+    find_if_inside; simpl; eauto.
+  Qed.
+
+End ilist_izip.
+
 Section ilist_replace.
 
   Variable A : Type. (* The indexing type. *)

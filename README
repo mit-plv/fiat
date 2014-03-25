@@ -17,7 +17,9 @@ Computation/
 
 ADT/
 - Definition of abstract data types (ADTs).
-  * ADTSig.v: definition of ADT interfaces (signatures).
+  * ADTSig.v: definition of ADT int
+
+$erfaces (signatures).
   * Core.v: core definitions of abstract data types
   * ADTHide.v: definitions for hiding part of an ADT interface
   * Specs.v: definition of method specification

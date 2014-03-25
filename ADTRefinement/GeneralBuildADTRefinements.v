@@ -262,7 +262,7 @@ Section BuildADTRefinements.
 
 End BuildADTRefinements.
 
-Tactic Notation "hone'" "observer" constr(obsIdx) "using" constr(obsBod) :=
+Tactic Notation "hone'" "observer" constr(obsIdx) "using" open_constr(obsBod) :=
   let A :=
       match goal with
           |- Sharpened ?A => constr:(A) end in
@@ -301,7 +301,7 @@ Tactic Notation "hone'" "observer" constr(obsIdx) "using" constr(obsBod) :=
                                 ))
       | idtac]; cbv beta in *; simpl in * .
 
-  Tactic Notation "hone'" "mutator" constr(mutIdx) "using" constr(mutBod) :=
+  Tactic Notation "hone'" "mutator" constr(mutIdx) "using" open_constr(mutBod) :=
     let A :=
         match goal with
             |- Sharpened ?A => constr:(A) end in
