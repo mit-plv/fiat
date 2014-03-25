@@ -4,6 +4,7 @@ MODULES    := \
 	LogicLemmas \
 	Computation/Core \
 	Computation/Monad \
+	Computation/Refinements/Tactics \
 	Computation/SetoidMorphisms \
 	Computation/Refinements/General \
 	Computation/Refinements/Inline \

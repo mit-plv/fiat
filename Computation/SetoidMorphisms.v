@@ -1,5 +1,5 @@
 Require Import Common.
-Require Import Computation.Core.
+Require Import Computation.Core Computation.Refinements.Tactics.
 
 (** General Lemmas about the parametric morphism behavior of
     [computes_to], [refine], and [refineEquiv]. *)
@@ -121,4 +121,21 @@ Add Parametric Morphism A : (@computes_to A)
       as refine_computes_to_mor.
 Proof.
   unfold refine, impl in *; intros; auto.
+Qed.
+
+Add Parametric Morphism A B
+: (fun P => refine { x : A | exists y : B, P x y })
+    with signature
+    pointwise_relation _ (pointwise_relation _ impl) ==> @refine A ==> impl
+      as refine_exists_mor.
+Proof.
+  unfold pointwise_relation, impl, refine in *.
+  intros.
+  specialize_all_ways.
+  repeat match goal with
+           | [ H : computes_to _ _ |- _ ] => apply computes_to_inv in H
+         end.
+  constructor.
+  destruct_head ex.
+  eauto.
 Qed.

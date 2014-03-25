@@ -1,28 +1,11 @@
 Require Import String Ensembles.
 Require Import Common.
-Require Import Computation.Core Computation.Monad Computation.SetoidMorphisms.
+Require Import Computation.Core Computation.Monad Computation.SetoidMorphisms Computation.Refinements.Tactics.
 
 (** General Lemmas about the behavior of [computes_to], [refine], and
     [refineEquiv]. *)
 
 Local Arguments impl _ _ / .
-
-Local Ltac t_refine' :=
-  first [ progress simpl in *
-        | progress eauto
-        | eassumption
-        | solve [ reflexivity ] (* [reflexivity] is broken in the presence of a [Reflexive pointwise_relation] instance.... see https://coq.inria.fr/bugs/show_bug.cgi?id=3257 *)
-        | progress split_iff
-        | progress inversion_by computes_to_inv
-        | progress subst
-        | intro
-        | progress destruct_head_hnf prod
-        | progress destruct_head_hnf and
-        | progress destruct_head_hnf sig
-        | econstructor
-        | erewrite is_computational_val_unique
-        | progress specialize_all_ways ].
-Local Ltac t_refine := repeat t_refine'.
 
 Section general_refine_lemmas.
 
