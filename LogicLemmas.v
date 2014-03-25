@@ -75,3 +75,11 @@ Proof. firstorder. Defined.
 
 Lemma flip_a_impl_b_impl_a (A : Prop) B : flip impl (B -> A) A.
 Proof. firstorder. Defined.
+
+Lemma exists_sig A P Q
+: (exists x : @sig A P, Q x) <-> (exists x y, Q (exist P x y)).
+Proof. firstorder eauto. Defined.
+
+Lemma exists_and_comm A B Q
+: (exists x : A, B /\ Q x) <-> (B /\ exists x : A, Q x).
+Proof. firstorder. Defined.
