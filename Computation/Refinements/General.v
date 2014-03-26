@@ -1,27 +1,11 @@
 Require Import String Ensembles.
 Require Import Common.
-Require Import Computation.Core Computation.Monad Computation.SetoidMorphisms.
+Require Import Computation.Core Computation.Monad Computation.SetoidMorphisms Computation.Refinements.Tactics.
 
 (** General Lemmas about the behavior of [computes_to], [refine], and
     [refineEquiv]. *)
 
 Local Arguments impl _ _ / .
-
-Local Ltac t_refine' :=
-  first [ progress simpl in *
-        | progress eauto
-        | eassumption
-        | solve [ reflexivity ] (* [reflexivity] is broken in the presence of a [Reflexive pointwise_relation] instance.... see https://coq.inria.fr/bugs/show_bug.cgi?id=3257 *)
-        | progress split_iff
-        | progress inversion_by computes_to_inv
-        | progress subst
-        | intro
-        | econstructor
-        | erewrite is_computational_val_unique
-        | progress destruct_head_hnf prod
-        | progress destruct_head_hnf and
-        | progress specialize_all_ways ].
-Local Ltac t_refine := repeat t_refine'.
 
 Section general_refine_lemmas.
 
@@ -121,31 +105,31 @@ Section general_refine_lemmas.
                  ret (f a a')).
   Proof. t_refine. Qed.
 
-  (** We prove some lemmas about [forall], for the benefit of setoid rewriting. *)
-  Definition remove_forall_eq A x B (P : A -> B -> Prop)
-  : pointwise_relation _ iff (fun z => forall y : A, y = x -> P y z) (P x).
+  Definition refineEquiv_pick_computes_to A (c : Comp A)
+  : refineEquiv { v | c ↝ v } c.
   Proof. t_refine. Qed.
 
-  Definition remove_forall_eq' A x B (P : A -> B -> Prop)
-  : pointwise_relation _ iff (fun z => forall y : A, x = y -> P y z) (P x).
+  Definition refine_pick_computes_to A (c : Comp A)
+  : refine { v | c ↝ v } c.
   Proof. t_refine. Qed.
 
-
-  (** These versions are around twice as fast as the [iff] versions... not sure why. *)
-  Definition remove_forall_eq0 A x B (P : A -> B -> Prop)
-  : pointwise_relation _ (flip impl) (fun z => forall y : A, y = x -> P y z) (P x).
+  Lemma split_refineEquiv_fst_proj1_sig A B P Q
+  : refineEquiv { x : { x : A * B | P x } | Q (fst (proj1_sig x)) }
+                (x <- { x : A | Q x };
+                 y <- { y : B | P (x, y) };
+                 pf <- { pf : P (x, y) | True };
+                 ret (exist P _ pf)).
   Proof. t_refine. Qed.
 
-  Definition remove_forall_eq1 A x B (P : A -> B -> Prop)
-  : pointwise_relation _ impl (fun z => forall y : A, y = x -> P y z) (P x).
-  Proof. t_refine. Qed.
+  Definition split_refine_fst_proj1_sig A B P Q
+    := proj1 (@split_refineEquiv_fst_proj1_sig A B P Q).
 
-  Definition remove_forall_eq0' A x B (P : A -> B -> Prop)
-  : pointwise_relation _ (flip impl) (fun z => forall y : A, x = y -> P y z) (P x).
-  Proof. t_refine. Qed.
-
-  Definition remove_forall_eq1' A x B (P : A -> B -> Prop)
-  : pointwise_relation _ impl (fun z => forall y : A, x = y -> P y z) (P x).
+  Lemma split_refineEquiv_snd_proj1_sig A B P Q
+  : refineEquiv { x : { x : A * B | P x } | Q (snd (proj1_sig x)) }
+                (x <- { x : B | Q x };
+                 y <- { y : A | P (y, x) };
+                 pf <- { pf : P (y, x) | True };
+                 ret (exist P _ pf)).
   Proof. t_refine. Qed.
 
   (** Variants for equalities with /\  *)
@@ -220,21 +204,14 @@ Section general_refine_lemmas.
                  { a | a = v /\ P a}).
   Proof. t_refine. Qed.
 
-  Definition refineEquiv_pick_computes_to A (c : Comp A)
-  : refineEquiv { v | c ↝ v } c.
+  Definition split_refine_snd_proj1_sig A B P Q
+    := proj1 (@split_refineEquiv_snd_proj1_sig A B P Q).
+
+  Lemma split_refineEquiv_proj1_sig A P Q
+  : refineEquiv { x : { x : A | P x } | Q (proj1_sig x) }
+                (x <- { x | P x /\ Q x };
+                 p <- { _ : P x | True };
+                 ret (exist P x p)).
   Proof. t_refine. Qed.
 
-  Lemma split_refine_fst_proj1_sig A B P Q
-  : refine { x : { x : A * B | P x } | Q (fst (proj1_sig x)) }
-           (x <- { x : A | Q x };
-            y <- { y : { y : B | P (x, y) } | True };
-            ret (exist P _ (proj2_sig y))).
-  Proof. t_refine. Qed.
-
-  Lemma split_refine_snd_proj1_sig A B P Q
-  : refine { x : { x : A * B | P x } | Q (snd (proj1_sig x)) }
-           (x <- { x : B | Q x };
-            y <- { y : { y : A | P (y, x) } | True };
-            ret (exist P _ (proj2_sig y))).
-  Proof. t_refine. Qed.
 End general_refine_lemmas.

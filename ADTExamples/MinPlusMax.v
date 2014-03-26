@@ -3,6 +3,7 @@ Require Import ADTRefinement ADTCache ADTRepInv ADT.Pick ADT.ADTHide ADTRefineme
 Require Import ADTExamples.BinaryOperationSpec ADTExamples.CombineBinaryOperationsSpec
         ADTRefinement.BuildADTRefinements.HoneRepresentation ADTRefinement.GeneralBuildADTRefinements
         ADTRefinement.BuildADTSetoidMorphisms.
+Require Import LogicLemmas Coq.Classes.Morphisms_Prop.
 
 Section MinMaxExample.
 
@@ -147,6 +148,28 @@ Section MinMaxExample.
     end;
   cbv beta in *; simpl in * .
 
+  Tactic Notation "hone''" "=-observer" constr(obsIdx) "using" open_constr(obsBod) :=
+    let A := match goal with  |- Sharpened ?A => constr:(A) end in
+    lazymatch A with
+      | @BuildADT ?Rep' ?mutSigs ?obsSigs ?mutDefs ?obsDefs
+        => let ASig := constr:(BuildADTSig mutSigs obsSigs) in
+           let MutatorIndex' := (eval simpl in (MutatorIndex ASig)) in
+           let ObserverIndex' := (eval simpl in (ObserverIndex ASig)) in
+           let ObserverDomCod' := (eval simpl in (ObserverDomCod ASig)) in
+           let obsIdxB := (eval simpl in (@Build_BoundedString (List.map obsID obsSigs) obsIdx _)) in
+           eapply SharpenStep;
+             [ eapply (refineADT_BuildADT_ReplaceObserver_eq
+                         mutDefs obsDefs obsIdxB
+                         (@Build_obsDef Rep'
+                                        {| obsID := obsIdx;
+                                           obsDom := fst (ObserverDomCod' obsIdxB);
+                                           obsCod := snd (ObserverDomCod' obsIdxB)
+                                        |}
+                                        obsBod))
+             | ]
+    end;
+  cbv beta in *; simpl in * .
+
   Tactic Notation "hone''" "∑-observer" constr(obsIdx) "using" open_constr(obsBod) :=
     let A := match goal with  |- Sharpened ?A => constr:(A) end in
     lazymatch A with
@@ -187,15 +210,17 @@ Section MinMaxExample.
   Tactic Notation "hone''" "observer" constr(obsIdx) :=
     hone'' observer obsIdx using _.
 
+  Tactic Notation "hone''" "=-observer" constr(obsIdx) :=
+    hone'' =-observer obsIdx using _.
+
   Tactic Notation "hone''" "observer" constr(obsIdx) "under" constr(refineADT_with_SiR) :=
     hone'' observer obsIdx under refineADT_with_SiR using _.
 
-  Tactic Notation "hone''" "∑-mutator" constr(mutIdx) "using" open_constr(mutBod) :=
+  Tactic Notation "hone''" "=-mutator" constr(mutIdx) "using" open_constr(mutBod) :=
     let A := match goal with  |- Sharpened ?A => constr:(A) end in
     lazymatch A with
       | @BuildADT ?Rep' ?mutSigs ?obsSigs ?mutDefs ?obsDefs
-        => let RepInv := lazymatch (eval hnf in Rep') with sig ?P => constr:(P) end in
-           let ASig := constr:(BuildADTSig mutSigs obsSigs) in
+        => let ASig := constr:(BuildADTSig mutSigs obsSigs) in
            let MutatorIndex' := (eval simpl in (MutatorIndex ASig)) in
            let MutatorDom' := (eval simpl in (MutatorDom ASig)) in
            let mutIdxB := (eval simpl in (@Build_BoundedString (List.map mutID mutSigs) mutIdx _)) in
@@ -211,8 +236,8 @@ Section MinMaxExample.
     end;
   cbv beta in *; simpl in * .
 
-  Tactic Notation "hone''" "∑-mutator" constr(mutIdx) :=
-    hone'' ∑-mutator mutIdx using _.
+  Tactic Notation "hone''" "=-mutator" constr(mutIdx) :=
+    hone'' =-mutator mutIdx using _.
 
 
   Tactic Notation "hone''" "mutator" constr(mutIdx) "using" open_constr(mutBod) :=
@@ -285,8 +310,6 @@ Section MinMaxExample.
       end
     | ].
 
-  Print refineADT_BuildADT_ReplaceMutator.
-
   Tactic Notation "hone'" "mutator" constr(mutIdx) "using" open_constr(mutBod) :=
     let A :=
         match goal with
@@ -348,13 +371,125 @@ Section MinMaxExample.
     (** Rewrite the "Min" and then "Max" [Pick] in the MinPlusMax Observer. *)
     dubiously specialized hone ∑-observer "MinPlusMax"%string  rewriting with observer "Min"%string.
     dubiously specialized hone ∑-observer "MinPlusMax"%string  rewriting with observer "Max"%string.
+    hone representation' using (fun x y => proj1_sig x = y).
+    hone'' =-observer "MinPlusMax"%string.
+    { intros; subst.
+      set_evars; simpl in *.
+      setoid_rewrite forall_sig_prop.
+      simpl.
+      setoid_rewrite forall_commute.
+      setoid_rewrite remove_forall_eq0.
+      unfold MinMaxSiR.
+      setoid_rewrite flip_a_impl_b_impl_a.
+      setoid_rewrite refineEquiv_pick_computes_to.
+      subst_body.
+      higher_order_2_reflexivity. }
+    hone'' mutator "Insert"%string using
+    (fun r x =>
+       (r1 <- callMut MinPlusMaxSpec "Insert" (fst r) x;
+        r2 <- callMut MinMaxImpl "Insert" (snd r) x;
+        ret (r1, r2))).
+    {
+      intros; subst.
+      (* Setoid rewriting is breaking down for me here. *)
+      (* setoid_rewrite forall_sig_prop; simpl.
+       setoid_rewrite forall_commute.
+setoid_rewrite remove_forall_eq0.
+       setoid_rewrite exists_sig; simpl.
+      setoid_rewrite exists_and_assoc.
+      setoid_rewrite remove_exists_and_eq0.
+      unfold MinMaxSiR.
+      unfold delegateADTSiR.
+      simpl.
+      setoid_rewrite refineEquiv_pick_eq'.
+      autorewrite with refine_monad.
+      setoid_rewrite flip_a_impl_b_impl_a.
+      setoid_rewrite remove_forall_eq0.
+      setoid_rewrite remove_exists_and_eq0.
+      setoid_rewrite split_refine_fst_proj1_sig; simpl.
+      setoid_rewrite refineEquiv_pick_computes_to.
+
+      repeat intro.
+      inversion_by computes_to_inv; subst; simpl.
+      constructor; simpl; eauto.
+      eexists.
+      econstructor; simpl; eauto.
+      econstructor; simpl; eauto.
+      econstructor; simpl; eauto.
+      unfold MinMaxSiR.
+      destruct refineMinMax.
+      unfold refineMutator in *.
+
+      econstructor.
+      eauto.
+      simpl in *.
+      unfold refine; intros; inversion_by computes_to_inv; subst;
+      econstructor.
+      unfold add_spec in *.
+      econstructor; intros; intuition; subst.
+      econstructor; split.
+      econstructor; split.
+      instantiate (1 := (x, x0)); split; simpl; eauto.
+      apply functional_extensionality; simpl; eauto.
+      apply functional_extensionality; simpl; eauto.
+      intros; rewrite H1, H0, H3; auto.
+      econstructor; eauto.
+    }
+
+    { intros; subst.
+      set_evars.
+      setoid_rewrite forall_sig_prop; simpl.
+      setoid_rewrite forall_commute.
+      setoid_rewrite remove_forall_eq0.
+      setoid_rewrite exists_sig; simpl.
+      setoid_rewrite exists_and_assoc.
+      setoid_rewrite remove_exists_and_eq0.
+      unfold MinMaxSiR.
+      unfold delegateADTSiR.
+      simpl.
+      setoid_rewrite refineEquiv_pick_eq'.
+      autorewrite with refine_monad.
+      setoid_rewrite flip_a_impl_b_impl_a.
+      setoid_rewrite remove_forall_eq0.
+      setoid_rewrite remove_exists_and_eq0.
+      setoid_rewrite split_refine_fst_proj1_sig; simpl.
+      setoid_rewrite refineEquiv_pick_computes_to.
+      eapply refine_exists_mor.
+      intros ? ?.
+      Lemma pick_exist_computes_to A B (P : B -> Type) c v (f : A -> B)
+      : impl (computes_to (v' <- c;
+                           ret (f v'))
+                          (proj1_sig v))
+             (computes_to (v' <- c
+                           ret (proj1_sig v'))
+                          (proj1_sig v)
+              /\ computes_to (v' <- c;
+                              ret (proj2_sig v')
+      SearchAbout Pick ex.
+      SearchAbout computes_to.
+
+      subst_body.
+      reflexivity.
+      reflexivity.
+      set_evars.
+      repeat intro.
+      econstructor.
+setoid_rewrite remove_forall_eq0.
+
+      setoid_rewrite remove_exists_and_eq1.
+
+        split; repeat
+        firstorder.
+
+    setoid_rewrite remove_forall_eq0'.
+
     hone'' ∑-mutator "Insert"%string using
            (fun (r : {nr : multiset * Rep MinMaxImpl | MinMaxSiR (fst nr) (snd nr)}) x =>
               (r1 <- { v : { v | callMut MinPlusMaxSpec "Insert" (fst (proj1_sig r)) x ↝ v } | True };
                r2 <- { v : { v | callMut MinMaxImpl "Insert" (snd (proj1_sig r)) x ↝ v } | True};
                ret (exist (fun nr => MinMaxSiR (fst nr) (snd nr)) (`r1, `r2) (helper_SiR_preserved _ r1 r2) ))).
-    admit.
-(*      subst.
+    { intros.
+      subst.
       unfold delegateADTSiR; simpl.
       setoid_rewrite remove_forall_eq0.
       setoid_rewrite remove_exists_and_eq0.
@@ -368,7 +503,9 @@ Section MinMaxExample.
       destruct_head sig.
       inversion_by computes_to_inv.
       trivial. } *)
-    - finish sharpening.
+      admit.
+    }
+      finish sharpening.
   Defined.
 
   (* An attempt to delegate to the reference spec,
@@ -385,39 +522,6 @@ Section MinMaxExample.
     fst or = fst nr /\ SiR (snd or) (snd nr).
 
   Arguments delegateImplSiR _ _ / .
-
-  Lemma refineMinMaxObs {Rep' : Type -> Type}
-        {Dom Cod : Type}
-        (proj : forall A, Rep' A -> A)
-        (SiR' : Rep' (Rep MinMaxSpec) -> Rep' (Rep MinMaxImpl) -> Prop)
-        (bod : forall (adt : ADT MinMaxSig),
-                 observerMethodType (Rep adt) Dom Cod)
-  : (forall or nr, SiR' or nr -> SiR (proj _ or) (proj _ nr))
-    -> (refineObserver SiR (bod MinMaxSpec)
-                       (bod MinMaxImpl))
-    -> refineObserver eq (absObserverMethod SiR' (fun r => (bod MinMaxSpec (proj _ r))))
-                   (fun r => bod MinMaxImpl (proj _ r)).
-  Proof.
-    simpl; intros; subst; econstructor; intros; eauto.
-    eapply H0; eauto.
-  Qed.
-
-  Lemma refineMinMaxMut {Rep' : Type -> Type}
-        {Dom : Type}
-        (proj : forall A, Rep' A -> A)
-        (SiR' : Rep' (Rep MinMaxSpec) -> Rep' (Rep MinMaxImpl) -> Prop)
-        (bod : forall (adt : ADT MinMaxSig),
-                 mutatorMethodType (Rep' (Rep adt)) Dom)
-  : (refineMutator SiR' (bod MinMaxSpec)
-                      (bod MinMaxImpl))
-    -> refineMutator eq (absMutatorMethod SiR' (bod MinMaxSpec))
-                  (bod MinMaxImpl).
-  Proof.
-    simpl; intros; subst; econstructor; intros; eauto.
-    econstructor; intros.
-    generalize (H _ _ _ H1 _ H0); intros; inversion_by computes_to_inv.
-    eauto.
-  Qed.
 
   Lemma refine_elim_forall
         {A B : Type}
@@ -445,33 +549,19 @@ Section MinMaxExample.
     erewrite (H _ _ H1 H2); econstructor.
   Qed.
 
-  Tactic Notation "swap" "representation" constr(adt) "with" constr(adt') "under" constr(SiR') :=
-    let A := match goal with  |- Sharpened ?A => constr:(A) end in
-    lazymatch A with
-      | @BuildADT ?Rep' ?mutSigs ?obsSigs ?mutDefs ?obsDefs
-        => let ASig := constr:(BuildADTSig mutSigs obsSigs) in
-           let MutatorIndex' := (eval simpl in (MutatorIndex ASig)) in
-           let ObserverIndex' := (eval simpl in (ObserverIndex ASig)) in
-           let ObserverDomCod' := (eval simpl in (ObserverDomCod ASig)) in
-           eapply SharpenStep
-    end;
-  cbv beta in *; simpl in * .
-
-
-    Lemma swap_rep 
-    : 
-      forall 
+  Lemma swap_rep
+    : forall
         Sig Sig'
         (ClientADT : ADT Sig -> ADT Sig')
         (adt adt' : ADT Sig)
         (SiR' : Rep (ClientADT adt) -> Rep (ClientADT adt') -> Prop),
       (forall mutIdx : MutatorIndex Sig',
-         refineMutator SiR' 
-                       (MutatorMethods (ClientADT adt) mutIdx) 
+         refineMutator SiR'
+                       (MutatorMethods (ClientADT adt) mutIdx)
                        (MutatorMethods (ClientADT adt') mutIdx))
       -> (forall obsIdx : ObserverIndex Sig',
-            refineObserver SiR' 
-                           (ObserverMethods (ClientADT adt) obsIdx) 
+            refineObserver SiR'
+                           (ObserverMethods (ClientADT adt) obsIdx)
                            (ObserverMethods (ClientADT adt') obsIdx))
       -> refineADT (ClientADT adt) (ClientADT adt').
     Proof.
@@ -535,6 +625,7 @@ Section MinMaxExample.
       setoid_rewrite refineEquiv_pick_pair.
       setoid_rewrite refineEquiv_pick_eq'.
       repeat setoid_rewrite refineEquiv_bind_unit.
+      (* Duplicate the call to Insert. *)
       rewrite duplicate_bind;
         [ | simpl; intros; inversion_by computes_to_inv;
           apply functional_extensionality; intros; rewrite H0, H1;
@@ -545,16 +636,16 @@ Section MinMaxExample.
     }
     (* Swap representations. *)
     eapply SharpenStep.
-    (* Do the swap. We should have a 'swap representation' 
+    (* Do the swap. We should have a 'swap representation'
        tactic  to do the pattern matching. *)
     eapply (@swap_rep MinMaxSig _
-                          (fun adt => 
+                          (fun adt =>
                              (ADTRep (multiset * Rep adt)
-      { def mut "Insert" (p : rep, n: nat) : rep := 
+      { def mut "Insert" (p : rep, n: nat) : rep :=
           a' <- (callMut MinPlusMaxSpec "Insert") (fst p) n;
           a'' <- (callMut adt "Insert") (snd p) n;
           ret (a', a'') ;
-        def obs "MinPlusMax" (p : rep, n : nat) : nat := 
+        def obs "MinPlusMax" (p : rep, n : nat) : nat :=
           {b : nat |
           (a <- (callObs adt "Min") (snd p) n ;
            a' <- (callObs adt "Max") (snd p) n;
@@ -568,14 +659,14 @@ Section MinMaxExample.
       setoid_rewrite <- (refineMutator_MinMaxSiR {| bstring := "Insert"%string |} _ _ n H1).
       rewrite H0; autorewrite with refine_monad.
       repeat (f_equiv; unfold pointwise_relation; intros;
-              autorewrite with refine_monad; simpl). 
+              autorewrite with refine_monad; simpl).
       unfold refine; intros; inversion_by computes_to_inv;
       subst; econstructor; simpl; auto.
     }
     (* Show the observer swap is valid. This is fairly boilerplate. *)
     {
       intros; simpl; unfold ith_obligation_1, ith_obligation_2; simpl.
-      destruct obsIdx as  [ ? [ [? | [ ] ] ] ]; subst; simpl. 
+      destruct obsIdx as  [ ? [ [? | [ ] ] ] ]; subst; simpl.
       intros; intuition; subst.
       repeat rewrite refineEquiv_pick_computes_to.
       rewrite (refineObserver_MinMaxSiR {| bstring := "Min"%string |} _ _ n H1).
