@@ -9,64 +9,142 @@ Local Arguments flip / .
 Local Arguments pointwise_relation / .
 
 Local Hint Extern 1 => progress simpl in *.
-Local Hint Extern 0 => progress subst.
+Local Hint Extern 1 => progress subst; eauto. (* WTF? *)
 Local Hint Extern 1 => progress destruct_head_hnf sig.
 
-(** We prove some lemmas about [forall], for the benefit of setoid rewriting. *)
-Definition remove_forall_eq A x (P : _ -> Prop)
-: iff (forall y : A, y = x -> P y) (P x).
-Proof. firstorder. Defined.
+Section forall_eq.
+  (** We prove some lemmas about [forall] and [eq], for the benefit of setoid rewriting. *)
+  Definition iff_remove_forall_eql A x (P : _ -> Prop)
+  : iff (forall y : A, y = x -> P y) (P x).
+  Proof. firstorder. Defined.
 
-Definition remove_forall_eq' A x (P : _ -> Prop)
-: iff (forall y : A, x = y -> P y) (P x).
-Proof. firstorder. Defined.
+  Definition iff_remove_forall_eqr A x (P : _ -> Prop)
+  : iff (forall y : A, x = y -> P y) (P x).
+  Proof. firstorder. Defined.
 
+  (** These versions are around twice as fast as the [iff] versions... not sure why. *)
+  Definition remove_forall_eql A x (P : _ -> Prop)
+  : flip impl (forall y : A, y = x -> P y) (P x)
+    := proj2 (@iff_remove_forall_eql A x P).
 
-(** These versions are around twice as fast as the [iff] versions... not sure why. *)
-Definition remove_forall_eq0 A x (P : _ -> Prop)
-: flip impl (forall y : A, y = x -> P y) (P x).
-Proof. firstorder. Defined.
+  Definition remove_forall_eql' A x (P : _ -> Prop)
+  : impl (forall y : A, y = x -> P y) (P x)
+    := proj1 (@iff_remove_forall_eql A x P).
 
-Definition remove_forall_eq1 A x (P : _ -> Prop)
-: impl (forall y : A, y = x -> P y) (P x).
-Proof. firstorder. Defined.
+  Definition remove_forall_eqr A x (P : _ -> Prop)
+  : flip impl (forall y : A, x = y -> P y) (P x)
+    := proj2 (@iff_remove_forall_eqr A x P).
 
-Definition remove_forall_eq0' A x (P : _ -> Prop)
-: flip impl (forall y : A, x = y -> P y) (P x).
-Proof. firstorder. Defined.
+  Definition remove_forall_eqr' A x (P : _ -> Prop)
+  : impl (forall y : A, x = y -> P y) (P x)
+    := proj1 (@iff_remove_forall_eqr A x P).
 
-Definition remove_forall_eq1' A x (P : _ -> Prop)
-: impl (forall y : A, x = y -> P y) (P x).
-Proof. firstorder. Defined.
+  Section and.
+    (** Variants for equalities with /\  *)
+    Definition iff_remove_forall_eql_and A x (P : _ -> Prop) (Q : A -> Prop)
+    : iff (forall y : A, (y = x /\ Q y) -> P y) (Q x -> P x).
+    Proof. firstorder. Qed.
 
-(** And now with [exists] *)
-Definition remove_exists_and_eq A x (P : _ -> Prop)
-: iff (exists y : A, P y /\ y = x) (P x).
-Proof. firstorder. Defined.
+    Definition iff_remove_forall_eqr_and A x (P : _ -> Prop) (Q : A -> Prop)
+    : iff (forall y : A, (x = y /\ Q y) -> P y) (Q x -> P x).
+    Proof. firstorder. Qed.
 
-Definition remove_exists_and_eq' A x (P : _ -> Prop)
-: iff (exists y : A, P y /\ x = y) (P x).
-Proof. firstorder. Defined.
+    Definition iff_remove_forall_and_eql A x (P : _ -> Prop) (Q : A -> Prop)
+    : iff (forall y : A, (Q y /\ y = x) -> P y) (Q x -> P x).
+    Proof. firstorder. Qed.
 
+    Definition iff_remove_forall_and_eqr A x (P : _ -> Prop) (Q : A -> Prop)
+    : iff (forall y : A, (Q y /\ x = y) -> P y) (Q x -> P x).
+    Proof. firstorder. Qed.
 
-(** These versions are around twice as fast as the [iff] versions... not sure why. *)
-Definition remove_exists_and_eq0 A x (P : _ -> Prop)
-: flip impl (exists y : A, P y /\ y = x) (P x).
-Proof. firstorder. Defined.
+    Definition remove_forall_eql_and A x (P : _ -> Prop) (Q : A -> Prop)
+    : flip impl (forall y : A, (y = x /\ Q y) -> P y) (Q x -> P x)
+      := proj2 (@iff_remove_forall_eql_and A x P Q).
 
-Definition remove_exists_and_eq1 A x (P : _ -> Prop)
-: impl (exists y : A, P y /\ y = x) (P x).
-Proof. firstorder. Defined.
+    Definition remove_forall_eql_and' A x (P : _ -> Prop) (Q : A -> Prop)
+    : impl (forall y : A, (y = x /\ Q y) -> P y) (Q x -> P x)
+      := proj1 (@iff_remove_forall_eql_and A x P Q).
 
-Definition remove_exists_and_eq0' A x (P : _ -> Prop)
-: flip impl (exists y : A, P y /\ x = y) (P x).
-Proof. firstorder. Defined.
+    Definition remove_forall_eqr_and A x (P : _ -> Prop) (Q : A -> Prop)
+    : flip impl (forall y : A, (x = y /\ Q y) -> P y) (Q x -> P x)
+      := proj2 (@iff_remove_forall_eqr_and A x P Q).
 
-Definition remove_exists_and_eq1' A x (P : _ -> Prop)
-: impl (exists y : A, P y /\ x = y) (P x).
-Proof. firstorder. Defined.
+    Definition remove_forall_eqr_and' A x (P : _ -> Prop) (Q : A -> Prop)
+    : impl (forall y : A, (x = y /\ Q y) -> P y) (Q x -> P x)
+      := proj1 (@iff_remove_forall_eqr_and A x P Q).
 
-Lemma forall_sig_prop A P (Q : _ -> Prop) : (forall x : @sig A P, Q x) <-> (forall x y, Q (exist P x y)).
+    Definition remove_forall_and_eql A x (P : _ -> Prop) (Q : A -> Prop)
+    : flip impl (forall y : A, (Q y /\ y = x) -> P y) (Q x -> P x)
+      := proj2 (@iff_remove_forall_and_eql A x P Q).
+
+    Definition remove_forall_and_eql' A x (P : _ -> Prop) (Q : A -> Prop)
+    : impl (forall y : A, (Q y /\ y = x) -> P y) (Q x -> P x)
+      := proj1 (@iff_remove_forall_and_eql A x P Q).
+
+    Definition remove_forall_and_eqr A x (P : _ -> Prop) (Q : A -> Prop)
+    : flip impl (forall y : A, (Q y /\ x = y) -> P y) (Q x -> P x)
+      := proj2 (@iff_remove_forall_and_eqr A x P Q).
+
+    Definition remove_forall_and_eqr' A x (P : _ -> Prop) (Q : A -> Prop)
+    : impl (forall y : A, (Q y /\ x = y) -> P y) (Q x -> P x)
+      := proj1 (@iff_remove_forall_and_eqr A x P Q).
+  End and.
+End forall_eq.
+
+Section exists_and_eq.
+  (** And now with [exists] *)
+  Definition iff_remove_exists_and_eql A x (P : _ -> Prop)
+  : iff (exists y : A, P y /\ y = x) (P x).
+  Proof. firstorder. Qed.
+
+  Definition iff_remove_exists_and_eqr A x (P : _ -> Prop)
+  : iff (exists y : A, P y /\ x = y) (P x).
+  Proof. firstorder. Defined.
+
+  Definition iff_remove_exists_eql_and A x (P : _ -> Prop)
+  : iff (exists y : A, y = x /\ P y) (P x).
+  Proof. firstorder. Qed.
+
+  Definition iff_remove_exists_eqr_and A x (P : _ -> Prop)
+  : iff (exists y : A, x = y /\ P y) (P x).
+  Proof. firstorder. Defined.
+
+  (** These versions are around twice as fast as the [iff] versions... not sure why. *)
+  Definition remove_exists_and_eql A x (P : _ -> Prop)
+  : flip impl (exists y : A, P y /\ y = x) (P x)
+    := proj2 (@iff_remove_exists_and_eql A x P).
+
+  Definition remove_exists_and_eql' A x (P : _ -> Prop)
+  : impl (exists y : A, P y /\ y = x) (P x)
+    := proj1 (@iff_remove_exists_and_eql A x P).
+
+  Definition remove_exists_and_eqr A x (P : _ -> Prop)
+  : flip impl (exists y : A, P y /\ x = y) (P x)
+    := proj2 (@iff_remove_exists_and_eqr A x P).
+
+  Definition remove_exists_and_eqr' A x (P : _ -> Prop)
+  : impl (exists y : A, P y /\ x = y) (P x)
+    := proj1 (@iff_remove_exists_and_eqr A x P).
+
+  Definition remove_exists_eql_and A x (P : _ -> Prop)
+  : flip impl (exists y : A, y = x /\ P y) (P x)
+    := proj2 (@iff_remove_exists_eql_and A x P).
+
+  Definition remove_exists_eql_and' A x (P : _ -> Prop)
+  : impl (exists y : A, y = x /\ P y) (P x)
+    := proj1 (@iff_remove_exists_eql_and A x P).
+
+  Definition remove_exists_eqr_and A x (P : _ -> Prop)
+  : flip impl (exists y : A, x = y /\ P y) (P x)
+    := proj2 (@iff_remove_exists_eqr_and A x P).
+
+  Definition remove_exists_eqr_and' A x (P : _ -> Prop)
+  : impl (exists y : A, x = y /\ P y) (P x)
+    := proj1 (@iff_remove_exists_eqr_and A x P).
+End exists_and_eq.
+
+Lemma forall_sig_prop A P (Q : _ -> Prop)
+: (forall x : @sig A P, Q x) <-> (forall x y, Q (exist P x y)).
 Proof. firstorder. Defined.
 
 Lemma forall_commute A P Q (R : forall x : A, P x -> Q x -> Prop)

@@ -362,7 +362,7 @@ Section MinMaxExample.
       set_evars; simpl in *.
       unfold two_op_spec.
       unfold delegateADTSiR; simpl.
-      setoid_rewrite remove_forall_eq0.
+      setoid_rewrite remove_forall_eql.
       setoid_rewrite refineEquiv_pick_computes_to.
       setoid_rewrite refineEquiv_split_func_ex2'.
       subst_body.
@@ -378,7 +378,7 @@ Section MinMaxExample.
       setoid_rewrite forall_sig_prop.
       simpl.
       setoid_rewrite forall_commute.
-      setoid_rewrite remove_forall_eq0.
+      setoid_rewrite remove_forall_eql.
       unfold MinMaxSiR.
       setoid_rewrite flip_a_impl_b_impl_a.
       setoid_rewrite refineEquiv_pick_computes_to.
