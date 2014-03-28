@@ -1,7 +1,15 @@
 \section{Related Work}
+
 \begin{itemize}
-\item Datatype Representation Synthesis
-\item Data Refinement in Isabelle/HOL
-\item Automatic Data Refinement
-\item SpecWare
+\item Datatype Representation Synthesis\cite{Hawkins+2011}: They have an
+  autotuner, but there's no real correctness here.
+\item Data Refinement in Isabelle/HOL\cite{Lammich+2013, Haftman+2013}
+  and Coq\cite{Cohen+2013}: The focus here is on reasoning about
+  client code: our concern is deriving correct implementations of
+  potentially complicated systems.
+\item SpecWare\cite{SpecWare}: This is in spirit the closest to
+  what we're doing. Refinement steps are justified by an extraction
+  to Isabelle/HOL, and the automation is sketchy. Their interest is in
+  deriving complicated algorithms (garbage collector). We are focusing
+  on user domains where we can leverage automation.
 \end{itemize}
