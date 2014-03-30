@@ -4,6 +4,7 @@
 \usepackage{url}
 \usepackage{bcprules}
 \usepackage{epigraph}
+\usepackage{pdfpages}
 
 \input{Preamble}
 
@@ -44,5 +45,11 @@
 \input{src/RelatedWork}
 
 \bibliography{bibliography}
+
+\cleardoublepage
+
+\appendix
+\section{The Code}
+\includepdf[pages={-}]{library.pdf}
 
 \end{document}

@@ -95,9 +95,9 @@ Overview/coqdoc.sty: all.pdf
 	cp coqdoc.sty "$@"
 
 Overview/library.pdf: Overview/library.tex Overview/coqdoc.sty
-	pdflatex Overview/library.tex
+	cd Overview; pdflatex library.tex
 
-Overview/ProjectOverview.pdf: $(shell find Overview -name "*.tex" -o -name "*.sty" -o -name "*.cls" -o -name "*.bib")
+Overview/ProjectOverview.pdf: $(shell find Overview -name "*.tex" -o -name "*.sty" -o -name "*.cls" -o -name "*.bib") Overview/library.pdf
 	cd Overview; pdflatex -interaction=batchmode -synctex=1 ProjectOverview.tex || true
 	cd Overview; bibtex ProjectOverview
 	cd Overview; pdflatex -interaction=batchmode -synctex=1 ProjectOverview.tex || true
