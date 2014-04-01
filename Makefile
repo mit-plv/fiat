@@ -54,6 +54,8 @@ MODULES    := \
 	ADTExamples/QueryStructure/QuerySpecs \
 	ADTExamples/QueryStructure/Bookstore
 
+COQDEP=coqdep
+COQDOC=coqdoc
 
 VS         := $(MODULES:%=%.v)
 VDS	   := $(MODULES:%=%.v.d)
@@ -78,13 +80,35 @@ SILENCE_COQDEP = $(SILENCE_COQDEP_$(V))
 COQDOCFLAGS=-interpolate -utf8
 
 
-.PHONY: all html clean pretty-timed pretty-timed-files
+.PHONY: all html clean pretty-timed pretty-timed-files pdf doc clean-doc
 
 all: Makefile.coq
 	$(MAKE) -f Makefile.coq
 
 html: Makefile.coq
 	$(MAKE) -f Makefile.coq html
+
+pdf: Overview/ProjectOverview.pdf Overview/library.pdf
+
+doc: pdf html
+
+all.pdf: Makefile.coq
+	$(MAKE) -f Makefile.coq COQDEP="$(COQDEP)" COQDOC="COQDOC='$(COQDOC)' ./coqdoc-latex.sh" all.pdf
+
+Overview/library.tex: all.pdf
+	cp "$<" "$@"
+
+Overview/coqdoc.sty: all.pdf
+	cp coqdoc.sty "$@"
+
+Overview/library.pdf: Overview/library.tex Overview/coqdoc.sty
+	cd Overview; pdflatex library.tex
+
+Overview/ProjectOverview.pdf: $(shell find Overview -name "*.tex" -o -name "*.sty" -o -name "*.cls" -o -name "*.bib") Overview/library.pdf
+	cd Overview; pdflatex -interaction=batchmode -synctex=1 ProjectOverview.tex || true
+	cd Overview; bibtex ProjectOverview
+	cd Overview; pdflatex -interaction=batchmode -synctex=1 ProjectOverview.tex || true
+	cd Overview; pdflatex -synctex=1 ProjectOverview.tex
 
 #pretty-timed-diff:
 #	bash ./etc/make-each-time-file.sh "$(MAKE)" "$(NEW_TIME_FILE)" "$(OLD_TIME_FILE)"
@@ -104,6 +128,11 @@ html: Makefile.coq
 Makefile.coq: Makefile $(VS)
 	coq_makefile $(VS) COQC = " $(SILENCE_COQC)\$$(TIMER) \"\$$(COQBIN)coqc\"" COQDEP = " $(SILENCE_COQDEP)\"\$$(COQBIN)coqdep\" -c" COQDOCFLAGS = "$(COQDOCFLAGS)" -arg -dont-load-proofs -R . ADTSynthesis -o Makefile.coq
 
-clean:: Makefile.coq
+clean-doc::
+	rm -rf html
+	rm -f all.pdf Overview/library.pdf Overview/ProjectOverview.pdf Overview/coqdoc.sty coqdoc.sty
+	rm -f $(shell find Overview -name "*.log" -o -name "*.aux" -o -name "*.bbl" -o -name "*.blg" -o -name "*.synctex.gz" -o -name "*.out" -o -name "*.toc"
+
+clean:: Makefile.coq clean-doc
 	$(MAKE) -f Makefile.coq clean
 	rm -f Makefile.coq .depend
