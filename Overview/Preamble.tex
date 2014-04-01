@@ -16,6 +16,11 @@
 \definecolor{HBlue}{RGB}{85,189,231}
 \definecolor{HYellow}{RGB}{255,236,65}
 
-\newcommand\AC[1]{\textcolor{DGreen}{[AC: #1]}}
-\newcommand\BD[1]{\textcolor{DPurple}{[BD: #1]}}
-\newcommand\JG[1]{\textcolor{DOrange!}{[JG: #1]}}
+\newcommand\AC[1]{\textcolor{DGreen}{[AC: #1]}} % Adam's Comments
+\newcommand\BD[1]{\textcolor{DPurple}{[BD: #1]}} % Ben's Comments
+\newcommand\JG[1]{\textcolor{DOrange!}{[JG: #1]}} % Jason's Comments
+
+\newenvironment{tabbedcodeblock}{ % For Code Blocks
+\sf\small
+\begin{tabbing}w\=w\=w\=w\=w\=w\=w\=w\=w\=w\=w\=w\=w\kill
+}{\end{tabbing}\vspace{-.1in}}
