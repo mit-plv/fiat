@@ -45,7 +45,14 @@ MODULES    := \
 	ADTExamples/BinaryOperationRefinements \
 	ADTExamples/MinCollection \
 	ADTExamples/MinPlusMax \
-	ADTExamples/Bookstore
+	ADTExamples/QueryStructure/Notations \
+	ADTExamples/QueryStructure/Heading \
+	ADTExamples/QueryStructure/Tuple \
+	ADTExamples/QueryStructure/Schema \
+	ADTExamples/QueryStructure/Relation \
+	ADTExamples/QueryStructure/QueryStructureSchema \
+	ADTExamples/QueryStructure/QuerySpecs \
+	ADTExamples/QueryStructure/Bookstore
 
 
 VS         := $(MODULES:%=%.v)

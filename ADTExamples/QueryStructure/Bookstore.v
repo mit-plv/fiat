@@ -1,34 +1,33 @@
-Require Import String Omega List Coq.Sets.Uniset Coq.Sets.Multiset.
-Require Import FunctionalExtensionality.
+Require Import String Omega List FunctionalExtensionality Ensembles.
 Require Export Computation ADT ADTRefinement ADT.Pick ADTNotation
-        ADTRefinement.BuildADTRefinements.
+        ADTRefinement.BuildADTRefinements
+        ADTExamples.QueryStructure.QueryStructureSchema.
 
 Generalizable All Variables.
 Set Implicit Arguments.
 
 Section BookStoreExamples.
 
-  (* Our bookstore has two 'tables':
-     - A list of books in the inventory
-     - A list of orders that have been placed. *)
+  (* Our bookstore has two relations (tables):
+     - The books in the inventory
+     - The orders that have been placed *)
 
-  Record Book :=
-    { Author : string;
-       Title : string;
-       ISBN : nat}.
+Definition MovieSchema :=
+  (schema <"Title" : string, ("ReleaseDate"%string : nat)%Attribute>
+   where attributes ["ReleaseDate"] depend on ["Title"])%Schema.
 
-  Hint Resolve string_dec.
+Open Scope QSSchema.
 
-  Lemma Book_eq_dec : forall o o' : Book, {o = o'} + {o <> o'}.
-    decide equality; auto with arith.
-  Qed.
-
-  Record Order := { oISBN : nat }.
-  Coercion Build_Order : nat >-> Order.
-
-  Lemma Order_eq_dec : forall o o' : Order, {o = o'} + {o <> o'}.
-    decide equality; auto with arith.
-  Qed.
+  Definition BookStore :=
+    query structure
+      [relation "Books" has
+                schema <"Author" : string,
+                        "Title" : string,
+                        "ISBN" : nat>
+                where attributes ["Title"; "Author"] depend on ["ISBN"];
+       relation "Orders" has
+                schema <"ISBN" : string,
+                        "Date" : nat> ].
 
   (* Our bookstore has two mutators:
      - [PlaceOrder] : Place an order into the 'Orders' table
@@ -39,16 +38,15 @@ Section BookStoreExamples.
      - [NumOrders] : The number of orders for a given author
    *)
 
-  Inductive BookStoreMutators : Set :=
-    PlaceOrder | AddBook.
-  Inductive BookStoreObservers : Set :=
-    GetTitles | NumOrders.
-
   (* Well, this is what we'd like to write. *)
 
   Local Open Scope ADTSig_scope.
   Local Open Scope ADT_scope.
   Local Open Scope string_scope.
+
+  Definition Book := Tuple <"Author" : string,
+                           "Title" : string,
+                           "ISBN" : nat>%Heading.
 
   Definition BookStoreSig : ADTSig :=
     ADTsignature {
@@ -58,9 +56,7 @@ Section BookStoreExamples.
         "NumOrders" : rep × string → nat
       }.
 
-  Record BookStoreRefRep :=
-    { Books : uniset Book;
-      Orders : list Order }.
+  (* Still need to reimplement specs using a better query notation.
 
   Definition PlaceOrderSpec
              (r : BookStoreRefRep) (n : nat) (r' : BookStoreRefRep) :=
@@ -128,6 +124,6 @@ Definition Ref_SiR
     Sharpened BookStorePick.
   Proof.
     hone representation' using Ref_SiR.
-  Admitted.
+  Admitted. *)
 
 End BookStoreExamples.
