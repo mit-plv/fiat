@@ -1,7 +1,7 @@
 Require Import String Omega List FunctionalExtensionality Ensembles.
 Require Export Computation ADT ADTRefinement ADT.Pick ADTNotation
         ADTRefinement.BuildADTRefinements
-        ADTExamples.QueryStructure.QueryStructureSchema.
+        QueryStructureSchema QueryStructure.
 
 Generalizable All Variables.
 Set Implicit Arguments.
@@ -18,8 +18,8 @@ Definition MovieSchema :=
 
 Open Scope QSSchema.
 
-  Definition BookStore :=
-    query structure
+  Definition BookStoreSchema :=
+    query structure schema
       [relation "Books" has
                 schema <"Author" : string,
                         "Title" : string,
@@ -28,6 +28,11 @@ Open Scope QSSchema.
        relation "Orders" has
                 schema <"ISBN" : string,
                         "Date" : nat> ].
+
+  Definition BookStore := QueryStructure BookStoreSchema.
+
+  Definition BookSchema :=
+    schemaHeading (qschemaSchema BookStoreSchema {| bstring := "Books" |}).
 
   (* Our bookstore has two mutators:
      - [PlaceOrder] : Place an order into the 'Orders' table
@@ -38,15 +43,11 @@ Open Scope QSSchema.
      - [NumOrders] : The number of orders for a given author
    *)
 
-  (* Well, this is what we'd like to write. *)
-
   Local Open Scope ADTSig_scope.
   Local Open Scope ADT_scope.
   Local Open Scope string_scope.
 
-  Definition Book := Tuple <"Author" : string,
-                           "Title" : string,
-                           "ISBN" : nat>%Heading.
+  Definition Book := Tuple BookSchema.
 
   Definition BookStoreSig : ADTSig :=
     ADTsignature {

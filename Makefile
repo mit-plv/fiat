@@ -51,6 +51,7 @@ MODULES    := \
 	ADTExamples/QueryStructure/Schema \
 	ADTExamples/QueryStructure/Relation \
 	ADTExamples/QueryStructure/QueryStructureSchema \
+	ADTExamples/QueryStructure/QueryStructure \
 	ADTExamples/QueryStructure/QuerySpecs \
 	ADTExamples/QueryStructure/Bookstore
 

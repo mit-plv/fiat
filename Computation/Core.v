@@ -40,7 +40,6 @@ End comp.
 
 Section computes_to.
 
-  (** TODO(JasonGross): Should this be [CoInductive]? *)
   Inductive computes_to : forall A, Comp A -> A -> Prop :=
   | ReturnComputes : forall A v, @computes_to A (Return v) v
   | BindComputes : forall A B comp_a f comp_a_value comp_b_value,

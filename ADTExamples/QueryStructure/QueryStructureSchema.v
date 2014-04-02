@@ -21,14 +21,17 @@ Record QueryStructureSchema :=
 (* A notation for foreign key constraints. *)
 
 Notation "'attribute' attr 'of' rel1 'references' rel2 " :=
-  (fun (rID1 rID2 : BoundedString _) (R1 : _) (R2 : _) =>
-     bstring _ rID1 = rel1%string ->
-     bstring _ rID2 = rel2%string ->
-     forall tup1,
-       rel R1 tup1 ->
-       exists tup2,
-         rel R2 tup2 /\
-         (tup1 {| bstring := attr%string|} = tup2 {| bstring := attr%string|} ))
+  (sigT (fun ids => @Relation (fst ids)
+                    -> Relation (snd ids)
+                    -> Prop)
+        ({| bstring := rel1%string|}, {| bstring := rel2%string|})
+        (fun ids (R1 : Relation (fst ids))
+             (R2 : Relation (snd ids)) =>
+           forall tup1,
+             rel R1 tup1 ->
+             exists tup2,
+               rel R2 tup2 /\
+               (tup1 {| bstring := attr%string|} = tup2 {| bstring := attr%string|} )))
   : QSSchemaConstraints_scope.
 
 (* Notations for Query Structures. *)
@@ -60,10 +63,10 @@ Definition BuildQueryStructure
                 namedSchemas defaultSchema);
      qschemaConstraints := constraints%QSSchemaConstraints |}.
 
-Notation "'query' 'structure' relList " :=
+Notation "'query' 'structure' 'schema' relList " :=
   (BuildQueryStructure relList%NamedSchema (fun _ _ _ _ => True)) : QSSchema_scope.
 
-Notation "'query' 'structure' relList 'enforcing' constraints" :=
+Notation "'query' 'structure' 'schema' relList 'enforcing' constraints" :=
   (BuildQueryStructure relList%NamedSchema constraints) : QSSchema_scope.
 
 Bind Scope QSSchema_scope with QueryStructureSchema.
