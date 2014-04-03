@@ -13,8 +13,8 @@ Record QueryStructureSchema :=
     qschemaSchema : qschemaIndex -> Schema;
     qschemaConstraints:
       forall idx idx',
-        @Relation (qschemaSchema idx)
-        -> @Relation (qschemaSchema idx')
+        Relation (qschemaSchema idx)
+        -> Relation (qschemaSchema idx')
         -> Prop
   }.
 
@@ -81,8 +81,8 @@ Defined.
   typeclass to get the typechecking to work. *)
 
 Definition ForeignKey_P rel1 rel2 attr1 attr2 tupmap
-           (R1 : @Relation rel1)
-           (R2 : @Relation rel2) :=
+           (R1 : Relation rel1)
+           (R2 : Relation rel2) :=
   forall tup1,
     rel R1 tup1 ->
     exists tup2,
@@ -98,8 +98,8 @@ Definition BuildForeignKeyConstraints
            attr1
            attr2
            {tupmap} :=
-  (existT (fun ids => @Relation (BuildQueryStructureSchema namedSchemas (fst ids))
-                      -> @Relation (BuildQueryStructureSchema namedSchemas (snd ids))
+  (existT (fun ids => Relation (BuildQueryStructureSchema namedSchemas (fst ids))
+                      -> Relation (BuildQueryStructureSchema namedSchemas (snd ids))
                     -> Prop)
           ({|bstring :=rel1; stringb := relBnd1 |},
            {|bstring :=rel2; stringb := relBnd2 |})
@@ -116,6 +116,62 @@ Notation "'attribute' attr 'of' rel1 'references' rel2 " :=
            stringb := _|}
         {| bstring := attr%string;
            stringb := _|} id) : QSSchemaConstraints_scope.
+
+Program Definition BuildQueryStructureConstraints_cons
+           (namedSchemas : list NamedSchema)
+           (idx' : sigT (fun idxs =>
+                 Relation (BuildQueryStructureSchema namedSchemas (fst idxs))
+                 -> Relation (BuildQueryStructureSchema namedSchemas (snd idxs))
+                 -> Prop) )
+           (constraints :
+              list (sigT (fun idxs =>
+                 Relation (BuildQueryStructureSchema namedSchemas (fst idxs))
+                 -> Relation (BuildQueryStructureSchema namedSchemas (snd idxs))
+                 -> Prop) ))
+           (idx : (BuildQueryStructureIndex namedSchemas *
+                   BuildQueryStructureIndex namedSchemas))
+           (HInd : Relation (BuildQueryStructureSchema namedSchemas (fst idx))
+                   -> Relation (BuildQueryStructureSchema namedSchemas (snd idx))
+                   -> Prop)
+: Relation (BuildQueryStructureSchema namedSchemas (fst idx))
+  -> Relation (BuildQueryStructureSchema namedSchemas (snd idx))
+  -> Prop :=
+  if (string_dec (bstring _ (fst (projT1 idx'))) (bstring _ (fst idx))) then
+    if (string_dec (bstring _ (snd (projT1 idx'))) (bstring _ (snd idx)) ) then
+      _ else (fun r1 r2 => HInd r1 r2)
+  else (fun r1 r2 => HInd r1 r2).
+Next Obligation.
+  simpl in *.
+  subst; apply X1.
+  erewrite BuildQueryStructureSchema_idx_eq;
+    [ eapply X
+    | simpl; rewrite H; eauto].
+  erewrite BuildQueryStructureSchema_idx_eq;
+    [ eapply X0
+    | simpl; rewrite H0; eauto].
+Defined.
+
+Fixpoint BuildQueryStructureConstraints
+(namedSchemas : list NamedSchema)
+(constraints :
+   list (sigT (fun idxs =>
+                 Relation (BuildQueryStructureSchema namedSchemas (fst idxs))
+                 -> Relation (BuildQueryStructureSchema namedSchemas (snd idxs))
+                 -> Prop) ))
+(idx : (BuildQueryStructureIndex namedSchemas *
+        BuildQueryStructureIndex namedSchemas)) {struct constraints}
+: Relation (BuildQueryStructureSchema namedSchemas (fst idx))
+  -> Relation (BuildQueryStructureSchema namedSchemas (snd idx))
+  -> Prop :=
+  match constraints with
+    | idx' :: constraints' =>
+      @BuildQueryStructureConstraints_cons
+        namedSchemas idx' constraints' idx
+      (BuildQueryStructureConstraints constraints' idx)
+    | nil => fun _ _ => True
+  end.
+
+(*
 
 Lemma BuildQueryStructureConstraints_eq
 : forall (namedSchemas : list NamedSchema)
@@ -203,14 +259,14 @@ Program Definition BuildQueryStructureConstraints
 (namedSchemas : list NamedSchema)
 (constraints :
    list (sigT (fun idxs =>
-                 @Relation (BuildQueryStructureSchema namedSchemas (fst idxs))
-                 -> @Relation (BuildQueryStructureSchema namedSchemas (snd idxs))
+                 Relation (BuildQueryStructureSchema namedSchemas (fst idxs))
+                 -> Relation (BuildQueryStructureSchema namedSchemas (snd idxs))
                  -> Prop) ))
 :
   forall (idx : (BuildQueryStructureIndex namedSchemas *
                  BuildQueryStructureIndex namedSchemas)),
-    @Relation (BuildQueryStructureSchema namedSchemas (fst idx))
-    -> @Relation (BuildQueryStructureSchema namedSchemas (snd idx))
+    Relation (BuildQueryStructureSchema namedSchemas (fst idx))
+    -> Relation (BuildQueryStructureSchema namedSchemas (snd idx))
     -> Prop :=
   fun idx =>
     ith (@BoundedStringProd_eq _ _) (siglist2ilist constraints)
@@ -223,6 +279,25 @@ Next Obligation.
   eapply BuildQueryStructureSchema_idx_eq.
   apply BuildQueryStructureConstraints_eq_snd.
 Defined.
+
+Definition BuildQueryStructureConstraints'
+(namedSchemas : list NamedSchema)
+(constraints :
+   list (sigT (fun idxs =>
+                 Relation (BuildQueryStructureSchema namedSchemas (fst idxs))
+                 -> Relation (BuildQueryStructureSchema namedSchemas (snd idxs))
+                 -> Prop) ))
+:
+  forall (idx : (BuildQueryStructureIndex namedSchemas *
+                 BuildQueryStructureIndex namedSchemas)),
+    Relation _
+    -> Relation _
+    -> Prop :=
+  fun idx =>
+    ith (@BoundedStringProd_eq _ _) (siglist2ilist constraints)
+        (bstring _ (fst idx), bstring _ (snd idx)) idx (fun _ _ => True).
+
+Print BuildQueryStructureConstraints'. *)
 
 Definition BuildQueryStructure
            (namedSchemas : list NamedSchema)
@@ -243,5 +318,12 @@ Notation "'query' 'structure' 'schema' relList 'enforcing' constraints" :=
   (BuildQueryStructure relList%NamedSchema
                        (let relListHint := Build_namedSchemaHint relList%NamedSchema in
                         constraints%QSSchemaConstraints)) : QSSchema_scope.
+
+Arguments BuildForeignKeyConstraints _ _ [_ _ _ _] _ _ / .
+Arguments BuildQueryStructureConstraints_cons [_] _ _ _ _ / _ _.
+Arguments BuildQueryStructureConstraints_cons_obligation_1 [_] _ / _ _ _ _ _ _ _ .
+Arguments eq_rect_r _ _ _ _ _ _ / .
+Arguments ForeignKey_P _ _ _ _ _ / _ _ .
+Arguments BuildQueryStructureSchema _ _ / .
 
 Bind Scope QSSchema_scope with QueryStructureSchema.
