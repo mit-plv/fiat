@@ -42,6 +42,14 @@ Section ilist.
       | inil => tt
     end.
 
+  Fixpoint siglist2ilist (sigList : list (sigT B))
+  : ilist (map (@projT1 _ B) sigList) :=
+    match sigList as sigList'
+          return ilist (map (@projT1 _ B) sigList') with
+      | nil => inil
+      | cons (existT a b) sigList' => icons b (siglist2ilist sigList')
+    end.
+
     Variable C : Type. (* The type of comparators. *)
 
     Variable AC_eq : A -> C -> bool. (* Comparision between index and comparator types. *)

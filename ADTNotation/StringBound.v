@@ -28,4 +28,8 @@ Section StringBound.
     { bstring :> string;
       stringb :> StringBound bstring Bound }.
 
+  Definition BoundedString_eq Bound
+             (bstr bstr' : BoundedString Bound) :
+    {bstring _ bstr = bstring _ bstr'} + {bstring _ bstr <> bstring _ bstr'} := string_dec (bstring _ bstr) (bstring _ bstr').
+
 End StringBound.

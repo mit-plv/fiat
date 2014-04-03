@@ -20,11 +20,11 @@ Reserved Notation "'schema' headings"
 Reserved Notation "'schema' headings 'where' constraints"
   (at level 0, headings at level 0, constraints at level 50).
 
-Reserved Notation "'query' 'structure' 'schema' relList 'enforcing' constraints"
-         (at level 0, constraints at level 50).
-
 Reserved Notation "'query' 'structure' 'schema' relList "
          (at level 0).
+
+Reserved Notation "'query' 'structure' 'schema' relList 'enforcing' constraints"
+         (at level 0, constraints at level 50).
 
 Delimit Scope Attribute_scope with Attribute.
 Delimit Scope Heading_scope with Heading.

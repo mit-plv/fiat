@@ -26,8 +26,132 @@ Open Scope QSSchema.
                         "ISBN" : nat>
                 where attributes ["Title"; "Author"] depend on ["ISBN"];
        relation "Orders" has
-                schema <"ISBN" : string,
-                        "Date" : nat> ].
+                schema <"ISBN" : nat,
+                        "Date" : nat> ] enforcing [attribute "ISBN" of "Orders" references "Books"].
+
+  Arguments BuildForeignKeyConstraints _ _ [_ _ _ _] _ _ / .
+            (* Arguments BuildQueryStructureConstraints [_] _ / _ _ _ _.
+  Arguments BuildQueryStructureConstraints_obligation_1 [_] _ _ _ _ / .
+  Arguments BuildQueryStructureConstraints_obligation_2 [_] _ _ _ _ _ / .
+  Arguments ith_obligation_2 [A B C] AC_eq [As] _ c default_A default_B [a] As' H il0 / .
+  Arguments ith_obligation_1 [A B C] _ [As] _ c default_A default_B _ / . *)
+
+  Goal (forall b,
+          qschemaConstraints
+            BookStoreSchema
+            {| bstring := "Orders" |}
+            {| bstring := "Books" |} = b).
+  Time simpl.
+  Time unfold BuildQueryStructureConstraints.
+  Time simpl BuildQueryStructureConstraints_obligation_1.
+  Time simpl BuildQueryStructureConstraints_obligation_2.
+  Time simpl BuildQueryStructureConstraints_eq_snd.
+  Time simpl BuildQueryStructureConstraints_eq_fst.
+  Time simpl siglist2ilist.
+  Time simpl eq_ind_r.
+  Time simpl eq_rect at 2.
+  Time simpl eq_rect at 1.
+  Time simpl.
+  Abort.
+  simpl.
+  unfold ith_obligation_1; simpl.
+  unfold ith_obligation_2; simpl.
+  BuildQueryStructureConstraints_obligation_1,
+  BuildQueryStructureConstraints_obligation_2.
+  unfold ith_obligation_1, ith_obligation_2; simpl.
+  unfold ith_obligation_1; simpl.
+  unfold ith_obligation_2; simpl.
+  simpl.
+
+  Definition bar :=       [relation "Books" has
+                schema <"Author" : string,
+                        "Title" : string,
+                        "ISBN" : nat>
+                where attributes ["Title"; "Author"] depend on ["ISBN"];
+       relation "Orders" has
+                schema <"ISBN" : nat,
+                        "Date" : nat> ]%NamedSchema.
+
+  Definition foo := (
+                     @BuildForeignKeyConstraints
+                       bar
+                       "Orders"%string "Books"%string _ _
+                       {| bstring := "ISBN" |} {| bstring := "ISBN" |}
+                   id).
+
+  Notation "'attribute' attr 'of' rel1 'references' rel2 " :=
+    (
+      @BuildForeignKeyConstraints
+        (@nSchemaHint _) rel1%string rel2%string _ _
+        {| bstring := attr%string;
+           stringb := _|}
+        {| bstring := attr%string;
+           stringb := _|} id).
+
+  Check (let bar' := Build_namedSchemaHint bar in
+         (attribute "ISBN" of "Orders" references "Books")).
+
+  Check (let bar' := Build_namedSchemaHint bar in
+         [attribute "ISBN" of "Orders" references "Books"]).
+
+    (fun relBnd1 relBnd2 attr1map attr2map
+         tupmap =>
+       @BuildForeignKeyConstraints
+         nSchemaHint rel1 rel2 relBnd1 relBnd2
+         (attr1map {| bstring := attr |}) (attr2map {| bstring := attr |})
+         tupmap) : QSSchemaConstraints_scope.
+
+  Notation "[ constr1 ; .. ; constrn ]" :=
+    (cons (constr1 _ _ _ id id id) .. (cons (constrn _ _ _ id id id) nil) ..).
+
+  Definition baz :=
+    let bar' := Build_namedSchemaHint bar in
+    @BuildForeignKeyConstraints
+      (@nSchemaHint _) "Orders"%string "Books"%string _ _
+      {| bstring := "ISBN"%string;
+         stringb := _|}
+    {| bstring := "ISBN"%string;
+         stringb := _|} id.
+
+  Check baz.
+    fun relBnd1 relBnd2 attr1map attr2map attr1Bnd attr2Bnd tupmap =>
+      @BuildForeignKeyConstraints
+         (@nSchemaHint bar') "Orders"%string "Books"%string relBnd1 relBnd2
+         (attr1map {| bstring := "ISBN"%string;
+                      stringb := attr1Bnd|})
+         (attr2map {| bstring := "ISBN"%string;
+                      stringb := attr1Bnd |})
+         tupmap.
+
+    (let bar' := Build_namedSchemaHint bar in
+     (attribute "ISBN" of "Orders" references "Books") (@nSchemaHint bar'))%QSSchemaConstraints.
+     in foo)%QSSchemaConstraints.
+      baz _ _).
+
+      foo id)%QSSchemaConstraints.
+
+  Check foo.
+
+  Definition foo :
+    @sigT (qschemaIndex BookStoreSchema * qschemaIndex BookStoreSchema)
+          (fun ids => @Relation (qschemaSchema BookStoreSchema (fst ids))
+                      -> @Relation (qschemaSchema BookStoreSchema (snd ids))
+                    -> Prop) :=
+    (fun qSchema =>  existT (fun ids => @Relation (qSchema (fst ids))
+                       -> @Relation (qSchema (snd ids))
+                    -> Prop)
+          ({| bstring := "Orders"%string|}, {| bstring := "Books"%string|})
+          (fun (R1 : @Relation (_ (fst _)))
+               (R2 : @Relation (_ (snd _)))
+           =>
+           forall tup1,
+             rel R1 tup1 ->
+             exists tup2,
+               rel R2 tup2 /\
+               (tup1 {| bstring := "ISBN"%string|} = tup2 {| bstring := "ISBN"%string|} ))) (qschemaSchema BookStoreSchema).
+
+
+      [attribute "ISBN" of "Orders" references "Books"].
 
   Definition BookStore := QueryStructure BookStoreSchema.
 
