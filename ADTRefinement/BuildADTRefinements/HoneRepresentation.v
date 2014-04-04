@@ -65,7 +65,7 @@ Section HoneRepresentation.
                                 obsCod := cod |})
                           (default_B :=
                              absObsDef (def obs "null" (r : rep, _ : () ) : () :=
-                                              ret () )%obsDef); eauto.
+                                   ret () )%obsDef); eauto.
     rewrite <- ith_imap; simpl; intros; eauto.
     unfold refine; intros.
     inversion_by computes_to_inv; eauto.

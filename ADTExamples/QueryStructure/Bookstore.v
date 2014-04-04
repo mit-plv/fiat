@@ -1,7 +1,7 @@
 Require Import String Omega List FunctionalExtensionality Ensembles.
 Require Export Computation ADT ADTRefinement ADT.Pick ADTNotation
         ADTRefinement.BuildADTRefinements
-        QueryStructureSchema QueryStructure.
+        QueryStructureSchema QueryStructure QueryQSSpecs InsertQSSpecs.
 
 Generalizable All Variables.
 Set Implicit Arguments.
@@ -20,14 +20,15 @@ Open Scope QSSchema.
 
   Definition BookStoreSchema :=
     query structure schema
-      [relation "Books" has
+      [ relation "Books" has
                 schema <"Author" : string,
                         "Title" : string,
                         "ISBN" : nat>
                 where attributes ["Title"; "Author"] depend on ["ISBN"];
-       relation "Orders" has
+        relation "Orders" has
                 schema <"ISBN" : nat,
-                        "Date" : nat> ] enforcing [attribute "ISBN" of "Orders" references "Books"].
+                        "Date" : nat> ]
+      enforcing [attribute "ISBN" of "Orders" references "Books"].
 
   (* Sanity check to show that the definitions produced
      can be efficiently evaluated. *)
@@ -39,10 +40,15 @@ Open Scope QSSchema.
   Time simpl.
   Abort.
 
-  Definition BookStore := QueryStructure BookStoreSchema.
+  Definition BookStoreRefRep := @QueryStructure BookStoreSchema.
 
   Definition BookSchema :=
     schemaHeading (qschemaSchema BookStoreSchema {| bstring := "Books" |}).
+  Definition OrderSchema :=
+    schemaHeading (qschemaSchema BookStoreSchema {| bstring := "Orders" |}).
+
+  Definition Book := Tuple BookSchema.
+  Definition Order := Tuple OrderSchema.
 
   (* Our bookstore has two mutators:
      - [PlaceOrder] : Place an order into the 'Orders' table
@@ -54,18 +60,76 @@ Open Scope QSSchema.
    *)
 
   Local Open Scope ADTSig_scope.
-  Local Open Scope ADT_scope.
-  Local Open Scope string_scope.
-
-  Definition Book := Tuple BookSchema.
+  Local Open Scope ADTParsing_scope.
+  Local Open Scope Schema.
+  Local Open Scope QuerySpec.
 
   Definition BookStoreSig : ADTSig :=
     ADTsignature {
-        "PlaceOrder" : rep × nat → rep,
+        "PlaceOrder" : rep × Order → rep,
         "AddBook" : rep × Book → rep ;
-        "GetTitles" : rep × string → list string,
+        "GetTitles" : rep × string → Relation schema <"Title" : string>,
         "NumOrders" : rep × string → nat
       }.
+
+  (* [GetTitles] : The titles of books written by a given author *)
+  Definition GetTitlesSpec
+             (r : BookStoreRefRep) (author : string) :=
+    For (b in r 's "Books")
+    Where (b 's "Author" = author)
+    Return <"Title" : (b 's "Title") >
+    returning (schema <"Title" : string>).
+
+  (* [NumOrders] : The number of orders for a given author *)
+  Definition NumOrdersSpec
+             (r : BookStoreRefRep) (author : string) : Ensemble nat :=
+    Count (For (b in r 's "Books") (o in r 's "Orders" )
+           Where (b 's "Author" = author /\ (b 's "ISBN") = (o 's "ISBN"))
+           Return <"ISBN" : (o 's "ISBN") >
+           returning (schema <"ISBN" : nat>)).
+
+  Definition BookStoreSpec : ADT BookStoreSig :=
+    ADTRep BookStoreRefRep {
+             (* [PlaceOrder] : Place an order into the 'Orders' table *)
+             def mut "PlaceOrder" ( r : rep , o : Order ) : rep :=
+               Pick (Insert o into "Orders" of r),
+
+             (* [AddBook] : Add a book to the inventory *)
+             def mut "AddBook" ( r : rep , b : Book ) : rep :=
+                 Pick (Insert b into "Books" of r) ;
+
+             (* [GetTitles] : The titles of books written by a given author *)
+             def obs "GetTitles" ( r : rep , author : string ) :
+               Relation schema <"Title" : string> :=
+               {titles | forall rel', rel (GetTitlesSpec r author) rel'
+                                      <-> rel titles rel' } ,
+
+             (* [NumOrders] : The number of orders for a given author *)
+             def obs "NumOrders" ( r : rep , author : string ) : nat :=
+                 Pick (Count (For (b in r 's "Books") (o in r 's "Orders" )
+                              Where (b 's "Author" = author /\ (b 's "ISBN") = (o 's "ISBN"))
+                              Return <"ISBN" : (o 's "ISBN") >
+                              returning (schema <"ISBN" : nat>)))
+         } .
+
+  Open Scope QueryStructure.
+
+  Definition Ref_SiR
+             (or : BookStoreRefRep)
+             (nr : list Book * list Order) :=
+    (forall o : Order, List.In o (snd nr) <-> exists rel', (or 's "Orders") rel' /\ rel rel' o) /\
+    (forall b : Book, List.In b (fst nr) <-> exists rel', (or 's "Books") rel' /\ rel rel' b).
+
+  Definition BookStore :
+    Sharpened BookStoreSpec.
+  Proof.
+    hone representation' using Ref_SiR.
+    (* This breaks our query notation- we need to reformulate that in a
+     better way. We also need to abstract it to return arbitrary
+     collection structures so we can tune the data type of the returned
+     structures. *)
+
+  Admitted.
 
   (* Still need to reimplement specs using a better query notation.
 

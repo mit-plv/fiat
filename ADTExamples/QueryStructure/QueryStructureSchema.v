@@ -13,7 +13,7 @@ Record QueryStructureSchema :=
     qschemaSchema : qschemaIndex -> Schema;
     qschemaConstraints:
       forall idx idx',
-        Relation (qschemaSchema idx)
+        Tuple (schemaHeading (qschemaSchema idx))
         -> Relation (qschemaSchema idx')
         -> Prop
   }.
@@ -80,15 +80,13 @@ Defined.
   tuples in those tables. We use the namedSchemaHint
   typeclass to get the typechecking to work. *)
 
-Definition ForeignKey_P rel1 rel2 attr1 attr2 tupmap
-           (R1 : Relation rel1)
-           (R2 : Relation rel2) :=
-  forall tup1,
-    rel R1 tup1 ->
-    exists tup2,
-      rel R2 tup2 /\
-      tup1 attr1 =
-      tupmap (tup2 attr2 ).
+Definition ForeignKey_P heading relSchema attr1 attr2 tupmap
+           (tup : Tuple heading)
+           (R : Relation relSchema) :=
+  exists tup2,
+    rel R tup2 /\
+    tup attr1 =
+    tupmap (tup2 attr2 ).
 
 Definition BuildForeignKeyConstraints
            (namedSchemas :  list NamedSchema)
@@ -98,7 +96,7 @@ Definition BuildForeignKeyConstraints
            attr1
            attr2
            {tupmap} :=
-  (existT (fun ids => Relation (BuildQueryStructureSchema namedSchemas (fst ids))
+  (existT (fun ids => Tuple (schemaHeading (BuildQueryStructureSchema namedSchemas (fst ids)))
                       -> Relation (BuildQueryStructureSchema namedSchemas (snd ids))
                     -> Prop)
           ({|bstring :=rel1; stringb := relBnd1 |},
@@ -120,20 +118,20 @@ Notation "'attribute' attr 'of' rel1 'references' rel2 " :=
 Program Definition BuildQueryStructureConstraints_cons
            (namedSchemas : list NamedSchema)
            (idx' : sigT (fun idxs =>
-                 Relation (BuildQueryStructureSchema namedSchemas (fst idxs))
+                 Tuple (schemaHeading (BuildQueryStructureSchema namedSchemas (fst idxs)))
                  -> Relation (BuildQueryStructureSchema namedSchemas (snd idxs))
                  -> Prop) )
            (constraints :
               list (sigT (fun idxs =>
-                 Relation (BuildQueryStructureSchema namedSchemas (fst idxs))
+                 Tuple (schemaHeading (BuildQueryStructureSchema namedSchemas (fst idxs)))
                  -> Relation (BuildQueryStructureSchema namedSchemas (snd idxs))
                  -> Prop) ))
            (idx : (BuildQueryStructureIndex namedSchemas *
                    BuildQueryStructureIndex namedSchemas))
-           (HInd : Relation (BuildQueryStructureSchema namedSchemas (fst idx))
+           (HInd : Tuple (schemaHeading (BuildQueryStructureSchema namedSchemas (fst idx)))
                    -> Relation (BuildQueryStructureSchema namedSchemas (snd idx))
                    -> Prop)
-: Relation (BuildQueryStructureSchema namedSchemas (fst idx))
+: Tuple (schemaHeading (BuildQueryStructureSchema namedSchemas (fst idx)))
   -> Relation (BuildQueryStructureSchema namedSchemas (snd idx))
   -> Prop :=
   if (string_dec (bstring _ (fst (projT1 idx'))) (bstring _ (fst idx))) then
@@ -155,12 +153,12 @@ Fixpoint BuildQueryStructureConstraints
 (namedSchemas : list NamedSchema)
 (constraints :
    list (sigT (fun idxs =>
-                 Relation (BuildQueryStructureSchema namedSchemas (fst idxs))
+                 Tuple (schemaHeading (BuildQueryStructureSchema namedSchemas (fst idxs)))
                  -> Relation (BuildQueryStructureSchema namedSchemas (snd idxs))
                  -> Prop) ))
 (idx : (BuildQueryStructureIndex namedSchemas *
         BuildQueryStructureIndex namedSchemas)) {struct constraints}
-: Relation (BuildQueryStructureSchema namedSchemas (fst idx))
+: Tuple (schemaHeading (BuildQueryStructureSchema namedSchemas (fst idx)))
   -> Relation (BuildQueryStructureSchema namedSchemas (snd idx))
   -> Prop :=
   match constraints with

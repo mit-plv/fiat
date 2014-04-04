@@ -52,7 +52,8 @@ MODULES    := \
 	ADTExamples/QueryStructure/Relation \
 	ADTExamples/QueryStructure/QueryStructureSchema \
 	ADTExamples/QueryStructure/QueryStructure \
-	ADTExamples/QueryStructure/QuerySpecs \
+	ADTExamples/QueryStructure/QueryQSSpecs \
+	ADTExamples/QueryStructure/InsertQSSpecs \
 	ADTExamples/QueryStructure/Bookstore
 
 COQDEP=coqdep
@@ -132,7 +133,7 @@ Makefile.coq: Makefile $(VS)
 clean-doc::
 	rm -rf html
 	rm -f all.pdf Overview/library.pdf Overview/ProjectOverview.pdf Overview/coqdoc.sty coqdoc.sty
-	rm -f $(shell find Overview -name "*.log" -o -name "*.aux" -o -name "*.bbl" -o -name "*.blg" -o -name "*.synctex.gz" -o -name "*.out" -o -name "*.toc"
+	rm -f $(shell find Overview -name "*.log" -o -name "*.aux" -o -name "*.bbl" -o -name "*.blg" -o -name "*.synctex.gz" -o -name "*.out" -o -name "*.toc")
 
 clean:: Makefile.coq clean-doc
 	$(MAKE) -f Makefile.coq clean

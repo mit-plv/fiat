@@ -11,6 +11,10 @@ Delimit Scope ADT_scope with ADT.
 
 Require Import List String.
 
+(* This class is used by BuildADT to give a hint
+   to help infer the representation type. *)
+Class RepHint := {repHint : Type}.
+
 (* Notations for ADT methods. Mutator and Observer methods
    are parameterized by a signature that includes the
    domain (both) and codomain (just observers). *)
@@ -19,11 +23,20 @@ Record obsDef {Rep : Type} (Sig : obsSig) :=
   { obsBody :> observerMethodType Rep (obsDom Sig) (obsCod Sig)}.
 
 Notation "'def' 'obs' id ( r : 'rep' , x : dom ) : cod := bod" :=
+  (Build_obsDef {| obsID := id; obsDom := dom; obsCod := cod |} (fun (r : repHint) x => bod%comp))
+    (no associativity, id at level 0, r at level 0, x at level 0, dom at level 0,
+     cod at level 0,
+     at level 70, format "'def'  'obs'  id  ( r  :  'rep' ,  x  :  dom )  :  cod  :=  '[  '   bod ']' " ) :
+obsDefParsing_scope.
+
+Notation "'def' 'obs' id ( r : 'rep' , x : dom ) : cod := bod" :=
   (Build_obsDef {| obsID := id; obsDom := dom; obsCod := cod |} (fun r x => bod%comp))
     (no associativity, id at level 0, r at level 0, x at level 0, dom at level 0,
      cod at level 0,
      at level 70, format "'def'  'obs'  id  ( r  :  'rep' ,  x  :  dom )  :  cod  :=  '[  '   bod ']' " ) :
 obsDef_scope.
+
+Delimit Scope obsDefParsing_scope with obsDefParsing.
 
 Bind Scope obsDef_scope with obsDef.
 Delimit Scope obsDef_scope with obsDef.
@@ -35,6 +48,13 @@ Record mutDef {Rep : Type} (Sig : mutSig) :=
   { mutBody :> mutatorMethodType Rep (mutDom Sig) }.
 
 Notation "'def' 'mut' id ( r : 'rep' , x : dom ) : 'rep' := bod" :=
+  (Build_mutDef {| mutID := id; mutDom := dom |} (fun (r : repHint) x => bod%comp))
+    (no associativity, at level 94, id at level 0, r at level 0,
+     x at level 0, dom at level 0,
+     format "'def'  'mut'  id  ( r  :  'rep' ,  x :  dom )  :  'rep'  :=  '[  '   bod ']' " ) :
+mutDefParsing_scope.
+
+Notation "'def' 'mut' id ( r : 'rep' , x : dom ) : 'rep' := bod" :=
   (Build_mutDef {| mutID := id; mutDom := dom |} (fun r x => bod%comp))
     (no associativity, at level 94, id at level 0, r at level 0,
      x at level 0, dom at level 0,
@@ -43,6 +63,7 @@ mutDef_scope.
 
 Bind Scope mutDef_scope with mutDef.
 Delimit Scope mutDef_scope with mutDef.
+Delimit Scope mutDefParsing_scope with mutDefParsing.
 
 Definition insertDef :=
   (def mut "Insert" ( r : rep , n : unit ) : rep := {n | n = plus r 0})%mutDef.
@@ -102,6 +123,16 @@ Program Definition BuildADT
           |}.
 
 (* Notation for ADTs built from [BuildADT]. *)
+
+Notation "'ADTRep' r { mut1 , .. , mutn ; obs1 , .. , obsn } " :=
+  (let _ := {| repHint := r |} in
+    @BuildADT r
+             _
+             _
+             (icons _ mut1%mutDefParsing .. (icons _ mutn%mutDefParsing (inil (@mutDef r))) ..)
+             (icons _ obs1%obsDefParsing .. (icons _ obsn%obsDefParsing (inil (@obsDef r))) ..))
+    (no associativity, at level 96, r at level 0,
+     format "'ADTRep'  r  '/' '[hv  ' {  mut1 , '//' .. , '//' mutn ; '//' obs1 , '//' .. , '//' obsn  ']' }") : ADTParsing_scope.
 
 Notation "'ADTRep' r { mut1 , .. , mutn ; obs1 , .. , obsn } " :=
   (@BuildADT r
