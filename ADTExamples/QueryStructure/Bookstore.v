@@ -35,17 +35,17 @@ Open Scope QSSchema.
   Goal (forall b,
           qschemaConstraints
             BookStoreSchema
-            {| bstring := "Orders" |}
-            {| bstring := "Books" |} = b).
+            "Orders"%string
+            "Books"%string = b).
   Time simpl.
   Abort.
 
   Definition BookStoreRefRep := @QueryStructure BookStoreSchema.
 
   Definition BookSchema :=
-    schemaHeading (qschemaSchema BookStoreSchema {| bstring := "Books" |}).
+    schemaHeading (qschemaSchema BookStoreSchema "Books"%string).
   Definition OrderSchema :=
-    schemaHeading (qschemaSchema BookStoreSchema {| bstring := "Orders" |}).
+    schemaHeading (qschemaSchema BookStoreSchema "Orders"%string).
 
   Definition Book := Tuple BookSchema.
   Definition Order := Tuple OrderSchema.
@@ -68,25 +68,28 @@ Open Scope QSSchema.
     ADTsignature {
         "PlaceOrder" : rep × Order → rep,
         "AddBook" : rep × Book → rep ;
-        "GetTitles" : rep × string → Relation schema <"Title" : string>,
+        "GetTitles" : rep × string → list string,
         "NumOrders" : rep × string → nat
       }.
 
   (* [GetTitles] : The titles of books written by a given author *)
   Definition GetTitlesSpec
              (r : BookStoreRefRep) (author : string) :=
-    For (b in r 's "Books")
-    Where (b 's "Author" = author)
-    Return <"Title" : (b 's "Title") >
-    returning (schema <"Title" : string>).
+    let _ := {| qsHint := r |} in
+    For (b in "Books")
+    Where (b!"Author" == author)
+    Return b!"Title".
+
+  Arguments qsSchemaHint _ /.
 
   (* [NumOrders] : The number of orders for a given author *)
   Definition NumOrdersSpec
              (r : BookStoreRefRep) (author : string) : Ensemble nat :=
-    Count (For (b in r 's "Books") (o in r 's "Orders" )
-           Where (b 's "Author" = author /\ (b 's "ISBN") = (o 's "ISBN"))
-           Return <"ISBN" : (o 's "ISBN") >
-           returning (schema <"ISBN" : nat>)).
+    let _ := {|qsHint := r |} in
+    Count (For (o in "Orders") (b in "Books")
+           Where (b!"Author" == author)
+           Where (b!"ISBN" == o!"ISBN")
+           Return <"ISBN" : o!"ISBN" >).
 
   Definition BookStoreSpec : ADT BookStoreSig :=
     ADTRep BookStoreRefRep {
@@ -100,35 +103,38 @@ Open Scope QSSchema.
 
              (* [GetTitles] : The titles of books written by a given author *)
              def obs "GetTitles" ( r : rep , author : string ) :
-               Relation schema <"Title" : string> :=
-               {titles | forall rel', rel (GetTitlesSpec r author) rel'
-                                      <-> rel titles rel' } ,
+                list string :=
+               let _ := {|qsHint := r |} in
+               Pick (For (b in "Books")
+                     Where (b!"Author" == author)
+                     Return b!"Title"),
 
              (* [NumOrders] : The number of orders for a given author *)
              def obs "NumOrders" ( r : rep , author : string ) : nat :=
-                 Pick (Count (For (b in r 's "Books") (o in r 's "Orders" )
-                              Where (b 's "Author" = author /\ (b 's "ISBN") = (o 's "ISBN"))
-                              Return <"ISBN" : (o 's "ISBN") >
-                              returning (schema <"ISBN" : nat>)))
+                 let _ := {|qsHint := r |} in
+                 Pick (Count (For (o in "Orders") (b in "Books")
+                              Where (b!"Author" == author)
+                              Where (b!"ISBN" == o!"ISBN")
+                              Return <"ISBN" : o!"ISBN" >))
          } .
-
-  Open Scope QueryStructure.
 
   Definition Ref_SiR
              (or : BookStoreRefRep)
              (nr : list Book * list Order) :=
-    (forall o : Order, List.In o (snd nr) <-> exists rel', (or 's "Orders") rel' /\ rel rel' o) /\
+    (forall o : Order, List.In o (snd nr)  (or 's "Orders") rel' /\ rel rel' o) /\
     (forall b : Book, List.In b (fst nr) <-> exists rel', (or 's "Books") rel' /\ rel rel' b).
+
+  (* Definition Ref_SiR
+             (or : BookStoreRefRep)
+             (nr : list Book * list Order) :=
+    (forall o : Order, List.In o (snd nr)  (or 's "Orders") rel' /\ rel rel' o) /\
+    (forall b : Book, List.In b (fst nr) <-> exists rel', (or 's "Books") rel' /\ rel rel' b). *)
 
   Definition BookStore :
     Sharpened BookStoreSpec.
   Proof.
-    hone representation' using Ref_SiR.
-    (* This breaks our query notation- we need to reformulate that in a
-     better way. We also need to abstract it to return arbitrary
-     collection structures so we can tune the data type of the returned
-     structures. *)
-
+    unfold BookStoreSpec.
+    simpl.
   Admitted.
 
   (* Still need to reimplement specs using a better query notation.

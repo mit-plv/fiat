@@ -36,8 +36,8 @@ Notation "< col1 , .. , coln >" :=
   (@BuildTuple _ (icons _ col1%Component .. (icons _ coln%Component (inil _)) ..))
   : Tuple_scope.
 
-Notation "t 's col" :=
-  (t%Tuple {| bstring := col%string |}) : Tuple_scope.
+Notation "t ! R" :=
+  (t%Tuple {| bstring := R%string |}) : Tuple_scope.
 
 Definition Title : string := "Title"%string .
 Definition ReleaseDate : string := "ReleaseDate"%string.

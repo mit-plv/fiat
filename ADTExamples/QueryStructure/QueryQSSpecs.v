@@ -1,4 +1,4 @@
-Require Import List String Ensembles
+Require Import List String Ensembles Omega
         ADTNotation Program QueryStructureSchema QueryStructure.
 
 (* Notations for queries. *)
@@ -6,30 +6,32 @@ Require Import List String Ensembles
 (* This typeclass allows our 'in' notation to avoid
    mentioning the QueryStructure. *)
 
+Instance Astring_eq : Query_eq string := {| A_eq_dec := string_dec |}.
+Instance Anat_eq : Query_eq nat := {| A_eq_dec := eq_nat_dec |}.
+
 Class QueryStructureHint :=
   { qsSchemaHint : QueryStructureSchema;
-     qsHint :> @QueryStructure qsSchemaHint
+    qsHint :> @QueryStructure qsSchemaHint
   }.
 
 Notation "( x 'in' R ) bod" :=
-  (fun bx =>
-     exists r x, R%QueryStructure r /\
-                 rel r x /\
-                 (bod bx)%QuerySpec) : QuerySpec_scope.
+  (fold_right (@app _) nil
+              (map (fun x :Tuple (schemaHeading
+                                    (qschemaSchema
+                                       qsSchemaHint R%string))
+                    => bod)
+                   (rel (rels qsHint R%string)))) : QuerySpec_scope.
 
 Notation "'Return' t" :=
-  (fun rx => rx = t%Tuple) : QuerySpec_scope.
+  (cons t%Tuple nil) : QuerySpec_scope.
 
 Notation "'Where' p bod" :=
-  (fun wx => p%Tuple /\ (bod wx)%QuerySpec) : QuerySpec_scope.
+  (if p%Tuple then bod else nil) : QuerySpec_scope.
 
-Notation "'For' bod 'returning' sch" :=
-  (@Build_Relation
-    sch bod%QuerySpec (fun _ _ => I))
+Notation "'For' bod" :=
+  (fun l => l = bod)
   : QuerySpec_scope.
 
-(* The spec for a count of the number of tuples in a relation.  *)
-Definition Count {Schema} (R : Relation Schema) (n : nat) :=
-  forall tup l,
-    (List.In tup l <-> rel R tup) <->
-    n = List.length l.
+(* The spec for a count of the number of tuples in a relation. *)
+Definition Count {Schema} (R : Ensemble (list Schema)) (n : nat) :=
+  exists l, R l /\ n = List.length l.

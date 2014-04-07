@@ -20,7 +20,7 @@ Infix ":" := Build_Attribute : Attribute_scope.
 Bind Scope Attribute_scope with Attribute.
 
 Definition attrName_eq (cs : Attribute) (idx : string) :=
-  if (string_dec (attrName cs) idx) then true else false.
+  if (string_dec (attrName cs) idx) then true else false .
 
 (* Notations for schemas. *)
 

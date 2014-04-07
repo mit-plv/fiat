@@ -1,12 +1,18 @@
 Reserved Infix ":"
          (no associativity, at level 60).
 
+Reserved Notation "t ! r"
+         (no associativity, at level 0).
+
 Reserved Notation "< col1 , .. , coln >"
          (at level 0, col1, coln at level 60,
           format "< '[v  ' col1 ,  .. ,  coln ']' >").
 
-Reserved Notation "t ''s' R"
-         (at level 70, format "t ''s' R").
+(* Class used to overload equality test notation (==) in queries. *)
+Class Query_eq (A : Type) :=
+      {A_eq_dec : forall a a' : A, {a = a'} + {a <> a'}}.
+
+Infix "==" := (A_eq_dec) (at level 1).
 
 Reserved Notation "'attributes' attrlist1 'depend' 'on' attrlist2 "
          (at level 50).
@@ -41,9 +47,9 @@ Reserved Notation "'Where' p bod"
          (right associativity, at level 0, x at level 0, p at level 0,
           format "'Where'  p '//' bod " ).
 
-Reserved Notation "'For' bod 'returning' sch"
+Reserved Notation "'For' bod"
          (right associativity, at level 0,
-          format "'For'  '[v' bod ']' '//' 'returning'  sch").
+          format "'For'  '[v' bod ']'").
 
 Delimit Scope Attribute_scope with Attribute.
 Delimit Scope Heading_scope with Heading.

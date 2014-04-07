@@ -10,16 +10,12 @@ Require Export
 
 Record QueryStructure (QSSchema : QueryStructureSchema) :=
   { rels : forall idx : qschemaIndex QSSchema,
-             Ensemble (Relation (qschemaSchema QSSchema idx));
+             Relation (qschemaSchema QSSchema idx);
     crossConstr :
       forall (idx idx' : qschemaIndex QSSchema)
-             (tup : Tuple (schemaHeading (qschemaSchema QSSchema idx)))
-             (rel1 : @Relation (qschemaSchema QSSchema idx))
-             (rel2 : @Relation (qschemaSchema QSSchema idx')),
-        rels idx rel1 ->
-        rel rel1 tup ->
-        qschemaConstraints QSSchema idx idx' tup rel2
+             (tup : Tuple (schemaHeading (qschemaSchema QSSchema idx))),
+        List.In tup (rel (rels idx)) ->
+        qschemaConstraints QSSchema idx idx' tup (rels idx')
   }.
 
-Notation "t 's R" := (rels t {| bstring := R%string |})
-                     : QueryStructure_scope.
+Notation "t ! R" := (rels t R%string): QueryStructure_scope.

@@ -53,26 +53,22 @@ Definition NamedSchema_eq (rn : NamedSchema) (idx : string) :=
 Definition defaultSchema := (relation "null" has schema < "null" : () >)%NamedSchema.
 
 Definition BuildQueryStructureIndex
-           (namedSchemas : list NamedSchema) :=
-           BoundedString (map relName namedSchemas).
+           (namedSchemas : list NamedSchema) := string.
 
 Definition BuildQueryStructureSchema
            (namedSchemas : list NamedSchema)
-           (idx : BoundedString (map relName namedSchemas)) :=
+           (idx : string) :=
   relSchema (nth (findIndex NamedSchema_eq namedSchemas idx)
                  namedSchemas defaultSchema).
 
 Lemma BuildQueryStructureSchema_idx_eq
       (namedSchemas : list NamedSchema)
 : forall idx idx' : BuildQueryStructureIndex namedSchemas,
-    bstring _ idx = bstring _ idx'
+    idx = idx'
     -> BuildQueryStructureSchema namedSchemas idx =
        BuildQueryStructureSchema namedSchemas idx'.
 Proof.
-  intros.
-  destruct idx as [idx idxBnd]; destruct idx' as [idx' idx'Bnd];
-  simpl in *; subst.
-  unfold BuildQueryStructureSchema; f_equal.
+  intros; rewrite H; auto.
 Defined.
 
 (* A notation for foreign key constraints. This gives us
@@ -84,23 +80,20 @@ Definition ForeignKey_P heading relSchema attr1 attr2 tupmap
            (tup : Tuple heading)
            (R : Relation relSchema) :=
   exists tup2,
-    rel R tup2 /\
+    List.In tup2 (rel R) /\
     tup attr1 =
     tupmap (tup2 attr2 ).
 
 Definition BuildForeignKeyConstraints
            (namedSchemas :  list NamedSchema)
            (rel1 rel2 : string)
-           {relBnd1}
-           {relBnd2}
            attr1
            attr2
            {tupmap} :=
   (existT (fun ids => Tuple (schemaHeading (BuildQueryStructureSchema namedSchemas (fst ids)))
                       -> Relation (BuildQueryStructureSchema namedSchemas (snd ids))
                     -> Prop)
-          ({|bstring :=rel1; stringb := relBnd1 |},
-           {|bstring :=rel2; stringb := relBnd2 |})
+          (rel1, rel2)
           (ForeignKey_P attr1 attr2 tupmap)).
 
 Class namedSchemaHint :=
@@ -109,7 +102,7 @@ Class namedSchemaHint :=
 Notation "'attribute' attr 'of' rel1 'references' rel2 " :=
   (
       @BuildForeignKeyConstraints
-        (@nSchemaHint _) rel1%string rel2%string _ _
+        (@nSchemaHint _) rel1%string rel2%string
         {| bstring := attr%string;
            stringb := _|}
         {| bstring := attr%string;
@@ -134,8 +127,8 @@ Program Definition BuildQueryStructureConstraints_cons
 : Tuple (schemaHeading (BuildQueryStructureSchema namedSchemas (fst idx)))
   -> Relation (BuildQueryStructureSchema namedSchemas (snd idx))
   -> Prop :=
-  if (string_dec (bstring _ (fst (projT1 idx'))) (bstring _ (fst idx))) then
-    if (string_dec (bstring _ (snd (projT1 idx'))) (bstring _ (snd idx)) ) then
+  if (string_dec (fst (projT1 idx')) (fst idx)) then
+    if (string_dec (snd (projT1 idx')) (snd idx) ) then
       _ else (fun r1 r2 => HInd r1 r2)
   else (fun r1 r2 => HInd r1 r2).
 Next Obligation.
@@ -143,10 +136,10 @@ Next Obligation.
   subst; apply X1.
   erewrite BuildQueryStructureSchema_idx_eq;
     [ eapply X
-    | simpl; rewrite H; eauto].
+    | simpl; eauto].
   erewrite BuildQueryStructureSchema_idx_eq;
     [ eapply X0
-    | simpl; rewrite H0; eauto].
+    | simpl; eauto].
 Defined.
 
 Fixpoint BuildQueryStructureConstraints
@@ -300,11 +293,8 @@ Print BuildQueryStructureConstraints'. *)
 Definition BuildQueryStructure
            (namedSchemas : list NamedSchema)
            constraints :=
-  {| qschemaIndex :=
-       BoundedString (map relName namedSchemas);
-     qschemaSchema idx :=
-       relSchema (nth (findIndex NamedSchema_eq namedSchemas idx)
-                      namedSchemas defaultSchema);
+  {| qschemaIndex := BuildQueryStructureIndex namedSchemas;
+     qschemaSchema := BuildQueryStructureSchema namedSchemas;
      qschemaConstraints idx idx' := @BuildQueryStructureConstraints
                                       namedSchemas
                                       constraints (idx, idx') |}.
@@ -317,7 +307,7 @@ Notation "'query' 'structure' 'schema' relList 'enforcing' constraints" :=
                        (let relListHint := Build_namedSchemaHint relList%NamedSchema in
                         constraints%QSSchemaConstraints)) : QSSchema_scope.
 
-Arguments BuildForeignKeyConstraints _ _ [_ _ _ _] _ _ / .
+Arguments BuildForeignKeyConstraints _ _ [_ _] _ _ / .
 Arguments BuildQueryStructureConstraints_cons [_] _ _ _ _ / _ _.
 Arguments BuildQueryStructureConstraints_cons_obligation_1 [_] _ / _ _ _ _ _ _ _ .
 Arguments eq_rect_r _ _ _ _ _ _ / .
