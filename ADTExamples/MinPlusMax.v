@@ -570,6 +570,8 @@ setoid_rewrite remove_forall_eq0.
       eapply refineADT_Build_ADT_Rep with (SiR := SiR'); eauto.
     Qed.
 
+    Delimit Scope ADTParsing_scope with ADTParsing.
+
   Definition MinPlusMaxImpl' (defaultValue : nat)
   : Sharpened MinPlusMaxSpec.
   Proof.

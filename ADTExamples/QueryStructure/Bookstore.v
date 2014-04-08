@@ -1,7 +1,7 @@
 Require Import String Omega List FunctionalExtensionality Ensembles.
-Require Export Computation ADT ADTRefinement ADT.Pick ADTNotation
-        ADTRefinement.BuildADTRefinements
-        QueryStructureSchema QueryStructure QueryQSSpecs InsertQSSpecs.
+Require Export Computation ADT ADTRefinement ADT.Pick
+        ADTRefinement.BuildADTRefinements ADTNotation
+        QueryStructureSchema QueryQSSpecs InsertQSSpecs QueryStructure.
 
 Generalizable All Variables.
 Set Implicit Arguments.
@@ -60,7 +60,7 @@ Open Scope QSSchema.
    *)
 
   Local Open Scope ADTSig_scope.
-  Local Open Scope ADTParsing_scope.
+  Local Open Scope QueryStructureParsing_scope.
   Local Open Scope Schema.
   Local Open Scope QuerySpec.
 
@@ -89,46 +89,34 @@ Open Scope QSSchema.
     Count (For (o in "Orders") (b in "Books")
            Where (b!"Author" == author)
            Where (b!"ISBN" == o!"ISBN")
-           Return <"ISBN" : o!"ISBN" >).
+           Return tt).
 
   Definition BookStoreSpec : ADT BookStoreSig :=
-    ADTRep BookStoreRefRep {
+    QueryADTRep BookStoreRefRep {
              (* [PlaceOrder] : Place an order into the 'Orders' table *)
-             def mut "PlaceOrder" ( r : rep , o : Order ) : rep :=
-               Pick (Insert o into "Orders" of r),
+             def update "PlaceOrder" ( o : Order ) : rep :=
+               Insert o into "Orders",
 
              (* [AddBook] : Add a book to the inventory *)
-             def mut "AddBook" ( r : rep , b : Book ) : rep :=
-                 Pick (Insert b into "Books" of r) ;
+             def update "AddBook" ( b : Book ) : rep :=
+                 Insert b into "Books" ;
 
              (* [GetTitles] : The titles of books written by a given author *)
-             def obs "GetTitles" ( r : rep , author : string ) :
-                list string :=
-               let _ := {|qsHint := r |} in
-               Pick (For (b in "Books")
-                     Where (b!"Author" == author)
-                     Return b!"Title"),
+             def query "GetTitles" ( author : string ) : list string :=
+               For (b in "Books")
+               Where (b!"Author" == author)
+               Return b!"Title",
 
              (* [NumOrders] : The number of orders for a given author *)
-             def obs "NumOrders" ( r : rep , author : string ) : nat :=
-                 let _ := {|qsHint := r |} in
-                 Pick (Count (For (o in "Orders") (b in "Books")
-                              Where (b!"Author" == author)
-                              Where (b!"ISBN" == o!"ISBN")
-                              Return <"ISBN" : o!"ISBN" >))
+             def query "NumOrders" ( author : string ) : nat :=
+                 Count (For (o in "Orders") (b in "Books")
+                        Where (b!"Author" == author)
+                        Where (b!"ISBN" == o!"ISBN")
+                        Return <"ISBN" : o!"ISBN" >)
          } .
 
-  Definition Ref_SiR
-             (or : BookStoreRefRep)
-             (nr : list Book * list Order) :=
-    (forall o : Order, List.In o (snd nr)  (or 's "Orders") rel' /\ rel rel' o) /\
-    (forall b : Book, List.In b (fst nr) <-> exists rel', (or 's "Books") rel' /\ rel rel' b).
-
-  (* Definition Ref_SiR
-             (or : BookStoreRefRep)
-             (nr : list Book * list Order) :=
-    (forall o : Order, List.In o (snd nr)  (or 's "Orders") rel' /\ rel rel' o) /\
-    (forall b : Book, List.In b (fst nr) <-> exists rel', (or 's "Books") rel' /\ rel rel' b). *)
+  Local Close Scope QueryStructureParsing_scope.
+  Local Open Scope QueryStructure_scope.
 
   Definition BookStore :
     Sharpened BookStoreSpec.
@@ -136,6 +124,12 @@ Open Scope QSSchema.
     unfold BookStoreSpec.
     simpl.
   Admitted.
+
+  (* Definition Ref_SiR
+             (or : BookStoreRefRep)
+             (nr : list Book * list Order) :=
+    (forall o : Order, List.In o (snd nr)  (or 's "Orders") rel' /\ rel rel' o) /\
+    (forall b : Book, List.In b (fst nr) <-> exists rel', (or 's "Books") rel' /\ rel rel' b). *)
 
   (* Still need to reimplement specs using a better query notation.
 

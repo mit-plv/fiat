@@ -24,6 +24,6 @@ Definition QSInsertSpec
         qschemaConstraints QSSchema idx idx' tup (rels qs idx'))
   -> rel (rels qs' idx) = tup :: rel (rels qs idx).
 
-Notation "'Insert' b 'into' idx 'of' r " :=
-  (QSInsertSpec r idx%string b)
+Notation "'Insert' b 'into' idx " :=
+  (QSInsertSpec qsHint idx%string b)
     (at level 80) : QuerySpec_scope.

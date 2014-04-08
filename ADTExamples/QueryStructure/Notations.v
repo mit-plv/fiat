@@ -2,7 +2,8 @@ Reserved Infix ":"
          (no associativity, at level 60).
 
 Reserved Notation "t ! r"
-         (no associativity, at level 0).
+         (no associativity, at level 0,
+          format "t ! r").
 
 Reserved Notation "< col1 , .. , coln >"
          (at level 0, col1, coln at level 60,
@@ -63,3 +64,8 @@ Delimit Scope QSSchema_scope with QSSchema.
 Delimit Scope QSSchemaConstraints_scope with QSSchemaConstraints.
 Delimit Scope QuerySpec_scope with QuerySpec.
 Delimit Scope QueryStructure_scope with QueryStructure.
+Delimit Scope QueryStructureParsing_scope with QueryStructureParsing.
+Delimit Scope queryDefParsing_scope with queryDefParsing.
+Delimit Scope queryDef_scope with queryDef.
+Delimit Scope updateDefParsing_scope with updateDefParsing.
+Delimit Scope updateDef_scope with updateDef.

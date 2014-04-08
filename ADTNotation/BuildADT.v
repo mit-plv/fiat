@@ -25,20 +25,18 @@ Record obsDef {Rep : Type} (Sig : obsSig) :=
 Notation "'def' 'obs' id ( r : 'rep' , x : dom ) : cod := bod" :=
   (Build_obsDef {| obsID := id; obsDom := dom; obsCod := cod |} (fun (r : repHint) x => bod%comp))
     (no associativity, id at level 0, r at level 0, x at level 0, dom at level 0,
-     cod at level 0,
-     at level 70, format "'def'  'obs'  id  ( r  :  'rep' ,  x  :  dom )  :  cod  :=  '[  '   bod ']' " ) :
+     cod at level 0, only parsing,
+     at level 94, format "'def'  'obs'  id  ( r  :  'rep' ,  x  :  dom )  :  cod  :=  '[  '   bod ']' " ) :
 obsDefParsing_scope.
 
 Notation "'def' 'obs' id ( r : 'rep' , x : dom ) : cod := bod" :=
   (Build_obsDef {| obsID := id; obsDom := dom; obsCod := cod |} (fun r x => bod%comp))
     (no associativity, id at level 0, r at level 0, x at level 0, dom at level 0,
      cod at level 0,
-     at level 70, format "'def'  'obs'  id  ( r  :  'rep' ,  x  :  dom )  :  cod  :=  '[  '   bod ']' " ) :
+     at level 94, format "'def'  'obs'  id  ( r  :  'rep' ,  x  :  dom )  :  cod  :=  '[  '   bod ']' " ) :
 obsDef_scope.
 
 Delimit Scope obsDefParsing_scope with obsDefParsing.
-
-Bind Scope obsDef_scope with obsDef.
 Delimit Scope obsDef_scope with obsDef.
 
 Definition minDef :=
@@ -50,7 +48,7 @@ Record mutDef {Rep : Type} (Sig : mutSig) :=
 Notation "'def' 'mut' id ( r : 'rep' , x : dom ) : 'rep' := bod" :=
   (Build_mutDef {| mutID := id; mutDom := dom |} (fun (r : repHint) x => bod%comp))
     (no associativity, at level 94, id at level 0, r at level 0,
-     x at level 0, dom at level 0,
+     x at level 0, dom at level 0, only parsing,
      format "'def'  'mut'  id  ( r  :  'rep' ,  x :  dom )  :  'rep'  :=  '[  '   bod ']' " ) :
 mutDefParsing_scope.
 
@@ -61,7 +59,6 @@ Notation "'def' 'mut' id ( r : 'rep' , x : dom ) : 'rep' := bod" :=
      format "'def'  'mut'  id  ( r  :  'rep' ,  x :  dom )  :  'rep'  :=  '[  '   bod ']' " ) :
 mutDef_scope.
 
-Bind Scope mutDef_scope with mutDef.
 Delimit Scope mutDef_scope with mutDef.
 Delimit Scope mutDefParsing_scope with mutDefParsing.
 
