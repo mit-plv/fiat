@@ -8,15 +8,36 @@ Require Export
    (described by a proposition) which satisfy the
    schema and the cross-relation constraints. *)
 
+Program Definition defaultRelation : Relation (relSchema defaultSchema) :=
+  {| rel := nil;
+     constr := fun (_ : Tuple <"null" : ()>%Heading) (_ : False) => I |}.
+
 Record QueryStructure (QSSchema : QueryStructureSchema) :=
-  { rels : forall idx : qschemaIndex QSSchema,
-             Relation (qschemaSchema QSSchema idx);
+  { rels : ilist (fun ns => Relation (relSchema ns))
+             (qschemaSchemas QSSchema);
     crossConstr :
-      forall (idx idx' : qschemaIndex QSSchema)
-             (tup : Tuple (schemaHeading (qschemaSchema QSSchema idx))),
-        List.In tup (rel (rels idx)) ->
-        qschemaConstraints QSSchema idx idx' tup (rels idx')
+      forall (idx idx' : string)
+             (tup :
+                Tuple (schemaHeading
+                         (GetNamedSchema QSSchema idx))),
+        idx <> idx' ->
+        (* These are cross-relation constraints which only need to be
+           enforced on distinct relations. *)
+        List.In tup
+                (rel
+                   (ith NamedSchema_eq rels idx defaultSchema
+                        defaultRelation)) ->
+        qschemaConstraints QSSchema
+                           idx idx' tup
+                           (rel (ith NamedSchema_eq rels idx' defaultSchema
+                                     defaultRelation))
   }.
+
+Definition GetRelation
+           (QSSchema : QueryStructureSchema)
+           (qs : QueryStructure QSSchema)
+           (idx : string) :=
+  rel (ith NamedSchema_eq (rels qs) idx defaultSchema defaultRelation).
 
 Notation "t ! R" := (rels t R%string): QueryStructure_scope.
 
@@ -32,14 +53,14 @@ Notation "'def' 'query' id ( x : dom ) : cod := bod" :=
   (Build_obsDef {| obsID := id; obsDom := dom; obsCod := cod |}
                 (fun (r : repHint) x =>
                    let _ := {| qsHint := r |} in
-                   Pick (bod%QuerySpec)))
+                   ret (bod%QuerySpec)))
     (no associativity, id at level 0, x at level 0, dom at level 0,
      cod at level 0, only parsing,
      at level 94, format "'def'  'query'  id  ( x  :  dom )  :  cod  :=  '[  '   bod ']' " ) :
 queryDefParsing_scope.
 
 Notation "'def' 'query' id ( x : dom ) : cod := bod" :=
-  (Build_obsDef {| obsID := id; obsDom := dom; obsCod := cod |} (fun r x => Pick (bod%QuerySpec)))
+  (Build_obsDef {| obsID := id; obsDom := dom; obsCod := cod |} (fun r x => ret (bod%QuerySpec)))
     (no associativity, id at level 0, r at level 0, x at level 0, dom at level 0,
      cod at level 0,
      at level 94, format "'def'  'query'  id  ( x  :  dom )  :  cod  :=  '[  '   bod ']' " ) :

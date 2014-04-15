@@ -37,7 +37,7 @@ Notation "< col1 , .. , coln >" :=
   : Tuple_scope.
 
 Notation "t ! R" :=
-  (t%Tuple {| bstring := R%string |}) : Tuple_scope.
+  (t%Tuple R%string) (only parsing): Tuple_scope.
 
 Definition Title : string := "Title"%string .
 Definition ReleaseDate : string := "ReleaseDate"%string.

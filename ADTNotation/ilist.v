@@ -79,11 +79,23 @@ Section ilist.
       (forall a, In a As -> AC_eq a c = false) ->
       findIndex As c = List.length As.
   Proof.
-    induction As; intros; simpl in *; intuition; subst.
+    clear B; induction As; intros; simpl in *; intuition; subst.
     rewrite H; auto.
   Qed.
 
   Local Hint Resolve findIndex_NIn.
+
+  Lemma findIndex_In_dec
+  : forall (c : C) (As : list A),
+      (forall a, In a As -> AC_eq a c = false)
+      \/ (exists a, In a As /\ AC_eq a c = true).
+  Proof.
+    clear B; induction As; intros; simpl in *; intuition.
+    caseEq (AC_eq a c); eauto.
+    left; intros; intuition; subst; eauto.
+    destruct_ex; intuition.
+    eauto.
+  Qed.
 
   Lemma nth_findIndex_In
   : forall (As : list A) (c : C) (a : A),
@@ -91,7 +103,27 @@ Section ilist.
       forall a a',
         nth (findIndex As c) As a = nth (findIndex As c) As a'.
   Proof.
-    intros; apply nth_indep; eauto.
+    clear B; intros; apply nth_indep; eauto.
+  Qed.
+
+  Lemma AC_eq_nth_In
+  : forall (As : list A) (c : C) (a default_A : A),
+      In a As -> AC_eq a c = true ->
+      AC_eq (nth (findIndex As c) As default_A) c = true.
+  Proof.
+    clear B; induction As; simpl; intros; intuition;
+    caseEq (AC_eq a c); eauto; subst; congruence.
+  Qed.
+
+  Lemma AC_eq_nth_NIn
+  : forall (As : list A) (c c' : C) (a default_A : A),
+      c <> c' ->
+      In a As -> AC_eq a c = true ->
+      (forall a, AC_eq a c = true -> AC_eq a c' = false) ->
+      AC_eq (nth (findIndex As c) As default_A) c' = false.
+  Proof.
+    clear B; induction As; simpl; intros; intuition;
+    caseEq (AC_eq a c); eauto; subst; try congruence.
   Qed.
 
   Lemma nth_findIndex_NIn
@@ -99,7 +131,7 @@ Section ilist.
       (forall a, In a As -> AC_eq a c = false) ->
       forall a, nth (findIndex As c) As a = a.
   Proof.
-    intros; apply nth_overflow; rewrite findIndex_NIn;
+    clear B; intros; apply nth_overflow; rewrite findIndex_NIn;
     auto with arith.
   Qed.
 
@@ -110,7 +142,7 @@ Section ilist.
       List.In a As -> AC_eq a c = true ->
       List.In (nth (findIndex As c) As default_A) As.
   Proof.
-    induction As; simpl; intros; destruct H; subst.
+    clear B; induction As; simpl; intros; destruct H; subst.
     - rewrite H0; auto.
     - caseEq (AC_eq a c); eauto.
   Qed.
@@ -290,6 +322,26 @@ Section ilist_replace.
     exact (icons _ new_b' (ilist_tail il')).
     exact (icons _ (ilist_hd il') (replace_index _ (ilist_tail il') c default_A new_b')).
   Defined.
+
+  Lemma replace_index_NIn
+  : forall (As : list A)
+           (il : ilist _ As)
+           (c : C)
+           (default_A : A)
+           (new_b : B (nth (findIndex AC_eq As c) As default_A)),
+      (forall a, In a As -> AC_eq a c = false) ->
+      replace_index il c default_A new_b = il.
+  Proof.
+    induction As; intros; subst.
+    - unfold ith_obligation_1; simpl; auto.
+      rewrite (ilist_invert il); auto.
+    - simpl in *.
+      revert new_b.
+      caseEq (AC_eq a c); unfold ith_obligation_2; simpl.
+      rewrite H in H0; auto; try congruence.
+      rewrite IHAs; eauto.
+      destruct (ilist_invert il) as [a' [b' il']]; subst; simpl; auto.
+  Qed.
 
   Lemma ith_replace :
     forall (As : list A)

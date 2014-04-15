@@ -3,16 +3,13 @@ Require Import List String Ensembles Omega
 
 (* Notations for queries. *)
 
-Instance Astring_eq : Query_eq string := {| A_eq_dec := string_dec |}.
-Instance Anat_eq : Query_eq nat := {| A_eq_dec := eq_nat_dec |}.
-
 Notation "( x 'in' R ) bod" :=
   (fold_right (@app _) nil
-              (map (fun x :Tuple (schemaHeading
-                                    (qschemaSchema
-                                       qsSchemaHint R%string))
+              (map (fun x : Tuple
+                              (schemaHeading
+                                 (GetNamedSchema qsSchemaHint R%string))
                     => bod)
-                   (rel (rels qsHint R%string)))) : QuerySpec_scope.
+                   (GetRelation qsHint R%string))) : QuerySpec_scope.
 
 Notation "'Return' t" :=
   (cons t%Tuple nil) : QuerySpec_scope.
@@ -20,9 +17,8 @@ Notation "'Return' t" :=
 Notation "'Where' p bod" :=
   (if p%Tuple then bod else nil) : QuerySpec_scope.
 
-Notation "'For' bod" := (eq bod)
+Notation "'For' bod" := (bod)
   : QuerySpec_scope.
 
 (* The spec for a count of the number of tuples in a relation. *)
-Definition Count {Schema} (R : Ensemble (list Schema)) (n : nat) :=
-  exists l, R l /\ n = List.length l.
+Definition Count {Schema} (R : list Schema) := List.length R.

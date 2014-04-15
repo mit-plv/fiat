@@ -299,7 +299,7 @@ Tactic Notation "hone'" "observer" constr(obsIdx) "using" open_constr(obsBod) :=
                                 |}
                                 obsBod
                                 ))
-      | idtac]; cbv beta in *; simpl in * .
+      | idtac]; cbv beta in *; simpl in *.
 
   Tactic Notation "hone'" "mutator" constr(mutIdx) "using" open_constr(mutBod) :=
     let A :=
@@ -329,12 +329,33 @@ Tactic Notation "hone'" "observer" constr(obsIdx) "using" open_constr(obsBod) :=
     let mutIdxB := eval simpl in
     (@Build_BoundedString (List.map mutID mutSigs) mutIdx _) in
       eapply SharpenStep;
-      [eapply (@refineADT_BuildADT_ReplaceMutator
-                 Rep' _ _ mutDefs obsDefs mutIdxB
+      [eapply (@refineADT_BuildADT_ReplaceMutator_eq
+                 Rep'  _ _ mutDefs obsDefs mutIdxB
                  (@Build_mutDef Rep'
                                 {| mutID := mutIdx;
                                    mutDom := MutatorDom' mutIdxB
                                 |}
                                 mutBod
                                 ))
-      | idtac]; cbv beta in *; simpl in * .
+      | idtac]; cbv beta in *; simpl in *.
+
+  (* This applies reflexivity after refining a method. *)
+
+Ltac higher_order_2_reflexivity :=
+  let x := match goal with |- ?R ?x (?f ?a ?b) => constr:(x) end in
+  let f := match goal with |- ?R ?x (?f ?a ?b) => constr:(f) end in
+  let a := match goal with |- ?R ?x (?f ?a ?b) => constr:(a) end in
+  let b := match goal with |- ?R ?x (?f ?a ?b) => constr:(b) end in
+  let x' := (eval pattern a, b in x) in
+  let f' := match x' with ?f' _ _ => constr:(f') end in
+  unify f f';
+    cbv beta;
+    reflexivity.
+
+Tactic Notation "hone'" "observer" constr(obsIdx) :=
+  hone' observer obsIdx using _;
+  [set_evars | ].
+
+Tactic Notation "hone'" "mutator" constr(mutIdx) :=
+  hone' mutator mutIdx using _;
+  [set_evars | ].

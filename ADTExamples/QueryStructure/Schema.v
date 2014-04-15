@@ -22,8 +22,8 @@ Definition tupleAgree
     tup1 attr = tup2 attr.
 
 Notation "[ attr1 ; .. ; attr2 ] " :=
-  ({| bstring := attr1%string |} :: .. ({| bstring := attr2%string |} :: nil) ..)
-  : SchemaConstraints_scope.
+  (attr1%string :: .. (attr2%string :: nil) ..)
+  : SchemaConstraints_scope. 
 
 Notation "'attributes' attrlist1 'depend' 'on' attrlist2 " :=
   (fun tup1 : Tuple _ =>

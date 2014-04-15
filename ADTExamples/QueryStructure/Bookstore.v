@@ -40,12 +40,12 @@ Open Scope QSSchema.
   Time simpl.
   Abort.
 
-  Definition BookStoreRefRep := @QueryStructure BookStoreSchema.
+  Definition BookStoreRefRep := QueryStructure BookStoreSchema.
 
   Definition BookSchema :=
-    schemaHeading (qschemaSchema BookStoreSchema "Books"%string).
+    schemaHeading (GetNamedSchema BookStoreSchema "Books"%string).
   Definition OrderSchema :=
-    schemaHeading (qschemaSchema BookStoreSchema "Orders"%string).
+    schemaHeading (GetNamedSchema BookStoreSchema "Orders"%string).
 
   Definition Book := Tuple BookSchema.
   Definition Order := Tuple OrderSchema.
@@ -73,21 +73,17 @@ Open Scope QSSchema.
       }.
 
   (* [GetTitles] : The titles of books written by a given author *)
-  Definition GetTitlesSpec
-             (r : BookStoreRefRep) (author : string) :=
-    let _ := {| qsHint := r |} in
-    For (b in "Books")
-    Where (b!"Author" == author)
-    Return b!"Title".
 
-  Arguments qsSchemaHint _ /.
+  Arguments GetNamedSchema _ _ / .
+
+  Arguments qsSchemaHint _ / .
 
   (* [NumOrders] : The number of orders for a given author *)
   Definition NumOrdersSpec
-             (r : BookStoreRefRep) (author : string) : Ensemble nat :=
+             (r : BookStoreRefRep) (author : string) :=
     let _ := {|qsHint := r |} in
     Count (For (o in "Orders") (b in "Books")
-           Where (b!"Author" == author)
+           Where (author == b!"Author")
            Where (b!"ISBN" == o!"ISBN")
            Return tt).
 
@@ -104,25 +100,84 @@ Open Scope QSSchema.
              (* [GetTitles] : The titles of books written by a given author *)
              def query "GetTitles" ( author : string ) : list string :=
                For (b in "Books")
-               Where (b!"Author" == author)
+               Where (author == b!"Author")
                Return b!"Title",
 
              (* [NumOrders] : The number of orders for a given author *)
              def query "NumOrders" ( author : string ) : nat :=
                  Count (For (o in "Orders") (b in "Books")
-                        Where (b!"Author" == author)
+                        Where (author == b!"Author")
                         Where (b!"ISBN" == o!"ISBN")
                         Return <"ISBN" : o!"ISBN" >)
          } .
 
   Local Close Scope QueryStructureParsing_scope.
+  Local Close Scope QuerySpec.
   Local Open Scope QueryStructure_scope.
+
+  Definition BookStoreSchema' :=
+    query structure schema
+      [ relation "Books" has
+                schema <"Author" : string,
+                        "Title" : string,
+                        "ISBN" : nat,
+                        "#Orders" : nat>
+                where attributes ["Title"; "Author"] depend on ["ISBN"];
+        relation "Orders" has
+                schema <"ISBN" : nat,
+                        "Date" : nat> ]
+      enforcing [attribute "ISBN" of "Orders" references "Books"].
+
+  Definition AddAttribute_SiR
+             (or : BookStoreRefRep)
+             (nr : QueryStructure BookStoreSchema') :=
+    (GetRelation or "Orders" = GetRelation nr "Orders" /\
+     GetRelation or "Books" = map (fun tup => <"Author" : tup!"Author",
+                                   "Title" : tup!"Title",
+                                   "ISBN" : tup!"ISBN">%Tuple)
+                          (GetRelation nr "Books")).
 
   Definition BookStore :
     Sharpened BookStoreSpec.
   Proof.
     unfold BookStoreSpec.
-    simpl.
+    (* Step 1: Decide what to do when inserting a book that
+       violates the key constraints of Books. I think
+       we will leave table unchanged when a 'bad' book is
+       inserted. *)
+    hone' mutator "PlaceOrder"%string.
+    {
+      simpl in *; intros; subst.
+      setoid_rewrite refineEquiv_pick_eq';
+      autorewrite with refine_monad.
+      rewrite QSInsertSpec_refine with (default := ret r_n).
+      subst_body.
+      higher_order_2_reflexivity.
+    }
+    (* Step 2: Decide what to do when adding an order that
+       violates foreign key constraints of Orders. *)
+    hone' mutator "AddBook"%string.
+    {
+      intros; subst.
+      setoid_rewrite refineEquiv_pick_eq';
+      autorewrite with refine_monad.
+      rewrite QSInsertSpec_refine with (default := ret r_n).
+      subst_body.
+      higher_order_2_reflexivity.
+    }
+    (* Step 3: Add the '#Orders' attribute to Books schema. *)
+    hone representation' using AddAttribute_SiR.
+
+    (* Step 3.1: Hone GetTitles to ignore the new field. *)
+    (* Step 3.2: Hone AddBook to set '#Orders' to 0. *)
+    (* Step 3.3: Hone PlaceOrder to increment '#Orders'. *)
+    (* Step 3.4: Hone NumOrders to use said field. *)
+
+    (* Step 4: Switch to implementation of Books to a
+               hashmap from authors to lists of titles. *)
+    (* Step 4.1: Update mutators *)
+    (* Step 4.2: Update observers *)
+
   Admitted.
 
   (* Definition Ref_SiR

@@ -8,37 +8,41 @@ Require Export
    schemas and a set of cross-relation constraints
    (i.e. foreign key constraints). *)
 
-Record QueryStructureSchema :=
-  { qschemaIndex : Set;
-    qschemaSchema : qschemaIndex -> Schema;
-    qschemaConstraints:
-      forall idx idx',
-        Tuple (schemaHeading (qschemaSchema idx))
-        -> Relation (qschemaSchema idx')
-        -> Prop
-  }.
-
-Definition Prod_eq {A B C D : Type}
-      (A_eq : A -> C -> bool)
-      (B_eq : B -> D -> bool)
-      (idx : A * B) (idx' : C * D) : bool :=
-  andb (A_eq (fst idx) (fst idx')) (B_eq (snd idx) (snd idx')).
-
-Definition BoundedString_eq bounds bstr str :=
-  if (string_dec (bstring bounds bstr) str) then true else false.
-
-Arguments BoundedString_eq _ _ _ / .
-
-Definition BoundedStringProd_eq bounds bounds' :=
-  Prod_eq (@BoundedString_eq bounds)
-          (@BoundedString_eq bounds').
-
-(* Notations for Query Structures. *)
-
 Record NamedSchema  :=
   { relName : string;
     relSchema : Schema
   }.
+
+Definition NamedSchema_eq (rn : NamedSchema) (idx : string) :=
+  if (string_dec (relName rn) idx) then true else false.
+
+Definition defaultSchema :=
+  {| relName := "null"%string;
+     relSchema :=  {| schemaHeading := <"null" : ()>%Heading;
+                      schemaConstraints tup := True
+                      |} |}.
+
+Definition BuildQSSchema
+           (namedSchemas : list NamedSchema)
+           (idx : string) :=
+  relSchema (nth (findIndex NamedSchema_eq namedSchemas idx)
+                 namedSchemas defaultSchema).
+
+Record QueryStructureSchema :=
+  { qschemaSchemas : list NamedSchema;
+    qschemaConstraints:
+      forall idx idx',
+        Tuple (schemaHeading (BuildQSSchema qschemaSchemas idx))
+        -> list (Tuple (schemaHeading (BuildQSSchema qschemaSchemas idx')))
+        -> Prop
+  }.
+
+Definition GetNamedSchema 
+           (QSSchema : QueryStructureSchema)
+           (idx : string) :=
+  BuildQSSchema (qschemaSchemas QSSchema) idx.
+
+(* Notations for Query Structures. *)
 
 Notation "'relation' name 'has' sch " :=
   {| relName := name%string;
@@ -47,26 +51,12 @@ Notation "'relation' name 'has' sch " :=
 
 Bind Scope NamedSchema_scope with NamedSchema.
 
-Definition NamedSchema_eq (rn : NamedSchema) (idx : string) :=
-  if (string_dec (relName rn) idx) then true else false.
-
-Definition defaultSchema := (relation "null" has schema < "null" : () >)%NamedSchema.
-
-Definition BuildQueryStructureIndex
-           (namedSchemas : list NamedSchema) := string.
-
-Definition BuildQueryStructureSchema
-           (namedSchemas : list NamedSchema)
-           (idx : string) :=
-  relSchema (nth (findIndex NamedSchema_eq namedSchemas idx)
-                 namedSchemas defaultSchema).
-
-Lemma BuildQueryStructureSchema_idx_eq
+Lemma BuildQSSchema_idx_eq
       (namedSchemas : list NamedSchema)
-: forall idx idx' : BuildQueryStructureIndex namedSchemas,
+: forall idx idx' : string,
     idx = idx'
-    -> BuildQueryStructureSchema namedSchemas idx =
-       BuildQueryStructureSchema namedSchemas idx'.
+    -> BuildQSSchema namedSchemas idx =
+       BuildQSSchema namedSchemas idx'.
 Proof.
   intros; rewrite H; auto.
 Defined.
@@ -78,9 +68,9 @@ Defined.
 
 Definition ForeignKey_P heading relSchema attr1 attr2 tupmap
            (tup : Tuple heading)
-           (R : Relation relSchema) :=
+           (R : list (Tuple relSchema)) :=
   exists tup2,
-    List.In tup2 (rel R) /\
+    List.In tup2 R /\
     tup attr1 =
     tupmap (tup2 attr2 ).
 
@@ -90,8 +80,8 @@ Definition BuildForeignKeyConstraints
            attr1
            attr2
            {tupmap} :=
-  (existT (fun ids => Tuple (schemaHeading (BuildQueryStructureSchema namedSchemas (fst ids)))
-                      -> Relation (BuildQueryStructureSchema namedSchemas (snd ids))
+  (existT (fun ids => Tuple (schemaHeading (BuildQSSchema namedSchemas (fst ids)))
+                      -> list (Tuple (schemaHeading (BuildQSSchema namedSchemas (snd ids))))
                     -> Prop)
           (rel1, rel2)
           (ForeignKey_P attr1 attr2 tupmap)).
@@ -103,29 +93,26 @@ Notation "'attribute' attr 'of' rel1 'references' rel2 " :=
   (
       @BuildForeignKeyConstraints
         (@nSchemaHint _) rel1%string rel2%string
-        {| bstring := attr%string;
-           stringb := _|}
-        {| bstring := attr%string;
-           stringb := _|} id) : QSSchemaConstraints_scope.
+        attr%string
+        attr%string id) : QSSchemaConstraints_scope.
 
 Program Definition BuildQueryStructureConstraints_cons
            (namedSchemas : list NamedSchema)
            (idx' : sigT (fun idxs =>
-                 Tuple (schemaHeading (BuildQueryStructureSchema namedSchemas (fst idxs)))
-                 -> Relation (BuildQueryStructureSchema namedSchemas (snd idxs))
+                 Tuple (schemaHeading (BuildQSSchema namedSchemas (fst idxs)))
+                 -> list (Tuple (schemaHeading (BuildQSSchema namedSchemas (snd idxs))))
                  -> Prop) )
            (constraints :
               list (sigT (fun idxs =>
-                 Tuple (schemaHeading (BuildQueryStructureSchema namedSchemas (fst idxs)))
-                 -> Relation (BuildQueryStructureSchema namedSchemas (snd idxs))
+                 Tuple (schemaHeading (BuildQSSchema namedSchemas (fst idxs)))
+                 -> list (Tuple (schemaHeading (BuildQSSchema namedSchemas (snd idxs))))
                  -> Prop) ))
-           (idx : (BuildQueryStructureIndex namedSchemas *
-                   BuildQueryStructureIndex namedSchemas))
-           (HInd : Tuple (schemaHeading (BuildQueryStructureSchema namedSchemas (fst idx)))
-                   -> Relation (BuildQueryStructureSchema namedSchemas (snd idx))
+           (idx : (string * string))
+           (HInd : Tuple (schemaHeading (BuildQSSchema namedSchemas (fst idx)))
+                   -> list (Tuple (schemaHeading (BuildQSSchema namedSchemas (snd idx))))
                    -> Prop)
-: Tuple (schemaHeading (BuildQueryStructureSchema namedSchemas (fst idx)))
-  -> Relation (BuildQueryStructureSchema namedSchemas (snd idx))
+: Tuple (schemaHeading (BuildQSSchema namedSchemas (fst idx)))
+  -> list (Tuple (schemaHeading (BuildQSSchema namedSchemas (snd idx))))
   -> Prop :=
   if (string_dec (fst (projT1 idx')) (fst idx)) then
     if (string_dec (snd (projT1 idx')) (snd idx) ) then
@@ -134,10 +121,10 @@ Program Definition BuildQueryStructureConstraints_cons
 Next Obligation.
   simpl in *.
   subst; apply X1.
-  erewrite BuildQueryStructureSchema_idx_eq;
+  erewrite BuildQSSchema_idx_eq;
     [ eapply X
     | simpl; eauto].
-  erewrite BuildQueryStructureSchema_idx_eq;
+  erewrite BuildQSSchema_idx_eq;
     [ eapply X0
     | simpl; eauto].
 Defined.
@@ -146,155 +133,25 @@ Fixpoint BuildQueryStructureConstraints
 (namedSchemas : list NamedSchema)
 (constraints :
    list (sigT (fun idxs =>
-                 Tuple (schemaHeading (BuildQueryStructureSchema namedSchemas (fst idxs)))
-                 -> Relation (BuildQueryStructureSchema namedSchemas (snd idxs))
+                 Tuple (schemaHeading (BuildQSSchema namedSchemas (fst idxs)))
+                 -> list (Tuple (schemaHeading (BuildQSSchema namedSchemas (snd idxs))))
                  -> Prop) ))
-(idx : (BuildQueryStructureIndex namedSchemas *
-        BuildQueryStructureIndex namedSchemas)) {struct constraints}
-: Tuple (schemaHeading (BuildQueryStructureSchema namedSchemas (fst idx)))
-  -> Relation (BuildQueryStructureSchema namedSchemas (snd idx))
+(idx : string * string) {struct constraints}
+: Tuple (schemaHeading (BuildQSSchema namedSchemas (fst idx)))
+  -> list (Tuple (schemaHeading (BuildQSSchema namedSchemas (snd idx))))
   -> Prop :=
   match constraints with
     | idx' :: constraints' =>
       @BuildQueryStructureConstraints_cons
         namedSchemas idx' constraints' idx
-      (BuildQueryStructureConstraints constraints' idx)
+      (BuildQueryStructureConstraints namedSchemas constraints' idx)
     | nil => fun _ _ => True
   end.
-
-(*
-
-Lemma BuildQueryStructureConstraints_eq
-: forall (namedSchemas : list NamedSchema)
-         P
-         (constraints :
-            list (sigT P))
-         (idx idx' : BuildQueryStructureIndex namedSchemas),
-    (bstring _ idx, bstring _ idx') =
-    (bstring _ (fst (nth
-       (findIndex
-          (BoundedStringProd_eq (bounds':=map relName namedSchemas))
-          (map (projT1 (P:=P)) constraints)
-          (bstring _ idx, bstring _ idx'))
-       (map (projT1 (P := P)) constraints)
-       (idx, idx'))),
-     bstring _ (snd (nth
-       (findIndex
-          (BoundedStringProd_eq (bounds':=map relName namedSchemas))
-          (map (projT1 (P := P)) constraints)
-          (bstring _ idx, bstring _ idx'))
-       (map (projT1 (P := P)) constraints)
-       (idx, idx'))))
-     .
-Proof.
-  intros.
-  induction (map (projT1 (P:=P)) constraints); simpl; try reflexivity.
-  unfold BoundedStringProd_eq, BoundedString_eq, Prod_eq; simpl.
-  destruct (string_dec (fst a) idx); simpl; try exact IHl.
-  destruct (string_dec (snd a) idx'); simpl in *; try reflexivity.
-  rewrite e, e0; reflexivity.
-  rewrite IHl at 1; reflexivity.
-Defined.
-
-     Print BuildQueryStructureConstraints_eq.
-
-Lemma BuildQueryStructureConstraints_eq_fst
-: forall (namedSchemas : list NamedSchema)
-         P
-         (constraints :
-            list (sigT P))
-         (idx idx' : BuildQueryStructureIndex namedSchemas),
-    bstring _ idx =
-    fst (bstring _ (fst (nth
-       (findIndex
-          (BoundedStringProd_eq (bounds':=map relName namedSchemas))
-          (map (projT1 (P:=P)) constraints)
-          (bstring _ idx, bstring _ idx'))
-       (map (projT1 (P := P)) constraints)
-       (idx, idx'))),
-     bstring _ (snd (nth
-       (findIndex
-          (BoundedStringProd_eq (bounds':=map relName namedSchemas))
-          (map (projT1 (P := P)) constraints)
-          (bstring _ idx, bstring _ idx'))
-       (map (projT1 (P := P)) constraints)
-       (idx, idx')))).
-  intros; rewrite <- BuildQueryStructureConstraints_eq; reflexivity.
-Defined.
-
-Lemma BuildQueryStructureConstraints_eq_snd
-: forall (namedSchemas : list NamedSchema)
-         P
-         (constraints :
-            list (sigT P))
-         (idx idx' : BuildQueryStructureIndex namedSchemas),
-    bstring _ idx' =
-    snd (bstring _ (fst (nth
-       (findIndex
-          (BoundedStringProd_eq (bounds':=map relName namedSchemas))
-          (map (projT1 (P:=P)) constraints)
-          (bstring _ idx, bstring _ idx'))
-       (map (projT1 (P := P)) constraints)
-       (idx, idx'))),
-     bstring _ (snd (nth
-       (findIndex
-          (BoundedStringProd_eq (bounds':=map relName namedSchemas))
-          (map (projT1 (P := P)) constraints)
-          (bstring _ idx, bstring _ idx'))
-       (map (projT1 (P := P)) constraints)
-       (idx, idx')))).
-  intros; rewrite <- BuildQueryStructureConstraints_eq; reflexivity.
-Defined.
-
-Program Definition BuildQueryStructureConstraints
-(namedSchemas : list NamedSchema)
-(constraints :
-   list (sigT (fun idxs =>
-                 Relation (BuildQueryStructureSchema namedSchemas (fst idxs))
-                 -> Relation (BuildQueryStructureSchema namedSchemas (snd idxs))
-                 -> Prop) ))
-:
-  forall (idx : (BuildQueryStructureIndex namedSchemas *
-                 BuildQueryStructureIndex namedSchemas)),
-    Relation (BuildQueryStructureSchema namedSchemas (fst idx))
-    -> Relation (BuildQueryStructureSchema namedSchemas (snd idx))
-    -> Prop :=
-  fun idx =>
-    ith (@BoundedStringProd_eq _ _) (siglist2ilist constraints)
-        (bstring _ (fst idx), bstring _ (snd idx)) idx (fun _ _ => True).
-Next Obligation.
-  eapply BuildQueryStructureSchema_idx_eq.
-  apply BuildQueryStructureConstraints_eq_fst.
-Defined.
-Next Obligation.
-  eapply BuildQueryStructureSchema_idx_eq.
-  apply BuildQueryStructureConstraints_eq_snd.
-Defined.
-
-Definition BuildQueryStructureConstraints'
-(namedSchemas : list NamedSchema)
-(constraints :
-   list (sigT (fun idxs =>
-                 Relation (BuildQueryStructureSchema namedSchemas (fst idxs))
-                 -> Relation (BuildQueryStructureSchema namedSchemas (snd idxs))
-                 -> Prop) ))
-:
-  forall (idx : (BuildQueryStructureIndex namedSchemas *
-                 BuildQueryStructureIndex namedSchemas)),
-    Relation _
-    -> Relation _
-    -> Prop :=
-  fun idx =>
-    ith (@BoundedStringProd_eq _ _) (siglist2ilist constraints)
-        (bstring _ (fst idx), bstring _ (snd idx)) idx (fun _ _ => True).
-
-Print BuildQueryStructureConstraints'. *)
 
 Definition BuildQueryStructure
            (namedSchemas : list NamedSchema)
            constraints :=
-  {| qschemaIndex := BuildQueryStructureIndex namedSchemas;
-     qschemaSchema := BuildQueryStructureSchema namedSchemas;
+  {| qschemaSchemas := namedSchemas;
      qschemaConstraints idx idx' := @BuildQueryStructureConstraints
                                       namedSchemas
                                       constraints (idx, idx') |}.
@@ -312,6 +169,11 @@ Arguments BuildQueryStructureConstraints_cons [_] _ _ _ _ / _ _.
 Arguments BuildQueryStructureConstraints_cons_obligation_1 [_] _ / _ _ _ _ _ _ _ .
 Arguments eq_rect_r _ _ _ _ _ _ / .
 Arguments ForeignKey_P _ _ _ _ _ / _ _ .
-Arguments BuildQueryStructureSchema _ _ / .
+Arguments BuildQSSchema _ _ / .
 
 Bind Scope QSSchema_scope with QueryStructureSchema.
+
+Instance Astring_eq : Query_eq string := {| A_eq_dec := string_dec |}.
+
+Require Import Omega.
+Instance Anat_eq : Query_eq nat := {| A_eq_dec := eq_nat_dec |}.
