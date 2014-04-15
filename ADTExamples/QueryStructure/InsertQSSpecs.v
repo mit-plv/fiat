@@ -3,33 +3,34 @@ Require Import List String Ensembles
 
 (* Definitions for updating query structures. *)
 
+Print QueryStructureHint.
+
 Definition QSInsertSpec
-           {QSSchema}
-           (qs : QueryStructure QSSchema)
+           (qs : QueryStructureHint)
            (idx : string)
            (tup : Tuple (schemaHeading (GetNamedSchema _ idx)))
-           (qs' : QueryStructure QSSchema)
+           (qs' : QueryStructure qsSchemaHint)
 : Prop :=
   (* All of the relations with a different index are untouched
      by insert. *)
   (forall idx',
      idx <> idx' ->
-     GetRelation qs idx' = GetRelation qs' idx') /\
+     GetRelation qsHint idx' = GetRelation qs' idx') /\
   (* If [tup] is consistent with the schema constraints and the
      cross-relation constraints, it is included in the relation
      indexed by [idx] after insert; that relation is unspecified if
      [tup] does not satisfy either set of constraints. *)
-  schemaConstraints (GetNamedSchema QSSchema idx) tup
+  schemaConstraints (GetNamedSchema qsSchemaHint idx) tup
   -> (forall idx',
-        qschemaConstraints QSSchema idx idx' tup (GetRelation  qs idx'))
+        qschemaConstraints qsSchemaHint idx idx' tup (GetRelation qsHint idx'))
   -> (forall idx' tup',
         idx' <> idx ->
-        qschemaConstraints QSSchema idx' idx tup' (tup :: (GetRelation qs idx)))
-  -> List.In idx (map relName (qschemaSchemas QSSchema))
-  -> GetRelation qs' idx = tup :: GetRelation qs idx.
+        qschemaConstraints qsSchemaHint idx' idx tup' (tup :: (GetRelation qsHint idx)))
+  -> List.In idx (map relName (qschemaSchemas qsSchemaHint))
+  -> GetRelation qs' idx = tup :: GetRelation qsHint idx.
 
 Notation "'Insert' b 'into' idx " :=
-  (QSInsertSpec qsHint idx%string b)
+  (Pick (QSInsertSpec _ idx%string b))
     (at level 80) : QuerySpec_scope.
 
 (* Facts about insert. We'll probably need to extract these to their
@@ -128,7 +129,7 @@ Section InsertRefinements.
   Lemma QSInsertSpec_refine :
     forall qsSchema qs idx tup default,
       refine
-        {x | QSInsertSpec qs idx tup x}%comp
+        (Pick (QSInsertSpec {| qsHint := qs |} idx tup))
         (schConstr <- Any (SchemaConstraints_dec qsSchema idx tup);
          qsConstr <- Any (QSSchemaConstraints_dec qs idx tup);
          qsConstr' <- Any (QSSchemaConstraints_dec' qs idx tup);

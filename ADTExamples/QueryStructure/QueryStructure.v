@@ -70,14 +70,15 @@ Notation "'def' 'update' id ( x : dom ) : 'rep' := bod" :=
   (Build_mutDef {| mutID := id; mutDom := dom |}
                 (fun (r : repHint) x =>
                    let _ := {| qsHint := r |} in
-                   Pick (bod%QuerySpec)))
+                   bod%QuerySpec))
     (no associativity, at level 94, id at level 0,
      x at level 0, dom at level 0, only parsing,
      format "'def'  'update'  id  ( x :  dom )  :  'rep'  :=  '[  '   bod ']' " ) :
 updateDefParsing_scope.
 
 Notation "'def' 'update' id ( x : dom ) : 'rep' := bod" :=
-  (Build_mutDef {| mutID := id; mutDom := dom |} (fun r x => Pick (bod%QuerySpec)))
+  (Build_mutDef (id%string : rep × dom → rep)%mutSig
+                   (fun r x => bod%QuerySpec))
     (no associativity, at level 94, id at level 0, r at level 0,
      x at level 0, dom at level 0,
      format "'def'  'update'  id  ( x :  dom )  :  'rep'  :=  '[  '   bod ']' " ) :

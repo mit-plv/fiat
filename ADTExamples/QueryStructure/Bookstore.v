@@ -137,6 +137,8 @@ Open Scope QSSchema.
                                    "ISBN" : tup!"ISBN">%Tuple)
                           (GetRelation nr "Books")).
 
+  Open Scope updateDef.
+
   Definition BookStore :
     Sharpened BookStoreSpec.
   Proof.
@@ -150,7 +152,7 @@ Open Scope QSSchema.
       simpl in *; intros; subst.
       setoid_rewrite refineEquiv_pick_eq';
       autorewrite with refine_monad.
-      rewrite QSInsertSpec_refine with (default := ret r_n).
+      setoid_rewrite QSInsertSpec_refine with (default := ret r_n).
       subst_body.
       higher_order_2_reflexivity.
     }
@@ -161,7 +163,7 @@ Open Scope QSSchema.
       intros; subst.
       setoid_rewrite refineEquiv_pick_eq';
       autorewrite with refine_monad.
-      rewrite QSInsertSpec_refine with (default := ret r_n).
+      setoid_rewrite QSInsertSpec_refine with (default := ret r_n).
       subst_body.
       higher_order_2_reflexivity.
     }
