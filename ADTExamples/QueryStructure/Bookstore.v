@@ -18,37 +18,44 @@ Definition MovieSchema :=
 
 Open Scope QSSchema.
 
+Definition Books := "B"%string.
+Definition Author := "A"%string.
+Definition Title := "T"%string.
+Definition ISBN := "I"%string.
+Definition Orders := "O"%string.
+Definition Date := "D"%string.
+
   Definition BookStoreSchema :=
     query structure schema
-      [ relation "Books" has
-                schema <"Author" : string,
-                        "Title" : string,
-                        "ISBN" : nat>
-                where attributes ["Title"; "Author"] depend on ["ISBN"];
-        relation "Orders" has
-                schema <"ISBN" : nat,
-                        "Date" : nat> ]
-      enforcing [attribute "ISBN" of "Orders" references "Books"].
+      [ relation Books has
+                schema <Author : string,
+                        Title : string,
+                        ISBN : nat>
+                where attributes [Title; Author] depend on [ISBN];
+        relation Orders has
+                schema <ISBN : nat,
+                        Date : nat> ]
+      enforcing [attribute ISBN of Orders references Books].
 
   (* Sanity check to show that the definitions produced
      can be efficiently evaluated. *)
   Goal (forall b,
-          qschemaConstraints
+          BuildQueryStructureConstraints
             BookStoreSchema
-            "Orders"%string
-            "Books"%string = b).
+            Orders%string
+            Books%string = b).
   Time simpl.
   Abort.
 
   Definition BookStoreRefRep := QueryStructure BookStoreSchema.
 
-  Definition BookSchema :=
-    schemaHeading (GetNamedSchema BookStoreSchema "Books"%string).
-  Definition OrderSchema :=
-    schemaHeading (GetNamedSchema BookStoreSchema "Orders"%string).
+  Definition BookSchemaHeading :=
+    QSGetNRelSchemaHeading BookStoreSchema Books.
+  Definition OrderSchemaHeading :=
+    QSGetNRelSchemaHeading BookStoreSchema Orders.
 
-  Definition Book := Tuple BookSchema.
-  Definition Order := Tuple OrderSchema.
+  Definition Book := Tuple BookSchemaHeading.
+  Definition Order := Tuple OrderSchemaHeading.
 
   (* Our bookstore has two mutators:
      - [PlaceOrder] : Place an order into the 'Orders' table
@@ -64,17 +71,20 @@ Open Scope QSSchema.
   Local Open Scope Schema.
   Local Open Scope QuerySpec.
 
+Definition PlaceOrder := "P"%string.
+Definition AddBook := "A"%string.
+Definition GetTitles := "G"%string.
+Definition NumOrders := "N"%string.
+
   Definition BookStoreSig : ADTSig :=
     ADTsignature {
-        "PlaceOrder" : rep × Order → rep,
-        "AddBook" : rep × Book → rep ;
-        "GetTitles" : rep × string → list string,
-        "NumOrders" : rep × string → nat
+        PlaceOrder : rep × Order → rep,
+        AddBook : rep × Book → rep ;
+        GetTitles : rep × string → list string,
+        NumOrders : rep × string → nat
       }.
 
   (* [GetTitles] : The titles of books written by a given author *)
-
-  Arguments GetNamedSchema _ _ / .
 
   Arguments qsSchemaHint _ / .
 
@@ -82,33 +92,33 @@ Open Scope QSSchema.
   Definition NumOrdersSpec
              (r : BookStoreRefRep) (author : string) :=
     let _ := {|qsHint := r |} in
-    Count (For (o in "Orders") (b in "Books")
-           Where (author == b!"Author")
-           Where (b!"ISBN" == o!"ISBN")
+    Count (For (o in Orders) (b in Books)
+           Where (author == b!Author)
+           Where (b!ISBN == o!ISBN)
            Return tt).
 
   Definition BookStoreSpec : ADT BookStoreSig :=
     QueryADTRep BookStoreRefRep {
              (* [PlaceOrder] : Place an order into the 'Orders' table *)
-             def update "PlaceOrder" ( o : Order ) : rep :=
-               Insert o into "Orders",
+             def update PlaceOrder ( o : Order ) : rep :=
+               Insert o into Orders,
 
              (* [AddBook] : Add a book to the inventory *)
-             def update "AddBook" ( b : Book ) : rep :=
-                 Insert b into "Books" ;
+             def update AddBook ( b : Book ) : rep :=
+                 Insert b into Books ;
 
              (* [GetTitles] : The titles of books written by a given author *)
-             def query "GetTitles" ( author : string ) : list string :=
-               For (b in "Books")
-               Where (author == b!"Author")
-               Return b!"Title",
+             def query GetTitles ( author : string ) : list string :=
+               For (b in Books)
+               Where (author == b!Author)
+               Return b!Title,
 
              (* [NumOrders] : The number of orders for a given author *)
-             def query "NumOrders" ( author : string ) : nat :=
-                 Count (For (o in "Orders") (b in "Books")
-                        Where (author == b!"Author")
-                        Where (b!"ISBN" == o!"ISBN")
-                        Return <"ISBN" : o!"ISBN" >)
+             def query NumOrders ( author : string ) : nat :=
+                 Count (For (o in Orders) (b in Books)
+                        Where (author == b!Author)
+                        Where (b!ISBN == o!ISBN)
+                        Return <ISBN : o!ISBN >)
          } .
 
   Local Close Scope QueryStructureParsing_scope.
@@ -117,48 +127,171 @@ Open Scope QSSchema.
 
   Definition BookStoreSchema' :=
     query structure schema
-      [ relation "Books" has
-                schema <"Author" : string,
-                        "Title" : string,
-                        "ISBN" : nat,
+      [ relation Books has
+                schema <Author : string,
+                        Title : string,
+                        ISBN : nat,
                         "#Orders" : nat>
-                where attributes ["Title"; "Author"] depend on ["ISBN"];
-        relation "Orders" has
-                schema <"ISBN" : nat,
-                        "Date" : nat> ]
-      enforcing [attribute "ISBN" of "Orders" references "Books"].
+                where attributes [Title; Author] depend on [ISBN];
+        relation Orders has
+                schema <ISBN : nat,
+                        Date : nat> ]
+      enforcing [attribute ISBN of Orders references Books].
 
   Definition AddAttribute_SiR
              (or : BookStoreRefRep)
              (nr : QueryStructure BookStoreSchema') :=
-    (GetRelation or "Orders" = GetRelation nr "Orders" /\
-     GetRelation or "Books" = map (fun tup => <"Author" : tup!"Author",
-                                   "Title" : tup!"Title",
-                                   "ISBN" : tup!"ISBN">%Tuple)
-                          (GetRelation nr "Books")).
+    (GetRelation or Orders = GetRelation nr Orders /\
+     GetRelation or Books = map (fun tup => <Author : tup!Author,
+                                   Title : tup!Title,
+                                   ISBN : tup!ISBN>%Tuple)
+                          (GetRelation nr Books)).
 
   Open Scope updateDef.
+
+  Arguments QSGetNRelSchemaHeading _ _ .
+
+  Print Pick.
+
+  Lemma refineEquiv_pick_forall_eq
+        A B (a : A) (P : A -> B -> Prop)
+  : @refineEquiv _
+                 (Pick (fun b => forall a', a = a' -> P a' b))
+                 (Pick (P a)).
+  Proof.
+    split; intros v Comp_v; inversion_by computes_to_inv;
+    econstructor; intros; subst; eauto.
+  Qed.
 
   Definition BookStore :
     Sharpened BookStoreSpec.
   Proof.
     unfold BookStoreSpec.
+    hone representation' using (@DropQSConstraints_SiR BookStoreSchema).
+    hone' observer GetTitles.
+    { unfold DropQSConstraints_SiR in *; simpl in *; intros; subst.
+      Unset Printing Notations.
+      idtac.
+      unfold Query_In.
+      simpl.
+      unfold GetRelation; simpl; unfold ith_obligation_2; simpl.
+      unfold Query_For.
+      rewrite refineEquiv_pick_forall_eq.
+      erewrite refine_pick.
+      Focus 2.
+      intros.
+      simpl.
+      rewrite H1.
+      setoid_rewrite refineEquiv_pick_eq.
+
+
+    unf
+    simpl.
     (* Step 1: Decide what to do when inserting a book that
        violates the key constraints of Books. I think
        we will leave table unchanged when a 'bad' book is
        inserted. *)
-    hone' mutator "PlaceOrder"%string.
+    hone' mutator PlaceOrder.
     {
       simpl in *; intros; subst.
       setoid_rewrite refineEquiv_pick_eq';
       autorewrite with refine_monad.
-      setoid_rewrite QSInsertSpec_refine with (default := ret r_n).
+      (* Things start to go off the rails if we use
+            QSInsertSpec_BuildQuerySpec_refine instead of
+            QSInsertSpec_refine because it unfolds the BookStoreSchema.
+         *)
+      setoid_rewrite QSInsertSpec_BuildQuerySpec_refine with (default := ret r_n).
+      unfold SchemaConstraints_dec; simpl schemaConstraints.
+      autorewrite with refine_keyconstraints refine_monad.
+      unfold Iterate_Constraints_dec; simpl.
+      Set Printing All.
+      idtac.
+      unfold ith_obligation_2; simpl.
+      unfold NamedSchema_eq; simpl.
+      idtac.
+      Set Printing All.
+      idtac.
+      simpl.
+      unfold BuildQueryStructureConstraints; simpl.
+      unfold BuildQueryStructureConstraints_cons; simpl.
+      Unset Printing Notations.
+      idtac.
+      Set Printing All.
+      idtac.
+      Print
+
+      Check QSInsertSpec_BuildQuerySpec_refine.
+
+      idtac.
+      setoid_rewrite QSInsertSpec_BuildQuerySpec_refine with (default := ret r_n).
+
+
+
+
+      unfold SchemaConstraints_dec; simpl schemaConstraints.
+      fold BookStoreSchema.
+      (* Here's where terms explode. *)
+      simpl.
+      unfold Iterate_Constraints_dec; simpl.
+      unfold BuildQueryStructureConstraints_cons; simpl.
+      idtac.
+      Set Printing All.
+      Show 1.
+      unfold GetRelation; simpl.
+      unfold ith_obligation_2; simpl.
+      Print Bind.
+      Set Printing All.
+      Show 1.
+      fail.
+      Set Printing Implicit.
+      Show 1.
+      fail.
+      unfold Iterate_Constraints_dec'; simpl.
+      unfold BuildQueryStructureConstraints_cons; simpl.
+      fail.
+      setoid_rewrite refine_Any_DecideableSB_True.
+
+      autorewrite with refine_keyconstraints refine_monad.
+      setoid_rewrite DecideableSB_Comp_refine; simpl.
+      unfold BuildQueryStructureConstraints_cons; simpl.
+      (* Can't get rid of the last Pick- rewriting is too slow!
+         rewrite refine_Any_DecideableSB_True. *)
+      unfold GetRelation; simpl.
+      unfold ith_obligation_2; simpl.
+      (* Just running idtac takes forever! *)
+      idtac.
+      Set Printing All.
+      idtac.
+      rewrite refine_Any_DecideableSB_True.
+      simpl BuildQueryStructureConstraints.
+      simpl GetRelation.
+      autorewrite with refine_monad.
+      simpl BuildQueryStructure.
+      simpl.
+      asdfasdfjl;k
+
+      simpl.
+      unfold NamedSchema_eq; simpl relName.
+      unfold DecideableSB_Comp.
+      simpl.
+      unfold DecideableSB_finiteComp; simpl.
+      unfold DecideableSB_finite; simpl.
+      unfold DecideableSB_finite_obligation_2,
+      DecideableSB_finite_obligation_3; simpl.
+      unfold QSSchemaConstraints_dec.
+      simpl qschemaConstraints.
+      unfold SchemaConstraints_dec; simpl.
+      assert (refine (x <- Any (DecideableSB True); ret x) (ret (left I))).
+
+      rewrite refine_Any_DecideableSB_True.
+
+      autorewrite with refine_keyconstraints.
       subst_body.
       higher_order_2_reflexivity.
     }
     (* Step 2: Decide what to do when adding an order that
        violates foreign key constraints of Orders. *)
-    hone' mutator "AddBook"%string.
+    hone' mutator AddBook%string.
     {
       intros; subst.
       setoid_rewrite refineEquiv_pick_eq';
@@ -185,8 +318,8 @@ Open Scope QSSchema.
   (* Definition Ref_SiR
              (or : BookStoreRefRep)
              (nr : list Book * list Order) :=
-    (forall o : Order, List.In o (snd nr)  (or 's "Orders") rel' /\ rel rel' o) /\
-    (forall b : Book, List.In b (fst nr) <-> exists rel', (or 's "Books") rel' /\ rel rel' b). *)
+    (forall o : Order, List.In o (snd nr)  (or 's Orders) rel' /\ rel rel' o) /\
+    (forall b : Book, List.In b (fst nr) <-> exists rel', (or 's Books) rel' /\ rel rel' b). *)
 
   (* Still need to reimplement specs using a better query notation.
 
@@ -236,11 +369,11 @@ Open Scope QSSchema.
     ADTRep BookStoreRefRep {
              def mut "PlaceOrder" ( r : rep , n : nat ) : rep :=
                {r' | PlaceOrderSpec r n r'},
-             def mut "AddBook" ( r : rep , b : Book ) : rep :=
+             def mut AddBook ( r : rep , b : Book ) : rep :=
                {r' | AddBookSpec r b r'} ;
-             def obs "GetTitles" ( r : rep , author : string ) : (list string) :=
+             def obs GetTitles ( r : rep , author : string ) : (list string) :=
                {titles | GetTitlesSpec r author titles} ,
-             def obs "NumOrders" ( r : rep , author : string ) : nat :=
+             def obs NumOrders ( r : rep , author : string ) : nat :=
                {numtitles | NumOrdersSpec r author numtitles}
          } .
 

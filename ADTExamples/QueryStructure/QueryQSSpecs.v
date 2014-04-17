@@ -5,7 +5,7 @@ Require Import List String Ensembles Omega
 
 Definition Query_In (qs : QueryStructureHint) {A} (R : string)
            (bod : Tuple (schemaHeading
-                           (GetNamedSchema qsSchemaHint R%string)) -> list A) :=
+                           (QSGetNRelSchema qsSchemaHint R%string)) -> list A) :=
   fold_right (@app _) (@nil _)
               (map bod (GetRelation qsHint R%string)).
 

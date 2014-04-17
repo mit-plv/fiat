@@ -2,7 +2,8 @@ Require Import List String FunctionalExtensionality Ensembles
         ADTNotation.ilist ADTNotation Program.
 Require Export
         ADTExamples.QueryStructure.Notations
-        Heading Tuple Schema Relation QueryStructureSchema.
+        Heading Tuple Schema Relation QueryStructureSchema
+        Sorting.Permutation.
 
 (* A Query Structure is a collection of relations
    (described by a proposition) which satisfy the
@@ -18,8 +19,7 @@ Record QueryStructure (QSSchema : QueryStructureSchema) :=
     crossConstr :
       forall (idx idx' : string)
              (tup :
-                Tuple (schemaHeading
-                         (GetNamedSchema QSSchema idx))),
+                Tuple (QSGetNRelSchemaHeading QSSchema idx)),
         idx <> idx' ->
         (* These are cross-relation constraints which only need to be
            enforced on distinct relations. *)
@@ -27,17 +27,11 @@ Record QueryStructure (QSSchema : QueryStructureSchema) :=
                 (rel
                    (ith NamedSchema_eq rels idx defaultSchema
                         defaultRelation)) ->
-        qschemaConstraints QSSchema
-                           idx idx' tup
-                           (rel (ith NamedSchema_eq rels idx' defaultSchema
-                                     defaultRelation))
+        BuildQueryStructureConstraints
+          QSSchema idx idx' tup
+          (rel (ith NamedSchema_eq rels idx' defaultSchema
+                    defaultRelation))
   }.
-
-Definition GetRelation
-           (QSSchema : QueryStructureSchema)
-           (qs : QueryStructure QSSchema)
-           (idx : string) :=
-  rel (ith NamedSchema_eq (rels qs) idx defaultSchema defaultRelation).
 
 Notation "t ! R" := (rels t R%string): QueryStructure_scope.
 
@@ -49,18 +43,20 @@ Class QueryStructureHint :=
     qsHint :> @QueryStructure qsSchemaHint
   }.
 
+Definition indistinguishable {A: Type} (a b: list A) := (Permutation a b).
+
 Notation "'def' 'query' id ( x : dom ) : cod := bod" :=
   (Build_obsDef {| obsID := id; obsDom := dom; obsCod := cod |}
                 (fun (r : repHint) x =>
                    let _ := {| qsHint := r |} in
-                   ret (bod%QuerySpec)))
+                   Pick (fun u => indistinguishable u (bod%QuerySpec))))
     (no associativity, id at level 0, x at level 0, dom at level 0,
      cod at level 0, only parsing,
      at level 94, format "'def'  'query'  id  ( x  :  dom )  :  cod  :=  '[  '   bod ']' " ) :
 queryDefParsing_scope.
 
 Notation "'def' 'query' id ( x : dom ) : cod := bod" :=
-  (Build_obsDef {| obsID := id; obsDom := dom; obsCod := cod |} (fun r x => ret (bod%QuerySpec)))
+  (Build_obsDef {| obsID := id; obsDom := dom; obsCod := cod |} (fun r x => Pick (fun u => indistinguishable u (bod%QuerySpec))))
     (no associativity, id at level 0, r at level 0, x at level 0, dom at level 0,
      cod at level 0,
      at level 94, format "'def'  'query'  id  ( x  :  dom )  :  cod  :=  '[  '   bod ']' " ) :
@@ -104,3 +100,30 @@ Notation "'QueryADTRep' r { mut1 , .. , mutn ; obs1 , .. , obsn } " :=
              (icons _ obs1%queryDef .. (icons _ obsn%queryDef (inil (@obsDef r))) ..))
     (no associativity, at level 96, r at level 0,
      format "'QueryADTRep'  r  '/' '[hv  ' {  mut1 , '//' .. , '//' mutn ; '//' obs1 , '//' .. , '//' obsn  ']' }") : QueryStructure_scope.
+
+Definition GetRelation
+           (QSSchema : QueryStructureSchema)
+           (qs : QueryStructure QSSchema)
+           (idx : string) :=
+  rel (ith NamedSchema_eq (rels qs) idx defaultSchema defaultRelation).
+
+(* This lets us drop the constraints right off the bat. *)
+
+Definition UnConstrQueryStructure (qsSchema : QueryStructureSchema) :=
+  ilist (fun ns => UnConstrRelation (relSchema ns))
+        (qschemaSchemas qsSchema).
+
+Definition DropQSConstraints
+           (qsSchema : QueryStructureSchema)
+           (qs : QueryStructure qsSchema)
+: UnConstrQueryStructure qsSchema :=
+    @imap NamedSchema
+        (fun ns => Relation (relSchema ns))
+        (fun ns => UnConstrRelation (relSchema ns))
+        (fun ns => @rel (relSchema ns)) _ (rels qs).
+
+Definition DropQSConstraints_SiR (qsSchema : QueryStructureSchema)
+           (qs : QueryStructure qsSchema)
+           (qs' : UnConstrQueryStructure qsSchema)
+           : Prop :=
+  DropQSConstraints qs = qs'.

@@ -11,3 +11,6 @@ Record Relation (RelationSchema : Schema) :=
       forall tup,
         List.In tup rel -> schemaConstraints RelationSchema tup
   }.
+
+Definition UnConstrRelation (RelationSchema : Schema) :=
+  list (Tuple (schemaHeading RelationSchema)).
