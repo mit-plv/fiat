@@ -80,7 +80,9 @@ Section Delegate.
       unfold refine; intros.
       inversion_by computes_to_inv.
       eauto. }
-    { unfold getObsDef, combinedObsDefs.
+    { unfold combinedObsDefs.
+      unfold getObsDef.
+      unfold combinedObsDef.
       destruct (In_obsIdx _ obsIdx) as [dom [cod In_obsIdx]].
       erewrite In_ith; simpl; eauto.
       intros.
@@ -89,9 +91,15 @@ Section Delegate.
         | [ |- context[ith ?AC_eq (imap ?B' ?f ?il) ?c ?default_A _] ]
           => pose (@ith_imap _ _ B' f _ AC_eq _ il c default_A)
       end.
+      pose (@In_ith).
+      (*match goal with
+        | [ |- context[ith ?AC_eq (imap ?B' ?f ?il) ?c ?default_A _] ]
+          => pose (@In_ith _ _ _ AC_eq   _ _ B' f _ AC_eq _ il c default_A)
+      end.
+       at 2; try eassumption; eauto.
       unfold combinedObsDef in *.
       simpl in *.
-      Fail rewrite <- e0.
+      Fail rewrite <- e0.*)
       repeat match goal with |- appcontext[?e] => is_evar e; generalize e end.
       admit. }
     Grab Existential Variables.
