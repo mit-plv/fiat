@@ -5,6 +5,144 @@ Require Import ADTExamples.BinaryOperationSpec ADTExamples.CombineBinaryOperatio
         ADTRefinement.BuildADTSetoidMorphisms.
 Require Import LogicLemmas Coq.Classes.Morphisms_Prop.
 
+Section Delegate.
+  Variable rep : Type. (** The old representation type. *)
+  Variable delegateRep : Type. (** The new representation type. *)
+
+  (** The relation between the two representations. *)
+  Variable R : rep -> delegateRep -> Prop.
+
+  Variable mutSigs : list mutSig.
+  Variable obsSigs : list obsSig.
+  Variable mutDefs : ilist (@mutDef rep) mutSigs.
+  Variable obsDefs : ilist (@obsDef rep) obsSigs.
+
+  (*Variable delegateMutSigs : list mutSig.*)
+  (** The delegate must have the same mutators. *)
+  (** TODO: generalize this to more mutators. *)
+  Variable delegateObsSigs : list obsSig.
+  Variable delegateMutDefs : ilist (@mutDef delegateRep) mutSigs.
+  Variable delegateObsDefs : ilist (@obsDef delegateRep) delegateObsSigs.
+
+  Definition combinedDelegateMutDef
+             (Sig : mutSig)
+             (Mut12 : @mutDef rep Sig * @mutDef delegateRep Sig)
+  : @mutDef (rep * delegateRep) Sig
+    := {| mutBody rep1rep2 arg := (r1 <- mutBody (fst Mut12) (fst rep1rep2) arg;
+                                   r2 <- mutBody (snd Mut12) (snd rep1rep2) arg;
+                                   ret (r1, r2)) |}.
+
+  Definition combinedObsDef
+             (Sig : obsSig)
+             (Obs : @obsDef rep Sig)
+  : @obsDef (rep * delegateRep) Sig
+    := {| obsBody rep1rep2 := obsBody Obs (fst rep1rep2) |}.
+
+  Definition combinedDelegateMutDefs
+  : ilist (@mutDef (rep * delegateRep)) mutSigs
+    := imap  _ combinedDelegateMutDef (izip _ (fun _ => pair) mutDefs delegateMutDefs).
+
+  Definition combinedObsDefs
+  : ilist (@obsDef (rep * delegateRep)) obsSigs
+    := imap  _ combinedObsDef obsDefs.
+
+  (** TODO: These should go elsewhere *)
+  Local Hint Extern 0 =>
+  match goal with
+    | [ H : ?x <> ?x |- _ ] => destruct (H eq_refl)
+  end.
+
+  Local Hint Extern 0 => progress unfold mutSig_eq; simpl.
+  Local Hint Extern 0 => progress unfold obsSig_eq; simpl.
+
+  Local Hint Extern 1 => find_if_inside; solve [ trivial ].
+
+  Local Hint Extern 1 => progress subst.
+
+  Lemma refineADT_BuildADT_Rep_default
+  : refineADT
+      (BuildADT mutDefs obsDefs)
+      (BuildADT combinedDelegateMutDefs combinedObsDefs).
+  Proof.
+    eapply refineADT_Build_ADT_Rep with (SiR := fun x y => x = fst y); eauto; intros.
+    { unfold getMutDef.
+      destruct (In_mutIdx _ mutIdx) as [dom In_mutIdx].
+      rewrite In_ith with (a := {| mutID := mutIdx;
+                                   mutDom := dom |})
+                            (default_B :=
+                               combinedDelegateMutDef ((def mut "null" (r : rep, _ : ()) : rep :=
+                                                          ret r )%mutDef,
+                                                       (def mut "null" (r : rep, _ : ()) : rep :=
+                                                          ret r )%mutDef)); simpl; eauto.
+      unfold combinedDelegateMutDefs.
+      rewrite <- ith_imap; simpl; eauto.
+      rewrite ith_izip with (f := fun _ => pair); simpl.
+      unfold refine; intros.
+      inversion_by computes_to_inv.
+      eauto. }
+    { unfold getObsDef, combinedObsDefs.
+      destruct (In_obsIdx _ obsIdx) as [dom [cod In_obsIdx]].
+      erewrite In_ith; simpl; eauto.
+      intros.
+      pose (@ith_imap).
+      match goal with
+        | [ |- context[ith ?AC_eq (imap ?B' ?f ?il) ?c ?default_A _] ]
+          => pose (@ith_imap _ _ B' f _ AC_eq _ il c default_A)
+      end.
+      unfold combinedObsDef in *.
+      simpl in *.
+      Fail rewrite <- e0.
+      repeat match goal with |- appcontext[?e] => is_evar e; generalize e end.
+      admit. }
+    Grab Existential Variables.
+    admit.
+  Qed.
+
+
+(*
+  Definition absMutDef
+             (Sig : mutSig)
+             (oldMut : @mutDef oldRep Sig)
+  : @mutDef newRep Sig :=
+    {| mutBody := absMutatorMethod SiR (mutBody oldMut) |}.
+
+  Definition absObsDef
+             (Sig : obsSig)
+             (oldMut : @obsDef oldRep Sig)
+  : @obsDef newRep Sig :=
+    {| obsBody := absObserverMethod SiR (obsBody oldMut) |}.*)
+(*
+  Lemma refineADT_BuildADT_Rep_default
+            (mutSigs : list mutSig)
+            (obsSigs : list obsSig)
+            (mutDefs : ilist (@mutDef oldRep) mutSigs)
+            (obsDefs : ilist (@obsDef oldRep) obsSigs) :
+    refineADT
+      (BuildADT mutDefs obsDefs)
+      (BuildADT (imap _ absMutDef mutDefs)
+                (imap _ absObsDef obsDefs)).
+*)
+
+(*
+  Variable ASig : ADTSig.
+  Variable A : ADT ASig.
+  Variable DelegateSig : ADTSig.
+  Variables DelegateSpec DelegateImpl : ADT DelegateSig.
+  Hypothesis refineDelegate : refineADT DelegateSpec DelegateImpl.
+
+  Let SiR := SiR refineDelegate.
+
+  Hypothesis refineMutatorPreservesSiR
+  : forall idx : MutatorIndex DelegateSig,
+      forall x0 k x1 x2 y,
+        computes_to (MutatorMethods DelegateSpec idx x0 k) x1
+        -> computes_to (MutatorMethods DelegateSpec idx x0 k) x2
+        -> SiR x1 y
+        -> SiR x2 y.
+*)
+End Delegate.
+
+
 Section MinMaxExample.
 
   Definition MinMaxSig : ADTSig :=
