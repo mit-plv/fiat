@@ -2,7 +2,8 @@ Require Import List String FunctionalExtensionality Ensembles
         ADTNotation.ilist ADTNotation Program.
 Require Export
         ADTExamples.QueryStructure.Notations
-        Heading Tuple Schema Relation QueryStructureSchema.
+        Heading Tuple Schema Relation QueryStructureSchema
+        Sorting.Permutation.
 
 (* A Query Structure is a collection of relations
    (described by a proposition) which satisfy the
@@ -49,18 +50,20 @@ Class QueryStructureHint :=
     qsHint :> @QueryStructure qsSchemaHint
   }.
 
+Definition indistinguishable {A: Type} (a b: list A) := (Permutation a b).
+
 Notation "'def' 'query' id ( x : dom ) : cod := bod" :=
   (Build_obsDef {| obsID := id; obsDom := dom; obsCod := cod |}
                 (fun (r : repHint) x =>
                    let _ := {| qsHint := r |} in
-                   ret (bod%QuerySpec)))
+                   Pick (fun u => indistinguishable u (bod%QuerySpec))))
     (no associativity, id at level 0, x at level 0, dom at level 0,
      cod at level 0, only parsing,
      at level 94, format "'def'  'query'  id  ( x  :  dom )  :  cod  :=  '[  '   bod ']' " ) :
 queryDefParsing_scope.
 
 Notation "'def' 'query' id ( x : dom ) : cod := bod" :=
-  (Build_obsDef {| obsID := id; obsDom := dom; obsCod := cod |} (fun r x => ret (bod%QuerySpec)))
+  (Build_obsDef {| obsID := id; obsDom := dom; obsCod := cod |} (fun r x => Pick (fun u => indistinguishable u (bod%QuerySpec))))
     (no associativity, id at level 0, r at level 0, x at level 0, dom at level 0,
      cod at level 0,
      at level 94, format "'def'  'query'  id  ( x  :  dom )  :  cod  :=  '[  '   bod ']' " ) :
