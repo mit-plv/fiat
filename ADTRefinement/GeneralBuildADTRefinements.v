@@ -1,4 +1,4 @@
-Require Import Common Computation ADT BuildADT ADTNotation List.
+Require Import Common Computation ADT BuildADT ADTNotation List Arith.
 Require Export ADTRefinement.Core ADTRefinement.GeneralRefinements
         ADTRefinement.SetoidMorphisms ADTRefinement.BuildADTSetoidMorphisms.
 
@@ -14,14 +14,13 @@ Section BuildADTRefinements.
      insert the new definition in the indexed list of method bodies.
    *)
 
-  Lemma In_mutSigs_eq
+  (* Lemma In_mutSigs_eq
     (mutSigs : list mutSig)
   : forall (idx : BoundedString (map mutID mutSigs))
            (mutIdx : String.string),
-   mutSig_eq
-     (nth (findIndex mutSig_eq mutSigs idx) mutSigs
-        ("null" : rep × () → rep)%mutSig) mutIdx = true ->
-   mutIdx = idx.
+      (AC_eq_bool _ mutSig_eq)
+        (nth_Bounded mutID mutSig_eq mutSigs idx) mutIdx = true ->
+      mutIdx = idx.
   Proof.
     intros.
     destruct (In_mutIdx _ idx) as [dom In_mutIdx].
@@ -42,7 +41,7 @@ Section BuildADTRefinements.
     unfold mutSig_eq; find_if_inside; simpl in *; congruence.
   Qed.
 
-  Hint Resolve In_mutSigs.
+  Hint Resolve In_mutSigs. *)
 
   Lemma refineADT_BuildADT_ReplaceMutator
             (Rep : Type)
@@ -52,16 +51,14 @@ Section BuildADTRefinements.
             (mutDefs : ilist (@mutDef Rep) mutSigs)
             (obsDefs : ilist (@obsDef Rep) obsSigs)
             (idx : BoundedString (List.map mutID mutSigs))
-            (newDef : mutDef (nth (findIndex mutSig_eq mutSigs idx)
-                                  mutSigs _))
+            (newDef : mutDef (nth_Bounded mutID mutSigs idx))
   :
     (forall mutIdx,
        refineMutator SiR (getMutDef mutDefs mutIdx) (getMutDef mutDefs mutIdx))
     -> (forall obsIdx,
           refineObserver SiR (getObsDef obsDefs obsIdx) (getObsDef obsDefs obsIdx))
     -> refineMutator SiR
-                     (mutBody (ith mutSig_eq mutDefs idx _
-                                   {| mutBody := (fun r _ => ret r) |}))
+                     (mutBody (ith_Bounded _ mutDefs idx ))
                      (mutBody newDef)
     -> refineADT
       (BuildADT mutDefs obsDefs)
@@ -69,6 +66,161 @@ Section BuildADTRefinements.
   Proof.
     intros; eapply refineADT_BuildADT_Rep with (SiR := SiR); eauto.
     intros; unfold getMutDef.
+    destruct (eq_nat_dec (ibound mutIdx) (ibound idx)).
+    - intros; unfold replaceMutDef; intros.
+      rewrite ith_replace_BoundIndex_eq with (idx_eq_idx' := sym_eq e); 
+        simpl; intros.
+      unfold refineMutator in H1.
+      setoid_rewrite (H1 _ _ (transport_A _ _ n) H2).
+      
+
+
+      unfold transport_A_A'.
+      Check (fun (n : nat) (e : ibound mutIdx = n) =>
+ forall (r_o r_n : Rep) (n0 : mutDom (nth_Bounded mutID mutSigs mutIdx)),
+ SiR r_o r_n ->
+ refine
+   (r_o' <- (mutBody (ith_Bounded mutID mutDefs mutIdx)) r_o n0;
+    {r_n0 : Rep | SiR r_o' r_n0})
+   ((transport_A_A' mutSigs newDef
+       (default_BoundedIndex_eq' mutID mutSigs n mutIdx (eq_sym e))
+       (eq_sym e)) r_n n0)).
+
+      destruct e.
+      clear.
+      revert e;
+
+      unfold transport_A_A', transport_A, transport_A'; simpl.
+      unfold default_BoundedIndex_eq'.
+      compute.
+destruct e.
+      simpl.
+
+      destruct e.
+
+      intros; setoid_rewrite H1.
+      rewrite
+
+      destru
+      unfold transport_A_A'; simpl; intros.
+      unfold transport_A, transport_A'; simpl.
+      destruct e.
+      intros.
+      destruct mutIdx as [mutIdx [ idx' nth_idx' lt_idx'] ].
+      unfold nth_Bounded in newDef.
+      simpl in newDef.
+      revert newDef H1.
+      erewrite default_BoundedIndex_lt_agnostic.
+      rewrite
+      destruct idx as [idx [ idx'' nth_idx'' lt_idx''] ]; simpl in *; subst.
+
+      generalize (@ith_replace_Index_eq mutSig (@mutDef Rep) _
+                                        (default_ith_BoundedIndex
+                                           (eq_ind (length (map mutID mutSigs))
+                                                   (fun n : nat => idx'' < n) lt_idx'
+                                                   (length mutSigs) (map_length mutID mutSigs)) mutDefs) idx'' mutSigs mutDefs newDef).
+
+
+
+(default_ith_BoundedIndex
+     (eq_ind (length (map projAC Bound)) (fun n : nat => ibound idx < n)
+        (ibound_lt idx) (length Bound) (map_length projAC Bound) il))). _
+                                        (nth_Bounded_obligation_1 mutID mutSigs idx) ibound mutSigs mutDefs
+                                        newDef).
+      revert ibound_lt newDef H1 n.
+      intro; rewrite map_length in ibound_lt.
+
+      erewrite (ith_Bounded'_eq' mutDefs ibound_lt).
+
+(@mutDef Rep) _ _ ibound mutSigs mutDefs
+                                                 newDef).
+
+with (il := (replace_Index _ _)).
+      intros.
+
+      simpl.
+      intros.
+      subst.
+      assert (ith_Bounded'
+         (default_BoundedIndex mutSigs
+            (eq_ind (length (map mutID mutSigs))
+               (fun n0 : nat => ibound mutIdx < n0)
+               (ibound_lt mutIdx) (length mutSigs)
+               (map_length mutID mutSigs)))
+         (default_ith_BoundedIndex
+            (eq_ind (length (map mutID mutSigs))
+               (fun n0 : nat => ibound mutIdx < n0)
+               (ibound_lt mutIdx) (length mutSigs)
+               (map_length mutID mutSigs))
+            (replace_Index
+               (default_BoundedIndex mutSigs
+                  (eq_ind (length (map mutID mutSigs))
+                     (fun n0 : nat => ibound idx < n0)
+                     (ibound_lt idx) (length mutSigs)
+                     (map_length mutID mutSigs))) (ibound idx) mutDefs newDef))
+         (ibound mutIdx)
+         (replace_Index
+            (default_BoundedIndex mutSigs
+               (eq_ind (length (map mutID mutSigs))
+                  (fun n0 : nat => ibound idx < n0)
+                  (ibound_lt idx) (length mutSigs)
+                  (map_length mutID mutSigs))) (ibound idx) mutDefs newDef)
+              = H3 (default_ith_BoundedIndex
+            (eq_ind (length (map mutID mutSigs))
+               (fun n0 : nat => ibound mutIdx < n0)
+               (ibound_lt mutIdx) (length mutSigs)
+               (map_length mutID mutSigs))
+            (replace_Index
+               (default_BoundedIndex mutSigs
+                  (eq_ind (length (map mutID mutSigs))
+                     (fun n0 : nat => ibound mutIdx < n0)
+                     (ibound_lt mutIdx) (length mutSigs)
+                     (map_length mutID mutSigs))) (ibound idx) mutDefs ))).
+
+
+ith_Bounded'
+                             (default_BoundedIndex mutSigs
+                                (eq_ind (length (map mutID mutSigs))
+                                   (fun n : nat => ibound idx < n)
+                                   (ibound_lt idx)
+                                   (length mutSigs)
+                                   (map_length mutID mutSigs)))
+
+(default_ith_BoundedIndex
+            (eq_ind (length (map mutID mutSigs))
+               (fun n0 : nat => ibound mutIdx < n0)
+               (ibound_lt mutIdx) (length mutSigs)
+               (map_length mutID mutSigs))
+            (replace_Index
+               (default_BoundedIndex mutSigs
+                  (eq_ind (length (map mutID mutSigs))
+                     (fun n0 : nat => ibound idx < n0)
+                     (ibound_lt idx) (length mutSigs)
+                     (map_length mutID mutSigs))) (ibound idx) mutDefs newDef))
+
+                             (ibound idx)
+                             (replace_Index
+                                (default_BoundedIndex mutSigs
+                                   (eq_ind (length (map mutID mutSigs))
+                                      (fun n : nat => ibound idx < n)
+                                      (ibound_lt idx)
+                                      (length mutSigs)
+                                      (map_length mutID mutSigs)))
+                                (ibound idx) mutDefs newDef)
+
+
+).
+      erewrite H3.
+      intros; (erewrite ith_replace_Index_eq; eauto.
+      erewrite <- map_length; apply (ibound_lt idx).
+  Qed.
+
+      Set Printing Implicit.
+      idtac.
+      simpl.
+      rewrite (@ith_replace_BoundIndex_eq mutSig String.string mutID
+                                          (@mutDef Rep) mutSigs mutDefs
+                                          idx mutIdx).
     caseEq (mutSig_eq (nth (findIndex mutSig_eq mutSigs idx) mutSigs
                            ("null" : rep × () → rep)%mutSig) mutIdx).
     - generalize (In_mutSigs_eq _ _ _ H2); intros; subst.

@@ -13,33 +13,29 @@ Section ReplaceMethods.
   Variable mutDefs : ilist (@mutDef Rep) mutSigs.
   Variable obsDefs : ilist (@obsDef Rep) obsSigs.
 
-  Definition replaceMutDef
-             (idx : string)
-             (newDef : mutDef (nth (findIndex mutSig_eq mutSigs idx)
-                                   mutSigs ("null" : rep × () → rep)%mutSig))
+  Program Definition replaceMutDef
+             (idx : BoundedString (map mutID mutSigs))
+             (newDef : mutDef (nth_Bounded mutID  mutSigs idx))
   : ilist (@mutDef Rep) mutSigs :=
-    replace_index mutSig_eq mutDefs idx _ newDef.
+    replace_BoundedIndex _ mutDefs idx newDef.
 
   Definition ADTReplaceMutDef
-             (idx : string)
-             (newDef : mutDef (nth (findIndex mutSig_eq mutSigs idx)
-                                   mutSigs ("null" : rep × () → rep)%mutSig))
+             (idx : BoundedString (map mutID mutSigs))
+             (newDef : mutDef (nth_Bounded mutID mutSigs idx))
   : ADT (BuildADTSig mutSigs obsSigs)
     := BuildADT (replaceMutDef idx newDef) obsDefs.
 
   Definition replaceObsDef
-             (idx : string)
-             (newDef : obsDef (nth (findIndex obsSig_eq obsSigs idx)
-                                   obsSigs ("null" : rep × () → ())%obsSig))
+             (idx : BoundedString (map obsID obsSigs))
+             (newDef : obsDef (nth_Bounded obsID obsSigs idx))
   : ilist (@obsDef Rep) obsSigs :=
-    replace_index obsSig_eq obsDefs idx _ newDef.
+    replace_BoundedIndex _ obsDefs idx newDef.
 
   Definition ADTReplaceObsDef
-             (idx : string)
-             (newDef : obsDef (nth (findIndex obsSig_eq obsSigs idx)
-                                   obsSigs ("null" : rep × () → ())%obsSig))
+             (idx : BoundedString (map obsID obsSigs))
+             (newDef : obsDef (nth_Bounded obsID obsSigs idx))
   : ADT (BuildADTSig mutSigs obsSigs)
-      := BuildADT mutDefs (replaceObsDef idx newDef).
+    := BuildADT mutDefs (replaceObsDef idx newDef).
 
 End ReplaceMethods.
 

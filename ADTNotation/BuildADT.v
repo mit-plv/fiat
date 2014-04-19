@@ -74,27 +74,20 @@ Definition getMutDef
         (Rep : Type)
         (mutSigs : list mutSig)
         (mutDefs : ilist (@mutDef Rep) mutSigs)
-        (idx : string)
-: mutatorMethodType Rep
-                    (mutDom
-                       (nth (findIndex mutSig_eq mutSigs idx)
-                            mutSigs ("null" : rep × () → rep)%mutSig)) :=
-  mutBody (ith mutSig_eq mutDefs idx
-              ("null" : rep × () → rep)%mutSig
-              {| mutBody := (fun r _ => ret r) |}).
+        (idx : BoundedString (map mutID mutSigs))
+: mutatorMethodType Rep (mutDom (nth_Bounded _ mutSigs idx)) :=
+  mutBody (@ith_Bounded _ _ _ (@mutDef Rep) mutSigs mutDefs idx).
 
 Definition getObsDef
          (Rep : Type)
          (obsSigs : list obsSig)
          (obsDefs : ilist (@obsDef Rep) obsSigs)
-         (idx : string)
-: observerMethodType Rep
-                     (obsDom (nth (findIndex obsSig_eq obsSigs idx)
-                                  obsSigs ("null" : rep × () → ())%obsSig))
-                     (obsCod (nth (findIndex obsSig_eq obsSigs idx)
-                                  obsSigs ("null" : rep × () → ())%obsSig)) :=
-  obsBody (ith obsSig_eq obsDefs idx _
-               (@Build_obsDef Rep ("null" : rep × () → ()) (fun r _ => ret tt))).
+         (idx : BoundedString (map obsID obsSigs))
+: observerMethodType
+    Rep
+    (obsDom (nth_Bounded _ obsSigs idx))
+    (obsCod (nth_Bounded _ obsSigs idx)) :=
+  obsBody (@ith_Bounded _ _ _ (@obsDef Rep) obsSigs obsDefs idx).
 
 (* Always simplify method lookup when the index is specified. *)
 Arguments getMutDef [_] [_] _ idx%string / _ _ .
@@ -141,5 +134,5 @@ Notation "'ADTRep' r { mut1 , .. , mutn ; obs1 , .. , obsn } " :=
      format "'ADTRep'  r  '/' '[hv  ' {  mut1 , '//' .. , '//' mutn ; '//' obs1 , '//' .. , '//' obsn  ']' }") : ADT_scope.
 
 (* Notations for method calls. *)
-Notation callObs adt idx := (ObserverMethods adt {| bstring := idx |}).
-Notation callMut adt idx := (MutatorMethods adt {| bstring := idx |}).
+Notation callObs adt idx := (ObserverMethods adt {| bindex := idx |}).
+Notation callMut adt idx := (MutatorMethods adt {| bindex := idx |}).
