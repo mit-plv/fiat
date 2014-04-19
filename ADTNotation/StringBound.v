@@ -102,10 +102,9 @@ Section ithIndexBound.
   Qed. *)
 
   Definition nth_Bounded'
-           (default_A : A)
            (n : nat)
            (Bound : list A)
-  : A := nth n Bound default_A.
+  : option A := nth_error Bound n.
 
   Fixpoint default_BoundedIndex
           (n : nat)
@@ -154,14 +153,49 @@ Section ithIndexBound.
       simpl; intros; eauto ]).
   Qed.
 
-  Program Definition nth_Bounded
+  Lemma nth_error_ex_0 :
+    forall (As : list A) (n : nat),
+      nth_error As n = None
+      -> ~ (n < List.length As).
+  Proof.
+    induction As; destruct n; simpl in *; intuition;
+    first [eapply lt_n_0; eauto; fail | discriminate | idtac].
+    eapply IHAs; eauto; eapply lt_S_n; auto.
+  Qed.
+
+  Definition nth_BoundedIndex_error
+             (AnyT : Type)
+             (As : list A)
+             (n : nat) 
+             (lt_n : n < List.length (map projAC As))
+             (nth_eq : nth_error As n = None)
+  : AnyT.
+  Proof.
+    elimtype False; eapply nth_error_ex_0; try eassumption.
+    rewrite map_length in lt_n; assumption.
+  Defined.
+
+  Definition nth_BoundedIndex_error_eq
+             (As : list A)
+             (n : nat) 
+             (lt_n : n < List.length (map projAC As))
+             (nth_eq : nth_error As n = None)
+             (default_A : A)
+  : nth_BoundedIndex_error A _ lt_n nth_eq = default_A.
+  Proof.
+    elimtype False; eapply nth_error_ex_0; try eassumption.
+    rewrite map_length in lt_n; assumption.
+  Defined.
+
+  Definition nth_Bounded
           (Bound : list A)
           (idx : BoundedIndex (map projAC Bound))
-  : A := @nth_Bounded' _ (ibound idx) Bound.
-  Next Obligation.
-    apply (@default_BoundedIndex (ibound idx) Bound).
-    erewrite <- map_length; apply (ibound_lt idx).
-  Defined.
+  : A := match @nth_Bounded' (ibound idx) Bound as x
+               return @nth_Bounded' (ibound idx) Bound = x-> A with
+             | Some a => fun _ => a
+             | None => fun eq => nth_BoundedIndex_error A _ 
+                                                        (ibound_lt idx) eq
+         end (eq_refl _).
 
   Lemma nth_Bounded_eq
   : forall (Bound : list A)
@@ -170,37 +204,63 @@ Section ithIndexBound.
       nth_Bounded Bound idx = nth (ibound idx) Bound default_A.
   Proof.
     intros; unfold nth_Bounded, nth_Bounded'.
-    eapply nth_indep; erewrite <- map_length; apply (ibound_lt idx).
+    rewrite <- nth_default_eq; unfold nth_default.
+    destruct idx as [idx [n In_n lt_n ]]; simpl in *.
+    refine (match (nth_error Bound n) as e
+                 return 
+                 (forall (f : e = None -> A ),
+                    (forall eq a, f eq = a) -> 
+                    match e as x return (e = x -> A) with
+                      | Some a => fun _  => a
+                      | None =>
+                        fun (eq : e = None) =>
+                          f eq
+                    end eq_refl = match e with
+                                    | Some x => x
+                                    | None => default_A
+                                  end) with
+             | Some a => fun f => _
+             | None => fun f => _
+           end
+          (nth_BoundedIndex_error A _ lt_n )
+          (nth_BoundedIndex_error_eq _ lt_n )); auto.
   Qed.
 
-  Global Arguments nth_Bounded_obligation_1 _ _ / .
+  (*Global Arguments nth_Bounded_obligation_1 _ _ / .  *)
+
+  Definition ith_Bounded'_T
+             (B : A -> Type)
+             (n : nat)
+             (Bound : list A)
+    := match (nth_Bounded' n Bound) with
+         | Some a => B a
+         | None => unit
+       end.
 
   Fixpoint ith_Bounded'
           {B : A -> Type}
-          (default_A : A)
-          (default_B : B default_A)
           (n : nat)
           (Bound : list A)
           (il : ilist B Bound)
           {struct n}
-  : B (nth_Bounded' default_A n Bound) :=
+  : ith_Bounded'_T B n Bound :=
     match n as n' return
           ilist B Bound
-          -> B (nth_Bounded' default_A n' Bound)
+          -> ith_Bounded'_T B n' Bound
     with
       | 0 => match Bound as Bound' return
                    ilist B Bound'
-                   -> B (nth_Bounded' default_A 0 Bound') with
-               | nil => fun il => default_B
+                   -> ith_Bounded'_T B 0 Bound' with
+               | nil => fun il => tt
                | cons a Bound' => fun il => ilist_hd il
              end
       | S n => match Bound as Bound' return
                      ilist B Bound'
-                     -> B (nth_Bounded' default_A (S n) Bound') with
-                 | nil => fun il => default_B
+                     -> ith_Bounded'_T B (S n) Bound' with
+                 | nil => fun il => tt
                  | cons a Bound' =>
                    fun il =>
-                     @ith_Bounded' B default_A default_B n Bound' (ilist_tail il)
+                     @ith_Bounded' B n Bound' (ilist_tail il)
              end
     end il.
 
@@ -239,13 +299,45 @@ Section ithIndexBound.
              end
     end lt_n il.
 
-  Program Definition ith_Bounded
+  Definition ith_BoundedIndex_error_eq
+             {B : A -> Type}
+             (As : list A)
+             (n : nat) 
+             (lt_n : n < List.length (map projAC As))
+             (nth_eq : nth_error As n = None)
+  : B (nth_BoundedIndex_error A As lt_n nth_eq).
+  Proof.
+    elimtype False; eapply nth_error_ex_0; try eassumption.
+    rewrite map_length in lt_n; assumption.
+  Defined.
+
+  Definition ith_Bounded
           {B : A -> Type}
           {Bound}
           (il : ilist B Bound)
           (idx : BoundedIndex (map projAC Bound))
-  : B (nth_Bounded Bound idx) :=
-    @ith_Bounded' B _ (default_ith_BoundedIndex _ il) (ibound idx) Bound il.
+  : B (nth_Bounded Bound idx) := 
+    match (nth_Bounded' (ibound idx) Bound) as a'
+                  return  
+                  match a' with
+                    | Some a => B a 
+                    | None => unit
+                  end -> 
+                  forall (f : a' = None -> A)
+                         (f' : forall eq, B (f eq)),
+                    B (match
+                          a' as x
+                          return (a' = x -> A)
+                        with
+                          | Some a0 => fun _ => a0
+                          | None =>
+                            fun eq => f eq
+                      end eq_refl) with
+        | Some a => fun b _ _ => b
+        | None => fun _ f f' => (f' eq_refl)
+    end (ith_Bounded' (ibound idx) il)
+        (nth_BoundedIndex_error A _ (ibound_lt idx))
+        (ith_BoundedIndex_error_eq Bound (ibound_lt idx)).
 
   Lemma ith_Bounded'_eq
         {B : A -> Type}
@@ -406,37 +498,35 @@ Section ithIndexBound.
              (n n' : nat)
              (As : list A)
   : a = a'
-    -> n = n' 
+    -> n = n'
     -> nth_Bounded' a n As = nth_Bounded' a' n' As.
   Proof.
     intros; induction H; induction H0; auto.
   Defined.
 
-  Check eq_rect.
-
-  Definition transport_A_A'
-             {B : A -> Type} 
-             (a a' : A) (n n' : nat) (As : list A) b 
+  Definition transport_A_QWAZA'
+             {B : A -> Type}
+             (a a' : A) (n n' : nat) (As : list A) b
              (a_eq_a' : a = a') (n_eq_n' : n = n') :=
     transport_A (B := B) (transport_A' As a_eq_a' n_eq_n') b.
-  
+
   Lemma transport_A'_refl
         {B : A -> Type} :
     forall (a : A) (n : nat) (As : list A) b,
       b = transport_A_A' (B := B) As b (eq_refl a) (eq_refl n).
   Proof.
-    reflexivity.
+    reflexivity.`
   Qed.
 
   Definition transport_A''
           {B : A -> Type}
-          (a : nat -> A) (n n': nat) (As : list A) 
+          (a : nat -> A) (n n': nat) (As : list A)
           (b : B (nth_Bounded' (a n') n' As))
           (b' : B (nth_Bounded' (a n) n As))
           : B (nth_Bounded' (a n') n' As).
   Proof.
-    refine (match (eq_nat_dec n n') with 
-              | left (eq_refl) => 
+    refine (match (eq_nat_dec n n') with
+              | left (eq_refl) =>
                 @transport_A_A' B (a n) (a n') n n' As b' _ _
               | right neq => b
             end); eauto.
@@ -496,12 +586,12 @@ Section ithIndexBound.
   Lemma default_BoundedIndex_eq'
   : forall Bound (idx idx' : BoundedIndex (map projAC Bound)),
       ibound idx = ibound idx'
-      -> default_BoundedIndex 
+      -> default_BoundedIndex
            Bound
            (eq_ind (Datatypes.length (map projAC Bound))
                    (fun n : nat => ibound idx < n) (ibound_lt idx)
                    (Datatypes.length Bound) (map_length projAC Bound)) =
-         default_BoundedIndex 
+         default_BoundedIndex
            Bound
            (eq_ind (Datatypes.length (map projAC Bound))
                    (fun n : nat => ibound idx' < n) (ibound_lt idx')
@@ -510,7 +600,7 @@ Section ithIndexBound.
     destruct idx as [idx [n nth_n lt_n]]; subst; simpl.
     destruct idx' as [idx' [n' nth_n' lt_n']]; intros; simpl in *;
     subst; apply default_BoundedIndex_lt_agnostic.
-  Defined.    
+  Defined.
 
   Lemma nth_Bounded'_eq :
     forall Bound (idx idx' : BoundedIndex (map projAC Bound))
@@ -532,7 +622,7 @@ Section ithIndexBound.
     unfold nth_Bounded; intros; eapply nth_Bounded'_eq; auto.
   Qed.
 
-  Eval simpl in (forall Bound idx a, nth_Bounded_obligation_1 Bound idx = 
+  Eval simpl in (forall Bound idx a, nth_Bounded_obligation_1 Bound idx =
                 a).
 
   Lemma ith_replace_BoundIndex_eq
@@ -544,7 +634,7 @@ Section ithIndexBound.
       (new_b : B (nth_Bounded Bound idx))
       (idx_eq_idx' : ibound idx = ibound idx'),
       ith_Bounded (replace_BoundedIndex il idx new_b) idx' =
-      @transport_A_A' B _ _ _ _ _ new_b (default_BoundedIndex_eq' _ _ _ idx_eq_idx') idx_eq_idx'. 
+      @transport_A_A' B _ _ _ _ _ new_b (default_BoundedIndex_eq' _ _ _ idx_eq_idx') idx_eq_idx'.
   Proof.
     unfold ith_Bounded, replace_BoundedIndex; simpl.
     intros; erewrite <- ith_replace_Index_eq; eauto.
@@ -561,7 +651,7 @@ Section ithIndexBound.
       (idx idx' : BoundedIndex (map projAC Bound))
       (new_b : B (nth_Bounded Bound idx')),
       ith_Bounded (replace_BoundedIndex il idx' new_b) idx =
-      @transport_A'' B _ (ibound idx) (ibound idx') Bound 
+      @transport_A'' B _ (ibound idx) (ibound idx') Bound
                       new_b (ith_Bounded il idx).
   .
   Check (eq_nat_dec).
@@ -577,18 +667,18 @@ Section ithIndexBound.
       match (eq_nat_dec (ibound idx) (ibound idx')) as
             eq_test
              return
-             match eq_test return Set with 
+             match eq_test return Set with
                  | left _  => B (nth_Bounded Bound idx')
                  | right _ => B (nth_Bounded Bound idx')
              end
       with
-          | left (eq_refl) => 
+          | left (eq_refl) =>
             @transport_A_A' B _ _ _ _ _ new_b (default_BoundedIndex_eq' _ _ _ eq_refl) eq_refl
           | right _ => ith_Bounded (replace_BoundedIndex il idx new_b) idx'
       end.
-            | 
-            
- . 
+            |
+
+ .
   Proof.
     unfold ith_Bounded, replace_BoundedIndex; simpl.
     intros; erewrite <- ith_replace_Index_eq; eauto.
