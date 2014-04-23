@@ -7,7 +7,7 @@ Definition Query_In (qs : QueryStructureHint) {A} (R : string)
            (bod : Tuple (schemaHeading
                            (QSGetNRelSchema qsSchemaHint R%string)) -> list A) :=
   fold_right (@app _) (@nil _)
-              (map bod (GetRelation qsHint R%string)).
+              (map bod (GetUnConstrRelation qsHint R%string)).
 
 Notation "( x 'in' R ) bod" :=
   (Query_In _ (R%string) (fun x => bod)) : QuerySpec_scope.

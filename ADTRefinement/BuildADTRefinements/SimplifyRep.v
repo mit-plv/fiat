@@ -52,25 +52,10 @@ Section SimplifyRep.
                 (imap _ simplifyObsDef obsDefs)).
   Proof.
     econstructor 1 with (SiR := SiR); simpl in *; eauto; intros.
-    - destruct (In_mutIdx _ idx) as [dom In_mutIdx].
-      rewrite In_ith with (a := {| mutID := idx;
-                                   mutDom := dom |})
-                            (default_B :=
-                               simplifyMutDef (def mut "null" (r : rep, _ : ()) : rep :=
-                                                 ret r )%mutDef); eauto.
-      rewrite <- ith_imap; simpl; eauto.
+    - rewrite <- ith_Bounded_imap.
       rewrite H; eauto; reflexivity.
-      unfold mutSig_eq; find_if_inside; simpl in *; congruence.
-    - destruct (In_obsIdx _ idx) as [dom [cod In_obsIdx] ].
-      rewrite In_ith with (a := {|obsID := idx;
-                                obsDom := dom;
-                                obsCod := cod |})
-                          (default_B :=
-                             simplifyObsDef (def obs "null" (r : rep, _ : () ) : () :=
-                                              ret () )%obsDef); eauto.
-    rewrite <- ith_imap; simpl; intros; eauto.
-    rewrite H0; eauto; reflexivity.
-    unfold obsSig_eq; find_if_inside; eauto.
+    - rewrite <- ith_Bounded_imap.
+      rewrite H0; eauto; reflexivity.
   Qed.
 
 End SimplifyRep.

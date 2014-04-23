@@ -7,13 +7,13 @@ Definition QSInsertSpec
            (qs : QueryStructureHint)
            (idx : string)
            (tup : Tuple (schemaHeading (QSGetNRelSchema _ idx)))
-           (qs' : QueryStructure qsSchemaHint)
+           (qs' : UnConstrQueryStructure qsSchemaHint)
 : Prop :=
   (* All of the relations with a different index are untouched
      by insert. *)
   (forall idx',
      idx <> idx' ->
-     GetRelation qsHint idx' = GetRelation qs' idx') /\
+     GetUnConstrRelation qsHint idx' = GetUnConstrRelation qs' idx') /\
   (* If [tup] is consistent with the schema constraints and the
      cross-relation constraints, it is included in the relation
      indexed by [idx] after insert; that relation is unspecified if
@@ -21,16 +21,16 @@ Definition QSInsertSpec
   schemaConstraints (QSGetNRelSchema qsSchemaHint idx) tup
   -> (forall idx',
         BuildQueryStructureConstraints
-          qsSchemaHint idx idx' tup (GetRelation qsHint idx'))
+          qsSchemaHint idx idx' tup (GetUnConstrRelation qsHint idx'))
   -> (forall idx' tup',
         idx' <> idx ->
         BuildQueryStructureConstraints
-          qsSchemaHint idx' idx tup' (tup :: (GetRelation qsHint idx)))
+          qsSchemaHint idx' idx tup' (tup :: (GetUnConstrRelation qsHint idx)))
   -> List.In idx (map relName (qschemaSchemas qsSchemaHint))
-  -> GetRelation qs' idx = tup :: GetRelation qsHint idx.
+  -> GetUnConstrRelation qs' idx = tup :: GetUnConstrRelation qsHint idx.
 
 Notation "'Insert' b 'into' idx " :=
-  (Pick (QSInsertSpec _ idx%string b))
+  (Pick (fun r => r = DropQSConstraints (QSInsertSpec _ idx%string b)))
     (at level 80) : QuerySpec_scope.
 
 (* Facts about insert. We'll probably need to extract these to their
@@ -92,21 +92,21 @@ Section InsertRefinements.
     |}.
   Next Obligation.
     simpl in *; intuition; subst; eauto.
-    eapply ((ith NamedSchema_eq (rels qs) idx _ _));
+    eapply ((ith_default NamedSchema_eq (rels qs) idx _ _));
       eassumption.
   Qed.
   Next Obligation.
     destruct (idx' == idx); subst; simpl in *; intuition.
     - destruct (findIndex_In_dec NamedSchema_eq idx (qschemaSchemas qsSchema)) as [NIn_a | [a [In_a a_eq] ] ].
       + rewrite replace_index_NIn in *; auto.
-      + erewrite ith_replace' in *; simpl; eauto.
+      + erewrite ith_default_replace' in *; simpl; eauto.
     - destruct (findIndex_In_dec NamedSchema_eq idx (qschemaSchemas qsSchema)) as [NIn_a | [a [In_a a_eq] ] ].
       + rewrite replace_index_NIn in *; auto.
       + destruct (idx0 == idx); subst; simpl in *; intuition.
-        * erewrite ith_replace' in H0; eauto; simpl in *.
-          rewrite ith_replace; eauto.
+        * erewrite ith_default_replace' in H0; eauto; simpl in *.
+          rewrite ith_default_replace; eauto.
           intuition; subst; eauto.
-        * rewrite ith_replace in *; eauto.
+        * rewrite ith_default_replace in *; eauto.
   Qed.
 
   Definition DecideableSB (P : Prop) := {P} + {~P}.
@@ -126,9 +126,7 @@ Section InsertRefinements.
          forall tup',
                 BuildQueryStructureConstraints qsSchema idx' idx tup' (tup :: (GetRelation qs idx))).
 
-  Definition Any (T : Type) := Pick (fun _ : T => True).
-
-  Lemma QSInsertSpec_refine :
+  (*Lemma QSInsertSpec_refine :
     forall qsSchema qs idx tup default,
       refine
         (Pick (QSInsertSpec {| qsHint := qs |} idx tup))
@@ -198,7 +196,7 @@ Section InsertRefinements.
            idx idx' tup (qs idx')) a.
   Proof.
     destruct qsSchema as [namedSchemas constraints]; simpl in *.
-    simpl in *; induction constraints; 
+    simpl in *; induction constraints;
     unfold BuildQueryStructureConstraints;  simpl; auto; intros.
     destruct a; destruct x; simpl in *.
     unfold BuildQueryStructureConstraints',
@@ -230,7 +228,7 @@ Section InsertRefinements.
                                        a idx tup' (tup :: qs idx).
   Proof.
     destruct qsSchema as [namedSchemas constraints]; simpl in *.
-    simpl in *; induction constraints; 
+    simpl in *; induction constraints;
     unfold BuildQueryStructureConstraints;  simpl; auto; intros.
     destruct a; destruct x; simpl in *.
     unfold BuildQueryStructureConstraints,
@@ -254,7 +252,7 @@ Section InsertRefinements.
          string_dec
          (map relName (qschemaSchemas qsSchema))
          (fun idx' =>
-            BuildQueryStructureConstraints 
+            BuildQueryStructureConstraints
               qsSchema idx idx' tup (GetRelation qs idx'))
          (ValidBound_DecideableSB_Comp qsSchema _
                                        idx tup ).
@@ -373,8 +371,8 @@ Definition DecideableSB_Comp (A : Type)
   : Comp (DecideableSB (forall a : A, P a)) :=
     (x <- DecideableSB_finiteComp Bound P;
     ret (DecideableSB_finite A_eq_dec P ValidBound x))%comp. *)
-
+*)
 End InsertRefinements.
 
 Create HintDb refine_keyconstraints discriminated.
-Hint Rewrite refine_Any_DecideableSB_True : refine_keyconstraints.
+(*Hint Rewrite refine_Any_DecideableSB_True : refine_keyconstraints.*)

@@ -91,7 +91,7 @@ Definition NumOrders := "N"%string.
   (* [NumOrders] : The number of orders for a given author *)
   Definition NumOrdersSpec
              (r : BookStoreRefRep) (author : string) :=
-    let _ := {|qsHint := r |} in
+    let _ := {|qsHint := DropQSConstraints r |} in
     Count (For (o in Orders) (b in Books)
            Where (author == b!Author)
            Where (b!ISBN == o!ISBN)

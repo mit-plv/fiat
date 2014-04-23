@@ -28,7 +28,7 @@ Definition BuildTuple
         (components : ilist Component attrs)
 : Tuple (BuildHeading attrs) :=
   fun idx =>
-    value (ith attrName_eq components idx _ DefaultAttribute).
+    value (ith_default attrName_eq components idx _ DefaultAttribute).
 
 (* Notation for tuples built from [BuildTuple]. *)
 

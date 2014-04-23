@@ -45,31 +45,16 @@ Section HoneRepresentation.
                 (imap _ absObsDef obsDefs)).
   Proof.
     eapply refineADT_Build_ADT_Rep with (SiR := SiR); eauto; intros.
-    unfold getMutDef.
-    destruct (In_mutIdx _ mutIdx) as [dom In_mutIdx].
-    rewrite In_ith with (a := {| mutID := mutIdx;
-                                 mutDom := dom |})
-                          (default_B :=
-                             absMutDef (def mut "null" (r : rep, _ : ()) : rep :=
-                                              ret r )%mutDef); eauto.
-    rewrite <- ith_imap; simpl; eauto.
-    unfold refine; intros.
-    inversion_by computes_to_inv.
-    destruct (H0 _ H) as [or' [Comp_or SiR_or''] ].
-    econstructor; eauto.
-    unfold mutSig_eq; find_if_inside; eauto.
-    destruct (In_obsIdx _ obsIdx) as [dom [cod In_obsIdx] ].
-    unfold getObsDef.
-    rewrite In_ith with (a := {|obsID := obsIdx;
-                                obsDom := dom;
-                                obsCod := cod |})
-                          (default_B :=
-                             absObsDef (def obs "null" (r : rep, _ : () ) : () :=
-                                   ret () )%obsDef); eauto.
-    rewrite <- ith_imap; simpl; intros; eauto.
-    unfold refine; intros.
-    inversion_by computes_to_inv; eauto.
-    unfold obsSig_eq; find_if_inside; eauto.
+    - unfold getMutDef.
+      rewrite <- ith_Bounded_imap.
+      unfold absMutDef, refineMutator, refine; simpl; intros.
+      inversion_by computes_to_inv.
+      destruct (H0 _ H) as [or' [Comp_or SiR_or''] ].
+      econstructor; eauto.
+    - unfold getObsDef.
+      rewrite <- ith_Bounded_imap.
+      unfold absObsDef, refineObserver, refine; simpl; intros.
+      inversion_by computes_to_inv; eauto.
   Qed.
 
 End HoneRepresentation.

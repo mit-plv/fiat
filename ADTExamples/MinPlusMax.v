@@ -65,7 +65,26 @@ Section Delegate.
       (BuildADT combinedDelegateMutDefs combinedObsDefs).
   Proof.
     eapply refineADT_Build_ADT_Rep with (SiR := fun x y => x = fst y); eauto; intros.
-    { unfold getMutDef.
+    - unfold getMutDef.
+      unfold combinedDelegateMutDefs.
+      rewrite <- ith_Bounded_imap; simpl.
+      rewrite ith_izip with (f := fun _ => pair); simpl.
+      unfold refine; intros.
+      inversion_by computes_to_inv.
+      eauto.
+
+      unfold absMutDef, refineMutator, refine; simpl; intros.
+      inversion_by computes_to_inv.
+      destruct (H0 _ H) as [or' [Comp_or SiR_or''] ].
+      econstructor; eauto.
+    - unfold getObsDef.
+      rewrite <- ith_Bounded_imap.
+      unfold absObsDef, refineObserver, refine; simpl; intros.
+      inversion_by computes_to_inv; eauto.
+  Qed.
+
+
+unfold getMutDef.
       destruct (In_mutIdx _ mutIdx) as [dom In_mutIdx].
       rewrite In_ith with (a := {| mutID := mutIdx;
                                    mutDom := dom |})

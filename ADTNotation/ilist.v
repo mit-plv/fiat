@@ -167,11 +167,53 @@ Section ilist.
     - caseEq (AC_eq a c'); rewrite H2 in H1; eauto.
   Qed.
 
-  Program Fixpoint ith (As : list A) (il : ilist As) (c : C) (default_A : A)
+  (* Looking up the ith value, returning None for
+     indices not in the list*)
+
+  Definition Dep_Option 
+             (opt_A : option A) :=
+    match opt_A with 
+        | Some a => B a
+        | None => True
+    end.
+
+  Fixpoint ith_error
+          (n : nat)
+          (As : list A)
+          (il : ilist As)
+          {struct n}
+  : Dep_Option (nth_error As n) :=
+    match n as n' return
+          ilist As
+          -> Dep_Option (nth_error As n')
+    with
+      | 0 => match As as As' return
+                   ilist As'
+                   -> Dep_Option (nth_error As' 0) with
+               | nil => fun il => I
+               | cons a As' => fun il => ilist_hd il
+             end
+      | S n => match As as As' return
+                     ilist As'
+                     -> Dep_Option (nth_error As' (S n)) with
+                 | nil => fun il => I
+                 | cons a As' =>
+                   fun il =>
+                     ith_error n (ilist_tail il)
+             end
+    end il.
+
+  (* Looking up the ith value, returning a default value
+     for indices not in the list. *)
+  Program Fixpoint ith_default 
+          (As : list A) 
+          (il : ilist As) 
+          (c : C) 
+          (default_A : A)
           (default_B : B default_A)
   {struct As} : B (nth (findIndex As c) As default_A) :=
     match As as As' return ilist As' -> B (nth (findIndex As' c) As' default_A) with
-        | a :: As' => (fun H il => _) (@ith As')
+        | a :: As' => (fun H il => _) (@ith_default As')
         | _ => fun il => _
     end il.
   Next Obligation.
@@ -180,7 +222,23 @@ Section ilist.
     exact (H (ilist_tail il0) _ _ default_B).
   Defined.
 
-  Lemma In_ith :
+  (*Program Fixpoint ith_default 
+          (As : list A) 
+          (n : nat)
+          (il : ilist As) 
+          (default_A : A)
+          (default_B : B default_A)
+  {struct As} : B (nth n As default_A) :=
+    match n as n', As as As' return 
+          ilist As' -> B (nth n' As' default_A) with
+        | 0, a :: _ => @ilist_hd _
+        | S n', a :: As' => fun il => 
+                              (@ith_default As' n' (ilist_tail il) 
+                                            default_A default_B)
+        | _, _ => fun il => default_B
+    end il. *)
+
+  Lemma In_ith_default :
     forall (a : A)
            (As : list A)
            (il : ilist As)
@@ -189,30 +247,30 @@ Section ilist.
            (default_B : B default_A),
       In a As -> AC_eq a c = true ->
       forall default_B',
-        ith il c default_B' = ith il c default_B.
+        ith_default il c default_B' = ith_default il c default_B.
   Proof.
     induction As; simpl; intros; intuition; subst;
-    unfold ith_obligation_2; simpl.
+    unfold ith_default_obligation_2; simpl.
     - rewrite H0; auto.
     - find_if_inside; eauto.
   Qed.
 
   Variable P : forall a, B a -> Prop.
 
-  Lemma ith_default :
+  Lemma ith_default_default :
     forall (As : list A)
            (il : ilist As)
            (c : C)
            (default_A : A)
            (default_B default_B' : B default_A),
       (P default_B' -> P default_B)
-      -> P (ith il c default_B')
-      -> P (ith il c default_B).
+      -> P (ith_default il c default_B')
+      -> P (ith_default il c default_B).
   Proof.
     induction As; intros; generalize (ilist_invert il); intros;
     destruct_ex; subst; simpl in *.
-    - unfold ith_obligation_1 in *; eauto.
-    - unfold ith_obligation_2 in *; destruct (AC_eq a c); eauto.
+    - unfold ith_default_obligation_1 in *; eauto.
+    - unfold ith_default_obligation_2 in *; destruct (AC_eq a c); eauto.
   Qed.
 
 End ilist.
@@ -234,19 +292,19 @@ Section ilist_imap.
   Variable C : Type. (* The type of comparators. *)
   Variable AC_eq : A -> C -> bool. (* Comparision between index and comparator types. *)
 
-  Lemma ith_imap :
+  Lemma ith_default_imap :
     forall (As : list A)
            (il : ilist _ As)
            (c : C)
            (default_A : A)
            (default_B : B default_A),
-      f (ith AC_eq il c default_A default_B) =
-      ith AC_eq (imap il) c default_A (f (default_B)).
+      f (ith_default AC_eq il c default_A default_B) =
+      ith_default AC_eq (imap il) c default_A (f (default_B)).
   Proof.
     induction As; intros; generalize (ilist_invert il);
     intros; destruct_ex; subst; simpl.
-    unfold ith_obligation_1; auto.
-    unfold ith_obligation_2; auto.
+    unfold ith_default_obligation_1; auto.
+    unfold ith_default_obligation_2; auto.
     find_if_inside; simpl; eauto.
   Qed.
 
@@ -273,7 +331,7 @@ Section ilist_izip.
   Variable C : Type. (* The type of comparators. *)
   Variable AC_eq : A -> C -> bool. (* Comparision between index and comparator types. *)
 
-  Lemma ith_izip :
+  Lemma ith_default_izip :
     forall (As : list A)
            (il : ilist B As)
            (il' : ilist B' As)
@@ -281,14 +339,14 @@ Section ilist_izip.
            (default_A : A)
            (default_B : B default_A)
            (default_B' : B' default_A),
-      ith AC_eq (izip il il') c default_A (f default_B default_B') =
-      f (ith AC_eq il c default_A default_B)
-        (ith AC_eq il' c default_A default_B').
+      ith_default AC_eq (izip il il') c default_A (f default_B default_B') =
+      f (ith_default AC_eq il c default_A default_B)
+        (ith_default AC_eq il' c default_A default_B').
   Proof.
     induction As; intros; generalize (ilist_invert il);
     intros; destruct_ex; subst; simpl.
-    unfold ith_obligation_1; auto.
-    unfold ith_obligation_2; auto.
+    unfold ith_default_obligation_1; auto.
+    unfold ith_default_obligation_2; auto.
     find_if_inside; simpl; eauto.
   Qed.
 
@@ -333,17 +391,17 @@ Section ilist_replace.
       replace_index il c default_A new_b = il.
   Proof.
     induction As; intros; subst.
-    - unfold ith_obligation_1; simpl; auto.
+    - unfold ith_default_obligation_1; simpl; auto.
       rewrite (ilist_invert il); auto.
     - simpl in *.
       revert new_b.
-      caseEq (AC_eq a c); unfold ith_obligation_2; simpl.
+      caseEq (AC_eq a c); unfold ith_default_obligation_2; simpl.
       rewrite H in H0; auto; try congruence.
       rewrite IHAs; eauto.
       destruct (ilist_invert il) as [a' [b' il']]; subst; simpl; auto.
   Qed.
 
-  Lemma ith_replace :
+  Lemma ith_default_replace :
     forall (As : list A)
            (il : ilist _ As)
            (c : C)
@@ -353,20 +411,20 @@ Section ilist_replace.
            (default_B : B default_A)
            (c' : C),
       AC_eq (nth (findIndex AC_eq As c) As default_A) c' = false ->
-      ith AC_eq (replace_index il c default_A new_b) c' default_A default_B =
-      ith AC_eq il c' default_A default_B.
+      ith_default AC_eq (replace_index il c default_A new_b) c' default_A default_B =
+      ith_default AC_eq il c' default_A default_B.
   Proof.
     induction As; intros; subst.
-    - unfold ith_obligation_1; simpl; auto.
+    - unfold ith_default_obligation_1; simpl; auto.
     - simpl in *.
       revert new_b.
-      caseEq (AC_eq a c); unfold ith_obligation_2; simpl;
+      caseEq (AC_eq a c); unfold ith_default_obligation_2; simpl;
       rewrite H0 in H.
       + rewrite H; eauto.
       + caseEq (AC_eq a c'); eauto.
   Qed.
 
-  Lemma ith_replace' :
+  Lemma ith_default_replace' :
     forall (As : list A)
            (il : ilist _ As)
            (c : C)
@@ -375,11 +433,11 @@ Section ilist_replace.
            (default_B : B default_A),
       forall a, In a As -> AC_eq a c = true ->
       AC_eq (nth (findIndex AC_eq As c) As default_A) c = true ->
-      ith AC_eq (replace_index il c default_A new_b) c default_A default_B =
+      ith_default AC_eq (replace_index il c default_A new_b) c default_A default_B =
       new_b.
   Proof.
     induction As; intros; destruct H; subst;
-    simpl in *; unfold ith_obligation_2; simpl; auto.
+    simpl in *; unfold ith_default_obligation_2; simpl; auto.
     - revert new_b H1; rewrite H0; intros; simpl; auto.
     - revert new_b H1; caseEq (AC_eq a c); simpl; eauto.
   Qed.
