@@ -68,61 +68,14 @@ Section Delegate.
     - unfold getMutDef.
       unfold combinedDelegateMutDefs.
       rewrite <- ith_Bounded_imap; simpl.
-      rewrite ith_izip with (f := fun _ => pair); simpl.
+      rewrite ith_Bounded_izip with (f := fun _ => pair); simpl.
       unfold refine; intros.
       inversion_by computes_to_inv.
       eauto.
-
-      unfold absMutDef, refineMutator, refine; simpl; intros.
-      inversion_by computes_to_inv.
-      destruct (H0 _ H) as [or' [Comp_or SiR_or''] ].
-      econstructor; eauto.
     - unfold getObsDef.
-      rewrite <- ith_Bounded_imap.
-      unfold absObsDef, refineObserver, refine; simpl; intros.
-      inversion_by computes_to_inv; eauto.
-  Qed.
-
-
-unfold getMutDef.
-      destruct (In_mutIdx _ mutIdx) as [dom In_mutIdx].
-      rewrite In_ith with (a := {| mutID := mutIdx;
-                                   mutDom := dom |})
-                            (default_B :=
-                               combinedDelegateMutDef ((def mut "null" (r : rep, _ : ()) : rep :=
-                                                          ret r )%mutDef,
-                                                       (def mut "null" (r : rep, _ : ()) : rep :=
-                                                          ret r )%mutDef)); simpl; eauto.
-      unfold combinedDelegateMutDefs.
-      rewrite <- ith_imap; simpl; eauto.
-      rewrite ith_izip with (f := fun _ => pair); simpl.
-      unfold refine; intros.
-      inversion_by computes_to_inv.
-      eauto. }
-    { unfold combinedObsDefs.
-      unfold getObsDef.
-      unfold combinedObsDef.
-      destruct (In_obsIdx _ obsIdx) as [dom [cod In_obsIdx]].
-      erewrite In_ith; simpl; eauto.
-      intros.
-      pose (@ith_imap).
-      match goal with
-        | [ |- context[ith ?AC_eq (imap ?B' ?f ?il) ?c ?default_A _] ]
-          => pose (@ith_imap _ _ B' f _ AC_eq _ il c default_A)
-      end.
-      pose (@In_ith).
-      (*match goal with
-        | [ |- context[ith ?AC_eq (imap ?B' ?f ?il) ?c ?default_A _] ]
-          => pose (@In_ith _ _ _ AC_eq   _ _ B' f _ AC_eq _ il c default_A)
-      end.
-       at 2; try eassumption; eauto.
-      unfold combinedObsDef in *.
-      simpl in *.
-      Fail rewrite <- e0.*)
-      repeat match goal with |- appcontext[?e] => is_evar e; generalize e end.
-      admit. }
-    Grab Existential Variables.
-    admit.
+      unfold combinedObsDefs.
+      rewrite <- ith_Bounded_imap; simpl.
+      unfold refine; intros; eauto.
   Qed.
 
 
@@ -227,18 +180,18 @@ Section MinMaxExample.
         (x : nat)
         (r1 : {v : multiset | {m' : multiset | add_spec (fst (` r)) x m'} ↝ v})
         (r2 : {v : Rep MinMaxImpl |
-               (callMut MinMaxImpl "Insert") (snd (` r)) x ↝ v})
+               (callMut MinMaxImpl "Insert"%string) (snd (` r)) x ↝ v})
   : MinMaxSiR (` r1) (` r2).
   Proof.
     unfold MinMaxSiR in *.
-    pose proof (refineMutatorPreservesSiR {| bstring := "Insert" |}) as SiRPreserved.
+    pose proof (refineMutatorPreservesSiR {| bindex := "Insert"%string |}) as SiRPreserved.
     clear refineMutatorPreservesSiR; simpl in *.
     abstract (
         destruct_head sig;
         simpl in *;
           inversion_by computes_to_inv;
         let H := fresh in
-        pose proof (refineMutator_MinMaxSiR {| bstring := "Insert" |}) as H;
+        pose proof (refineMutator_MinMaxSiR {| bindex := "Insert"%string |}) as H;
         simpl in *;
           match goal with
             | [ x : _, y : _, z : _ |- _ ] =>
@@ -299,9 +252,9 @@ Section MinMaxExample.
            let MutatorIndex' := (eval simpl in (MutatorIndex ASig)) in
            let ObserverIndex' := (eval simpl in (ObserverIndex ASig)) in
            let ObserverDomCod' := (eval simpl in (ObserverDomCod ASig)) in
-           let obsIdxB := (eval simpl in (@Build_BoundedString (List.map obsID obsSigs) obsIdx _)) in
+           let obsIdxB := (eval simpl in (@Build_BoundedIndex (List.map obsID obsSigs) obsIdx _)) in
            eapply SharpenStep;
-             [ eapply (refineADT_BuildADT_ReplaceObserver_generic
+             [ eapply (refineADT_BuildADT_ReplaceObserver
                          mutDefs obsDefs obsIdxB
                          (@Build_obsDef Rep'
                                         {| obsID := obsIdx;
@@ -321,7 +274,7 @@ Section MinMaxExample.
            let MutatorIndex' := (eval simpl in (MutatorIndex ASig)) in
            let ObserverIndex' := (eval simpl in (ObserverIndex ASig)) in
            let ObserverDomCod' := (eval simpl in (ObserverDomCod ASig)) in
-           let obsIdxB := (eval simpl in (@Build_BoundedString (List.map obsID obsSigs) obsIdx _)) in
+           let obsIdxB := (eval simpl in (@Build_BoundedIndex (List.map obsID obsSigs) obsIdx _)) in
            eapply SharpenStep;
              [ eapply (refineADT_BuildADT_ReplaceObserver_eq
                          mutDefs obsDefs obsIdxB
@@ -344,7 +297,7 @@ Section MinMaxExample.
            let MutatorIndex' := (eval simpl in (MutatorIndex ASig)) in
            let ObserverIndex' := (eval simpl in (ObserverIndex ASig)) in
            let ObserverDomCod' := (eval simpl in (ObserverDomCod ASig)) in
-           let obsIdxB := (eval simpl in (@Build_BoundedString (List.map obsID obsSigs) obsIdx _)) in
+           let obsIdxB := (eval simpl in (@Build_BoundedIndex (List.map obsID obsSigs) obsIdx _)) in
            eapply SharpenStep;
              [ eapply (refineADT_BuildADT_ReplaceObserver_sigma
                          mutDefs obsDefs obsIdxB
@@ -388,7 +341,7 @@ Section MinMaxExample.
         => let ASig := constr:(BuildADTSig mutSigs obsSigs) in
            let MutatorIndex' := (eval simpl in (MutatorIndex ASig)) in
            let MutatorDom' := (eval simpl in (MutatorDom ASig)) in
-           let mutIdxB := (eval simpl in (@Build_BoundedString (List.map mutID mutSigs) mutIdx _)) in
+           let mutIdxB := (eval simpl in (@Build_BoundedIndex (List.map mutID mutSigs) mutIdx _)) in
            eapply SharpenStep;
              [ eapply (refineADT_BuildADT_ReplaceMutator_eq
                          mutDefs obsDefs mutIdxB
@@ -431,7 +384,7 @@ Section MinMaxExample.
     let ObserverIndex' := eval simpl in (ObserverIndex ASig) in
     let MutatorDom' := eval simpl in (MutatorDom ASig) in
     let mutIdxB := eval simpl in
-    (@Build_BoundedString (List.map mutID mutSigs) mutIdx _) in
+    (@Build_BoundedIndex (List.map mutID mutSigs) mutIdx _) in
         eapply SharpenStep with
         (adt' := ADTReplaceMutDef mutDefs obsDefs mutIdxB
                                   (@Build_mutDef Rep'
@@ -463,7 +416,7 @@ Section MinMaxExample.
         | [ r_n : sig _ |- _ ]
           => pose proof (fun arg =>
                            refineObserver_MinMaxSiR
-                             {| bstring := rew_observer_name |}
+                             {| bindex := rew_observer_name |}
                              _ _ arg
                              (proj2_sig r_n)) as H';
             simpl in H';
@@ -501,7 +454,7 @@ Section MinMaxExample.
     let ObserverIndex' := eval simpl in (ObserverIndex ASig) in
     let MutatorDom' := eval simpl in (MutatorDom ASig) in
     let mutIdxB := eval simpl in
-    (@Build_BoundedString (List.map mutID mutSigs) mutIdx _) in
+    (@Build_BoundedIndex (List.map mutID mutSigs) mutIdx _) in
       eapply SharpenStep;
       [eapply (@refineADT_BuildADT_ReplaceMutator_eq
                  Rep'  _ _ mutDefs obsDefs mutIdxB

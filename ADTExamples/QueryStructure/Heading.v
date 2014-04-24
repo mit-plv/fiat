@@ -27,10 +27,8 @@ Definition attrName_eq (cs : Attribute) (idx : string) :=
 Definition BuildHeading
            (attrs : list Attribute)
 : Heading :=
-  {| Attributes := string;
-     Domain idx := attrType (nth (findIndex attrName_eq attrs idx)
-                                   attrs {| attrName := "null";
-                                                 attrType := unit |} ) |}.
+  {| Attributes := BoundedString (map attrName attrs);
+     Domain idx := attrType (nth_Bounded _ attrs idx) |}.
 
 (* Notation for schemas built from [BuildHeading]. *)
 

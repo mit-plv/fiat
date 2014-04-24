@@ -5,7 +5,7 @@ Require Import List String Ensembles
 
 Definition QSInsertSpec
            (qs : QueryStructureHint)
-           (idx : string)
+           (idx : _)
            (tup : Tuple (schemaHeading (QSGetNRelSchema _ idx)))
            (qs' : UnConstrQueryStructure qsSchemaHint)
 : Prop :=
@@ -26,11 +26,12 @@ Definition QSInsertSpec
         idx' <> idx ->
         BuildQueryStructureConstraints
           qsSchemaHint idx' idx tup' (tup :: (GetUnConstrRelation qsHint idx)))
-  -> List.In idx (map relName (qschemaSchemas qsSchemaHint))
+  -> List.In (bindex idx) (map relName (qschemaSchemas qsSchemaHint))
   -> GetUnConstrRelation qs' idx = tup :: GetUnConstrRelation qsHint idx.
 
 Notation "'Insert' b 'into' idx " :=
-  (Pick (fun r => r = DropQSConstraints (QSInsertSpec _ idx%string b)))
+  (Bind (Pick (QSInsertSpec _ idx b))
+        (fun r' => Pick (fun r => r' = DropQSConstraints r)))
     (at level 80) : QuerySpec_scope.
 
 (* Facts about insert. We'll probably need to extract these to their
@@ -73,10 +74,10 @@ Section InsertRefinements.
   Hint Resolve AC_eq_nth_In AC_eq_nth_NIn NamedSchema_eq_neq
        NamedSchema_eq_eq crossConstr.
 
-  Program Definition Insert_Valid
+  (*Program Definition Insert_Valid
              (qsSchema : QueryStructureSchema)
              (qs : QueryStructure qsSchema)
-             (idx : string)
+             (idx : _)
              (tup : Tuple (QSGetNRelSchemaHeading qsSchema idx))
              (schConstr : schemaConstraints (QSGetNRelSchema qsSchema idx) tup)
              (qsConstr : forall idx',
@@ -87,18 +88,18 @@ Section InsertRefinements.
                             BuildQueryStructureConstraints qsSchema idx' idx tup' (tup :: (GetRelation qs idx)))
   : QueryStructure qsSchema :=
     {| rels :=
-         replace_index NamedSchema_eq (rels qs) idx _
+         replace_BoundedIndex _ (rels qs) idx
                        {| rel := (tup :: (GetRelation qs idx))|}
     |}.
   Next Obligation.
     simpl in *; intuition; subst; eauto.
-    eapply ((ith_default NamedSchema_eq (rels qs) idx _ _));
+    eapply ((ith_Bounded _ (rels qs) idx ));
       eassumption.
   Qed.
   Next Obligation.
-    destruct (idx' == idx); subst; simpl in *; intuition.
-    - destruct (findIndex_In_dec NamedSchema_eq idx (qschemaSchemas qsSchema)) as [NIn_a | [a [In_a a_eq] ] ].
-      + rewrite replace_index_NIn in *; auto.
+    destruct ((bindex idx') == (bindex idx)); subst; simpl in *; intuition.
+    - destruct (findIndex_In_dec NamedSchema_eq (bindex idx) (qschemaSchemas qsSchema)) as [NIn_a | [a [In_a a_eq] ] ].
+      + rewrite replace_indexBounded_NIn in *; auto.
       + erewrite ith_default_replace' in *; simpl; eauto.
     - destruct (findIndex_In_dec NamedSchema_eq idx (qschemaSchemas qsSchema)) as [NIn_a | [a [In_a a_eq] ] ].
       + rewrite replace_index_NIn in *; auto.
@@ -107,7 +108,7 @@ Section InsertRefinements.
           rewrite ith_default_replace; eauto.
           intuition; subst; eauto.
         * rewrite ith_default_replace in *; eauto.
-  Qed.
+  Qed. *)
 
   Definition DecideableSB (P : Prop) := {P} + {~P}.
 

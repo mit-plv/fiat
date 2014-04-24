@@ -1,4 +1,5 @@
-Require Import List String Common FunctionalExtensionality Ensembles
+Require Import List String Common Arith 
+        FunctionalExtensionality Ensembles
         ADTNotation.ilist ADTNotation.StringBound Program.
 Require Export
         ADTExamples.QueryStructure.Notations
@@ -24,25 +25,24 @@ Definition defaultSchema :=
 
 Definition GetNRelSchema
            (namedSchemas : list NamedSchema)
-           (idx : string) :=
-  relSchema (nth (findIndex NamedSchema_eq namedSchemas idx)
-                 namedSchemas defaultSchema).
+           (idx : BoundedString (map relName namedSchemas)) :=
+  relSchema (nth_Bounded _ namedSchemas idx).
 
 Definition GetNRelSchemaHeading
            (namedSchemas :  list NamedSchema)
-           (idx : string)
+           (idx : BoundedString (map relName namedSchemas))
 := schemaHeading (GetNRelSchema namedSchemas idx).
 
 Definition crossRelationR
            (namedSchemas : list NamedSchema)
-           (idx idx' : string)
+           (idx idx' : _)
   := Tuple (GetNRelSchemaHeading namedSchemas idx)
      -> list (Tuple (GetNRelSchemaHeading namedSchemas idx'))
      -> Prop.
 
 Definition crossRelationProdR
            (namedSchemas : list NamedSchema)
-           (idxs : string * string)
+           (idxs : _ * _)
   := crossRelationR namedSchemas (fst idxs) (snd idxs).
 
 Record QueryStructureSchema :=
@@ -53,12 +53,12 @@ Record QueryStructureSchema :=
 
 Definition QSGetNRelSchema
            (QSSchema : QueryStructureSchema)
-           (idx : string) :=
+           (idx : _) :=
   GetNRelSchema (qschemaSchemas QSSchema) idx.
 
 Definition QSGetNRelSchemaHeading
            (QSSchema : QueryStructureSchema)
-           (idx : string) :=
+           (idx : _) :=
   GetNRelSchemaHeading (qschemaSchemas QSSchema) idx.
 
 (* Notations for Query Structures. *)
@@ -72,7 +72,7 @@ Bind Scope NamedSchema_scope with NamedSchema.
 
 Lemma BuildQSSchema_idx_eq
       (namedSchemas : list NamedSchema)
-: forall idx idx' : string,
+: forall idx idx' : _,
     idx = idx'
     -> GetNRelSchema namedSchemas idx =
        GetNRelSchema namedSchemas idx'.
@@ -95,7 +95,7 @@ Definition ForeignKey_P heading relSchema attr1 attr2 tupmap
 
 Definition BuildForeignKeyConstraints
            (namedSchemas :  list NamedSchema)
-           (rel1 rel2 : string)
+           (rel1 rel2 : _)
            attr1
            attr2
            {tupmap} :=
@@ -115,24 +115,30 @@ Notation "'attribute' attr 'of' rel1 'references' rel2 " :=
 
 Local Obligation Tactic := intros.
 
+Print projT1.
+
 Program Definition BuildQueryStructureConstraints_cons
            (namedSchemas : list NamedSchema)
            (constr : sigT (crossRelationProdR namedSchemas))
            (constraints :
               list (sigT (crossRelationProdR namedSchemas)))
-           (idx idx' : string)
+           (idx idx' : _)
            (HInd : crossRelationR namedSchemas idx idx')
-: crossRelationR namedSchemas idx idx' :=
-  if (string_dec (fst (projT1 constr)) idx) then
-    if (string_dec (snd (projT1 constr)) idx') then
+: crossRelationR namedSchemas idx idx'
+:=
+  if (eq_nat_dec (ibound idx) (ibound (indexb (fst (projT1 constr))))) then
+    if (eq_nat_dec (ibound idx') (ibound (indexb (snd (projT1 constr))))) then
       _
     else (fun r1 r2 => HInd r1 r2)
  else (fun r1 r2 => HInd r1 r2).
 Next Obligation.
   destruct constr; simpl in *.
-  destruct (In_dec string_dec idx (map relName namedSchemas)).
-  destruct (In_dec string_dec idx' (map relName namedSchemas)).
-  subst; exact (fun X X0 => c X X0).
+  destruct (In_dec string_dec (bindex idx) (map relName namedSchemas)).
+  destruct (In_dec string_dec (bindex idx') (map relName namedSchemas)).
+  unfold crossRelationR, GetNRelSchemaHeading, GetNRelSchema; simpl.
+  erewrite nth_Bounded_eq; try (exact H).
+  erewrite nth_Bounded_eq with (idx0 := idx') ; try (exact H0).
+  exact (fun X X0 => c X X0).
   exact (fun X X0 => True).
   exact (fun X X0 => True).
 Defined.
@@ -141,7 +147,7 @@ Fixpoint BuildQueryStructureConstraints'
          (namedSchemas : list NamedSchema)
          (constraints :
             list (sigT (crossRelationProdR namedSchemas)))
-(idx idx' : string) {struct constraints}
+(idx idx' : _) {struct constraints}
 : crossRelationR namedSchemas idx idx' :=
   match constraints with
     | idx'' :: constraints' =>

@@ -9,40 +9,6 @@ Set Implicit Arguments.
 
 Section BuildADTRefinements.
 
-  (* To define a notation-friendly version of honing individual
-     methods, we use [ADTReplaceMutDef] and [ADTReplaceObsDef] to
-     insert the new definition in the indexed list of method bodies.
-   *)
-
-  (* Lemma In_mutSigs_eq
-    (mutSigs : list mutSig)
-  : forall (idx : BoundedString (map mutID mutSigs))
-           (mutIdx : String.string),
-      (AC_eq_bool _ mutSig_eq)
-        (nth_Bounded mutID mutSig_eq mutSigs idx) mutIdx = true ->
-      mutIdx = idx.
-  Proof.
-    intros.
-    destruct (In_mutIdx _ idx) as [dom In_mutIdx].
-    eapply In_AC_eq; eauto.
-    unfold mutSig_eq; intros; repeat find_if_inside; congruence.
-    unfold mutSig_eq; find_if_inside; simpl in *; congruence.
-  Qed.
-
-  Lemma In_mutSigs
-        (mutSigs : list mutSig)
-  : forall (idx : BoundedString (map mutID mutSigs)),
-      List.In
-        (nth (findIndex mutSig_eq mutSigs idx) mutSigs
-             ("null" : rep × () → rep)%mutSig) mutSigs.
-  Proof.
-    intros; destruct (In_mutIdx _ idx) as [dom In_mutIdx].
-    eapply In_As; eauto.
-    unfold mutSig_eq; find_if_inside; simpl in *; congruence.
-  Qed.
-
-  Hint Resolve In_mutSigs. *)
-
   Lemma refineADT_BuildADT_ReplaceMutator
             (Rep : Type)
             (SiR : Rep -> Rep -> Prop)

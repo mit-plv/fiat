@@ -12,38 +12,38 @@ Section BookStoreExamples.
      - The books in the inventory
      - The orders that have been placed *)
 
-Definition MovieSchema :=
-  (schema <"Title" : string, ("ReleaseDate"%string : nat)%Attribute>
-   where attributes ["ReleaseDate"] depend on ["Title"])%Schema.
-
 Open Scope QSSchema.
-
-Definition Books := "B"%string.
-Definition Author := "A"%string.
-Definition Title := "T"%string.
-Definition ISBN := "I"%string.
-Definition Orders := "O"%string.
-Definition Date := "D"%string.
 
   Definition BookStoreSchema :=
     query structure schema
-      [ relation Books has
-                schema <Author : string,
-                        Title : string,
-                        ISBN : nat>
-                where attributes [Title; Author] depend on [ISBN];
-        relation Orders has
-                schema <ISBN : nat,
-                        Date : nat> ]
-      enforcing [attribute ISBN of Orders references Books].
+      [ relation "Books" has
+                schema <"Author" : string,
+                        "Title" : string,
+                        "ISBN" : nat>
+                where attributes [{| bindex := Title |} ; {|bindex := "Author" |}] depend on [{|bindex := "ISBN" |}];
+        relation "Orders" has
+                schema <"ISBN" : nat,
+                        "Date" : nat> ]
+      enforcing [attribute {| bindex := "ISBN" |} of {| bindex := "Orders" |} references {| bindex := "Books" |}].
+
+Definition Books : BoundedIndex (map relName (qschemaSchemas BookStoreSchema)) := {| bindex := "Books"%string |}.
+Definition Orders : BoundedIndex (map relName (qschemaSchemas BookStoreSchema)) := {| bindex := "Orders"%string |}.
+Definition Author : Attributes (GetNRelSchemaHeading (qschemaSchemas BookStoreSchema) Books)
+  := {|bindex := "Author"%string |}.
+Definition Title : Attributes (GetNRelSchemaHeading (qschemaSchemas BookStoreSchema) Books)
+  := {|bindex := "Title"%string |}.
+Definition ISBN : Attributes (GetNRelSchemaHeading (qschemaSchemas BookStoreSchema) Books)
+  := {|bindex := "ISBN"%string |}.
+Definition oISBN : Attributes (GetNRelSchemaHeading (qschemaSchemas BookStoreSchema) Orders)
+  := {|bindex := "ISBN"%string |}.
+Definition Date : Attributes (GetNRelSchemaHeading (qschemaSchemas BookStoreSchema) Orders)
+  := {|bindex := "Date"%string |}.
 
   (* Sanity check to show that the definitions produced
      can be efficiently evaluated. *)
   Goal (forall b,
           BuildQueryStructureConstraints
-            BookStoreSchema
-            Orders%string
-            Books%string = b).
+            BookStoreSchema Orders Books = b).
   Time simpl.
   Abort.
 
@@ -71,37 +71,33 @@ Definition Date := "D"%string.
   Local Open Scope Schema.
   Local Open Scope QuerySpec.
 
-Definition PlaceOrder := "P"%string.
-Definition AddBook := "A"%string.
-Definition GetTitles := "G"%string.
-Definition NumOrders := "N"%string.
+  Definition PlaceOrder := "P"%string.
+  Definition AddBook := "A"%string.
+  Definition GetTitles := "G"%string.
+  Definition NumOrders := "N"%string.
 
   Definition BookStoreSig : ADTSig :=
     ADTsignature {
         PlaceOrder : rep × Order → rep,
         AddBook : rep × Book → rep ;
         GetTitles : rep × string → list string,
-        NumOrders : rep × string → nat
+        NumOrders : rep × string → list nat
       }.
-
-  (* [GetTitles] : The titles of books written by a given author *)
-
-  Arguments qsSchemaHint _ / .
 
   (* [NumOrders] : The number of orders for a given author *)
   Definition NumOrdersSpec
              (r : BookStoreRefRep) (author : string) :=
     let _ := {|qsHint := DropQSConstraints r |} in
-    Count (For (o in Orders) (b in Books)
+    Count (For (o in Orders) (b in Books )
            Where (author == b!Author)
-           Where (b!ISBN == o!ISBN)
+           Where (b!ISBN == o!oISBN)
            Return tt).
 
   Definition BookStoreSpec : ADT BookStoreSig :=
     QueryADTRep BookStoreRefRep {
              (* [PlaceOrder] : Place an order into the 'Orders' table *)
-             def update PlaceOrder ( o : Order ) : rep :=
-               Insert o into Orders,
+                  def update PlaceOrder ( o : Order ) : rep :=
+                    Insert o into Orders,
 
              (* [AddBook] : Add a book to the inventory *)
              def update AddBook ( b : Book ) : rep :=
@@ -114,18 +110,18 @@ Definition NumOrders := "N"%string.
                Return b!Title,
 
              (* [NumOrders] : The number of orders for a given author *)
-             def query NumOrders ( author : string ) : nat :=
-                 Count (For (o in Orders) (b in Books)
+             def query NumOrders ( author : string ) : list nat :=
+                 For (o in Orders) (b in Books)
                         Where (author == b!Author)
-                        Where (b!ISBN == o!ISBN)
-                        Return <ISBN : o!ISBN >)
+                        Where (b!ISBN == o!oISBN)
+                        Return o!oISBN
          } .
 
   Local Close Scope QueryStructureParsing_scope.
   Local Close Scope QuerySpec.
   Local Open Scope QueryStructure_scope.
 
-  Definition BookStoreSchema' :=
+  (* Definition BookStoreSchema' :=
     query structure schema
       [ relation Books has
                 schema <Author : string,
@@ -136,16 +132,16 @@ Definition NumOrders := "N"%string.
         relation Orders has
                 schema <ISBN : nat,
                         Date : nat> ]
-      enforcing [attribute ISBN of Orders references Books].
+      enforcing [attribute ISBN of Orders references Books]. *)
 
-  Definition AddAttribute_SiR
+  (* Definition AddAttribute_SiR
              (or : BookStoreRefRep)
              (nr : QueryStructure BookStoreSchema') :=
     (GetRelation or Orders = GetRelation nr Orders /\
      GetRelation or Books = map (fun tup => <Author : tup!Author,
                                    Title : tup!Title,
                                    ISBN : tup!ISBN>%Tuple)
-                          (GetRelation nr Books)).
+                          (GetRelation nr Books)). *)
 
   Open Scope updateDef.
 

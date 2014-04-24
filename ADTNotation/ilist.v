@@ -1,10 +1,16 @@
 Generalizable All Variables.
 Set Implicit Arguments.
 
-Require Import List String.
+Require Import List String Arith.
 Require Import Common.
 
 Section ilist.
+
+  (* Lists of elements whose types depend on an indexing set (CPDT's hlists).
+     These lists are a convenient way to implement finite maps
+     whose elements depend on their keys. The data structures used
+     by our ADT notations uses these to implement notation-friendly
+     method lookups.  *)
 
   Variable A : Type. (* The indexing type. *)
   Variable B : A -> Type. (* The type of indexed elements. *)
@@ -13,14 +19,7 @@ Section ilist.
   | icons : forall a As, B a -> ilist As -> ilist (a :: As)
   | inil : ilist nil.
 
-  Lemma ilist_invert (As : list A) (il : ilist As) :
-    match As as As' return ilist As' -> Prop with
-      | a :: As' => fun il => exists b il', il = icons b il'
-      | nil => fun il => il = inil
-    end il.
-  Proof.
-    destruct il; eauto.
-  Qed.
+  (* Get the car of an ilist. *)
 
   Definition ilist_hd (As : list A) (il : ilist As) :
     match As as As' return ilist As' -> Type with
@@ -32,7 +31,9 @@ Section ilist.
       | inil => tt
     end.
 
-  Definition ilist_tail (As : list A) (il : ilist As) :
+  (* Get the cdr of an ilist. *)
+
+  Definition ilist_tl (As : list A) (il : ilist As) :
     match As as As' return ilist As' -> Type with
       | a :: As' => fun il => ilist As'
       | nil => fun _ => unit
@@ -42,17 +43,570 @@ Section ilist.
       | inil => tt
     end.
 
+  (* Membership in an indexed list. *)
+
+  Inductive ilist_In {a : A} (b : B a)
+  : forall (As : list A) (il : ilist As), Prop :=
+  | In_hd : forall As' (il : ilist As'),
+              ilist_In b (icons b il)
+  | In_tl : forall a' (b' : B a') As' (il : ilist As'),
+              ilist_In b il ->
+              ilist_In b (icons b' il).
+
+  (* ilists can be built from standard lists of sigma types *)
+
   Fixpoint siglist2ilist (sigList : list (sigT B))
   : ilist (map (@projT1 _ B) sigList) :=
     match sigList as sigList'
           return ilist (map (@projT1 _ B) sigList') with
-      | nil => inil
-      | cons (existT a b) sigList' => icons b (siglist2ilist sigList')
+      | [] => inil
+      | (existT a b) :: sigList' => icons b (siglist2ilist sigList')
     end.
 
-    Variable C : Type. (* The type of comparators. *)
+  (* and vice versa. *)
 
-    Variable AC_eq : A -> C -> bool. (* Comparision between index and comparator types. *)
+  Fixpoint ilist2siglist {As : list A} (il : ilist As) : list (sigT B) :=
+    match il with
+      | inil => []
+      | icons a As b il' => (existT B a b) :: (ilist2siglist il')
+    end.
+
+  (* ilist2siglist is the inverse of siglist2ilist *)
+  Lemma siglist2ilist_id
+  : forall (sigList : list (sigT B)),
+      ilist2siglist (siglist2ilist sigList) = sigList.
+  Proof.
+    induction sigList; simpl; auto.
+    destruct a; simpl; congruence.
+  Qed.
+
+  (* and vice-versa. *)
+
+  Fixpoint ilist2siglist_map
+          As (il : ilist As)
+  : map (@projT1 _ B) (ilist2siglist il) = As :=
+    match il as il' in ilist As' return
+          map (@projT1 _ B) (ilist2siglist il') = As' with
+      | inil => eq_refl
+      | icons a As' b il' => f_equal (fun b' => cons a b') (ilist2siglist_map il')
+    end.
+
+  Lemma ilist2sislist_map_cons
+  : forall a b As (il il' : ilist As),
+      match ilist2siglist_map il in (_ = y) return (ilist y -> Prop) with
+        | eq_refl =>
+          fun il' => siglist2ilist (ilist2siglist il) = il'
+      end il'
+      ->
+      match
+        f_equal (fun b' : list A => a :: b') (ilist2siglist_map il) in (_ = y)
+        return (ilist y -> Prop)
+      with
+        | eq_refl =>
+          fun il' : ilist (a :: map (projT1 (P:=B)) (ilist2siglist il)) =>
+            icons b (siglist2ilist (ilist2siglist il)) = il'
+      end (icons b il').
+  Proof.
+    intros until il; destruct (ilist2siglist_map il); congruence.
+  Qed.
+
+  Lemma ilist2siglist_id
+  : forall As (il : ilist As),
+      match (ilist2siglist_map il) in (_ = y) return
+            forall (il' : ilist y), Prop
+      with
+        | eq_refl => fun il' => siglist2ilist (ilist2siglist il) = il'
+      end il.
+  Proof.
+    induction il; simpl; auto.
+    apply ilist2sislist_map_cons; auto.
+  Qed.
+
+  (* Looking up the ith value, returning None for indices not in the list *)
+
+  (* A dependent option. *)
+  Inductive Dep_Option : option A -> Type :=
+    | Dep_Some : forall a, B a -> Dep_Option (Some a)
+    | Dep_None : Dep_Option None.
+
+  (* [Dep_Option_elim] projects out the [B a] value from
+     a dependent option indexed with [Some a], and returns
+     a unit value otherwise. *)
+  Definition Dep_Option_elimT (a_opt : option A) : Type :=
+    match a_opt with
+      | Some a => B a
+      | None => unit
+    end.
+  Definition Dep_Option_elim (a_opt : option A)
+            (b_opt : Dep_Option a_opt) :=
+    match b_opt in Dep_Option a_opt' return
+          Dep_Option_elimT a_opt' with
+      | Dep_Some a b => b
+      | Dep_None => tt
+    end.
+
+  Fixpoint ith_error
+          (As : list A)
+          (il : ilist As)
+          (n : nat)
+          {struct n}
+  : Dep_Option (nth_error As n) :=
+    match n as n' return
+          ilist As
+          -> Dep_Option (nth_error As n')
+    with
+      | 0 => match As as As' return
+                   ilist As'
+                   -> Dep_Option (nth_error As' 0) with
+               | nil => fun il => Dep_None
+               | cons a As' => fun il => Dep_Some (ilist_hd il)
+             end
+      | S n => match As as As' return
+                     ilist As'
+                     -> Dep_Option (nth_error As' (S n)) with
+                 | nil => fun il => Dep_None
+                 | cons a As' =>
+                   fun il =>
+                     ith_error (ilist_tl il) n
+             end
+    end il.
+
+  (* Looking up the ith value, returning a default value
+     for indices not in the list. *)
+  Fixpoint ith_default
+          (default_A : A)
+          (default_B : B default_A)
+          (As : list A)
+          (il : ilist As)
+          (n : nat)
+  {struct As} : B (nth n As default_A) :=
+    match As as As', n as n' return ilist As' -> B (nth n' As' default_A) with
+        | a :: As', 0    => @ilist_hd _
+        | a :: As', S n' => fun il => ith_default default_B (ilist_tl il) n'
+        | []      , 0    => fun il => default_B
+        | []      , S n' => fun il => default_B
+    end il.
+
+  (* TODO: prove equivalence of the two indexed lookup functions.
+  Lemma ith_error_eq_ith_default
+  : forall (As : list A) (il : ilist As) (n : nat) (b : B _),
+      (forall nth_eq : nth_error As n = Some a,
+         match nth_eq as in (_ = y) return
+               Dep_Option  -> Dep_Option y -> Prop
+         with
+           | eq_refl => fun opt_b' b' => opt_b' = b'
+         end (ith_error il n)) <->
+      (forall default_A (default_B : B default_A),
+         ith_default default_B il n = b).
+   *)
+
+  Lemma ilist_invert (As : list A) (il : ilist As) :
+    match As as As' return ilist As' -> Prop with
+      | a :: As' => fun il => exists b il', il = icons b il'
+      | nil => fun il => il = inil
+    end il.
+  Proof.
+    destruct il; eauto.
+  Qed.
+
+  (* The [ith_induction] tactic is for working with lookups of bounded indices.
+     It first inducts on n, then destructs the index list [As] and eliminates
+     the contradictory cases, then finally destructs any indexed list in the
+     context with Bounds of [As]. *)
+
+  Ltac icons_invert :=
+    repeat match goal with
+             | [il : ilist (_ :: _) |- _]
+               => let il' := fresh "il" in
+                  let b' := fresh "b" in
+                  let il'_eq := fresh "il_eq" in
+                  generalize (ilist_invert il);
+                    intros il'; destruct il' as [b' [il' il'_eq]]; subst
+           end.
+
+  Ltac ith_induction n As :=
+    induction n; simpl; intros;
+    (destruct As; simpl in *;
+                  [intros; elimtype False; eapply lt_n_0; eassumption
+                  | icons_invert ]).
+
+  Lemma ith_default_In :
+    forall (n : nat)
+           (As : list A)
+           (il : ilist As)
+           (default_A : A)
+           (default_B : B default_A),
+      n < List.length As ->
+      ilist_In (ith_default default_B il n) il.
+  Proof.
+    ith_induction n As; simpl; constructor; eauto with arith.
+  Qed.
+
+  (* TODO: Implement this lemma too.
+
+    Lemma ith_default_overflow :
+    forall (n : nat)
+           (As : list A)
+           (il : ilist As)
+           (default_A : A)
+           (default_B : B default_A),
+      List.length As <= n ->
+      ith_default default_B il n = default_B.
+  Proof.
+    ith_induction n As; simpl; constructor; eauto with arith.
+  Qed. *)
+
+  Lemma ith_default_indep :
+    forall (n : nat)
+           (As : list A)
+           (il : ilist As)
+           (default_A : A)
+           (default_B default_B' : B default_A),
+      n < List.length As ->
+      ith_default default_B il n = ith_default default_B' il n.
+  Proof.
+    ith_induction n As; simpl; eauto with arith.
+  Qed.
+
+End ilist.
+
+Ltac icons_invert :=
+  repeat match goal with
+           | [il : ilist _ (_ :: _) |- _]
+             => let il' := fresh "il" in
+                let b' := fresh "b" in
+                let il'_eq := fresh "il_eq" in
+                generalize (ilist_invert il);
+                  intros il'; destruct il' as [b' [il' il'_eq]]; subst
+         end.
+
+Ltac ith_induction n As :=
+  induction n; simpl; intros;
+  (destruct As; simpl in *;
+                [intros; elimtype False; eapply lt_n_0; eassumption
+                | icons_invert ]).
+
+Section ilist_imap.
+
+  (* Mapping a function over an indexed list. *)
+
+  Variable A : Type. (* The indexing type. *)
+  Variable B B' : A -> Type. (* The two types of indexed elements. *)
+  Variable f : forall a, B a -> B' a. (* The function to map over the list. *)
+
+  Fixpoint imap (As : list A)
+           (il : ilist B As)
+  : ilist B' As :=
+    match il in ilist _ As return ilist _ As with
+      | icons a As b il' => icons a (f b) (imap il')
+      | inil => inil B'
+    end.
+
+  (* [imap] behaves as expected with the [ith_default] lookup
+     function. *)
+  Lemma ith_default_imap :
+    forall (n : nat)
+           (As : list A)
+           (il : ilist _ As)
+           (default_A : A)
+           (default_B : B default_A),
+      f (ith_default default_A default_B il n) =
+      ith_default default_A (f default_B) (imap il) n.
+  Proof.
+    induction n; destruct As; simpl; eauto;
+    intros; icons_invert; simpl; auto.
+  Qed.
+
+  (* Mapping [f] over a dependent option. *)
+  Definition Dep_Option_Map
+             (a_opt : option A)
+             (b_opt : Dep_Option B a_opt) :
+    Dep_Option B' a_opt :=
+    match b_opt with
+      | Dep_Some a b' => Dep_Some B' a (f b')
+      | Dep_None => Dep_None B'
+    end.
+
+  (* Applying [f] to the value projected from a dependent option [b_opt]
+     is the same as mapping [f] over the [b_opt] and projecting.
+   *)
+  Lemma Dep_Option_Map_elim
+  : forall (a_opt : option A)
+           (b_opt : Dep_Option B a_opt),
+      Dep_Option_elim (Dep_Option_Map b_opt) =
+      match a_opt as a_opt' return
+            Dep_Option B a_opt' -> Dep_Option_elimT B' a_opt' with
+        | Some a => fun b => f (Dep_Option_elim b)
+        | None => fun _ => tt
+      end b_opt.
+  Proof.
+    unfold Dep_Option_elim, Dep_Option_Map; destruct b_opt; reflexivity.
+  Qed.
+
+  (* Concrete values for [a_opt] produce corrolaries of 
+     [Dep_Option_Map_elim] with nicer statements. *)
+  Corollary Dep_Option_Map_elim_Some
+  : forall (a : A)
+           (b_opt : Dep_Option B (Some a)),
+      Dep_Option_elim (Dep_Option_Map b_opt) = f (Dep_Option_elim b_opt).
+  Proof.
+    intros; eapply Dep_Option_Map_elim; eauto.
+  Qed.
+
+  Corollary Dep_Option_Map_elim_None
+  : forall (b_opt : Dep_Option B None),
+      Dep_Option_elim (Dep_Option_Map b_opt) = tt.
+  Proof.
+    intros; eapply Dep_Option_Map_elim; eauto.
+  Qed.
+
+  (* [imap] behaves as expected with the [ith_error] lookup
+     function as well, albeit with a more dependently-typed statement. *)
+  Lemma ith_error_imap :
+    forall (n : nat)
+           (As : list A)
+           (il : ilist _ As),
+      Dep_Option_Map (ith_error il n) =
+      ith_error (imap il) n.
+  Proof.
+    induction n; destruct As; simpl; eauto;
+    intros; icons_invert; simpl; auto.
+  Qed.
+
+End ilist_imap.
+
+Section ilist_izip.
+
+  (* Merging two indexed lists together. *)
+
+  Variable A : Type. (* The indexing type. *)
+  Variable B B' D : A -> Type. (* The three types of indexed elements. *)
+  Variable f : forall a, B a -> B' a -> D a.
+
+  (* The function which merges the two sets of elements. *)
+  Fixpoint izip (As : list A)
+           (il : ilist B As) (il' : ilist B' As)
+  : ilist D As :=
+    match As as As' return ilist B As' -> ilist B' As' -> ilist D As' with
+      | a :: As' =>
+        fun il il' =>
+          icons a (f (ilist_hd il) (ilist_hd il'))
+                (izip (ilist_tl il) (ilist_tl il'))
+      | [] => fun il il' => inil D
+    end il il'.
+
+  (* [izip] behaves as expected with the [ith_default] lookup
+     function. *)
+  Lemma ith_default_izip :
+    forall (n : nat)
+           (As : list A)
+           (il : ilist B As)
+           (il' : ilist B' As)
+           (default_A : A)
+           (default_B : B default_A)
+           (default_B' : B' default_A),
+      ith_default _ (f default_B default_B') (izip il il') n =
+      f (ith_default _ default_B il n) (ith_default _ default_B' il' n).
+  Proof.
+    induction n; destruct As; simpl; eauto;
+    intros; icons_invert; simpl; auto.
+  Qed.
+
+  (* Merging two dependent options together. *)
+  Definition Dep_Option_Zip
+             (a_opt : option A)
+             (b_opt : Dep_Option B a_opt)
+             (b'_opt : Dep_Option B' a_opt):
+    Dep_Option D a_opt :=
+    match a_opt as a_opt' return
+          Dep_Option B a_opt' -> Dep_Option B' a_opt' ->
+          Dep_Option D a_opt' with
+      | Some a =>
+        fun b b' =>
+          Dep_Some D a (f (Dep_Option_elim b) (Dep_Option_elim b'))
+      | None => fun _ _ => Dep_None D
+    end b_opt b'_opt.
+
+  (* Projecting the combination of two dependent sums [b_opt] and [b'_opt]
+     is the same as combining the projections of [b_opt] and [b'_opt]. *)
+  Lemma Dep_Option_Zip_elim
+  : forall (a_opt : option A)
+           (b_opt : Dep_Option B a_opt)
+           (b'_opt : Dep_Option B' a_opt),
+      Dep_Option_elim (Dep_Option_Zip b_opt b'_opt) =
+      match a_opt as a_opt' return
+            Dep_Option B a_opt'
+            -> Dep_Option B' a_opt'
+            -> Dep_Option_elimT D a_opt' with
+        | Some a => fun b b' => f (Dep_Option_elim b) (Dep_Option_elim b')
+        | None => fun _ _ => tt
+      end b_opt b'_opt.
+  Proof.
+    unfold Dep_Option_elim, Dep_Option_Zip; destruct b_opt; reflexivity.
+  Qed.
+
+  (* Concrete values for [a_opt] produce corrolaries of 
+     [Dep_Option_Zip_elim] with nicer statements. *)
+  Corollary Dep_Option_Zip_elim_Some
+  : forall (a : A)
+           (b_opt : Dep_Option B (Some a))
+           (b'_opt : Dep_Option B' (Some a)),
+      Dep_Option_elim (Dep_Option_Zip b_opt b'_opt) = 
+      f (Dep_Option_elim b_opt) (Dep_Option_elim b'_opt).
+  Proof.
+    intros; eapply Dep_Option_Zip_elim; eauto.
+  Qed.
+
+  Corollary Dep_Option_Zip_elim_None
+  : forall (b_opt : Dep_Option B None)
+           (b'_opt : Dep_Option B' None),
+      Dep_Option_elim (Dep_Option_Zip b_opt b'_opt) = tt.
+  Proof.
+    intros; eapply Dep_Option_Zip_elim; eauto.
+  Qed.
+
+  (* [izip] behaves as expected with the [ith_error] lookup
+     function as well, albeit with a more dependently-typed statement. *)
+
+  Lemma ith_error_izip :
+    forall (n : nat)
+           (As : list A)
+           (il : ilist B As)
+           (il' : ilist B' As),
+      ith_error (izip il il') n =
+      Dep_Option_Zip (ith_error il n) (ith_error il' n).
+  Proof.
+    induction n; destruct As; simpl; eauto;
+    intros; icons_invert; simpl; auto.
+  Qed.
+
+End ilist_izip.
+
+Section ilist_replace.
+
+  (* Replacing an element of an indexed list. *)
+  Variable A : Type. (* The indexing type. *)
+  Variable B : A -> Type. (* The two types of indexed elements. *)
+
+  Program Fixpoint replace_Index
+           {B : A -> Type}
+           (n : nat)
+           (As : list A)
+           (il : ilist B As)
+           (new_b : Dep_Option_elimT B (nth_error As n))
+           {struct As} : ilist B As :=
+    match n as n' return
+            ilist B As
+            -> Dep_Option_elimT B (nth_error As n')
+            -> ilist B As with
+      | 0 => match As as As' return
+                   ilist B As'
+                   -> Dep_Option_elimT B (nth_error As' 0)
+                   -> ilist B As' with
+               | nil =>
+                 fun il _ => inil _
+               | cons a Bound' =>
+                 fun il new_b =>
+                   icons _ new_b (ilist_tl il)
+             end
+      | S n => match As as As' return
+                     ilist B As'
+                     -> Dep_Option_elimT B (nth_error As' (S n))
+                     -> ilist B As' with
+                 | nil => fun il _ => inil _
+                 | cons a Bound' =>
+                   fun il new_b =>
+                     icons _ (ilist_hd il)
+                           (@replace_Index B n Bound'
+                                           (ilist_tl il) new_b)
+               end
+    end il new_b.
+
+  Lemma replace_Index_overflow
+  : forall
+      (n : nat)
+      (As : list A)
+      (il : ilist _ As)
+      (new_b : Dep_Option_elimT B (nth_error As n)),
+      List.length As <= n
+      -> replace_Index n il new_b = il.
+  Proof.
+    induction n; simpl; 
+    (destruct As; intros; 
+     [generalize (ilist_invert il); intros; subst; reflexivity |
+      icons_invert; simpl in *]).
+    - destruct (le_Sn_0 _ H).
+    - f_equal; auto with arith.
+  Qed.
+
+  Definition Dep_Option_elim_P2
+             {B B' : A -> Type}
+             (P : forall a, B a -> B' a -> Prop)
+             (a_opt : option A)
+             (b_opt : Dep_Option B a_opt)
+             (b'_opt : Dep_Option B' a_opt)
+      := match a_opt as a' return
+               Dep_Option_elimT B a' -> Dep_Option_elimT B' a' -> Prop with
+           | Some a => P a
+           | None => fun _ _ => True
+         end (Dep_Option_elim b_opt) (Dep_Option_elim b'_opt).
+
+  Lemma Dep_Option_P2_refl
+  : forall n As b,
+      @Dep_Option_elim_P2 B _ (fun a b b' => b = b')
+                     (nth_error As n) b b.
+  Proof.
+    intros n As; destruct (nth_error As n); simpl; auto.
+  Qed.
+
+  Lemma ith_replace_Index_neq
+  : forall
+      (n : nat)
+      (As : list A)
+      (il : ilist _ As)
+      (n' : nat)
+      (new_b : Dep_Option_elimT B (nth_error As n')),
+      n <> n'
+      -> Dep_Option_elim_P2
+           (fun a b b' => b = b')
+           (ith_error (replace_Index n' il new_b) n)
+           (ith_error il n).
+  Proof.
+    unfold Dep_Option_elim_P2.
+    induction n; simpl; destruct As; intros; icons_invert;
+    simpl in *; auto;
+    destruct n'; simpl; try congruence.
+    eapply Dep_Option_P2_refl.
+    eapply IHn; congruence.
+  Qed.
+
+  Lemma ith_replace_Index_eq
+  : forall
+      (n : nat)
+      (As : list A)
+      (il : ilist _ As)
+      (new_b : Dep_Option B (nth_error As n)),
+      Dep_Option_elim_P2
+        (fun a b b' => b = b')
+        (ith_error (replace_Index n il (Dep_Option_elim new_b)) n)
+        new_b.
+  Proof.
+    unfold Dep_Option_elim_P2.
+    induction n; destruct As; simpl; auto; intros; icons_invert.
+    apply IHn.
+  Qed.
+
+End ilist_replace.
+
+Section findIndex.
+
+  (* Find the index of an element in a list matching a comparator.
+     Originally used to look up the element of an ilist using ith_default. *)
+
+  Variable A : Type. (* The indexing type. *)
+  Variable C : Type. (* The type of comparators. *)
+
+  Variable AC_eq : A -> C -> bool. (* Comparision between index and comparator types. *)
 
   Fixpoint findIndex (As : list A) (c : C)
   : nat :=
@@ -79,7 +633,7 @@ Section ilist.
       (forall a, In a As -> AC_eq a c = false) ->
       findIndex As c = List.length As.
   Proof.
-    clear B; induction As; intros; simpl in *; intuition; subst.
+    induction As; intros; simpl in *; intuition; subst.
     rewrite H; auto.
   Qed.
 
@@ -90,7 +644,7 @@ Section ilist.
       (forall a, In a As -> AC_eq a c = false)
       \/ (exists a, In a As /\ AC_eq a c = true).
   Proof.
-    clear B; induction As; intros; simpl in *; intuition.
+    induction As; intros; simpl in *; intuition.
     caseEq (AC_eq a c); eauto.
     left; intros; intuition; subst; eauto.
     destruct_ex; intuition.
@@ -103,7 +657,7 @@ Section ilist.
       forall a a',
         nth (findIndex As c) As a = nth (findIndex As c) As a'.
   Proof.
-    clear B; intros; apply nth_indep; eauto.
+    intros; apply nth_indep; eauto.
   Qed.
 
   Lemma AC_eq_nth_In
@@ -111,7 +665,7 @@ Section ilist.
       In a As -> AC_eq a c = true ->
       AC_eq (nth (findIndex As c) As default_A) c = true.
   Proof.
-    clear B; induction As; simpl; intros; intuition;
+    induction As; simpl; intros; intuition;
     caseEq (AC_eq a c); eauto; subst; congruence.
   Qed.
 
@@ -122,7 +676,7 @@ Section ilist.
       (forall a, AC_eq a c = true -> AC_eq a c' = false) ->
       AC_eq (nth (findIndex As c) As default_A) c' = false.
   Proof.
-    clear B; induction As; simpl; intros; intuition;
+    induction As; simpl; intros; intuition;
     caseEq (AC_eq a c); eauto; subst; try congruence.
   Qed.
 
@@ -131,7 +685,7 @@ Section ilist.
       (forall a, In a As -> AC_eq a c = false) ->
       forall a, nth (findIndex As c) As a = a.
   Proof.
-    clear B; intros; apply nth_overflow; rewrite findIndex_NIn;
+    intros; apply nth_overflow; rewrite findIndex_NIn;
     auto with arith.
   Qed.
 
@@ -142,7 +696,7 @@ Section ilist.
       List.In a As -> AC_eq a c = true ->
       List.In (nth (findIndex As c) As default_A) As.
   Proof.
-    clear B; induction As; simpl; intros; destruct H; subst.
+    induction As; simpl; intros; destruct H; subst.
     - rewrite H0; auto.
     - caseEq (AC_eq a c); eauto.
   Qed.
@@ -167,279 +721,4 @@ Section ilist.
     - caseEq (AC_eq a c'); rewrite H2 in H1; eauto.
   Qed.
 
-  (* Looking up the ith value, returning None for
-     indices not in the list*)
-
-  Definition Dep_Option 
-             (opt_A : option A) :=
-    match opt_A with 
-        | Some a => B a
-        | None => True
-    end.
-
-  Fixpoint ith_error
-          (n : nat)
-          (As : list A)
-          (il : ilist As)
-          {struct n}
-  : Dep_Option (nth_error As n) :=
-    match n as n' return
-          ilist As
-          -> Dep_Option (nth_error As n')
-    with
-      | 0 => match As as As' return
-                   ilist As'
-                   -> Dep_Option (nth_error As' 0) with
-               | nil => fun il => I
-               | cons a As' => fun il => ilist_hd il
-             end
-      | S n => match As as As' return
-                     ilist As'
-                     -> Dep_Option (nth_error As' (S n)) with
-                 | nil => fun il => I
-                 | cons a As' =>
-                   fun il =>
-                     ith_error n (ilist_tail il)
-             end
-    end il.
-
-  (* Looking up the ith value, returning a default value
-     for indices not in the list. *)
-  Program Fixpoint ith_default 
-          (As : list A) 
-          (il : ilist As) 
-          (c : C) 
-          (default_A : A)
-          (default_B : B default_A)
-  {struct As} : B (nth (findIndex As c) As default_A) :=
-    match As as As' return ilist As' -> B (nth (findIndex As' c) As' default_A) with
-        | a :: As' => (fun H il => _) (@ith_default As')
-        | _ => fun il => _
-    end il.
-  Next Obligation.
-    destruct (AC_eq a c).
-    exact (ilist_hd il0).
-    exact (H (ilist_tail il0) _ _ default_B).
-  Defined.
-
-  (*Program Fixpoint ith_default 
-          (As : list A) 
-          (n : nat)
-          (il : ilist As) 
-          (default_A : A)
-          (default_B : B default_A)
-  {struct As} : B (nth n As default_A) :=
-    match n as n', As as As' return 
-          ilist As' -> B (nth n' As' default_A) with
-        | 0, a :: _ => @ilist_hd _
-        | S n', a :: As' => fun il => 
-                              (@ith_default As' n' (ilist_tail il) 
-                                            default_A default_B)
-        | _, _ => fun il => default_B
-    end il. *)
-
-  Lemma In_ith_default :
-    forall (a : A)
-           (As : list A)
-           (il : ilist As)
-           (c : C)
-           (default_A : A)
-           (default_B : B default_A),
-      In a As -> AC_eq a c = true ->
-      forall default_B',
-        ith_default il c default_B' = ith_default il c default_B.
-  Proof.
-    induction As; simpl; intros; intuition; subst;
-    unfold ith_default_obligation_2; simpl.
-    - rewrite H0; auto.
-    - find_if_inside; eauto.
-  Qed.
-
-  Variable P : forall a, B a -> Prop.
-
-  Lemma ith_default_default :
-    forall (As : list A)
-           (il : ilist As)
-           (c : C)
-           (default_A : A)
-           (default_B default_B' : B default_A),
-      (P default_B' -> P default_B)
-      -> P (ith_default il c default_B')
-      -> P (ith_default il c default_B).
-  Proof.
-    induction As; intros; generalize (ilist_invert il); intros;
-    destruct_ex; subst; simpl in *.
-    - unfold ith_default_obligation_1 in *; eauto.
-    - unfold ith_default_obligation_2 in *; destruct (AC_eq a c); eauto.
-  Qed.
-
-End ilist.
-
-Section ilist_imap.
-
-  Variable A : Type. (* The indexing type. *)
-  Variable B B' : A -> Type. (* The two types of indexed elements. *)
-  Variable f : forall a, B a -> B' a. (* The function to map over the list. *)
-
-  Fixpoint imap (As : list A)
-           (il : ilist B As)
-  : ilist B' As :=
-    match il in ilist _ As return ilist _ As with
-      | icons a As b il' => icons a (f b) (imap il')
-      | inil => inil B'
-    end.
-
-  Variable C : Type. (* The type of comparators. *)
-  Variable AC_eq : A -> C -> bool. (* Comparision between index and comparator types. *)
-
-  Lemma ith_default_imap :
-    forall (As : list A)
-           (il : ilist _ As)
-           (c : C)
-           (default_A : A)
-           (default_B : B default_A),
-      f (ith_default AC_eq il c default_A default_B) =
-      ith_default AC_eq (imap il) c default_A (f (default_B)).
-  Proof.
-    induction As; intros; generalize (ilist_invert il);
-    intros; destruct_ex; subst; simpl.
-    unfold ith_default_obligation_1; auto.
-    unfold ith_default_obligation_2; auto.
-    find_if_inside; simpl; eauto.
-  Qed.
-
-End ilist_imap.
-
-Section ilist_izip.
-
-  Variable A : Type. (* The indexing type. *)
-  Variable B B' D : A -> Type. (* The three types of indexed elements. *)
-  Variable f : forall a, B a -> B' a -> D a.
-  (* The function which combines the two sets of elements. *)
-
-  Fixpoint izip (As : list A)
-           (il : ilist B As) (il' : ilist B' As)
-  : ilist D As :=
-    match As as As' return ilist B As' -> ilist B' As' -> ilist D As' with
-      | a :: As' =>
-        fun il il' =>
-          icons a (f (ilist_hd il) (ilist_hd il'))
-                (izip (ilist_tail il) (ilist_tail il'))
-      | [] => fun il il' => inil D
-    end il il'.
-
-  Variable C : Type. (* The type of comparators. *)
-  Variable AC_eq : A -> C -> bool. (* Comparision between index and comparator types. *)
-
-  Lemma ith_default_izip :
-    forall (As : list A)
-           (il : ilist B As)
-           (il' : ilist B' As)
-           (c : C)
-           (default_A : A)
-           (default_B : B default_A)
-           (default_B' : B' default_A),
-      ith_default AC_eq (izip il il') c default_A (f default_B default_B') =
-      f (ith_default AC_eq il c default_A default_B)
-        (ith_default AC_eq il' c default_A default_B').
-  Proof.
-    induction As; intros; generalize (ilist_invert il);
-    intros; destruct_ex; subst; simpl.
-    unfold ith_default_obligation_1; auto.
-    unfold ith_default_obligation_2; auto.
-    find_if_inside; simpl; eauto.
-  Qed.
-
-End ilist_izip.
-
-Section ilist_replace.
-
-  Variable A : Type. (* The indexing type. *)
-  Variable B : A -> Type. (* The two types of indexed elements. *)
-
-  Variable C : Type. (* The type of comparators. *)
-  Variable AC_eq : A -> C -> bool. (* Comparision between index and comparator types. *)
-
-  Fixpoint replace_index
-          (As : list A)
-          (il : ilist B As)
-          (c : C)
-          (default_A : A)
-          (new_b : B (nth (findIndex AC_eq As c) As default_A))
-  {struct As} : ilist B As.
-  Proof.
-    refine (match As as As' return
-                  ilist B As'
-                  -> B (nth (findIndex AC_eq As' c) As' default_A)
-                  -> ilist B As' with
-              | a :: As' => (fun il' new_b' => _)
-              | _ => fun il' new_b' => inil _
-            end il new_b).
-    simpl in *.
-    destruct (AC_eq a c).
-    exact (icons _ new_b' (ilist_tail il')).
-    exact (icons _ (ilist_hd il') (replace_index _ (ilist_tail il') c default_A new_b')).
-  Defined.
-
-  Lemma replace_index_NIn
-  : forall (As : list A)
-           (il : ilist _ As)
-           (c : C)
-           (default_A : A)
-           (new_b : B (nth (findIndex AC_eq As c) As default_A)),
-      (forall a, In a As -> AC_eq a c = false) ->
-      replace_index il c default_A new_b = il.
-  Proof.
-    induction As; intros; subst.
-    - unfold ith_default_obligation_1; simpl; auto.
-      rewrite (ilist_invert il); auto.
-    - simpl in *.
-      revert new_b.
-      caseEq (AC_eq a c); unfold ith_default_obligation_2; simpl.
-      rewrite H in H0; auto; try congruence.
-      rewrite IHAs; eauto.
-      destruct (ilist_invert il) as [a' [b' il']]; subst; simpl; auto.
-  Qed.
-
-  Lemma ith_default_replace :
-    forall (As : list A)
-           (il : ilist _ As)
-           (c : C)
-           (default_A : A)
-
-           (new_b : B (nth (findIndex AC_eq As c) As default_A))
-           (default_B : B default_A)
-           (c' : C),
-      AC_eq (nth (findIndex AC_eq As c) As default_A) c' = false ->
-      ith_default AC_eq (replace_index il c default_A new_b) c' default_A default_B =
-      ith_default AC_eq il c' default_A default_B.
-  Proof.
-    induction As; intros; subst.
-    - unfold ith_default_obligation_1; simpl; auto.
-    - simpl in *.
-      revert new_b.
-      caseEq (AC_eq a c); unfold ith_default_obligation_2; simpl;
-      rewrite H0 in H.
-      + rewrite H; eauto.
-      + caseEq (AC_eq a c'); eauto.
-  Qed.
-
-  Lemma ith_default_replace' :
-    forall (As : list A)
-           (il : ilist _ As)
-           (c : C)
-           (default_A : A)
-           (new_b : B (nth (findIndex AC_eq As c) As default_A))
-           (default_B : B default_A),
-      forall a, In a As -> AC_eq a c = true ->
-      AC_eq (nth (findIndex AC_eq As c) As default_A) c = true ->
-      ith_default AC_eq (replace_index il c default_A new_b) c default_A default_B =
-      new_b.
-  Proof.
-    induction As; intros; destruct H; subst;
-    simpl in *; unfold ith_default_obligation_2; simpl; auto.
-    - revert new_b H1; rewrite H0; intros; simpl; auto.
-    - revert new_b H1; caseEq (AC_eq a c); simpl; eauto.
-  Qed.
-
-End ilist_replace.
+End findIndex.

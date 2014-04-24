@@ -23,12 +23,14 @@ Bind Scope Component_scope with Component.
 Definition DefaultAttribute :=
   Build_Component ("null" : unit)%Attribute tt.
 
+Print BuildHeading.
+
 Definition BuildTuple
         (attrs : list Attribute)
         (components : ilist Component attrs)
 : Tuple (BuildHeading attrs) :=
   fun idx =>
-    value (ith_default attrName_eq components idx _ DefaultAttribute).
+    value (ith_Bounded _ components idx).
 
 (* Notation for tuples built from [BuildTuple]. *)
 

@@ -15,7 +15,7 @@ Section ReplaceMethods.
 
   Program Definition replaceMutDef
              (idx : BoundedString (map mutID mutSigs))
-             (newDef : mutDef (nth_Bounded mutID  mutSigs idx))
+             (newDef : mutDef (nth_Bounded mutID mutSigs idx))
   : ilist (@mutDef Rep) mutSigs :=
     replace_BoundedIndex _ mutDefs idx newDef.
 

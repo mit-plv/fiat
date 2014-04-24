@@ -20,7 +20,7 @@ Record QueryStructure (QSSchema : QueryStructureSchema) :=
   { rels : ilist (fun ns => Relation (relSchema ns))
              (qschemaSchemas QSSchema);
     crossConstr :
-      forall (idx idx' : string)
+      forall (idx idx' : BoundedString (map relName (qschemaSchemas QSSchema)))
              (tup :
                 Tuple (QSGetNRelSchemaHeading QSSchema idx)),
         idx <> idx' ->
@@ -28,12 +28,10 @@ Record QueryStructure (QSSchema : QueryStructureSchema) :=
            enforced on distinct relations. *)
         List.In tup
                 (rel
-                   (ith_default NamedSchema_eq rels idx defaultSchema
-                        defaultRelation)) ->
+                   (ith_Bounded _ rels idx )) ->
         BuildQueryStructureConstraints
           QSSchema idx idx' tup
-          (rel (ith_default NamedSchema_eq rels idx' defaultSchema
-                    defaultRelation))
+          (rel (ith_Bounded _ rels idx'))
   }.
 
 Notation "t ! R" := (rels t R%string): QueryStructure_scope.
@@ -130,11 +128,11 @@ Notation "'QueryADTRep' r { mut1 , .. , mutn ; obs1 , .. , obsn } " :=
 Definition GetUnConstrRelation
            (QSSchema : QueryStructureSchema)
            (qs : UnConstrQueryStructure QSSchema)
-           (idx : string) :=
-  ith_default NamedSchema_eq qs idx defaultSchema defaultUnConstrRelation.
+           (idx : BoundedString (map relName (qschemaSchemas QSSchema)))
+  := ith_Bounded _ qs idx.
 
 Definition GetRelation
            (QSSchema : QueryStructureSchema)
            (qs : QueryStructure QSSchema)
-           (idx : string) :=
-  rel (ith_default NamedSchema_eq (rels qs) idx defaultSchema defaultRelation).
+           (idx : BoundedString (map relName (qschemaSchemas QSSchema)))
+  := rel (ith_Bounded _ (rels qs) idx).

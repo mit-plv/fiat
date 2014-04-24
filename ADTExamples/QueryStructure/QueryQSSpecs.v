@@ -3,7 +3,7 @@ Require Import List String Ensembles Omega
 
 (* Notations for queries. *)
 
-Definition Query_In (qs : QueryStructureHint) {A} (R : string)
+Definition Query_In (qs : QueryStructureHint) {A} (R : _)
            (bod : Tuple (schemaHeading
                            (QSGetNRelSchema qsSchemaHint R%string)) -> list A) :=
   fold_right (@app _) (@nil _)

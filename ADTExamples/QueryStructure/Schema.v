@@ -46,7 +46,7 @@ Bind Scope Schema_scope with Schema.
 
 Definition MovieSchema :=
   (schema <"Title" : string, "ReleaseDate" : nat >
-   where attributes ["ReleaseDate"] depend on ["Title"] )%Schema.
+   where attributes [{| bindex := "ReleaseDate" |}] depend on [{|bindex := "Title" |}] )%Schema.
 
 Definition MovieSchema' :=
   (schema <"Title" : string, "ReleaseDate" : nat >)%Schema.

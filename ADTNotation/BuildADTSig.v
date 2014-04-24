@@ -32,7 +32,7 @@ Notation "id : 'rep' × dom → 'rep'" :=
   {| mutID := id;
      mutDom := dom |} : mutSig_scope.
 
-Program Definition mutSig_eq (mdef : mutSig) (idx : string) 
+Program Definition mutSig_eq (mdef : mutSig) (idx : string)
 : { True } + {mutID mdef <> idx} :=
   if string_dec (mutID mdef) idx then left I else right _.
 
@@ -51,9 +51,9 @@ Definition BuildADTSig
   {| MutatorIndex := BoundedString (map mutID mutSigs);
      ObserverIndex := BoundedString (map obsID obsSigs);
      MutatorDom idx :=
-       mutDom (nth_Bounded _ mutSigs idx) ;
+       mutDom (nth_Bounded mutID mutSigs idx) ;
     ObserverDomCod idx :=
-      let domcod := (nth_Bounded _ obsSigs idx)
+      let domcod := (nth_Bounded obsID obsSigs idx)
       in (obsDom domcod, obsCod domcod)
   |}.
 
@@ -70,7 +70,7 @@ Notation "'ADTsignature' { mut1 , .. , mutn ; obs1 , .. , obsn }" :=
 
 (* Since [BuildADTSig] constructs an ADT signature with
    [BoundedString] indices, every mutator index appears
-   in [mutSigs] and every observer index appears in [obsSigs]. 
+   in [mutSigs] and every observer index appears in [obsSigs].
 
 Lemma In_mutIdx :
   forall mutSigs

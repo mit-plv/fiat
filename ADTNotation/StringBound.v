@@ -1,4 +1,4 @@
-Require Import List String Arith.
+Require Import List String Arith ilist.
 
 (* Typeclasses for ensuring that a string is included
    in a list (i.e. a set of method names). This allows
@@ -11,36 +11,30 @@ Section IndexBound.
 
   Class IndexBound (a : A) (Bound : list A) :=
     { ibound :> nat;
-      boundi : nth_error Bound ibound = Some a;
-      ibound_lt : ibound < List.length Bound}.
+      boundi : nth_error Bound ibound = Some a}.
 
   Global Instance IndexBound_head (a : A) (Bound : list A)
   : IndexBound a (a :: Bound) :=
     {| ibound := 0;
-       boundi := eq_refl;
-       ibound_lt := lt_0_Sn _ |}.
+       boundi := eq_refl|}.
 
   Global Instance IndexBound_tail
            (a a' : A) (Bound : list A)
            {sB' : IndexBound a Bound}
   : IndexBound a (a' :: Bound) :=
     {| ibound := S ibound;
-       boundi := boundi;
-       ibound_lt := lt_n_S _ _ ibound_lt |}.
+       boundi := boundi |}.
 
   Definition tail_IndexBound
            (a : A) (Bound : list A)
            (n : nat)
            (nth_n : nth_error Bound n = Some a)
-           (lt_n : S n < S (List.length Bound))
   : IndexBound a Bound :=
     {| ibound := n;
-       boundi := nth_n;
-       ibound_lt := lt_S_n _ _ lt_n |}.
+       boundi := nth_n |}.
 
   Global Arguments ibound [a Bound] _ .
   Global Arguments boundi [a Bound] _.
-  Global Arguments ibound_lt [a Bound] _ .
 
   Record BoundedIndex (Bound : list A) :=
     { bindex :> A;
@@ -49,13 +43,24 @@ Section IndexBound.
   Global Arguments bindex [Bound] _ .
   Global Arguments indexb [Bound] _ .
 
+  Lemma lt_nth :
+    forall n As (a : A),
+      nth_error As n = Some a
+      -> n < List.length As.
+  Proof.
+    induction n; destruct As; simpl; intros;
+    try auto with arith; try discriminate.
+    apply lt_n_S; eauto with arith.
+  Qed.
+
   Definition BoundedIndex_nil
              (AnyT : Type)
              (idx : BoundedIndex nil)
   : AnyT.
   Proof.
-    destruct idx as [idx [n _ lt_n ]].
-    elimtype False; eapply lt_n_0; eassumption.
+    destruct idx as [idx [n nth_n]].
+    elimtype False; eapply lt_n_0.
+    apply (lt_nth _ _ nth_n).
   Qed.
 
   Lemma indexb_ibound_eq :
@@ -65,8 +70,8 @@ Section IndexBound.
   Proof.
     intros; induction Bound; simpl in *.
     - apply BoundedIndex_nil; auto.
-    - destruct bidx as [bindex [n nth_n lt_n]];
-      destruct bidx' as [bindex' [n' nth_n' lt_n']]; simpl in *; subst.
+    - destruct bidx as [bindex [n nth_n]];
+      destruct bidx' as [bindex' [n' nth_n']]; simpl in *; subst.
       congruence.
   Qed.
 
@@ -78,46 +83,12 @@ Definition BoundedString_eq {Bound} (bidx bidx' : BoundedString Bound) :=
 
 Section ithIndexBound.
 
+  (* Given a bounded index [BoundedIndex Bound], we can wrap
+     various lookup functions over lists indexed over [Bound].
+   *)
+
   Context {A C : Type}.
   Variable (projAC : A -> C).
-
-  Require Import ilist.
-
-  Lemma nth_error_ex_0 :
-    forall (As : list A) (n : nat),
-      nth_error As n = None
-      -> ~ (n < List.length As).
-  Proof.
-    induction As; destruct n; simpl in *; intuition;
-    first [eapply lt_n_0; eauto; fail | discriminate | idtac].
-    eapply IHAs; eauto; eapply lt_S_n; auto.
-  Qed.
-
-  Definition nth_Index_error
-             (AnyT : Type)
-             (As : list A)
-             (n : nat)
-             (lt_n : n < List.length (map projAC As))
-             (nth_eq : nth_error As n = None)
-  : AnyT.
-  Proof.
-    elimtype False; eapply nth_error_ex_0; try eassumption.
-    rewrite map_length in lt_n; assumption.
-  Defined.
-
-  Lemma nth_Index_Some_a
-  : forall (c : C)
-           (As : list A)
-           (n : nat),
-      nth_error (map projAC As) n = Some c
-      -> n < List.length (map projAC As)
-      -> option_map projAC (nth_error As n) = Some c.
-  Proof.
-    induction As; destruct n; simpl in *; intros;
-    try discriminate; eauto.
-    eapply IHAs; auto.
-    apply lt_S_n; auto.
-  Defined.
 
   Lemma None_neq_Some
   : forall (AnyT AnyT' : Type) (a : AnyT),
@@ -126,42 +97,50 @@ Section ithIndexBound.
     intros; discriminate.
   Qed.
 
-  Program Definition nth_Bounded
+  (* Given a [BoundedIndex] for a list, we can always return an element. *)
+  Definition nth_Bounded'
              (Bound : list A)
-             (idx : BoundedIndex (map projAC Bound))
-  : A := match nth_error Bound (ibound idx) as x
-               return (option_map projAC x = Some (bindex idx)) -> A with
+             (c : C)
+             (a_opt : option A)
+             (nth_n : option_map projAC a_opt = Some c)
+  : A := match a_opt as x
+               return (option_map projAC x = Some c) -> A with
              | Some a => fun _ => a
              | None => fun f => None_neq_Some _ f
-         end (nth_Index_Some_a _ (boundi idx) (ibound_lt idx)).
+         end nth_n.
 
-  Definition Dep_Option2
-             (P : A -> A -> Prop)
-             (a_opt a_opt' : option A)
-    := match a_opt, a_opt' with
-         | Some a, Some a' => P a a'
-         | _, _ => True
-       end.
+  Lemma nth_error_map :
+    forall n As c_opt,
+      nth_error (map projAC As) n = c_opt
+      -> option_map projAC (nth_error As n) = c_opt.
+  Proof.
+    induction n; destruct As; simpl; eauto.
+  Defined.
 
+  Definition nth_Bounded
+             (Bound : list A)
+             (idx : BoundedIndex (map projAC Bound))
+  : A := nth_Bounded' Bound (nth_error Bound (ibound idx))
+                      (nth_error_map _ _ (boundi idx)).
+
+  (* We can lift [B (nth_Bounded idx)] to a dependent option. *)
   Definition Some_Dep_Option
              {B : A -> Type}
              (Bound : list A)
              (idx : BoundedIndex (map projAC Bound))
   : B (nth_Bounded Bound idx) ->
     Dep_Option B (nth_error Bound (ibound idx)) :=
-    (match (nth_error Bound (ibound idx)) as e return
+    match (nth_error Bound (ibound idx)) as e return
            forall c,
-             (B
-                (match e as x return (option_map projAC x = Some (bindex idx) -> A) with
-                   | Some a => fun _ : option_map projAC (Some a) = Some (bindex idx) => a
-                   | None =>
-                     fun f : option_map projAC None = Some (bindex idx) =>
-                       None_neq_Some A f
-                 end c) ->
-              Dep_Option B e) with
-       | Some a => fun c => id
+             B (@nth_Bounded' _ _ e c) ->
+              Dep_Option B e with
+       | Some a => fun c => Dep_Some _ _
        | None => fun c => None_neq_Some _ c
-     end (nth_Index_Some_a _ (boundi idx) (ibound_lt idx))).
+     end (nth_error_map _ _ (boundi idx)).
+
+  (* [nth_Bounded_rect] builds a function whose type depends
+     on [nth_Bounded] by reducing to a case with [nth_error],
+     which is easier to work/reason with. *)
 
   Definition nth_Bounded_rect
         (P : forall As, BoundedIndex (map projAC As) -> A -> Type)
@@ -172,19 +151,23 @@ Section ithIndexBound.
     fun Bound idx =>
       match (nth_error Bound (ibound idx)) as e
             return
-            (forall (f : option_map projAC e = Some (bindex idx)),
+            (forall (f : option_map _ e = Some (bindex idx)),
                (Dep_Option (P Bound idx) e) ->
                P _ _
                  (match e as e' return
-                        option_map projAC e' = Some (bindex idx)
+                        option_map _ e' = Some (bindex idx)
                         -> A
                   with
                     | Some a => fun _ => a
                     | None => fun f => _
                   end f)) with
-        | Some a => fun _ H => H
+        | Some a => fun _ H => Dep_Option_elim H
         | None => fun f => None_neq_Some _ f
-      end (nth_Index_Some_a _ (boundi idx) (ibound_lt idx)).
+      end (nth_error_map _ _ (boundi idx)).
+
+  (* [nth_Bounded_ind2] builds a function whose type depends
+     on *two* occurences of [nth_Bounded] by reducing to a case
+     with [nth_error], which is easier to reason with. *)
 
   Program Definition nth_Bounded_ind2
              (P : forall As, BoundedIndex (map projAC As)
@@ -193,34 +176,41 @@ Section ithIndexBound.
   : forall (Bound : list A)
            (idx : BoundedIndex (map projAC Bound))
            (idx' : BoundedIndex (map projAC Bound)),
-      Dep_Option2 (P Bound idx idx') (nth_error Bound (ibound idx))
-                  (nth_error Bound (ibound idx'))
-      -> P Bound idx idx' (nth_Bounded Bound idx) (nth_Bounded Bound idx'):=
+      match nth_error Bound (ibound idx), nth_error Bound (ibound idx') with
+          | Some a, Some a' => P Bound idx idx' a a'
+          | _, _ => True
+      end
+      -> P Bound idx idx' (nth_Bounded _ idx) (nth_Bounded _ idx'):=
     fun Bound idx idx' =>
       match (nth_error Bound (ibound idx)) as e, (nth_error Bound (ibound idx')) as e'
             return
-            (forall (f : option_map projAC e = Some (bindex idx))
-                    (f' : option_map projAC e' = Some (bindex idx')),
-               (Dep_Option2 (P Bound idx idx') e e') ->
-               P Bound idx idx'
+            (forall (f : option_map _ e = Some (bindex idx))
+                    (f' : option_map _ e' = Some (bindex idx')),
+               (match e, e' with
+                  | Some a, Some a' => P Bound idx idx' a a'
+                  | _, _ => True
+                end)
+               -> P Bound idx idx'
                  (match e as e'' return
-                        option_map projAC e'' = Some (bindex idx)
+                        option_map _ e'' = Some (bindex idx)
                         -> A
                   with
                     | Some a => fun _ => a
                     | _ => fun f => _
                   end f)
                  (match e' as e'' return
-                        option_map projAC e'' = Some (bindex idx')
+                        option_map _ e'' = Some (bindex idx')
                         -> A
                   with
                     | Some a => fun _ => a
                     | _ => fun f => _
                   end f')) with
-        | Some a, Some a' => fun _ _ (H : Dep_Option2 _ (Some a) (Some a')) => _
+        | Some a, Some a' => fun _ _ H => _
         | _, _ => fun f => _
-      end (nth_Index_Some_a _ (boundi idx) (ibound_lt idx))
-          (nth_Index_Some_a _ (boundi idx') (ibound_lt idx')).
+      end (nth_error_map _ _ (boundi idx))
+          (nth_error_map _ _ (boundi idx')).
+
+  (* [nth_Bounded] returns the same elements as [nth_default] *)
 
   Lemma nth_Bounded_eq_nth_default
   : forall (Bound : list A)
@@ -229,11 +219,13 @@ Section ithIndexBound.
       nth_Bounded Bound idx = nth (ibound idx) Bound default_A.
   Proof.
     intros Bound idx; eapply nth_Bounded_rect.
-    unfold Dep_Option; case_eq (nth_error Bound (ibound idx)); auto.
+    case_eq (nth_error Bound (ibound idx)); econstructor; auto.
     intros; rewrite <- nth_default_eq; unfold nth_default;
     rewrite H; reflexivity.
   Qed.
 
+  (* The result of [nth_Bounded] doesn't depend on the proof
+     that [ibound] is a valid index. *)
   Lemma nth_Bounded_eq
   : forall (Bound : list A)
            (idx idx' : BoundedIndex (map projAC Bound)),
@@ -241,11 +233,15 @@ Section ithIndexBound.
       -> nth_Bounded Bound idx = nth_Bounded Bound idx'.
   Proof.
     intros.
-    eapply nth_Bounded_ind2 with (idx := idx) (idx' := idx');
-      unfold Dep_Option2; rewrite H.
-    destruct (nth_error Bound (ibound idx')); reflexivity.
-  Defined.
+    eapply nth_Bounded_ind2 with (idx := idx) (idx' := idx').
+    simpl.
+    case_eq (nth_error Bound (ibound idx'));
+      case_eq (nth_error Bound (ibound idx)); auto.
+    congruence.
+  Qed.
 
+  (* Given a [BoundedIndex] for a list [Bound], we can always return
+     an element of a list indexed by [Bound]. *)
   Definition ith_Bounded
           {B : A -> Type}
           {Bound}
@@ -255,60 +251,14 @@ Section ithIndexBound.
     match (nth_error Bound (ibound idx)) as a'
                   return
                   Dep_Option B a' ->
-                  forall (f : option_map projAC a' = Some (bindex idx)),
-                    B (match a' as e return
-                             option_map projAC e = Some (bindex idx) -> A
-                        with
-                          | Some a0 => fun _ => a0
-                          | None => fun f => None_neq_Some _ f
-                      end f) with
-        | Some a => fun b _ => b
+                  forall (f : option_map _ a' = Some (bindex idx)),
+                    B (nth_Bounded' Bound _ f) with
+        | Some a => fun b _ => Dep_Option_elim b
         | None => fun _ f => None_neq_Some _ f
-    end (ith_error (ibound idx) il)
-        (nth_Index_Some_a _ (boundi idx) (ibound_lt idx)).
+    end (ith_error il (ibound idx)) (nth_error_map _ _ (boundi idx)).
 
-    Definition Dep_Option_P
-               {B : A -> Type}
-               (P : forall a, B a -> Type)
-               (a_opt : option A)
-               (b_opt : Dep_Option B a_opt)
-      := match a_opt as a' return
-               Dep_Option B a' -> Type with
-           | Some a => P a
-           | None => fun _ => True
-         end b_opt.
-
-    Definition Dep_Option_P2
-               {B B' : A -> Type}
-               (P : forall a, B a -> B' a -> Prop)
-               (a_opt : option A)
-               (b_opt : Dep_Option B a_opt)
-               (b_opt' : Dep_Option B' a_opt)
-      := match a_opt as a' return
-               Dep_Option B a' -> Dep_Option B' a' -> Prop with
-           | Some a => P a
-           | None => fun _ _ => True
-         end b_opt b_opt'.
-
-    Lemma ith_error_imap
-        {B B' : A -> Type}
-    : forall (n : nat)
-          (Bound : list A)
-          (il : ilist B Bound)
-          (f : forall idx, B idx -> B' idx),
-        Dep_Option_P2 (fun a b b' => f a b = b')
-                        (nth_error Bound n)
-                        (ith_error n il)
-                        (ith_error n (imap B' f il)).
-    Proof.
-      unfold Dep_Option_P2; simpl.
-      induction n; simpl; destruct Bound; simpl; auto; intros;
-      generalize (ilist_invert il);
-      intros; subst; simpl; destruct H as [b [il' il_eq]]; subst;
-      simpl; eauto.
-      eapply IHn.
-  Qed.
-
+  (* To build a reasoning principle for ith_Bounded, we need to
+     show that option types are shuffled around by [Dep_Option_elim] *)
     Definition ith_error_eq_P
                {B : A -> Type}
                (Bound : list A)
@@ -317,17 +267,11 @@ Section ithIndexBound.
       match e' as e'
         return
         (Dep_Option B e' ->
-         forall c : option_map projAC e' = Some (bindex idx),
-           B
-             (match
-                 e' as x return (option_map projAC x = Some (bindex idx) -> A)
-               with
-                 | Some a => fun _ => a
-                 | None => fun f => None_neq_Some A f
-               end c) -> Type)
+         forall c : option_map _ e' = Some (bindex idx),
+           B (nth_Bounded' Bound _ c) -> Type)
       with
         | Some e =>
-          fun b c d => b = d
+          fun b c d => Dep_Option_elim b = d
         | None => fun b c d => True
       end b c d.
 
@@ -335,53 +279,64 @@ Section ithIndexBound.
           {B : A -> Type}
     : forall (Bound : list A)
              (idx : BoundedIndex (map projAC Bound))
-             (il : ilist B Bound),
+              (il : ilist B Bound),
         ith_error_eq_P Bound idx
-                          (nth_error Bound (ibound idx))
-                          (ith_error (ibound idx) il)
-                          (nth_Index_Some_a Bound (boundi idx) (ibound_lt idx))
-                          (ith_Bounded il idx).
+        (ith_error il (ibound idx))
+        (nth_error_map _ _ (boundi idx))
+        (ith_Bounded il idx).
     Proof.
       unfold ith_error_eq_P; simpl.
-      destruct idx as [idx [n In_n lt_n ]]; simpl in *.
-      revert n In_n lt_n.
-      induction Bound; destruct n; simpl; eauto.
-      intros; eapply IHBound.
+      destruct idx as [idx [n In_n ]]; simpl in *.
+      revert n In_n; induction Bound; destruct n;
+      simpl; eauto; intros.
+      eapply IHBound.
     Qed.
 
-    Program Definition ith_Bounded_ind
+  Definition Dep_Option_elim_P
+             {B : A -> Type}
+             (P : forall a, B a -> Type)
+             (a_opt : option A)
+             (b_opt : Dep_Option B a_opt)
+      := match a_opt as a' return
+               Dep_Option_elimT B a' -> Type with
+           | Some a => P a
+           | None => fun _ => True
+         end (Dep_Option_elim b_opt).
+
+    (* [ith_Bounded_rect] builds a function whose type depends
+     on [ith_Bounded] by reducing to a case with [ith_error],
+     which is easier to work/reason with. *)
+
+    Program Definition ith_Bounded_rect
             {B : A -> Type}
         (P : forall As, BoundedIndex (map projAC As)
                         -> ilist B As -> forall a : A, B a -> Type)
   : forall (Bound : list A)
            (idx : BoundedIndex (map projAC Bound))
            (il : ilist B Bound),
-      Dep_Option_P (P Bound idx il) (nth_error Bound (ibound idx))
-                    (ith_error (ibound idx) il)
+      Dep_Option_elim_P (P Bound idx il) (ith_error il (ibound idx))
       -> P Bound idx il _ (ith_Bounded il idx) :=
     fun Bound idx il =>
       match (nth_error Bound (ibound idx)) as e
                  return
                  forall (b : Dep_Option B e)
-                        (c : option_map projAC e = Some (bindex idx))
+                        (c : option_map _ e = Some (bindex idx))
                         d,
-                   (ith_error_eq_P Bound idx e b c d)
-                   -> Dep_Option_P (P Bound idx il) e b ->
-                   P _ _ _
-                   (match e as x return
-                          (option_map projAC x = Some (bindex idx) -> A) with
-                      | Some a => fun _ => a
-                      | None => fun f =>
-                          None_neq_Some A f
-                    end c) d with
+                   (ith_error_eq_P Bound idx b c d)
+                   -> Dep_Option_elim_P (P Bound idx il) b ->
+                   P _ _ _ (@nth_Bounded' _ _ e c) d with
           | Some a => _
           | None => _
-           end (ith_error (ibound idx) il)
-               (nth_Index_Some_a Bound (boundi idx) (ibound_lt idx))
+           end (ith_error il (ibound idx))
+               _
                (ith_Bounded il idx)
                (ith_error_eq idx il).
 
-    Program Definition ith_Bounded_ind_Dep
+    (* [ith_Bounded_ind] builds a proof whose type depends
+     on both [nth_Bounded] and an occurence of [ith_Bounded] by reducing
+     it to a case with an [ith_error], which is easier to reason with. *)
+
+    Program Definition ith_Bounded_ind
             {B B' : A -> Type}
             (P : forall As, BoundedIndex (map projAC As)
                         -> ilist B As
@@ -390,8 +345,7 @@ Section ithIndexBound.
            (idx : BoundedIndex (map projAC Bound))
            (il : ilist B Bound)
            (b : B' (nth_Bounded Bound idx)),
-      Dep_Option_P2 (P Bound idx il) (nth_error Bound (ibound idx))
-                      (ith_error (ibound idx) il)
+      Dep_Option_elim_P2 (P Bound idx il) (ith_error il (ibound idx))
                       (Some_Dep_Option Bound idx b)
       -> P Bound idx il _ (ith_Bounded il idx) b :=
       fun Bound idx il b =>
@@ -399,35 +353,33 @@ Section ithIndexBound.
               return
               forall (b : Dep_Option B e)
                      (b' : Dep_Option B' e)
-                     (c : option_map projAC e = Some (bindex idx))
+                     (c : option_map _ e = Some (bindex idx))
                      d d',
-                (ith_error_eq_P Bound idx e b c d)
-                -> (ith_error_eq_P Bound idx e b' c d')
-                -> Dep_Option_P2 (P Bound idx il) e b b' ->
-                P _ _ _
-                  (match e as x return
-                         (option_map projAC x = Some (bindex idx) -> A) with
-                     | Some a => fun _ => a
-                     | None => fun f =>
-                                 None_neq_Some A f
-                   end c) d d' with
+                (ith_error_eq_P Bound idx b c d)
+                -> (ith_error_eq_P Bound idx b' c d')
+                -> Dep_Option_elim_P2 (P Bound idx il) b b' ->
+                P _ _ _ (@nth_Bounded' _ _ _ c) d d' with
           | Some a => _
           | None => _
-        end (ith_error (ibound idx) il)
+        end (ith_error il (ibound idx))
             (Some_Dep_Option Bound idx b)
-            (nth_Index_Some_a Bound (boundi idx) (ibound_lt idx))
+            _ 
             (ith_Bounded il idx)
             b
             (ith_error_eq idx il)
             _.
     Next Obligation.
       unfold ith_error_eq_P; simpl.
-      destruct idx as [idx [n In_n lt_n ]]; simpl in *.
-      revert n In_n lt_n b; clear.
+      destruct idx as [idx [n In_n ]]; simpl in *.
+      revert n In_n b; clear.
       induction Bound; destruct n; simpl; intros; eauto.
       unfold Some_Dep_Option; simpl.
       intros; eapply IHBound.
     Qed.
+
+    (* [ith_Bounded_ind2] builds a proof whose type depends
+     on *two* occurences of [ith_Bounded] by reducing  it to a case
+     with two [ith_error]s, which is easier to reason with. *)
 
     Program Definition ith_Bounded_ind2
             {B B' : A -> Type}
@@ -438,36 +390,92 @@ Section ithIndexBound.
            (idx : BoundedIndex (map projAC Bound))
            (il : ilist B Bound)
            (il' : ilist B' Bound),
-      Dep_Option_P2 (P Bound idx il) (nth_error Bound (ibound idx))
-                      (ith_error (ibound idx) il)
-                      (ith_error (ibound idx) il')
+      Dep_Option_elim_P2 (P Bound idx il)
+                      (ith_error il (ibound idx))
+                      (ith_error il' (ibound idx) )
       -> P Bound idx il _ (ith_Bounded il idx) (ith_Bounded il' idx) :=
     fun Bound idx il il' =>
       match (nth_error Bound (ibound idx)) as e
                  return
                  forall (b : Dep_Option B e)
                         (b' : Dep_Option B' e)
-                        (c : option_map projAC e = Some (bindex idx))
+                        (c : option_map _ e = Some (bindex idx))
                         d d',
-                   (ith_error_eq_P Bound idx e b c d)
-                   -> (ith_error_eq_P Bound idx e b' c d')
-                   -> Dep_Option_P2 (P Bound idx il) e b b' ->
-                   P _ _ _
-                   (match e as x return
-                          (option_map projAC x = Some (bindex idx) -> A) with
-                      | Some a => fun _ => a
-                      | None => fun f =>
-                          None_neq_Some A f
-                    end c) d d' with
+                   (ith_error_eq_P Bound idx b c d)
+                   -> (ith_error_eq_P Bound idx b' c d')
+                   -> Dep_Option_elim_P2 (P Bound idx il) b b' ->
+                   P _ _ _ (@nth_Bounded' _ _ _ c) d d' with
           | Some a => _
           | None => _
-           end (ith_error (ibound idx) il)
-               (ith_error (ibound idx) il')
-               (nth_Index_Some_a Bound (boundi idx) (ibound_lt idx))
+           end (ith_error il (ibound idx))
+               (ith_error il' (ibound idx) )
+               _
                (ith_Bounded il idx)
                (ith_Bounded il' idx)
                (ith_error_eq idx il)
                (ith_error_eq idx il').
+
+  Definition Dep_Option_elim_P3
+             {B B' B'' : A -> Type}
+             (P : forall a, B a -> B' a -> B'' a -> Prop)
+             (a_opt : option A)
+             (b_opt : Dep_Option B a_opt)
+             (b'_opt : Dep_Option B' a_opt)
+             (b''_opt : Dep_Option B'' a_opt)
+      := match a_opt as a' return
+               Dep_Option_elimT B a' 
+               -> Dep_Option_elimT B' a' 
+               -> Dep_Option_elimT B'' a' 
+               -> Prop with
+           | Some a => P a
+           | None => fun _ _ _ => True
+         end (Dep_Option_elim b_opt) 
+             (Dep_Option_elim b'_opt)
+             (Dep_Option_elim b''_opt).
+
+    Program Definition ith_Bounded_ind3
+            {B B' B'' : A -> Type}
+            (P : forall As, BoundedIndex (map projAC As)
+                        -> ilist B As
+                        -> forall a : A, B a -> B' a -> B'' a -> Prop)
+  : forall (Bound : list A)
+           (idx : BoundedIndex (map projAC Bound))
+           (il : ilist B Bound)
+           (il' : ilist B' Bound)
+           (il'' : ilist B'' Bound),
+      Dep_Option_elim_P3 (P Bound idx il)
+                      (ith_error il (ibound idx))
+                      (ith_error il' (ibound idx))
+                      (ith_error il'' (ibound idx))
+      -> P Bound idx il _ 
+           (ith_Bounded il idx) 
+           (ith_Bounded il' idx)
+           (ith_Bounded il'' idx):=
+    fun Bound idx il il' il'' =>
+      match (nth_error Bound (ibound idx)) as e
+                 return
+                 forall (b : Dep_Option B e)
+                        (b' : Dep_Option B' e)
+                        (b'' : Dep_Option B'' e)
+                        (c : option_map _ e = Some (bindex idx))
+                        d d' d'',
+                   (ith_error_eq_P Bound idx b c d)
+                   -> (ith_error_eq_P Bound idx b' c d')
+                   -> (ith_error_eq_P Bound idx b'' c d'')
+                   -> Dep_Option_elim_P3 (P Bound idx il) b b' b'' ->
+                   P _ _ _ (@nth_Bounded' _ _ _ c) d d' d'' with
+          | Some a => _
+          | None => _
+           end (ith_error il (ibound idx))
+               (ith_error il' (ibound idx) )
+               (ith_error il'' (ibound idx) )
+               _
+               (ith_Bounded il idx)
+               (ith_Bounded il' idx)
+               (ith_Bounded il'' idx)
+               (ith_error_eq idx il)
+               (ith_error_eq idx il')
+               (ith_error_eq idx il'').
 
   Lemma ith_Bounded_imap
         {B B' : A -> Type}
@@ -480,103 +488,10 @@ Section ithIndexBound.
   Proof.
     intros.
     eapply ith_Bounded_ind2 with (idx0 := idx) (il0 := il) (il' := imap B' f il).
-    apply ith_error_imap.
-  Qed.
-
-  Program Fixpoint replace_Index
-           {B : A -> Type}
-           (n : nat)
-           (As : list A)
-           (il : ilist B As)
-           (new_b : Dep_Option B (nth_error As n))
-           {struct As} : ilist B As :=
-    match n as n' return
-            ilist B As
-            -> Dep_Option B (nth_error As n')
-            -> ilist B As with
-      | 0 => match As as As' return
-                   ilist B As'
-                   -> Dep_Option B (nth_error As' 0)
-                   -> ilist B As' with
-               | nil =>
-                 fun il _ => inil _
-               | cons a Bound' =>
-                 fun il new_b =>
-                   icons _ new_b (ilist_tail il)
-             end
-      | S n => match As as As' return
-                     ilist B As'
-                     -> Dep_Option B (nth_error As' (S n))
-                     -> ilist B As' with
-                 | nil => fun il _ => inil _
-                 | cons a Bound' =>
-                   fun il new_b =>
-                     icons _ (ilist_hd il)
-                           (@replace_Index B n Bound'
-                                           (ilist_tail il) new_b)
-               end
-    end il new_b.
-
-  Lemma Dep_Option_P2_refl
-        {B : A -> Type}
-  : forall n As il,
-      @Dep_Option_P2 B _ (fun a b b' => b = b')
-                     (nth_error As n)
-                     (ith_error n il)
-                     (ith_error n il).
-  Proof.
-    intros.
-    refine (match (nth_error As n) as e return
-                  forall c, Dep_Option_P2 (fun a b b' => b = b') e c c with
-              | Some a => fun b => _
-              | None => fun b => _
-            end (ith_error n il)); simpl; auto.
-  Qed.
-
-  Lemma ith_replace_Index_neq
-        {B : A -> Type}
-  : forall
-      (n : nat)
-      (As : list A)
-      (il : ilist _ As)
-      (n' : nat)
-      (new_b : Dep_Option B (nth_error As n')),
-      n <> n'
-      -> Dep_Option_P2
-           (fun a b b' => b = b')
-           (nth_error As n)
-           (ith_error n (replace_Index n' il new_b))
-           (ith_error n il).
-  Proof.
-    unfold Dep_Option_P2.
-    induction n; simpl; destruct As; simpl; auto; intros;
-    generalize (ilist_invert il); intros; subst; auto;
-    destruct H0 as [b [il' il_eq]]; subst;
-      destruct n'; simpl; auto; try congruence.
-    eapply Dep_Option_P2_refl.
-    eapply IHn; congruence.
-  Qed.
-
-  Lemma ith_replace_Index_eq
-        {B : A -> Type}
-  : forall
-      (n : nat)
-      (As : list A)
-      (il : ilist _ As)
-      (new_b : Dep_Option B (nth_error As n)),
-      @Dep_Option_P2 B B
-        (fun a b b' => b = b')
-        (nth_error As n)
-        (ith_error n (replace_Index n il new_b))
-        new_b.
-  Proof.
-    unfold Dep_Option_P2.
-    induction n; simpl;
-    (destruct As;
-     [destruct new_b; reflexivity |
-      intros; generalize (ilist_invert il); intros;
-      destruct H as [b [il' il_eq]]; subst; simpl; eauto]).
-    eapply IHn.
+    destruct idx as [idx [n nth_n] ]; simpl in *; subst.
+    revert Bound nth_n il;
+      induction n; destruct Bound; simpl; eauto;
+    intros; icons_invert; simpl; auto.
   Qed.
 
   Definition replace_BoundedIndex
@@ -586,7 +501,7 @@ Section ithIndexBound.
            (idx : BoundedIndex (map projAC Bound))
            (new_b : B (nth_Bounded Bound idx))
   : ilist B Bound :=
-    replace_Index (ibound idx) il (Some_Dep_Option _ _ new_b).
+    replace_Index (ibound idx) il (Dep_Option_elim (Some_Dep_Option _ _ new_b)).
 
   Lemma ith_replace_BoundIndex_neq
         {B : A -> Type}
@@ -594,7 +509,7 @@ Section ithIndexBound.
       (Bound : list A)
       (il : ilist _ Bound)
       (idx idx' : BoundedIndex (map projAC Bound))
-      (new_b : B (nth_Bounded Bound idx )),
+      (new_b : B (nth_Bounded Bound idx)),
       ibound idx <> ibound idx'
       -> ith_Bounded (replace_BoundedIndex il idx new_b) idx' =
          ith_Bounded il idx'.
@@ -632,18 +547,39 @@ Section ithIndexBound.
       rewrite e.
       unfold replace_BoundedIndex.
       clear idx H e.
-      destruct idx' as [idx' [n nth_n lt_n] ]; simpl in *; subst.
-      generalize Bound il idx' nth_n lt_n new_b H0; clear.
-      induction n; simpl;
-      destruct Bound; simpl; auto; intros.
+      destruct idx' as [idx' [n nth_n ] ]; simpl in *; subst.
+      generalize n il idx' nth_n  new_b H0; clear.
+      induction Bound; simpl;
+      destruct n; simpl; auto; intros.
       unfold Some_Dep_Option; simpl in *.
-      eapply IHn; eauto.
+      eapply IHBound; eauto.
     }
     erewrite ith_replace_BoundIndex_neq; eauto.
   Qed.
 
-End ithIndexBound.
+  Lemma ith_Bounded_izip 
+        {B B' D : A -> Type}
+        (f : forall a, B a -> B' a -> D a)
+  : forall (Bound : list A)
+           (idx : BoundedIndex (map projAC Bound))
+           (il : ilist B Bound)
+           (il' : ilist B' Bound),
+      ith_Bounded (izip _ f il il') idx =
+      f _ (ith_Bounded il idx) (ith_Bounded il' idx).
+  Proof.
+    intros.
+    eapply ith_Bounded_ind3 with 
+    (idx0 := idx)
+      (il0 := il)
+      (il'0 := il').
+      destruct idx as [idx [n nth_n ] ]; simpl in *; subst.
+      generalize n il idx nth_n; clear.
+      induction Bound; simpl;
+      destruct n; simpl; auto; intros.
+      eapply IHBound; eauto.
+  Qed.
 
+End ithIndexBound.
 
   (* Lemma ith_Bounded_lt
           {B : A -> Type}
@@ -664,7 +600,7 @@ End ithIndexBound.
           {B : A -> Type}
           {Bound}
           (il : ilist B Bound)
-          (idx : BoundedIndex (map projAC Bound))
+          (idx : BoundedIndex Bound)
   : B (nth_Bounded Bound idx) :=
     @ith_error B (ibound idx) Bound _ _.
 
@@ -905,7 +841,7 @@ End ithIndexBound.
 
   Program Definition nth_Bounded
           (Bound : list A)
-          (idx : BoundedIndex (map projAC Bound))
+          (idx : BoundedIndex Bound)
   : A := @nth_Bounded' (ibound idx) Bound _.
   Next Obligation.
     generalize (ibound_lt idx); clear.
@@ -994,7 +930,7 @@ End ithIndexBound.
           {B : A -> Type}
           {Bound}
           (il : ilist B Bound)
-          (idx : BoundedIndex (map projAC Bound))
+          (idx : BoundedIndex Bound)
   : B (nth_Bounded Bound idx) :=
     @ith_error B (ibound idx) Bound _ _.
 
