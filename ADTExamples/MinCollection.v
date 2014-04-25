@@ -120,7 +120,7 @@ Section MinCollectionExamples.
   Defined.
 
   (* Show the term derived above as a sanity check. *)
-  Goal (forall b, MutatorMethods (projT1 (MinCollectionCached 0)) () = b).
+  Goal (forall b, ObserverMethods (projT1 (MinCollectionCached 0)) () = b).
     simpl.
   Abort.
 

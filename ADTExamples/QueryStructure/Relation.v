@@ -6,11 +6,11 @@ Require Import List String FunctionalExtensionality Ensembles
    which satisfy the schema constraints. *)
 
 Record Relation (RelationSchema : Schema) :=
-  { rel : list (Tuple (schemaHeading RelationSchema));
+  { rel : Ensemble (Tuple (schemaHeading RelationSchema));
     constr :
       forall tup,
-        List.In tup rel -> schemaConstraints RelationSchema tup
+        rel tup -> schemaConstraints RelationSchema tup
   }.
 
 Definition UnConstrRelation (RelationSchema : Schema) :=
-  list (Tuple (schemaHeading RelationSchema)).
+  Ensemble (Tuple (schemaHeading RelationSchema)).

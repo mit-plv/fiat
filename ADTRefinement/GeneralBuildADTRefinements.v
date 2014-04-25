@@ -9,6 +9,10 @@ Set Implicit Arguments.
 
 Section BuildADTRefinements.
 
+  Require Import String.
+  Local Hint Resolve string_dec.
+
+
   Lemma refineADT_BuildADT_ReplaceMutator
             (Rep : Type)
             (SiR : Rep -> Rep -> Prop)
@@ -109,6 +113,7 @@ Section BuildADTRefinements.
     unfold replaceObsDef.
     eapply ith_replace_BoundedIndex_ind; eauto.
   Qed.
+
 
   Lemma refineADT_BuildADT_ReplaceObserver_eq
             (Rep : Type)

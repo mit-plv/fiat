@@ -37,7 +37,7 @@ Definition crossRelationR
            (namedSchemas : list NamedSchema)
            (idx idx' : _)
   := Tuple (GetNRelSchemaHeading namedSchemas idx)
-     -> list (Tuple (GetNRelSchemaHeading namedSchemas idx'))
+     -> Ensemble (Tuple (GetNRelSchemaHeading namedSchemas idx'))
      -> Prop.
 
 Definition crossRelationProdR
@@ -87,9 +87,9 @@ Defined.
 
 Definition ForeignKey_P heading relSchema attr1 attr2 tupmap
            (tup : Tuple heading)
-           (R : list (Tuple relSchema)) :=
+           (R : Ensemble (Tuple relSchema)) :=
   exists tup2,
-    List.In tup2 R /\
+    R tup2 /\
     tup attr1 =
     tupmap (tup2 attr2 ).
 
@@ -114,8 +114,6 @@ Notation "'attribute' attr 'of' rel1 'references' rel2 " :=
         attr%string id) : QSSchemaConstraints_scope.
 
 Local Obligation Tactic := intros.
-
-Print projT1.
 
 Program Definition BuildQueryStructureConstraints_cons
            (namedSchemas : list NamedSchema)
@@ -147,14 +145,14 @@ Fixpoint BuildQueryStructureConstraints'
          (namedSchemas : list NamedSchema)
          (constraints :
             list (sigT (crossRelationProdR namedSchemas)))
-(idx idx' : _) {struct constraints}
-: crossRelationR namedSchemas idx idx' :=
+ {struct constraints}
+: forall (idx idx' : _), crossRelationR namedSchemas idx idx' :=
   match constraints with
     | idx'' :: constraints' =>
-      @BuildQueryStructureConstraints_cons
-        namedSchemas idx'' constraints' idx idx'
-      (BuildQueryStructureConstraints' constraints' idx idx')
-    | nil => fun _ _ => True
+      fun idx idx' => @BuildQueryStructureConstraints_cons
+                        namedSchemas idx'' constraints' idx idx'
+                        (BuildQueryStructureConstraints' constraints' idx idx')
+    | nil => fun _ _ _ _ => True
   end.
 
 Definition BuildQueryStructureConstraints qsSchema :=

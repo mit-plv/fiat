@@ -26,18 +26,16 @@ Open Scope QSSchema.
                         "Date" : nat> ]
       enforcing [attribute {| bindex := "ISBN" |} of {| bindex := "Orders" |} references {| bindex := "Books" |}].
 
-Definition Books : BoundedIndex (map relName (qschemaSchemas BookStoreSchema)) := {| bindex := "Books"%string |}.
-Definition Orders : BoundedIndex (map relName (qschemaSchemas BookStoreSchema)) := {| bindex := "Orders"%string |}.
-Definition Author : Attributes (GetNRelSchemaHeading (qschemaSchemas BookStoreSchema) Books)
-  := {|bindex := "Author"%string |}.
-Definition Title : Attributes (GetNRelSchemaHeading (qschemaSchemas BookStoreSchema) Books)
-  := {|bindex := "Title"%string |}.
-Definition ISBN : Attributes (GetNRelSchemaHeading (qschemaSchemas BookStoreSchema) Books)
-  := {|bindex := "ISBN"%string |}.
-Definition oISBN : Attributes (GetNRelSchemaHeading (qschemaSchemas BookStoreSchema) Orders)
-  := {|bindex := "ISBN"%string |}.
-Definition Date : Attributes (GetNRelSchemaHeading (qschemaSchemas BookStoreSchema) Orders)
-  := {|bindex := "Date"%string |}.
+Definition Books := GetRelationKey BookStoreSchema "Books".
+Definition Orders := GetRelationKey BookStoreSchema "Orders".
+
+Definition Author := GetAttributeKey Books "Author".
+Definition Title := GetAttributeKey Books "Title".
+Definition ISBN := GetAttributeKey Books "ISBN".
+
+Definition oISBN := GetAttributeKey Orders "ISBN".
+Definition Date := GetAttributeKey Orders "Date".
+
 
   (* Sanity check to show that the definitions produced
      can be efficiently evaluated. *)
@@ -81,17 +79,17 @@ Definition Date : Attributes (GetNRelSchemaHeading (qschemaSchemas BookStoreSche
         PlaceOrder : rep × Order → rep,
         AddBook : rep × Book → rep ;
         GetTitles : rep × string → list string,
-        NumOrders : rep × string → list nat
+        NumOrders : rep × string → nat
       }.
 
   (* [NumOrders] : The number of orders for a given author *)
-  Definition NumOrdersSpec
+  (* Definition NumOrdersSpec
              (r : BookStoreRefRep) (author : string) :=
     let _ := {|qsHint := DropQSConstraints r |} in
     Count (For (o in Orders) (b in Books )
            Where (author == b!Author)
            Where (b!ISBN == o!oISBN)
-           Return tt).
+           Return tt). *)
 
   Definition BookStoreSpec : ADT BookStoreSig :=
     QueryADTRep BookStoreRefRep {
@@ -106,15 +104,15 @@ Definition Date : Attributes (GetNRelSchemaHeading (qschemaSchemas BookStoreSche
              (* [GetTitles] : The titles of books written by a given author *)
              def query GetTitles ( author : string ) : list string :=
                For (b in Books)
-               Where (author == b!Author)
+               Where (author = b!Author)
                Return b!Title,
 
              (* [NumOrders] : The number of orders for a given author *)
-             def query NumOrders ( author : string ) : list nat :=
-                 For (o in Orders) (b in Books)
-                        Where (author == b!Author)
-                        Where (b!ISBN == o!oISBN)
-                        Return o!oISBN
+             def query NumOrders ( author : string ) : nat :=
+                 Count (For (o in Orders) (b in Books)
+                        Where (author = b!Author)
+                        Where (b!ISBN = o!oISBN)
+                        Return o!oISBN)
          } .
 
   Local Close Scope QueryStructureParsing_scope.
@@ -162,7 +160,6 @@ Definition Date : Attributes (GetNRelSchemaHeading (qschemaSchemas BookStoreSche
   Definition BookStore :
     Sharpened BookStoreSpec.
   Proof.
-    unfold BookStoreSpec.
     hone representation' using (@DropQSConstraints_SiR BookStoreSchema).
     hone' observer GetTitles.
     { unfold DropQSConstraints_SiR in *; simpl in *; intros; subst.

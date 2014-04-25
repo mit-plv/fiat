@@ -3,17 +3,27 @@ Require Import List String Ensembles
 
 (* Definitions for updating query structures. *)
 
+(* 'Inserting' a Tuple [tup] into a relation [R] represented
+    as an ensemble produces a new ensemble that holds for any
+    Tuple [tup'] equal to [tup] or which is already in [R]. *)
+Definition RelationInsert
+           {Heading}
+           (tup : Tuple Heading)
+           (R : Ensemble _)
+           (tup' : Tuple Heading) :=
+  tup' = tup \/ R tup'.
+
 Definition QSInsertSpec
            (qs : QueryStructureHint)
            (idx : _)
            (tup : Tuple (schemaHeading (QSGetNRelSchema _ idx)))
-           (qs' : UnConstrQueryStructure qsSchemaHint)
+           (qs' : QueryStructure qsSchemaHint)
 : Prop :=
   (* All of the relations with a different index are untouched
      by insert. *)
   (forall idx',
      idx <> idx' ->
-     GetUnConstrRelation qsHint idx' = GetUnConstrRelation qs' idx') /\
+     GetRelation qsHint idx' = GetRelation qs' idx') /\
   (* If [tup] is consistent with the schema constraints and the
      cross-relation constraints, it is included in the relation
      indexed by [idx] after insert; that relation is unspecified if
@@ -21,17 +31,19 @@ Definition QSInsertSpec
   schemaConstraints (QSGetNRelSchema qsSchemaHint idx) tup
   -> (forall idx',
         BuildQueryStructureConstraints
-          qsSchemaHint idx idx' tup (GetUnConstrRelation qsHint idx'))
+          qsSchemaHint idx idx' tup (GetRelation qsHint idx'))
   -> (forall idx' tup',
         idx' <> idx ->
         BuildQueryStructureConstraints
-          qsSchemaHint idx' idx tup' (tup :: (GetUnConstrRelation qsHint idx)))
+          qsSchemaHint idx' idx tup'
+          (RelationInsert tup (GetRelation qsHint idx)))
   -> List.In (bindex idx) (map relName (qschemaSchemas qsSchemaHint))
-  -> GetUnConstrRelation qs' idx = tup :: GetUnConstrRelation qsHint idx.
+  -> (forall t, GetRelation qs' idx t <->
+               (RelationInsert tup (GetRelation qsHint idx) t)).
 
 Notation "'Insert' b 'into' idx " :=
   (Bind (Pick (QSInsertSpec _ idx b))
-        (fun r' => Pick (fun r => r' = DropQSConstraints r)))
+        (fun r' => Pick (fun r => r' = r)))
     (at level 80) : QuerySpec_scope.
 
 (* Facts about insert. We'll probably need to extract these to their
@@ -74,7 +86,7 @@ Section InsertRefinements.
   Hint Resolve AC_eq_nth_In AC_eq_nth_NIn NamedSchema_eq_neq
        NamedSchema_eq_eq crossConstr.
 
-  (*Program Definition Insert_Valid
+  Program Definition Insert_Valid
              (qsSchema : QueryStructureSchema)
              (qs : QueryStructure qsSchema)
              (idx : _)
@@ -85,32 +97,28 @@ Section InsertRefinements.
              (qsConstr' : forall idx',
                             idx' <> idx ->
                             forall tup',
-                            BuildQueryStructureConstraints qsSchema idx' idx tup' (tup :: (GetRelation qs idx)))
+                            BuildQueryStructureConstraints qsSchema idx' idx tup'
+                                                           (RelationInsert tup (GetRelation qs idx)))
   : QueryStructure qsSchema :=
     {| rels :=
          replace_BoundedIndex _ (rels qs) idx
-                       {| rel := (tup :: (GetRelation qs idx))|}
+                       {| rel := RelationInsert tup (GetRelation qs idx)|}
     |}.
   Next Obligation.
-    simpl in *; intuition; subst; eauto.
-    eapply ((ith_Bounded _ (rels qs) idx ));
-      eassumption.
+    unfold RelationInsert in *; simpl in *; intuition; subst; eauto.
+    eapply ((ith_Bounded _ (rels qs) idx )); eassumption.
   Qed.
   Next Obligation.
-    destruct ((bindex idx') == (bindex idx)); subst; simpl in *; intuition.
-    - destruct (findIndex_In_dec NamedSchema_eq (bindex idx) (qschemaSchemas qsSchema)) as [NIn_a | [a [In_a a_eq] ] ].
-      + rewrite replace_indexBounded_NIn in *; auto.
-      + erewrite ith_default_replace' in *; simpl; eauto.
-    - destruct (findIndex_In_dec NamedSchema_eq idx (qschemaSchemas qsSchema)) as [NIn_a | [a [In_a a_eq] ] ].
-      + rewrite replace_index_NIn in *; auto.
-      + destruct (idx0 == idx); subst; simpl in *; intuition.
-        * erewrite ith_default_replace' in H0; eauto; simpl in *.
-          rewrite ith_default_replace; eauto.
-          intuition; subst; eauto.
-        * rewrite ith_default_replace in *; eauto.
-  Qed. *)
+    destruct (BoundedString_eq_dec idx idx'); subst.
+    - rewrite ith_replace_BoundIndex_eq; eauto.
+    - rewrite ith_replace_BoundIndex_neq in *; eauto using string_dec.
+      destruct (BoundedString_eq_dec idx0 idx); subst.
+      rewrite ith_replace_BoundIndex_eq in H0; simpl in *; eauto.
+      unfold RelationInsert in H0; intuition; subst; eauto.
+      rewrite ith_replace_BoundIndex_neq in H0; eauto using string_dec.
+  Qed.
 
-  Definition DecideableSB (P : Prop) := {P} + {~P}.
+  (*Definition DecideableSB (P : Prop) := {P} + {~P}.
 
   Definition SchemaConstraints_dec qsSchema idx tup :=
     DecideableSB (schemaConstraints (QSGetNRelSchema qsSchema idx) tup).
@@ -125,30 +133,48 @@ Section InsertRefinements.
       (forall idx',
          idx' <> idx ->
          forall tup',
-                BuildQueryStructureConstraints qsSchema idx' idx tup' (tup :: (GetRelation qs idx))).
+                BuildQueryStructureConstraints qsSchema idx' idx tup'
+                                               (RelationInsert tup (GetRelation qs idx))). *)
 
-  (*Lemma QSInsertSpec_refine :
+  Lemma QSInsertSpec_refine :
     forall qsSchema qs idx tup default,
-      refine
-        (Pick (QSInsertSpec {| qsHint := qs |} idx tup))
-        (schConstr <- Any (SchemaConstraints_dec qsSchema idx tup);
-         qsConstr <- Any (QSSchemaConstraints_dec qs idx tup);
-         qsConstr' <- Any (QSSchemaConstraints_dec' qs idx tup);
-         match schConstr, qsConstr, qsConstr' with
-           | left schConstr, left qsConstr, left qsConstr' =>
-             ret (Insert_Valid qs tup schConstr qsConstr qsConstr')
-           | _, _, _ => default
-         end).
+      refine (Pick (QSInsertSpec {| qsHint := qs |} idx tup)) default
+      -> refine
+           (Pick (QSInsertSpec {| qsHint := qs |} idx tup))
+           (schConstr <- {b | b = true ->
+                              schemaConstraints (QSGetNRelSchema qsSchema idx) tup};
+            qsConstr <- {b | b = true ->
+                             (forall idx',
+                                BuildQueryStructureConstraints qsSchema idx idx' tup (GetRelation qs idx'))};
+            qsConstr' <- {b | b = true ->
+                              forall idx',
+                                idx' <> idx ->
+                                forall tup',
+                                  BuildQueryStructureConstraints qsSchema idx' idx tup'
+                                                                 (RelationInsert tup (GetRelation qs idx))};
+            match schConstr, qsConstr, qsConstr' with
+              | true, true, true =>
+                {qs' |
+                 (forall idx',
+                    idx <> idx' ->
+                    GetRelation qsHint idx' =
+                    GetRelation qs' idx')
+                 /\ forall t,
+                      GetRelation qs' idx t <->
+                      (RelationInsert tup (GetRelation qsHint idx) t)
+             }
+
+              | _, _, _ => default
+            end).
   Proof.
-    unfold Any; intros qsSchema qs idx tup default v Comp_v.
+    intros qsSchema qs idx tup default refines_default v Comp_v.
+    do 3 (apply_in_hyp computes_to_inv; destruct_ex; intuition);
+    destruct x; destruct x0; destruct x1; eauto.
     repeat (apply_in_hyp computes_to_inv; destruct_ex; intuition).
-    destruct x; destruct x0; destruct x1;
-    econstructor; unfold QSInsertSpec; simpl; subst; intuition.
-    unfold Insert_Valid, GetRelation; simpl.
-    destruct (proj1 (@in_map_iff _ _ relName _ _) H5) as [a' [a'_eq In_a' ] ].
-    erewrite ith_replace'; simpl; eauto.
+    econstructor; unfold QSInsertSpec; eauto.
   Qed.
 
+  (*
   Lemma refine_Any_DecideableSB_True
   : refine (Any (DecideableSB True)) (ret (left I)).
   Proof.
