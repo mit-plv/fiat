@@ -183,7 +183,7 @@ Tactic Notation "hone'" "observer" constr(obsIdx) "using" open_constr(obsBod) :=
     let ObserverIndex' := eval simpl in (ObserverIndex ASig) in
     let ObserverDomCod' := eval simpl in (ObserverDomCod ASig) in
     let obsIdxB := eval simpl in
-    (@Build_BoundedIndex (List.map obsID obsSigs) obsIdx _) in
+    (@Build_BoundedIndex _ (List.map obsID obsSigs) obsIdx _) in
       eapply SharpenStep;
       [eapply (@refineADT_BuildADT_ReplaceObserver
                  Rep' _ _ mutDefs obsDefs obsIdxB
@@ -222,7 +222,7 @@ Tactic Notation "hone'" "observer" constr(obsIdx) "using" open_constr(obsBod) :=
     let ObserverIndex' := eval simpl in (ObserverIndex ASig) in
     let MutatorDom' := eval simpl in (MutatorDom ASig) in
     let mutIdxB := eval simpl in
-    (@Build_BoundedIndex (List.map mutID mutSigs) mutIdx _) in
+    (@Build_BoundedIndex _ (List.map mutID mutSigs) mutIdx _) in
       eapply SharpenStep;
       [eapply (@refineADT_BuildADT_ReplaceMutator_eq
                  Rep'  _ _ mutDefs obsDefs mutIdxB
