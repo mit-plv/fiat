@@ -149,4 +149,11 @@ Section general_refine_lemmas.
                  ret (exist P x p)).
   Proof. t_refine. Qed.
 
+  Lemma refineEquiv_pick_forall_eq
+        A B (a : A) (P : A -> B -> Prop)
+  : @refineEquiv _
+                 (Pick (fun b => forall a', a = a' -> P a' b))
+                 (Pick (P a)).
+  Proof. t_refine. Qed.
+
 End general_refine_lemmas.

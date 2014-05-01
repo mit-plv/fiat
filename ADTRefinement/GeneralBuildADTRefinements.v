@@ -234,19 +234,6 @@ Tactic Notation "hone'" "observer" constr(obsIdx) "using" open_constr(obsBod) :=
                                 ))
       | idtac]; cbv beta in *; simpl in *.
 
-  (* This applies reflexivity after refining a method. *)
-
-Ltac higher_order_2_reflexivity :=
-  let x := match goal with |- ?R ?x (?f ?a ?b) => constr:(x) end in
-  let f := match goal with |- ?R ?x (?f ?a ?b) => constr:(f) end in
-  let a := match goal with |- ?R ?x (?f ?a ?b) => constr:(a) end in
-  let b := match goal with |- ?R ?x (?f ?a ?b) => constr:(b) end in
-  let x' := (eval pattern a, b in x) in
-  let f' := match x' with ?f' _ _ => constr:(f') end in
-  unify f f';
-    cbv beta;
-    reflexivity.
-
 Tactic Notation "hone'" "observer" constr(obsIdx) :=
   hone' observer obsIdx using _;
   [set_evars | ].

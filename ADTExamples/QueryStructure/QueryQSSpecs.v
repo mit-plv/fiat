@@ -7,7 +7,7 @@ Definition Query_In (qs : QueryStructureHint) {A} (R : _)
            (bod : Tuple (schemaHeading
                            (QSGetNRelSchema qsSchemaHint R%string)) -> Ensemble A)
            (a : A) :=
-  forall tup, (GetRelation qsHint R%string) tup ->
+  exists tup, (GetRelation qsHint R) tup /\
               bod tup a.
 
 Notation "( x 'in' R ) bod" :=
@@ -20,7 +20,7 @@ Notation "'Return' t" :=
 
 Definition Query_Where
            {A : Type} (P : Prop) (bod : Ensemble A) (a : A) :=
-  P -> bod a.
+  P /\ bod a.
 
 Notation "'Where' p bod" :=
   (Query_Where p%Tuple bod) : QuerySpec_scope.

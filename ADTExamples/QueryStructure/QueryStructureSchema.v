@@ -158,9 +158,6 @@ Fixpoint BuildQueryStructureConstraints'
 Definition BuildQueryStructureConstraints qsSchema :=
   BuildQueryStructureConstraints' (qschemaConstraints qsSchema).
 
-Notation "'query' 'structure' 'schema' relList " :=
-  (@Build_QueryStructureSchema relList%NamedSchema []) : QSSchema_scope.
-
 Notation "'query' 'structure' 'schema' relList 'enforcing' constraints" :=
   (@Build_QueryStructureSchema relList%NamedSchema
                        (let relListHint := Build_namedSchemaHint relList%NamedSchema in
@@ -173,6 +170,18 @@ Arguments BuildQueryStructureConstraints_cons [_] _ _ _ _ (*/*) _ _ _.
 Arguments BuildQueryStructureConstraints_cons_obligation_1 [_] _ (*/*) _ _ _ _ _ _ _ _.
 Arguments eq_rect_r _ _ _ _ _ _ / .
 Arguments ForeignKey_P _ _ _ _ _ / _ _ .
+
+(* This lets us drop the constraints from the reference implementation
+   for easier refinements. *)
+
+Definition UnConstrQueryStructure (qsSchema : QueryStructureSchema) :=
+  ilist (fun ns => UnConstrRelation (relSchema ns))
+        (qschemaSchemas qsSchema).
+
+Notation "'query' 'structure' 'schema' relList " :=
+  (@Build_QueryStructureSchema relList%NamedSchema []) : QSSchema_scope.
+
+
 
 Bind Scope QSSchema_scope with QueryStructureSchema.
 

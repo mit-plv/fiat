@@ -35,28 +35,6 @@ Record QueryStructure (QSSchema : QueryStructureSchema) :=
 
 Notation "t ! R" := (rels t R%string): QueryStructure_scope.
 
-(* This lets us drop the constraints from the reference implementation
-   for easier refinements. *)
-
-Definition UnConstrQueryStructure (qsSchema : QueryStructureSchema) :=
-  ilist (fun ns => UnConstrRelation (relSchema ns))
-        (qschemaSchemas qsSchema).
-
-Definition DropQSConstraints
-           (qsSchema : QueryStructureSchema)
-           (qs : QueryStructure qsSchema)
-: UnConstrQueryStructure qsSchema :=
-    @imap NamedSchema
-        (fun ns => Relation (relSchema ns))
-        (fun ns => UnConstrRelation (relSchema ns))
-        (fun ns => @rel (relSchema ns)) _ (rels qs).
-
-Definition DropQSConstraints_SiR (qsSchema : QueryStructureSchema)
-           (qs : QueryStructure qsSchema)
-           (qs' : UnConstrQueryStructure qsSchema)
-           : Prop :=
-  DropQSConstraints qs = qs'.
-
 (* This typeclass allows our method definitions to infer the
    the QueryStructure [r] they are called with. *)
 
@@ -64,6 +42,9 @@ Class QueryStructureHint :=
   { qsSchemaHint : QueryStructureSchema;
     qsHint :> @QueryStructure qsSchemaHint
   }.
+
+(* This lets us drop the constraints from the reference implementation
+   for easier refinements. *)
 
 Notation "'def' 'query' id ( x : dom ) : cod := bod" :=
   (Build_obsDef {| obsID := id; obsDom := dom; obsCod := cod |}
@@ -140,3 +121,18 @@ Definition GetRelation
            (qs : QueryStructure QSSchema)
            (idx : BoundedString (map relName (qschemaSchemas QSSchema)))
   := rel (ith_Bounded _ (rels qs) idx).
+
+Definition DropQSConstraints
+           (qsSchema : QueryStructureSchema)
+           (qs : QueryStructure qsSchema)
+: UnConstrQueryStructure qsSchema :=
+    @imap NamedSchema
+        (fun ns => Relation (relSchema ns))
+        (fun ns => UnConstrRelation (relSchema ns))
+        (fun ns => @rel (relSchema ns)) _ (rels qs).
+
+Definition DropQSConstraints_SiR (qsSchema : QueryStructureSchema)
+           (qs : QueryStructure qsSchema)
+           (qs' : UnConstrQueryStructure qsSchema)
+           : Prop :=
+  DropQSConstraints qs = qs'.

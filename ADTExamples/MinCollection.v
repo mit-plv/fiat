@@ -93,6 +93,7 @@ Section MinCollectionExamples.
   Definition MinCollectionCached (defaultValue : nat) :
     Sharpened NatLower.
   Proof.
+    unfold NatLower, NatBinOpSpec, pickImpl.
     (* Step 1: Update the representation. *)
     hone representation using (fun or (nr : option nat) =>
                                  match nr with
@@ -120,7 +121,7 @@ Section MinCollectionExamples.
   Defined.
 
   (* Show the term derived above as a sanity check. *)
-  Goal (forall b, ObserverMethods (projT1 (MinCollectionCached 0)) () = b).
+  Goal (forall b, MutatorMethods (projT1 (MinCollectionCached 0)) () = b).
     simpl.
   Abort.
 

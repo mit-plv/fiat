@@ -53,7 +53,7 @@ Section monad.
 End monad.
 
 
-(* [Comp] also obeys the monad laws using both [refineEquiv] 
+(* [Comp] also obeys the monad laws using both [refineEquiv]
    as our notions of equivalence. *)
 
 Section monad_refine.
@@ -86,6 +86,11 @@ Create HintDb refine_monad discriminated.
 (*Hint Rewrite refine_bind_bind refine_bind_unit refine_unit_bind : refine_monad.
 Hint Rewrite <- refine_bind_bind' refine_bind_unit' refine_unit_bind' : refine_monad.*)
 Hint Rewrite @refineEquiv_bind_bind @refineEquiv_bind_unit @refineEquiv_unit_bind : refine_monad.
+Tactic Notation "autosetoid_rewrite" "with" "refine_monad" :=
+  repeat first [setoid_rewrite refineEquiv_bind_bind |
+                setoid_rewrite refineEquiv_bind_unit |
+                setoid_rewrite refineEquiv_unit_bind] .
+
 (* Ideally we would throw refineEquiv_under_bind in here as well, but it gets stuck *)
 
 Ltac interleave_autorewrite_refine_monad_with tac :=

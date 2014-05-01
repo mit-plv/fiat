@@ -78,61 +78,61 @@ Section IndexBound.
   Section Bounded_Index_Dec_Eq.
   (* If equality on A is decideable, so is equality
      on bounded indices in in A. *)
-    Variable A_eq_dec : 
+    Variable A_eq_dec :
       forall a a' : A, {a = a'} + {a <> a'}.
 
     Require Import Eqdep_dec.
 
-    Program Definition Opt_A_eq_dec (a a' : option A): 
+    Program Definition Opt_A_eq_dec (a a' : option A):
       {a = a'} + {a <> a'} :=
-      match a as a, a' as a' return {a = a'} + {a <> a'} with 
+      match a as a, a' as a' return {a = a'} + {a <> a'} with
           | Some a, Some a' => if A_eq_dec a a' then left _ else right _
           | None, None => left _
           | _, _ => right _
       end.
 
     Definition K_Opt_A :
-      forall (a : option A) (P: a = a -> Prop), 
+      forall (a : option A) (P: a = a -> Prop),
           P (refl_equal a) -> forall p : a = a, P p :=
       K_dec_set Opt_A_eq_dec.
 
     Definition UIP_Opt_A  :
-      forall (a : option A) (Q : option A -> Type) 
+      forall (a : option A) (Q : option A -> Type)
              (x : Q a) (h : a = a),
         x = eq_rect a Q x a h.
       intros; eapply K_Opt_A with (p := h); reflexivity.
     Defined.
 
-    Lemma eq_proofs_unicity_Opt_A 
+    Lemma eq_proofs_unicity_Opt_A
       : forall (a a' : option A) (p1 p2 : a = a'), p1 = p2.
-      apply eq_proofs_unicity; intros. 
+      apply eq_proofs_unicity; intros.
       destruct (Opt_A_eq_dec x y); auto.
     Qed.
-    
-    Corollary idx_ibound_eq 
+
+    Corollary idx_ibound_eq
     : forall Bound (idx idx' : BoundedIndex Bound),
         ibound (indexb idx) = ibound (indexb idx') ->
-        idx = idx'. 
+        idx = idx'.
     Proof.
       intros; generalize (indexb_ibound_eq idx idx' H);
-      destruct idx as [idx [n' In_n' ]]; 
-        destruct idx' as [idx' [n'' In_n'' ]]; intros; 
+      destruct idx as [idx [n' In_n' ]];
+        destruct idx' as [idx' [n'' In_n'' ]]; intros;
         simpl in *; subst; f_equal.
       rewrite (eq_proofs_unicity_Opt_A In_n' In_n''); auto.
     Qed.
 
-    Corollary idx_ibound_neq 
+    Corollary idx_ibound_neq
     : forall Bound (idx idx' : BoundedIndex Bound),
         ibound (indexb idx) <> ibound (indexb idx') ->
-        idx <> idx'. 
+        idx <> idx'.
     Proof.
-      intros; destruct idx as [idx [n' In_n' ]]; 
-        destruct idx' as [idx' [n'' In_n'' ]]; intros; 
+      intros; destruct idx as [idx [n' In_n' ]];
+        destruct idx' as [idx' [n'' In_n'' ]]; intros;
         simpl in *; subst.
       unfold not; intros; apply H; injection H0; auto.
     Qed.
 
-    Corollary BoundedIndex_eq_dec Bound : 
+    Corollary BoundedIndex_eq_dec Bound :
       forall idx idx' : (BoundedIndex Bound),
         {idx = idx'} + {idx <> idx'}.
     Proof.
@@ -146,11 +146,15 @@ Section IndexBound.
 End IndexBound.
 
 Definition BoundedString := @BoundedIndex string.
-Definition BoundedString_eq_dec 
-           {Bound} 
-           (bidx bidx' : BoundedString Bound) 
-: {bidx = bidx'} + {bidx <> bidx'} := 
+Definition BoundedString_eq_dec
+           {Bound}
+           (bidx bidx' : BoundedString Bound)
+: {bidx = bidx'} + {bidx <> bidx'} :=
   BoundedIndex_eq_dec string_dec  bidx bidx'.
+
+Notation "` A ´" :=
+  ({| bindex := A%string |}) (at level 0,
+                              format "` A ´").
 
 Section ithIndexBound.
 
@@ -640,7 +644,7 @@ Section ithIndexBound.
     intros.
     destruct (BoundedIndex_eq_dec C_eq_dec idx idx'); subst.
     + rewrite ith_replace_BoundIndex_eq; assumption.
-    + rewrite ith_replace_BoundIndex_neq; 
+    + rewrite ith_replace_BoundIndex_neq;
       unfold not; eauto using idx_ibound_eq.
   Qed.
 

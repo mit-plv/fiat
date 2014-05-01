@@ -251,7 +251,7 @@ Ltac setoid_rewrite_hyp := repeat setoid_rewrite_hyp'.
 Ltac setoid_rewrite_rev_hyp' := do_with_hyp ltac:(fun H => setoid_rewrite <- H).
 Ltac setoid_rewrite_rev_hyp := repeat setoid_rewrite_rev_hyp'.
 
-Hint Extern 0 => apply reflexivity : typeclass_instances.
+Hint Extern 0 => solve [apply reflexivity] : typeclass_instances.
 
 Ltac set_evars :=
   repeat match goal with
@@ -399,6 +399,37 @@ Definition forall_relation4 {A : Type} {B : A -> Type}
   forall_relation (fun a => (@forall_relation3 (B a) (C a) (D a) (E a) (R a))).
 Definition pointwise_relation4 {A B C D E : Type} (R : relation E) :=
   pointwise_relation A (@pointwise_relation3 B C D E R).
+
+Ltac higher_order_1_reflexivity' :=
+  let a := match goal with |- ?R ?a (?f ?x) => constr:(a) end in
+  let f := match goal with |- ?R ?a (?f ?x) => constr:(f) end in
+  let x := match goal with |- ?R ?a (?f ?x) => constr:(x) end in
+  let a' := (eval pattern x in a) in
+  let f' := match a' with ?f' _ => constr:(f') end in
+  unify f f';
+    cbv beta;
+    solve [apply reflexivity].
+
+Ltac higher_order_1_reflexivity :=
+  solve [ higher_order_1_reflexivity'
+        | apply symmetry; higher_order_1_reflexivity' ].
+
+  (* This applies reflexivity after refining a method. *)
+
+Ltac higher_order_2_reflexivity' :=
+  let x := match goal with |- ?R ?x (?f ?a ?b) => constr:(x) end in
+  let f := match goal with |- ?R ?x (?f ?a ?b) => constr:(f) end in
+  let a := match goal with |- ?R ?x (?f ?a ?b) => constr:(a) end in
+  let b := match goal with |- ?R ?x (?f ?a ?b) => constr:(b) end in
+  let x' := (eval pattern a, b in x) in
+  let f' := match x' with ?f' _ _ => constr:(f') end in
+  unify f f';
+    cbv beta;
+    solve [apply reflexivity].
+
+Ltac higher_order_2_reflexivity :=
+  solve [ higher_order_2_reflexivity'
+        | apply symmetry; higher_order_2_reflexivity' ].
 
 Axiom IsHProp : Type -> Type.
 Existing Class IsHProp.

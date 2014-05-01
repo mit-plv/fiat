@@ -1,5 +1,8 @@
 Require Import String Omega List FunctionalExtensionality Ensembles.
-Require Export Computation ADT ADTRefinement ADT.Pick
+
+Ltac typeof' pf := type of pf.
+
+Require Import Computation ADT ADTRefinement ADT.Pick
         ADTRefinement.BuildADTRefinements ADTNotation
         QueryStructureSchema QueryQSSpecs InsertQSSpecs QueryStructure.
 
@@ -20,7 +23,7 @@ Open Scope QSSchema.
                 schema <"Author" : string,
                         "Title" : string,
                         "ISBN" : nat>
-                where attributes [{| bindex := Title |} ; {|bindex := "Author" |}] depend on [{|bindex := "ISBN" |}];
+                where attributes [{| bindex := "Title" |} ; {|bindex := "Author" |}] depend on [{|bindex := "ISBN" |}];
         relation "Orders" has
                 schema <"ISBN" : nat,
                         "Date" : nat> ]
@@ -143,43 +146,16 @@ Definition Date := GetAttributeKey Orders "Date".
 
   Open Scope updateDef.
 
-  Arguments QSGetNRelSchemaHeading _ _ .
-
-  Print Pick.
-
-  Lemma refineEquiv_pick_forall_eq
-        A B (a : A) (P : A -> B -> Prop)
-  : @refineEquiv _
-                 (Pick (fun b => forall a', a = a' -> P a' b))
-                 (Pick (P a)).
-  Proof.
-    split; intros v Comp_v; inversion_by computes_to_inv;
-    econstructor; intros; subst; eauto.
-  Qed.
+  Lemma refine_if_self : 
+    forall (u : bool),
+    refine (if u then (ret true) else (ret false))
+           (ret u).
+    Proof. destruct u; reflexivity. Qed.
 
   Definition BookStore :
     Sharpened BookStoreSpec.
   Proof.
-    hone representation' using (@DropQSConstraints_SiR BookStoreSchema).
-    hone' observer GetTitles.
-    { unfold DropQSConstraints_SiR in *; simpl in *; intros; subst.
-      Unset Printing Notations.
-      idtac.
-      unfold Query_In.
-      simpl.
-      unfold GetRelation; simpl; unfold ith_obligation_2; simpl.
-      unfold Query_For.
-      rewrite refineEquiv_pick_forall_eq.
-      erewrite refine_pick.
-      Focus 2.
-      intros.
-      simpl.
-      rewrite H1.
-      setoid_rewrite refineEquiv_pick_eq.
-
-
-    unf
-    simpl.
+    unfold BookStoreSpec.
     (* Step 1: Decide what to do when inserting a book that
        violates the key constraints of Books. I think
        we will leave table unchanged when a 'bad' book is
@@ -189,96 +165,20 @@ Definition Date := GetAttributeKey Orders "Date".
       simpl in *; intros; subst.
       setoid_rewrite refineEquiv_pick_eq';
       autorewrite with refine_monad.
-      (* Things start to go off the rails if we use
-            QSInsertSpec_BuildQuerySpec_refine instead of
-            QSInsertSpec_refine because it unfolds the BookStoreSchema.
-         *)
-      setoid_rewrite QSInsertSpec_BuildQuerySpec_refine with (default := ret r_n).
-      unfold SchemaConstraints_dec; simpl schemaConstraints.
-      autorewrite with refine_keyconstraints refine_monad.
-      unfold Iterate_Constraints_dec; simpl.
-      Set Printing All.
-      idtac.
-      unfold ith_obligation_2; simpl.
-      unfold NamedSchema_eq; simpl.
-      idtac.
-      Set Printing All.
-      idtac.
-      simpl.
-      unfold BuildQueryStructureConstraints; simpl.
-      unfold BuildQueryStructureConstraints_cons; simpl.
-      Unset Printing Notations.
-      idtac.
-      Set Printing All.
-      idtac.
-      Print
-
-      Check QSInsertSpec_BuildQuerySpec_refine.
-
-      idtac.
-      setoid_rewrite QSInsertSpec_BuildQuerySpec_refine with (default := ret r_n).
-
-
-
-
-      unfold SchemaConstraints_dec; simpl schemaConstraints.
-      fold BookStoreSchema.
-      (* Here's where terms explode. *)
-      simpl.
-      unfold Iterate_Constraints_dec; simpl.
-      unfold BuildQueryStructureConstraints_cons; simpl.
-      idtac.
-      Set Printing All.
-      Show 1.
-      unfold GetRelation; simpl.
-      unfold ith_obligation_2; simpl.
-      Print Bind.
-      Set Printing All.
-      Show 1.
-      fail.
-      Set Printing Implicit.
-      Show 1.
-      fail.
-      unfold Iterate_Constraints_dec'; simpl.
-      unfold BuildQueryStructureConstraints_cons; simpl.
-      fail.
-      setoid_rewrite refine_Any_DecideableSB_True.
-
-      autorewrite with refine_keyconstraints refine_monad.
-      setoid_rewrite DecideableSB_Comp_refine; simpl.
-      unfold BuildQueryStructureConstraints_cons; simpl.
-      (* Can't get rid of the last Pick- rewriting is too slow!
-         rewrite refine_Any_DecideableSB_True. *)
-      unfold GetRelation; simpl.
-      unfold ith_obligation_2; simpl.
-      (* Just running idtac takes forever! *)
-      idtac.
-      Set Printing All.
-      idtac.
-      rewrite refine_Any_DecideableSB_True.
-      simpl BuildQueryStructureConstraints.
-      simpl GetRelation.
-      autorewrite with refine_monad.
-      simpl BuildQueryStructure.
-      simpl.
-      asdfasdfjl;k
-
-      simpl.
-      unfold NamedSchema_eq; simpl relName.
-      unfold DecideableSB_Comp.
-      simpl.
-      unfold DecideableSB_finiteComp; simpl.
-      unfold DecideableSB_finite; simpl.
-      unfold DecideableSB_finite_obligation_2,
-      DecideableSB_finite_obligation_3; simpl.
-      unfold QSSchemaConstraints_dec.
-      simpl qschemaConstraints.
-      unfold SchemaConstraints_dec; simpl.
-      assert (refine (x <- Any (DecideableSB True); ret x) (ret (left I))).
-
-      rewrite refine_Any_DecideableSB_True.
-
-      autorewrite with refine_keyconstraints.
+      setoid_rewrite QSInsertSpec_refine' with (default := ret r_n).
+      simpl; cbv beta iota delta
+          [Iterate_Decide_Comp
+             Iterate_Decide_Comp'
+             Ensemble_BoundedIndex_app_cons
+             SatisfiesCrossRelationConstraints
+             BuildQueryStructureConstraints
+             BuildQueryStructureConstraints'
+             BuildQueryStructureConstraints_cons]; simpl.
+      cbv beta delta [GetNRelSchemaHeading Ensemble_BoundedIndex_app_cons id]; simpl.
+      setoid_rewrite decides_True; setoid_rewrite decides_2_True;
+      autosetoid_rewrite with refine_monad.
+      unfold If_Then_Else; simpl; setoid_rewrite refine_if_self;
+      autosetoid_rewrite with refine_monad.
       subst_body.
       higher_order_2_reflexivity.
     }
@@ -286,13 +186,27 @@ Definition Date := GetAttributeKey Orders "Date".
        violates foreign key constraints of Orders. *)
     hone' mutator AddBook%string.
     {
-      intros; subst.
+      simpl in *; intros; subst.
       setoid_rewrite refineEquiv_pick_eq';
       autorewrite with refine_monad.
-      setoid_rewrite QSInsertSpec_refine with (default := ret r_n).
+      setoid_rewrite QSInsertSpec_refine' with (default := ret r_n).
+      simpl; cbv beta iota delta
+          [Iterate_Decide_Comp
+             Iterate_Decide_Comp'
+             Ensemble_BoundedIndex_app_cons
+             SatisfiesCrossRelationConstraints
+             BuildQueryStructureConstraints
+             BuildQueryStructureConstraints'
+             BuildQueryStructureConstraints_cons]; simpl.
+      cbv beta delta [GetNRelSchemaHeading Ensemble_BoundedIndex_app_cons id]; simpl.
+      setoid_rewrite decides_True; setoid_rewrite decides_2_True;
+      autosetoid_rewrite with refine_monad.
+      unfold If_Then_Else; simpl; setoid_rewrite refine_if_self;
+      autosetoid_rewrite with refine_monad.
       subst_body.
       higher_order_2_reflexivity.
     }
+    unfold replace_BoundedIndex, replace_Index; simpl.
     (* Step 3: Add the '#Orders' attribute to Books schema. *)
     hone representation' using AddAttribute_SiR.
 
