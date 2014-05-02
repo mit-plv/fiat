@@ -1,4 +1,4 @@
-Require Import List String Common Arith 
+Require Import List String Common Arith
         FunctionalExtensionality Ensembles
         ADTNotation.ilist ADTNotation.StringBound Program.
 Require Export
@@ -106,12 +106,14 @@ Definition BuildForeignKeyConstraints
 Class namedSchemaHint :=
   { nSchemaHint :> list NamedSchema }.
 
+
+
 Notation "'attribute' attr 'of' rel1 'references' rel2 " :=
   (
       @BuildForeignKeyConstraints
-        (@nSchemaHint _) rel1%string rel2%string
-        attr%string
-        attr%string id) : QSSchemaConstraints_scope.
+        (@nSchemaHint _) {| bindex := rel1%string |} {| bindex := rel2%string |}
+        {| bindex := attr%string |}
+        {| bindex := attr%string |} id) : QSSchemaConstraints_scope.
 
 Local Obligation Tactic := intros.
 
@@ -180,8 +182,6 @@ Definition UnConstrQueryStructure (qsSchema : QueryStructureSchema) :=
 
 Notation "'query' 'structure' 'schema' relList " :=
   (@Build_QueryStructureSchema relList%NamedSchema []) : QSSchema_scope.
-
-
 
 Bind Scope QSSchema_scope with QueryStructureSchema.
 

@@ -156,4 +156,11 @@ Section general_refine_lemmas.
                  (Pick (P a)).
   Proof. t_refine. Qed.
 
+  Lemma refine_if_bool_eta :
+    forall (u : bool),
+    refine (if u then (ret true) else (ret false))
+           (ret u).
+    Proof. destruct u; reflexivity. Qed.
+
+
 End general_refine_lemmas.

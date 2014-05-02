@@ -1,6 +1,7 @@
 Require Import String Omega List FunctionalExtensionality Ensembles.
 
 Ltac typeof' pf := type of pf.
+Ltac simpl_typeof pf := cbv delta in (type of pf).
 
 Require Import Computation ADT ADTRefinement ADT.Pick
         ADTRefinement.BuildADTRefinements ADTNotation
@@ -10,6 +11,9 @@ Generalizable All Variables.
 Set Implicit Arguments.
 
 Section BookStoreExamples.
+
+  Arguments Tuple [Heading] .
+  Arguments BoundedString [_].
 
   (* Our bookstore has two relations (tables):
      - The books in the inventory
@@ -23,11 +27,11 @@ Open Scope QSSchema.
                 schema <"Author" : string,
                         "Title" : string,
                         "ISBN" : nat>
-                where attributes [{| bindex := "Title" |} ; {|bindex := "Author" |}] depend on [{|bindex := "ISBN" |}];
+                where attributes ["Title"; "Author"] depend on ["ISBN"];
         relation "Orders" has
                 schema <"ISBN" : nat,
                         "Date" : nat> ]
-      enforcing [attribute {| bindex := "ISBN" |} of {| bindex := "Orders" |} references {| bindex := "Books" |}].
+      enforcing [attribute "ISBN" of "Orders" references "Books"].
 
 Definition Books := GetRelationKey BookStoreSchema "Books".
 Definition Orders := GetRelationKey BookStoreSchema "Orders".
@@ -55,8 +59,8 @@ Definition Date := GetAttributeKey Orders "Date".
   Definition OrderSchemaHeading :=
     QSGetNRelSchemaHeading BookStoreSchema Orders.
 
-  Definition Book := Tuple BookSchemaHeading.
-  Definition Order := Tuple OrderSchemaHeading.
+  Definition Book := @Tuple BookSchemaHeading.
+  Definition Order := @Tuple OrderSchemaHeading.
 
   (* Our bookstore has two mutators:
      - [PlaceOrder] : Place an order into the 'Orders' table
@@ -108,7 +112,7 @@ Definition Date := GetAttributeKey Orders "Date".
              def query GetTitles ( author : string ) : list string :=
                For (b in Books)
                Where (author = b!Author)
-               Return b!Title,
+               Return (b!Title),
 
              (* [NumOrders] : The number of orders for a given author *)
              def query NumOrders ( author : string ) : nat :=
@@ -122,35 +126,29 @@ Definition Date := GetAttributeKey Orders "Date".
   Local Close Scope QuerySpec.
   Local Open Scope QueryStructure_scope.
 
-  (* Definition BookStoreSchema' :=
+  Definition BookStoreSchema' :=
     query structure schema
-      [ relation Books has
-                schema <Author : string,
-                        Title : string,
-                        ISBN : nat,
+      [ relation "Books" has
+                schema <"Author" : string,
+                        "Title" : string,
+                        "ISBN" : nat,
                         "#Orders" : nat>
-                where attributes [Title; Author] depend on [ISBN];
-        relation Orders has
-                schema <ISBN : nat,
-                        Date : nat> ]
-      enforcing [attribute ISBN of Orders references Books]. *)
+                where attributes ["Title" ; "Author"] depend on ["ISBN"];
+        relation "Orders" has
+                schema <"ISBN" : nat,
+                        "Date" : nat> ]
+      enforcing [attribute "ISBN" of "Orders" references "Books"].
 
-  (* Definition AddAttribute_SiR
+  (*Definition AddAttribute_SiR
              (or : BookStoreRefRep)
              (nr : QueryStructure BookStoreSchema') :=
     (GetRelation or Orders = GetRelation nr Orders /\
-     GetRelation or Books = map (fun tup => <Author : tup!Author,
-                                   Title : tup!Title,
-                                   ISBN : tup!ISBN>%Tuple)
-                          (GetRelation nr Books)). *)
+     GetRelation or Books = map (fun tup => <"Author" : tup!Author,
+                                             "Title" : tup!Title,
+                                             "ISBN" : tup!ISBN>%Tuple)
+                                (GetRelation nr Books)). *)
 
   Open Scope updateDef.
-
-  Lemma refine_if_self : 
-    forall (u : bool),
-    refine (if u then (ret true) else (ret false))
-           (ret u).
-    Proof. destruct u; reflexivity. Qed.
 
   Definition BookStore :
     Sharpened BookStoreSpec.
@@ -162,53 +160,40 @@ Definition Date := GetAttributeKey Orders "Date".
        inserted. *)
     hone' mutator PlaceOrder.
     {
-      simpl in *; intros; subst.
-      setoid_rewrite refineEquiv_pick_eq';
-      autorewrite with refine_monad.
-      setoid_rewrite QSInsertSpec_refine' with (default := ret r_n).
-      simpl; cbv beta iota delta
-          [Iterate_Decide_Comp
-             Iterate_Decide_Comp'
-             Ensemble_BoundedIndex_app_cons
-             SatisfiesCrossRelationConstraints
-             BuildQueryStructureConstraints
-             BuildQueryStructureConstraints'
-             BuildQueryStructureConstraints_cons]; simpl.
-      cbv beta delta [GetNRelSchemaHeading Ensemble_BoundedIndex_app_cons id]; simpl.
-      setoid_rewrite decides_True; setoid_rewrite decides_2_True;
-      autosetoid_rewrite with refine_monad.
-      unfold If_Then_Else; simpl; setoid_rewrite refine_if_self;
-      autosetoid_rewrite with refine_monad.
-      subst_body.
-      higher_order_2_reflexivity.
+      setoid_rewrite QSInsertSpec_refine with (default := ret r_n); simpl.
+      setoid_rewrite decides_True.
+      setoid_rewrite decides_3_True.
+      simplify with monad laws.
+      unfold If_Then_Else; simpl.
+      setoid_rewrite refine_if_bool_eta.
+      simplify with monad laws.
+      finish honing.
     }
     (* Step 2: Decide what to do when adding an order that
        violates foreign key constraints of Orders. *)
-    hone' mutator AddBook%string.
+    hone' mutator AddBook.
     {
-      simpl in *; intros; subst.
-      setoid_rewrite refineEquiv_pick_eq';
-      autorewrite with refine_monad.
-      setoid_rewrite QSInsertSpec_refine' with (default := ret r_n).
-      simpl; cbv beta iota delta
-          [Iterate_Decide_Comp
-             Iterate_Decide_Comp'
-             Ensemble_BoundedIndex_app_cons
-             SatisfiesCrossRelationConstraints
-             BuildQueryStructureConstraints
-             BuildQueryStructureConstraints'
-             BuildQueryStructureConstraints_cons]; simpl.
-      cbv beta delta [GetNRelSchemaHeading Ensemble_BoundedIndex_app_cons id]; simpl.
-      setoid_rewrite decides_True; setoid_rewrite decides_2_True;
-      autosetoid_rewrite with refine_monad.
-      unfold If_Then_Else; simpl; setoid_rewrite refine_if_self;
-      autosetoid_rewrite with refine_monad.
-      subst_body.
-      higher_order_2_reflexivity.
+      setoid_rewrite QSInsertSpec_refine with (default := ret r_n); simpl.
+      setoid_rewrite decides_True.
+      setoid_rewrite decides_3_True.
+      setoid_rewrite refineEquiv_bind_unit.
+      unfold If_Then_Else; simpl.
+      setoid_rewrite refine_if_bool_eta.
+      simplify with monad laws.
+      remove_trivial_insertion_constraints r_n n Orders Books oISBN ISBN.
+      finish honing.
     }
-    unfold replace_BoundedIndex, replace_Index; simpl.
+
+    (* Step 3: Hone representation to a list. Basically this should
+       amount to a bunch of refinements that show how to 'push' the
+       simulation relation through absmutator and absobserver by
+       providing implementations.
+       *)
+    (* Step 4: Profit. :)*)
+
+    (* Alternate 'simple' steps. *)
     (* Step 3: Add the '#Orders' attribute to Books schema. *)
-    hone representation' using AddAttribute_SiR.
+
 
     (* Step 3.1: Hone GetTitles to ignore the new field. *)
     (* Step 3.2: Hone AddBook to set '#Orders' to 0. *)

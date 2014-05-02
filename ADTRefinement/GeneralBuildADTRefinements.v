@@ -194,7 +194,9 @@ Tactic Notation "hone'" "observer" constr(obsIdx) "using" open_constr(obsBod) :=
                                 |}
                                 obsBod
                                 ))
-      | idtac]; cbv beta in *; simpl in *.
+      | idtac]; cbv beta in *; simpl in *;
+      cbv beta delta [replace_BoundedIndex replace_Index] in *;
+      simpl in *.
 
   Tactic Notation "hone'" "mutator" constr(mutIdx) "using" open_constr(mutBod) :=
     let A :=
@@ -232,12 +234,25 @@ Tactic Notation "hone'" "observer" constr(obsIdx) "using" open_constr(obsBod) :=
                                 |}
                                 mutBod
                                 ))
-      | idtac]; cbv beta in *; simpl in *.
+      | idtac]; cbv beta in *; simpl in *;
+      cbv beta delta [replace_BoundedIndex replace_Index] in *;
+      simpl in *.
 
 Tactic Notation "hone'" "observer" constr(obsIdx) :=
   hone' observer obsIdx using _;
-  [set_evars | ].
+  [set_evars;
+    simpl in *; intros; subst;
+    setoid_rewrite refineEquiv_pick_eq';
+    autosetoid_rewrite with refine_monad
+ | ].
 
 Tactic Notation "hone'" "mutator" constr(mutIdx) :=
   hone' mutator mutIdx using _;
-  [set_evars | ].
+  [set_evars;
+    simpl in *; intros; subst;
+    setoid_rewrite refineEquiv_pick_eq';
+    autosetoid_rewrite with refine_monad | ].
+
+Tactic Notation "finish" "honing" :=
+  subst_body;
+  higher_order_2_reflexivity.

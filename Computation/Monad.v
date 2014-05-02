@@ -91,6 +91,9 @@ Tactic Notation "autosetoid_rewrite" "with" "refine_monad" :=
                 setoid_rewrite refineEquiv_bind_unit |
                 setoid_rewrite refineEquiv_unit_bind] .
 
+Tactic Notation "simplify" "with" "monad" "laws" :=
+  autosetoid_rewrite with refine_monad.
+
 (* Ideally we would throw refineEquiv_under_bind in here as well, but it gets stuck *)
 
 Ltac interleave_autorewrite_refine_monad_with tac :=

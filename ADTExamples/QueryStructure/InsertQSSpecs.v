@@ -41,9 +41,10 @@ Definition QSInsertSpec
      table produced by inserting [tup] into the relation indexed by [Ridx], *)
   -> (forall Ridx' tup',
         Ridx' <> Ridx ->
-        SatisfiesCrossRelationConstraints
-          Ridx' Ridx tup'
-          (RelationInsert tup (GetRelation qsHint Ridx)))
+        (GetRelation qsHint Ridx') tup'
+        -> SatisfiesCrossRelationConstraints
+             Ridx' Ridx tup'
+             (RelationInsert tup (GetRelation qsHint Ridx)))
   (* [tup] is included in the relation indexed by [Ridx] after insert.
    The behavior of insertion is unspecified otherwise. *)
   -> (forall t, GetRelation qs' Ridx t <->
@@ -295,7 +296,7 @@ Section InsertRefinements.
     destruct (eq_nat_dec (List.length As) n ); subst.
     - rewrite (BoundedIndex_app_cons_nth_eq
                  A_eq_dec As As' _ (List.length As)
-                 (nth_error_app (As ++ [a]%SchemaConstraints) As'
+                 (nth_error_app (As ++ [a]) As'
                                 (Datatypes.length As) nth)
                  nth').
       erewrite <- BoundedIndex_app_cons_nth_eq; eauto.
@@ -308,7 +309,7 @@ Section InsertRefinements.
       generalize (H0 _ _ H1); intros.
       erewrite (BoundedIndex_app_cons_nth_eq
                  A_eq_dec As As' _ n
-                 (nth_error_app (As ++ [a]%SchemaConstraints) As'
+                 (nth_error_app (As ++ [a]) As'
                                 n nth)).
       erewrite <- BoundedIndex_app_cons_nth_eq; eauto.
       eapply Ensemble_BoundedIndex_app_equiv; eauto.
@@ -332,7 +333,7 @@ Section InsertRefinements.
     revert Visited P H H0 idx n nth_n; induction Remaining; simpl; intros.
     - eapply Ensemble_BoundedIndex_nth_eq with (a := idx); auto.
     - split_and.
-      assert (nth_error ((Visited ++ [a]%SchemaConstraints) ++ Remaining) n = Some idx)
+      assert (nth_error ((Visited ++ [a]) ++ Remaining) n = Some idx)
         as nth_n'
           by (rewrite <- app_assoc; simpl; assumption).
       generalize (IHRemaining _ _ (Ensemble_nth_error_app A_eq_dec _ _ _ P H1 H) H2 _ _ nth_n').
@@ -379,7 +380,7 @@ Section InsertRefinements.
       auto using string_dec.
   Qed.
 
-  Lemma QSInsertSpec_refine :
+  Lemma QSInsertSpec_refine' :
     forall qsSchema (qs : QueryStructure qsSchema) Ridx tup default,
       refine
            (Pick (QSInsertSpec {| qsHint := qs |} Ridx tup))
@@ -391,7 +392,8 @@ Section InsertRefinements.
                                 (forall Ridx',
                                    Ridx' <> Ridx ->
                                    forall tup',
-                                     SatisfiesCrossRelationConstraints
+                                     (GetRelation qs Ridx') tup'
+                                                           -> SatisfiesCrossRelationConstraints
                                        Ridx' Ridx tup'
                                        (RelationInsert tup (GetRelation qs Ridx)))};
             match schConstr, qsConstr, qsConstr' with
@@ -488,6 +490,13 @@ Section InsertRefinements.
     econstructor; inversion_by computes_to_inv; subst; simpl; auto.
   Qed.
 
+  Lemma decides_3_True (A B : Type) (C : B -> Type) :
+    refine {b' | decides b' (A -> forall b : B, C b -> True)}%comp
+           (ret true).
+  Proof.
+    econstructor; inversion_by computes_to_inv; subst; simpl; auto.
+  Qed.
+
   Lemma decides_neq (A : Type) (B : Prop) (a : A) :
     refine {b' | decides b' (a <> a -> B)}%comp
            (ret true).
@@ -537,43 +546,10 @@ Section InsertRefinements.
   Definition lift_BoundedIndex
              qsSchema Ridx
              (Ridx' : BoundedIndex (GetRelevantConstraints qsSchema Ridx))
-  : BoundedString (map relName (qschemaSchemas qsSchema)).
-    destruct Ridx' as [Ridx' [n nth_n]];
-    econstructor 1 with (bindex := Ridx').
-    unfold GetRelevantConstraints in *.
-    revert n nth_n.
-    induction (qschemaConstraints qsSchema); simpl in *; intros.
-    - destruct n; discriminate.
-    - destruct n; simpl in *.
-      revert nth_n.
-      case_eq (BoundedIndex_eq_dec string_dec Ridx (fst (projT1 a)));
-        intros; subst.
-
-    econstructor; eauto.
-
-    intros
+  : BoundedString (map relName (qschemaSchemas qsSchema)). *)
 
 
-  Lemma Iterate_Decide_Comp_refine :
-    forall qsSchema (qs : QueryStructure qsSchema) Ridx tup,
-      refine (@Iterate_Decide_Comp _
-                                   (fun Ridx' =>
-                                      SatisfiesCrossRelationConstraints
-                                        Ridx Ridx' tup
-                                        (GetRelation qs Ridx')))
-             (@Iterate_Decide_Comp (GetRelevantConstraints qsSchema Ridx)
-                                   (fun Ridx' =>
-                                      SatisfiesCrossRelationConstraints
-                                        Ridx Ridx' tup
-                                        (GetRelation qs Ridx'))).
-
-
-Definition SatisfiesCrossRelationConstraints
-           {qsSchema} Ridx Ridx' tup R :=
-  BuildQueryStructureConstraints qsSchema Ridx Ridx' tup R. *)
-
-
-  Lemma QSInsertSpec_refine' :
+  Lemma QSInsertSpec_refine :
     forall qsSchema (qs : QueryStructure qsSchema) Ridx tup default,
       refine
            (Pick (QSInsertSpec {| qsHint := qs |} Ridx tup))
@@ -585,9 +561,10 @@ Definition SatisfiesCrossRelationConstraints
                                      (GetRelation qsHint Ridx')));
             qsConstr' <- (@Iterate_Decide_Comp _
                                 (fun Ridx' =>
-                                   Ridx' <> Ridx ->
-                                   forall tup',
-                                     SatisfiesCrossRelationConstraints
+                                   Ridx' <> Ridx
+                                   -> forall tup',
+                                        (GetRelation qsHint Ridx') tup'
+                                        -> SatisfiesCrossRelationConstraints
                                        Ridx' Ridx tup'
                                        (RelationInsert tup (GetRelation qs Ridx))));
             match schConstr, qsConstr, qsConstr' with
@@ -606,401 +583,63 @@ Definition SatisfiesCrossRelationConstraints
             end).
   Proof.
     intros.
-    rewrite QSInsertSpec_refine; f_equiv.
+    rewrite QSInsertSpec_refine'; f_equiv.
     unfold pointwise_relation; intros.
     rewrite Iterate_Decide_Comp_BoundedIndex; f_equiv.
     unfold pointwise_relation; intros.
     rewrite Iterate_Decide_Comp_BoundedIndex; reflexivity.
   Qed.
 
-  (* Lemma Iterate_Ensemble_equiv {A : Set}
-        (A_eq_dec : forall a a' : A, {a = a'} + {a <> a'})
-  : forall (Remaining Visited : list A)
-           (P : Ensemble (BoundedIndex (Visited ++ Remaining))),
-      (forall a n (nth : nth_error Visited n = Some a),
-         P {| bindex := a;
-              indexb := {| ibound := n;
-                           boundi := nth_error_app _ _ _ nth |} |})
-      -> (Iterate_Ensemble_BoundedIndex Visited Remaining P ->
-         forall idx, P idx).
-    intros; destruct idx as [idx [n nth_n] ]; simpl in *.
-    revert Visited P H H0 idx n nth_n; induction Remaining; simpl; intros.
-    - eapply Ensemble_BoundedIndex_nth_eq with (a := idx); auto.
-    - split_and.
-      assert (nth_error ((Visited ++ [a]%SchemaConstraints) ++ Remaining) n = Some idx)
-        as nth_n'
-          by (rewrite <- app_assoc; simpl; assumption).
-      generalize (IHRemaining _ _ (Ensemble_nth_error_app A_eq_dec _ _ _ P H1 H) H2 _ _ nth_n').
-      unfold Ensemble_BoundedIndex_app_cons, eq_rect; destruct (app_cons a Visited Remaining).
-      intros; erewrite (eq_proofs_unicity_Opt_A A_eq_dec nth_n); eauto.
-      Grab Existential Variables.
-      rewrite app_nil_r in nth_n; assumption.
-  Qed.
-
-  Lemma Iterate_Ensemble_equiv' {A : Set}
-        (A_eq_dec : forall a a' : A, {a = a'} + {a <> a'})
-  : forall (Remaining Visited : list A)
-           (P : Ensemble (BoundedIndex (Visited ++ Remaining))),
-      (forall idx, P idx)
-      -> Iterate_Ensemble_BoundedIndex Visited Remaining P.
-    induction Remaining; simpl; auto.
-    intros; split; eauto.
-    eapply IHRemaining; intros; eauto.
-    intros; destruct idx as [idx [n nth_n] ]; simpl in *.
-    eapply Ensemble_BoundedIndex_app_equiv; eauto.
-    Grab Existential Variables.
-    rewrite <- app_assoc in nth_n; simpl in nth_n; eassumption.
-  Qed.
-
-  Lemma refine_Iterate_Ensemble {A : Set}
-        (A_eq_dec : forall a a' : A, {a = a'} + {a <> a'})
-  : forall (As : list A)
-           (P : Ensemble (BoundedIndex As)),
-      refine {b | decides b (forall idx, P idx)}
-             {b | decides b (Iterate_Ensemble_BoundedIndex [] As P)}.
-  Proof.
-    intros; eapply refine_pick_pick.
-    intros; destruct x; simpl in *.
-    intros; eapply Iterate_Ensemble_equiv with (Visited := []); eauto.
-    destruct n; simpl; intros; discriminate.
-    unfold not; intros; apply H.
-    apply Iterate_Ensemble_equiv'; auto.
-  Qed.
-
-
-
-  Lemma QSInsertSpec_refine :
-    forall qsSchema (qs : QueryStructure qsSchema) Ridx tup default,
-      refine
-           (Pick (QSInsertSpec {| qsHint := qs |} Ridx tup))
-           (schConstr <- {b | decides b (SatisfiesSchemaConstraints Ridx tup)};
-            qsConstr <- {b | decides b
-(forall Ridx', SatisfiesCrossRelationConstraints Ridx Ridx' tup (GetRelation qs Ridx'))};
-            qsConstr' <- {b | decides
-                                b
-                                (forall Ridx',
-                                   Ridx' <> Ridx ->
-                                   forall tup',
-                                     SatisfiesCrossRelationConstraints
-                                       Ridx' Ridx tup'
-                                       (RelationInsert tup (GetRelation qs Ridx)))};
-            match schConstr, qsConstr, qsConstr' with
-              | true, true, true =>
-                {qs' |
-                 (forall Ridx',
-                    Ridx <> Ridx' ->
-                    GetRelation qsHint Ridx' =
-                    GetRelation qs' Ridx')
-                 /\ forall t,
-                      GetRelation qs' Ridx t <->
-                      (RelationInsert tup (GetRelation qsHint Ridx) t)
-             }
-
-              | _, _, _ => default
-            end).
-  Proof.
-    intros qsSchema qs Ridx tup default v Comp_v.
-    do 3 (apply_in_hyp computes_to_inv; destruct_ex; split_and);
-      destruct x;
-      [ destruct x0;
-        [ destruct x1;
-          [ repeat (apply_in_hyp computes_to_inv; destruct_ex; split_and); simpl in *;
-            econstructor; unfold QSInsertSpec; eauto |
-             ]
-        |  ]
-      |  ];
-      cbv delta [decides] beta in *; simpl in *;
-      repeat (apply_in_hyp computes_to_inv; destruct_ex); eauto;
-      econstructor; unfold QSInsertSpec; intros;
-      elimtype False; intuition.
-  Qed.
-
-  (* Infrastructure for Inserting into QueryStructures built using
-     BuildQueryStructure*)
-
-  Program Fixpoint DecideableSB_Comp (A : Type)
-          (Bound : list A)
-          (P : Ensemble A)
-          {struct Bound}
-  : Comp bool :=
-    match Bound as Bound' with
-      | nil => ret true
-      | cons a Bound' => Bind {b' | decides b' (P a)}%comp
-                                 (fun b' =>
-                                    if b'
-                                    then
-                                      DecideableSB_Comp Bound' P
-                                    else ret false)
-    end.
-
-  (* Next Obligation.
-
-    destruct b'; destruct b; simpl in *; try discriminate.
-    destruct (A_eq_dec a a0).
-    -
-    Focus 2.
-    apply ValidBound'; tauto.
-  Defined. *)
-
-  Definition Iterate_Constraints_dec
-             qsSchema
-             (qs : QueryStructure qsSchema)
-             Ridx
-             (tup : Tuple (QSGetNRelSchemaHeading qsSchema Ridx))
-    := DecideableSB_Comp
-         (map (fun constr => snd (projT1 constr)) (qschemaConstraints qsSchema))
-         (fun Ridx' =>
-            BuildQueryStructureConstraints
-              qsSchema Ridx Ridx' tup (GetRelation qs Ridx')).
-
-  Lemma DecideableSB_Comp_refine :
-  forall qsSchema
-         (qs : QueryStructure qsSchema)
-         Ridx
-         (tup : Tuple (QSGetNRelSchemaHeading qsSchema Ridx)),
-      refine
-        {b | decides b (forall Ridx',
-                          SatisfiesCrossRelationConstraints Ridx Ridx' tup (GetRelation qs Ridx')) }
-      (Iterate_Constraints_dec qs Ridx tup).
-  Proof.
-    unfold Iterate_Constraints_dec, SatisfiesCrossRelationConstraints,
-    QSGetNRelSchema; simpl.
-    unfold BuildQueryStructureConstraints.
-    intro; induction (qschemaConstraints qsSchema); simpl; intros.
-    - repeat econstructor; inversion_by computes_to_inv; subst; simpl; auto.
-    - intros v Comp_v; apply computes_to_inv in Comp_v; destruct_ex; split_and.
-      destruct x.
-      generalize (IHl _ _ _ _ H1).
-      econstructor.
-      unfold BuildQueryStructureConstraints_cons; simpl.
-      destruct (Peano_dec.eq_nat_dec (ibound Ridx) (ibound (fst (projT1 a)))).
-      simpl.
-
-    intros.
-    repeat econstructor.
-
-  Qed.
-
-  Definition Iterate_Constraints_dec'
-             qsSchema
-             (qs : QueryStructure qsSchema)
-             Ridx
-             (tup : Tuple (QSGetNRelSchemaHeading qsSchema Ridx))
-    := DecideableSB_Comp
-         string_dec
-         (map relName (qschemaSchemas qsSchema))
-         (fun Ridx' =>
-            Ridx' <> Ridx ->
-            forall tup' : Tuple (QSGetNRelSchemaHeading qsSchema Ridx'),
-            BuildQueryStructureConstraints
-              qsSchema Ridx' Ridx tup' (tup :: (GetRelation qs Ridx)))
-         (ValidBound_DecideableSB_Comp' qsSchema _ tup ).
-
-  Lemma DecideableSB_Comp'_refine :
-  forall qsSchema
-         (qs : QueryStructure qsSchema)
-         Ridx
-         (tup : Tuple (QSGetNRelSchemaHeading qsSchema Ridx)),
-      refine
-      (Any (QSSchemaConstraints_dec' qs Ridx tup))
-      (Iterate_Constraints_dec' qs Ridx tup).
-  Proof.
-    intros.
-    repeat econstructor.
-  Qed.
-
-  Definition ValidBound_DecideableSB_Comp
-             qsSchema
-             (qs : forall Ridx : string,
-                     list
-                       (Tuple
-                          (QSGetNRelSchemaHeading qsSchema Ridx)))
-             Ridx
-             (tup : Tuple (QSGetNRelSchemaHeading qsSchema Ridx))
-  : forall a : string,
-      ~ List.In a (map relName (qschemaSchemas qsSchema)) ->
-      (fun Ridx' : string =>
-         BuildQueryStructureConstraints qsSchema
-           Ridx Ridx' tup (qs Ridx')) a.
-  Proof.
-    destruct qsSchema as [namedSchemas constraints]; simpl in *.
-    simpl in *; induction constraints;
-    unfold BuildQueryStructureConstraints;  simpl; auto; intros.
-    destruct a; destruct x; simpl in *.
-    unfold BuildQueryStructureConstraints',
-    BuildQueryStructureConstraints_cons,
-    BuildQueryStructureConstraints_cons_obligation_1 in *;
-      simpl in *.
-    destruct (string_dec s Ridx); try (apply IHconstraints; eauto; fail).
-    destruct (string_dec s0 a0); try (apply IHconstraints; eauto; fail).
-    destruct e; destruct e0.
-    unfold eq_sym, eq_rect; simpl.
-    destruct (in_dec string_dec s (map relName namedSchemas)); auto.
-    destruct (in_dec string_dec s0 (map relName namedSchemas)); tauto.
-  Qed.
-
-  Definition ValidBound_DecideableSB_Comp'
-             qsSchema
-             (qs : forall Ridx : string,
-                     list
-                       (Tuple
-                          (QSGetNRelSchemaHeading qsSchema Ridx)))
-             Ridx
-             (tup : Tuple (QSGetNRelSchemaHeading qsSchema Ridx))
-  : forall a : string,
-      ~ List.In a (map relName (qschemaSchemas qsSchema)) ->
-      a <> Ridx ->
-      forall
-        tup' : Tuple (QSGetNRelSchemaHeading qsSchema a),
-        BuildQueryStructureConstraints qsSchema
-                                       a Ridx tup' (tup :: qs Ridx).
-  Proof.
-    destruct qsSchema as [namedSchemas constraints]; simpl in *.
-    simpl in *; induction constraints;
-    unfold BuildQueryStructureConstraints;  simpl; auto; intros.
-    destruct a; destruct x; simpl in *.
-    unfold BuildQueryStructureConstraints,
-    BuildQueryStructureConstraints_cons,
-    BuildQueryStructureConstraints_cons_obligation_1 in *;
-      simpl in *.
-    destruct (string_dec s a0); try (apply IHconstraints; eauto; fail).
-    destruct (string_dec s0 Ridx); try (apply IHconstraints; eauto; fail).
-    destruct e; destruct e0.
-    unfold eq_sym, eq_rect; simpl.
-    destruct (in_dec string_dec s (map relName namedSchemas)); auto.
-    destruct (in_dec string_dec s0 (map relName namedSchemas)); tauto.
-  Qed.
-
-  Definition Iterate_Constraints_dec
-             qsSchema
-             (qs : QueryStructure qsSchema)
-             Ridx
-             (tup : Tuple (QSGetNRelSchemaHeading qsSchema Ridx))
-    := DecideableSB_Comp
-         string_dec
-         (map relName (qschemaSchemas qsSchema))
-         (fun Ridx' =>
-            BuildQueryStructureConstraints
-              qsSchema Ridx Ridx' tup (GetRelation qs Ridx'))
-         (ValidBound_DecideableSB_Comp qsSchema _
-                                       Ridx tup ).
-
-  Set Printing All.
-
-  Lemma DecideableSB_Comp_refine :
-  forall qsSchema
-         (qs : QueryStructure qsSchema)
-         Ridx
-         (tup : Tuple (QSGetNRelSchemaHeading qsSchema Ridx)),
-      refine
-      (Any (QSSchemaConstraints_dec qs Ridx tup))
-      (Iterate_Constraints_dec qs Ridx tup).
-  Proof.
-    intros.
-    repeat econstructor.
-  Qed.
-
-  Definition Iterate_Constraints_dec'
-             qsSchema
-             (qs : QueryStructure qsSchema)
-             Ridx
-             (tup : Tuple (QSGetNRelSchemaHeading qsSchema Ridx))
-    := DecideableSB_Comp
-         string_dec
-         (map relName (qschemaSchemas qsSchema))
-         (fun Ridx' =>
-            Ridx' <> Ridx ->
-            forall tup' : Tuple (QSGetNRelSchemaHeading qsSchema Ridx'),
-            BuildQueryStructureConstraints
-              qsSchema Ridx' Ridx tup' (tup :: (GetRelation qs Ridx)))
-         (ValidBound_DecideableSB_Comp' qsSchema _ tup ).
-
-  Lemma DecideableSB_Comp'_refine :
-  forall qsSchema
-         (qs : QueryStructure qsSchema)
-         Ridx
-         (tup : Tuple (QSGetNRelSchemaHeading qsSchema Ridx)),
-      refine
-      (Any (QSSchemaConstraints_dec' qs Ridx tup))
-      (Iterate_Constraints_dec' qs Ridx tup).
-  Proof.
-    intros.
-    repeat econstructor.
-  Qed.
-
-  Lemma QSInsertSpec_BuildQuerySpec_refine :
-    forall qsSchema
-           (qs : QueryStructure qsSchema)
-           Ridx tup default,
-      refine
-        (Pick (QSInsertSpec {| qsHint := qs |} Ridx tup))
-        (schConstr <- Any (SchemaConstraints_dec _ Ridx tup);
-         qsConstr <- (Iterate_Constraints_dec qs Ridx tup);
-         qsConstr' <- (Iterate_Constraints_dec' qs Ridx tup);
-         match schConstr, qsConstr, qsConstr' with
-           | left schConstr, left qsConstr, left qsConstr' =>
-             ret (Insert_Valid qs tup schConstr qsConstr qsConstr')
-           | _, _, _ => default
-         end).
-  Proof.
-    intros.
-    rewrite QSInsertSpec_refine.
-    setoid_rewrite DecideableSB_Comp'_refine;
-      setoid_rewrite DecideableSB_Comp_refine.
-    reflexivity.
-  Qed.
-
-  (* Old Solution
-  Program Fixpoint DecideableSB_finite (A : Type)
-        (A_eq_dec : forall a a' : A, {a = a'} + {a <> a'})
-        (Bound : list A)
-        (P : Ensemble A)
-        (ValidBound : forall a, ~ List.In a Bound -> P a)
-        (Bound_dec : ilist (fun a => DecideableSB (P a)) Bound)
-        {struct Bound}
-  : DecideableSB (forall a : A, P a) :=
-    match Bound as Bound'
-          return
-          (forall a, ~ List.In a Bound' -> P a)
-          -> ilist (fun a => DecideableSB (P a)) Bound'
-          -> DecideableSB (forall a : A, P a) with
-      | nil => fun ValidBound Bound_dec => left _
-      | cons a Bound' =>
-        fun ValidBound Bound_dec =>
-          match (ilist_hd Bound_dec) with
-            | left P_a =>
-              (fun H' => _)
-                (DecideableSB_finite A_eq_dec P _ (ilist_tail Bound_dec))
-            | right P_a => right _
-          end
-    end ValidBound Bound_dec.
-  Next Obligation.
-    destruct (A_eq_dec a a0); subst; eauto.
-    apply ValidBound0; simpl; tauto.
-  Defined.
-
-  Program Fixpoint DecideableSB_finiteComp (A : Type)
-          (Bound : list A)
-          (P : Ensemble A)
-  : Comp (ilist (fun a => DecideableSB (P a)) Bound) :=
-    match Bound with
-      | nil => ret (inil _)
-      | cons a Bound' =>
-        (Pa <- Any (DecideableSB (P a));
-          PBound' <- DecideableSB_finiteComp Bound' P;
-          ret (icons _ Pa PBound'))%comp
-    end.
-
-Definition DecideableSB_Comp (A : Type)
-          (A_eq_dec : forall a a' : A, {a = a'} + {a <> a'})
-          (Bound : list A)
-          (P : Ensemble A)
-          (ValidBound : forall a, ~ List.In a Bound -> P a)
-  : Comp (DecideableSB (forall a : A, P a)) :=
-    (x <- DecideableSB_finiteComp Bound P;
-    ret (DecideableSB_finite A_eq_dec P ValidBound x))%comp. *)
-*)
 End InsertRefinements.
+
+(* We should put all these simplification hints into a distinct file
+   so we're not unfolding things all willy-nilly. *)
+Arguments Iterate_Decide_Comp _ _ / .
+Arguments Iterate_Decide_Comp' _ _ _ _ / .
+Arguments Ensemble_BoundedIndex_app_cons  _ _ _ _ _ _ / .
+Arguments SatisfiesCrossRelationConstraints  _ _ _ _ _ / .
+Arguments BuildQueryStructureConstraints  _ _ _ _ _ / .
+Arguments BuildQueryStructureConstraints'  _ _ _ _ _ _ / .
+Arguments BuildQueryStructureConstraints_cons / .
+Arguments GetNRelSchemaHeading  _ _ / .
+Arguments Ensemble_BoundedIndex_app_cons  _ _ _ _ _ _ / .
+Arguments id  _ _ / .
+
+  (* When we insert a tuple into a relation which has another relation has
+     a foreign key into, we need to show that we haven't messed up any
+     references (which is, of course, trivial. We should bake this into
+     our the [QSInsertSpec_refine'] refinement itself by filtering out the
+     irrelevant constraints somehow, but for now we can use the following
+     tactic to rewrite them away. *)
+
+  Ltac remove_trivial_insertion_constraints r tup Ridx Ridx' attr attr':=
+    let refine_trivial := fresh in
+    try (assert
+           (refine {b' |
+                    decides b'
+                            (Ridx <> Ridx' ->
+                             forall tup',
+                               (GetRelation r Ridx) tup' ->
+                               exists
+                                 tup2,
+                                 RelationInsert tup (GetRelation r Ridx') tup2 /\
+                                 tup' attr = tup2 attr')} (ret true))
+          as refine_trivial by
+              (let v := fresh in
+               let Comp_v := fresh in
+               intros v Comp_v;
+               inversion_by computes_to_inv; subst;
+               let neq := fresh in
+               let tup' := fresh in
+               let In_tup' := fresh in
+               econstructor; simpl; intros neq tup' In_tup';
+               unfold RelationInsert;
+               destruct (@crossConstr _ _ Ridx Ridx' tup' neq In_tup'); split_and; eauto);
+         setoid_rewrite refine_trivial;
+         clear refine_trivial;
+         autosetoid_rewrite with refine_monad).
+
+
 
 Create HintDb refine_keyconstraints discriminated.
 (*Hint Rewrite refine_Any_DecideableSB_True : refine_keyconstraints.*)

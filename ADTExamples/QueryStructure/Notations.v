@@ -2,7 +2,7 @@ Reserved Infix ":"
          (no associativity, at level 60).
 
 Reserved Notation "t ! r"
-         (no associativity, at level 0,
+         (no associativity, at level 2,
           format "t ! r").
 
 Reserved Notation "< col1 , .. , coln >"
@@ -41,15 +41,15 @@ Reserved Notation "( x 'in' r ) bod"
           format "( x  'in'  r ) '//' bod ").
 
 Reserved Notation "'Return' t"
-         (right associativity, at level 0,
+         (right associativity, at level 3,
           format "'Return'  t" ).
 
 Reserved Notation "'Where' p bod"
-         (right associativity, at level 0, x at level 0, p at level 0,
+         (right associativity, at level 3, x at level 3, p at level 3,
           format "'Where'  p '//' bod " ).
 
 Reserved Notation "'For' bod"
-         (right associativity, at level 0,
+         (right associativity, at level 3,
           format "'For'  '[v' bod ']'").
 
 Delimit Scope Attribute_scope with Attribute.

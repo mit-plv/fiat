@@ -23,8 +23,6 @@ Bind Scope Component_scope with Component.
 Definition DefaultAttribute :=
   Build_Component ("null" : unit)%Attribute tt.
 
-Print BuildHeading.
-
 Definition BuildTuple
         (attrs : list Attribute)
         (components : ilist Component attrs)
@@ -38,8 +36,12 @@ Notation "< col1 , .. , coln >" :=
   (@BuildTuple _ (icons _ col1%Component .. (icons _ coln%Component (inil _)) ..))
   : Tuple_scope.
 
-Notation "t ! R" :=
-  (t%Tuple R%string) (only parsing): Tuple_scope.
+Definition GetAttribute 
+           {heading} 
+           (tup : Tuple heading)
+           (attr : Attributes heading) 
+: Domain heading attr :=
+  tup attr.
 
-Definition Title : string := "Title"%string .
-Definition ReleaseDate : string := "ReleaseDate"%string.
+Notation "t ! R" :=
+  (GetAttribute t%Tuple R%string): Tuple_scope.

@@ -22,8 +22,8 @@ Definition tupleAgree
     tup1 attr = tup2 attr.
 
 Notation "[ attr1 ; .. ; attr2 ] " :=
-  (attr1%string :: .. (attr2%string :: nil) ..)
-  : SchemaConstraints_scope. 
+  ({|bindex := attr1%string |} :: .. ({| bindex := attr2%string |} :: nil) ..)
+  : SchemaConstraints_scope.
 
 Notation "'attributes' attrlist1 'depend' 'on' attrlist2 " :=
   (fun tup1 : Tuple _ =>
@@ -46,7 +46,7 @@ Bind Scope Schema_scope with Schema.
 
 Definition MovieSchema :=
   (schema <"Title" : string, "ReleaseDate" : nat >
-   where attributes [{| bindex := "ReleaseDate" |}] depend on [{|bindex := "Title" |}] )%Schema.
+   where attributes ["ReleaseDate"] depend on ["Title" ] )%Schema.
 
 Definition MovieSchema' :=
   (schema <"Title" : string, "ReleaseDate" : nat >)%Schema.
