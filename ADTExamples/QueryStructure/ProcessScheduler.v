@@ -1,4 +1,4 @@
-Require Import String Omega List FunctionalExtensionality Ensembles.
+Require Import String Omega List FunctionalExtensionality Ensembles. 
 Require Export Computation ADT ADTRefinement ADT.Pick
         ADTRefinement.BuildADTRefinements ADTNotation ADTNotation.BuildADT GeneralBuildADTRefinements
         QueryStructureSchema QueryQSSpecs InsertQSSpecs QueryStructure.
@@ -446,7 +446,7 @@ Section ProcessSchedulerExample.
     "Suspend"    : rep × nat     → rep,
     "Resume"     : rep × nat     → rep*);
     ENUMERATE    : rep × State   → list nat,
-    GET_CPU_TIME : rep × State     → list nat (*,
+    GET_CPU_TIME : rep × nat     → list nat (*,
     COUNT        : rep × unit    → nat*)
   }.
 
@@ -463,9 +463,9 @@ Section ProcessSchedulerExample.
               Where (p!STATE = state)
               Return (p!PID), 
 
-        def query GET_CPU_TIME (state : State) : list nat :=
+        def query GET_CPU_TIME (id : nat) : list nat :=
           For (p in PROCESSES)
-              Where (p!STATE = state)
+              Where (p!PID = id)
               Return (p!CPU)
 (*,
           
@@ -767,6 +767,8 @@ Section ProcessSchedulerExample.
 
   Definition beq_process_iff__state := beq_process_true_iff (A:=State) _ STATE beq_state_true_iff.
 
+  Definition beq_process_iff__pid   := beq_process_true_iff (A:=nat) _ PID beq_nat_true_iff.
+
   (*
   Definition SimpleDB_enumerate (db: SimpleDB) (state: State) :=
     ret (List.map (fun (p: Process) => p!PID)
@@ -802,10 +804,10 @@ Section ProcessSchedulerExample.
 
     hone_observer' GET_CPU_TIME.
 
-    intros db state result computes set_db db_equiv.
+    intros db pid result computes set_db db_equiv.
 
-    rewrite (extraction db _ _ _ (fun p => beq_state p!STATE state));
-      eauto using beq_process_iff__state.
+    rewrite (extraction db _ _ _ (fun p => beq_nat p!PID pid));
+      eauto using beq_process_iff__pid.
 
     refine_eq_into_ret;
       eexists.
@@ -1230,14 +1232,37 @@ Section ProcessSchedulerExample.
               let (sleeping, running) := db in _);
       reflexivity.
 
+    hone_observer' GET_CPU_TIME.
+
+
+    intros db pid result computes set_db db_equiv.
+
+    destruct db as (sleeping, running);
+      unfold NeatDB_equivalence in db_equiv;
+      destruct db_equiv as (sleeping_correct, (running_correct, (sleeping_keys, running_keys))).
+
+    pose proof (equiv_SameElements 
+                  (partition_set (GetRelation set_db PROCESSES))
+                  (SetUnion_Or running_correct sleeping_correct)).
     
+    set (full_db := SetUnion (GetValues running) (GetValues sleeping)).
 
-    
+    unfold SameElements, In, AllRunningSet, AllSleepingSet in sleeping_correct, running_correct. 
+    symmetry in sleeping_correct, running_correct.
 
-    rewrite sleeping_correct, running_correct.
+    rewrite (extraction_id (full_db) _ _ _ (fun p => beq_state p!STATE Running)) in running_correct;
+      eauto using beq_process_iff__state.
 
+    rewrite (extraction_id full_db _ _ _ (fun p => beq_state p!STATE Sleeping)) in sleeping_correct;
+      eauto using beq_process_iff__state.
+
+    rewrite (extraction (full_db) _ _ _ (fun p => beq_nat p!PID pid));
+      eauto using beq_process_iff__pid.
+
+    unfold full_db.
     rewrite filter_union.
 
+    rewrite filter_on_key.
     repeat rewrite filter_on_key; 
       trivial.
     
@@ -1248,7 +1273,5 @@ Section ProcessSchedulerExample.
 
     $$
   Admitted.
-
-    dkfne
 End ProcessSchedulerExample.
 
