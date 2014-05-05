@@ -988,12 +988,14 @@ Section ProcessSchedulerExample.
   Print TreeDB.
 
   Lemma filter_on_key :
-    forall (tree: TreeDB) (equality: forall x y, {x = y} + {x <> y}), 
+    forall (tree: TreeDB) 
+           (equality: nat -> nat -> bool)
+           (equality_iff: forall x y, equality x y = true <-> x = y),
     forall (key: nat),
       KeyedOnPID tree -> 
       SetEq
         (List.filter
-           (dec2bool (fun (p: Process) => equality key (p!PID)))
+           (fun (p: Process) => equality (p!PID) key)
            (GetValues tree))
         (Option2Box 
            (GenericTreeDB.find key tree)).
@@ -1001,7 +1003,6 @@ Section ProcessSchedulerExample.
     unfold KeyedOnPID.
     unfold SetEq, GetValues.
     intros; intuition.
-    SearchAbout GenericTreeDB.find GenericTreeDB.MapsTo.
 
     Lemma or_false :
       forall (P: Prop), P \/ False <-> P.
@@ -1029,7 +1030,7 @@ Section ProcessSchedulerExample.
 
     specialize (H t k in_seq).
 
-    destruct (equality key (t!PID)); try discriminate.
+    rewrite equality_iff in *.
     subst; trivial.
 
     (****)
@@ -1046,7 +1047,8 @@ Section ProcessSchedulerExample.
     
     specialize (H x key H2).
     
-    destruct (equality key (x!PID)); intuition.
+    rewrite equality_iff in *.
+    intuition.
   Qed.
 
   Add Parametric Morphism {A: Type} (x: A) :
@@ -1262,11 +1264,10 @@ Section ProcessSchedulerExample.
     unfold full_db.
     rewrite filter_union.
 
-    rewrite filter_on_key.
     repeat rewrite filter_on_key; 
-      trivial.
+      eauto using beq_nat_true_iff.
     
-    apply (refine_eqA_into_ret _).
+    refine_eq_into_ret.
 
     instantiate (1 := fun db params => let (sleeping, running) := db in ret _);
       reflexivity.
