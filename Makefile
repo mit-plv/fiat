@@ -43,8 +43,6 @@ MODULES    := \
 	ADTExamples/BinaryOperationSpec \
 	ADTExamples/BinaryOperationImpl \
 	ADTExamples/BinaryOperationRefinements \
-	ADTExamples/MinCollection \
-	ADTExamples/MinPlusMax \
 	ADTExamples/QueryStructure/Notations \
 	ADTExamples/QueryStructure/Heading \
 	ADTExamples/QueryStructure/Tuple \
@@ -54,7 +52,16 @@ MODULES    := \
 	ADTExamples/QueryStructure/QueryStructure \
 	ADTExamples/QueryStructure/QueryQSSpecs \
 	ADTExamples/QueryStructure/InsertQSSpecs \
-	ADTExamples/QueryStructure/Bookstore
+	ADTExamples/QueryStructure/ProcessScheduler/SetEq \
+	ADTExamples/QueryStructure/ProcessScheduler/State \
+	ADTExamples/QueryStructure/ProcessScheduler/AdditionalLemmas \
+	ADTExamples/QueryStructure/ProcessScheduler/FMapExtensions \
+	ADTExamples/QueryStructure/ProcessScheduler/DBSchema \
+	ADTExamples/QueryStructure/ProcessScheduler/ListBasedRefinement \
+	ADTExamples/QueryStructure/ProcessScheduler/TreeBasedRefinement \
+	ADTExamples/QueryStructure/Bookstore \
+	ADTExamples/MinCollection \
+	ADTExamples/MinPlusMax
 
 COQDEP=coqdep
 COQDOC=coqdoc
