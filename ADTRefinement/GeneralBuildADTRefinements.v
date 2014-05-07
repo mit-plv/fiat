@@ -12,7 +12,6 @@ Section BuildADTRefinements.
   Require Import String.
   Local Hint Resolve string_dec.
 
-
   Lemma refineADT_BuildADT_ReplaceMutator
             (Rep : Type)
             (SiR : Rep -> Rep -> Prop)
@@ -58,6 +57,30 @@ Section BuildADTRefinements.
   Proof.
     eapply refineADT_BuildADT_ReplaceMutator;
     simpl; unfold refine; intros; subst; eauto.
+  Qed.
+
+  Corollary refineADT_BuildADT_refinement_of_Mutator_eq
+            (Rep : Type)
+            (SiR : Rep -> Rep -> Prop)
+            (mutSigs : list mutSig)
+            (obsSigs : list obsSig)
+            (mutDefs : ilist (@mutDef Rep) mutSigs)
+            (obsDefs : ilist (@obsDef Rep) obsSigs)
+            (idx : BoundedString (List.map mutID mutSigs))
+  :
+    forall
+      (ref : forall r_n n,
+               Refinement
+                 of
+                 (r_o' <- (mutBody (ith_Bounded _ mutDefs idx)) r_n n;
+                  {r_n0 : Rep | r_o' = r_n0})%comp),
+      refineADT
+        (BuildADT mutDefs obsDefs)
+        (ADTReplaceMutDef mutDefs obsDefs idx
+                          {| mutBody := fun r_n n => proj1_sig (ref r_n n) |} ).
+  Proof.
+    intros; eapply refineADT_BuildADT_ReplaceMutator_eq.
+    simpl; intros; subst; eapply (proj2_sig (ref r_n n)).
   Qed.
 
   Lemma refineADT_BuildADT_ReplaceMutator_sigma
@@ -185,7 +208,7 @@ Tactic Notation "hone'" "observer" constr(obsIdx) "using" open_constr(obsBod) :=
     let obsIdxB := eval simpl in
     (@Build_BoundedIndex _ (List.map obsID obsSigs) obsIdx _) in
       eapply SharpenStep;
-      [eapply (@refineADT_BuildADT_ReplaceObserver
+      [eapply (@refineADT_BuildADT_ReplaceObserver_eq
                  Rep' _ _ mutDefs obsDefs obsIdxB
                  (@Build_obsDef Rep'
                                 {| obsID := obsIdx;

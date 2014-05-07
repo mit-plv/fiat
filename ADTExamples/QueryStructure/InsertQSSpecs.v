@@ -50,6 +50,8 @@ Definition QSInsertSpec
   -> (forall t, GetRelation qs' Ridx t <->
                (RelationInsert tup (GetRelation qsHint Ridx) t)).
 
+Check replace_ith.
+
 Notation "'Insert' b 'into' Ridx " :=
   (Bind (Pick (QSInsertSpec _ Ridx b))
         (fun r' => Pick (fun r => r' = r)))

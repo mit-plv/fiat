@@ -147,6 +147,18 @@ Definition refine {A}
            (new : Comp A)
   := forall v, new ↝ v -> old ↝ v.
 
+(* A definition and notation for pretty printing the goals used to
+   interactively deriving refinements. *)
+
+Definition Refinement_Of {A} (c : Comp A) :=
+  {c' | refine c%comp c'}.
+
+Notation "'Refinement' 'of' c" :=
+  {c' | refine c%comp c'}
+    (at level 0, no associativity,
+     format "'Refinement'  'of' '/' '[v'    c ']' " )
+  : comp_scope.
+
 (** Define a symmetrized version of [refine] for ease of rewriting *)
 Definition refineEquiv {A}
            (old : Comp A)

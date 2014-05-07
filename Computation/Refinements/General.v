@@ -160,7 +160,26 @@ Section general_refine_lemmas.
     forall (u : bool),
     refine (if u then (ret true) else (ret false))
            (ret u).
-    Proof. destruct u; reflexivity. Qed.
+  Proof. destruct u; reflexivity. Qed.
 
+  Open Scope comp.
+
+  Lemma refinement_step {A} (c c' : Comp A) :
+    refine c c'
+    -> Refinement of c'
+    -> Refinement of c.
+  Proof.
+    intros refine_c_c' Refinement_c'.
+    destruct Refinement_c' as [c'' refine_c'_c''].
+    intros; econstructor.
+    etransitivity; eassumption.
+  Defined.
 
 End general_refine_lemmas.
+
+Tactic Notation "finalize" "refinement" :=
+  eexists; solve [ reflexivity | eapply reflexivityT ].
+
+Tactic Notation "refine" "using" constr(refinement_rule) :=
+  eapply refinement_step;
+  [progress setoid_rewrite refinement_rule; try reflexivity | ].

@@ -89,15 +89,6 @@ Definition Date := GetAttributeKey Orders "Date".
         NumOrders : rep × string → nat
       }.
 
-  (* [NumOrders] : The number of orders for a given author *)
-  (* Definition NumOrdersSpec
-             (r : BookStoreRefRep) (author : string) :=
-    let _ := {|qsHint := DropQSConstraints r |} in
-    Count (For (o in Orders) (b in Books )
-           Where (author == b!Author)
-           Where (b!ISBN == o!oISBN)
-           Return tt). *)
-
   Definition BookStoreSpec : ADT BookStoreSig :=
     QueryADTRep BookStoreRefRep {
              (* [PlaceOrder] : Place an order into the 'Orders' table *)
@@ -125,28 +116,6 @@ Definition Date := GetAttributeKey Orders "Date".
   Local Close Scope QueryStructureParsing_scope.
   Local Close Scope QuerySpec.
   Local Open Scope QueryStructure_scope.
-
-  Definition BookStoreSchema' :=
-    query structure schema
-      [ relation "Books" has
-                schema <"Author" : string,
-                        "Title" : string,
-                        "ISBN" : nat,
-                        "#Orders" : nat>
-                where attributes ["Title" ; "Author"] depend on ["ISBN"];
-        relation "Orders" has
-                schema <"ISBN" : nat,
-                        "Date" : nat> ]
-      enforcing [attribute "ISBN" of "Orders" references "Books"].
-
-  (*Definition AddAttribute_SiR
-             (or : BookStoreRefRep)
-             (nr : QueryStructure BookStoreSchema') :=
-    (GetRelation or Orders = GetRelation nr Orders /\
-     GetRelation or Books = map (fun tup => <"Author" : tup!Author,
-                                             "Title" : tup!Title,
-                                             "ISBN" : tup!ISBN>%Tuple)
-                                (GetRelation nr Books)). *)
 
   Open Scope updateDef.
 
@@ -206,6 +175,29 @@ Definition Date := GetAttributeKey Orders "Date".
     (* Step 4.2: Update observers *)
 
   Admitted.
+
+  Definition BookStoreSchema' :=
+    query structure schema
+      [ relation "Books" has
+                schema <"Author" : string,
+                        "Title" : string,
+                        "ISBN" : nat,
+                        "#Orders" : nat>
+                where attributes ["Title" ; "Author"] depend on ["ISBN"];
+        relation "Orders" has
+                schema <"ISBN" : nat,
+                        "Date" : nat> ]
+      enforcing [attribute "ISBN" of "Orders" references "Books"].
+
+  (*Definition AddAttribute_SiR
+             (or : BookStoreRefRep)
+             (nr : QueryStructure BookStoreSchema') :=
+    (GetRelation or Orders = GetRelation nr Orders /\
+     GetRelation or Books = map (fun tup => <"Author" : tup!Author,
+                                             "Title" : tup!Title,
+                                             "ISBN" : tup!ISBN>%Tuple)
+                                (GetRelation nr Books)). *)
+
 
   (* Definition Ref_SiR
              (or : BookStoreRefRep)
