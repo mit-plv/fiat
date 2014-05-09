@@ -175,6 +175,18 @@ Section general_refine_lemmas.
     etransitivity; eassumption.
   Defined.
 
+  Lemma refine_pick_forall_Prop
+        A B C (a : A) (Q : C -> A -> Prop) (P : A -> C -> B -> Prop)
+        b 
+  : 
+    (forall c, Q c a -> refine (Pick (P a c)) b) -> 
+    @refine B (Pick (fun b' => forall c, Q c a -> P a c b')) b.
+  Proof. 
+    unfold refine; intros; econstructor; intros.
+    generalize (H _ H1 _ H0); intros.
+    inversion_by computes_to_inv; assumption.
+  Qed.
+
 End general_refine_lemmas.
 
 Tactic Notation "finalize" "refinement" :=

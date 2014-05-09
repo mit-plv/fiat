@@ -9,12 +9,6 @@ Require Export
    (described by a proposition) which satisfy the
    schema and the cross-relation constraints. *)
 
-Program Definition defaultRelation : Relation (relSchema defaultSchema) :=
-  {| rel := fun _ => False;
-     constr := fun (_ : Tuple <"null" : ()>%Heading) (_ : False) => I |}.
-
-Definition defaultUnConstrRelation : UnConstrRelation (relSchema defaultSchema) :=
-  fun _ => False.
 
 Record QueryStructure (QSSchema : QueryStructureSchema) :=
   { rels : ilist (fun ns => Relation (relSchema ns))

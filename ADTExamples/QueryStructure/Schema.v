@@ -9,7 +9,9 @@ Require Import List String FunctionalExtensionality Ensembles
 
 Record Schema :=
   { schemaHeading : Heading;
-    schemaConstraints: Tuple schemaHeading -> Prop
+    schemaConstraints: Tuple schemaHeading
+                       -> Tuple schemaHeading
+                       -> Prop
   }.
 
 (* A notation for functional dependencies. *)
@@ -26,8 +28,7 @@ Notation "[ attr1 ; .. ; attr2 ] " :=
   : SchemaConstraints_scope.
 
 Notation "'attributes' attrlist1 'depend' 'on' attrlist2 " :=
-  (fun tup1 : Tuple _ =>
-     forall tup2 : Tuple _ ,
+  (fun tup1 tup2 : Tuple _ =>
        tupleAgree tup1 tup2 attrlist1%SchemaConstraints ->
        tupleAgree tup1 tup2 attrlist2%SchemaConstraints)
   : SchemaConstraints_scope.
@@ -40,7 +41,7 @@ Notation "'schema' headings 'where' constraints" :=
 
 Notation "'schema' headings" :=
   {| schemaHeading := headings%Heading;
-     schemaConstraints := fun _ => True |} : Schema_scope.
+     schemaConstraints := fun _ _ => True |} : Schema_scope.
 
 Bind Scope Schema_scope with Schema.
 

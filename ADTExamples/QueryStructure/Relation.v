@@ -8,8 +8,10 @@ Require Import List String FunctionalExtensionality Ensembles
 Record Relation (RelationSchema : Schema) :=
   { rel : Ensemble (Tuple (schemaHeading RelationSchema));
     constr :
-      forall tup,
-        rel tup -> schemaConstraints RelationSchema tup
+      forall tup tup',
+        rel tup -> 
+        rel tup' -> 
+        schemaConstraints RelationSchema tup tup'
   }.
 
 Definition UnConstrRelation (RelationSchema : Schema) :=

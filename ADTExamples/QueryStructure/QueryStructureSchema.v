@@ -17,12 +17,6 @@ Record NamedSchema  :=
 Definition NamedSchema_eq (rn : NamedSchema) (idx : string) :=
   if (string_dec (relName rn) idx) then true else false.
 
-Definition defaultSchema :=
-  {| relName := "null"%string;
-     relSchema :=  {| schemaHeading := <"null" : ()>%Heading;
-                      schemaConstraints tup := True
-                      |} |}.
-
 Definition GetNRelSchema
            (namedSchemas : list NamedSchema)
            (idx : BoundedString (map relName namedSchemas)) :=

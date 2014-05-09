@@ -265,7 +265,6 @@ Tactic Notation "hone'" "observer" constr(obsIdx) :=
   hone' observer obsIdx using _;
   [set_evars;
     simpl in *; intros; subst;
-    setoid_rewrite refineEquiv_pick_eq';
     autosetoid_rewrite with refine_monad
  | ].
 
@@ -273,7 +272,6 @@ Tactic Notation "hone'" "mutator" constr(mutIdx) :=
   hone' mutator mutIdx using _;
   [set_evars;
     simpl in *; intros; subst;
-    setoid_rewrite refineEquiv_pick_eq';
     autosetoid_rewrite with refine_monad | ].
 
 Tactic Notation "finish" "honing" :=

@@ -648,4 +648,38 @@ Section ithIndexBound.
       unfold not; eauto using idx_ibound_eq.
   Qed.
 
+  Lemma ilist_eq {B : A -> Type}
+  : forall (Bound : list A)
+           (il il' : ilist B Bound),
+      (forall idx, ith_Bounded il idx = ith_Bounded il' idx) -> il = il'.
+  Proof.
+    induction Bound; intros.
+    - rewrite (ilist_invert il), (ilist_invert il'); reflexivity.
+    - icons_invert; f_equal.
+      generalize (H {| bindex := projAC a |}).
+      unfold ith_Bounded; simpl; auto.
+      apply IHBound; intros.
+      generalize (H  {| bindex := bindex idx;
+                       indexb := @IndexBound_tail _ _ _ _ (indexb idx) |}).
+      unfold ith_Bounded; simpl; auto.
+  Qed.
+
+  Lemma imap_replace_BoundedIndex
+        {B B' : A -> Type}
+  : forall (f : forall idx'', B idx'' -> B' idx'')
+           (Bound : list A)
+           (idx : BoundedIndex (map projAC Bound))
+           (il : ilist B Bound)
+           b,
+      imap B' f (replace_BoundedIndex il idx b) =
+      replace_BoundedIndex (imap B' f il) idx (f _ b).
+  Proof.
+    intros; apply ilist_eq; intros.
+    destruct (BoundedIndex_eq_dec C_eq_dec idx idx0); subst;
+    rewrite <- ith_Bounded_imap.
+    - repeat rewrite ith_replace_BoundIndex_eq; reflexivity.
+    - repeat rewrite ith_replace_BoundIndex_neq; auto.
+      rewrite <- ith_Bounded_imap; auto.
+  Qed.
+
 End ithIndexBound.
