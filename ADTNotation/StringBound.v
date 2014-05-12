@@ -683,3 +683,5 @@ Section ithIndexBound.
   Qed.
 
 End ithIndexBound.
+
+Arguments BoundedString [_].

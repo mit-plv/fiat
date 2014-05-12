@@ -9,8 +9,8 @@ Require Import List String FunctionalExtensionality Ensembles
 
 Record Schema :=
   { schemaHeading : Heading;
-    schemaConstraints: Tuple schemaHeading
-                       -> Tuple schemaHeading
+    schemaConstraints: @Tuple schemaHeading
+                       -> @Tuple schemaHeading
                        -> Prop
   }.
 
@@ -18,7 +18,7 @@ Record Schema :=
 
 Definition tupleAgree
            {h : Heading}
-           (tup1 tup2 : Tuple h) attrlist :=
+           (tup1 tup2 : @Tuple h) attrlist :=
   forall attr,
     List.In attr attrlist ->
     tup1 attr = tup2 attr.
@@ -28,7 +28,7 @@ Notation "[ attr1 ; .. ; attr2 ] " :=
   : SchemaConstraints_scope.
 
 Notation "'attributes' attrlist1 'depend' 'on' attrlist2 " :=
-  (fun tup1 tup2 : Tuple _ =>
+  (fun tup1 tup2 : @Tuple _ =>
        tupleAgree tup1 tup2 attrlist1%SchemaConstraints ->
        tupleAgree tup1 tup2 attrlist2%SchemaConstraints)
   : SchemaConstraints_scope.
@@ -46,8 +46,8 @@ Notation "'schema' headings" :=
 Bind Scope Schema_scope with Schema.
 
 Definition MovieSchema :=
-  (schema <"Title" : string, "ReleaseDate" : nat >
+  (schema <"Title" :: string, "ReleaseDate" :: nat >
    where attributes ["ReleaseDate"] depend on ["Title" ] )%Schema.
 
 Definition MovieSchema' :=
-  (schema <"Title" : string, "ReleaseDate" : nat >)%Schema.
+  (schema <"Title" :: string, "ReleaseDate" :: nat >)%Schema.

@@ -14,9 +14,9 @@ Record QueryStructure (QSSchema : QueryStructureSchema) :=
   { rels : ilist (fun ns => Relation (relSchema ns))
              (qschemaSchemas QSSchema);
     crossConstr :
-      forall (idx idx' : BoundedString (map relName (qschemaSchemas QSSchema)))
+      forall (idx idx' : @BoundedString (map relName (qschemaSchemas QSSchema)))
              (tup :
-                Tuple (QSGetNRelSchemaHeading QSSchema idx)),
+                @Tuple (QSGetNRelSchemaHeading QSSchema idx)),
         idx <> idx' ->
         (* These are cross-relation constraints which only need to be
            enforced on distinct relations. *)
@@ -107,13 +107,13 @@ Notation GetAttributeKey Rel index :=
 Definition GetUnConstrRelation
            (QSSchema : QueryStructureSchema)
            (qs : UnConstrQueryStructure QSSchema)
-           (idx : BoundedString (map relName (qschemaSchemas QSSchema)))
+           (idx : @BoundedString (map relName (qschemaSchemas QSSchema)))
   := ith_Bounded _ qs idx.
 
 Definition GetRelation
            (QSSchema : QueryStructureSchema)
            (qs : QueryStructure QSSchema)
-           (idx : BoundedString (map relName (qschemaSchemas QSSchema)))
+           (idx : @BoundedString (map relName (qschemaSchemas QSSchema)))
   := rel (ith_Bounded _ (rels qs) idx).
 
 Definition DropQSConstraints

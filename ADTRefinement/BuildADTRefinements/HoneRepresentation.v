@@ -62,7 +62,7 @@ End HoneRepresentation.
 (* Honing tactic for refining the ADT representation which provides
    default observer and mutator implementations. *)
 
-Tactic Notation "hone" "representation'" "using" open_constr(SiR') :=
+Tactic Notation "hone" "representation" "using" open_constr(SiR') :=
   eapply SharpenStep;
   [eapply refineADT_BuildADT_Rep_default with (SiR := SiR') |
    compute [imap absMutDef absMutatorMethod

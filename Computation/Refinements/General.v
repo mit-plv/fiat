@@ -177,14 +177,44 @@ Section general_refine_lemmas.
 
   Lemma refine_pick_forall_Prop
         A B C (a : A) (Q : C -> A -> Prop) (P : A -> C -> B -> Prop)
-        b 
-  : 
-    (forall c, Q c a -> refine (Pick (P a c)) b) -> 
+        b
+  :
+    (forall c, Q c a -> refine (Pick (P a c)) b) ->
     @refine B (Pick (fun b' => forall c, Q c a -> P a c b')) b.
-  Proof. 
+  Proof.
     unfold refine; intros; econstructor; intros.
     generalize (H _ H1 _ H0); intros.
     inversion_by computes_to_inv; assumption.
+  Qed.
+
+  Lemma refine_pick_eq_ex_bind {A B : Type}
+        (P : A -> B -> Prop)
+        (a : A)
+  : refine (a' <- {a' | a' = a /\ exists b, P a' b};
+            {b | P a' b})
+           {b | P a b}.
+  Proof.
+    unfold refine; intros; inversion_by computes_to_inv;
+    econstructor; eauto.
+  Qed.
+
+  Lemma refine_under_if {A B}
+        (P : A -> B -> Prop) :
+    forall (cond : bool) (ta ea : A) ta' ea',
+      refine {b | P ta b} ta'
+      -> refine {b | P ea b} ea'
+      -> refine {b | P (if cond then ta else ea) b}
+                (if cond then ta' else ea').
+  Proof.
+    intros; destruct cond; eauto.
+  Qed.
+
+  Lemma refine_if_ret {A}
+  : forall (cond : bool) (ta ea : A),
+      refineEquiv (ret (if cond then ta else ea))
+                  (if cond then ret ta else ret ea).
+  Proof.
+    split; destruct cond; reflexivity.
   Qed.
 
 End general_refine_lemmas.

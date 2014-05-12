@@ -1,4 +1,4 @@
-Require Import List Omega Ensembles. 
+Require Import List Omega Ensembles.
 
 Require Import FMapAVL OrderedTypeEx.
 Require Import FMapExtensions.
@@ -19,18 +19,18 @@ Section ListBasedRefinement.
   Definition rels_builder (db: SimpleDB) _constr_
     : ilist (fun ns : NamedSchema => Relation (relSchema ns))
             (qschemaSchemas ProcessSchedulerSchema) :=
-    icons (B := fun ns => Relation (relSchema ns)) _ 
+    icons (B := fun ns => Relation (relSchema ns)) _
           {| rel := db; constr := _constr_ |} (inil _).
-  
-  Definition ref_rep_builder db _constr_ _crossConstr_ 
+
+  Definition ref_rep_builder db _constr_ _crossConstr_
     : QueryStructure ProcessSchedulerSchema :=
     {| rels := rels_builder db _constr_; crossConstr := _crossConstr_ |}.
 *)
 
-  (*TODO: Why doesn't 
-        hone' observer ENUMERATE; simpl in *. 
-      behave the same as 
-        hone' observer ENUMERATE. simpl in *. 
+  (*TODO: Why doesn't
+        hone' observer ENUMERATE; simpl in *.
+      behave the same as
+        hone' observer ENUMERATE. simpl in *.
    *)
 
   Definition ProcessScheduler :
@@ -38,9 +38,9 @@ Section ListBasedRefinement.
   Proof.
     (* == Introduce the list-based (SimpleDB) representation == *)
     hone representation' using SimpleDB_equivalence.
-    
+
     (* == Implement ENUMERATE == *)
- 
+
     hone_observer' ENUMERATE.
 
     intros db state result computes set_db db_equiv.
@@ -67,41 +67,41 @@ Section ListBasedRefinement.
     hone' mutator SPAWN using SimpleDB_spawn;
       [ rinse SimpleDB_spawn ns | ].
 
-    apply (BindComputes _ (comp_a_value := 
+    apply (BindComputes _ (comp_a_value :=
              <NS : ns, PID : 0, STATE : Sleeping, CPU : 0> :: newrep));
-      constructor; 
+      constructor;
       [ | trivial].
 
     intros oldrep oldrep_equiv_newrep;
-      eexists (ref_rep_builder 
-                 (<NS : ns, PID : 0, STATE : Sleeping, CPU : 0> :: newrep) 
+      eexists (ref_rep_builder
+                 (<NS : ns, PID : 0, STATE : Sleeping, CPU : 0> :: newrep)
                  _ _);
       constructor.
-    
-    (* QSInsertSpec computes to the 
+
+    (* QSInsertSpec computes to the
        representation introduced above *)
     constructor;
       rewrite <- oldrep_equiv_newrep;
       unfold QSInsertSpec, GetRelation;
       trivial.
 
-    (* That representation is equivalent (modulo 
+    (* That representation is equivalent (modulo
        SimpleDB_equivalence) to our implementation *)
-    unfold ref_rep_builder, rels_builder, 
+    unfold ref_rep_builder, rels_builder,
            QSInsertSpec, SimpleDB_equivalence, GetRelation;
       trivial.
 
     finish sharpening.
 
-    (* == Prove that DB constraints are satisfied == *) 
+    (* == Prove that DB constraints are satisfied == *)
     Grab Existential Variables.
-    
+
     (* Cross-table constraints (?) *)
     simpl; trivial.
-    
+
     (* Single-table constraints *)
-    intros; simpl in *. 
- 
+    intros; simpl in *.
+
     (*
       unfold tupleAgree; simpl. intros. simpl in H.
       specialize (H0 attr).

@@ -48,8 +48,8 @@ Definition BuildADTSig
            (mutSigs : list mutSig)
            (obsSigs : list obsSig)
 : ADTSig :=
-  {| MutatorIndex := BoundedString (map mutID mutSigs);
-     ObserverIndex := BoundedString (map obsID obsSigs);
+  {| MutatorIndex := @BoundedString (map mutID mutSigs);
+     ObserverIndex := @BoundedString (map obsID obsSigs);
      MutatorDom idx :=
        mutDom (nth_Bounded mutID mutSigs idx) ;
     ObserverDomCod idx :=

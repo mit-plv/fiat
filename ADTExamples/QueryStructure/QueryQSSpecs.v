@@ -4,7 +4,7 @@ Require Import List String Ensembles Omega
 (* Notations for queries. *)
 
 Definition Query_In (qs : QueryStructureHint) {A} (R : _)
-           (bod : Tuple (schemaHeading
+           (bod : @Tuple (schemaHeading
                            (QSGetNRelSchema qsSchemaHint R%string)) -> Ensemble A)
            (a : A) :=
   exists tup, (GetRelation qsHint R) tup /\

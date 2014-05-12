@@ -19,19 +19,19 @@ Definition NamedSchema_eq (rn : NamedSchema) (idx : string) :=
 
 Definition GetNRelSchema
            (namedSchemas : list NamedSchema)
-           (idx : BoundedString (map relName namedSchemas)) :=
+           (idx : @BoundedString (map relName namedSchemas)) :=
   relSchema (nth_Bounded _ namedSchemas idx).
 
 Definition GetNRelSchemaHeading
            (namedSchemas :  list NamedSchema)
-           (idx : BoundedString (map relName namedSchemas))
+           (idx : @BoundedString (map relName namedSchemas))
 := schemaHeading (GetNRelSchema namedSchemas idx).
 
 Definition crossRelationR
            (namedSchemas : list NamedSchema)
            (idx idx' : _)
-  := Tuple (GetNRelSchemaHeading namedSchemas idx)
-     -> Ensemble (Tuple (GetNRelSchemaHeading namedSchemas idx'))
+  := @Tuple (GetNRelSchemaHeading namedSchemas idx)
+     -> Ensemble (@Tuple (GetNRelSchemaHeading namedSchemas idx'))
      -> Prop.
 
 Definition crossRelationProdR
@@ -80,8 +80,8 @@ Defined.
   typeclass to get the typechecking to work. *)
 
 Definition ForeignKey_P heading relSchema attr1 attr2 tupmap
-           (tup : Tuple heading)
-           (R : Ensemble (Tuple relSchema)) :=
+           (tup : @Tuple heading)
+           (R : Ensemble (@Tuple relSchema)) :=
   exists tup2,
     R tup2 /\
     tup attr1 =

@@ -1,4 +1,4 @@
-Require Import List Bool DecidableType DecidableTypeEx OrderedType Morphisms Setoid.
+Require Import List Bool OrderedType Morphisms Setoid.
 
 Definition SetEq {A: Type} (seq1: list A) (seq2: list A) :=
   forall x,
@@ -6,9 +6,9 @@ Definition SetEq {A: Type} (seq1: list A) (seq2: list A) :=
 
 Lemma SetEq_rewrite :
   forall {A: Type} (seq1 seq2: list A),
-    SetEq seq1 seq2 <-> forall a, List.In a seq1 <-> List.In a seq2. 
+    SetEq seq1 seq2 <-> forall a, List.In a seq1 <-> List.In a seq2.
   unfold SetEq; tauto.
-Qed.          
+Qed.
 
 Ltac autospecialize :=
   repeat match goal with
@@ -18,23 +18,23 @@ Ltac autospecialize :=
 Lemma SetEq_Reflexive :
   forall {A: Type}, forall (x: list A), SetEq x x.
 Proof.
-  unfold Reflexive, SetEq; 
+  unfold Reflexive, SetEq;
   intuition;
   autospecialize;
   intuition.
-Qed. 
+Qed.
 
 Lemma SetEq_Symmetric :
   forall {A: Type}, forall (x y: list A), SetEq x y -> SetEq y x.
 Proof.
-  unfold Symmetric, SetEq; 
+  unfold Symmetric, SetEq;
   intuition; autospecialize; intuition.
 Qed.
 
 Lemma SetEq_Transitive :
   forall {A: Type}, forall (x y z: list A), SetEq x y -> SetEq y z -> SetEq x z.
 Proof.
-  unfold Transitive, SetEq; 
+  unfold Transitive, SetEq;
   intuition; autospecialize; intuition.
 Qed.
 
@@ -89,11 +89,11 @@ Proof.
 Qed.
 
 Definition IsSetEqSafe {A B: Type} (proc: list A -> list B) :=
-  forall (seq1 seq2: list A), 
-    SetEq seq1 seq2 -> 
+  forall (seq1 seq2: list A),
+    SetEq seq1 seq2 ->
     SetEq (proc seq1) (proc seq2).
 
-Lemma SetEq_modulo_SetEqSafe_fun : 
+Lemma SetEq_modulo_SetEqSafe_fun :
   forall {A B: Type},
   forall (seq1: list B) (seq2 seq3: list A),
   forall (proc: list A -> list B),
@@ -104,7 +104,7 @@ Proof.
   intros; eauto using SetEq_trans_iff_2.
 Qed.
 
-Lemma SetEq_after_map : 
+Lemma SetEq_after_map :
   forall {A B: Type} (seq1 seq2: list A),
   forall (proc: A -> B),
     SetEq seq1 seq2 -> SetEq (map proc seq1) (map proc seq2).
@@ -123,12 +123,12 @@ Proof.
 Qed.
 
 Lemma map_modulo_SetEq :
-  forall {A B: Type} (seq1 seq1': list A) (seq2: list B), 
+  forall {A B: Type} (seq1 seq1': list A) (seq2: list B),
   forall (proc: A -> B),
-    SetEq seq1 seq1' -> 
+    SetEq seq1 seq1' ->
     (SetEq (map proc seq1) (seq2) <-> SetEq (map proc seq1') (seq2)).
 Proof.
-  intros; 
+  intros;
   simpl;
   apply SetEq_trans_iff;
   apply SetEq_after_map;
@@ -136,10 +136,10 @@ Proof.
 Qed.
 
 Lemma IsSetEqSafe_map :
-  forall {A B: Type} (proc: A -> B), 
+  forall {A B: Type} (proc: A -> B),
     IsSetEqSafe (fun x => List.map proc x).
 Proof.
-  unfold IsSetEqSafe; 
+  unfold IsSetEqSafe;
   eauto using SetEq_after_map.
 Qed.
 
@@ -147,7 +147,7 @@ Lemma IsSetEqSafe_filter :
   forall {A: Type} (pred: A -> bool),
     IsSetEqSafe (fun x => List.filter pred x).
 Proof.
-  unfold IsSetEqSafe, SetEq; 
+  unfold IsSetEqSafe, SetEq;
   intros;
   repeat rewrite filter_In;
   specialize (H x);
@@ -156,14 +156,14 @@ Qed.
 
 Definition SetUnion {A: Type} (x y: list A) := (x ++ y)%list.
 
-Lemma union_left : 
+Lemma union_left :
   forall {A: Type} (x: A) (seq1 seq2: list A),
     SetEq (SetUnion (x::seq1) seq2) (x :: (SetUnion seq1 seq2)).
 Proof.
   intros; unfold SetEq, SetUnion; intuition.
 Qed.
 
-Lemma union_right : 
+Lemma union_right :
   forall {A: Type} (x: A) (seq1 seq2: list A),
     SetEq (SetUnion seq1 (x::seq2)) (x :: (SetUnion seq1 seq2)).
 Proof.
@@ -174,7 +174,7 @@ Qed.
 
 Lemma filter_union :
   forall {A: Type} (seq1 seq2: list A),
-  forall (pred: A -> bool), 
+  forall (pred: A -> bool),
     SetEq (List.filter pred (SetUnion seq1 seq2))
           (SetUnion (List.filter pred seq1) (List.filter pred seq2)).
 Proof.
@@ -186,17 +186,17 @@ Proof.
   tauto.
 Qed.
 
-Lemma SetEq_append : 
+Lemma SetEq_append :
   forall {A: Type} (seq1 seq2: list A) (x: A),
     SetEq seq1 seq2 -> SetEq (x :: seq1) (x :: seq2).
 Proof.
-  intros A s1 s2 x s_eq; 
-  unfold SetEq; 
+  intros A s1 s2 x s_eq;
+  unfold SetEq;
   split; intro H;
   simpl in *;
-  [rewrite s_eq in H | rewrite <- s_eq in H]; 
+  [rewrite s_eq in H | rewrite <- s_eq in H];
   intuition.
-Qed.  
+Qed.
 
 Add Parametric Morphism {A B: Type} (proc: A -> B) :
   (List.map proc)
@@ -227,7 +227,7 @@ Proof.
 Qed.
 
 
-Add Parametric Morphism {A: Type} : (@SetUnion A) 
+Add Parametric Morphism {A: Type} : (@SetUnion A)
     with signature (@SetEq A ==> @SetEq A ==> @SetEq A)
       as union_morphism.
 Proof.
@@ -235,9 +235,8 @@ Proof.
   intros;
   rewrite ! in_app_iff;
   intuition;
-  repeat match goal with 
+  repeat match goal with
            | [ H: List.In ?x _, H': forall _, _ |- _ ] => try specialize (H' x)
          end;
   tauto.
 Qed.
-

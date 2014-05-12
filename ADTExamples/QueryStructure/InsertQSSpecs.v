@@ -8,9 +8,9 @@ Require Import List String Ensembles Arith
     Tuple [tup'] equal to [tup] or which is already in [R]. *)
 Definition RelationInsert
            {Heading}
-           (tup : Tuple Heading)
+           (tup : @Tuple Heading)
            (R : Ensemble _)
-           (tup' : Tuple Heading) :=
+           (tup' : @Tuple Heading) :=
   tup' = tup \/ R tup'.
 
 Definition SatisfiesSchemaConstraints
@@ -24,7 +24,7 @@ Definition SatisfiesCrossRelationConstraints
 Definition QSInsertSpec
            (qs : QueryStructureHint)
            (Ridx : _)
-           (tup : Tuple (schemaHeading (QSGetNRelSchema _ Ridx)))
+           (tup : @Tuple (schemaHeading (QSGetNRelSchema _ Ridx)))
            (qs' : QueryStructure qsSchemaHint)
 : Prop :=
   (* All of the relations with a different index are untouched
@@ -106,7 +106,7 @@ Section InsertRefinements.
     (qsSchema : QueryStructureSchema)
     (qs : QueryStructure qsSchema)
     (Ridx : _)
-    (tup : Tuple (QSGetNRelSchemaHeading qsSchema Ridx))
+    (tup : @Tuple (QSGetNRelSchemaHeading qsSchema Ridx))
     (schConstr : forall tup',
                    GetRelation qs Ridx tup' ->
                    SatisfiesSchemaConstraints Ridx tup tup')
@@ -651,8 +651,8 @@ Section InsertRefinements.
 
   Lemma QSInsertSpec_UnConstr_refine :
     forall qsSchema (qs : UnConstrQueryStructure qsSchema)
-           (Ridx : BoundedString (map relName (qschemaSchemas qsSchema)))
-           (tup : Tuple (schemaHeading (QSGetNRelSchema qsSchema Ridx)))
+           (Ridx : @BoundedString (map relName (qschemaSchemas qsSchema)))
+           (tup : @Tuple (schemaHeading (QSGetNRelSchema qsSchema Ridx)))
            (or : QueryStructure qsSchema),
       DropQSConstraints_SiR or qs ->
       refine
@@ -716,7 +716,7 @@ Section InsertRefinements.
       assert ((fun Ridx' : BoundedIndex (map relName (qschemaSchemas qsSchema)) =>
           Ridx' <> Ridx ->
           forall
-            tup' : Tuple
+            tup' : @Tuple
                      (schemaHeading
                         (relSchema
                            (nth_Bounded relName (qschemaSchemas qsSchema)
@@ -727,7 +727,7 @@ Section InsertRefinements.
               (fun Ridx' : BoundedIndex (map relName (qschemaSchemas qsSchema)) =>
       Ridx' <> Ridx ->
       forall
-        tup' : Tuple
+        tup' : @Tuple
                  (schemaHeading
                     (relSchema
                        (nth_Bounded relName (qschemaSchemas qsSchema) Ridx'))),
@@ -818,3 +818,7 @@ Arguments id  _ _ / .
 
 Create HintDb refine_keyconstraints discriminated.
 (*Hint Rewrite refine_Any_DecideableSB_True : refine_keyconstraints.*)
+
+Arguments ith_Bounded _ _ _ _ _ _ _ / .
+Arguments SatisfiesSchemaConstraints _ _ _ _ / .
+Arguments GetUnConstrRelation _ _ _ _ / .

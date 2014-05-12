@@ -14,25 +14,25 @@ Section ReplaceMethods.
   Variable obsDefs : ilist (@obsDef Rep) obsSigs.
 
   Program Definition replaceMutDef
-             (idx : BoundedString (map mutID mutSigs))
+             (idx : @BoundedString (map mutID mutSigs))
              (newDef : mutDef (nth_Bounded mutID mutSigs idx))
   : ilist (@mutDef Rep) mutSigs :=
     replace_BoundedIndex _ mutDefs idx newDef.
 
   Definition ADTReplaceMutDef
-             (idx : BoundedString (map mutID mutSigs))
+             (idx : @BoundedString (map mutID mutSigs))
              (newDef : mutDef (nth_Bounded mutID mutSigs idx))
   : ADT (BuildADTSig mutSigs obsSigs)
     := BuildADT (replaceMutDef idx newDef) obsDefs.
 
   Definition replaceObsDef
-             (idx : BoundedString (map obsID obsSigs))
+             (idx : @BoundedString (map obsID obsSigs))
              (newDef : obsDef (nth_Bounded obsID obsSigs idx))
   : ilist (@obsDef Rep) obsSigs :=
     replace_BoundedIndex _ obsDefs idx newDef.
 
   Definition ADTReplaceObsDef
-             (idx : BoundedString (map obsID obsSigs))
+             (idx : @BoundedString (map obsID obsSigs))
              (newDef : obsDef (nth_Bounded obsID obsSigs idx))
   : ADT (BuildADTSig mutSigs obsSigs)
     := BuildADT mutDefs (replaceObsDef idx newDef).

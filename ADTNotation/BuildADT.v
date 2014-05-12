@@ -74,7 +74,7 @@ Definition getMutDef
         (Rep : Type)
         (mutSigs : list mutSig)
         (mutDefs : ilist (@mutDef Rep) mutSigs)
-        (idx : BoundedString (map mutID mutSigs))
+        (idx : @BoundedString (map mutID mutSigs))
 : mutatorMethodType Rep (mutDom (nth_Bounded _ mutSigs idx)) :=
   mutBody (@ith_Bounded _ _ _ (@mutDef Rep) mutSigs mutDefs idx).
 
@@ -82,7 +82,7 @@ Definition getObsDef
          (Rep : Type)
          (obsSigs : list obsSig)
          (obsDefs : ilist (@obsDef Rep) obsSigs)
-         (idx : BoundedString (map obsID obsSigs))
+         (idx : @BoundedString (map obsID obsSigs))
 : observerMethodType
     Rep
     (obsDom (nth_Bounded _ obsSigs idx))

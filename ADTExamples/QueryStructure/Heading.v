@@ -15,7 +15,7 @@ Record Attribute :=
   { attrName : string;
     attrType : Type }.
 
-Infix ":" := Build_Attribute : Attribute_scope.
+Infix "::" := Build_Attribute : Attribute_scope.
 
 Bind Scope Attribute_scope with Attribute.
 
@@ -27,7 +27,7 @@ Definition attrName_eq (cs : Attribute) (idx : string) :=
 Definition BuildHeading
            (attrs : list Attribute)
 : Heading :=
-  {| Attributes := BoundedString (map attrName attrs);
+  {| Attributes := @BoundedString (map attrName attrs);
      Domain idx := attrType (nth_Bounded _ attrs idx) |}.
 
 (* Notation for schemas built from [BuildHeading]. *)
@@ -36,4 +36,4 @@ Notation "< col1 , .. , coln >" :=
   (BuildHeading ( col1%Attribute :: .. (coln%Attribute :: []) ..))
   : Heading_scope.
 
-Definition MovieHeading := (< "Title" : string, "ReleaseDate" : nat >)%Heading.
+Definition MovieHeading := (< "Title" :: string, "ReleaseDate" :: nat >)%Heading.

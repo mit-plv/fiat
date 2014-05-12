@@ -11,7 +11,7 @@ Definition Tuple (Heading : Heading) :=
 Record Component (Heading : Attribute) :=
   { value : attrType Heading }.
 
-Notation "id : value" :=
+Notation "id :: value" :=
   (Build_Component {| attrName := id;
                       attrType := _ |}
                    value) : Component_scope.
@@ -21,7 +21,7 @@ Bind Scope Component_scope with Component.
 (* Notation-friendly tuple definition. *)
 
 Definition DefaultAttribute :=
-  Build_Component ("null" : unit)%Attribute tt.
+  Build_Component ("null" :: unit)%Attribute tt.
 
 Definition BuildTuple
         (attrs : list Attribute)
@@ -36,12 +36,14 @@ Notation "< col1 , .. , coln >" :=
   (@BuildTuple _ (icons _ col1%Component .. (icons _ coln%Component (inil _)) ..))
   : Tuple_scope.
 
-Definition GetAttribute 
-           {heading} 
+Definition GetAttribute
+           {heading}
            (tup : Tuple heading)
-           (attr : Attributes heading) 
+           (attr : Attributes heading)
 : Domain heading attr :=
   tup attr.
 
 Notation "t ! R" :=
   (GetAttribute t%Tuple R%string): Tuple_scope.
+
+Arguments Tuple [Heading] .
