@@ -186,21 +186,19 @@ Ltac refine_eq_into_ret :=
 
 Ltac hone_observer' name :=
   hone' observer name using _;
-  unfold refine; 
-  intros; 
-  [ instantiate (1 := eq);
-    econstructor
-  | 
-  | unfold Query_For, Query_Where, 
+  [ simpl;
+    unfold refine; 
+    intros;
+    unfold Query_For, Query_Where, 
     Query_In, Query_Return, qsHint, 
     In, qsSchemaHint;
     constructor;
     intros;
-    constructor
-  | ];
-  repeat subst;
-  [ | | | generalize_all | ];
-  try solve [eauto].
+    constructor;
+    intros;
+    repeat subst;
+    constructor;
+    generalize_all | ].
 
 (* TODO: This could probably inconjunction with pull_definition to
 avoid the case disjunction in there, but I'm not sure how to allow
@@ -212,6 +210,8 @@ Ltac uncurry_evar :=
 
 Ltac pull_definition :=
   match goal with
+    | [ |- ?f (?db1, (?db2, ?db3)) ?params = ret ?body ] =>
+      instantiate (1 := fun db params => let (db1, db23) := db in let (db2, db3) := db23 in ret _)
     | [ |- ?f (?db1, ?db2) ?params = ret ?body ] =>
       instantiate (1 := fun db params => let (db1, db2) := db in ret _)
     | [ |- ?f ?db ?params = ret ?body ] => 
