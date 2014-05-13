@@ -109,14 +109,6 @@ Section BookStoreExamples.
   Local Close Scope QuerySpec.
   Local Open Scope QueryStructure_scope.
 
-  Lemma BookSchemaHeading_dec
-    : decideable_Heading_Domain BookSchemaHeading.
-  Proof.
-    destruct idx as [idx [n In_idx]];
-    repeat (destruct n; simpl in *; auto using string_dec;
-            auto using eq_nat_dec; try discriminate).
-  Defined.
-
   Tactic Notation "implement" "queries" "over" "lists" :=
       unfold DropQSConstraints_SiR in *; subst;
       repeat rewrite GetRelDropConstraints in *; subst; split_and;

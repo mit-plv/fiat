@@ -66,22 +66,15 @@ Proof.
   apply H; auto.
 Qed.
 
-Class DecideableWhereClause {A} (P : Ensemble A) :=
-  { cond : A -> bool;
-    cond_dec : forall a, cond a = true <-> P a}.
+Class DecideableEnsemble {A} (P : Ensemble A) :=
+  { dec : A -> bool;
+    dec_decides_P : forall a, dec a = true <-> P a}.
 
-Instance DecideableWhereClause_EqString {A : Type}
-         (f f' : A -> string)
-         : DecideableWhereClause (fun a => eq (f a) (f' a)) :=
-  {| cond a := if string_dec (f a) (f' a) then true else false |}.
-Proof.
-  intros; find_if_inside; split; congruence.
-Defined.
-
-Instance DecideableWhereClause_EqNat {A : Type}
-         (f f' : A -> nat)
-         : DecideableWhereClause (fun a => eq (f a) (f' a)) :=
-  {| cond a := if eq_nat_dec (f a) (f' a) then true else false |}.
+Instance DecideableEnsemble_EqDec {A B : Type}
+         (B_eq_dec : Query_eq B)
+         (f f' : A -> B)
+         : DecideableEnsemble (fun a => eq (f a) (f' a)) :=
+  {| dec a := if A_eq_dec (f a) (f' a) then true else false |}.
 Proof.
   intros; find_if_inside; split; congruence.
 Defined.

@@ -29,8 +29,8 @@ Notation "[ attr1 ; .. ; attr2 ] " :=
 
 Notation "'attributes' attrlist1 'depend' 'on' attrlist2 " :=
   (fun tup1 tup2 : @Tuple _ =>
-       tupleAgree tup1 tup2 attrlist1%SchemaConstraints ->
-       tupleAgree tup1 tup2 attrlist2%SchemaConstraints)
+       tupleAgree tup1 tup2 attrlist2%SchemaConstraints ->
+       tupleAgree tup1 tup2 attrlist1%SchemaConstraints)
   : SchemaConstraints_scope.
 
 (* Notations for Schemas. *)

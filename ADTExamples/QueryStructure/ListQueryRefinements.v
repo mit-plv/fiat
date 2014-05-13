@@ -101,21 +101,21 @@ Lemma Equivalent_List_In_Where {A B : Type}
       (l : list B)
       (P : Ensemble B)
       (bod : B -> Ensemble A)
-      (P_dec : DecideableWhereClause P)
+      (P_dec : DecideableEnsemble P)
 :
   Equivalent_Ensembles
     (fun a : A => exists b, List.In b l /\ Query_Where (P b) (bod b) a)
-    (fun a : A => exists b, List.In b (filter cond l) /\ (bod b) a)
+    (fun a : A => exists b, List.In b (filter dec l) /\ (bod b) a)
 .
 Proof.
   destruct P_dec; split; intros; unfold In, Query_Where in *.
   destruct H; eexists; intuition; eauto.
   eapply filter_In; split; eauto.
-  eapply cond_dec; eauto.
+  eapply dec_decides_P; eauto.
   destruct H; intuition; eexists; split; eauto.
   eapply filter_In; eauto.
   intuition; eauto using filter_In.
-  eapply cond_dec; eapply filter_In; eauto.
+  eapply dec_decides_P; eapply filter_In; eauto.
 Qed.
 
 Lemma refine_For_List_Return {A B}

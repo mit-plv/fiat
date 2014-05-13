@@ -173,8 +173,6 @@ Section InsertRefinements.
                 BuildQueryStructureConstraints qsSchema Ridx' Ridx tup'
                                                (RelationInsert tup (GetRelation qs Ridx))). *)
 
-  Definition decides (b : bool) (P : Prop) := if b then P else ~ P.
-
   Lemma app_assoc
         (A : Type)
         (l m n : list A)
@@ -386,6 +384,8 @@ Section InsertRefinements.
           (Bound : list string)
           (P : Ensemble (BoundedIndex Bound)) : Prop :=
     Iterate_Ensemble_BoundedIndex' [] Bound P.
+
+  Definition decides (b : bool) (P : Prop) := if b then P else ~ P.
 
   Program Lemma refine_Iterate_Ensemble {A : Set}
         (A_eq_dec : forall a a' : A, {a = a'} + {a <> a'})
