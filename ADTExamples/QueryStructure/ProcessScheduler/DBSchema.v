@@ -18,9 +18,9 @@ Section ProcessSchedulerInterface.
   Definition PROCESSES_TABLE := "processes".
 
   Definition ProcessSchedulerSchema := query structure schema [
-    relation PROCESSES_TABLE has schema <PID_COLUMN   : nat,
-                                         STATE_COLUMN : State,
-                                         CPU_COLUMN   : nat>
+    relation PROCESSES_TABLE has schema <PID_COLUMN   :: nat,
+                                         STATE_COLUMN :: State,
+                                         CPU_COLUMN   :: nat>
     where attributes [CPU_COLUMN; STATE_COLUMN] depend on [PID_COLUMN]
   ] enforcing [].
 
@@ -36,7 +36,7 @@ Section ProcessSchedulerInterface.
   Definition ProcessSchema := 
     QSGetNRelSchemaHeading ProcessSchedulerSchema PROCESSES.
 
-  Definition Process := (Tuple ProcessSchema).
+  Definition Process := (@Tuple ProcessSchema).
 
   Definition SPAWN        := "Spawn".
   Definition ENUMERATE    := "Enumerate".
@@ -57,7 +57,7 @@ Section ProcessSchedulerInterface.
     QueryADTRep 
       ProcessSchedulerRefRep {
         def update SPAWN (ns : nat) : rep := (* TODO: pid/0 *)
-          Insert <PID_COLUMN: 0, STATE_COLUMN: Sleeping, CPU_COLUMN: 0> into PROCESSES;
+          Insert <PID_COLUMN:: 0, STATE_COLUMN:: Sleeping, CPU_COLUMN :: 0> into PROCESSES;
           
         def query ENUMERATE (state : State) : list nat :=
           For (p in PROCESSES)
@@ -81,7 +81,7 @@ Section ProcessSchedulerLemmas.
     forall { A: Type } (db_schema: Heading) (column: Attributes db_schema)
            { beq_A: Domain db_schema column -> Domain db_schema column -> bool },
     forall (beq_iff : forall a b, beq_A a b = true <-> a = b),
-    forall value (p: Tuple db_schema),
+    forall value (p: @Tuple db_schema),
       p column = value <-> beq_A (p column) value = true.
   Proof.
     intros ? ? ? ? beq_iff; split; apply beq_iff.

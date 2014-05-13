@@ -112,34 +112,23 @@ Section BookStoreExamples.
   Lemma BookSchemaHeading_dec
     : decideable_Heading_Domain BookSchemaHeading.
   Proof.
-  Admitted.
+    destruct idx as [idx [n In_idx]];
+    repeat (destruct n; simpl in *; auto using string_dec;
+            auto using eq_nat_dec; try discriminate).
+  Defined.
+
+  Tactic Notation "implement" "queries" "over" "lists" :=
+      unfold DropQSConstraints_SiR in *; subst;
+      repeat rewrite GetRelDropConstraints in *; subst; split_and;
+      repeat (progress
+                (try (setoid_rewrite Equivalent_In_EnsembleListEquivalence; simpl; eauto);
+                 try (setoid_rewrite Equivalent_List_In_Where with (P_dec := _); simpl);
+                 try (setoid_rewrite Equivalent_Join_Lists; eauto)));
+        setoid_rewrite refine_For_List_Return; simplify with monad laws.
 
   Definition BookStoreListImpl_SiR or (nr : (list Book) * (list Order)) : Prop :=
     (EnsembleListEquivalence (GetUnConstrRelation or Books) (fst nr))
     /\ (EnsembleListEquivalence (GetUnConstrRelation or Orders) (snd nr)).
-
-  Definition Refinement_of_method
-             {Rep Dom : Type}
-             (mut : mutatorMethodType Rep Dom)
-    := sigT (fun newDef =>
-               (forall n (r_n : Rep),
-                  refine (mut r_n n)
-                         (newDef r_n n))).
-
-  Lemma Method_Refinement_Step
-        {Rep Dom : Type}
-        (mut : mutatorMethodType Rep Dom)
-        (mut' : sigT (fun mut' => forall n (r_n : Rep),
-                                    refine (mut r_n n)
-                                           (mut' r_n n)))
-  : Refinement_of_method (proj1_sig mut')
-    -> Refinement_of_method mut.
-  Proof.
-    intros H0; exists (proj1_sig H0).
-    intros; etransitivity; eauto.
-    eapply (proj2_sig mut').
-    eapply (proj2_sig H0).
-  Qed.
 
   Definition BookStore :
     Sharpened BookStoreSpec.
@@ -149,170 +138,96 @@ Section BookStoreExamples.
     (* Step 1: Drop the constraints on the tables. From the perspective
       of a client of a sharpened ADT the invariants will still hold,
       since ADT refinement preserves the simulation relation.   *)
-
     hone representation using (@DropQSConstraints_SiR BookStoreSchema).
 
     (* Step 2: Remove extraneous schema and cross-relation constraints
        from the [PlaceOrder] mutator so that subsequent refinements
        will only need to implement with the foreign key constraint. *)
-
     hone mutator "PlaceOrder".
     {
-      set_evars.
-      intros; setoid_rewrite QSInsertSpec_UnConstr_refine; eauto; simpl.
-      setoid_rewrite decides_True.
-      setoid_rewrite decides_2_True.
-      setoid_rewrite decides_3_True.
-      simplify with monad laws.
-      unfold If_Then_Else; simpl.
-      setoid_rewrite refine_if_bool_eta.
-      simplify with monad laws.
+      remove trivial insertion checks.
       finish honing.
     }
 
     (* Step 3: Similarly remove extraneous schema and cross-relation
        constraints [AddBook] mutator so that subsequent refinements
        will only need to implement the single key constraint. *)
-
     hone mutator "AddBook".
     {
-      set_evars.
-      intros; setoid_rewrite QSInsertSpec_UnConstr_refine; eauto; simpl.
-      setoid_rewrite decides_True.
-      setoid_rewrite decides_3_True.
-      rewrite refine_tupleAgree_refl_True.
-      simplify with monad laws.
+      remove trivial insertion checks.
       remove_trivial_insertion_constraints r_n n Orders Books
-                                           oISBN ISBN  H.
+                                           oISBN ISBN H.
       finish honing.
     }
 
     (* Step 4: Switch to an implementation of the representation
        type as a pair of lists of tuples. *)
-
     hone representation using BookStoreListImpl_SiR.
 
-    (* Step 5: Implement the [GetTitles] observer. *)
+    (* Step 5: Implement the [GetTitles] observer for the pair of lists
+     representation. *)
     hone observer "GetTitles".
-    { destruct H; subst; simpl in *.
-      set_evars; simpl in *.
-      rewrite refine_pick_computes_to.
-      apply refine_pick_forall_Prop with
-      (P := fun _ _ _ => _); intros.
-      unfold DropQSConstraints_SiR in H2; intros; subst.
-      intros; rewrite refine_pick_computes_to.
-      repeat rewrite GetRelDropConstraints in *.
-      setoid_rewrite Equivalent_In_EnsembleListEquivalence; simpl; eauto.
-      setoid_rewrite Equivalent_List_In_Where with
-      (cond := fun (a0 : Book) => if (string_dec (GetAttribute a0 Author) n) then true else false); simpl.
-      rewrite refine_For_List_Return.
+    {
+      unfold BookStoreListImpl_SiR in *; split_and.
+      implement queries for lists.
       finish honing.
-      intros; destruct (string_dec (a!Author)%Tuple n); split; intros;
-      auto; congruence.
     }
 
-    (* Step 5: Implement the [NumOrders] observer. *)
-
+    (* Step 6: Implement the [NumOrders] observer for the pair of lists
+     representation. *)
     hone observer "NumOrders".
     {
-      destruct H; subst; set_evars; simpl in *.
-      intros; rewrite refine_pick_computes_to.
-      apply refine_pick_forall_Prop with
-      (P := fun r_n or (n' : _) => _).
-      unfold Count, DropQSConstraints_SiR; intros; subst.
-      repeat rewrite GetRelDropConstraints in *.
-      rewrite refine_pick_computes_to; eauto.
+      unfold BookStoreListImpl_SiR in *; split_and.
+      unfold Count.
+      (* We first swap the order of the 'fors' to make the
+         implementation more efficient. *)
       rewrite Equivalent_Swap_In.
       rewrite refine_Query_For_In_Equivalent;
         [ | apply Equivalent_Swap_In_Where with (qs := _)].
-      setoid_rewrite Equivalent_In_EnsembleListEquivalence; eauto.
-      setoid_rewrite Equivalent_List_In_Where with
-      (cond := fun a =>
-                 if (string_dec (a!Author)%Tuple n)
-                 then true
-                 else false); simpl.
-      setoid_rewrite Equivalent_Join_Lists; eauto.
-      setoid_rewrite Equivalent_List_In_Where with
-      (cond := fun ab =>
-               if (eq_nat_dec ((fst ab)!ISBN)%Tuple
-                              ((snd ab)!oISBN)%Tuple)
-               then true else false); simpl.
-    rewrite refine_For_List_Return.
-    simplify with monad laws.
-    exact (reflexivity _).
-    { intros; destruct (eq_nat_dec ((fst a)!ISBN)%Tuple ((snd a)!oISBN)%Tuple);
-      split; intros; auto; congruence. }
-    { intros; destruct (string_dec (a!Author)%Tuple n); split; intros;
-    auto; congruence. }
+      (* Now implement the list query. *)
+      implement queries for lists.
+      rewrite map_length.
+      finish honing.
     }
 
+    (* Step 7: Implement the [AddBook] mutator for the pair of lists
+     representation. *)
     hone mutator "AddBook".
-    { destruct H; set_evars.
+    { unfold BookStoreListImpl_SiR in *; split_and.
       setoid_rewrite refineEquiv_split_ex.
       setoid_rewrite refineEquiv_pick_computes_to_and.
-      simplify with monad laws.
       setoid_rewrite refine_unused_key_check with
-      (h_dec_eq := BookSchemaHeading_dec ); eauto.
+      (h_dec_eq := BookSchemaHeading_dec); eauto.
       simplify with monad laws.
       setoid_rewrite refine_unused_key_check' with
-      (h_dec_eq := BookSchemaHeading_dec ); eauto.
+      (h_dec_eq := BookSchemaHeading_dec); eauto.
       simplify with monad laws.
       rewrite refine_pick_eq_ex_bind.
-      rewrite refine_under_if with (ea' := ret r_n);
-        [ | reflexivity |
-          econstructor; inversion_by computes_to_inv; subst;
-          constructor; eauto] .
-
-      apply refine_refine_if; [ | reflexivity ].
-
-      apply refine_under_if with (ea' := ret r_n);
-        [ | econstructor; inversion_by computes_to_inv; subst;
-          constructor; eauto] .
-      unfold BookStoreListImpl_SiR;
-        unfold GetUnConstrRelation, ith_Bounded; simpl.
-      erewrite refine_pick with (c := ret (n :: fst r_n, snd r_n)).
-      reflexivity.
-      intros x H3; apply computes_to_inv in H3; subst; eauto.
-      unfold GetUnConstrRelation, ith_Bounded,
-      EnsembleListEquivalence, RelationInsert, In in *; simpl in *;
-      split; intuition; eauto.
-      right; eapply H; eauto.
-      right; eapply H; eauto.
+      rewrite refineEquiv_pick_pair.
+      Split Constraint Checks.
+      implement insert for lists.
+      unfold Orders, Books; congruence.
+      implement failed insert.
     }
 
+    (* Step 7: Implement the [PlaceOrder] mutator for the pair of lists
+     representation. *)
     hone mutator "PlaceOrder".
-    { set_evars.
+    { unfold BookStoreListImpl_SiR in *; split_and.
       setoid_rewrite refineEquiv_split_ex.
       setoid_rewrite refineEquiv_pick_computes_to_and.
-      simplify with monad laws.
-      intros.
-      destruct H; rewrite refine_foreign_key_check
-                   with (cond := fun a =>
-                                   if (eq_nat_dec (a!ISBN)%Tuple (n!oISBN)%Tuple)
-                                   then true
-                                   else false)
-
-; eauto.
+      setoid_rewrite refine_foreign_key_check with
+                     (P_dec := _); eauto.
       simplify with monad laws.
       rewrite refine_pick_eq_ex_bind.
-      rewrite refine_under_if with (ea' := ret r_n);
-        [ | reflexivity |
-          econstructor; inversion_by computes_to_inv; subst;
-          constructor; eauto] .
-      apply refine_refine_if; [ | reflexivity ].
-      unfold BookStoreListImpl_SiR;
-        unfold GetUnConstrRelation, ith_Bounded; simpl.
-      erewrite refine_pick with (c := ret (fst r_n, n :: snd r_n)).
-      reflexivity.
-      intros x H3; apply computes_to_inv in H3; subst; eauto.
-      unfold GetUnConstrRelation, ith_Bounded,
-      EnsembleListEquivalence, RelationInsert, In in *; simpl in *;
-      split; intuition; eauto.
-      right; eapply H1; eauto.
-      right; eapply H1; eauto.
+      rewrite refineEquiv_pick_pair.
+      Split Constraint Checks.
+      implement insert for lists.
+      unfold Orders, Books; congruence.
+      implement failed insert.
     }
 
-    (* Step 4: Profit. :)*)
+    (* Step 8: Profit. :)*)
 
     finish sharpening.
   Defined.

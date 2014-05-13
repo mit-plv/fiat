@@ -31,6 +31,13 @@ Section general_refine_lemmas.
             c.
   Proof. t_refine. Qed.
 
+  Lemma refine_pick_val A (P : A -> Prop) a
+  : P a -> @refine A ({x | P x })%comp
+                   (ret a).
+  Proof.
+    t_refine.
+  Qed.
+
   Lemma refine_pick_pick A (P1 P2 : A -> Prop)
         (H : forall x, P2 x -> P1 x)
   : @refine _
@@ -198,24 +205,54 @@ Section general_refine_lemmas.
     econstructor; eauto.
   Qed.
 
-  Lemma refine_under_if {A B}
-        (P : A -> B -> Prop) :
-    forall (cond : bool) (ta ea : A) ta' ea',
-      refine {b | P ta b} ta'
-      -> refine {b | P ea b} ea'
-      -> refine {b | P (if cond then ta else ea) b}
-                (if cond then ta' else ea').
+  Lemma refineEquiv_if A :
+    forall (f : bool -> Comp A) (b : bool) ta ea,
+      refineEquiv (f true) ta
+      -> refineEquiv (f false) ea
+      -> refineEquiv (f b) (if b then ta else ea).
   Proof.
-    intros; destruct cond; eauto.
+    destruct b; simpl; auto.
   Qed.
 
-  Lemma refine_if_ret {A}
+  Lemma refine_if A :
+    forall (c : Comp A) (b : bool) ta ea,
+      (b = true -> refine c ta)
+      -> (b = false -> refine c ea)
+      -> refine c (if b then ta else ea).
+  Proof.
+    destruct b; simpl; auto.
+  Qed.
+
+  Lemma refineEquiv_Pick_if {A B}
+        (P : A -> B -> Prop) :
+    forall (cond : bool) (ta ea : A) ta' ea',
+      refineEquiv {b | P ta b} ta'
+      -> refineEquiv {b | P ea b} ea'
+      -> refineEquiv {b | P (if cond then ta else ea) b}
+                (if cond then ta' else ea').
+  Proof.
+    intros; setoid_rewrite refineEquiv_if with
+            (f := fun cond : bool => {b : B | P (if cond then ta else ea) b}); eauto.
+    reflexivity.
+  Qed.
+
+  Lemma refineEquiv_if_ret {A}
   : forall (cond : bool) (ta ea : A),
       refineEquiv (ret (if cond then ta else ea))
                   (if cond then ret ta else ret ea).
   Proof.
     split; destruct cond; reflexivity.
   Qed.
+
+  Definition refine_split_ex A B
+             (P : A -> Prop) (P' : A -> B -> Prop)
+  : @refine _
+            { b | exists a, P a /\ P' a b }%comp
+            (a <- { a | P a};
+             { b | P' a b })%comp.
+    Proof.
+      t_refine.
+    Qed.
 
 End general_refine_lemmas.
 

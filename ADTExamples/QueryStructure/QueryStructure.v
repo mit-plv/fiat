@@ -130,3 +130,13 @@ Definition DropQSConstraints_SiR (qsSchema : QueryStructureSchema)
            (qs' : UnConstrQueryStructure qsSchema)
            : Prop :=
   DropQSConstraints qs = qs'.
+
+Lemma GetRelDropConstraints
+      (qsSchema : QueryStructureSchema)
+      (qs : QueryStructure qsSchema)
+      (Ridx : _)
+: GetUnConstrRelation (DropQSConstraints qs) Ridx = GetRelation qs Ridx.
+Proof.
+  unfold GetUnConstrRelation, DropQSConstraints, GetRelation.
+  rewrite <- ith_Bounded_imap; reflexivity.
+Qed.

@@ -101,6 +101,16 @@ Section InsertRefinements.
   Hint Unfold SatisfiesCrossRelationConstraints
        SatisfiesSchemaConstraints.
 
+  Definition UpdateRelation
+             (qsSchema : QueryStructureSchema)
+             (rels : ilist (fun ns => Relation (relSchema ns))
+                           (qschemaSchemas qsSchema))
+             (Ridx : _)
+             newRel :
+    ilist (fun ns => Relation (relSchema ns))
+          (qschemaSchemas qsSchema) :=
+    replace_BoundedIndex relName rels Ridx newRel.
+
   Program
     Definition Insert_Valid
     (qsSchema : QueryStructureSchema)
@@ -126,8 +136,7 @@ Section InsertRefinements.
                      (RelationInsert tup (GetRelation qs Ridx)))
   : QueryStructure qsSchema :=
     {| rels :=
-         replace_BoundedIndex _ (rels qs) Ridx
-                       {| rel := RelationInsert tup (GetRelation qs Ridx)|}
+         UpdateRelation _ (rels qs) Ridx {| rel := RelationInsert tup (GetRelation qs Ridx)|}
     |}.
   Next Obligation.
     unfold SatisfiesSchemaConstraints in *.
@@ -135,7 +144,7 @@ Section InsertRefinements.
     eapply ((ith_Bounded _ (rels qs) Ridx )); eassumption.
   Defined.
   Next Obligation.
-    unfold SatisfiesCrossRelationConstraints in *;
+    unfold SatisfiesCrossRelationConstraints, UpdateRelation in *;
     destruct (BoundedString_eq_dec Ridx idx'); subst.
     - rewrite ith_replace_BoundIndex_eq; simpl.
       rewrite ith_replace_BoundIndex_neq in H0; eauto using string_dec.
@@ -545,7 +554,7 @@ Section InsertRefinements.
   : If_Then_Else
       with signature
       (@eq bool) ==> (@refine A) ==> (@refine A) ==> (@refine A)
-        as refine_if.
+        as refine_If_Then_Else_if.
   Proof.
     compute.
     intros; destruct_head bool; intros; eauto.
@@ -639,17 +648,18 @@ Section InsertRefinements.
     setoid_rewrite Iterate_Decide_Comp_BoundedIndex; f_equiv.
   Qed.
 
-  Lemma GetRelDropConstraints
-        (qsSchema : QueryStructureSchema)
-        (qs : QueryStructure qsSchema)
-        (Ridx : _)
-  : GetUnConstrRelation (DropQSConstraints qs) Ridx = GetRelation qs Ridx.
-  Proof.
-    unfold GetUnConstrRelation, DropQSConstraints, GetRelation.
-    rewrite <- ith_Bounded_imap; reflexivity.
-  Qed.
+  Definition UpdateUnConstrRelation
+             (qsSchema : QueryStructureSchema)
+             (rels : ilist (fun ns => UnConstrRelation (relSchema ns))
+                           (qschemaSchemas qsSchema))
+             (Ridx : _)
+             newRel :
+    ilist (fun ns => UnConstrRelation (relSchema ns))
+          (qschemaSchemas qsSchema) :=
+    replace_BoundedIndex relName rels Ridx newRel.
 
-  Lemma QSInsertSpec_UnConstr_refine :
+
+  Lemma QSInsertSpec_UnConstr_refine' :
     forall qsSchema (qs : UnConstrQueryStructure qsSchema)
            (Ridx : @BoundedString (map relName (qschemaSchemas qsSchema)))
            (tup : @Tuple (schemaHeading (QSGetNRelSchema qsSchema Ridx)))
@@ -688,8 +698,7 @@ Section InsertRefinements.
                                        (RelationInsert tup (GetUnConstrRelation qs Ridx))));
             ret match schConstr_self, schConstr, schConstr', qsConstr, qsConstr' with
               | true, true, true, true, true =>
-                (replace_BoundedIndex relName qs Ridx
-                                      (RelationInsert tup (GetUnConstrRelation qs Ridx)))
+                (UpdateUnConstrRelation _ qs Ridx (RelationInsert tup (GetUnConstrRelation qs Ridx)))
               | _, _, _, _, _ => qs
             end).
   Proof.
@@ -756,13 +765,77 @@ Section InsertRefinements.
                         end H0 H1 H2 H3' H4').
       repeat (econstructor; eauto).
       repeat find_if_inside; try econstructor; simpl in *.
-      unfold GetRelation, Insert_Valid; simpl; split; intros.
+      unfold GetRelation, Insert_Valid, UpdateUnConstrRelation,
+      UpdateRelation ; simpl; split; intros.
       rewrite ith_replace_BoundIndex_neq; eauto using string_dec; simpl.
       rewrite ith_replace_BoundIndex_eq; unfold RelationInsert, GetRelation;
       simpl; intuition.
       repeat find_if_inside; subst; repeat econstructor.
       unfold DropQSConstraints, Insert_Valid, RelationInsert; simpl.
-      rewrite imap_replace_BoundedIndex; simpl; eauto using string_dec.
+      unfold GetRelation, Insert_Valid, UpdateUnConstrRelation,
+      UpdateRelation; rewrite imap_replace_BoundedIndex; simpl; eauto using string_dec.
+  Qed.
+
+  Lemma QSInsertSpec_UnConstr_refine :
+    forall qsSchema (qs : UnConstrQueryStructure qsSchema)
+           (Ridx : @BoundedString (map relName (qschemaSchemas qsSchema)))
+           (tup : @Tuple (schemaHeading (QSGetNRelSchema qsSchema Ridx)))
+           (or : QueryStructure qsSchema)
+           refined_schConstr_self refined_schConstr refined_schConstr'
+           refined_qsConstr refined_qsConstr',
+      refine {b | decides b (SatisfiesSchemaConstraints Ridx tup tup)}
+             refined_schConstr_self
+      -> refine {b | decides b
+                             (forall tup',
+                                GetUnConstrRelation qs Ridx tup'
+                                -> SatisfiesSchemaConstraints Ridx tup tup')}
+                refined_schConstr
+      -> refine
+           {b |
+            decides
+              b
+              (forall tup',
+                 GetUnConstrRelation qs Ridx tup'
+                 -> SatisfiesSchemaConstraints Ridx tup' tup)}
+           refined_schConstr'
+      -> refine
+           (@Iterate_Decide_Comp _
+                                 (fun Ridx' =>
+                                    SatisfiesCrossRelationConstraints
+                                      Ridx Ridx' tup
+                                      (GetUnConstrRelation qs Ridx')))
+           refined_qsConstr
+      -> refine
+            (@Iterate_Decide_Comp _
+                                  (fun Ridx' =>
+                                     Ridx' <> Ridx
+                                     -> forall tup',
+                                          (GetUnConstrRelation qs Ridx') tup'
+                                          -> SatisfiesCrossRelationConstraints
+                                               Ridx' Ridx tup'
+                                               (RelationInsert tup (GetUnConstrRelation qs Ridx))))
+           refined_qsConstr'
+      -> DropQSConstraints_SiR or qs ->
+      refine
+        (Pick (fun qs' =>
+                 exists or' : QueryStructure qsSchema,
+                   (Pick (QSInsertSpec {| qsHint := or |} Ridx tup)) ↝ or' /\
+                   DropQSConstraints_SiR or' qs'))
+        (schConstr_self <- refined_schConstr_self;
+         schConstr <- refined_schConstr;
+         schConstr' <- refined_schConstr';
+         qsConstr <- refined_qsConstr ;
+         qsConstr' <- refined_qsConstr';
+            ret match schConstr_self, schConstr, schConstr', qsConstr, qsConstr' with
+              | true, true, true, true, true =>
+                (UpdateUnConstrRelation _ qs Ridx
+                                      (RelationInsert tup (GetUnConstrRelation qs Ridx)))
+              | _, _, _, _, _ => qs
+            end).
+  Proof.
+    intros; rewrite QSInsertSpec_UnConstr_refine'; try eassumption.
+    setoid_rewrite H; setoid_rewrite H0; setoid_rewrite H1;
+    setoid_rewrite H2; setoid_rewrite H3; reflexivity.
   Qed.
 
 End InsertRefinements.
@@ -821,4 +894,5 @@ Create HintDb refine_keyconstraints discriminated.
 
 Arguments ith_Bounded _ _ _ _ _ _ _ / .
 Arguments SatisfiesSchemaConstraints _ _ _ _ / .
-Arguments GetUnConstrRelation _ _ _ _ / .
+Arguments GetUnConstrRelation : simpl never.
+Arguments replace_BoundedIndex : simpl never.
