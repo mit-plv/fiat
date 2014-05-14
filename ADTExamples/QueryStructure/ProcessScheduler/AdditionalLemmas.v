@@ -162,6 +162,43 @@ Section AdditionalComputationLemmas.
   Proof.
     intros; subst; apply ReturnComputes; trivial.
   Qed.
+
+  Require Import Computation.Refinements.Tactics.
+
+  Lemma refine_snd :
+    forall {A B: Type} (P: B -> Prop),
+      refine 
+        { pair | P (snd pair) }
+        (_fst <- Pick (fun (x: A) => True);
+         _snd <- Pick (fun (y: B) => P y);
+         ret (_fst, _snd)).
+  Proof.
+    t_refine.
+  Qed.
+
+  Lemma refine_let :
+    forall {A B : Type} (PA : A -> Prop) (PB : B -> Prop),
+      refineEquiv (Pick (fun x: A * B  =>  let (a, b) := x in PA a /\ PB b))
+                  (a <- {a | PA a};
+                   b <- {b | PB b};
+                   ret (a, b)).
+  Proof.
+    t_refine.
+  Qed.
+
+  Lemma refine_ret_eq :
+    forall {A: Type} (a: A) b,
+      b = ret a -> refine (ret a) (b).
+  Proof.
+    t_refine.
+  Qed.
+
+  Lemma ret_computes_to :
+    forall {A: Type} (a1 a2: A),
+      ret a1 ↝ a2 <-> a1 = a2.
+  Proof.
+    t_refine.
+  Qed.
   
   Lemma refine_eqA_into_ret :
     forall {A: Type} {eqA: list A -> list A -> Prop},
