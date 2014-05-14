@@ -16,7 +16,7 @@ Section ListBasedRefinement.
   Definition SimpleDB := prod nat (list Process).
 
   Definition SimpleDB_equivalence rep (db: SimpleDB) :=
-    forall a, In _ (GetUnConstrRelation rep PROCESSES) a <-> List.In a (snd db).
+    EnsembleListEquivalence (GetUnConstrRelation rep PROCESSES) (snd db).
 
   Lemma refine_decision :
     forall c,
@@ -114,18 +114,22 @@ Section ListBasedRefinement.
 
     intros db state result computes set_db_unconstr set_db constr_unconstr_equiv db_equiv.
 
+    unfold SimpleDB_equivalence, DropQSConstraints_SiR in *;
+      rewrite <- constr_unconstr_equiv, GetRelDropConstraints in db_equiv.
+
     rewrite (refine_ensemble_into_list_with_extraction (snd db) _ _ _ (fun p => beq_state p!STATE state));
       eauto using beq_process_iff__state.
 
     refine_eq_into_ret;
       eexists.
 
-    admit.
-
     (* == Implement GET_CPU_TIME == *)
     hone_observer' GET_CPU_TIME.
 
     intros db pid result computes set_db_unconstr set_db constr_unconstr_equiv db_equiv.
+
+    unfold SimpleDB_equivalence, DropQSConstraints_SiR in *;
+      rewrite <- constr_unconstr_equiv, GetRelDropConstraints in db_equiv.
 
     rewrite (refine_ensemble_into_list_with_extraction (snd db) _ _ _ (fun p => beq_nat p!PID pid) _);
       eauto using beq_process_iff__pid.
@@ -133,8 +137,6 @@ Section ListBasedRefinement.
     refine_eq_into_ret;
       eexists.
     
-    admit.
-
     (* == Implement SPAWN == *)
     hone mutator SPAWN.
 
