@@ -180,6 +180,113 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
     symmetry.
     apply map_list_map_fmap.
   Qed.
+
+  Lemma MapsTo_snd :
+    forall {A: Type} val tree,
+      (exists key, MapsTo key val tree)
+      <-> List.In val (List.map snd (elements (elt:=A) tree)).
+  Proof.
+    split; 
+    intro H; 
+    [ 
+      destruct H as [key mapsto];
+      apply (InA_In_snd key);
+      apply elements_1
+    | 
+    rewrite in_map_iff in H;
+      destruct H as [(key, val') (eq_val_val', in_lst)];
+      subst; simpl;
+      exists key;
+      apply in_elements_mapsto
+    ]; trivial.
+  Qed.
+
+  Lemma MapsTo_In :
+    forall {A: Type} key (val: A) tree, 
+      MapsTo key val tree -> In key tree.
+  Proof.
+    intros.
+    rewrite elements_in_iff.
+    rewrite elements_mapsto_iff in *.
+    eauto.
+  Qed.
+
+  Lemma in_elements_after_add:
+    forall {A: Type} key (added elem: A) tree, 
+      (List.In elem (GetValues (add key added tree)) 
+       -> (elem = added \/ List.In elem (GetValues tree))).
+  Proof.
+    unfold GetValues;
+    intros ? ? ? ? ? is_in;
+    rewrite <- MapsTo_snd;
+    rewrite <- MapsTo_snd in is_in.
+
+    destruct is_in as [key' map_add];
+      rewrite add_mapsto_iff in map_add;
+      destruct map_add;
+      [ left | right ]; intuition; eauto.
+  Qed.
+  
+  Lemma in_elements_after_add':
+    forall {A: Type} _key (added elem: A) tree, 
+      (~ In _key tree) ->
+      (elem = added \/ List.In elem (GetValues tree))
+      -> (List.In elem (GetValues (add _key added tree))).
+  Proof.
+    unfold GetValues;
+    intros ? ? ? ? ? not_in is_in;
+    rewrite <- MapsTo_snd;
+    rewrite <- MapsTo_snd in is_in.
+
+    setoid_rewrite add_mapsto_iff;
+      destruct is_in as [eq | [_key' _key'_map]];
+      [ exists _key 
+      | exists _key'; 
+        right; 
+        split;
+        [ intro Eeq;
+          apply MapsTo_In in _key'_map;
+          apply not_in;
+          rewrite (In_iff _ Eeq) | ]
+      ]; intuition.
+  Qed.
+
+  Lemma in_elements_after_add_iff:
+    forall {A: Type} key (added elem: A) tree, 
+      (~ In key tree) ->
+      (List.In elem (GetValues (add key added tree)) 
+       <-> (elem = added \/ List.In elem (GetValues tree))).
+  Proof.
+    intros; 
+    split; 
+    eauto using in_elements_after_add, in_elements_after_add'.
+  Qed.
+
+  Lemma EnsembleListEquivalence_fmap_add_filtered :
+    forall {A: Type} (cond : A -> Prop) ensemble key tree added,
+      cond added ->
+      (~ In (elt:=A) key tree) ->
+      EnsembleListEquivalence 
+        (fun x => Ensembles.In _ ensemble x /\ cond x) 
+        (GetValues tree) -> 
+      EnsembleListEquivalence
+        (fun x => (x = added \/ Ensembles.In _ ensemble x) /\ cond x)
+        (GetValues (add key added tree)).
+  Proof.
+    unfold EnsembleListEquivalence;
+    split; intros;
+    unfold Ensembles.In in *; simpl in *.
+
+    apply in_elements_after_add'; trivial.        
+    rewrite <- H1.
+    intuition.
+
+    apply in_elements_after_add in H2.
+    destruct H2; intuition.
+    subst; intuition.
+    rewrite <- H1 in H2; intuition.
+    rewrite <- H1 in H2; intuition.
+  Qed.
 End FMapExtensions_fun.
 
 Module FMapExtensions (M: WS) := FMapExtensions_fun M.E M.
