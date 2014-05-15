@@ -658,7 +658,6 @@ Section InsertRefinements.
           (qschemaSchemas qsSchema) :=
     replace_BoundedIndex relName rels Ridx newRel.
 
-
   Lemma QSInsertSpec_UnConstr_refine' :
     forall qsSchema (qs : UnConstrQueryStructure qsSchema)
            (Ridx : @BoundedString (map relName (qschemaSchemas qsSchema)))

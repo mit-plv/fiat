@@ -60,6 +60,22 @@ Section general_refine_lemmas.
                   ret (a, b))%comp.
   Proof. t_refine. Qed.
 
+       Lemma refineEquiv_pick_pair_fst_dep A B (PA : A -> B -> Prop) (PB : B -> Prop)
+       : @refineEquiv _
+                      {x | PA (fst x) (snd x) /\ PB (snd x)}%comp
+                      (b <- { b | PB b };
+                       a <- { a | PA a b };
+                       ret (a, b))%comp.
+       Proof. t_refine. Qed.
+
+       Lemma refineEquiv_pick_pair_snd_dep A B (PA : A -> Prop) (PB : A -> B -> Prop)
+       : @refineEquiv _
+                      { x | PA (fst x) /\ PB (fst x) (snd x) }%comp
+                      (a <- { a | PA a };
+                       b <- { b | PB a b };
+                       ret (a, b))%comp.
+       Proof. t_refine. Qed.
+
   Definition refineEquiv_split_ex A B
              (P : A -> Prop) (P' : A -> B -> Prop)
   : @refineEquiv _
@@ -253,6 +269,23 @@ Section general_refine_lemmas.
     Proof.
       t_refine.
     Qed.
+
+  Definition refineEquiv_pick_ex_computes_to_and A B
+             (c : Comp A)
+             (P : A -> B -> Prop)
+  : refineEquiv { b | exists a, c ↝ a /\ P a b}
+                (a <- c;
+                 { b | P a b}).
+  Proof. t_refine. Qed.
+
+  Definition refineEquiv_pick_ex_computes_to_bind_and A B D
+             (c : B -> Comp A)
+             (cB : Comp B)
+             (P : A -> D -> Prop)
+  : refineEquiv { d | exists a, (b <- cB; c b) ↝ a /\ P a d}
+                (b <- cB;
+                 { d | exists a, c b ↝ a /\ P a d}).
+  Proof. t_refine. Qed.
 
 End general_refine_lemmas.
 

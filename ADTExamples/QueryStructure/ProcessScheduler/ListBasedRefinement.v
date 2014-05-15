@@ -4,110 +4,214 @@ Require Import FMapAVL OrderedTypeEx.
 Require Import FMapExtensions.
 Require Import DBSchema SetEq AdditionalLemmas.
 Require Export ADTRefinement.BuildADTRefinements.
+Require Import GeneralInsertRefinements ListInsertRefinements
+        GeneralQueryRefinements ListQueryRefinements.
 
 Unset Implicit Arguments.
+Notation "x '∈' y" := (In _ y x) (at level 50, no associativity).
 
 Section ListBasedRefinement.
   Local Open Scope Tuple_scope.
 
-  Definition SimpleDB := list Process.
+  Definition SimpleDB := prod nat (list Process).
 
-  Definition SimpleDB_equivalence (rep: ProcessSchedulerRefRep) (db: SimpleDB) :=
-    forall a, In _ (GetRelation rep PROCESSES) a <-> List.In a db.
+  Definition SimpleDB_equivalence rep (db: SimpleDB) :=
+    (forall a, List.In a (snd db) -> fst db > (a PID)) /\
+    EnsembleListEquivalence (GetUnConstrRelation rep PROCESSES) (snd db).
 
-(*
-  Definition rels_builder (db: SimpleDB) _constr_
-    : ilist (fun ns : NamedSchema => Relation (relSchema ns))
-            (qschemaSchemas ProcessSchedulerSchema) :=
-    icons (B := fun ns => Relation (relSchema ns)) _
-          {| rel := db; constr := _constr_ |} (inil _).
+  Lemma refine_decision :
+    forall n c,
+    (forall a, (GetUnConstrRelation c PROCESSES) a ->
+               n > (a PID)) ->
+      refine
+        ({b |
+          decides b
+                  (forall tup' : Tuple,
+              GetUnConstrRelation c PROCESSES tup' ->
+              tupleAgree
+                <PID_COLUMN :: n, STATE_COLUMN :: Sleeping,
+                   CPU_COLUMN :: 0> tup' [PID_COLUMN]%SchemaConstraints ->
+              tupleAgree
+                <PID_COLUMN :: n, STATE_COLUMN :: Sleeping,
+                   CPU_COLUMN :: 0> tup'
+                [CPU_COLUMN; STATE_COLUMN]%SchemaConstraints)})
+        (ret true).
+  Proof.
+    unfold refine, decides; intros; constructor; inversion_by computes_to_inv; subst.
+    unfold tupleAgree; intros.
+    elimtype False; generalize (H _ H0), (H1 PID).
+    unfold BuildTuple, PID, ith_Bounded; simpl; intros.
+    rewrite H4 in H3; eauto.
+    omega.
+  Qed.
 
-  Definition ref_rep_builder db _constr_ _crossConstr_
-    : QueryStructure ProcessSchedulerSchema :=
-    {| rels := rels_builder db _constr_; crossConstr := _crossConstr_ |}.
-*)
+  Lemma refine_decision' :
+    forall n c,
+    (forall a, (GetUnConstrRelation c PROCESSES) a ->
+               n > (a PID)) ->
+      refine
+        ({b |
+          decides b
+                  (forall tup' : Tuple,
+              GetUnConstrRelation c PROCESSES tup' ->
+              tupleAgree tup'
+                <PID_COLUMN :: n, STATE_COLUMN :: Sleeping,
+                   CPU_COLUMN :: 0> [PID_COLUMN]%SchemaConstraints ->
+              tupleAgree tup'
+                <PID_COLUMN :: n, STATE_COLUMN :: Sleeping,
+                   CPU_COLUMN :: 0>
+                [CPU_COLUMN; STATE_COLUMN]%SchemaConstraints)})
+        (ret true).
+  Proof.
+    unfold refine, decides; intros; constructor; inversion_by computes_to_inv; subst.
+    unfold tupleAgree; intros.
+    elimtype False; generalize (H _ H0), (H1 PID).
+    unfold BuildTuple, PID, ith_Bounded; simpl; intros.
+    rewrite H4 in H3; eauto.
+    omega.
+  Qed.
 
-  (*TODO: Why doesn't
-        hone' observer ENUMERATE; simpl in *.
-      behave the same as
-        hone' observer ENUMERATE. simpl in *.
-   *)
+  Lemma tupleAgree_sym :
+    forall h: Heading,
+    forall t1 t2 attrs,
+      @tupleAgree h t1 t2 attrs <-> @tupleAgree h t2 t1 attrs.
+  Proof.
+    intros h t1 t2 attrs; unfold tupleAgree.
+    assert (forall attr, t1 attr = t2 attr <-> t2 attr = t1 attr) as inner_sym by (split; symmetry; trivial).
+    setoid_rewrite inner_sym.
+    f_equiv.
+  Qed.
+
+  Require Import Computation.Refinements.Tactics.
+
+  Lemma refine_snd :
+    forall {A B: Type} (P: B -> Prop),
+      refine
+        { pair | P (snd pair) }
+        (_fst <- Pick (fun (x: A) => True);
+         _snd <- Pick (fun (y: B) => P y);
+         ret (_fst, _snd)).
+  Proof.
+    t_refine.
+  Qed.
+
+  Lemma refine_ret_eq :
+    forall {A: Type} (a: A) b,
+      b = ret a -> refine (ret a) (b).
+  Proof.
+    t_refine.
+  Qed.
+
+  Lemma ret_computes_to :
+    forall {A: Type} (a1 a2: A),
+      ret a1 ↝ a2 <-> a1 = a2.
+  Proof.
+    t_refine.
+  Qed.
 
   Definition ProcessScheduler :
     Sharpened ProcessSchedulerSpec.
   Proof.
+    unfold ProcessSchedulerSpec.
+
+    hone representation using (@DropQSConstraints_SiR ProcessSchedulerSchema).
+
+    hone mutator SPAWN.
+    {
+      unfold ForAll_In.
+      remove trivial insertion checks.
+      finish honing.
+    }
+
     (* == Introduce the list-based (SimpleDB) representation == *)
-    hone representation' using SimpleDB_equivalence.
+    hone representation using SimpleDB_equivalence.
 
     (* == Implement ENUMERATE == *)
+    hone observer ENUMERATE.
+    {
+      unfold SimpleDB_equivalence in *.
+      implement queries for lists.
+      finish honing.
+    }
 
-    hone_observer' ENUMERATE.
+    (* == Implement GET_CPU_TIME == *)
+    hone observer GET_CPU_TIME.
+    {
+      unfold SimpleDB_equivalence in *.
+      implement queries for lists.
+      finish honing.
+    }
 
-    intros db state result computes set_db db_equiv.
+    hone mutator SPAWN.
+    {  unfold SimpleDB_equivalence in *; split_and.
+       setoid_rewrite refineEquiv_split_ex.
+       setoid_rewrite refineEquiv_pick_computes_to_and.
+       setoid_rewrite (refine_pick_val _ (a := fst r_n)); eauto.
+       simplify with monad laws.
+       setoid_rewrite refine_decision; eauto; simplify with monad laws.
+       setoid_rewrite refine_decision'; eauto; simplify with monad laws.
+       rewrite refine_pick_eq_ex_bind.
+       rewrite refineEquiv_pick_pair_fst_dep with
+       (PA := fun (a : nat) (b : list Process) => forall t : Tuple, List.In t b -> a > t PID).
+       setoid_rewrite ImplementListInsert_eq; eauto;
+       simplify with monad laws.
+       setoid_rewrite (refine_pick_val _ (a := S (fst r_n))); eauto;
+       simplify with monad laws.
+       finish honing.
+       simpl; intros; intuition.
+       subst; unfold BuildTuple, PID, ith_Bounded; simpl; omega.
+       generalize (H1 _ H3); omega.
+       intros; eapply H1; eapply H2; eauto.
+       intros; eapply H1; eapply H2; eauto.
+       intros; eapply H1; eapply H2; eauto.
+    }
 
-    rewrite (refine_ensemble_into_list_with_extraction db _ _ _ (fun p => beq_state p!STATE state));
+    finish sharpening.
+  Defined.
+
+  (* intros db state result computes set_db_unconstr set_db constr_unconstr_equiv db_equiv.
+
+    rewrite (refine_ensemble_into_list_with_extraction (snd db) _ _ _ (fun p => beq_state p!STATE state));
       eauto using beq_process_iff__state.
 
     refine_eq_into_ret;
       eexists.
 
+    admit.
+
+    (* == Implement GET_CPU_TIME == *)
     hone_observer' GET_CPU_TIME.
 
-    intros db pid result computes set_db db_equiv.
+    intros db pid result computes set_db_unconstr set_db constr_unconstr_equiv db_equiv.
 
-    Check refine_ensemble_into_list_with_extraction.
-    rewrite (refine_ensemble_into_list_with_extraction db _ _ _ (fun p => beq_nat p!PID pid) _);
+    rewrite (refine_ensemble_into_list_with_extraction (snd db) _ _ _ (fun p => beq_nat p!PID pid) _);
       eauto using beq_process_iff__pid.
 
     refine_eq_into_ret;
       eexists.
 
+    admit.
+
     (* == Implement SPAWN == *)
-    (*
-    hone' mutator SPAWN using SimpleDB_spawn;
-      [ rinse SimpleDB_spawn ns | ].
+    hone mutator SPAWN.
 
-    apply (BindComputes _ (comp_a_value :=
-             <NS : ns, PID : 0, STATE : Sleeping, CPU : 0> :: newrep));
-      constructor;
-      [ | trivial].
+    setoid_rewrite refineEquiv_split_ex.
+    setoid_rewrite refineEquiv_pick_computes_to_and.
+    simplify with monad laws.
 
-    intros oldrep oldrep_equiv_newrep;
-      eexists (ref_rep_builder
-                 (<NS : ns, PID : 0, STATE : Sleeping, CPU : 0> :: newrep)
-                 _ _);
-      constructor.
+    setoid_rewrite refine_pick_eq_ex_bind.
+    setoid_rewrite refine_decision; setoid_rewrite refine_decision';
+    simplify with monad laws.
 
-    (* QSInsertSpec computes to the
-       representation introduced above *)
-    constructor;
-      rewrite <- oldrep_equiv_newrep;
-      unfold QSInsertSpec, GetRelation;
-      trivial.
-
-    (* That representation is equivalent (modulo
-       SimpleDB_equivalence) to our implementation *)
-    unfold ref_rep_builder, rels_builder,
-           QSInsertSpec, SimpleDB_equivalence, GetRelation;
-      trivial.
+    (* Check refineEquiv_pick_pair. *)
+    unfold SimpleDB_equivalence.
+    setoid_rewrite (refine_snd (fun b => EnsembleListEquivalence _ b)).
+    setoid_rewrite (refine_pick_val _ (a := S (fst r_n))); eauto.
+    simplify with monad laws.
+    setoid_rewrite ImplementListInsert_eq; eauto.
+    simplify with monad laws.
+    apply refine_ret_eq; unfold H0; clear H0; eexists.
 
     finish sharpening.
-
-    (* == Prove that DB constraints are satisfied == *)
-    Grab Existential Variables.
-
-    (* Cross-table constraints (?) *)
-    simpl; trivial.
-
-    (* Single-table constraints *)
-    intros; simpl in *.
-
-    (*
-      unfold tupleAgree; simpl. intros. simpl in H.
-      specialize (H0 attr).
-      destruct H1; subst; simpl in H0.
-     *)
-    (* TODO: Verify this. Shouldn't tup2 be in <...> :: newrep as well? *)
-     *)
-  Admitted.
+  Defined. *)
 End ListBasedRefinement.

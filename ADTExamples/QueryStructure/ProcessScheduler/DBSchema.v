@@ -1,9 +1,11 @@
-Require Import String Omega List Ensembles. 
+Require Import String Omega List Ensembles.
 
 Require Export ADTNotation.
 Require Export QueryStructureSchema QueryQSSpecs InsertQSSpecs QueryStructure.
 
 Require Export State.
+
+(*Notation "x '∈' y" := (In _ y x) (at level 50, no associativity) *)
 
 Section ProcessSchedulerInterface.
   Local Open Scope QSSchema.
@@ -30,10 +32,10 @@ Section ProcessSchedulerInterface.
   Definition STATE := GetAttributeKey PROCESSES STATE_COLUMN.
   Definition CPU   := GetAttributeKey PROCESSES CPU_COLUMN.
 
-  Definition ProcessSchedulerRefRep := 
+  Definition ProcessSchedulerRefRep :=
     @QueryStructure ProcessSchedulerSchema.
 
-  Definition ProcessSchema := 
+  Definition ProcessSchema :=
     QSGetNRelSchemaHeading ProcessSchedulerSchema PROCESSES.
 
   Definition Process := (@Tuple ProcessSchema).
@@ -53,31 +55,47 @@ Section ProcessSchedulerInterface.
     COUNT        : rep × unit    → nat*)
   }.
 
-  Definition ProcessSchedulerSpec : ADT ProcessSchedulerSig := 
-    QueryADTRep 
+  Open Scope comp_scope.
+
+  Definition ForAll_In
+             qsSchema
+             (qs : QueryStructure qsSchema)
+             (R : BoundedString) (bod : Ensemble Tuple) : Prop :=
+    forall tup, GetRelation qs R tup ->
+                bod tup.
+
+  Notation "∀ x '∈' R ',' bod" :=
+    (ForAll_In qsHint R (fun x => bod)) (bod at level 11, at level 10)
+    : QuerySpec_scope.
+
+  Arguments ForAll_In _ _ _ _ / .
+
+  Definition ProcessSchedulerSpec : ADT ProcessSchedulerSig :=
+    QueryADTRep
       ProcessSchedulerRefRep {
         def update SPAWN (ns : nat) : rep := (* TODO: pid/0 *)
-          Insert <PID_COLUMN:: 0, STATE_COLUMN:: Sleeping, CPU_COLUMN :: 0> into PROCESSES;
-          
+          new_pid <- {n | ∀ p ∈ PROCESSES, (n > p!PID)};
+          Insert <PID_COLUMN:: new_pid, STATE_COLUMN:: Sleeping, CPU_COLUMN :: 0> into PROCESSES;
+
         def query ENUMERATE (state : State) : list nat :=
           For (p in PROCESSES)
               Where (p!STATE = state)
-              Return (p!PID), 
+              Return (p!PID),
 
         def query GET_CPU_TIME (id : nat) : list nat :=
           For (p in PROCESSES)
               Where (p!PID = id)
               Return (p!CPU)
 (*,
-          
+
         def query COUNT (_: unit) : nat :=
-          Count (For (p in PROCESSES_TABLE) 
+          Count (For (p in PROCESSES_TABLE)
                  Return 1)*)
       }.
 End ProcessSchedulerInterface.
 
 Section ProcessSchedulerLemmas.
-  Lemma beq_process_true_iff : 
+  Lemma beq_process_true_iff :
     forall { A: Type } (db_schema: Heading) (column: Attributes db_schema)
            { beq_A: Domain db_schema column -> Domain db_schema column -> bool },
     forall (beq_iff : forall a b, beq_A a b = true <-> a = b),
@@ -85,7 +103,7 @@ Section ProcessSchedulerLemmas.
       p column = value <-> beq_A (p column) value = true.
   Proof.
     intros ? ? ? ? beq_iff; split; apply beq_iff.
-  Qed.  
+  Qed.
 
   Definition beq_process_iff__state := beq_process_true_iff (A:=State) STATE beq_state_true_iff.
 
