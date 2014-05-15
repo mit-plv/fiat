@@ -66,33 +66,6 @@ Section ListBasedRefinement.
     f_equiv.
   Qed.
   
-  Require Import Computation.Refinements.Tactics.
-
-  Lemma refine_snd :
-    forall {A B: Type} (P: B -> Prop),
-      refine 
-        { pair | P (snd pair) }
-        (_fst <- Pick (fun (x: A) => True);
-         _snd <- Pick (fun (y: B) => P y);
-         ret (_fst, _snd)).
-  Proof.
-    t_refine.
-  Qed.
-
-  Lemma refine_ret_eq :
-    forall {A: Type} (a: A) b,
-      b = ret a -> refine (ret a) (b).
-  Proof.
-    t_refine.
-  Qed.
-
-  Lemma ret_computes_to :
-    forall {A: Type} (a1 a2: A),
-      ret a1 ↝ a2 <-> a1 = a2.
-  Proof.
-    t_refine.
-  Qed.
-
   Definition ProcessScheduler :
     Sharpened ProcessSchedulerSpec.
   Proof.
