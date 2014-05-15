@@ -46,6 +46,16 @@ Section AdditionalLogicLemmas.
   Qed.
 End AdditionalLogicLemmas.
 
+Section AdditionalEnsembleLemmas.
+  Lemma weaken :
+    forall {A: Type} ensemble condition,
+    forall (x: A), 
+      In _ (fun x => In _ ensemble x /\ condition x) x
+      -> In _ ensemble x.
+  Proof.
+    unfold In; intros; intuition.
+  Qed.
+End AdditionalEnsembleLemmas.
 
 Section AdditionalListLemmas.   
   Lemma map_id : 
