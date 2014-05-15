@@ -121,37 +121,72 @@ Section TreeBasedRefinement.
       tauto.
   Qed.
 
-  Lemma decide_admit :
-    forall c,
+  Lemma no_collisions_when_using_a_fresh_pid :
+    forall pid c (tup tup': Process),
+      tupleAgree tup tup' [PID_COLUMN]%SchemaConstraints ->
+      (forall a, (GetUnConstrRelation c PROCESSES) a -> pid > (a PID)) ->
+      tup!PID = pid ->
+      GetUnConstrRelation c PROCESSES tup' ->
+      False.
+  Proof.
+    unfold tupleAgree, GetAttribute; 
+    simpl; 
+    intuition;
+    specialize (H0 tup' H2); 
+    specialize (H PID); 
+      subst; 
+      intuition. 
+  Qed.
+      
+  Lemma insert_always_happens :
+    forall pid c,
+      (forall a, (GetUnConstrRelation c PROCESSES) a -> pid > (a PID)) ->
       refine 
         {b |
          decides b
                  (forall tup' : Tuple,
                     GetUnConstrRelation c PROCESSES tup' ->
                     tupleAgree
-                      (<PID_COLUMN :: 0, STATE_COLUMN :: Sleeping, CPU_COLUMN :: 0>) tup'
-                      [CPU_COLUMN; STATE_COLUMN]%SchemaConstraints ->
+                      (<PID_COLUMN :: pid, STATE_COLUMN :: Sleeping, CPU_COLUMN :: 0>) tup'
+                      [PID_COLUMN]%SchemaConstraints ->
                     tupleAgree
-                      (<PID_COLUMN :: 0, STATE_COLUMN :: Sleeping, CPU_COLUMN :: 0>) tup'
-                      [PID_COLUMN]%SchemaConstraints)}
+                      (<PID_COLUMN :: pid, STATE_COLUMN :: Sleeping, CPU_COLUMN :: 0>) tup'
+                      [CPU_COLUMN; STATE_COLUMN]%SchemaConstraints)
+                    }
         (ret true).
-  Proof. admit. Qed.
+  Proof.  
+    intros; constructor; inversion_by computes_to_inv; subst; simpl.
+    intros; exfalso; apply (no_collisions_when_using_a_fresh_pid pid c _ _ H1); trivial.
+  Qed.
   
-  Lemma decide_admit' :
-    forall c,
-      refine
+  Lemma tupleAgree_sym : 
+    forall (heading: Heading) tup1 tup2 attrs,
+      @tupleAgree heading tup1 tup2 attrs <-> @tupleAgree heading tup2 tup1 attrs.
+  Proof.
+    intros; unfold tupleAgree.
+    intuition; symmetry; intuition.
+  Qed.
+  
+  Lemma insert_always_happens' :
+    forall pid c,
+      (forall a, (GetUnConstrRelation c PROCESSES) a -> pid > (a PID)) ->
+      refine 
         {b |
          decides b
                  (forall tup' : Tuple,
                     GetUnConstrRelation c PROCESSES tup' ->
-                    tupleAgree 
-                      tup' (<PID_COLUMN :: 0, STATE_COLUMN :: Sleeping, CPU_COLUMN :: 0>)
-                      [CPU_COLUMN; STATE_COLUMN]%SchemaConstraints ->
-                    tupleAgree 
-                      tup' (<PID_COLUMN :: 0, STATE_COLUMN :: Sleeping, CPU_COLUMN :: 0>)
-                      [PID_COLUMN]%SchemaConstraints)}
+                    tupleAgree
+                      tup' (<PID_COLUMN :: pid, STATE_COLUMN :: Sleeping, CPU_COLUMN :: 0>)
+                      [PID_COLUMN]%SchemaConstraints ->
+                    tupleAgree
+                      tup' (<PID_COLUMN :: pid, STATE_COLUMN :: Sleeping, CPU_COLUMN :: 0>)
+                      [CPU_COLUMN; STATE_COLUMN]%SchemaConstraints)
+                    }
         (ret true).
-  Proof. admit. Qed.
+  Proof. 
+    intros; constructor; inversion_by computes_to_inv; subst; simpl.
+    intros; exfalso; rewrite tupleAgree_sym in H1; apply (no_collisions_when_using_a_fresh_pid pid c _ _ H1); trivial.
+  Qed.
 
   Lemma refine_pick_fmap_add_matching :
     forall tree ens tuple pid (cond: Process -> Prop),
@@ -229,6 +264,36 @@ Section TreeBasedRefinement.
     trivial.
   Qed. 
 
+  Lemma InValues_In :
+    forall tree tup,
+      KeyedOnPID tree ->
+      List.In tup (GetValues tree) ->
+      (GenericTreeDB.In tup!PID tree). 
+  Proof.
+    unfold KeyedOnPID; intuition.
+    apply (MapsTo_In _ tup).
+    unfold GetValues in H0; rewrite <- MapsTo_snd in H0.
+    destruct H0 as [key mapsto].
+    pose proof (H _ _ mapsto); subst; trivial.
+  Qed.
+
+  Lemma In_InValues :
+    forall tree pid,
+      KeyedOnPID tree ->
+      (GenericTreeDB.In pid tree) ->
+      (exists tup, tup!PID = pid /\ List.In tup (GetValues tree)).
+  Proof.
+    unfold KeyedOnPID; intuition.
+    unfold GetValues; setoid_rewrite <- MapsTo_snd.
+
+    rewrite elements_in_iff in H0.
+    destruct H0 as [val ina].
+    rewrite <- elements_mapsto_iff in ina.
+    pose proof (H _ _ ina); subst.
+    eauto.
+  Qed.
+  
+
   Lemma NeatScheduler :
     Sharpened ProcessSchedulerSpec.
   Proof.
@@ -236,6 +301,7 @@ Section TreeBasedRefinement.
 
     hone mutator SPAWN.
     {
+      unfold ForAll_In. (*TODO: Why does swapping these two calls break 'finish honing'?*)
       remove trivial insertion checks.
       finish honing.
     }
@@ -333,25 +399,24 @@ Section TreeBasedRefinement.
 
     hone mutator SPAWN.
 
-    setoid_rewrite decide_admit.
-    setoid_rewrite decide_admit'.
+    unfold NeatDB_equivalence, NeatDB in *;
+      destruct r_n as (next_pid & sleeping & running);
+      destruct H as (nextpid_correct & (sleeping_correct & sleeping_keys)
+                                     & (running_correct & running_keys));
+      simpl in *.
+
     setoid_rewrite refineEquiv_split_ex.
     setoid_rewrite refineEquiv_pick_computes_to_and.
     simplify with monad laws.
-    setoid_rewrite refine_pick_eq_ex_bind. 
 
-    unfold NeatDB_equivalence.
+    setoid_rewrite (refine_pick_val _ (a := next_pid)); eauto.
     simplify with monad laws.
-
-    Require Import Utf8.
-    simpl.
-
-    unfold NeatDB.
-
-    destruct r_n as (next_pid & sleeping & running);
-      unfold NeatDB_equivalence in H;
-      destruct H as (nextpid_correct & (sleeping_correct & sleeping_keys)
-                                     & (running_correct & running_keys)).
+    setoid_rewrite insert_always_happens; eauto.
+    simplify with monad laws.
+    setoid_rewrite insert_always_happens'; eauto.
+    simplify with monad laws.
+    setoid_rewrite refine_pick_eq_ex_bind. 
+    simplify with monad laws. 
 
     setoid_rewrite refine_let.
     setoid_rewrite (refine_pick_val _ (a := S next_pid)).
@@ -367,20 +432,30 @@ Section TreeBasedRefinement.
 
     apply refine_ret_eq.
     unfold H0; clear H0.
-    
     pull_definition.
 
-    intuition.
+    (* Didn't insert a running process *)
     discriminate.
 
-    admit. (* Really new PID *)
+    (* No duplicates *)
+    
+    unfold not; intro has_key.
+    apply In_InValues in has_key; eauto.
+    destruct has_key as [tup (collision & already_inserted)].
+    unfold EnsembleListEquivalence in sleeping_correct; 
+      rewrite <- sleeping_correct in already_inserted.
+    
+    apply weaken, (nextpid_correct tup!PID) in already_inserted; eauto.
+    compute in collision, already_inserted.
+    omega.
 
-    unfold GetUnConstrRelation, UpdateUnConstrRelation, RelationInsert, In; simpl; intros.
-    destruct H;
-    subst; simpl in *.
-
-    compute; omega.
-    apply lt_S, (nextpid_correct _ tuple); intuition.
+    (* Updated next_pid properly *)
+    unfold In, GetUnConstrRelation, UpdateUnConstrRelation, RelationInsert in *; 
+      simpl in *;
+      intros pid tuple [ is_new_process | is_updated_process ] pid_eq; 
+      subst;
+      [ compute | apply lt_S, (nextpid_correct _ tuple) ]; 
+      intuition.
 
     finish sharpening.
   Defined.
