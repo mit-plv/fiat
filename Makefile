@@ -62,10 +62,10 @@ MODULES    := \
 	ADTExamples/QueryStructure/ProcessScheduler/FMapExtensions \
 	ADTExamples/QueryStructure/ProcessScheduler/DBSchema \
 	ADTExamples/QueryStructure/ProcessScheduler/ListBasedRefinement \
-	ADTExamples/QueryStructure/ProcessScheduler/TreeBasedRefinement \
 	ADTExamples/QueryStructure/Bookstore \
 	ADTExamples/MinCollection \
 	ADTExamples/MinPlusMax
+#	ADTExamples/QueryStructure/ProcessScheduler/TreeBasedRefinement \
 
 COQDEP=coqdep
 COQDOC=coqdoc

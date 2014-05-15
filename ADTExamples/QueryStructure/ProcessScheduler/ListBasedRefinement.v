@@ -84,31 +84,6 @@ Section ListBasedRefinement.
 
   Require Import Computation.Refinements.Tactics.
 
-  Lemma refine_snd :
-    forall {A B: Type} (P: B -> Prop),
-      refine
-        { pair | P (snd pair) }
-        (_fst <- Pick (fun (x: A) => True);
-         _snd <- Pick (fun (y: B) => P y);
-         ret (_fst, _snd)).
-  Proof.
-    t_refine.
-  Qed.
-
-  Lemma refine_ret_eq :
-    forall {A: Type} (a: A) b,
-      b = ret a -> refine (ret a) (b).
-  Proof.
-    t_refine.
-  Qed.
-
-  Lemma ret_computes_to :
-    forall {A: Type} (a1 a2: A),
-      ret a1 ↝ a2 <-> a1 = a2.
-  Proof.
-    t_refine.
-  Qed.
-
   Definition ProcessScheduler :
     Sharpened ProcessSchedulerSpec.
   Proof.
@@ -143,7 +118,8 @@ Section ListBasedRefinement.
     }
 
     hone mutator SPAWN.
-    {  unfold SimpleDB_equivalence in *; split_and.
+    {  
+      unfold SimpleDB_equivalence in *; split_and.
        setoid_rewrite refineEquiv_split_ex.
        setoid_rewrite refineEquiv_pick_computes_to_and.
        setoid_rewrite (refine_pick_val _ (a := fst r_n)); eauto.
@@ -168,52 +144,4 @@ Section ListBasedRefinement.
 
     finish sharpening.
   Defined.
-
-  (* intros db state result computes set_db_unconstr set_db constr_unconstr_equiv db_equiv.
-
-    unfold SimpleDB_equivalence, DropQSConstraints_SiR in *;
-      rewrite <- constr_unconstr_equiv, GetRelDropConstraints in db_equiv.
-
-    rewrite (refine_ensemble_into_list_with_extraction (snd db) _ _ _ (fun p => beq_state p!STATE state));
-      eauto using beq_process_iff__state.
-
-    refine_eq_into_ret;
-      eexists.
-
-    (* == Implement GET_CPU_TIME == *)
-    hone_observer' GET_CPU_TIME.
-
-    intros db pid result computes set_db_unconstr set_db constr_unconstr_equiv db_equiv.
-
-    unfold SimpleDB_equivalence, DropQSConstraints_SiR in *;
-      rewrite <- constr_unconstr_equiv, GetRelDropConstraints in db_equiv.
-
-    rewrite (refine_ensemble_into_list_with_extraction (snd db) _ _ _ (fun p => beq_nat p!PID pid) _);
-      eauto using beq_process_iff__pid.
-
-    refine_eq_into_ret;
-      eexists.
-
-    (* == Implement SPAWN == *)
-    hone mutator SPAWN.
-
-    setoid_rewrite refineEquiv_split_ex.
-    setoid_rewrite refineEquiv_pick_computes_to_and.
-    simplify with monad laws.
-
-    setoid_rewrite refine_pick_eq_ex_bind.
-    setoid_rewrite refine_decision; setoid_rewrite refine_decision';
-    simplify with monad laws.
-
-    (* Check refineEquiv_pick_pair. *)
-    unfold SimpleDB_equivalence.
-    setoid_rewrite (refine_snd (fun b => EnsembleListEquivalence _ b)).
-    setoid_rewrite (refine_pick_val _ (a := S (fst r_n))); eauto.
-    simplify with monad laws.
-    setoid_rewrite ImplementListInsert_eq; eauto.
-    simplify with monad laws.
-    apply refine_ret_eq; unfold H0; clear H0; eexists.
-
-    finish sharpening.
-  Defined. *)
 End ListBasedRefinement.
