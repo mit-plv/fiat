@@ -95,7 +95,7 @@ TIMER=\$$(if \$$(TIMED), $(STDTIME), $(TIMECMD))
 .PHONY: all html clean pretty-timed pretty-timed-files pdf doc clean-doc
 
 all: Makefile.coq
-	$(MAKE) -f Makefile.coq
+	$(MAKE) -f Makefile.coq COQC="$(SILENCE_COQC)$(TIMER) \"$(COQBIN)coqc\"" COQDEP=" $(SILENCE_COQDEP)\"$(COQBIN)coqdep\" -c"
 
 html: Makefile.coq
 	$(MAKE) -f Makefile.coq html
@@ -123,7 +123,7 @@ Overview/ProjectOverview.pdf: $(shell find Overview -name "*.tex" -o -name "*.st
 	cd Overview; pdflatex -synctex=1 ProjectOverview.tex
 
 Makefile.coq: Makefile $(VS)
-	coq_makefile $(VS) COQC = " $(SILENCE_COQC)$(TIMER) \"\$$(COQBIN)coqc\"" COQDEP = " $(SILENCE_COQDEP)\"\$$(COQBIN)coqdep\" -c" COQDOCFLAGS = "$(COQDOCFLAGS)" -arg -dont-load-proofs -R . ADTSynthesis -o Makefile.coq
+	"$(COQBIN)coq_makefile" $(VS) COQC = " $(SILENCE_COQC)$(TIMER) \"\$$(COQBIN)coqc\"" COQDEP = " $(SILENCE_COQDEP)\"\$$(COQBIN)coqdep\" -c" COQDOCFLAGS = "$(COQDOCFLAGS)" -arg -dont-load-proofs -R . ADTSynthesis -o Makefile.coq
 
 clean-doc::
 	rm -rf html

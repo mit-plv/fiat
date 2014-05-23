@@ -92,9 +92,9 @@ Section is_computational.
   : is_computational c -> { a | unique (computes_to c) a }.
   Proof.
     refine match c as c return is_computational c -> { a | unique (computes_to c) a } with
-             | Return T x => fun _ => existT (unique (computes_to (ret x)))
-                                             x
-                                             _
+             | Return T x => fun _ => exist (unique (computes_to (ret x)))
+                                            x
+                                            _
              | Pick _ _ => fun H => match is_computational_inv H with end
              | Bind _ _ x f
                => fun H
