@@ -172,7 +172,7 @@ Section BuildADTRefinements.
     destruct newDef; simpl.
     intros; eapply refineADT_BuildADT_ReplaceObserver_eq;
     simpl; intros; subst; try reflexivity;
-    simplify with monad laws; eauto.
+    eauto.
   Qed.
 
 
