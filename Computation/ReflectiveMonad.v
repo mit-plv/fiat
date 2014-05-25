@@ -91,5 +91,5 @@ Qed.
 Tactic Notation "simplify" "with" "monad" "laws" constr(fuel) :=
   refine (@simplify_computation_with_monad_laws_helper fuel _ _ _ _).
 
-Tactic Notation "simplify" "with" "monad" "laws" :=
+Tactic Notation "reflective" "simplify" "with" "monad" "laws" :=
   simplify with monad laws 1000.
