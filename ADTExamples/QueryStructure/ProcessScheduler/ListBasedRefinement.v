@@ -118,21 +118,21 @@ Section ListBasedRefinement.
     }
 
     hone mutator SPAWN.
-    {  
+    {
       unfold SimpleDB_equivalence in *; split_and.
        setoid_rewrite refineEquiv_split_ex.
        setoid_rewrite refineEquiv_pick_computes_to_and.
        setoid_rewrite (refine_pick_val _ (a := fst r_n)); eauto.
        simplify with monad laws.
-       setoid_rewrite refine_decision; eauto; simplify with monad laws.
-       setoid_rewrite refine_decision'; eauto; simplify with monad laws.
+       setoid_rewrite refine_decision; eauto; try simplify with monad laws.
+       setoid_rewrite refine_decision'; eauto; try simplify with monad laws.
        rewrite refine_pick_eq_ex_bind.
        rewrite refineEquiv_pick_pair_fst_dep with
        (PA := fun (a : nat) (b : list Process) => forall t : Tuple, List.In t b -> a > t PID).
        setoid_rewrite ImplementListInsert_eq; eauto;
        simplify with monad laws.
        setoid_rewrite (refine_pick_val _ (a := S (fst r_n))); eauto;
-       simplify with monad laws.
+       try simplify with monad laws.
        finish honing.
        simpl; intros; intuition.
        subst; unfold BuildTuple, PID, ith_Bounded; simpl; omega.

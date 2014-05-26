@@ -140,4 +140,4 @@ Tactic Notation "implement" "queries" "for" "lists" :=
             (try (setoid_rewrite Equivalent_In_EnsembleListEquivalence; simpl; eauto);
              try (setoid_rewrite Equivalent_List_In_Where with (P_dec := _); simpl);
              try (setoid_rewrite Equivalent_Join_Lists; eauto)));
-  setoid_rewrite refine_For_List_Return; simplify with monad laws.
+  setoid_rewrite refine_For_List_Return; try simplify with monad laws.

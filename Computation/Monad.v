@@ -2,12 +2,10 @@ Require Import String Ensembles.
 Require Import Common.
 Require Import Computation.Core.
 
-(* [Comp] obeys the monad laws, using [computes_to] as the
-   notion of equivalence. .*)
+(** [Comp] obeys the monad laws, using [computes_to] as the
+    notion of equivalence. .*)
 
 Section monad.
-  Context `{ctx : LookupContext}.
-
   Local Ltac t :=
     split;
     intro;
@@ -49,15 +47,13 @@ Section monad.
   Proof.
     t; split_iff; eauto.
   Qed.
-
 End monad.
 
 
-(* [Comp] also obeys the monad laws using both [refineEquiv]
-   as our notions of equivalence. *)
+(** [Comp] also obeys the monad laws using both [refineEquiv]
+    as our notions of equivalence. *)
 
 Section monad_refine.
-
   Lemma refineEquiv_bind_bind X Y Z (f : X -> Comp Y) (g : Y -> Comp Z) x
   : refineEquiv (Bind (Bind x f) g)
                 (Bind x (fun u => Bind (f u) g)).
@@ -78,23 +74,20 @@ Section monad_refine.
   Proof.
     split; intro; apply unit_bind.
   Qed.
-
 End monad_refine.
 
 Create HintDb refine_monad discriminated.
 
-(*Hint Rewrite refine_bind_bind refine_bind_unit refine_unit_bind : refine_monad.
-Hint Rewrite <- refine_bind_bind' refine_bind_unit' refine_unit_bind' : refine_monad.*)
 Hint Rewrite @refineEquiv_bind_bind @refineEquiv_bind_unit @refineEquiv_unit_bind : refine_monad.
 Tactic Notation "autosetoid_rewrite" "with" "refine_monad" :=
   repeat first [setoid_rewrite refineEquiv_bind_bind |
                 setoid_rewrite refineEquiv_bind_unit |
                 setoid_rewrite refineEquiv_unit_bind] .
 
-Tactic Notation "simplify" "with" "monad" "laws" :=
+Tactic Notation "simplify" "with" "setoid-y" "monad" "laws" :=
   autosetoid_rewrite with refine_monad.
 
-(* Ideally we would throw refineEquiv_under_bind in here as well, but it gets stuck *)
+(** Ideally we would throw [refineEquiv_under_bind] in here as well, but it gets stuck *)
 
 Ltac interleave_autorewrite_refine_monad_with tac :=
   repeat first [ reflexivity

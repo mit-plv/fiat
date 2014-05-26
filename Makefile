@@ -5,6 +5,7 @@ MODULES    := \
 	Computation/Core \
 	Computation/Monad \
 	Computation/ReflectiveMonad \
+	Computation/ApplyMonad \
 	Computation/Refinements/Tactics \
 	Computation/SetoidMorphisms \
 	Computation/Refinements/General \

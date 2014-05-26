@@ -705,8 +705,7 @@ Section InsertRefinements.
     setoid_rewrite refineEquiv_split_ex.
     setoid_rewrite refineEquiv_pick_computes_to_and.
     simplify with monad laws.
-    setoid_rewrite refineEquiv_pick_eq';
-      simplify with monad laws.
+    setoid_rewrite refineEquiv_pick_eq'.
     unfold DropQSConstraints_SiR in *; intros; subst.
     rewrite QSInsertSpec_refine with (default := ret or).
     unfold refine; intros; subst.

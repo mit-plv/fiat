@@ -256,7 +256,7 @@ Fixpoint Check_List_Ex_Prop {A}
   match l with
     | [] => false
     | a :: l' => if (cond a) then
-                   true else 
+                   true else
                    Check_List_Ex_Prop cond l'
   end.
 
@@ -305,7 +305,7 @@ Proof.
   unfold refine; intros; inversion_by computes_to_inv;
   subst; econstructor.
   case_eq (Check_List_Ex_Prop dec l); simpl; intros.
-  destruct (Check_List_Ex_Prop_dec dec P _ dec_decides_P H0); 
+  destruct (Check_List_Ex_Prop_dec dec P _ dec_decides_P H0);
     eexists; intuition; try apply H; eauto.
   unfold not; intros; eapply Check_List_Ex_Prop_dec';
   eauto using dec_decides_P.
@@ -367,11 +367,11 @@ Qed.
 Tactic Notation "implement" "insert" "for" "lists" :=
   repeat (progress
             (try (setoid_rewrite ImplementListInsert_eq; eauto;
-                  simplify with monad laws);
+                  try simplify with monad laws);
              try (setoid_rewrite ImplementListInsert_neq;
-                  eauto; simplify with monad laws);
+                  eauto; try simplify with monad laws);
              try (match goal with
                     | |- context [ (GetUnConstrRelation _ ?Ridx) ] =>
                       setoid_rewrite (@ImplementListInsert_neq _ Ridx)
-                  end; eauto; simplify with monad laws)));
+                  end; eauto; try simplify with monad laws)));
   try reflexivity.
