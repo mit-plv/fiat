@@ -880,12 +880,15 @@ Arguments id  _ _ / .
                let neq := fresh in
                let tup' := fresh in
                let In_tup' := fresh in
-               econstructor; simpl; intros neq tup' In_tup';
+               econstructor; simpl map; simpl; intros neq tup' In_tup';
                unfold RelationInsert;
-               destruct (@crossConstr _ _ Ridx Ridx' tup' neq In_tup'); split_and; eauto);
+               let H' := fresh in
+               pose proof (@crossConstr _ _ Ridx Ridx' tup' neq In_tup') as H';
+               simpl map in *; simpl in *;
+               destruct H' as [? [? ?]]; eauto);
       setoid_rewrite refine_trivial;
       clear refine_trivial;
-      autosetoid_rewrite with refine_monad.
+      simplify with monad laws.
 
 Create HintDb refine_keyconstraints discriminated.
 (*Hint Rewrite refine_Any_DecideableSB_True : refine_keyconstraints.*)
