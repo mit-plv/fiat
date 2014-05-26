@@ -31,6 +31,7 @@ Ltac simplify_trivial_SatisfiesSchemaConstraints :=
   try setoid_rewrite decides_2_True; reflexivity.
 
 Ltac simplify_trivial_SatisfiesCrossRelationConstraints :=
+  simpl map; (* this shaves off 3-9 seconds in some cases *)
   simpl; try setoid_rewrite decides_True;
   try setoid_rewrite decides_3_True;
   repeat setoid_rewrite refineEquiv_bind_unit;
@@ -64,10 +65,7 @@ Tactic Notation "remove" "trivial" "insertion" "checks" :=
              | simplify_trivial_SatisfiesCrossRelationConstraints
              | simplify_trivial_SatisfiesCrossRelationConstraints
              | eauto ]
-  | (* simplify using the monad laws *)
-  repeat setoid_rewrite refineEquiv_bind_unit;
-    repeat setoid_rewrite refineEquiv_bind_bind;
-    repeat setoid_rewrite refineEquiv_bind_unit;
+  | simplify with monad laws;
     try rewrite <- GetRelDropConstraints;
     repeat match goal with
              | H : DropQSConstraints_SiR ?qs ?uqs |- _ =>
