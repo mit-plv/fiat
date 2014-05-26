@@ -191,6 +191,7 @@ Section BookStoreExamples.
       unfold BookStoreListImpl_SiR in *; split_and.
       setoid_rewrite refineEquiv_split_ex.
       setoid_rewrite refineEquiv_pick_computes_to_and.
+      simplify with monad laws.
       setoid_rewrite refine_unused_key_check
       with (attr_eq_dec' := ISBN_attr_dec)
              (attr_eq_dec := _); eauto.
