@@ -214,6 +214,67 @@ Proof.
   apply IsSetEqSafe_filter.
 Qed.
 
+Lemma false_or :
+  forall (P Q: Prop),
+    (False <-> P \/ Q) <-> (False <-> P) /\ (False <-> Q).
+Proof.
+  tauto.
+Qed.
+
+Lemma false_or' :
+  forall (P Q: Prop),
+    (P \/ Q <-> False) <-> (False <-> P) /\ (False <-> Q).
+Proof.
+  tauto.
+Qed.
+
+Lemma equiv_false :
+  forall P,
+    (False <-> P) <-> (~ P).
+Proof. 
+  tauto.
+Qed.
+
+Lemma equiv_false' :
+  forall P,
+    (P <-> False) <-> (~ P).
+Proof. 
+  tauto.
+Qed.
+
+Definition flatten {A} := List.fold_right (@app A) nil.
+
+Lemma in_flatten_iff :
+  forall {A} y,
+    forall x, @List.In A x (flatten y) <-> 
+              exists y0, @List.In A x y0 /\ @List.In (list A) y0 y. 
+Proof.
+  intros A bag.
+  induction bag as [ | sublist bag' IH ]; simpl.
+  
+  firstorder.
+
+  intros elem; rewrite in_app_iff.
+  split; [intro in_flattened | intro in_sublist].
+  
+  firstorder.
+  destruct in_sublist as [sublist' (elem_in_sublist' & H)].
+  
+  destruct H;
+    subst;
+    firstorder.
+Qed.
+
+Add Parametric Morphism {A: Type} :
+  flatten
+    with signature (@SetEq (list A) ==> @SetEq A)
+      as concat_right_morphism.
+Proof.
+  unfold SetEq;
+  setoid_rewrite in_flatten_iff;
+  firstorder.
+Qed.
+
 Require Import State.
 
 Add Parametric Morphism (A: Type) :

@@ -36,6 +36,9 @@ Section AdditionalDefinitions.
 
   Definition EnsembleListEquivalence {A: Type} (ensemble: A -> Prop) (seq: list A) :=
     forall x, In _ ensemble x <-> List.In x seq.
+
+  Definition FilteredSet {A B} ensemble projection (value: B) :=
+    fun (p: A) => ensemble p /\ projection p = value.
 End AdditionalDefinitions.
 
 Section AdditionalLogicLemmas.
