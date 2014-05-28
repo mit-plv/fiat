@@ -1,0 +1,105 @@
+(** * A variant of the [Comp] monad laws using [apply] *)
+Require Import String Ensembles.
+Require Import Common.
+Require Import Computation.Core Computation.Monad Computation.SetoidMorphisms.
+
+(** ** Helper monad laws, on the left side of a [refine] *)
+
+Section monad.
+  Local Ltac t := intro H; autorewrite with refine_monad; exact H.
+
+  Lemma refine_bind_bind_helper X Y Z (f : X -> Comp Y) (g : Y -> Comp Z) x y
+  : refine (Bind x (fun u => Bind (f u) g)) y
+    -> refine (Bind (Bind x f) g) y.
+  Proof. t. Qed.
+
+  Lemma refine_bind_unit_helper X Y (f : X -> Comp Y) x y
+  : refine (f x) y
+    -> refine (Bind (Return x) f) y.
+  Proof. t. Qed.
+
+  Lemma refine_unit_bind_helper X (x : Comp X) y
+  : refine x y
+    -> refine (Bind x (@Return X)) y.
+  Proof. t. Qed.
+
+  (** XXX This is a terribly ugly tactic that should be improved *)
+  Local Ltac t2 :=
+    intros;
+    repeat match goal with
+             | [ H : _ |- _ ] => specialize (H _ (reflexivity _))
+             | [ H : _ |- _ ] => pose proof (fun x => H x _ (reflexivity _)); clear H
+           end;
+    repeat intro;
+    specialize_all_ways;
+    repeat match goal with
+             | [ H : _ |- _ ] => apply computes_to_inv in H;
+                                progress (destruct_head ex;
+                                          destruct_head and)
+           end;
+    unfold refine in *;
+    econstructor; eauto.
+
+  Lemma refine_under_bind_helper X Y (f f' : X -> Comp Y) x x' y
+  : (forall y, refine x y -> refine x' y)
+    -> (forall x0 y, refine (f x0) y -> refine (f' x0) y)
+    -> refine (Bind x f) y
+    -> refine (Bind x' f') y.
+  Proof. t2. Qed.
+
+  Lemma refine_under_bind_helper_1 X Y (f : X -> Comp Y) x x' y
+  : (forall y, refine x y -> refine x' y)
+    -> refine (Bind x f) y
+    -> refine (Bind x' f) y.
+  Proof. t2. Qed.
+
+  Lemma refine_under_bind_helper_2 X Y (f f' : X -> Comp Y) x y
+  : (forall x0 y, refine (f x0) y -> refine (f' x0) y)
+    -> refine (Bind x f) y
+    -> refine (Bind x f') y.
+  Proof. t2. Qed.
+End monad.
+
+Ltac simplify_with_applied_monad_laws :=
+  progress repeat first [ apply refine_bind_unit_helper
+                        | apply refine_unit_bind_helper
+                        | apply refine_bind_bind_helper
+                        | eapply refine_under_bind_helper; [ let H := fresh in
+                                                             intros ? H;
+                                                               simplify_with_applied_monad_laws;
+                                                               exact H
+                                                           | let H := fresh in
+                                                             intros ? ? H;
+                                                               simplify_with_applied_monad_laws;
+                                                               exact H
+                                                           | ]
+                        | eapply refine_under_bind_helper_1; [ let H := fresh in
+                                                               intros ? H;
+                                                                 simplify_with_applied_monad_laws;
+                                                                 exact H
+                                                             | ]
+                        | eapply refine_under_bind_helper_2; [ let H := fresh in
+                                                               intros ? ? H;
+                                                                 simplify_with_applied_monad_laws;
+                                                                 exact H
+                                                             | ] ].
+
+Tactic Notation "simplify" "with" "monad" "laws" :=
+  simplify_with_applied_monad_laws.
+
+(* Ideally we would throw refineEquiv_under_bind in here as well, but it gets stuck *)
+
+Ltac interleave_autorewrite_refine_monad_with tac :=
+  repeat first [ reflexivity
+               | progress tac
+               | progress autorewrite with refine_monad
+               (*| rewrite refine_bind_bind'; progress tac
+               | rewrite refine_bind_unit'; progress tac
+               | rewrite refine_unit_bind'; progress tac
+               | rewrite <- refine_bind_bind; progress tac
+               | rewrite <- refine_bind_unit; progress tac
+               | rewrite <- refine_unit_bind; progress tac ]*)
+               | rewrite <- !refineEquiv_bind_bind; progress tac
+               | rewrite <- !refineEquiv_bind_unit; progress tac
+               | rewrite <- !refineEquiv_unit_bind; progress tac
+               (*| rewrite <- !refineEquiv_under_bind; progress tac *)].
