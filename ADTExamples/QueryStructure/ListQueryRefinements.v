@@ -25,6 +25,21 @@ Proof.
   split; intros; unfold In in *.
   destruct H0; eexists; intuition; eauto.
   eapply H; eauto.
+  rewrite GetRelDropConstraints in H1; apply H1.
+  destruct H0; intuition; eexists; split; eauto.
+  rewrite GetRelDropConstraints; eapply H; eauto.
+Qed.
+
+Lemma Equivalent_UnConstr_In_EnsembleListEquivalence {A}
+      qsSchema qs R l bod
+: EnsembleListEquivalence (GetUnConstrRelation qs R) l ->
+  Equivalent_Ensembles
+    (@UnConstrQuery_In qsSchema qs A R bod)
+    (fun a => exists tup, List.In tup l /\ bod tup a).
+Proof.
+  split; intros; unfold In in *.
+  destruct H0; eexists; intuition; eauto.
+  eapply H; eauto.
   destruct H0; intuition; eexists; split; eauto.
   eapply H; eauto.
 Qed.
@@ -74,14 +89,11 @@ Proof.
 Qed.
 
 Lemma Equivalent_Join_Lists {A B}
-      (qs : QueryStructureHint) (R : _)
-      (l : list B)
-      (l' : list _)
-      bod
-: EnsembleListEquivalence (GetRelation qsHint R) l' ->
+      qsSchema qs R (l : list B) l' bod
+: EnsembleListEquivalence (GetUnConstrRelation qs R) l' ->
   Equivalent_Ensembles
     (fun a => exists b, List.In b l /\
-                        (@Query_In qs A R (bod b) a))
+                        (@UnConstrQuery_In qsSchema qs A R (bod b) a))
     (fun a => exists b, List.In b (Join_Lists l l') /\
                         (bod (fst b) (snd b) a)).
 Proof.
@@ -93,7 +105,7 @@ Proof.
     simpl; auto.
   - destruct_ex; intuition; destruct x; eexists; intuition.
     eapply (In_Join_Lists l l'); eauto.
-    unfold Query_In; eexists; intuition; eauto.
+    eexists; intuition; eauto.
     apply H; eapply (In_Join_Lists l l'); eauto.
 Qed.
 
@@ -137,7 +149,7 @@ Tactic Notation "implement" "queries" "for" "lists" :=
   unfold DropQSConstraints_SiR in *; subst;
   repeat rewrite GetRelDropConstraints in *; subst; split_and;
   repeat (progress
-            (try (setoid_rewrite Equivalent_In_EnsembleListEquivalence; simpl; eauto);
+            (try (setoid_rewrite Equivalent_UnConstr_In_EnsembleListEquivalence; simpl; eauto);
              try (setoid_rewrite Equivalent_List_In_Where with (P_dec := _); simpl);
              try (setoid_rewrite Equivalent_Join_Lists; eauto)));
   setoid_rewrite refine_For_List_Return; try simplify with monad laws.

@@ -1,6 +1,6 @@
 Require Import String Omega List FunctionalExtensionality Ensembles
         Computation ADT ADTRefinement ADTNotation QueryStructureSchema
-        QueryQSSpecs InsertQSSpecs QueryStructure.
+        BuildADTRefinements QueryQSSpecs InsertQSSpecs QueryStructure.
 
 Lemma tupleAgree_refl :
   forall (h : Heading)
@@ -40,10 +40,14 @@ Ltac simplify_trivial_SatisfiesCrossRelationConstraints :=
 
 Tactic Notation "remove" "trivial" "insertion" "checks" :=
   (* Move all the binds we can outside the exists / computes
-   used for abstraction. *)
-  repeat setoid_rewrite refineEquiv_pick_ex_computes_to_bind_and;
-  (* apply etransitivity in order to rewrite insert first and
-     then simplify the trivial constraints. *)
+   used for abstraction, stopping when we've rewritten
+         the bind in [QSInsertSpec]. *)
+      repeat
+        (setoid_rewrite refineEquiv_pick_ex_computes_to_bind_and;
+         match goal with
+           | |- context [(Insert _ into ?R)%QuerySpec] => idtac
+           | _ => fail
+         end);
   etransitivity;
   [ (* drill under the binds so that we can rewrite [QSInsertSpec]
      (we can't use setoid_rewriting because there's a 'deep metavariable'
@@ -86,3 +90,9 @@ Tactic Notation "Split" "Constraint" "Checks" :=
 Tactic Notation "implement" "failed" "insert" :=
   repeat (rewrite refine_pick_val, refineEquiv_bind_unit; eauto);
   reflexivity.
+
+Tactic Notation "drop" "constraints" "from" "insert" constr(methname) :=
+  hone method methname;
+  [ remove trivial insertion checks ;
+    repeat remove_trivial_insertion_constraints;
+    finish honing | ].

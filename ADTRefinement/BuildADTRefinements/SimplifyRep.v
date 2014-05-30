@@ -1,5 +1,12 @@
-Require Import Common Computation ADT Ensembles BuildADT ADTNotation.
-Require Import ADTRefinement.Core ADTRefinement.SetoidMorphisms ADTRefinement.Refinements.SimplifyRep.
+Require Import List Common
+        ADT.ADTSig ADT.Core
+        ADTNotation.BuildADTSig ADTNotation.BuildADT
+        ADTNotation.ilist ADTNotation.StringBound
+        ADTRefinement.Core ADTRefinement.SetoidMorphisms
+        ADTRefinement.GeneralRefinements
+        ADTRefinement.Refinements.HoneRepresentation
+        ADTRefinement.BuildADTSetoidMorphisms
+        ADTRefinement.Refinements.SimplifyRep.
 
 Section SimplifyRep.
 
@@ -17,43 +24,42 @@ Section SimplifyRep.
   Variable SiR : oldRep -> newRep -> Prop.
   Notation "ro ≃ rn" := (SiR ro rn) (at level 70).
 
-  Definition simplifyMutDef
-             (Sig : mutSig)
-             (oldMut : @mutDef oldRep Sig)
-  : @mutDef newRep Sig :=
-    {| mutBody := simplifyMutatorMethod simplifyf concretize (mutBody oldMut) |}.
+  Definition simplifyMethDef
+             (Sig : methSig)
+             (oldMeth : @methDef oldRep Sig)
+  : @methDef newRep Sig :=
+    {| methBody := simplifyMethod simplifyf concretize (methBody oldMeth) |}.
 
-  Definition simplifyObsDef
-             (Sig : obsSig)
-             (oldMut : @obsDef oldRep Sig)
-  : @obsDef newRep Sig :=
-    {| obsBody := simplifyObserverMethod concretize (obsBody oldMut) |}.
+  Definition simplifyConstrDef
+             (Sig : consSig)
+             (oldConstr : @consDef oldRep Sig)
+  : @consDef newRep Sig :=
+    {| consBody := simplifyConstructor simplifyf (consBody oldConstr) |}.
 
   Lemma refineADT_BuildADT_Rep_default
-            (mutSigs : list mutSig)
-            (obsSigs : list obsSig)
-            (mutDefs : ilist (@mutDef oldRep) mutSigs)
-            (obsDefs : ilist (@obsDef oldRep) obsSigs) :
+            (constrSigs : list consSig)
+            (methSigs : list methSig)
+            (constrDefs : ilist (@consDef oldRep) constrSigs)
+            (methDefs : ilist (@methDef oldRep) methSigs) :
+    (forall r_o, r_o ≃ simplifyf r_o) ->
     (forall r_n r_o,
        (r_o ≃ r_n) ->
        forall idx n,
-         refineEquiv (r_o'' <- getMutDef mutDefs idx r_o n;
-                      {r_n' | r_o'' ≃ r_n'})
-                     (r_o'' <- getMutDef mutDefs idx (concretize r_n) n;
-                      ret (simplifyf r_o''))) ->
-    (forall r_n r_o,
-       (r_o ≃ r_n) ->
-       forall idx n,
-         refineEquiv (getObsDef obsDefs idx r_o n)
-                     (getObsDef obsDefs idx (concretize r_n) n)) ->
+         refineEquiv (r_o'' <- getMethDef methDefs idx r_o n;
+                      r_n' <- {r_n' | fst r_o'' ≃ r_n'};
+                      ret (r_n', snd r_o''))
+                     (r_o'' <- getMethDef methDefs idx (concretize r_n) n;
+                      ret (simplifyf (fst r_o''), snd r_o''))) ->
     refineADT
-      (BuildADT mutDefs obsDefs)
-      (BuildADT (imap _ simplifyMutDef mutDefs)
-                (imap _ simplifyObsDef obsDefs)).
+      (BuildADT constrDefs methDefs)
+      (BuildADT (imap _ simplifyConstrDef constrDefs)
+                (imap _ simplifyMethDef methDefs)).
   Proof.
     econstructor 1 with (SiR := SiR); simpl in *; eauto; intros.
     - rewrite <- ith_Bounded_imap.
-      rewrite H; eauto; reflexivity.
+      unfold simplifyConstrDef, simplifyConstructor; simpl.
+      intros v Comp_v; inversion_by computes_to_inv; 
+      repeat econstructor; subst; eauto.
     - rewrite <- ith_Bounded_imap.
       rewrite H0; eauto; reflexivity.
   Qed.

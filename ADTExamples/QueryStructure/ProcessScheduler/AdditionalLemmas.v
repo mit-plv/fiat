@@ -1,12 +1,13 @@
-Require Import List Program Ensembles.
-Require Import Coq.Lists.SetoidList.
-Require Import ADTNotation GeneralBuildADTRefinements QueryQSSpecs QueryStructure.
-Require Import SetEq.
+Require Import Ensembles List Coq.Lists.SetoidList Program
+        Common Computation.Core
+        ADTNotation.BuildADTSig ADTNotation.BuildADT
+        GeneralBuildADTRefinements QueryQSSpecs QueryStructure
+        SetEq.
 
 Unset Implicit Arguments.
 
 Ltac generalize_all :=
-  repeat match goal with 
+  repeat match goal with
              [ H : _ |- _ ] => generalize H; clear H
          end.
 
@@ -20,12 +21,12 @@ Section AdditionalDefinitions.
     end.
 
   Definition dec2bool {A: Type} {P: A -> Prop} (pred: forall (a: A), sumbool (P a) (~ (P a))) :=
-    fun (a: A) => 
+    fun (a: A) =>
       match pred a with
         | left _  => true
         | right _ => false
       end.
-  
+
   Definition Box {A: Type} (x: A) := [x].
 
   Definition Option2Box {A: Type} (xo: option A) :=
@@ -35,7 +36,7 @@ Section AdditionalDefinitions.
     end.
 
   Definition EnsembleListEquivalence {A: Type} (ensemble: A -> Prop) (seq: list A) :=
-    forall x, In _ ensemble x <-> List.In x seq.
+    forall x, Ensembles.In _ ensemble x <-> List.In x seq.
 
   Definition FilteredSet {A B} ensemble projection (value: B) :=
     fun (p: A) => ensemble p /\ projection p = value.
@@ -52,35 +53,35 @@ End AdditionalLogicLemmas.
 Section AdditionalEnsembleLemmas.
   Lemma weaken :
     forall {A: Type} ensemble condition,
-    forall (x: A), 
-      In _ (fun x => In _ ensemble x /\ condition x) x
-      -> In _ ensemble x.
+    forall (x: A),
+      Ensembles.In _ (fun x => Ensembles.In _ ensemble x /\ condition x) x
+      -> Ensembles.In _ ensemble x.
   Proof.
-    unfold In; intros; intuition.
+    unfold Ensembles.In; intros; intuition.
   Qed.
 End AdditionalEnsembleLemmas.
 
-Section AdditionalListLemmas.   
-  Lemma map_id : 
+Section AdditionalListLemmas.
+  Lemma map_id :
     forall {A: Type} (seq: list A),
       (map (fun x => x) seq) = seq.
   Proof.
     intros A seq; induction seq; simpl; congruence.
-  Qed.      
+  Qed.
 
   Lemma filter_comm :
-    forall {A: Type} (pred1 pred2: A -> bool), 
+    forall {A: Type} (pred1 pred2: A -> bool),
     forall (seq: list A),
       List.filter pred1 (List.filter pred2 seq) =
       List.filter pred2 (List.filter pred1 seq).
   Proof.
-    intros A pred1 pred2 seq; 
+    intros A pred1 pred2 seq;
     induction seq as [ | hd tl];
-    [ simpl 
-    | destruct (pred1 hd) eqn:eq1; 
-      destruct (pred2 hd) eqn:eq2; 
-      repeat progress (simpl; 
-                       try rewrite eq1; 
+    [ simpl
+    | destruct (pred1 hd) eqn:eq1;
+      destruct (pred2 hd) eqn:eq2;
+      repeat progress (simpl;
+                       try rewrite eq1;
                        try rewrite eq2)
     ]; congruence.
   Qed.
@@ -89,14 +90,14 @@ Section AdditionalListLemmas.
     forall (A : Type) (x : A) (l : list A),
       InA eq x l -> List.In x l.
   Proof.
-    intros ? ? ? H; 
-    induction H; 
+    intros ? ? ? H;
+    induction H;
     simpl;
     intuition.
   Qed.
 
-  Lemma not_InA_not_In : 
-    forall {A: Type} l eqA (x: A), 
+  Lemma not_InA_not_In :
+    forall {A: Type} l eqA (x: A),
       Equivalence eqA ->
       not (InA eqA x l) -> not (List.In x l).
   Proof.
@@ -104,7 +105,7 @@ Section AdditionalListLemmas.
     induction l;
     intros ? ? equiv not_inA in_l;
     simpl in *;
-    
+
     [ trivial
     | destruct in_l as [eq | in_l];
       subst;
@@ -114,14 +115,14 @@ Section AdditionalListLemmas.
     ].
   Qed.
 
-  Lemma NoDupA_stronger_than_NoDup : 
-    forall {A: Type} (seq: list A) eqA, 
+  Lemma NoDupA_stronger_than_NoDup :
+    forall {A: Type} (seq: list A) eqA,
       Equivalence eqA ->
       NoDupA eqA seq -> NoDup seq.
   Proof.
     intros ? ? ? ? nodupA;
     induction nodupA;
-    constructor;
+    constructor ;
     [ apply (not_InA_not_In _ _ _ _ H0)
     | trivial].
   (* Alternative proof: red; intros; apply (In_InA (eqA:=eqA)) in H2; intuition. *)
@@ -129,22 +130,22 @@ Section AdditionalListLemmas.
 
   Lemma add_filter_nonnil_under_app :
     forall {A: Type} (seq: list (list A)),
-      fold_right (app (A := A)) [] seq = 
+      fold_right (app (A := A)) [] seq =
       fold_right (app (A := A)) [] (List.filter NonNil seq).
   Proof.
-    intros; induction seq; simpl; 
-    [ | destruct a; simpl; rewrite IHseq]; 
+    intros; induction seq; simpl;
+    [ | destruct a; simpl; rewrite IHseq];
     trivial.
   Qed.
-  
+
 (*
   Require Import Notations QueryQSSpecs.
   Local Open Scope QuerySpec_scope.
   Lemma filter_nonnil_plus_where_is_just_filter :
     forall {A B: Type} {P: A -> Prop} (seq: list A),
     forall (pred: forall (a: A), sumbool (P a) (~ (P a))) (extraction: A -> B),
-      List.filter NonNil (map (fun p => 
-                                 Where (pred p) 
+      List.filter NonNil (map (fun p =>
+                                 Where (pred p)
                                        [extraction p]) seq) =
       map Box
           (map extraction (List.filter (dec2bool pred) seq)).
@@ -156,21 +157,21 @@ Section AdditionalListLemmas.
 
   Lemma box_plus_app_is_identity :
     forall {A: Type} (seq: list A),
-      fold_right (app (A := A)) [] (map Box seq) = seq. 
+      fold_right (app (A := A)) [] (map Box seq) = seq.
   Proof.
     intros A seq; induction seq; simpl; congruence.
   Qed.
 
   Lemma in_Option2Box :
     forall {A: Type} (xo: option A) (x: A),
-      List.In x (Option2Box xo) <-> xo = Some x. 
+      List.In x (Option2Box xo) <-> xo = Some x.
   Proof.
     intros A xo x; destruct xo; simpl; try rewrite or_false; intuition; congruence.
-  Qed.          
+  Qed.
 End AdditionalListLemmas.
 
 Section AdditionalComputationLemmas.
-  Lemma eq_ret_compute : 
+  Lemma eq_ret_compute :
     forall (A: Type) (x y: A), x = y -> ret x ↝ y.
   Proof.
     intros; subst; apply ReturnComputes; trivial.
@@ -180,7 +181,7 @@ Section AdditionalComputationLemmas.
 
   Lemma refine_snd :
     forall {A B: Type} (P: B -> Prop),
-      refine 
+      refine
         { pair | P (snd pair) }
         (_fst <- Pick (fun (x: A) => True);
          _snd <- Pick (fun (y: B) => P y);
@@ -212,35 +213,35 @@ Section AdditionalComputationLemmas.
   Proof.
     t_refine.
   Qed.
-  
+
   Lemma refine_eqA_into_ret :
     forall {A: Type} {eqA: list A -> list A -> Prop},
       Reflexive eqA ->
       forall (comp : Comp (list A)) (impl result: list A),
         comp = ret impl -> (
           comp ↝ result ->
-          eqA result impl 
+          eqA result impl
         ).
   Proof.
-    intros; subst; inversion_by computes_to_inv; subst; trivial. 
+    intros; subst; inversion_by computes_to_inv; subst; trivial.
   Qed.
 End AdditionalComputationLemmas.
 
 Ltac refine_eq_into_ret :=
   match goal with
-    | [ H : _ _ _ ↝ _ |- ?eq _ _ ] => 
-      generalize H; 
+    | [ H : _ _ _ ↝ _ |- ?eq _ _ ] =>
+      generalize H;
         clear H;
         apply (refine_eqA_into_ret _)
-  end.    
+  end.
 
 Ltac hone_observer' name :=
-  hone' observer name using _;
+  hone constructor name using _;
   [ simpl;
-    unfold refine; 
+    unfold refine;
     intros;
-    unfold Query_For, Query_Where, 
-    Query_In, Query_Return, qsHint, 
+    unfold Query_For, Query_Where,
+    Query_In, Query_Return, qsHint,
     In, qsSchemaHint;
     constructor;
     intros;
@@ -264,19 +265,19 @@ Ltac pull_definition :=
       instantiate (1 := fun db params => let (db1, db23) := db in let (db2, db3) := db23 in ret _)
     | [ |- ?f (?db1, ?db2) ?params = ret ?body ] =>
       instantiate (1 := fun db params => let (db1, db2) := db in ret _)
-    | [ |- ?f ?db ?params = ret ?body ] => 
-      instantiate (1 := fun db params => ret (_ db params)) 
+    | [ |- ?f ?db ?params = ret ?body ] =>
+      instantiate (1 := fun db params => ret (_ db params))
   end;
   simpl;
   exists.
 
 Section AdditionalQueryLemmas.
   Lemma refine_ensemble_into_list_with_extraction :
-    forall {A B: Type} (la: list A) (ens: A -> Prop) (lb: list B)  
-           (cond_prop: A -> Prop) (cond: A -> bool) 
+    forall {A B: Type} (la: list A) (ens: A -> Prop) (lb: list B)
+           (cond_prop: A -> Prop) (cond: A -> bool)
            (extraction: A -> B),
-      (forall a, (cond_prop a <-> cond a = true)) -> 
-      (EnsembleListEquivalence ens la) -> 
+      (forall a, (cond_prop a <-> cond a = true)) ->
+      (EnsembleListEquivalence ens la) ->
       ((forall (b: B), List.In b lb <-> (exists a0, ens a0 /\ cond_prop a0 /\ extraction a0 = b)) <->
        (SetEq lb (map extraction (List.filter cond la)))).
   Proof.
@@ -305,7 +306,7 @@ Section AdditionalQueryLemmas.
 
     rewrite H1.
     rewrite in_map_iff.
-    split; intro HH; 
+    split; intro HH;
     destruct HH as [x HH];
     exists x;
     try rewrite filter_In in *;
@@ -314,18 +315,18 @@ Section AdditionalQueryLemmas.
     tauto.
   Qed.
 
-  Lemma refine_ensemble_into_list : 
+  Lemma refine_ensemble_into_list :
     forall {A: Type},
-    forall (la: list A) (ens: A -> Prop) (lb: list A)  
+    forall (la: list A) (ens: A -> Prop) (lb: list A)
            (cond_prop: A -> Prop) (cond: A -> bool),
-      (forall a, (cond_prop a <-> cond a = true)) -> 
+      (forall a, (cond_prop a <-> cond a = true)) ->
       (EnsembleListEquivalence ens la) ->
       ((forall (b : A), List.In b lb <-> ens b /\ cond_prop b) <->
        (SetEq lb (List.filter cond la))).
   Proof.
     unfold EnsembleListEquivalence.
     intros A la ens lb cond_prop cond H H0.
- 
+
     pose proof (refine_ensemble_into_list_with_extraction la ens lb cond_prop cond (fun x => x) H H0).
     simpl in H1.
 
@@ -345,28 +346,28 @@ Section AdditionalQueryLemmas.
     unfold SetEq in HH.
     intros b; specialize (HH b).
     rewrite HH.
-    
+
     rewrite filter_In, H, H0.
     intuition.
   Qed.
 End AdditionalQueryLemmas.
 
 Section AdditionalSetEqLemmas.
-  Lemma SetUnion_Or : 
-    forall {A: Type} 
+  Lemma SetUnion_Or :
+    forall {A: Type}
            {ens1 ens2: A -> Prop}
            {seq1 seq2: list A},
       EnsembleListEquivalence ens1 seq1 ->
       EnsembleListEquivalence ens2 seq2 ->
       EnsembleListEquivalence (fun x => ens1 x \/ ens2 x) (SetUnion seq1 seq2).
   Proof.
-    unfold EnsembleListEquivalence, SetUnion, In;
+    unfold EnsembleListEquivalence, SetUnion, Ensembles.In;
     intros A ens1 ens2 seq1 seq2 eq1 eq2 x;
     specialize (eq1 x);
     specialize (eq2 x);
     rewrite in_app_iff;
     tauto.
-  Qed.      
+  Qed.
 
   Lemma equiv_EnsembleListEquivalence:
     forall {A: Type} {seq ens1 ens2},
@@ -376,9 +377,9 @@ Section AdditionalSetEqLemmas.
   Proof.
     intros A ? ? ? equiv;
     unfold EnsembleListEquivalence;
-    intros same_1 x; 
-    specialize (equiv x); 
-    specialize (same_1 x); 
+    intros same_1 x;
+    specialize (equiv x);
+    specialize (same_1 x);
     intuition.
   Qed.
 End AdditionalSetEqLemmas.

@@ -1,11 +1,11 @@
-Require Import List Common Computation ADT Ensembles ADTNotation.
-Require Import ADTRefinement.Core ADTRefinement.SetoidMorphisms
+Require Import List Common 
+        ADT.ADTSig ADT.Core
+        ADTNotation.BuildADTSig ADTNotation.BuildADT
+        ADTNotation.ilist ADTNotation.StringBound
+        ADTRefinement.Core ADTRefinement.SetoidMorphisms
         ADTRefinement.GeneralRefinements
         ADTRefinement.Refinements.HoneRepresentation
         ADTRefinement.BuildADTSetoidMorphisms.
-
-Generalizable All Variables.
-Set Implicit Arguments.
 
 (* A generic refinement and honing tactic for switching the
     representation of an ADT built from [BuildADT]. *)
@@ -22,48 +22,49 @@ Section HoneRepresentation.
      implementation (computation?) for the methods of an ADT with
      using the old methods. *)
 
-  Definition absMutDef
-             (Sig : mutSig)
-             (oldMut : @mutDef oldRep Sig)
-  : @mutDef newRep Sig :=
-    {| mutBody := absMutatorMethod SiR (mutBody oldMut) |}.
+  Definition absConsDef
+             (Sig : consSig)
+             (oldCons : @consDef oldRep Sig)
+  : @consDef newRep Sig :=
+    {| consBody := absConstructor SiR (consBody oldCons) |}.
 
-  Definition absObsDef
-             (Sig : obsSig)
-             (oldMut : @obsDef oldRep Sig)
-  : @obsDef newRep Sig :=
-    {| obsBody := absObserverMethod SiR (obsBody oldMut) |}.
+  Definition absMethDef
+             (Sig : methSig)
+             (oldCons : @methDef oldRep Sig)
+  : @methDef newRep Sig :=
+    {| methBody := absMethod SiR (methBody oldCons) |}.
 
   Lemma refineADT_BuildADT_Rep_default
-            (mutSigs : list mutSig)
-            (obsSigs : list obsSig)
-            (mutDefs : ilist (@mutDef oldRep) mutSigs)
-            (obsDefs : ilist (@obsDef oldRep) obsSigs) :
+            (consSigs : list consSig)
+            (methSigs : list methSig)
+            (consDefs : ilist (@consDef oldRep) consSigs)
+            (methDefs : ilist (@methDef oldRep) methSigs) :
     refineADT
-      (BuildADT mutDefs obsDefs)
-      (BuildADT (imap _ absMutDef mutDefs)
-                (imap _ absObsDef obsDefs)).
+      (BuildADT consDefs methDefs)
+      (BuildADT (imap _ absConsDef consDefs)
+                (imap _ absMethDef methDefs)).
   Proof.
     eapply refineADT_Build_ADT_Rep with (SiR := SiR); eauto; intros.
-    - unfold getMutDef.
+    - unfold getConsDef.
       rewrite <- ith_Bounded_imap.
-      unfold absMutDef, refineMutator, refine; simpl; intros.
-      inversion_by computes_to_inv.
-      destruct (H0 _ H) as [or' [Comp_or SiR_or''] ].
-      econstructor; eauto.
-    - unfold getObsDef.
-      rewrite <- ith_Bounded_imap.
-      unfold absObsDef, refineObserver, refine; simpl; intros.
+      unfold absConsDef, refineConstructor, refine; simpl; intros.
       inversion_by computes_to_inv; eauto.
+    - unfold getMethDef.
+      rewrite <- ith_Bounded_imap.
+      unfold absMethDef, refineMethod, refine; simpl; intros.
+      inversion_by computes_to_inv; eauto.
+      destruct (H0 _ H) as [or' [Comp_or [SiR_or'' or''_eq] ] ];
+        subst; repeat econstructor; eauto.
+      destruct v; simpl in *; subst; econstructor.
   Qed.
 
 End HoneRepresentation.
 
 (* Honing tactic for refining the ADT representation which provides
-   default observer and mutator implementations. *)
+   default metherver and consator implementations. *)
 
 Tactic Notation "hone" "representation" "using" open_constr(SiR') :=
   eapply SharpenStep;
   [eapply refineADT_BuildADT_Rep_default with (SiR := SiR') |
-   compute [imap absMutDef absMutatorMethod
-                 absObsDef absObserverMethod]; simpl ].
+   compute [imap absConsDef absConstructor
+                 absMethDef absMethod]; simpl ].

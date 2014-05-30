@@ -1,14 +1,15 @@
-Require Import List String FunctionalExtensionality Ensembles
-        ADTNotation.ilist ADTNotation Program.
-Require Export
-        ADTExamples.QueryStructure.Notations
-        Heading Tuple Schema Relation QueryStructureSchema
-        Sorting.Permutation.
+Require Import List String FunctionalExtensionality
+        Computation.Core
+        ADT.ADTSig ADT.Core
+        ADTNotation.ilist ADTNotation.StringBound
+        ADTNotation.BuildADT ADTNotation.BuildADTSig
+        QueryStructure.Notations
+        QueryStructure.Heading QueryStructure.Tuple QueryStructure.Schema QueryStructure.Relation
+        QueryStructure.QueryStructureSchema.
 
 (* A Query Structure is a collection of relations
    (described by a proposition) which satisfy the
    schema and the cross-relation constraints. *)
-
 
 Record QueryStructure (QSSchema : QueryStructureSchema) :=
   { rels : ilist (fun ns => Relation (relSchema ns))
@@ -32,70 +33,47 @@ Notation "t ! R" := (rels t R%string): QueryStructure_scope.
 (* This typeclass allows our method definitions to infer the
    the QueryStructure [r] they are called with. *)
 
-Class QueryStructureHint :=
-  { qsSchemaHint : QueryStructureSchema;
-    qsHint :> @QueryStructure qsSchemaHint
+Class QueryStructureSchemaHint :=
+  { qsSchemaHint : QueryStructureSchema
   }.
 
-(* This lets us drop the constraints from the reference implementation
-   for easier refinements. *)
+Class QueryStructureHint :=
+  { qsSchemaHint' : QueryStructureSchema;
+    qsHint :> @QueryStructure qsSchemaHint'
+  }.
 
-Notation "'def' 'query' id ( x : dom ) : cod := bod" :=
-  (Build_obsDef {| obsID := id; obsDom := dom; obsCod := cod |}
-                (fun (r : repHint) x =>
+Notation "'query' id ( x : dom ) : cod := bod" :=
+  (Build_methDef {| methID := id; methDom := dom; methCod := cod |}
+                (fun (r : QueryStructure qsSchemaHint) x =>
+                   let _ := {| qsHint := r |} in
+                   queryRes <- bod%QuerySpec;
+                    ret (r, queryRes)))%comp
+    (no associativity, id at level 0, x at level 0, dom at level 0,
+     cod at level 0, only parsing,
+     at level 94, format "'query'  id  ( x  :  dom )  :  cod  :=  '[  '   bod ']' " ) :
+queryDef_scope.
+
+Notation "'update' id ( x : dom ) : cod := bod" :=
+  (Build_methDef {| methID := id; methDom := dom; methCod := cod |}
+                (fun (r : QueryStructure qsSchemaHint) x =>
                    let _ := {| qsHint := r |} in
                    bod%QuerySpec))
     (no associativity, id at level 0, x at level 0, dom at level 0,
      cod at level 0, only parsing,
-     at level 94, format "'def'  'query'  id  ( x  :  dom )  :  cod  :=  '[  '   bod ']' " ) :
-queryDefParsing_scope.
-
-Notation "'def' 'query' id ( x : dom ) : cod := bod" :=
-  (Build_obsDef {| obsID := id; obsDom := dom; obsCod := cod |}
-                (fun r x => (bod%QuerySpec)))
-    (no associativity, id at level 0, r at level 0, x at level 0, dom at level 0,
-     cod at level 0,
-     at level 94, format "'def'  'query'  id  ( x  :  dom )  :  cod  :=  '[  '   bod ']' " ) :
+     at level 94, format "'update'  id  ( x  :  dom )  :  cod  :=  '[  '   bod ']' " ) :
 queryDef_scope.
-
-Notation "'def' 'update' id ( x : dom ) : 'rep' := bod" :=
-  (Build_mutDef {| mutID := id; mutDom := dom |}
-                (fun (r : repHint) x =>
-                   let _ := {| qsHint := r |} in
-                   bod%QuerySpec))
-    (no associativity, at level 94, id at level 0,
-     x at level 0, dom at level 0, only parsing,
-     format "'def'  'update'  id  ( x :  dom )  :  'rep'  :=  '[  '   bod ']' " ) :
-updateDefParsing_scope.
-
-Notation "'def' 'update' id ( x : dom ) : 'rep' := bod" :=
-  (Build_mutDef (id%string : rep × dom → rep)%mutSig
-                   (fun r x => bod%QuerySpec))
-    (no associativity, at level 94, id at level 0, r at level 0,
-     x at level 0, dom at level 0,
-     format "'def'  'update'  id  ( x :  dom )  :  'rep'  :=  '[  '   bod ']' " ) :
-updateDef_scope.
 
 (* Notation for ADTs built from [BuildADT]. *)
 
-Notation "'QueryADTRep' r { mut1 , .. , mutn ; obs1 , .. , obsn } " :=
-  (let _ := {| repHint := r |} in
-    @BuildADT r
+Notation "'QueryADTRep' r { cons1 , meth1 , .. , methn } " :=
+  (let _ := {| qsSchemaHint := r |} in
+    @BuildADT (QueryStructure r)
              _
              _
-             (icons _ mut1%updateDefParsing .. (icons _ mutn%updateDefParsing (inil (@mutDef r))) ..)
-             (icons _ obs1%queryDefParsing .. (icons _ obsn%queryDefParsing (inil (@obsDef r))) ..))
+             (icons _ cons1%consDef (inil (@consDef (QueryStructure r))))
+             (icons _ meth1%queryDef .. (icons _ methn%queryDef (inil (@methDef (QueryStructure r)))) ..))
     (no associativity, at level 96, r at level 0, only parsing,
-     format "'QueryADTRep'  r  '/' '[hv  ' {  mut1 , '//' .. , '//' mutn ; '//' obs1 , '//' .. , '//' obsn  ']' }") : QueryStructureParsing_scope.
-
-Notation "'QueryADTRep' r { mut1 , .. , mutn ; obs1 , .. , obsn } " :=
-  (@BuildADT r
-             _
-             _
-             (icons _ mut1%updateDef .. (icons _ mutn%updateDef (inil (@mutDef r))) ..)
-             (icons _ obs1%queryDef .. (icons _ obsn%queryDef (inil (@obsDef r))) ..))
-    (no associativity, at level 96, r at level 0,
-     format "'QueryADTRep'  r  '/' '[hv  ' {  mut1 , '//' .. , '//' mutn ; '//' obs1 , '//' .. , '//' obsn  ']' }") : QueryStructure_scope.
+     format "'QueryADTRep'  r  '/' '[hv  ' {  cons1 , '//' '//' meth1 , '//' .. , '//' methn  ']' }") : QueryStructure_scope.
 
 Notation GetRelationKey QSSchema index :=
   (@Build_BoundedIndex _ (map relName (qschemaSchemas QSSchema))
@@ -104,17 +82,20 @@ Notation GetRelationKey QSSchema index :=
 Notation GetAttributeKey Rel index :=
   ((fun x : Attributes (GetNRelSchemaHeading (qschemaSchemas _) Rel) => x)  {| bindex := index%string |}).
 
-Definition GetUnConstrRelation
-           (QSSchema : QueryStructureSchema)
-           (qs : UnConstrQueryStructure QSSchema)
-           (idx : @BoundedString (map relName (qschemaSchemas QSSchema)))
-  := ith_Bounded _ qs idx.
-
 Definition GetRelation
            (QSSchema : QueryStructureSchema)
            (qs : QueryStructure QSSchema)
            (idx : @BoundedString (map relName (qschemaSchemas QSSchema)))
   := rel (ith_Bounded _ (rels qs) idx).
+
+(* This lets us drop the constraints from the reference implementation
+   for easier refinements. *)
+
+Definition GetUnConstrRelation
+           (QSSchema : QueryStructureSchema)
+           (qs : UnConstrQueryStructure QSSchema)
+           (idx : @BoundedString (map relName (qschemaSchemas QSSchema)))
+  := ith_Bounded _ qs idx.
 
 Definition DropQSConstraints
            (qsSchema : QueryStructureSchema)

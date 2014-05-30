@@ -1,13 +1,16 @@
-Require Import List String Ensembles Omega
-        ADTNotation Program QueryStructureSchema QueryStructure.
+Require Import List String Ensembles
+        Computation.Core
+        ADT.ADTSig ADT.Core
+        ADTNotation.BuildADT ADTNotation.BuildADTSig
+        QueryStructure.QueryStructureSchema  QueryStructure.QueryStructure.
 
 (* Notations for queries. *)
 
 Definition Query_In (qs : QueryStructureHint) {A} (R : _)
            (bod : @Tuple (schemaHeading
-                           (QSGetNRelSchema qsSchemaHint R%string)) -> Ensemble A)
+                           (QSGetNRelSchema qsSchemaHint' R%string)) -> Ensemble A)
            (a : A) :=
-  exists tup, (GetRelation qsHint R) tup /\
+  exists tup, (GetUnConstrRelation (DropQSConstraints qsHint) R) tup /\
               bod tup a.
 
 Notation "( x 'in' R ) bod" :=
@@ -25,7 +28,8 @@ Definition Query_Where
 Notation "'Where' p bod" :=
   (Query_Where p%Tuple bod) : QuerySpec_scope.
 
-Definition Query_For {A} (bod : Ensemble A) : Comp (list A) :=
+Definition Query_For
+           {A} (bod : Ensemble A) : Comp (list A) :=
   Pick (fun l : list A => forall a, (List.In a l) <-> In _ bod a).
 
 Notation "'For' bod" := (Query_For bod) : QuerySpec_scope.

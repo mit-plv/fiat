@@ -1,16 +1,17 @@
-Require Import Common Computation ADT Ensembles ADTHide.
-Require Import ADTRefinement.Core.
+Require Import Common 
+        ADT.ADTSig ADT.Core ADT.ADTHide
+        ADTRefinement.Core.
 
-Lemma RefineHideADT'
+Lemma RefineHideADT
       extSig'
-      oldMutatorIndex oldObserverIndex
-      (MutatorMap : oldMutatorIndex -> MutatorIndex extSig')
-      (ObserverMap : oldObserverIndex -> ObserverIndex extSig')
+      oldConstructorIndex oldMethodIndex
+      (ConstructorMap : oldConstructorIndex -> ConstructorIndex extSig')
+      (MethodMap : oldMethodIndex -> MethodIndex extSig')
       oldADT
 : forall newADT newADT',
     refineADT newADT newADT'
-    -> arrow (refineADT oldADT (HideADT MutatorMap ObserverMap newADT))
-             (refineADT oldADT (HideADT MutatorMap ObserverMap newADT')).
+    -> arrow (refineADT oldADT (HideADT ConstructorMap MethodMap newADT))
+             (refineADT oldADT (HideADT ConstructorMap MethodMap newADT')).
 Proof.
   unfold arrow.
   intros ? ? [SiR ? ?] [SiR' ? ?].
@@ -23,21 +24,9 @@ Proof.
     unfold pointwise_relation; intros.
     econstructor; inversion_by computes_to_inv; eauto.
   - destruct_ex; intuition.
-    rewrite_rev_hyp; eauto; reflexivity.
+    rewrite_rev_hyp; try eassumption; [].
+    autorewrite with refine_monad; f_equiv;
+    unfold pointwise_relation; intros.
+    intros v Comp_v; inversion_by computes_to_inv; subst; simpl in *; 
+    eauto.
 Qed.
-
-Definition RefineHideADT := RefineHideADT'.
-
-(*Add Parametric Morphism
-    extSig'
-    oldMutatorIndex oldObserverIndex
-    (MutatorMap : oldMutatorIndex -> MutatorIndex extSig')
-    (ObserverMap : oldObserverIndex -> ObserverIndex extSig')
-    oldADT
-: (fun newADT => refineADT oldADT (HideADT MutatorMap ObserverMap newADT))
-    with signature
-    refineADT ==> impl
-as RefineHideADT.
-Proof.
-  unfold impl; intros; apply RefineHideADT'.
-Qed.*)

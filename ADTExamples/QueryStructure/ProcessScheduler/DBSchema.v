@@ -1,25 +1,27 @@
-Require Import String Omega List Ensembles.
-
-Require Export ADTNotation.
-Require Export QueryStructureSchema QueryQSSpecs InsertQSSpecs QueryStructure.
-
-Require Export State.
+Require Import String Omega List FunctionalExtensionality Ensembles
+        Computation ADT ADTRefinement ADTNotation QueryStructureSchema
+        BuildADTRefinements QueryQSSpecs InsertQSSpecs EmptyQSSpecs
+        QueryStructure GeneralInsertRefinements ListInsertRefinements
+        GeneralQueryRefinements ListQueryRefinements
+        ProcessScheduler.AdditionalLemmas
+        State.
 
 (*Notation "x '∈' y" := (In _ y x) (at level 50, no associativity) *)
 
 Section ProcessSchedulerInterface.
   Local Open Scope QSSchema.
-  Local Open Scope ADTSig_scope.
-  Local Open Scope QueryStructureParsing_scope.
   Local Open Scope string_scope.
+  Local Open Scope ADTSig_scope.
+  Local Open Scope QueryStructure_scope.
   Local Open Scope Tuple_scope.
+  Local Open Scope QuerySpec.
 
   Definition PID_COLUMN := "pid".
   Definition STATE_COLUMN := "state".
   Definition CPU_COLUMN := "cpu".
   Definition PROCESSES_TABLE := "processes".
 
-  Definition ProcessSchedulerSchema := query structure schema [
+  Definition ProcessSchedulerSchema := Query Structure Schema [
     relation PROCESSES_TABLE has schema <PID_COLUMN   :: nat,
                                          STATE_COLUMN :: State,
                                          CPU_COLUMN   :: nat>
@@ -32,9 +34,6 @@ Section ProcessSchedulerInterface.
   Definition STATE := GetAttributeKey PROCESSES STATE_COLUMN.
   Definition CPU   := GetAttributeKey PROCESSES CPU_COLUMN.
 
-  Definition ProcessSchedulerRefRep :=
-    @QueryStructure ProcessSchedulerSchema.
-
   Definition ProcessSchema :=
     QSGetNRelSchemaHeading ProcessSchedulerSchema PROCESSES.
 
@@ -44,14 +43,16 @@ Section ProcessSchedulerInterface.
   Definition ENUMERATE    := "Enumerate".
   Definition GET_CPU_TIME := "GetCPUTime".
   Definition COUNT        := "Count".
+  Definition INIT         := "Init".
 
   Definition ProcessSchedulerSig := ADTsignature {
-    SPAWN        : rep × nat     → rep(*,
+    INIT         : unit          → rep ,
+    SPAWN        : rep × nat     → rep × (), (*,
     "Kill"       : rep × nat     → rep,
     "Suspend"    : rep × nat     → rep,
-    "Resume"     : rep × nat     → rep*);
-    ENUMERATE    : rep × State   → list nat,
-    GET_CPU_TIME : rep × nat     → list nat (*,
+    "Resume"     : rep × nat     → rep*)
+    ENUMERATE    : rep × State   → rep × list nat,
+    GET_CPU_TIME : rep × nat     → rep ×list nat (*,
     COUNT        : rep × unit    → nat*)
   }.
 
@@ -72,17 +73,19 @@ Section ProcessSchedulerInterface.
 
   Definition ProcessSchedulerSpec : ADT ProcessSchedulerSig :=
     QueryADTRep
-      ProcessSchedulerRefRep {
-        def update SPAWN (ns : nat) : rep := (* TODO: pid/0 *)
-          new_pid <- {n | ∀ p ∈ PROCESSES, (n > p!PID)};
-          Insert <PID_COLUMN:: new_pid, STATE_COLUMN:: Sleeping, CPU_COLUMN :: 0> into PROCESSES;
+      ProcessSchedulerSchema {
+        const INIT (_ : unit) : rep := empty,
 
-        def query ENUMERATE (state : State) : list nat :=
+        update SPAWN (ns : nat) : unit :=
+          new_pid <- {n | ∀ p ∈ PROCESSES, (n > p!PID)};
+          Insert <PID_COLUMN:: new_pid, STATE_COLUMN:: Sleeping, CPU_COLUMN :: 0> into PROCESSES,
+
+        query ENUMERATE (state : State) : list nat :=
           For (p in PROCESSES)
               Where (p!STATE = state)
               Return (p!PID),
 
-        def query GET_CPU_TIME (id : nat) : list nat :=
+        query GET_CPU_TIME (id : nat) : list nat :=
           For (p in PROCESSES)
               Where (p!PID = id)
               Return (p!CPU)

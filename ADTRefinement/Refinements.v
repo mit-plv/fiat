@@ -1,3 +1,3 @@
 Require Export ADTRefinement.Refinements.HoneRepresentation
-        ADTRefinement.Refinements.HonePickRepresentation
-        ADTRefinement.Refinements.SimplifyRep.
+        ADTRefinement.Refinements.SimplifyRep
+        ADTRefinement.Refinements.DelegateMethods.
