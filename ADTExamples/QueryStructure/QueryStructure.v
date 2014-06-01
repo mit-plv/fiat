@@ -1,10 +1,10 @@
-Require Import List String FunctionalExtensionality
+Require Import List String FunctionalExtensionality Ensembles
         Computation.Core
         ADT.ADTSig ADT.Core
         ADTNotation.ilist ADTNotation.StringBound
         ADTNotation.BuildADT ADTNotation.BuildADTSig
-        QueryStructure.Notations
-        QueryStructure.Heading QueryStructure.Tuple QueryStructure.Schema QueryStructure.Relation
+        QueryStructure.Notations QueryStructure.Heading
+        QueryStructure.Tuple QueryStructure.Schema QueryStructure.Relation
         QueryStructure.QueryStructureSchema.
 
 (* A Query Structure is a collection of relations
@@ -75,13 +75,6 @@ Notation "'QueryADTRep' r { cons1 , meth1 , .. , methn } " :=
     (no associativity, at level 96, r at level 0, only parsing,
      format "'QueryADTRep'  r  '/' '[hv  ' {  cons1 , '//' '//' meth1 , '//' .. , '//' methn  ']' }") : QueryStructure_scope.
 
-Notation GetRelationKey QSSchema index :=
-  (@Build_BoundedIndex _ (map relName (qschemaSchemas QSSchema))
-                      index%string _).
-
-Notation GetAttributeKey Rel index :=
-  ((fun x : Attributes (GetNRelSchemaHeading (qschemaSchemas _) Rel) => x)  {| bindex := index%string |}).
-
 Definition GetRelation
            (QSSchema : QueryStructureSchema)
            (qs : QueryStructure QSSchema)
@@ -121,3 +114,14 @@ Proof.
   unfold GetUnConstrRelation, DropQSConstraints, GetRelation.
   rewrite <- ith_Bounded_imap; reflexivity.
 Qed.
+
+(* Typeclass + notations for declaring simulation relation for
+   QueryStructure Implementations. *)
+
+Class UnConstrRelationSiRClass {A B : Type} :=
+  { UnConstrRelationSiR : Ensemble A -> B -> Prop }.
+
+Notation "ro ≃ rn" := (@UnConstrRelationSiR _ _ _ ro%QueryImpl rn) : QueryImpl_scope.
+
+Notation "qs ! R" :=
+  (GetUnConstrRelation qs {|bindex := R%string |}): QueryImpl_scope.

@@ -181,5 +181,14 @@ Bind Scope QSSchema_scope with QueryStructureSchema.
 
 Instance Astring_eq : Query_eq string := {| A_eq_dec := string_dec |}.
 
-Require Import Omega.
 Instance Anat_eq : Query_eq nat := {| A_eq_dec := eq_nat_dec |}.
+
+Notation GetAttributeKey Rel index :=
+  ((fun x : Attributes (GetNRelSchemaHeading (qschemaSchemas _) Rel) => x)  {| bindex := index%string |}).
+
+Notation GetRelationKey QSSchema index :=
+  (@Build_BoundedIndex _ (map relName (qschemaSchemas QSSchema))
+                      index%string _).
+
+Notation TupleDef QSSchema index :=
+  (@Tuple (QSGetNRelSchemaHeading QSSchema {| bindex := index%string |})).

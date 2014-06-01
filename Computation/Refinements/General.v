@@ -60,19 +60,19 @@ Section general_refine_lemmas.
                   ret (a, b))%comp.
   Proof. t_refine. Qed.
 
-  Lemma refineEquiv_pick_pair_fst_dep A B (PA : A -> B -> Prop) (PB : B -> Prop)
+  Lemma refineEquiv_pick_pair_fst_dep A B (PA : A * B -> Prop) (PB : B -> Prop)
   : @refineEquiv _
-                 {x | PA (fst x) (snd x) /\ PB (snd x)}%comp
+                 {x | PA x /\ PB (snd x)}%comp
                  (b <- { b | PB b };
-                  a <- { a | PA a b };
+                  a <- { a | PA (a, b) };
                   ret (a, b))%comp.
   Proof. t_refine. Qed.
-  
-  Lemma refineEquiv_pick_pair_snd_dep A B (PA : A -> Prop) (PB : A -> B -> Prop)
+
+  Lemma refineEquiv_pick_pair_snd_dep A B (PA : A -> Prop) (PB : A * B -> Prop)
   : @refineEquiv _
-                 { x | PA (fst x) /\ PB (fst x) (snd x) }%comp
+                 { x | PA (fst x) /\ PB x }%comp
                  (a <- { a | PA a };
-                  b <- { b | PB a b };
+                  b <- { b | PB (a, b) };
                   ret (a, b))%comp.
   Proof. t_refine. Qed.
 

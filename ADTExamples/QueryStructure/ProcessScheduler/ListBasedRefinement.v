@@ -1,9 +1,11 @@
 Require Import String Omega List FunctionalExtensionality Ensembles
-        FMapAVL OrderedTypeEx FMapExtensions
-        Computation ADT ADTRefinement ADTNotation QueryStructureSchema
-        BuildADTRefinements QueryQSSpecs InsertQSSpecs EmptyQSSpecs
-        QueryStructure GeneralInsertRefinements ListInsertRefinements
-        GeneralQueryRefinements ListQueryRefinements
+        Computation ADT ADTRefinement ADTNotation BuildADTRefinements
+        QueryStructureSchema QueryStructure
+        QueryQSSpecs InsertQSSpecs EmptyQSSpecs
+        GeneralInsertRefinements GeneralQueryRefinements
+        GeneralQueryStructureRefinements
+        ListQueryRefinements ListInsertRefinements
+        ListQueryStructureRefinements
         ProcessScheduler.AdditionalLemmas
         DBSchema SetEq State.
 
@@ -82,28 +84,12 @@ Section ListBasedRefinement.
     f_equiv.
   Qed.
 
-  Require Import Computation.Refinements.Tactics.
-
-  Lemma EnsembleListEquivalence_Empty :
-    forall qsSchema Ridx,
-      EnsembleListEquivalence
-        (GetUnConstrRelation (DropQSConstraints (QSEmptySpec qsSchema))
-                             Ridx) [].
-  Proof.
-    intros; rewrite GetRelDropConstraints; simpl; split; simpl; intros;
-    unfold GetRelation, In in *;
-    rewrite Build_EmptyRelation_IsEmpty in *; simpl in *; auto.
-  Qed.
-
   Definition ProcessScheduler :
     Sharpened ProcessSchedulerSpec.
   Proof.
     unfold ProcessSchedulerSpec.
 
-    hone representation using (@DropQSConstraints_SiR ProcessSchedulerSchema).
-    drop constraints from query ENUMERATE.
-    drop constraints from query GET_CPU_TIME.
-    unfold ForAll_In; drop constraints from insert SPAWN.
+    unfold ForAll_In; start honing QueryStructure.
 
     (* == Introduce the list-based (SimpleDB) representation == *)
     hone representation using SimpleDB_equivalence.
@@ -120,15 +106,18 @@ Section ListBasedRefinement.
     (* == Implement ENUMERATE == *)
     hone method ENUMERATE.
     {
-      unfold SimpleDB_equivalence in *; split_and.
+      unfold SimpleDB_equivalence in *; split_and; subst.
       setoid_rewrite refineEquiv_pick_ex_computes_to_and.
       simplify with monad laws.
-      implement queries for lists.
+      setoid_rewrite Equivalent_UnConstr_In_EnsembleListEquivalence;
+        simpl; eauto.
+      setoid_rewrite Equivalent_List_In_Where; simpl.
+      setoid_rewrite refine_For_List_Return; simplify with monad laws.
       rewrite refineEquiv_pick_pair with
-      (PA := fun a => (forall a0 : Process, In a0 (snd a) -> fst a > a0 PID)
-                      /\ EnsembleListEquivalence (GetUnConstrRelation c PROCESSES) (snd a)).
+      (PA := fun a => (forall a0 : Process, List.In a0 (snd a) -> fst a > a0 PID)
+                      /\ _ (snd a)).
       rewrite refineEquiv_pick_pair_fst_dep with
-      (PA := fun a b => (forall a0 : Process, In a0 b -> a > a0 PID)).
+      (PA := fun a => (forall a0 : Process, List.In a0 (snd a) -> fst a > a0 PID)).
       repeat (rewrite refine_pick_val; [simplify with monad laws | eassumption]).
       setoid_rewrite refineEquiv_pick_eq'.
       simplify with monad laws.
@@ -141,12 +130,16 @@ Section ListBasedRefinement.
       unfold SimpleDB_equivalence in *; split_and.
       setoid_rewrite refineEquiv_pick_ex_computes_to_and.
       simplify with monad laws.
-      implement queries for lists.
+      setoid_rewrite Equivalent_UnConstr_In_EnsembleListEquivalence;
+        simpl; eauto.
+      setoid_rewrite Equivalent_List_In_Where; simpl.
+      setoid_rewrite refine_For_List_Return; simplify with monad laws.
+
       rewrite refineEquiv_pick_pair with
-      (PA := fun a => (forall a0 : Process, In a0 (snd a) -> fst a > a0 PID)
+      (PA := fun a => (forall a0 : Process, List.In a0 (snd a) -> fst a > a0 PID)
                       /\ EnsembleListEquivalence (GetUnConstrRelation c PROCESSES) (snd a)).
       rewrite refineEquiv_pick_pair_fst_dep with
-      (PA := fun a b => (forall a0 : Process, In a0 b -> a > a0 PID)).
+      (PA := fun a => (forall a0 : Process, List.In a0 (snd a) -> (fst a) > a0 PID)).
       repeat (rewrite refine_pick_val; [simplify with monad laws | eassumption]).
       setoid_rewrite refineEquiv_pick_eq'.
       simplify with monad laws.
@@ -164,10 +157,10 @@ Section ListBasedRefinement.
       setoid_rewrite refine_decision'; eauto; try simplify with monad laws.
       rewrite refine_pick_eq_ex_bind.
       rewrite refineEquiv_pick_pair with
-      (PA := fun a => (forall a0 : Process, In a0 (snd a) -> fst a > a0 PID)
+      (PA := fun a => (forall a0 : Process, List.In a0 (snd a) -> fst a > a0 PID)
                       /\ _ (snd a)).
       rewrite refineEquiv_pick_pair_fst_dep with
-      (PA := fun (a : nat) (b : list Process) => forall t : Tuple, List.In t b -> a > t PID).
+      (PA := fun a => forall t : Tuple, List.In t (snd a) -> fst a > t PID).
       setoid_rewrite ImplementListInsert_eq; eauto;
       simplify with monad laws.
       setoid_rewrite (refine_pick_val _ (a := S (fst r_n))); eauto.
@@ -190,12 +183,12 @@ Section ListBasedRefinement.
       repeat setoid_rewrite refineEquiv_pick_eq'.
       simplify with monad laws.
       rewrite refineEquiv_pick_pair_fst_dep with
-      (PA := fun a b => (forall a0 : Process, In a0 b -> a > a0 PID)).
+      (PA := fun a => (forall a0 : Process, List.In a0 (snd a) -> (fst a) > a0 PID)).
       repeat (rewrite refine_pick_val;
               [simplify with monad laws
               | apply EnsembleListEquivalence_Empty]).
       rewrite refine_pick_val.
-      simplify with monad laws; 
+      simplify with monad laws;
       subst_body; higher_order_1_reflexivity.
       instantiate (1 := 0); simpl; intuition.
     }

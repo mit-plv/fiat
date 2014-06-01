@@ -1,20 +1,21 @@
 Require Import List String Ensembles
         Computation.Core
         ADT.ADTSig ADT.Core
-        ADTNotation.BuildADT ADTNotation.BuildADTSig
+        ADTNotation.StringBound ADTNotation.BuildADT ADTNotation.BuildADTSig
         QueryStructure.QueryStructureSchema  QueryStructure.QueryStructure.
 
 (* Notations for queries. *)
 
 Definition Query_In (qs : QueryStructureHint) {A} (R : _)
            (bod : @Tuple (schemaHeading
-                           (QSGetNRelSchema qsSchemaHint' R%string)) -> Ensemble A)
+                           (QSGetNRelSchema qsSchemaHint' R)) -> Ensemble A)
            (a : A) :=
   exists tup, (GetUnConstrRelation (DropQSConstraints qsHint) R) tup /\
               bod tup a.
 
+
 Notation "( x 'in' R ) bod" :=
-  (Query_In _ (R%string) (fun x => bod)) : QuerySpec_scope.
+  (Query_In _ {| bindex := R%string |} (fun x => bod)) : QuerySpec_scope.
 
 Definition Query_Return {A : Type} (a a' : A) := (a = a').
 

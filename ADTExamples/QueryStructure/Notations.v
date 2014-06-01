@@ -12,6 +12,8 @@ Class Query_eq (A : Type) :=
 
 Infix "==" := (A_eq_dec) (at level 1).
 
+Reserved Notation "ro ≃ rn"  (at level 70).
+
 Reserved Notation "'attributes' attrlist1 'depend' 'on' attrlist2 "
          (at level 50).
 
@@ -60,6 +62,7 @@ Delimit Scope NamedSchema_scope with NamedSchema.
 Delimit Scope QSSchema_scope with QSSchema.
 Delimit Scope QSSchemaConstraints_scope with QSSchemaConstraints.
 Delimit Scope QuerySpec_scope with QuerySpec.
+Delimit Scope QueryImpl_scope with QueryImpl.
 Delimit Scope QueryStructure_scope with QueryStructure.
 Delimit Scope QueryStructureParsing_scope with QueryStructureParsing.
 Delimit Scope queryDefParsing_scope with queryDefParsing.

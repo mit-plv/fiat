@@ -9,12 +9,7 @@ Require Import String Omega List FunctionalExtensionality Ensembles
 (*Notation "x '∈' y" := (In _ y x) (at level 50, no associativity) *)
 
 Section ProcessSchedulerInterface.
-  Local Open Scope QSSchema.
-  Local Open Scope string_scope.
-  Local Open Scope ADTSig_scope.
-  Local Open Scope QueryStructure_scope.
-  Local Open Scope Tuple_scope.
-  Local Open Scope QuerySpec.
+  Require Import QueryStructureNotations.
 
   Definition PID_COLUMN := "pid".
   Definition STATE_COLUMN := "state".
@@ -47,16 +42,13 @@ Section ProcessSchedulerInterface.
 
   Definition ProcessSchedulerSig := ADTsignature {
     INIT         : unit          → rep ,
-    SPAWN        : rep × nat     → rep × (), (*,
-    "Kill"       : rep × nat     → rep,
-    "Suspend"    : rep × nat     → rep,
-    "Resume"     : rep × nat     → rep*)
+    SPAWN        : rep × nat     → rep × (), 
     ENUMERATE    : rep × State   → rep × list nat,
-    GET_CPU_TIME : rep × nat     → rep ×list nat (*,
-    COUNT        : rep × unit    → nat*)
+    GET_CPU_TIME : rep × nat     → rep ×list nat 
   }.
 
   Open Scope comp_scope.
+  Open Scope Tuple. 
 
   Definition ForAll_In
              qsSchema
@@ -77,18 +69,18 @@ Section ProcessSchedulerInterface.
         const INIT (_ : unit) : rep := empty,
 
         update SPAWN (ns : nat) : unit :=
-          new_pid <- {n | ∀ p ∈ PROCESSES, (n > p!PID)};
-          Insert <PID_COLUMN:: new_pid, STATE_COLUMN:: Sleeping, CPU_COLUMN :: 0> into PROCESSES,
+          new_pid <- {n | ∀ p ∈ PROCESSES, (n > p!PID_COLUMN)};
+          Insert <PID_COLUMN:: new_pid, STATE_COLUMN:: Sleeping, CPU_COLUMN :: 0> into PROCESSES_TABLE,
 
         query ENUMERATE (state : State) : list nat :=
-          For (p in PROCESSES)
-              Where (p!STATE = state)
-              Return (p!PID),
+          For (p in PROCESSES_TABLE)
+              Where (p STATE = state)
+              Return (p!PID_COLUMN),
 
         query GET_CPU_TIME (id : nat) : list nat :=
-          For (p in PROCESSES)
-              Where (p!PID = id)
-              Return (p!CPU)
+          For (p in PROCESSES_TABLE)
+              Where (p!PID_COLUMN = id)
+              Return (p!CPU_COLUMN)
 (*,
 
         def query COUNT (_: unit) : nat :=

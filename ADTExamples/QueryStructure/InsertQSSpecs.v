@@ -60,7 +60,7 @@ Definition QSInsertSpec
                (RelationInsert tup (GetRelation qsHint Ridx) t)).
 
 Notation "'Insert' b 'into' Ridx " :=
-  (qs <- Pick (QSInsertSpec _ Ridx b);
+  (qs <- Pick (QSInsertSpec _ {|bindex := Ridx |} b);
    ret (qs, tt))%comp
     (at level 80) : QuerySpec_scope.
 
@@ -821,14 +821,14 @@ Arguments id  _ _ / .
 
   Ltac remove_trivial_insertion_constraints :=
       match goal with
-          |- context[RelationInsert _ (GetUnConstrRelation _ ?Ridx') ] =>
+          |- context[RelationInsert _ (GetUnConstrRelation _ _) ] =>
           match goal with
               SiR : DropQSConstraints_SiR ?or ?nr
               |- context [
                      Pick
                        (fun b =>
                           decides b
-                                  (?Ridx <> Ridx' ->
+                                  (?Ridx <> ?Ridx' ->
                          forall tup' ,
                            GetUnConstrRelation ?r ?Ridx tup' ->
                            exists tup2,

@@ -50,11 +50,14 @@ MODULES    := \
 	ADTExamples/QueryStructure/InsertQSSpecs \
 	ADTExamples/QueryStructure/GeneralQueryRefinements \
 	ADTExamples/QueryStructure/GeneralInsertRefinements \
+	ADTExamples/QueryStructure/GeneralQueryStructureRefinements \
 	ADTExamples/QueryStructure/ProcessScheduler/State \
 	ADTExamples/QueryStructure/ProcessScheduler/SetEq \
 	ADTExamples/QueryStructure/ProcessScheduler/AdditionalLemmas \
 	ADTExamples/QueryStructure/ListQueryRefinements \
 	ADTExamples/QueryStructure/ListInsertRefinements \
+	ADTExamples/QueryStructure/ListQueryStructureRefinements \
+	ADTExamples/QueryStructure/QueryStructureNotations \
 	ADTExamples/QueryStructure/Bookstore \
 	ADTExamples/QueryStructure/ProcessScheduler/FMapExtensions \
 	ADTExamples/QueryStructure/ProcessScheduler/DBSchema \

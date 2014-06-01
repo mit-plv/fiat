@@ -58,9 +58,10 @@ Tactic Notation "remove" "trivial" "insertion" "checks" :=
     (* Pull out the relation we're inserting into and then
      rewrite [QSInsertSpec] *)
             match goal with
-                |- context [(Insert _ into ?R)%QuerySpec] =>
+                H : DropQSConstraints_SiR _ ?r_n
+                |- context [(Insert ?n into ?R)%QuerySpec] =>
                 eapply (@QSInsertSpec_UnConstr_refine
-                          _ _ R _)
+                          _ r_n {|bindex := R |} n)
             end;
             (* try to discharge the trivial constraints *)
             [  simplify_trivial_SatisfiesSchemaConstraints
@@ -78,14 +79,13 @@ Tactic Notation "remove" "trivial" "insertion" "checks" :=
     ].
 
 Tactic Notation "Split" "Constraint" "Checks" :=
-  let b := match goal with
-             | [ |- context[if ?X then _ else _] ] => constr:(X)
-             | [ H : context[if ?X then _ else _] |- _ ]=> constr:(X)
-           end in
-  let b_eq := fresh in
-  eapply (@refine_if _ _ b); intros b_eq;
-  repeat setoid_rewrite b_eq;
-  repeat rewrite b_eq.
+  repeat (let b := match goal with
+                     | [ |- context[if ?X then _ else _] ] => constr:(X)
+                     | [ H : context[if ?X then _ else _] |- _ ]=> constr:(X)
+                   end in
+          let b_eq := fresh in
+          eapply (@refine_if _ _ b); intros b_eq;
+          simpl in *; repeat rewrite b_eq; simpl).
 
 Tactic Notation "implement" "failed" "insert" :=
   repeat (rewrite refine_pick_val, refineEquiv_bind_unit; eauto);

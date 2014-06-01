@@ -343,7 +343,7 @@ Tactic Notation "hone" "constructor" constr(consIdx) :=
                ));
       [ intros; try (apply refine_pick_forall_Prop with
                      (P := fun r_n n r_o => _); intros);
-        set_evars; simpl in *; subst |
+        simpl in *; set_evars; simpl in *; subst |
           cbv beta in *; simpl in *;
           cbv beta delta [replace_BoundedIndex replace_Index] in *;
           simpl in *].
@@ -387,7 +387,7 @@ Tactic Notation "hone" "constructor" constr(consIdx) :=
       [ intros; repeat (progress (try rewrite refine_pick_computes_to;
                                   try apply refine_pick_forall_Prop with
                                   (P := fun _ _ _ => _); intros));
-        set_evars; simpl in *; subst |
+        simpl in *; set_evars; simpl in *; subst |
             cbv beta in *; simpl in *;
             cbv beta delta [replace_BoundedIndex replace_Index] in *;
             simpl in *].

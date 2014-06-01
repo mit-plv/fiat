@@ -1,6 +1,8 @@
 Require Import String Omega List FunctionalExtensionality Ensembles
-        Computation ADT ADTRefinement ADTNotation QueryStructureSchema
-        QueryQSSpecs QueryStructure GeneralQueryRefinements.
+        Computation ADT ADTRefinement ADTNotation
+        ADTRefinement.GeneralBuildADTRefinements
+        QueryStructureSchema QueryQSSpecs QueryStructure
+        GeneralQueryRefinements.
 
 Require Import ProcessScheduler.AdditionalLemmas SetEq.
 
@@ -153,3 +155,16 @@ Tactic Notation "implement" "queries" "for" "lists" :=
              try (setoid_rewrite Equivalent_List_In_Where with (P_dec := _); simpl);
              try (setoid_rewrite Equivalent_Join_Lists; eauto)));
   setoid_rewrite refine_For_List_Return; try simplify with monad laws.
+
+Tactic Notation "implement" "query" "in" constr(queryName) "with" "lists" "under" hyp(SiR) :=
+    hone method queryName;
+  [ unfold SiR in *; split_and;
+    setoid_rewrite refineEquiv_pick_ex_computes_to_and;
+    simplify with monad laws;
+    implement queries for lists;
+    setoid_rewrite refineEquiv_pick_pair_pair;
+    setoid_rewrite refineEquiv_pick_eq';
+    repeat (rewrite refine_pick_val; [simplify with monad laws | eassumption]);
+    finish honing
+  |
+  ].
