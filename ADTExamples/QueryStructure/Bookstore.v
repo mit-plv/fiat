@@ -35,9 +35,9 @@ Section BookStoreExamples.
                         "Title" :: string,
                         "ISBN" :: nat>
                 where attributes ["Title"; "Author"] depend on ["ISBN"];
-    relation "Orders" has
+        relation "Orders" has
                 schema <"ISBN" :: nat,
-    "Date" :: nat> ]
+                        "Date" :: nat> ]
       enforcing [attribute "ISBN" of "Orders" references "Books"].
 
   (* Aliases for the tuples contained in Books and Orders, respectively. *)
@@ -55,7 +55,7 @@ Section BookStoreExamples.
 
   Definition BookStoreSig : ADTSig :=
     ADTsignature {
-        "InitBookstore" : unit → rep ,
+        "InitBookstore" : unit → rep,
         "PlaceOrder" : rep × Order → rep × unit,
         "AddBook" : rep × Book → rep × unit,
         "GetTitles" : rep × string → rep × list string,
@@ -117,5 +117,4 @@ Section BookStoreExamples.
 
     finish sharpening.
   Defined.
-
 End BookStoreExamples.
