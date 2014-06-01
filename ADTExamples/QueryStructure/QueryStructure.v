@@ -21,8 +21,7 @@ Record QueryStructure (QSSchema : QueryStructureSchema) :=
         idx <> idx' ->
         (* These are cross-relation constraints which only need to be
            enforced on distinct relations. *)
-                (rel
-                   (ith_Bounded _ rels idx )) tup ->
+        (rel (ith_Bounded _ rels idx )) tup ->
         BuildQueryStructureConstraints
           QSSchema idx idx' tup
           (rel (ith_Bounded _ rels idx'))

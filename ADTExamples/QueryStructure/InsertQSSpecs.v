@@ -380,14 +380,14 @@ Section InsertRefinements.
                             GetRelation qs Ridx tup'
                             -> SatisfiesSchemaConstraints Ridx tup' tup)};
             qsConstr <- {b | decides b
-(forall Ridx', SatisfiesCrossRelationConstraints Ridx Ridx' tup (GetRelation qs Ridx'))};
+              (forall Ridx', SatisfiesCrossRelationConstraints Ridx Ridx' tup (GetRelation qs Ridx'))};
             qsConstr' <- {b | decides
                                 b
                                 (forall Ridx',
                                    Ridx' <> Ridx ->
                                    forall tup',
                                      (GetRelation qs Ridx') tup'
-                                                           -> SatisfiesCrossRelationConstraints
+                                     -> SatisfiesCrossRelationConstraints
                                        Ridx' Ridx tup'
                                        (RelationInsert tup (GetRelation qs Ridx)))};
             match schConstr_self, schConstr, schConstr', qsConstr, qsConstr' with

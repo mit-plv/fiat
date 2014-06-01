@@ -174,7 +174,7 @@ Definition UnConstrQueryStructure (qsSchema : QueryStructureSchema) :=
   ilist (fun ns => UnConstrRelation (relSchema ns))
         (qschemaSchemas qsSchema).
 
- Notation "'Query' 'Structure' 'Schema' relList " :=
+Notation "'Query' 'Structure' 'Schema' relList " :=
   (@Build_QueryStructureSchema relList%NamedSchema []) : QSSchema_scope.
 
 Bind Scope QSSchema_scope with QueryStructureSchema.
@@ -184,11 +184,11 @@ Instance Astring_eq : Query_eq string := {| A_eq_dec := string_dec |}.
 Instance Anat_eq : Query_eq nat := {| A_eq_dec := eq_nat_dec |}.
 
 Notation GetAttributeKey Rel index :=
-  ((fun x : Attributes (GetNRelSchemaHeading (qschemaSchemas _) Rel) => x)  {| bindex := index%string |}).
+  ((fun x : Attributes (GetNRelSchemaHeading (qschemaSchemas _) Rel) => x)  {| bindex := index |}).
 
 Notation GetRelationKey QSSchema index :=
   (@Build_BoundedIndex _ (map relName (qschemaSchemas QSSchema))
-                      index%string _).
+                      index _).
 
 Notation TupleDef QSSchema index :=
   (@Tuple (QSGetNRelSchemaHeading QSSchema {| bindex := index%string |})).
