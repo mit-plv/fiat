@@ -151,10 +151,10 @@ Definition refine {A}
    interactively deriving refinements. *)
 
 Definition Refinement_Of {A} (c : Comp A) :=
-  {c' | refine c%comp c'}.
+  {c' | refine c c'}.
 
 Notation "'Refinement' 'of' c" :=
-  {c' | refine c%comp c'}
+  {c' | refine c c'}
     (at level 0, no associativity,
      format "'Refinement'  'of' '/' '[v'    c ']' " )
   : comp_scope.

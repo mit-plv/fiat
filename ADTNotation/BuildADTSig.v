@@ -38,7 +38,7 @@ Notation "id : dom → 'rep'" :=
   : consSig_scope.
 
 (* [BuildADTSig] constructs an ADT signature from a list of
-   consator signatures and a list of metherver signatures.
+   constructor signatures and a list of method signatures.
    This definition can be formated nicely using notations. *)
 
 Definition BuildADTSig

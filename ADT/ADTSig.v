@@ -14,16 +14,16 @@ Definition methodType (rep dom cod : Type)
 (* Signatures of ADT operations *)
 Record ADTSig :=
   {
-     (** The index set of constructors *)
+    (** The index set of constructors *)
     ConstructorIndex : Type;
 
     (** The index set of methods *)
     MethodIndex : Type;
 
+    (** The representation-independent domain of constructors. *)
     ConstructorDom : ConstructorIndex -> Type;
-    (** The representation-independent domain of constructors. **)
 
-    MethodDomCod : MethodIndex -> (Type * Type)
-     (** The representation-independent domain and codomain of methods. **)
+    (** The representation-independent domain and codomain of methods. *)
+    MethodDomCod : MethodIndex -> Type * Type
 
   }.

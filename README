@@ -17,9 +17,7 @@ Computation/
 
 ADT/
 - Definition of abstract data types (ADTs).
-  * ADTSig.v: definition of ADT int
-
-$erfaces (signatures).
+  * ADTSig.v: definition of ADT interfaces (signatures).
   * Core.v: core definitions of abstract data types
   * ADTHide.v: definitions for hiding part of an ADT interface
   * Specs.v: definition of method specification
@@ -58,7 +56,7 @@ ADTRefinement/Refinements/
     		     definitions in ADTHide.v
   * ADTCache.v: adding a cached value to the representation of an ADT
   * ADTRepInv.v: refining an ADT under a representation invariant
-  * DelegateMethods.v: delegating funcionality to another ADT
+  * DelegateMethods.v: delegating functionality to another ADT
 
 ADTRefinement/BuildADTRefinements/
 - Definitions and tactics for notation-friendly versions of more

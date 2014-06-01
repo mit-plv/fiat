@@ -77,7 +77,7 @@ Arguments getConsDef [_] [_] _ idx%string / _ .
 Arguments getMethDef [_] [_] _ idx%string / _ _ .
 
 (* [BuildADT] constructs an ADT from a single constructor
-   definition and a list of metherver signatures,
+   definition and a list of method signatures,
    both indexed by their signatures. [BuildADT] uses [BuildADTSig]
    to construct the signature of the ADT from these signatures.
    This definition is formated nicely using notations. *)
