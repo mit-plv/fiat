@@ -61,7 +61,7 @@ Section HoneRepresentation.
 End HoneRepresentation.
 
 (* Honing tactic for refining the ADT representation which provides
-   default metherver and consator implementations. *)
+   default method and constructor implementations. *)
 
 Tactic Notation "hone" "representation" "using" open_constr(SiR') :=
   eapply SharpenStep;

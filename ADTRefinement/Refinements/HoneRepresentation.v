@@ -82,7 +82,7 @@ Section HoneRepresentation.
 
 End HoneRepresentation.
 
-  (* Always unfold absMutatorMethods and absObserverMethods. *)
+(* Always unfold absMutatorMethods and absObserverMethods. *)
 Global Arguments absMethod oldRep newRep SiR Dom Cod oldMethod / nr n.
 Global Arguments absConstructor oldRep newRep SiR Dom oldConstr / n .
 
@@ -90,4 +90,4 @@ Global Arguments absConstructor oldRep newRep SiR Dom oldConstr / n .
    default observer and mutator implementations. *)
 Tactic Notation "hone" "representation" "using" constr(SiR') :=
     eapply SharpenStep;
-    [eapply refineADT_Build_ADT_Rep_default with (SiR := SiR') | idtac].
+    [eapply refineADT_Build_ADT_Rep_default with (SiR := SiR') | ].

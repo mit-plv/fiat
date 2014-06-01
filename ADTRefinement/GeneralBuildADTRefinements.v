@@ -231,67 +231,67 @@ Tactic Notation "hone" "method" constr(methIdx) "using" open_constr(methBod) :=
   let methDefs :=
         match A with
             BuildADT _ ?methDefs  => constr:(methDefs) end in
-    let Rep' :=
-        match A with
-            @BuildADT ?Rep _ _ _ _ => constr:(Rep) end in
-    let ConstructorIndex' := eval simpl in (ConstructorIndex ASig) in
-    let MethodIndex' := eval simpl in (MethodIndex ASig) in
-    let MethodDomCod' := eval simpl in (MethodDomCod ASig) in
-    let methIdxB := eval simpl in
-    (@Build_BoundedIndex _ (List.map methID methSigs) methIdx _) in
-      eapply SharpenStep;
-      [eapply (@refineADT_BuildADT_ReplaceMethod_eq
-                 Rep' _ _ consDefs methDefs methIdxB
-                 (@Build_methDef Rep'
-                                {| methID := methIdx;
-                                   methDom := fst (MethodDomCod' methIdxB);
-                                   methCod := snd (MethodDomCod' methIdxB)
-                                |}
-                                methBod
-                                ))
-      | idtac]; cbv beta in *; simpl in *;
-      cbv beta delta [replace_BoundedIndex replace_Index] in *;
-      simpl in *.
+  let Rep' :=
+      match A with
+          @BuildADT ?Rep _ _ _ _ => constr:(Rep) end in
+  let ConstructorIndex' := eval simpl in (ConstructorIndex ASig) in
+  let MethodIndex' := eval simpl in (MethodIndex ASig) in
+  let MethodDomCod' := eval simpl in (MethodDomCod ASig) in
+  let methIdxB := eval simpl in
+  (@Build_BoundedIndex _ (List.map methID methSigs) methIdx _) in
+    eapply SharpenStep;
+    [eapply (@refineADT_BuildADT_ReplaceMethod_eq
+               Rep' _ _ consDefs methDefs methIdxB
+               (@Build_methDef Rep'
+                              {| methID := methIdx;
+                                 methDom := fst (MethodDomCod' methIdxB);
+                                 methCod := snd (MethodDomCod' methIdxB)
+                              |}
+                              methBod
+                              ))
+    | idtac]; cbv beta in *; simpl in *;
+    cbv beta delta [replace_BoundedIndex replace_Index] in *;
+    simpl in *.
 
-  Tactic Notation "hone" "constructor" constr(consIdx) "using" open_constr(consBod) :=
-    let A :=
-        match goal with
-            |- Sharpened ?A => constr:(A) end in
-    let ASig := match type of A with
-                    ADT ?Sig => Sig
-                end in
-    let consSigs :=
-        match ASig with
-            BuildADTSig ?consSigs _ => constr:(consSigs) end in
-    let methSigs :=
-        match ASig with
-            BuildADTSig _ ?methSigs => constr:(methSigs) end in
-    let consDefs :=
-        match A with
-            BuildADT ?consDefs _  => constr:(consDefs) end in
-    let methDefs :=
-        match A with
-            BuildADT _ ?methDefs  => constr:(methDefs) end in
-    let Rep' :=
-        match A with
-            @BuildADT ?Rep _ _ _ _ => constr:(Rep) end in
-    let ConstructorIndex' := eval simpl in (ConstructorIndex ASig) in
-    let MethodIndex' := eval simpl in (MethodIndex ASig) in
-    let ConstructorDom' := eval simpl in (ConstructorDom ASig) in
-    let consIdxB := eval simpl in
-    (@Build_BoundedIndex _ (List.map consID consSigs) consIdx _) in
-      eapply SharpenStep;
-      [eapply (@refineADT_BuildADT_ReplaceConstructor_eq
-                 Rep'  _ _ consDefs methDefs consIdxB
-                 (@Build_consDef Rep'
-                                {| consID := consIdx;
-                                   consDom := ConstructorDom' consIdxB
-                                |}
-                                consBod
-                                ))
-      | idtac]; cbv beta in *; simpl in *;
-      cbv beta delta [replace_BoundedIndex replace_Index] in *;
-      simpl in *.
+Tactic Notation "hone" "constructor" constr(consIdx) "using" open_constr(consBod) :=
+  let A :=
+      match goal with
+          |- Sharpened ?A => constr:(A) end in
+  let ASig := match type of A with
+                  ADT ?Sig => Sig
+              end in
+  let consSigs :=
+      match ASig with
+          BuildADTSig ?consSigs _ => constr:(consSigs) end in
+  let methSigs :=
+      match ASig with
+          BuildADTSig _ ?methSigs => constr:(methSigs) end in
+  let consDefs :=
+      match A with
+          BuildADT ?consDefs _  => constr:(consDefs) end in
+  let methDefs :=
+      match A with
+          BuildADT _ ?methDefs  => constr:(methDefs) end in
+  let Rep' :=
+      match A with
+          @BuildADT ?Rep _ _ _ _ => constr:(Rep) end in
+  let ConstructorIndex' := eval simpl in (ConstructorIndex ASig) in
+  let MethodIndex' := eval simpl in (MethodIndex ASig) in
+  let ConstructorDom' := eval simpl in (ConstructorDom ASig) in
+  let consIdxB := eval simpl in
+  (@Build_BoundedIndex _ (List.map consID consSigs) consIdx _) in
+    eapply SharpenStep;
+    [eapply (@refineADT_BuildADT_ReplaceConstructor_eq
+               Rep'  _ _ consDefs methDefs consIdxB
+               (@Build_consDef Rep'
+                              {| consID := consIdx;
+                                 consDom := ConstructorDom' consIdxB
+                              |}
+                              consBod
+                              ))
+    | idtac]; cbv beta in *; simpl in *;
+    cbv beta delta [replace_BoundedIndex replace_Index] in *;
+    simpl in *.
 
 Tactic Notation "hone" "method" constr(methIdx) :=
   hone' method methIdx using _;
@@ -306,91 +306,91 @@ Tactic Notation "hone" "constructor" constr(consIdx) :=
     simpl in *; intros; subst;
     autosetoid_rewrite with refine_monad | ].
 
-  Tactic Notation "hone" "constructor" constr(consIdx) :=
-    let A :=
-        match goal with
-            |- Sharpened ?A => constr:(A) end in
-    let ASig := match type of A with
-                    ADT ?Sig => Sig
-                end in
-    let consSigs :=
-        match ASig with
-            BuildADTSig ?consSigs _ => constr:(consSigs) end in
-    let methSigs :=
-        match ASig with
-            BuildADTSig _ ?methSigs => constr:(methSigs) end in
-    let consDefs :=
-        match A with
-            BuildADT ?consDefs _  => constr:(consDefs) end in
-    let methDefs :=
-        match A with
-            BuildADT _ ?methDefs  => constr:(methDefs) end in
-    let Rep' :=
-        match A with
-            @BuildADT ?Rep _ _ _ _ => constr:(Rep) end in
-    let ConstructorIndex' := eval simpl in (ConstructorIndex ASig) in
-    let MethodIndex' := eval simpl in (MethodIndex ASig) in
-    let ConstructorDom' := eval simpl in (ConstructorDom ASig) in
-    let consIdxB := eval simpl in
-    (@Build_BoundedIndex _ (List.map consID consSigs) consIdx _) in
-        eapply (@SharpenStep_BuildADT_ReplaceConstructor_eq
-                 Rep'  _ _ consDefs methDefs consIdxB
-                 (@Build_consDef Rep'
-                                {| consID := consIdx;
-                                   consDom := ConstructorDom' consIdxB
-                                |}
-                                _
-               ));
-      [ intros; try (apply refine_pick_forall_Prop with
-                     (P := fun r_n n r_o => _); intros);
-        simpl in *; set_evars; simpl in *; subst |
+Tactic Notation "hone" "constructor" constr(consIdx) :=
+  let A :=
+      match goal with
+          |- Sharpened ?A => constr:(A) end in
+  let ASig := match type of A with
+                  ADT ?Sig => Sig
+              end in
+  let consSigs :=
+      match ASig with
+          BuildADTSig ?consSigs _ => constr:(consSigs) end in
+  let methSigs :=
+      match ASig with
+          BuildADTSig _ ?methSigs => constr:(methSigs) end in
+  let consDefs :=
+      match A with
+          BuildADT ?consDefs _  => constr:(consDefs) end in
+  let methDefs :=
+      match A with
+          BuildADT _ ?methDefs  => constr:(methDefs) end in
+  let Rep' :=
+      match A with
+          @BuildADT ?Rep _ _ _ _ => constr:(Rep) end in
+  let ConstructorIndex' := eval simpl in (ConstructorIndex ASig) in
+  let MethodIndex' := eval simpl in (MethodIndex ASig) in
+  let ConstructorDom' := eval simpl in (ConstructorDom ASig) in
+  let consIdxB := eval simpl in
+  (@Build_BoundedIndex _ (List.map consID consSigs) consIdx _) in
+      eapply (@SharpenStep_BuildADT_ReplaceConstructor_eq
+               Rep'  _ _ consDefs methDefs consIdxB
+               (@Build_consDef Rep'
+                              {| consID := consIdx;
+                                 consDom := ConstructorDom' consIdxB
+                              |}
+                              _
+             ));
+    [ intros; try (apply refine_pick_forall_Prop with
+                   (P := fun r_n n r_o => _); intros);
+      simpl in *; set_evars; simpl in *; subst |
+        cbv beta in *; simpl in *;
+        cbv beta delta [replace_BoundedIndex replace_Index] in *;
+        simpl in *].
+
+Tactic Notation "hone" "method" constr(methIdx) :=
+  let A :=
+      match goal with
+          |- Sharpened ?A => constr:(A) end in
+  let ASig := match type of A with
+                  ADT ?Sig => Sig
+              end in
+  let consSigs :=
+      match ASig with
+          BuildADTSig ?consSigs _ => constr:(consSigs) end in
+  let methSigs :=
+      match ASig with
+          BuildADTSig _ ?methSigs => constr:(methSigs) end in
+  let consDefs :=
+      match A with
+          BuildADT ?consDefs _  => constr:(consDefs) end in
+  let methDefs :=
+      match A with
+          BuildADT _ ?methDefs  => constr:(methDefs) end in
+  let Rep' :=
+      match A with
+          @BuildADT ?Rep _ _ _ _ => constr:(Rep) end in
+  let ConstructorIndex' := eval simpl in (ConstructorIndex ASig) in
+  let MethodIndex' := eval simpl in (MethodIndex ASig) in
+  let MethodDomCod' := eval simpl in (MethodDomCod ASig) in
+  let methIdxB := eval simpl in
+  (@Build_BoundedIndex _ (List.map methID methSigs) methIdx _) in
+      eapply (@SharpenStep_BuildADT_ReplaceMethod_eq
+                Rep'  _ _ consDefs methDefs methIdxB
+                (@Build_methDef Rep'
+                               {| methID := methIdx;
+                                  methDom := fst (MethodDomCod' methIdxB);
+                                  methCod := snd (MethodDomCod' methIdxB)
+                               |}
+                               _
+                              ));
+    [ intros; repeat (progress (try rewrite refine_pick_computes_to;
+                                try apply refine_pick_forall_Prop with
+                                (P := fun _ _ _ => _); intros));
+      simpl in *; set_evars; simpl in *; subst |
           cbv beta in *; simpl in *;
           cbv beta delta [replace_BoundedIndex replace_Index] in *;
           simpl in *].
-
-  Tactic Notation "hone" "method" constr(methIdx) :=
-    let A :=
-        match goal with
-            |- Sharpened ?A => constr:(A) end in
-    let ASig := match type of A with
-                    ADT ?Sig => Sig
-                end in
-    let consSigs :=
-        match ASig with
-            BuildADTSig ?consSigs _ => constr:(consSigs) end in
-    let methSigs :=
-        match ASig with
-            BuildADTSig _ ?methSigs => constr:(methSigs) end in
-    let consDefs :=
-        match A with
-            BuildADT ?consDefs _  => constr:(consDefs) end in
-    let methDefs :=
-        match A with
-            BuildADT _ ?methDefs  => constr:(methDefs) end in
-    let Rep' :=
-        match A with
-            @BuildADT ?Rep _ _ _ _ => constr:(Rep) end in
-    let ConstructorIndex' := eval simpl in (ConstructorIndex ASig) in
-    let MethodIndex' := eval simpl in (MethodIndex ASig) in
-    let MethodDomCod' := eval simpl in (MethodDomCod ASig) in
-    let methIdxB := eval simpl in
-    (@Build_BoundedIndex _ (List.map methID methSigs) methIdx _) in
-        eapply (@SharpenStep_BuildADT_ReplaceMethod_eq
-                  Rep'  _ _ consDefs methDefs methIdxB
-                  (@Build_methDef Rep'
-                                 {| methID := methIdx;
-                                    methDom := fst (MethodDomCod' methIdxB);
-                                    methCod := snd (MethodDomCod' methIdxB)
-                                 |}
-                                 _
-                                ));
-      [ intros; repeat (progress (try rewrite refine_pick_computes_to;
-                                  try apply refine_pick_forall_Prop with
-                                  (P := fun _ _ _ => _); intros));
-        simpl in *; set_evars; simpl in *; subst |
-            cbv beta in *; simpl in *;
-            cbv beta delta [replace_BoundedIndex replace_Index] in *;
-            simpl in *].
 
 Tactic Notation "finish" "honing" :=
   subst_body;

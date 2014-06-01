@@ -127,25 +127,25 @@ Qed.
 
 (** Refining Methods is a valid ADT refinement. *)
 
-Lemma refineADT_Build_ADT_Method rep Sig ms
-: forall obs obs',
+Lemma refineADT_Build_ADT_Method rep Sig cs
+: forall ms ms',
     (forall idx, @refineMethod _ _ eq
                                  (fst (MethodDomCod Sig idx))
                                  (snd (MethodDomCod Sig idx))
-                                 (obs idx) (obs' idx))
-    -> refineADT (@Build_ADT Sig rep ms obs) (@Build_ADT Sig rep ms obs').
+                                 (ms idx) (ms' idx))
+    -> refineADT (@Build_ADT Sig rep cs ms) (@Build_ADT Sig rep cs ms').
 Proof.
   intros; eapply refineADT_Build_ADT_Rep; eauto; reflexivity.
 Qed.
 
 (** Refining Constructors is also a valid ADT refinement. *)
 
-Lemma refineADT_Build_ADT_Constructors rep Sig obs
-: forall mut mut',
+Lemma refineADT_Build_ADT_Constructors rep Sig ms
+: forall cs cs',
     (forall idx, @refineConstructor _ _ eq
                                 (ConstructorDom Sig idx)
-                                (mut idx) (mut' idx))
-    -> refineADT (@Build_ADT Sig rep mut obs) (@Build_ADT Sig rep mut' obs).
+                                (cs idx) (cs' idx))
+    -> refineADT (@Build_ADT Sig rep cs ms) (@Build_ADT Sig rep cs' ms).
 Proof.
   intros; eapply refineADT_Build_ADT_Rep; eauto; reflexivity.
 Qed.
@@ -156,16 +156,16 @@ Qed.
     should be the preferred mode. ]*)
 
 Lemma refineADT_Build_ADT_Both rep Sig
-: forall obs obs',
+: forall ms ms',
     (forall idx, @refineMethod _ _ eq
                                  (fst (MethodDomCod Sig idx))
                                  (snd (MethodDomCod Sig idx))
-                                 (obs idx) (obs' idx))
-    -> forall mut mut',
+                                 (ms idx) (ms' idx))
+    -> forall cs cs',
          (forall idx, @refineConstructor _ _ eq
                                      (ConstructorDom Sig idx)
-                                     (mut idx) (mut' idx))
-         -> refineADT (@Build_ADT Sig rep mut obs) (@Build_ADT Sig rep mut' obs').
+                                     (cs idx) (cs' idx))
+         -> refineADT (@Build_ADT Sig rep cs ms) (@Build_ADT Sig rep cs' ms').
 Proof.
   intros; eapply refineADT_Build_ADT_Rep; eauto; reflexivity.
 Qed.
