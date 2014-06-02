@@ -99,6 +99,15 @@ Proof.
   intros; find_if_inside; split; congruence.
 Defined.
 
+Require Import Arith Omega.
+
+Instance DecideableEnsemble_gt {A} (f f' : A -> nat)
+  : DecideableEnsemble (fun a => f a > f' a) :=
+  {| dec a := if le_lt_dec (f a) (f' a) then false else true |}.
+Proof.
+  intros; find_if_inside; intuition.
+Defined.
+
 Lemma refineEquiv_For_DropQSConstraints A qsSchema qs :
   forall bod,
       refine

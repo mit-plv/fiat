@@ -58,6 +58,7 @@ MODULES    := \
 	ADTExamples/QueryStructure/ListInsertRefinements \
 	ADTExamples/QueryStructure/ListQueryStructureRefinements \
 	ADTExamples/QueryStructure/QueryStructureNotations \
+	ADTExamples/QueryStructure/Trivial \
 	ADTExamples/QueryStructure/Bookstore \
 	ADTExamples/QueryStructure/ProcessScheduler/FMapExtensions \
 	ADTExamples/QueryStructure/ProcessScheduler/DBSchema \
