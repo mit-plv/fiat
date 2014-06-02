@@ -4,7 +4,6 @@ Require Import FMapAVL OrderedTypeEx.
 Require Import Coq.FSets.FMapFacts.
 Require Import FMapExtensions.
 
-Module NatIndexedMap := FMapAVL.Make Nat_as_OT.
 Unset Implicit Arguments.
 
 Definition flatten {A} :=
@@ -139,8 +138,10 @@ Module IndexedTree (Import M: WS).
       {| 
         bempty := 
           EmptyAsIndexedBag TBag TItem TBagSearchTerm bags_bag projection;
+
         benumerate container :=
           flatten (List.map benumerate (Values (container.(ifmap))));
+
         bfind container key_searchterm :=
           let (key_option, search_term) := key_searchterm in
           match key_option with
@@ -152,13 +153,15 @@ Module IndexedTree (Import M: WS).
             | None   =>
               flatten (List.map (fun bag => bag.(bfind) search_term) (Values container.(ifmap)))
           end;
+
         binsert container item :=
           let k := projection item in
           let bag := FindWithDefault k bempty container.(ifmap) in
           {|
             ifmap := add k (bag.(binsert) item) container.(ifmap);
-            iconsistency := _ 
+            iconsistency := _
           |};
+
         binsert_enumerate := _
       |}.
     Proof.
@@ -331,84 +334,158 @@ Proof.
   apply (ListAsBag (@MatchAgainstSearchTerms heading)).
 Defined.
 
-Require Import String Tuple.
-Open Scope string_scope.
-
-Local Open Scope Heading_scope. 
-Definition CountriesHeading := <"Name" :: string, "PopM" :: nat>.
-
-Local Open Scope Tuple_scope.
-
-Definition TestSet : list (@Tuple CountriesHeading) := [
-  <"Name" :: "China", "PopM" :: 1365>; 
-  <"Name" :: "India", "PopM" :: 1245>; 
-  <"Name" :: "United States", "PopM" :: 318>; 
-  <"Name" :: "Indonesia", "PopM" :: 247>; 
-  <"Name" :: "Brazil", "PopM" :: 203>; 
-  <"Name" :: "Pakistan", "PopM" :: 187>; 
-  <"Name" :: "Nigeria", "PopM" :: 174>; 
-  <"Name" :: "Bangladesh", "PopM" :: 153>; 
-  <"Name" :: "Russia", "PopM" :: 144>; 
-  <"Name" :: "Japan", "PopM" :: 127>; 
-  <"Name" :: "Mexico", "PopM" :: 120>; 
-  <"Name" :: "Philippines", "PopM" :: 100>; 
-  <"Name" :: "Vietnam", "PopM" :: 90>; 
-  <"Name" :: "Ethiopia", "PopM" :: 87>; 
-  <"Name" :: "Egypt", "PopM" :: 87>; 
-  <"Name" :: "Germany", "PopM" :: 81>; 
-  <"Name" :: "Iran", "PopM" :: 77>; 
-  <"Name" :: "Turkey", "PopM" :: 77>; 
-  <"Name" :: "Democratic Republic of the Congo", "PopM" :: 68>; 
-  <"Name" :: "France", "PopM" :: 66>
-].
-
+Require Import Beatles.
 Require Import StringBound.
 Require Import Peano_dec.
+Require Import String_as_OT.
 
-Definition Name : Attributes CountriesHeading := {| bindex := "Name" |}.
-Definition PopM : Attributes CountriesHeading := {| bindex := "PopM" |}.
+Open Scope string_scope.
+Open Scope Tuple_scope.
 
-Example fr : 
-  bfind TestSet [ TupleEqualityMatcher (eq_dec := string_dec) Name "France" ] = 
-  [<"Name" :: "France", "PopM" :: 66>].
+Eval simpl in (bfind FirstAlbums [ TupleEqualityMatcher (eq_dec := string_dec) Name "Please Please Me" ]).
+
+Eval simpl in (bfind FirstAlbums [ TupleEqualityMatcher (eq_dec := eq_nat_dec) Year 3]).
+
+Eval simpl in (bfind FirstAlbums [ TupleEqualityMatcher (eq_dec := eq_nat_dec) Year 3; TupleEqualityMatcher (eq_dec := eq_nat_dec) UKpeak 1]).
+
+Module NatIndexedMap := FMapAVL.Make Nat_as_OT.
+Module StringIndexedMap := FMapAVL.Make String_as_OT.
+
+Module NatTreeExts := IndexedTree NatIndexedMap.
+Module StringTreeExts := IndexedTree StringIndexedMap.
+
+Definition NatTreeType TSubtree TSubtreeSearchTerm heading subtree_as_bag := 
+  (@NatTreeExts.IndexedBag 
+     TSubtree 
+     (@Tuple heading) 
+     TSubtreeSearchTerm 
+     subtree_as_bag).
+
+Definition StringTreeType TSubtree TSubtreeSearchTerm heading subtree_as_bag := 
+  (@StringTreeExts.IndexedBag 
+     TSubtree 
+     (@Tuple heading) 
+     TSubtreeSearchTerm
+     subtree_as_bag).
+
+Definition cast {T1 T2: Type} (eq: T1 = T2) (x: T1) : T2.
 Proof.
-  reflexivity.
+  subst; auto.
+Defined.
+
+Record BagPlusBagProof heading :=
+  { BagType: Type; SearchTermType: Type; BagProof: Bag BagType (@Tuple heading) SearchTermType }.
+
+Record ProperAttribute {heading} :=
+  {
+    Attribute: Attributes heading; 
+    ProperlyTyped: { Domain heading Attribute = nat } + { Domain heading Attribute = string }
+  }.
+
+Fixpoint NestedTreeFromAttributes'
+         heading 
+         (indexes: list (@ProperAttribute heading)) 
+         {struct indexes}: BagPlusBagProof heading :=
+  match indexes with
+    | [] => 
+      {| BagType        := list (@Tuple heading);
+         SearchTermType := SearchTermsCollection heading |}
+    | proper_attr :: more_indexes => 
+      let attr := Attribute proper_attr in
+      let (t, st, bagproof) := NestedTreeFromAttributes' heading more_indexes in
+      match (ProperlyTyped proper_attr) with
+        | left eq_nat     => 
+          {| BagType        := NatTreeType t st heading bagproof (fun x => cast eq_nat x!attr);
+             SearchTermType := option nat * st |}
+        | right eq_string => 
+          {| BagType        := StringTreeType t st heading bagproof (fun x => cast eq_string x!attr);
+             SearchTermType := option string * st |}
+      end
+    end.
+
+Lemma eq_attributes : forall seq (a b: @BoundedString seq),
+             a = b <-> (bindex a = bindex b /\ (ibound (indexb a)) = (ibound (indexb b))).
+  split; intros; 
+  simpl in *;
+  try (subst; tauto);
+  apply idx_ibound_eq; 
+    intuition (apply string_dec).
 Qed.
 
-Example p77 :
-  bfind TestSet [ TupleEqualityMatcher (eq_dec := eq_nat_dec) PopM 77 ] = 
-  [<"Name" :: "Iran", "PopM" :: 77>; <"Name" :: "Turkey", "PopM" :: 77>].
+Ltac ProveDecidability indices :=
+  refine (NestedTreeFromAttributes' AlbumHeading indices _);
+  intros attr in_indices; simpl in *;
+  setoid_rewrite eq_attributes in in_indices;
+
+  destruct attr as [bindex indexb];
+  destruct indexb as [ibound boundi];
+  simpl in *;
+
+  repeat match goal with 
+           | [ |- _ ] => 
+             destruct ibound as [ | ibound ];
+               [ try (exfalso; omega); solve [eauto] | try discriminate ]
+         end.
+
+Definition CheckType {heading} (attr: Attributes heading) (rightT: _) :=
+  {| Attribute := attr; ProperlyTyped := rightT |}.
+
+Ltac autoconvert func :=
+  match goal with 
+    | [ src := cons ?head ?tail |- list _ ] =>
+      refine (func head _ :: _);
+        [ solve [ eauto with * ] | clear src;
+                            set (src := tail);
+                            autoconvert func ]
+    | [ src := nil |- list _ ] => apply []
+    | _ => idtac
+  end.
+
+Ltac mkIndex heading attributes :=
+  set (source := attributes);
+  assert (list (@ProperAttribute heading)) as decorated_source;
+  autoconvert (@CheckType heading);
+  apply (NestedTreeFromAttributes' AlbumHeading decorated_source).
+
+Definition SampleIndex : BagPlusBagProof AlbumHeading.
 Proof.
-  reflexivity.
-Qed.
+  mkIndex AlbumHeading [Year; UKpeak; Name].
+Defined.
 
-Check @binsert.
-
-Definition TreeContainer := NatIndexedMap.t (@Tuple CountriesHeading).
-
-Module NatMapExts := IndexedTree NatIndexedMap.
-
-Definition Country := (@Tuple CountriesHeading).
-Definition NatIndexedCountries := (@NatMapExts.IndexedBag (list Country) Country (SearchTermsCollection CountriesHeading) _).
-
-Definition TestSetAsTree :=
-  List.fold_left binsert TestSet (bempty (TContainer := NatIndexedCountries (fun country => country!PopM))).
-
-Example p77_t :
-  bfind TestSetAsTree (Some 77, @nil (TSearchTermMatcher CountriesHeading)) = 
-  [<"Name" :: "Iran", "PopM" :: 77>; <"Name" :: "Turkey", "PopM" :: 77>].
+Definition SampleIndex' : BagPlusBagProof AlbumHeading.
 Proof.
+  refine (NestedTreeFromAttributes' AlbumHeading [CheckType Year _; CheckType UKpeak _; CheckType Name _]);   eauto.
+Defined.
+
+Definition IndexedAlbums :=
+  List.fold_left binsert FirstAlbums (@bempty _ _ _ (BagProof _ SampleIndex)).
+
+Eval simpl in (SearchTermType AlbumHeading SampleIndex).
+Time Eval simpl in (bfind IndexedAlbums (Some 3, (None, (None, [])))).
+Time Eval simpl in (bfind IndexedAlbums (Some 3, (Some 1, (None, [])))).
+Time Eval simpl in (bfind IndexedAlbums (Some 3, (Some 1, (Some "With the Beatles", [])))).
+Time Eval simpl in (bfind IndexedAlbums (None, (None, (Some "With the Beatles", [])))).
+Time Eval simpl in (bfind IndexedAlbums (None, (None, (None, [TupleEqualityMatcher (eq_dec := string_dec) Name "With the Beatles"])))).
+
+(*Time Eval simpl in (@bfind _ _ _ (BagProof _ SampleIndex) IndexedAlbums (Some 3, (Some 1, (None, @nil (TSearchTermMatcher AlbumHeading))))).*)
+
+(*
+  simpl.
   unfold bfind.
-  unfold NatMapExts.IndexedBagAsBag.
-  unfold TestSetAsTree.
-  unfold TestSet.
+  unfold IndexedAlbums.
+  unfold BagProof.
+  unfold SampleIndex.
+  unfold NestedTreeFromAttributes'.
+  unfold right_type.
+  unfold CheckType.
   unfold bempty.
-  unfold NatMapExts.IndexedBagAsBag.
-  unfold NatMapExts.EmptyAsIndexedBag.
-  unfold binsert.
-  unfold TupleListAsBag.
-  unfold ListAsBag.
-  unfold bempty, bfind.
-  unfold MatchAgainstSearchTerms.
-  (* simpl. Won't do *)
-Admitted.
+  simpl attribute.
+  unfold StringTreeType.
+  unfold NatTreeType.
+  unfold fold_left.
+  unfold FirstAlbums.
+  progress simpl NatTreeExts.IndexedBagAsBag.
+  (*progress simpl StringTreeExts.IndexedBagAsBag.*)
+  unfold NatTreeExts.IndexedBagAsBag.
+  simpl.
+*)
