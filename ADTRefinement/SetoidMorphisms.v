@@ -1,22 +1,20 @@
-Require Import Common Computation ADT Ensembles.
-Require Export ADTRefinement.Core.
+Require Import Common Computation Ensembles.
+Require Import ADT.ADTSig ADT.Core ADTRefinement.Core.
 
 (** Definitions for integrating [refineADT] into the setoid rewriting
     framework. *)
 
-Generalizable All Variables.
-Set Implicit Arguments.
-
-Instance refineMutator_refl rep Dom
-: Reflexive (@refineMutator rep rep eq Dom).
+Instance refineConstructor_refl rep Dom
+: Reflexive (@refineConstructor rep rep eq Dom).
 Proof.
   intro; simpl; intros; subst; econstructor; eauto.
 Qed.
 
-Instance refineObserver_refl rep Dom Cod
-: Reflexive (@refineObserver rep rep eq Dom Cod).
+Instance refineMethod_refl rep Dom Cod
+: Reflexive (@refineMethod rep rep eq Dom Cod).
 Proof.
-  intro; simpl; intros; subst; reflexivity.
+  intro; simpl; unfold refine; intros; subst;
+  repeat econstructor; try destruct v; eauto.
 Qed.
 
 Global Instance refineADT_PreOrder Sig : PreOrderT (refineADT (Sig := Sig)).
@@ -36,7 +34,11 @@ Proof.
       autorewrite with refine_monad; f_equiv; unfold pointwise_relation;
       intros; econstructor; inversion_by computes_to_inv;
       eauto.
-    + destruct_ex; intuition; rewrite_rev_hyp; eauto; reflexivity.
+    + destruct_ex; intuition; rewrite_rev_hyp; eauto.
+      autorewrite with refine_monad; f_equiv; unfold pointwise_relation.
+      intros; rewrite refine_split_ex; autorewrite with refine_monad;
+      f_equiv; unfold pointwise_relation; intros;
+      autorewrite with refine_monad; simpl; f_equiv.
 Qed.
 
 (*Add Parametric Relation Sig : (ADT Sig) refineADT
@@ -56,8 +58,8 @@ Add Parametric Morphism : @Build_ADT
   (fun oldM newM => newM -> Comp oldM)
     ==> arrow
     ==> arrow
-    ==> (pointwise_relation _ (@refineMutator _ _ _))
-    ==> (pointwise_relation _ (@refineObserver _ _ _))
+    ==> (pointwise_relation _ (@refineConstructor _ _ _))
+    ==> (pointwise_relation _ (@refineMethod _ _ _))
     ==> refineADT
     as refineADT_Build_ADT.
 Proof.
@@ -80,32 +82,32 @@ Lemma refineADT_Build_ADT_Rep Sig oldRep newRep
       (SiR : oldRep -> newRep -> Prop)
 :
   (@respectful_heteroT
-     (forall idx, mutatorMethodType oldRep (MutatorDom Sig idx))
-     (forall idx, mutatorMethodType newRep (MutatorDom Sig idx))
-     (fun oldMuts =>
+     (forall idx, constructorType oldRep (ConstructorDom Sig idx))
+     (forall idx, constructorType newRep (ConstructorDom Sig idx))
+     (fun oldConstrs =>
         (forall idx,
-           observerMethodType oldRep (fst (ObserverDomCod Sig idx)) (snd (ObserverDomCod Sig idx)))
+           methodType oldRep (fst (MethodDomCod Sig idx)) (snd (MethodDomCod Sig idx)))
         -> ADT Sig)
-     (fun newMuts =>
+     (fun newConstrs =>
         (forall idx,
-           observerMethodType newRep (fst (ObserverDomCod Sig idx)) (snd (ObserverDomCod Sig idx)))
+           methodType newRep (fst (MethodDomCod Sig idx)) (snd (MethodDomCod Sig idx)))
         -> ADT Sig)
-     (fun oldMuts newMuts =>
+     (fun oldConstrs newConstrs =>
         forall mutIdx,
-          @refineMutator oldRep newRep SiR
+          @refineConstructor oldRep newRep SiR
                          _
-                         (oldMuts mutIdx)
-                         (newMuts mutIdx))
+                         (oldConstrs mutIdx)
+                         (newConstrs mutIdx))
      (fun x y => @respectful_heteroT
-                   (forall idx, observerMethodType oldRep _ _)
-                   (forall idx, observerMethodType newRep _ _)
+                   (forall idx, methodType oldRep _ _)
+                   (forall idx, methodType newRep _ _)
                    (fun _ => ADT Sig)
                    (fun _ => ADT Sig)
                    (fun obs obs' =>
-                      forall obsIdx : ObserverIndex Sig,
-                        @refineObserver oldRep newRep SiR
-                                        (fst (ObserverDomCod Sig obsIdx))
-                                        (snd (ObserverDomCod Sig obsIdx))
+                      forall obsIdx : MethodIndex Sig,
+                        @refineMethod oldRep newRep SiR
+                                        (fst (MethodDomCod Sig obsIdx))
+                                        (snd (MethodDomCod Sig obsIdx))
                                         (obs obsIdx)
                                         (obs' obsIdx))
                    (fun obs obs' => refineADT)))
@@ -123,93 +125,65 @@ Qed.
     which follow from [refineADT_Build_ADT_Rep] as [Parametric
     Morphism]s... or we could, if [refineADT] were in [Prop]. *)
 
-(** Refining Observers is a valid ADT refinement. *)
+(** Refining Methods is a valid ADT refinement. *)
 
-Lemma refineADT_Build_ADT_Observer' rep Sig ms
-: forall obs obs',
-    (forall idx, @refineObserver _ _ eq
-                                 (fst (ObserverDomCod Sig idx))
-                                 (snd (ObserverDomCod Sig idx))
-                                 (obs idx) (obs' idx))
-    -> refineADT (@Build_ADT Sig rep ms obs) (@Build_ADT Sig rep ms obs').
+Lemma refineADT_Build_ADT_Method rep Sig cs
+: forall ms ms',
+    (forall idx, @refineMethod _ _ eq
+                                 (fst (MethodDomCod Sig idx))
+                                 (snd (MethodDomCod Sig idx))
+                                 (ms idx) (ms' idx))
+    -> refineADT (@Build_ADT Sig rep cs ms) (@Build_ADT Sig rep cs ms').
 Proof.
   intros; eapply refineADT_Build_ADT_Rep; eauto; reflexivity.
 Qed.
 
-Definition refineADT_Build_ADT_Observer := refineADT_Build_ADT_Observer'.
+(** Refining Constructors is also a valid ADT refinement. *)
 
-(*Add Parametric Morphism rep Sig ms
-: (@Build_ADT Sig rep ms)
-    with signature
-    (fun obs obs' =>
-       forall idx, @refineObserver _ _ eq
-                                   (fst (ObserverDomCod Sig idx))
-                                   (snd (ObserverDomCod Sig idx))
-                                   (obs idx) (obs' idx))
-      ==> refineADT
-      as refineADT_Build_ADT_Observer.
-Proof.
-  apply refineADT_Build_ADT_Observer'.
-Qed.*)
-
-(** Refining Mutators is also a valid ADT refinement. *)
-
-Lemma refineADT_Build_ADT_Mutators' rep Sig obs
-: forall mut mut',
-    (forall idx, @refineMutator _ _ eq
-                                (MutatorDom Sig idx)
-                                (mut idx) (mut' idx))
-    -> refineADT (@Build_ADT Sig rep mut obs) (@Build_ADT Sig rep mut' obs).
+Lemma refineADT_Build_ADT_Constructors rep Sig ms
+: forall cs cs',
+    (forall idx, @refineConstructor _ _ eq
+                                (ConstructorDom Sig idx)
+                                (cs idx) (cs' idx))
+    -> refineADT (@Build_ADT Sig rep cs ms) (@Build_ADT Sig rep cs' ms).
 Proof.
   intros; eapply refineADT_Build_ADT_Rep; eauto; reflexivity.
 Qed.
-
-Definition refineADT_Build_ADT_Mutators := refineADT_Build_ADT_Mutators'.
-(*Add Parametric Morphism rep Sig obs
-: (fun ms => @Build_ADT Sig rep ms obs)
-    with signature
-    (fun mut mut' =>
-       forall idx, @refineMutator _ _ eq
-                                   (MutatorDom Sig idx)
-                                   (mut idx) (mut' idx))
-      ==> refineADT
-      as refineADT_Build_ADT_Mutators.
-Proof.
-  apply refineADT_Build_ADT_Mutators'.
-Qed.*)
 
 (** Refining observers and mutators at the same time is also a valid
     refinement. [BD: I've come to the conclusion that smaller
     refinement steps are better, so using the previous refinements
     should be the preferred mode. ]*)
 
-Lemma refineADT_Build_ADT_Both' rep Sig
-: forall obs obs',
-    (forall idx, @refineObserver _ _ eq
-                                 (fst (ObserverDomCod Sig idx))
-                                 (snd (ObserverDomCod Sig idx))
-                                 (obs idx) (obs' idx))
-    -> forall mut mut',
-         (forall idx, @refineMutator _ _ eq
-                                     (MutatorDom Sig idx)
-                                     (mut idx) (mut' idx))
-         -> refineADT (@Build_ADT Sig rep mut obs) (@Build_ADT Sig rep mut' obs').
+Lemma refineADT_Build_ADT_Both rep Sig
+: forall ms ms',
+    (forall idx, @refineMethod _ _ eq
+                                 (fst (MethodDomCod Sig idx))
+                                 (snd (MethodDomCod Sig idx))
+                                 (ms idx) (ms' idx))
+    -> forall cs cs',
+         (forall idx, @refineConstructor _ _ eq
+                                     (ConstructorDom Sig idx)
+                                     (cs idx) (cs' idx))
+         -> refineADT (@Build_ADT Sig rep cs ms) (@Build_ADT Sig rep cs' ms').
 Proof.
   intros; eapply refineADT_Build_ADT_Rep; eauto; reflexivity.
 Qed.
 
-Definition refineADT_Build_ADT_Both := refineADT_Build_ADT_Both'.
-(*Add Parametric Morphism Sig rep
+(* If [refineADT] lived in [Prop], we'd be able to register
+   refineADT_Build_ADT_Both as a morphism.
+
+Add Parametric Morphism Sig rep
 : (@Build_ADT Sig rep)
     with signature
     (fun mut mut' =>
-       forall idx, @refineMutator _ _ eq
-                                   (MutatorDom Sig idx)
+       forall idx, @refineConstructor _ _ eq
+                                   (ConstructorDom Sig idx)
                                    (mut idx) (mut' idx))
       ==> (fun obs obs' =>
-       forall idx, @refineObserver _ _ eq
-                                   (fst (ObserverDomCod Sig idx))
-                                   (snd (ObserverDomCod Sig idx))
+       forall idx, @refineMethod _ _ eq
+                                   (fst (MethodDomCod Sig idx))
+                                   (snd (MethodDomCod Sig idx))
                                    (obs idx) (obs' idx))
       ==> refineADT
       as refineADT_Build_ADT_Both.

@@ -22,7 +22,7 @@ Section ilist.
   (* Get the car of an ilist. *)
 
   Definition ilist_hd (As : list A) (il : ilist As) :
-    match As as As' return ilist As' -> Type with
+    match As return ilist As -> Type with
       | a :: As' => fun il => B a
       | nil => fun _ => unit
     end il :=
@@ -34,7 +34,7 @@ Section ilist.
   (* Get the cdr of an ilist. *)
 
   Definition ilist_tl (As : list A) (il : ilist As) :
-    match As as As' return ilist As' -> Type with
+    match As return ilist As -> Type with
       | a :: As' => fun il => ilist As'
       | nil => fun _ => unit
     end il :=
@@ -57,8 +57,8 @@ Section ilist.
 
   Fixpoint siglist2ilist (sigList : list (sigT B))
   : ilist (map (@projT1 _ B) sigList) :=
-    match sigList as sigList'
-          return ilist (map (@projT1 _ B) sigList') with
+    match sigList
+          return ilist (map (@projT1 _ B) sigList) with
       | [] => inil
       | (existT a b) :: sigList' => icons b (siglist2ilist sigList')
     end.
@@ -334,8 +334,8 @@ Section ilist_imap.
   : forall (a_opt : option A)
            (b_opt : Dep_Option B a_opt),
       Dep_Option_elim (Dep_Option_Map b_opt) =
-      match a_opt as a_opt' return
-            Dep_Option B a_opt' -> Dep_Option_elimT B' a_opt' with
+      match a_opt return
+            Dep_Option B a_opt -> Dep_Option_elimT B' a_opt with
         | Some a => fun b => f (Dep_Option_elim b)
         | None => fun _ => tt
       end b_opt.
@@ -387,7 +387,7 @@ Section ilist_izip.
   Fixpoint izip (As : list A)
            (il : ilist B As) (il' : ilist B' As)
   : ilist D As :=
-    match As as As' return ilist B As' -> ilist B' As' -> ilist D As' with
+    match As return ilist B As -> ilist B' As -> ilist D As with
       | a :: As' =>
         fun il il' =>
           icons a (f (ilist_hd il) (ilist_hd il'))
@@ -418,9 +418,9 @@ Section ilist_izip.
              (b_opt : Dep_Option B a_opt)
              (b'_opt : Dep_Option B' a_opt):
     Dep_Option D a_opt :=
-    match a_opt as a_opt' return
-          Dep_Option B a_opt' -> Dep_Option B' a_opt' ->
-          Dep_Option D a_opt' with
+    match a_opt return
+          Dep_Option B a_opt -> Dep_Option B' a_opt ->
+          Dep_Option D a_opt with
       | Some a =>
         fun b b' =>
           Dep_Some D a (f (Dep_Option_elim b) (Dep_Option_elim b'))
@@ -434,10 +434,10 @@ Section ilist_izip.
            (b_opt : Dep_Option B a_opt)
            (b'_opt : Dep_Option B' a_opt),
       Dep_Option_elim (Dep_Option_Zip b_opt b'_opt) =
-      match a_opt as a_opt' return
-            Dep_Option B a_opt'
-            -> Dep_Option B' a_opt'
-            -> Dep_Option_elimT D a_opt' with
+      match a_opt return
+            Dep_Option B a_opt
+            -> Dep_Option B' a_opt
+            -> Dep_Option_elimT D a_opt with
         | Some a => fun b b' => f (Dep_Option_elim b) (Dep_Option_elim b')
         | None => fun _ _ => tt
       end b_opt b'_opt.
@@ -495,24 +495,24 @@ Section ilist_replace.
            (il : ilist B As)
            (new_b : Dep_Option_elimT B (nth_error As n))
            {struct As} : ilist B As :=
-    match n as n' return
+    match n return
             ilist B As
-            -> Dep_Option_elimT B (nth_error As n')
+            -> Dep_Option_elimT B (nth_error As n)
             -> ilist B As with
-      | 0 => match As as As' return
-                   ilist B As'
-                   -> Dep_Option_elimT B (nth_error As' 0)
-                   -> ilist B As' with
+      | 0 => match As return
+                   ilist B As
+                   -> Dep_Option_elimT B (nth_error As 0)
+                   -> ilist B As with
                | nil =>
                  fun il _ => inil _
                | cons a Bound' =>
                  fun il new_b =>
                    icons _ new_b (ilist_tl il)
              end
-      | S n => match As as As' return
-                     ilist B As'
-                     -> Dep_Option_elimT B (nth_error As' (S n))
-                     -> ilist B As' with
+      | S n => match As return
+                     ilist B As
+                     -> Dep_Option_elimT B (nth_error As (S n))
+                     -> ilist B As with
                  | nil => fun il _ => inil _
                  | cons a Bound' =>
                    fun il new_b =>
@@ -545,8 +545,8 @@ Section ilist_replace.
              (a_opt : option A)
              (b_opt : Dep_Option B a_opt)
              (b'_opt : Dep_Option B' a_opt)
-      := match a_opt as a' return
-               Dep_Option_elimT B a' -> Dep_Option_elimT B' a' -> Prop with
+      := match a_opt return
+               Dep_Option_elimT B a_opt -> Dep_Option_elimT B' a_opt -> Prop with
            | Some a => P a
            | None => fun _ _ => True
          end (Dep_Option_elim b_opt) (Dep_Option_elim b'_opt).

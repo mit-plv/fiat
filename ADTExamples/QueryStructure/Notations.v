@@ -1,6 +1,3 @@
-Reserved Infix ":"
-         (no associativity, at level 60).
-
 Reserved Notation "t ! r"
          (no associativity, at level 2,
           format "t ! r").
@@ -14,6 +11,8 @@ Class Query_eq (A : Type) :=
       {A_eq_dec : forall a a' : A, {a = a'} + {a <> a'}}.
 
 Infix "==" := (A_eq_dec) (at level 1).
+
+Reserved Notation "ro ≃ rn"  (at level 70).
 
 Reserved Notation "'attributes' attrlist1 'depend' 'on' attrlist2 "
          (at level 50).
@@ -30,10 +29,10 @@ Reserved Notation "'schema' headings"
 Reserved Notation "'schema' headings 'where' constraints"
   (at level 0, headings at level 0, constraints at level 50).
 
-Reserved Notation "'query' 'structure' 'schema' relList "
+Reserved Notation "'Query' 'Structure' 'Schema' relList "
          (at level 0).
 
-Reserved Notation "'query' 'structure' 'schema' relList 'enforcing' constraints"
+Reserved Notation "'Query' 'Structure' 'Schema' relList 'enforcing' constraints"
          (at level 0, constraints at level 50).
 
 Reserved Notation "( x 'in' r ) bod"
@@ -63,6 +62,7 @@ Delimit Scope NamedSchema_scope with NamedSchema.
 Delimit Scope QSSchema_scope with QSSchema.
 Delimit Scope QSSchemaConstraints_scope with QSSchemaConstraints.
 Delimit Scope QuerySpec_scope with QuerySpec.
+Delimit Scope QueryImpl_scope with QueryImpl.
 Delimit Scope QueryStructure_scope with QueryStructure.
 Delimit Scope QueryStructureParsing_scope with QueryStructureParsing.
 Delimit Scope queryDefParsing_scope with queryDefParsing.

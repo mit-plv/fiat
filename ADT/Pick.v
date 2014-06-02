@@ -25,9 +25,9 @@ Section pick.
           { r' : rep
           | mutatorMethodSpecs idx r x r'}%comp;
       ObserverMethods idx :=
-        fun r n =>
-          { n' : snd (ObserverDomCod Sig idx)
-          | observerMethodSpecs idx r n n'}%comp
+        fun r x =>
+          { x' : snd (ObserverDomCod Sig idx)
+          | observerMethodSpecs idx r x x'}%comp
     |}.
 
 End pick.

@@ -44,6 +44,6 @@ Definition GetAttribute
   tup attr.
 
 Notation "t ! R" :=
-  (GetAttribute t%Tuple R%string): Tuple_scope.
+  (GetAttribute t%Tuple {|bindex := R%string |}): Tuple_scope.
 
 Arguments Tuple [Heading] .

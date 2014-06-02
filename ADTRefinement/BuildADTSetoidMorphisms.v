@@ -1,30 +1,28 @@
-Require Import ADT ADTNotation.
-Require Export ADTRefinement.Core ADTRefinement.SetoidMorphisms.
+Require Import Common
+        ADTNotation.BuildADT ADTRefinement.Core 
+        ADTRefinement.SetoidMorphisms.
 
 (* A notation-friendly version of the setoid morphisms
    infrastructure for ADT refinement. *)
 
-Generalizable All Variables.
-Set Implicit Arguments.
-
-Theorem refineADT_BuildADT_Rep mutSigs obsSigs oldRep newRep
+Theorem refineADT_BuildADT_Rep consSigs methSigs oldRep newRep
       (SiR : oldRep -> newRep -> Prop)
 : @respectful_heteroT _ _ _ _
-      (fun oldMuts newMuts =>
-         forall mutIdx,
-           @refineMutator oldRep newRep SiR
+      (fun oldCons newCons =>
+         forall consIdx,
+           @refineConstructor oldRep newRep SiR
                           _
-                          (getMutDef oldMuts mutIdx)
-                          (getMutDef newMuts mutIdx))
+                          (getConsDef oldCons consIdx)
+                          (getConsDef newCons consIdx))
       (fun x y => @respectful_heteroT _ _ _ _
-                    (fun oldObs newObs =>
-                       forall obsIdx,
-                         @refineObserver oldRep newRep SiR _ _
-                                         (getObsDef oldObs obsIdx)
-                                         (getObsDef newObs obsIdx))
-                    (fun obs obs' => refineADT))
-     (@BuildADT oldRep mutSigs obsSigs)
-     (@BuildADT newRep mutSigs obsSigs).
+                    (fun oldMeth newMeth =>
+                       forall methIdx,
+                         @refineMethod oldRep newRep SiR _ _
+                                         (getMethDef oldMeth methIdx)
+                                         (getMethDef newMeth methIdx))
+                    (fun m m' => refineADT))
+     (@BuildADT oldRep consSigs methSigs)
+     (@BuildADT newRep consSigs methSigs).
  Proof.
    unfold Proper, respectful_heteroT; intros.
    let A := match goal with |- refineADT ?A ?B => constr:(A) end in
@@ -33,34 +31,32 @@ Theorem refineADT_BuildADT_Rep mutSigs obsSigs oldRep newRep
      unfold id, pointwise_relation in *; simpl in *; intros; eauto.
  Qed.
 
-Lemma refineADT_BuildADT_Both'
-      rep mutSigs obsSigs
-: forall oldMuts newMuts,
-    (forall mutIdx, @refineMutator _ _ eq _
-                                   (getMutDef oldMuts mutIdx)
-                                   (getMutDef newMuts mutIdx))
-    -> forall oldObs newObs,
-         (forall obsIdx, @refineObserver _ _ eq _ _
-                                         (getObsDef oldObs obsIdx)
-                                         (getObsDef newObs obsIdx))
-         -> refineADT (@BuildADT rep mutSigs obsSigs oldMuts oldObs)
-                      (@BuildADT rep mutSigs obsSigs newMuts newObs).
+Lemma refineADT_BuildADT_Both
+      rep consigs methSigs
+: forall oldCons newCons,
+    (forall consIdx, @refineConstructor _ _ eq _
+                                   (getConsDef oldCons consIdx)
+                                   (getConsDef newCons consIdx))
+    -> forall oldMeth newMeth,
+         (forall methIdx, @refineMethod _ _ eq _ _
+                                         (getMethDef oldMeth methIdx)
+                                         (getMethDef newMeth methIdx))
+         -> refineADT (@BuildADT rep consigs methSigs oldCons oldMeth)
+                      (@BuildADT rep consigs methSigs newCons newMeth).
   intros; eapply refineADT_BuildADT_Rep; eauto; reflexivity.
 Qed.
 
-Definition refineADT_BuildADT_Both := refineADT_BuildADT_Both'.
-
-(*Add Parametric Morphism rep mutSigs obsSigs
-: (@BuildADT rep mutSigs obsSigs)
+(*Add Parametric Morphism rep consigs methSigs
+: (@BuildADT rep consigs methSigs)
     with signature
-    (fun oldMuts newMuts =>
-       forall mutIdx, @refineMutator _ _ eq _
-                                  (getMutDef oldMuts mutIdx)
-                                  (getMutDef newMuts mutIdx))
-      ==> (fun oldObs newObs =>
-             forall obsIdx, @refineObserver _ _ eq _ _
-                                         (getObsDef oldObs obsIdx)
-                                         (getObsDef newObs obsIdx))
+    (fun oldCons newCons =>
+       forall consIdx, @refineConsator _ _ eq _
+                                  (getConsDef oldCons consIdx)
+                                  (getConsDef newCons consIdx))
+      ==> (fun oldMeth newMeth =>
+             forall methIdx, @refineMetherver _ _ eq _ _
+                                         (getMethDef oldMeth methIdx)
+                                         (getMethDef newMeth methIdx))
       ==> refineADT
       as refineADT_BuildADT_Both.
 Proof.

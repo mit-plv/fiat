@@ -1,5 +1,7 @@
-Require Import Common Computation ADT Ensembles.
-Require Import ADTRefinement.Core ADTRefinement.SetoidMorphisms ADTRefinement.GeneralRefinements.
+Require Import Common Computation
+        ADT.ADTSig ADT.Core
+        ADTRefinement.Core ADTRefinement.SetoidMorphisms 
+        ADTRefinement.GeneralRefinements.
 
 (* A generic refinement and honing tactic for switching the
     representation of an ADT. *)
@@ -11,82 +13,81 @@ Section HoneRepresentation.
 
   (* The simulation relation between old and new representations. *)
   Variable SiR : oldRep -> newRep -> Prop.
-  Infix "≃" := (SiR) (at level 70).
+  Local Infix "≃" := (SiR) (at level 70).
 
   (* When switching representations, we can always build a default
-     implementation (computation?) for the methods of an ADT with
+     implementation (computation?) for the methods of an ADT by
      using the old methods. *)
 
-  Definition absMutatorMethod
-        (Dom : Type)
-        (oldMuts : mutatorMethodType oldRep Dom) nr n
-  : Comp newRep :=
+  Definition absMethod
+        (Dom Cod : Type)
+        (oldMethod : methodType oldRep Dom Cod) nr n
+  : Comp (newRep * Cod) :=
     {nr' | forall or,
              or ≃ nr ->
              exists or',
-               (oldMuts or n) ↝ or' /\
-               or' ≃ nr'}%comp.
+               (oldMethod or n) ↝ or' /\
+               fst or' ≃ fst nr' /\ snd or' = snd nr'}%comp.
 
-  Lemma refine_absMutatorMethod
-        (Dom : Type)
-        (oldMuts : mutatorMethodType oldRep Dom)
-  : @refineMutator oldRep newRep SiR
-                   _
-                   oldMuts
-                   (absMutatorMethod oldMuts).
+  Lemma refine_absMethod
+        (Dom Cod : Type)
+        (oldMethod : methodType oldRep Dom Cod)
+  : @refineMethod oldRep newRep SiR _ _ 
+                   oldMethod
+                   (absMethod oldMethod).
   Proof.
-    unfold refineMutator, absMutatorMethod, refine; intros.
+    unfold refineMethod, absMethod, refine; intros.
     inversion_by computes_to_inv.
-    destruct (H0 _ H) as [or' [Comp_or SiR_or''] ].
-    econstructor; eauto.
+    destruct (H0 _ H) as [or' [Comp_or [SiR_or'' eq_or''] ] ].
+    repeat econstructor; eauto.
+    destruct v; simpl in *; subst; econstructor.
   Qed.
 
-  Hint Resolve refine_absMutatorMethod.
+  Hint Resolve refine_absMethod.
 
-  (* A similar approach works for observers. *)
-  Definition absObserverMethod
-             (Dom Cod : Type)
-             (oldObs : observerMethodType oldRep Dom Cod)
-             nr n
-  : Comp Cod :=
-    {n' | forall or,
-            or ≃ nr ->
-            (oldObs or n) ↝ n'}%comp.
+  (* A similar approach works for constructors. *)
+  Definition absConstructor
+             (Dom : Type)
+             (oldConstr : constructorType oldRep Dom)
+             n
+  : Comp newRep :=
+    {nr | exists or', oldConstr n ↝ or' /\
+                      or' ≃ nr }%comp.
 
-  Lemma refine_absObserverMethod
-        (Dom Cod : Type)
-        (oldObs :observerMethodType oldRep Dom Cod)
-  : @refineObserver oldRep newRep SiR _ _ oldObs
-                    (absObserverMethod oldObs).
+  Lemma refine_absConstructor
+        (Dom : Type)
+        (oldConstr : constructorType oldRep Dom)
+  : @refineConstructor oldRep newRep SiR _ oldConstr
+                    (absConstructor oldConstr).
   Proof.
-    unfold refineObserver, absObserverMethod, refine; intros.
+    unfold refineConstructor, absConstructor, refine; intros.
     inversion_by computes_to_inv; eauto.
   Qed.
 
-  Hint Resolve refine_absObserverMethod.
+  Hint Resolve refine_absConstructor.
 
   (* We can refine an ADT using the default mutator and observer
      implementations provided by [absMutatorMethod] and [absObserverMethod]. *)
   Lemma refineADT_Build_ADT_Rep_default
         Sig
-        oldMuts oldObs :
+        oldConstrs oldMeths :
     refineADT
-      (@Build_ADT Sig oldRep oldMuts oldObs)
+      (@Build_ADT Sig oldRep oldConstrs oldMeths)
       (@Build_ADT Sig newRep
-                  (fun idx => absMutatorMethod (oldMuts idx))
-                  (fun idx => absObserverMethod (oldObs idx))).
+                  (fun idx => absConstructor (oldConstrs idx))
+                  (fun idx => absMethod (oldMeths idx))).
   Proof.
     eapply refineADT_Build_ADT_Rep; eauto.
   Qed.
 
 End HoneRepresentation.
 
-  (* Always unfold absMutatorMethods and absObserverMethods. *)
-Global Arguments absMutatorMethod oldRep newRep SiR Dom oldMuts / nr n.
-Global Arguments absObserverMethod oldRep newRep SiR Dom Cod oldObs / nr n .
+(* Always unfold absMutatorMethods and absObserverMethods. *)
+Global Arguments absMethod oldRep newRep SiR Dom Cod oldMethod / nr n.
+Global Arguments absConstructor oldRep newRep SiR Dom oldConstr / n .
 
 (* Honing tactic for refining the ADT representation which provides
    default observer and mutator implementations. *)
-Tactic Notation "hone" "representation" "using" constr(BiSR) :=
+Tactic Notation "hone" "representation" "using" constr(SiR') :=
     eapply SharpenStep;
-    [eapply refineADT_Build_ADT_Rep_default with (SiR := BiSR) | idtac].
+    [eapply refineADT_Build_ADT_Rep_default with (SiR := SiR') | ].

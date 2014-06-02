@@ -1,7 +1,9 @@
 Require Import String Omega List FunctionalExtensionality Ensembles
         Computation ADT ADTRefinement ADTNotation QueryStructureSchema
         QueryQSSpecs InsertQSSpecs QueryStructure Bool
-        ProcessScheduler.AdditionalLemmas GeneralQueryRefinements.
+        ADTRefinement.GeneralBuildADTRefinements
+        ProcessScheduler.AdditionalLemmas GeneralQueryRefinements
+        GeneralInsertRefinements.
 
 Class List_Query_eq (As : list Type) :=
   { As_Query_eq : ilist Query_eq As}.
@@ -368,10 +370,62 @@ Tactic Notation "implement" "insert" "for" "lists" :=
   repeat (progress
             (try (setoid_rewrite ImplementListInsert_eq; eauto;
                   try simplify with monad laws);
-             try (setoid_rewrite ImplementListInsert_neq;
-                  eauto; try simplify with monad laws);
+             try (match goal with
+                      |- context
+                           [{a | EnsembleListEquivalence
+                                   ((UpdateUnConstrRelation ?QSSchema ?c ?Ridx
+                                                            (RelationInsert ?n (?c!?R)))!?R')%QueryImpl a}%comp] =>
+                      setoid_rewrite ((@ImplementListInsert_neq QSSchema
+                                                                {| bindex := R' |}
+                                                                {| bindex := R |} n c))
+                  end;
+                    eauto; try simplify with monad laws);
              try (match goal with
                     | |- context [ (GetUnConstrRelation _ ?Ridx) ] =>
                       setoid_rewrite (@ImplementListInsert_neq _ Ridx)
                   end; eauto; try simplify with monad laws)));
   try reflexivity.
+
+Ltac implement_foreign_key_check_w_lists H :=
+  repeat (match goal with
+              |- context [
+                     forall tup' : @Tuple ?h,
+                       (?qs ! ?R )%QueryImpl tup' ->
+                       tupleAgree ?n tup' ?attrlist2%SchemaConstraints ->
+                       tupleAgree ?n tup' ?attrlist1%SchemaConstraints ]
+              =>
+              setoid_rewrite (@refine_unused_key_check h attrlist1 attrlist2 _ _ n (qs ! R )%QueryImpl);
+              [ simplify with monad laws |
+                unfold H in *; split_and; eauto ]
+              | |- context [
+                       forall tup' : @Tuple ?h,
+                         (?qs ! ?R )%QueryImpl tup' ->
+                         tupleAgree tup' ?n ?attrlist2%SchemaConstraints ->
+                         tupleAgree tup' ?n  ?attrlist1%SchemaConstraints]
+                =>
+                setoid_rewrite (@refine_unused_key_check' h attrlist1 attrlist2 _ _ n (qs ! R )%QueryImpl);
+              [ simplify with monad laws |
+                unfold H in *; split_and; eauto ]
+          end).
+
+
+Tactic Notation "implement" "insert" "in" constr(relName) "with" "lists" "under" hyp(Rep_SiR) :=
+    hone method relName;
+    [
+      setoid_rewrite refineEquiv_split_ex;
+      setoid_rewrite refineEquiv_pick_computes_to_and;
+      simplify with monad laws;
+      implement_foreign_key_check_w_lists Rep_SiR;
+      try (setoid_rewrite refine_foreign_key_check;
+           [ | unfold Rep_SiR in *; intuition; eauto ]);
+      try simplify with monad laws;
+      rewrite refine_pick_eq_ex_bind; unfold Rep_SiR in *;
+      split_and; simpl;
+      rewrite refineEquiv_pick_pair_pair;
+      setoid_rewrite refineEquiv_pick_eq';
+      simplify with monad laws; simpl;
+      Split Constraint Checks;
+        first [
+          implement insert for lists; congruence
+      | repeat (rewrite refine_pick_val; [rewrite refineEquiv_bind_unit | eassumption]); reflexivity ]
+    | ].

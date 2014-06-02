@@ -14,8 +14,6 @@ MODULES    := \
 	ADT/ADTSig \
 	ADT/Core \
 	ADT/ADTHide \
-	ADT/Specs \
-	ADT/Pick \
 	ADT \
 	ADTNotation/StringBound \
 	ADTNotation/BuildADTSig \
@@ -30,7 +28,6 @@ MODULES    := \
 	ADTRefinement/GeneralBuildADTRefinements \
 	ADTRefinement/Refinements/DelegateMethods \
 	ADTRefinement/Refinements/HoneRepresentation \
-	ADTRefinement/Refinements/HonePickRepresentation \
 	ADTRefinement/Refinements/SimplifyRep \
 	ADTRefinement/Refinements/ADTRepInv \
 	ADTRefinement/Refinements/ADTCache \
@@ -41,10 +38,6 @@ MODULES    := \
 	ADTRefinement/BuildADTRefinements \
 	ADTRefinement \
 	ComputationExamples \
-	ADTExamples/CombineBinaryOperationsSpec \
-	ADTExamples/BinaryOperationSpec \
-	ADTExamples/BinaryOperationImpl \
-	ADTExamples/BinaryOperationRefinements \
 	ADTExamples/QueryStructure/Notations \
 	ADTExamples/QueryStructure/Heading \
 	ADTExamples/QueryStructure/Tuple \
@@ -52,22 +45,32 @@ MODULES    := \
 	ADTExamples/QueryStructure/Relation \
 	ADTExamples/QueryStructure/QueryStructureSchema \
 	ADTExamples/QueryStructure/QueryStructure \
+	ADTExamples/QueryStructure/EmptyQSSpecs \
 	ADTExamples/QueryStructure/QueryQSSpecs \
 	ADTExamples/QueryStructure/InsertQSSpecs \
 	ADTExamples/QueryStructure/GeneralQueryRefinements \
 	ADTExamples/QueryStructure/GeneralInsertRefinements \
+	ADTExamples/QueryStructure/GeneralQueryStructureRefinements \
+	ADTExamples/QueryStructure/ProcessScheduler/State \
+	ADTExamples/QueryStructure/ProcessScheduler/SetEq \
+	ADTExamples/QueryStructure/ProcessScheduler/AdditionalLemmas \
 	ADTExamples/QueryStructure/ListQueryRefinements \
 	ADTExamples/QueryStructure/ListInsertRefinements \
-	ADTExamples/QueryStructure/ProcessScheduler/SetEq \
-	ADTExamples/QueryStructure/ProcessScheduler/State \
-	ADTExamples/QueryStructure/ProcessScheduler/AdditionalLemmas \
+	ADTExamples/QueryStructure/ListQueryStructureRefinements \
+	ADTExamples/QueryStructure/QueryStructureNotations \
+	ADTExamples/QueryStructure/Trivial \
+	ADTExamples/QueryStructure/Bookstore \
 	ADTExamples/QueryStructure/ProcessScheduler/FMapExtensions \
 	ADTExamples/QueryStructure/ProcessScheduler/DBSchema \
-	ADTExamples/QueryStructure/ProcessScheduler/ListBasedRefinement \
-	ADTExamples/QueryStructure/ProcessScheduler/TreeBasedRefinement \
-	ADTExamples/QueryStructure/Bookstore \
-	ADTExamples/MinCollection \
-	ADTExamples/MinPlusMax
+	ADTExamples/QueryStructure/ProcessScheduler/ListBasedRefinement
+
+# ADTExamples/QueryStructure/ProcessScheduler/TreeBasedRefinement \
+# ADTExamples/CombineBinaryOperationsSpec
+# ADTExamples/BinaryOperationSpec
+# ADTExamples/BinaryOperationImpl
+# ADTExamples/BinaryOperationRefinements
+# ADTExamples/MinCollection
+# ADTExamples/MinPlusMax
 
 COQDEP=coqdep
 COQDOC=coqdoc

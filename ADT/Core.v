@@ -4,23 +4,23 @@ Require Import Ensembles.
 Generalizable All Variables.
 Set Implicit Arguments.
 
-(** * Basic ADT definitions *)
+(** Basic ADT definitions *)
 
 (** Interface of an ADT *)
 Record ADT (Sig : ADTSig) :=
   {
-    Rep : Type;
     (** The representation type of the ADT **)
+    Rep : Type;
 
-    MutatorMethods :
-      forall idx : MutatorIndex Sig,
-        mutatorMethodType Rep (MutatorDom Sig idx);
-    (** Mutator method implementations *)
+    (** Constructor implementations *)
+    Constructors :
+      forall idx : ConstructorIndex Sig,
+        constructorType Rep (ConstructorDom Sig idx);
 
-    ObserverMethods :
-      forall idx : ObserverIndex Sig,
-        observerMethodType Rep (fst (ObserverDomCod Sig idx))
-                           (snd (ObserverDomCod Sig idx))
-    (** Observer method implementations *)
+    (** Method implementations *)
+    Methods :
+      forall idx : MethodIndex Sig,
+        methodType Rep (fst (MethodDomCod Sig idx))
+                   (snd (MethodDomCod Sig idx))
 
   }.

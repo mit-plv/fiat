@@ -1,105 +1,107 @@
-Require Import Common Computation ADT BuildADT ADTNotation List Arith.
-Require Export ADTRefinement.Core ADTRefinement.GeneralRefinements
+Require Import List Arith
+        Common Computation ADT.ADTSig ADT.Core
+        ADTNotation.StringBound ADTNotation.ilist
+        ADTNotation.BuildADTSig ADTNotation.BuildADT
+        ADTNotation.BuildADTReplaceMethods
+        ADTRefinement.Core ADTRefinement.GeneralRefinements
         ADTRefinement.SetoidMorphisms ADTRefinement.BuildADTSetoidMorphisms.
 
 (* Notation-friendly versions of the honing tactics in GeneralRefinements. *)
-
-Generalizable All Variables.
-Set Implicit Arguments.
 
 Section BuildADTRefinements.
 
   Require Import String.
   Local Hint Resolve string_dec.
 
-  Lemma refineADT_BuildADT_ReplaceMutator
+  Lemma refineADT_BuildADT_ReplaceConstructor
             (Rep : Type)
             (SiR : Rep -> Rep -> Prop)
-            (mutSigs : list mutSig)
-            (obsSigs : list obsSig)
-            (mutDefs : ilist (@mutDef Rep) mutSigs)
-            (obsDefs : ilist (@obsDef Rep) obsSigs)
-            (idx : @BoundedString (List.map mutID mutSigs))
-            (newDef : mutDef (nth_Bounded mutID mutSigs idx))
+            (consSigs : list consSig)
+            (methSigs : list methSig)
+            (consDefs : ilist (@consDef Rep) consSigs)
+            (methDefs : ilist (@methDef Rep) methSigs)
+            (idx : @BoundedString (List.map consID consSigs))
+            (newDef : consDef (nth_Bounded consID consSigs idx))
   :
-    (forall mutIdx,
-       refineMutator SiR (getMutDef mutDefs mutIdx) (getMutDef mutDefs mutIdx))
-    -> (forall obsIdx,
-          refineObserver SiR (getObsDef obsDefs obsIdx) (getObsDef obsDefs obsIdx))
-    -> refineMutator SiR
-                     (mutBody (ith_Bounded _ mutDefs idx ))
-                     (mutBody newDef)
+    (forall consIdx,
+       refineConstructor SiR (getConsDef consDefs consIdx) (getConsDef consDefs consIdx))
+    -> (forall methIdx,
+          refineMethod SiR (getMethDef methDefs methIdx) (getMethDef methDefs methIdx))
+    -> refineConstructor SiR
+                     (consBody (ith_Bounded _ consDefs idx ))
+                     (consBody newDef)
     -> refineADT
-      (BuildADT mutDefs obsDefs)
-      (ADTReplaceMutDef mutDefs obsDefs idx newDef).
+      (BuildADT consDefs methDefs)
+      (ADTReplaceConsDef consDefs methDefs idx newDef).
   Proof.
     intros; eapply refineADT_BuildADT_Rep with (SiR := SiR); eauto.
-    intros; unfold getMutDef.
-    unfold replaceMutDef.
+    intros; unfold getConsDef.
+    unfold replaceConsDef.
     eapply ith_replace_BoundedIndex_ind; eauto.
   Qed.
 
-  Corollary refineADT_BuildADT_ReplaceMutator_eq
+  Corollary refineADT_BuildADT_ReplaceConstructor_eq
             (Rep : Type)
-            (mutSigs : list mutSig)
-            (obsSigs : list obsSig)
-            (mutDefs : ilist (@mutDef Rep) mutSigs)
-            (obsDefs : ilist (@obsDef Rep) obsSigs)
-            (idx : @BoundedString (List.map mutID mutSigs))
-            (newDef : mutDef (nth_Bounded mutID mutSigs idx))
+            (consSigs : list consSig)
+            (methSigs : list methSig)
+            (consDefs : ilist (@consDef Rep) consSigs)
+            (methDefs : ilist (@methDef Rep) methSigs)
+            (idx : @BoundedString (List.map consID consSigs))
+            (newDef : consDef (nth_Bounded consID consSigs idx))
   :
-    refineMutator eq
-                  (mutBody (ith_Bounded _ mutDefs idx))
-                  (mutBody newDef)
+    refineConstructor eq
+                  (consBody (ith_Bounded _ consDefs idx))
+                  (consBody newDef)
     -> refineADT
-      (BuildADT mutDefs obsDefs)
-      (ADTReplaceMutDef mutDefs obsDefs idx newDef).
+      (BuildADT consDefs methDefs)
+      (ADTReplaceConsDef consDefs methDefs idx newDef).
   Proof.
-    eapply refineADT_BuildADT_ReplaceMutator;
+    eapply refineADT_BuildADT_ReplaceConstructor;
     simpl; unfold refine; intros; subst; eauto.
+    repeat econstructor; try destruct v; eauto.
   Qed.
 
-  Corollary SharpenStep_BuildADT_ReplaceMutator_eq
+  Corollary SharpenStep_BuildADT_ReplaceConstructor_eq
             (Rep : Type)
-            (mutSigs : list mutSig)
-            (obsSigs : list obsSig)
-            (mutDefs : ilist (@mutDef Rep) mutSigs)
-            (obsDefs : ilist (@obsDef Rep) obsSigs)
-            (idx : @BoundedString (List.map mutID mutSigs))
-            (newDef : mutDef (nth_Bounded mutID mutSigs idx))
+            (consSigs : list consSig)
+            (methSigs : list methSig)
+            (consDefs : ilist (@consDef Rep) consSigs)
+            (methDefs : ilist (@methDef Rep) methSigs)
+            (idx : @BoundedString (List.map consID consSigs))
+            (newDef : consDef (nth_Bounded consID consSigs idx))
   :
-    (forall r_n n,
-      refine (mutBody (ith_Bounded mutID mutDefs idx) r_n n) (mutBody newDef r_n n))
-    -> Sharpened (ADTReplaceMutDef mutDefs obsDefs idx newDef)
-    -> Sharpened (BuildADT mutDefs obsDefs).
+    (forall d,
+      refine (consBody (ith_Bounded consID consDefs idx) d) (consBody newDef d))
+    -> Sharpened (ADTReplaceConsDef consDefs methDefs idx newDef)
+    -> Sharpened (BuildADT consDefs methDefs).
   Proof.
     intros; eapply SharpenStep; eauto.
     destruct newDef; simpl.
-    intros; eapply refineADT_BuildADT_ReplaceMutator_eq;
+    intros; eapply refineADT_BuildADT_ReplaceConstructor_eq;
     simpl; intros; subst; try reflexivity;
     setoid_rewrite refineEquiv_pick_eq'; simplify with monad laws;
     eauto.
   Defined.
 
-  Lemma refineADT_BuildADT_ReplaceMutator_sigma
+  Lemma refineADT_BuildADT_ReplaceConstructor_sigma
         (RepT : Type)
         (RepInv : RepT -> Prop)
         `{forall x, IsHProp (RepInv x)}
-        (mutSigs : list mutSig)
-        (obsSigs : list obsSig)
-        (mutDefs : ilist (@mutDef (sig RepInv)) mutSigs)
-        (obsDefs : ilist (@obsDef (sig RepInv)) obsSigs)
-        (idx : @BoundedString (List.map mutID mutSigs))
-        (newDef : mutDef (nth_Bounded mutID mutSigs idx))
-  : refineMutator (fun x y => proj1_sig x = proj1_sig y)
-                  (mutBody (ith_Bounded _ mutDefs idx))
-                  (mutBody newDef)
+        (consSigs : list consSig)
+        (methSigs : list methSig)
+        (consDefs : ilist (@consDef (sig RepInv)) consSigs)
+        (methDefs : ilist (@methDef (sig RepInv)) methSigs)
+        (idx : @BoundedString (List.map consID consSigs))
+        (newDef : consDef (nth_Bounded consID consSigs idx))
+  : refineConstructor (fun x y => proj1_sig x = proj1_sig y)
+                  (consBody (ith_Bounded _ consDefs idx))
+                  (consBody newDef)
     -> refineADT
-         (BuildADT mutDefs obsDefs)
-         (ADTReplaceMutDef mutDefs obsDefs idx newDef).
+         (BuildADT consDefs methDefs)
+         (ADTReplaceConsDef consDefs methDefs idx newDef).
   Proof.
     intro H'.
-    eapply refineADT_BuildADT_ReplaceMutator_eq.
+    eapply refineADT_BuildADT_ReplaceConstructor_eq.
     simpl in *; intros; subst; eauto.
     etransitivity; [ | eapply_hyp; reflexivity ].
     eapply refine_bind; [ reflexivity | intro ].
@@ -109,276 +111,286 @@ Section BuildADTRefinements.
       assumption.
   Qed.
 
-  Lemma refineADT_BuildADT_ReplaceObserver
+  Lemma refineADT_BuildADT_ReplaceMethod
             (Rep : Type)
-            (mutSigs : list mutSig)
-            (obsSigs : list obsSig)
-            (mutDefs : ilist (@mutDef Rep) mutSigs)
-            (obsDefs : ilist (@obsDef Rep) obsSigs)
-            (idx : @BoundedString (List.map obsID obsSigs))
-            (newDef : obsDef (nth_Bounded _ obsSigs idx))
+            (consSigs : list consSig)
+            (methSigs : list methSig)
+            (consDefs : ilist (@consDef Rep) consSigs)
+            (methDefs : ilist (@methDef Rep) methSigs)
+            (idx : @BoundedString (List.map methID methSigs))
+            (newDef : methDef (nth_Bounded _ methSigs idx))
             SiR
-            (SiR_reflexive_mutator : forall mutIdx,
-                                       refineMutator SiR (getMutDef mutDefs mutIdx) (getMutDef mutDefs mutIdx))
-            (SiR_reflexive_observer : forall obsIdx,
-                                        refineObserver SiR (getObsDef obsDefs obsIdx) (getObsDef obsDefs obsIdx))
-  : refineObserver SiR
-                   (obsBody (ith_Bounded _ obsDefs idx))
-                   (obsBody newDef)
+            (SiR_reflexive_constructor :
+               forall consIdx,
+                 refineConstructor SiR (getConsDef consDefs consIdx) (getConsDef consDefs consIdx))
+            (SiR_reflexive_method :
+               forall methIdx,
+                 refineMethod SiR (getMethDef methDefs methIdx) (getMethDef methDefs methIdx))
+  : refineMethod SiR
+                   (methBody (ith_Bounded _ methDefs idx))
+                   (methBody newDef)
     -> refineADT
-         (BuildADT mutDefs obsDefs)
-         (ADTReplaceObsDef mutDefs obsDefs idx newDef).
+         (BuildADT consDefs methDefs)
+         (ADTReplaceMethDef consDefs methDefs idx newDef).
   Proof.
     intros; eapply refineADT_BuildADT_Rep with (SiR := SiR); trivial.
-    intros; unfold getObsDef.
-    unfold replaceObsDef.
+    intros; unfold getMethDef.
+    unfold replaceMethDef.
     eapply ith_replace_BoundedIndex_ind; eauto.
   Qed.
 
-  Lemma refineADT_BuildADT_ReplaceObserver_eq
+  Lemma refineADT_BuildADT_ReplaceMethod_eq
             (Rep : Type)
-            (mutSigs : list mutSig)
-            (obsSigs : list obsSig)
-            (mutDefs : ilist (@mutDef Rep) mutSigs)
-            (obsDefs : ilist (@obsDef Rep) obsSigs)
-            (idx : @BoundedString (List.map obsID obsSigs))
-            (newDef : obsDef (nth_Bounded _ obsSigs idx))
-  : refineObserver eq
-                   (obsBody (ith_Bounded _ obsDefs idx))
-                   (obsBody newDef)
+            (consSigs : list consSig)
+            (methSigs : list methSig)
+            (consDefs : ilist (@consDef Rep) consSigs)
+            (methDefs : ilist (@methDef Rep) methSigs)
+            (idx : @BoundedString (List.map methID methSigs))
+            (newDef : methDef (nth_Bounded _ methSigs idx))
+  : refineMethod eq
+                   (methBody (ith_Bounded _ methDefs idx))
+                   (methBody newDef)
     -> refineADT
-         (BuildADT mutDefs obsDefs)
-         (ADTReplaceObsDef mutDefs obsDefs idx newDef).
+         (BuildADT consDefs methDefs)
+         (ADTReplaceMethDef consDefs methDefs idx newDef).
   Proof.
-    eapply refineADT_BuildADT_ReplaceObserver;
+    eapply refineADT_BuildADT_ReplaceMethod;
     reflexivity.
   Qed.
 
-  Corollary SharpenStep_BuildADT_ReplaceObserver_eq
+  Corollary SharpenStep_BuildADT_ReplaceMethod_eq
             (Rep : Type)
-            (mutSigs : list mutSig)
-            (obsSigs : list obsSig)
-            (mutDefs : ilist (@mutDef Rep) mutSigs)
-            (obsDefs : ilist (@obsDef Rep) obsSigs)
-            (idx : @BoundedString (List.map obsID obsSigs))
-            (newDef : obsDef (nth_Bounded _ obsSigs idx))
+            (consSigs : list consSig)
+            (methSigs : list methSig)
+            (consDefs : ilist (@consDef Rep) consSigs)
+            (methDefs : ilist (@methDef Rep) methSigs)
+            (idx : @BoundedString (List.map methID methSigs))
+            (newDef : methDef (nth_Bounded _ methSigs idx))
   :
     (forall r_n n,
-      refine (obsBody (ith_Bounded obsID obsDefs idx) r_n n) (obsBody newDef r_n n))
-    -> Sharpened (ADTReplaceObsDef mutDefs obsDefs idx newDef)
-    -> Sharpened (BuildADT mutDefs obsDefs).
+      refine (methBody (ith_Bounded methID methDefs idx) r_n n) (methBody newDef r_n n))
+    -> Sharpened (ADTReplaceMethDef consDefs methDefs idx newDef)
+    -> Sharpened (BuildADT consDefs methDefs).
   Proof.
     intros; eapply SharpenStep; eauto.
     destruct newDef; simpl.
-    intros; eapply refineADT_BuildADT_ReplaceObserver_eq;
+    intros; eapply refineADT_BuildADT_ReplaceMethod_eq;
     simpl; intros; subst; try reflexivity;
-    eauto.
+    setoid_rewrite H; setoid_rewrite refineEquiv_pick_eq';
+    simplify with monad laws.
+    econstructor; eauto.
+    destruct v; simpl; econstructor.
   Qed.
 
-
-
-  Lemma refineADT_BuildADT_ReplaceObserver_sigma
+  Lemma refineADT_BuildADT_ReplaceMethod_sigma
         (RepT : Type)
         (RepInv : RepT -> Prop)
-        (mutSigs : list mutSig)
-        (obsSigs : list obsSig)
-        (mutDefs : ilist (@mutDef (sig RepInv)) mutSigs)
-        (obsDefs : ilist (@obsDef (sig RepInv)) obsSigs)
-        (idx : @BoundedString (List.map obsID obsSigs))
-        (newDef : obsDef (nth_Bounded _ obsSigs idx))
-  : refineObserver (fun x y => proj1_sig x = proj1_sig y)
-                   (obsBody (ith_Bounded _ obsDefs idx))
-                   (obsBody newDef)
+        (consSigs : list consSig)
+        (methSigs : list methSig)
+        (consDefs : ilist (@consDef (sig RepInv)) consSigs)
+        (methDefs : ilist (@methDef (sig RepInv)) methSigs)
+        (idx : @BoundedString (List.map methID methSigs))
+        (newDef : methDef (nth_Bounded _ methSigs idx))
+        (SiR_reflexive_method :
+           forall methIdx,
+             refineMethod (fun x y => proj1_sig x = proj1_sig y)
+                          (getMethDef methDefs methIdx)
+                          (getMethDef methDefs methIdx))
+  : refineMethod (fun x y => proj1_sig x = proj1_sig y)
+                   (methBody (ith_Bounded _ methDefs idx))
+                   (methBody newDef)
     -> refineADT
-         (BuildADT mutDefs obsDefs)
-         (ADTReplaceObsDef mutDefs obsDefs idx newDef).
+         (BuildADT consDefs methDefs)
+         (ADTReplaceMethDef consDefs methDefs idx newDef).
   Proof.
     intro H'.
-    eapply refineADT_BuildADT_ReplaceObserver_eq.
+    eapply refineADT_BuildADT_ReplaceMethod with
+    (SiR := fun r_o r_n => proj1_sig r_o = proj1_sig r_n); eauto;
     simpl in *; intros; subst; eauto.
+    intro; econstructor; eauto.
   Qed.
 
 End BuildADTRefinements.
 
-Tactic Notation "hone'" "observer" constr(obsIdx) "using" open_constr(obsBod) :=
+Tactic Notation "hone" "method" constr(methIdx) "using" open_constr(methBod) :=
   let A :=
       match goal with
           |- Sharpened ?A => constr:(A) end in
   let ASig := match type of A with
                   ADT ?Sig => Sig
               end in
-  let mutSigs :=
+  let consSigs :=
       match ASig with
-          BuildADTSig ?mutSigs _ => constr:(mutSigs) end in
-  let obsSigs :=
+          BuildADTSig ?consSigs _ => constr:(consSigs) end in
+  let methSigs :=
       match ASig with
-          BuildADTSig _ ?obsSigs => constr:(obsSigs) end in
-  let mutDefs :=
+          BuildADTSig _ ?methSigs => constr:(methSigs) end in
+  let consDefs :=
         match A with
-            BuildADT ?mutDefs _  => constr:(mutDefs) end in
-  let obsDefs :=
+            BuildADT ?consDefs _  => constr:(consDefs) end in
+  let methDefs :=
         match A with
-            BuildADT _ ?obsDefs  => constr:(obsDefs) end in
-    let Rep' :=
-        match A with
-            @BuildADT ?Rep _ _ _ _ => constr:(Rep) end in
-    let MutatorIndex' := eval simpl in (MutatorIndex ASig) in
-    let ObserverIndex' := eval simpl in (ObserverIndex ASig) in
-    let ObserverDomCod' := eval simpl in (ObserverDomCod ASig) in
-    let obsIdxB := eval simpl in
-    (@Build_BoundedIndex _ (List.map obsID obsSigs) obsIdx _) in
-      eapply SharpenStep;
-      [eapply (@refineADT_BuildADT_ReplaceObserver_eq
-                 Rep' _ _ mutDefs obsDefs obsIdxB
-                 (@Build_obsDef Rep'
-                                {| obsID := obsIdx;
-                                   obsDom := fst (ObserverDomCod' obsIdxB);
-                                   obsCod := snd (ObserverDomCod' obsIdxB)
-                                |}
-                                obsBod
-                                ))
-      | idtac]; cbv beta in *; simpl in *;
-      cbv beta delta [replace_BoundedIndex replace_Index] in *;
-      simpl in *.
+            BuildADT _ ?methDefs  => constr:(methDefs) end in
+  let Rep' :=
+      match A with
+          @BuildADT ?Rep _ _ _ _ => constr:(Rep) end in
+  let ConstructorIndex' := eval simpl in (ConstructorIndex ASig) in
+  let MethodIndex' := eval simpl in (MethodIndex ASig) in
+  let MethodDomCod' := eval simpl in (MethodDomCod ASig) in
+  let methIdxB := eval simpl in
+  (@Build_BoundedIndex _ (List.map methID methSigs) methIdx _) in
+    eapply SharpenStep;
+    [eapply (@refineADT_BuildADT_ReplaceMethod_eq
+               Rep' _ _ consDefs methDefs methIdxB
+               (@Build_methDef Rep'
+                              {| methID := methIdx;
+                                 methDom := fst (MethodDomCod' methIdxB);
+                                 methCod := snd (MethodDomCod' methIdxB)
+                              |}
+                              methBod
+                              ))
+    | idtac]; cbv beta in *; simpl in *;
+    cbv beta delta [replace_BoundedIndex replace_Index] in *;
+    simpl in *.
 
-  Tactic Notation "hone'" "mutator" constr(mutIdx) "using" open_constr(mutBod) :=
-    let A :=
-        match goal with
-            |- Sharpened ?A => constr:(A) end in
-    let ASig := match type of A with
-                    ADT ?Sig => Sig
-                end in
-    let mutSigs :=
-        match ASig with
-            BuildADTSig ?mutSigs _ => constr:(mutSigs) end in
-    let obsSigs :=
-        match ASig with
-            BuildADTSig _ ?obsSigs => constr:(obsSigs) end in
-    let mutDefs :=
-        match A with
-            BuildADT ?mutDefs _  => constr:(mutDefs) end in
-    let obsDefs :=
-        match A with
-            BuildADT _ ?obsDefs  => constr:(obsDefs) end in
-    let Rep' :=
-        match A with
-            @BuildADT ?Rep _ _ _ _ => constr:(Rep) end in
-    let MutatorIndex' := eval simpl in (MutatorIndex ASig) in
-    let ObserverIndex' := eval simpl in (ObserverIndex ASig) in
-    let MutatorDom' := eval simpl in (MutatorDom ASig) in
-    let mutIdxB := eval simpl in
-    (@Build_BoundedIndex _ (List.map mutID mutSigs) mutIdx _) in
-      eapply SharpenStep;
-      [eapply (@refineADT_BuildADT_ReplaceMutator_eq
-                 Rep'  _ _ mutDefs obsDefs mutIdxB
-                 (@Build_mutDef Rep'
-                                {| mutID := mutIdx;
-                                   mutDom := MutatorDom' mutIdxB
-                                |}
-                                mutBod
-                                ))
-      | idtac]; cbv beta in *; simpl in *;
-      cbv beta delta [replace_BoundedIndex replace_Index] in *;
-      simpl in *.
+Tactic Notation "hone" "constructor" constr(consIdx) "using" open_constr(consBod) :=
+  let A :=
+      match goal with
+          |- Sharpened ?A => constr:(A) end in
+  let ASig := match type of A with
+                  ADT ?Sig => Sig
+              end in
+  let consSigs :=
+      match ASig with
+          BuildADTSig ?consSigs _ => constr:(consSigs) end in
+  let methSigs :=
+      match ASig with
+          BuildADTSig _ ?methSigs => constr:(methSigs) end in
+  let consDefs :=
+      match A with
+          BuildADT ?consDefs _  => constr:(consDefs) end in
+  let methDefs :=
+      match A with
+          BuildADT _ ?methDefs  => constr:(methDefs) end in
+  let Rep' :=
+      match A with
+          @BuildADT ?Rep _ _ _ _ => constr:(Rep) end in
+  let ConstructorIndex' := eval simpl in (ConstructorIndex ASig) in
+  let MethodIndex' := eval simpl in (MethodIndex ASig) in
+  let ConstructorDom' := eval simpl in (ConstructorDom ASig) in
+  let consIdxB := eval simpl in
+  (@Build_BoundedIndex _ (List.map consID consSigs) consIdx _) in
+    eapply SharpenStep;
+    [eapply (@refineADT_BuildADT_ReplaceConstructor_eq
+               Rep'  _ _ consDefs methDefs consIdxB
+               (@Build_consDef Rep'
+                              {| consID := consIdx;
+                                 consDom := ConstructorDom' consIdxB
+                              |}
+                              consBod
+                              ))
+    | idtac]; cbv beta in *; simpl in *;
+    cbv beta delta [replace_BoundedIndex replace_Index] in *;
+    simpl in *.
 
-Tactic Notation "hone'" "observer" constr(obsIdx) :=
-  hone' observer obsIdx using _;
+Tactic Notation "hone" "method" constr(methIdx) :=
+  hone' method methIdx using _;
   [set_evars;
     simpl in *; intros; subst;
     autosetoid_rewrite with refine_monad
  | ].
 
-Tactic Notation "hone'" "mutator" constr(mutIdx) :=
-  hone' mutator mutIdx using _;
+Tactic Notation "hone" "constructor" constr(consIdx) :=
+  hone' constructor consIdx using _;
   [set_evars;
     simpl in *; intros; subst;
     autosetoid_rewrite with refine_monad | ].
 
-  Tactic Notation "hone" "mutator" constr(mutIdx) :=
-    let A :=
-        match goal with
-            |- Sharpened ?A => constr:(A) end in
-    let ASig := match type of A with
-                    ADT ?Sig => Sig
-                end in
-    let mutSigs :=
-        match ASig with
-            BuildADTSig ?mutSigs _ => constr:(mutSigs) end in
-    let obsSigs :=
-        match ASig with
-            BuildADTSig _ ?obsSigs => constr:(obsSigs) end in
-    let mutDefs :=
-        match A with
-            BuildADT ?mutDefs _  => constr:(mutDefs) end in
-    let obsDefs :=
-        match A with
-            BuildADT _ ?obsDefs  => constr:(obsDefs) end in
-    let Rep' :=
-        match A with
-            @BuildADT ?Rep _ _ _ _ => constr:(Rep) end in
-    let MutatorIndex' := eval simpl in (MutatorIndex ASig) in
-    let ObserverIndex' := eval simpl in (ObserverIndex ASig) in
-    let MutatorDom' := eval simpl in (MutatorDom ASig) in
-    let mutIdxB := eval simpl in
-    (@Build_BoundedIndex _ (List.map mutID mutSigs) mutIdx _) in
-        eapply (@SharpenStep_BuildADT_ReplaceMutator_eq
-                 Rep'  _ _ mutDefs obsDefs mutIdxB
-                 (@Build_mutDef Rep'
-                                {| mutID := mutIdx;
-                                   mutDom := MutatorDom' mutIdxB
-                                |}
-                                _
-               ));
-      [ intros; try (apply refine_pick_forall_Prop with
-                     (P := fun r_n n r_o => _); intros);
-        set_evars; simpl in *; subst |
+Tactic Notation "hone" "constructor" constr(consIdx) :=
+  let A :=
+      match goal with
+          |- Sharpened ?A => constr:(A) end in
+  let ASig := match type of A with
+                  ADT ?Sig => Sig
+              end in
+  let consSigs :=
+      match ASig with
+          BuildADTSig ?consSigs _ => constr:(consSigs) end in
+  let methSigs :=
+      match ASig with
+          BuildADTSig _ ?methSigs => constr:(methSigs) end in
+  let consDefs :=
+      match A with
+          BuildADT ?consDefs _  => constr:(consDefs) end in
+  let methDefs :=
+      match A with
+          BuildADT _ ?methDefs  => constr:(methDefs) end in
+  let Rep' :=
+      match A with
+          @BuildADT ?Rep _ _ _ _ => constr:(Rep) end in
+  let ConstructorIndex' := eval simpl in (ConstructorIndex ASig) in
+  let MethodIndex' := eval simpl in (MethodIndex ASig) in
+  let ConstructorDom' := eval simpl in (ConstructorDom ASig) in
+  let consIdxB := eval simpl in
+  (@Build_BoundedIndex _ (List.map consID consSigs) consIdx _) in
+      eapply (@SharpenStep_BuildADT_ReplaceConstructor_eq
+               Rep'  _ _ consDefs methDefs consIdxB
+               (@Build_consDef Rep'
+                              {| consID := consIdx;
+                                 consDom := ConstructorDom' consIdxB
+                              |}
+                              _
+             ));
+    [ intros; try (apply refine_pick_forall_Prop with
+                   (P := fun r_n n r_o => _); intros);
+      simpl in *; set_evars; simpl in *; subst |
+        cbv beta in *; simpl in *;
+        cbv beta delta [replace_BoundedIndex replace_Index] in *;
+        simpl in *].
+
+Tactic Notation "hone" "method" constr(methIdx) :=
+  let A :=
+      match goal with
+          |- Sharpened ?A => constr:(A) end in
+  let ASig := match type of A with
+                  ADT ?Sig => Sig
+              end in
+  let consSigs :=
+      match ASig with
+          BuildADTSig ?consSigs _ => constr:(consSigs) end in
+  let methSigs :=
+      match ASig with
+          BuildADTSig _ ?methSigs => constr:(methSigs) end in
+  let consDefs :=
+      match A with
+          BuildADT ?consDefs _  => constr:(consDefs) end in
+  let methDefs :=
+      match A with
+          BuildADT _ ?methDefs  => constr:(methDefs) end in
+  let Rep' :=
+      match A with
+          @BuildADT ?Rep _ _ _ _ => constr:(Rep) end in
+  let ConstructorIndex' := eval simpl in (ConstructorIndex ASig) in
+  let MethodIndex' := eval simpl in (MethodIndex ASig) in
+  let MethodDomCod' := eval simpl in (MethodDomCod ASig) in
+  let methIdxB := eval simpl in
+  (@Build_BoundedIndex _ (List.map methID methSigs) methIdx _) in
+      eapply (@SharpenStep_BuildADT_ReplaceMethod_eq
+                Rep'  _ _ consDefs methDefs methIdxB
+                (@Build_methDef Rep'
+                               {| methID := methIdx;
+                                  methDom := fst (MethodDomCod' methIdxB);
+                                  methCod := snd (MethodDomCod' methIdxB)
+                               |}
+                               _
+                              ));
+    [ intros; repeat (progress (try rewrite refine_pick_computes_to;
+                                try apply refine_pick_forall_Prop with
+                                (P := fun _ _ _ => _); intros));
+      simpl in *; set_evars; simpl in *; subst |
           cbv beta in *; simpl in *;
           cbv beta delta [replace_BoundedIndex replace_Index] in *;
           simpl in *].
-
-  Tactic Notation "hone" "observer" constr(obsIdx) :=
-    let A :=
-        match goal with
-            |- Sharpened ?A => constr:(A) end in
-    let ASig := match type of A with
-                    ADT ?Sig => Sig
-                end in
-    let mutSigs :=
-        match ASig with
-            BuildADTSig ?mutSigs _ => constr:(mutSigs) end in
-    let obsSigs :=
-        match ASig with
-            BuildADTSig _ ?obsSigs => constr:(obsSigs) end in
-    let mutDefs :=
-        match A with
-            BuildADT ?mutDefs _  => constr:(mutDefs) end in
-    let obsDefs :=
-        match A with
-            BuildADT _ ?obsDefs  => constr:(obsDefs) end in
-    let Rep' :=
-        match A with
-            @BuildADT ?Rep _ _ _ _ => constr:(Rep) end in
-    let MutatorIndex' := eval simpl in (MutatorIndex ASig) in
-    let ObserverIndex' := eval simpl in (ObserverIndex ASig) in
-    let ObserverDomCod' := eval simpl in (ObserverDomCod ASig) in
-    let obsIdxB := eval simpl in
-    (@Build_BoundedIndex _ (List.map obsID obsSigs) obsIdx _) in
-        eapply (@SharpenStep_BuildADT_ReplaceObserver_eq
-                  Rep'  _ _ mutDefs obsDefs obsIdxB
-                  (@Build_obsDef Rep'
-                                 {| obsID := obsIdx;
-                                    obsDom := fst (ObserverDomCod' obsIdxB);
-                                    obsCod := snd (ObserverDomCod' obsIdxB)
-                                 |}
-                                 _
-                                ));
-      [ intros; repeat (progress (try rewrite refine_pick_computes_to;
-                                  try apply refine_pick_forall_Prop with
-                                  (P := fun _ _ _ => _); intros));
-        set_evars; simpl in *; subst |
-            cbv beta in *; simpl in *;
-            cbv beta delta [replace_BoundedIndex replace_Index] in *;
-            simpl in *].
 
 Tactic Notation "finish" "honing" :=
   subst_body;

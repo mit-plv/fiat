@@ -60,21 +60,33 @@ Section general_refine_lemmas.
                   ret (a, b))%comp.
   Proof. t_refine. Qed.
 
-       Lemma refineEquiv_pick_pair_fst_dep A B (PA : A -> B -> Prop) (PB : B -> Prop)
-       : @refineEquiv _
-                      {x | PA (fst x) (snd x) /\ PB (snd x)}%comp
-                      (b <- { b | PB b };
-                       a <- { a | PA a b };
-                       ret (a, b))%comp.
-       Proof. t_refine. Qed.
+  Lemma refineEquiv_pick_pair_fst_dep A B (PA : A * B -> Prop) (PB : B -> Prop)
+  : @refineEquiv _
+                 {x | PA x /\ PB (snd x)}%comp
+                 (b <- { b | PB b };
+                  a <- { a | PA (a, b) };
+                  ret (a, b))%comp.
+  Proof. t_refine. Qed.
 
-       Lemma refineEquiv_pick_pair_snd_dep A B (PA : A -> Prop) (PB : A -> B -> Prop)
-       : @refineEquiv _
-                      { x | PA (fst x) /\ PB (fst x) (snd x) }%comp
-                      (a <- { a | PA a };
-                       b <- { b | PB a b };
-                       ret (a, b))%comp.
-       Proof. t_refine. Qed.
+  Lemma refineEquiv_pick_pair_snd_dep A B (PA : A -> Prop) (PB : A * B -> Prop)
+  : @refineEquiv _
+                 { x | PA (fst x) /\ PB x }%comp
+                 (a <- { a | PA a };
+                  b <- { b | PB (a, b) };
+                  ret (a, b))%comp.
+  Proof. t_refine. Qed.
+
+  Lemma refineEquiv_pick_pair_pair A B C
+        (PA : A -> Prop) (PB : B -> Prop) (PC : C -> Prop)
+  : @refineEquiv _
+                 { x | (PA (fst (fst x))
+                                   /\ PB (snd (fst x)))
+                                   /\ PC (snd x)}%comp
+                 (a <- { a | PA a };
+                  b <- { b | PB b };
+                  c <- { c | PC c };
+                  ret (a, b, c))%comp.
+  Proof. t_refine. Qed.
 
   Definition refineEquiv_split_ex A B
              (P : A -> Prop) (P' : A -> B -> Prop)

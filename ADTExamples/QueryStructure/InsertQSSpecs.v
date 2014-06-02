@@ -1,5 +1,9 @@
 Require Import List String Ensembles Arith
-        ADTNotation Program QueryStructureSchema QueryStructure.
+        Computation.Core
+        ADT.ADTSig ADT.Core
+        ADTNotation.ilist ADTNotation.StringBound
+        ADTNotation.BuildADT ADTNotation.BuildADTSig
+        QueryStructure.QueryStructureSchema  QueryStructure.QueryStructure.
 
 (* Definitions for updating query structures. *)
 
@@ -25,7 +29,7 @@ Definition QSInsertSpec
            (qs : QueryStructureHint)
            (Ridx : _)
            (tup : @Tuple (schemaHeading (QSGetNRelSchema _ Ridx)))
-           (qs' : QueryStructure qsSchemaHint)
+           (qs' : QueryStructure qsSchemaHint')
 : Prop :=
   (* All of the relations with a different index are untouched
      by insert. *)
@@ -56,7 +60,8 @@ Definition QSInsertSpec
                (RelationInsert tup (GetRelation qsHint Ridx) t)).
 
 Notation "'Insert' b 'into' Ridx " :=
-  (Pick (QSInsertSpec _ Ridx b))
+  (qs <- Pick (QSInsertSpec _ {|bindex := Ridx |} b);
+   ret (qs, tt))%comp
     (at level 80) : QuerySpec_scope.
 
 (* Facts about insert. We'll probably need to extract these to their
@@ -64,40 +69,7 @@ Notation "'Insert' b 'into' Ridx " :=
 
 Section InsertRefinements.
 
-  (* Definition Insert_Valid_obligation_0 *)
-  (*            (qsSchema : QueryStructureSchema) *)
-  (*            (Ridx Ridx' : string) *)
-  (*            (tup : Tuple (schemaHeading (GetNamedSchema qsSchema Ridx))) *)
-  (*            (Ridx_eq : Ridx = Ridx') *)
-  (* : Tuple (schemaHeading (GetNamedSchema qsSchema Ridx')). *)
-  (* Proof. *)
-  (*   rewrite <- Ridx_eq. *)
-  (*   eassumption. *)
-  (* Defined. *)
-
-  (* Arguments Insert_Valid_obligation_0 _ _ _ _ _ / _ . *)
-
-  Lemma NamedSchema_eq_neq
-  : forall Ridx Ridx' a,
-      Ridx <> Ridx'
-      -> NamedSchema_eq a Ridx = true
-      -> NamedSchema_eq a Ridx' = false.
-  Proof.
-    unfold NamedSchema_eq; destruct a; simpl.
-    repeat find_if_inside; congruence.
-  Qed.
-
-  Lemma NamedSchema_eq_eq :
-    forall Ridx a,
-      relName a = Ridx
-      -> NamedSchema_eq a Ridx = true.
-  Proof.
-    intros; unfold NamedSchema_eq; destruct a; subst; simpl.
-    caseEq (string_dec relName relName); eauto.
-  Qed.
-
-  Hint Resolve AC_eq_nth_In AC_eq_nth_NIn NamedSchema_eq_neq
-       NamedSchema_eq_eq crossConstr.
+  Hint Resolve AC_eq_nth_In AC_eq_nth_NIn crossConstr.
   Hint Unfold SatisfiesCrossRelationConstraints
        SatisfiesSchemaConstraints.
 
@@ -155,64 +127,45 @@ Section InsertRefinements.
       rewrite ith_replace_BoundIndex_neq in H0; eauto using string_dec.
   Qed.
 
-  (*Definition DecideableSB (P : Prop) := {P} + {~P}.
+  Fixpoint app_assoc {A : Set} (As As' As'' : list A):
+      As ++ (As' ++ As'') = (As ++ As') ++ As'' :=
+    match As as As return
+                  As ++ (As' ++ As'') = (As ++ As') ++ As'' with
+              | [] => eq_refl _
+              | a :: As => (f_equal (fun l => a :: l) (app_assoc As As' As''))
+            end.
 
-  Definition SchemaConstraints_dec qsSchema Ridx tup :=
-    DecideableSB (schemaConstraints (QSGetNRelSchema qsSchema Ridx) tup).
-
-  Definition QSSchemaConstraints_dec qsSchema qs Ridx tup :=
-    DecideableSB
-      (forall Ridx',
-         BuildQueryStructureConstraints qsSchema Ridx Ridx' tup (GetRelation qs Ridx')).
-
-  Definition QSSchemaConstraints_dec' qsSchema qs Ridx tup :=
-    DecideableSB
-      (forall Ridx',
-         Ridx' <> Ridx ->
-         forall tup',
-                BuildQueryStructureConstraints qsSchema Ridx' Ridx tup'
-                                               (RelationInsert tup (GetRelation qs Ridx))). *)
-
-  Lemma app_assoc
-        (A : Type)
-        (l m n : list A)
-  : l ++ m ++ n = (l ++ m) ++ n.
-  Proof.
-    induction l; simpl; auto.
-    rewrite IHl; reflexivity.
-  Defined.
-
-  Lemma app_cons {A : Set}:
+  Lemma app_comm_cons' {A : Set}:
     forall (a : A) As As',
       As ++ (a :: As') = (As ++ [a]) ++ As'.
   Proof.
     intros; rewrite <- app_assoc; reflexivity.
   Defined.
 
-  Definition Ensemble_BoundedIndex_app_cons {A : Set}
+  Definition Ensemble_BoundedIndex_app_comm_cons {A : Set}
     (a : A)
     (As As' : list A)
     (P : Ensemble (BoundedIndex (As ++ a :: As')))
   : Ensemble (BoundedIndex ((As ++ [a]) ++ As')).
-    rewrite app_cons in P; exact P.
+    rewrite app_comm_cons' in P; exact P.
   Defined.
 
-  Definition BoundedIndex_app_cons {A : Set}
+  Definition BoundedIndex_app_comm_cons {A : Set}
     (a : A)
     (As As' : list A)
     (a' : BoundedIndex (As ++ a :: As'))
   : BoundedIndex ((As ++ [a]) ++ As').
-    rewrite app_cons in a'; exact a'.
+    rewrite app_comm_cons' in a'; exact a'.
   Defined.
 
-  Lemma ibound_BoundedIndex_app_cons {A : Set}
+  Lemma ibound_BoundedIndex_app_comm_cons {A : Set}
     (a : A)
     (As As' : list A)
     (a' : BoundedIndex (As ++ a :: As'))
-  : ibound a' = ibound (BoundedIndex_app_cons a As As' a').
+  : ibound a' = ibound (BoundedIndex_app_comm_cons a As As' a').
   Proof.
-    unfold BoundedIndex_app_cons, eq_rec, eq_rect; simpl.
-    destruct (app_cons a As As'); reflexivity.
+    unfold BoundedIndex_app_comm_cons, eq_rec, eq_rect; simpl.
+    destruct (app_comm_cons' a As As'); reflexivity.
   Qed.
 
   Program Fixpoint Iterate_Ensemble_BoundedIndex'
@@ -231,7 +184,7 @@ Section InsertRefinements.
     clear P; induction Visited; simpl; auto.
   Defined.
   Next Obligation.
-    exact (Ensemble_BoundedIndex_app_cons _ _ _ P).
+    exact (Ensemble_BoundedIndex_app_comm_cons _ _ _ P).
   Defined.
 
   Lemma Ensemble_BoundedIndex_app_equiv {A : Set}
@@ -240,10 +193,10 @@ Section InsertRefinements.
         (P : Ensemble (BoundedIndex (As ++ a :: As')))
   : forall idx idx' n nth nth',
       P {| bindex := idx; indexb := {| ibound := n; boundi := nth |}|} <->
-      Ensemble_BoundedIndex_app_cons a As As' P
+      Ensemble_BoundedIndex_app_comm_cons a As As' P
                                      {| bindex := idx'; indexb := {| ibound := n; boundi := nth' |}|}.
   Proof.
-    split; unfold Ensemble_BoundedIndex_app_cons, BoundedIndex_app_cons, app_cons; simpl;
+    split; unfold Ensemble_BoundedIndex_app_comm_cons, BoundedIndex_app_comm_cons, app_comm_cons'; simpl;
     unfold eq_rec, eq_rect, eq_ind, eq_rect; destruct (app_assoc As [a] As'); auto;
     generalize (indexb_ibound_eq
             {| bindex := idx'; indexb := {| ibound := n; boundi := nth' |}|}
@@ -252,17 +205,17 @@ Section InsertRefinements.
     erewrite (eq_proofs_unicity_Opt_A A_eq_dec _); eauto.
   Qed.
 
-  Lemma BoundedIndex_app_cons_nth_eq {A : Set}
+  Lemma BoundedIndex_app_comm_cons_nth_eq {A : Set}
         (A_eq_dec : forall a a' : A, {a = a'} + {a <> a'})
   : forall
       (As As' : list A)
       a a' a'' n nth nth',
       {| bindex := a; indexb := {| ibound := n; boundi := nth |}|} =
-      BoundedIndex_app_cons a' As As' {| bindex := a''; indexb := {| ibound := n; boundi := nth' |}|}.
+      BoundedIndex_app_comm_cons a' As As' {| bindex := a''; indexb := {| ibound := n; boundi := nth' |}|}.
   Proof.
     intros.
-    unfold BoundedIndex_app_cons, eq_rec, eq_rect; simpl.
-    destruct (app_cons a' As As').
+    unfold BoundedIndex_app_comm_cons, eq_rec, eq_rect; simpl.
+    destruct (app_comm_cons' a' As As').
     generalize (indexb_ibound_eq
             {| bindex := a''; indexb := {| ibound := n; boundi := nth' |}|}
             {| bindex := a; indexb := {| ibound := n; boundi := nth |}|}
@@ -309,19 +262,19 @@ Section InsertRefinements.
                       ibound := n;
                       boundi := nth_error_app As (a :: As') n nth |} |})
       -> forall (a' : A) (n : nat) (nth : nth_error (As ++ [a]) n = Some a'),
-           Ensemble_BoundedIndex_app_cons a As As' P
+           Ensemble_BoundedIndex_app_comm_cons a As As' P
                                           {| bindex := a';
                                              indexb := {| ibound := n;
                                                           boundi := nth_error_app (As ++ [a]) As' n nth |} |}.
   Proof.
     intros.
     destruct (eq_nat_dec (List.length As) n ); subst.
-    - rewrite (BoundedIndex_app_cons_nth_eq
+    - rewrite (BoundedIndex_app_comm_cons_nth_eq
                  A_eq_dec As As' _ (List.length As)
                  (nth_error_app (As ++ [a]) As'
                                 (Datatypes.length As) nth)
                  nth').
-      erewrite <- BoundedIndex_app_cons_nth_eq; eauto.
+      erewrite <- BoundedIndex_app_comm_cons_nth_eq; eauto.
       eapply Ensemble_BoundedIndex_app_equiv; eauto.
     - assert (nth_error As n = Some a') by
           (revert n nth n0; clear; induction As; destruct n; simpl; intros;
@@ -329,11 +282,11 @@ Section InsertRefinements.
            [destruct n; discriminate
            | eauto]).
       generalize (H0 _ _ H1); intros.
-      erewrite (BoundedIndex_app_cons_nth_eq
+      erewrite (BoundedIndex_app_comm_cons_nth_eq
                  A_eq_dec As As' _ n
                  (nth_error_app (As ++ [a]) As'
                                 n nth)).
-      erewrite <- BoundedIndex_app_cons_nth_eq; eauto.
+      erewrite <- BoundedIndex_app_comm_cons_nth_eq; eauto.
       eapply Ensemble_BoundedIndex_app_equiv; eauto.
       Grab Existential Variables.
       rewrite <- app_assoc; simpl; apply nth_error_app; eassumption.
@@ -359,7 +312,7 @@ Section InsertRefinements.
         as nth_n'
           by (rewrite <- app_assoc; simpl; assumption).
       generalize (IHRemaining _ _ (Ensemble_nth_error_app A_eq_dec _ _ _ P H1 H) H2 _ _ nth_n').
-      unfold Ensemble_BoundedIndex_app_cons, eq_rect; destruct (app_cons a Visited Remaining).
+      unfold Ensemble_BoundedIndex_app_comm_cons, eq_rect; destruct (app_comm_cons' a Visited Remaining).
       intros; erewrite (eq_proofs_unicity_Opt_A A_eq_dec nth_n); eauto.
       Grab Existential Variables.
       rewrite app_nil_r in nth_n; assumption.
@@ -427,14 +380,14 @@ Section InsertRefinements.
                             GetRelation qs Ridx tup'
                             -> SatisfiesSchemaConstraints Ridx tup' tup)};
             qsConstr <- {b | decides b
-(forall Ridx', SatisfiesCrossRelationConstraints Ridx Ridx' tup (GetRelation qs Ridx'))};
+              (forall Ridx', SatisfiesCrossRelationConstraints Ridx Ridx' tup (GetRelation qs Ridx'))};
             qsConstr' <- {b | decides
                                 b
                                 (forall Ridx',
                                    Ridx' <> Ridx ->
                                    forall tup',
                                      (GetRelation qs Ridx') tup'
-                                                           -> SatisfiesCrossRelationConstraints
+                                     -> SatisfiesCrossRelationConstraints
                                        Ridx' Ridx tup'
                                        (RelationInsert tup (GetRelation qs Ridx)))};
             match schConstr_self, schConstr, schConstr', qsConstr, qsConstr' with
@@ -497,7 +450,7 @@ Section InsertRefinements.
     clear P; induction Visited; simpl; auto.
   Defined.
   Next Obligation.
-    exact (Ensemble_BoundedIndex_app_cons _ _ _ P).
+    exact (Ensemble_BoundedIndex_app_comm_cons _ _ _ P).
   Defined.
 
   Lemma refine_Iterate_Decided_Ensemble' {A : Set}
@@ -775,7 +728,7 @@ Section InsertRefinements.
   Qed.
 
   Lemma QSInsertSpec_UnConstr_refine :
-    forall qsSchema (qs : UnConstrQueryStructure qsSchema)
+    forall qsSchema (qs : UnConstrQueryStructure qsSchema )
            (Ridx : @BoundedString (map relName (qschemaSchemas qsSchema)))
            (tup : @Tuple (schemaHeading (QSGetNRelSchema qsSchema Ridx)))
            (or : QueryStructure qsSchema)
@@ -815,11 +768,12 @@ Section InsertRefinements.
            refined_qsConstr'
       -> DropQSConstraints_SiR or qs ->
       refine
-        (Pick (fun qs' =>
-                 exists or' : QueryStructure qsSchema,
-                   (Pick (QSInsertSpec {| qsHint := or |} Ridx tup)) ↝ or' /\
-                   DropQSConstraints_SiR or' qs'))
-        (schConstr_self <- refined_schConstr_self;
+        { or'' | exists or',
+                 (qs <- Pick (QSInsertSpec {| qsHint := or |} Ridx tup);
+                  ret (qs, tt)) ↝ or'
+                 /\ DropQSConstraints_SiR (fst or') (fst or'')
+                 /\ snd or' = snd or''}
+        (qs <- (schConstr_self <- refined_schConstr_self;
          schConstr <- refined_schConstr;
          schConstr' <- refined_schConstr';
          qsConstr <- refined_qsConstr ;
@@ -828,12 +782,19 @@ Section InsertRefinements.
               | true, true, true, true, true =>
                 (UpdateUnConstrRelation _ qs Ridx
                                       (RelationInsert tup (GetUnConstrRelation qs Ridx)))
-              | _, _, _, _, _ => qs
-            end).
+              | _, _, _, _, _ => (qs)
+            end);
+         ret (qs, ())).
   Proof.
-    intros; rewrite QSInsertSpec_UnConstr_refine'; try eassumption.
-    setoid_rewrite H; setoid_rewrite H0; setoid_rewrite H1;
-    setoid_rewrite H2; setoid_rewrite H3; reflexivity.
+    intros.
+    setoid_rewrite <- H; setoid_rewrite <- H0; setoid_rewrite <- H1;
+    setoid_rewrite <- H2; setoid_rewrite <- H3;
+    setoid_rewrite <- QSInsertSpec_UnConstr_refine'; eauto.
+    repeat setoid_rewrite refineEquiv_pick_ex_computes_to_and.
+    repeat setoid_rewrite refineEquiv_pick_pair.
+    repeat setoid_rewrite refineEquiv_pick_eq';
+      repeat setoid_rewrite refineEquiv_bind_bind;
+      simplify with monad laws; setoid_rewrite refineEquiv_bind_unit; f_equiv.
   Qed.
 
 End InsertRefinements.
@@ -842,13 +803,13 @@ End InsertRefinements.
    so we're not unfolding things all willy-nilly. *)
 Arguments Iterate_Decide_Comp _ _ / .
 Arguments Iterate_Decide_Comp' _ _ _ _ / .
-Arguments Ensemble_BoundedIndex_app_cons  _ _ _ _ _ _ / .
+Arguments Ensemble_BoundedIndex_app_comm_cons  _ _ _ _ _ _ / .
 Arguments SatisfiesCrossRelationConstraints  _ _ _ _ _ / .
 Arguments BuildQueryStructureConstraints  _ _ _ _ _ / .
 Arguments BuildQueryStructureConstraints'  _ _ _ _ _ _ / .
 Arguments BuildQueryStructureConstraints_cons / .
 Arguments GetNRelSchemaHeading  _ _ / .
-Arguments Ensemble_BoundedIndex_app_cons  _ _ _ _ _ _ / .
+Arguments Ensemble_BoundedIndex_app_comm_cons  _ _ _ _ _ _ / .
 Arguments id  _ _ / .
 
   (* When we insert a tuple into a relation which has another relation has
@@ -858,37 +819,54 @@ Arguments id  _ _ / .
      irrelevant constraints somehow, but for now we can use the following
      tactic to rewrite them away. *)
 
-  Ltac remove_trivial_insertion_constraints r tup Ridx Ridx' attr attr' SiR :=
-    let refine_trivial := fresh in
-    assert
-           (refine {b' |
-                    decides b'
-                            (Ridx <> Ridx' ->
-                             forall tup',
-                               (GetUnConstrRelation r Ridx) tup' ->
-                               exists
-                                 tup2,
-                                 RelationInsert tup (GetUnConstrRelation r Ridx') tup2 /\
-                                 tup' attr = tup2 attr')} (ret true))
-          as refine_trivial by
-              (let v := fresh in
-               let Comp_v := fresh in
-               intros v Comp_v;
-               apply computes_to_inv in Comp_v;
-               rewrite <- SiR; subst;
-               repeat rewrite GetRelDropConstraints;
-               let neq := fresh in
-               let tup' := fresh in
-               let In_tup' := fresh in
-               econstructor; simpl map; simpl; intros neq tup' In_tup';
-               unfold RelationInsert;
-               let H' := fresh in
-               pose proof (@crossConstr _ _ Ridx Ridx' tup' neq In_tup') as H';
-               simpl map in *; simpl in *;
-               destruct H' as [? [? ?]]; eauto);
-      setoid_rewrite refine_trivial;
-      clear refine_trivial;
-      simplify with monad laws.
+  Ltac remove_trivial_insertion_constraints :=
+      match goal with
+          |- context[RelationInsert _ (GetUnConstrRelation _ _) ] =>
+          match goal with
+              SiR : DropQSConstraints_SiR ?or ?nr
+              |- context [
+                     Pick
+                       (fun b =>
+                          decides b
+                                  (?Ridx <> ?Ridx' ->
+                         forall tup' ,
+                           GetUnConstrRelation ?r ?Ridx tup' ->
+                           exists tup2,
+                             RelationInsert ?tup (GetUnConstrRelation ?r _) tup2 /\
+                             tup' ?attr = tup2 ?attr'))] =>
+              let refine_trivial := fresh in
+              assert
+                (refine {b' |
+                         decides b'
+                                 (Ridx <> Ridx' ->
+                                  forall tup',
+                                    (GetUnConstrRelation r Ridx) tup' ->
+                                    exists
+                                      tup2,
+                                      RelationInsert tup (GetUnConstrRelation r Ridx') tup2 /\
+                                      tup' attr = tup2 attr')} (ret true))
+                as refine_trivial;
+                [ let v := fresh in
+                  let Comp_v := fresh in
+                  intros v Comp_v;
+                    apply computes_to_inv in Comp_v;
+                    rewrite <- SiR; subst;
+                    repeat rewrite GetRelDropConstraints;
+                    let neq := fresh in
+                    let tup' := fresh in
+                    let In_tup' := fresh in
+                    econstructor; simpl map; simpl; intros neq tup' In_tup';
+                    unfold RelationInsert;
+                    let H' := fresh in
+                    pose proof (@crossConstr _ or Ridx Ridx' tup' neq In_tup') as H';
+                      simpl map in *; simpl in *;
+                      destruct H' as [? [? ?]]; eauto |
+                  setoid_rewrite refine_trivial;
+                    clear refine_trivial;
+                    simplify with monad laws ]
+
+          end
+      end.
 
 Create HintDb refine_keyconstraints discriminated.
 (*Hint Rewrite refine_Any_DecideableSB_True : refine_keyconstraints.*)

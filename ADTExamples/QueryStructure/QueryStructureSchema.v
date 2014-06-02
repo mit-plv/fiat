@@ -154,7 +154,7 @@ Fixpoint BuildQueryStructureConstraints'
 Definition BuildQueryStructureConstraints qsSchema :=
   BuildQueryStructureConstraints' (qschemaConstraints qsSchema).
 
-Notation "'query' 'structure' 'schema' relList 'enforcing' constraints" :=
+Notation "'Query' 'Structure' 'Schema' relList 'enforcing' constraints" :=
   (@Build_QueryStructureSchema relList%NamedSchema
                        (let relListHint := Build_namedSchemaHint relList%NamedSchema in
                         constraints%QSSchemaConstraints)) : QSSchema_scope.
@@ -174,12 +174,21 @@ Definition UnConstrQueryStructure (qsSchema : QueryStructureSchema) :=
   ilist (fun ns => UnConstrRelation (relSchema ns))
         (qschemaSchemas qsSchema).
 
-Notation "'query' 'structure' 'schema' relList " :=
+Notation "'Query' 'Structure' 'Schema' relList " :=
   (@Build_QueryStructureSchema relList%NamedSchema []) : QSSchema_scope.
 
 Bind Scope QSSchema_scope with QueryStructureSchema.
 
 Instance Astring_eq : Query_eq string := {| A_eq_dec := string_dec |}.
 
-Require Import Omega.
 Instance Anat_eq : Query_eq nat := {| A_eq_dec := eq_nat_dec |}.
+
+Notation GetAttributeKey Rel index :=
+  ((fun x : Attributes (GetNRelSchemaHeading (qschemaSchemas _) Rel) => x)  {| bindex := index |}).
+
+Notation GetRelationKey QSSchema index :=
+  (@Build_BoundedIndex _ (map relName (qschemaSchemas QSSchema))
+                      index _).
+
+Notation TupleDef QSSchema index :=
+  (@Tuple (QSGetNRelSchemaHeading QSSchema {| bindex := index%string |})).

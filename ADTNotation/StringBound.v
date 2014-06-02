@@ -77,7 +77,7 @@ Section IndexBound.
 
   Section Bounded_Index_Dec_Eq.
   (* If equality on A is decideable, so is equality
-     on bounded indices in in A. *)
+     on bounded indices in A. *)
     Variable A_eq_dec :
       forall a a' : A, {a = a'} + {a <> a'}.
 

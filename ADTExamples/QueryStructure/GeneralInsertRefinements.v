@@ -1,6 +1,6 @@
 Require Import String Omega List FunctionalExtensionality Ensembles
         Computation ADT ADTRefinement ADTNotation QueryStructureSchema
-        QueryQSSpecs InsertQSSpecs QueryStructure.
+        BuildADTRefinements QueryQSSpecs InsertQSSpecs QueryStructure.
 
 Lemma tupleAgree_refl :
   forall (h : Heading)
@@ -40,10 +40,14 @@ Ltac simplify_trivial_SatisfiesCrossRelationConstraints :=
 
 Tactic Notation "remove" "trivial" "insertion" "checks" :=
   (* Move all the binds we can outside the exists / computes
-   used for abstraction. *)
-  repeat setoid_rewrite refineEquiv_pick_ex_computes_to_bind_and;
-  (* apply etransitivity in order to rewrite insert first and
-     then simplify the trivial constraints. *)
+   used for abstraction, stopping when we've rewritten
+         the bind in [QSInsertSpec]. *)
+      repeat
+        (setoid_rewrite refineEquiv_pick_ex_computes_to_bind_and;
+         match goal with
+           | |- context [(Insert _ into ?R)%QuerySpec] => idtac
+           | _ => fail
+         end);
   etransitivity;
   [ (* drill under the binds so that we can rewrite [QSInsertSpec]
      (we can't use setoid_rewriting because there's a 'deep metavariable'
@@ -54,9 +58,10 @@ Tactic Notation "remove" "trivial" "insertion" "checks" :=
     (* Pull out the relation we're inserting into and then
      rewrite [QSInsertSpec] *)
             match goal with
-                |- context [(Insert _ into ?R)%QuerySpec] =>
+                H : DropQSConstraints_SiR _ ?r_n
+                |- context [(Insert ?n into ?R)%QuerySpec] =>
                 eapply (@QSInsertSpec_UnConstr_refine
-                          _ _ R _)
+                          _ r_n {|bindex := R |} n)
             end;
             (* try to discharge the trivial constraints *)
             [  simplify_trivial_SatisfiesSchemaConstraints
@@ -74,15 +79,20 @@ Tactic Notation "remove" "trivial" "insertion" "checks" :=
     ].
 
 Tactic Notation "Split" "Constraint" "Checks" :=
-  let b := match goal with
-             | [ |- context[if ?X then _ else _] ] => constr:(X)
-             | [ H : context[if ?X then _ else _] |- _ ]=> constr:(X)
-           end in
-  let b_eq := fresh in
-  eapply (@refine_if _ _ b); intros b_eq;
-  repeat setoid_rewrite b_eq;
-  repeat rewrite b_eq.
+  repeat (let b := match goal with
+                     | [ |- context[if ?X then _ else _] ] => constr:(X)
+                     | [ H : context[if ?X then _ else _] |- _ ]=> constr:(X)
+                   end in
+          let b_eq := fresh in
+          eapply (@refine_if _ _ b); intros b_eq;
+          simpl in *; repeat rewrite b_eq; simpl).
 
 Tactic Notation "implement" "failed" "insert" :=
   repeat (rewrite refine_pick_val, refineEquiv_bind_unit; eauto);
   reflexivity.
+
+Tactic Notation "drop" "constraints" "from" "insert" constr(methname) :=
+  hone method methname;
+  [ remove trivial insertion checks ;
+    repeat remove_trivial_insertion_constraints;
+    finish honing | ].

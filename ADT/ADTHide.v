@@ -1,39 +1,39 @@
-Require Import Common Computation ADT Ensembles.
+Require Import Common Computation.Core ADT.Core Ensembles.
 
 Section HideADT.
 
   Context {extSig : ADTSig}.
   (* The extended signature *)
 
-  Context {resMutatorIndex : Type}.
-  (* The restricted set of mutator indices *)
+  Context {resConstructorIndex : Type}.
+  (* The restricted set of constructor indices *)
 
-  Context {resObserverIndex : Type}.
-  (* The restricted set of observer indices *)
+  Context {resMethodIndex : Type}.
+  (* The restricted set of method indices *)
 
-  Variable MutatorMap : resMutatorIndex -> MutatorIndex extSig.
-  (* Map from restricted to extended mutator indices *)
+  Variable constructorMap : resConstructorIndex -> ConstructorIndex extSig.
+  (* Map from restricted to extended constructor indices *)
 
-  Variable ObserverMap : resObserverIndex -> ObserverIndex extSig.
-  (* Map from restricted to extended observer indices *)
+  Variable methodMap : resMethodIndex -> MethodIndex extSig.
+  (* Map from restricted to extended method indices *)
 
   Definition resSig :=
-    {| MutatorIndex := resMutatorIndex;
-       ObserverIndex := resObserverIndex;
-       MutatorDom idx := MutatorDom extSig (MutatorMap idx);
-       ObserverDomCod idx := ObserverDomCod extSig (ObserverMap idx)
+    {| ConstructorIndex := resConstructorIndex;
+       MethodIndex := resMethodIndex;
+       ConstructorDom idx := ConstructorDom extSig (constructorMap idx);
+       MethodDomCod idx := MethodDomCod extSig (methodMap idx)
     |}.
-  (* The signature of the ADT with restricted mutator and observer indices *)
+  (* The signature of the ADT with restricted constructor and method indices *)
 
   Definition HideADT (extADT : ADT extSig) : ADT resSig :=
     match extADT with
-        {| Rep := Rep;
-           MutatorMethods := extMutatorMethods;
-           ObserverMethods := extObserverMethods
+        {| Rep := rep;
+           Constructors := extConstructors;
+           Methods := extMethods
         |} =>
         Build_ADT resSig
-          (fun idx => extMutatorMethods (MutatorMap idx))
-          (fun idx => extObserverMethods (ObserverMap idx))
+          (fun idx => extConstructors (constructorMap idx))
+          (fun idx => extMethods (methodMap idx))
     end.
 
 End HideADT.

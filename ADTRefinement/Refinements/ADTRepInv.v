@@ -1,4 +1,7 @@
-Require Import Common Computation ADT Ensembles ADTRefinement.
+Require Import Common Computation Ensembles 
+        ADT.ADTSig ADT.Core
+        ADTRefinement.Core ADTRefinement.SetoidMorphisms
+        ADTRefinement.GeneralRefinements.
 
 Generalizable All Variables.
 Set Implicit Arguments.
@@ -69,42 +72,22 @@ Section RepInv.
       Hopefully we can include additional information into the honing
       tactics to avoid reproving invariant preservation.  *)
 
-  Lemma refineADT_Build_ADT_RepInv'
+  Lemma refineADT_Build_ADT_RepInv
         Sig
-  : forall mut mut',
-      (forall idx, @refineMutator _ _ repInvSiR
-                                  (MutatorDom Sig idx)
-                                  (mut idx) (mut' idx))
-      -> forall obs obs',
-           (forall idx, @refineObserver _ _ repInvSiR
-                                        (fst (ObserverDomCod Sig idx))
-                                        (snd (ObserverDomCod Sig idx))
-                                        (obs idx) (obs' idx))
-           -> refineADT (@Build_ADT Sig rep mut obs)
-                        (@Build_ADT Sig rep mut' obs').
+  : forall constr constr',
+      (forall idx, @refineConstructor _ _ repInvSiR
+                                  (ConstructorDom Sig idx)
+                                  (constr idx) (constr' idx))
+      -> forall meth meth',
+           (forall idx, @refineMethod _ _ repInvSiR
+                                        (fst (MethodDomCod Sig idx))
+                                        (snd (MethodDomCod Sig idx))
+                                        (meth idx) (meth' idx))
+           -> refineADT (@Build_ADT Sig rep constr meth)
+                        (@Build_ADT Sig rep constr' meth').
   Proof.
     intros; eapply refineADT_Build_ADT_Rep; eauto; reflexivity.
   Qed.
-
-  Definition refineADT_Build_ADT_RepInv := refineADT_Build_ADT_RepInv'.
-  (*Add Parametric Morphism
-      Sig
-  : (@Build_ADT Sig rep)
-      with signature
-    (fun mut mut' =>
-       forall idx, @refineMutator _ _ repInvSiR
-                                   (MutatorDom Sig idx)
-                                   (mut idx) (mut' idx))
-      ==> (fun obs obs' =>
-       forall idx, @refineObserver _ _ repInvSiR
-                                   (fst (ObserverDomCod Sig idx))
-                                   (snd (ObserverDomCod Sig idx))
-                                   (obs idx) (obs' idx))
-        ==> refineADT
-        as refineADT_Build_ADT_RepInv.
-  Proof.
-    apply refineADT_Build_ADT_RepInv'.
-  Qed.*)
 
   Lemma refine_pick_repInvSiR :
     forall r_o, repInv r_o ->
@@ -131,24 +114,26 @@ End RepInv.
 Lemma refinesADTRepInv Sig
       (adt : ADT Sig)
       (repInv : Ensemble (Rep adt))
-      ObserverMethods'
-      MutatorMethods'
-      (RefMut : forall idx (r : Rep adt) n,
+      Constructors'
+      Methods'
+      (RefConstr : forall idx d,
+                  refine
+                    (r_o' <- Constructors adt idx d;
+                      {r_n  | r_o' = r_n /\ repInv r_n})
+                    (Constructors' idx d))
+      (RefMeth : forall idx (r : Rep adt) n,
                   repInv r ->
                   refine
-                    (r' <- MutatorMethods adt idx r n;
-                     {r'' : Rep adt | repInvSiR repInv r' r''})
-                    (MutatorMethods' idx r n))
-      (RefObv : forall idx (r : Rep adt) n,
-                  repInv r ->
-                  refine
-                    (ObserverMethods adt idx r n)
-                    (ObserverMethods' idx r n))
-      (cachedIndex : ObserverIndex Sig)
+                    (r' <- Methods adt idx r n;
+                     r'' <- {r'' : Rep adt | 
+                             repInvSiR repInv (fst r') r''};
+                    ret (r'', snd r'))
+                    (Methods' idx r n))
+      (cachedIndex : ConstructorIndex Sig)
 : refineADT adt
             {| Rep := Rep adt;
-               MutatorMethods := MutatorMethods';
-               ObserverMethods := ObserverMethods'
+               Constructors := Constructors';
+               Methods := Methods'
             |}.
 Proof.
   destruct adt.
@@ -157,7 +142,7 @@ Proof.
   simpl in *; intros; intuition; subst; eauto.
 Qed.
 
-Tactic Notation "hone" "mutator" constr(mutIdx) "using" constr(mutBody)
+Tactic Notation "hone" "method" constr(mutIdx) "using" constr(mutBody)
        "under" "invariant" constr(repInv) :=
     let A :=
         match goal with
@@ -167,19 +152,19 @@ Tactic Notation "hone" "mutator" constr(mutIdx) "using" constr(mutBody)
                 end in
     let mutIdx_eq' := fresh in
     let Rep' := eval simpl in (Rep A) in
-    let MutatorIndex' := eval simpl in (MutatorIndex ASig) in
-    let ObserverIndex' := eval simpl in (ObserverIndex ASig) in
-    let MutatorMethods' := eval simpl in (MutatorMethods A) in
-    let ObserverMethods' := eval simpl in (ObserverMethods A) in
-      assert (forall idx idx' : MutatorIndex', {idx = idx'} + {idx <> idx'})
+    let MethodIndex' := eval simpl in (MethodIndex ASig) in
+    let ConstructorIndex' := eval simpl in (ConstructorIndex ASig) in
+    let Methods' := eval simpl in (Methods A) in
+    let Constructors' := eval simpl in (Constructors A) in
+      assert (forall idx idx' : MethodIndex', {idx = idx'} + {idx <> idx'})
         as mutIdx_eq' by (decide equality);
       eapply SharpenStep;
         [eapply (@refineADT_Build_ADT_RepInv Rep' repInv
                    _
                    _
-                   (fun idx : MutatorIndex ASig => if (mutIdx_eq' idx mutIdx) then
+                   (fun idx : MethodIndex ASig => if (mutIdx_eq' idx mutIdx) then
                                  mutBody
                                else
-                                 MutatorMethods' idx));
-          try instantiate (1 := ObserverMethods')
+                                 Methods' idx));
+          try instantiate (1 := Constructors')
         | idtac]; cbv beta in *; simpl in *.

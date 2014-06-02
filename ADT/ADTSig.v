@@ -1,30 +1,29 @@
 Require Export Common Computation ADTNotation.ilist.
 
-(** Type of a mutator method. *)
-Definition mutatorMethodType (Ty dom : Type)
-  := Ty    (* Initial model *)
-     -> dom (* Actual argument*)
-     -> Comp Ty (* Final Model *).
+(** Type of a constructor. *)
+Definition constructorType (rep dom : Type)
+  :=  dom (* Initialization arguments *)
+     -> Comp rep (* Freshly constructed model *).
 
-(** Type of an obeserver method. *)
-Definition observerMethodType (Ty dom cod : Type)
-  := Ty    (* Initial model *)
-     -> dom (* Actual argument*)
-     -> Comp cod. (* Return value *)
+(** Type of a method. *)
+Definition methodType (rep dom cod : Type)
+  := rep    (* Initial model *)
+     -> dom (* Method arguments *)
+     -> Comp (rep * cod) (* Final model and return value. *).
 
+(* Signatures of ADT operations *)
 Record ADTSig :=
-  { MutatorIndex : Type;
-     (** The index set of mutators *)
+  {
+    (** The index set of constructors *)
+    ConstructorIndex : Type;
 
-     ObserverIndex : Type;
-     (** The index set of observers *)
+    (** The index set of methods *)
+    MethodIndex : Type;
 
-     MutatorDom : MutatorIndex -> Type;
-     (** The representation-independent piece of the
-         domain of mutator methods. **)
+    (** The representation-independent domain of constructors. *)
+    ConstructorDom : ConstructorIndex -> Type;
 
-    ObserverDomCod : ObserverIndex -> (Type * Type)
-     (** The representation-independent piece of the
-         domain and codomain of observer methods. **)
+    (** The representation-independent domain and codomain of methods. *)
+    MethodDomCod : MethodIndex -> Type * Type
 
   }.

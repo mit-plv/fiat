@@ -1,6 +1,7 @@
-Require Export Common Computation ADTSig ADT ADTNotation.ilist
+Require Import Common List String
+        ADT.ADTSig ADT.Core 
+        ADTNotation.StringBound ADTNotation.ilist
         ADTNotation.BuildADTSig ADTNotation.BuildADT.
-Require Import Ensembles ADTNotation.StringBound String List.
 
 (* Definitions for replacing method bodies of ADTs built
    from [BuildADT] . *)
@@ -8,42 +9,42 @@ Require Import Ensembles ADTNotation.StringBound String List.
 Section ReplaceMethods.
 
   Variable Rep : Type.
-  Variable mutSigs : list mutSig.
-  Variable obsSigs : list obsSig.
-  Variable mutDefs : ilist (@mutDef Rep) mutSigs.
-  Variable obsDefs : ilist (@obsDef Rep) obsSigs.
+  Variable consSigs : list consSig.
+  Variable methSigs : list methSig.
+  Variable consDefs : ilist (@consDef Rep) consSigs.
+  Variable methDefs : ilist (@methDef Rep) methSigs.
 
-  Program Definition replaceMutDef
-             (idx : @BoundedString (map mutID mutSigs))
-             (newDef : mutDef (nth_Bounded mutID mutSigs idx))
-  : ilist (@mutDef Rep) mutSigs :=
-    replace_BoundedIndex _ mutDefs idx newDef.
+  Program Definition replaceConsDef
+             (idx : @BoundedString (map consID consSigs))
+             (newDef : consDef (nth_Bounded consID consSigs idx))
+  : ilist (@consDef Rep) consSigs :=
+    replace_BoundedIndex _ consDefs idx newDef.
 
-  Definition ADTReplaceMutDef
-             (idx : @BoundedString (map mutID mutSigs))
-             (newDef : mutDef (nth_Bounded mutID mutSigs idx))
-  : ADT (BuildADTSig mutSigs obsSigs)
-    := BuildADT (replaceMutDef idx newDef) obsDefs.
+  Definition ADTReplaceConsDef
+             (idx : @BoundedString (map consID consSigs))
+             (newDef : consDef (nth_Bounded consID consSigs idx))
+  : ADT (BuildADTSig consSigs methSigs)
+    := BuildADT (replaceConsDef idx newDef) methDefs.
 
-  Definition replaceObsDef
-             (idx : @BoundedString (map obsID obsSigs))
-             (newDef : obsDef (nth_Bounded obsID obsSigs idx))
-  : ilist (@obsDef Rep) obsSigs :=
-    replace_BoundedIndex _ obsDefs idx newDef.
+  Definition replaceMethDef
+             (idx : @BoundedString (map methID methSigs))
+             (newDef : methDef (nth_Bounded methID methSigs idx))
+  : ilist (@methDef Rep) methSigs :=
+    replace_BoundedIndex _ methDefs idx newDef.
 
-  Definition ADTReplaceObsDef
-             (idx : @BoundedString (map obsID obsSigs))
-             (newDef : obsDef (nth_Bounded obsID obsSigs idx))
-  : ADT (BuildADTSig mutSigs obsSigs)
-    := BuildADT mutDefs (replaceObsDef idx newDef).
+  Definition ADTReplaceMethDef
+             (idx : @BoundedString (map methID methSigs))
+             (newDef : methDef (nth_Bounded methID methSigs idx))
+  : ADT (BuildADTSig consSigs methSigs)
+    := BuildADT consDefs (replaceMethDef idx newDef).
 
 End ReplaceMethods.
 
 (* Always simplify method replacement when the index and new
    body are specified. *)
 
-Arguments replaceMutDef [_ _] _ idx%string newDef%mutDef / .
-Arguments ADTReplaceMutDef [_ _ _] _ _ idx%string newDef%mutDef / .
+Arguments replaceConsDef [_ _] _ idx%string newDef%consDef / .
+Arguments ADTReplaceConsDef [_ _ _] _ _ idx%string newDef%consDef / .
 
-Arguments replaceObsDef [_ _] _ idx%string newDef%obsDef / .
-Arguments ADTReplaceObsDef [_ _ _] _ _ idx%string newDef%obsDef / .
+Arguments replaceMethDef [_ _] _ idx%string newDef%methDef / .
+Arguments ADTReplaceMethDef [_ _ _] _ _ idx%string newDef%methDef / .

@@ -1,5 +1,6 @@
-Require Import Common Computation ADT Ensembles.
-Require Import ADTRefinement.Core ADTRefinement.SetoidMorphisms.
+Require Import Common Computation 
+        ADT.ADTSig ADT.Core
+        ADTRefinement.Core ADTRefinement.SetoidMorphisms.
 
 Section SimplifyRep.
 
@@ -17,45 +18,44 @@ Section SimplifyRep.
   Variable SiR : oldRep -> newRep -> Prop.
   Notation "ro ≃ rn" := (SiR ro rn) (at level 70).
 
-  Definition simplifyMutatorMethod
-             (Dom : Type)
-             (oldMuts : mutatorMethodType oldRep Dom)
-             r_n n : Comp newRep :=
-    (r_o' <- (oldMuts (concretize r_n) n);
-     ret (simplifyf r_o'))%comp.
-
-  Definition simplifyObserverMethod
+  Definition simplifyMethod
              (Dom Cod : Type)
-             (oldObs : observerMethodType oldRep Dom Cod)
-             nr n : Comp Cod :=
-    oldObs (concretize nr) n.
+             (oldMeth : methodType oldRep Dom Cod)
+             r_n n : Comp (newRep * Cod) :=
+    (r_o' <- (oldMeth (concretize r_n) n);
+     ret (simplifyf (fst r_o'), snd r_o'))%comp.
+
+  Definition simplifyConstructor
+             (Dom : Type)
+             (oldConstr : constructorType oldRep Dom)
+             n : Comp newRep :=
+    (or <- oldConstr n;
+     ret (simplifyf or))%comp.
 
   Variable Sig : ADTSig. (* The signature of the ADT being simplified. *)
 
-  Definition simplifyRep
-             oldMuts oldObs :
+  Definition simplifyRep oldConstr oldMeths :
+    (forall r_o, r_o ≃ simplifyf r_o) -> 
     (forall r_n r_o,
        (r_o ≃ r_n) ->
        forall idx n,
-         refineEquiv (r_o'' <- oldMuts idx r_o n;
-                      {r_n' | r_o'' ≃ r_n'})
-                     (r_o'' <- oldMuts idx (concretize r_n) n;
-                      ret (simplifyf r_o''))) ->
-    (forall r_n r_o,
-       (r_o ≃ r_n) ->
-       forall idx n,
-         refineEquiv (oldObs idx r_o n)
-                     (oldObs idx (concretize r_n) n)) ->
+         refineEquiv (r_o'' <- oldMeths idx r_o n;
+                      r_n' <- {r_n' | fst r_o'' ≃ r_n'};
+                      ret (r_n', snd r_o''))
+                     (r_o'' <- oldMeths idx (concretize r_n) n;
+                      ret (simplifyf (fst r_o''), snd r_o''))) ->
     refineADT
-      (@Build_ADT Sig oldRep oldMuts oldObs)
+      (@Build_ADT Sig oldRep oldConstr oldMeths)
       (@Build_ADT Sig newRep
-                  (fun idx => simplifyMutatorMethod (oldMuts idx))
-                  (fun idx => simplifyObserverMethod (oldObs idx))).
+                  (fun idx => simplifyConstructor (oldConstr idx))
+                  (fun idx => simplifyMethod (oldMeths idx))).
   Proof.
     econstructor 1 with
     (SiR := SiR); simpl; eauto.
-    - unfold simplifyMutatorMethod; intros; eapply H; eauto.
-    - unfold simplifyObserverMethod; intros; eapply H0; eauto.
+    - unfold simplifyConstructor, refine; intros;
+      inversion_by computes_to_inv; repeat econstructor; subst; eauto.
+    - unfold simplifyMethod; intros. 
+      eapply H0; eauto.
   Qed.
 
 End SimplifyRep.
