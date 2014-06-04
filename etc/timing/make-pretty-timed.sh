@@ -35,7 +35,7 @@ source "$DIR"/make-pretty-timed-defaults.sh "$@"
 # run make clean and make
 bash "$DIR"/make-each-time-file.sh "$MAKE" "$SINGLE_TIME_FILE" || exit 1
 # aggregate the results
-python "$DIR"/make-one-time-file.py "$SINGLE_TIME_FILE" "$SINGLE_PRETTY_TIME_FILE" || exit 1
+python "$(relpath "$DIR"/make-one-time-file.py)" "$SINGLE_TIME_FILE" "$SINGLE_PRETTY_TIME_FILE" || exit 1
 # print out the results
 cat "$SINGLE_PRETTY_TIME_FILE"
 # echo a final new line, because `cat` doesn't

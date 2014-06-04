@@ -16,7 +16,7 @@ trap "exit 1" SIGHUP SIGINT SIGTERM
 source "$DIR"/make-pretty-timed-defaults.sh "$@"
 
 # aggregate the results
-python "$DIR"/make-both-time-files.py "$NEW_TIME_FILE" "$OLD_TIME_FILE" "$BOTH_TIME_FILE" || exit 1
+python "$(relpath "$DIR"/make-both-time-files.py)" "$NEW_TIME_FILE" "$OLD_TIME_FILE" "$BOTH_TIME_FILE" || exit 1
 # print out the results
 cat "$BOTH_TIME_FILE"
 # echo a final new line, because `cat` doesn't
