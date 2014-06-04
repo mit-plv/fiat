@@ -26,7 +26,7 @@
 #
 # $ git status
 # $ git add <all files mentioned above which you care to have in the repo>
-# $ ./etc/timing/make-pretty-timed-diff.sh
+# $ "$DIR"/make-pretty-timed-diff.sh
 # $ git commit -at ./time-of-build-both.log
 #
 # This will bring up an editor, where you should add your commit
@@ -44,9 +44,9 @@ source "$DIR/pushd-root.sh"
 trap "exit 1" SIGHUP SIGINT SIGTERM
 
 # get the names of the files we use
-source ./etc/timing/make-pretty-timed-defaults.sh "$@"
+source "$DIR"/make-pretty-timed-defaults.sh "$@"
 
 # run make clean and make, on both the old state and the new state
-bash ./etc/timing/make-each-time-file.sh "$MAKE" "$NEW_TIME_FILE" "$OLD_TIME_FILE" || exit 1
+bash "$DIR"/make-each-time-file.sh "$MAKE" "$NEW_TIME_FILE" "$OLD_TIME_FILE" || exit 1
 # aggregate the results
-bash ./etc/timing/make-combine-pretty-timed.sh "$@"
+bash "$DIR"/make-combine-pretty-timed.sh "$@"
