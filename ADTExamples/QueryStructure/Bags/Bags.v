@@ -734,6 +734,246 @@ Proof.
   rewrite star_search, IHcontainer; trivial.
 Defined.
 
+Definition IsCacheable
+           {TItem TAcc}
+           (initial_value: TAcc)
+           (cache_updater: TItem -> TAcc -> TAcc) :=
+  forall seq1 seq2,
+    SetEq seq1 seq2 ->
+    (List.fold_right cache_updater initial_value seq1 =
+     List.fold_right cache_updater initial_value seq2).
+  
+Record CachingBag 
+       {TBag TItem TSearchTerm: Type} 
+       {bag_bag: Bag TBag TItem TSearchTerm} 
+       {TCachedValue: Type}
+       {initial_cached_value: TCachedValue}
+       {cache_updater: TItem -> TCachedValue -> TCachedValue} 
+       {cache_update_seteq_morphism: IsCacheable initial_cached_value cache_updater} :=
+  { 
+    cbag:          TBag;
+    ccached_value: TCachedValue;
+    
+    cfresh_cache:  List.fold_right cache_updater initial_cached_value (benumerate cbag) = ccached_value
+  }.
+
+Lemma eq_sym_iff :
+  forall {A} x y, @eq A x y <-> @eq A y x.
+Proof. split; intros; symmetry; assumption. Qed.
+
+Lemma binsert_enumerate_SetEq {TContainer TItem TSearchTerm} (bag: Bag TContainer TItem TSearchTerm):
+  forall inserted container,
+    SetEq 
+      (benumerate (binsert container inserted))
+      (inserted :: (benumerate container)).
+Proof.
+  unfold SetEq; intros; simpl.
+  setoid_rewrite or_comm; setoid_rewrite eq_sym_iff. 
+  apply binsert_enumerate. 
+Qed.
+
+Lemma benumerate_empty_eq_nil {TContainer TItem TSearchTerm} (bag: Bag TContainer TItem TSearchTerm):
+  (benumerate bempty) = []. 
+Proof.
+  pose proof (benumerate_empty) as not_in.
+  destruct (benumerate bempty) as [ | item ? ]; 
+    simpl in *;
+    [ | exfalso; apply (not_in item) ];
+    eauto.
+Qed.
+
+Instance CachingBagAsBag 
+         {TBag TItem TSearchTerm: Type} 
+         {bag_bag: Bag TBag TItem TSearchTerm} 
+         {TCachedValue: Type}
+         {initial_cached_value: TCachedValue} 
+         {cache_updater: TItem -> TCachedValue -> TCachedValue} 
+         {cache_update_seteq_morphism: IsCacheable initial_cached_value cache_updater}
+         (caching_bag: @CachingBag TBag TItem TSearchTerm bag_bag 
+                                   TCachedValue initial_cached_value cache_updater 
+                                   cache_update_seteq_morphism)
+         : Bag (@CachingBag TBag TItem TSearchTerm bag_bag 
+                            TCachedValue initial_cached_value cache_updater
+                            cache_update_seteq_morphism) 
+               TItem 
+               TSearchTerm :=
+  {| 
+    bempty                         := {| cbag          := @bempty _ _ _ bag_bag; 
+                                         ccached_value := initial_cached_value |};
+    bstar                          := @bstar _ _ _ bag_bag;
+    bfind_matcher search_term item := bfind_matcher search_term item;
+
+    benumerate container        := benumerate container.(cbag);
+    bfind container search_term := bfind container.(cbag) search_term; 
+    binsert container item      := {| cbag          := binsert container.(cbag) item;
+                                      ccached_value := cache_updater item container.(ccached_value) |} 
+  |}.
+Proof.    
+  simpl; intros; apply binsert_enumerate.
+  simpl; intros; apply benumerate_empty.
+  simpl; intros; apply bstar_search.
+  simpl; intros; apply bfind_correct.
+
+  Grab Existential Variables.
+
+  rewrite (cache_update_seteq_morphism _ _ (binsert_enumerate_SetEq bag_bag _ _));
+  simpl; setoid_rewrite cfresh_cache; reflexivity.
+
+  rewrite benumerate_empty_eq_nil; reflexivity.
+Qed.
+
+Lemma in_nil_iff :
+  forall {A} (item: A),
+    List.In item [] <-> False.
+Proof.
+  intuition.
+Qed.
+
+Lemma in_not_nil :
+  forall {A} x seq,
+    @List.In A x seq -> seq <> nil.
+Proof.
+  intros A x seq in_seq eq_nil.
+  apply (@in_nil _ x).
+  subst seq; assumption.
+Qed.
+
+Lemma in_seq_false_nil_iff :
+   forall {A} (seq: list A),
+     (forall (item: A), (List.In item seq <-> False)) <-> 
+     (seq = []).
+Proof.
+  intros.
+  destruct seq; simpl in *; try tauto.
+  split; intro H.
+  exfalso; specialize (H a); rewrite <- H; eauto.
+  discriminate.
+Qed.
+
+Lemma seteq_nil_nil :
+  forall {A} seq,
+    @SetEq A seq nil <-> seq = nil.
+Proof.
+  unfold SetEq.
+  intros; destruct seq.
+
+  tauto.
+  split; [ | discriminate ].
+  intro H; specialize (H a).
+  exfalso; simpl in H; rewrite <- H; eauto.
+Qed.
+
+Lemma seteq_nil_nil' :
+  forall {A} seq,
+    @SetEq A nil seq <-> seq = nil.
+Proof.
+  setoid_rewrite SetEq_Symmetric_iff.
+  intro; exact seteq_nil_nil.
+Qed.
+
+Section CacheableFunctions. 
+  Definition IsMax m seq :=
+    (forall x, List.In x seq -> x <= m) /\ List.In m seq.
+
+  Add Parametric Morphism (m: nat) :
+    (IsMax m)
+      with signature (@SetEq nat ==> iff)
+        as IsMax_morphism.
+  Proof.
+    firstorder.
+  Qed.
+
+  Definition ListMax default seq :=
+    List.fold_right max default seq.
+
+  Lemma le_r_le_max : 
+    forall x y z,
+      x <= z -> x <= max y z.
+  Proof.
+    intros x y z;
+    destruct (Max.max_spec y z) as [ (comp, eq) | (comp, eq) ]; 
+    rewrite eq;
+    omega.
+  Qed.
+
+  Lemma le_l_le_max : 
+    forall x y z,
+      x <= y -> x <= max y z.
+  Proof.
+    intros x y z. 
+    rewrite Max.max_comm.
+    apply le_r_le_max.
+  Qed.
+
+  Lemma ListMax_correct_nil :
+    forall seq default,
+      seq = nil -> ListMax default seq = default.
+  Proof.
+    unfold ListMax; intros; subst; intuition.
+  Qed.
+  
+  Lemma ListMax_correct :
+    forall seq default,
+      IsMax (ListMax default seq) (default :: seq).
+  Proof.
+    unfold IsMax; 
+    induction seq as [ | head tail IH ]; 
+    intros; simpl.
+ 
+    intuition.
+
+    specialize (IH default);
+    destruct IH as (sup & in_seq).
+
+    split. 
+
+    intros x [ eq | [ eq | in_tail ] ].
+    
+    apply le_r_le_max, sup; simpl; intuition.
+    apply le_l_le_max; subst; intuition.
+    apply le_r_le_max, sup; simpl; intuition.
+
+    destruct in_seq as [ max_default | max_in_tail ].
+
+    rewrite <- max_default, Max.max_comm;
+    destruct (Max.max_spec default head); 
+    intuition.
+
+    match goal with
+      | [ |- context[ max ?a ?b ] ] => destruct (Max.max_spec a b) as [ (comp & max_eq) | (comp & max_eq) ]
+    end; rewrite max_eq; intuition.
+  Qed.
+
+  Lemma Max_unique :
+    forall {x y} seq,
+      IsMax x seq ->
+      IsMax y seq -> 
+      x = y.
+  Proof.
+    unfold IsMax;
+    intros x y seq (x_sup & x_in) (y_sup & y_in);
+    specialize (x_sup _ y_in);
+    specialize (y_sup _ x_in);
+    apply Le.le_antisym; assumption.
+  Qed.
+
+  (* TODO: rename SetEq_append to SetEq_cons *)
+
+  (* TODO: find a cleaner way than destruct; discriminate *)
+  (* TODO: Look at reflexive, discriminate, congruence, absurd in more details *)
+  Lemma max_cacheable :
+    forall initial_value,
+      IsCacheable initial_value max.
+  Proof.
+    unfold IsCacheable.
+
+    intros init seq1 seq2 set_eq;
+    apply (Max_unique (init :: seq1));
+    [ | setoid_rewrite (SetEq_append _ _ init set_eq) ];
+    apply ListMax_correct.
+  Qed.
+End CacheableFunctions.
+
 Require Import Tuple Heading.
 
 Definition TSearchTermMatcher (heading: Heading) := (@Tuple heading -> bool).
@@ -847,21 +1087,6 @@ Lemma eq_attributes : forall seq (a b: @BoundedString seq),
     intuition (apply string_dec).
 Qed.
 
-Ltac ProveDecidability indices :=
-  refine (NestedTreeFromAttributes' AlbumHeading indices _);
-  intros attr in_indices; simpl in *;
-  setoid_rewrite eq_attributes in in_indices;
-
-  destruct attr as [bindex indexb];
-  destruct indexb as [ibound boundi];
-  simpl in *;
-
-  repeat match goal with 
-           | [ |- _ ] => 
-             destruct ibound as [ | ibound ];
-               [ try (exfalso; omega); solve [eauto] | try discriminate ]
-         end.
-
 Definition CheckType {heading} (attr: Attributes heading) (rightT: _) :=
   {| Attribute := attr; ProperlyTyped := rightT |}.
 
@@ -877,19 +1102,13 @@ Ltac autoconvert func :=
   end.
 
 Ltac mkIndex heading attributes :=
-  set (source := attributes);
-  assert (list (@ProperAttribute heading)) as decorated_source;
-  autoconvert (@CheckType heading);
+  set (src := attributes);
+  assert (list (@ProperAttribute heading)) as decorated_source by autoconvert (@CheckType heading);
   apply (NestedTreeFromAttributes' heading decorated_source).
 
 Definition SampleIndex : BagPlusBagProof AlbumHeading.
 Proof.
   mkIndex AlbumHeading [Year; UKpeak; Name].
-Defined.
-
-Definition SampleIndex' : BagPlusBagProof AlbumHeading.
-Proof.
-  refine (NestedTreeFromAttributes' AlbumHeading [CheckType Year _; CheckType UKpeak _; CheckType Name _]);   eauto.
 Defined.
 
 Definition IndexedAlbums :=
