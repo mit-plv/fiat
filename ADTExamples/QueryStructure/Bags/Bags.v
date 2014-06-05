@@ -749,7 +749,7 @@ Record CachingBag
        {TCachedValue: Type}
        {initial_cached_value: TCachedValue}
        {cache_updater: TItem -> TCachedValue -> TCachedValue} 
-       {cache_update_seteq_morphism: IsCacheable initial_cached_value cache_updater} :=
+       {cache_updater_cacheable: IsCacheable initial_cached_value cache_updater} :=
   { 
     cbag:          TBag;
     ccached_value: TCachedValue;
@@ -788,13 +788,13 @@ Instance CachingBagAsBag
          {TCachedValue: Type}
          {initial_cached_value: TCachedValue} 
          {cache_updater: TItem -> TCachedValue -> TCachedValue} 
-         {cache_update_seteq_morphism: IsCacheable initial_cached_value cache_updater}
+         {cache_updater_cacheable: IsCacheable initial_cached_value cache_updater}
          (caching_bag: @CachingBag TBag TItem TSearchTerm bag_bag 
                                    TCachedValue initial_cached_value cache_updater 
-                                   cache_update_seteq_morphism)
+                                   cache_updater_cacheable)
          : Bag (@CachingBag TBag TItem TSearchTerm bag_bag 
                             TCachedValue initial_cached_value cache_updater
-                            cache_update_seteq_morphism) 
+                            cache_updater_cacheable) 
                TItem 
                TSearchTerm :=
   {| 
@@ -816,7 +816,7 @@ Proof.
 
   Grab Existential Variables.
 
-  rewrite (cache_update_seteq_morphism _ _ (binsert_enumerate_SetEq bag_bag _ _));
+  rewrite (cache_updater_cacheable _ _ (binsert_enumerate_SetEq bag_bag _ _));
   simpl; setoid_rewrite cfresh_cache; reflexivity.
 
   rewrite benumerate_empty_eq_nil; reflexivity.
@@ -871,107 +871,154 @@ Proof.
   intro; exact seteq_nil_nil.
 Qed.
 
-Section CacheableFunctions. 
-  Definition IsMax m seq :=
-    (forall x, List.In x seq -> x <= m) /\ List.In m seq.
+Section CacheableFunctions.
+  Section Generalities.
+    Lemma foldright_compose :
+      forall {TInf TOutf TAcc} 
+             (g : TOutf -> TAcc -> TAcc) (f : TInf -> TOutf) 
+             (seq : list TInf) (init : TAcc),
+        List.fold_right (compose g f) init seq =
+        List.fold_right g init (List.map f seq).
+    Proof.
+      intros; 
+      induction seq; 
+      simpl; 
+      [  | rewrite IHseq ];
+      reflexivity.
+    Qed.            
 
-  Add Parametric Morphism (m: nat) :
-    (IsMax m)
-      with signature (@SetEq nat ==> iff)
-        as IsMax_morphism.
-  Proof.
-    firstorder.
-  Qed.
+    Lemma projection_cacheable :
+      forall {TItem TCacheUpdaterInput TCachedValue} 
+             (projection: TItem -> TCacheUpdaterInput)
+             (cache_updater: TCacheUpdaterInput -> TCachedValue -> TCachedValue)
+             (initial_value: TCachedValue),
+        IsCacheable initial_value cache_updater -> 
+        IsCacheable initial_value (compose cache_updater projection).
+      Proof.
+        unfold IsCacheable.
+        intros * is_cacheable * set_eq. 
+        rewrite !foldright_compose; 
+          apply is_cacheable;
+          rewrite set_eq;
+          reflexivity.
+      Qed.
 
-  Definition ListMax default seq :=
-    List.fold_right max default seq.
+      Definition AddCachingLayer
+                 {TBag TItem TSearchTerm: Type} 
+                 (bag: Bag TBag TItem TSearchTerm)
+                 {TCacheUpdaterInput TCachedValue: Type}
+                 (cache_projection: TItem -> TCacheUpdaterInput) 
+                 (initial_cached_value: TCachedValue)
+                 (cache_updater: TCacheUpdaterInput -> TCachedValue -> TCachedValue) 
+                 (cache_updater_cacheable: IsCacheable initial_cached_value cache_updater) :=
+        @CachingBag TBag TItem TSearchTerm 
+                    bag TCachedValue initial_cached_value 
+                    (compose cache_updater cache_projection) 
+                    (projection_cacheable cache_projection cache_updater initial_cached_value cache_updater_cacheable).
+  End Generalities.
 
-  Lemma le_r_le_max : 
-    forall x y z,
-      x <= z -> x <= max y z.
-  Proof.
-    intros x y z;
-    destruct (Max.max_spec y z) as [ (comp, eq) | (comp, eq) ]; 
-    rewrite eq;
-    omega.
-  Qed.
+  Section MaxCacheable.
+    Definition IsMax m seq :=
+      (forall x, List.In x seq -> x <= m) /\ List.In m seq.
 
-  Lemma le_l_le_max : 
-    forall x y z,
-      x <= y -> x <= max y z.
-  Proof.
-    intros x y z. 
-    rewrite Max.max_comm.
-    apply le_r_le_max.
-  Qed.
+    Add Parametric Morphism (m: nat) :
+      (IsMax m)
+        with signature (@SetEq nat ==> iff)
+          as IsMax_morphism.
+    Proof.
+      firstorder.
+    Qed.
 
-  Lemma ListMax_correct_nil :
-    forall seq default,
-      seq = nil -> ListMax default seq = default.
-  Proof.
-    unfold ListMax; intros; subst; intuition.
-  Qed.
-  
-  Lemma ListMax_correct :
-    forall seq default,
-      IsMax (ListMax default seq) (default :: seq).
-  Proof.
-    unfold IsMax; 
-    induction seq as [ | head tail IH ]; 
-    intros; simpl.
- 
-    intuition.
+    Definition ListMax default seq :=
+      List.fold_right max default seq.
 
-    specialize (IH default);
-    destruct IH as (sup & in_seq).
+    Lemma le_r_le_max : 
+      forall x y z,
+        x <= z -> x <= max y z.
+    Proof.
+      intros x y z;
+      destruct (Max.max_spec y z) as [ (comp, eq) | (comp, eq) ]; 
+      rewrite eq;
+      omega.
+    Qed.
 
-    split. 
+    Lemma le_l_le_max : 
+      forall x y z,
+        x <= y -> x <= max y z.
+    Proof.
+      intros x y z. 
+      rewrite Max.max_comm.
+      apply le_r_le_max.
+    Qed.
 
-    intros x [ eq | [ eq | in_tail ] ].
+    Lemma ListMax_correct_nil :
+      forall seq default,
+        seq = nil -> ListMax default seq = default.
+    Proof.
+      unfold ListMax; intros; subst; intuition.
+    Qed.
     
-    apply le_r_le_max, sup; simpl; intuition.
-    apply le_l_le_max; subst; intuition.
-    apply le_r_le_max, sup; simpl; intuition.
+    Lemma ListMax_correct :
+      forall seq default,
+        IsMax (ListMax default seq) (default :: seq).
+    Proof.
+      unfold IsMax; 
+      induction seq as [ | head tail IH ]; 
+      intros; simpl.
+      
+      intuition.
 
-    destruct in_seq as [ max_default | max_in_tail ].
+      specialize (IH default);
+        destruct IH as (sup & in_seq).
 
-    rewrite <- max_default, Max.max_comm;
-    destruct (Max.max_spec default head); 
-    intuition.
+      split. 
 
-    match goal with
-      | [ |- context[ max ?a ?b ] ] => destruct (Max.max_spec a b) as [ (comp & max_eq) | (comp & max_eq) ]
-    end; rewrite max_eq; intuition.
-  Qed.
+      intros x [ eq | [ eq | in_tail ] ].
+      
+      apply le_r_le_max, sup; simpl; intuition.
+      apply le_l_le_max; subst; intuition.
+      apply le_r_le_max, sup; simpl; intuition.
 
-  Lemma Max_unique :
-    forall {x y} seq,
-      IsMax x seq ->
-      IsMax y seq -> 
-      x = y.
-  Proof.
-    unfold IsMax;
-    intros x y seq (x_sup & x_in) (y_sup & y_in);
-    specialize (x_sup _ y_in);
-    specialize (y_sup _ x_in);
-    apply Le.le_antisym; assumption.
-  Qed.
+      destruct in_seq as [ max_default | max_in_tail ].
 
-  (* TODO: rename SetEq_append to SetEq_cons *)
+      rewrite <- max_default, Max.max_comm;
+        destruct (Max.max_spec default head); 
+        intuition.
 
-  (* TODO: find a cleaner way than destruct; discriminate *)
-  (* TODO: Look at reflexive, discriminate, congruence, absurd in more details *)
-  Lemma max_cacheable :
-    forall initial_value,
-      IsCacheable initial_value max.
-  Proof.
-    unfold IsCacheable.
+      match goal with
+        | [ |- context[ max ?a ?b ] ] => destruct (Max.max_spec a b) as [ (comp & max_eq) | (comp & max_eq) ]
+      end; rewrite max_eq; intuition.
+    Qed.
 
-    intros init seq1 seq2 set_eq;
-    apply (Max_unique (init :: seq1));
-    [ | setoid_rewrite (SetEq_append _ _ init set_eq) ];
-    apply ListMax_correct.
-  Qed.
+    Lemma Max_unique :
+      forall {x y} seq,
+        IsMax x seq ->
+        IsMax y seq -> 
+        x = y.
+    Proof.
+      unfold IsMax;
+      intros x y seq (x_sup & x_in) (y_sup & y_in);
+      specialize (x_sup _ y_in);
+      specialize (y_sup _ x_in);
+      apply Le.le_antisym; assumption.
+    Qed.
+
+    (* TODO: rename SetEq_append to SetEq_cons *)
+
+    (* TODO: find a cleaner way than destruct; discriminate *)
+    (* TODO: Look at reflexive, discriminate, congruence, absurd in more details *)
+    Lemma ListMax_cacheable :
+      forall initial_value,
+        IsCacheable initial_value max.
+    Proof.
+      unfold IsCacheable.
+
+      intros init seq1 seq2 set_eq;
+        apply (Max_unique (init :: seq1));
+        [ | setoid_rewrite (SetEq_append _ _ init set_eq) ];
+        apply ListMax_correct.
+    Qed.
+  End MaxCacheable.
 End CacheableFunctions.
 
 Require Import Tuple Heading.
