@@ -22,7 +22,7 @@
 # exit if you have staged but uncomitted changes.  The preferred way
 # to run this script is:
 #
-# $ ./etc/timing/make-pretty-timed-diff-tip.sh
+# $ "$DIR"/make-pretty-timed-diff-tip.sh
 # $ git commit --amend -em "$(git log -1 --pretty=%B; echo; cat ./time-of-build-both.log)"
 #
 # This will bring up an editor, where you should edit your commit
@@ -40,9 +40,9 @@ source "$DIR/pushd-root.sh"
 trap "exit 1" SIGHUP SIGINT SIGTERM
 
 # get the names of the files we use
-source ./etc/timing/make-pretty-timed-defaults.sh "$@"
+source "$DIR"/make-pretty-timed-defaults.sh "$@"
 
 # run make clean and make, on both the old state and the new state
-bash ./etc/timing/make-each-time-file-tip.sh "$MAKE" "$NEW_TIME_FILE" "$OLD_TIME_FILE" || exit 1
+bash "$DIR"/make-each-time-file-tip.sh "$MAKE" "$NEW_TIME_FILE" "$OLD_TIME_FILE" || exit 1
 # aggregate the results
-bash ./etc/timing/make-combine-pretty-timed.sh "$@"
+bash "$DIR"/make-combine-pretty-timed.sh "$@"
