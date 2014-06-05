@@ -3,9 +3,9 @@ Require Import String Omega List FunctionalExtensionality Ensembles
         BuildADTRefinements QueryQSSpecs InsertQSSpecs EmptyQSSpecs
         QueryStructure GeneralInsertRefinements ListInsertRefinements
         GeneralQueryRefinements ListQueryRefinements
-        ProcessScheduler.AdditionalLemmas
-        State.
+        ProcessScheduler.AdditionalLemmas.
 
+(* TODO: Reactivate? *)
 (*Notation "x '∈' y" := (In _ y x) (at level 50, no associativity) *)
 
 Section ProcessSchedulerInterface.
@@ -15,6 +15,10 @@ Section ProcessSchedulerInterface.
   Definition STATE_COLUMN := "state".
   Definition CPU_COLUMN := "cpu".
   Definition PROCESSES_TABLE := "processes".
+
+  Definition State := nat.
+  Definition SLEEPING := 0.
+  Definition RUNNING  := 1.
 
   Definition ProcessSchedulerSchema := Query Structure Schema [
     relation PROCESSES_TABLE has schema <PID_COLUMN   :: nat,
@@ -70,7 +74,7 @@ Section ProcessSchedulerInterface.
 
         update SPAWN (ns : nat) : unit :=
           new_pid <- {n | ∀ p ∈ PROCESSES, (n > p!PID_COLUMN)};
-          Insert <PID_COLUMN:: new_pid, STATE_COLUMN:: Sleeping, CPU_COLUMN :: 0> into PROCESSES_TABLE,
+          Insert <PID_COLUMN:: new_pid, STATE_COLUMN:: SLEEPING, CPU_COLUMN:: 0> into PROCESSES_TABLE,
 
         query ENUMERATE (state : State) : list nat :=
           For (p in PROCESSES_TABLE)
@@ -100,7 +104,6 @@ Section ProcessSchedulerLemmas.
     intros ? ? ? ? beq_iff; split; apply beq_iff.
   Qed.
 
-  Definition beq_process_iff__state := beq_process_true_iff (A:=State) STATE beq_state_true_iff.
-
+  (* TODO: Is this needed? *)
   Definition beq_process_iff__pid   := beq_process_true_iff (A:=nat) PID beq_nat_true_iff.
 End ProcessSchedulerLemmas.

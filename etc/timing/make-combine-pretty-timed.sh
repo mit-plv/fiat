@@ -13,10 +13,10 @@ source "$DIR/pushd-root.sh"
 trap "exit 1" SIGHUP SIGINT SIGTERM
 
 # get the names of the files we use
-source ./etc/timing/make-pretty-timed-defaults.sh "$@"
+source "$DIR"/make-pretty-timed-defaults.sh "$@"
 
 # aggregate the results
-python ./etc/timing/make-both-time-files.py "$NEW_TIME_FILE" "$OLD_TIME_FILE" "$BOTH_TIME_FILE" || exit 1
+python "$(relpath "$DIR"/make-both-time-files.py)" "$NEW_TIME_FILE" "$OLD_TIME_FILE" "$BOTH_TIME_FILE" || exit 1
 # print out the results
 cat "$BOTH_TIME_FILE"
 # echo a final new line, because `cat` doesn't

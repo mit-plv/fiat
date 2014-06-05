@@ -3,6 +3,7 @@ Require Import Ensembles List Coq.Lists.SetoidList Program
         ADTNotation.BuildADTSig ADTNotation.BuildADT
         GeneralBuildADTRefinements QueryQSSpecs QueryStructure
         SetEq.
+Require Export EnsembleListEquivalence.
 
 Unset Implicit Arguments.
 
@@ -34,9 +35,6 @@ Section AdditionalDefinitions.
       | Some x => [x]
       | None   => []
     end.
-
-  Definition EnsembleListEquivalence {A: Type} (ensemble: A -> Prop) (seq: list A) :=
-    forall x, Ensembles.In _ ensemble x <-> List.In x seq.
 
   Definition FilteredSet {A B} ensemble projection (value: B) :=
     fun (p: A) => ensemble p /\ projection p = value.
