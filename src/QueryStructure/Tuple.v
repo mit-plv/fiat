@@ -1,6 +1,6 @@
 Require Import List String FunctionalExtensionality Ensembles
         ADTNotation.ilist ADTNotation.StringBound Program Heading
-        ADTExamples.QueryStructure.Notations.
+        QueryStructure.Notations.
 
 (* A tuple is a map from attributes to values. *)
 Definition Tuple (Heading : Heading) :=

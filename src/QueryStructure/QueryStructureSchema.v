@@ -2,7 +2,7 @@ Require Import List String Common Arith
         FunctionalExtensionality Ensembles
         ADTNotation.ilist ADTNotation.StringBound Program.
 Require Export
-        ADTExamples.QueryStructure.Notations
+        QueryStructure.Notations
         Heading Tuple Schema Relation.
 
 (* A Query Structure schema is a set of named relation

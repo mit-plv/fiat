@@ -1,9 +1,8 @@
-Require Import String Omega List FunctionalExtensionality Ensembles
+Require Export String Omega List FunctionalExtensionality Ensembles
         Computation ADT ADTRefinement ADTNotation QueryStructureSchema
         BuildADTRefinements QueryQSSpecs InsertQSSpecs EmptyQSSpecs
         QueryStructure GeneralInsertRefinements ListInsertRefinements
-        GeneralQueryRefinements ListQueryRefinements
-        ProcessScheduler.AdditionalLemmas.
+        GeneralQueryRefinements ListQueryRefinements AdditionalLemmas.
 
 Open Scope QSSchema.
 Open Scope ADTSig.

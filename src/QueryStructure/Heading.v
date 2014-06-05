@@ -1,6 +1,6 @@
 Require Import List String FunctionalExtensionality Ensembles
         ADTNotation.ilist ADTNotation.StringBound Program
-        ADTExamples.QueryStructure.Notations.
+        QueryStructure.Notations.
 
 (* A heading describes a tuple as a set of Attributes
    and types. *)

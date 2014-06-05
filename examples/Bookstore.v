@@ -6,7 +6,7 @@ Require Import String Omega List FunctionalExtensionality Ensembles
         GeneralQueryStructureRefinements
         ListQueryRefinements ListInsertRefinements
         ListQueryStructureRefinements
-        ProcessScheduler.AdditionalLemmas.
+        AdditionalLemmas.
 
 Section BookStoreExamples.
   Require Import QueryStructureNotations.

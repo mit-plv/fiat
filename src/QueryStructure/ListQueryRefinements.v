@@ -2,9 +2,7 @@ Require Import String Omega List FunctionalExtensionality Ensembles
         Computation ADT ADTRefinement ADTNotation
         ADTRefinement.GeneralBuildADTRefinements
         QueryStructureSchema QueryQSSpecs QueryStructure
-        GeneralQueryRefinements.
-
-Require Import ProcessScheduler.AdditionalLemmas SetEq.
+        GeneralQueryRefinements AdditionalLemmas SetEq.
 
 Lemma refine_SetEq_self {A} :
   forall l : list A,

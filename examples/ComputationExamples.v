@@ -1,4 +1,5 @@
-Require Import List Ensembles String Setoid RelationClasses Morphisms Morphisms_Prop Program Equivalence Min Max Permutation Sorted.
+Require Import List Ensembles String Setoid RelationClasses Morphisms Morphisms_Prop
+        Program Equivalence Min Max Permutation Sorted.
 Require Import Common Computation.
 
 Section op_funcs.

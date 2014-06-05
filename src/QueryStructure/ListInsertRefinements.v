@@ -1,8 +1,8 @@
-Require Import String Omega List FunctionalExtensionality Ensembles
+Require Import String Omega List FunctionalExtensionality Ensembles Bool
         Computation ADT ADTRefinement ADTNotation QueryStructureSchema
-        QueryQSSpecs InsertQSSpecs QueryStructure Bool
+        QueryQSSpecs InsertQSSpecs QueryStructure
         ADTRefinement.GeneralBuildADTRefinements
-        ProcessScheduler.AdditionalLemmas GeneralQueryRefinements
+        AdditionalLemmas GeneralQueryRefinements
         GeneralInsertRefinements.
 
 Class List_Query_eq (As : list Type) :=

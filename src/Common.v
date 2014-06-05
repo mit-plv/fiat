@@ -1,5 +1,4 @@
 Require Export Setoid RelationClasses Program Morphisms.
-Require Export ADTSynthesis.Notations.
 
 Global Set Implicit Arguments.
 Global Generalizable All Variables.

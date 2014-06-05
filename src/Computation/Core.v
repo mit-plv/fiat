@@ -1,5 +1,6 @@
 Require Import String Ensembles.
 Require Import Common.
+Require Export Computation.Notations.
 
 Inductive Comp : Type -> Type :=
 | Return : forall A, A -> Comp A

@@ -1,6 +1,6 @@
 Require Import List String FunctionalExtensionality Ensembles
         ADTNotation.ilist ADTNotation.StringBound Program
-        ADTExamples.QueryStructure.Notations
+        QueryStructure.Notations
         Heading Tuple.
 
 (* A relation schema is a heading for the tuples of the

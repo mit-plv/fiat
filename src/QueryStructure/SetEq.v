@@ -241,14 +241,14 @@ Qed.
 Lemma equiv_false :
   forall P,
     (False <-> P) <-> (~ P).
-Proof. 
+Proof.
   tauto.
 Qed.
 
 Lemma equiv_false' :
   forall P,
     (P <-> False) <-> (~ P).
-Proof. 
+Proof.
   tauto.
 Qed.
 
@@ -256,20 +256,20 @@ Definition flatten {A} := List.fold_right (@app A) nil.
 
 Lemma in_flatten_iff :
   forall {A} y,
-    forall x, @List.In A x (flatten y) <-> 
-              exists y0, @List.In A x y0 /\ @List.In (list A) y0 y. 
+    forall x, @List.In A x (flatten y) <->
+              exists y0, @List.In A x y0 /\ @List.In (list A) y0 y.
 Proof.
   intros A bag.
   induction bag as [ | sublist bag' IH ]; simpl.
-  
+
   firstorder.
 
   intros elem; rewrite in_app_iff.
   split; [intro in_flattened | intro in_sublist].
-  
+
   firstorder.
   destruct in_sublist as [sublist' (elem_in_sublist' & H)].
-  
+
   destruct H;
     subst;
     firstorder.
@@ -283,18 +283,6 @@ Proof.
   unfold SetEq;
   setoid_rewrite in_flatten_iff;
   firstorder.
-Qed.
-
-Require Import State.
-
-Add Parametric Morphism (A: Type) :
-  (State_rect (fun _ => list A))
-    with signature (@SetEq A ==> @SetEq A ==> pointwise_relation _ (@SetEq A))
-      as rect_morphism.
-Proof.
-  intros;
-  unfold pointwise_relation, State_rect;
-  intro state; destruct state; trivial.
 Qed.
 
 

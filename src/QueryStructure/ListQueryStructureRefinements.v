@@ -2,8 +2,7 @@ Require Import String Omega List FunctionalExtensionality Ensembles
         Computation ADT ADTRefinement ADTNotation QueryStructureSchema
         BuildADTRefinements QueryQSSpecs InsertQSSpecs EmptyQSSpecs
         QueryStructure GeneralInsertRefinements
-        GeneralQueryRefinements ProcessScheduler.SetEq
-        ProcessScheduler.AdditionalLemmas
+        GeneralQueryRefinements SetEq AdditionalLemmas
         ListInsertRefinements ListQueryRefinements.
 
 Instance EnsembleListEquivalence_SiR {A}:

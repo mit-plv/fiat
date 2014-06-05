@@ -1,4 +1,4 @@
-Require Export Common Computation ADTNotation.ilist.
+Require Export Common Computation.
 
 (** Type of a constructor. *)
 Definition constructorType (rep dom : Type)

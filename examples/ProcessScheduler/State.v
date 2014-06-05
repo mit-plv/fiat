@@ -49,3 +49,13 @@ Instance State_Query_eq : Query_eq State :=
 Proof.
   decide equality.
 Qed.
+
+Add Parametric Morphism (A: Type) :
+  (State_rect (fun _ => list A))
+    with signature (@SetEq A ==> @SetEq A ==> pointwise_relation _ (@SetEq A))
+      as rect_morphism.
+Proof.
+  intros;
+  unfold pointwise_relation, State_rect;
+  intro state; destruct state; trivial.
+Qed.
