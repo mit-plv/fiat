@@ -301,7 +301,7 @@ Section TreeBasedRefinement.
 
       setoid_rewrite Equivalent_List_In_Where.
 
-      rewrite (filter_by_equiv dec (bfind_matcher (Some n, (None, []))))
+      rewrite (filter_by_equiv dec (@bfind_matcher _ _ _ (BagProof _ PIDIndex) (Some n, (None, []))))
         by (
             unfold ObservationalEq; simpl; 
             unfold NatTreeExts.KeyFilter;
@@ -315,6 +315,7 @@ Section TreeBasedRefinement.
       setoid_rewrite (@bfind_correct _ _ _ (BagProof _ PIDIndex) (snd r_n) (Some n, (None, []))).
       setoid_rewrite refine_For_List_Return.
       simplify with monad laws.
+
 
       rewrite refine_pick_val by eassumption.
       simplify with monad laws.
@@ -348,7 +349,7 @@ Section TreeBasedRefinement.
         eauto. (* TODO: Could explicitly pass the right list *)
 
       setoid_rewrite Equivalent_List_In_Where.
-      rewrite (filter_by_equiv dec (bfind_matcher (None, (Some n, [])))) 
+      rewrite (filter_by_equiv dec (@bfind_matcher _ _ _ (BagProof _ PIDIndex) (None, (Some n, [])))) 
         by (
             unfold ObservationalEq; simpl; 
             unfold NatTreeExts.KeyFilter;
@@ -430,7 +431,5 @@ Section TreeBasedRefinement.
     }
 
     finish sharpening.
-
-    Grap Existential Variables. (* TODO: This returns 'no such unproven subgoal' :/ *)
   Defined.
 End TreeBasedRefinement.
