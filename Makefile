@@ -58,18 +58,19 @@ MODULES    := \
 	ADTExamples/QueryStructure/ListInsertRefinements \
 	ADTExamples/QueryStructure/ListQueryStructureRefinements \
 	ADTExamples/QueryStructure/QueryStructureNotations \
-	ADTExamples/QueryStructure/Trivial \
-	ADTExamples/QueryStructure/Bookstore \
+	ADTExamples/QueryStructure/Bags/Beatles \
+	ADTExamples/QueryStructure/Bags/NatCompare_Facts \
+	ADTExamples/QueryStructure/Bags/String_as_OT \
+	ADTExamples/QueryStructure/Bags/Bags \
+	ADTExamples/QueryStructure/ProcessScheduler/SetEq \
+	ADTExamples/QueryStructure/ProcessScheduler/EnsembleListEquivalence \
+	ADTExamples/QueryStructure/ProcessScheduler/State \
+	ADTExamples/QueryStructure/ProcessScheduler/AdditionalLemmas \
 	ADTExamples/QueryStructure/ProcessScheduler/FMapExtensions \
-	ADTExamples/QueryStructure/ProcessScheduler/DBSchema
-#	ADTExamples/QueryStructure/ProcessScheduler/ListBasedRefinement
-# ADTExamples/QueryStructure/ProcessScheduler/TreeBasedRefinement \
-# ADTExamples/CombineBinaryOperationsSpec
-# ADTExamples/BinaryOperationSpec
-# ADTExamples/BinaryOperationImpl
-# ADTExamples/BinaryOperationRefinements
-# ADTExamples/MinCollection
-# ADTExamples/MinPlusMax
+	ADTExamples/QueryStructure/ProcessScheduler/DBSchema \
+	ADTExamples/QueryStructure/ProcessScheduler/TreeBasedRefinement \
+	ADTExamples/QueryStructure/Trivial \
+	ADTExamples/QueryStructure/Bookstore
 
 COQDEP=coqdep
 COQDOC=coqdoc

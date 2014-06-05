@@ -140,110 +140,16 @@ Section TreeBasedRefinement.
     intros; exfalso; rewrite tupleAgree_sym in H1; apply (no_collisions_when_using_a_fresh_pid pid c _ _ H1); trivial.
   Qed.
 
-(*
-  Lemma refine_pick_fmap_add_matching :
-    forall tree ens tuple pid (cond: Process -> Prop),
-      cond tuple ->
-      tuple PID = pid ->
-      (~ GenericTreeDB.In (elt:=Tuple) pid tree) ->
-      (EnsembleListEquivalence
-         (fun tuple' => In _ (GetUnConstrRelation ens PROCESSES) tuple' /\ cond tuple')
-         (benumerate tree)) ->
-      refine
-        {a |
-         EnsembleListEquivalence
-           (fun tuple' =>
-              In _ (GetUnConstrRelation
-                      (UpdateUnConstrRelation
-                         ProcessSchedulerSchema ens PROCESSES
-                         (RelationInsert tuple (GetUnConstrRelation ens PROCESSES)))
-                      PROCESSES) tuple' /\ cond tuple')
-           (benumerate a)}
-        (ret (GenericTreeDB.add pid tuple tree)).
+  Lemma get_update_unconstr_iff :
+    forall db_schema qs table new_contents,
+    forall x,
+      x ∈ GetUnConstrRelation (UpdateUnConstrRelation db_schema qs table new_contents) table <->
+      x ∈ new_contents.
   Proof.
-    unfold refine;
-    intros;
-    inversion_by computes_to_inv;
-    subst.
-    constructor;
-      split.
-    unfold GetUnConstrRelation, RelationInsert, AllSleepingSet in *; simpl in *.
-
-    apply (EnsembleListEquivalence_fmap_add_filtered _ (fun x => ilist_hd ens x));
-      simpl;
-      intuition.
-
-    apply KeyedOnPID_add;
-      intuition.
+    unfold GetUnConstrRelation, UpdateUnConstrRelation, RelationInsert;
+    intros; rewrite ith_replace_BoundIndex_eq;
+    reflexivity.
   Qed.
-
-  Lemma refine_pick_fmap_add_not_matching :
-    forall tree ens tuple (cond: Process -> Prop),
-      (~ cond tuple) ->
-      KeyedOnPID tree ->
-      (EnsembleListEquivalence
-         (fun tuple' => In _ (GetUnConstrRelation ens PROCESSES) tuple' /\ cond tuple')
-         (GetValues tree)) ->
-      refine
-        {a |
-         EnsembleListEquivalence
-           (fun tuple' =>
-              In _ (GetUnConstrRelation
-                      (UpdateUnConstrRelation
-                         ProcessSchedulerSchema ens PROCESSES
-                         (RelationInsert tuple (GetUnConstrRelation ens PROCESSES)))
-                      PROCESSES) tuple' /\ cond tuple')
-           (GetValues a) /\
-         KeyedOnPID a}
-        (ret tree).
-  Proof.
-    unfold refine;
-    intros;
-    inversion_by computes_to_inv;
-    subst.
-    constructor;
-      split.
-    unfold GetUnConstrRelation, RelationInsert, AllSleepingSet in *; simpl in *.
-
-    unfold EnsembleListEquivalence, In in *;
-      intros.
-
-    rewrite <- H1.
-    split; intros;
-    intuition; subst; intuition.
-
-    trivial.
-  Qed.
-
-  Lemma InValues_In :
-    forall tree tup,
-      KeyedOnPID tree ->
-      List.In tup (GetValues tree) ->
-      (GenericTreeDB.In tup!PID tree).
-  Proof.
-    unfold KeyedOnPID; intuition.
-    apply (MapsTo_In _ tup).
-    unfold GetValues in H0; rewrite <- MapsTo_snd in H0.
-    destruct H0 as [key mapsto].
-    pose proof (H _ _ mapsto); subst; trivial.
-  Qed.
-
-  Lemma In_InValues :
-    forall tree pid,
-      KeyedOnPID tree ->
-      (GenericTreeDB.In pid tree) ->
-      (exists tup, tup!PID = pid /\ List.In tup (GetValues tree)).
-  Proof.
-    unfold KeyedOnPID; intuition.
-    unfold GetValues; setoid_rewrite <- MapsTo_snd.
-
-    rewrite elements_in_iff in H0.
-    destruct H0 as [val ina].
-    rewrite <- elements_mapsto_iff in ina.
-    pose proof (H _ _ ina); subst.
-    eauto.
-  Qed.
-*)
 
   Lemma NeatScheduler :
     Sharpened ProcessSchedulerSpec.
@@ -330,9 +236,8 @@ Section TreeBasedRefinement.
              it makes it possble to swap same-type search terms,
              delaying the failure until the call to bfind_correct *)
     (* TODO: The backtick notation from bounded indexes cannot be input *)
-    (* TODO: The call to filter_by_equiv generates existentials, probably 
-             corresponding to projections *)
-   
+    (* TODO: The insert_always_happens scripts could probably be made more generic *)
+    
     hone method GET_CPU_TIME. {
       pose proof H;
       unfold NeatDB_equivalence in H;
@@ -383,19 +288,13 @@ Section TreeBasedRefinement.
       rewrite refine_pick_val by eassumption.
       simplify with monad laws.
 
-      rewrite refine_pick_val;
-        [ | instantiate (1 := true) ].
+      rewrite insert_always_happens by eassumption.
       simplify with monad laws.
 
-      rewrite refine_pick_val;
-        [ | instantiate (1 := true) ].
+      rewrite insert_always_happens' by eassumption.
       simplify with monad laws.
 
-      unfold NeatDB.
-      simpl.
-
-      unfold NeatDB_equivalence.
-      simpl Domain.
+      unfold NeatDB, NeatDB_equivalence.
       
       setoid_rewrite 
         (refineEquiv_pick_pair_snd_dep
@@ -409,14 +308,20 @@ Section TreeBasedRefinement.
       simplify with monad laws.      
 
       rewrite refine_pick_val;
-        [ | instantiate (1 := (binsert (snd r_n) <PID_COLUMN :: S (fst r_n), STATE_COLUMN :: SLEEPING, CPU_COLUMN :: 0>))].
+        [ | instantiate (1 := (binsert (snd r_n) <PID_COLUMN :: fst r_n, STATE_COLUMN :: SLEEPING, CPU_COLUMN :: 0>))].
 
       simplify with monad laws.
 
       finish honing.
 
-      (* Insert correct -- should be in the signature *)
-      admit.
+      (* Insert correct *)
+      unfold EnsembleListEquivalence in db_equiv |- *.
+
+      setoid_rewrite (@binsert_enumerate _ _ _ (BagProof _ PIDIndex)).
+      setoid_rewrite get_update_unconstr_iff.
+      setoid_rewrite <- db_equiv.
+      unfold RelationInsert, In in db_equiv |- *;
+      intuition.
 
       (* Buffered value for next_pid correct *)
       unfold In, GetUnConstrRelation, UpdateUnConstrRelation, RelationInsert in next_pid_correct |- *;
@@ -424,10 +329,6 @@ Section TreeBasedRefinement.
       intros tuple [ is_new | is_old ]; 
         [ subst | apply lt_S ];
         intuition.
-
-      (* Unicity constraints respected *)
-      admit.
-      admit.      
     }
 
     finish sharpening.

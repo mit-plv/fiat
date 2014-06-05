@@ -201,7 +201,7 @@ Qed.
 Add Parametric Morphism {A B: Type} (proc: A -> B) :
   (List.map proc)
     with signature (@SetEq A ==> @SetEq B)
-      as filter_morphism.
+      as map_morphism.
 Proof.
   apply IsSetEqSafe_map.
 Qed.
@@ -209,9 +209,19 @@ Qed.
 Add Parametric Morphism {A: Type} (pred: A -> bool) :
   (List.filter pred)
     with signature (@SetEq A ==> @SetEq A)
-      as map_morphism.
+      as filter_morphism.
 Proof.
   apply IsSetEqSafe_filter.
+Qed.
+
+Require Import EnsembleListEquivalence.
+
+Add Parametric Morphism {A: Type} (ens: A -> Prop) :
+  (EnsembleListEquivalence ens)
+    with signature (@SetEq A ==> @iff)
+      as ensemble_list_equivalence_morphism.
+Proof.
+  firstorder.
 Qed.
 
 Lemma false_or :
