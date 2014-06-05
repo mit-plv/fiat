@@ -12,6 +12,8 @@ Require Import String Omega List FunctionalExtensionality Ensembles
 Unset Implicit Arguments.
 Notation "x '∈' y" := (In _ y x) (at level 50, no associativity).
 
+Require Import Bags.
+
 Section ListBasedRefinement.
   Local Open Scope Tuple_scope.
 
@@ -19,7 +21,7 @@ Section ListBasedRefinement.
 
   Definition SimpleDB_equivalence rep (db: SimpleDB) :=
     (forall a, List.In a (snd db) -> fst db > (a PID)) /\
-    EnsembleListEquivalence (GetUnConstrRelation rep PROCESSES) (snd db).
+    EnsembleListEquivalence (GetUnConstrRelation rep PROCESSES) (benumerate (snd db)).
 
   Lemma refine_decision :
     forall n c,

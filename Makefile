@@ -61,9 +61,8 @@ MODULES    := \
 	ADTExamples/QueryStructure/Trivial \
 	ADTExamples/QueryStructure/Bookstore \
 	ADTExamples/QueryStructure/ProcessScheduler/FMapExtensions \
-	ADTExamples/QueryStructure/ProcessScheduler/DBSchema \
-	ADTExamples/QueryStructure/ProcessScheduler/ListBasedRefinement
-
+	ADTExamples/QueryStructure/ProcessScheduler/DBSchema
+#	ADTExamples/QueryStructure/ProcessScheduler/ListBasedRefinement
 # ADTExamples/QueryStructure/ProcessScheduler/TreeBasedRefinement \
 # ADTExamples/CombineBinaryOperationsSpec
 # ADTExamples/BinaryOperationSpec

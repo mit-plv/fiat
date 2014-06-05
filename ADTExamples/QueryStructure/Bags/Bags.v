@@ -80,7 +80,20 @@ Module IndexedTree (Import M: WS).
              (key: TKey)
              (projection: TItem -> TKey) :=
     (fun x : TItem => if E.eq_dec (projection x) key then true else false).
-      
+  
+  Lemma KeyFilter_beq :
+    forall {TItem} beq,
+      (forall x y, reflect (E.eq x y) (beq x y)) ->
+      (forall key projection (item: TItem), 
+         KeyFilter key projection item = beq (projection item) key).
+  Proof.
+    intros TItem beq spec key projection item.
+    specialize (spec (projection item) key).
+    unfold KeyFilter.
+    destruct spec as [ is_eq | neq ];
+    destruct (F.eq_dec _ _); intuition.
+  Qed.    
+
   Definition EmptyAsIndexedBag 
              (TBag TItem TBagSearchTerm: Type) 
              (bags_bag: Bag TBag TItem TBagSearchTerm) projection 
@@ -444,7 +457,7 @@ Module IndexedTree (Import M: WS).
         
         pose proof (elements_3w (ifmap container)) as no_dup.
         rewrite decomp in no_dup; apply NoDupA_swap in no_dup; eauto using equiv_eq_key.
-        Print NoDupA.
+
         inversion no_dup as [ | ? ? y_not_in no_dup' ]; subst.
         rewrite InA_app_iff in y_not_in by eauto using equiv_eq_key.
      
@@ -637,7 +650,6 @@ Module IndexedTree (Import M: WS).
         congruence.
       Qed.
 
-      Show.
       rewrite consist.
       destruct (find key (ifmap container)) as [ bag | ].
 
@@ -882,7 +894,7 @@ Defined.
 
 Definition IndexedAlbums :=
   List.fold_left binsert FirstAlbums (@bempty _ _ _ (BagProof _ SampleIndex)).
-
+(*
 Eval simpl in (SearchTermType AlbumHeading SampleIndex).
 Time Eval simpl in (bfind IndexedAlbums (Some 3, (None, (None, [])))).
 Time Eval simpl in (bfind IndexedAlbums (Some 3, (Some 1, (None, [])))).
