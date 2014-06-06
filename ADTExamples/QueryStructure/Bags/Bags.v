@@ -3,6 +3,7 @@ Require Import FMapInterface.
 Require Import FMapAVL OrderedTypeEx.
 Require Import Coq.FSets.FMapFacts.
 Require Import FMapExtensions.
+Require Import AdditionalLemmas.
 
 Unset Implicit Arguments.
 
@@ -767,10 +768,6 @@ Record CachingBag
          caches. Should an empty/non-empty distinction be needed,
          initial_cached_value can be set to None, and TCachedValue
          replaced by an option type. *)
-
-Lemma eq_sym_iff :
-  forall {A} x y, @eq A x y <-> @eq A y x.
-Proof. split; intros; symmetry; assumption. Qed.
 
 Lemma binsert_enumerate_SetEq {TContainer TItem TSearchTerm} (bag: Bag TContainer TItem TSearchTerm):
   forall inserted container,

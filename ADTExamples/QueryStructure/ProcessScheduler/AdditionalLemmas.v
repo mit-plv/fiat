@@ -38,6 +38,9 @@ Section AdditionalDefinitions.
 
   Definition FilteredSet {A B} ensemble projection (value: B) :=
     fun (p: A) => ensemble p /\ projection p = value.
+
+  Definition ObservationalEq {A B} f g :=
+    forall (a: A), @eq B (f a) (g a).
 End AdditionalDefinitions.
 
 Section AdditionalLogicLemmas.
@@ -45,6 +48,12 @@ Section AdditionalLogicLemmas.
     forall (P: Prop), P \/ False <-> P.
   Proof.
     tauto.
+  Qed.
+
+  Lemma eq_sym_iff :
+    forall {A} x y, @eq A x y <-> @eq A y x.
+  Proof. 
+    split; intros; symmetry; assumption.
   Qed.
 End AdditionalLogicLemmas.
 
@@ -136,23 +145,6 @@ Section AdditionalListLemmas.
     trivial.
   Qed.
 
-(*
-  Require Import Notations QueryQSSpecs.
-  Local Open Scope QuerySpec_scope.
-  Lemma filter_nonnil_plus_where_is_just_filter :
-    forall {A B: Type} {P: A -> Prop} (seq: list A),
-    forall (pred: forall (a: A), sumbool (P a) (~ (P a))) (extraction: A -> B),
-      List.filter NonNil (map (fun p =>
-                                 Where (pred p)
-                                       [extraction p]) seq) =
-      map Box
-          (map extraction (List.filter (dec2bool pred) seq)).
-    intros; induction seq; simpl;
-    [ | unfold dec2bool; destruct (pred a); subst; rewrite IHseq];
-    trivial.
-  Qed.
-*)
-
   Lemma box_plus_app_is_identity :
     forall {A: Type} (seq: list A),
       fold_right (app (A := A)) [] (map Box seq) = seq.
@@ -165,6 +157,14 @@ Section AdditionalListLemmas.
       List.In x (Option2Box xo) <-> xo = Some x.
   Proof.
     intros A xo x; destruct xo; simpl; try rewrite or_false; intuition; congruence.
+  Qed.
+
+  Lemma filter_by_equiv :
+    forall {A} f g,
+      ObservationalEq f g ->
+      forall seq, @List.filter A f seq = @List.filter A g seq.
+  Proof.
+    intros A f g obs seq; unfold ObservationalEq in obs; induction seq; simpl; try rewrite obs; try rewrite IHseq; trivial.
   Qed.
 End AdditionalListLemmas.
 
@@ -348,6 +348,36 @@ Section AdditionalQueryLemmas.
     rewrite filter_In, H, H0.
     intuition.
   Qed.
+
+  Require Import Computation.Refinements.General.
+
+  Lemma refine_pick_val' : 
+    forall {A : Type} (a : A)  (P : A -> Prop),
+      P a -> refine (Pick P) (ret a).
+  Proof.
+    intros; apply refine_pick_val; assumption.
+  Qed.
+
+  Require Import InsertQSSpecs StringBound.
+  Lemma get_update_unconstr_iff :
+    forall db_schema qs table new_contents,
+    forall x,
+      Ensembles.In _ (GetUnConstrRelation (UpdateUnConstrRelation db_schema qs table new_contents) table) x <->
+      Ensembles.In _ new_contents x.
+  Proof.
+    unfold GetUnConstrRelation, UpdateUnConstrRelation, RelationInsert;
+    intros; rewrite ith_replace_BoundIndex_eq;
+    reflexivity.
+  Qed.
+
+  Require Import Heading Schema.
+  Lemma tupleAgree_sym :
+    forall (heading: Heading) tup1 tup2 attrs,
+      @tupleAgree heading tup1 tup2 attrs <-> @tupleAgree heading tup2 tup1 attrs.
+  Proof.
+    intros; unfold tupleAgree;
+    split; intro; setoid_rewrite eq_sym_iff; assumption.
+  Qed.
 End AdditionalQueryLemmas.
 
 Section AdditionalSetEqLemmas.
@@ -365,19 +395,5 @@ Section AdditionalSetEqLemmas.
     specialize (eq2 x);
     rewrite in_app_iff;
     tauto.
-  Qed.
-
-  Lemma equiv_EnsembleListEquivalence:
-    forall {A: Type} {seq ens1 ens2},
-      (forall (x: A), ens1 x <-> ens2 x) ->
-      EnsembleListEquivalence ens1 seq ->
-      EnsembleListEquivalence ens2 seq.
-  Proof.
-    intros A ? ? ? equiv;
-    unfold EnsembleListEquivalence;
-    intros same_1 x;
-    specialize (equiv x);
-    specialize (same_1 x);
-    intuition.
   Qed.
 End AdditionalSetEqLemmas.
