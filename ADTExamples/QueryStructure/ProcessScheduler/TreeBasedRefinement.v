@@ -20,25 +20,31 @@ Unset Implicit Arguments.
 Module GenericTreeDB := FMapAVL.Make(Nat_as_OT). (* TODO: Add the generic implementation *)
 (*Module Import DBExtraFacts := FMapExtensions GenericTreeDB.*)
 
-Definition PIDIndex : BagPlusBagProof ProcessSchema.
+Definition PIDIndex : @BagPlusBagProof (@Tuple ProcessSchema).
 Proof.
   mkIndex ProcessSchema [STATE; PID].
 Defined.
 
-Definition PIDIndexedTree := BagType _ PIDIndex.
+(* TODO: Remove: Definition PIDIndexedTree := BagType PIDIndex. *)
+
+(* TODO: Rename BagPlusBagProof to BagSpecification *)
+
+Definition Storage := AddCachingLayer (BagProof PIDIndex) (fun p => p PID)
+                                      0 max (ListMax_cacheable 0).
+
+Definition StorageType           := BagType Storage.
+Definition StorageIsBag          := BagProof Storage.
+Definition StorageSearchTermType := SearchTermType Storage.
 
 Section TreeBasedRefinement.
   Open Scope type_scope.
   Open Scope Tuple_scope.
 
-  Definition NeatDB :=
-    (nat * PIDIndexedTree).
+  Definition NeatDB := StorageType.
 
   Definition NeatDB_equivalence old_rep (neat_db: NeatDB) :=
-    (*TODO: Would be cleaner: let (next_pid, database) := neat_db in*)
     let set_db := GetUnConstrRelation old_rep PROCESSES in
-    (forall tuple, In _ set_db tuple -> gt (fst neat_db) (tuple PID)) /\
-    (EnsembleListEquivalence set_db (benumerate (snd neat_db))).
+    EnsembleListEquivalence set_db (benumerate neat_db).
 
   Definition ObservationalEq {A B} f g :=
     forall (a: A), @eq B (f a) (g a).
@@ -52,7 +58,7 @@ Section TreeBasedRefinement.
   Qed.
 
   Lemma filter_on_key :
-    forall (tree: PIDIndexedTree) (key: nat),
+    forall (tree: StorageType) (key: nat),
       SetEq
         (List.filter
            (fun (p: Process) => beq_nat (p PID) key)
@@ -61,7 +67,7 @@ Section TreeBasedRefinement.
   Proof.
     intros tree key.
 
-    rewrite (filter_by_equiv _ (@bfind_matcher _ _ _ (BagProof _ PIDIndex) (None, (Some key, bstar)))).
+    rewrite (filter_by_equiv _ (@bfind_matcher _ _ _ StorageIsBag (None, (Some key, bstar)))).
     apply (bfind_correct).
     
     unfold ObservationalEq.
@@ -171,30 +177,14 @@ Section TreeBasedRefinement.
       repeat setoid_rewrite refineEquiv_pick_eq'.
       simplify with monad laws.
 
-      setoid_rewrite (* TODO *)
-        (refineEquiv_pick_pair_snd_dep
-           (fun frist => forall tuple : Tuple, tuple ∈ _ -> frist > tuple PID)
-           (fun pair  => EnsembleListEquivalence _ (benumerate (snd pair)))).
-
       rewrite refine_pick_val;
-        [ simplify with monad laws | instantiate (1 := 0) ].
+        [ | instantiate (1 := bempty); apply EnsembleListEquivalence_Empty ].
 
-      rewrite refine_pick_val;
-        [ simplify with monad laws | instantiate (1 := bempty); apply EnsembleListEquivalence_Empty ].
-
-      subst_body; higher_order_1_reflexivity. (* TODO: finish constructing? *)
-
-      (* Buffered pid value correct *)
-      intros tuple in_empty;
-      apply EnsembleListEquivalence_Empty in in_empty;
-      intuition.
+      subst_body; higher_order_1_reflexivity. 
     }
 
     hone method ENUMERATE. {
-      pose proof H;
-      unfold NeatDB_equivalence in H;
-      destruct H as (next_pid_correct & db_equiv);
-      simpl Domain in next_pid_correct.
+      unfold NeatDB_equivalence in H.
 
       setoid_rewrite refineEquiv_pick_ex_computes_to_and.
       setoid_rewrite refineEquiv_pick_pair.
@@ -207,7 +197,7 @@ Section TreeBasedRefinement.
 
       setoid_rewrite Equivalent_List_In_Where.
 
-      rewrite (filter_by_equiv dec (@bfind_matcher _ _ _ (BagProof _ PIDIndex) (Some n, (None, []))))
+      rewrite (filter_by_equiv dec (@bfind_matcher _ _ _ StorageIsBag (Some n, (None, []))))
         by (
             unfold ObservationalEq; simpl; 
             unfold NatTreeExts.KeyFilter;
@@ -218,10 +208,9 @@ Section TreeBasedRefinement.
             intuition
           ).
 
-      setoid_rewrite (@bfind_correct _ _ _ (BagProof _ PIDIndex) (snd r_n) (Some n, (None, []))).
+      setoid_rewrite (@bfind_correct _ _ _ StorageIsBag r_n (Some n, (None, []))).
       setoid_rewrite refine_For_List_Return.
       simplify with monad laws.
-
 
       rewrite refine_pick_val by eassumption.
       simplify with monad laws.
@@ -239,10 +228,7 @@ Section TreeBasedRefinement.
     (* TODO: The insert_always_happens scripts could probably be made more generic *)
     
     hone method GET_CPU_TIME. {
-      pose proof H;
-      unfold NeatDB_equivalence in H;
-      destruct H as (next_pid_correct & db_equiv);
-      simpl Domain in next_pid_correct.
+      unfold NeatDB_equivalence in H.
       
       setoid_rewrite refineEquiv_pick_ex_computes_to_and.
       setoid_rewrite refineEquiv_pick_pair.
@@ -254,7 +240,7 @@ Section TreeBasedRefinement.
         eauto. (* TODO: Could explicitly pass the right list *)
 
       setoid_rewrite Equivalent_List_In_Where.
-      rewrite (filter_by_equiv dec (@bfind_matcher _ _ _ (BagProof _ PIDIndex) (None, (Some n, [])))) 
+      rewrite (filter_by_equiv dec (@bfind_matcher _ _ _ StorageIsBag (None, (Some n, [])))) 
         by (
             unfold ObservationalEq; simpl; 
             unfold NatTreeExts.KeyFilter;
@@ -264,7 +250,7 @@ Section TreeBasedRefinement.
             rewrite ?andb_true_r, ?andb_true_l;
             intuition
           ).
-      setoid_rewrite (@bfind_correct _ _ _ (BagProof _ PIDIndex) (snd r_n) (None, (Some n, []))).
+      setoid_rewrite (@bfind_correct _ _ _ StorageIsBag r_n (None, (Some n, []))).
       setoid_rewrite refine_For_List_Return.
       simplify with monad laws.
 
@@ -274,10 +260,7 @@ Section TreeBasedRefinement.
     }
 
     hone method SPAWN. {
-      pose proof H;
-      unfold NeatDB_equivalence in H;
-      destruct H as (next_pid_correct & db_equiv);
-      simpl Domain in next_pid_correct.
+      unfold NeatDB_equivalence in H.
       
       setoid_rewrite refineEquiv_pick_ex_computes_to_and.
       setoid_rewrite refineEquiv_pick_pair.
@@ -285,6 +268,17 @@ Section TreeBasedRefinement.
       simplify with monad laws.
       simpl.
  
+      assert (forall tup : Tuple,
+                GetUnConstrRelation c PROCESSES tup ->
+                S (ccached_value r_n) > tup!PID_COLUMN) 
+        by (
+            intros;
+            rewrite <- (cfresh_cache r_n);
+            apply (cached_max_gt_projected (fun (p: Process) => p!PID_COLUMN));
+            unfold EnsembleListEquivalence, In in H;               (* TODO: Get rid of this unfold *)
+            rewrite <- H; assumption                               (* TODO: What is this spurious GetAttribute? *)
+          ).
+
       rewrite refine_pick_val by eassumption.
       simplify with monad laws.
 
@@ -294,41 +288,23 @@ Section TreeBasedRefinement.
       rewrite insert_always_happens' by eassumption.
       simplify with monad laws.
 
-      unfold NeatDB, NeatDB_equivalence.
-      
-      setoid_rewrite 
-        (refineEquiv_pick_pair_snd_dep
-           (fun frist => forall tuple : Tuple, tuple ∈ _ -> frist > tuple PID)
-           (fun pair  => EnsembleListEquivalence _ (benumerate (snd pair)))).
-
-      simplify with monad laws.
+      unfold NeatDB_equivalence.
 
       rewrite refine_pick_val;
-        [ | instantiate (1 := S (fst r_n)) ].
-      simplify with monad laws.      
-
-      rewrite refine_pick_val;
-        [ | instantiate (1 := (binsert (snd r_n) <PID_COLUMN :: fst r_n, STATE_COLUMN :: SLEEPING, CPU_COLUMN :: 0>))].
+        [ | instantiate (1 := (binsert r_n <PID_COLUMN :: (S (ccached_value r_n)), STATE_COLUMN :: SLEEPING, CPU_COLUMN :: 0>))].
 
       simplify with monad laws.
 
       finish honing.
 
       (* Insert correct *)
-      unfold EnsembleListEquivalence in db_equiv |- *.
+      unfold EnsembleListEquivalence in *.
 
-      setoid_rewrite (@binsert_enumerate _ _ _ (BagProof _ PIDIndex)).
+      setoid_rewrite (@binsert_enumerate _ _ _ StorageIsBag).
       setoid_rewrite get_update_unconstr_iff.
-      setoid_rewrite <- db_equiv.
-      unfold RelationInsert, In in db_equiv |- *;
+      setoid_rewrite <- H.
+      unfold RelationInsert, In in *;
       intuition.
-
-      (* Buffered value for next_pid correct *)
-      unfold In, GetUnConstrRelation, UpdateUnConstrRelation, RelationInsert in next_pid_correct |- *;
-      simpl in next_pid_correct |- *;
-      intros tuple [ is_new | is_old ]; 
-        [ subst | apply lt_S ];
-        intuition.
     }
 
     finish sharpening.

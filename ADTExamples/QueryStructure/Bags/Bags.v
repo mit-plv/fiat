@@ -49,6 +49,11 @@ Class Bag (TContainer TItem TSearchTerm: Type) :=
                             (bfind container search_term)
   }.
 
+Record BagPlusBagProof {TItem} :=
+  { BagType: Type; 
+    SearchTermType: Type; 
+    BagProof: Bag BagType TItem SearchTermType }.
+
 Module IndexedTree (Import M: WS).
   Module Import BasicFacts := WFacts_fun E M.
   Module Import BasicProperties := WProperties_fun E M.
@@ -757,6 +762,12 @@ Record CachingBag
     cfresh_cache:  List.fold_right cache_updater initial_cached_value (benumerate cbag) = ccached_value
   }.
 
+(* Note: The caching interface provides the initial_cached_value
+         parameter to allow implementations to gracefully handle empty
+         caches. Should an empty/non-empty distinction be needed,
+         initial_cached_value can be set to None, and TCachedValue
+         replaced by an option type. *)
+
 Lemma eq_sym_iff :
   forall {A} x y, @eq A x y <-> @eq A y x.
 Proof. split; intros; symmetry; assumption. Qed.
@@ -789,9 +800,6 @@ Instance CachingBagAsBag
          {initial_cached_value: TCachedValue} 
          {cache_updater: TItem -> TCachedValue -> TCachedValue} 
          {cache_updater_cacheable: IsCacheable initial_cached_value cache_updater}
-         (caching_bag: @CachingBag TBag TItem TSearchTerm bag_bag 
-                                   TCachedValue initial_cached_value cache_updater 
-                                   cache_updater_cacheable)
          : Bag (@CachingBag TBag TItem TSearchTerm bag_bag 
                             TCachedValue initial_cached_value cache_updater
                             cache_updater_cacheable) 
@@ -820,7 +828,7 @@ Proof.
   simpl; setoid_rewrite cfresh_cache; reflexivity.
 
   rewrite benumerate_empty_eq_nil; reflexivity.
-Qed.
+Defined.
 
 Lemma in_nil_iff :
   forall {A} (item: A),
@@ -911,10 +919,54 @@ Section CacheableFunctions.
                  (initial_cached_value: TCachedValue)
                  (cache_updater: TCacheUpdaterInput -> TCachedValue -> TCachedValue) 
                  (cache_updater_cacheable: IsCacheable initial_cached_value cache_updater) :=
-        @CachingBag TBag TItem TSearchTerm 
-                    bag TCachedValue initial_cached_value 
-                    (compose cache_updater cache_projection) 
-                    (projection_cacheable cache_projection cache_updater initial_cached_value cache_updater_cacheable).
+        {|
+          BagType       :=  @CachingBag TBag TItem TSearchTerm 
+                                        bag TCachedValue initial_cached_value 
+                                        (compose cache_updater cache_projection) 
+                                        (projection_cacheable cache_projection 
+                                                              cache_updater 
+                                                              initial_cached_value 
+                                                              cache_updater_cacheable);
+          SearchTermType := TSearchTerm;
+          BagProof       := _
+        |}.
+
+      Definition CacheImplementationEnsures
+                 {TCacheUpdaterInput TCachedValue}
+                 cache_property
+                 (cache_updater: TCacheUpdaterInput -> TCachedValue -> TCachedValue) 
+                 (initial_value: TCachedValue) :=
+        forall seq (value: TCacheUpdaterInput),
+          cache_property seq value (List.fold_right cache_updater initial_value seq).
+
+      Definition ProjectedCacheImplementationEnsures
+                 {TItem TCacheUpdaterInput TCachedValue}
+                 cache_property
+                 (cache_updater: TCacheUpdaterInput -> TCachedValue -> TCachedValue) 
+                 (projection: TItem -> TCacheUpdaterInput)
+                 (initial_value: TCachedValue) :=
+        forall seq (item: TItem),
+          cache_property (List.map projection seq) (projection item) (List.fold_right (compose cache_updater projection) initial_value seq).
+
+      (* Formally equivalent to ProjectedCacheImplementationEnsures cache_property id initial_value *)
+
+      Lemma generalize_to_projection :
+        forall {TItem TCacheUpdaterInput TCachedValue} 
+               {cache_updater: TCacheUpdaterInput -> TCachedValue -> TCachedValue}
+               (projection: TItem -> TCacheUpdaterInput)
+               (initial_value: TCachedValue)
+               (cache_property: list TCacheUpdaterInput ->
+                                TCacheUpdaterInput -> TCachedValue -> Type),
+          (CacheImplementationEnsures          
+             cache_property cache_updater initial_value) ->
+          (ProjectedCacheImplementationEnsures
+             cache_property cache_updater projection initial_value).
+      Proof.
+        unfold CacheImplementationEnsures, ProjectedCacheImplementationEnsures;
+        intros * non_projected_proof *;
+        rewrite foldright_compose;
+        apply non_projected_proof.
+      Qed.
   End Generalities.
 
   Section MaxCacheable.
@@ -1018,6 +1070,56 @@ Section CacheableFunctions.
         [ | setoid_rewrite (SetEq_append _ _ init set_eq) ];
         apply ListMax_correct.
     Qed.
+
+    Definition cached_max_gt_property seq value cached_max :=
+      List.In value seq -> S cached_max > value.
+
+    Lemma cached_max_gt :
+      forall default,
+        CacheImplementationEnsures cached_max_gt_property max default. 
+    Proof.
+      unfold CacheImplementationEnsures, cached_max_gt_property; 
+      intros;
+      destruct (ListMax_correct seq default) as (sup & _);
+      apply Gt.le_gt_S, sup;
+      simpl; auto.
+    Qed.
+
+    Lemma cached_max_gt_projected' {TItem} projection :
+      forall default,
+        ProjectedCacheImplementationEnsures (TItem := TItem) cached_max_gt_property max projection default.
+    Proof.
+      unfold ProjectedCacheImplementationEnsures.
+      unfold cached_max_gt_property.
+
+      intros;
+      apply (generalize_to_projection projection default cached_max_gt_property (cached_max_gt default));
+      trivial.
+    Qed.
+
+      Lemma in_map_unproject :
+        forall {A B} projection seq,
+        forall item,
+          @List.In A item seq ->
+          @List.In B (projection item) (List.map projection seq).
+      Proof.
+        intros ? ? ? seq;
+        induction seq; simpl; intros item in_seq.
+
+        trivial.
+        destruct in_seq;
+          [ left; f_equal | right ]; intuition.
+      Qed.
+
+    Lemma cached_max_gt_projected : 
+      forall {A} projection,
+      forall default seq (item: A),
+        List.In item seq -> S (List.fold_right (compose max projection) default seq) > (projection item).
+    Proof.
+      intros;
+      apply (cached_max_gt_projected' projection);
+      apply (in_map_unproject); trivial.
+    Qed.
   End MaxCacheable.
 End CacheableFunctions.
 
@@ -1095,9 +1197,6 @@ Proof.
   subst; auto.
 Defined.
 
-Record BagPlusBagProof heading :=
-  { BagType: Type; SearchTermType: Type; BagProof: Bag BagType (@Tuple heading) SearchTermType }.
-
 Record ProperAttribute {heading} :=
   {
     Attribute: Attributes heading; 
@@ -1107,7 +1206,7 @@ Record ProperAttribute {heading} :=
 Fixpoint NestedTreeFromAttributes'
          heading 
          (indexes: list (@ProperAttribute heading)) 
-         {struct indexes}: BagPlusBagProof heading :=
+         {struct indexes}: (@BagPlusBagProof (@Tuple heading)) :=
   match indexes with
     | [] => 
       {| BagType        := list (@Tuple heading);
@@ -1153,13 +1252,13 @@ Ltac mkIndex heading attributes :=
   assert (list (@ProperAttribute heading)) as decorated_source by autoconvert (@CheckType heading);
   apply (NestedTreeFromAttributes' heading decorated_source).
 
-Definition SampleIndex : BagPlusBagProof AlbumHeading.
+Definition SampleIndex : @BagPlusBagProof (@Tuple AlbumHeading).
 Proof.
   mkIndex AlbumHeading [Year; UKpeak; Name].
 Defined.
 
 Definition IndexedAlbums :=
-  List.fold_left binsert FirstAlbums (@bempty _ _ _ (BagProof _ SampleIndex)).
+  List.fold_left binsert FirstAlbums (@bempty _ _ _ (BagProof SampleIndex)).
 (*
 Eval simpl in (SearchTermType AlbumHeading SampleIndex).
 Time Eval simpl in (bfind IndexedAlbums (Some 3, (None, (None, [])))).
