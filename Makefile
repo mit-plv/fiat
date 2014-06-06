@@ -62,7 +62,12 @@ MODULES    := \
 	ADTExamples/QueryStructure/Bags/NatCompare_Facts \
 	ADTExamples/QueryStructure/Bags/String_as_OT \
 	ADTExamples/QueryStructure/Bags/Bags \
+	ADTExamples/QueryStructure/Bags/ListBags \
+	ADTExamples/QueryStructure/Bags/TreeBags \
+	ADTExamples/QueryStructure/Bags/CachingBags \
+	ADTExamples/QueryStructure/Bags/BagsOfTuples \
 	ADTExamples/QueryStructure/ProcessScheduler/SetEq \
+	ADTExamples/QueryStructure/ProcessScheduler/SetEqProperties \
 	ADTExamples/QueryStructure/ProcessScheduler/EnsembleListEquivalence \
 	ADTExamples/QueryStructure/ProcessScheduler/State \
 	ADTExamples/QueryStructure/ProcessScheduler/AdditionalLemmas \

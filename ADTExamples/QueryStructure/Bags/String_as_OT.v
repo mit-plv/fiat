@@ -1,7 +1,8 @@
-Require Import Omega.
+Require Import Omega String Ascii.
+Require Import Coq.Structures.OrderedType.
 
 Lemma nat_compare_eq_refl : forall x, nat_compare x x = Eq.
-  intros; rewrite nat_compare_eq_iff; trivial.
+  intros; apply nat_compare_eq_iff; trivial.
 Qed.
 
 Hint Rewrite <- nat_compare_lt : nat_comp_hints.
@@ -21,14 +22,11 @@ Lemma nat_compare_consistent :
 Proof.
   intros n0 n1;
   destruct (lt_eq_lt_dec n0 n1) as [ [_lt | _eq] | _lt ];
-    [ constructor 1; constructor 1  | constructor 1; constructor 2 | constructor 2 ];
-    split;
-    autorewrite_nat_compare;
-    intuition.
+  [ constructor 1; constructor 1  | constructor 1; constructor 2 | constructor 2 ];
+  split;
+  autorewrite_nat_compare;
+  intuition.
 Qed.
-
-Require Import String Ascii.
-Require Import Coq.Structures.OrderedType.
 
 Module String_as_OT <: OrderedType.
   Definition t := string.
@@ -49,8 +47,8 @@ Module String_as_OT <: OrderedType.
   Lemma string_compare_eq_refl : forall x, string_compare x x = Eq.
     intro x; 
     induction x; 
-      simpl; 
-      autorewrite_nat_compare;
+      simpl; trivial;
+      autorewrite_nat_compare.
       trivial.
   Qed.
 
@@ -200,6 +198,7 @@ Module String_as_OT <: OrderedType.
   Qed.    
 End String_as_OT.
 
+(* Usage example:
 Require Import FMapAVL.
 Require Import Coq.Structures.OrderedTypeEx.
 
@@ -219,3 +218,4 @@ Definition population_in_millions :=
  [[ "china" >> 1364, "india" >> 1243, "united states" >> 318, "indonesia" >> 247, "brazil" >> 201, "pakistan" >> 186, "nigeria" >> 174, "bangladesh" >> 153, "russia" >> 144, "japan" >> 127, "mexico" >> 120, "philippines" >> 99, "vietnam" >> 90, "ethiopia" >> 87, "egypt" >> 86, "germany" >> 81, "iran" >> 77, "turkey" >> 77, "democratic republic of the congo" >> 68, "france" >> 66 ]].
 
 Eval compute in (find "france" population_in_millions).
+*)

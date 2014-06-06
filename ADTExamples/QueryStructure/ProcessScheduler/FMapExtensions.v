@@ -4,7 +4,7 @@ Require Export FMapInterface.
 Require Import Coq.FSets.FMapFacts.
 Require Import Coq.Structures.OrderedTypeEx.
 
-Require Import SetEq AdditionalLemmas.
+Require Import SetEq SetEqProperties AdditionalLemmas.
 
 Unset Implicit Arguments.
 
@@ -265,7 +265,7 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
         SameElements (List.map proc seq) (map proc db).
   Proof.
     unfold SameElements; intros.
-    rewrite (map_modulo_SetEq _ (GetValues db)); trivial.
+    rewrite (@map_modulo_SetEq _ _ _ (GetValues db)); trivial.
     clear H; clear seq.
     unfold SetEq.
     symmetry.
@@ -395,121 +395,3 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
 End FMapExtensions_fun.
 
 Module FMapExtensions (M: WS) := FMapExtensions_fun M.E M.
-
-Module NestedTrees (M1: WS) (M2: WS).
-  Module Ext1 := FMapExtensions M1.
-  Module Ext2 := FMapExtensions M2.
-
-  Definition PartitionedEnsembleListEquivalence {A} set_db tree_db projection :=
-      forall key_instance,
-        EnsembleListEquivalence
-          (FilteredSet set_db projection key_instance)
-          (@Ext2.GetValues A (Ext1.FindWithDefault key_instance (M2.empty A) tree_db)).
-
-
-  Definition ExtractRows {A: Type} db :=
-    @flatten A (map Ext2.GetValues 
-                    (Ext1.GetValues db)).
-
-  Lemma FindWithDefault_NonEmpty_Found :
-    forall {A} key tree,
-      let subtree := Ext1.FindWithDefault key (M2.empty A) tree in
-      (exists row, List.In row (Ext2.GetValues subtree)) ->
-      List.In subtree (Ext1.GetValues tree).
-  Proof.    
-    intros.
-    unfold Ext1.FindWithDefault in subtree.
-    destruct (M1.find key tree) eqn:eq_find.
-
-    rewrite <- Ext1.BasicFacts.find_mapsto_iff in eq_find.
-    unfold Ext1.GetValues.
-    rewrite <- Ext1.MapsTo_snd.
-    eauto.
-
-    exfalso.
-    destruct H as [row row_in].
-    unfold Ext2.GetValues in row_in.
-    rewrite <- Ext2.MapsTo_snd in row_in. (* TODO: Embed GetValues in MapsTo_snd *)
-    destruct row_in as [key2 maps_to].
-    rewrite <- Ext2.BasicFacts.empty_mapsto_iff.
-    eauto.
-  Qed.
-
-  Definition IndexedBy {A} projection tree :=
-    forall key subtree,
-      M1.MapsTo key subtree tree ->
-      forall (row: A),
-        List.In row (Ext2.GetValues subtree) -> projection row = key. 
-
-  Lemma unpartition :
-    forall {A} projection set_db tree_db,
-      IndexedBy projection tree_db ->
-      @PartitionedEnsembleListEquivalence A set_db tree_db projection ->
-      EnsembleListEquivalence set_db (ExtractRows tree_db).
-    Proof.
-      unfold PartitionedEnsembleListEquivalence, ExtractRows; intros.
-      unfold EnsembleListEquivalence; intros.
-
-      specialize (H0 (projection x)).
-      unfold FilteredSet in *.
-      unfold ExtractRows.
-
-      split; intros.
-      rewrite in_flatten_iff.
-      set (subtree := (Ext1.FindWithDefault (projection x) (M2.empty A) tree_db)) in *.
-      exists (Ext2.GetValues subtree).
-      
-      specialize (H0 x); unfold Ensembles.In in *; simpl in H0.
-      rewrite in_map_iff.
-      split.
-      
-      intuition.
-      exists subtree; split; trivial.
-      destruct H0 as (H0 & _).
-
-      Lemma ugh: 
-        forall (P Q R: Prop),
-         (P /\ Q -> R) <->  (P -> Q -> R).
-      Proof.
-        tauto.
-      Qed.
-      
-      rewrite ugh in H0.
-      specialize (H0 H1 (eq_refl (projection x))).
- 
-      apply FindWithDefault_NonEmpty_Found;
-        eauto.
-
-      specialize (H0 x).
-      destruct H0 as (_ & H0).
-
-      unfold Ensembles.In in *.
-
-      Lemma ugh2 :
-        forall (P Q R: Prop),
-          (P -> (Q /\ R)) <-> ((P -> Q) /\ (P -> R)).
-      Proof.
-        tauto.
-      Qed.
-
-      rewrite ugh2 in H0.
-      destruct H0 as (H0 & _).
-
-      rewrite in_flatten_iff in H1.
-      destruct H1 as [subtree_values (x_in_subtree_values & subtree_values_in_map)].
-      rewrite in_map_iff in subtree_values_in_map.
-      destruct subtree_values_in_map as [subtree (subtree_values_correct & subtree_in_tree_values)].
-      unfold Ext1.GetValues in subtree_in_tree_values.
-      rewrite <- Ext1.MapsTo_snd in subtree_in_tree_values.
-      destruct subtree_in_tree_values as [key maps_to].
-      subst.
-
-      unfold IndexedBy in H.
-      specialize (H _ _ maps_to _ x_in_subtree_values).
-      subst.
-
-      apply (Ext1.FindWithDefault_MapsTo (M2.empty A)) in maps_to.
-      rewrite maps_to in H0.
-      intuition.
-    Qed.
-End NestedTrees.

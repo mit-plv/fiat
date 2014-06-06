@@ -5,20 +5,13 @@ Require Import String Omega List FunctionalExtensionality Ensembles
         GeneralInsertRefinements GeneralQueryRefinements
         GeneralQueryStructureRefinements
         ListQueryRefinements ListInsertRefinements
-        ListQueryStructureRefinements
-        ProcessScheduler.AdditionalLemmas
-        DBSchema SetEq.
+        ListQueryStructureRefinements.
 
-Require Import Bags.
-Require Import FMapAVL OrderedTypeEx.
-Require Import FMapExtensions.
+Require Import BagsOfTuples CachingBags Bool.
 Require Import DBSchema SetEq AdditionalLemmas.
 Require Export ADTRefinement.BuildADTRefinements.
 
 Unset Implicit Arguments.
-
-Module GenericTreeDB := FMapAVL.Make(Nat_as_OT). (* TODO: Add the generic implementation *)
-(*Module Import DBExtraFacts := FMapExtensions GenericTreeDB.*)
 
 Definition StatePIDIndexedTree : @BagPlusBagProof (@Tuple ProcessSchema).
   mkIndex ProcessSchema [STATE; PID].
@@ -133,9 +126,9 @@ Section TreeBasedRefinement.
       (* Full qualification of bfind_matcher needed to avoid apparition of spurious existentials *)
       rewrite (filter_by_equiv dec (@bfind_matcher _ _ _ StorageIsBag (Some n, (None, []))))
         by (
-            unfold ObservationalEq; simpl; 
-            unfold NatTreeExts.KeyFilter;
-            unfold NatTreeExts.MoreFacts.BasicProperties.F.eq_dec;
+            unfold ObservationalEq; simpl;
+            unfold NatTreeBag.KeyFilter;
+            unfold NatTreeBag.MoreFacts.BasicProperties.F.eq_dec;
             
             intros;
             rewrite ?andb_true_r, ?andb_true_l;
@@ -175,16 +168,7 @@ Section TreeBasedRefinement.
       setoid_rewrite Equivalent_List_In_Where.
 
       (* Full qualification of bfind_matcher needed to avoid apparition of spurious existentials *)
-      rewrite (filter_by_equiv dec (@bfind_matcher _ _ _ StorageIsBag (None, (Some n, []))))
-        by (
-            unfold ObservationalEq; simpl; 
-            unfold NatTreeExts.KeyFilter;
-            unfold NatTreeExts.MoreFacts.BasicProperties.F.eq_dec;
-            
-            intros;
-            rewrite ?andb_true_r, ?andb_true_l;
-            intuition
-          ).
+      rewrite (filter_by_equiv _ (@bfind_matcher _ _ _ StorageIsBag (None, (Some n, [])))) by prove_observational_eq.
 
       setoid_rewrite (@bfind_correct _ _ _ StorageIsBag r_n (None, (Some n, []))).
       setoid_rewrite refine_For_List_Return.
@@ -227,7 +211,10 @@ Section TreeBasedRefinement.
       unfold equivalence.
 
       rewrite (refine_pick_val' 
-                 (binsert r_n <PID_COLUMN :: (S (ccached_value r_n)), STATE_COLUMN :: SLEEPING, CPU_COLUMN :: 0>)).
+                 (binsert r_n 
+                  <PID_COLUMN :: (S (ccached_value r_n)), 
+                  STATE_COLUMN :: SLEEPING, 
+                  CPU_COLUMN :: 0>)).
 
       simplify with monad laws.
 
