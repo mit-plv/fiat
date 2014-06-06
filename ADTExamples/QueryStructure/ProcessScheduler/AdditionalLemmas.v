@@ -166,6 +166,125 @@ Section AdditionalListLemmas.
   Proof.
     intros A f g obs seq; unfold ObservationalEq in obs; induction seq; simpl; try rewrite obs; try rewrite IHseq; trivial.
   Qed.
+
+  Lemma filter_and :
+    forall {A} pred1 pred2,
+    forall (seq: list A),
+      List.filter (fun x => andb (pred1 x) (pred2 x)) seq =
+      List.filter pred1 (List.filter pred2 seq).
+  Proof.
+    intros; 
+    induction seq;
+    simpl;
+    [ | destruct (pred1 a) eqn:eq1; 
+        destruct (pred2 a) eqn:eq2];
+    simpl; 
+    try rewrite eq1;
+    try rewrite eq2;
+    trivial;
+    f_equal;
+    trivial.
+  Qed.
+
+  Lemma filter_and' :
+    forall {A} pred1 pred2,
+    forall (seq: list A),
+      List.filter (fun x => andb (pred1 x) (pred2 x)) seq =
+      List.filter pred2 (List.filter pred1 seq).
+  Proof.
+    intros; 
+    induction seq;
+    simpl;
+    [ | destruct (pred1 a) eqn:eq1; 
+        destruct (pred2 a) eqn:eq2];
+    simpl; 
+    try rewrite eq1;
+    try rewrite eq2;
+    trivial;
+    f_equal;
+    trivial.
+  Qed.
+
+  Lemma flatten_filter :
+    forall {A} (seq: list (list A)) pred, 
+      List.filter pred (flatten seq) =
+      flatten (List.map (List.filter pred) seq). 
+  Proof.
+    intros; induction seq; trivial.
+    unfold flatten; simpl.
+    induction a; trivial.
+    simpl; 
+      destruct (pred a); simpl; rewrite IHa; trivial.
+  Qed.
+
+  Lemma map_map :
+    forall { A B C } (proc1: A -> B) (proc2: B -> C),
+    forall seq,
+      List.map proc2 (List.map proc1 seq) = List.map (fun x => proc2 (proc1 x)) seq.
+  Proof.            
+    intros; induction seq; simpl; f_equal; trivial.
+  Qed.        
+  
+  Lemma filter_all_true :
+    forall {A} pred (seq: list A),
+      (forall x, List.In x seq -> pred x = true) ->
+      List.filter pred seq = seq.
+  Proof.
+    induction seq as [ | head tail IH ]; simpl; trivial.
+    intros all_true.
+    rewrite all_true by eauto.
+    f_equal; intuition.
+  Qed.
+
+  Lemma filter_all_false :
+    forall {A} seq pred,
+      (forall item : A, List.In item seq -> pred item = false) ->
+      List.filter pred seq = [].
+  Proof.
+    intros A seq pred all_false; induction seq as [ | head tail IH ]; simpl; trivial.
+    rewrite (all_false head) by (simpl; eauto). 
+    intuition.
+  Qed.
+
+  Lemma map_filter_all_false :
+    forall {A} pred seq, 
+      (forall subseq, List.In subseq seq -> 
+                      forall (item: A), List.In item subseq -> 
+                                        pred item = false) ->
+      (List.map (List.filter pred) seq) = (List.map (fun x => []) seq).
+  Proof.
+    intros A pred seq all_false; 
+    induction seq as [ | subseq subseqs IH ] ; simpl; trivial.
+    
+    f_equal.
+
+    specialize (all_false subseq (or_introl eq_refl)).
+    apply filter_all_false; assumption.
+
+    apply IH; firstorder.
+  Qed.
+
+  Lemma flatten_nils :
+    forall {A} (seq: list (list A)),
+      flatten (List.map (fun _ => []) seq) = @nil A.
+  Proof.        
+    induction seq; intuition. 
+  Qed.
+
+  Lemma flatten_app :
+    forall {A} (seq1 seq2: list (list A)),
+      flatten (seq1 ++ seq2) = flatten seq1 ++ flatten seq2.
+  Proof.
+    unfold flatten; induction seq1; simpl; trivial.
+    intros; rewrite IHseq1; rewrite app_assoc; trivial.
+  Qed.
+
+  Lemma flatten_head :
+    forall {A} head tail,
+      @flatten A (head :: tail) = head ++ flatten tail.
+  Proof.
+    intuition.
+  Qed.
 End AdditionalListLemmas.
 
 Section AdditionalComputationLemmas.

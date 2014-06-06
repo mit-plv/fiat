@@ -12,14 +12,45 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
   Module Export BasicFacts := WFacts_fun E M.
   Module Export BasicProperties := WProperties_fun E M.
 
+  Definition TKey := key.
+  
+  Definition FindWithDefault {A} (key: TKey) (default: A) (fmap: t A) :=
+    match find key fmap with
+      | Some result => result
+      | None        => default
+    end.
+  
+  Definition Values {A} container :=
+    List.map snd (@elements A container).
+  
+  Lemma FindWithDefault_dec :
+    forall {A : Type} (key : TKey) (default : A) (fmap : t A),
+      { exists result, 
+          MapsTo key result fmap /\
+          @FindWithDefault A key default fmap = result } +
+      { find key fmap = None /\ 
+        @FindWithDefault A key default fmap = default }.
+  Proof.
+    unfold FindWithDefault;
+    intros A key default fmap; 
+    destruct (find key fmap) eqn:find;
+    [ left; rewrite <- find_mapsto_iff in find | right ];
+    eauto.
+  Qed.
+  
+  Lemma Values_empty :
+    forall {A}, Values (empty A) = []. 
+  Proof.
+      intros;
+    unfold Values;
+    rewrite elements_empty;
+    reflexivity.
+  Qed.
+  
+  (* TODO: Get rid of this *)
   Definition GetValues {A: Type} (db: t A) : list A  :=
     List.map snd (elements db).
-
-  Definition FindWithDefault {A: Type} (key: key) (db: t A) (default: A) :=
-    match find key db with
-      | Some x => x
-      | None   => default
-    end.
+  
   
   Definition IndexedBy {A} projection tree :=
     forall key (value: A),
@@ -29,7 +60,7 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
   Lemma FindWithDefault_MapsTo :
     forall {A} default key (value: A) tree,
       MapsTo key value tree -> 
-      FindWithDefault key tree default = value.
+      FindWithDefault key default tree = value.
   Proof.
     unfold FindWithDefault; intros ? ? ? ? ? maps_to.
     rewrite find_mapsto_iff in *.
@@ -68,7 +99,7 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
     exists (k', e'); intuition.
   Qed.
 
-  Lemma Equivalence_eq_key_elt : 
+  Lemma equiv_eq_key_elt : 
     forall {A: Type}, Equivalence (eq_key_elt (elt := A)).
   Proof.
     unfold eq_key_elt;
@@ -76,7 +107,46 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
     simpl in *; 
     intuition;
     eauto using E.eq_trans, eq_trans.
-  Qed.      
+  Qed.  
+
+  Lemma equiv_eq_key :
+    forall elt,
+      Equivalence (eq_key (elt:=elt)).
+  Proof.
+    intros; unfold eq_key; intuition.
+    unfold Transitive; firstorder.
+    transitivity (fst y); trivial.
+  Qed.
+
+  Lemma InA_front_InA :
+    forall elt,
+    forall {item} front middle tail,
+      InA (eq_key_elt (elt:=elt)) item front -> InA (eq_key_elt (elt:=elt)) item (front ++ middle :: tail).
+  Proof.
+    intros; intuition. 
+    rewrite InA_app_iff;
+      [intuition | apply equiv_eq_key_elt].
+  Qed.
+
+  Lemma InA_tail_InA :
+    forall elt,
+    forall {item} front middle tail,
+      InA (eq_key_elt (elt:=elt)) item tail -> InA (eq_key_elt (elt:=elt)) item (front ++ middle :: tail).
+  Proof.
+    intros; intuition. 
+    rewrite InA_app_iff;
+      [intuition | apply equiv_eq_key_elt].
+  Qed.
+
+  Lemma InA_front_tail_InA :
+    forall elt,
+    forall {item} front middle tail,
+      InA (eq_key_elt (elt:=elt)) item front \/ InA (eq_key_elt (elt:=elt)) item tail -> 
+      InA (eq_key_elt (elt:=elt)) item (front ++ middle :: tail).
+  Proof.
+    intros elt item front middle tail in_or;
+    destruct in_or; eauto using InA_front_InA, InA_tail_InA.
+  Qed.    
 
   Lemma eq_stronger_than_eq_key_elt : 
     forall {A: Type} x seq, 
@@ -84,7 +154,7 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
   Proof.
     intros.
     apply InA_In in H.
-    apply (In_InA Equivalence_eq_key_elt);
+    apply (In_InA equiv_eq_key_elt);
       trivial.
   Qed. 
 
@@ -92,7 +162,7 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
     forall {A: Type} k (e: A) (m: t A), 
       List.In (k, e) (elements m) -> MapsTo k e m.
     intros; 
-    eauto using elements_2, (In_InA Equivalence_eq_key_elt).
+    eauto using elements_2, (In_InA equiv_eq_key_elt).
   Qed.
 
   Lemma in_elements_after_map : 
@@ -334,7 +404,7 @@ Module NestedTrees (M1: WS) (M2: WS).
       forall key_instance,
         EnsembleListEquivalence
           (FilteredSet set_db projection key_instance)
-          (@Ext2.GetValues A (Ext1.FindWithDefault key_instance tree_db (M2.empty A))).
+          (@Ext2.GetValues A (Ext1.FindWithDefault key_instance (M2.empty A) tree_db)).
 
 
   Definition ExtractRows {A: Type} db :=
@@ -343,7 +413,7 @@ Module NestedTrees (M1: WS) (M2: WS).
 
   Lemma FindWithDefault_NonEmpty_Found :
     forall {A} key tree,
-      let subtree := Ext1.FindWithDefault key tree (M2.empty A) in
+      let subtree := Ext1.FindWithDefault key (M2.empty A) tree in
       (exists row, List.In row (Ext2.GetValues subtree)) ->
       List.In subtree (Ext1.GetValues tree).
   Proof.    
@@ -386,7 +456,7 @@ Module NestedTrees (M1: WS) (M2: WS).
 
       split; intros.
       rewrite in_flatten_iff.
-      set (subtree := (Ext1.FindWithDefault (projection x) tree_db (M2.empty A))) in *.
+      set (subtree := (Ext1.FindWithDefault (projection x) (M2.empty A) tree_db)) in *.
       exists (Ext2.GetValues subtree).
       
       specialize (H0 x); unfold Ensembles.In in *; simpl in H0.

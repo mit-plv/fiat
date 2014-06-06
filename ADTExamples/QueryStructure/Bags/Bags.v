@@ -100,29 +100,14 @@ Module IndexedTree (Import M: WS).
     destruct (F.eq_dec _ _); intuition.
   Qed.    
 
-  Definition EmptyAsIndexedBag 
-             (TBag TItem TBagSearchTerm: Type) 
-             (bags_bag: Bag TBag TItem TBagSearchTerm) projection 
-  : @IndexedBag TBag TItem TBagSearchTerm bags_bag projection.
-    refine (
-        {|
-          ifmap        := empty TBag;
-          iconsistency := _
-        |}
-      ).
-    Proof. 
+  Lemma iconsistency_empty :
+    forall {TBag TItem TBagSearchTerm: Type} 
+           {bags_bag: Bag TBag TItem TBagSearchTerm} {projection},
+      IndexedBagConsistency projection (empty TBag).
+  Proof.
       unfold IndexedBagConsistency; 
       intros; rewrite empty_mapsto_iff in *; exfalso; trivial.
-    Defined.
-
-    Definition FindWithDefault {A} (key: TKey) (default: A) (fmap: t A) :=
-      match find key fmap with
-        | Some result => result
-        | None        => default
-      end.
-
-    Definition Values {A} container :=
-      List.map snd (@elements A container).
+  Qed.
 
     Lemma consistency_key_eq :
       forall {TBag TItem TBagSearchTerm},
@@ -137,30 +122,27 @@ Module IndexedTree (Import M: WS).
       destruct indexed_bag as [? consistent].
       unfold IndexedBagConsistency in consistent.
       eapply consistent; eauto.
-    Qed.      
-
-    Lemma FindWithDefault_dec :
-      forall {A : Type} (key : TKey) (default : A) (fmap : t A),
-        { exists result, 
-            MapsTo key result fmap /\
-            @FindWithDefault A key default fmap = result } +
-        { find key fmap = None /\ 
-          @FindWithDefault A key default fmap = default }.
-    Proof.
-      unfold FindWithDefault;
-      intros A key default fmap; 
-      destruct (find key fmap) eqn:find;
-      [ left; rewrite <- find_mapsto_iff in find | right ];
-      eauto.
     Qed.
 
-    Lemma Values_empty :
-      forall {A}, Values (empty A) = []. 
+    Ltac destruct_if :=
+      match goal with
+          [ |- context [ if ?cond then _ else _ ] ] => destruct cond
+      end.
+
+    Lemma KeyFilter_true :
+      forall {A} k projection (item: A),
+        KeyFilter k projection item = true <-> E.eq (projection item) k.
     Proof.
-      intros;
-      unfold Values;
-      rewrite elements_empty;
-      reflexivity.
+      unfold KeyFilter; intros;
+      destruct_if; intros; intuition.
+    Qed.
+
+    Lemma KeyFilter_false :
+      forall {A} k projection (item: A),
+        KeyFilter k projection item = false <-> ~ E.eq (projection item) k.
+    Proof.
+      unfold KeyFilter; intros;
+      destruct_if; intros; intuition.
     Qed.
 
     Instance IndexedBagAsBag 
@@ -171,11 +153,10 @@ Module IndexedTree (Import M: WS).
         TItem 
         ((option TKey) * TBagSearchTerm) :=
       {| 
-        bempty := 
-          EmptyAsIndexedBag TBag TItem TBagSearchTerm bags_bag projection;
+        bempty := {| ifmap        := empty TBag;
+                     iconsistency := iconsistency_empty |};
 
-        bstar  :=
-          (None, @bstar _ _ _ bags_bag);
+        bstar  := (None, @bstar _ _ _ bags_bag);
 
         bfind_matcher key_searchterm item :=
           let (key_option, search_term) := key_searchterm in
@@ -247,7 +228,7 @@ Module IndexedTree (Import M: WS).
       autoexists; eauto.
 
       Focus 2.
-      unfold flatten, EmptyAsIndexedBag; simpl.
+      unfold flatten; simpl.
       rewrite Values_empty; tauto.
  
       destruct H as [ [ items ( in_seq & [ bag ( bag_items & [ key maps_to ] ) ] ) ] | eq_item_inserted ].
@@ -313,120 +294,10 @@ Module IndexedTree (Import M: WS).
       unfold IndexedBagConsistency in i.
 
 
-      Lemma filter_and :
-        forall {A} pred1 pred2,
-        forall (seq: list A),
-          List.filter (fun x => pred1 x && pred2 x) seq =
-          List.filter pred1 (List.filter pred2 seq).
-      Proof.
-        intros; 
-        induction seq;
-        simpl;
-        [ | destruct (pred1 a) eqn:eq1; 
-            destruct (pred2 a) eqn:eq2];
-        simpl; 
-        try rewrite eq1;
-        try rewrite eq2;
-        trivial;
-        f_equal;
-        trivial.
-      Qed.
-
-      Lemma filter_and_opp :
-        forall {A} pred1 pred2,
-        forall (seq: list A),
-          List.filter (fun x => pred1 x && pred2 x) seq =
-          List.filter pred2 (List.filter pred1 seq).
-      Proof.
-        intros; 
-        induction seq;
-        simpl;
-        [ | destruct (pred1 a) eqn:eq1; 
-            destruct (pred2 a) eqn:eq2];
-        simpl; 
-        try rewrite eq1;
-        try rewrite eq2;
-        trivial;
-        f_equal;
-        trivial.
-      Qed.
-
-      rewrite filter_and_opp.
-
-      Lemma flatten_filter :
-        forall {A} (seq: list (list A)) pred, 
-          List.filter pred (flatten seq) =
-          flatten (List.map (List.filter pred) seq). 
-      Proof.
-        intros; induction seq; trivial.
-        unfold flatten; simpl.
-        induction a; trivial.
-        simpl; 
-          destruct (pred a); simpl; rewrite IHa; trivial.
-      Qed.
+      rewrite filter_and'.
 
       rewrite flatten_filter.
       
-
-        Lemma equiv_eq_key_elt :
-          forall elt,
-            Equivalence (eq_key_elt (elt:=elt)).
-        Proof.
-          intros; unfold eq_key_elt; intuition.
-          unfold Symmetric; firstorder.
-          unfold Transitive; firstorder.
-          transitivity (fst y); trivial.
-          transitivity (snd y); trivial.
-        Qed.
-
-        Lemma equiv_eq_key :
-          forall elt,
-            Equivalence (eq_key (elt:=elt)).
-        Proof.
-          intros; unfold eq_key; intuition.
-          unfold Transitive; firstorder.
-          transitivity (fst y); trivial.
-        Qed.
-
-
-        Lemma map_map :
-          forall { A B C } (proc1: A -> B) (proc2: B -> C),
-            forall seq,
-            List.map proc2 (List.map proc1 seq) = List.map (fun x => proc2 (proc1 x)) seq.
-        Proof.            
-          intros; induction seq; simpl; f_equal; trivial.
-        Qed.        
-   
-        Lemma InA_front_InA :
-          forall elt,
-          forall {item} front middle tail,
-            InA (eq_key_elt (elt:=elt)) item front -> InA (eq_key_elt (elt:=elt)) item (front ++ middle :: tail).
-        Proof.
-          intros; intuition. 
-          rewrite InA_app_iff;
-            [intuition | apply equiv_eq_key_elt].
-        Qed.
-
-        Lemma InA_tail_InA :
-          forall elt,
-          forall {item} front middle tail,
-            InA (eq_key_elt (elt:=elt)) item tail -> InA (eq_key_elt (elt:=elt)) item (front ++ middle :: tail).
-        Proof.
-          intros; intuition. 
-          rewrite InA_app_iff;
-            [intuition | apply equiv_eq_key_elt].
-        Qed.
-
-        Lemma InA_front_tail_InA :
-          forall elt,
-          forall {item} front middle tail,
-            InA (eq_key_elt (elt:=elt)) item front \/ InA (eq_key_elt (elt:=elt)) item tail -> 
-            InA (eq_key_elt (elt:=elt)) item (front ++ middle :: tail).
-        Proof.
-          intros elt item front middle tail in_or;
-          destruct in_or; eauto using InA_front_InA, InA_tail_InA.
-        Qed.
-        
       Lemma consist :
         forall 
           {TBag TItem TSearchTerm bags_bag projection} 
@@ -493,88 +364,6 @@ Module IndexedTree (Import M: WS).
             (apply (InA_eqke_eqk (k2 := fst y) (snd y)) in in_seq; eauto);
             rewrite <- surjective_pairing in in_seq; intuition.
         }
-
-        Lemma filter_all_true :
-          forall {A} pred (seq: list A),
-            (forall x, List.In x seq -> pred x = true) ->
-            List.filter pred seq = seq.
-        Proof.
-          induction seq as [ | head tail IH ]; simpl; trivial.
-          intros all_true.
-          rewrite all_true by eauto.
-          f_equal; intuition.
-        Qed.
-
-        Lemma filter_all_false :
-          forall {A} seq pred,
-            (forall item : A, List.In item seq -> pred item = false) ->
-            List.filter pred seq = [].
-        Proof.
-          intros A seq pred all_false; induction seq as [ | head tail IH ]; simpl; trivial.
-          rewrite (all_false head) by (simpl; eauto). 
-          intuition.
-        Qed.
-
-        Lemma map_filter_all_false :
-          forall {A} pred seq, 
-            (forall subseq, List.In subseq seq -> 
-                            forall (item: A), List.In item subseq -> 
-                                              pred item = false) ->
-            (List.map (List.filter pred) seq) = (List.map (fun x => []) seq).
-        Proof.
-          intros A pred seq all_false; 
-          induction seq as [ | subseq subseqs IH ] ; simpl; trivial.
-          
-          f_equal.
-
-          specialize (all_false subseq (or_introl eq_refl)).
-          apply filter_all_false; assumption.
-
-          apply IH; firstorder.
-        Qed.
-
-        Lemma flatten_nils :
-          forall {A} (seq: list (list A)),
-            flatten (List.map (fun _ => []) seq) = @nil A.
-        Proof.        
-          induction seq; intuition. 
-        Qed.
-
-        Lemma flatten_app :
-          forall {A} (seq1 seq2: list (list A)),
-            flatten (seq1 ++ seq2) = flatten seq1 ++ flatten seq2.
-        Proof.
-          unfold flatten; induction seq1; simpl; trivial.
-          intros; rewrite IHseq1; rewrite app_assoc; trivial.
-        Qed.
-
-        Lemma flatten_head :
-          forall {A} head tail,
-            @flatten A (head :: tail) = head ++ flatten tail.
-        Proof.
-          intuition.
-        Qed.
-        
-        Ltac destruct_if :=
-          match goal with
-              [ |- context [ if ?cond then _ else _ ] ] => destruct cond
-          end.
-
-        Lemma KeyFilter_true :
-          forall {A} k projection (item: A),
-            KeyFilter k projection item = true <-> E.eq (projection item) k.
-        Proof.
-          unfold KeyFilter; intros;
-          destruct_if; intros; intuition.
-        Qed.
-
-        Lemma KeyFilter_false :
-          forall {A} k projection (item: A),
-            KeyFilter k projection item = false <-> ~ E.eq (projection item) k.
-        Proof.
-          unfold KeyFilter; intros;
-          destruct_if; intros; intuition.
-        Qed.
 
         Lemma In_InA :
           forall (A : Type) (l : list A) (eqA : relation A) (x : A),
@@ -1265,25 +1054,4 @@ Time Eval simpl in (bfind IndexedAlbums (None, (None, (Some "With the Beatles", 
 Time Eval simpl in (bfind IndexedAlbums (None, (None, (None, [TupleEqualityMatcher (eq_dec := string_dec) Name "With the Beatles"])))).
 
 (*Time Eval simpl in (@bfind _ _ _ (BagProof _ SampleIndex) IndexedAlbums (Some 3, (Some 1, (None, @nil (TSearchTermMatcher AlbumHeading))))).*)
-*)
-
-(*
-  simpl.
-  unfold bfind.
-  unfold IndexedAlbums.
-  unfold BagProof.
-  unfold SampleIndex.
-  unfold NestedTreeFromAttributes'.
-  unfold right_type.
-  unfold CheckType.
-  unfold bempty.
-  simpl attribute.
-  unfold StringTreeType.
-  unfold NatTreeType.
-  unfold fold_left.
-  unfold FirstAlbums.
-  progress simpl NatTreeExts.IndexedBagAsBag.
-  (*progress simpl StringTreeExts.IndexedBagAsBag.*)
-  unfold NatTreeExts.IndexedBagAsBag.
-  simpl.
 *)
