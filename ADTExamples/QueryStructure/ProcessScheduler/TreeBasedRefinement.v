@@ -160,10 +160,10 @@ Section TreeBasedRefinement.
              delaying the failure until the call to bfind_correct *)
     (* TODO: The backtick notation from bounded indexes cannot be input *)
     (* TODO: The insert_always_happens scripts could probably be made more generic *)
-    
+
     hone method GET_CPU_TIME. {
       unfold equivalence in H.
-      
+
       setoid_rewrite refineEquiv_pick_ex_computes_to_and.
       setoid_rewrite refineEquiv_pick_pair.
       setoid_rewrite refineEquiv_pick_eq'. 
@@ -171,9 +171,11 @@ Section TreeBasedRefinement.
       simpl.
 
       rewrite (Equivalent_UnConstr_In_EnsembleListEquivalence) by eassumption.
+
       setoid_rewrite Equivalent_List_In_Where.
 
-      rewrite (filter_by_equiv dec (@bfind_matcher _ _ _ StorageIsBag (None, (Some n, [])))) 
+      (* Full qualification of bfind_matcher needed to avoid apparition of spurious existentials *)
+      rewrite (filter_by_equiv dec (@bfind_matcher _ _ _ StorageIsBag (None, (Some n, []))))
         by (
             unfold ObservationalEq; simpl; 
             unfold NatTreeExts.KeyFilter;
@@ -183,6 +185,7 @@ Section TreeBasedRefinement.
             rewrite ?andb_true_r, ?andb_true_l;
             intuition
           ).
+
       setoid_rewrite (@bfind_correct _ _ _ StorageIsBag r_n (None, (Some n, []))).
       setoid_rewrite refine_For_List_Return.
       simplify with monad laws.
@@ -190,7 +193,7 @@ Section TreeBasedRefinement.
       rewrite refine_pick_val by eassumption.
       simplify with monad laws.
       finish honing.
-    }
+    }    
 
     hone method SPAWN. {
       unfold equivalence in H.
@@ -233,7 +236,7 @@ Section TreeBasedRefinement.
       (* Insert correct *)
       unfold EnsembleListEquivalence in *.
 
-      setoid_rewrite (@binsert_enumerate _ _ _ StorageIsBag).
+      setoid_rewrite (@binsert_enumerate _ _ _ StorageIsBag _).
       setoid_rewrite get_update_unconstr_iff.
       setoid_rewrite <- H.
       unfold RelationInsert, In in *;
