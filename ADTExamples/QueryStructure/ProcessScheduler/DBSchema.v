@@ -57,12 +57,13 @@ Section ProcessSchedulerInterface.
   Definition ForAll_In
              qsSchema
              (qs : QueryStructure qsSchema)
-             (R : BoundedString) (bod : Ensemble Tuple) : Prop :=
+             R (bod : Ensemble (@Tuple (QSGetNRelSchemaHeading qsSchema R))) : Prop :=
     forall tup, GetRelation qs R tup ->
                 bod tup.
 
   Notation "∀ x '∈' R ',' bod" :=
-    (ForAll_In qsHint R (fun x => bod)) (bod at level 11, at level 10)
+    (ForAll_In qsHint R (fun x => bod)) 
+      (bod at level 11, at level 10)
     : QuerySpec_scope.
 
   Arguments ForAll_In _ _ _ _ / .
