@@ -61,10 +61,12 @@ MODULES    := \
 	ADTExamples/QueryStructure/Bags/Beatles \
 	ADTExamples/QueryStructure/Bags/NatCompare_Facts \
 	ADTExamples/QueryStructure/Bags/String_as_OT \
-	ADTExamples/QueryStructure/Bags/Bags \
+	ADTExamples/QueryStructure/Bags/BagsInterface \
+	ADTExamples/QueryStructure/Bags/BagsProperties \
 	ADTExamples/QueryStructure/Bags/ListBags \
 	ADTExamples/QueryStructure/Bags/TreeBags \
 	ADTExamples/QueryStructure/Bags/CachingBags \
+	ADTExamples/QueryStructure/Bags/Bags \
 	ADTExamples/QueryStructure/Bags/BagsOfTuples \
 	ADTExamples/QueryStructure/ProcessScheduler/SetEq \
 	ADTExamples/QueryStructure/ProcessScheduler/SetEqProperties \

@@ -124,16 +124,7 @@ Section TreeBasedRefinement.
       setoid_rewrite Equivalent_List_In_Where.
 
       (* Full qualification of bfind_matcher needed to avoid apparition of spurious existentials *)
-      rewrite (filter_by_equiv dec (@bfind_matcher _ _ _ StorageIsBag (Some n, (None, []))))
-        by (
-            unfold ObservationalEq; simpl;
-            unfold NatTreeBag.KeyFilter;
-            unfold NatTreeBag.MoreFacts.BasicProperties.F.eq_dec;
-            
-            intros;
-            rewrite ?andb_true_r, ?andb_true_l;
-            intuition
-          ).
+      rewrite (filter_by_equiv dec (@bfind_matcher _ _ _ StorageIsBag (Some n, (None, [])))) by prove_observational_eq.
 
       setoid_rewrite (@bfind_correct _ _ _ StorageIsBag r_n (Some n, (None, []))).
       setoid_rewrite refine_For_List_Return.
@@ -197,7 +188,7 @@ Section TreeBasedRefinement.
             apply (cached_max_gt_projected (fun (p: Process) => p!PID_COLUMN));
             unfold EnsembleListEquivalence, In in H;               (* TODO: Get rid of this unfold *)
             rewrite <- H; assumption                               (* TODO: What is this spurious GetAttribute? *)
-          ).
+          ). (* TODO NEXT *)
 
       rewrite refine_pick_val by eassumption.
       simplify with monad laws.

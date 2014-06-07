@@ -1,4 +1,4 @@
-Require Export Bags.
+Require Export BagsInterface.
 Unset Implicit Arguments.
 
 Definition ListAsBag_bfind 

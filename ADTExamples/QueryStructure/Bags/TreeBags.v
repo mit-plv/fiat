@@ -1,4 +1,4 @@
-Require Export Bags.
+Require Export BagsInterface.
 Require Import SetEqProperties FMapExtensions AdditionalLemmas.
 Require Import FMapInterface Coq.FSets.FMapFacts.
 
