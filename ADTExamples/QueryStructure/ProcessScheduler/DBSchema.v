@@ -58,7 +58,7 @@ Section ProcessSchedulerInterface.
              qsSchema
              (qs : QueryStructure qsSchema)
              R (bod : Ensemble (@Tuple (QSGetNRelSchemaHeading qsSchema R))) : Prop :=
-    forall tup, GetRelation qs R tup ->
+    forall tup, Ensembles.In _ (GetRelation qs R) tup ->
                 bod tup.
 
   Notation "∀ x '∈' R ',' bod" :=

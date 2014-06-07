@@ -59,7 +59,6 @@ MODULES    := \
 	ADTExamples/QueryStructure/ListQueryStructureRefinements \
 	ADTExamples/QueryStructure/QueryStructureNotations \
 	ADTExamples/QueryStructure/Bags/Beatles \
-	ADTExamples/QueryStructure/Bags/NatCompare_Facts \
 	ADTExamples/QueryStructure/Bags/String_as_OT \
 	ADTExamples/QueryStructure/Bags/BagsInterface \
 	ADTExamples/QueryStructure/Bags/BagsProperties \

@@ -436,6 +436,14 @@ Section AdditionalComputationLemmas.
     intros; subst; apply ReturnComputes; trivial.
   Qed.
 
+  Lemma refine_eq_ret :
+    forall {A} (a a': A),
+      a = a' ->
+      refineEquiv  (ret a) (ret a').
+  Proof.
+    intros; subst; reflexivity.
+  Qed.
+
   Require Import Computation.Refinements.Tactics.
 
   Lemma refine_snd :
@@ -587,8 +595,7 @@ Section AdditionalQueryLemmas. (* TODO: Kill the two following lemmas. They are 
   Qed.
 
   Require Import InsertQSSpecs StringBound.
-  Lemma get_update_unconstr_iff :
-    forall db_schema qs table new_contents,
+  Lemma get_update_unconstr_iff {db_schema qs table new_contents} :
     forall x,
       Ensembles.In _ (GetUnConstrRelation (UpdateUnConstrRelation db_schema qs table new_contents) table) x <->
       Ensembles.In _ new_contents x.
@@ -597,6 +604,8 @@ Section AdditionalQueryLemmas. (* TODO: Kill the two following lemmas. They are 
     intros; rewrite ith_replace_BoundIndex_eq;
     reflexivity.
   Qed.
+
+
 
   Require Import Heading Schema.
   Lemma tupleAgree_sym :

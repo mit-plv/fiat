@@ -17,7 +17,8 @@ Definition StatePIDIndexedTree : @BagPlusBagProof (@Tuple ProcessSchema).
   mkIndex ProcessSchema [STATE; PID].
 Defined.
 
-Definition Storage := AddCachingLayer (BagProof StatePIDIndexedTree) (fun p => p PID)
+Definition Storage := AddCachingLayer (BagProof StatePIDIndexedTree) 
+                                      (fun p => p PID)
                                       0 max (ListMax_cacheable 0).
 
 Definition StorageType           := BagType Storage.
@@ -179,16 +180,9 @@ Section TreeBasedRefinement.
       simplify with monad laws.
       simpl.
  
-      assert (forall tup : Tuple,
-                GetUnConstrRelation c PROCESSES tup ->
-                S (ccached_value r_n) > tup!PID_COLUMN) 
-        by (
-            intros;
-            rewrite <- (cfresh_cache r_n);
-            apply (cached_max_gt_projected (fun (p: Process) => p!PID_COLUMN));
-            unfold EnsembleListEquivalence, In in H;               (* TODO: Get rid of this unfold *)
-            rewrite <- H; assumption                               (* TODO: What is this spurious GetAttribute? *)
-          ). (* TODO NEXT *)
+      assert (forall tup : Process, tup ∈ GetUnConstrRelation c PROCESSES -> S (ccached_value r_n) > tup!PID_COLUMN)
+        by (rewrite <- EnsembleListEquivalence_lift_property by eassumption;
+            apply (assert_cache_property (cfresh_cache r_n) (cached_max_gt_projected _ _))).
 
       rewrite refine_pick_val by eassumption.
       simplify with monad laws.
@@ -212,13 +206,10 @@ Section TreeBasedRefinement.
       finish honing.
 
       (* Insert correct *)
-      unfold EnsembleListEquivalence in *.
-
+      apply (ensemble_list_equivalence_set_eq_morphism get_update_unconstr_iff).
+      unfold RelationInsert, EnsembleListEquivalence, In in *.
       setoid_rewrite (@binsert_enumerate _ _ _ StorageIsBag _).
-      setoid_rewrite get_update_unconstr_iff.
-      setoid_rewrite <- H.
-      unfold RelationInsert, In in *;
-      intuition.
+      setoid_rewrite <- H; tauto.
     }
 
     finish sharpening.

@@ -45,6 +45,15 @@ Record Cache
          initial_value can be set to None, and TCachedValue
          replaced by an option type. *)
 
+Definition extract_cacheability_proof 
+           {TBag TItem TSearchTerm TCachedValue: Type} 
+           {bag_bag: Bag TBag TItem TSearchTerm}
+           {initial_value: TCachedValue}
+           {updater: TItem -> TCachedValue -> TCachedValue}
+           {updater_cacheable: IsCacheable updater initial_value}
+           (cache: @Cache TBag TItem TSearchTerm TCachedValue bag_bag initial_value updater updater_cacheable) := 
+  updater_cacheable.
+
 Lemma empty_caching_bag_fresh:
   forall {TBag TItem TSearchTerm TCachedValue: Type}
          {bag_bag : Bag TBag TItem TSearchTerm}
@@ -301,6 +310,23 @@ Section CacheableFunctions.
         intros * non_projected_proof *;
         rewrite foldright_compose in *;
         apply non_projected_proof.
+      Qed.
+
+      Lemma assert_cache_property :
+        forall {TItem TCacheUpdaterInput TCachedValue: Type},
+        forall {updater: TCacheUpdaterInput -> TCachedValue -> TCachedValue}
+               {projection: TItem -> TCacheUpdaterInput}
+               {cached_value: TCachedValue}
+               {cache_property},
+        forall {seq: list TItem} {initial_value: TCachedValue},
+          CachedValueIsFresh (compose updater projection) initial_value seq cached_value ->
+          ProjectedCacheImplementationEnsures cache_property updater projection initial_value ->
+          forall item,
+            cache_property projection seq item cached_value.
+      Proof.
+        intros * fresh_cache impl_ensures *.
+        rewrite <- fresh_cache.
+        apply impl_ensures.
       Qed.
   End Generalities.
 
