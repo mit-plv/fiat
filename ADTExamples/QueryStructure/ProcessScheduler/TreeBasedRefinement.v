@@ -31,6 +31,11 @@ Section TreeBasedRefinement.
 
   Notation "x '∈' y" := (In _ y x) (at level 50, no associativity).
 
+  Tactic Notation "lift" "list" "property" constr(prop) "as" ident(name) :=
+    pose proof prop as name;
+    setoid_rewrite EnsembleListEquivalence_lift_property in name;
+    [ | eassumption].
+
   Tactic Notation "call" "eapply" constr(hypothesis) "after" tactic1(preprocessor) :=
     first [ preprocessor; eapply hypothesis | eapply hypothesis ].
 
@@ -71,12 +76,15 @@ Section TreeBasedRefinement.
 
     unfold ForAll_In; start honing QueryStructure.
 
-    Definition equivalence := fun set_db (db: StorageType) =>
+    Definition equivalence := fun (set_db: UnConstrQueryStructure ProcessSchedulerSchema) 
+                                   (db: StorageType) =>
       EnsembleListEquivalence (GetUnConstrRelation set_db PROCESSES) (benumerate db).
 
-    hone representation using equivalence. (* TODO: unfolding equiv here slows everything down. Why? *)
+    hone representation using equivalence.
     
     hone constructor INIT. {
+      unfold equivalence.
+
       repeat setoid_rewrite refineEquiv_pick_ex_computes_to_and.
       repeat setoid_rewrite refineEquiv_pick_eq'.
       simplify with monad laws.
@@ -91,17 +99,16 @@ Section TreeBasedRefinement.
       setoid_rewrite refineEquiv_pick_ex_computes_to_and.
       setoid_rewrite refineEquiv_pick_pair.
       setoid_rewrite refineEquiv_pick_eq'. 
-      simplify with monad laws.
+      simplify with monad laws. (* TODO: Why does replacing . with ; break simpl? *) 
       simpl.
 
-      rewrite (Equivalent_UnConstr_In_EnsembleListEquivalence) by eassumption.
-
+      rewrite Equivalent_UnConstr_In_EnsembleListEquivalence by eassumption.
       setoid_rewrite Equivalent_List_In_Where.
 
-      (* Full qualification of bfind_matcher needed to avoid apparition of spurious existentials *)
-      rewrite (filter_by_equiv dec (@bfind_matcher _ _ _ StorageIsBag (Some n, (None, [])))) by prove_observational_eq.
+      rewrite (filter_by_equiv _ (bfind_matcher (Bag := StorageIsBag) (Some n, (None, [])))) 
+        by prove_observational_eq.
 
-      setoid_rewrite (@bfind_correct _ _ _ StorageIsBag r_n (Some n, (None, []))).
+      setoid_rewrite (bfind_correct _).
       setoid_rewrite refine_For_List_Return.
       simplify with monad laws.
 
@@ -128,15 +135,14 @@ Section TreeBasedRefinement.
       simplify with monad laws.
       simpl.
 
-      rewrite (Equivalent_UnConstr_In_EnsembleListEquivalence) by eassumption.
+      rewrite Equivalent_UnConstr_In_EnsembleListEquivalence by eassumption.
+      rewrite Equivalent_List_In_Where.
 
-      setoid_rewrite Equivalent_List_In_Where.
+      rewrite (filter_by_equiv _ (bfind_matcher (Bag := StorageIsBag) (None, (Some n, [])))) 
+        by prove_observational_eq.
 
-      (* Full qualification of bfind_matcher needed to avoid apparition of spurious existentials *)
-      rewrite (filter_by_equiv _ (@bfind_matcher _ _ _ StorageIsBag (None, (Some n, [])))) by prove_observational_eq.
-
-      setoid_rewrite (@bfind_correct _ _ _ StorageIsBag r_n (None, (Some n, []))).
-      setoid_rewrite refine_For_List_Return.
+      setoid_rewrite (bfind_correct _).
+      rewrite refine_For_List_Return.
       simplify with monad laws.
 
       rewrite refine_pick_val by eassumption.
@@ -152,10 +158,8 @@ Section TreeBasedRefinement.
       setoid_rewrite refineEquiv_pick_eq'. 
       simplify with monad laws.
       simpl.
- 
-      assert (forall tup : Process, tup ∈ GetUnConstrRelation c PROCESSES -> S (ccached_value r_n) <> tup!PID_COLUMN)
-        by (rewrite <- EnsembleListEquivalence_lift_property by eassumption;
-            apply (assert_cache_property (cfresh_cache r_n) (max_cached_neq_projected _ _))).
+
+      lift list property (assert_cache_property (cfresh_cache r_n) max_cached_neq_projected) as cache.
 
       rewrite refine_pick_val by eassumption.
       simplify with monad laws.

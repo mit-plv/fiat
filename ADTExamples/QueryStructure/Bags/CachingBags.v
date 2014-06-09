@@ -434,9 +434,8 @@ Section CacheableFunctions.
       simpl; auto.
     Qed.
 
-    Lemma max_cached_gt_projected {TItem} projection : 
-      forall default,
-        ProjectedCacheImplementationEnsures (TItem := TItem) cached_gt_property max projection default.
+    Lemma max_cached_gt_projected {TItem} {projection} {default} : 
+      ProjectedCacheImplementationEnsures (TItem := TItem) cached_gt_property max projection default.
     Proof.
       unfold 
         ProjectedCacheImplementationEnsures_strong, 
@@ -448,9 +447,8 @@ Section CacheableFunctions.
       assumption.
     Qed.
 
-    Lemma max_cached_neq_projected {TItem} projection : 
-      forall default,
-        ProjectedCacheImplementationEnsures (TItem := TItem) cached_neq_property max projection default.
+    Lemma max_cached_neq_projected {TItem} {projection} {default} : 
+      ProjectedCacheImplementationEnsures (TItem := TItem) cached_neq_property max projection default.
     Proof.
       unfold 
         ProjectedCacheImplementationEnsures,
