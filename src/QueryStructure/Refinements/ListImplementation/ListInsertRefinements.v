@@ -409,17 +409,17 @@ Ltac implement_foreign_key_check_w_lists H :=
           end).
 
 
-Tactic Notation "implement" "insert" "in" constr(relName) "with" "lists" "under" hyp(Rep_SiR) :=
+Tactic Notation "implement" "insert" "in" constr(relName) "with" "lists" "under" hyp(Rep_AbsR) :=
     hone method relName;
     [
       setoid_rewrite refineEquiv_split_ex;
       setoid_rewrite refineEquiv_pick_computes_to_and;
       simplify with monad laws;
-      implement_foreign_key_check_w_lists Rep_SiR;
+      implement_foreign_key_check_w_lists Rep_AbsR;
       try (setoid_rewrite refine_foreign_key_check;
-           [ | unfold Rep_SiR in *; intuition; eauto ]);
+           [ | unfold Rep_AbsR in *; intuition; eauto ]);
       try simplify with monad laws;
-      rewrite refine_pick_eq_ex_bind; unfold Rep_SiR in *;
+      rewrite refine_pick_eq_ex_bind; unfold Rep_AbsR in *;
       split_and; simpl;
       rewrite refineEquiv_pick_pair_pair;
       setoid_rewrite refineEquiv_pick_eq';

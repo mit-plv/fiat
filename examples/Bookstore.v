@@ -1,15 +1,6 @@
-Require Import String Omega List FunctionalExtensionality Ensembles
-        Computation ADT ADTRefinement ADTNotation BuildADTRefinements
-        QueryStructureSchema QueryStructure
-        QueryQSSpecs InsertQSSpecs EmptyQSSpecs
-        GeneralInsertRefinements GeneralQueryRefinements
-        GeneralQueryStructureRefinements
-        ListQueryRefinements ListInsertRefinements
-        ListQueryStructureRefinements
-        AdditionalLemmas.
-
 Section BookStoreExamples.
   Require Import QueryStructureNotations.
+  Require Import ListImplementation.
 
   (* Our bookstore has two relations (tables):
      - The [Books] relation contains the books in the
@@ -84,7 +75,7 @@ Section BookStoreExamples.
                  Return o!"ISBN")
   }.
 
-  Definition BookStoreListImpl_SiR
+  Definition BookStoreListImpl_AbsR
              (or : UnConstrQueryStructure BookStoreSchema)
              (nr : list Book * list Order) : Prop :=
     or ! "Books" ≃ fst nr /\ or ! "Orders" ≃ snd nr.
@@ -111,7 +102,7 @@ Section BookStoreExamples.
     (* Step 3: Switch to an implementation of the representation
        type as a pair of lists of tuples. *)
 
-    implement using lists under BookStoreListImpl_SiR.
+    implement using lists under BookStoreListImpl_AbsR.
 
     (* Step 4: Profit. :) *)
 

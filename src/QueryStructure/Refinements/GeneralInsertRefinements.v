@@ -58,7 +58,7 @@ Tactic Notation "remove" "trivial" "insertion" "checks" :=
     (* Pull out the relation we're inserting into and then
      rewrite [QSInsertSpec] *)
             match goal with
-                H : DropQSConstraints_SiR _ ?r_n
+                H : DropQSConstraints_AbsR _ ?r_n
                 |- context [(Insert ?n into ?R)%QuerySpec] =>
                 eapply (@QSInsertSpec_UnConstr_refine
                           _ r_n {|bindex := R |} n)
@@ -73,7 +73,7 @@ Tactic Notation "remove" "trivial" "insertion" "checks" :=
   | simplify with monad laws;
     try rewrite <- GetRelDropConstraints;
     repeat match goal with
-             | H : DropQSConstraints_SiR ?qs ?uqs |- _ =>
+             | H : DropQSConstraints_AbsR ?qs ?uqs |- _ =>
                rewrite H in *; clear qs H
            end
     ].

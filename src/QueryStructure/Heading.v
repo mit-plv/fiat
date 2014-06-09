@@ -35,5 +35,3 @@ Definition BuildHeading
 Notation "< col1 , .. , coln >" :=
   (BuildHeading ( col1%Attribute :: .. (coln%Attribute :: []) ..))
   : Heading_scope.
-
-Definition MovieHeading := (< "Title" :: string, "ReleaseDate" :: nat >)%Heading.

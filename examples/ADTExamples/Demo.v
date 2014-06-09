@@ -154,7 +154,7 @@ Section Demo.
                  {n' | bin_op_spec le defaultSpec m n n'}
            }.
 
-  Definition MinCollectionSiR or (nr : option nat) :=
+  Definition MinCollectionAbsR or (nr : option nat) :=
     match nr with
       | Some n => nonempty_spec le or n
       | None => empty_spec defaultSpec or 0
@@ -166,7 +166,7 @@ Section Demo.
   Proof.
     unfold MinCollectionSpec.
     (* Step 1: Update the representation. *)
-    hone representation' using MinCollectionSiR.
+    hone representation' using MinCollectionAbsR.
     (* Step 2: Refine the insert/add mutator method. *)
     hone' mutator "Insert" using (fun r n =>
                              ret (match r with
@@ -258,7 +258,7 @@ Section Delegate.
       (BuildADT mutDefs obsDefs)
       (BuildADT combinedDelegateMutDefs combinedObsDefs).
   Proof.
-    eapply refineADT_Build_ADT_Rep with (SiR := fun x y => x = fst y); eauto; intros.
+    eapply refineADT_Build_ADT_Rep with (AbsR := fun x y => x = fst y); eauto; intros.
     - unfold getMutDef.
       unfold combinedDelegateMutDefs.
       rewrite <- ith_Bounded_imap; simpl.
@@ -278,13 +278,13 @@ Section Delegate.
              (Sig : mutSig)
              (oldMut : @mutDef oldRep Sig)
   : @mutDef newRep Sig :=
-    {| mutBody := absMutatorMethod SiR (mutBody oldMut) |}.
+    {| mutBody := absMutatorMethod AbsR (mutBody oldMut) |}.
 
   Definition absObsDef
              (Sig : obsSig)
              (oldMut : @obsDef oldRep Sig)
   : @obsDef newRep Sig :=
-    {| obsBody := absObserverMethod SiR (obsBody oldMut) |}.*)
+    {| obsBody := absObserverMethod AbsR (obsBody oldMut) |}.*)
 (*
   Lemma refineADT_BuildADT_Rep_default
             (mutSigs : list mutSig)
@@ -304,15 +304,15 @@ Section Delegate.
   Variables DelegateSpec DelegateImpl : ADT DelegateSig.
   Hypothesis refineDelegate : refineADT DelegateSpec DelegateImpl.
 
-  Let SiR := SiR refineDelegate.
+  Let AbsR := AbsR refineDelegate.
 
-  Hypothesis refineMutatorPreservesSiR
+  Hypothesis refineMutatorPreservesAbsR
   : forall idx : MutatorIndex DelegateSig,
       forall x0 k x1 x2 y,
         computes_to (MutatorMethods DelegateSpec idx x0 k) x1
         -> computes_to (MutatorMethods DelegateSpec idx x0 k) x2
-        -> SiR x1 y
-        -> SiR x2 y.
+        -> AbsR x1 y
+        -> AbsR x2 y.
 *)
 End Delegate.
 
@@ -341,51 +341,51 @@ Section MinMaxExample.
 
   Variable MinMaxImpl : ADT MinMaxSig.
   Variable refineMinMax : refineADT MinMaxSpec MinMaxImpl.
-  Let SiR := SiR refineMinMax.
+  Let AbsR := AbsR refineMinMax.
 
-  Definition MinMaxSiR (or : multiset) (nr : Rep MinMaxImpl) :=
-    SiR or nr.
+  Definition MinMaxAbsR (or : multiset) (nr : Rep MinMaxImpl) :=
+    AbsR or nr.
 
-  Lemma refineObserver_MinMaxSiR
+  Lemma refineObserver_MinMaxAbsR
   : forall idx : ObserverIndex MinMaxSig,
-      refineObserver SiR (ObserverMethods MinMaxSpec idx)
+      refineObserver AbsR (ObserverMethods MinMaxSpec idx)
                      (ObserverMethods MinMaxImpl idx).
   Proof.
     destruct refineMinMax; eauto.
   Qed.
-  Lemma refineMutator_MinMaxSiR
+  Lemma refineMutator_MinMaxAbsR
   : forall idx : MutatorIndex MinMaxSig,
-      refineMutator SiR (MutatorMethods MinMaxSpec idx)
+      refineMutator AbsR (MutatorMethods MinMaxSpec idx)
                     (MutatorMethods MinMaxImpl idx).
   Proof.
     destruct refineMinMax; eauto.
   Qed.
 
-  Hypothesis refineMutatorPreservesSiR
+  Hypothesis refineMutatorPreservesAbsR
   : forall idx : MutatorIndex MinMaxSig,
       forall x0 k x1 x2 y,
         computes_to (MutatorMethods MinMaxSpec idx x0 k) x1
         -> computes_to (MutatorMethods MinMaxSpec idx x0 k) x2
-        -> SiR x1 y
-        -> SiR x2 y.
+        -> AbsR x1 y
+        -> AbsR x2 y.
 
-  Lemma helper_SiR_preserved
-        (r : {nr : multiset * Rep MinMaxImpl | MinMaxSiR (fst nr) (snd nr)})
+  Lemma helper_AbsR_preserved
+        (r : {nr : multiset * Rep MinMaxImpl | MinMaxAbsR (fst nr) (snd nr)})
         (x : nat)
         (r1 : {v : multiset | {m' : multiset | add_spec (fst (` r)) x m'} ↝ v})
         (r2 : {v : Rep MinMaxImpl |
                (callMut MinMaxImpl "Insert"%string) (snd (` r)) x ↝ v})
-  : MinMaxSiR (` r1) (` r2).
+  : MinMaxAbsR (` r1) (` r2).
   Proof.
-    unfold MinMaxSiR in *.
-    pose proof (refineMutatorPreservesSiR {| bindex := "Insert"%string |}) as SiRPreserved.
-    clear refineMutatorPreservesSiR; simpl in *.
+    unfold MinMaxAbsR in *.
+    pose proof (refineMutatorPreservesAbsR {| bindex := "Insert"%string |}) as AbsRPreserved.
+    clear refineMutatorPreservesAbsR; simpl in *.
     abstract (
         destruct_head sig;
         simpl in *;
           inversion_by computes_to_inv;
         let H := fresh in
-        pose proof (refineMutator_MinMaxSiR {| bindex := "Insert"%string |}) as H;
+        pose proof (refineMutator_MinMaxAbsR {| bindex := "Insert"%string |}) as H;
         simpl in *;
           match goal with
             | [ x : _, y : _, z : _ |- _ ] =>
@@ -396,37 +396,37 @@ Section MinMaxExample.
                  | _ => progress destruct_head ex
                  | _ => progress destruct_head and
                end;
-        eapply SiRPreserved;
+        eapply AbsRPreserved;
         solve [ eassumption
               | constructor; eassumption ]
       ).
   Qed.
   (*
-  Inductive type_SiR {Sig} {A B : ADT Sig} (P : (Rep A -> Rep B -> Prop) -> Prop) : refineADT A B -> Type
-    := Build_type_SiR : forall SiR H0 H1,
-                          P SiR
-                          -> type_SiR P (@refinesADT _ A B SiR H0 H1).
+  Inductive type_AbsR {Sig} {A B : ADT Sig} (P : (Rep A -> Rep B -> Prop) -> Prop) : refineADT A B -> Type
+    := Build_type_AbsR : forall AbsR H0 H1,
+                          P AbsR
+                          -> type_AbsR P (@refinesADT _ A B AbsR H0 H1).
 
-  Global Instance trunc_type_SiR {Sig A B} (P : _ -> Prop)
+  Global Instance trunc_type_AbsR {Sig A B} (P : _ -> Prop)
          `{forall R, IsHProp (P R)}
          rH
-  : IsHProp (@type_SiR Sig A B P rH).
+  : IsHProp (@type_AbsR Sig A B P rH).
   Proof.
     apply hprop_allpath.
     intros x y.
     destruct x.
     inversion y.
 
-  Definition MinMaxSiR (or : Rep MinMaxSpec) (nr : Rep MinMaxImpl) (H : refineADT MinMaxSpec MinMaxImpl) :=
-    inhabited (type_SiR (fun SiR => SiR or nr) H).*)
+  Definition MinMaxAbsR (or : Rep MinMaxSpec) (nr : Rep MinMaxImpl) (H : refineADT MinMaxSpec MinMaxImpl) :=
+    inhabited (type_AbsR (fun AbsR => AbsR or nr) H).*)
 
-  Definition delegateADTSiR (or : multiset)
+  Definition delegateADTAbsR (or : multiset)
              (nr : { nr : multiset * Rep MinMaxImpl
-                   | MinMaxSiR (fst nr) (snd nr)(* refineMinMax*) }) :=
+                   | MinMaxAbsR (fst nr) (snd nr)(* refineMinMax*) }) :=
     or = fst (proj1_sig nr).
 
   Ltac autorefine :=
-    unfold repInvSiR in *|-*;
+    unfold repInvAbsR in *|-*;
     subst; split_and; intros;
     autorewrite with refine_monad;
     eauto 50 with cache_refinements typeclass_instances;
@@ -508,14 +508,14 @@ Section MinMaxExample.
   Tactic Notation "hone''" "∑-observer" constr(obsIdx) :=
     hone'' ∑-observer obsIdx using _.
 
-  Tactic Notation "hone''" "observer" constr(obsIdx) "under" constr(refineADT_with_SiR) "using" open_constr(obsBod) :=
+  Tactic Notation "hone''" "observer" constr(obsIdx) "under" constr(refineADT_with_AbsR) "using" open_constr(obsBod) :=
     hone'' observer obsIdx using obsBod;
-  [ (*let H' := fresh "SiR" in
-    pose proof refineADT_with_SiR as H'; revert H';
-    refine (refineADT_SiR_elim _);
+  [ (*let H' := fresh "AbsR" in
+    pose proof refineADT_with_AbsR as H'; revert H';
+    refine (refineADT_AbsR_elim _);
     intro H';
     exists H'*)
-    exists (SiR refineADT_with_SiR)
+    exists (AbsR refineADT_with_AbsR)
   | ].
 
 
@@ -525,8 +525,8 @@ Section MinMaxExample.
   Tactic Notation "hone''" "=-observer" constr(obsIdx) :=
     hone'' =-observer obsIdx using _.
 
-  Tactic Notation "hone''" "observer" constr(obsIdx) "under" constr(refineADT_with_SiR) :=
-    hone'' observer obsIdx under refineADT_with_SiR using _.
+  Tactic Notation "hone''" "observer" constr(obsIdx) "under" constr(refineADT_with_AbsR) :=
+    hone'' observer obsIdx under refineADT_with_AbsR using _.
 
   Tactic Notation "hone''" "=-mutator" constr(mutIdx) "using" open_constr(mutBod) :=
     let A := match goal with  |- Sharpened ?A => constr:(A) end in
@@ -603,13 +603,13 @@ Section MinMaxExample.
     hone'' ∑-observer observer_name;
     [ intros;
       rewrite_hyp; clear;
-      let SiR := fresh "SiR" in
+      let AbsR := fresh "AbsR" in
       let H := fresh "H" in
       let H' := fresh "H'" in
       lazymatch goal with
         | [ r_n : sig _ |- _ ]
           => pose proof (fun arg =>
-                           refineObserver_MinMaxSiR
+                           refineObserver_MinMaxAbsR
                              {| bindex := rew_observer_name |}
                              _ _ arg
                              (proj2_sig r_n)) as H';
@@ -667,13 +667,13 @@ Section MinMaxExample.
     unfold NatTwoBinOpSpec.
     unfold two_op_spec.
     (** Add a MinMax instance to the representation so we can delegate to it. *)
-    hone representation' using delegateADTSiR.
+    hone representation' using delegateADTAbsR.
     (** Split out the [Pick]s in the MinPlusMax Observer. *)
     hone'' ∑-observer "MinPlusMax"%string.
     { intros.
       set_evars; simpl in *.
       unfold two_op_spec.
-      unfold delegateADTSiR; simpl.
+      unfold delegateADTAbsR; simpl.
       setoid_rewrite remove_forall_eql.
       setoid_rewrite refineEquiv_pick_computes_to.
       setoid_rewrite refineEquiv_split_func_ex2'.
@@ -691,7 +691,7 @@ Section MinMaxExample.
       simpl.
       setoid_rewrite forall_commute.
       setoid_rewrite remove_forall_eql.
-      unfold MinMaxSiR.
+      unfold MinMaxAbsR.
       setoid_rewrite flip_a_impl_b_impl_a.
       setoid_rewrite refineEquiv_pick_computes_to.
       subst_body.
@@ -710,8 +710,8 @@ setoid_rewrite remove_forall_eq0.
        setoid_rewrite exists_sig; simpl.
       setoid_rewrite exists_and_assoc.
       setoid_rewrite remove_exists_and_eq0.
-      unfold MinMaxSiR.
-      unfold delegateADTSiR.
+      unfold MinMaxAbsR.
+      unfold delegateADTAbsR.
       simpl.
       setoid_rewrite refineEquiv_pick_eq'.
       autorewrite with refine_monad.
@@ -728,7 +728,7 @@ setoid_rewrite remove_forall_eq0.
       econstructor; simpl; eauto.
       econstructor; simpl; eauto.
       econstructor; simpl; eauto.
-      unfold MinMaxSiR.
+      unfold MinMaxAbsR.
       destruct refineMinMax.
       unfold refineMutator in *.
 
@@ -756,8 +756,8 @@ setoid_rewrite remove_forall_eq0.
       setoid_rewrite exists_sig; simpl.
       setoid_rewrite exists_and_assoc.
       setoid_rewrite remove_exists_and_eq0.
-      unfold MinMaxSiR.
-      unfold delegateADTSiR.
+      unfold MinMaxAbsR.
+      unfold delegateADTAbsR.
       simpl.
       setoid_rewrite refineEquiv_pick_eq'.
       autorewrite with refine_monad.
@@ -796,13 +796,13 @@ setoid_rewrite remove_forall_eq0.
     setoid_rewrite remove_forall_eq0'.
 
     hone'' ∑-mutator "Insert"%string using
-           (fun (r : {nr : multiset * Rep MinMaxImpl | MinMaxSiR (fst nr) (snd nr)}) x =>
+           (fun (r : {nr : multiset * Rep MinMaxImpl | MinMaxAbsR (fst nr) (snd nr)}) x =>
               (r1 <- { v : { v | callMut MinPlusMaxSpec "Insert" (fst (proj1_sig r)) x ↝ v } | True };
                r2 <- { v : { v | callMut MinMaxImpl "Insert" (snd (proj1_sig r)) x ↝ v } | True};
-               ret (exist (fun nr => MinMaxSiR (fst nr) (snd nr)) (`r1, `r2) (helper_SiR_preserved _ r1 r2) ))).
+               ret (exist (fun nr => MinMaxAbsR (fst nr) (snd nr)) (`r1, `r2) (helper_AbsR_preserved _ r1 r2) ))).
     { intros.
       subst.
-      unfold delegateADTSiR; simpl.
+      unfold delegateADTAbsR; simpl.
       setoid_rewrite remove_forall_eq0.
       setoid_rewrite remove_exists_and_eq0.
       setoid_rewrite refineEquiv_pick_eq'.
@@ -823,17 +823,17 @@ setoid_rewrite remove_forall_eq0.
   (* An attempt to delegate to the reference spec,
      then refine the delegate ADT to the implementation. *)
 
-  Definition delegateSpecSiR (or : multiset)
+  Definition delegateSpecAbsR (or : multiset)
              (nr : multiset * Rep MinMaxSpec) :=
     or = fst nr /\ or = snd nr.
 
-  Arguments delegateSpecSiR _ _ / .
+  Arguments delegateSpecAbsR _ _ / .
 
-  Definition delegateImplSiR (or : multiset * multiset)
+  Definition delegateImplAbsR (or : multiset * multiset)
              (nr : multiset * Rep MinMaxImpl) :=
-    fst or = fst nr /\ SiR (snd or) (snd nr).
+    fst or = fst nr /\ AbsR (snd or) (snd nr).
 
-  Arguments delegateImplSiR _ _ / .
+  Arguments delegateImplAbsR _ _ / .
 
   Lemma refine_elim_forall
         {A B : Type}
@@ -866,20 +866,20 @@ setoid_rewrite remove_forall_eq0.
         Sig Sig'
         (ClientADT : ADT Sig -> ADT Sig')
         (adt adt' : ADT Sig)
-        (SiR' : Rep (ClientADT adt) -> Rep (ClientADT adt') -> Prop),
+        (AbsR' : Rep (ClientADT adt) -> Rep (ClientADT adt') -> Prop),
       (forall mutIdx : MutatorIndex Sig',
-         refineMutator SiR'
+         refineMutator AbsR'
                        (MutatorMethods (ClientADT adt) mutIdx)
                        (MutatorMethods (ClientADT adt') mutIdx))
       -> (forall obsIdx : ObserverIndex Sig',
-            refineObserver SiR'
+            refineObserver AbsR'
                            (ObserverMethods (ClientADT adt) obsIdx)
                            (ObserverMethods (ClientADT adt') obsIdx))
       -> refineADT (ClientADT adt) (ClientADT adt').
     Proof.
       intros.
       destruct (ClientADT adt); destruct (ClientADT adt').
-      eapply refineADT_Build_ADT_Rep with (SiR := SiR'); eauto.
+      eapply refineADT_Build_ADT_Rep with (AbsR := AbsR'); eauto.
     Qed.
 
     Delimit Scope ADTParsing_scope with ADTParsing.
@@ -887,7 +887,7 @@ setoid_rewrite remove_forall_eq0.
   Definition MinPlusMaxImpl' (defaultValue : nat)
   : Sharpened MinPlusMaxSpec.
   Proof.
-    clear refineMutatorPreservesSiR.
+    clear refineMutatorPreservesAbsR.
     (** Split out the [Pick]s in the MinPlusMax Observer. *)
     unfold MinPlusMaxSpec, NatTwoBinOpSpec, two_op_spec.
     hone' observer "MinPlusMax"%string using _; simpl.
@@ -900,7 +900,7 @@ setoid_rewrite remove_forall_eq0.
       higher_order_2_reflexivity.
     }
     (** Add a MinMax instance to the representation so we can delegate to it. *)
-    hone representation' using delegateSpecSiR.
+    hone representation' using delegateSpecAbsR.
     (** Rewrite the "Min" and then "Max" [Pick] in the MinPlusMax Observer. *)
     hone' observer "MinPlusMax"%string using _.
     { intros; subst.
@@ -964,13 +964,13 @@ setoid_rewrite remove_forall_eq0.
           (a <- (callObs adt "Min") (snd p) n ;
            a' <- (callObs adt "Max") (snd p) n;
            ret (a + a')) ↝ b}  })%ADT) MinMaxSpec MinMaxImpl
-           delegateImplSiR).
+           delegateImplAbsR).
     (* Show the mutator swap is valid. This is fairly boilerplate. *)
     {
       intros; simpl; unfold ith_obligation_1, ith_obligation_2; simpl.
       destruct mutIdx as  [ ? [ [? | [ ] ] ] ]; subst; simpl.
       intros; intuition; subst.
-      setoid_rewrite <- (refineMutator_MinMaxSiR {| bstring := "Insert"%string |} _ _ n H1).
+      setoid_rewrite <- (refineMutator_MinMaxAbsR {| bstring := "Insert"%string |} _ _ n H1).
       rewrite H0; autorewrite with refine_monad.
       repeat (f_equiv; unfold pointwise_relation; intros;
               autorewrite with refine_monad; simpl).
@@ -983,10 +983,10 @@ setoid_rewrite remove_forall_eq0.
       destruct obsIdx as  [ ? [ [? | [ ] ] ] ]; subst; simpl.
       intros; intuition; subst.
       repeat rewrite refineEquiv_pick_computes_to.
-      rewrite (refineObserver_MinMaxSiR {| bstring := "Min"%string |} _ _ n H1).
+      rewrite (refineObserver_MinMaxAbsR {| bstring := "Min"%string |} _ _ n H1).
       f_equiv; unfold pointwise_relation; intros.
       autorewrite with refine_monad; simpl;
-      rewrite (refineObserver_MinMaxSiR {| bstring := "Max"%string |} _ _ n H1); f_equiv.
+      rewrite (refineObserver_MinMaxAbsR {| bstring := "Max"%string |} _ _ n H1); f_equiv.
     }
     - finish sharpening.
   Defined.

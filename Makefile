@@ -3,7 +3,7 @@ SRC_MODULES    := \
 	Computation/Notations \
 	Computation/Core \
 	Computation/Monad \
-	Computation/LogicLemmas
+	Computation/LogicLemmas \
 	Computation/Refinements/Tactics \
 	Computation/SetoidMorphisms \
 	Computation/ReflectiveMonad \
@@ -44,19 +44,20 @@ SRC_MODULES    := \
 	QueryStructure/Relation \
 	QueryStructure/QueryStructureSchema \
 	QueryStructure/QueryStructure \
-	QueryStructure/EmptyQSSpecs \
-	QueryStructure/QueryQSSpecs \
-	QueryStructure/InsertQSSpecs \
-	QueryStructure/GeneralQueryRefinements \
-	QueryStructure/GeneralInsertRefinements \
-	QueryStructure/GeneralQueryStructureRefinements \
+	QueryStructure/QuerySpecs/EmptyQSSpecs \
+	QueryStructure/QuerySpecs/QueryQSSpecs \
+	QueryStructure/QuerySpecs/InsertQSSpecs \
+	QueryStructure/QueryStructureNotations \
+	QueryStructure/Refinements/GeneralQueryRefinements \
+	QueryStructure/Refinements/GeneralInsertRefinements \
+	QueryStructure/Refinements/GeneralQueryStructureRefinements \
 	QueryStructure/SetEq \
 	QueryStructure/AdditionalLemmas \
-	QueryStructure/ListQueryRefinements \
-	QueryStructure/ListInsertRefinements \
-	QueryStructure/ListQueryStructureRefinements \
-	QueryStructure/QueryStructureNotations \
-	QueryStructure/FMapExtensions
+	QueryStructure/Refinements/ListImplementation/ListQueryRefinements \
+	QueryStructure/Refinements/ListImplementation/ListInsertRefinements \
+	QueryStructure/Refinements/ListImplementation/ListQueryStructureRefinements \
+	QueryStructure/Refinements/ListImplementation \
+	QueryStructure/Refinements/FMapImplementation/FMapExtensions
 
 EXAMPLE_MODULES := \
 	ComputationExamples \

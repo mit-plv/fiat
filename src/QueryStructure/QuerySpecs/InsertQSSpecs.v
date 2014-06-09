@@ -616,12 +616,12 @@ Section InsertRefinements.
            (Ridx : @BoundedString (map relName (qschemaSchemas qsSchema)))
            (tup : @Tuple (schemaHeading (QSGetNRelSchema qsSchema Ridx)))
            (or : QueryStructure qsSchema),
-      DropQSConstraints_SiR or qs ->
+      DropQSConstraints_AbsR or qs ->
       refine
         (Pick (fun qs' =>
                  exists or' : QueryStructure qsSchema,
                    (Pick (QSInsertSpec {| qsHint := or |} Ridx tup)) ↝ or' /\
-                   DropQSConstraints_SiR or' qs'))
+                   DropQSConstraints_AbsR or' qs'))
         (schConstr_self <- {b | decides b (SatisfiesSchemaConstraints Ridx tup tup)};
          schConstr <-
                    {b | decides b
@@ -659,7 +659,7 @@ Section InsertRefinements.
     setoid_rewrite refineEquiv_pick_computes_to_and.
     simplify with monad laws.
     setoid_rewrite refineEquiv_pick_eq'.
-    unfold DropQSConstraints_SiR in *; intros; subst.
+    unfold DropQSConstraints_AbsR in *; intros; subst.
     rewrite QSInsertSpec_refine with (default := ret or).
     unfold refine; intros; subst.
       do 5 (apply_in_hyp computes_to_inv; destruct_ex; split_and).
@@ -766,12 +766,12 @@ Section InsertRefinements.
                                                Ridx' Ridx tup'
                                                (RelationInsert tup (GetUnConstrRelation qs Ridx))))
            refined_qsConstr'
-      -> DropQSConstraints_SiR or qs ->
+      -> DropQSConstraints_AbsR or qs ->
       refine
         { or'' | exists or',
                  (qs <- Pick (QSInsertSpec {| qsHint := or |} Ridx tup);
                   ret (qs, tt)) ↝ or'
-                 /\ DropQSConstraints_SiR (fst or') (fst or'')
+                 /\ DropQSConstraints_AbsR (fst or') (fst or'')
                  /\ snd or' = snd or''}
         (qs <- (schConstr_self <- refined_schConstr_self;
          schConstr <- refined_schConstr;
@@ -823,7 +823,7 @@ Arguments id  _ _ / .
       match goal with
           |- context[RelationInsert _ (GetUnConstrRelation _ _) ] =>
           match goal with
-              SiR : DropQSConstraints_SiR ?or ?nr
+              AbsR : DropQSConstraints_AbsR ?or ?nr
               |- context [
                      Pick
                        (fun b =>
@@ -850,7 +850,7 @@ Arguments id  _ _ / .
                   let Comp_v := fresh in
                   intros v Comp_v;
                     apply computes_to_inv in Comp_v;
-                    rewrite <- SiR; subst;
+                    rewrite <- AbsR; subst;
                     repeat rewrite GetRelDropConstraints;
                     let neq := fresh in
                     let tup' := fresh in

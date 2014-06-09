@@ -42,12 +42,3 @@ Notation "'schema' headings 'where' constraints" :=
 Notation "'schema' headings" :=
   {| schemaHeading := headings%Heading;
      schemaConstraints := fun _ _ => True |} : Schema_scope.
-
-Bind Scope Schema_scope with Schema.
-
-Definition MovieSchema :=
-  (schema <"Title" :: string, "ReleaseDate" :: nat >
-   where attributes ["ReleaseDate"] depend on ["Title" ] )%Schema.
-
-Definition MovieSchema' :=
-  (schema <"Title" :: string, "ReleaseDate" :: nat >)%Schema.

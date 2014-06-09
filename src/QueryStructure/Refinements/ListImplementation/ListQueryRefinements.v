@@ -146,7 +146,7 @@ Proof.
 Qed.
 
 Tactic Notation "implement" "queries" "for" "lists" :=
-  unfold DropQSConstraints_SiR in *; subst;
+  unfold DropQSConstraints_AbsR in *; subst;
   repeat rewrite GetRelDropConstraints in *; subst; split_and;
   repeat (progress
             (try (setoid_rewrite Equivalent_UnConstr_In_EnsembleListEquivalence; simpl; eauto);
@@ -154,9 +154,9 @@ Tactic Notation "implement" "queries" "for" "lists" :=
              try (setoid_rewrite Equivalent_Join_Lists; eauto)));
   setoid_rewrite refine_For_List_Return; try simplify with monad laws.
 
-Tactic Notation "implement" "query" "in" constr(queryName) "with" "lists" "under" hyp(SiR) :=
+Tactic Notation "implement" "query" "in" constr(queryName) "with" "lists" "under" hyp(AbsR) :=
     hone method queryName;
-  [ unfold SiR in *; split_and;
+  [ unfold AbsR in *; split_and;
     setoid_rewrite refineEquiv_pick_ex_computes_to_and;
     simplify with monad laws;
     implement queries for lists;

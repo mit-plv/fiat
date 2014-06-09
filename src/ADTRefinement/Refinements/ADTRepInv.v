@@ -1,4 +1,4 @@
-Require Import Common Computation Ensembles 
+Require Import Common Computation Ensembles
         ADT.ADTSig ADT.Core
         ADTRefinement.Core ADTRefinement.SetoidMorphisms
         ADTRefinement.GeneralRefinements.
@@ -24,7 +24,7 @@ Set Implicit Arguments.
 
     Dependent products introduce another wrinkle to refinement: since
     an ADT refinement can change the proof produced by a method, we
-    can't always use equality as the simulation relation in
+    can't always use equality as the abstraction relation in
     [ADTrefine]. (As an example of a case where the proof changes, a
     refinement might use a cached value instead of running a method on
     the current state.)
@@ -37,11 +37,11 @@ Set Implicit Arguments.
     fields. Since proofs aren't packaged into the representation in
     this approach, equality suffices for expressing method refinement.
 
-    Yet another approach is to use the simulation relation to derive
+    Yet another approach is to use the abstract relation to derive
     an ad hoc invariant for a particular refinement step. The basic
-    idea is that the simulation relation relates two equal states for
+    idea is that the abstraction relation relates two equal states for
     which the invariant holds. By baking the invariant into the
-    simulation relation, it becomes a hypothesis to all of our
+    abstraction relation, it becomes a hypothesis to all of our
     refinement proofs.  The cost of this approach is that it requires
     a proof that each mutator preserves the invariant on an ad hoc
     basis, which could leave to some duplicate proofs (One way to
@@ -59,14 +59,14 @@ Section RepInv.
   Variable rep : Type.
   Variable repInv : Ensemble rep.
 
-  (** This is the simulation relation we use to mimic invariants- the
+  (** This is the abstraction relation we use to mimic invariants- the
       representations are always the same /and/ the invariant
       holds. *)
 
-  Definition repInvSiR (r_o r_n : rep) :=
+  Definition repInvAbsR (r_o r_n : rep) :=
     r_o = r_n /\ repInv r_n.
 
-  (** Refining an adt using the [repInvSiR] relation allows us to
+  (** Refining an adt using the [repInvAbsR] relation allows us to
       utilize [repInv] when proving method refinement. Of course, we
       also have to show that mutators preserve the invariant.
       Hopefully we can include additional information into the honing
@@ -75,11 +75,11 @@ Section RepInv.
   Lemma refineADT_Build_ADT_RepInv
         Sig
   : forall constr constr',
-      (forall idx, @refineConstructor _ _ repInvSiR
+      (forall idx, @refineConstructor _ _ repInvAbsR
                                   (ConstructorDom Sig idx)
                                   (constr idx) (constr' idx))
       -> forall meth meth',
-           (forall idx, @refineMethod _ _ repInvSiR
+           (forall idx, @refineMethod _ _ repInvAbsR
                                         (fst (MethodDomCod Sig idx))
                                         (snd (MethodDomCod Sig idx))
                                         (meth idx) (meth' idx))
@@ -89,21 +89,21 @@ Section RepInv.
     intros; eapply refineADT_Build_ADT_Rep; eauto; reflexivity.
   Qed.
 
-  Lemma refine_pick_repInvSiR :
+  Lemma refine_pick_repInvAbsR :
     forall r_o, repInv r_o ->
-    refineEquiv {r_n | repInvSiR r_o r_n}
+    refineEquiv {r_n | repInvAbsR r_o r_n}
                 (ret r_o).
   Proof.
-    unfold repInvSiR; split; intros v CompV; inversion_by computes_to_inv; intuition;
+    unfold repInvAbsR; split; intros v CompV; inversion_by computes_to_inv; intuition;
     subst; econstructor; eauto.
   Qed.
 
-  Lemma refine_pick_repInvSiR' :
+  Lemma refine_pick_repInvAbsR' :
     forall r_n, repInv r_n ->
-    refineEquiv {r_o | repInvSiR r_o r_n}
+    refineEquiv {r_o | repInvAbsR r_o r_n}
                 (ret r_n).
   Proof.
-    unfold repInvSiR; split; intros v CompV; inversion_by computes_to_inv; intuition;
+    unfold repInvAbsR; split; intros v CompV; inversion_by computes_to_inv; intuition;
     subst; econstructor; eauto.
   Qed.
 
@@ -125,8 +125,8 @@ Lemma refinesADTRepInv Sig
                   repInv r ->
                   refine
                     (r' <- Methods adt idx r n;
-                     r'' <- {r'' : Rep adt | 
-                             repInvSiR repInv (fst r') r''};
+                     r'' <- {r'' : Rep adt |
+                             repInvAbsR repInv (fst r') r''};
                     ret (r'', snd r'))
                     (Methods' idx r n))
       (cachedIndex : ConstructorIndex Sig)
@@ -138,7 +138,7 @@ Lemma refinesADTRepInv Sig
 Proof.
   destruct adt.
   eapply refineADT_Build_ADT_RepInv with
-  (repInv := repInv); unfold pointwise_relation, repInvSiR in *;
+  (repInv := repInv); unfold pointwise_relation, repInvAbsR in *;
   simpl in *; intros; intuition; subst; eauto.
 Qed.
 

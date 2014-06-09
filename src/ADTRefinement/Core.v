@@ -8,10 +8,10 @@ Section MethodRefinement.
   (** Old and new representations **)
   Variables oldRep newRep : Type.
 
-  (** Simulation Relation *)
-  Variable SiR : oldRep -> newRep -> Prop.
+  (** Abstraction Relation *)
+  Variable AbsR : oldRep -> newRep -> Prop.
 
-  Notation "ro ≃ rn" := (SiR ro rn) (at level 70).
+  Notation "ro ≃ rn" := (AbsR ro rn) (at level 70).
 
   (** Refinement of a constructor: the computation produced by
    a constructor [newConstructor] should be a refinement
@@ -21,7 +21,7 @@ Section MethodRefinement.
            old constructor
        Dom --------------> old rep
         ∥                      |
-        ∥ id               SiR |
+        ∥ id               AbsR |
         ∥                      |
        Dom --------------> new rep
           new constructor
@@ -39,8 +39,8 @@ Section MethodRefinement.
 
   (** Refinement of a method : the values of the computation
       produced by applying a new method [newMethod] to any new
-      state [r_n] related to an old state [r_o] by the simulation
-      relation [SiR] are related by [SiR] to some value produced by
+      state [r_n] related to an old state [r_o] by the abstraction
+      relation [AbsR] are related by [AbsR] to some value produced by
       the corresponding old method on [r_o]. Related values
       are taken to related values (with the new method potentially
       producing more deterministic computations). That is, the
@@ -49,7 +49,7 @@ Section MethodRefinement.
                    old method
        old rep --------------> old rep
           |                         |
-      SiR |                         | SiR
+      AbsR |                         | AbsR
           ↓                         ↓
        new rep --------------> new rep
                    new method
@@ -69,18 +69,18 @@ End MethodRefinement.
 
 Record refineADT {Sig} (A B : ADT Sig) :=
   refinesADT {
-      SiR : _;
+      AbsR : _;
       ADTRefinementPreservesConstructors
       : forall idx : ConstructorIndex Sig,
           @refineConstructor
-            (Rep A) (Rep B) SiR
+            (Rep A) (Rep B) AbsR
             (ConstructorDom Sig idx)
             (Constructors A idx)
             (Constructors B idx);
       ADTRefinementPreservesMethods
       : forall idx : MethodIndex Sig,
           @refineMethod
-            (Rep A) (Rep B) SiR
+            (Rep A) (Rep B) AbsR
             (fst (MethodDomCod Sig idx))
             (snd (MethodDomCod Sig idx))
             (Methods A idx)
@@ -90,4 +90,4 @@ Record refineADT {Sig} (A B : ADT Sig) :=
 Arguments refineMethod / .
 Arguments refineConstructor / .
 
-Notation "ro ≃ rn" := (@SiR _ _ _ _ ro rn) (at level 70).
+Notation "ro ≃ rn" := (@AbsR _ _ _ _ ro rn) (at level 70).

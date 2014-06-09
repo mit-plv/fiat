@@ -3,7 +3,7 @@ Require Import List String FunctionalExtensionality Ensembles
         QueryStructure.Notations.
 
 (* A tuple is a map from attributes to values. *)
-Definition Tuple (Heading : Heading) :=
+Definition Tuple {Heading : Heading} :=
   forall (i : Attributes Heading), Domain Heading i.
 
 (* Notations for tuple field. *)
@@ -20,13 +20,10 @@ Bind Scope Component_scope with Component.
 
 (* Notation-friendly tuple definition. *)
 
-Definition DefaultAttribute :=
-  Build_Component ("null" :: unit)%Attribute tt.
-
 Definition BuildTuple
         (attrs : list Attribute)
         (components : ilist Component attrs)
-: Tuple (BuildHeading attrs) :=
+: @Tuple (BuildHeading attrs) :=
   fun idx =>
     value (ith_Bounded _ components idx).
 
@@ -38,12 +35,10 @@ Notation "< col1 , .. , coln >" :=
 
 Definition GetAttribute
            {heading}
-           (tup : Tuple heading)
+           (tup : @Tuple heading)
            (attr : Attributes heading)
 : Domain heading attr :=
   tup attr.
 
 Notation "t ! R" :=
   (GetAttribute t%Tuple {|bindex := R%string |}): Tuple_scope.
-
-Arguments Tuple [Heading] .

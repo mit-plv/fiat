@@ -168,7 +168,7 @@ Section BinOpRefine.
   Proof.
     unfold NatBinOpSpec.
     eapply transitivityT; [ apply (refines_rep_pickImpl absList2Multiset) | ].
-    econstructor 1 with (SiR := @eq (list nat)); simpl; intros; subst.
+    econstructor 1 with (AbsR := @eq (list nat)); simpl; intros; subst.
     setoid_rewrite refineEquiv_pick_eq'; autorewrite with refine_monad;
     interleave_autorewrite_refine_monad_with ltac:(apply refine_add_impl).
     interleave_autorewrite_refine_monad_with ltac:(apply refine_bin_op_impl).

@@ -349,35 +349,3 @@ Section AdditionalQueryLemmas.
     intuition.
   Qed.
 End AdditionalQueryLemmas.
-
-Section AdditionalSetEqLemmas.
-  Lemma SetUnion_Or :
-    forall {A: Type}
-           {ens1 ens2: A -> Prop}
-           {seq1 seq2: list A},
-      EnsembleListEquivalence ens1 seq1 ->
-      EnsembleListEquivalence ens2 seq2 ->
-      EnsembleListEquivalence (fun x => ens1 x \/ ens2 x) (SetUnion seq1 seq2).
-  Proof.
-    unfold EnsembleListEquivalence, SetUnion, Ensembles.In;
-    intros A ens1 ens2 seq1 seq2 eq1 eq2 x;
-    specialize (eq1 x);
-    specialize (eq2 x);
-    rewrite in_app_iff;
-    tauto.
-  Qed.
-
-  Lemma equiv_EnsembleListEquivalence:
-    forall {A: Type} {seq ens1 ens2},
-      (forall (x: A), ens1 x <-> ens2 x) ->
-      EnsembleListEquivalence ens1 seq ->
-      EnsembleListEquivalence ens2 seq.
-  Proof.
-    intros A ? ? ? equiv;
-    unfold EnsembleListEquivalence;
-    intros same_1 x;
-    specialize (equiv x);
-    specialize (same_1 x);
-    intuition.
-  Qed.
-End AdditionalSetEqLemmas.

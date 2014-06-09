@@ -98,7 +98,7 @@ Definition DropQSConstraints
         (fun ns => UnConstrRelation (relSchema ns))
         (fun ns => @rel (relSchema ns)) _ (rels qs).
 
-Definition DropQSConstraints_SiR (qsSchema : QueryStructureSchema)
+Definition DropQSConstraints_AbsR (qsSchema : QueryStructureSchema)
            (qs : QueryStructure qsSchema)
            (qs' : UnConstrQueryStructure qsSchema)
            : Prop :=
@@ -114,13 +114,13 @@ Proof.
   rewrite <- ith_Bounded_imap; reflexivity.
 Qed.
 
-(* Typeclass + notations for declaring simulation relation for
+(* Typeclass + notations for declaring abstraction relation for
    QueryStructure Implementations. *)
 
-Class UnConstrRelationSiRClass {A B : Type} :=
-  { UnConstrRelationSiR : Ensemble A -> B -> Prop }.
+Class UnConstrRelationAbsRClass {A B : Type} :=
+  { UnConstrRelationAbsR : Ensemble A -> B -> Prop }.
 
-Notation "ro ≃ rn" := (@UnConstrRelationSiR _ _ _ ro%QueryImpl rn) : QueryImpl_scope.
+Notation "ro ≃ rn" := (@UnConstrRelationAbsR _ _ _ ro%QueryImpl rn) : QueryImpl_scope.
 
 Notation "qs ! R" :=
   (GetUnConstrRelation qs {|bindex := R%string |}): QueryImpl_scope.

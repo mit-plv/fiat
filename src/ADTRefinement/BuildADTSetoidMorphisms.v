@@ -1,23 +1,23 @@
 Require Import Common
-        ADTNotation.BuildADT ADTRefinement.Core 
+        ADTNotation.BuildADT ADTRefinement.Core
         ADTRefinement.SetoidMorphisms.
 
 (* A notation-friendly version of the setoid morphisms
    infrastructure for ADT refinement. *)
 
 Theorem refineADT_BuildADT_Rep consSigs methSigs oldRep newRep
-      (SiR : oldRep -> newRep -> Prop)
+      (AbsR : oldRep -> newRep -> Prop)
 : @respectful_heteroT _ _ _ _
       (fun oldCons newCons =>
          forall consIdx,
-           @refineConstructor oldRep newRep SiR
+           @refineConstructor oldRep newRep AbsR
                           _
                           (getConsDef oldCons consIdx)
                           (getConsDef newCons consIdx))
       (fun x y => @respectful_heteroT _ _ _ _
                     (fun oldMeth newMeth =>
                        forall methIdx,
-                         @refineMethod oldRep newRep SiR _ _
+                         @refineMethod oldRep newRep AbsR _ _
                                          (getMethDef oldMeth methIdx)
                                          (getMethDef newMeth methIdx))
                     (fun m m' => refineADT))
@@ -27,7 +27,7 @@ Theorem refineADT_BuildADT_Rep consSigs methSigs oldRep newRep
    unfold Proper, respectful_heteroT; intros.
    let A := match goal with |- refineADT ?A ?B => constr:(A) end in
    let B := match goal with |- refineADT ?A ?B => constr:(B) end in
-   eapply (@refinesADT _ A B SiR);
+   eapply (@refinesADT _ A B AbsR);
      unfold id, pointwise_relation in *; simpl in *; intros; eauto.
  Qed.
 

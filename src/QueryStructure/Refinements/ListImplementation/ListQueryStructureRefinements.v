@@ -5,9 +5,9 @@ Require Import String Omega List FunctionalExtensionality Ensembles
         GeneralQueryRefinements SetEq AdditionalLemmas
         ListInsertRefinements ListQueryRefinements.
 
-Instance EnsembleListEquivalence_SiR {A}:
-  @UnConstrRelationSiRClass A (list A) :=
-  {| UnConstrRelationSiR := @EnsembleListEquivalence A |}.
+Instance EnsembleListEquivalence_AbsR {A}:
+  @UnConstrRelationAbsRClass A (list A) :=
+  {| UnConstrRelationAbsR := @EnsembleListEquivalence A |}.
 
   Lemma EnsembleListEquivalence_Empty :
     forall qsSchema Ridx,
@@ -20,9 +20,9 @@ Instance EnsembleListEquivalence_SiR {A}:
     rewrite Build_EmptyRelation_IsEmpty in *; simpl in *; auto.
   Qed.
 
-Ltac implement_empty_list constrName RepSiR :=
+Ltac implement_empty_list constrName RepAbsR :=
   hone constructor constrName;
-  [ unfold RepSiR, DropQSConstraints_SiR;
+  [ unfold RepAbsR, DropQSConstraints_AbsR;
     repeat setoid_rewrite refineEquiv_pick_ex_computes_to_and;
     repeat setoid_rewrite refineEquiv_pick_eq';
     simplify with monad laws;
@@ -33,21 +33,21 @@ Ltac implement_empty_list constrName RepSiR :=
         subst_body; higher_order_1_reflexivity
   | ].
 
-Tactic Notation "implement" "using" "lists" "under" constr(Rep_SiR) :=
-    let SiR_Hyp := fresh in
-    pose Rep_SiR as SiR_Hyp;
-      unfold Rep_SiR in SiR_Hyp;
-      hone representation using SiR_Hyp;
+Tactic Notation "implement" "using" "lists" "under" constr(Rep_AbsR) :=
+    let AbsR_Hyp := fresh in
+    pose Rep_AbsR as AbsR_Hyp;
+      unfold Rep_AbsR in AbsR_Hyp;
+      hone representation using AbsR_Hyp;
       repeat match goal with
                  |- context[
                         (const ?R ( _ : _ ) : rep :=
                            { _ | exists _, _ })%consDef] =>
-                 implement_empty_list R SiR_Hyp
+                 implement_empty_list R AbsR_Hyp
              end;
       repeat
         match goal with
             |- context [ (meth ?R ( _ : rep , _ : _ ) : _ :=
                             {nr' | forall or , _ } )%methDef] =>
-            first [ implement insert in R with lists under SiR_Hyp
-                  | implement query in R with lists under SiR_Hyp ]
+            first [ implement insert in R with lists under AbsR_Hyp
+                  | implement query in R with lists under AbsR_Hyp ]
         end.

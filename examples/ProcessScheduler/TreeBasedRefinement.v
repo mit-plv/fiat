@@ -63,7 +63,7 @@ Section TreeBasedRefinement.
 
     rewrite (filter_by_equiv _ (@bfind_matcher _ _ _ (BagProof _ PIDIndex) (None, (Some key, bstar)))).
     apply (bfind_correct).
-    
+
     unfold ObservationalEq.
     simpl.
     intros.
@@ -159,14 +159,14 @@ Section TreeBasedRefinement.
     unfold ForAll_In; start honing QueryStructure.
 
     hone representation using NeatDB_equivalence.
-    
-    (* (* TODO: Why does adding this followed simpl break the 
-          Equivalent_UnConstr_In_EnsembleListEquivalence rewrite? *) 
+
+    (* (* TODO: Why does adding this followed simpl break the
+          Equivalent_UnConstr_In_EnsembleListEquivalence rewrite? *)
       unfold UnConstrQuery_In.
      (*simpl.*) *)
 
     hone constructor INIT. {
-      unfold NeatDB_equivalence, DropQSConstraints_SiR.
+      unfold NeatDB_equivalence, DropQSConstraints_AbsR.
       repeat setoid_rewrite refineEquiv_pick_ex_computes_to_and.
       repeat setoid_rewrite refineEquiv_pick_eq'.
       simplify with monad laws.
@@ -198,7 +198,7 @@ Section TreeBasedRefinement.
 
       setoid_rewrite refineEquiv_pick_ex_computes_to_and.
       setoid_rewrite refineEquiv_pick_pair.
-      setoid_rewrite refineEquiv_pick_eq'. 
+      setoid_rewrite refineEquiv_pick_eq'.
       simplify with monad laws.
       simpl.
 
@@ -209,10 +209,10 @@ Section TreeBasedRefinement.
 
       rewrite (filter_by_equiv dec (@bfind_matcher _ _ _ (BagProof _ PIDIndex) (Some n, (None, []))))
         by (
-            unfold ObservationalEq; simpl; 
+            unfold ObservationalEq; simpl;
             unfold NatTreeExts.KeyFilter;
             unfold NatTreeExts.MoreFacts.BasicProperties.F.eq_dec;
-            
+
             intros;
             rewrite ?andb_true_r, ?andb_true_l;
             intuition
@@ -226,27 +226,27 @@ Section TreeBasedRefinement.
       rewrite refine_pick_val by eassumption.
       simplify with monad laws.
       finish honing.
-    }    
+    }
 
     (* TODO: s/Decideable/Decidable/ *)
     (* TODO: Use rewrite by instead of [ ... | eassumption ] *)
-    (* TODO: Handle the 'projection' parameter differently; 
-             right now it appears explicitly in plenty of 
-             places, and since it is infered in KeyFilter 
+    (* TODO: Handle the 'projection' parameter differently;
+             right now it appears explicitly in plenty of
+             places, and since it is infered in KeyFilter
              it makes it possble to swap same-type search terms,
              delaying the failure until the call to bfind_correct *)
     (* TODO: The backtick notation from bounded indexes cannot be input *)
     (* TODO: The insert_always_happens scripts could probably be made more generic *)
-    
+
     hone method GET_CPU_TIME. {
       pose proof H;
       unfold NeatDB_equivalence in H;
       destruct H as (next_pid_correct & db_equiv);
       simpl Domain in next_pid_correct.
-      
+
       setoid_rewrite refineEquiv_pick_ex_computes_to_and.
       setoid_rewrite refineEquiv_pick_pair.
-      setoid_rewrite refineEquiv_pick_eq'. 
+      setoid_rewrite refineEquiv_pick_eq'.
       simplify with monad laws.
       simpl.
 
@@ -254,12 +254,12 @@ Section TreeBasedRefinement.
         eauto. (* TODO: Could explicitly pass the right list *)
 
       setoid_rewrite Equivalent_List_In_Where.
-      rewrite (filter_by_equiv dec (@bfind_matcher _ _ _ (BagProof _ PIDIndex) (None, (Some n, [])))) 
+      rewrite (filter_by_equiv dec (@bfind_matcher _ _ _ (BagProof _ PIDIndex) (None, (Some n, []))))
         by (
-            unfold ObservationalEq; simpl; 
+            unfold ObservationalEq; simpl;
             unfold NatTreeExts.KeyFilter;
             unfold NatTreeExts.MoreFacts.BasicProperties.F.eq_dec;
-            
+
             intros;
             rewrite ?andb_true_r, ?andb_true_l;
             intuition
@@ -278,13 +278,13 @@ Section TreeBasedRefinement.
       unfold NeatDB_equivalence in H;
       destruct H as (next_pid_correct & db_equiv);
       simpl Domain in next_pid_correct.
-      
+
       setoid_rewrite refineEquiv_pick_ex_computes_to_and.
       setoid_rewrite refineEquiv_pick_pair.
-      setoid_rewrite refineEquiv_pick_eq'. 
+      setoid_rewrite refineEquiv_pick_eq'.
       simplify with monad laws.
       simpl.
- 
+
       rewrite refine_pick_val by eassumption.
       simplify with monad laws.
 
@@ -295,8 +295,8 @@ Section TreeBasedRefinement.
       simplify with monad laws.
 
       unfold NeatDB, NeatDB_equivalence.
-      
-      setoid_rewrite 
+
+      setoid_rewrite
         (refineEquiv_pick_pair_snd_dep
            (fun frist => forall tuple : Tuple, tuple ∈ _ -> frist > tuple PID)
            (fun pair  => EnsembleListEquivalence _ (benumerate (snd pair)))).
@@ -305,7 +305,7 @@ Section TreeBasedRefinement.
 
       rewrite refine_pick_val;
         [ | instantiate (1 := S (fst r_n)) ].
-      simplify with monad laws.      
+      simplify with monad laws.
 
       rewrite refine_pick_val;
         [ | instantiate (1 := (binsert (snd r_n) <PID_COLUMN :: fst r_n, STATE_COLUMN :: SLEEPING, CPU_COLUMN :: 0>))].
@@ -326,7 +326,7 @@ Section TreeBasedRefinement.
       (* Buffered value for next_pid correct *)
       unfold In, GetUnConstrRelation, UpdateUnConstrRelation, RelationInsert in next_pid_correct |- *;
       simpl in next_pid_correct |- *;
-      intros tuple [ is_new | is_old ]; 
+      intros tuple [ is_new | is_old ];
         [ subst | apply lt_S ];
         intuition.
     }

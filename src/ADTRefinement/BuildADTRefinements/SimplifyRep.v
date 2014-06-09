@@ -20,9 +20,9 @@ Section SimplifyRep.
   Variable simplifyf : oldRep -> newRep. (* The simplification function. *)
   Variable concretize : newRep -> oldRep. (* A map to the enriched representation. *)
 
-  (* The simulation relation between old and new representations. *)
-  Variable SiR : oldRep -> newRep -> Prop.
-  Notation "ro ≃ rn" := (SiR ro rn) (at level 70).
+  (* The abstraction relation between old and new representations. *)
+  Variable AbsR : oldRep -> newRep -> Prop.
+  Notation "ro ≃ rn" := (AbsR ro rn) (at level 70).
 
   Definition simplifyMethDef
              (Sig : methSig)
@@ -55,10 +55,10 @@ Section SimplifyRep.
       (BuildADT (imap _ simplifyConstrDef constrDefs)
                 (imap _ simplifyMethDef methDefs)).
   Proof.
-    econstructor 1 with (SiR := SiR); simpl in *; eauto; intros.
+    econstructor 1 with (AbsR := AbsR); simpl in *; eauto; intros.
     - rewrite <- ith_Bounded_imap.
       unfold simplifyConstrDef, simplifyConstructor; simpl.
-      intros v Comp_v; inversion_by computes_to_inv; 
+      intros v Comp_v; inversion_by computes_to_inv;
       repeat econstructor; subst; eauto.
     - rewrite <- ith_Bounded_imap.
       rewrite H0; eauto; reflexivity.

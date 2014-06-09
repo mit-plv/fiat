@@ -1,13 +1,5 @@
-Require Import String Omega List FunctionalExtensionality Ensembles
-        Computation ADT ADTRefinement ADTNotation BuildADTRefinements
-        QueryStructureSchema QueryStructure
-        QueryQSSpecs InsertQSSpecs EmptyQSSpecs
-        GeneralInsertRefinements GeneralQueryRefinements
-        GeneralQueryStructureRefinements
-        ListQueryRefinements ListInsertRefinements
-        ListQueryStructureRefinements
-        AdditionalLemmas
-        QueryStructureNotations.
+Require Import QueryStructureNotations.
+Require Import ListImplementation.
 
 Definition MySchema :=
   Query Structure Schema

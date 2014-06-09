@@ -1,4 +1,4 @@
-Require Import Common Computation 
+Require Import Common Computation
         ADT.ADTSig ADT.Core
         ADTRefinement.Core ADTRefinement.SetoidMorphisms.
 
@@ -14,9 +14,9 @@ Section SimplifyRep.
   Variable simplifyf : oldRep -> newRep. (* The simplification function. *)
   Variable concretize : newRep -> oldRep. (* A map to the enriched representation. *)
 
-  (* The simulation relation between old and new representations. *)
-  Variable SiR : oldRep -> newRep -> Prop.
-  Notation "ro ≃ rn" := (SiR ro rn) (at level 70).
+  (* The abstraction relation between old and new representations. *)
+  Variable AbsR : oldRep -> newRep -> Prop.
+  Notation "ro ≃ rn" := (AbsR ro rn) (at level 70).
 
   Definition simplifyMethod
              (Dom Cod : Type)
@@ -35,7 +35,7 @@ Section SimplifyRep.
   Variable Sig : ADTSig. (* The signature of the ADT being simplified. *)
 
   Definition simplifyRep oldConstr oldMeths :
-    (forall r_o, r_o ≃ simplifyf r_o) -> 
+    (forall r_o, r_o ≃ simplifyf r_o) ->
     (forall r_n r_o,
        (r_o ≃ r_n) ->
        forall idx n,
@@ -51,10 +51,10 @@ Section SimplifyRep.
                   (fun idx => simplifyMethod (oldMeths idx))).
   Proof.
     econstructor 1 with
-    (SiR := SiR); simpl; eauto.
+    (AbsR := AbsR); simpl; eauto.
     - unfold simplifyConstructor, refine; intros;
       inversion_by computes_to_inv; repeat econstructor; subst; eauto.
-    - unfold simplifyMethod; intros. 
+    - unfold simplifyMethod; intros.
       eapply H0; eauto.
   Qed.
 

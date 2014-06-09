@@ -66,17 +66,17 @@ Section ImplExamples.
 
   Arguments MinCollectionSpec / .
 
-  Definition mslSiR (or : multiset) (nr : list nat) :=
+  Definition mslAbsR (or : multiset) (nr : list nat) :=
     or = absList2Multiset nr.
 
   Definition MinCollection' (defaultValue : nat) :
     { Rep : ADT MinCollectionSig
     | refineADT MinCollectionSpec Rep }.
   Proof.
-    hone' representation using mslSiR.
+    hone' representation using mslAbsR.
     hone' observer "Min"%string using (bin_op_impl min defaultValue);
       intros; subst.
-    unfold mslSiR.
+    unfold mslAbsR.
     rewrite refine_bin_op_spec' with (defaultValue := defaultValue).
     unfold bin_op_impl; reflexivity.
     admit.
@@ -92,7 +92,7 @@ Section ImplExamples.
              More notation, better tactic support. *)
 
   Ltac autorefine :=
-    unfold repInvSiR in *|-*;
+    unfold repInvAbsR in *|-*;
     subst; split_and; intros;
     autorewrite with refine_monad;
     eauto 50 with cache_refinements bin_op_refinements typeclass_instances;

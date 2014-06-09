@@ -22,13 +22,13 @@ Proof.
   split; compute in *.
   - intro x; destruct x.
     econstructor 1 with
-    (SiR := @eq Rep);
+    (AbsR := @eq Rep);
       try reflexivity.
   - intros x y z H H'.
-    destruct H as [SiR ? ?].
-    destruct H' as [SiR' ? ?]; simpl in *.
+    destruct H as [AbsR ? ?].
+    destruct H' as [AbsR' ? ?]; simpl in *.
     econstructor 1 with
-      (SiR := fun x z => exists y, SiR x y /\ SiR' y z);
+      (AbsR := fun x z => exists y, AbsR x y /\ AbsR' y z);
       simpl in *; intros.
     + destruct_ex; intuition; rewrite_rev_hyp; eauto.
       autorewrite with refine_monad; f_equiv; unfold pointwise_relation;
@@ -79,7 +79,7 @@ Qed.
  *)
 
 Lemma refineADT_Build_ADT_Rep Sig oldRep newRep
-      (SiR : oldRep -> newRep -> Prop)
+      (AbsR : oldRep -> newRep -> Prop)
 :
   (@respectful_heteroT
      (forall idx, constructorType oldRep (ConstructorDom Sig idx))
@@ -94,7 +94,7 @@ Lemma refineADT_Build_ADT_Rep Sig oldRep newRep
         -> ADT Sig)
      (fun oldConstrs newConstrs =>
         forall mutIdx,
-          @refineConstructor oldRep newRep SiR
+          @refineConstructor oldRep newRep AbsR
                          _
                          (oldConstrs mutIdx)
                          (newConstrs mutIdx))
@@ -105,7 +105,7 @@ Lemma refineADT_Build_ADT_Rep Sig oldRep newRep
                    (fun _ => ADT Sig)
                    (fun obs obs' =>
                       forall obsIdx : MethodIndex Sig,
-                        @refineMethod oldRep newRep SiR
+                        @refineMethod oldRep newRep AbsR
                                         (fst (MethodDomCod Sig obsIdx))
                                         (snd (MethodDomCod Sig obsIdx))
                                         (obs obsIdx)
@@ -117,7 +117,7 @@ Proof.
   unfold Proper, respectful_heteroT; intros.
   let A := match goal with |- refineADT ?A ?B => constr:(A) end in
   let B := match goal with |- refineADT ?A ?B => constr:(B) end in
-  eapply (@refinesADT Sig A B SiR);
+  eapply (@refinesADT Sig A B AbsR);
     unfold id, pointwise_relation in *; simpl in *; intros; eauto.
 Qed.
 

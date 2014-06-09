@@ -55,7 +55,7 @@ Section DelegateMethods.
   Proof.
     unfold ADTwDelegatedMethods; destruct delegatorADT;
     eapply refineADT_Build_ADT_Rep with
-    (SiR := fun or nr => or = fst nr); simpl; intros; subst.
+    (AbsR := fun or nr => or = fst nr); simpl; intros; subst.
     - unfold refine; intros; inversion_by computes_to_inv; subst;
       econstructor; eauto.
     - f_equiv; unfold pointwise_relation, refine; intros.

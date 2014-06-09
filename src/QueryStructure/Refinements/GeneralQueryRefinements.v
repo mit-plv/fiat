@@ -115,7 +115,7 @@ Lemma refineEquiv_For_DropQSConstraints A qsSchema qs :
       exists or' : QueryStructure qsSchema * list A,
        (queryRes <- (For bod)%QuerySpec;
         ret (qs, queryRes)) ↝ or' /\
-       DropQSConstraints_SiR (fst or') (fst H1) /\ snd or' = snd H1}
+       DropQSConstraints_AbsR (fst or') (fst H1) /\ snd or' = snd H1}
      (b <- (For bod)%QuerySpec;
       ret (DropQSConstraints qs, b) ) .
 Proof.
@@ -123,7 +123,7 @@ Proof.
   intros; f_equiv; unfold pointwise_relation; intros.
   setoid_rewrite refineEquiv_pick_ex_computes_to_and;
   setoid_rewrite refineEquiv_bind_unit; simpl;
-  unfold DropQSConstraints_SiR;
+  unfold DropQSConstraints_AbsR;
   setoid_rewrite refineEquiv_pick_pair;
   setoid_rewrite refineEquiv_pick_eq';
   simplify with monad laws; f_equiv.
@@ -138,7 +138,7 @@ Tactic Notation "drop" "constraints" "from" "query" constr(methname) :=
     setoid_rewrite refineEquiv_pick_pair; simpl;
     setoid_rewrite refineEquiv_pick_eq';
     match goal with
-        H : DropQSConstraints_SiR _ _ |- _ =>
-        unfold DropQSConstraints_SiR in H; rewrite H
+        H : DropQSConstraints_AbsR _ _ |- _ =>
+        unfold DropQSConstraints_AbsR in H; rewrite H
     end; simplify with monad laws;
     finish honing | ].

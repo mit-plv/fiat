@@ -180,7 +180,7 @@ Section ListBasedRefinement.
 
     hone constructor INIT.
     {
-      unfold SimpleDB_equivalence, DropQSConstraints_SiR.
+      unfold SimpleDB_equivalence, DropQSConstraints_AbsR.
       repeat setoid_rewrite refineEquiv_pick_ex_computes_to_and.
       repeat setoid_rewrite refineEquiv_pick_eq'.
       simplify with monad laws.

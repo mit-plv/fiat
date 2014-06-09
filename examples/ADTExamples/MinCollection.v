@@ -63,7 +63,7 @@ Section MinCollectionExamples.
              More notation, better tactic support. *)
 
   Ltac autorefine :=
-    unfold repInvSiR in *|-*;
+    unfold repInvAbsR in *|-*;
     subst; split_and; intros;
     autorewrite with refine_monad;
     eauto 50 with cache_refinements bin_op_refinements typeclass_instances;
@@ -149,7 +149,7 @@ Section MinCollectionExamples.
     (* Step 4: Replace the [Pick] used to get [cachedVal] in the add implementation. *)
     hone mutator () using (update_cachedOp min) under invariant
          (fun r => bin_op_spec le (fun _ => True) (absList2Multiset (origRep r)) defaultValue (cachedVal r)).
-    { intros; unfold repInvSiR in *|-; intuition; subst.
+    { intros; unfold repInvAbsR in *|-; intuition; subst.
       subst; unfold add_impl; simpl; autorewrite with refine_monad.
       rewrite bin_op_spec_unique with (v := match origRep r_n with
                                               | nil => n
@@ -157,7 +157,7 @@ Section MinCollectionExamples.
                                             end)
                                         (n := defaultValue);
         autorewrite with refine_monad; eauto 50 with cache_refinements bin_op_refinements typeclass_instances.
-      rewrite refine_pick_repInvSiR.
+      rewrite refine_pick_repInvAbsR.
       unfold update_cachedOp; destruct (origRep r_n); reflexivity.
       simpl origRep; simpl cachedVal; autorefine.
     }
@@ -178,7 +178,7 @@ Section MinCollectionExamples.
                                 | None  => {| origRep := nil;
                                                cachedVal := defaultValue |}
                             end)
-    (SiR := fun (r_o : cachedRep (list nat) nat)
+    (AbsR := fun (r_o : cachedRep (list nat) nat)
                 (r_n : option nat) =>
               (origRep r_o = nil -> cachedVal r_o = defaultValue) /\
      r_n = match (origRep r_o) with

@@ -54,7 +54,7 @@ Section addCache.
      when the cached value [cachedVal] satisfies the original [cacheSpec] and
      the original representation of [r_n] is equal to [r_o]. *)
 
-  Definition cachedRepSiR
+  Definition cachedRepAbsR
 	     (r_o : rep)
              (r_n : cachedRep) :=
     r_o = origRep r_n /\ cacheSpec (origRep r_n) (cachedVal r_n).
@@ -75,10 +75,10 @@ Theorem refinesAddCachedValue Sig
 Proof.
   unfold addCachedValue; destruct adt.
   econstructor 1 with
-  (SiR := fun r_o r_n => r_o = origRep r_n /\ cacheSpec (origRep r_n) (cachedVal r_n)); unfold MethodAddCacheEntry, ConstructorAddCacheEntry; simpl;
+  (AbsR := fun r_o r_n => r_o = origRep r_n /\ cacheSpec (origRep r_n) (cachedVal r_n)); unfold MethodAddCacheEntry, ConstructorAddCacheEntry; simpl;
   intros; autorewrite with refine_monad.
   - unfold refine; intros; inversion_by computes_to_inv; subst; eauto.
-  - intros v CompV; inversion_by computes_to_inv; subst; 
+  - intros v CompV; inversion_by computes_to_inv; subst;
     repeat econstructor; eauto.
 Qed.
 
@@ -116,15 +116,15 @@ Lemma refinesReplaceMethodCache
       (cachedIndex : MethodIndex Sig)
       (f : Rep adt -> (fst (MethodDomCod Sig cachedIndex))
            -> Comp (Rep adt * snd (MethodDomCod Sig cachedIndex)))
-      (ConstrSiR : forall idx d, 
+      (ConstrAbsR : forall idx d,
                      refine (r_o' <- Constructors adt idx d;
-                             {r_n | r_o' = r_n /\ repInv r_n}) 
+                             {r_n | r_o' = r_n /\ repInv r_n})
                             (Constructors adt idx d))
-      (MethSiR : forall idx (r : Rep adt) n,
+      (MethAbsR : forall idx (r : Rep adt) n,
                   repInv r ->
                   refine
                     (r' <- Methods adt idx r n;
-                     r'' <- {r'' : Rep adt | repInvSiR repInv (fst r') r''};
+                     r'' <- {r'' : Rep adt | repInvAbsR repInv (fst r') r''};
                     ret (r'', snd r'))
                     (Methods adt idx r n))
       (refines_f : forall r n,
@@ -133,8 +133,8 @@ Lemma refinesReplaceMethodCache
 : refineADT adt (replaceMethod adt MethodIndex_eq cachedIndex f).
 Proof.
   unfold replaceMethod; destruct adt; simpl.
-  econstructor 1 with (SiR := repInvSiR repInv (rep := Rep));
-    simpl in *|-*; unfold id, repInvSiR; intros; intuition; subst; eauto.
+  econstructor 1 with (AbsR := repInvAbsR repInv (rep := Rep));
+    simpl in *|-*; unfold id, repInvAbsR; intros; intuition; subst; eauto.
   - destruct (MethodIndex_eq idx cachedIndex);
     [unfold replaceMethod_obligation_1, eq_rect_r, eq_rect;
       destruct e; simpl; eauto; eauto; rewrite <- refines_f;
@@ -142,7 +142,7 @@ Proof.
     | eauto].
 Qed.
 
-(* Combining the above two refinements to replace an observer with a cached value. 
+(* Combining the above two refinements to replace an observer with a cached value.
 Lemma refinesReplaceAddCache
       Sig
       adt

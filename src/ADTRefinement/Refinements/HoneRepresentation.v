@@ -1,6 +1,6 @@
 Require Import Common Computation
         ADT.ADTSig ADT.Core
-        ADTRefinement.Core ADTRefinement.SetoidMorphisms 
+        ADTRefinement.Core ADTRefinement.SetoidMorphisms
         ADTRefinement.GeneralRefinements.
 
 (* A generic refinement and honing tactic for switching the
@@ -11,9 +11,9 @@ Section HoneRepresentation.
   Variable oldRep : Type. (* The old representation type. *)
   Variable newRep : Type. (* The new representation type. *)
 
-  (* The simulation relation between old and new representations. *)
-  Variable SiR : oldRep -> newRep -> Prop.
-  Local Infix "≃" := (SiR) (at level 70).
+  (* The abstraction relation between old and new representations. *)
+  Variable AbsR : oldRep -> newRep -> Prop.
+  Local Infix "≃" := (AbsR) (at level 70).
 
   (* When switching representations, we can always build a default
      implementation (computation?) for the methods of an ADT by
@@ -32,13 +32,13 @@ Section HoneRepresentation.
   Lemma refine_absMethod
         (Dom Cod : Type)
         (oldMethod : methodType oldRep Dom Cod)
-  : @refineMethod oldRep newRep SiR _ _ 
+  : @refineMethod oldRep newRep AbsR _ _
                    oldMethod
                    (absMethod oldMethod).
   Proof.
     unfold refineMethod, absMethod, refine; intros.
     inversion_by computes_to_inv.
-    destruct (H0 _ H) as [or' [Comp_or [SiR_or'' eq_or''] ] ].
+    destruct (H0 _ H) as [or' [Comp_or [AbsR_or'' eq_or''] ] ].
     repeat econstructor; eauto.
     destruct v; simpl in *; subst; econstructor.
   Qed.
@@ -57,7 +57,7 @@ Section HoneRepresentation.
   Lemma refine_absConstructor
         (Dom : Type)
         (oldConstr : constructorType oldRep Dom)
-  : @refineConstructor oldRep newRep SiR _ oldConstr
+  : @refineConstructor oldRep newRep AbsR _ oldConstr
                     (absConstructor oldConstr).
   Proof.
     unfold refineConstructor, absConstructor, refine; intros.
@@ -83,11 +83,11 @@ Section HoneRepresentation.
 End HoneRepresentation.
 
 (* Always unfold absMutatorMethods and absObserverMethods. *)
-Global Arguments absMethod oldRep newRep SiR Dom Cod oldMethod / nr n.
-Global Arguments absConstructor oldRep newRep SiR Dom oldConstr / n .
+Global Arguments absMethod oldRep newRep AbsR Dom Cod oldMethod / nr n.
+Global Arguments absConstructor oldRep newRep AbsR Dom oldConstr / n .
 
 (* Honing tactic for refining the ADT representation which provides
    default observer and mutator implementations. *)
-Tactic Notation "hone" "representation" "using" constr(SiR') :=
+Tactic Notation "hone" "representation" "using" constr(AbsR') :=
     eapply SharpenStep;
-    [eapply refineADT_Build_ADT_Rep_default with (SiR := SiR') | ].
+    [eapply refineADT_Build_ADT_Rep_default with (AbsR := AbsR') | ].

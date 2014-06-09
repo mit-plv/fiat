@@ -28,13 +28,13 @@ Notation "id : 'rep' × dom → 'rep' × cod " :=
   {| methID := id;
      methDom := dom;
      methCod := cod |}
-    (at level 60, format "id  :  'rep'  ×  dom  →  'rep' × cod" )
+    (at level 60)
   : methSig_scope.
 
 Notation "id : dom → 'rep'" :=
   {| consID := id;
      consDom := dom |}
-    (at level 60, format "id  :  dom  →  'rep'" )
+    (at level 60)
   : consSig_scope.
 
 (* [BuildADTSig] constructs an ADT signature from a list of

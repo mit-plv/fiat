@@ -15,7 +15,7 @@ Section BuildADTRefinements.
 
   Lemma refineADT_BuildADT_ReplaceConstructor
             (Rep : Type)
-            (SiR : Rep -> Rep -> Prop)
+            (AbsR : Rep -> Rep -> Prop)
             (consSigs : list consSig)
             (methSigs : list methSig)
             (consDefs : ilist (@consDef Rep) consSigs)
@@ -24,17 +24,17 @@ Section BuildADTRefinements.
             (newDef : consDef (nth_Bounded consID consSigs idx))
   :
     (forall consIdx,
-       refineConstructor SiR (getConsDef consDefs consIdx) (getConsDef consDefs consIdx))
+       refineConstructor AbsR (getConsDef consDefs consIdx) (getConsDef consDefs consIdx))
     -> (forall methIdx,
-          refineMethod SiR (getMethDef methDefs methIdx) (getMethDef methDefs methIdx))
-    -> refineConstructor SiR
+          refineMethod AbsR (getMethDef methDefs methIdx) (getMethDef methDefs methIdx))
+    -> refineConstructor AbsR
                      (consBody (ith_Bounded _ consDefs idx ))
                      (consBody newDef)
     -> refineADT
       (BuildADT consDefs methDefs)
       (ADTReplaceConsDef consDefs methDefs idx newDef).
   Proof.
-    intros; eapply refineADT_BuildADT_Rep with (SiR := SiR); eauto.
+    intros; eapply refineADT_BuildADT_Rep with (AbsR := AbsR); eauto.
     intros; unfold getConsDef.
     unfold replaceConsDef.
     eapply ith_replace_BoundedIndex_ind; eauto.
@@ -119,21 +119,21 @@ Section BuildADTRefinements.
             (methDefs : ilist (@methDef Rep) methSigs)
             (idx : @BoundedString (List.map methID methSigs))
             (newDef : methDef (nth_Bounded _ methSigs idx))
-            SiR
-            (SiR_reflexive_constructor :
+            AbsR
+            (AbsR_reflexive_constructor :
                forall consIdx,
-                 refineConstructor SiR (getConsDef consDefs consIdx) (getConsDef consDefs consIdx))
-            (SiR_reflexive_method :
+                 refineConstructor AbsR (getConsDef consDefs consIdx) (getConsDef consDefs consIdx))
+            (AbsR_reflexive_method :
                forall methIdx,
-                 refineMethod SiR (getMethDef methDefs methIdx) (getMethDef methDefs methIdx))
-  : refineMethod SiR
+                 refineMethod AbsR (getMethDef methDefs methIdx) (getMethDef methDefs methIdx))
+  : refineMethod AbsR
                    (methBody (ith_Bounded _ methDefs idx))
                    (methBody newDef)
     -> refineADT
          (BuildADT consDefs methDefs)
          (ADTReplaceMethDef consDefs methDefs idx newDef).
   Proof.
-    intros; eapply refineADT_BuildADT_Rep with (SiR := SiR); trivial.
+    intros; eapply refineADT_BuildADT_Rep with (AbsR := AbsR); trivial.
     intros; unfold getMethDef.
     unfold replaceMethDef.
     eapply ith_replace_BoundedIndex_ind; eauto.
@@ -191,7 +191,7 @@ Section BuildADTRefinements.
         (methDefs : ilist (@methDef (sig RepInv)) methSigs)
         (idx : @BoundedString (List.map methID methSigs))
         (newDef : methDef (nth_Bounded _ methSigs idx))
-        (SiR_reflexive_method :
+        (AbsR_reflexive_method :
            forall methIdx,
              refineMethod (fun x y => proj1_sig x = proj1_sig y)
                           (getMethDef methDefs methIdx)
@@ -205,7 +205,7 @@ Section BuildADTRefinements.
   Proof.
     intro H'.
     eapply refineADT_BuildADT_ReplaceMethod with
-    (SiR := fun r_o r_n => proj1_sig r_o = proj1_sig r_n); eauto;
+    (AbsR := fun r_o r_n => proj1_sig r_o = proj1_sig r_n); eauto;
     simpl in *; intros; subst; eauto.
     intro; econstructor; eauto.
   Qed.
