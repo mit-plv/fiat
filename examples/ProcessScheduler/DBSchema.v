@@ -3,7 +3,7 @@ Require Import String Omega List FunctionalExtensionality Ensembles
         BuildADTRefinements QueryQSSpecs InsertQSSpecs EmptyQSSpecs
         QueryStructure GeneralInsertRefinements ListInsertRefinements
         GeneralQueryRefinements ListQueryRefinements
-        ProcessScheduler.AdditionalLemmas.
+        AdditionalLemmas.
 
 (* TODO: Reactivate? *)
 (*Notation "x '∈' y" := (In _ y x) (at level 50, no associativity) *)
@@ -46,23 +46,24 @@ Section ProcessSchedulerInterface.
 
   Definition ProcessSchedulerSig := ADTsignature {
     INIT         : unit          → rep ,
-    SPAWN        : rep × nat     → rep × (), 
+    SPAWN        : rep × nat     → rep × (),
     ENUMERATE    : rep × State   → rep × list nat,
-    GET_CPU_TIME : rep × nat     → rep ×list nat 
+    GET_CPU_TIME : rep × nat     → rep ×list nat
   }.
 
   Open Scope comp_scope.
-  Open Scope Tuple. 
+  Open Scope Tuple.
 
   Definition ForAll_In
              qsSchema
              (qs : QueryStructure qsSchema)
-             (R : BoundedString) (bod : Ensemble Tuple) : Prop :=
-    forall tup, GetRelation qs R tup ->
+             R (bod : Ensemble (@Tuple (QSGetNRelSchemaHeading qsSchema R))) : Prop :=
+    forall tup, Ensembles.In _ (GetRelation qs R) tup ->
                 bod tup.
 
   Notation "∀ x '∈' R ',' bod" :=
-    (ForAll_In qsHint R (fun x => bod)) (bod at level 11, at level 10)
+    (ForAll_In qsHint R (fun x => bod))
+      (bod at level 11, at level 10)
     : QuerySpec_scope.
 
   Arguments ForAll_In _ _ _ _ / .
@@ -73,7 +74,7 @@ Section ProcessSchedulerInterface.
         const INIT (_ : unit) : rep := empty,
 
         update SPAWN (ns : nat) : unit :=
-          new_pid <- {n | ∀ p ∈ PROCESSES, (n > p!PID_COLUMN)};
+          new_pid <- {n | ∀ p ∈ PROCESSES, (n <> p!PID_COLUMN)};
           Insert <PID_COLUMN:: new_pid, STATE_COLUMN:: SLEEPING, CPU_COLUMN:: 0> into PROCESSES_TABLE,
 
         query ENUMERATE (state : State) : list nat :=

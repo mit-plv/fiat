@@ -42,7 +42,7 @@ Proof.
   intro params; intros; destruct params; simpl; trivial.
 Qed.
 
-Require Import QueryStructure.Notations.
+Require Import Common SetEq QueryStructure.Notations.
 
 Instance State_Query_eq : Query_eq State :=
   {| A_eq_dec := _ |}.

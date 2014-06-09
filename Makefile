@@ -51,12 +51,16 @@ SRC_MODULES    := \
 	QueryStructure/Refinements/GeneralInsertRefinements \
 	QueryStructure/Refinements/GeneralQueryStructureRefinements \
 	QueryStructure/SetEq \
+	QueryStructure/SetEqProperties \
 	QueryStructure/AdditionalLemmas \
 	QueryStructure/Refinements/ListImplementation/ListQueryRefinements \
 	QueryStructure/Refinements/ListImplementation/ListInsertRefinements \
 	QueryStructure/Refinements/ListImplementation/ListQueryStructureRefinements \
 	QueryStructure/Refinements/ListImplementation \
-	QueryStructure/Refinements/FMapImplementation/FMapExtensions
+	QueryStructure/Refinements/FMapImplementation/FMapExtensions \
+	QueryStructure/Refinements/Bags/BagsInterface\
+	QueryStructure/Refinements/Bags/String_as_OT \
+	QueryStructure/Refinements/Bags/Bags
 
 EXAMPLE_MODULES := \
 	ComputationExamples \
@@ -64,7 +68,8 @@ EXAMPLE_MODULES := \
 	Bookstore \
 	ProcessScheduler/State \
 	ProcessScheduler/DBSchema \
-	ProcessScheduler/ListBasedRefinement
+	ProcessScheduler/ListBasedRefinement \
+	ProcessScheduler/TreeBasedRefinement
 
 # ADTExamples/QueryStructure/ProcessScheduler/TreeBasedRefinement \
 # ADTExamples/CombineBinaryOperationsSpec

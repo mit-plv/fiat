@@ -2,7 +2,7 @@ Require Import Ensembles List Coq.Lists.SetoidList Program
         Common Computation.Core
         ADTNotation.BuildADTSig ADTNotation.BuildADT
         GeneralBuildADTRefinements QueryQSSpecs QueryStructure
-        SetEq.
+        SetEq Omega.
 Require Export EnsembleListEquivalence.
 
 Unset Implicit Arguments.
@@ -26,7 +26,7 @@ Section AdditionalDefinitions.
       match pred a with
         | left _  => true
         | right _ => false
-      end.
+      end. (* TODO: Use this *)
 
   Definition Box {A: Type} (x: A) := [x].
 
@@ -38,7 +38,43 @@ Section AdditionalDefinitions.
 
   Definition FilteredSet {A B} ensemble projection (value: B) :=
     fun (p: A) => ensemble p /\ projection p = value.
+
+  Definition ObservationalEq {A B} f g :=
+    forall (a: A), @eq B (f a) (g a).
 End AdditionalDefinitions.
+
+Section AdditionalNatLemmas.
+  Lemma le_r_le_max :
+    forall x y z,
+      x <= z -> x <= max y z.
+  Proof.
+    intros x y z;
+    destruct (Max.max_spec y z) as [ (comp, eq) | (comp, eq) ];
+    rewrite eq;
+    omega.
+  Qed.
+
+  Lemma le_l_le_max :
+    forall x y z,
+      x <= y -> x <= max y z.
+  Proof.
+    intros x y z.
+    rewrite Max.max_comm.
+    apply le_r_le_max.
+  Qed.
+
+  Lemma le_neq_impl :
+    forall m n, m < n -> m <> n.
+  Proof.
+    intros; omega.
+  Qed.
+
+  Lemma gt_neq_impl :
+    forall m n, m > n -> m <> n.
+  Proof.
+    intros; omega.
+  Qed.
+End AdditionalNatLemmas.
 
 Section AdditionalLogicLemmas.
   Lemma or_false :
@@ -46,7 +82,59 @@ Section AdditionalLogicLemmas.
   Proof.
     tauto.
   Qed.
+
+  Lemma false_or :
+    forall (P Q: Prop),
+      (False <-> P \/ Q) <-> (False <-> P) /\ (False <-> Q).
+  Proof.
+    tauto.
+  Qed.
+
+  Lemma false_or' :
+    forall (P Q: Prop),
+      (P \/ Q <-> False) <-> (False <-> P) /\ (False <-> Q).
+  Proof.
+    tauto.
+  Qed.
+
+  Lemma equiv_false :
+    forall P,
+      (False <-> P) <-> (~ P).
+  Proof.
+    tauto.
+  Qed.
+
+  Lemma equiv_false' :
+    forall P,
+      (P <-> False) <-> (~ P).
+  Proof.
+    tauto.
+  Qed.
+
+  Lemma eq_sym_iff :
+    forall {A} x y, @eq A x y <-> @eq A y x.
+  Proof.
+    split; intros; symmetry; assumption.
+  Qed.
 End AdditionalLogicLemmas.
+
+Section AdditionalBoolLemmas.
+  Lemma collapse_ifs_dec :
+    forall P (b: {P} + {~P}),
+      (if (if b then true else false) then true else false) =
+      (if b then true else false).
+  Proof.
+    destruct b; reflexivity.
+  Qed.
+
+  Lemma collapse_ifs_bool :
+    forall (b: bool),
+      (if (if b then true else false) then true else false) =
+      (if b then true else false).
+  Proof.
+    destruct b; reflexivity.
+  Qed.
+End AdditionalBoolLemmas.
 
 Section AdditionalEnsembleLemmas.
   Lemma weaken :
@@ -65,6 +153,34 @@ Section AdditionalListLemmas.
       (map (fun x => x) seq) = seq.
   Proof.
     intros A seq; induction seq; simpl; congruence.
+  Qed.
+
+  Lemma in_nil_iff :
+    forall {A} (item: A),
+      List.In item [] <-> False.
+  Proof.
+    intuition.
+  Qed.
+
+  Lemma in_not_nil :
+    forall {A} x seq,
+      @List.In A x seq -> seq <> nil.
+  Proof.
+    intros A x seq in_seq eq_nil.
+    apply (@in_nil _ x).
+    subst seq; assumption.
+  Qed.
+
+  Lemma in_seq_false_nil_iff :
+    forall {A} (seq: list A),
+      (forall (item: A), (List.In item seq <-> False)) <->
+      (seq = []).
+  Proof.
+    intros.
+    destruct seq; simpl in *; try tauto.
+    split; intro H.
+    exfalso; specialize (H a); rewrite <- H; eauto.
+    discriminate.
   Qed.
 
   Lemma filter_comm :
@@ -136,23 +252,6 @@ Section AdditionalListLemmas.
     trivial.
   Qed.
 
-(*
-  Require Import Notations QueryQSSpecs.
-  Local Open Scope QuerySpec_scope.
-  Lemma filter_nonnil_plus_where_is_just_filter :
-    forall {A B: Type} {P: A -> Prop} (seq: list A),
-    forall (pred: forall (a: A), sumbool (P a) (~ (P a))) (extraction: A -> B),
-      List.filter NonNil (map (fun p =>
-                                 Where (pred p)
-                                       [extraction p]) seq) =
-      map Box
-          (map extraction (List.filter (dec2bool pred) seq)).
-    intros; induction seq; simpl;
-    [ | unfold dec2bool; destruct (pred a); subst; rewrite IHseq];
-    trivial.
-  Qed.
-*)
-
   Lemma box_plus_app_is_identity :
     forall {A: Type} (seq: list A),
       fold_right (app (A := A)) [] (map Box seq) = seq.
@@ -166,6 +265,180 @@ Section AdditionalListLemmas.
   Proof.
     intros A xo x; destruct xo; simpl; try rewrite or_false; intuition; congruence.
   Qed.
+
+  Lemma filter_by_equiv :
+    forall {A} f g,
+      ObservationalEq f g ->
+      forall seq, @List.filter A f seq = @List.filter A g seq.
+  Proof.
+    intros A f g obs seq; unfold ObservationalEq in obs; induction seq; simpl; try rewrite obs; try rewrite IHseq; trivial.
+  Qed.
+
+  Lemma filter_and :
+    forall {A} pred1 pred2,
+    forall (seq: list A),
+      List.filter (fun x => andb (pred1 x) (pred2 x)) seq =
+      List.filter pred1 (List.filter pred2 seq).
+  Proof.
+    intros;
+    induction seq;
+    simpl;
+    [ | destruct (pred1 a) eqn:eq1;
+        destruct (pred2 a) eqn:eq2];
+    simpl;
+    try rewrite eq1;
+    try rewrite eq2;
+    trivial;
+    f_equal;
+    trivial.
+  Qed.
+
+  Lemma filter_and' :
+    forall {A} pred1 pred2,
+    forall (seq: list A),
+      List.filter (fun x => andb (pred1 x) (pred2 x)) seq =
+      List.filter pred2 (List.filter pred1 seq).
+  Proof.
+    intros;
+    induction seq;
+    simpl;
+    [ | destruct (pred1 a) eqn:eq1;
+        destruct (pred2 a) eqn:eq2];
+    simpl;
+    try rewrite eq1;
+    try rewrite eq2;
+    trivial;
+    f_equal;
+    trivial.
+  Qed.
+
+  Definition flatten {A} seq := List.fold_right (@app A) [] seq.
+
+  Lemma in_flatten_iff :
+    forall {A} x seqs,
+      @List.In A x (flatten seqs) <->
+      exists seq, List.In x seq /\ List.In seq seqs.
+  Proof.
+    intros; unfold flatten.
+    induction seqs; simpl.
+
+    firstorder.
+    rewrite in_app_iff.
+    rewrite IHseqs.
+
+    split.
+    intros [ in_head | [seq (in_seqs & in_seq) ] ]; eauto.
+    intros [ seq ( in_seq & [ eq_head | in_seqs ] ) ]; subst; eauto.
+  Qed.
+
+  Lemma flatten_filter :
+    forall {A} (seq: list (list A)) pred,
+      List.filter pred (flatten seq) =
+      flatten (List.map (List.filter pred) seq).
+  Proof.
+    intros; induction seq; trivial.
+    unfold flatten; simpl.
+    induction a; trivial.
+    simpl;
+      destruct (pred a); simpl; rewrite IHa; trivial.
+  Qed.
+
+  Lemma map_map :
+    forall { A B C } (proc1: A -> B) (proc2: B -> C),
+    forall seq,
+      List.map proc2 (List.map proc1 seq) = List.map (fun x => proc2 (proc1 x)) seq.
+  Proof.
+    intros; induction seq; simpl; f_equal; trivial.
+  Qed.
+
+  Lemma filter_all_true :
+    forall {A} pred (seq: list A),
+      (forall x, List.In x seq -> pred x = true) ->
+      List.filter pred seq = seq.
+  Proof.
+    induction seq as [ | head tail IH ]; simpl; trivial.
+    intros all_true.
+    rewrite all_true by eauto.
+    f_equal; intuition.
+  Qed.
+
+  Lemma filter_all_false :
+    forall {A} seq pred,
+      (forall item : A, List.In item seq -> pred item = false) ->
+      List.filter pred seq = [].
+  Proof.
+    intros A seq pred all_false; induction seq as [ | head tail IH ]; simpl; trivial.
+    rewrite (all_false head) by (simpl; eauto).
+    intuition.
+  Qed.
+
+  Lemma map_filter_all_false :
+    forall {A} pred seq,
+      (forall subseq, List.In subseq seq ->
+                      forall (item: A), List.In item subseq ->
+                                        pred item = false) ->
+      (List.map (List.filter pred) seq) = (List.map (fun x => []) seq).
+  Proof.
+    intros A pred seq all_false;
+    induction seq as [ | subseq subseqs IH ] ; simpl; trivial.
+
+    f_equal.
+
+    specialize (all_false subseq (or_introl eq_refl)).
+    apply filter_all_false; assumption.
+
+    apply IH; firstorder.
+  Qed.
+
+  Lemma foldright_compose :
+    forall {TInf TOutf TAcc}
+           (g : TOutf -> TAcc -> TAcc) (f : TInf -> TOutf)
+           (seq : list TInf) (init : TAcc),
+      List.fold_right (compose g f) init seq =
+      List.fold_right g init (List.map f seq).
+  Proof.
+    intros;
+    induction seq;
+    simpl;
+    [  | rewrite IHseq ];
+    reflexivity.
+  Qed.
+
+  Lemma flatten_nils :
+    forall {A} (seq: list (list A)),
+      flatten (List.map (fun _ => []) seq) = @nil A.
+  Proof.
+    induction seq; intuition.
+  Qed.
+
+  Lemma flatten_app :
+    forall {A} (seq1 seq2: list (list A)),
+      flatten (seq1 ++ seq2) = flatten seq1 ++ flatten seq2.
+  Proof.
+    unfold flatten; induction seq1; simpl; trivial.
+    intros; rewrite IHseq1; rewrite app_assoc; trivial.
+  Qed.
+
+  Lemma flatten_head :
+    forall {A} head tail,
+      @flatten A (head :: tail) = head ++ flatten tail.
+  Proof.
+    intuition.
+  Qed.
+
+  Lemma in_map_unproject :
+    forall {A B} projection seq,
+    forall item,
+      @List.In A item seq ->
+      @List.In B (projection item) (List.map projection seq).
+  Proof.
+    intros ? ? ? seq;
+    induction seq; simpl; intros item in_seq.
+
+    trivial.
+    destruct in_seq;
+      [ left; f_equal | right ]; intuition.
+  Qed.
 End AdditionalListLemmas.
 
 Section AdditionalComputationLemmas.
@@ -173,6 +446,14 @@ Section AdditionalComputationLemmas.
     forall (A: Type) (x y: A), x = y -> ret x ↝ y.
   Proof.
     intros; subst; apply ReturnComputes; trivial.
+  Qed.
+
+  Lemma refine_eq_ret :
+    forall {A} (a a': A),
+      a = a' ->
+      refineEquiv  (ret a) (ret a').
+  Proof.
+    intros; subst; reflexivity.
   Qed.
 
   Require Import Computation.Refinements.Tactics.
@@ -233,43 +514,10 @@ Ltac refine_eq_into_ret :=
         apply (refine_eqA_into_ret _)
   end.
 
-Ltac hone_observer' name :=
-  hone constructor name using _;
-  [ simpl;
-    unfold refine;
-    intros;
-    unfold Query_For, Query_Where,
-    Query_In, Query_Return, qsHint,
-    In, qsSchemaHint;
-    constructor;
-    intros;
-    constructor;
-    intros;
-    repeat subst;
-    constructor;
-    generalize_all | ].
+Ltac prove_observational_eq :=
+  lazy; intuition (eauto using collapse_ifs_bool, collapse_ifs_dec; eauto with *).
 
-(* TODO: This could probably inconjunction with pull_definition to
-avoid the case disjunction in there, but I'm not sure how to allow
-unification to proceed: it seems that only a let inside of the
-instantiation pattern will do.  *)
-Ltac uncurry_evar :=
-  instantiate (1 := (fun x => _ (fst x) (snd x)));
-  simpl.
-
-Ltac pull_definition :=
-  match goal with
-    | [ |- ?f (?db1, (?db2, ?db3)) ?params = ret ?body ] =>
-      instantiate (1 := fun db params => let (db1, db23) := db in let (db2, db3) := db23 in ret _)
-    | [ |- ?f (?db1, ?db2) ?params = ret ?body ] =>
-      instantiate (1 := fun db params => let (db1, db2) := db in ret _)
-    | [ |- ?f ?db ?params = ret ?body ] =>
-      instantiate (1 := fun db params => ret (_ db params))
-  end;
-  simpl;
-  exists.
-
-Section AdditionalQueryLemmas.
+Section AdditionalQueryLemmas. (* TODO: Kill the two following lemmas. They are outdated now. :'( *)
   Lemma refine_ensemble_into_list_with_extraction :
     forall {A B: Type} (la: list A) (ens: A -> Prop) (lb: list B)
            (cond_prop: A -> Prop) (cond: A -> bool)
@@ -347,5 +595,34 @@ Section AdditionalQueryLemmas.
 
     rewrite filter_In, H, H0.
     intuition.
+  Qed.
+
+  Require Import Computation.Refinements.General.
+
+  Lemma refine_pick_val' :
+    forall {A : Type} (a : A)  (P : A -> Prop),
+      P a -> refine (Pick P) (ret a).
+  Proof.
+    intros; apply refine_pick_val; assumption.
+  Qed.
+
+  Require Import InsertQSSpecs StringBound.
+  Lemma get_update_unconstr_iff {db_schema qs table new_contents} :
+    forall x,
+      Ensembles.In _ (GetUnConstrRelation (UpdateUnConstrRelation db_schema qs table new_contents) table) x <->
+      Ensembles.In _ new_contents x.
+  Proof.
+    unfold GetUnConstrRelation, UpdateUnConstrRelation, RelationInsert;
+    intros; rewrite ith_replace_BoundIndex_eq;
+    reflexivity.
+  Qed.
+
+  Require Import Heading Schema.
+  Lemma tupleAgree_sym :
+    forall (heading: Heading) tup1 tup2 attrs,
+      @tupleAgree heading tup1 tup2 attrs <-> @tupleAgree heading tup2 tup1 attrs.
+  Proof.
+    intros; unfold tupleAgree;
+    split; intro; setoid_rewrite eq_sym_iff; assumption.
   Qed.
 End AdditionalQueryLemmas.
