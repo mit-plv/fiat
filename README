@@ -1,32 +1,40 @@
 About:
-----------------------------------------------------------------------
+======================================================================
 This repository holds experimental work on synthesizing ADTs using Coq
-8.4pl2.  Files are compiled using the included Makefile.
+8.4pl4.  Files are compiled using the included Makefile.
 
-Organization:
+Top-Level Directory Organization:
+======================================================================
+
+I.   src - Source files for the ADT synthesis library
+II.  examples - Example ADT derivations using the library
+III. Overview - Latex source for overview paper / POPL submission
+IV.  etc - Miscellaneous files (mostly timing scripts at the moment)
+
+Detailed Sub-Directory Organization:
+======================================================================
+
+I. src
 ----------------------------------------------------------------------
-
 Computation/
 - Definitions of computations and refinement that form the core of ADT
   refinement.
   * Core.v: core definitions of computation and refinement
   * Monad.v: proofs that computations satisfy the monad laws
   * SetoidMorphisms.v: setoid rewriting machinery support for refinement
-  * Refinements/General.v: general refinement lemmas
-  * Refinements/Inline.v: refinements for inlining call *OUTDATED*
+  * ReflectiveMonad.v: reflective tactic for simplifying using the monad laws
+  * ApplyMonad.v: applicative tactic for simplifying using the monad laws
+  * Refinements/General.v: core set of refinement facts used for synthesis
 
 ADT/
 - Definition of abstract data types (ADTs).
-  * ADTSig.v: definition of ADT interfaces (signatures).
-  * Core.v: core definitions of abstract data types
+  * ADTSig.d: Definition of ADT interfaces (signatures).
+  * Core.v: core definitions of ADT
   * ADTHide.v: definitions for hiding part of an ADT interface
-  * Specs.v: definition of method specification
-  * Pick.v: definition of an ADT specification with methods implemented
-    	    /specified only using Pick
 
 ADTNotation/
 - More pleasant notations for ADTs.
-  * ilist.v: definitions of the indexed lists used in our notations
+  * ilist.v: definitions of the indexed lists used in ADT notations
   * StringBound.v: typeclass definition of the bounded strings our
     		   notations use for method indices
   * BuildADTSig.v: notation for ADT signatures
@@ -39,18 +47,16 @@ ADTRefinement/
   to implementation.
   * Core.v: definition of ADT refinement
   * SetoidMorphisms.v: setoid rewriting machinery for ADT refinement
-  * GeneralRefinements.v: core tactics for ADT refinements:
-    			  + taking a single refinement step
-			  + replacing a mutator
-			  + replacing an observer
+  * GeneralRefinements.v: core tactics for a 'single step' of ADT refinement
+    			  through either method or constructor refinement
   * BuildADTSetoidMorphims.v: Notation-friendly proofs of switching
     			      representation and method refinement
+  * GeneralBuildADTRefinements.v: Notation-friendly tactics for refining a
+    				  single ADT method or constructor
 
 ADTRefinement/Refinements/
 - Definitions and tactics for more specialized refinements.
   * HoneRepresentation.v : switching the representation type of an ADT
-  * HonePickRepresentation.v : switching the representation type of an ADT
-    			       specified using Picks
   * SimplifyRep.v : simplifying the representation type of an ADT
   * RefineHideADT.v: refining ADTs with interfaces hidden using the
     		     definitions in ADTHide.v
@@ -59,25 +65,42 @@ ADTRefinement/Refinements/
   * DelegateMethods.v: delegating functionality to another ADT
 
 ADTRefinement/BuildADTRefinements/
-- Definitions and tactics for notation-friendly versions of more
-  specialized refinements.
-  * HoneRepresentation.v : switching the representation type of an ADT
-  * HonePickRepresentation.v : switching the representation type of an ADT
-    			       specified using Picks
+- Definitions and tactics for notation-friendly versions of some of the
+  specialized refinements in ADTRefinement/Refinements
 
-ADTExamples/
-- Example derivations of ADT implementations of a specification.
-  * BinOperationSpec.v: Specification of operations on a collection
-    			with a comparator.
-  * BinOperationImpl.v: Implementations of operations specified in
-    			BinOperationsSpec.v
-  * MinCollection.v: Derivation of a collection with a minimum observer.
-  * CombineBinaryOperationsSpec.v: Specification of operations combining
-    				   operations specified in BinOperationSpec.v
-  * MinPlusMax.v : Derivation of a collection with a "minimum plus maximum"
-    		   observer.
-  * Bookstore.v : Derivation of an inventory management system for a
-    		  bookstore with SQL-like operations.
+QueryStructure/
+- Library for specifying and refining ADTs with SQL-like operations
+  * Heading.v: definitions of signatures for labeled data (headings)
+  * Tuple.v: definitions for labeled data (tuples)
+  * Schema.v: definitions for specifying sets of tuples with data-integrity
+    	       constraints (relation schemas)
+  * Relation.v: definitions for sets of tuples (relations)
+  * QueryStructureSchema.v: definitions for specifying sets of relations with
+    			     cross-relation data-integrity constraints
+  * QueryStructure.v: definitions for reference representation of ADTs
+    		       with SQL-like operations
+
+QueryStructure/QuerySpecs
+- Definitions and notations for specifying SQL-like operations on QueryStructures
+  * EmptyQSSpecs.v: empty QueryStructure constructor
+  * InsertQSSpecs.v: QueryStructure insertion operation + basic refinement for
+    		      for performing data-integrity checks
+  * QueryQSSpecs.v query operations for QueryStructures
+
+QueryStructure/Refinements
+- Implementations of QueryStructures
+  * ListImplementation: list-based representation
+  * FMapImplementation: finite-map-based representation
+  * Bags: -
+
+II. examples
+----------------------------------------------------------------------
+
+ComputationExamples.v: finding min and max elements in a list
+Trivial.v: List-based implementation of a QueryStructure of dogs and their owners
+Bookstore.v: List-based implementation of a QueryStructure of a bookstore
+
+ProcessScheduler: QueryStructure with table of processes
 
 History:
 ----------------------------------------------------------------------
