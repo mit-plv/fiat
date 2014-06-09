@@ -417,45 +417,46 @@ Section CacheableFunctions.
         apply ListMax_correct.
     Qed.
 
-    Definition cached_max_gt_property {TItem} (projection: TItem -> nat) seq value cached_max :=
-      List.In value seq -> S cached_max > projection value.
+    Definition cached_gt_property {TItem} (projection: TItem -> nat) seq value cached :=
+      List.In value seq -> S cached > projection value.
 
-    Lemma cached_max_gt :
+    Definition cached_neq_property {TItem} (projection: TItem -> nat) seq value cached :=
+      List.In value seq -> S cached <> projection value.
+
+    Lemma max_cached_gt :
       forall default,
-        CacheImplementationEnsures cached_max_gt_property max default. 
+        CacheImplementationEnsures cached_gt_property max default. 
     Proof.
-      unfold CacheImplementationEnsures, cached_max_gt_property; 
+      unfold CacheImplementationEnsures, cached_gt_property; 
       intros;
       destruct (ListMax_correct seq default) as (sup & _);
       apply Gt.le_gt_S, sup;
       simpl; auto.
     Qed.
 
-    Lemma cached_max_gt_projected' {TItem} projection :
+    Lemma max_cached_gt_projected {TItem} projection : 
       forall default,
-        ProjectedCacheImplementationEnsures_strong (TItem := TItem) cached_max_gt_property 
-                                                   max projection default.
+        ProjectedCacheImplementationEnsures (TItem := TItem) cached_gt_property max projection default.
     Proof.
-      unfold ProjectedCacheImplementationEnsures.
-      unfold cached_max_gt_property.
- 
-      intros;
-      apply (generalize_to_projection projection default cached_max_gt_property (cached_max_gt default)).
-    Qed.
-
-    Lemma cached_max_gt_projected {TItem} projection : 
-      forall default,
-        ProjectedCacheImplementationEnsures (TItem := TItem) cached_max_gt_property max projection default.
-    Proof.
-      intros.
-      pose proof (generalize_to_projection projection default cached_max_gt_property (cached_max_gt default)) as H.
-
       unfold 
         ProjectedCacheImplementationEnsures_strong, 
         ProjectedCacheImplementationEnsures,
-        cached_max_gt_property in *;
+        cached_gt_property in *;
+      intros;
+      apply (generalize_to_projection projection default cached_gt_property (max_cached_gt default));
+      apply in_map_unproject; 
+      assumption.
+    Qed.
+
+    Lemma max_cached_neq_projected {TItem} projection : 
+      forall default,
+        ProjectedCacheImplementationEnsures (TItem := TItem) cached_neq_property max projection default.
+    Proof.
+      unfold 
+        ProjectedCacheImplementationEnsures,
+        cached_neq_property in *;
       intros; 
-      apply H, in_map_unproject; 
+      apply gt_neq_impl, max_cached_gt_projected; 
       assumption.
     Qed.
   End MaxCacheable.

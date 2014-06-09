@@ -62,6 +62,18 @@ Section AdditionalNatLemmas.
     rewrite Max.max_comm.
     apply le_r_le_max.
   Qed.
+
+  Lemma le_neq_impl :
+    forall m n, m < n -> m <> n.
+  Proof.
+    intros; omega.
+  Qed.
+
+  Lemma gt_neq_impl :
+    forall m n, m > n -> m <> n.
+  Proof.
+    intros; omega.
+  Qed.
 End AdditionalNatLemmas.
 
 Section AdditionalLogicLemmas.
@@ -604,8 +616,6 @@ Section AdditionalQueryLemmas. (* TODO: Kill the two following lemmas. They are 
     intros; rewrite ith_replace_BoundIndex_eq;
     reflexivity.
   Qed.
-
-
 
   Require Import Heading Schema.
   Lemma tupleAgree_sym :

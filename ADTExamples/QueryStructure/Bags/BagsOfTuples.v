@@ -110,6 +110,9 @@ Ltac mkIndex heading attributes :=
   assert (list (@ProperAttribute heading)) as decorated_source by autoconvert (@CheckType heading);
   apply (NestedTreeFromAttributes' heading decorated_source).
 
+
+
+
 (* Example use:
 Require Import Beatles.
 
@@ -130,3 +133,26 @@ Time Eval simpl in (bfind IndexedAlbums (None, (None, (None, [TupleEqualityMatch
 
 (*Time Eval simpl in (@bfind _ _ _ (BagProof _ SampleIndex) IndexedAlbums (Some 3, (Some 1, (None, @nil (TSearchTermMatcher AlbumHeading))))).*)
 *)
+
+Require Import EnsembleListEquivalence QueryStructure InsertQSSpecs AdditionalLemmas.
+
+Lemma binsert_correct_DB {TContainer TSearchTerm} :
+  forall db_schema qs index (store: TContainer),
+  forall {store_is_bag: Bag TContainer _ TSearchTerm},
+    EnsembleListEquivalence 
+      (GetUnConstrRelation qs index) 
+      (benumerate store) ->
+    forall tuple,
+      EnsembleListEquivalence 
+        (GetUnConstrRelation
+           (UpdateUnConstrRelation db_schema qs index 
+                                   (RelationInsert tuple (GetUnConstrRelation qs index))) index)
+        (benumerate (binsert store tuple)).
+Proof.
+  intros * equiv **;
+                 apply (ensemble_list_equivalence_set_eq_morphism get_update_unconstr_iff);
+  unfold RelationInsert, EnsembleListEquivalence, Ensembles.In in *;
+  setoid_rewrite (@binsert_enumerate _ _ _ store_is_bag _);
+  setoid_rewrite <- equiv;
+  tauto.
+Qed.

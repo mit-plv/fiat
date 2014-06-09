@@ -31,64 +31,38 @@ Section TreeBasedRefinement.
 
   Notation "x '∈' y" := (In _ y x) (at level 50, no associativity).
 
-  Lemma no_collisions_when_using_a_fresh_pid :
-    forall pid c (tup tup': Process),
-      tupleAgree tup tup' [PID_COLUMN]%SchemaConstraints ->
-      (forall a, (GetUnConstrRelation c PROCESSES) a -> pid > (a PID)) ->
-      tup PID = pid ->
-      GetUnConstrRelation c PROCESSES tup' ->
-      False.
-  Proof.
-    unfold tupleAgree, GetAttribute;
-    simpl;
-    intuition;
-    specialize (H0 tup' H2);
-    specialize (H PID);
-      subst;
-      intuition.
-  Qed.
+  Tactic Notation "call" "eapply" constr(hypothesis) "after" tactic1(preprocessor) :=
+    first [ preprocessor; eapply hypothesis | eapply hypothesis ].
 
-  Lemma insert_always_happens :
-    forall pid c,
-      (forall a, (GetUnConstrRelation c PROCESSES) a -> pid > (a PID)) ->
-      refine
-        {b |
-         decides b
-                 (forall tup' : Tuple,
-                    GetUnConstrRelation c PROCESSES tup' ->
-                    tupleAgree
-                      (<PID_COLUMN :: pid, STATE_COLUMN :: SLEEPING, CPU_COLUMN :: 0>) tup'
-                      [PID_COLUMN]%SchemaConstraints ->
-                    tupleAgree
-                      (<PID_COLUMN :: pid, STATE_COLUMN :: SLEEPING, CPU_COLUMN :: 0>) tup'
-                      [CPU_COLUMN; STATE_COLUMN]%SchemaConstraints)
-                    }
-        (ret true).
-  Proof.
-    intros; constructor; inversion_by computes_to_inv; subst; simpl.
-    intros; exfalso; apply (no_collisions_when_using_a_fresh_pid pid c _ _ H1); trivial.
-  Qed.
+  (* The following tactic is useful when we have a set of hypotheses
+     of the form
 
-  Lemma insert_always_happens' :
-    forall pid c,
-      (forall a, (GetUnConstrRelation c PROCESSES) a -> pid > (a PID)) ->
-      refine
-        {b |
-         decides b
-                 (forall tup' : Tuple,
-                    GetUnConstrRelation c PROCESSES tup' ->
-                    tupleAgree
-                      tup' (<PID_COLUMN :: pid, STATE_COLUMN :: SLEEPING, CPU_COLUMN :: 0>)
-                      [PID_COLUMN]%SchemaConstraints ->
-                    tupleAgree
-                      tup' (<PID_COLUMN :: pid, STATE_COLUMN :: SLEEPING, CPU_COLUMN :: 0>)
-                      [CPU_COLUMN; STATE_COLUMN]%SchemaConstraints)
-                    }
-        (ret true).
-  Proof.
-    intros; constructor; inversion_by computes_to_inv; subst; simpl.
-    intros; exfalso; rewrite tupleAgree_sym in H1; apply (no_collisions_when_using_a_fresh_pid pid c _ _ H1); trivial.
-  Qed.
+     H0 : In DB tuple 
+     H  : tupleAgree tuple <COL :: x, ...> COL
+     H' : forall tuple', In DB tuple' -> (tuple'!COL <> x)
+
+     which essentially means that we have a tuple that's in the DB and
+     matches another one on the COL column, and an hypothesis H' that
+     guarantees that such a match is in fact impossible. In that case,
+     it's essentially enough to call exfalso, which this tactic does
+   *)
+
+  Tactic Notation "prove" "trivial" "constraints" :=
+    unfold decides, not in *;
+    intros;
+    match goal with 
+      | [ H: tupleAgree _ _ (?column :: _) |- _ ] => 
+        specialize (H column); 
+        exfalso; 
+        match goal with
+          | [ H': _ |- _] => 
+            eapply H'; 
+            try eassumption;
+            call eapply H after symmetry;
+            simpl;
+            auto
+        end
+    end.
 
   Lemma NeatScheduler :
     Sharpened ProcessSchedulerSpec.
@@ -144,7 +118,6 @@ Section TreeBasedRefinement.
              it makes it possble to swap same-type search terms,
              delaying the failure until the call to bfind_correct *)
     (* TODO: The backtick notation from bounded indexes cannot be input *)
-    (* TODO: The insert_always_happens scripts could probably be made more generic *)
 
     hone method GET_CPU_TIME. {
       unfold equivalence in H.
@@ -180,36 +153,26 @@ Section TreeBasedRefinement.
       simplify with monad laws.
       simpl.
  
-      assert (forall tup : Process, tup ∈ GetUnConstrRelation c PROCESSES -> S (ccached_value r_n) > tup!PID_COLUMN)
+      assert (forall tup : Process, tup ∈ GetUnConstrRelation c PROCESSES -> S (ccached_value r_n) <> tup!PID_COLUMN)
         by (rewrite <- EnsembleListEquivalence_lift_property by eassumption;
-            apply (assert_cache_property (cfresh_cache r_n) (cached_max_gt_projected _ _))).
+            apply (assert_cache_property (cfresh_cache r_n) (max_cached_neq_projected _ _))).
 
       rewrite refine_pick_val by eassumption.
       simplify with monad laws.
 
-      rewrite insert_always_happens by eassumption.
+      rewrite (refine_pick_val' true) by prove trivial constraints.
       simplify with monad laws.
 
-      rewrite insert_always_happens' by eassumption.
+      rewrite (refine_pick_val' true) by prove trivial constraints.
       simplify with monad laws.
 
       unfold equivalence.
 
-      rewrite (refine_pick_val' 
-                 (binsert r_n 
-                  <PID_COLUMN :: (S (ccached_value r_n)), 
-                  STATE_COLUMN :: SLEEPING, 
-                  CPU_COLUMN :: 0>)).
+      rewrite refine_pick_val by (apply binsert_correct_DB; eassumption).
 
       simplify with monad laws.
 
       finish honing.
-
-      (* Insert correct *)
-      apply (ensemble_list_equivalence_set_eq_morphism get_update_unconstr_iff).
-      unfold RelationInsert, EnsembleListEquivalence, In in *.
-      setoid_rewrite (@binsert_enumerate _ _ _ StorageIsBag _).
-      setoid_rewrite <- H; tauto.
     }
 
     finish sharpening.

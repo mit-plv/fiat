@@ -74,7 +74,7 @@ Section ProcessSchedulerInterface.
         const INIT (_ : unit) : rep := empty,
 
         update SPAWN (ns : nat) : unit :=
-          new_pid <- {n | ∀ p ∈ PROCESSES, (n > p!PID_COLUMN)};
+          new_pid <- {n | ∀ p ∈ PROCESSES, (n <> p!PID_COLUMN)};
           Insert <PID_COLUMN:: new_pid, STATE_COLUMN:: SLEEPING, CPU_COLUMN:: 0> into PROCESSES_TABLE,
 
         query ENUMERATE (state : State) : list nat :=
