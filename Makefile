@@ -4,12 +4,11 @@ SRC_MODULES    := \
 	Computation/Core \
 	Computation/Monad \
 	Computation/LogicLemmas \
-	Computation/Refinements/Tactics \
 	Computation/SetoidMorphisms \
 	Computation/ReflectiveMonad \
 	Computation/ApplyMonad \
 	Computation/Refinements/General \
-	Computation/Refinements/Inline \
+	Computation/Refinements/Tactics \
 	Computation \
 	ADT/ADTSig \
 	ADT/Core \

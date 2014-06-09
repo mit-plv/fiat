@@ -1,5 +1,5 @@
 Require Import Common.
-Require Import Computation.Core Computation.Refinements.Tactics.
+Require Import Computation.Core.
 
 (** General Lemmas about the parametric morphism behavior of
     [computes_to], [refine], and [refineEquiv]. *)
