@@ -5,7 +5,14 @@ Require Import Computation.Core.
 (** [Comp] obeys the monad laws, using [computes_to] as the
     notion of equivalence. .*)
 
+Definition equiv {A} (c1 c2 : Comp A) := forall v, c1 ↝ v <-> c2 ↝ v.
+
+Infix "~" := equiv (at level 70) : comp_scope.
+
 Section monad.
+
+  Local Open Scope comp_scope.
+
   Local Ltac t :=
     split;
     intro;
@@ -20,35 +27,31 @@ Section monad.
                    | solve [ constructor ]
                    | eapply BindComputes; (eassumption || (try eassumption; [])) ].
 
-  Lemma bind_bind X Y Z (f : X -> Comp Y) (g : Y -> Comp Z) x v
-  : Bind (Bind x f) g ↝ v
-    <-> Bind x (fun u => Bind (f u) g) ↝ v.
+  Lemma bind_bind X Y Z (f : X -> Comp Y) (g : Y -> Comp Z) x
+  : Bind (Bind x f) g ~ Bind x (fun u => Bind (f u) g).
   Proof.
     t.
   Qed.
 
-  Lemma bind_unit X Y (f : X -> Comp Y) x v
-  : Bind (Return x) f ↝ v
-    <-> f x ↝ v.
+  Lemma bind_unit X Y (f : X -> Comp Y) x
+  : Bind (Return x) f ~ f x.
   Proof.
     t.
   Qed.
 
-  Lemma unit_bind X (x : Comp X) v
-  : (Bind x (@Return X)) ↝ v
-    <-> x ↝ v.
+  Lemma unit_bind X (x : Comp X) 
+  : (Bind x (@Return X)) ~ x.
   Proof.
     t.
   Qed.
 
   Lemma computes_under_bind X Y (f g : X -> Comp Y) x
-  : (forall x v, f x ↝ v <-> g x ↝ v) ->
-    (forall v, Bind x f ↝ v <-> Bind x g ↝ v).
+  : (forall x, f x ~ g x) ->
+    Bind x f ~ Bind x g.
   Proof.
-    t; split_iff; eauto.
+    t; unfold equiv in *; split_iff; eauto.
   Qed.
 End monad.
-
 
 (** [Comp] also obeys the monad laws using both [refineEquiv]
     as our notions of equivalence. *)
