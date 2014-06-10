@@ -59,6 +59,11 @@ SRC_MODULES    := \
 	QueryStructure/Refinements/ListImplementation \
 	QueryStructure/Refinements/FMapImplementation/FMapExtensions \
 	QueryStructure/Refinements/Bags/BagsInterface\
+	QueryStructure/Refinements/Bags/BagsProperties\
+	QueryStructure/Refinements/Bags/ListBags\
+	QueryStructure/Refinements/Bags/TreeBags\
+	QueryStructure/Refinements/Bags/CachingBags\
+	QueryStructure/Refinements/Bags/BagsOfTuples\
 	QueryStructure/Refinements/Bags/String_as_OT \
 	QueryStructure/Refinements/Bags/Bags
 
@@ -85,11 +90,13 @@ COQDOC=coqdoc
 SRC_VS         	:= $(SRC_MODULES:%=%.v)
 PREFIXED_SRC_VS	:= $(SRC_MODULES:%=src/%.v)
 SRC_VDS	   	:= $(SRC_MODULES:%=src/%.v.d)
+PREFIXED_SRC_VOS:= $(SRC_MODULES:%=src/%.vo)
 
 
 EXAMPLE_VS          := $(EXAMPLE_MODULES:%=%.v)
 PREFIXED_EXAMPLE_VS := $(EXAMPLE_MODULES:%=examples/%.v)
 EXAMPLE_VDS	    := $(EXAMPLE_MODULES:%=examples/%.v.d)
+PREFIXED_EXAMPLE_VOS:= $(EXAMPLE_MODULES:%=examples/%.vo)
 
 V = 0
 
@@ -112,26 +119,13 @@ TIMER=\$$(if \$$(TIMED), $(STDTIME), $(TIMECMD))
 
 .PHONY: all sources examples html clean pretty-timed pretty-timed-files pdf doc clean-doc
 
-all: sources examples
+sources : $(PREFIXED_SRC_VOS)
 
-sources : src/Makefile.coq
-	$(MAKE) -C src/ -f Makefile.coq COQC="$(SILENCE_COQC)$(TIMER) \"$(COQBIN)coqc\"" COQDEP=" $(SILENCE_COQDEP)\"$(COQBIN)coqdep\" -c"
-
-examples : examples/Makefile.coq
-	$(MAKE) -C examples/ -f Makefile.coq COQC="$(SILENCE_COQC)$(TIMER) \"$(COQBIN)coqc\"" COQDEP=" $(SILENCE_COQDEP)\"$(COQBIN)coqdep\" -c"
-
-html_sources : Source_Makefile.coq
-	$(MAKE) -f Source_Makefile.coq html
-
-html_examples : examples/Makefile.coq
-	$(MAKE) -f examples/Makefile.coq html
+examples : $(PREFIXED_EXAMPLE_VOS)
 
 pdf: Overview/ProjectOverview.pdf Overview/library.pdf
 
 doc: pdf html
-
-all.pdf: Source_Makefile.coq
-	$(MAKE) -f Source_Makefile.coq COQDEP="$(COQDEP)" COQDOC="COQDOC='$(COQDOC)' ./coqdoc-latex.sh" all.pdf
 
 Overview/library.tex: all.pdf
 	cp "$<" "$@"
@@ -148,21 +142,19 @@ Overview/ProjectOverview.pdf: $(shell find Overview -name "*.tex" -o -name "*.st
 	cd Overview; pdflatex -interaction=batchmode -synctex=1 ProjectOverview.tex || true
 	cd Overview; pdflatex -synctex=1 ProjectOverview.tex
 
-src/Makefile.coq: Makefile $(PREFIXED_SRC_VS)
-	"$(COQBIN)coq_makefile" $(SRC_VS) COQC = " $(SILENCE_COQC)$(TIMER) \"\$$(COQBIN)coqc\"" COQDEP = " $(SILENCE_COQDEP)\"\$$(COQBIN)coqdep\" -c" COQDOCFLAGS = "$(COQDOCFLAGS)" -arg -dont-load-proofs -R . ADTSynthesis.src -o Makefile.coq
-	mv Makefile.coq src/Makefile.coq
-
-examples/Makefile.coq: Makefile $(PREFIXED_EXAMPLE_VS)
-	"$(COQBIN)coq_makefile" $(EXAMPLE_VS) COQC = " $(SILENCE_COQC)$(TIMER) \"\$$(COQBIN)coqc\"" COQDEP = " $(SILENCE_COQDEP)\"\$$(COQBIN)coqdep\" -c" COQDOCFLAGS = "$(COQDOCFLAGS)" -arg -dont-load-proofs -I src -R ../ ADTSynthesis -o Makefile.coq
-	mv Makefile.coq examples/Makefile.coq
+Makefile.coq: Makefile
+	"$(COQBIN)coq_makefile" $(PREFIXED_SRC_VS) $(PREFIXED_EXAMPLE_VS) COQC = " $(SILENCE_COQC)$(TIMER) \"\$$(COQBIN)coqc\"" COQDEP = " $(SILENCE_COQDEP)\"\$$(COQBIN)coqdep\" -c" COQDOCFLAGS = "$(COQDOCFLAGS)" -arg -dont-load-proofs -R . ADTSynthesis -o Makefile.coq
 
 clean-doc::
 	rm -rf html
 	rm -f all.pdf Overview/library.pdf Overview/ProjectOverview.pdf Overview/coqdoc.sty coqdoc.sty
 	rm -f $(shell find Overview -name "*.log" -o -name "*.aux" -o -name "*.bbl" -o -name "*.blg" -o -name "*.synctex.gz" -o -name "*.out" -o -name "*.toc")
 
-clean:: src/Makefile.coq examples/Makefile.coq clean-doc
-	$(MAKE) -C src/ -f Makefile.coq clean
-	$(MAKE) -C examples/ -f Makefile.coq clean
-	rm -f Source_Makefile.coq .depend
-	rm -f examples/Makefile.coq .depend
+-include Makefile.coq
+
+# uncomment this to get a clean target that cleans the documentation, at the cost of emitting
+# Makefile:156: warning: overriding recipe for target 'clean'
+# Makefile.coq:247: warning: ignoring old recipe for target 'clean'
+#clean: clean-doc Makefile.coq
+#	$(MAKE) -f Makefile.coq clean
+#	rm -f Makefile.coq
