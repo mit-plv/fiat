@@ -13,7 +13,7 @@ Require Export ADTRefinement.BuildADTRefinements.
 
 Unset Implicit Arguments.
 
-Definition StatePIDIndexedTree : @BagPlusBagProof (@Tuple ProcessSchema).
+Definition StatePIDIndexedTree : @BagPlusBagProof Process.
   mkIndex ProcessSchema [STATE; PID].
 Defined.
 
@@ -69,12 +69,15 @@ Section TreeBasedRefinement.
         end
     end.
 
-  Definition equivalence 
+<<<<<<< HEAD
+  Definition equivalence
              (set_db: UnConstrQueryStructure ProcessSchedulerSchema)
              (db: StorageType) :=
     EnsembleListEquivalence (GetUnConstrRelation set_db PROCESSES) (benumerate db).
 
 
+=======
+>>>>>>> 655cfb8... Introduce tighter constraints on benumerate by introducing a bcount predicate
   Lemma NeatScheduler :
     Sharpened ProcessSchedulerSpec.
   Proof.
@@ -82,6 +85,9 @@ Section TreeBasedRefinement.
 
     unfold ForAll_In; start honing QueryStructure.
 
+    Definition equivalence := fun (set_db: UnConstrQueryStructure ProcessSchedulerSchema)
+                                   (db: StorageType) =>
+      EnsembleListEquivalence (GetUnConstrRelation set_db PROCESSES) (benumerate db).
 
     hone representation using equivalence.
 
@@ -89,10 +95,10 @@ Section TreeBasedRefinement.
       unfold equivalence.
 
       repeat setoid_rewrite refineEquiv_pick_ex_computes_to_and.
-      repeat setoid_rewrite refineEquiv_pick_eq'.
+      repeat setoid_rewrite refineEquiv_pick_eq'. (* Replace the pick over the unconstrained query structure with call to dropConstraints *)
       simplify with monad laws.
 
-      rewrite (refine_pick_val' bempty) by apply EnsembleListEquivalence_Empty.
+      rewrite (refine_pick_val' bempty) by intuition (apply EnsembleListEquivalence_Empty).
       subst_body; higher_order_1_reflexivity.
     }
 
@@ -115,7 +121,7 @@ Section TreeBasedRefinement.
       setoid_rewrite refine_For_List_Return.
       simplify with monad laws.
 
-      rewrite refine_pick_val by eassumption.
+      rewrite refine_pick_val by eauto.
       simplify with monad laws.
       finish honing.
     }
@@ -153,16 +159,16 @@ Section TreeBasedRefinement.
       finish honing.
     }
 
-      hone method SPAWN. {
+    hone method SPAWN. {
       unfold equivalence in H.
+
+      lift list property (assert_cache_property (cfresh_cache r_n) max_cached_neq_projected) as cache.
 
       setoid_rewrite refineEquiv_pick_ex_computes_to_and.
       setoid_rewrite refineEquiv_pick_pair.
       setoid_rewrite refineEquiv_pick_eq'.
       simplify with monad laws.
       simpl.
-
-      lift list property (assert_cache_property (cfresh_cache r_n) max_cached_neq_projected) as cache.
 
       rewrite refine_pick_val by eassumption.
       simplify with monad laws.
