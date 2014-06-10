@@ -69,15 +69,6 @@ Section TreeBasedRefinement.
         end
     end.
 
-<<<<<<< HEAD
-  Definition equivalence
-             (set_db: UnConstrQueryStructure ProcessSchedulerSchema)
-             (db: StorageType) :=
-    EnsembleListEquivalence (GetUnConstrRelation set_db PROCESSES) (benumerate db).
-
-
-=======
->>>>>>> 655cfb8... Introduce tighter constraints on benumerate by introducing a bcount predicate
   Lemma NeatScheduler :
     Sharpened ProcessSchedulerSpec.
   Proof.
