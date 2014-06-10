@@ -13,13 +13,13 @@ Section ListBasedRefinement.
   Definition SimpleDB_equivalence
              (rep : UnConstrQueryStructure ProcessSchedulerSchema)
              (db: SimpleDB) :=
-    (forall a, List.In a (snd db) -> fst db > (a PID)) /\
+    (forall a, List.In a (snd db) -> fst db > (a ! "pid")) /\
     rep ! "processes" ≃ snd db.
-    
+
   Lemma refine_decision :
     forall n c,
     (forall a, (GetUnConstrRelation c PROCESSES) a ->
-               n > (a PID)) ->
+               n > (a ! "pid")) ->
       refine
         ({b |
           decides b
@@ -36,8 +36,8 @@ Section ListBasedRefinement.
   Proof.
     unfold refine, decides; intros; constructor; inversion_by computes_to_inv; subst.
     unfold tupleAgree; intros.
-    elimtype False; generalize (H _ H0), (H1 PID).
-    unfold BuildTuple, PID, ith_Bounded; simpl; intros.
+    elimtype False; generalize (H _ H0), (H1 {| bindex := "pid" |}).
+    unfold BuildTuple, GetAttribute; simpl; intros.
     rewrite H4 in H3; eauto.
     omega.
   Qed.
@@ -45,7 +45,7 @@ Section ListBasedRefinement.
   Lemma refine_decision' :
     forall n c,
     (forall a, (GetUnConstrRelation c PROCESSES) a ->
-               n > (a PID)) ->
+               n > a ! "pid" ) ->
       refine
         ({b |
           decides b
@@ -62,29 +62,18 @@ Section ListBasedRefinement.
   Proof.
     unfold refine, decides; intros; constructor; inversion_by computes_to_inv; subst.
     unfold tupleAgree; intros.
-    elimtype False; generalize (H _ H0), (H1 PID).
-    unfold BuildTuple, PID, ith_Bounded; simpl; intros.
+    elimtype False; generalize (H _ H0), (H1 {| bindex := "pid" |}).
+    unfold BuildTuple, GetAttribute; simpl; intros.
     rewrite H4 in H3; eauto.
     omega.
-  Qed.
-
-  Lemma tupleAgree_sym :
-    forall h: Heading,
-    forall t1 t2 attrs,
-      @tupleAgree h t1 t2 attrs <-> @tupleAgree h t2 t1 attrs.
-  Proof.
-    intros h t1 t2 attrs; unfold tupleAgree.
-    assert (forall attr, t1 attr = t2 attr <-> t2 attr = t1 attr) as inner_sym by (split; symmetry; trivial).
-    setoid_rewrite inner_sym.
-    f_equiv.
   Qed.
 
   Definition ProcessScheduler :
     Sharpened ProcessSchedulerSpec.
   Proof.
-    unfold ProcessSchedulerSpec.
+    unfold ProcessSchedulerSpec, ForAll_In.
 
-    unfold ForAll_In; start honing QueryStructure.
+    start honing QueryStructure.
 
     (* == Introduce the list-based (SimpleDB) representation == *)
     hone representation using SimpleDB_equivalence.
@@ -120,7 +109,7 @@ Section ListBasedRefinement.
         simpl; eauto.
       setoid_rewrite Equivalent_List_In_Where; simpl.
       setoid_rewrite refine_For_List_Return; simplify with monad laws.
-      simpl; rewrite refineEquiv_pick_pair with 
+      simpl; rewrite refineEquiv_pick_pair with
       (PA := fun a : SimpleDB => (forall a0 : Process, List.In a0 (snd a) -> fst a > a0 PID)
                       /\ EnsembleListEquivalence.EnsembleListEquivalence
         (c!"processes")%QueryImpl (snd a)).
@@ -149,20 +138,17 @@ Section ListBasedRefinement.
       instantiate (1 := 0); simpl; intuition.
     }
 
-    (* Need to first drop Insertion Constraints.
     hone method SPAWN.
     {
       unfold SimpleDB_equivalence in *; split_and.
       setoid_rewrite refineEquiv_split_ex.
       setoid_rewrite refineEquiv_pick_computes_to_and.
       simplify with monad laws.
-      setoid_rewrite refine_pick_eq_ex_bind.
-      setoid_rewrite refine_pick_forall_Prop.
-      setoid_rewrite refine_pick_eq_forall_Prop.
       setoid_rewrite (refine_pick_val _ (a := fst r_n)); eauto.
+      simplify with monad laws.
       setoid_rewrite refine_decision; eauto; try simplify with monad laws.
       setoid_rewrite refine_decision'; eauto; try simplify with monad laws.
-      rewrite refine_pick_eq_ex_bind.
+      rewrite refine_pick_eq_ex_bind; simpl.
       rewrite refineEquiv_pick_pair with
       (PA := fun a => (forall a0 : Process, List.In a0 (snd a) -> fst a > a0 PID)
                       /\ _ (snd a)).
@@ -176,12 +162,17 @@ Section ListBasedRefinement.
         simplify with monad laws; simpl.
       finish honing.
       simpl; intros; intuition.
-      subst; unfold BuildTuple, PID, ith_Bounded; simpl; omega.
-      generalize (H1 _ H3); omega.
+      subst; unfold BuildTuple, PID; simpl; omega.
+      subst; unfold BuildTuple, PID, PID_COLUMN, GetAttribute in *;
+      simpl; generalize (H1 _ H3); simpl; omega.
       intros; eapply H1; eapply H2; eauto.
       intros; eapply H1; eapply H2; eauto.
-      intros; eapply H1; eapply H2; eauto.
-    } *)
+      unfold not, BuildTuple, PID, PID_COLUMN in *; intros; subst; simpl.
+      unfold EnsembleListEquivalence.EnsembleListEquivalence in *;
+        generalize (H1 _ ((proj1 (H2 _)) H)).
+      rewrite H3.
+      unfold GetAttribute; omega.
+    } 
 
     finish sharpening.
   Defined.

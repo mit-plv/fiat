@@ -60,8 +60,14 @@ Tactic Notation "remove" "trivial" "insertion" "checks" :=
             match goal with
                 H : DropQSConstraints_AbsR _ ?r_n
                 |- context [(Insert ?n into ?R)%QuerySpec] =>
-                eapply (@QSInsertSpec_UnConstr_refine
-                          _ r_n {|bindex := R |} n)
+                (* If we try to eapply [QSInsertSpec_UnConstr_refine] directly
+                   after we've drilled under a bind, this tactic will fail because
+                   typeclass resolution breaks down. Generalizing and applying gets
+                   around this problem for reasons unknown. *)
+                let H := fresh in
+                generalize (@QSInsertSpec_UnConstr_refine
+                              _ r_n {|bindex := R |} n) as H; intro H;
+                apply H
             end;
             (* try to discharge the trivial constraints *)
             [  simplify_trivial_SatisfiesSchemaConstraints

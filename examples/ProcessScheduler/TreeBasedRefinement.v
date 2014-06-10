@@ -69,6 +69,12 @@ Section TreeBasedRefinement.
         end
     end.
 
+  Definition equivalence 
+             (set_db: UnConstrQueryStructure ProcessSchedulerSchema)
+             (db: StorageType) :=
+    EnsembleListEquivalence (GetUnConstrRelation set_db PROCESSES) (benumerate db).
+
+
   Lemma NeatScheduler :
     Sharpened ProcessSchedulerSpec.
   Proof.
@@ -76,9 +82,6 @@ Section TreeBasedRefinement.
 
     unfold ForAll_In; start honing QueryStructure.
 
-    Definition equivalence := fun (set_db: UnConstrQueryStructure ProcessSchedulerSchema)
-                                   (db: StorageType) =>
-      EnsembleListEquivalence (GetUnConstrRelation set_db PROCESSES) (benumerate db).
 
     hone representation using equivalence.
 
@@ -150,8 +153,6 @@ Section TreeBasedRefinement.
       finish honing.
     }
 
-    (* Again need to repair initial drop constraints tactic 
-       to work on insertion  
       hone method SPAWN. {
       unfold equivalence in H.
 
@@ -179,7 +180,7 @@ Section TreeBasedRefinement.
       simplify with monad laws.
 
       finish honing.
-    } *)
+    }
 
     finish sharpening.
   Defined.
