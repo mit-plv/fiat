@@ -5,9 +5,6 @@ Require Import String Omega List FunctionalExtensionality Ensembles
         GeneralQueryRefinements ListQueryRefinements
         AdditionalLemmas.
 
-(* TODO: Reactivate? *)
-(*Notation "x '∈' y" := (In _ y x) (at level 50, no associativity) *)
-
 Section ProcessSchedulerInterface.
   Require Import QueryStructureNotations.
 
@@ -45,10 +42,10 @@ Section ProcessSchedulerInterface.
   Definition INIT         := "Init".
 
   Definition ProcessSchedulerSig := ADTsignature {
-    INIT         : unit          → rep ,
+    INIT         : unit          → rep,
     SPAWN        : rep × nat     → rep × (),
     ENUMERATE    : rep × State   → rep × list nat,
-    GET_CPU_TIME : rep × nat     → rep ×list nat
+    GET_CPU_TIME : rep × nat     → rep × list nat
   }.
 
   Open Scope comp_scope.
@@ -93,18 +90,3 @@ Section ProcessSchedulerInterface.
                  Return 1)*)
       }.
 End ProcessSchedulerInterface.
-
-Section ProcessSchedulerLemmas.
-  Lemma beq_process_true_iff :
-    forall { A: Type } (db_schema: Heading) (column: Attributes db_schema)
-           { beq_A: Domain db_schema column -> Domain db_schema column -> bool },
-    forall (beq_iff : forall a b, beq_A a b = true <-> a = b),
-    forall value (p: @Tuple db_schema),
-      p column = value <-> beq_A (p column) value = true.
-  Proof.
-    intros ? ? ? ? beq_iff; split; apply beq_iff.
-  Qed.
-
-  (* TODO: Is this needed? *)
-  Definition beq_process_iff__pid   := beq_process_true_iff (A:=nat) PID beq_nat_true_iff.
-End ProcessSchedulerLemmas.

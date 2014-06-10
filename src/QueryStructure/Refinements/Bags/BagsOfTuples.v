@@ -17,9 +17,6 @@ Fixpoint MatchAgainstSearchTerms
     | is_match :: more_terms => (is_match item) && MatchAgainstSearchTerms more_terms item
   end.
 
-Definition HasDecidableEquality (T: Type) :=
-  forall (x y: T), {x = y} + {x <> y}.
-
 Definition TupleEqualityMatcher 
            {heading: Heading} 
            (attr: Attributes heading)
@@ -39,25 +36,32 @@ Defined.
 
 Require Import FMapAVL.
 
+
+Module NIndexedMap := FMapAVL.Make N_as_OT.
+Module ZIndexedMap := FMapAVL.Make Z_as_OT.
 Module NatIndexedMap := FMapAVL.Make Nat_as_OT.
 Module StringIndexedMap := FMapAVL.Make String_as_OT.
 
+Module NTreeBag := TreeBag NIndexedMap.
+Module ZTreeBag := TreeBag ZIndexedMap.
 Module NatTreeBag := TreeBag NatIndexedMap.
 Module StringTreeBag := TreeBag StringIndexedMap.
 
-Definition NatTreeType TSubtree TSubtreeSearchTerm heading subtree_as_bag := 
-  (@NatTreeBag.IndexedBag 
-     TSubtree 
-     (@Tuple heading) 
-     TSubtreeSearchTerm 
-     subtree_as_bag).
+Definition TTreeConstructor (TKey: Type) :=
+  forall TBag TItem TBagSearchTerm : Type,
+    Bag TBag TItem TBagSearchTerm -> (TItem -> TKey) -> Type.
 
-Definition StringTreeType TSubtree TSubtreeSearchTerm heading subtree_as_bag := 
-  (@StringTreeBag.IndexedBag 
-     TSubtree 
-     (@Tuple heading) 
-     TSubtreeSearchTerm
-     subtree_as_bag).
+Definition mkTreeType 
+           (TKey: Type)
+           (tree_constructor: TTreeConstructor TKey)
+           TSubtree TSubtreeSearchTerm
+           heading subtree_as_bag : (@Tuple heading -> TKey) -> Type := 
+  tree_constructor TSubtree (@Tuple heading) TSubtreeSearchTerm subtree_as_bag.
+
+Definition NTreeType      := mkTreeType BinNums.N (@NTreeBag.IndexedBag).
+Definition ZTreeType      := mkTreeType BinNums.Z (@ZTreeBag.IndexedBag).
+Definition NatTreeType    := mkTreeType nat       (@NatTreeBag.IndexedBag).
+Definition StringTreeType := mkTreeType string    (@StringTreeBag.IndexedBag).
 
 Definition cast {T1 T2: Type} (eq: T1 = T2) (x: T1) : T2.
 Proof.
@@ -67,7 +71,8 @@ Defined.
 Record ProperAttribute {heading} :=
   {
     Attribute: Attributes heading; 
-    ProperlyTyped: { Domain heading Attribute = nat } + { Domain heading Attribute = string }
+    ProperlyTyped: { Domain heading Attribute = BinNums.N } + { Domain heading Attribute = BinNums.Z } +
+                   { Domain heading Attribute = nat } + { Domain heading Attribute = string }
   }.
 
 Fixpoint NestedTreeFromAttributes'
@@ -81,15 +86,21 @@ Fixpoint NestedTreeFromAttributes'
     | proper_attr :: more_indexes => 
       let attr := @Attribute heading proper_attr in
       let (t, st, bagproof) := NestedTreeFromAttributes' heading more_indexes in
-      match (@ProperlyTyped heading proper_attr) with
-        | left  eq_nat    => 
-          {| BagType        := NatTreeType    t st heading bagproof (fun x => cast eq_nat    (x attr));
-             SearchTermType := option nat    * st |}
-        | right eq_string => 
-          {| BagType        := StringTreeType t st heading bagproof (fun x => cast eq_string (x attr));
+      match ProperlyTyped proper_attr with
+        | inleft (inleft (left conv))  =>
+          {| BagType        := NTreeType t st heading bagproof (fun x => cast conv (x attr));
+             SearchTermType := option BinNums.N * st |}
+        | inleft (inleft (right conv)) =>
+          {| BagType        := ZTreeType t st heading bagproof (fun x => cast conv (x attr));
+             SearchTermType := option BinNums.Z * st |}
+        | inleft (inright conv)        =>
+          {| BagType        := NatTreeType t st heading bagproof (fun x => cast conv (x attr));
+             SearchTermType := option nat * st |}
+        | inright conv                 =>
+          {| BagType        := StringTreeType t st heading bagproof (fun x => cast conv (x attr));
              SearchTermType := option string * st |}
       end
-    end.
+  end.
 
 Definition CheckType {heading} (attr: Attributes heading) (rightT: _) :=
   {| Attribute := attr; ProperlyTyped := rightT |}.
@@ -110,11 +121,10 @@ Ltac mkIndex heading attributes :=
   assert (list (@ProperAttribute heading)) as decorated_source by autoconvert (@CheckType heading);
   apply (NestedTreeFromAttributes' heading decorated_source).
 
-
-
-
-(* Example use:
 Require Import Beatles.
+Local Open Scope string_scope.
+
+Local Open Scope Tuple_scope.
 
 Definition SampleIndex : @BagPlusBagProof (@Tuple AlbumHeading).
 Proof.
@@ -124,10 +134,11 @@ Defined.
 Definition IndexedAlbums :=
   List.fold_left binsert FirstAlbums (@bempty _ _ _ (BagProof SampleIndex)).
 
+(* Example use: 
 Eval simpl in (SearchTermType SampleIndex).
-Time Eval simpl in (bfind IndexedAlbums (Some 3, (None, (None, [])))).
-Time Eval simpl in (bfind IndexedAlbums (Some 3, (Some 1, (None, [])))).
-Time Eval simpl in (bfind IndexedAlbums (Some 3, (Some 1, (Some "With the Beatles", [])))).
+Time Eval simpl in (bfind IndexedAlbums (Some 1963%N, (None, (None, [])))).
+Time Eval simpl in (bfind IndexedAlbums (Some 1963%N, (Some 1, (None, [])))).
+Time Eval simpl in (bfind IndexedAlbums (Some 1963%N, (Some 1, (Some "With the Beatles", [])))).
 Time Eval simpl in (bfind IndexedAlbums (None, (None, (Some "With the Beatles", [])))).
 Time Eval simpl in (bfind IndexedAlbums (None, (None, (None, [TupleEqualityMatcher (eq_dec := string_dec) Name "With the Beatles"])))).
 

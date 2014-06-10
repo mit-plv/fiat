@@ -107,7 +107,6 @@ Module TreeBag (Import M: WS).
              {bags_bag: Bag TBag TItem TBagSearchTerm} :=
     (@None TKey, @bstar _ _ _ bags_bag).
 
-
   Definition IndexedBag_bfind_matcher 
              {TBag TItem TBagSearchTerm: Type}
              {bags_bag: Bag TBag TItem TBagSearchTerm}
@@ -142,6 +141,15 @@ Module TreeBag (Import M: WS).
       | None   =>
         flatten (List.map (fun bag =>  @bfind _ _ _ bags_bag bag search_term) (Values (ifmap container)))
     end.
+
+  Definition IndexedBag_bcount
+           {TBag TItem TBagSearchTerm: Type}
+           {bags_bag: Bag TBag TItem TBagSearchTerm}
+           (projection: TItem -> TKey)
+           (beq : HasDecidableEquality TItem)
+           (container: @IndexedBag TBag TItem TBagSearchTerm bags_bag projection)
+           (item: TItem) :=
+    fold (fun _ bag acc => acc + bcount beq bag item) (ifmap container) 0.
 
   Lemma indexed_bag_insert_consistent :
     forall {TBag TItem TBagSearchTerm: Type}
@@ -292,6 +300,249 @@ Module TreeBag (Import M: WS).
     apply add_1; trivial.
   Qed.
 
+  Lemma eq_dec_reflexive :
+    forall x,
+      (if E.eq_dec x x then true else false) = true.
+  Proof.
+    intros; destruct (E.eq_dec _ _); eauto using E.eq_refl.
+  Qed.      
+
+  Lemma IndexedBag_BagInsertCount :
+    forall {TBag TItem TBagSearchTerm: Type}
+           {bags_bag: Bag TBag TItem TBagSearchTerm}
+           (projection: TItem -> TKey),
+    BagInsertCount IndexedBag_benumerate (IndexedBag_binsert projection) (IndexedBag_bcount projection).
+  Proof.
+    unfold IndexedBag_bcount, IndexedBag_benumerate, IndexedBag_binsert, BagInsertCount;
+    simpl; intros.
+
+    set (filter := (fun key (_: TBag) => if E.eq_dec key (projection inserted) then true else false)).
+
+    assert ( Proper (E.eq ==> eq ==> eq) filter) 
+      as filter_proper 
+        by (
+            unfold filter, Proper, respectful; intros x y E_eq **; subst;
+            destruct (F.eq_dec x _), (F.eq_dec y _); rewrite E_eq in *; intuition
+          ).
+
+    assert ( Proper (E.eq ==> eq ==> eq ==> eq)
+                    (fun (_ : key) (bag : TBag) (acc : nat) => acc + bcount beq bag item))
+      as add_proper
+        by (unfold filter, Proper, respectful; intros; subst; eauto).
+
+    assert ( transpose_neqkey eq
+                              (fun (_ : key) (bag : TBag) (acc : nat) => acc + bcount beq bag item))
+      as transpose_neqkey_eq
+        by (unfold transpose_neqkey; intros; omega).
+ 
+    match goal with
+      | [ |- context[FindWithDefault ?a ?b ?c] ] => 
+        destruct (FindWithDefault_dec a b c)
+          as [ [ result (maps_to & _eq) ] | (find_none & _eq) ]; 
+        rewrite _eq; clear _eq
+    end.
+
+    Focus 2.
+    rewrite <- not_find_in_iff in find_none by eauto.
+    rewrite (fold_add (eqA := @eq nat)) by eauto.
+    rewrite binsert_count.
+    rewrite bcount_empty.
+    simpl; reflexivity.
+
+    pose (partitioned := partition filter (ifmap container)).
+    pose (modified := fst partitioned).
+    pose (unmodified := snd partitioned).
+    assert (partitioned = (modified, unmodified)) as partitioned' by eauto.
+    apply partition_Partition in partitioned'; eauto.
+
+    erewrite (Partition_fold (eqA := @eq nat)) with (m := ifmap container); eauto.
+
+    assert (Equal (add (projection inserted) result (empty TBag)) modified) as modified_singleton. {
+      unfold Equal; intro key.
+      
+      destruct (E.eq_dec key (projection inserted)) as [ eq_k_proj | neq_k_proj ].
+      
+      rewrite eq_k_proj;
+        rewrite add_eq_o by eauto;
+        symmetry; rewrite <- find_mapsto_iff;
+        rewrite (partition_iff_1 _ _ (m := ifmap container)) 
+          by (unfold filter; intuition (eauto using eq_dec_reflexive));
+        split; unfold filter; (eauto using eq_dec_reflexive).
+      
+      rewrite add_neq_o by eauto.
+      rewrite empty_o.
+      destruct (find key _) eqn:eqfind'; 
+        [ exfalso | eauto ].
+      rewrite <- find_mapsto_iff in eqfind'.
+      rewrite (partition_iff_1 _ _ (m := ifmap container)) 
+        in eqfind' by (unfold filter; intuition (eauto using eq_dec_reflexive)).
+      destruct eqfind' as (_ & filter_true).
+      unfold filter in filter_true.
+      destruct (E.eq_dec key (projection inserted)); try discriminate.
+      intuition.
+    }
+
+    assert (Partition (add (projection inserted) (binsert result inserted) (ifmap container))
+                      (add (projection inserted) (binsert result inserted) modified)
+                      (unmodified)). {
+      unfold Partition.
+      split.
+
+      unfold Disjoint.
+      intros key (in_modified & in_unmodified).
+      rewrite add_in_iff in in_modified.
+
+      assert (E.eq (projection inserted) key) as eq_key. {
+        destruct in_modified as [ ? | in_modified ]; [ eassumption | ].
+        
+        apply In_MapsTo in in_modified.
+        destruct in_modified as [ val ( maps_to' & find_some ) ].
+        
+        rewrite partition_iff_1 with (f := filter) (m := ifmap container) in maps_to'; eauto.
+        destruct maps_to' as (maps_to' & filter_true).
+        unfold filter in filter_true.
+        destruct (E.eq_dec key (projection inserted)); try discriminate. 
+        eauto.
+      }        
+
+      assert (~ E.eq (projection inserted) key) as neq_key. { (* There is an obvious pattern in common here *)
+        apply In_MapsTo in in_unmodified.
+        destruct in_unmodified as [ val ( maps_to' & find_some ) ].
+        
+        rewrite partition_iff_2 with (f := filter) (m := ifmap container) in maps_to'; eauto.
+        destruct maps_to' as (maps_to' & filter_false).
+        unfold filter in filter_false.
+        destruct (E.eq_dec key (projection inserted)); try discriminate. 
+        eauto.
+      }
+
+      apply neq_key; assumption.
+
+      split; intros * maps_to'.
+      rewrite add_mapsto_iff in maps_to'.
+      destruct maps_to' as [ (keq & veq) | (kneq & maps_to') ]; subst.
+
+      left; apply add_1; eauto.
+      right; rewrite partition_iff_2 with (f := filter) (m := ifmap container) by eauto;
+      unfold filter; split; [ assumption | destruct (E.eq_dec _ _); intuition ].
+
+      destruct maps_to' as [ maps_to' | maps_to' ].
+
+      rewrite add_mapsto_iff in maps_to';
+      destruct maps_to' as [ (keq & veq) | (kneq & maps_to') ]; subst.
+
+      apply add_1; assumption.
+      
+      exfalso.
+      rewrite partition_iff_1 with (f := filter) (m := ifmap container) in maps_to'; eauto.
+      destruct maps_to' as (maps_to' & filter_true).
+      unfold filter in filter_true.
+      destruct (E.eq_dec k (projection inserted)); try discriminate.
+      apply kneq; symmetry; assumption.
+
+      assert (partition filter (ifmap container) = (modified, unmodified)) as is_partition by reflexivity.
+      apply partition_Partition in is_partition; eauto.
+      destruct is_partition as (disjoint & equiv).
+
+      rewrite partition_iff_2 with (f := filter) (m := ifmap container) in maps_to'; eauto.
+      destruct maps_to' as (maps_to' & filter_false).
+      unfold filter in filter_false.
+      destruct (E.eq_dec k (projection inserted)); try discriminate. 
+      eauto.
+
+      apply add_2; eauto.
+    }
+    
+    erewrite (Partition_fold (eqA := @eq nat)) with (m := add _ _ _); eauto.
+    
+    erewrite (fold_Equal _ _ _ (m1 := modified)); try symmetry; eauto.
+    
+    set (base := (fold
+        (fun (_ : key) (bag : TBag) (acc : nat) => acc + bcount beq bag item)
+        unmodified 0)).
+
+    assert (Equal (add (projection inserted) (binsert result inserted) modified)
+                  (add (projection inserted) (binsert result inserted) (empty TBag))) as add_singleton. {
+      unfold Equal; intro key'. 
+      rewrite <- modified_singleton.
+      destruct (E.eq_dec key' (projection inserted));
+      [ repeat rewrite add_eq_o | repeat rewrite add_neq_o ]; eauto.
+    }
+
+    erewrite (fold_Equal _ _ _ _ add_singleton); eauto.
+
+    rewrite !fold_spec_right; simpl.
+
+    Lemma elements_one :
+      forall {TValue} k v,
+        forall pair, 
+          List.In pair (elements (add k v (empty TValue))) -> 
+          eq_key_elt pair (k, v).
+    Proof.
+      unfold eq_key_elt;
+      intros * pair_in.
+      destruct pair as [k' v'].
+      apply in_elements_mapsto in pair_in.
+      rewrite add_mapsto_iff in pair_in.
+
+      destruct pair_in as [ (keq & veq) | (kneq & maps_to) ]; simpl; eauto.
+      exfalso; erewrite <- empty_mapsto_iff; eauto.
+    Qed.
+    
+    Lemma list_eq_singleton :
+      forall {A: Type} (seq: list A) (item: A),
+        seq = [item] <-> (List.In item seq /\ List.length seq = 1).
+    Proof.
+      split; intros * H; subst.
+      firstorder.
+      destruct seq; simpl in *; [ exfalso; intuition | ].
+      destruct seq; simpl in *; intuition; subst; intuition.
+    Qed.
+
+    Lemma InA_singleton :
+      forall {TValue} k v,
+        InA (eq_key_elt (elt:=TValue)) (k, v) (elements (add k v (empty TValue))).
+    Proof.
+      intros; apply elements_1, add_1; eauto.
+    Qed.      
+
+    Lemma elements_one_eq :
+      forall {TValue} k v,
+        exists k',
+          elements (add k v (empty TValue)) = [(k', v)] /\ E.eq k k'.
+    Proof.
+      intros;
+      pose proof (InA_singleton k v) as in_A.
+      rewrite InA_alt in in_A; unfold eq_key_elt in in_A.
+      destruct in_A as [(k', v') ((eq_k & eq_v) & in_elements)]; simpl in *; subst.
+      exists k'; split; eauto.
+      rewrite list_eq_singleton.
+      split; try eassumption.
+      rewrite <- M.cardinal_1.
+      erewrite cardinal_2; unfold Add; eauto.
+
+      erewrite <- cardinal_1; eauto using (empty_1).
+      rewrite empty_in_iff; intuition.
+    Qed.
+
+    destruct (elements_one_eq (projection inserted) result) 
+      as [projection_inserted'1 (elems_singleton1 & eq_proj_proj'1)].
+
+    destruct (elements_one_eq (projection inserted) (binsert result inserted)) 
+      as [projection_inserted'2 (elems_singleton2 & eq_proj_proj'2)].
+
+    rewrite elems_singleton1, elems_singleton2.
+    unfold uncurry; simpl.
+
+    rewrite binsert_count.
+
+    omega.
+
+    Grab Existential Variables.
+    eauto.
+    eauto.
+  Qed.
+
   Lemma IndexedBag_BagEnumerateEmpty :
     forall {TBag TItem TBagSearchTerm: Type}
            {bags_bag: Bag TBag TItem TBagSearchTerm}
@@ -301,6 +552,17 @@ Module TreeBag (Import M: WS).
     intros;
     unfold BagEnumerateEmpty, IndexedBag_benumerate, flatten; simpl;
     rewrite Values_empty; tauto.
+  Qed.
+
+  Lemma IndexedBag_BagCountEmpty : 
+    forall {TBag TItem TBagSearchTerm: Type}
+           {bags_bag: Bag TBag TItem TBagSearchTerm}
+           (projection: TItem -> TKey),
+      BagCountEmpty IndexedBag_benumerate (IndexedBag_bempty projection) (IndexedBag_bcount projection).
+  Proof.
+    unfold BagCountEmpty, IndexedBag_benumerate, IndexedBag_bempty, IndexedBag_bcount.
+    intros; simpl.
+    apply fold_Empty; eauto using empty_1.
   Qed.
 
   Lemma IndexedBag_BagFindStar :
@@ -537,7 +799,9 @@ Module TreeBag (Import M: WS).
       binsert    := IndexedBag_binsert projection;
 
       binsert_enumerate := IndexedBag_BagInsertEnumerate projection;
+      binsert_count     := IndexedBag_BagInsertCount projection;
       benumerate_empty  := IndexedBag_BagEnumerateEmpty projection;
+      bcount_empty      := IndexedBag_BagCountEmpty projection;
       bfind_star        := IndexedBag_BagFindStar projection;
       bfind_correct     := IndexedBag_BagFindCorrect projection
     |}. 
