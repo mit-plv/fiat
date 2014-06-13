@@ -30,7 +30,7 @@ Proof.
   reflexivity.
 Qed.
 
-Class Equivalent_Trace_Ensembles {ReturnT TraceT TraceT' : Type}
+Definition Equivalent_Ensembles {ReturnT TraceT TraceT' : Type}
            (P : Ensemble (ReturnT * TraceT))
            (Q : Ensemble (ReturnT * TraceT')) :=
   { TraceT_map : TraceT -> TraceT';
@@ -106,8 +106,8 @@ Proof.
   simpl in *; eauto.
   - f_equal; apply (TraceT_map_inv t0).
   - f_equal; apply (TraceT'_map_inv t0).
-  - injection H0; intros; subst; f_equal; eauto using TraceT_map_inj. 
-  - injection H0; intros; subst; f_equal; eauto using TraceT'_map_inj. 
+  - injection H0; intros; subst; f_equal; eauto using TraceT_map_inj.
+  - injection H0; intros; subst; f_equal; eauto using TraceT'_map_inj.
   - eapply (TraceT_map_valid (r, t0)); eauto.
   - eapply (TraceT'_map_valid (r, t0)); eauto.
 Qed.
