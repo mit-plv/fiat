@@ -13,35 +13,41 @@ Proof.
   econstructor; subst; split; eauto.
 Qed.
 
-Lemma Equivalent_In_EnsembleListEquivalence {A}
+Lemma Equivalent_In_EnsembleListEquivalence {ReturnT TraceT}
       (qs : QueryStructureHint) (R : _)
       (l : list _)
-      bod
+      (bod : @Tuple _ -> Ensemble (ReturnT * TraceT))
 : EnsembleListEquivalence (GetRelation qsHint R) l ->
-  Equivalent_Ensembles
-    (@Query_In qs A R bod)
-    (fun a => exists tup, List.In tup l /\ bod tup a).
+  Equivalent_Trace_Ensembles
+    (@Query_In qs _ _ R bod)
+    (fun el => List.In (fst (snd el)) l
+     /\ bod (fst (snd el)) (fst el, snd (snd el))).
 Proof.
-  split; intros; unfold In in *.
-  destruct H0; eexists; intuition; eauto.
-  eapply H; eauto.
-  rewrite GetRelDropConstraints in H1; apply H1.
-  destruct H0; intuition; eexists; split; eauto.
-  rewrite GetRelDropConstraints; eapply H; eauto.
+  econstructor 1 with (TraceT_map := id)
+                        (TraceT'_map := id);
+  intros; destruct_pairs; unfold id in *; auto;
+  unfold Query_In in *; simpl in *; intuition.
+  rewrite GetRelDropConstraints in *; apply H; apply H1.
+  rewrite GetRelDropConstraints in *; apply H; apply H1.
 Qed.
 
-Lemma Equivalent_UnConstr_In_EnsembleListEquivalence {A}
-      qsSchema qs R l bod
-: EnsembleListEquivalence (GetUnConstrRelation qs R) l ->
-  Equivalent_Ensembles
-    (@UnConstrQuery_In qsSchema qs A R bod)
-    (fun a => exists tup, List.In tup l /\ bod tup a).
+Lemma Equivalent_UnConstr_In_EnsembleListEquivalence
+      {ReturnT TraceT}
+      qsSchema qs (R : _)
+      (l : list _)
+      (bod : @Tuple _ -> Ensemble (ReturnT * TraceT))
+: EnsembleListEquivalence (GetUnConstrRelation qs R) l
+  -> Equivalent_Trace_Ensembles
+       (@UnConstrQuery_In qsSchema qs _ _ R bod)
+       (fun el => List.In (fst (snd el)) l
+                  /\ bod (fst (snd el)) (fst el, snd (snd el))).
 Proof.
-  split; intros; unfold In in *.
-  destruct H0; eexists; intuition; eauto.
-  eapply H; eauto.
-  destruct H0; intuition; eexists; split; eauto.
-  eapply H; eauto.
+  econstructor 1 with (TraceT_map := id)
+                        (TraceT'_map := id);
+  intros; destruct_pairs; unfold id in *; auto;
+  unfold UnConstrQuery_In in *; simpl in *; intuition.
+  apply H; apply H1.
+  apply H; apply H1.
 Qed.
 
 Definition Join_Lists {A B}
@@ -88,61 +94,84 @@ Proof.
   apply in_map_iff; eexists; intuition; eauto.
 Qed.
 
-Lemma Equivalent_Join_Lists {A B}
-      qsSchema qs R (l : list B) l' bod
+Lemma Equivalent_Join_Lists {ReturnT TraceT heading}
+      qsSchema qs R (l : list (@Tuple heading)) l'
+      (bod : Tuple -> Tuple -> Ensemble (ReturnT * TraceT))
 : EnsembleListEquivalence (GetUnConstrRelation qs R) l' ->
-  Equivalent_Ensembles
-    (fun a => exists b, List.In b l /\
-                        (@UnConstrQuery_In qsSchema qs A R (bod b) a))
-    (fun a => exists b, List.In b (Join_Lists l l') /\
-                        (bod (fst b) (snd b) a)).
+  Equivalent_Trace_Ensembles
+    (fun tup' : ReturnT * (Tuple * (Tuple * TraceT)) =>
+                           List.In (fst (snd tup')) l /\
+                 (@UnConstrQuery_In qsSchema qs _ _ R (bod (fst (snd tup')))
+                                    (fst tup', snd (snd tup'))))
+    (fun tup' : ReturnT * (Tuple * (Tuple * TraceT)) =>
+       List.In ((fst (snd tup')), fst (snd (snd tup'))) (Join_Lists l l') /\
+       (bod (fst (snd tup')) (fst (snd (snd tup'))) (fst tup', snd (snd (snd tup'))))).
 Proof.
-  split; intros; unfold In in *.
-  - destruct H0; intuition; destruct H2; eexists; intuition; eauto.
-    unfold EnsembleListEquivalence in H.
-    apply In_Join_Lists; split; eauto.
-    eapply H; unfold In; apply H2.
-    simpl; auto.
-  - destruct_ex; intuition; destruct x; eexists; intuition.
-    eapply (In_Join_Lists l l'); eauto.
-    eexists; intuition; eauto.
-    apply H; eapply (In_Join_Lists l l'); eauto.
+  econstructor 1 with (TraceT_map := id)
+                        (TraceT'_map := id);
+  intros; destruct_pairs; unfold id in *; auto;
+  unfold UnConstrQuery_In in *; simpl in *; intuition.
+  - eapply In_Join_Lists; split; eauto.
+    eapply H; eauto.
+  - eapply (proj1 (In_Join_Lists _ _ _ _ ) H1) .
+  - eapply H; eapply (proj1 (In_Join_Lists _ _ _ _ ) H1).
 Qed.
 
-Lemma Equivalent_List_In_Where {A B : Type}
-      (l : list B)
-      (P : Ensemble B)
-      (bod : B -> Ensemble A)
+Lemma Equivalent_List_In_Where {ReturnT TraceT TraceT'}
+      (l : list TraceT)
+      (P : Ensemble TraceT)
+      (bod : TraceT -> Ensemble (ReturnT * TraceT'))
       (P_dec : DecideableEnsemble P)
 :
-  Equivalent_Ensembles
-    (fun a : A => exists b, List.In b l /\ Query_Where (P b) (bod b) a)
-    (fun a : A => exists b, List.In b (filter dec l) /\ (bod b) a)
-.
+  Equivalent_Trace_Ensembles
+    (fun tup : ReturnT * (TraceT * TraceT') =>
+       List.In (fst (snd tup)) l
+       /\ Query_Where (P (fst (snd tup))) (bod (fst (snd tup)))
+                      (fst tup, snd (snd tup)))
+    (fun tup : ReturnT * (TraceT * TraceT') =>
+       List.In (fst (snd tup)) (filter dec l)
+       /\ bod (fst (snd tup)) (fst tup, snd (snd tup))) .
 Proof.
-  destruct P_dec; split; intros; unfold In, Query_Where in *.
-  destruct H; eexists; intuition; eauto.
-  eapply filter_In; split; eauto.
-  eapply dec_decides_P; eauto.
-  destruct H; intuition; eexists; split; eauto.
-  eapply filter_In; eauto.
-  intuition; eauto using filter_In.
-  eapply dec_decides_P; eapply filter_In; eauto.
+  destruct P_dec.
+  econstructor 1 with (TraceT_map := id)
+                        (TraceT'_map := id);
+  intros; destruct_pairs; unfold id in *; auto;
+  unfold In, Query_Where in *; simpl in *; intuition.
+  - eapply filter_In; split; eauto;
+    eapply dec_decides_P; eauto.
+  - eapply filter_In; eauto.
+  - eapply dec_decides_P; eapply filter_In; eauto.
 Qed.
 
-Lemma refine_For_List_Return {A B}
-      (l : list B)
-      (extract : B -> A)
-: refine
-    (For (fun a : A =>
-            exists b : B,
-              List.In b l /\ Return (extract b) a))%QuerySpec
+Lemma refine_For_List_Return {ReturnT TraceT}
+      (l : list _ )
+      (extract : TraceT -> ReturnT)
+: NoDup l
+  -> refine
+    (For (fun el : ReturnT * (TraceT * unit) =>
+            List.In (fst (snd el)) l /\ Return (extract (fst (snd el))) (fst el, tt)))%QuerySpec
     (ret (map extract l)).
 Proof.
   unfold refine; intros; inversion_by computes_to_inv; subst.
-  econstructor; unfold In, Query_Return; split; intros.
-  eapply in_map_iff in H; destruct_ex; intuition; eauto.
-  eapply in_map_iff; destruct_ex; intuition; eauto.
+  econstructor; unfold In, Query_Return.
+  eexists (map (fun el => (extract el, (el, tt))) l); split.
+  rewrite map_map; simpl; f_equal.
+  unfold EnsembleListEquivalence.
+  split; intros.
+  { induction l; simpl in *; econstructor; inversion H; subst; eauto.
+    unfold not; intros; eapply H2.
+    revert H0; clear; induction l; simpl; intros; intuition.
+    injections; auto.
+  }
+  { unfold In; split; intros.
+    eapply in_map_iff; destruct_ex; intuition; eauto.
+    exists (fst (snd x)); destruct_pairs; simpl in *; split; eauto.
+    f_equal; eauto.
+    destruct u; eauto.
+    eapply in_map_iff in H0; destruct_ex; intuition; eauto.
+    subst; simpl; eauto.
+    destruct_pairs; simpl in *; injections; auto.
+  }
 Qed.
 
 Tactic Notation "implement" "queries" "for" "lists" :=

@@ -16,8 +16,9 @@ Instance EnsembleListEquivalence_AbsR {A}:
                              Ridx) [].
   Proof.
     intros; rewrite GetRelDropConstraints; simpl; split; simpl; intros;
-    unfold GetRelation, In in *;
-    rewrite Build_EmptyRelation_IsEmpty in *; simpl in *; auto.
+    unfold GetRelation, In in *.
+    + econstructor.
+    + rewrite Build_EmptyRelation_IsEmpty in *; simpl in *; intuition.
   Qed.
 
 Ltac implement_empty_list constrName RepAbsR :=

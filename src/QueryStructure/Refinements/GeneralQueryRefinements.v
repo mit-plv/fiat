@@ -1,89 +1,115 @@
 Require Import String List FunctionalExtensionality Ensembles Common
         Computation BuildADTRefinements
-        QueryStructureSchema QueryQSSpecs QueryStructure.
+        QueryStructureSchema QueryQSSpecs QueryStructure
+        EnsembleListEquivalence.
 
-Definition UnConstrQuery_In qsSchema (qs : UnConstrQueryStructure qsSchema) {A} (R : _)
-           (bod : @Tuple _ -> Ensemble A)
-           (a : A) :=
-  exists tup, (GetUnConstrRelation qs R) tup /\
-              bod tup a.
+Definition UnConstrQuery_In
+           qsSchema
+           (qs : UnConstrQueryStructure qsSchema)
+           {ReturnT TraceT}
+           (R : _)
+           (bod : @Tuple _ -> Ensemble (ReturnT * TraceT))
+           (el : ReturnT * (Tuple * TraceT))
+  :=
+  GetUnConstrRelation qs R (fst (snd el))
+  /\ bod (fst (snd el)) (fst el, snd (snd el)).
 
-Lemma DropQSConstraintsQuery_In {A} :
+Lemma DropQSConstraintsQuery_In {ReturnT TraceT} :
   forall qs R bod,
-         @Query_In A qs R bod =
+         @Query_In ReturnT TraceT qs R bod =
          UnConstrQuery_In (DropQSConstraints qsHint) R bod.
 Proof.
   reflexivity.
 Qed.
 
-Lemma DropQSConstraintsQuery_In_UnderBinder {A B} :
+Lemma DropQSConstraintsQuery_In_UnderBinder {ReturnT TraceT B} :
   forall qs R bod,
-    (fun b : B => @Query_In A qs R (bod b)) =
+    (fun b : B => @Query_In ReturnT TraceT qs R (bod b)) =
     (fun b : B => UnConstrQuery_In (DropQSConstraints qsHint) R (bod b)).
 Proof.
   reflexivity.
 Qed.
 
-Definition Equivalent_Ensembles {A : Type}
-           (P Q : Ensemble A) := forall a, P a <-> Q a.
+Class Equivalent_Trace_Ensembles {ReturnT TraceT TraceT' : Type}
+           (P : Ensemble (ReturnT * TraceT))
+           (Q : Ensemble (ReturnT * TraceT')) :=
+  { TraceT_map : TraceT -> TraceT';
+     TraceT'_map : TraceT' -> TraceT;
+     TraceT_map_inv : forall trace, TraceT'_map (TraceT_map trace) = trace;
+     TraceT'_map_inv : forall trace, TraceT_map (TraceT'_map trace) = trace;
+     TraceT_map_inj : forall trace trace', TraceT_map trace = TraceT_map trace'
+                                           -> trace = trace';
+     TraceT'_map_inj : forall trace trace', TraceT'_map trace = TraceT'_map trace'
+                                           -> trace = trace';
+     TraceT_map_valid : forall el, P el -> Q (fst el, TraceT_map (snd el));
+     TraceT'_map_valid : forall el, Q el -> P (fst el, TraceT'_map (snd el))
+  }.
 
-Lemma Equivalent_Swap_In {A}
-      qsSchema qs R R' (bod : Tuple -> Tuple -> Ensemble A)
+Ltac destruct_pairs :=
+  repeat match goal with
+             H : prod _ _ |- _ => destruct H
+         end.
+
+Lemma Equivalent_Swap_In {ReturnT TraceT}
+      qsSchema qs R R' (bod : Tuple -> Tuple -> Ensemble (ReturnT * TraceT))
 :
-  Equivalent_Ensembles
-    (@UnConstrQuery_In qsSchema qs _ R (fun tup => @UnConstrQuery_In qsSchema qs _ R' (bod tup)))
-    (@UnConstrQuery_In qsSchema qs _ R' (fun tup => @UnConstrQuery_In qsSchema qs _ R
+  Equivalent_Trace_Ensembles
+    (@UnConstrQuery_In qsSchema qs _ _ R (fun tup => @UnConstrQuery_In qsSchema qs _ _ R' (fun tup' => bod tup tup')))
+    (@UnConstrQuery_In qsSchema qs _ _ R' (fun tup => @UnConstrQuery_In qsSchema qs _ _ R
                                              (fun tup' => bod tup' tup))).
 Proof.
-  unfold Equivalent_Ensembles, UnConstrQuery_In; split; intros;
-  repeat (progress (destruct_ex; intuition)); eexists;
-  split; eauto.
+  econstructor 1 with (TraceT_map := fun el => (fst (snd el), (fst el, snd (snd el))))
+                        (TraceT'_map := fun el => (fst (snd el), (fst el, snd (snd el))));
+  simpl; intros; destruct_pairs; simpl in *; injections; auto;
+  unfold UnConstrQuery_In in *; intuition.
 Qed.
 
-Lemma Equivalent_Swap_In_Where {A}
+Lemma Equivalent_Swap_In_Where {ReturnT TraceT}
       qsSchema qs R {heading}
-      (bod : @Tuple heading -> Tuple -> Ensemble A)
+      (bod : @Tuple heading -> Tuple -> Ensemble (ReturnT * TraceT))
       (P : @Tuple heading -> Prop)
 :
-  pointwise_relation
-    Tuple Equivalent_Ensembles
-    (fun tup' : Tuple =>
-       (@UnConstrQuery_In qsSchema qs _ R
-                  (fun tup => Query_Where (P tup') (bod tup' tup))))
-    (fun tup' : Tuple =>
-       Query_Where (P tup') (@UnConstrQuery_In qsSchema qs _ R (bod tup'))).
+  forall tup',
+    Equivalent_Trace_Ensembles
+      (@UnConstrQuery_In qsSchema qs _ _ R
+                  (fun tup => Query_Where (P tup') (bod tup' tup)))
+      (Query_Where (P tup') (@UnConstrQuery_In qsSchema qs _ _ R (bod tup'))).
 Proof.
-  unfold Equivalent_Ensembles, UnConstrQuery_In, Query_Where; split; intros;
-  repeat (progress (destruct_ex; intuition)); eexists;
-  split; eauto.
+  econstructor 1 with (TraceT_map := id)
+                      (TraceT'_map := id);
+  intros; destruct_pairs; unfold id in *; simpl in *; auto;
+  unfold UnConstrQuery_In, Query_Where in *; intuition.
 Qed.
 
-Add Parametric Morphism {A: Type} :
-  (Query_For)
-    with signature (@Equivalent_Ensembles A ==> refine)
-      as refine_Query_For_Equivalent.
-Proof.
-  unfold impl, Query_For, refine; intros.
-  inversion_by computes_to_inv.
-  econstructor; split_iff; split; intros; eauto.
-  apply H; apply H1; auto.
-  apply H2; apply H; auto.
-Qed.
-
-Add Parametric Morphism {A: Type}
-    qsSchema qs R
+Lemma Equivalent_Under_In {ReturnT TraceT TraceT'}
+      qsSchema qs R
+      (bod : Tuple -> Ensemble (ReturnT * TraceT))
+      (bod' : Tuple -> Ensemble (ReturnT * TraceT'))
 :
-  (fun bod => Query_For (@UnConstrQuery_In qsSchema qs _ R bod))
-    with signature ((pointwise_relation Tuple (@Equivalent_Ensembles A) ==> refine ))
-      as refine_Query_For_In_Equivalent.
+  (forall tup, Equivalent_Trace_Ensembles (bod tup) (bod' tup))
+  -> Equivalent_Trace_Ensembles
+      (@UnConstrQuery_In qsSchema qs _ _ R (fun tup => bod tup))
+      (@UnConstrQuery_In qsSchema qs _ _ R (fun tup => bod' tup)).
 Proof.
-  unfold impl, Query_For, pointwise_relation, UnConstrQuery_In, In, refine.
-  intros; inversion_by computes_to_inv.
-  econstructor; split_iff; split; intros; eauto.
-  destruct (H1 _ H0); eexists; intuition; eauto.
-  apply H; auto.
-  destruct_ex; apply H2; eexists; intuition; eauto.
-  apply H; auto.
+  intros H.
+  econstructor 1 with
+  (TraceT_map :=
+     (fun el : Tuple * TraceT =>
+        (fst el, (TraceT_map (Equivalent_Trace_Ensembles := H (fst el)))
+          (snd el))))
+  (TraceT'_map :=
+     (fun el : Tuple * TraceT' =>
+        (fst el, (TraceT'_map (Equivalent_Trace_Ensembles := H (fst el)))
+          (snd el))));
+  intros; destruct_pairs; unfold id in *; simpl in *; auto;
+  unfold UnConstrQuery_In, Query_Where in *; intuition;
+  simpl in *; eauto.
+  - f_equal; apply (TraceT_map_inv t0).
+  - f_equal; apply (TraceT'_map_inv t0).
+  - injection H0; intros; subst; f_equal; eauto using TraceT_map_inj. 
+  - injection H0; intros; subst; f_equal; eauto using TraceT'_map_inj. 
+  - eapply (TraceT_map_valid (r, t0)); eauto.
+  - eapply (TraceT'_map_valid (r, t0)); eauto.
 Qed.
 
 Class DecideableEnsemble {A} (P : Ensemble A) :=
@@ -108,14 +134,43 @@ Proof.
   intros; find_if_inside; intuition.
 Defined.
 
-Lemma refineEquiv_For_DropQSConstraints A qsSchema qs :
-  forall bod,
+Lemma refine_For_Equivalent_Trace_Ensembles
+      {ReturnT TraceT TraceT' : Type} :
+  forall bod bod',
+    @Equivalent_Trace_Ensembles ReturnT TraceT TraceT' bod bod' ->
+    refine (For bod)%QuerySpec
+           (For bod')%QuerySpec.
+Proof.
+  intros; unfold Query_For, refine;
+  intros; inversion_by computes_to_inv; subst; econstructor.
+  {
+    exists (map (fun el => (fst el, TraceT'_map (snd el))) x); intuition.
+    rewrite map_map; f_equal.
+    unfold EnsembleListEquivalence.EnsembleListEquivalence in *; intuition.
+    clear H0; induction x; simpl; inversion H; subst; constructor; eauto.
+    unfold not; intros; apply H2.
+    destruct ((proj1 (in_map_iff _ _ _ )) H0); intuition; injections; subst.
+    apply_in_hyp TraceT'_map_inj; destruct a; destruct x0; simpl in *; subst; eauto.
+    rewrite <- (TraceT_map_inv b); eapply in_map_iff; eexists (_, _); split;
+    simpl; try reflexivity.
+    eapply H0; eapply (TraceT_map_valid (_, _)); eassumption.
+    rewrite <- (TraceT_map_inv b).
+    eapply (TraceT'_map_valid (_, _)).
+    eapply H0.
+    destruct ((proj1 (in_map_iff _ _ _ )) H1); intuition; injections; subst.
+    destruct x0; rewrite <- (TraceT'_map_inv t) in H4; eauto.
+  }
+Qed.
+
+Lemma refineEquiv_For_DropQSConstraints {ReturnT TraceT : Type}
+      qsSchema qs :
+  forall (bod : Ensemble (ReturnT * TraceT)),
       refine
      {H1 |
-      exists or' : QueryStructure qsSchema * list A,
-       (queryRes <- (For bod)%QuerySpec;
-        ret (qs, queryRes)) ↝ or' /\
-       DropQSConstraints_AbsR (fst or') (fst H1) /\ snd or' = snd H1}
+      exists or' : QueryStructure qsSchema * list ReturnT,
+                   (queryRes <- (For bod)%QuerySpec;
+                    ret (qs, queryRes)) ↝ or' /\
+                   DropQSConstraints_AbsR (fst or') (fst H1) /\ snd or' = snd H1}
      (b <- (For bod)%QuerySpec;
       ret (DropQSConstraints qs, b) ) .
 Proof.

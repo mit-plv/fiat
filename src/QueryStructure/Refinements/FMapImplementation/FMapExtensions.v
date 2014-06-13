@@ -379,8 +379,9 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
         (GetValues (add key added tree)).
   Proof.
     unfold EnsembleListEquivalence;
-    split; intros;
+    repeat split; intros;
     unfold Ensembles.In in *; simpl in *.
+
 
     apply in_elements_after_add'; trivial.
     rewrite <- H1.

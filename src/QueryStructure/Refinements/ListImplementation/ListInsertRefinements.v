@@ -330,6 +330,7 @@ Lemma ImplementListInsert_eq qsSchema Ridx
       (nr : list (Tuple))
 :
   EnsembleListEquivalence (GetUnConstrRelation or Ridx) nr
+  -> ~ List.In tup nr
   -> refine
        {a |
         EnsembleListEquivalence
@@ -341,8 +342,11 @@ Proof.
   unfold refine; intros; inversion_by computes_to_inv; subst; constructor.
   unfold GetUnConstrRelation, UpdateUnConstrRelation in *.
   rewrite ith_replace_BoundIndex_eq.
-  unfold EnsembleListEquivalence, RelationInsert, In, List.In in *; split; intuition.
+  unfold RelationInsert, In in *; split; intuition.
+  destruct H; econstructor; eauto.
+  unfold In in *; simpl; intuition.
   right; apply H; auto.
+  unfold In in *; simpl in *; intuition.
   right; apply H; auto.
 Qed.
 
