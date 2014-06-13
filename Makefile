@@ -53,6 +53,7 @@ SRC_MODULES    := \
 	QueryStructure/SetEq \
 	QueryStructure/SetEqProperties \
 	QueryStructure/AdditionalLemmas \
+	QueryStructure/Refinements/AdditionalMorphisms \
 	QueryStructure/Refinements/ListImplementation/ListQueryRefinements \
 	QueryStructure/Refinements/ListImplementation/ListInsertRefinements \
 	QueryStructure/Refinements/ListImplementation/ListQueryStructureRefinements \
