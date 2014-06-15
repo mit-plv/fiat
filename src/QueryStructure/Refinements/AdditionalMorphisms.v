@@ -130,6 +130,16 @@ Proof.
   apply Permutation_app; eauto.
 Qed.
 
+Add Parametric Morphism {A B : Type} :
+  (@flat_map A B)
+    with signature (pointwise_relation A (@Permutation B) ==> @eq (list A) ==> @Permutation B)
+      as flatmap_permutation_eq_permutation_morphism.
+Proof.
+  intros.
+  rewrite ?flat_map_flatten.
+  apply flatten_map_permutation_eq_permutation_morphism; eauto.
+Qed.
+
 Add Parametric Morphism {A B: Type} :
   (fun comp seq => @flatten B (@List.map A (list B) comp seq))
     with signature (pointwise_relation A (@Permutation B) ==> @Permutation A ==> @Permutation B)
@@ -155,3 +165,14 @@ Proof.
 
   apply flatten_map_permutation_eq_permutation_morphism; try (symmetry; eauto).
 Qed.
+
+Add Parametric Morphism {A B : Type} :
+  (@flat_map A B)
+    with signature (pointwise_relation A (@Permutation B) ==> @Permutation A ==> @Permutation B)
+      as flatmap_permutation_permutation_permutation_morphism.
+Proof.
+  intros.
+  rewrite ?flat_map_flatten.
+  apply flatten_map_permutation_permutation_permutation_morphism; eauto.
+Qed.
+
