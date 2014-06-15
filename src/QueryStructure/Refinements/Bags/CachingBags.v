@@ -18,14 +18,20 @@ Definition CachedValueIsFresh
            (cached_value: TCachedValue) :=
   RecomputeCachedValue updater initial_value items = cached_value.
 
+Require Import SetEq.
+Require Import Morphisms.
+
+Definition IsStronglyCacheable
+           {TItem TCachedValue}
+           (updater: TItem -> TCachedValue -> TCachedValue)
+           (initial_value: TCachedValue) :=
+  Proper (@SetEq TItem ==> @eq TCachedValue) (RecomputeCachedValue updater initial_value). 
+
 Definition IsCacheable
            {TItem TCachedValue}
            (updater: TItem -> TCachedValue -> TCachedValue)
            (initial_value: TCachedValue) :=
-  forall seq1 seq2,
-    SetEq seq1 seq2 ->
-    RecomputeCachedValue updater initial_value seq1 =
-    RecomputeCachedValue updater initial_value seq2.
+  Proper (@Permutation TItem ==> @eq TCachedValue) (RecomputeCachedValue updater initial_value). 
 
 Record Cache 
        {TBag TItem TSearchTerm TCachedValue: Type} 
@@ -102,7 +108,7 @@ Definition Cache_benumerate
            (container: @Cache _ _ _ _ bag_bag initial_value 
                               updater updater_cacheable) :=
   benumerate (cbag container).
-         
+
 Definition Cache_bfind
            {TBag TItem TSearchTerm TCachedValue: Type} 
            {bag_bag: Bag TBag TItem TSearchTerm}
@@ -125,7 +131,7 @@ Definition Cache_bcount
                               updater updater_cacheable) 
            (item: TItem) :=
   bcount beq (cbag container) item.
-         
+
 Lemma updated_cache_fresh_after_insert :
   forall {TBag TItem TSearchTerm TCachedValue: Type} 
          {bag_bag: Bag TBag TItem TSearchTerm}
@@ -138,12 +144,13 @@ Lemma updated_cache_fresh_after_insert :
     CachedValueIsFresh updater initial_value
                        (benumerate (binsert (cbag container) item))
                        (updater item (ccached_value container)).
-  Proof.
-    intros;
-    unfold CachedValueIsFresh;
-    setoid_rewrite (updater_cacheable _ _ (binsert_enumerate_SetEq bag_bag _ _));
-    simpl; rewrite cfresh_cache; reflexivity. (* TODO: Replacing rewrite with setoid_rewrite here throws a coq bug *)
-  Qed.
+Proof.
+  intros;
+  unfold CachedValueIsFresh.
+  unfold IsCacheable in updater_cacheable.
+  rewrite binsert_enumerate.
+  simpl; rewrite cfresh_cache; reflexivity.
+Qed.
 
 Definition Cache_binsert
            {TBag TItem TSearchTerm TCachedValue: Type} 
@@ -154,7 +161,7 @@ Definition Cache_binsert
            (container: @Cache _ _ _ _ bag_bag initial_value 
                               updater updater_cacheable) 
            (item: TItem) : @Cache _ _ _ _ bag_bag initial_value 
-                              updater updater_cacheable :=
+                                  updater updater_cacheable :=
   {|
     cbag          := binsert (cbag container) item;
     ccached_value := updater item (ccached_value container);
@@ -172,9 +179,9 @@ Lemma Cache_BagInsertEnumerate :
          (updater: TItem -> TCachedValue -> TCachedValue)
          (initial_value: TCachedValue)
          (updater_cacheable: IsCacheable updater initial_value),
-   BagInsertEnumerate
-     (Cache_benumerate updater initial_value updater_cacheable)
-     (Cache_binsert    updater initial_value updater_cacheable).
+    BagInsertEnumerate
+      (Cache_benumerate updater initial_value updater_cacheable)
+      (Cache_binsert    updater initial_value updater_cacheable).
 Proof. transparent_implementation. Qed.
 
 Lemma Cache_BagInsertCount :
@@ -183,10 +190,10 @@ Lemma Cache_BagInsertCount :
          (updater: TItem -> TCachedValue -> TCachedValue)
          (initial_value: TCachedValue)
          (updater_cacheable: IsCacheable updater initial_value),
-   BagInsertCount
-     (Cache_benumerate updater initial_value updater_cacheable)
-     (Cache_binsert    updater initial_value updater_cacheable)
-     (Cache_bcount     updater initial_value updater_cacheable).
+    BagInsertCount
+      (Cache_benumerate updater initial_value updater_cacheable)
+      (Cache_binsert    updater initial_value updater_cacheable)
+      (Cache_bcount     updater initial_value updater_cacheable).
 Proof. transparent_implementation. Qed.
 
 Lemma Cache_BagEnumerateEmpty :
@@ -195,9 +202,9 @@ Lemma Cache_BagEnumerateEmpty :
          (updater: TItem -> TCachedValue -> TCachedValue)
          (initial_value: TCachedValue)
          (updater_cacheable: IsCacheable updater initial_value),
- BagEnumerateEmpty
-   (Cache_benumerate updater initial_value updater_cacheable)
-   (Cache_bempty     updater initial_value updater_cacheable).
+    BagEnumerateEmpty
+      (Cache_benumerate updater initial_value updater_cacheable)
+      (Cache_bempty     updater initial_value updater_cacheable).
 Proof. transparent_implementation. Qed.
 
 Lemma Cache_BagCountEmpty :
@@ -206,10 +213,10 @@ Lemma Cache_BagCountEmpty :
          (updater: TItem -> TCachedValue -> TCachedValue)
          (initial_value: TCachedValue)
          (updater_cacheable: IsCacheable updater initial_value),
- BagCountEmpty
-   (Cache_benumerate updater initial_value updater_cacheable)
-   (Cache_bempty     updater initial_value updater_cacheable)
-   (Cache_bcount     updater initial_value updater_cacheable).
+    BagCountEmpty
+      (Cache_benumerate updater initial_value updater_cacheable)
+      (Cache_bempty     updater initial_value updater_cacheable)
+      (Cache_bcount     updater initial_value updater_cacheable).
 Proof. transparent_implementation. Qed.
 
 Lemma Cache_BagFindStar :
@@ -218,10 +225,10 @@ Lemma Cache_BagFindStar :
          (updater: TItem -> TCachedValue -> TCachedValue)
          (initial_value: TCachedValue)
          (updater_cacheable: IsCacheable updater initial_value),
- BagFindStar
-   (Cache_bfind      updater initial_value updater_cacheable)
-   (Cache_benumerate updater initial_value updater_cacheable)
-   Cache_bstar.
+    BagFindStar
+      (Cache_bfind      updater initial_value updater_cacheable)
+      (Cache_benumerate updater initial_value updater_cacheable)
+      Cache_bstar.
 Proof. transparent_implementation. Qed.
 
 Lemma Cache_BagFindCorrect :
@@ -242,9 +249,9 @@ Instance CacheAsBag
          (updater: TItem -> TCachedValue -> TCachedValue)
          (initial_value: TCachedValue)
          (updater_cacheable: IsCacheable updater initial_value)
-         : Bag (@Cache _ _ _ _ bag_bag initial_value 
-                       updater updater_cacheable) 
-               TItem TSearchTerm :=
+: Bag (@Cache _ _ _ _ bag_bag initial_value 
+              updater updater_cacheable) 
+      TItem TSearchTerm :=
   {| 
     bempty        := Cache_bempty updater initial_value updater_cacheable;
     bstar         := Cache_bstar;
@@ -271,15 +278,41 @@ Section CacheableFunctions.
              (initial_value: TCachedValue),
         IsCacheable updater initial_value -> 
         IsCacheable (compose updater projection) initial_value.
-      Proof.
-        unfold IsCacheable.
-        intros * is_cacheable * set_eq. 
-        unfold RecomputeCachedValue in *.
-        rewrite !foldright_compose;
-          apply is_cacheable;
-          rewrite set_eq;
-          reflexivity.
-      Qed.
+    Proof.
+      unfold IsCacheable, Proper, respectful.
+      intros * is_cacheable * set_eq. 
+      unfold RecomputeCachedValue in *.
+      rewrite !foldright_compose;
+        apply is_cacheable;
+        rewrite set_eq;
+        reflexivity.
+    Qed.
+    
+    Require Import SetEqProperties.
+    Lemma projection_strongly_cacheable :
+      forall {TItem TCacheUpdaterInput TCachedValue}
+             (projection: TItem -> TCacheUpdaterInput)
+             (updater: TCacheUpdaterInput -> TCachedValue -> TCachedValue)
+             (initial_value: TCachedValue),
+        IsStronglyCacheable updater initial_value -> 
+        IsStronglyCacheable (compose updater projection) initial_value.
+    Proof.
+      unfold IsStronglyCacheable, Proper, respectful.
+      intros * is_cacheable * set_eq. 
+      unfold RecomputeCachedValue in *.
+      rewrite !foldright_compose;
+        apply is_cacheable;
+        rewrite set_eq;
+        reflexivity.
+    Qed.
+    
+    Lemma strongly_cacheable_cacheable :
+      forall {TItem TCachedValue} f initial_value,
+        @IsStronglyCacheable TItem TCachedValue f initial_value -> IsCacheable f initial_value.
+    Proof.
+      unfold IsCacheable, IsStronglyCacheable, SetEq, Proper, respectful; intros * set_eq * perm.
+      apply set_eq; setoid_rewrite perm; reflexivity.
+    Qed.
 
       Definition AddCachingLayer
                  {TBag TItem TSearchTerm TCacheUpdaterInput TCachedValue: Type} 
@@ -299,7 +332,7 @@ Section CacheableFunctions.
           SearchTermType := TSearchTerm;
           BagProof       := _
         |}.
-
+      
       Definition CacheImplementationEnsures
                  {TCacheUpdaterInput TCachedValue}
                  (cache_property: (TCacheUpdaterInput -> TCacheUpdaterInput) -> list TCacheUpdaterInput -> TCacheUpdaterInput -> TCachedValue -> Prop)
@@ -443,11 +476,11 @@ Section CacheableFunctions.
     (* TODO: find a cleaner way than destruct; discriminate *)
     (* TODO: Look at reflexive, discriminate, congruence, absurd in more details *)
 
-    Lemma ListMax_cacheable :
+    Lemma ListMax_strongly_cacheable :
       forall initial_value,
-        IsCacheable max initial_value.
+        IsStronglyCacheable max initial_value.
     Proof.
-      unfold IsCacheable.
+      unfold IsStronglyCacheable.
 
       intros init seq1 seq2 set_eq;
         apply (Max_unique (init :: seq1));
@@ -455,6 +488,14 @@ Section CacheableFunctions.
         apply ListMax_correct.
     Qed.
 
+    Lemma ListMax_cacheable :
+      forall initial_value,
+        IsCacheable max initial_value.
+    Proof.
+      intros; apply strongly_cacheable_cacheable.
+      apply ListMax_strongly_cacheable.
+    Qed.
+      
     Definition cached_gt_property {TItem} (projection: TItem -> nat) seq value cached :=
       List.In value seq -> S cached > projection value.
 
@@ -477,8 +518,8 @@ Section CacheableFunctions.
     Proof.
       unfold 
         ProjectedCacheImplementationEnsures_strong, 
-        ProjectedCacheImplementationEnsures,
-        cached_gt_property in *;
+      ProjectedCacheImplementationEnsures,
+      cached_gt_property in *;
       intros;
       apply (generalize_to_projection projection default cached_gt_property (max_cached_gt default));
       apply in_map_unproject; 
@@ -490,7 +531,7 @@ Section CacheableFunctions.
     Proof.
       unfold 
         ProjectedCacheImplementationEnsures,
-        cached_neq_property in *;
+      cached_neq_property in *;
       intros; 
       apply gt_neq_impl, max_cached_gt_projected; 
       assumption.

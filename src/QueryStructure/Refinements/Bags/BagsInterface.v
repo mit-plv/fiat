@@ -1,4 +1,4 @@
-Require Export Program SetEq SetEqProperties.
+Require Export Program Permutation.
 
 Unset Implicit Arguments.
 
@@ -9,9 +9,10 @@ Definition BagInsertEnumerate
            {TContainer TItem: Type}
            (benumerate : TContainer -> list TItem)
            (binsert    : TContainer -> TItem -> TContainer) :=
-  forall item inserted container,
-    List.In item (benumerate (binsert container inserted)) <->
-    List.In item (benumerate container) \/ item = inserted.
+  forall inserted container,
+    Permutation
+      (benumerate (binsert container inserted))
+      (inserted :: (benumerate container)).
 
 Definition BagInsertCount
            {TContainer TItem}
@@ -50,7 +51,7 @@ Definition BagFindCorrect
            (bfind_matcher : TSearchTerm -> TItem -> bool)
            (benumerate : TContainer -> list TItem) :=
   forall container search_term,
-    SetEq
+    Permutation
       (List.filter (bfind_matcher search_term) (benumerate container))
       (bfind container search_term).
 
