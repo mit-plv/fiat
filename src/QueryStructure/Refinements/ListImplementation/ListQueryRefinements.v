@@ -48,9 +48,9 @@ Definition Join_Lists {A B}
            (l : list A)
            (l' : list B)
 : list (A * B) :=
-  fold_left (@app _) (map (fun a => map (fun b => (a, b)) l') l) nil.
+  flat_map (fun a => map (fun b => (a, b)) l') l.
 
-Lemma In_fold_left_app {A}
+Lemma In_fold_left_app {A} (* unused *)
 : forall (l : list (list A))
          (l'' : list A)
          (a : A),
@@ -76,16 +76,19 @@ Lemma In_Join_Lists {A B}
     List.In (a, b) (Join_Lists l l') <->
     (List.In a l /\ List.In b l').
 Proof.
-  unfold Join_Lists; split; intros.
-  apply In_fold_left_app in H; simpl in *; intuition;
-  destruct_ex; intuition;
-  apply in_map_iff in H0; destruct_ex; intuition; subst;
-  apply in_map_iff in H1; destruct_ex; intuition; subst;
-  simpl; congruence.
-  intuition.
-  apply In_fold_left_app; right.
-  exists (map (fun b : B => (a, b)) l'); split;
-  apply in_map_iff; eexists; intuition; eauto.
+  unfold Join_Lists; setoid_rewrite flat_map_flatten;
+  split; intros;
+  [
+    rewrite in_flatten_iff in H; 
+    setoid_rewrite in_map_iff in H;
+    destruct H as [seq (in_seq & [ a' (seq_is_map & a'_in_l) ] ) ]; 
+    subst; rewrite in_map_iff in in_seq; 
+    destruct in_seq as [ b' (eq_ab_a'b' & b'_in_l') ]; 
+    intuition congruence
+  | destruct H;
+    setoid_rewrite in_flatten_iff;
+    setoid_rewrite in_map_iff;
+    eexists; split; [ | eexists; split ]; eauto; rewrite in_map_iff; eauto ].
 Qed.
 
 Lemma Equivalent_Join_Lists {A B}
