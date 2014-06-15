@@ -1,3 +1,278 @@
+Require Import String List Sorting.Permutation
+        FunctionalExtensionality Ensembles Common
+        Computation BuildADTRefinements
+        QueryStructureSchema QueryQSSpecs QueryStructure EnsembleListEquivalence.
+
+Add Parametric Morphism ResultT
+: (@Query_For ResultT)
+    with signature (refine ==> refine)
+      as refine_For.
+Proof.
+  intros; unfold Query_For; rewrite H; reflexivity.
+Qed.
+
+Definition UnConstrQuery_In {ResultT}
+           qsSchema (qs : UnConstrQueryStructure qsSchema)
+           (R : @StringBound.BoundedString
+                  (map relName (qschemaSchemas qsSchema)))
+           (bod : @Tuple (schemaHeading (relSchema
+                                           (StringBound.nth_Bounded relName (qschemaSchemas qsSchema) R))) -> Comp (list ResultT))
+  :=
+  QueryResultComp (GetUnConstrRelation qs R) bod.
+
+Lemma refine_flatten_CompList_func {A B}
+: forall (l : list A) (f f' : A -> Comp (list B)),
+    pointwise_relation _ refine f f'
+    -> refine (flatten_CompList (map f l))
+           (flatten_CompList (map f' l)).
+Proof.
+  induction l; simpl; intros.
+  + reflexivity.
+  + rewrite H; setoid_rewrite (IHl f f' H).
+    reflexivity.
+Qed.
+
+Add Parametric Morphism {ResultT} P
+: (@Query_Where ResultT P)
+    with signature (refine ==> refine)
+      as refine_Query_Where_In.
+Proof.
+  unfold Query_Where, refine; intros;
+  inversion_by computes_to_inv; econstructor; intuition.
+Qed.
+
+Add Parametric Morphism {ResultT} qsSchema qs R
+: (@UnConstrQuery_In ResultT qsSchema qs R)
+    with signature (pointwise_relation _ refine ==> refine)
+      as refine_UnConstrQuery_In.
+Proof.
+  intros; unfold UnConstrQuery_In, QueryResultComp.
+    apply refine_bind.
+    reflexivity.
+    unfold pointwise_relation; intros;
+    eapply refine_flatten_CompList_func; eauto.
+Qed.
+
+Lemma DropQSConstraintsQuery_In {A} :
+  forall qs R bod,
+         @Query_In A qs R bod =
+         UnConstrQuery_In (DropQSConstraints qsHint) R bod.
+Proof.
+  reflexivity.
+Qed.
+
+Lemma DropQSConstraintsQuery_In_UnderBinder {A B} :
+  forall qs R bod,
+    (fun b : B => @Query_In A qs R (bod b)) =
+    (fun b : B => UnConstrQuery_In (DropQSConstraints qsHint) R (bod b)).
+Proof.
+  reflexivity.
+Qed.
+
+Lemma flatten_permutation {A B}
+: forall f f' l l',
+    pointwise_relation A (@Permutation B) f f'
+    -> Permutation l l'
+    -> Permutation (flatten (map f l)) (flatten (map f' l')).
+Admitted.
+
+Lemma EnsembleListEquivalence_Permutation {A}
+: forall ens (l l' : list A),
+    EnsembleListEquivalence ens l
+    -> EnsembleListEquivalence ens l'
+    -> Permutation l l'.
+Proof.
+Admitted.
+
+(*Lemma Equivalent_Swap_In {ResultT}
+      qsSchema qs R (bod : Tuple -> Comp (list ResultT))
+      enumR
+      (enumerableR : EnsembleListEquivalence (GetUnConstrRelation qs R) enumR)
+:
+  refine
+    (@UnConstrQuery_In qsSchema qs _ R (fun tup => @UnConstrQuery_In qsSchema qs _ R' (bod tup)))
+
+
+Lemma Equivalent_Swap_In {ResultT}
+      qsSchema qs R R' (bod : Tuple -> Tuple -> Comp (list ResultT))
+      enumR enumR'
+      (enumerableR : EnsembleListEquivalence (GetUnConstrRelation qs R) enumR)
+      (enumerableR' : EnsembleListEquivalence (GetUnConstrRelation qs R') enumR')
+:
+  refine
+    (@UnConstrQuery_In qsSchema qs _ R (fun tup => @UnConstrQuery_In qsSchema qs _ R' (bod tup)))
+    (@UnConstrQuery_In qsSchema qs _ R' (fun tup => @UnConstrQuery_In qsSchema qs _ R
+                                             (fun tup' => bod tup' tup))).
+Proof.
+  unfold UnConstrQuery_In, QueryResultComp, In; intros.
+  unfold refine; intros; inversion_by computes_to_inv; subst.
+  econstructor.
+  econstructor; eauto.
+  econstructor 2 with (comp_a_value := x0).
+  assert (forall a : Tuple,
+            (queryBod <- {queryBod : Tuple -> list ResultT |
+                    forall a0 : Tuple, bod a0 a ↝ queryBod a0};
+             {resultList : list ResultT |
+              Permutation.Permutation resultList
+                                      (flatten (map queryBod enumR))}) ↝ x0 a).
+  { intros; generalize (H1 a); intros; inversion_by computes_to_inv.
+    econstructor.
+    econstructor.
+    intros; apply H4.
+    econstructor.
+    eapply Permutation_trans; eauto.
+    eapply flatten_permutation.
+    unfold pointwise_relation; intros; eapply Permutation_refl.
+    eapply EnsembleListEquivalence_Permutation; eauto.
+  }
+  econstructor 2 with (comp_a_value := x0).
+
+
+  subst; repeat econstructor.
+  intros; eapply H3.
+
+  repeat econstructor; eauto.
+  intros; eapply enumerableR'; eauto.
+  intros; eapply enumerableR'; eauto.
+  intros.
+
+  apply H1 simplify with monad laws.
+  assert (refine
+  Print refine_pick_forall_Prop.
+  setoid_rewrite refine_pick_forall_Prop. refine_pick_forall; try eassumption.
+
+  rewrite computes_
+  inversion_by computes_to_inv; subst.
+
+  induction x; simpl; subst.
+  constructor 2 with (comp_a_value := []).
+  econstructor.
+
+  Focus 2.
+  constructor.
+[ | econstructor].
+  F
+
+  repeat (progress (destruct_ex; intuition)).
+  induction x; simpl in *; subst.
+  exists (@nil (@Tuple (schemaHeading
+                           (relSchema
+                              (@StringBound.nth_Bounded NamedSchema string
+                                 relName (qschemaSchemas qsSchema) R'))) * list ResultT)).
+  simpl; intuition.
+  destruct_ex; intuition.
+  induction x; simpl in *; subst.
+  eapply H2.
+
+  eapply H0; eauto.
+  eexists x; split; eauto.
+  Focus 2.
+  apply H1.
+Qed.
+
+Lemma Equivalent_Swap_In_Where {A}
+      qsSchema qs R {heading}
+      (bod : @Tuple heading -> Tuple -> Ensemble A)
+      (P : @Tuple heading -> Prop)
+:
+  pointwise_relation
+    Tuple Equivalent_Ensembles
+    (fun tup' : Tuple =>
+       (@UnConstrQuery_In qsSchema qs _ R
+                  (fun tup => Query_Where (P tup') (bod tup' tup))))
+    (fun tup' : Tuple =>
+       Query_Where (P tup') (@UnConstrQuery_In qsSchema qs _ R (bod tup'))).
+Proof.
+  unfold Equivalent_Ensembles, UnConstrQuery_In, Query_Where; split; intros;
+  repeat (progress (destruct_ex; intuition)); eexists;
+  split; eauto.
+Qed.
+
+Add Parametric Morphism {A: Type} :
+  (Query_For)
+    with signature (@Equivalent_Ensembles A ==> refine)
+      as refine_Query_For_Equivalent.
+Proof.
+  unfold impl, Query_For, refine; intros.
+  inversion_by computes_to_inv.
+  econstructor; split_iff; split; intros; eauto.
+  apply H; apply H1; auto.
+  apply H2; apply H; auto.
+Qed.
+
+Add Parametric Morphism {A: Type}
+    qsSchema qs R
+:
+  (fun bod => Query_For (@UnConstrQuery_In qsSchema qs _ R bod))
+    with signature ((pointwise_relation Tuple (@Equivalent_Ensembles A) ==> refine ))
+      as refine_Query_For_In_Equivalent.
+Proof.
+  unfold impl, Query_For, pointwise_relation, UnConstrQuery_In, In, refine.
+  intros; inversion_by computes_to_inv.
+  econstructor; split_iff; split; intros; eauto.
+  destruct (H1 _ H0); eexists; intuition; eauto.
+  apply H; auto.
+  destruct_ex; apply H2; eexists; intuition; eauto.
+  apply H; auto.
+Qed. *)
+
+Class DecideableEnsemble {A} (P : Ensemble A) :=
+  { dec : A -> bool;
+    dec_decides_P : forall a, dec a = true <-> P a}.
+
+Instance DecideableEnsemble_EqDec {A B : Type}
+         (B_eq_dec : Query_eq B)
+         (f f' : A -> B)
+         : DecideableEnsemble (fun a => eq (f a) (f' a)) :=
+  {| dec a := if A_eq_dec (f a) (f' a) then true else false |}.
+Proof.
+  intros; find_if_inside; split; congruence.
+Defined.
+
+Require Import Arith Omega.
+
+Instance DecideableEnsemble_gt {A} (f f' : A -> nat)
+  : DecideableEnsemble (fun a => f a > f' a) :=
+  {| dec a := if le_lt_dec (f a) (f' a) then false else true |}.
+Proof.
+  intros; find_if_inside; intuition.
+Defined.
+
+Lemma refineEquiv_For_DropQSConstraints A qsSchema qs :
+  forall bod,
+      refine
+     {H1 |
+      exists or' : QueryStructure qsSchema * list A,
+       (queryRes <- (For bod)%QuerySpec;
+        ret (qs, queryRes)) ↝ or' /\
+       DropQSConstraints_AbsR (fst or') (fst H1) /\ snd or' = snd H1}
+     (b <- (For bod)%QuerySpec;
+      ret (DropQSConstraints qs, b) ) .
+Proof.
+  setoid_rewrite refineEquiv_pick_ex_computes_to_bind_and;
+  intros; f_equiv; unfold pointwise_relation; intros.
+  setoid_rewrite refineEquiv_pick_ex_computes_to_and;
+  setoid_rewrite refineEquiv_bind_unit; simpl;
+  unfold DropQSConstraints_AbsR;
+  setoid_rewrite refineEquiv_pick_pair;
+  setoid_rewrite refineEquiv_pick_eq';
+  simplify with monad laws; f_equiv.
+Qed.
+
+Tactic Notation "drop" "constraints" "from" "query" constr(methname) :=
+  hone method methname;
+  [ setoid_rewrite refineEquiv_pick_ex_computes_to_and;
+    setoid_rewrite DropQSConstraintsQuery_In;
+    repeat setoid_rewrite DropQSConstraintsQuery_In_UnderBinder;
+    setoid_rewrite refineEquiv_pick_pair;
+    setoid_rewrite refineEquiv_pick_eq';
+    simplify with monad laws; cbv beta; simpl;
+    match goal with
+        H : DropQSConstraints_AbsR _ _ |- _ =>
+        unfold DropQSConstraints_AbsR in H; rewrite H
+    end; finish honing | ].
+
+(*
 Require Import String List FunctionalExtensionality Ensembles Common
         Computation BuildADTRefinements
         QueryStructureSchema QueryQSSpecs QueryStructure
@@ -196,4 +471,4 @@ Tactic Notation "drop" "constraints" "from" "query" constr(methname) :=
         H : DropQSConstraints_AbsR _ _ |- _ =>
         unfold DropQSConstraints_AbsR in H; rewrite H
     end; simplify with monad laws;
-    finish honing | ].
+    finish honing | ]. *)

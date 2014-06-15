@@ -152,9 +152,8 @@ Definition BoundedString_eq_dec
 : {bidx = bidx'} + {bidx <> bidx'} :=
   BoundedIndex_eq_dec string_dec  bidx bidx'.
 
-Notation "` A ´" :=
-  ({| bindex := A%string |}) (at level 0,
-                              format "` A ´").
+Notation "`` A" :=
+  ({| bindex := A%string |}) (at level 0, format "`` A").
 
 Section ithIndexBound.
 

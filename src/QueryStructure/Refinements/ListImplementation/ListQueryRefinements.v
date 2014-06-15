@@ -13,65 +13,66 @@ Proof.
   econstructor; subst; split; eauto.
 Qed.
 
-Lemma Equivalent_In_EnsembleListEquivalence {ReturnT TraceT}
+(* Lemma Equivalent_In_EnsembleListEquivalence {ReturnT}
       (qs : QueryStructureHint) (R : _)
       (l : list _)
-      (bod : @Tuple _ -> Ensemble (ReturnT * TraceT))
+      (l' : Tuple -> list ReturnT)
+      (bod : Tuple -> Comp (list ReturnT))
 : EnsembleListEquivalence (GetRelation qsHint R) l ->
-  Equivalent_Trace_Ensembles
-    (@Query_In qs _ _ R bod)
-    (fun el => List.In (fst (snd el)) l
-     /\ bod (fst (snd el)) (fst el, snd (snd el))).
+  pointwise_relation _ refine bod (fun tup => ret (l' tup))
+  -> refine
+       (@Query_In qs _ R bod)
+       (ret (flatten (map l' l))).
 Proof.
-  econstructor 1 with (TraceT_map := id)
-                        (TraceT'_map := id);
-  intros; destruct_pairs; unfold id in *; auto;
-  unfold Query_In in *; simpl in *; intuition.
-  rewrite GetRelDropConstraints in *; apply H; apply H1.
-  rewrite GetRelDropConstraints in *; apply H; apply H1.
-Qed.
+  intros.
+  unfold Query_In, QueryResultComp.
+  econstructor.
+  econstructor.
 
-Lemma Equivalent_UnConstr_In_EnsembleListEquivalence
-      {ReturnT TraceT}
+
+  eauto.
+Lemma Equivalent_UnConstr_In_EnsembleListEquivalence {ReturnT}
       qsSchema qs (R : _)
       (l : list _)
-      (bod : @Tuple _ -> Ensemble (ReturnT * TraceT))
-: EnsembleListEquivalence (GetUnConstrRelation qs R) l
-  -> Equivalent_Trace_Ensembles
-       (@UnConstrQuery_In qsSchema qs _ _ R bod)
-       (fun el => List.In (fst (snd el)) l
-                  /\ bod (fst (snd el)) (fst el, snd (snd el))).
+      (l' : Tuple -> list ReturnT)
+      (bod : Tuple -> Comp (list ReturnT))
+: EnsembleListEquivalence (GetUnConstrRelation qs R) l ->
+  pointwise_relation _ refine bod (fun tup => ret (l' tup))
+  -> refine
+       (@UnConstrQuery_In qsSchema qs _ R bod)
+       (ret (flatten (map l' l))).
 Proof.
+
   econstructor 1 with (TraceT_map := id)
                         (TraceT'_map := id);
   intros; destruct_pairs; unfold id in *; auto;
   unfold UnConstrQuery_In in *; simpl in *; intuition.
   apply H; apply H1.
   apply H; apply H1.
-Qed.
+Qed. *)
 
 Definition Join_Lists {A B}
            (l : list A)
            (l' : list B)
 : list (A * B) :=
-  fold_left (@app _) (map (fun a => map (fun b => (a, b)) l') l) nil.
+  fold_right (@app _) nil (map (fun a => map (fun b => (a, b)) l') l).
 
-Lemma In_fold_left_app {A}
+Lemma In_fold_right_app {A}
 : forall (l : list (list A))
          (l'' : list A)
          (a : A),
-    List.In a (fold_left (@app _) l l'') <->
+    List.In a (fold_right (@app _) l'' l) <->
     (List.In a l'' \/ (exists l', List.In l' l /\ List.In a l')).
 Proof.
   induction l; simpl; intuition.
   destruct_ex; intuition.
-  destruct (proj1 (IHl _ _) H).
-  apply in_app_or in H0; intuition; eauto.
+  apply in_app_or in H; intuition; eauto.
+  destruct (proj1 (IHl _ _) H0); intuition.
   destruct_ex; intuition; eauto.
-  eapply IHl; eauto using in_or_app.
+  eapply in_or_app; right; eapply IHl; intuition.
   destruct_ex; intuition; subst; eauto.
-  eapply IHl; eauto using in_or_app.
-  eapply IHl; eauto using in_or_app.
+  eapply in_or_app; left; eauto.
+  eapply in_or_app; right; eapply IHl; eauto.
 Qed.
 
 Lemma In_Join_Lists {A B}
@@ -83,18 +84,116 @@ Lemma In_Join_Lists {A B}
     (List.In a l /\ List.In b l').
 Proof.
   unfold Join_Lists; split; intros.
-  apply In_fold_left_app in H; simpl in *; intuition;
+  apply In_fold_right_app in H; simpl in *; intuition;
   destruct_ex; intuition;
   apply in_map_iff in H0; destruct_ex; intuition; subst;
   apply in_map_iff in H1; destruct_ex; intuition; subst;
   simpl; congruence.
   intuition.
-  apply In_fold_left_app; right.
+  apply In_fold_right_app; right.
   exists (map (fun b : B => (a, b)) l'); split;
   apply in_map_iff; eexists; intuition; eauto.
 Qed.
 
-Lemma Equivalent_Join_Lists {ReturnT TraceT heading}
+Definition List_Query_In
+           {QueryT ResultT}
+           (queriedList : list QueryT)
+           (resultComp : QueryT -> Comp (list ResultT))
+  :=
+    flatten_CompList (map resultComp queriedList).
+
+Lemma refine_List_Query_In {ResultT}
+      qsSchema qs R l resultComp
+: EnsembleListEquivalence (GetUnConstrRelation qs R) l
+  -> refine (@UnConstrQuery_In ResultT qsSchema qs R resultComp)
+            (List_Query_In l resultComp).
+Proof.
+  intros; unfold UnConstrQuery_In, QueryResultComp, List_Query_In;
+  rewrite refine_pick_val; eauto; simplify with monad laws;
+  reflexivity.
+Qed.
+
+Lemma refine_Join_List_Query_In {QueryT ResultT}
+      qsSchema qs R l' l resultComp
+: EnsembleListEquivalence (GetUnConstrRelation qs R) l
+  -> refine (List_Query_In (QueryT := QueryT) l'
+                           (fun b => @UnConstrQuery_In ResultT qsSchema qs R (resultComp b)))
+            (List_Query_In (Join_Lists l' l) (fun b => (resultComp (fst b) (snd b)))).
+Proof.
+  intros; unfold QueryResultComp, List_Query_In.
+  rewrite refine_flatten_CompList_func.
+  Focus 2.
+  unfold pointwise_relation; intros.
+  apply refine_List_Query_In; eassumption.
+  unfold List_Query_In, flatten_CompList.
+  induction l'; simpl.
+  reflexivity.
+  setoid_rewrite IHl'; clear IHl'.
+  unfold Join_Lists; simpl; auto.
+  simpl; rewrite map_app.
+  rewrite map_map.
+  repeat rewrite fold_right_app.
+  simpl.
+  assert (resultComp a = fun x : Tuple => resultComp a x) as eta by
+      (apply functional_extensionality; auto); rewrite <- eta.
+  induction (map (resultComp a) l); simpl;
+  simplify with monad laws.
+  - reflexivity.
+  - setoid_rewrite <- IHl0.
+    repeat setoid_rewrite refineEquiv_bind_bind.
+    setoid_rewrite refineEquiv_bind_unit.
+    setoid_rewrite app_assoc; reflexivity.
+Qed.
+
+Lemma refine_List_Query_In_Where {QueryT ResultT}
+      l (P : Ensemble QueryT)
+      (resultComp : QueryT -> Comp (list ResultT))
+      (P_dec : DecideableEnsemble P)
+: refine (List_Query_In (QueryT := QueryT) l
+                           (fun b => Query_Where (P b) (resultComp b)))
+            (List_Query_In (filter dec l) resultComp).
+Proof.
+  induction l; unfold List_Query_In, Query_Where in *; simpl.
+  - reflexivity.
+  - caseEq (dec a); simpl;
+    setoid_rewrite <- IHl.
+    + f_equiv; apply dec_decides_P in H;
+      unfold refine; intro; econstructor; intuition.
+    + unfold refine; intro; econstructor; intuition.
+      simpl; eauto.
+Qed.
+
+Lemma refine_For_List {ResultT : Type}
+      (bod : Comp (list ResultT))
+: refine (Query_For bod) bod.
+Proof.
+  unfold Query_For, refine; intros; econstructor;
+  eauto.
+Qed.
+
+Lemma refine_List_Query_In_Return {QueryT ResultT : Type}
+      (l : list QueryT) (proj : QueryT -> ResultT)
+: refine (List_Query_In l (fun tup => Query_Return (proj tup)))
+         (ret (map proj l)) .
+Proof.
+  induction l; unfold Query_For, List_Query_In, Query_Return in *;
+  simpl; intros.
+  - reflexivity.
+  - simplify with monad laws.
+    rewrite IHl; simplify with monad laws.
+    reflexivity.
+Qed.
+
+Lemma refine_List_For_Query_In_Return {QueryT ResultT : Type}
+      (l : list QueryT) (proj : QueryT -> ResultT)
+: refine (Query_For (List_Query_In l (fun tup => Query_Return (proj tup))))
+         (ret (map proj l)) .
+Proof.
+  rewrite refine_List_Query_In_Return, refine_For_List.
+  reflexivity.
+Qed.
+
+      (*Lemma Equivalent_Join_Lists {ReturnT TraceT heading}
       qsSchema qs R (l : list (@Tuple heading)) l'
       (bod : Tuple -> Tuple -> Ensemble (ReturnT * TraceT))
 : EnsembleListEquivalence (GetUnConstrRelation qs R) l' ->
@@ -195,3 +294,4 @@ Tactic Notation "implement" "query" "in" constr(queryName) "with" "lists" "under
     finish honing
   |
   ].
+ *)

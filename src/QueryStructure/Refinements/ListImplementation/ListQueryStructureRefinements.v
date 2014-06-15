@@ -34,7 +34,7 @@ Ltac implement_empty_list constrName RepAbsR :=
         subst_body; higher_order_1_reflexivity
   | ].
 
-Tactic Notation "implement" "using" "lists" "under" constr(Rep_AbsR) :=
+(*Tactic Notation "implement" "using" "lists" "under" constr(Rep_AbsR) :=
     let AbsR_Hyp := fresh in
     pose Rep_AbsR as AbsR_Hyp;
       unfold Rep_AbsR in AbsR_Hyp;
@@ -52,3 +52,4 @@ Tactic Notation "implement" "using" "lists" "under" constr(Rep_AbsR) :=
             first [ implement insert in R with lists under AbsR_Hyp
                   | implement query in R with lists under AbsR_Hyp ]
         end.
+*)
