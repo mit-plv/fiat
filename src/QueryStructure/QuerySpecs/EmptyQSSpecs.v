@@ -8,7 +8,7 @@ Require Import List String Ensembles Arith
 Local Obligation Tactic := intuition.
 
 Program Definition EmptyRelation (sch : Schema) : Relation sch :=
-  Build_Relation sch (fun T : @Tuple (schemaHeading sch) => False) _.
+  Build_Relation sch (fun T : @IndexedTuple (schemaHeading sch) => False) _.
 
 Fixpoint Build_EmptyRelations (schemas : list NamedSchema) :
   ilist (fun ns : NamedSchema => Relation (relSchema ns))

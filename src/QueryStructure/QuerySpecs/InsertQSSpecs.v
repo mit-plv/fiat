@@ -10,12 +10,11 @@ Require Import List String Ensembles Arith
 (* 'Inserting' a Tuple [tup] into a relation [R] represented
     as an ensemble produces a new ensemble that holds for any
     Tuple [tup'] equal to [tup] or which is already in [R]. *)
-Definition RelationInsert
-           {Heading}
-           (tup : @Tuple Heading)
-           (R : Ensemble _)
-           (tup' : @Tuple Heading) :=
-  tup' = tup \/ R tup'.
+Definition EnsembleInsert {A : Type}
+           (a : A)
+           (R : Ensemble A)
+           (a' : A) :=
+  a' = a \/ R a'.
 
 Definition SatisfiesSchemaConstraints
            {qsSchema} Ridx tup tup' :=
@@ -28,7 +27,7 @@ Definition SatisfiesCrossRelationConstraints
 Definition QSInsertSpec
            (qs : QueryStructureHint)
            (Ridx : _)
-           (tup : @Tuple (schemaHeading (QSGetNRelSchema _ Ridx)))
+           (tup : @IndexedTuple (schemaHeading (QSGetNRelSchema _ Ridx)))
            (qs' : QueryStructure qsSchemaHint')
 : Prop :=
   (* All of the relations with a different index are untouched
@@ -44,7 +43,8 @@ Definition QSInsertSpec
     SatisfiesSchemaConstraints Ridx tup' tup)
   (* and [tup] is consistent with the other tables per the cross-relation
      constraints, *)
-  -> (forall Ridx', SatisfiesCrossRelationConstraints Ridx Ridx' tup (GetRelation qsHint Ridx'))
+  -> (forall Ridx', SatisfiesCrossRelationConstraints Ridx Ridx' tup
+                                                      ((GetRelation qsHint Ridx')))
   (* and each tuple in the other tables is consistent with the
      table produced by inserting [tup] into the relation indexed by [Ridx], *)
   -> (forall Ridx',
@@ -53,14 +53,20 @@ Definition QSInsertSpec
         (GetRelation qsHint Ridx') tup'
         -> SatisfiesCrossRelationConstraints
              Ridx' Ridx tup'
-             (RelationInsert tup (GetRelation qsHint Ridx)))
+             (EnsembleInsert tup ((GetRelation qsHint Ridx))))
   (* [tup] is included in the relation indexed by [Ridx] after insert.
    The behavior of insertion is unspecified otherwise. *)
   -> (forall t, GetRelation qs' Ridx t <->
-               (RelationInsert tup (GetRelation qsHint Ridx) t)).
+                (EnsembleInsert tup (GetRelation qsHint Ridx) t)).
+
+Definition freshIdx (qs : QueryStructureHint) Ridx (n : nat) :=
+  forall tup,
+    GetRelation qsHint Ridx tup ->
+    tupleIndex tup <> n.
 
 Notation "'Insert' b 'into' Ridx " :=
-  (qs <- Pick (QSInsertSpec _ {|bindex := Ridx |} b);
+  (idx <- Pick (freshIdx _ {|bindex := Ridx%comp |});
+   qs <- Pick (QSInsertSpec _ {|bindex := Ridx |} b);
    ret (qs, tt))%comp
     (at level 80) : QuerySpec_scope.
 
@@ -88,7 +94,7 @@ Section InsertRefinements.
     (qsSchema : QueryStructureSchema)
     (qs : QueryStructure qsSchema)
     (Ridx : _)
-    (tup : @Tuple (QSGetNRelSchemaHeading qsSchema Ridx))
+    (tup : @IndexedTuple (QSGetNRelSchemaHeading qsSchema Ridx))
     (schConstr : forall tup',
                    GetRelation qs Ridx tup' ->
                    SatisfiesSchemaConstraints Ridx tup tup')
@@ -105,14 +111,14 @@ Section InsertRefinements.
                      GetRelation qs Ridx' tup'
                      -> SatisfiesCrossRelationConstraints
                      Ridx' Ridx tup'
-                     (RelationInsert tup (GetRelation qs Ridx)))
+                     (EnsembleInsert tup (GetRelation qs Ridx)))
   : QueryStructure qsSchema :=
     {| rels :=
-         UpdateRelation _ (rels qs) Ridx {| rel := RelationInsert tup (GetRelation qs Ridx)|}
+         UpdateRelation _ (rels qs) Ridx {| rel := EnsembleInsert tup (GetRelation qs Ridx)|}
     |}.
   Next Obligation.
     unfold SatisfiesSchemaConstraints in *.
-    unfold RelationInsert in *; simpl in *; intuition; subst; eauto.
+    unfold EnsembleInsert in *; simpl in *; intuition; subst; eauto.
     eapply ((ith_Bounded _ (rels qs) Ridx )); eassumption.
   Defined.
   Next Obligation.
@@ -123,7 +129,7 @@ Section InsertRefinements.
     - rewrite ith_replace_BoundIndex_neq in *; eauto using string_dec.
       destruct (BoundedString_eq_dec Ridx idx); subst.
       rewrite ith_replace_BoundIndex_eq in H0; simpl in *; eauto.
-      unfold RelationInsert in H0; intuition; subst; eauto.
+      unfold EnsembleInsert in H0; intuition; subst; eauto.
       rewrite ith_replace_BoundIndex_neq in H0; eauto using string_dec.
   Qed.
 
@@ -389,7 +395,7 @@ Section InsertRefinements.
                                      (GetRelation qs Ridx') tup'
                                      -> SatisfiesCrossRelationConstraints
                                        Ridx' Ridx tup'
-                                       (RelationInsert tup (GetRelation qs Ridx)))};
+                                       (EnsembleInsert tup (GetRelation qs Ridx)))};
             match schConstr_self, schConstr, schConstr', qsConstr, qsConstr' with
               | true, true, true, true, true =>
                 {qs' |
@@ -399,7 +405,7 @@ Section InsertRefinements.
                     GetRelation qs' Ridx')
                  /\ forall t,
                       GetRelation qs' Ridx t <->
-                      (RelationInsert tup (GetRelation qsHint Ridx) t)
+                      (EnsembleInsert tup (GetRelation qsHint Ridx) t)
              }
 
               | _, _ , _, _, _ => default
@@ -579,7 +585,7 @@ Section InsertRefinements.
                                         (GetRelation qsHint Ridx') tup'
                                         -> SatisfiesCrossRelationConstraints
                                        Ridx' Ridx tup'
-                                       (RelationInsert tup (GetRelation qs Ridx))));
+                                       (EnsembleInsert tup (GetRelation qs Ridx))));
             match schConstr_self, schConstr, schConstr', qsConstr, qsConstr' with
               | true, true, true, true, true =>
                 {qs' |
@@ -589,7 +595,7 @@ Section InsertRefinements.
                     GetRelation qs' Ridx')
                  /\ forall t,
                       GetRelation qs' Ridx t <->
-                      (RelationInsert tup (GetRelation qsHint Ridx) t)
+                      (EnsembleInsert tup (GetRelation qsHint Ridx) t)
              }
 
               | _, _, _, _, _ => default
@@ -614,7 +620,7 @@ Section InsertRefinements.
   Lemma QSInsertSpec_UnConstr_refine' :
     forall qsSchema (qs : UnConstrQueryStructure qsSchema)
            (Ridx : @BoundedString (map relName (qschemaSchemas qsSchema)))
-           (tup : @Tuple (schemaHeading (QSGetNRelSchema qsSchema Ridx)))
+           (tup : @IndexedTuple (schemaHeading (QSGetNRelSchema qsSchema Ridx)))
            (or : QueryStructure qsSchema),
       DropQSConstraints_AbsR or qs ->
       refine
@@ -647,10 +653,10 @@ Section InsertRefinements.
                                         (GetUnConstrRelation qs Ridx') tup'
                                         -> SatisfiesCrossRelationConstraints
                                        Ridx' Ridx tup'
-                                       (RelationInsert tup (GetUnConstrRelation qs Ridx))));
+                                       (EnsembleInsert tup (GetUnConstrRelation qs Ridx))));
             ret match schConstr_self, schConstr, schConstr', qsConstr, qsConstr' with
               | true, true, true, true, true =>
-                (UpdateUnConstrRelation _ qs Ridx (RelationInsert tup (GetUnConstrRelation qs Ridx)))
+                (UpdateUnConstrRelation _ qs Ridx (EnsembleInsert tup (GetUnConstrRelation qs Ridx)))
               | _, _, _, _, _ => qs
             end).
   Proof.
@@ -676,24 +682,24 @@ Section InsertRefinements.
       assert ((fun Ridx' : BoundedIndex (map relName (qschemaSchemas qsSchema)) =>
           Ridx' <> Ridx ->
           forall
-            tup' : @Tuple
+            tup' : @IndexedTuple
                      (schemaHeading
                         (relSchema
                            (nth_Bounded relName (qschemaSchemas qsSchema)
                               Ridx'))),
           GetUnConstrRelation (DropQSConstraints or) Ridx' tup' ->
           SatisfiesCrossRelationConstraints Ridx' Ridx tup'
-            (RelationInsert tup (GetRelation or Ridx))) =
+            (EnsembleInsert tup (GetRelation or Ridx))) =
               (fun Ridx' : BoundedIndex (map relName (qschemaSchemas qsSchema)) =>
       Ridx' <> Ridx ->
       forall
-        tup' : @Tuple
+        tup' : @IndexedTuple
                  (schemaHeading
                     (relSchema
                        (nth_Bounded relName (qschemaSchemas qsSchema) Ridx'))),
       GetRelation or Ridx' tup' ->
       SatisfiesCrossRelationConstraints Ridx' Ridx tup'
-                                        (RelationInsert tup (GetRelation or Ridx))))
+                                        (EnsembleInsert tup (GetRelation or Ridx))))
           as rewriteSat
             by (apply functional_extensionality; intros; rewrite GetRelDropConstraints;
                 reflexivity); rewrite rewriteSat in H4; clear rewriteSat.
@@ -719,10 +725,10 @@ Section InsertRefinements.
       unfold GetRelation, Insert_Valid, UpdateUnConstrRelation,
       UpdateRelation ; simpl; split; intros.
       rewrite ith_replace_BoundIndex_neq; eauto using string_dec; simpl.
-      rewrite ith_replace_BoundIndex_eq; unfold RelationInsert, GetRelation;
+      rewrite ith_replace_BoundIndex_eq; unfold EnsembleInsert, GetRelation;
       simpl; intuition.
       repeat find_if_inside; subst; repeat econstructor.
-      unfold DropQSConstraints, Insert_Valid, RelationInsert; simpl.
+      unfold DropQSConstraints, Insert_Valid, EnsembleInsert; simpl.
       unfold GetRelation, Insert_Valid, UpdateUnConstrRelation,
       UpdateRelation; rewrite imap_replace_BoundedIndex; simpl; eauto using string_dec.
   Qed.
@@ -730,7 +736,7 @@ Section InsertRefinements.
   Lemma QSInsertSpec_UnConstr_refine :
     forall qsSchema (qs : UnConstrQueryStructure qsSchema )
            (Ridx : @BoundedString (map relName (qschemaSchemas qsSchema)))
-           (tup : @Tuple (schemaHeading (QSGetNRelSchema qsSchema Ridx)))
+           (tup : @IndexedTuple (schemaHeading (QSGetNRelSchema qsSchema Ridx)))
            (or : QueryStructure qsSchema)
            refined_schConstr_self refined_schConstr refined_schConstr'
            refined_qsConstr refined_qsConstr',
@@ -764,7 +770,7 @@ Section InsertRefinements.
                                           (GetUnConstrRelation qs Ridx') tup'
                                           -> SatisfiesCrossRelationConstraints
                                                Ridx' Ridx tup'
-                                               (RelationInsert tup (GetUnConstrRelation qs Ridx))))
+                                               (EnsembleInsert tup (GetUnConstrRelation qs Ridx))))
            refined_qsConstr'
       -> DropQSConstraints_AbsR or qs ->
       refine
@@ -781,7 +787,7 @@ Section InsertRefinements.
             ret match schConstr_self, schConstr, schConstr', qsConstr, qsConstr' with
               | true, true, true, true, true =>
                 (UpdateUnConstrRelation _ qs Ridx
-                                      (RelationInsert tup (GetUnConstrRelation qs Ridx)))
+                                      (EnsembleInsert tup (GetUnConstrRelation qs Ridx)))
               | _, _, _, _, _ => (qs)
             end);
          ret (qs, ())).
@@ -821,7 +827,7 @@ Arguments id  _ _ / .
 
   Ltac remove_trivial_insertion_constraints :=
       match goal with
-          |- context[RelationInsert _ (GetUnConstrRelation _ _) ] =>
+          |- context[EnsembleInsert _ (GetUnConstrRelation _ _) ] =>
           match goal with
               AbsR : DropQSConstraints_AbsR ?or ?nr
               |- context [
@@ -832,7 +838,7 @@ Arguments id  _ _ / .
                          forall tup' ,
                            GetUnConstrRelation ?r ?Ridx tup' ->
                            exists tup2,
-                             RelationInsert ?tup (GetUnConstrRelation ?r _) tup2 /\
+                             EnsembleInsert ?tup (GetUnConstrRelation ?r _) tup2 /\
                              tup' ?attr = tup2 ?attr'))] =>
               let refine_trivial := fresh in
               assert
@@ -843,7 +849,7 @@ Arguments id  _ _ / .
                                     (GetUnConstrRelation r Ridx) tup' ->
                                     exists
                                       tup2,
-                                      RelationInsert tup (GetUnConstrRelation r Ridx') tup2 /\
+                                      EnsembleInsert tup (GetUnConstrRelation r Ridx') tup2 /\
                                       tup' attr = tup2 attr')} (ret true))
                 as refine_trivial;
                 [ let v := fresh in
@@ -856,7 +862,7 @@ Arguments id  _ _ / .
                     let tup' := fresh in
                     let In_tup' := fresh in
                     econstructor; simpl map; simpl; intros neq tup' In_tup';
-                    unfold RelationInsert;
+                    unfold EnsembleInsert;
                     let H' := fresh in
                     pose proof (@crossConstr _ or Ridx Ridx' tup' neq In_tup') as H';
                       simpl map in *; simpl in *;

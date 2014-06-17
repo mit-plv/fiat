@@ -2,12 +2,19 @@ Require Import String Omega List FunctionalExtensionality Ensembles
         Computation ADT ADTRefinement ADTNotation QueryStructureSchema
         BuildADTRefinements QueryQSSpecs InsertQSSpecs EmptyQSSpecs
         QueryStructure GeneralInsertRefinements
-        GeneralQueryRefinements SetEq AdditionalLemmas
-        ListInsertRefinements ListQueryRefinements.
+        GeneralQueryRefinements SetEq AdditionalLemmas.
 
-Instance EnsembleListEquivalence_AbsR {A}:
-  @UnConstrRelationAbsRClass A (list A) :=
-  {| UnConstrRelationAbsR := @EnsembleListEquivalence A |}.
+Definition EnsembleIndexedListEquivalence {heading}
+           (R : Ensemble (@IndexedTuple heading))
+           (l : list (@Tuple heading)) :=
+  (forall tup, In _ R tup ->
+               lt (tupleIndex tup)  (length l))
+  /\ UnIndexedEnsembleListEquivalence R l.
+
+Instance EnsembleListEquivalence_AbsR {heading}:
+  @UnConstrRelationAbsRClass (@IndexedTuple heading)
+                             (list (@Tuple heading)) :=
+  {| UnConstrRelationAbsR := @EnsembleIndexedListEquivalence heading|}.
 
   Lemma EnsembleListEquivalence_Empty :
     forall qsSchema Ridx,

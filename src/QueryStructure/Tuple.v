@@ -42,3 +42,8 @@ Definition GetAttribute
 
 Notation "t ! R" :=
   (GetAttribute t%Tuple {|bindex := R%string |}): Tuple_scope.
+
+Record IndexedTuple {heading} :=
+  { tupleIndex : nat;
+    indexedTuple :> @Tuple heading
+  }.

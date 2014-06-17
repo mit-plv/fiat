@@ -31,7 +31,7 @@ Definition crossRelationR
            (namedSchemas : list NamedSchema)
            (idx idx' : _)
   := @Tuple (GetNRelSchemaHeading namedSchemas idx)
-     -> Ensemble (@Tuple (GetNRelSchemaHeading namedSchemas idx'))
+     -> Ensemble (@IndexedTuple (GetNRelSchemaHeading namedSchemas idx'))
      -> Prop.
 
 Definition crossRelationProdR
@@ -81,11 +81,11 @@ Defined.
 
 Definition ForeignKey_P heading relSchema attr1 attr2 tupmap
            (tup : @Tuple heading)
-           (R : Ensemble (@Tuple relSchema)) :=
+           (R : Ensemble (@IndexedTuple relSchema)) :=
   exists tup2,
     R tup2 /\
     tup attr1 =
-    tupmap (tup2 attr2 ).
+    tupmap ((indexedTuple tup2) attr2 ).
 
 Definition BuildForeignKeyConstraints
            (namedSchemas :  list NamedSchema)

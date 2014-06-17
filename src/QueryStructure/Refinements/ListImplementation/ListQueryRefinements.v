@@ -1,8 +1,9 @@
 Require Import String Omega List FunctionalExtensionality Ensembles
-        Computation ADT ADTRefinement ADTNotation
+        Sorting.Permutation Computation ADT ADTRefinement ADTNotation
         ADTRefinement.GeneralBuildADTRefinements
         QueryStructureSchema QueryQSSpecs QueryStructure
-        GeneralQueryRefinements AdditionalLemmas SetEq.
+        GeneralQueryRefinements AdditionalLemmas SetEq
+        ListQueryStructureRefinements.
 
 Lemma refine_SetEq_self {A} :
   forall l : list A,
@@ -104,18 +105,19 @@ Definition List_Query_In
 
 Lemma refine_List_Query_In {ResultT}
       qsSchema qs R l resultComp
-: EnsembleListEquivalence (GetUnConstrRelation qs R) l
+: EnsembleIndexedListEquivalence (GetUnConstrRelation qs R) l
   -> refine (@UnConstrQuery_In ResultT qsSchema qs R resultComp)
             (List_Query_In l resultComp).
 Proof.
+  intros; destruct H as [l' [eq_l_l' [eq_l_R equiv_l_R ]]].
   intros; unfold UnConstrQuery_In, QueryResultComp, List_Query_In;
-  rewrite refine_pick_val; eauto; simplify with monad laws;
-  reflexivity.
+  rewrite refine_pick_val; eauto; simplify with monad laws.
+  subst; reflexivity.
 Qed.
 
 Lemma refine_Join_List_Query_In {QueryT ResultT}
       qsSchema qs R l' l resultComp
-: EnsembleListEquivalence (GetUnConstrRelation qs R) l
+: EnsembleIndexedListEquivalence (GetUnConstrRelation qs R) l
   -> refine (List_Query_In (QueryT := QueryT) l'
                            (fun b => @UnConstrQuery_In ResultT qsSchema qs R (resultComp b)))
             (List_Query_In (Join_Lists l' l) (fun b => (resultComp (fst b) (snd b)))).

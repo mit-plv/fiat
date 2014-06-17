@@ -25,15 +25,16 @@ Definition flatten_CompList {A} (c : list (Comp (list A))) :=
               ret (l ++ l')) (ret []) c.
 
 Definition QueryResultComp
-           {QueryT ResultT}
-           (queriedEnsemble : Ensemble QueryT)
-           (resultEnsemble : QueryT -> Comp (list ResultT))
+           {heading ResultT}
+           (queriedEnsemble : Ensemble (@IndexedTuple heading))
+           (resultEnsemble : (@Tuple heading) -> Comp (list ResultT))
   :=
     (* First construct a list that contains each element in the query list
        (expressed as an ensemble) paired with its result list.
        Then flatten the result and compare with [resultList].*)
-    queriedList <- {queriedList | EnsembleListEquivalence queriedEnsemble queriedList };
-    flatten_CompList (map resultEnsemble queriedList).
+    queriedList <- {queriedList | EnsembleListEquivalence queriedEnsemble
+                                                          queriedList };
+    flatten_CompList (map resultEnsemble (map indexedTuple queriedList)).
 
 Definition Query_In (qs : QueryStructureHint) {ResultT} (R : _)
            (bod : @Tuple (schemaHeading

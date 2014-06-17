@@ -69,20 +69,10 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma flatten_permutation {A B}
-: forall f f' l l',
-    pointwise_relation A (@Permutation B) f f'
-    -> Permutation l l'
-    -> Permutation (flatten (map f l)) (flatten (map f' l')).
-Admitted.
-
-Lemma EnsembleListEquivalence_Permutation {A}
-: forall ens (l l' : list A),
-    EnsembleListEquivalence ens l
-    -> EnsembleListEquivalence ens l'
-    -> Permutation l l'.
-Proof.
-Admitted.
+Definition UnIndexedEnsembleListEquivalence
+           {heading} R (l : list (@Tuple heading))  :=
+  exists l', (map indexedTuple l') = l /\
+  EnsembleListEquivalence R l'.
 
 (*Lemma Equivalent_Swap_In {ResultT}
       qsSchema qs R (bod : Tuple -> Comp (list ResultT))

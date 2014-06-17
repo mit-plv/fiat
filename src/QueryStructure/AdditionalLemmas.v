@@ -203,7 +203,7 @@ Section AdditionalQueryLemmas.
       Ensembles.In _ (GetUnConstrRelation (UpdateUnConstrRelation db_schema qs table new_contents) table) x <->
       Ensembles.In _ new_contents x.
   Proof.
-    unfold GetUnConstrRelation, UpdateUnConstrRelation, RelationInsert;
+    unfold GetUnConstrRelation, UpdateUnConstrRelation, EnsembleInsert;
     intros; rewrite ith_replace_BoundIndex_eq;
     reflexivity.
   Qed.

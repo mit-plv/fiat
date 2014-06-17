@@ -6,7 +6,7 @@ Require Import List String FunctionalExtensionality Ensembles
    which satisfy the schema constraints. *)
 
 Record Relation (RelationSchema : Schema) :=
-  { rel : Ensemble (@Tuple (schemaHeading RelationSchema));
+  { rel : Ensemble (@IndexedTuple (schemaHeading RelationSchema));
     constr :
       forall tup tup',
         rel tup ->
@@ -15,4 +15,10 @@ Record Relation (RelationSchema : Schema) :=
   }.
 
 Definition UnConstrRelation (RelationSchema : Schema) :=
-  Ensemble (@Tuple (schemaHeading RelationSchema)).
+  Ensemble (@IndexedTuple (schemaHeading RelationSchema)).
+
+Definition UnIndexedTupleIn {heading}
+           (rel : Ensemble (@IndexedTuple heading))
+           (tup : @Tuple heading):=
+  exists n, rel {|tupleIndex := n;
+                  indexedTuple := tup |}.

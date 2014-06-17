@@ -2,8 +2,8 @@ Require Import String Omega List FunctionalExtensionality Ensembles Bool
         Computation ADT ADTRefinement ADTNotation QueryStructureSchema
         QueryQSSpecs InsertQSSpecs QueryStructure
         ADTRefinement.GeneralBuildADTRefinements
-        AdditionalLemmas GeneralQueryRefinements
-        GeneralInsertRefinements.
+        AdditionalLemmas GeneralQueryRefinements GeneralInsertRefinements
+        GeneralQueryStructureRefinements ListQueryStructureRefinements.
 
 Class List_Query_eq (As : list Type) :=
   { As_Query_eq : ilist Query_eq As}.
@@ -329,25 +329,39 @@ Lemma ImplementListInsert_eq qsSchema Ridx
       (or : UnConstrQueryStructure qsSchema)
       (nr : list (Tuple))
 :
-  EnsembleListEquivalence (GetUnConstrRelation or Ridx) nr
+  EnsembleIndexedListEquivalence (GetUnConstrRelation or Ridx) nr
   -> ~ List.In tup nr
   -> refine
        {a |
-        EnsembleListEquivalence
+        EnsembleIndexedListEquivalence
           (GetUnConstrRelation
              (UpdateUnConstrRelation qsSchema or Ridx
-                                     (RelationInsert tup (GetUnConstrRelation or Ridx))) Ridx) a}
+                                     (EnsembleInsert {| tupleIndex := length nr;
+                                                        indexedTuple := tup|}
+                                                     (GetUnConstrRelation or Ridx))) Ridx) a}
        (ret (tup :: nr)).
 Proof.
   unfold refine; intros; inversion_by computes_to_inv; subst; constructor.
   unfold GetUnConstrRelation, UpdateUnConstrRelation in *.
   rewrite ith_replace_BoundIndex_eq.
-  unfold RelationInsert, In in *; split; intuition.
-  destruct H; econstructor; eauto.
+  unfold EnsembleInsert, In, EnsembleIndexedListEquivalence in *;
+    intuition.
+  unfold In in *; destruct H; subst; simpl.
+  omega.
+  generalize (H1 _ H); omega.
+  destruct H2 as [l' [l'_eq equiv_l']];
+    econstructor 1 with ({| tupleIndex := length nr;
+                            indexedTuple := tup|} :: l'); split; eauto.
+  simpl; subst; reflexivity.
+  unfold EnsembleListEquivalence in *; intuition.
+  econstructor; eauto.
+  unfold not; intros.
+  generalize (H1 _ (proj2 (H2 _) H3)); simpl.
+  omega.
   unfold In in *; simpl; intuition.
-  right; apply H; auto.
+  right; apply H2; auto.
   unfold In in *; simpl in *; intuition.
-  right; apply H; auto.
+  right; apply H2; auto.
 Qed.
 
 Lemma ImplementListInsert_neq qsSchema Ridx Ridx'
@@ -356,13 +370,15 @@ Lemma ImplementListInsert_neq qsSchema Ridx Ridx'
       (nr : list (Tuple))
 :
   Ridx <> Ridx'
-  -> EnsembleListEquivalence (GetUnConstrRelation or Ridx) nr
+  -> EnsembleIndexedListEquivalence (GetUnConstrRelation or Ridx) nr
   -> refine
        {a |
-        EnsembleListEquivalence
+        EnsembleIndexedListEquivalence
           (GetUnConstrRelation
              (UpdateUnConstrRelation qsSchema or Ridx'
-                                     (RelationInsert tup (GetUnConstrRelation or Ridx'))) Ridx) a}
+                                     (EnsembleInsert {| tupleIndex := length nr;
+                                                        indexedTuple := tup|}
+ (GetUnConstrRelation or Ridx'))) Ridx) a}
        (ret nr).
 Proof.
   unfold refine; intros; inversion_by computes_to_inv; subst; constructor.
@@ -378,7 +394,7 @@ Tactic Notation "implement" "insert" "for" "lists" :=
                       |- context
                            [{a | EnsembleListEquivalence
                                    ((UpdateUnConstrRelation ?QSSchema ?c ?Ridx
-                                                            (RelationInsert ?n (?c!?R)))!?R')%QueryImpl a}%comp] =>
+                                                            (EnsembleInsert ?n (?c!?R)))!?R')%QueryImpl a}%comp] =>
                       setoid_rewrite ((@ImplementListInsert_neq QSSchema
                                                                 {| bindex := R' |}
                                                                 {| bindex := R |} n c))

@@ -17,7 +17,7 @@ Record QueryStructure (QSSchema : QueryStructureSchema) :=
     crossConstr :
       forall (idx idx' : @BoundedString (map relName (qschemaSchemas QSSchema)))
              (tup :
-                @Tuple (QSGetNRelSchemaHeading QSSchema idx)),
+                @IndexedTuple (QSGetNRelSchemaHeading QSSchema idx)),
         idx <> idx' ->
         (* These are cross-relation constraints which only need to be
            enforced on distinct relations. *)
