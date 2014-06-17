@@ -19,7 +19,7 @@ Defined.
 
 Definition Storage := AddCachingLayer (BagProof StatePIDIndexedTree)
                                       (fun p => p PID)
-                                      0 max (ListMax_cacheable 0).
+                                      0 eq _ max ListMax_cacheable.
 
 Definition StorageType           := BagType Storage.
 Definition StorageIsBag          := BagProof Storage.
@@ -153,8 +153,8 @@ Section TreeBasedRefinement.
     hone method SPAWN. {
       unfold equivalence in H.
 
-      lift list property (assert_cache_property (cfresh_cache r_n) max_cached_neq_projected) as cache.
-
+      lift list property (assert_cache_property (cfresh_cache r_n) max_cached_neq_projected _) as cache.
+    
       setoid_rewrite refineEquiv_pick_ex_computes_to_and.
       setoid_rewrite refineEquiv_pick_pair.
       setoid_rewrite refineEquiv_pick_eq'.
