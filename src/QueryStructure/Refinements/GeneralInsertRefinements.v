@@ -60,29 +60,37 @@ Tactic Notation "remove" "trivial" "insertion" "checks" :=
             match goal with
                 H : DropQSConstraints_AbsR _ ?r_n
                 |- context [(Insert ?n into ?R)%QuerySpec] =>
+                setoid_rewrite refineEquiv_pick_ex_computes_to_bind_and;
+                  apply refine_bind;
+                  [unfold freshIdx; simpl; reflexivity
+                  | unfold pointwise_relation;
+                    let idx := fresh in
+                    intro idx;
+                      let H := fresh in
                 (* If we try to eapply [QSInsertSpec_UnConstr_refine] directly
                    after we've drilled under a bind, this tactic will fail because
                    typeclass resolution breaks down. Generalizing and applying gets
                    around this problem for reasons unknown. *)
-                let H := fresh in
-                generalize (@QSInsertSpec_UnConstr_refine
-                              _ r_n {|bindex := R |} n) as H; intro H;
-                apply H
-            end;
-            (* try to discharge the trivial constraints *)
-            [  simplify_trivial_SatisfiesSchemaConstraints
-             | simplify_trivial_SatisfiesSchemaConstraints
-             | simplify_trivial_SatisfiesSchemaConstraints
-             | simplify_trivial_SatisfiesCrossRelationConstraints
-             | simplify_trivial_SatisfiesCrossRelationConstraints
-             | eauto ]
+
+                      generalize (@QSInsertSpec_UnConstr_refine
+                                    _ r_n {|bindex := R |}
+                                    {| tupleIndex := idx;
+                                       indexedTuple := n |}) as H;
+                        intro H; apply H;
+                        [  simplify_trivial_SatisfiesSchemaConstraints
+                         | simplify_trivial_SatisfiesSchemaConstraints
+                         | simplify_trivial_SatisfiesSchemaConstraints
+                         | simplify_trivial_SatisfiesCrossRelationConstraints
+                         | simplify_trivial_SatisfiesCrossRelationConstraints
+                         | eauto ]]
+            end
   | simplify with monad laws;
     try rewrite <- GetRelDropConstraints;
     repeat match goal with
              | H : DropQSConstraints_AbsR ?qs ?uqs |- _ =>
-               rewrite H in *; clear qs H
+               rewrite H in *
            end
-    ].
+    ] .
 
 Tactic Notation "Split" "Constraint" "Checks" :=
   repeat (let b := match goal with
@@ -99,6 +107,15 @@ Tactic Notation "implement" "failed" "insert" :=
 
 Tactic Notation "drop" "constraints" "from" "insert" constr(methname) :=
   hone method methname;
-  [ remove trivial insertion checks ;
-    repeat remove_trivial_insertion_constraints;
-    finish honing | ].
+  [ remove trivial insertion checks;
+    (* The trivial insertion checks involve the fresh id,
+       so we need to drill under the binder before
+       attempting to remove them.
+     *)
+    setoid_rewrite refine_bind;
+    [ | reflexivity |
+      unfold pointwise_relation; intros;
+      repeat remove_trivial_insertion_constraints;
+      higher_order_1_reflexivity ];
+    finish honing
+  | ].

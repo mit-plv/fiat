@@ -201,11 +201,11 @@ Lemma refine_unused_key_check
          (attr_eq_dec : List_Query_eq (map (Domain h) attrlist))
          (attr_eq_dec' : List_Query_eq (map (Domain h) attrlist'))
          (tup : Tuple)
-         (rel : Ensemble Tuple)
+         (rel : Ensemble IndexedTuple)
          (l : list Tuple),
-    EnsembleListEquivalence rel l
+    EnsembleIndexedListEquivalence  rel l
     -> refine {b | decides b
-                           (forall tup' : Tuple,
+                           (forall tup' : IndexedTuple,
                               rel tup' ->
                               tupleAgree tup tup' attrlist' ->
                               tupleAgree tup tup' attrlist)}
@@ -216,9 +216,16 @@ Proof.
   subst; econstructor.
   case_eq (Check_Attr_Depend _ _ attr_eq_dec attr_eq_dec' tup l); simpl; intros.
   eapply Check_Attr_Depend_dec; try apply H; eauto.
+  destruct H as [l' [fresh_l' [l'_eq [_ equiv_l_l']]]]; subst.
+  eapply in_map; eapply equiv_l_l'; eapply H1.
   unfold not; intros.
   eapply (Check_Attr_Depend_dec' attr_eq_dec attr_eq_dec'); eauto.
-  intros; eapply H1; eauto; eapply H; eauto.
+  destruct H as [l' [fresh_l' [l'_eq [_ equiv_l_l']]]]; subst.
+  intros.
+  apply (in_map_iff indexedTuple) in H; destruct_ex;
+  intuition; subst.
+  intros; eapply H1; eauto.
+  eapply equiv_l_l'; eauto.
 Qed.
 
 Lemma refine_unused_key_check'
@@ -227,11 +234,11 @@ Lemma refine_unused_key_check'
          (attr_eq_dec : List_Query_eq (map (Domain h) attrlist))
          (attr_eq_dec' : List_Query_eq (map (Domain h) attrlist'))
          (tup : Tuple)
-         (rel : Ensemble Tuple)
+         (rel : Ensemble IndexedTuple)
          (l : list Tuple),
-    EnsembleListEquivalence rel l
+    EnsembleIndexedListEquivalence  rel l
     -> refine {b | decides b
-                           (forall tup' : Tuple,
+                           (forall tup' : IndexedTuple,
                               rel tup' ->
                               tupleAgree tup' tup attrlist' ->
                               tupleAgree tup' tup attrlist)}
@@ -244,10 +251,16 @@ Proof.
   unfold tupleAgree in *; intros; apply sym_eq.
   eapply (Check_Attr_Depend_dec _ attr_eq_dec attr_eq_dec'); unfold tupleAgree;
   intros; try apply H; try rewrite H2; eauto.
+  destruct H as [l' [fresh_l' [l'_eq [_ equiv_l_l']]]]; subst.
+  eapply in_map; eapply equiv_l_l'; eapply H1.
   unfold not; intros.
   eapply (Check_Attr_Depend_dec' attr_eq_dec attr_eq_dec'); eauto.
   unfold tupleAgree in *; intros.
+  destruct H as [l' [fresh_l' [l'_eq [_ equiv_l_l']]]]; subst.
+  apply (in_map_iff indexedTuple) in H2; destruct_ex; intuition;
+  subst.
   apply sym_eq; apply H1; try eapply H; eauto.
+  eapply equiv_l_l'; eauto.
   intros; rewrite H3; eauto.
 Qed.
 
@@ -291,14 +304,14 @@ Qed.
 
 Lemma refine_foreign_key_check
       (h : Heading)
-      (rel : Ensemble Tuple)
+      (rel : Ensemble IndexedTuple)
       (l : list Tuple)
       (P : Ensemble Tuple)
       (P_dec : DecideableEnsemble P)
-: EnsembleListEquivalence rel l
+: EnsembleIndexedListEquivalence rel l
     -> refine {b  |
                decides b
-                       (exists tup' : @Tuple h,
+                       (exists tup' : @IndexedTuple h,
                           rel tup' /\
                           P tup')}
               (ret (Check_List_Ex_Prop dec l)).
@@ -307,11 +320,16 @@ Proof.
   unfold refine; intros; inversion_by computes_to_inv;
   subst; econstructor.
   case_eq (Check_List_Ex_Prop dec l); simpl; intros.
+  destruct H as [l' [fresh_l' [l'_eq [_ equiv_l_l']]]]; subst.
   destruct (Check_List_Ex_Prop_dec dec P _ dec_decides_P H0);
-    eexists; intuition; try apply H; eauto.
+    intuition.
+  apply in_map_iff in H1; destruct_ex; intuition; subst.
+  eexists; intuition; eauto; eapply equiv_l_l'; eauto.
   unfold not; intros; eapply Check_List_Ex_Prop_dec';
   eauto using dec_decides_P.
   destruct_ex; intuition; eexists; intuition; try apply H; eauto.
+  destruct H as [l' [fresh_l' [l'_eq [_ equiv_l_l']]]]; subst.
+  eapply in_map; eapply equiv_l_l'; unfold In; eauto.
 Qed.
 
 Add Parametric Morphism {A: Type} (b : bool):
@@ -330,7 +348,6 @@ Lemma ImplementListInsert_eq qsSchema Ridx
       (nr : list (Tuple))
 :
   EnsembleIndexedListEquivalence (GetUnConstrRelation or Ridx) nr
-  -> ~ List.In tup nr
   -> refine
        {a |
         EnsembleIndexedListEquivalence
@@ -348,20 +365,20 @@ Proof.
     intuition.
   unfold In in *; destruct H; subst; simpl.
   omega.
-  generalize (H1 _ H); omega.
-  destruct H2 as [l' [l'_eq equiv_l']];
+  generalize (H0 _ H); omega.
+  destruct H1 as [l' [l'_eq equiv_l']];
     econstructor 1 with ({| tupleIndex := length nr;
                             indexedTuple := tup|} :: l'); split; eauto.
   simpl; subst; reflexivity.
-  unfold EnsembleListEquivalence in *; intuition.
+  unfold EnsembleListEquivalence  in *; intuition.
   econstructor; eauto.
   unfold not; intros.
-  generalize (H1 _ (proj2 (H2 _) H3)); simpl.
+  generalize (H0 _ (proj2 (H1 _) H2)); simpl.
   omega.
   unfold In in *; simpl; intuition.
-  right; apply H2; auto.
+  right; apply H1; auto.
   unfold In in *; simpl in *; intuition.
-  right; apply H2; auto.
+  right; apply H1; auto.
 Qed.
 
 Lemma ImplementListInsert_neq qsSchema Ridx Ridx'
@@ -392,7 +409,7 @@ Tactic Notation "implement" "insert" "for" "lists" :=
                   try simplify with monad laws);
              try (match goal with
                       |- context
-                           [{a | EnsembleListEquivalence
+                           [{a | EnsembleIndexedListEquivalence
                                    ((UpdateUnConstrRelation ?QSSchema ?c ?Ridx
                                                             (EnsembleInsert ?n (?c!?R)))!?R')%QueryImpl a}%comp] =>
                       setoid_rewrite ((@ImplementListInsert_neq QSSchema

@@ -28,6 +28,22 @@ Instance EnsembleListEquivalence_AbsR {heading}:
     + rewrite Build_EmptyRelation_IsEmpty in *; simpl in *; intuition.
   Qed.
 
+  Lemma EnsembleIndexedListEquivalence_Empty :
+    forall qsSchema Ridx,
+      EnsembleIndexedListEquivalence
+        (GetUnConstrRelation (DropQSConstraints (QSEmptySpec qsSchema))
+                             Ridx) [].
+  Proof.
+    intros; rewrite GetRelDropConstraints; simpl; split; simpl; intros;
+    unfold GetRelation, In in *.
+    + rewrite Build_EmptyRelation_IsEmpty in *; simpl in *; intuition.
+    + eexists []; intuition; econstructor.
+      - econstructor.
+      - unfold In; split; intros.
+        * rewrite Build_EmptyRelation_IsEmpty in *; simpl in *; intuition.
+        * intuition.
+  Qed.
+
 Ltac implement_empty_list constrName RepAbsR :=
   hone constructor constrName;
   [ unfold RepAbsR, DropQSConstraints_AbsR;
@@ -37,7 +53,7 @@ Ltac implement_empty_list constrName RepAbsR :=
     repeat rewrite refineEquiv_pick_pair;
     repeat (rewrite refine_pick_val;
             [simplify with monad laws
-            | apply EnsembleListEquivalence_Empty]);
+            | apply EnsembleIndexedListEquivalence_Empty]);
         subst_body; higher_order_1_reflexivity
   | ].
 

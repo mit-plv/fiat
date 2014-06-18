@@ -66,7 +66,8 @@ Definition freshIdx (qs : QueryStructureHint) Ridx (n : nat) :=
 
 Notation "'Insert' b 'into' Ridx " :=
   (idx <- Pick (freshIdx _ {|bindex := Ridx%comp |});
-   qs <- Pick (QSInsertSpec _ {|bindex := Ridx |} b);
+   qs <- Pick (QSInsertSpec _ {|bindex := Ridx |} {| tupleIndex := idx;
+                                                     indexedTuple := b |});
    ret (qs, tt))%comp
     (at level 80) : QuerySpec_scope.
 
@@ -839,7 +840,7 @@ Arguments id  _ _ / .
                            GetUnConstrRelation ?r ?Ridx tup' ->
                            exists tup2,
                              EnsembleInsert ?tup (GetUnConstrRelation ?r _) tup2 /\
-                             tup' ?attr = tup2 ?attr'))] =>
+                             (indexedTuple tup') ?attr = (indexedTuple tup2) ?attr'))] =>
               let refine_trivial := fresh in
               assert
                 (refine {b' |
@@ -850,7 +851,7 @@ Arguments id  _ _ / .
                                     exists
                                       tup2,
                                       EnsembleInsert tup (GetUnConstrRelation r Ridx') tup2 /\
-                                      tup' attr = tup2 attr')} (ret true))
+                                      (indexedTuple tup') attr = (indexedTuple tup2) attr')} (ret true))
                 as refine_trivial;
                 [ let v := fresh in
                   let Comp_v := fresh in

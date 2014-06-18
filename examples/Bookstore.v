@@ -80,6 +80,8 @@ Section BookStoreExamples.
              (nr : list Book * list Order) : Prop :=
     or ! "Books" ≃ fst nr /\ or ! "Orders" ≃ snd nr.
 
+  Opaque Query_For.
+
   Definition BookStore :
     Sharpened BookStoreSpec.
   Proof.
@@ -90,19 +92,183 @@ Section BookStoreExamples.
       since ADT refinement preserves the simulation relation. *)
     start honing QueryStructure.
 
-    (* Step 2: We first swap the order of the 'For's to make the
-         implementation more efficient. *)
+    hone representation using BookStoreListImpl_AbsR.
+
+    implement_empty_list "InitBookstore" BookStoreListImpl_AbsR.
+
+    hone method "PlaceOrder".
+    {
+      setoid_rewrite refineEquiv_pick_ex_computes_to_bind_and.
+      rewrite refine_pick_val with (A := nat) (a := length (snd r_n)).
+      simplify with monad laws.
+      setoid_rewrite refineEquiv_split_ex.
+      setoid_rewrite refineEquiv_pick_computes_to_and.
+      simplify with monad laws.
+      (* TODO: remove this etransitivity, apply step. *)
+      etransitivity.
+      apply refine_bind.
+      eapply (@refine_foreign_key_check
+                 _
+                 _ (fst r_n)
+      (fun tup2 : Tuple => n ``("ISBN") = tup2 ``("ISBN"))).
+      destruct H; eauto.
+      unfold pointwise_relation; intros; higher_order_1_reflexivity.
+      (* END TODO*)
+      simplify with monad laws.
+      rewrite refine_pick_eq_ex_bind; unfold BookStoreListImpl_AbsR in *.
+      split_and; simpl;
+      rewrite refineEquiv_pick_pair_pair;
+      setoid_rewrite refineEquiv_pick_eq';
+      simplify with monad laws; simpl.
+      Split Constraint Checks.
+      (* TODO move this back to a tactic *)
+      etransitivity.
+      apply refine_bind.
+      match goal with
+          |- context
+               [{a | EnsembleIndexedListEquivalence
+                       ((UpdateUnConstrRelation ?QSSchema ?c ?Ridx
+                                                (EnsembleInsert ?n (?c!?R)))!?R')%QueryImpl a}%comp] =>
+          let H := fresh in
+          generalize ((@ImplementListInsert_neq QSSchema
+                                                {| bindex := R' |}
+                                                {| bindex := R |} n c)) as H; intros; setoid_rewrite H
+      end; try reflexivity; try eassumption.
+      congruence.
+      unfold pointwise_relation; intros.
+      setoid_rewrite (@ImplementListInsert_eq); eauto.
+      simplify with monad laws.
+      higher_order_1_reflexivity.
+      simplify with monad laws.
+      reflexivity.
+      rewrite refine_pick_val; eauto.
+      simplify with monad laws.
+      rewrite refine_pick_val; eauto.
+      simplify with monad laws.
+      reflexivity.
+      intros.
+      destruct H as [_ [l l']].
+      generalize (l _ H1).
+      unfold not; intros.
+      eapply lt_irrefl.
+      destruct tup; simpl in *; subst.
+      eapply H.
+    }
+
+    hone method "AddBook".
+    {
+      setoid_rewrite refineEquiv_pick_ex_computes_to_bind_and.
+      rewrite refine_pick_val with (A := nat) (a := length (fst r_n)).
+      simplify with monad laws.
+      setoid_rewrite refineEquiv_split_ex.
+      setoid_rewrite refineEquiv_pick_computes_to_and.
+      simplify with monad laws.
+      (* Again, to tactics *)
+      repeat match goal with
+          |- context [
+                 forall tup' : @IndexedTuple ?h,
+                   (?qs ! ?R )%QueryImpl tup' ->
+                   tupleAgree ?n (indexedTuple tup') ?attrlist2%SchemaConstraints ->
+                   tupleAgree ?n (indexedTuple tup') ?attrlist1%SchemaConstraints ]
+              =>
+              let H' := fresh in
+              generalize (@refine_unused_key_check h attrlist1 attrlist2 _ _ n (qs ! R )%QueryImpl) as H'; intros; setoid_rewrite H'; clear H';
+              [ simplify with monad laws |
+                unfold BookStoreListImpl_AbsR in *; split_and; eauto ]
+        | |- context [
+                 forall tup' : @IndexedTuple ?h,
+                   (?qs ! ?R )%QueryImpl tup' ->
+                   tupleAgree (indexedTuple tup') ?n ?attrlist2%SchemaConstraints ->
+                   tupleAgree (indexedTuple tup') ?n  ?attrlist1%SchemaConstraints]
+                =>
+                let H' := fresh in
+                generalize (@refine_unused_key_check' h attrlist1 attrlist2 _ _ n (qs ! R )%QueryImpl) as H'; intros; setoid_rewrite H'; clear H';
+                  [ simplify with monad laws |
+                    unfold BookStoreListImpl_AbsR in *; split_and; eauto ]
+      end.
+
+      rewrite refine_pick_eq_ex_bind; unfold BookStoreListImpl_AbsR in *.
+      split_and; simpl;
+      rewrite refineEquiv_pick_pair_pair;
+      setoid_rewrite refineEquiv_pick_eq';
+      simplify with monad laws; simpl.
+      Split Constraint Checks.
+      (* TODO move this back to a tactic *)
+      setoid_rewrite (@ImplementListInsert_eq); eauto.
+      simplify with monad laws.
+      match goal with
+          |- context
+               [{a | EnsembleIndexedListEquivalence
+                       ((UpdateUnConstrRelation ?QSSchema ?c ?Ridx
+                                                (EnsembleInsert ?n (?c!?R)))!?R')%QueryImpl a}%comp] =>
+          let H := fresh in
+          generalize ((@ImplementListInsert_neq QSSchema
+                                                {| bindex := R' |}
+                                                {| bindex := R |} n c)) as H; intros; setoid_rewrite H
+      end; try reflexivity; try eassumption.
+      congruence.
+      rewrite refine_pick_val; eauto;
+      simplify with monad laws.
+      rewrite refine_pick_val; eauto;
+      simplify with monad laws.
+      reflexivity.
+      rewrite refine_pick_val; eauto;
+      simplify with monad laws.
+      rewrite refine_pick_val; eauto;
+      simplify with monad laws.
+      reflexivity.
+      intros.
+      destruct H as [[l l'] _].
+      generalize (l _ H1).
+      unfold not; intros.
+      eapply lt_irrefl.
+      destruct tup; simpl in *; subst.
+      eapply H.
+    }
+
+    hone method "GetTitles".
+    {
+      simpl.
+      unfold BookStoreListImpl_AbsR in H; split_and.
+      setoid_rewrite refineEquiv_pick_ex_computes_to_and.
+      simplify with monad laws.
+      rewrite refine_List_Query_In; eauto.
+      rewrite refine_List_Query_In_Where.
+      rewrite refine_List_For_Query_In_Return;
+        simplify with monad laws; simpl.
+
+      setoid_rewrite refineEquiv_pick_pair_pair.
+      setoid_rewrite refineEquiv_pick_eq'.
+      simplify with monad laws.
+      rewrite refine_pick_val by eassumption.
+      simplify with monad laws.
+      rewrite refine_pick_val by eassumption.
+      simplify with monad laws.
+      finish honing.
+  }
 
     hone method "NumOrders".
-    { rewrite Equivalent_Swap_In;
-      rewrite refine_Query_For_In_Equivalent;
-        [ | apply Equivalent_Swap_In_Where with (qs := _)]; cbv beta;
-        finish honing. }
+    {
+      simpl.
+      unfold BookStoreListImpl_AbsR in H; split_and.
+      setoid_rewrite refineEquiv_pick_ex_computes_to_and.
+      simplify with monad laws.
+      rewrite refine_List_Query_In; eauto.
+      rewrite refine_Join_List_Query_In; eauto.
+      rewrite refine_List_Query_In_Where.
+      rewrite refine_List_Query_In_Where.
+      rewrite refine_List_For_Query_In_Return;
+        simplify with monad laws; simpl.
 
-    (* Step 3: Switch to an implementation of the representation
-       type as a pair of lists of tuples. *)
-
-    implement using lists under BookStoreListImpl_AbsR.
+      setoid_rewrite refineEquiv_pick_pair_pair.
+      setoid_rewrite refineEquiv_pick_eq'.
+      simplify with monad laws.
+      rewrite refine_pick_val by eassumption.
+      simplify with monad laws.
+      rewrite refine_pick_val by eassumption.
+      simplify with monad laws.
+      finish honing.
+  }
 
     (* Step 4: Profit. :) *)
 
