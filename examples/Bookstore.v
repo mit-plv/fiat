@@ -75,10 +75,12 @@ Section BookStoreExamples.
                  Return o!"ISBN")
   }.
 
+  Require Import BagsOfTuples.
+
   Definition BookStoreListImpl_AbsR
              (or : UnConstrQueryStructure BookStoreSchema)
              (nr : list Book * list Order) : Prop :=
-    or ! "Books" ≃ fst nr /\ or ! "Orders" ≃ snd nr.
+    or ! "Books" ≃ benumerate (fst nr) /\ or ! "Orders" ≃ benumerate (snd nr).
 
   Opaque Query_For.
 
