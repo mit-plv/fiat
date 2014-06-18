@@ -1,14 +1,21 @@
 Require Import BagsInterface AdditionalLemmas.
+Require Import AdditionalMorphisms.
 
-Lemma binsert_enumerate_SetEq {TContainer TItem TSearchTerm} (bag: Bag TContainer TItem TSearchTerm):
-  forall inserted container,
-    SetEq 
-      (benumerate (binsert container inserted))
-      (inserted :: (benumerate container)).
+Lemma refold_in :
+  forall {A} a b l,
+    @List.In A a (b :: l) <-> List.In a l \/ a = b. 
 Proof.
-  unfold SetEq; intros; simpl.
-  setoid_rewrite or_comm; setoid_rewrite eq_sym_iff. 
-  apply binsert_enumerate. 
+  intros; simpl; intuition.
+Qed.
+
+Lemma binsert_enumerate_weak {TContainer TItem TSearchTerm} {bag: Bag TContainer TItem TSearchTerm}:
+  forall item inserted container,
+    List.In item (benumerate (binsert container inserted)) <->
+    List.In item (benumerate container) \/ item = inserted.
+Proof.
+  intros.
+  rewrite <- refold_in.
+  apply in_permutation_morphism; eauto using binsert_enumerate. 
 Qed.
 
 Lemma benumerate_empty_eq_nil {TContainer TItem TSearchTerm} (bag: Bag TContainer TItem TSearchTerm):

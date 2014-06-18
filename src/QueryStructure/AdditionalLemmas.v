@@ -313,6 +313,14 @@ Section AdditionalListLemmas.
   Qed.
 
   Definition flatten {A} seq := List.fold_right (@app A) [] seq.
+  
+  Lemma flat_map_flatten :
+    forall {A B: Type},
+    forall comp seq,
+      @flat_map A B comp seq = flatten (map comp seq).
+  Proof.
+    intros; induction seq; simpl; try rewrite IHseq; reflexivity.
+  Qed.
 
   Lemma in_flatten_iff :
     forall {A} x seqs,
@@ -515,7 +523,18 @@ Ltac refine_eq_into_ret :=
   end.
 
 Ltac prove_observational_eq :=
-  lazy; intuition (eauto using collapse_ifs_bool, collapse_ifs_dec; eauto with *).
+  clear;
+  vm_compute;
+  intros;
+  repeat match goal with
+           | [ |- context[ if ?cond then _ else _ ] ] => 
+             let eqn := fresh "eqn" in
+             destruct cond eqn:eqn; 
+               subst; 
+               vm_compute; 
+               rewrite ?collapse_ifs_bool, ?collapse_ifs_dec; 
+               intuition
+         end.
 
 Section AdditionalQueryLemmas. (* TODO: Kill the two following lemmas. They are outdated now. :'( *)
   Lemma refine_ensemble_into_list_with_extraction :
