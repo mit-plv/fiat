@@ -110,8 +110,6 @@ Section AdditionalBoolLemmas.
   Qed.
 End AdditionalBoolLemmas.
 
-<<<<<<< HEAD
-=======
 Section AdditionalEnsembleLemmas.
   Lemma weaken :
     forall {A: Type} ensemble condition,
@@ -289,7 +287,7 @@ Section AdditionalListLemmas.
   Qed.
 
   Definition flatten {A} seq := List.fold_right (@app A) [] seq.
-  
+
   Lemma flat_map_flatten :
     forall {A B: Type},
     forall comp seq,
@@ -425,7 +423,6 @@ Section AdditionalListLemmas.
   Qed.
 End AdditionalListLemmas.
 
->>>>>>> master
 Section AdditionalComputationLemmas.
   Lemma eq_ret_compute :
     forall (A: Type) (x y: A), x = y -> ret x ↝ y.
@@ -504,12 +501,12 @@ Ltac prove_observational_eq :=
   vm_compute;
   intros;
   repeat match goal with
-           | [ |- context[ if ?cond then _ else _ ] ] => 
+           | [ |- context[ if ?cond then _ else _ ] ] =>
              let eqn := fresh "eqn" in
-             destruct cond eqn:eqn; 
-               subst; 
-               vm_compute; 
-               rewrite ?collapse_ifs_bool, ?collapse_ifs_dec; 
+             destruct cond eqn:eqn;
+               subst;
+               vm_compute;
+               rewrite ?collapse_ifs_bool, ?collapse_ifs_dec;
                intuition
          end.
 
