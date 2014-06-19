@@ -1,13 +1,6 @@
 Require Import BagsInterface AdditionalLemmas.
 Require Import AdditionalMorphisms.
 
-Lemma refold_in :
-  forall {A} a b l,
-    @List.In A a (b :: l) <-> List.In a l \/ a = b. 
-Proof.
-  intros; simpl; intuition.
-Qed.
-
 Lemma binsert_enumerate_weak {TContainer TItem TSearchTerm} {bag: Bag TContainer TItem TSearchTerm}:
   forall item inserted container,
     List.In item (benumerate (binsert container inserted)) <->
@@ -27,4 +20,12 @@ Proof.
     simpl in *;
     [ | exfalso; apply (not_in item) ];
     eauto.
+Qed.
+
+Lemma binsert_enumerate_length :
+  forall {TItem TContainer TSearchTerm} {bag_proof: Bag TContainer TItem TSearchTerm},
+  forall (bag: TContainer) (item: TItem),
+    List.length (benumerate (binsert bag item)) = S (List.length (benumerate bag)).
+Proof.      
+  intros; rewrite binsert_enumerate; simpl; trivial.
 Qed.

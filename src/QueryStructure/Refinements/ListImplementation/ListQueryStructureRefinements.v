@@ -11,8 +11,6 @@ Definition EnsembleIndexedListEquivalence {heading}
                lt (tupleIndex tup)  (length l))
   /\ UnIndexedEnsembleListEquivalence R l.
 
-Print UnIndexedEnsembleListEquivalence.
-
 Instance EnsembleListEquivalence_AbsR {heading}:
   @UnConstrRelationAbsRClass (@IndexedTuple heading)
                              (list (@Tuple heading)) :=
@@ -33,6 +31,16 @@ Proof.
   setoid_rewrite equiv.
   setoid_rewrite in_map_iff.
   split; intros; firstorder; subst; intuition. 
+Qed.
+
+Lemma EnsembleIndexedListEquivalence_pick_new_index :
+  forall {heading} ens seq,
+    EnsembleIndexedListEquivalence ens seq ->
+    forall (tup: @IndexedTuple heading),
+      Ensembles.In _ ens tup -> tupleIndex tup <> Datatypes.length seq.
+Proof.
+  intros * (indexes & equiv) ** ;
+  apply le_neq_impl; eauto.
 Qed.
 
   Lemma EnsembleListEquivalence_Empty :

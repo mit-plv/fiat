@@ -48,6 +48,13 @@ Section AdditionalNatLemmas.
   Proof.
     intros; omega.
   Qed.
+
+  Lemma lt_refl_False :
+    forall x, 
+      lt x x -> False.
+  Proof.
+    intros; omega.
+  Qed.
 End AdditionalNatLemmas.
 
 Section AdditionalLogicLemmas.
@@ -420,6 +427,62 @@ Section AdditionalListLemmas.
     trivial.
     destruct in_seq;
       [ left; f_equal | right ]; intuition.
+  Qed.
+
+
+  Lemma refold_map :
+    forall {A B} (f: A -> B) x seq,
+      f x :: map f seq = map f (x :: seq).
+  Proof.
+    simpl; reflexivity.
+  Qed.
+
+  Lemma refold_in :
+    forall {A} a b l,
+      @List.In A a (b :: l) <-> List.In a l \/ a = b. 
+  Proof.
+    intros; simpl; intuition.
+  Qed.
+
+  Lemma app_map_inv :
+    forall {A B} seq l1 l2 (f: A -> B),
+      l1 ++ l2 = map f seq ->
+      exists l1' l2',
+        seq = l1' ++ l2' /\ l1 = map f l1' /\ l2 = map f l2'. 
+  Proof.
+    induction seq; simpl; intros.
+    
+    exists (@nil A) (@nil A); simpl.
+    apply app_eq_nil in H; intuition.
+
+    destruct l1.
+    rewrite app_nil_l in H.
+    exists (@nil A) (a :: seq); simpl; intuition.
+
+    rewrite <- app_comm_cons in H.
+    inversion H.
+    specialize (IHseq _ _ _ H2).
+    destruct IHseq as [l1' [l2' (seq_eq_app & l1l1' & l2l2') ] ].
+    exists (a :: l1') (l2'); subst; intuition.
+  Qed.
+
+  Lemma cons_map_inv :
+    forall {A B} seq x1 l2 (f: A -> B),
+      x1 :: l2 = map f seq ->
+      exists x1' l2',
+        seq = x1' :: l2' /\ x1 = f x1' /\ l2 = map f l2'. 
+  Proof.
+    intros * _eq.
+    destruct seq as [ | x1' l2' ]; simpl in *; try discriminate.
+    inversion _eq.
+    exists x1' l2'; subst; intuition.
+  Qed.
+
+  Lemma map_eq_nil_inv :
+    forall {A B} (f: A -> B) seq,
+      map f seq = [] -> seq = [].
+  Proof.
+    intros; destruct seq; simpl in *; try discriminate; trivial. 
   Qed.
 End AdditionalListLemmas.
 

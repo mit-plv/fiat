@@ -54,6 +54,7 @@ SRC_MODULES    := \
 	QueryStructure/SetEqProperties \
 	QueryStructure/AdditionalLemmas \
 	QueryStructure/Refinements/AdditionalMorphisms \
+	QueryStructure/Refinements/AdditionalPermutationLemmas \
 	QueryStructure/Refinements/ListImplementation/ListQueryRefinements \
 	QueryStructure/Refinements/ListImplementation/ListInsertRefinements \
 	QueryStructure/Refinements/ListImplementation/ListQueryStructureRefinements \
@@ -70,11 +71,11 @@ SRC_MODULES    := \
 
 EXAMPLE_MODULES := \
 	ComputationExamples \
-	Trivial \
 	ProcessScheduler/State \
 	ProcessScheduler/DBSchema \
-	ProcessScheduler/ListBasedRefinement \
 	ProcessScheduler/TreeBasedRefinement \
+	ProcessScheduler/ListBasedRefinement \
+	Trivial \
 	Bookstore
 
 # ADTExamples/QueryStructure/ProcessScheduler/TreeBasedRefinement \

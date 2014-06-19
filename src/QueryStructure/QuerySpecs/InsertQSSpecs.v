@@ -16,6 +16,14 @@ Definition EnsembleInsert {A : Type}
            (a' : A) :=
   a' = a \/ R a'.
 
+Lemma in_ensemble_insert_iff :
+  forall {A} table tup inserted,
+    In A (EnsembleInsert inserted table) tup <->
+    tup = inserted \/ In A table tup.
+Proof.
+  firstorder.
+Qed.
+
 Definition SatisfiesSchemaConstraints
            {qsSchema} Ridx tup tup' :=
     schemaConstraints (QSGetNRelSchema qsSchema Ridx) tup tup'.
