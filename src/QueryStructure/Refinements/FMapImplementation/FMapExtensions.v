@@ -367,6 +367,8 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
     intuition eauto.
   Qed.
 
+  (* This should be simplified by the switch to Permutations.
+
   Lemma EnsembleListEquivalence_fmap_add_filtered :
     forall {A: Type} (cond : A -> Prop) ensemble key tree added,
       cond added ->
@@ -380,7 +382,8 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
   Proof.
     unfold EnsembleListEquivalence;
     repeat split; intros;
-    unfold Ensembles.In in *; simpl in *.
+    unfold Ensembles.In in *; simpl in *; intuition.
+
 
 
     apply in_elements_after_add'; trivial.
@@ -392,7 +395,7 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
     subst; intuition.
     rewrite <- H1 in H2; intuition.
     rewrite <- H1 in H2; intuition.
-  Qed.
+  Qed. *)
 End FMapExtensions_fun.
 
 Module FMapExtensions (M: WS) := FMapExtensions_fun M.E M.

@@ -154,6 +154,7 @@ Time Eval simpl in (bfind IndexedAlbums (None, (None, (None, [TupleEqualityMatch
 
 Require Import EnsembleListEquivalence QueryStructure InsertQSSpecs AdditionalLemmas.
 
+(* Need to switch to a different equivalence relation. 
 Lemma binsert_correct_DB {TContainer TSearchTerm} :
   forall db_schema qs index (store: TContainer),
   forall {store_is_bag: Bag TContainer _ TSearchTerm},
@@ -164,13 +165,14 @@ Lemma binsert_correct_DB {TContainer TSearchTerm} :
       EnsembleListEquivalence 
         (GetUnConstrRelation
            (UpdateUnConstrRelation db_schema qs index 
-                                   (RelationInsert tuple (GetUnConstrRelation qs index))) index)
+                                   (EnsembleInsert tuple (GetUnConstrRelation qs index))) index)
         (benumerate (binsert store tuple)).
 Proof.
   intros * equiv ** ;
   apply (ensemble_list_equivalence_set_eq_morphism get_update_unconstr_iff);
-  unfold RelationInsert, EnsembleListEquivalence, Ensembles.In in *;
+  unfold EnsembleInsert, EnsembleListEquivalence, Ensembles.In in *.
+  intuition.
   setoid_rewrite (@binsert_enumerate _ _ _ store_is_bag _);
   simpl; setoid_rewrite <- equiv;
   intuition.
-Qed.
+Qed. *)

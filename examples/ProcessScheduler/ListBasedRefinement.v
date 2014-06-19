@@ -23,7 +23,7 @@ Section ListBasedRefinement.
       refine
         ({b |
           decides b
-                  (forall tup' : Tuple,
+                  (forall tup' : IndexedTuple,
               GetUnConstrRelation c PROCESSES tup' ->
               tupleAgree
                 <PID_COLUMN :: n, STATE_COLUMN :: SLEEPING,
@@ -49,7 +49,7 @@ Section ListBasedRefinement.
       refine
         ({b |
           decides b
-                  (forall tup' : Tuple,
+                  (forall tup' : IndexedTuple,
               GetUnConstrRelation c PROCESSES tup' ->
               tupleAgree tup'
                 <PID_COLUMN :: n, STATE_COLUMN :: SLEEPING,
@@ -68,6 +68,8 @@ Section ListBasedRefinement.
     omega.
   Qed.
 
+  Opaque Query_For.
+
   Definition ProcessScheduler :
     Sharpened ProcessSchedulerSpec.
   Proof.
@@ -84,10 +86,11 @@ Section ListBasedRefinement.
       unfold SimpleDB_equivalence in *; split_and; subst.
       setoid_rewrite refineEquiv_pick_ex_computes_to_and.
       simplify with monad laws.
-      setoid_rewrite Equivalent_UnConstr_In_EnsembleListEquivalence;
-        simpl; eauto.
-      setoid_rewrite Equivalent_List_In_Where; simpl.
-      setoid_rewrite refine_For_List_Return; simplify with monad laws.
+      rewrite refine_List_Query_In; eauto.
+      rewrite refine_List_Query_In_Where.
+      rewrite refine_List_For_Query_In_Return;
+        simplify with monad laws; simpl.
+
       rewrite refineEquiv_pick_pair with
       (PA := fun a => (forall a0 : Process, List.In a0 (snd a) -> fst a > a0 PID)
                       /\ _ (snd a)).
@@ -105,13 +108,15 @@ Section ListBasedRefinement.
       unfold SimpleDB_equivalence in *; split_and.
       setoid_rewrite refineEquiv_pick_ex_computes_to_and.
       simplify with monad laws.
-      setoid_rewrite Equivalent_UnConstr_In_EnsembleListEquivalence;
-        simpl; eauto.
-      setoid_rewrite Equivalent_List_In_Where; simpl.
-      setoid_rewrite refine_For_List_Return; simplify with monad laws.
+
+      rewrite refine_List_Query_In; eauto.
+      rewrite refine_List_Query_In_Where.
+      rewrite refine_List_For_Query_In_Return;
+        simplify with monad laws; simpl.
+
       simpl; rewrite refineEquiv_pick_pair with
       (PA := fun a : SimpleDB => (forall a0 : Process, List.In a0 (snd a) -> fst a > a0 PID)
-                      /\ EnsembleListEquivalence.EnsembleListEquivalence
+                      /\ EnsembleIndexedListEquivalence
         (c!"processes")%QueryImpl (snd a)).
       rewrite refineEquiv_pick_pair_fst_dep with
       (PA := fun a => (forall a0 : Process, List.In a0 (snd a) -> (fst a) > a0 PID)).
@@ -132,19 +137,25 @@ Section ListBasedRefinement.
       repeat (rewrite refine_pick_val;
               [simplify with monad laws
               | apply EnsembleListEquivalence_Empty]).
-      rewrite refine_pick_val.
-      simplify with monad laws;
+      rewrite refine_pick_val; simpl;
+      eauto using EnsembleIndexedListEquivalence_Empty.
+      simplify with monad laws.
+      rewrite refine_pick_val with (A := nat) (a := 0).
+      simplify with monad laws; 
       subst_body; higher_order_1_reflexivity.
-      instantiate (1 := 0); simpl; intuition.
+      simpl; intros; intuition.
     }
 
     hone method SPAWN.
     {
       unfold SimpleDB_equivalence in *; split_and.
+      setoid_rewrite refineEquiv_pick_ex_computes_to_bind_and.
+      rewrite refine_pick_val with (A := nat) (a := fst r_n).
+      simplify with monad laws.
       setoid_rewrite refineEquiv_split_ex.
       setoid_rewrite refineEquiv_pick_computes_to_and.
       simplify with monad laws.
-      setoid_rewrite (refine_pick_val _ (a := fst r_n)); eauto.
+      setoid_rewrite (refine_pick_val _ (a := length (snd r_n))); eauto.
       simplify with monad laws.
       setoid_rewrite refine_decision; eauto; try simplify with monad laws.
       setoid_rewrite refine_decision'; eauto; try simplify with monad laws.
@@ -154,7 +165,8 @@ Section ListBasedRefinement.
                       /\ _ (snd a)).
       rewrite refineEquiv_pick_pair_fst_dep with
       (PA := fun a => forall t : Tuple, List.In t (snd a) -> fst a > t PID).
-      setoid_rewrite ImplementListInsert_eq; eauto;
+      simplify with monad laws.
+      setoid_rewrite (@ImplementListInsert_eq ProcessSchedulerSchema); eauto;
       simplify with monad laws.
       setoid_rewrite (refine_pick_val _ (a := S (fst r_n))); eauto.
       simplify with monad laws.
@@ -165,14 +177,22 @@ Section ListBasedRefinement.
       subst; unfold BuildTuple, PID; simpl; omega.
       subst; unfold BuildTuple, PID, PID_COLUMN, GetAttribute in *;
       simpl; generalize (H1 _ H3); simpl; omega.
-      intros; eapply H1; eapply H2; eauto.
-      intros; eapply H1; eapply H2; eauto.
+      destruct H2 as [_ [l [l_eq [NoDup l_equiv ]]]]; subst;
+      intros; eapply H1; rewrite <- l_eq; eapply in_map; eapply l_equiv;
+      eauto.
+      destruct H2 as [_ [l [l_eq [NoDup l_equiv ]]]]; subst;
+      intros; eapply H1; rewrite <- l_eq; eapply in_map; eapply l_equiv;
+      eauto.
       unfold not, BuildTuple, PID, PID_COLUMN in *; intros; subst; simpl.
-      unfold EnsembleListEquivalence.EnsembleListEquivalence in *;
-        generalize (H1 _ ((proj1 (H2 _)) H)).
-      rewrite H3.
-      unfold GetAttribute; omega.
-    } 
+      destruct H2 as [tup_le _]; subst.
+      apply tup_le in H; destruct tup; simpl in *; subst.
+      eapply lt_irrefl; eapply H.
+      unfold not; intros; destruct H2 as [_ [l [l_eq [NoDup l_equiv ]]]]; subst.
+      rewrite H3 in H1; pose proof (H1 (indexedTuple tup)); rewrite <- l_eq in *.
+      eapply lt_irrefl; eapply H2.
+      eapply in_map_iff; eexists; split; eauto.
+      eapply l_equiv; eauto.
+    }
 
     finish sharpening.
   Defined.

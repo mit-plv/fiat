@@ -31,12 +31,27 @@ Ltac simplify_trivial_SatisfiesSchemaConstraints :=
   try setoid_rewrite decides_2_True; reflexivity.
 
 Ltac simplify_trivial_SatisfiesCrossRelationConstraints :=
-  simpl map; (* this shaves off 3-9 seconds in some cases *)
-  simpl; try setoid_rewrite decides_True;
-  try setoid_rewrite decides_3_True;
-  repeat setoid_rewrite refineEquiv_bind_unit;
-  unfold If_Then_Else;
-  try setoid_rewrite refine_if_bool_eta; reflexivity.
+  simpl map; simpl;
+    repeat match goal with
+             | |- context [if _ then ret true else ret false] =>
+               setoid_rewrite refine_if_bool_eta at 1
+             | |- refine (Bind (Pick (fun b => decides b True)) _) _ =>
+             etransitivity; [ apply refine_bind;
+                              [ apply decides_True
+                              | unfold pointwise_relation;
+                                intro; higher_order_1_reflexivity ]
+                            | rewrite refineEquiv_bind_unit at 1;
+                              unfold If_Then_Else ]
+             | |- refine (Bind (Pick (fun b' => decides b' (forall _ _ _, True))) _ ) _ =>
+               etransitivity;
+                 [ apply refine_bind;
+                   [ apply decides_3_True
+                   | unfold pointwise_relation;
+                     intro; higher_order_1_reflexivity ]
+                 | rewrite refineEquiv_bind_unit at 1;
+                   unfold If_Then_Else ]
+
+    end.
 
 Tactic Notation "remove" "trivial" "insertion" "checks" :=
   (* Move all the binds we can outside the exists / computes
@@ -60,29 +75,23 @@ Tactic Notation "remove" "trivial" "insertion" "checks" :=
             match goal with
                 H : DropQSConstraints_AbsR _ ?r_n
                 |- context [(Insert ?n into ?R)%QuerySpec] =>
-                setoid_rewrite refineEquiv_pick_ex_computes_to_bind_and;
-                  apply refine_bind;
-                  [unfold freshIdx; simpl; reflexivity
-                  | unfold pointwise_relation;
-                    let idx := fresh in
-                    intro idx;
-                      let H := fresh in
+                let H' := fresh in
                 (* If we try to eapply [QSInsertSpec_UnConstr_refine] directly
                    after we've drilled under a bind, this tactic will fail because
                    typeclass resolution breaks down. Generalizing and applying gets
                    around this problem for reasons unknown. *)
-
                       generalize (@QSInsertSpec_UnConstr_refine
-                                    _ r_n {|bindex := R |}
-                                    {| tupleIndex := idx;
-                                       indexedTuple := n |}) as H;
-                        intro H; apply H;
+                                    _ r_n {|bindex := R |} n) as H';
+                        intro H'; apply H';
                         [  simplify_trivial_SatisfiesSchemaConstraints
                          | simplify_trivial_SatisfiesSchemaConstraints
                          | simplify_trivial_SatisfiesSchemaConstraints
-                         | simplify_trivial_SatisfiesCrossRelationConstraints
-                         | simplify_trivial_SatisfiesCrossRelationConstraints
-                         | eauto ]]
+                         | simplify_trivial_SatisfiesCrossRelationConstraints;
+                           reflexivity
+                         | intros;
+                           simplify_trivial_SatisfiesCrossRelationConstraints;
+                           higher_order_1_reflexivity
+                         | eauto ]
             end
   | simplify with monad laws;
     try rewrite <- GetRelDropConstraints;
@@ -90,7 +99,7 @@ Tactic Notation "remove" "trivial" "insertion" "checks" :=
              | H : DropQSConstraints_AbsR ?qs ?uqs |- _ =>
                rewrite H in *
            end
-    ] .
+    ].
 
 Tactic Notation "Split" "Constraint" "Checks" :=
   repeat (let b := match goal with

@@ -92,6 +92,18 @@ Section BookStoreExamples.
     (* Step 1: Drop the constraints on the tables. From the perspective
       of a client of a sharpened ADT the invariants will still hold,
       since ADT refinement preserves the simulation relation. *)
+
+  match goal with
+      |- context [@BuildADT (QueryStructure ?Rep) _ _ _ _] =>
+      hone representation using (@DropQSConstraints_AbsR Rep)
+  end.
+
+  drop constraints from insert "PlaceOrder".
+  drop constraints from insert "AddBook".
+  drop constraints from query "GetTitles".
+  drop constraints from query "NumOrders".
+  idtac.
+
     start honing QueryStructure.
 
     hone representation using BookStoreListImpl_AbsR.

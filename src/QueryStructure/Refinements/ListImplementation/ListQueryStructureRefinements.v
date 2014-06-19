@@ -11,6 +11,8 @@ Definition EnsembleIndexedListEquivalence {heading}
                lt (tupleIndex tup)  (length l))
   /\ UnIndexedEnsembleListEquivalence R l.
 
+Print UnIndexedEnsembleListEquivalence.
+
 Instance EnsembleListEquivalence_AbsR {heading}:
   @UnConstrRelationAbsRClass (@IndexedTuple heading)
                              (list (@Tuple heading)) :=
