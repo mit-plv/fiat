@@ -16,6 +16,23 @@ Instance EnsembleListEquivalence_AbsR {heading}:
                              (list (@Tuple heading)) :=
   {| UnConstrRelationAbsR := @EnsembleIndexedListEquivalence heading|}.
 
+
+Lemma EnsembleIndexedListEquivalence_lift_property {heading} {P: @Tuple heading -> Prop} :
+  forall (sequence: list (@Tuple heading)) (ensemble: @IndexedTuple heading -> Prop),
+    EnsembleIndexedListEquivalence ensemble sequence ->
+    ((forall item,
+        List.In item sequence -> P item) <->
+     (forall item,
+        Ensembles.In _ ensemble item -> P (indexedTuple item))).
+Proof.
+  intros * equiv;
+  destruct equiv as [_ [ l' (is_map & _ & equiv) ] ];
+  subst.
+  setoid_rewrite equiv.
+  setoid_rewrite in_map_iff.
+  split; intros; firstorder; subst; intuition. 
+Qed.
+
   Lemma EnsembleListEquivalence_Empty :
     forall qsSchema Ridx,
       EnsembleListEquivalence

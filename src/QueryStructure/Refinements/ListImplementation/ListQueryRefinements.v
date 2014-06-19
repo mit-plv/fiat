@@ -195,6 +195,25 @@ Proof.
   reflexivity.
 Qed.
 
+Lemma refine_List_For_Query_In_Return_Permutation :
+  forall (QueryT ResultT : Type) (l : list QueryT) (proj : QueryT -> ResultT),
+    refine
+      (For (List_Query_In l (fun tup : QueryT => Return (proj tup))))%QuerySpec
+      (Pick (fun l' => Permutation (map proj l) l')).
+Proof.
+  intros; rewrite refine_List_Query_In_Return;
+  unfold Query_For; econstructor; eauto.
+Qed.
+
+Lemma refine_Permutation_Reflexivity :
+  forall (ResultT : Type) (l : list ResultT),
+    refine
+      (Pick (fun l' => Permutation l l'))
+      (ret l).
+Proof.
+  constructor; inversion_by computes_to_inv; subst; eauto.
+Qed.
+
       (*Lemma Equivalent_Join_Lists {ReturnT TraceT heading}
       qsSchema qs R (l : list (@Tuple heading)) l'
       (bod : Tuple -> Tuple -> Ensemble (ReturnT * TraceT))
