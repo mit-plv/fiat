@@ -152,27 +152,56 @@ Time Eval simpl in (bfind IndexedAlbums (None, (None, (None, [TupleEqualityMatch
 *)
 *)
 
-Require Import EnsembleListEquivalence QueryStructure InsertQSSpecs AdditionalLemmas.
+Require Import EnsembleListEquivalence GeneralQueryRefinements ListQueryStructureRefinements QueryStructure InsertQSSpecs AdditionalLemmas AdditionalPermutationLemmas Arith.
 
-(* Need to switch to a different equivalence relation. 
 Lemma binsert_correct_DB {TContainer TSearchTerm} :
   forall db_schema qs index (store: TContainer),
   forall {store_is_bag: Bag TContainer _ TSearchTerm},
-    EnsembleListEquivalence 
+    EnsembleIndexedListEquivalence 
       (GetUnConstrRelation qs index) 
-      (benumerate store) ->
+      (benumerate (Bag := store_is_bag) store) ->
     forall tuple,
-      EnsembleListEquivalence 
+      EnsembleIndexedListEquivalence 
         (GetUnConstrRelation
            (UpdateUnConstrRelation db_schema qs index 
-                                   (EnsembleInsert tuple (GetUnConstrRelation qs index))) index)
-        (benumerate (binsert store tuple)).
+                                   (EnsembleInsert 
+                                      {| tupleIndex := Datatypes.length (benumerate store);
+                                         indexedTuple := tuple |} 
+                                      (GetUnConstrRelation qs index))) index)
+        (benumerate (binsert (Bag := store_is_bag) store tuple)).
 Proof.
-  intros * equiv ** ;
-  apply (ensemble_list_equivalence_set_eq_morphism get_update_unconstr_iff);
-  unfold EnsembleInsert, EnsembleListEquivalence, Ensembles.In in *.
-  intuition.
-  setoid_rewrite (@binsert_enumerate _ _ _ store_is_bag _);
-  simpl; setoid_rewrite <- equiv;
-  intuition.
-Qed. *)
+  intros.
+  unfold EnsembleIndexedListEquivalence, UnIndexedEnsembleListEquivalence, EnsembleListEquivalence in *.
+
+  setoid_rewrite get_update_unconstr_iff.
+  setoid_rewrite in_ensemble_insert_iff.
+  setoid_rewrite NoDup_modulo_permutation.
+  split; intros.
+
+  rewrite binsert_enumerate_length;      
+    destruct H0; subst;
+    [ | apply lt_S]; 
+    intuition.
+
+  destruct H as (indices & [ l' (map & nodup & equiv) ]).
+
+  destruct (permutation_map_cons indexedTuple (binsert_enumerate tuple store)
+                                 {| tupleIndex := Datatypes.length (benumerate store);
+                                    indexedTuple := tuple |} l' eq_refl map)
+    as [ l'0 (map' & perm) ].
+
+  exists l'0.
+  split; [ assumption | split ].
+
+  eexists; split; try apply perm.
+  
+  constructor;
+    [ rewrite <- equiv; intro abs; 
+      apply indices in abs; simpl in abs; 
+      eapply lt_refl_False; eauto | assumption ].
+  
+  setoid_rewrite perm.
+  setoid_rewrite equiv.
+  setoid_rewrite eq_sym_iff at 1.
+  reflexivity.
+Qed.

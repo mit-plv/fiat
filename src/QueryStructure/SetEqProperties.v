@@ -99,38 +99,6 @@ Proof.
   apply IsSetEqSafe_filter.
 Qed.
 
-Require Import EnsembleListEquivalence.
-Hint Resolve Permutation_in.
-
-Lemma NoDup_Permutation {A} :
-  forall (l l' : list A),
-    Permutation l l' -> NoDup l -> NoDup l'.
-Proof.
-  intros; induction H.
-  + econstructor.
-  + inversion H0; subst; econstructor; eauto.
-    unfold not; intros; apply H3; apply Permutation_sym in H;
-    eapply Permutation_in; eauto.
-  + inversion H0; subst; inversion H3; subst; repeat econstructor; eauto.
-    * unfold not; intros; destruct H; eauto.
-      apply H2; econstructor; eauto.
-    * unfold not; intros; apply H2; econstructor 2; eauto.
-  + eauto.
-Qed.
-
-Add Parametric Morphism {A: Type} (ens: A -> Prop) :
-  (EnsembleListEquivalence ens)
-    with signature (@Permutation A ==> @iff)
-      as ensemble_list_equivalence_morphism.
-Proof.
-  firstorder; try eauto using NoDup_Permutation.
-  eapply Permutation_in; eauto; eapply H1; eauto.
-  eapply Permutation_sym in H; eapply H1; eapply Permutation_in; eauto.
-  apply Permutation_sym in H; try eauto using NoDup_Permutation.
-  apply Permutation_sym in H; eapply Permutation_in; eauto; eapply H1; eauto.
-  eapply H1; eapply Permutation_in; eauto.
-Qed.
-
 Add Parametric Morphism {A: Type} :
   flatten
     with signature (@SetEq (list A) ==> @SetEq A)

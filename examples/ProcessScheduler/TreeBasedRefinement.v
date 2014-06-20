@@ -8,7 +8,7 @@ Require Import String Omega List FunctionalExtensionality Ensembles
         ListQueryStructureRefinements.
 
 Require Import BagsOfTuples CachingBags Bool.
-Require Import DBSchema SetEq AdditionalLemmas.
+Require Import DBSchema AdditionalLemmas.
 Require Export ADTRefinement.BuildADTRefinements.
 
 Unset Implicit Arguments.
@@ -33,7 +33,7 @@ Section TreeBasedRefinement.
 
   Tactic Notation "lift" "list" "property" constr(prop) "as" ident(name) :=
     pose proof prop as name;
-    setoid_rewrite EnsembleListEquivalence_lift_property in name;
+    setoid_rewrite EnsembleIndexedListEquivalence_lift_property in name;
     [ | eassumption].
 
   Tactic Notation "call" "eapply" constr(hypothesis) "after" tactic1(preprocessor) :=
@@ -69,6 +69,11 @@ Section TreeBasedRefinement.
         end
     end.
 
+  Opaque Query_For.
+
+  Definition equivalence (set_db: UnConstrQueryStructure ProcessSchedulerSchema) (db: StorageType) :=
+    EnsembleIndexedListEquivalence (GetUnConstrRelation set_db PROCESSES) (benumerate db).
+
   Lemma NeatScheduler :
     Sharpened ProcessSchedulerSpec.
   Proof.
@@ -76,43 +81,39 @@ Section TreeBasedRefinement.
 
     unfold ForAll_In; start honing QueryStructure.
 
-    Definition equivalence := fun (set_db: UnConstrQueryStructure ProcessSchedulerSchema)
-                                   (db: StorageType) =>
-      EnsembleListEquivalence (GetUnConstrRelation set_db PROCESSES) (benumerate db).
-
     hone representation using equivalence.
 
     hone constructor INIT. {
       unfold equivalence.
 
-      repeat setoid_rewrite refineEquiv_pick_ex_computes_to_and.
-      repeat setoid_rewrite refineEquiv_pick_eq'. (* Replace the pick over the unconstrained query structure with call to dropConstraints *)
+      repeat setoid_rewrite refineEquiv_pick_ex_computes_to_and;
+      repeat setoid_rewrite refineEquiv_pick_eq';
       simplify with monad laws.
 
-      rewrite (refine_pick_val' bempty) by intuition (apply EnsembleListEquivalence_Empty).
+      rewrite (refine_pick_val' bempty) by intuition (apply EnsembleIndexedListEquivalence_Empty).
       subst_body; higher_order_1_reflexivity.
     }
 
     hone method ENUMERATE. {
       unfold equivalence in H.
 
-      setoid_rewrite refineEquiv_pick_ex_computes_to_and.
-      setoid_rewrite refineEquiv_pick_pair.
-      setoid_rewrite refineEquiv_pick_eq'.
-      simplify with monad laws. (* TODO: Why does replacing . with ; break simpl? *)
+      setoid_rewrite refineEquiv_pick_ex_computes_to_and;
+      setoid_rewrite refineEquiv_pick_pair;
+      setoid_rewrite refineEquiv_pick_eq';
+      simplify with monad laws; cbv beta;
       simpl.
 
-      rewrite Equivalent_UnConstr_In_EnsembleListEquivalence by eassumption.
-      setoid_rewrite Equivalent_List_In_Where.
+      rewrite refine_List_Query_In; eauto.
+      rewrite refine_List_Query_In_Where.
+      rewrite refine_List_For_Query_In_Return_Permutation.
 
       rewrite (filter_by_equiv _ (bfind_matcher (Bag := StorageIsBag) (Some n, (None, []))))
         by prove_observational_eq.
-
       setoid_rewrite (bfind_correct _).
-      setoid_rewrite refine_For_List_Return.
+      setoid_rewrite refine_Permutation_Reflexivity.
       simplify with monad laws.
 
-      rewrite refine_pick_val by eauto.
+      rewrite refine_pick_val by eassumption.
       simplify with monad laws.
       finish honing.
     }
@@ -129,20 +130,21 @@ Section TreeBasedRefinement.
     hone method GET_CPU_TIME. {
       unfold equivalence in H.
 
-      setoid_rewrite refineEquiv_pick_ex_computes_to_and.
-      setoid_rewrite refineEquiv_pick_pair.
-      setoid_rewrite refineEquiv_pick_eq'.
-      simplify with monad laws.
+      setoid_rewrite refineEquiv_pick_ex_computes_to_and;
+      setoid_rewrite refineEquiv_pick_pair;
+      setoid_rewrite refineEquiv_pick_eq';
+      simplify with monad laws; cbv beta;
       simpl.
 
-      rewrite Equivalent_UnConstr_In_EnsembleListEquivalence by eassumption.
-      rewrite Equivalent_List_In_Where.
+      rewrite refine_List_Query_In; eauto.
+      rewrite refine_List_Query_In_Where.
+      rewrite refine_List_For_Query_In_Return_Permutation.
 
       rewrite (filter_by_equiv _ (bfind_matcher (Bag := StorageIsBag) (None, (Some n, []))))
         by prove_observational_eq.
 
       setoid_rewrite (bfind_correct _).
-      rewrite refine_For_List_Return.
+      setoid_rewrite refine_Permutation_Reflexivity.
       simplify with monad laws.
 
       rewrite refine_pick_val by eassumption.
@@ -155,25 +157,25 @@ Section TreeBasedRefinement.
 
       lift list property (assert_cache_property (cfresh_cache r_n) max_cached_neq_projected _) as cache.
     
-      setoid_rewrite refineEquiv_pick_ex_computes_to_and.
-      setoid_rewrite refineEquiv_pick_pair.
-      setoid_rewrite refineEquiv_pick_eq'.
-      simplify with monad laws.
+      setoid_rewrite refineEquiv_pick_ex_computes_to_and;
+      setoid_rewrite refineEquiv_pick_pair;
+      setoid_rewrite refineEquiv_pick_eq';
+      simplify with monad laws; cbv beta;
       simpl.
 
       rewrite refine_pick_val by eassumption.
       simplify with monad laws.
-
-      rewrite (refine_pick_val' true) by prove trivial constraints.
+ 
+      rewrite refine_pick_val by eauto using EnsembleIndexedListEquivalence_pick_new_index.
       simplify with monad laws.
 
       rewrite (refine_pick_val' true) by prove trivial constraints.
       simplify with monad laws.
 
-      unfold equivalence.
+      rewrite (refine_pick_val' true) by prove trivial constraints.
+      simplify with monad laws.
 
-      rewrite refine_pick_val by (apply binsert_correct_DB; eassumption).
-
+      rewrite refine_pick_val by (apply binsert_correct_DB; eauto).
       simplify with monad laws.
 
       finish honing.

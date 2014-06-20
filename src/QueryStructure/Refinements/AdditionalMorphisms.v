@@ -54,6 +54,14 @@ Qed.
 
 Require Import Permutation.
 
+Add Parametric Morphism {A} :
+  (@List.length A)
+    with signature (@Permutation A ==> eq)
+      as list_length_permutation_eq_morphism.
+Proof.
+  apply Permutation_length.
+Qed.
+
 Add Parametric Morphism {A B: Type} :
   (@List.map A B)
     with signature (pointwise_relation A (@eq B) ==> @Permutation A ==> @Permutation B)
@@ -174,5 +182,20 @@ Proof.
   intros.
   rewrite ?flat_map_flatten.
   apply flatten_map_permutation_permutation_permutation_morphism; eauto.
+Qed.
+
+Require Import AdditionalPermutationLemmas.
+
+Add Parametric Morphism {A: Type} (ens: A -> Prop) :
+  (EnsembleListEquivalence ens)
+    with signature (@Permutation A ==> @iff)
+      as ensemble_list_equivalence_morphism.
+Proof.
+  firstorder; try eauto using NoDup_Permutation.
+  eapply Permutation_in; eauto; eapply H1; eauto.
+  eapply Permutation_sym in H; eapply H1; eapply Permutation_in; eauto.
+  apply Permutation_sym in H; try eauto using NoDup_Permutation.
+  apply Permutation_sym in H; eapply Permutation_in; eauto; eapply H1; eauto.
+  eapply H1; eapply Permutation_in; eauto.
 Qed.
 

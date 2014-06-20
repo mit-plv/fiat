@@ -33,6 +33,16 @@ Proof.
   split; intros; firstorder; subst; intuition.
 Qed.
 
+Lemma EnsembleIndexedListEquivalence_pick_new_index :
+  forall {heading} ens seq,
+    EnsembleIndexedListEquivalence ens seq ->
+    forall (tup: @IndexedTuple heading),
+      Ensembles.In _ ens tup -> tupleIndex tup <> Datatypes.length seq.
+Proof.
+  intros * (indexes & equiv) ** ;
+  apply le_neq_impl; eauto.
+Qed.
+
   Lemma EnsembleListEquivalence_Empty :
     forall qsSchema Ridx,
       EnsembleListEquivalence
