@@ -152,7 +152,20 @@ Time Eval simpl in (bfind IndexedAlbums (None, (None, (None, [TupleEqualityMatch
 *)
 *)
 
-Require Import EnsembleListEquivalence GeneralQueryRefinements ListQueryStructureRefinements QueryStructure InsertQSSpecs AdditionalLemmas AdditionalPermutationLemmas Arith.
+Require Import QueryStructureNotations ListImplementation.
+Require Import AdditionalLemmas AdditionalPermutationLemmas Arith.
+
+Lemma bempty_correct_DB :
+  forall {TContainer TSearchTerm : Type} {db_schema : QueryStructureSchema}
+         {index : BoundedString} {store_is_bag : Bag TContainer Tuple TSearchTerm},
+    EnsembleIndexedListEquivalence
+      (GetUnConstrRelation (DropQSConstraints (QSEmptySpec db_schema)) index)
+      (benumerate bempty).
+Proof.
+  intros.
+  rewrite benumerate_empty_eq_nil.
+  apply EnsembleIndexedListEquivalence_Empty.
+Qed.
 
 Lemma binsert_correct_DB {TContainer TSearchTerm} :
   forall db_schema qs index (store: TContainer),
