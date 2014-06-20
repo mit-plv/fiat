@@ -163,7 +163,7 @@ Lemma binsert_correct_DB {TContainer TSearchTerm} :
     forall tuple,
       EnsembleIndexedListEquivalence 
         (GetUnConstrRelation
-           (UpdateUnConstrRelation db_schema qs index 
+           (@UpdateUnConstrRelation db_schema qs index 
                                    (EnsembleInsert 
                                       {| tupleIndex := Datatypes.length (benumerate store);
                                          indexedTuple := tuple |} 

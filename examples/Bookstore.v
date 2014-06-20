@@ -142,9 +142,9 @@ Section BookStoreExamples.
                                                 {| bindex := R' |}
                                                 {| bindex := R |} n c)) as H; intros; setoid_rewrite H
       end; try reflexivity; try eassumption.
-      congruence.
+      subst_body; congruence.
       unfold pointwise_relation; intros.
-      setoid_rewrite (@ImplementListInsert_eq); eauto.
+      subst_strings; setoid_rewrite (@ImplementListInsert_eq); eauto.
       simplify with monad laws.
       higher_order_1_reflexivity.
       simplify with monad laws.
@@ -203,7 +203,7 @@ Section BookStoreExamples.
       simplify with monad laws; simpl.
       Split Constraint Checks.
       (* TODO move this back to a tactic *)
-      setoid_rewrite (@ImplementListInsert_eq); eauto.
+      subst_strings; setoid_rewrite (@ImplementListInsert_eq); eauto.
       simplify with monad laws.
       match goal with
           |- context
@@ -242,7 +242,7 @@ Section BookStoreExamples.
       setoid_rewrite refineEquiv_pick_ex_computes_to_and.
       simplify with monad laws.
       rewrite refine_List_Query_In; eauto.
-      rewrite refine_List_Query_In_Where.
+      subst_strings; rewrite refine_List_Query_In_Where.
       rewrite refine_List_For_Query_In_Return;
         simplify with monad laws; simpl.
 
@@ -262,6 +262,7 @@ Section BookStoreExamples.
       unfold BookStoreListImpl_AbsR in H; split_and.
       setoid_rewrite refineEquiv_pick_ex_computes_to_and.
       simplify with monad laws.
+      subst_strings.
       rewrite refine_List_Query_In; eauto.
       rewrite refine_Join_List_Query_In; eauto.
       rewrite refine_List_Query_In_Where.
@@ -280,8 +281,6 @@ Section BookStoreExamples.
   }
 
     implement_empty_list "InitBookstore" BookStoreListImpl_AbsR.
-
-    (* Step 4: Profit. :) *)
 
     finish sharpening.
   Defined.

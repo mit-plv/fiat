@@ -1,7 +1,8 @@
 Require Import String List Sorting.Permutation
-        FunctionalExtensionality Ensembles Common
+        FunctionalExtensionality ADTNotation Ensembles Common
         Computation BuildADTRefinements
-        QueryStructureSchema QueryQSSpecs QueryStructure EnsembleListEquivalence.
+        QueryStructureSchema QueryQSSpecs QueryStructure
+        EnsembleListEquivalence.
 
 Add Parametric Morphism ResultT
 : (@Query_For ResultT)
@@ -249,18 +250,38 @@ Proof.
   simplify with monad laws; f_equiv.
 Qed.
 
+Ltac subst_strings :=
+  repeat match goal with
+           | [ H : string |- _ ] => subst H
+           | [ H : BoundedIndex _ |- _ ] => subst H
+         end.
+
+Ltac pose_string_ids :=
+  subst_strings;
+  repeat match goal with
+           | |- context [String ?R ?R'] =>
+             let str := fresh "StringId" in
+             set (String R R') as str in *
+           | |- context [ ``(?R) ] =>
+             let idx := fresh in
+             set ``(R) as fresh in *
+         end.
+
 Tactic Notation "drop" "constraints" "from" "query" constr(methname) :=
   hone method methname;
-  [ setoid_rewrite refineEquiv_pick_ex_computes_to_and;
-    setoid_rewrite DropQSConstraintsQuery_In;
-    repeat setoid_rewrite DropQSConstraintsQuery_In_UnderBinder;
-    setoid_rewrite refineEquiv_pick_pair;
-    setoid_rewrite refineEquiv_pick_eq';
-    simplify with monad laws; cbv beta; simpl;
+  [       setoid_rewrite refineEquiv_pick_ex_computes_to_and;
+      subst_strings; setoid_rewrite DropQSConstraintsQuery_In;
+      simpl; repeat setoid_rewrite DropQSConstraintsQuery_In_UnderBinder;
+      simpl; pose_string_ids;
+      setoid_rewrite refineEquiv_pick_pair; simpl;
+      simplify with monad laws;
+      setoid_rewrite refineEquiv_pick_eq';
+      simplify with monad laws; cbv beta; simpl;
     match goal with
         H : DropQSConstraints_AbsR _ _ |- _ =>
         unfold DropQSConstraints_AbsR in H; rewrite H
-    end; finish honing | ].
+    end;
+    finish honing | ].
 
 (*
 Require Import String List FunctionalExtensionality Ensembles Common

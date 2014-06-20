@@ -1255,61 +1255,6 @@ Arguments GetNRelSchemaHeading  _ _ / .
 Arguments Ensemble_BoundedIndex_app_comm_cons  _ _ _ _ _ _ / .
 Arguments id  _ _ / .
 
-  (* When we insert a tuple into a relation which has another relation has
-     a foreign key into, we need to show that we haven't messed up any
-     references (which is, of course, trivial. We should bake this into
-     our the [QSInsertSpec_refine'] refinement itself by filtering out the
-     irrelevant constraints somehow, but for now we can use the following
-     tactic to rewrite them away. *)
-
-  Ltac remove_trivial_insertion_constraints :=
-      match goal with
-          |- context[EnsembleInsert _ (GetUnConstrRelation _ _) ] =>
-          match goal with
-              AbsR : DropQSConstraints_AbsR ?or ?nr
-              |- context [
-                     Pick
-                       (fun b =>
-                          decides b
-                                  (forall tup' ,
-                           GetUnConstrRelation ?r ?Ridx tup' ->
-                           exists tup2,
-                             EnsembleInsert ?tup (GetUnConstrRelation ?r ?Ridx') tup2 /\
-                             (indexedTuple tup') ?attr = (indexedTuple tup2) ?attr'))] =>
-              let neq := fresh in
-              assert (Ridx <> Ridx') by congruence;
-              let refine_trivial := fresh in
-              assert
-                (refine {b' |
-                         decides b'
-                                 (forall tup',
-                                    (GetUnConstrRelation r Ridx) tup' ->
-                                    exists
-                                      tup2,
-                                      EnsembleInsert tup (GetUnConstrRelation r Ridx') tup2 /\
-                                      (indexedTuple tup') attr = (indexedTuple tup2) attr')} (ret true))
-                as refine_trivial;
-                [ let v := fresh in
-                  let Comp_v := fresh in
-                  intros v Comp_v;
-                    apply computes_to_inv in Comp_v;
-                    rewrite <- AbsR; subst;
-                    repeat rewrite GetRelDropConstraints;
-                    let tup' := fresh in
-                    let In_tup' := fresh in
-                    econstructor; simpl map; simpl; intros tup' In_tup';
-                    unfold EnsembleInsert;
-                    let H' := fresh in
-                    pose proof (@crossConstr _ or Ridx Ridx' tup' neq In_tup') as H';
-                      simpl map in *; simpl in *;
-                      destruct H' as [? [? ?]]; eauto |
-                  setoid_rewrite refine_trivial;
-                    clear refine_trivial;
-                    simplify with monad laws ]
-
-          end
-      end.
-
 Create HintDb refine_keyconstraints discriminated.
 (*Hint Rewrite refine_Any_DecideableSB_True : refine_keyconstraints.*)
 
