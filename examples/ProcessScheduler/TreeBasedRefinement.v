@@ -103,7 +103,7 @@ Section TreeBasedRefinement.
       simplify with monad laws; cbv beta;
       simpl.
 
-      rewrite refine_List_Query_In; eauto.
+      rewrite refine_List_Query_In by eassumption.
       rewrite refine_List_Query_In_Where.
       rewrite refine_List_For_Query_In_Return_Permutation.
 
