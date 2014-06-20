@@ -9,9 +9,9 @@ Require Import List String FunctionalExtensionality Ensembles
 
 Record Schema :=
   { schemaHeading : Heading;
-    schemaConstraints: @Tuple schemaHeading
-                       -> @Tuple schemaHeading
-                       -> Prop
+    schemaConstraints: option (@Tuple schemaHeading
+                               -> @Tuple schemaHeading
+                               -> Prop)
   }.
 
 (* A notation for functional dependencies. *)
@@ -29,16 +29,19 @@ Notation "[ attr1 ; .. ; attr2 ] " :=
 
 Notation "'attributes' attrlist1 'depend' 'on' attrlist2 " :=
   (fun tup1 tup2 : @Tuple _ =>
-       tupleAgree tup1 tup2 attrlist2%SchemaConstraints ->
-       tupleAgree tup1 tup2 attrlist1%SchemaConstraints)
+          tupleAgree tup1 tup2 attrlist2%SchemaConstraints ->
+          tupleAgree tup1 tup2 attrlist1%SchemaConstraints)
   : SchemaConstraints_scope.
 
 (* Notations for Schemas. *)
 
 Notation "'schema' headings 'where' constraints" :=
   {| schemaHeading := headings%Heading;
-     schemaConstraints := constraints%SchemaConstraints |} : Schema_scope.
+     schemaConstraints :=
+       @Some (@Tuple headings%Heading
+              -> @Tuple headings%Heading
+              -> Prop) constraints%SchemaConstraints |} : Schema_scope.
 
 Notation "'schema' headings" :=
   {| schemaHeading := headings%Heading;
-     schemaConstraints := fun _ _ => True |} : Schema_scope.
+     schemaConstraints := None |} : Schema_scope.

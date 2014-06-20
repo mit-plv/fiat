@@ -524,7 +524,7 @@ Section AdditionalQueryLemmas.
   Require Import InsertQSSpecs StringBound.
   Lemma get_update_unconstr_iff {db_schema qs table new_contents} :
     forall x,
-      Ensembles.In _ (GetUnConstrRelation (UpdateUnConstrRelation db_schema qs table new_contents) table) x <->
+      Ensembles.In _ (GetUnConstrRelation (@UpdateUnConstrRelation db_schema qs table new_contents) table) x <->
       Ensembles.In _ new_contents x.
   Proof.
     unfold GetUnConstrRelation, UpdateUnConstrRelation, EnsembleInsert;
