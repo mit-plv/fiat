@@ -92,6 +92,29 @@ Qed.
 
 Definition swap_pair {A B} (x: A * B) := (snd x, fst x).
 
+Lemma swap_pair_fst {A B} :
+  forall (x: A * B), fst (swap_pair x) = snd x.
+Proof.
+  reflexivity.
+Qed.
+
+Lemma swap_pair_snd :
+  forall {A B} (x: A * B), snd (swap_pair x) = fst x.
+Proof.
+  reflexivity.
+Qed.
+
+Ltac trickle_swap :=
+  (* faster than just calling repeat first [ setoid_rewrite _ | setoid_rewrite _ ] *)
+  repeat match goal with 
+           | [ |- context [ filter _ (map swap_pair _) ] ] => 
+             setoid_rewrite filter_map with (g := swap_pair)
+           | [ |- context [ map    _ (map swap_pair _) ] ] => 
+             setoid_rewrite map_map with (f := swap_pair)
+         end;
+  try setoid_rewrite swap_pair_fst; (* TODO: broken *)
+  try setoid_rewrite swap_pair_snd.
+
 Lemma join_nil_r :
   forall {A B} s1,
     @Join_Lists A B s1 [] = [].
@@ -160,12 +183,26 @@ Proof.
     f_equal. rewrite IHs1. 
     rewrite filter_map; reflexivity.
     rewrite <- !flat_map_flatten.
-    apply flat_map_filter.
+    apply filter_flat_map_join_snd.
     rewrite IHs1. rewrite filter_map.
     simpl; reflexivity.
     rewrite <- !flat_map_flatten.
-    apply flat_map_filter.
+    apply filter_flat_map_join_snd.
 Qed.
+
+
+Lemma filter_join_lists : 
+  forall {A B} (f: A * B -> bool) xs ys, 
+    filter f (Join_Lists xs ys) = 
+    (flat_map (fun x => map (fun y => (x, y)) (filter (fun y : B => f (x, y)) ys)) xs).
+Proof.
+  intros.
+  unfold Join_Lists.
+  rewrite filter_flat_map.
+  setoid_rewrite filter_map.
+  reflexivity.
+Qed.
+
 
 Definition List_Query_In
            {QueryT ResultT}

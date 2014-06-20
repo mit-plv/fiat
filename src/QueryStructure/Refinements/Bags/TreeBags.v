@@ -206,32 +206,6 @@ Module TreeBag (Import M: WS).
       iconsistency := indexed_bag_insert_consistent container item
     |}.
 
-  Definition pointwise2_relation := 
-    fun (A A': Type) {B : Type} (R : relation B) (f g : A -> A' -> B) =>
-      forall a a', R (f a a') (g a a').
-
-  Add Parametric Morphism {A B: Type} :
-    (@List.fold_right A B)
-      with signature (pointwise2_relation B A eq ==> eq ==> eq ==> eq)
-        as fold_right_pointwise2eq_eq_eq_morphism.
-  Proof.
-    intros * equiv default seq.
-    induction seq; simpl.
-
-    reflexivity.
-    rewrite IHseq; apply equiv.
-  Qed.
-
-  Add Parametric Morphism {A B: Type} :
-    (@List.fold_left A B)
-      with signature (pointwise2_relation A B eq ==> eq ==> eq ==> eq)
-        as fold_left_pointwise2eq_eq_eq_morphism.
-  Proof.
-    intros.
-    rewrite <- !fold_left_rev_right.
-    setoid_rewrite H; reflexivity.
-  Qed.
-
   Add Parametric Morphism {A} : (* TODO: This speeds up code in elements_fold, but does it break anything? *)
     (@cons A)
       with signature (eq ==> eq ==> eq)
