@@ -1,6 +1,6 @@
 Require Import List String FunctionalExtensionality Ensembles
         ADTNotation.ilist ADTNotation.StringBound Program Schema
-        Tuple.
+        Heading Tuple.
 
 (* A relation is a collection of tuples (described by a proposition)
    which satisfy the schema constraints. *)
@@ -8,14 +8,16 @@ Require Import List String FunctionalExtensionality Ensembles
 Record Relation (RelationSchema : Schema) :=
   { rel : Ensemble (@IndexedTuple (schemaHeading RelationSchema));
     constr :
-      forall tup tup',
-        rel tup ->
-        rel tup' ->
-        schemaConstraints RelationSchema tup tup'
+      match (schemaConstraints RelationSchema) with
+        | Some Constr =>
+         forall tup tup',
+           rel tup -> rel tup' -> Constr tup tup'
+        | None => True
+      end
   }.
 
-Definition UnConstrRelation (RelationSchema : Schema) :=
-  Ensemble (@IndexedTuple (schemaHeading RelationSchema)).
+Definition UnConstrRelation (RelationSchema : Heading) :=
+  Ensemble (@IndexedTuple RelationSchema).
 
 Definition UnIndexedTupleIn {heading}
            (rel : Ensemble (@IndexedTuple heading))

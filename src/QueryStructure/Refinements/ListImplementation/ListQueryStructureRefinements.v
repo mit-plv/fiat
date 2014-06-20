@@ -30,7 +30,7 @@ Proof.
   subst.
   setoid_rewrite equiv.
   setoid_rewrite in_map_iff.
-  split; intros; firstorder; subst; intuition. 
+  split; intros; firstorder; subst; intuition.
 Qed.
 
 Lemma EnsembleIndexedListEquivalence_pick_new_index :

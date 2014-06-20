@@ -157,6 +157,8 @@ Section ListBasedRefinement.
       simplify with monad laws.
       setoid_rewrite (refine_pick_val _ (a := length (snd r_n))); eauto.
       simplify with monad laws.
+      rewrite refine_tupleAgree_refl_True;
+        simplify with monad laws.
       setoid_rewrite refine_decision; eauto; try simplify with monad laws.
       setoid_rewrite refine_decision'; eauto; try simplify with monad laws.
       rewrite refine_pick_eq_ex_bind; simpl.

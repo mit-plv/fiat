@@ -19,13 +19,18 @@ Section BookStoreExamples.
      constraint.
    *)
 
+  Check (schema <"Author" :: string,
+         "Title" :: string,
+         "ISBN" :: nat>
+         where attributes ["Title"; "Author"] depend on ["ISBN"]).
+
   Definition BookStoreSchema :=
     Query Structure Schema
       [ relation "Books" has
                 schema <"Author" :: string,
                         "Title" :: string,
                         "ISBN" :: nat>
-                where attributes ["Title"; "Author"] depend on ["ISBN"];
+                        where attributes ["Title"; "Author"] depend on ["ISBN"];
         relation "Orders" has
                 schema <"ISBN" :: nat,
                         "Date" :: nat> ]
@@ -93,22 +98,9 @@ Section BookStoreExamples.
       of a client of a sharpened ADT the invariants will still hold,
       since ADT refinement preserves the simulation relation. *)
 
-  match goal with
-      |- context [@BuildADT (QueryStructure ?Rep) _ _ _ _] =>
-      hone representation using (@DropQSConstraints_AbsR Rep)
-  end.
-
-  drop constraints from insert "PlaceOrder".
-  drop constraints from insert "AddBook".
-  drop constraints from query "GetTitles".
-  drop constraints from query "NumOrders".
-  idtac.
-
     start honing QueryStructure.
 
     hone representation using BookStoreListImpl_AbsR.
-
-    implement_empty_list "InitBookstore" BookStoreListImpl_AbsR.
 
     hone method "PlaceOrder".
     {
@@ -129,6 +121,8 @@ Section BookStoreExamples.
       unfold pointwise_relation; intros; higher_order_1_reflexivity.
       (* END TODO*)
       simplify with monad laws.
+      unfold If_Then_Else; rewrite refine_if_bool_eta.
+      simplify with monad laws.
       rewrite refine_pick_eq_ex_bind; unfold BookStoreListImpl_AbsR in *.
       split_and; simpl;
       rewrite refineEquiv_pick_pair_pair;
@@ -141,7 +135,7 @@ Section BookStoreExamples.
       match goal with
           |- context
                [{a | EnsembleIndexedListEquivalence
-                       ((UpdateUnConstrRelation ?QSSchema ?c ?Ridx
+                       ((@UpdateUnConstrRelation ?QSSchema ?c ?Ridx
                                                 (EnsembleInsert ?n (?c!?R)))!?R')%QueryImpl a}%comp] =>
           let H := fresh in
           generalize ((@ImplementListInsert_neq QSSchema
@@ -177,6 +171,8 @@ Section BookStoreExamples.
       setoid_rewrite refineEquiv_split_ex.
       setoid_rewrite refineEquiv_pick_computes_to_and.
       simplify with monad laws.
+      rewrite refine_tupleAgree_refl_True;
+        simplify with monad laws.
       (* Again, to tactics *)
       repeat match goal with
           |- context [
@@ -200,7 +196,6 @@ Section BookStoreExamples.
                   [ simplify with monad laws |
                     unfold BookStoreListImpl_AbsR in *; split_and; eauto ]
       end.
-
       rewrite refine_pick_eq_ex_bind; unfold BookStoreListImpl_AbsR in *.
       split_and; simpl;
       rewrite refineEquiv_pick_pair_pair;
@@ -213,7 +208,7 @@ Section BookStoreExamples.
       match goal with
           |- context
                [{a | EnsembleIndexedListEquivalence
-                       ((UpdateUnConstrRelation ?QSSchema ?c ?Ridx
+                       ((@UpdateUnConstrRelation ?QSSchema ?c ?Ridx
                                                 (EnsembleInsert ?n (?c!?R)))!?R')%QueryImpl a}%comp] =>
           let H := fresh in
           generalize ((@ImplementListInsert_neq QSSchema
@@ -283,6 +278,8 @@ Section BookStoreExamples.
       simplify with monad laws.
       finish honing.
   }
+
+    implement_empty_list "InitBookstore" BookStoreListImpl_AbsR.
 
     (* Step 4: Profit. :) *)
 

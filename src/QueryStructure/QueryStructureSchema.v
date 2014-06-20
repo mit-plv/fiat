@@ -100,8 +100,6 @@ Definition BuildForeignKeyConstraints
 Class namedSchemaHint :=
   { nSchemaHint :> list NamedSchema }.
 
-
-
 Notation "'attribute' attr 'of' rel1 'references' rel2 " :=
   (
       @BuildForeignKeyConstraints
@@ -109,70 +107,15 @@ Notation "'attribute' attr 'of' rel1 'references' rel2 " :=
         {| bindex := attr%string |}
         {| bindex := attr%string |} id) : QSSchemaConstraints_scope.
 
-Local Obligation Tactic := intros.
-
-Program Definition BuildQueryStructureConstraints_cons
-           (namedSchemas : list NamedSchema)
-           (constr : sigT (crossRelationProdR namedSchemas))
-           (constraints :
-              list (sigT (crossRelationProdR namedSchemas)))
-           (idx idx' : _)
-           (HInd : crossRelationR namedSchemas idx idx')
-: crossRelationR namedSchemas idx idx'
-:=
-  if (eq_nat_dec (ibound idx) (ibound (indexb (fst (projT1 constr))))) then
-    if (eq_nat_dec (ibound idx') (ibound (indexb (snd (projT1 constr))))) then
-      _
-    else (fun r1 r2 => HInd r1 r2)
- else (fun r1 r2 => HInd r1 r2).
-Next Obligation.
-  destruct constr; simpl in *.
-  destruct (In_dec string_dec (bindex idx) (map relName namedSchemas)).
-  destruct (In_dec string_dec (bindex idx') (map relName namedSchemas)).
-  unfold crossRelationR, GetNRelSchemaHeading, GetNRelSchema; simpl.
-  erewrite nth_Bounded_eq; try (exact H).
-  erewrite nth_Bounded_eq with (idx0 := idx') ; try (exact H0).
-  exact (fun X X0 => c X X0).
-  exact (fun X X0 => True).
-  exact (fun X X0 => True).
-Defined.
-
-Fixpoint BuildQueryStructureConstraints'
-         (namedSchemas : list NamedSchema)
-         (constraints :
-            list (sigT (crossRelationProdR namedSchemas)))
- {struct constraints}
-: forall (idx idx' : _), crossRelationR namedSchemas idx idx' :=
-  match constraints with
-    | idx'' :: constraints' =>
-      fun idx idx' => @BuildQueryStructureConstraints_cons
-                        namedSchemas idx'' constraints' idx idx'
-                        (BuildQueryStructureConstraints' constraints' idx idx')
-    | nil => fun _ _ _ _ => True
-  end.
-
-Definition BuildQueryStructureConstraints qsSchema :=
-  BuildQueryStructureConstraints' (qschemaConstraints qsSchema).
-
 Notation "'Query' 'Structure' 'Schema' relList 'enforcing' constraints" :=
   (@Build_QueryStructureSchema relList%NamedSchema
                        (let relListHint := Build_namedSchemaHint relList%NamedSchema in
                         constraints%QSSchemaConstraints)) : QSSchema_scope.
 
 Arguments BuildForeignKeyConstraints _ _ [_ _] _ _ (*/*) .
-Arguments BuildQueryStructureConstraints _ _ _ _ _.
-Arguments BuildQueryStructureConstraints_cons [_] _ _ _ _ (*/*) _ _ _.
 
-Arguments BuildQueryStructureConstraints_cons_obligation_1 [_] _ (*/*) _ _ _ _ _ _ _ _.
 Arguments eq_rect_r _ _ _ _ _ _ / .
 Arguments ForeignKey_P _ _ _ _ _ / _ _ .
-
-(* This lets us drop the constraints from the reference implementation
-   for easier refinements. *)
-
-Definition UnConstrQueryStructure (qsSchema : QueryStructureSchema) :=
-  ilist (fun ns => UnConstrRelation (relSchema ns))
-        (qschemaSchemas qsSchema).
 
 Notation "'Query' 'Structure' 'Schema' relList " :=
   (@Build_QueryStructureSchema relList%NamedSchema []) : QSSchema_scope.

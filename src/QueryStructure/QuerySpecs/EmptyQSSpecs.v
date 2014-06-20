@@ -9,6 +9,9 @@ Local Obligation Tactic := intuition.
 
 Program Definition EmptyRelation (sch : Schema) : Relation sch :=
   Build_Relation sch (fun T : @IndexedTuple (schemaHeading sch) => False) _.
+Next Obligation.
+  destruct (schemaConstraints sch); intuition.
+Qed.
 
 Fixpoint Build_EmptyRelations (schemas : list NamedSchema) :
   ilist (fun ns : NamedSchema => Relation (relSchema ns))
@@ -41,6 +44,7 @@ Program Definition QSEmptySpec (qsSchema : QueryStructureSchema) :
   {| rels := Build_EmptyRelations (qschemaSchemas qsSchema) |}.
 Next Obligation.
   rewrite Build_EmptyRelation_IsEmpty in *; simpl in *;
+  destruct (BuildQueryStructureConstraints qsSchema idx idx');
   intuition.
 Qed.
 

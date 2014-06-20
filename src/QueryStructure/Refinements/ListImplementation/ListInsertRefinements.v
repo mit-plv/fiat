@@ -352,7 +352,7 @@ Lemma ImplementListInsert_eq qsSchema Ridx
        {a |
         EnsembleIndexedListEquivalence
           (GetUnConstrRelation
-             (UpdateUnConstrRelation qsSchema or Ridx
+             (@UpdateUnConstrRelation qsSchema or Ridx
                                      (EnsembleInsert {| tupleIndex := length nr;
                                                         indexedTuple := tup|}
                                                      (GetUnConstrRelation or Ridx))) Ridx) a}
@@ -392,7 +392,7 @@ Lemma ImplementListInsert_neq qsSchema Ridx Ridx'
        {a |
         EnsembleIndexedListEquivalence
           (GetUnConstrRelation
-             (UpdateUnConstrRelation qsSchema or Ridx'
+             (@UpdateUnConstrRelation qsSchema or Ridx'
                                      (EnsembleInsert {| tupleIndex := length nr;
                                                         indexedTuple := tup|}
  (GetUnConstrRelation or Ridx'))) Ridx) a}

@@ -57,48 +57,41 @@ Tactic Notation "remove" "trivial" "insertion" "checks" :=
   (* Move all the binds we can outside the exists / computes
    used for abstraction, stopping when we've rewritten
          the bind in [QSInsertSpec]. *)
-      repeat
+    repeat
         (setoid_rewrite refineEquiv_pick_ex_computes_to_bind_and;
          match goal with
            | |- context [(Insert _ into ?R)%QuerySpec] => idtac
            | _ => fail
          end);
-  etransitivity;
-  [ (* drill under the binds so that we can rewrite [QSInsertSpec]
+    etransitivity;
+   (* drill under the binds so that we can rewrite [QSInsertSpec]
      (we can't use setoid_rewriting because there's a 'deep metavariable'
      *)
-    repeat (apply refine_bind;
-            [ reflexivity
-            | unfold pointwise_relation; intros] );
-    (* Pull out the relation we're inserting into and then
+    [ repeat (apply refine_bind;
+              [ reflexivity
+              | unfold pointwise_relation; intros] );
+      (* Pull out the relation we're inserting into and then
      rewrite [QSInsertSpec] *)
-            match goal with
-                H : DropQSConstraints_AbsR _ ?r_n
-                |- context [(Insert ?n into ?R)%QuerySpec] =>
-                let H' := fresh in
-                (* If we try to eapply [QSInsertSpec_UnConstr_refine] directly
+      match goal with
+          H : DropQSConstraints_AbsR _ ?r_n
+          |- context [(Insert ?n into ?R)%QuerySpec] =>
+          let H' := fresh in
+      (* If we try to eapply [QSInsertSpec_UnConstr_refine] directly
                    after we've drilled under a bind, this tactic will fail because
                    typeclass resolution breaks down. Generalizing and applying gets
                    around this problem for reasons unknown. *)
-                      generalize (@QSInsertSpec_UnConstr_refine
-                                    _ r_n {|bindex := R |} n) as H';
-                        intro H'; apply H';
-                        [  simplify_trivial_SatisfiesSchemaConstraints
-                         | simplify_trivial_SatisfiesSchemaConstraints
-                         | simplify_trivial_SatisfiesSchemaConstraints
-                         | simplify_trivial_SatisfiesCrossRelationConstraints;
-                           reflexivity
-                         | intros;
-                           simplify_trivial_SatisfiesCrossRelationConstraints;
-                           higher_order_1_reflexivity
-                         | eauto ]
-            end
-  | simplify with monad laws;
-    try rewrite <- GetRelDropConstraints;
-    repeat match goal with
-             | H : DropQSConstraints_AbsR ?qs ?uqs |- _ =>
-               rewrite H in *
-           end
+          pose proof (@QSInsertSpec_UnConstr_refine_opt
+                        _ r_n {|bindex := R |} n _ H) as H';
+            apply H'
+      end
+    | cbv beta; simpl schemaConstraints; cbv iota;
+      simpl map; simpl app; simpl;
+      simplify with monad laws;
+      try rewrite <- GetRelDropConstraints;
+      repeat match goal with
+               | H : DropQSConstraints_AbsR ?qs ?uqs |- _ =>
+                 rewrite H in *
+             end
     ].
 
 Tactic Notation "Split" "Constraint" "Checks" :=
@@ -119,8 +112,7 @@ Tactic Notation "drop" "constraints" "from" "insert" constr(methname) :=
   [ remove trivial insertion checks;
     (* The trivial insertion checks involve the fresh id,
        so we need to drill under the binder before
-       attempting to remove them.
-     *)
+       attempting to remove them. *)
     setoid_rewrite refine_bind;
     [ | reflexivity |
       unfold pointwise_relation; intros;
