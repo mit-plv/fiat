@@ -484,6 +484,86 @@ Section AdditionalListLemmas.
   Proof.
     intros; destruct seq; simpl in *; try discriminate; trivial. 
   Qed.
+
+
+  Lemma filter_app :
+    forall {A} (f: A -> _) s1 s2,
+      List.filter f (s1 ++ s2) =
+      List.filter f s1 ++ List.filter f s2.
+  Proof.
+    induction s1; simpl; intros.
+
+    - reflexivity.
+    - destruct (f a); simpl; congruence.
+  Qed.
+  
+  Lemma filter_map :
+    forall {A B} f g seq,
+      List.filter f (@List.map A B g seq) =
+      List.map g (List.filter (fun x => f (g x)) seq). 
+  Proof.
+    induction seq; simpl; intros.
+
+    - reflexivity.
+    - destruct (f (g a)); simpl; [ f_equal | ]; assumption.
+  Qed.
+
+  Lemma filter_true :
+    forall {A} s,
+      @filter A (fun _ => true) s = s.
+  Proof.
+    induction s; simpl; try rewrite IHs; reflexivity.
+  Qed.
+
+  Lemma filter_false :
+    forall {A} s,
+      @filter A (fun _ => false) s = [].
+  Proof.
+    induction s; simpl; try rewrite IHs; reflexivity.
+  Qed.
+
+  Lemma flat_map_filter :
+    forall {A B} f s1 s2,
+      flat_map (filter (fun x : A * B => f (snd x)))
+               (map (fun a1 : A => map (fun b : B => (a1, b)) s2) s1) =
+      flat_map (fun a1 : A => map (fun b : B => (a1, b)) (filter f s2)) s1.
+  Proof.
+    induction s1; simpl; intros; trivial.
+    rewrite IHs1; f_equiv.
+    rewrite filter_map; simpl; reflexivity.
+  Qed.
+
+  Lemma flat_map_empty :
+    forall {A B} s,
+      @flat_map A B (fun _ => []) s = [].
+  Proof.
+    induction s; firstorder.
+  Qed.
+
+  Lemma filter_commute :
+    forall {A} f g seq,
+      @filter A f (filter g seq) = filter g (filter f seq).
+  Proof. 
+    induction seq; simpl; intros; trivial.
+    destruct (f a) eqn:eqf; destruct (g a) eqn:eqg;
+    simpl; rewrite ?eqf, ?eqg, ?IHseq; trivial.
+  Qed.
+
+  Lemma fold_right_id {A} :
+    forall seq,
+      @List.fold_right (list A) A (fun elem acc => elem :: acc) [] seq = seq. 
+  Proof.
+    induction seq; simpl; try rewrite IHseq; congruence.
+  Qed.
+  
+  Lemma fold_left_id {A} :
+    forall seq,
+      @List.fold_left (list A) A (fun acc elem => elem :: acc) seq [] = rev seq. 
+  Proof.
+    intros.
+    rewrite <- fold_left_rev_right.
+    apply fold_right_id.
+  Qed.
 End AdditionalListLemmas.
 
 Section AdditionalComputationLemmas.

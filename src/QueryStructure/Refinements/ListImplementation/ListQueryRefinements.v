@@ -56,9 +56,9 @@ Definition Join_Lists {A B}
            (l : list A)
            (l' : list B)
 : list (A * B) :=
-  fold_right (@app _) nil (map (fun a => map (fun b => (a, b)) l') l).
+  flat_map (fun a => map (fun b => (a, b)) l') l.
 
-Lemma In_fold_right_app {A}
+Lemma In_fold_right_app {A} (* unused *)
 : forall (l : list (list A))
          (l'' : list A)
          (a : A),
@@ -84,16 +84,87 @@ Lemma In_Join_Lists {A B}
     List.In (a, b) (Join_Lists l l') <->
     (List.In a l /\ List.In b l').
 Proof.
-  unfold Join_Lists; split; intros.
-  apply In_fold_right_app in H; simpl in *; intuition;
-  destruct_ex; intuition;
-  apply in_map_iff in H0; destruct_ex; intuition; subst;
-  apply in_map_iff in H1; destruct_ex; intuition; subst;
-  simpl; congruence.
-  intuition.
-  apply In_fold_right_app; right.
-  exists (map (fun b : B => (a, b)) l'); split;
-  apply in_map_iff; eexists; intuition; eauto.
+  unfold Join_Lists;
+  setoid_rewrite in_flat_map;
+  setoid_rewrite in_map_iff.
+  firstorder; congruence.
+Qed.
+
+Definition swap_pair {A B} (x: A * B) := (snd x, fst x).
+
+Lemma join_nil_r :
+  forall {A B} s1,
+    @Join_Lists A B s1 [] = [].
+Proof.
+  unfold Join_Lists; 
+  induction s1; simpl; intros;
+  try rewrite flat_map_empty; reflexivity.
+Qed.
+
+Lemma join_nil_l :
+  forall {A B} s2,
+    @Join_Lists A B [] s2 = [].
+Proof.
+  unfold Join_Lists; 
+  induction s2; simpl; intros;
+  reflexivity.
+Qed.
+
+Require Import AdditionalMorphisms.
+
+Lemma swap_joins :
+  forall {A B} s1 s2,
+    Permutation
+      (@Join_Lists A B s1 s2)
+      (map swap_pair (Join_Lists s2 s1)).
+Proof.
+  induction s1; simpl; intros.
+
+  - rewrite join_nil_r; trivial.
+  - rewrite IHs1; unfold Join_Lists.
+    replace (map (fun b : B => (a, b)) s2) with (map swap_pair (map (fun b : B => (b, a)) s2))
+      by (induction s2; unfold swap_pair in *; simpl; try rewrite IHs2; firstorder).
+    rewrite <- map_app; f_equiv; simpl.
+    induction s2; simpl; trivial.
+    constructor; rewrite <- IHs2.
+    rewrite !app_assoc.
+    apply Permutation_app_tail, Permutation_app_comm.
+Qed.
+
+Lemma filter_join_fst :
+  forall {A B} f s1 s2,
+    List.filter (fun x => f (fst x)) (@Join_Lists A B s1 s2) =
+    Join_Lists (List.filter f s1) s2.
+Proof.      
+  unfold Join_Lists; induction s1; intros; simpl.
+  
+  - reflexivity.
+  - destruct (f a) eqn:eq_fa; 
+    rewrite filter_app, filter_map; 
+    simpl; rewrite eq_fa;
+    [ rewrite filter_true | rewrite filter_false ];
+    simpl; rewrite IHs1; reflexivity.
+Qed.
+
+Lemma filter_join_snd :
+  forall {A B} f s1 s2,
+    List.filter (fun x => f (snd x)) (@Join_Lists A B s1 s2) =
+    Join_Lists s1 (List.filter f s2).
+Proof.      
+  unfold Join_Lists; induction s2; intros; simpl.
+
+  - rewrite !flat_map_empty; reflexivity.
+  - rewrite !flat_map_flatten, !flatten_filter in IHs2 |- *.
+    induction s1; simpl in *; trivial.
+    destruct (f a) eqn:eq_fa; simpl in *.          
+    f_equal. rewrite IHs1. 
+    rewrite filter_map; reflexivity.
+    rewrite <- !flat_map_flatten.
+    apply flat_map_filter.
+    rewrite IHs1. rewrite filter_map.
+    simpl; reflexivity.
+    rewrite <- !flat_map_flatten.
+    apply flat_map_filter.
 Qed.
 
 Definition List_Query_In
@@ -137,7 +208,7 @@ Proof.
   repeat rewrite fold_right_app.
   simpl.
   assert (resultComp a = fun x : Tuple => resultComp a x) as eta by
-      (apply functional_extensionality; auto); rewrite <- eta.
+                                                              (apply functional_extensionality; auto); rewrite <- eta.
   induction (map (resultComp a) l); simpl;
   simplify with monad laws.
   - reflexivity.
@@ -152,8 +223,8 @@ Lemma refine_List_Query_In_Where {QueryT ResultT}
       (resultComp : QueryT -> Comp (list ResultT))
       (P_dec : DecideableEnsemble P)
 : refine (List_Query_In (QueryT := QueryT) l
-                           (fun b => Query_Where (P b) (resultComp b)))
-            (List_Query_In (filter dec l) resultComp).
+                        (fun b => Query_Where (P b) (resultComp b)))
+         (List_Query_In (filter dec l) resultComp).
 Proof.
   induction l; unfold List_Query_In, Query_Where in *; simpl.
   - reflexivity.
@@ -214,7 +285,7 @@ Proof.
   constructor; inversion_by computes_to_inv; subst; eauto.
 Qed.
 
-      (*Lemma Equivalent_Join_Lists {ReturnT TraceT heading}
+(*Lemma Equivalent_Join_Lists {ReturnT TraceT heading}
       qsSchema qs R (l : list (@Tuple heading)) l'
       (bod : Tuple -> Tuple -> Ensemble (ReturnT * TraceT))
 : EnsembleListEquivalence (GetUnConstrRelation qs R) l' ->
