@@ -39,6 +39,17 @@ Section TreeBasedRefinement.
   Tactic Notation "call" "eapply" constr(hypothesis) "after" tactic1(preprocessor) :=
     first [ preprocessor; eapply hypothesis | eapply hypothesis ].
 
+  Tactic Notation 
+         "rewrite" "filter" "on" reference(indexed_storage) 
+         "using" "keyword" constr(keyword) :=
+    match goal with
+      | [ (*storage: BagType ?ind, *) H: EnsembleIndexedListEquivalence ?table (benumerate ?storage) 
+          |- appcontext [ filter ?filter_function (benumerate ?storage) ] ] => 
+        rewrite (filter_by_equiv filter_function
+                                 (bfind_matcher (Bag := BagProof indexed_storage) keyword))
+          by prove_observational_eq
+    end.
+
   (* The following tactic is useful when we have a set of hypotheses
      of the form
 
@@ -139,6 +150,9 @@ Section TreeBasedRefinement.
       rewrite refine_List_Query_In; eauto.
       rewrite refine_List_Query_In_Where.
       rewrite refine_List_For_Query_In_Return_Permutation.
+
+      rewrite filter on Storage 
+        using keyword (@None nat, (Some n, @nil (TSearchTermMatcher ProcessSchema))). 
 
       rewrite (filter_by_equiv _ (bfind_matcher (Bag := StorageIsBag) (None, (Some n, []))))
         by prove_observational_eq.
