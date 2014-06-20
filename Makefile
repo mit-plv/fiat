@@ -73,10 +73,10 @@ EXAMPLE_MODULES := \
 	ComputationExamples \
 	ProcessScheduler/State \
 	ProcessScheduler/DBSchema \
-	ProcessScheduler/TreeBasedRefinement \
 	ProcessScheduler/ListBasedRefinement \
 	Trivial \
-	Bookstore
+	Bookstore \
+	ProcessScheduler/TreeBasedRefinement \
 
 # ADTExamples/QueryStructure/ProcessScheduler/TreeBasedRefinement \
 # ADTExamples/CombineBinaryOperationsSpec

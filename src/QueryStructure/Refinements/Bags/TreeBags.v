@@ -206,23 +206,6 @@ Module TreeBag (Import M: WS).
       iconsistency := indexed_bag_insert_consistent container item
     |}.
 
-
-  Lemma fold_right_id {A} :
-    forall seq,
-      @List.fold_right (list A) A (fun elem acc => elem :: acc) [] seq = seq. 
-  Proof.
-    induction seq; simpl; try rewrite IHseq; congruence.
-  Qed.
-  
-  Lemma fold_left_id {A} :
-    forall seq,
-      @List.fold_left (list A) A (fun acc elem => elem :: acc) seq [] = rev seq. 
-  Proof.
-    intros.
-    rewrite <- fold_left_rev_right.
-    apply fold_right_id.
-  Qed.
-
   Definition pointwise2_relation := 
     fun (A A': Type) {B : Type} (R : relation B) (f g : A -> A' -> B) =>
       forall a a', R (f a a') (g a a').
@@ -330,14 +313,6 @@ Module TreeBag (Import M: WS).
   Qed.
 
 
-  Add Parametric Morphism {A: Type} :
-    (@rev A)
-      with signature (@Permutation A ==> @Permutation A)
-        as rev_permutation_permutation_morphism.
-  Proof.
-    apply Permutation_rev'_Proper.
-  Qed.
-
   Lemma map_fold :
     forall {A B TValue} f g m init,
       (@List.map A B g
@@ -391,13 +366,6 @@ Module TreeBag (Import M: WS).
     assumption.
   Qed.
 
-  Add Parametric Morphism {A: Type} :
-    (@app A)
-      with signature (@Permutation A ==> @Permutation A ==> @Permutation A)
-        as app_permutation_permutation_permutation_morphism.
-  Proof.        
-    intros; apply Permutation_app; assumption.
-  Qed.
 
   Definition KeyBasedPartitioningFunction TBag reference :=
     fun key (_: TBag) => if E.eq_dec key reference then true else false.

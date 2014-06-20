@@ -184,6 +184,22 @@ Proof.
   apply flatten_map_permutation_permutation_permutation_morphism; eauto.
 Qed.
 
+Add Parametric Morphism {A: Type} :
+  (@app A)
+    with signature (@Permutation A ==> @Permutation A ==> @Permutation A)
+      as app_permutation_permutation_permutation_morphism.
+Proof.        
+  intros; apply Permutation_app; assumption.
+Qed.
+
+Add Parametric Morphism {A: Type} :
+  (@rev A)
+    with signature (@Permutation A ==> @Permutation A)
+      as rev_permutation_permutation_morphism.
+Proof.
+  apply Permutation_rev'_Proper.
+Qed.
+
 Require Import AdditionalPermutationLemmas.
 
 Add Parametric Morphism {A: Type} (ens: A -> Prop) :
