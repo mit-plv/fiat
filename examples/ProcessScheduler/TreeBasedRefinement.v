@@ -169,6 +169,9 @@ Section TreeBasedRefinement.
       rewrite refine_pick_val by eauto using EnsembleIndexedListEquivalence_pick_new_index.
       simplify with monad laws.
 
+      rewrite refine_tupleAgree_refl_True.
+      simplify with monad laws.
+
       rewrite (refine_pick_val' true) by prove trivial constraints.
       simplify with monad laws.
 
