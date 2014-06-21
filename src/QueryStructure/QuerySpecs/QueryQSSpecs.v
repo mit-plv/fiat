@@ -36,14 +36,17 @@ Definition QueryResultComp
                                                           queriedList };
     flatten_CompList (map resultEnsemble (map indexedTuple queriedList)).
 
-Definition Query_In (qs : QueryStructureHint) {ResultT} (R : _)
+Definition Query_In {ResultT}
+           (qs : QueryStructureHint)
+           (R : _)
            (bod : @Tuple (schemaHeading
                             (QSGetNRelSchema qsSchemaHint' R))
-                  -> Comp (list ResultT)) :=
-  QueryResultComp (GetUnConstrRelation (DropQSConstraints qsHint) R) bod.
+                  -> Comp (list ResultT))
+  := QueryResultComp (GetUnConstrRelation (DropQSConstraints qsHint) R) bod.
 
 Notation "( x 'in' R ) bod" :=
-  (Query_In _ {| bindex := R%string |} (fun x => bod)) : QuerySpec_scope.
+  (Query_In _ {| bindex := R%string |}
+            (fun x => bod)) : QuerySpec_scope.
 
 (* [Query_Return] returns the singleton list. *)
 Definition Query_Return {ResultT : Type} (a : ResultT) := ret [a].

@@ -15,7 +15,7 @@ Section BuildQueryStructureConstraints.
    *)
 
   Local Obligation Tactic := intros.
-  
+
   (* [BuildQueryStructureConstraints_cons] searches the *)
   Program Definition BuildQueryStructureConstraints_cons
           (namedSchemas : list NamedSchema)
@@ -40,7 +40,7 @@ Section BuildQueryStructureConstraints.
     erewrite nth_Bounded_eq with (idx0 := idx') by (exact H0).
     exact (Some c).
   Defined.
-  
+
   Fixpoint BuildQueryStructureConstraints'
            (namedSchemas : list NamedSchema)
            (constraints :
@@ -54,10 +54,10 @@ Section BuildQueryStructureConstraints.
                           (BuildQueryStructureConstraints' constraints' idx idx')
       | nil => fun _ _ => None
     end.
-  
+
   Definition BuildQueryStructureConstraints qsSchema :=
     BuildQueryStructureConstraints' (qschemaConstraints qsSchema).
-  
+
 End BuildQueryStructureConstraints.
 
 (* A Query Structure is a collection of relations
@@ -69,8 +69,8 @@ Record QueryStructure (QSSchema : QueryStructureSchema) :=
              (qschemaSchemas QSSchema);
     crossConstr :
       forall (idx idx' : @BoundedString (map relName (qschemaSchemas QSSchema))),
-      match (BuildQueryStructureConstraints QSSchema idx idx') with 
-        | Some CrossConstr => 
+      match (BuildQueryStructureConstraints QSSchema idx idx') with
+        | Some CrossConstr =>
           forall (tup :
                     @IndexedTuple (QSGetNRelSchemaHeading QSSchema idx)),
             idx <> idx' ->
@@ -100,6 +100,7 @@ Notation "'query' id ( x : dom ) : cod := bod" :=
   (Build_methDef {| methID := id; methDom := dom; methCod := cod |}
                 (fun (r : QueryStructure qsSchemaHint) x =>
                    let _ := {| qsHint := r |} in
+                   let _ := {| codHint := cod |} in
                    queryRes <- bod%QuerySpec;
                     ret (r, queryRes)))%comp
     (no associativity, id at level 0, x at level 0, dom at level 0,

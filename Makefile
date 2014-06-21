@@ -35,6 +35,7 @@ SRC_MODULES    := \
 	ADTRefinement/Refinements \
 	ADTRefinement/BuildADTRefinements/HoneRepresentation \
 	ADTRefinement/BuildADTRefinements/SimplifyRep \
+	ADTRefinement/BuildADTRefinements/AddCache \
 	ADTRefinement/BuildADTRefinements \
 	QueryStructure/Notations \
 	QueryStructure/Heading \

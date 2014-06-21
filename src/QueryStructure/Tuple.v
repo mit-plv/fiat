@@ -40,8 +40,19 @@ Definition GetAttribute
 : Domain heading attr :=
   tup attr.
 
+Definition getHeading {Bound} (tup : @Tuple (BuildHeading Bound))
+: list string := map attrName Bound.
+
+Definition GetAttribute'
+           {heading}
+           (tup : @Tuple (BuildHeading heading))
+           (attr : @BoundedString (map attrName heading))
+: Domain (BuildHeading heading) attr :=
+  tup attr.
+
 Notation "t ! R" :=
-  (GetAttribute t%Tuple {|bindex := R%string |}): Tuple_scope.
+  (GetAttribute' t%Tuple (@Build_BoundedIndex _ _ R%string _))
+  : Tuple_scope.
 
 Record IndexedTuple {heading} :=
   { tupleIndex : nat;
