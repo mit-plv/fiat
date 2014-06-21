@@ -103,7 +103,7 @@ Section TreeBasedRefinement.
       rewrite refine_List_Query_In_Where; instantiate (1 := _).
       rewrite refine_List_For_Query_In_Return_Permutation.
 
-      rewrite filter on Storage using search term 
+      rewrite filter over Storage using search term 
                 (@None nat, (Some n, @nil (TSearchTermMatcher ProcessSchema))). 
 
       setoid_rewrite (bfind_correct _).
