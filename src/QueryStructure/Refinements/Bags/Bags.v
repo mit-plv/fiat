@@ -1,1 +1,1 @@
-Require Export BagsInterface BagsProperties ListBags TreeBags CachingBags.
+Require Export BagsInterface BagsProperties ListBags TreeBags CachingBags BagsTactics.

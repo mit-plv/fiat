@@ -711,20 +711,6 @@ Ltac refine_eq_into_ret :=
         apply (refine_eqA_into_ret _)
   end.
 
-Ltac prove_observational_eq :=
-  clear;
-  vm_compute;
-  intros;
-  repeat match goal with
-           | [ |- context[ if ?cond then _ else _ ] ] =>
-             let eqn := fresh "eqn" in
-             destruct cond eqn:eqn;
-               subst;
-               vm_compute;
-               rewrite ?collapse_ifs_bool, ?collapse_ifs_dec;
-               intuition
-         end.
-
 Section AdditionalQueryLemmas.
 
   Require Import Computation.Refinements.General.

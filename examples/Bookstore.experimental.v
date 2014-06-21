@@ -167,7 +167,7 @@ Section BookStoreExamples.
 
     hone method "NumOrders". {
       unfold BookStoreListImpl_AbsR in H; split_and.
-      
+
       setoid_rewrite refineEquiv_pick_ex_computes_to_and;
       setoid_rewrite refineEquiv_pick_pair;
       setoid_rewrite refineEquiv_pick_eq';
@@ -184,20 +184,24 @@ Section BookStoreExamples.
 
       (* Step 2: Make it more efficient *)
       rewrite (filter_join_snd (fun (a: Book) => ?[string_dec n (a!sAUTHOR)])).
-      rewrite (filter_by_equiv _ (bfind_matcher (Bag := BagProof BookStorage) (Some n, (None, [])))) 
-        by prove_observational_eq.
+      
+      rewrite filter over BookStorage using search term
+                (Some n, (@None nat, @nil (TSearchTermMatcher BookSchema))).
 
       setoid_rewrite swap_joins; trickle_swap; simpl.
 
       setoid_rewrite filter_join_lists; simpl.
-      setoid_rewrite (filter_by_equiv_meta
-                 (fun (x: Book) (y : Order) => ?[eq_nat_dec x!sISBN y!sISBN]) 
-                 (fun (x: Book) => bfind_matcher (Bag := BagProof OrderStorage) (Some x!sISBN, [])) _).
+
+      rewrite dependent filter 
+                (fun (x: Book) (y : Order) => ?[eq_nat_dec x!sISBN y!sISBN]) 
+              over OrderStorage using dependent search term 
+                (fun (x: Book) => (Some x!sISBN, @nil (TSearchTermMatcher OrderSchema))).
+
+      setoid_rewrite (bfind_correct _).
 
       setoid_rewrite map_flat_map.      
       setoid_rewrite map_map; simpl.
       
-      setoid_rewrite (bfind_correct _).
       setoid_rewrite refine_Permutation_Reflexivity.
       simplify with monad laws.
 
@@ -224,13 +228,14 @@ Section BookStoreExamples.
       simpl.
  
       rewrite refine_List_Query_In by eassumption.
-      setoid_rewrite refine_List_Query_In_Where.
+      setoid_rewrite refine_List_Query_In_Where; instantiate (1 := _).
       rewrite refine_List_For_Query_In_Return_Permutation.
 
-      rewrite (filter_by_equiv _ (bfind_matcher (Bag := BagProof BookStorage) (Some n, (None, [])))) by
-          prove_observational_eq.
-      
+      rewrite filter over BookStorage using search term
+              (Some n, (@None nat, @nil (TSearchTermMatcher BookSchema))).
+
       setoid_rewrite (bfind_correct _).
+
       setoid_rewrite refine_Permutation_Reflexivity.
       simplify with monad laws.
 
@@ -239,6 +244,8 @@ Section BookStoreExamples.
       simplify with monad laws.
       finish honing.
     }
+
+    
 
     (* TODO: Look into Typeclasses Opaque (BoundedString Attribute). *)
   Defined.

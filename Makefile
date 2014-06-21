@@ -62,6 +62,7 @@ SRC_MODULES    := \
 	QueryStructure/Refinements/FMapImplementation/FMapExtensions \
 	QueryStructure/Refinements/Bags/BagsInterface\
 	QueryStructure/Refinements/Bags/BagsProperties\
+	QueryStructure/Refinements/Bags/BagsTactics\
 	QueryStructure/Refinements/Bags/ListBags\
 	QueryStructure/Refinements/Bags/TreeBags\
 	QueryStructure/Refinements/Bags/CachingBags\

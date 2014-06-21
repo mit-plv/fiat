@@ -31,55 +31,6 @@ Section TreeBasedRefinement.
 
   Notation "x '∈' y" := (In _ y x) (at level 50, no associativity).
 
-  Tactic Notation "lift" "list" "property" constr(prop) "as" ident(name) :=
-    pose proof prop as name;
-    setoid_rewrite EnsembleIndexedListEquivalence_lift_property in name;
-    [ | eassumption].
-
-  Tactic Notation "call" "eapply" constr(hypothesis) "after" tactic1(preprocessor) :=
-    first [ preprocessor; eapply hypothesis | eapply hypothesis ].
-
-  Tactic Notation 
-         "rewrite" "filter" "on" reference(indexed_storage) 
-         "using" "keyword" constr(keyword) :=
-    match goal with
-      | [ (*storage: BagType ?ind, *) H: EnsembleIndexedListEquivalence ?table (benumerate ?storage) 
-          |- appcontext [ filter ?filter_function (benumerate ?storage) ] ] => 
-        rewrite (filter_by_equiv filter_function
-                                 (bfind_matcher (Bag := BagProof indexed_storage) keyword))
-          by prove_observational_eq
-    end.
-
-  (* The following tactic is useful when we have a set of hypotheses
-     of the form
-
-     H0 : In DB tuple
-     H  : tupleAgree tuple <COL :: x, ...> COL
-     H' : forall tuple', In DB tuple' -> (tuple'!COL <> x)
-
-     which essentially means that we have a tuple that's in the DB and
-     matches another one on the COL column, and an hypothesis H' that
-     guarantees that such a match is in fact impossible. In that case,
-     it's essentially enough to call exfalso, which this tactic does
-   *)
-
-  Tactic Notation "prove" "trivial" "constraints" :=
-    unfold decides, not in *;
-    intros;
-    match goal with
-      | [ H: tupleAgree _ _ (?column :: _) |- _ ] =>
-        specialize (H column);
-        exfalso;
-        match goal with
-          | [ H': _ |- _] =>
-            eapply H';
-            try eassumption;
-            call eapply H after symmetry;
-            simpl;
-            auto
-        end
-    end.
-
   Opaque Query_For.
 
   Definition equivalence (set_db: UnConstrQueryStructure ProcessSchedulerSchema) (db: StorageType) :=
@@ -115,11 +66,12 @@ Section TreeBasedRefinement.
       simpl.
 
       rewrite refine_List_Query_In by eassumption.
-      rewrite refine_List_Query_In_Where.
+      rewrite refine_List_Query_In_Where; instantiate (1 := _).
       rewrite refine_List_For_Query_In_Return_Permutation.
 
-      rewrite (filter_by_equiv _ (bfind_matcher (Bag := StorageIsBag) (Some n, (None, []))))
-        by prove_observational_eq.
+      rewrite filter over Storage using search term 
+                (Some n, (@None nat, @nil (TSearchTermMatcher ProcessSchema))).
+
       setoid_rewrite (bfind_correct _).
       setoid_rewrite refine_Permutation_Reflexivity.
       simplify with monad laws.
@@ -148,14 +100,11 @@ Section TreeBasedRefinement.
       simpl.
 
       rewrite refine_List_Query_In; eauto.
-      rewrite refine_List_Query_In_Where.
+      rewrite refine_List_Query_In_Where; instantiate (1 := _).
       rewrite refine_List_For_Query_In_Return_Permutation.
 
-      rewrite filter on Storage 
-        using keyword (@None nat, (Some n, @nil (TSearchTermMatcher ProcessSchema))). 
-
-      rewrite (filter_by_equiv _ (bfind_matcher (Bag := StorageIsBag) (None, (Some n, []))))
-        by prove_observational_eq.
+      rewrite filter on Storage using search term 
+                (@None nat, (Some n, @nil (TSearchTermMatcher ProcessSchema))). 
 
       setoid_rewrite (bfind_correct _).
       setoid_rewrite refine_Permutation_Reflexivity.
