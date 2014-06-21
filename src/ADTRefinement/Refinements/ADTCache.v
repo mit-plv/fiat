@@ -12,54 +12,90 @@ Section addCache.
   Variable rep : Type.
   Variable cacheTyp : Type.
 
-  Record cachedRep := cOb
-                        { origRep : rep;
-                          cachedVal : cacheTyp
-                        }.
-
-  (* To add a cache, we update an ADT's methods to include cached values.
-       We first run the old mutators to obtain the original mutated
-       representation [r_o], then we add a Pick implementation of a [cacheVal]
-       that satisfies our specification [cacheSpec] to the result. *)
+  Record cachedRep := 
+    { origRep : rep;
+      cachedVal : cacheTyp
+    }.
 
   Variable cacheSpec : rep -> cacheTyp -> Prop.
 
-  Definition MethodAddCacheEntry
-             {MethodIndex}
-             {MethodDomCod : MethodIndex -> Type * Type}
-             (Methods :
-                forall idx,
-                  methodType rep
-                             (fst (MethodDomCod idx))
-                             (snd (MethodDomCod idx)))
-             idx r n :=
-    or <- Methods idx (origRep r) n;
-    cv <- {cr : cacheTyp | cacheSpec (fst or) cr };
-    ret ({| origRep := fst or;
-           cachedVal := cv |}, snd or).
+  (* A representation with an added value [nr] is related to any representation [or]
+     when the cached value [cachedVal] satisfies the original [cacheSpec] and
+     the original representation of [nr] is equal to [or]. *)
 
-  Definition ConstructorAddCacheEntry
-             {ConstructorIndex}
-             {ConstructorDom : ConstructorIndex -> Type}
-             (Constructors :
-                forall idx,
-                  constructorType rep (ConstructorDom idx))
-             idx n :=
-    or <- Constructors idx n;
-    cv <- {cr : cacheTyp | cacheSpec or cr };
+  Definition cachedRep_AbsR (or : rep) (nr : cachedRep) :=
+    or = origRep nr /\ cacheSpec or (cachedVal nr).
+
+  (* To add a cache, we update an ADT's methods to include cached values.
+       We first run the old method to obtain the original result [or],
+       then we add a Pick implementation of a [cacheVal]
+       that satisfies our specification [cacheSpec] to the result. *)
+
+  Definition addCacheToMethod
+        (Dom Cod : Type)
+        (oldMethod : methodType rep Dom Cod) nr n
+  : Comp (cachedRep * Cod) :=
+    or <- oldMethod (origRep nr) n;
+    cv <- {cv | cacheSpec (fst or) cv};
+    ret ({| origRep := (fst or);
+            cachedVal := cv |}, snd or).
+
+  Lemma refine_addCacheToMethod
+        (Dom Cod : Type)
+        (oldMethod : methodType rep Dom Cod)
+  : @refineMethod rep cachedRep cachedRep_AbsR _ _
+                  oldMethod
+                  (addCacheToMethod oldMethod).
+  Proof.
+    unfold refineMethod, addCacheToMethod, refine; intros.
+    inversion_by computes_to_inv; subst.
+    destruct H; subst.
+    repeat econstructor; eauto.
+  Qed.
+
+  (* A similar approach works for constructors. *)
+  Definition addCacheToConstructor
+        (Dom : Type)
+        (oldConstr : constructorType rep Dom) n
+  : Comp cachedRep :=
+    or <- oldConstr n;
+    cv <- {cv | cacheSpec or cv};
     ret {| origRep := or;
            cachedVal := cv |}.
 
-  (* A representation with an added value [r_n] is related to any representation [r_o]
-     when the cached value [cachedVal] satisfies the original [cacheSpec] and
-     the original representation of [r_n] is equal to [r_o]. *)
+  Lemma refine_addCacheToConstructor
+        (Dom : Type)
+        (oldConstr : constructorType rep Dom)
+  : @refineConstructor rep cachedRep cachedRep_AbsR _
+                  oldConstr
+                  (addCacheToConstructor oldConstr).
+  Proof.
+    unfold refineConstructor, addCacheToConstructor, refine; intros.
+    inversion_by computes_to_inv; subst.
+    repeat econstructor; eauto.
+  Qed.
 
-  Definition cachedRepAbsR
-	     (r_o : rep)
-             (r_n : cachedRep) :=
-    r_o = origRep r_n /\ cacheSpec (origRep r_n) (cachedVal r_n).
+  (* We can refine an ADT using the default caching implementations 
+     provided by [absMutatorMethod] and [absObserverMethod]. *)
+  Lemma refine_addCacheToADT
+        Sig
+        oldConstrs oldMeths :
+    refineADT
+      (@Build_ADT Sig rep oldConstrs oldMeths)
+      (@Build_ADT Sig cachedRep
+                  (fun idx => addCacheToConstructor (oldConstrs idx))
+                  (fun idx => addCacheToMethod (oldMeths idx))).
+  Proof.
+    eapply refineADT_Build_ADT_Rep; 
+    eauto using refine_addCacheToConstructor,
+    refine_addCacheToMethod.
+  Qed.
 
 End addCache.
+
+
+
+(* Old Caching Definitions.
 
 Definition addCachedValue Sig cacheTyp adt cacheSpec
 : ADT Sig :=
@@ -142,6 +178,9 @@ Proof.
     | eauto].
 Qed.
 
+
+
+
 (* Combining the above two refinements to replace an observer with a cached value.
 Lemma refinesReplaceAddCache
       Sig
@@ -203,4 +242,4 @@ Hint Resolve refine_pick_cache : cache_refinements.
              (adt := A)
              (cachedIndex := ())
              (MethodIndex_eq := mutIdx_eq'); simpl
-    | idtac]; cbv beta in *; simpl in *. *)
+    | idtac]; cbv beta in *; simpl in *. *) *)

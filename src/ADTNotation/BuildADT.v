@@ -12,6 +12,11 @@ Delimit Scope ADT_scope with ADT.
    to help infer the representation type. *)
 Class RepHint := {repHint : Type}.
 
+(* This class is used to give a hint to help infer the
+   return type. *)
+
+Class CoDHint := {codHint : Type}.
+
 (* Notations for ADT methods. Constructors and methods
    are parameterized by a signature that includes the
    domain (both) and codomain (just methods). *)
@@ -20,7 +25,7 @@ Record methDef {Rep : Type} (Sig : methSig) :=
   { methBody :> methodType Rep (methDom Sig) (methCod Sig)}.
 
 Notation "'meth' id ( r : 'rep' , x : dom ) : cod := bod" :=
-  (Build_methDef {| methID := id; methDom := dom; methCod := cod |} (fun (r : repHint) x => bod%comp))
+  (Build_methDef {| methID := id; methDom := dom; methCod := cod |} (fun (r : repHint) x => let cod := {| codHint := cod |} in bod%comp))
     (no associativity, id at level 0, r at level 0, x at level 0, dom at level 0,
      cod at level 0, only parsing,
      at level 94, format "'meth'  id  ( r  :  'rep' ,  x  :  dom )  :  cod  := '/' '[  '   bod ']' " ) :
