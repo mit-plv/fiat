@@ -255,6 +255,16 @@ Section AdditionalListLemmas.
     intros A f g obs seq; unfold ObservationalEq in obs; induction seq; simpl; try rewrite obs; try rewrite IHseq; trivial.
   Qed.
 
+  Lemma filter_by_equiv_meta :
+    forall {A B : Type} (f g : A -> B -> bool),
+      (forall (a: A), ObservationalEq (f a) (g a)) -> 
+      (forall (a: A) (seq : list B), filter (f a) seq = filter (g a) seq).
+  Proof.
+    intros * equiv *;
+    rewrite (filter_by_equiv _ _ (equiv _));
+    reflexivity.
+  Qed.
+
   Lemma filter_and :
     forall {A} pred1 pred2,
     forall (seq: list A),
@@ -332,10 +342,27 @@ Section AdditionalListLemmas.
       destruct (pred a); simpl; rewrite IHa; trivial.
   Qed.
 
+  Lemma map_flatten :
+    forall {B C} (f: B -> C) (xs: list (list B)), 
+      map f (flatten xs) = flatten (map (fun x => map f x) xs).
+  Proof.
+    induction xs; simpl;
+    [ | rewrite map_app, IHxs ]; reflexivity.
+  Qed.
+
+  Lemma map_flat_map :
+    forall {A B C} (f: B -> C) (g: A -> list B) (xs: list A), 
+      map f (flat_map g xs) = flat_map (fun x : A => map f (g x)) xs.
+  Proof.
+    intros; 
+    rewrite flat_map_flatten, map_flatten, map_map, <- flat_map_flatten;
+    reflexivity.
+  Qed.
+
   Lemma map_map :
-    forall { A B C } (proc1: A -> B) (proc2: B -> C),
+    forall { A B C } (f: A -> B) (g: B -> C),
     forall seq,
-      List.map proc2 (List.map proc1 seq) = List.map (fun x => proc2 (proc1 x)) seq.
+      List.map g (List.map f seq) = List.map (fun x => g (f x)) seq.
   Proof.
     intros; induction seq; simpl; f_equal; trivial.
   Qed.
@@ -415,6 +442,43 @@ Section AdditionalListLemmas.
     intuition.
   Qed.
 
+  Require Import Permutation.
+
+  Lemma flat_map_rev_permutation :
+    forall {A B} seq (f: A -> list B),
+      Permutation (flat_map f seq) (flat_map f (rev seq)).
+  Proof.
+    induction seq; simpl; intros.
+    
+    - reflexivity.
+    - rewrite !flat_map_flatten, map_app. 
+      rewrite flatten_app, <- !flat_map_flatten. 
+      simpl; rewrite app_nil_r. 
+      rewrite Permutation_app_comm.
+      apply Permutation_app; eauto.
+  Qed.
+
+  Lemma length_flatten_aux :
+    forall {A} seq,
+    forall n,
+      n + List.length (flatten seq) = List.fold_right (compose plus (@List.length A)) n seq. 
+  Proof.
+    induction seq; simpl; intros.
+    
+    - auto with arith. 
+    - unfold compose;
+      rewrite app_length, <- IHseq;
+      omega.
+  Qed.
+
+  Lemma length_flatten :
+    forall {A} seq,
+      List.length (flatten seq) = List.fold_right (compose plus (@List.length A)) 0 seq. 
+  Proof.
+    intros.
+    pose proof (length_flatten_aux seq 0) as H; simpl in H; eauto.
+  Qed.
+
   Lemma in_map_unproject :
     forall {A B} projection seq,
     forall item,
@@ -428,7 +492,6 @@ Section AdditionalListLemmas.
     destruct in_seq;
       [ left; f_equal | right ]; intuition.
   Qed.
-
 
   Lemma refold_map :
     forall {A B} (f: A -> B) x seq,
@@ -522,7 +585,16 @@ Section AdditionalListLemmas.
     induction s; simpl; try rewrite IHs; reflexivity.
   Qed.
 
-  Lemma flat_map_filter :
+  Lemma filter_flat_map :
+    forall {A B} g (f: B -> bool) xs,
+      filter f (flat_map g xs) =
+      flat_map (fun x : A => filter f (g x)) xs.
+  Proof.
+    intros; rewrite !flat_map_flatten.
+    rewrite flatten_filter, map_map; reflexivity.
+  Qed.
+
+  Lemma filter_flat_map_join_snd :
     forall {A B} f s1 s2,
       flat_map (filter (fun x : A * B => f (snd x)))
                (map (fun a1 : A => map (fun b : B => (a1, b)) s2) s1) =

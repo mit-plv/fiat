@@ -1,5 +1,8 @@
 Require Import List.
-Require Import Setoid Morphisms AdditionalLemmas.
+Require Import Setoid Morphisms.
+Require Import AdditionalLemmas.
+
+Unset Implicit Arguments.
 
 Add Parametric Morphism {A: Type} :
   (fun (P: A -> Prop) => exists x, P x)
@@ -184,6 +187,24 @@ Proof.
   apply flatten_map_permutation_permutation_permutation_morphism; eauto.
 Qed.
 
+Add Parametric Morphism {A B} :
+  (@flat_map A B)
+    with signature (pointwise_relation A eq ==> eq ==> eq)
+      as flat_map_pointwiseeq_eq_eq_morphism_Proper.
+Proof.
+  intros * equiv ** seq.
+  induction seq; simpl; [ | rewrite equiv, IHseq ]; reflexivity.
+Qed.      
+
+Add Parametric Morphism {A B} :
+  (flat_map (B := A * B))
+    with signature (pointwise_relation A eq ==> eq ==> eq)
+      as flat_map_pair_pointwiseeq_eq_eq_morphism.
+Proof.
+  intros * equiv ** seq.
+  induction seq; simpl; [ | rewrite IHseq, equiv ]; reflexivity.
+Qed.
+
 Add Parametric Morphism {A: Type} :
   (@app A)
     with signature (@Permutation A ==> @Permutation A ==> @Permutation A)
@@ -200,6 +221,45 @@ Proof.
   apply Permutation_rev'_Proper.
 Qed.
 
+Definition pointwise2_relation := 
+  fun (A A': Type) {B : Type} (R : relation B) (f g : A -> A' -> B) =>
+    forall a a', R (f a a') (g a a').
+
+Add Parametric Morphism {A B: Type} :
+  (@List.fold_right A B)
+    with signature (@pointwise2_relation B A _ eq ==> eq ==> eq ==> eq)
+      as fold_right_pointwise2eq_eq_eq_morphism.
+Proof.
+  intros * equiv default seq.
+  induction seq; simpl.
+
+  reflexivity.
+  rewrite IHseq; apply equiv.
+Qed.
+
+Add Parametric Morphism {A B: Type} :
+  (@List.fold_left A B)
+    with signature (pointwise2_relation A B eq ==> eq ==> eq ==> eq)
+      as fold_left_pointwise2eq_eq_eq_morphism.
+Proof.
+  intros.
+  rewrite <- !fold_left_rev_right.
+  setoid_rewrite H; reflexivity.
+Qed.
+
+Require Import Program Arith.
+
+(* TODO: Move this to a separate file *)
+Lemma length_flat_map :
+  forall {A B} seq (f: A -> list B),
+    List.length (flat_map f seq) = 
+    fold_left (fun count (x : A) => count + List.length (f x)) seq 0.
+Proof.
+  intros; rewrite (Permutation_length (flat_map_rev_permutation seq f));
+  rewrite flat_map_flatten, length_flatten, <- foldright_compose, fold_left_rev_right;
+  unfold compose; simpl; setoid_rewrite plus_comm at 1; reflexivity.
+Qed.
+
 Require Import AdditionalPermutationLemmas.
 
 Add Parametric Morphism {A: Type} (ens: A -> Prop) :
@@ -214,4 +274,3 @@ Proof.
   apply Permutation_sym in H; eapply Permutation_in; eauto; eapply H1; eauto.
   eapply H1; eapply Permutation_in; eauto.
 Qed.
-
