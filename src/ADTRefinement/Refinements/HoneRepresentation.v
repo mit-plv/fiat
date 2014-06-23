@@ -82,9 +82,9 @@ Section HoneRepresentation.
 
 End HoneRepresentation.
 
-(* Always unfold absMutatorMethods and absObserverMethods. *)
+(* Always unfold absMutatorMethods and absObserverMethods.
 Global Arguments absMethod oldRep newRep AbsR Dom Cod oldMethod / nr n.
-Global Arguments absConstructor oldRep newRep AbsR Dom oldConstr / n .
+Global Arguments absConstructor oldRep newRep AbsR Dom oldConstr / n . *)
 
 (* Honing tactic for refining the ADT representation which provides
    default observer and mutator implementations. *)

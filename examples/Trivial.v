@@ -1,5 +1,6 @@
 Require Import QueryStructureNotations.
 Require Import ListImplementation.
+Require Import AddCache.
 
 Definition MySchema :=
   Query Structure Schema
@@ -15,40 +16,44 @@ Definition MySchema :=
 Definition Person := TupleDef MySchema "Person".
 Definition Dog := TupleDef MySchema "Dog".
 
-
 Definition MySig : ADTSig :=
   ADTsignature {
-    "Empty" : unit → rep,
-    "YoungOwners'Breeds" : rep × nat → rep × list string
+      "Empty" : unit → rep,
+      "YoungOwners'Breeds" : rep × nat → rep × list string,
+      "BreedPopulation" : rep × string → rep × nat
   }.
-
-Definition People := GetRelationKey MySchema "Person".
-Definition Dogs := GetRelationKey MySchema "Dog".
-
-Definition Age := GetAttributeKey People "Age".
-Definition Name := GetAttributeKey People "Name".
-
-Definition Owner := GetAttributeKey Dogs "Owner".
-Definition Breed := GetAttributeKey Dogs "Breed".
-
 
 Definition MySpec : ADT MySig :=
   QueryADTRep MySchema {
     const "Empty" (_ : unit) : rep := empty,
 
     query "YoungOwners'Breeds" ( ageLimit : nat ) : list string :=
-      For (d in "Dog") (o in "Person")
-      Where (o Age > ageLimit)
-      Where (d Owner = o Name)
-      Return (d Breed)
+      For (d in "Dog")
+          (o in "Person")
+          Where (ageLimit > o!"Age")
+          Where (d!"Name" = o!"Name")
+          Return (d!"Breed"),
+
+    query "BreedPopulation" ( breed : string ) : nat :=
+        Count (For (d in "Dog")
+                   Where (d!"Breed" = breed)
+                   Return ())
 }.
+
+Definition BreedCacheSpec (or : UnConstrQueryStructure MySchema)
+           (cache : string -> nat) :=
+forall breed,
+  refine
+    (Count (For (UnConstrQuery_In or ``("Dog")
+                                  (fun d =>
+                                     Where (d!"Breed" = breed)
+             Return ()))))
+    (ret (cache breed)).
 
 Definition MyListImpl_abs
            (or : UnConstrQueryStructure MySchema)
            (nr : list Person * list Dog) : Prop :=
   or!"Person" ≃ fst nr /\ or!"Dog" ≃ snd nr.
-
-Opaque Query_For.
 
 Definition My :
   Sharpened MySpec.
@@ -56,6 +61,13 @@ Proof.
   unfold MySpec.
 
   start honing QueryStructure.
+
+  add cache with spec BreedCacheSpec.
+
+  hone method "YoungOwners'Breeds".
+  { simplify with monad laws; cbv beta; simpl.
+
+
 
   hone representation using MyListImpl_abs.
   implement_empty_list "Empty" MyListImpl_abs.
@@ -82,6 +94,6 @@ Proof.
     simplify with monad laws.
     finish honing.
   }
-  
+
   finish sharpening.
 Defined.

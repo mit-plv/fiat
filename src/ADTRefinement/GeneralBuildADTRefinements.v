@@ -212,7 +212,7 @@ Section BuildADTRefinements.
 
 End BuildADTRefinements.
 
-Tactic Notation "hone" "method" constr(methIdx) "using" open_constr(methBod) :=
+(* Tactic Notation "hone" "method" constr(methIdx) "using" open_constr(methBod) :=
   let A :=
       match goal with
           |- Sharpened ?A => constr:(A) end in
@@ -297,14 +297,14 @@ Tactic Notation "hone" "method" constr(methIdx) :=
   hone' method methIdx using _;
   [set_evars;
     simpl in *; intros; subst;
-    autosetoid_rewrite with refine_monad
+    simplify with monad laws
  | ].
 
 Tactic Notation "hone" "constructor" constr(consIdx) :=
   hone' constructor consIdx using _;
   [set_evars;
     simpl in *; intros; subst;
-    autosetoid_rewrite with refine_monad | ].
+    simplify with monad laws  | ].
 
 Tactic Notation "hone" "constructor" constr(consIdx) :=
   let A :=
@@ -390,8 +390,8 @@ Tactic Notation "hone" "method" constr(methIdx) :=
       simpl in *; set_evars; simpl in *; subst |
           cbv beta in *; simpl in *;
           cbv beta delta [replace_BoundedIndex replace_Index] in *;
-          simpl in *].
+          simpl in *]. *)
 
 Tactic Notation "finish" "honing" :=
   subst_body;
-  higher_order_2_reflexivity.
+  first [higher_order_2_reflexivity | higher_order_1_reflexivity ].

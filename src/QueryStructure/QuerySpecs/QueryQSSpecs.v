@@ -16,6 +16,14 @@ Definition Query_For {ResultT}
   result <- bod;
   {l | Permutation result l}.
 
+(* [Query_For] is opaque so that the [simplify with monad laws]
+   tactic doesn't agressively simplify them away. Computations
+   with [Query_For] should be refined using refinement lemmas.
+   To prove these lemmas, we'll make [Query_For] locally transparent
+   in the file defining them.  *)
+
+Global Opaque Query_For.
+
 Notation "'For' bod" := (Query_For bod) : QuerySpec_scope.
 
 Definition flatten_CompList {A} (c : list (Comp (list A))) :=
@@ -65,3 +73,9 @@ Notation "'Where' p bod" :=
 Definition Count {A} (rows : Comp (list A)) : Comp nat :=
   l <- rows;
   ret (List.length l).
+
+(* Much like [Query_For], [Count] is opaque so that the
+   [simplify with monad laws] tactic doesn't agressively
+   simplify it away.  *)
+
+Global Opaque Count.

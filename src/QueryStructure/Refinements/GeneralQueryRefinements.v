@@ -4,10 +4,27 @@ Require Import String List Sorting.Permutation
         QueryStructureSchema QueryQSSpecs QueryStructure
         EnsembleListEquivalence.
 
+(* [Query_For] and [Count] are opaque, so we need to make both
+   transparent in order to reason about them. *)
+Local Transparent Query_For Count.
+
+Lemma refine_Count {A} rows
+: refine (@Count A rows)
+         (l <- rows;
+          ret (List.length l)).
+Proof. reflexivity. Qed.
+
+Lemma refine_For
+: forall ResultT (bod : Comp (list ResultT)),
+    refine (For bod)%QuerySpec
+           (result <- bod;
+            {l | Permutation result l}).
+Proof. reflexivity. Qed.
+
 Add Parametric Morphism ResultT
 : (@Query_For ResultT)
     with signature (refine ==> refine)
-      as refine_For.
+      as refine_refine_For.
 Proof.
   intros; unfold Query_For; rewrite H; reflexivity.
 Qed.
@@ -269,14 +286,12 @@ Ltac pose_string_ids :=
 
 Tactic Notation "drop" "constraints" "from" "query" constr(methname) :=
   hone method methname;
-  [       setoid_rewrite refineEquiv_pick_ex_computes_to_and;
-      subst_strings; setoid_rewrite DropQSConstraintsQuery_In;
-      simpl; repeat setoid_rewrite DropQSConstraintsQuery_In_UnderBinder;
-      simpl; pose_string_ids;
-      setoid_rewrite refineEquiv_pick_pair; simpl;
-      simplify with monad laws;
-      setoid_rewrite refineEquiv_pick_eq';
-      simplify with monad laws; cbv beta; simpl;
+  [ simplify with monad laws;
+    subst_strings; setoid_rewrite DropQSConstraintsQuery_In;
+    simpl; repeat setoid_rewrite DropQSConstraintsQuery_In_UnderBinder;
+    simpl; pose_string_ids;
+    setoid_rewrite refineEquiv_pick_eq';
+    simplify with monad laws; cbv beta; simpl;
     match goal with
         H : DropQSConstraints_AbsR _ _ |- _ =>
         unfold DropQSConstraints_AbsR in H; rewrite H

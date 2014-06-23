@@ -12,7 +12,7 @@ Section addCache.
   Variable rep : Type.
   Variable cacheTyp : Type.
 
-  Record cachedRep := 
+  Record cachedRep :=
     { origRep : rep;
       cachedVal : cacheTyp
     }.
@@ -75,7 +75,7 @@ Section addCache.
     repeat econstructor; eauto.
   Qed.
 
-  (* We can refine an ADT using the default caching implementations 
+  (* We can refine an ADT using the default caching implementations
      provided by [absMutatorMethod] and [absObserverMethod]. *)
   Lemma refine_addCacheToADT
         Sig
@@ -86,9 +86,23 @@ Section addCache.
                   (fun idx => addCacheToConstructor (oldConstrs idx))
                   (fun idx => addCacheToMethod (oldMeths idx))).
   Proof.
-    eapply refineADT_Build_ADT_Rep; 
+    eapply refineADT_Build_ADT_Rep;
     eauto using refine_addCacheToConstructor,
     refine_addCacheToMethod.
+  Qed.
+
+  (* After caching, we can resolve [Pick]s of the new
+   representation by showing how to build the cache. *)
+  Lemma refine_pick_cachedRep
+  : forall or,
+      refine {nr | cachedRep_AbsR or nr}
+             (cv <- {cv | cacheSpec or cv};
+              ret {| origRep := or;
+                     cachedVal := cv |}).
+  Proof.
+    unfold refine; intros or v ComputesTo_v;
+    inversion_by computes_to_inv; subst; econstructor.
+    unfold cachedRep_AbsR; simpl; intuition.
   Qed.
 
 End addCache.

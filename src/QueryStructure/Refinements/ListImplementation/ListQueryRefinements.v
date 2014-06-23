@@ -14,6 +14,10 @@ Proof.
   econstructor; subst; split; eauto.
 Qed.
 
+(* [Query_For] is opaque, so we need to make it transparent in
+   order to reason about it. *)
+Local Transparent Query_For.
+
 (* Lemma Equivalent_In_EnsembleListEquivalence {ReturnT}
       (qs : QueryStructureHint) (R : _)
       (l : list _)
@@ -106,10 +110,10 @@ Qed.
 
 Ltac trickle_swap :=
   (* faster than just calling repeat first [ setoid_rewrite _ | setoid_rewrite _ ] *)
-  repeat match goal with 
-           | [ |- context [ filter _ (map swap_pair _) ] ] => 
+  repeat match goal with
+           | [ |- context [ filter _ (map swap_pair _) ] ] =>
              setoid_rewrite filter_map with (g := swap_pair)
-           | [ |- context [ map    _ (map swap_pair _) ] ] => 
+           | [ |- context [ map    _ (map swap_pair _) ] ] =>
              setoid_rewrite map_map with (f := swap_pair)
          end;
   try setoid_rewrite swap_pair_fst; (* TODO: broken *)
@@ -119,7 +123,7 @@ Lemma join_nil_r :
   forall {A B} s1,
     @Join_Lists A B s1 [] = [].
 Proof.
-  unfold Join_Lists; 
+  unfold Join_Lists;
   induction s1; simpl; intros;
   try rewrite flat_map_empty; reflexivity.
 Qed.
@@ -128,7 +132,7 @@ Lemma join_nil_l :
   forall {A B} s2,
     @Join_Lists A B [] s2 = [].
 Proof.
-  unfold Join_Lists; 
+  unfold Join_Lists;
   induction s2; simpl; intros;
   reflexivity.
 Qed.
@@ -158,12 +162,12 @@ Lemma filter_join_fst :
   forall {A B} f s1 s2,
     List.filter (fun x => f (fst x)) (@Join_Lists A B s1 s2) =
     Join_Lists (List.filter f s1) s2.
-Proof.      
+Proof.
   unfold Join_Lists; induction s1; intros; simpl.
-  
+
   - reflexivity.
-  - destruct (f a) eqn:eq_fa; 
-    rewrite filter_app, filter_map; 
+  - destruct (f a) eqn:eq_fa;
+    rewrite filter_app, filter_map;
     simpl; rewrite eq_fa;
     [ rewrite filter_true | rewrite filter_false ];
     simpl; rewrite IHs1; reflexivity.
@@ -173,14 +177,14 @@ Lemma filter_join_snd :
   forall {A B} f s1 s2,
     List.filter (fun x => f (snd x)) (@Join_Lists A B s1 s2) =
     Join_Lists s1 (List.filter f s2).
-Proof.      
+Proof.
   unfold Join_Lists; induction s2; intros; simpl.
 
   - rewrite !flat_map_empty; reflexivity.
   - rewrite !flat_map_flatten, !flatten_filter in IHs2 |- *.
     induction s1; simpl in *; trivial.
-    destruct (f a) eqn:eq_fa; simpl in *.          
-    f_equal. rewrite IHs1. 
+    destruct (f a) eqn:eq_fa; simpl in *.
+    f_equal. rewrite IHs1.
     rewrite filter_map; reflexivity.
     rewrite <- !flat_map_flatten.
     apply filter_flat_map_join_snd.
@@ -191,9 +195,9 @@ Proof.
 Qed.
 
 
-Lemma filter_join_lists : 
-  forall {A B} (f: A * B -> bool) xs ys, 
-    filter f (Join_Lists xs ys) = 
+Lemma filter_join_lists :
+  forall {A B} (f: A * B -> bool) xs ys,
+    filter f (Join_Lists xs ys) =
     (flat_map (fun x => map (fun y => (x, y)) (filter (fun y : B => f (x, y)) ys)) xs).
 Proof.
   intros.
