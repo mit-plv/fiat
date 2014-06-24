@@ -78,11 +78,16 @@ Definition freshIdx (qs : QueryStructureHint) Ridx (n : nat) :=
     GetRelation qsHint Ridx tup ->
     tupleIndex tup <> n.
 
+Definition QSInsert (qs : QueryStructureHint) Ridx tup :=
+  (idx <- Pick (freshIdx _ Ridx);
+   qs <- Pick (QSInsertSpec _ Ridx {| tupleIndex := idx;
+                                      indexedTuple := tup |});
+   ret (qs, tt))%comp.
+
+Opaque QSInsert.
+
 Notation "'Insert' b 'into' Ridx " :=
-  (idx <- Pick (freshIdx _ {|bindex := Ridx%comp |});
-   qs <- Pick (QSInsertSpec _ {|bindex := Ridx |} {| tupleIndex := idx;
-                                                     indexedTuple := b |});
-   ret (qs, tt))%comp
+  (QSInsert _ {|bindex := Ridx%comp |} b)
     (at level 80) : QuerySpec_scope.
 
 (* Facts about insert. We'll probably need to extract these to their
@@ -1114,6 +1119,8 @@ forall qsSchema qs
                                       (GetUnConstrRelation qs Ridx')))
            (@Iterate_Decide_Comp *)
 
+  Local Transparent QSInsert.
+
   Lemma QSInsertSpec_UnConstr_refine_opt :
     forall qsSchema (qs : UnConstrQueryStructure qsSchema )
            (Ridx : @BoundedString (map relName (qschemaSchemas qsSchema)))
@@ -1121,11 +1128,7 @@ forall qsSchema qs
            (or : QueryStructure qsSchema),
       DropQSConstraints_AbsR or qs ->
       refine
-        (or' <- (idx <- Pick (freshIdx {| qsHint := or |} Ridx);
-                 qs <- Pick (QSInsertSpec {| qsHint := or |} Ridx
-                                          {| tupleIndex := idx;
-                                             indexedTuple := tup |});
-                 ret (qs, tt));
+        (or' <- QSInsert {| qsHint := or |} Ridx tup;
          nr' <- {nr' | DropQSConstraints_AbsR (fst or') nr'};
          ret (nr', snd or'))
         match (schemaConstraints (QSGetNRelSchema qsSchema Ridx)) with
@@ -1213,6 +1216,7 @@ forall qsSchema qs
                          end);
             ret (qs, ())
         end.
+    unfold QSInsert.
     intros; rewrite QSInsertSpec_UnConstr_refine;
     eauto using
           refine_SatisfiesSchemaConstraints_self,

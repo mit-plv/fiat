@@ -114,7 +114,8 @@ Section BookStoreExamples.
                  _ (fst r_n)
       (fun tup2 : Tuple => n ``("ISBN") = tup2 ``("ISBN"))).
       destruct H0; eauto.
-      unfold pointwise_relation; intros; higher_order_1_reflexivity.
+      unfold pointwise_relation; intros.
+      higher_order_1_reflexivity.
       (* END TODO*)
       pose_string_ids.
       simplify with monad laws.

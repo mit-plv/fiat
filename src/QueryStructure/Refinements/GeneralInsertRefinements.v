@@ -127,42 +127,41 @@ Tactic Notation "remove" "trivial" "insertion" "checks" :=
   (* Move all the binds we can outside the exists / computes
    used for abstraction, stopping when we've rewritten
          the bind in [QSInsertSpec]. *)
-  repeat
-    (apply refine_bind;
-     match goal with
-       | |- context [Bind (Insert _ into ?R)%QuerySpec _] =>
-         apply refine_bind;
-         [ reflexivity
-         | unfold pointwise_relation; intros ]
-       | _ => fail
-     end);
-       etransitivity;
-    [ (* Pull out the relation we're inserting into and then
+  repeat rewrite refineEquiv_bind_bind;
+  etransitivity;
+  [ repeat (apply refine_bind;
+            [reflexivity
+            | match goal with
+                | |- context [Bind (Insert _ into _)%QuerySpec _] =>
+                  unfold pointwise_relation; intros
+                    end
+                 ] );
+    (* Pull out the relation we're inserting into and then
      rewrite [QSInsertSpec] *)
-      match goal with
-          H : DropQSConstraints_AbsR _ ?r_n
-          |- context [(Insert ?n into ?R)%QuerySpec] =>
-          let H' := fresh in
+    match goal with
+        H : DropQSConstraints_AbsR _ ?r_n
+        |- context [(Insert ?n into ?R)%QuerySpec] =>
+        let H' := fresh in
           (* If we try to eapply [QSInsertSpec_UnConstr_refine] directly
                    after we've drilled under a bind, this tactic will fail because
                    typeclass resolution breaks down. Generalizing and applying gets
                    around this problem for reasons unknown. *)
-          let H' := fresh in
+        let H' := fresh in
         pose proof (@QSInsertSpec_UnConstr_refine_opt
                       _ r_n {| bindex := R |} n _ H) as H';
           apply H'
-      end
-    | cbv beta; simpl schemaConstraints; cbv iota;
-      simpl map; simpl app;
-      simpl relName in *; simpl schemaHeading in *;
-      pose_string_ids; simpl;
-      simplify with monad laws;
-      try rewrite <- GetRelDropConstraints;
-      repeat match goal with
-               | H : DropQSConstraints_AbsR ?qs ?uqs |- _ =>
-                 rewrite H in *
-             end
-    ].
+    end
+  | cbv beta; simpl schemaConstraints; cbv iota;
+    simpl map; simpl app;
+    simpl relName in *; simpl schemaHeading in *;
+    pose_string_ids; simpl;
+    simplify with monad laws;
+    try rewrite <- GetRelDropConstraints;
+    repeat match goal with
+             | H : DropQSConstraints_AbsR ?qs ?uqs |- _ =>
+               rewrite H in *
+           end
+  ].
 
 Tactic Notation "Split" "Constraint" "Checks" :=
   repeat (let b := match goal with
