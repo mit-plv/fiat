@@ -1,4 +1,7 @@
-Require Import AdditionalLemmas List Permutation.
+Require Export Permutation.
+Require Import AdditionalLemmas List.
+
+Unset Implicit Arguments.
 
 Lemma NoDup_Permutation_rewrite {A} :
   forall (l l' : list A),

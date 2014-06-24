@@ -91,6 +91,20 @@ Section AdditionalLogicLemmas.
     tauto.
   Qed.
 
+  Lemma not_exists_forall :
+    forall {A} (P: A -> Prop),
+      (~ (exists a, P a)) <-> (forall a, ~ P a).
+  Proof.
+    firstorder.
+  Qed.
+
+  Lemma not_and_implication :
+    forall (P Q: Prop),
+      ( ~ (P /\ Q) ) <-> (P -> ~ Q).
+  Proof.
+    firstorder.
+  Qed.
+
   Lemma eq_sym_iff :
     forall {A} x y, @eq A x y <-> @eq A y x.
   Proof.
@@ -133,6 +147,22 @@ Section AdditionalListLemmas.
       (map (fun x => x) seq) = seq.
   Proof.
     intros A seq; induction seq; simpl; congruence.
+  Qed.
+
+  Lemma app_singleton :
+    forall {A} (x: A) s,
+      [x] ++ s = x :: s.
+  Proof.
+    reflexivity.
+  Qed.
+
+  Lemma app_eq_nil_iff :
+    forall {A} s1 s2,
+      @nil A = s1 ++ s2 <-> ([] = s1 /\ [] = s2).
+  Proof.
+    intros; split; intro H.
+    - symmetry in H; apply app_eq_nil in H; intuition.
+    - intuition; subst; intuition.
   Qed.
 
   Lemma singleton_neq_nil :
@@ -725,5 +755,14 @@ Section AdditionalQueryLemmas.
   Proof.
     intros; unfold tupleAgree;
     split; intro; setoid_rewrite eq_sym_iff; assumption.
+  Qed.
+
+  Lemma refine_trivial_if_then_else :
+    forall x,
+      refine 
+        (If_Then_Else x (ret true) (ret false))
+        (ret x).
+  Proof.
+    destruct x; reflexivity.
   Qed.
 End AdditionalQueryLemmas.

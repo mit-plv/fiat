@@ -57,7 +57,9 @@ SRC_MODULES    := \
 	QueryStructure/AdditionalLemmas \
 	QueryStructure/Refinements/AdditionalMorphisms \
 	QueryStructure/Refinements/AdditionalPermutationLemmas \
+	QueryStructure/Refinements/flattenCompListProperties \
 	QueryStructure/Refinements/EnsembleListEquivalenceProperties \
+	QueryStructure/Refinements/ConstraintChecksRefinements \
 	QueryStructure/Refinements/ListImplementation/ListQueryRefinements \
 	QueryStructure/Refinements/ListImplementation/ListInsertRefinements \
 	QueryStructure/Refinements/ListImplementation/ListQueryStructureRefinements \
