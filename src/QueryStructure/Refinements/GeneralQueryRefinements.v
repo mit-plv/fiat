@@ -4,13 +4,54 @@ Require Import String List Sorting.Permutation
         QueryStructureSchema QueryQSSpecs QueryStructure
         EnsembleListEquivalence.
 
+(* [Query_For] and [Count] are opaque, so we need to make both
+   transparent in order to reason about them. *)
+Local Transparent Query_For Count.
+
+Lemma refine_Count {A} rows
+: refine (@Count A rows)
+         (l <- rows;
+          ret (List.length l)).
+Proof. reflexivity. Qed.
+
+Lemma refine_For
+: forall ResultT (bod : Comp (list ResultT)),
+    refine (For bod)%QuerySpec
+           (result <- bod;
+            {l | Permutation result l}).
+Proof. reflexivity. Qed.
+
 Add Parametric Morphism ResultT
 : (@Query_For ResultT)
     with signature (refine ==> refine)
-      as refine_For.
+      as refine_refine_For.
 Proof.
   intros; unfold Query_For; rewrite H; reflexivity.
 Qed.
+
+Add Parametric Morphism ResultT
+: (@Count ResultT)
+    with signature (refine ==> refine)
+      as refine_refine_Count.
+Proof.
+  intros; unfold Count; rewrite H; reflexivity.
+Qed.
+
+Lemma refine_Count_bind_bind_app {A}
+: forall (l l' : Comp (list A)),
+    refine (Count (la <- l;
+                   la' <- l';
+                   {l | Permutation.Permutation (la ++ la') l}))
+           (len <- Count l;
+            len' <- Count l';
+            ret (len + len')).
+Proof.
+  intros; unfold Count.
+  unfold refine; intros; inversion_by computes_to_inv; subst.
+  econstructor; eauto.
+  rewrite app_length; econstructor.
+Qed.
+
 
 Definition UnConstrQuery_In {ResultT}
            qsSchema (qs : UnConstrQueryStructure qsSchema)
@@ -207,6 +248,16 @@ Proof.
   apply H; auto.
 Qed. *)
 
+Lemma refine_Count_if {A} :
+  forall (b : bool) (t : A),
+    refine (Count (if b then (Return t)%QuerySpec else ret []))
+           (ret (if b then 1 else 0)).
+Proof.
+  intros; rewrite refine_Count.
+  destruct b; simplify with monad laws; reflexivity.
+Qed.
+
+
 Class DecideableEnsemble {A} (P : Ensemble A) :=
   { dec : A -> bool;
     dec_decides_P : forall a, dec a = true <-> P a}.
@@ -219,6 +270,37 @@ Instance DecideableEnsemble_EqDec {A B : Type}
 Proof.
   intros; find_if_inside; split; congruence.
 Defined.
+
+Lemma Decides_false {A} :
+  forall (P : Ensemble A)
+         (P_dec : DecideableEnsemble P) a,
+    dec a = false <-> ~ (P a).
+Proof.
+  split; unfold not; intros.
+  + apply dec_decides_P in H0; congruence.
+  + caseEq (dec a); eauto.
+    apply dec_decides_P in H0; intuition.
+Qed.
+
+Lemma refine_Where {A B} :
+  forall (P : Ensemble A)
+         (P_dec : DecideableEnsemble P)
+         (bod : Comp (list B)),
+  forall a,
+    refine (Where (P a) bod)%QuerySpec
+           (if (dec a) then
+              bod
+            else
+              (ret [])).
+Proof.
+  unfold refine, Query_Where; intros.
+  caseEq (dec a); rewrite H0 in H; econstructor;
+  split; intros; eauto.
+  apply dec_decides_P in H0; intuition.
+  apply Decides_false in H0; intuition.
+  inversion_by computes_to_inv; eauto.
+Qed.
+
 
 Require Import Arith Omega.
 
@@ -269,14 +351,12 @@ Ltac pose_string_ids :=
 
 Tactic Notation "drop" "constraints" "from" "query" constr(methname) :=
   hone method methname;
-  [       setoid_rewrite refineEquiv_pick_ex_computes_to_and;
-      subst_strings; setoid_rewrite DropQSConstraintsQuery_In;
-      simpl; repeat setoid_rewrite DropQSConstraintsQuery_In_UnderBinder;
-      simpl; pose_string_ids;
-      setoid_rewrite refineEquiv_pick_pair; simpl;
-      simplify with monad laws;
-      setoid_rewrite refineEquiv_pick_eq';
-      simplify with monad laws; cbv beta; simpl;
+  [ simplify with monad laws;
+    subst_strings; setoid_rewrite DropQSConstraintsQuery_In;
+    simpl; repeat setoid_rewrite DropQSConstraintsQuery_In_UnderBinder;
+    simpl; pose_string_ids;
+    setoid_rewrite refineEquiv_pick_eq';
+    simplify with monad laws; cbv beta; simpl;
     match goal with
         H : DropQSConstraints_AbsR _ _ |- _ =>
         unfold DropQSConstraints_AbsR in H; rewrite H

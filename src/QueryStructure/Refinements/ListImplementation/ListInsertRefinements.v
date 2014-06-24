@@ -1,7 +1,7 @@
 Require Import String Omega List FunctionalExtensionality Ensembles Bool
         Computation ADT ADTRefinement ADTNotation QueryStructureSchema
         QueryQSSpecs InsertQSSpecs QueryStructure
-        ADTRefinement.GeneralBuildADTRefinements
+        ADTRefinement.BuildADTRefinements
         AdditionalLemmas GeneralQueryRefinements GeneralInsertRefinements
         GeneralQueryStructureRefinements ListQueryStructureRefinements.
 
@@ -444,7 +444,6 @@ Ltac implement_foreign_key_check_w_lists H :=
               [ simplify with monad laws |
                 unfold H in *; split_and; eauto ]
           end).
-
 
 Tactic Notation "implement" "insert" "in" constr(relName) "with" "lists" "under" hyp(Rep_AbsR) :=
     hone method relName;

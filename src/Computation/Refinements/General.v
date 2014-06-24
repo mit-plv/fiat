@@ -38,6 +38,16 @@ Section general_refine_lemmas.
     t_refine.
   Qed.
 
+  Lemma refine_bind_pick : 
+    forall (A B : Type) (P : Ensemble A),
+    forall x y : A -> Comp B,
+      (forall a, P a -> refine (x a) (y a)) ->
+      refine (a <- {a | P a};
+              x a) 
+             (a <- {a | P a};
+              y a).
+  Proof. t_refine. Qed.
+
   Lemma refine_pick_pick A (P1 P2 : A -> Prop)
         (H : forall x, P2 x -> P1 x)
   : @refine _

@@ -646,10 +646,8 @@ Section InsertRefinements.
            (or : QueryStructure qsSchema),
       DropQSConstraints_AbsR or qs ->
       refine
-        (Pick (fun qs' =>
-                 exists or' : QueryStructure qsSchema,
-                   (Pick (QSInsertSpec {| qsHint := or |} Ridx tup)) ↝ or' /\
-                   DropQSConstraints_AbsR or' qs'))
+        (or' <- Pick (QSInsertSpec {| qsHint := or |} Ridx tup);
+         {nr' | DropQSConstraints_AbsR or' nr'})
         (schConstr_self <- {b | decides b (SatisfiesSchemaConstraints Ridx tup tup)};
          schConstr <-
                    {b | decides b
@@ -683,9 +681,6 @@ Section InsertRefinements.
             end).
   Proof.
     intros.
-    setoid_rewrite refineEquiv_split_ex.
-    setoid_rewrite refineEquiv_pick_computes_to_and.
-    simplify with monad laws.
     setoid_rewrite refineEquiv_pick_eq'.
     unfold DropQSConstraints_AbsR in *; intros; subst.
     rewrite QSInsertSpec_refine with (default := ret or).
@@ -800,14 +795,13 @@ Section InsertRefinements.
               (refined_qsConstr' idx))
       -> DropQSConstraints_AbsR or qs ->
       refine
-        { or'' | exists or',
-                 (idx <- Pick (freshIdx {| qsHint := or |} Ridx);
-                  qs <- Pick (QSInsertSpec {| qsHint := or |} Ridx
-                                           {| tupleIndex := idx;
-                                              indexedTuple := tup |});
-                  ret (qs, tt)) ↝ or'
-                 /\ DropQSConstraints_AbsR (fst or') (fst or'')
-                 /\ snd or' = snd or''}
+        (or' <- (idx <- Pick (freshIdx {| qsHint := or |} Ridx);
+                 qs <- Pick (QSInsertSpec {| qsHint := or |} Ridx
+                                          {| tupleIndex := idx;
+                                             indexedTuple := tup |});
+                 ret (qs, tt));
+         nr' <- {nr' | DropQSConstraints_AbsR (fst or') nr'};
+         ret (nr', snd or'))
         (idx <- {idx | forall tup, GetUnConstrRelation qs Ridx tup ->
                                    tupleIndex tup <> idx};
          qs <- (schConstr_self <- refined_schConstr_self;
@@ -827,7 +821,7 @@ Section InsertRefinements.
          ret (qs, ())).
   Proof.
     intros.
-    setoid_rewrite refineEquiv_pick_ex_computes_to_bind_and.
+    simplify with monad laws.
     f_equiv; unfold pointwise_relation; intros.
     unfold DropQSConstraints_AbsR in *; subst;
     unfold freshIdx, refine; intros.
@@ -836,12 +830,7 @@ Section InsertRefinements.
     setoid_rewrite <- H; setoid_rewrite <- H0; setoid_rewrite <- H1;
     setoid_rewrite <- H2; setoid_rewrite <- (H3 a).
     setoid_rewrite <- (QSInsertSpec_UnConstr_refine' _ {| tupleIndex := a; indexedTuple := tup |} H4).
-    repeat setoid_rewrite refineEquiv_pick_ex_computes_to_and.
-    repeat setoid_rewrite refineEquiv_pick_pair.
-    repeat setoid_rewrite refineEquiv_pick_eq';
-      repeat setoid_rewrite refineEquiv_bind_bind.
-    simplify with monad laws; setoid_rewrite refineEquiv_bind_unit;
-    f_equiv.
+    repeat setoid_rewrite refineEquiv_bind_bind; f_equiv.
   Qed.
 
   Lemma refine_SatisfiesSchemaConstraints_self
@@ -1132,14 +1121,13 @@ forall qsSchema qs
            (or : QueryStructure qsSchema),
       DropQSConstraints_AbsR or qs ->
       refine
-        { or'' | exists or',
-                 (idx <- Pick (freshIdx {| qsHint := or |} Ridx);
-                  qs <- Pick (QSInsertSpec {| qsHint := or |} Ridx
-                                           {| tupleIndex := idx;
-                                              indexedTuple := tup |});
-                  ret (qs, tt)) ↝ or'
-                 /\ DropQSConstraints_AbsR (fst or') (fst or'')
-                 /\ snd or' = snd or''}
+        (or' <- (idx <- Pick (freshIdx {| qsHint := or |} Ridx);
+                 qs <- Pick (QSInsertSpec {| qsHint := or |} Ridx
+                                          {| tupleIndex := idx;
+                                             indexedTuple := tup |});
+                 ret (qs, tt));
+         nr' <- {nr' | DropQSConstraints_AbsR (fst or') nr'};
+         ret (nr', snd or'))
         match (schemaConstraints (QSGetNRelSchema qsSchema Ridx)) with
             Some Constr =>
             idx <- {idx | forall tup, GetUnConstrRelation qs Ridx tup ->

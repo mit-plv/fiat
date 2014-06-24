@@ -36,7 +36,7 @@ Section SimplifyRep.
   : @consDef newRep Sig :=
     {| consBody := simplifyConstructor simplifyf (consBody oldConstr) |}.
 
-  Lemma refineADT_BuildADT_Rep_default
+  Lemma refineADT_BuildADT_Simplify
             (constrSigs : list consSig)
             (methSigs : list methSig)
             (constrDefs : ilist (@consDef oldRep) constrSigs)
