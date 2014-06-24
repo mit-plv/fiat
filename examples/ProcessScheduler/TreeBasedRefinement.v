@@ -56,6 +56,8 @@ Section TreeBasedRefinement.
       subst_body; higher_order_1_reflexivity.
     }
 
+    Opaque bfind benumerate.
+
     hone method ENUMERATE. {
       unfold equivalence in *.
       simplify with monad laws; cbv beta; simpl.
@@ -103,7 +105,7 @@ Section TreeBasedRefinement.
       setoid_rewrite refine_Permutation_Reflexivity.
       simplify with monad laws.
 
-      rewrite refine_pick_val with 
+      rewrite refine_pick_val with
       (A := StorageType) (a := r_n)
         by eassumption.
       simplify with monad laws.
@@ -131,7 +133,7 @@ Section TreeBasedRefinement.
       rewrite (refine_pick_val' true) by prove trivial constraints.
       simplify with monad laws.
 
-      rewrite refine_pick_val by 
+      rewrite refine_pick_val by
           (apply binsert_correct_DB; eassumption).
       simplify with monad laws; simpl.
       finish honing.
