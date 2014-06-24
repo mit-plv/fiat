@@ -248,6 +248,35 @@ Proof.
   apply H; auto.
 Qed. *)
 
+Lemma refine_Where {A B} :
+  forall (P : Ensemble A)
+         (P_dec : DecideableEnsemble P)
+         (bod : Comp (list B)),
+  forall a,
+    refine (Where (P a) bod)
+           (if (dec a) then
+              bod
+            else
+              (ret [])).
+Proof.
+  unfold refine, Query_Where; intros.
+  caseEq (dec a); rewrite H0 in H; econstructor;
+  split; intros; eauto.
+  apply dec_decides_P in H0; intuition.
+  apply Decides_false in H0; intuition.
+  inversion_by computes_to_inv; eauto.
+Qed.
+
+Lemma refine_Count_if {A} :
+  forall (b : bool) (t : A),
+    refine (Count (if b then Return t else ret []))
+           (ret (if b then 1 else 0)).
+Proof.
+  intros; rewrite refine_Count.
+  destruct b; simplify with monad laws; reflexivity.
+Qed.
+
+
 Class DecideableEnsemble {A} (P : Ensemble A) :=
   { dec : A -> bool;
     dec_decides_P : forall a, dec a = true <-> P a}.
