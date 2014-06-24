@@ -104,11 +104,7 @@ Section BookStoreExamples.
 
     hone method "PlaceOrder".
     {
-      setoid_rewrite refineEquiv_pick_ex_computes_to_bind_and.
       rewrite refine_pick_val with (A := nat) (a := length (snd r_n)).
-      simplify with monad laws.
-      setoid_rewrite refineEquiv_split_ex.
-      setoid_rewrite refineEquiv_pick_computes_to_and.
       simplify with monad laws.
       (* TODO: remove this etransitivity, apply step. *)
       etransitivity.
@@ -117,21 +113,21 @@ Section BookStoreExamples.
                  _
                  _ (fst r_n)
       (fun tup2 : Tuple => n ``("ISBN") = tup2 ``("ISBN"))).
-      destruct H; eauto.
+      destruct H0; eauto.
       unfold pointwise_relation; intros; higher_order_1_reflexivity.
       (* END TODO*)
+      pose_string_ids.
       simplify with monad laws.
       unfold If_Then_Else; rewrite refine_if_bool_eta.
       simplify with monad laws.
-      rewrite refine_pick_eq_ex_bind; unfold BookStoreListImpl_AbsR in *.
-      split_and; simpl;
-      rewrite refineEquiv_pick_pair_pair;
-      setoid_rewrite refineEquiv_pick_eq';
+      unfold BookStoreListImpl_AbsR in *; split_and; simpl in *.
+      pose_string_ids.
+      rewrite refineEquiv_pick_pair.
       simplify with monad laws; simpl.
       Split Constraint Checks.
       (* TODO move this back to a tactic *)
       etransitivity.
-      apply refine_bind.
+      subst_strings.
       match goal with
           |- context
                [{a | EnsembleIndexedListEquivalence
@@ -142,34 +138,35 @@ Section BookStoreExamples.
                                                 {| bindex := R' |}
                                                 {| bindex := R |} n c)) as H; intros; setoid_rewrite H
       end; try reflexivity; try eassumption.
-      subst_body; congruence.
-      unfold pointwise_relation; intros.
-      subst_strings; setoid_rewrite (@ImplementListInsert_eq); eauto.
+      congruence.
       simplify with monad laws.
-      higher_order_1_reflexivity.
-      simplify with monad laws.
-      reflexivity.
+      match goal with
+          |- context
+               [{a | EnsembleIndexedListEquivalence
+                       ((@UpdateUnConstrRelation ?QSSchema ?c ?Ridx
+                                                (EnsembleInsert ?n (?c!?R)))!?R)%QueryImpl a}%comp] =>
+          let H := fresh in
+          generalize ((@ImplementListInsert_eq QSSchema
+                                                {| bindex := R |}
+                                                n c)) as H; intros; setoid_rewrite H
+      end; try reflexivity; try eassumption.
       rewrite refine_pick_val; eauto.
       simplify with monad laws.
       rewrite refine_pick_val; eauto.
       simplify with monad laws.
       reflexivity.
       intros.
-      destruct H as [_ [l l']].
+      destruct H0 as [_ [l l']].
       generalize (l _ H1).
       unfold not; intros.
       eapply lt_irrefl.
       destruct tup; simpl in *; subst.
-      eapply H.
+      eapply H0.
     }
 
     hone method "AddBook".
     {
-      setoid_rewrite refineEquiv_pick_ex_computes_to_bind_and.
       rewrite refine_pick_val with (A := nat) (a := length (fst r_n)).
-      simplify with monad laws.
-      setoid_rewrite refineEquiv_split_ex.
-      setoid_rewrite refineEquiv_pick_computes_to_and.
       simplify with monad laws.
       rewrite refine_tupleAgree_refl_True;
         simplify with monad laws.
@@ -196,10 +193,9 @@ Section BookStoreExamples.
                   [ simplify with monad laws |
                     unfold BookStoreListImpl_AbsR in *; split_and; eauto ]
       end.
-      rewrite refine_pick_eq_ex_bind; unfold BookStoreListImpl_AbsR in *.
-      split_and; simpl;
-      rewrite refineEquiv_pick_pair_pair;
-      setoid_rewrite refineEquiv_pick_eq';
+      pose_string_ids.
+      unfold BookStoreListImpl_AbsR in *; split_and; simpl.
+      rewrite refineEquiv_pick_pair.
       simplify with monad laws; simpl.
       Split Constraint Checks.
       (* TODO move this back to a tactic *)
@@ -227,27 +223,27 @@ Section BookStoreExamples.
       simplify with monad laws.
       reflexivity.
       intros.
-      destruct H as [[l l'] _].
+      destruct H0 as [[l l'] _].
       generalize (l _ H1).
       unfold not; intros.
       eapply lt_irrefl.
       destruct tup; simpl in *; subst.
-      eapply H.
+      eapply H0.
     }
 
     hone method "GetTitles".
     {
       simpl.
-      unfold BookStoreListImpl_AbsR in H; split_and.
-      setoid_rewrite refineEquiv_pick_ex_computes_to_and.
+      unfold BookStoreListImpl_AbsR in *; split_and.
+      pose_string_ids.
       simplify with monad laws.
       rewrite refine_List_Query_In; eauto.
       subst_strings; rewrite refine_List_Query_In_Where.
       rewrite refine_List_For_Query_In_Return;
         simplify with monad laws; simpl.
 
-      setoid_rewrite refineEquiv_pick_pair_pair.
-      setoid_rewrite refineEquiv_pick_eq'.
+      setoid_rewrite refineEquiv_pick_pair.
+      pose_string_ids.
       simplify with monad laws.
       rewrite refine_pick_val by eassumption.
       simplify with monad laws.
@@ -258,20 +254,20 @@ Section BookStoreExamples.
 
     hone method "NumOrders".
     {
-      simpl.
-      unfold BookStoreListImpl_AbsR in H; split_and.
-      setoid_rewrite refineEquiv_pick_ex_computes_to_and.
+      simpl; unfold BookStoreListImpl_AbsR in *; split_and.
+      pose_string_ids.
       simplify with monad laws.
       subst_strings.
       rewrite refine_List_Query_In; eauto.
       rewrite refine_Join_List_Query_In; eauto.
       rewrite refine_List_Query_In_Where.
       rewrite refine_List_Query_In_Where.
-      rewrite refine_List_For_Query_In_Return;
-        simplify with monad laws; simpl.
+      rewrite refine_List_For_Query_In_Return.
+      rewrite refine_Count.
+      pose_string_ids.
+      simplify with monad laws; simpl.
 
-      setoid_rewrite refineEquiv_pick_pair_pair.
-      setoid_rewrite refineEquiv_pick_eq'.
+      setoid_rewrite refineEquiv_pick_pair.
       simplify with monad laws.
       rewrite refine_pick_val by eassumption.
       simplify with monad laws.
@@ -280,8 +276,20 @@ Section BookStoreExamples.
       finish honing.
   }
 
-    implement_empty_list "InitBookstore" BookStoreListImpl_AbsR.
+  hone constructor "InitBookstore".
+  { simplify with monad laws.
+    simpl; unfold BookStoreListImpl_AbsR in *;
+    pose_string_ids.
+    rewrite refineEquiv_pick_pair.
+    rewrite refine_pick_val by
+        apply EnsembleIndexedListEquivalence_Empty;
+    simplify with monad laws.
+    rewrite refine_pick_val by
+        apply EnsembleIndexedListEquivalence_Empty;
+      simplify with monad laws.
+    finish honing.
+  }
 
-    finish sharpening.
+  finish sharpening.
   Defined.
 End BookStoreExamples.
