@@ -1,6 +1,8 @@
 Require Import String Omega List FunctionalExtensionality Ensembles
+        Sorting.Permutation
         Computation ADT ADTRefinement ADTNotation BuildADTRefinements
         QueryStructureSchema QueryStructure
+        EnsembleListEquivalence
         QueryQSSpecs InsertQSSpecs EmptyQSSpecs
         GeneralInsertRefinements GeneralQueryRefinements.
 
@@ -50,6 +52,65 @@ Proof.
   simplify with monad laws.
   rewrite refine_pick_val with
   (A := list ResultT) (a := []); reflexivity.
+Qed.
+
+Lemma Ensemble_List_Equivalence_Insert {A}
+: forall (a : A) (Ens : Ensemble A),
+    ~ In _ Ens a ->
+    refine {l |
+            EnsembleListEquivalence (EnsembleInsert a Ens) l}
+           (l <- { l |
+                   EnsembleListEquivalence Ens l};
+            ret (a :: l) ).
+Proof.
+  unfold EnsembleListEquivalence, refine, In,
+  EnsembleInsert; intros.
+  inversion_by computes_to_inv; subst; econstructor.
+  simpl; intuition.
+  econstructor; eauto.
+  intuition; eapply H; eapply H3; eauto.
+  right; eapply H3; eauto.
+  right; eapply H3; eauto.
+Qed.
+
+Lemma refine_For_In_Insert
+: forall ResultT MySchema R or a tup bod,
+    ~ In _ (GetUnConstrRelation or R)
+      {| tupleIndex := a;
+         indexedTuple := tup |}
+    -> refine (Query_For
+                 (@UnConstrQuery_In
+                    ResultT MySchema
+                    (UpdateUnConstrRelation
+                       or R
+                       (EnsembleInsert {| tupleIndex := a;
+                                          indexedTuple := tup |}
+                                       (GetUnConstrRelation or R)))
+                    R bod))
+              (newResults <- bod tup;
+               origResults <- (Query_For
+                                 (@UnConstrQuery_In
+                                    ResultT MySchema or R bod));
+               {l | Permutation.Permutation (newResults ++ origResults) l}).
+Proof.
+  intros; rewrite refine_For.
+  unfold UnConstrQuery_In,
+  GetUnConstrRelation at 1, UpdateUnConstrRelation.
+  rewrite ith_replace_BoundIndex_eq.
+  unfold QueryResultComp; simplify with monad laws.
+  rewrite Ensemble_List_Equivalence_Insert by eauto.
+  setoid_rewrite refineEquiv_bind_bind.
+  setoid_rewrite refineEquiv_bind_unit; simpl.
+  simplify with monad laws.
+  Transparent Query_For.
+  unfold Query_For.
+  repeat setoid_rewrite refineEquiv_bind_bind; simpl.
+  unfold refine; intros; inversion_by computes_to_inv.
+  econstructor; eauto.
+  econstructor; eauto.
+  econstructor; eauto.
+  econstructor.
+  rewrite Permutation.Permutation_app_head; eauto.
 Qed.
 
 Tactic Notation "start" "honing" "QueryStructure" :=

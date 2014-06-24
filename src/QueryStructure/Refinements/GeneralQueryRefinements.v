@@ -29,6 +29,30 @@ Proof.
   intros; unfold Query_For; rewrite H; reflexivity.
 Qed.
 
+Add Parametric Morphism ResultT
+: (@Count ResultT)
+    with signature (refine ==> refine)
+      as refine_refine_Count.
+Proof.
+  intros; unfold Count; rewrite H; reflexivity.
+Qed.
+
+Lemma refine_Count_bind_bind_app {A}
+: forall (l l' : Comp (list A)),
+    refine (Count (la <- l;
+                   la' <- l';
+                   {l | Permutation.Permutation (la ++ la') l}))
+           (len <- Count l;
+            len' <- Count l';
+            ret (len + len')).
+Proof.
+  intros; unfold Count.
+  unfold refine; intros; inversion_by computes_to_inv; subst.
+  econstructor; eauto.
+  rewrite app_length; econstructor.
+Qed.
+
+
 Definition UnConstrQuery_In {ResultT}
            qsSchema (qs : UnConstrQueryStructure qsSchema)
            (R : @StringBound.BoundedString
@@ -236,6 +260,17 @@ Instance DecideableEnsemble_EqDec {A B : Type}
 Proof.
   intros; find_if_inside; split; congruence.
 Defined.
+
+Lemma Decides_false {A} :
+  forall (P : Ensemble A)
+         (P_dec : DecideableEnsemble P) a,
+    dec a = false <-> ~ (P a).
+Proof.
+  split; unfold not; intros.
+  + apply dec_decides_P in H0; congruence.
+  + caseEq (dec a); eauto.
+    apply dec_decides_P in H0; intuition.
+Qed.
 
 Require Import Arith Omega.
 

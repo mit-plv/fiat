@@ -64,7 +64,7 @@ Notation "'Return' t" :=
 
 Definition Query_Where
            {ResultT : Type} (P : Prop) (bod : Comp (list ResultT)) :=
-  {l | P -> bod ↝ l /\ ~ P -> l = []}.
+  {l | (P -> bod ↝ l) /\ (~ P -> l = [])}.
 
 Notation "'Where' p bod" :=
   (Query_Where p%Tuple bod) : QuerySpec_scope.

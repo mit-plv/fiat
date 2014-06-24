@@ -127,32 +127,30 @@ Tactic Notation "remove" "trivial" "insertion" "checks" :=
   (* Move all the binds we can outside the exists / computes
    used for abstraction, stopping when we've rewritten
          the bind in [QSInsertSpec]. *)
-    repeat
-        (setoid_rewrite refineEquiv_pick_ex_computes_to_bind_and;
-         match goal with
-           | |- context [(Insert _ into ?R)%QuerySpec] => idtac
-           | _ => fail
-         end);
-    etransitivity;
-   (* drill under the binds so that we can rewrite [QSInsertSpec]
-     (we can't use setoid_rewriting because there's a 'deep metavariable'
-     *)
-    [ repeat (apply refine_bind;
-              [ reflexivity
-              | unfold pointwise_relation; intros] );
-      (* Pull out the relation we're inserting into and then
+  repeat
+    (apply refine_bind;
+     match goal with
+       | |- context [Bind (Insert _ into ?R)%QuerySpec _] =>
+         apply refine_bind;
+         [ reflexivity
+         | unfold pointwise_relation; intros ]
+       | _ => fail
+     end);
+       etransitivity;
+    [ (* Pull out the relation we're inserting into and then
      rewrite [QSInsertSpec] *)
       match goal with
           H : DropQSConstraints_AbsR _ ?r_n
           |- context [(Insert ?n into ?R)%QuerySpec] =>
           let H' := fresh in
-      (* If we try to eapply [QSInsertSpec_UnConstr_refine] directly
+          (* If we try to eapply [QSInsertSpec_UnConstr_refine] directly
                    after we've drilled under a bind, this tactic will fail because
                    typeclass resolution breaks down. Generalizing and applying gets
                    around this problem for reasons unknown. *)
-          pose proof (@QSInsertSpec_UnConstr_refine_opt
-                        _ r_n {|bindex := R |} n _ H) as H';
-            apply H'
+          let H' := fresh in
+        pose proof (@QSInsertSpec_UnConstr_refine_opt
+                      _ r_n {| bindex := R |} n _ H) as H';
+          apply H'
       end
     | cbv beta; simpl schemaConstraints; cbv iota;
       simpl map; simpl app;

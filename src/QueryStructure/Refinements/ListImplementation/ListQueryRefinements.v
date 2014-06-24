@@ -273,8 +273,10 @@ Proof.
     setoid_rewrite <- IHl.
     + f_equiv; apply dec_decides_P in H;
       unfold refine; intro; econstructor; intuition.
-    + unfold refine; intro; econstructor; intuition.
-      simpl; eauto.
+    + apply Decides_false in H.
+      unfold refine; intro; econstructor; intuition.
+      econstructor; intuition.
+      repeat econstructor; eauto.
 Qed.
 
 Lemma refine_For_List {ResultT : Type}
