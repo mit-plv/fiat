@@ -57,26 +57,24 @@ Section TreeBasedRefinement.
     }
 
     hone method ENUMERATE. {
-      unfold equivalence in H.
-
-      setoid_rewrite refineEquiv_pick_ex_computes_to_and;
-      setoid_rewrite refineEquiv_pick_pair;
-      setoid_rewrite refineEquiv_pick_eq';
-      simplify with monad laws; cbv beta;
-      simpl.
+      unfold equivalence in *.
+      simplify with monad laws; cbv beta; simpl.
 
       rewrite refine_List_Query_In by eassumption.
       rewrite refine_List_Query_In_Where; instantiate (1 := _).
       rewrite refine_List_For_Query_In_Return_Permutation.
 
-      rewrite filter over Storage using search term 
+      rewrite filter over Storage using search term
                 (Some n, (@None nat, @nil (TSearchTermMatcher ProcessSchema))).
 
       setoid_rewrite (bfind_correct _).
       setoid_rewrite refine_Permutation_Reflexivity.
       simplify with monad laws.
 
-      rewrite refine_pick_val by eassumption.
+      rewrite refine_pick_val with
+      (A := StorageType)
+        (a := r_n)
+        by eassumption.
       simplify with monad laws.
       finish honing.
     }
@@ -91,44 +89,36 @@ Section TreeBasedRefinement.
     (* TODO: The backtick notation from bounded indexes cannot be input *)
 
     hone method GET_CPU_TIME. {
-      unfold equivalence in H.
-
-      setoid_rewrite refineEquiv_pick_ex_computes_to_and;
-      setoid_rewrite refineEquiv_pick_pair;
-      setoid_rewrite refineEquiv_pick_eq';
-      simplify with monad laws; cbv beta;
-      simpl.
+      unfold equivalence in *.
+      simplify with monad laws; cbv beta; simpl.
 
       rewrite refine_List_Query_In; eauto.
       rewrite refine_List_Query_In_Where; instantiate (1 := _).
       rewrite refine_List_For_Query_In_Return_Permutation.
 
-      rewrite filter over Storage using search term 
-                (@None nat, (Some n, @nil (TSearchTermMatcher ProcessSchema))). 
+      rewrite filter over Storage using search term
+                (@None nat, (Some n, @nil (TSearchTermMatcher ProcessSchema))).
 
       setoid_rewrite (bfind_correct _).
       setoid_rewrite refine_Permutation_Reflexivity.
       simplify with monad laws.
 
-      rewrite refine_pick_val by eassumption.
+      rewrite refine_pick_val with 
+      (A := StorageType) (a := r_n)
+        by eassumption.
       simplify with monad laws.
       finish honing.
     }
 
     hone method SPAWN. {
-      unfold equivalence in H.
+      unfold equivalence in *.
 
       lift list property (assert_cache_property (cfresh_cache r_n) max_cached_neq_projected _) as cache.
-    
-      setoid_rewrite refineEquiv_pick_ex_computes_to_and;
-      setoid_rewrite refineEquiv_pick_pair;
-      setoid_rewrite refineEquiv_pick_eq';
-      simplify with monad laws; cbv beta;
-      simpl.
+      simplify with monad laws; cbv beta.
 
       rewrite refine_pick_val by eassumption.
       simplify with monad laws.
- 
+
       rewrite refine_pick_val by eauto using EnsembleIndexedListEquivalence_pick_new_index.
       simplify with monad laws.
 
@@ -141,9 +131,9 @@ Section TreeBasedRefinement.
       rewrite (refine_pick_val' true) by prove trivial constraints.
       simplify with monad laws.
 
-      rewrite refine_pick_val by (apply binsert_correct_DB; eauto).
-      simplify with monad laws.
-
+      rewrite refine_pick_val by 
+          (apply binsert_correct_DB; eassumption).
+      simplify with monad laws; simpl.
       finish honing.
     }
 

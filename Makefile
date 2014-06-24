@@ -73,12 +73,13 @@ SRC_MODULES    := \
 
 EXAMPLE_MODULES := \
 	ComputationExamples \
+	Trivial \
+	TrivialCache \
 	ProcessScheduler/State \
 	ProcessScheduler/DBSchema \
 	ProcessScheduler/ListBasedRefinement \
-	Trivial \
-	Bookstore \
 	ProcessScheduler/TreeBasedRefinement \
+	Bookstore
 
 # ADTExamples/QueryStructure/ProcessScheduler/TreeBasedRefinement \
 # ADTExamples/CombineBinaryOperationsSpec
