@@ -83,7 +83,7 @@ Proof.
     setoid_rewrite (refine_pick_val _ H0).
     simplify with monad laws; simpl.
     unfold cachedRep_AbsR in H0; intuition; subst.
-    eapply refine_if with (b := if (string_dec n "Dachshund") 
+    eapply refine_if with (b := if (string_dec n "Dachshund")
                                 then true
                                 else false).
     { find_if_inside; try congruence; subst.
@@ -92,7 +92,7 @@ Proof.
       setoid_rewrite H2; simplify with monad laws; simpl.
       reflexivity. }
     { find_if_inside; try congruence; subst.
-      simpl; reflexivity. 
+      simpl; reflexivity.
     }
   }
 
@@ -107,34 +107,6 @@ Proof.
     setoid_rewrite refine_For_In_Empty.
     simplify with monad laws; reflexivity.
   }
-
-  Lemma refine_Where {A B} :
-    forall (P : Ensemble A)
-           (P_dec : DecideableEnsemble P)
-           (bod : Comp (list B)),
-      forall a,
-        refine (Where (P a) bod)
-               (if (dec a) then
-                  bod
-                else
-                  (ret [])).
-  Proof.
-    unfold refine, Query_Where; intros.
-    caseEq (dec a); rewrite H0 in H; econstructor;
-    split; intros; eauto.
-    apply dec_decides_P in H0; intuition.
-    apply Decides_false in H0; intuition.
-    inversion_by computes_to_inv; eauto.
-  Qed.
-
-  Lemma refine_Count_if {A} :
-    forall (b : bool) (t : A),
-      refine (Count (if b then Return t else ret []))
-             (ret (if b then 1 else 0)).
-  Proof.
-    intros; rewrite refine_Count.
-    destruct b; simplify with monad laws; reflexivity.
-  Qed.
 
   hone method "AddDog".
   {
@@ -163,7 +135,7 @@ Proof.
     subst_body.
     etransitivity.
     pose (n!"Breed"); simpl in *.
-    eapply refine_if with (b := if (string_dec d "Dachshund") 
+    eapply refine_if with (b := if (string_dec d "Dachshund")
                                 then true
                                 else false);
     find_if_inside; try congruence; intros.
@@ -232,13 +204,13 @@ Proof.
 
   hone method "BreedPopulation".
   {
-    eapply refine_if with (b := if (string_dec n "Dachshund") 
+    eapply refine_if with (b := if (string_dec n "Dachshund")
                                 then true
                                 else false);
     find_if_inside; try congruence; intros;
     simplify with monad laws; simpl.
 
-    { 
+    {
       unfold MyListImpl_abs in *; intuition.
       setoid_rewrite refineEquiv_pick_pair_pair.
       setoid_rewrite refineEquiv_pick_eq'.
@@ -281,7 +253,7 @@ Proof.
     setoid_rewrite refineEquiv_pick_pair_pair; simpl.
     setoid_rewrite refineEquiv_pick_eq'.
     simplify with monad laws.
-    subst_strings. 
+    subst_strings.
       match goal with
           |- context
                [{a | EnsembleIndexedListEquivalence
@@ -312,6 +284,6 @@ Proof.
       setoid_rewrite <- H4 in H3; eapply H3.
       eauto.
   }
-  
+
   finish sharpening.
 Defined.
