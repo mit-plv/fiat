@@ -9,7 +9,7 @@ Definition TSearchTermMatcher (heading: Heading) := (@Tuple heading -> bool).
 Definition SearchTermsCollection heading :=
   list (TSearchTermMatcher heading).
 
-Fixpoint MatchAgainstSearchTerms 
+Fixpoint MatchAgainstSearchTerms
          {heading: Heading}
          (search_terms : SearchTermsCollection heading) (item: Tuple) :=
   match search_terms with
@@ -17,12 +17,12 @@ Fixpoint MatchAgainstSearchTerms
     | is_match :: more_terms => (is_match item) && MatchAgainstSearchTerms more_terms item
   end.
 
-Definition TupleEqualityMatcher 
-           {heading: Heading} 
+Definition TupleEqualityMatcher
+           {heading: Heading}
            (attr: Attributes heading)
-           (value: Domain heading attr) 
+           (value: Domain heading attr)
            {eq_dec: HasDecidableEquality (Domain heading attr)} : TSearchTermMatcher heading :=
-  fun tuple => 
+  fun tuple =>
     match eq_dec (tuple attr) value with
       | in_left  => true
       | in_right => false
@@ -56,11 +56,11 @@ Definition TTreeConstructor (TKey: Type) :=
   forall TBag TItem TBagSearchTerm : Type,
     Bag TBag TItem TBagSearchTerm -> (TItem -> TKey) -> Type.
 
-Definition mkTreeType 
+Definition mkTreeType
            (TKey: Type)
            (tree_constructor: TTreeConstructor TKey)
            TSubtree TSubtreeSearchTerm
-           heading subtree_as_bag : (@Tuple heading -> TKey) -> Type := 
+           heading subtree_as_bag : (@Tuple heading -> TKey) -> Type :=
   tree_constructor TSubtree (@Tuple heading) TSubtreeSearchTerm subtree_as_bag.
 
 Definition NTreeType      := mkTreeType BinNums.N (@NTreeBag.IndexedBag).
@@ -75,20 +75,20 @@ Defined.
 
 Record ProperAttribute {heading} :=
   {
-    Attribute: Attributes heading; 
+    Attribute: Attributes heading;
     ProperlyTyped: { Domain heading Attribute = BinNums.N } + { Domain heading Attribute = BinNums.Z } +
                    { Domain heading Attribute = nat } + { Domain heading Attribute = string }
   }.
 
 Fixpoint NestedTreeFromAttributes'
-         heading 
-         (indexes: list (@ProperAttribute heading)) 
+         heading
+         (indexes: list (@ProperAttribute heading))
          {struct indexes}: (@BagPlusBagProof (@Tuple heading)) :=
   match indexes with
-    | [] => 
+    | [] =>
       {| BagType        := list (@Tuple heading);
          SearchTermType := SearchTermsCollection heading |}
-    | proper_attr :: more_indexes => 
+    | proper_attr :: more_indexes =>
       let attr := @Attribute heading proper_attr in
       let (t, st, bagproof) := NestedTreeFromAttributes' heading more_indexes in
       match ProperlyTyped proper_attr with
@@ -111,7 +111,7 @@ Definition CheckType {heading} (attr: Attributes heading) (rightT: _) :=
   {| Attribute := attr; ProperlyTyped := rightT |}.
 
 Ltac autoconvert func :=
-  match goal with 
+  match goal with
     | [ src := cons ?head ?tail |- list _ ] =>
       refine (func head _ :: _);
         [ solve [ eauto with * ] | clear src;
@@ -140,7 +140,7 @@ Defined.
 Definition IndexedAlbums :=
   List.fold_left binsert FirstAlbums (@bempty _ _ _ (BagProof SampleIndex)).
 
-(* Example use: 
+(* Example use:
 Eval simpl in (SearchTermType SampleIndex).
 Time Eval simpl in (bfind IndexedAlbums (Some 1963%N, (None, (None, [])))).
 Time Eval simpl in (bfind IndexedAlbums (Some 1963%N, (Some 1, (None, [])))).
@@ -170,30 +170,30 @@ Qed.
 Lemma binsert_correct_DB {TContainer TSearchTerm} :
   forall db_schema qs index (store: TContainer),
   forall {store_is_bag: Bag TContainer _ TSearchTerm},
-    EnsembleIndexedListEquivalence 
-      (GetUnConstrRelation qs index) 
+    EnsembleIndexedListEquivalence
+      (GetUnConstrRelation qs index)
       (benumerate (Bag := store_is_bag) store) ->
     forall tuple,
-      EnsembleIndexedListEquivalence 
+      EnsembleIndexedListEquivalence
         (GetUnConstrRelation
-           (@UpdateUnConstrRelation db_schema qs index 
-                                   (EnsembleInsert 
+           (@UpdateUnConstrRelation db_schema qs index
+                                   (EnsembleInsert
                                       {| tupleIndex := Datatypes.length (benumerate store);
-                                         indexedTuple := tuple |} 
+                                         indexedTuple := tuple |}
                                       (GetUnConstrRelation qs index))) index)
         (benumerate (binsert (Bag := store_is_bag) store tuple)).
 Proof.
   intros.
   unfold EnsembleIndexedListEquivalence, UnIndexedEnsembleListEquivalence, EnsembleListEquivalence in *.
 
-  setoid_rewrite get_update_unconstr_iff.
+  setoid_rewrite get_update_unconstr_eq.
   setoid_rewrite in_ensemble_insert_iff.
   setoid_rewrite NoDup_modulo_permutation.
   split; intros.
 
-  rewrite binsert_enumerate_length;      
+  rewrite binsert_enumerate_length;
     destruct H0; subst;
-    [ | apply lt_S]; 
+    [ | apply lt_S];
     intuition.
 
   destruct H as (indices & [ l' (map & nodup & equiv) ]).
@@ -207,12 +207,12 @@ Proof.
   split; [ assumption | split ].
 
   eexists; split; try apply perm.
-  
+
   constructor;
-    [ rewrite <- equiv; intro abs; 
-      apply indices in abs; simpl in abs; 
+    [ rewrite <- equiv; intro abs;
+      apply indices in abs; simpl in abs;
       eapply lt_refl_False; eauto | assumption ].
-  
+
   setoid_rewrite perm.
   setoid_rewrite equiv.
   setoid_rewrite eq_sym_iff at 1.

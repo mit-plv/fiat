@@ -342,6 +342,22 @@ Proof.
   destruct b; eauto.
 Qed.
 
+Lemma refine_list_insert_in_other_table :
+  forall (db_schema : QueryStructureSchema) (qs : UnConstrQueryStructure db_schema)
+         (index1 index2 : BoundedString) (store : list Tuple),
+    EnsembleIndexedListEquivalence (GetUnConstrRelation qs index2) store ->
+    index1 <> index2 ->
+    forall inserted : @IndexedTuple _,
+      EnsembleIndexedListEquivalence
+        (GetUnConstrRelation
+           (UpdateUnConstrRelation qs index1
+                                   (EnsembleInsert inserted (GetUnConstrRelation qs index1))) index2)
+        (store).
+Proof.
+  intros ** .
+  rewrite get_update_unconstr_neq; eauto.
+Qed.
+
 Lemma ImplementListInsert_eq qsSchema Ridx
       (tup : Tuple)
       (or : UnConstrQueryStructure qsSchema)
