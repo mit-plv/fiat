@@ -1,5 +1,5 @@
 Require Export Bags Tuple Heading List Program.
-Require Import String_as_OT.
+Require Import String_as_OT EnsembleListEquivalence.
 Require Import Bool String OrderedTypeEx.
 
 Unset Implicit Arguments.

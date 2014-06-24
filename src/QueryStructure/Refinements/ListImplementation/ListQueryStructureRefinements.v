@@ -2,7 +2,7 @@ Require Import String Omega List FunctionalExtensionality Ensembles
         Computation ADT ADTRefinement ADTNotation QueryStructureSchema
         BuildADTRefinements QueryQSSpecs InsertQSSpecs EmptyQSSpecs
         QueryStructure GeneralInsertRefinements
-        GeneralQueryRefinements SetEq AdditionalLemmas.
+        GeneralQueryRefinements SetEq AdditionalLemmas EnsembleListEquivalence.
 
 Definition EnsembleIndexedListEquivalence {heading}
            (R : Ensemble (@IndexedTuple heading))

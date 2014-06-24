@@ -1,6 +1,6 @@
 Require Import AdditionalLemmas List Permutation.
 
-Lemma NoDup_Permutation {A} :
+Lemma NoDup_Permutation_rewrite {A} :
   forall (l l' : list A),
     Permutation l l' -> NoDup l -> NoDup l'.
 Proof.
@@ -24,7 +24,52 @@ Proof.
   [ exists seq; intuition | ].
   destruct H as [ seq' (no_dup & perm) ].
   symmetry in perm.
-  eapply NoDup_Permutation; eauto. 
+  eapply NoDup_Permutation_rewrite; eauto. 
+Qed.
+
+Lemma NoDup_slice :
+  forall {A} a b c,
+    @NoDup A (a ++ b ++ c) -> NoDup (a ++ c).
+Proof.
+  induction b; simpl; intros.
+  - trivial.              
+  - apply IHb.
+    eapply NoDup_remove_1; eauto.
+Qed.
+
+Lemma NoDup_app_inv :
+  forall {A} a b,
+    @NoDup A (a ++ b) ->
+    forall x,
+      List.In x a -> ~ List.In x b.
+Proof.
+  intros * no_dup * in_a.
+  apply in_split in in_a.
+  destruct in_a as [ a1 [ a2 _eq ] ]; subst.
+  rewrite <- app_assoc, <- app_comm_cons in no_dup.
+  apply NoDup_remove_2 in no_dup.
+  repeat rewrite in_app_iff in no_dup; intuition.
+Qed.
+
+Lemma NoDup_app_swap :
+  forall {A} a b,
+    @NoDup A (a ++ b) ->
+    @NoDup A (b ++ a).
+Proof.
+  intros.
+  eapply NoDup_Permutation_rewrite; try apply Permutation_app_comm; assumption.
+Qed.
+
+Lemma NoDup_app_inv' :
+  forall {A} a b c,
+    @NoDup A (a ++ b ++ c) ->
+    forall x,
+      List.In x a \/ List.In x c -> ~ List.In x b.
+Proof.
+  intros * no_dup * [ in_a | in_c ];
+  [ | rewrite app_assoc in no_dup; apply NoDup_app_swap in no_dup ];
+  eapply NoDup_app_inv in no_dup; eauto;
+  intuition.
 Qed.
 
 Lemma permutation_cons_in :

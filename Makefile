@@ -47,6 +47,7 @@ SRC_MODULES    := \
 	QueryStructure/QuerySpecs/EmptyQSSpecs \
 	QueryStructure/QuerySpecs/QueryQSSpecs \
 	QueryStructure/QuerySpecs/InsertQSSpecs \
+	QueryStructure/QuerySpecs/EnsembleListEquivalence \
 	QueryStructure/QueryStructureNotations \
 	QueryStructure/Refinements/GeneralQueryRefinements \
 	QueryStructure/Refinements/GeneralInsertRefinements \
@@ -56,6 +57,7 @@ SRC_MODULES    := \
 	QueryStructure/AdditionalLemmas \
 	QueryStructure/Refinements/AdditionalMorphisms \
 	QueryStructure/Refinements/AdditionalPermutationLemmas \
+	QueryStructure/Refinements/EnsembleListEquivalenceProperties \
 	QueryStructure/Refinements/ListImplementation/ListQueryRefinements \
 	QueryStructure/Refinements/ListImplementation/ListInsertRefinements \
 	QueryStructure/Refinements/ListImplementation/ListQueryStructureRefinements \

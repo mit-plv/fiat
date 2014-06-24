@@ -33,7 +33,7 @@ Tactic Notation
         |- appcontext [ filter ?filter1 (benumerate ?storage) ] ] => 
       let temp := fresh in 
       let filter2 := constr:(bfind_matcher (Bag := BagProof indexed_storage) keyword) in
-      assert (ObservationalEq filter1 filter2) as temp by prove_observational_eq;
+      assert (ExtensionalEq filter1 filter2) as temp by prove_observational_eq;
         rewrite (filter_by_equiv filter1 filter2 temp);
         clear temp
   end.
@@ -44,7 +44,7 @@ Tactic Notation
        "using" "dependent" "search" "term" constr(keyword) :=
   let temp := fresh in
   let filter2 := constr:(fun x => bfind_matcher (Bag := BagProof indexed_storage) (keyword x)) in
-  assert (forall x, ObservationalEq (filter1 x) (filter2 x)) as temp by prove_observational_eq;
+  assert (forall x, ExtensionalEq (filter1 x) (filter2 x)) as temp by prove_observational_eq;
     setoid_rewrite (filter_by_equiv_meta filter1 filter2 temp);
     clear temp.
 

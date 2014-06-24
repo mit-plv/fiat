@@ -3,7 +3,6 @@ Require Import Ensembles List Coq.Lists.SetoidList Program
         ADTNotation.BuildADTSig ADTNotation.BuildADT
         GeneralBuildADTRefinements QueryQSSpecs QueryStructure
         SetEq Omega.
-Require Export EnsembleListEquivalence.
 
 Unset Implicit Arguments.
 
@@ -136,6 +135,13 @@ Section AdditionalListLemmas.
     intros A seq; induction seq; simpl; congruence.
   Qed.
 
+  Lemma singleton_neq_nil :
+    forall {A} (a: A),
+      [a] = [] <-> False.
+  Proof.
+    intuition discriminate.
+  Qed.              
+
   Lemma in_nil_iff :
     forall {A} (item: A),
       List.In item [] <-> False.
@@ -223,41 +229,20 @@ Section AdditionalListLemmas.
   (* Alternative proof: red; intros; apply (In_InA (eqA:=eqA)) in H2; intuition. *)
   Qed.
 
-  Lemma add_filter_nonnil_under_app :
-    forall {A: Type} (seq: list (list A)),
-      fold_right (app (A := A)) [] seq =
-      fold_right (app (A := A)) [] (List.filter NonNil seq).
-  Proof.
-    intros; induction seq; simpl;
-    [ | destruct a; simpl; rewrite IHseq];
-    trivial.
-  Qed.
-
-  Lemma box_plus_app_is_identity :
-    forall {A: Type} (seq: list A),
-      fold_right (app (A := A)) [] (map Box seq) = seq.
-  Proof.
-    intros A seq; induction seq; simpl; congruence.
-  Qed.
-
-  Lemma in_Option2Box :
-    forall {A: Type} (xo: option A) (x: A),
-      List.In x (Option2Box xo) <-> xo = Some x.
-  Proof.
-    intros A xo x; destruct xo; simpl; try rewrite or_false; intuition; congruence.
-  Qed.
+  Definition ExtensionalEq {A B} f g :=
+    forall (a: A), @eq B (f a) (g a).
 
   Lemma filter_by_equiv :
     forall {A} f g,
-      ObservationalEq f g ->
+      ExtensionalEq f g ->
       forall seq, @List.filter A f seq = @List.filter A g seq.
   Proof.
-    intros A f g obs seq; unfold ObservationalEq in obs; induction seq; simpl; try rewrite obs; try rewrite IHseq; trivial.
+    intros A f g obs seq; unfold ExtensionalEq in obs; induction seq; simpl; try rewrite obs; try rewrite IHseq; trivial.
   Qed.
 
   Lemma filter_by_equiv_meta :
     forall {A B : Type} (f g : A -> B -> bool),
-      (forall (a: A), ObservationalEq (f a) (g a)) -> 
+      (forall (a: A), ExtensionalEq (f a) (g a)) -> 
       (forall (a: A) (seq : list B), filter (f a) seq = filter (g a) seq).
   Proof.
     intros * equiv *;
