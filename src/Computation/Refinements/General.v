@@ -31,19 +31,19 @@ Section general_refine_lemmas.
             c.
   Proof. t_refine. Qed.
 
-  Lemma refine_pick_val A (P : A -> Prop) a
+  Lemma refine_pick_val A a (P : A -> Prop)
   : P a -> @refine A ({x | P x })%comp
                    (ret a).
   Proof.
     t_refine.
   Qed.
 
-  Lemma refine_bind_pick : 
+  Lemma refine_bind_pick :
     forall (A B : Type) (P : Ensemble A),
     forall x y : A -> Comp B,
       (forall a, P a -> refine (x a) (y a)) ->
       refine (a <- {a | P a};
-              x a) 
+              x a)
              (a <- {a | P a};
               y a).
   Proof. t_refine. Qed.
