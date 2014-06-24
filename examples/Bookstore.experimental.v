@@ -238,6 +238,16 @@ Section BookStoreExamples.
       finish honing.
     }
 
+    Definition ID {A} := fun (x: A) => x.
+
+    Lemma ens_red :
+      forall {heading TContainer TSearchTerm} x y (y_is_bag: Bag TContainer _ TSearchTerm),
+        @EnsembleIndexedListEquivalence heading x (benumerate (Bag := y_is_bag) y) =
+        (ID (fun y => EnsembleIndexedListEquivalence x (benumerate y))) y.
+    Proof.
+      intros; reflexivity.
+    Qed.
+
     hone method "PlaceOrder". {
       Notation " A ! B " := (A ``(B)) (at level 2).
       setoid_rewrite refine_trivial_if_then_else.
@@ -248,8 +258,49 @@ Section BookStoreExamples.
       rewrite refine_pick_val by eauto using EnsembleIndexedListEquivalence_pick_new_index.
       simplify with monad laws.
 
-      Check refine_List_Query_In.
+      rewrite (refine_foreign_key_constraint_via_select (fun (b: Book) => n!sISBN = b!sISBN)) 
+        by eauto with typeclass_instances.
+      simplify with monad laws; cbv beta; 
+      simpl.
+
+      rewrite refine_List_Query_In by eassumption.
+      setoid_rewrite refine_List_Query_In_Where; instantiate (1 := _).
+      rewrite refine_List_For_Query_In_Return_Permutation.
+
+      rewrite filter over BookStorage using search term
+              (@None string, (Some n!sISBN, @nil (TSearchTermMatcher BookSchema))).
+
+      setoid_rewrite (bfind_correct _).
+      setoid_rewrite refine_Count.
+      setoid_rewrite refine_Permutation_Reflexivity.
+      simplify with monad laws.
+
+      setoid_rewrite map_length.
+      unfold BookStoreListImpl_AbsR.
       
+      Split Constraint Checks.
+
+      setoid_rewrite ens_red;
+        setoid_rewrite refineEquiv_pick_pair;
+        unfold ID; simpl.
+      simplify with monad laws.
+
+      rewrite (refine_pick_val' (fst r_n))
+        by (
+            pose proof (@refine_list_insert_in_other_table _ or ``(sORDERS)  ``(sBOOKS)) as agh;
+            apply agh; intuition discriminate
+          ).
+      simplify with monad laws.
+
+      rewrite refine_pick_val by (apply (binsert_correct_DB (store_is_bag := BagProof OrderStorage) _ _ _ _ H2); eauto).
+      simplify with monad laws.
+      reflexivity.
+
+      rewrite refine_pick_val by eauto.
+      simplify with monad laws.
+      reflexivity.
+    }
+
       Lemma in_indexed_in_list :
         forall {heading} table seq P,
           (@EnsembleIndexedListEquivalence heading table seq) ->
@@ -278,67 +329,9 @@ Section BookStoreExamples.
 
       Require Import List.
 
-      
-      Transparent Query_For Count.
+      Definition gtb x y :=
+        andb (leb y x) (negb (beq_nat x y)). 
 
-      Print boxed_option.
-      Require Import AdditionalPermutationLemmas.
-
-      SearchAbout DecideableEnsemble.
-      Opaque Query_For .
-      Opaque Count.
-
-      setoid_rewrite (refine_foreign_key_constraint_via_select (fun (b: Book) => n!sISBN = b!sISBN)); eauto.
-
-      simplify with monad laws; simpl.
-      
-      rewrite refine_List_Query_In by eassumption.
-      setoid_rewrite refine_List_Query_In_Where; instantiate (1 := _).
-      rewrite refine_List_For_Query_In_Return_Permutation.
-
-      rewrite filter over BookStorage using search term
-              (@None string, (Some n!sISBN, @nil (TSearchTermMatcher BookSchema))).
-
-      setoid_rewrite (bfind_correct _).
-      setoid_rewrite refine_Count.
-      setoid_rewrite refine_Permutation_Reflexivity.
-      simplify with monad laws.
-
-      setoid_rewrite map_length.
-      unfold BookStoreListImpl_AbsR.
-      
-      Split Constraint Checks.
-
-      Definition ID {A}  := fun (x: A) => x.
-
-      Lemma ens_red :
-        forall {heading TContainer TSearchTerm} x y (y_is_bag: Bag TContainer _ TSearchTerm),
-          @EnsembleIndexedListEquivalence heading x (benumerate (Bag := y_is_bag) y) =
-          (ID (fun y => EnsembleIndexedListEquivalence x (benumerate y))) y.
-      Proof.
-        intros; reflexivity.
-      Qed.
-
-      
-      setoid_rewrite ens_red.
-      setoid_rewrite refineEquiv_pick_pair.
-      unfold ID; simpl.
-      simplify with monad laws.
-
-      rewrite (refine_pick_val' (fst r_n)) by ((*apply (fun id => @refine_list_insert_in_other_table _ c id _ (benumerate (Bag := BagProof BookStorage) (fst r_n)) H1);*) 
-                                               intuition discriminate).
-      simplify with monad laws.
-
-      rewrite refine_pick_val by (apply (binsert_correct_DB (store_is_bag := BagProof OrderStorage) _ _ _ _ H2); eauto).
-      simplify with monad laws.
-      reflexivity.
-
-      rewrite refine_pick_val by eauto.
-      reflexivity.
-
-
-      constructor.
-      
       Lemma gtb_true_iff :
         forall x y, gtb x y = true <-> x > y.
       Proof.
@@ -354,10 +347,6 @@ Section BookStoreExamples.
         rewrite andb_false_iff, negb_false_iff, beq_nat_true_iff, leb_iff_conv;
         intuition omega.
       Qed.
-
-      destruct (gtb _ _) eqn:eq_gtb; [ rewrite gtb_true_iff in eq_gtb | rewrite gtb_false_iff in eq_gtb ].
-      induction x2; simpl in *; intros;
-      inversion_by computes_to_inv.
 
       Lemma EnsembleListEquivalence_nil_In_False :
         forall {heading} (ens: @IndexedTuple heading -> Prop),
@@ -381,27 +370,6 @@ Section BookStoreExamples.
         apply map_eq_nil_inv in map_nil; subst.
         intuition.
       Qed.
-
-      rewrite <- H3, <- H4 in eq_gtb;
-      simpl in eq_gtb; exfalso; omega.
-
-      Lemma count_query :
-        forall {A sch} qs tbl F (P: Tuple -> A),
-        forall n,
-          computes_to
-            (Count (For (UnConstrQuery_In (qsSchema := sch)  qs tbl (fun x => Where (F x) Return (P x) )))) n /\ n > 0 <->
-          exists x, F x.
-      Proof.
-        intros.
-        unfold Count, Query_For, UnConstrQuery_In, Query_Where, Query_Return, QueryResultComp, flatten_CompList.
-        split; intros; inversion_by computes_to_inv.
-        Print computes_to.
-
-        rewrite <- H3 in H2.
-        rewrite <- H2 in H1.
-        subst. clear H3 x.
-        
-
 
     (* TODO: Look into Typeclasses Opaque (BoundedString Attribute). *)
   Defined.

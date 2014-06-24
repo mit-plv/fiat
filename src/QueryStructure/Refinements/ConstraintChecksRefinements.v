@@ -3,9 +3,6 @@ Require Import List Compare_dec AdditionalLemmas AdditionalPermutationLemmas Add
 
 Unset Implicit Arguments.
 
-Definition gtb x y :=
-  andb (leb y x) (negb (beq_nat x y)). 
-
 Transparent Count Query_For.
 
 Lemma For_computes_to_In :
@@ -127,7 +124,7 @@ Lemma refine_foreign_key_constraint_via_select :
                           (GetUnConstrRelation c tbl tup2 /\ P (indexedTuple tup2)))))
       (Bind 
          (Count (For (UnConstrQuery_In c tbl (fun tup => Where (P tup) Return tup))))
-         (fun count => ret (gtb count 0))).
+         (fun count => ret (negb (beq_nat count 0)))).
 Proof.
   unfold refine, Count, UnConstrQuery_In; intros * excl * pick_comp ** .
   inversion_by computes_to_inv; subst.
@@ -135,7 +132,7 @@ Proof.
   constructor.
 
   destruct (Datatypes.length x0) eqn:eq_length;
-    destruct x0 as [ | head tail ]; simpl in *; try discriminate; unfold gtb; simpl.
+    destruct x0 as [ | head tail ]; simpl in *; try discriminate; simpl.
 
   pose proof (For_computes_to_nil _ (GetUnConstrRelation c tbl) H0). 
   rewrite not_exists_forall; intro a; rewrite not_and_implication; intros.
