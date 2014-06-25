@@ -92,7 +92,7 @@ Ltac pose_string_ids :=
                              EnsembleInsert ?tup (GetUnConstrRelation ?r ?Ridx') tup2 /\
                              (indexedTuple tup') ?attr = (indexedTuple tup2) ?attr'))] =>
               let neq := fresh in
-              assert (Ridx <> Ridx') by (subst_strings; congruence);
+              assert (Ridx <> Ridx') by (subst_strings; discriminate);
               let refine_trivial := fresh in
               assert
                 (refine {b' |
