@@ -19,7 +19,7 @@ Definition Dog := TupleDef MySchema "Dog".
 Definition MySig : ADTSig :=
   ADTsignature {
       "Empty" : unit → rep,
-      "AddDog" : rep × Dog → rep × unit,
+      "AddDog" : rep × Dog → rep × bool,
       "YoungOwners'Breeds" : rep × nat → rep × list string,
       "BreedPopulation" : rep × string → rep × nat
   }.
@@ -28,7 +28,7 @@ Definition MySpec : ADT MySig :=
   QueryADTRep MySchema {
     const "Empty" (_ : unit) : rep := empty,
 
-   update "AddDog" (dog : Dog) : unit :=
+   update "AddDog" (dog : Dog) : bool :=
       Insert dog into "Dog",
 
     query "YoungOwners'Breeds" ( ageLimit : nat ) : list string :=
@@ -73,8 +73,8 @@ Proof.
   hone method "YoungOwners'Breeds".
   { simplify with monad laws.
     setoid_rewrite (refine_pick_val _ H0).
-    simplify with monad laws; simpl.
-    unfold cachedRep_AbsR in H0; intuition; subst.
+    simplify with monad laws.
+    unfold cachedRep_AbsR in H0; intuition; subst; simpl.
     finish honing.
   }
 
@@ -161,13 +161,7 @@ Proof.
   hone constructor "Empty".
   { simplify with monad laws.
     unfold MyListImpl_abs, GetUnConstrRelation; simpl.
-    rewrite (@refineEquiv_pick_pair_pair
-                  (list Person)
-                  (list Dog)
-                  (nat)
-                  (EnsembleIndexedListEquivalence (fun _ : IndexedTuple => False))
-                  (EnsembleIndexedListEquivalence (fun _ : IndexedTuple => False))
-                  (fun c : nat => 0 = c)).
+    rewrite refineEquiv_pick_pair_pair.
     rewrite refine_pick_val by
         apply EnsembleIndexedListEquivalence_Empty;
     simplify with monad laws.

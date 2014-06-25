@@ -82,7 +82,7 @@ Definition MyListImpl_abs
            (or : cachedRep (UnConstrQueryStructure MySchema) (Ensemble (string * nat)))
            (nr : (list Person * list Dog) * MapStringNat) : Prop :=
   ((origRep or) ! "Person" ≃ fst (fst nr) /\
-  (origRep or) ! "Dog" ≃ snd (fst nr)) /\
+   (origRep or) ! "Dog" ≃ snd (fst nr) ) /\
   forall BreedCount, cachedVal or BreedCount <->
                      StringIndexedMap.MapsTo (fst BreedCount) (snd BreedCount) (snd nr).
 
@@ -135,10 +135,10 @@ Proof.
       apply refine_under_bind'; intros.
       (* Check and see if there are any Breeds in the cache with
        smaller populations. *)
-      eapply (refine_Pick_Some 
+      eapply (refine_Pick_Some
                 (fun BreedCount => cachedVal r_n BreedCount
                                    /\ (a > snd BreedCount)
-                                   /\ (forall BreedCount', 
+                                   /\ (forall BreedCount',
                                          cachedVal r_n BreedCount' ->
                                          snd BreedCount >= snd BreedCount'))); intros;
       [ split_and
@@ -246,6 +246,32 @@ Proof.
   }
 
   hone representation using MyListImpl_abs.
+
+  hone method "YoungOwners'Breeds".
+  {
+    simplify with monad laws; simpl.
+    unfold MyListImpl_abs in *; intuition.
+    rewrite refine_List_Query_In by apply H3.
+    rewrite refine_Join_List_Query_In by apply H0.
+    rewrite refine_List_Query_In_Where.
+    rewrite refine_List_Query_In_Where.
+    rewrite refine_List_For_Query_In_Return;
+      pose_string_ids; simplify with monad laws; simpl.
+    match goal with
+
+
+    setoid_rewrite refineEquiv_pick_eq'.
+    simplify with monad laws.
+    simpl in *.
+    rewrite refine_pick_val by eassumption.
+    simplify with monad laws.
+    rewrite refine_pick_val by eassumption.
+    simplify with monad laws.
+    rewrite H2.
+    finish honing.
+  }
+
+
   hone constructor "Empty".
   { simplify with monad laws.
     unfold MyListImpl_abs, GetUnConstrRelation; simpl.
@@ -267,28 +293,6 @@ Proof.
     finish honing.
   }
 
-  hone method "YoungOwners'Breeds".
-  {
-    simplify with monad laws; simpl.
-    unfold MyListImpl_abs in *; intuition.
-    rewrite refine_List_Query_In by apply H3.
-    rewrite refine_Join_List_Query_In by apply H0.
-    rewrite refine_List_Query_In_Where.
-    rewrite refine_List_Query_In_Where.
-    rewrite refine_List_For_Query_In_Return;
-      simplify with monad laws; simpl.
-
-    setoid_rewrite refineEquiv_pick_pair_pair.
-    setoid_rewrite refineEquiv_pick_eq'.
-    simplify with monad laws.
-    simpl in *.
-    rewrite refine_pick_val by eassumption.
-    simplify with monad laws.
-    rewrite refine_pick_val by eassumption.
-    simplify with monad laws.
-    rewrite H2.
-    finish honing.
-  }
 
   hone method "BreedPopulation".
   {

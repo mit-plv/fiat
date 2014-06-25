@@ -58,8 +58,8 @@ Section BookStoreExamples.
   Definition BookStoreSig : ADTSig :=
     ADTsignature {
         "InitBookstore" : unit → rep,
-        "PlaceOrder" : rep × Order → rep × unit,
-        "AddBook" : rep × Book → rep × unit,
+        "PlaceOrder" : rep × Order → rep × bool,
+        "AddBook" : rep × Book → rep × bool,
         "GetTitles" : rep × string → rep × list string,
         "NumOrders" : rep × string → rep × nat
       }.
@@ -68,10 +68,10 @@ Section BookStoreExamples.
     QueryADTRep BookStoreSchema {
       const "InitBookstore" (_ : unit) : rep := empty,
 
-      update "PlaceOrder" ( o : Order ) : unit :=
+      update "PlaceOrder" ( o : Order ) : bool :=
           Insert o into sORDERS,
 
-      update "AddBook" ( b : Book ) : unit :=
+      update "AddBook" ( b : Book ) : bool :=
           Insert b into sBOOKS ,
 
       query "GetTitles" ( author : string ) : list string :=
@@ -89,22 +89,22 @@ Section BookStoreExamples.
   Require Import BagsOfTuples Bool.
 
   (* (* TODO *)
-  Eval compute in 
+  Eval compute in
       (
-        let relation_key := 
+        let relation_key :=
             (fun (x : BoundedIndex (map relName (qschemaSchemas BookStoreSchema))) => x)
               {| bindex := sBOOKS; indexb := _ |} in
-        let attribute_key := 
+        let attribute_key :=
             (fun (x :  Attributes (GetNRelSchemaHeading (qschemaSchemas BookStoreSchema) relation_key)) => x)
               {| bindex := sISBN; indexb := _ |} in
         attribute_key
       ).
    *)
-  
+
   Notation "qs_schema / rel_index" := (GetRelationKey qs_schema rel_index) (at level 40, left associativity).
   Notation "rel_key // attr_index" := (GetAttributeKey rel_key attr_index) (at level 50).
 
-  Definition Books := BookStoreSchema/sBOOKS. 
+  Definition Books := BookStoreSchema/sBOOKS.
   Definition Orders := BookStoreSchema/sORDERS.
   Definition BookSchema := QSGetNRelSchemaHeading BookStoreSchema Books.
   Definition OrderSchema := QSGetNRelSchemaHeading BookStoreSchema Orders.
@@ -143,7 +143,7 @@ Section BookStoreExamples.
         |- context [@BuildADT (QueryStructure ?Rep) _ _ _ _] =>
         hone representation using (@DropQSConstraints_AbsR Rep)
     end.
-    
+
     drop constraints from insert "PlaceOrder".
     drop constraints from insert "AddBook".
     drop constraints from query "GetTitles".
@@ -161,7 +161,7 @@ Section BookStoreExamples.
       simplify with monad laws.
 
       rewrite (refine_pick_val' (bempty, bempty)) by (intuition; apply bempty_correct_DB).
-      subst_body; higher_order_1_reflexivity. 
+      subst_body; higher_order_1_reflexivity.
     }
 
     Notation "?[ A ]" := (if A then true else false) (at level 50).
@@ -180,7 +180,7 @@ Section BookStoreExamples.
 
       (* Step 2: Make it more efficient *)
       rewrite (filter_join_snd (fun (a: Book) => ?[string_dec n (a!sAUTHOR)])).
-      
+
       rewrite filter over BookStorage using search term
                 (Some n, (@None nat, @nil (TSearchTermMatcher BookSchema))).
 
@@ -188,16 +188,16 @@ Section BookStoreExamples.
 
       setoid_rewrite filter_join_lists; simpl.
 
-      rewrite dependent filter 
-                (fun (x: Book) (y : Order) => ?[eq_nat_dec x!sISBN y!sISBN]) 
-              over OrderStorage using dependent search term 
+      rewrite dependent filter
+                (fun (x: Book) (y : Order) => ?[eq_nat_dec x!sISBN y!sISBN])
+              over OrderStorage using dependent search term
                 (fun (x: Book) => (Some x!sISBN, @nil (TSearchTermMatcher OrderSchema))).
 
       setoid_rewrite (bfind_correct _).
 
-      setoid_rewrite map_flat_map.      
+      setoid_rewrite map_flat_map.
       setoid_rewrite map_map; simpl.
-      
+
       setoid_rewrite refine_Permutation_Reflexivity.
       setoid_rewrite refine_Count.
       simplify with monad laws.
@@ -233,7 +233,7 @@ Section BookStoreExamples.
       simpl.
 
       unfold BookStoreListImpl_AbsR.
-      rewrite refine_pick_val by eauto. 
+      rewrite refine_pick_val by eauto.
       simplify with monad laws.
       finish honing.
     }
@@ -258,9 +258,9 @@ Section BookStoreExamples.
       rewrite refine_pick_val by eauto using EnsembleIndexedListEquivalence_pick_new_index.
       simplify with monad laws.
 
-      rewrite (refine_foreign_key_constraint_via_select (fun (b: Book) => n!sISBN = b!sISBN)) 
+      rewrite (refine_foreign_key_constraint_via_select (fun (b: Book) => n!sISBN = b!sISBN))
         by eauto with typeclass_instances.
-      simplify with monad laws; cbv beta; 
+      simplify with monad laws; cbv beta;
       simpl.
 
       rewrite refine_List_Query_In by eassumption.
@@ -277,7 +277,7 @@ Section BookStoreExamples.
 
       setoid_rewrite map_length.
       unfold BookStoreListImpl_AbsR.
-      
+
       Split Constraint Checks.
 
       setoid_rewrite ens_red;
@@ -304,24 +304,24 @@ Section BookStoreExamples.
       Lemma in_indexed_in_list :
         forall {heading} table seq P,
           (@EnsembleIndexedListEquivalence heading table seq) ->
-          ((exists itup, table itup /\ P (indexedTuple itup)) <-> 
+          ((exists itup, table itup /\ P (indexedTuple itup)) <->
            (exists tup,  List.In tup seq /\ P tup)).
       Proof.
         intros * ( indices & [ seq' ( map_correct & nodup & equiv ) ] ).
         split; subst; setoid_rewrite in_map_iff; intros [ tup' (_in & _P) ].
 
-        - eexists; split; 
-          [ eexists; split; [ reflexivity | apply equiv ] | ]; 
-          eassumption. 
+        - eexists; split;
+          [ eexists; split; [ reflexivity | apply equiv ] | ];
+          eassumption.
         - destruct _in as [ tup'' ( proj_eq & _in ) ];
           eexists; subst; split; [ apply equiv |  ];
           eassumption.
-      Qed.        
+      Qed.
 
       Show.
       Add Parametric Morphism :
         (decides)
-          with signature (eq ==> iff ==> iff) 
+          with signature (eq ==> iff ==> iff)
             as decides_eq_iff_eq_morphism.
       Proof.
         intros b **; unfold decides; destruct b; intuition.
@@ -330,7 +330,7 @@ Section BookStoreExamples.
       Require Import List.
 
       Definition gtb x y :=
-        andb (leb y x) (negb (beq_nat x y)). 
+        andb (leb y x) (negb (beq_nat x y)).
 
       Lemma gtb_true_iff :
         forall x y, gtb x y = true <-> x > y.
@@ -338,7 +338,7 @@ Section BookStoreExamples.
         unfold gtb; intros;
         rewrite andb_true_iff, negb_true_iff, beq_nat_false_iff, leb_iff;
         intuition omega.
-      Qed.          
+      Qed.
 
       Lemma gtb_false_iff :
         forall x y, gtb x y = false <-> x <= y.
@@ -355,7 +355,7 @@ Section BookStoreExamples.
       Proof.
         intros * equiv ** .
         destruct equiv as ( ? & equiv ).
-        rewrite equiv. 
+        rewrite equiv.
         intuition.
       Qed.
 
@@ -366,7 +366,7 @@ Section BookStoreExamples.
       Proof.
         intros * equiv ** .
         destruct equiv as ( _ & [ ? ( map_nil & ? & equiv ) ] ).
-        rewrite equiv. 
+        rewrite equiv.
         apply map_eq_nil_inv in map_nil; subst.
         intuition.
       Qed.

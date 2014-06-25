@@ -52,8 +52,8 @@ Section BookStoreExamples.
   Definition BookStoreSig : ADTSig :=
     ADTsignature {
         "InitBookstore" : unit → rep,
-        "PlaceOrder" : rep × Order → rep × unit,
-        "AddBook" : rep × Book → rep × unit,
+        "PlaceOrder" : rep × Order → rep × bool,
+        "AddBook" : rep × Book → rep × bool,
         "GetTitles" : rep × string → rep × list string,
         "NumOrders" : rep × string → rep × nat
       }.
@@ -62,10 +62,10 @@ Section BookStoreExamples.
     QueryADTRep BookStoreSchema {
       const "InitBookstore" (_ : unit) : rep := empty,
 
-      update "PlaceOrder" ( o : Order ) : unit :=
+      update "PlaceOrder" ( o : Order ) : bool :=
           Insert o into "Orders",
 
-      update "AddBook" ( b : Book ) : unit :=
+      update "AddBook" ( b : Book ) : bool :=
           Insert b into "Books" ,
 
       query "GetTitles" ( author : string ) : list string :=

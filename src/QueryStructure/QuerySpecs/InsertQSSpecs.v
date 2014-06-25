@@ -78,11 +78,27 @@ Definition freshIdx (qs : QueryStructureHint) Ridx (n : nat) :=
     GetRelation qsHint Ridx tup ->
     tupleIndex tup <> n.
 
+Definition decides (b : bool) (P : Prop) := if b then P else ~ P.
+
+Definition SuccessfulInsertSpec
+           (qs : QueryStructureHint)
+           (Ridx : _)
+           (qs' : QueryStructure qsSchemaHint')
+           (tup : @IndexedTuple (schemaHeading (QSGetNRelSchema _ Ridx)))
+           (result : bool) : Prop :=
+  decides result (forall t,
+               GetRelation qs' Ridx t <->
+               (EnsembleInsert tup
+                               (GetRelation qsHint Ridx) t)).
+
 Definition QSInsert (qs : QueryStructureHint) Ridx tup :=
   (idx <- Pick (freshIdx _ Ridx);
-   qs <- Pick (QSInsertSpec _ Ridx {| tupleIndex := idx;
+   qs' <- Pick (QSInsertSpec _ Ridx {| tupleIndex := idx;
                                       indexedTuple := tup |});
-   ret (qs, tt))%comp.
+   b <- Pick (SuccessfulInsertSpec _ Ridx qs' 
+                                   {| tupleIndex := idx;
+                                      indexedTuple := tup |});
+   ret (qs', b))%comp.
 
 Opaque QSInsert.
 
@@ -373,7 +389,7 @@ Section InsertRefinements.
           (P : Ensemble (BoundedIndex Bound)) : Prop :=
     Iterate_Ensemble_BoundedIndex' [] Bound P.
 
-  Definition decides (b : bool) (P : Prop) := if b then P else ~ P.
+
 
   Program Lemma refine_Iterate_Ensemble {A : Set}
         (A_eq_dec : forall a a' : A, {a = a'} + {a <> a'})
@@ -677,11 +693,15 @@ Section InsertRefinements.
     forall qsSchema (qs : UnConstrQueryStructure qsSchema)
            (Ridx : @BoundedString (map relName (qschemaSchemas qsSchema)))
            (tup : @IndexedTuple (schemaHeading (QSGetNRelSchema qsSchema Ridx)))
-           (or : QueryStructure qsSchema),
+           (or : QueryStructure qsSchema)
+           (NIntup : ~ GetUnConstrRelation qs Ridx tup),
       DropQSConstraints_AbsR or qs ->
       refine
-        (or' <- Pick (QSInsertSpec {| qsHint := or |} Ridx tup);
-         {nr' | DropQSConstraints_AbsR or' nr'})
+        (or' <- (qs' <- Pick (QSInsertSpec {| qsHint := or |} Ridx tup);
+                 b <- Pick (SuccessfulInsertSpec {| qsHint := or |} Ridx qs' tup);
+                 ret (qs', b));
+         nr' <- {nr' | DropQSConstraints_AbsR (fst or') nr'};
+         ret (nr', snd or'))
         (schConstr_self <- {b | decides b (SatisfiesSchemaConstraints Ridx tup tup)};
          schConstr <-
                    {b | decides b
@@ -710,8 +730,8 @@ Section InsertRefinements.
                                        (EnsembleInsert tup (GetUnConstrRelation qs Ridx))));
             ret match schConstr_self, schConstr, schConstr', qsConstr, qsConstr' with
               | true, true, true, true, true =>
-                (UpdateUnConstrRelation qs Ridx (EnsembleInsert tup (GetUnConstrRelation qs Ridx)))
-              | _, _, _, _, _ => qs
+                (UpdateUnConstrRelation qs Ridx (EnsembleInsert tup (GetUnConstrRelation qs Ridx)), true)
+              | _, _, _, _, _ => (qs, false)
             end).
   Proof.
     intros.
@@ -768,16 +788,51 @@ Section InsertRefinements.
                                      decides x3' _ -> _
                         with
                           | true, true, true, true, true =>
+                            fun H H0 H1 H2 H3 => (@Insert_Valid _ or Ridx tup H0 H1 H H2 H3, true)
+                          | _, _, _, _, _ => fun _ _ _ _ _ => (or, false)
+                        end H0 H1 H2 H3' H4').
+      econstructor 2 with (comp_a_value :=  match x as x', x0 as x0', x1 as x1', x2 as x2', x3 as x3'
+                              return decides x' _ ->
+                                     decides x0' _ ->
+                                     decides x1' _ ->
+                                     decides x2' _ ->
+                                     decides x3' _ -> _
+                        with
+                          | true, true, true, true, true =>
                             fun H H0 H1 H2 H3 => @Insert_Valid _ or Ridx tup H0 H1 H H2 H3
                           | _, _, _, _, _ => fun _ _ _ _ _ => or
                         end H0 H1 H2 H3' H4').
       repeat (econstructor; eauto).
       repeat find_if_inside; try econstructor; simpl in *.
       unfold GetRelation, Insert_Valid, UpdateUnConstrRelation,
-      UpdateRelation ; simpl; split; intros.
+      UpdateRelation, EnsembleInsert ; simpl; split; intros; eauto.
       rewrite ith_replace_BoundIndex_neq; eauto using string_dec; simpl.
       rewrite ith_replace_BoundIndex_eq; unfold EnsembleInsert, GetRelation;
       simpl; intuition.
+      econstructor.
+      econstructor 3 with (v :=  match x as x', x0 as x0', x1 as x1', x2 as x2', x3 as x3'
+                              return decides x' _ ->
+                                     decides x0' _ ->
+                                     decides x1' _ ->
+                                     decides x2' _ ->
+                                     decides x3' _ -> _
+                        with
+                          | true, true, true, true, true =>
+                            fun H H0 H1 H2 H3 => true
+                          | _, _, _, _, _ => fun _ _ _ _ _ => false
+                        end H0 H1 H2 H3' H4').
+      repeat find_if_inside; simpl;
+      try (solve [unfold not; let H := fresh in intros H; eapply NIntup; eapply H;
+      unfold EnsembleInsert; eauto]).
+      intros; rewrite <- GetRelDropConstraints.
+      unfold Insert_Valid, GetUnConstrRelation, DropQSConstraints, 
+      UpdateRelation; simpl.
+      rewrite <- ith_Bounded_imap, ith_replace_BoundIndex_eq; simpl;
+      tauto.
+
+      repeat find_if_inside; subst; repeat econstructor.
+
+      simpl.
       repeat find_if_inside; subst; repeat econstructor.
       unfold DropQSConstraints, Insert_Valid, EnsembleInsert; simpl.
       unfold GetRelation, Insert_Valid, UpdateUnConstrRelation,
@@ -830,41 +885,48 @@ Section InsertRefinements.
       -> DropQSConstraints_AbsR or qs ->
       refine
         (or' <- (idx <- Pick (freshIdx {| qsHint := or |} Ridx);
-                 qs <- Pick (QSInsertSpec {| qsHint := or |} Ridx
+                 qs' <- Pick (QSInsertSpec {| qsHint := or |} Ridx
                                           {| tupleIndex := idx;
                                              indexedTuple := tup |});
-                 ret (qs, tt));
+                 b <- Pick (SuccessfulInsertSpec {| qsHint := or |} Ridx qs' 
+                                                 {| tupleIndex := idx;
+                                                    indexedTuple := tup |});
+                 ret (qs', b));
          nr' <- {nr' | DropQSConstraints_AbsR (fst or') nr'};
          ret (nr', snd or'))
         (idx <- {idx | forall tup, GetUnConstrRelation qs Ridx tup ->
                                    tupleIndex tup <> idx};
-         qs <- (schConstr_self <- refined_schConstr_self;
-                schConstr <- refined_schConstr;
-                schConstr' <- refined_schConstr';
-                qsConstr <- refined_qsConstr ;
-                qsConstr' <- (refined_qsConstr' idx);
-                ret match schConstr_self, schConstr, schConstr', qsConstr, qsConstr' with
-                      | true, true, true, true, true =>
-                        (UpdateUnConstrRelation qs Ridx
-                                                (EnsembleInsert
-                                                   {| tupleIndex := idx;
-                                                      indexedTuple := tup |}
-                                                   (GetUnConstrRelation qs Ridx)))
-                      | _, _, _, _, _ => (qs)
-                    end);
-         ret (qs, ())).
+         (schConstr_self <- refined_schConstr_self;
+          schConstr <- refined_schConstr;
+          schConstr' <- refined_schConstr';
+          qsConstr <- refined_qsConstr ;
+          qsConstr' <- (refined_qsConstr' idx);
+          ret match schConstr_self, schConstr, schConstr', qsConstr, qsConstr' with
+                | true, true, true, true, true =>
+                  (UpdateUnConstrRelation qs Ridx
+                                          (EnsembleInsert
+                                             {| tupleIndex := idx;
+                                                indexedTuple := tup |}
+                                                   (GetUnConstrRelation qs Ridx)), true)
+                | _, _, _, _, _ => (qs, false)
+              end)).
   Proof.
     intros.
     simplify with monad laws.
-    f_equiv; unfold pointwise_relation; intros.
-    unfold DropQSConstraints_AbsR in *; subst;
-    unfold freshIdx, refine; intros.
-    inversion_by computes_to_inv; econstructor; intros.
-    rewrite <- GetRelDropConstraints in *; eauto.
+    unfold freshIdx.
+    simpl.
+    rewrite <- GetRelDropConstraints.
+    unfold DropQSConstraints_AbsR in *; subst.
+    apply refine_bind_pick; intros.
     setoid_rewrite <- H; setoid_rewrite <- H0; setoid_rewrite <- H1;
     setoid_rewrite <- H2; setoid_rewrite <- (H3 a).
-    setoid_rewrite <- (QSInsertSpec_UnConstr_refine' _ {| tupleIndex := a; indexedTuple := tup |} H4).
-    repeat setoid_rewrite refineEquiv_bind_bind; f_equiv.
+    setoid_rewrite <- (QSInsertSpec_UnConstr_refine' _ {| tupleIndex := a; indexedTuple := tup |}).
+    repeat setoid_rewrite refineEquiv_bind_bind.
+    setoid_rewrite refineEquiv_bind_unit; simpl.
+    unfold DropQSConstraints_AbsR in *; subst.
+    f_equiv; intros.
+    unfold not; eauto; intros; eapply H4; eauto.
+    reflexivity.
   Qed.
 
   Lemma refine_SatisfiesSchemaConstraints_self
@@ -1157,14 +1219,21 @@ forall qsSchema qs
            (or : QueryStructure qsSchema),
       DropQSConstraints_AbsR or qs ->
       refine
-        (or' <- QSInsert {| qsHint := or |} Ridx tup;
+        (or' <- (idx <- Pick (freshIdx {| qsHint := or |} Ridx);
+                 qs' <- Pick (QSInsertSpec {| qsHint := or |} Ridx
+                                          {| tupleIndex := idx;
+                                             indexedTuple := tup |});
+                 b <- Pick (SuccessfulInsertSpec {| qsHint := or |} Ridx qs' 
+                                                 {| tupleIndex := idx;
+                                                    indexedTuple := tup |});
+                 ret (qs', b));
          nr' <- {nr' | DropQSConstraints_AbsR (fst or') nr'};
          ret (nr', snd or'))
         match (schemaConstraints (QSGetNRelSchema qsSchema Ridx)) with
             Some Constr =>
             idx <- {idx | forall tup, GetUnConstrRelation qs Ridx tup ->
                                       tupleIndex tup <> idx} ;
-            qs <- (schConstr_self <- {b | decides b (Constr tup tup) };
+            (schConstr_self <- {b | decides b (Constr tup tup) };
                    schConstr <- {b | decides b
                                              (forall tup',
                                                 GetUnConstrRelation qs Ridx tup'
@@ -1203,14 +1272,13 @@ forall qsSchema qs
                                                    (EnsembleInsert
                                                       {| tupleIndex := idx;
                                                          indexedTuple := tup |}
-                                                      (GetUnConstrRelation qs Ridx)))
-                         | _, _, _, _, _ => (qs)
-                       end);
-            ret (qs, ())
+                                                      (GetUnConstrRelation qs Ridx)), true)
+                         | _, _, _, _, _ => (qs, false)
+                       end)
           | None =>
             idx <- {idx | forall tup, GetUnConstrRelation qs Ridx tup ->
                                       tupleIndex tup <> idx};
-            qs <- (qsConstr <- (@Iterate_Decide_Comp_opt' _ _ []
+            (qsConstr <- (@Iterate_Decide_Comp_opt' _ _ []
                                    (fun Ridx' =>
                                       match (BuildQueryStructureConstraints qsSchema Ridx Ridx') with
                                         | Some CrossConstr =>
@@ -1240,10 +1308,9 @@ forall qsSchema qs
                                                      (EnsembleInsert
                                                         {| tupleIndex := idx;
                                                            indexedTuple := tup |}
-                                                        (GetUnConstrRelation qs Ridx)))
-                           | _, _ => (qs)
-                         end);
-            ret (qs, ())
+                                                        (GetUnConstrRelation qs Ridx)), true)
+                           | _, _ => (qs, false)
+                         end)
         end.
     unfold QSInsert.
     intros; rewrite QSInsertSpec_UnConstr_refine;

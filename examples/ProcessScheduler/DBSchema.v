@@ -43,7 +43,7 @@ Section ProcessSchedulerInterface.
 
   Definition ProcessSchedulerSig := ADTsignature {
     INIT         : unit          → rep,
-    SPAWN        : rep × nat     → rep × (),
+    SPAWN        : rep × nat     → rep × bool,
     ENUMERATE    : rep × State   → rep × list nat,
     GET_CPU_TIME : rep × nat     → rep × list nat
   }.
@@ -70,7 +70,7 @@ Section ProcessSchedulerInterface.
       ProcessSchedulerSchema {
         const INIT (_ : unit) : rep := empty,
 
-        update SPAWN (ns : nat) : unit :=
+        update SPAWN (ns : nat) : bool :=
           new_pid <- {n | ∀ p ∈ PROCESSES, (n <> p!PID_COLUMN)};
           Insert <PID_COLUMN:: new_pid, STATE_COLUMN:: SLEEPING, CPU_COLUMN:: 0> into PROCESSES_TABLE,
 
