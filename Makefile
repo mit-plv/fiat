@@ -55,7 +55,9 @@ SRC_MODULES    := \
 	QueryStructure/SetEq \
 	QueryStructure/SetEqProperties \
 	QueryStructure/AdditionalLemmas \
+	QueryStructure/tupleAgree \
 	QueryStructure/Refinements/AdditionalMorphisms \
+	QueryStructure/Refinements/AdditionalRefinementLemmas \
 	QueryStructure/Refinements/AdditionalPermutationLemmas \
 	QueryStructure/Refinements/flattenCompListProperties \
 	QueryStructure/Refinements/EnsembleListEquivalenceProperties \

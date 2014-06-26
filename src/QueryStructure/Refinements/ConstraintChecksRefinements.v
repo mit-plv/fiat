@@ -114,7 +114,7 @@ Proof.
     [ rewrite dec_decides_P in eqdec | rewrite Decides_false in eqdec ]; intuition.
 Qed.
 
-Lemma refine_foreign_key_constraint_via_select :
+Lemma refine_constraint_check_into_query :
   forall {schm tbl} P (P_dec : DecideableEnsemble P),
   forall (c : UnConstrQueryStructure schm),
     refine
@@ -143,4 +143,53 @@ Proof.
   eexists; split; eauto.
 
   apply decidable_excl; assumption.
+Qed.
+
+Definition refine_foreign_key_check_into_query {schm tbl} := 
+  @refine_constraint_check_into_query schm tbl.
+
+Require Import tupleAgree Bool AdditionalRefinementLemmas.
+
+Lemma refine_functional_dependency_check_into_query :
+  forall {schm : QueryStructureSchema} {tbl} ref args1 args2,
+    DecideableEnsemble (fun x : Tuple => tupleAgree_computational ref x args1 /\
+                                         ~ tupleAgree_computational ref x args2) ->
+    forall c : UnConstrQueryStructure schm,
+      ((forall tup' : IndexedTuple,
+          GetUnConstrRelation c tbl tup' -> tupleAgree ref tup' args1 -> tupleAgree ref tup' args2) <->
+       (forall tup' : IndexedTuple,
+          ~ (GetUnConstrRelation c tbl tup' /\ tupleAgree ref tup' args1 /\ ~ tupleAgree ref tup' args2))) ->
+      refine
+        (Pick (fun (b : bool) => 
+                 decides b
+                         (forall tup' : IndexedTuple,
+                            GetUnConstrRelation c tbl tup' ->
+                            tupleAgree ref tup' args1 ->
+                            tupleAgree ref tup' args2)))
+        (Bind (Count
+                 For (UnConstrQuery_In c tbl
+                                       (fun tup : Tuple =>
+                                          Where (tupleAgree_computational ref tup args1 /\
+                                                 ~ tupleAgree_computational ref tup args2)
+                                                Return tup)))
+              (fun count => ret (beq_nat count 0))).
+Proof.
+  intros * is_dec ** .
+
+  setoid_replace (forall tup', GetUnConstrRelation c tbl tup' ->
+                               tupleAgree ref tup' args1 -> tupleAgree ref tup' args2)
+  with           (forall tup', ~ (GetUnConstrRelation c tbl tup' /\ 
+                                  tupleAgree ref tup' args1 /\ 
+                                  ~ tupleAgree ref tup' args2)); eauto.
+
+  setoid_rewrite refine_decide_negation.
+  setoid_rewrite tupleAgree_equivalence.
+  setoid_rewrite (refine_constraint_check_into_query
+                    (fun (x: Tuple ) => tupleAgree_computational ref x args1 /\ 
+                                        ~ tupleAgree_computational ref x args2)); try assumption.
+
+  Opaque Query_For Count.
+  simplify with monad laws.
+  setoid_rewrite negb_involutive.
+  reflexivity.
 Qed.

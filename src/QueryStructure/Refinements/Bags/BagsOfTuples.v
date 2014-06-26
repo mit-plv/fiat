@@ -1,4 +1,4 @@
-Require Export Bags Tuple Heading List Program.
+Require Export BagsInterface ListBags TreeBags Tuple Heading List Program.
 Require Import String_as_OT EnsembleListEquivalence.
 Require Import Bool String OrderedTypeEx.
 
@@ -17,16 +17,21 @@ Fixpoint MatchAgainstSearchTerms
     | is_match :: more_terms => (is_match item) && MatchAgainstSearchTerms more_terms item
   end.
 
+Require Import GeneralQueryRefinements.
+
 Definition TupleEqualityMatcher
            {heading: Heading}
            (attr: Attributes heading)
            (value: Domain heading attr)
-           {eq_dec: HasDecidableEquality (Domain heading attr)} : TSearchTermMatcher heading :=
-  fun tuple =>
-    match eq_dec (tuple attr) value with
-      | in_left  => true
-      | in_right => false
-    end.
+           {ens_dec: DecideableEnsemble (fun x : Domain heading attr => value = x)} 
+: TSearchTermMatcher heading := fun tuple => dec (tuple attr).
+
+Definition TupleDisequalityMatcher
+           {heading: Heading}
+           (attr: Attributes heading)
+           (value: Domain heading attr)
+           {ens_dec: DecideableEnsemble (fun x : Domain heading attr => value = x)} 
+: TSearchTermMatcher heading := fun tuple => negb (dec (tuple attr)).
 
 Instance TupleListAsBag (heading: Heading) :
   Bag (list (@Tuple heading)) (@Tuple heading) (SearchTermsCollection heading).
@@ -218,3 +223,19 @@ Proof.
   setoid_rewrite eq_sym_iff at 1.
   reflexivity.
 Qed.
+
+Ltac binsert_correct_DB :=
+  match goal with
+    | [ H: EnsembleIndexedListEquivalence (GetUnConstrRelation ?qs ?index)
+                                          (benumerate (Bag := ?bagproof) ?store) |-
+        EnsembleIndexedListEquivalence
+          (GetUnConstrRelation
+             (UpdateUnConstrRelation ?qs ?index
+                                     (EnsembleInsert
+                                        {|
+                                          tupleIndex := Datatypes.length (benumerate ?store);
+                                          indexedTuple := ?tuple |} 
+                                        (GetUnConstrRelation ?qs ?index))) 
+             ?index)
+          (benumerate _) ] => apply (binsert_correct_DB (store_is_bag := bagproof) _ qs index _ H)
+  end.
