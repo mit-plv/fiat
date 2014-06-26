@@ -354,9 +354,20 @@ Lemma refine_list_insert_in_other_table :
                                    (EnsembleInsert inserted (GetUnConstrRelation qs index1))) index2)
         (store).
 Proof.
-  intros ** .
-  rewrite get_update_unconstr_neq; eauto.
+  intros; rewrite get_update_unconstr_neq; eauto.
 Qed.
+
+Ltac refine_list_insert_in_other_table :=
+  match goal with 
+    | [ |- appcontext [ 
+               EnsembleIndexedListEquivalence
+                 (GetUnConstrRelation
+                    (UpdateUnConstrRelation ?qs ?index1
+                                            (EnsembleInsert ?inserted 
+                                                            (GetUnConstrRelation ?qs ?index1))) 
+                    ?index2) ] ] => apply (@refine_list_insert_in_other_table _ qs index1 index2);
+                                   [ eauto | intuition discriminate ]
+  end.
 
 Lemma ImplementListInsert_eq qsSchema Ridx
       (tup : Tuple)
