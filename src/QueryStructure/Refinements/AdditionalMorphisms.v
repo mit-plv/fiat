@@ -274,3 +274,14 @@ Proof.
   apply Permutation_sym in H; eapply Permutation_in; eauto; eapply H1; eauto.
   eapply H1; eapply Permutation_in; eauto.
 Qed.
+
+Require Import InsertQSSpecs.
+
+Add Morphism 
+    (decides)
+    with signature (eq ==> iff ==> iff)
+      as decide_eq_iff_iff_morphism.
+Proof.
+  unfold decides; intros b p1 p2 equiv.
+  destruct b; simpl; intuition.
+Qed.

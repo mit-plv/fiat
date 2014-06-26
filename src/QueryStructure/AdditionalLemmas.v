@@ -2,7 +2,7 @@ Require Import Ensembles List Coq.Lists.SetoidList Program
         Common Computation.Core
         ADTNotation.BuildADTSig ADTNotation.BuildADT
         GeneralBuildADTRefinements QueryQSSpecs QueryStructure
-        SetEq Omega.
+        SetEq Omega String Arith.
 
 Unset Implicit Arguments.
 
@@ -54,6 +54,13 @@ Section AdditionalNatLemmas.
   Proof.
     intros; omega.
   Qed.
+
+  Lemma beq_nat_eq_nat_dec :
+    forall x y, 
+      beq_nat x y = if eq_nat_dec x y then true else false.
+  Proof.
+    intros; destruct (eq_nat_dec _ _); [ apply beq_nat_true_iff | apply beq_nat_false_iff ]; assumption.
+  Qed.
 End AdditionalNatLemmas.
 
 Section AdditionalLogicLemmas.
@@ -87,6 +94,13 @@ Section AdditionalLogicLemmas.
   Lemma equiv_false' :
     forall P,
       (P <-> False) <-> (~ P).
+  Proof.
+    tauto.
+  Qed.
+
+  Lemma and_True :
+    forall P,
+      (P /\ True) <-> P.
   Proof.
     tauto.
   Qed.
@@ -127,6 +141,33 @@ Section AdditionalBoolLemmas.
       (if b then true else false).
   Proof.
     destruct b; reflexivity.
+  Qed.
+
+  Lemma string_dec_bool_true_iff :
+    forall s1 s2, 
+      (if string_dec s1 s2 then true else false) = true <-> s1 = s2.
+  Proof.          
+    intros s1 s2; destruct (string_dec s1 s2); simpl; intuition.
+  Qed.
+
+  Lemma eq_nat_dec_bool_true_iff :
+    forall n1 n2, 
+      (if eq_nat_dec n1 n2 then true else false) = true <-> n1 = n2.
+  Proof.          
+    intros n1 n2; destruct (eq_nat_dec n1 n2); simpl; intuition.
+  Qed.
+
+  Lemma bool_equiv_true:
+    forall (f g: bool),
+      (f = true <-> g = true) <-> (f = g).
+  Proof.
+    intros f g; destruct f, g; intuition.
+  Qed.
+
+  Lemma if_negb :
+    forall {A} (b: bool) (x y: A), (if negb b then x else y) = (if b then y else x).
+  Proof.
+    intros; destruct b; simpl; reflexivity.
   Qed.
 End AdditionalBoolLemmas.
 
@@ -653,50 +694,8 @@ Section AdditionalListLemmas.
   Qed.
 End AdditionalListLemmas.
 
-Section AdditionalComputationLemmas.
-  Lemma eq_ret_compute :
-    forall (A: Type) (x y: A), x = y -> ret x ↝ y.
-  Proof.
-    intros; subst; apply ReturnComputes; trivial.
-  Qed.
-
-  Lemma refine_eq_ret :
-    forall {A} (a a': A),
-      a = a' ->
-      refineEquiv  (ret a) (ret a').
-  Proof.
-    intros; subst; reflexivity.
-  Qed.
-
+Section AdditionalComputeationLemmas.
   Require Import Computation.Refinements.Tactics.
-
-  Lemma refine_snd :
-    forall {A B: Type} (P: B -> Prop),
-      refine
-        { pair | P (snd pair) }
-        (_fst <- Pick (fun (x: A) => True);
-         _snd <- Pick (fun (y: B) => P y);
-         ret (_fst, _snd)).
-  Proof.
-    t_refine.
-  Qed.
-
-  Lemma refine_let :
-    forall {A B : Type} (PA : A -> Prop) (PB : B -> Prop),
-      refineEquiv (Pick (fun x: A * B  =>  let (a, b) := x in PA a /\ PB b))
-                  (a <- {a | PA a};
-                   b <- {b | PB b};
-                   ret (a, b)).
-  Proof.
-    t_refine.
-  Qed.
-
-  Lemma refine_ret_eq :
-    forall {A: Type} (a: A) b,
-      b = ret a -> refine (ret a) (b).
-  Proof.
-    t_refine.
-  Qed.
 
   Lemma ret_computes_to :
     forall {A: Type} (a1 a2: A),
@@ -704,39 +703,9 @@ Section AdditionalComputationLemmas.
   Proof.
     t_refine.
   Qed.
-
-  Lemma refine_eqA_into_ret :
-    forall {A: Type} {eqA: list A -> list A -> Prop},
-      Reflexive eqA ->
-      forall (comp : Comp (list A)) (impl result: list A),
-        comp = ret impl -> (
-          comp ↝ result ->
-          eqA result impl
-        ).
-  Proof.
-    intros; subst; inversion_by computes_to_inv; subst; trivial.
-  Qed.
-End AdditionalComputationLemmas.
-
-Ltac refine_eq_into_ret :=
-  match goal with
-    | [ H : _ _ _ ↝ _ |- ?eq _ _ ] =>
-      generalize H;
-        clear H;
-        apply (refine_eqA_into_ret _)
-  end.
+End AdditionalComputeationLemmas.
 
 Section AdditionalQueryLemmas.
-
-  Require Import Computation.Refinements.General.
-
-  Lemma refine_pick_val' :
-    forall {A : Type} (a : A)  (P : A -> Prop),
-      P a -> refine (Pick P) (ret a).
-  Proof.
-    intros; apply refine_pick_val; assumption.
-  Qed.
-
   Require Import InsertQSSpecs StringBound.
   Lemma get_update_unconstr_iff {db_schema qs table new_contents} :
     forall x,
@@ -748,21 +717,11 @@ Section AdditionalQueryLemmas.
     reflexivity.
   Qed.
 
-  Require Import Heading Schema.
-  Lemma tupleAgree_sym :
-    forall (heading: Heading) tup1 tup2 attrs,
-      @tupleAgree heading tup1 tup2 attrs <-> @tupleAgree heading tup2 tup1 attrs.
+  Lemma decides_negb :
+    forall b P,
+      decides (negb b) P -> decides b (~ P).
   Proof.
-    intros; unfold tupleAgree;
-    split; intro; setoid_rewrite eq_sym_iff; assumption.
-  Qed.
-
-  Lemma refine_trivial_if_then_else :
-    forall x,
-      refine 
-        (If_Then_Else x (ret true) (ret false))
-        (ret x).
-  Proof.
-    destruct x; reflexivity.
+    unfold decides; setoid_rewrite if_negb; simpl; intros.
+    destruct b; simpl in *; intuition.
   Qed.
 End AdditionalQueryLemmas.
