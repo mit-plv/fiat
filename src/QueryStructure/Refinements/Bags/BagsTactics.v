@@ -1,21 +1,46 @@
-Require Import QueryStructureNotations.
-Require Import ListImplementation.
 Require Import BagsInterface.
 Require Import AdditionalLemmas.
 
-Ltac prove_observational_eq :=
-  clear;
-  vm_compute;
+Ltac is_sumbool expr :=
+  match type of expr with
+    | (sumbool _ _) => idtac
+    | _ => fail
+  end.
+
+Ltac unfold_functions expr :=
+  match expr with
+    | appcontext [ ?f _ ] => unfold f
+  end.
+
+Ltac destruct_ifs_inside conditional :=
+  match conditional with 
+    | context [ if ?sub_conditional then _ else _ ] => destruct_ifs_inside sub_conditional 
+    | _ => first [ is_sumbool conditional; destruct conditional | progress unfold_functions conditional ]
+  end.
+
+Ltac destruct_ifs :=
   intros;
-  repeat match goal with
-           | [ |- context[ if ?cond then _ else _ ] ] =>
-             let eqn := fresh "eqn" in
-             destruct cond eqn:eqn;
-               subst;
-               vm_compute;
-               rewrite ?collapse_ifs_bool, ?collapse_ifs_dec;
-               intuition
-         end.
+  repeat (match goal with
+            | [ |- ?body ] => 
+              destruct_ifs_inside body
+          end; simpl in *).
+
+Ltac prove_extensional_eq :=
+  clear;
+  unfold ExtensionalEq;
+  destruct_ifs; first [ solve [intuition] | solve [exfalso; intuition] | idtac ].
+
+Require Import String Arith.
+
+Example ifs_destruction : 
+  forall w x y z,
+    (if (if string_dec w x then true else false) then (if eq_nat_dec y z then false else true) else (if eq_nat_dec z y then true else false)) = (if (if eq_nat_dec y z then true else false) then (if string_dec x w then false else true) else (if string_dec x w then true else false)).
+Proof.
+  destruct_ifs; intuition.
+Qed.
+
+Require Import QueryStructureNotations.
+Require Import ListImplementation.
 
 Tactic Notation "lift" "list" "property" constr(prop) "as" ident(name) :=
   pose proof prop as name;
@@ -33,7 +58,7 @@ Tactic Notation
         |- appcontext [ filter ?filter1 (benumerate ?storage) ] ] => 
       let temp := fresh in 
       let filter2 := constr:(bfind_matcher (Bag := BagProof indexed_storage) keyword) in
-      assert (ExtensionalEq filter1 filter2) as temp by prove_observational_eq;
+      assert (ExtensionalEq filter1 filter2) as temp by prove_extensional_eq;
         rewrite (filter_by_equiv filter1 filter2 temp);
         clear temp
   end.
@@ -44,7 +69,7 @@ Tactic Notation
        "using" "dependent" "search" "term" constr(keyword) :=
   let temp := fresh in
   let filter2 := constr:(fun x => bfind_matcher (Bag := BagProof indexed_storage) (keyword x)) in
-  assert (forall x, ExtensionalEq (filter1 x) (filter2 x)) as temp by prove_observational_eq;
+  assert (forall x, ExtensionalEq (filter1 x) (filter2 x)) as temp by prove_extensional_eq;
     setoid_rewrite (filter_by_equiv_meta filter1 filter2 temp);
     clear temp.
 
@@ -78,3 +103,19 @@ Tactic Notation "prove" "trivial" "constraints" :=
               auto
         end
   end.
+
+Definition ID {A} := fun (x: A) => x.
+
+Lemma ens_red :
+  forall {heading TContainer TSearchTerm} x y (y_is_bag: Bag TContainer _ TSearchTerm),
+    @EnsembleIndexedListEquivalence heading x (benumerate (Bag := y_is_bag) y) =
+    (ID (fun y => EnsembleIndexedListEquivalence x (benumerate y))) y.
+Proof.
+  intros; reflexivity.
+Qed.
+
+(* Workaround Coq's algorithms not being able to infer ther arguments to refineEquiv_pick_pair *)
+Ltac refineEquiv_pick_pair_benumerate :=
+  setoid_rewrite ens_red;
+  setoid_rewrite refineEquiv_pick_pair;
+  unfold ID; cbv beta.
