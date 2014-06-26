@@ -7,8 +7,8 @@ Require Import String Omega List FunctionalExtensionality Ensembles
         ListQueryRefinements ListInsertRefinements
         ListQueryStructureRefinements.
 
-Require Import BagsOfTuples CachingBags Bool.
-Require Import DBSchema AdditionalLemmas.
+Require Import Bags BagsOfTuples CachingBags Bool.
+Require Import DBSchema AdditionalLemmas AdditionalRefinementLemmas.
 Require Export ADTRefinement.BuildADTRefinements.
 
 Unset Implicit Arguments.
@@ -52,7 +52,7 @@ Section TreeBasedRefinement.
       repeat setoid_rewrite refineEquiv_pick_eq';
       simplify with monad laws.
 
-      rewrite (refine_pick_val' bempty) by intuition (apply EnsembleIndexedListEquivalence_Empty).
+      rewrite (refine_pick_val' bempty) by (intuition; apply bempty_correct_DB).
       subst_body; higher_order_1_reflexivity.
     }
 
