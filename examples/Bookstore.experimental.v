@@ -138,28 +138,7 @@ Proof.
 
   hone method "NumOrders"; [ observer | ].
 
-  hone method "GetTitles". {
-    unfold BookStoreListImpl_AbsR in H0; split_and.
-    simplify with monad laws.
-
-    rewrite refine_List_Query_In by eassumption.
-    setoid_rewrite refine_List_Query_In_Where; instantiate (1 := _).
-    rewrite refine_List_For_Query_In_Return_Permutation.
-
-    rewrite filter over BookStorage using search term
-            (Some n, (@None nat, @nil (TSearchTermMatcher BookSchema))).
-
-    setoid_rewrite (bfind_correct _).
-
-    setoid_rewrite refine_Permutation_Reflexivity.
-    simplify with monad laws.
-    simpl.
-
-    unfold BookStoreListImpl_AbsR.
-    rewrite refine_pick_val by eauto. 
-    simplify with monad laws.
-    finish honing.
-  }
+  hone method "GetTitles"; [ observer | ].
 
   hone method "PlaceOrder". {
     unfold BookStoreListImpl_AbsR in H0; split_and.
