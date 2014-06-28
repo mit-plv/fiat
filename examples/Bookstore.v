@@ -34,7 +34,7 @@ Section BookStoreExamples.
         relation "Orders" has
                 schema <"ISBN" :: nat,
                         "Date" :: nat> ]
-      enforcing [attribute "ISBN" of "Orders" references "Books"].
+      enforcing [attribute "ISBN" for "Orders" references "Books"].
 
   (* Aliases for the tuples contained in Books and Orders, respectively. *)
   Definition Book := TupleDef BookStoreSchema "Books".

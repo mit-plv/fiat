@@ -100,7 +100,7 @@ Definition BuildForeignKeyConstraints
 Class namedSchemaHint :=
   { nSchemaHint :> list NamedSchema }.
 
-Notation "'attribute' attr 'of' rel1 'references' rel2 " :=
+Notation "'attribute' attr 'for' rel1 'references' rel2 " :=
   (
       @BuildForeignKeyConstraints
         (@nSchemaHint _) {| bindex := rel1%string |} {| bindex := rel2%string |}

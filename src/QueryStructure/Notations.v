@@ -17,7 +17,7 @@ Reserved Notation "ro ≃ rn"  (at level 70).
 Reserved Notation "'attributes' attrlist1 'depend' 'on' attrlist2 "
          (at level 50).
 
-Reserved Notation "'attribute' attr 'of' rel1 'references' rel2 "
+Reserved Notation "'attribute' attr 'for' rel1 'references' rel2 "
          (at level 50).
 
 Reserved Notation "'relation' name 'has' sch"

@@ -85,6 +85,7 @@ EXAMPLE_MODULES := \
 	ProcessScheduler/DBSchema \
 	ProcessScheduler/ListBasedRefinement \
 	ProcessScheduler/TreeBasedRefinement \
+	AutoDB \
 	Bookstore
 
 # ADTExamples/QueryStructure/ProcessScheduler/TreeBasedRefinement \
