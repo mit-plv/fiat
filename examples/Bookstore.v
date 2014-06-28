@@ -19,11 +19,6 @@ Section BookStoreExamples.
      constraint.
    *)
 
-  Check (schema <"Author" :: string,
-         "Title" :: string,
-         "ISBN" :: nat>
-         where attributes ["Title"; "Author"] depend on ["ISBN"]).
-
   Definition BookStoreSchema :=
     Query Structure Schema
       [ relation "Books" has

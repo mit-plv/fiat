@@ -397,3 +397,29 @@ Ltac method :=
     | [ |- refine (x <- _; y <- Pick _; ret _) _ ] => observer
     | _ => mutator
   end.
+
+Ltac honeOne :=
+  match goal with
+    | [ |- context[@Build_consDef _ (Build_consSig ?id _) _] ] =>
+      hone constructor id; [ method | ]
+    | [ |- context[@Build_methDef _ (Build_methSig ?id _ _) _] ] =>
+      hone method id; [ method | ]
+  end.
+
+(* Finally, implement a whole ADT. *)
+
+Ltac unfolder E k :=
+  (let E' := eval unfold E in E in k E')
+    || k E.
+
+Ltac hone_representation AbsR' :=
+  eapply SharpenStep;
+  [eapply refineADT_BuildADT_Rep_default with (AbsR := AbsR') |
+   compute [imap absConsDef absMethDef]; simpl ].
+
+Ltac plan AbsR :=
+  match goal with
+    | [ |- Sharpened ?spec ] =>
+      unfolder spec ltac:(fun spec' => change spec with spec')
+  end; start_honing_QueryStructure; hone_representation AbsR;
+  repeat honeOne.

@@ -113,7 +113,7 @@ Proof.
   rewrite Permutation.Permutation_app_head; eauto.
 Qed.
 
-Tactic Notation "start" "honing" "QueryStructure" :=
+Ltac start_honing_QueryStructure :=
   pose_string_ids;
   match goal with
       |- context [@BuildADT (QueryStructure ?Rep) _ _ _ _] =>
@@ -134,3 +134,5 @@ Tactic Notation "start" "honing" "QueryStructure" :=
                           | drop constraints from insert Id ]
                 end; pose_string_ids)
   end.
+
+Tactic Notation "start" "honing" "QueryStructure" := start_honing_QueryStructure.

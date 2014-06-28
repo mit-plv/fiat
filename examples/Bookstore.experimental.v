@@ -121,25 +121,6 @@ Definition BookStoreListImpl_AbsR
 Definition BookStore :
   Sharpened BookStoreSpec.
 Proof.
-  unfold BookStoreSpec.
-
-  (* Step 1: Drop the constraints on the tables. From the perspective
-    of a client of a sharpened ADT the invariants will still hold,
-    since ADT refinement preserves the simulation relation. *)
-
-  start honing QueryStructure.
-
-  hone representation using BookStoreListImpl_AbsR.
-
-  hone constructor "Init"; [ method | ].
-
-  hone method "NumOrders"; [ method | ].
-
-  hone method "GetTitles"; [ method | ].
-
-  hone method "PlaceOrder"; [ method | ].
-
-  hone method "AddBook"; [ method | ].
-
+  plan BookStoreListImpl_AbsR.
   finish sharpening.
 Defined.
