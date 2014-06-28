@@ -140,7 +140,6 @@ Ltac makeTerm storage fd X k :=
   | list (Attributes ?SC) =>
     match eval hnf in SC with
     | Build_Heading ?f =>
-      idtac SC f fd X fs;
       createTerm SC f fd X fs k
     end
   end.
@@ -161,7 +160,60 @@ Ltac useIndex storage :=
       ltac:(fun tm => rewrite filter over storage using search term tm))
 end.
 
-Ltac asPerm_dep' storage := useIndex storage.
+Ltac find_usage F k :=
+  match F with
+    | fun x => map ?G (@?F' x) =>
+      let T := type of G in
+      find_usage F' k
+    | fun x => filter ?G (@?F' x) =>
+      let T := type of G in
+      find_usage F' k
+    | fun x => map (fun y => @?G x y) (@?F' x) =>
+      k G
+    | fun x => filter (fun y => @?G x y) (@?F' x) =>
+      k G
+  end.
+
+Ltac findGoodTerm_dep F k :=
+  match F with
+    | fun a b => ?[@?f a b] =>
+      match type of f with
+        | forall a b, {a!?fd = _} + {_} => k fd
+        | forall a, {_ = a!?fd} + {_} => k fd
+      end
+  end.
+
+Ltac createTerm_dep dom SC f fd fs k :=
+  match fs with
+  | nil =>
+    k (fun x : dom => @nil (TSearchTermMatcher SC))
+  | ?s :: ?fs' =>
+    createTerm_dep dom SC f fd fs' ltac:(fun rest =>
+      (let H := fresh in assert (H : bindex s = fd) by reflexivity; clear H;
+       k (fun x : dom => (Some (x!fd), rest x))
+        || k (fun x : dom => (@None (f s), rest x))))
+  end.
+
+Ltac makeTerm_dep storage dom fd k :=
+  let fs := fields storage in
+  match type of fs with
+    | list (Attributes ?SC) =>
+      match eval hnf in SC with
+        | Build_Heading ?f =>
+          createTerm_dep dom SC f fd fs k
+      end
+  end.
+
+Ltac useIndex_dep storage :=
+  match goal with
+    | [ |- context[fun x : ?dom => @?F x] ] => find_usage F ltac:(fun G =>
+        findGoodTerm_dep G ltac:(fun fd =>
+          makeTerm_dep storage dom fd ltac:(fun tm =>
+            rewrite dependent filter G over storage
+                    using dependent search term tm)))
+  end.
+
+Ltac asPerm_dep' storage := useIndex storage || useIndex_dep storage.
 Ltac asPerm_dep storages :=
   asPerm_dep' storages
           || match storages with

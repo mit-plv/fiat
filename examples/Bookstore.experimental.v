@@ -141,13 +141,6 @@ Proof.
 
     concretize.
     asPerm (BookStorage, OrderStorage).
-
-    rewrite dependent filter 
-              (fun (x: Book) (y : Order) => ?[eq_nat_dec x!sISBN y!sISBN]) 
-            over OrderStorage using dependent search term 
-              (fun (x: Book) => (Some x!sISBN, @nil (TSearchTermMatcher OrderSchema))).
-
-    asPerm (BookStorage, OrderStorage).
     commit.
     choose_db BookStoreListImpl_AbsR.
     cleanup.
