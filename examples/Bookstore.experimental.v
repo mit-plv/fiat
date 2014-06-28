@@ -131,38 +131,15 @@ Proof.
 
   hone representation using BookStoreListImpl_AbsR.
 
-  hone constructor "Init"; [ initializer | ].
+  hone constructor "Init"; [ method | ].
 
-  hone method "NumOrders"; [ observer | ].
+  hone method "NumOrders"; [ method | ].
 
-  hone method "GetTitles"; [ observer | ].
+  hone method "GetTitles"; [ method | ].
 
-  hone method "PlaceOrder". {
-    startMethod BookStoreListImpl_AbsR.
-    pruneDuplicates.
-    pickIndex.
-    foreignToQuery.
-    concretize.
-    asPerm (BookStorage, OrderStorage).
-    commit.
-    cleanup.
-    Split Constraint Checks.
-    checksSucceeded.
-    checksFailed.
-  }
+  hone method "PlaceOrder"; [ method | ].
 
-  hone method "AddBook". {
-    startMethod BookStoreListImpl_AbsR.
-    pruneDuplicates.
-    pickIndex.
-    fundepToQuery.
-    concretize.
-    asPerm (BookStorage, OrderStorage).
-    commit.
-    Split Constraint Checks.
-    checksSucceeded.
-    checksFailed.
-  }
+  hone method "AddBook"; [ method | ].
 
   finish sharpening.
 Defined.

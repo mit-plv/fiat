@@ -370,3 +370,30 @@ Ltac checksFailed :=
     | [ |- context[ret (_, false)] ] =>
       rewrite refine_pick_val by eauto; simplify with monad laws; reflexivity
   end.
+
+Ltac mutator' AbsR storages :=
+  startMethod AbsR; pruneDuplicates; pickIndex;
+  repeat ((foreignToQuery || fundepToQuery);
+          concretize; asPerm storages; commit);
+  Split Constraint Checks; checksSucceeded || checksFailed.
+
+Ltac mutator :=
+  match goal with
+    | [ |- context[tupleIndex _ <> _] ] =>
+      match goal with
+        | [ |- context[nr' <- Pick (fun nr' => ?AbsR _ nr'); ret (nr', _)] ] =>
+          match type of AbsR with
+            | UnConstrQueryStructure _ -> ?T -> Prop =>
+              let storages := storageOf T in mutator' AbsR storages
+          end
+      end
+  end.
+
+(* Now, one tactic to combine all method types. *)
+
+Ltac method :=
+  match goal with
+    | [ |- refine (x <- ret _; Pick _) _ ] => initializer
+    | [ |- refine (x <- _; y <- Pick _; ret _) _ ] => observer
+    | _ => mutator
+  end.
