@@ -162,54 +162,24 @@ Proof.
   Defined.
 
   hone method "AddBook". {
-    unfold BookStoreListImpl_AbsR in H0; split_and.
-    simplify with monad laws.
-
-    rewrite refine_pick_val by eauto using EnsembleIndexedListEquivalence_pick_new_index.
-    simplify with monad laws.
-
-    rewrite refine_tupleAgree_refl_True.
-    simplify with monad laws.
-
-    rewrite (refine_functional_dependency_check_into_query n); 
-      [ | prove_decidability_for_functional_dependencies | ].
-
-    rewrite refine_List_Query_In by eassumption.
-    setoid_rewrite refine_List_Query_In_Where; instantiate (1 := @blah1 n). (* TODO: get rid of blah1 *)
-    rewrite refine_List_For_Query_In_Return_Permutation.
-    simplify with monad laws.
-
+    startMethod BookStoreListImpl_AbsR.
+    pruneDuplicates.
+    pickIndex.
+    fundepToQuery.
+    concretize1.
+    setoid_rewrite refine_List_Query_In_Where; instantiate (1 := @blah1 n).
+    concretize.
+    asPerm (BookStorage, OrderStorage).
     rewrite filter over BookStorage
             using search term (@None string, (Some n!sISBN, [ 
                                 (fun (x: Book) => (negb (?[string_dec x!sTITLE n!sTITLE]))
                                                || (negb (?[string_dec x!sAUTHOR n!sAUTHOR])))
                               ])).
-    setoid_rewrite (bfind_correct _).
-    setoid_rewrite refine_Count.
-    setoid_rewrite refine_Permutation_Reflexivity.
-    simplify with monad laws.
-
-    rewrite (refine_pick_val' true) by (clear; admit). (* Redundant check *)
-    simplify with monad laws.
-
-    setoid_rewrite map_length.
-
-    unfold BookStoreListImpl_AbsR; simpl.
+    asPerm (BookStorage, OrderStorage).
+    commit.
     Split Constraint Checks.
-
-    refineEquiv_pick_pair_benumerate;
-    simplify with monad laws.
-
-    rewrite refine_pick_val by binsert_correct_DB. 
-    simplify with monad laws. 
-
-    rewrite refine_pick_val by refine_list_insert_in_other_table.
-    simplify with monad laws.
-    reflexivity.
-
-    setoid_rewrite refine_pick_val; eauto.
-    simplify with monad laws; reflexivity.
-
+    checksSucceeded.
+    checksFailed.
     admit. (* Classical logic thing; should go away when the specs are changed *)
   }
 

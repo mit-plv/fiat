@@ -74,11 +74,13 @@ Ltac reveal_bfind_matcher :=
 
 Ltac simp := hide_bfind_matcher; simpl; reveal_bfind_matcher.
 
-Ltac concretize :=
-  repeat ((rewrite refine_List_Query_In by eassumption)
-       || (rewrite refine_Join_List_Query_In by eassumption)
-       || (rewrite refine_List_Query_In_Where; instantiate (1 := _))
-       || rewrite refine_List_For_Query_In_Return_Permutation); simpl.
+Ltac concretize1 :=
+  (rewrite refine_List_Query_In by eassumption)
+    || (rewrite refine_Join_List_Query_In by eassumption)
+    || (rewrite refine_List_Query_In_Where; instantiate (1 := _))
+    || rewrite refine_List_For_Query_In_Return_Permutation.
+
+Ltac concretize := repeat concretize1; simpl.
 
 (* Now some tactics that operate while the query is still allowed to vary by permutation. *)
 
@@ -279,9 +281,38 @@ Ltac observer :=
 
 (* Tactics for implementing constraint checks in mutators *)
 
+Theorem key_symmetry : forall A H (f : _ -> _ -> Comp A) (P : _ -> Prop) sc1 sc2 n,
+  refine (x1 <- Pick (fun b : bool => decides b (forall tup' : @IndexedTuple H,
+                                                    P tup'
+                                                    -> tupleAgree n tup' sc1
+                                                    -> tupleAgree n tup' sc2));
+          x2 <- Pick (fun b : bool => decides b (forall tup' : @IndexedTuple H,
+                                                    P tup'
+                                                    -> tupleAgree tup' n sc1
+                                                    -> tupleAgree tup' n sc2));
+          f x1 x2)
+         (x1 <- Pick (fun b : bool => decides b (forall tup' : @IndexedTuple H,
+                                                   P tup'
+                                                   -> tupleAgree n tup' sc1
+                                                   -> tupleAgree n tup' sc2));
+          f x1 x1).
+Proof.
+  unfold refine; intros.
+  apply computes_to_inv in H0; firstorder.
+  apply computes_to_inv in H0; firstorder.
+  econstructor.
+  eauto.
+  econstructor.
+  econstructor.
+  instantiate (1 := x).
+  eapply decide_eq_iff_iff_morphism; eauto.
+  unfold tupleAgree; intuition auto using sym_eq.
+  assumption.
+Qed.
+
+
 Ltac pruneDuplicates :=
-  repeat (setoid_rewrite refine_trivial_if_then_else);
-  simplify with monad laws.
+  repeat ((setoid_rewrite refine_trivial_if_then_else || setoid_rewrite key_symmetry || setoid_rewrite refine_tupleAgree_refl_True); try simplify with monad laws).
 
 Ltac pickIndex :=
   rewrite refine_pick_val by eauto using EnsembleIndexedListEquivalence_pick_new_index;
@@ -299,6 +330,16 @@ Ltac foreignToQuery :=
       end
   end.
 
+Ltac fundepToQuery :=
+  match goal with
+    | [ |- context[Pick (fun b => decides b (forall tup', _ -> tupleAgree ?n _ _ -> tupleAgree ?n _ _))] ] =>
+      rewrite (refine_functional_dependency_check_into_query n);
+        [ | prove_decidability_for_functional_dependencies | ]
+    | [ |- context[Pick (fun b => decides b (forall tup', _ -> tupleAgree _ ?n _ -> tupleAgree _ ?n _))] ] =>
+      rewrite (refine_functional_dependency_check_into_query n);
+        [ | prove_decidability_for_functional_dependencies | ]
+  end; try simplify with monad laws.
+
 Ltac checksSucceeded :=
   match goal with
     | [ |- context[ret (_, true)] ] =>
@@ -313,3 +354,9 @@ Ltac checksFailed :=
     | [ |- context[ret (_, false)] ] =>
       rewrite refine_pick_val by eauto; simplify with monad laws; reflexivity
   end.
+
+Theorem if_dead : forall A (e1 e2 e3 : A) (b : bool),
+  (if b then if b then e1 else e2 else e3) = (if b then e1 else e3).
+Proof.
+  destruct b; auto.
+Qed.
