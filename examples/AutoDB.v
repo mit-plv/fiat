@@ -237,3 +237,30 @@ Ltac choose_db AbsR := unfold AbsR; rewrite refine_pick_val by eauto; [ simplify
 
 Ltac cleanup := repeat (setoid_rewrite length_flat_map
                                        || setoid_rewrite map_length).
+
+(* Final wrapper tactic for observers *)
+
+Ltac storageOf T :=
+  match eval hnf in T with
+    | (?T1 * ?T2)%type =>
+      let s1 := storageOf T1 in
+      let s2 := storageOf T2 in
+      constr:(s1, s2)
+    | _ =>
+      match eval unfold T in T with
+        | BagType ?s => s
+      end
+  end.
+
+Ltac observer' AbsR storages :=
+  startMethod AbsR; concretize; asPerm storages;
+  commit; choose_db AbsR; cleanup; finish honing.
+
+Ltac observer :=
+  match goal with
+    | [ _ : ?AbsR _ _ |- _ ] =>
+      match type of AbsR with
+        | UnConstrQueryStructure _ -> ?T -> Prop =>
+          let storages := storageOf T in observer' AbsR storages
+    end
+  end.

@@ -136,16 +136,7 @@ Proof.
     finishMethod.
   }
 
-  hone method "NumOrders". {
-    startMethod BookStoreListImpl_AbsR.
-
-    concretize.
-    asPerm (BookStorage, OrderStorage).
-    commit.
-    choose_db BookStoreListImpl_AbsR.
-    cleanup.
-    finish honing.
-  }
+  hone method "NumOrders"; [ observer | ].
 
   hone method "GetTitles". {
     unfold BookStoreListImpl_AbsR in H0; split_and.
