@@ -51,6 +51,12 @@ Ltac startMethod AbsR :=
 
 Ltac finishMethod := subst_body; higher_order_1_reflexivity.
 
+Ltac initializer :=
+  match goal with
+    | [ |- refine (or' <- _; Pick (fun nr' => ?AbsR or' nr')) _ ] =>
+      startMethod AbsR; finishMethod
+  end.
+
 (* We need to avoid bad "simplification" of [bfind_matcher] calls,
  * which hide the right structure for type-class resolution.
  * [simp] defined here is a [simpl] version that prevents such reductions. *)

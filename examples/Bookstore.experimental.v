@@ -131,10 +131,7 @@ Proof.
 
   hone representation using BookStoreListImpl_AbsR.
 
-  hone constructor "Init". {
-    startMethod BookStoreListImpl_AbsR.
-    finishMethod.
-  }
+  hone constructor "Init"; [ initializer | ].
 
   hone method "NumOrders"; [ observer | ].
 
