@@ -162,7 +162,6 @@ Proof.
     Split Constraint Checks.
     checksSucceeded.
     checksFailed.
-    admit. (* Classical logic thing; should go away when the specs are changed *)
   }
 
   finish sharpening.

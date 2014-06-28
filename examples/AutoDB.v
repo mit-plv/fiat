@@ -337,14 +337,23 @@ Ltac foreignToQuery :=
       end
   end.
 
+Ltac dec_tauto := clear; intuition eauto;
+                  eapply Tuple_Agree_eq_dec;
+                  match goal with
+                    | [ |- ?E = true ] => case_eq E; intuition idtac; [ exfalso ]
+                  end;
+                  match goal with
+                    | [ H : _ |- _ ] => apply Tuple_Agree_eq_dec' in H; solve [ eauto ]
+                  end.
+
 Ltac fundepToQuery :=
   match goal with
     | [ |- context[Pick (fun b => decides b (forall tup', _ -> tupleAgree ?n _ _ -> tupleAgree ?n _ _))] ] =>
       rewrite (refine_functional_dependency_check_into_query n);
-        [ | prove_decidability_for_functional_dependencies | ]
+        [ | prove_decidability_for_functional_dependencies | dec_tauto ]
     | [ |- context[Pick (fun b => decides b (forall tup', _ -> tupleAgree _ ?n _ -> tupleAgree _ ?n _))] ] =>
       rewrite (refine_functional_dependency_check_into_query n);
-        [ | prove_decidability_for_functional_dependencies | ]
+        [ | prove_decidability_for_functional_dependencies | dec_tauto ]
   end; try simplify with monad laws.
 
 Ltac checksSucceeded :=
