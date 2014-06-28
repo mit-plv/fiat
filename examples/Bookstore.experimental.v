@@ -151,30 +151,12 @@ Proof.
     checksFailed.
   }
 
-  Lemma blah1 : (* TODO: Get rid of this *)
-    forall (n: @Tuple BookSchema), 
-      DecideableEnsemble
-        (fun x : Tuple =>
-           tupleAgree_computational n x [sISBN]%SchemaConstraints /\
-           ~ tupleAgree_computational n x [sTITLE; sAUTHOR]%SchemaConstraints).
-  Proof.
-    prove_decidability_for_functional_dependencies.
-  Defined.
-
   hone method "AddBook". {
     startMethod BookStoreListImpl_AbsR.
     pruneDuplicates.
     pickIndex.
     fundepToQuery.
-    concretize1.
-    setoid_rewrite refine_List_Query_In_Where; instantiate (1 := @blah1 n).
     concretize.
-    asPerm (BookStorage, OrderStorage).
-    rewrite filter over BookStorage
-            using search term (@None string, (Some n!sISBN, [ 
-                                (fun (x: Book) => (negb (?[string_dec x!sTITLE n!sTITLE]))
-                                               || (negb (?[string_dec x!sAUTHOR n!sAUTHOR])))
-                              ])).
     asPerm (BookStorage, OrderStorage).
     commit.
     Split Constraint Checks.

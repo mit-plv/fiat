@@ -21,6 +21,8 @@ Ltac prove_decidability_for_functional_dependencies :=
   rewrite bool_equiv_true;
   reflexivity.
 
+Hint Extern 100 (DecideableEnsemble _) => prove_decidability_for_functional_dependencies : typeclass_instances.
+
 Notation "qs_schema / rel_index" := (GetRelationKey qs_schema rel_index) (at level 40, left associativity).
 Notation "rel_key // attr_index" := (GetAttributeKey rel_key attr_index) (at level 50).
 
@@ -137,42 +139,47 @@ Ltac fields storage :=
 Ltac makeEvar T k :=
   let x := fresh in evar (x : T); let y := eval unfold x in x in clear x; k y.
 
-Ltac createTerm SC f fd X fs k :=
+Ltac createTerm SC f fd X tail fs k :=
   match fs with
   | nil =>
-    k (@nil (TSearchTermMatcher SC))
+    k tail
   | ?s :: ?fs' =>
-    createTerm SC f fd X fs' ltac:(fun rest =>
+    createTerm SC f fd X tail fs' ltac:(fun rest =>
       (let H := fresh in assert (H : bindex s = fd) by reflexivity; clear H;
        k (Some X, rest))
         || k (@None (f s), rest))
   end.
 
-Ltac makeTerm storage fd X k :=
-  let fs := fields storage in
-  match type of fs with
-  | list (Attributes ?SC) =>
-    match eval hnf in SC with
+Ltac makeTerm storage fs SC fd X tail k :=
+  match eval hnf in SC with
     | Build_Heading ?f =>
-      createTerm SC f fd X fs k
-    end
+      createTerm SC f fd X tail fs k
   end.
 
-Ltac findGoodTerm F k :=
+Ltac findGoodTerm SC F k :=
   match F with
   | fun a => ?[@?f a] =>
     match type of f with
-    | forall a, {?X = _!?fd} + {_} => k fd X
-    | forall a, {_!?fd = ?X} + {_} => k fd X
+    | forall a, {?X = _!?fd} + {_} => k fd X (@nil (TSearchTermMatcher SC))
+    | forall a, {_!?fd = ?X} + {_} => k fd X (@nil (TSearchTermMatcher SC))
+    | forall a, {?X = _``?fd} + {_} => k fd X (@nil (TSearchTermMatcher SC))
+    | forall a, {_``?fd = ?X} + {_} => k fd X (@nil (TSearchTermMatcher SC))
     end
+  | fun a => (@?f a) && (@?g a) =>
+    findGoodTerm SC f ltac:(fun fd X tail => k fd X (g :: tail))
+    || findGoodTerm SC g ltac:(fun fd X tail => k fd X (f :: tail))
   end.
 
 Ltac useIndex storage :=
   match goal with
-  | [ |- context[@filter Tuple ?F _ ] ] =>
-    findGoodTerm F ltac:(fun fd X => makeTerm storage fd X
-      ltac:(fun tm => rewrite filter over storage using search term tm))
-end.
+    | [ |- context[@filter Tuple ?F _ ] ] =>
+      let fs := fields storage in
+      match type of fs with
+        | list (Attributes ?SC) =>
+          findGoodTerm SC F ltac:(fun fd X tail => makeTerm storage fs SC fd X tail
+            ltac:(fun tm => rewrite filter over storage using search term tm))
+      end
+  end.
 
 Ltac find_usage F k :=
   match F with
@@ -354,9 +361,3 @@ Ltac checksFailed :=
     | [ |- context[ret (_, false)] ] =>
       rewrite refine_pick_val by eauto; simplify with monad laws; reflexivity
   end.
-
-Theorem if_dead : forall A (e1 e2 e3 : A) (b : bool),
-  (if b then if b then e1 else e2 else e3) = (if b then e1 else e3).
-Proof.
-  destruct b; auto.
-Qed.
