@@ -47,14 +47,14 @@ Ltac splitPick :=
   end.
 
 Ltac startMethod AbsR :=
-  unfold AbsR in *; split_and; simplify with monad laws; try splitPick.
+  unfold AbsR in *; split_and; simplify with monad laws.
 
 Ltac finishMethod := subst_body; higher_order_1_reflexivity.
 
 Ltac initializer :=
   match goal with
     | [ |- refine (or' <- _; Pick (fun nr' => ?AbsR or' nr')) _ ] =>
-      startMethod AbsR; finishMethod
+      startMethod AbsR; try splitPick; finishMethod
   end.
 
 (* We need to avoid bad "simplification" of [bfind_matcher] calls,
@@ -108,8 +108,14 @@ Ltac getSnd F k :=
     let G' := eval unfold G in G in clear G; k G'
   end.
 
+Theorem map_ident : forall A ls, map (fun x : A => x) ls = ls.
+Proof.
+  induction ls; simpl; intuition congruence.
+Qed.
+
 Ltac asPerm_indep :=
   match goal with
+    | _ => setoid_rewrite map_ident
     | _ => setoid_rewrite map_flat_map; simp
     | _ => setoid_rewrite map_map; simp
     | _ => setoid_rewrite (bfind_correct _)
@@ -269,4 +275,41 @@ Ltac observer :=
         | UnConstrQueryStructure _ -> ?T -> Prop =>
           let storages := storageOf T in observer' AbsR storages
     end
+  end.
+
+(* Tactics for implementing constraint checks in mutators *)
+
+Ltac pruneDuplicates :=
+  repeat (setoid_rewrite refine_trivial_if_then_else);
+  simplify with monad laws.
+
+Ltac pickIndex :=
+  rewrite refine_pick_val by eauto using EnsembleIndexedListEquivalence_pick_new_index;
+  simplify with monad laws.
+
+Ltac foreignToQuery :=
+  match goal with
+    | [ |- context[Pick (fun b' => decides b' (exists tup2 : @IndexedTuple ?H, _ /\ ?r ``?s = _ ))] ] =>
+      match goal with
+        | [ |- appcontext[@benumerate _ (@Tuple ?H')] ] =>
+          equate H H'; let T' := constr:(@Tuple H') in
+            rewrite (refine_foreign_key_check_into_query (fun t : T' => r!s = t!s))
+              by eauto with typeclass_instances;
+              simplify with monad laws; cbv beta; simpl
+      end
+  end.
+
+Ltac checksSucceeded :=
+  match goal with
+    | [ |- context[ret (_, true)] ] =>
+      refineEquiv_pick_pair_benumerate; simplify with monad laws;
+      repeat (rewrite refine_pick_val by (refine_list_insert_in_other_table || binsert_correct_DB);
+              simplify with monad laws);
+      reflexivity
+  end.
+
+Ltac checksFailed :=
+  match goal with
+    | [ |- context[ret (_, false)] ] =>
+      rewrite refine_pick_val by eauto; simplify with monad laws; reflexivity
   end.

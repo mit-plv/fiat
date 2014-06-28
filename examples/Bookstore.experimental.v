@@ -138,49 +138,17 @@ Proof.
   hone method "GetTitles"; [ observer | ].
 
   hone method "PlaceOrder". {
-    unfold BookStoreListImpl_AbsR in H0; split_and.
-    simplify with monad laws.
-
-    rewrite refine_pick_val by eauto using EnsembleIndexedListEquivalence_pick_new_index.
-    simplify with monad laws.
-
-    rewrite (refine_foreign_key_check_into_query (fun (b: Book) => n!sISBN = b!sISBN)) 
-      by eauto with typeclass_instances.
-    simplify with monad laws; cbv beta; 
-    simpl.
-
-    rewrite refine_List_Query_In by eassumption.
-    setoid_rewrite refine_List_Query_In_Where; instantiate (1 := _).
-    rewrite refine_List_For_Query_In_Return_Permutation.
-
-    rewrite filter over BookStorage using search term
-            (@None string, (Some n!sISBN, @nil (TSearchTermMatcher BookSchema))).
-
-    setoid_rewrite (bfind_correct _).
-    setoid_rewrite refine_Count.
-    setoid_rewrite refine_Permutation_Reflexivity.
-    simplify with monad laws.
-
-    setoid_rewrite map_length.
-    setoid_rewrite refine_trivial_if_then_else.
-    simplify with monad laws.
-
-    unfold BookStoreListImpl_AbsR.
+    startMethod BookStoreListImpl_AbsR.
+    pruneDuplicates.
+    pickIndex.
+    foreignToQuery.
+    concretize.
+    asPerm (BookStorage, OrderStorage).
+    commit.
+    cleanup.
     Split Constraint Checks.
-
-    refineEquiv_pick_pair_benumerate.
-    simplify with monad laws.
-
-    rewrite (refine_pick_val' (fst r_n)) by refine_list_insert_in_other_table.
-    simplify with monad laws.
-
-    rewrite refine_pick_val by binsert_correct_DB.
-    simplify with monad laws.
-    reflexivity.
-
-    rewrite refine_pick_val by eauto.
-    simplify with monad laws.
-    reflexivity.
+    checksSucceeded.
+    checksFailed.
   }
 
   Lemma blah1 : (* TODO: Get rid of this *)
