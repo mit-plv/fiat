@@ -73,10 +73,7 @@ Section TreeBasedRefinement.
       setoid_rewrite refine_Permutation_Reflexivity.
       simplify with monad laws.
 
-      rewrite refine_pick_val with
-      (A := StorageType)
-        (a := r_n)
-        by eassumption.
+      rewrite refine_pick_val by eassumption.
       simplify with monad laws.
       finish honing.
     }
@@ -105,9 +102,7 @@ Section TreeBasedRefinement.
       setoid_rewrite refine_Permutation_Reflexivity.
       simplify with monad laws.
 
-      rewrite refine_pick_val with
-      (A := StorageType) (a := r_n)
-        by eassumption.
+      rewrite refine_pick_val by eassumption.
       simplify with monad laws.
       finish honing.
     }
@@ -133,12 +128,29 @@ Section TreeBasedRefinement.
       rewrite (refine_pick_val' true) by prove trivial constraints.
       simplify with monad laws.
 
-      rewrite refine_pick_val by
-          (apply binsert_correct_DB; eassumption).
+      rewrite refine_pick_val by binsert_correct_DB.
       simplify with monad laws; simpl.
       finish honing.
     }
+ 
+    hone method COUNT. {
+      unfold equivalence in *.
 
-    finish sharpening.
+      simplify with monad laws.
+      
+      rewrite refine_List_Query_In; eauto.
+      rewrite refine_List_For_Query_In_Return_Permutation.
+      rewrite refine_Count.
+      rewrite refine_Permutation_Reflexivity.
+      simplify with monad laws.
+
+      rewrite map_length.
+      simpl.
+
+      rewrite refine_pick_val by eassumption.
+      finish honing.
+    }
+
+   finish sharpening.
   Defined.
 End TreeBasedRefinement.

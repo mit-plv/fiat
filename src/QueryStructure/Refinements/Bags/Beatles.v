@@ -9,7 +9,7 @@ Require Export NArith.
 Local Open Scope string_scope.
 Local Open Scope Heading_scope.
 
-Definition AlbumHeading := <"Name":: string, "Date":: string, "Year":: BinNums.N, "Label":: string, "Country":: string, "UKpeak":: nat, "AUSpeak":: nat, "CANpeak":: nat, "FRApeak":: nat>.
+Definition AlbumHeading := <"Name":: string, "Date":: string, "Year":: N, "Label":: string, "Country":: string, "UKpeak":: N, "AUSpeak":: N, "CANpeak":: N, "FRApeak":: N>.
 
 Definition Album := @Tuple AlbumHeading.
 
@@ -24,6 +24,7 @@ Definition CANpeak : Attributes AlbumHeading := {| bindex := "CANpeak" |}.
 Definition FRApeak : Attributes AlbumHeading := {| bindex := "FRApeak" |}.
 
 Local Open Scope Tuple_scope.
+Local Open Scope N_scope.
 
 Definition FirstAlbums : list Album := [
   <"Name":: "Please Please Me", "Date":: "22 March 1963", "Year":: 1963%N, "Label":: "Parlophone", "Country":: "UK", "UKpeak":: 1, "AUSpeak":: 0, "CANpeak":: 0, "FRApeak":: 5>;

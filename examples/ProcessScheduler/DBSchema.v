@@ -43,9 +43,10 @@ Section ProcessSchedulerInterface.
 
   Definition ProcessSchedulerSig := ADTsignature {
     INIT         : unit          → rep,
-    SPAWN        : rep × nat     → rep × bool,
+    SPAWN        : rep × unit    → rep × bool,
     ENUMERATE    : rep × State   → rep × list nat,
-    GET_CPU_TIME : rep × nat     → rep × list nat
+    GET_CPU_TIME : rep × nat     → rep × list nat,
+    COUNT        : rep × unit    → rep × nat
   }.
 
   Open Scope comp_scope.
@@ -70,7 +71,7 @@ Section ProcessSchedulerInterface.
       ProcessSchedulerSchema {
         const INIT (_ : unit) : rep := empty,
 
-        update SPAWN (ns : nat) : bool :=
+        update SPAWN (_ : unit) : bool :=
           new_pid <- {n | ∀ p ∈ PROCESSES, (n <> p!PID_COLUMN)};
           Insert <PID_COLUMN:: new_pid, STATE_COLUMN:: SLEEPING, CPU_COLUMN:: 0> into PROCESSES_TABLE,
 
@@ -82,11 +83,10 @@ Section ProcessSchedulerInterface.
         query GET_CPU_TIME (id : nat) : list nat :=
           For (p in PROCESSES_TABLE)
               Where (p!PID_COLUMN = id)
-              Return (p!CPU_COLUMN)
-(*,
+              Return (p!CPU_COLUMN),
 
-        def query COUNT (_: unit) : nat :=
+        query COUNT (_ : unit) : nat :=
           Count (For (p in PROCESSES_TABLE)
-                 Return 1)*)
+                 Return 1)
       }.
 End ProcessSchedulerInterface.
