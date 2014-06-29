@@ -95,7 +95,22 @@ Proof.
   eauto.
 Qed.
 
+(* We have to define a wrapper for if then else in
+ order for it to play nicely with setoid_rewriting. *)
+Definition If_Then_Else {A}
+           (c : bool)
+           (t e : A) :=
+  if c then t else e.
 
+Add Parametric Morphism A (c : bool)
+: (If_Then_Else c)
+    with signature
+      (@refine A ==> @refine A ==> @refine A )
+      as refine_If_Then_Else.
+Proof.
+  unfold If_Then_Else; intros.
+  destruct c; eassumption.
+Qed.
 
 Add Parametric Morphism A
 : (@Pick A)

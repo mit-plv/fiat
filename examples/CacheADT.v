@@ -1,6 +1,8 @@
 Require Import String Omega List FunctionalExtensionality Ensembles
         Computation ADT ADTRefinement ADTNotation BuildADTRefinements.
 
+Open Scope string.
+
 Section CacheADT.
 
   Variable Key : Type.
@@ -13,6 +15,7 @@ Section CacheADT.
         "UpdateKey" : rep × (Key * Value) → rep × bool,
         "LookupKey"   : rep × Key → rep × (option Value)
   }.
+  
 
   Definition EnsembleInsert  {A} (a : A) (ens : Ensemble A) (a' : A)
     : Prop := a' = a \/ ens a'.
@@ -54,7 +57,9 @@ Section CacheADT.
                    (~ usedKey r (fst kv) -> (SubEnsembleInsert kv r (fst r'))
                                             /\ snd r' = true)},
         meth "UpdateKey" (r : rep, kv : Key * Value) : bool :=
-              { r' | (usedKey r (fst kv) -> r' = (EnsembleReplace kv r, true)) /\
+              { r' | (usedKey r (fst kv) ->
+                      (Same_set _ (fst r') (EnsembleReplace kv r)
+                       /\ snd r' = true)) /\
                      (~ usedKey r (fst kv) -> snd r' = false)},
         meth "LookupKey" (r : rep, k : Key) : option Value :=
                 v <- {v | ValidLookup r k v};
@@ -62,12 +67,6 @@ Section CacheADT.
       }.
 
 End CacheADT.
-
-Require Import String_as_OT.
-Require Import FMapAVL.
-
-Module StringIndexedMap := FMapAVL.Make String_as_OT.
-Definition MapStringNat := StringIndexedMap.t nat.
 
 Section AddDuplicateKeyStrategies.
 
@@ -83,14 +82,16 @@ Section AddDuplicateKeyStrategies.
                     (~ usedKey r (fst kv) -> (SubEnsembleInsert kv r (fst r'))
                                              /\ snd r' = true)}
              (b <- {b | decides b (usedKey r (fst kv))};
-              r' <- { r' | if b then r' = EnsembleReplace kv r
-                                else SubEnsembleInsert kv r r' };
+              r' <- If_Then_Else b
+                 (ret (EnsembleReplace kv r))
+                 { r' | SubEnsembleInsert kv r r' };
               ret (r', negb b)).
   Proof.
+    unfold If_Then_Else;
     intros; rewrite refine_pick_decides.
     f_equiv; unfold pointwise_relation; intros.
     destruct a.
-    - refine pick eq; rewrite refineEquiv_bind_unit;
+    - rewrite refineEquiv_bind_unit;
       apply refine_pick_val; reflexivity.
     - refine pick pair.
       refine pick eq.
@@ -105,14 +106,15 @@ Section AddDuplicateKeyStrategies.
                     (~ usedKey r (fst kv) -> (SubEnsembleInsert kv r (fst r'))
                                              /\ snd r' = true)}
              (b <- {b | decides b (usedKey r (fst kv))};
-              r' <- { r' | if b then r' = r
-                                else SubEnsembleInsert kv r r' };
+              r' <- If_Then_Else b (ret r)
+                 { r' | SubEnsembleInsert kv r r' };
               ret (r', negb b)).
   Proof.
+    unfold If_Then_Else;
     intros; rewrite refine_pick_decides.
     f_equiv; unfold pointwise_relation; intros.
     destruct a.
-    - refine pick eq; rewrite refineEquiv_bind_unit;
+    - rewrite refineEquiv_bind_unit;
       apply refine_pick_val; reflexivity.
     - refine pick pair.
       refine pick eq.
@@ -127,71 +129,333 @@ Section CacheEvictionStrategies.
   Variable Key : Type.
   Variable Value : Type.
 
-  Definition CacheADTwMetric_AbsR
-             (or : Ensemble (Key * Value))
-             (nr : Ensemble (Key * (Value * nat)))
-    := forall kv, or (fst kv, fst (snd kv)) <-> nr kv.
-
   (* First refinement- determine if there is a key to be replaced. *)
 
   Lemma refine_SubEnsembleInsert
-  : forall (k : Key)
-           (v : Value)
-           (idx : nat)
-           (r : Ensemble (Key * (Value * nat))),
-      refine { r' | (SubEnsembleInsert (k, (v, idx)) r r')}
+  : forall (kv : Key * Value)
+           (r : Ensemble (Key * Value)),
+      refine { r' | (SubEnsembleInsert kv r r')}
              (kv_opt <- {kv_opt | forall kv',
                                     kv_opt = Some kv' -> r kv'};
-              {r' | r' = match kv_opt with
-                           | Some (kv', _) =>
-                             EnsembleInsert (k, (v, idx))
+              {r' | Same_set _ r' match kv_opt with
+                                    | Some (kv', _) =>
+                                      EnsembleInsert kv
                                             (EnsembleRemove kv' r)
-                           | None => EnsembleInsert (k, (v, idx)) r
-                         end} ).
+                                    | None => EnsembleInsert kv r
+                                  end} ).
   Proof.
     intros; rewrite refine_Pick_Some with
             (P := r).
     f_equiv; unfold pointwise_relation; intros.
     destruct a;
-      [ higher_order_1_reflexivity 
+      [ higher_order_1_reflexivity
       | reflexivity ].
-    simpl; intros; refine pick eq;  apply refine_pick_val;
-    destruct b; unfold SubEnsembleInsert, EnsembleInsert,
-                EnsembleRemove; simpl; intros; intuition.
-    simpl; intros; refine pick eq;  apply refine_pick_val;
-    unfold SubEnsembleInsert, EnsembleInsert,
-    EnsembleRemove; simpl; intros; intuition.
+    simpl; intros.
+    apply refine_pick_pick; destruct b;
+    unfold Same_set, Included, In, SubEnsembleInsert, EnsembleInsert,
+    EnsembleRemove in *; simpl; intros; intuition.
+    destruct (H2 _ H1); intuition.
+    apply refine_pick_pick; 
+    unfold Same_set, Included, In, SubEnsembleInsert, EnsembleInsert,
+    EnsembleRemove in *; simpl; intros; intuition.
   Qed.
 
+  (* Never tab a key for replacement *)
+  Lemma refine_pick_KeyToBeReplaced_never
+  : forall (r : Ensemble (Key * Value)),
+      refine {kv_opt | forall kv',
+                         kv_opt = Some kv' -> r kv'}
+             (ret None).
+  Proof.
+    intros; rewrite refine_pick_val;
+    [ reflexivity
+      | discriminate ].
+  Qed.
+
+  Section LogicalIndex.
+
+    (* To define various replacement strategies, we're going to
+       add a logical index to the pairs of keys and values. *)
+
+    Definition CacheADTwLogIndex_AbsR
+             (or : Ensemble (Key * Value))
+             (nr : Ensemble (Key * (Value * nat)))
+    := (forall k v, or (k, v) -> (exists idx, nr (k, (v, idx))))
+       /\ (forall k v idx, nr (k, (v, idx)) -> or (k, v)).
+
+    Definition DropLogIndex
+               (nr : Ensemble (Key * (Value * nat))) :
+      Ensemble (Key * Value) :=
+      fun kv => (exists idx, nr (fst kv, (snd kv, idx))).
+
+    Lemma refine_LogIndexEmpty
+    : refine {nr' |
+              CacheADTwLogIndex_AbsR (fun _ : Key * Value => False) nr'}
+             (ret (fun _  => False)).
+    Proof.
+      apply refine_pick_val;
+      unfold CacheADTwLogIndex_AbsR; intuition;
+      destruct_ex; eauto.
+    Qed.
+
+    Lemma refine_LogIndexUsedKey
+    : forall n or nr,
+        CacheADTwLogIndex_AbsR or nr
+        -> refine {b | decides b (usedKey or n)}
+               {b | decides b (usedKey nr n)}.
+    Proof.
+      unfold CacheADTwLogIndex_AbsR;
+      intros; apply refine_pick_pick;
+      unfold usedKey; simpl; intros; unfold decides;
+      find_if_inside; simpl in * ; destruct_ex.
+      destruct x; eexists; eapply H; eauto.
+      unfold not; intros; eapply H0.
+      destruct_ex.
+      apply H in H1; destruct_ex; eauto.
+    Qed.
+
+    Lemma refine_LogIndexAddSpec
+    : forall n or nr,
+        CacheADTwLogIndex_AbsR or nr
+        -> refine
+             (or' <- {r'|
+                      (usedKey or (fst n) -> snd r' = false) /\
+                      (~ usedKey or (fst n) ->
+                       SubEnsembleInsert n or (fst r') /\ snd r' = true)};
+              nr' <- {nr' | CacheADTwLogIndex_AbsR (fst or') nr'};
+              ret (nr', snd or'))
+             ({r' |
+               (usedKey nr (fst n) -> snd r' = false) /\
+               (~ usedKey nr (fst n) ->
+                exists idx : nat,
+                  SubEnsembleInsert (fst n, (snd n, idx))
+                                    nr (fst r') /\ snd r' = true)}).
+    Proof.
+      unfold CacheADTwLogIndex_AbsR, usedKey; intros; split_and.
+      unfold refine; intros; inversion_by computes_to_inv.
+      econstructor 2 with (comp_a_value := (DropLogIndex (fst v), snd v));
+        simpl.
+      - econstructor; simpl; split.
+        intros; destruct_ex.
+        apply H0 in H; destruct_ex.
+        eapply H2; eauto.
+        intros; destruct H3.
+        unfold not; intros; apply H;
+        destruct_ex; destruct x; eexists; eapply H1; eauto.
+        intuition.
+        unfold SubEnsembleInsert, DropLogIndex, EnsembleInsert in *.
+        intros; destruct_ex; simpl in *.
+        destruct (H4 _ H3); destruct a'; destruct n; simpl in *.
+        left; congruence.
+        right; eauto.
+      - econstructor 2 with (comp_a_value := fst v).
+        unfold DropLogIndex; econstructor; split; intros; eauto.
+        destruct v; eauto.
+    Qed.
+
+    Lemma LogIndexEnsembleReplace 
+    : forall k v idx or nr kvi,
+        CacheADTwLogIndex_AbsR or nr
+        -> EnsembleReplace (k, (v, idx)) nr kvi
+        -> EnsembleReplace (k, v) or (fst kvi, fst (snd kvi)).
+    Proof.
+      unfold EnsembleReplace, CacheADTwLogIndex_AbsR; 
+      intros; simpl in *; intuition; subst; simpl; eauto.
+      unfold EnsembleRemove in *; simpl in *; right; intuition.
+      destruct kvi as [k' [v' i']]; eauto.
+    Qed.
+
+    Lemma LogIndexEnsembleReplace'
+    : forall k v idx or nr kv,
+        CacheADTwLogIndex_AbsR or nr
+        -> EnsembleReplace (k, v) or kv
+        -> exists idx', 
+               EnsembleReplace (k, (v, idx)) nr (fst kv, (snd kv, idx')).
+    Proof.
+      unfold EnsembleReplace, CacheADTwLogIndex_AbsR; 
+      intros; simpl in *; intuition; subst; simpl; eauto.
+      unfold EnsembleRemove in *; simpl in *; intuition.
+      destruct kv as [k' v']; simpl in *.
+      destruct (H1 _ _ H3).
+      exists x; simpl; eauto.
+    Qed.
+
+    Lemma refine_LogIndexUpdateSpec
+    : forall n or nr,
+        CacheADTwLogIndex_AbsR or nr
+        -> refine
+             (or' <- {r' |
+                      (usedKey or (fst n) -> 
+                       (Same_set _ (fst r') (EnsembleReplace n or) 
+                        /\ snd r' = true))
+                      /\ (~ usedKey or (fst n) -> snd r' = false)};
+              nr' <- {nr' | CacheADTwLogIndex_AbsR (fst or') nr'};
+              ret (nr', snd or'))
+             {r' | (usedKey nr (fst n) -> 
+                    (exists idx, 
+                       Same_set _ (fst r')
+                                (EnsembleReplace (fst n, (snd n, idx)) nr))
+                    /\ snd r' = true)
+                   /\ (~ usedKey nr (fst n) -> snd r' = false)}.
+    Proof.
+      unfold CacheADTwLogIndex_AbsR, usedKey, Same_set; intros; split_and.
+      unfold refine; intros; inversion_by computes_to_inv.
+      econstructor 2 with (comp_a_value := (DropLogIndex (fst v), snd v));
+        simpl.
+      - econstructor; simpl; split.
+        intros; destruct_ex.
+        apply H0 in H2; destruct_ex.
+        destruct H; eauto; intuition; eauto.
+        unfold SubEnsembleInsert, DropLogIndex, EnsembleInsert,
+          Included, In in *; simpl in *; intros; destruct_ex;
+        destruct n; destruct x2; simpl in *.
+        apply H5 in H.
+        eapply (LogIndexEnsembleReplace (nr := nr) (kvi := (k0, (v1, x3)))); try split; eauto.
+        unfold DropLogIndex, EnsembleReplace, EnsembleRemove, 
+        Included, In in *; simpl in *;
+        intros; destruct_ex;
+        destruct n; destruct x2; simpl in *; intuition; injections.
+        eexists; eapply H6; simpl; eauto.
+        apply H0 in H8; destruct_ex; eauto.
+        intros; eapply H3.
+        unfold not; intros; eapply H2.
+        destruct_ex; destruct x; eauto.
+      - econstructor 2 with (comp_a_value := fst v).
+        unfold DropLogIndex; econstructor; split; intros; eauto.
+        destruct v; eauto.
+    Qed.
+    
+    Definition UnLogIndexedEquivalence
+               (nr nr' : Ensemble (Key * (Value * nat)))
+      := (forall k v i, nr (k, (v, i)) -> (exists i', nr' (k, (v, i'))))
+         /\ (forall k v i, nr' (k, (v, i)) -> (exists i', nr (k, (v, i')))).
+
+    Lemma refine_LogIndexLookupSpec
+    : forall n or nr,
+        CacheADTwLogIndex_AbsR or nr
+        -> refine
+             (x0 <- {v | ValidLookup or n v};
+              nr' <- {nr' | CacheADTwLogIndex_AbsR or nr'};
+              ret (nr', x0))
+             (x0 <- {v | ValidLookup nr n v};
+              nr' <- {nr' | UnLogIndexedEquivalence nr nr'};
+              ret (nr', option_map fst x0)).
+    Proof.
+      unfold CacheADTwLogIndex_AbsR; intros; split_and.
+      unfold refine; intros; inversion_by computes_to_inv.
+      econstructor 2 with (comp_a_value := option_map fst x).
+      - econstructor.
+        unfold ValidLookup in *; intros.
+        destruct x; simpl in H3; try discriminate.
+        destruct p;  eapply H1; eapply H2;
+        injections; eauto.
+      - subst; econstructor; econstructor.
+        split; intros; eauto.
+        unfold UnLogIndexedEquivalence in *; split_and.
+        destruct (H0 _ _ H); eauto.
+        unfold UnLogIndexedEquivalence in *; split_and.
+        destruct (H5 _ _ _ H); eauto.
+    Qed.
+
+    Definition BoundedStringCacheADT' :
+      Sharpened (@CacheSpec Key Value).
+    Proof.
+      unfold CacheSpec.
+      hone representation using CacheADTwLogIndex_AbsR.
+      hone constructor "EmptyCache".
+      {
+        simplify with monad laws.
+        rewrite refine_LogIndexEmpty.
+        finish honing.
+      }
+      hone method "AddKey".
+      {
+        apply refine_LogIndexAddSpec; eauto.
+      }
+      hone method "UpdateKey".
+      {
+        apply refine_LogIndexUpdateSpec; eauto.
+      }
+      hone method "LookupKey".
+      {
+        simplify with monad laws.
+        eapply refine_LogIndexLookupSpec; eauto.
+      }
+      hone method "AddKey".
+      {
+        setoid_rewrite refine_ReplaceUsedKey.
+
+
+
+
+  (* Pick the key with the lowest index for replacement *)
   Lemma refine_pick_KeyToBeReplaced_min
-  : forall (r : Ensemble (Key * (Value * nat))),
+  : forall (r : Ensemble (nat * (Key * Value))),
       refine {kv_opt | forall kv',
                          kv_opt = Some kv' -> r kv'}
              {kv_opt | forall kv',
-                         kv_opt = Some kv' -> 
-                         (r kv' 
-                          /\ (forall kv'', 
-                                r kv'' -> (snd (snd kv')) <= snd (snd kv'')))
+                         kv_opt = Some kv' ->
+                         (r kv'
+                          /\ (forall kv'',
+                                r kv'' -> fst kv' <= fst kv''))
                              }.
   Proof.
     intros; apply refine_pick_pick; intros.
     eapply H; eauto.
   Qed.
 
+  (* Pick the key with the highest index for replacement *)
   Lemma refine_pick_KeyToBeReplaced_max
-  : forall (r : Ensemble (Key * (Value * nat))),
+  : forall (r : Ensemble (nat * (Key * Value))),
       refine {kv_opt | forall kv',
                          kv_opt = Some kv' -> r kv'}
              {kv_opt | forall kv',
-                         kv_opt = Some kv' -> 
-                         (r kv' 
-                          /\ (forall kv'', 
-                                r kv'' -> (snd (snd kv'')) <= snd (snd kv')))
+                         kv_opt = Some kv' ->
+                         (r kv'
+                          /\ (forall kv'',
+                                r kv'' -> fst kv'' <= fst kv'))
                              }.
   Proof.
     intros; apply refine_pick_pick; intros.
     eapply H; eauto.
   Qed.
+
+ (* *)
+
+  Definition CacheADTwLogIndex_AbsR
+             (or : Ensemble (Key * Value))
+             (nr : Ensemble (Key * (Value * nat)))
+    := forall kv, or (fst kv, fst (snd kv)) <-> nr kv.
+
+
+    hone method "AddKey".
+    hone
+
+    hone method "AddKey".
+    {
+      rewrite refine_ReplaceUsedKey.
+      setoid_rewrite refine_SubEnsembleInsert.
+      simpl.
+      apply refine_bind.
+      reflexivity.
+      unfold pointwise_relation; intros.
+      apply refine_bind.
+      apply refine_if.
+      reflexivity.
+
+
+
+
+
+.
+    }
+
+Require Import String_as_OT.
+Require Import FMapAVL.
+
+Module StringIndexedMap := FMapAVL.Make String_as_OT.
+Definition MapStringNat := StringIndexedMap.t nat.
+
 
 
   Lemma refine_ReplaceUsedKey

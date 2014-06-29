@@ -48,6 +48,7 @@ SRC_MODULES    := \
 	QueryStructure/QuerySpecs/QueryQSSpecs \
 	QueryStructure/QuerySpecs/InsertQSSpecs \
 	QueryStructure/QuerySpecs/EnsembleListEquivalence \
+	QueryStructure/QuerySpecs/EnsembleListEquivalenceProperties \
 	QueryStructure/QueryStructureNotations \
 	QueryStructure/Refinements/GeneralQueryRefinements \
 	QueryStructure/Refinements/GeneralInsertRefinements \
