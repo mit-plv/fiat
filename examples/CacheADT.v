@@ -15,7 +15,7 @@ Section CacheADT.
         "UpdateKey" : rep × (Key * Value) → rep × bool,
         "LookupKey"   : rep × Key → rep × (option Value)
   }.
-  
+
 
   Definition EnsembleInsert  {A} (a : A) (ens : Ensemble A) (a' : A)
     : Prop := a' = a \/ ens a'.
@@ -155,7 +155,7 @@ Section CacheEvictionStrategies.
     unfold Same_set, Included, In, SubEnsembleInsert, EnsembleInsert,
     EnsembleRemove in *; simpl; intros; intuition.
     destruct (H2 _ H1); intuition.
-    apply refine_pick_pick; 
+    apply refine_pick_pick;
     unfold Same_set, Included, In, SubEnsembleInsert, EnsembleInsert,
     EnsembleRemove in *; simpl; intros; intuition.
   Qed.
@@ -177,24 +177,70 @@ Section CacheEvictionStrategies.
     (* To define various replacement strategies, we're going to
        add a logical index to the pairs of keys and values. *)
 
+    Definition KVEnsemble_EquivalentKeys {A B}
+               (ens : Ensemble (Key * A))
+               (ens' : Ensemble (Key * B)) :=
+      (forall k a, ens (k, a) -> (exists b, ens' (k, b)))
+      /\ (forall k b, ens' (k, b) -> (exists a, ens (k, a))).
+
     Definition CacheADTwLogIndex_AbsR
              (or : Ensemble (Key * Value))
-             (nr : Ensemble (Key * (Value * nat)))
-    := (forall k v, or (k, v) -> (exists idx, nr (k, (v, idx))))
-       /\ (forall k v idx, nr (k, (v, idx)) -> or (k, v)).
+             (nr : Ensemble (Key * Value) *
+                   Ensemble (Key * nat))
+      := or = (fst nr)
+         /\ (KVEnsemble_EquivalentKeys (fst nr) (snd nr)).
 
     Definition DropLogIndex
-               (nr : Ensemble (Key * (Value * nat))) :
-      Ensemble (Key * Value) :=
-      fun kv => (exists idx, nr (fst kv, (snd kv, idx))).
+               (nr : Ensemble (Key * Value) *
+                     Ensemble (Key * nat))
+    : Ensemble (Key * Value) :=
+      fst nr.
+
+  (* Pick the key with the lowest index for replacement *)
+  Lemma refine_pick_KeyToBeReplaced_min
+  : forall (r : Ensemble (Key * Value) *
+                Ensemble (Key * nat)),
+      refine {kv_opt | forall kv',
+                         kv_opt = Some kv' -> fst r kv'}
+             {kv_opt | forall kv',
+                         kv_opt = Some kv' ->
+                         (fst r kv'
+                          /\ (forall idx ki,
+                                snd r (fst kv', idx) ->
+                                snd r ki ->
+                                idx <= snd ki))
+                             }.
+  Proof.
+    intros; apply refine_pick_pick; intros.
+    eapply H; eauto.
+  Qed.
+
+  (* Pick the key with the highest index for replacement *)
+  Lemma refine_pick_KeyToBeReplaced_max
+  : forall (r : Ensemble (Key * Value) *
+                Ensemble (Key * nat)),
+      refine {kv_opt | forall kv',
+                         kv_opt = Some kv' -> fst r kv'}
+             {kv_opt | forall kv',
+                         kv_opt = Some kv' ->
+                         (fst r kv'
+                          /\ (forall idx ki,
+                                snd r (fst kv', idx) ->
+                                snd r ki ->
+                                snd ki <= idx))
+                             }.
+  Proof.
+    intros; apply refine_pick_pick; intros.
+    eapply H; eauto.
+  Qed.
 
     Lemma refine_LogIndexEmpty
     : refine {nr' |
               CacheADTwLogIndex_AbsR (fun _ : Key * Value => False) nr'}
-             (ret (fun _  => False)).
+             (ret (fun _  => False, fun _ => False)).
     Proof.
       apply refine_pick_val;
-      unfold CacheADTwLogIndex_AbsR; intuition;
+      unfold CacheADTwLogIndex_AbsR, KVEnsemble_EquivalentKeys; intuition;
       destruct_ex; eauto.
     Qed.
 
@@ -202,17 +248,131 @@ Section CacheEvictionStrategies.
     : forall n or nr,
         CacheADTwLogIndex_AbsR or nr
         -> refine {b | decides b (usedKey or n)}
-               {b | decides b (usedKey nr n)}.
+               {b | decides b (usedKey (fst nr) n)}.
     Proof.
-      unfold CacheADTwLogIndex_AbsR;
+      unfold CacheADTwLogIndex_AbsR, KVEnsemble_EquivalentKeys;
       intros; apply refine_pick_pick;
       unfold usedKey; simpl; intros; unfold decides;
-      find_if_inside; simpl in * ; destruct_ex.
-      destruct x; eexists; eapply H; eauto.
-      unfold not; intros; eapply H0.
-      destruct_ex.
-      apply H in H1; destruct_ex; eauto.
+      find_if_inside; simpl in * ; destruct_ex;
+      unfold Same_set, Included, In in *; intuition; subst; eauto.
     Qed.
+
+    Lemma refine_pick_CacheADTwLogIndex_AbsR or' :
+          refine
+            {nr' | CacheADTwLogIndex_AbsR or' nr'}
+            (nr' <- {nr' | KVEnsemble_EquivalentKeys or' nr'};
+             ret (or', nr')).
+    Proof.
+      unfold CacheADTwLogIndex_AbsR; intros.
+      setoid_rewrite refineEquiv_pick_pair_snd_dep; simpl.
+      refine pick val or'.
+      simplify with monad laws; f_equiv.
+      unfold Same_set, Included; eauto.
+    Qed.
+
+    Lemma refine_pick_KVEnsembleRemove {B} :
+      forall (ens ens' : Ensemble (Key * B)) (a : Key),
+        KVEnsemble_EquivalentKeys ens ens'
+        -> refine
+             {ens'' | KVEnsemble_EquivalentKeys (EnsembleRemove a ens) ens''}
+             (ret (EnsembleRemove a ens')).
+    Proof.
+      intros; refine pick val _; try reflexivity.
+      unfold KVEnsemble_EquivalentKeys, EnsembleRemove in *;
+        simpl in *; intuition.
+      apply H0 in H3; destruct_ex; eauto.
+      apply H1 in H3; destruct_ex; eauto.
+    Qed.
+
+    Lemma refine_pick_KVEnsembleInsert {B} :
+      forall (ens ens' : Ensemble (Key * B)) (ab : Key * B),
+        KVEnsemble_EquivalentKeys ens ens'
+        -> refine
+             {ens'' | KVEnsemble_EquivalentKeys (EnsembleInsert ab ens) ens''}
+             (b <- Pick (fun b : B => True);
+              ret (EnsembleInsert (fst ab, b) ens')).
+    Proof.
+      unfold refine; intros.
+      inversion_by computes_to_inv; subst.
+      econstructor.
+      unfold KVEnsemble_EquivalentKeys, EnsembleInsert in *;
+        simpl in *; intuition; injections; eauto.
+      apply H0 in H3; destruct_ex; eauto.
+      apply H2 in H3; destruct_ex; eauto.
+    Qed.
+
+    Lemma refine_If_Then_Else_Bind {A B}
+    : forall i (t e : Comp A) (b : A -> Comp B),
+        refine (a <- If_Then_Else i t e; b a)
+               (If_Then_Else i
+                             (a <- t;
+                              b a)
+                             (a <- e;
+                              b a)).
+    Proof.
+      intros; destruct i; simpl; reflexivity.
+    Qed.
+
+
+    Definition BoundedStringCacheADT' :
+      Sharpened (@CacheSpec Key Value).
+    Proof.
+      unfold CacheSpec.
+      hone representation using CacheADTwLogIndex_AbsR.
+      hone constructor "EmptyCache".
+      {
+        simplify with monad laws.
+        rewrite refine_LogIndexEmpty.
+        finish honing.
+      }
+      hone method "AddKey".
+      {
+        destruct H0; subst.
+        setoid_rewrite refine_pick_CacheADTwLogIndex_AbsR;
+        simplify with monad laws.
+        finish honing.
+      }
+      hone method "UpdateKey".
+      {
+        destruct H0; subst.
+        setoid_rewrite refine_pick_CacheADTwLogIndex_AbsR;
+        simplify with monad laws.
+        finish honing.
+      }
+      hone method "LookupKey".
+      {
+        destruct H0; subst.
+        setoid_rewrite refine_pick_CacheADTwLogIndex_AbsR;
+        simplify with monad laws.
+        finish honing.
+      }
+      hone method "AddKey".
+      {
+        setoid_rewrite refine_ReplaceUsedKey.
+        setoid_rewrite refine_SubEnsembleInsert.
+        simplify with monad laws.
+        setoid_rewrite refine_pick_KeyToBeReplaced_min.
+        simpl.
+        setoid_rewrite refine_If_Then_Else_Bind.
+        setoid_rewrite refineEquiv_bind_unit;
+          setoid_rewrite refineEquiv_bind_bind.
+
+        rewrite
+        simpl.
+        apply refine_bind.
+        Focus 2.
+        unfold pointwise_relation; intros.
+        apply refine_bind.
+        Focus.
+        apply refine_If_Then_Else.
+        reflexivity.
+        apply refine_bind.
+
+        apply refine_pick_KeyToBeReplaced_min.
+
+        simplify with monad laws.
+        eapply refine_LogIndexLookupSpec; eauto.
+      }
 
     Lemma refine_LogIndexAddSpec
     : forall n or nr,
@@ -225,10 +385,9 @@ Section CacheEvictionStrategies.
               nr' <- {nr' | CacheADTwLogIndex_AbsR (fst or') nr'};
               ret (nr', snd or'))
              ({r' |
-               (usedKey nr (fst n) -> snd r' = false) /\
-               (~ usedKey nr (fst n) ->
-                exists idx : nat,
-                  SubEnsembleInsert (fst n, (snd n, idx))
+               (usedKey (fst nr) (fst n) -> snd r' = false) /\
+               (~ usedKey (fst nr) (fst n) ->
+                SubEnsembleInsert (fst n, (snd n, idx))
                                     nr (fst r') /\ snd r' = true)}).
     Proof.
       unfold CacheADTwLogIndex_AbsR, usedKey; intros; split_and.
@@ -253,13 +412,13 @@ Section CacheEvictionStrategies.
         destruct v; eauto.
     Qed.
 
-    Lemma LogIndexEnsembleReplace 
+    Lemma LogIndexEnsembleReplace
     : forall k v idx or nr kvi,
         CacheADTwLogIndex_AbsR or nr
         -> EnsembleReplace (k, (v, idx)) nr kvi
         -> EnsembleReplace (k, v) or (fst kvi, fst (snd kvi)).
     Proof.
-      unfold EnsembleReplace, CacheADTwLogIndex_AbsR; 
+      unfold EnsembleReplace, CacheADTwLogIndex_AbsR;
       intros; simpl in *; intuition; subst; simpl; eauto.
       unfold EnsembleRemove in *; simpl in *; right; intuition.
       destruct kvi as [k' [v' i']]; eauto.
@@ -269,10 +428,10 @@ Section CacheEvictionStrategies.
     : forall k v idx or nr kv,
         CacheADTwLogIndex_AbsR or nr
         -> EnsembleReplace (k, v) or kv
-        -> exists idx', 
+        -> exists idx',
                EnsembleReplace (k, (v, idx)) nr (fst kv, (snd kv, idx')).
     Proof.
-      unfold EnsembleReplace, CacheADTwLogIndex_AbsR; 
+      unfold EnsembleReplace, CacheADTwLogIndex_AbsR;
       intros; simpl in *; intuition; subst; simpl; eauto.
       unfold EnsembleRemove in *; simpl in *; intuition.
       destruct kv as [k' v']; simpl in *.
@@ -285,14 +444,14 @@ Section CacheEvictionStrategies.
         CacheADTwLogIndex_AbsR or nr
         -> refine
              (or' <- {r' |
-                      (usedKey or (fst n) -> 
-                       (Same_set _ (fst r') (EnsembleReplace n or) 
+                      (usedKey or (fst n) ->
+                       (Same_set _ (fst r') (EnsembleReplace n or)
                         /\ snd r' = true))
                       /\ (~ usedKey or (fst n) -> snd r' = false)};
               nr' <- {nr' | CacheADTwLogIndex_AbsR (fst or') nr'};
               ret (nr', snd or'))
-             {r' | (usedKey nr (fst n) -> 
-                    (exists idx, 
+             {r' | (usedKey nr (fst n) ->
+                    (exists idx,
                        Same_set _ (fst r')
                                 (EnsembleReplace (fst n, (snd n, idx)) nr))
                     /\ snd r' = true)
@@ -311,7 +470,7 @@ Section CacheEvictionStrategies.
         destruct n; destruct x2; simpl in *.
         apply H5 in H.
         eapply (LogIndexEnsembleReplace (nr := nr) (kvi := (k0, (v1, x3)))); try split; eauto.
-        unfold DropLogIndex, EnsembleReplace, EnsembleRemove, 
+        unfold DropLogIndex, EnsembleReplace, EnsembleRemove,
         Included, In in *; simpl in *;
         intros; destruct_ex;
         destruct n; destruct x2; simpl in *; intuition; injections.
@@ -324,7 +483,7 @@ Section CacheEvictionStrategies.
         unfold DropLogIndex; econstructor; split; intros; eauto.
         destruct v; eauto.
     Qed.
-    
+
     Definition UnLogIndexedEquivalence
                (nr nr' : Ensemble (Key * (Value * nat)))
       := (forall k v i, nr (k, (v, i)) -> (exists i', nr' (k, (v, i'))))
@@ -387,38 +546,6 @@ Section CacheEvictionStrategies.
 
 
 
-
-  (* Pick the key with the lowest index for replacement *)
-  Lemma refine_pick_KeyToBeReplaced_min
-  : forall (r : Ensemble (nat * (Key * Value))),
-      refine {kv_opt | forall kv',
-                         kv_opt = Some kv' -> r kv'}
-             {kv_opt | forall kv',
-                         kv_opt = Some kv' ->
-                         (r kv'
-                          /\ (forall kv'',
-                                r kv'' -> fst kv' <= fst kv''))
-                             }.
-  Proof.
-    intros; apply refine_pick_pick; intros.
-    eapply H; eauto.
-  Qed.
-
-  (* Pick the key with the highest index for replacement *)
-  Lemma refine_pick_KeyToBeReplaced_max
-  : forall (r : Ensemble (nat * (Key * Value))),
-      refine {kv_opt | forall kv',
-                         kv_opt = Some kv' -> r kv'}
-             {kv_opt | forall kv',
-                         kv_opt = Some kv' ->
-                         (r kv'
-                          /\ (forall kv'',
-                                r kv'' -> fst kv'' <= fst kv'))
-                             }.
-  Proof.
-    intros; apply refine_pick_pick; intros.
-    eapply H; eauto.
-  Qed.
 
  (* *)
 
