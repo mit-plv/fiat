@@ -1,6 +1,3 @@
-Class mkIndex_helper {T1 T2} (heading : T1) (attributes' : T2) retT := make_mkIndex_helper : retT.
-Ltac constr_mkIndex heading0 attributes0 retT0 :=
-  constr:((_ : mkIndex_helper heading0 attributes0 retT0) : retT0).
 Require Import AutoDB.
 
 (* Our bookstore has two relations (tables):
@@ -90,35 +87,40 @@ Definition BookStoreSpec : ADT BookStoreSig :=
 }.
 
 (* Aliases for internal names of the two tables *)
-Definition Books := BookStoreSchema/sBOOKS.
+Definition Books := BookStoreSchema/sBOOKS. 
 Definition Orders := BookStoreSchema/sORDERS.
 
 (* Aliases for internal notions of schemas for the two tables *)
 Definition BookSchema := QSGetNRelSchemaHeading BookStoreSchema Books.
 Definition OrderSchema := QSGetNRelSchemaHeading BookStoreSchema Orders.
 
-Hint Extern 0 (mkIndex_helper ?heading ?attributes' ?retT) => change retT; mkIndex heading attributes' : typeclass_instances.
+(* Now we define an index structure for each table. *)
 
-Tactic Notation "plan" "with" "abstraction" "relation" "for" constr(Schema)
-       "with" "name" constr(strName1) "and" "schema" constr(schema1) "of" "bag" "of" constr(thing1) "indexed" "on" constr(indices1)
-        "and" "name" constr(strName2) "and" "schema" constr(schema2) "of" "bag" "of" constr(thing2) "indexed" "on" constr(indices2)
-  := let Storage1 := constr_mkIndex schema1 indices1 (@BagPlusBagProof thing1) in
-     let T1 := constr:(BagType Storage1) in
-     let Storage2 := constr_mkIndex schema2 indices2 (@BagPlusBagProof thing2) in
-     let T2 := constr:(BagType Storage2) in
-     let x := constr:(fun (or : UnConstrQueryStructure Schema)
-                          (nr : T1 * T2)
-                      => or!strName1 ≃ benumerate (fst nr) /\ or!strName2 ≃ benumerate (snd nr)) in
-     let AbsR := fresh "AbsR" in
-     pose x as AbsR;
-       plan AbsR;
-       subst AbsR.
+Definition BookStorage : @BagPlusBagProof Book.
+  mkIndex BookSchema [ Books//sAUTHOR; Books//sISBN ].
+Defined.
+(* In other words, index first on the author field, then the ISBN field.
+ * Works especially efficiently for accesses keyed on author. *)
+
+Definition OrderStorage : @BagPlusBagProof Order.
+  mkIndex OrderSchema [ Orders//sISBN ].
+Defined.
+
+(* Each index has an associate datatype.  Let's name each one. *)
+Definition TBookStorage := BagType BookStorage.
+Definition TOrderStorage := BagType OrderStorage.
+
+(* This abstraction relation connects:
+ * 1. Abstract database from reference implementation, using sets
+ * 2. Our fancy realization, using search trees (from Bags library) *)
+Definition BookStoreListImpl_AbsR
+           (or : UnConstrQueryStructure BookStoreSchema)
+           (nr : TBookStorage * TOrderStorage) : Prop :=
+  or!sBOOKS ≃ benumerate (fst nr) /\ or!sORDERS ≃ benumerate (snd nr).
 
 Definition BookStore :
   Sharpened BookStoreSpec.
 Proof.
-  plan with abstraction relation for BookStoreSchema
-       with name sBOOKS  and schema BookSchema  of bag of Book  indexed on [ Books//sAUTHOR ; Books//sISBN ]
-       and  name sORDERS and schema OrderSchema of bag of Order indexed on [ Orders//sISBN ].
+  plan BookStoreListImpl_AbsR.
   finish sharpening.
 Defined.
