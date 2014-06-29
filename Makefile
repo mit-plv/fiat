@@ -55,10 +55,10 @@ SRC_MODULES    := \
 	QueryStructure/SetEq \
 	QueryStructure/SetEqProperties \
 	QueryStructure/AdditionalLemmas \
+	QueryStructure/Refinements/EnsembleListEquivalenceProperties \
 	QueryStructure/Refinements/AdditionalMorphisms \
 	QueryStructure/Refinements/AdditionalPermutationLemmas \
 	QueryStructure/Refinements/flattenCompListProperties \
-	QueryStructure/Refinements/EnsembleListEquivalenceProperties \
 	QueryStructure/Refinements/ConstraintChecksRefinements \
 	QueryStructure/Refinements/ListImplementation/ListQueryRefinements \
 	QueryStructure/Refinements/ListImplementation/ListInsertRefinements \
