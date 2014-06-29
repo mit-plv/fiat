@@ -9,14 +9,11 @@ Local Arguments impl _ _ / .
 
 Section general_refine_lemmas.
 
-  Lemma refine_under_bind X Y (f g : X -> Comp Y) x
-        (eqv_f_g : forall x, refine (f x) (g x))
-  : refine (Bind x f) (Bind x g).
-  Proof.
-    unfold refine; simpl in *; hnf; intros.
-    inversion_by computes_to_inv; econstructor; eauto.
-    eapply eqv_f_g; eauto.
-  Qed.
+  Lemma refine_under_bind {A B}
+  : forall c (x y : A -> Comp B),
+      (forall a, computes_to c a -> refine (x a) (y a))
+      -> refine (a <- c; x a) (a <- c; y a).
+  Proof. t_refine. Qed.
 
   Lemma refineEquiv_is_computational {A} {c} (CompC : @is_computational A c)
   : @refineEquiv _ c (ret (is_computational_val CompC)).
@@ -309,6 +306,59 @@ Section general_refine_lemmas.
                  { d | exists a, c b ↝ a /\ P a d}).
   Proof. t_refine. Qed.
 
+  Lemma refine_Pick_Some {A B}
+  : forall (P : Ensemble B) (c e : Comp A) (t : B -> Comp A),
+      (forall b, P b -> refine c (t b))
+      -> (refine c e)
+      -> refine c
+                (b <- {b | forall b',
+                             (b = Some b' -> P b')};
+                   match b with
+                   | Some b => t b
+                   | None => e
+                   end).
+  Proof.
+    unfold refine; intros; apply computes_to_inv in H1; destruct_ex; intuition.
+    destruct x; inversion_by computes_to_inv; eauto.
+  Qed.
+
+  Lemma refine_Pick_Some_dec {A B}
+  : forall (P : Ensemble B) (c e : Comp A) (t : B -> Comp A),
+      (forall b, P b -> refine c (t b))
+      -> ((forall b, ~ P b) -> refine c e)
+      -> refine c
+                (b <- {b | forall b',
+                             (b = Some b' -> P b')
+                             /\ (b = None -> forall b', ~ P b')};
+                 match b with
+                   | Some b => t b
+                   | None => e
+                 end).
+  Proof.
+    unfold refine; intros; apply computes_to_inv in H1; destruct_ex; intuition.
+    destruct x; inversion_by computes_to_inv; eauto.
+  Qed.
+
+  Definition decides (b : bool) (P : Prop)
+    := if b then P else ~ P.
+
+  Lemma refine_pick_decides {A}
+        (P : Prop)
+        (Q Q' : Ensemble A)
+  : refine {a | (P -> Q a) /\
+                (~ P -> Q' a)}
+           (b <- {b | decides b P};
+            if b then
+            {a | Q a}
+            else
+              {a | Q' a}).
+  Proof.
+    unfold refine; intros; apply_in_hyp computes_to_inv;
+    destruct_ex; split_and; inversion_by computes_to_inv.
+    destruct x; simpl in *; inversion_by computes_to_inv;
+    econstructor; intuition.
+  Qed.
+
 End general_refine_lemmas.
 
 Tactic Notation "finalize" "refinement" :=
@@ -317,3 +367,42 @@ Tactic Notation "finalize" "refinement" :=
 Tactic Notation "refine" "using" constr(refinement_rule) :=
   eapply refinement_step;
   [progress setoid_rewrite refinement_rule; try reflexivity | ].
+
+(* 'Wrapper' tactics for various refinements *)
+
+Tactic Notation "refine" "pick" "pair" :=
+  rewrite refine_pick_pick;
+  [ |
+    let x := fresh in
+    let H := fresh in
+    intros x H;
+      let A := match goal with
+                   |- ?A /\ ?B => constr:(A)
+               end in
+      let B := match goal with
+                   |- ?A /\ ?B => constr:(B)
+               end in
+      match eval pattern (fst x) in A with
+          ?A' _ =>
+          match eval pattern (snd x) in B with
+              ?B' _ =>
+              match type of H with
+                | ?C _ => unify C (fun x => A' (fst x) /\ B' (snd x));
+                         exact H
+              end
+          end
+      end ]; rewrite refineEquiv_pick_pair.
+
+  Tactic Notation "refine" "pick" "val" open_constr(v) :=
+    let T := type of v in
+    rewrite refine_pick_val with
+    (A := T)
+      (a := v).
+
+  Tactic Notation "refine" "pick" "eq" :=
+    match goal with
+      | |- context[Pick (fun x => x = _)] =>
+        setoid_rewrite refineEquiv_pick_eq
+      | |- context[Pick (fun x => _ = x)] =>
+        setoid_rewrite refineEquiv_pick_eq'
+    end.

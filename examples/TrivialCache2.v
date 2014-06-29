@@ -1,3 +1,5 @@
+Ltac typeof' a := type of a.
+
 Require Import QueryStructureNotations.
 Require Import ListImplementation.
 Require Import AddCache ADTCache.
@@ -24,7 +26,7 @@ Definition Dog := TupleDef MySchema "Dog".
 Definition MySig : ADTSig :=
   ADTsignature {
       "Empty" : unit → rep,
-      "AddDog" : rep × Dog → rep × unit,
+      "AddDog" : rep × Dog → rep × bool,
       "YoungOwners'Breeds" : rep × nat → rep × list string,
       "BreedPopulation" : rep × string → rep × nat
   }.
@@ -33,7 +35,7 @@ Definition MySpec : ADT MySig :=
   QueryADTRep MySchema {
     const "Empty" (_ : unit) : rep := empty,
 
-   update "AddDog" (dog : Dog) : unit :=
+   update "AddDog" (dog : Dog) : bool :=
       Insert dog into "Dog",
 
     query "YoungOwners'Breeds" ( ageLimit : nat ) : list string :=
@@ -100,6 +102,9 @@ Definition My :
 Proof.
   unfold MySpec.
 
+  pose_string_ids.
+  Print Ltac pose_string_ids.
+
   start honing QueryStructure.
 
   hone representation using (cachedRep_AbsR BreedCacheSpec).
@@ -133,8 +138,27 @@ Proof.
     { intros; unfold BreedCacheSpec in H2.
       subst_body.
       apply refine_under_bind'; intros.
-      (* Check and see if there are any Breeds in the cache with
+      (* Check to see if the cache isn't fully populated. *)
+      eapply (refine_Pick_Some
+                (EnsembleListEquivalence.EnsembleListEquivalence (cachedVal r_n))).
+      intros; apply (@refine_if _ _ (if (lt_dec (length b) 10) then true
+                    else false)).
+      (* If so, insert this query into the cache. *)
+      intros; rewrite refine_pick_cachedRep.
+      simpl; simplify with monad laws.
+      rewrite refine_pick_val with 
+      (A := Ensemble (string * nat))
+        (a := EnsembleInsert (n, a) (cachedVal r_n)).
+      simplify with  monad laws.
+      reflexivity.
+      unfold BreedCacheSpec, EnsembleInsert; intros;
+      intuition.
+      subst; simpl.
+      intros v Comp_v; apply computes_to_inv in Comp_v; 
+      subst; eauto.
+      (* If not, Check and see if there are any Breeds in the cache with
        smaller populations. *)
+      intros.
       eapply (refine_Pick_Some
                 (fun BreedCount => cachedVal r_n BreedCount
                                    /\ (a > snd BreedCount)
@@ -153,7 +177,7 @@ Proof.
       (A := Ensemble (string * nat))
       (a := EnsembleInsert (n, a)
                            (fun BreedCount =>
-                              b <> BreedCount
+                              b0 <> BreedCount
                               /\ cachedVal r_n BreedCount)).
       simplify with monad laws.
       higher_order_1_reflexivity.
@@ -161,6 +185,8 @@ Proof.
       unfold EnsembleInsert in InBreedCount; intuition; subst.
       simpl.
       unfold refine; intros; inversion_by computes_to_inv; subst; eauto.
+      (* If the cache isn't enumerable, then don't touch it. *)
+      intros.
     }
   }
 
@@ -183,6 +209,8 @@ Proof.
     simplify with monad laws.
     subst_strings.
     eapply (refine_Pick_Some (fun Count => cachedVal r_n (n!"Breed", Count))); intros.
+
+    (* If this breed is cached. *)
     { unfold cachedRep_AbsR, BreedCacheSpec in *; split_and; subst.
       set (n!"Breed") in *.
       simpl in d.
@@ -257,20 +285,31 @@ Proof.
     rewrite refine_List_Query_In_Where.
     rewrite refine_List_For_Query_In_Return;
       pose_string_ids; simplify with monad laws; simpl.
-    match goal with
-
-
-    setoid_rewrite refineEquiv_pick_eq'.
-    simplify with monad laws.
+    let H := fresh in
+    pose (refineEquiv_pick_pair
+            (fun nr => EnsembleIndexedListEquivalence
+                         ((origRep or)!StringId2)%QueryImpl
+                         (fst nr) /\
+                       EnsembleIndexedListEquivalence
+                         ((origRep or)!StringId3)%QueryImpl
+                         (snd nr))
+            (fun nr => (forall BreedCount : string * nat,
+                          cachedVal or BreedCount <->
+                          StringIndexedMap.MapsTo (fst BreedCount)
+                                                  (snd BreedCount) nr)))
+      as H;
+    simpl in H; rewrite H; clear H.
+    rewrite refineEquiv_pick_pair.
     simpl in *.
-    rewrite refine_pick_val by eassumption.
     simplify with monad laws.
-    rewrite refine_pick_val by eassumption.
+    rewrite refine_pick_val by eauto.
     simplify with monad laws.
-    rewrite H2.
+    rewrite refine_pick_val by eauto.
+    simplify with monad laws.
+    rewrite refine_pick_val by eauto.
+    simplify with monad laws.
     finish honing.
   }
-
 
   hone constructor "Empty".
   { simplify with monad laws.
