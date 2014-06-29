@@ -84,7 +84,6 @@ EXAMPLE_MODULES := \
 	ProcessScheduler/State \
 	ProcessScheduler/DBSchema \
 	ProcessScheduler/ListBasedRefinement \
-	ProcessScheduler/TreeBasedRefinement \
 	AutoDB \
 	Bookstore
 
@@ -163,6 +162,15 @@ clean-doc::
 	rm -f $(shell find Overview -name "*.log" -o -name "*.aux" -o -name "*.bbl" -o -name "*.blg" -o -name "*.synctex.gz" -o -name "*.out" -o -name "*.toc")
 
 -include Makefile.coq
+
+examples/BookstoreExtraction.vo : examples/BookstoreExtraction.v examples/Bookstore.vo
+	coqc -R src ADTSynthesis -R examples ADTExamples examples/BookstoreExtraction.v
+
+examples/bookstore.cmxa: examples/BookstoreExtraction.vo
+	cd examples && ocamlopt -o bookstore.cmxa -a bookstore.mli bookstore.ml
+
+repl: examples/repl.ml examples/bookstore.cmxa
+	cd examples && ocamlopt -o repl unix.cmxa str.cmxa bookstore.cmxa repl.ml
 
 # uncomment this to get a clean target that cleans the documentation, at the cost of emitting
 # Makefile:156: warning: overriding recipe for target 'clean'

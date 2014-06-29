@@ -90,13 +90,13 @@ try
                            Printf.printf "Books by %s:\n" author;
                            List.iter (fun title -> Printf.printf "+ %s \n" (toString title)) titles
                            
-        | "num_orders"-> let [author] = read_arguments command 1 input_line offset in
-                           let num = run (num_orders 
-                                            (toCharList author)) store in
-                           Printf.printf "Found %d orders for author %s\n" num author
+        | "num_orders" -> let [author] = read_arguments command 1 input_line offset in
+                          let num = run (num_orders 
+                                           (toCharList author)) store in
+                          Printf.printf "Found %d orders for author %s\n" num author
 
-        | _             -> print_string "Unknown command!\nExpecting any of\n+ reset\n+ add_book [author title isbn]\n+ place_order [isbn]\n+ get_titles [author]\n+ num_orders [author]\n"; 
-                           raise Not_found
+        | unknown      -> Printf.printf "Unknown command %s!\nExpecting any of\n+ reset\n+ add_book [author title isbn]\n+ place_order [isbn]\n+ get_titles [author]\n+ num_orders [author]\n" unknown;
+                          raise Not_found
       ) with
         Not_found -> ()
     ) with
