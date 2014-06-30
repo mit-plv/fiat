@@ -359,6 +359,32 @@ Section general_refine_lemmas.
     econstructor; intuition.
   Qed.
 
+  Lemma refine_If_Then_Else_Bind {A B}
+  : forall i (t e : Comp A) (b : A -> Comp B),
+      refine (a <- If i Then t Else e; b a)
+             (If i Then (a <- t;
+                         b a)
+                   Else (a <- e;
+                         b a)).
+  Proof.
+      intros; destruct i; simpl; reflexivity.
+  Qed.
+
+  Lemma refine_If_Opt_Then_Else_Bind {A B C}
+  : forall (i : option A)
+           (t : A -> Comp B)
+           (e : Comp B)
+           (c : B -> Comp C),
+      refine (b <- If_Opt_Then_Else i t e; c b)
+             (If_Opt_Then_Else i (fun a' =>
+                                      b <- t a';
+                                  c b)
+                               (b <- e;
+                                c b)).
+  Proof.
+    intros; destruct i; simpl; reflexivity.
+  Qed.
+
 End general_refine_lemmas.
 
 Tactic Notation "finalize" "refinement" :=

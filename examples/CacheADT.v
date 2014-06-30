@@ -75,16 +75,16 @@ Section AddDuplicateKeyStrategies.
 
   (* Two strategies : replace the key*)
 
-  Lemma refine_ReplaceUsedKey
+  Lemma refine_ReplaceUsedKeyAdd
   : forall (kv : Key * Value)
            (r : Ensemble (Key * Value)),
       refine { r' | (usedKey r (fst kv) -> snd r' = false) /\
                     (~ usedKey r (fst kv) -> (SubEnsembleInsert kv r (fst r'))
                                              /\ snd r' = true)}
              (b <- {b | decides b (usedKey r (fst kv))};
-              r' <- If_Then_Else b
-                 (ret (EnsembleReplace kv r))
-                 { r' | SubEnsembleInsert kv r r' };
+              r' <- If b
+                 Then (ret (EnsembleReplace kv r))
+                 Else { r' | SubEnsembleInsert kv r r' };
               ret (r', negb b)).
   Proof.
     unfold If_Then_Else;
@@ -99,15 +99,16 @@ Section AddDuplicateKeyStrategies.
       f_equiv.
   Qed.
 
-  Lemma refine_IgnoreUsedKeyInsert
+  Lemma refine_IgnoreUsedKeyAdd
   : forall (kv : Key * Value)
            (r : Ensemble (Key * Value)),
       refine { r' | (usedKey r (fst kv) -> snd r' = false) /\
                     (~ usedKey r (fst kv) -> (SubEnsembleInsert kv r (fst r'))
                                              /\ snd r' = true)}
              (b <- {b | decides b (usedKey r (fst kv))};
-              r' <- If_Then_Else b (ret r)
-                 { r' | SubEnsembleInsert kv r r' };
+              r' <- If b
+                 Then (ret r)
+                 Else { r' | SubEnsembleInsert kv r r' };
               ret (r', negb b)).
   Proof.
     unfold If_Then_Else;
@@ -124,6 +125,63 @@ Section AddDuplicateKeyStrategies.
 
 End AddDuplicateKeyStrategies.
 
+Section UpdateMissingKeyStrategies.
+
+  Variable Key : Type.
+  Variable Value : Type.
+
+  (* Two strategies : add the key *)
+
+  Lemma refine_AddUnusedKeyUpdate
+  : forall (kv : Key * Value)
+           (r : Ensemble (Key * Value)),
+      refine { r' | (usedKey r (fst kv) ->
+                     (Same_set _ (fst r') (EnsembleReplace kv r)
+                      /\ snd r' = true)) /\
+                    (~ usedKey r (fst kv) -> snd r' = false)}
+             (b <- {b | decides b (usedKey r (fst kv))};
+              r' <- If b
+                 Then (ret (EnsembleReplace kv r))
+                 Else { r' | SubEnsembleInsert kv r r' };
+              ret (r', b)).
+  Proof.
+    unfold If_Then_Else;
+    intros; rewrite refine_pick_decides.
+    f_equiv; unfold pointwise_relation; intros.
+    destruct a.
+    - rewrite refineEquiv_bind_unit;
+      apply refine_pick_val; simpl; intuition.
+    - unfold refine; intros;
+      inversion_by computes_to_inv; subst;
+      econstructor; eauto.
+  Qed.
+
+  Lemma refine_IgnoreUnusedKeyUpdate
+  : forall (kv : Key * Value)
+           (r : Ensemble (Key * Value)),
+      refine { r' | (usedKey r (fst kv) ->
+                     (Same_set _ (fst r') (EnsembleReplace kv r)
+                      /\ snd r' = true)) /\
+                    (~ usedKey r (fst kv) -> snd r' = false)}
+             (b <- {b | decides b (usedKey r (fst kv))};
+              r' <- If b
+                 Then (ret (EnsembleReplace kv r))
+                 Else ret r;
+              ret (r', b)).
+  Proof.
+    unfold If_Then_Else;
+    intros; rewrite refine_pick_decides.
+    f_equiv; unfold pointwise_relation; intros.
+    destruct a.
+    - rewrite refineEquiv_bind_unit;
+      apply refine_pick_val; simpl; intuition.
+    - unfold refine; intros;
+      inversion_by computes_to_inv; subst;
+      econstructor; eauto.
+  Qed.
+
+End UpdateMissingKeyStrategies.
+
 Section CacheEvictionStrategies.
 
   Variable Key : Type.
@@ -137,25 +195,22 @@ Section CacheEvictionStrategies.
       refine { r' | (SubEnsembleInsert kv r r')}
              (kv_opt <- {kv_opt | forall kv',
                                     kv_opt = Some kv' -> r kv'};
-              {r' | Same_set _ r' match kv_opt with
-                                    | Some (kv', _) =>
-                                      EnsembleInsert kv
-                                            (EnsembleRemove kv' r)
-                                    | None => EnsembleInsert kv r
-                                  end} ).
+              Ifopt kv_opt as kv' Then
+                                  ret (EnsembleInsert kv
+                                                      (EnsembleRemove (fst kv') r))
+                                  Else
+                                  ret (EnsembleInsert kv r)).
   Proof.
     intros; rewrite refine_Pick_Some with
             (P := r).
-    f_equiv; unfold pointwise_relation; intros.
+    f_equiv; unfold pointwise_relation; intros; simpl.
     destruct a;
       [ higher_order_1_reflexivity
       | reflexivity ].
-    simpl; intros.
-    apply refine_pick_pick; destruct b;
+    simpl; intros; apply refine_pick_val;
     unfold Same_set, Included, In, SubEnsembleInsert, EnsembleInsert,
     EnsembleRemove in *; simpl; intros; intuition.
-    destruct (H2 _ H1); intuition.
-    apply refine_pick_pick;
+    simpl; intros; apply refine_pick_val;
     unfold Same_set, Included, In, SubEnsembleInsert, EnsembleInsert,
     EnsembleRemove in *; simpl; intros; intuition.
   Qed.
@@ -270,51 +325,147 @@ Section CacheEvictionStrategies.
       unfold Same_set, Included; eauto.
     Qed.
 
-    Lemma refine_pick_KVEnsembleRemove {B} :
-      forall (ens ens' : Ensemble (Key * B)) (a : Key),
+    Lemma KVEnsemble_EquivalentKeys_Remove {B C} :
+      forall (ens : Ensemble (Key * B))
+             (ens' : Ensemble (Key * C)),
         KVEnsemble_EquivalentKeys ens ens'
-        -> refine
-             {ens'' | KVEnsemble_EquivalentKeys (EnsembleRemove a ens) ens''}
-             (ret (EnsembleRemove a ens')).
+        -> forall (a : Key),
+             KVEnsemble_EquivalentKeys (EnsembleRemove a ens)
+                                       (EnsembleRemove a ens').
     Proof.
-      intros; refine pick val _; try reflexivity.
       unfold KVEnsemble_EquivalentKeys, EnsembleRemove in *;
         simpl in *; intuition.
       apply H0 in H3; destruct_ex; eauto.
       apply H1 in H3; destruct_ex; eauto.
     Qed.
 
-    Lemma refine_pick_KVEnsembleInsert {B} :
-      forall (ens ens' : Ensemble (Key * B)) (ab : Key * B),
+    Lemma KVEnsemble_EquivalentKeys_Replace {B C} :
+      forall (ens : Ensemble (Key * B))
+             (ens' : Ensemble (Key * C)),
         KVEnsemble_EquivalentKeys ens ens'
-        -> refine
-             {ens'' | KVEnsemble_EquivalentKeys (EnsembleInsert ab ens) ens''}
-             (b <- Pick (fun b : B => True);
-              ret (EnsembleInsert (fst ab, b) ens')).
+        -> forall kb c,
+             KVEnsemble_EquivalentKeys (EnsembleReplace kb ens)
+                                       (EnsembleReplace (fst kb, c) ens').
     Proof.
-      unfold refine; intros.
-      inversion_by computes_to_inv; subst.
-      econstructor.
-      unfold KVEnsemble_EquivalentKeys, EnsembleInsert in *;
+      unfold KVEnsemble_EquivalentKeys, EnsembleReplace,
+        EnsembleRemove in *;
         simpl in *; intuition; injections; eauto.
       apply H0 in H3; destruct_ex; eauto.
-      apply H2 in H3; destruct_ex; eauto.
+      apply H1 in H3; destruct_ex; eauto.
     Qed.
 
-    Lemma refine_If_Then_Else_Bind {A B}
-    : forall i (t e : Comp A) (b : A -> Comp B),
-        refine (a <- If_Then_Else i t e; b a)
-               (If_Then_Else i
-                             (a <- t;
-                              b a)
-                             (a <- e;
-                              b a)).
+    Lemma KVEnsemble_EquivalentKeys_Refl {B} :
+      forall (ens : Ensemble (Key * B)),
+        KVEnsemble_EquivalentKeys ens ens.
     Proof.
-      intros; destruct i; simpl; reflexivity.
+      unfold KVEnsemble_EquivalentKeys, EnsembleRemove in *;
+      simpl in *; intuition; eauto.
     Qed.
 
+    Lemma KVEnsemble_EquivalentKeys_Insert {B C} :
+      forall (ens : Ensemble (Key * B))
+             (ens' : Ensemble (Key * C)),
+        KVEnsemble_EquivalentKeys ens ens'
+        -> forall (ab : Key * B) (c : C),
+             KVEnsemble_EquivalentKeys (EnsembleInsert ab ens)
+                                       (EnsembleInsert (fst ab, c) ens').
+    Proof.
+      unfold refine; intros.
+      unfold KVEnsemble_EquivalentKeys, EnsembleInsert in *;
+        simpl in *; intuition; injections; eauto.
+      apply H0 in H2; destruct_ex; eauto.
+      apply H1 in H2; destruct_ex; eauto.
+    Qed.
 
-    Definition BoundedStringCacheADT' :
+    Definition PickID {A} (_ : A) := True.
+
+    Lemma refine_pick_KVEnsembleInsert {B C} :
+      forall (ens : Ensemble (Key * B))
+             (ens' : Ensemble (Key * C)),
+        KVEnsemble_EquivalentKeys ens ens'
+        -> forall (ab : Key * B),
+             refine
+             {ens'' | KVEnsemble_EquivalentKeys
+                        (EnsembleInsert ab ens) ens''}
+             (b <- {b | @PickID C b};
+              ret (EnsembleInsert (fst ab, b) ens')).
+    Proof.
+      unfold refine; intros; inversion_by computes_to_inv;
+      subst; econstructor.
+      eauto using KVEnsemble_EquivalentKeys_Insert,
+      KVEnsemble_EquivalentKeys_Remove.
+    Qed.
+
+    Lemma refine_pick_KVEnsembleInsertRemove {B C} :
+      forall (ens : Ensemble (Key * B))
+             (ens' : Ensemble (Key * C)),
+        KVEnsemble_EquivalentKeys ens ens'
+        -> forall (ab : Key * B) k,
+             refine
+             {ens'' | KVEnsemble_EquivalentKeys
+                        (EnsembleInsert
+                           ab
+                           (EnsembleRemove k ens)) ens''}
+             (b <- {b | @PickID C b};
+              ret (EnsembleInsert (fst ab, b)
+                                  (EnsembleRemove k ens'))).
+    Proof.
+      unfold refine; intros; inversion_by computes_to_inv;
+      subst; econstructor.
+      eauto using KVEnsemble_EquivalentKeys_Insert,
+      KVEnsemble_EquivalentKeys_Remove.
+    Qed.
+
+    Lemma refine_pick_KVEnsembleRemove {B C} :
+      forall (ens : Ensemble (Key * B))
+             (ens' : Ensemble (Key * C)),
+        KVEnsemble_EquivalentKeys ens ens'
+        -> forall k,
+             refine
+             {ens'' | KVEnsemble_EquivalentKeys
+                        (EnsembleRemove k ens) ens''}
+             (ret (EnsembleRemove k ens')).
+    Proof.
+      unfold refine; intros; inversion_by computes_to_inv;
+      subst; econstructor.
+      eauto using KVEnsemble_EquivalentKeys_Remove.
+    Qed.
+
+    Lemma refine_pick_KVEnsembleReplace {B C} :
+      forall (ens : Ensemble (Key * B))
+             (ens' : Ensemble (Key * C)),
+        KVEnsemble_EquivalentKeys ens ens'
+        -> forall k,
+             refine
+             {ens'' | KVEnsemble_EquivalentKeys
+                        (EnsembleReplace k ens) ens''}
+             (b <- {b | @PickID C b};
+              ret (EnsembleReplace (fst k, b) ens')).
+    Proof.
+      unfold refine; intros; inversion_by computes_to_inv;
+      subst; econstructor.
+      eauto using KVEnsemble_EquivalentKeys_Replace.
+    Qed.
+
+    Lemma refine_pick_KVEnsemble {B C} :
+      forall (ens : Ensemble (Key * B))
+             (ens' : Ensemble (Key * C)),
+        KVEnsemble_EquivalentKeys ens ens'
+        -> refine
+          {ens'' | KVEnsemble_EquivalentKeys ens ens''}
+          (ret ens').
+    Proof.
+      unfold refine; intros; inversion_by computes_to_inv;
+      subst; econstructor.
+      eauto.
+    Qed.
+  End LogicalIndex.
+
+End CacheEvictionStrategies.
+
+(* This is a cache which doesn't replace *)
+
+    Definition BoundedStringCacheADT :
       Sharpened (@CacheSpec Key Value).
     Proof.
       unfold CacheSpec.
@@ -330,6 +481,23 @@ Section CacheEvictionStrategies.
         destruct H0; subst.
         setoid_rewrite refine_pick_CacheADTwLogIndex_AbsR;
         simplify with monad laws.
+
+        setoid_rewrite refine_ReplaceUsedKeyAdd.
+        setoid_rewrite refine_SubEnsembleInsert.
+        simplify with monad laws.
+        setoid_rewrite refine_pick_KeyToBeReplaced_min; simpl.
+        setoid_rewrite refine_If_Then_Else_Bind.
+        setoid_rewrite refineEquiv_bind_unit;
+          setoid_rewrite refineEquiv_bind_bind.
+        setoid_rewrite refine_If_Opt_Then_Else_Bind.
+        setoid_rewrite refineEquiv_bind_unit.
+        setoid_rewrite
+          (refine_pick_KVEnsembleInsertRemove H1).
+        setoid_rewrite
+          (refine_pick_KVEnsembleInsert H1).
+        setoid_rewrite refineEquiv_bind_bind;
+          setoid_rewrite refineEquiv_bind_unit.
+
         finish honing.
       }
       hone method "UpdateKey".
@@ -337,6 +505,17 @@ Section CacheEvictionStrategies.
         destruct H0; subst.
         setoid_rewrite refine_pick_CacheADTwLogIndex_AbsR;
         simplify with monad laws.
+
+        setoid_rewrite refine_IgnoreUnusedKeyUpdate.
+        simplify with monad laws.
+        setoid_rewrite refine_If_Then_Else_Bind.
+        setoid_rewrite refineEquiv_bind_unit; simpl.
+
+        setoid_rewrite (refine_pick_KVEnsemble H1).
+        setoid_rewrite (refine_pick_KVEnsembleReplace H1).
+        setoid_rewrite refineEquiv_bind_bind;
+        setoid_rewrite refineEquiv_bind_unit.
+
         finish honing.
       }
       hone method "LookupKey".
@@ -344,19 +523,38 @@ Section CacheEvictionStrategies.
         destruct H0; subst.
         setoid_rewrite refine_pick_CacheADTwLogIndex_AbsR;
         simplify with monad laws.
+
+        setoid_rewrite (refine_pick_KVEnsemble H1).
+        simplify with monad laws.
+        simpl.
         finish honing.
       }
+
       hone method "AddKey".
       {
-        setoid_rewrite refine_ReplaceUsedKey.
-        setoid_rewrite refine_SubEnsembleInsert.
-        simplify with monad laws.
-        setoid_rewrite refine_pick_KeyToBeReplaced_min.
-        simpl.
-        setoid_rewrite refine_If_Then_Else_Bind.
-        setoid_rewrite refineEquiv_bind_unit;
-          setoid_rewrite refineEquiv_bind_bind.
 
+        apply refine_bind; unfold pointwise_relation; intros.
+        reflexivity.
+        apply refine_If_Then_Else.
+        reflexivity.
+
+        simpl in *.
+
+        apply refine_bind.
+        reflexivity.
+        unfold pointwise_relation; intros.
+        apply refine_If_Opt_Then_Else.
+        unfold pointwise_relation; intros.
+        setoid_rewrite
+          refine_pick_KVEnsembleInsertRemove.
+        Focus 2.
+        apply KVEnsemble_EquivalentKeys_Refl.
+
+        apply refine_bind.
+        apply refine_pick_KVEnsembleInsert.
+        rewrite refine_pick_KVEnsembleInsert.
+        setoid_rewrite refine_pick_KVEnsembleInsert.
+          setoid_rewrite refineEquiv_bind_bind.
         rewrite
         simpl.
         apply refine_bind.
