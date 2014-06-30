@@ -1,6 +1,24 @@
 Require Import Computation.Core ADT ADTRefinement ADTNotation BuildADTRefinements.
-Require Import String Bookstore.
+Require Import Bool String String_as_OT OrderedTypeEx Bookstore.
 Require Import ExtrOcamlBasic ExtrOcamlNatInt ExtrOcamlZInt ExtrOcamlString.
+
+Extract Inlined Constant fst => fst.
+Extract Inlined Constant snd => snd.
+Extract Inlined Constant negb => not.
+Extract Inlined Constant List.length => "List.length".
+Extract Inlined Constant app => "( @ )".
+Extract Constant String_as_OT.eq_dec  => "(=)".
+Extract Constant Nat_as_OT.eq_dec     => "(=)".
+
+Extract Constant String_as_OT.compare => "fun a b -> let comp = compare a b in 
+                                          if comp = 0 then EQ else if comp < 0 then LT else GT".
+Extract Constant Nat_as_OT.compare    => "fun a b -> let comp = compare a b in 
+                                          if comp = 0 then EQ else if comp < 0 then LT else GT".
+Extract Constant String_as_OT.string_compare => "fun a b -> let comp = compare a b in 
+                                                 if comp = 0 then Eq else if comp < 0 then Lt else Gt".
+
+Extract Inductive reflect            => bool [ true false ].
+Extract Inlined Constant iff_reflect => "".
 
 Open Scope string.
 

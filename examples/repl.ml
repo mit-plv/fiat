@@ -101,7 +101,7 @@ let benchmark nb_authors nb_books nb_orders nb_titles_queries nb_orders_queries 
   Printf.printf "Getting titles\n";
   let titles_start = Unix.gettimeofday () in
   for iteration = 0 to nb_titles_queries - 1 do
-    let a = run (get_titles title_authors.(iteration)) store in ()
+    let _ = run (get_titles title_authors.(iteration)) store in ()
     (* List.iter (fun x -> Printf.printf "%s\n" (toString x)) a *)
   done;
   let get_titles_duration = stats titles_start nb_titles_queries in
