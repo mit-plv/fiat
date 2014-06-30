@@ -193,16 +193,17 @@ Section CacheEvictionStrategies.
   : forall (kv : Key * Value)
            (r : Ensemble (Key * Value)),
       refine { r' | (SubEnsembleInsert kv r r')}
-             (kv_opt <- {kv_opt | forall kv',
-                                    kv_opt = Some kv' -> r kv'};
-              Ifopt kv_opt as kv' Then
+             (k_opt <- {k_opt | forall k',
+                                    k_opt = Some k' ->
+                                    exists v', r (k', v')};
+              Ifopt k_opt as k' Then
                                   ret (EnsembleInsert kv
-                                                      (EnsembleRemove (fst kv') r))
+                                                      (EnsembleRemove k' r))
                                   Else
                                   ret (EnsembleInsert kv r)).
   Proof.
     intros; rewrite refine_Pick_Some with
-            (P := r).
+            (P := fun k' => exists v', r (k', v')).
     f_equiv; unfold pointwise_relation; intros; simpl.
     destruct a;
       [ higher_order_1_reflexivity
@@ -218,8 +219,9 @@ Section CacheEvictionStrategies.
   (* Never tab a key for replacement *)
   Lemma refine_pick_KeyToBeReplaced_never
   : forall (r : Ensemble (Key * Value)),
-      refine {kv_opt | forall kv',
-                         kv_opt = Some kv' -> r kv'}
+      refine {k_opt | forall k',
+                         k_opt = Some k' -> 
+                         exists v', r (k', v')}
              (ret None).
   Proof.
     intros; rewrite refine_pick_val;
@@ -255,13 +257,14 @@ Section CacheEvictionStrategies.
   Lemma refine_pick_KeyToBeReplaced_min
   : forall (r : Ensemble (Key * Value) *
                 Ensemble (Key * nat)),
-      refine {kv_opt | forall kv',
-                         kv_opt = Some kv' -> fst r kv'}
-             {kv_opt | forall kv',
-                         kv_opt = Some kv' ->
-                         (fst r kv'
+      refine {k_opt | forall k',
+                         k_opt = Some k' -> 
+                         exists v', fst r (k', v')}
+             {k_opt | forall k',
+                         k_opt = Some k' ->
+                         ((exists v', fst r (k', v'))
                           /\ (forall idx ki,
-                                snd r (fst kv', idx) ->
+                                snd r (k', idx) ->
                                 snd r ki ->
                                 idx <= snd ki))
                              }.
@@ -274,13 +277,14 @@ Section CacheEvictionStrategies.
   Lemma refine_pick_KeyToBeReplaced_max
   : forall (r : Ensemble (Key * Value) *
                 Ensemble (Key * nat)),
-      refine {kv_opt | forall kv',
-                         kv_opt = Some kv' -> fst r kv'}
-             {kv_opt | forall kv',
-                         kv_opt = Some kv' ->
-                         (fst r kv'
+      refine {k_opt | forall k',
+                         k_opt = Some k' -> 
+                         exists v', fst r (k', v')}
+             {k_opt | forall k',
+                         k_opt = Some k' ->
+                         ((exists v', fst r (k', v'))
                           /\ (forall idx ki,
-                                snd r (fst kv', idx) ->
+                                snd r (k', idx) ->
                                 snd r ki ->
                                 snd ki <= idx))
                              }.
@@ -463,13 +467,347 @@ Section CacheEvictionStrategies.
 
 End CacheEvictionStrategies.
 
-(* This is a cache which doesn't replace *)
+Require Import String_as_OT.
+Require Import FMapAVL.
+Module StringIndexedMap := FMapAVL.Make String_as_OT.
+Definition MapStringNat := StringIndexedMap.t nat.
 
-    Definition BoundedStringCacheADT :
-      Sharpened (@CacheSpec Key Value).
+Section BoundedStringCacheADT.
+
+(* This is a cache which ignores updates to missing values
+   and uses an LRU strategy to pick any elements to remove.
+ *)
+
+  Variable Value : Type.
+  Variable Bound : nat.
+
+  Definition EnsembleFMapEquivalence {A}
+             (ens : Ensemble (string * A))
+             (fmap : StringIndexedMap.t A) :=
+    forall k,
+      (forall a, StringIndexedMap.find k fmap = Some a ->
+                 ens (k, a))
+      /\ (forall a, ens (k, a) ->
+                 exists a',
+                   StringIndexedMap.find k fmap = Some a').
+
+  Definition FMapCommonKeys {A B}
+             (values : StringIndexedMap.t A)
+             (indices : StringIndexedMap.t B)
+    := forall k,
+         (forall a, StringIndexedMap.MapsTo k a values ->
+                    exists b, StringIndexedMap.MapsTo k b indices)
+         /\ (forall b, StringIndexedMap.MapsTo k b indices ->
+                    exists a, StringIndexedMap.MapsTo k a values).
+
+  Definition indexBound
+             (indices : StringIndexedMap.t nat)
+             (indicesBound : nat)
+    := forall k idx,
+         StringIndexedMap.find k indices = Some idx ->
+         idx <= indicesBound.
+
+  Definition BoundedStringCacheADT_AbsR
+             (spec : Ensemble (string * Value)
+                     * Ensemble (string * nat))
+             (impl : StringIndexedMap.t Value
+                     * StringIndexedMap.t nat
+                     * nat) :=
+    EnsembleFMapEquivalence (fst spec) (fst (fst impl)) /\
+    EnsembleFMapEquivalence (snd spec) (snd (fst impl)) /\
+    FMapCommonKeys (fst (fst impl)) (snd (fst impl)) /\
+    indexBound (snd (fst impl)) (snd impl).
+
+  Lemma decides_usedKey
+  : forall (or : Ensemble (string * Value))
+           (nr : StringIndexedMap.t Value)
+           (k : string),
+      EnsembleFMapEquivalence or nr ->
+      decides (if StringIndexedMap.find k nr then
+                 true else
+                 false)
+              (usedKey or k).
+  Proof.
+    unfold EnsembleFMapEquivalence, usedKey; intros;
+    pose proof (H k); intuition.
+    find_if_inside; simpl; eauto.
+    intuition; destruct_ex.
+    destruct (H2 _ H0); discriminate.
+  Qed.
+
+  Lemma AbsR_add_EnsembleReplace {A}
+  : forall nr kv or v,
+      EnsembleFMapEquivalence or nr
+      -> StringIndexedMap.find (elt:=A) (fst kv) nr = Some v
+      -> EnsembleFMapEquivalence
+           (EnsembleReplace kv or)
+           (StringIndexedMap.add (fst kv) (snd kv) nr).
+  Proof.
+    unfold EnsembleReplace, EnsembleRemove,
+    EnsembleFMapEquivalence;
+    intros; intuition.
+    destruct (string_dec k (fst kv)); subst.
+    left.
+    rewrite (StringIndexedMap.find_1 (StringIndexedMap.add_1 nr (snd kv) (refl_equal (fst kv))))
+      in *; destruct kv; simpl in *; f_equal; congruence.
+    right; split; eauto.
+    eapply H.
+    eauto using StringIndexedMap.find_1, StringIndexedMap.add_3,
+    StringIndexedMap.find_2.
+    subst; simpl in *.
+    eexists; eauto using StringIndexedMap.find_1, StringIndexedMap.add_1.
+    destruct (string_dec k (fst kv)); subst.
+    eexists; eauto using StringIndexedMap.find_1, StringIndexedMap.add_1.
+    destruct (H k).
+    destruct (H4 _ H3).
+    eauto using StringIndexedMap.find_1, StringIndexedMap.add_2,
+    StringIndexedMap.find_2.
+  Qed.
+
+  Lemma AbsR_add_EnsembleInsert {A}
+  : forall nr kv or,
+      EnsembleFMapEquivalence or nr
+      -> StringIndexedMap.find (elt:=A) (fst kv) nr = None
+      -> EnsembleFMapEquivalence
+           (fun kv' => kv' = kv \/ or kv')
+           (StringIndexedMap.add (fst kv) (snd kv) nr).
+  Proof.
+    unfold SubEnsembleInsert, EnsembleFMapEquivalence;
+    intros; intuition.
+    destruct (string_dec k (fst kv)); subst.
+    left.
+    rewrite (StringIndexedMap.find_1 (StringIndexedMap.add_1 nr (snd kv) (refl_equal (fst kv))))
+      in *; destruct kv; simpl in *; f_equal; congruence.
+    right.
+    pose proof (H k); intuition.
+    eauto using StringIndexedMap.find_1, StringIndexedMap.add_3,
+    StringIndexedMap.find_2.
+    subst; simpl in *.
+    eexists; eauto using StringIndexedMap.find_1, StringIndexedMap.add_1.
+    destruct (string_dec k (fst kv)); subst.
+    eexists; eauto using StringIndexedMap.find_1, StringIndexedMap.add_1.
+    destruct (H k).
+    destruct (H3 _ H2).
+    eauto using StringIndexedMap.find_1, StringIndexedMap.add_2,
+    StringIndexedMap.find_2.
+  Qed.
+
+  Lemma AbsR_add_EnsembleInsertRemove {A}
+  : forall nr or k kv,
+     EnsembleFMapEquivalence (A := A) or nr
+      -> EnsembleFMapEquivalence
+           (EnsembleInsert kv (EnsembleRemove k or))
+           (StringIndexedMap.add (fst kv) (snd kv) (StringIndexedMap.remove k nr)).
+  Proof.
+    unfold SubEnsembleInsert, EnsembleRemove,
+    EnsembleInsert, EnsembleFMapEquivalence;
+    intros; intuition.
+    destruct (string_dec k0 a); subst; simpl in *.
+    rewrite (StringIndexedMap.find_1 (StringIndexedMap.add_1 _ b (refl_equal a)))
+      in H0; left; f_equal; congruence.
+    right; intuition;
+    apply StringIndexedMap.find_2 in H0;
+      apply StringIndexedMap.add_3 in H0; eauto.
+    apply sym_eq in H1.
+    eapply (StringIndexedMap.remove_1); eauto.
+    unfold StringIndexedMap.In, StringIndexedMap.Raw.In0,
+    StringIndexedMap.MapsTo in *; simpl in *; eexists; eauto.
+    eapply H; eauto using StringIndexedMap.find_1,
+              StringIndexedMap.remove_3.
+    injections; simpl.
+    eexists; eauto using StringIndexedMap.find_1,
+             StringIndexedMap.add_1.
+    simpl in *.
+    destruct (string_dec k0 a); subst; simpl in *.
+    eexists; eauto using StringIndexedMap.find_1,
+             StringIndexedMap.add_1.
+    apply (H k0) in H2; destruct_ex.
+    eexists x;
+      eauto using StringIndexedMap.find_1,
+      StringIndexedMap.add_2, StringIndexedMap.remove_2,
+      StringIndexedMap.find_2.
+  Qed.
+
+  Lemma FMapCommonKeys_add {A B}
+  : forall k a b
+           (ens : StringIndexedMap.t A)
+           (ens' : StringIndexedMap.t B),
+      FMapCommonKeys ens ens'
+      -> FMapCommonKeys
+           (StringIndexedMap.add k a ens)
+           (StringIndexedMap.add k b ens').
+  Proof.
+    unfold FMapCommonKeys; intuition;
+    (destruct (string_dec k0 k);
+     [eexists; eapply StringIndexedMap.add_1; eauto
+     |
+     eapply StringIndexedMap.add_3 in H0; eauto;
+     apply H in H0; destruct_ex;
+     eexists; eapply StringIndexedMap.add_2; eauto]).
+  Qed.
+
+  Lemma FMapCommonKeys_remove {A B}
+  : forall k
+           (ens : StringIndexedMap.t A)
+           (ens' : StringIndexedMap.t B),
+      FMapCommonKeys ens ens'
+      -> FMapCommonKeys
+           (StringIndexedMap.remove k ens)
+           (StringIndexedMap.remove k ens').
+  Proof.
+    unfold FMapCommonKeys; intuition;
+    (destruct (string_dec k0 k);
+     [subst; elimtype False;
+      eapply (StringIndexedMap.remove_1); eauto;
+      unfold StringIndexedMap.In, StringIndexedMap.Raw.In0,
+      StringIndexedMap.MapsTo in *; simpl in *; eauto
+     |
+     eapply StringIndexedMap.remove_3 in H0;
+       apply H in H0; destruct_ex;
+       eauto using StringIndexedMap.remove_2 ]).
+  Qed.
+
+  Lemma indexBound_add
+  : forall indices k n,
+      indexBound indices n
+      -> indexBound (StringIndexedMap.add k n indices) (S n).
+  Proof.
+    unfold indexBound; intros.
+    destruct (string_dec k k0).
+    rewrite (StringIndexedMap.find_1 (StringIndexedMap.add_1 _ _ e)) in H0.
+    injections; omega.
+    apply StringIndexedMap.find_2 in H0.
+    eapply StringIndexedMap.add_3 in H0; eauto.
+    apply StringIndexedMap.find_1 in H0; eauto.
+  Qed.
+
+  Lemma indexBound_add_remove
+  : forall indices k k' n,
+      indexBound indices n
+      -> indexBound (StringIndexedMap.add k n
+                                          (StringIndexedMap.remove k' indices)) (S n).
+  Proof.
+    unfold indexBound; intros.
+    destruct (string_dec k k0).
+    rewrite (StringIndexedMap.find_1 (StringIndexedMap.add_1 _ _ e)) in H0.
+    injections; omega.
+    apply StringIndexedMap.find_2 in H0.
+    eapply StringIndexedMap.add_3 in H0; eauto.
+    destruct (string_dec k' k0).
+    elimtype False;
+      eapply (StringIndexedMap.remove_1); eauto;
+      unfold StringIndexedMap.In, StringIndexedMap.Raw.In0,
+      StringIndexedMap.MapsTo in *; simpl in *; eauto.
+    apply StringIndexedMap.remove_3 in H0; eauto.
+    apply StringIndexedMap.find_1 in H0; eauto.
+  Qed.
+
+  Definition find_minimum_Key
+             (indices : StringIndexedMap.t nat)
+  : option (string * nat) := 
+    StringIndexedMap.fold 
+      (fun k idx sv => 
+         Ifopt sv as sv' 
+                       Then 
+                         if (lt_dec idx (snd sv') ) 
+                         then Some (k, idx)
+                         else Some sv'
+                       Else
+                         Some (k, idx))
+      indices None.
+
+  Lemma refine_pick_oldest {V} :
+    forall spec_indices impl_indices 
+           spec_values impl_values,
+    EnsembleFMapEquivalence spec_indices impl_indices /\
+    EnsembleFMapEquivalence spec_values impl_values /\
+    FMapCommonKeys impl_values impl_indices
+    ->  refine {k_opt | forall k' : string,
+                          k_opt = Some k' ->
+                          ((exists v' : V, spec_values (k', v'))
+                           /\ (forall (idx : nat) (ki : string * nat),
+                                 spec_indices (k', idx) -> spec_indices ki -> idx <= snd ki))}
+               (ret (option_map fst (find_minimum_Key impl_indices))).
+  Proof.
+    unfold refine; intros; inversion_by computes_to_inv; subst.
+    econstructor; intros.
+    caseEq (find_minimum_Key impl_indices); rewrite H2 in *;
+    simpl in *; try discriminate; injections.
+    unfold EnsembleFMapEquivalence in *.
+    unfold find_minimum_Key in *.
+    rewrite StringIndexedMap.fold_1 in H2.
+    admit.
+  Qed.
+
+  Lemma AbsR_add_EnsembleInsertRemove' {A}
+  : forall nr or k kv,
+     EnsembleFMapEquivalence or nr
+      -> StringIndexedMap.find (elt:=A) (fst kv) nr = None
+      -> EnsembleFMapEquivalence
+           (EnsembleInsert kv (EnsembleRemove k or))
+           (StringIndexedMap.add (fst kv) (snd kv) (StringIndexedMap.remove k nr)).
+  Proof.
+    unfold SubEnsembleInsert, EnsembleRemove,
+    EnsembleInsert, EnsembleFMapEquivalence;
+    intros; intuition.
+    destruct (string_dec k0 (fst kv)); subst.
+    left;
+    rewrite (StringIndexedMap.find_1 (StringIndexedMap.add_1 _ (snd kv) (refl_equal (fst kv))))
+      in H1; destruct kv; simpl in *; f_equal; congruence.
+    right; destruct (string_dec k0 k); subst.
+    elimtype False; eapply StringIndexedMap.remove_1 with (x := k); eauto.
+    eapply StringIndexedMap.find_2 in H1.
+    eapply StringIndexedMap.add_3 in H1; eauto.
+    unfold StringIndexedMap.In, StringIndexedMap.Raw.In0; eauto.
+    intuition.
+    eapply H.
+    eapply StringIndexedMap.find_1.
+    eapply StringIndexedMap.remove_3; eauto.
+    eapply StringIndexedMap.add_3; clear n0; eauto.
+    eapply StringIndexedMap.find_2; eauto.
+    subst; simpl.
+    eauto using StringIndexedMap.find_1, StringIndexedMap.add_1.
+    destruct (string_dec k0 (fst kv)); subst.
+    eauto using StringIndexedMap.find_1, StringIndexedMap.add_1.
+    destruct (H k0).
+    destruct (H4 _ H3).
+    eexists.
+    eapply StringIndexedMap.find_2 in H5.
+    eapply StringIndexedMap.remove_2 in H5.
+    eapply StringIndexedMap.add_2 in H5; eauto.
+    eapply StringIndexedMap.find_1; eauto.
+    simpl in *; congruence.
+  Qed.
+
+  Lemma refine_If_Then_Else'
+  : forall (A : Type) (c : bool) (x x0 y y0 : Comp A),
+      (c = true -> refine x y)
+      -> (c = false -> refine x0 y0)
+      -> refine (If c Then x Else x0) (If c Then y Else y0).
+  Proof.
+    unfold refine; intros; destruct c; auto.
+  Qed.
+
+  Lemma FMapCommonKeys_find_None {A B}
+  : forall m m' k, 
+      FMapCommonKeys m m' 
+      -> StringIndexedMap.find (elt:=A) k m = None 
+      -> StringIndexedMap.find (elt:=B) k m' = None .
+  Proof.
+    intros.
+    caseEq (StringIndexedMap.find (elt:=B) k m'); eauto.
+    apply StringIndexedMap.find_2 in H1.
+    apply H in H1.
+    destruct_ex.
+    apply StringIndexedMap.find_1 in H1.
+    rewrite H1 in H0; discriminate.
+  Qed.
+
+Definition BoundedStringCacheADT
+: Sharpened (@CacheSpec string Value).
     Proof.
       unfold CacheSpec.
-      hone representation using CacheADTwLogIndex_AbsR.
+      hone representation using (@CacheADTwLogIndex_AbsR string Value).
       hone constructor "EmptyCache".
       {
         simplify with monad laws.
@@ -530,807 +868,157 @@ End CacheEvictionStrategies.
         finish honing.
       }
 
-      hone method "AddKey".
-      {
+      hone representation using BoundedStringCacheADT_AbsR.
 
-        apply refine_bind; unfold pointwise_relation; intros.
-        reflexivity.
-        apply refine_If_Then_Else.
-        reflexivity.
-
-        simpl in *.
-
-        apply refine_bind.
-        reflexivity.
-        unfold pointwise_relation; intros.
-        apply refine_If_Opt_Then_Else.
-        unfold pointwise_relation; intros.
-        setoid_rewrite
-          refine_pick_KVEnsembleInsertRemove.
-        Focus 2.
-        apply KVEnsemble_EquivalentKeys_Refl.
-
-        apply refine_bind.
-        apply refine_pick_KVEnsembleInsert.
-        rewrite refine_pick_KVEnsembleInsert.
-        setoid_rewrite refine_pick_KVEnsembleInsert.
-          setoid_rewrite refineEquiv_bind_bind.
-        rewrite
-        simpl.
-        apply refine_bind.
-        Focus 2.
-        unfold pointwise_relation; intros.
-        apply refine_bind.
-        Focus.
-        apply refine_If_Then_Else.
-        reflexivity.
-        apply refine_bind.
-
-        apply refine_pick_KeyToBeReplaced_min.
-
-        simplify with monad laws.
-        eapply refine_LogIndexLookupSpec; eauto.
-      }
-
-    Lemma refine_LogIndexAddSpec
-    : forall n or nr,
-        CacheADTwLogIndex_AbsR or nr
-        -> refine
-             (or' <- {r'|
-                      (usedKey or (fst n) -> snd r' = false) /\
-                      (~ usedKey or (fst n) ->
-                       SubEnsembleInsert n or (fst r') /\ snd r' = true)};
-              nr' <- {nr' | CacheADTwLogIndex_AbsR (fst or') nr'};
-              ret (nr', snd or'))
-             ({r' |
-               (usedKey (fst nr) (fst n) -> snd r' = false) /\
-               (~ usedKey (fst nr) (fst n) ->
-                SubEnsembleInsert (fst n, (snd n, idx))
-                                    nr (fst r') /\ snd r' = true)}).
-    Proof.
-      unfold CacheADTwLogIndex_AbsR, usedKey; intros; split_and.
-      unfold refine; intros; inversion_by computes_to_inv.
-      econstructor 2 with (comp_a_value := (DropLogIndex (fst v), snd v));
-        simpl.
-      - econstructor; simpl; split.
-        intros; destruct_ex.
-        apply H0 in H; destruct_ex.
-        eapply H2; eauto.
-        intros; destruct H3.
-        unfold not; intros; apply H;
-        destruct_ex; destruct x; eexists; eapply H1; eauto.
-        intuition.
-        unfold SubEnsembleInsert, DropLogIndex, EnsembleInsert in *.
-        intros; destruct_ex; simpl in *.
-        destruct (H4 _ H3); destruct a'; destruct n; simpl in *.
-        left; congruence.
-        right; eauto.
-      - econstructor 2 with (comp_a_value := fst v).
-        unfold DropLogIndex; econstructor; split; intros; eauto.
-        destruct v; eauto.
-    Qed.
-
-    Lemma LogIndexEnsembleReplace
-    : forall k v idx or nr kvi,
-        CacheADTwLogIndex_AbsR or nr
-        -> EnsembleReplace (k, (v, idx)) nr kvi
-        -> EnsembleReplace (k, v) or (fst kvi, fst (snd kvi)).
-    Proof.
-      unfold EnsembleReplace, CacheADTwLogIndex_AbsR;
-      intros; simpl in *; intuition; subst; simpl; eauto.
-      unfold EnsembleRemove in *; simpl in *; right; intuition.
-      destruct kvi as [k' [v' i']]; eauto.
-    Qed.
-
-    Lemma LogIndexEnsembleReplace'
-    : forall k v idx or nr kv,
-        CacheADTwLogIndex_AbsR or nr
-        -> EnsembleReplace (k, v) or kv
-        -> exists idx',
-               EnsembleReplace (k, (v, idx)) nr (fst kv, (snd kv, idx')).
-    Proof.
-      unfold EnsembleReplace, CacheADTwLogIndex_AbsR;
-      intros; simpl in *; intuition; subst; simpl; eauto.
-      unfold EnsembleRemove in *; simpl in *; intuition.
-      destruct kv as [k' v']; simpl in *.
-      destruct (H1 _ _ H3).
-      exists x; simpl; eauto.
-    Qed.
-
-    Lemma refine_LogIndexUpdateSpec
-    : forall n or nr,
-        CacheADTwLogIndex_AbsR or nr
-        -> refine
-             (or' <- {r' |
-                      (usedKey or (fst n) ->
-                       (Same_set _ (fst r') (EnsembleReplace n or)
-                        /\ snd r' = true))
-                      /\ (~ usedKey or (fst n) -> snd r' = false)};
-              nr' <- {nr' | CacheADTwLogIndex_AbsR (fst or') nr'};
-              ret (nr', snd or'))
-             {r' | (usedKey nr (fst n) ->
-                    (exists idx,
-                       Same_set _ (fst r')
-                                (EnsembleReplace (fst n, (snd n, idx)) nr))
-                    /\ snd r' = true)
-                   /\ (~ usedKey nr (fst n) -> snd r' = false)}.
-    Proof.
-      unfold CacheADTwLogIndex_AbsR, usedKey, Same_set; intros; split_and.
-      unfold refine; intros; inversion_by computes_to_inv.
-      econstructor 2 with (comp_a_value := (DropLogIndex (fst v), snd v));
-        simpl.
-      - econstructor; simpl; split.
-        intros; destruct_ex.
-        apply H0 in H2; destruct_ex.
-        destruct H; eauto; intuition; eauto.
-        unfold SubEnsembleInsert, DropLogIndex, EnsembleInsert,
-          Included, In in *; simpl in *; intros; destruct_ex;
-        destruct n; destruct x2; simpl in *.
-        apply H5 in H.
-        eapply (LogIndexEnsembleReplace (nr := nr) (kvi := (k0, (v1, x3)))); try split; eauto.
-        unfold DropLogIndex, EnsembleReplace, EnsembleRemove,
-        Included, In in *; simpl in *;
-        intros; destruct_ex;
-        destruct n; destruct x2; simpl in *; intuition; injections.
-        eexists; eapply H6; simpl; eauto.
-        apply H0 in H8; destruct_ex; eauto.
-        intros; eapply H3.
-        unfold not; intros; eapply H2.
-        destruct_ex; destruct x; eauto.
-      - econstructor 2 with (comp_a_value := fst v).
-        unfold DropLogIndex; econstructor; split; intros; eauto.
-        destruct v; eauto.
-    Qed.
-
-    Definition UnLogIndexedEquivalence
-               (nr nr' : Ensemble (Key * (Value * nat)))
-      := (forall k v i, nr (k, (v, i)) -> (exists i', nr' (k, (v, i'))))
-         /\ (forall k v i, nr' (k, (v, i)) -> (exists i', nr (k, (v, i')))).
-
-    Lemma refine_LogIndexLookupSpec
-    : forall n or nr,
-        CacheADTwLogIndex_AbsR or nr
-        -> refine
-             (x0 <- {v | ValidLookup or n v};
-              nr' <- {nr' | CacheADTwLogIndex_AbsR or nr'};
-              ret (nr', x0))
-             (x0 <- {v | ValidLookup nr n v};
-              nr' <- {nr' | UnLogIndexedEquivalence nr nr'};
-              ret (nr', option_map fst x0)).
-    Proof.
-      unfold CacheADTwLogIndex_AbsR; intros; split_and.
-      unfold refine; intros; inversion_by computes_to_inv.
-      econstructor 2 with (comp_a_value := option_map fst x).
-      - econstructor.
-        unfold ValidLookup in *; intros.
-        destruct x; simpl in H3; try discriminate.
-        destruct p;  eapply H1; eapply H2;
-        injections; eauto.
-      - subst; econstructor; econstructor.
-        split; intros; eauto.
-        unfold UnLogIndexedEquivalence in *; split_and.
-        destruct (H0 _ _ H); eauto.
-        unfold UnLogIndexedEquivalence in *; split_and.
-        destruct (H5 _ _ _ H); eauto.
-    Qed.
-
-    Definition BoundedStringCacheADT' :
-      Sharpened (@CacheSpec Key Value).
-    Proof.
-      unfold CacheSpec.
-      hone representation using CacheADTwLogIndex_AbsR.
       hone constructor "EmptyCache".
-      {
-        simplify with monad laws.
-        rewrite refine_LogIndexEmpty.
+      { simplify with monad laws.
+        refine pick val
+        (StringIndexedMap.empty Value,
+         StringIndexedMap.empty nat,
+         0).
         finish honing.
+        repeat split; intuition; simpl in *;
+        try (eapply (StringIndexedMap.empty_1); eauto;
+             eapply (StringIndexedMap.find_2); eauto).
+        - elimtype False;
+          eapply StringIndexedMap.empty_1; eauto.
+        - elimtype False;
+          eapply StringIndexedMap.empty_1; eauto.
+        - unfold indexBound; intros;
+          elimtype False;
+          eapply (StringIndexedMap.empty_1);
+          eapply (StringIndexedMap.find_2); eauto.
       }
-      hone method "AddKey".
-      {
-        apply refine_LogIndexAddSpec; eauto.
-      }
-      hone method "UpdateKey".
-      {
-        apply refine_LogIndexUpdateSpec; eauto.
-      }
-      hone method "LookupKey".
-      {
-        simplify with monad laws.
-        eapply refine_LogIndexLookupSpec; eauto.
-      }
-      hone method "AddKey".
-      {
-        setoid_rewrite refine_ReplaceUsedKey.
-
-
-
-
- (* *)
-
-  Definition CacheADTwLogIndex_AbsR
-             (or : Ensemble (Key * Value))
-             (nr : Ensemble (Key * (Value * nat)))
-    := forall kv, or (fst kv, fst (snd kv)) <-> nr kv.
-
-
-    hone method "AddKey".
-    hone
-
-    hone method "AddKey".
-    {
-      rewrite refine_ReplaceUsedKey.
-      setoid_rewrite refine_SubEnsembleInsert.
-      simpl.
-      apply refine_bind.
-      reflexivity.
-      unfold pointwise_relation; intros.
-      apply refine_bind.
-      apply refine_if.
-      reflexivity.
-
-
-
-
-
-.
-    }
-
-Require Import String_as_OT.
-Require Import FMapAVL.
-
-Module StringIndexedMap := FMapAVL.Make String_as_OT.
-Definition MapStringNat := StringIndexedMap.t nat.
-
-
-
-  Lemma refine_ReplaceUsedKey
-  : forall (kv : Key * Value)
-           (r : Ensemble (Key * Value)),
-      refine { r' | (usedKey r (fst kv) -> snd r' = false) /\
-                    (~ usedKey r (fst kv) -> (SubEnsembleInsert kv r (fst r'))
-                                             /\ snd r' = true)}
-             (b <- {b | decides b (usedKey r (fst kv))};
-              r' <- { r' | if b then r' = EnsembleReplace kv r
-                                else SubEnsembleInsert kv r r' };
-              ret (r', negb b)).
-  Proof.
-    intros; rewrite refine_pick_decides.
-    f_equiv; unfold pointwise_relation; intros.
-    destruct a.
-    - refine pick eq; rewrite refineEquiv_bind_unit;
-      apply refine_pick_val; reflexivity.
-    - refine pick pair.
-      refine pick eq.
-      simplify with monad laws.
-      f_equiv.
-  Qed.
-
-  Lemma refine_IgnoreUsedKeyInsert
-  : forall (kv : Key * Value)
-           (r : Ensemble (Key * Value)),
-      refine { r' | (usedKey r (fst kv) -> snd r' = false) /\
-                    (~ usedKey r (fst kv) -> (SubEnsembleInsert kv r (fst r'))
-                                             /\ snd r' = true)}
-             (b <- {b | decides b (usedKey r (fst kv))};
-              r' <- { r' | if b then r' = r
-                                else SubEnsembleInsert kv r r' };
-              ret (r', negb b)).
-  Proof.
-    intros; rewrite refine_pick_decides.
-    f_equiv; unfold pointwise_relation; intros.
-    destruct a.
-    - refine pick eq; rewrite refineEquiv_bind_unit;
-      apply refine_pick_val; reflexivity.
-    - refine pick pair.
-      refine pick eq.
-      simplify with monad laws.
-      f_equiv.
-  Qed.
-
-
-  Definition BoundedStringCacheADT_AbsR
-             (or nr : Ensemble (Key * Value))
-    := forall kv, (or kv <-> nr kv) /\
-                  (forall kv', nr kv' -> fst kv' = fst kv).
-
-
-
-  Lemma decides_usedKey
-  : forall (or : Ensemble (string * Value))
-           (nr : StringIndexedMap.t Value)
-           (k : string),
-      BoundedStringCacheADT_AbsR or nr ->
-      decides (if StringIndexedMap.find k nr then
-                 true else
-                 false)
-              (usedKey or k).
-  Proof.
-    unfold BoundedStringCacheADT_AbsR, usedKey; intros;
-    pose proof (H k); intuition.
-    find_if_inside; simpl; eauto.
-    intuition; destruct_ex.
-    destruct (H2 _ H0); discriminate.
-  Qed.
-
-  Lemma AbsR_add_EnsembleReplace
-  : forall nr kv or v,
-      BoundedStringCacheADT_AbsR or nr
-      -> StringIndexedMap.find (elt:=Value) (fst kv) nr = Some v
-      -> BoundedStringCacheADT_AbsR
-           (EnsembleReplace kv or)
-           (StringIndexedMap.add (fst kv) (snd kv) nr).
-  Proof.
-    unfold EnsembleReplace, EnsembleRemove,
-    BoundedStringCacheADT_AbsR;
-    intros; intuition.
-    destruct (string_dec k (fst kv)); subst.
-    left.
-    rewrite (StringIndexedMap.find_1 (StringIndexedMap.add_1 nr (snd kv) (refl_equal (fst kv))))
-      in *; destruct kv; simpl in *; f_equal; congruence.
-    right; split; eauto.
-    eapply H.
-    eauto using StringIndexedMap.find_1, StringIndexedMap.add_3,
-    StringIndexedMap.find_2.
-    subst; simpl in *.
-    eexists; eauto using StringIndexedMap.find_1, StringIndexedMap.add_1.
-    destruct (string_dec k (fst kv)); subst.
-    eexists; eauto using StringIndexedMap.find_1, StringIndexedMap.add_1.
-    destruct (H k).
-    destruct (H4 _ H3).
-    eauto using StringIndexedMap.find_1, StringIndexedMap.add_2,
-    StringIndexedMap.find_2.
-  Qed.
-
-  Lemma AbsR_add_EnsembleInsert
-  : forall nr kv or,
-      BoundedStringCacheADT_AbsR or nr
-      -> StringIndexedMap.find (elt:=Value) (fst kv) nr = None
-      -> BoundedStringCacheADT_AbsR
-           (fun kv' => kv' = kv \/ or kv')
-           (StringIndexedMap.add (fst kv) (snd kv) nr).
-  Proof.
-    unfold SubEnsembleInsert, BoundedStringCacheADT_AbsR;
-    intros; intuition.
-    destruct (string_dec k (fst kv)); subst.
-    left.
-    rewrite (StringIndexedMap.find_1 (StringIndexedMap.add_1 nr (snd kv) (refl_equal (fst kv))))
-      in *; destruct kv; simpl in *; f_equal; congruence.
-    right.
-    pose proof (H k); intuition.
-    eauto using StringIndexedMap.find_1, StringIndexedMap.add_3,
-    StringIndexedMap.find_2.
-    subst; simpl in *.
-    eexists; eauto using StringIndexedMap.find_1, StringIndexedMap.add_1.
-    destruct (string_dec k (fst kv)); subst.
-    eexists; eauto using StringIndexedMap.find_1, StringIndexedMap.add_1.
-    destruct (H k).
-    destruct (H3 _ H2).
-    eauto using StringIndexedMap.find_1, StringIndexedMap.add_2,
-    StringIndexedMap.find_2.
-  Qed.
-
-  Lemma AbsR_add_EnsembleInsertRemove
-  : forall nr or k kv,
-      BoundedStringCacheADT_AbsR or nr
-      -> StringIndexedMap.find (elt:=Value) (fst kv) nr = None
-      -> BoundedStringCacheADT_AbsR
-           (EnsembleInsert kv (EnsembleRemove k or))
-           (StringIndexedMap.add (fst kv) (snd kv) (StringIndexedMap.remove k nr)).
-  Proof.
-    unfold SubEnsembleInsert, EnsembleRemove,
-    EnsembleInsert, BoundedStringCacheADT_AbsR;
-    intros; intuition.
-    destruct (string_dec k0 (fst kv)); subst.
-    left;
-    rewrite (StringIndexedMap.find_1 (StringIndexedMap.add_1 _ (snd kv) (refl_equal (fst kv))))
-      in H1; destruct kv; simpl in *; f_equal; congruence.
-    right; destruct (string_dec k0 k); subst.
-    elimtype False; eapply StringIndexedMap.remove_1 with (x := k); eauto.
-    eapply StringIndexedMap.find_2 in H1.
-    eapply StringIndexedMap.add_3 in H1; eauto.
-    unfold StringIndexedMap.In, StringIndexedMap.Raw.In0; eauto.
-    intuition.
-    eapply H.
-    eapply StringIndexedMap.find_1.
-    eapply StringIndexedMap.remove_3; eauto.
-    eapply StringIndexedMap.add_3; clear n0; eauto.
-    eapply StringIndexedMap.find_2; eauto.
-    subst; simpl.
-    eauto using StringIndexedMap.find_1, StringIndexedMap.add_1.
-    destruct (string_dec k0 (fst kv)); subst.
-    eauto using StringIndexedMap.find_1, StringIndexedMap.add_1.
-    destruct (H k0).
-    destruct (H4 _ H3).
-    eexists.
-    eapply StringIndexedMap.find_2 in H5.
-    eapply StringIndexedMap.remove_2 in H5.
-    eapply StringIndexedMap.add_2 in H5; eauto.
-    eapply StringIndexedMap.find_1; eauto.
-    simpl in *; congruence.
-  Qed.
-
-  Definition BoundedStringCacheADT' :
-    Sharpened (@CacheSpec string Value).
-  Proof.
-    unfold CacheSpec; simpl.
-    hone representation using BoundedStringCacheADT_AbsR.
-
-    hone constructor "EmptyCache".
-    {
-      simplify with monad laws.
-      rewrite refine_pick_val with
-      (A := StringIndexedMap.t Value)
-      (a := StringIndexedMap.empty Value).
-      finish honing.
-      unfold BoundedStringCacheADT_AbsR; intros; intuition.
-      eapply (StringIndexedMap.empty_1); eauto.
-      eapply (StringIndexedMap.find_2); eauto.
-    }
 
     hone method "LookupKey".
     {
       simplify with monad laws.
-      refine pick val (StringIndexedMap.find n r_n).
+      refine pick val (StringIndexedMap.find n (fst (fst r_n))).
       simplify with monad laws; simpl.
       rewrite refine_pick_val by eauto.
       simplify with monad laws.
       finish honing.
       unfold BoundedStringCacheADT_AbsR, ValidLookup in *;
-        intros; pose proof (H0 n); intuition.
+        eapply H0.
     }
 
     hone method "UpdateKey".
     {
-      rewrite refine_pick_decides;
+        unfold BoundedStringCacheADT_AbsR in *; split_and.
         simplify with monad laws.
-      rewrite refine_pick_val by eauto using decides_usedKey.
-      simplify with monad laws.
-      eapply refine_if with
-      (b := if StringIndexedMap.find (elt:=Value) (fst n) r_n then true else false).
-      {
-        (* If the Key is used, do this. *)
-        caseEq (StringIndexedMap.find (elt:=Value) (fst n) r_n);
-        try discriminate; simpl.
-        rewrite refineEquiv_pick_eq; simplify with monad laws; simpl.
-        rewrite refine_pick_val by
+        rewrite refine_pick_val by eauto using decides_usedKey.
+        simplify with monad laws.
+        setoid_rewrite refine_If_Then_Else_Bind.
+        apply refine_If_Then_Else';
+        caseEq (StringIndexedMap.find (elt:=Value) (fst n) (fst (fst r_n))); simpl; try discriminate.
+        { refine pick val (snd r_n); unfold PickID; eauto.
+          simplify with monad laws.
+          simpl.
+          refine pick val
+                 (StringIndexedMap.add (fst n) (snd n) (fst (fst r_n)),
+                  StringIndexedMap.add (fst n) (snd r_n) (snd (fst r_n)),
+                  S (snd r_n)).
+          simplify with monad laws; reflexivity.
+          simpl; intuition.
           eauto using AbsR_add_EnsembleReplace.
-        simplify with monad laws.
-        reflexivity.
-      }
-      {
-        (* If the Key isn't in the cache, do this. *)
-        caseEq (StringIndexedMap.find (elt:=Value) (fst n) r_n);
-        try discriminate; simpl.
-        erefine pick val (_, _).
-        simplify with monad laws.
-        rewrite refine_pick_val by eauto.
-        simplify with monad laws; simpl; reflexivity.
-      }
+          apply StringIndexedMap.find_2 in H3.
+          apply H2 in H3; destruct_ex.
+          simpl.
+          eapply AbsR_add_EnsembleReplace with
+          (kv := (_, _)); eauto using StringIndexedMap.find_1.
+          eauto using FMapCommonKeys_add.
+          eauto using indexBound_add.
+        }
+        { simplify with monad laws.
+          refine pick val _; eauto.
+          simplify with monad laws; simpl.
+          reflexivity.
+        }
     }
 
-    hone method "AddKey".
-    {
-      rewrite refine_pick_decides;
-      simplify with monad laws.
-      rewrite refine_pick_val by eauto using decides_usedKey.
-      simplify with monad laws.
-      eapply refine_if with
-      (b := if StringIndexedMap.find (elt:=Value) (fst n) r_n then true else false).
+      hone method "AddKey".
       {
-        (* If the Key is used, do nothing. *)
-        caseEq (StringIndexedMap.find (elt:=Value) (fst n) r_n);
-        try discriminate; simpl.
-        erefine pick val (_, _).
+        unfold BoundedStringCacheADT_AbsR in *; split_and.
         simplify with monad laws.
-        rewrite refine_pick_val by eauto.
-        simplify with monad laws; simpl; reflexivity.
-      }
-      {
-        (* If the Key is not used, do this. *)
-        caseEq (StringIndexedMap.find (elt:=Value) (fst n) r_n);
-        try discriminate; simpl.
-        refine pick_pair.
-        setoid_rewrite refineEquiv_pick_eq; simplify with monad laws.
-        (* Check if there is a key worth removing *)
-        etransitivity;
-          [ eapply (refine_Pick_Some (A := StringIndexedMap.t Value * bool)
-                                     (fun kv => StringIndexedMap.find (fst kv) r_n = Some (snd kv)))
-          | ].
-        { (* If so, replace it. *)
-          intros.
-          refine pick val (EnsembleInsert n (EnsembleRemove (fst b) or)).
+        rewrite refine_pick_val by eauto using decides_usedKey.
+        simplify with monad laws.
+        setoid_rewrite refine_If_Then_Else_Bind.
+        etransitivity.
+        apply refine_If_Then_Else';
+        caseEq (StringIndexedMap.find (elt:=Value) (fst n) (fst (fst r_n))); simpl; try discriminate.
+        (* If the key is used, do this. *)
+        + simplify with monad laws.
+          refine pick val (snd r_n); unfold PickID; eauto.
           simplify with monad laws; simpl.
-          rewrite refine_pick_val
-            by eauto using AbsR_add_EnsembleInsertRemove.
-          simplify with monad laws.
-          higher_order_1_reflexivity.
-          unfold SubEnsembleInsert, EnsembleInsert, EnsembleRemove; eauto.
-        }
-        {
-          (* If not, do a standard insert. *)
-          refine pick val (EnsembleInsert n or).
-          simplify with monad laws; simpl.
-          rewrite refine_pick_val
-            by eauto using AbsR_add_EnsembleInsert.
+          refine pick val ((_, _), _);
+            [ |
+              simpl; intuition;
+              simpl; eauto using
+                           AbsR_add_EnsembleReplace,
+                     AbsR_add_EnsembleInsertRemove,
+                     FMapCommonKeys_remove,
+                     FMapCommonKeys_add,
+                     indexBound_add_remove].
           simplify with monad laws.
           reflexivity.
-          unfold SubEnsembleInsert, EnsembleInsert, EnsembleRemove; eauto.
-        }
-        (* Here's where we can decide how to pick the element to
-         replace. Picking None lets the cache grow unboundedly. *)
-        refine pick val (@None (StringIndexedMap.key * Value) ).
-        try simplify with monad laws.
-        reflexivity.
-        intuition; try discriminate.
-      }
-
-    }
-
-    finish sharpening.
-
-  Defined.
-
-End BoundedStringCacheADT.
-
-Section BoundedStringCacheADT.
-
-  Variable Value : Type.
-
-  Definition BoundedStringCacheADT_AbsR
-             (or : Ensemble (string * Value))
-             (nr : StringIndexedMap.t Value) :=
-    forall k,
-      (forall v, StringIndexedMap.find k nr = Some v ->
-                 or (k, v)) /\
-      (forall v, or (k, v) ->
-                 exists v',
-                   StringIndexedMap.find k nr = Some v').
-
-  Lemma decides_usedKey
-  : forall (or : Ensemble (string * Value))
-           (nr : StringIndexedMap.t Value)
-           (k : string),
-      BoundedStringCacheADT_AbsR or nr ->
-      decides (if StringIndexedMap.find k nr then
-                 true else
-                 false)
-              (usedKey or k).
-  Proof.
-    unfold BoundedStringCacheADT_AbsR, usedKey; intros;
-    pose proof (H k); intuition.
-    find_if_inside; simpl; eauto.
-    intuition; destruct_ex.
-    destruct (H2 _ H0); discriminate.
-  Qed.
-
-  Lemma AbsR_add_EnsembleReplace
-  : forall nr kv or v,
-      BoundedStringCacheADT_AbsR or nr
-      -> StringIndexedMap.find (elt:=Value) (fst kv) nr = Some v
-      -> BoundedStringCacheADT_AbsR
-           (EnsembleReplace kv or)
-           (StringIndexedMap.add (fst kv) (snd kv) nr).
-  Proof.
-    unfold EnsembleReplace, EnsembleRemove,
-    BoundedStringCacheADT_AbsR;
-    intros; intuition.
-    destruct (string_dec k (fst kv)); subst.
-    left.
-    rewrite (StringIndexedMap.find_1 (StringIndexedMap.add_1 nr (snd kv) (refl_equal (fst kv))))
-      in *; destruct kv; simpl in *; f_equal; congruence.
-    right; split; eauto.
-    eapply H.
-    eauto using StringIndexedMap.find_1, StringIndexedMap.add_3,
-    StringIndexedMap.find_2.
-    subst; simpl in *.
-    eexists; eauto using StringIndexedMap.find_1, StringIndexedMap.add_1.
-    destruct (string_dec k (fst kv)); subst.
-    eexists; eauto using StringIndexedMap.find_1, StringIndexedMap.add_1.
-    destruct (H k).
-    destruct (H4 _ H3).
-    eauto using StringIndexedMap.find_1, StringIndexedMap.add_2,
-    StringIndexedMap.find_2.
-  Qed.
-
-  Lemma AbsR_add_EnsembleInsert
-  : forall nr kv or,
-      BoundedStringCacheADT_AbsR or nr
-      -> StringIndexedMap.find (elt:=Value) (fst kv) nr = None
-      -> BoundedStringCacheADT_AbsR
-           (fun kv' => kv' = kv \/ or kv')
-           (StringIndexedMap.add (fst kv) (snd kv) nr).
-  Proof.
-    unfold SubEnsembleInsert, BoundedStringCacheADT_AbsR;
-    intros; intuition.
-    destruct (string_dec k (fst kv)); subst.
-    left.
-    rewrite (StringIndexedMap.find_1 (StringIndexedMap.add_1 nr (snd kv) (refl_equal (fst kv))))
-      in *; destruct kv; simpl in *; f_equal; congruence.
-    right.
-    pose proof (H k); intuition.
-    eauto using StringIndexedMap.find_1, StringIndexedMap.add_3,
-    StringIndexedMap.find_2.
-    subst; simpl in *.
-    eexists; eauto using StringIndexedMap.find_1, StringIndexedMap.add_1.
-    destruct (string_dec k (fst kv)); subst.
-    eexists; eauto using StringIndexedMap.find_1, StringIndexedMap.add_1.
-    destruct (H k).
-    destruct (H3 _ H2).
-    eauto using StringIndexedMap.find_1, StringIndexedMap.add_2,
-    StringIndexedMap.find_2.
-  Qed.
-
-  Lemma AbsR_add_EnsembleInsertRemove
-  : forall nr or k kv,
-      BoundedStringCacheADT_AbsR or nr
-      -> StringIndexedMap.find (elt:=Value) (fst kv) nr = None
-      -> BoundedStringCacheADT_AbsR
-           (EnsembleInsert kv (EnsembleRemove k or))
-           (StringIndexedMap.add (fst kv) (snd kv) (StringIndexedMap.remove k nr)).
-  Proof.
-    unfold SubEnsembleInsert, EnsembleRemove,
-    EnsembleInsert, BoundedStringCacheADT_AbsR;
-    intros; intuition.
-    destruct (string_dec k0 (fst kv)); subst.
-    left;
-    rewrite (StringIndexedMap.find_1 (StringIndexedMap.add_1 _ (snd kv) (refl_equal (fst kv))))
-      in H1; destruct kv; simpl in *; f_equal; congruence.
-    right; destruct (string_dec k0 k); subst.
-    elimtype False; eapply StringIndexedMap.remove_1 with (x := k); eauto.
-    eapply StringIndexedMap.find_2 in H1.
-    eapply StringIndexedMap.add_3 in H1; eauto.
-    unfold StringIndexedMap.In, StringIndexedMap.Raw.In0; eauto.
-    intuition.
-    eapply H.
-    eapply StringIndexedMap.find_1.
-    eapply StringIndexedMap.remove_3; eauto.
-    eapply StringIndexedMap.add_3; clear n0; eauto.
-    eapply StringIndexedMap.find_2; eauto.
-    subst; simpl.
-    eauto using StringIndexedMap.find_1, StringIndexedMap.add_1.
-    destruct (string_dec k0 (fst kv)); subst.
-    eauto using StringIndexedMap.find_1, StringIndexedMap.add_1.
-    destruct (H k0).
-    destruct (H4 _ H3).
-    eexists.
-    eapply StringIndexedMap.find_2 in H5.
-    eapply StringIndexedMap.remove_2 in H5.
-    eapply StringIndexedMap.add_2 in H5; eauto.
-    eapply StringIndexedMap.find_1; eauto.
-    simpl in *; congruence.
-  Qed.
-
-  Tactic Notation "refine" "pick" "val" constr(v) :=
-    let T := type of v in
-    rewrite refine_pick_val with
-    (A := T)
-      (a := v).
-
-  Tactic Notation "erefine" "pick" "val" open_constr(v) :=
-    let T := type of v in
-    erewrite refine_pick_val with
-    (A := T)
-      (a := v) by reflexivity.
-
-  Definition BoundedStringCacheADT' :
-    Sharpened (@CacheSpec string Value).
-  Proof.
-    unfold CacheSpec; simpl.
-    hone representation using BoundedStringCacheADT_AbsR.
-
-    hone constructor "EmptyCache".
-    {
-      simplify with monad laws.
-      rewrite refine_pick_val with
-      (A := StringIndexedMap.t Value)
-      (a := StringIndexedMap.empty Value).
-      finish honing.
-      unfold BoundedStringCacheADT_AbsR; intros; intuition.
-      eapply (StringIndexedMap.empty_1); eauto.
-      eapply (StringIndexedMap.find_2); eauto.
-    }
-
-    hone method "LookupKey".
-    {
-      simplify with monad laws.
-      refine pick val (StringIndexedMap.find n r_n).
-      simplify with monad laws; simpl.
-      rewrite refine_pick_val by eauto.
-      simplify with monad laws.
-      finish honing.
-      unfold BoundedStringCacheADT_AbsR, ValidLookup in *;
-        intros; pose proof (H0 n); intuition.
-    }
-
-    hone method "UpdateKey".
-    {
-      rewrite refine_pick_decides;
-        simplify with monad laws.
-      rewrite refine_pick_val by eauto using decides_usedKey.
-      simplify with monad laws.
-      eapply refine_if with
-      (b := if StringIndexedMap.find (elt:=Value) (fst n) r_n then true else false).
-      {
-        (* If the Key is used, do this. *)
-        caseEq (StringIndexedMap.find (elt:=Value) (fst n) r_n);
-        try discriminate; simpl.
-        rewrite refineEquiv_pick_eq; simplify with monad laws; simpl.
-        rewrite refine_pick_val by
-          eauto using AbsR_add_EnsembleReplace.
-        simplify with monad laws.
-        reflexivity.
-      }
-      {
-        (* If the Key isn't in the cache, do this. *)
-        caseEq (StringIndexedMap.find (elt:=Value) (fst n) r_n);
-        try discriminate; simpl.
-        erefine pick val (_, _).
-        simplify with monad laws.
-        rewrite refine_pick_val by eauto.
-        simplify with monad laws; simpl; reflexivity.
-      }
-    }
-
-    hone method "AddKey".
-    {
-      rewrite refine_pick_decides;
-      simplify with monad laws.
-      rewrite refine_pick_val by eauto using decides_usedKey.
-      simplify with monad laws.
-      eapply refine_if with
-      (b := if StringIndexedMap.find (elt:=Value) (fst n) r_n then true else false).
-      {
-        (* If the Key is used, do nothing. *)
-        caseEq (StringIndexedMap.find (elt:=Value) (fst n) r_n);
-        try discriminate; simpl.
-        erefine pick val (_, _).
-        simplify with monad laws.
-        rewrite refine_pick_val by eauto.
-        simplify with monad laws; simpl; reflexivity.
-      }
-      {
-        (* If the Key is not used, do this. *)
-        caseEq (StringIndexedMap.find (elt:=Value) (fst n) r_n);
-        try discriminate; simpl.
-        refine pick_pair.
-        setoid_rewrite refineEquiv_pick_eq; simplify with monad laws.
-        (* Check if there is a key worth removing *)
-        etransitivity;
-          [ eapply (refine_Pick_Some (A := StringIndexedMap.t Value * bool)
-                                     (fun kv => StringIndexedMap.find (fst kv) r_n = Some (snd kv)))
-          | ].
-        { (* If so, replace it. *)
-          intros.
-          refine pick val (EnsembleInsert n (EnsembleRemove (fst b) or)).
-          simplify with monad laws; simpl.
-          rewrite refine_pick_val
-            by eauto using AbsR_add_EnsembleInsertRemove.
+        + (* If the key is not used, do this. *)
           simplify with monad laws.
-          higher_order_1_reflexivity.
-          unfold SubEnsembleInsert, EnsembleInsert, EnsembleRemove; eauto.
-        }
-        {
-          (* If not, do a standard insert. *)
-          refine pick val (EnsembleInsert n or).
-          simplify with monad laws; simpl.
-          rewrite refine_pick_val
-            by eauto using AbsR_add_EnsembleInsert.
+          (* Check to see if we've hit the bound. *)
+          apply (refine_if (b := if (gt_dec (snd r_n) Bound)
+                                    then true
+                                    else false)); intros.
+          (* If we have, then pick a key to remove. *)
+          rewrite refine_pick_oldest; eauto.
           simplify with monad laws.
-          reflexivity.
-          unfold SubEnsembleInsert, EnsembleInsert, EnsembleRemove; eauto.
-        }
-        (* Here's where we can decide how to pick the element to
-         replace. Picking None lets the cache grow unboundedly. *)
-        refine pick val (@None (StringIndexedMap.key * Value) ).
-        try simplify with monad laws.
-        reflexivity.
-        intuition; try discriminate.
+          rewrite refine_If_Opt_Then_Else_Bind.
+          (* Should add a constaint that Bound is greater
+             than zero- then we can do away with this check. *)
+          apply refine_If_Opt_Then_Else.
+          * unfold pointwise_relation; intros.
+            refine pick val (snd r_n); unfold PickID; eauto.
+            simplify with monad laws; simpl.
+            refine pick val ((_, _), S (snd r_n));
+              [ |
+                simpl; split; [ | split; [ | split ] ];
+                simpl; eauto using
+                     AbsR_add_EnsembleInsertRemove,
+                       FMapCommonKeys_remove,
+                       FMapCommonKeys_add,
+                       indexBound_add_remove].
+            simplify with monad laws; simpl.
+            higher_order_1_reflexivity.
+          * refine pick val (snd r_n); unfold PickID; eauto.
+            simplify with monad laws; simpl.
+            refine pick val ((_, _), S (snd r_n));
+              [ |
+                simpl; intuition
+                simpl; eauto using
+                             AbsR_add_EnsembleInsert,
+                       FMapCommonKeys_add,
+                       indexBound_add;
+                eapply (AbsR_add_EnsembleInsert (_, _));
+                simpl; eauto using FMapCommonKeys_find_None].
+            simplify with monad laws.
+            reflexivity.
+          * refine pick val None; try discriminate.
+            simplify with monad laws.
+            refine pick val (snd r_n); unfold PickID; eauto.
+            simplify with monad laws; simpl.
+            refine pick val ((_, _), S (snd r_n));
+              [ |
+                simpl; intuition
+                simpl; eauto using
+                             AbsR_add_EnsembleInsert,
+                       FMapCommonKeys_add,
+                       indexBound_add;
+                eapply (AbsR_add_EnsembleInsert (_, _));
+                simpl; eauto using FMapCommonKeys_find_None].
+            simplify with monad laws.
+            reflexivity.            
+          + finish honing.
       }
 
-    }
-
-    finish sharpening.
-
-  Defined.
+      finish sharpening.
+    Defined.
 
 End BoundedStringCacheADT.
