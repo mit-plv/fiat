@@ -1,5 +1,5 @@
 Require Import Computation.Core ADT ADTRefinement ADTNotation BuildADTRefinements.
-Require Import String Bookstore.
+Require Import String BookstoreNaive.
 Require Import ExtrOcamlBasic ExtrOcamlNatInt ExtrOcamlZInt ExtrOcamlString.
 
 Open Scope string.
@@ -32,4 +32,4 @@ Definition get_titles (author: string) (rep: Rep bookstore) : option (_ * list s
 Definition num_orders (author: string) (rep: Rep bookstore) : option (_ * nat) :=
   eval (Methods bookstore ``("NumOrders") rep (author)).
 
-Extraction "examples/bookstore.ml" init_bookstore add_book place_order get_titles num_orders.
+Extraction "examples/bookstorenaive.ml" init_bookstore add_book place_order get_titles num_orders.

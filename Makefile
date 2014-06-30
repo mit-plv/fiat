@@ -85,7 +85,8 @@ EXAMPLE_MODULES := \
 	ProcessScheduler/DBSchema \
 	ProcessScheduler/ListBasedRefinement \
 	AutoDB \
-	Bookstore
+	Bookstore \
+	BookstoreNaive
 
 # ADTExamples/QueryStructure/ProcessScheduler/TreeBasedRefinement \
 # ADTExamples/CombineBinaryOperationsSpec
@@ -166,11 +167,20 @@ clean-doc::
 examples/BookstoreExtraction.vo : examples/BookstoreExtraction.v examples/Bookstore.vo
 	coqc -R src ADTSynthesis -R examples ADTExamples examples/BookstoreExtraction.v
 
+examples/BookstoreNaiveExtraction.vo : examples/BookstoreNaiveExtraction.v examples/BookstoreNaive.vo
+	coqc -R src ADTSynthesis -R examples ADTExamples examples/BookstoreNaiveExtraction.v
+
 examples/bookstore.cmxa: examples/BookstoreExtraction.vo
 	cd examples && ocamlopt -o bookstore.cmxa -a bookstore.mli bookstore.ml
 
+examples/bookstorenaive.cmxa: examples/BookstoreNaiveExtraction.vo
+	cd examples && ocamlopt -o bookstorenaive.cmxa -a bookstorenaive.mli bookstorenaive.ml
+
 repl: examples/repl.ml examples/bookstore.cmxa
 	cd examples && ocamlopt -o repl unix.cmxa str.cmxa bookstore.cmxa repl.ml
+
+naiverepl: examples/repl.ml examples/bookstorenaive.cmxa
+	cd examples && ocamlopt -o repl unix.cmxa str.cmxa bookstorenaive.cmxa repl.ml
 
 # uncomment this to get a clean target that cleans the documentation, at the cost of emitting
 # Makefile:156: warning: overriding recipe for target 'clean'
