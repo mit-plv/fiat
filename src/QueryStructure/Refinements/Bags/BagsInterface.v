@@ -2,9 +2,6 @@ Require Export Program Permutation.
 
 Unset Implicit Arguments.
 
-Definition HasDecidableEquality (T: Type) :=
-  forall (x y: T), {x = y} + {x <> y}.
-
 Definition BagInsertEnumerate
            {TContainer TItem: Type}
            (benumerate : TContainer -> list TItem)
@@ -12,31 +9,13 @@ Definition BagInsertEnumerate
   forall inserted container,
     Permutation
       (benumerate (binsert container inserted))
-      (inserted :: (benumerate container)).
-
-Definition BagInsertCount
-           {TContainer TItem}
-           (benumerate : TContainer -> list TItem)
-           (binsert    : TContainer -> TItem -> TContainer)
-           (bcount     : HasDecidableEquality TItem -> TContainer -> TItem -> nat) :=
-  forall (beq : HasDecidableEquality TItem),
-  forall item inserted container,
-    bcount beq (binsert container inserted) item =
-    bcount beq container item + (if beq item inserted then 1 else 0).
+      (inserted :: benumerate container).
 
 Definition BagEnumerateEmpty
            {TContainer TItem: Type}
            (benumerate : TContainer -> list TItem)
            (bempty     : TContainer) :=
   forall item, ~ List.In item (benumerate bempty).
-
-Definition BagCountEmpty
-           {TContainer TItem: Type}
-           (benumerate : TContainer -> list TItem)
-           (bempty     : TContainer)
-           (bcount     : HasDecidableEquality TItem -> TContainer -> TItem -> nat) :=
-  forall (beq : HasDecidableEquality TItem),
-  forall item, bcount beq bempty item = 0. 
 
 Definition BagFindStar
            {TContainer TItem TSearchTerm: Type}
@@ -55,6 +34,13 @@ Definition BagFindCorrect
       (List.filter (bfind_matcher search_term) (benumerate container))
       (bfind container search_term).
 
+Definition BagCountCorrect
+           {TContainer TItem TSearchTerm: Type}
+           (bcount        : TContainer -> TSearchTerm -> nat)
+           (bfind         : TContainer -> TSearchTerm -> list TItem) :=
+  forall container search_term,
+    List.length (bfind container search_term) = (bcount container search_term).
+
 Class Bag (TContainer TItem TSearchTerm: Type) :=
   {
     bempty        : TContainer;
@@ -64,14 +50,13 @@ Class Bag (TContainer TItem TSearchTerm: Type) :=
     benumerate : TContainer -> list TItem;
     bfind      : TContainer -> TSearchTerm -> list TItem;
     binsert    : TContainer -> TItem -> TContainer;
-    bcount     : HasDecidableEquality TItem -> TContainer -> TItem -> nat;
+    bcount     : TContainer -> TSearchTerm -> nat;
 
     binsert_enumerate : BagInsertEnumerate benumerate binsert;
-    binsert_count     : BagInsertCount benumerate binsert bcount;
     benumerate_empty  : BagEnumerateEmpty benumerate bempty;
-    bcount_empty      : BagCountEmpty benumerate bempty bcount;
     bfind_star        : BagFindStar bfind benumerate bstar;
-    bfind_correct     : BagFindCorrect bfind bfind_matcher benumerate
+    bfind_correct     : BagFindCorrect bfind bfind_matcher benumerate;
+    bcount_correct    : BagCountCorrect bcount bfind
   }.
 
 Record BagPlusBagProof {TItem} :=

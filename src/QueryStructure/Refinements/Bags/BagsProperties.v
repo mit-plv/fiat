@@ -29,3 +29,44 @@ Lemma binsert_enumerate_length :
 Proof.      
   intros; rewrite binsert_enumerate; simpl; trivial.
 Qed.
+
+Definition HasDecidableEquality (T: Type) :=
+  forall (x y: T), {x = y} + {x <> y}.
+
+Definition _BagInsertCount
+           {TContainer TItem}
+           (benumerate : TContainer -> list TItem)
+           (binsert    : TContainer -> TItem -> TContainer)
+           (bcount     : HasDecidableEquality TItem -> TContainer -> TItem -> nat) :=
+  forall (beq : HasDecidableEquality TItem),
+  forall item inserted container,
+    bcount beq (binsert container inserted) item =
+    bcount beq container item + if beq item inserted then 1 else 0.
+
+Definition _BagCountEmpty
+           {TContainer TItem: Type}
+           (benumerate : TContainer -> list TItem)
+           (bempty     : TContainer)
+           (bcount     : HasDecidableEquality TItem -> TContainer -> TItem -> nat) :=
+  forall (beq : HasDecidableEquality TItem),
+  forall item, bcount beq bempty item = 0. 
+
+Definition _bcount {TContainer TItem TSearchTerm} (bag: Bag TContainer TItem TSearchTerm) 
+           (dec: HasDecidableEquality TItem) container item :=
+  List.length (List.filter (fun x => if dec item x then true else false) (benumerate container)). 
+
+Lemma _bcount_empty {TContainer TItem TSearchTerm} :
+  forall (bag: Bag TContainer TItem TSearchTerm),
+    @_BagCountEmpty TContainer TItem benumerate bempty (_bcount bag).
+Proof.
+  unfold _BagCountEmpty, _bcount; intros;
+  rewrite benumerate_empty_eq_nil; simpl; trivial.
+Qed.
+
+Lemma _binsert_count {TContainer TItem TSearchTerm} :
+  forall (bag: Bag TContainer TItem TSearchTerm),
+    @_BagInsertCount TContainer TItem benumerate binsert (_bcount bag).
+Proof.
+  unfold _BagInsertCount, _bcount; intros;
+  rewrite binsert_enumerate; simpl; destruct (beq item inserted); simpl; omega.
+Qed.
