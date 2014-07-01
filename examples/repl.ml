@@ -70,12 +70,11 @@ let stats start_time iterations =
   Printf.printf "  %d transactions completed in %.2f ms.\n" iterations elapsed_time_ms;
   Printf.printf "  %.2f TPS.\n" (float_of_int iterations /. elapsed_time_s);
   flush stdout;
-  elapsed_time_ms
+  (elapsed_time_ms /. float_of_int iterations)
 ;;
 
 let benchmark nb_authors nb_books nb_orders nb_titles_queries nb_orders_queries store  =
   Printf.printf "Initialization\n";
-
   store        := extract (init_bookstore ());
   let names    = Array.init nb_authors (fun _ -> toCharList (random_string 25)) in
   let authors  = Array.init nb_books   (fun _ -> names.(Random.int nb_authors)) in
@@ -89,7 +88,7 @@ let benchmark nb_authors nb_books nb_orders nb_titles_queries nb_orders_queries 
   for iteration = 0 to nb_books - 1 do
     let _ = run (add_book authors.(iteration) titles.(iteration) iteration) store in ()
   done;
-  let books_duration = stats books_start nb_books in
+  let books_duration = stats books_start nb_books in 
 
   Printf.printf "Placing orders\n";
   let orders_start = Unix.gettimeofday () in
@@ -104,7 +103,7 @@ let benchmark nb_authors nb_books nb_orders nb_titles_queries nb_orders_queries 
     let _ = run (get_titles title_authors.(iteration)) store in ()
     (* List.iter (fun x -> Printf.printf "%s\n" (toString x)) a *)
   done;
-  let get_titles_duration = stats titles_start nb_titles_queries in
+  let get_titles_duration = stats titles_start nb_titles_queries in 
 
   Printf.printf "Counting orders\n";
   let orders_start = Unix.gettimeofday () in
@@ -114,8 +113,18 @@ let benchmark nb_authors nb_books nb_orders nb_titles_queries nb_orders_queries 
   done;
   let num_orders_duration = stats orders_start nb_orders_queries in
 
-  Printf.printf "%.2f\t%.2f\t%.2f\t%.2f\n" books_duration orders_duration get_titles_duration num_orders_duration
+  Printf.fprintf stderr "%d\t%d\t%d\t%.4f\t%.4f\t%.4f\t%.4f\n" 
+    nb_authors nb_books nb_orders 
+    books_duration orders_duration get_titles_duration num_orders_duration;
+  flush stderr
 ;;
+
+let _for _start _step _end body =
+  let n = ref _start in
+  while !n < _end do
+    body !n;
+    n := !n + _step
+  done;;
 
 let store = ref (extract (init_bookstore ()));;
 
@@ -155,7 +164,23 @@ try
                                            (toCharList author)) store in
                           Printf.printf "Found %d orders for author %s\n" num author
 
-        | "benchmark"  -> let [nb_authors; nb_books; nb_orders; nb_titles_queries; nb_orders_queries] =
+        | "benchmark*books" -> let [nb_authors; nb_books_start; nb_books_step; nb_books_end;
+                                    nb_orders; nb_titles_queries; nb_orders_queries] =
+                                 map int_of_string (read_arguments command 7 input_line offset) in
+                               _for nb_books_start nb_books_step nb_books_end (fun nb_books ->
+                                 benchmark nb_authors nb_books nb_orders 
+                                   nb_titles_queries nb_orders_queries store);
+                               Printf.printf "Benchmark completed\n";
+
+        | "benchmark*orders" -> let [nb_authors; nb_books; nb_orders_start; nb_orders_step; nb_orders_end;
+                                     nb_titles_queries; nb_orders_queries] =
+                                 map int_of_string (read_arguments command 7 input_line offset) in
+                               _for nb_orders_start nb_orders_step nb_orders_end (fun nb_orders ->
+                                 benchmark nb_authors nb_books nb_orders 
+                                   nb_titles_queries nb_orders_queries store);
+                               Printf.printf "Benchmark completed\n";
+
+        | "benchmark" -> let [nb_authors; nb_books; nb_orders; nb_titles_queries; nb_orders_queries] =
                             map int_of_string (read_arguments command 5 input_line offset) in
                           benchmark nb_authors nb_books nb_orders nb_titles_queries nb_orders_queries store;
                           Printf.printf "Benchmark completed\n";
