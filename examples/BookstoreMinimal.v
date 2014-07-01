@@ -53,7 +53,7 @@ Definition OrdersStorage : @BagPlusBagProof (SC#"Orders").
   makeIndex SC "Orders" ["ISBN"].
 Defined.
 
-Definition BookStore_AbsR
+Definition Bookstore_AbsR
            (or : UnConstrQueryStructure SC)
            (nr : (BagType BooksStorage) * (BagType OrdersStorage)) :=
   or!"Books" ≃ benumerate (fst nr) /\ or!"Orders" ≃ benumerate (snd nr).
