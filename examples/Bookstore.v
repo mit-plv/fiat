@@ -87,8 +87,8 @@ Definition BookStoreSpec : ADT BookStoreSig :=
 }.
 
 (* Aliases for internal names of the two tables *)
-Definition Books := BookStoreSchema/sBOOKS. 
-Definition Orders := BookStoreSchema/sORDERS.
+Definition Books := GetRelationKey BookStoreSchema sBOOKS. 
+Definition Orders := GetRelationKey BookStoreSchema sORDERS.
 
 (* Aliases for internal notions of schemas for the two tables *)
 Definition BookSchema := QSGetNRelSchemaHeading BookStoreSchema Books.
@@ -97,13 +97,13 @@ Definition OrderSchema := QSGetNRelSchemaHeading BookStoreSchema Orders.
 (* Now we define an index structure for each table. *)
 
 Definition BookStorage : @BagPlusBagProof Book.
-  mkIndex BookSchema [ Books//sAUTHOR; Books//sISBN ].
+  mkIndex BookSchema [ BookSchema/sAUTHOR; BookSchema/sISBN ].
 Defined.
 (* In other words, index first on the author field, then the ISBN field.
  * Works especially efficiently for accesses keyed on author. *)
 
 Definition OrderStorage : @BagPlusBagProof Order.
-  mkIndex OrderSchema [ Orders//sISBN ].
+  mkIndex OrderSchema [ OrderSchema/sISBN ].
 Defined.
 
 (* Each index has an associate datatype.  Let's name each one. *)

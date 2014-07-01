@@ -55,6 +55,10 @@ Definition QSGetNRelSchemaHeading
            (idx : _) :=
   GetNRelSchemaHeading (qschemaSchemas QSSchema) idx.
 
+Notation GetHeading QSSchema index :=
+  (@QSGetNRelSchemaHeading QSSchema (@Build_BoundedIndex _ _ index _)).
+
+
 (* Notations for Query Structures. *)
 
 Notation "'relation' name 'has' sch " :=

@@ -87,8 +87,8 @@ Definition BookStoreSpec : ADT BookStoreSig :=
 }.
 
 (* Aliases for internal names of the two tables *)
-Definition Books := BookStoreSchema/sBOOKS. 
-Definition Orders := BookStoreSchema/sORDERS.
+Definition Books := GetRelationKey BookStoreSchema sBOOKS. 
+Definition Orders := GetRelationKey BookStoreSchema sORDERS.
 
 (* Aliases for internal notions of schemas for the two tables *)
 Definition BookSchema := QSGetNRelSchemaHeading BookStoreSchema Books.
