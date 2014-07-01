@@ -245,21 +245,30 @@ Ltac asPerm_dep storages :=
 Ltac asPerm' storages := asPerm_indep || asPerm_dep storages.
 Ltac asPerm storages := repeat (asPerm' storages).
 
+(* A final cleanup phase, applying a few helpful rewrites *)
+
+Ltac cleanup := repeat (setoid_rewrite length_flat_map
+                     || setoid_rewrite map_length
+                     || setoid_rewrite bcount_correct).
+
 (* After doing all the optimizations we want in permutation land, we commit to a list. *)
 
+Lemma refine_count : forall A B C a (f : A -> B) (g : B -> Comp C),
+                       refine (x <- (l <- ret a; ret (f l)); g x) (x <- ret (f a); g x).
+Proof.
+  intros; simplify with monad laws; do 2 intro.
+  apply computes_to_inv in H; firstorder.
+  apply computes_to_inv in H; firstorder congruence.
+Qed.
+
 Ltac commit := repeat (setoid_rewrite refine_Permutation_Reflexivity
-                                      || setoid_rewrite refine_Count);
-              try simplify with monad laws.
+                    || setoid_rewrite refine_Count);
+              try (etransitivity; [ apply refine_count | ]);
+              cleanup; try simplify with monad laws.
 
 (* Next, a trivial step to choose the new database to be just the old one. *)
 
 Ltac choose_db AbsR := unfold AbsR; rewrite refine_pick_val by eauto; [ simplify with monad laws ].
-
-(* A final cleanup phase, applying a few helpful rewrites *)
-
-Ltac cleanup := repeat (setoid_rewrite length_flat_map
-                                       || setoid_rewrite map_length 
-                                       || setoid_rewrite bcount_correct).
 
 (* Final wrapper tactic for observers *)
 
@@ -277,7 +286,7 @@ Ltac storageOf T :=
 
 Ltac observer' AbsR storages :=
   startMethod AbsR; concretize; asPerm storages;
-  commit; choose_db AbsR; cleanup; finish honing.
+  commit; choose_db AbsR; finish honing.
 
 Ltac observer :=
   match goal with

@@ -59,7 +59,7 @@ Definition OrdersStorage : @BagPlusBagProof Order.
   mkIndex OrdersHeading [OrdersHeading/"ISBN"].
 Defined.
 
-Definition BookstoreAbsR
+Definition BookStore_AbsR
            (or : UnConstrQueryStructure BookstoreSchema)
            (nr : (BagType BooksStorage) * (BagType OrdersStorage)) :=
   or!"Books" ≃ benumerate (fst nr) /\ or!"Orders" ≃ benumerate (snd nr).
@@ -67,7 +67,7 @@ Definition BookstoreAbsR
 Definition Bookstore :
   Sharpened BookstoreSpec.
 Proof.
-  plan BookstoreAbsR.
+  plan Bookstore_AbsR.
   finish sharpening.
 Defined.
 

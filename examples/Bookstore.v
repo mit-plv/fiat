@@ -113,7 +113,7 @@ Definition TOrderStorage := BagType OrderStorage.
 (* This abstraction relation connects:
  * 1. Abstract database from reference implementation, using sets
  * 2. Our fancy realization, using search trees (from Bags library) *)
-Definition BookStoreListImpl_AbsR
+Definition BookStore_AbsR
            (or : UnConstrQueryStructure BookStoreSchema)
            (nr : TBookStorage * TOrderStorage) : Prop :=
   or!sBOOKS ≃ benumerate (fst nr) /\ or!sORDERS ≃ benumerate (snd nr).
@@ -121,6 +121,6 @@ Definition BookStoreListImpl_AbsR
 Definition BookStore :
   Sharpened BookStoreSpec.
 Proof.
-  plan BookStoreListImpl_AbsR.
+  plan BookStore_AbsR.
   finish sharpening.
 Defined.
