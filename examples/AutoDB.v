@@ -23,8 +23,9 @@ Ltac prove_decidability_for_functional_dependencies :=
 
 Hint Extern 100 (DecideableEnsemble _) => prove_decidability_for_functional_dependencies : typeclass_instances.
 
-Notation "qs_schema / rel_index" := (GetRelationKey qs_schema rel_index) (at level 40, left associativity).
-Notation "rel_key // attr_index" := (GetAttributeKey rel_key attr_index) (at level 50).
+Notation "heading / attr_index" := ((fun x : Attributes heading => x) 
+                                       {| bindex := attr_index; indexb := _ |}) 
+                                      (at level 40, left associativity).
 
 Notation "?[ A ]" := (if A then true else false) (at level 50).
 
@@ -257,7 +258,8 @@ Ltac choose_db AbsR := unfold AbsR; rewrite refine_pick_val by eauto; [ simplify
 (* A final cleanup phase, applying a few helpful rewrites *)
 
 Ltac cleanup := repeat (setoid_rewrite length_flat_map
-                                       || setoid_rewrite map_length).
+                                       || setoid_rewrite map_length 
+                                       || setoid_rewrite bcount_correct).
 
 (* Final wrapper tactic for observers *)
 
