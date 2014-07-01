@@ -1,6 +1,6 @@
 Require Export BagsInterface BagsProperties.
 Require Import SetEqProperties FMapExtensions AdditionalLemmas.
-Require Import FMapInterface Coq.FSets.FMapFacts.
+Require Import FMapInterface Coq.FSets.FMapFacts CachingBags CacheableFunctions.
 
 Unset Implicit Arguments.
 
@@ -146,10 +146,18 @@ Module TreeBag (Import M: WS).
              {TBag TItem TBagSearchTerm: Type}
              {bags_bag: Bag TBag TItem TBagSearchTerm}
              (projection: TItem -> TKey)
-             (beq : HasDecidableEquality TItem)
-             (container: @IndexedBag TBag TItem TBagSearchTerm bags_bag projection)
-             (item: TItem) :=
-    fold (fun _ bag acc => acc + bcount beq bag item) (ifmap container) 0.
+             (container: @IndexedBag TBag TItem TBagSearchTerm bags_bag projection) 
+             (key_searchterm: (option TKey) * TBagSearchTerm) :=
+    let (key_option, search_term) := key_searchterm in
+    match key_option with
+      | Some k =>
+        match find k (ifmap container) with
+          | Some bag => @bcount _ _ _ bags_bag bag search_term
+          | None     => 0
+        end
+      | None   =>
+        fold (fun _ bag acc => acc + @bcount _ _ _ bags_bag bag search_term) (ifmap container) 0
+    end.
 
   Lemma indexed_bag_insert_consistent :
     forall {TBag TItem TBagSearchTerm: Type}
@@ -748,76 +756,32 @@ Module TreeBag (Import M: WS).
       reflexivity.
     Qed.
 
-  Lemma IndexedBag_BagInsertCount :
+  Lemma IndexedBag_BagCountCorrect :
     forall {TBag TItem TBagSearchTerm: Type}
            {bags_bag: Bag TBag TItem TBagSearchTerm}
            (projection: TItem -> TKey),
-      BagInsertCount IndexedBag_benumerate (IndexedBag_binsert projection) (IndexedBag_bcount projection).
+      BagCountCorrect (IndexedBag_bcount projection) (IndexedBag_bfind projection) .
   Proof.
-
-    unfold IndexedBag_bcount, IndexedBag_benumerate, IndexedBag_binsert, BagInsertCount;
-    simpl; intros.
-
-    assert ( Proper (E.eq ==> eq ==> eq ==> eq)
-                    (fun (_ : key) (bag : TBag) (acc : nat) => acc + bcount beq bag item))
-      as add_proper
-        by (unfold filter, Proper, respectful; intros; subst; eauto).
-
-    assert ( transpose_neqkey eq
-                              (fun (_ : key) (bag : TBag) (acc : nat) => acc + bcount beq bag item))
-      as transpose_neqkey_eq
-        by (unfold transpose_neqkey; intros; omega).
-
-    match goal with
-      | [ |- context[FindWithDefault ?a ?b ?c] ] => 
-        destruct (FindWithDefault_dec a b c)
-          as [ [ result (maps_to & _eq) ] | (find_none & _eq) ]; 
-          rewrite _eq; clear _eq
-    end.
-
-    (* Key already found *)
-    pose proof (partition_after_KeyBasedPartition_and_add 
-                  (TValue := TBag) 
-                  (projection inserted)
-                  (binsert result inserted)
-                  (ifmap container)) as part_add.
-
-    pose proof (partition_Partition_simple
-                  (TBag)
-                  (KeyBasedPartitioningFunction TBag (projection inserted))
-                  (KeyBasedPartitioningFunction_Proper _ _)
-                  (ifmap container)) as part.
+    unfold IndexedBag_bcount, IndexedBag_bfind, BagCountCorrect;
+    simpl; intros; destruct search_term as [ [ key | ] search_term ].
     
-    rewrite Partition_fold at 1 
-      by (eauto using part_add, Permutation_Equivalence, Values_fold_Proper, Values_fold_transpose_neqkey).
-    symmetry.
+    + destruct (find _ _); eauto using bcount_correct.
+    + rewrite length_flatten.
+      rewrite (fold_over_Values _ _ (fun acc bag => acc + bcount bag search_term)) by eauto.
+      rewrite <- fold_left_rev_right.
+      setoid_rewrite Plus.plus_comm at 1.
+      replace (fun (y : TBag) (x : nat) => bcount y search_term + x)
+      with (compose plus (fun bag => bcount bag search_term)) by reflexivity.
+      rewrite !foldright_compose. 
+
+      symmetry; setoid_rewrite <- rev_involutive at 1.
+      rewrite fold_left_rev_right, map_rev, rev_involutive.
     
-    rewrite Partition_fold at 1 
-      by (eauto using part    , Permutation_Equivalence, Values_fold_Proper, Values_fold_transpose_neqkey).
-    symmetry.
-
-    pose proof (KeyBasedPartition_fst_singleton (TValue := TBag) _ _ _ maps_to) as singleton.
-    pose proof (add_Equal_simple singleton (projection inserted) (binsert result inserted)) as singleton'.
-
-    rewrite (fold_Equal_simpl singleton')
-      by (eauto using Permutation_Equivalence, Values_fold_Proper, Values_fold_transpose_neqkey).
-    rewrite (fold_Equal_simpl singleton)
-      by (eauto using Permutation_Equivalence, Values_fold_Proper, Values_fold_transpose_neqkey).
-    rewrite (fold_Equal_simpl (multiple_adds _ _ _ _))
-      by (eauto using Permutation_Equivalence, Values_fold_Proper, Values_fold_transpose_neqkey).
-    rewrite !fold_add
-      by (eauto using Permutation_Equivalence, Values_fold_Proper, Values_fold_transpose_neqkey, empty_In).
-
-    rewrite fold_empty.
-    rewrite binsert_count.
-    omega.
-
-    (* Key not found *)
-    rewrite <- not_find_in_iff in find_none by eauto.
-    rewrite (fold_add (eqA := @eq nat)) by eauto.
-    rewrite binsert_count.
-    rewrite bcount_empty.
-    simpl; reflexivity.
+      rewrite fold_sym, <- !fold_map.
+      setoid_rewrite bcount_correct.
+      reflexivity.
+      
+      apply plus_cacheable.
   Qed.
 
   Lemma IndexedBag_BagEnumerateEmpty :
@@ -829,17 +793,6 @@ Module TreeBag (Import M: WS).
     intros;
     unfold BagEnumerateEmpty, IndexedBag_benumerate, flatten; simpl;
     rewrite Values_empty; tauto.
-  Qed.
-
-  Lemma IndexedBag_BagCountEmpty : 
-    forall {TBag TItem TBagSearchTerm: Type}
-           {bags_bag: Bag TBag TItem TBagSearchTerm}
-           (projection: TItem -> TKey),
-      BagCountEmpty IndexedBag_benumerate (IndexedBag_bempty projection) (IndexedBag_bcount projection).
-  Proof.
-    unfold BagCountEmpty, IndexedBag_benumerate, IndexedBag_bempty, IndexedBag_bcount.
-    intros; simpl.
-    apply fold_Empty; eauto using empty_1.
   Qed.
 
   Lemma IndexedBag_BagFindStar :
@@ -1060,12 +1013,12 @@ Module TreeBag (Import M: WS).
       benumerate := IndexedBag_benumerate;
       bfind      := IndexedBag_bfind projection;
       binsert    := IndexedBag_binsert projection;
+      bcount     := IndexedBag_bcount projection;
 
       binsert_enumerate := IndexedBag_BagInsertEnumerate projection;
-      binsert_count     := IndexedBag_BagInsertCount projection;
       benumerate_empty  := IndexedBag_BagEnumerateEmpty projection;
-      bcount_empty      := IndexedBag_BagCountEmpty projection;
       bfind_star        := IndexedBag_BagFindStar projection;
-      bfind_correct     := IndexedBag_BagFindCorrect projection
+      bfind_correct     := IndexedBag_BagFindCorrect projection;
+      bcount_correct    := IndexedBag_BagCountCorrect projection
     |}. 
 End TreeBag.

@@ -1,4 +1,4 @@
-Require Export BagsInterface BagsProperties.
+Require Export BagsInterface BagsProperties List Program.
 Require Import AdditionalLemmas.
 
 Unset Implicit Arguments.
@@ -34,8 +34,6 @@ Definition IsCacheable
            (updater: TItem -> TCachedValue -> TCachedValue) :=
   Proper (eqA ==> @Permutation TItem ==> eqA) (RecomputeCachedValue updater).
 
-Require Import List.
-
 Lemma is_cacheable_proper :
   forall {TItem TCachedValue} {eqA} {f: TItem -> TCachedValue -> TCachedValue},
     IsCacheable eqA f ->
@@ -45,6 +43,21 @@ Proof.
   intros * cacheable * is_eq * is_eqA; subst.
   specialize (cacheable x0 y0 is_eqA [y] [y]).
   simpl in cacheable; apply cacheable; trivial.
+Qed.
+
+Require Import Permutation.
+Lemma fold_sym :
+  forall {TAcc TVal} (f: TVal -> TAcc -> TAcc),
+  forall (seq: list TVal) (default: TAcc),
+    IsCacheable eq f -> 
+    List.fold_right (fun val acc => f val acc) default seq =
+    List.fold_left (fun acc val => f val acc) seq default.
+Proof.
+  intros.
+  unfold IsCacheable, RecomputeCachedValue in H.
+  rewrite <- fold_left_rev_right.
+  rewrite <- (Permutation_rev seq).
+  reflexivity.
 Qed.
 
 Record Cache
@@ -146,15 +159,14 @@ Definition Cache_bfind
 Definition Cache_bcount
            {TBag TItem TSearchTerm TCachedValue: Type}
            {bag_bag: Bag TBag TItem TSearchTerm}
-           (initial_value: TCachedValue)
+           (initial_value : TCachedValue)
            (eqA: TCachedValue -> TCachedValue -> Prop)
-           (updater: TItem -> TCachedValue -> TCachedValue)
+           (updater : TItem -> TCachedValue -> TCachedValue)
            (updater_cacheable: IsCacheable eqA updater)
-           (beq : HasDecidableEquality TItem)
            (container: @Cache _ _ _ _ bag_bag initial_value
                               eqA updater updater_cacheable)
-           (item: TItem) :=
-  bcount beq (cbag container) item.
+           (search_term: TSearchTerm) :=
+  bcount (cbag container) search_term.
 
 Lemma updated_cache_fresh_after_insert :
   forall {TBag TItem TSearchTerm TCachedValue: Type}
@@ -201,9 +213,9 @@ Definition Cache_binsert
   |}.
 
 Ltac transparent_implementation :=
-  unfold BagInsertEnumerate, BagEnumerateEmpty, BagFindStar, BagFindCorrect, BagInsertCount, BagCountEmpty;
+  unfold BagInsertEnumerate, BagEnumerateEmpty, BagFindStar, BagFindCorrect, BagCountCorrect;
   intros;
-  first [ apply binsert_enumerate | apply benumerate_empty | apply bfind_correct | apply bfind_star | apply binsert_count | apply bcount_empty ].
+  first [ apply binsert_enumerate | apply benumerate_empty | apply bfind_correct | apply bfind_star | apply bcount_correct ].
 
 Lemma Cache_BagInsertEnumerate :
   forall {TBag TItem TSearchTerm TCachedValue: Type}
@@ -218,20 +230,6 @@ Lemma Cache_BagInsertEnumerate :
       (Cache_binsert    initial_value eqA equiv updater updater_cacheable).
 Proof. transparent_implementation. Qed.
 
-Lemma Cache_BagInsertCount :
-  forall {TBag TItem TSearchTerm TCachedValue: Type}
-         {bag_bag: Bag TBag TItem TSearchTerm}
-         (initial_value: TCachedValue)
-         (eqA: TCachedValue -> TCachedValue -> Prop)
-         (equiv: Equivalence eqA)
-         (updater: TItem -> TCachedValue -> TCachedValue)
-         (updater_cacheable: IsCacheable eqA updater),
-    BagInsertCount
-      (Cache_benumerate initial_value eqA updater updater_cacheable)
-      (Cache_binsert    initial_value eqA equiv updater updater_cacheable)
-      (Cache_bcount     initial_value eqA updater updater_cacheable).
-Proof. transparent_implementation. Qed.
-
 Lemma Cache_BagEnumerateEmpty :
   forall {TBag TItem TSearchTerm TCachedValue: Type}
          {bag_bag: Bag TBag TItem TSearchTerm}
@@ -243,20 +241,6 @@ Lemma Cache_BagEnumerateEmpty :
     BagEnumerateEmpty
       (Cache_benumerate initial_value eqA updater updater_cacheable)
       (Cache_bempty     initial_value eqA equiv updater updater_cacheable).
-Proof. transparent_implementation. Qed.
-
-Lemma Cache_BagCountEmpty :
-  forall {TBag TItem TSearchTerm TCachedValue: Type}
-         {bag_bag: Bag TBag TItem TSearchTerm}
-         (initial_value: TCachedValue)
-         (eqA: TCachedValue -> TCachedValue -> Prop)
-         (equiv: Equivalence eqA)
-         (updater: TItem -> TCachedValue -> TCachedValue)
-         (updater_cacheable: IsCacheable eqA updater),
-    BagCountEmpty
-      (Cache_benumerate initial_value eqA updater updater_cacheable)
-      (Cache_bempty     initial_value eqA equiv updater updater_cacheable)
-      (Cache_bcount     initial_value eqA updater updater_cacheable).
 Proof. transparent_implementation. Qed.
 
 Lemma Cache_BagFindStar :
@@ -285,6 +269,18 @@ Lemma Cache_BagFindCorrect :
       (Cache_benumerate    initial_value eqA updater updater_cacheable).
 Proof. transparent_implementation. Qed.
 
+Lemma Cache_BagCountCorrect :
+  forall {TBag TItem TSearchTerm TCachedValue: Type}
+         {bag_bag: Bag TBag TItem TSearchTerm}
+         (initial_value: TCachedValue)
+         (eqA: TCachedValue -> TCachedValue -> Prop)
+         (updater: TItem -> TCachedValue -> TCachedValue)
+         (updater_cacheable: IsCacheable eqA updater),
+    BagCountCorrect
+      (Cache_bcount initial_value eqA updater updater_cacheable)
+      (Cache_bfind  initial_value eqA updater updater_cacheable).
+Proof. transparent_implementation. Qed.
+
 Instance CacheAsBag
          {TBag TItem TSearchTerm TCachedValue: Type}
          {bag_bag: Bag TBag TItem TSearchTerm}
@@ -304,13 +300,13 @@ Instance CacheAsBag
     benumerate := Cache_benumerate initial_value eqA updater updater_cacheable;
     bfind      := Cache_bfind      initial_value eqA updater updater_cacheable;
     binsert    := Cache_binsert    initial_value eqA equiv updater updater_cacheable;
+    bcount     := Cache_bcount     initial_value eqA updater updater_cacheable;
 
     binsert_enumerate := Cache_BagInsertEnumerate initial_value eqA equiv updater updater_cacheable;
-    binsert_count     := Cache_BagInsertCount     initial_value eqA equiv updater updater_cacheable;
     benumerate_empty  := Cache_BagEnumerateEmpty  initial_value eqA equiv updater updater_cacheable;
-    bcount_empty      := Cache_BagCountEmpty      initial_value eqA equiv updater updater_cacheable;
     bfind_star        := Cache_BagFindStar        initial_value eqA updater updater_cacheable;
-    bfind_correct     := Cache_BagFindCorrect     initial_value eqA updater updater_cacheable
+    bfind_correct     := Cache_BagFindCorrect     initial_value eqA updater updater_cacheable;
+    bcount_correct    := Cache_BagCountCorrect    initial_value eqA updater updater_cacheable
   |}.
 
 Section CacheableFunctions.

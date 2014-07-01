@@ -73,18 +73,19 @@ SRC_MODULES    := \
 	QueryStructure/Refinements/Bags/ListBags\
 	QueryStructure/Refinements/Bags/TreeBags\
 	QueryStructure/Refinements/Bags/CachingBags\
+	QueryStructure/Refinements/Bags/CacheableFunctions\
 	QueryStructure/Refinements/Bags/BagsOfTuples\
 	QueryStructure/Refinements/Bags/String_as_OT \
 	QueryStructure/Refinements/Bags/Bags
 
 EXAMPLE_MODULES := \
+	AutoDB \
 	ComputationExamples \
 	Trivial \
 	TrivialCache \
 	ProcessScheduler/State \
 	ProcessScheduler/DBSchema \
 	ProcessScheduler/ListBasedRefinement \
-	AutoDB \
 	Bookstore \
 	BookstoreNaive
 
