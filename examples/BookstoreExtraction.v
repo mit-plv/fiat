@@ -12,7 +12,7 @@ Extract Constant Nat_as_OT.eq_dec     => "(=)".
 
 Extract Constant String_as_OT.compare => "fun a b -> let comp = compare a b in 
                                           if comp = 0 then EQ else if comp < 0 then LT else GT".
-Extract Constant Nat_as_OT.compare    => "fun a b -> let comp = compare a b in 
+Extract Constant Nat_as_OT.compare    => "fun (a: int) (b: int) -> let comp = compare a b in 
                                           if comp = 0 then EQ else if comp < 0 then LT else GT".
 Extract Constant String_as_OT.string_compare => "fun a b -> let comp = compare a b in 
                                                  if comp = 0 then Eq else if comp < 0 then Lt else Gt".
