@@ -131,32 +131,6 @@ Ltac mkIndex heading attributes :=
   assert (list (@ProperAttribute heading)) as decorated_source by autoconvert (@CheckType heading);
   apply (NestedTreeFromAttributes' heading decorated_source).
 
-(*
-Require Import Beatles.
-Local Open Scope string_scope.
-
-Local Open Scope Tuple_scope.
-
-Definition SampleIndex : @BagPlusBagProof (@Tuple AlbumHeading).
-Proof.
-  mkIndex AlbumHeading [Year; UKpeak; Name].
-Defined.
-
-Definition IndexedAlbums :=
-  List.fold_left binsert FirstAlbums (@bempty _ _ _ (BagProof SampleIndex)).
-
-(* Example use:
-Eval simpl in (SearchTermType SampleIndex).
-Time Eval simpl in (bfind IndexedAlbums (Some 1963%N, (None, (None, [])))).
-Time Eval simpl in (bfind IndexedAlbums (Some 1963%N, (Some 1, (None, [])))).
-Time Eval simpl in (bfind IndexedAlbums (Some 1963%N, (Some 1, (Some "With the Beatles", [])))).
-Time Eval simpl in (bfind IndexedAlbums (None, (None, (Some "With the Beatles", [])))).
-Time Eval simpl in (bfind IndexedAlbums (None, (None, (None, [TupleEqualityMatcher (eq_dec := string_dec) Name "With the Beatles"])))).
-
-(*Time Eval simpl in (@bfind _ _ _ (BagProof _ SampleIndex) IndexedAlbums (Some 3, (Some 1, (None, @nil (TSearchTermMatcher AlbumHeading))))).*)
-*)
-*)
-
 Require Import QueryStructureNotations ListImplementation.
 Require Import AdditionalLemmas AdditionalPermutationLemmas Arith.
 
@@ -227,15 +201,6 @@ Qed.
 Ltac binsert_correct_DB :=
   match goal with
     | [ H: EnsembleIndexedListEquivalence (GetUnConstrRelation ?qs ?index)
-                                          (benumerate (Bag := ?bagproof) ?store) |-
-        EnsembleIndexedListEquivalence
-          (GetUnConstrRelation
-             (UpdateUnConstrRelation ?qs ?index
-                                     (EnsembleInsert
-                                        {|
-                                          tupleIndex := Datatypes.length (benumerate ?store);
-                                          indexedTuple := ?tuple |} 
-                                        (GetUnConstrRelation ?qs ?index))) 
-             ?index)
-          (benumerate _) ] => apply (binsert_correct_DB (store_is_bag := bagproof) _ qs index _ H)
+                                          (benumerate (Bag := ?bagproof) ?store) |- _ ] => 
+      solve [ simpl; apply (binsert_correct_DB (store_is_bag := bagproof) _ qs index _ H) ]
   end.
