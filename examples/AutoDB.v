@@ -27,9 +27,24 @@ Notation "heading / attr_index" := ((fun x : Attributes heading => x)
                                        {| bindex := attr_index; indexb := _ |}) 
                                       (at level 40, left associativity).
 
+Ltac lmap A f seq :=
+  let rec aux seq :=
+      match seq with
+        | nil => constr:(@nil A)
+        | ?h :: ?t =>
+          let h' := f h in
+          let t' := aux t in
+          constr:(h' :: t')
+      end 
+  in aux seq.
+
+Ltac makeIndex sc table columns :=
+  set (heading := GetHeading sc table);
+  mkIndex heading ltac:(lmap (Attributes heading)%type ltac:(fun x => constr:(heading/x)) columns).
+
+Notation "QSSchema # rel_key" := (TupleDef QSSchema rel_key) (at level 100, no associativity).
+
 Notation "?[ A ]" := (if A then true else false) (at level 50).
-
-
 
 (** * Tactics galore! *)
 
