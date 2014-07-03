@@ -6,12 +6,61 @@ Require Import String List Sorting.Permutation
 
 (* [Query_For] and all aggregates are opaque, so we need to make them
    transparent in order to reason about them. *) 
-Local Transparent Query_For Count MaxN MaxZ.
+Local Transparent Query_For Count Max MaxN MaxZ Sum SumN SumZ.
+Require Import NArith ZArith.
 
 Lemma refine_Count {A} rows
 : refine (@Count A rows)
          (l <- rows;
           ret (List.length l)).
+Proof. reflexivity. Qed.
+
+Lemma refine_FoldAggregateOption {A} (rows: Comp (list A)) (updater: A -> A -> A) :
+  refine (@FoldAggregateOption A updater rows)
+         (l <- rows;
+          ret (foldOption updater l)).
+Proof. reflexivity. Qed.
+
+Lemma refine_FoldAggregate {A B} (rows: Comp (list B)) (updater: A -> B -> A) (default: A) :
+  refine (@FoldAggregate A B updater default rows)
+         (l <- rows;
+          ret (List.fold_left updater l default)).
+Proof. reflexivity. Qed.
+
+Lemma refine_Sum rows :
+  refine (Sum rows)
+         (l <- rows;
+          ret (List.fold_left plus l 0)).
+Proof. reflexivity. Qed.
+
+Lemma refine_SumN rows :
+  refine (SumN rows)
+         (l <- rows;
+          ret (List.fold_left N.add l 0%N)).
+Proof. reflexivity. Qed.
+
+Lemma refine_SumZ rows :
+  refine (SumZ rows)
+         (l <- rows;
+          ret (List.fold_left Z.add l 0%Z)).
+Proof. reflexivity. Qed.
+
+Lemma refine_Max rows :
+  refine (Max rows)
+         (l <- rows;
+          ret (foldOption max l)).
+Proof. reflexivity. Qed.
+
+Lemma refine_MaxN rows :
+  refine (MaxN rows)
+         (l <- rows;
+          ret (foldOption N.max l)).
+Proof. reflexivity. Qed.
+
+Lemma refine_MaxZ rows :
+  refine (MaxZ rows)
+         (l <- rows;
+          ret (foldOption Z.max l)).
 Proof. reflexivity. Qed.
 
 Lemma refine_For
@@ -21,12 +70,15 @@ Lemma refine_For
             {l | Permutation result l}).
 Proof. reflexivity. Qed.
 
+Tactic Notation "t_morphism" reference(symb) :=
+  intros * H; unfold symb; rewrite H; reflexivity.
+
 Add Parametric Morphism ResultT
 : (@Query_For ResultT)
     with signature (refine ==> refine)
       as refine_refine_For.
 Proof.
-  intros; unfold Query_For; rewrite H; reflexivity.
+  t_morphism Query_For.
 Qed.
 
 Add Parametric Morphism ResultT
@@ -34,7 +86,65 @@ Add Parametric Morphism ResultT
     with signature (refine ==> refine)
       as refine_refine_Count.
 Proof.
-  intros; unfold Count; rewrite H; reflexivity.
+  t_morphism Count.
+Qed.
+
+Add Parametric Morphism {A B} (updater: A -> B -> A) :
+  (@FoldAggregate A B updater)
+    with signature (eq ==> refine ==> refine)
+      as FoldAggregate_eq_refine_refine_morphism.
+Proof.
+  t_morphism FoldAggregate.
+Qed.
+
+Add Parametric Morphism {A} (updater: A -> A -> A) :
+  (@FoldAggregateOption A updater)
+    with signature (refine ==> refine)
+      as FoldAggregateOption_refine_refine_morphism.
+Proof.
+  t_morphism FoldAggregateOption.
+Qed.
+
+Add Morphism Max
+  with signature (refine ==> refine)
+    as Max_refine_refine_Morphism.
+Proof.
+  t_morphism Max.
+Qed.
+
+Add Morphism MaxN
+  with signature (refine ==> refine)
+    as MaxN_refine_refine_Morphism.
+Proof.
+  t_morphism MaxN.
+Qed.
+
+Add Morphism MaxZ
+  with signature (refine ==> refine)
+    as MaxZ_refine_refine_Morphism.
+Proof.
+  t_morphism MaxZ.
+Qed.
+
+Add Morphism Sum
+  with signature (refine ==> refine)
+    as Sum_refine_refine_Morphism.
+Proof.
+  t_morphism Sum.
+Qed.
+
+Add Morphism SumN
+  with signature (refine ==> refine)
+    as SumN_refine_refine_Morphism.
+Proof.
+  t_morphism SumN.
+Qed.
+
+Add Morphism SumZ
+  with signature (refine ==> refine)
+    as SumZ_refine_refine_Morphism.
+Proof.
+  t_morphism SumZ.
 Qed.
 
 Lemma refine_Count_bind_bind_app {A}

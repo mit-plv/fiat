@@ -31,8 +31,8 @@ Definition StocksSchema :=
               schema <STOCK_CODE :: nat,
                       DATE :: Date,
                       TIME :: Timestamp,
-                      PRICE :: nat,
-                      VOLUME :: nat>
+                      PRICE :: N,
+                      VOLUME :: N>
               where attributes [PRICE] depend on [STOCK_CODE; TIME] ]
     enforcing [attribute STOCK_CODE for TRANSACTIONS references STOCKS].
 
@@ -41,10 +41,10 @@ Definition StocksSig : ADTSig :=
       "Init"               : unit                              → rep,
       "AddStock"           : rep × (StocksSchema#STOCKS)       → rep × bool,
       "AddTransaction"     : rep × (StocksSchema#TRANSACTIONS) → rep × bool,
-      "TotalVolume"        : rep × (StockCode * Date)          → rep × nat,
-      "MaxPrice"           : rep × (StockCode * Date)          → rep × nat,
+      "TotalVolume"        : rep × (StockCode * Date)          → rep × N,
+      "MaxPrice"           : rep × (StockCode * Date)          → rep × option N,
       "TotalActivity"      : rep × (StockCode * Date)          → rep × nat,
-      "LargestTransaction" : rep × Date                        → rep × nat
+      "LargestTransaction" : rep × (StockType * Date)          → rep × option N
     }.
 
 Definition StocksSpec : ADT StocksSig :=
@@ -57,31 +57,31 @@ Definition StocksSpec : ADT StocksSig :=
     update "AddTransaction" (transaction : StocksSchema#TRANSACTIONS) : bool :=
         Insert transaction into TRANSACTIONS,
 
-    query "TotalVolume" (params: StockCode * Date) : nat :=
+    query "TotalVolume" (params: StockCode * Date) : N :=
       SumN (For (transaction in TRANSACTIONS)
             Where (transaction!STOCK_CODE = fst params)
-            Where (transaction!DATE = sdn params)
+            Where (transaction!DATE = snd params)
             Return transaction!VOLUME),
 
-    query "MaxPrice" (params: StockCode * Date) : nat :=
+    query "MaxPrice" (params: StockCode * Date) : option N :=
       MaxN (For (transaction in TRANSACTIONS)
             Where (transaction!STOCK_CODE = fst params)
-            Where (transaction!DATE = sdn params)
+            Where (transaction!DATE = snd params)
             Return transaction!PRICE),
 
     query "TotalActivity" (params: StockCode * Date) : nat :=
       Count (For (transaction in TRANSACTIONS)
             Where (transaction!STOCK_CODE = fst params)
-            Where (transaction!DATE = sdn params)
-            Return 1),
+            Where (transaction!DATE = snd params)
+            Return ()),
 
-    query "LargestTransaction" (params: StockType * Date) : nat :=
-      MaxN (For (stock in STOKES)
+    query "LargestTransaction" (params: StockType * Date) : option N :=
+      MaxN (For (stock in STOCKS)
             For (transaction in TRANSACTIONS)
             Where (stock!TYPE = fst params)
             Where (transaction!DATE = snd params)
             Where (stock!STOCK_CODE = transaction!STOCK_CODE)
-            Return (transaction!PRICE * transaction!VOLUME))
+            Return (N.mul transaction!PRICE transaction!VOLUME))
 }.
 
 Definition StocksStorage : @BagPlusBagProof (StocksSchema#STOCKS).

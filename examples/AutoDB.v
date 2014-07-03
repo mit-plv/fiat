@@ -283,7 +283,13 @@ Proof.
 Qed.
 
 Ltac commit := repeat (setoid_rewrite refine_Permutation_Reflexivity
-                    || setoid_rewrite refine_Count);
+                    || setoid_rewrite refine_Count
+                    || setoid_rewrite refine_MaxN
+                    || setoid_rewrite refine_SumN
+                    || setoid_rewrite refine_MaxZ
+                    || setoid_rewrite refine_SumZ
+                    || setoid_rewrite refine_Max
+                    || setoid_rewrite refine_Sum);
               try (etransitivity; [ apply refine_count | ]);
               cleanup; try simplify with monad laws.
 

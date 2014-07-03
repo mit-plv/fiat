@@ -84,26 +84,42 @@ Definition foldOption {A: Type} (f : A -> A -> A) seq :=
 
 Require Import NArith ZArith.
 
-Definition FoldAggregateOption {A} (rows: Comp (list A)) (updater: A -> A -> A) :=
+Definition FoldAggregateOption {A} (updater: A -> A -> A) (rows: Comp (list A)) :=
   l <- rows;
   ret (foldOption updater l).
 
+Definition FoldAggregate {A B} (updater: A -> B -> A) (default: A) (rows: Comp (list B)) :=
+  l <- rows;
+  ret (List.fold_left updater l default).
+
+Definition Max (rows : Comp (list nat)) : Comp (option nat) :=
+  FoldAggregateOption max rows.
+
 Definition MaxN (rows : Comp (list N)) : Comp (option N) :=
-  FoldAggregateOption rows N.max.
+  FoldAggregateOption N.max rows.
 
 Definition MaxZ (rows : Comp (list Z)) : Comp (option Z) :=
-  FoldAggregateOption rows Z.max.
+  FoldAggregateOption Z.max rows.
+
+Definition Sum  (rows : Comp (list nat)) : Comp nat :=
+  FoldAggregate plus 0 rows.
+
+Definition SumN (rows : Comp (list N)) : Comp N :=
+  FoldAggregate N.add 0%N rows.
+
+Definition SumZ (rows : Comp (list Z)) : Comp Z :=
+  FoldAggregate Z.add 0%Z rows.
 
 (*
 Definition MinN (rows : Comp (list N)) : Comp (option N) :=
-  FoldAggregateOption rows N.min.
+  FoldAggregateOption N.min rows.
 
 Definition MinZ (rows : Comp (list Z)) : Comp (option Z) :=
-  FoldAggregateOption rows Z.min.
+  FoldAggregateOption Z.min rows.
 *)
 
 (* Much like [Query_For], [Count] is opaque so that the
    [simplify with monad laws] tactic doesn't agressively
    simplify it away.  *)
 
-Global Opaque Count MaxN MaxZ.
+Global Opaque Count Max MaxN MaxZ Sum SumN SumZ.
