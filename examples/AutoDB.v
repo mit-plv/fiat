@@ -12,6 +12,8 @@ Global Opaque binsert benumerate bfind bcount.
 Ltac prove_decidability_for_functional_dependencies :=
   simpl; econstructor; intros;
   try setoid_rewrite <- eq_nat_dec_bool_true_iff;
+  try setoid_rewrite <- eq_N_dec_bool_true_iff;
+  try setoid_rewrite <- eq_Z_dec_bool_true_iff;
   try setoid_rewrite <- string_dec_bool_true_iff;
   setoid_rewrite and_True;
   repeat progress (
@@ -364,14 +366,15 @@ Ltac pickIndex :=
   simplify with monad laws.
 
 Ltac foreignToQuery :=
-  match goal with
+ match goal with
     | [ |- context[Pick (fun b' => decides b' (exists tup2 : @IndexedTuple ?H, _ /\ ?r ``?s = _ ))] ] =>
       match goal with
         | [ |- appcontext[@benumerate _ (@Tuple ?H')] ] =>
           equate H H'; let T' := constr:(@Tuple H') in
-            rewrite (refine_foreign_key_check_into_query (fun t : T' => r!s = t!s))
-              by eauto with typeclass_instances;
-              simplify with monad laws; cbv beta; simpl
+                       let temp := fresh in
+                       pose (refine_foreign_key_check_into_query (fun t : T' => r!s = t!s)) as temp;
+                         rewrite temp by eauto with typeclass_instances;
+                         simplify with monad laws; cbv beta; simpl; clear temp
       end
   end.
 
