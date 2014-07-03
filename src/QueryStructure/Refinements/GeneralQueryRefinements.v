@@ -4,9 +4,9 @@ Require Import String List Sorting.Permutation
         QueryStructureSchema QueryQSSpecs QueryStructure
         EnsembleListEquivalence.
 
-(* [Query_For] and [Count] are opaque, so we need to make both
-   transparent in order to reason about them. *)
-Local Transparent Query_For Count.
+(* [Query_For] and all aggregates are opaque, so we need to make them
+   transparent in order to reason about them. *) 
+Local Transparent Query_For Count MaxN MaxZ.
 
 Lemma refine_Count {A} rows
 : refine (@Count A rows)

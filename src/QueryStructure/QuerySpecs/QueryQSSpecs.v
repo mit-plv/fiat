@@ -74,8 +74,36 @@ Definition Count {A} (rows : Comp (list A)) : Comp nat :=
   l <- rows;
   ret (List.length l).
 
+Definition foldOption {A: Type} (f : A -> A -> A) seq :=
+  match seq with
+    | []     => None
+    | h :: t => Some (List.fold_left f t h)
+  end.
+
+(* Specs for the min and the max of lists of values. *)
+
+Require Import NArith ZArith.
+
+Definition FoldAggregateOption {A} (rows: Comp (list A)) (updater: A -> A -> A) :=
+  l <- rows;
+  ret (foldOption updater l).
+
+Definition MaxN (rows : Comp (list N)) : Comp (option N) :=
+  FoldAggregateOption rows N.max.
+
+Definition MaxZ (rows : Comp (list Z)) : Comp (option Z) :=
+  FoldAggregateOption rows Z.max.
+
+(*
+Definition MinN (rows : Comp (list N)) : Comp (option N) :=
+  FoldAggregateOption rows N.min.
+
+Definition MinZ (rows : Comp (list Z)) : Comp (option Z) :=
+  FoldAggregateOption rows Z.min.
+*)
+
 (* Much like [Query_For], [Count] is opaque so that the
    [simplify with monad laws] tactic doesn't agressively
    simplify it away.  *)
 
-Global Opaque Count.
+Global Opaque Count MaxN MaxZ.
