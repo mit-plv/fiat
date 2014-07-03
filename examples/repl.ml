@@ -76,12 +76,12 @@ let stats start_time iterations =
 let benchmark nb_authors nb_books nb_orders nb_titles_queries nb_orders_queries store  =
   Printf.printf "Initialization\n";
   store        := extract (init_bookstore ());
-  let names    = Array.init nb_authors (fun _ -> toCharList (random_string 25)) in
-  let authors  = Array.init nb_books   (fun _ -> names.(Random.int nb_authors)) in
-  let titles   = Array.init nb_books   (fun _ -> toCharList (random_string 50)) in
-  let isbns    = Array.init nb_orders  (fun _ -> Random.int nb_books) in
-  let title_authors = Array.init nb_titles_queries (fun _ -> names.(Random.int nb_authors)) in
-  let order_authors = Array.init nb_orders_queries (fun _ -> names.(Random.int nb_authors)) in
+  let names    = Random.init 1; Array.init nb_authors (fun _ -> toCharList (random_string 25)) in
+  let authors  = Random.init 2; Array.init nb_books   (fun _ -> names.(Random.int nb_authors)) in
+  let titles   = Random.init 3; Array.init nb_books   (fun _ -> toCharList (random_string 50)) in
+  let isbns    = Random.init 4; Array.init nb_orders  (fun _ -> Random.int nb_books) in
+  let title_authors = Random.init 5; Array.init nb_titles_queries (fun _ -> names.(Random.int nb_authors)) in
+  let order_authors = Random.init 6; Array.init nb_orders_queries (fun _ -> names.(Random.int nb_authors)) in
 
   Printf.printf "Adding books...\n";
   let books_start = Unix.gettimeofday () in
@@ -93,7 +93,7 @@ let benchmark nb_authors nb_books nb_orders nb_titles_queries nb_orders_queries 
   Printf.printf "Placing orders\n";
   let orders_start = Unix.gettimeofday () in
   for iteration = 0 to nb_orders - 1 do
-    let _ = run (place_order isbns.(iteration) 0) store in ()
+    let _ = run (place_order isbns.(iteration) iteration) store in ()
   done;
   let orders_duration = stats orders_start nb_orders in
 
@@ -121,7 +121,7 @@ let benchmark nb_authors nb_books nb_orders nb_titles_queries nb_orders_queries 
 
 let _for _start _step _end body =
   let n = ref _start in
-  while !n < _end do
+  while !n <= _end do
     body !n;
     n := !n + _step
   done;;
