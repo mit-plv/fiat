@@ -1,49 +1,32 @@
-Require Export BagsInterface ListBags TreeBags Tuple Heading List Program.
+Require Export BagsInterface CountingListBags TreeBags Tuple Heading List Program.
 Require Import String_as_OT EnsembleListEquivalence.
 Require Import Bool String OrderedTypeEx.
 
 Unset Implicit Arguments.
 
-Definition TSearchTermMatcher (heading: Heading) := (@Tuple heading -> bool).
-
-Definition SearchTermsCollection heading :=
-  list (TSearchTermMatcher heading).
-
-Fixpoint MatchAgainstSearchTerms
-         {heading: Heading}
-         (search_terms : SearchTermsCollection heading) (item: Tuple) :=
-  match search_terms with
-    | []                     => true
-    | is_match :: more_terms => (is_match item) && MatchAgainstSearchTerms more_terms item
-  end.
-
 Require Import GeneralQueryRefinements.
+
+Definition TSearchTermMatcher (heading: Heading) := (@Tuple heading -> bool).
 
 Definition TupleEqualityMatcher
            {heading: Heading}
            (attr: Attributes heading)
            (value: Domain heading attr)
-           {ens_dec: DecideableEnsemble (fun x : Domain heading attr => value = x)} 
-: TSearchTermMatcher heading := fun tuple => dec (tuple attr).
+           {ens_dec: DecideableEnsemble (fun x : Domain heading attr => value = x)} := 
+  fun tuple => dec (tuple attr).
 
 Definition TupleDisequalityMatcher
            {heading: Heading}
            (attr: Attributes heading)
            (value: Domain heading attr)
-           {ens_dec: DecideableEnsemble (fun x : Domain heading attr => value = x)} 
-: TSearchTermMatcher heading := fun tuple => negb (dec (tuple attr)).
+           {ens_dec: DecideableEnsemble (fun x : Domain heading attr => value = x)} := 
+  fun tuple => negb (dec (tuple attr)).
 
 Instance TupleListAsBag (heading: Heading) :
-  Bag (list (@Tuple heading)) (@Tuple heading) (SearchTermsCollection heading).
+  Bag (@CountingList (@Tuple heading)) (@Tuple heading) (list (TSearchTermMatcher heading)).
 Proof.
-  apply (ListAsBag [] (@MatchAgainstSearchTerms heading)); eauto.
+  apply CountingListAsBag. 
 Defined.
-
-Definition TupleListBag {heading} :=
-  {|
-    BagType        := list (@Tuple heading);
-    SearchTermType := (SearchTermsCollection heading)
-  |}.
 
 Require Import FMapAVL.
 
@@ -91,8 +74,8 @@ Fixpoint NestedTreeFromAttributes'
          {struct indexes}: (@BagPlusBagProof (@Tuple heading)) :=
   match indexes with
     | [] =>
-      {| BagType        := list (@Tuple heading);
-         SearchTermType := SearchTermsCollection heading |}
+      {| BagType        := @CountingList (@Tuple heading);
+         SearchTermType := list (TSearchTermMatcher heading) |}
     | proper_attr :: more_indexes =>
       let attr := @Attribute heading proper_attr in
       let (t, st, bagproof) := NestedTreeFromAttributes' heading more_indexes in

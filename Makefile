@@ -71,6 +71,7 @@ SRC_MODULES    := \
 	QueryStructure/Refinements/Bags/BagsProperties\
 	QueryStructure/Refinements/Bags/BagsTactics\
 	QueryStructure/Refinements/Bags/ListBags\
+	QueryStructure/Refinements/Bags/CountingListBags\
 	QueryStructure/Refinements/Bags/TreeBags\
 	QueryStructure/Refinements/Bags/CachingBags\
 	QueryStructure/Refinements/Bags/CacheableFunctions\
