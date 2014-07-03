@@ -95,7 +95,51 @@ Proof.
   eauto.
 Qed.
 
+(* We have to define a wrapper for if then else in
+ order for it to play nicely with setoid_rewriting. *)
+Definition If_Then_Else {A}
+           (c : bool)
+           (t e : A) :=
+  if c then t else e.
 
+Add Parametric Morphism A (c : bool)
+: (If_Then_Else c)
+    with signature
+      (@refine A ==> @refine A ==> @refine A )
+      as refine_If_Then_Else.
+Proof.
+  unfold If_Then_Else; intros.
+  destruct c; eassumption.
+Qed.
+
+Notation "'If' c 'Then' t 'Else' e" :=
+  (If_Then_Else c t e) 
+    (at level 70).
+
+Definition If_Opt_Then_Else {A B}
+           (c : option A)
+           (t : A -> B)
+           (e : B) :=
+  match c with 
+    | Some a => t a
+    | None => e
+  end.
+
+Add Parametric Morphism A B (c : option A)
+: (@If_Opt_Then_Else A (Comp B) c)
+    with signature
+    ((pointwise_relation A (@refine B))
+       ==> @refine B 
+       ==> @refine B )
+      as refine_If_Opt_Then_Else.
+Proof.
+  unfold If_Opt_Then_Else; intros.
+  destruct c; eauto.
+Qed.
+
+Notation "'Ifopt' c 'as' c' 'Then' t 'Else' e" :=
+  (If_Opt_Then_Else c (fun c' => t) e) 
+    (at level 70).
 
 Add Parametric Morphism A
 : (@Pick A)

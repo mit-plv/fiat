@@ -21,7 +21,7 @@ Section MethodRefinement.
            old constructor
        Dom --------------> old rep
         ∥                      |
-        ∥ id               AbsR |
+        ∥ id              AbsR |
         ∥                      |
        Dom --------------> new rep
           new constructor
@@ -49,7 +49,7 @@ Section MethodRefinement.
                    old method
        old rep --------------> old rep
           |                         |
-      AbsR |                         | AbsR
+     AbsR |                         | AbsR
           ↓                         ↓
        new rep --------------> new rep
                    new method

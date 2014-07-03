@@ -23,8 +23,8 @@ Ltac prove_decidability_for_functional_dependencies :=
 
 Hint Extern 100 (DecideableEnsemble _) => prove_decidability_for_functional_dependencies : typeclass_instances.
 
-Notation "heading / attr_index" := ((fun x : Attributes heading => x) 
-                                       {| bindex := attr_index; indexb := _ |}) 
+Notation "heading / attr_index" := ((fun x : Attributes heading => x)
+                                       {| bindex := attr_index; indexb := _ |})
                                       (at level 40, left associativity).
 
 Ltac lmap A f seq :=
@@ -35,7 +35,7 @@ Ltac lmap A f seq :=
           let h' := f h in
           let t' := aux t in
           constr:(h' :: t')
-      end 
+      end
   in aux seq.
 
 Ltac makeIndex sc table columns :=
@@ -146,7 +146,7 @@ Ltac asPerm_indep :=
       (* The check below prevent this rule from creating an infinite loop
          when asPerm_indep is called repeatedly *)
       match ls1 with (filter _ _) => fail end;
-      (* If ls1 is not a filter, though, it's probably best to swap the two 
+      (* If ls1 is not a filter, though, it's probably best to swap the two
          lists before calling rewrite filter_join_lists, since filter_join
          _lists produces code that loops on the ls1 first *)
       setoid_rewrite (swap_joins ls1 (filter f ls2)); trickle_swap; simp
@@ -364,16 +364,17 @@ Ltac pickIndex :=
   simplify with monad laws.
 
 Ltac foreignToQuery :=
-  match goal with
+match goal with
     | [ |- context[Pick (fun b' => decides b' (exists tup2 : @IndexedTuple ?H, _ /\ ?r ``?s = _ ))] ] =>
       match goal with
         | [ |- appcontext[@benumerate _ (@Tuple ?H')] ] =>
-          equate H H'; let T' := constr:(@Tuple H') in
-            rewrite (refine_foreign_key_check_into_query (fun t : T' => r!s = t!s))
-              by eauto with typeclass_instances;
-              simplify with monad laws; cbv beta; simpl
-      end
-  end.
+          equate H H';
+            let T' := constr:(@Tuple H') in
+            let G := fresh in
+            pose (refine_foreign_key_check_into_query (fun t : T' => r!s = t!s)) as G;
+              rewrite G by eauto with typeclass_instances;
+              simplify with monad laws; cbv beta; simpl; clear G
+      end end.
 
 Ltac dec_tauto := clear; intuition eauto;
                   eapply Tuple_Agree_eq_dec;

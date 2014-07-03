@@ -13,6 +13,7 @@ SRC_MODULES    := \
 	ADT/ADTSig \
 	ADT/Core \
 	ADT/ADTHide \
+	ADT/ComputationalADT \
 	ADT \
 	ADTNotation/ilist \
 	ADTNotation/StringBound \
@@ -48,6 +49,7 @@ SRC_MODULES    := \
 	QueryStructure/QuerySpecs/QueryQSSpecs \
 	QueryStructure/QuerySpecs/InsertQSSpecs \
 	QueryStructure/QuerySpecs/EnsembleListEquivalence \
+	QueryStructure/QuerySpecs/EnsembleListEquivalenceProperties \
 	QueryStructure/QueryStructureNotations \
 	QueryStructure/Refinements/GeneralQueryRefinements \
 	QueryStructure/Refinements/GeneralInsertRefinements \
@@ -60,7 +62,6 @@ SRC_MODULES    := \
 	QueryStructure/Refinements/AdditionalRefinementLemmas \
 	QueryStructure/Refinements/AdditionalPermutationLemmas \
 	QueryStructure/Refinements/flattenCompListProperties \
-	QueryStructure/Refinements/EnsembleListEquivalenceProperties \
 	QueryStructure/Refinements/ConstraintChecksRefinements \
 	QueryStructure/Refinements/ListImplementation/ListQueryRefinements \
 	QueryStructure/Refinements/ListImplementation/ListInsertRefinements \
@@ -82,6 +83,7 @@ SRC_MODULES    := \
 EXAMPLE_MODULES := \
 	AutoDB \
 	ComputationExamples \
+	CacheADT \
 	Trivial \
 	TrivialCache \
 	ProcessScheduler/State \
