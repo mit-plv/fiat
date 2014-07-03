@@ -147,7 +147,7 @@ Ltac asPerm_indep :=
     | [ |- context[filter _ (Join_Lists ?ls1 (filter ?f ?ls2))] ] =>
       (* The check below prevent this rule from creating an infinite loop
          when asPerm_indep is called repeatedly *)
-      match ls1 with (filter _ _) => fail end;
+      match ls1 with (filter _ _) => fail 1 | _ => idtac end;
       (* If ls1 is not a filter, though, it's probably best to swap the two 
          lists before calling rewrite filter_join_lists, since filter_join
          _lists produces code that loops on the ls1 first *)
