@@ -108,7 +108,7 @@ Ltac getFst F k :=
   match type of F with
   | ?A * ?B -> ?C =>
     let G := fresh "G" in let p := fresh "p" in let H := fresh "H" in
-    evar (G : B -> C); assert (H : forall p, F p = G (snd p)) by (subst G; intro p;
+    evar (G : A -> C); assert (H : forall p, F p = G (fst p)) by (subst G; intro p;
       pattern (fst p);
       match goal with
       | [ |- (fun t => @?f t = @?g t) _ ] => equate g f; reflexivity
@@ -143,6 +143,12 @@ Ltac asPerm_indep :=
       getFst F ltac:(fun f => rewrite (filter_join_fst f))
                       || getSnd F ltac:(fun f => rewrite (filter_join_snd f))
     | [ |- context[filter _ (Join_Lists ?ls1 (filter ?f ?ls2))] ] =>
+      (* The check below prevent this rule from creating an infinite loop
+         when asPerm_indep is called repeatedly *)
+      match ls1 with (filter _ _) => fail end;
+      (* If ls1 is not a filter, though, it's probably best to swap the two 
+         lists before calling rewrite filter_join_lists, since filter_join
+         _lists produces code that loops on the ls1 first *)
       setoid_rewrite (swap_joins ls1 (filter f ls2)); trickle_swap; simp
     | _ => setoid_rewrite filter_join_lists; simp
   end.
