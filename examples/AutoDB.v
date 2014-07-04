@@ -385,16 +385,16 @@ Ltac pickIndex :=
   simplify with monad laws.
 
 Ltac foreignToQuery :=
- match goal with
-    | [ |- context[Pick (fun b' => decides b' (exists tup2 : @IndexedTuple ?H, _ /\ ?r ``?s = _ ))] ] =>
-      match goal with
-        | [ |- appcontext[@benumerate _ (@Tuple ?H')] ] =>
-          equate H H'; let T' := constr:(@Tuple H') in
-                       let temp := fresh in
-                       pose (refine_foreign_key_check_into_query (fun t : T' => r!s = t!s)) as temp;
-                         rewrite temp by eauto with typeclass_instances;
-                         simplify with monad laws; cbv beta; simpl; clear temp
-      end
+  match goal with
+    | [ _ : ?SC#_ |- context[Pick (fun b' => decides b' (exists tup2 : @IndexedTuple ?H, (_!?R)%QueryImpl tup2 /\ ?r ``?s = _ ))] ] =>
+      let T' := constr:(@Tuple (schemaHeading
+                                  (relSchema
+                                     (@nth_Bounded NamedSchema string relName (qschemaSchemas SC)
+                                                   ``R)))) in
+      let temp := fresh in
+      pose (refine_foreign_key_check_into_query (fun t : T' => r!s = t!s)) as temp;
+        rewrite temp by eauto with typeclass_instances;
+        simplify with monad laws; cbv beta; simpl; clear temp
   end.
 
 Ltac dec_tauto := clear; intuition eauto;

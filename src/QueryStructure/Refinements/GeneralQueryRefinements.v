@@ -462,8 +462,8 @@ Ltac pose_string_ids :=
 Tactic Notation "drop" "constraints" "from" "query" constr(methname) :=
   hone method methname;
   [ simplify with monad laws;
-    subst_strings; setoid_rewrite DropQSConstraintsQuery_In;
-    simpl; repeat setoid_rewrite DropQSConstraintsQuery_In_UnderBinder;
+    subst_strings; repeat (setoid_rewrite DropQSConstraintsQuery_In; simpl);
+    repeat setoid_rewrite DropQSConstraintsQuery_In_UnderBinder;
     simpl; pose_string_ids;
     setoid_rewrite refineEquiv_pick_eq';
     simplify with monad laws; cbv beta; simpl;

@@ -83,7 +83,6 @@ SRC_MODULES    := \
 EXAMPLE_MODULES := \
 	AutoDB \
 	ComputationExamples \
-	CacheADT \
 	Trivial \
 	TrivialCache \
 	ProcessScheduler/State \
@@ -91,7 +90,8 @@ EXAMPLE_MODULES := \
 	ProcessScheduler/ListBasedRefinement \
 	Bookstore \
 	BookstoreNaive \
-	Weather
+	Weather Stocks
+#	CacheADT \
 
 # ADTExamples/QueryStructure/ProcessScheduler/TreeBasedRefinement \
 # ADTExamples/CombineBinaryOperationsSpec

@@ -76,8 +76,7 @@ Definition StocksSpec : ADT StocksSig :=
             Return ()),
 
     query "LargestTransaction" (params: StockType * Date) : option N :=
-      MaxN (For (stock in STOCKS)
-            For (transaction in TRANSACTIONS)
+      MaxN (For (stock in STOCKS) (transaction in TRANSACTIONS)
             Where (stock!TYPE = fst params)
             Where (transaction!DATE = snd params)
             Where (stock!STOCK_CODE = transaction!STOCK_CODE)
@@ -112,73 +111,6 @@ Definition Stocks_AbsR
 Definition StocksDB :
   Sharpened StocksSpec.
 Proof.
-  match goal with
-    | [ |- Sharpened ?spec ] =>
-      unfolder spec ltac:(fun spec' => change spec with spec')
-  end; start_honing_QueryStructure; hone_representation Stocks_AbsR.
-
-(*  plan Stocks_AbsR. *)
- 
-  hone method "AddTransaction".
-  startMethod Stocks_AbsR. 
-  pruneDuplicates. 
-  pickIndex.
-  fundepToQuery.
-  concretize.
-  asPerm (StocksStorage, TransactionsStorage).
-  commit.
-
-  (* This is the body of foreignToQuery *) 
-  match goal with
-    | [ |- context[Pick (fun b' => decides b' (exists tup2 : @IndexedTuple ?H, _ /\ ?r ``?s = _ ))] ] =>
-      match goal with
-        | [ |- appcontext[@benumerate _ (@Tuple ?H')] ] =>
-          equate H H'; let T' := constr:(@Tuple H') in
-                       let temp := fresh in
-                       pose (refine_foreign_key_check_into_query (fun t : T' => r!s = t!s)) as temp;
-                         rewrite temp by eauto with typeclass_instances;
-                         simplify with monad laws; cbv beta; simpl; clear temp
-      end
-  end.
-
-  Focus 2.
-  (* Strange thing: there are two levels of absMethod here *)
-  hone method "LargestTransaction". 
-  idtac.
-  idtac.
-  unfold Stocks_AbsR in *; split_and. simplify with monad laws.
-  startMethod Stocks_AbsR. concretize. asPerm (StocksStorage, TransactionsStorage.
-  commit; choose_db AbsR; finish honing.
-  
-  match goal with
-    | [ |- Sharpened ?spec ] =>
-      unfolder spec ltac:(fun spec' => change spec with spec')
-  end; start_honing_QueryStructure. hone_representation Stocks_AbsR.
-
-  hone method "AddStock".
-  mutator.
-  startMethod Stocks_AbsR; repeat progress (try setoid_rewrite refine_trivial_if_then_else; 
-                   try setoid_rewrite key_symmetry;
-                   try setoid_rewrite refine_tupleAgree_refl_True; 
-                   try simplify with monad laws); pickIndex;
-  repeat ((foreignToQuery || fundepToQuery);
-          concretize; asPerm storages; commit);
-  Split Constraint Checks; checksSucceeded || checksFailed.
-  pickIndex.
-  mutator.
-  honeOne.
-
   plan Stocks_AbsR.
-  
-  Print Ltac plan.
-
-  (*unfold cast, eq_rect_r, eq_rect, eq_sym.*)
-  Notation "a ! b" := (a ``(b)).
-  Notation "a == b" := (if string_dec a b then true else false).
-  Notation "a != b" := (negb (beq_nat b a)) (at level 20, no associativity).
-  Notation "a == b" := (beq_nat b a).
-  repeat match goal with
-           | [ H := _ |- _ ] => unfold H; clear H
-         end.
   finish sharpening.
 Defined.
