@@ -306,17 +306,14 @@ Section general_refine_lemmas.
                  { d | exists a, c b ↝ a /\ P a d}).
   Proof. t_refine. Qed.
 
-  Lemma refine_Pick_Some {A B}
+  Lemma refine_Pick_If_Then_Opt {A B}
   : forall (P : Ensemble B) (c e : Comp A) (t : B -> Comp A),
       (forall b, P b -> refine c (t b))
       -> (refine c e)
       -> refine c
                 (b <- {b | forall b',
                              (b = Some b' -> P b')};
-                   match b with
-                   | Some b => t b
-                   | None => e
-                   end).
+                 Ifopt b as b' Then t b' Else e).
   Proof.
     unfold refine; intros; apply computes_to_inv in H1; destruct_ex; intuition.
     destruct x; inversion_by computes_to_inv; eauto.
@@ -330,10 +327,7 @@ Section general_refine_lemmas.
                 (b <- {b | forall b',
                              (b = Some b' -> P b')
                              /\ (b = None -> forall b', ~ P b')};
-                 match b with
-                   | Some b => t b
-                   | None => e
-                 end).
+                 Ifopt b as b' Then t b' Else e) .
   Proof.
     unfold refine; intros; apply computes_to_inv in H1; destruct_ex; intuition.
     destruct x; inversion_by computes_to_inv; eauto.
@@ -343,6 +337,19 @@ Section general_refine_lemmas.
     := if b then P else ~ P.
 
   Lemma refine_pick_decides {A}
+  : forall (P : Prop) (c e : Comp A) (t : Comp A),
+    (P -> refine c t)
+    -> (~ P -> refine c e)
+    -> refine c
+         (b <- {b | decides b P};
+          if b then t else e).
+  Proof.
+    unfold refine; intros; apply_in_hyp computes_to_inv;
+    destruct_ex; split_and; inversion_by computes_to_inv.
+    destruct x; simpl in *; eauto.
+  Qed.
+
+  Lemma refine_pick_decides' {A}
         (P : Prop)
         (Q Q' : Ensemble A)
   : refine {a | (P -> Q a) /\
@@ -353,9 +360,8 @@ Section general_refine_lemmas.
             else
               {a | Q' a}).
   Proof.
+    eapply refine_pick_decides;
     unfold refine; intros; apply_in_hyp computes_to_inv;
-    destruct_ex; split_and; inversion_by computes_to_inv.
-    destruct x; simpl in *; inversion_by computes_to_inv;
     econstructor; intuition.
   Qed.
 

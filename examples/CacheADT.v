@@ -12,10 +12,9 @@ Section CacheADT.
     ADTsignature {
         "EmptyCache"  : unit → rep,
         "AddKey" : rep × (Key * Value) → rep × bool,
-        "UpdateKey" : rep × (Key * Value) → rep × bool,
+        "UpdateKey" : rep × (Key * (Value -> Value)) → rep × bool,
         "LookupKey"   : rep × Key → rep × (option Value)
   }.
-
 
   Definition EnsembleInsert  {A} (a : A) (ens : Ensemble A) (a' : A)
     : Prop := a' = a \/ ens a'.
@@ -37,6 +36,32 @@ Section CacheADT.
   : Prop := k' = k \/
             (EnsembleRemove (fst k) ens k').
 
+  Definition EnsembleUpdate
+             (k : Key)
+             (ens : Ensemble (Key * Value))
+             (f : Value -> Value)
+             (kv : Key * Value)
+  : Prop := ((fst kv) = k /\ exists v, (snd kv) = f v /\ In _ ens (k, v)) \/
+            (EnsembleRemove k ens kv).
+
+  Lemma SubEnsembleInsertReplace
+  : forall (kv : Key * Value)
+           (r : Ensemble (Key * Value)),
+   SubEnsembleInsert kv r (EnsembleReplace kv r).
+  Proof.
+    unfold SubEnsembleInsert, EnsembleInsert,
+    EnsembleReplace, EnsembleRemove; intros; intuition.
+  Qed.
+
+  Lemma SubEnsembleInsertRefl
+  : forall (kv : Key * Value)
+           (r : Ensemble (Key * Value)),
+   SubEnsembleInsert kv r r.
+  Proof.
+    unfold SubEnsembleInsert, EnsembleInsert,
+    EnsembleReplace, EnsembleRemove; intros; eauto.
+  Qed.
+
   Definition ValidLookup
              (r : Ensemble (Key * Value))
              (k : Key)
@@ -53,14 +78,14 @@ Section CacheADT.
         const "EmptyCache" (_ : unit) : rep :=
           ret (fun _ => False),
         meth "AddKey" (r : rep, kv : Key * Value) : bool :=
-            { r' | (usedKey r (fst kv) -> snd r' = false) /\
-                   (~ usedKey r (fst kv) -> (SubEnsembleInsert kv r (fst r'))
-                                            /\ snd r' = true)},
-        meth "UpdateKey" (r : rep, kv : Key * Value) : bool :=
-              { r' | (usedKey r (fst kv) ->
-                      (Same_set _ (fst r') (EnsembleReplace kv r)
-                       /\ snd r' = true)) /\
-                     (~ usedKey r (fst kv) -> snd r' = false)},
+            { r' | (SubEnsembleInsert kv r (fst r')) /\
+                   ((usedKey r (fst kv) /\ snd r' = false) \/
+                    (~ usedKey r (fst kv) /\ snd r' = true))},
+        meth "UpdateKey" (r : rep, kv : Key * (Value -> Value)) : bool :=
+              { r' |
+                (Same_set _ (fst r') (EnsembleUpdate (fst kv) r (snd kv)))
+                 /\ ((usedKey r (fst kv) /\ snd r' = true) \/
+                     (~ usedKey r (fst kv) -> snd r' = false))},
         meth "LookupKey" (r : rep, k : Key) : option Value :=
                 v <- {v | ValidLookup r k v};
         ret (r, v)
@@ -78,49 +103,59 @@ Section AddDuplicateKeyStrategies.
   Lemma refine_ReplaceUsedKeyAdd
   : forall (kv : Key * Value)
            (r : Ensemble (Key * Value)),
-      refine { r' | (usedKey r (fst kv) -> snd r' = false) /\
-                    (~ usedKey r (fst kv) -> (SubEnsembleInsert kv r (fst r'))
-                                             /\ snd r' = true)}
+      refine { r' | (SubEnsembleInsert kv r (fst r')) /\
+                    ((usedKey r (fst kv) /\ snd r' = false) \/
+                     (~ usedKey r (fst kv) /\ snd r' = true))}
              (b <- {b | decides b (usedKey r (fst kv))};
               r' <- If b
                  Then (ret (EnsembleReplace kv r))
                  Else { r' | SubEnsembleInsert kv r r' };
               ret (r', negb b)).
   Proof.
-    unfold If_Then_Else;
-    intros; rewrite refine_pick_decides.
+    etransitivity.
+    apply refine_pick_decides with
+            (P := usedKey r (fst kv));
+      intros; refine pick pair;
+    (apply refine_bind;
+     [reflexivity |
+      unfold pointwise_relation; intros;
+      refine pick val _;
+      [simplify with monad laws; higher_order_1_reflexivity
+      | intuition ]]).
     f_equiv; unfold pointwise_relation; intros.
-    destruct a.
-    - rewrite refineEquiv_bind_unit;
-      apply refine_pick_val; reflexivity.
-    - refine pick pair.
-      refine pick eq.
-      simplify with monad laws.
-      f_equiv.
+    destruct a; simpl.
+    - refine pick val _; try reflexivity.
+      apply SubEnsembleInsertReplace.
+    - reflexivity.
   Qed.
 
   Lemma refine_IgnoreUsedKeyAdd
   : forall (kv : Key * Value)
            (r : Ensemble (Key * Value)),
-      refine { r' | (usedKey r (fst kv) -> snd r' = false) /\
-                    (~ usedKey r (fst kv) -> (SubEnsembleInsert kv r (fst r'))
-                                             /\ snd r' = true)}
+      refine { r' | (SubEnsembleInsert kv r (fst r')) /\
+                    ((usedKey r (fst kv) /\ snd r' = false) \/
+                     (~ usedKey r (fst kv) /\ snd r' = true))}
              (b <- {b | decides b (usedKey r (fst kv))};
               r' <- If b
                  Then (ret r)
                  Else { r' | SubEnsembleInsert kv r r' };
               ret (r', negb b)).
   Proof.
-    unfold If_Then_Else;
-    intros; rewrite refine_pick_decides.
+    etransitivity.
+    apply refine_pick_decides with
+            (P := usedKey r (fst kv));
+      intros; refine pick pair;
+    (apply refine_bind;
+     [reflexivity |
+      unfold pointwise_relation; intros;
+      refine pick val _;
+      [simplify with monad laws; higher_order_1_reflexivity
+      | intuition ]]).
     f_equiv; unfold pointwise_relation; intros.
-    destruct a.
-    - rewrite refineEquiv_bind_unit;
-      apply refine_pick_val; reflexivity.
-    - refine pick pair.
-      refine pick eq.
-      simplify with monad laws.
-      f_equiv.
+    destruct a; simpl.
+    - refine pick val _; try reflexivity.
+      apply SubEnsembleInsertRefl.
+    - reflexivity.
   Qed.
 
 End AddDuplicateKeyStrategies.
@@ -130,54 +165,36 @@ Section UpdateMissingKeyStrategies.
   Variable Key : Type.
   Variable Value : Type.
 
-  (* Two strategies : add the key *)
-
-  Lemma refine_AddUnusedKeyUpdate
-  : forall (kv : Key * Value)
-           (r : Ensemble (Key * Value)),
-      refine { r' | (usedKey r (fst kv) ->
-                     (Same_set _ (fst r') (EnsembleReplace kv r)
-                      /\ snd r' = true)) /\
-                    (~ usedKey r (fst kv) -> snd r' = false)}
-             (b <- {b | decides b (usedKey r (fst kv))};
-              r' <- If b
-                 Then (ret (EnsembleReplace kv r))
-                 Else { r' | SubEnsembleInsert kv r r' };
-              ret (r', b)).
-  Proof.
-    unfold If_Then_Else;
-    intros; rewrite refine_pick_decides.
-    f_equiv; unfold pointwise_relation; intros.
-    destruct a.
-    - rewrite refineEquiv_bind_unit;
-      apply refine_pick_val; simpl; intuition.
-    - unfold refine; intros;
-      inversion_by computes_to_inv; subst;
-      econstructor; eauto.
-  Qed.
+  (* Best Practice : Update the key, if its there. *)
 
   Lemma refine_IgnoreUnusedKeyUpdate
-  : forall (kv : Key * Value)
+  : forall (kv : Key * (Value -> Value))
            (r : Ensemble (Key * Value)),
-      refine { r' | (usedKey r (fst kv) ->
-                     (Same_set _ (fst r') (EnsembleReplace kv r)
-                      /\ snd r' = true)) /\
-                    (~ usedKey r (fst kv) -> snd r' = false)}
+      refine { r' |
+                (Same_set _ (fst r') (EnsembleUpdate (fst kv) r (snd kv)))
+                 /\ ((usedKey r (fst kv) /\ snd r' = true) \/
+                     (~ usedKey r (fst kv) -> snd r' = false))}
              (b <- {b | decides b (usedKey r (fst kv))};
-              r' <- If b
-                 Then (ret (EnsembleReplace kv r))
-                 Else ret r;
+              r' <- ret (EnsembleUpdate (fst kv) r (snd kv));
               ret (r', b)).
   Proof.
-    unfold If_Then_Else;
-    intros; rewrite refine_pick_decides.
-    f_equiv; unfold pointwise_relation; intros.
-    destruct a.
-    - rewrite refineEquiv_bind_unit;
-      apply refine_pick_val; simpl; intuition.
-    - unfold refine; intros;
-      inversion_by computes_to_inv; subst;
-      econstructor; eauto.
+    etransitivity.
+    apply refine_pick_decides with
+            (P := usedKey r (fst kv));
+      intros; refine pick pair;
+    (apply refine_bind;
+     [reflexivity |
+      unfold pointwise_relation; intros;
+      refine pick val _;
+      [simplify with monad laws; higher_order_1_reflexivity
+      | intuition ]]).
+    apply refine_under_bind.
+    destruct a; simpl; intros.
+    - refine pick val _; [reflexivity | intuition ].
+    - inversion_by computes_to_inv; simpl in H.
+      f_equiv.
+      apply refine_pick_val.
+      unfold Same_set, Included; intuition; unfold In in *.
   Qed.
 
 End UpdateMissingKeyStrategies.
@@ -202,7 +219,7 @@ Section CacheEvictionStrategies.
                                   Else
                                   ret (EnsembleInsert kv r)).
   Proof.
-    intros; rewrite refine_Pick_Some with
+    intros; rewrite refine_Pick_If_Then_Opt with
             (P := fun k' => exists v', r (k', v')).
     f_equiv; unfold pointwise_relation; intros; simpl.
     destruct a;
@@ -220,7 +237,7 @@ Section CacheEvictionStrategies.
   Lemma refine_pick_KeyToBeReplaced_never
   : forall (r : Ensemble (Key * Value)),
       refine {k_opt | forall k',
-                         k_opt = Some k' -> 
+                         k_opt = Some k' ->
                          exists v', r (k', v')}
              (ret None).
   Proof.
@@ -258,7 +275,7 @@ Section CacheEvictionStrategies.
   : forall (r : Ensemble (Key * Value) *
                 Ensemble (Key * nat)),
       refine {k_opt | forall k',
-                         k_opt = Some k' -> 
+                         k_opt = Some k' ->
                          exists v', fst r (k', v')}
              {k_opt | forall k',
                          k_opt = Some k' ->
@@ -278,7 +295,7 @@ Section CacheEvictionStrategies.
   : forall (r : Ensemble (Key * Value) *
                 Ensemble (Key * nat)),
       refine {k_opt | forall k',
-                         k_opt = Some k' -> 
+                         k_opt = Some k' ->
                          exists v', fst r (k', v')}
              {k_opt | forall k',
                          k_opt = Some k' ->
@@ -356,6 +373,27 @@ Section CacheEvictionStrategies.
         simpl in *; intuition; injections; eauto.
       apply H0 in H3; destruct_ex; eauto.
       apply H1 in H3; destruct_ex; eauto.
+    Qed.
+
+    Lemma KVEnsemble_EquivalentKeys_Update {B C} :
+      forall (ens : Ensemble (Key * B))
+             (ens' : Ensemble (Key * C)),
+        KVEnsemble_EquivalentKeys ens ens'
+        -> forall k f g,
+             KVEnsemble_EquivalentKeys (EnsembleUpdate k ens f)
+                                       (EnsembleUpdate k ens' g).
+    Proof.
+      unfold KVEnsemble_EquivalentKeys, EnsembleUpdate,
+        EnsembleReplace, EnsembleRemove in *;
+        simpl in *; intuition; injections; eauto; subst.
+      destruct_ex; intuition; eauto; subst.
+      apply H0 in H3; destruct_ex; eauto.
+      exists (g x0); left; intuition; eauto.
+      apply H0 in H3; destruct_ex; eauto.
+      destruct_ex; intuition; subst.
+      apply H1 in H3; destruct_ex;
+      eexists; left; intuition; eauto.
+      apply H1 in H3; destruct_ex;  eauto.
     Qed.
 
     Lemma KVEnsemble_EquivalentKeys_Refl {B} :
@@ -449,6 +487,22 @@ Section CacheEvictionStrategies.
       unfold refine; intros; inversion_by computes_to_inv;
       subst; econstructor.
       eauto using KVEnsemble_EquivalentKeys_Replace.
+    Qed.
+
+    Lemma refine_pick_KVEnsembleUpdate {B C}
+    : forall (ens : Ensemble (Key * B))
+                (ens' : Ensemble (Key * C)),
+        KVEnsemble_EquivalentKeys ens ens'
+        -> forall k f,
+             refine
+               {ens'' | KVEnsemble_EquivalentKeys
+                          (EnsembleUpdate k ens f) ens''}
+               (b <- {b | @PickID C b};
+                ret (EnsembleUpdate k ens' (fun _ => b))).
+    Proof.
+      unfold refine; intros; inversion_by computes_to_inv;
+      subst; econstructor.
+      eauto using KVEnsemble_EquivalentKeys_Update.
     Qed.
 
     Lemma refine_pick_KVEnsemble {B C} :
@@ -562,6 +616,55 @@ Section BoundedStringCacheADT.
     destruct (H4 _ H3).
     eauto using StringIndexedMap.find_1, StringIndexedMap.add_2,
     StringIndexedMap.find_2.
+  Qed.
+
+  Lemma AbsR_add_EnsembleUpdate {A}
+  : forall nr k f or v,
+      EnsembleFMapEquivalence or nr
+      -> StringIndexedMap.find (elt:=A) k nr = Some v
+      -> EnsembleFMapEquivalence
+           (EnsembleUpdate k or f)
+           (StringIndexedMap.add k (f v) nr).
+  Proof.
+    unfold EnsembleUpdate, EnsembleRemove,
+    EnsembleFMapEquivalence;
+    intros; intuition.
+    destruct (string_dec k0 k); subst.
+    left.
+    rewrite (StringIndexedMap.find_1 (StringIndexedMap.add_1 nr (f v) (refl_equal k)))
+      in *; simpl in *; f_equal; injections; intuition.
+    eexists; split; eauto.
+    eapply H; eauto.
+    right; split; eauto.
+    eapply H.
+    eauto using StringIndexedMap.find_1, StringIndexedMap.add_3,
+    StringIndexedMap.find_2.
+    subst; simpl in *.
+    eexists; eauto using StringIndexedMap.find_1, StringIndexedMap.add_1.
+    destruct (string_dec k0 k); subst.
+    eexists; eauto using StringIndexedMap.find_1, StringIndexedMap.add_1.
+    destruct (H k0).
+    destruct (H4 _ H3).
+    eauto using StringIndexedMap.find_1, StringIndexedMap.add_2,
+    StringIndexedMap.find_2.
+  Qed.
+
+  Lemma AbsR_add_EnsembleUpdate' {A}
+  : forall nr k f or,
+      EnsembleFMapEquivalence or nr
+      -> StringIndexedMap.find (elt:=A) k nr = None
+      -> EnsembleFMapEquivalence (EnsembleUpdate k or f) nr.
+  Proof.
+    unfold EnsembleUpdate, EnsembleRemove,
+    EnsembleFMapEquivalence;
+    intros; intuition.
+    destruct (string_dec k0 k); subst.
+    rewrite H0 in H1; discriminate.
+    right; intuition; eapply H; eauto.
+    subst; simpl in *.
+    destruct_ex; intuition; eapply H in H3; subst.
+    destruct_ex; rewrite H0 in *; discriminate.
+    eapply H; eauto.
   Qed.
 
   Lemma AbsR_add_EnsembleInsert {A}
@@ -704,20 +807,56 @@ Section BoundedStringCacheADT.
 
   Definition find_minimum_Key
              (indices : StringIndexedMap.t nat)
-  : option (string * nat) := 
-    StringIndexedMap.fold 
-      (fun k idx sv => 
-         Ifopt sv as sv' 
-                       Then 
-                         if (lt_dec idx (snd sv') ) 
+  : option (string * nat) :=
+    StringIndexedMap.fold
+      (fun k idx sv =>
+         Ifopt sv as sv'
+                       Then
+                         if (lt_dec idx (snd sv') )
                          then Some (k, idx)
                          else Some sv'
                        Else
                          Some (k, idx))
       indices None.
 
+  Lemma find_minimum_Key_correct :
+    forall indices kv,
+      find_minimum_Key indices = Some kv ->
+      forall k v, StringIndexedMap.find k indices = Some v ->
+                  snd kv <= v.
+  Proof.
+    intros.
+    unfold find_minimum_Key in H.
+    rewrite StringIndexedMap.fold_1 in H.
+    apply StringIndexedMap.find_2 in H0.
+    apply StringIndexedMap.elements_1 in H0.
+    unfold StringIndexedMap.eq_key_elt in H0.
+    unfold StringIndexedMap.Raw.Proofs.PX.eqke in H0.
+    assert (   forall (k0 : StringIndexedMap.key) (v0 : nat) p',
+   fold_left
+     (fun (a : option (StringIndexedMap.key * nat))
+        (p : StringIndexedMap.key * nat) =>
+      Ifopt a as sv'
+      Then if lt_dec (snd p) (snd sv') then Some (fst p, snd p) else Some sv'
+      Else Some (fst p, snd p))
+     (StringIndexedMap.elements (elt:=nat) indices) p' =
+   Some kv ->
+   SetoidList.InA
+     (fun p p' : string * nat => fst p = fst p' /\ snd p = snd p')
+     (k0, v0) (StringIndexedMap.elements (elt:=nat) indices) ->
+   (snd kv <= v0 \/ Some kv = p')).
+    { clear; induction (StringIndexedMap.elements (elt:=nat) indices);
+      simpl; intros; subst.
+      destruct H0; simpl in *; subst; eauto.
+      destruct H0; simpl in *; subst; eauto; intuition; subst.
+      Focus 2.
+
+    generalize k v H H0.
+
+    induction (StringIndexedMap.elements (elt:=nat) indices).
+
   Lemma refine_pick_oldest {V} :
-    forall spec_indices impl_indices 
+    forall spec_indices impl_indices
            spec_values impl_values,
     EnsembleFMapEquivalence spec_indices impl_indices /\
     EnsembleFMapEquivalence spec_values impl_values /\
@@ -736,6 +875,24 @@ Section BoundedStringCacheADT.
     unfold EnsembleFMapEquivalence in *.
     unfold find_minimum_Key in *.
     rewrite StringIndexedMap.fold_1 in H2.
+    assert (forall l p opt, fold_left
+                        (fun (a : option (StringIndexedMap.key * nat))
+                             (p0 : StringIndexedMap.key * nat) =>
+                           Ifopt a as sv'
+                                        Then if lt_dec (snd p0) (snd sv')
+                                             then Some (fst p0, snd p0)
+                                             else Some sv' Else Some (fst p0, snd p0)) l opt = Some p
+                      -> ((exists k, List.In (k, snd p) l) \/ Some p = opt)
+                         /\ forall kv, List.In kv l -> snd p <= snd kv).
+    { clear; induction l; simpl.
+      split; intros; subst; eauto; intuition.
+      intros; destruct (IHl _ _ H); intuition.
+      destruct_ex; subst; eauto.
+      destruct_ex; subst; eauto.
+      eapply (H1 _ H0).
+      destruct opt; simpl in H0.
+      det
+
     admit.
   Qed.
 
@@ -789,9 +946,9 @@ Section BoundedStringCacheADT.
   Qed.
 
   Lemma FMapCommonKeys_find_None {A B}
-  : forall m m' k, 
-      FMapCommonKeys m m' 
-      -> StringIndexedMap.find (elt:=A) k m = None 
+  : forall m m' k,
+      FMapCommonKeys m m'
+      -> StringIndexedMap.find (elt:=A) k m = None
       -> StringIndexedMap.find (elt:=B) k m' = None .
   Proof.
     intros.
@@ -846,14 +1003,10 @@ Definition BoundedStringCacheADT
 
         setoid_rewrite refine_IgnoreUnusedKeyUpdate.
         simplify with monad laws.
-        setoid_rewrite refine_If_Then_Else_Bind.
-        setoid_rewrite refineEquiv_bind_unit; simpl.
-
-        setoid_rewrite (refine_pick_KVEnsemble H1).
-        setoid_rewrite (refine_pick_KVEnsembleReplace H1).
-        setoid_rewrite refineEquiv_bind_bind;
+        setoid_rewrite (refine_pick_KVEnsembleUpdate H1).
+        setoid_rewrite refineEquiv_bind_bind.
         setoid_rewrite refineEquiv_bind_unit.
-
+        simpl.
         finish honing.
       }
       hone method "LookupKey".
@@ -904,121 +1057,130 @@ Definition BoundedStringCacheADT
 
     hone method "UpdateKey".
     {
-        unfold BoundedStringCacheADT_AbsR in *; split_and.
+      unfold BoundedStringCacheADT_AbsR in *; split_and.
+      simplify with monad laws.
+      rewrite refine_pick_val by eauto using decides_usedKey.
+      simplify with monad laws; simpl.
+      refine pick val (snd r_n); unfold PickID; eauto;
+      simplify with monad laws.
+      etransitivity.
+      apply refine_Pick_Some_dec with
+      (P := fun b => StringIndexedMap.find (elt:=Value) (fst n) (fst (fst r_n)) = Some b); intros.
+      {
+        refine pick val
+               (StringIndexedMap.add (fst n) ((snd n) b) (fst (fst r_n)),
+                StringIndexedMap.add (fst n) (snd r_n) (snd (fst r_n)),
+                S (snd r_n)).
         simplify with monad laws.
-        rewrite refine_pick_val by eauto using decides_usedKey.
-        simplify with monad laws.
-        setoid_rewrite refine_If_Then_Else_Bind.
-        apply refine_If_Then_Else';
-        caseEq (StringIndexedMap.find (elt:=Value) (fst n) (fst (fst r_n))); simpl; try discriminate.
-        { refine pick val (snd r_n); unfold PickID; eauto.
-          simplify with monad laws.
-          simpl.
-          refine pick val
-                 (StringIndexedMap.add (fst n) (snd n) (fst (fst r_n)),
-                  StringIndexedMap.add (fst n) (snd r_n) (snd (fst r_n)),
-                  S (snd r_n)).
-          simplify with monad laws; reflexivity.
-          simpl; intuition.
-          eauto using AbsR_add_EnsembleReplace.
-          apply StringIndexedMap.find_2 in H3.
-          apply H2 in H3; destruct_ex.
-          simpl.
-          eapply AbsR_add_EnsembleReplace with
-          (kv := (_, _)); eauto using StringIndexedMap.find_1.
-          eauto using FMapCommonKeys_add.
-          eauto using indexBound_add.
-        }
-        { simplify with monad laws.
-          refine pick val _; eauto.
-          simplify with monad laws; simpl.
-          reflexivity.
-        }
+        rewrite H3.
+        higher_order_1_reflexivity.
+        simpl; intuition.
+        eauto using AbsR_add_EnsembleUpdate.
+        apply StringIndexedMap.find_2 in H3.
+        apply H2 in H3; destruct_ex.
+        eapply AbsR_add_EnsembleUpdate with (f := fun _ => snd r_n);
+          eauto using StringIndexedMap.find_1.
+        eauto using FMapCommonKeys_add.
+        eauto using indexBound_add.
+      }
+      {
+        refine pick val _; eauto.
+        simplify with monad laws; simpl.
+        reflexivity.
+        caseEq (StringIndexedMap.find (elt:=Value) (fst n) (fst (fst r_n)));
+          try solve [elimtype False; eapply H3; eauto];
+          intuition; eauto using AbsR_add_EnsembleUpdate'.
+        eapply AbsR_add_EnsembleUpdate'; eauto using FMapCommonKeys_find_None.
+      }
+      refine pick val (StringIndexedMap.find (elt:=Value) (fst n) (fst (fst r_n)));
+        try (split; congruence).
+      simplify with monad laws.
+      finish honing.
     }
 
-      hone method "AddKey".
-      {
-        unfold BoundedStringCacheADT_AbsR in *; split_and.
-        simplify with monad laws.
-        rewrite refine_pick_val by eauto using decides_usedKey.
-        simplify with monad laws.
-        setoid_rewrite refine_If_Then_Else_Bind.
-        etransitivity.
-        apply refine_If_Then_Else';
+    hone method "AddKey".
+    {
+      unfold BoundedStringCacheADT_AbsR in *; split_and.
+      simplify with monad laws.
+      rewrite refine_pick_val by eauto using decides_usedKey.
+      simplify with monad laws.
+      setoid_rewrite refine_If_Then_Else_Bind.
+      etransitivity.
+      apply refine_If_Then_Else';
         caseEq (StringIndexedMap.find (elt:=Value) (fst n) (fst (fst r_n))); simpl; try discriminate.
-        (* If the key is used, do this. *)
-        + simplify with monad laws.
+      (* If the key is used, do this. *)
+      + simplify with monad laws.
+        refine pick val (snd r_n); unfold PickID; eauto.
+        simplify with monad laws; simpl.
+        refine pick val ((_, _), _);
+          [ |
+            simpl; intuition;
+            simpl; eauto using
+                         AbsR_add_EnsembleReplace,
+                   AbsR_add_EnsembleInsertRemove,
+                   FMapCommonKeys_remove,
+                   FMapCommonKeys_add,
+                   indexBound_add_remove].
+        simplify with monad laws.
+        reflexivity.
+      + (* If the key is not used, do this. *)
+        simplify with monad laws.
+        (* Check to see if we've hit the bound. *)
+        apply (refine_if (b := if (gt_dec (snd r_n) Bound)
+                               then true
+                               else false)); intros.
+        (* If we have, then pick a key to remove. *)
+        rewrite refine_pick_oldest; eauto.
+        simplify with monad laws.
+        rewrite refine_If_Opt_Then_Else_Bind.
+        (* Should add a constaint that Bound is greater
+             than zero- then we can do away with this check. *)
+        apply refine_If_Opt_Then_Else.
+        * unfold pointwise_relation; intros.
           refine pick val (snd r_n); unfold PickID; eauto.
           simplify with monad laws; simpl.
-          refine pick val ((_, _), _);
+          refine pick val ((_, _), S (snd r_n));
             [ |
-              simpl; intuition;
+              simpl; split; [ | split; [ | split ] ];
               simpl; eauto using
-                           AbsR_add_EnsembleReplace,
-                     AbsR_add_EnsembleInsertRemove,
+                           AbsR_add_EnsembleInsertRemove,
                      FMapCommonKeys_remove,
                      FMapCommonKeys_add,
                      indexBound_add_remove].
+          simplify with monad laws; simpl.
+          higher_order_1_reflexivity.
+        * refine pick val (snd r_n); unfold PickID; eauto.
+          simplify with monad laws; simpl.
+          refine pick val ((_, _), S (snd r_n));
+            [ |
+              simpl; intuition
+                       simpl; eauto using
+                                    AbsR_add_EnsembleInsert,
+                              FMapCommonKeys_add,
+                              indexBound_add;
+              eapply (AbsR_add_EnsembleInsert (_, _));
+              simpl; eauto using FMapCommonKeys_find_None].
           simplify with monad laws.
           reflexivity.
-        + (* If the key is not used, do this. *)
+        * refine pick val None; try discriminate.
           simplify with monad laws.
-          (* Check to see if we've hit the bound. *)
-          apply (refine_if (b := if (gt_dec (snd r_n) Bound)
-                                    then true
-                                    else false)); intros.
-          (* If we have, then pick a key to remove. *)
-          rewrite refine_pick_oldest; eauto.
+          refine pick val (snd r_n); unfold PickID; eauto.
+          simplify with monad laws; simpl.
+          refine pick val ((_, _), S (snd r_n));
+            [ |
+              simpl; intuition
+                       simpl; eauto using
+                                    AbsR_add_EnsembleInsert,
+                              FMapCommonKeys_add,
+                              indexBound_add;
+              eapply (AbsR_add_EnsembleInsert (_, _));
+              simpl; eauto using FMapCommonKeys_find_None].
           simplify with monad laws.
-          rewrite refine_If_Opt_Then_Else_Bind.
-          (* Should add a constaint that Bound is greater
-             than zero- then we can do away with this check. *)
-          apply refine_If_Opt_Then_Else.
-          * unfold pointwise_relation; intros.
-            refine pick val (snd r_n); unfold PickID; eauto.
-            simplify with monad laws; simpl.
-            refine pick val ((_, _), S (snd r_n));
-              [ |
-                simpl; split; [ | split; [ | split ] ];
-                simpl; eauto using
-                     AbsR_add_EnsembleInsertRemove,
-                       FMapCommonKeys_remove,
-                       FMapCommonKeys_add,
-                       indexBound_add_remove].
-            simplify with monad laws; simpl.
-            higher_order_1_reflexivity.
-          * refine pick val (snd r_n); unfold PickID; eauto.
-            simplify with monad laws; simpl.
-            refine pick val ((_, _), S (snd r_n));
-              [ |
-                simpl; intuition
-                simpl; eauto using
-                             AbsR_add_EnsembleInsert,
-                       FMapCommonKeys_add,
-                       indexBound_add;
-                eapply (AbsR_add_EnsembleInsert (_, _));
-                simpl; eauto using FMapCommonKeys_find_None].
-            simplify with monad laws.
-            reflexivity.
-          * refine pick val None; try discriminate.
-            simplify with monad laws.
-            refine pick val (snd r_n); unfold PickID; eauto.
-            simplify with monad laws; simpl.
-            refine pick val ((_, _), S (snd r_n));
-              [ |
-                simpl; intuition
-                simpl; eauto using
-                             AbsR_add_EnsembleInsert,
-                       FMapCommonKeys_add,
-                       indexBound_add;
-                eapply (AbsR_add_EnsembleInsert (_, _));
-                simpl; eauto using FMapCommonKeys_find_None].
-            simplify with monad laws.
-            reflexivity.            
-          + finish honing.
-      }
+          reflexivity.
+      + finish honing.
+    }
 
-      finish sharpening.
+    finish sharpening.
     Defined.
 
 End BoundedStringCacheADT.

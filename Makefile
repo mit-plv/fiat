@@ -49,7 +49,6 @@ SRC_MODULES    := \
 	QueryStructure/QuerySpecs/QueryQSSpecs \
 	QueryStructure/QuerySpecs/InsertQSSpecs \
 	QueryStructure/QuerySpecs/EnsembleListEquivalence \
-	QueryStructure/QuerySpecs/EnsembleListEquivalenceProperties \
 	QueryStructure/QueryStructureNotations \
 	QueryStructure/Refinements/GeneralQueryRefinements \
 	QueryStructure/Refinements/GeneralInsertRefinements \
@@ -58,9 +57,10 @@ SRC_MODULES    := \
 	QueryStructure/SetEqProperties \
 	QueryStructure/AdditionalLemmas \
 	QueryStructure/tupleAgree \
-	QueryStructure/Refinements/AdditionalMorphisms \
 	QueryStructure/Refinements/AdditionalRefinementLemmas \
 	QueryStructure/Refinements/AdditionalPermutationLemmas \
+	QueryStructure/Refinements/EnsembleListEquivalenceProperties \
+	QueryStructure/Refinements/AdditionalMorphisms \
 	QueryStructure/Refinements/flattenCompListProperties \
 	QueryStructure/Refinements/ConstraintChecksRefinements \
 	QueryStructure/Refinements/ListImplementation/ListQueryRefinements \

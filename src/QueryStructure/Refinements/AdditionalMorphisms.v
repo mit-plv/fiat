@@ -40,7 +40,7 @@ Add Parametric Morphism {A: Type} :
 Proof.
   intros * equiv seq;
   unfold pointwise_relation in equiv;
-  induction seq as [ | h t IH ]; 
+  induction seq as [ | h t IH ];
   simpl;
   [ | rewrite equiv, IH ];
   trivial.
@@ -94,7 +94,7 @@ Proof.
   intros * equiv * is_perm.
 
   induction is_perm; simpl; rewrite ?equiv.
-  
+
   constructor.
   destruct_ifs; try constructor;
   erewrite filter_eq_restricted_morphism; eauto; symmetry; eassumption.
@@ -120,7 +120,7 @@ Add Parametric Morphism {A: Type} :
       as flatten_permutation_morphism.
 Proof.
   intros * is_perm.
-  
+
   induction is_perm; simpl.
 
   constructor.
@@ -168,10 +168,10 @@ Proof.
   apply Permutation_app.
   rewrite Permutation_app_comm;
     apply Permutation_app; apply equiv.
-  
+
   apply flatten_map_permutation_eq_permutation_morphism; eauto.
 
-  etransitivity; 
+  etransitivity;
     [ etransitivity; [ eauto | ] | eauto ].
 
   apply flatten_map_permutation_eq_permutation_morphism; try (symmetry; eauto).
@@ -194,7 +194,7 @@ Add Parametric Morphism {A B} :
 Proof.
   intros * equiv ** seq.
   induction seq; simpl; [ | rewrite equiv, IHseq ]; reflexivity.
-Qed.      
+Qed.
 
 Add Parametric Morphism {A B} :
   (flat_map (B := A * B))
@@ -209,7 +209,7 @@ Add Parametric Morphism {A: Type} :
   (@app A)
     with signature (@Permutation A ==> @Permutation A ==> @Permutation A)
       as app_permutation_permutation_permutation_morphism.
-Proof.        
+Proof.
   intros; apply Permutation_app; assumption.
 Qed.
 
@@ -221,7 +221,7 @@ Proof.
   apply Permutation_rev'_Proper.
 Qed.
 
-Definition pointwise2_relation := 
+Definition pointwise2_relation :=
   fun (A A': Type) {B : Type} (R : relation B) (f g : A -> A' -> B) =>
     forall a a', R (f a a') (g a a').
 
@@ -252,7 +252,7 @@ Require Import Program Arith.
 (* TODO: Move this to a separate file *)
 Lemma length_flat_map :
   forall {A B} seq (f: A -> list B),
-    List.length (flat_map f seq) = 
+    List.length (flat_map f seq) =
     fold_left (fun count (x : A) => count + List.length (f x)) seq 0.
 Proof.
   intros; rewrite (Permutation_length (flat_map_rev_permutation seq f));
@@ -277,7 +277,7 @@ Qed.
 
 Require Import InsertQSSpecs.
 
-Add Morphism 
+Add Morphism
     (decides)
     with signature (eq ==> iff ==> iff)
       as decide_eq_iff_iff_morphism.
