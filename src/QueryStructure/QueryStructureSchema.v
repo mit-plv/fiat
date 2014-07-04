@@ -130,6 +130,10 @@ Instance Astring_eq : Query_eq string := {| A_eq_dec := string_dec |}.
 
 Instance Anat_eq : Query_eq nat := {| A_eq_dec := eq_nat_dec |}.
 
+Require Import NArith ZArith.
+Instance AN_eq : Query_eq N := {| A_eq_dec := N.eq_dec |}.
+Instance AZ_eq : Query_eq Z := {| A_eq_dec := Z.eq_dec |}.
+
 Notation GetAttributeKey Rel index :=
   ((fun x : Attributes (GetNRelSchemaHeading (qschemaSchemas _) Rel) => x)  {| bindex := index |}).
 
