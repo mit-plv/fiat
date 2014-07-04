@@ -157,6 +157,18 @@ Section AdditionalBoolLemmas.
     intros n1 n2; destruct (eq_nat_dec n1 n2); simpl; intuition.
   Qed.
 
+  Lemma eq_N_dec_bool_true_iff :
+    forall n1 n2 : N, (if N.eq_dec n1 n2 then true else false) = true <-> n1 = n2.
+  Proof.
+    intros; destruct (N.eq_dec _ _); intuition.
+  Qed.
+
+  Lemma eq_Z_dec_bool_true_iff :
+    forall n1 n2 : Z, (if Z.eq_dec n1 n2 then true else false) = true <-> n1 = n2.
+  Proof.
+    intros; destruct (Z.eq_dec _ _); intuition.
+  Qed.
+
   Lemma bool_equiv_true:
     forall (f g: bool),
       (f = true <-> g = true) <-> (f = g).

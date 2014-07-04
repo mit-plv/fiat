@@ -90,7 +90,8 @@ EXAMPLE_MODULES := \
 	ProcessScheduler/DBSchema \
 	ProcessScheduler/ListBasedRefinement \
 	Bookstore \
-	BookstoreNaive
+	BookstoreNaive \
+	Weather
 
 # ADTExamples/QueryStructure/ProcessScheduler/TreeBasedRefinement \
 # ADTExamples/CombineBinaryOperationsSpec

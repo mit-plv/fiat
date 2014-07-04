@@ -23,3 +23,9 @@
 /Overview/coqdoc.sty
 /all.pdf
 /html
+*.a
+*.cm*
+*.o
+examples/bookstore.ml
+examples/bookstore.mli
+examples/repl
