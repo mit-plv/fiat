@@ -153,6 +153,7 @@ Ltac asPerm_indep :=
          _lists produces code that loops on the ls1 first *)
       setoid_rewrite (swap_joins ls1 (filter f ls2)); trickle_swap; simp
     | _ => setoid_rewrite filter_join_lists; simp
+    | _ => setoid_rewrite <- filter_and
   end.
 
 Ltac fields storage :=
@@ -219,43 +220,61 @@ Ltac find_usage F k :=
       k G
   end.
 
-Ltac findGoodTerm_dep F k :=
+Ltac findGoodTerm_dep SC F k :=
   match F with
-    | fun a b => ?[@?f a b] =>
-      match type of f with
-        | forall a b, {a!?fd = _} + {_} => k fd
-        | forall a, {_ = a!?fd} + {_} => k fd
-      end
+  | fun (a : ?T) b => ?[@?f a b] =>
+    match type of f with
+    | forall a b, {@?X a = _!?fd} + {_} => k (fd, X) (fun _ : T => @nil (TSearchTermMatcher SC))
+    | forall a b, {_!?fd = @?X a} + {_} => k (fd, X) (fun _ : T => @nil (TSearchTermMatcher SC))
+    | forall a b, {@?X a = _``?fd} + {_} => k (fd, X) (fun _ : T => @nil (TSearchTermMatcher SC))
+    | forall a b, {_``?fd = @?X a} + {_} => k (fd, X) (fun _ : T => @nil (TSearchTermMatcher SC))
+    end
+  | fun (a : ?T) b => (@?f a b) && (@?g a b) =>
+    findGoodTerm_dep SC f ltac:(fun fds1 tail1 =>
+      findGoodTerm_dep SC g ltac:(fun fds2 tail2 =>
+        k (fds1, fds2) (fun x : T => tail1 x ++ tail2 x)%list))
+  | _ => k tt (fun x => F x :: nil)
   end.
 
-Ltac createTerm_dep dom SC f fd fs k :=
+Ltac findMatchingTerm fds s k :=
+  match fds with
+    | (?fd, ?X) =>
+      let H := fresh in assert (H : bindex s = fd) by reflexivity; clear H;
+        k X
+    | (?fds1, ?fds2) => findMatchingTerm fds1 s k || findMatchingTerm fds2 s k
+  end.
+
+Ltac createTerm_dep dom SC f fds fs k :=
   match fs with
   | nil =>
     k (fun x : dom => @nil (TSearchTermMatcher SC))
   | ?s :: ?fs' =>
-    createTerm_dep dom SC f fd fs' ltac:(fun rest =>
-      (let H := fresh in assert (H : bindex s = fd) by reflexivity; clear H;
-       k (fun x : dom => (Some (x!fd), rest x))
-        || k (fun x : dom => (@None (f s), rest x))))
+    createTerm_dep dom SC f fds fs' ltac:(fun rest =>
+      findMatchingTerm fds s ltac:(fun X =>
+        k (fun x : dom => (Some (X x), rest x)))
+      || k (fun x : dom => (@None (f s), rest x)))
   end.
 
-Ltac makeTerm_dep storage dom fd k :=
+Ltac makeTerm_dep SC storage dom fds k :=
   let fs := fields storage in
-  match type of fs with
-    | list (Attributes ?SC) =>
-      match eval hnf in SC with
-        | Build_Heading ?f =>
-          createTerm_dep dom SC f fd fs k
-      end
+  match eval hnf in SC with
+    | Build_Heading ?f =>
+      createTerm_dep dom SC f fds fs k
   end.
 
 Ltac useIndex_dep storage :=
-  match goal with
-    | [ |- context[fun x : ?dom => @?F x] ] => find_usage F ltac:(fun G =>
-        findGoodTerm_dep G ltac:(fun fd =>
-          makeTerm_dep storage dom fd ltac:(fun tm =>
-            rewrite dependent filter G over storage
-                    using dependent search term tm)))
+  let fs := fields storage in
+  match type of fs with
+    | list (Attributes ?SC) =>
+      match goal with
+        | [ |- context[fun x : ?dom => @?F x] ] => find_usage F ltac:(fun G =>
+          findGoodTerm_dep SC G ltac:(fun fds rest =>
+            let rest := eval simpl in rest in
+            makeTerm_dep SC storage dom fds ltac:(fun tm =>
+              let tm := eval simpl in tm in
+                rewrite dependent filter G over storage
+                        using dependent search term tm)))
+      end
   end.
 
 Ltac asPerm_dep' storage := useIndex storage || useIndex_dep storage.

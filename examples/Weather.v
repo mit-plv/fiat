@@ -45,7 +45,6 @@ Definition WeatherSig : ADTSig :=
       "AddCell"        : rep × (WeatherSchema#CELLS)        → rep × bool,
       "AddMeasurement" : rep × (WeatherSchema#MEASUREMENTS) → rep × bool,
       "CountCells"     : rep × AreaCode                        → rep × nat,
-(*      "CellIsActive"   : rep × nat                          → rep × bool, *)
       "LocalMax"       : rep × (AreaCode * MeasurementType)    → rep × option Z
     }.
 
