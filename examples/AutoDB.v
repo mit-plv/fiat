@@ -164,35 +164,44 @@ Ltac fields storage :=
 Ltac makeEvar T k :=
   let x := fresh in evar (x : T); let y := eval unfold x in x in clear x; k y.
 
-Ltac createTerm SC f fd X tail fs k :=
+Ltac findMatchingTerm fds s k :=
+  match fds with
+    | (?fd, ?X) =>
+      let H := fresh in assert (H : bindex s = fd) by reflexivity; clear H;
+        k X
+    | (?fds1, ?fds2) => findMatchingTerm fds1 s k || findMatchingTerm fds2 s k
+  end.
+
+Ltac createTerm f fds tail fs k :=
   match fs with
   | nil =>
     k tail
   | ?s :: ?fs' =>
-    createTerm SC f fd X tail fs' ltac:(fun rest =>
-      (let H := fresh in assert (H : bindex s = fd) by reflexivity; clear H;
-       k (Some X, rest))
-        || k (@None (f s), rest))
+    createTerm f fds tail fs' ltac:(fun rest =>
+      findMatchingTerm fds s ltac:(fun X =>
+        k (Some X, rest))
+      || k (@None (f s), rest))
   end.
 
-Ltac makeTerm storage fs SC fd X tail k :=
+Ltac makeTerm storage fs SC fds tail k :=
   match eval hnf in SC with
-    | Build_Heading ?f =>
-      createTerm SC f fd X tail fs k
+  | Build_Heading ?f =>
+    createTerm f fds tail fs k
   end.
 
 Ltac findGoodTerm SC F k :=
   match F with
   | fun a => ?[@?f a] =>
     match type of f with
-    | forall a, {?X = _!?fd} + {_} => k fd X (@nil (TSearchTermMatcher SC))
-    | forall a, {_!?fd = ?X} + {_} => k fd X (@nil (TSearchTermMatcher SC))
-    | forall a, {?X = _``?fd} + {_} => k fd X (@nil (TSearchTermMatcher SC))
-    | forall a, {_``?fd = ?X} + {_} => k fd X (@nil (TSearchTermMatcher SC))
+    | forall a, {?X = _!?fd} + {_} => k (fd, X) (@nil (TSearchTermMatcher SC))
+    | forall a, {_!?fd = ?X} + {_} => k (fd, X) (@nil (TSearchTermMatcher SC))
+    | forall a, {?X = _``?fd} + {_} => k (fd, X) (@nil (TSearchTermMatcher SC))
+    | forall a, {_``?fd = ?X} + {_} => k (fd, X) (@nil (TSearchTermMatcher SC))
     end
   | fun a => (@?f a) && (@?g a) =>
-    findGoodTerm SC f ltac:(fun fd X tail => k fd X (g :: tail))
-    || findGoodTerm SC g ltac:(fun fd X tail => k fd X (f :: tail))
+    findGoodTerm SC f ltac:(fun fds1 tail1 =>
+      findGoodTerm SC g ltac:(fun fds2 tail2 =>
+        k (fds1, fds2) (tail1 ++ tail2)%list))
   end.
 
 Ltac useIndex storage :=
@@ -201,8 +210,10 @@ Ltac useIndex storage :=
       let fs := fields storage in
       match type of fs with
         | list (Attributes ?SC) =>
-          findGoodTerm SC F ltac:(fun fd X tail => makeTerm storage fs SC fd X tail
-            ltac:(fun tm => rewrite filter over storage using search term tm))
+          findGoodTerm SC F ltac:(fun fds tail =>
+            let tail := eval simpl in tail in
+              makeTerm storage fs SC fds tail
+              ltac:(fun tm => rewrite filter over storage using search term tm))
       end
   end.
 
@@ -234,14 +245,6 @@ Ltac findGoodTerm_dep SC F k :=
       findGoodTerm_dep SC g ltac:(fun fds2 tail2 =>
         k (fds1, fds2) (fun x : T => tail1 x ++ tail2 x)%list))
   | _ => k tt (fun x => F x :: nil)
-  end.
-
-Ltac findMatchingTerm fds s k :=
-  match fds with
-    | (?fd, ?X) =>
-      let H := fresh in assert (H : bindex s = fd) by reflexivity; clear H;
-        k X
-    | (?fds1, ?fds2) => findMatchingTerm fds1 s k || findMatchingTerm fds2 s k
   end.
 
 Ltac createTerm_dep dom SC f fds fs k :=
