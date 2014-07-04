@@ -202,6 +202,7 @@ Ltac findGoodTerm SC F k :=
     findGoodTerm SC f ltac:(fun fds1 tail1 =>
       findGoodTerm SC g ltac:(fun fds2 tail2 =>
         k (fds1, fds2) (tail1 ++ tail2)%list))
+  | _ => k tt (F :: nil)
   end.
 
 Ltac useIndex storage :=
@@ -387,7 +388,18 @@ Ltac pickIndex :=
   rewrite refine_pick_val by eauto using EnsembleIndexedListEquivalence_pick_new_index;
   simplify with monad laws.
 
-Ltac foreignToQuery :=
+Ltac revealSchema :=
+  repeat match goal with
+         | [ x : ?T |- _ ] =>
+           match T with
+           | _#_ => fail 1
+           | _ => red in x; match type of x with
+                            | _#_ => idtac
+                            end
+           end
+         end.
+
+Ltac foreignToQuery := revealSchema;
   match goal with
     | [ _ : ?SC#_ |- context[Pick (fun b' => decides b' (exists tup2 : @IndexedTuple ?H, (_!?R)%QueryImpl tup2 /\ ?r ``?s = _ ))] ] =>
       let T' := constr:(@Tuple (schemaHeading
