@@ -409,9 +409,22 @@ Ltac higher_order_1_reflexivity' :=
     cbv beta;
     solve [apply reflexivity].
 
+Ltac sym_higher_order_1_reflexivity' :=
+  let a := match goal with |- ?R (?f ?x) ?a => constr:(a) end in
+  let f := match goal with |- ?R (?f ?x) ?a => constr:(f) end in
+  let x := match goal with |- ?R (?f ?x) ?a => constr:(x) end in
+  let a' := (eval pattern x in a) in
+  let f' := match a' with ?f' _ => constr:(f') end in
+  unify f f';
+    cbv beta;
+    solve [apply reflexivity].
+
+(* refine is an antisymmetric relation, so we can try to apply
+   symmetric versions of higher_order_1_reflexivity. *)
+
 Ltac higher_order_1_reflexivity :=
   solve [ higher_order_1_reflexivity'
-        | apply symmetry; higher_order_1_reflexivity' ].
+        | sym_higher_order_1_reflexivity' ].
 
   (* This applies reflexivity after refining a method. *)
 
@@ -426,9 +439,20 @@ Ltac higher_order_2_reflexivity' :=
     cbv beta;
     solve [apply reflexivity].
 
+Ltac sym_higher_order_2_reflexivity' :=
+  let x := match goal with |- ?R (?f ?a ?b) ?x => constr:(x) end in
+  let f := match goal with |- ?R (?f ?a ?b) ?x => constr:(f) end in
+  let a := match goal with |- ?R (?f ?a ?b) ?x => constr:(a) end in
+  let b := match goal with |- ?R (?f ?a ?b) ?x => constr:(b) end in
+  let x' := (eval pattern a, b in x) in
+  let f' := match x' with ?f' _ _ => constr:(f') end in
+  unify f f';
+    cbv beta;
+    solve [apply reflexivity].
+
 Ltac higher_order_2_reflexivity :=
   solve [ higher_order_2_reflexivity'
-        | apply symmetry; higher_order_2_reflexivity' ].
+        | sym_higher_order_2_reflexivity' ].
 
 Axiom IsHProp : Type -> Type.
 Existing Class IsHProp.

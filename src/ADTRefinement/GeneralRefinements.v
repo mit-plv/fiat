@@ -1,4 +1,4 @@
-Require Import Common ADT.Core
+Require Import Common ADT.Core ADT.ComputationalADT
         ADTRefinement.Core ADTRefinement.SetoidMorphisms.
 
 (* To derive an ADT interactively from a specification [spec], we can
@@ -26,6 +26,8 @@ Require Import Common ADT.Core
 
 Notation Sharpened spec := {adt : _ & refineADT spec adt}.
 
+Notation FullySharpened spec := {adt : _ & prod (refineADT spec adt) (is_computationalADT adt)}.
+
 (* A single refinement step. *)
 Definition SharpenStep Sig adt :
   forall adt',
@@ -38,6 +40,16 @@ Proof.
   (* rewrite refineA. *)
   eapply transitivityT; [ eassumption | ].
   exact (projT2 SpecA').
+Defined.
+
+Definition SharpenFully Sig adt :
+  forall adt',
+    refineADT (Sig := Sig) adt adt' ->
+    Sharpened adt' ->
+    is_computationalADT adt' ->
+    FullySharpened adt.
+Proof.
+  eauto.
 Defined.
 
 (* A tactic for finishing a derivation. Probably needs a better name.*)

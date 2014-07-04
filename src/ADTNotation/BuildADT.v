@@ -1,5 +1,5 @@
 Require Import Common Computation Ensembles List String
-        ADT.ADTSig ADT.Core
+        ADT.ADTSig ADT.Core ADT.ComputationalADT
         ADTNotation.StringBound ADTNotation.ilist
         ADTNotation.BuildADTSig.
 
@@ -124,3 +124,7 @@ Notation "'ADTRep' r { cons1 , meth1 , .. , methn } " :=
 (* Notations for method calls. *)
 Notation callMeth adt idx := (Methods adt {| bindex := idx |}).
 Notation callCons adt idx := (Constructors adt {| bindex := idx |}).
+Notation CallMethod CompADT idx r i :=
+  (CallComputationalMethod CompADT {|bindex := idx |} r i).
+Notation CallConstructor CompADT idx i :=
+  (CallComputationalConstructor CompADT {|bindex := idx |} i).
