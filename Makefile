@@ -85,15 +85,13 @@ EXAMPLE_MODULES := \
 	ComputationExamples \
 	Trivial \
 	TrivialCache \
-	ProcessScheduler/State \
 	ProcessScheduler/DBSchema \
-	ProcessScheduler/ListBasedRefinement \
+	ProcessScheduler/TreeBasedRefinement \
 	Bookstore \
 	BookstoreNaive \
 	Weather Stocks
 #	CacheADT \
 
-# ADTExamples/QueryStructure/ProcessScheduler/TreeBasedRefinement \
 # ADTExamples/CombineBinaryOperationsSpec
 # ADTExamples/BinaryOperationSpec
 # ADTExamples/BinaryOperationImpl
