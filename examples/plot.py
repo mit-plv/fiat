@@ -11,7 +11,7 @@ def setParams(width_pt, scale = 1.0):
         width_in = width_pt / PTS_PER_INCH
         height_in = width_in * 2 * PHI
 
-        params = { 'lines.markersize': 6,
+        params = { 'lines.markersize': 3,
                    'lines.linewidth': 1,
                    'axes.labelsize': 9,
                    'xtick.labelsize': 9,
@@ -26,9 +26,10 @@ def setParams(width_pt, scale = 1.0):
         rcParams.update(params)
 
 setParams(240)
-linestyles = [' ', ' ', ' ', ' ', '-', '-', '-', '-', ':']
+color = "white"
+linestyles = ['-', '-', '-', '-', ':']
 markers = ['o', 's', 'o', 's']
-colors = ["#3465a4", "#73d216", "#f57900", "#cc0000", "#75507b"]
+colors = [color, color, color, color, "#3465a4", "#73d216", "#f57900", "#cc0000", "#75507b"]
 
 REFERENCE = 1
 INTERESTING = [3, 4, 5, 6]
@@ -47,17 +48,17 @@ for line in sys.stdin:
 
 fig, axes = pyplot.subplots(2, sharex=True)
 
-def average(group):
+def merge(group):
         group = tuple(group)
         #print(group)
         return sum(group) / len(group)
 
-def tuples_averages(tuples):
+def tuples_merge(tuples):
         grouped = zip(*tuples)
-        return (average(group) for group in grouped)
+        return (merge(group) for group in grouped)
 
 x, ys = zip(*sorted(curves.items()))
-ys = zip(*map(tuples_averages, ys))
+ys = zip(*map(tuples_merge, ys))
 
 ys = [ys[i] for i in [3,2,1,0]]
 ax = [0,0,1,1]
@@ -72,6 +73,7 @@ axes[0].legend(["NumOrders", "GetTitles"], loc=2)#, ncol=2)
 axes[1].legend(["PlaceOrder", "AddBook"], loc=2)#, ncol=2)
 
 for ax in axes:
+        ax.set_ylim(ymin=0)
         ax.yaxis.set_major_locator(ticker.MaxNLocator(nbins=5, prune='upper'))
 
 pyplot.subplots_adjust(hspace=0.5)
