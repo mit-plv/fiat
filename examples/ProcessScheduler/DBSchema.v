@@ -1,16 +1,9 @@
-Require Import String Omega List FunctionalExtensionality Ensembles
-        Computation ADT ADTRefinement ADTNotation QueryStructureSchema
-        BuildADTRefinements QueryQSSpecs InsertQSSpecs EmptyQSSpecs
-        QueryStructure GeneralInsertRefinements ListInsertRefinements
-        GeneralQueryRefinements ListQueryRefinements
-        AdditionalLemmas.
+Require Import AutoDB.
 
 Section ProcessSchedulerInterface.
-  Require Import QueryStructureNotations.
-
-  Definition PID_COLUMN := "pid".
-  Definition STATE_COLUMN := "state".
-  Definition CPU_COLUMN := "cpu".
+  Definition PID := "pid".
+  Definition STATE := "state".
+  Definition CPU := "cpu".
   Definition PROCESSES_TABLE := "processes".
 
   Definition State := nat.
@@ -18,22 +11,11 @@ Section ProcessSchedulerInterface.
   Definition RUNNING  := 1.
 
   Definition ProcessSchedulerSchema := Query Structure Schema [
-    relation PROCESSES_TABLE has schema <PID_COLUMN   :: nat,
-                                         STATE_COLUMN :: State,
-                                         CPU_COLUMN   :: nat>
-    where attributes [CPU_COLUMN; STATE_COLUMN] depend on [PID_COLUMN]
+    relation PROCESSES_TABLE has schema <PID   :: nat,
+                                         STATE :: State,
+                                         CPU   :: nat>
+    where attributes [CPU; STATE] depend on [PID]
   ] enforcing [].
-
-  Definition PROCESSES := GetRelationKey ProcessSchedulerSchema PROCESSES_TABLE.
-
-  Definition PID   := GetAttributeKey PROCESSES PID_COLUMN.
-  Definition STATE := GetAttributeKey PROCESSES STATE_COLUMN.
-  Definition CPU   := GetAttributeKey PROCESSES CPU_COLUMN.
-
-  Definition ProcessSchema :=
-    QSGetNRelSchemaHeading ProcessSchedulerSchema PROCESSES.
-
-  Definition Process := (@Tuple ProcessSchema).
 
   Definition SPAWN        := "Spawn".
   Definition ENUMERATE    := "Enumerate".
@@ -72,18 +54,18 @@ Section ProcessSchedulerInterface.
         const INIT (_ : unit) : rep := empty,
 
         update SPAWN (_ : unit) : bool :=
-          new_pid <- {n | ∀ p ∈ PROCESSES, (n <> p!PID_COLUMN)};
-          Insert <PID_COLUMN:: new_pid, STATE_COLUMN:: SLEEPING, CPU_COLUMN:: 0> into PROCESSES_TABLE,
+          new_pid <- {n | ∀ p ∈ ``(PROCESSES_TABLE), (n <> p!PID)};
+          Insert <PID:: new_pid, STATE:: SLEEPING, CPU:: 0> into PROCESSES_TABLE,
 
         query ENUMERATE (state : State) : list nat :=
           For (p in PROCESSES_TABLE)
-              Where (p STATE = state)
-              Return (p!PID_COLUMN),
+              Where (p!STATE = state)
+              Return (p!PID),
 
         query GET_CPU_TIME (id : nat) : list nat :=
           For (p in PROCESSES_TABLE)
-              Where (p!PID_COLUMN = id)
-              Return (p!CPU_COLUMN),
+              Where (p!PID = id)
+              Return (p!CPU),
 
         query COUNT (_ : unit) : nat :=
           Count (For (p in PROCESSES_TABLE)

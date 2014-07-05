@@ -1,11 +1,4 @@
-Require Import String Omega List FunctionalExtensionality Ensembles
-        Computation ADT ADTRefinement ADTNotation BuildADTRefinements
-        QueryStructureSchema QueryStructure
-        QueryQSSpecs InsertQSSpecs EmptyQSSpecs
-        GeneralInsertRefinements GeneralQueryRefinements
-        GeneralQueryStructureRefinements
-        ListQueryRefinements ListInsertRefinements
-        ListQueryStructureRefinements.
+Require Import AutoDB.
 
 Require Import Bags BagsOfTuples CachingBags Bool.
 Require Import DBSchema AdditionalLemmas AdditionalRefinementLemmas.
@@ -13,12 +6,15 @@ Require Export ADTRefinement.BuildADTRefinements.
 
 Unset Implicit Arguments.
 
-Definition StatePIDIndexedTree : @BagPlusBagProof Process.
-  mkIndex ProcessSchema [STATE; PID].
+Definition Processes := GetRelationKey ProcessSchedulerSchema PROCESSES_TABLE. 
+Definition ProcessHeading := QSGetNRelSchemaHeading ProcessSchedulerSchema Processes.
+
+Definition StatePIDIndexedTree : @BagPlusBagProof (@Tuple ProcessHeading).
+  mkIndex ProcessHeading [ProcessHeading/STATE; ProcessHeading/PID].
 Defined.
 
 Definition Storage := AddCachingLayer (BagProof StatePIDIndexedTree)
-                                      (fun p => p PID)
+                                      (fun p => p!PID)
                                       0 eq _ max ListMax_cacheable.
 
 Definition StorageType           := BagType Storage.
@@ -26,15 +22,11 @@ Definition StorageIsBag          := BagProof Storage.
 Definition StorageSearchTermType := SearchTermType Storage.
 
 Section TreeBasedRefinement.
-  Open Scope type_scope.
-  Open Scope Tuple_scope.
-
-  Notation "x '∈' y" := (In _ y x) (at level 50, no associativity).
-
-  Opaque Query_For.
-
-  Definition equivalence (set_db: UnConstrQueryStructure ProcessSchedulerSchema) (db: StorageType) :=
-    EnsembleIndexedListEquivalence (GetUnConstrRelation set_db PROCESSES) (benumerate db).
+  Definition ProcessScheduler_AbsR
+             (or : UnConstrQueryStructure ProcessSchedulerSchema)
+             (nr : StorageType) :=
+    EnsembleIndexedListEquivalence (or!PROCESSES_TABLE)%QueryImpl
+                                   (benumerate nr).
 
   Lemma NeatScheduler :
     Sharpened ProcessSchedulerSpec.
@@ -42,115 +34,78 @@ Section TreeBasedRefinement.
     unfold ProcessSchedulerSpec.
 
     unfold ForAll_In; start honing QueryStructure.
-
-    hone representation using equivalence.
+    hone representation using ProcessScheduler_AbsR.
 
     hone constructor INIT. {
-      unfold equivalence.
-
-      repeat setoid_rewrite refineEquiv_pick_ex_computes_to_and;
-      repeat setoid_rewrite refineEquiv_pick_eq';
+      unfold ProcessScheduler_AbsR in *.
       simplify with monad laws.
 
       rewrite (refine_pick_val' bempty) by (intuition; apply bempty_correct_DB).
       subst_body; higher_order_1_reflexivity.
     }
 
-    Opaque bfind benumerate.
-
     hone method ENUMERATE. {
-      unfold equivalence in *.
-      simplify with monad laws; cbv beta; simpl.
+      unfold ProcessScheduler_AbsR in *.
+      simplify with monad laws.
 
-      rewrite refine_List_Query_In by eassumption.
-      rewrite refine_List_Query_In_Where; instantiate (1 := _).
-      rewrite refine_List_For_Query_In_Return_Permutation.
-
+      concretize.
       rewrite filter over Storage using search term
-                (Some n, (@None nat, @nil (TSearchTermMatcher ProcessSchema))).
-
+                (Some n, (@None nat, @nil (TSearchTermMatcher ProcessHeading))).
       setoid_rewrite (bfind_correct _).
-      setoid_rewrite refine_Permutation_Reflexivity.
-      simplify with monad laws.
+      commit.
 
-      rewrite refine_pick_val by eassumption.
-      simplify with monad laws.
+      choose_db ProcessScheduler_AbsR.
       finish honing.
     }
 
-    (* TODO: s/Decideable/Decidable/ *)
-    (* TODO: Use rewrite by instead of [ ... | eassumption ] *)
-    (* TODO: Handle the 'projection' parameter differently;
-             right now it appears explicitly in plenty of
-             places, and since it is infered in KeyFilter
-             it makes it possble to swap same-type search terms,
-             delaying the failure until the call to bfind_correct *)
-    (* TODO: The backtick notation from bounded indexes cannot be input *)
-
     hone method GET_CPU_TIME. {
-      unfold equivalence in *.
-      simplify with monad laws; cbv beta; simpl.
+      unfold ProcessScheduler_AbsR in *.
+      simplify with monad laws.
 
-      rewrite refine_List_Query_In; eauto.
-      rewrite refine_List_Query_In_Where; instantiate (1 := _).
-      rewrite refine_List_For_Query_In_Return_Permutation.
-
+      concretize.
       rewrite filter over Storage using search term
-                (@None nat, (Some n, @nil (TSearchTermMatcher ProcessSchema))).
-
+                (@None nat, (Some n, @nil (TSearchTermMatcher ProcessHeading))).
       setoid_rewrite (bfind_correct _).
-      setoid_rewrite refine_Permutation_Reflexivity.
-      simplify with monad laws.
-
-      rewrite refine_pick_val by eassumption.
-      simplify with monad laws.
+      commit.
+      
+      choose_db ProcessScheduler_AbsR.
       finish honing.
     }
 
     hone method SPAWN. {
-      unfold equivalence in *.
-
-      lift list property (assert_cache_property (cfresh_cache r_n) max_cached_neq_projected _) as cache.
-      simplify with monad laws; cbv beta.
-
-      rewrite refine_pick_val by eassumption.
+      unfold ProcessScheduler_AbsR in *;
       simplify with monad laws.
 
-      rewrite refine_pick_val by eauto using EnsembleIndexedListEquivalence_pick_new_index.
-      simplify with monad laws.
+      lift list property (assert_cache_property (cfresh_cache r_n) 
+                                                max_cached_neq_projected _) as cache.
 
-      rewrite refine_tupleAgree_refl_True.
-      simplify with monad laws.
+      rewrite refine_pick_val by eassumption;
+        simplify with monad laws.
 
-      rewrite (refine_pick_val' true) by prove trivial constraints.
-      simplify with monad laws.
+      pruneDuplicates.
+      pickIndex.
 
-      rewrite (refine_pick_val' true) by prove trivial constraints.
-      simplify with monad laws.
+      rewrite (refine_pick_val' true) by prove trivial constraints;
+        simplify with monad laws.
 
-      rewrite refine_pick_val by binsert_correct_DB.
-      simplify with monad laws; simpl.
+      rewrite refine_pick_val by binsert_correct_DB;
+        simplify with monad laws; simpl.
+
       finish honing.
     }
  
     hone method COUNT. {
-      unfold equivalence in *.
-
-      simplify with monad laws.
-      
-      rewrite refine_List_Query_In; eauto.
-      rewrite refine_List_For_Query_In_Return_Permutation.
-      rewrite refine_Count.
-      rewrite refine_Permutation_Reflexivity.
+      unfold ProcessScheduler_AbsR in *.
       simplify with monad laws.
 
-      rewrite map_length.
-      simpl.
+      concretize.
+      rewrite <- (bfind_star _).
+      commit.
 
       rewrite refine_pick_val by eassumption.
       finish honing.
     }
 
-   finish sharpening.
+    finish sharpening.
   Defined.
 End TreeBasedRefinement.
