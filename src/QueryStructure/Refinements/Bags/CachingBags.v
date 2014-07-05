@@ -539,11 +539,6 @@ Section CacheableFunctions.
       apply Le.le_antisym; assumption.
     Qed.
 
-    (* TODO: rename SetEq_append to SetEq_cons *)
-
-    (* TODO: find a cleaner way than destruct; discriminate *)
-    (* TODO: Look at reflexive, discriminate, congruence, absurd in more details *)
-
     Lemma ListMax_strongly_cacheable :
       IsStronglyCacheable eq max.
     Proof.

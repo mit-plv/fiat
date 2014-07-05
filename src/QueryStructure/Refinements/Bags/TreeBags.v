@@ -180,7 +180,7 @@ Module TreeBag (Import M: WS).
 
     rewrite (binsert_enumerate_weak item' item bag).
     intro H; destruct H.
-    apply ((iconsistency container) k' bag); trivial. (* TODO: Why are parens significant here? *)
+    apply ((iconsistency container) k' bag); trivial.
 
     rewrite <- is_eq.
     unfold bag in *.
@@ -214,7 +214,7 @@ Module TreeBag (Import M: WS).
       iconsistency := indexed_bag_insert_consistent container item
     |}.
 
-  Add Parametric Morphism {A} : (* TODO: This speeds up code in elements_fold, but does it break anything? *)
+  Add Parametric Morphism {A} :
     (@cons A)
       with signature (eq ==> eq ==> eq)
         as cons_eq_eq_eq_morphism.

@@ -31,7 +31,6 @@ Lemma boxed_option_nil :
     (~ P x).
 Proof.
   unfold boxed_option; simpl; intros.
-  (* broken: inversion_by computes_to_inv. *)
   apply computes_to_inv in H.
   rewrite ret_computes_to, singleton_neq_nil in H.
   intuition.
@@ -69,7 +68,7 @@ Proof.
     rewrite app_eq_nil_iff in H.
     setoid_rewrite app_eq_nil_iff.
     eexists; eexists; intuition; subst; intuition constructor.
-  - inversion_by computes_to_inv. (* TODO: unfolding boxed_option here crashes inversion_by *)
+  - inversion_by computes_to_inv.
     pose proof H0; unfold boxed_option in H0.
     apply computes_to_inv in H0; simpl in H0.
     destruct H0 as (spec1 & spec2).

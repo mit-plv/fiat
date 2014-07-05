@@ -47,10 +47,8 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
     reflexivity.
   Qed.
 
-  (* TODO: Get rid of this *)
   Definition GetValues {A: Type} (db: t A) : list A  :=
     List.map snd (elements db).
-
 
   Definition IndexedBy {A} projection tree :=
     forall key (value: A),

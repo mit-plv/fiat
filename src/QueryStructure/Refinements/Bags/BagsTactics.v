@@ -54,7 +54,7 @@ Tactic Notation
        "rewrite" "filter" "over" reference(indexed_storage) 
        "using" "search" "term" constr(keyword) :=
   match goal with
-    | [ (*TODO: storage: BagType ?ind, *) H: EnsembleIndexedListEquivalence ?table (benumerate ?storage) 
+    | [ H: EnsembleIndexedListEquivalence ?table (benumerate ?storage) 
         |- appcontext [ filter ?filter1 (benumerate ?storage) ] ] => 
       let temp := fresh in 
       let filter2 := constr:(bfind_matcher (Bag := BagProof indexed_storage) keyword) in
