@@ -1,6 +1,9 @@
 open Bookstore;;
 open Str;;
 
+(* Gc.set { (Gc.get ()) with Gc.verbose = 0x01 };; *)
+(*  Gc.tune ~minor_heap_size:(262144 * 2) () ;; *)
+
 let extract (Some x) = x;;
 let now () = int_of_float (Unix.time ());;
 
@@ -73,6 +76,9 @@ let stats start_time iterations =
   (elapsed_time_ms /. float_of_int iterations)
 ;;
 
+let gc () =
+  Gc.compact ();;
+
 let benchmark nb_authors nb_books nb_orders nb_titles_queries nb_orders_queries store  =
   Printf.printf "Initialization\n";
   store        := extract (init_bookstore ());
@@ -83,6 +89,8 @@ let benchmark nb_authors nb_books nb_orders nb_titles_queries nb_orders_queries 
   let title_authors = Random.init 5; Array.init nb_titles_queries (fun _ -> names.(Random.int nb_authors)) in
   let order_authors = Random.init 6; Array.init nb_orders_queries (fun _ -> names.(Random.int nb_authors)) in
 
+  gc ();
+
   Printf.printf "Adding books...\n";
   let books_start = Unix.gettimeofday () in
   for iteration = 0 to nb_books - 1 do
@@ -90,12 +98,16 @@ let benchmark nb_authors nb_books nb_orders nb_titles_queries nb_orders_queries 
   done;
   let books_duration = stats books_start nb_books in 
 
+  gc ();
+
   Printf.printf "Placing orders\n";
   let orders_start = Unix.gettimeofday () in
   for iteration = 0 to nb_orders - 1 do
     let _ = run (place_order isbns.(iteration) iteration) store in ()
   done;
   let orders_duration = stats orders_start nb_orders in
+
+  gc ();
 
   Printf.printf "Getting titles\n";
   let titles_start = Unix.gettimeofday () in
@@ -105,6 +117,8 @@ let benchmark nb_authors nb_books nb_orders nb_titles_queries nb_orders_queries 
   done;
   let get_titles_duration = stats titles_start nb_titles_queries in 
 
+  gc ();
+
   Printf.printf "Counting orders\n";
   let orders_start = Unix.gettimeofday () in
   for iteration = 0 to nb_orders_queries - 1 do
@@ -113,20 +127,26 @@ let benchmark nb_authors nb_books nb_orders nb_titles_queries nb_orders_queries 
   done;
   let num_orders_duration = stats orders_start nb_orders_queries in
 
+  gc ();
+
   Printf.fprintf stderr "%d\t%d\t%d\t%.4f\t%.4f\t%.4f\t%.4f\n" 
     nb_authors nb_books nb_orders 
     books_duration orders_duration get_titles_duration num_orders_duration;
   flush stderr
 ;;
 
-let _for _start _step _end body =
+let _for _start _step _end _repeat body =
   let n = ref _start in
   while !n <= _end do
-    body !n;
+    for iteration = 0 to _repeat - 1 do
+      body !n
+    done;
     n := !n + _step
   done;;
 
 let store = ref (extract (init_bookstore ()));;
+
+let repeat = 5;;
 
 try
   while true do
@@ -167,7 +187,7 @@ try
         | "benchmark*books" -> let [nb_authors; nb_books_start; nb_books_step; nb_books_end;
                                     nb_orders; nb_titles_queries; nb_orders_queries] =
                                  map int_of_string (read_arguments command 7 input_line offset) in
-                               _for nb_books_start nb_books_step nb_books_end (fun nb_books ->
+                               _for nb_books_start nb_books_step nb_books_end repeat (fun nb_books ->
                                  benchmark nb_authors nb_books nb_orders 
                                    nb_titles_queries nb_orders_queries store);
                                Printf.printf "Benchmark completed\n";
@@ -175,7 +195,7 @@ try
         | "benchmark*orders" -> let [nb_authors; nb_books; nb_orders_start; nb_orders_step; nb_orders_end;
                                      nb_titles_queries; nb_orders_queries] =
                                  map int_of_string (read_arguments command 7 input_line offset) in
-                               _for nb_orders_start nb_orders_step nb_orders_end (fun nb_orders ->
+                               _for nb_orders_start nb_orders_step nb_orders_end repeat (fun nb_orders ->
                                  benchmark nb_authors nb_books nb_orders 
                                    nb_titles_queries nb_orders_queries store);
                                Printf.printf "Benchmark completed\n";

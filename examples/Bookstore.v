@@ -122,6 +122,5 @@ Definition BookStore :
   Sharpened BookStoreSpec.
 Proof.
   plan BookStore_AbsR.
-
   finish sharpening.
 Defined.
