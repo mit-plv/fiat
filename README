@@ -1,24 +1,51 @@
-About:
-======================================================================
-This repository holds experimental work on synthesizing ADTs using Coq
-8.4pl4.  Files are compiled using the included Makefile.
+Fiat − Deductive Synthesis of Abstract Data Types in a Proof Assistant
+=============================================================
 
-Top-Level Directory Organization:
-======================================================================
+This repository holds the source code of Fiat, an Coq ADT synthesis
+library.
 
-I.   src - Source files for the ADT synthesis library
-II.  examples - Example ADT derivations using the library
-III. Overview - Latex source for overview paper / POPL submission
-IV.  etc - Miscellaneous files (mostly timing scripts at the moment)
+## Dependencies:
+  * To build the library:          Coq 8.4pl2
+  * To step through the examples:  GNU Emacs 23.4.1, Proof General 4.3
+  * To extract and run Ocaml code: Ocaml 3.12.1
 
-Detailed Sub-Directory Organization:
-======================================================================
+## Compiling and running the code
+  * To build the library: `make sources`
+  * To build the examples: `make examples`
+  * To extract the bookstore example to OCaml: `make repl`
 
-I. src
-----------------------------------------------------------------------
-Computation/
-- Definitions of computations and refinement that form the core of ADT
-  refinement.
+## Where to start
+  The `examples` folder contains three interesting database refinements:
+
+  * `Bookstore.v` contains a fully automated refinement of the bookstore
+     example presented throughout the paper.
+  * `Stocks.v` and `Weather.v` contain two additional automated examples,
+     with more complex indexing schemes, and more diverse aggregation
+     operators.
+
+  Stepping through these files in emacs requires that the sources be
+  built, using `make sources`.
+
+  The best way to get a feeling of how the library works, and what the
+  query planner does under the hood, is to step through the bookstore
+  semi-automated refinement found in `examples/BookstoreSemiAutomatic.v`,
+  which shares the preamble of Bookstore.v, but shows a more progressive
+  derivation.
+
+## Further exploring the code base
+
+### Top-level directory organization
+
+1. `src` - Source files for the ADT synthesis library
+2. `examples` - Example ADT derivations using the library
+
+### Detailed sub-directory organization:
+
+#### src/Computation
+
+Definitions of computations and refinement that form the core of ADT
+refinement.
+
   * Core.v: core definitions of computation and refinement
   * Monad.v: proofs that computations satisfy the monad laws
   * SetoidMorphisms.v: setoid rewriting machinery support for refinement
@@ -26,128 +53,90 @@ Computation/
   * ApplyMonad.v: applicative tactic for simplifying using the monad laws
   * Refinements/General.v: core set of refinement facts used for synthesis
 
-ADT/
-- Definition of abstract data types (ADTs).
+#### src/ADT/
+
+Definition of abstract data types (ADTs).
+
   * ADTSig.d: Definition of ADT interfaces (signatures).
   * Core.v: core definitions of ADT
   * ADTHide.v: definitions for hiding part of an ADT interface
 
-ADTNotation/
-- More pleasant notations for ADTs.
+#### ADTNotation/
+
+More pleasant notations for ADTs.
+
   * ilist.v: definitions of the indexed lists used in ADT notations
   * StringBound.v: typeclass definition of the bounded strings our
-    		   notations use for method indices
+                   notations use for method indices
   * BuildADTSig.v: notation for ADT signatures
   * BuildADT.v: notation for ADT definitions
   * BuildADTReplaceMethods.v: functions for notation-friendly method
-    			      replacement
+                              replacement
 
-ADTRefinement/
-- Definitions of and machinery for refining ADTs from specification
-  to implementation.
+#### ADTRefinement/
+
+Definitions of and machinery for refining ADTs from specification
+to implementation.
+
   * Core.v: definition of ADT refinement
   * SetoidMorphisms.v: setoid rewriting machinery for ADT refinement
-  * GeneralRefinements.v: core tactics for a 'single step' of ADT refinement
-    			  through either method or constructor refinement
+  * GeneralRefinements.v: core tactics for a 'single step' of ADT
+    refinement through either method or constructor refinement
   * BuildADTSetoidMorphims.v: Notation-friendly proofs of switching
-    			      representation and method refinement
-  * GeneralBuildADTRefinements.v: Notation-friendly tactics for refining a
-    				  single ADT method or constructor
+    representation and method refinement
+  * GeneralBuildADTRefinements.v: Notation-friendly tactics for refining
+    a single ADT method or constructor
 
-ADTRefinement/Refinements/
-- Definitions and tactics for more specialized refinements.
+#### ADTRefinement/Refinements/
+
+Definitions and tactics for more specialized refinements.
+
   * HoneRepresentation.v : switching the representation type of an ADT
   * SimplifyRep.v : simplifying the representation type of an ADT
   * RefineHideADT.v: refining ADTs with interfaces hidden using the
-    		     definitions in ADTHide.v
+    definitions in ADTHide.v
   * ADTCache.v: adding a cached value to the representation of an ADT
   * ADTRepInv.v: refining an ADT under a representation invariant
   * DelegateMethods.v: delegating functionality to another ADT
 
-ADTRefinement/BuildADTRefinements/
-- Definitions and tactics for notation-friendly versions of some of the
-  specialized refinements in ADTRefinement/Refinements
+#### ADTRefinement/BuildADTRefinements/
 
-QueryStructure/
-- Library for specifying and refining ADTs with SQL-like operations
+Definitions and tactics for notation-friendly versions of some of the
+specialized refinements in ADTRefinement/Refinements
+
+#### QueryStructure/
+
+Library for specifying and refining ADTs with SQL-like operations
+
   * Heading.v: definitions of signatures for labeled data (headings)
   * Tuple.v: definitions for labeled data (tuples)
   * Schema.v: definitions for specifying sets of tuples with data-integrity
-    	       constraints (relation schemas)
+              constraints (relation schema)
   * Relation.v: definitions for sets of tuples (relations)
   * QueryStructureSchema.v: definitions for specifying sets of relations with
-    			     cross-relation data-integrity constraints
+                            cross-relation data-integrity constraints
   * QueryStructure.v: definitions for reference representation of ADTs
-    		       with SQL-like operations
+    with SQL-like operations
 
-QueryStructure/QuerySpecs
-- Definitions and notations for specifying SQL-like operations on QueryStructures
+#### QueryStructure/QuerySpecs
+
+Definitions and notations for specifying SQL-like operations on QueryStructures
+
   * EmptyQSSpecs.v: empty QueryStructure constructor
   * InsertQSSpecs.v: QueryStructure insertion operation + basic refinement for
-    		      for performing data-integrity checks
-  * QueryQSSpecs.v query operations for QueryStructures
+                     for performing data-integrity checks
+  * QueryQSSpecs.v: query operations for QueryStructures
 
-QueryStructure/Refinements
-- Implementations of QueryStructures
+#### QueryStructure/Refinements
+
+Implementations of QueryStructures
+
   * ListImplementation: list-based representation
-  * FMapImplementation: finite-map-based representation
-  * Bags: -
-
-II. examples
-----------------------------------------------------------------------
-
-ComputationExamples.v: finding min and max elements in a list
-Trivial.v: List-based implementation of a QueryStructure of dogs and their owners
-Bookstore.v: List-based implementation of a QueryStructure of a bookstore
-
-ProcessScheduler: QueryStructure with table of processes
-
-History:
-----------------------------------------------------------------------
-This is a partial accounting of the previous iterations of the project.
-
-
-Attempt 6:
- - Combine implementations into a single ADT.v, use [Comp] rather than
-   having a separate spec and implementations
-
-Attempt 5:
- - Reorganize files to split up componets
-  * Common.v - common tactics and definitions and lemmas
-  * ADT.v - definition of an ADT using [Comp]
-  * PartialADT.v - definition of an ADT which might be missing some implementations
-  * ADTExamples.v - a few examples of program refinement
-  * ComputationExamples.v - a few examples of program refinement not using ADTs
-
-The attempts below refer to files in commit
-1a189325e0522abd0f43e2d309eb9d1d75c2970a and before.
-
-Attempt 4:
- - ComputationalADT.v
-   * Attempt at including [Comp] type into ADTs
-
-Attempt 3:
- - SAT.v
-   * Attempt at implementing a SAT solver and some refinement using a
-     monadic functional language
-
-Attempt 2:
- - InternalADT.v
-   * implements ADT combinators based on ADTs using arbitrary indexing
-     types
-   * uses sums of units in practice
-   * contains aborted automation attempt from an earlier version of
-     the file at the bottom
-
-Attempt 1:
- - ADT.v
-   * implements ADT combinators based on ADTs using [string]s as the
-     indexing type for methods
- - ListADT.v
-   * aborted attempt to use lists rather than strings as the indexing
-     type for methods
-
-Attempt 0:
- - combinators.v
-   * implements very basic ADT combinators based on higher order
-     functions
+  * FMapImplementation: extra lemmas about Coq's Fmaps
+  * Bags: Implementations of the Bag interface described in the paper:
+    * ListBags.v: List-based bag implementation
+    * TreeBags.v: Fmap-based bag implementation
+    * CachingBags.v: Bags augmenting existing bags with a caching layer
+    * CountingBags: Specific kind of ListBags keeping track of their
+                    number of elements
+    * BagsOfTuples.v: Nested TreeBags containing tuples
