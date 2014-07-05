@@ -176,16 +176,16 @@ examples/BookstoreNaiveExtraction.vo : examples/BookstoreNaiveExtraction.v examp
 	coqc -R src ADTSynthesis -R examples ADTExamples examples/BookstoreNaiveExtraction.v
 
 examples/bookstore.cmxa: examples/BookstoreExtraction.vo
-	cd examples && ocamlopt -o bookstore.cmxa -a bookstore.mli bookstore.ml
+	cd examples && ocamlopt -w -a -o bookstore.cmxa -a bookstore.mli bookstore.ml
 
 examples/bookstorenaive.cmxa: examples/BookstoreNaiveExtraction.vo
-	cd examples && ocamlopt -o bookstorenaive.cmxa -a bookstorenaive.mli bookstorenaive.ml
+	cd examples && ocamlopt -w -a -o bookstorenaive.cmxa -a bookstorenaive.mli bookstorenaive.ml
 
 repl: examples/repl.ml examples/bookstore.cmxa
-	cd examples && ocamlopt -o repl unix.cmxa str.cmxa bookstore.cmxa repl.ml
+	cd examples && ocamlopt -w -a -o repl unix.cmxa str.cmxa bookstore.cmxa repl.ml
 
 naiverepl: examples/repl.ml examples/bookstorenaive.cmxa
-	cd examples && ocamlopt -o repl unix.cmxa str.cmxa bookstorenaive.cmxa repl.ml
+	cd examples && ocamlopt -w -a -o repl unix.cmxa str.cmxa bookstorenaive.cmxa repl.ml
 
 # uncomment this to get a clean target that cleans the documentation, at the cost of emitting
 # Makefile:156: warning: overriding recipe for target 'clean'
