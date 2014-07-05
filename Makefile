@@ -88,8 +88,10 @@ EXAMPLE_MODULES := \
 	ProcessScheduler/DBSchema \
 	ProcessScheduler/TreeBasedRefinement \
 	Bookstore \
+	BookstoreSemiAutomatic \
 	BookstoreNaive \
-	Weather Stocks
+	Weather \
+	Stocks
 #	CacheADT \
 
 # ADTExamples/CombineBinaryOperationsSpec
