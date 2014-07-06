@@ -129,7 +129,7 @@ let benchmark nb_authors nb_books nb_orders nb_titles_queries nb_orders_queries 
 
   gc ();
 
-  Printf.fprintf stderr "%d\t%d\t%d\t%.4f\t%.4f\t%.4f\t%.4f\n" 
+  Printf.fprintf stderr "%d\t%d\t%d\t%.6f\t%.6f\t%.6f\t%.6f\n" 
     nb_authors nb_books nb_orders 
     books_duration orders_duration get_titles_duration num_orders_duration;
   flush stderr
