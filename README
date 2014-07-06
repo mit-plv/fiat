@@ -32,6 +32,22 @@ library.
   which shares the preamble of Bookstore.v, but shows a more progressive
   derivation.
 
+## Extracting and running the code
+  Running `make repl` produces a `repl` binary in the `examples/` directory,
+  which supports the following commands:
+
+  * reset
+  * add_book    [author title isbn]
+  * place_order [isbn]
+  * get_titles  [author]
+  * num_orders  [author]
+  * benchmark   [nb_authors nb_books nb_orders
+                 nb_titles_queries nb_orders_queries]
+
+  To replicate the results highlighted in the paper, run `examples/repl`,
+  and type
+    benchmark 1000 10000 100000 100000 100000
+
 ## Further exploring the code base
 
 ### Top-level directory organization
