@@ -78,20 +78,18 @@ SRC_MODULES    := \
 	QueryStructure/Refinements/Bags/CachingBags\
 	QueryStructure/Refinements/Bags/CacheableFunctions\
 	QueryStructure/Refinements/Bags/BagsOfTuples\
-	QueryStructure/Refinements/Bags/String_as_OT \
-	QueryStructure/Refinements/Bags/Bags
+	QueryStructure/Refinements/Bags/String_as_OT\
+	QueryStructure/Refinements/Bags/Bags\
+	QueryStructure/Refinements/AutoDB
 
 EXAMPLE_MODULES := \
-	AutoDB \
 	ComputationExamples \
 	TrivialCache \
-	ProcessScheduler/DBSchema \
-	ProcessScheduler/TreeBasedRefinement \
 	Bookstore \
 	BookstoreSemiAutomatic \
-	BookstoreNaive \
 	Weather \
-	Stocks
+	Stocks \
+	ProcessScheduler
 
 COQDEP=coqdep
 COQDOC=coqdoc
