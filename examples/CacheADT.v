@@ -542,8 +542,7 @@ Section BoundedStringCacheADT.
       (forall a, StringIndexedMap.find k fmap = Some a ->
                  ens (k, a))
       /\ (forall a, ens (k, a) ->
-                 exists a',
-                   StringIndexedMap.find k fmap = Some a').
+                    StringIndexedMap.find k fmap = Some a).
 
   Definition FMapCommonKeys {A B}
              (values : StringIndexedMap.t A)
@@ -586,7 +585,7 @@ Section BoundedStringCacheADT.
     pose proof (H k); intuition.
     find_if_inside; simpl; eauto.
     intuition; destruct_ex.
-    destruct (H2 _ H0); discriminate.
+    apply H2 in H0; discriminate.
   Qed.
 
   Lemma AbsR_add_EnsembleReplace {A}
@@ -609,11 +608,11 @@ Section BoundedStringCacheADT.
     eauto using StringIndexedMap.find_1, StringIndexedMap.add_3,
     StringIndexedMap.find_2.
     subst; simpl in *.
-    eexists; eauto using StringIndexedMap.find_1, StringIndexedMap.add_1.
+    eauto using StringIndexedMap.find_1, StringIndexedMap.add_1.
     destruct (string_dec k (fst kv)); subst.
-    eexists; eauto using StringIndexedMap.find_1, StringIndexedMap.add_1.
+    simpl in H1; congruence.
     destruct (H k).
-    destruct (H4 _ H3).
+    generalize (H4 _ H3).
     eauto using StringIndexedMap.find_1, StringIndexedMap.add_2,
     StringIndexedMap.find_2.
   Qed.
@@ -640,11 +639,10 @@ Section BoundedStringCacheADT.
     eauto using StringIndexedMap.find_1, StringIndexedMap.add_3,
     StringIndexedMap.find_2.
     subst; simpl in *.
-    eexists; eauto using StringIndexedMap.find_1, StringIndexedMap.add_1.
-    destruct (string_dec k0 k); subst.
-    eexists; eauto using StringIndexedMap.find_1, StringIndexedMap.add_1.
-    destruct (H k0).
-    destruct (H4 _ H3).
+    destruct_ex; intuition; subst.
+    apply H in H3; rewrite H0 in H3; injections.
+    eauto using StringIndexedMap.find_1, StringIndexedMap.add_1.
+    apply H in H3.
     eauto using StringIndexedMap.find_1, StringIndexedMap.add_2,
     StringIndexedMap.find_2.
   Qed.
@@ -686,47 +684,71 @@ Section BoundedStringCacheADT.
     eauto using StringIndexedMap.find_1, StringIndexedMap.add_3,
     StringIndexedMap.find_2.
     subst; simpl in *.
-    eexists; eauto using StringIndexedMap.find_1, StringIndexedMap.add_1.
+    eauto using StringIndexedMap.find_1, StringIndexedMap.add_1.
     destruct (string_dec k (fst kv)); subst.
-    eexists; eauto using StringIndexedMap.find_1, StringIndexedMap.add_1.
-    destruct (H k).
-    destruct (H3 _ H2).
+    apply H in H2.
+    rewrite H0 in H2; discriminate.
+    apply H in H2.
     eauto using StringIndexedMap.find_1, StringIndexedMap.add_2,
     StringIndexedMap.find_2.
   Qed.
 
-  Lemma AbsR_add_EnsembleInsertRemove {A}
-  : forall nr or k kv,
-     EnsembleFMapEquivalence (A := A) or nr
+  Lemma AbsR_remove_EnsembleRemove {A}
+  : forall nr or k,
+      EnsembleFMapEquivalence (A := A) or nr
       -> EnsembleFMapEquivalence
-           (EnsembleInsert kv (EnsembleRemove k or))
-           (StringIndexedMap.add (fst kv) (snd kv) (StringIndexedMap.remove k nr)).
+           (EnsembleRemove k or)
+           (StringIndexedMap.remove k nr).
+  Proof.
+    unfold EnsembleRemove, EnsembleFMapEquivalence;
+    intros; intuition; simpl in *; subst.
+    eapply StringIndexedMap.remove_1; try reflexivity;
+    unfold StringIndexedMap.In, StringIndexedMap.Raw.In0;
+    simpl; apply StringIndexedMap.find_2 in H0;
+    unfold StringIndexedMap.MapsTo, StringIndexedMap.remove in H0;
+    simpl in H0; eauto.
+    destruct (string_dec k0 k); subst; simpl in *.
+    elimtype False.
+    eapply StringIndexedMap.remove_1; try reflexivity;
+    unfold StringIndexedMap.In, StringIndexedMap.Raw.In0;
+    simpl; apply StringIndexedMap.find_2 in H0;
+    unfold StringIndexedMap.MapsTo, StringIndexedMap.remove in H0;
+    simpl in H0; eauto.
+    apply StringIndexedMap.find_2 in H0.
+    apply StringIndexedMap.remove_3 in H0; eapply H;
+    eauto using StringIndexedMap.find_1.
+    apply StringIndexedMap.find_1.
+    apply StringIndexedMap.remove_2; eauto.
+    eapply H in H2.
+    eauto using StringIndexedMap.find_2.
+  Qed.
+
+  Lemma AbsR_add_EnsembleInsertRemove {A}
+  : forall nr or kv,
+      EnsembleFMapEquivalence (A := A) or nr
+      -> EnsembleFMapEquivalence
+           (EnsembleInsert kv (EnsembleRemove (fst kv) or))
+           (StringIndexedMap.add (fst kv) (snd kv) nr).
   Proof.
     unfold SubEnsembleInsert, EnsembleRemove,
     EnsembleInsert, EnsembleFMapEquivalence;
     intros; intuition.
-    destruct (string_dec k0 a); subst; simpl in *.
+    destruct (string_dec k a); subst; simpl in *.
     rewrite (StringIndexedMap.find_1 (StringIndexedMap.add_1 _ b (refl_equal a)))
       in H0; left; f_equal; congruence.
     right; intuition;
     apply StringIndexedMap.find_2 in H0;
       apply StringIndexedMap.add_3 in H0; eauto.
-    apply sym_eq in H1.
-    eapply (StringIndexedMap.remove_1); eauto.
+    eapply H; eauto using StringIndexedMap.find_1.
     unfold StringIndexedMap.In, StringIndexedMap.Raw.In0,
-    StringIndexedMap.MapsTo in *; simpl in *; eexists; eauto.
-    eapply H; eauto using StringIndexedMap.find_1,
-              StringIndexedMap.remove_3.
-    injections; simpl.
-    eexists; eauto using StringIndexedMap.find_1,
-             StringIndexedMap.add_1.
-    simpl in *.
-    destruct (string_dec k0 a); subst; simpl in *.
-    eexists; eauto using StringIndexedMap.find_1,
-             StringIndexedMap.add_1.
-    apply (H k0) in H2; destruct_ex.
-    eexists x;
-      eauto using StringIndexedMap.find_1,
+    StringIndexedMap.MapsTo in *; simpl in *; eauto.
+    injections.
+    eauto using StringIndexedMap.find_1,
+    StringIndexedMap.add_1.
+    apply H in H2; simpl in *.
+    apply StringIndexedMap.find_1;
+      apply StringIndexedMap.add_2; eauto.
+    eauto using StringIndexedMap.find_1,
       StringIndexedMap.add_2, StringIndexedMap.remove_2,
       StringIndexedMap.find_2.
   Qed.
@@ -819,6 +841,69 @@ Section BoundedStringCacheADT.
                          Some (k, idx))
       indices None.
 
+  Lemma fold_left_In :
+    forall l kv p',
+   fold_left
+     (fun (a : option (StringIndexedMap.key * nat))
+        (p : StringIndexedMap.key * nat) =>
+      Ifopt a as sv'
+      Then if lt_dec (snd p) (snd sv') then Some (fst p, snd p) else Some sv'
+      Else Some p) l p' =
+   Some kv ->
+   (Some kv = p') \/
+   SetoidList.InA
+     (fun p p' : string * nat => fst p = fst p' /\ snd p = snd p')
+     kv l.
+  Proof.
+    clear; induction l; simpl; intros; subst; eauto.
+    destruct p'; simpl in H.
+    destruct (lt_dec (snd a) (snd p)).
+    destruct (IHl _ _ H).
+    right; constructor; injections; simpl; eauto.
+    right; constructor 2; eauto.
+    destruct (IHl _ _ H).
+    injections; eauto.
+    eauto.
+    right; destruct (IHl _ _ H); injections; eauto.
+  Qed.
+
+  Lemma fold_left_min_opt :
+    forall l kv p',
+   fold_left
+     (fun (a : option (StringIndexedMap.key * nat))
+        (p : StringIndexedMap.key * nat) =>
+      Ifopt a as sv'
+      Then if lt_dec (snd p) (snd sv') then Some (fst p, snd p) else Some sv'
+      Else Some p) l (Some p') =
+   Some kv ->
+   snd kv <= snd p'.
+  Proof.
+    clear; induction l; simpl; intros; subst; eauto.
+    injections; eauto.
+    destruct (lt_dec (snd a) (snd p')).
+    apply le_trans with (m := snd a); eauto with arith.
+    eauto.
+  Qed.
+
+  Lemma find_minimum_Key_In :
+    forall indices kv,
+      find_minimum_Key indices = Some kv ->
+      StringIndexedMap.MapsTo (elt:=nat) (fst kv) (snd kv) indices.
+  Proof.
+    intros.
+    unfold find_minimum_Key in H.
+    rewrite StringIndexedMap.fold_1 in H.
+    eapply StringIndexedMap.elements_2.
+    destruct (@fold_left_In (StringIndexedMap.elements (elt:=nat) indices) kv None); intuition.
+    unfold StringIndexedMap.key in *.
+    rewrite <- H; f_equal.
+    repeat (apply functional_extensionality; intros); f_equal;
+    intuition.
+    discriminate.
+    destruct kv.
+    unfold StringIndexedMap.eq_key_elt, StringIndexedMap.Raw.Proofs.PX.eqke; eauto.
+  Qed.
+
   Lemma find_minimum_Key_correct :
     forall indices kv,
       find_minimum_Key indices = Some kv ->
@@ -838,22 +923,61 @@ Section BoundedStringCacheADT.
         (p : StringIndexedMap.key * nat) =>
       Ifopt a as sv'
       Then if lt_dec (snd p) (snd sv') then Some (fst p, snd p) else Some sv'
-      Else Some (fst p, snd p))
-     (StringIndexedMap.elements (elt:=nat) indices) p' =
+      Else Some p)
+     (StringIndexedMap.elements (elt:=nat) indices) (Some p') =
    Some kv ->
+
    SetoidList.InA
      (fun p p' : string * nat => fst p = fst p' /\ snd p = snd p')
-     (k0, v0) (StringIndexedMap.elements (elt:=nat) indices) ->
-   (snd kv <= v0 \/ Some kv = p')).
+     (k0, v0) (StringIndexedMap.elements (elt:=nat) indices)
+   -> ((snd kv <= snd p') /\( snd kv <= v0 ))).
     { clear; induction (StringIndexedMap.elements (elt:=nat) indices);
-      simpl; intros; subst.
-      destruct H0; simpl in *; subst; eauto.
-      destruct H0; simpl in *; subst; eauto; intuition; subst.
-      Focus 2.
-
-    generalize k v H H0.
-
-    induction (StringIndexedMap.elements (elt:=nat) indices).
+      simpl; intros; subst; eauto.
+      destruct p'; simpl in H.
+      inversion H0; subst; intuition; simpl in *; subst; eauto.
+      destruct (lt_dec (snd a) (snd p')).
+      inversion H0; subst.
+      intuition; simpl in *; intros; subst.
+      destruct (fold_left_In _ _ H); injections; simpl;
+      auto with arith.
+      destruct kv.
+      destruct (IHl _ _ _ H H1); simpl in *.
+      eauto with arith.
+      destruct (fold_left_In _ _ H); injections; simpl;
+      auto with arith.
+      destruct kv.
+      destruct (IHl _ _ _ H H1); simpl in *; eauto with arith.
+      intuition.
+      destruct (IHl _ _ _ H H2); simpl in *.
+      omega.
+      destruct (IHl _ _ _ H H2); simpl in *; eauto.
+      inversion H0; subst.
+      destruct (fold_left_In _ _ H); injections; simpl;
+      intuition; simpl in *; subst.
+      apply not_gt.
+      auto with arith.
+      destruct kv.
+      destruct (IHl _ _ _ H H1); simpl in *; eauto.
+      destruct kv.
+      destruct (IHl _ _ _ H H1); simpl in *; eauto.
+      eapply le_trans.
+      eapply H2.
+      apply not_gt; auto with arith.
+      destruct (IHl _ _ _ H H2); eauto.
+    }
+    destruct ((StringIndexedMap.elements (elt:=nat) indices)).
+    simpl in H; discriminate.
+    simpl in H.
+    eapply H1 with (p' := p); eauto.
+    simpl.
+    destruct (lt_dec (snd p) (snd p)); eauto.
+    elimtype False.
+    omega.
+    rewrite <- H; f_equal.
+    repeat (apply functional_extensionality; intros); f_equal.
+    destruct x0; reflexivity.
+    destruct p; eauto.
+  Qed.
 
   Lemma refine_pick_oldest {V} :
     forall spec_indices impl_indices
@@ -873,67 +997,19 @@ Section BoundedStringCacheADT.
     caseEq (find_minimum_Key impl_indices); rewrite H2 in *;
     simpl in *; try discriminate; injections.
     unfold EnsembleFMapEquivalence in *.
-    unfold find_minimum_Key in *.
-    rewrite StringIndexedMap.fold_1 in H2.
-    assert (forall l p opt, fold_left
-                        (fun (a : option (StringIndexedMap.key * nat))
-                             (p0 : StringIndexedMap.key * nat) =>
-                           Ifopt a as sv'
-                                        Then if lt_dec (snd p0) (snd sv')
-                                             then Some (fst p0, snd p0)
-                                             else Some sv' Else Some (fst p0, snd p0)) l opt = Some p
-                      -> ((exists k, List.In (k, snd p) l) \/ Some p = opt)
-                         /\ forall kv, List.In kv l -> snd p <= snd kv).
-    { clear; induction l; simpl.
-      split; intros; subst; eauto; intuition.
-      intros; destruct (IHl _ _ H); intuition.
-      destruct_ex; subst; eauto.
-      destruct_ex; subst; eauto.
-      eapply (H1 _ H0).
-      destruct opt; simpl in H0.
-      det
-
-    admit.
-  Qed.
-
-  Lemma AbsR_add_EnsembleInsertRemove' {A}
-  : forall nr or k kv,
-     EnsembleFMapEquivalence or nr
-      -> StringIndexedMap.find (elt:=A) (fst kv) nr = None
-      -> EnsembleFMapEquivalence
-           (EnsembleInsert kv (EnsembleRemove k or))
-           (StringIndexedMap.add (fst kv) (snd kv) (StringIndexedMap.remove k nr)).
-  Proof.
-    unfold SubEnsembleInsert, EnsembleRemove,
-    EnsembleInsert, EnsembleFMapEquivalence;
-    intros; intuition.
-    destruct (string_dec k0 (fst kv)); subst.
-    left;
-    rewrite (StringIndexedMap.find_1 (StringIndexedMap.add_1 _ (snd kv) (refl_equal (fst kv))))
-      in H1; destruct kv; simpl in *; f_equal; congruence.
-    right; destruct (string_dec k0 k); subst.
-    elimtype False; eapply StringIndexedMap.remove_1 with (x := k); eauto.
-    eapply StringIndexedMap.find_2 in H1.
-    eapply StringIndexedMap.add_3 in H1; eauto.
-    unfold StringIndexedMap.In, StringIndexedMap.Raw.In0; eauto.
-    intuition.
-    eapply H.
-    eapply StringIndexedMap.find_1.
-    eapply StringIndexedMap.remove_3; eauto.
-    eapply StringIndexedMap.add_3; clear n0; eauto.
-    eapply StringIndexedMap.find_2; eauto.
-    subst; simpl.
-    eauto using StringIndexedMap.find_1, StringIndexedMap.add_1.
-    destruct (string_dec k0 (fst kv)); subst.
-    eauto using StringIndexedMap.find_1, StringIndexedMap.add_1.
-    destruct (H k0).
-    destruct (H4 _ H3).
-    eexists.
-    eapply StringIndexedMap.find_2 in H5.
-    eapply StringIndexedMap.remove_2 in H5.
-    eapply StringIndexedMap.add_2 in H5; eauto.
-    eapply StringIndexedMap.find_1; eauto.
-    simpl in *; congruence.
+    pose proof (find_minimum_Key_correct _ H2).
+    pose proof (find_minimum_Key_In _ H2).
+    split; intros.
+    unfold FMapCommonKeys in H3.
+    destruct (H3 (fst p)).
+    destruct (H6 (snd p)); eauto.
+    destruct (H (fst p)); eexists; eauto.
+    eapply H8.
+    eauto using StringIndexedMap.find_1.
+    apply H1 in H5; destruct ki; eapply H1 in H6. destruct_ex;
+    simpl in *.
+    eapply StringIndexedMap.find_1 in H4; rewrite H5 in H4.
+    injection H4; intros; subst; eauto.
   Qed.
 
   Lemma refine_If_Then_Else'
@@ -958,6 +1034,21 @@ Section BoundedStringCacheADT.
     destruct_ex.
     apply StringIndexedMap.find_1 in H1.
     rewrite H1 in H0; discriminate.
+  Qed.
+
+  Lemma StringIndexedMap_find_None_remove {V}
+  : forall k k' m,
+      StringIndexedMap.find (elt:=V) k m = None
+      -> StringIndexedMap.find
+           (elt:=V) k
+           (StringIndexedMap.remove k' m) = None.
+  Proof.
+    intros.
+    caseEq (StringIndexedMap.find (elt:=V) k (StringIndexedMap.remove (elt:=V) k' m)); eauto.
+    apply StringIndexedMap.find_2 in H0.
+    apply StringIndexedMap.remove_3 in H0; 
+      apply StringIndexedMap.find_1 in H0; 
+      congruence.
   Qed.
 
 Definition BoundedStringCacheADT
@@ -1117,12 +1208,13 @@ Definition BoundedStringCacheADT
             simpl; intuition;
             simpl; eauto using
                          AbsR_add_EnsembleReplace,
-                   AbsR_add_EnsembleInsertRemove,
                    FMapCommonKeys_remove,
                    FMapCommonKeys_add,
-                   indexBound_add_remove].
+                   AbsR_add_EnsembleInsertRemove,
+                   indexBound_add].
         simplify with monad laws.
         reflexivity.
+        eapply (AbsR_add_EnsembleInsertRemove (fst n, snd r_n) H0).
       + (* If the key is not used, do this. *)
         simplify with monad laws.
         (* Check to see if we've hit the bound. *)
@@ -1139,16 +1231,25 @@ Definition BoundedStringCacheADT
         * unfold pointwise_relation; intros.
           refine pick val (snd r_n); unfold PickID; eauto.
           simplify with monad laws; simpl.
-          refine pick val ((_, _), S (snd r_n));
+          refine pick val ((StringIndexedMap.add (elt:=Value) (fst n) (snd n) (StringIndexedMap.remove a (fst (fst r_n))), _), S (snd r_n));
             [ |
               simpl; split; [ | split; [ | split ] ];
               simpl; eauto using
                            AbsR_add_EnsembleInsertRemove,
                      FMapCommonKeys_remove,
+                     AbsR_add_EnsembleInsert, 
+                     AbsR_remove_EnsembleRemove,
+                     StringIndexedMap_find_None_remove,
                      FMapCommonKeys_add,
                      indexBound_add_remove].
           simplify with monad laws; simpl.
           higher_order_1_reflexivity.
+          apply (@AbsR_add_EnsembleInsert nat);
+            eauto using 
+                AbsR_add_EnsembleInsert, AbsR_remove_EnsembleRemove,
+          StringIndexedMap_find_None_remove.
+          apply StringIndexedMap_find_None_remove.
+          eapply FMapCommonKeys_find_None; eauto.
         * refine pick val (snd r_n); unfold PickID; eauto.
           simplify with monad laws; simpl.
           refine pick val ((_, _), S (snd r_n));
