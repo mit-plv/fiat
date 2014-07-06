@@ -84,7 +84,6 @@ SRC_MODULES    := \
 EXAMPLE_MODULES := \
 	AutoDB \
 	ComputationExamples \
-	Trivial \
 	TrivialCache \
 	ProcessScheduler/DBSchema \
 	ProcessScheduler/TreeBasedRefinement \
@@ -93,14 +92,6 @@ EXAMPLE_MODULES := \
 	BookstoreNaive \
 	Weather \
 	Stocks
-#	CacheADT \
-
-# ADTExamples/CombineBinaryOperationsSpec
-# ADTExamples/BinaryOperationSpec
-# ADTExamples/BinaryOperationImpl
-# ADTExamples/BinaryOperationRefinements
-# ADTExamples/MinCollection
-# ADTExamples/MinPlusMax
 
 COQDEP=coqdep
 COQDOC=coqdoc
