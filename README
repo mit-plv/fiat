@@ -1,13 +1,13 @@
 Fiat − Deductive Synthesis of Abstract Data Types in a Proof Assistant
-=============================================================
+======================================================================
 
-This repository holds the source code of Fiat, an Coq ADT synthesis
+This repository holds the source code of Fiat, a Coq ADT synthesis
 library.
 
 ## Dependencies:
   * To build the library:          Coq 8.4pl2
   * To step through the examples:  GNU Emacs 23.4.1, Proof General 4.3
-  * To extract and run Ocaml code: Ocaml 3.12.1
+  * To extract and run OCaml code: OCaml 3.12.1
 
 ## Compiling and running the code
   * To build the library: `make sources`
@@ -57,7 +57,7 @@ refinement.
 
 Definition of abstract data types (ADTs).
 
-  * ADTSig.d: Definition of ADT interfaces (signatures).
+  * ADTSig.d: definition of ADT interfaces (signatures)
   * Core.v: core definitions of ADT
   * ADTHide.v: definitions for hiding part of an ADT interface
 
@@ -91,8 +91,8 @@ to implementation.
 
 Definitions and tactics for more specialized refinements.
 
-  * HoneRepresentation.v : switching the representation type of an ADT
-  * SimplifyRep.v : simplifying the representation type of an ADT
+  * HoneRepresentation.v: switching the representation type of an ADT
+  * SimplifyRep.v: simplifying the representation type of an ADT
   * RefineHideADT.v: refining ADTs with interfaces hidden using the
     definitions in ADTHide.v
   * ADTCache.v: adding a cached value to the representation of an ADT
@@ -135,7 +135,7 @@ Implementations of QueryStructures
   * FMapImplementation: extra lemmas about Coq's Fmaps
   * Bags: Implementations of the Bag interface described in the paper:
     * ListBags.v: List-based bag implementation
-    * TreeBags.v: Fmap-based bag implementation
+    * TreeBags.v: FMap-based bag implementation
     * CachingBags.v: Bags augmenting existing bags with a caching layer
     * CountingBags: Specific kind of ListBags keeping track of their
                     number of elements

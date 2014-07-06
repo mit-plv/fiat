@@ -130,4 +130,4 @@ Defined.
 
 (* The same implementation can of course be derived in a more manual
 way; the derivation in BookstoreSemiAutomatic.v demonstrates such an
-implementation, using varying degrees of automation for each method *)
+implementation, using varying degrees of automation for each method. *)
