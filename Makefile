@@ -83,7 +83,6 @@ SRC_MODULES    := \
 	QueryStructure/Refinements/AutoDB
 
 EXAMPLE_MODULES := \
-	ComputationExamples \
 	TrivialCache \
 	Bookstore \
 	BookstoreSemiAutomatic \
