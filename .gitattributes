@@ -2,6 +2,7 @@
 /paper export-ignore
 /etc export-ignore
 /examples/ADTExamples export-ignore
+/examples/ProcessScheduler/ export-ignore
 
 .gitattributes export-ignore
 .gitignore export-ignore
@@ -24,4 +25,3 @@ examples/ComputationExamples.v export-ignore
 examples/BookstoreLists.v export-ignore
 examples/BookstoreNaive.v export-ignore
 examples/BookstoreNaiveExtraction.v export-ignore
-examples/ProcessScheduler/ListBasedRefinement.v export-ignore
