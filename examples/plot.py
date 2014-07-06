@@ -51,7 +51,7 @@ fig, axes = pyplot.subplots(2, sharex=True)
 def merge(group):
         group = tuple(group)
         #print(group)
-        return sum(group) / len(group)
+        return min(group) #sum(group) / len(group)
 
 def tuples_merge(tuples):
         grouped = zip(*tuples)
