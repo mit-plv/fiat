@@ -29,12 +29,13 @@ library.
   The best way to get a feeling of how the library works, and what the
   query planner does under the hood, is to step through the bookstore
   semi-automated refinement found in `examples/BookstoreSemiAutomatic.v`,
-  which shares the preamble of Bookstore.v, but shows a more progressive
-  derivation.
+  which shares the preamble of `Bookstore.v`, but shows a more
+  progressive derivation. Finally, the query planner code can be found
+  in `src/QueryStructure/Refinements/AutoDB.v`.
 
 ## Extracting and running the code
-  Running `make repl` produces a `repl` binary in the `examples/` directory,
-  which supports the following commands:
+  Running `make repl` produces a `repl` binary in the `examples/`
+  directory, which supports the following commands:
 
   * reset
   * add_book    [author title isbn]
