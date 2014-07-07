@@ -1,13 +1,13 @@
 Fiat − Deductive Synthesis of Abstract Data Types in a Proof Assistant
-=============================================================
+======================================================================
 
-This repository holds the source code of Fiat, an Coq ADT synthesis
+This repository holds the source code of Fiat, a Coq ADT synthesis
 library.
 
 ## Dependencies:
   * To build the library:          Coq 8.4pl2
   * To step through the examples:  GNU Emacs 23.4.1, Proof General 4.3
-  * To extract and run Ocaml code: Ocaml 3.12.1
+  * To extract and run OCaml code: OCaml 3.12.1
 
 ## Compiling and running the code
   * To build the library: `make sources`
@@ -31,6 +31,22 @@ library.
   semi-automated refinement found in `examples/BookstoreSemiAutomatic.v`,
   which shares the preamble of Bookstore.v, but shows a more progressive
   derivation.
+
+## Extracting and running the code
+  Running `make repl` produces a `repl` binary in the `examples/` directory,
+  which supports the following commands:
+
+  * reset
+  * add_book    [author title isbn]
+  * place_order [isbn]
+  * get_titles  [author]
+  * num_orders  [author]
+  * benchmark   [nb_authors nb_books nb_orders
+                 nb_titles_queries nb_orders_queries]
+
+  To replicate the results highlighted in the paper, run `examples/repl`,
+  and type
+    benchmark 1000 10000 100000 100000 100000
 
 ## Further exploring the code base
 
@@ -57,7 +73,7 @@ refinement.
 
 Definition of abstract data types (ADTs).
 
-  * ADTSig.d: Definition of ADT interfaces (signatures).
+  * ADTSig.d: definition of ADT interfaces (signatures)
   * Core.v: core definitions of ADT
   * ADTHide.v: definitions for hiding part of an ADT interface
 
@@ -91,8 +107,8 @@ to implementation.
 
 Definitions and tactics for more specialized refinements.
 
-  * HoneRepresentation.v : switching the representation type of an ADT
-  * SimplifyRep.v : simplifying the representation type of an ADT
+  * HoneRepresentation.v: switching the representation type of an ADT
+  * SimplifyRep.v: simplifying the representation type of an ADT
   * RefineHideADT.v: refining ADTs with interfaces hidden using the
     definitions in ADTHide.v
   * ADTCache.v: adding a cached value to the representation of an ADT
@@ -135,7 +151,7 @@ Implementations of QueryStructures
   * FMapImplementation: extra lemmas about Coq's Fmaps
   * Bags: Implementations of the Bag interface described in the paper:
     * ListBags.v: List-based bag implementation
-    * TreeBags.v: Fmap-based bag implementation
+    * TreeBags.v: FMap-based bag implementation
     * CachingBags.v: Bags augmenting existing bags with a caching layer
     * CountingBags: Specific kind of ListBags keeping track of their
                     number of elements

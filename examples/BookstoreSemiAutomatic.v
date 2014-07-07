@@ -18,8 +18,7 @@
  *)
 
 (* Let's define some synonyms for strings we'll need,
- * to save on type-checking time.
- * (Thanks for being weird, Coq!) *)
+ * to save on type-checking time. *)
 Definition sBOOKS := "Books".
 Definition sAUTHOR := "Authors".
 Definition sTITLE := "Title".

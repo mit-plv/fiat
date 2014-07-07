@@ -61,6 +61,7 @@ SRC_MODULES    := \
 	QueryStructure/Refinements/AdditionalPermutationLemmas \
 	QueryStructure/Refinements/EnsembleListEquivalenceProperties \
 	QueryStructure/Refinements/AdditionalMorphisms \
+	QueryStructure/Refinements/AdditionalFlatMapLemmas \
 	QueryStructure/Refinements/flattenCompListProperties \
 	QueryStructure/Refinements/ConstraintChecksRefinements \
 	QueryStructure/Refinements/ListImplementation/ListQueryRefinements \
@@ -77,29 +78,17 @@ SRC_MODULES    := \
 	QueryStructure/Refinements/Bags/CachingBags\
 	QueryStructure/Refinements/Bags/CacheableFunctions\
 	QueryStructure/Refinements/Bags/BagsOfTuples\
-	QueryStructure/Refinements/Bags/String_as_OT \
-	QueryStructure/Refinements/Bags/Bags
+	QueryStructure/Refinements/Bags/String_as_OT\
+	QueryStructure/Refinements/Bags/Bags\
+	QueryStructure/Refinements/AutoDB
 
 EXAMPLE_MODULES := \
-	AutoDB \
-	ComputationExamples \
-	Trivial \
 	TrivialCache \
-	ProcessScheduler/DBSchema \
-	ProcessScheduler/TreeBasedRefinement \
 	Bookstore \
 	BookstoreSemiAutomatic \
-	BookstoreNaive \
 	Weather \
-	Stocks
-#	CacheADT \
-
-# ADTExamples/CombineBinaryOperationsSpec
-# ADTExamples/BinaryOperationSpec
-# ADTExamples/BinaryOperationImpl
-# ADTExamples/BinaryOperationRefinements
-# ADTExamples/MinCollection
-# ADTExamples/MinPlusMax
+	Stocks \
+	ProcessScheduler
 
 COQDEP=coqdep
 COQDOC=coqdoc
@@ -129,10 +118,8 @@ COQDOCFLAGS=-interpolate -utf8
 
 TIMED=
 TIMECMD=
-# we should use %U for compatibility with Coq trunk, but that's broken on Windows cygwin with a non-cygwin-compilied program, it seems.  %M is also broken, but whatever
 STDTIME=/usr/bin/time -f \"\$$* (user: %e mem: %M ko)\"
 TIMER=\$$(if \$$(TIMED), $(STDTIME), $(TIMECMD))
-
 
 .PHONY: all sources examples html clean pretty-timed pretty-timed-files pdf doc clean-doc
 
@@ -186,10 +173,3 @@ repl: examples/repl.ml examples/bookstore.cmxa
 
 naiverepl: examples/repl.ml examples/bookstorenaive.cmxa
 	cd examples && ocamlopt -w -a -o repl unix.cmxa str.cmxa bookstorenaive.cmxa repl.ml
-
-# uncomment this to get a clean target that cleans the documentation, at the cost of emitting
-# Makefile:156: warning: overriding recipe for target 'clean'
-# Makefile.coq:247: warning: ignoring old recipe for target 'clean'
-#clean: clean-doc Makefile.coq
-#	$(MAKE) -f Makefile.coq clean
-#	rm -f Makefile.coq
