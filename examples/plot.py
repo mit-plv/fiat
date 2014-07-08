@@ -11,7 +11,7 @@ def setParams(width_pt, scale = 1.0):
         width_in = width_pt / PTS_PER_INCH
         height_in = width_in * 2 * PHI
 
-        params = { 'lines.markersize': 3,
+        params = { 'lines.markersize': 2,
                    'lines.linewidth': 1,
                    'axes.labelsize': 9,
                    'xtick.labelsize': 9,
@@ -27,8 +27,8 @@ def setParams(width_pt, scale = 1.0):
 
 setParams(240)
 color = "white"
-linestyles = ['-', '-', '-', '-', ':']
-markers = ['o', 's', 'o', 's']
+linestyles = [' ', ' ', ' ', ' ', '-', '-', '-', '-', ':']
+markers = ['s', 'o', 's', 'o']
 colors = [color, color, color, color, "#3465a4", "#73d216", "#f57900", "#cc0000", "#75507b"]
 
 REFERENCE = 1
@@ -63,14 +63,14 @@ ys = zip(*map(tuples_merge, ys))
 ys = [ys[i] for i in [3,2,1,0]]
 ax = [0,0,1,1]
 for num, y in enumerate(ys):
-        axes[ax[num]].plot(x, y, linestyle=linestyles[num], color=colors[num], marker=markers[num])
+        axes[ax[num]].plot(x, y, linestyle=linestyles[num], marker=markers[num], color=colors[num])
 
 pyplot.xlabel("Number of books")
 axes[0].set_ylabel("Average read time (ms)")
 axes[1].set_ylabel("Average write time (ms)")
 axes[0].xaxis.set_major_formatter(ticker.FuncFormatter(lambda x, y: '{0:,}'.format(int(x)).replace(',', r'\,')))
-axes[0].legend(["NumOrders", "GetTitles"], loc=2)#, ncol=2)
-axes[1].legend(["PlaceOrder", "AddBook"], loc=2)#, ncol=2)
+axes[0].legend(["NumOrders", "GetTitles"], loc=2, numpoints=1)#, ncol=2)
+axes[1].legend(["PlaceOrder", "AddBook"], loc=2, numpoints=1)#, ncol=2)
 
 for ax in axes:
         ax.set_ylim(ymin=0)
