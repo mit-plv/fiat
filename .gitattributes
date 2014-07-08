@@ -2,7 +2,7 @@
 /paper export-ignore
 /etc export-ignore
 /examples/ADTExamples export-ignore
-/examples/ProcessScheduler/ export-ignore
+/examples/ProcessScheduler-outdated/ export-ignore
 
 .gitattributes export-ignore
 .gitignore export-ignore
@@ -22,6 +22,7 @@ examples/CacheADT.v export-ignore
 examples/ADTExamples.v export-ignore
 examples/ComputationExamples.v export-ignore
 
+examples/BookstoreMinimal.v export-ignore
 examples/BookstoreLists.v export-ignore
 examples/BookstoreNaive.v export-ignore
 examples/BookstoreNaiveExtraction.v export-ignore
