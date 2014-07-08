@@ -348,38 +348,38 @@ Section CacheEvictionStrategies.
 
     Lemma KVEnsemble_EquivalentKeys_Remove {B C} :
       forall (ens : Ensemble (Key * B))
-             (ens' : Ensemble (Key * C)),
-        KVEnsemble_EquivalentKeys ens ens'
-        -> forall (a : Key),
+             (ens' : Ensemble (Key * C))
+             (EquivKeys : KVEnsemble_EquivalentKeys ens ens')
+             (a : Key),
              KVEnsemble_EquivalentKeys (EnsembleRemove a ens)
                                        (EnsembleRemove a ens').
     Proof.
       unfold KVEnsemble_EquivalentKeys, EnsembleRemove in *;
         simpl in *; intuition.
+      apply H in H3; destruct_ex; eauto.
       apply H0 in H3; destruct_ex; eauto.
-      apply H1 in H3; destruct_ex; eauto.
     Qed.
 
     Lemma KVEnsemble_EquivalentKeys_Replace {B C} :
       forall (ens : Ensemble (Key * B))
-             (ens' : Ensemble (Key * C)),
-        KVEnsemble_EquivalentKeys ens ens'
-        -> forall kb c,
+             (ens' : Ensemble (Key * C))
+             (EquivKeys : KVEnsemble_EquivalentKeys ens ens')
+             kb c,
              KVEnsemble_EquivalentKeys (EnsembleReplace kb ens)
                                        (EnsembleReplace (fst kb, c) ens').
     Proof.
       unfold KVEnsemble_EquivalentKeys, EnsembleReplace,
         EnsembleRemove in *;
         simpl in *; intuition; injections; eauto.
+      apply H in H3; destruct_ex; eauto.
       apply H0 in H3; destruct_ex; eauto.
-      apply H1 in H3; destruct_ex; eauto.
     Qed.
 
     Lemma KVEnsemble_EquivalentKeys_Update {B C} :
       forall (ens : Ensemble (Key * B))
-             (ens' : Ensemble (Key * C)),
-        KVEnsemble_EquivalentKeys ens ens'
-        -> forall k f g,
+             (ens' : Ensemble (Key * C))
+             (EquivKeys : KVEnsemble_EquivalentKeys ens ens')
+             k f g,
              KVEnsemble_EquivalentKeys (EnsembleUpdate k ens f)
                                        (EnsembleUpdate k ens' g).
     Proof.
@@ -387,13 +387,13 @@ Section CacheEvictionStrategies.
         EnsembleReplace, EnsembleRemove in *;
         simpl in *; intuition; injections; eauto; subst.
       destruct_ex; intuition; eauto; subst.
-      apply H0 in H3; destruct_ex; eauto.
+      apply H in H3; destruct_ex; eauto.
       exists (g x0); left; intuition; eauto.
-      apply H0 in H3; destruct_ex; eauto.
+      apply H in H3; destruct_ex; eauto.
       destruct_ex; intuition; subst.
-      apply H1 in H3; destruct_ex;
+      apply H0 in H3; destruct_ex;
       eexists; left; intuition; eauto.
-      apply H1 in H3; destruct_ex;  eauto.
+      apply H0 in H3; destruct_ex;  eauto.
     Qed.
 
     Lemma KVEnsemble_EquivalentKeys_Refl {B} :
@@ -406,26 +406,26 @@ Section CacheEvictionStrategies.
 
     Lemma KVEnsemble_EquivalentKeys_Insert {B C} :
       forall (ens : Ensemble (Key * B))
-             (ens' : Ensemble (Key * C)),
-        KVEnsemble_EquivalentKeys ens ens'
-        -> forall (ab : Key * B) (c : C),
+             (ens' : Ensemble (Key * C))
+             (EquivKeys : KVEnsemble_EquivalentKeys ens ens')
+             (ab : Key * B) (c : C),
              KVEnsemble_EquivalentKeys (EnsembleInsert ab ens)
                                        (EnsembleInsert (fst ab, c) ens').
     Proof.
       unfold refine; intros.
       unfold KVEnsemble_EquivalentKeys, EnsembleInsert in *;
         simpl in *; intuition; injections; eauto.
+      apply H in H2; destruct_ex; eauto.
       apply H0 in H2; destruct_ex; eauto.
-      apply H1 in H2; destruct_ex; eauto.
     Qed.
 
     Definition PickID {A} (_ : A) := True.
 
     Lemma refine_pick_KVEnsembleInsert {B C} :
       forall (ens : Ensemble (Key * B))
-             (ens' : Ensemble (Key * C)),
-        KVEnsemble_EquivalentKeys ens ens'
-        -> forall (ab : Key * B),
+             (ens' : Ensemble (Key * C))
+             (EquivKeys : KVEnsemble_EquivalentKeys ens ens')
+             (ab : Key * B),
              refine
              {ens'' | KVEnsemble_EquivalentKeys
                         (EnsembleInsert ab ens) ens''}
@@ -440,10 +440,10 @@ Section CacheEvictionStrategies.
 
     Lemma refine_pick_KVEnsembleInsertRemove {B C} :
       forall (ens : Ensemble (Key * B))
-             (ens' : Ensemble (Key * C)),
-        KVEnsemble_EquivalentKeys ens ens'
-        -> forall (ab : Key * B) k,
-             refine
+             (ens' : Ensemble (Key * C))
+             (EquivKeys : KVEnsemble_EquivalentKeys ens ens')
+             (ab : Key * B) k,
+        refine
              {ens'' | KVEnsemble_EquivalentKeys
                         (EnsembleInsert
                            ab
@@ -460,9 +460,9 @@ Section CacheEvictionStrategies.
 
     Lemma refine_pick_KVEnsembleRemove {B C} :
       forall (ens : Ensemble (Key * B))
-             (ens' : Ensemble (Key * C)),
-        KVEnsemble_EquivalentKeys ens ens'
-        -> forall k,
+             (ens' : Ensemble (Key * C))
+             (EquivKeys : KVEnsemble_EquivalentKeys ens ens')
+             k,
              refine
              {ens'' | KVEnsemble_EquivalentKeys
                         (EnsembleRemove k ens) ens''}
@@ -475,9 +475,9 @@ Section CacheEvictionStrategies.
 
     Lemma refine_pick_KVEnsembleReplace {B C} :
       forall (ens : Ensemble (Key * B))
-             (ens' : Ensemble (Key * C)),
-        KVEnsemble_EquivalentKeys ens ens'
-        -> forall k,
+             (ens' : Ensemble (Key * C))
+             (EquivKeys : KVEnsemble_EquivalentKeys ens ens')
+             k,
              refine
              {ens'' | KVEnsemble_EquivalentKeys
                         (EnsembleReplace k ens) ens''}
@@ -491,9 +491,9 @@ Section CacheEvictionStrategies.
 
     Lemma refine_pick_KVEnsembleUpdate {B C}
     : forall (ens : Ensemble (Key * B))
-                (ens' : Ensemble (Key * C)),
-        KVEnsemble_EquivalentKeys ens ens'
-        -> forall k f,
+                (ens' : Ensemble (Key * C))
+                (EquivKeys : KVEnsemble_EquivalentKeys ens ens')
+                k f,
              refine
                {ens'' | KVEnsemble_EquivalentKeys
                           (EnsembleUpdate k ens f) ens''}
@@ -507,9 +507,9 @@ Section CacheEvictionStrategies.
 
     Lemma refine_pick_KVEnsemble {B C} :
       forall (ens : Ensemble (Key * B))
-             (ens' : Ensemble (Key * C)),
-        KVEnsemble_EquivalentKeys ens ens'
-        -> refine
+             (ens' : Ensemble (Key * C))
+             (EquivKeys : KVEnsemble_EquivalentKeys ens ens'),
+             refine
           {ens'' | KVEnsemble_EquivalentKeys ens ens''}
           (ret ens').
     Proof.
@@ -1046,10 +1046,25 @@ Section BoundedStringCacheADT.
     intros.
     caseEq (StringIndexedMap.find (elt:=V) k (StringIndexedMap.remove (elt:=V) k' m)); eauto.
     apply StringIndexedMap.find_2 in H0.
-    apply StringIndexedMap.remove_3 in H0; 
-      apply StringIndexedMap.find_1 in H0; 
+    apply StringIndexedMap.remove_3 in H0;
+      apply StringIndexedMap.find_1 in H0;
       congruence.
   Qed.
+
+Tactic Notation "rewrite" "with" "monad" "laws" :=
+  repeat first [ setoid_rewrite refineEquiv_bind_bind
+               | setoid_rewrite refineEquiv_bind_unit
+               | setoid_rewrite refineEquiv_unit_bind].
+
+(* To keep the presentation clean for the paper, we'll
+ split and rename the premise holding the abstraction. *)
+Ltac split_CacheADTwLogIndex_AbsR :=
+  match goal with
+      H : CacheADTwLogIndex_AbsR _ _ |- _ =>
+      let H' := fresh "Eq_or_nr" in
+      let H'' := fresh "EquivKeys_H" in
+      destruct H as [H' H'']; rewrite H' in *
+  end.
 
 Definition BoundedStringCacheADT
 : Sharpened (@CacheSpec string Value).
@@ -1064,51 +1079,42 @@ Definition BoundedStringCacheADT
       }
       hone method "AddKey".
       {
-        destruct H0; subst.
-        setoid_rewrite refine_pick_CacheADTwLogIndex_AbsR;
-        simplify with monad laws.
-
+        split_CacheADTwLogIndex_AbsR.
+        setoid_rewrite refine_pick_CacheADTwLogIndex_AbsR.
         setoid_rewrite refine_ReplaceUsedKeyAdd.
         setoid_rewrite refine_SubEnsembleInsert.
-        simplify with monad laws.
-        setoid_rewrite refine_pick_KeyToBeReplaced_min; simpl.
+        rewrite with monad laws.
+        setoid_rewrite refine_pick_KeyToBeReplaced_min.
         setoid_rewrite refine_If_Then_Else_Bind.
-        setoid_rewrite refineEquiv_bind_unit;
-          setoid_rewrite refineEquiv_bind_bind.
+        rewrite with monad laws.
         setoid_rewrite refine_If_Opt_Then_Else_Bind.
-        setoid_rewrite refineEquiv_bind_unit.
-        setoid_rewrite
-          (refine_pick_KVEnsembleInsertRemove H1).
-        setoid_rewrite
-          (refine_pick_KVEnsembleInsert H1).
-        setoid_rewrite refineEquiv_bind_bind;
-          setoid_rewrite refineEquiv_bind_unit.
-
+        rewrite with monad laws.
+        pose proof refine_pick_KVEnsembleInsertRemove.
+        setoid_rewrite refine_pick_KVEnsembleInsertRemove
+                       with (1 := EquivKeys_H).
+        setoid_rewrite refine_pick_KVEnsembleInsert
+                       with (1 := EquivKeys_H).
+        rewrite with monad laws; simpl.
         finish honing.
       }
       hone method "UpdateKey".
       {
-        destruct H0; subst.
-        setoid_rewrite refine_pick_CacheADTwLogIndex_AbsR;
-        simplify with monad laws.
-
+        split_CacheADTwLogIndex_AbsR.
+        setoid_rewrite refine_pick_CacheADTwLogIndex_AbsR.
         setoid_rewrite refine_IgnoreUnusedKeyUpdate.
-        simplify with monad laws.
-        setoid_rewrite (refine_pick_KVEnsembleUpdate H1).
-        setoid_rewrite refineEquiv_bind_bind.
-        setoid_rewrite refineEquiv_bind_unit.
-        simpl.
+        rewrite with monad laws.
+        setoid_rewrite refine_pick_KVEnsembleUpdate
+                       with (1 := EquivKeys_H).
+        rewrite with monad laws; simpl.
         finish honing.
       }
       hone method "LookupKey".
       {
-        destruct H0; subst.
-        setoid_rewrite refine_pick_CacheADTwLogIndex_AbsR;
-        simplify with monad laws.
-
-        setoid_rewrite (refine_pick_KVEnsemble H1).
-        simplify with monad laws.
-        simpl.
+        split_CacheADTwLogIndex_AbsR.
+        setoid_rewrite refine_pick_CacheADTwLogIndex_AbsR.
+        rewrite with monad laws.
+        setoid_rewrite (refine_pick_KVEnsemble EquivKeys_H).
+        rewrite with monad laws;  simpl.
         finish honing.
       }
 
@@ -1237,7 +1243,7 @@ Definition BoundedStringCacheADT
               simpl; eauto using
                            AbsR_add_EnsembleInsertRemove,
                      FMapCommonKeys_remove,
-                     AbsR_add_EnsembleInsert, 
+                     AbsR_add_EnsembleInsert,
                      AbsR_remove_EnsembleRemove,
                      StringIndexedMap_find_None_remove,
                      FMapCommonKeys_add,
@@ -1245,7 +1251,7 @@ Definition BoundedStringCacheADT
           simplify with monad laws; simpl.
           higher_order_1_reflexivity.
           apply (@AbsR_add_EnsembleInsert nat);
-            eauto using 
+            eauto using
                 AbsR_add_EnsembleInsert, AbsR_remove_EnsembleRemove,
           StringIndexedMap_find_None_remove.
           apply StringIndexedMap_find_None_remove.
@@ -1283,5 +1289,5 @@ Definition BoundedStringCacheADT
 
     finish sharpening.
     Defined.
-
+F
 End BoundedStringCacheADT.
