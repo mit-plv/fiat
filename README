@@ -32,6 +32,11 @@ library.
   which shares the preamble of Bookstore.v, but shows a more progressive
   derivation.
 
+  The examples/CacheADT directory also includes the derivation of an abstract
+  data type implementing a Least Recently Used cache, as discussed in Section
+  3.1 of the paper. 
+  
+
 ## Extracting and running the code
   Running `make repl` produces a `repl` binary in the `examples/` directory,
   which supports the following commands:
