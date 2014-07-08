@@ -1,6 +1,6 @@
 Require Import QueryStructureNotations.
 Require Import ListImplementation.
-Require Import AddCache ADTCache.
+Require Import ADTCache LRUCache.
 
 Definition MySchema :=
   Query Structure Schema

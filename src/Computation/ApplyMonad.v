@@ -89,6 +89,11 @@ Tactic Notation "simplify" "with" "monad" "laws" :=
 
 (* Ideally we would throw refineEquiv_under_bind in here as well, but it gets stuck *)
 
+Tactic Notation "autorewrite" "with" "monad" "laws" :=
+  repeat first [ setoid_rewrite refineEquiv_bind_bind
+               | setoid_rewrite refineEquiv_bind_unit
+               | setoid_rewrite refineEquiv_unit_bind].
+
 Ltac interleave_autorewrite_refine_monad_with tac :=
   repeat first [ reflexivity
                | progress tac

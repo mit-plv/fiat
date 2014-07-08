@@ -33,6 +33,11 @@ library.
   progressive derivation. Finally, the query planner code can be found
   in `src/QueryStructure/Refinements/AutoDB.v`.
 
+  The examples/CacheADT directory also includes the derivation of an abstract
+  data type implementing a Least Recently Used cache, as discussed in Section
+  3.1 of the paper. 
+  
+
 ## Extracting and running the code
   Running `make repl` produces a `repl` binary in the `examples/`
   directory, which supports the following commands:

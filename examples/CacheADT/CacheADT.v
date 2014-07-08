@@ -348,38 +348,38 @@ Section CacheEvictionStrategies.
 
     Lemma KVEnsemble_EquivalentKeys_Remove {B C} :
       forall (ens : Ensemble (Key * B))
-             (ens' : Ensemble (Key * C)),
-        KVEnsemble_EquivalentKeys ens ens'
-        -> forall (a : Key),
+             (ens' : Ensemble (Key * C))
+             (EquivKeys : KVEnsemble_EquivalentKeys ens ens')
+             (a : Key),
              KVEnsemble_EquivalentKeys (EnsembleRemove a ens)
                                        (EnsembleRemove a ens').
     Proof.
       unfold KVEnsemble_EquivalentKeys, EnsembleRemove in *;
         simpl in *; intuition.
+      apply H in H3; destruct_ex; eauto.
       apply H0 in H3; destruct_ex; eauto.
-      apply H1 in H3; destruct_ex; eauto.
     Qed.
 
     Lemma KVEnsemble_EquivalentKeys_Replace {B C} :
       forall (ens : Ensemble (Key * B))
-             (ens' : Ensemble (Key * C)),
-        KVEnsemble_EquivalentKeys ens ens'
-        -> forall kb c,
+             (ens' : Ensemble (Key * C))
+             (EquivKeys : KVEnsemble_EquivalentKeys ens ens')
+             kb c,
              KVEnsemble_EquivalentKeys (EnsembleReplace kb ens)
                                        (EnsembleReplace (fst kb, c) ens').
     Proof.
       unfold KVEnsemble_EquivalentKeys, EnsembleReplace,
         EnsembleRemove in *;
         simpl in *; intuition; injections; eauto.
+      apply H in H3; destruct_ex; eauto.
       apply H0 in H3; destruct_ex; eauto.
-      apply H1 in H3; destruct_ex; eauto.
     Qed.
 
     Lemma KVEnsemble_EquivalentKeys_Update {B C} :
       forall (ens : Ensemble (Key * B))
-             (ens' : Ensemble (Key * C)),
-        KVEnsemble_EquivalentKeys ens ens'
-        -> forall k f g,
+             (ens' : Ensemble (Key * C))
+             (EquivKeys : KVEnsemble_EquivalentKeys ens ens')
+             k f g,
              KVEnsemble_EquivalentKeys (EnsembleUpdate k ens f)
                                        (EnsembleUpdate k ens' g).
     Proof.
@@ -387,13 +387,13 @@ Section CacheEvictionStrategies.
         EnsembleReplace, EnsembleRemove in *;
         simpl in *; intuition; injections; eauto; subst.
       destruct_ex; intuition; eauto; subst.
-      apply H0 in H3; destruct_ex; eauto.
+      apply H in H3; destruct_ex; eauto.
       exists (g x0); left; intuition; eauto.
-      apply H0 in H3; destruct_ex; eauto.
+      apply H in H3; destruct_ex; eauto.
       destruct_ex; intuition; subst.
-      apply H1 in H3; destruct_ex;
+      apply H0 in H3; destruct_ex;
       eexists; left; intuition; eauto.
-      apply H1 in H3; destruct_ex;  eauto.
+      apply H0 in H3; destruct_ex;  eauto.
     Qed.
 
     Lemma KVEnsemble_EquivalentKeys_Refl {B} :
@@ -406,26 +406,26 @@ Section CacheEvictionStrategies.
 
     Lemma KVEnsemble_EquivalentKeys_Insert {B C} :
       forall (ens : Ensemble (Key * B))
-             (ens' : Ensemble (Key * C)),
-        KVEnsemble_EquivalentKeys ens ens'
-        -> forall (ab : Key * B) (c : C),
+             (ens' : Ensemble (Key * C))
+             (EquivKeys : KVEnsemble_EquivalentKeys ens ens')
+             (ab : Key * B) (c : C),
              KVEnsemble_EquivalentKeys (EnsembleInsert ab ens)
                                        (EnsembleInsert (fst ab, c) ens').
     Proof.
       unfold refine; intros.
       unfold KVEnsemble_EquivalentKeys, EnsembleInsert in *;
         simpl in *; intuition; injections; eauto.
+      apply H in H2; destruct_ex; eauto.
       apply H0 in H2; destruct_ex; eauto.
-      apply H1 in H2; destruct_ex; eauto.
     Qed.
 
     Definition PickID {A} (_ : A) := True.
 
     Lemma refine_pick_KVEnsembleInsert {B C} :
       forall (ens : Ensemble (Key * B))
-             (ens' : Ensemble (Key * C)),
-        KVEnsemble_EquivalentKeys ens ens'
-        -> forall (ab : Key * B),
+             (ens' : Ensemble (Key * C))
+             (EquivKeys : KVEnsemble_EquivalentKeys ens ens')
+             (ab : Key * B),
              refine
              {ens'' | KVEnsemble_EquivalentKeys
                         (EnsembleInsert ab ens) ens''}
@@ -440,10 +440,10 @@ Section CacheEvictionStrategies.
 
     Lemma refine_pick_KVEnsembleInsertRemove {B C} :
       forall (ens : Ensemble (Key * B))
-             (ens' : Ensemble (Key * C)),
-        KVEnsemble_EquivalentKeys ens ens'
-        -> forall (ab : Key * B) k,
-             refine
+             (ens' : Ensemble (Key * C))
+             (EquivKeys : KVEnsemble_EquivalentKeys ens ens')
+             (ab : Key * B) k,
+        refine
              {ens'' | KVEnsemble_EquivalentKeys
                         (EnsembleInsert
                            ab
@@ -460,9 +460,9 @@ Section CacheEvictionStrategies.
 
     Lemma refine_pick_KVEnsembleRemove {B C} :
       forall (ens : Ensemble (Key * B))
-             (ens' : Ensemble (Key * C)),
-        KVEnsemble_EquivalentKeys ens ens'
-        -> forall k,
+             (ens' : Ensemble (Key * C))
+             (EquivKeys : KVEnsemble_EquivalentKeys ens ens')
+             k,
              refine
              {ens'' | KVEnsemble_EquivalentKeys
                         (EnsembleRemove k ens) ens''}
@@ -475,9 +475,9 @@ Section CacheEvictionStrategies.
 
     Lemma refine_pick_KVEnsembleReplace {B C} :
       forall (ens : Ensemble (Key * B))
-             (ens' : Ensemble (Key * C)),
-        KVEnsemble_EquivalentKeys ens ens'
-        -> forall k,
+             (ens' : Ensemble (Key * C))
+             (EquivKeys : KVEnsemble_EquivalentKeys ens ens')
+             k,
              refine
              {ens'' | KVEnsemble_EquivalentKeys
                         (EnsembleReplace k ens) ens''}
@@ -491,9 +491,9 @@ Section CacheEvictionStrategies.
 
     Lemma refine_pick_KVEnsembleUpdate {B C}
     : forall (ens : Ensemble (Key * B))
-                (ens' : Ensemble (Key * C)),
-        KVEnsemble_EquivalentKeys ens ens'
-        -> forall k f,
+                (ens' : Ensemble (Key * C))
+                (EquivKeys : KVEnsemble_EquivalentKeys ens ens')
+                k f,
              refine
                {ens'' | KVEnsemble_EquivalentKeys
                           (EnsembleUpdate k ens f) ens''}
@@ -507,9 +507,9 @@ Section CacheEvictionStrategies.
 
     Lemma refine_pick_KVEnsemble {B C} :
       forall (ens : Ensemble (Key * B))
-             (ens' : Ensemble (Key * C)),
-        KVEnsemble_EquivalentKeys ens ens'
-        -> refine
+             (ens' : Ensemble (Key * C))
+             (EquivKeys : KVEnsemble_EquivalentKeys ens ens'),
+             refine
           {ens'' | KVEnsemble_EquivalentKeys ens ens''}
           (ret ens').
     Proof.
@@ -542,8 +542,7 @@ Section BoundedStringCacheADT.
       (forall a, StringIndexedMap.find k fmap = Some a ->
                  ens (k, a))
       /\ (forall a, ens (k, a) ->
-                 exists a',
-                   StringIndexedMap.find k fmap = Some a').
+                    StringIndexedMap.find k fmap = Some a).
 
   Definition FMapCommonKeys {A B}
              (values : StringIndexedMap.t A)
@@ -586,7 +585,7 @@ Section BoundedStringCacheADT.
     pose proof (H k); intuition.
     find_if_inside; simpl; eauto.
     intuition; destruct_ex.
-    destruct (H2 _ H0); discriminate.
+    apply H2 in H0; discriminate.
   Qed.
 
   Lemma AbsR_add_EnsembleReplace {A}
@@ -609,11 +608,11 @@ Section BoundedStringCacheADT.
     eauto using StringIndexedMap.find_1, StringIndexedMap.add_3,
     StringIndexedMap.find_2.
     subst; simpl in *.
-    eexists; eauto using StringIndexedMap.find_1, StringIndexedMap.add_1.
+    eauto using StringIndexedMap.find_1, StringIndexedMap.add_1.
     destruct (string_dec k (fst kv)); subst.
-    eexists; eauto using StringIndexedMap.find_1, StringIndexedMap.add_1.
+    simpl in H1; congruence.
     destruct (H k).
-    destruct (H4 _ H3).
+    generalize (H4 _ H3).
     eauto using StringIndexedMap.find_1, StringIndexedMap.add_2,
     StringIndexedMap.find_2.
   Qed.
@@ -640,11 +639,10 @@ Section BoundedStringCacheADT.
     eauto using StringIndexedMap.find_1, StringIndexedMap.add_3,
     StringIndexedMap.find_2.
     subst; simpl in *.
-    eexists; eauto using StringIndexedMap.find_1, StringIndexedMap.add_1.
-    destruct (string_dec k0 k); subst.
-    eexists; eauto using StringIndexedMap.find_1, StringIndexedMap.add_1.
-    destruct (H k0).
-    destruct (H4 _ H3).
+    destruct_ex; intuition; subst.
+    apply H in H3; rewrite H0 in H3; injections.
+    eauto using StringIndexedMap.find_1, StringIndexedMap.add_1.
+    apply H in H3.
     eauto using StringIndexedMap.find_1, StringIndexedMap.add_2,
     StringIndexedMap.find_2.
   Qed.
@@ -686,47 +684,71 @@ Section BoundedStringCacheADT.
     eauto using StringIndexedMap.find_1, StringIndexedMap.add_3,
     StringIndexedMap.find_2.
     subst; simpl in *.
-    eexists; eauto using StringIndexedMap.find_1, StringIndexedMap.add_1.
+    eauto using StringIndexedMap.find_1, StringIndexedMap.add_1.
     destruct (string_dec k (fst kv)); subst.
-    eexists; eauto using StringIndexedMap.find_1, StringIndexedMap.add_1.
-    destruct (H k).
-    destruct (H3 _ H2).
+    apply H in H2.
+    rewrite H0 in H2; discriminate.
+    apply H in H2.
     eauto using StringIndexedMap.find_1, StringIndexedMap.add_2,
     StringIndexedMap.find_2.
   Qed.
 
-  Lemma AbsR_add_EnsembleInsertRemove {A}
-  : forall nr or k kv,
-     EnsembleFMapEquivalence (A := A) or nr
+  Lemma AbsR_remove_EnsembleRemove {A}
+  : forall nr or k,
+      EnsembleFMapEquivalence (A := A) or nr
       -> EnsembleFMapEquivalence
-           (EnsembleInsert kv (EnsembleRemove k or))
-           (StringIndexedMap.add (fst kv) (snd kv) (StringIndexedMap.remove k nr)).
+           (EnsembleRemove k or)
+           (StringIndexedMap.remove k nr).
+  Proof.
+    unfold EnsembleRemove, EnsembleFMapEquivalence;
+    intros; intuition; simpl in *; subst.
+    eapply StringIndexedMap.remove_1; try reflexivity;
+    unfold StringIndexedMap.In, StringIndexedMap.Raw.In0;
+    simpl; apply StringIndexedMap.find_2 in H0;
+    unfold StringIndexedMap.MapsTo, StringIndexedMap.remove in H0;
+    simpl in H0; eauto.
+    destruct (string_dec k0 k); subst; simpl in *.
+    elimtype False.
+    eapply StringIndexedMap.remove_1; try reflexivity;
+    unfold StringIndexedMap.In, StringIndexedMap.Raw.In0;
+    simpl; apply StringIndexedMap.find_2 in H0;
+    unfold StringIndexedMap.MapsTo, StringIndexedMap.remove in H0;
+    simpl in H0; eauto.
+    apply StringIndexedMap.find_2 in H0.
+    apply StringIndexedMap.remove_3 in H0; eapply H;
+    eauto using StringIndexedMap.find_1.
+    apply StringIndexedMap.find_1.
+    apply StringIndexedMap.remove_2; eauto.
+    eapply H in H2.
+    eauto using StringIndexedMap.find_2.
+  Qed.
+
+  Lemma AbsR_add_EnsembleInsertRemove {A}
+  : forall nr or kv,
+      EnsembleFMapEquivalence (A := A) or nr
+      -> EnsembleFMapEquivalence
+           (EnsembleInsert kv (EnsembleRemove (fst kv) or))
+           (StringIndexedMap.add (fst kv) (snd kv) nr).
   Proof.
     unfold SubEnsembleInsert, EnsembleRemove,
     EnsembleInsert, EnsembleFMapEquivalence;
     intros; intuition.
-    destruct (string_dec k0 a); subst; simpl in *.
+    destruct (string_dec k a); subst; simpl in *.
     rewrite (StringIndexedMap.find_1 (StringIndexedMap.add_1 _ b (refl_equal a)))
       in H0; left; f_equal; congruence.
     right; intuition;
     apply StringIndexedMap.find_2 in H0;
       apply StringIndexedMap.add_3 in H0; eauto.
-    apply sym_eq in H1.
-    eapply (StringIndexedMap.remove_1); eauto.
+    eapply H; eauto using StringIndexedMap.find_1.
     unfold StringIndexedMap.In, StringIndexedMap.Raw.In0,
-    StringIndexedMap.MapsTo in *; simpl in *; eexists; eauto.
-    eapply H; eauto using StringIndexedMap.find_1,
-              StringIndexedMap.remove_3.
-    injections; simpl.
-    eexists; eauto using StringIndexedMap.find_1,
-             StringIndexedMap.add_1.
-    simpl in *.
-    destruct (string_dec k0 a); subst; simpl in *.
-    eexists; eauto using StringIndexedMap.find_1,
-             StringIndexedMap.add_1.
-    apply (H k0) in H2; destruct_ex.
-    eexists x;
-      eauto using StringIndexedMap.find_1,
+    StringIndexedMap.MapsTo in *; simpl in *; eauto.
+    injections.
+    eauto using StringIndexedMap.find_1,
+    StringIndexedMap.add_1.
+    apply H in H2; simpl in *.
+    apply StringIndexedMap.find_1;
+      apply StringIndexedMap.add_2; eauto.
+    eauto using StringIndexedMap.find_1,
       StringIndexedMap.add_2, StringIndexedMap.remove_2,
       StringIndexedMap.find_2.
   Qed.
@@ -819,6 +841,69 @@ Section BoundedStringCacheADT.
                          Some (k, idx))
       indices None.
 
+  Lemma fold_left_In :
+    forall l kv p',
+   fold_left
+     (fun (a : option (StringIndexedMap.key * nat))
+        (p : StringIndexedMap.key * nat) =>
+      Ifopt a as sv'
+      Then if lt_dec (snd p) (snd sv') then Some (fst p, snd p) else Some sv'
+      Else Some p) l p' =
+   Some kv ->
+   (Some kv = p') \/
+   SetoidList.InA
+     (fun p p' : string * nat => fst p = fst p' /\ snd p = snd p')
+     kv l.
+  Proof.
+    clear; induction l; simpl; intros; subst; eauto.
+    destruct p'; simpl in H.
+    destruct (lt_dec (snd a) (snd p)).
+    destruct (IHl _ _ H).
+    right; constructor; injections; simpl; eauto.
+    right; constructor 2; eauto.
+    destruct (IHl _ _ H).
+    injections; eauto.
+    eauto.
+    right; destruct (IHl _ _ H); injections; eauto.
+  Qed.
+
+  Lemma fold_left_min_opt :
+    forall l kv p',
+   fold_left
+     (fun (a : option (StringIndexedMap.key * nat))
+        (p : StringIndexedMap.key * nat) =>
+      Ifopt a as sv'
+      Then if lt_dec (snd p) (snd sv') then Some (fst p, snd p) else Some sv'
+      Else Some p) l (Some p') =
+   Some kv ->
+   snd kv <= snd p'.
+  Proof.
+    clear; induction l; simpl; intros; subst; eauto.
+    injections; eauto.
+    destruct (lt_dec (snd a) (snd p')).
+    apply le_trans with (m := snd a); eauto with arith.
+    eauto.
+  Qed.
+
+  Lemma find_minimum_Key_In :
+    forall indices kv,
+      find_minimum_Key indices = Some kv ->
+      StringIndexedMap.MapsTo (elt:=nat) (fst kv) (snd kv) indices.
+  Proof.
+    intros.
+    unfold find_minimum_Key in H.
+    rewrite StringIndexedMap.fold_1 in H.
+    eapply StringIndexedMap.elements_2.
+    destruct (@fold_left_In (StringIndexedMap.elements (elt:=nat) indices) kv None); intuition.
+    unfold StringIndexedMap.key in *.
+    rewrite <- H; f_equal.
+    repeat (apply functional_extensionality; intros); f_equal;
+    intuition.
+    discriminate.
+    destruct kv.
+    unfold StringIndexedMap.eq_key_elt, StringIndexedMap.Raw.Proofs.PX.eqke; eauto.
+  Qed.
+
   Lemma find_minimum_Key_correct :
     forall indices kv,
       find_minimum_Key indices = Some kv ->
@@ -838,22 +923,61 @@ Section BoundedStringCacheADT.
         (p : StringIndexedMap.key * nat) =>
       Ifopt a as sv'
       Then if lt_dec (snd p) (snd sv') then Some (fst p, snd p) else Some sv'
-      Else Some (fst p, snd p))
-     (StringIndexedMap.elements (elt:=nat) indices) p' =
+      Else Some p)
+     (StringIndexedMap.elements (elt:=nat) indices) (Some p') =
    Some kv ->
+
    SetoidList.InA
      (fun p p' : string * nat => fst p = fst p' /\ snd p = snd p')
-     (k0, v0) (StringIndexedMap.elements (elt:=nat) indices) ->
-   (snd kv <= v0 \/ Some kv = p')).
+     (k0, v0) (StringIndexedMap.elements (elt:=nat) indices)
+   -> ((snd kv <= snd p') /\( snd kv <= v0 ))).
     { clear; induction (StringIndexedMap.elements (elt:=nat) indices);
-      simpl; intros; subst.
-      destruct H0; simpl in *; subst; eauto.
-      destruct H0; simpl in *; subst; eauto; intuition; subst.
-      Focus 2.
-
-    generalize k v H H0.
-
-    induction (StringIndexedMap.elements (elt:=nat) indices).
+      simpl; intros; subst; eauto.
+      destruct p'; simpl in H.
+      inversion H0; subst; intuition; simpl in *; subst; eauto.
+      destruct (lt_dec (snd a) (snd p')).
+      inversion H0; subst.
+      intuition; simpl in *; intros; subst.
+      destruct (fold_left_In _ _ H); injections; simpl;
+      auto with arith.
+      destruct kv.
+      destruct (IHl _ _ _ H H1); simpl in *.
+      eauto with arith.
+      destruct (fold_left_In _ _ H); injections; simpl;
+      auto with arith.
+      destruct kv.
+      destruct (IHl _ _ _ H H1); simpl in *; eauto with arith.
+      intuition.
+      destruct (IHl _ _ _ H H2); simpl in *.
+      omega.
+      destruct (IHl _ _ _ H H2); simpl in *; eauto.
+      inversion H0; subst.
+      destruct (fold_left_In _ _ H); injections; simpl;
+      intuition; simpl in *; subst.
+      apply not_gt.
+      auto with arith.
+      destruct kv.
+      destruct (IHl _ _ _ H H1); simpl in *; eauto.
+      destruct kv.
+      destruct (IHl _ _ _ H H1); simpl in *; eauto.
+      eapply le_trans.
+      eapply H2.
+      apply not_gt; auto with arith.
+      destruct (IHl _ _ _ H H2); eauto.
+    }
+    destruct ((StringIndexedMap.elements (elt:=nat) indices)).
+    simpl in H; discriminate.
+    simpl in H.
+    eapply H1 with (p' := p); eauto.
+    simpl.
+    destruct (lt_dec (snd p) (snd p)); eauto.
+    elimtype False.
+    omega.
+    rewrite <- H; f_equal.
+    repeat (apply functional_extensionality; intros); f_equal.
+    destruct x0; reflexivity.
+    destruct p; eauto.
+  Qed.
 
   Lemma refine_pick_oldest {V} :
     forall spec_indices impl_indices
@@ -873,67 +997,19 @@ Section BoundedStringCacheADT.
     caseEq (find_minimum_Key impl_indices); rewrite H2 in *;
     simpl in *; try discriminate; injections.
     unfold EnsembleFMapEquivalence in *.
-    unfold find_minimum_Key in *.
-    rewrite StringIndexedMap.fold_1 in H2.
-    assert (forall l p opt, fold_left
-                        (fun (a : option (StringIndexedMap.key * nat))
-                             (p0 : StringIndexedMap.key * nat) =>
-                           Ifopt a as sv'
-                                        Then if lt_dec (snd p0) (snd sv')
-                                             then Some (fst p0, snd p0)
-                                             else Some sv' Else Some (fst p0, snd p0)) l opt = Some p
-                      -> ((exists k, List.In (k, snd p) l) \/ Some p = opt)
-                         /\ forall kv, List.In kv l -> snd p <= snd kv).
-    { clear; induction l; simpl.
-      split; intros; subst; eauto; intuition.
-      intros; destruct (IHl _ _ H); intuition.
-      destruct_ex; subst; eauto.
-      destruct_ex; subst; eauto.
-      eapply (H1 _ H0).
-      destruct opt; simpl in H0.
-      det
-
-    admit.
-  Qed.
-
-  Lemma AbsR_add_EnsembleInsertRemove' {A}
-  : forall nr or k kv,
-     EnsembleFMapEquivalence or nr
-      -> StringIndexedMap.find (elt:=A) (fst kv) nr = None
-      -> EnsembleFMapEquivalence
-           (EnsembleInsert kv (EnsembleRemove k or))
-           (StringIndexedMap.add (fst kv) (snd kv) (StringIndexedMap.remove k nr)).
-  Proof.
-    unfold SubEnsembleInsert, EnsembleRemove,
-    EnsembleInsert, EnsembleFMapEquivalence;
-    intros; intuition.
-    destruct (string_dec k0 (fst kv)); subst.
-    left;
-    rewrite (StringIndexedMap.find_1 (StringIndexedMap.add_1 _ (snd kv) (refl_equal (fst kv))))
-      in H1; destruct kv; simpl in *; f_equal; congruence.
-    right; destruct (string_dec k0 k); subst.
-    elimtype False; eapply StringIndexedMap.remove_1 with (x := k); eauto.
-    eapply StringIndexedMap.find_2 in H1.
-    eapply StringIndexedMap.add_3 in H1; eauto.
-    unfold StringIndexedMap.In, StringIndexedMap.Raw.In0; eauto.
-    intuition.
-    eapply H.
-    eapply StringIndexedMap.find_1.
-    eapply StringIndexedMap.remove_3; eauto.
-    eapply StringIndexedMap.add_3; clear n0; eauto.
-    eapply StringIndexedMap.find_2; eauto.
-    subst; simpl.
-    eauto using StringIndexedMap.find_1, StringIndexedMap.add_1.
-    destruct (string_dec k0 (fst kv)); subst.
-    eauto using StringIndexedMap.find_1, StringIndexedMap.add_1.
-    destruct (H k0).
-    destruct (H4 _ H3).
-    eexists.
-    eapply StringIndexedMap.find_2 in H5.
-    eapply StringIndexedMap.remove_2 in H5.
-    eapply StringIndexedMap.add_2 in H5; eauto.
-    eapply StringIndexedMap.find_1; eauto.
-    simpl in *; congruence.
+    pose proof (find_minimum_Key_correct _ H2).
+    pose proof (find_minimum_Key_In _ H2).
+    split; intros.
+    unfold FMapCommonKeys in H3.
+    destruct (H3 (fst p)).
+    destruct (H6 (snd p)); eauto.
+    destruct (H (fst p)); eexists; eauto.
+    eapply H8.
+    eauto using StringIndexedMap.find_1.
+    apply H1 in H5; destruct ki; eapply H1 in H6. destruct_ex;
+    simpl in *.
+    eapply StringIndexedMap.find_1 in H4; rewrite H5 in H4.
+    injection H4; intros; subst; eauto.
   Qed.
 
   Lemma refine_If_Then_Else'
@@ -960,6 +1036,36 @@ Section BoundedStringCacheADT.
     rewrite H1 in H0; discriminate.
   Qed.
 
+  Lemma StringIndexedMap_find_None_remove {V}
+  : forall k k' m,
+      StringIndexedMap.find (elt:=V) k m = None
+      -> StringIndexedMap.find
+           (elt:=V) k
+           (StringIndexedMap.remove k' m) = None.
+  Proof.
+    intros.
+    caseEq (StringIndexedMap.find (elt:=V) k (StringIndexedMap.remove (elt:=V) k' m)); eauto.
+    apply StringIndexedMap.find_2 in H0.
+    apply StringIndexedMap.remove_3 in H0;
+      apply StringIndexedMap.find_1 in H0;
+      congruence.
+  Qed.
+
+Tactic Notation "rewrite" "with" "monad" "laws" :=
+  repeat first [ setoid_rewrite refineEquiv_bind_bind
+               | setoid_rewrite refineEquiv_bind_unit
+               | setoid_rewrite refineEquiv_unit_bind].
+
+(* To keep the presentation clean for the paper, we'll
+ split and rename the premise holding the abstraction. *)
+Ltac split_CacheADTwLogIndex_AbsR :=
+  match goal with
+      H : CacheADTwLogIndex_AbsR _ _ |- _ =>
+      let H' := fresh "Eq_or_nr" in
+      let H'' := fresh "EquivKeys_H" in
+      destruct H as [H' H'']; rewrite H' in *
+  end.
+
 Definition BoundedStringCacheADT
 : Sharpened (@CacheSpec string Value).
     Proof.
@@ -973,51 +1079,42 @@ Definition BoundedStringCacheADT
       }
       hone method "AddKey".
       {
-        destruct H0; subst.
-        setoid_rewrite refine_pick_CacheADTwLogIndex_AbsR;
-        simplify with monad laws.
-
+        split_CacheADTwLogIndex_AbsR.
+        setoid_rewrite refine_pick_CacheADTwLogIndex_AbsR.
         setoid_rewrite refine_ReplaceUsedKeyAdd.
         setoid_rewrite refine_SubEnsembleInsert.
-        simplify with monad laws.
-        setoid_rewrite refine_pick_KeyToBeReplaced_min; simpl.
+        rewrite with monad laws.
+        setoid_rewrite refine_pick_KeyToBeReplaced_min.
         setoid_rewrite refine_If_Then_Else_Bind.
-        setoid_rewrite refineEquiv_bind_unit;
-          setoid_rewrite refineEquiv_bind_bind.
+        rewrite with monad laws.
         setoid_rewrite refine_If_Opt_Then_Else_Bind.
-        setoid_rewrite refineEquiv_bind_unit.
-        setoid_rewrite
-          (refine_pick_KVEnsembleInsertRemove H1).
-        setoid_rewrite
-          (refine_pick_KVEnsembleInsert H1).
-        setoid_rewrite refineEquiv_bind_bind;
-          setoid_rewrite refineEquiv_bind_unit.
-
+        rewrite with monad laws.
+        pose proof refine_pick_KVEnsembleInsertRemove.
+        setoid_rewrite refine_pick_KVEnsembleInsertRemove
+                       with (1 := EquivKeys_H).
+        setoid_rewrite refine_pick_KVEnsembleInsert
+                       with (1 := EquivKeys_H).
+        rewrite with monad laws; simpl.
         finish honing.
       }
       hone method "UpdateKey".
       {
-        destruct H0; subst.
-        setoid_rewrite refine_pick_CacheADTwLogIndex_AbsR;
-        simplify with monad laws.
-
+        split_CacheADTwLogIndex_AbsR.
+        setoid_rewrite refine_pick_CacheADTwLogIndex_AbsR.
         setoid_rewrite refine_IgnoreUnusedKeyUpdate.
-        simplify with monad laws.
-        setoid_rewrite (refine_pick_KVEnsembleUpdate H1).
-        setoid_rewrite refineEquiv_bind_bind.
-        setoid_rewrite refineEquiv_bind_unit.
-        simpl.
+        rewrite with monad laws.
+        setoid_rewrite refine_pick_KVEnsembleUpdate
+                       with (1 := EquivKeys_H).
+        rewrite with monad laws; simpl.
         finish honing.
       }
       hone method "LookupKey".
       {
-        destruct H0; subst.
-        setoid_rewrite refine_pick_CacheADTwLogIndex_AbsR;
-        simplify with monad laws.
-
-        setoid_rewrite (refine_pick_KVEnsemble H1).
-        simplify with monad laws.
-        simpl.
+        split_CacheADTwLogIndex_AbsR.
+        setoid_rewrite refine_pick_CacheADTwLogIndex_AbsR.
+        rewrite with monad laws.
+        setoid_rewrite (refine_pick_KVEnsemble EquivKeys_H).
+        rewrite with monad laws;  simpl.
         finish honing.
       }
 
@@ -1117,12 +1214,13 @@ Definition BoundedStringCacheADT
             simpl; intuition;
             simpl; eauto using
                          AbsR_add_EnsembleReplace,
-                   AbsR_add_EnsembleInsertRemove,
                    FMapCommonKeys_remove,
                    FMapCommonKeys_add,
-                   indexBound_add_remove].
+                   AbsR_add_EnsembleInsertRemove,
+                   indexBound_add].
         simplify with monad laws.
         reflexivity.
+        eapply (AbsR_add_EnsembleInsertRemove (fst n, snd r_n) H0).
       + (* If the key is not used, do this. *)
         simplify with monad laws.
         (* Check to see if we've hit the bound. *)
@@ -1139,16 +1237,25 @@ Definition BoundedStringCacheADT
         * unfold pointwise_relation; intros.
           refine pick val (snd r_n); unfold PickID; eauto.
           simplify with monad laws; simpl.
-          refine pick val ((_, _), S (snd r_n));
+          refine pick val ((StringIndexedMap.add (elt:=Value) (fst n) (snd n) (StringIndexedMap.remove a (fst (fst r_n))), _), S (snd r_n));
             [ |
               simpl; split; [ | split; [ | split ] ];
               simpl; eauto using
                            AbsR_add_EnsembleInsertRemove,
                      FMapCommonKeys_remove,
+                     AbsR_add_EnsembleInsert,
+                     AbsR_remove_EnsembleRemove,
+                     StringIndexedMap_find_None_remove,
                      FMapCommonKeys_add,
                      indexBound_add_remove].
           simplify with monad laws; simpl.
           higher_order_1_reflexivity.
+          apply (@AbsR_add_EnsembleInsert nat);
+            eauto using
+                AbsR_add_EnsembleInsert, AbsR_remove_EnsembleRemove,
+          StringIndexedMap_find_None_remove.
+          apply StringIndexedMap_find_None_remove.
+          eapply FMapCommonKeys_find_None; eauto.
         * refine pick val (snd r_n); unfold PickID; eauto.
           simplify with monad laws; simpl.
           refine pick val ((_, _), S (snd r_n));
@@ -1182,5 +1289,5 @@ Definition BoundedStringCacheADT
 
     finish sharpening.
     Defined.
-
+F
 End BoundedStringCacheADT.

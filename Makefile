@@ -83,12 +83,17 @@ SRC_MODULES    := \
 	QueryStructure/Refinements/AutoDB
 
 EXAMPLE_MODULES := \
-	TrivialCache \
 	Bookstore \
 	BookstoreSemiAutomatic \
 	Weather \
 	Stocks \
-	ProcessScheduler
+	ProcessScheduler \
+	CacheADT/KVEnsembles \
+	CacheADT/CacheSpec \
+	CacheADT/CacheRefinements \
+	CacheADT/FMapCacheImplementation \
+	CacheADT/LRUCache \
+	BookstoreCache
 
 COQDEP=coqdep
 COQDOC=coqdoc

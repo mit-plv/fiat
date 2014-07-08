@@ -86,7 +86,7 @@ Definition BookStoreSpec : ADT BookStoreSig :=
 }.
 
 (* Aliases for internal names of the two tables *)
-Definition Books := GetRelationKey BookStoreSchema sBOOKS. 
+Definition Books := GetRelationKey BookStoreSchema sBOOKS.
 Definition Orders := GetRelationKey BookStoreSchema sORDERS.
 
 (* Aliases for internal notions of schemas for the two tables *)
@@ -122,7 +122,7 @@ Definition BookStore_AbsR
    which should take anywhere from 10 to 25 minutes to complete *)
 Definition BookStore :
   Sharpened BookStoreSpec.
-Proof. 
+Proof.
   plan BookStore_AbsR.
   finish sharpening.
 Defined.
