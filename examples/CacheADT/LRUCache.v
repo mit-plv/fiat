@@ -4,9 +4,9 @@ Require Import String Omega List FunctionalExtensionality Ensembles
 
 Section LRUCache.
 
-(* Abstraction relation between Ensemble specification 
+(* Abstraction relation between Ensemble specification
  and FMap Implementation. *)
-  
+
   Variable Value : Type. (* Type of cached values *)
   Variable Bound : nat. (* Bound on cache size *)
 
@@ -23,7 +23,7 @@ Section LRUCache.
 
   (* To keep the presentation clean for the paper, we'll
  split and rename the premise holding the abstraction. *)
-  Ltac split_CacheADTwLogIndex_AbsR :=
+  Ltac StartMethod :=
     match goal with
         H : CacheADTwLogIndex_AbsR _ _ |- _ =>
         let H' := fresh "Eq_or_nr" in
@@ -44,8 +44,7 @@ Section LRUCache.
     }
     hone method "AddKey".
     {
-      split_CacheADTwLogIndex_AbsR.
-      setoid_rewrite refine_pick_CacheADTwLogIndex_AbsR.
+      StartMethod.
       setoid_rewrite refine_ReplaceUsedKeyAdd.
       setoid_rewrite refine_SubEnsembleInsert.
       autorewrite with monad laws.
@@ -54,6 +53,7 @@ Section LRUCache.
       autorewrite with monad laws.
       setoid_rewrite refine_If_Opt_Then_Else_Bind.
       autorewrite with monad laws.
+      setoid_rewrite refine_pick_CacheADTwLogIndex_AbsR.
       setoid_rewrite refine_pick_KVEnsembleInsertRemove
       with (1 := EquivKeys_H).
       setoid_rewrite refine_pick_KVEnsembleInsert
@@ -63,7 +63,7 @@ Section LRUCache.
     }
     hone method "UpdateKey".
     {
-      split_CacheADTwLogIndex_AbsR.
+      StartMethod.
       setoid_rewrite refine_pick_CacheADTwLogIndex_AbsR.
       setoid_rewrite refine_IgnoreUnusedKeyUpdate.
       autorewrite with monad laws.
@@ -74,7 +74,7 @@ Section LRUCache.
     }
     hone method "LookupKey".
     {
-      split_CacheADTwLogIndex_AbsR.
+      StartMethod.
       setoid_rewrite refine_pick_CacheADTwLogIndex_AbsR.
       autorewrite with monad laws.
       setoid_rewrite (refine_pick_KVEnsemble EquivKeys_H).
@@ -84,7 +84,7 @@ Section LRUCache.
 
     hone representation using BoundedStringCacheADT_AbsR.
 
-    (* The section is a good example of manual optimization 
+    (* The section is a good example of manual optimization
        scripts, largely because we haven't implemented honing
        tactics for implementing caches. *)
 

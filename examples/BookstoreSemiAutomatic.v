@@ -86,7 +86,7 @@ Definition BookStoreSpec : ADT BookStoreSig :=
 }.
 
 (* Aliases for internal names of the two tables *)
-Definition Books := GetRelationKey BookStoreSchema sBOOKS. 
+Definition Books := GetRelationKey BookStoreSchema sBOOKS.
 Definition Orders := GetRelationKey BookStoreSchema sORDERS.
 
 (* Aliases for internal notions of schemas for the two tables *)
@@ -117,11 +117,11 @@ Definition BookStore_AbsR
            (nr : TBookStorage * TOrderStorage) : Prop :=
   or!sBOOKS ≃ benumerate (fst nr) /\ or!sORDERS ≃ benumerate (snd nr).
 
-Definition BookStoreManual : 
-  Sharpened BookStoreSpec.  
+Definition BookStoreManual :
+  Sharpened BookStoreSpec.
 Proof.
   unfold BookStoreSpec.
-  
+
   (* First, we unfold various definitions and drop constraints *)
   start honing QueryStructure.
 
@@ -129,48 +129,48 @@ Proof.
   hone representation using BookStore_AbsR.
 
   (* We start the actual refinement with the constructor, in a fully
-  automated way *) 
-  hone constructor "Init". { 
-    initializer. 
+  automated way *)
+  hone constructor "Init". {
+    initializer.
   }
 
-  (* We then move on to the "PlaceOrder" method, which we decide to 
+  (* We then move on to the "PlaceOrder" method, which we decide to
      implement semi-manually *)
   hone method "PlaceOrder". {
-    (* First, we unfold the definition of our abstraction relation *) 
-    startMethod BookStore_AbsR. 
-    
+    (* First, we unfold the definition of our abstraction relation *)
+    startMethod BookStore_AbsR.
+
     (* The, we remove trivial or redundant checks *)
     pruneDuplicates.
 
     (* Since the specification represents datasets as mathematical
        sets, every inserted item is paired with a unique ID, which we
        need to pick. Further refinements will drop this index, which
-       thus doesn't have any computational cost. *) 
+       thus doesn't have any computational cost. *)
     pickIndex.
 
     (* To ease its implementation, we convert this foregin key check
-       into a query *) 
+       into a query *)
     foreignToQuery.
-    
+
     (* This query, operating on sets, is then transformed into a
-       filter on lists, making use of the equivalence relations 
+       filter on lists, making use of the equivalence relations
        specified by Bookstore_AbsR *)
     concretize.
 
     (* At this point, we need to pick a list of results whose elements
        are a permutation of the one derived from the query. Using
        permutation-preserving transformations, we substitute slow
-       operations for more efficient ones *) 
+       operations for more efficient ones *)
     asPerm (BookStorage, OrderStorage).
-    
+
     (* This representation is reasonnably satisfactory; we pick the
        resulting list, and proceed to a few extra optimizations *)
     commit.
 
-    (* Now that we have a decision procedure for the constraint checks, 
-       all that remains is to proceed to the actual insertions. We 
-       distinguish the case where checks succeeded, and the case where 
+    (* Now that we have a decision procedure for the constraint checks,
+       all that remains is to proceed to the actual insertions. We
+       distinguish the case where checks succeeded, and the case where
        checks failed. *)
     Split Constraint Checks.
 
@@ -185,25 +185,67 @@ Proof.
   (* The AddBook method follows a similar pattern, so we implement it
       automatically: *)
   hone method "AddBook". {
-    mutator.
+
+    startMethod BookStore_AbsR.
+
+    (* The, we remove trivial or redundant checks *)
+    pruneDuplicates.
+
+    (* Since the specification represents datasets as mathematical
+       sets, every inserted item is paired with a unique ID, which we
+       need to pick. Further refinements will drop this index, which
+       thus doesn't have any computational cost. *)
+    pickIndex.
+
+    (* To ease its implementation, we convert this functional dependency
+       check into a query *)
+    fundepToQuery.
+
+    (* This query, operating on sets, is then transformed into a
+       filter on lists, making use of the equivalence relations
+       specified by Bookstore_AbsR *)
+    concretize.
+
+    (* At this point, we need to pick a list of results whose elements
+       are a permutation of the one derived from the query. Using
+       permutation-preserving transformations, we substitute slow
+       operations for more efficient ones *)
+    asPerm (BookStorage, OrderStorage).
+
+    (* This representation is reasonnably satisfactory; we pick the
+       resulting list, and proceed to a few extra optimizations *)
+    commit.
+
+    (* Now that we have a decision procedure for the constraint checks,
+       all that remains is to proceed to the actual insertions. We
+       distinguish the case where checks succeeded, and the case where
+       checks failed. *)
+    Split Constraint Checks.
+
+    (* First, the case where checks succeed: the insertion is valid: *)
+    checksSucceeded.
+
+    (* Second, the case where checks failed: in that case, the DB
+       remains untouched: *)
+    checksFailed.
   }
 
   (* We then move on to implementing the observers. First, GetTitles;
      again, we adopt a slightly more manual style to demonstrate the
-     main steps of the implementation. *) 
+     main steps of the implementation. *)
   hone method "GetTitles". {
     (* Just as before, we unfold the definition of our abstraction
-       relation *) 
+       relation *)
     startMethod BookStore_AbsR.
 
     (* And just like before, we translate this query in terms of list
-       operations. *) 
+       operations. *)
     concretize.
- 
+
     (* The optimization of this query follows a similar pattern: *)
     asPerm BookStorage.
 
-    (* This optimization is satisfactory: we pick the resulting list *) 
+    (* This optimization is satisfactory: we pick the resulting list *)
     commit.
 
     (* GetTitles is an observer: it doesn't modify the tables in any way. *)
@@ -214,7 +256,7 @@ Proof.
   }
 
   (* Our last method is NumOrders, which we can pass to the automatic
-  query planner. This takes a few minutes to complete *) 
+  query planner. This takes a few minutes to complete *)
   hone method "NumOrders". {
     observer.
   }
