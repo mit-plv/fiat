@@ -134,8 +134,66 @@ Proof.
     initializer. 
   }
 
-  (* We then move on to the "PlaceOrder" method, which we decide to 
+  (* We then move on to the "GetTitles" method, which we decide to 
      implement semi-manually *)
+  hone method "GetTitles". {
+    (* STEP 1: unfold the definition of the abstraction relation. *) 
+    startMethod BookStore_AbsR.
+
+    (* STEP 2: use rewrites to phrase the query in terms of some
+     * concrete list computation. *)
+    (* First, instead of looping over the mathematical relation,
+     * let's loop over an enumeration of the elements in the
+     * concrete data structure. *)
+    rewrite refine_List_Query_In by eassumption.
+
+    (* Next, we can implement the [Where] test as a list [filter]. *)
+    rewrite refine_List_Query_In_Where; instantiate (1 := _).
+
+    (* Now the expression is close enough to a list computation, so
+     * we can replace the whole [for] with selection of some list that
+     * is a permutation of the one we're building. *)
+    rewrite refine_List_For_Query_In_Return_Permutation.
+
+    (* A tactic from our library will do this sort of rewriting for us. *)
+    Undo 3.
+    concretize.
+ 
+    (* STEP 3: more rewrites to find opportunities to use the index
+     * structures efficiently *)
+    (* We are filtering the results of enumerating all entries in a data structure.
+     * There's a method available that combines the two operations. *)
+    rewrite filter over BookStorage
+            using search term (Some n, (@None nat, @nil (TSearchTermMatcher BookSchema))).
+
+    (* Again, a generic tactic would handle this phase. *)
+    Undo 1.
+    asPerm BookStorage.
+
+    (* STEP 4: Now we have settled on the final list expression.
+     * Let's commit to using it instead of one of its other permutations. *)
+    setoid_rewrite refine_Permutation_Reflexivity.
+    simplify with monad laws.
+
+    (* As usual, we have automation for this phase. *)
+    Undo 2.
+    commit.
+
+    (* STEP 5: Pick the current database as the new one. *)
+    rewrite refine_pick_val by eauto.
+    simplify with monad laws.
+
+    (* Automated version: *)
+    Undo 2.
+    choose_db BookStore_AbsR.
+
+    (* And we're done! *)
+    finish honing.
+  }
+
+  (* We then move on to implementing one of the mutators.
+     Again, we adopt a slightly more manual style to demonstrate the
+     main steps of the implementation. *) 
   hone method "PlaceOrder". {
     (* First, we unfold the definition of our abstraction relation *) 
     startMethod BookStore_AbsR. 
@@ -164,7 +222,7 @@ Proof.
        operations for more efficient ones *) 
     asPerm (BookStorage, OrderStorage).
     
-    (* This representation is reasonnably satisfactory; we pick the
+    (* This representation is reasonably satisfactory; we pick the
        resulting list, and proceed to a few extra optimizations *)
     commit.
 
@@ -182,39 +240,13 @@ Proof.
     checksFailed.
   }
 
-  (* The AddBook method follows a similar pattern, so we implement it
-      automatically: *)
+  (* The remaining methods are similar, so we'll just throw the
+   * automation at them. *)
+
   hone method "AddBook". {
     mutator.
   }
 
-  (* We then move on to implementing the observers. First, GetTitles;
-     again, we adopt a slightly more manual style to demonstrate the
-     main steps of the implementation. *) 
-  hone method "GetTitles". {
-    (* Just as before, we unfold the definition of our abstraction
-       relation *) 
-    startMethod BookStore_AbsR.
-
-    (* And just like before, we translate this query in terms of list
-       operations. *) 
-    concretize.
- 
-    (* The optimization of this query follows a similar pattern: *)
-    asPerm BookStorage.
-
-    (* This optimization is satisfactory: we pick the resulting list *) 
-    commit.
-
-    (* GetTitles is an observer: it doesn't modify the tables in any way. *)
-    choose_db BookStore_AbsR.
-
-    (* And we're done! *)
-    finish honing.
-  }
-
-  (* Our last method is NumOrders, which we can pass to the automatic
-  query planner. This takes a few minutes to complete *) 
   hone method "NumOrders". {
     observer.
   }
