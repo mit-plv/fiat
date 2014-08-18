@@ -212,10 +212,63 @@ Definition Cache_binsert
     cfresh_cache  := updated_cache_fresh_after_insert _ _ _ _ _ _ _
   |}.
 
+(* We're just going to recompute the cached value in the interest of 
+   expediency. Future implementations will have more clever ways of 
+   doing this. *)
+Definition Cache_bdelete
+           {TBag TItem TSearchTerm TCachedValue: Type}
+           {bag_bag: Bag TBag TItem TSearchTerm}
+           (initial_value: TCachedValue)
+           (eqA: TCachedValue -> TCachedValue -> Prop)
+           (equiv: Equivalence eqA)
+           (updater: TItem -> TCachedValue -> TCachedValue)
+           (updater_cacheable: IsCacheable eqA updater)
+           (container: @Cache TBag TItem TSearchTerm TCachedValue
+                              bag_bag initial_value
+                              eqA updater updater_cacheable)
+           (search_term : TSearchTerm) : @Cache TBag TItem TSearchTerm TCachedValue
+                                  bag_bag initial_value
+                                  eqA updater updater_cacheable :=
+  let c := bdelete (Bag := bag_bag) (cbag container) search_term in 
+  {|
+    cbag          := c;
+    ccached_value := RecomputeCachedValue updater initial_value (benumerate c);
+    cfresh_cache  := reflexivity _
+  |}.
+
+(* We're just going to recompute the cached value in the interest of 
+   expediency. Future implementations will have more clever ways of 
+   doing this. *)
+Definition Cache_bupdate
+           {TBag TItem TSearchTerm TCachedValue: Type}
+           {bag_bag: Bag TBag TItem TSearchTerm}
+           (initial_value: TCachedValue)
+           (eqA: TCachedValue -> TCachedValue -> Prop)
+           (equiv: Equivalence eqA)
+           (updater: TItem -> TCachedValue -> TCachedValue)
+           (updater_cacheable: IsCacheable eqA updater)
+           (container: @Cache TBag TItem TSearchTerm TCachedValue
+                              bag_bag initial_value
+                              eqA updater updater_cacheable)
+           (search_term : TSearchTerm) 
+           (update_f : TItem -> TItem) 
+: @Cache TBag TItem TSearchTerm TCachedValue
+         bag_bag initial_value
+         eqA updater updater_cacheable :=
+  let c := bupdate (Bag := bag_bag) (cbag container) search_term update_f in 
+  {|
+    cbag          := c;
+    ccached_value := RecomputeCachedValue updater initial_value (benumerate c);
+    cfresh_cache  := reflexivity _
+  |}.
+
 Ltac transparent_implementation :=
-  unfold BagInsertEnumerate, BagEnumerateEmpty, BagFindStar, BagFindCorrect, BagCountCorrect;
+  unfold BagInsertEnumerate, BagEnumerateEmpty, BagFindStar, 
+         BagFindCorrect, BagCountCorrect, BagDeleteCorrect, BagUpdateCorrect;
   intros;
-  first [ apply binsert_enumerate | apply benumerate_empty | apply bfind_correct | apply bfind_star | apply bcount_correct ].
+  first [ apply binsert_enumerate | apply benumerate_empty 
+          | apply bfind_correct | apply bfind_star 
+          | apply bcount_correct | apply bdelete_correct | apply bupdate_correct ].
 
 Lemma Cache_BagInsertEnumerate :
   forall {TBag TItem TSearchTerm TCachedValue: Type}
@@ -281,6 +334,34 @@ Lemma Cache_BagCountCorrect :
       (Cache_bfind  initial_value eqA updater updater_cacheable).
 Proof. transparent_implementation. Qed.
 
+Lemma Cache_BagDeleteCorrect :
+  forall {TBag TItem TSearchTerm TCachedValue: Type}
+         {bag_bag: Bag TBag TItem TSearchTerm}
+         (initial_value: TCachedValue)
+         (eqA: TCachedValue -> TCachedValue -> Prop)
+         (equiv: Equivalence eqA)
+         (updater: TItem -> TCachedValue -> TCachedValue)
+         (updater_cacheable: IsCacheable eqA updater),
+   BagDeleteCorrect (Cache_bfind initial_value eqA updater updater_cacheable)
+     (Cache_bfind_matcher initial_value eqA updater updater_cacheable)
+     (Cache_benumerate initial_value eqA updater updater_cacheable)
+     (Cache_bdelete initial_value eqA equiv updater updater_cacheable).
+Proof. transparent_implementation. Qed.
+
+Lemma Cache_BagUpdateCorrect :
+  forall {TBag TItem TSearchTerm TCachedValue: Type}
+         {bag_bag: Bag TBag TItem TSearchTerm}
+         (initial_value: TCachedValue)
+         (eqA: TCachedValue -> TCachedValue -> Prop)
+         (equiv: Equivalence eqA)
+         (updater: TItem -> TCachedValue -> TCachedValue)
+         (updater_cacheable: IsCacheable eqA updater),
+    BagUpdateCorrect (Cache_bfind initial_value eqA updater updater_cacheable)
+     (Cache_bfind_matcher initial_value eqA updater updater_cacheable)
+     (Cache_benumerate initial_value eqA updater updater_cacheable)
+     (Cache_bupdate initial_value eqA equiv updater updater_cacheable).
+Proof. transparent_implementation. Qed.
+
 Instance CacheAsBag
          {TBag TItem TSearchTerm TCachedValue: Type}
          {bag_bag: Bag TBag TItem TSearchTerm}
@@ -301,12 +382,16 @@ Instance CacheAsBag
     bfind      := Cache_bfind      initial_value eqA updater updater_cacheable;
     binsert    := Cache_binsert    initial_value eqA equiv updater updater_cacheable;
     bcount     := Cache_bcount     initial_value eqA updater updater_cacheable;
+    bdelete    := Cache_bdelete     initial_value eqA equiv updater updater_cacheable;
+    bupdate    := Cache_bupdate    initial_value eqA equiv updater updater_cacheable;
 
     binsert_enumerate := Cache_BagInsertEnumerate initial_value eqA equiv updater updater_cacheable;
     benumerate_empty  := Cache_BagEnumerateEmpty  initial_value eqA equiv updater updater_cacheable;
     bfind_star        := Cache_BagFindStar        initial_value eqA updater updater_cacheable;
     bfind_correct     := Cache_BagFindCorrect     initial_value eqA updater updater_cacheable;
-    bcount_correct    := Cache_BagCountCorrect    initial_value eqA updater updater_cacheable
+    bcount_correct    := Cache_BagCountCorrect    initial_value eqA updater updater_cacheable;
+    bdelete_correct   := Cache_BagDeleteCorrect   initial_value eqA equiv updater updater_cacheable;
+    bupdate_correct   := Cache_BagUpdateCorrect   initial_value eqA equiv updater updater_cacheable
   |}.
 
 Section CacheableFunctions.

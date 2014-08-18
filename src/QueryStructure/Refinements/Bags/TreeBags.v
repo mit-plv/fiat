@@ -142,6 +142,40 @@ Module TreeBag (Import M: WS).
         flatten (List.map (fun bag =>  @bfind _ _ _ bags_bag bag search_term) (Values (ifmap container)))
     end.
 
+  Lemma RemoveKey_IndexedBag_consistent
+         {TBag TItem TBagSearchTerm: Type} 
+         {bags_bag: Bag TBag TItem TBagSearchTerm} 
+         {projection}
+         (k : TKey)  
+         (container : @IndexedBag TBag TItem TBagSearchTerm bags_bag projection)
+  : IndexedTreeConsistency projection (remove k (ifmap container)).
+  Proof.
+    unfold IndexedTreeConsistency; intros.
+    apply remove_3 in H; eapply iconsistency; eauto.
+  Qed.
+
+  Set Printing Implicit.
+  Locate Values.
+
+  Program Definition IndexedBag_bdelete
+             {TBag TItem TBagSearchTerm: Type}
+             {bags_bag: Bag TBag TItem TBagSearchTerm}
+             (projection: TItem -> TKey)
+             (container: @IndexedBag TBag TItem TBagSearchTerm bags_bag projection) 
+             (key_searchterm: (option TKey) * TBagSearchTerm) :=
+    let (key_option, search_term) := key_searchterm in
+    match key_option with
+      | Some k => {| ifmap := remove k (@ifmap TBag TItem TBagSearchTerm bags_bag
+                                               projection container);
+                     iconsistency := RemoveKey_IndexedBag_consistent k container |}
+      | None => {| ifmap := map (fun bag => @bdelete _ _ _ bags_bag bag search_term) (ifmap container);
+                   iconsistency := _ |}
+    end.
+
+
+        flatten (List.map (fun bag =>  @bfind _ _ _ bags_bag bag search_term) (Values (ifmap container)))
+    end.
+
   Definition IndexedBag_bcount
              {TBag TItem TBagSearchTerm: Type}
              {bags_bag: Bag TBag TItem TBagSearchTerm}

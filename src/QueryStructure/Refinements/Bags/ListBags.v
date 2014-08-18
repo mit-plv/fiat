@@ -1,6 +1,8 @@
 Require Export BagsInterface.
 Unset Implicit Arguments.
 
+Open Scope list.
+
 Definition ListAsBag_bfind 
            {TItem TSearchTerm: Type}
            (matcher: TSearchTerm -> TItem -> bool) 
@@ -18,6 +20,23 @@ Definition ListAsBag_bcount
            (matcher: TSearchTerm -> TItem -> bool) 
            (container: list TItem) (search_term: TSearchTerm) :=
   List.fold_left (fun acc x => acc + if (matcher search_term x) then 1 else 0) container 0.
+
+Definition ListAsBag_bdelete
+           {TItem TSearchTerm: Type}
+           (bfind_matcher : TSearchTerm -> TItem -> bool)
+           (container : list TItem)
+           (search_term : TSearchTerm) :=
+  snd (List.partition (bfind_matcher search_term) container).
+
+Definition ListAsBag_bupdate
+           {TItem TSearchTerm: Type}
+           (bfind_matcher : TSearchTerm -> TItem -> bool)
+           (container : list TItem)
+           (search_term : TSearchTerm) 
+           (f_update : TItem -> TItem) :=
+  (snd (List.partition (bfind_matcher search_term) container))
+       ++ List.map f_update (fst (List.partition (bfind_matcher search_term)
+                                                 container)).
 
 Lemma List_BagInsertEnumerate :
   forall {TItem: Type},
@@ -81,6 +100,24 @@ Proof.
   rewrite plus_0_r in temp; simpl in temp; exact temp.
 Qed.
 
+Lemma List_BagDeleteCorrect :
+  forall {TItem TSearchTerm: Type}
+         (matcher: TSearchTerm -> TItem -> bool),
+    BagDeleteCorrect (ListAsBag_bfind matcher) matcher id
+                     (ListAsBag_bdelete matcher).
+Proof.
+  firstorder.
+Qed.
+
+Lemma List_BagUpdateCorrect :
+  forall {TItem TSearchTerm: Type}
+         (matcher: TSearchTerm -> TItem -> bool),
+    BagUpdateCorrect (ListAsBag_bfind matcher) matcher id
+   (ListAsBag_bupdate matcher).
+Proof.
+  firstorder.
+Qed.
+
 Instance ListAsBag
          {TItem TSearchTerm: Type}
          (star: TSearchTerm)
@@ -95,10 +132,14 @@ Instance ListAsBag
     bfind      := ListAsBag_bfind matcher;
     binsert    := ListAsBag_binsert;
     bcount     := ListAsBag_bcount matcher;
-    
+    bdelete    := ListAsBag_bdelete matcher;
+    bupdate    := ListAsBag_bupdate matcher;
+
     binsert_enumerate := List_BagInsertEnumerate;
     benumerate_empty  := List_BagEnumerateEmpty;
     bfind_star        := List_BagFindStar star matcher find_star;
     bfind_correct     := List_BagFindCorrect matcher;
-    bcount_correct    := List_BagCountCorrect matcher
+    bcount_correct    := List_BagCountCorrect matcher;
+    bdelete_correct   := List_BagDeleteCorrect matcher;
+    bupdate_correct   := List_BagUpdateCorrect matcher
   |}.

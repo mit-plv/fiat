@@ -29,3 +29,9 @@
 examples/bookstore.ml
 examples/bookstore.mli
 examples/repl
+/ADT-Synthesis-Submitted.tiff
+/examples/*coq*
+/examples/ADTExamples/PLLunch.v
+/examples/ADTExamples/PLLunch2.v
+/examples/ADTExamples/SetoidRewritingAdventures.v
+/src/Makefile.coq
