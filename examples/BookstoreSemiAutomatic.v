@@ -140,7 +140,7 @@ Proof.
     (* First, we unfold the definition of our abstraction relation *)
     startMethod BookStore_AbsR.
 
-    (* The, we remove trivial or redundant checks *)
+    (* Then, we remove trivial or redundant checks *)
     pruneDuplicates.
 
     (* Since the specification represents datasets as mathematical
