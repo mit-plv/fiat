@@ -1,43 +1,43 @@
 Require Import CachingBags.
 
 Unset Implicit Arguments.
-
+(* This also needs to be adapted with update and delete.
 Section Generalities.
   Require Import Morphisms.
 
   Lemma comm_cacheable_aux :
-    forall {TValue TCachedValue} 
+    forall {TValue TCachedValue}
            (eqA: TCachedValue -> TCachedValue -> Prop)
            (f: TValue -> TCachedValue -> TCachedValue),
       Equivalence eqA ->
-      Proper (eq ==> eqA ==> eqA) f -> 
+      Proper (eq ==> eqA ==> eqA) f ->
       Proper (eqA ==> eq ==> eqA) (RecomputeCachedValue f).
   Proof.
     intros;
     unfold RecomputeCachedValue, Morphisms.Proper, Morphisms.respectful;
     intros ** seq seq';
     subst;
-    induction seq; 
-      simpl; 
+    induction seq;
+      simpl;
       trivial;
       try rewrite IHseq;
       reflexivity.
   Qed.
 
   Lemma comm_cacheable :
-    forall {TValue TCachedValue} 
+    forall {TValue TCachedValue}
            (eqA: TCachedValue -> TCachedValue -> Prop)
            (f: TValue -> TCachedValue -> TCachedValue),
       (Equivalence eqA) ->
-      (Proper (eq ==> eqA ==> eqA) f) -> 
+      (Proper (eq ==> eqA ==> eqA) f) ->
       (forall x y default, eqA (f x (f y default)) (f y (f x default))) ->
       (IsCacheable eqA f).
   Proof.
     unfold IsCacheable;
-    intros * equiv proper comm; 
+    intros * equiv proper comm;
     unfold Morphisms.Proper, Morphisms.respectful;
     intros * is_eqA * perm;
-      induction perm as [ | | x1 x2 l | ]; 
+      induction perm as [ | | x1 x2 l | ];
       simpl.
 
     trivial.
@@ -58,8 +58,8 @@ Section Aggregates.
 
   Ltac t :=
     intros;
-    apply comm_cacheable; intros; simpl; 
-    [ try solve [ first [ apply eq_equivalence | intuition ] ] | 
+    apply comm_cacheable; intros; simpl;
+    [ try solve [ first [ apply eq_equivalence | intuition ] ] |
       try solve [ unfold Proper, respectful; intros; all_rewrites; intuition ] | ].
 
   Section Counts.
@@ -89,7 +89,7 @@ Section Aggregates.
     Lemma Zadd_cacheable :
       IsCacheable eq Z.add.
     Proof.
-      t; ring. 
+      t; ring.
     Qed.
 
     Lemma Qplus_cacheable :
@@ -99,7 +99,7 @@ Section Aggregates.
     Qed.
 
     Definition squared {T} (add: T -> T -> T) (mul: T -> T -> T) :=
-      fun x acc => add (mul x x) acc. 
+      fun x acc => add (mul x x) acc.
 
     Lemma plus_sq_cacheable :
       IsCacheable eq (squared plus mult).
@@ -199,31 +199,31 @@ Section Aggregates.
          stored_sum_sq := Z.add (stored_sum_sq store) (Zsq x);
          stored_count  := plus  (stored_count  store) (1) |}.
 
-    Definition avg sum n := Rdiv (IZR sum) (INR n). 
+    Definition avg sum n := Rdiv (IZR sum) (INR n).
 
     Definition GetAvg projection variance_store :=
       match stored_count variance_store with
         | 0%nat => 0%R
         | n     => avg (projection variance_store) n
       end.
-    
+
     Definition GetSampleAvg projection variance_store :=
       match stored_count variance_store with
         | 0%nat => 0%R
         | 1%nat => 0%R
         | S n   => avg (projection variance_store) n
       end.
-    
+
     Definition GetAverage        := GetAvg stored_sum.
     Definition GetAverageSq      := GetAvg stored_sum_sq.
-    Definition GetVariance store := Rminus (GetAverageSq store) 
-                                           (Rsq (GetAverage store)).  
+    Definition GetVariance store := Rminus (GetAverageSq store)
+                                           (Rsq (GetAverage store)).
     Definition GetStdDev   store := sqrt   (GetVariance store).
 
     Definition GetSampleAverage        := GetSampleAvg stored_sum.
     Definition GetSampleAverageSq      := GetSampleAvg stored_sum_sq.
-    Definition GetSampleVariance store := Rminus (GetSampleAverageSq store) 
-                                                 (Rsq (GetSampleAverage store)).  
+    Definition GetSampleVariance store := Rminus (GetSampleAverageSq store)
+                                                 (Rsq (GetSampleAverage store)).
     Definition GetSampleStdDev   store := sqrt   (GetSampleVariance store).
 
     Lemma variance_store_cacheable :
@@ -233,10 +233,12 @@ Section Aggregates.
     Qed.
   End Statistics.
 
-  (* Missing:    
+  (* Missing:
      BIT_AND()		Return bitwise and
      BIT_OR()		Return bitwise or
      BIT_XOR()		Return bitwise xor
      COUNT(DISTINCT)	Return the count of a number of different values
      GROUP_CONCAT()	Return a concatenated string *)
 End Aggregates.
+
+*)

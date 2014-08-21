@@ -1,6 +1,6 @@
 Require Export BagsInterface BagsProperties.
-Require Import SetEqProperties FMapExtensions AdditionalLemmas.
-Require Import FMapInterface Coq.FSets.FMapFacts CachingBags CacheableFunctions.
+Require Import SetEqProperties FMapExtensions AdditionalLemmas AdditionalPermutationLemmas.
+Require Import FMapInterface Coq.FSets.FMapFacts.
 
 Unset Implicit Arguments.
 
@@ -11,65 +11,57 @@ Module TreeBag (Import M: WS).
 
   Definition TKey := key.
 
-  Definition IndexedTreeConsistency 
-             {TBag TItem TBagSearchTerm: Type}
-             {bags_bag: Bag TBag TItem TBagSearchTerm}
-             projection fmap :=
+  Context {TBag : Type}
+          {TItem : Type}
+          {TBagSearchTerm : Type}
+          {TBagUpdateTerm : Type}.
+  Variables (projection: TItem -> TKey)            
+            (bags_bag: Bag TBag TItem TBagSearchTerm TBagUpdateTerm).
+
+  Definition IndexedTreeConsistency fmap :=
     forall (key: TKey) (bag: TBag),
-      MapsTo key bag fmap -> 
+      MapsTo key bag fmap ->
       forall (item: TItem),
         List.In item (benumerate bag) ->
         E.eq (projection item) key.
 
-  Record IndexedBag 
-         {TBag TItem TBagSearchTerm: Type} 
-         {bags_bag: Bag TBag TItem TBagSearchTerm} 
-         {projection} :=
-    { 
-      ifmap        : t TBag;
-      iconsistency : IndexedTreeConsistency projection ifmap
+  Record IndexedBag :=
+    { ifmap        : t TBag;
+      iconsistency : IndexedTreeConsistency ifmap
     }.
 
-  Definition KeyFilter 
-             {TItem}
-             (key: TKey)
-             (projection: TItem -> TKey) :=
+  Definition KeyFilter (key: TKey) :=
     (fun x : TItem => if E.eq_dec (projection x) key then true else false).
-  
+
   Lemma KeyFilter_beq :
-    forall {TItem} beq,
+    forall beq,
       (forall x y, reflect (E.eq x y) (beq x y)) ->
-      (forall key projection (item: TItem), 
-         KeyFilter key projection item = beq (projection item) key).
+      (forall key (item: TItem),
+         KeyFilter key item = beq (projection item) key).
   Proof.
-    intros TItem beq spec key projection item.
+    intros beq spec key item.
     specialize (spec (projection item) key).
     unfold KeyFilter.
     destruct spec as [ is_eq | neq ];
       destruct (F.eq_dec _ _); intuition.
-  Qed.    
+  Qed.
 
   Lemma iconsistency_empty :
-    forall {TBag TItem TBagSearchTerm: Type} 
-           {bags_bag: Bag TBag TItem TBagSearchTerm} 
-           projection,
-      IndexedTreeConsistency projection (empty TBag).
+      IndexedTreeConsistency (empty TBag).
   Proof.
-    unfold IndexedTreeConsistency; 
+    unfold IndexedTreeConsistency;
     intros; rewrite empty_mapsto_iff in *; exfalso; trivial.
   Qed.
 
   Lemma consistency_key_eq :
-    forall {TBag TItem TBagSearchTerm},
-    forall bags_bag (projection: TItem -> TKey),
-    forall (indexed_bag: @IndexedBag TBag TItem TBagSearchTerm bags_bag projection),
+    forall (container : IndexedBag),
     forall (key: TKey) bag item,
-      MapsTo key bag (ifmap indexed_bag) ->
+      MapsTo key bag (ifmap container) ->
       List.In item (benumerate bag) ->
       E.eq (projection item) key.
   Proof.
     intros.
-    destruct indexed_bag as [? consistent].
+    destruct container as [? consistent].
     unfold IndexedTreeConsistency in consistent.
     eapply consistent; eauto.
   Qed.
@@ -80,97 +72,442 @@ Module TreeBag (Import M: WS).
     end.
 
   Lemma KeyFilter_true :
-    forall {A} k projection (item: A),
-      KeyFilter k projection item = true <-> E.eq (projection item) k.
+    forall k item,
+      KeyFilter k item = true <-> E.eq (projection item) k.
   Proof.
     unfold KeyFilter; intros;
     destruct_if; intros; intuition.
   Qed.
 
   Lemma KeyFilter_false :
-    forall {A} k projection (item: A),
-      KeyFilter k projection item = false <-> ~ E.eq (projection item) k.
+    forall k item,
+      KeyFilter k item = false <-> ~ E.eq (projection item) k.
   Proof.
     unfold KeyFilter; intros;
     destruct_if; intros; intuition.
   Qed.
 
-  Definition IndexedBag_bempty 
-             {TBag TItem TBagSearchTerm: Type}
-             {bags_bag: Bag TBag TItem TBagSearchTerm}
-             (projection: TItem -> TKey) :=
+  Definition IndexedBag_bempty :=
     {| ifmap        := empty TBag;
-       iconsistency := iconsistency_empty projection |}.
+       iconsistency := iconsistency_empty |}.
 
-  Definition IndexedBag_bstar
-             {TBag TItem TBagSearchTerm: Type}
-             {bags_bag: Bag TBag TItem TBagSearchTerm} :=
-    (@None TKey, @bstar _ _ _ bags_bag).
+  Definition IndexedBag_bstar :=
+    (@None TKey, @bstar _ _ _ _ bags_bag).
 
-  Definition IndexedBag_bfind_matcher 
-             {TBag TItem TBagSearchTerm: Type}
-             {bags_bag: Bag TBag TItem TBagSearchTerm}
-             (projection: TItem -> TKey)
+  Definition IndexedBag_bid :=
+    (@None TKey, @bid _ _ _ _ bags_bag).
+
+  Definition IndexedBag_bfind_matcher
              (key_searchterm: (option TKey) * TBagSearchTerm) (item: TItem) :=
     let (key_option, search_term) := key_searchterm in
     match key_option with
-      | Some k => KeyFilter k projection item
-      | None   => true 
+      | Some k => KeyFilter k item
+      | None   => true
     end && (bfind_matcher search_term item).
 
-  Definition IndexedBag_benumerate 
-             {TBag TItem TBagSearchTerm: Type}
-             {bags_bag: Bag TBag TItem TBagSearchTerm}
-             {projection: TItem -> TKey} 
-             (container: @IndexedBag TBag TItem TBagSearchTerm bags_bag projection) :=
+  Definition IndexedBag_benumerate
+             (container: IndexedBag) :=
     flatten (List.map benumerate (Values (ifmap container))).
 
   Definition IndexedBag_bfind
-             {TBag TItem TBagSearchTerm: Type}
-             {bags_bag: Bag TBag TItem TBagSearchTerm}
-             (projection: TItem -> TKey)
-             (container: @IndexedBag TBag TItem TBagSearchTerm bags_bag projection) 
+             (container: IndexedBag)
              (key_searchterm: (option TKey) * TBagSearchTerm) :=
     let (key_option, search_term) := key_searchterm in
     match key_option with
       | Some k =>
         match find k (ifmap container) with
-          | Some bag => @bfind _ _ _ bags_bag bag search_term
+          | Some bag => @bfind _ _ _ _ bags_bag bag search_term
           | None     => nil
         end
       | None   =>
-        flatten (List.map (fun bag =>  @bfind _ _ _ bags_bag bag search_term) (Values (ifmap container)))
+        flatten (List.map (fun bag =>  @bfind _ _ _ _ bags_bag bag search_term) (Values (ifmap container)))
     end.
 
-  Lemma RemoveKey_IndexedBag_consistent
-         {TBag TItem TBagSearchTerm: Type} 
-         {bags_bag: Bag TBag TItem TBagSearchTerm} 
-         {projection}
-         (k : TKey)  
-         (container : @IndexedBag TBag TItem TBagSearchTerm bags_bag projection)
-  : IndexedTreeConsistency projection (remove k (ifmap container)).
+  Lemma InA_mapsto_add {Value} : 
+    forall bag' kv k' (v' : Value),
+      InA (@eq_key_elt _) kv (elements (add k' v' bag')) -> 
+      eq_key_elt kv (k', v') \/
+      (~ E.eq (fst kv) k' /\
+       InA (@eq_key_elt _) kv (elements bag')).
   Proof.
-    unfold IndexedTreeConsistency; intros.
-    apply remove_3 in H; eapply iconsistency; eauto.
+    intros.
+    destruct kv as [k v]; apply elements_2 in H.
+    apply add_mapsto_iff in H; intuition; subst;
+    [left; split; simpl; eauto | 
+     right; eauto using elements_1].
   Qed.
 
-  Set Printing Implicit.
-  Locate Values.
+  Lemma InA_mapsto_add' {Value} : 
+    forall bag' kv k' (v' : Value),
+      (eq_key_elt kv (k', v') \/
+       (~ E.eq (fst kv) k' /\
+        InA (@eq_key_elt _) kv (elements bag'))) 
+      -> InA (@eq_key_elt _) kv (elements (add k' v' bag')).
+  Proof.
+    intros; destruct kv as [k v]; apply elements_1; 
+    apply add_mapsto_iff; intuition;
+    [destruct H0; eauto 
+    | right; intuition; apply elements_2; eauto].
+  Qed.
 
-  Program Definition IndexedBag_bdelete
-             {TBag TItem TBagSearchTerm: Type}
-             {bags_bag: Bag TBag TItem TBagSearchTerm}
-             (projection: TItem -> TKey)
-             (container: @IndexedBag TBag TItem TBagSearchTerm bags_bag projection) 
-             (key_searchterm: (option TKey) * TBagSearchTerm) :=
+    Lemma InA_app_swap {A} eqA :
+      Equivalence eqA 
+      -> forall (a : A) l l', 
+           InA eqA a (l ++ l') -> InA eqA a (l' ++ l).
+    Proof.
+      intros; eapply InA_app_iff; 
+      eapply InA_app_iff in H0; eauto; intuition.
+    Qed.
+    
+    Lemma InA_app_cons_swap {A} eqA :
+      Equivalence eqA 
+      -> forall (a a' : A) l l', 
+           InA eqA a (l ++ (a' :: l')) <-> InA eqA a ((a' :: l) ++ l').
+    Proof.
+      split; intros.
+      - eapply InA_app_swap; eauto.
+        intros; eapply InA_app_iff; 
+        eapply InA_app_iff in H0; eauto; intuition.
+        inversion H; subst; eauto.
+      - eapply InA_app_swap; eauto.
+        intros; eapply InA_app_iff; 
+        eapply InA_app_iff in H0; eauto; intuition.
+        inversion H; subst; eauto.
+    Qed.
+
+  Lemma Permutation_InA_cons {Value} : 
+    forall l (l' : list (key * Value)), 
+      NoDupA (@eq_key _) l
+      -> NoDupA (@eq_key _) l'
+      -> (forall k v, 
+            InA (@eq_key_elt _) (k, v) l' <-> 
+            (InA (@eq_key_elt _) (k, v) l))
+      -> Permutation (List.map snd l') 
+                     (List.map snd l).
+  Proof.
+    induction l; intros.
+    destruct l'.
+    constructor.
+    assert (InA (eq_key_elt (elt:=Value)) (fst p, snd p) []) as H2
+      by (eapply H1; left; split; reflexivity); inversion H2.
+    destruct a as [k v].
+    assert (InA (eq_key_elt (elt:=Value)) (k, v) l') as H2
+      by (eapply H1; econstructor; split; reflexivity).
+    destruct (InA_split H2) as [l'1 [kv [l'2 [eq_kv eq_l]]]]; subst.
+    rewrite <- Permutation_middle; simpl.
+    destruct eq_kv; simpl in *; subst; constructor.
+    eapply NoDupA_swap in H0; eauto using eqk_equiv.
+    inversion H0; inversion H; subst; apply IHl; eauto.
+    assert (forall (k0 : key) (v : Value),
+              InA (eq_key_elt (elt:=Value)) (k0, v) (kv :: (l'1 ++ l'2)) <->
+              InA (eq_key_elt (elt:=Value)) (k0, v) ((k, snd kv) :: l)) by 
+        (split; intros;
+         [ eapply H1; eapply InA_app_cons_swap
+         | eapply H1 in H4; eapply InA_app_cons_swap in H4 ]; eauto using eqke_equiv).
+    split; intros. 
+    + generalize (proj1 (H4 k0 v) (InA_cons_tl _ H5)); intros.
+      inversion H8; subst; eauto.
+      destruct H12; simpl in *.
+      elimtype False; apply H6.
+      revert H5 H9 H3; clear; induction (l'1 ++ l'2); intros;
+      inversion H5; subst;
+        [ constructor; destruct H0; simpl in *; unfold eq_key;
+          rewrite <- H3, <- H9; eauto
+        | constructor 2; eauto ].
+      + generalize (proj2 (H1 k0 v) (InA_cons_tl _ H5)); intros.
+        eapply InA_app_cons_swap in H8; eauto using eqke_equiv.
+        inversion H8; subst; eauto.
+        destruct H12; simpl in *.
+        elimtype False; apply H10.
+        revert H5 H9 H3; clear; induction l; intros; 
+        inversion H5; subst;
+        [ constructor; destruct H0; simpl in *; unfold eq_key;
+          simpl; rewrite <- H, H9; eauto
+        | constructor 2; eauto ].
+  Qed.
+
+  Lemma FMap_Insert_fold_add {Value}
+  : forall (f : Value -> Value) (bag : t Value) bag', 
+      (forall (k : key), InA E.eq k (List.map fst (elements bag))
+                  -> ~ In k bag')
+      -> Permutation 
+           (List.map snd (elements (fold (fun k bag'' r' => add k (f bag'') r') 
+                           bag bag')))
+           (List.map snd ((List.map (fun kv => (fst kv, f (snd kv))) (elements bag)) ++ elements bag')).
+  Proof.
+    intros.
+    intros; rewrite fold_1.
+    generalize (elements_3w bag) as NoDupl.
+    revert bag' H; induction (elements bag); simpl; intros.
+    reflexivity.
+    rewrite IHl, Permutation_cons_app; 
+      try (rewrite List.map_app; reflexivity).
+    rewrite List.map_app, List.map_map.
+    apply Permutation_app; try reflexivity.
+    apply (Permutation_InA_cons ((fst a, f (snd a)) :: elements bag'));
+      eauto using elements_3w.
+    econstructor; eauto using elements_3w.
+    unfold not; intros; eapply (H (fst a)); 
+    [ constructor; reflexivity 
+    | eapply elements_in_iff; revert H0; clear; intro; induction H0].
+    repeat econstructor; eauto.
+    destruct IHInA; econstructor; econstructor 2; eauto.
+    split; intros.
+    apply InA_mapsto_add in H0; intuition.
+    inversion H0; subst; eapply InA_mapsto_add'; intuition.
+    right; intuition.
+    eapply H; simpl.
+    econstructor; reflexivity.
+    eapply elements_in_iff; revert H2 H1; clear; intros;
+    induction H2.
+    destruct H; repeat econstructor; eauto.
+    destruct IHInA; econstructor; econstructor 2; eauto.
+    unfold not; intros.
+    apply add_in_iff in H1; destruct H1.
+    inversion NoDupl; subst; rewrite <- H1 in H0; eapply H4.
+    revert H0; clear; induction l; intros; inversion H0; subst.
+    constructor; eauto.
+    econstructor 2; eauto.
+    eapply H; eauto.
+    inversion NoDupl; eauto.
+  Qed.
+
+  Lemma FMap_fold_add_MapsTo_NIn {Value}
+  : forall (f : Value -> Value) l k v bag', 
+      ~ InA (@eq_key _) (k,v) (List.map (fun kv => (fst kv, f (snd kv))) l)
+      -> (MapsTo k v (fold_left (fun a p => add (fst p) (f (snd p)) a) l bag')
+                      <-> MapsTo k v bag').
+  Proof.
+    unfold eq_key; intros; revert k v bag' H.
+    induction l; simpl; intros; split; eauto.
+    intros; assert (MapsTo k v (add (fst a) (f (snd a)) bag')).
+    apply IHl; 
+      [unfold not; intros; apply H; constructor 2; eauto
+      | eauto].
+    apply add_mapsto_iff in H1; intuition; subst.
+    intros; eapply IHl; eauto using add_2.
+  Qed.    
+
+  Lemma FMap_fold_add_MapsTo_In {Value}
+  : forall (f : Value -> Value) (bag : t Value) bag' k v, 
+      InA (@eq_key_elt _) (k,v) (List.map (fun kv => (fst kv, f (snd kv))) (elements bag))
+      -> MapsTo k v
+           (fold (fun k bag'' r' => add k (f bag'') r') bag bag').
+  Proof.
+    intros; rewrite fold_1 in *; revert k v bag' H;
+    generalize (elements_3w bag); induction (elements bag); 
+    intros; inversion H0; inversion H; subst; simpl in *; eauto.
+    destruct H2; simpl in *; subst; rewrite H1.
+    apply FMap_fold_add_MapsTo_NIn; eauto.
+    unfold not, eq_key in *; intros; apply H6; revert H2; clear; 
+    induction l; simpl in *; intros; inversion H2; subst; eauto.
+    apply add_1; reflexivity.
+  Qed.
+
+  Lemma FMap_Insert_fold_add_MapsTo {Value}
+  : forall (f : Value -> Value) (bag : t Value) bag' k v, 
+      MapsTo k v
+           (fold (fun k bag'' r' => add k (f bag'') r') bag bag') -> 
+      MapsTo k v bag' \/
+      InA (@eq_key_elt _) (k,v) (List.map (fun kv => (fst kv, f (snd kv))) (elements bag)).
+  Proof.
+    intros; rewrite fold_1 in *; revert bag' H;
+    induction (elements bag); simpl in *; eauto; intros.
+    apply IHl in H; intuition.
+    apply add_mapsto_iff in H0; intuition; subst.
+    right; constructor; split; eauto.
+  Qed.
+
+  Lemma InA_Map {A B} eqB
+  : forall (f : A -> B) (b : B) (l : list A), 
+      InA eqB b (List.map f l) <-> 
+      exists a, eqB b (f a) /\ List.In a l.
+  Proof.
+    split; induction l; simpl; intros; inversion H; subst; 
+    eauto. destruct (IHl H1) as [a' [In_a eq_b]]; eauto.
+    intuition.
+    intuition; subst.
+    constructor; eauto.
+    constructor 2; eauto.
+  Qed.
+
+  Lemma FMap_Insert_fold_add_map_eq {Value}
+  : forall (f : Value -> Value) (bag : t Value), 
+      Equal
+           (fold (fun k bag'' r' => add k (f bag'') r') bag (empty _))
+           (map f bag).
+  Proof.
+    unfold Equal.
+    intros; case_eq (find y
+                          (fold
+                             (fun (k : key) (bag'' : Value) (r' : t Value) => add k (f bag'') r')
+                             bag (empty Value)));
+    intros; case_eq (find y (map f bag)); intros; eauto.
+    - apply find_2 in H; apply find_2 in H0.
+      apply FMap_Insert_fold_add_MapsTo in H; destruct H.
+      elimtype False; apply empty_mapsto_iff in H; eauto.
+      apply map_mapsto_iff in H0; destruct H0 as [a [eq_a MapsTo_y]]; subst.
+      generalize (elements_3w bag); apply elements_1 in MapsTo_y; 
+      induction MapsTo_y; intros.
+      + inversion H1; subst; destruct H0; simpl in *; subst.
+        inversion H; subst;
+        [destruct H3; simpl in *; subst; eauto 
+        | elimtype False; apply H4; revert H0 H3; clear; induction l; 
+          intros; inversion H3; subst; unfold eq_key in *].
+        destruct H1; simpl in *; subst; constructor; eauto.
+        constructor 2; eauto.
+      + inversion H0; subst; eapply IHMapsTo_y; eauto.
+        inversion H; subst; eauto.
+        destruct H2; simpl in *; subst.
+        elimtype False; apply H3; revert H1 MapsTo_y; clear; induction l;
+        intros; inversion MapsTo_y; subst; unfold eq_key in *.
+        destruct H0; simpl in *; subst; constructor; eauto.
+        constructor 2; eauto.
+    - apply find_2 in H; apply FMap_Insert_fold_add_MapsTo in H; destruct H.
+      elimtype False; apply empty_mapsto_iff in H; eauto.
+      apply InA_Map in H; destruct H as [[k v'] [eq_k In_k]]; simpl in *.
+      destruct eq_k; simpl in *; rewrite H in H0.
+      apply not_find_in_iff in H0; elimtype False; eapply H0.
+      apply map_in_iff; exists v'; apply elements_2.
+      apply InA_alt; eexists; repeat split; eauto.
+    - apply find_2 in H0; apply not_find_in_iff in H.
+      apply map_mapsto_iff in H0; destruct H0 as [k [k_eq MapsTo_k]]; subst.
+      elimtype False; apply H.
+      econstructor 1 with (x := f k); apply FMap_fold_add_MapsTo_In.
+      apply elements_1 in MapsTo_k; revert MapsTo_k; clear;
+      intro; induction MapsTo_k; simpl.
+      repeat constructor; destruct H; simpl in *; subst; eauto.
+      constructor 2; eauto.
+  Qed.
+
+  Definition IndexedBag_bdelete'
+             (container: IndexedBag)
+             (key_searchterm: (option TKey) * TBagSearchTerm)
+  : (list TItem) * (t TBag) :=
     let (key_option, search_term) := key_searchterm in
     match key_option with
-      | Some k => {| ifmap := remove k (@ifmap TBag TItem TBagSearchTerm bags_bag
-                                               projection container);
-                     iconsistency := RemoveKey_IndexedBag_consistent k container |}
-      | None => {| ifmap := map (fun bag => @bdelete _ _ _ bags_bag bag search_term) (ifmap container);
-                   iconsistency := _ |}
+      | Some k => (match find k (ifmap container) with
+                      | Some bag => @benumerate _ _ _ _ bags_bag bag
+                      | None => nil
+                   end, @remove TBag k (ifmap container))
+      | None => fold (fun k bag (res : (list TItem) * (t TBag)) =>
+                        match @bdelete _ _ _ _ bags_bag bag search_term with 
+                          | (d, r) => let (d', r') := res in
+                                      (d ++ d', add k r r')
+                        end) (ifmap container) ([], empty TBag)
     end.
+  
+  Lemma In_partition {A} 
+  : forall f (l : list A) a, 
+      List.In a l <-> (List.In a (fst (List.partition f l))
+                       \/ List.In a (snd (List.partition f l))).
+  Proof.
+    split; induction l; simpl; intros; intuition; simpl; subst; 
+    first [destruct (f a0); destruct (List.partition f l); simpl in *; intuition
+          | destruct (f a); destruct (List.partition f l); simpl; intuition].
+  Qed.
+    
+  Lemma IndexedBag_bdelete_consistent
+        (container: IndexedBag)
+        (key_searchterm: (option TKey) * TBagSearchTerm)
+  : IndexedTreeConsistency (snd (IndexedBag_bdelete' container key_searchterm)).
+  Proof.
+    intros; destruct key_searchterm; destruct o; simpl in *;
+    unfold IndexedTreeConsistency; intros.
+    + apply remove_3 in H; eapply iconsistency; eauto.
+    + destruct container as [bag' WF_bag']; simpl in *.
+      assert (forall l, 
+                snd
+                  (fold_left
+                     (fun (a : list TItem * t TBag) (p : key * TBag) =>
+                        let (d, r) := bdelete (snd p) t0 in
+                        let (d', r') := a in (d ++ d', add (fst p) r r'))
+                     (elements bag') l)
+                = fold_left
+                            (fun (a : t TBag) (p : key * TBag) =>
+                               add (fst p) (snd (bdelete (snd p) t0))a) 
+                            (elements bag') (snd l)).
+      { induction (elements bag'); simpl in *; eauto.
+        intros; rewrite IHl; destruct l0; 
+        destruct (bdelete (snd a) t0); simpl; reflexivity. }
+      assert (MapsTo key0 bag 
+                     (fold
+                        (fun (k : key) (bag0 : TBag) (r' : t TBag) =>
+                           add k (snd (bdelete bag0 t0)) r') bag'
+                        (empty TBag)))
+      by (rewrite fold_1, H1 in H; simpl in H;  rewrite fold_1; eauto); clear H H1.
+      rewrite FMap_Insert_fold_add_map_eq in H2.
+      apply map_mapsto_iff in H2; destruct H2 as [k [k_eq MapsTo_k]]; subst.
+      eapply WF_bag'; eauto.
+      destruct (bdelete_correct k t0).
+      eapply In_partition; right; eapply Permutation_in; eauto.
+  Qed.
+
+
+  Lemma MapDelete_IndexedBag_consistent
+        (container : t TBag)
+        (search_term: TBagSearchTerm)
+  : IndexedTreeConsistency container
+    -> IndexedTreeConsistency (map (fun bag : TBag => bdelete bag search_term) container).
+  Proof.
+    unfold IndexedTreeConsistency; intros.
+    assert (In key0 container) by (eapply map_2; econstructor; eauto).
+    destruct H2.
+    eapply H; eauto.
+    pose proof (map_1 ((fun bag : TBag => bdelete bag search_term)) H2).
+    apply find_1 in H3; apply find_1 in H0.
+    rewrite H0 in H3; injection H3; intros; subst.
+    assert (List.In item (snd (List.partition (bfind_matcher search_term) (benumerate x)))).
+    { eapply Permutation_in. eapply bdelete_correct. eauto. }
+
+eapply
+
+
+    apply find_1 in H0; rewrite map_o in H0.
+    unfold option_map in *.
+    destruct (find key0 container).
+    eapply H with (bag := t0). (* with (bag := bdelete bag search_term). *)
+    apply find_2.
+
+
+
+    rewrite map_o in H
+    assert (In key0
+               (map (fun bag0 : TBag => bdelete bag0 search_term) container))
+      by (econstructor; eauto).
+    apply map_2 in H2.
+    destruct H2.
+
+
+
+
+  Lemma MapDelete_IndexedBag_consistent
+        {TBag TItem TBagSearchTerm: Type}
+        {bags_bag: Bag TBag TItem TBagSearchTerm}
+        (projection: TItem -> TKey)
+        (container: @IndexedBag TBag TItem TBagSearchTerm bags_bag projection)
+        (search_term: TBagSearchTerm)
+  : IndexedTreeConsistency projection
+                           (map (fun bag : TBag => bdelete bag search_term) (ifmap container)).
+  Proof.
+    unfold IndexedTreeConsistency; intros.
+    destruct container; simpl in *.
+    eapply iconsistency; eauto.
+    Check
+    apply find_mapsto_iff in H.
+    destruct container; simpl in *.
+    eapply iconsistency; eauto.
+    eapply find_2.
+
+    eapply iconsisitency.
+    Print find.
+
+    destruct (find key0 (ifmap container)).
+    simpl in H.
+unfold IndexedTreeConsistency; intros.
+
+
+
 
 
         flatten (List.map (fun bag =>  @bfind _ _ _ bags_bag bag search_term) (Values (ifmap container)))
@@ -180,7 +517,7 @@ Module TreeBag (Import M: WS).
              {TBag TItem TBagSearchTerm: Type}
              {bags_bag: Bag TBag TItem TBagSearchTerm}
              (projection: TItem -> TKey)
-             (container: @IndexedBag TBag TItem TBagSearchTerm bags_bag projection) 
+             (container: @IndexedBag TBag TItem TBagSearchTerm bags_bag projection)
              (key_searchterm: (option TKey) * TBagSearchTerm) :=
     let (key_option, search_term) := key_searchterm in
     match key_option with
@@ -196,8 +533,8 @@ Module TreeBag (Import M: WS).
   Lemma indexed_bag_insert_consistent :
     forall {TBag TItem TBagSearchTerm: Type}
            {bags_bag: Bag TBag TItem TBagSearchTerm}
-           {projection: TItem -> TKey} 
-           (container: @IndexedBag TBag TItem TBagSearchTerm bags_bag projection) 
+           {projection: TItem -> TKey}
+           (container: @IndexedBag TBag TItem TBagSearchTerm bags_bag projection)
            (item: TItem),
       let k := projection item in
       let fmap := ifmap container in
@@ -226,19 +563,19 @@ Module TreeBag (Import M: WS).
 
     subst; trivial.
     exfalso; apply (@benumerate_empty _ _ _ bags_bag) in H; trivial.
-    
+
     subst.
-    unfold k in *. 
+    unfold k in *.
     trivial.
 
     apply ((iconsistency container) k' bag' maps_to item').
-  Qed.    
+  Qed.
 
-  Definition IndexedBag_binsert 
+  Definition IndexedBag_binsert
              {TBag TItem TBagSearchTerm: Type}
              {bags_bag: Bag TBag TItem TBagSearchTerm}
              (projection: TItem -> TKey)
-             (container: @IndexedBag TBag TItem TBagSearchTerm bags_bag projection) 
+             (container: @IndexedBag TBag TItem TBagSearchTerm bags_bag projection)
              (item: TItem) : @IndexedBag TBag TItem TBagSearchTerm bags_bag projection :=
     let k := projection item in
     let fmap := ifmap container in
@@ -284,14 +621,14 @@ Module TreeBag (Import M: WS).
   Qed.
 
   Lemma fold_right_map :
-    forall {A B} f seq, 
+    forall {A B} f seq,
       @List.fold_right (list B) A (fun b a => f b :: a) [] seq = List.map f seq.
   Proof.
     intros; induction seq; simpl; try rewrite IHseq; reflexivity.
-  Qed.      
+  Qed.
 
   Lemma fold_left_map :
-    forall {A B} f seq, 
+    forall {A B} f seq,
       @List.fold_left (list B) A (fun a b => f b :: a) seq [] = List.map f (rev seq).
   Proof.
     intros; rewrite <- fold_left_rev_right; apply fold_right_map.
@@ -334,7 +671,7 @@ Module TreeBag (Import M: WS).
       (@List.map A B g
                  (fold
                     (fun k (v: TValue) acc =>
-                       f k v :: acc) m init)) = 
+                       f k v :: acc) m init)) =
       (fold (fun k v acc => g (f k v) :: acc) m (List.map g init)).
   Proof.
     intros until m; setoid_rewrite fold_1.
@@ -366,16 +703,16 @@ Module TreeBag (Import M: WS).
 
     rewrite map_rev.
     rewrite rev_involutive.
-    
+
     etransitivity.
     apply Permutation_app_comm.
-    simpl; reflexivity. 
+    simpl; reflexivity.
 
     apply Permutation_Equivalence.
 
-    unfold Proper, respectful; intros; simpl; 
+    unfold Proper, respectful; intros; simpl;
     subst; apply Permutation_cons; assumption.
-    
+
     unfold transpose_neqkey; intros; simpl;
     constructor.
 
@@ -387,13 +724,13 @@ Module TreeBag (Import M: WS).
     fun key (_: TBag) => if E.eq_dec key reference then true else false.
 
   Lemma KeyBasedPartitioningFunction_Proper :
-    forall TBag reference, 
+    forall TBag reference,
       Proper (E.eq ==> eq ==> eq) (KeyBasedPartitioningFunction TBag reference).
   Proof.
     intros;
     unfold KeyBasedPartitioningFunction, Proper, respectful; intros x y E_eq **; subst;
     destruct (F.eq_dec x _), (F.eq_dec y _); rewrite E_eq in *; intuition.
-  Qed.  
+  Qed.
 
   Lemma eq_dec_refl :
     forall x,
@@ -406,7 +743,7 @@ Module TreeBag (Import M: WS).
     forall x y,
       (if E.eq_dec x y then true else false) = (if E.eq_dec y x then true else false).
   Proof.
-    intros; destruct (E.eq_dec x y), (E.eq_dec y x); intuition. 
+    intros; destruct (E.eq_dec x y), (E.eq_dec y x); intuition.
   Qed.
 
   Lemma KeyBasedPartitioningFunction_eq_true :
@@ -428,7 +765,7 @@ Module TreeBag (Import M: WS).
   Lemma KeyBasedPartitioningFunction_refl :
     forall TValue k k' v,
       KeyBasedPartitioningFunction TValue k k' v = KeyBasedPartitioningFunction TValue k' k v.
-  Proof. 
+  Proof.
     intros; unfold KeyBasedPartitioningFunction; rewrite eq_dec_comm; reflexivity.
   Qed.
 
@@ -439,7 +776,7 @@ Module TreeBag (Import M: WS).
         exists l1 l2,
           Permutation (Values m) (l1 ++ v :: l2) /\
           Permutation (Values (add k v' m)) (l1 ++ v' :: l2).
-    Proof.      
+    Proof.
       intros.
       pose (partitioned := partition (KeyBasedPartitioningFunction TValue k) m).
 
@@ -463,25 +800,25 @@ Module TreeBag (Import M: WS).
     intros.
     symmetry.
     unfold Equal; intro key.
-    
+
     destruct (E.eq_dec key k) as [ eq_k_proj | neq_k_proj ].
-    
+
     rewrite eq_k_proj;
       rewrite add_eq_o by eauto;
       symmetry; rewrite <- find_mapsto_iff;
       rewrite partition_iff_1 with (f := KeyBasedPartitioningFunction TValue k) (m := m);
-      intuition (try rewrite <- KeyBasedPartitioningFunction_eq_true; 
+      intuition (try rewrite <- KeyBasedPartitioningFunction_eq_true;
                  eauto using E.eq_refl, KeyBasedPartitioningFunction_Proper).
-    
+
     rewrite add_neq_o by eauto.
     rewrite empty_o.
-    destruct (find key _) eqn:eqfind'; 
+    destruct (find key _) eqn:eqfind';
       [ exfalso | eauto ].
     rewrite <- find_mapsto_iff in eqfind'.
     rewrite partition_iff_1 with (f := KeyBasedPartitioningFunction TValue k) (m := m) in eqfind'.
     destruct eqfind' as (maps_to & kvpf_true).
     apply neq_k_proj.
-    erewrite KeyBasedPartitioningFunction_eq_true. 
+    erewrite KeyBasedPartitioningFunction_eq_true.
     rewrite KeyBasedPartitioningFunction_refl.
     eauto.
     eauto using KeyBasedPartitioningFunction_Proper.
@@ -494,8 +831,8 @@ Module TreeBag (Import M: WS).
       E.eq k k'.
   Proof.
     intros * maps_to.
-    rewrite partition_iff_1 
-    with (f := KeyBasedPartitioningFunction TValue k) (m := m) 
+    rewrite partition_iff_1
+    with (f := KeyBasedPartitioningFunction TValue k) (m := m)
       in maps_to; eauto using KeyBasedPartitioningFunction_Proper.
     destruct maps_to as (_ & kbpf_true).
     rewrite <- KeyBasedPartitioningFunction_eq_true in kbpf_true.
@@ -509,7 +846,7 @@ Module TreeBag (Import M: WS).
   Proof.
     intros * in_singleton.
     apply In_MapsTo in in_singleton.
-    destruct in_singleton as [ val (maps_to & _) ]. 
+    destruct in_singleton as [ val (maps_to & _) ].
     eapply MapsTo_KeyBasedPartition_fst; eauto.
   Qed.
 
@@ -520,7 +857,7 @@ Module TreeBag (Import M: WS).
   Proof.
     intros * maps_to.
     rewrite partition_iff_2
-    with (f := KeyBasedPartitioningFunction TValue k) (m := m) 
+    with (f := KeyBasedPartitioningFunction TValue k) (m := m)
       in maps_to; eauto using KeyBasedPartitioningFunction_Proper.
     destruct maps_to as (_ & kbpf_false).
     rewrite <- KeyBasedPartitioningFunction_eq_false in kbpf_false.
@@ -541,7 +878,7 @@ Module TreeBag (Import M: WS).
   Lemma MapsTo_partition_fst:
     forall TValue f k v (m: t TValue),
       Proper (E.eq ==> eq ==> eq) f ->
-      MapsTo k v (fst (partition f m)) -> 
+      MapsTo k v (fst (partition f m)) ->
       MapsTo k v m.
   Proof.
     intros * ? maps_to.
@@ -552,7 +889,7 @@ Module TreeBag (Import M: WS).
   Lemma MapsTo_partition_snd:
     forall TValue f k v (m: t TValue),
       Proper (E.eq ==> eq ==> eq) f ->
-      MapsTo k v (snd (partition f m)) -> 
+      MapsTo k v (snd (partition f m)) ->
       MapsTo k v m.
   Proof.
     intros * ? maps_to.
@@ -569,19 +906,19 @@ Module TreeBag (Import M: WS).
     unfold Partition.
     split.
 
-    { 
+    {
       unfold Disjoint.
       intros key (in_modified & in_unmodified).
       rewrite add_in_iff in in_modified.
-      
-      assert (E.eq k key) 
+
+      assert (E.eq k key)
         by (
             destruct in_modified;
             [ assumption | eapply In_KeyBasedPartition_fst; eauto ]
           ); clear in_modified.
-      
+
       apply In_KeyBasedPartition_snd in in_unmodified.
-      
+
       intuition.
     }
 
@@ -589,21 +926,21 @@ Module TreeBag (Import M: WS).
     rewrite add_mapsto_iff in maps_to'.
     destruct maps_to' as [ (keq & veq) | (kneq & maps_to') ]; subst.
 
-    left; 
+    left;
       apply add_1; eauto.
-    right; 
-      rewrite partition_iff_2 
-      with (f := KeyBasedPartitioningFunction TValue k) (m := m) 
+    right;
+      rewrite partition_iff_2
+      with (f := KeyBasedPartitioningFunction TValue k) (m := m)
       by (eauto using KeyBasedPartitioningFunction_Proper);
       rewrite <- KeyBasedPartitioningFunction_eq_false;
       intuition.
 
     destruct maps_to' as [ maps_to' | maps_to' ].
-    
+
     rewrite add_mapsto_iff in maps_to';
-      destruct maps_to' as [ (keq & veq) | (kneq & maps_to') ]; 
+      destruct maps_to' as [ (keq & veq) | (kneq & maps_to') ];
       [ subst; apply add_1; assumption | ].
-    
+
     exfalso.
     apply MapsTo_KeyBasedPartition_fst in maps_to'.
     intuition.
@@ -651,7 +988,7 @@ Module TreeBag (Import M: WS).
     forall {TValue} {m1 m2: t TValue},
       Equal m1 m2 ->
       forall k v,
-        Equal (add k v m1) (add k v m2). 
+        Equal (add k v m1) (add k v m2).
   Proof.
     intros.
     apply add_m; eauto.
@@ -693,7 +1030,7 @@ Module TreeBag (Import M: WS).
       ~ In k (empty TValue).
   Proof.
     intros; rewrite empty_in_iff; tauto.
-  Qed.      
+  Qed.
 
   Lemma IndexedBag_BagInsertEnumerate :
     forall {TBag TItem TBagSearchTerm: Type}
@@ -706,18 +1043,18 @@ Module TreeBag (Import M: WS).
 
     pose proof bfind_star.
     unfold BagFindStar in H.
-    
+
     match goal with
-      | [ |- context[FindWithDefault ?a ?b ?c] ] => 
+      | [ |- context[FindWithDefault ?a ?b ?c] ] =>
         destruct (FindWithDefault_dec a b c)
-          as [ [ result (maps_to & _eq) ] | (find_none & _eq) ]; 
+          as [ [ result (maps_to & _eq) ] | (find_none & _eq) ];
           rewrite _eq; clear _eq
     end.
 
     (* Existing key *)
-    
-    pose proof (partition_after_KeyBasedPartition_and_add 
-                  (TValue := TBag) 
+
+    pose proof (partition_after_KeyBasedPartition_and_add
+                  (TValue := TBag)
                   (projection inserted)
                   (binsert result inserted)
                   (ifmap container)) as part_add.
@@ -728,14 +1065,14 @@ Module TreeBag (Import M: WS).
                   (KeyBasedPartitioningFunction_Proper _ _)
                   (ifmap container)) as part.
 
-    rewrite !Values_fold_perm 
+    rewrite !Values_fold_perm
       by (eauto using Permutation_Equivalence, Values_fold_Proper, Values_fold_transpose_neqkey).
-    
-    rewrite Partition_fold at 1 
+
+    rewrite Partition_fold at 1
       by (eauto using part_add, Permutation_Equivalence, Values_fold_Proper, Values_fold_transpose_neqkey).
     symmetry.
-    
-    rewrite Partition_fold at 1 
+
+    rewrite Partition_fold at 1
       by (eauto using part    , Permutation_Equivalence, Values_fold_Proper, Values_fold_transpose_neqkey).
     symmetry.
 
@@ -778,7 +1115,7 @@ Module TreeBag (Import M: WS).
       induction seq; simpl; intros; trivial; try rewrite IHseq; intuition.
     Qed.
 
-    Lemma fold_over_Values : 
+    Lemma fold_over_Values :
       forall {TValue TAcc} (m: t TValue) f g (init: TAcc),
         (forall k v acc, f k v acc = g acc v) ->
         fold f m init = fold_left g (Values m) init.
@@ -798,7 +1135,7 @@ Module TreeBag (Import M: WS).
   Proof.
     unfold IndexedBag_bcount, IndexedBag_bfind, BagCountCorrect;
     simpl; intros; destruct search_term as [ [ key | ] search_term ].
-    
+
     + destruct (find _ _); eauto using bcount_correct.
     + rewrite length_flatten.
       rewrite (fold_over_Values _ _ (fun acc bag => acc + bcount bag search_term)) by eauto.
@@ -806,15 +1143,15 @@ Module TreeBag (Import M: WS).
       setoid_rewrite Plus.plus_comm at 1.
       replace (fun (y : TBag) (x : nat) => bcount y search_term + x)
       with (compose plus (fun bag => bcount bag search_term)) by reflexivity.
-      rewrite !foldright_compose. 
+      rewrite !foldright_compose.
 
       symmetry; setoid_rewrite <- rev_involutive at 1.
       rewrite fold_left_rev_right, map_rev, rev_involutive.
-    
+
       rewrite fold_sym, <- !fold_map.
       setoid_rewrite bcount_correct.
       reflexivity.
-      
+
       apply plus_cacheable.
   Qed.
 
@@ -836,7 +1173,7 @@ Module TreeBag (Import M: WS).
       BagFindStar (IndexedBag_bfind projection) IndexedBag_benumerate IndexedBag_bstar.
   Proof.
     unfold BagFindStar, IndexedBag_benumerate; simpl.
-    
+
     intros; induction (Values (ifmap container)); simpl; trivial.
     rewrite (@bfind_star _ _ _ bags_bag).
     f_equal; trivial.
@@ -862,10 +1199,10 @@ Module TreeBag (Import M: WS).
     rewrite filter_and'.
 
     rewrite flatten_filter.
-    
+
     Lemma consist :
-      forall 
-        {TBag TItem TSearchTerm bags_bag projection} 
+      forall
+        {TBag TItem TSearchTerm bags_bag projection}
         (container: @IndexedBag TBag TItem TSearchTerm bags_bag projection),
       forall k,
         eq
@@ -876,7 +1213,7 @@ Module TreeBag (Import M: WS).
             | Some bag => benumerate bag
             | None => nil
           end.
-    Proof.          
+    Proof.
       intros.
 
       pose (iconsistency container); unfold IndexedTreeConsistency in i.
@@ -893,21 +1230,21 @@ Module TreeBag (Import M: WS).
 
       destruct eqfind as [ l1 [ y [ l2 (y_k_bag & decomp) ] ] ].
       rewrite decomp.
-      
+
       rewrite (map_map snd benumerate).
       rewrite ! map_app; simpl.
-      
+
       pose proof (elements_3w (ifmap container)) as no_dup.
       rewrite decomp in no_dup; apply NoDupA_swap in no_dup; eauto using equiv_eq_key.
 
       inversion no_dup as [ | ? ? y_not_in no_dup' ]; subst.
       rewrite InA_app_iff in y_not_in by eauto using equiv_eq_key.
-      
+
       unfold eq_key_elt in y_k_bag; simpl in y_k_bag.
       destruct y_k_bag as (y_k & y_bag).
 
-      assert (forall k' bag', InA (@eq_key_elt _) (k', bag') (l1 ++ l2) -> 
-                              forall item, 
+      assert (forall k' bag', InA (@eq_key_elt _) (k', bag') (l1 ++ l2) ->
+                              forall item,
                                 List.In item (benumerate bag') ->
                                 ~ E.eq (projection item) k).
       {
@@ -919,7 +1256,7 @@ Module TreeBag (Import M: WS).
         apply (InA_front_tail_InA _ _ y) in in_app.
         rewrite <- decomp, <- elements_mapsto_iff in in_app.
 
-        pose proof (i _ _ in_app _ in_bag'_items) as eq_k'. 
+        pose proof (i _ _ in_app _ in_bag'_items) as eq_k'.
         symmetry in eq_k.
         pose proof (E.eq_trans eq_k eq_k').
 
@@ -946,22 +1283,22 @@ Module TreeBag (Import M: WS).
             rewrite in_map_iff in in_map;
             destruct in_map as [ (k', bag') (benum_eq & in_seq) ];
             rewrite KeyFilter_false;
-            
+
             simpl in benum_eq;
             subst subseq;
-            apply (H k' bag'); 
+            apply (H k' bag');
             eauto;
-            
+
             apply In_InA; eauto using equiv_eq_key_elt;
             rewrite in_app_iff;
-            eauto 
+            eauto
               .. ].
 
-      rewrite 
-        flatten_app, 
-      flatten_head, 
-      !flatten_nils, 
-      app_nil_l, app_nil_r, 
+      rewrite
+        flatten_app,
+      flatten_head,
+      !flatten_nils,
+      app_nil_l, app_nil_r,
       <- y_bag,
       filter_all_true; trivial.
 
@@ -978,20 +1315,20 @@ Module TreeBag (Import M: WS).
         destruct seq as [ | a ]; trivial.
         exfalso; apply H; exists a; simpl; intuition.
       Qed.
-      
+
       rewrite nil_in_false.
       intros [item item_in].
 
       rewrite in_flatten_iff in item_in.
       do 2 setoid_rewrite in_map_iff in item_in.
 
-      destruct item_in as 
-          [ subseq 
-              (in_subseq 
-                 & [ subseq_prefilter 
-                       ( pre_post_filter 
-                           & [ bag 
-                                 (eq_bag_pre_filter 
+      destruct item_in as
+          [ subseq
+              (in_subseq
+                 & [ subseq_prefilter
+                       ( pre_post_filter
+                           & [ bag
+                                 (eq_bag_pre_filter
                                     & bag_in) ] ) ] ) ].
 
       subst subseq.
@@ -1015,7 +1352,7 @@ Module TreeBag (Import M: WS).
     destruct (find key (ifmap container)) as [ bag | ].
 
     apply bfind_correct.
-    eauto. 
+    eauto.
 
     (* No key provided *)
 
@@ -1031,15 +1368,15 @@ Module TreeBag (Import M: WS).
 
     rewrite IHl; reflexivity.
   Qed.
-  
-  Instance IndexedBagAsBag 
-           (TBag TItem TBagSearchTerm: Type) 
-           (bags_bag: Bag TBag TItem TBagSearchTerm) (projection: TItem -> TKey) 
-  : Bag 
-      (@IndexedBag TBag TItem TBagSearchTerm bags_bag projection) 
-      TItem 
+
+  Instance IndexedBagAsBag
+           (TBag TItem TBagSearchTerm: Type)
+           (bags_bag: Bag TBag TItem TBagSearchTerm) (projection: TItem -> TKey)
+  : Bag
+      (@IndexedBag TBag TItem TBagSearchTerm bags_bag projection)
+      TItem
       ((option TKey) * TBagSearchTerm) :=
-    {| 
+    {|
       bempty        := IndexedBag_bempty projection;
       bstar         := IndexedBag_bstar;
       bfind_matcher := IndexedBag_bfind_matcher projection;
@@ -1054,5 +1391,5 @@ Module TreeBag (Import M: WS).
       bfind_star        := IndexedBag_BagFindStar projection;
       bfind_correct     := IndexedBag_BagFindCorrect projection;
       bcount_correct    := IndexedBag_BagCountCorrect projection
-    |}. 
+    |}.
 End TreeBag.

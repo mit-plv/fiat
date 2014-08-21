@@ -106,8 +106,8 @@ Tactic Notation "prove" "trivial" "constraints" :=
 
 Definition ID {A} := fun (x: A) => x.
 
-Lemma ens_red :
-  forall {heading TContainer TSearchTerm} x y (y_is_bag: Bag TContainer _ TSearchTerm),
+Lemma ens_red {heading TContainer TSearchTerm TUpdateTerm} :
+  forall x y (y_is_bag: Bag TContainer _ TSearchTerm TUpdateTerm),
     @EnsembleIndexedListEquivalence heading x (benumerate (Bag := y_is_bag) y) =
     (ID (fun y => EnsembleIndexedListEquivalence x (benumerate y))) y.
 Proof.

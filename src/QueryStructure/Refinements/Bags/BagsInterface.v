@@ -43,6 +43,13 @@ Definition BagFindStar
            (bstar : TSearchTerm) :=
   forall container, bfind container bstar = benumerate container.
 
+(* The [bid] update term is the identity function *)
+Definition BagUpdateID
+           {TContainer TItem TUpdateTerm: Type}
+           (bupdate_transform : TUpdateTerm -> TUpdateTerm -> TItem)
+           (bid : TUpdateTerm) :=
+  forall item, bupdate_transform bid item = bupdate_transform bid item.
+
 (* [bcount] returns the number of elements in a bag which match
    a search term [search_term]. *)
 Definition BagCountCorrect
@@ -60,10 +67,13 @@ Definition BagDeleteCorrect
            (bfind         : TContainer -> TSearchTerm -> list TItem)
            (bfind_matcher : TSearchTerm -> TItem -> bool)
            (benumerate : TContainer -> list TItem)
-           (bdelete    : TContainer -> TSearchTerm -> TContainer) :=
+           (bdelete    : TContainer -> TSearchTerm -> (list TItem) * TContainer) :=
   forall container search_term,
-    Permutation (benumerate (bdelete container search_term))
+    Permutation (benumerate (snd (bdelete container search_term)))
                 (snd (List.partition (bfind_matcher search_term)
+                                     (benumerate container)))
+    /\ Permutation (fst (bdelete container search_term))
+                   (fst (List.partition (bfind_matcher search_term)
                                      (benumerate container))).
 
 (* The elements of a bag [container] in which the function [f_update]
@@ -71,30 +81,34 @@ Definition BagDeleteCorrect
    is a permutation of partitioning the list into non-matching terms
    and matching terms and mapping [f_update] over the latter. *)
 Definition BagUpdateCorrect
-           {TContainer TItem TSearchTerm: Type}
+           {TContainer TItem TSearchTerm TUpdateTerm : Type}
            (bfind         : TContainer -> TSearchTerm -> list TItem)
            (bfind_matcher : TSearchTerm -> TItem -> bool)
            (benumerate : TContainer -> list TItem)
-           (bupdate    : TContainer -> TSearchTerm -> (TItem -> TItem) -> TContainer) :=
-  forall container search_term f_update,
-    Permutation (benumerate (bupdate container search_term f_update))
-                ((snd (List.partition (bfind_matcher search_term)
-                                      (benumerate container)))
-                   ++ List.map f_update (fst (List.partition (bfind_matcher search_term)
-                                                             (benumerate container)))).
+           (bupdate_transform : TUpdateTerm -> TItem -> TItem)
+           (bupdate    : TContainer -> TSearchTerm -> TUpdateTerm -> TContainer) :=
+  forall container search_term update_term,
+    Permutation (benumerate (bupdate container search_term update_term))
+                   ((snd (List.partition (bfind_matcher search_term)
+                                         (benumerate container)))
+                      ++ List.map (bupdate_transform update_term)
+                      (fst (List.partition (bfind_matcher search_term)
+                                           (benumerate container)))).
 
-Class Bag (TContainer TItem TSearchTerm: Type) :=
+Class Bag (TContainer TItem TSearchTerm TUpdateTerm : Type) :=
   {
-    bempty        : TContainer;
-    bstar         : TSearchTerm;
-    bfind_matcher : TSearchTerm -> TItem -> bool;
+    bempty            : TContainer;
+    bstar             : TSearchTerm;
+    bid               : TUpdateTerm;
+    bfind_matcher     : TSearchTerm -> TItem -> bool;
+    bupdate_transform : TUpdateTerm -> TItem -> TItem;
 
     benumerate : TContainer -> list TItem;
     bfind      : TContainer -> TSearchTerm -> list TItem;
     binsert    : TContainer -> TItem -> TContainer;
     bcount     : TContainer -> TSearchTerm -> nat;
-    bdelete    : TContainer -> TSearchTerm -> TContainer;
-    bupdate    : TContainer -> TSearchTerm -> (TItem -> TItem) -> TContainer;
+    bdelete    : TContainer -> TSearchTerm -> (list TItem) * TContainer;
+    bupdate    : TContainer -> TSearchTerm -> TUpdateTerm -> TContainer;
 
     binsert_enumerate : BagInsertEnumerate benumerate binsert;
     benumerate_empty  : BagEnumerateEmpty benumerate bempty;
@@ -102,10 +116,11 @@ Class Bag (TContainer TItem TSearchTerm: Type) :=
     bfind_correct     : BagFindCorrect bfind bfind_matcher benumerate;
     bcount_correct    : BagCountCorrect bcount bfind;
     bdelete_correct   : BagDeleteCorrect bfind bfind_matcher benumerate bdelete;
-    bupdate_correct   : BagUpdateCorrect bfind bfind_matcher benumerate bupdate
+    bupdate_correct   : BagUpdateCorrect bfind bfind_matcher benumerate bupdate_transform bupdate
   }.
 
 Record BagPlusBagProof {TItem} :=
   { BagType: Type;
     SearchTermType: Type;
-    BagProof: Bag BagType TItem SearchTermType }.
+    UpdateTermType: Type;
+    BagProof: Bag BagType TItem SearchTermType UpdateTermType}.
