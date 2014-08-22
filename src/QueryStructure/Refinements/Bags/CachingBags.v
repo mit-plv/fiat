@@ -41,19 +41,7 @@ Section CachingBags.
   Qed.
 
   Require Import Permutation.
-  Lemma fold_sym :
-    forall {TAcc TVal} (f: TVal -> TAcc -> TAcc),
-    forall (seq: list TVal) (default: TAcc),
-      IsCacheable eq f ->
-      List.fold_right (fun val acc => f val acc) default seq =
-      List.fold_left (fun acc val => f val acc) seq default.
-  Proof.
-    intros.
-    unfold IsCacheable, RecomputeCachedValue in H.
-    rewrite <- fold_left_rev_right.
-    rewrite <- (Permutation_rev seq).
-    reflexivity.
-  Qed.
+
 
   Record Cache
          {TBag TItem TSearchTerm TCachedValue: Type}
