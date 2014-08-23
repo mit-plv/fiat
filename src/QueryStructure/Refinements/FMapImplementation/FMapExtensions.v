@@ -152,15 +152,14 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
   Proof.
     intros.
     apply InA_In in H.
-    apply (In_InA equiv_eq_key_elt);
-      trivial.
+    apply (In_InA ); eauto using equiv_eq_key_elt.
   Qed.
 
   Lemma in_elements_mapsto :
     forall {A: Type} k (e: A) (m: t A),
       List.In (k, e) (elements m) -> MapsTo k e m.
     intros;
-    eauto using elements_2, (In_InA equiv_eq_key_elt).
+    eauto using elements_2, In_InA, equiv_eq_key_elt.
   Qed.
 
   Lemma in_elements_after_map :
@@ -365,7 +364,506 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
     intuition eauto.
   Qed.
 
-  (* This should be simplified by the switch to Permutations.
+  Require Import Permutation AdditionalPermutationLemmas.
+
+  Lemma InA_mapsto_add {Value} :
+    forall bag' kv k' (v' : Value),
+      InA (@eq_key_elt _) kv (elements (add k' v' bag')) ->
+      eq_key_elt kv (k', v') \/
+      (~ E.eq (fst kv) k' /\
+       InA (@eq_key_elt _) kv (elements bag')).
+  Proof.
+    intros.
+    destruct kv as [k v]; apply elements_2 in H.
+    apply add_mapsto_iff in H; intuition; subst;
+    [left; split; simpl; eauto |
+     right; eauto using elements_1].
+  Qed.
+
+  Lemma InA_mapsto_add' {Value} :
+    forall bag' kv k' (v' : Value),
+      (eq_key_elt kv (k', v') \/
+       (~ E.eq (fst kv) k' /\
+        InA (@eq_key_elt _) kv (elements bag')))
+      -> InA (@eq_key_elt _) kv (elements (add k' v' bag')).
+  Proof.
+    intros; destruct kv as [k v]; apply elements_1;
+    apply add_mapsto_iff; intuition;
+    [destruct H0; eauto
+    | right; intuition; apply elements_2; eauto].
+  Qed.
+
+  Lemma Permutation_InA_cons {Value} :
+    forall l (l' : list (key * Value)),
+      NoDupA (@eq_key _) l
+      -> NoDupA (@eq_key _) l'
+      -> (forall k v,
+            InA (@eq_key_elt _) (k, v) l' <->
+            (InA (@eq_key_elt _) (k, v) l))
+      -> Permutation (List.map snd l')
+                     (List.map snd l).
+  Proof.
+    induction l; intros.
+    destruct l'.
+    constructor.
+    assert (InA (eq_key_elt (elt:=Value)) (fst p, snd p) []) as H2
+                                                               by (eapply H1; left; split; reflexivity); inversion H2.
+    destruct a as [k v].
+    assert (InA (eq_key_elt (elt:=Value)) (k, v) l') as H2
+                                                       by (eapply H1; econstructor; split; reflexivity).
+    destruct (InA_split H2) as [l'1 [kv [l'2 [eq_kv eq_l]]]]; subst.
+    repeat rewrite List.map_app; simpl.
+    etransitivity.
+    symmetry.
+    apply Permutation_middle.
+    destruct eq_kv; simpl in *; subst; constructor.
+    rewrite <- List.map_app.
+    eapply NoDupA_swap in H0; eauto using eqk_equiv.
+    inversion H0; inversion H; subst; apply IHl; eauto.
+    assert (forall (k0 : key) (v : Value),
+              InA (eq_key_elt (elt:=Value)) (k0, v) (kv :: (l'1 ++ l'2)) <->
+              InA (eq_key_elt (elt:=Value)) (k0, v) ((k, snd kv) :: l)) by
+        (split; intros;
+         [ eapply H1; eapply InA_app_cons_swap
+         | eapply H1 in H4; eapply InA_app_cons_swap in H4 ]; eauto using eqke_equiv).
+    split; intros.
+    + generalize (proj1 (H4 k0 v) (InA_cons_tl _ H5)); intros.
+      inversion H8; subst; eauto.
+      destruct H12; simpl in *.
+      elimtype False; apply H6.
+      revert H5 H9 H3; clear; induction (l'1 ++ l'2); intros;
+      inversion H5; subst;
+      [ constructor; destruct H0; simpl in *; unfold eq_key;
+        rewrite <- H3, <- H9; eauto
+      | constructor 2; eauto ].
+    + generalize (proj2 (H1 k0 v) (InA_cons_tl _ H5)); intros.
+      eapply InA_app_cons_swap in H8; eauto using eqke_equiv.
+      inversion H8; subst; eauto.
+      destruct H12; simpl in *.
+      elimtype False; apply H10.
+      revert H5 H9 H3; clear; induction l; intros;
+      inversion H5; subst;
+      [ constructor; destruct H0; simpl in *; unfold eq_key;
+        simpl; rewrite <- H, H9; eauto
+      | constructor 2; eauto ].
+  Qed.
+
+
+  Lemma FMap_Insert_fold_add {Value}
+  : forall (f : Value -> Value) (bag : t Value) bag',
+      (forall (k : key), InA E.eq k (List.map fst (elements bag))
+                         -> ~ In k bag')
+      -> Permutation
+           (List.map snd (elements (fold (fun k bag'' r' => add k (f bag'') r')
+                                         bag bag')))
+           (List.map snd ((List.map (fun kv => (fst kv, f (snd kv))) (elements bag)) ++ elements bag')).
+  Proof.
+    intros.
+    intros; rewrite fold_1.
+    generalize (elements_3w bag) as NoDupl.
+    revert bag' H; induction (elements bag); simpl; intros.
+    reflexivity.
+    rewrite IHl, Permutation_cons_app;
+      try (rewrite List.map_app; reflexivity).
+    rewrite List.map_app, List.map_map.
+    apply Permutation_app; try reflexivity.
+    apply (Permutation_InA_cons ((fst a, f (snd a)) :: elements bag'));
+      eauto using elements_3w.
+    econstructor; eauto using elements_3w.
+    unfold not; intros; eapply (H (fst a));
+    [ constructor; reflexivity
+    | eapply elements_in_iff; revert H0; clear; intro; induction H0].
+    repeat econstructor; eauto.
+    destruct IHInA; econstructor; econstructor 2; eauto.
+    split; intros.
+    apply InA_mapsto_add in H0; intuition.
+    inversion H0; subst; eapply InA_mapsto_add'; intuition.
+    right; intuition.
+    eapply H; simpl.
+    econstructor; reflexivity.
+    eapply elements_in_iff; revert H2 H1; clear; intros;
+    induction H2.
+    destruct H; repeat econstructor; eauto.
+    destruct IHInA; econstructor; econstructor 2; eauto.
+    unfold not; intros.
+    apply add_in_iff in H1; destruct H1.
+    inversion NoDupl; subst; rewrite <- H1 in H0; eapply H4.
+    revert H0; clear; induction l; intros; inversion H0; subst.
+    constructor; eauto.
+    econstructor 2; eauto.
+    eapply H; eauto.
+    inversion NoDupl; eauto.
+  Qed.
+
+  Lemma FMap_fold_add_MapsTo_NIn {Value}
+  : forall (f : Value -> Value) l k v bag',
+      ~ InA (@eq_key _) (k,v) (List.map (fun kv => (fst kv, f (snd kv))) l)
+      -> (MapsTo k v (fold_left (fun a p => add (fst p) (f (snd p)) a) l bag')
+          <-> MapsTo k v bag').
+  Proof.
+    unfold eq_key; intros; revert k v bag' H.
+    induction l; simpl; intros; split; eauto.
+    intros; assert (MapsTo k v (add (fst a) (f (snd a)) bag')).
+    apply IHl;
+      [unfold not; intros; apply H; constructor 2; eauto
+      | eauto].
+    apply add_mapsto_iff in H1; intuition; subst.
+    intros; eapply IHl; eauto using add_2.
+  Qed.
+
+  Lemma FMap_fold_add_MapsTo_In {Value}
+  : forall (f : Value -> Value) (bag : t Value) bag' k v,
+      InA (@eq_key_elt _) (k,v) (List.map (fun kv => (fst kv, f (snd kv))) (elements bag))
+      -> MapsTo k v
+                (fold (fun k bag'' r' => add k (f bag'') r') bag bag').
+  Proof.
+    intros; rewrite fold_1 in *; revert k v bag' H;
+    generalize (elements_3w bag); induction (elements bag);
+    intros; inversion H0; inversion H; subst; simpl in *; eauto.
+    destruct H2; simpl in *; subst; rewrite H1.
+    apply FMap_fold_add_MapsTo_NIn; eauto.
+    unfold not, eq_key in *; intros; apply H6; revert H2; clear;
+    induction l; simpl in *; intros; inversion H2; subst; eauto.
+    apply add_1; reflexivity.
+  Qed.
+
+  Lemma FMap_Insert_fold_add_MapsTo {Value}
+  : forall (f : Value -> Value) (bag : t Value) bag' k v,
+      MapsTo k v
+             (fold (fun k bag'' r' => add k (f bag'') r') bag bag') ->
+      MapsTo k v bag' \/
+      InA (@eq_key_elt _) (k,v) (List.map (fun kv => (fst kv, f (snd kv))) (elements bag)).
+  Proof.
+    intros; rewrite fold_1 in *; revert bag' H;
+    induction (elements bag); simpl in *; eauto; intros.
+    apply IHl in H; intuition.
+    apply add_mapsto_iff in H0; intuition; subst.
+    right; constructor; split; eauto.
+  Qed.
+
+  Lemma InA_Map {A B} eqB
+  : forall (f : A -> B) (b : B) (l : list A),
+      InA eqB b (List.map f l) <->
+      exists a, eqB b (f a) /\ List.In a l.
+  Proof.
+    split; induction l; simpl; intros; inversion H; subst;
+    eauto. destruct (IHl H1) as [a' [In_a eq_b]]; eauto.
+    intuition.
+    intuition; subst.
+    constructor; eauto.
+    constructor 2; eauto.
+  Qed.
+
+  Lemma FMap_Insert_fold_add_map_eq {Value}
+  : forall (f : Value -> Value) (bag : t Value),
+      Equal
+        (fold (fun k bag'' r' => add k (f bag'') r') bag (empty _))
+        (map f bag).
+  Proof.
+    unfold Equal.
+    intros; case_eq (find y
+                          (fold
+                             (fun (k : key) (bag'' : Value) (r' : t Value) => add k (f bag'') r')
+                             bag (empty Value)));
+    intros; case_eq (find y (map f bag)); intros; eauto.
+    - apply find_2 in H; apply find_2 in H0.
+      apply FMap_Insert_fold_add_MapsTo in H; destruct H.
+      elimtype False; apply empty_mapsto_iff in H; eauto.
+      apply map_mapsto_iff in H0; destruct H0 as [a [eq_a MapsTo_y]]; subst.
+      generalize (elements_3w bag); apply elements_1 in MapsTo_y;
+      induction MapsTo_y; intros.
+      + inversion H1; subst; destruct H0; simpl in *; subst.
+        inversion H; subst;
+        [destruct H3; simpl in *; subst; eauto
+        | elimtype False; apply H4; revert H0 H3; clear; induction l;
+          intros; inversion H3; subst; unfold eq_key in *].
+        destruct H1; simpl in *; subst; constructor; eauto.
+        constructor 2; eauto.
+      + inversion H0; subst; eapply IHMapsTo_y; eauto.
+        inversion H; subst; eauto.
+        destruct H2; simpl in *; subst.
+        elimtype False; apply H3; revert H1 MapsTo_y; clear; induction l;
+        intros; inversion MapsTo_y; subst; unfold eq_key in *.
+        destruct H0; simpl in *; subst; constructor; eauto.
+        constructor 2; eauto.
+    - apply find_2 in H; apply FMap_Insert_fold_add_MapsTo in H; destruct H.
+      elimtype False; apply empty_mapsto_iff in H; eauto.
+      apply InA_Map in H; destruct H as [[k v'] [eq_k In_k]]; simpl in *.
+      destruct eq_k; simpl in *; rewrite H in H0.
+      apply not_find_in_iff in H0; elimtype False; eapply H0.
+      apply map_in_iff; exists v'; apply elements_2.
+      apply InA_alt; eexists; repeat split; eauto.
+    - apply find_2 in H0; apply not_find_in_iff in H.
+      apply map_mapsto_iff in H0; destruct H0 as [k [k_eq MapsTo_k]]; subst.
+      elimtype False; apply H.
+      econstructor 1 with (x := f k); apply FMap_fold_add_MapsTo_In.
+      apply elements_1 in MapsTo_k; revert MapsTo_k; clear;
+      intro; induction MapsTo_k; simpl.
+      repeat constructor; destruct H; simpl in *; subst; eauto.
+      constructor 2; eauto.
+  Qed.
+
+    (* Partitioning a finite map [m] with a function that respects key and value equality
+       will produce a pair of maps equivalent to [m]. *)
+    Lemma MapsTo_partition_fst:
+      forall TValue f k v (m: t TValue),
+        Proper (E.eq ==> eq ==> eq) f ->
+        MapsTo k v (fst (partition f m)) ->
+        MapsTo k v m.
+    Proof.
+      intros * ? maps_to.
+      rewrite partition_iff_1 with (f := f) (m := m) in maps_to;
+        intuition.
+    Qed.
+
+    Lemma MapsTo_partition_snd:
+      forall TValue f k v (m: t TValue),
+        Proper (E.eq ==> eq ==> eq) f ->
+        MapsTo k v (snd (partition f m)) ->
+        MapsTo k v m.
+    Proof.
+      intros * ? maps_to.
+      rewrite partition_iff_2 with (f := f) (m := m) in maps_to;
+        intuition.
+    Qed.
+
+    (* A restatement of the specification of the [Partition] relation. *)
+    Lemma partition_Partition_simple :
+      forall TValue f,
+        Proper (E.eq ==> eq ==> eq) f ->
+        forall (m: t TValue),
+          Partition m
+                    (fst (partition f m))
+                    (snd (partition f m)).
+    Proof.
+      intros.
+      eapply partition_Partition; eauto.
+    Qed.
+
+    (* folding a function [f] which respects key, value, and accumulator
+       equivalences over two equivalent maps [m1] [m2] will produce
+       equivalent values. *)
+    Lemma fold_Equal_simpl :
+      forall {TValue TAcc} {eqA: TAcc -> TAcc -> Prop} {m1 m2: t TValue} {f} {init: TAcc},
+        Equal m1 m2 ->
+        Equivalence eqA ->
+        Proper (E.eq ==> eq ==> eqA ==> eqA) f ->
+        transpose_neqkey eqA f ->
+        eqA (fold f m1 init) (fold f m2 init).
+    Proof.
+      intros.
+      apply fold_Equal; assumption.
+    Qed.
+
+    Lemma fold_empty :
+      forall {TValue TAcc} f (default: TAcc),
+        fold f (empty TValue) default = default.
+    Proof.
+      intros;
+      apply fold_Empty;
+      eauto using empty_1.
+    Qed.
+
+    (* Adding the same key [k] to equivalent maps will produce equivalent maps*)
+    Lemma add_Equal_simple :
+      forall {TValue} {m1 m2: t TValue},
+        Equal m1 m2 ->
+        forall k v,
+          Equal (add k v m1) (add k v m2).
+    Proof.
+      intros.
+      apply add_m; eauto.
+    Qed.
+
+    (* Adding a key [k] overwrites previous values of [k] in a map. *)
+    Lemma multiple_adds :
+      forall {TValue} k v1 v2 (m: t TValue),
+        Equal (add k v2 (add k v1 m))
+              (add k v2 m).
+    Proof.
+      intros.
+      unfold Equal.
+      intros k'.
+      destruct (E.eq_dec k k').
+
+      rewrite !add_eq_o; eauto.
+      rewrite !add_neq_o; eauto.
+    Qed.
+
+    Lemma Values_fold_Proper :
+      forall {A},
+        Proper (E.eq ==> eq ==> Permutation (A:=A) ==> Permutation (A:=A))
+               (fun (_ : key) (val : A) (acc : list A) => val :: acc).
+    Proof.
+      unfold Proper, respectful; intros.
+      subst; eauto.
+    Qed.
+
+    Lemma Values_fold_transpose_neqkey :
+      forall {A},
+        transpose_neqkey (Permutation (A:=A))
+                         (fun (_ : key) (val : A) (acc : list A) => val :: acc).
+    Proof.
+      unfold transpose_neqkey; intros; constructor.
+    Qed.
+
+    Lemma empty_In :
+      forall {TValue} k,
+        ~ In k (empty TValue).
+    Proof.
+      intros; rewrite empty_in_iff; tauto.
+    Qed.
+
+    Lemma fold_right_map :
+      forall {A B} f seq,
+        @List.fold_right (list B) A (fun b a => f b :: a) [] seq = List.map f seq.
+    Proof.
+      intros; induction seq; simpl; try rewrite IHseq; reflexivity.
+    Qed.
+
+    Lemma fold_left_map :
+      forall {A B} f seq,
+        @List.fold_left (list B) A (fun a b => f b :: a) seq [] = List.map f (rev seq).
+    Proof.
+      intros; rewrite <- fold_left_rev_right; apply fold_right_map.
+    Qed.
+
+    Lemma Values_fold_perm :
+      forall {TValues} (m: t TValues),
+        Permutation
+          (Values m)
+          (fold (fun key val acc => cons val acc) m []).
+    Proof.
+      intros.
+      rewrite fold_1.
+
+      rewrite fold_left_map.
+      unfold Values.
+
+      rewrite map_rev.
+      apply Permutation_rev.
+    Qed.
+
+    Lemma Values_fold_eq :
+      forall {TValues} (m: t TValues),
+        (Values m) =
+        (rev (fold (fun key val acc => cons val acc) m [])).
+    Proof.
+      intros.
+      rewrite fold_1.
+
+      rewrite fold_left_map.
+      unfold Values.
+
+      rewrite map_rev.
+      rewrite rev_involutive; reflexivity.
+    Qed.
+
+
+    Lemma map_fold :
+      forall {A B TValue} f g m init,
+        (@List.map A B g
+                   (fold
+                      (fun k (v: TValue) acc =>
+                         f k v :: acc) m init)) =
+        (fold (fun k v acc => g (f k v) :: acc) m (List.map g init)).
+    Proof.
+      intros until m; setoid_rewrite fold_1.
+      setoid_rewrite <- fold_left_rev_right; simpl.
+      induction (elements m) as [ | ? ? IH ]; simpl; trivial.
+      setoid_rewrite fold_right_app.
+      setoid_rewrite IH; simpl.
+      reflexivity.
+    Qed.
+
+    Lemma elements_fold_eq :
+      forall {TValues} (m: t TValues),
+        (elements m) =
+        (rev (fold (fun key val acc => cons (key, val) acc) m [])).
+    Proof.
+      intros.
+      rewrite fold_1.
+
+      assert ((fold_left
+                 (fun (a : list (key * TValues)) (p : key * TValues) =>
+                    (fst p, snd p) :: a) (elements m) [])
+              = (fold_left
+                   (fun (a : list (key * TValues)) (p : key * TValues) =>
+                      p :: a) (elements m) []))
+        by (f_equal; repeat (apply functional_extensionality; intros);
+            rewrite <- surjective_pairing; reflexivity).
+
+      rewrite H.
+
+      setoid_rewrite fold_left_id.
+      rewrite rev_involutive; reflexivity.
+    Qed.
+
+    Lemma elements_fold_perm :
+      forall {TValues} (m: t TValues),
+        Permutation
+          (elements m)
+          (fold (fun key val acc => cons (key, val) acc) m []).
+    Proof.
+      intros.
+      rewrite fold_1.
+
+      assert ((fold_left
+                 (fun (a : list (key * TValues)) (p : key * TValues) =>
+                    (fst p, snd p) :: a) (elements m) [])
+              = (fold_left
+                   (fun (a : list (key * TValues)) (p : key * TValues) =>
+                      p :: a) (elements m) []))
+        by (f_equal; repeat (apply functional_extensionality; intros);
+            rewrite <- surjective_pairing; reflexivity).
+
+      rewrite H.
+
+      setoid_rewrite fold_left_id.
+      apply Permutation_rev.
+    Qed.
+
+    Lemma values_add_not_in {A : Type} :
+      forall (m: t A),
+      forall k v,
+        ~ In k m ->
+        Permutation
+          (Values (add k v m))
+          (v :: Values m).
+    Proof.
+      intros.
+      unfold Values.
+      rewrite elements_fold_eq.
+
+      rewrite map_rev.
+      rewrite map_fold; simpl.
+      etransitivity.
+      symmetry.
+      etransitivity; [ | apply Permutation_rev].
+      symmetry.
+      apply (fold_add (elt := A) (eqA := @Permutation A )); eauto.
+
+      apply Permutation_Equivalence.
+
+      unfold Proper, respectful; intros; simpl;
+      subst; apply Permutation_cons; assumption.
+
+      unfold transpose_neqkey; intros; simpl;
+      constructor.
+
+      rewrite fold_1.
+      rewrite fold_left_map.
+      econstructor.
+      rewrite Permutation_rev.
+
+      rewrite map_rev.
+      rewrite rev_involutive.
+      reflexivity.
+    Qed.
+
+
+
+(* This should be simplified by the switch to Permutations.
 
   Lemma EnsembleListEquivalence_fmap_add_filtered :
     forall {A: Type} (cond : A -> Prop) ensemble key tree added,
@@ -394,6 +892,9 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
     rewrite <- H1 in H2; intuition.
     rewrite <- H1 in H2; intuition.
   Qed. *)
+
+
+
 End FMapExtensions_fun.
 
 Module FMapExtensions (M: WS) := FMapExtensions_fun M.E M.
