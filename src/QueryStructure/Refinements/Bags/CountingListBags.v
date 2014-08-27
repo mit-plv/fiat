@@ -125,7 +125,7 @@ Section CountingListBags.
     binsert_Preserves_RepInv CountingList_RepInv CountingListAsBag_binsert.
   Proof.
     unfold binsert_Preserves_RepInv, CountingList_RepInv;
-    intros; simpl; rewrite H; reflexivity.
+    intros; simpl; rewrite containerCorrect; reflexivity.
   Qed.
 
   Lemma CountingList_bdelete_Preserves_RepInv :
@@ -134,11 +134,11 @@ Section CountingListBags.
     unfold bdelete_Preserves_RepInv, CountingList_RepInv, CountingListAsBag_bdelete;
     destruct container as [n l]; revert n; induction l; intros; simpl in *; eauto.
     destruct (MatchAgainstMany search_term a); simpl.
-    destruct n; simpl in *; [ discriminate | injection H]; intros.
-    pose proof (IHl n search_term H0).
+    destruct n; simpl in *; [ discriminate | injection containerCorrect]; intros.
+    pose proof (IHl n search_term H).
     destruct (CountingListPartition l (MatchAgainstMany search_term)); simpl in *; eauto.
-    destruct n; simpl in *; [ discriminate | injection H]; intros.
-    pose proof (IHl n search_term H0).
+    destruct n; simpl in *; [ discriminate | injection containerCorrect]; intros.
+    pose proof (IHl n search_term H).
     destruct (CountingListPartition l (MatchAgainstMany search_term)); simpl in *; eauto.
   Qed.
 
@@ -179,11 +179,11 @@ Section CountingListBags.
     unfold bupdate_Preserves_RepInv, CountingList_RepInv.
     destruct container as [n l]; simpl; revert n;
     induction l; simpl; intros; auto.
-    erewrite <- H; simpl; erewrite <- (IHl (length l) search_term update_term); auto.
+    erewrite <- containerCorrect; simpl; erewrite <- (IHl (length l) search_term update_term); auto.
     destruct (CountingListPartition l (MatchAgainstMany search_term)); simpl.
     destruct (MatchAgainstMany search_term a); simpl;
     rewrite List.app_length; simpl; rewrite List.map_length;
-    repeat rewrite H; auto.
+    repeat rewrite containerCorrect; auto.
     rewrite List.app_length; simpl; rewrite List.map_length;
     repeat rewrite cconsistent; auto.
   Qed.
@@ -242,8 +242,8 @@ Section CountingListBags.
     unfold BagCountCorrect, CountingListAsBag_bcount, CountingListAsBag_bfind,
     CountingList_RepInv; intros;
     pose proof (CountingList_BagCountCorrect_aux (ccontents container) search_term 0) as temp;
-    rewrite plus_0_r in temp; simpl in temp;
-    destruct search_term; simpl; [ apply H | apply temp ].
+    rewrite plus_0_r in temp; simpl in temp.
+    destruct search_term; simpl; [ apply containerCorrect | apply temp ].
   Qed.
 
   Lemma CountingList_BagDeleteCorrect :

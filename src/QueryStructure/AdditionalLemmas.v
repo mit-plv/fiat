@@ -756,6 +756,64 @@ Section AdditionalListLemmas.
     apply InA_cons_tl, IHl; trivial.
   Qed.
 
+  Lemma fold_map :
+      forall {A B C} seq f g init,
+        @List.fold_left C A (fun acc x => f acc (g x)) seq init =
+        @List.fold_left C B (fun acc x => f acc (  x)) (@List.map A B g seq) init.
+  Proof.
+    induction seq; simpl; intros; trivial; try rewrite IHseq; intuition.
+  Qed.
+
+  Lemma fold_plus_sym :
+    forall (seq: list nat) (default: nat),
+      List.fold_right plus default seq =
+      List.fold_left plus seq default.
+  Proof.
+    intros; rewrite <- fold_left_rev_right.
+    revert default; induction seq; simpl; eauto; intros.
+    rewrite fold_right_app; simpl; rewrite <- IHseq.
+    clear IHseq; revert a default; induction seq;
+    simpl; intros; auto with arith.
+    rewrite <- IHseq; omega.
+  Qed.
+
+  Lemma map_snd {A B C} :
+    forall (f : A -> B) (l : list (C * A)),
+      List.map f (List.map snd l) =
+      List.map snd (List.map (fun ca => (fst ca, f (snd ca))) l).
+  Proof.
+    intros; repeat rewrite List.map_map; induction l; simpl; eauto.
+  Qed.
+
+  Lemma partition_app {A} :
+    forall f (l1 l2 : list A),
+      List.partition f (l1 ++ l2) =
+      (fst (List.partition f l1) ++ fst (List.partition f l2),
+       snd (List.partition f l1) ++ snd (List.partition f l2)).
+  Proof.
+    induction l1; simpl.
+    - intros; destruct (List.partition f l2); reflexivity.
+    - intros; rewrite IHl1; destruct (f a); destruct (List.partition f l1);
+      simpl; f_equal.
+  Qed.
+
+
+  Lemma partition_filter_eq {A} :
+    forall (f : A -> bool) l,
+      fst (List.partition f l) = List.filter f l.
+  Proof.
+    induction l; simpl; eauto.
+    destruct (List.partition f l); destruct (f a); simpl in *; congruence.
+  Qed.
+
+  Lemma partition_filter_neq {A} :
+    forall (f : A -> bool) l,
+      snd (List.partition f l) = List.filter (fun a => negb (f a)) l.
+  Proof.
+    induction l; simpl; eauto.
+    destruct (List.partition f l); destruct (f a); simpl in *; congruence.
+  Qed.
+
 End AdditionalListLemmas.
 
 Section AdditionalComputeationLemmas.

@@ -11,8 +11,8 @@ Definition BagInsertEnumerate
            (RepInv : TContainer -> Prop)
            (benumerate : TContainer -> list TItem)
            (binsert    : TContainer -> TItem -> TContainer) :=
-  forall inserted container,
-    RepInv container ->
+  forall inserted container
+         (containerCorrect : RepInv container),
     Permutation
       (benumerate (binsert container inserted))
       (inserted :: benumerate container).
@@ -33,8 +33,8 @@ Definition BagFindCorrect
            (bfind         : TContainer -> TSearchTerm -> list TItem)
            (bfind_matcher : TSearchTerm -> TItem -> bool)
            (benumerate : TContainer -> list TItem) :=
-  forall container search_term,
-    RepInv container ->
+  forall container search_term
+         (containerCorrect : RepInv container),
     Permutation
       (List.filter (bfind_matcher search_term) (benumerate container))
       (bfind container search_term).
@@ -46,7 +46,9 @@ Definition BagFindStar
            (bfind : TContainer -> TSearchTerm -> list TItem)
            (benumerate : TContainer -> list TItem)
            (bstar : TSearchTerm) :=
-  forall container, bfind container bstar = benumerate container.
+  forall container
+    (containerCorrect : RepInv container),
+      bfind container bstar = benumerate container.
 
 (* The [bid] update term is the identity function *)
 Definition BagUpdateID
@@ -62,8 +64,8 @@ Definition BagCountCorrect
            (RepInv : TContainer -> Prop)
            (bcount        : TContainer -> TSearchTerm -> nat)
            (bfind         : TContainer -> TSearchTerm -> list TItem) :=
-  forall container search_term,
-    RepInv container ->
+  forall container search_term
+  (containerCorrect : RepInv container),
     List.length (bfind container search_term) = (bcount container search_term).
 
 (* The elements of a bag [container] from which all elements matching
@@ -76,8 +78,8 @@ Definition BagDeleteCorrect
            (bfind_matcher : TSearchTerm -> TItem -> bool)
            (benumerate : TContainer -> list TItem)
            (bdelete    : TContainer -> TSearchTerm -> (list TItem) * TContainer) :=
-  forall container search_term,
-    RepInv container ->
+  forall container search_term
+         (containerCorrect : RepInv container),
     Permutation (benumerate (snd (bdelete container search_term)))
                 (snd (List.partition (bfind_matcher search_term)
                                      (benumerate container)))
@@ -97,8 +99,8 @@ Definition BagUpdateCorrect
            (benumerate : TContainer -> list TItem)
            (bupdate_transform : TUpdateTerm -> TItem -> TItem)
            (bupdate    : TContainer -> TSearchTerm -> TUpdateTerm -> TContainer) :=
-  forall container search_term update_term,
-    RepInv container ->
+  forall container search_term update_term
+         (containerCorrect : RepInv container),
     Permutation (benumerate (bupdate container search_term update_term))
                    ((snd (List.partition (bfind_matcher search_term)
                                          (benumerate container)))
@@ -110,26 +112,26 @@ Definition binsert_Preserves_RepInv
            {TContainer TItem: Type}
            (RepInv : TContainer -> Prop)
            (binsert    : TContainer -> TItem -> TContainer)
-    := forall container item,
-                        RepInv container
-                        -> RepInv (binsert container item).
+    := forall container item
+              (containerCorrect : RepInv container),
+         RepInv (binsert container item).
 
 Definition bdelete_Preserves_RepInv
            {TContainer TItem TSearchTerm: Type}
            (RepInv : TContainer -> Prop)
            (bdelete    : TContainer -> TSearchTerm -> (list TItem) * TContainer)
-  := forall container search_term,
-                        RepInv container
-                        -> RepInv (snd (bdelete container search_term)).
+  := forall container search_term
+            (containerCorrect : RepInv container),
+       RepInv (snd (bdelete container search_term)).
 
-Definition bupdate_Preserves_RepInv    
+Definition bupdate_Preserves_RepInv
            {TContainer TSearchTerm TUpdateTerm : Type}
            (RepInv : TContainer -> Prop)
            (bupdate    : TContainer -> TSearchTerm -> TUpdateTerm -> TContainer)
-  := forall container search_term update_term,
-       RepInv container
-       -> RepInv (bupdate container search_term update_term).
-       
+  := forall container search_term update_term
+            (containerCorrect : RepInv container),
+       RepInv (bupdate container search_term update_term).
+
 Class Bag (TItem : Type) :=
   {
     BagType : Type;
