@@ -893,7 +893,24 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
     rewrite <- H1 in H2; intuition.
   Qed. *)
 
-
+    Lemma fold_pair {A B A' B' V} :
+      forall (m : t V) (ab : A * B) (f : TKey -> V -> (A' * B')) fa fb,
+        @fold V (A * B) (fun k (v : V) (ab : A * B) =>
+                let (a, b) := f k v in
+                let (a', b') := ab in
+                (fa k a a', fb k b b'))
+                 m ab
+        = (fold (fun k m (a' : A) =>
+                   fa k (fst (f k m)) a') m (fst ab),
+           fold (fun k m (b' : B) =>
+                   fb k (snd (f k m)) b')
+                m (snd ab)).
+    Proof.
+      intros; repeat rewrite fold_1; revert ab; induction (elements m);
+      destruct ab; simpl; eauto.
+      destruct a; simpl; destruct (f k v);
+      rewrite IHl; reflexivity.
+    Qed.
 
 End FMapExtensions_fun.
 

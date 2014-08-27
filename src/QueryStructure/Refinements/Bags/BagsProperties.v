@@ -3,16 +3,15 @@ Require Import AdditionalMorphisms.
 
 Section BagsProperties.
 
-  Context {TContainer   : Type}
-          {TItem        : Type}
-          {TSearchTerm  : Type}
-          {TUpdateTerm  : Type}
-          {bag          : Bag TContainer TItem TSearchTerm TUpdateTerm}.
+  Context {TItem        : Type}
+          {bag          : Bag TItem}
+          {valid_bag    : CorrectBag bag}.
 
   Lemma binsert_enumerate_weak
   : forall item inserted container,
-      List.In item (benumerate (binsert container inserted)) <->
-      List.In item (benumerate container) \/ item = inserted.
+      RepInv container -> 
+      (List.In item (benumerate (binsert container inserted)) <->
+      List.In item (benumerate container) \/ item = inserted).
   Proof.
     intros.
     rewrite <- refold_in.
@@ -31,7 +30,8 @@ Section BagsProperties.
   Qed.
 
   Lemma binsert_enumerate_length
-  : forall (bag: TContainer) (item: TItem),
+  : forall (bag: BagType) (item: TItem),
+      RepInv bag -> 
       List.length (benumerate (binsert bag item)) = S (List.length (benumerate bag)).
   Proof.
     intros; rewrite binsert_enumerate; simpl; trivial.
@@ -41,7 +41,8 @@ Section BagsProperties.
     List.length (List.filter (fun x => if bfind_matcher item x then true else false) (benumerate container)).
 
   Definition _BagInsertCount :=
-    forall (search_term : TSearchTerm) (item : TItem) (container : TContainer),
+    forall (search_term : SearchTermType) (item : TItem) (container : BagType),
+      RepInv container -> 
       _bcount (binsert container item) search_term =
       _bcount container search_term + if bfind_matcher search_term item then 1 else 0.
 
@@ -58,7 +59,8 @@ Section BagsProperties.
   Lemma _binsert_count : _BagInsertCount.
   Proof.
     unfold _BagInsertCount, _bcount; intros;
-    rewrite binsert_enumerate; simpl; destruct (bfind_matcher search_term item); simpl; omega.
+    rewrite binsert_enumerate; simpl; destruct (bfind_matcher search_term item); simpl; 
+    eauto; omega.
   Qed.
 
 End BagsProperties.

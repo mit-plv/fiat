@@ -1,4 +1,4 @@
-Require Export BagsInterface CountingListBags TreeBags Tuple Heading List Program.
+Require Export BagsInterface CountingListBags TreeBags Tuple Heading List Program ilist.
 Require Import String_as_OT EnsembleListEquivalence.
 Require Import Bool String OrderedTypeEx.
 
@@ -12,21 +12,15 @@ Definition TupleEqualityMatcher
            {heading: Heading}
            (attr: Attributes heading)
            (value: Domain heading attr)
-           {ens_dec: DecideableEnsemble (fun x : Domain heading attr => value = x)} := 
+           {ens_dec: DecideableEnsemble (fun x : Domain heading attr => value = x)} :=
   fun tuple => dec (tuple attr).
 
 Definition TupleDisequalityMatcher
            {heading: Heading}
            (attr: Attributes heading)
            (value: Domain heading attr)
-           {ens_dec: DecideableEnsemble (fun x : Domain heading attr => value = x)} := 
+           {ens_dec: DecideableEnsemble (fun x : Domain heading attr => value = x)} :=
   fun tuple => negb (dec (tuple attr)).
-
-Instance TupleListAsBag (heading: Heading) :
-  Bag (@CountingList (@Tuple heading)) (@Tuple heading) (list (TSearchTermMatcher heading)).
-Proof.
-  apply CountingListAsBag. 
-Defined.
 
 Require Import FMapAVL.
 
@@ -41,15 +35,17 @@ Module NatTreeBag := TreeBag NatIndexedMap.
 Module StringTreeBag := TreeBag StringIndexedMap.
 
 Definition TTreeConstructor (TKey: Type) :=
-  forall TBag TItem TBagSearchTerm : Type,
-    Bag TBag TItem TBagSearchTerm -> (TItem -> TKey) -> Type.
+  forall TBag TItem TBagSearchTerm TBagUpdateTerm : Type,
+  Bag TBag TItem TBagSearchTerm TBagUpdateTerm
+  -> (TItem -> TKey) -> Type.
 
 Definition mkTreeType
            (TKey: Type)
            (tree_constructor: TTreeConstructor TKey)
-           TSubtree TSubtreeSearchTerm
-           heading subtree_as_bag : (@Tuple heading -> TKey) -> Type :=
-  tree_constructor TSubtree (@Tuple heading) TSubtreeSearchTerm subtree_as_bag.
+           TSubtree TSubtreeSearchTerm TSubtreeUpdateTerm
+           heading projection subtree_as_bag : Type :=
+  tree_constructor TSubtree (@Tuple heading) TSubtreeSearchTerm
+                   TSubtreeUpdateTerm projection subtree_as_bag.
 
 Definition NTreeType      := mkTreeType BinNums.N (@NTreeBag.IndexedBag).
 Definition ZTreeType      := mkTreeType BinNums.Z (@ZTreeBag.IndexedBag).
@@ -63,34 +59,70 @@ Defined.
 
 Record ProperAttribute {heading} :=
   {
-    Attribute: Attributes heading;
+    Attribute :> Attributes heading;
     ProperlyTyped: { Domain heading Attribute = BinNums.N } + { Domain heading Attribute = BinNums.Z } +
                    { Domain heading Attribute = nat } + { Domain heading Attribute = string }
   }.
 
-Fixpoint NestedTreeFromAttributes'
+Record KeyPreservingUpdateF {heading}
+       (indices : list (@ProperAttribute heading))
+  :=
+  { KPUpdate_F : @Tuple heading -> @Tuple heading;
+    ValidUpdate_F :
+      forall K tup,
+        In K indices
+        -> KPUpdate_F tup (@Attribute _ K) = tup (@Attribute _ K)}.
+
+Instance TupleListAsBag
+         (heading: Heading)
+         indices
+: Bag (@CountingList (@Tuple heading)) (@Tuple heading)
+      (list (TSearchTermMatcher heading))
+      (@KeyPreservingUpdateF heading indices).
+Proof.
+  apply CountingListAsBag.
+  econstructor 1 with (KPUpdate_F := @id _); reflexivity.
+  intro KP; apply (KPUpdate_F _ KP).
+Defined.
+
+Definition foo 
          heading
-         (indexes: list (@ProperAttribute heading))
-         {struct indexes}: (@BagPlusBagProof (@Tuple heading)) :=
-  match indexes with
-    | [] =>
-      {| BagType        := @CountingList (@Tuple heading);
-         SearchTermType := list (TSearchTermMatcher heading) |}
-    | proper_attr :: more_indexes =>
+         (Keys : list (@ProperAttribute heading))
+  := 
+    {| BagType        := @CountingList (@Tuple heading);
+       SearchTermType := list (TSearchTermMatcher heading);
+       BagProof       := TupleListAsBag heading Keys |}.
+
+Program Fixpoint NestedTreeFromAttributes'
+         heading
+         (indices : list (@ProperAttribute heading))
+         (Keys : list (@ProperAttribute heading))
+         {struct indices}
+: @BagPlusBagProof (@Tuple heading) (@KeyPreservingUpdateF heading Keys) :=
+  match indices with
+    | [] => foo heading Keys
+    | proper_attr :: more_indexes =>  
       let attr := @Attribute heading proper_attr in
-      let (t, st, bagproof) := NestedTreeFromAttributes' heading more_indexes in
-      match ProperlyTyped proper_attr with
+      let (t, st, bagproof) := NestedTreeFromAttributes' heading more_indexes Keys in
+      match @ProperlyTyped _ proper_attr with
         | inleft (inleft (left conv))  =>
-          {| BagType        := NTreeType t st heading bagproof (fun x => cast conv (x attr));
-             SearchTermType := option BinNums.N * st |}
+          {| BagType        := NTreeType t st _ heading bagproof (fun x => cast conv (x attr));
+             SearchTermType := option BinNums.N * st;
+             BagProof := NTreeBag.IndexedBagAsBag 
+                           (NestedTreeFromAttributes' heading more_indexes Keys)
+                           (fun x => cast conv (x attr))
+          |}
+        | _ => _ end
+  end.
+
         | inleft (inleft (right conv)) =>
-          {| BagType        := ZTreeType t st heading bagproof (fun x => cast conv (x attr));
+          {| BagType        := ZTreeType t st upt heading bagproof (fun x => cast conv (x attr));
              SearchTermType := option BinNums.Z * st |}
         | inleft (inright conv)        =>
-          {| BagType        := NatTreeType t st heading bagproof (fun x => cast conv (x attr));
+          {| BagType        := NatTreeType t st upt heading bagproof (fun x => cast conv (x attr));
              SearchTermType := option nat * st |}
         | inright conv                 =>
-          {| BagType        := StringTreeType t st heading bagproof (fun x => cast conv (x attr));
+          {| BagType        := StringTreeType t st upt heading bagproof (fun x => cast conv (x attr));
              SearchTermType := option string * st |}
       end
   end.
@@ -184,6 +216,6 @@ Qed.
 Ltac binsert_correct_DB :=
   match goal with
     | [ H: EnsembleIndexedListEquivalence (GetUnConstrRelation ?qs ?index)
-                                          (benumerate (Bag := ?bagproof) ?store) |- _ ] => 
+                                          (benumerate (Bag := ?bagproof) ?store) |- _ ] =>
       solve [ simpl; apply (binsert_correct_DB (store_is_bag := bagproof) _ qs index _ H) ]
   end.

@@ -57,7 +57,7 @@ Tactic Notation
     | [ H: EnsembleIndexedListEquivalence ?table (benumerate ?storage) 
         |- appcontext [ filter ?filter1 (benumerate ?storage) ] ] => 
       let temp := fresh in 
-      let filter2 := constr:(bfind_matcher (Bag := BagProof indexed_storage) keyword) in
+      let filter2 := constr:(bfind_matcher (Bag := BagType indexed_storage) keyword) in
       assert (ExtensionalEq filter1 filter2) as temp by prove_extensional_eq;
         rewrite (filter_by_equiv filter1 filter2 temp);
         clear temp
@@ -68,7 +68,7 @@ Tactic Notation
        "over" reference(indexed_storage) 
        "using" "dependent" "search" "term" constr(keyword) :=
   let temp := fresh in
-  let filter2 := constr:(fun x => bfind_matcher (Bag := BagProof indexed_storage) (keyword x)) in
+  let filter2 := constr:(fun x => bfind_matcher (Bag := BagType indexed_storage) (keyword x)) in
   assert (forall x, ExtensionalEq (filter1 x) (filter2 x)) as temp by prove_extensional_eq;
     setoid_rewrite (filter_by_equiv_meta filter1 filter2 temp);
     clear temp.
@@ -106,8 +106,8 @@ Tactic Notation "prove" "trivial" "constraints" :=
 
 Definition ID {A} := fun (x: A) => x.
 
-Lemma ens_red {heading TContainer TSearchTerm TUpdateTerm} :
-  forall x y (y_is_bag: Bag TContainer _ TSearchTerm TUpdateTerm),
+Lemma ens_red {heading} :
+  forall (y_is_bag: Bag (@Tuple heading)) x y,
     @EnsembleIndexedListEquivalence heading x (benumerate (Bag := y_is_bag) y) =
     (ID (fun y => EnsembleIndexedListEquivalence x (benumerate y))) y.
 Proof.

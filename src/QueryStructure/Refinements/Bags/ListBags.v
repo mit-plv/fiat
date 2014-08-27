@@ -44,7 +44,7 @@ Section ListBags.
                            container)).
 
   Lemma List_BagInsertEnumerate :
-    BagInsertEnumerate id ListAsBag_binsert.
+    BagInsertEnumerate (fun _ => True) id (ListAsBag_binsert).
   Proof.
     firstorder.
   Qed.
@@ -56,7 +56,7 @@ Section ListBags.
   Qed.
 
   Lemma List_BagFindStar :
-    BagFindStar ListAsBag_bfind id star.
+    BagFindStar (fun _ => True) ListAsBag_bfind id star.
   Proof.
     intros;
     induction container; simpl;
@@ -64,7 +64,7 @@ Section ListBags.
   Qed.
 
   Lemma List_BagFindCorrect :
-    BagFindCorrect ListAsBag_bfind bfind_matcher id.
+    BagFindCorrect (fun _ => True) ListAsBag_bfind bfind_matcher id.
   Proof.
     firstorder.
   Qed.
@@ -86,7 +86,7 @@ Section ListBags.
   Qed.
 
   Lemma List_BagCountCorrect :
-    BagCountCorrect ListAsBag_bcount ListAsBag_bfind.
+    BagCountCorrect (fun _ => True) ListAsBag_bcount ListAsBag_bfind.
   Proof.
     unfold BagCountCorrect, ListAsBag_bcount, ListAsBag_bfind; intros;
     pose proof (List_BagCountCorrect_aux container search_term 0) as temp;
@@ -94,30 +94,42 @@ Section ListBags.
   Qed.
 
   Lemma List_BagDeleteCorrect :
-    BagDeleteCorrect ListAsBag_bfind bfind_matcher id ListAsBag_bdelete.
+    BagDeleteCorrect (fun _ => True) ListAsBag_bfind bfind_matcher id ListAsBag_bdelete.
   Proof.
     firstorder.
   Qed.
 
   Lemma List_BagUpdateCorrect :
-    BagUpdateCorrect ListAsBag_bfind bfind_matcher id bupdate_transform ListAsBag_bupdate.
+    BagUpdateCorrect (fun _ => True) ListAsBag_bfind bfind_matcher id bupdate_transform ListAsBag_bupdate.
   Proof.
     firstorder.
   Qed.
 
   Global Instance ListAsBag
-  : Bag (list TItem) TItem TSearchTerm TUpdateTerm :=
+  : Bag TItem  :=
     {|
-      bempty := nil;
-      bid    := bid;
-      bstar  := star;
+      BagType        := (list TItem);
+      SearchTermType := TSearchTerm;
+      UpdateTermType := TUpdateTerm;
+
+      bempty            := nil;
+      bid               := bid;
+      bstar             := star;
+      bfind_matcher     := bfind_matcher;
+      bupdate_transform := bupdate_transform;
 
       benumerate := id;
       bfind      := ListAsBag_bfind;
       binsert    := ListAsBag_binsert;
       bcount     := ListAsBag_bcount;
       bdelete    := ListAsBag_bdelete;
-      bupdate    := ListAsBag_bupdate;
+      bupdate    := ListAsBag_bupdate
+    |}.
+
+  Global Instance ListAsBagCorrect
+  : CorrectBag ListAsBag :=
+    {|
+      RepInv            := fun _ => True;
 
       binsert_enumerate := List_BagInsertEnumerate;
       benumerate_empty  := List_BagEnumerateEmpty;
@@ -127,5 +139,11 @@ Section ListBags.
       bdelete_correct   := List_BagDeleteCorrect;
       bupdate_correct   := List_BagUpdateCorrect
     |}.
+  Proof.
+    eauto.
+    unfold binsert_Preserves_RepInv; eauto.
+    unfold bdelete_Preserves_RepInv; eauto.
+    unfold bupdate_Preserves_RepInv; eauto.
+  Qed.
 
 End ListBags.
