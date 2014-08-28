@@ -50,7 +50,7 @@ Tactic Notation "lift" "list" "property" constr(prop) "as" ident(name) :=
 Tactic Notation "call" "eapply" constr(hypothesis) "after" tactic1(preprocessor) :=
   first [ preprocessor; eapply hypothesis | eapply hypothesis ].
 
-Tactic Notation 
+(*Tactic Notation 
        "rewrite" "filter" "over" reference(indexed_storage) 
        "using" "search" "term" constr(keyword) :=
   match goal with
@@ -71,7 +71,7 @@ Tactic Notation
   let filter2 := constr:(fun x => bfind_matcher (Bag := BagType indexed_storage) (keyword x)) in
   assert (forall x, ExtensionalEq (filter1 x) (filter2 x)) as temp by prove_extensional_eq;
     setoid_rewrite (filter_by_equiv_meta filter1 filter2 temp);
-    clear temp.
+    clear temp. *)
 
 
 (* The following tactic is useful when we have a set of hypotheses
@@ -106,16 +106,16 @@ Tactic Notation "prove" "trivial" "constraints" :=
 
 Definition ID {A} := fun (x: A) => x.
 
-Lemma ens_red {heading} :
+(* Lemma ens_red {heading} :
   forall (y_is_bag: Bag (@Tuple heading)) x y,
     @EnsembleIndexedListEquivalence heading x (benumerate (Bag := y_is_bag) y) =
     (ID (fun y => EnsembleIndexedListEquivalence x (benumerate y))) y.
 Proof.
   intros; reflexivity.
-Qed.
+Qed. *)
 
 (* Workaround Coq's algorithms not being able to infer ther arguments to refineEquiv_pick_pair *)
-Ltac refineEquiv_pick_pair_benumerate :=
+(*Ltac refineEquiv_pick_pair_benumerate :=
   setoid_rewrite ens_red;
   setoid_rewrite refineEquiv_pick_pair;
-  unfold ID; cbv beta.
+  unfold ID; cbv beta. *)

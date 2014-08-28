@@ -94,13 +94,15 @@ Definition BagDeleteCorrect
 Definition BagUpdateCorrect
            {TContainer TItem TSearchTerm TUpdateTerm : Type}
            (RepInv : TContainer -> Prop)
+           (ValidUpdate : TUpdateTerm -> Prop)
            (bfind         : TContainer -> TSearchTerm -> list TItem)
            (bfind_matcher : TSearchTerm -> TItem -> bool)
            (benumerate : TContainer -> list TItem)
            (bupdate_transform : TUpdateTerm -> TItem -> TItem)
            (bupdate    : TContainer -> TSearchTerm -> TUpdateTerm -> TContainer) :=
   forall container search_term update_term
-         (containerCorrect : RepInv container),
+         (containerCorrect : RepInv container)
+         (valid_update : ValidUpdate update_term),
     Permutation (benumerate (bupdate container search_term update_term))
                    ((snd (List.partition (bfind_matcher search_term)
                                          (benumerate container)))
@@ -127,16 +129,15 @@ Definition bdelete_Preserves_RepInv
 Definition bupdate_Preserves_RepInv
            {TContainer TSearchTerm TUpdateTerm : Type}
            (RepInv : TContainer -> Prop)
+           (ValidUpdate       : TUpdateTerm -> Prop)
            (bupdate    : TContainer -> TSearchTerm -> TUpdateTerm -> TContainer)
   := forall container search_term update_term
-            (containerCorrect : RepInv container),
+            (containerCorrect : RepInv container)
+            (valid_update : ValidUpdate update_term),
        RepInv (bupdate container search_term update_term).
 
-Class Bag (TItem : Type) :=
+Class Bag (BagType TItem SearchTermType UpdateTermType : Type) :=
   {
-    BagType : Type;
-    SearchTermType : Type;
-    UpdateTermType : Type;
 
     bempty            : BagType;
     bstar             : SearchTermType;
@@ -153,14 +154,17 @@ Class Bag (TItem : Type) :=
   }.
 
 
-Class CorrectBag {TItem} (BagImplementation : Bag TItem) :=
+Class CorrectBag
+      {BagType TItem SearchTermType UpdateTermType : Type}
+      (RepInv            : BagType -> Prop)
+      (ValidUpdate       : UpdateTermType -> Prop)
+      (BagImplementation : Bag BagType TItem SearchTermType UpdateTermType) :=
 {
-  RepInv            : BagType -> Prop;
 
   bempty_RepInv     : RepInv bempty;
   binsert_RepInv    : binsert_Preserves_RepInv RepInv binsert;
   bdelete_RepInv    : bdelete_Preserves_RepInv RepInv bdelete ;
-  bupdate_RepInv    : bupdate_Preserves_RepInv RepInv bupdate;
+  bupdate_RepInv    : bupdate_Preserves_RepInv RepInv ValidUpdate bupdate;
 
   binsert_enumerate : BagInsertEnumerate RepInv benumerate binsert;
   benumerate_empty  : BagEnumerateEmpty benumerate bempty;
@@ -168,5 +172,5 @@ Class CorrectBag {TItem} (BagImplementation : Bag TItem) :=
   bfind_correct     : BagFindCorrect RepInv bfind bfind_matcher benumerate;
   bcount_correct    : BagCountCorrect RepInv bcount bfind;
   bdelete_correct   : BagDeleteCorrect RepInv bfind bfind_matcher benumerate bdelete;
-  bupdate_correct   : BagUpdateCorrect RepInv bfind bfind_matcher benumerate bupdate_transform bupdate
+  bupdate_correct   : BagUpdateCorrect RepInv ValidUpdate bfind bfind_matcher benumerate bupdate_transform bupdate
 }.

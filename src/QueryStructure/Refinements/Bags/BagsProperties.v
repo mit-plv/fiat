@@ -3,13 +3,16 @@ Require Import AdditionalMorphisms.
 
 Section BagsProperties.
 
-  Context {TItem        : Type}
-          {bag          : Bag TItem}
-          {valid_bag    : CorrectBag bag}.
+  Context
+    {BagType TItem SearchTermType UpdateTermType : Type}
+    (bag          : Bag BagType TItem SearchTermType UpdateTermType)
+    (RepInv       : BagType -> Prop)
+    (ValidUpdate  : UpdateTermType -> Prop)
+    (valid_bag    : CorrectBag RepInv ValidUpdate bag).
 
   Lemma binsert_enumerate_weak
   : forall item inserted container,
-      RepInv container -> 
+      RepInv container ->
       (List.In item (benumerate (binsert container inserted)) <->
       List.In item (benumerate container) \/ item = inserted).
   Proof.
@@ -31,7 +34,7 @@ Section BagsProperties.
 
   Lemma binsert_enumerate_length
   : forall (bag: BagType) (item: TItem),
-      RepInv bag -> 
+      RepInv bag ->
       List.length (benumerate (binsert bag item)) = S (List.length (benumerate bag)).
   Proof.
     intros; rewrite binsert_enumerate; simpl; trivial.
@@ -42,7 +45,7 @@ Section BagsProperties.
 
   Definition _BagInsertCount :=
     forall (search_term : SearchTermType) (item : TItem) (container : BagType),
-      RepInv container -> 
+      RepInv container ->
       _bcount (binsert container item) search_term =
       _bcount container search_term + if bfind_matcher search_term item then 1 else 0.
 
@@ -59,7 +62,7 @@ Section BagsProperties.
   Lemma _binsert_count : _BagInsertCount.
   Proof.
     unfold _BagInsertCount, _bcount; intros;
-    rewrite binsert_enumerate; simpl; destruct (bfind_matcher search_term item); simpl; 
+    rewrite binsert_enumerate; simpl; destruct (bfind_matcher search_term item); simpl;
     eauto; omega.
   Qed.
 

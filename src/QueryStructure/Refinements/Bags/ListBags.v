@@ -43,8 +43,11 @@ Section ListBags.
       (fst (List.partition (bfind_matcher search_term)
                            container)).
 
+  Definition ListBag_RepInv (_ : list TItem) := True.
+  Definition ListBag_ValidUpdate (_ : TUpdateTerm) := True.
+
   Lemma List_BagInsertEnumerate :
-    BagInsertEnumerate (fun _ => True) id (ListAsBag_binsert).
+    BagInsertEnumerate ListBag_RepInv id (ListAsBag_binsert).
   Proof.
     firstorder.
   Qed.
@@ -56,15 +59,15 @@ Section ListBags.
   Qed.
 
   Lemma List_BagFindStar :
-    BagFindStar (fun _ => True) ListAsBag_bfind id star.
+    BagFindStar ListBag_RepInv ListAsBag_bfind id star.
   Proof.
-    intros;
+    intros; unfold ListBag_RepInv;
     induction container; simpl;
     [ | rewrite find_star, IHcontainer]; trivial.
   Qed.
 
   Lemma List_BagFindCorrect :
-    BagFindCorrect (fun _ => True) ListAsBag_bfind bfind_matcher id.
+    BagFindCorrect ListBag_RepInv ListAsBag_bfind bfind_matcher id.
   Proof.
     firstorder.
   Qed.
@@ -86,7 +89,7 @@ Section ListBags.
   Qed.
 
   Lemma List_BagCountCorrect :
-    BagCountCorrect (fun _ => True) ListAsBag_bcount ListAsBag_bfind.
+    BagCountCorrect ListBag_RepInv ListAsBag_bcount ListAsBag_bfind.
   Proof.
     unfold BagCountCorrect, ListAsBag_bcount, ListAsBag_bfind; intros;
     pose proof (List_BagCountCorrect_aux container search_term 0) as temp;
@@ -94,24 +97,21 @@ Section ListBags.
   Qed.
 
   Lemma List_BagDeleteCorrect :
-    BagDeleteCorrect (fun _ => True) ListAsBag_bfind bfind_matcher id ListAsBag_bdelete.
+    BagDeleteCorrect ListBag_RepInv ListAsBag_bfind bfind_matcher id ListAsBag_bdelete.
   Proof.
     firstorder.
   Qed.
 
   Lemma List_BagUpdateCorrect :
-    BagUpdateCorrect (fun _ => True) ListAsBag_bfind bfind_matcher id bupdate_transform ListAsBag_bupdate.
+    BagUpdateCorrect ListBag_RepInv ListBag_ValidUpdate 
+                     ListAsBag_bfind bfind_matcher id bupdate_transform ListAsBag_bupdate.
   Proof.
     firstorder.
   Qed.
 
   Global Instance ListAsBag
-  : Bag TItem  :=
+  : Bag (list TItem) TItem TSearchTerm TUpdateTerm :=
     {|
-      BagType        := (list TItem);
-      SearchTermType := TSearchTerm;
-      UpdateTermType := TUpdateTerm;
-
       bempty            := nil;
       bid               := bid;
       bstar             := star;
@@ -127,9 +127,8 @@ Section ListBags.
     |}.
 
   Global Instance ListAsBagCorrect
-  : CorrectBag ListAsBag :=
+  : CorrectBag ListBag_RepInv ListBag_ValidUpdate ListAsBag :=
     {|
-      RepInv            := fun _ => True;
 
       binsert_enumerate := List_BagInsertEnumerate;
       benumerate_empty  := List_BagEnumerateEmpty;
@@ -140,7 +139,7 @@ Section ListBags.
       bupdate_correct   := List_BagUpdateCorrect
     |}.
   Proof.
-    eauto.
+    unfold ListBag_RepInv; eauto.
     unfold binsert_Preserves_RepInv; eauto.
     unfold bdelete_Preserves_RepInv; eauto.
     unfold bupdate_Preserves_RepInv; eauto.

@@ -5,15 +5,6 @@ Require Import FMapInterface Coq.FSets.FMapFacts.
 
 Unset Implicit Arguments.
 
-(* A class for Bags whose update functions preserve the key
-Class KeyPreservingUpdateBag
-      {TItem : Type}
-      {TKey : Type}
-      (TKeyEq : TKey -> TKey -> Prop)
-      (projection: TItem -> TKey)
-  := { KP_BagProof :> @BagPlusBagProof TItem;
-       KeyPreservation_Proof : KeyPreservingUpdate TKeyEq projection KP_BagProof }. *)
-
 Module TreeBag (Import M: WS).
   Module Import BasicFacts := WFacts_fun E M.
   Module Import BasicProperties := WProperties_fun E M.
@@ -23,15 +14,12 @@ Module TreeBag (Import M: WS).
 
   Section TreeBagDefinitions.
 
-    Context {TItem : Type}
-            (TBag : Bag TItem)
-            (TBagCorrect : CorrectBag TBag).
-
-    Variables (projection: TItem -> TKey)
-              (key_preserving_Update :
-                 forall K item updateTerm,
-                   E.eq (projection item) K
-                   -> E.eq (projection (bupdate_transform updateTerm item)) K ).
+    Context {BagType TItem SearchTermType UpdateTermType : Type}
+            (TBag : Bag BagType TItem SearchTermType UpdateTermType)
+            (RepInv : BagType -> Prop)
+            (ValidUpdate : UpdateTermType -> Prop)
+            (TBagCorrect : CorrectBag RepInv ValidUpdate TBag)
+            (projection: TItem -> TKey).
 
     Definition IndexedBag := t BagType.
 
@@ -101,11 +89,11 @@ Module TreeBag (Import M: WS).
           match key_option with
             | Some k =>
               match find k container with
-                | Some bag => bfind bag search_term
+                | Some bag => bfind (Bag := TBag) bag search_term
                 | None     => nil
               end
             | None   =>
-              flatten (List.map (fun bag => bfind bag search_term) (Values container))
+              flatten (List.map (fun bag : BagType => bfind bag search_term) (Values container))
           end
       end.
 
@@ -173,6 +161,12 @@ Module TreeBag (Import M: WS).
           List.In item (benumerate bag) ->
           E.eq (projection item) key.
 
+    Definition IndexedBag_ValidUpdate (update_term : UpdateTermType) :=
+      ValidUpdate update_term /\
+      forall K item,
+        E.eq (projection item) K
+        -> E.eq (projection (bupdate_transform update_term item)) K.
+
     Lemma IndexedBag_Empty_RepInv :
       IndexedBag_RepInv (empty BagType).
     Proof.
@@ -207,17 +201,18 @@ Module TreeBag (Import M: WS).
         eapply binsert_RepInv; eapply containerCorrect; eauto.
         eapply binsert_RepInv; eapply bempty_RepInv.
       - rewrite <- is_eq.
-        rewrite binsert_enumerate_weak in H; intuition; subst.
-        
+        rewrite binsert_enumerate_weak with (RepInv0 := RepInv) (ValidUpdate0 := ValidUpdate) in H; intuition; subst.
+
         destruct (FindWithDefault_dec (projection item') bempty container)
           as [ [bag' (mapsto & equality)] | (not_found & equality) ];
         rewrite equality in *; clear equality.
         eapply containerCorrect; eauto.
-        rewrite benumerate_empty_eq_nil in H0; simpl in H0; intuition.
+        rewrite benumerate_empty_eq_nil with (RepInv0 := RepInv) (ValidUpdate0 := ValidUpdate) in H0;
+          simpl in H0; intuition.
         reflexivity.
         destruct (FindWithDefault_dec (projection item') bempty container)
           as [ [bag' (mapsto & equality)] | (not_found & equality) ];
-        rewrite equality in *; clear equality.
+        rewrite equality in *; clear equality; eauto.
         + eapply containerCorrect; eauto.
         + apply bempty_RepInv.
       - eapply containerCorrect; eauto.
@@ -256,7 +251,7 @@ Module TreeBag (Import M: WS).
     Defined.
 
     Lemma IndexedBag_bupdate_Preserves_RepInv
-    : bupdate_Preserves_RepInv IndexedBag_RepInv IndexedBag_bupdate.
+    : bupdate_Preserves_RepInv IndexedBag_RepInv IndexedBag_ValidUpdate IndexedBag_bupdate.
     Proof.
       unfold bupdate_Preserves_RepInv, IndexedBag_RepInv.
       intros; destruct search_term; destruct o; simpl in *.
@@ -265,11 +260,13 @@ Module TreeBag (Import M: WS).
         assert (RepInv b) as WF_b by (eapply containerCorrect; eauto).
         intuition.
         + rewrite add_mapsto_iff in H; intuition.
-          rewrite <- H2; eauto using bupdate_RepInv.
+          unfold IndexedBag_ValidUpdate in *.
+          rewrite <- H2; eapply bupdate_RepInv; intuition.
           eapply containerCorrect; eauto.
         + rewrite add_mapsto_iff in H; intuition.
           rewrite <- H3 in H1.
-          pose proof (bupdate_correct b s update_term WF_b).
+          destruct valid_update as [valid_update valid_update'].
+          pose proof (bupdate_correct b s update_term WF_b valid_update).
           rewrite <- H.
           pose proof (Permutation_in _ H2 H1) as H4;
             apply in_app_or in H4; destruct H4.
@@ -277,14 +274,15 @@ Module TreeBag (Import M: WS).
             eapply containerCorrect; eauto.
           * apply in_map_iff in H4; destruct H4 as [item' [item'_eq In_item']].
             rewrite <- item'_eq in *.
-            eapply key_preserving_Update.
+            eapply valid_update'.
             eapply containerCorrect; eauto; eapply In_partition; eauto.
           * eapply containerCorrect; eauto.
         + eapply containerCorrect; eauto.
       - rewrite map_mapsto_iff in H;
         destruct H as [bag' [bag'_eq MapsTo_key0]]; subst.
         assert (RepInv bag') as WF_bag' by (eapply containerCorrect; eauto).
-        pose proof (bupdate_correct bag' s update_term WF_bag'); intuition.
+          destruct valid_update as [valid_update valid_update'].
+        pose proof (bupdate_correct bag' s update_term WF_bag' valid_update); intuition.
         apply bupdate_RepInv; eauto.
         pose proof (Permutation_in _ H H0) as H4;
           apply in_app_or in H4; destruct H4.
@@ -292,7 +290,7 @@ Module TreeBag (Import M: WS).
           eapply containerCorrect; eauto.
         + rewrite in_map_iff in H1; destruct H1 as [item' [item'_eq In_item']].
           rewrite <- item'_eq in *.
-          eapply key_preserving_Update.
+          eapply valid_update'.
           eapply containerCorrect; eauto; eapply In_partition; eauto.
     Defined.
 
@@ -568,12 +566,11 @@ Module TreeBag (Import M: WS).
       simpl.
 
       rewrite binsert_enumerate.
-      rewrite benumerate_empty_eq_nil.
-      simpl; reflexivity.
+      rewrite benumerate_empty_eq_nil with (RepInv0 := RepInv) (ValidUpdate0 := ValidUpdate); eauto.
       apply bempty_RepInv.
     Qed.
 
-    Lemma alt_IndexedBag_RepInv 
+    Lemma alt_IndexedBag_RepInv
     : forall container,
         IndexedBag_RepInv container
         -> forall (key0 : TKey) (bag : BagType),
@@ -608,10 +605,10 @@ Module TreeBag (Import M: WS).
 
         rewrite fold_plus_sym, <- !fold_map.
         unfold Values.
-        
+
         pose proof (alt_IndexedBag_RepInv _ containerCorrect) as containerCorrect'.
         remember 0; clear Heqn;
-        revert n containerCorrect'; clear; induction (elements container); 
+        revert TBagCorrect n containerCorrect'; clear; induction (elements container);
         simpl; intros; eauto.
         rewrite IHl; intuition.
         f_equal.
@@ -636,7 +633,7 @@ Module TreeBag (Import M: WS).
       unfold IndexedBag_RepInv, BagFindStar, IndexedBag_benumerate; simpl.
       intros.
       pose proof (alt_IndexedBag_RepInv _ containerCorrect) as containerCorrect'.
-      revert containerCorrect'; clear.
+      revert TBagCorrect containerCorrect' ; clear.
       unfold Values; induction (elements container); intros; simpl; trivial.
       rewrite bfind_star.
       f_equal; trivial; eauto.
@@ -823,7 +820,7 @@ Module TreeBag (Import M: WS).
 
       simpl.
       rewrite consist.
-      case_eq (find key container); intros. 
+      case_eq (find key container); intros.
 
       apply bfind_correct.
       eapply containerCorrect; rewrite find_mapsto_iff; eauto.
@@ -836,7 +833,7 @@ Module TreeBag (Import M: WS).
       rewrite flatten_filter; intros.
 
       pose proof (alt_IndexedBag_RepInv _ containerCorrect) as containerCorrect'.
-      revert containerCorrect'; clear.
+      revert TBagCorrect containerCorrect'; clear.
       unfold Values; induction (elements container); simpl; eauto; intros.
 
       apply Permutation_app.
@@ -1137,7 +1134,7 @@ Module TreeBag (Import M: WS).
           * rewrite app_nil_r, <- Permutation_map_Values,
             Permuation_filter_flatten, Permutation_map_Values,
             Permutation_map_filter, consist4.
-            destruct H0; 
+            destruct H0;
               [eapply containerCorrect; rewrite find_mapsto_iff; eauto
               | rewrite H0].
             rewrite partition_filter_neq, H; reflexivity.
@@ -1145,7 +1142,7 @@ Module TreeBag (Import M: WS).
           * eauto.
         + pose proof (bdelete_correct b search_term); intuition.
           destruct (bdelete b search_term); simpl in *.
-          destruct H0; 
+          destruct H0;
             [eapply containerCorrect; rewrite find_mapsto_iff; eauto
             | rewrite H1].
           rewrite partition_filter_eq, partition_filter_eq.
@@ -1216,8 +1213,9 @@ Module TreeBag (Import M: WS).
     Qed.
 
     Lemma IndexedBag_BagUpdateCorrect :
-      BagUpdateCorrect IndexedBag_RepInv IndexedBag_bfind IndexedBag_bfind_matcher
-        IndexedBag_benumerate bupdate_transform IndexedBag_bupdate.
+      BagUpdateCorrect IndexedBag_RepInv IndexedBag_ValidUpdate
+                       IndexedBag_bfind IndexedBag_bfind_matcher
+                       IndexedBag_benumerate bupdate_transform IndexedBag_bupdate.
     Proof.
 
       destruct search_term as [option_key search_term];
@@ -1258,6 +1256,7 @@ Module TreeBag (Import M: WS).
           *  rewrite partition_filter_eq, partition_filter_eq.
              rewrite filter_and', flatten_filter, consist, H; eauto.
           * eapply containerCorrect; rewrite find_mapsto_iff; eauto.
+          * eapply valid_update.
           * eauto.
         + rewrite partition_filter_neq, flatten_filter,
           partition_filter_eq, filter_and', flatten_filter,
@@ -1288,8 +1287,9 @@ Module TreeBag (Import M: WS).
         unfold Values; induction (elements container); simpl.
         + constructor.
         + rewrite IHl, partition_app; simpl.
-          rewrite Permutation_app by 
-              (try (apply bupdate_correct;
+          destruct valid_update as [valid_update valid_update'].
+          rewrite Permutation_app by
+              (try (apply bupdate_correct; try eassumption;
                     destruct a; eapply containerCorrect'; repeat constructor; eauto);
               eauto).
           rewrite <- !app_assoc.
@@ -1305,15 +1305,13 @@ Module TreeBag (Import M: WS).
   End TreeBagDefinitions.
 
   Instance IndexedBagAsBag
-           {TItem : Type}
-           (TBag : Bag TItem)
+           {BagType TItem SearchTermType UpdateTermType : Type}
+           (TBag : Bag BagType TItem SearchTermType UpdateTermType)
            projection
-  : Bag TItem :=
-    {| BagType := IndexedBag TBag;
-       SearchTermType := prod (option TKey) (SearchTermType);
-       UpdateTermType := UpdateTermType;
+  : Bag IndexedBag TItem ((option TKey) * (SearchTermType)) UpdateTermType :=
+    {|
 
-       bempty            := IndexedBag_bempty TBag;
+       bempty            := IndexedBag_bempty;
        bstar             := IndexedBag_bstar TBag;
        bid               := bid;
        bfind_matcher     := IndexedBag_bfind_matcher TBag projection;
@@ -1328,26 +1326,28 @@ Module TreeBag (Import M: WS).
 
 
   Instance IndexedBagAsCorrectBag
-           {TItem : Type}
-           (TBag : Bag TItem)
-           (CorrectTBag : CorrectBag TBag)
-           projection                      
-           key_preserving_Update
-  : CorrectBag (IndexedBagAsBag TBag projection) :=
-    {| RepInv := IndexedBag_RepInv _ CorrectTBag projection;
+           {BagType TItem SearchTermType UpdateTermType : Type}
+           (TBag : Bag BagType TItem SearchTermType UpdateTermType)
+           (RepInv : BagType -> Prop)
+           (ValidUpdate : UpdateTermType -> Prop)
+           (CorrectTBag : CorrectBag RepInv ValidUpdate TBag)
+           projection
+  : CorrectBag (IndexedBag_RepInv _ RepInv projection)
+               (IndexedBag_ValidUpdate _ ValidUpdate projection)
+               (IndexedBagAsBag TBag projection ) :=
+    {|
+       bempty_RepInv     := IndexedBag_Empty_RepInv TBag RepInv projection;
+       binsert_RepInv    := IndexedBag_binsert_Preserves_RepInv TBag _ _ _ projection;
+       bdelete_RepInv    := IndexedBag_bdelete_Preserves_RepInv TBag _ _ _ projection;
+       bupdate_RepInv    := IndexedBag_bupdate_Preserves_RepInv TBag _ _ _ projection;
 
-       bempty_RepInv     := IndexedBag_Empty_RepInv TBag CorrectTBag projection;
-       binsert_RepInv    := IndexedBag_binsert_Preserves_RepInv TBag CorrectTBag projection;
-       bdelete_RepInv    := IndexedBag_bdelete_Preserves_RepInv TBag CorrectTBag projection;
-       bupdate_RepInv    := IndexedBag_bupdate_Preserves_RepInv TBag CorrectTBag projection key_preserving_Update;
-
-       binsert_enumerate := IndexedBag_BagInsertEnumerate TBag CorrectTBag projection;
-       benumerate_empty  := IndexedBag_BagEnumerateEmpty TBag;
-       bfind_star        := IndexedBag_BagFindStar TBag CorrectTBag projection;
-       bfind_correct     := IndexedBag_BagFindCorrect TBag CorrectTBag projection;
-       bcount_correct    := IndexedBag_BagCountCorrect TBag CorrectTBag projection;
-       bdelete_correct   := IndexedBag_BagDeleteCorrect TBag CorrectTBag projection;
-       bupdate_correct   := IndexedBag_BagUpdateCorrect TBag CorrectTBag projection 
+       binsert_enumerate := IndexedBag_BagInsertEnumerate TBag RepInv _ CorrectTBag projection;
+       benumerate_empty  := IndexedBag_BagEnumerateEmpty TBag projection;
+       bfind_star        := IndexedBag_BagFindStar TBag _ _ CorrectTBag projection;
+       bfind_correct     := IndexedBag_BagFindCorrect TBag _ _ CorrectTBag projection;
+       bcount_correct    := IndexedBag_BagCountCorrect TBag _ _ CorrectTBag projection;
+       bdelete_correct   := IndexedBag_BagDeleteCorrect TBag _ _ CorrectTBag projection;
+       bupdate_correct   := IndexedBag_BagUpdateCorrect TBag _ _ CorrectTBag projection
     |}.
-      
+
 End TreeBag.

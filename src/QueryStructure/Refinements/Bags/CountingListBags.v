@@ -99,10 +99,8 @@ Section CountingListBags.
 
 
   Instance CountingListAsBag
-  : Bag TItem :=
+  : Bag CountingList TItem _ _ :=
     {|
-
-      BagType := CountingList;
 
       bempty := CountingList_empty;
       bstar  := nil;
@@ -120,6 +118,7 @@ Section CountingListBags.
 
   Definition CountingList_RepInv (container : CountingList) :=
     List.length (ccontents container) = clength container.
+  Definition CountingList_ValidUpdate (_ : TUpdateTerm) := True.
 
   Lemma CountingList_binsert_Preserves_RepInv :
     binsert_Preserves_RepInv CountingList_RepInv CountingListAsBag_binsert.
@@ -174,7 +173,7 @@ Section CountingListBags.
   Qed.
 
   Lemma CountingList_bupdate_Preserves_RepInv
-  : bupdate_Preserves_RepInv CountingList_RepInv CountingListAsBag_bupdate.
+  : bupdate_Preserves_RepInv CountingList_RepInv CountingList_ValidUpdate CountingListAsBag_bupdate.
   Proof.
     unfold bupdate_Preserves_RepInv, CountingList_RepInv.
     destruct container as [n l]; simpl; revert n;
@@ -267,8 +266,9 @@ Section CountingListBags.
   Qed.
 
   Lemma CountingList_BagUpdateCorrect :
-    BagUpdateCorrect CountingList_RepInv CountingListAsBag_bfind MatchAgainstMany ccontents
-                       bupdate_transform CountingListAsBag_bupdate.
+    BagUpdateCorrect CountingList_RepInv CountingList_ValidUpdate
+                     CountingListAsBag_bfind MatchAgainstMany ccontents
+                     bupdate_transform CountingListAsBag_bupdate.
   Proof.
     unfold BagUpdateCorrect, CountingList_RepInv; destruct container as [n l];
     revert n; induction l; simpl; intros.
@@ -283,9 +283,8 @@ Section CountingListBags.
   Qed.
 
   Instance CountingListAsCorrectBag
-  : CorrectBag CountingListAsBag :=
-    {| RepInv            := CountingList_RepInv;
-
+  : CorrectBag CountingList_RepInv CountingList_ValidUpdate CountingListAsBag :=
+    {|
        bempty_RepInv     := CountingList_Empty_RepInv;
        binsert_RepInv    := CountingList_binsert_Preserves_RepInv;
        bdelete_RepInv    := CountingList_bdelete_Preserves_RepInv;
