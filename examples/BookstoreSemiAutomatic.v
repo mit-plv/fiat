@@ -95,23 +95,20 @@ Definition OrderSchema := QSGetNRelSchemaHeading BookStoreSchema Orders.
 
 (* Now we define an index structure for each table. *)
 
-Definition BookStorage : @BagPlusBagProof Book.
+Definition TBookStorage : Type.
   mkIndex BookSchema [ BookSchema/sAUTHOR; BookSchema/sISBN ].
 Defined.
 (* In other words, index first on the author field, then the ISBN field.
  * Works especially efficiently for accesses keyed on author. *)
 
-Definition OrderStorage : @BagPlusBagProof Order.
+Definition TOrderStorage : Type.
   mkIndex OrderSchema [ OrderSchema/sISBN ].
 Defined.
-
-(* Each index has an associate datatype.  Let's name each one. *)
-Definition TBookStorage := BagType BookStorage.
-Definition TOrderStorage := BagType OrderStorage.
 
 (* This abstraction relation connects:
  * 1. Abstract database from reference implementation, using sets
  * 2. Our fancy realization, using search trees (from Bags library) *)
+
 Definition BookStore_AbsR
            (or : UnConstrQueryStructure BookStoreSchema)
            (nr : TBookStorage * TOrderStorage) : Prop :=
@@ -134,14 +131,9 @@ Proof.
     initializer.
   }
 
-<<<<<<< variant A
-  (* We then move on to the "PlaceOrder" method, which we decide to
->>>>>>> variant B
   (* We then move on to the "GetTitles" method, which we decide to
-####### Ancestor
-  (* We then move on to the "PlaceOrder" method, which we decide to
-======= end
      implement semi-manually *)
+
   hone method "GetTitles". {
     (* STEP 1: unfold the definition of the abstraction relation. *)
     startMethod BookStore_AbsR.
@@ -169,10 +161,11 @@ Proof.
      * structures efficiently *)
     (* We are filtering the results of enumerating all entries in a data structure.
      * There's a method available that combines the two operations. *)
-    rewrite filter over BookStorage
+
+    rewrite filter over TBookStorage
             using search term (Some n, (@None nat, @nil (TSearchTermMatcher BookSchema))).
 
-    (* Again, a generic tactic would handle this phase. *)
+    (* Again, a generic tactic can handle this phase. *)
     Undo 1.
     asPerm BookStorage.
 
@@ -227,16 +220,8 @@ Proof.
        permutation-preserving transformations, we substitute slow
        operations for more efficient ones *)
     asPerm (BookStorage, OrderStorage).
-<<<<<<< variant A
-
-    (* This representation is reasonnably satisfactory; we pick the
->>>>>>> variant B
 
     (* This representation is reasonably satisfactory; we pick the
-####### Ancestor
-
-    (* This representation is reasonnably satisfactory; we pick the
-======= end
        resulting list, and proceed to a few extra optimizations *)
     commit.
 

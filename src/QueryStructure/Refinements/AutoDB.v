@@ -58,7 +58,12 @@ Ltac evarForType T k :=
   | _ => let x := fresh in evar (x : T); let y := eval unfold x in x in clear x; k y
   end.
 
-Hint Extern 1 (_ ≃ _) => apply bempty_correct_DB : StartOfMethod.
+Hint Extern 1 (_ ≃ _) => eapply bempty_correct_DB;
+                        match goal with
+                            [ |- CorrectBag _ _ _ ] =>
+                            (eapply NestedTreeFromAttributesAsCorrectBag_UpdateF)
+                        end : StartOfMethod.
+
 
 Ltac splitPick :=
   match goal with
@@ -332,7 +337,7 @@ Ltac storageOf T :=
       constr:(s1, s2)
     | _ =>
       match eval unfold T in T with
-        | BagType ?s => s
+        | ?s => s
       end
   end.
 
@@ -435,7 +440,9 @@ Ltac checksSucceeded :=
   match goal with
     | [ |- context[ret (_, true)] ] =>
       refineEquiv_pick_pair_benumerate; simplify with monad laws;
-      repeat (rewrite refine_pick_val by (refine_list_insert_in_other_table || binsert_correct_DB);
+      repeat (rewrite refine_pick_val by
+                 (refine_list_insert_in_other_table
+                    || binsert_correct_DB);
               simplify with monad laws);
       reflexivity
   end.

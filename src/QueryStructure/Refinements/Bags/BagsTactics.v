@@ -13,15 +13,15 @@ Ltac unfold_functions expr :=
   end.
 
 Ltac destruct_ifs_inside conditional :=
-  match conditional with 
-    | context [ if ?sub_conditional then _ else _ ] => destruct_ifs_inside sub_conditional 
+  match conditional with
+    | context [ if ?sub_conditional then _ else _ ] => destruct_ifs_inside sub_conditional
     | _ => first [ is_sumbool conditional; destruct conditional | progress unfold_functions conditional ]
   end.
 
 Ltac destruct_ifs :=
   intros;
   repeat (match goal with
-            | [ |- ?body ] => 
+            | [ |- ?body ] =>
               destruct_ifs_inside body
           end; simpl in *).
 
@@ -32,7 +32,7 @@ Ltac prove_extensional_eq :=
 
 Require Import String Arith.
 
-Example ifs_destruction : 
+Example ifs_destruction :
   forall w x y z,
     (if (if string_dec w x then true else false) then (if eq_nat_dec y z then false else true) else (if eq_nat_dec z y then true else false)) = (if (if eq_nat_dec y z then true else false) then (if string_dec x w then false else true) else (if string_dec x w then true else false)).
 Proof.
@@ -50,28 +50,28 @@ Tactic Notation "lift" "list" "property" constr(prop) "as" ident(name) :=
 Tactic Notation "call" "eapply" constr(hypothesis) "after" tactic1(preprocessor) :=
   first [ preprocessor; eapply hypothesis | eapply hypothesis ].
 
-(*Tactic Notation 
-       "rewrite" "filter" "over" reference(indexed_storage) 
+Tactic Notation
+       "rewrite" "filter" "over" reference(indexed_storage)
        "using" "search" "term" constr(keyword) :=
   match goal with
-    | [ H: EnsembleIndexedListEquivalence ?table (benumerate ?storage) 
-        |- appcontext [ filter ?filter1 (benumerate ?storage) ] ] => 
-      let temp := fresh in 
-      let filter2 := constr:(bfind_matcher (Bag := BagType indexed_storage) keyword) in
+    | [ H: EnsembleIndexedListEquivalence ?table (benumerate (Bag := ?bag) ?storage)
+        |- appcontext [ filter ?filter1 (benumerate (Bag := ?bag) ?storage) ] ] =>
+      let temp := fresh in
+      let filter2 := constr:(bfind_matcher (BagType := indexed_storage) (Bag := bag) keyword) in
       assert (ExtensionalEq filter1 filter2) as temp by prove_extensional_eq;
         rewrite (filter_by_equiv filter1 filter2 temp);
         clear temp
   end.
 
-Tactic Notation 
+Tactic Notation
        "rewrite" "dependent" "filter" constr(filter1)
-       "over" reference(indexed_storage) 
+       "over" reference(indexed_storage)
        "using" "dependent" "search" "term" constr(keyword) :=
   let temp := fresh in
-  let filter2 := constr:(fun x => bfind_matcher (Bag := BagType indexed_storage) (keyword x)) in
+  let filter2 := constr:(fun x => bfind_matcher (BagType := indexed_storage) (keyword x)) in
   assert (forall x, ExtensionalEq (filter1 x) (filter2 x)) as temp by prove_extensional_eq;
     setoid_rewrite (filter_by_equiv_meta filter1 filter2 temp);
-    clear temp. *)
+    clear temp.
 
 
 (* The following tactic is useful when we have a set of hypotheses
@@ -106,16 +106,17 @@ Tactic Notation "prove" "trivial" "constraints" :=
 
 Definition ID {A} := fun (x: A) => x.
 
-(* Lemma ens_red {heading} :
-  forall (y_is_bag: Bag (@Tuple heading)) x y,
+ Lemma ens_red {heading}
+ {BagType TSearchTerm TUpdateTerm} :
+  forall (y_is_bag: Bag BagType (@Tuple heading) TSearchTerm TUpdateTerm) x y,
     @EnsembleIndexedListEquivalence heading x (benumerate (Bag := y_is_bag) y) =
     (ID (fun y => EnsembleIndexedListEquivalence x (benumerate y))) y.
 Proof.
   intros; reflexivity.
-Qed. *)
+Qed.
 
 (* Workaround Coq's algorithms not being able to infer ther arguments to refineEquiv_pick_pair *)
-(*Ltac refineEquiv_pick_pair_benumerate :=
+Ltac refineEquiv_pick_pair_benumerate :=
   setoid_rewrite ens_red;
   setoid_rewrite refineEquiv_pick_pair;
-  unfold ID; cbv beta. *)
+  unfold ID; cbv beta.

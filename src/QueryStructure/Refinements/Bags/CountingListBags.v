@@ -7,7 +7,6 @@ Section CountingListBags.
 
   Context {TItem : Type}
           {TUpdateTerm : Type}
-          (bid : TUpdateTerm)
           (bupdate_transform : TUpdateTerm -> TItem -> TItem).
 
   Record CountingList :=
@@ -104,7 +103,6 @@ Section CountingListBags.
 
       bempty := CountingList_empty;
       bstar  := nil;
-      bid    := bid;
       bfind_matcher := MatchAgainstMany;
       bupdate_transform := bupdate_transform;
 

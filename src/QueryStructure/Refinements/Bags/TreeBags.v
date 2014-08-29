@@ -66,9 +66,6 @@ Module TreeBag (Import M: WS).
     Definition IndexedBag_bstar :=
       (@None TKey, bstar).
 
-    Definition IndexedBag_bid :=
-      (@None TKey, bid).
-
     Definition IndexedBag_bfind_matcher
                (key_searchterm: (option TKey) * SearchTermType) (item: TItem) :=
       let (key_option, search_term) := key_searchterm in
@@ -1304,7 +1301,7 @@ Module TreeBag (Import M: WS).
 
   End TreeBagDefinitions.
 
-  Instance IndexedBagAsBag
+  Global Instance IndexedBagAsBag
            {BagType TItem SearchTermType UpdateTermType : Type}
            (TBag : Bag BagType TItem SearchTermType UpdateTermType)
            projection
@@ -1313,7 +1310,6 @@ Module TreeBag (Import M: WS).
 
        bempty            := IndexedBag_bempty;
        bstar             := IndexedBag_bstar TBag;
-       bid               := bid;
        bfind_matcher     := IndexedBag_bfind_matcher TBag projection;
        bupdate_transform := bupdate_transform;
 
@@ -1325,7 +1321,7 @@ Module TreeBag (Import M: WS).
        bupdate    := IndexedBag_bupdate TBag |}.
 
 
-  Instance IndexedBagAsCorrectBag
+  Global Instance IndexedBagAsCorrectBag
            {BagType TItem SearchTermType UpdateTermType : Type}
            (TBag : Bag BagType TItem SearchTermType UpdateTermType)
            (RepInv : BagType -> Prop)

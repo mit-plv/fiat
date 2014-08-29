@@ -103,7 +103,7 @@ Section ListBags.
   Qed.
 
   Lemma List_BagUpdateCorrect :
-    BagUpdateCorrect ListBag_RepInv ListBag_ValidUpdate 
+    BagUpdateCorrect ListBag_RepInv ListBag_ValidUpdate
                      ListAsBag_bfind bfind_matcher id bupdate_transform ListAsBag_bupdate.
   Proof.
     firstorder.
@@ -113,7 +113,6 @@ Section ListBags.
   : Bag (list TItem) TItem TSearchTerm TUpdateTerm :=
     {|
       bempty            := nil;
-      bid               := bid;
       bstar             := star;
       bfind_matcher     := bfind_matcher;
       bupdate_transform := bupdate_transform;

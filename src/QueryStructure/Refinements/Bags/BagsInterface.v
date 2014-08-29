@@ -50,13 +50,6 @@ Definition BagFindStar
     (containerCorrect : RepInv container),
       bfind container bstar = benumerate container.
 
-(* The [bid] update term is the identity function *)
-Definition BagUpdateID
-           {TContainer TItem TUpdateTerm: Type}
-           (bupdate_transform : TUpdateTerm -> TUpdateTerm -> TItem)
-           (bid : TUpdateTerm) :=
-  forall item, bupdate_transform bid item = bupdate_transform bid item.
-
 (* [bcount] returns the number of elements in a bag which match
    a search term [search_term]. *)
 Definition BagCountCorrect
@@ -141,7 +134,6 @@ Class Bag (BagType TItem SearchTermType UpdateTermType : Type) :=
 
     bempty            : BagType;
     bstar             : SearchTermType;
-    bid               : UpdateTermType;
     bfind_matcher     : SearchTermType -> TItem -> bool;
     bupdate_transform : UpdateTermType -> TItem -> TItem;
 
@@ -166,11 +158,86 @@ Class CorrectBag
   bdelete_RepInv    : bdelete_Preserves_RepInv RepInv bdelete ;
   bupdate_RepInv    : bupdate_Preserves_RepInv RepInv ValidUpdate bupdate;
 
-  binsert_enumerate : BagInsertEnumerate RepInv benumerate binsert;
-  benumerate_empty  : BagEnumerateEmpty benumerate bempty;
   bfind_star        : BagFindStar RepInv bfind benumerate bstar;
+
+  benumerate_empty  : BagEnumerateEmpty benumerate bempty;
+  binsert_enumerate : BagInsertEnumerate RepInv benumerate binsert;
   bfind_correct     : BagFindCorrect RepInv bfind bfind_matcher benumerate;
   bcount_correct    : BagCountCorrect RepInv bcount bfind;
   bdelete_correct   : BagDeleteCorrect RepInv bfind bfind_matcher benumerate bdelete;
   bupdate_correct   : BagUpdateCorrect RepInv ValidUpdate bfind bfind_matcher benumerate bupdate_transform bupdate
 }.
+
+Class BagPlusProof (TItem : Type) :=
+  { BagTypePlus : Type;
+    SearchTermTypePlus : Type;
+    UpdateTermTypePlus : Type;
+
+    RepInvPlus : BagTypePlus -> Prop;
+    ValidUpdatePlus : UpdateTermTypePlus -> Prop;
+
+    BagPlus :> Bag BagTypePlus TItem SearchTermTypePlus UpdateTermTypePlus;
+    CorrectBagPlus :> CorrectBag RepInvPlus ValidUpdatePlus BagPlus
+  }.
+
+Definition WFBagPlusType {TItem} (Index : BagPlusProof TItem)
+  := sigT (RepInvPlus).
+
+Instance WFBagPlusTypeAsBag {TItem}
+         (Index : BagPlusProof TItem)
+: Bag (WFBagPlusType Index) TItem SearchTermTypePlus
+      (sigT ValidUpdatePlus).
+Proof.
+  destruct Index as [? ? ? ? ? BagPlus' CorrectBagPlus'];
+  destruct BagPlus'; destruct CorrectBagPlus'; simpl in *.
+  econstructor 1; simpl; try solve [eassumption].
+  (* bempty *)
+  econstructor; eauto.
+  (* bupdate_transform *)
+  intro; apply bupdate_transform0; apply X.
+  (* benumerate *)
+  intros; apply benumerate0; apply X.
+  (* bfind *)
+  intros; destruct X; apply (bfind0 x X0).
+  (* binsert *)
+  intros; destruct X; econstructor; eapply binsert_RepInv; apply r.
+  (* bcount *)
+  intros; destruct X; eapply bcount0; [apply x | apply X0 ].
+  (* bdelete *)
+  intros x search_term; constructor.
+  - eapply (fst (bdelete0 (projT1 x) search_term)).
+  - econstructor; eapply bdelete_RepInv; apply (projT2 x).
+  (* bupdate *)
+  - intros x search_term update_term; destruct x; destruct update_term;
+    econstructor.
+    eapply bupdate_RepInv.
+    apply r.
+    apply v.
+    Grab Existential Variables.
+    simpl; apply search_term.
+    simpl; apply search_term.
+    apply X0.
+Defined.
+
+Instance WFBagPlusTypeAsCorrectBag {TItem}
+         (Index : BagPlusProof TItem)
+: CorrectBag (fun _ => True) (fun _ => True) (WFBagPlusTypeAsBag Index).
+Proof.
+  destruct Index as [? ? ? ? ? BagPlus' CorrectBagPlus'];
+  destruct BagPlus'; destruct CorrectBagPlus'; simpl in *.
+  constructor; simpl; eauto;
+  cbv delta [binsert_Preserves_RepInv
+               bupdate_Preserves_RepInv
+               bdelete_Preserves_RepInv
+               BagInsertEnumerate
+               BagEnumerateEmpty
+               BagFindStar
+               BagFindCorrect
+               BagCountCorrect
+               BagDeleteCorrect
+               BagUpdateCorrect]; simpl; eauto;
+  try (solve [intros; destruct container; eauto]).
+  (* bupdate_correct *)
+  destruct container; simpl; intros.
+  destruct update_term; eauto.
+Qed.
