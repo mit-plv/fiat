@@ -74,21 +74,21 @@ Definition WeatherSpec : ADT WeatherSig :=
 Definition CellHeading := GetHeading WeatherSchema CELLS.
 Definition MeasurementsHeading := GetHeading WeatherSchema MEASUREMENTS.
 
-Definition CellsStorage : @BagPlusBagProof (WeatherSchema#CELLS).
+Definition CellsStorage : @BagPlusProof (WeatherSchema#CELLS).
   mkIndex CellHeading [ CellHeading/AREA_CODE ].
 Defined.
 
-Definition MeasurementsStorage : @BagPlusBagProof (WeatherSchema#MEASUREMENTS).
+Definition MeasurementsStorage : @BagPlusProof (WeatherSchema#MEASUREMENTS).
   mkIndex MeasurementsHeading [ MeasurementsHeading/MEASUREMENT_TYPE; MeasurementsHeading/CELL_ID ].
 Defined.
 
-Definition TCellsBag := BagType CellsStorage.
-Definition TMeasurementsBag := BagType MeasurementsStorage.
+Definition TCellsBag := BagTypePlus CellsStorage.
+Definition TMeasurementsBag := BagTypePlus MeasurementsStorage.
 
 Definition Weather_AbsR
            (or : UnConstrQueryStructure WeatherSchema)
-           (nr : (TCellsBag) * (TMeasurementsBag)) : Prop :=
-  or!CELLS ≃ benumerate (fst nr) /\ or!MEASUREMENTS ≃ benumerate (snd nr).
+           (nr : TCellsBag * TMeasurementsBag) : Prop :=
+  or!CELLS ≃ fst nr /\ or!MEASUREMENTS ≃ snd nr.
 
 Definition WeatherStation :
   Sharpened WeatherSpec.

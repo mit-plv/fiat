@@ -93,29 +93,29 @@ Definition Orders := GetRelationKey BookStoreSchema sORDERS.
 Definition BookSchema := QSGetNRelSchemaHeading BookStoreSchema Books.
 Definition OrderSchema := QSGetNRelSchemaHeading BookStoreSchema Orders.
 
-(* Now we define an index structure for each table. *)
-
-Definition BookStorage : @BagPlusBagProof Book.
+Definition BookStorage : BagPlusProof (@Tuple BookSchema).
   mkIndex BookSchema [ BookSchema/sAUTHOR; BookSchema/sISBN ].
 Defined.
 (* In other words, index first on the author field, then the ISBN field.
  * Works especially efficiently for accesses keyed on author. *)
 
-Definition OrderStorage : @BagPlusBagProof Order.
+Definition OrderStorage : BagPlusProof (@Tuple OrderSchema).
   mkIndex OrderSchema [ OrderSchema/sISBN ].
 Defined.
 
-(* Each index has an associate datatype.  Let's name each one. *)
-Definition TBookStorage := BagType BookStorage.
-Definition TOrderStorage := BagType OrderStorage.
+(* For convenience, we define aliases for the types of the
+   index structures contained in our storage types. *)
+Definition TBookStorage := BagTypePlus BookStorage.
+Definition TOrderStorage := BagTypePlus OrderStorage.
 
 (* This abstraction relation connects:
  * 1. Abstract database from reference implementation, using sets
  * 2. Our fancy realization, using search trees (from Bags library) *)
+
 Definition BookStore_AbsR
            (or : UnConstrQueryStructure BookStoreSchema)
            (nr : TBookStorage * TOrderStorage) : Prop :=
-  or!sBOOKS ≃ benumerate (fst nr) /\ or!sORDERS ≃ benumerate (snd nr).
+  or!sBOOKS ≃ fst nr /\ or!sORDERS ≃ snd nr.
 
 (* An efficient implementation for the bookstore example can be
    obtained in a fully automated manner using our query planner,

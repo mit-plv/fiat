@@ -380,6 +380,8 @@ Ltac autoconvert func :=
     | _ => idtac
   end.
 
+(* [mkIndex] builds a [BagPlusProof] record packaging an indexed
+   with all its operations and proofs of correctness. *)
 Ltac mkIndex heading attributes :=
   set (src := attributes);
   assert (list (@ProperAttribute heading)) as decorated_source by autoconvert (@CheckType heading);
@@ -387,6 +389,27 @@ Ltac mkIndex heading attributes :=
 
 Require Import QueryStructureNotations ListImplementation.
 Require Import AdditionalLemmas AdditionalPermutationLemmas Arith.
+
+(* An equivalence relation between Ensembles of Tuples and Bags
+   which incorporates the bag's representation invariant. *)
+
+Definition EnsembleBagEquivalence
+           {heading : Heading}
+           (bagplus : BagPlusProof (@Tuple heading))
+           (ens : Ensemble (@IndexedTuple heading))
+           (store : BagTypePlus bagplus)
+: Prop :=
+  ens ≃ benumerate (Bag := BagPlus bagplus) store /\
+  RepInvPlus bagplus store.
+
+Instance EnsembleIndexedTreeEquivalence_AbsR
+           {heading : Heading}
+           {bagplus : BagPlusProof (@Tuple heading)}
+: @UnConstrRelationAbsRClass (@IndexedTuple heading) (BagTypePlus bagplus) :=
+  {| UnConstrRelationAbsR := EnsembleBagEquivalence bagplus |}.
+
+(* We now prove that [empty] is a valid abstraction of the
+   empty database. *)
 
 Lemma bempty_correct_DB :
   forall {TContainer TSearchTerm TUpdateTerm : Type}
@@ -409,24 +432,23 @@ Corollary bemptyPlus_correct_DB :
   forall {db_schema : QueryStructureSchema}
          {index : BoundedString}
          {bag_plus : BagPlusProof (@Tuple (@QSGetNRelSchemaHeading db_schema index))},
-    EnsembleIndexedListEquivalence
-      (GetUnConstrRelation (DropQSConstraints (QSEmptySpec db_schema)) index)
-      (benumerate (Bag := BagPlus) bempty).
+    GetUnConstrRelation (DropQSConstraints (QSEmptySpec db_schema)) index ≃
+                        bempty (Bag := BagPlus bag_plus).
 Proof.
-  destruct bag_plus; intros; eapply bempty_correct_DB; eauto.
+  destruct bag_plus; intros; simpl; constructor.
+  eapply bempty_correct_DB; eauto.
+  apply bempty_RepInv.
 Qed.
 
-Lemma binsert_correct_DB {TContainer TSearchTerm TUpdateTerm}
-:  forall db_schema qs index (store: TContainer)
-         {store_is_bag: Bag TContainer _ TSearchTerm TUpdateTerm}
-         {RepInv : TContainer -> Prop}
-         {ValidUpdate : TUpdateTerm -> Prop}
-         {bag_is_valid : CorrectBag RepInv ValidUpdate store_is_bag}
-         (store_is_valid : RepInv store),
-    EnsembleIndexedListEquivalence
-      (GetUnConstrRelation qs index)
-      (benumerate (Bag := store_is_bag) store) ->
-    forall tuple,
+(* We now prove that [binsert] is a valid abstraction of the
+   adding a tuple to the ensemble modeling the database. *)
+
+Lemma binsert_correct_DB
+      db_schema qs index
+      (bag_plus : BagPlusProof (@Tuple (@QSGetNRelSchemaHeading db_schema index)))
+:  forall (store: BagTypePlus bag_plus),
+     GetUnConstrRelation qs index ≃ store
+     -> forall tuple,
       EnsembleIndexedListEquivalence
         (GetUnConstrRelation
            (@UpdateUnConstrRelation db_schema qs index
@@ -434,24 +456,28 @@ Lemma binsert_correct_DB {TContainer TSearchTerm TUpdateTerm}
                                       {| tupleIndex := Datatypes.length (benumerate store);
                                          indexedTuple := tuple |}
                                       (GetUnConstrRelation qs index))) index)
-        (benumerate (binsert (Bag := store_is_bag) store tuple)).
+        (benumerate (binsert (Bag := BagPlus bag_plus) store tuple)).
 Proof.
-  intros.
-  unfold EnsembleIndexedListEquivalence, UnIndexedEnsembleListEquivalence, EnsembleListEquivalence in *.
+  intros * store_eqv; destruct store_eqv as (store_eqv, store_WF).
+  unfold EnsembleIndexedTreeEquivalence_AbsR,
+  EnsembleBagEquivalence, EnsembleIndexedListEquivalence,
+  UnIndexedEnsembleListEquivalence, EnsembleListEquivalence in *.
 
   setoid_rewrite get_update_unconstr_eq.
   setoid_rewrite in_ensemble_insert_iff.
   setoid_rewrite NoDup_modulo_permutation.
   split; intros.
 
-  erewrite binsert_enumerate_length by eauto;
-    destruct H0; subst;
+  erewrite binsert_enumerate_length by eauto with typeclass_instances.
+    intuition; subst;
     [ | apply lt_S];
     intuition.
 
-  destruct H as (indices & [ l' (map & nodup & equiv) ]).
+  destruct store_eqv as (indices & [ l' (map & nodup & equiv) ]); eauto.
 
-  destruct (permutation_map_cons indexedTuple (binsert_enumerate tuple store store_is_valid)
+  destruct store_eqv as (indices & [ l' (map & nodup & equiv) ]); eauto.
+
+  destruct (permutation_map_cons indexedTuple (binsert_enumerate tuple store store_WF)
                                  {| tupleIndex := Datatypes.length (benumerate store);
                                     indexedTuple := tuple |} l' eq_refl map)
     as [ l'0 (map' & perm) ].
@@ -472,9 +498,31 @@ Proof.
   reflexivity.
 Qed.
 
+Corollary binsertPlus_correct_DB :
+  forall {db_schema : QueryStructureSchema}
+         qs
+         (index : BoundedString)
+         (bag_plus : BagPlusProof (@Tuple (@QSGetNRelSchemaHeading db_schema index)))
+         store,
+    GetUnConstrRelation qs index ≃ store
+    -> forall tuple,
+    GetUnConstrRelation
+       (@UpdateUnConstrRelation db_schema qs index
+                                (EnsembleInsert
+                                   {| tupleIndex := Datatypes.length (benumerate store);
+                                      indexedTuple := tuple |}
+                                   (GetUnConstrRelation qs index))) index
+      ≃ binsert (Bag := BagPlus bag_plus) store tuple.
+Proof.
+  simpl; intros; constructor.
+  - eapply binsert_correct_DB; eauto.
+  - eapply binsert_RepInv; apply H.
+Qed.
+
 Ltac binsert_correct_DB :=
   match goal with
-    | [ H: EnsembleIndexedListEquivalence (GetUnConstrRelation ?qs ?index)
-                                          (benumerate (Bag := ?bagproof) ?store) |- _ ] =>
-      solve [ simpl; apply (binsert_correct_DB (store_is_bag := bagproof) _ qs index _ H) ]
+    | [ H: EnsembleBagEquivalence ?bag_plus
+                                  (GetUnConstrRelation ?qs ?index)
+                                  ?store |- _ ] =>
+      solve [ simpl; apply (binsertPlus_correct_DB qs index bag_plus store H) ]
   end.

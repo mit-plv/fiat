@@ -95,15 +95,20 @@ Definition OrderSchema := QSGetNRelSchemaHeading BookStoreSchema Orders.
 
 (* Now we define an index structure for each table. *)
 
-Definition TBookStorage : Type.
+Definition BookStorage : BagPlusProof (@Tuple BookSchema).
   mkIndex BookSchema [ BookSchema/sAUTHOR; BookSchema/sISBN ].
 Defined.
 (* In other words, index first on the author field, then the ISBN field.
  * Works especially efficiently for accesses keyed on author. *)
 
-Definition TOrderStorage : Type.
+Definition OrderStorage : BagPlusProof (@Tuple OrderSchema).
   mkIndex OrderSchema [ OrderSchema/sISBN ].
 Defined.
+
+(* For convenience, we define aliases for the types of the
+   index structures contained in our storage types. *)
+Definition TBookStorage := BagTypePlus BookStorage.
+Definition TOrderStorage := BagTypePlus OrderStorage.
 
 (* This abstraction relation connects:
  * 1. Abstract database from reference implementation, using sets
@@ -112,7 +117,7 @@ Defined.
 Definition BookStore_AbsR
            (or : UnConstrQueryStructure BookStoreSchema)
            (nr : TBookStorage * TOrderStorage) : Prop :=
-  or!sBOOKS ≃ benumerate (fst nr) /\ or!sORDERS ≃ benumerate (snd nr).
+  or!sBOOKS ≃ fst nr /\ or!sORDERS ≃ snd nr.
 
 Definition BookStoreManual :
   Sharpened BookStoreSpec.
@@ -143,7 +148,8 @@ Proof.
     (* First, instead of looping over the mathematical relation,
      * let's loop over an enumeration of the elements in the
      * concrete data structure. *)
-    rewrite refine_List_Query_In by eassumption.
+
+    rewrite refine_List_Query_In by EquivalentBagIsEquivalentIndexedList.
 
     (* Next, we can implement the [Where] test as a list [filter]. *)
     rewrite refine_List_Query_In_Where; instantiate (1 := _).
@@ -162,7 +168,7 @@ Proof.
     (* We are filtering the results of enumerating all entries in a data structure.
      * There's a method available that combines the two operations. *)
 
-    rewrite filter over TBookStorage
+    rewrite filter over BookStorage
             using search term (Some n, (@None nat, @nil (TSearchTermMatcher BookSchema))).
 
     (* Again, a generic tactic can handle this phase. *)
@@ -204,6 +210,7 @@ Proof.
        sets, every inserted item is paired with a unique ID, which we
        need to pick. Further refinements will drop this index, which
        thus doesn't have any computational cost. *)
+
     pickIndex.
 
     (* To ease its implementation, we convert this foregin key check
@@ -231,7 +238,6 @@ Proof.
        checks failed. *)
     Split Constraint Checks.
 
-    (* First, the case where checks succeed: the insertion is valid: *)
     checksSucceeded.
 
     (* Second, the case where checks failed: in that case, the DB
@@ -291,6 +297,7 @@ Proof.
   hone method "NumOrders". {
     observer.
   }
+  unfold cast, eq_rect_r, eq_rect, eq_sym; simpl.
 
   (* At this point our implementation is fully computational: we're done! *)
   finish sharpening.

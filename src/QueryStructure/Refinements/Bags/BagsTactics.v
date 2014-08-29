@@ -41,6 +41,7 @@ Qed.
 
 Require Import QueryStructureNotations.
 Require Import ListImplementation.
+Require Import BagsOfTuples.
 
 Tactic Notation "lift" "list" "property" constr(prop) "as" ident(name) :=
   pose proof prop as name;
@@ -54,21 +55,22 @@ Tactic Notation
        "rewrite" "filter" "over" reference(indexed_storage)
        "using" "search" "term" constr(keyword) :=
   match goal with
-    | [ H: EnsembleIndexedListEquivalence ?table (benumerate (Bag := ?bag) ?storage)
-        |- appcontext [ filter ?filter1 (benumerate (Bag := ?bag) ?storage) ] ] =>
+    | [ H: EnsembleBagEquivalence ?bag_plus ?table ?storage
+        |- appcontext [ filter ?filter1 (benumerate ?storage) ] ] =>
       let temp := fresh in
-      let filter2 := constr:(bfind_matcher (BagType := indexed_storage) (Bag := bag) keyword) in
-      assert (ExtensionalEq filter1 filter2) as temp by prove_extensional_eq;
-        rewrite (filter_by_equiv filter1 filter2 temp);
-        clear temp
-  end.
+      let filter2 := constr:(bfind_matcher (Bag := BagPlus indexed_storage)
+                                           keyword) in
+          assert (ExtensionalEq filter1 filter2) as temp by prove_extensional_eq;
+            rewrite (filter_by_equiv filter1 filter2 temp);
+            clear temp
+      end.
 
 Tactic Notation
        "rewrite" "dependent" "filter" constr(filter1)
        "over" reference(indexed_storage)
        "using" "dependent" "search" "term" constr(keyword) :=
   let temp := fresh in
-  let filter2 := constr:(fun x => bfind_matcher (BagType := indexed_storage) (keyword x)) in
+  let filter2 := constr:(fun x => bfind_matcher (Bag := BagPlus indexed_storage) (keyword x)) in
   assert (forall x, ExtensionalEq (filter1 x) (filter2 x)) as temp by prove_extensional_eq;
     setoid_rewrite (filter_by_equiv_meta filter1 filter2 temp);
     clear temp.
@@ -106,8 +108,8 @@ Tactic Notation "prove" "trivial" "constraints" :=
 
 Definition ID {A} := fun (x: A) => x.
 
- Lemma ens_red {heading}
- {BagType TSearchTerm TUpdateTerm} :
+Lemma ens_red {heading}
+      {BagType TSearchTerm TUpdateTerm} :
   forall (y_is_bag: Bag BagType (@Tuple heading) TSearchTerm TUpdateTerm) x y,
     @EnsembleIndexedListEquivalence heading x (benumerate (Bag := y_is_bag) y) =
     (ID (fun y => EnsembleIndexedListEquivalence x (benumerate y))) y.
@@ -115,8 +117,45 @@ Proof.
   intros; reflexivity.
 Qed.
 
+Lemma EnsembleBagEquivalence_pick_new_index :
+  forall {heading} storage ens seq,
+    EnsembleBagEquivalence storage ens seq ->
+    forall (tup: @IndexedTuple heading),
+      Ensembles.In _ ens tup -> tupleIndex tup <> Datatypes.length (benumerate seq).
+Proof.
+  intros * (indexes & equiv) ** ;
+  eapply EnsembleIndexedListEquivalence_pick_new_index; eauto.
+  apply indexes.
+Qed.
+
+Lemma refine_bag_insert_in_other_table :
+  forall (db_schema : QueryStructureSchema) (qs : UnConstrQueryStructure db_schema)
+         (index1 index2 : BoundedString) bag_store store  ,
+    EnsembleBagEquivalence bag_store (GetUnConstrRelation qs index2) store ->
+    index1 <> index2 ->
+    forall inserted : @IndexedTuple _,
+      EnsembleBagEquivalence bag_store
+                             (GetUnConstrRelation
+                                (UpdateUnConstrRelation qs index1
+                                                        (EnsembleInsert inserted (GetUnConstrRelation qs index1))) index2)
+                             (store).
+Proof.
+  intros; rewrite get_update_unconstr_neq; eauto.
+Qed.
+
+        Ltac refine_bag_insert_in_other_table :=
+          match goal with
+            | [ |- appcontext [
+                       EnsembleBagEquivalence ?bag
+                         (GetUnConstrRelation
+                            (UpdateUnConstrRelation ?qs ?index1
+                                            (EnsembleInsert ?inserted
+                                                            (GetUnConstrRelation ?qs ?index1)))
+                            ?index2) ] ] => apply (@refine_bag_insert_in_other_table _ qs index1 index2 bag);
+                                           [ eauto | intuition discriminate ]
+          end.
+
 (* Workaround Coq's algorithms not being able to infer ther arguments to refineEquiv_pick_pair *)
 Ltac refineEquiv_pick_pair_benumerate :=
-  setoid_rewrite ens_red;
   setoid_rewrite refineEquiv_pick_pair;
   unfold ID; cbv beta.

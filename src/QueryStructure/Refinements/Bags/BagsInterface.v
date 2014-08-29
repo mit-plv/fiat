@@ -168,7 +168,9 @@ Class CorrectBag
   bupdate_correct   : BagUpdateCorrect RepInv ValidUpdate bfind bfind_matcher benumerate bupdate_transform bupdate
 }.
 
-Class BagPlusProof (TItem : Type) :=
+(* [BagPlusProof] packages a container with its operations and
+   their correctness proofs. *)
+Record BagPlusProof (TItem : Type) :=
   { BagTypePlus : Type;
     SearchTermTypePlus : Type;
     UpdateTermTypePlus : Type;
@@ -176,17 +178,34 @@ Class BagPlusProof (TItem : Type) :=
     RepInvPlus : BagTypePlus -> Prop;
     ValidUpdatePlus : UpdateTermTypePlus -> Prop;
 
-    BagPlus :> Bag BagTypePlus TItem SearchTermTypePlus UpdateTermTypePlus;
-    CorrectBagPlus :> CorrectBag RepInvPlus ValidUpdatePlus BagPlus
+    BagPlus : Bag BagTypePlus TItem SearchTermTypePlus UpdateTermTypePlus;
+    CorrectBagPlus : CorrectBag RepInvPlus ValidUpdatePlus BagPlus
   }.
 
+Arguments BagTypePlus [TItem] _.
+Arguments SearchTermTypePlus [TItem] _.
+Arguments UpdateTermTypePlus [TItem] _.
+Arguments RepInvPlus [TItem] _ _.
+Arguments ValidUpdatePlus [TItem] _ _.
+Arguments BagPlus [TItem] _.
+Arguments CorrectBagPlus [TItem] _.
+
+Instance BagPlusProofAsBag {TItem}
+         (bag : BagPlusProof TItem)
+: Bag _ _ _ _ := BagPlus bag.
+
+Instance BagPlusProofAsCorrectBag {TItem}
+         (bag : BagPlusProof TItem)
+: CorrectBag _ _ _ := CorrectBagPlus bag.
+
+(* We can bundle a container and its invariant if we so desire. *)
 Definition WFBagPlusType {TItem} (Index : BagPlusProof TItem)
-  := sigT (RepInvPlus).
+  := sigT (RepInvPlus Index).
 
 Instance WFBagPlusTypeAsBag {TItem}
          (Index : BagPlusProof TItem)
-: Bag (WFBagPlusType Index) TItem SearchTermTypePlus
-      (sigT ValidUpdatePlus).
+: Bag (WFBagPlusType Index) TItem (SearchTermTypePlus Index)
+      (sigT (ValidUpdatePlus Index)).
 Proof.
   destruct Index as [? ? ? ? ? BagPlus' CorrectBagPlus'];
   destruct BagPlus'; destruct CorrectBagPlus'; simpl in *.
@@ -200,17 +219,17 @@ Proof.
   (* bfind *)
   intros; destruct X; apply (bfind0 x X0).
   (* binsert *)
-  intros; destruct X; econstructor; eapply binsert_RepInv; apply r.
+  intros; destruct X; econstructor; eapply binsert_RepInv0; apply r.
   (* bcount *)
   intros; destruct X; eapply bcount0; [apply x | apply X0 ].
   (* bdelete *)
   intros x search_term; constructor.
   - eapply (fst (bdelete0 (projT1 x) search_term)).
-  - econstructor; eapply bdelete_RepInv; apply (projT2 x).
+  - econstructor; eapply bdelete_RepInv0; apply (projT2 x).
   (* bupdate *)
   - intros x search_term update_term; destruct x; destruct update_term;
     econstructor.
-    eapply bupdate_RepInv.
+    eapply bupdate_RepInv0.
     apply r.
     apply v.
     Grab Existential Variables.

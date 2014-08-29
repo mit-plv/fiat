@@ -58,23 +58,19 @@ Ltac evarForType T k :=
   | _ => let x := fresh in evar (x : T); let y := eval unfold x in x in clear x; k y
   end.
 
-Hint Extern 1 (_ ≃ _) => eapply bempty_correct_DB;
-                        match goal with
-                            [ |- CorrectBag _ _ _ ] =>
-                            (eapply NestedTreeFromAttributesAsCorrectBag_UpdateF)
-                        end : StartOfMethod.
+Ltac startMethod AbsR :=
+  unfold AbsR in *; split_and; simplify with monad laws.
 
+Ltac finishMethod := subst_body; higher_order_1_reflexivity.
+
+(* These tactics implement initializing the empty database. *)
+Hint Extern 1 (_ ≃ _) => eapply bemptyPlus_correct_DB : StartOfMethod.
 
 Ltac splitPick :=
   match goal with
   | [ |- refine (@Pick ?T _) _ ] => evarForType T ltac:(fun Tv =>
       rewrite (refine_pick_val' Tv) by (unfold fst, snd; intuition auto with StartOfMethod))
   end.
-
-Ltac startMethod AbsR :=
-  unfold AbsR in *; split_and; simplify with monad laws.
-
-Ltac finishMethod := subst_body; higher_order_1_reflexivity.
 
 Ltac initializer :=
   match goal with
@@ -99,9 +95,16 @@ Ltac reveal_bfind_matcher :=
 
 Ltac simp := hide_bfind_matcher; simpl; reveal_bfind_matcher.
 
+Ltac EquivalentBagIsEquivalentIndexedList :=
+  match goal with
+    | [ H: EnsembleBagEquivalence _ ?ens _ |-
+        EnsembleIndexedListEquivalence ?ens _ ] =>
+      solve [apply H]
+  end.
+
 Ltac concretize1 :=
-  (rewrite refine_List_Query_In by eassumption)
-    || (rewrite refine_Join_List_Query_In by eassumption)
+  (rewrite refine_List_Query_In by EquivalentBagIsEquivalentIndexedList)
+    || (rewrite refine_Join_List_Query_In by EquivalentBagIsEquivalentIndexedList)
     || (rewrite refine_List_Query_In_Where; instantiate (1 := _))
     || rewrite refine_List_For_Query_In_Return_Permutation.
 
@@ -188,12 +191,17 @@ Ltac createTerm f fds tail fs k :=
       || k (@None (f s), rest))
   end.
 
+(* Get the heading of SC, then *)
 Ltac makeTerm storage fs SC fds tail k :=
   match eval hnf in SC with
   | Build_Heading ?f =>
     createTerm f fds tail fs k
   end.
 
+(* Given a storage schema [SC], a filter [F], and a
+   tactic [k] which processes filters, convert [F] into
+   a search term (a list of boolean functions over the tuples in
+   [SC]. *)
 Ltac findGoodTerm SC F k :=
   match F with
   | fun a => ?[@?f a] =>
@@ -212,6 +220,8 @@ Ltac findGoodTerm SC F k :=
 
 Ltac useIndex storage :=
   match goal with
+    (* If we've already filtered, don't do it again*)
+    | [ |- context[@filter Tuple (@bfind_matcher _ _ _ _ _ _) _ ] ] => fail 1
     | [ |- context[@filter Tuple ?F _ ] ] =>
       let fs := fields storage in
       match type of fs with
@@ -389,8 +399,9 @@ Qed.
 Ltac pruneDuplicates :=
   repeat ((setoid_rewrite refine_trivial_if_then_else || setoid_rewrite key_symmetry || setoid_rewrite refine_tupleAgree_refl_True); try simplify with monad laws).
 
+(* Pick a new logical index using [EnsembleBagEquivalence_pick_new_index] *)
 Ltac pickIndex :=
-  rewrite refine_pick_val by eauto using EnsembleIndexedListEquivalence_pick_new_index;
+  rewrite refine_pick_val by eauto using  EnsembleBagEquivalence_pick_new_index;
   simplify with monad laws.
 
 Ltac revealSchema :=
@@ -439,9 +450,13 @@ Ltac fundepToQuery :=
 Ltac checksSucceeded :=
   match goal with
     | [ |- context[ret (_, true)] ] =>
-      refineEquiv_pick_pair_benumerate; simplify with monad laws;
+      setoid_rewrite refineEquiv_pick_pair;
+        (* Because our equivalence relation on Bags hides the application of ,
+           benumerate, we can now simply call [refineEquiv_pick_pair]
+           instead of  [refineEquiv_pick_pair_benumerate]  here.  *)
+        simplify with monad laws;
       repeat (rewrite refine_pick_val by
-                 (refine_list_insert_in_other_table
+                 (refine_bag_insert_in_other_table
                     || binsert_correct_DB);
               simplify with monad laws);
       reflexivity

@@ -92,21 +92,21 @@ Definition STOCK_TYPE             := StocksHeading/TYPE.
 Definition TRANSACTIONS_DATE      := TransactionsHeading/DATE.
 Definition TRANSACTIONS_STOCKCODE := TransactionsHeading/STOCK_CODE.
 
-Definition StocksStorage : @BagPlusBagProof (StocksSchema#STOCKS).
+Definition StocksStorage : @BagPlusProof (StocksSchema#STOCKS).
   mkIndex StocksHeading [StocksHeading/TYPE; StocksHeading/STOCK_CODE].
 Defined.
 
-Definition TransactionsStorage : @BagPlusBagProof (StocksSchema#TRANSACTIONS).
+Definition TransactionsStorage : @BagPlusProof (StocksSchema#TRANSACTIONS).
   mkIndex TransactionsHeading [TransactionsHeading/DATE; TransactionsHeading/STOCK_CODE].
 Defined.
 
-Definition TStocksBag := BagType StocksStorage.
-Definition TTransactionsBag := BagType TransactionsStorage.
+Definition TStocksBag := BagTypePlus StocksStorage.
+Definition TTransactionsBag := BagTypePlus TransactionsStorage.
 
 Definition Stocks_AbsR
            (or : UnConstrQueryStructure StocksSchema)
            (nr : (TStocksBag) * (TTransactionsBag)) : Prop :=
-  or!STOCKS ≃ benumerate (fst nr) /\ or!TRANSACTIONS ≃ benumerate (snd nr).
+  or!STOCKS ≃ fst nr /\ or!TRANSACTIONS ≃ snd nr.
 
 Definition StocksDB :
   Sharpened StocksSpec.
