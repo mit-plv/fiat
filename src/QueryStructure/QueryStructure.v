@@ -180,6 +180,40 @@ Qed.
 Class UnConstrRelationAbsRClass {A B : Type} :=
   { UnConstrRelationAbsR : Ensemble A -> B -> Prop }.
 
+Definition decides (b : bool) (P : Prop) := if b then P else ~ P.
+
+Definition SatisfiesSchemaConstraints
+           {qsSchema} Ridx tup tup' :=
+  match (schemaConstraints (QSGetNRelSchema qsSchema Ridx)) with
+      Some Constr => Constr tup tup'
+    | None => True
+  end.
+
+Definition SatisfiesCrossRelationConstraints
+           {qsSchema} Ridx Ridx' tup R :=
+  match (BuildQueryStructureConstraints qsSchema Ridx Ridx') with
+      | Some CrossConstr => CrossConstr tup R
+      | None => True
+  end.
+
+Definition UpdateUnConstrRelation
+           (qsSchema : QueryStructureSchema)
+           (rels : UnConstrQueryStructure qsSchema)
+           (Ridx : _)
+           newRel :
+  UnConstrQueryStructure qsSchema :=
+  replace_BoundedIndex relName rels Ridx newRel.
+
+Definition UpdateRelation
+           (qsSchema : QueryStructureSchema)
+           (rels : ilist (fun ns => Relation (relSchema ns))
+                         (qschemaSchemas qsSchema))
+           (Ridx : _)
+           newRel :
+  ilist (fun ns => Relation (relSchema ns))
+        (qschemaSchemas qsSchema) :=
+  replace_BoundedIndex relName rels Ridx newRel.
+
 Notation "ro ≃ rn" := (@UnConstrRelationAbsR _ _ _ ro%QueryImpl rn) : QueryImpl_scope.
 
 Notation "qs ! R" :=

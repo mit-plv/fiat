@@ -443,6 +443,8 @@ Qed.
 (* We now prove that [binsert] is a valid abstraction of the
    adding a tuple to the ensemble modeling the database. *)
 
+Require Import OperationRefinements.
+
 Lemma binsert_correct_DB
       db_schema qs index
       (bag_plus : BagPlusProof (@Tuple (@QSGetNRelSchemaHeading db_schema index)))

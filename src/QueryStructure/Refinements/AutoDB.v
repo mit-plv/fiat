@@ -2,7 +2,7 @@ Require Export BagsOfTuples Bool.
 Require Export ListImplementation.
 Require Export ConstraintChecksRefinements.
 Require Export Bags AdditionalLemmas AdditionalFlatMapLemmas AdditionalRefinementLemmas AdditionalMorphisms Bool tupleAgree.
-Require Export QueryStructureNotations.
+Require Export QueryStructureNotations OperationRefinements.
 
 Import AdditionalLemmas.
 

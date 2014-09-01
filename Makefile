@@ -48,11 +48,15 @@ SRC_MODULES    := \
 	QueryStructure/QuerySpecs/EmptyQSSpecs \
 	QueryStructure/QuerySpecs/QueryQSSpecs \
 	QueryStructure/QuerySpecs/InsertQSSpecs \
+	QueryStructure/QuerySpecs/DeleteQSSpecs \
 	QueryStructure/QuerySpecs/EnsembleListEquivalence \
 	QueryStructure/QueryStructureNotations \
+	QueryStructure/Refinements/ConstraintCheckRefinements \
 	QueryStructure/Refinements/GeneralQueryRefinements \
 	QueryStructure/Refinements/GeneralInsertRefinements \
 	QueryStructure/Refinements/GeneralQueryStructureRefinements \
+	QueryStructure/Refinements/ConstraintCheckUnfoldings \
+	QueryStructure/Refinements/OperationRefinements \
 	QueryStructure/SetEq \
 	QueryStructure/SetEqProperties \
 	QueryStructure/AdditionalLemmas \

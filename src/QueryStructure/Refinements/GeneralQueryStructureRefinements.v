@@ -135,4 +135,14 @@ Ltac start_honing_QueryStructure :=
                 end; pose_string_ids)
   end.
 
+Lemma refine_trivial_if_then_else :
+  forall x,
+    refine
+      (If_Then_Else x (ret true) (ret false))
+      (ret x).
+Proof.
+  destruct x; reflexivity.
+Qed.
+
+
 Tactic Notation "start" "honing" "QueryStructure" := start_honing_QueryStructure.

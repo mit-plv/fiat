@@ -15,12 +15,6 @@
 /coqdoc.sty
 /Makefile.coq
 /time-worked
-/Overview/ProjectOverview.pdf
-/Overview/ProjectOverview.bbl
-/Overview/ProjectOverview.blg
-/Overview/library.pdf
-/Overview/library.tex
-/Overview/coqdoc.sty
 /all.pdf
 /html
 *.a
@@ -35,3 +29,7 @@ examples/repl
 /examples/ADTExamples/PLLunch2.v
 /examples/ADTExamples/SetoidRewritingAdventures.v
 /src/Makefile.coq
+/src/QueryStructure/QuerySpecs/ConstraintCheckUnfoldings.v
+/src/QueryStructure/QuerySpecs/InsertQSRefinements.v
+/src/QueryStructure/Refinements/AdditionalListLemmas.v
+/src/Overview

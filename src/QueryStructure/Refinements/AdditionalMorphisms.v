@@ -1,5 +1,5 @@
 Require Import List.
-Require Import Setoid Morphisms.
+Require Import Setoid Morphisms QueryStructure.
 Require Import AdditionalLemmas EnsembleListEquivalenceProperties.
 
 Unset Implicit Arguments.
@@ -262,8 +262,6 @@ Proof.
   apply Permutation_sym in H; eapply Permutation_in; eauto; eapply H1; eauto.
   eapply H1; eapply Permutation_in; eauto.
 Qed.
-
-Require Import InsertQSSpecs.
 
 Add Morphism
     (decides)

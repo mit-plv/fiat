@@ -1,5 +1,6 @@
 Require Import BagsInterface.
 Require Import AdditionalLemmas.
+Require Import OperationRefinements.
 
 Ltac is_sumbool expr :=
   match type of expr with
