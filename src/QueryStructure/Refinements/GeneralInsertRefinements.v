@@ -194,35 +194,6 @@ Section InsertRefinements.
     setoid_rewrite Iterate_Decide_Comp_BoundedIndex; f_equiv.
   Qed.
 
-  (* Consequences of ith_replace_BoundIndex_neq and ith_replace_BoundIndex_eq on updates *)
-
-  Lemma get_update_unconstr_eq :
-    forall (db_schema : QueryStructureSchema) (qs : UnConstrQueryStructure db_schema)
-           (index : BoundedString),
-    forall inserted : @IndexedTuple _,
-      (GetUnConstrRelation
-         (UpdateUnConstrRelation qs index
-                                 (EnsembleInsert inserted (GetUnConstrRelation qs index))) index) =
-      (EnsembleInsert inserted (GetUnConstrRelation qs index)).
-  Proof.
-    unfold UpdateUnConstrRelation, EnsembleInsert, GetUnConstrRelation;
-    intros; simpl; rewrite ith_replace_BoundIndex_eq; eauto using string_dec.
-  Qed.
-
-  Lemma get_update_unconstr_neq :
-    forall (db_schema : QueryStructureSchema) (qs : UnConstrQueryStructure db_schema)
-           (index1 index2 : BoundedString),
-      index1 <> index2 ->
-      forall inserted : @IndexedTuple _,
-        (GetUnConstrRelation
-           (UpdateUnConstrRelation qs index1
-                                   (EnsembleInsert inserted (GetUnConstrRelation qs index1))) index2) =
-        (GetUnConstrRelation qs index2).
-  Proof.
-    unfold UpdateUnConstrRelation, EnsembleInsert, GetUnConstrRelation;
-    intros; simpl; rewrite ith_replace_BoundIndex_neq; eauto using string_dec.
-  Qed.
-
   Lemma QSInsertSpec_UnConstr_refine' :
     forall qsSchema (qs : UnConstrQueryStructure qsSchema)
            (Ridx : @BoundedString (map relName (qschemaSchemas qsSchema)))

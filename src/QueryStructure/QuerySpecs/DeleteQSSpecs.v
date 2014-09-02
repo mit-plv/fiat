@@ -14,7 +14,7 @@ Definition EnsembleDelete
            {A : Type}
            (F : Ensemble A)
            (R : Ensemble A)
-: Ensemble A := Intersection _ R (Complement _ F).
+: Ensemble A := Intersection _ F (Complement _ R).
 
 (* This delete is fairly constrained:
    If the delete is consistent with the constraints, it is

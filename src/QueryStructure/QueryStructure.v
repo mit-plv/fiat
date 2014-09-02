@@ -214,6 +214,30 @@ Definition UpdateRelation
         (qschemaSchemas qsSchema) :=
   replace_BoundedIndex relName rels Ridx newRel.
 
+  (* Consequences of ith_replace_BoundIndex_neq and ith_replace_BoundIndex_eq on updates *)
+
+  Lemma get_update_unconstr_eq :
+    forall (db_schema : QueryStructureSchema) (qs : UnConstrQueryStructure db_schema)
+           (index : BoundedString) ens,
+      GetUnConstrRelation
+        (UpdateUnConstrRelation qs index ens) index = ens.
+  Proof.
+    unfold UpdateUnConstrRelation, GetUnConstrRelation;
+    intros; simpl; rewrite ith_replace_BoundIndex_eq; eauto using string_dec.
+  Qed.
+
+  Lemma get_update_unconstr_neq :
+    forall (db_schema : QueryStructureSchema) (qs : UnConstrQueryStructure db_schema)
+           (index1 index2 : BoundedString) ens,
+      index1 <> index2 ->
+      GetUnConstrRelation
+        (UpdateUnConstrRelation qs index1 ens) index2 =
+      GetUnConstrRelation qs index2.
+  Proof.
+    unfold UpdateUnConstrRelation, GetUnConstrRelation;
+    intros; simpl; rewrite ith_replace_BoundIndex_neq; eauto using string_dec.
+  Qed.
+
 Notation "ro ≃ rn" := (@UnConstrRelationAbsR _ _ _ ro%QueryImpl rn) : QueryImpl_scope.
 
 Notation "qs ! R" :=
