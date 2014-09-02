@@ -58,25 +58,25 @@ Section cfg.
         non-terminal, together with a list of substrings which cover
         the original string, each of which is a parse of the relevant
         component of the pattern. *)
-    Inductive is_parse_of : String -> nonterminal -> Type :=
-    | ParseHead : forall str pat pats, is_parse_of_pattern str pat
-                                       -> is_parse_of str (pat::pats)
-    | ParseTail : forall str pat pats, is_parse_of str pats
-                                       -> is_parse_of str (pat::pats)
-    with is_parse_of_pattern : String -> pattern -> Type :=
-    | ParsePatternNil : is_parse_of_pattern (Empty _) nil
+    Inductive parse_of : String -> nonterminal -> Type :=
+    | ParseHead : forall str pat pats, parse_of_pattern str pat
+                                       -> parse_of str (pat::pats)
+    | ParseTail : forall str pat pats, parse_of str pats
+                                       -> parse_of str (pat::pats)
+    with parse_of_pattern : String -> pattern -> Type :=
+    | ParsePatternNil : parse_of_pattern (Empty _) nil
     | ParsePatternCons : forall str pat strs pats,
-                           is_parse_of_item str pat
-                           -> is_parse_of_pattern strs pats
-                           -> is_parse_of_pattern (str ++ strs) (pat::pats)
-    with is_parse_of_item : String -> item -> Type :=
-    | ParseTerminal : forall x, is_parse_of_item [ x ] (Terminal x)
-    | ParseNonTerminal : forall name str, is_parse_of str (Lookup G name)
-                                          -> is_parse_of_item str (NonTerminal name).
+                           parse_of_item str pat
+                           -> parse_of_pattern strs pats
+                           -> parse_of_pattern (str ++ strs) (pat::pats)
+    with parse_of_item : String -> item -> Type :=
+    | ParseTerminal : forall x, parse_of_item [ x ] (Terminal x)
+    | ParseNonTerminal : forall name str, parse_of str (Lookup G name)
+                                          -> parse_of_item str (NonTerminal name).
   End parse.
 
-  Definition is_parse_of_grammar (String : string_like) (str : String) (G : grammar) :=
-    is_parse_of String G str G.
+  Definition parse_of_grammar (String : string_like) (str : String) (G : grammar) :=
+    parse_of String G str G.
 End cfg.
 
 Definition string_stringlike : string_like Ascii.ascii.
@@ -103,7 +103,7 @@ Section examples.
       {| Top_name := "";
          Lookup := fun _ => nil::nil |}.
 
-    Definition trivial_grammar_parses_empty_string : is_parse_of_grammar _ (Empty String) trivial_grammar.
+    Definition trivial_grammar_parses_empty_string : parse_of_grammar _ (Empty String) trivial_grammar.
     Proof.
       hnf.
       simpl.
