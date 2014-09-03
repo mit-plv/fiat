@@ -3,11 +3,24 @@ Require Export Setoid RelationClasses Program Morphisms.
 Global Set Implicit Arguments.
 Global Generalizable All Variables.
 
-(** fail if [tac] succeeds, do nothing otherwise *)
-Tactic Notation (at level 3) "not" tactic(tac) := (tac; fail 1) || idtac.
+(** Test if a tactic succeeds, but always roll-back the results *)
+Tactic Notation "test" tactic3(tac) :=
+  try (first [ tac | fail 2 tac "does not succeed" ]; fail tac "succeeds"; [](* test for [t] solved all goals *)).
 
-(** fail if [tac] fails, but don't actually execute [tac] *)
-Tactic Notation (at level 3) "test" tactic(tac) := not (not tac).
+(** [not tac] is equivalent to [fail tac "succeeds"] if [tac] succeeds, and is equivalent to [idtac] if [tac] fails *)
+Tactic Notation "not" tactic3(tac) := try ((test tac); fail 1 tac "succeeds").
+
+(** Runs [abstract] after clearing the environment, solving the goal
+    with the tactic associated with [cls <goal type>].  In 8.5, we
+    could pass a tactic instead. *)
+Tactic Notation "clear" "abstract" constr(cls) :=
+  let G := match goal with |- ?G => constr:(G) end in
+  let pf := constr:(_ : cls G) in
+  let pf' := (eval cbv beta in pf) in
+  repeat match goal with
+           | [ H : _ |- _ ] => clear H; test (abstract (exact pf'))
+         end;
+    [ abstract (exact pf') ].
 
 (** fail if [x] is a function application, a dependent product ([fun _
     => _]), or a sigma type ([forall _, _]) *)

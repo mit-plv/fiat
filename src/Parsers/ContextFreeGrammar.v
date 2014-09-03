@@ -1,9 +1,9 @@
 (** * Definition of Context Free Grammars *)
-Require Import Coq.Strings.String Coq.Lists.List.
+Require Import Coq.Strings.String Coq.Lists.List Coq.Program.Program.
 
 Set Implicit Arguments.
 
-Reserved Notation "[ x ]" (at level 0).
+Delimit Scope string_like_scope with string_like.
 
 Section cfg.
   Variable CharType : Type.
@@ -15,7 +15,7 @@ Section cfg.
     Record string_like :=
       {
         String :> Type;
-        Singleton :> CharType -> String where "[ x ]" := (Singleton x);
+        Singleton : CharType -> String where "[ x ]" := (Singleton x);
         Empty : String;
         Concat : String -> String -> String where "x ++ y" := (Concat x y);
         dec_eq : forall x y : String, {x = y} + {x <> y};
@@ -23,6 +23,8 @@ Section cfg.
         LeftId : forall x, Empty ++ x = x;
         RightId : forall x, x ++ Empty = x
       }.
+
+    Bind Scope string_like_scope with String.
 
     (** An [item] is the basic building block of a context-free
         grammar; it is either a terminal ([CharType]-literal) or a
@@ -48,7 +50,7 @@ Section cfg.
       }.
   End definitions.
 
-  Local Notation "[ x ]" := (@Singleton _ x).
+  Local Notation "[[ x ]]" := (@Singleton _ x) : string_like_scope.
   Local Infix "++" := (@Concat _).
 
   Section parse.
@@ -70,7 +72,7 @@ Section cfg.
                            -> parse_of_pattern strs pats
                            -> parse_of_pattern (str ++ strs) (pat::pats)
     with parse_of_item : String -> item -> Type :=
-    | ParseTerminal : forall x, parse_of_item [ x ] (Terminal x)
+    | ParseTerminal : forall x, parse_of_item [[ x ]]%string_like (Terminal x)
     | ParseNonTerminal : forall name str, parse_of str (Lookup G name)
                                           -> parse_of_item str (NonTerminal name).
   End parse.
@@ -78,6 +80,17 @@ Section cfg.
   Definition parse_of_grammar (String : string_like) (str : String) (G : grammar) :=
     parse_of String G str G.
 End cfg.
+
+Arguments parse_of _%type_scope _ _ _%string_like _.
+Arguments parse_of_item _%type_scope _ _ _%string_like _.
+Arguments parse_of_pattern _%type_scope _ _ _%string_like _.
+Arguments parse_of_grammar _%type_scope _ _%string_like _.
+Arguments Concat _%type_scope _ (_ _)%string_like.
+Arguments dec_eq _%type_scope _ (_ _)%string_like.
+
+Notation "[[ x ]]" := (@Singleton _ _ x) : string_like_scope.
+Infix "++" := (@Concat _ _) : string_like_scope.
+Infix "=s" := (@dec_eq _ _) (at level 70, right associativity) : string_like_scope.
 
 Definition string_stringlike : string_like Ascii.ascii.
 Proof.
