@@ -270,6 +270,28 @@ Section ilist.
 
 End ilist.
 
+Section of_list.
+  Context {T : Type}.
+
+  Fixpoint ilist_of_list (ls : list T) : ilist (fun _ => T) ls
+    := match ls as ls return ilist (fun _ => T) ls with
+         | nil => inil _
+         | x::xs => @icons _ (fun _ => T) x _ x (ilist_of_list xs)
+       end.
+
+  Fixpoint list_of_ilist {T'} {is} (ls : ilist (fun _ : T' => T) is) : list T
+    := match ls with
+         | inil => nil
+         | icons _ _ x xs => x::list_of_ilist xs
+       end.
+
+  Lemma list_of_ilist_of_list ls : list_of_ilist (ilist_of_list ls) = ls.
+  Proof.
+    induction ls; simpl in *; f_equal; assumption.
+  Qed.
+End of_list.
+
+
 Ltac icons_invert :=
   repeat match goal with
            | [il : ilist _ (_ :: _) |- _]
@@ -343,7 +365,7 @@ Section ilist_imap.
     unfold Dep_Option_elim, Dep_Option_Map; destruct b_opt; reflexivity.
   Qed.
 
-  (* Concrete values for [a_opt] produce corrolaries of 
+  (* Concrete values for [a_opt] produce corrolaries of
      [Dep_Option_Map_elim] with nicer statements. *)
   Corollary Dep_Option_Map_elim_Some
   : forall (a : A)
@@ -445,13 +467,13 @@ Section ilist_izip.
     unfold Dep_Option_elim, Dep_Option_Zip; destruct b_opt; reflexivity.
   Qed.
 
-  (* Concrete values for [a_opt] produce corrolaries of 
+  (* Concrete values for [a_opt] produce corrolaries of
      [Dep_Option_Zip_elim] with nicer statements. *)
   Corollary Dep_Option_Zip_elim_Some
   : forall (a : A)
            (b_opt : Dep_Option B (Some a))
            (b'_opt : Dep_Option B' (Some a)),
-      Dep_Option_elim (Dep_Option_Zip b_opt b'_opt) = 
+      Dep_Option_elim (Dep_Option_Zip b_opt b'_opt) =
       f (Dep_Option_elim b_opt) (Dep_Option_elim b'_opt).
   Proof.
     intros; eapply Dep_Option_Zip_elim; eauto.
@@ -531,8 +553,8 @@ Section ilist_replace.
       List.length As <= n
       -> replace_Index n il new_b = il.
   Proof.
-    induction n; simpl; 
-    (destruct As; intros; 
+    induction n; simpl;
+    (destruct As; intros;
      [generalize (ilist_invert il); intros; subst; reflexivity |
       icons_invert; simpl in *]).
     - destruct (le_Sn_0 _ H).
