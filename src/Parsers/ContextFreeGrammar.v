@@ -18,7 +18,8 @@ Section cfg.
         Singleton : CharType -> String where "[ x ]" := (Singleton x);
         Empty : String;
         Concat : String -> String -> String where "x ++ y" := (Concat x y);
-        dec_eq : forall x y : String, {x = y} + {x <> y};
+        bool_eq : String -> String -> bool;
+        bool_eq_correct : forall x y : String, bool_eq x y = true <-> x = y;
         Associativity : forall x y z, (x ++ y) ++ z = x ++ (y ++ z);
         LeftId : forall x, Empty ++ x = x;
         RightId : forall x, x ++ Empty = x
@@ -86,11 +87,11 @@ Arguments parse_of_item _%type_scope _ _ _%string_like _.
 Arguments parse_of_pattern _%type_scope _ _ _%string_like _.
 Arguments parse_of_grammar _%type_scope _ _%string_like _.
 Arguments Concat _%type_scope _ (_ _)%string_like.
-Arguments dec_eq _%type_scope _ (_ _)%string_like.
+Arguments bool_eq _%type_scope _ (_ _)%string_like.
 
 Notation "[[ x ]]" := (@Singleton _ _ x) : string_like_scope.
 Infix "++" := (@Concat _ _) : string_like_scope.
-Infix "=s" := (@dec_eq _ _) (at level 70, right associativity) : string_like_scope.
+Infix "=s" := (@bool_eq _ _) (at level 70, right associativity) : string_like_scope.
 
 Definition string_stringlike : string_like Ascii.ascii.
 Proof.
@@ -98,13 +99,14 @@ Proof.
             Singleton := fun x => String.String x EmptyString;
             Empty := EmptyString;
             Concat := append;
-            dec_eq := string_dec |};
-  let x := fresh "x" in
-  let IHx := fresh "IHx" in
-  intro x; induction x as [|? ? IHx]; try reflexivity; simpl;
-  intros;
-  f_equal;
-  auto.
+            bool_eq x y := if string_dec x y then true else false |};
+  solve [ let x := fresh "x" in
+          let IHx := fresh "IHx" in
+          intro x; induction x as [|? ? IHx]; try reflexivity; simpl;
+          intros;
+          f_equal;
+          auto
+        | intros; edestruct string_dec; split; congruence ].
 Qed.
 
 Section examples.

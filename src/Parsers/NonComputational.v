@@ -1,7 +1,7 @@
 (** * Definition of a [comp]-based non-computational CFG parser *)
-Require Import Coq.Lists.List Coq.Program.Program.
+Require Import Coq.Lists.List Coq.Program.Program Coq.Program.Wf.
 Require Import Parsers.ContextFreeGrammar Parsers.Specification.
-Require Import Common.
+Require Import Common ADTNotation.ilist.
 
 Set Implicit Arguments.
 (*(** We implement a generic recursive descent parser.  We parameterize
@@ -25,17 +25,27 @@ Set Implicit Arguments.
     The basic idea is that
 
 FIXME *)*)
-Infix "=s" := (@dec_eq _ _) (at level 70, right associativity) : string_like_scope.
+(** TODO: rename pattern to production *)
 Local Open Scope string_like_scope.
 
 Section recursive_descent_parser.
   Context CharType (String : string_like CharType) (G : grammar CharType).
   Context (T : String -> nonterminal CharType -> Type)
-          (aggregate : forall s1 nt1, T s1 nt1 -> forall s2 nt2, T s2 nt2 -> T (s1 ++ s2)%string_like (nt1 ++ nt2)%list)
+          (aggregate : forall s1 pat, T s1 [ [ pat ] ] -> forall s2 pats, T s2 [pats] -> T (s1 ++ s2)%string_like [pat::pats]%list)
           (T_reverse_lookup : forall str name, T str (Lookup G name) -> T str [ [ NonTerminal _ name ] ]).
-  Context (pick_parses : String -> nonterminal CharType -> list (list String)).
-  Context (make_leaf : forall c, T [[c]]%string_like [ [ Terminal c ] ]).
+  Context (parse_pattern_by_picking
+           : forall (parse_pattern_from_split_list
+                     : forall (strs : list String)
+                              (pat : pattern CharType),
+                         ilist (fun sp => T (fst sp) [ [ snd sp ] ]) (combine strs pat))
+                    (str : String)
+                    (pat : pattern CharType),
+               T str [ pat ]).
+  Context (decide_leaf : forall str ch, T str [ [ Terminal ch ] ]).
   Context (make_empty : T (Empty _) [ [ ] ]).
+  Context (fold_patterns : forall str (pats : list (pattern CharType)),
+                             ilist (fun pat => T str [ pat ]) pats
+                             -> T str pats).
 
   Section parts.
     Local Ltac t' :=
@@ -47,6 +57,7 @@ Section recursive_descent_parser.
         | [ H : ?x <> ?x |- _ ] => solve [ destruct (H eq_refl) ]
         | [ H : parse_of_item _ _ _ _ |- _ ] => inversion H; clear H
         | [ H : parse_of_pattern _ _ _ _ |- _ ] => inversion H; clear H
+        | [ H : _ -> False |- False ] => apply H; clear H; solve [ repeat t' ]
       end.
 
     Class by_t' T := make_by_t' : T.
@@ -60,74 +71,50 @@ Section recursive_descent_parser.
 
 
     Section item.
-      Variable parse_nonterminal : forall str nt, (T str nt * parse_of _ G str nt)
-                                                  + (parse_of _ G str nt -> False).
+      Context (str : String)
+              (parse_nonterminal : forall nt, T str nt).
 
-      Definition parse_item str it : (T str [ [ it ] ] * parse_of_item _ G str it)
-                                     + (parse_of_item _ G str it -> False).
-      Proof.
-        refine (match it with
-                  | Terminal ch => match [[ch]] =s str with
-                                     | left pf => inl (_ (make_leaf ch), _ (ParseTerminal _ _ ch))
-                                     | right _ => inr (fun H => _)
-                                   end
-                  | NonTerminal name => match parse_nonterminal str (Lookup G name) with
-                                          | inl (t, parse) => inl (T_reverse_lookup _ t, ParseNonTerminal _ parse)
-                                          | inr pf => inr (fun H => pf _)
-                                        end
-                end);
-        t.
-      Defined.
+      Definition parse_item it : T str [ [ it ] ]
+        := match it with
+             | Terminal ch => decide_leaf str ch
+             | NonTerminal name => T_reverse_lookup _ (parse_nonterminal (Lookup G name))
+           end.
     End item.
 
     Section pattern.
-      Variable parse_nonterminal : forall str nt, (T str nt * parse_of _ G str nt)
-                                                  + (parse_of _ G str nt -> False).
+      Variable parse_nonterminal : forall str nt, T str nt.
 
-      Fixpoint parse_pattern str pat : (T str [ pat ] * parse_of_pattern _ G str pat)
-                                       + (parse_of_pattern _ G str pat -> False).
-      Proof.
-        refine (match pat with
-                  | nil => match Empty _ =s str with
-                             | left pf => inl (_ make_empty, _ (ParsePatternNil _ _))
-                             | right _ => inr (fun H => _)
-                           end
-                  | pat'::pats' => _
-                end);
-        t.
+      Definition parse_pattern_from_split_list
+                 (strs : list String)
+                 (pat : pattern CharType)
+      : ilist (fun sp => T (fst sp) [ [ snd sp ] ]) (combine strs pat)
+        := imap_list (fun sp => T (fst sp) [ [ snd sp ] ])
+                     (fun sp => parse_item (parse_nonterminal (fst sp)) (snd sp))
+                     (combine strs pat).
 
+      Definition parse_pattern (str : String) (pat : pattern CharType) : T str [ pat ]
+        := parse_pattern_by_picking parse_pattern_from_split_list str pat.
+    End pattern.
 
+    Section nonterminal.
+      Section step.
+        Variable parse_nonterminal : forall str nt, T str nt.
 
-      Definition parse_item str it : (T str [ [ it ] ] * parse_of_item _ G str it)
-                                     + (parse_of_item _ G str it -> False).
-      Proof.
-        refine (match it with
-                  | Terminal ch => match [[ch]] =s str with
-                                     | left pf => inl (_ (make_leaf ch), _ (ParseTerminal _ _ ch))
-                                     | right _ => inr (fun H => _)
-                                   end
-                  | NonTerminal name => match parse_nonterminal str (Lookup G name) with
-                                          | inl (t, parse) => inl (T_reverse_lookup _ t, ParseNonTerminal _ parse)
-                                          | inr pf => inr (fun H => pf _)
-                                        end
-                end);
-        t.
-      Defined.
-    with parse_of_pattern : String -> pattern -> Type :=
-    | ParsePatternNil : parse_of_pattern (Empty _) nil
-    | ParsePatternCons : forall str pat strs pats,
-                           parse_of_item str pat
-                           -> parse_of_pattern strs pats
-                           -> parse_of_pattern (str ++ strs) (pat::pats)
+        Definition parse_nonterminal_step (str : String) (nt : nonterminal CharType) : T str nt
+          := fold_patterns (imap_list (fun pat => T str [ pat ])
+                                      (parse_pattern parse_nonterminal str)
+                                      nt).
+      End step.
 
-      (** We
-
-
-        inversion H.
-
-    Next Obligation.
-
-    Proof.
-      destruct it as [c|]; simpl.
-      {
-      intros str it.
+      Section wf.
+        Check Fix.
+        SearchAbout well_founded.
+    End nonterminal
+                                        Proof.
+        refine (match nt with
+                  | nil => make_false str
+                  | pat::pats => _
+                end).
+      Definition parse_nonterminal str nt : T str nt
+        := reverse_nonterminal_permutation (parse_nonterminal_helper str (choose_nonterminal_order str nt)).
+    End nonterminal.
