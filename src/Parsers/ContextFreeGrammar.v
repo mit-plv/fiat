@@ -20,6 +20,7 @@ Section cfg.
         Concat : String -> String -> String where "x ++ y" := (Concat x y);
         bool_eq : String -> String -> bool;
         bool_eq_correct : forall x y : String, bool_eq x y = true <-> x = y;
+        Length : String -> nat;
         Associativity : forall x y z, (x ++ y) ++ z = x ++ (y ++ z);
         LeftId : forall x, Empty ++ x = x;
         RightId : forall x, x ++ Empty = x
@@ -99,6 +100,7 @@ Proof.
             Singleton := fun x => String.String x EmptyString;
             Empty := EmptyString;
             Concat := append;
+            Length := String.length;
             bool_eq x y := if string_dec x y then true else false |};
   solve [ let x := fresh "x" in
           let IHx := fresh "IHx" in
