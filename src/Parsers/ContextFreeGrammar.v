@@ -77,6 +77,12 @@ Section cfg.
     | ParseTerminal : forall x, parse_of_item [[ x ]]%string_like (Terminal x)
     | ParseNonTerminal : forall name str, parse_of str (Lookup G name)
                                           -> parse_of_item str (NonTerminal name).
+
+    Definition ParsePatternSingleton str it (p : parse_of_item str it) : parse_of_pattern str [ it ].
+    Proof.
+      rewrite <- (RightId _ str).
+      constructor; assumption || constructor.
+    Defined.
   End parse.
 
   Definition parse_of_grammar (String : string_like) (str : String) (G : grammar) :=
