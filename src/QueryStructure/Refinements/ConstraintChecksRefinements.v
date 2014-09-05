@@ -8,6 +8,23 @@ Unset Implicit Arguments.
 
 Transparent Count Query_For.
 
+Ltac subst_strings :=
+  repeat match goal with
+           | [ H : string |- _ ] => subst H
+           | [ H : BoundedIndex _ |- _ ] => subst H
+         end.
+
+Ltac pose_string_ids :=
+  subst_strings;
+  repeat match goal with
+           | |- context [String ?R ?R'] =>
+             let str := fresh "StringId" in
+             set (String R R') as str in *
+           | |- context [ ``(?R) ] =>
+             let idx := fresh in
+             set ``(R) as fresh in *
+         end.
+
 Section ConstraintCheckRefinements.
   Hint Resolve AC_eq_nth_In AC_eq_nth_NIn crossConstr.
   Hint Unfold SatisfiesCrossRelationConstraints

@@ -1,7 +1,7 @@
 Require Import String Omega List FunctionalExtensionality Ensembles
         Computation ADT ADTRefinement ADTNotation QueryStructureSchema
         BuildADTRefinements QueryStructure
-        QuerySpecs.QueryQSSpecs QuerySpecs.InsertQSSpecs
+        QuerySpecs.QueryQSSpecs QuerySpecs.InsertQSSpecs EnsembleListEquivalence
         ConstraintChecksRefinements.
 
 (* Facts about implements insert operations. *)
@@ -344,6 +344,17 @@ Section InsertRefinements.
       UpdateRelation; rewrite imap_replace_BoundedIndex; simpl; eauto using string_dec.
   Qed.
 
+  Lemma freshIdx2UnConstr {qsSchema} qs Ridx
+  : refine {bound | forall tup : IndexedTuple,
+                      @GetUnConstrRelation qsSchema qs Ridx tup ->
+                      tupleIndex tup <> bound}
+           {bound | UnConstrFreshIdx (GetUnConstrRelation qs Ridx) bound}.
+  Proof.
+    unfold UnConstrFreshIdx; intros v Comp_v; econstructor.
+    inversion_by computes_to_inv; intros.
+    apply Comp_v in H; omega.
+  Qed.
+
   Lemma QSInsertSpec_UnConstr_refine :
     forall qsSchema (qs : UnConstrQueryStructure qsSchema )
            (Ridx : @BoundedString (map relName (qschemaSchemas qsSchema)))
@@ -399,8 +410,7 @@ Section InsertRefinements.
                  ret (qs', b));
          nr' <- {nr' | DropQSConstraints_AbsR (fst or') nr'};
          ret (nr', snd or'))
-        (idx <- {idx | forall tup, GetUnConstrRelation qs Ridx tup ->
-                                   tupleIndex tup <> idx};
+        (idx <- {idx | UnConstrFreshIdx (GetUnConstrRelation qs Ridx) idx};
          (schConstr_self <- refined_schConstr_self;
           schConstr <- refined_schConstr;
           schConstr' <- refined_schConstr';
@@ -422,6 +432,7 @@ Section InsertRefinements.
     simpl.
     rewrite <- GetRelDropConstraints.
     unfold DropQSConstraints_AbsR in *; subst.
+    rewrite freshIdx2UnConstr.
     apply refine_bind_pick; intros.
     setoid_rewrite <- H; setoid_rewrite <- H0; setoid_rewrite <- H1;
     setoid_rewrite <- H2; setoid_rewrite <- (H3 a).
@@ -430,7 +441,8 @@ Section InsertRefinements.
     setoid_rewrite refineEquiv_bind_unit; simpl.
     unfold DropQSConstraints_AbsR in *; subst.
     f_equiv; intros.
-    unfold not; eauto; intros; eapply H4; eauto.
+    unfold UnConstrFreshIdx, not in *; intros.
+    apply H4 in H5; simpl in *; omega.
     reflexivity.
   Qed.
 
@@ -503,8 +515,7 @@ Section InsertRefinements.
          ret (nr', snd or'))
         match (schemaConstraints (QSGetNRelSchema qsSchema Ridx)) with
             Some Constr =>
-            idx <- {idx | forall tup, GetUnConstrRelation qs Ridx tup ->
-                                      tupleIndex tup <> idx} ;
+            idx <- {idx | UnConstrFreshIdx (GetUnConstrRelation qs Ridx) idx} ;
             (schConstr_self <- {b | decides b (Constr tup tup) };
                    schConstr <- {b | decides b
                                              (forall tup',
@@ -548,8 +559,7 @@ Section InsertRefinements.
                          | _, _, _, _, _ => (qs, false)
                        end)
           | None =>
-            idx <- {idx | forall tup, GetUnConstrRelation qs Ridx tup ->
-                                      tupleIndex tup <> idx};
+            idx <- {idx | UnConstrFreshIdx (GetUnConstrRelation qs Ridx) idx};
             (qsConstr <- (@Iterate_Decide_Comp_opt' _ _ []
                                    (fun Ridx' =>
                                       match (BuildQueryStructureConstraints qsSchema Ridx Ridx') with
@@ -601,23 +611,6 @@ Section InsertRefinements.
   Qed.
 
 End InsertRefinements.
-
-Ltac subst_strings :=
-  repeat match goal with
-           | [ H : string |- _ ] => subst H
-           | [ H : BoundedIndex _ |- _ ] => subst H
-         end.
-
-Ltac pose_string_ids :=
-  subst_strings;
-  repeat match goal with
-           | |- context [String ?R ?R'] =>
-             let str := fresh "StringId" in
-             set (String R R') as str in *
-           | |- context [ ``(?R) ] =>
-             let idx := fresh in
-             set ``(R) as fresh in *
-         end.
 
   (* When we insert a tuple into a relation which has another relation has
      a foreign key into, we need to show that we haven't messed up any

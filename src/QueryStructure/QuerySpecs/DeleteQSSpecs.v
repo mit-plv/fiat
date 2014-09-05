@@ -4,7 +4,7 @@ Require Import List String Ensembles Arith
         ADTNotation.ilist ADTNotation.StringBound
         ADTNotation.BuildADT ADTNotation.BuildADTSig
         QueryStructure.QueryStructureSchema QueryStructure.QueryStructure
-        InsertQSSpecs ListQueryStructureRefinements.
+        InsertQSSpecs EnsembleListEquivalence.
 
 (* Definitions for updating query structures. *)
 
@@ -24,7 +24,7 @@ Definition EnsembleDelete
 Definition QSDeleteSpec
            (qs : QueryStructureHint)
            (Ridx : _)
-           (DeletedTuples : Ensemble (@IndexedTuple (schemaHeading (QSGetNRelSchema _ Ridx))))
+           (DeletedTuples : Ensemble (@Tuple (schemaHeading (QSGetNRelSchema _ Ridx))))
            (qs' : QueryStructure qsSchemaHint')
 : Prop :=
   (* Either we get a database with an updated ensemble whose
@@ -70,13 +70,16 @@ Definition QSDeleteSpec
 
 (* We augment [QSDeleteSpec] so that delete also returns a list of the
    deleted Tuples. *)
-Definition QSDelete (qs : QueryStructureHint) Ridx DeletedTuples :=
+Definition QSDelete (qs : QueryStructureHint) Ridx
+           (DeletedTuples : Ensemble (@Tuple (schemaHeading (QSGetNRelSchema _ Ridx)))) :=
   (qs'       <- Pick (QSDeleteSpec _ Ridx DeletedTuples);
-   deleted   <- Pick (EnsembleIndexedListEquivalence
+   deleted   <- Pick (UnIndexedEnsembleListEquivalence
                         (Intersection _
                                       (GetRelation qsHint Ridx)
-                                      (GetRelation qs' Ridx)));
-   ret (deleted, qs'))%comp.
+                                      (Complement _ (GetRelation qs' Ridx))));
+   ret (qs', deleted))%comp.
+
+Opaque QSDelete.
 
 Notation "'Delete' b 'from' Ridx 'where' Ens" :=
   (QSDelete _ {|bindex := Ridx%comp |} (fun b => Ens))

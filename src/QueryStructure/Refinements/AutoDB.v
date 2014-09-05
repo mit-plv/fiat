@@ -1,7 +1,7 @@
 Require Export BagsOfTuples Bool.
 Require Export ListImplementation.
 Require Export ConstraintChecksRefinements.
-Require Export Bags AdditionalLemmas AdditionalFlatMapLemmas AdditionalRefinementLemmas AdditionalMorphisms Bool tupleAgree.
+Require Export Bags AdditionalLemmas AdditionalFlatMapLemmas AdditionalRefinementLemmas AdditionalMorphisms Bool tupleAgree EnsembleListEquivalence.
 Require Export QueryStructureNotations OperationRefinements.
 
 Import AdditionalLemmas.
@@ -401,8 +401,15 @@ Ltac pruneDuplicates :=
 
 (* Pick a new logical index using [EnsembleBagEquivalence_pick_new_index] *)
 Ltac pickIndex :=
-  rewrite refine_pick_val by eauto using  EnsembleBagEquivalence_pick_new_index;
-  simplify with monad laws.
+    match goal with
+        [H : EnsembleBagEquivalence ?storage ?R ?bag
+         |- context[Pick (fun bound => UnConstrFreshIdx ?R bound) ] ] =>
+        let bound := fresh in
+        let ValidBound := fresh in
+        destruct (@EnsembleBagEquivalence_pick_new_index _ storage R bag H)
+          as [bound ValidBound];
+          rewrite refine_pick_val by eauto using ValidBound;
+          simplify with monad laws end.
 
 Ltac revealSchema :=
   repeat match goal with
@@ -456,7 +463,7 @@ Ltac checksSucceeded :=
            instead of  [refineEquiv_pick_pair_benumerate]  here.  *)
         simplify with monad laws;
       repeat (rewrite refine_pick_val by
-                 (refine_bag_insert_in_other_table
+                 (refine_bag_update_other_table
                     || binsert_correct_DB);
               simplify with monad laws);
       reflexivity

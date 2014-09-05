@@ -3,8 +3,9 @@ Require Import String Omega List FunctionalExtensionality Ensembles
         Computation ADT ADTRefinement ADTNotation BuildADTRefinements
         QueryStructureSchema QueryStructure
         EnsembleListEquivalence
-        QueryQSSpecs InsertQSSpecs EmptyQSSpecs
-        GeneralInsertRefinements GeneralQueryRefinements.
+        QueryQSSpecs InsertQSSpecs EmptyQSSpecs DeleteQSSpecs
+        QueryStructureNotations
+        GeneralQueryRefinements GeneralInsertRefinements GeneralDeleteRefinements.
 
 Ltac subst_strings :=
   repeat match goal with
@@ -128,10 +129,15 @@ Ltac start_honing_QueryStructure :=
               | ]
         end; pose_string_ids;
         repeat (match goal with
-                    |- context [Build_methDef (@Build_methSig ?Id _ _)
+                  | |- context [Build_methDef (@Build_methSig ?Id _ _)
+                                              (absMethod _ (fun _ _ => Insert _ into _))] =>
+                    drop constraints from insert Id
+                  | |- context [Build_methDef (@Build_methSig ?Id _ _)
+                                              (absMethod _ (fun _ _ => Delete _ from _ where _))] =>
+                    drop constraints from delete Id
+                  | |- context [Build_methDef (@Build_methSig ?Id _ _)
                                               (@absMethod _ _ _ _ _ _)] =>
-                    first [ drop constraints from query Id
-                          | drop constraints from insert Id ]
+                    drop constraints from query Id
                 end; pose_string_ids)
   end.
 

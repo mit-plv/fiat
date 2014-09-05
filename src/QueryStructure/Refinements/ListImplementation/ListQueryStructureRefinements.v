@@ -4,19 +4,6 @@ Require Import String Omega List FunctionalExtensionality Ensembles
         QueryStructure GeneralInsertRefinements
         GeneralQueryRefinements SetEq AdditionalLemmas EnsembleListEquivalence.
 
-Definition EnsembleIndexedListEquivalence {heading}
-           (R : Ensemble (@IndexedTuple heading))
-           (l : list (@Tuple heading)) :=
-  (forall tup, In _ R tup ->
-               lt (tupleIndex tup)  (length l))
-  /\ UnIndexedEnsembleListEquivalence R l.
-
-Instance EnsembleListEquivalence_AbsR {heading}:
-  @UnConstrRelationAbsRClass (@IndexedTuple heading)
-                             (list (@Tuple heading)) :=
-  {| UnConstrRelationAbsR := @EnsembleIndexedListEquivalence heading|}.
-
-
 Lemma EnsembleIndexedListEquivalence_lift_property {heading} {P: @Tuple heading -> Prop} :
   forall (sequence: list (@Tuple heading)) (ensemble: @IndexedTuple heading -> Prop),
     EnsembleIndexedListEquivalence ensemble sequence ->
@@ -33,14 +20,14 @@ Proof.
   split; intros; firstorder; subst; intuition.
 Qed.
 
-Lemma EnsembleIndexedListEquivalence_pick_new_index :
-  forall {heading} ens seq,
+Lemma EnsembleIndexedListEquivalence_pick_new_index {heading} :
+  forall (ens : Ensemble (@IndexedTuple heading)) seq,
     EnsembleIndexedListEquivalence ens seq ->
-    forall (tup: @IndexedTuple heading),
-      Ensembles.In _ ens tup -> tupleIndex tup <> Datatypes.length seq.
+    exists bound, 
+      UnConstrFreshIdx ens bound.
 Proof.
-  intros * (indexes & equiv) ** ;
-  apply le_neq_impl; eauto.
+  intros * (indexes & equiv) ** .
+  destruct_ex; eexists x; eauto.
 Qed.
 
   Lemma EnsembleListEquivalence_Empty :
@@ -64,6 +51,7 @@ Qed.
     intros; rewrite GetRelDropConstraints; simpl; split; simpl; intros;
     unfold GetRelation, In in *.
     + rewrite Build_EmptyRelation_IsEmpty in *; simpl in *; intuition.
+      exists 0; unfold UnConstrFreshIdx; intros; intuition.
     + eexists []; intuition; econstructor.
       - econstructor.
       - unfold In; split; intros.

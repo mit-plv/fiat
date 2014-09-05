@@ -1,7 +1,7 @@
 Require Export String Omega List FunctionalExtensionality Ensembles
         Computation ADT ADTRefinement ADTNotation QueryStructureSchema
         BuildADTRefinements QueryQSSpecs InsertQSSpecs EmptyQSSpecs
-        QueryStructure.
+        DeleteQSSpecs QueryStructure.
 
 Open Scope QSSchema.
 Open Scope ADTSig.

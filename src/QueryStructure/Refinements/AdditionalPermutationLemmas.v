@@ -243,3 +243,13 @@ Proof.
     eapply InA_app_iff in H0; eauto; intuition.
     inversion H; subst; eauto.
 Qed.
+
+Lemma PermutationConsSplit {A} :
+  forall (a : A) (l l' : list A),
+    Permutation (a :: l) l'
+    -> exists l1' l2', l' = app l1' (a :: l2').
+Proof.
+  intros.
+  apply (Permutation_in a) in H; simpl; eauto.
+  apply in_split; apply H; constructor; eauto.
+Qed.

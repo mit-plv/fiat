@@ -1,7 +1,7 @@
 Require Import List String Ensembles Arith
         ADTNotation.ilist ADTNotation.StringBound
-        QueryStructure.QueryStructureSchema QueryStructure.QueryStructure
-        QueryStructure.Refinements.ConstraintChecksRefinements.
+        QueryStructureSchema QueryStructure
+        ConstraintChecksRefinements.
 
 (* We put all these simplification hints into a distinct file
    so we're not unfolding things all willy-nilly. *)

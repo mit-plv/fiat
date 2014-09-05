@@ -1,6 +1,8 @@
 Require Import BagsInterface.
 Require Import AdditionalLemmas.
+Require Import EnsembleListEquivalence.
 Require Import OperationRefinements.
+
 
 Ltac is_sumbool expr :=
   match type of expr with
@@ -118,43 +120,39 @@ Proof.
   intros; reflexivity.
 Qed.
 
-Lemma EnsembleBagEquivalence_pick_new_index :
-  forall {heading} storage ens seq,
+Lemma EnsembleBagEquivalence_pick_new_index {heading} :
+  forall storage (ens : Ensemble (@IndexedTuple heading)) seq,
     EnsembleBagEquivalence storage ens seq ->
-    forall (tup: @IndexedTuple heading),
-      Ensembles.In _ ens tup -> tupleIndex tup <> Datatypes.length (benumerate seq).
+    exists bound, UnConstrFreshIdx ens bound.
 Proof.
   intros * (indexes & equiv) ** ;
   eapply EnsembleIndexedListEquivalence_pick_new_index; eauto.
   apply indexes.
 Qed.
 
-Lemma refine_bag_insert_in_other_table :
+Lemma refine_bag_update_other_table :
   forall (db_schema : QueryStructureSchema) (qs : UnConstrQueryStructure db_schema)
-         (index1 index2 : BoundedString) bag_store store  ,
+         (index1 index2 : BoundedString) bag_store store Rel,
     EnsembleBagEquivalence bag_store (GetUnConstrRelation qs index2) store ->
     index1 <> index2 ->
-    forall inserted : @IndexedTuple _,
       EnsembleBagEquivalence bag_store
                              (GetUnConstrRelation
-                                (UpdateUnConstrRelation qs index1
-                                                        (EnsembleInsert inserted (GetUnConstrRelation qs index1))) index2)
-                             (store).
+                                (UpdateUnConstrRelation qs index1 Rel) index2)
+                             store.
 Proof.
   intros; rewrite get_update_unconstr_neq; eauto.
 Qed.
 
-        Ltac refine_bag_insert_in_other_table :=
-          match goal with
-            | [ |- appcontext [
-                       EnsembleBagEquivalence ?bag
-                         (GetUnConstrRelation
-                            (UpdateUnConstrRelation ?qs ?index1
-                                            (EnsembleInsert ?inserted
-                                                            (GetUnConstrRelation ?qs ?index1)))
-                            ?index2) ] ] => apply (@refine_bag_insert_in_other_table _ qs index1 index2 bag);
-                                           [ eauto | intuition discriminate ]
-          end.
+Ltac refine_bag_update_other_table :=
+  match goal with
+    | [ |- appcontext [
+               EnsembleBagEquivalence
+                 ?bag
+                 (GetUnConstrRelation
+                    (UpdateUnConstrRelation ?qs ?index1 ?Rel) ?index2) ] ] =>
+      apply (@refine_bag_update_other_table _ qs index1 index2 bag);
+        [ eauto | intuition discriminate ]
+  end.
 
 (* Workaround Coq's algorithms not being able to infer ther arguments to refineEquiv_pick_pair *)
 Ltac refineEquiv_pick_pair_benumerate :=

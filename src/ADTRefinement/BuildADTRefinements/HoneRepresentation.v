@@ -225,8 +225,8 @@ Tactic Notation "hone" "method" constr(methIdx) :=
     [ intros;
       simpl in *; set_evars; simpl in *;
       match goal with
-        |  |- refine (absMethod ?AbsR ?oldMethod ?nr ?d)
-                     (?H ?nr ?d) => eapply (@refine_AbsMethod _ _ AbsR _ _ oldMethod)
+        |  |- refine (@absMethod ?oldRep ?newRep ?AbsR ?Dom ?Cod ?oldMethod ?nr ?d)
+                     (?H ?nr ?d) => eapply (@refine_AbsMethod oldRep newRep AbsR Dom Cod oldMethod)
         | _ => cbv [absMethod]
       end; intros
     |

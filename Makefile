@@ -54,8 +54,9 @@ SRC_MODULES    := \
 	QueryStructure/Refinements/ConstraintCheckRefinements \
 	QueryStructure/Refinements/GeneralQueryRefinements \
 	QueryStructure/Refinements/GeneralInsertRefinements \
+	QueryStructure/Refinements/GeneralDeleteRefinements \
+	QueryStructure/Refinements/ConstraintChecksUnfoldings \
 	QueryStructure/Refinements/GeneralQueryStructureRefinements \
-	QueryStructure/Refinements/ConstraintCheckUnfoldings \
 	QueryStructure/Refinements/OperationRefinements \
 	QueryStructure/SetEq \
 	QueryStructure/SetEqProperties \

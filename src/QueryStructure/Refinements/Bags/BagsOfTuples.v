@@ -450,18 +450,19 @@ Lemma binsert_correct_DB
       (bag_plus : BagPlusProof (@Tuple (@QSGetNRelSchemaHeading db_schema index)))
 :  forall (store: BagTypePlus bag_plus),
      GetUnConstrRelation qs index ≃ store
-     -> forall tuple,
+     -> forall tuple bound
+        (ValidBound : UnConstrFreshIdx (GetUnConstrRelation qs index) bound),
       EnsembleIndexedListEquivalence
         (GetUnConstrRelation
            (@UpdateUnConstrRelation db_schema qs index
                                    (EnsembleInsert
-                                      {| tupleIndex := Datatypes.length (benumerate store);
+                                      {| tupleIndex := bound;
                                          indexedTuple := tuple |}
                                       (GetUnConstrRelation qs index))) index)
         (benumerate (binsert (Bag := BagPlus bag_plus) store tuple)).
 Proof.
   intros * store_eqv; destruct store_eqv as (store_eqv, store_WF).
-  unfold EnsembleIndexedTreeEquivalence_AbsR,
+  unfold EnsembleIndexedTreeEquivalence_AbsR, UnConstrFreshIdx,
   EnsembleBagEquivalence, EnsembleIndexedListEquivalence,
   UnIndexedEnsembleListEquivalence, EnsembleListEquivalence in *.
 
@@ -470,17 +471,20 @@ Proof.
   setoid_rewrite NoDup_modulo_permutation.
   split; intros.
 
-  erewrite binsert_enumerate_length by eauto with typeclass_instances.
+  unfold UnConstrFreshIdx; exists (S bound); intros; intuition; subst; simpl.
+  unfold EnsembleInsert in *; intuition; subst; simpl; omega.
+  (* erewrite binsert_enumerate_length by eauto with typeclass_instances.
     intuition; subst;
     [ | apply lt_S];
-    intuition.
+    intuition. *)
 
   destruct store_eqv as (indices & [ l' (map & nodup & equiv) ]); eauto.
 
-  destruct store_eqv as (indices & [ l' (map & nodup & equiv) ]); eauto.
+
+  (* destruct store_eqv as (indices & [ l' (map & nodup & equiv) ]); eauto. *)
 
   destruct (permutation_map_cons indexedTuple (binsert_enumerate tuple store store_WF)
-                                 {| tupleIndex := Datatypes.length (benumerate store);
+                                 {| tupleIndex := bound;
                                     indexedTuple := tuple |} l' eq_refl map)
     as [ l'0 (map' & perm) ].
 
@@ -490,9 +494,8 @@ Proof.
   eexists; split; try apply perm.
 
   constructor;
-    [ rewrite <- equiv; intro abs;
-      apply indices in abs; simpl in abs;
-      eapply lt_refl_False; eauto | assumption ].
+    [ rewrite <- equiv; intro abs; apply H in abs;
+      simpl in abs; omega | assumption ].
 
   setoid_rewrite perm.
   setoid_rewrite equiv.
@@ -507,11 +510,13 @@ Corollary binsertPlus_correct_DB :
          (bag_plus : BagPlusProof (@Tuple (@QSGetNRelSchemaHeading db_schema index)))
          store,
     GetUnConstrRelation qs index ≃ store
-    -> forall tuple,
-    GetUnConstrRelation
+    -> forall
+      tuple bound
+      (ValidBound : UnConstrFreshIdx (GetUnConstrRelation qs index) bound),
+      GetUnConstrRelation
        (@UpdateUnConstrRelation db_schema qs index
                                 (EnsembleInsert
-                                   {| tupleIndex := Datatypes.length (benumerate store);
+                                   {| tupleIndex := bound;
                                       indexedTuple := tuple |}
                                    (GetUnConstrRelation qs index))) index
       ≃ binsert (Bag := BagPlus bag_plus) store tuple.
@@ -525,6 +530,7 @@ Ltac binsert_correct_DB :=
   match goal with
     | [ H: EnsembleBagEquivalence ?bag_plus
                                   (GetUnConstrRelation ?qs ?index)
-                                  ?store |- _ ] =>
-      solve [ simpl; apply (binsertPlus_correct_DB qs index bag_plus store H) ]
+                                  ?store,
+        H0 : UnConstrFreshIdx (GetUnConstrRelation ?qs ?index) ?bound |- _ ] =>
+      solve [ simpl; apply (binsertPlus_correct_DB qs index bag_plus store H _ bound H0) ]
   end.
