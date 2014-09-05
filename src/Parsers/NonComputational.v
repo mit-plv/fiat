@@ -180,6 +180,7 @@ Section recursive_descent_parser.
                        (or_intror (conj (eq_sym pf) (remove_nonterminal_dec H)))
                        str
                        (reflexivity _)
+                       (** oops, this makes it loop, since we just removed the nt *)
                        nt). }
             { (** oops, we already saw this nonterminal in the past.  ABORT! *)
               apply make_abort. } }
