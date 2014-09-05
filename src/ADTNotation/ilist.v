@@ -270,23 +270,33 @@ Section ilist.
 
 End ilist.
 
+(** ** Mapping a function over a(n i)[list], in two non-dependent ways *)
+Section ilist_map.
+  Context {A} (B : A -> Type).
+
+  Fixpoint imap_list (f : forall a : A, B a) (As : list A) : ilist B As
+    := match As with
+         | nil => inil _
+         | x::xs => @icons _ B x _ (f x) (imap_list f xs)
+       end.
+
+  Fixpoint map_ilist {C} (f : forall (a : A), B a -> C) {As} (Bs : ilist B As) : list C
+    := match Bs with
+         | inil => nil
+         | icons _ _ x xs => (f _ x)::map_ilist f xs
+       end.
+End ilist_map.
+
 Section of_list.
   Context {T : Type}.
 
-  Fixpoint ilist_of_list (ls : list T) : ilist (fun _ => T) ls
-    := match ls as ls return ilist (fun _ => T) ls with
-         | nil => inil _
-         | x::xs => @icons _ (fun _ => T) x _ x (ilist_of_list xs)
-       end.
-
-  Fixpoint list_of_ilist {T'} {is} (ls : ilist (fun _ : T' => T) is) : list T
-    := match ls with
-         | inil => nil
-         | icons _ _ x xs => x::list_of_ilist xs
-       end.
+  Definition ilist_of_list : forall ls : list T, ilist (fun _ => T) ls := imap_list (fun _ => T) (fun x => x).
+  Definition list_of_ilist {T'} {is} (ls : ilist (fun _ : T' => T) is) : list T
+    := map_ilist (B := fun _ => T) (fun _ x => x) ls.
 
   Lemma list_of_ilist_of_list ls : list_of_ilist (ilist_of_list ls) = ls.
   Proof.
+    unfold list_of_ilist, ilist_of_list.
     induction ls; simpl in *; f_equal; assumption.
   Qed.
 End of_list.
