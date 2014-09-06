@@ -112,5 +112,8 @@ Definition StocksDB :
   Sharpened StocksSpec.
 Proof.
   plan Stocks_AbsR.
+
+  Show.
+
   finish sharpening.
 Defined.

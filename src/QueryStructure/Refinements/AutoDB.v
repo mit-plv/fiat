@@ -531,7 +531,7 @@ Ltac mutator' AbsR storages :=
 
 Ltac mutator :=
   match goal with
-    | [ |- context[tupleIndex _ <> _] ] =>
+    | [ |- context[UnConstrFreshIdx _ _] ] =>
       match goal with
         | [ |- context[nr' <- Pick (fun nr' => ?AbsR _ nr'); ret (nr', _)] ] =>
           match type of AbsR with

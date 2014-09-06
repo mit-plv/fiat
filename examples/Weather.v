@@ -94,5 +94,8 @@ Definition WeatherStation :
   Sharpened WeatherSpec.
 Proof.
   plan Weather_AbsR.
+
+  Show.
+
   finish sharpening.
 Defined.

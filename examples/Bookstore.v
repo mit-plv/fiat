@@ -123,7 +123,11 @@ Definition BookStore_AbsR
 Definition BookStore :
   Sharpened BookStoreSpec.
 Proof.
+
   plan BookStore_AbsR.
+
+  Show.
+
   finish sharpening.
 Defined.
 

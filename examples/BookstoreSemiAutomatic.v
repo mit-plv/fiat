@@ -319,4 +319,7 @@ Proof.
 
   (* At this point our implementation is fully computational: we're done! *)
   finish sharpening.
+
+  Show.
+
 Defined.
