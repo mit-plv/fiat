@@ -80,7 +80,9 @@ SRC_MODULES    := \
 	QueryStructure/Refinements/Bags/BagsOfTuples\
 	QueryStructure/Refinements/Bags/String_as_OT\
 	QueryStructure/Refinements/Bags/Bags\
-	QueryStructure/Refinements/AutoDB
+	QueryStructure/Refinements/AutoDB\
+	Parsers/ContextFreeGrammar\
+	Parsers/Specification\
 
 EXAMPLE_MODULES := \
 	Bookstore \
