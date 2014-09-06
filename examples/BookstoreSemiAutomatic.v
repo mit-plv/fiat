@@ -57,18 +57,23 @@ Definition BookStoreSig : ADTSig :=
   ADTsignature {
       "Init" : unit → rep,
       "PlaceOrder" : rep × Order → rep × bool,
+      "DeleteOrder" : rep × nat → rep × list Order,
       "AddBook" : rep × Book → rep × bool,
       "GetTitles" : rep × string → rep × list string,
       "NumOrders" : rep × string → rep × nat
     }.
 
 (* Now we write what the methods should actually do. *)
+
 Definition BookStoreSpec : ADT BookStoreSig :=
   QueryADTRep BookStoreSchema {
     const "Init" (_ : unit) : rep := empty,
 
     update "PlaceOrder" ( o : Order ) : bool :=
         Insert o into sORDERS,
+
+    update "DeleteOrder" ( oid : nat ) : list Order :=
+        Delete o from sORDERS where o!sISBN = oid ,
 
     update "AddBook" ( b : Book ) : bool :=
         Insert b into sBOOKS ,
@@ -95,31 +100,34 @@ Definition OrderSchema := QSGetNRelSchemaHeading BookStoreSchema Orders.
 
 (* Now we define an index structure for each table. *)
 
-Definition BookStorage : @BagPlusBagProof Book.
+Definition BookStorage : BagPlusProof (@Tuple BookSchema).
   mkIndex BookSchema [ BookSchema/sAUTHOR; BookSchema/sISBN ].
 Defined.
 (* In other words, index first on the author field, then the ISBN field.
  * Works especially efficiently for accesses keyed on author. *)
 
-Definition OrderStorage : @BagPlusBagProof Order.
+Definition OrderStorage : BagPlusProof (@Tuple OrderSchema).
   mkIndex OrderSchema [ OrderSchema/sISBN ].
 Defined.
 
-(* Each index has an associate datatype.  Let's name each one. *)
-Definition TBookStorage := BagType BookStorage.
-Definition TOrderStorage := BagType OrderStorage.
+(* For convenience, we define aliases for the types of the
+   index structures contained in our storage types. *)
+Definition TBookStorage := BagTypePlus BookStorage.
+Definition TOrderStorage := BagTypePlus OrderStorage.
 
 (* This abstraction relation connects:
  * 1. Abstract database from reference implementation, using sets
  * 2. Our fancy realization, using search trees (from Bags library) *)
+
 Definition BookStore_AbsR
            (or : UnConstrQueryStructure BookStoreSchema)
            (nr : TBookStorage * TOrderStorage) : Prop :=
-  or!sBOOKS ≃ benumerate (fst nr) /\ or!sORDERS ≃ benumerate (snd nr).
+  or!sBOOKS ≃ fst nr /\ or!sORDERS ≃ snd nr.
 
-Definition BookStoreManual :
+Theorem BookStoreManual :
   Sharpened BookStoreSpec.
 Proof.
+
   unfold BookStoreSpec.
 
   (* First, we unfold various definitions and drop constraints *)
@@ -134,14 +142,9 @@ Proof.
     initializer.
   }
 
-<<<<<<< variant A
-  (* We then move on to the "PlaceOrder" method, which we decide to
->>>>>>> variant B
   (* We then move on to the "GetTitles" method, which we decide to
-####### Ancestor
-  (* We then move on to the "PlaceOrder" method, which we decide to
-======= end
      implement semi-manually *)
+
   hone method "GetTitles". {
     (* STEP 1: unfold the definition of the abstraction relation. *)
     startMethod BookStore_AbsR.
@@ -151,7 +154,8 @@ Proof.
     (* First, instead of looping over the mathematical relation,
      * let's loop over an enumeration of the elements in the
      * concrete data structure. *)
-    rewrite refine_List_Query_In by eassumption.
+
+    rewrite refine_List_Query_In by EquivalentBagIsEquivalentIndexedList.
 
     (* Next, we can implement the [Where] test as a list [filter]. *)
     rewrite refine_List_Query_In_Where; instantiate (1 := _).
@@ -169,10 +173,11 @@ Proof.
      * structures efficiently *)
     (* We are filtering the results of enumerating all entries in a data structure.
      * There's a method available that combines the two operations. *)
+
     rewrite filter over BookStorage
             using search term (Some n, (@None nat, @nil (TSearchTermMatcher BookSchema))).
 
-    (* Again, a generic tactic would handle this phase. *)
+    (* Again, a generic tactic can handle this phase. *)
     Undo 1.
     asPerm BookStorage.
 
@@ -211,6 +216,7 @@ Proof.
        sets, every inserted item is paired with a unique ID, which we
        need to pick. Further refinements will drop this index, which
        thus doesn't have any computational cost. *)
+
     pickIndex.
 
     (* To ease its implementation, we convert this foregin key check
@@ -227,16 +233,8 @@ Proof.
        permutation-preserving transformations, we substitute slow
        operations for more efficient ones *)
     asPerm (BookStorage, OrderStorage).
-<<<<<<< variant A
-
-    (* This representation is reasonnably satisfactory; we pick the
->>>>>>> variant B
 
     (* This representation is reasonably satisfactory; we pick the
-####### Ancestor
-
-    (* This representation is reasonnably satisfactory; we pick the
-======= end
        resulting list, and proceed to a few extra optimizations *)
     commit.
 
@@ -306,6 +304,18 @@ Proof.
   hone method "NumOrders". {
     observer.
   }
+
+  hone method "DeleteOrder". {
+    startMethod BookStore_AbsR.
+
+    useDeleteIndex.
+
+    deleteChecksSucceeded.
+
+    finish honing.
+  }
+
+  unfold cast, eq_rect_r, eq_rect, eq_sym; simpl.
 
   (* At this point our implementation is fully computational: we're done! *)
   finish sharpening.

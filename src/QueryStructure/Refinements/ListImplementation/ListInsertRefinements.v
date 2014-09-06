@@ -358,13 +358,13 @@ Proof.
 Qed.
 
 Ltac refine_list_insert_in_other_table :=
-  match goal with 
-    | [ |- appcontext [ 
+  match goal with
+    | [ |- appcontext [
                EnsembleIndexedListEquivalence
                  (GetUnConstrRelation
                     (UpdateUnConstrRelation ?qs ?index1
-                                            (EnsembleInsert ?inserted 
-                                                            (GetUnConstrRelation ?qs ?index1))) 
+                                            (EnsembleInsert ?inserted
+                                                            (GetUnConstrRelation ?qs ?index1)))
                     ?index2) ] ] => apply (@refine_list_insert_in_other_table _ qs index1 index2);
                                    [ eauto | intuition discriminate ]
   end.
@@ -373,14 +373,16 @@ Lemma ImplementListInsert_eq qsSchema Ridx
       (tup : Tuple)
       (or : UnConstrQueryStructure qsSchema)
       (nr : list (Tuple))
+      (bound : nat)
 :
   EnsembleIndexedListEquivalence (GetUnConstrRelation or Ridx) nr
+  -> (UnConstrFreshIdx (GetUnConstrRelation or Ridx) bound)
   -> refine
        {a |
         EnsembleIndexedListEquivalence
           (GetUnConstrRelation
              (@UpdateUnConstrRelation qsSchema or Ridx
-                                     (EnsembleInsert {| tupleIndex := length nr;
+                                     (EnsembleInsert {| tupleIndex := bound;
                                                         indexedTuple := tup|}
                                                      (GetUnConstrRelation or Ridx))) Ridx) a}
        (ret (tup :: nr)).
@@ -388,30 +390,31 @@ Proof.
   unfold refine; intros; inversion_by computes_to_inv; subst; constructor.
   unfold GetUnConstrRelation, UpdateUnConstrRelation in *.
   rewrite ith_replace_BoundIndex_eq.
-  unfold EnsembleInsert, In, EnsembleIndexedListEquivalence in *;
+  unfold EnsembleInsert, In, EnsembleIndexedListEquivalence, UnConstrFreshIdx in *;
     intuition.
-  unfold In in *; destruct H; subst; simpl.
-  omega.
-  generalize (H0 _ H); omega.
-  destruct H1 as [l' [l'_eq equiv_l']];
-    econstructor 1 with ({| tupleIndex := length nr;
+  exists (S bound); unfold In in *; destruct_ex; subst; simpl.
+  intros; intuition; subst.
+  simpl. omega.
+  destruct H2 as [l' [l'_eq equiv_l']];
+    econstructor 1 with ({| tupleIndex := bound;
                             indexedTuple := tup|} :: l'); split; eauto.
   simpl; subst; reflexivity.
-  unfold EnsembleListEquivalence  in *; intuition.
+  unfold EnsembleListEquivalence in *; intuition.
   econstructor; eauto.
   unfold not; intros.
-  generalize (H0 _ (proj2 (H1 _) H2)); simpl.
+  generalize (H0 _ (proj2 (H2 _) H3)); simpl.
   omega.
   unfold In in *; simpl; intuition.
-  right; apply H1; auto.
+  right; apply H2; auto.
   unfold In in *; simpl in *; intuition.
-  right; apply H1; auto.
+  right; apply H2; auto.
 Qed.
 
 Lemma ImplementListInsert_neq qsSchema Ridx Ridx'
       (tup : Tuple)
       (or : UnConstrQueryStructure qsSchema)
       (nr : list (Tuple))
+      m
 :
   Ridx <> Ridx'
   -> EnsembleIndexedListEquivalence (GetUnConstrRelation or Ridx) nr
@@ -420,7 +423,7 @@ Lemma ImplementListInsert_neq qsSchema Ridx Ridx'
         EnsembleIndexedListEquivalence
           (GetUnConstrRelation
              (@UpdateUnConstrRelation qsSchema or Ridx'
-                                     (EnsembleInsert {| tupleIndex := length nr;
+                                     (EnsembleInsert {| tupleIndex := m;
                                                         indexedTuple := tup|}
  (GetUnConstrRelation or Ridx'))) Ridx) a}
        (ret nr).

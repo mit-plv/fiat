@@ -79,20 +79,11 @@ Proof.
   split; intro; setoid_rewrite eq_sym_iff; assumption.
 Qed.
 
-Lemma refine_trivial_if_then_else :
-  forall x,
-    refine 
-      (If_Then_Else x (ret true) (ret false))
-      (ret x).
-Proof.
-  destruct x; reflexivity.
-Qed.
-
 Require Import Bool.
 
 Lemma refine_decide_not :
   forall {A} (P: A -> Prop),
-    refine (Pick (fun (b : bool) => 
+    refine (Pick (fun (b : bool) =>
                     decides b (forall (x: A), ~ P x)))
            (Pick (fun (b : bool) =>
                     decides (negb b) (exists (x: A), P x))).
@@ -109,7 +100,7 @@ Lemma refine_decide_negb :
                 (Bind (Pick (fun b => decides b P))
                       (fun b => ret (negb b))).
 Proof.
-  unfold refineEquiv, refine; simpl; 
+  unfold refineEquiv, refine; simpl;
   split; intros; inversion_by computes_to_inv;
   subst; repeat econstructor; eauto; rewrite negb_involutive;
   [ assumption | constructor ].
@@ -117,7 +108,7 @@ Qed.
 
 Lemma refine_decide_negation :
   forall {A} (P: A -> Prop),
-    refine (Pick (fun (b : bool) => 
+    refine (Pick (fun (b : bool) =>
                     decides b (forall (x: A), ~ P x)))
            (Bind (Pick (fun b => decides b (exists (x: A), P x)))
                  (fun b => ret (negb b))).
@@ -125,4 +116,3 @@ Proof.
   intros;
   rewrite refine_decide_not, refine_decide_negb; reflexivity.
 Qed.
-

@@ -5,7 +5,7 @@ Require Import List String FunctionalExtensionality Ensembles
 (* A heading describes a tuple as a set of Attributes
    and types. *)
 Record Heading :=
-  { Attributes : Type;
+  { Attributes : Set;
     Domain : Attributes -> Type
   }.
 

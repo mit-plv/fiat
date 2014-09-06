@@ -75,7 +75,7 @@ End ProcessSchedulerInterface.
 
 Unset Implicit Arguments.
 
-Definition Processes := GetRelationKey ProcessSchedulerSchema PROCESSES_TABLE. 
+Definition Processes := GetRelationKey ProcessSchedulerSchema PROCESSES_TABLE.
 Definition ProcessHeading := QSGetNRelSchemaHeading ProcessSchedulerSchema Processes.
 
 Definition StatePIDIndexedTree : @BagPlusBagProof (@Tuple ProcessHeading).
@@ -136,7 +136,7 @@ Section TreeBasedRefinement.
                 (@None nat, (Some n, @nil (TSearchTermMatcher ProcessHeading))).
       setoid_rewrite (bfind_correct _).
       commit.
-      
+
       choose_db ProcessScheduler_AbsR.
       finish honing.
     }
@@ -145,7 +145,7 @@ Section TreeBasedRefinement.
       unfold ProcessScheduler_AbsR in *;
       simplify with monad laws.
 
-      lift list property (assert_cache_property (cfresh_cache r_n) 
+      lift list property (assert_cache_property (cfresh_cache r_n)
                                                 max_cached_neq_projected _) as cache.
 
       rewrite refine_pick_val by eassumption;
@@ -162,7 +162,7 @@ Section TreeBasedRefinement.
 
       finish honing.
     }
- 
+
     hone method COUNT. {
       unfold ProcessScheduler_AbsR in *.
       simplify with monad laws.

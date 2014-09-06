@@ -27,7 +27,7 @@ Proof.
   [ exists seq; intuition | ].
   destruct H as [ seq' (no_dup & perm) ].
   symmetry in perm.
-  eapply NoDup_Permutation_rewrite; eauto. 
+  eapply NoDup_Permutation_rewrite; eauto.
 Qed.
 
 Lemma NoDup_slice :
@@ -35,7 +35,7 @@ Lemma NoDup_slice :
     @NoDup A (a ++ b ++ c) -> NoDup (a ++ c).
 Proof.
   induction b; simpl; intros.
-  - trivial.              
+  - trivial.
   - apply IHb.
     eapply NoDup_remove_1; eauto.
 Qed.
@@ -88,7 +88,7 @@ Qed.
 Lemma permutation_map :
   forall {A B} f seq seq',
     Permutation seq' (@map A B f seq) ->
-    exists seq0, 
+    exists seq0,
       seq' = map f seq0.
 Proof.
   induction seq; simpl; intros.
@@ -108,7 +108,7 @@ Proof.
 
   apply app_map_inv in IHseq.
   destruct IHseq as [ l1' [ l2' (seq0_eq_app & l1l1' & l2l2') ] ].
-  
+
   exists (l1' ++ a :: l2').
   rewrite map_app.
   simpl.
@@ -116,12 +116,12 @@ Proof.
 Qed.
 
 Lemma permutation_map_base :
-  forall {A} {B} (f: B -> A) {shuffled: list A} {l1}, 
+  forall {A} {B} (f: B -> A) {shuffled: list A} {l1},
     Permutation shuffled l1 ->
     forall l1',
       List.map f l1' = l1 ->
-      exists l', 
-        List.map f l' = shuffled /\ 
+      exists l',
+        List.map f l' = shuffled /\
         Permutation l' l1'.
 Proof.
   induction shuffled; simpl; intros.
@@ -133,7 +133,7 @@ Proof.
   symmetry in H.
   pose proof (permutation_cons_in H) as in_l1.
   apply in_split in in_l1.
-  destruct in_l1 as [ l2 [ l3 l1_split ] ]. 
+  destruct in_l1 as [ l2 [ l3 l1_split ] ].
   rewrite l1_split in H, H0; clear l1_split l1.
   rewrite <- Permutation_middle in H.
   apply Permutation_cons_inv in H.
@@ -153,13 +153,13 @@ Proof.
 Qed.
 
 Lemma permutation_map_app :
-  forall {A} {B} (f: B -> A) {l1 l2} {shuffled: list A}, 
+  forall {A} {B} (f: B -> A) {l1 l2} {shuffled: list A},
     Permutation shuffled (l1 ++ l2) ->
-    forall l1' l2', 
+    forall l1' l2',
       List.map f l1' = l1 ->
       List.map f l2' = l2 ->
-      exists l', 
-        List.map f l' = shuffled /\ 
+      exists l',
+        List.map f l' = shuffled /\
         Permutation l' (l1' ++ l2').
 Proof.
   induction l2; simpl; intros.
@@ -190,13 +190,13 @@ Qed.
 Require Import Program.
 
 Lemma permutation_map_cons :
-  forall {A} {B} (f: B -> A) {x1 l2} {shuffled: list A}, 
+  forall {A} {B} (f: B -> A) {x1 l2} {shuffled: list A},
     Permutation shuffled (x1 :: l2) ->
-    forall x1' l2', 
+    forall x1' l2',
       f x1' = x1 ->
       List.map f l2' = l2 ->
-      exists l', 
-        List.map f l' = shuffled /\ 
+      exists l',
+        List.map f l' = shuffled /\
         Permutation l' (x1' :: l2').
 Proof.
   intros.
@@ -215,4 +215,41 @@ Proof.
   inversion len.
   destruct seq; simpl in *; try discriminate.
   apply Permutation_length_1 in H; congruence.
+Qed.
+
+Require Import SetoidList.
+
+Lemma InA_app_swap {A} eqA :
+  Equivalence eqA
+  -> forall (a : A) l l',
+       InA eqA a (l ++ l') -> InA eqA a (l' ++ l).
+Proof.
+  intros; eapply InA_app_iff;
+  eapply InA_app_iff in H0; eauto; intuition.
+Qed.
+
+Lemma InA_app_cons_swap {A} eqA :
+  Equivalence eqA
+  -> forall (a a' : A) l l',
+       InA eqA a (l ++ (a' :: l')) <-> InA eqA a ((a' :: l) ++ l').
+Proof.
+  split; intros.
+  - eapply InA_app_swap; eauto.
+    intros; eapply InA_app_iff;
+    eapply InA_app_iff in H0; eauto; intuition.
+    inversion H; subst; eauto.
+  - eapply InA_app_swap; eauto.
+    intros; eapply InA_app_iff;
+    eapply InA_app_iff in H0; eauto; intuition.
+    inversion H; subst; eauto.
+Qed.
+
+Lemma PermutationConsSplit {A} :
+  forall (a : A) (l l' : list A),
+    Permutation (a :: l) l'
+    -> exists l1' l2', l' = app l1' (a :: l2').
+Proof.
+  intros.
+  apply (Permutation_in a) in H; simpl; eauto.
+  apply in_split; apply H; constructor; eauto.
 Qed.

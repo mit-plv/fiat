@@ -5,7 +5,7 @@ Require Import String List Sorting.Permutation
         EnsembleListEquivalence.
 
 (* [Query_For] and all aggregates are opaque, so we need to make them
-   transparent in order to reason about them. *) 
+   transparent in order to reason about them. *)
 Local Transparent Query_For Count Max MaxN MaxZ Sum SumN SumZ.
 Require Import NArith ZArith.
 
@@ -220,11 +220,6 @@ Lemma DropQSConstraintsQuery_In_UnderBinder {A B} :
 Proof.
   reflexivity.
 Qed.
-
-Definition UnIndexedEnsembleListEquivalence
-           {heading} R (l : list (@Tuple heading))  :=
-  exists l', (map indexedTuple l') = l /\
-  EnsembleListEquivalence R l'.
 
 (*Lemma Equivalent_Swap_In {ResultT}
       qsSchema qs R (bod : Tuple -> Comp (list ResultT))
@@ -441,6 +436,16 @@ Proof.
   setoid_rewrite refineEquiv_pick_eq';
   simplify with monad laws; f_equiv.
 Qed.
+
+Global Instance IndexedDecideableEnsemble
+       {heading}
+       {P : Ensemble (@Tuple heading)}
+       {P_dec : DecideableEnsemble P}
+: DecideableEnsemble (fun x : IndexedTuple => P x) :=
+  {| dec := @GeneralQueryRefinements.dec _ _ P_dec |}.
+Proof.
+  intuition; eapply dec_decides_P; simpl in *; eauto.
+Defined.
 
 Ltac subst_strings :=
   repeat match goal with

@@ -49,14 +49,14 @@ Section AdditionalNatLemmas.
   Qed.
 
   Lemma lt_refl_False :
-    forall x, 
+    forall x,
       lt x x -> False.
   Proof.
     intros; omega.
   Qed.
 
   Lemma beq_nat_eq_nat_dec :
-    forall x y, 
+    forall x y,
       beq_nat x y = if eq_nat_dec x y then true else false.
   Proof.
     intros; destruct (eq_nat_dec _ _); [ apply beq_nat_true_iff | apply beq_nat_false_iff ]; assumption.
@@ -144,16 +144,16 @@ Section AdditionalBoolLemmas.
   Qed.
 
   Lemma string_dec_bool_true_iff :
-    forall s1 s2, 
+    forall s1 s2,
       (if string_dec s1 s2 then true else false) = true <-> s1 = s2.
-  Proof.          
+  Proof.
     intros s1 s2; destruct (string_dec s1 s2); simpl; intuition.
   Qed.
 
   Lemma eq_nat_dec_bool_true_iff :
-    forall n1 n2, 
+    forall n1 n2,
       (if eq_nat_dec n1 n2 then true else false) = true <-> n1 = n2.
-  Proof.          
+  Proof.
     intros n1 n2; destruct (eq_nat_dec n1 n2); simpl; intuition.
   Qed.
 
@@ -223,7 +223,7 @@ Section AdditionalListLemmas.
       [a] = [] <-> False.
   Proof.
     intuition discriminate.
-  Qed.              
+  Qed.
 
   Lemma in_nil_iff :
     forall {A} (item: A),
@@ -299,6 +299,16 @@ Section AdditionalListLemmas.
     ].
   Qed.
 
+  Lemma NoDupFilter {A}
+  : forall (f : A -> bool) (l : list A),
+      NoDup l -> NoDup (filter f l).
+  Proof.
+    induction l; simpl; intros; eauto.
+    inversion H; subst; find_if_inside; try constructor; eauto.
+    unfold not; intros H'; apply H2; revert H'; clear; induction l;
+    simpl; eauto; find_if_inside; simpl; intuition.
+  Qed.
+
   Lemma NoDupA_stronger_than_NoDup :
     forall {A: Type} (seq: list A) eqA,
       Equivalence eqA ->
@@ -325,7 +335,7 @@ Section AdditionalListLemmas.
 
   Lemma filter_by_equiv_meta :
     forall {A B : Type} (f g : A -> B -> bool),
-      (forall (a: A), ExtensionalEq (f a) (g a)) -> 
+      (forall (a: A), ExtensionalEq (f a) (g a)) ->
       (forall (a: A) (seq : list B), filter (f a) seq = filter (g a) seq).
   Proof.
     intros * equiv *;
@@ -411,7 +421,7 @@ Section AdditionalListLemmas.
   Qed.
 
   Lemma map_flatten :
-    forall {B C} (f: B -> C) (xs: list (list B)), 
+    forall {B C} (f: B -> C) (xs: list (list B)),
       map f (flatten xs) = flatten (map (fun x => map f x) xs).
   Proof.
     induction xs; simpl;
@@ -419,10 +429,10 @@ Section AdditionalListLemmas.
   Qed.
 
   Lemma map_flat_map :
-    forall {A B C} (f: B -> C) (g: A -> list B) (xs: list A), 
+    forall {A B C} (f: B -> C) (g: A -> list B) (xs: list A),
       map f (flat_map g xs) = flat_map (fun x : A => map f (g x)) xs.
   Proof.
-    intros; 
+    intros;
     rewrite flat_map_flatten, map_flatten, map_map, <- flat_map_flatten;
     reflexivity.
   Qed.
@@ -517,11 +527,11 @@ Section AdditionalListLemmas.
       Permutation (flat_map f seq) (flat_map f (rev seq)).
   Proof.
     induction seq; simpl; intros.
-    
+
     - reflexivity.
-    - rewrite !flat_map_flatten, map_app. 
-      rewrite flatten_app, <- !flat_map_flatten. 
-      simpl; rewrite app_nil_r. 
+    - rewrite !flat_map_flatten, map_app.
+      rewrite flatten_app, <- !flat_map_flatten.
+      simpl; rewrite app_nil_r.
       rewrite Permutation_app_comm.
       apply Permutation_app; eauto.
   Qed.
@@ -529,11 +539,11 @@ Section AdditionalListLemmas.
   Lemma length_flatten_aux :
     forall {A} seq,
     forall n,
-      n + List.length (flatten seq) = List.fold_right (compose plus (@List.length A)) n seq. 
+      n + List.length (flatten seq) = List.fold_right (compose plus (@List.length A)) n seq.
   Proof.
     induction seq; simpl; intros.
-    
-    - auto with arith. 
+
+    - auto with arith.
     - unfold compose;
       rewrite app_length, <- IHseq;
       omega.
@@ -541,7 +551,7 @@ Section AdditionalListLemmas.
 
   Lemma length_flatten :
     forall {A} seq,
-      List.length (flatten seq) = List.fold_right (compose plus (@List.length A)) 0 seq. 
+      List.length (flatten seq) = List.fold_right (compose plus (@List.length A)) 0 seq.
   Proof.
     intros.
     pose proof (length_flatten_aux seq 0) as H; simpl in H; eauto.
@@ -570,7 +580,7 @@ Section AdditionalListLemmas.
 
   Lemma refold_in :
     forall {A} a b l,
-      @List.In A a (b :: l) <-> List.In a l \/ a = b. 
+      @List.In A a (b :: l) <-> List.In a l \/ a = b.
   Proof.
     intros; simpl; intuition.
   Qed.
@@ -579,10 +589,10 @@ Section AdditionalListLemmas.
     forall {A B} seq l1 l2 (f: A -> B),
       l1 ++ l2 = map f seq ->
       exists l1' l2',
-        seq = l1' ++ l2' /\ l1 = map f l1' /\ l2 = map f l2'. 
+        seq = l1' ++ l2' /\ l1 = map f l1' /\ l2 = map f l2'.
   Proof.
     induction seq; simpl; intros.
-    
+
     exists (@nil A) (@nil A); simpl.
     apply app_eq_nil in H; intuition.
 
@@ -601,7 +611,7 @@ Section AdditionalListLemmas.
     forall {A B} seq x1 l2 (f: A -> B),
       x1 :: l2 = map f seq ->
       exists x1' l2',
-        seq = x1' :: l2' /\ x1 = f x1' /\ l2 = map f l2'. 
+        seq = x1' :: l2' /\ x1 = f x1' /\ l2 = map f l2'.
   Proof.
     intros * _eq.
     destruct seq as [ | x1' l2' ]; simpl in *; try discriminate.
@@ -613,7 +623,7 @@ Section AdditionalListLemmas.
     forall {A B} (f: A -> B) seq,
       map f seq = [] -> seq = [].
   Proof.
-    intros; destruct seq; simpl in *; try discriminate; trivial. 
+    intros; destruct seq; simpl in *; try discriminate; trivial.
   Qed.
 
 
@@ -627,11 +637,11 @@ Section AdditionalListLemmas.
     - reflexivity.
     - destruct (f a); simpl; congruence.
   Qed.
-  
+
   Lemma filter_map :
     forall {A B} f g seq,
       List.filter f (@List.map A B g seq) =
-      List.map g (List.filter (fun x => f (g x)) seq). 
+      List.map g (List.filter (fun x => f (g x)) seq).
   Proof.
     induction seq; simpl; intros.
 
@@ -683,7 +693,7 @@ Section AdditionalListLemmas.
   Lemma filter_commute :
     forall {A} f g seq,
       @filter A f (filter g seq) = filter g (filter f seq).
-  Proof. 
+  Proof.
     induction seq; simpl; intros; trivial.
     destruct (f a) eqn:eqf; destruct (g a) eqn:eqg;
     simpl; rewrite ?eqf, ?eqg, ?IHseq; trivial.
@@ -691,19 +701,129 @@ Section AdditionalListLemmas.
 
   Lemma fold_right_id {A} :
     forall seq,
-      @List.fold_right (list A) A (fun elem acc => elem :: acc) [] seq = seq. 
+      @List.fold_right (list A) A (fun elem acc => elem :: acc) [] seq = seq.
   Proof.
     induction seq; simpl; try rewrite IHseq; congruence.
   Qed.
-  
+
   Lemma fold_left_id {A} :
     forall seq,
-      @List.fold_left (list A) A (fun acc elem => elem :: acc) seq [] = rev seq. 
+      @List.fold_left (list A) A (fun acc elem => elem :: acc) seq [] = rev seq.
   Proof.
     intros.
     rewrite <- fold_left_rev_right.
     apply fold_right_id.
   Qed.
+
+  Lemma In_partition {A}
+  : forall f (l : list A) a,
+      List.In a l <-> (List.In a (fst (List.partition f l))
+                       \/ List.In a (snd (List.partition f l))).
+  Proof.
+    split; induction l; simpl; intros; intuition; simpl; subst;
+    first [destruct (f a0); destruct (List.partition f l); simpl in *; intuition
+          | destruct (f a); destruct (List.partition f l); simpl; intuition].
+  Qed.
+
+  Lemma In_partition_matched {A}
+  : forall f (l : list A) a,
+      List.In a (fst (List.partition f l)) ->
+      f a = true.
+  Proof.
+    induction l; simpl; intros; intuition; simpl; subst; eauto.
+    case_eq (f a); destruct (List.partition f l); simpl; intuition;
+    rewrite H0 in H; eauto; inversion H; subst; eauto.
+  Qed.
+
+  Lemma In_partition_unmatched {A}
+  : forall f (l : list A) a,
+      List.In a (snd (List.partition f l)) ->
+      f a = false.
+  Proof.
+    induction l; simpl; intros; intuition; simpl; subst; eauto.
+    case_eq (f a); destruct (List.partition f l); simpl; intuition;
+    rewrite H0 in H; eauto; inversion H; subst; eauto.
+  Qed.
+
+  Lemma nil_in_false :
+    forall {A} seq,
+      seq = nil <-> ~ exists (x: A), List.In x seq.
+  Proof.
+    split; intro H.
+    intros [ x in_seq ]; subst; eauto using in_nil.
+    destruct seq as [ | a ]; trivial.
+    exfalso; apply H; exists a; simpl; intuition.
+  Qed.
+
+  Lemma In_InA :
+    forall (A : Type) (l : list A) (eqA : relation A) (x : A),
+      Equivalence eqA -> List.In x l -> InA eqA x l.
+  Proof.
+    induction l; intros; simpl in *.
+    exfalso; eauto using in_nil.
+    destruct H0.
+    apply InA_cons_hd; subst; reflexivity.
+    apply InA_cons_tl, IHl; trivial.
+  Qed.
+
+  Lemma fold_map :
+      forall {A B C} seq f g init,
+        @List.fold_left C A (fun acc x => f acc (g x)) seq init =
+        @List.fold_left C B (fun acc x => f acc (  x)) (@List.map A B g seq) init.
+  Proof.
+    induction seq; simpl; intros; trivial; try rewrite IHseq; intuition.
+  Qed.
+
+  Lemma fold_plus_sym :
+    forall (seq: list nat) (default: nat),
+      List.fold_right plus default seq =
+      List.fold_left plus seq default.
+  Proof.
+    intros; rewrite <- fold_left_rev_right.
+    revert default; induction seq; simpl; eauto; intros.
+    rewrite fold_right_app; simpl; rewrite <- IHseq.
+    clear IHseq; revert a default; induction seq;
+    simpl; intros; auto with arith.
+    rewrite <- IHseq; omega.
+  Qed.
+
+  Lemma map_snd {A B C} :
+    forall (f : A -> B) (l : list (C * A)),
+      List.map f (List.map snd l) =
+      List.map snd (List.map (fun ca => (fst ca, f (snd ca))) l).
+  Proof.
+    intros; repeat rewrite List.map_map; induction l; simpl; eauto.
+  Qed.
+
+  Lemma partition_app {A} :
+    forall f (l1 l2 : list A),
+      List.partition f (l1 ++ l2) =
+      (fst (List.partition f l1) ++ fst (List.partition f l2),
+       snd (List.partition f l1) ++ snd (List.partition f l2)).
+  Proof.
+    induction l1; simpl.
+    - intros; destruct (List.partition f l2); reflexivity.
+    - intros; rewrite IHl1; destruct (f a); destruct (List.partition f l1);
+      simpl; f_equal.
+  Qed.
+
+
+  Lemma partition_filter_eq {A} :
+    forall (f : A -> bool) l,
+      fst (List.partition f l) = List.filter f l.
+  Proof.
+    induction l; simpl; eauto.
+    destruct (List.partition f l); destruct (f a); simpl in *; congruence.
+  Qed.
+
+  Lemma partition_filter_neq {A} :
+    forall (f : A -> bool) l,
+      snd (List.partition f l) = List.filter (fun a => negb (f a)) l.
+  Proof.
+    induction l; simpl; eauto.
+    destruct (List.partition f l); destruct (f a); simpl in *; congruence.
+  Qed.
+
 End AdditionalListLemmas.
 
 Section AdditionalComputeationLemmas.
