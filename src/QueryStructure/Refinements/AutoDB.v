@@ -296,6 +296,25 @@ Ltac useIndex_dep storage :=
       end
   end.
 
+Ltac useDeleteIndex :=
+  match goal with
+      [ H : EnsembleBagEquivalence ?bag_plus (@GetUnConstrRelation ?qsSchema ?qs ?Ridx) ?bag
+        |- context[Pick (QSDeletedTuples ?qs ?Ridx ?DeletedTuples)] ] =>
+      let dec := constr:(@GeneralQueryRefinements.dec _ DeletedTuples _) in
+      let storage := bag_plus in
+      let fs := fields storage in
+      match type of fs with
+        | list (Attributes ?SC) =>
+          findGoodTerm SC dec ltac:(fun fds tail =>
+            let tail := eval simpl in tail in
+              makeTerm storage fs SC fds tail
+              ltac:(fun tm =>
+                      rewrite (@bdelete_correct_DB_fst
+                                 qsSchema qs Ridx bag_plus
+                                 bag H DeletedTuples _ tm) by prove_extensional_eq))
+      end
+    end; rewrite refineEquiv_bind_unit; simpl.
+
 Ltac asPerm_dep' storage := useIndex storage || useIndex_dep storage.
 Ltac asPerm_dep storages :=
   asPerm_dep' storages
@@ -468,6 +487,35 @@ Ltac checksSucceeded :=
               simplify with monad laws);
       reflexivity
   end.
+
+Ltac deleteChecksSucceeded :=
+  match goal with
+    | [ |- context[ret (_, fst (bdelete ?r_n ?search_term)) ] ] =>
+      setoid_rewrite refineEquiv_pick_pair;
+        simplify with monad laws;
+        repeat (rewrite refine_pick_val
+                by (simpl; (refine_bag_update_other_table
+                              || snd_bdelete_correct search_term));
+                simplify with monad laws)
+  end.
+
+Ltac bdeleteZeta :=
+  simpl;
+  match goal with
+    | [ |- refine (ret ?p) ?B ] =>
+      match goal with
+          [ |- context[@bdelete ?bag ?item ?TSearchTerm ?UpdateTerm
+                           ?bag_proof ?r_n ?search_term] ] =>
+          let b :=
+              (eval pattern (@bdelete bag item TSearchTerm UpdateTerm bag_proof r_n search_term)
+                in p) in
+          match b with
+              | ?g ?x => change p with (let y := x in g y);
+                         cbv beta
+          end
+      end
+  end.
+
 
 Ltac checksFailed :=
   match goal with

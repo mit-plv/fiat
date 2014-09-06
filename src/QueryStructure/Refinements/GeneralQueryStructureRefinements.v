@@ -150,5 +150,4 @@ Proof.
   destruct x; reflexivity.
 Qed.
 
-
 Tactic Notation "start" "honing" "QueryStructure" := start_honing_QueryStructure.

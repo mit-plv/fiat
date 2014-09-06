@@ -437,6 +437,16 @@ Proof.
   simplify with monad laws; f_equiv.
 Qed.
 
+Global Instance IndexedDecideableEnsemble
+       {heading}
+       {P : Ensemble (@Tuple heading)}
+       {P_dec : DecideableEnsemble P}
+: DecideableEnsemble (fun x : IndexedTuple => P x) :=
+  {| dec := @GeneralQueryRefinements.dec _ _ P_dec |}.
+Proof.
+  intuition; eapply dec_decides_P; simpl in *; eauto.
+Defined.
+
 Ltac subst_strings :=
   repeat match goal with
            | [ H : string |- _ ] => subst H

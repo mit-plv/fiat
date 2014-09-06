@@ -1,8 +1,6 @@
 Require Import BagsInterface.
 Require Import AdditionalLemmas.
 Require Import EnsembleListEquivalence.
-Require Import OperationRefinements.
-
 
 Ltac is_sumbool expr :=
   match type of expr with
@@ -45,6 +43,25 @@ Qed.
 Require Import QueryStructureNotations.
 Require Import ListImplementation.
 Require Import BagsOfTuples.
+
+Ltac autoconvert func :=
+  match goal with
+    | [ src := cons ?head ?tail |- list _ ] =>
+      refine (func head _ :: _);
+        [ solve [ eauto with * ] | clear src;
+                            set (src := tail);
+                            autoconvert func ]
+    | [ src := nil |- list _ ] => apply []
+    | _ => idtac
+  end.
+
+(* [mkIndex] builds a [BagPlusProof] record packaging an indexed
+   with all its operations and proofs of correctness. *)
+Ltac mkIndex heading attributes' :=
+  set (src := attributes');
+  assert (list (@ProperAttribute heading)) as decorated_source by autoconvert (@CheckType heading);
+  apply (@NestedTreeFromAttributesAsCorrectBagPlusProof heading decorated_source).
+
 
 Tactic Notation "lift" "list" "property" constr(prop) "as" ident(name) :=
   pose proof prop as name;
@@ -158,3 +175,26 @@ Ltac refine_bag_update_other_table :=
 Ltac refineEquiv_pick_pair_benumerate :=
   setoid_rewrite refineEquiv_pick_pair;
   unfold ID; cbv beta.
+
+Ltac snd_bdelete_correct search_term :=
+  match goal with
+      H : EnsembleBagEquivalence ?bag_plus (GetUnConstrRelation ?Rel' ?Ridx) ?bag
+      |- EnsembleBagEquivalence
+           ?bag_plus
+           (GetUnConstrRelation
+              (UpdateUnConstrRelation
+                 ?Rel ?Ridx
+                 (EnsembleDelete (GetUnConstrRelation ?Rel' ?Ridx) ?DeletedTuples))
+              ?Ridx) _ =>
+      eapply (@bdeletePlus_correct_DB_snd _ Rel Ridx bag_plus bag H DeletedTuples _ search_term);
+        prove_extensional_eq
+  end.
+
+Ltac binsert_correct_DB :=
+  match goal with
+    | [ H: EnsembleBagEquivalence ?bag_plus
+                                  (GetUnConstrRelation ?qs ?index)
+                                  ?store,
+        H0 : UnConstrFreshIdx (GetUnConstrRelation ?qs ?index) ?bound |- _ ] =>
+      solve [ simpl; apply (binsertPlus_correct_DB qs index bag_plus store H _ bound H0) ]
+  end.

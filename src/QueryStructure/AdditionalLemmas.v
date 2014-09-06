@@ -299,6 +299,16 @@ Section AdditionalListLemmas.
     ].
   Qed.
 
+  Lemma NoDupFilter {A}
+  : forall (f : A -> bool) (l : list A),
+      NoDup l -> NoDup (filter f l).
+  Proof.
+    induction l; simpl; intros; eauto.
+    inversion H; subst; find_if_inside; try constructor; eauto.
+    unfold not; intros H'; apply H2; revert H'; clear; induction l;
+    simpl; eauto; find_if_inside; simpl; intuition.
+  Qed.
+
   Lemma NoDupA_stronger_than_NoDup :
     forall {A: Type} (seq: list A) eqA,
       Equivalence eqA ->
