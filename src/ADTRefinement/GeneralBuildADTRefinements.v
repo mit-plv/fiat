@@ -1,6 +1,6 @@
 Require Import List Arith
         Common Computation ADT.ADTSig ADT.Core
-        ADTNotation.StringBound ADTNotation.ilist
+        ADTNotation.StringBound Common.ilist
         ADTNotation.BuildADTSig ADTNotation.BuildADT
         ADTNotation.BuildADTReplaceMethods
         ADTRefinement.Core ADTRefinement.GeneralRefinements

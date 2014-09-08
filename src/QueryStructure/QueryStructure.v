@@ -1,7 +1,7 @@
 Require Import List String FunctionalExtensionality Ensembles Arith
         Computation.Core
         ADT.ADTSig ADT.Core
-        ADTNotation.ilist ADTNotation.StringBound
+        Common.ilist ADTNotation.StringBound
         ADTNotation.BuildADT ADTNotation.BuildADTSig
         QueryStructure.Notations QueryStructure.Heading
         QueryStructure.Tuple QueryStructure.Schema QueryStructure.Relation

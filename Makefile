@@ -15,7 +15,7 @@ SRC_MODULES    := \
 	ADT/ADTHide \
 	ADT/ComputationalADT \
 	ADT \
-	ADTNotation/ilist \
+	Common/ilist \
 	ADTNotation/StringBound \
 	ADTNotation/BuildADTSig \
 	ADTNotation/BuildADT \
@@ -51,7 +51,7 @@ SRC_MODULES    := \
 	QueryStructure/QuerySpecs/DeleteQSSpecs \
 	QueryStructure/QuerySpecs/EnsembleListEquivalence \
 	QueryStructure/QueryStructureNotations \
-	QueryStructure/Refinements/ConstraintCheckRefinements \
+	QueryStructure/Refinements/ConstraintChecksRefinements \
 	QueryStructure/Refinements/GeneralQueryRefinements \
 	QueryStructure/Refinements/GeneralInsertRefinements \
 	QueryStructure/Refinements/GeneralDeleteRefinements \
@@ -83,7 +83,7 @@ SRC_MODULES    := \
 	QueryStructure/Refinements/Bags/CachingBags\
 	QueryStructure/Refinements/Bags/CacheableFunctions\
 	QueryStructure/Refinements/Bags/BagsOfTuples\
-	QueryStructure/Refinements/Bags/String_as_OT\
+	Common/String_as_OT\
 	QueryStructure/Refinements/Bags/Bags\
 	QueryStructure/Refinements/AutoDB\
 	Parsers/ContextFreeGrammar\

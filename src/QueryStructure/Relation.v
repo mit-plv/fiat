@@ -1,5 +1,5 @@
 Require Import List String FunctionalExtensionality Ensembles
-        ADTNotation.ilist ADTNotation.StringBound Program Schema
+        Common.ilist ADTNotation.StringBound Program Schema
         Heading Tuple.
 
 (* A relation is a collection of tuples (described by a proposition)
