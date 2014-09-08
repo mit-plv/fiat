@@ -97,7 +97,7 @@ Section recursive_descent_parser.
             (T_reverse_lookup : forall str name, T str (Lookup G name) -> T str [ [ NonTerminal _ name ] ]).
     Context (parse_pattern_by_picking
              : forall max_len
-                      (parse_pattern_from_split_list
+                      (parse_pattern_from_split_list'
                        : forall (strs : list { str : String | Length _ str <= max_len })
                                 (pat : pattern CharType),
                            ilist (fun sp => T (proj1_sig (fst sp)) [ [ snd sp ] ]) (combine strs pat))
@@ -203,16 +203,74 @@ Section recursive_descent_parser.
   End generic.
 
   Section parse_tree.
-    Local Hint Constructors parse_of parse_of_pattern parse_of_item.
-    Local Hint Resolve ParseHead ParsePatternSingleton.
-    Local Hint Extern 1 => apply ParseHead.
+    Context (make_splits : forall (str : String) (pat : pattern CharType),
+                             list
+                               {str' : String |
+                                Length String str' <= Length _ str}).
+    Local Hint Constructors parse_of parse_of_pattern parse_of_item : parse_tree.
+    Local Hint Resolve ParseHead ParsePatternSingleton : parse_tree.
+    Local Hint Extern 1 => apply ParseHead : parse_tree.
+    Local Hint Extern 0 (option (parse_of _ _ _ [])) => exact None : parse_tree.
 
     Definition parse_tree_for : forall str nt, option (parse_of String G str nt).
-    Proof.
+    Proof with auto with parse_tree nocore.
       apply (@parse_nonterminal (fun str nt => option (parse_of _ G str nt))).
-      { intros str name [p|]; [ apply Some | exact None ].
-        eauto. }
+      { intros str name [p|]; [ apply Some | exact None ]... }
       { intros.
+        specialize (make_splits str).
+        pose proof (fun pat => map (fun spf => exist (fun s => Length _ s <= max_len)
+                                                     (proj1_sig spf)
+                                                     (transitivity (R := le) (proj2_sig spf) pf))
+                                   (make_splits pat)) as make_splits'.
+        specialize (fun pat => parse_pattern_from_split_list' (make_splits' pat) pat).
+Goal (fun x : nat => x) = (fun x : nat => x).
+  match goal with
+    | |- context[fun x => x] => pose (fun y : Set => y)
+  end. (* success *)
+  match goal with
+    | |- context[fun y => y] => pose (fun y : Set => y)
+  end. (* Toplevel input, characters 0-78:
+Error: Ltac variable y is not bound to an identifier.
+It cannot be used in a binder. *)
+        Variable pick_splits : forall (str : String) (pat : pattern CharType),
+                                 { strs : list { str' : String | Length _ str' <= Length _ str }
+                                 | fold_left (fun sp acc => proj1_sig (fst sp) ++ acc) (Empty _) (combine strs pat) = str
+                                   /\
+        admit. }
+      { (** decide_leaf *)
+        intros str ch.
+        case_eq (str =s [[ch]]); intro H; [ apply bool_eq_correct in H; apply Some | exact None ].
+        subst... }
+      { (** fold_patterns *)
+        intros str pats parses; induction parses; simpl in *...
+        repeat match goal with H : option _ |- _ => destruct H end;
+          try solve [ apply Some; auto with parse_tree nocore
+                    | apply Some;
+                      repeat match goal with
+                               | _ => progress auto with parse_tree nocore
+                               | [ H : parse_of _ _ _ _ |- _ ] => inversion H; clear H; subst
+                             end
+                    | match goal with
+                        | [ H : parse_of _ _ _ _ |- _ ] => fail 1
+                        | _ => idtac
+                      end;
+                      exact None ]. }
+      { (** make_abort *)
+        intros; exact None. }
+    Defined.
+        {
+        apply Some.
+        apply ParseHead.
+        inversion p; subst.
+        try solve [ apply Some.. ].
+
+        auto with parse_tree nocore.
+        .
+
+        exact (fun str ch =>
+                 if str =s [ [ ch ] ] as b return (
+
+Print Universes.
         apply ParsePatternSingleton.
         constructor.
         assumption.
