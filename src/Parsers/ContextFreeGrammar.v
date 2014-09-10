@@ -2,6 +2,8 @@
 Require Import Coq.Strings.String Coq.Lists.List Coq.Program.Program.
 
 Set Implicit Arguments.
+Local Set Boolean Equality Schemes.
+Local Set Decidable Equality Schemes.
 
 Delimit Scope string_like_scope with string_like.
 
@@ -41,6 +43,14 @@ Section cfg.
         pattern. *)
     Definition pattern := list item.
     Definition nonterminal := list pattern.
+
+    Definition nonterminal_dec (CharType_eq_dec : forall x y : CharType, {x = y} + {x <> y})
+               (x y : nonterminal) : {x = y} + {x <> y}.
+    Proof.
+      repeat (apply list_eq_dec; intros);
+      decide equality.
+      apply string_dec.
+    Defined.
 
     (** A [grammar] consists of a [nonterminal] to match a string
         against, and a function mapping names to non-terminals. *)
@@ -108,14 +118,14 @@ Proof.
             Concat := append;
             Length := String.length;
             bool_eq x y := if string_dec x y then true else false |};
-  solve [ let x := fresh "x" in
-          let IHx := fresh "IHx" in
-          intro x; induction x as [|? ? IHx]; try reflexivity; simpl;
-          intros;
-          f_equal;
-          auto
+  solve [ abstract (let x := fresh "x" in
+                    let IHx := fresh "IHx" in
+                    intro x; induction x as [|? ? IHx]; try reflexivity; simpl;
+                    intros;
+                    f_equal;
+                    auto)
         | intros; edestruct string_dec; split; congruence ].
-Qed.
+Defined.
 
 Section examples.
   Section generic.
