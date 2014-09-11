@@ -456,7 +456,8 @@ Module example_parse_empty_grammar.
     { apply rdp_list_ntl_wf. }
   Defined.
 
-  Definition parse : forall str : string, option (parse_of string_stringlike (trivial_grammar _) str (trivial_grammar _))
+  Definition parse : forall str : string,
+                       option (parse_of string_stringlike (trivial_grammar _) str (trivial_grammar _))
     := fun str => make_parse_of str _.
 
   Eval hnf in if (parse "") then true else false.

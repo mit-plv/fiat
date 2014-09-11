@@ -41,8 +41,8 @@ Section cfg.
         list of items.  A string matches a pattern if it can be broken
         up into components that match the relevant element of the
         pattern. *)
-    Definition pattern := list item.
-    Definition nonterminal := list pattern.
+    Definition pattern := list item. (* should be [production := ] *)
+    Definition nonterminal := list pattern. (* should be [productions := ] *)
 
     Definition nonterminal_dec (CharType_eq_dec : forall x y : CharType, {x = y} + {x <> y})
                (x y : nonterminal) : {x = y} + {x <> y}.
