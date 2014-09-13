@@ -15,7 +15,7 @@ SRC_MODULES    := \
 	ADT/ADTHide \
 	ADT/ComputationalADT \
 	ADT \
-	ADTNotation/ilist \
+	Common/ilist \
 	ADTNotation/StringBound \
 	ADTNotation/BuildADTSig \
 	ADTNotation/BuildADT \
@@ -83,11 +83,12 @@ SRC_MODULES    := \
 	QueryStructure/Refinements/Bags/CachingBags\
 	QueryStructure/Refinements/Bags/CacheableFunctions\
 	QueryStructure/Refinements/Bags/BagsOfTuples\
-	QueryStructure/Refinements/Bags/String_as_OT\
+	Common/String_as_OT\
 	QueryStructure/Refinements/Bags/Bags\
 	QueryStructure/Refinements/AutoDB\
 	Parsers/ContextFreeGrammar\
 	Parsers/Specification\
+	Parsers/NonComputational
 
 EXAMPLE_MODULES := \
 	Bookstore \

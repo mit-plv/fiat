@@ -1,5 +1,5 @@
 Require Import Common Computation ADT.ADTSig
-        ADTNotation.ilist ADTNotation.StringBound.
+        Common.ilist ADTNotation.StringBound.
 Require Import List String.
 
 (* Notation for ADT Signatures. *)

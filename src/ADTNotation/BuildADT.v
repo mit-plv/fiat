@@ -1,6 +1,6 @@
 Require Import Common Computation Ensembles List String
         ADT.ADTSig ADT.Core ADT.ComputationalADT
-        ADTNotation.StringBound ADTNotation.ilist
+        ADTNotation.StringBound Common.ilist
         ADTNotation.BuildADTSig.
 
 (* Notations for ADTs. *)

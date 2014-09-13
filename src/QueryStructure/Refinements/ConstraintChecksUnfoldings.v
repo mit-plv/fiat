@@ -1,5 +1,5 @@
 Require Import List String Ensembles Arith
-        ADTNotation.ilist ADTNotation.StringBound
+        Common.ilist ADTNotation.StringBound
         QueryStructureSchema QueryStructure
         ConstraintChecksRefinements.
 

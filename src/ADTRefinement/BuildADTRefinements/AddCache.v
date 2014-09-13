@@ -1,7 +1,7 @@
 Require Import List Common
         ADT.ADTSig ADT.Core
         ADTNotation.BuildADTSig ADTNotation.BuildADT
-        ADTNotation.ilist ADTNotation.StringBound
+        Common.ilist ADTNotation.StringBound
         ADTRefinement.Core ADTRefinement.SetoidMorphisms
         ADTRefinement.GeneralRefinements
         ADTRefinement.Refinements.HoneRepresentation
