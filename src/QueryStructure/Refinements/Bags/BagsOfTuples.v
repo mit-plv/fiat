@@ -608,6 +608,7 @@ Qed.
       intros; unfold ExtensionalEq, EnsembleBagEquivalence in *.
       unfold EnsembleBagEquivalence.
       repeat rewrite get_update_unconstr_eq; simpl; intros.
+
       split;
         [
         | eapply bdelete_RepInv; intuition ].
@@ -654,7 +655,7 @@ Qed.
         induction x0; intros; simpl in *|-; intuition; subst; eauto.
         inversion H3; subst; exists x0; intuition.
         inversion H3; subst.
-        destruct (IHx0 _ H H4); intuition; eexists (a :: x1). 
+        destruct (IHx0 _ H H4); intuition; eexists (a :: x1).
         rewrite H1; intuition.
         constructor.
         simpl in H0; intuition; subst; eauto.
@@ -663,7 +664,7 @@ Qed.
       rewrite filter_map in H1; rewrite H in H1; simpl in *.
       rewrite H8 in *; simpl in *.
       destruct (IHl DeletedTuples DT_Dec x1
-                    (fun tup => In _ u tup /\ tup <> x)); eauto; 
+                    (fun tup => In _ u tup /\ tup <> x)); eauto;
       clear IHl.
       rewrite filter_map; eapply Permutation_cons_inv; eauto.
       apply NoDup_Permutation_rewrite in H; eauto.
@@ -683,9 +684,9 @@ Qed.
       constructor; eauto.
       unfold not; intros.
       unfold In in *.
-      apply H10 in H9; inversion H9; subst; unfold In in *; 
+      apply H10 in H9; inversion H9; subst; unfold In in *;
       intuition.
-      unfold In in H9; inversion H9; subst; unfold In in *; 
+      unfold In in H9; inversion H9; subst; unfold In in *;
       intuition.
       generalize (Permutation_in _ H (proj1 (H7 _) H11)); intros In_x0.
       destruct In_x0; simpl; subst; eauto.
@@ -695,16 +696,16 @@ Qed.
       constructor; intros.
       apply H7.
       simpl in *; intuition; subst; eauto.
-      apply H10 in H11; unfold In in *; inversion H11; 
+      apply H10 in H11; unfold In in *; inversion H11;
       unfold In in *; subst; intuition eauto.
       apply H7; eauto.
       unfold In.
       simpl in *; intuition; subst; eauto.
       apply dec_decides_P in H11; rewrite H0 in H11;
-      unfold BagPlusProofAsBag, QSGetNRelSchemaHeading, 
+      unfold BagPlusProofAsBag, QSGetNRelSchemaHeading,
       GetNRelSchemaHeading, GetNRelSchema in *; simpl in *;
       congruence.
-      apply H10 in H12; unfold In in *; inversion H12; 
+      apply H10 in H12; unfold In in *; inversion H12;
       unfold In in *; subst; intuition eauto.
     Qed.
 

@@ -387,9 +387,9 @@ Ltac observer :=
 
 Theorem key_symmetry : forall A H (f : _ -> _ -> Comp A) (P : _ -> Prop) sc1 sc2 n,
   refine (x1 <- Pick (fun b : bool => decides b (forall tup' : @IndexedTuple H,
-                                                    P tup'
-                                                    -> tupleAgree n tup' sc1
-                                                    -> tupleAgree n tup' sc2));
+                                                   P tup'
+                                                   -> tupleAgree n tup' sc1
+                                                   -> tupleAgree n tup' sc2));
           x2 <- Pick (fun b : bool => decides b (forall tup' : @IndexedTuple H,
                                                     P tup'
                                                     -> tupleAgree tup' n sc1
@@ -441,16 +441,22 @@ Ltac revealSchema :=
            end
          end.
 
-Ltac foreignToQuery := revealSchema;
+Ltac foreignToQuery :=
+  revealSchema;
   match goal with
-    | [ _ : ?SC#_ |- context[Pick (fun b' => decides b' (exists tup2 : @IndexedTuple ?H, (_!?R)%QueryImpl tup2 /\ ?r ``?s = _ ))] ] =>
-      let T' := constr:(@Tuple (schemaHeading
-                                  (relSchema
-                                     (@nth_Bounded NamedSchema string relName (qschemaSchemas SC)
-                                                   ``R)))) in
+    | [ _ : ?SC#_ |- context[Pick
+                               (fun b' =>
+                                  decides
+                                    b'
+                                    (ForeignKey_P ?attr ?attr'
+                                                  ?tupmap ?tup
+                                                  (_!?R)%QueryImpl))]]
+      =>  let T' := constr:(@Tuple (schemaHeading
+                                      (relSchema
+                                         (@nth_Bounded NamedSchema string relName (qschemaSchemas SC) ``R)))) in
       let temp := fresh in
-      pose (refine_foreign_key_check_into_query (fun t : T' => r!s = t!s)) as temp;
-        rewrite temp by eauto with typeclass_instances;
+      pose (refine_foreign_key_check_into_query (fun t : T' => tup attr = tupmap (t attr'))) as temp; unfold ForeignKey_P;
+      rewrite temp by eauto with typeclass_instances;
         simplify with monad laws; cbv beta; simpl; clear temp
   end.
 
@@ -488,17 +494,6 @@ Ltac checksSucceeded :=
       reflexivity
   end.
 
-Ltac deleteChecksSucceeded :=
-  match goal with
-    | [ |- context[ret (_, fst (bdelete ?r_n ?search_term)) ] ] =>
-      setoid_rewrite refineEquiv_pick_pair;
-        simplify with monad laws;
-        repeat (rewrite refine_pick_val
-                by (simpl; (refine_bag_update_other_table
-                              || snd_bdelete_correct search_term));
-                simplify with monad laws)
-  end.
-
 Ltac bdeleteZeta :=
   simpl;
   match goal with
@@ -516,11 +511,31 @@ Ltac bdeleteZeta :=
       end
   end.
 
+Ltac deleteChecksSucceeded :=
+  useDeleteIndex;
+  match goal with
+    | [ |- context[ret (_, fst (bdelete ?r_n ?search_term)) ] ] =>
+      setoid_rewrite refineEquiv_pick_pair;
+        simplify with monad laws;
+        repeat (rewrite refine_pick_val
+                by (simpl; (refine_bag_update_other_table
+                              || snd_bdelete_correct search_term));
+                simplify with monad laws);
+        bdeleteZeta
+  end.
 
 Ltac checksFailed :=
   match goal with
     | [ |- context[ret (_, false)] ] =>
       rewrite refine_pick_val by eauto; simplify with monad laws; reflexivity
+  end.
+
+Ltac deleteChecksFailed :=
+  match goal with
+    | [ |- context[ret (_, [])] ] =>
+      simplify with monad laws;
+        rewrite refine_pick_val by eauto; simplify with monad laws;
+        simpl; reflexivity
   end.
 
 Ltac mutator' AbsR storages :=

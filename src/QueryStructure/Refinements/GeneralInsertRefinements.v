@@ -620,33 +620,35 @@ End InsertRefinements.
      tactic to rewrite them away. *)
 
   Ltac remove_trivial_insertion_constraints :=
-          repeat match goal with
+          repeat     match goal with
           |- context[EnsembleInsert _ (GetUnConstrRelation _ _) ] =>
           match goal with
-              AbsR : DropQSConstraints_AbsR ?or ?nr
+              AbsR : @DropQSConstraints_AbsR ?schm ?or ?nr
               |- context [
                      Pick
                        (fun b =>
-                          decides b
-                                  (forall tup' ,
-                           GetUnConstrRelation ?r ?Ridx tup' ->
-                           exists tup2,
-                             EnsembleInsert ?tup (GetUnConstrRelation ?r ?Ridx') tup2 /\
-                             (indexedTuple tup') ?attr = (indexedTuple tup2) ?attr'))] =>
+                          decides
+                            b
+                            (forall tup' : @IndexedTuple ?heading,
+                               (@GetUnConstrRelation ?schm ?r ?Ridx) tup' ->
+                               ForeignKey_P ?attr ?attr' ?tup_map
+                                            (indexedTuple tup')
+                                            (EnsembleInsert ?tup (GetUnConstrRelation ?r ?Ridx'))))] =>
               let neq := fresh in
               assert (Ridx <> Ridx') by (subst_strings; discriminate);
               let refine_trivial := fresh in
-              assert
-                (refine {b' |
+              assert (refine {b' |
                          decides b'
-                                 (forall tup',
+                                 (forall tup' : IndexedTuple,
                                     (GetUnConstrRelation r Ridx) tup' ->
-                                    exists
-                                      tup2,
-                                      EnsembleInsert tup (GetUnConstrRelation r Ridx') tup2 /\
-                                      (indexedTuple tup') attr = (indexedTuple tup2) attr')} (ret true))
-                as refine_trivial;
-                [ let v := fresh in
+                                    @ForeignKey_P heading
+                                                  (schemaHeading (GetNRelSchema (qschemaSchemas schm) Ridx'))
+                                                  attr attr' tup_map
+                                                  (indexedTuple tup')
+                                                  (EnsembleInsert tup (GetUnConstrRelation r Ridx')))}
+                      (ret true)) as refine_trivial;
+                [ unfold ForeignKey_P;
+                  let v := fresh in
                   let Comp_v := fresh in
                   intros v Comp_v;
                     apply computes_to_inv in Comp_v;
@@ -659,11 +661,11 @@ End InsertRefinements.
                     let H' := fresh in
                     pose proof (@crossConstr _ or Ridx Ridx' tup' neq In_tup') as H';
                       simpl map in *; simpl in *;
-                      destruct H' as [? [? ?]]; eauto |
-                  subst_strings; setoid_rewrite refine_trivial;
+                      destruct H' as [? [? ?]]; eauto
+                | subst_strings; setoid_rewrite refine_trivial;
                   clear refine_trivial;
                   pose_string_ids; simplify with monad laws
-                ] end end .
+                ] end end.
 
 Tactic Notation "remove" "trivial" "insertion" "checks" :=
   (* Move all the binds we can outside the exists / computes

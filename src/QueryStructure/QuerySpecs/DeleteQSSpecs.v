@@ -16,11 +16,38 @@ Definition EnsembleDelete
            (R : Ensemble A)
 : Ensemble A := Intersection _ F (Complement _ R).
 
+(* Removing a set of tuples [DeletedTuples] from a Relation
+ [GetRelation qshint Ridx] is permitted if the resulting
+ Ensemble satisfies the Schema Constraints, *)
+Definition DeletePreservesSchemaConstraints
+           {heading}
+           (Rel : Ensemble (@IndexedTuple heading))
+           (DeletedTuples : Ensemble Tuple)
+           (Constr : Tuple -> Tuple -> Prop)
+  :=
+    forall tup tup',
+      EnsembleDelete Rel DeletedTuples tup
+      -> EnsembleDelete Rel DeletedTuples tup'
+      -> Constr tup tup'.
+
+(* AND if the resulting Ensemble satisfies the Cross Constraints. *)
+Definition DeletePreservesCrossConstraints
+           {heading heading'}
+           (Rel : Ensemble (@IndexedTuple heading))
+           (Rel' : Ensemble (@IndexedTuple heading'))
+           (DeletedTuples : Ensemble Tuple)
+           (CrossConstr : Tuple -> Ensemble IndexedTuple -> Prop)
+  :=
+    forall tup',
+      Rel' tup'
+      -> CrossConstr (indexedTuple tup') (EnsembleDelete Rel DeletedTuples).
+
 (* This delete is fairly constrained:
    If the delete is consistent with the constraints, it is
    applied to the table,
    OTHERWISE
    No tables are changed. *)
+
 Definition QSDeleteSpec
            (qs : QueryStructureHint)
            (Ridx : _)
@@ -29,44 +56,40 @@ Definition QSDeleteSpec
 : Prop :=
   (* Either we get a database with an updated ensemble whose
      tuples satisfy the schema constraints. *)
-  ((forall tup tup',
-        EnsembleDelete (GetRelation qsHint Ridx) DeletedTuples tup
-        -> EnsembleDelete (GetRelation qsHint Ridx) DeletedTuples tup'
-        -> SatisfiesSchemaConstraints Ridx tup tup')
+  (DeletePreservesSchemaConstraints (GetRelation qsHint Ridx) DeletedTuples (SatisfiesSchemaConstraints Ridx)
    (* And is compatible with the cross-schema constraints. *)
-  /\ (forall Ridx',
-        Ridx' <> Ridx ->
-        forall tup',
-          (GetRelation qsHint Ridx') tup'
-          -> SatisfiesCrossRelationConstraints
-               Ridx' Ridx tup'
-               (EnsembleDelete (GetRelation qsHint Ridx) DeletedTuples))
-  (* And is equivalent to removing the specified tuples
+   /\ (forall Ridx',
+         Ridx' <> Ridx
+         -> DeletePreservesCrossConstraints
+              (GetRelation qsHint Ridx)
+              (GetRelation qsHint Ridx')
+              DeletedTuples
+              (SatisfiesCrossRelationConstraints Ridx' Ridx)
+   (* And is equivalent to removing the specified tuples
      from the original ensemble *)
-  /\ (forall tup, GetRelation qs' Ridx tup <->
-                  (EnsembleDelete (GetRelation qsHint Ridx) DeletedTuples tup))
-  (* And all other tables are unchanged*)
-  /\ (forall Ridx',
-     Ridx <> Ridx' ->
-     GetRelation qsHint Ridx' = GetRelation qs' Ridx'))
+   /\ (forall tup, GetRelation qs' Ridx tup <->
+                   (EnsembleDelete (GetRelation qsHint Ridx) DeletedTuples tup))
+   (* And all other tables are unchanged*)
+   /\ (forall Ridx',
+         Ridx <> Ridx' ->
+         GetRelation qsHint Ridx' = GetRelation qs' Ridx')))
   \/
   (* Otherwise, one of the schema constraints was violated. *)
-  ((~(forall tup tup',
-        EnsembleDelete (GetRelation qsHint Ridx) DeletedTuples tup
-        -> EnsembleDelete (GetRelation qsHint Ridx) DeletedTuples tup'
-        -> SatisfiesSchemaConstraints Ridx tup tup')
+  ((~ DeletePreservesSchemaConstraints
+      (GetRelation qsHint Ridx) DeletedTuples
+      (SatisfiesSchemaConstraints Ridx)
     (* Or one of the cross-schema constraints was violated. *)
-  \/ ~(forall Ridx',
-        Ridx' <> Ridx ->
-        forall tup',
-          (GetRelation qsHint Ridx') tup'
-          -> SatisfiesCrossRelationConstraints
-               Ridx' Ridx tup'
-               (EnsembleDelete (GetRelation qsHint Ridx) DeletedTuples))
-   ) /\
+    \/ ~ (forall Ridx',
+         Ridx' <> Ridx
+         -> DeletePreservesCrossConstraints 
+              (GetRelation qsHint Ridx)
+              (GetRelation qsHint Ridx')
+              DeletedTuples
+              (SatisfiesCrossRelationConstraints Ridx' Ridx)))
+    /\
    (* And the updated table is equivalent to the original *)
    (forall tup, GetRelation qs' Ridx tup <->
-                (GetRelation qsHint Ridx tup))).
+                (GetRelation qsHint Ridx tup))) .
 
 (* We augment [QSDeleteSpec] so that delete also returns a list of the
    deleted Tuples. *)

@@ -119,7 +119,7 @@ Notation "'Query' 'Structure' 'Schema' relList 'enforcing' constraints" :=
 Arguments BuildForeignKeyConstraints _ _ [_ _] _ _ (*/*) .
 
 Arguments eq_rect_r _ _ _ _ _ _ / .
-Arguments ForeignKey_P _ _ _ _ _ / _ _ .
+(*Arguments ForeignKey_P _ _ _ _ _ / _ _ . *)
 
 Notation "'Query' 'Structure' 'Schema' relList " :=
   (@Build_QueryStructureSchema relList%NamedSchema []) : QSSchema_scope.

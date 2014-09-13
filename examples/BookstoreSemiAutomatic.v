@@ -1,4 +1,4 @@
- Require Import AutoDB.
+Require Import AutoDB.
 
 (* Our bookstore has two relations (tables):
    - The [Books] relation contains the books in the
@@ -27,13 +27,14 @@ Definition sORDERS := "Orders".
 Definition sDATE := "Date".
 
 (* Now here's the actual schema, in the usual sense. *)
+
 Definition BookStoreSchema :=
   Query Structure Schema
     [ relation sBOOKS has
               schema <sAUTHOR :: string,
                       sTITLE :: string,
                       sISBN :: nat>
-              where attributes [sTITLE; sAUTHOR] depend on [sISBN];
+                      where attributes [sTITLE; sAUTHOR] depend on [sISBN];
       relation sORDERS has
               schema <sISBN :: nat,
                       sDATE :: nat> ]
@@ -59,6 +60,7 @@ Definition BookStoreSig : ADTSig :=
       "PlaceOrder" : rep × Order → rep × bool,
       "DeleteOrder" : rep × nat → rep × list Order,
       "AddBook" : rep × Book → rep × bool,
+      "DeleteBook" : rep × nat → rep × list Book,
       "GetTitles" : rep × string → rep × list string,
       "NumOrders" : rep × string → rep × nat
     }.
@@ -77,6 +79,9 @@ Definition BookStoreSpec : ADT BookStoreSig :=
 
     update "AddBook" ( b : Book ) : bool :=
         Insert b into sBOOKS ,
+
+    update "DeleteBook" ( id : nat ) : list Book :=
+        Delete book from sBOOKS where book!sISBN = id ,
 
     query "GetTitles" ( author : string ) : list string :=
       For (b in sBOOKS)
@@ -140,6 +145,60 @@ Proof.
   automated way *)
   hone constructor "Init". {
     initializer.
+  }
+
+  hone method "DeleteOrder". {
+    startMethod BookStore_AbsR.
+
+    deleteChecksSucceeded.
+
+    finish honing.
+  }
+
+  hone method "DeleteBook". {
+    startMethod BookStore_AbsR.
+
+    setoid_rewrite refine_if_bool_eta.
+    simplify with monad laws.
+
+    match goal with
+        [ |- context [{b |
+            ((forall tup tup',
+                GetUnConstrRelation ?or ?Ridx tup
+                -> GetUnConstrRelation ?or ?Ridx tup' ->
+                FunctionalDependency_P ?attr1 ?attr2 _ _)
+             -> decides b (DeletePreservesSchemaConstraints
+                     (GetUnConstrRelation ?or ?Ridx) ?DeletedTuples
+                     ?P)) }]] =>
+        rewrite (@DeletePrimaryKeysOK _ or Ridx DeletedTuples
+                   attr1 attr2); simplify with monad laws
+    end.
+    match goal with
+        [ |- context [
+                 {b'|
+                           ?P ->
+                           decides b'
+                             (DeletePreservesCrossConstraints
+                                (GetUnConstrRelation ?qs ?Ridx)
+                                (GetUnConstrRelation ?qs ?Ridx')
+                                ?DeletedTuples
+                                (ForeignKey_P ?attr1 ?attr2 ?tupmap))} ]
+        ] => rewrite (@DeleteForeignKeysCheck _ qs Ridx Ridx'
+                                                 DeletedTuples)
+    end;
+      [simplify with monad laws;
+        concretize;
+        asPerm (OrderStorage, BookStorage);
+        commit
+      | auto with typeclass_instances
+      | unfold tupleAgree; clear; simpl; intros; rewrite <- H; eauto
+      | auto with typeclass_instances
+      | unfold Iterate_Ensemble_BoundedIndex_filter; simpl; intuition
+      | simpl; auto
+      ].
+    Split Constraint Checks;
+      [ deleteChecksSucceeded; reflexivity
+      | deleteChecksFailed].
   }
 
   (* We then move on to the "GetTitles" method, which we decide to
@@ -206,6 +265,7 @@ Proof.
      Again, we adopt a slightly more manual style to demonstrate the
      main steps of the implementation. *)
   hone method "PlaceOrder". {
+
     (* First, we unfold the definition of our abstraction relation *)
     startMethod BookStore_AbsR.
 
@@ -294,6 +354,7 @@ Proof.
     Split Constraint Checks.
 
     (* First, the case where checks succeed: the insertion is valid: *)
+
     checksSucceeded.
 
     (* Second, the case where checks failed: in that case, the DB
@@ -305,21 +366,12 @@ Proof.
     observer.
   }
 
-  hone method "DeleteOrder". {
-    startMethod BookStore_AbsR.
-
-    useDeleteIndex.
-
-    deleteChecksSucceeded.
-
-    finish honing.
-  }
-
   unfold cast, eq_rect_r, eq_rect, eq_sym; simpl.
 
   (* At this point our implementation is fully computational: we're done! *)
-  finish sharpening.
 
   Show.
+
+  finish sharpening.
 
 Defined.

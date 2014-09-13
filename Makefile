@@ -51,7 +51,7 @@ SRC_MODULES    := \
 	QueryStructure/QuerySpecs/DeleteQSSpecs \
 	QueryStructure/QuerySpecs/EnsembleListEquivalence \
 	QueryStructure/QueryStructureNotations \
-	QueryStructure/Refinements/ConstraintCheckRefinements \
+	QueryStructure/Refinements/ConstraintChecksRefinements \
 	QueryStructure/Refinements/GeneralQueryRefinements \
 	QueryStructure/Refinements/GeneralInsertRefinements \
 	QueryStructure/Refinements/GeneralDeleteRefinements \

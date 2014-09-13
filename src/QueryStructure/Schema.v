@@ -14,8 +14,10 @@ Record Schema :=
                                -> Prop)
   }.
 
-(* A notation for functional dependencies. *)
+Class HeadingHint :=
+  { headingHint :> Heading }.
 
+(* A notation for functional dependencies. *)
 Definition tupleAgree
            {h : Heading}
            (tup1 tup2 : @Tuple h) attrlist :=
@@ -23,14 +25,30 @@ Definition tupleAgree
     List.In attr attrlist ->
     tup1 attr = tup2 attr.
 
+Definition AttributeList {hHint : HeadingHint}
+  := list (Attributes headingHint).
+
 Notation "[ attr1 ; .. ; attr2 ] " :=
-  ({|bindex := attr1%string |} :: .. ({| bindex := attr2%string |} :: nil) ..)
+  (cons (@Build_BoundedIndex _ _ attr1%string _)
+        .. (cons
+                 (@Build_BoundedIndex _ _ attr2%string _) nil) ..)
   : SchemaConstraints_scope.
 
+Definition FunctionalDependency_P
+           (hHint : Heading)
+:  list (Attributes hHint)
+   -> list (Attributes hHint)
+   -> @Tuple hHint
+   -> @Tuple hHint
+   -> Prop :=
+  fun attrlist1 attrlist2 tup1 tup2 =>
+    tupleAgree tup1 tup2 attrlist2 ->
+    tupleAgree tup1 tup2 attrlist1.
+
 Notation "'attributes' attrlist1 'depend' 'on' attrlist2 " :=
-  (fun tup1 tup2 : @Tuple _ =>
-          tupleAgree tup1 tup2 attrlist2%SchemaConstraints ->
-          tupleAgree tup1 tup2 attrlist1%SchemaConstraints)
+  ((@FunctionalDependency_P headingHint : list BoundedString -> _)
+     (attrlist1%SchemaConstraints : list BoundedString)
+     (attrlist2%SchemaConstraints : list BoundedString))
   : SchemaConstraints_scope.
 
 (* Notations for Schemas. *)
@@ -40,7 +58,8 @@ Notation "'schema' headings 'where' constraints" :=
      schemaConstraints :=
        @Some (@Tuple headings%Heading
               -> @Tuple headings%Heading
-              -> Prop) constraints%SchemaConstraints |} : Schema_scope.
+              -> Prop) (let hHint := {|headingHint := headings%Heading |} in
+                        constraints%SchemaConstraints) |} : Schema_scope.
 
 Notation "'schema' headings" :=
   {| schemaHeading := headings%Heading;
