@@ -1,8 +1,9 @@
 Require Export BagsOfTuples Bool.
 Require Export ListImplementation.
-Require Export ConstraintChecksRefinements.
+Require Export ConstraintChecksRefinements DecideableEnsembles.
 Require Export Bags AdditionalLemmas AdditionalFlatMapLemmas AdditionalRefinementLemmas AdditionalMorphisms Bool tupleAgree EnsembleListEquivalence.
 Require Export QueryStructureNotations OperationRefinements.
+Require Export Common.IterateBoundedIndex.
 
 Import AdditionalLemmas.
 
@@ -300,7 +301,7 @@ Ltac useDeleteIndex :=
   match goal with
       [ H : EnsembleBagEquivalence ?bag_plus (@GetUnConstrRelation ?qsSchema ?qs ?Ridx) ?bag
         |- context[Pick (QSDeletedTuples ?qs ?Ridx ?DeletedTuples)] ] =>
-      let dec := constr:(@GeneralQueryRefinements.dec _ DeletedTuples _) in
+      let dec := constr:(@dec _ DeletedTuples _) in
       let storage := bag_plus in
       let fs := fields storage in
       match type of fs with
@@ -590,3 +591,43 @@ Ltac plan AbsR :=
       unfolder spec ltac:(fun spec' => change spec with spec')
   end; start_honing_QueryStructure; hone_representation AbsR;
   repeat honeOne.
+
+Ltac delete_preserves_primary_keys :=
+    match goal with
+        [ |- context [{b |
+            ((forall tup tup',
+                GetUnConstrRelation ?or ?Ridx tup
+                -> GetUnConstrRelation ?or ?Ridx tup' ->
+                FunctionalDependency_P ?attr1 ?attr2 _ _)
+             -> decides b (DeletePreservesSchemaConstraints
+                     (GetUnConstrRelation ?or ?Ridx) ?DeletedTuples
+                     ?P)) }]] =>
+        rewrite (@DeletePrimaryKeysOK _ or Ridx DeletedTuples
+                   attr1 attr2); simplify with monad laws
+    end.
+
+Ltac delete_foreign_key_check_to_Query storage :=
+    match goal with
+        [ |- context [
+                 {b'|
+                           ?P ->
+                           decides b'
+                             (DeletePreservesCrossConstraints
+                                (GetUnConstrRelation ?qs ?Ridx)
+                                (GetUnConstrRelation ?qs ?Ridx')
+                                ?DeletedTuples
+                                (ForeignKey_P ?attr1 ?attr2 ?tupmap))} ]
+        ] => rewrite (@DeleteForeignKeysCheck _ qs Ridx Ridx'
+                                                 DeletedTuples)
+    end;
+      [simplify with monad laws;
+        concretize;
+        asPerm storage;
+        commit
+      | auto with typeclass_instances
+      | unfold tupleAgree; clear; simpl;
+        let H' := fresh in intros; rewrite <- H'; eauto
+      | auto with typeclass_instances
+      | unfold Iterate_Ensemble_BoundedIndex_filter; simpl; intuition
+      | simpl; auto
+      ].

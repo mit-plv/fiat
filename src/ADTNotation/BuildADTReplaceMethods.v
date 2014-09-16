@@ -1,6 +1,6 @@
 Require Import Common List String
-        ADT.ADTSig ADT.Core 
-        ADTNotation.StringBound Common.ilist
+        ADT.ADTSig ADT.Core
+        Common.StringBound Common.ilist
         ADTNotation.BuildADTSig ADTNotation.BuildADT.
 
 (* Definitions for replacing method bodies of ADTs built

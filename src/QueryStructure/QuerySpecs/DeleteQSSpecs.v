@@ -1,7 +1,7 @@
 Require Import List String Ensembles Arith
         Computation.Core
         ADT.ADTSig ADT.Core
-        Common.ilist ADTNotation.StringBound
+        Common.ilist Common.StringBound
         ADTNotation.BuildADT ADTNotation.BuildADTSig
         QueryStructure.QueryStructureSchema QueryStructure.QueryStructure
         InsertQSSpecs EnsembleListEquivalence.
@@ -81,7 +81,7 @@ Definition QSDeleteSpec
     (* Or one of the cross-schema constraints was violated. *)
     \/ ~ (forall Ridx',
          Ridx' <> Ridx
-         -> DeletePreservesCrossConstraints 
+         -> DeletePreservesCrossConstraints
               (GetRelation qsHint Ridx)
               (GetRelation qsHint Ridx')
               DeletedTuples

@@ -1,7 +1,7 @@
 Require Import String Omega List FunctionalExtensionality Ensembles Bool
         Computation ADT ADTRefinement ADTNotation QueryStructureSchema
         QueryQSSpecs InsertQSSpecs QueryStructure
-        ADTRefinement.BuildADTRefinements
+        ADTRefinement.BuildADTRefinements Common.DecideableEnsembles
         EnsembleListEquivalence AdditionalLemmas GeneralQueryRefinements GeneralInsertRefinements
         GeneralQueryStructureRefinements ListQueryStructureRefinements.
 

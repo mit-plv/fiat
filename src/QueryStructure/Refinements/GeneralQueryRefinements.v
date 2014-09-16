@@ -1,5 +1,6 @@
 Require Import String List Sorting.Permutation
         FunctionalExtensionality ADTNotation Ensembles Common
+        Common.DecideableEnsembles
         Computation BuildADTRefinements
         QueryStructureSchema QueryQSSpecs QueryStructure
         EnsembleListEquivalence.
@@ -362,11 +363,6 @@ Proof.
   destruct b; simplify with monad laws; reflexivity.
 Qed.
 
-
-Class DecideableEnsemble {A} (P : Ensemble A) :=
-  { dec : A -> bool;
-    dec_decides_P : forall a, dec a = true <-> P a}.
-
 Instance DecideableEnsemble_EqDec {A B : Type}
          (B_eq_dec : Query_eq B)
          (f f' : A -> B)
@@ -375,17 +371,6 @@ Instance DecideableEnsemble_EqDec {A B : Type}
 Proof.
   intros; find_if_inside; split; congruence.
 Defined.
-
-Lemma Decides_false {A} :
-  forall (P : Ensemble A)
-         (P_dec : DecideableEnsemble P) a,
-    dec a = false <-> ~ (P a).
-Proof.
-  split; unfold not; intros.
-  + apply dec_decides_P in H0; congruence.
-  + caseEq (dec a); eauto.
-    apply dec_decides_P in H0; intuition.
-Qed.
 
 Lemma refine_Where {A B} :
   forall (P : Ensemble A)
@@ -408,13 +393,6 @@ Qed.
 
 
 Require Import Arith Omega.
-
-Instance DecideableEnsemble_gt {A} (f f' : A -> nat)
-  : DecideableEnsemble (fun a => f a > f' a) :=
-  {| dec a := if le_lt_dec (f a) (f' a) then false else true |}.
-Proof.
-  intros; find_if_inside; intuition.
-Defined.
 
 Lemma refineEquiv_For_DropQSConstraints A qsSchema qs :
   forall bod,
@@ -442,7 +420,7 @@ Global Instance IndexedDecideableEnsemble
        {P : Ensemble (@Tuple heading)}
        {P_dec : DecideableEnsemble P}
 : DecideableEnsemble (fun x : IndexedTuple => P x) :=
-  {| dec := @GeneralQueryRefinements.dec _ _ P_dec |}.
+  {| dec := @dec _ _ P_dec |}.
 Proof.
   intuition; eapply dec_decides_P; simpl in *; eauto.
 Defined.

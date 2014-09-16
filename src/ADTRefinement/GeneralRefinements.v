@@ -1,4 +1,4 @@
-Require Import Common ADT.Core ADT.ComputationalADT
+Require Import Common Common.ilist ADT.Core ADT.ComputationalADT
         ADTRefinement.Core ADTRefinement.SetoidMorphisms.
 
 (* To derive an ADT interactively from a specification [spec], we can
@@ -24,9 +24,24 @@ Require Import Common ADT.Core ADT.ComputationalADT
    knives), so I'm carrying on the naming convention with a
    'Sharpened' notation for the dependent products. *)
 
-Notation Sharpened spec := {adt : _ & refineADT spec adt}.
-
 Notation FullySharpened spec := {adt : _ & prod (refineADT spec adt) (is_computationalADT adt)}.
+
+Record SharpenedUnderDelegates {Sig} (spec : ADT Sig) :=
+  { Sharpened_DelegateSpecs :
+      list (sigT ADT);
+    Sharpened_Delegates_To_FullySharpened :
+      (forall delegate, List.In delegate (Sharpened_DelegateSpecs) ->
+                        FullySharpened (projT2 delegate))
+      -> is_computationalADT spec
+  }.
+
+(* Old Deprecated Sharpened Definition *)
+(* Notation Sharpened spec := {adt : _ & refineADT spec adt}. *)
+
+(* Shiny New Sharpened Definition includes proof that the
+   ADT produced is sharpened modulo a set of 'Delegated ADTs'. *)
+Notation Sharpened spec :=
+  {adt : _ & (refineADT spec adt) & SharpenedUnderDelegates adt}.
 
 (* A single refinement step. *)
 Definition SharpenStep Sig adt :
@@ -35,11 +50,12 @@ Definition SharpenStep Sig adt :
     Sharpened adt' ->
     Sharpened adt.
 Proof.
-  intros adt' refineA SpecA';
-  eexists (projT1 SpecA').
+  intros adt' refineA SpecA'.
+  destruct SpecA' as [adt'' refine_adt'' MostlySharpened_adt''].
+  exists adt''.
   (* rewrite refineA. *)
-  eapply transitivityT; [ eassumption | ].
-  exact (projT2 SpecA').
+  eapply transitivityT; [ eassumption | eassumption ].
+  exact MostlySharpened_adt''.
 Defined.
 
 Definition SharpenFully Sig adt :
@@ -52,8 +68,19 @@ Proof.
   eauto.
 Defined.
 
-(* A tactic for finishing a derivation. Probably needs a better name.*)
-Tactic Notation "finish" "sharpening" := eexists; solve [ reflexivity | eapply reflexivityT ].
+Definition Extract_is_computationalADT
+           {Sig}
+           (adt : ADT Sig)
+           (adt_is_comp : is_computationalADT adt)
+: cADT Sig :=
+  {| cRep := Rep adt;
+     cConstructors :=
+       fun idx arg =>
+         CallComputationalConstructor adt_is_comp idx arg;
+     cMethods :=
+       fun idx arg rep =>
+         CallComputationalMethod adt_is_comp idx arg rep
+  |}.
 
 (* Honing tactic for refining the observer method with the specified index.
      This version of the tactic takes the new implementation as an argument. *)

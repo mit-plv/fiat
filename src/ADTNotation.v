@@ -1,4 +1,4 @@
-Require Export Common.ilist ADTNotation.StringBound
+Require Export Common.ilist Common.StringBound
         ADTNotation.BuildADTSig ADTNotation.BuildADT ADTNotation.BuildADTReplaceMethods.
 
 Open Scope ADT.

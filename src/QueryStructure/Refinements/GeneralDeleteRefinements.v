@@ -2,7 +2,8 @@ Require Import String Omega List FunctionalExtensionality Ensembles
         Computation ADT ADTRefinement ADTNotation Schema QueryStructureSchema
         BuildADTRefinements QueryStructure EnsembleListEquivalence
         QuerySpecs.QueryQSSpecs QuerySpecs.DeleteQSSpecs
-        ConstraintChecksRefinements ListQueryStructureRefinements.
+        ConstraintChecksRefinements ListQueryStructureRefinements
+        Common.IterateBoundedIndex Common.DecideableEnsembles.
 
 (* Facts about implements delete operations. *)
 
@@ -33,7 +34,7 @@ Section DeleteRefinements.
                                           (SatisfiesSchemaConstraints Ridx))
     (* And is compatible with the cross-schema constraints. *)
     (crossConstr' :
-       (Iterate_Ensemble_BoundedIndex_filter
+       (@Iterate_Ensemble_BoundedIndex_filter
           (map relName (qschemaSchemas qsSchema))
           (fun idx : nat => if eq_nat_dec (ibound Ridx) idx then false else true)
           (fun Ridx' : BoundedIndex (map relName (qschemaSchemas qsSchema)) =>
@@ -70,9 +71,9 @@ Section DeleteRefinements.
       rewrite ith_replace_BoundIndex_neq in H1; eauto using string_dec.
       generalize (fun c => crossConstr' c idx H0).
       rewrite H; intros H'; eapply H'; eauto.
-      eapply (Iterate_Ensemble_filter_neq 
-                string_dec 
-                _ 
+      eapply (Iterate_Ensemble_filter_neq
+                string_dec
+                _
                 (fun Ridx' : BoundedIndex (map relName (qschemaSchemas qsSchema)) =>
                    forall tup' : IndexedTuple,
                      GetUnConstrRelation (DropQSConstraints qs) Ridx' tup' ->
@@ -297,9 +298,9 @@ Section DeleteRefinements.
     repeat (econstructor; eauto).
     instantiate (1 := x0); destruct x0; simpl in *; intros; eauto;
     eapply H1'; eauto.
-    eapply (Iterate_Ensemble_filter_neq 
-              string_dec 
-              _ 
+    eapply (Iterate_Ensemble_filter_neq
+              string_dec
+              _
               (fun Ridx' : BoundedIndex (map relName (qschemaSchemas qsSchema)) =>
                  forall tup' : IndexedTuple,
                    GetUnConstrRelation (DropQSConstraints or) Ridx' tup' ->
@@ -308,9 +309,9 @@ Section DeleteRefinements.
                      | None => True
                    end)).
     intros; eapply H; try rewrite <- GetRelDropConstraints; eauto.
-    eapply (Iterate_Ensemble_filter_neq 
-              string_dec 
-              _ 
+    eapply (Iterate_Ensemble_filter_neq
+              string_dec
+              _
               (fun Ridx' : BoundedIndex (map relName (qschemaSchemas qsSchema)) =>
                  forall tup' : IndexedTuple,
                    GetUnConstrRelation (DropQSConstraints or) Ridx' tup' ->
@@ -673,7 +674,7 @@ Section DeleteRefinements.
   Proof.
     unfold EnsembleDelete, Complement, In in *; intuition;
     destruct H; constructor; eauto; unfold In in *.
-    - case_eq (GeneralQueryRefinements.dec x); intros.
+    - case_eq (dec x); intros.
       + eapply dec_decides_P; eauto.
       + exfalso; apply H0; constructor; unfold In; eauto.
         intros H'; apply dec_decides_P in H'; congruence.
@@ -731,7 +732,7 @@ Section DeleteRefinements.
         destruct H0; eapply H1; eauto.
     - inversion_by computes_to_inv; subst.
       unfold UnConstrRelation in u.
-      case_eq (@GeneralQueryRefinements.dec _ P P_dec a); intros.
+      case_eq (@dec _ P P_dec a); intros.
       + apply computes_to_inv in H1; simpl in *; intuition.
         apply dec_decides_P in H; apply H3 in H.
         apply computes_to_inv in H; simpl in *; subst; simpl in *.
@@ -772,7 +773,7 @@ Section DeleteRefinements.
               constructor; eauto.
               subst; constructor; eauto.
               apply H7; simpl; eauto.
-              case_eq (@GeneralQueryRefinements.dec _ P P_dec a); intros.
+              case_eq (@dec _ P P_dec a); intros.
               apply dec_decides_P; eauto.
               assert (~ P a) as H''
                                by (unfold not; intros H'; apply dec_decides_P in H'; congruence);

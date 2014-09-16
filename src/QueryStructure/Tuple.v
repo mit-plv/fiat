@@ -1,5 +1,5 @@
 Require Import List String FunctionalExtensionality Ensembles
-        Common.ilist ADTNotation.StringBound Program Heading
+        Common.ilist Common.StringBound Program Heading
         QueryStructure.Notations.
 
 (* A tuple is a map from attributes to values. *)

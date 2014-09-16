@@ -161,41 +161,10 @@ Proof.
     setoid_rewrite refine_if_bool_eta.
     simplify with monad laws.
 
-    match goal with
-        [ |- context [{b |
-            ((forall tup tup',
-                GetUnConstrRelation ?or ?Ridx tup
-                -> GetUnConstrRelation ?or ?Ridx tup' ->
-                FunctionalDependency_P ?attr1 ?attr2 _ _)
-             -> decides b (DeletePreservesSchemaConstraints
-                     (GetUnConstrRelation ?or ?Ridx) ?DeletedTuples
-                     ?P)) }]] =>
-        rewrite (@DeletePrimaryKeysOK _ or Ridx DeletedTuples
-                   attr1 attr2); simplify with monad laws
-    end.
-    match goal with
-        [ |- context [
-                 {b'|
-                           ?P ->
-                           decides b'
-                             (DeletePreservesCrossConstraints
-                                (GetUnConstrRelation ?qs ?Ridx)
-                                (GetUnConstrRelation ?qs ?Ridx')
-                                ?DeletedTuples
-                                (ForeignKey_P ?attr1 ?attr2 ?tupmap))} ]
-        ] => rewrite (@DeleteForeignKeysCheck _ qs Ridx Ridx'
-                                                 DeletedTuples)
-    end;
-      [simplify with monad laws;
-        concretize;
-        asPerm (OrderStorage, BookStorage);
-        commit
-      | auto with typeclass_instances
-      | unfold tupleAgree; clear; simpl; intros; rewrite <- H; eauto
-      | auto with typeclass_instances
-      | unfold Iterate_Ensemble_BoundedIndex_filter; simpl; intuition
-      | simpl; auto
-      ].
+    delete_preserves_primary_keys.
+
+    delete_foreign_key_check_to_Query (sAUTHOR, sISBN).
+
     Split Constraint Checks;
       [ deleteChecksSucceeded; reflexivity
       | deleteChecksFailed].
@@ -368,10 +337,10 @@ Proof.
 
   unfold cast, eq_rect_r, eq_rect, eq_sym; simpl.
 
-  (* At this point our implementation is fully computational: we're done! *)
-
   Show.
 
-  finish sharpening.
+  (* At this point our implementation is fully computational: we're done! *)
+
+  finish sharpening (@nil (sigT ADT)).
 
 Defined.

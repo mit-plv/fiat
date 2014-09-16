@@ -1,6 +1,6 @@
 Require Import List Arith
         Common Computation ADT.ADTSig ADT.Core
-        ADTNotation.StringBound Common.ilist
+        Common.StringBound Common.ilist IterateBoundedIndex
         ADTNotation.BuildADTSig ADTNotation.BuildADT
         ADTNotation.BuildADTReplaceMethods
         ADTRefinement.Core ADTRefinement.GeneralRefinements
@@ -391,6 +391,28 @@ Tactic Notation "hone" "method" constr(methIdx) :=
           cbv beta in *; simpl in *;
           cbv beta delta [replace_BoundedIndex replace_Index] in *;
           simpl in *]. *)
+
+(* A tactic for finishing a derivation. Probably needs a better name.*)
+Tactic Notation "finish" "sharpening" constr(delegatees):=
+  eexists; [ eapply reflexivityT
+           | constructor 1 with (Sharpened_DelegateSpecs := delegatees); intros;
+             split; simpl;
+             match goal with
+                 [|- forall idx : BoundedString, _] =>
+                 let idx := fresh in
+                 intro idx; pattern idx;
+                 eapply Iterate_Ensemble_BoundedIndex_equiv;
+                 unfold Iterate_Ensemble_BoundedIndex; simpl;
+                 intuition;
+                 repeat
+                   (try simplify with monad laws;
+                    first [constructor
+                          | match goal with
+                                |- context[if ?b then _ else _] =>
+                                destruct b
+                            end
+                          ])
+                    end ].
 
 Tactic Notation "finish" "honing" :=
   subst_body;

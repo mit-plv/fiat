@@ -1,7 +1,7 @@
 Require Import List String Ensembles Sorting.Permutation
         Computation.Core
         ADT.ADTSig ADT.Core
-        ADTNotation.StringBound ADTNotation.BuildADT ADTNotation.BuildADTSig
+        Common.StringBound ADTNotation.BuildADT ADTNotation.BuildADTSig
         QueryStructure.QueryStructureSchema  QueryStructure.QueryStructure
         EnsembleListEquivalence.
 

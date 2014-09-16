@@ -1,6 +1,6 @@
 Require Import List String Common Arith
         FunctionalExtensionality Ensembles
-        Common.ilist ADTNotation.StringBound Program.
+        Common.ilist Common.StringBound Program.
 Require Export
         QueryStructure.Notations
         Heading Tuple Schema Relation.

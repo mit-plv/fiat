@@ -1,7 +1,8 @@
 Require Import List String Ensembles Arith
-        Common.ilist ADTNotation.StringBound
+        Common.ilist Common.StringBound
         QueryStructureSchema QueryStructure
-        ConstraintChecksRefinements.
+        ConstraintChecksRefinements
+        Common.IterateBoundedIndex Common.DecideableEnsembles.
 
 (* We put all these simplification hints into a distinct file
    so we're not unfolding things all willy-nilly. *)

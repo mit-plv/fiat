@@ -1,5 +1,5 @@
 Require Export BagsInterface CountingListBags TreeBags Tuple Heading List Program ilist.
-Require Import String_as_OT EnsembleListEquivalence.
+Require Import String_as_OT EnsembleListEquivalence DecideableEnsembles.
 Require Import Bool String OrderedTypeEx.
 
 Unset Implicit Arguments.
@@ -517,7 +517,7 @@ Qed.
              (DT : Ensemble Tuple)
              (DT_Dec : DecideableEnsemble DT)
              search_term,
-        ExtensionalEq (@GeneralQueryRefinements.dec _ _ DT_Dec)
+        ExtensionalEq (@dec _ _ DT_Dec)
                               (bfind_matcher (Bag := BagPlus bag_plus) search_term)
              -> refine {x | QSDeletedTuples qs Ridx DT x}
                        (ret (fst (bdelete bag search_term))).
@@ -548,7 +548,7 @@ Qed.
                    (@UpdateUnConstrRelation db_schema qs index
                                             (EnsembleDelete (GetUnConstrRelation qs index)
                                                             DeletedTuples)) index)
-                (snd (List.partition (@GeneralQueryRefinements.dec _ _ DT_Dec)
+                (snd (List.partition (@dec _ _ DT_Dec)
                                      (benumerate store))).
     Proof.
       simpl; unfold EnsembleDelete, EnsembleBagEquivalence, In, Complement; simpl;
@@ -557,20 +557,20 @@ Qed.
       repeat setoid_rewrite get_update_unconstr_eq; simpl; intros.
       exists x0.
       unfold UnConstrFreshIdx in *; intros; apply H; destruct H3; eauto.
-      exists (snd (partition (@GeneralQueryRefinements.dec IndexedTuple (fun t => DeletedTuples t) _ ) x)); intuition.
+      exists (snd (partition (@dec IndexedTuple (fun t => DeletedTuples t) _ ) x)); intuition.
       - unfold BagPlusProofAsBag; rewrite <- H2.
         repeat rewrite partition_filter_neq.
         clear; induction x; simpl; eauto.
         find_if_inside; simpl; eauto; rewrite <- IHx; reflexivity.
       - revert H0; clear; induction x; simpl; eauto.
         intros; inversion H0; subst.
-        case_eq (partition (fun x0 => @GeneralQueryRefinements.dec IndexedTuple (fun t => DeletedTuples t) _ x0) x); intros; simpl in *; rewrite H.
+        case_eq (partition (fun x0 => @dec IndexedTuple (fun t => DeletedTuples t) _ x0) x); intros; simpl in *; rewrite H.
         rewrite H in IHx; apply IHx in H3;
-        case_eq (@GeneralQueryRefinements.dec IndexedTuple (fun t => DeletedTuples t) _ a);
+        case_eq (@dec IndexedTuple (fun t => DeletedTuples t) _ a);
         intros; simpl in *; rewrite H1; simpl; eauto.
         constructor; eauto.
         unfold not; intros; apply H2; eapply In_partition with
-        (f := fun x0 : IndexedTuple => @GeneralQueryRefinements.dec IndexedTuple (fun t => DeletedTuples t) _ x0).
+        (f := fun x0 : IndexedTuple => @dec IndexedTuple (fun t => DeletedTuples t) _ x0).
         simpl in *; rewrite H; eauto.
       - rewrite get_update_unconstr_eq in H3.
         destruct H3; unfold In in *.
@@ -595,7 +595,7 @@ Qed.
          -> forall (DeletedTuples : Ensemble (@IndexedTuple (@QSGetNRelSchemaHeading db_schema index)))
                    (DT_Dec : DecideableEnsemble DeletedTuples)
                    search_term,
-              ExtensionalEq (@GeneralQueryRefinements.dec _ _ DT_Dec)
+              ExtensionalEq (@dec _ _ DT_Dec)
                             (bfind_matcher (Bag := BagPlus bag_plus) search_term)
               -> EnsembleBagEquivalence
                    bag_plus

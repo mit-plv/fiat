@@ -1,7 +1,7 @@
 Require Import List String Ensembles Arith
         Computation.Core
         ADT.ADTSig ADT.Core
-        Common.ilist ADTNotation.StringBound
+        Common.ilist Common.StringBound
         ADTNotation.BuildADT ADTNotation.BuildADTSig
         QueryStructure.QueryStructureSchema QueryStructure.QueryStructure.
 
