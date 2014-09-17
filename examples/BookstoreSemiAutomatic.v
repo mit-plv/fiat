@@ -46,7 +46,7 @@ Definition Order := TupleDef BookStoreSchema sORDERS.
 
 (* Our bookstore has two mutators:
    - [PlaceOrder] : Place an order into the 'Orders' table
-   - [AddBook] : Add a book to the inventory
+   - [AddBook] : Add a book to the inventory table
 
    Our bookstore has two observers:
    - [GetTitles] : The titles of books written by an author
