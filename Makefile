@@ -94,14 +94,14 @@ EXAMPLE_MODULES := \
 	Bookstore \
 	BookstoreSemiAutomatic \
 	Weather \
-	Stocks \
-	ProcessScheduler \
-	CacheADT/KVEnsembles \
-	CacheADT/CacheSpec \
-	CacheADT/CacheRefinements \
-	CacheADT/FMapCacheImplementation \
-	CacheADT/LRUCache \
-	BookstoreCache
+	Stocks
+#	ProcessScheduler \
+#	CacheADT/KVEnsembles \
+#	CacheADT/CacheSpec \
+#	CacheADT/CacheRefinements \
+#	CacheADT/FMapCacheImplementation \
+#	CacheADT/LRUCache \
+#	BookstoreCache
 
 COQDEP=coqdep
 COQDOC=coqdoc
