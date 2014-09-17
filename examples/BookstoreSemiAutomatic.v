@@ -49,7 +49,7 @@ Definition Order := TupleDef BookStoreSchema sORDERS.
    - [AddBook] : Add a book to the inventory table
 
    Our bookstore has two observers:
-   - [GetTitles] : The titles of books written by an author
+   - [GetTitles] : The titles of the books written by an author
    - [NumOrders] : The number of orders for an author
  *)
 
