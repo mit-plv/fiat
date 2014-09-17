@@ -341,6 +341,9 @@ Proof.
 
   (* At this point our implementation is fully computational: we're done! *)
 
+  Show.
+
+
   finish sharpening (@nil (sigT ADT)).
 
 Defined.
