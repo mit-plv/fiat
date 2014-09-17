@@ -50,7 +50,7 @@ Definition Order := TupleDef BookStoreSchema sORDERS.
 
    Our bookstore has two observers:
    - [GetTitles] : The titles of books written by a given author
-   - [NumOrders] : The number of orders for a given author
+   - [NumOrders] : The number of orders for an author
  *)
 
 (* So, first let's give the type signatures of the methods. *)
