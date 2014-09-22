@@ -6,18 +6,18 @@ import sys
 PHI = (math.sqrt(5) - 1) / 2
 PTS_PER_INCH = 72.27
 
-def setParams(width_pt, scale = 1.0):
+def setParams(width_pt, scale = 2.0):
         width_pt = width_pt * scale
         width_in = width_pt / PTS_PER_INCH
-        height_in = width_in * 2 * PHI
+        height_in = width_in / (3 * PHI)
 
-        params = { 'lines.markersize': 2,
+        params = { 'lines.markersize': 5,
                    'lines.linewidth': 1,
-                   'axes.labelsize': 9,
-                   'xtick.labelsize': 9,
-                   'ytick.labelsize': 9,
-                   'legend.fontsize': 9,
-                   'font.size': 9,
+                   'axes.labelsize': 12,
+                   'xtick.labelsize': 12,
+                   'ytick.labelsize': 12,
+                   'legend.fontsize': 12,
+                   'font.size': 12,
                    'font.family': 'serif',
                    'font.serif': ['Times'],
                    'text.usetex': True,
@@ -46,7 +46,7 @@ for line in sys.stdin:
         ys = tuple(samples[col] for col in INTERESTING)
         curves[x].append(ys)
 
-fig, axes = pyplot.subplots(2, sharex=True)
+fig, axes = pyplot.subplots(1,2)
 
 def merge(group):
         group = tuple(group)
@@ -65,7 +65,8 @@ ax = [0,0,1,1]
 for num, y in enumerate(ys):
         axes[ax[num]].plot(x, y, linestyle=linestyles[num], marker=markers[num], color=colors[num])
 
-pyplot.xlabel("Number of books")
+axes[0].set_xlabel("Number of books")
+axes[1].set_xlabel("Number of books")
 axes[0].set_ylabel("Average read time (ms)")
 axes[1].set_ylabel("Average write time (ms)")
 axes[0].xaxis.set_major_formatter(ticker.FuncFormatter(lambda x, y: '{0:,}'.format(int(x)).replace(',', r'\,')))
