@@ -341,9 +341,6 @@ Proof.
 
   Show.
 
-  Arguments Dep_Type_BoundedIndex_app_comm_cons _ _ _ _ _ _ / .
-
-
   FullySharpenEachMethod (@nil ADTSig) (inil ADT); simpl;
   intros.
 

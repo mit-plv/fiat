@@ -1,46 +1,39 @@
 Require Import List String Ensembles Arith
         Computation.Core
         ADT.ADTSig ADT.Core
-        Common.ilist Common.StringBound
+        Common.ilist Common.StringBound IndexedEnsembles
         ADTNotation.BuildADT ADTNotation.BuildADTSig
         QueryStructure.QueryStructureSchema QueryStructure.QueryStructure
-        InsertQSSpecs EnsembleListEquivalence.
+        InsertQSSpecs.
 
 (* Definitions for updating query structures. *)
-
-(* 'Deleting' a set of tuples [F] from a relation [R] is the same
-   as taking the intersection of [R] and the complement of [F]. *)
-Definition EnsembleDelete
-           {A : Type}
-           (F : Ensemble A)
-           (R : Ensemble A)
-: Ensemble A := Intersection _ F (Complement _ R).
 
 (* Removing a set of tuples [DeletedTuples] from a Relation
  [GetRelation qshint Ridx] is permitted if the resulting
  Ensemble satisfies the Schema Constraints, *)
 Definition DeletePreservesSchemaConstraints
            {heading}
-           (Rel : Ensemble (@IndexedTuple heading))
-           (DeletedTuples : Ensemble Tuple)
+           (Rel : @IndexedEnsemble (@Tuple heading))
+           (DeletedTuples : @Ensemble Tuple)
            (Constr : Tuple -> Tuple -> Prop)
   :=
     forall tup tup',
       EnsembleDelete Rel DeletedTuples tup
       -> EnsembleDelete Rel DeletedTuples tup'
-      -> Constr tup tup'.
+      -> Constr (indexedElement tup) (indexedElement tup').
 
 (* AND if the resulting Ensemble satisfies the Cross Constraints. *)
 Definition DeletePreservesCrossConstraints
            {heading heading'}
-           (Rel : Ensemble (@IndexedTuple heading))
-           (Rel' : Ensemble (@IndexedTuple heading'))
-           (DeletedTuples : Ensemble Tuple)
-           (CrossConstr : Tuple -> Ensemble IndexedTuple -> Prop)
+           (Rel : @IndexedEnsemble (@Tuple heading))
+           (Rel' : @IndexedEnsemble (@Tuple heading'))
+           (DeletedTuples : @Ensemble Tuple)
+           (CrossConstr : Tuple -> @IndexedEnsemble Tuple -> Prop)
   :=
     forall tup',
       Rel' tup'
-      -> CrossConstr (indexedTuple tup') (EnsembleDelete Rel DeletedTuples).
+      -> CrossConstr (indexedTuple tup')
+                     (EnsembleDelete Rel DeletedTuples).
 
 (* This delete is fairly constrained:
    If the delete is consistent with the constraints, it is
@@ -51,7 +44,7 @@ Definition DeletePreservesCrossConstraints
 Definition QSDeleteSpec
            (qs : QueryStructureHint)
            (Ridx : _)
-           (DeletedTuples : Ensemble (@Tuple (schemaHeading (QSGetNRelSchema _ Ridx))))
+           (DeletedTuples : @Ensemble (@Tuple (schemaHeading (QSGetNRelSchema _ Ridx))))
            (qs' : QueryStructure qsSchemaHint')
 : Prop :=
   (* Either we get a database with an updated ensemble whose
@@ -94,7 +87,7 @@ Definition QSDeleteSpec
 (* We augment [QSDeleteSpec] so that delete also returns a list of the
    deleted Tuples. *)
 Definition QSDelete (qs : QueryStructureHint) Ridx
-           (DeletedTuples : Ensemble (@Tuple (schemaHeading (QSGetNRelSchema _ Ridx)))) :=
+           (DeletedTuples : @Ensemble (@Tuple (schemaHeading (QSGetNRelSchema _ Ridx)))) :=
   (qs'       <- Pick (QSDeleteSpec _ Ridx DeletedTuples);
    deleted   <- Pick (UnIndexedEnsembleListEquivalence
                         (Intersection _

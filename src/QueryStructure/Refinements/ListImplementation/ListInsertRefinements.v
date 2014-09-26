@@ -2,7 +2,7 @@ Require Import String Omega List FunctionalExtensionality Ensembles Bool
         Computation ADT ADTRefinement ADTNotation QueryStructureSchema
         QueryQSSpecs InsertQSSpecs QueryStructure
         ADTRefinement.BuildADTRefinements Common.DecideableEnsembles
-        EnsembleListEquivalence AdditionalLemmas GeneralQueryRefinements GeneralInsertRefinements
+        IndexedEnsembles AdditionalLemmas GeneralQueryRefinements GeneralInsertRefinements
         GeneralQueryStructureRefinements ListQueryStructureRefinements.
 
 Class List_Query_eq (As : list Type) :=
@@ -207,8 +207,8 @@ Lemma refine_unused_key_check
     -> refine {b | decides b
                            (forall tup' : IndexedTuple,
                               rel tup' ->
-                              tupleAgree tup tup' attrlist' ->
-                              tupleAgree tup tup' attrlist)}
+                              tupleAgree tup (indexedElement tup') attrlist' ->
+                              tupleAgree tup (indexedElement tup') attrlist)}
               (ret (Check_Attr_Depend _ _ attr_eq_dec attr_eq_dec' tup l)).
 Proof.
   intros.
@@ -240,8 +240,8 @@ Lemma refine_unused_key_check'
     -> refine {b | decides b
                            (forall tup' : IndexedTuple,
                               rel tup' ->
-                              tupleAgree tup' tup attrlist' ->
-                              tupleAgree tup' tup attrlist)}
+                              tupleAgree (indexedElement tup') tup attrlist' ->
+                              tupleAgree (indexedElement tup') tup attrlist)}
               (ret (Check_Attr_Depend _ _ attr_eq_dec attr_eq_dec' tup l)).
 Proof.
   intros.
@@ -313,7 +313,7 @@ Lemma refine_foreign_key_check
                decides b
                        (exists tup' : @IndexedTuple h,
                           rel tup' /\
-                          P tup')}
+                          P (indexedElement tup'))}
               (ret (Check_List_Ex_Prop dec l)).
 Proof.
   intros.
@@ -382,8 +382,8 @@ Lemma ImplementListInsert_eq qsSchema Ridx
         EnsembleIndexedListEquivalence
           (GetUnConstrRelation
              (@UpdateUnConstrRelation qsSchema or Ridx
-                                     (EnsembleInsert {| tupleIndex := bound;
-                                                        indexedTuple := tup|}
+                                     (EnsembleInsert {| elementIndex := bound;
+                                                        indexedElement := tup|}
                                                      (GetUnConstrRelation or Ridx))) Ridx) a}
        (ret (tup :: nr)).
 Proof.
@@ -396,8 +396,8 @@ Proof.
   intros; intuition; subst.
   simpl. omega.
   destruct H2 as [l' [l'_eq equiv_l']];
-    econstructor 1 with ({| tupleIndex := bound;
-                            indexedTuple := tup|} :: l'); split; eauto.
+    econstructor 1 with ({| elementIndex := bound;
+                            indexedElement := tup|} :: l'); split; eauto.
   simpl; subst; reflexivity.
   unfold EnsembleListEquivalence in *; intuition.
   econstructor; eauto.
@@ -423,8 +423,8 @@ Lemma ImplementListInsert_neq qsSchema Ridx Ridx'
         EnsembleIndexedListEquivalence
           (GetUnConstrRelation
              (@UpdateUnConstrRelation qsSchema or Ridx'
-                                     (EnsembleInsert {| tupleIndex := m;
-                                                        indexedTuple := tup|}
+                                     (EnsembleInsert {| elementIndex := m;
+                                                        indexedElement := tup|}
  (GetUnConstrRelation or Ridx'))) Ridx) a}
        (ret nr).
 Proof.

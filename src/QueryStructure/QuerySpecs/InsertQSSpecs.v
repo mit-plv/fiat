@@ -1,7 +1,7 @@
 Require Import List String Ensembles Arith
         Computation.Core
         ADT.ADTSig ADT.Core
-        Common.ilist Common.StringBound
+        Common.ilist Common.StringBound IndexedEnsembles
         ADTNotation.BuildADT ADTNotation.BuildADTSig
         QueryStructure.QueryStructureSchema QueryStructure.QueryStructure.
 
@@ -36,14 +36,14 @@ Definition QSInsertSpec
      Ridx <> Ridx' ->
      GetRelation qsHint Ridx' = GetRelation qs' Ridx') /\
   (* If [tup] is consistent with the schema constraints, *)
-  (SatisfiesSchemaConstraints Ridx tup tup)
+  (SatisfiesSchemaConstraints Ridx (indexedElement tup) (indexedElement tup))
   -> (forall tup', GetRelation qsHint Ridx tup' ->
-                SatisfiesSchemaConstraints Ridx tup tup')
+                SatisfiesSchemaConstraints Ridx (indexedElement tup) (indexedElement tup'))
   -> (forall tup', GetRelation qsHint Ridx tup' ->
-    SatisfiesSchemaConstraints Ridx tup' tup)
+    SatisfiesSchemaConstraints Ridx (indexedElement tup') (indexedElement tup))
   (* and [tup] is consistent with the other tables per the cross-relation
      constraints, *)
-  -> (forall Ridx', SatisfiesCrossRelationConstraints Ridx Ridx' tup
+  -> (forall Ridx', SatisfiesCrossRelationConstraints Ridx Ridx' (indexedElement tup)
                                                       ((GetRelation qsHint Ridx')))
   (* and each tuple in the other tables is consistent with the
      table produced by inserting [tup] into the relation indexed by [Ridx], *)
@@ -52,7 +52,7 @@ Definition QSInsertSpec
         forall tup',
         (GetRelation qsHint Ridx') tup'
         -> SatisfiesCrossRelationConstraints
-             Ridx' Ridx tup'
+             Ridx' Ridx (indexedElement tup')
              (EnsembleInsert tup ((GetRelation qsHint Ridx))))
   (* [tup] is included in the relation indexed by [Ridx] after insert.
    The behavior of insertion is unspecified otherwise. *)
@@ -77,11 +77,11 @@ Definition SuccessfulInsertSpec
 
 Definition QSInsert (qs : QueryStructureHint) Ridx tup :=
   (idx <- Pick (freshIdx _ Ridx);
-   qs' <- Pick (QSInsertSpec _ Ridx {| tupleIndex := idx;
-                                      indexedTuple := tup |});
+   qs' <- Pick (QSInsertSpec _ Ridx {| elementIndex := idx;
+                                      indexedElement := tup |});
    b <- Pick (SuccessfulInsertSpec _ Ridx qs'
-                                   {| tupleIndex := idx;
-                                      indexedTuple := tup |});
+                                   {| elementIndex := idx;
+                                      indexedElement := tup |});
    ret (qs', b))%comp.
 
 Opaque QSInsert.

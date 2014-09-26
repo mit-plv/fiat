@@ -2,7 +2,7 @@ Require Import String Omega List FunctionalExtensionality Ensembles
         Sorting.Permutation
         Computation ADT ADTRefinement ADTNotation BuildADTRefinements
         QueryStructureSchema QueryStructure
-        EnsembleListEquivalence
+        IndexedEnsembles
         QueryQSSpecs InsertQSSpecs EmptyQSSpecs DeleteQSSpecs
         QueryStructureNotations
         GeneralQueryRefinements GeneralInsertRefinements GeneralDeleteRefinements.
@@ -77,15 +77,15 @@ Qed.
 Lemma refine_For_In_Insert
 : forall ResultT MySchema R or a tup bod,
     ~ In _ (GetUnConstrRelation or R)
-      {| tupleIndex := a;
-         indexedTuple := tup |}
+      {| elementIndex := a;
+         indexedElement := tup |}
     -> refine (Query_For
                  (@UnConstrQuery_In
                     ResultT MySchema
                     (UpdateUnConstrRelation
                        or R
-                       (EnsembleInsert {| tupleIndex := a;
-                                          indexedTuple := tup |}
+                       (EnsembleInsert {| elementIndex := a;
+                                          indexedElement := tup |}
                                        (GetUnConstrRelation or R)))
                     R bod))
               (newResults <- bod tup;

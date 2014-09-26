@@ -1,9 +1,8 @@
 Require Import String List Sorting.Permutation
         FunctionalExtensionality ADTNotation Ensembles Common
-        Common.DecideableEnsembles
+        IndexedEnsembles Common.DecideableEnsembles
         Computation BuildADTRefinements
-        QueryStructureSchema QueryQSSpecs QueryStructure
-        EnsembleListEquivalence.
+        QueryStructureSchema QueryQSSpecs QueryStructure.
 
 (* [Query_For] and all aggregates are opaque, so we need to make them
    transparent in order to reason about them. *)
@@ -419,8 +418,8 @@ Global Instance IndexedDecideableEnsemble
        {heading}
        {P : Ensemble (@Tuple heading)}
        {P_dec : DecideableEnsemble P}
-: DecideableEnsemble (fun x : IndexedTuple => P x) :=
-  {| dec := @dec _ _ P_dec |}.
+: DecideableEnsemble (fun x : IndexedTuple => P (indexedTuple x)) :=
+  {| dec itup := @dec _ _ P_dec (indexedTuple itup)|}.
 Proof.
   intuition; eapply dec_decides_P; simpl in *; eauto.
 Defined.

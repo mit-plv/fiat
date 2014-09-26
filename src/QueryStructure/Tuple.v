@@ -1,6 +1,6 @@
 Require Import List String FunctionalExtensionality Ensembles
         Common.ilist Common.StringBound Program Heading
-        QueryStructure.Notations.
+        IndexedEnsembles QueryStructure.Notations.
 
 (* A tuple is a map from attributes to values. *)
 Definition Tuple {Heading : Heading} :=
@@ -54,7 +54,8 @@ Notation "t ! R" :=
   (GetAttribute' t%Tuple (@Build_BoundedIndex _ _ R%string _))
   : Tuple_scope.
 
-Record IndexedTuple {heading} :=
-  { tupleIndex : nat;
-    indexedTuple :> @Tuple heading
-  }.
+Definition IndexedTuple {heading} := @IndexedElement (@Tuple heading).
+Definition tupleIndex {heading} (I : @IndexedTuple heading) : nat :=
+  elementIndex I.
+Definition indexedTuple {heading} (I : @IndexedTuple heading) 
+: @Tuple heading := indexedElement I.

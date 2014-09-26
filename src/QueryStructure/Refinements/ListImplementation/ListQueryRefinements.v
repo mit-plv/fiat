@@ -3,7 +3,7 @@ Require Import String Omega List FunctionalExtensionality Ensembles
         ADTRefinement.GeneralBuildADTRefinements
         QueryStructureSchema QueryQSSpecs QueryStructure
         GeneralQueryRefinements AdditionalLemmas SetEq
-        ListQueryStructureRefinements EnsembleListEquivalence
+        ListQueryStructureRefinements IndexedEnsembles
         Common.DecideableEnsembles.
 
 Lemma refine_SetEq_self {A} :

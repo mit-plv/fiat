@@ -3,8 +3,10 @@ Require Import List AdditionalLemmas AdditionalMorphisms.
 
 Unset Implicit Arguments.
 
-Definition boxed_option {heading} (P: _ -> Prop) (x: @IndexedTuple heading) :=
-  Pick (fun l : list Tuple => (P x -> ret [indexedTuple x] ↝ l) /\ (~ P x -> l = [])).
+Definition boxed_option {heading} 
+           (P: @Tuple heading -> Prop) 
+           (x: @IndexedTuple heading) :=
+  Pick (fun l : list Tuple => (P (indexedTuple x) -> ret [indexedTuple x] ↝ l) /\ (~ P (indexedTuple x) -> l = [])).
 
 Lemma flatten_CompList_app :
   forall {A} x1 x2 x1' x2',
@@ -27,8 +29,8 @@ Qed.
 Lemma boxed_option_nil :
   forall {heading} (P: @Tuple heading -> Prop),
   forall x,
-    boxed_option (fun x : IndexedTuple => P x) x ↝ [] ->
-    (~ P x).
+    boxed_option (fun x : Tuple => P x) x ↝ [] ->
+    (~ P (indexedTuple x)).
 Proof.
   unfold boxed_option; simpl; intros.
   apply computes_to_inv in H.
@@ -38,9 +40,9 @@ Qed.
 
 Lemma flatten_CompList_nil :
   forall {heading} (P: @Tuple heading -> Prop),
-  forall seq,
+  forall (seq : list (@IndexedTuple heading)),
     flatten_CompList (map (boxed_option P) seq) ↝ [] ->
-    forall x, List.In x seq -> (~ P x).
+    forall x, List.In x seq -> (~ P (indexedTuple x)).
 Proof.
   induction seq; simpl; intros flatten_comp * in_seq.
   - exfalso; assumption.
@@ -72,7 +74,7 @@ Proof.
     pose proof H0; unfold boxed_option in H0.
     apply computes_to_inv in H0; simpl in H0.
     destruct H0 as (spec1 & spec2).
-    destruct (excl a) as [ Ptrue | Pfalse ];
+    destruct (excl (indexedTuple a)) as [ Ptrue | Pfalse ];
       [ specialize (spec1 Ptrue); apply computes_to_inv in spec1
       | specialize (spec2 Pfalse) ]; subst.
     + rewrite app_singleton in H2. 

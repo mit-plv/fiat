@@ -1,6 +1,6 @@
 Require Import BagsInterface.
 Require Import AdditionalLemmas.
-Require Import EnsembleListEquivalence.
+Require Import IndexedEnsembles.
 
 Ltac is_sumbool expr :=
   match type of expr with
@@ -131,7 +131,7 @@ Definition ID {A} := fun (x: A) => x.
 Lemma ens_red {heading}
       {BagType TSearchTerm TUpdateTerm} :
   forall (y_is_bag: Bag BagType (@Tuple heading) TSearchTerm TUpdateTerm) x y,
-    @EnsembleIndexedListEquivalence heading x (benumerate (Bag := y_is_bag) y) =
+    @EnsembleIndexedListEquivalence (@Tuple heading) x (benumerate (Bag := y_is_bag) y) =
     (ID (fun y => EnsembleIndexedListEquivalence x (benumerate y))) y.
 Proof.
   intros; reflexivity.

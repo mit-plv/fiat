@@ -554,15 +554,19 @@ Section ConstraintCheckRefinements.
   : forall qsSchema qs
            (Ridx : @BoundedString (map relName (qschemaSchemas qsSchema)))
            (tup : @Tuple (schemaHeading (QSGetNRelSchema qsSchema Ridx))),
-      refine {b | decides b
-                          (forall tup',
-                             GetUnConstrRelation qs Ridx tup'
-                             -> SatisfiesSchemaConstraints Ridx tup tup')}
+      refine {b | decides
+                    b
+                    (forall tup',
+                       GetUnConstrRelation qs Ridx tup'
+                       -> SatisfiesSchemaConstraints
+                            Ridx
+                            tup
+                            (indexedElement tup'))}
              match (schemaConstraints (QSGetNRelSchema qsSchema Ridx)) with
                  Some Constr =>
                  {b | decides b (forall tup',
                                    GetUnConstrRelation qs Ridx tup'
-                                   -> Constr tup tup')}
+                                   -> Constr tup (indexedElement tup'))}
                | None => ret true
              end.
   Proof.
@@ -580,12 +584,12 @@ Section ConstraintCheckRefinements.
       refine {b | decides b
                           (forall tup',
                              GetUnConstrRelation qs Ridx tup'
-                             -> SatisfiesSchemaConstraints Ridx tup' tup)}
+                             -> SatisfiesSchemaConstraints Ridx (indexedElement tup') tup)}
              match (schemaConstraints (QSGetNRelSchema qsSchema Ridx)) with
                  Some Constr =>
                  {b | decides b (forall tup',
                                    GetUnConstrRelation qs Ridx tup'
-                                   -> Constr tup' tup)}
+                                   -> Constr (indexedElement tup') tup)}
                | None => ret true
              end.
   Proof.
@@ -679,7 +683,7 @@ Section ConstraintCheckRefinements.
       refine {b | (forall tup tup',
                           GetUnConstrRelation qs Ridx tup
                           -> GetUnConstrRelation qs Ridx tup'
-                          -> (FunctionalDependency_P attrlist1 attrlist2 tup tup'))
+                          -> (FunctionalDependency_P attrlist1 attrlist2 (indexedElement tup) (indexedElement tup')))
                      -> decides b (DeletePreservesSchemaConstraints
                                       (GetUnConstrRelation qs Ridx)
                                       DeletedTuples
@@ -723,7 +727,7 @@ Section ConstraintCheckRefinements.
       -> forall (a : A), List.In a results ->
                          exists (tup' : IndexedTuple) results',
                            Ensembles.In _ (GetUnConstrRelation qs Ridx) tup'
-                           /\ bod tup' ↝ results'
+                           /\ bod (indexedElement tup') ↝ results'
                            /\ List.In a results'.
   Proof.
     unfold UnConstrQuery_In, QueryResultComp; intros;
@@ -754,7 +758,7 @@ Section ConstraintCheckRefinements.
            results
            (a : A) (tup' : IndexedTuple),
       Ensembles.In _ (GetUnConstrRelation qs Ridx) tup'
-      -> (forall results', bod tup' ↝ results'
+      -> (forall results', bod (indexedElement tup') ↝ results'
                            -> List.In a results')
       -> UnConstrQuery_In qs Ridx bod ↝ results
       -> List.In a results.
@@ -797,7 +801,7 @@ Section ConstraintCheckRefinements.
            (ForeignKey_P_P :
               P -> (forall tup' : IndexedTuple,
                         GetUnConstrRelation qs Ridx' tup' ->
-                        ForeignKey_P attr' attr tupmap tup'
+                        ForeignKey_P attr' attr tupmap (indexedElement tup')
                                      (GetUnConstrRelation qs Ridx)))
 
            (tup_map_inj : forall a a', tupmap a = tupmap a' -> a = a'),
@@ -855,11 +859,12 @@ Section ConstraintCheckRefinements.
       unfold Ensembles.In, Complement, In in *.
       unfold Query_Where in H0; apply computes_to_inv in H0;
       intuition.
-      case_eq (@dec _ _ Delete_dec x5); intros.
+      case_eq (@dec _ _ Delete_dec (indexedElement x5)); intros.
       + apply Delete_dec in H0; pose proof (H14 H0) as H'.
         apply computes_to_inv in H'; split_and.
+        unfold indexedTuple in *.
         rewrite H10 in *.
-        destruct (A_eq_dec (indexedTuple x5 attr) (indexedTuple x3 attr)).
+        destruct (A_eq_dec (indexedElement x5 attr) (indexedElement x3 attr)).
         * rewrite e in *;
           pose proof (H16 (refl_equal _)) as e'; apply computes_to_inv in e'; simpl in *; subst.
           apply H13; eapply AgreeDelete; eauto.
@@ -911,7 +916,7 @@ Proof.
   apply computes_to_inv in ret_cons; subst.
 
   rewrite singleton_neq_nil in spec2.
-  destruct (excl head') as [ H | H ]; try solve [exfalso; intuition].
+  destruct (excl (indexedTuple head')) as [ H | H ]; try solve [exfalso; intuition].
   specialize (spec1 H).
 
   apply computes_to_inv in spec1.
@@ -1024,16 +1029,20 @@ Lemma refine_functional_dependency_check_into_query :
                                          ~ tupleAgree_computational ref x args2) ->
     forall c : UnConstrQueryStructure schm,
       ((forall tup' : IndexedTuple,
-          GetUnConstrRelation c tbl tup' -> tupleAgree ref tup' args1 -> tupleAgree ref tup' args2) <->
+          GetUnConstrRelation c tbl tup'
+          -> tupleAgree ref (indexedElement tup') args1
+          -> tupleAgree ref (indexedElement tup') args2) <->
        (forall tup' : IndexedTuple,
-          ~ (GetUnConstrRelation c tbl tup' /\ tupleAgree ref tup' args1 /\ ~ tupleAgree ref tup' args2))) ->
+          ~ (GetUnConstrRelation c tbl tup'
+             /\ tupleAgree ref (indexedElement tup') args1
+             /\ ~ tupleAgree ref (indexedElement tup') args2))) ->
       refine
         (Pick (fun (b : bool) =>
                  decides b
                          (forall tup' : IndexedTuple,
                             GetUnConstrRelation c tbl tup' ->
-                            tupleAgree ref tup' args1 ->
-                            tupleAgree ref tup' args2)))
+                            tupleAgree ref (indexedElement tup') args1 ->
+                            tupleAgree ref (indexedElement tup') args2)))
         (Bind (Count
                  For (UnConstrQuery_In c tbl
                                        (fun tup : Tuple =>
@@ -1044,11 +1053,13 @@ Lemma refine_functional_dependency_check_into_query :
 Proof.
   intros * is_dec ** .
 
-  setoid_replace (forall tup', GetUnConstrRelation c tbl tup' ->
-                               tupleAgree ref tup' args1 -> tupleAgree ref tup' args2)
+  setoid_replace (forall tup', 
+                    GetUnConstrRelation c tbl tup' ->
+                    tupleAgree ref (indexedElement tup') args1
+                    -> tupleAgree ref (indexedElement tup') args2)
   with           (forall tup', ~ (GetUnConstrRelation c tbl tup' /\
-                                  tupleAgree ref tup' args1 /\
-                                  ~ tupleAgree ref tup' args2)); eauto.
+                                  tupleAgree ref (indexedElement tup') args1 /\
+                                  ~ tupleAgree ref (indexedElement tup') args2)); eauto.
 
   setoid_rewrite refine_decide_negation.
   setoid_rewrite tupleAgree_equivalence.

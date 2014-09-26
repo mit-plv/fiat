@@ -1,4 +1,5 @@
 Require Export String Omega List FunctionalExtensionality Ensembles
+        IndexedEnsembles
         Computation ADT ADTRefinement ADTNotation QueryStructureSchema
         BuildADTRefinements QueryQSSpecs InsertQSSpecs EmptyQSSpecs
         DeleteQSSpecs QueryStructure.

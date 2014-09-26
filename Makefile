@@ -42,6 +42,7 @@ SRC_MODULES    := \
 	ADTRefinement/BuildADTRefinements/AddCache \
 	ADTRefinement/BuildADTRefinements \
 	QueryStructure/Notations \
+	QueryStructure/IndexedEnsembles \
 	QueryStructure/Heading \
 	QueryStructure/Tuple \
 	QueryStructure/Schema \
@@ -52,7 +53,6 @@ SRC_MODULES    := \
 	QueryStructure/QuerySpecs/QueryQSSpecs \
 	QueryStructure/QuerySpecs/InsertQSSpecs \
 	QueryStructure/QuerySpecs/DeleteQSSpecs \
-	QueryStructure/QuerySpecs/EnsembleListEquivalence \
 	QueryStructure/QueryStructureNotations \
 	QueryStructure/Refinements/ConstraintChecksRefinements \
 	QueryStructure/Refinements/GeneralQueryRefinements \
@@ -85,7 +85,9 @@ SRC_MODULES    := \
 	QueryStructure/Refinements/Bags/TreeBags\
 	QueryStructure/Refinements/Bags/CachingBags\
 	QueryStructure/Refinements/Bags/CacheableFunctions\
+	QueryStructure/Refinements/Bags/BagADT\
 	QueryStructure/Refinements/Bags/BagsOfTuples\
+	QueryStructure/Refinements/Bags/BagsofTuplesADT\
 	Common/String_as_OT\
 	QueryStructure/Refinements/Bags/Bags\
 	QueryStructure/Refinements/AutoDB\

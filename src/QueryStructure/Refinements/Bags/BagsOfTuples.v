@@ -1,5 +1,5 @@
 Require Export BagsInterface CountingListBags TreeBags Tuple Heading List Program ilist.
-Require Import String_as_OT EnsembleListEquivalence DecideableEnsembles.
+Require Import String_as_OT IndexedEnsembles DecideableEnsembles.
 Require Import Bool String OrderedTypeEx.
 
 Unset Implicit Arguments.
@@ -438,8 +438,8 @@ Lemma binsert_correct_DB
         (GetUnConstrRelation
            (@UpdateUnConstrRelation db_schema qs index
                                    (EnsembleInsert
-                                      {| tupleIndex := bound;
-                                         indexedTuple := tuple |}
+                                      {| elementIndex := bound;
+                                         indexedElement := tuple |}
                                       (GetUnConstrRelation qs index))) index)
         (benumerate (binsert (Bag := BagPlus bag_plus) store tuple)).
 Proof.
@@ -465,9 +465,9 @@ Proof.
 
   (* destruct store_eqv as (indices & [ l' (map & nodup & equiv) ]); eauto. *)
 
-  destruct (permutation_map_cons indexedTuple (binsert_enumerate tuple store store_WF)
-                                 {| tupleIndex := bound;
-                                    indexedTuple := tuple |} l' eq_refl map)
+  destruct (permutation_map_cons indexedElement (binsert_enumerate tuple store store_WF)
+                                 {| elementIndex := bound;
+                                    indexedElement := tuple |} l' eq_refl map)
     as [ l'0 (map' & perm) ].
 
   exists l'0.
@@ -498,8 +498,8 @@ Corollary binsertPlus_correct_DB :
       GetUnConstrRelation
        (@UpdateUnConstrRelation db_schema qs index
                                 (EnsembleInsert
-                                   {| tupleIndex := bound;
-                                      indexedTuple := tuple |}
+                                   {| elementIndex := bound;
+                                      indexedElement := tuple |}
                                    (GetUnConstrRelation qs index))) index
       ≃ binsert (Bag := BagPlus bag_plus) store tuple.
 Proof.
@@ -557,20 +557,21 @@ Qed.
       repeat setoid_rewrite get_update_unconstr_eq; simpl; intros.
       exists x0.
       unfold UnConstrFreshIdx in *; intros; apply H; destruct H3; eauto.
-      exists (snd (partition (@dec IndexedTuple (fun t => DeletedTuples t) _ ) x)); intuition.
+      exists (snd (partition (@dec IndexedTuple (fun t => DeletedTuples (indexedElement t)) _ ) x)); intuition.
       - unfold BagPlusProofAsBag; rewrite <- H2.
         repeat rewrite partition_filter_neq.
         clear; induction x; simpl; eauto.
+        unfold indexedTuple in *;
         find_if_inside; simpl; eauto; rewrite <- IHx; reflexivity.
       - revert H0; clear; induction x; simpl; eauto.
         intros; inversion H0; subst.
-        case_eq (partition (fun x0 => @dec IndexedTuple (fun t => DeletedTuples t) _ x0) x); intros; simpl in *; rewrite H.
+        case_eq (partition (fun x0 => @dec IndexedTuple (fun t => DeletedTuples (indexedElement t)) _ x0) x); intros; simpl in *; rewrite H.
         rewrite H in IHx; apply IHx in H3;
-        case_eq (@dec IndexedTuple (fun t => DeletedTuples t) _ a);
+        case_eq (@dec IndexedTuple (fun t => DeletedTuples (indexedElement t)) _ a);
         intros; simpl in *; rewrite H1; simpl; eauto.
         constructor; eauto.
         unfold not; intros; apply H2; eapply In_partition with
-        (f := fun x0 : IndexedTuple => @dec IndexedTuple (fun t => DeletedTuples t) _ x0).
+        (f := fun x0 : IndexedTuple => @dec IndexedTuple (fun t => DeletedTuples (indexedElement t)) _ x0).
         simpl in *; rewrite H; eauto.
       - rewrite get_update_unconstr_eq in H3.
         destruct H3; unfold In in *.
@@ -581,7 +582,7 @@ Qed.
         unfold In; intros.
         apply In_partition_unmatched in H3.
         simpl in *; apply dec_decides_P in H5.
-        unfold QSGetNRelSchemaHeading, GetNRelSchemaHeading, GetNRelSchema in *;
+        unfold indexedTuple, QSGetNRelSchemaHeading, GetNRelSchemaHeading, GetNRelSchema in *;
           rewrite H3 in H5; congruence.
     Qed.
 
@@ -592,7 +593,7 @@ Qed.
           bag_plus
     :  forall (store: BagTypePlus bag_plus),
          EnsembleBagEquivalence bag_plus (GetUnConstrRelation qs index) store
-         -> forall (DeletedTuples : Ensemble (@IndexedTuple (@QSGetNRelSchemaHeading db_schema index)))
+         -> forall (DeletedTuples : Ensemble (@Tuple (@QSGetNRelSchemaHeading db_schema index)))
                    (DT_Dec : DecideableEnsemble DeletedTuples)
                    search_term,
               ExtensionalEq (@dec _ _ DT_Dec)
@@ -631,17 +632,17 @@ Qed.
       apply Permutation_nil in H1.
       apply dec_decides_P; rewrite H0.
       revert H1 H; clear; induction x0; simpl; eauto.
-      case_eq (bfind_matcher (Bag := BagPlus bag_plus) search_term a); simpl; intros.
+      case_eq (bfind_matcher (Bag := BagPlus bag_plus) search_term (indexedElement a)); simpl; intros.
       intuition; subst; eauto.
       discriminate.
       assert (exists a',
-                List.In a' x0 /\ indexedTuple a' = a
-                /\ (bfind_matcher (Bag := BagPlus bag_plus) search_term a' = false)).
+                List.In a' x0 /\ indexedElement a' = a
+                /\ (bfind_matcher (Bag := BagPlus bag_plus) search_term (indexedElement a') = false)).
       generalize (@Permutation_in _ _ _ a H1 (or_introl (refl_equal _))).
       rewrite filter_map; clear; induction x0; simpl;
       intuition.
       revert H;
-        case_eq (bfind_matcher (Bag := BagPlus bag_plus) search_term a0); simpl; intros; eauto.
+        case_eq (bfind_matcher (Bag := BagPlus bag_plus) search_term (indexedElement a0)); simpl; intros; eauto.
       apply IHx0 in H0; destruct_ex; intuition eauto.
       subst; intuition eauto.
       destruct_ex; intuition eauto.

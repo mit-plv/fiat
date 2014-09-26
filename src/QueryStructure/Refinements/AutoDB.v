@@ -1,7 +1,7 @@
 Require Export BagsOfTuples Bool.
 Require Export ListImplementation.
 Require Export ConstraintChecksRefinements DecideableEnsembles.
-Require Export Bags AdditionalLemmas AdditionalFlatMapLemmas AdditionalRefinementLemmas AdditionalMorphisms Bool tupleAgree EnsembleListEquivalence.
+Require Export Bags AdditionalLemmas AdditionalFlatMapLemmas AdditionalRefinementLemmas AdditionalMorphisms Bool tupleAgree IndexedEnsembles.
 Require Export QueryStructureNotations OperationRefinements.
 Require Export Common.IterateBoundedIndex.
 
@@ -389,17 +389,17 @@ Ltac observer :=
 Theorem key_symmetry : forall A H (f : _ -> _ -> Comp A) (P : _ -> Prop) sc1 sc2 n,
   refine (x1 <- Pick (fun b : bool => decides b (forall tup' : @IndexedTuple H,
                                                    P tup'
-                                                   -> tupleAgree n tup' sc1
-                                                   -> tupleAgree n tup' sc2));
+                                                   -> tupleAgree n (indexedElement tup') sc1
+                                                   -> tupleAgree n (indexedElement tup') sc2));
           x2 <- Pick (fun b : bool => decides b (forall tup' : @IndexedTuple H,
                                                     P tup'
-                                                    -> tupleAgree tup' n sc1
-                                                    -> tupleAgree tup' n sc2));
+                                                    -> tupleAgree (indexedElement tup') n sc1
+                                                    -> tupleAgree (indexedElement tup') n sc2));
           f x1 x2)
          (x1 <- Pick (fun b : bool => decides b (forall tup' : @IndexedTuple H,
                                                    P tup'
-                                                   -> tupleAgree n tup' sc1
-                                                   -> tupleAgree n tup' sc2));
+                                                   -> tupleAgree n (indexedElement tup') sc1
+                                                   -> tupleAgree n (indexedElement tup') sc2));
           f x1 x1).
 Proof.
   unfold refine; intros.

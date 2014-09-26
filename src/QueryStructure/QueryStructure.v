@@ -3,6 +3,7 @@ Require Import List String FunctionalExtensionality Ensembles Arith
         ADT.ADTSig ADT.Core
         Common.ilist Common.StringBound
         ADTNotation.BuildADT ADTNotation.BuildADTSig
+        QueryStructure.IndexedEnsembles
         QueryStructure.Notations QueryStructure.Heading
         QueryStructure.Tuple QueryStructure.Schema QueryStructure.Relation
         QueryStructure.QueryStructureSchema.
@@ -77,7 +78,7 @@ Record QueryStructure (QSSchema : QueryStructureSchema) :=
             (* These are cross-relation constraints which only need to be
            enforced on distinct relations. *)
             (rel (ith_Bounded _ rels idx )) tup ->
-            CrossConstr tup (rel (ith_Bounded _ rels idx'))
+            CrossConstr (indexedElement tup) (rel (ith_Bounded _ rels idx'))
         | None => True
       end
   }.
@@ -176,9 +177,6 @@ Qed.
 
 (* Typeclass + notations for declaring abstraction relation for
    QueryStructure Implementations. *)
-
-Class UnConstrRelationAbsRClass {A B : Type} :=
-  { UnConstrRelationAbsR : Ensemble A -> B -> Prop }.
 
 Definition decides (b : bool) (P : Prop) := if b then P else ~ P.
 

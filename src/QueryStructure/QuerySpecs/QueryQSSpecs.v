@@ -1,9 +1,9 @@
 Require Import List String Ensembles Sorting.Permutation
         Computation.Core
         ADT.ADTSig ADT.Core
+        IndexedEnsembles
         Common.StringBound ADTNotation.BuildADT ADTNotation.BuildADTSig
-        QueryStructure.QueryStructureSchema  QueryStructure.QueryStructure
-        EnsembleListEquivalence.
+        QueryStructure.QueryStructureSchema  QueryStructure.QueryStructure.
 
 (* Notations and definitions for queries.
    The basic idea is to represent queries as ensembles of lists of returned values.

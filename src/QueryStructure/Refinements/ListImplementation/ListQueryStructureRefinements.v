@@ -2,7 +2,7 @@ Require Import String Omega List FunctionalExtensionality Ensembles
         Computation ADT ADTRefinement ADTNotation QueryStructureSchema
         BuildADTRefinements QueryQSSpecs InsertQSSpecs EmptyQSSpecs
         QueryStructure GeneralInsertRefinements
-        GeneralQueryRefinements SetEq AdditionalLemmas EnsembleListEquivalence.
+        GeneralQueryRefinements SetEq AdditionalLemmas IndexedEnsembles.
 
 Lemma EnsembleIndexedListEquivalence_lift_property {heading} {P: @Tuple heading -> Prop} :
   forall (sequence: list (@Tuple heading)) (ensemble: @IndexedTuple heading -> Prop),
@@ -17,13 +17,14 @@ Proof.
   subst.
   setoid_rewrite equiv.
   setoid_rewrite in_map_iff.
+  unfold IndexedTuple, indexedTuple in *.
   split; intros; firstorder; subst; intuition.
 Qed.
 
 Lemma EnsembleIndexedListEquivalence_pick_new_index {heading} :
   forall (ens : Ensemble (@IndexedTuple heading)) seq,
     EnsembleIndexedListEquivalence ens seq ->
-    exists bound, 
+    exists bound,
       UnConstrFreshIdx ens bound.
 Proof.
   intros * (indexes & equiv) ** .
