@@ -56,20 +56,20 @@ Definition Order := TupleDef BookStoreSchema sORDERS.
 (* So, first let's give the type signatures of the methods. *)
 Definition BookStoreSig : ADTSig :=
   ADTsignature {
-      "Init" : unit → rep,
-      "PlaceOrder" : rep × Order → rep × bool,
-      "DeleteOrder" : rep × nat → rep × list Order,
-      "AddBook" : rep × Book → rep × bool,
-      "DeleteBook" : rep × nat → rep × list Book,
-      "GetTitles" : rep × string → rep × list string,
-      "NumOrders" : rep × string → rep × nat
+      Constructor "Init" : unit -> rep,
+      Method "PlaceOrder" : rep x Order -> rep x bool,
+      Method "DeleteOrder" : rep x nat -> rep x list Order,
+      Method "AddBook" : rep x Book -> rep x bool,
+      Method "DeleteBook" : rep x nat -> rep x list Book,
+      Method "GetTitles" : rep x string -> rep x list string,
+      Method "NumOrders" : rep x string -> rep x nat
     }.
 
 (* Now we write what the methods should actually do. *)
 
 Definition BookStoreSpec : ADT BookStoreSig :=
   QueryADTRep BookStoreSchema {
-    const "Init" (_ : unit) : rep := empty,
+    Def Constructor "Init" (_ : unit) : rep := empty,
 
     update "PlaceOrder" ( o : Order ) : bool :=
         Insert o into sORDERS,
@@ -337,13 +337,24 @@ Proof.
 
   unfold cast, eq_rect_r, eq_rect, eq_sym; simpl.
 
-  Show.
-
   (* At this point our implementation is fully computational: we're done! *)
 
   Show.
 
+  Arguments Dep_Type_BoundedIndex_app_comm_cons _ _ _ _ _ _ / .
 
-  finish sharpening (@nil (sigT ADT)).
+
+  FullySharpenEachMethod (@nil ADTSig) (inil ADT); simpl;
+  intros.
+
+  intros; eapply SharpenIfComputesTo; repeat constructor.
+  intros; eapply SharpenIfComputesTo; repeat constructor.
+  intros; eapply SharpenIfComputesTo; repeat constructor.
 
 Defined.
+
+Definition BookStoreImpl : ComputationalADT.cADT BookStoreSig.
+  extract implementation of BookStoreManual using (inil _).
+Defined.
+
+Print BookStoreImpl.

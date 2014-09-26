@@ -1,4 +1,4 @@
-Require Import Common Common.ilist ADT.Core ADT.ComputationalADT
+Require Import List Common Common.ilist ADT.Core ADT.ComputationalADT
         ADTRefinement.Core ADTRefinement.SetoidMorphisms.
 
 (* To derive an ADT interactively from a specification [spec], we can
@@ -24,15 +24,14 @@ Require Import Common Common.ilist ADT.Core ADT.ComputationalADT
    knives), so I'm carrying on the naming convention with a
    'Sharpened' notation for the dependent products. *)
 
-Notation FullySharpened spec := {adt : _ & prod (refineADT spec adt) (is_computationalADT adt)}.
+Notation FullySharpened spec := {adt : _ & refineADT spec (LiftcADT adt)}.
 
-Record SharpenedUnderDelegates {Sig} (spec : ADT Sig) :=
-  { Sharpened_DelegateSpecs :
-      list (sigT ADT);
-    Sharpened_Delegates_To_FullySharpened :
-      (forall delegate, List.In delegate (Sharpened_DelegateSpecs) ->
-                        FullySharpened (projT2 delegate))
-      -> is_computationalADT spec
+Record SharpenedUnderDelegates Sig :=
+  { Sharpened_DelegateSigs : list ADTSig;
+    Sharpened_Implementation :
+      ilist cADT Sharpened_DelegateSigs
+      -> cADT Sig;
+    Sharpened_DelegateSpecs : ilist ADT Sharpened_DelegateSigs
   }.
 
 (* Old Deprecated Sharpened Definition *)
@@ -40,8 +39,20 @@ Record SharpenedUnderDelegates {Sig} (spec : ADT Sig) :=
 
 (* Shiny New Sharpened Definition includes proof that the
    ADT produced is sharpened modulo a set of 'Delegated ADTs'. *)
+
+Definition FullySharpenedUnderDelegates
+           {Sig}
+           (spec : ADT Sig)
+           (adt : SharpenedUnderDelegates Sig ) :=
+  forall (DelegateImpl : ilist cADT (Sharpened_DelegateSigs adt)),
+    (forall n, Dep_Option_elim_T2
+                 (fun Sig adt1 adt2 => @refineADT Sig adt1 (LiftcADT adt2))
+                 (ith_error (Sharpened_DelegateSpecs adt) n)
+                 (ith_error DelegateImpl n))
+        -> refineADT spec (LiftcADT (Sharpened_Implementation adt DelegateImpl)).
+
 Notation Sharpened spec :=
-  {adt : _ & (refineADT spec adt) & SharpenedUnderDelegates adt}.
+  {adt : _ & @FullySharpenedUnderDelegates _ spec adt}.
 
 (* A single refinement step. *)
 Definition SharpenStep Sig adt :
@@ -50,24 +61,105 @@ Definition SharpenStep Sig adt :
     Sharpened adt' ->
     Sharpened adt.
 Proof.
-  intros adt' refineA SpecA'.
-  destruct SpecA' as [adt'' refine_adt'' MostlySharpened_adt''].
-  exists adt''.
-  (* rewrite refineA. *)
-  eapply transitivityT; [ eassumption | eassumption ].
-  exact MostlySharpened_adt''.
+  intros adt' refineA adt''.
+  exists (projT1 adt'').
+  unfold FullySharpenedUnderDelegates in *.
+  intros DI X; eapply transitivityT; [ eassumption | exact (projT2 adt'' DI X)].
 Defined.
 
-Definition SharpenFully Sig adt :
-  forall adt',
-    refineADT (Sig := Sig) adt adt' ->
-    Sharpened adt' ->
-    is_computationalADT adt' ->
-    FullySharpened adt.
+Lemma projT1_SharpenStep
+: forall Sig adt adt' refine_adt_adt' Sharpened_adt',
+    projT1 (@SharpenStep Sig adt adt' refine_adt_adt' Sharpened_adt') =
+    projT1 Sharpened_adt'.
 Proof.
-  eauto.
-Defined.
+  reflexivity.
+Qed.
 
+(* Definition for constructing an easily extractible ADT implementation. *)
+Definition BuildMostlySharpenedcADT Sig
+             Rep
+             (DelegateSigs : list ADTSig)
+             (cConstructors :
+                ilist cADT DelegateSigs ->
+                forall idx,
+                  cConstructorType
+                    Rep
+                    (ConstructorDom Sig idx))
+             (cMethods :
+                ilist cADT DelegateSigs
+                -> forall idx,
+                     cMethodType
+                       Rep
+                       (fst (MethodDomCod Sig idx))
+                       (snd (MethodDomCod Sig idx)))
+             (DelegateImpl : ilist cADT DelegateSigs)
+  : cADT Sig :=
+    {| cRep          := Rep;
+       cConstructors := cConstructors DelegateImpl;
+       cMethods      := cMethods DelegateImpl |}.
+
+(* Proof component of the ADT is Qed-ed. *)
+Lemma FullySharpened_BuildMostlySharpenedcADT {Sig}
+: forall (spec : ADT Sig)
+         (DelegateSigs : list ADTSig)
+         cConstructors cMethods
+         (DelegateSpecs : ilist ADT DelegateSigs),
+    (forall (DelegateImpl : ilist cADT DelegateSigs),
+       (forall n, Dep_Option_elim_T2
+                    (fun Sig adt adt' => @refineADT Sig adt (LiftcADT adt'))
+                    (ith_error DelegateSpecs n)
+                    (ith_error DelegateImpl n))
+       -> forall idx d, Constructors spec idx d ↝ cConstructors DelegateImpl idx d)
+    -> (forall (DelegateImpl : ilist cADT DelegateSigs),
+          (forall n, Dep_Option_elim_T2
+                       (fun Sig adt adt' => @refineADT Sig adt (LiftcADT adt'))
+                       (ith_error DelegateSpecs n)
+                       (ith_error DelegateImpl n))
+          -> forall idx r d, Methods spec idx r d ↝ cMethods DelegateImpl idx r d)
+    -> FullySharpenedUnderDelegates 
+         spec
+         {| Sharpened_DelegateSigs := DelegateSigs;
+            Sharpened_Implementation := BuildMostlySharpenedcADT Sig cConstructors
+                                                                 cMethods;
+            Sharpened_DelegateSpecs := DelegateSpecs |}.
+Proof.
+  intros * cConstructorsRefinesSpec cMethodsRefinesSpec DelegateImpl DelegateImplRefinesSpec.
+  eapply (@refinesADT Sig spec (LiftcADT {|cRep := Rep spec;
+                                           cConstructors := _;
+                                           cMethods := _|}) eq).
+  - unfold refineConstructor, refine; simpl; intros;
+    inversion_by computes_to_inv; subst; repeat econstructor;
+    apply (cConstructorsRefinesSpec _ DelegateImplRefinesSpec idx d).
+  - unfold refineMethod, refine; simpl; intros;
+    inversion_by computes_to_inv; subst; repeat econstructor.
+    + apply (cMethodsRefinesSpec _ DelegateImplRefinesSpec idx r_n d).
+    + simpl; case_eq (cMethods DelegateImpl idx r_n d); econstructor.
+Qed.
+
+Definition SharpenFully {Sig}
+           (spec : ADT Sig)
+           (DelegateSigs : list ADTSig)
+           cConstructors cMethods
+           (DelegateSpecs : ilist ADT DelegateSigs)
+           (cConstructorsRefinesSpec : 
+              forall (DelegateImpl : ilist cADT DelegateSigs),
+                (forall n, Dep_Option_elim_T2
+                             (fun Sig adt adt' => @refineADT Sig adt (LiftcADT adt'))
+                             (ith_error DelegateSpecs n)
+                             (ith_error DelegateImpl n))
+                -> forall idx d, Constructors spec idx d ↝ cConstructors DelegateImpl idx d)
+           (cMethodsRefinesSpec : 
+              forall (DelegateImpl : ilist cADT DelegateSigs),
+                (forall n, Dep_Option_elim_T2
+                             (fun Sig adt adt' => @refineADT Sig adt (LiftcADT adt'))
+                             (ith_error DelegateSpecs n)
+                             (ith_error DelegateImpl n))
+                -> forall idx r d, Methods spec idx r d ↝ cMethods DelegateImpl idx r d)
+: Sharpened spec := 
+  existT _ _ (FullySharpened_BuildMostlySharpenedcADT spec cConstructors
+                                                    cMethods DelegateSpecs
+                                                    cConstructorsRefinesSpec cMethodsRefinesSpec).
+                                                    
 Definition Extract_is_computationalADT
            {Sig}
            (adt : ADT Sig)

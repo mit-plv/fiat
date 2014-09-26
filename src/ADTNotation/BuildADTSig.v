@@ -1,5 +1,4 @@
-Require Import Common Computation ADT.ADTSig
-        Common.ilist Common.StringBound.
+Require Import Common.ilist Common.StringBound ADT.ADTSig.
 Require Import List String.
 
 (* Notation for ADT Signatures. *)
@@ -24,17 +23,17 @@ Delimit Scope methSig_scope with methSig.
 
 (* Notation for ADT Methods. *)
 
-Notation "id : 'rep' × dom → 'rep' × cod " :=
+Notation "'Method' id : 'rep' 'x' dom '->' 'rep' 'x' cod " :=
   {| methID := id;
      methDom := dom;
      methCod := cod |}
-    (at level 60)
+    (id at level 0, dom at level 59, rep at level 59, at level 93)
   : methSig_scope.
 
-Notation "id : dom → 'rep'" :=
+Notation "'Constructor' id ':' dom '->' 'rep'" :=
   {| consID := id;
      consDom := dom |}
-    (at level 60)
+    (id at level 0, dom at level 59, rep at level 59, at level 93)
   : consSig_scope.
 
 (* [BuildADTSig] constructs an ADT signature from a list of
@@ -62,5 +61,7 @@ Delimit Scope ADTSig_scope with ADTSig.
 Notation "'ADTsignature' { cons1 , meth1 , .. , methn }" :=
   (BuildADTSig (cons1%consSig :: [])
               (meth1%methSig :: .. (methn%methSig :: []) ..))
-    (at level 70,
+    (at level 0,
+     cons1 at level 93,
+     meth1 at level 93, methn at level 93,
      format "'ADTsignature'  { '[v' '//' cons1 , '//' meth1 , '//' .. , '//' methn '//'  ']' }") : ADTSig_scope.

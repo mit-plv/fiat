@@ -7,12 +7,12 @@ Set Implicit Arguments.
 (** Definition of a fully computational ADT *)
 
 (** Type of a computational constructor. *)
-Definition computationalConstructorType (rep dom : Type)
+Definition cConstructorType (rep dom : Type)
   :=  dom (* Initialization arguments *)
      -> rep (* Freshly constructed model *).
 
 (** Type of a method. *)
-Definition computationalMethodType (rep dom cod : Type)
+Definition cMethodType (rep dom cod : Type)
   := rep    (* Initial model *)
      -> dom (* Method arguments *)
      -> (rep * cod) (* Final model and return value. *).
@@ -26,14 +26,19 @@ Record cADT (Sig : ADTSig) :=
     (** Constructor implementations *)
     cConstructors :
       forall idx : ConstructorIndex Sig,
-        computationalConstructorType cRep (ConstructorDom Sig idx);
+        cConstructorType cRep (ConstructorDom Sig idx);
 
     (** Method implementations *)
     cMethods :
       forall idx : MethodIndex Sig,
-        computationalMethodType cRep (fst (MethodDomCod Sig idx))
+        cMethodType cRep (fst (MethodDomCod Sig idx))
                                 (snd (MethodDomCod Sig idx))
   }.
+
+Definition LiftcADT (Sig : ADTSig) (A : cADT Sig) : ADT Sig :=
+  {| Rep                := cRep A;
+     Constructors idx d := ret (cConstructors A idx d);
+     Methods idx r d    := ret (cMethods A idx r d) |}.
 
 Definition is_computationalADT (Sig : ADTSig) (A : ADT Sig) :=
   (forall (idx : ConstructorIndex Sig) i,

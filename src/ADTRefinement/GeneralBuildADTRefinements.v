@@ -1,7 +1,9 @@
 Require Import List Arith
         Common Computation ADT.ADTSig ADT.Core
+        ADT.ComputationalADT
         Common.StringBound Common.ilist IterateBoundedIndex
         ADTNotation.BuildADTSig ADTNotation.BuildADT
+        ADTNotation.BuildComputationalADT
         ADTNotation.BuildADTReplaceMethods
         ADTRefinement.Core ADTRefinement.GeneralRefinements
         ADTRefinement.SetoidMorphisms ADTRefinement.BuildADTSetoidMorphisms.
@@ -180,7 +182,7 @@ Section BuildADTRefinements.
     simplify with monad laws.
     econstructor; eauto.
     destruct v; simpl; econstructor.
-  Qed.
+  Defined.
 
   Lemma refineADT_BuildADT_ReplaceMethod_sigma
         (RepT : Type)
@@ -210,187 +212,146 @@ Section BuildADTRefinements.
     intro; econstructor; eauto.
   Qed.
 
+  (* Notation-Friendly Lemmas for constructing an easily extractible
+     ADT implementation. *)
+
+  Definition Notation_Friendly_BuildMostlySharpenedcADT
+             (RepT : Type)
+             (consSigs : list consSig)
+             (methSigs : list methSig)
+             (DelegateSigs : list ADTSig)
+             (cConstructors :
+                ilist cADT DelegateSigs ->
+                ilist (fun Sig => cConstructorType RepT (consDom Sig)) consSigs)
+             (cMethods :
+                ilist cADT DelegateSigs
+                -> ilist (fun Sig => cMethodType RepT (methDom Sig) (methCod Sig)) methSigs)
+             (DelegateImpl : ilist cADT DelegateSigs)
+  : cADT (BuildADTSig consSigs methSigs) :=
+    @BuildcADT RepT consSigs methSigs
+               (imap _ (@Build_cConsDef RepT) (cConstructors DelegateImpl))
+               (imap _ (@Build_cMethDef RepT) (cMethods DelegateImpl)).
+
+
+
+  Definition Notation_Friendly_FullySharpened_BuildMostlySharpenedcADT
+             (RepT : Type)
+             (consSigs : list consSig)
+             (methSigs : list methSig)
+             (consDefs : ilist (@consDef RepT) consSigs)
+             (methDefs : ilist (@methDef RepT) methSigs)
+  : forall (DelegateSigs : list ADTSig)
+             (cConstructors :
+                ilist cADT DelegateSigs ->
+                ilist (fun Sig => cConstructorType RepT (consDom Sig)) consSigs)
+             (cMethods :
+                ilist cADT DelegateSigs
+                -> ilist (fun Sig => cMethodType RepT (methDom Sig) (methCod Sig)) methSigs)
+           (DelegateSpecs : ilist ADT DelegateSigs),
+      (forall (DelegateImpl : ilist cADT DelegateSigs),
+         (forall n, Dep_Option_elim_T2
+                      (fun Sig adt adt' => @refineADT Sig adt (LiftcADT adt'))
+                      (ith_error DelegateSpecs n)
+                      (ith_error DelegateImpl n))
+         -> Iterate_Dep_Type_BoundedIndex
+              (fun idx =>
+                 forall d, getConsDef consDefs idx d
+                                      ↝
+                                      (ith_Bounded _ (cConstructors DelegateImpl) idx) d))
+      -> (forall (DelegateImpl : ilist cADT DelegateSigs),
+            (forall n, Dep_Option_elim_T2
+                         (fun Sig adt adt' => @refineADT Sig adt (LiftcADT adt'))
+                         (ith_error DelegateSpecs n)
+                         (ith_error DelegateImpl n))
+         -> Iterate_Dep_Type_BoundedIndex
+              (fun idx =>
+                 forall d r,
+                 getMethDef methDefs idx d r
+                            ↝ (ith_Bounded _ (cMethods DelegateImpl) idx) d r))
+      ->
+
+FullySharpenedUnderDelegates (BuildADT consDefs methDefs)
+     {|
+     Sharpened_DelegateSigs := DelegateSigs;
+     Sharpened_Implementation := Notation_Friendly_BuildMostlySharpenedcADT
+                                   cConstructors cMethods;
+     Sharpened_DelegateSpecs := DelegateSpecs |}.
+  Proof.
+    intros * cConstructorsRefinesSpec cMethodsRefinesSpec
+                                      DelegateImpl DelegateImplRefinesSpec.
+    eapply (@refinesADT _ (BuildADT consDefs methDefs)
+                        (LiftcADT {|cRep := RepT;
+                                    cConstructors := _;
+                                    cMethods := _|}) eq).
+    - unfold refineConstructor, refine; simpl; intros;
+      inversion_by computes_to_inv; subst; repeat econstructor.
+      rewrite <- ith_Bounded_imap;
+        apply (Iterate_Dep_Type_BoundedIndex_equiv_1 _
+              (cConstructorsRefinesSpec _ DelegateImplRefinesSpec) idx d).
+    -  unfold refineMethod, refine; simpl; intros;
+       inversion_by computes_to_inv; subst; repeat econstructor.
+       + apply (Iterate_Dep_Type_BoundedIndex_equiv_1
+                  _
+                  (cMethodsRefinesSpec _ DelegateImplRefinesSpec) idx r_n d).
+       + rewrite <- ith_Bounded_imap; unfold getcMethDef; simpl;
+         destruct ((ith_Bounded methID (cMethods DelegateImpl) idx));
+         simpl; econstructor.
+  Qed.
+
+  Definition Notation_Friendly_SharpenFully
+             (RepT : Type)
+             (consSigs : list consSig)
+             (methSigs : list methSig)
+             (consDefs : ilist (@consDef RepT) consSigs)
+             (methDefs : ilist (@methDef RepT) methSigs)
+             (DelegateSigs : list ADTSig)
+             (cConstructors :
+                ilist cADT DelegateSigs ->
+                ilist (fun Sig => cConstructorType RepT (consDom Sig)) consSigs)
+             (cMethods :
+                ilist cADT DelegateSigs
+                -> ilist (fun Sig => cMethodType RepT (methDom Sig) (methCod Sig)) methSigs)
+             (DelegateSpecs : ilist ADT DelegateSigs)
+             (cConstructorsRefinesSpec :
+                forall (DelegateImpl : ilist cADT DelegateSigs),
+                  (forall n, Dep_Option_elim_T2
+                               (fun Sig adt adt' => @refineADT Sig adt (LiftcADT adt'))
+                               (ith_error DelegateSpecs n)
+                               (ith_error DelegateImpl n))
+                  -> Iterate_Dep_Type_BoundedIndex
+                       (fun idx =>
+                          forall d, getConsDef consDefs idx d
+                                               ↝
+                                               (ith_Bounded _ (cConstructors DelegateImpl) idx) d))
+           (cMethodsRefinesSpec :
+              forall (DelegateImpl : ilist cADT DelegateSigs),
+                (forall n, Dep_Option_elim_T2
+                             (fun Sig adt adt' => @refineADT Sig adt (LiftcADT adt'))
+                             (ith_error DelegateSpecs n)
+                             (ith_error DelegateImpl n))
+                -> Iterate_Dep_Type_BoundedIndex
+                     (fun idx =>
+                        forall d r,
+                          getMethDef methDefs idx d r
+                                     ↝ (ith_Bounded _ (cMethods DelegateImpl) idx) d r))
+           :  Sharpened (BuildADT consDefs methDefs)
+    :=
+  existT _ _
+         (Notation_Friendly_FullySharpened_BuildMostlySharpenedcADT
+            consDefs methDefs cConstructors cMethods
+            DelegateSpecs
+            cConstructorsRefinesSpec cMethodsRefinesSpec).
+
+
 End BuildADTRefinements.
 
-(* Tactic Notation "hone" "method" constr(methIdx) "using" open_constr(methBod) :=
-  let A :=
-      match goal with
-          |- Sharpened ?A => constr:(A) end in
-  let ASig := match type of A with
-                  ADT ?Sig => Sig
-              end in
-  let consSigs :=
-      match ASig with
-          BuildADTSig ?consSigs _ => constr:(consSigs) end in
-  let methSigs :=
-      match ASig with
-          BuildADTSig _ ?methSigs => constr:(methSigs) end in
-  let consDefs :=
-        match A with
-            BuildADT ?consDefs _  => constr:(consDefs) end in
-  let methDefs :=
-        match A with
-            BuildADT _ ?methDefs  => constr:(methDefs) end in
-  let Rep' :=
-      match A with
-          @BuildADT ?Rep _ _ _ _ => constr:(Rep) end in
-  let ConstructorIndex' := eval simpl in (ConstructorIndex ASig) in
-  let MethodIndex' := eval simpl in (MethodIndex ASig) in
-  let MethodDomCod' := eval simpl in (MethodDomCod ASig) in
-  let methIdxB := eval simpl in
-  (@Build_BoundedIndex _ (List.map methID methSigs) methIdx _) in
-    eapply SharpenStep;
-    [eapply (@refineADT_BuildADT_ReplaceMethod_eq
-               Rep' _ _ consDefs methDefs methIdxB
-               (@Build_methDef Rep'
-                              {| methID := methIdx;
-                                 methDom := fst (MethodDomCod' methIdxB);
-                                 methCod := snd (MethodDomCod' methIdxB)
-                              |}
-                              methBod
-                              ))
-    | idtac]; cbv beta in *; simpl in *;
-    cbv beta delta [replace_BoundedIndex replace_Index] in *;
-    simpl in *.
+Arguments Notation_Friendly_BuildMostlySharpenedcADT _ _ _ _ _ _ _ / .
 
-Tactic Notation "hone" "constructor" constr(consIdx) "using" open_constr(consBod) :=
-  let A :=
-      match goal with
-          |- Sharpened ?A => constr:(A) end in
-  let ASig := match type of A with
-                  ADT ?Sig => Sig
-              end in
-  let consSigs :=
-      match ASig with
-          BuildADTSig ?consSigs _ => constr:(consSigs) end in
-  let methSigs :=
-      match ASig with
-          BuildADTSig _ ?methSigs => constr:(methSigs) end in
-  let consDefs :=
-      match A with
-          BuildADT ?consDefs _  => constr:(consDefs) end in
-  let methDefs :=
-      match A with
-          BuildADT _ ?methDefs  => constr:(methDefs) end in
-  let Rep' :=
-      match A with
-          @BuildADT ?Rep _ _ _ _ => constr:(Rep) end in
-  let ConstructorIndex' := eval simpl in (ConstructorIndex ASig) in
-  let MethodIndex' := eval simpl in (MethodIndex ASig) in
-  let ConstructorDom' := eval simpl in (ConstructorDom ASig) in
-  let consIdxB := eval simpl in
-  (@Build_BoundedIndex _ (List.map consID consSigs) consIdx _) in
-    eapply SharpenStep;
-    [eapply (@refineADT_BuildADT_ReplaceConstructor_eq
-               Rep'  _ _ consDefs methDefs consIdxB
-               (@Build_consDef Rep'
-                              {| consID := consIdx;
-                                 consDom := ConstructorDom' consIdxB
-                              |}
-                              consBod
-                              ))
-    | idtac]; cbv beta in *; simpl in *;
-    cbv beta delta [replace_BoundedIndex replace_Index] in *;
-    simpl in *.
-
-Tactic Notation "hone" "method" constr(methIdx) :=
-  hone' method methIdx using _;
-  [set_evars;
-    simpl in *; intros; subst;
-    simplify with monad laws
- | ].
-
-Tactic Notation "hone" "constructor" constr(consIdx) :=
-  hone' constructor consIdx using _;
-  [set_evars;
-    simpl in *; intros; subst;
-    simplify with monad laws  | ].
-
-Tactic Notation "hone" "constructor" constr(consIdx) :=
-  let A :=
-      match goal with
-          |- Sharpened ?A => constr:(A) end in
-  let ASig := match type of A with
-                  ADT ?Sig => Sig
-              end in
-  let consSigs :=
-      match ASig with
-          BuildADTSig ?consSigs _ => constr:(consSigs) end in
-  let methSigs :=
-      match ASig with
-          BuildADTSig _ ?methSigs => constr:(methSigs) end in
-  let consDefs :=
-      match A with
-          BuildADT ?consDefs _  => constr:(consDefs) end in
-  let methDefs :=
-      match A with
-          BuildADT _ ?methDefs  => constr:(methDefs) end in
-  let Rep' :=
-      match A with
-          @BuildADT ?Rep _ _ _ _ => constr:(Rep) end in
-  let ConstructorIndex' := eval simpl in (ConstructorIndex ASig) in
-  let MethodIndex' := eval simpl in (MethodIndex ASig) in
-  let ConstructorDom' := eval simpl in (ConstructorDom ASig) in
-  let consIdxB := eval simpl in
-  (@Build_BoundedIndex _ (List.map consID consSigs) consIdx _) in
-      eapply (@SharpenStep_BuildADT_ReplaceConstructor_eq
-               Rep'  _ _ consDefs methDefs consIdxB
-               (@Build_consDef Rep'
-                              {| consID := consIdx;
-                                 consDom := ConstructorDom' consIdxB
-                              |}
-                              _
-             ));
-    [ intros; try (apply refine_pick_forall_Prop with
-                   (P := fun r_n n r_o => _); intros);
-      simpl in *; set_evars; simpl in *; subst |
-        cbv beta in *; simpl in *;
-        cbv beta delta [replace_BoundedIndex replace_Index] in *;
-        simpl in *].
-
-Tactic Notation "hone" "method" constr(methIdx) :=
-  let A :=
-      match goal with
-          |- Sharpened ?A => constr:(A) end in
-  let ASig := match type of A with
-                  ADT ?Sig => Sig
-              end in
-  let consSigs :=
-      match ASig with
-          BuildADTSig ?consSigs _ => constr:(consSigs) end in
-  let methSigs :=
-      match ASig with
-          BuildADTSig _ ?methSigs => constr:(methSigs) end in
-  let consDefs :=
-      match A with
-          BuildADT ?consDefs _  => constr:(consDefs) end in
-  let methDefs :=
-      match A with
-          BuildADT _ ?methDefs  => constr:(methDefs) end in
-  let Rep' :=
-      match A with
-          @BuildADT ?Rep _ _ _ _ => constr:(Rep) end in
-  let ConstructorIndex' := eval simpl in (ConstructorIndex ASig) in
-  let MethodIndex' := eval simpl in (MethodIndex ASig) in
-  let MethodDomCod' := eval simpl in (MethodDomCod ASig) in
-  let methIdxB := eval simpl in
-  (@Build_BoundedIndex _ (List.map methID methSigs) methIdx _) in
-      eapply (@SharpenStep_BuildADT_ReplaceMethod_eq
-                Rep'  _ _ consDefs methDefs methIdxB
-                (@Build_methDef Rep'
-                               {| methID := methIdx;
-                                  methDom := fst (MethodDomCod' methIdxB);
-                                  methCod := snd (MethodDomCod' methIdxB)
-                               |}
-                               _
-                              ));
-    [ intros; repeat (progress (try rewrite refine_pick_computes_to;
-                                try apply refine_pick_forall_Prop with
-                                (P := fun _ _ _ => _); intros));
-      simpl in *; set_evars; simpl in *; subst |
-          cbv beta in *; simpl in *;
-          cbv beta delta [replace_BoundedIndex replace_Index] in *;
-          simpl in *]. *)
+Tactic Notation "extract" "implementation" "of" constr(adtImpl) "using" open_constr(delegateImpl) :=
+  let Impl :=
+      eval simpl in
+  (Sharpened_Implementation (projT1 adtImpl) delegateImpl) in
+      exact Impl.
 
 (* A tactic for finishing a derivation. Probably needs a better name.*)
 Tactic Notation "finish" "sharpening" constr(delegatees):=
@@ -417,3 +378,57 @@ Tactic Notation "finish" "sharpening" constr(delegatees):=
 Tactic Notation "finish" "honing" :=
   subst_body;
   first [higher_order_2_reflexivity | higher_order_1_reflexivity ].
+
+Ltac makeEvar T k :=
+  let x := fresh in evar (x : T); let y := eval unfold x in x in clear x; k y.
+
+Ltac ilist_of_evar C B As k :=
+  match As with
+    | nil => k (fun (c : C) => inil B)
+    | cons ?a ?As' =>
+      makeEvar (C -> B a)
+               ltac:(fun b =>
+                       ilist_of_evar
+                         C B As'
+                         ltac:(fun Bs' => k (fun c => icons a (b c) (Bs' c))))
+  end.
+
+Ltac FullySharpenEachMethod delegateSigs delegateSpecs :=
+  match goal with
+      |- Sharpened (@BuildADT ?Rep ?consSigs ?methSigs ?consDefs ?methDefs ) =>
+      ilist_of_evar
+        (ilist ComputationalADT.cADT delegateSigs)
+        (fun Sig => cMethodType Rep (methDom Sig) (methCod Sig))
+        methSigs
+        ltac:(fun cMeths => ilist_of_evar
+                              (ilist ComputationalADT.cADT delegateSigs)
+                              (fun Sig => cConstructorType Rep (consDom Sig))
+                              consSigs
+                              ltac:(fun cCons =>
+                                      eapply Notation_Friendly_SharpenFully
+                                      with (DelegateSpecs := delegateSpecs)
+                                             (cConstructors := cCons)
+                                             (cMethods := cMeths)));
+        unfold Dep_Type_BoundedIndex_app_comm_cons; simpl;
+        intros; repeat econstructor
+  end.
+
+Ltac BuildFullySharpenedConstructor :=
+  intros;
+  match goal with
+      |- ret ?x ↝ ?Bod ?DelegateImpl ?d
+      => let Bod' := eval pattern DelegateImpl, d in x in
+         match Bod' with
+           | (?Bod'' _ _) =>
+             unify Bod Bod''; constructor
+         end
+  end.
+
+Lemma SharpenIfComputesTo {A} :
+  forall (cond : bool) (cT cE : Comp A) vT vE,
+    cT ↝ vT
+    -> cE ↝ vE
+    -> (if cond then cT else cE) ↝ if cond then vT else vE.
+Proof.
+  destruct cond; eauto.
+Qed.

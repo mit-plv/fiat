@@ -3,7 +3,7 @@ SRC_MODULES    := \
 	Common/ilist \
 	Common/StringBound \
 	Common/DecideableEnsembles \
-	Common/IterateStringBound \
+	Common/IterateBoundedIndex \
 	Computation/Notations \
 	Computation/Core \
 	Computation/Monad \
@@ -21,6 +21,7 @@ SRC_MODULES    := \
 	ADT \
 	ADTNotation/BuildADTSig \
 	ADTNotation/BuildADT \
+	ADTNotation/BuildComputationalADT \
 	ADTNotation/BuildADTReplaceMethods \
 	ADTNotation \
 	ADTRefinement/Core \
