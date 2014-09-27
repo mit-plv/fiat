@@ -1,4 +1,4 @@
-Require Export Permutation.
+Require Export Permutation Common.
 Require Import AdditionalLemmas List.
 
 Unset Implicit Arguments.
@@ -252,4 +252,27 @@ Proof.
   intros.
   apply (Permutation_in a) in H; simpl; eauto.
   apply in_split; apply H; constructor; eauto.
+Qed.
+
+Lemma permutation_filter {A}
+: forall pred (l f : list A),
+    Permutation (filter pred l) f
+    -> exists f', filter pred f' = f 
+                  /\ Permutation l f'.
+Proof.
+  induction l; simpl; intros.
+  - apply Permutation_nil in H; subst; eexists nil; 
+    split; [reflexivity | constructor ].
+  - revert H; case_eq (pred a); intros.
+    + pose proof (PermutationConsSplit _ _ _ H0).
+      destruct H1 as (l1 & l2 & f_eq); subst.
+      destruct (IHl (app l1 l2)).
+      eauto using Permutation_cons_app_inv.
+      intuition.
+      pose proof (filter_app_inv _ _ _ _ H2); destruct_ex; intuition.
+      eexists (app _ (a :: _)); intuition.
+      rewrite filter_app; simpl; rewrite H, H1, H6; reflexivity.
+      eapply Permutation_cons_app; rewrite H3, H4; reflexivity.
+    + apply IHl in H0; destruct_ex; intuition.
+      eexists (a :: x); intuition; simpl; rewrite H; eauto.
 Qed.

@@ -1,4 +1,5 @@
-Require Import List String FunctionalExtensionality Ensembles.
+Require Import List String FunctionalExtensionality Permutation
+         Ensembles AdditionalPermutationLemmas.
 
 Class UnConstrRelationAbsRClass {A B : Type} :=
   { UnConstrRelationAbsR : Ensemble A -> B -> Prop }.
@@ -69,4 +70,50 @@ Section IndexedEnsembles.
                                (list ElementType) :=
     {| UnConstrRelationAbsR := EnsembleIndexedListEquivalence|}.
 
+  Ltac destruct_EnsembleIndexedListEquivalence :=
+    match goal with
+        H : EnsembleIndexedListEquivalence ?or ?nr |- _ =>
+        let bnd := fresh "bnd" in
+        let fresh_bnd := fresh "fresh_bnd" in
+        let lor := fresh "l" or in
+        let eqv_or := fresh "eqv_" or in
+        let NoDup_lor := fresh "NoDup_" or in
+        let eqv_r_n := fresh "eqv_nr" in
+        let H' := fresh in
+        pose proof H as H';
+        destruct H' as [[bnd fresh_bnd] [lor [eqv_or [NoDup_lor eqv_r_n]]]]
+    end.
+
+  Lemma Permutation_EnsembleIndexedListEquivalence
+  : forall ensemble (l l' : list _),
+      EnsembleIndexedListEquivalence ensemble l
+      -> Permutation l l'
+      -> EnsembleIndexedListEquivalence ensemble l'.
+  Proof.
+    simpl; intros.
+    destruct_EnsembleIndexedListEquivalence.
+    econstructor; eauto.
+    symmetry in H0.
+    destruct (permutation_map_base indexedElement H0 _ eqv_ensemble) as [l'' [l''_eq H']].
+    econstructor; split; eauto.
+    constructor.
+    apply NoDup_modulo_permutation; eauto.
+    intros; rewrite eqv_nr.
+    split; apply Permutation_in; eauto; symmetry; eauto.
+  Qed.
+
 End IndexedEnsembles.
+
+  Ltac destruct_EnsembleIndexedListEquivalence :=
+    match goal with
+        H : EnsembleIndexedListEquivalence ?or ?nr |- _ =>
+        let bnd := fresh "bnd" in
+        let fresh_bnd := fresh "fresh_bnd" in
+        let lor := fresh "l" or in
+        let eqv_or := fresh "eqv_" or in
+        let NoDup_lor := fresh "NoDup_" or in
+        let eqv_r_n := fresh "eqv_nr" in
+        let H' := fresh in
+        pose proof H as H';
+        destruct H' as [[bnd fresh_bnd] [lor [eqv_or [NoDup_lor eqv_r_n]]]]
+    end.

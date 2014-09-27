@@ -81,6 +81,15 @@ Qed.
 
 Require Import Bool.
 
+Lemma decides_negb :
+  forall b P,
+    decides (negb b) P -> decides b (~ P).
+Proof.
+  unfold decides; setoid_rewrite if_negb; simpl; intros.
+  destruct b; simpl in *; intuition.
+Qed.
+
+
 Lemma refine_decide_not :
   forall {A} (P: A -> Prop),
     refine (Pick (fun (b : bool) =>
@@ -116,3 +125,21 @@ Proof.
   intros;
   rewrite refine_decide_not, refine_decide_negb; reflexivity.
 Qed.
+
+Section AdditionalQueryLemmas.
+
+  Require Import InsertQSSpecs StringBound
+  ADTNotation.BuildADTSig ADTNotation.BuildADT
+  GeneralBuildADTRefinements QueryQSSpecs QueryStructure
+  .
+  Lemma get_update_unconstr_iff {db_schema qs table new_contents} :
+    forall x,
+      Ensembles.In _ (GetUnConstrRelation (@UpdateUnConstrRelation db_schema qs table new_contents) table) x <->
+      Ensembles.In _ new_contents x.
+  Proof.
+    unfold GetUnConstrRelation, UpdateUnConstrRelation, EnsembleInsert.
+    intros. rewrite ith_replace_BoundIndex_eq;
+            reflexivity.
+  Qed.
+
+End AdditionalQueryLemmas.

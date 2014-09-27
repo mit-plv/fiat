@@ -57,6 +57,7 @@ Ltac autoconvert func :=
 
 (* [mkIndex] builds a [BagPlusProof] record packaging an indexed
    with all its operations and proofs of correctness. *)
+
 Ltac mkIndex heading attributes' :=
   set (src := attributes');
   assert (list (@ProperAttribute heading)) as decorated_source by autoconvert (@CheckType heading);

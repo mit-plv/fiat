@@ -1,7 +1,5 @@
 Require Import Ensembles List Coq.Lists.SetoidList Program
         Common Computation.Core
-        ADTNotation.BuildADTSig ADTNotation.BuildADT
-        GeneralBuildADTRefinements QueryQSSpecs QueryStructure
         SetEq Omega String Arith.
 
 Unset Implicit Arguments.
@@ -824,6 +822,38 @@ Section AdditionalListLemmas.
     destruct (List.partition f l); destruct (f a); simpl in *; congruence.
   Qed.
 
+
+  Lemma filter_app_inv {A}
+  : forall pred (l l1 l2 : list A),
+      filter pred l = app l1 l2
+      -> exists l1' l2', l = app l1' l2'
+                         /\ l1 = filter pred l1'
+                         /\ l2 = filter pred l2'.
+  Proof.
+    induction l; simpl; intros.
+    - destruct l1; simpl in *;
+      [ destruct l2;
+        [ eexists nil; eexists nil; intuition
+        | discriminate]
+      | discriminate ].
+    - revert H; case_eq (pred a); intros.
+      + destruct l1; simpl in *.
+        * destruct l2; [ discriminate | ].
+          injection H0; intros.
+          apply (IHl [] l2) in H1; destruct_ex; intuition; subst.
+          eexists []; eexists (_ :: _); intuition; simpl.
+          rewrite H, H0; reflexivity.
+        * injection H0; intros.
+          apply IHl in H1; destruct_ex; subst.
+          eexists (a0 :: x); eexists x0; intuition.
+          rewrite H2; reflexivity.
+          simpl; rewrite H, H1; reflexivity.
+      + apply IHl in H0; destruct_ex; subst.
+        eexists (a :: x); eexists x0; intuition.
+        rewrite H1; reflexivity.
+        simpl; rewrite H, H0; reflexivity.
+  Qed.
+
 End AdditionalListLemmas.
 
 Section AdditionalComputeationLemmas.
@@ -836,24 +866,3 @@ Section AdditionalComputeationLemmas.
     t_refine.
   Qed.
 End AdditionalComputeationLemmas.
-
-Section AdditionalQueryLemmas.
-  Require Import InsertQSSpecs StringBound.
-  Lemma get_update_unconstr_iff {db_schema qs table new_contents} :
-    forall x,
-      Ensembles.In _ (GetUnConstrRelation (@UpdateUnConstrRelation db_schema qs table new_contents) table) x <->
-      Ensembles.In _ new_contents x.
-  Proof.
-    unfold GetUnConstrRelation, UpdateUnConstrRelation, EnsembleInsert.
-    intros. rewrite ith_replace_BoundIndex_eq;
-    reflexivity.
-  Qed.
-
-  Lemma decides_negb :
-    forall b P,
-      decides (negb b) P -> decides b (~ P).
-  Proof.
-    unfold decides; setoid_rewrite if_negb; simpl; intros.
-    destruct b; simpl in *; intuition.
-  Qed.
-End AdditionalQueryLemmas.
