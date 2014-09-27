@@ -1,6 +1,6 @@
 Require Export BagsInterface CountingListBags TreeBags Tuple Heading List Program ilist.
 Require Import String_as_OT IndexedEnsembles DecideableEnsembles.
-Require Import Bool String OrderedTypeEx.
+Require Import Bool String OrderedTypeEx BinNat ZArith_dec Arith.
 
 Unset Implicit Arguments.
 
@@ -87,6 +87,40 @@ Fixpoint BuildSearchTermFromAttributes {heading}
       | [] => (list (@Tuple heading -> bool))
       | idx :: indices' => prod (option (ProperAttributeToFMapKey idx)) (BuildSearchTermFromAttributes indices')
   end.
+
+Definition ProperAttribute_eq {heading}
+  (index : @ProperAttribute heading)
+  (k : ProperAttributeToFMapKey index)
+  (attr : Domain heading (Attribute index))
+: bool.
+Proof.
+  destruct index; simpl in *.
+  destruct (ProperlyTyped0) as [ [ [ | ] | ]| ];
+    rewrite e in attr.
+  exact (if (N_eq_dec attr k) then true else false).
+  exact (if (Z_eq_dec attr k) then true else false).
+  exact (if (eq_nat_dec attr k) then true else false).
+  exact (if (string_dec attr k) then true else false).
+Defined.
+
+Fixpoint SearchTermFromAttributesMatcher {heading}
+         (indices : list (@ProperAttribute heading))
+: BuildSearchTermFromAttributes indices -> @Tuple heading -> bool :=
+  match indices return
+        BuildSearchTermFromAttributes indices -> @Tuple heading -> bool
+  with
+    | nil => fun f tup => MatchAgainstMany f tup
+    | index :: indices' =>
+      (fun (H : BuildSearchTermFromAttributes indices' -> @Tuple heading -> bool)
+           (f : prod (option (ProperAttributeToFMapKey index))
+                     (BuildSearchTermFromAttributes indices'))
+           (tup : @Tuple heading) =>
+         match f with
+           | (Some k, index') => (ProperAttribute_eq index k (tup (Attribute index))) && (H index' tup)
+          | (None, index') => H index' tup
+        end) (SearchTermFromAttributesMatcher indices')
+  end.
+
 
 Definition cast {T1 T2: Type} (eq: T1 = T2) (x: T1) : T2.
 Proof.

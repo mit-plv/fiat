@@ -27,6 +27,10 @@ Section CountingListBags.
       ccontents := @nil TItem
     |}.
 
+  (* This seems inefficient -- why aren't we converting these lists
+      once and for all?
+  *)
+
   Fixpoint MatchAgainstMany
            (search_terms : list (TItem -> bool))
            (item: TItem) :=

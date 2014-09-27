@@ -77,7 +77,7 @@ Section SharpenedBag.
       rewrite partition_filter_neq in H1; symmetry in H1.
       destruct (permutation_filter _ _ _ H1) as [l [l_eq Perm_l]].
       symmetry in Perm_l.
-      destruct (permutation_map_base indexedElement Perm_l _ eqv_or) 
+      destruct (permutation_map_base indexedElement Perm_l _ eqv_or)
                as [l' [l'_eq Perm_l']].
       exists (filter (fun a => negb (bfind_matcher search_term (indexedElement a))) l'); repeat split.
       + rewrite <- l_eq, <- l'_eq, filter_map; reflexivity.
@@ -191,7 +191,7 @@ Section SharpenedBag.
     }
 
     FullySharpenEachMethod (@nil ADTSig) (inil ADT); simpl.
-    
+
   Defined.
 
   Definition BagADTImpl : ComputationalADT.cADT (BagSig (@Tuple heading) SearchTermTypePlus).
