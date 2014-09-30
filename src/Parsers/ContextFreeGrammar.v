@@ -93,6 +93,25 @@ Section cfg.
       rewrite <- (RightId _ str).
       constructor; assumption || constructor.
     Defined.
+
+    Definition ParsePatternApp str1 str2 p1 p2 (pop1 : parse_of_pattern str1 p1) (pop2 : parse_of_pattern str2 p2)
+    : parse_of_pattern (str1 ++ str2) (p1 ++ p2)%list.
+    Proof.
+      induction pop1; simpl.
+      { rewrite LeftId; assumption. }
+      { rewrite Associativity.
+        constructor; assumption. }
+    Defined.
+
+    Definition ParseApp str1 str2 p1 p2 (po1 : parse_of str1 [ p1 ]) (po2 : parse_of str2 [ p2 ])
+    : parse_of (str1 ++ str2) [ (p1 ++ p2)%list ].
+    Proof.
+      inversion_clear po1; inversion_clear po2;
+      try match goal with
+            | [ H : parse_of _ [] |- _ ] => exfalso; revert H; clear; intro H; abstract inversion H
+          end.
+      { constructor. apply ParsePatternApp; assumption. }
+    Defined.
   End parse.
 
   Definition parse_of_grammar (String : string_like) (str : String) (G : grammar) :=
