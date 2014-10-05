@@ -88,7 +88,8 @@ SRC_MODULES    := \
 	QueryStructure/Refinements/AutoDB\
 	Parsers/ContextFreeGrammar\
 	Parsers/Specification\
-	Parsers/NonComputational
+	Parsers/NonComputational\
+	Parsers/BooleanRecognizer
 
 EXAMPLE_MODULES := \
 	Bookstore \
