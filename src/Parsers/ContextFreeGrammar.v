@@ -37,28 +37,28 @@ Section cfg.
     | Terminal (_ : CharType)
     | NonTerminal (name : string).
 
-    (** A [nonterminal] is a list of possible patterns; a pattern is a
-        list of items.  A string matches a pattern if it can be broken
-        up into components that match the relevant element of the
-        pattern. *)
-    Definition pattern := list item. (* should be [production := ] *)
-    Definition nonterminal := list pattern. (* should be [productions := ] *)
+    (** A [productions] is a list of possible [production]s; a
+        [production] is a list of [item]s.  A string matches a
+        [production] if it can be broken up into components that match
+        the relevant element of the [production]. *)
+    Definition production := list item.
+    Definition productions := list production.
 
-    Definition nonterminal_dec (CharType_eq_dec : forall x y : CharType, {x = y} + {x <> y})
-               (x y : nonterminal) : {x = y} + {x <> y}.
+    Definition productions_dec (CharType_eq_dec : forall x y : CharType, {x = y} + {x <> y})
+               (x y : productions) : {x = y} + {x <> y}.
     Proof.
       repeat (apply list_eq_dec; intros);
       decide equality.
       apply string_dec.
     Defined.
 
-    (** A [grammar] consists of a [nonterminal] to match a string
-        against, and a function mapping names to non-terminals. *)
+    (** A [grammar] consists of [productions] to match a string
+        against, and a function mapping names to [productions]. *)
     Record grammar :=
       {
         Top_name :> string;
-        Lookup :> string -> nonterminal;
-        Top :> nonterminal := Lookup Top_name
+        Lookup :> string -> productions;
+        Top :> productions := Lookup Top_name
       }.
   End definitions.
 
@@ -68,34 +68,34 @@ Section cfg.
   Section parse.
     Variable String : string_like.
     Variable G : grammar.
-    (** A parse of a string into a [nonterminal] is a pattern in that
-        non-terminal, together with a list of substrings which cover
-        the original string, each of which is a parse of the relevant
-        component of the pattern. *)
-    Inductive parse_of : String -> nonterminal -> Type :=
-    | ParseHead : forall str pat pats, parse_of_pattern str pat
+    (** A parse of a string into [productions] is a [production] in
+        that list, together with a list of substrings which cover the
+        original string, each of which is a parse of the relevant
+        component of the [production]. *)
+    Inductive parse_of : String -> productions -> Type :=
+    | ParseHead : forall str pat pats, parse_of_production str pat
                                        -> parse_of str (pat::pats)
     | ParseTail : forall str pat pats, parse_of str pats
                                        -> parse_of str (pat::pats)
-    with parse_of_pattern : String -> pattern -> Type :=
-    | ParsePatternNil : parse_of_pattern (Empty _) nil
-    | ParsePatternCons : forall str pat strs pats,
+    with parse_of_production : String -> production -> Type :=
+    | ParseProductionNil : parse_of_production (Empty _) nil
+    | ParseProductionCons : forall str pat strs pats,
                            parse_of_item str pat
-                           -> parse_of_pattern strs pats
-                           -> parse_of_pattern (str ++ strs) (pat::pats)
+                           -> parse_of_production strs pats
+                           -> parse_of_production (str ++ strs) (pat::pats)
     with parse_of_item : String -> item -> Type :=
     | ParseTerminal : forall x, parse_of_item [[ x ]]%string_like (Terminal x)
     | ParseNonTerminal : forall name str, parse_of str (Lookup G name)
                                           -> parse_of_item str (NonTerminal name).
 
-    Definition ParsePatternSingleton str it (p : parse_of_item str it) : parse_of_pattern str [ it ].
+    Definition ParseProductionSingleton str it (p : parse_of_item str it) : parse_of_production str [ it ].
     Proof.
       rewrite <- (RightId _ str).
       constructor; assumption || constructor.
     Defined.
 
-    Definition ParsePatternApp str1 str2 p1 p2 (pop1 : parse_of_pattern str1 p1) (pop2 : parse_of_pattern str2 p2)
-    : parse_of_pattern (str1 ++ str2) (p1 ++ p2)%list.
+    Definition ParseProductionApp str1 str2 p1 p2 (pop1 : parse_of_production str1 p1) (pop2 : parse_of_production str2 p2)
+    : parse_of_production (str1 ++ str2) (p1 ++ p2)%list.
     Proof.
       induction pop1; simpl.
       { rewrite LeftId; assumption. }
@@ -110,7 +110,7 @@ Section cfg.
       try match goal with
             | [ H : parse_of _ [] |- _ ] => exfalso; revert H; clear; intro H; abstract inversion H
           end.
-      { constructor. apply ParsePatternApp; assumption. }
+      { constructor. apply ParseProductionApp; assumption. }
     Defined.
   End parse.
 
@@ -120,7 +120,7 @@ End cfg.
 
 Arguments parse_of _%type_scope _ _ _%string_like _.
 Arguments parse_of_item _%type_scope _ _ _%string_like _.
-Arguments parse_of_pattern _%type_scope _ _ _%string_like _.
+Arguments parse_of_production _%type_scope _ _ _%string_like _.
 Arguments parse_of_grammar _%type_scope _ _%string_like _.
 Arguments Concat _%type_scope _ (_ _)%string_like.
 Arguments bool_eq _%type_scope _ (_ _)%string_like.

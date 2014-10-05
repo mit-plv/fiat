@@ -16,16 +16,15 @@ Set Implicit Arguments.
     - [aggregate : String → T → String → T → T] - takes the results of
       two successful adjacent parses and combines them.
 
-    - [pick_parses : String → nonterminal → list (list String)] - A
-      non-terminal is a list of patterns.  This function will break up
+    - [pick_parses : String → productions → list (list String)] - A
+      non-terminal is a list of production-objectss.  This function will break up
       a string into a list of possible splits; a split is an
-      assignment of a part of the string to each pattern.
+      assignment of a part of the string to each production.
 
 
     The basic idea is that
 
 FIXME *)*)
-(** TODO: rename pattern to production *)
 
 Section wf.
   Section wf_prod.
@@ -135,16 +134,16 @@ Local Open Scope string_like_scope.
 
 Section recursive_descent_parser.
   Context CharType (String : string_like CharType) (G : grammar CharType).
-  Context (nonterminal_listT : String -> Type)
-          (initial_nonterminal_data : forall str, nonterminal_listT str)
-          (is_valid_nonterminal : forall str, nonterminal_listT str -> nonterminal CharType -> bool)
-          (remove_nonterminal : forall str, nonterminal_listT str -> nonterminal CharType -> nonterminal_listT str)
-          (nonterminal_listT_R : forall str, nonterminal_listT str -> nonterminal_listT str -> Prop)
-          (remove_nonterminal_dec : forall str ls nt, is_valid_nonterminal str ls nt = true
-                                                  -> nonterminal_listT_R str (remove_nonterminal str ls nt) ls)
-          (ntl_wf : forall str, well_founded (nonterminal_listT_R str)).
+  Context (productions_listT : String -> Type)
+          (initial_productions_data : forall str, productions_listT str)
+          (is_valid_productions : forall str, productions_listT str -> productions CharType -> bool)
+          (remove_productions : forall str, productions_listT str -> productions CharType -> productions_listT str)
+          (productions_listT_R : forall str, productions_listT str -> productions_listT str -> Prop)
+          (remove_productions_dec : forall str ls nt, is_valid_productions str ls nt = true
+                                                  -> productions_listT_R str (remove_productions str ls nt) ls)
+          (ntl_wf : forall str, well_founded (productions_listT_R str)).
   Section generic.
-    Context (T_success T_failure : String -> nonterminal CharType -> Type)
+    Context (T_success T_failure : String -> productions CharType -> Type)
             (T_success_reverse_lookup : forall str name, T_success str (Lookup G name) -> T_success str [ [ NonTerminal _ name ] ])
             (T_failure_reverse_lookup : forall str name, T_failure str (Lookup G name) -> T_failure str [ [ NonTerminal _ name ] ])
             (transport_T_success_str : forall (s1 s2 : String) nt, s1 = s2 -> T_success s1 nt -> T_success s2 nt)
@@ -160,122 +159,122 @@ Section recursive_descent_parser.
             | inl p' => inl (T_success_reverse_lookup _ p')
             | inr p' => inr (T_failure_reverse_lookup _ p')
           end.
-    Context (parse_pattern_by_picking
+    Context (parse_production_by_picking
              : forall str0
-                      (parse_pattern_from_split_list'
+                      (parse_production_from_split_list'
                        : forall (strs : list { str : String | Length _ str < Length _ str0 \/ str = str0 })
-                                (pat : pattern CharType),
+                                (pat : production CharType),
                            ilist (fun sp => T (proj1_sig (fst sp)) [ [ snd sp ] ]) (combine strs pat))
                       (str : String)
                       (pf : Length _ str < Length _ str0 \/ str = str0)
-                      (pat : pattern CharType),
+                      (pat : production CharType),
                  T str [ pat ]).
     Context (decide_leaf : forall str ch, T str [ [ Terminal ch ] ]).
-    Context (fold_patterns : forall str (pats : list (pattern CharType)),
+    Context (fold_productions : forall str (pats : productions CharType),
                                ilist (fun pat => T str [ pat ]) pats
                                -> T str pats).
-    Context (make_abort : forall str nt valid_list, @is_valid_nonterminal str valid_list nt = false -> T_failure str nt).
+    Context (make_abort : forall str nt valid_list, @is_valid_productions str valid_list nt = false -> T_failure str nt).
 
 
     Section parts.
       Section item.
         Context (str : String)
-                (parse_nonterminal : forall nt, T str nt).
+                (parse_productions : forall nt, T str nt).
 
         Definition parse_item it : T str [ [ it ] ]
           := match it with
                | Terminal ch => decide_leaf str ch
-               | NonTerminal name => T_reverse_lookup _ (parse_nonterminal (Lookup G name))
+               | NonTerminal name => T_reverse_lookup _ (parse_productions (Lookup G name))
              end.
       End item.
 
-      Section pattern.
+      Section production.
         Variable str0 : String.
-        Variable parse_nonterminal : forall (str : String)
+        Variable parse_productions : forall (str : String)
                                             (pf : Length _ str < Length _ str0 \/ str = str0)
                                             nt, T str nt.
 
-        Definition parse_pattern_from_split_list
+        Definition parse_production_from_split_list
                    (strs : list { str : String | Length _ str < Length _ str0 \/ str = str0 })
-                   (pat : pattern CharType)
+                   (pat : production CharType)
         : ilist (fun sp => T (proj1_sig (fst sp)) [ [ snd sp ] ]) (combine strs pat)
           := imap_list (fun sp => T (proj1_sig (fst sp)) [ [ snd sp ] ])
-                       (fun sp => parse_item (@parse_nonterminal _ (proj2_sig (fst sp))) (snd sp))
+                       (fun sp => parse_item (@parse_productions _ (proj2_sig (fst sp))) (snd sp))
                        (combine strs pat).
 
-        Definition parse_pattern (str : String) (pf : Length _ str < Length _ str0 \/ str = str0) (pat : pattern CharType)
+        Definition parse_production (str : String) (pf : Length _ str < Length _ str0 \/ str = str0) (pat : production CharType)
         : T str [ pat ]
-          := parse_pattern_by_picking parse_pattern_from_split_list pf pat.
-      End pattern.
+          := parse_production_by_picking parse_production_from_split_list pf pat.
+      End production.
 
-      Section nonterminal.
+      Section productions.
         Section step.
           Variable str0 : String.
-          Variable parse_nonterminal : forall (str : String)
+          Variable parse_productions : forall (str : String)
                                               (pf : Length _ str < Length _ str0 \/ str = str0)
                                               nt, T str nt.
 
-          Definition parse_nonterminal_step (str : String) (pf : Length _ str < Length _ str0 \/ str = str0) (nt : nonterminal CharType)
+          Definition parse_productions_step (str : String) (pf : Length _ str < Length _ str0 \/ str = str0) (nt : productions CharType)
           : T str nt
-            := fold_patterns (imap_list (fun pat => T str [ pat ])
-                                        (parse_pattern parse_nonterminal pf)
+            := fold_productions (imap_list (fun pat => T str [ pat ])
+                                        (parse_production parse_productions pf)
                                         nt).
         End step.
 
         Section wf.
-          Definition parse_nonterminal_or_abort str0 str (valid_list : forall str, nonterminal_listT str)
+          Definition parse_productions_or_abort str0 str (valid_list : forall str, productions_listT str)
                      (pf : Length _ str < Length _ str0 \/ str = str0)
-                     (nt : nonterminal CharType)
+                     (nt : productions CharType)
           : T str nt.
           Proof.
             revert str pf nt.
-            change str0 with (projT1 (existT nonterminal_listT str0 (valid_list str0))).
-            generalize (existT nonterminal_listT str0 (valid_list str0)); clear str0 valid_list.
-            refine (@Fix (sigT nonterminal_listT) _ (@well_founded_sigT_relation
+            change str0 with (projT1 (existT productions_listT str0 (valid_list str0))).
+            generalize (existT productions_listT str0 (valid_list str0)); clear str0 valid_list.
+            refine (@Fix (sigT productions_listT) _ (@well_founded_sigT_relation
                                                        String
-                                                       nonterminal_listT
+                                                       productions_listT
                                                        _
                                                        _
                                                        (well_founded_ltof _ (Length String))
                                                        ntl_wf)
                          _ _).
-            intros [str0 valid_list] parse_nonterminal str pf nt; simpl in *.
+            intros [str0 valid_list] parse_productions str pf nt; simpl in *.
             destruct (lt_dec (Length _ str) (Length _ str0)) as [pf'|pf'];
               [ | assert (H : str0 = str) by intuition; apply (transport_T_str H); clear H ].
-            { (** [str] got smaller, so we reset the valid nonterminals *)
-              specialize (parse_nonterminal
-                            (existT _ str (initial_nonterminal_data str))
+            { (** [str] got smaller, so we reset the valid productions list *)
+              specialize (parse_productions
+                            (existT _ str (initial_productions_data str))
                             (or_introl pf')); simpl in *.
-              exact (parse_nonterminal_step parse_nonterminal (or_intror eq_refl) nt). }
-            { (** [str] didn't get smaller, so we cache the fact that we've hit this nonterminal already *)
-              case_eq (is_valid_nonterminal valid_list nt).
+              exact (parse_productions_step parse_productions (or_intror eq_refl) nt). }
+            { (** [str] didn't get smaller, so we cache the fact that we've hit this productions already *)
+              case_eq (is_valid_productions valid_list nt).
               { (** It was valid, so we can remove it *)
                 intro H'.
-                specialize (fun pf' => parse_nonterminal
-                              (existT _ str0 (remove_nonterminal valid_list nt))
+                specialize (fun pf' => parse_productions
+                              (existT _ str0 (remove_productions valid_list nt))
                               (or_intror (ex_intro _ eq_refl pf'))); simpl in *.
-                specialize (parse_nonterminal (remove_nonterminal_dec H')).
-                exact (parse_nonterminal_step parse_nonterminal (or_intror eq_refl) nt). }
-              { (** oops, we already saw this nonterminal in the past.  ABORT! *)
+                specialize (parse_productions (remove_productions_dec H')).
+                exact (parse_productions_step parse_productions (or_intror eq_refl) nt). }
+              { (** oops, we already saw this productions in the past.  ABORT! *)
                 intro; right; eapply make_abort; eassumption. } }
           Defined.
 
-          Definition parse_nonterminal str nt : T str nt
-            := @parse_nonterminal_or_abort str str initial_nonterminal_data
+          Definition parse_productions str nt : T str nt
+            := @parse_productions_or_abort str str initial_productions_data
                                            (or_intror eq_refl) nt.
         End wf.
-      End nonterminal.
+      End productions.
     End parts.
   End generic.
 
   Section parse_tree.
-    Local Hint Constructors parse_of parse_of_pattern parse_of_item : parse_tree.
-    Local Hint Resolve ParseHead ParsePatternSingleton : parse_tree.
+    Local Hint Constructors parse_of parse_of_production parse_of_item : parse_tree.
+    Local Hint Resolve ParseHead ParseProductionSingleton : parse_tree.
     Local Hint Extern 1 => apply ParseHead : parse_tree.
     Local Hint Extern 0 (option (parse_of _ _ _ [])) => exact None : parse_tree.
-    Context (pick_patterns
+    Context (pick_productions
              : forall (str : String)
-                      (pat : pattern CharType)
+                      (pat : production CharType)
                       (patH : Datatypes.length pat > 0),
                  { ls : list { split : list { str_part : String | Length _ str_part < Length _ str \/ str_part = str }
                              | List.length split = List.length pat
@@ -297,7 +296,7 @@ Section recursive_descent_parser.
 
     Definition parse_tree_for : forall str nt, parse_of String G str nt + option (parse_of String G str nt -> False).
     Proof with auto with parse_tree nocore.
-      apply (@parse_nonterminal (fun str nt => parse_of _ G str nt)
+      apply (@parse_productions (fun str nt => parse_of _ G str nt)
                                 (fun str nt => option (parse_of _ G str nt -> False)))...
       { intros str name [np|]; [ apply Some | exact None ].
         revert np; clear; intros.
@@ -305,21 +304,21 @@ Section recursive_descent_parser.
                            | [ H : context[_ ++ Empty String] |- _ ] => rewrite RightId in H
                            | [ H : ?T, H' : ?T -> False |- _ ] => destruct (H' H)
                            | [ p : parse_of _ _ _ _ |- _ ] => (inversion p; subst; clear p)
-                           | [ p : parse_of_pattern _ _ _ _ |- _ ] => (inversion p; subst; clear p)
+                           | [ p : parse_of_production _ _ _ _ |- _ ] => (inversion p; subst; clear p)
                            | [ p : parse_of_item _ _ _ _ |- _ ] => (inversion p; subst; clear p)
                          end). }
         { intros; subst; assumption. }
         { intros; subst; assumption. }
-        { intros str0 parse_pattern_from_split_list' str pf pat.
-          pose proof (parse_pattern_from_split_list' ((exist _ str pf)::nil) pat) as parse_pattern_from_split_list''; simpl in *.
+        { intros str0 parse_production_from_split_list' str pf pat.
+          pose proof (parse_production_from_split_list' ((exist _ str pf)::nil) pat) as parse_production_from_split_list''; simpl in *.
           destruct pat as [|pat0 [|pat1 pats] ]; simpl in *.
           { case_eq (str =s Empty _); intro H; [ left | right; exact None ]...
             apply bool_eq_correct in H; subst... }
-          { destruct (ilist_hd parse_pattern_from_split_list'') as [tree|]; simpl in *; [ left | right ]; assumption. }
+          { destruct (ilist_hd parse_production_from_split_list'') as [tree|]; simpl in *; [ left | right ]; assumption. }
           { (** we need to split the string *)
-            clear parse_pattern_from_split_list''.
+            clear parse_production_from_split_list''.
             refine (aggregate _); clear aggregate.
-            refine (map _ (proj1_sig (@pick_patterns str (pat0::pat1::pats) (Gt.gt_Sn_O _)))); clear pick_patterns.
+            refine (map _ (proj1_sig (@pick_productions str (pat0::pat1::pats) (Gt.gt_Sn_O _)))); clear pick_productions.
             intros [ split [ split_length split_strings ] ].
             let T := match type of split with list ?T => constr:(T) end in
             set (f := (map (fun x' : T
@@ -332,7 +331,7 @@ Section recursive_descent_parser.
                               | or_intror H0, or_introl H1 => or_introl (transitivity (R := le) H1 (NPeano.Nat.eq_le_incl _ _ (f_equal (Length String) H0)))
                               | or_intror H0, or_intror H1 => or_intror (transitivity H1 H0)
                             end)))).
-            specialize (parse_pattern_from_split_list' (f split) (pat0 :: pat1 :: pats)).
+            specialize (parse_production_from_split_list' (f split) (pat0 :: pat1 :: pats)).
             generalize dependent split.
             intro split.
             generalize (pat0::pat1::pats).
@@ -386,7 +385,7 @@ Section recursive_descent_parser.
         intros str ch.
         case_eq (str =s [[ch]]); intro H; [ apply bool_eq_correct in H; left | right; exact None ].
         subst... }
-      { (** fold_patterns *)
+      { (** fold_productions *)
         intros str pats parses; induction parses; simpl in *;
         repeat match goal with
                  | [ H : option _ |- _ ] => destruct H
@@ -415,28 +414,28 @@ Section recursive_descent_parser.
 
 
 (*  Section parse_tree_no_split.
-    Local Hint Constructors parse_of parse_of_pattern parse_of_item : parse_tree.
-    Local Hint Resolve ParseHead ParsePatternSingleton : parse_tree.
+    Local Hint Constructors parse_of parse_of_production parse_of_item : parse_tree.
+    Local Hint Resolve ParseHead ParseProductionSingleton : parse_tree.
     Local Hint Extern 1 => apply ParseHead : parse_tree.
     Local Hint Extern 0 (option (parse_of _ _ _ [])) => exact None : parse_tree.
 
     Definition parse_tree_no_split_for : forall str nt, option (parse_of String G str nt).
     Proof with auto with parse_tree nocore.
-      apply (@parse_nonterminal (fun str nt => option (parse_of _ G str nt))).
+      apply (@parse_productions (fun str nt => option (parse_of _ G str nt))).
       { intros str name [p|]; [ apply Some | exact None ]... }
       { intros.
-        specialize (parse_pattern_from_split_list' ((exist _ str pf)::nil) pat); simpl in *.
+        specialize (parse_production_from_split_list' ((exist _ str pf)::nil) pat); simpl in *.
         destruct pat as [|pat0 [|pat1 pats] ]; simpl in *.
         { case_eq (str =s Empty _); intro H; [ apply Some | exact None ]...
           apply bool_eq_correct in H; subst... }
-        { destruct (ilist_hd parse_pattern_from_split_list') as [tree|]; simpl in *; [ apply Some | exact None ]... }
+        { destruct (ilist_hd parse_production_from_split_list') as [tree|]; simpl in *; [ apply Some | exact None ]... }
         { (** we don't handle the case where we need to split the string *)
           exact None. } }
       { (** decide_leaf *)
         intros str ch.
         case_eq (str =s [[ch]]); intro H; [ apply bool_eq_correct in H; apply Some | exact None ].
         subst... }
-      { (** fold_patterns *)
+      { (** fold_productions *)
         intros str pats parses; induction parses; simpl in *...
         repeat match goal with H : option _ |- _ => destruct H end;
           try solve [ apply Some; auto with parse_tree nocore
@@ -460,7 +459,7 @@ Section recursive_descent_parser.
 
   Section generic_by_simple_listing.
     (** If we don't need to pass proofs down the tree, we can just ask for a list of splits. *)
-    Context (T_success T_failure : String -> nonterminal CharType -> Type)
+    Context (T_success T_failure : String -> productions CharType -> Type)
             (T_success_reverse_lookup : forall str name, T_success str (Lookup G name) -> T_success str [ [ NonTerminal _ name ] ])
             (T_failure_reverse_lookup : forall str name, T_failure str (Lookup G name) -> T_failure str [ [ NonTerminal _ name ] ])
             (transport_T_success_str : forall (s1 s2 : String) nt, s1 = s2 -> T_success s1 nt -> T_success s2 nt)
@@ -471,17 +470,17 @@ Section recursive_descent_parser.
         | inl p' => inl (transport_T_success_str H p')
         | inr p' => inr (transport_T_failure_str H p')
       end.
-    Context (pick_patterns
+    Context (pick_productions
              : forall (str : String)
-                      (pat : pattern CharType),
+                      (pat : production CharType),
                  { ls : list { split : list { str_part : String | Length _ str_part < Length _ str \/ str_part = str }
                              | List.length split = List.length pat
                                /\ fold_right (Concat _) (Empty _) (map (@proj1_sig _ _) split) = str }
                  | List.length ls <> 0 }).
-    Context (simple_fold_pattern_parts
+    Context (simple_fold_production_parts
              : forall str0
                       strs
-                      (pat : pattern CharType)
+                      (pat : production CharType)
                       (pf : List.length strs = List.length pat),
                  ilist (fun sp : {str1 : String |
                                   Length String str1 < Length String str0 \/
@@ -491,30 +490,30 @@ Section recursive_descent_parser.
                  -> T (fold_left (Concat _) (map (@proj1_sig _ _) strs) (Empty _))
                       [ pat ]).
     Context (decide_leaf : forall str ch, T str [ [ Terminal ch ] ]).
-    Context (fold_patterns : forall str (pats : list (pattern CharType)),
+    Context (fold_productions : forall str (pats : productions CharType),
                                ilist (fun pat => T str [ pat ]) pats
                                -> T str pats).
-    Context (make_abort : forall str nt valid_list, @is_valid_nonterminal str valid_list nt = false -> T_failure str nt).
+    Context (make_abort : forall str nt valid_list, @is_valid_productions str valid_list nt = false -> T_failure str nt).
 
-    Definition parse_nonterminal_with_split_picker str nt : T str nt.
+    Definition parse_productions_with_split_picker str nt : T str nt.
     Proof.
-      refine (@parse_nonterminal T_success T_failure T_success_reverse_lookup T_failure_reverse_lookup transport_T_success_str transport_T_failure_str _ decide_leaf fold_patterns make_abort str nt).
+      refine (@parse_productions T_success T_failure T_success_reverse_lookup T_failure_reverse_lookup transport_T_success_str transport_T_failure_str _ decide_leaf fold_productions make_abort str nt).
       clear str nt.
       intros str0 parse_a_split str H pat.
-      specialize (pick_patterns str pat).
+      specialize (pick_productions str pat).
       specialize (fun strs => parse_a_split strs pat).
       specialize (fun strs H =>
-                    @simple_fold_pattern_parts _ _ _ H (parse_a_split strs)).
+                    @simple_fold_production_parts _ _ _ H (parse_a_split strs)).
       clear parse_a_split.
-      move simple_fold_pattern_parts at bottom.
+      move simple_fold_production_parts at bottom.
       specialize (fun strs pf1 pf2 =>
                     @transport_T_str
                       _ str _ pf1
-                      (@simple_fold_pattern_parts strs pf2)).
-      clear simple_fold_pattern_parts.
-      move pick_patterns at bottom.
+                      (@simple_fold_production_parts strs pf2)).
+      clear simple_fold_production_parts.
+      move pick_productions at bottom.
       move transport_T_str at bottom.
-      destruct pick_patterns as [ls H'].
+      destruct pick_productions as [ls H'].
       let T := match type of ls with list (@sig (list ?T) _) => constr:(T) end in
       set (f := (map (fun x' : T
                       => exist
@@ -559,36 +558,36 @@ Section recursive_descent_parser.
 
 
 
-      apply simple_fold_pattern_parts.
+      apply simple_fold_production_parts.
 
-      move pick_patterns at bottom.
+      move pick_productions at bottom.
       pose @imap_list.
-            := @parse_nonterminal_or_abort str str initial_nonterminal_data
+            := @parse_productions_or_abort str str initial_productions_data
                                            (or_intror eq_refl) nt.
 
   Section parse_tree_no_split.
-    Local Hint Constructors parse_of parse_of_pattern parse_of_item : parse_tree.
-    Local Hint Resolve ParseHead ParsePatternSingleton : parse_tree.
+    Local Hint Constructors parse_of parse_of_production parse_of_item : parse_tree.
+    Local Hint Resolve ParseHead ParseProductionSingleton : parse_tree.
     Local Hint Extern 1 => apply ParseHead : parse_tree.
     Local Hint Extern 0 (option (parse_of _ _ _ [])) => exact None : parse_tree.
 
     Definition parse_tree_no_split_for : forall str nt, option (parse_of String G str nt).
     Proof with auto with parse_tree nocore.
-      apply (@parse_nonterminal (fun str nt => option (parse_of _ G str nt))).
+      apply (@parse_productions (fun str nt => option (parse_of _ G str nt))).
       { intros str name [p|]; [ apply Some | exact None ]... }
       { intros.
-        specialize (parse_pattern_from_split_list' ((exist _ str pf)::nil) pat); simpl in *.
+        specialize (parse_production_from_split_list' ((exist _ str pf)::nil) pat); simpl in *.
         destruct pat as [|pat0 [|pat1 pats] ]; simpl in *.
         { case_eq (str =s Empty _); intro H; [ apply Some | exact None ]...
           apply bool_eq_correct in H; subst... }
-        { destruct (ilist_hd parse_pattern_from_split_list') as [tree|]; simpl in *; [ apply Some | exact None ]... }
+        { destruct (ilist_hd parse_production_from_split_list') as [tree|]; simpl in *; [ apply Some | exact None ]... }
         { (** we don't handle the case where we need to split the string *)
           exact None. } }
       { (** decide_leaf *)
         intros str ch.
         case_eq (str =s [[ch]]); intro H; [ apply bool_eq_correct in H; apply Some | exact None ].
         subst... }
-      { (** fold_patterns *)
+      { (** fold_productions *)
         intros str pats parses; induction parses; simpl in *...
         repeat match goal with H : option _ |- _ => destruct H end;
           try solve [ apply Some; auto with parse_tree nocore
@@ -609,28 +608,28 @@ Section recursive_descent_parser.
 
 
   Section parse_tree_no_split.
-    Local Hint Constructors parse_of parse_of_pattern parse_of_item : parse_tree.
-    Local Hint Resolve ParseHead ParsePatternSingleton : parse_tree.
+    Local Hint Constructors parse_of parse_of_production parse_of_item : parse_tree.
+    Local Hint Resolve ParseHead ParseProductionSingleton : parse_tree.
     Local Hint Extern 1 => apply ParseHead : parse_tree.
     Local Hint Extern 0 (option (parse_of _ _ _ [])) => exact None : parse_tree.
 
     Definition parse_tree_no_split_for : forall str nt, option (parse_of String G str nt).
     Proof with auto with parse_tree nocore.
-      apply (@parse_nonterminal (fun str nt => option (parse_of _ G str nt))).
+      apply (@parse_productions (fun str nt => option (parse_of _ G str nt))).
       { intros str name [p|]; [ apply Some | exact None ]... }
       { intros.
-        specialize (parse_pattern_from_split_list' ((exist _ str pf)::nil) pat); simpl in *.
+        specialize (parse_production_from_split_list' ((exist _ str pf)::nil) pat); simpl in *.
         destruct pat as [|pat0 [|pat1 pats] ]; simpl in *.
         { case_eq (str =s Empty _); intro H; [ apply Some | exact None ]...
           apply bool_eq_correct in H; subst... }
-        { destruct (ilist_hd parse_pattern_from_split_list') as [tree|]; simpl in *; [ apply Some | exact None ]... }
+        { destruct (ilist_hd parse_production_from_split_list') as [tree|]; simpl in *; [ apply Some | exact None ]... }
         { (** we don't handle the case where we need to split the string *)
           exact None. } }
       { (** decide_leaf *)
         intros str ch.
         case_eq (str =s [[ch]]); intro H; [ apply bool_eq_correct in H; apply Some | exact None ].
         subst... }
-      { (** fold_patterns *)
+      { (** fold_productions *)
         intros str pats parses; induction parses; simpl in *...
         repeat match goal with H : option _ |- _ => destruct H end;
           try solve [ apply Some; auto with parse_tree nocore
@@ -653,13 +652,13 @@ End recursive_descent_parser.
 Section recursive_descent_parser_list.
   Context {CharType} {String : string_like CharType} {G : grammar CharType}.
   Variable (CharType_eq_dec : forall x y : CharType, {x = y} + {x <> y}).
-  Definition rdp_list_nonterminal_listT : String -> Type := fun _ => list (nonterminal CharType).
-  Definition rdp_list_is_valid_nonterminal : forall str, rdp_list_nonterminal_listT str -> nonterminal CharType -> bool
-    := fun str ls nt => if in_dec (nonterminal_dec CharType_eq_dec) nt ls then true else false.
-  Definition rdp_list_remove_nonterminal : forall str, rdp_list_nonterminal_listT str -> nonterminal CharType -> rdp_list_nonterminal_listT str
+  Definition rdp_list_productions_listT : String -> Type := fun _ => list (productions CharType).
+  Definition rdp_list_is_valid_productions : forall str, rdp_list_productions_listT str -> productions CharType -> bool
+    := fun str ls nt => if in_dec (productions_dec CharType_eq_dec) nt ls then true else false.
+  Definition rdp_list_remove_productions : forall str, rdp_list_productions_listT str -> productions CharType -> rdp_list_productions_listT str
     := fun str ls nt =>
-         filter (fun x => if nonterminal_dec CharType_eq_dec nt x then false else true) ls.
-  Definition rdp_list_nonterminal_listT_R : forall str, rdp_list_nonterminal_listT str -> rdp_list_nonterminal_listT str -> Prop
+         filter (fun x => if productions_dec CharType_eq_dec nt x then false else true) ls.
+  Definition rdp_list_productions_listT_R : forall str, rdp_list_productions_listT str -> rdp_list_productions_listT str -> Prop
     := fun _ => ltof _ (@List.length _).
   Lemma filter_list_dec {T} f (ls : list T) : List.length (filter f ls) <= List.length ls.
   Proof.
@@ -670,12 +669,12 @@ Section recursive_descent_parser_list.
              | [ |- _ <= S _ ] => solve [ apply le_S; auto ]
            end.
   Defined.
-  Lemma rdp_list_remove_nonterminal_dec : forall str ls nt, @rdp_list_is_valid_nonterminal str ls nt = true
-                                                            -> @rdp_list_nonterminal_listT_R str (@rdp_list_remove_nonterminal str ls nt) ls.
+  Lemma rdp_list_remove_productions_dec : forall str ls nt, @rdp_list_is_valid_productions str ls nt = true
+                                                            -> @rdp_list_productions_listT_R str (@rdp_list_remove_productions str ls nt) ls.
   Proof.
     intros.
-    unfold rdp_list_is_valid_nonterminal, rdp_list_nonterminal_listT_R, rdp_list_remove_nonterminal, ltof in *.
-    destruct (in_dec (nonterminal_dec CharType_eq_dec) nt ls); [ | discriminate ].
+    unfold rdp_list_is_valid_productions, rdp_list_productions_listT_R, rdp_list_remove_productions, ltof in *.
+    destruct (in_dec (productions_dec CharType_eq_dec) nt ls); [ | discriminate ].
     match goal with
       | [ H : In ?nt ?ls |- context[filter ?f ?ls] ]
         => assert (~In nt (filter f ls))
@@ -683,7 +682,7 @@ Section recursive_descent_parser_list.
     { intro H'.
       apply filter_In in H'.
       destruct H' as [? H'].
-      destruct (nonterminal_dec CharType_eq_dec nt nt); congruence. }
+      destruct (productions_dec CharType_eq_dec nt nt); congruence. }
     { match goal with
         | [ |- context[filter ?f ?ls] ] => generalize dependent f; intros
       end.
@@ -701,9 +700,9 @@ Section recursive_descent_parser_list.
                | [ H : _ -> _ -> ?G |- ?G ] => apply H; auto
              end. }
   Defined.
-  Lemma rdp_list_ntl_wf : forall str, well_founded (@rdp_list_nonterminal_listT_R str).
+  Lemma rdp_list_ntl_wf : forall str, well_founded (@rdp_list_productions_listT_R str).
   Proof.
-    unfold rdp_list_nonterminal_listT_R.
+    unfold rdp_list_productions_listT_R.
     intro.
     apply well_founded_ltof.
   Defined.
@@ -712,18 +711,18 @@ End recursive_descent_parser_list.
 (*
 
   Section parse_tree.
-    Context (make_splits : forall (str : String) (pat : pattern CharType),
+    Context (make_splits : forall (str : String) (pat : production CharType),
                              list
                                {str' : String |
                                 Length String str' <= Length _ str}).
-    Local Hint Constructors parse_of parse_of_pattern parse_of_item : parse_tree.
-    Local Hint Resolve ParseHead ParsePatternSingleton : parse_tree.
+    Local Hint Constructors parse_of parse_of_production parse_of_item : parse_tree.
+    Local Hint Resolve ParseHead ParseProductionSingleton : parse_tree.
     Local Hint Extern 1 => apply ParseHead : parse_tree.
     Local Hint Extern 0 (option (parse_of _ _ _ [])) => exact None : parse_tree.
 
     Definition parse_tree_for : forall str nt, option (parse_of String G str nt).
     Proof with auto with parse_tree nocore.
-      apply (@parse_nonterminal (fun str nt => option (parse_of _ G str nt))).
+      apply (@parse_productions (fun str nt => option (parse_of _ G str nt))).
       { intros str name [p|]; [ apply Some | exact None ]... }
       { intros.
         specialize (make_splits str).
@@ -731,7 +730,7 @@ End recursive_descent_parser_list.
                                                      (proj1_sig spf)
                                                      (transitivity (R := le) (proj2_sig spf) pf))
                                    (make_splits pat)) as make_splits'.
-        specialize (fun pat => parse_pattern_from_split_list' (make_splits' pat) pat).
+        specialize (fun pat => parse_production_from_split_list' (make_splits' pat) pat).
 Goal (fun x : nat => x) = (fun x : nat => x).
   match goal with
     | |- context[fun x => x] => pose (fun y : Set => y)
@@ -741,7 +740,7 @@ Goal (fun x : nat => x) = (fun x : nat => x).
   end. (* Toplevel input, characters 0-78:
 Error: Ltac variable y is not bound to an identifier.
 It cannot be used in a binder. *)
-        Variable pick_splits : forall (str : String) (pat : pattern CharType),
+        Variable pick_splits : forall (str : String) (pat : production CharType),
                                  { strs : list { str' : String | Length _ str' <= Length _ str }
                                  | fold_left (fun sp acc => proj1_sig (fst sp) ++ acc) (Empty _) (combine strs pat) = str
                                    /\
@@ -750,7 +749,7 @@ It cannot be used in a binder. *)
         intros str ch.
         case_eq (str =s [[ch]]); intro H; [ apply bool_eq_correct in H; apply Some | exact None ].
         subst... }
-      { (** fold_patterns *)
+      { (** fold_productions *)
         intros str pats parses; induction parses; simpl in *...
         repeat match goal with H : option _ |- _ => destruct H end;
           try solve [ apply Some; auto with parse_tree nocore
@@ -780,11 +779,11 @@ It cannot be used in a binder. *)
                  if str =s [ [ ch ] ] as b return (
 
 Print Universes.
-        apply ParsePatternSingleton.
+        apply ParseProductionSingleton.
         constructor.
         assumption.
-        eapply ParsePatternCons.
-        Print parse_of_pattern.
+        eapply ParseProductionCons.
+        Print parse_of_production.
       Print parse_of.
 
 End recursive_descent_parser.
@@ -865,7 +864,7 @@ Section example_parse_string_grammar.
   Local Hint Resolve NPeano.Nat.lt_lt_add_l NPeano.Nat.lt_lt_add_r NPeano.Nat.lt_add_pos_r NPeano.Nat.lt_add_pos_l : arith.
 
   Definition brute_force_splitter
-  : forall (str : string_stringlike) (pat : pattern Ascii.ascii),
+  : forall (str : string_stringlike) (pat : production Ascii.ascii),
       Datatypes.length pat > 0 ->
       {ls
        : list
@@ -929,12 +928,12 @@ Section example_parse_string_grammar.
                                             + option (parse_of string_stringlike G str nt -> False).
   Proof.
     eapply parse_tree_for
-    with (nonterminal_listT := rdp_list_nonterminal_listT)
-           (is_valid_nonterminal := rdp_list_is_valid_nonterminal Ascii.ascii_dec)
-           (remove_nonterminal := rdp_list_remove_nonterminal Ascii.ascii_dec)
-           (nonterminal_listT_R := rdp_list_nonterminal_listT_R).
+    with (productions_listT := rdp_list_productions_listT)
+           (is_valid_productions := rdp_list_is_valid_productions Ascii.ascii_dec)
+           (remove_productions := rdp_list_remove_productions Ascii.ascii_dec)
+           (productions_listT_R := rdp_list_productions_listT_R).
     { intros; exact [Lookup (trivial_grammar _) ""%string]. }
-    { apply rdp_list_remove_nonterminal_dec. }
+    { apply rdp_list_remove_productions_dec. }
     { apply rdp_list_ntl_wf. }
     { apply brute_force_splitter. }
   Defined.
@@ -974,12 +973,12 @@ Module example_parse_empty_grammar.
                                             + option (parse_of string_stringlike (trivial_grammar _) str nt -> False).
   Proof.
     eapply parse_tree_for
-    with (nonterminal_listT := rdp_list_nonterminal_listT)
-           (is_valid_nonterminal := rdp_list_is_valid_nonterminal Ascii.ascii_dec)
-           (remove_nonterminal := rdp_list_remove_nonterminal Ascii.ascii_dec)
-           (nonterminal_listT_R := rdp_list_nonterminal_listT_R).
+    with (productions_listT := rdp_list_productions_listT)
+           (is_valid_productions := rdp_list_is_valid_productions Ascii.ascii_dec)
+           (remove_productions := rdp_list_remove_productions Ascii.ascii_dec)
+           (productions_listT_R := rdp_list_productions_listT_R).
     { intros; exact [Lookup (trivial_grammar _) ""%string]. }
-    { apply rdp_list_remove_nonterminal_dec. }
+    { apply rdp_list_remove_productions_dec. }
     { apply rdp_list_ntl_wf. }
     { simpl.
       intros str pat H.
