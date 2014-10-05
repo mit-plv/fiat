@@ -118,7 +118,7 @@ Section recursive_descent_parser.
         Proof.
           destruct_head or; subst;
           first [ right; reflexivity | left; assumption | left; etransitivity; eassumption ].
-        Defined.
+        Qed.
 
         (** We assume the splits we are given are valid (are actually splits of the string, rather than an unrelated split) and are the same length as the given [production].  Behavior in other cases is undefined *)
         (** We match a production if any split of the string matches that production *)
@@ -219,7 +219,7 @@ Section recursive_descent_parser_list.
              | [ |- S _ <= S _ ] => solve [ apply Le.le_n_S; auto ]
              | [ |- _ <= S _ ] => solve [ apply le_S; auto ]
            end.
-  Defined.
+  Qed.
   Lemma rdp_list_remove_productions_dec : forall ls prods,
                                             @rdp_list_is_valid_productions ls prods = true
                                             -> @rdp_list_productions_listT_R (@rdp_list_remove_productions ls prods) ls.
@@ -251,7 +251,7 @@ Section recursive_descent_parser_list.
                | _ => apply filter_list_dec
                | [ H : _ -> _ -> ?G |- ?G ] => apply H; auto
              end. }
-  Defined.
+  Qed.
   Lemma rdp_list_ntl_wf : well_founded rdp_list_productions_listT_R.
   Proof.
     unfold rdp_list_productions_listT_R.
@@ -271,8 +271,9 @@ Section example_parse_string_grammar.
                                                              _)
                                              (make_all_single_splits str')
             end).
-    simpl; apply f_equal.
-    apply proj2_sig.
+    clear.
+    abstract (simpl; apply f_equal;
+              apply proj2_sig).
   Defined.
 
   Lemma length_append (s1 s2 : string) : length (s1 ++ s2) = length s1 + length s2.
@@ -347,7 +348,7 @@ Section example_parse_string_grammar.
     induction pats; simpl in *; intros str.
     { (** We only get one thing in the list *)
       refine (((exist _ str _)::nil)::nil).
-      simpl; auto with arith. }
+      abstract (simpl; auto with arith). }
     { pose (make_all_single_splits str) as single_splits.
       pose proof (map (@proj1_sig _ _) single_splits).
       refine (flatten1
@@ -428,7 +429,7 @@ Section examples.
     Delimit Scope productions_scope with productions.
     Delimit Scope productions_assignment_scope with prods_assignment.
     Bind Scope productions_scope with productions.
-    Notation "n0 ::== r0" := ((n0 : string)%string, (r0 : productions _)%productions) (at level 200, r0 at next level) : production_assignment_scope.
+    Notation "n0 ::== r0" := ((n0 : string)%string, (r0 : productions _)%productions) (at level 100) : production_assignment_scope.
     Notation "[[[ x ;; .. ;; y ]]]" :=
       (list_to_productions (nil::nil) (cons x%prod_assignment .. (cons y%prod_assignment nil) .. )) : productions_assignment_scope.
 
@@ -440,7 +441,7 @@ Section examples.
 
     Definition ab_star_grammar : grammar Ascii.ascii :=
       {| Top_name := "ab_star";
-         Lookup := [[[ ("" ::== << "" >>) ;;
+         Lookup := [[[ ("" ::== (<< "" >>)) ;;
                        ("ab" ::== << "ab" >>) ;;
                        ("ab_star" ::== << $< "" >$
                                         | $< "ab" $ "ab_star" >$ >> ) ]]]%prods_assignment |}.
