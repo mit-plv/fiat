@@ -412,18 +412,38 @@ Section examples.
 
     Coercion production_of_string : string >-> production.
 
+    Fixpoint list_to_productions {T} (default : T) (ls : list (string * T)) : string -> T
+      := match ls with
+           | nil => fun _ => default
+           | (str, t)::ls' => fun s => if string_dec str s
+                                       then t
+                                       else list_to_productions default ls' s
+         end.
+
+    Delimit Scope item_scope with item.
+    Bind Scope item_scope with item.
+    Delimit Scope production_scope with production.
+    Delimit Scope production_assignment_scope with prod_assignment.
+    Bind Scope production_scope with production.
+    Delimit Scope productions_scope with productions.
+    Delimit Scope productions_assignment_scope with prods_assignment.
+    Bind Scope productions_scope with productions.
+    Notation "n0 ::== r0" := ((n0 : string)%string, (r0 : productions _)%productions) (at level 200, r0 at next level) : production_assignment_scope.
+    Notation "[[[ x ;; .. ;; y ]]]" :=
+      (list_to_productions (nil::nil) (cons x%prod_assignment .. (cons y%prod_assignment nil) .. )) : productions_assignment_scope.
+
+    Local Open Scope string_scope.
+    Notation "<< x | .. | y >>" :=
+      (@cons (production _) (x)%production .. (@cons (production _) (y)%production nil) .. ) : productions_scope.
+
+    Notation "$< x $ .. $ y >$" := (cons (NonTerminal _ x) .. (cons (NonTerminal _ y) nil) .. ) : production_scope.
+
     Definition ab_star_grammar : grammar Ascii.ascii :=
       {| Top_name := "ab_star";
-         Lookup := fun s =>
-                     if string_dec s ""
-                     then nil::nil
-                     else if string_dec s "ab"
-                          then ("ab"%string : production _)::nil
-                          else if string_dec s "ab_star"
-                               then ((NonTerminal _ ""%string)::nil)
-                                      ::((NonTerminal _ "ab"%string)::(NonTerminal _ "ab_star")::nil)
-                                      ::nil
-                               else nil::nil |}.
+         Lookup := [[[ ("" ::== << "" >>) ;;
+                       ("ab" ::== << "ab" >>) ;;
+                       ("ab_star" ::== << $< "" >$
+                                        | $< "ab" $ "ab_star" >$ >> ) ]]]%prods_assignment |}.
 
     Definition make_parse_of : forall (str : string)
                                       (prods : productions Ascii.ascii),
@@ -448,6 +468,7 @@ Section examples.
     Time Compute parse "aba".
     Check eq_refl : parse "aba" = false.
     Time Compute parse "abab".
+    Time Compute parse "ababab".
     Check eq_refl : parse "abab" = true.
   (* For debugging: *)(*
   Goal True.
