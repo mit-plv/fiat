@@ -169,35 +169,35 @@ Section recursive_descent_parser.
                               _
                               (well_founded_ltof _ (Length String))
                               ntl_wf)
-                         _ _).
-            refine (fun sl parse_productions str pf prods
-                    => let str0 := fst sl in
-                       let valid_list := snd sl in
-                       match lt_dec (Length _ str) (Length _ str0) with
-                         | left pf' =>
-                           (** [str] got smaller, so we reset the valid productions list *)
-                           parse_productions_step
-                             (parse_productions
-                                (pair str initial_productions_data)
-                                (or_introl pf'))
-                             (or_intror eq_refl)
-                             prods
-                         | right pf' =>
-                           (** [str] didn't get smaller, so we cache the fact that we've hit this productions already *)
-                           (if is_valid_productions valid_list prods as is_valid
-                               return is_valid_productions valid_list prods = is_valid -> _
-                            then (** It was valid, so we can remove it *)
-                              fun H' =>
-                                parse_productions_step
-                                  (parse_productions
-                                     (pair str0 (remove_productions valid_list prods))
-                                     (or_intror (conj eq_refl (remove_productions_dec H'))))
-                                  (or_intror eq_refl)
-                                  prods
-                            else (** oops, we already saw this productions in the past.  ABORT! *)
-                              fun _ => false
-                           ) eq_refl
-                       end).
+                         _
+                         (fun sl parse_productions str pf prods
+                          => let str0 := fst sl in
+                             let valid_list := snd sl in
+                             match lt_dec (Length _ str) (Length _ str0) with
+                               | left pf' =>
+                                 (** [str] got smaller, so we reset the valid productions list *)
+                                 parse_productions_step
+                                   (parse_productions
+                                      (pair str initial_productions_data)
+                                      (or_introl pf'))
+                                   (or_intror eq_refl)
+                                   prods
+                               | right pf' =>
+                                 (** [str] didn't get smaller, so we cache the fact that we've hit this productions already *)
+                                 (if is_valid_productions valid_list prods as is_valid
+                                     return is_valid_productions valid_list prods = is_valid -> _
+                                  then (** It was valid, so we can remove it *)
+                                    fun H' =>
+                                      parse_productions_step
+                                        (parse_productions
+                                           (pair str0 (remove_productions valid_list prods))
+                                           (or_intror (conj eq_refl (remove_productions_dec H'))))
+                                        (or_intror eq_refl)
+                                        prods
+                                  else (** oops, we already saw this productions in the past.  ABORT! *)
+                                    fun _ => false
+                                 ) eq_refl
+                             end)).
           Defined.
 
           Definition parse_productions (str : String) (prods : productions CharType)
