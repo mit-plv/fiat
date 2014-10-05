@@ -923,6 +923,7 @@ Section example_parse_string_grammar.
   Defined.
 
   Variable G : grammar Ascii.ascii.
+  Variable all_productions : list (productions Ascii.ascii).
 
   Definition brute_force_make_parse_of : forall str nt, parse_of string_stringlike G str nt
                                             + option (parse_of string_stringlike G str nt -> False).
@@ -932,7 +933,7 @@ Section example_parse_string_grammar.
            (is_valid_productions := rdp_list_is_valid_productions Ascii.ascii_dec)
            (remove_productions := rdp_list_remove_productions Ascii.ascii_dec)
            (productions_listT_R := rdp_list_productions_listT_R).
-    { intros; exact [Lookup (trivial_grammar _) ""%string]. }
+    { intros; exact all_productions. }
     { apply rdp_list_remove_productions_dec. }
     { apply rdp_list_ntl_wf. }
     { apply brute_force_splitter. }
@@ -942,7 +943,7 @@ End example_parse_string_grammar.
 Module example_parse_empty_grammar.
   Definition make_parse_of : forall str nt, parse_of string_stringlike (trivial_grammar _) str nt
                                             + option (parse_of string_stringlike (trivial_grammar _) str nt -> False)
-    := brute_force_make_parse_of _.
+    := @brute_force_make_parse_of (trivial_grammar _) (map (Lookup (trivial_grammar _)) (""::nil)%string).
 
 
 
@@ -966,67 +967,70 @@ Module example_parse_empty_grammar.
   Abort.
 End example_parse_empty_grammar.
 
+
+Section examples.
+  Section ab_star.
+
+    Fixpoint production_of_string (s : string) : production Ascii.ascii
+      := match s with
+           | EmptyString => nil
+           | String.String ch s' => (Terminal ch)::production_of_string s'
+         end.
+
+    Coercion production_of_string : string >-> production.
+
+    Definition ab_star_grammar : grammar Ascii.ascii :=
+      {| Top_name := "ab_star";
+         Lookup := fun s =>
+                     if string_dec s ""
+                     then nil::nil
+                     else if string_dec s "ab"
+                          then ("ab"%string : production _)::nil
+                          else if string_dec s "ab_star"
+                               then ((NonTerminal _ ""%string)::nil)
+                                      ::((NonTerminal _ "ab"%string)::(NonTerminal _ "ab_star")::nil)
+                                      ::nil
+                               else nil::nil |}.
+
+    Definition make_parse_of : forall (str : string)
+                                      (prods : productions Ascii.ascii),
+                                 _
+      := @brute_force_make_parse_of ab_star_grammar (map (Lookup ab_star_grammar) (""::"ab"::"ab_star"::nil)%string).
+
+
+
+    Definition parse : forall str : string, _
+      := fun str => make_parse_of str ab_star_grammar.
 (*
-
-Module example_parse_empty_grammar.
-  Definition make_parse_of : forall str nt, parse_of string_stringlike (trivial_grammar _) str nt
-                                            + option (parse_of string_stringlike (trivial_grammar _) str nt -> False).
-  Proof.
-    eapply parse_tree_for
-    with (productions_listT := rdp_list_productions_listT)
-           (is_valid_productions := rdp_list_is_valid_productions Ascii.ascii_dec)
-           (remove_productions := rdp_list_remove_productions Ascii.ascii_dec)
-           (productions_listT_R := rdp_list_productions_listT_R).
-    { intros; exact [Lookup (trivial_grammar _) ""%string]. }
-    { apply rdp_list_remove_productions_dec. }
-    { apply rdp_list_ntl_wf. }
-    { simpl.
-      intros str pat H.
-      refine (exist _ (_::nil) _).
-      exact (NPeano.Nat.neq_succ_0 _).
-      Grab Existential Variables.
-      hnf in pat.
-      destruct pat as [|pat pats];
-        simpl in *;
-        [ exfalso; revert H; clear; intro H; abstract inversion H
-        | clear H ].
-      revert str.
-      induction pats.
-      { simpl; intros str.
-        refine (exist _ ((exist _ str _)::nil) (conj eq_refl (RightId string_stringlike _))). }
-      { simpl in *; intros str.
-        destruct str as [|ch str].
-        { specialize (IHpats ""%string).
-          destruct IHpats as [split [H0 H1] ].
-          exists ((exist _ ""%string (or_intror eq_refl))::split); simpl;
-          split; f_equal; auto. }
-        { specialize (IHpats str); simpl.
-          destruct IHpats as [split [H0 H1] ].
-          destruct str; simpl in *.
-          { exists ((exist _ (String.String ch ""%string) (or_intror eq_refl))::split);
-            split; simpl; try solve [ f_equal; auto ]. }
-        simpl in *.
-        simpl.
-        exact .
-
-
-      SearchAbout (_ ++ "")%string.
-      simpl.
-      SearchAbout (S _ <> 0).
-  Defined.
-
-  Definition parse : forall str : string,
-                       option (parse_of string_stringlike (trivial_grammar _) str (trivial_grammar _))
-    := fun str => make_parse_of str _.
-
-  Eval hnf in if (parse "") then true else false.
-  Eval hnf in if (parse "a") then true else false.
-
+    Time Eval hnf in if parse "" then true else false.
+    Check eq_refl : parse "" = true.
+    Time Compute parse "a".
+    Check eq_refl : parse "a" = false.
+    Time Compute parse "ab".
+    Check eq_refl : parse "ab" = true.
+    Time Compute parse "aa".
+    Check eq_refl : parse "aa" = false.
+    Time Compute parse "ba".
+    Check eq_refl : parse "ba" = false.
+    Time Compute parse "aba".
+    Check eq_refl : parse "aba" = false.
+    Time Compute parse "abab".
+    Check eq_refl : parse "abab" = true.*)
+  (* For debugging: *)(*
   Goal True.
-    pose (parse "") as X.
-    hnf in X; simpl in X.
-    pose (parse "a") as Y.
-    hnf in Y; simpl in Y.
-  Abort.
-End example_parse_empty_grammar.
-*)
+    pose proof (eq_refl (parse "abab")) as s.
+    unfold parse in s.
+    unfold make_parse_of in s.
+    unfold brute_force_make_parse_of in s.
+    cbv beta zeta delta [parse_productions] in s.
+    cbv beta zeta delta [parse_productions_or_abort] in s.
+    rewrite Init.Wf.Fix_eq in s.
+    Ltac do_compute_in c H :=
+      let c' := (eval compute in c) in
+      change c with c' in H.
+    do_compute_in (lt_dec (Length string_stringlike "abab"%string) (Length string_stringlike "abab"%string)) s.
+    change (if in_right then ?x else ?y) with y in s.
+    cbv beta zeta delta [rdp_list_is_valid_productions] in s.
+                       *)
+  End ab_star.
+End examples.
