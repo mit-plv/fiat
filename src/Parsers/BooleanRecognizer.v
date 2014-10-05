@@ -170,24 +170,34 @@ Section recursive_descent_parser.
                               (well_founded_ltof _ (Length String))
                               ntl_wf)
                          _ _).
-            intros [str0 valid_list] parse_productions str pf prods; simpl in *.
-            destruct (lt_dec (Length _ str) (Length _ str0)) as [pf'|pf'].
-            { (** [str] got smaller, so we reset the valid productions list *)
-              specialize (parse_productions
-                            (pair str initial_productions_data)
-                            (or_introl pf')); simpl in *.
-              exact (parse_productions_step parse_productions (or_intror eq_refl) prods). }
-            { (** [str] didn't get smaller, so we cache the fact that we've hit this productions already *)
-              case_eq (is_valid_productions valid_list prods).
-              { (** It was valid, so we can remove it *)
-                intro H'.
-                specialize (fun pf' => parse_productions
-                              (pair str0 (remove_productions valid_list prods))
-                              (or_intror (conj eq_refl pf'))); simpl in *.
-                specialize (parse_productions (remove_productions_dec H')).
-                exact (parse_productions_step parse_productions (or_intror eq_refl) prods). }
-              { (** oops, we already saw this productions in the past.  ABORT! *)
-                intro; exact false. } }
+            refine (fun sl parse_productions str pf prods
+                    => let str0 := fst sl in
+                       let valid_list := snd sl in
+                       match lt_dec (Length _ str) (Length _ str0) with
+                         | left pf' =>
+                           (** [str] got smaller, so we reset the valid productions list *)
+                           parse_productions_step
+                             (parse_productions
+                                (pair str initial_productions_data)
+                                (or_introl pf'))
+                             (or_intror eq_refl)
+                             prods
+                         | right pf' =>
+                           (** [str] didn't get smaller, so we cache the fact that we've hit this productions already *)
+                           (if is_valid_productions valid_list prods as is_valid
+                               return is_valid_productions valid_list prods = is_valid -> _
+                            then (** It was valid, so we can remove it *)
+                              fun H' =>
+                                parse_productions_step
+                                  (parse_productions
+                                     (pair str0 (remove_productions valid_list prods))
+                                     (or_intror (conj eq_refl (remove_productions_dec H'))))
+                                  (or_intror eq_refl)
+                                  prods
+                            else (** oops, we already saw this productions in the past.  ABORT! *)
+                              fun _ => false
+                           ) eq_refl
+                       end).
           Defined.
 
           Definition parse_productions (str : String) (prods : productions CharType)
@@ -195,6 +205,7 @@ Section recursive_descent_parser.
             := @parse_productions_or_abort str str initial_productions_data
                                            (or_intror eq_refl) prods.
         End wf.
+
       End productions.
     End parts.
   End bool.
@@ -263,17 +274,17 @@ End recursive_descent_parser_list.
 Section example_parse_string_grammar.
   Fixpoint make_all_single_splits (str : string) : list { strs : string * string | (fst strs ++ snd strs = str)%string }.
   Proof.
-    refine ((exist _ (""%string, str) eq_refl)::_).
-    refine (match str with
-              | ""%string => nil
-              | String.String ch str' => map (fun p => exist _ (String.String ch (fst (proj1_sig p)),
-                                                                snd (proj1_sig p))
-                                                             _)
-                                             (make_all_single_splits str')
-            end).
+    refine ((exist _ (""%string, str) eq_refl)
+              ::(match str with
+                   | ""%string => nil
+                   | String.String ch str' =>
+                     map (fun p => exist _ (String.String ch (fst (proj1_sig p)),
+                                            snd (proj1_sig p))
+                                         _)
+                         (make_all_single_splits str')
+                 end)).
     clear.
-    abstract (simpl; apply f_equal;
-              apply proj2_sig).
+    abstract (simpl; apply f_equal; apply proj2_sig).
   Defined.
 
   Lemma length_append (s1 s2 : string) : length (s1 ++ s2) = length s1 + length s2.
@@ -332,55 +343,61 @@ Section example_parse_string_grammar.
 
   Local Hint Resolve NPeano.Nat.lt_lt_add_l NPeano.Nat.lt_lt_add_r NPeano.Nat.lt_add_pos_r NPeano.Nat.lt_add_pos_l : arith.
 
+  Fixpoint brute_force_splitter_helper
+           (prod : production Ascii.ascii)
+  : forall str : string_stringlike,
+      list
+        (list
+           {str_part : string_stringlike |
+            Length string_stringlike str_part < Length string_stringlike str \/
+            str_part = str}).
+  Proof.
+    refine (match prod with
+              | nil => fun str =>
+                         (** We only get one thing in the list *)
+                         (((exist _ str _)::nil)::nil)
+              | _::prod' => fun str =>
+                              (flatten1
+                                 (map (fun s1s2p =>
+                                         map
+                                           (fun split_list => ((exist _ (fst (proj1_sig s1s2p)) _)
+                                                                 ::(map (fun s => exist _ (proj1_sig s) _)
+                                                                        split_list)))
+                                           (@brute_force_splitter_helper prod' (snd (proj1_sig s1s2p))))
+                                      (make_all_single_splits str)))
+            end);
+    subst_body;
+    clear;
+    abstract t.
+  Defined.
+
   Definition brute_force_splitter
-  : forall (str : string_stringlike) (pat : production Ascii.ascii),
+  : forall (str : string_stringlike) (prod : production Ascii.ascii),
       list
         (list
            { str_part : string_stringlike |
              Length string_stringlike str_part < Length string_stringlike str \/
-             str_part = str }).
-  Proof.
-    simpl.
-    intros str [|pat pats];
-      [ exact nil (** no patterns, no split (actually, we should never encounter this case *)
-      | ].
-    revert str.
-    induction pats; simpl in *; intros str.
-    { (** We only get one thing in the list *)
-      refine (((exist _ str _)::nil)::nil).
-      abstract (simpl; auto with arith). }
-    { pose (make_all_single_splits str) as single_splits.
-      pose proof (map (@proj1_sig _ _) single_splits).
-      refine (flatten1
-                (map (fun s1s2p =>
-                        map
-                          (fun split_list => ((exist _ (fst (proj1_sig s1s2p)) _)
-                                                ::(map (fun s => exist _ (proj1_sig s) _)
-                                                       split_list)))
-                          (IHpats (snd (proj1_sig s1s2p))))
-                     single_splits));
-        subst_body;
-        clear;
-        abstract t. }
-  Defined.
+             str_part = str })
+    := fun str prods =>
+         match prods with
+           | nil => nil (** no patterns, no split (actually, we should never encounter this case *)
+           | _::prod => brute_force_splitter_helper prod str
+         end.
 
   Variable G : grammar Ascii.ascii.
   Variable all_productions : list (productions Ascii.ascii).
 
   Definition brute_force_make_parse_of : @String Ascii.ascii string_stringlike
                                          -> productions Ascii.ascii
-                                         -> bool.
-  Proof.
-    eapply (@parse_productions _ _ G)
-    with (productions_listT := rdp_list_productions_listT)
-           (is_valid_productions := rdp_list_is_valid_productions Ascii.ascii_dec)
-           (remove_productions := rdp_list_remove_productions Ascii.ascii_dec)
-           (productions_listT_R := rdp_list_productions_listT_R).
-    { intros; exact all_productions. }
-    { apply rdp_list_remove_productions_dec. }
-    { apply rdp_list_ntl_wf. }
-    { intros; apply brute_force_splitter; assumption. }
-  Defined.
+                                         -> bool
+    := parse_productions
+         string_stringlike
+         G
+         all_productions
+         (rdp_list_is_valid_productions Ascii.ascii_dec)
+         (rdp_list_remove_productions Ascii.ascii_dec)
+         (rdp_list_remove_productions_dec Ascii.ascii_dec) rdp_list_ntl_wf
+         brute_force_splitter.
 End example_parse_string_grammar.
 
 Module example_parse_empty_grammar.
