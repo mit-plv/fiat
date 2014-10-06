@@ -6,6 +6,7 @@ Require Import Common Common.ilist.
 Set Implicit Arguments.
 Local Open Scope string_like_scope.
 
+(** TODO: move to another file *)
 Section wf.
   Section wf_prod.
     Context A B (RA : relation A) (RB : relation B).
@@ -66,6 +67,7 @@ Section recursive_descent_parser.
                                                      -> productions_listT_R (remove_productions ls prods) ls)
           (ntl_wf : well_founded productions_listT_R).
   Section bool.
+    (** TODO: name the lower-length \/ same value relation *)
     Context (split_string_for_production
              : forall (str0 : String)
                       (prod : production CharType),
@@ -90,7 +92,8 @@ Section recursive_descent_parser.
                                        -> productions CharType
                                        -> bool.
 
-        (** To match a [production], we must match all of its items.  If the lengths do match up, we don't define the outcome. *)
+        (** To match a [production], we must match all of its items.
+            If the lengths do match up, we don't define the outcome. *)
         Definition parse_production_from_split_list
                    (strs : list { str : String | Length _ str < Length _ str0 \/ str = str0 })
                    (prod : production CharType)
@@ -108,7 +111,7 @@ Section recursive_descent_parser.
                    (prod : production CharType)
         : bool
           := fold_left orb
-                       (map (fun strs => parse_production_from_split_list strs prod)
+                       (map (fun strs' => parse_production_from_split_list strs' prod)
                             strs)
                        false.
 
@@ -152,53 +155,55 @@ Section recursive_descent_parser.
         End step.
 
         Section wf.
+          (** TODO: add comment explaining signature *)
+          Definition parse_productions_or_abort_helper
+          : forall (p : String * productions_listT) (str : String),
+              Length String str < Length String (fst p) \/ str = fst p ->
+              productions CharType -> bool
+            := @Fix (prod String productions_listT)
+                    _ (@well_founded_prod_relation
+                         String
+                         productions_listT
+                         _
+                         _
+                         (well_founded_ltof _ (Length String))
+                         ntl_wf)
+                    _
+                    (fun sl parse_productions str pf (prods : productions CharType)
+                     => let str0 := fst sl in
+                        let valid_list := snd sl in
+                        match lt_dec (Length _ str) (Length _ str0) with
+                          | left pf' =>
+                            (** [str] got smaller, so we reset the valid productions list *)
+                            parse_productions_step
+                              (parse_productions
+                                 (str, initial_productions_data)
+                                 (or_introl pf'))
+                              (or_intror eq_refl)
+                              prods
+                          | right pf' =>
+                            (** [str] didn't get smaller, so we cache the fact that we've hit this productions already *)
+                            (if is_valid_productions valid_list prods as is_valid
+                                return is_valid_productions valid_list prods = is_valid -> _
+                             then (** It was valid, so we can remove it *)
+                               fun H' =>
+                                 parse_productions_step
+                                   (parse_productions
+                                      (str0, remove_productions valid_list prods)
+                                      (or_intror (conj eq_refl (remove_productions_dec H'))))
+                                   (or_intror eq_refl)
+                                   prods
+                             else (** oops, we already saw this productions in the past.  ABORT! *)
+                               fun _ => false
+                            ) eq_refl
+                        end).
+
           Definition parse_productions_or_abort (str0 str : String)
                      (valid_list : productions_listT)
                      (pf : Length _ str < Length _ str0 \/ str = str0)
                      (prods : productions CharType)
-          : bool.
-          Proof.
-            revert str pf prods.
-            change str0 with (fst (pair str0 valid_list)).
-            generalize (pair str0 valid_list); clear str0 valid_list.
-            refine (@Fix (prod String productions_listT)
-                         _ (@well_founded_prod_relation
-                              String
-                              productions_listT
-                              _
-                              _
-                              (well_founded_ltof _ (Length String))
-                              ntl_wf)
-                         _
-                         (fun sl parse_productions str pf prods
-                          => let str0 := fst sl in
-                             let valid_list := snd sl in
-                             match lt_dec (Length _ str) (Length _ str0) with
-                               | left pf' =>
-                                 (** [str] got smaller, so we reset the valid productions list *)
-                                 parse_productions_step
-                                   (parse_productions
-                                      (pair str initial_productions_data)
-                                      (or_introl pf'))
-                                   (or_intror eq_refl)
-                                   prods
-                               | right pf' =>
-                                 (** [str] didn't get smaller, so we cache the fact that we've hit this productions already *)
-                                 (if is_valid_productions valid_list prods as is_valid
-                                     return is_valid_productions valid_list prods = is_valid -> _
-                                  then (** It was valid, so we can remove it *)
-                                    fun H' =>
-                                      parse_productions_step
-                                        (parse_productions
-                                           (pair str0 (remove_productions valid_list prods))
-                                           (or_intror (conj eq_refl (remove_productions_dec H'))))
-                                        (or_intror eq_refl)
-                                        prods
-                                  else (** oops, we already saw this productions in the past.  ABORT! *)
-                                    fun _ => false
-                                 ) eq_refl
-                             end)).
-          Defined.
+          : bool
+            := parse_productions_or_abort_helper (str0, valid_list) pf prods.
 
           Definition parse_productions (str : String) (prods : productions CharType)
           : bool
@@ -381,7 +386,7 @@ Section example_parse_string_grammar.
     := fun str prods =>
          match prods with
            | nil => nil (** no patterns, no split (actually, we should never encounter this case *)
-           | _::prod => brute_force_splitter_helper prod str
+           | _::prods' => brute_force_splitter_helper prods' str
          end.
 
   Variable G : grammar Ascii.ascii.

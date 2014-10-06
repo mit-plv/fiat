@@ -54,9 +54,11 @@ Section cfg.
 
     (** A [grammar] consists of [productions] to match a string
         against, and a function mapping names to [productions]. *)
+    (** TODO(jgross): also include list of valid starting non-terminals, for convenience and notation *)
+    (** TODO(jgross): look up notations for specifying these nicely *)
     Record grammar :=
       {
-        Top_name :> string;
+        Top_name :> string; (** TODO: look up standard name for this (maybe initial? maybe starting?) *)
         Lookup :> string -> productions;
         Top :> productions := Lookup Top_name
       }.
