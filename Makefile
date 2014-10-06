@@ -1,6 +1,7 @@
 SRC_MODULES    := \
 	Common \
 	Common/ilist \
+	Common/i2list \
 	Common/StringBound \
 	Common/DecideableEnsembles \
 	Common/IterateBoundedIndex \

@@ -366,17 +366,6 @@ Section ithIndexBound.
       eapply IHBound.
     Qed.
 
-  Definition Dep_Option_elim_P
-             {B : A -> Type}
-             (P : forall a, B a -> Type)
-             (a_opt : option A)
-             (b_opt : Dep_Option B a_opt)
-      := match a_opt as a' return
-               Dep_Option_elimT B a' -> Type with
-           | Some a => P a
-           | None => fun _ => True
-         end (Dep_Option_elim b_opt).
-
     (* [ith_Bounded_rect] builds a function whose type depends
      on [ith_Bounded] by reducing to a case with [ith_error],
      which is easier to work/reason with. *)

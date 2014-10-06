@@ -137,6 +137,7 @@ Section ilist.
       | Some a => B a
       | None => unit
     end.
+
   Definition Dep_Option_elim (a_opt : option A)
             (b_opt : Dep_Option a_opt) :=
     match b_opt in Dep_Option a_opt' return
@@ -144,6 +145,16 @@ Section ilist.
       | Dep_Some a b => b
       | Dep_None => tt
     end.
+
+  Definition Dep_Option_elim_P
+             (P : forall a, B a -> Type)
+             (a_opt : option A)
+             (b_opt : Dep_Option a_opt)
+    := match a_opt as a' return
+             Dep_Option_elimT a' -> Type with
+         | Some a => P a
+         | None => fun _ => True
+       end (Dep_Option_elim b_opt).
 
   Fixpoint ith_error
           (As : list A)

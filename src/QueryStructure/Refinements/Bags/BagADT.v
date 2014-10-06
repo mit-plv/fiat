@@ -13,16 +13,16 @@ Section BagADT.
   Definition BagSig : ADTSig :=
     ADTsignature {
         Constructor "EmptyCache" : unit             -> rep,
-        Method "Find" : rep x SearchTermType -> rep x list ElementType,
+        Method "Find"      : rep x SearchTermType -> rep x list ElementType,
         Method "Enumerate" : rep x SearchTermType -> rep x list ElementType,
         Method "Insert"    : rep x ElementType -> rep x unit,
         Method "Count"     : rep x SearchTermType  -> rep x nat,
-        Method "Delete"    : rep x SearchTermType  -> rep x (list ElementType)
-        (*Method "Update"    : rep x (SearchTermType * UpdateTermType) -> rep x unit *)
+        Method "Delete"    : rep x SearchTermType  -> rep x (list ElementType),
+        Method "Update"    : rep x (SearchTermType * (ElementType -> ElementType)) -> rep x unit
   }.
 
   Definition BagSpec : ADT BagSig :=
-    ADTRep (@IndexedEnsemble ElementType) {
+    ADTRep (IndexedEnsemble ) {
         Def Constructor "EmptyCache" (_ : unit) : rep :=
           ret (Empty_set _),
 

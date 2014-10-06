@@ -190,6 +190,10 @@ Section SharpenedBag.
       eapply Permutation_EnsembleIndexedListEquivalence; simpl; eauto.
     }
 
+    hone method "Update".
+    {
+    }
+
     FullySharpenEachMethod (@nil ADTSig) (inil ADT); simpl.
 
   Defined.
