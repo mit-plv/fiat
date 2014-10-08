@@ -51,7 +51,12 @@ Section BagADT.
           ret (EnsembleDelete
                  r
                  (fun tup => SearchTermMatcher f tup = true),
-               filter (SearchTermMatcher f) deleted)
+               filter (SearchTermMatcher f) deleted),
+
+          Def Method "Update" (r : rep, fup : (SearchTermType * (ElementType -> ElementType)))
+          : unit :=
+
+
            }.
 
 End BagADT.
