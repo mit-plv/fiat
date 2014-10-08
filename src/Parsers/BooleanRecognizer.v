@@ -66,12 +66,15 @@ Section recursive_descent_parser.
           (remove_productions_dec : forall ls prods, is_valid_productions ls prods = true
                                                      -> productions_listT_R (remove_productions ls prods) ls)
           (ntl_wf : well_founded productions_listT_R).
+
+  Definition str_le (s1 s2 : String) := Length _ s1 < Length _ s2 \/ s1 = s2.
+  Local Infix "≤s" := str_le (at level 70, right associativity).
   Section bool.
     (** TODO: name the lower-length \/ same value relation *)
     Context (split_string_for_production
              : forall (str0 : String)
                       (prod : production CharType),
-                 list (list { str : String | Length _ str < Length _ str0 \/ str = str0 })).
+                 list (list { str : String | str ≤s str0 })).
 
     Section parts.
       Section item.
@@ -88,32 +91,32 @@ Section recursive_descent_parser.
       Section production.
         Variable str0 : String.
         Variable parse_productions : forall (str : String),
-                                       Length _ str < Length _ str0 \/ str = str0
+                                       str ≤s str0
                                        -> productions CharType
                                        -> bool.
 
         (** To match a [production], we must match all of its items.
             If the lengths do match up, we don't define the outcome. *)
         Definition parse_production_from_split_list
-                   (strs : list { str : String | Length _ str < Length _ str0 \/ str = str0 })
+                   (strs : list { str : String | str ≤s str0 })
                    (prod : production CharType)
         : bool
-          := fold_left andb
-                       (map (fun sp => parse_item (proj1_sig (fst sp))
-                                                  (parse_productions (proj2_sig (fst sp)))
-                                                  (snd sp))
-                            (combine strs prod))
-                       true.
+          := fold_right andb
+                        true
+                        (map (fun sp => parse_item (proj1_sig (fst sp))
+                                                   (parse_productions (proj2_sig (fst sp)))
+                                                   (snd sp))
+                             (combine strs prod)).
 
         (** To match a [production], any split of the string can match. *)
         Definition parse_production_from_any_split_list
-                   (strs : list (list { str : String | Length _ str < Length _ str0 \/ str = str0 }))
+                   (strs : list (list { str : String | str ≤s str0 }))
                    (prod : production CharType)
         : bool
-          := fold_left orb
-                       (map (fun strs' => parse_production_from_split_list strs' prod)
-                            strs)
-                       false.
+          := fold_right orb
+                        false
+                        (map (fun strs' => parse_production_from_split_list strs' prod)
+                             strs).
 
         Definition or_transitivity {A B} `{@Transitive B R} {f : A -> B} {a0 a}
                    (pf : R (f a) (f a0) \/ a = a0) a' (pf' : R (f a') (f a) \/ a' = a)
@@ -126,7 +129,7 @@ Section recursive_descent_parser.
         (** We assume the splits we are given are valid (are actually splits of the string, rather than an unrelated split) and are the same length as the given [production].  Behavior in other cases is undefined *)
         (** We match a production if any split of the string matches that production *)
         Definition parse_production
-                   (str : String) (pf : Length _ str < Length _ str0 \/ str = str0)
+                   (str : String) (pf : str ≤s str0)
                    (prod : production CharType)
         : bool
           := if (gt_dec (Datatypes.length prod) 0)
@@ -142,23 +145,23 @@ Section recursive_descent_parser.
         Section step.
           Variable str0 : String.
           Variable parse_productions : forall (str : String)
-                                              (pf : Length _ str < Length _ str0 \/ str = str0),
+                                              (pf : str ≤s str0),
                                          productions CharType -> bool.
 
           (** To parse as a given list of [production]s, we must parse as one of the [production]s. *)
-          Definition parse_productions_step (str : String) (pf : Length _ str < Length _ str0 \/ str = str0) (prods : productions CharType)
+          Definition parse_productions_step (str : String) (pf : str ≤s str0) (prods : productions CharType)
           : bool
-            := fold_left orb
-                         (map (parse_production parse_productions pf)
-                              prods)
-                         false.
+            := fold_right orb
+                          false
+                          (map (parse_production parse_productions pf)
+                               prods).
         End step.
 
         Section wf.
           (** TODO: add comment explaining signature *)
           Definition parse_productions_or_abort_helper
           : forall (p : String * productions_listT) (str : String),
-              Length String str < Length String (fst p) \/ str = fst p ->
+              str ≤s fst p ->
               productions CharType -> bool
             := @Fix (prod String productions_listT)
                     _ (@well_founded_prod_relation
@@ -200,7 +203,7 @@ Section recursive_descent_parser.
 
           Definition parse_productions_or_abort (str0 str : String)
                      (valid_list : productions_listT)
-                     (pf : Length _ str < Length _ str0 \/ str = str0)
+                     (pf : str ≤s str0)
                      (prods : productions CharType)
           : bool
             := parse_productions_or_abort_helper (str0, valid_list) pf prods.
@@ -353,9 +356,7 @@ Section example_parse_string_grammar.
   : forall str : string_stringlike,
       list
         (list
-           {str_part : string_stringlike |
-            Length string_stringlike str_part < Length string_stringlike str \/
-            str_part = str}).
+           {str_part : string_stringlike | str_part ≤s str }).
   Proof.
     refine (match prod with
               | nil => fun str =>
@@ -380,9 +381,7 @@ Section example_parse_string_grammar.
   : forall (str : string_stringlike) (prod : production Ascii.ascii),
       list
         (list
-           { str_part : string_stringlike |
-             Length string_stringlike str_part < Length string_stringlike str \/
-             str_part = str })
+           { str_part : string_stringlike | str_part ≤s str })
     := fun str prods =>
          match prods with
            | nil => nil (** no patterns, no split (actually, we should never encounter this case *)
@@ -396,7 +395,6 @@ Section example_parse_string_grammar.
                                          -> productions Ascii.ascii
                                          -> bool
     := parse_productions
-         string_stringlike
          G
          all_productions
          (rdp_list_is_valid_productions Ascii.ascii_dec)
