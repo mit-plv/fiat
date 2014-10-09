@@ -12,18 +12,17 @@ Section BagADT.
 
   Definition BagSig : ADTSig :=
     ADTsignature {
-        Constructor "EmptyCache" : unit             -> rep,
+        Constructor "EmptyBag" : unit             -> rep,
         Method "Find"      : rep x SearchTermType -> rep x list ElementType,
-        Method "Enumerate" : rep x SearchTermType -> rep x list ElementType,
+        Method "Enumerate" : rep x unit -> rep x list ElementType,
         Method "Insert"    : rep x ElementType -> rep x unit,
         Method "Count"     : rep x SearchTermType  -> rep x nat,
-        Method "Delete"    : rep x SearchTermType  -> rep x (list ElementType),
-        Method "Update"    : rep x (SearchTermType * (ElementType -> ElementType)) -> rep x unit
+        Method "Delete"    : rep x SearchTermType  -> rep x (list ElementType)
   }.
 
   Definition BagSpec : ADT BagSig :=
     ADTRep (IndexedEnsemble ) {
-        Def Constructor "EmptyCache" (_ : unit) : rep :=
+        Def Constructor "EmptyBag" (_ : unit) : rep :=
           ret (Empty_set _),
 
         Def Method "Find" (r : rep, f : SearchTermType)
@@ -31,7 +30,7 @@ Section BagADT.
             results <- {l | EnsembleIndexedListEquivalence r l};
         ret (r, filter (SearchTermMatcher f) results),
 
-        Def Method "Enumerate" (r : rep, f : SearchTermType)
+        Def Method "Enumerate" (r : rep, f : unit)
           : list ElementType :=
             results <- {l | EnsembleIndexedListEquivalence r l};
         ret (r, results),
@@ -51,11 +50,7 @@ Section BagADT.
           ret (EnsembleDelete
                  r
                  (fun tup => SearchTermMatcher f tup = true),
-               filter (SearchTermMatcher f) deleted),
-
-          Def Method "Update" (r : rep, fup : (SearchTermType * (ElementType -> ElementType)))
-          : unit :=
-
+               filter (SearchTermMatcher f) deleted)
 
            }.
 
