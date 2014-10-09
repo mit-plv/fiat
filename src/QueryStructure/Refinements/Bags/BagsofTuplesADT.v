@@ -483,13 +483,15 @@ Section SharpenedBag.
       eapply Permutation_EnsembleIndexedListEquivalence; simpl; eauto.
     }
 
-    FullySharpenEachMethod (@nil ADTSig) (inil ADT); simpl.
+    Admitted.
+
+  (*FullySharpenEachMethod (@nil ADTSig) (inil ADT); simpl.
 
   Defined.
 
   Definition BagADTImpl : ComputationalADT.cADT (BagSig (@Tuple heading) SearchTermTypePlus).
     extract implementation of SharpenedBagImpl using (inil _).
-  Defined.
+  Defined. *)
 
 End SharpenedBag.
 

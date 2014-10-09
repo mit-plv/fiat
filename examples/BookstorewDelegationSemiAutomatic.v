@@ -252,7 +252,6 @@ Proof.
     setoid_rewrite ListQueryRefinements.refine_List_Query_In_Return; simplify with monad laws.
     simpl.
     setoid_rewrite (refine_pick_val _ H0); simplify with monad laws.
-
     finish honing.
   }
 
@@ -260,12 +259,135 @@ Proof.
 
   (* At this point our implementation is fully computational: we're done! *)
 
-(*
+  Require Import ADTNotation.BuildComputationalADT.
+  Require Import ADT.ComputationalADT.
+
+  Ltac FullySharpenEachMethod delegateSigs delegateSpecs cRep'  :=
+    match goal with
+        |- Sharpened (@BuildADT ?Rep ?consSigs ?methSigs ?consDefs ?methDefs) =>
+        ilist_of_evar
+          (ilist ComputationalADT.cADT delegateSigs)
+          (fun DelegateImpl Sig => cMethodType (cRep' DelegateImpl) (methDom Sig) (methCod Sig))
+          methSigs
+          ltac:(fun cMeths => ilist_of_evar
+                                (ilist ComputationalADT.cADT delegateSigs)
+                                (fun DelegateImpl Sig =>
+                                   cConstructorType (cRep' DelegateImpl) (consDom Sig))
+                                consSigs
+                                ltac:(fun cCons =>
+                                        eapply Notation_Friendly_SharpenFully with
+                                        (DelegateSpecs := delegateSpecs)
+                                          (cConstructors := cCons)
+                                          (cMethods := cMeths)
+                                          (cAbsR := _)));
+          unfold Dep_Type_BoundedIndex_app_comm_cons; simpl
+    end.
+
   FullySharpenEachMethod [BagSig Book (BuildSearchTermFromAttributes BookSearchTerm);
                            BagSig Order (BuildSearchTermFromAttributes OrderSearchTerm)]
                          (icons _ (BagSpec (SearchTermFromAttributesMatcher BookSearchTerm))
                          (icons _ (BagSpec (SearchTermFromAttributesMatcher OrderSearchTerm))
-                                (inil ADT))); simpl;
+                                (inil ADT)))
+                         (fun DelegateImpl : ilist cADT
+                                                [BagSig Book (BuildSearchTermFromAttributes BookSearchTerm);
+                                                  BagSig Order (BuildSearchTermFromAttributes OrderSearchTerm)] => prod (cRep (ilist_hd DelegateImpl)) (cRep (ilist_hd (ilist_tl DelegateImpl)))).
+  instantiate (2 := fun (DelegateImpl : ilist cADT
+                                                [BagSig Book (BuildSearchTermFromAttributes BookSearchTerm);
+                                                  BagSig Order (BuildSearchTermFromAttributes OrderSearchTerm)])
+                              ValidImpl
+                        (r_o : IndexedQueryStructure BookStoreSchema BookStoreIndices)
+                        (r_n : cRep (ilist_hd DelegateImpl) *
+                               cRep (ilist_hd (ilist_tl DelegateImpl))) =>
+                      AbsR (ValidImpl 0)
+                           (GetIndexedRelation r_o {| bindex := sBOOKS |})
+                           (fst r_n) /\
+                      AbsR (ValidImpl 1)
+                           (GetIndexedRelation r_o {| bindex := sORDERS |})
+                           (snd r_n)).
+  simpl.
+  intros; repeat econstructor; simpl;
+  unfold GetIndexedRelation, i2th_Bounded, ith_Bounded_rect; simpl.
+
+  instantiate (1 := fun (DI : ilist cADT
+                                    [BagSig Book
+                                            (BuildSearchTermFromAttributes BookSearchTerm);
+                                      BagSig Order
+                                             (BuildSearchTermFromAttributes OrderSearchTerm)])
+                        d =>
+          (CallConstructor (ilist_hd DI) "EmptyBag" d, CallConstructor (ilist_hd (ilist_tl DI)) "EmptyBag" d)); simpl.
+
+  Lemma refine_ret_v {A : Type} :
+    forall (a : A) c,
+      refine c (ret a) -> c ↝ a.
+    intros * H; apply (H _ (ReturnComputes a)).
+  Qed.
+
+  pose proof (refine_ret_v (ADTRefinementPreservesConstructors (ValidImpl 0)
+              {| bindex := "EmptyBag" |} d)) as H'; simpl in H';
+  apply computes_to_inv in H'; destruct_ex; intuition;
+  apply computes_to_inv in H1; destruct_ex; intuition; 
+  apply computes_to_inv in H0; subst; eauto.
+
+  pose proof (refine_ret_v (ADTRefinementPreservesConstructors (ValidImpl 1)
+              {| bindex := "EmptyBag" |} d)) as H'; simpl in H';
+  apply computes_to_inv in H'; destruct_ex; intuition;
+  apply computes_to_inv in H1; destruct_ex; intuition; 
+  apply computes_to_inv in H0; subst; eauto.
+
+  intros; split; 
+  unfold GetIndexedRelation, i2th_Bounded, ith_Bounded_rect; simpl; intros. 
+  intuition.
+  pose proof (refine_ret_v 
+                (ADTRefinementPreservesMethods
+                   (ValidImpl 1)
+                   {| bindex := "Delete" |} 
+                   (GetIndexedRelation r_o {| bindex := sORDERS |})
+                   (snd r_n)
+                   (None, [fun a : Order => ?[eq_nat_dec a!sISBN d]]) 
+                   H1)) as H'; simpl in H'.
+
+
+)) as H'; simpl in H';
+  apply computes_to_inv in H'; destruct_ex; intuition;
+  apply computes_to_inv in H1; destruct_ex; intuition; 
+  apply computes_to_inv in H0; subst; eauto.
+
+
+  
+
+  Show Existentials.
+  instantiate (1 := fun (DI : ilist cADT
+                                    [BagSig Book
+                                            (BuildSearchTermFromAttributes BookSearchTerm);
+                                      BagSig Order
+                                             (BuildSearchTermFromAttributes OrderSearchTerm)])
+                        d =>
+                      (CallConstructor (ilist_hd DI) "EmptyBag" d, ()) ).
+  unfold CallConstructor in H1.
+
+  simpl in *;
+
+
+
+  idtac.
+
+  simpl in *.
+  Check (fun (r_o : IndexedQueryStructure BookStoreSchema BookStoreIndices) =>
+           GetIndexedRelation r_o {| bindex := sBOOKS |}).
+
+                           (fst r_n)).
+
+  eapply Notation_Friendly_SharpenFully
+  with (DelegateSpecs := i1)
+         (cConstructors := i)
+         (cMethods := i0).
+                 => ).
+
+            (icons _ (BagSpec (SearchTermFromAttributesMatcher BookSearchTerm))
+                   (icons _ (BagSpec (SearchTermFromAttributesMatcher OrderSearchTerm))
+                          (inil ADT)))
+         (cAbsR := fun _ _ _ => True).
+
   intros; pose (ADTRefinementPreservesMethods (X 1));
   pose (ADTRefinementPreservesMethods (X 0)); simpl in *.
   generalize (r1 {| bindex := "Delete" |}).
@@ -279,7 +401,7 @@ pose (X 0); simpl in *.
   eapply d0.
   intros; eapply SharpenIfComputesTo; repeat constructor.
   intros; eapply SharpenIfComputesTo; repeat constructor.
-  intros; eapply SharpenIfComputesTo; repeat constructor. 
+  intros; eapply SharpenIfComputesTo; repeat constructor.
 Defined.
 *)
 Admitted.

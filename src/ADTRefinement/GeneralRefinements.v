@@ -43,7 +43,7 @@ Record SharpenedUnderDelegates Sig :=
 Definition FullySharpenedUnderDelegates
            {Sig}
            (spec : ADT Sig)
-           (adt : SharpenedUnderDelegates Sig ) :=
+           (adt : SharpenedUnderDelegates Sig) :=
   forall (DelegateImpl : ilist cADT (Sharpened_DelegateSigs adt)),
     (forall n, Dep_Option_elim_T2
                  (fun Sig adt1 adt2 => @refineADT Sig adt1 (LiftcADT adt2))
@@ -77,24 +77,22 @@ Qed.
 
 (* Definition for constructing an easily extractible ADT implementation. *)
 Definition BuildMostlySharpenedcADT Sig
-             Rep
-             (DelegateSigs : list ADTSig)
-             (cConstructors :
-                ilist cADT DelegateSigs ->
-                forall idx,
-                  cConstructorType
-                    Rep
-                    (ConstructorDom Sig idx))
-             (cMethods :
-                ilist cADT DelegateSigs
-                -> forall idx,
-                     cMethodType
-                       Rep
-                       (fst (MethodDomCod Sig idx))
-                       (snd (MethodDomCod Sig idx)))
-             (DelegateImpl : ilist cADT DelegateSigs)
+           (DelegateSigs : list ADTSig)
+           (rep : ilist cADT DelegateSigs -> Type)
+           (cConstructors :
+              forall (DelegateImpl : ilist cADT DelegateSigs) idx,
+                cConstructorType
+                  (rep DelegateImpl)
+                  (ConstructorDom Sig idx))
+           (cMethods :
+              forall (DelegateImpl : ilist cADT DelegateSigs) idx,
+                cMethodType
+                  (rep DelegateImpl)
+                  (fst (MethodDomCod Sig idx))
+                  (snd (MethodDomCod Sig idx)))
+           (DelegateImpl : ilist cADT DelegateSigs)
   : cADT Sig :=
-    {| cRep          := Rep;
+    {| cRep          := rep DelegateImpl;
        cConstructors := cConstructors DelegateImpl;
        cMethods      := cMethods DelegateImpl |}.
 
@@ -102,64 +100,120 @@ Definition BuildMostlySharpenedcADT Sig
 Lemma FullySharpened_BuildMostlySharpenedcADT {Sig}
 : forall (spec : ADT Sig)
          (DelegateSigs : list ADTSig)
-         cConstructors cMethods
-         (DelegateSpecs : ilist ADT DelegateSigs),
-    (forall (DelegateImpl : ilist cADT DelegateSigs),
-       (forall n, Dep_Option_elim_T2
-                    (fun Sig adt adt' => @refineADT Sig adt (LiftcADT adt'))
-                    (ith_error DelegateSpecs n)
-                    (ith_error DelegateImpl n))
-       -> forall idx d, Constructors spec idx d ↝ cConstructors DelegateImpl idx d)
-    -> (forall (DelegateImpl : ilist cADT DelegateSigs),
-          (forall n, Dep_Option_elim_T2
-                       (fun Sig adt adt' => @refineADT Sig adt (LiftcADT adt'))
-                       (ith_error DelegateSpecs n)
-                       (ith_error DelegateImpl n))
-          -> forall idx r d, Methods spec idx r d ↝ cMethods DelegateImpl idx r d)
-    -> FullySharpenedUnderDelegates 
+         (rep : ilist cADT DelegateSigs -> Type)
+         (cConstructors :
+            forall (DelegateImpl : ilist cADT DelegateSigs) idx,
+              cConstructorType
+                (rep DelegateImpl)
+                (ConstructorDom Sig idx))
+         (cMethods :
+            forall (DelegateImpl : ilist cADT DelegateSigs) idx,
+              cMethodType
+                (rep DelegateImpl)
+                (fst (MethodDomCod Sig idx))
+                (snd (MethodDomCod Sig idx)))
+         (DelegateSpecs : ilist ADT DelegateSigs)
+         (cAbsR : forall DelegateImpl,
+                    (forall n, Dep_Option_elim_T2
+                                 (fun Sig adt adt' => @refineADT Sig adt (LiftcADT adt'))
+                                 (ith_error DelegateSpecs n)
+                                 (ith_error DelegateImpl n))
+                    -> Rep spec -> rep DelegateImpl -> Prop),
+    (forall (DelegateImpl : ilist cADT DelegateSigs)
+            (ValidImpl : forall n, Dep_Option_elim_T2
+                                     (fun Sig adt adt' => @refineADT Sig adt (LiftcADT adt'))
+                                     (ith_error DelegateSpecs n)
+                                     (ith_error DelegateImpl n)),
+     forall idx d,
+     exists r_o,
+       Constructors spec idx d ↝ r_o
+       /\ cAbsR _ ValidImpl r_o (cConstructors DelegateImpl idx d))
+    -> (forall (DelegateImpl : ilist cADT DelegateSigs)
+               (ValidImpl : forall n, Dep_Option_elim_T2
+                                        (fun Sig adt adt' => @refineADT Sig adt (LiftcADT adt'))
+                                        (ith_error DelegateSpecs n)
+                                        (ith_error DelegateImpl n)),
+        forall idx r_o d r_n ,
+          cAbsR _ ValidImpl r_o r_n
+          -> exists r_o',
+               Methods spec idx r_o d ↝ (r_o', snd (cMethods DelegateImpl idx r_n d))
+               /\ cAbsR _ ValidImpl r_o' (fst (cMethods DelegateImpl idx r_n d)))
+    -> FullySharpenedUnderDelegates
          spec
          {| Sharpened_DelegateSigs := DelegateSigs;
-            Sharpened_Implementation := BuildMostlySharpenedcADT Sig cConstructors
+            Sharpened_Implementation := BuildMostlySharpenedcADT Sig rep cConstructors
                                                                  cMethods;
             Sharpened_DelegateSpecs := DelegateSpecs |}.
 Proof.
   intros * cConstructorsRefinesSpec cMethodsRefinesSpec DelegateImpl DelegateImplRefinesSpec.
-  eapply (@refinesADT Sig spec (LiftcADT {|cRep := Rep spec;
+  eapply (@refinesADT Sig spec (LiftcADT {|cRep := rep DelegateImpl;
                                            cConstructors := _;
-                                           cMethods := _|}) eq).
+                                           cMethods := _|}) 
+                      (cAbsR DelegateImpl DelegateImplRefinesSpec)).
   - unfold refineConstructor, refine; simpl; intros;
-    inversion_by computes_to_inv; subst; repeat econstructor;
-    apply (cConstructorsRefinesSpec _ DelegateImplRefinesSpec idx d).
+    inversion_by computes_to_inv; subst.
+    destruct (cConstructorsRefinesSpec _ DelegateImplRefinesSpec idx d) as
+        [r_o' [Comp_r_o cAbsR_r_o_n]].
+    repeat econstructor; eauto.
   - unfold refineMethod, refine; simpl; intros;
-    inversion_by computes_to_inv; subst; repeat econstructor.
-    + apply (cMethodsRefinesSpec _ DelegateImplRefinesSpec idx r_n d).
-    + simpl; case_eq (cMethods DelegateImpl idx r_n d); econstructor.
+    inversion_by computes_to_inv; subst.
+    destruct (cMethodsRefinesSpec _ DelegateImplRefinesSpec idx _ d _ H) as
+        [r_o' [Comp_r_o cAbsR_r_o_n]].
+    repeat econstructor; eauto.
+    simpl; case_eq (cMethods DelegateImpl idx r_n d); econstructor.
 Qed.
 
 Definition SharpenFully {Sig}
            (spec : ADT Sig)
-           (DelegateSigs : list ADTSig)
-           cConstructors cMethods
-           (DelegateSpecs : ilist ADT DelegateSigs)
-           (cConstructorsRefinesSpec : 
-              forall (DelegateImpl : ilist cADT DelegateSigs),
-                (forall n, Dep_Option_elim_T2
-                             (fun Sig adt adt' => @refineADT Sig adt (LiftcADT adt'))
-                             (ith_error DelegateSpecs n)
-                             (ith_error DelegateImpl n))
-                -> forall idx d, Constructors spec idx d ↝ cConstructors DelegateImpl idx d)
-           (cMethodsRefinesSpec : 
-              forall (DelegateImpl : ilist cADT DelegateSigs),
-                (forall n, Dep_Option_elim_T2
-                             (fun Sig adt adt' => @refineADT Sig adt (LiftcADT adt'))
-                             (ith_error DelegateSpecs n)
-                             (ith_error DelegateImpl n))
-                -> forall idx r d, Methods spec idx r d ↝ cMethods DelegateImpl idx r d)
-: Sharpened spec := 
-  existT _ _ (FullySharpened_BuildMostlySharpenedcADT spec cConstructors
-                                                    cMethods DelegateSpecs
+         (DelegateSigs : list ADTSig)
+         (rep : ilist cADT DelegateSigs -> Type)
+         (cConstructors :
+            forall (DelegateImpl : ilist cADT DelegateSigs) idx,
+              cConstructorType
+                (rep DelegateImpl)
+                (ConstructorDom Sig idx))
+         (cMethods :
+            forall (DelegateImpl : ilist cADT DelegateSigs) idx,
+              cMethodType
+                (rep DelegateImpl)
+                (fst (MethodDomCod Sig idx))
+                (snd (MethodDomCod Sig idx)))
+         (DelegateSpecs : ilist ADT DelegateSigs)
+         (cAbsR : forall DelegateImpl,
+                    (forall n, Dep_Option_elim_T2
+                                 (fun Sig adt adt' => @refineADT Sig adt (LiftcADT adt'))
+                                 (ith_error DelegateSpecs n)
+                                 (ith_error DelegateImpl n))
+                    -> Rep spec -> rep DelegateImpl -> Prop)
+         (cConstructorsRefinesSpec :
+            forall (DelegateImpl : ilist cADT DelegateSigs)
+                   (ValidImpl : 
+                      forall n, Dep_Option_elim_T2
+                                  (fun Sig adt adt' => @refineADT Sig adt (LiftcADT adt'))
+                                  (ith_error DelegateSpecs n)
+                                  (ith_error DelegateImpl n)),
+            forall idx d,
+                 exists r_o,
+                   Constructors spec idx d ↝ r_o
+                   /\ cAbsR _ ValidImpl r_o (cConstructors DelegateImpl idx d))
+         (cMethodsRefinesSpec :
+            forall (DelegateImpl : ilist cADT DelegateSigs)
+                   (ValidImpl : 
+                      forall n, 
+                        Dep_Option_elim_T2
+                          (fun Sig adt adt' => @refineADT Sig adt (LiftcADT adt'))
+                          (ith_error DelegateSpecs n)
+                          (ith_error DelegateImpl n)),
+            forall idx r_o d r_n ,
+              cAbsR _ ValidImpl r_o r_n
+              -> exists r_o',
+                   Methods spec idx r_o d ↝ (r_o', snd (cMethods DelegateImpl idx r_n d))
+                   /\ cAbsR _ ValidImpl r_o' (fst (cMethods DelegateImpl idx r_n d)))
+: Sharpened spec :=
+  existT _ _ (FullySharpened_BuildMostlySharpenedcADT spec rep cConstructors
+                                                    cMethods DelegateSpecs cAbsR
                                                     cConstructorsRefinesSpec cMethodsRefinesSpec).
-                                                    
+
 Definition Extract_is_computationalADT
            {Sig}
            (adt : ADT Sig)
