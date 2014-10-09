@@ -111,6 +111,84 @@ Section sound.
                  end.
         Defined.
 
+        Lemma fold_right_map {A B C} (f : A -> B) g c ls
+        : @fold_right C B g
+                      c
+                      (map f ls)
+          = fold_right (g ∘ f) c ls.
+        Proof.
+          induction ls; unfold compose; simpl; f_equal; auto.
+        Qed.
+
+        Lemma fold_right_orb_true ls
+        : fold_right orb true ls = true.
+        Proof.
+          induction ls; destruct_head_hnf bool; simpl in *; trivial.
+        Qed.
+
+        Lemma fold_right_orb b b' ls
+        : fold_right orb b ls = b'
+          <-> fold_right or (b = b') (map (fun x => x = b') ls).
+        Proof.
+          revert b'; induction ls.
+          repeat match goal with
+                   | _ => reflexivity
+                   | _ => progress simpl in *
+                   | _ => intro
+                   | _ => split
+                   | _ => rewrite fold_right_orb_true
+                   | _ => progress destruct_head or
+                   | _ => left; reflexivity
+                   | _ => right; assumption
+                   | [ H : _ |- _ ] => rewrite fold_right_orb_true in H
+                   | [ H : true = false |- _ ] => solve [ inversion H ]
+                   | [ H : false = true |- _ ] => solve [ inversion H ]
+                 end.
+          repeat match goal with
+                   | _ => reflexivity
+                   | _ => progress simpl in *
+                   | _ => intro
+                   | _ => split
+                   | _ => rewrite fold_right_orb_true
+                   | _ => progress destruct_head or
+                   | _ => progress destruct_head_hnf bool
+                   | _ => left; reflexivity
+                   | _ => right; assumption
+                   | _ => progress split_iff
+                   | _ => progress subst
+                   | [ H : _ |- _ ] => rewrite fold_right_orb_true in H
+                   | [ H : true = false |- _ ] => solve [ inversion H ]
+                   | [ H : false = true |- _ ] => solve [ inversion H ]
+                   | _ => solve [ eauto ]
+                 end.
+          destruct a; simpl in *.
+          split.
+          intros; left; assumption.
+          intros [|]; trivial.
+          try solve [ repeat match goal with
+                               | _ => reflexivity
+                               | _ => progress destruct_head_hnf bool
+                               | _ => progress destruct_head_hnf and
+                               | [ H : ?a = ?b, H' : ?a = ?b -> _ |- _ ] => specialize (H' H)
+                               | _ => left; reflexivity
+                               | _ => right; assumption
+                               | [ H : true = false |- _ ] => solve [ inversion H ]
+                               | [ H : false = true |- _ ] => solve [ inversion H ]
+                             end ].
+          { repeat match goal with
+                   | _ => reflexivity
+                               | _ => progress destruct_head_hnf bool
+                               | [ H : ?a = ?b, H' : ?a = ?b -> _ |- _ ] => specialize (H' H)
+                               | _ => left; reflexivity
+                               | _ => right; assumption
+                               | [ H : true = false |- _ ] => solve [ inversion H ]
+                               | [ H : false = true |- _ ] => solve [ inversion H ]
+                             end.
+ simpl; try reflexivity;
+          split; intros; destruct_head or.
+                     ls
+                     b'
+
         Lemma parse_production_from_any_split_list_sound
               (parse_productions_sound
                : forall str pf prods,
@@ -130,6 +208,11 @@ Section sound.
           -> parse_of_production _ G str0 prod.
         Proof.
           unfold parse_production_from_any_split_list.
+          rewrite !fold_right_map.
+          repeat match goal with
+                   | [ H : _ |- _ ] => rewrite fold_right_map in H
+                 end.
+          rewrite fold_right_map
           induction strs; simpl in *; intros; eauto.
           apply Bool.orb_true_elim in H.
           destruct_head and.
