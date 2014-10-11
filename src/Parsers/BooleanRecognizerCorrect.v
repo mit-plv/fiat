@@ -2,12 +2,15 @@
 Require Import Coq.Lists.List Coq.Program.Program Coq.Program.Wf Coq.Arith.Wf_nat Coq.Arith.Compare_dec Coq.Classes.RelationClasses Coq.Strings.String.
 Require Import Parsers.ContextFreeGrammar Parsers.Specification Parsers.BooleanRecognizer.
 Require Import Common Common.ilist.
+Require Import Eqdep_dec.
 
 Local Hint Extern 0 =>
 match goal with
   | [ H : false = true |- _ ] => solve [ destruct (Bool.diff_false_true H) ]
   | [ H : true = false |- _ ] => solve [ destruct (Bool.diff_true_false H) ]
 end.
+
+Coercion is_true (b : bool) := b = true.
 
 Section sound.
   Section general.
@@ -32,14 +35,20 @@ Section sound.
         Context (str : String)
                 (str_matches_productions : productions CharType -> bool).
 
+        Definition str_matches_productions_soundT
+          := forall prods, str_matches_productions prods = true
+                           -> parse_of _ G str prods.
+
+        Definition str_matches_productions_completeT
+          := forall prods, parse_of _ G str prods
+                           -> str_matches_productions prods = true.
+
         Lemma parse_item_sound
-              (str_matches_productions_sound
-               : forall prods, str_matches_productions prods = true
-                               -> parse_of _ G str prods)
+              (str_matches_productions_sound : str_matches_productions_soundT)
               (it : item CharType)
         : parse_item String G str str_matches_productions it = true -> parse_of_item _ G str it.
         Proof.
-          unfold parse_item in *.
+          unfold parse_item, str_matches_productions_soundT in *.
           repeat match goal with
                    | _ => intro
                    | [ H : context[match ?E with _ => _ end] |- _ ] => atomic E; destruct E
@@ -51,13 +60,11 @@ Section sound.
         Defined.
 
         Lemma parse_item_complete
-              (str_matches_productions_complete
-               : forall prods, parse_of _ G str prods
-                               -> str_matches_productions prods = true)
+              (str_matches_productions_complete : str_matches_productions_completeT)
               (it : item CharType)
         : parse_of_item _ G str it -> parse_item String G str str_matches_productions it = true.
         Proof.
-          unfold parse_item in *.
+          unfold parse_item, str_matches_productions_completeT in *.
           repeat match goal with
                    | _ => intro
                    | _ => reflexivity
@@ -68,47 +75,64 @@ Section sound.
         Qed.
       End item.
 
-      Section production.
+      Section production0.
         Context (str0 : String)
                 (parse_productions : forall (str : String),
                                        str_le _ str str0
                                        -> productions CharType
                                        -> bool).
 
+        Definition parse_productions_soundT
+          := forall str pf prods,
+               @parse_productions str pf prods = true
+               -> parse_of _ G str prods.
+
+        Definition parse_productions_completeT
+          := forall str pf prods,
+               parse_of _ G str prods
+               -> @parse_productions str pf prods = true.
+
+        Definition split_list_correctT (split_list : list { str : String | str_le _ str str0 })
+                   (prod : production CharType)
+          := ((bool_eq _ (fold_right (Concat _) (Empty _) (map (@proj1_sig _ _) split_list)) str0)
+                && if Arith.Peano_dec.eq_nat_dec (Datatypes.length split_list) (Datatypes.length prod)
+                   then true
+                   else false)%bool.
+
         Lemma parse_production_from_split_list_sound
-              (parse_productions_sound
-               : forall str pf prods,
-                   @parse_productions str pf prods = true
-                   -> parse_of _ G str prods)
+              (parse_productions_sound : parse_productions_soundT)
               (strs : list { str : String | str_le _ str str0 })
-              (strs_correct : fold_right (Concat _) (Empty _) (map (@proj1_sig _ _) strs) = str0)
               (prod : production CharType)
-              (strs_length_correct : Datatypes.length strs = Datatypes.length prod)
+              (strs_correct : split_list_correctT strs prod)
         : parse_production_from_split_list G parse_productions strs prod = true
           -> parse_of_production _ G str0 prod.
         Proof.
-          unfold parse_production_from_split_list.
+          unfold parse_production_from_split_list, parse_productions_soundT, split_list_correctT, is_true in *.
           intro H.
+          apply Bool.andb_true_iff in strs_correct.
+          rewrite bool_eq_correct in strs_correct.
+          destruct strs_correct as [strs_correct ?].
           rewrite <- strs_correct; clear strs_correct.
-          revert strs strs_length_correct H;
+          edestruct Arith.Peano_dec.eq_nat_dec;
+            generalize dependent strs;
             induction prod;
-            intros strs strs_length_correct H; destruct strs;
-          repeat match goal with
-                   | _ => intro
-                   | [ H : _ = true |- _ ] => apply bool_eq_correct in H
-                   | _ => progress subst
-                   | _ => progress simpl in *
-                   | [ H : S _ = 0 |- _ ] => solve [ destruct (NPeano.Nat.neq_succ_0 _ H) ]
-                   | [ H : 0 = S _ |- _ ] => solve [ destruct (NPeano.Nat.neq_0_succ _ H) ]
-                   | [ H : 0 > 0 |- _ ] => solve [ destruct (Le.le_Sn_0 _ H) ]
-                   | [ H : S _ = S _ |- _ ] => apply NPeano.Nat.succ_inj in H
-                   | [ H : (_ && _)%bool = true |- _ ] => apply Bool.andb_true_iff in H
-                   | [ H : _ /\ _ |- _ ] => destruct H
-                   | [ H : parse_item _ _ _ _ _ = true |- _ ] => apply parse_item_sound in H; []
-                   | [ H : parse_item _ _ _ _ _ = true |- _ ] => apply parse_item_sound in H; eauto; []
-                   | [ H : parse_item _ _ _ _ _ = true |- _ ] => apply parse_item_sound in H; solve [ eauto ]
-                   | _ => solve [ eauto ]
-                 end.
+            intro strs; destruct strs;
+            repeat match goal with
+                     | _ => intro
+                     | [ H : _ = true |- _ ] => apply bool_eq_correct in H
+                     | _ => progress subst
+                     | _ => progress simpl in *
+                     | [ H : S _ = 0 |- _ ] => solve [ destruct (NPeano.Nat.neq_succ_0 _ H) ]
+                     | [ H : 0 = S _ |- _ ] => solve [ destruct (NPeano.Nat.neq_0_succ _ H) ]
+                     | [ H : 0 > 0 |- _ ] => solve [ destruct (Le.le_Sn_0 _ H) ]
+                     | [ H : S _ = S _ |- _ ] => apply NPeano.Nat.succ_inj in H
+                     | [ H : (_ && _)%bool = true |- _ ] => apply Bool.andb_true_iff in H
+                     | [ H : _ /\ _ |- _ ] => destruct H
+                     | [ H : parse_item _ _ _ _ _ = true |- _ ] => apply parse_item_sound in H; hnf; []
+                     | [ H : parse_item _ _ _ _ _ = true |- _ ] => apply parse_item_sound in H; hnf; eauto; []
+                     | [ H : parse_item _ _ _ _ _ = true |- _ ] => apply parse_item_sound in H; hnf; solve [ eauto ]
+                     | _ => solve [ eauto ]
+                   end.
         Defined.
 
         Lemma fold_right_map {A B C} (f : A -> B) g c ls
@@ -126,107 +150,464 @@ Section sound.
           induction ls; destruct_head_hnf bool; simpl in *; trivial.
         Qed.
 
-        Lemma fold_right_orb b b' ls
-        : fold_right orb b ls = b'
-          <-> fold_right or (b = b') (map (fun x => x = b') ls).
+        Lemma fold_right_orb b ls
+        : fold_right orb b ls = true
+          <-> fold_right or (b = true) (map (fun x => x = true) ls).
         Proof.
-          revert b'; induction ls.
+          induction ls; simpl; intros; try reflexivity.
+          rewrite <- IHls; clear.
           repeat match goal with
-                   | _ => reflexivity
-                   | _ => progress simpl in *
-                   | _ => intro
+                   | _ => assumption
                    | _ => split
-                   | _ => rewrite fold_right_orb_true
-                   | _ => progress destruct_head or
-                   | _ => left; reflexivity
-                   | _ => right; assumption
-                   | [ H : _ |- _ ] => rewrite fold_right_orb_true in H
-                   | [ H : true = false |- _ ] => solve [ inversion H ]
-                   | [ H : false = true |- _ ] => solve [ inversion H ]
-                 end.
-          repeat match goal with
-                   | _ => reflexivity
-                   | _ => progress simpl in *
                    | _ => intro
-                   | _ => split
-                   | _ => rewrite fold_right_orb_true
-                   | _ => progress destruct_head or
-                   | _ => progress destruct_head_hnf bool
-                   | _ => left; reflexivity
-                   | _ => right; assumption
-                   | _ => progress split_iff
                    | _ => progress subst
-                   | [ H : _ |- _ ] => rewrite fold_right_orb_true in H
-                   | [ H : true = false |- _ ] => solve [ inversion H ]
-                   | [ H : false = true |- _ ] => solve [ inversion H ]
-                   | _ => solve [ eauto ]
+                   | _ => progress simpl in *
+                   | _ => progress destruct_head or
+                   | _ => progress destruct_head bool
+                   | _ => left; reflexivity
+                   | _ => right; assumption
                  end.
-          destruct a; simpl in *.
-          split.
-          intros; left; assumption.
-          intros [|]; trivial.
-          try solve [ repeat match goal with
-                               | _ => reflexivity
-                               | _ => progress destruct_head_hnf bool
-                               | _ => progress destruct_head_hnf and
-                               | [ H : ?a = ?b, H' : ?a = ?b -> _ |- _ ] => specialize (H' H)
-                               | _ => left; reflexivity
-                               | _ => right; assumption
-                               | [ H : true = false |- _ ] => solve [ inversion H ]
-                               | [ H : false = true |- _ ] => solve [ inversion H ]
-                             end ].
-          { repeat match goal with
-                   | _ => reflexivity
-                               | _ => progress destruct_head_hnf bool
-                               | [ H : ?a = ?b, H' : ?a = ?b -> _ |- _ ] => specialize (H' H)
-                               | _ => left; reflexivity
-                               | _ => right; assumption
-                               | [ H : true = false |- _ ] => solve [ inversion H ]
-                               | [ H : false = true |- _ ] => solve [ inversion H ]
-                             end.
- simpl; try reflexivity;
-          split; intros; destruct_head or.
-                     ls
-                     b'
+        Qed.
+
+        Lemma fold_right_map_andb_andb {T} x y f g (ls : list T)
+        : fold_right andb x (map f ls) = true /\ fold_right andb y (map g ls) = true
+          <-> fold_right andb (andb x y) (map (fun k => andb (f k) (g k)) ls) = true.
+        Proof.
+          induction ls; simpl; intros; destruct_head_hnf bool; try tauto;
+          rewrite !Bool.andb_true_iff;
+          try tauto.
+        Qed.
+
+        Lemma fold_right_map_andb_orb {T} x y f g (ls : list T)
+        : fold_right andb x (map f ls) = true /\ fold_right orb y (map g ls) = true
+          -> fold_right orb (andb x y) (map (fun k => andb (f k) (g k)) ls) = true.
+        Proof.
+          induction ls; simpl; intros; destruct_head_hnf bool; try tauto;
+          repeat match goal with
+                   | [ H : _ |- _ ] => progress rewrite ?Bool.orb_true_iff, ?Bool.andb_true_iff in H
+                   | _ => progress rewrite ?Bool.orb_true_iff, ?Bool.andb_true_iff
+                 end;
+          try tauto.
+        Qed.
+
+        Lemma fold_right_map_and_and {T} x y f g (ls : list T)
+        : fold_right and x (map f ls) /\ fold_right and y (map g ls)
+          <-> fold_right and (x /\ y) (map (fun k => f k /\ g k) ls).
+        Proof.
+          revert x y.
+          induction ls; simpl; intros; try reflexivity.
+          rewrite <- IHls; clear.
+          tauto.
+        Qed.
+
+        Lemma fold_right_map_and_or {T} x y f g (ls : list T)
+        : fold_right and x (map f ls) /\ fold_right or y (map g ls)
+          -> fold_right or (x /\ y) (map (fun k => f k /\ g k) ls).
+        Proof.
+          revert x y.
+          induction ls; simpl; intros; try assumption.
+          intuition.
+        Qed.
+
+        Functional Scheme fold_right_rect := Induction for fold_right Sort Type.
+
+        Definition split_lists_correctT (split_lists : list (list { str : String | str_le _ str str0 }))
+                   (prod : production CharType)
+          := fold_right andb true (map (fun ls => split_list_correctT ls prod) split_lists).
 
         Lemma parse_production_from_any_split_list_sound
+              (parse_productions_sound : parse_productions_soundT)
+              (strs : list (list { str : String | Length _ str < Length _ str0 \/ str = str0 }))
+              (prod : production CharType)
+              (strs_correct : split_lists_correctT strs prod)
+        : parse_production_from_any_split_list G parse_productions strs prod = true
+          -> parse_of_production _ G str0 prod.
+        Proof.
+          unfold parse_production_from_any_split_list; intro.
+          unfold split_lists_correctT, is_true in *.
+          repeat match goal with
+                   | _ => intro
+                   | [ H0 : fold_right andb _ _ = true, H1 : fold_right andb _ _ = true |- _ ]
+                     => pose proof (proj1 (@fold_right_map_andb_andb _ _ _ _ _ _) (conj H0 H1));
+                       clear H0 H1
+                   | [ H0 : fold_right andb _ _ = true, H1 : fold_right orb _ _ = true |- _ ]
+                     => pose proof (@fold_right_map_andb_orb _ _ _ _ _ _) (conj H0 H1);
+                       clear H0 H1
+                 end.
+          simpl in *.
+          let H := match goal with H : fold_right orb _ _ = _ |- _ => constr:H end in
+          rewrite fold_right_map in H;
+            let T := match type of H with ?a = _ => constr:a end in
+            functional induction T using fold_right_rect;
+              intros; subst;
+              destruct_head_hnf and;
+              repeat match goal with
+                       | _ => progress simpl in *
+                       | _ => progress unfold compose in *
+                       | _ => progress destruct_head_hnf sumbool
+                       | _ => progress destruct_head_hnf and
+                       | [ H : false = true |- _ ] => solve [ destruct (Bool.diff_false_true H) ]
+                       | [ H : true = false |- _ ] => solve [ destruct (Bool.diff_true_false H) ]
+                       | [ H : _ |- _ ] => apply Bool.orb_true_elim in H
+                       | [ H : _ |- _ ] => rewrite Bool.andb_true_iff in H
+                       | [ H : context[Peano_dec.eq_nat_dec ?a ?b] |- _ ] => destruct (Peano_dec.eq_nat_dec a b)
+                       | [ H : (_ =s _)%string_like = true |- _ ] => apply bool_eq_correct in H
+                       | _ => eapply parse_production_from_split_list_sound; eassumption
+                       | _ => auto
+                     end.
+        Defined.
+      End production0.
+
+      Section production1.
+        Context (str0 : String)
+                (parse_productions : forall (str : String),
+                                       str_le _ str str0
+                                       -> productions CharType
+                                       -> bool).
+
+        Definition or_transitivity' {A B} `{@Transitive B R} {f : A -> B} {a0 a}
+                   (pf : R (f a) (f a0) \/ a = a0) a' (pf' : R (f a') (f a) \/ a' = a)
+        : R (f a') (f a0) \/ a' = a0.
+        Proof.
+          destruct_head or; subst;
+          first [ right; reflexivity | left; assumption | left; etransitivity; eassumption ].
+        Defined.
+
+        Lemma or_transitivity_eq' {A B} `{@Transitive B R} `{@Irreflexive B R} {f : A -> B} {a0 a}
+              (isprop_r : forall x y (pf1 pf2 : R x y), pf1 = pf2)
+              (isset_a : forall pf : a0 = a0, pf = eq_refl)
+              (pf : R (f a) (f a0) \/ a = a0) a' (pf' : R (f a') (f a) \/ a' = a)
+        : or_transitivity pf pf' = or_transitivity' pf pf'.
+        Proof.
+          destruct pf, pf'; simpl in *; subst; compute;
+          match goal with
+            | [ |- ?a = _ ] => case_eq a
+          end;
+          repeat match goal with
+                   | _ => intro
+                   | _ => progress subst
+                   | [ |- _ = _ :> or _ _ ] => progress f_equal
+                   | _ => apply isprop_r
+                   | _ => apply isset_a
+                   | [ |- or_intror _ = or_introl _ ] => exfalso
+                   | [ |- or_introl _ = or_intror _ ] => exfalso
+                   | [ H : R ?a ?b, H' : R ?b ?a |- _ ] => destruct (irreflexivity (transitivity H H'))
+                   | [ H : R ?a ?a |- _ ] => destruct (irreflexivity H)
+                 end.
+        Qed.
+
+        Fixpoint le_0_n_transparent n : 0 <= n
+          := match n with
+               | 0 => le_n _
+               | S n' => le_S _ _ (le_0_n_transparent n')
+             end.
+
+        Fixpoint le_n_S_transparent {n m} (H : n <= m) : S n <= S m
+          := match H with
+               | le_n => le_n _
+               | le_S _ H0 => le_S _ _ (le_n_S_transparent H0)
+             end.
+
+        Fixpoint le_pred_transparent {n m} (H : n <= m) : pred n <= pred m.
+        Proof.
+          destruct H; try constructor.
+          destruct m; simpl.
+          { change 0 with (pred 0); apply le_pred_transparent; assumption. }
+          { constructor.
+            change m with (pred (S m)).
+            apply le_pred_transparent; assumption. }
+        Defined.
+
+        Definition le_S_n_transparent {n m} (H : S n <= S m) : n <= m
+          := le_pred_transparent H.
+
+        Fixpoint le_dec_transparent n m : {n <= m} + {~n <= m}
+          := match n, m with
+               | 0, _ => left (le_0_n_transparent _)
+               | S _, 0 => right (Le.le_Sn_0 _)
+               | S n', S m' => match le_dec_transparent n' m' with
+                                 | left H => left (le_n_S_transparent H)
+                                 | right nH => right (fun H => nH (le_S_n_transparent H))
+                               end
+             end.
+
+        Definition lt_dec_transparent n m : {n < m} + {~n < m}
+          := le_dec_transparent _ _.
+
+        Fixpoint lt_irrelevant n m pf : match lt_dec_transparent n m with
+                                          | left pf2 => pf = pf2
+                                          | right pf2 => False
+                                        end.
+        Proof.
+          revert lt_irrelevant.
+          clear.
+          intro lt_irrelevant.
+          destruct pf as [|? pf]; simpl;
+          [ clear lt_irrelevant | specialize (lt_irrelevant _ _ pf) ];
+          unfold lt_dec_transparent in *;
+          simpl in *;
+          repeat match goal with
+                   | _ => reflexivity
+                   | _ => progress simpl in *
+                   | _ => intros; clear lt_irrelevant; exfalso; abstract intuition
+                   | [ |- context[match ?m with _ => _ end] ]
+                     => destruct m; intros; exfalso; abstract intuition
+                   | [ |- context[le_dec_transparent ?n ?n] ]
+                     => atomic n;
+                       match goal with
+                         | [ H : context[le_dec_transparent n n] |- _ ]
+                           => destruct (le_dec_transparent n n);
+                             [ rewrite <- H; reflexivity | assumption ]
+                         | _ => induction n
+                       end
+                 end.
+(*
+          destruct m0.
+          destruct lt_irrelevant.
+          destruct n; simpl in *.
+          subst; reflexivity.
+          destruct m0.
+          destruct lt_irrelevant.
+
+          Focus 2.
+          repeat match goal with
+
+                 end.
+          end.
+          destruct m; intros. exfalso; abstract intuition.
+          destruct (le_dec_transparent n m).
+          exfalso; abstract intuition.
+          intros; exfalso; abstract intuition.
+            rewrite <- IHn.
+            repeat match goal with
+                     | _ => reflexivity
+                     | _ => assumption
+                     | _ => progress simpl in *
+                   end.
+                 simpl
+          end.
+          { induction n; try reflexivity; try assumption.
+            unfold lt_dec_transparent in *.
+            simpl in *.
+            edestruct le_dec_transparent; try assumption.
+            rewrite <- IHn.
+            reflexivity. }
+          { unfold lt_dec_transparent in *.
+            simpl in *.
+            edestruct le_dec_transparent.
+            Set Printing All.
+            compute.
+            unfold Gt.gt_le_S.
+          SearchAbout lt_dec
+          unfold lt_dec; simpl.
+
+        Lemma map_or_transitivity'
+              str ls pf
+        : (map
+             (map
+                (fun sp : {str1 : String | str_le String str1 str} =>
+                   exist (fun str1 : String => str_le String str1 str0)
+                         (` sp) (or_transitivity pf (proj2_sig sp))))
+             ls)
+          = (map
+               (map
+                  (fun sp : {str1 : String | str_le String str1 str} =>
+                     exist (fun str1 : String => str_le String str1 str0)
+                           (` sp) (or_transitivity' pf (proj2_sig sp))))
+               ls).
+        Proof.
+          clear.
+          repeat match goal with
+                   | [ |- map ?f ?ls = map ?g ?ls ] => let IHls := fresh in
+                                                       induction ls as [|? ? IHls]; simpl; trivial; [];
+                                                       rewrite IHls; clear IHls
+                   | [ |- ?a::?b = ?a::?c ] => apply f_equal
+                   | [ |- ?a::?b = ?c::?b ] => apply f_equal2; [ | reflexivity ]
+                 end.
+          f_equal; apply or_transitivity_eq'.
+
+          { intros.
+            apply eq_proofs_unicity.
+            intros x y.
+            case_eq (bool_eq _ x y); intro H.
+            { apply bool_eq_correct in H.
+              left; assumption. }
+            { right; intro H'.
+              apply bool_eq_correct in H'.
+              generalize dependent (x =s y)%string_like; clear; intros; subst;
+              discriminate. }
+
+
+          Focus 2.
+          Require Import Eqdep_dec.
+
+          SearchAbout (_ < _).
+*)
+          Lemma or_to_sumbool (s1 s2 : String) (f : String -> nat)
+                (H : f s1 < f s2 \/ s1 = s2)
+          : {f s1 < f s2} + {s1 = s2}.
+          Proof.
+            case_eq (bool_eq _ s1 s2).
+            { intro H'; right; apply bool_eq_correct in H'; exact H'. }
+            { intro H'; left; destruct H; trivial.
+              apply bool_eq_correct in H.
+              generalize dependent (s1 =s s2)%string_like; intros; subst.
+              discriminate. }
+          Qed.
+
+          Lemma fold_right_andb_map_impl {T} x y f g (ls : list T)
+                (H0 : x = true -> y = true)
+                (H1 : forall k, f k = true -> g k = true)
+          : (fold_right andb x (map f ls) = true -> fold_right andb y (map g ls) = true).
+          Proof.
+            induction ls; simpl; intros; try tauto.
+            rewrite IHls; simpl;
+            repeat match goal with
+                     | [ H : _ = true |- _ ] => apply Bool.andb_true_iff in H
+                     | [ |- _ = true ] => apply Bool.andb_true_iff
+                     | _ => progress destruct_head and
+                     | _ => split
+                     | _ => auto
+                   end.
+          Qed.
+
+        Lemma parse_production_sound_helper
               (parse_productions_sound
                : forall str pf prods,
                    @parse_productions str pf prods = true
                    -> parse_of _ G str prods)
-              (strs : list (list { str : String | Length _ str < Length _ str0 \/ str = str0 }))
-              (strs_correct : fold_right and
-                                         True
-                                         (map (fun strs' => fold_right (Concat _) (Empty _) (map (@proj1_sig _ _) strs') = str0)
-                                              strs))
+              (str : String) (pf : Length _ str < Length _ str0 \/ str = str0)
               (prod : production CharType)
-              (strs_length_correct : fold_right and
-                                         True
-                                         (map (fun strs' => Datatypes.length strs' = Datatypes.length prod)
-                                              strs))
-        : parse_production_from_any_split_list G parse_productions strs prod = true
-          -> parse_of_production _ G str0 prod.
+              (strs_correct : forall str (pf : Length _ str < Length _ str0 \/ str = str0),
+                                fold_right
+                                  andb
+                                  true
+                                  (map (fun strs' => fold_right (Concat _) (Empty _) (map (@proj1_sig _ _) strs') =s str0)%string_like
+                                       (map
+                                          (map
+                                             (fun sp : {str1 : String | str_le String str1 str} =>
+                                                exist (fun str1 : String => str_le String str1 str0)
+                                                      (` sp) (or_transitivity pf (proj2_sig sp))))
+                                          (split_string_for_production str prod)))
+                                = true)
+              (strs_length_correct : forall str (pf : Length _ str < Length _ str0 \/ str = str0),
+                                       fold_right
+                                         andb
+                                         true
+                                         (map (fun strs' => if Arith.Peano_dec.eq_nat_dec (Datatypes.length strs') (Datatypes.length prod) then true else false)
+                                              (map
+                                                 (map
+                                                    (fun sp : {str1 : String | str_le String str1 str} =>
+                                                       exist (fun str1 : String => str_le String str1 str0)
+                                                             (` sp) (or_transitivity pf (proj2_sig sp))))
+                                                 (split_string_for_production str prod)))
+                                       = true)
+        : parse_production G split_string_for_production parse_productions pf prod = true
+          -> parse_of_production _ G str prod.
         Proof.
-          unfold parse_production_from_any_split_list.
-          rewrite !fold_right_map.
+          unfold parse_production.
+          pose proof (or_to_sumbool _ pf) as pf'.
+          generalize dependent (split_string_for_production str prod); intros.
+          destruct prod;
+            repeat match goal with
+                     | _ => intro
+                     | _ => progress simpl in *
+                     | [ H : _ = true |- _ ] => apply bool_eq_correct in H
+                     | [ H : sumbool _ _ |- _ ] => destruct H
+                     | _ => progress subst
+                     | _ => progress simpl in *
+                     | [ H : 0 > 0 |- _ ] => solve [ destruct (Le.le_Sn_0 _ H) ]
+                     | _ => solve [ eauto ]
+                   end.
+          eapply parse_production_from_any_split_list_sound.
+          eapply parse_productions_sound.
+            try (eapply parse_production_from_any_split_list_sound; eassumption).
+
+          solve [ eapply parse_production_from_any_split_list_sound; eapply_hyp ].
+          pose (fun str pf' => @parse_productions str (or_transitivity pf pf')) as parse_productions'.
+          let strs' := match goal with strs : list (list _) |- _ => constr:strs end in
+          eapply parse_production_from_any_split_list_sound
+          with (parse_productions := parse_productions')
+                 (strs := strs'); try eassumption;
+          intros; subst parse_productions';
+          try solve [ eapply_hyp ];
           repeat match goal with
-                   | [ H : _ |- _ ] => rewrite fold_right_map in H
+                   | _ => intro
+                   | [ H : _ |- _ ] => rewrite map_map in H
                  end.
-          rewrite fold_right_map
-          induction strs; simpl in *; intros; eauto.
-          apply Bool.orb_true_elim in H.
-          destruct_head and.
-          destruct H.
+          move strs_correct at bottom.
+          match goal with
+            | [ H : context[Concat String] |- context[Concat String] ]
+              => revert H; apply fold_right_andb_map_impl; trivial
+          end.
+          repeat match goal with
+                   | _ => intro
+                   | [ H : _ |- _ ] => rewrite map_map in H
+                 end.
           simpl in *.
-          apply IHstrs. eauto.
+          intro
+          intros; rewrite
+          match goal with
+          rewrite fold_right_map.
+          unfold compose in *; simpl in *.
+          Lemma fold_right_f_fold_right_map_map {A B C D E F f f' k k' k'' g h ls}
+          : @fold_right A B (fun x => f (@fold_right C D f' k (map (g x) (map (A := F x) (B := E x) (h x) (ls x))))) k' k''
+            = fold_right (fun x => f (fold_right f' k (map (g x ∘ h x) (ls x)))) k' k''.
+          Proof.
+            clear.
+            induction k''; simpl; trivial.
+            rewrite <- IHk''; clear IHk''.
+            rewrite map_map.
+            reflexivity.
+          Qed.
+
+          match type of strs_correct with
+            | @fold_right ?A ?B (fun x => andb (@fold_right ?C ?D ?f' ?k (map (@?g x) (map (A := @?F x) (B := @?E x) (@?h x) (@?ls x)))))
+          rewrite fold_right_f_fold_right_map_map in strs_correct.
+          setoid_rewrite map_map in strs_correct.
+          match type of strs_correct with ?a = _ => functional induction a using fold_right_rect end.
+          simpl.
+          reflexivity.
+          simpl
+
+          setoid_rewrite map_map in strs_correct.
+
+                   | [ |- _ ] => rewrite fold_right_map
+                 end.
+          move strs_correct at bottom.
+          eapply parse_productions_sound.
+          apply H1.
+
           eauto.
-          eauto.
-          SearchAbout (orb _ _ = true).
-          destruct_head or.
-          := fold_left orb
-                       (map (fun strs' => parse_production_from_split_list strs' prod)
-                            strs)
-                       false.
+          eapply p.
+ with (parse_productions := parse_productions); try eassumption.
+          eapply
+          move parse_productions_sound at bottom.
+
+          exact parse_productions_sound.
+          intros ? ?.
+          exact parse_productions_sound.
+          intros; apply parse_productions_sound.
+
+
+          Focus 2.
+          { eapply parse_production_from_any_split_list_sound; try eassumption.
+            repeat match goal with
+                     | _ => progress destruct_head or
+                     | [ H : ?a < ?a |- _ ] => destruct (Lt.lt_irrefl _ H)
+                   end.
+            unfold or_transitivity in *.
+          rewrite !map_map.
+            rewrite <- fold_right_andb.
+; try eassumption.
+
+          induction (split_string_for_production str (a::prod)).
+          simpl in *.
+          inversion H.
+          apply IHl.
+          move H at bottom.
+          simpl in *.
+
 
         (*Lemma parse_production_from_split_list_complete
               (parse_productions_correct
@@ -310,14 +691,6 @@ Section sound.
                        (map (fun strs' => parse_production_from_split_list strs' prod)
                             strs)
                        false.
-
-        Definition or_transitivity {A B} `{@Transitive B R} {f : A -> B} {a0 a}
-                   (pf : R (f a) (f a0) \/ a = a0) a' (pf' : R (f a') (f a) \/ a' = a)
-        : R (f a') (f a0) \/ a' = a0.
-        Proof.
-          destruct_head or; subst;
-          first [ right; reflexivity | left; assumption | left; etransitivity; eassumption ].
-        Qed.
 
         (** We assume the splits we are given are valid (are actually splits of the string, rather than an unrelated split) and are the same length as the given [production].  Behavior in other cases is undefined *)
         (** We match a production if any split of the string matches that production *)
