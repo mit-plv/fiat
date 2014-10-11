@@ -261,10 +261,10 @@ Section BuildADTRefinements.
                              (ith_error DelegateImpl n)),
          Iterate_Dep_Type_BoundedIndex
               (fun idx =>
-                 forall d,
-                 exists r_o,
-                   getConsDef consDefs idx d ↝ r_o
-                   /\ cAbsR _ ValidImpl r_o (ith_Bounded _ (cConstructors DelegateImpl) idx d)))
+                 @refineConstructor
+                   RepT (rep DelegateImpl) (cAbsR _ ValidImpl) _
+                   (getConsDef consDefs idx)
+                   (fun d => ret (ith_Bounded _ (cConstructors DelegateImpl) idx d))))
       -> (forall (DelegateImpl : ilist cADT DelegateSigs)
             (ValidImpl :
                forall n, Dep_Option_elim_T2
@@ -273,12 +273,10 @@ Section BuildADTRefinements.
                            (ith_error DelegateImpl n)),
             Iterate_Dep_Type_BoundedIndex
               (fun idx =>
-                 forall r_o d r_n ,
-                   cAbsR _ ValidImpl r_o r_n
-                   -> exists r_o',
-                        getMethDef methDefs idx r_o d ↝
-                                   (r_o', snd (ith_Bounded _ (cMethods DelegateImpl) idx r_n d))
-                        /\ cAbsR _ ValidImpl r_o' (fst (ith_Bounded _ (cMethods DelegateImpl) idx r_n d))))
+                 @refineMethod
+                   (RepT) (rep DelegateImpl) (cAbsR _ ValidImpl) _ _
+                   (getMethDef methDefs idx)
+                   (fun r_n d => ret (ith_Bounded _ (cMethods DelegateImpl) idx r_n d))))
       -> FullySharpenedUnderDelegates
            (BuildADT consDefs methDefs)
            {|
@@ -292,25 +290,17 @@ Section BuildADTRefinements.
     eapply (@refinesADT _ (BuildADT consDefs methDefs)
                         (LiftcADT {|cRep := rep DelegateImpl;
                                     cConstructors := _;
-                                    cMethods := _|}) 
+                                    cMethods := _|})
                         (cAbsR DelegateImpl DelegateImplRefinesSpec)).
-    - unfold refineConstructor, refine; simpl; intros;
-      inversion_by computes_to_inv; subst;
-      destruct (Iterate_Dep_Type_BoundedIndex_equiv_1
-              _ (cConstructorsRefinesSpec DelegateImpl DelegateImplRefinesSpec) idx d)
-        as [r_o' [Comp_r_o cAbsR_r_o_n]].
-      repeat econstructor; eauto.
+    - simpl; intros.
       rewrite <- ith_Bounded_imap; eauto.
-    -  unfold refineMethod, refine; simpl; intros;
-       inversion_by computes_to_inv; subst.
-      destruct (Iterate_Dep_Type_BoundedIndex_equiv_1
-                  _ (cMethodsRefinesSpec DelegateImpl DelegateImplRefinesSpec)
-                  idx _ d _ H) as
-           [r_o' [Comp_r_o cAbsR_r_o_n]].
-      repeat econstructor; eauto; simpl.
-      rewrite <- ith_Bounded_imap; unfold getcMethDef; simpl;
-      destruct ((ith_Bounded methID (cMethods DelegateImpl) idx));
-      simpl; econstructor.
+      eapply (Iterate_Dep_Type_BoundedIndex_equiv_1
+              _ (cConstructorsRefinesSpec DelegateImpl DelegateImplRefinesSpec) idx d).
+    - simpl; intros.
+       rewrite <- ith_Bounded_imap;
+         eapply (Iterate_Dep_Type_BoundedIndex_equiv_1
+                   _ (cMethodsRefinesSpec DelegateImpl DelegateImplRefinesSpec)
+                   idx r_o r_n d H).
   Qed.
 
   Definition Notation_Friendly_SharpenFully
@@ -336,32 +326,30 @@ Section BuildADTRefinements.
                         -> RepT -> rep DelegateImpl -> Prop)
              (cConstructorsRefinesSpec :
                 forall (DelegateImpl : ilist cADT DelegateSigs)
-                  (ValidImpl : 
+                  (ValidImpl :
                      forall n, Dep_Option_elim_T2
                                  (fun Sig adt adt' => @refineADT Sig adt (LiftcADT adt'))
                                  (ith_error DelegateSpecs n)
                                  (ith_error DelegateImpl n)),
                   Iterate_Dep_Type_BoundedIndex
                     (fun idx =>
-                       forall d,
-                       exists r_o,
-                         getConsDef consDefs idx d ↝ r_o
-                         /\ cAbsR _ ValidImpl r_o (ith_Bounded _ (cConstructors DelegateImpl) idx d)))
+                       @refineConstructor
+                         RepT (rep DelegateImpl) (cAbsR _ ValidImpl) _
+                         (getConsDef consDefs idx)
+                         (fun d => ret (ith_Bounded _ (cConstructors DelegateImpl) idx d))))
              (cMethodsRefinesSpec :
                 forall (DelegateImpl : ilist cADT DelegateSigs)
-                       (ValidImpl : 
+                       (ValidImpl :
                           forall n, Dep_Option_elim_T2
                                       (fun Sig adt adt' => @refineADT Sig adt (LiftcADT adt'))
                                       (ith_error DelegateSpecs n)
                                       (ith_error DelegateImpl n)),
                   Iterate_Dep_Type_BoundedIndex
                     (fun idx =>
-                       forall r_o d r_n ,
-                         cAbsR _ ValidImpl r_o r_n
-                         -> exists r_o',
-                              getMethDef methDefs idx r_o d ↝
-                                         (r_o', snd (ith_Bounded _ (cMethods DelegateImpl) idx r_n d))
-                              /\ cAbsR _ ValidImpl r_o' (fst (ith_Bounded _ (cMethods DelegateImpl) idx r_n d))))
+                       @refineMethod
+                         (RepT) (rep DelegateImpl) (cAbsR _ ValidImpl) _ _
+                         (getMethDef methDefs idx)
+                         (fun r_n d => ret (ith_Bounded _ (cMethods DelegateImpl) idx r_n d))))
   :  Sharpened (BuildADT consDefs methDefs)
     :=
       existT _ _
@@ -369,7 +357,7 @@ Section BuildADTRefinements.
                 consDefs methDefs rep cConstructors cMethods
                 DelegateSpecs cAbsR
                 cConstructorsRefinesSpec cMethodsRefinesSpec).
-  
+
 End BuildADTRefinements.
 
 Arguments Notation_Friendly_BuildMostlySharpenedcADT _ _ _ _ _ _ _ / .

@@ -303,108 +303,184 @@ Proof.
                            (fst r_n) /\
                       AbsR (ValidImpl 1)
                            (GetIndexedRelation r_o {| bindex := sORDERS |})
-                           (snd r_n)).
-  simpl.
-  intros; repeat econstructor; simpl;
-  unfold GetIndexedRelation, i2th_Bounded, ith_Bounded_rect; simpl.
-
-  instantiate (1 := fun (DI : ilist cADT
-                                    [BagSig Book
-                                            (BuildSearchTermFromAttributes BookSearchTerm);
-                                      BagSig Order
-                                             (BuildSearchTermFromAttributes OrderSearchTerm)])
-                        d =>
-          (CallConstructor (ilist_hd DI) "EmptyBag" d, CallConstructor (ilist_hd (ilist_tl DI)) "EmptyBag" d)); simpl.
-
-  Lemma refine_ret_v {A : Type} :
-    forall (a : A) c,
-      refine c (ret a) -> c ↝ a.
-    intros * H; apply (H _ (ReturnComputes a)).
-  Qed.
-
-  pose proof (refine_ret_v (ADTRefinementPreservesConstructors (ValidImpl 0)
-              {| bindex := "EmptyBag" |} d)) as H'; simpl in H';
-  apply computes_to_inv in H'; destruct_ex; intuition;
-  apply computes_to_inv in H1; destruct_ex; intuition; 
-  apply computes_to_inv in H0; subst; eauto.
-
-  pose proof (refine_ret_v (ADTRefinementPreservesConstructors (ValidImpl 1)
-              {| bindex := "EmptyBag" |} d)) as H'; simpl in H';
-  apply computes_to_inv in H'; destruct_ex; intuition;
-  apply computes_to_inv in H1; destruct_ex; intuition; 
-  apply computes_to_inv in H0; subst; eauto.
-
-  intros; split; 
-  unfold GetIndexedRelation, i2th_Bounded, ith_Bounded_rect; simpl; intros. 
-  intuition.
-  pose proof (refine_ret_v 
-                (ADTRefinementPreservesMethods
-                   (ValidImpl 1)
-                   {| bindex := "Delete" |} 
-                   (GetIndexedRelation r_o {| bindex := sORDERS |})
-                   (snd r_n)
-                   (None, [fun a : Order => ?[eq_nat_dec a!sISBN d]]) 
-                   H1)) as H'; simpl in H'.
-
-
-)) as H'; simpl in H';
-  apply computes_to_inv in H'; destruct_ex; intuition;
-  apply computes_to_inv in H1; destruct_ex; intuition; 
-  apply computes_to_inv in H0; subst; eauto.
-
-
+                           (snd r_n));
+    simpl; split;
+    intros; unfold GetIndexedRelation, i2th_Bounded, ith_Bounded_rect; simpl.
   
+  - simplify with monad laws; simpl.
 
-  Show Existentials.
-  instantiate (1 := fun (DI : ilist cADT
-                                    [BagSig Book
-                                            (BuildSearchTermFromAttributes BookSearchTerm);
-                                      BagSig Order
-                                             (BuildSearchTermFromAttributes OrderSearchTerm)])
-                        d =>
-                      (CallConstructor (ilist_hd DI) "EmptyBag" d, ()) ).
-  unfold CallConstructor in H1.
+  let H := fresh in
+  pose proof (Iterate_Dep_Type_BoundedIndex_equiv_2 _ (ADTRefinementPreservesConstructors (ValidImpl 1))) as H; simpl in H; intuition.
+  let H := fresh in
+  pose proof (Iterate_Dep_Type_BoundedIndex_equiv_2 _ (ADTRefinementPreservesConstructors (ValidImpl 0))) as H; simpl in H; intuition.
 
-  simpl in *;
+  rewrite refineEquiv_pick_pair.
+  assert (refine
+            {r_n : cRep (ilist_hd (ilist_tl DelegateImpl)) |
+             AbsR (ValidImpl 1) (Empty_set IndexedElement) r_n}
+            (r_o' <- ret (Empty_set IndexedElement);
+             {r_n : cRep (ilist_hd (ilist_tl DelegateImpl)) |
+              AbsR (ValidImpl 1) r_o' r_n})) as H' by
+      (setoid_rewrite refineEquiv_bind_unit; reflexivity);
+    setoid_rewrite H'; setoid_rewrite (a d); clear H'.
 
+  assert (refine
+            {r_n : cRep (ilist_hd DelegateImpl) |
+             AbsR (ValidImpl 0) (Empty_set IndexedElement) r_n}
+            (r_o' <- ret (Empty_set IndexedElement);
+             {r_n : cRep (ilist_hd DelegateImpl) |
+              AbsR (ValidImpl 0) r_o' r_n})) as H' by
+      (setoid_rewrite refineEquiv_bind_unit; reflexivity);
+    setoid_rewrite H'; setoid_rewrite (a0 d); clear H'.
 
+  simplify with monad laws.
 
-  idtac.
+  Ltac higher_order_2_reflexivity'' :=
+    let x := match goal with |- ?R (ret ?x) (ret (?f ?a ?b)) => constr:(x) end in
+    let f := match goal with |- ?R (ret ?x) (ret (?f ?a ?b)) => constr:(f) end in
+    let a := match goal with |- ?R (ret ?x) (ret (?f ?a ?b)) => constr:(a) end in
+    let b := match goal with |- ?R (ret ?x) (ret (?f ?a ?b)) => constr:(b) end in
+    let x' := (eval pattern a, b in x) in
+    let f' := match x' with ?f' _ _ => constr:(f') end in
+    unify f f';
+      cbv beta;
+      solve [apply reflexivity].
 
-  simpl in *.
-  Check (fun (r_o : IndexedQueryStructure BookStoreSchema BookStoreIndices) =>
-           GetIndexedRelation r_o {| bindex := sBOOKS |}).
+  higher_order_2_reflexivity''.
+  - constructor.
+  - simpl; split; intros; intuition.
+    let H := fresh in
+    pose proof (Iterate_Dep_Type_BoundedIndex_equiv_2 _ (ADTRefinementPreservesMethods (ValidImpl 1))) as H.
+    Opaque Methods.
+    simpl Iterate_Dep_Type_BoundedIndex in H. intuition.
+    simplify with monad laws.
+    setoid_rewrite refineEquiv_pick_pair; simplify with monad laws.
+    simpl.
+    
+    Lemma refineEquiv_duplicate_bind {A B : Type}
+    : forall (c : Comp A) (k : A -> A -> Comp B), 
+        refine (a <- c; a' <- c; k a a')
+               (a <- c; k a a).
+    Proof.
+      unfold refine; intros; inversion_by computes_to_inv;
+      repeat (econstructor; eauto).
+    Qed.
 
-                           (fst r_n)).
+    rewrite refineEquiv_duplicate_bind.
+    setoid_rewrite get_update_indexed_eq.
+    Check get_update_indexed_neq.
+    simpl in *|-*.
+    match goal with 
+        |- context[GetIndexedRelation (UpdateIndexedRelation ?r ?idx _ ) ?idx'] => 
+        assert (idx <> idx') as H' by
+                                 (unfold not; intros; discriminate);
+          setoid_rewrite (fun n => @get_update_indexed_neq _ _ r idx idx' n H')
+    end.
+    setoid_rewrite (refine_pick_val _ H0); simplify with monad laws.
+    
+    match goal with 
+        |- context [CallBagMethod _ _ _ ?d] => pose proof (a3 _ _ d H1) 
+    end.
+    
+    Print callMeth.
 
-  eapply Notation_Friendly_SharpenFully
-  with (DelegateSpecs := i1)
-         (cConstructors := i)
-         (cMethods := i0).
-                 => ).
+    Check (ValidImpl 1).
 
-            (icons _ (BagSpec (SearchTermFromAttributesMatcher BookSearchTerm))
-                   (icons _ (BagSpec (SearchTermFromAttributesMatcher OrderSearchTerm))
-                          (inil ADT)))
-         (cAbsR := fun _ _ _ => True).
+    Lemma ComputesToLiftcADT {Sig}
+    : forall (cadt : cADT Sig) idx r_n d,
+        Methods (LiftcADT cadt) idx r_n d ↝ cMethods cadt idx r_n d.
+    Proof.
+      unfold LiftcADT; simpl; intros.
+      Transparent Methods.
+      simpl; constructor.
+    Qed.
 
-  intros; pose (ADTRefinementPreservesMethods (X 1));
-  pose (ADTRefinementPreservesMethods (X 0)); simpl in *.
-  generalize (r1 {| bindex := "Delete" |}).
-  simpl.
-  intros; eapply SharpenIfComputesTo.
-  Show Existentials.
+    Lemma refineCallMethod {Sig} 
+    : forall (adt : ADT Sig) (cadt : cADT Sig) 
+             (refineA : refineADT adt (LiftcADT cadt))  idx r_o r_n d,
+        refine (r_o' <- Methods adt idx r_o d;
+                r_n' <- Pick (fun r_n' : cRep cadt => AbsR refineA (fst r_o') r_n');
+                ret (r_n', snd r_o'))
+               (Methods (LiftcADT cadt) idx r_n d)
+        -> exists r_o', 
+             refine (Methods adt idx r_o d) (ret r_o') /\
+             refine {r_n' | AbsR refineA (fst r_o') r_n'}
+                    (ret (fst (cMethods cadt idx r_n d))) /\
+             snd r_o' = snd (cMethods cadt idx r_n d)
+             /\ AbsR refineA (fst r_o') (fst (cMethods cadt idx r_n d)).
+    Proof.
+      intros.
+      pose proof (H _ (ComputesToLiftcADT cadt idx r_n d)); 
+        inversion_by computes_to_inv; subst.
+      exists x; intuition.
+      intros c Comp_v; inversion_by computes_to_inv; subst; auto.
+      rewrite <- H3; refine pick val x0; simpl; eauto.
+      reflexivity.
+      rewrite <- H3; eauto.
+      rewrite <- H3; eauto.
+    Qed.
 
-pose (X 0); simpl in *.
-  generalize (ADTRefinementPreservesConstructors d0).
-  Print refineADT.
-  eapply d0.
-  intros; eapply SharpenIfComputesTo; repeat constructor.
-  intros; eapply SharpenIfComputesTo; repeat constructor.
-  intros; eapply SharpenIfComputesTo; repeat constructor.
+    Eval cbv beta in (snd r_n) .
+    pose (@refineCallMethod _ (BagSpec (SearchTermFromAttributesMatcher 
+                                          (ith_Bounded relName BookStoreIndices
+                                                       (GetRelationKey BookStoreSchema sORDERS))))
+                            (ilist_hd (ilist_tl DelegateImpl)) (ValidImpl 1) 
+                            {| bindex := "Delete" |} _ _ _ H).
+    destruct_ex; intuition.
+    rewrite H3.
+    simplify with monad laws.
+    rewrite H2.
+    simplify with monad laws.
+    simpl.
+    destruct x.
+    simpl in *.
+    rewrite H4; simpl.
+    higher_order_2_reflexivity''.
+
+    Opaque Methods.
+
+    let H := fresh in
+    pose proof (Iterate_Dep_Type_BoundedIndex_equiv_2 _ (ADTRefinementPreservesMethods (ValidImpl 0))) as H.
+    simpl Iterate_Dep_Type_BoundedIndex in H. intuition.
+    simplify with monad laws.
+    setoid_rewrite refineEquiv_pick_pair; simplify with monad laws.
+    simpl.
+
+    simpl in *|-*.
+
+    match goal with 
+        |- context [CallBagMethod _ _ _ ?d] => pose proof (a0 _ _ d H0) 
+    end.
+
+    pose (@refineCallMethod _ (BagSpec (SearchTermFromAttributesMatcher 
+                                          (ith_Bounded relName BookStoreIndices
+                                                       (GetRelationKey BookStoreSchema sBOOKS))))
+                            (ilist_hd DelegateImpl) (ValidImpl 0) 
+                            {| bindex := "Find" |} _ _ _ H).
+    destruct_ex; intuition.
+    rewrite H3.
+    simplify with monad laws.
+    refine pick val a. 
+    simplify with monad laws.
+    refine pick val b.
+    simplify with monad laws. 
+    destruct x.
+    simpl in H4; rewrite H4.
+    simpl.
+    let x := match goal with |- ?R (ret ?x) (ret (?f ?a (?b, ?b') ?c)) => constr:(x) end in
+    let f := match goal with |- ?R (ret ?x) (ret (?f ?a (?b, ?b') ?c)) => constr:(f) end in
+    let a := match goal with |- ?R (ret ?x) (ret (?f ?a (?b, ?b') ?c)) => constr:(a) end in
+    let b := match goal with |- ?R (ret ?x) (ret (?f ?a (?b, ?b') ?c)) => constr:(b) end in
+    let b' := match goal with |- ?R (ret ?x) (ret (?f ?a (?b, ?b') ?c)) => constr:(b') end in
+    let c := match goal with |- ?R (ret ?x) (ret (?f ?a (?b, ?b') ?c)) => constr:(c) end in
+    let x' := (eval pattern a, b, b', c in x) in    
+    let f' := match x' with ?f' _ _ _ _ => constr:(fun i a => f' i (fst a) (snd a)) end in
+    unify f f';
+      cbv beta;
+      solve [apply reflexivity].
+    eauto.
+    eauto.
 Defined.
-*)
-Admitted.
 
 (*Definition BookStoreImpl : ComputationalADT.cADT BookStoreSig.
   extract implementation of BookStoreManual using (inil _).
