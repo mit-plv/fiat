@@ -16,6 +16,7 @@ SRC_MODULES    := \
 	ADT/ComputationalADT \
 	ADT \
 	Common/ilist \
+	Common/Wf \
 	ADTNotation/StringBound \
 	ADTNotation/BuildADTSig \
 	ADTNotation/BuildADT \

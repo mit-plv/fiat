@@ -1,60 +1,10 @@
 (** * Definition of a boolean-returning CFG parser-recognizer *)
 Require Import Coq.Lists.List Coq.Program.Program Coq.Program.Wf Coq.Arith.Wf_nat Coq.Arith.Compare_dec Coq.Classes.RelationClasses Coq.Strings.String.
 Require Import Parsers.ContextFreeGrammar Parsers.Specification.
-Require Import Common Common.ilist.
+Require Import Common Common.ilist Common.Wf.
 
 Set Implicit Arguments.
 Local Open Scope string_like_scope.
-
-(** TODO: move to another file *)
-Section wf.
-  Section wf_prod.
-    Context A B (RA : relation A) (RB : relation B).
-
-    Definition prod_relation : relation (A * B)
-      := fun ab a'b' =>
-           RA (fst ab) (fst a'b') \/ (fst a'b' = fst ab /\ RB (snd ab) (snd a'b')).
-
-    Fixpoint well_founded_prod_relation_helper
-             a b
-             (wf_A : Acc RA a) (wf_B : well_founded RB) {struct wf_A}
-    : Acc prod_relation (a, b)
-      := match wf_A with
-           | Acc_intro fa => (fix wf_B_rec b' (wf_B' : Acc RB b') : Acc prod_relation (a, b')
-                              := Acc_intro
-                                   _
-                                   (fun ab =>
-                                      match ab as ab return prod_relation ab (a, b') -> Acc prod_relation ab with
-                                        | (a'', b'') =>
-                                          fun pf =>
-                                            match pf with
-                                              | or_introl pf'
-                                                => @well_founded_prod_relation_helper
-                                                     _ _
-                                                     (fa _ pf')
-                                                     wf_B
-                                              | or_intror (conj pfa pfb)
-                                                => match wf_B' with
-                                                     | Acc_intro fb
-                                                       => eq_rect
-                                                            _
-                                                            (fun a'' => Acc prod_relation (a'', b''))
-                                                            (wf_B_rec _ (fb _ pfb))
-                                                            _
-                                                            pfa
-                                                   end
-                                            end
-                                      end)
-                             ) b (wf_B b)
-         end.
-
-    Definition well_founded_prod_relation : well_founded RA -> well_founded RB -> well_founded prod_relation.
-    Proof.
-      intros wf_A wf_B [a b]; hnf in *.
-      apply well_founded_prod_relation_helper; auto.
-    Defined.
-  End wf_prod.
-End wf.
 
 Section recursive_descent_parser.
   Context CharType (String : string_like CharType) (G : grammar CharType).
