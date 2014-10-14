@@ -433,10 +433,10 @@ Ltac BuildFullySharpenedConstructor :=
   match goal with
       |- ret ?x ↝ ?Bod ?DelegateImpl ?d
       => let Bod' := eval pattern DelegateImpl, d in x in
-         match Bod' with
-           | (?Bod'' _ _) =>
-             unify Bod Bod''; constructor
-         end
+                                                      match Bod' with
+                                                        | (?Bod'' _ _) =>
+                                                          unify Bod Bod''; constructor
+                                                      end
   end.
 
 Lemma SharpenIfComputesTo {A} :
@@ -446,4 +446,37 @@ Lemma SharpenIfComputesTo {A} :
     -> (if cond then cT else cE) ↝ if cond then vT else vE.
 Proof.
   destruct cond; eauto.
+Qed.
+
+Lemma ComputesToLiftcADT {Sig}
+: forall (cadt : cADT Sig) idx r_n d,
+    Methods (LiftcADT cadt) idx r_n d ↝ cMethods cadt idx r_n d.
+Proof.
+  unfold LiftcADT; simpl; intros.
+  simpl; constructor.
+Qed.
+
+Lemma refineCallMethod {Sig}
+: forall (adt : ADT Sig) (cadt : cADT Sig)
+         (refineA : refineADT adt (LiftcADT cadt))  idx r_o r_n d,
+    refine (r_o' <- Methods adt idx r_o d;
+            r_n' <- Pick (fun r_n' : cRep cadt => AbsR refineA (fst r_o') r_n');
+            ret (r_n', snd r_o'))
+           (Methods (LiftcADT cadt) idx r_n d)
+    -> exists r_o',
+         refine (Methods adt idx r_o d) (ret r_o') /\
+         refine {r_n' | AbsR refineA (fst r_o') r_n'}
+                (ret (fst (cMethods cadt idx r_n d))) /\
+         snd r_o' = snd (cMethods cadt idx r_n d)
+         /\ AbsR refineA (fst r_o') (fst (cMethods cadt idx r_n d)).
+Proof.
+  intros.
+  pose proof (H _ (ComputesToLiftcADT cadt idx r_n d));
+    inversion_by computes_to_inv; subst.
+  exists x; intuition.
+  intros c Comp_v; inversion_by computes_to_inv; subst; auto.
+  rewrite <- H3; refine pick val x0; simpl; eauto.
+  reflexivity.
+  rewrite <- H3; eauto.
+  rewrite <- H3; eauto.
 Qed.

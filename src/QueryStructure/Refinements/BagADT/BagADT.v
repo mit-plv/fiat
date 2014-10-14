@@ -21,7 +21,7 @@ Section BagADT.
   }.
 
   Definition BagSpec : ADT BagSig :=
-    ADTRep (IndexedEnsemble ) {
+    ADTRep (IndexedEnsemble) {
         Def Constructor "EmptyBag" (_ : unit) : rep :=
           ret (Empty_set _),
 

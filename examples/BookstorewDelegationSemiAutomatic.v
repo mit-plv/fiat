@@ -227,8 +227,6 @@ Proof.
     setoid_rewrite refine_Query_In_Enumerate; eauto.
     setoid_rewrite refine_List_Query_In_Where.
 
-    pose refine_Query_For_In_Find.
-
     match goal with
         [ H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
           |- context[For (l <- CallBagMethod ?idx {| bindex := "Enumerate"|} ?r_n0 ();
@@ -262,7 +260,7 @@ Proof.
   Require Import ADTNotation.BuildComputationalADT.
   Require Import ADT.ComputationalADT.
 
-  Ltac FullySharpenEachMethod delegateSigs delegateSpecs cRep'  :=
+  Ltac FullySharpenEachMethod delegateSigs delegateSpecs cRep' cAbsR' :=
     match goal with
         |- Sharpened (@BuildADT ?Rep ?consSigs ?methSigs ?consDefs ?methDefs) =>
         ilist_of_evar
@@ -279,8 +277,8 @@ Proof.
                                         (DelegateSpecs := delegateSpecs)
                                           (cConstructors := cCons)
                                           (cMethods := cMeths)
-                                          (cAbsR := _)));
-          unfold Dep_Type_BoundedIndex_app_comm_cons; simpl
+                                          (cAbsR := cAbsR')));
+          unfold Dep_Type_BoundedIndex_app_comm_cons
     end.
 
   FullySharpenEachMethod [BagSig Book (BuildSearchTermFromAttributes BookSearchTerm);
@@ -290,23 +288,28 @@ Proof.
                                 (inil ADT)))
                          (fun DelegateImpl : ilist cADT
                                                 [BagSig Book (BuildSearchTermFromAttributes BookSearchTerm);
-                                                  BagSig Order (BuildSearchTermFromAttributes OrderSearchTerm)] => prod (cRep (ilist_hd DelegateImpl)) (cRep (ilist_hd (ilist_tl DelegateImpl)))).
-  instantiate (2 := fun (DelegateImpl : ilist cADT
+                                                  BagSig Order (BuildSearchTermFromAttributes OrderSearchTerm)] => prod (cRep (ilist_hd DelegateImpl)) (cRep (ilist_hd (ilist_tl DelegateImpl))))
+                         (fun (DelegateImpl : ilist cADT
                                                 [BagSig Book (BuildSearchTermFromAttributes BookSearchTerm);
                                                   BagSig Order (BuildSearchTermFromAttributes OrderSearchTerm)])
-                              ValidImpl
+                              (ValidImpl :
+                                 forall n, Dep_Option_elim_T2
+                                             (fun Sig adt adt' => @refineADT Sig adt (LiftcADT adt'))
+                                             (ith_error (icons _ (BagSpec (SearchTermFromAttributesMatcher BookSearchTerm))
+                         (icons _ (BagSpec (SearchTermFromAttributesMatcher OrderSearchTerm))
+                                (inil ADT))) n)
+                                             (ith_error DelegateImpl n))
                         (r_o : IndexedQueryStructure BookStoreSchema BookStoreIndices)
-                        (r_n : cRep (ilist_hd DelegateImpl) *
-                               cRep (ilist_hd (ilist_tl DelegateImpl))) =>
+                        r_n =>
                       AbsR (ValidImpl 0)
                            (GetIndexedRelation r_o {| bindex := sBOOKS |})
                            (fst r_n) /\
                       AbsR (ValidImpl 1)
                            (GetIndexedRelation r_o {| bindex := sORDERS |})
-                           (snd r_n));
+                           (snd r_n)).
     simpl; split;
     intros; unfold GetIndexedRelation, i2th_Bounded, ith_Bounded_rect; simpl.
-  
+
   - simplify with monad laws; simpl.
 
   let H := fresh in
@@ -356,9 +359,9 @@ Proof.
     simplify with monad laws.
     setoid_rewrite refineEquiv_pick_pair; simplify with monad laws.
     simpl.
-    
+
     Lemma refineEquiv_duplicate_bind {A B : Type}
-    : forall (c : Comp A) (k : A -> A -> Comp B), 
+    : forall (c : Comp A) (k : A -> A -> Comp B),
         refine (a <- c; a' <- c; k a a')
                (a <- c; k a a).
     Proof.
@@ -370,61 +373,23 @@ Proof.
     setoid_rewrite get_update_indexed_eq.
     Check get_update_indexed_neq.
     simpl in *|-*.
-    match goal with 
-        |- context[GetIndexedRelation (UpdateIndexedRelation ?r ?idx _ ) ?idx'] => 
+    match goal with
+        |- context[GetIndexedRelation (UpdateIndexedRelation ?r ?idx _ ) ?idx'] =>
         assert (idx <> idx') as H' by
                                  (unfold not; intros; discriminate);
           setoid_rewrite (fun n => @get_update_indexed_neq _ _ r idx idx' n H')
     end.
     setoid_rewrite (refine_pick_val _ H0); simplify with monad laws.
-    
-    match goal with 
-        |- context [CallBagMethod _ _ _ ?d] => pose proof (a3 _ _ d H1) 
+
+    match goal with
+        |- context [CallBagMethod _ _ _ ?d] => pose proof (a3 _ _ d H1)
     end.
-    
-    Print callMeth.
-
-    Check (ValidImpl 1).
-
-    Lemma ComputesToLiftcADT {Sig}
-    : forall (cadt : cADT Sig) idx r_n d,
-        Methods (LiftcADT cadt) idx r_n d ↝ cMethods cadt idx r_n d.
-    Proof.
-      unfold LiftcADT; simpl; intros.
-      Transparent Methods.
-      simpl; constructor.
-    Qed.
-
-    Lemma refineCallMethod {Sig} 
-    : forall (adt : ADT Sig) (cadt : cADT Sig) 
-             (refineA : refineADT adt (LiftcADT cadt))  idx r_o r_n d,
-        refine (r_o' <- Methods adt idx r_o d;
-                r_n' <- Pick (fun r_n' : cRep cadt => AbsR refineA (fst r_o') r_n');
-                ret (r_n', snd r_o'))
-               (Methods (LiftcADT cadt) idx r_n d)
-        -> exists r_o', 
-             refine (Methods adt idx r_o d) (ret r_o') /\
-             refine {r_n' | AbsR refineA (fst r_o') r_n'}
-                    (ret (fst (cMethods cadt idx r_n d))) /\
-             snd r_o' = snd (cMethods cadt idx r_n d)
-             /\ AbsR refineA (fst r_o') (fst (cMethods cadt idx r_n d)).
-    Proof.
-      intros.
-      pose proof (H _ (ComputesToLiftcADT cadt idx r_n d)); 
-        inversion_by computes_to_inv; subst.
-      exists x; intuition.
-      intros c Comp_v; inversion_by computes_to_inv; subst; auto.
-      rewrite <- H3; refine pick val x0; simpl; eauto.
-      reflexivity.
-      rewrite <- H3; eauto.
-      rewrite <- H3; eauto.
-    Qed.
 
     Eval cbv beta in (snd r_n) .
-    pose (@refineCallMethod _ (BagSpec (SearchTermFromAttributesMatcher 
+    pose (@refineCallMethod _ (BagSpec (SearchTermFromAttributesMatcher
                                           (ith_Bounded relName BookStoreIndices
                                                        (GetRelationKey BookStoreSchema sORDERS))))
-                            (ilist_hd (ilist_tl DelegateImpl)) (ValidImpl 1) 
+                            (ilist_hd (ilist_tl DelegateImpl)) (ValidImpl 1)
                             {| bindex := "Delete" |} _ _ _ H).
     destruct_ex; intuition.
     rewrite H3.
@@ -448,22 +413,22 @@ Proof.
 
     simpl in *|-*.
 
-    match goal with 
-        |- context [CallBagMethod _ _ _ ?d] => pose proof (a0 _ _ d H0) 
+    match goal with
+        |- context [CallBagMethod _ _ _ ?d] => pose proof (a0 _ _ d H0)
     end.
 
-    pose (@refineCallMethod _ (BagSpec (SearchTermFromAttributesMatcher 
+    pose (@refineCallMethod _ (BagSpec (SearchTermFromAttributesMatcher
                                           (ith_Bounded relName BookStoreIndices
                                                        (GetRelationKey BookStoreSchema sBOOKS))))
-                            (ilist_hd DelegateImpl) (ValidImpl 0) 
+                            (ilist_hd DelegateImpl) (ValidImpl 0)
                             {| bindex := "Find" |} _ _ _ H).
     destruct_ex; intuition.
     rewrite H3.
     simplify with monad laws.
-    refine pick val a. 
+    refine pick val a.
     simplify with monad laws.
     refine pick val b.
-    simplify with monad laws. 
+    simplify with monad laws.
     destruct x.
     simpl in H4; rewrite H4.
     simpl.
@@ -473,7 +438,7 @@ Proof.
     let b := match goal with |- ?R (ret ?x) (ret (?f ?a (?b, ?b') ?c)) => constr:(b) end in
     let b' := match goal with |- ?R (ret ?x) (ret (?f ?a (?b, ?b') ?c)) => constr:(b') end in
     let c := match goal with |- ?R (ret ?x) (ret (?f ?a (?b, ?b') ?c)) => constr:(c) end in
-    let x' := (eval pattern a, b, b', c in x) in    
+    let x' := (eval pattern a, b, b', c in x) in
     let f' := match x' with ?f' _ _ _ _ => constr:(fun i a => f' i (fst a) (snd a)) end in
     unify f f';
       cbv beta;

@@ -86,9 +86,11 @@ SRC_MODULES    := \
 	QueryStructure/Refinements/Bags/TreeBags\
 	QueryStructure/Refinements/Bags/CachingBags\
 	QueryStructure/Refinements/Bags/CacheableFunctions\
-	QueryStructure/Refinements/Bags/BagADT\
 	QueryStructure/Refinements/Bags/BagsOfTuples\
-	QueryStructure/Refinements/Bags/BagsofTuplesADT\
+	QueryStructure/Refinements/BagADT/BagADT\
+	QueryStructure/Refinements/BagADT/Refinements\
+	QueryStructure/Refinements/BagADT/BagImplementation\
+	QueryStructure/Refinements/BagADT/DelegateImplementation\
 	Common/String_as_OT\
 	QueryStructure/Refinements/Bags/Bags\
 	QueryStructure/Refinements/AutoDB\
