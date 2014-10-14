@@ -25,7 +25,10 @@ Section cfg.
         Length : String -> nat;
         Associativity : forall x y z, (x ++ y) ++ z = x ++ (y ++ z);
         LeftId : forall x, Empty ++ x = x;
-        RightId : forall x, x ++ Empty = x
+        RightId : forall x, x ++ Empty = x;
+        Length_correct : forall s1 s2, Length s1 + Length s2 = Length (s1 ++ s2);
+        Length_Empty : Length Empty = 0;
+        Empty_Length : forall s1, Length s1 = 0 -> s1 = Empty
       }.
 
     Bind Scope string_like_scope with String.
@@ -131,6 +134,8 @@ Notation "[[ x ]]" := (@Singleton _ _ x) : string_like_scope.
 Infix "++" := (@Concat _ _) : string_like_scope.
 Infix "=s" := (@bool_eq _ _) (at level 70, right associativity) : string_like_scope.
 
+Local Hint Extern 0 => match goal with H : S _ = 0 |- _ => destruct (NPeano.Nat.neq_succ_0 _ H) end.
+
 Definition string_stringlike : string_like Ascii.ascii.
 Proof.
   refine {| String := string;
@@ -145,6 +150,7 @@ Proof.
                     intros;
                     f_equal;
                     auto)
+        | intros; split; congruence
         | intros; edestruct string_dec; split; congruence ].
 Defined.
 
