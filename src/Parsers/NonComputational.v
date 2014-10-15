@@ -1,7 +1,7 @@
 (** * Definition of a [comp]-based non-computational CFG parser *)
 Require Import Coq.Lists.List Coq.Program.Program Coq.Program.Wf Coq.Arith.Wf_nat Coq.Arith.Compare_dec Coq.Classes.RelationClasses Coq.Strings.String.
 Require Import Parsers.ContextFreeGrammar Parsers.Specification.
-Require Import Common Common.ilist.
+Require Import Common Common.ilist Common.Wf.
 
 Set Implicit Arguments.
 (*(** We implement a generic recursive descent parser.  We parameterize
@@ -25,110 +25,6 @@ Set Implicit Arguments.
     The basic idea is that
 
 FIXME *)*)
-
-Section wf.
-  Section wf_prod.
-    Context A B (RA : relation A) (RB : relation B).
-
-    Definition prod_relation : relation (A * B)
-      := fun ab a'b' =>
-           RA (fst ab) (fst a'b') \/ (fst a'b' = fst ab /\ RB (snd ab) (snd a'b')).
-
-    Fixpoint well_founded_prod_relation_helper
-             a b
-             (wf_A : Acc RA a) (wf_B : well_founded RB) {struct wf_A}
-    : Acc prod_relation (a, b)
-      := match wf_A with
-           | Acc_intro fa => (fix wf_B_rec b' (wf_B' : Acc RB b') : Acc prod_relation (a, b')
-                              := Acc_intro
-                                   _
-                                   (fun ab =>
-                                      match ab as ab return prod_relation ab (a, b') -> Acc prod_relation ab with
-                                        | (a'', b'') =>
-                                          fun pf =>
-                                            match pf with
-                                              | or_introl pf'
-                                                => @well_founded_prod_relation_helper
-                                                     _ _
-                                                     (fa _ pf')
-                                                     wf_B
-                                              | or_intror (conj pfa pfb)
-                                                => match wf_B' with
-                                                     | Acc_intro fb
-                                                       => eq_rect
-                                                            _
-                                                            (fun a'' => Acc prod_relation (a'', b''))
-                                                            (wf_B_rec _ (fb _ pfb))
-                                                            _
-                                                            pfa
-                                                   end
-                                            end
-                                      end)
-                             ) b (wf_B b)
-         end.
-
-    Definition well_founded_prod_relation : well_founded RA -> well_founded RB -> well_founded prod_relation.
-    Proof.
-      intros wf_A wf_B [a b]; hnf in *.
-      apply well_founded_prod_relation_helper; auto.
-    Defined.
-  End wf_prod.
-
-  Section wf_sig.
-    Context A B (RA : relation A) (RB : forall a : A, relation (B a)).
-
-    Definition sigT_relation : relation (sigT B)
-      := fun ab a'b' =>
-           RA (projT1 ab) (projT1 a'b') \/ (exists pf : projT1 a'b' = projT1 ab, RB (projT2 ab)
-                                                                                    (eq_rect _ B (projT2 a'b') _ pf)).
-
-    Fixpoint well_founded_sigT_relation_helper
-             a b
-             (wf_A : Acc RA a) (wf_B : forall a, well_founded (@RB a)) {struct wf_A}
-    : Acc sigT_relation (existT _ a b).
-    Proof.
-      refine match wf_A with
-               | Acc_intro fa => (fix wf_B_rec b' (wf_B' : Acc (@RB a) b') : Acc sigT_relation (existT _ a b')
-                                  := Acc_intro
-                                       _
-                                       (fun ab =>
-                                          match ab as ab return sigT_relation ab (existT _ a b') -> Acc sigT_relation ab with
-                                            | existT a'' b'' =>
-                                              fun pf =>
-                                                match pf with
-                                                  | or_introl pf'
-                                                    => @well_founded_sigT_relation_helper
-                                                         _ _
-                                                         (fa _ pf')
-                                                         wf_B
-                                                  | or_intror (ex_intro pfa pfb)
-                                                    => match wf_B' with
-                                                         | Acc_intro fb
-                                                           => _(*eq_rect
-                                                            _
-                                                            (fun a'' => Acc sigT_relation (existT B a'' _(*b''*)))
-                                                            (wf_B_rec _ (fb _ _(*pfb*)))
-                                                            _
-                                                            pfa*)
-                                                       end
-                                                end
-                                          end)
-                                 ) b (wf_B a b)
-             end;
-      simpl in *.
-      destruct pfa; simpl in *.
-      exact (wf_B_rec _ (fb _ pfb)).
-    Defined.
-
-    Definition well_founded_sigT_relation : well_founded RA
-                                            -> (forall a, well_founded (@RB a))
-                                            -> well_founded sigT_relation.
-    Proof.
-      intros wf_A wf_B [a b]; hnf in *.
-      apply well_founded_sigT_relation_helper; auto.
-    Defined.
-  End wf_sig.
-End wf.
 
 Local Open Scope string_like_scope.
 
@@ -162,11 +58,11 @@ Section recursive_descent_parser.
     Context (parse_production_by_picking
              : forall str0
                       (parse_production_from_split_list'
-                       : forall (strs : list { str : String | Length _ str < Length _ str0 \/ str = str0 })
+                       : forall (strs : list { str : String | str ≤s str0 })
                                 (pat : production CharType),
                            ilist (fun sp => T (proj1_sig (fst sp)) [ [ snd sp ] ]) (combine strs pat))
                       (str : String)
-                      (pf : Length _ str < Length _ str0 \/ str = str0)
+                      (pf : str ≤s str0)
                       (pat : production CharType),
                  T str [ pat ]).
     Context (decide_leaf : forall str ch, T str [ [ Terminal ch ] ]).
@@ -191,18 +87,18 @@ Section recursive_descent_parser.
       Section production.
         Variable str0 : String.
         Variable parse_productions : forall (str : String)
-                                            (pf : Length _ str < Length _ str0 \/ str = str0)
+                                            (pf : str ≤s str0)
                                             nt, T str nt.
 
         Definition parse_production_from_split_list
-                   (strs : list { str : String | Length _ str < Length _ str0 \/ str = str0 })
+                   (strs : list { str : String | str ≤s str0 })
                    (pat : production CharType)
         : ilist (fun sp => T (proj1_sig (fst sp)) [ [ snd sp ] ]) (combine strs pat)
           := imap_list (fun sp => T (proj1_sig (fst sp)) [ [ snd sp ] ])
                        (fun sp => parse_item (@parse_productions _ (proj2_sig (fst sp))) (snd sp))
                        (combine strs pat).
 
-        Definition parse_production (str : String) (pf : Length _ str < Length _ str0 \/ str = str0) (pat : production CharType)
+        Definition parse_production (str : String) (pf : str ≤s str0) (pat : production CharType)
         : T str [ pat ]
           := parse_production_by_picking parse_production_from_split_list pf pat.
       End production.
@@ -211,10 +107,10 @@ Section recursive_descent_parser.
         Section step.
           Variable str0 : String.
           Variable parse_productions : forall (str : String)
-                                              (pf : Length _ str < Length _ str0 \/ str = str0)
+                                              (pf : str ≤s str0)
                                               nt, T str nt.
 
-          Definition parse_productions_step (str : String) (pf : Length _ str < Length _ str0 \/ str = str0) (nt : productions CharType)
+          Definition parse_productions_step (str : String) (pf : str ≤s str0) (nt : productions CharType)
           : T str nt
             := fold_productions (imap_list (fun pat => T str [ pat ])
                                         (parse_production parse_productions pf)
@@ -223,7 +119,7 @@ Section recursive_descent_parser.
 
         Section wf.
           Definition parse_productions_or_abort str0 str (valid_list : forall str, productions_listT str)
-                     (pf : Length _ str < Length _ str0 \/ str = str0)
+                     (pf : str ≤s str0)
                      (nt : productions CharType)
           : T str nt.
           Proof.
@@ -235,12 +131,12 @@ Section recursive_descent_parser.
                                                        productions_listT
                                                        _
                                                        _
-                                                       (well_founded_ltof _ (Length String))
+                                                       (well_founded_ltof _ Length)
                                                        ntl_wf)
                          _ _).
             intros [str0 valid_list] parse_productions str pf nt; simpl in *.
-            destruct (lt_dec (Length _ str) (Length _ str0)) as [pf'|pf'];
-              [ | assert (H : str0 = str) by intuition; apply (transport_T_str H); clear H ].
+            destruct (lt_dec (Length str) (Length str0)) as [pf'|pf'];
+              [ | unfold str_le in *; assert (H : str0 = str) by intuition; apply (transport_T_str H); clear H ].
             { (** [str] got smaller, so we reset the valid productions list *)
               specialize (parse_productions
                             (existT _ str (initial_productions_data str))
@@ -276,9 +172,9 @@ Section recursive_descent_parser.
              : forall (str : String)
                       (pat : production CharType)
                       (patH : Datatypes.length pat > 0),
-                 { ls : list { split : list { str_part : String | Length _ str_part < Length _ str \/ str_part = str }
+                 { ls : list { split : list { str_part : String | str_part ≤s str }
                              | List.length split = List.length pat
-                               /\ fold_right (Concat _) (Empty _) (map (@proj1_sig _ _) split) = str }
+                               /\ fold_right Concat (Empty _) (map (@proj1_sig _ _) split) = str }
                  | List.length ls <> 0 }).
 
     Let aggregate str pats : list (parse_of String G str pats +
@@ -323,12 +219,12 @@ Section recursive_descent_parser.
             let T := match type of split with list ?T => constr:(T) end in
             set (f := (map (fun x' : T
                       => exist
-                           (fun str => Length String str < Length String str0 \/ str = str0)
+                           (fun str => str ≤s str0)
                            (proj1_sig x')
                            (match pf, proj2_sig x' with
                               | or_introl H0, or_introl H1 => or_introl (transitivity H1 H0)
-                              | or_introl H0, or_intror H1 => or_introl (transitivity (R := le) (Le.le_n_S _ _ (NPeano.Nat.eq_le_incl _ _ (f_equal (Length String) H1))) H0)
-                              | or_intror H0, or_introl H1 => or_introl (transitivity (R := le) H1 (NPeano.Nat.eq_le_incl _ _ (f_equal (Length String) H0)))
+                              | or_introl H0, or_intror H1 => or_introl (transitivity (R := le) (Le.le_n_S _ _ (NPeano.Nat.eq_le_incl _ _ (f_equal Length H1))) H0)
+                              | or_intror H0, or_introl H1 => or_introl (transitivity (R := le) H1 (NPeano.Nat.eq_le_incl _ _ (f_equal Length H0)))
                               | or_intror H0, or_intror H1 => or_intror (transitivity H1 H0)
                             end)))).
             specialize (parse_production_from_split_list' (f split) (pat0 :: pat1 :: pats)).
@@ -870,15 +766,13 @@ Section example_parse_string_grammar.
        : list
            {split
             : list
-                {str_part : string_stringlike |
-                 Length string_stringlike str_part < Length string_stringlike str \/
-                 str_part = str} |
+                {str_part : string_stringlike | str_part ≤s str } |
             Datatypes.length split = Datatypes.length pat /\
-            fold_right (Concat string_stringlike) (Empty string_stringlike)
+            fold_right Concat (Empty string_stringlike)
                        (map (@proj1_sig _ _) split) = str} |
        Datatypes.length ls <> 0}.
   Proof.
-    simpl.
+    simpl; unfold str_le in *.
     intros str [|pat pats] H;
       [ exfalso; clear str; simpl in H; abstract inversion H
       | clear H ].
@@ -923,7 +817,6 @@ Section example_parse_string_grammar.
   Defined.
 
   Variable G : grammar Ascii.ascii.
-  Variable all_productions : list (productions Ascii.ascii).
 
   Definition brute_force_make_parse_of : forall str nt, parse_of string_stringlike G str nt
                                             + option (parse_of string_stringlike G str nt -> False).
@@ -933,7 +826,7 @@ Section example_parse_string_grammar.
            (is_valid_productions := rdp_list_is_valid_productions Ascii.ascii_dec)
            (remove_productions := rdp_list_remove_productions Ascii.ascii_dec)
            (productions_listT_R := rdp_list_productions_listT_R).
-    { intros; exact all_productions. }
+    { intros; exact (Valid_nonterminals G). }
     { apply rdp_list_remove_productions_dec. }
     { apply rdp_list_ntl_wf. }
     { apply brute_force_splitter. }
@@ -943,7 +836,7 @@ End example_parse_string_grammar.
 Module example_parse_empty_grammar.
   Definition make_parse_of : forall str nt, parse_of string_stringlike (trivial_grammar _) str nt
                                             + option (parse_of string_stringlike (trivial_grammar _) str nt -> False)
-    := @brute_force_make_parse_of (trivial_grammar _) (map (Lookup (trivial_grammar _)) (""::nil)%string).
+    := @brute_force_make_parse_of (trivial_grammar _).
 
 
 
@@ -980,7 +873,7 @@ Section examples.
     Coercion production_of_string : string >-> production.
 
     Definition ab_star_grammar : grammar Ascii.ascii :=
-      {| Top_name := "ab_star";
+      {| Start_symbol := "ab_star";
          Lookup := fun s =>
                      if string_dec s ""
                      then nil::nil
@@ -990,12 +883,13 @@ Section examples.
                                then ((NonTerminal _ ""%string)::nil)
                                       ::((NonTerminal _ "ab"%string)::(NonTerminal _ "ab_star")::nil)
                                       ::nil
-                               else nil::nil |}.
+                               else nil::nil;
+         Valid_nonterminal_symbols := (""::"ab"::"ab_star"::nil)%string |}.
 
     Definition make_parse_of : forall (str : string)
                                       (prods : productions Ascii.ascii),
                                  _
-      := @brute_force_make_parse_of ab_star_grammar (map (Lookup ab_star_grammar) (""::"ab"::"ab_star"::nil)%string).
+      := @brute_force_make_parse_of ab_star_grammar.
 
 
 

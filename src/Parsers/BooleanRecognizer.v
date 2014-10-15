@@ -8,16 +8,6 @@ Set Implicit Arguments.
 Local Open Scope string_like_scope.
 
 (** TODO: move this elsewhere *)
-Fixpoint combine_sig {T P} (ls : list T) : List.Forall P ls -> list (sig P).
-Proof.
-  refine match ls with
-           | nil => fun _ => nil
-           | x::xs => fun H => (exist _ x _)::@combine_sig _ _ xs _
-         end;
-  clear combine_sig;
-  abstract (inversion H; subst; assumption).
-Defined.
-
 Section recursive_descent_parser.
   Context CharType (String : string_like CharType) (G : grammar CharType).
   Context (productions_listT : Type)
@@ -28,17 +18,13 @@ Section recursive_descent_parser.
           (remove_productions_dec : forall ls prods, is_valid_productions ls prods = true
                                                      -> productions_listT_R (remove_productions ls prods) ls)
           (ntl_wf : well_founded productions_listT_R).
-
-  Definition str_le (s1 s2 : String) := Length _ s1 < Length _ s2 \/ s1 = s2.
-  Local Infix "≤s" := str_le (at level 70, right associativity).
   Section bool.
     Context (split_string_for_production
-             : forall (str0 : String)
-                      (prod : production CharType),
-                 list (list String))
+             : forall (str0 : String) (prod : production CharType), list (String * String))
             (split_string_for_production_correct
              : forall str0 prod,
-                 List.Forall (List.Forall (fun str => str ≤s str0)) (split_string_for_production str0 prod)).
+                 List.Forall (fun s1s2 => fst s1s2 ≤s str0 /\ snd s1s2 ≤s str0)
+                             (split_string_for_production str0 prod)).
 
     Section parts.
       Section item.
@@ -60,59 +46,32 @@ Section recursive_descent_parser.
                                        -> bool.
 
         (** To match a [production], we must match all of its items.
-            If the lengths do match up, we don't define the outcome. *)
-        Definition parse_production_from_split_list
-                   (strs : list String)
-                   (strs_correct : List.Forall (fun str => str ≤s str0) strs)
-                   (prod : production CharType)
-        : bool
-          := fold_right andb
-                        true
-                        (map (fun sp => parse_item (proj1_sig (fst sp))
-                                                   (parse_productions (proj2_sig (fst sp)))
-                                                   (snd sp))
-                             (combine (combine_sig strs_correct) prod)).
-
-        (** To match a [production], any split of the string can match. *)
-        Definition parse_production_from_any_split_list
-                   (strs : list (list String))
-                   (strs_correct : List.Forall (List.Forall (fun str => str ≤s str0)) strs)
-                   (prod : production CharType)
-        : bool
-          := fold_right orb
-                        false
-                        (map (fun strs' => parse_production_from_split_list (proj2_sig strs') prod)
-                             (combine_sig strs_correct)).
-
-        Definition or_transitivity {A B} `{@Transitive B R} {f : A -> B} {a0 a}
-                   (pf : R (f a) (f a0) \/ a = a0) a' (pf' : R (f a') (f a) \/ a' = a)
-        : R (f a') (f a0) \/ a' = a0.
-        Proof.
-          destruct_head or; subst;
-          first [ right; reflexivity | left; assumption | left; etransitivity; eassumption ].
-        Qed.
-
-        (** We assume the splits we are given are valid (are actually splits of the string, rather than an unrelated split) and are the same length as the given [production].  Behavior in other cases is undefined *)
-        (** We match a production if any split of the string matches that production *)
-        Definition parse_production
-                   (str : String) (pf : str ≤s str0)
-                   (prod : production CharType)
+            But we may do so on any particular split. *)
+        Fixpoint parse_production
+                 (str : String) (pf : str ≤s str0)
+                 (prod : production CharType)
         : bool.
         Proof.
-          refine (if (gt_dec (Datatypes.length prod) 0)
-                  then (@parse_production_from_any_split_list
-                          (@split_string_for_production str prod)
-                          _
-                          prod)
-                  else (** 0-length production, only accept empty *)
-                    (str =s Empty _)).
-          specialize (split_string_for_production_correct str prod).
-          revert split_string_for_production_correct.
-          revert pf; clear; intro pf.
+          refine match prod with
+                   | nil =>
+                     (** 0-length production, only accept empty *)
+                     str =s Empty _
+                   | it::its
+                     => let parse_production' := fun str pf => @parse_production str pf its in
+                        fold_right
+                          orb
+                          false
+                          (map (fun s1s2p => (parse_item (fst (proj1_sig s1s2p))
+                                                         (@parse_productions (fst (proj1_sig s1s2p))
+                                                                             _)
+                                                         it)
+                                               && parse_production' (snd (proj1_sig s1s2p)) _)%bool
+                               (combine_sig (split_string_for_production_correct str prod)))
+                 end;
+          revert pf; clear; intros;
           abstract (
-              repeat first [ apply Forall_impl
-                           | eapply or_transitivity; eassumption
-                           | intro ]
+              destruct_head sig; destruct_head and;
+              etransitivity; eassumption
             ).
         Defined.
       End production.
@@ -145,13 +104,13 @@ Section recursive_descent_parser.
                          productions_listT
                          _
                          _
-                         (well_founded_ltof _ (Length String))
+                         (well_founded_ltof _ Length)
                          ntl_wf)
                     _
                     (fun sl parse_productions str pf (prods : productions CharType)
                      => let str0 := fst sl in
                         let valid_list := snd sl in
-                        match lt_dec (Length _ str) (Length _ str0) with
+                        match lt_dec (Length str) (Length str0) with
                           | left pf' =>
                             (** [str] got smaller, so we reset the valid productions list *)
                             parse_productions_step
@@ -256,230 +215,59 @@ Section recursive_descent_parser_list.
 End recursive_descent_parser_list.
 
 (** TODO: move this elsewhere *)
-Local Ltac str_le_append_t :=
-  repeat match goal with
-           | _ => intro
-           | _ => progress subst
-           | [ H : (_ =s _)%string_like = true |- _ ] => apply bool_eq_correct in H
-           | _ => progress rewrite ?LeftId, ?RightId
-           | _ => right; reflexivity
-           | [ H : Length _ _ = 0 |- _ ] => apply Empty_Length in H
-           | [ H : Length _ ?s <> 0 |- _ ] => destruct (Length _ s)
-           | [ H : ?n <> ?n |- _ ] => destruct (H eq_refl)
-           | [ |- ?x < ?x + S _ \/ _ ] => left; omega
-           | [ |- ?x < S _ + ?x \/ _ ] => left; omega
-         end.
-
-Lemma str_le1_append CharType (String : string_like CharType) (s1 s2 : String)
-: str_le _ s1 (s1 ++ s2)%string_like.
-Proof.
-  hnf.
-  rewrite <- Length_correct.
-  case_eq (bool_eq _ s2 (Empty _));
-  destruct (NPeano.Nat.eq_dec (Length _ s2) 0);
-  str_le_append_t.
-Qed.
-
-Lemma str_le2_append CharType (String : string_like CharType) (s1 s2 : String)
-: str_le _ s2 (s1 ++ s2)%string_like.
-Proof.
-  hnf.
-  rewrite <- Length_correct.
-  case_eq (bool_eq _ s1 (Empty _));
-  destruct (NPeano.Nat.eq_dec (Length _ s1) 0);
-  str_le_append_t.
-Qed.
-
 Section example_parse_string_grammar.
-  Fixpoint make_all_single_splits (str : string) : list { strs : string * string | (fst strs ++ snd strs = str)%string }.
-  Proof.
-    refine ((exist _ (""%string, str) eq_refl)
-              ::(match str with
-                   | ""%string => nil
-                   | String.String ch str' =>
-                     map (fun p => exist _ (String.String ch (fst (proj1_sig p)),
-                                            snd (proj1_sig p))
-                                         _)
-                         (make_all_single_splits str')
-                 end)).
-    clear.
-    abstract (simpl; apply f_equal; apply proj2_sig).
-  Defined.
+  Fixpoint make_all_single_splits (str : string) : list (string * string)
+    := ((""%string, str))
+         ::(match str with
+              | ""%string => nil
+              | String.String ch str' =>
+                map (fun p => (String.String ch (fst p), snd p))
+                    (make_all_single_splits str')
+            end).
 
-  Lemma length_append (s1 s2 : string) : length (s1 ++ s2) = length s1 + length s2.
+  Lemma make_all_single_splits_correct_eq str
+  : List.Forall (fun strs => fst strs ++ snd strs = str)%string (make_all_single_splits str).
   Proof.
-    revert s2.
-    induction s1; simpl; trivial; [].
-    intros.
-    f_equal; auto.
+    induction str; simpl; constructor; auto.
+    apply Forall_map.
+    unfold compose; simpl.
+    revert IHstr; apply Forall_impl; intros.
+    subst; trivial.
   Qed.
 
-  Fixpoint flatten1 {T} (ls : list (list T)) : list T
-    := match ls with
-         | nil => nil
-         | x::xs => (x ++ flatten1 xs)%list
-       end.
-
-  Lemma flatten1_length_ne_0 {T} (ls : list (list T)) (H0 : Datatypes.length ls <> 0)
-        (H1 : Datatypes.length (hd nil ls) <> 0)
-  : Datatypes.length (flatten1 ls) <> 0.
+  Lemma make_all_single_splits_correct_str_le (str : string_stringlike)
+  : List.Forall (fun strs => fst strs ≤s str /\ snd strs ≤s str)%string (make_all_single_splits str).
   Proof.
-    destruct ls as [| [|] ]; simpl in *; auto.
+    generalize (make_all_single_splits_correct_eq str).
+    apply Forall_impl.
+    intros; subst; split;
+    first [ apply str_le1_append
+          | apply str_le2_append ].
   Qed.
-
-  Local Hint Constructors List.Forall.
-
-  Lemma Forall_app {T} P (ls1 ls2 : list T)
-  : List.Forall P ls1 /\ List.Forall P ls2 <-> List.Forall P (ls1 ++ ls2).
-  Proof.
-    split.
-    { intros [H1 H2].
-      induction H1; simpl; auto. }
-    { intro H; split; induction ls1; simpl in *; auto.
-      { inversion_clear H; auto. }
-      { inversion_clear H; auto. } }
-  Qed.
-
-  Lemma Forall_flatten1 {T ls P}
-  : List.Forall P (@flatten1 T ls) <-> List.Forall (List.Forall P) ls.
-  Proof.
-    induction ls; simpl.
-    { repeat first [ esplit | intro | constructor ]. }
-    { etransitivity; [ symmetry; apply Forall_app | ].
-      split_iff.
-      split.
-      { intros [? ?]; auto. }
-      { intro H'; inversion_clear H'; split; auto. } }
-  Qed.
-
-
-  Lemma Forall_map {A B} {f : A -> B} {ls P}
-  : List.Forall P (map f ls) <-> List.Forall (P ∘ f) ls.
-  Proof.
-    induction ls; simpl.
-    { repeat first [ esplit | intro | constructor ]. }
-    { split_iff.
-      split;
-        intro H'; inversion_clear H'; auto. }
-  Qed.
-
-  (*Local Ltac t' :=
-    match goal with
-      | _ => progress simpl in *
-      | _ => progress subst
-      | [ H : ?a = ?b |- _ ] => progress subst a
-      | [ H : ?a = ?b |- _ ] => progress subst b
-      | _ => rewrite (LeftId string_stringlike _)
-      | _ => rewrite (RightId string_stringlike _)
-      | _ => reflexivity
-      | _ => split
-      | _ => right; reflexivity
-      | _ => rewrite map_length
-      | _ => rewrite map_map
-      | _ => rewrite length_append
-      | _ => progress destruct_head_hnf prod
-      | _ => progress destruct_head_hnf and
-      | _ => progress destruct_head_hnf or
-      | _ => progress destruct_head_hnf sig
-      | _ => progress auto with arith
-      | _ => apply f_equal
-      | _ => solve [ apply proj2_sig ]
-      | _ => solve [ left; auto with arith ]
-      | [ str : string |- _ ] => solve [ destruct str; simpl; auto with arith ]
-      | [ str : string |- _ ] => solve [ left; destruct str; simpl; auto with arith ]
-    end.
-  Local Ltac t'' :=
-    match goal with
-      | _ => progress t'
-      | [ str : string |- _ ] => solve [ destruct str; repeat t' ]
-    end.
-  Local Ltac t :=
-    solve [ repeat t'' ].*)
 
   Local Hint Resolve NPeano.Nat.lt_lt_add_l NPeano.Nat.lt_lt_add_r NPeano.Nat.lt_add_pos_r NPeano.Nat.lt_add_pos_l : arith.
   Local Hint Resolve str_le1_append str_le2_append.
 
-  Fixpoint brute_force_splitter_helper
-           (prod : production Ascii.ascii)
-  : string_stringlike
-    -> list (list string_stringlike)
-    := match prod with
-         | nil => fun str =>
-                    (** We only get one thing in the list *)
-                    ((str::nil)::nil)
-         | _::prod' => fun str =>
-                         (flatten1
-                            (map (fun s1s2p =>
-                                    map
-                                      (fun split_list => (fst (proj1_sig s1s2p))::split_list)
-                                      (@brute_force_splitter_helper prod' (snd (proj1_sig s1s2p))))
-                                 (make_all_single_splits str)))
-       end.
-
-  Definition brute_force_splitter
-  : forall (str : string_stringlike) (prod : production Ascii.ascii),
-      list (list string_stringlike)
-    := fun str prods =>
-         match prods with
-           | nil => nil (** no patterns, no split (actually, we should never encounter this case *)
-           | _::prods' => brute_force_splitter_helper prods' str
-         end.
-
-  Lemma brute_force_splitter_helper_correct
-           (prod : production Ascii.ascii)
-           (str : string_stringlike)
-  : List.Forall (List.Forall (fun str_part => str_le _ str_part str)) (brute_force_splitter_helper prod str).
-  Proof.
-    revert str.
-    induction prod; simpl; intro.
-    { repeat first [ right; reflexivity | constructor ]. }
-    { repeat match goal with
-               | [ |- Forall _ (flatten1 _) ] => apply Forall_flatten1
-               | [ |- Forall _ (map _ _) ] => apply Forall_map; unfold compose; simpl
-               | [ |- Forall _ (make_all_single_splits _) ] => apply Forall_forall; intros
-               | [ H : forall str : String string_stringlike, _ |- context[brute_force_splitter_helper _ ?str] ]
-                 => specialize (H str)
-               | [ H : Forall _ ?l |- Forall _ ?l ] => revert H; apply Forall_impl; intros
-               | [ |- Forall _ (_ :: _) ] => constructor
-               | _ => progress destruct_head sig
-               | _ => progress subst
-               | _ => solve [ eauto ]
-               | _ => apply str_le1_append
-               | _ => apply str_le2_append
-               | [ H : str_le _ ?a _ |- str_le _ ?a _ ] => eapply or_transitivity; [ | exact H ]; clear H a
-             end. }
-  Qed.
-
-  Lemma brute_force_splitter_correct
-             (str : string_stringlike) (prod : production Ascii.ascii)
-  : List.Forall (List.Forall (fun str_part => str_le _ str_part str)) (brute_force_splitter str prod).
-  Proof.
-    unfold brute_force_splitter.
-    destruct prod; auto.
-    apply brute_force_splitter_helper_correct.
-  Qed.
-
   Variable G : grammar Ascii.ascii.
-  Variable all_productions : list (productions Ascii.ascii).
 
   Definition brute_force_make_parse_of : @String Ascii.ascii string_stringlike
                                          -> productions Ascii.ascii
                                          -> bool
     := parse_productions
          G
-         all_productions
+         (Valid_nonterminals G)
          (rdp_list_is_valid_productions Ascii.ascii_dec)
          (rdp_list_remove_productions Ascii.ascii_dec)
          (rdp_list_remove_productions_dec Ascii.ascii_dec) rdp_list_ntl_wf
-         brute_force_splitter
-         brute_force_splitter_correct.
+         (fun (str : string_stringlike) _ => make_all_single_splits str)
+         (fun str0 _ => make_all_single_splits_correct_str_le str0).
 End example_parse_string_grammar.
 
 Module example_parse_empty_grammar.
   Definition make_parse_of : forall (str : string)
                                     (prods : productions Ascii.ascii),
                                bool
-    := @brute_force_make_parse_of (trivial_grammar _) (map (Lookup (trivial_grammar _)) (""::nil)%string).
+    := @brute_force_make_parse_of (trivial_grammar _).
 
 
 
@@ -532,37 +320,38 @@ Section examples.
     Notation "$< x $ .. $ y >$" := (cons (NonTerminal _ x) .. (cons (NonTerminal _ y) nil) .. ) : production_scope.
 
     Definition ab_star_grammar : grammar Ascii.ascii :=
-      {| Top_name := "ab_star";
+      {| Start_symbol := "ab_star";
          Lookup := [[[ ("" ::== (<< "" >>)) ;;
                        ("ab" ::== << "ab" >>) ;;
                        ("ab_star" ::== << $< "" >$
-                                        | $< "ab" $ "ab_star" >$ >> ) ]]]%prods_assignment |}.
+                                        | $< "ab" $ "ab_star" >$ >> ) ]]]%prods_assignment;
+         Valid_nonterminal_symbols := (""::"ab"::"ab_star"::nil)%string |}.
 
     Definition make_parse_of : forall (str : string)
                                       (prods : productions Ascii.ascii),
                                  bool
-      := @brute_force_make_parse_of ab_star_grammar (map (Lookup ab_star_grammar) (""::"ab"::"ab_star"::nil)%string).
+      := @brute_force_make_parse_of ab_star_grammar.
 
 
 
     Definition parse : string -> bool
       := fun str => make_parse_of str ab_star_grammar.
 
-    Time Compute parse "".
+    Time Eval lazy in parse "".
     Check eq_refl : parse "" = true.
-    Time Compute parse "a".
+    Time Eval lazy in parse "a".
     Check eq_refl : parse "a" = false.
-    Time Compute parse "ab".
+    Time Eval lazy in parse "ab".
     Check eq_refl : parse "ab" = true.
-    Time Compute parse "aa".
+    Time Eval lazy in parse "aa".
     Check eq_refl : parse "aa" = false.
-    Time Compute parse "ba".
+    Time Eval lazy in parse "ba".
     Check eq_refl : parse "ba" = false.
-    Time Compute parse "aba".
+    Time Eval lazy in parse "aba".
     Check eq_refl : parse "aba" = false.
-    Time Compute parse "abab".
-    Time Compute parse "ababab".
-    Check eq_refl : parse "abab" = true.
+    Time Eval lazy in parse "abab".
+    Time Eval lazy in parse "ababab".
+    Check eq_refl : parse "ababab" = true.
   (* For debugging: *)(*
   Goal True.
     pose proof (eq_refl (parse "abab")) as s.

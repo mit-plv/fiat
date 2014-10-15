@@ -87,6 +87,7 @@ SRC_MODULES    := \
 	Common/String_as_OT\
 	QueryStructure/Refinements/Bags/Bags\
 	QueryStructure/Refinements/AutoDB\
+	Parsers/StringLike\
 	Parsers/ContextFreeGrammar\
 	Parsers/Specification\
 	Parsers/NonComputational\

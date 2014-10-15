@@ -1,5 +1,6 @@
 (** * Definition of Context Free Grammars *)
 Require Import Coq.Strings.String Coq.Lists.List Coq.Program.Program.
+Require Export Parsers.StringLike.
 
 Set Implicit Arguments.
 Local Set Boolean Equality Schemes.
@@ -11,28 +12,6 @@ Section cfg.
   Variable CharType : Type.
 
   Section definitions.
-    (** Something is string-like (for a given type of characters) if
-        it has an associative concatenation operation and decidable
-        equality. *)
-    Record string_like :=
-      {
-        String :> Type;
-        Singleton : CharType -> String where "[ x ]" := (Singleton x);
-        Empty : String;
-        Concat : String -> String -> String where "x ++ y" := (Concat x y);
-        bool_eq : String -> String -> bool;
-        bool_eq_correct : forall x y : String, bool_eq x y = true <-> x = y;
-        Length : String -> nat;
-        Associativity : forall x y z, (x ++ y) ++ z = x ++ (y ++ z);
-        LeftId : forall x, Empty ++ x = x;
-        RightId : forall x, x ++ Empty = x;
-        Length_correct : forall s1 s2, Length s1 + Length s2 = Length (s1 ++ s2);
-        Length_Empty : Length Empty = 0;
-        Empty_Length : forall s1, Length s1 = 0 -> s1 = Empty
-      }.
-
-    Bind Scope string_like_scope with String.
-
     (** An [item] is the basic building block of a context-free
         grammar; it is either a terminal ([CharType]-literal) or a
         nonterminal of a given name. *)
@@ -61,17 +40,16 @@ Section cfg.
     (** TODO(jgross): look up notations for specifying these nicely *)
     Record grammar :=
       {
-        Top_name :> string; (** TODO: look up standard name for this (maybe initial? maybe starting?) *)
+        Start_symbol :> string;
         Lookup :> string -> productions;
-        Top :> productions := Lookup Top_name
+        Start_production :> productions := Lookup Start_symbol;
+        Valid_nonterminal_symbols : list string;
+        Valid_nonterminals : list productions := map Lookup Valid_nonterminal_symbols
       }.
   End definitions.
 
-  Local Notation "[[ x ]]" := (@Singleton _ x) : string_like_scope.
-  Local Infix "++" := (@Concat _).
-
   Section parse.
-    Variable String : string_like.
+    Variable String : string_like CharType.
     Variable G : grammar.
     (** A parse of a string into [productions] is a [production] in
         that list, together with a list of substrings which cover the
@@ -119,7 +97,7 @@ Section cfg.
     Defined.
   End parse.
 
-  Definition parse_of_grammar (String : string_like) (str : String) (G : grammar) :=
+  Definition parse_of_grammar (String : string_like CharType) (str : String) (G : grammar) :=
     parse_of String G str G.
 End cfg.
 
@@ -127,12 +105,6 @@ Arguments parse_of _%type_scope _ _ _%string_like _.
 Arguments parse_of_item _%type_scope _ _ _%string_like _.
 Arguments parse_of_production _%type_scope _ _ _%string_like _.
 Arguments parse_of_grammar _%type_scope _ _%string_like _.
-Arguments Concat _%type_scope _ (_ _)%string_like.
-Arguments bool_eq _%type_scope _ (_ _)%string_like.
-
-Notation "[[ x ]]" := (@Singleton _ _ x) : string_like_scope.
-Infix "++" := (@Concat _ _) : string_like_scope.
-Infix "=s" := (@bool_eq _ _) (at level 70, right associativity) : string_like_scope.
 
 Local Hint Extern 0 => match goal with H : S _ = 0 |- _ => destruct (NPeano.Nat.neq_succ_0 _ H) end.
 
@@ -160,8 +132,9 @@ Section examples.
     Variable String : string_like CharType.
 
     Definition trivial_grammar : grammar CharType :=
-      {| Top_name := "";
-         Lookup := fun _ => nil::nil |}.
+      {| Start_symbol := "";
+         Lookup := fun _ => nil::nil;
+         Valid_nonterminal_symbols := ""%string::nil |}.
 
     Definition trivial_grammar_parses_empty_string : parse_of_grammar _ (Empty String) trivial_grammar.
     Proof.

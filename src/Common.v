@@ -1,3 +1,4 @@
+Require Import Coq.Lists.List.
 Require Export Setoid RelationClasses Program Morphisms.
 
 Global Set Implicit Arguments.
@@ -519,3 +520,62 @@ Lemma path_sig_hprop {A} {P : A -> Prop} `{forall x : A, IsHProp (P x)}
 Proof.
   destruct_head sig; intros; subst; f_equal; apply allpath_hprop.
 Defined.
+
+Fixpoint combine_sig {T P} (ls : list T) : List.Forall P ls -> list (sig P).
+Proof.
+  refine match ls with
+           | nil => fun _ => nil
+           | x::xs => fun H => (exist _ x _)::@combine_sig _ _ xs _
+         end;
+  clear combine_sig;
+  abstract (inversion H; subst; assumption).
+Defined.
+
+Fixpoint flatten1 {T} (ls : list (list T)) : list T
+  := match ls with
+       | nil => nil
+       | x::xs => (x ++ flatten1 xs)%list
+     end.
+
+Lemma flatten1_length_ne_0 {T} (ls : list (list T)) (H0 : Datatypes.length ls <> 0)
+      (H1 : Datatypes.length (hd nil ls) <> 0)
+: Datatypes.length (flatten1 ls) <> 0.
+Proof.
+  destruct ls as [| [|] ]; simpl in *; auto.
+Qed.
+
+Local Hint Constructors List.Forall.
+
+Lemma Forall_app {T} P (ls1 ls2 : list T)
+: List.Forall P ls1 /\ List.Forall P ls2 <-> List.Forall P (ls1 ++ ls2).
+Proof.
+  split.
+  { intros [H1 H2].
+    induction H1; simpl; auto. }
+  { intro H; split; induction ls1; simpl in *; auto.
+    { inversion_clear H; auto. }
+    { inversion_clear H; auto. } }
+Qed.
+
+Lemma Forall_flatten1 {T ls P}
+: List.Forall P (@flatten1 T ls) <-> List.Forall (List.Forall P) ls.
+Proof.
+  induction ls; simpl.
+  { repeat first [ esplit | intro | constructor ]. }
+  { etransitivity; [ symmetry; apply Forall_app | ].
+    split_iff.
+    split.
+    { intros [? ?]; auto. }
+    { intro H'; inversion_clear H'; split; auto. } }
+Qed.
+
+
+Lemma Forall_map {A B} {f : A -> B} {ls P}
+: List.Forall P (map f ls) <-> List.Forall (P ∘ f) ls.
+Proof.
+  induction ls; simpl.
+  { repeat first [ esplit | intro | constructor ]. }
+  { split_iff.
+    split;
+      intro H'; inversion_clear H'; auto. }
+Qed.
