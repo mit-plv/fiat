@@ -1,4 +1,4 @@
-Require Import Coq.Lists.List.
+Require Import Coq.Lists.List Coq.Strings.String.
 Require Export Setoid RelationClasses Program Morphisms.
 
 Global Set Implicit Arguments.
@@ -521,14 +521,71 @@ Proof.
   destruct_head sig; intros; subst; f_equal; apply allpath_hprop.
 Defined.
 
-Fixpoint combine_sig {T P} (ls : list T) : List.Forall P ls -> list (sig P).
+Fixpoint combine_sig_helper {T} {P : T -> Prop} (ls : list T) : (forall x, In x ls -> P x) -> list (sig P).
 Proof.
   refine match ls with
            | nil => fun _ => nil
-           | x::xs => fun H => (exist _ x _)::@combine_sig _ _ xs _
+           | x::xs => fun H => (exist _ x _)::@combine_sig_helper _ _ xs _
          end;
-  clear combine_sig;
-  abstract (inversion H; subst; assumption).
+  clear combine_sig_helper; simpl in *;
+  intros;
+  apply H;
+  first [ left; reflexivity
+        | right; assumption ].
+Defined.
+
+Lemma Forall_forall1_transparent_helper_1 {A P} {x : A} {xs : list A} {l : list A}
+      (H : Forall P l) (H' : x::xs = l)
+: P x.
+Proof.
+  subst; inversion H; repeat subst; assumption.
+Defined.
+Lemma Forall_forall1_transparent_helper_2 {A P} {x : A} {xs : list A} {l : list A}
+      (H : Forall P l) (H' : x::xs = l)
+: Forall P xs.
+Proof.
+  subst; inversion H; repeat subst; assumption.
+Defined.
+
+Fixpoint Forall_forall1_transparent {A} (P : A -> Prop) (l : list A) {struct l}
+: Forall P l -> forall x, In x l -> P x
+  := match l as l return Forall P l -> forall x, In x l -> P x with
+       | nil => fun _ _ f => match f : False with end
+       | x::xs => fun H x' H' =>
+                    match H' with
+                      | or_introl H'' => eq_rect x
+                                                 P
+                                                 (Forall_forall1_transparent_helper_1 H eq_refl)
+                                                 _
+                                                 H''
+                      | or_intror H'' => @Forall_forall1_transparent A P xs (Forall_forall1_transparent_helper_2 H eq_refl) _ H''
+                    end
+     end.
+
+Definition combine_sig {T P ls} (H : List.Forall P ls) : list (@sig T P)
+  := combine_sig_helper ls (@Forall_forall1_transparent T P ls H).
+
+Arguments Forall_forall1_transparent_helper_1 : simpl never.
+Arguments Forall_forall1_transparent_helper_2 : simpl never.
+
+Lemma In_combine_sig {T P ls H x} (H' : In x ls)
+: In (exist P x (@Forall_forall1_transparent T P ls H _ H')) (combine_sig H).
+Proof.
+  unfold combine_sig.
+  induction ls; simpl in *; trivial.
+  destruct_head or; subst;
+  try first [ left; reflexivity ].
+  right.
+  revert H.
+  match goal with
+    | [ |- context[@eq_refl ?A ?a] ] => generalize (@eq_refl A a)
+  end.
+  set (als := a::ls) in *.
+  change als with (a::ls) at 1.
+  clearbody als.
+  intros e H.
+  destruct H; [ exfalso; solve [ inversion e ] | ].
+  apply IHls.
 Defined.
 
 Fixpoint flatten1 {T} (ls : list (list T)) : list T
@@ -578,4 +635,169 @@ Proof.
   { split_iff.
     split;
       intro H'; inversion_clear H'; auto. }
+Qed.
+
+Lemma fold_right_map {A B C} (f : A -> B) g c ls
+: @fold_right C B g
+              c
+              (map f ls)
+  = fold_right (g ∘ f) c ls.
+Proof.
+  induction ls; unfold compose; simpl; f_equal; auto.
+Qed.
+
+Lemma fold_right_orb_true ls
+: fold_right orb true ls = true.
+Proof.
+  induction ls; destruct_head_hnf bool; simpl in *; trivial.
+Qed.
+
+Lemma fold_right_orb b ls
+: fold_right orb b ls = true
+  <-> fold_right or (b = true) (map (fun x => x = true) ls).
+Proof.
+  induction ls; simpl; intros; try reflexivity.
+  rewrite <- IHls; clear.
+  repeat match goal with
+           | _ => assumption
+           | _ => split
+           | _ => intro
+           | _ => progress subst
+           | _ => progress simpl in *
+           | _ => progress destruct_head or
+           | _ => progress destruct_head bool
+           | _ => left; reflexivity
+           | _ => right; assumption
+         end.
+Qed.
+
+Local Hint Constructors Exists.
+
+Local Ltac fold_right_orb_map_sig_t :=
+  repeat match goal with
+           | _ => split
+           | _ => intro
+           | _ => progress simpl in *
+           | _ => progress subst
+           | _ => progress destruct_head sumbool
+           | _ => progress destruct_head sig
+           | _ => progress destruct_head and
+           | _ => progress destruct_head or
+           | [ H : _ = true |- _ ] => rewrite H
+           | [ H : (_ || _)%bool = true |- _ ] => apply Bool.orb_true_elim in H
+           | [ H : ?a, H' : ?a -> ?b |- _ ] => specialize (H' H)
+           | [ H : ?a, H' : @sig ?a ?P -> ?b |- _ ] => specialize (fun b => H' (exist P H b))
+           | [ H' : _ /\ _ -> _ |- _ ] => specialize (fun a b => H' (conj a b))
+           | [ |- (?a || true)%bool = true ] => destruct a; reflexivity
+           | _ => solve [ eauto ]
+           | _ => congruence
+         end.
+
+Lemma fold_right_orb_map_sig1 {T} f (ls : list T)
+: fold_right orb false (map f ls) = true
+  -> sig (fun x => In x ls /\ f x = true).
+Proof.
+  induction ls; fold_right_orb_map_sig_t.
+Qed.
+
+Lemma fold_right_orb_map_sig2 {T} f (ls : list T)
+: sig (fun x => In x ls /\ f x = true)
+  -> fold_right orb false (map f ls) = true.
+Proof.
+  induction ls; fold_right_orb_map_sig_t.
+Qed.
+
+Lemma fold_right_orb_map {T} f (ls : list T)
+: fold_right orb false (map f ls) = true
+  <-> List.Exists (fun x => f x = true) ls.
+Proof.
+  induction ls;
+  repeat match goal with
+           | _ => split
+           | _ => intro
+           | _ => progress simpl in *
+           | [ H : Exists _ [] |- _ ] => solve [ inversion H ]
+           | [ H : Exists _ (_::_) |- _ ] => inversion_clear H
+           | _ => progress split_iff
+           | _ => progress destruct_head sumbool
+           | [ H : (_ || _)%bool = true |- _ ] => apply Bool.orb_true_elim in H
+           | [ H : ?a, H' : ?a -> ?b |- _ ] => specialize (H' H)
+           | [ H : _ = true |- _ ] => rewrite H
+           | [ |- (?a || true)%bool = _ ] => destruct a; reflexivity
+           | _ => solve [ eauto ]
+           | _ => congruence
+         end.
+Qed.
+
+Lemma fold_right_map_andb_andb {T} x y f g (ls : list T)
+: fold_right andb x (map f ls) = true /\ fold_right andb y (map g ls) = true
+  <-> fold_right andb (andb x y) (map (fun k => andb (f k) (g k)) ls) = true.
+Proof.
+  induction ls; simpl; intros; destruct_head_hnf bool; try tauto;
+  rewrite !Bool.andb_true_iff;
+  try tauto.
+Qed.
+
+Lemma fold_right_map_andb_orb {T} x y f g (ls : list T)
+: fold_right andb x (map f ls) = true /\ fold_right orb y (map g ls) = true
+  -> fold_right orb (andb x y) (map (fun k => andb (f k) (g k)) ls) = true.
+Proof.
+  induction ls; simpl; intros; destruct_head_hnf bool; try tauto;
+  repeat match goal with
+           | [ H : _ |- _ ] => progress rewrite ?Bool.orb_true_iff, ?Bool.andb_true_iff in H
+           | _ => progress rewrite ?Bool.orb_true_iff, ?Bool.andb_true_iff
+         end;
+  try tauto.
+Qed.
+
+Lemma fold_right_map_and_and {T} x y f g (ls : list T)
+: fold_right and x (map f ls) /\ fold_right and y (map g ls)
+  <-> fold_right and (x /\ y) (map (fun k => f k /\ g k) ls).
+Proof.
+  revert x y.
+  induction ls; simpl; intros; try reflexivity.
+  rewrite <- IHls; clear.
+  tauto.
+Qed.
+
+Lemma fold_right_map_and_or {T} x y f g (ls : list T)
+: fold_right and x (map f ls) /\ fold_right or y (map g ls)
+  -> fold_right or (x /\ y) (map (fun k => f k /\ g k) ls).
+Proof.
+  revert x y.
+  induction ls; simpl; intros; try assumption.
+  intuition.
+Qed.
+
+Functional Scheme fold_right_rect := Induction for fold_right Sort Type.
+
+Lemma ascii_dec_refl a : Ascii.ascii_dec a a = left eq_refl.
+Proof.
+  destruct a as [b0 b1 b2 b3 b4 b5 b6 b7].
+  repeat match goal with
+           | [ H : bool |- _ ] => case H; clear H
+         end;
+    reflexivity.
+Qed.
+
+Lemma string_dec_refl a : string_dec a a = left eq_refl.
+Proof.
+  induction a; trivial.
+  simpl; rewrite IHa, ascii_dec_refl; reflexivity.
+Qed.
+
+Lemma fold_right_andb_map_impl {T} x y f g (ls : list T)
+      (H0 : x = true -> y = true)
+      (H1 : forall k, f k = true -> g k = true)
+: (fold_right andb x (map f ls) = true -> fold_right andb y (map g ls) = true).
+Proof.
+  induction ls; simpl; intros; try tauto.
+  rewrite IHls; simpl;
+  repeat match goal with
+           | [ H : _ = true |- _ ] => apply Bool.andb_true_iff in H
+           | [ |- _ = true ] => apply Bool.andb_true_iff
+           | _ => progress destruct_head and
+           | _ => split
+           | _ => auto
+         end.
 Qed.

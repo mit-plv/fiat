@@ -23,7 +23,7 @@ Section recursive_descent_parser.
              : forall (str0 : String) (prod : production CharType), list (String * String))
             (split_string_for_production_correct
              : forall str0 prod,
-                 List.Forall (fun s1s2 => fst s1s2 ≤s str0 /\ snd s1s2 ≤s str0)
+                 List.Forall (fun s1s2 => (fst s1s2 ++ snd s1s2 =s str0) = true)
                              (split_string_for_production str0 prod)).
 
     Section parts.
@@ -70,8 +70,14 @@ Section recursive_descent_parser.
                  end;
           revert pf; clear; intros;
           abstract (
-              destruct_head sig; destruct_head and;
-              etransitivity; eassumption
+              repeat first [ progress destruct_head sig
+                           | progress destruct_head and
+                           | etransitivity; eassumption
+                           | etransitivity; try eassumption; []
+                           | progress subst
+                           | idtac; match goal with H : (_ =s _) = true |- _ => apply bool_eq_correct in H end
+                           | apply str_le1_append
+                           | apply str_le2_append ]
             ).
         Defined.
       End production.
@@ -235,6 +241,20 @@ Section example_parse_string_grammar.
     subst; trivial.
   Qed.
 
+  Local Opaque string_dec.
+  Lemma make_all_single_splits_correct_seq str
+  : List.Forall (fun strs : string_stringlike * string_stringlike
+                 => (fst strs ++ snd strs =s str) = true)%string_like (make_all_single_splits str).
+  Proof.
+    induction str; simpl; constructor; simpl; auto.
+    { rewrite string_dec_refl; reflexivity. }
+    { apply Forall_map.
+      unfold compose; simpl.
+      revert IHstr; apply Forall_impl; intros.
+      match goal with H : (_ =s _) = true |- _ => apply bool_eq_correct in H end.
+      subst; rewrite string_dec_refl; reflexivity. }
+  Qed.
+
   Lemma make_all_single_splits_correct_str_le (str : string_stringlike)
   : List.Forall (fun strs => fst strs ≤s str /\ snd strs ≤s str)%string (make_all_single_splits str).
   Proof.
@@ -253,14 +273,18 @@ Section example_parse_string_grammar.
   Definition brute_force_make_parse_of : @String Ascii.ascii string_stringlike
                                          -> productions Ascii.ascii
                                          -> bool
-    := parse_productions
+    := @parse_productions
+         _
+         _
          G
+         _
          (Valid_nonterminals G)
          (rdp_list_is_valid_productions Ascii.ascii_dec)
          (rdp_list_remove_productions Ascii.ascii_dec)
+         _
          (rdp_list_remove_productions_dec Ascii.ascii_dec) rdp_list_ntl_wf
          (fun (str : string_stringlike) _ => make_all_single_splits str)
-         (fun str0 _ => make_all_single_splits_correct_str_le str0).
+         (fun str0 _ => make_all_single_splits_correct_seq str0).
 End example_parse_string_grammar.
 
 Module example_parse_empty_grammar.
