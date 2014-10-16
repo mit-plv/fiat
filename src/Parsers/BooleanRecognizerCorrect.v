@@ -556,3 +556,26 @@ Section brute_force_spliter.
       ).
   Defined.
 End brute_force_spliter.
+
+Section brute_force_make_parse_of.
+  Variable G : grammar Ascii.ascii.
+
+  Definition brute_force_make_parse_of_sound
+             (str : @String Ascii.ascii string_stringlike)
+             (prods : productions Ascii.ascii)
+  : brute_force_make_parse_of G str prods = true -> parse_of _ G str prods.
+  Proof.
+    unfold brute_force_make_parse_of.
+    apply parse_productions_sound.
+  Defined.
+
+  Definition brute_force_make_parse_of_complete
+             (str : @String Ascii.ascii string_stringlike)
+             (prods : productions Ascii.ascii)
+  : parse_of _ G str prods -> brute_force_make_parse_of G str prods = true.
+  Proof.
+    unfold brute_force_make_parse_of.
+    apply parse_productions_complete.
+    apply make_all_single_splits_complete.
+  Defined.
+End brute_force_make_parse_of.
