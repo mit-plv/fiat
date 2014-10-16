@@ -369,7 +369,14 @@ Section sound.
                   eapply parse_productions_step_complete; try eassumption.
                   hnf.
                   exfalso; clear; admit. }
-                { (** INTERESTING CASE HERE - need to show that if not [is_valid_productions], then we can't have a parse tree *)
+                { (** INTERESTING CASE HERE - need to show that if not
+                      [is_valid_productions], then we can't have a
+                      parse tree.  We actually can't use [destruct
+                      (is_valid_productions (snd p) prods)] above, but
+                      instead need to use a smarter variant of
+                      [case_eq] ([case_eq] itself errors with a
+                      dependent type error), so we have a witness that
+                      we don't have a valid production. *)
                   exfalso; clear; admit. } } }
             { exfalso; clear; admit. }
           Defined.
@@ -411,7 +418,7 @@ Section sound.
   End general.
 End sound.
 
-
+Print Fix.
 Section brute_force_spliter.
   Lemma make_all_single_splits_complete_helper
   : forall (str : string_stringlike)
