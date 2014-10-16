@@ -225,374 +225,221 @@ Section sound.
         Section step.
           Variable str0 : String.
           Variable parse_productions : forall (str : String)
-                                              (pf : Length _ str < Length _ str0 \/ str = str0),
+                                              (pf : str ≤s str0),
                                          productions CharType -> bool.
 
+          Local Ltac parse_productions_step_t :=
+            repeat match goal with
+                     | _ => intro
+                     | [ H : (_ || _)%bool = true |- _ ] => apply Bool.orb_true_elim in H
+                     | [ H : (_ && _)%bool = true |- _ ] => apply Bool.andb_true_iff in H
+                     | [ |- (_ || _)%bool = true ] => apply Bool.orb_true_iff
+                     | [ |- (_ =s _) = true ] => apply bool_eq_correct
+                     | [ H : (_ =s _) = true |- _ ] => apply bool_eq_correct in H
+                     | _ => progress destruct_head_hnf sumbool
+                     | _ => progress destruct_head_hnf and
+                     | _ => progress destruct_head_hnf sig
+                     | _ => progress destruct_head_hnf sigT
+                     | _ => progress destruct_head_hnf Datatypes.prod
+                     | _ => progress simpl in *
+                     | _ => progress subst
+                     | [ H : parse_of _ _ _ nil |- _ ] => solve [ inversion H ]
+                     | [ H : parse_of _ _ _ (_::_) |- _ ] => inversion H; clear H; subst
+                     | [ H : parse_production _ _ _ _ _ _ = true |- _ ] => apply parse_production_sound in H; try eassumption; []
+                     | _ => solve [ eauto ]
+                   end.
+
+
           (** To parse as a given list of [production]s, we must parse as one of the [production]s. *)
-          Definition parse_productions_step (str : String) (pf : Length _ str < Length _ str0 \/ str = str0) (prods : productions CharType)
-          : bool
-            := fold_left orb
-                         (map (parse_production parse_productions pf)
-                              prods)
-                         false.
+          Lemma parse_productions_step_sound
+                (parse_productions_sound : parse_productions_soundT parse_productions)
+                (str : String) (pf : str ≤s str0) (prods : productions CharType)
+                (ne : prods <> nil)
+          : parse_productions_step G split_string_for_production split_string_for_production_correct parse_productions pf prods = true
+            -> parse_of _ G str prods.
+          Proof.
+            destruct prods as [|prod prods]; [ solve [ destruct (ne eq_refl) ] | clear ne ].
+            unfold parse_productions_step.
+            revert prod.
+            induction prods; simpl; auto; intros.
+            { parse_productions_step_t. }
+            { parse_productions_step_t.
+              apply ParseTail.
+              apply IHprods; clear IHprods.
+              parse_productions_step_t. }
+          Defined.
+
+          Lemma parse_productions_step_complete
+                (parse_productions_complete : parse_productions_completeT parse_productions)
+                (split_string_for_production_complete : forall str pf prod, @split_list_completeT str0 str pf (split_string_for_production str prod) prod)
+                (str : String) (pf : str ≤s str0) (prods : productions CharType)
+                (ne : prods <> nil)
+          : parse_of _ G str prods
+            -> parse_productions_step G split_string_for_production split_string_for_production_correct parse_productions pf prods = true.
+          Proof.
+            destruct prods as [|prod prods]; [ solve [ destruct (ne eq_refl) ] | clear ne ].
+            unfold parse_productions_step.
+            revert prod.
+            induction prods; simpl; auto.
+            { parse_productions_step_t.
+              left; apply parse_production_complete; assumption. }
+            { parse_productions_step_t.
+              match goal with
+                | [ H : forall prod, parse_of _ _ ?s (prod::_) -> _,
+                      H' : parse_of_production _ _ ?s ?prod |- _ ]
+                  => specialize (H prod (ParseHead _ H'))
+              end.
+              parse_productions_step_t.
+              right.
+              parse_productions_step_t. }
+          Qed.
         End step.
 
+        (** TODO: move this elsewhere *)
+        Lemma or_to_sumbool (s1 s2 : String) (f : String -> nat)
+              (H : f s1 < f s2 \/ s1 = s2)
+        : {f s1 < f s2} + {s1 = s2}.
+        Proof.
+          case_eq (s1 =s s2).
+          { intro H'; right; apply bool_eq_correct in H'; exact H'. }
+          { intro H'; left; destruct H; trivial.
+            apply bool_eq_correct in H.
+            generalize dependent (s1 =s s2)%string_like; intros; subst.
+            discriminate. }
+        Qed.
+
         Section wf.
-          (** TODO: add comment explaining signature *)
-          Definition parse_productions_or_abort_helper
-          : forall (p : String * productions_listT) (str : String),
-              Length String str < Length String (fst p) \/ str = fst p ->
-              productions CharType -> bool
-            := @Fix (prod String productions_listT)
-                    _ (@well_founded_prod_relation
-                         String
-                         productions_listT
-                         _
-                         _
-                         (well_founded_ltof _ (Length String))
-                         ntl_wf)
-                    _
-                    (fun sl parse_productions str pf (prods : productions CharType)
-                     => let str0 := fst sl in
-                        let valid_list := snd sl in
-                        match lt_dec (Length _ str) (Length _ str0) with
-                          | left pf' =>
-                            (** [str] got smaller, so we reset the valid productions list *)
-                            parse_productions_step
-                              (parse_productions
-                                 (str, initial_productions_data)
-                                 (or_introl pf'))
-                              (or_intror eq_refl)
-                              prods
-                          | right pf' =>
-                            (** [str] didn't get smaller, so we cache the fact that we've hit this productions already *)
-                            (if is_valid_productions valid_list prods as is_valid
-                                return is_valid_productions valid_list prods = is_valid -> _
-                             then (** It was valid, so we can remove it *)
-                               fun H' =>
-                                 parse_productions_step
-                                   (parse_productions
-                                      (str0, remove_productions valid_list prods)
-                                      (or_intror (conj eq_refl (remove_productions_dec H'))))
-                                   (or_intror eq_refl)
-                                   prods
-                             else (** oops, we already saw this productions in the past.  ABORT! *)
-                               fun _ => false
-                            ) eq_refl
-                        end).
+          Lemma parse_productions_or_abort_helper_sound
+                (p : String * productions_listT) (str : String)
+                (pf : str ≤s fst p)
+                (prods : productions CharType)
+                (ne : prods <> nil)
+          : parse_productions_or_abort_helper G initial_productions_data is_valid_productions remove_productions
+                                              remove_productions_dec ntl_wf split_string_for_production
+                                              split_string_for_production_correct
+                                              p pf prods
+            = true
+            -> parse_of _ G str prods.
+          Proof.
+            unfold parse_productions_or_abort_helper.
+            rewrite Init.Wf.Fix_eq.
+            { match goal with
+                | [ |- context[if lt_dec ?a ?b then _ else _] ] => destruct (lt_dec a b)
+              end.
+              { apply parse_productions_step_sound; try assumption.
+                hnf.
+                exfalso; clear; admit. }
+              { edestruct is_valid_productions; [ | solve [ auto ] ].
+                intros.
+                hnf in pf.
+                apply or_to_sumbool in pf.
+                destruct pf as [ pf | pf ]; [ exfalso; hnf in *; solve [ auto ] | subst ].
+                eapply parse_productions_step_sound; try eassumption.
+                hnf.
+                exfalso; clear; admit. } }
+            { exfalso; clear; admit. }
+          Defined.
 
-          Definition parse_productions_or_abort (str0 str : String)
-                     (valid_list : productions_listT)
-                     (pf : Length _ str < Length _ str0 \/ str = str0)
-                     (prods : productions CharType)
-          : bool
-            := parse_productions_or_abort_helper (str0, valid_list) pf prods.
+          Lemma parse_productions_or_abort_helper_complete
+                (p : String * productions_listT) (str : String)
+                (split_string_for_production_complete : forall str0 pf prod, @split_list_completeT str str0 pf (split_string_for_production str0 prod) prod)
+                (pf : str ≤s fst p)
+                (prods : productions CharType)
+                (ne : prods <> nil)
+          : parse_of _ G str prods
+            -> parse_productions_or_abort_helper G initial_productions_data is_valid_productions remove_productions
+                                              remove_productions_dec ntl_wf split_string_for_production
+                                              split_string_for_production_correct
+                                              p pf prods
+               = true.
+          Proof.
+            unfold parse_productions_or_abort_helper.
+            rewrite Init.Wf.Fix_eq.
+            { match goal with
+                | [ |- context[if lt_dec ?a ?b then _ else _] ] => destruct (lt_dec a b)
+              end.
+              { apply parse_productions_step_complete; try assumption.
+                hnf.
+                exfalso; clear; admit. }
+              { destruct (is_valid_productions (snd p) (prods)).
+                { intros.
+                  hnf in pf.
+                  apply or_to_sumbool in pf.
+                  destruct pf as [ pf | pf ]; [ exfalso; hnf in *; solve [ auto ] | subst ].
+                  eapply parse_productions_step_complete; try eassumption.
+                  hnf.
+                  exfalso; clear; admit. }
+                { (** INTERESTING CASE HERE - need to show that if not [is_valid_productions], then we can't have a parse tree *)
+                  exfalso; clear; admit. } } }
+            { exfalso; clear; admit. }
+          Defined.
 
-          Definition parse_productions (str : String) (prods : productions CharType)
-          : bool
-            := @parse_productions_or_abort str str initial_productions_data
-                                           (or_intror eq_refl) prods.
+          Lemma parse_productions_sound
+                (str : String) (prods : productions CharType)
+          : parse_productions _ G initial_productions_data is_valid_productions remove_productions
+                              remove_productions_dec ntl_wf split_string_for_production
+                              split_string_for_production_correct
+                              str prods
+            = true
+            -> parse_of _ G str prods.
+          Proof.
+            unfold parse_productions, parse_productions_or_abort.
+            destruct prods; [ solve [ auto ] | ].
+            apply parse_productions_or_abort_helper_sound.
+            clear; intro H; abstract inversion H.
+          Defined.
+
+          Lemma parse_productions_complete
+                (str : String)
+                (split_string_for_production_complete : forall str0 pf prod, @split_list_completeT str str0 pf (split_string_for_production str0 prod) prod)
+                (prods : productions CharType)
+          : parse_of _ G str prods
+            -> parse_productions _ G initial_productions_data is_valid_productions remove_productions
+                                 remove_productions_dec ntl_wf split_string_for_production
+                                 split_string_for_production_correct
+                                 str prods
+               = true.
+          Proof.
+            unfold parse_productions, parse_productions_or_abort.
+            destruct prods; [ solve [ intro H'; inversion H' ] | ].
+            apply parse_productions_or_abort_helper_complete; try assumption.
+            clear; intro H; abstract inversion H.
+          Defined.
         End wf.
-
       End productions.
     End parts.
-  End bool.
-End recursive_descent_parser.
+  End general.
+End sound.
 
-Section recursive_descent_parser_list.
-  Context {CharType} {String : string_like CharType} {G : grammar CharType}.
-  Variable (CharType_eq_dec : forall x y : CharType, {x = y} + {x <> y}).
-  Definition rdp_list_productions_listT : Type := list (productions CharType).
-  Definition rdp_list_is_valid_productions : rdp_list_productions_listT -> productions CharType -> bool
-    := fun ls nt => if in_dec (productions_dec CharType_eq_dec) nt ls then true else false.
-  Definition rdp_list_remove_productions : rdp_list_productions_listT -> productions CharType -> rdp_list_productions_listT
-    := fun ls nt =>
-         filter (fun x => if productions_dec CharType_eq_dec nt x then false else true) ls.
-  Definition rdp_list_productions_listT_R : rdp_list_productions_listT -> rdp_list_productions_listT -> Prop
-    := ltof _ (@List.length _).
-  Lemma filter_list_dec {T} f (ls : list T) : List.length (filter f ls) <= List.length ls.
-  Proof.
-    induction ls; trivial; simpl in *.
-    repeat match goal with
-             | [ |- context[if ?a then _ else _] ] => destruct a; simpl in *
-             | [ |- S _ <= S _ ] => solve [ apply Le.le_n_S; auto ]
-             | [ |- _ <= S _ ] => solve [ apply le_S; auto ]
-           end.
-  Qed.
-  Lemma rdp_list_remove_productions_dec : forall ls prods,
-                                            @rdp_list_is_valid_productions ls prods = true
-                                            -> @rdp_list_productions_listT_R (@rdp_list_remove_productions ls prods) ls.
-  Proof.
-    intros.
-    unfold rdp_list_is_valid_productions, rdp_list_productions_listT_R, rdp_list_remove_productions, ltof in *.
-    destruct (in_dec (productions_dec CharType_eq_dec) prods ls); [ | discriminate ].
-    match goal with
-      | [ H : In ?prods ?ls |- context[filter ?f ?ls] ]
-        => assert (~In prods (filter f ls))
-    end.
-    { intro H'.
-      apply filter_In in H'.
-      destruct H' as [? H'].
-      destruct (productions_dec CharType_eq_dec prods prods); congruence. }
-    { match goal with
-        | [ |- context[filter ?f ?ls] ] => generalize dependent f; intros
-      end.
-      induction ls; simpl in *; try congruence.
-      repeat match goal with
-               | [ |- context[if ?x then _ else _] ] => destruct x; simpl in *
-               | [ H : _ \/ _ |- _ ] => destruct H
-               | _ => progress subst
-               | [ H : ~(_ \/ _) |- _ ] => apply Decidable.not_or in H
-               | [ H : _ /\ _ |- _ ] => destruct H
-               | [ H : ?x <> ?x |- _ ] => exfalso; apply (H eq_refl)
-               | _ => apply Lt.lt_n_S
-               | _ => apply Le.le_n_S
-               | _ => apply filter_list_dec
-               | [ H : _ -> _ -> ?G |- ?G ] => apply H; auto
-             end. }
-  Qed.
-  Lemma rdp_list_ntl_wf : well_founded rdp_list_productions_listT_R.
-  Proof.
-    unfold rdp_list_productions_listT_R.
-    intro.
-    apply well_founded_ltof.
-  Defined.
-End recursive_descent_parser_list.
 
-Section example_parse_string_grammar.
-  Fixpoint make_all_single_splits (str : string) : list { strs : string * string | (fst strs ++ snd strs = str)%string }.
+Section brute_force_spliter.
+  Lemma make_all_single_splits_complete_helper
+  : forall (str : string_stringlike)
+           (s1s2 : string_stringlike * string_stringlike),
+      fst s1s2 ++ snd s1s2 =s str -> In s1s2 (make_all_single_splits str).
   Proof.
-    refine ((exist _ (""%string, str) eq_refl)
-              ::(match str with
-                   | ""%string => nil
-                   | String.String ch str' =>
-                     map (fun p => exist _ (String.String ch (fst (proj1_sig p)),
-                                            snd (proj1_sig p))
-                                         _)
-                         (make_all_single_splits str')
-                 end)).
-    clear.
-    abstract (simpl; apply f_equal; apply proj2_sig).
-  Defined.
-
-  Lemma length_append (s1 s2 : string) : length (s1 ++ s2) = length s1 + length s2.
-  Proof.
+    intros str [s1 s2] H.
+    apply bool_eq_correct in H; subst.
     revert s2.
-    induction s1; simpl; trivial; [].
-    intros.
-    f_equal; auto.
+    induction s1; simpl in *.
+    { intros.
+      destruct s2; left; reflexivity. }
+    { intros; right.
+      refine (@in_map _ _ _ _ (s1, s2) _).
+      auto. }
   Qed.
 
-  Fixpoint flatten1 {T} (ls : list (list T)) : list T
-    := match ls with
-         | nil => nil
-         | x::xs => (x ++ flatten1 xs)%list
-       end.
-
-  Lemma flatten1_length_ne_0 {T} (ls : list (list T)) (H0 : Datatypes.length ls <> 0)
-        (H1 : Datatypes.length (hd nil ls) <> 0)
-  : Datatypes.length (flatten1 ls) <> 0.
+  Lemma make_all_single_splits_complete
+  : forall G str0 str pf prod, @split_list_completeT _ string_stringlike G str0 str pf (@make_all_single_splits str) prod.
   Proof.
-    destruct ls as [| [|] ]; simpl in *; auto.
-  Qed.
-
-  Local Ltac t' :=
-    match goal with
-      | _ => progress simpl in *
-      | _ => progress subst
-      | [ H : ?a = ?b |- _ ] => progress subst a
-      | [ H : ?a = ?b |- _ ] => progress subst b
-      | _ => rewrite (LeftId string_stringlike _)
-      | _ => rewrite (RightId string_stringlike _)
-      | _ => reflexivity
-      | _ => split
-      | _ => right; reflexivity
-      | _ => rewrite map_length
-      | _ => rewrite map_map
-      | _ => rewrite length_append
-      | _ => progress destruct_head_hnf prod
-      | _ => progress destruct_head_hnf and
-      | _ => progress destruct_head_hnf or
-      | _ => progress destruct_head_hnf sig
-      | _ => progress auto with arith
-      | _ => apply f_equal
-      | _ => solve [ apply proj2_sig ]
-      | _ => solve [ left; auto with arith ]
-      | [ str : string |- _ ] => solve [ destruct str; simpl; auto with arith ]
-      | [ str : string |- _ ] => solve [ left; destruct str; simpl; auto with arith ]
-    end.
-  Local Ltac t'' :=
-    match goal with
-      | _ => progress t'
-      | [ str : string |- _ ] => solve [ destruct str; repeat t' ]
-    end.
-  Local Ltac t :=
-    solve [ repeat t'' ].
-
-  Local Hint Resolve NPeano.Nat.lt_lt_add_l NPeano.Nat.lt_lt_add_r NPeano.Nat.lt_add_pos_r NPeano.Nat.lt_add_pos_l : arith.
-
-  Fixpoint brute_force_splitter_helper
-           (prod : production Ascii.ascii)
-  : forall str : string_stringlike,
-      list
-        (list
-           {str_part : string_stringlike |
-            Length string_stringlike str_part < Length string_stringlike str \/
-            str_part = str}).
-  Proof.
-    refine (match prod with
-              | nil => fun str =>
-                         (** We only get one thing in the list *)
-                         (((exist _ str _)::nil)::nil)
-              | _::prod' => fun str =>
-                              (flatten1
-                                 (map (fun s1s2p =>
-                                         map
-                                           (fun split_list => ((exist _ (fst (proj1_sig s1s2p)) _)
-                                                                 ::(map (fun s => exist _ (proj1_sig s) _)
-                                                                        split_list)))
-                                           (@brute_force_splitter_helper prod' (snd (proj1_sig s1s2p))))
-                                      (make_all_single_splits str)))
-            end);
-    subst_body;
-    clear;
-    abstract t.
+    intros; hnf.
+    destruct prod; trivial.
+    intros [ s1s2 [ [ p1 p2 ] p3 ] ].
+    exists s1s2.
+    abstract (
+        repeat split; try assumption;
+        apply make_all_single_splits_complete_helper;
+        assumption
+      ).
   Defined.
-
-  Definition brute_force_splitter
-  : forall (str : string_stringlike) (prod : production Ascii.ascii),
-      list
-        (list
-           { str_part : string_stringlike |
-             Length string_stringlike str_part < Length string_stringlike str \/
-             str_part = str })
-    := fun str prods =>
-         match prods with
-           | nil => nil (** no patterns, no split (actually, we should never encounter this case *)
-           | _::prods' => brute_force_splitter_helper prods' str
-         end.
-
-  Variable G : grammar Ascii.ascii.
-  Variable all_productions : list (productions Ascii.ascii).
-
-  Definition brute_force_make_parse_of : @String Ascii.ascii string_stringlike
-                                         -> productions Ascii.ascii
-                                         -> bool
-    := parse_productions
-         string_stringlike
-         G
-         all_productions
-         (rdp_list_is_valid_productions Ascii.ascii_dec)
-         (rdp_list_remove_productions Ascii.ascii_dec)
-         (rdp_list_remove_productions_dec Ascii.ascii_dec) rdp_list_ntl_wf
-         brute_force_splitter.
-End example_parse_string_grammar.
-
-Module example_parse_empty_grammar.
-  Definition make_parse_of : forall (str : string)
-                                    (prods : productions Ascii.ascii),
-                               bool
-    := @brute_force_make_parse_of (trivial_grammar _) (map (Lookup (trivial_grammar _)) (""::nil)%string).
-
-
-
-  Definition parse : string -> bool
-    := fun str => make_parse_of str (trivial_grammar _).
-
-  Time Compute parse "".
-  Check eq_refl : true = parse "".
-  Time Compute parse "a".
-  Check eq_refl : false = parse "a".
-  Time Compute parse "aa".
-  Check eq_refl : false = parse "aa".
-End example_parse_empty_grammar.
-
-Section examples.
-  Section ab_star.
-
-    Fixpoint production_of_string (s : string) : production Ascii.ascii
-      := match s with
-           | EmptyString => nil
-           | String.String ch s' => (Terminal ch)::production_of_string s'
-         end.
-
-    Coercion production_of_string : string >-> production.
-
-    Fixpoint list_to_productions {T} (default : T) (ls : list (string * T)) : string -> T
-      := match ls with
-           | nil => fun _ => default
-           | (str, t)::ls' => fun s => if string_dec str s
-                                       then t
-                                       else list_to_productions default ls' s
-         end.
-
-    Delimit Scope item_scope with item.
-    Bind Scope item_scope with item.
-    Delimit Scope production_scope with production.
-    Delimit Scope production_assignment_scope with prod_assignment.
-    Bind Scope production_scope with production.
-    Delimit Scope productions_scope with productions.
-    Delimit Scope productions_assignment_scope with prods_assignment.
-    Bind Scope productions_scope with productions.
-    Notation "n0 ::== r0" := ((n0 : string)%string, (r0 : productions _)%productions) (at level 100) : production_assignment_scope.
-    Notation "[[[ x ;; .. ;; y ]]]" :=
-      (list_to_productions (nil::nil) (cons x%prod_assignment .. (cons y%prod_assignment nil) .. )) : productions_assignment_scope.
-
-    Local Open Scope string_scope.
-    Notation "<< x | .. | y >>" :=
-      (@cons (production _) (x)%production .. (@cons (production _) (y)%production nil) .. ) : productions_scope.
-
-    Notation "$< x $ .. $ y >$" := (cons (NonTerminal _ x) .. (cons (NonTerminal _ y) nil) .. ) : production_scope.
-
-    Definition ab_star_grammar : grammar Ascii.ascii :=
-      {| Top_name := "ab_star";
-         Lookup := [[[ ("" ::== (<< "" >>)) ;;
-                       ("ab" ::== << "ab" >>) ;;
-                       ("ab_star" ::== << $< "" >$
-                                        | $< "ab" $ "ab_star" >$ >> ) ]]]%prods_assignment |}.
-
-    Definition make_parse_of : forall (str : string)
-                                      (prods : productions Ascii.ascii),
-                                 bool
-      := @brute_force_make_parse_of ab_star_grammar (map (Lookup ab_star_grammar) (""::"ab"::"ab_star"::nil)%string).
-
-
-
-    Definition parse : string -> bool
-      := fun str => make_parse_of str ab_star_grammar.
-
-    Time Compute parse "".
-    Check eq_refl : parse "" = true.
-    Time Compute parse "a".
-    Check eq_refl : parse "a" = false.
-    Time Compute parse "ab".
-    Check eq_refl : parse "ab" = true.
-    Time Compute parse "aa".
-    Check eq_refl : parse "aa" = false.
-    Time Compute parse "ba".
-    Check eq_refl : parse "ba" = false.
-    Time Compute parse "aba".
-    Check eq_refl : parse "aba" = false.
-    Time Compute parse "abab".
-    Time Compute parse "ababab".
-    Check eq_refl : parse "abab" = true.
-  (* For debugging: *)(*
-  Goal True.
-    pose proof (eq_refl (parse "abab")) as s.
-    unfold parse in s.
-    unfold make_parse_of in s.
-    unfold brute_force_make_parse_of in s.
-    cbv beta zeta delta [parse_productions] in s.
-    cbv beta zeta delta [parse_productions_or_abort] in s.
-    rewrite Init.Wf.Fix_eq in s.
-    Ltac do_compute_in c H :=
-      let c' := (eval compute in c) in
-      change c with c' in H.
-    do_compute_in (lt_dec (Length string_stringlike "abab"%string) (Length string_stringlike "abab"%string)) s.
-    change (if in_right then ?x else ?y) with y in s.
-    cbv beta zeta delta [rdp_list_is_valid_productions] in s.
-                       *)
-  End ab_star.
-End examples.
-
-    Lemma
+End brute_force_spliter.

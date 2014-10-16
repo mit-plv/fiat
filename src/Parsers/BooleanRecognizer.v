@@ -147,7 +147,10 @@ Section recursive_descent_parser.
                      (pf : str ≤s str0)
                      (prods : productions CharType)
           : bool
-            := parse_productions_or_abort_helper (str0, valid_list) pf prods.
+            := match prods with
+                 | nil => false
+                 | _ => parse_productions_or_abort_helper (str0, valid_list) pf prods
+               end.
 
           Definition parse_productions (str : String) (prods : productions CharType)
           : bool
