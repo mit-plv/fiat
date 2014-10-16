@@ -37,15 +37,15 @@ Section sound.
 
       Section item.
         Context (str : String)
-                (str_matches_productions : productions CharType -> bool).
+                (str_matches_productions : production CharType -> productions CharType -> bool).
 
         Definition str_matches_productions_soundT
-          := forall prods, str_matches_productions prods = true
-                           -> parse_of _ G str prods.
+          := forall prod prods, str_matches_productions prod prods = true
+                                -> parse_of _ G str (prod::prods).
 
         Definition str_matches_productions_completeT
-          := forall prods, parse_of _ G str prods
-                           -> str_matches_productions prods = true.
+          := forall prod prods, parse_of _ G str (prod::prods)
+                                -> str_matches_productions prod prods = true.
 
         Lemma parse_item_sound
               (str_matches_productions_sound : str_matches_productions_soundT)
@@ -58,6 +58,8 @@ Section sound.
                    | [ H : context[match ?E with _ => _ end] |- _ ] => atomic E; destruct E
                    | [ |- context[match ?E with _ => _ end] ] => atomic E; destruct E
                    | [ H : _ = true |- _ ] => apply bool_eq_correct in H
+                   | [ |- parse_of_item _ _ _ (NonTerminal _ _) ] => constructor
+                   | [ H : context[match ?E with _ => _ end] |- context[?E] ] => destruct E
                    | _ => progress subst
                    | _ => solve [ eauto ]
                  end.
@@ -74,6 +76,8 @@ Section sound.
                    | _ => reflexivity
                    | [ H : parse_of_item _ _ ?s ?i |- _ ] => atomic s; atomic i; destruct H
                    | [ |- _ = true ] => apply bool_eq_correct
+                   | [ H : context[?E] |- context[match ?E with _ => _ end] ] => destruct E
+                   | [ H : parse_of _ _ _ [] |- _ ] => solve [ inversion H ]
                    | _ => solve [ eauto ]
                end.
         Qed.
@@ -82,14 +86,18 @@ Section sound.
       Section item_ext.
         Lemma parse_item_ext
               (str : String)
-              (str_matches_productions1 str_matches_productions2 : productions CharType -> bool)
+              (str_matches_productions1 str_matches_productions2 : production CharType -> productions CharType -> bool)
               (it : item CharType)
-              (ext : forall x, str_matches_productions1 x = str_matches_productions2 x)
+              (ext : forall x y, str_matches_productions1 x y = str_matches_productions2 x y)
         : parse_item String G str str_matches_productions1 it
           = parse_item String G str str_matches_productions2 it.
         Proof.
           unfold parse_item.
-          destruct it; auto.
+          destruct it; auto;
+          match goal with
+            | [ |- context[match ?E with _ => _ end] ] => destruct E
+          end;
+          auto.
         Qed.
       End item_ext.
 
@@ -97,18 +105,19 @@ Section sound.
         Context (str0 : String)
                 (parse_productions : forall (str : String),
                                        str ≤s str0
+                                       -> production CharType
                                        -> productions CharType
                                        -> bool).
 
         Definition parse_productions_soundT
-          := forall str pf prods,
-               @parse_productions str pf prods = true
-               -> parse_of _ G str prods.
+          := forall str pf prod prods,
+               @parse_productions str pf prod prods = true
+               -> parse_of _ G str (prod::prods).
 
         Definition parse_productions_completeT
-          := forall str pf prods,
-               parse_of _ G str prods
-               -> @parse_productions str pf prods = true.
+          := forall str pf prod prods,
+               parse_of _ G str (prod::prods)
+               -> @parse_productions str pf prod prods = true.
 
         Definition split_correctT
                    (str1 : String)
@@ -240,10 +249,12 @@ Section sound.
               (str0 : String)
               (parse_productions1 parse_productions2 : forall (str : String),
                                                          str ≤s str0
+                                                         -> production CharType
                                                          -> productions CharType
                                                          -> bool)
               (str : String) (pf : str ≤s str0) (prod : production CharType)
-              (ext : forall str' pf' prods', parse_productions1 str' pf' prods' = parse_productions2 str' pf' prods')
+              (ext : forall str' pf' prod' prods', parse_productions1 str' pf' prod' prods'
+                                                   = parse_productions2 str' pf' prod' prods')
         : parse_production G split_string_for_production split_string_for_production_correct parse_productions1 pf prod
           = parse_production G split_string_for_production split_string_for_production_correct parse_productions2 pf prod.
         Proof.
@@ -261,7 +272,7 @@ Section sound.
           Variable str0 : String.
           Variable parse_productions : forall (str : String)
                                               (pf : str ≤s str0),
-                                         productions CharType -> bool.
+                                         production CharType -> productions CharType -> bool.
 
           Local Ltac parse_productions_step_t :=
             repeat match goal with
@@ -288,12 +299,10 @@ Section sound.
           (** To parse as a given list of [production]s, we must parse as one of the [production]s. *)
           Lemma parse_productions_step_sound
                 (parse_productions_sound : parse_productions_soundT parse_productions)
-                (str : String) (pf : str ≤s str0) (prods : productions CharType)
-                (ne : prods <> nil)
-          : parse_productions_step G split_string_for_production split_string_for_production_correct parse_productions pf prods = true
-            -> parse_of _ G str prods.
+                (str : String) (pf : str ≤s str0) (prod : production CharType) (prods : productions CharType)
+          : parse_productions_step G split_string_for_production split_string_for_production_correct parse_productions pf (prod::prods) = true
+            -> parse_of _ G str (prod::prods).
           Proof.
-            destruct prods as [|prod prods]; [ solve [ destruct (ne eq_refl) ] | clear ne ].
             unfold parse_productions_step.
             revert prod.
             induction prods; simpl; auto; intros.
@@ -307,12 +316,10 @@ Section sound.
           Lemma parse_productions_step_complete
                 (parse_productions_complete : parse_productions_completeT parse_productions)
                 (split_string_for_production_complete : forall str pf prod, @split_list_completeT str0 str pf (split_string_for_production str prod) prod)
-                (str : String) (pf : str ≤s str0) (prods : productions CharType)
-                (ne : prods <> nil)
-          : parse_of _ G str prods
-            -> parse_productions_step G split_string_for_production split_string_for_production_correct parse_productions pf prods = true.
+                (str : String) (pf : str ≤s str0) (prod : production CharType) (prods : productions CharType)
+          : parse_of _ G str (prod::prods)
+            -> parse_productions_step G split_string_for_production split_string_for_production_correct parse_productions pf (prod::prods) = true.
           Proof.
-            destruct prods as [|prod prods]; [ solve [ destruct (ne eq_refl) ] | clear ne ].
             unfold parse_productions_step.
             revert prod.
             induction prods; simpl; auto.
@@ -334,9 +341,10 @@ Section sound.
           Lemma parse_productions_step_ext (str0 : String)
                 (parse_productions1 parse_productions2 : forall (str : String)
                                                                 (pf : str ≤s str0),
-                                                           productions CharType -> bool)
+                                                           production CharType -> productions CharType -> bool)
                 (str : String) (pf : str ≤s str0) (prods : productions CharType)
-                (ext : forall str' pf' prods', parse_productions1 str' pf' prods' = parse_productions2 str' pf' prods')
+                (ext : forall str' pf' prod' prods', parse_productions1 str' pf' prod' prods'
+                                                     = parse_productions2 str' pf' prod' prods')
           : parse_productions_step G split_string_for_production split_string_for_production_correct parse_productions1 pf prods
             = parse_productions_step G split_string_for_production split_string_for_production_correct parse_productions2 pf prods.
           Proof.
@@ -374,31 +382,44 @@ Section sound.
           Lemma parse_productions_or_abort_helper_sound
                 (p : String * productions_listT) (str : String)
                 (pf : str ≤s fst p)
+                (prod : production CharType)
                 (prods : productions CharType)
-                (ne : prods <> nil)
           : parse_productions_or_abort_helper G initial_productions_data is_valid_productions remove_productions
                                               remove_productions_dec ntl_wf split_string_for_production
                                               split_string_for_production_correct
-                                              p pf prods
+                                              p pf prod prods
             = true
-            -> parse_of _ G str prods.
+            -> parse_of _ G str (prod::prods).
           Proof.
             unfold parse_productions_or_abort_helper.
-            rewrite Fix3_eq.
+            revert str pf prod prods.
+            let Acca := match goal with |- context[@Fix4 _ _ _ _ _ _ ?Rwf _ _ ?a _ _ _ _] => constr:(Rwf a) end in
+            induction (Acca) as [? ? IHr];
+              intros str pf prod prods.
+            rewrite Fix4_eq.
             { match goal with
-                | [ |- context[if lt_dec ?a ?b then _ else _] ] => destruct (lt_dec a b)
+                | [ |- context[match lt_dec ?a ?b with _ => _ end] ] => destruct (lt_dec a b) as [Hlt|Hlt]
               end.
-              { apply parse_productions_step_sound; try assumption.
+              { apply parse_productions_step_sound; try assumption; simpl.
                 hnf.
-                exfalso; clear; admit. }
-              { edestruct is_valid_productions; [ | solve [ auto ] ].
+                intros str0 pf0 prod0 prods0 H'; eapply IHr;
+                try first [ exact H' | eassumption ].
+                left; assumption. }
+              { let ivp := match goal with |- context[is_valid_productions ?x ?y] => constr:(is_valid_productions x y) end in
+                set (ivp' := ivp);
+                  assert (ivp = ivp') by reflexivity;
+                  clearbody ivp';
+                  destruct ivp'; [ | solve [ auto ] ].
                 intros.
                 hnf in pf.
                 apply or_to_sumbool in pf.
                 destruct pf as [ pf | pf ]; [ exfalso; hnf in *; solve [ auto ] | subst ].
                 eapply parse_productions_step_sound; try eassumption.
                 hnf.
-                exfalso; clear; admit. } }
+                intros str0 pf0 prod0 prods0 H'; eapply IHr;
+                try first [ exact H' | eassumption ].
+                right; split; trivial; simpl.
+                apply remove_productions_dec; assumption. } }
             { repeat match goal with
                        | _ => intro
                        | _ => reflexivity
@@ -413,39 +434,51 @@ Section sound.
                 (p : String * productions_listT) (str : String)
                 (split_string_for_production_complete : forall str0 pf prod, @split_list_completeT str str0 pf (split_string_for_production str0 prod) prod)
                 (pf : str ≤s fst p)
+                (prod : production CharType)
                 (prods : productions CharType)
-                (ne : prods <> nil)
-          : parse_of _ G str prods
+          : parse_of _ G str (prod::prods)
             -> parse_productions_or_abort_helper G initial_productions_data is_valid_productions remove_productions
                                               remove_productions_dec ntl_wf split_string_for_production
                                               split_string_for_production_correct
-                                              p pf prods
+                                              p pf prod prods
                = true.
           Proof.
             unfold parse_productions_or_abort_helper.
-            rewrite Fix3_eq.
+            revert str split_string_for_production_complete pf prod prods.
+            let Acca := match goal with |- context[@Fix4 _ _ _ _ _ _ ?Rwf _ _ ?a _ _ _ _] => constr:(Rwf a) end in
+            induction (Acca) as [? ? IHr];
+              intros str split_string_for_production_complete pf prod prods.
+            rewrite Fix4_eq.
             { match goal with
                 | [ |- context[if lt_dec ?a ?b then _ else _] ] => destruct (lt_dec a b)
               end.
               { apply parse_productions_step_complete; try assumption.
                 hnf.
-                exfalso; clear; admit. }
-              { destruct (is_valid_productions (snd p) (prods)).
+                intros str0 pf0 prod0 prods0 H'; eapply IHr;
+                try first [ exact H' | eassumption ].
+                { left; assumption. }
+                { intros; apply split_string_for_production_complete.
+                  etransitivity; eassumption. } }
+              { let ivp := match goal with |- context[is_valid_productions ?x ?y] => constr:(is_valid_productions x y) end in
+                set (ivp' := ivp);
+                  assert (ivp = ivp') by reflexivity;
+                  clearbody ivp';
+                  destruct ivp'.
                 { intros.
                   hnf in pf.
                   apply or_to_sumbool in pf.
                   destruct pf as [ pf | pf ]; [ exfalso; hnf in *; solve [ auto ] | subst ].
                   eapply parse_productions_step_complete; try eassumption.
                   hnf.
-                  exfalso; clear; admit. }
+                  intros str0 pf0 prod0 prods0 H'; eapply IHr;
+                  try first [ exact H' | eassumption ].
+                  { right; split; trivial; simpl.
+                    apply remove_productions_dec; assumption. }
+                  { intros; apply split_string_for_production_complete.
+                    etransitivity; eassumption. } }
                 { (** INTERESTING CASE HERE - need to show that if not
                       [is_valid_productions], then we can't have a
-                      parse tree.  We actually can't use [destruct
-                      (is_valid_productions (snd p) prods)] above, but
-                      instead need to use a smarter variant of
-                      [case_eq] ([case_eq] itself errors with a
-                      dependent type error), so we have a witness that
-                      we don't have a valid production. *)
+                      parse tree. *)
                   exfalso; clear; admit. } } }
             { repeat match goal with
                        | _ => intro
@@ -469,7 +502,6 @@ Section sound.
             unfold parse_productions, parse_productions_or_abort.
             destruct prods; [ solve [ auto ] | ].
             apply parse_productions_or_abort_helper_sound.
-            clear; intro H; abstract inversion H.
           Defined.
 
           Lemma parse_productions_complete
@@ -486,7 +518,6 @@ Section sound.
             unfold parse_productions, parse_productions_or_abort.
             destruct prods; [ solve [ intro H'; inversion H' ] | ].
             apply parse_productions_or_abort_helper_complete; try assumption.
-            clear; intro H; abstract inversion H.
           Defined.
         End wf.
       End productions.
@@ -494,7 +525,6 @@ Section sound.
   End general.
 End sound.
 
-Print Fix.
 Section brute_force_spliter.
   Lemma make_all_single_splits_complete_helper
   : forall (str : string_stringlike)

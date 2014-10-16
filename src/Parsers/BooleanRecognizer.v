@@ -28,13 +28,19 @@ Section recursive_descent_parser.
 
     Section parts.
       Section item.
+        (** We require that the list of productions be non-empty; we
+            do this by passing the first element separately, rather
+            than invoking dependent types and proofs. *)
         Context (str : String)
-                (str_matches_productions : productions CharType -> bool).
+                (str_matches_productions : production CharType -> productions CharType -> bool).
 
         Definition parse_item (it : item CharType) : bool
           := match it with
                | Terminal ch => [[ ch ]] =s str
-               | NonTerminal name => str_matches_productions (Lookup G name)
+               | NonTerminal name => match Lookup G name with
+                                       | nil => (** No string can match an empty nonterminal *) false
+                                       | p::ps => str_matches_productions p ps
+                                     end
              end.
       End item.
 
@@ -42,6 +48,7 @@ Section recursive_descent_parser.
         Variable str0 : String.
         Variable parse_productions : forall (str : String),
                                        str ≤s str0
+                                       -> production CharType
                                        -> productions CharType
                                        -> bool.
 
@@ -87,7 +94,7 @@ Section recursive_descent_parser.
           Variable str0 : String.
           Variable parse_productions : forall (str : String)
                                               (pf : str ≤s str0),
-                                         productions CharType -> bool.
+                                         production CharType -> productions CharType -> bool.
 
           (** To parse as a given list of [production]s, we must parse as one of the [production]s. *)
           Definition parse_productions_step (str : String) (pf : str ≤s str0) (prods : productions CharType)
@@ -102,10 +109,12 @@ Section recursive_descent_parser.
           (** TODO: add comment explaining signature *)
           Definition parse_productions_or_abort_helper
           : forall (p : String * productions_listT) (str : String),
-              str ≤s fst p ->
-              productions CharType -> bool
-            := @Fix3
-                 (prod String productions_listT) _ _ _
+              str ≤s fst p
+              -> production CharType
+              -> productions CharType
+              -> bool
+            := @Fix4
+                 (prod String productions_listT) _ _ _ _
                  _ (@well_founded_prod_relation
                       String
                       productions_listT
@@ -114,7 +123,7 @@ Section recursive_descent_parser.
                       (well_founded_ltof _ Length)
                       ntl_wf)
                  _
-                 (fun sl parse_productions str pf (prods : productions CharType)
+                 (fun sl parse_productions str pf (prod : production CharType) (prods : productions CharType)
                   => let str0 := fst sl in
                      let valid_list := snd sl in
                      match lt_dec (Length str) (Length str0) with
@@ -125,19 +134,19 @@ Section recursive_descent_parser.
                               (str, initial_productions_data)
                               (or_introl pf'))
                            (or_intror eq_refl)
-                           prods
+                           (prod::prods)
                        | right pf' =>
                          (** [str] didn't get smaller, so we cache the fact that we've hit this productions already *)
-                         (if is_valid_productions valid_list prods as is_valid
-                             return is_valid_productions valid_list prods = is_valid -> _
+                         (if is_valid_productions valid_list (prod::prods) as is_valid
+                             return is_valid_productions valid_list (prod::prods) = is_valid -> _
                           then (** It was valid, so we can remove it *)
                             fun H' =>
                               parse_productions_step
                                 (parse_productions
-                                   (str0, remove_productions valid_list prods)
+                                   (str0, remove_productions valid_list (prod::prods))
                                    (or_intror (conj eq_refl (remove_productions_dec H'))))
                                 (or_intror eq_refl)
-                                prods
+                                (prod::prods)
                           else (** oops, we already saw this productions in the past.  ABORT! *)
                             fun _ => false
                          ) eq_refl
@@ -150,7 +159,7 @@ Section recursive_descent_parser.
           : bool
             := match prods with
                  | nil => false
-                 | _ => parse_productions_or_abort_helper (str0, valid_list) pf prods
+                 | p::ps => parse_productions_or_abort_helper (str0, valid_list) pf p ps
                end.
 
           Definition parse_productions (str : String) (prods : productions CharType)
@@ -158,7 +167,6 @@ Section recursive_descent_parser.
             := @parse_productions_or_abort str str initial_productions_data
                                            (or_intror eq_refl) prods.
         End wf.
-
       End productions.
     End parts.
   End bool.
