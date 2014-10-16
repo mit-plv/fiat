@@ -104,43 +104,44 @@ Section recursive_descent_parser.
           : forall (p : String * productions_listT) (str : String),
               str ≤s fst p ->
               productions CharType -> bool
-            := @Fix (prod String productions_listT)
-                    _ (@well_founded_prod_relation
-                         String
-                         productions_listT
-                         _
-                         _
-                         (well_founded_ltof _ Length)
-                         ntl_wf)
-                    _
-                    (fun sl parse_productions str pf (prods : productions CharType)
-                     => let str0 := fst sl in
-                        let valid_list := snd sl in
-                        match lt_dec (Length str) (Length str0) with
-                          | left pf' =>
-                            (** [str] got smaller, so we reset the valid productions list *)
-                            parse_productions_step
-                              (parse_productions
-                                 (str, initial_productions_data)
-                                 (or_introl pf'))
-                              (or_intror eq_refl)
-                              prods
-                          | right pf' =>
-                            (** [str] didn't get smaller, so we cache the fact that we've hit this productions already *)
-                            (if is_valid_productions valid_list prods as is_valid
-                                return is_valid_productions valid_list prods = is_valid -> _
-                             then (** It was valid, so we can remove it *)
-                               fun H' =>
-                                 parse_productions_step
-                                   (parse_productions
-                                      (str0, remove_productions valid_list prods)
-                                      (or_intror (conj eq_refl (remove_productions_dec H'))))
-                                   (or_intror eq_refl)
-                                   prods
-                             else (** oops, we already saw this productions in the past.  ABORT! *)
-                               fun _ => false
-                            ) eq_refl
-                        end).
+            := @Fix3
+                 (prod String productions_listT) _ _ _
+                 _ (@well_founded_prod_relation
+                      String
+                      productions_listT
+                      _
+                      _
+                      (well_founded_ltof _ Length)
+                      ntl_wf)
+                 _
+                 (fun sl parse_productions str pf (prods : productions CharType)
+                  => let str0 := fst sl in
+                     let valid_list := snd sl in
+                     match lt_dec (Length str) (Length str0) with
+                       | left pf' =>
+                         (** [str] got smaller, so we reset the valid productions list *)
+                         parse_productions_step
+                           (parse_productions
+                              (str, initial_productions_data)
+                              (or_introl pf'))
+                           (or_intror eq_refl)
+                           prods
+                       | right pf' =>
+                         (** [str] didn't get smaller, so we cache the fact that we've hit this productions already *)
+                         (if is_valid_productions valid_list prods as is_valid
+                             return is_valid_productions valid_list prods = is_valid -> _
+                          then (** It was valid, so we can remove it *)
+                            fun H' =>
+                              parse_productions_step
+                                (parse_productions
+                                   (str0, remove_productions valid_list prods)
+                                   (or_intror (conj eq_refl (remove_productions_dec H'))))
+                                (or_intror eq_refl)
+                                prods
+                          else (** oops, we already saw this productions in the past.  ABORT! *)
+                            fun _ => false
+                         ) eq_refl
+                     end).
 
           Definition parse_productions_or_abort (str0 str : String)
                      (valid_list : productions_listT)

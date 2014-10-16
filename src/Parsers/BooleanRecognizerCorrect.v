@@ -1,7 +1,7 @@
 (** * Definition of a boolean-returning CFG parser-recognizer *)
 Require Import Coq.Lists.List Coq.Program.Program Coq.Program.Wf Coq.Arith.Wf_nat Coq.Arith.Compare_dec Coq.Classes.RelationClasses Coq.Strings.String.
 Require Import Parsers.ContextFreeGrammar Parsers.Specification Parsers.BooleanRecognizer.
-Require Import Common Common.ilist.
+Require Import Common Common.ilist Common.Wf.
 Require Import Eqdep_dec.
 
 Local Hint Extern 0 =>
@@ -78,6 +78,20 @@ Section sound.
                end.
         Qed.
       End item.
+
+      Section item_ext.
+        Lemma parse_item_ext
+              (str : String)
+              (str_matches_productions1 str_matches_productions2 : productions CharType -> bool)
+              (it : item CharType)
+              (ext : forall x, str_matches_productions1 x = str_matches_productions2 x)
+        : parse_item String G str str_matches_productions1 it
+          = parse_item String G str str_matches_productions2 it.
+        Proof.
+          unfold parse_item.
+          destruct it; auto.
+        Qed.
+      End item_ext.
 
       Section production.
         Context (str0 : String)
@@ -221,6 +235,27 @@ Section sound.
         Qed.
       End production.
 
+      Section production_ext.
+        Lemma parse_production_ext
+              (str0 : String)
+              (parse_productions1 parse_productions2 : forall (str : String),
+                                                         str ≤s str0
+                                                         -> productions CharType
+                                                         -> bool)
+              (str : String) (pf : str ≤s str0) (prod : production CharType)
+              (ext : forall str' pf' prods', parse_productions1 str' pf' prods' = parse_productions2 str' pf' prods')
+        : parse_production G split_string_for_production split_string_for_production_correct parse_productions1 pf prod
+          = parse_production G split_string_for_production split_string_for_production_correct parse_productions2 pf prod.
+        Proof.
+          revert str pf.
+          induction prod as [|? ? IHprod]; simpl; intros; try reflexivity; [].
+          f_equal.
+          apply map_ext; intros.
+          apply f_equal2; [ apply parse_item_ext | apply IHprod ].
+          intros; apply ext.
+        Qed.
+      End production_ext.
+
       Section productions.
         Section step.
           Variable str0 : String.
@@ -295,6 +330,23 @@ Section sound.
           Qed.
         End step.
 
+        Section step_extensional.
+          Lemma parse_productions_step_ext (str0 : String)
+                (parse_productions1 parse_productions2 : forall (str : String)
+                                                                (pf : str ≤s str0),
+                                                           productions CharType -> bool)
+                (str : String) (pf : str ≤s str0) (prods : productions CharType)
+                (ext : forall str' pf' prods', parse_productions1 str' pf' prods' = parse_productions2 str' pf' prods')
+          : parse_productions_step G split_string_for_production split_string_for_production_correct parse_productions1 pf prods
+            = parse_productions_step G split_string_for_production split_string_for_production_correct parse_productions2 pf prods.
+          Proof.
+            unfold parse_productions_step.
+            f_equal.
+            apply map_ext; intros.
+            apply parse_production_ext; auto.
+          Qed.
+        End step_extensional.
+
         (** TODO: move this elsewhere *)
         Lemma or_to_sumbool (s1 s2 : String) (f : String -> nat)
               (H : f s1 < f s2 \/ s1 = s2)
@@ -307,6 +359,16 @@ Section sound.
             generalize dependent (s1 =s s2)%string_like; intros; subst.
             discriminate. }
         Qed.
+
+        (** TODO: move this elsewhere *)
+        Lemma if_ext {T} (b : bool) (f1 f2 : b = true -> T true) (g1 g2 : b = false -> T false)
+              (ext_f : forall H, f1 H = f2 H)
+              (ext_g : forall H, g1 H = g2 H)
+        : (if b as b' return (b = b' -> T b') then f1 else g1) eq_refl
+          = (if b as b' return (b = b' -> T b') then f2 else g2) eq_refl.
+        Proof.
+          destruct b; auto.
+        Defined.
 
         Section wf.
           Lemma parse_productions_or_abort_helper_sound
@@ -322,7 +384,7 @@ Section sound.
             -> parse_of _ G str prods.
           Proof.
             unfold parse_productions_or_abort_helper.
-            rewrite Init.Wf.Fix_eq.
+            rewrite Fix3_eq.
             { match goal with
                 | [ |- context[if lt_dec ?a ?b then _ else _] ] => destruct (lt_dec a b)
               end.
@@ -337,7 +399,14 @@ Section sound.
                 eapply parse_productions_step_sound; try eassumption.
                 hnf.
                 exfalso; clear; admit. } }
-            { exfalso; clear; admit. }
+            { repeat match goal with
+                       | _ => intro
+                       | _ => reflexivity
+                       | [ |- context[match ?E with _ => _ end] ] => destruct E
+                       | [ H : _ |- _ ] => rewrite H; reflexivity
+                       | _ => apply parse_productions_step_ext; auto
+                       | _ => apply (@if_ext (fun _ => bool)); intros
+                     end. }
           Defined.
 
           Lemma parse_productions_or_abort_helper_complete
@@ -354,7 +423,7 @@ Section sound.
                = true.
           Proof.
             unfold parse_productions_or_abort_helper.
-            rewrite Init.Wf.Fix_eq.
+            rewrite Fix3_eq.
             { match goal with
                 | [ |- context[if lt_dec ?a ?b then _ else _] ] => destruct (lt_dec a b)
               end.
@@ -378,7 +447,14 @@ Section sound.
                       dependent type error), so we have a witness that
                       we don't have a valid production. *)
                   exfalso; clear; admit. } } }
-            { exfalso; clear; admit. }
+            { repeat match goal with
+                       | _ => intro
+                       | _ => reflexivity
+                       | [ |- context[match ?E with _ => _ end] ] => destruct E
+                       | [ H : _ |- _ ] => rewrite H; reflexivity
+                       | _ => apply parse_productions_step_ext; auto
+                       | _ => apply (@if_ext (fun _ => bool)); intros
+                     end. }
           Defined.
 
           Lemma parse_productions_sound
