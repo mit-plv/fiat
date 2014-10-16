@@ -24,9 +24,7 @@ Record string_like (CharType : Type) :=
     RightId : forall x, x ++ Empty = x;
     Length_correct : forall s1 s2, Length s1 + Length s2 = Length (s1 ++ s2);
     Length_Empty : Length Empty = 0;
-    Empty_Length : forall s1, Length s1 = 0 -> s1 = Empty;
-    is_empty : String -> bool;
-    is_empty_correct : forall s, is_empty s = bool_eq s Empty
+    Empty_Length : forall s1, Length s1 = 0 -> s1 = Empty
   }.
 
 Delimit Scope string_like_scope with string_like.
@@ -47,7 +45,6 @@ Proof.
             Empty := EmptyString;
             Concat := append;
             Length := String.length;
-            is_empty := fun s => match s with EmptyString => true | _ => false end;
             bool_eq x y := if string_dec x y then true else false |};
   solve [ abstract (let x := fresh "x" in
                     let IHx := fresh "IHx" in

@@ -55,7 +55,7 @@ Section recursive_descent_parser.
           refine match prod with
                    | nil =>
                      (** 0-length production, only accept empty *)
-                     is_empty _ str
+                     str =s Empty _
                    | it::its
                      => let parse_production' := fun str pf => @parse_production str pf its in
                         fold_right
@@ -93,7 +93,7 @@ Section recursive_descent_parser.
           Definition parse_productions_step (str : String) (pf : str ≤s str0) (prods : productions CharType)
           : bool
             := fold_right orb
-                          (is_empty _ str)
+                          false
                           (map (parse_production parse_productions pf)
                                prods).
         End step.
@@ -373,9 +373,9 @@ Section examples.
     Check eq_refl : parse "ba" = false.
     Time Eval lazy in parse "aba".
     Check eq_refl : parse "aba" = false.
-    (*Time Eval lazy in parse "abab".
+    Time Eval lazy in parse "abab".
     Time Eval lazy in parse "ababab".
-    Check eq_refl : parse "ababab" = true.*)
+    Check eq_refl : parse "ababab" = true.
   (* For debugging: *)(*
   Goal True.
     pose proof (eq_refl (parse "abab")) as s.
