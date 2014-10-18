@@ -88,6 +88,9 @@ SRC_MODULES    := \
 	QueryStructure/Refinements/Bags/Bags\
 	QueryStructure/Refinements/AutoDB\
 	Parsers/StringLike\
+	Parsers/StringStringLike\
+	Parsers/ListLike\
+	Parsers/ListListLike\
 	Parsers/ContextFreeGrammar\
 	Parsers/Specification\
 	Parsers/NonComputational\
