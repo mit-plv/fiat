@@ -25,7 +25,7 @@ Set Implicit Arguments.
     The basic idea is that
 
 FIXME *)*)
-(*
+
 Local Open Scope string_like_scope.
 
 Section recursive_descent_parser.
@@ -928,4 +928,3 @@ Section examples.
                        *)
   End ab_star.
 End examples.
-*)
