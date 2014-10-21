@@ -109,7 +109,8 @@ EXAMPLE_MODULES := \
 	CacheADT/CacheRefinements \
 	CacheADT/FMapCacheImplementation \
 	CacheADT/LRUCache \
-	BookstoreCache
+	BookstoreCache \
+	FiniteSetsExamples
 
 COQDEP=coqdep
 COQDOC=coqdoc

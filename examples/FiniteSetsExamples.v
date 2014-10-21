@@ -80,6 +80,7 @@ Notation FullySharpenedComputation spec
 Definition countUniqueImpl (FiniteSetImpl : FullySharpened FiniteSetSpec) (ls : list word)
 : FullySharpenedComputation (countUniqueSpec ls).
 Proof.
+  (** We turn the list into a finite set, and then call 'size' *)
   exists (snd (CallMethod (projT1 FiniteSetImpl) "Size"
                           (List.fold_right
                              (fun w xs => fst (CallMethod (projT1 FiniteSetImpl) "Add" xs w))
@@ -94,6 +95,10 @@ Defined.
 Definition sumUniqueImpl (FiniteSetImpl : FullySharpened FiniteSetSpec) (ls : list word)
 : FullySharpenedComputation (sumUniqueSpec ls).
 Proof.
+  (** We fold over the list, using a finite set to keep track of what
+      we've seen, and every time we see something new, we update our
+      running sum.  This should be compiled down to a for loop with an
+      in-place update. *)
   exists (snd (List.fold_right
                  (fun w xs_sum =>
                     let xs := fst xs_sum in
