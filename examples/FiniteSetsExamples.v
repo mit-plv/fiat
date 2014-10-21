@@ -10,6 +10,8 @@ Local Open Scope string_scope.
 Definition word := nat.
 
 (** We define the interface for finite sets *)
+(** QUESTION: Does Facade give us any other methods?  Do we want to
+    provide any other methods? *)
 Definition FiniteSetSig : ADTSig :=
   ADTsignature {
       Constructor "Empty" : unit -> rep,
@@ -20,8 +22,6 @@ Definition FiniteSetSig : ADTSig :=
     }.
 
 (** And now the spec *)
-(** QUESTION: Does Facade give us any other methods?  Do we want to
-    provide any other methods? *)
 Definition FiniteSetSpec : ADT FiniteSetSig :=
   ADTRep (Ensemble word) {
     Def Constructor "Empty" (_ : unit) : rep := ret (Empty_set _),
