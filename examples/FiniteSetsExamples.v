@@ -201,7 +201,7 @@ Section FiniteSetHelpers.
     { (** HELP: How can I prove this?  It seems false, if, e.g.,
           [FiniteSetImpl] decides to use [False] as it's
           representation.  But if this is unprovable, then
-          [ADTRefinementPreservesConstructors] seems utterly
+          [ADTRefinementPreservesMethods] seems utterly
           useless. *)
       admit. }
   Qed.
