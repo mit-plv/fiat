@@ -5,6 +5,49 @@ Require Import GeneralQueryRefinements.
 Require Import QueryStructureNotations ListImplementation.
 Require Import AdditionalLemmas AdditionalPermutationLemmas ADT.ComputationalADT Arith BagADT.
 
+Definition packagedADT (Sig : ADTSig) :=
+  {Rep : Type & prod Rep
+              (prod (forall idx : ConstructorIndex Sig,
+                       cConstructorType Rep (ConstructorDom Sig idx))
+                    (forall idx : MethodIndex Sig,
+                       cMethodType Rep (fst (MethodDomCod Sig idx))
+                                   (snd (MethodDomCod Sig idx))))
+  }.
+
+Definition CallPackagedADTMethod
+           (Sig : ADTSig)
+           (idx : MethodIndex Sig)
+           (d : fst (MethodDomCod Sig idx))
+           (pADT : packagedADT Sig)
+: prod (packagedADT Sig) (snd (MethodDomCod Sig idx))
+  := let results := snd (snd (projT2 pADT)) idx (fst (projT2 pADT)) d in
+     (existT _ (projT1 pADT) (fst results, snd (projT2 pADT)),
+      snd results).
+
+Record cADT (cRep : Type) (Sig : ADTSig) : Type :=
+  {
+
+    (** Constructor implementations *)
+    cConstructors :
+      forall idx : ConstructorIndex Sig,
+        cConstructorType cRep (ConstructorDom Sig idx);
+
+    (** Method implementations *)
+    cMethods :
+      forall idx : MethodIndex Sig,
+        cMethodType cRep (fst (MethodDomCod Sig idx))
+                                (snd (MethodDomCod Sig idx))
+  }.
+
+Definition CallPackagedADTConstructors
+           (Sig : ADTSig)
+           (idx : ConstructorIndex Sig)
+           (d : ConstructorDom Sig idx)
+           (pADT : packagedADT Sig)
+: packagedADT Sig
+  := let results := fst (snd (projT2 pADT)) idx d in
+     existT _ (projT1 pADT) (results, snd (projT2 pADT)).
+
 Section FiniteMapADT.
 
   Variable ValueType : Type.
@@ -118,12 +161,20 @@ Section SharpenedBagImplementation.
     match Keys with
       | [] => [ListSig (@Tuple heading)]
       | Key :: Keys' =>
-        @FiniteMapSig (@Tuple heading) (Domain heading Key) :: BuildcADTSignaturesFromAttributes Keys'
+        @FiniteMapSig
+          (packagedADT (BagSig (@Tuple heading) (BuildSearchTermTypeFromAttributes Keys')))
+          (Domain heading Key)
+          :: BuildcADTSignaturesFromAttributes Keys'
     end.
 
+  Set Printing Universes.
+
   Definition UnIndexedBagcADT
-             (ListADTImpl : cADT (ListSig (@Tuple heading)))
-  : cADT (BagSig (@Tuple heading) (@Tuple heading -> bool)) :=
+             {ListRep}
+             (ListADTImpl : cADT ListRep (ListSig (@Tuple heading)))
+  : cADT ListRep (BagSig (@Tuple heading) (@Tuple heading -> bool)).
+  Admitted.
+   (*:=
     cADTRep (cRep ListADTImpl) {
         Def Constructor "EmptyBag" (u : unit) : rep :=
           CallConstructor ListADTImpl "EmptyList" (),
@@ -151,16 +202,20 @@ Section SharpenedBagImplementation.
         Def Method "Delete" (r : rep, filt : Tuple -> bool)
         : list (@Tuple heading) :=
               CallMethod ListADTImpl "Delete" r filt
-            }.
+            }. *)
 
   Definition AttributeToIndexedBagcADT
              (Key : Attributes heading)
              SubTreeSearchTermType
-             (SubTreeImpl : cADT (BagSig (@Tuple heading) SubTreeSearchTermType))
-             (NodeImpl : cADT (FiniteMapSig (cRep SubTreeImpl) (Domain heading Key)))
-  : cADT (@BagSig (@Tuple heading) (option (Domain heading Key) * SubTreeSearchTermType)) :=
+             (Sig := BagSig (@Tuple heading) SubTreeSearchTermType)
+             {NodeRep SubTreeRep}
+             (NodeImpl : cADT NodeRep (FiniteMapSig (packagedADT (BagSig (@Tuple heading) SubTreeSearchTermType))
+                                            (Domain heading Key)))
 
-    cADTRep (cRep NodeImpl) {
+             (SubTreeImpl : cADT SubTreeRep Sig)
+  : cADT NodeRep (@BagSig (@Tuple heading) (option (Domain heading Key) * SubTreeSearchTermType)).
+  Admitted.
+(*    refine (cADTRep (cRep NodeImpl) {
         Def Constructor "EmptyBag" (u : unit) : rep :=
           CallConstructor NodeImpl "EmptyMap" u,
 
@@ -170,16 +225,21 @@ Section SharpenedBagImplementation.
                   | (Some index, indices') =>
                     match CallMethod NodeImpl "Find" r index with
                       | (r', Some subtree) =>
-                        let results := CallMethod SubTreeImpl "Find" subtree indices' in
+                        let results := @CallPackagedADTMethod
+                                         (BagSig Tuple SubTreeSearchTermType)
+                                         {|bindex := "Find" |} indices' subtree in
                         (fst (CallMethod NodeImpl "Insert" r' (index, fst results)), snd results)
                       | (r', None) => (r', [])
                     end
                   | (None, indices') =>
                     let results := CallMethod NodeImpl "Enumerate" r () in
                     fold_right
-                      (fun (subtree : _ * _) (items : cRep NodeImpl * list Tuple) =>
+                      (fun (subtree : _ * packagedADT (BagSig Tuple SubTreeSearchTermType))
+                           (items : cRep NodeImpl * list Tuple) =>
                          let (r, elts) := items in
-                         let result := CallMethod SubTreeImpl "Find" (snd subtree) indices' in
+                         let result := @CallPackagedADTMethod
+                                         (BagSig Tuple SubTreeSearchTermType)
+                                         {|bindex := "Find" |} indices' (snd subtree) in
                          (fst (CallMethod NodeImpl "Insert" r (fst subtree, fst result)),
                           app (snd result) elts))
                     (fst results, []) (snd results)
@@ -189,9 +249,13 @@ Section SharpenedBagImplementation.
           : list (@Tuple heading) :=
               let results := CallMethod NodeImpl "Enumerate" r () in
               fold_right
-                (fun (subtree : _ * _ ) (items : cRep NodeImpl * list Tuple) =>
+                (fun (subtree : _ * packagedADT (BagSig Tuple SubTreeSearchTermType))
+                     (items : cRep NodeImpl * list Tuple) =>
                    let (r, elts) := items in
-                   let result := CallMethod SubTreeImpl "Enumerate" (snd subtree) () in
+                   let result := @CallPackagedADTMethod
+                                         (BagSig Tuple SubTreeSearchTermType)
+                                         {|bindex := "Enumerate" |}
+                                         () (snd subtree) in
                    (fst (CallMethod NodeImpl "Insert" r (fst subtree, fst result)),
                     app (snd result) elts))
                 (fst results, []) (snd results),
@@ -200,13 +264,20 @@ Section SharpenedBagImplementation.
         Def Method "Insert" (r : rep, element : @Tuple heading) : unit :=
                 match CallMethod NodeImpl "Find" r (element Key) with
                   | (r', Some subtree) =>
-                    let result := CallMethod SubTreeImpl "Insert" subtree element in
+                    let result := @CallPackagedADTMethod
+                                    (BagSig Tuple SubTreeSearchTermType)
+                                    {|bindex := "Insert" |}
+                                    element subtree in
                     CallMethod NodeImpl "Insert" r' (element Key, fst result)
                   | (r', None) =>
                     let new_subtree :=
-                        CallMethod SubTreeImpl "Insert"
-                                   (CallConstructor SubTreeImpl "EmptyBag" ()) element in
-                    (fst (CallMethod NodeImpl "Insert" r' (element Key, fst new_subtree)), ())
+                        (snd (projT2 SubTreeImpl)) {|bindex := "Insert" |}
+                                  (fst (projT2 SubTreeImpl) {|bindex := "EmptyBag" |} ())
+                                  element in
+                    (fst (CallMethod NodeImpl "Insert" r'
+                                     (element Key, existT _ (projT1 SubTreeImpl)
+                                                          (fst new_subtree,
+                                                           projT2 SubTreeImpl))), ())
                 end,
 
         Def Method "Count" (r : rep, indices : option (Domain heading Key) * SubTreeSearchTermType)
@@ -215,16 +286,23 @@ Section SharpenedBagImplementation.
                   | (Some index, indices') =>
                     match CallMethod NodeImpl "Find" r index with
                       | (r', Some subtree) =>
-                        let results := CallMethod SubTreeImpl "Count" subtree indices' in
+                        let results := @CallPackagedADTMethod
+                                         (BagSig Tuple SubTreeSearchTermType)
+                                         {|bindex := "Count" |}
+                                         indices' subtree in
                         (fst (CallMethod NodeImpl "Insert" r' (index, fst results)), snd results)
                       | (r', None) => (r', 0)
                     end
                   | (None, indices') =>
                     let results := CallMethod NodeImpl "Enumerate" r () in
                     fold_right
-                      (fun (subtree : _ * _) (items : cRep NodeImpl * nat) =>
+                      (fun (subtree : _ * packagedADT (BagSig Tuple SubTreeSearchTermType))
+                           (items : cRep NodeImpl * nat) =>
                          let (r, elts) := items in
-                         let result := CallMethod SubTreeImpl "Count" (snd subtree) indices' in
+                         let result := @CallPackagedADTMethod
+                                         (BagSig Tuple SubTreeSearchTermType)
+                                         {|bindex := "Count" |}
+                                         indices' (snd subtree) in
                          (fst (CallMethod NodeImpl "Insert" r (fst subtree, fst result)),
                           (snd result) + elts))
                     (fst results, 0) (snd results)
@@ -236,50 +314,46 @@ Section SharpenedBagImplementation.
                   | (Some index, indices') =>
                     match CallMethod NodeImpl "Find" r index with
                       | (r', Some subtree) =>
-                        let results := CallMethod SubTreeImpl "Delete" subtree indices' in
+                        let results := @CallPackagedADTMethod
+                                         (BagSig Tuple SubTreeSearchTermType)
+                                         {|bindex := "Delete" |}
+                                         indices' subtree in
                         (fst (CallMethod NodeImpl "Insert" r' (index, fst results)), snd results)
                       | (r', None) => (r', [])
                     end
                   | (None, indices') =>
                     let results := CallMethod NodeImpl "Enumerate" r () in
                     fold_right
-                      (fun (subtree : _ * _) (items : cRep NodeImpl * list Tuple) =>
+                      (fun (subtree : _ * packagedADT (BagSig Tuple SubTreeSearchTermType))
+                           (items : cRep NodeImpl * list Tuple) =>
                          let (r, elts) := items in
-                         let result := CallMethod SubTreeImpl "Delete" (snd subtree) indices' in
+                         let result := @CallPackagedADTMethod
+                                         (BagSig Tuple SubTreeSearchTermType)
+                                         {|bindex := "Delete" |}
+                                         indices' (snd subtree) in
                          (fst (CallMethod NodeImpl "Insert" r (fst subtree, fst result)),
                           app (snd result) elts))
                     (fst results, []) (snd results)
             end
 
-           }.
+           }).
+    Defined.*)
 
- Program Fixpoint NestedTreeFromAttributesAsBagcADT
+  Fixpoint NestedTreeFromAttributesAsBagcADT
           (Keys : list (@Attributes heading))
- : sigT (fun Sigs : list ADTSig =>
-           ilist cADT Sigs ->
-           cADT (@BagSig (@Tuple heading) (BuildSearchTermTypeFromAttributes Keys))) :=
-   match Keys return
-         sigT (fun Sigs : list ADTSig =>
-                 ilist cADT Sigs ->
-                 cADT (@BagSig (@Tuple heading) (BuildSearchTermTypeFromAttributes Keys)))
+ : ilist (fun Sig => {rep : _ & cADT rep Sig}) (BuildcADTSignaturesFromAttributes Keys) ->
+   {rep :_ & cADT rep (@BagSig (@Tuple heading) (BuildSearchTermTypeFromAttributes Keys))} :=
+  match Keys return
+         ilist (fun Sig => {rep : _ & cADT rep Sig}) (BuildcADTSignaturesFromAttributes Keys) ->
+         {rep :_ & cADT rep (@BagSig (@Tuple heading) (BuildSearchTermTypeFromAttributes Keys))}
    with
-     | [] => existT _ [ListSig (@Tuple heading)]
-                    (fun Impl => UnIndexedBagcADT (ilist_hd Impl))
+     | [] => fun Impl => existT _ _ (UnIndexedBagcADT (projT2 (ilist_hd Impl)))
      | Key :: Keys' =>
-       let SubTreeImpl := NestedTreeFromAttributesAsBagcADT Keys' in
-       existT ((@BagSig (@Tuple heading) (option (Domain heading Key) * SubTreeSearchTermType))
-         @AttributeToIndexedBagcADT
-           Key (BuildSearchTermTypeFromAttributes Keys')
-           (NestedTreeFromAttributesAsBagcADT Keys' (ilist_tl SubTreeImpl))
-           (ilist_hd SubTreeImpl)
+       fun SubTreeImpl =>
+         existT _ _ (@AttributeToIndexedBagcADT
+           Key _ _ _ (projT2 (ilist_hd SubTreeImpl))
+           (projT2 (NestedTreeFromAttributesAsBagcADT Keys' (ilist_tl SubTreeImpl))))
    end.
- Next Obligation.
-   simpl.
-
-   simpl.
-   Check (ilist_hd SubTreeImpl0).
-
-   simpl.
 
 
   Variable SearchTermTypePlus : Type.

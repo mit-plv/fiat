@@ -480,3 +480,79 @@ Proof.
   rewrite <- H3; eauto.
   rewrite <- H3; eauto.
 Qed.
+
+Ltac ilist_of_evar1 C B As k :=
+  match As with
+    | nil => k (fun c : C => inil B)
+    | cons ?a ?As' =>
+      makeEvar (forall c : C, B a)
+               ltac:(fun b =>
+                       ilist_of_evar1
+                         C B As'
+                         ltac:(fun Bs' => k (fun c : C => icons a (b c) (Bs' c))))
+  end.
+
+Ltac FullySharpenEachMethod1 delegateSigs delegateSpecs :=
+  match goal with
+      |- Sharpened (@BuildADT ?Rep ?consSigs ?methSigs ?consDefs ?methDefs) =>
+      ilist_of_evar1
+        (ilist ComputationalADT.cADT delegateSigs)
+        (fun Sig => ComputationalADT.cMethodType Rep (methDom Sig) (methCod Sig))
+        methSigs
+        ltac:(fun cMeths => ilist_of_evar1
+                              (ilist ComputationalADT.cADT delegateSigs)
+                              (fun Sig => ComputationalADT.cConstructorType Rep (consDom Sig))
+                              consSigs
+                              ltac:(fun cCons =>
+                                      eapply Notation_Friendly_SharpenFully
+                                      with
+                                      (rep := fun _ => Rep)
+                                      (cAbsR :=
+                                         fun (DelegateImpl : ilist
+                                                          (fun Sig : ADTSig =>
+                                                             ComputationalADT.cADT Sig)
+                                                          delegateSigs)
+                                             (ref : forall n : nat,
+                                                      Dep_Option_elim_T2
+                                                        (fun (Sig : ADTSig) (adt : ADT Sig)
+                                                             (adt' : ComputationalADT.cADT Sig) =>
+                                                           refineADT adt (ComputationalADT.LiftcADT adt'))
+                                                        (ith_error (inil ADT) n) (ith_error DelegateImpl n)) => @eq _)
+                                    (DelegateSpecs := delegateSpecs)
+                                             (cConstructors := cCons)
+                                             (cMethods := cMeths)));
+        unfold Dep_Type_BoundedIndex_app_comm_cons; simpl;
+        intuition; intros; subst
+  end.
+
+  Ltac make_computational_constructor :=
+    let x := match goal with |- ?R (ret ?x) (ret (?f ?a ?b)) => constr:(x) end in
+    let f := match goal with |- ?R (ret ?x) (ret (?f ?a ?b)) => constr:(f) end in
+    let a := match goal with |- ?R (ret ?x) (ret (?f ?a ?b)) => constr:(a) end in
+    let b := match goal with |- ?R (ret ?x) (ret (?f ?a ?b)) => constr:(b) end in
+    let x' := (eval pattern a, b in x) in
+    let f' := match x' with ?f' _ _ => constr:(f') end in
+    unify f f';
+      cbv beta;
+      solve [apply reflexivity].
+
+Ltac make_computational_method :=
+    let x := match goal with |- ?R (ret ?x) (ret (?f ?a (?b, ?b') ?c)) => constr:(x) end in
+    let f := match goal with |- ?R (ret ?x) (ret (?f ?a (?b, ?b') ?c)) => constr:(f) end in
+    let a := match goal with |- ?R (ret ?x) (ret (?f ?a (?b, ?b') ?c)) => constr:(a) end in
+    let b := match goal with |- ?R (ret ?x) (ret (?f ?a (?b, ?b') ?c)) => constr:(b) end in
+    let b' := match goal with |- ?R (ret ?x) (ret (?f ?a (?b, ?b') ?c)) => constr:(b') end in
+    let c := match goal with |- ?R (ret ?x) (ret (?f ?a (?b, ?b') ?c)) => constr:(c) end in
+    let x' := (eval pattern a, b, b', c in x) in
+    let f' := match x' with ?f' _ _ _ _ => constr:(fun i a => f' i (fst a) (snd a)) end in
+    unify f f';
+      cbv beta;
+      solve [apply reflexivity].
+
+Lemma refineIfret {A} :
+  forall (cond : bool) (a a' : A),
+    refine (if cond then ret a else ret a')
+           (ret (if cond then a else a')).
+Proof.
+  destruct cond; reflexivity.
+Qed.

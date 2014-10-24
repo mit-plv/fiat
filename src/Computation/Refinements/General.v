@@ -249,6 +249,22 @@ Section general_refine_lemmas.
     destruct b; simpl; auto.
   Qed.
 
+  Lemma refine_if_P A :
+    forall Pc (Pt Pa : Ensemble A),
+      refine { a | (Pc -> Pt a) /\ Pa a}
+             (b <- {b | Pc -> b = true};
+              if b then { a | Pt a /\ Pa a}
+              else { a | Pa a}).
+  Proof.
+    unfold refine; intros.
+    apply computes_to_inv in H; destruct_ex; constructor; intuition.
+    apply computes_to_inv in H0; apply H0 in X; subst.
+    inversion_by computes_to_inv; eauto.
+
+    t_refine.
+    destruct x;  t_refine.
+  Qed.
+
   Lemma refine_if A :
     forall (c : Comp A) (b : bool) ta ea,
       (b = true -> refine c ta)

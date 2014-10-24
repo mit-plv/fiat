@@ -199,3 +199,24 @@ Ltac binsert_correct_DB :=
         H0 : UnConstrFreshIdx (GetUnConstrRelation ?qs ?index) ?bound |- _ ] =>
       solve [ simpl; apply (binsertPlus_correct_DB qs index bag_plus store H _ bound H0) ]
   end.
+
+Lemma refine_Perm_map
+      {TItem A}
+      {BagPl : BagPlusProof TItem}
+:
+  forall search_term b f,
+    refine {l' : list A |
+            Permutation
+              (map f (filter (bfind_matcher (Bag := BagPlus BagPl) search_term)
+                             (benumerate (Bag := BagPlus BagPl) b))) l' }
+           {l' : list A |
+            Permutation
+              (map f (bfind (Bag := BagPlus BagPl) b search_term)) l' }.
+    Admitted.
+
+Tactic Notation "replace" "filter" "enumerate" constr(storage) :=
+    match goal with
+        |- context[map ?f (filter (bfind_matcher ?search_term)
+                                  (benumerate ?bag))] =>
+        rewrite (@refine_Perm_map _ _ storage search_term bag f)
+    end.

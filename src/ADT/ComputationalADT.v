@@ -18,7 +18,7 @@ Definition cMethodType (rep dom cod : Type)
      -> (rep * cod) (* Final model and return value. *).
 
 (** Interface of a computational ADT *)
-Record cADT (Sig : ADTSig) :=
+Record cADT (Sig : ADTSig) : Type :=
   {
     (** The representation type of the ADT **)
     cRep : Type;
