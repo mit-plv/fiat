@@ -134,21 +134,29 @@ Section FiniteSetHelpers.
            end.
   Qed.
 
-  (*Lemma EnsembleOfList_FiniteSetOfList ls
+  Lemma AbsR_EnsembleOfList_FiniteSetOfList ls
   : AbsR (projT2 FiniteSetImpl) (EnsembleOfList ls) (FiniteSetOfList ls).
   Proof.
-    unfold EnsembleOfList, FiniteSetOfList;
-    induction ls; simpl.
-    Set Printing Coercions.
-    lazymatch goal with
-      | [ |- context[CallConstructor (projT1 ?impl) ?idx ?arg] ]
-        => idtac;
-          let lem := constr:(ADTRefinementPreservesConstructors (projT2 impl) {| bindex := idx |} arg) in
-           pose proof lem; simpl in *
-    end.
-    hnf in H.
+    induction ls; simpl;
+    let lem := match goal with
+                 | [ |- context[CallConstructor (projT1 ?impl) ?idx ?arg] ]
+                   => constr:(ADTRefinementPreservesConstructors (projT2 impl) {| bindex := idx |} arg)
+                 | [ IHls : AbsR _ _ _ |- context[CallMethod (projT1 ?impl) ?idx ?rep ?arg] ]
+                   => constr:(ADTRefinementPreservesMethods (projT2 impl) {| bindex := idx |} _ rep arg IHls)
+               end in
+    let lem' := constr:(lem  _ (ReturnComputes _)) in
+    pose proof lem' as H; simpl in *;
+    repeat match goal with
+             | _ => progress inversion_by computes_to_inv
+             | _ => progress subst
+             | _ => progress simpl in *
+             | _ => assumption
+             | [ H : (_, _) = (_, _) |- _ ] => inversion H; clear H
+             | [ H : (_, _) = ?x |- _ ] => destruct x
+           end.
+  Qed.
 
-    *)
+  Local Hint Immediate EnsembleOfList_In AbsR_EnsembleOfList_FiniteSetOfList.
 
   Lemma comp_split_snd {A B} (x : A * B)
   : refineEquiv (ret (snd x))
@@ -170,6 +178,19 @@ Section FiniteSetHelpers.
                  | econstructor; try eassumption; [] ].
   Qed.
 
+  Lemma refine_skip2 {A B} (a : Comp A) (dummy : Comp B)
+  : refine a
+           (dummy;;
+            a).
+  Proof.
+    repeat first [ intro
+                 | inversion_by computes_to_inv
+                 | assumption
+                 | econstructor; eassumption
+                 | econstructor; try eassumption; [] ].
+  Qed.
+
+
   Ltac handle_calls :=
     repeat match goal with
              | [ |- context[ret ((CallMethod (projT1 ?impl) ?idx) ?rep ?arg)] ]
@@ -180,7 +201,7 @@ Section FiniteSetHelpers.
                   simpl rewrite <- lem
            end.
 
-  Lemma finite_set_handle_cardinal (ls : list W)
+  Lemma finite_set_handle_cardinal_helper (ls : list W)
   : refine (S <- { S : Ensemble W | forall x, Ensembles.In _ S x <-> List.In x ls  };
             { n : nat | cardinal _ S n })
            (ret (snd (CallMethod (projT1 FiniteSetImpl) "Size"
@@ -188,22 +209,122 @@ Section FiniteSetHelpers.
                                  tt))).
   Proof.
     etransitivity; [ | apply comp_split_snd ].
-    handle_calls.
+    handle_calls; [ | apply AbsR_EnsembleOfList_FiniteSetOfList ].
     repeat first [ progress simpl
                  | rewrite <- refine_skip
                  | autosetoid_rewrite with refine_monad ].
-    instantiate (1 := EnsembleOfList ls).
-    { repeat intro.
-      econstructor; try eassumption; [].
-      inversion_by computes_to_inv.
+    repeat intro; eauto.
+  Qed.
+
+  Lemma reverse_ensemble_list_equivalence (S : Ensemble W)
+  : refineEquiv (ls <- {ls : list W | EnsembleListEquivalence S ls};
+                 {S0 : Ensemble W | forall x : W, Ensembles.In W S0 x <-> In x ls})
+                (ls <- {ls : list W | EnsembleListEquivalence S ls};
+                 { S' : _ | Same_set _ S' S }).
+  Proof.
+    split; repeat intro;
+    inversion_by computes_to_inv;
+    subst;
+    repeat constructor;
+    let x := match goal with H : EnsembleListEquivalence _ ?x |- _ => constr:x end in
+    apply BindComputes with (comp_a_value := x);
+      destruct_head_hnf and;
+      split_iff;
+      repeat constructor;
+      hnf;
+      auto.
+  Qed.
+
+  Lemma reverse_ensemble_list_equivalence' {B} (S : Ensemble W) (f : _ -> Comp B)
+  : refineEquiv (ls <- {ls : list W | EnsembleListEquivalence S ls};
+                 Bind {S0 : Ensemble W | forall x : W, Ensembles.In W S0 x <-> In x ls} f)
+                (ls <- {ls : list W | EnsembleListEquivalence S ls};
+                 Bind { S' : _ | Same_set _ S' S } f).
+  Proof.
+    etransitivity; [ symmetry; apply refineEquiv_bind_bind | ].
+    rewrite reverse_ensemble_list_equivalence.
+    apply refineEquiv_bind_bind.
+  Qed.
+
+  Lemma reverse_ensemble_list_equivalence'' {B} (S : Ensemble W) (f : _ -> Comp B)
+  : refine (ls <- {ls : list W | EnsembleListEquivalence S ls};
+            Bind {S0 : Ensemble W | forall x : W, Ensembles.In W S0 x <-> In x ls} f)
+           ({ls : list W | EnsembleListEquivalence S ls};;
+            Bind { S' : _ | Same_set _ S' S } f).
+  Proof.
+    rewrite reverse_ensemble_list_equivalence'.
+    reflexivity.
+  Qed.
+
+  Lemma finite_set_handle_cardinal (S : Ensemble W)
+  : refine { n : nat | cardinal _ S n }
+           (ls <- { ls : _ | EnsembleListEquivalence S ls };
+            ret (snd (CallMethod (projT1 FiniteSetImpl) "Size"
+                                 (FiniteSetOfList ls)
+                                 tt))).
+  Proof.
+    setoid_rewrite <- finite_set_handle_cardinal_helper.
+    rewrite reverse_ensemble_list_equivalence'.
+    rewrite <- refine_skip2.
+    repeat intro;
+      inversion_by computes_to_inv;
       constructor.
-      apply EnsembleOfList_In. }
-    { (** HELP: How can I prove this?  It seems false, if, e.g.,
-          [FiniteSetImpl] decides to use [False] as it's
-          representation.  But if this is unprovable, then
-          [ADTRefinementPreservesMethods] seems utterly
-          useless. *)
-      admit. }
+    (** TODO: redefine [cardinal] so that it says that [fun _ => False] has cardinality 0 *)
+    match goal with
+      | [ H : _ |- _ ] => apply Extensionality_Ensembles in H
+    end.
+    subst; assumption.
+  Qed.
+
+  Lemma finite_set_handle_EnsembleListEquivalence (ls : list W)
+  : refine (S <- { S : Ensemble W | forall x, Ensembles.In _ S x <-> List.In x ls };
+            { ls' : _ | EnsembleListEquivalence S ls' })
+           (ret (snd (List.fold_right
+                        (fun w xs_ls' =>
+                           let xs := fst xs_ls' in
+                           let ls' := snd xs_ls' in
+                           if (snd (CallMethod (projT1 FiniteSetImpl) "In" xs w) : bool)
+                           then xs_ls'
+                           else (fst (CallMethod (projT1 FiniteSetImpl) "Add" xs w),
+                                 w::ls'))
+                        (CallConstructor (projT1 FiniteSetImpl) "Empty" tt,
+                         nil)
+                        ls))).
+  Proof.
+    induction ls; simpl.
+    { autosetoid_rewrite with refine_monad.
+      repeat first [ intro
+                   | progress simpl
+                   | rewrite <- refine_skip
+                   | progress autosetoid_rewrite with refine_monad
+                   | progress inversion_by computes_to_inv
+                   | progress subst ].
+      econstructor; repeat constructor; eauto; simpl; eauto. }
+    { admit. }
+  Qed.
+
+  Lemma finite_set_handle_EnsembleListEquivalence' {A} (ls : list W) (f : _ -> Comp A)
+  : refine (S <- { S : Ensemble W | forall x, Ensembles.In _ S x <-> List.In x ls };
+            Bind { ls' : _ | EnsembleListEquivalence S ls' } f)
+           (f (snd (List.fold_right
+                      (fun w xs_ls' =>
+                         let xs := fst xs_ls' in
+                         let ls' := snd xs_ls' in
+                         if (snd (CallMethod (projT1 FiniteSetImpl) "In" xs w) : bool)
+                         then xs_ls'
+                         else (fst (CallMethod (projT1 FiniteSetImpl) "Add" xs w),
+                               w::ls'))
+                      (CallConstructor (projT1 FiniteSetImpl) "Empty" tt,
+                       nil)
+                      ls))).
+  Proof.
+    rewrite <- refineEquiv_bind_bind.
+    rewrite finite_set_handle_EnsembleListEquivalence.
+    match goal with
+      | [ |- context[ret ?x] ] => generalize x; intro
+    end.
+    autorewrite with refine_monad.
+    reflexivity.
   Qed.
 End FiniteSetHelpers.
 
@@ -211,13 +332,20 @@ Definition countUniqueImpl (FiniteSetImpl : FullySharpened FiniteSetSpec) (ls : 
 : FullySharpenedComputation (countUniqueSpec ls).
 Proof.
   (** We turn the list into a finite set, and then call 'size' *)
+  eexists.
+  match goal with
+    | [ |- refine ?a ?b ] => let a' := eval hnf in a in change (refine a' b)
+  end.
+  setoid_rewrite (@finite_set_handle_cardinal FiniteSetImpl).
+  rewrite (@finite_set_handle_EnsembleListEquivalence' FiniteSetImpl).
+  reflexivity. (*
   exists (snd (CallMethod (projT1 FiniteSetImpl) "Size"
                           (List.fold_right
                              (fun w xs => fst (CallMethod (projT1 FiniteSetImpl) "Add" xs w))
                              (CallConstructor (projT1 FiniteSetImpl) "Empty" tt)
                              ls)
                           tt)).
-  admit.
+  admit. *)
 Defined.
 
 (** And now we do the same for summing. *)
