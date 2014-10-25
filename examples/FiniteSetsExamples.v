@@ -99,6 +99,8 @@ Section FiniteSetHelpers.
   Local Hint Extern 0 =>
   match goal with
     | [ H : False |- _ ] => destruct H
+    | [ H : false = true |- _ ] => solve [ inversion H ]
+    | [ H : true = false |- _ ] => solve [ inversion H ]
   end.
   Local Hint Extern 0 => apply Constructive_sets.Noone_in_empty.
   Local Hint Resolve Constructive_sets.Add_intro2 Constructive_sets.Add_intro1.
@@ -132,6 +134,57 @@ Section FiniteSetHelpers.
              | _ => solve [ right; eauto ]
              | _ => left; reflexivity
            end.
+  Qed.
+
+  Ltac handle_calls_then' tac :=
+    let lem := match goal with
+                 | [ |- context[(CallMethod (projT1 ?impl) ?idx) ?rep ?arg] ]
+                   => constr:(fun rep' => ADTRefinementPreservesMethods (projT2 impl) {| bindex := idx |} rep' rep arg)
+                 | [ |- context[(CallConstructor (projT1 ?impl) ?idx) ?arg] ]
+                   => constr:(ADTRefinementPreservesConstructors (projT2 impl) {| bindex := idx |} arg)
+                 | [ H : context[(CallMethod (projT1 ?impl) ?idx) ?rep ?arg] |- _ ]
+                   => constr:(fun rep' => ADTRefinementPreservesMethods (projT2 impl) {| bindex := idx |} rep' rep arg)
+                 | [ H : context[(CallConstructor (projT1 ?impl) ?idx) ?arg] |- _ ]
+                   => constr:(ADTRefinementPreservesConstructors (projT2 impl) {| bindex := idx |} arg)
+               end in
+    let H' := fresh in
+    first [ pose proof (fun rep' H => lem rep' H _ (ReturnComputes _)) as H'
+          | pose proof (lem _ (ReturnComputes _)) as H' ];
+      simpl in H';
+      tac H'.
+
+  Local Ltac t :=
+    repeat match goal with
+             | _ => reflexivity
+             | _ => assumption
+             | _ => progress inversion_by computes_to_inv
+             | _ => progress subst
+             | _ => progress simpl in *
+             | _ => progress split_iff
+             | _ => split
+             | _ => intro
+             | [ H : ?T -> ?U, H' : ?T |- _ ] => specialize (H H')
+             | [ H : ?x = ?x -> _ |- _ ] => specialize (H eq_refl)
+             | [ H : (_, _) = (_, _) |- _ ] => inversion H; clear H
+             | [ H : (_, _) = ?x |- _ ] => destruct x
+           end.
+
+  Lemma classify_AbsR S fs
+  : AbsR (projT2 FiniteSetImpl) S fs
+    -> (forall x, Ensembles.In _ S x
+                   <-> snd (CallMethod (projT1 FiniteSetImpl) "In" fs x) = true).
+  Proof.
+    t.
+    { handle_calls_then' ltac:(fun H =>
+                                 match goal with
+                                   | [ H' : AbsR _ _ _ |- _ ] => specialize (H _ H')
+                                 end).
+      t. }
+    { handle_calls_then' ltac:(fun H =>
+                                 match goal with
+                                   | [ H' : AbsR _ _ _ |- _ ] => specialize (H _ H')
+                                 end).
+      t. }
   Qed.
 
   Lemma AbsR_EnsembleOfList_FiniteSetOfList ls
@@ -263,6 +316,7 @@ Section FiniteSetHelpers.
                                  (FiniteSetOfList ls)
                                  tt))).
   Proof.
+    simpl.
     setoid_rewrite <- finite_set_handle_cardinal_helper.
     rewrite reverse_ensemble_list_equivalence'.
     rewrite <- refine_skip2.
@@ -276,21 +330,226 @@ Section FiniteSetHelpers.
     subst; assumption.
   Qed.
 
+  Definition ListAndFiniteSetOfList (ls : list W)
+    := List.fold_right
+         (fun w xs_ls' =>
+            let xs := fst xs_ls' in
+            let ls' := snd xs_ls' in
+            (fst (CallMethod (projT1 FiniteSetImpl) "Add" xs w),
+             if (snd (CallMethod (projT1 FiniteSetImpl) "In" xs w) : bool)
+             then ls'
+             else w::ls'))
+         (CallConstructor (projT1 FiniteSetImpl) "Empty" tt,
+          nil)
+         ls.
+
+
+  Lemma fst_fold_right {A B A'} (f : B -> A -> A) (g : B -> A * A' -> A') a a' ls
+  : fst (fold_right (fun b aa' => (f b (fst aa'), g b aa')) (a, a') ls)
+    = fold_right f a ls.
+  Proof.
+    induction ls; simpl; trivial.
+    rewrite IHls; reflexivity.
+  Qed.
+
+  Lemma NoListJustFiniteSetOfList ls
+  : fst (ListAndFiniteSetOfList ls) = FiniteSetOfList ls.
+  Proof.
+    unfold FiniteSetOfList.
+    unfold ListAndFiniteSetOfList.
+    simpl.
+    etransitivity; [ | eapply fst_fold_right ].
+    reflexivity.
+  Qed.
+
+
+  (*Lemma ListAndFiniteSetOfList_spec1 ls S
+  : AbsR (projT2 FiniteSetImpl)
+         S
+         (fst (ListAndFiniteSetOfList ls))
+    <-> EnsembleListEquivalence S (snd (ListAndFiniteSetOfList ls)).
+  Proof.
+    revert S.
+    induction ls.
+    { simpl.
+      let lem := match goal with
+                   | [ |- context[CallConstructor (projT1 ?impl) ?idx ?arg] ]
+                     => constr:(ADTRefinementPreservesConstructors (projT2 impl) {| bindex := idx |} arg)
+                   | [ IHls : AbsR _ _ _ |- context[CallMethod (projT1 ?impl) ?idx ?rep ?arg] ]
+                     => constr:(ADTRefinementPreservesMethods (projT2 impl) {| bindex := idx |} _ rep arg IHls)
+                 end in
+      let lem' := constr:(lem  _ (ReturnComputes _)) in
+      pose proof lem';
+        inversion_by computes_to_inv;
+        subst.
+      intros; split.
+      { repeat (intro || split || constructor || simpl in * || auto).
+        match goal with
+          | [ x : W, H1 : AbsR _ _ _, H2 : AbsR _ _ _ |- _ ]
+            => let lem := constr:(ADTRefinementPreservesMethods
+                                    (projT2 FiniteSetImpl)
+                                    {| bindex := "In" |}) in
+               pose proof (lem _ _ x H1 _ (ReturnComputes _));
+                 pose proof (lem _ _ x H2 _ (ReturnComputes _))
+        end.
+        simpl in *.
+        inversion_by computes_to_inv.
+        repeat match goal with
+                 | _ => progress simpl in *
+                 | _ => progress subst
+                 | _ => progress split_iff
+                 | [ H : ?T -> ?U, H' : ?T |- _ ] => specialize (H H')
+                 | [ H : ?x = ?x -> _ |- _ ] => specialize (H eq_refl)
+                 | [ H : (_, _) = (_, _) |- _ ] => inversion H; clear H
+                 | [ H : (_, _) = ?x |- _ ] => destruct x
+                 | _ => progress destruct_head_hnf Empty_set
+               end. }
+      { repeat first [ intro
+                     | split
+                     | constructor
+                     | progress simpl in *
+                     | progress split_iff
+                     | progress destruct_head_hnf and ].
+        (** TODO: eliminate extensionality_ensembles here? *)
+        rewrite (Extensionality_Ensembles _ S (Empty_set _)); trivial.
+        split; hnf; intros; unfold Ensembles.In in *;
+        destruct_head_hnf Empty_set;
+        solve [ exfalso; eauto ]. } }
+    { simpl.
+      match goal with
+        | [ |- context[if ?E then _ else _] ] => case_eq E; intro
+      end; auto.
+      let lem := match goal with
+                   | [ H : appcontext[CallMethod (projT1 ?impl) ?idx ?rep ?arg] |- _ ]
+                     => constr:(fun rep' => ADTRefinementPreservesMethods (projT2 impl) {| bindex := idx |} rep' rep arg)
+                 end in
+      pose proof (fun rep' H => lem rep' H _ (ReturnComputes _));
+        simpl in *.
+      intro S.
+      specialize (H0 (Subtract _ S a)).
+      split.
+      { intro H'.
+
+      unfold refine in H0.
+      simpl in H0.
+      let lem' := constr:(lem  _ (ReturnComputes _)) in
+      pose proof lem';
+        inversion_by computes_to_inv;
+
+
+      edestruct cMethods.
+        exfalso; eauto.
+        unfold Same_set in *.
+        unfold Included in *.
+        unfold iff in *.
+ || auto).
+
+
+        hnf in H2, H3.
+        simpl in *.
+
+
+        assert (Ensembles.In _ (Empty_set _) x).
+        *)
+  Lemma AbsR_EnsembleOfList_FiniteSetOfListOfFiniteSetAndListOfList ls
+  : AbsR (projT2 FiniteSetImpl)
+         (EnsembleOfList ls)
+         (FiniteSetOfList (snd (ListAndFiniteSetOfList ls))).
+  Proof.
+    induction ls; simpl.
+    { handle_calls_then' ltac:(fun H => idtac).
+      inversion_by computes_to_inv; subst; trivial. }
+    { handle_calls_then' ltac:(fun H =>
+                                 rewrite NoListJustFiniteSetOfList in *;
+                                 specialize (H _ (AbsR_EnsembleOfList_FiniteSetOfList _))).
+      inversion_by computes_to_inv.
+      destruct_head_hnf prod;
+      destruct_head_hnf bool;
+      t.
+      { (** TODO: Rewrite [FiniteSetOfList] and [EnsembleOfList] and
+            [ListAndFiniteSetOfList] to only [Add] things when they're
+            not already in there.  This way, we won't need
+            extensionality_ensembles. *)
+        match goal with
+          | [ H : AbsR _ ?S ?fs |- AbsR _ (Add _ ?S ?a) ?fs ]
+            => rewrite (Extensionality_Ensembles _ (Add _ S a) S);
+              [ exact H | ]
+        end.
+        repeat first [ intro
+                     | split
+                     | assumption
+                     | progress destruct_head_hnf Union
+                     | progress destruct_head_hnf Singleton
+                     | constructor ]. }
+      { handle_calls_then' ltac:(fun H =>
+                                   match goal with
+                                     | [ H' : AbsR _ _ _ |- _ ]
+                                       => specialize (H _ H')
+                                   end).
+        inversion_by computes_to_inv.
+        t. } }
+  Qed.
+
+(*  Definition FiniteSetOfListAndFiniteSetOfList ls
+  : AbsR (projT2 FiniteSetImpl) (EnsembleOfList ls) (FiniteSetOfList (snd (ListAndFiniteSetOfList ls))).
+  Proof.
+
+
+
+                (ret ).
+  Proof.*)
+
+  Lemma refine_EnsembleListEquivalenceAdd {T} ls a
+  : refine (S <- {S : Ensemble T
+                 | forall x, Ensembles.In T S x <-> a = x \/ List.In x ls};
+            {ls' : list T | EnsembleListEquivalence S ls'})
+           (S <- {S : Ensemble T
+                 | forall x, Ensembles.In T S x <-> List.In x ls};
+            ls' <- {ls' : list T | EnsembleListEquivalence S ls'};
+            b <- { b : bool | b = true <-> List.In a ls };
+            ret (if b then ls' else a::ls')).
+  Proof.
+    repeat intro.
+    repeat match goal with
+             | [ H : computes_to (Bind _ _) _ |- _ ]
+               => apply computes_to_inv in H;
+                 destruct_head_hnf ex;
+                 destruct_head_hnf and
+             | [ H : computes_to (ret _) _ |- _ ]
+               => apply computes_to_inv in H
+             | _ => progress subst
+             | _ => progress inversion_by computes_to_inv
+             | _ => progress split_iff
+           end.
+    let S := match goal with H : Ensemble _ |- _ => constr:H end in
+    apply BindComputes with (comp_a_value := (Ensembles.Add _ S a));
+      constructor;
+      repeat match goal with
+               | _ => intro
+               | _ => split
+               | _ => progress destruct_head_hnf Union
+               | _ => progress destruct_head_hnf Singleton
+               | _ => progress destruct_head_hnf sumbool
+               | _ => progress destruct_head_hnf or
+               | _ => progress destruct_head_hnf and
+               | _ => progress destruct_head_hnf bool
+               | _ => progress split_iff
+               | _ => progress subst
+               | _ => solve [ left; eauto ]
+               | _ => solve [ right; eauto ]
+               | [ H : forall x, Ensembles.In _ _ _ -> _, H' : Ensembles.In _ _ _ |- _ ]
+                 => specialize (H _ H')
+               | _ => solve [ eauto ]
+               | _ => solve [ constructor; intuition ]
+             end.
+  Qed.
+
   Lemma finite_set_handle_EnsembleListEquivalence (ls : list W)
   : refine (S <- { S : Ensemble W | forall x, Ensembles.In _ S x <-> List.In x ls };
             { ls' : _ | EnsembleListEquivalence S ls' })
-           (ret (snd (List.fold_right
-                        (fun w xs_ls' =>
-                           let xs := fst xs_ls' in
-                           let ls' := snd xs_ls' in
-                           if (snd (CallMethod (projT1 FiniteSetImpl) "In" xs w) : bool)
-                           then xs_ls'
-                           else (fst (CallMethod (projT1 FiniteSetImpl) "Add" xs w),
-                                 w::ls'))
-                        (CallConstructor (projT1 FiniteSetImpl) "Empty" tt,
-                         nil)
-                        ls))).
+           (ret (snd (ListAndFiniteSetOfList ls))).
   Proof.
+    simpl.
     induction ls; simpl.
     { autosetoid_rewrite with refine_monad.
       repeat first [ intro
@@ -300,52 +559,103 @@ Section FiniteSetHelpers.
                    | progress inversion_by computes_to_inv
                    | progress subst ].
       econstructor; repeat constructor; eauto; simpl; eauto. }
-    { admit. }
+    { rewrite refine_EnsembleListEquivalenceAdd.
+      rewrite <- refineEquiv_bind_bind.
+      rewrite IHls; clear IHls.
+      autorewrite with refine_monad.
+      rewrite NoListJustFiniteSetOfList.
+      match goal with
+        | [ |- context[if ?E then _ else _] ] => case_eq E; intro
+      end;
+        handle_calls_then'
+          ltac:(fun H => specialize (H _ (AbsR_EnsembleOfList_FiniteSetOfList _)));
+        inversion_by computes_to_inv;
+        t.
+      { match goal with
+          | [ H : Ensembles.In _ (EnsembleOfList _) _ |- _ ] => apply EnsembleOfList_In in H
+        end.
+        apply BindComputes with (comp_a_value := true);
+        repeat constructor; eauto. }
+      { apply BindComputes with (comp_a_value := false);
+        repeat constructor; intros; eauto.
+        match goal with
+          | [ H : Ensembles.In _ (EnsembleOfList _) _ -> ?T |- ?T ]
+            => apply H, EnsembleOfList_In; trivial
+        end. } }
   Qed.
 
   Lemma finite_set_handle_EnsembleListEquivalence' {A} (ls : list W) (f : _ -> Comp A)
   : refine (S <- { S : Ensemble W | forall x, Ensembles.In _ S x <-> List.In x ls };
             Bind { ls' : _ | EnsembleListEquivalence S ls' } f)
-           (f (snd (List.fold_right
-                      (fun w xs_ls' =>
-                         let xs := fst xs_ls' in
-                         let ls' := snd xs_ls' in
-                         if (snd (CallMethod (projT1 FiniteSetImpl) "In" xs w) : bool)
-                         then xs_ls'
-                         else (fst (CallMethod (projT1 FiniteSetImpl) "Add" xs w),
-                               w::ls'))
-                      (CallConstructor (projT1 FiniteSetImpl) "Empty" tt,
-                       nil)
-                      ls))).
+           (f (snd (ListAndFiniteSetOfList ls))).
   Proof.
+    simpl.
     rewrite <- refineEquiv_bind_bind.
-    rewrite finite_set_handle_EnsembleListEquivalence.
+    rewrite finite_set_handle_EnsembleListEquivalence; simpl.
     match goal with
       | [ |- context[ret ?x] ] => generalize x; intro
     end.
     autorewrite with refine_monad.
     reflexivity.
   Qed.
+
+  Lemma cardinal_unique {T} (S : Ensemble T) x y
+        (H : cardinal _ S x) (H' : cardinal _ S y)
+  : x = y.
+  Proof.
+    admit.
+  Qed.
+
+  Lemma CallSize_FiniteSetOfListOfListAndFiniteSetOfList ls arg
+  : snd
+      ((CallMethod (projT1 FiniteSetImpl) "Size")
+         (FiniteSetOfList (snd (ListAndFiniteSetOfList ls)))
+         arg)
+    = snd ((CallMethod (projT1 FiniteSetImpl) "Size")
+             (FiniteSetOfList ls)
+             arg).
+  Proof.
+    do 2 (handle_calls_then' ltac:(fun H =>
+                                     first [ specialize (H _ (AbsR_EnsembleOfList_FiniteSetOfListOfFiniteSetAndListOfList _))
+                                           | specialize (H _ (AbsR_EnsembleOfList_FiniteSetOfList _)) ]);
+          inversion_by computes_to_inv;
+          t).
+    eapply cardinal_unique; eassumption.
+  Qed.
 End FiniteSetHelpers.
+
+Ltac start_FullySharpenedComputation :=
+  eexists;
+  match goal with
+    | [ |- refine ?a ?b ] => let a' := eval hnf in a in change (refine a' b)
+  end.
+
+Ltac finish_FullySharpenedComputation :=
+  reflexivity.
+
+Local Notation Sharpening x := (refine x (ret _)).
+
+Tactic Notation "begin" "sharpening" "computation" := start_FullySharpenedComputation.
+
+Tactic Notation "finish" "sharpening" "computation" := finish_FullySharpenedComputation.
+
+Ltac finite_set_sharpen_step FiniteSetImpl :=
+  first [ setoid_rewrite (@finite_set_handle_cardinal FiniteSetImpl)
+        | rewrite (@finite_set_handle_EnsembleListEquivalence' FiniteSetImpl)
+        | rewrite (@CallSize_FiniteSetOfListOfListAndFiniteSetOfList FiniteSetImpl) ].
+
+Tactic Notation "sharpen" "computation" "with" "FiniteSet" "implementation" ":=" constr(FiniteSetImpl) :=
+  repeat finite_set_sharpen_step FiniteSetImpl.
 
 Definition countUniqueImpl (FiniteSetImpl : FullySharpened FiniteSetSpec) (ls : list W)
 : FullySharpenedComputation (countUniqueSpec ls).
 Proof.
   (** We turn the list into a finite set, and then call 'size' *)
-  eexists.
-  match goal with
-    | [ |- refine ?a ?b ] => let a' := eval hnf in a in change (refine a' b)
-  end.
-  setoid_rewrite (@finite_set_handle_cardinal FiniteSetImpl).
-  rewrite (@finite_set_handle_EnsembleListEquivalence' FiniteSetImpl).
-  reflexivity. (*
-  exists (snd (CallMethod (projT1 FiniteSetImpl) "Size"
-                          (List.fold_right
-                             (fun w xs => fst (CallMethod (projT1 FiniteSetImpl) "Add" xs w))
-                             (CallConstructor (projT1 FiniteSetImpl) "Empty" tt)
-                             ls)
-                          tt)).
-  admit. *)
+  begin sharpening computation.
+
+  sharpen computation with FiniteSet implementation := FiniteSetImpl.
+
+  finish sharpening computation.
 Defined.
 
 (** And now we do the same for summing. *)
