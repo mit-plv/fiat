@@ -934,6 +934,8 @@ Proof.
   (** We turn the list into a finite set, and then call 'size' *)
   begin sharpening computation.
 
+  (** This is slowish.  I suspect factoring out all the strings in the
+      file into constants will make things a bit faster. *)
   sharpen computation with FiniteSet implementation := FiniteSetImpl.
 
   finish sharpening computation.
