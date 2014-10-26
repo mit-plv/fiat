@@ -226,44 +226,64 @@ Section FiniteSetHelpers.
   Local Hint Extern 0 => apply Constructive_sets.Noone_in_empty.
   Local Hint Resolve Constructive_sets.Add_intro2 Constructive_sets.Add_intro1.
 
+  Definition FiniteSetAndFunctionOfList {A} (f : W -> A -> A) (a : A)
+             (ls : list W)
+    := List.fold_right
+         (fun w xs_acc =>
+            let xs := fst xs_acc in
+            let acc := snd xs_acc in
+            ((if (snd (CallMethod (projT1 FiniteSetImpl) "In" xs w) : bool)
+             then xs
+             else fst (CallMethod (projT1 FiniteSetImpl) "Add" xs w)),
+             (if (snd (CallMethod (projT1 FiniteSetImpl) "In" xs w) : bool)
+              then acc
+              else f w acc)))
+         (CallConstructor (projT1 FiniteSetImpl) "Empty" tt,
+          a)
+         ls.
+
+  Definition FiniteSetAndListOfList (ls : list W)
+    := FiniteSetAndFunctionOfList (@cons _) nil ls.
+
+  Definition EnsembleOfList (ls : list W) : Ensemble W
+    := snd (FiniteSetAndFunctionOfList
+              (fun w xs => Ensembles.Add _ xs w)
+              (Ensembles.Empty_set _)
+              ls).
+
+  Lemma fst_fold_right {A B A'} (f : B -> A -> A) (g : B -> A * A' -> A') a a' ls
+  : fst (fold_right (fun b aa' => (f b (fst aa'), g b aa')) (a, a') ls)
+    = fold_right f a ls.
+  Proof.
+    induction ls; simpl; trivial.
+    rewrite IHls; reflexivity.
+  Qed.
+
   Definition FiniteSetOfList (ls : list W) : cRep (projT1 FiniteSetImpl)
     := List.fold_right
          (fun w xs =>
-            (*if (snd (CallMethod (projT1 FiniteSetImpl) "In" xs w) : bool)
+            if (snd (CallMethod (projT1 FiniteSetImpl) "In" xs w) : bool)
             then xs
-            else*) fst (CallMethod (projT1 FiniteSetImpl) "Add" xs w))
+            else fst (CallMethod (projT1 FiniteSetImpl) "Add" xs w))
          (CallConstructor (projT1 FiniteSetImpl) "Empty" tt)
          ls.
 
-  (** We would need to jump through some hoops with [{ sls : Ensemble
-      W * list W | Same_set (fst sls) (elements (snd sls)) }] if we
-      wanted to avoid [Extensionality_Ensembles] *)
-  Definition EnsembleOfList {T} (ls : list T) : Ensemble T
-    := List.fold_right
-         (fun w xs => Ensembles.Add _ xs w)
-         (Ensembles.Empty_set _)
-         ls.
-
-  Lemma EnsembleOfList_In {T} (ls : list T)
-  : forall x, Ensembles.In _ (EnsembleOfList ls) x <-> In x ls.
+  Lemma NoFunctionJustFiniteSetOfFunction {A} f a ls
+  : fst (@FiniteSetAndFunctionOfList A f a ls) = FiniteSetOfList ls.
   Proof.
-    induction ls;
-    repeat match goal with
-             | _ => split
-             | _ => progress split_iff
-             | [ H : Ensembles.In _ (Ensembles.Add _ _ _) _ |- _ ] => apply Constructive_sets.Add_inv in H
-             | [ H : Ensembles.In _ (Empty_set _) _ |- _ ] => apply Constructive_sets.Noone_in_empty in H
-             | _ => progress destruct_head or
-             | _ => intro
-             | _ => progress subst
-             | _ => progress simpl in *
-             | _ => solve [ eauto ]
-             | _ => solve [ right; eauto ]
-             | _ => left; reflexivity
-           end.
+    unfold FiniteSetOfList.
+    unfold FiniteSetAndFunctionOfList.
+    simpl.
+    etransitivity; [ | eapply fst_fold_right ].
+    reflexivity.
   Qed.
 
+  Definition NoListJustFiniteSetOfList ls
+  : fst (FiniteSetAndListOfList ls) = FiniteSetOfList ls
+    := NoFunctionJustFiniteSetOfFunction _ _ _.
+
   Ltac handle_calls_then' tac :=
+    idtac;
     let lem := match goal with
                  | [ |- context[(CallMethod (projT1 ?impl) ?idx) ?rep ?arg] ]
                    => constr:(fun rep' => ADTRefinementPreservesMethods (projT2 impl) {| bindex := idx |} rep' rep arg)
@@ -280,6 +300,63 @@ Section FiniteSetHelpers.
       simpl in H';
       tac H'.
 
+  Local Ltac pre_t :=
+    repeat match goal with
+             | _ => progress inversion_by computes_to_inv
+             | _ => progress subst
+             | _ => progress simpl in *
+             | _ => progress split_iff
+             | _ => progress destruct_head bool
+             | [ H : ?x = ?x -> _ |- _ ] => specialize (H eq_refl)
+             | _ => assumption
+             | [ H : (_, _) = (_, _) |- _ ] => inversion H; clear H
+             | [ H : (_, _) = ?x |- _ ] => destruct x
+           end.
+
+  Lemma AbsR_EnsembleOfList_FiniteSetOfList ls
+  : AbsR (projT2 FiniteSetImpl) (EnsembleOfList ls) (FiniteSetOfList ls).
+  Proof.
+    induction ls; simpl;
+    handle_calls_then' ltac:(fun H => try specialize (H _ IHls));
+    pre_t;
+    unfold EnsembleOfList in *; simpl;
+    rewrite NoFunctionJustFiniteSetOfFunction;
+    handle_calls_then' ltac:(fun H => try specialize (H _ IHls));
+    pre_t.
+    { specialize_all_ways; auto. }
+    { specialize_all_ways; auto. }
+    { handle_calls_then' ltac:(fun H => try specialize (H _ IHls));
+      pre_t. }
+  Qed.
+
+  Lemma EnsembleOfList_In (ls : list W)
+  : forall x, Ensembles.In _ (EnsembleOfList ls) x <-> In x ls.
+  Proof.
+    induction ls;
+    repeat match goal with
+             | _ => split
+             | _ => progress split_iff
+             | [ H : Ensembles.In _ (Ensembles.Add _ _ _) _ |- _ ] => apply Constructive_sets.Add_inv in H
+             | [ H : Ensembles.In _ (Empty_set _) _ |- _ ] => apply Constructive_sets.Noone_in_empty in H
+             | _ => progress destruct_head or
+             | _ => progress destruct_head_hnf Empty_set
+             | _ => intro
+             | _ => progress subst
+             | _ => progress simpl in *
+             | _ => solve [ eauto ]
+             | _ => solve [ right; eauto ]
+             | _ => left; reflexivity
+             | _ => progress unfold EnsembleOfList in *
+             | [ H : context[if ?E then _ else _] |- _ ]
+               => revert H; case_eq E; intros
+             | [ |- context[if ?E then _ else _] ]
+               => case_eq E; intros
+             | [ H : _ |- _ ] => progress rewrite NoFunctionJustFiniteSetOfFunction in H
+           end.
+    handle_calls_then' ltac:(fun H => specialize (H _ (AbsR_EnsembleOfList_FiniteSetOfList _)));
+      pre_t.
+  Qed.
+
   Local Ltac t :=
     repeat match goal with
              | _ => reflexivity
@@ -288,6 +365,7 @@ Section FiniteSetHelpers.
              | _ => progress subst
              | _ => progress simpl in *
              | _ => progress split_iff
+             | _ => progress destruct_head_hnf bool
              | _ => split
              | _ => intro
              | [ H : ?T -> ?U, H' : ?T |- _ ] => specialize (H H')
@@ -312,28 +390,6 @@ Section FiniteSetHelpers.
                                    | [ H' : AbsR _ _ _ |- _ ] => specialize (H _ H')
                                  end).
       t. }
-  Qed.
-
-  Lemma AbsR_EnsembleOfList_FiniteSetOfList ls
-  : AbsR (projT2 FiniteSetImpl) (EnsembleOfList ls) (FiniteSetOfList ls).
-  Proof.
-    induction ls; simpl;
-    let lem := match goal with
-                 | [ |- context[CallConstructor (projT1 ?impl) ?idx ?arg] ]
-                   => constr:(ADTRefinementPreservesConstructors (projT2 impl) {| bindex := idx |} arg)
-                 | [ IHls : AbsR _ _ _ |- context[CallMethod (projT1 ?impl) ?idx ?rep ?arg] ]
-                   => constr:(ADTRefinementPreservesMethods (projT2 impl) {| bindex := idx |} _ rep arg IHls)
-               end in
-    let lem' := constr:(lem  _ (ReturnComputes _)) in
-    pose proof lem' as H; simpl in *;
-    repeat match goal with
-             | _ => progress inversion_by computes_to_inv
-             | _ => progress subst
-             | _ => progress simpl in *
-             | _ => assumption
-             | [ H : (_, _) = (_, _) |- _ ] => inversion H; clear H
-             | [ H : (_, _) = ?x |- _ ] => destruct x
-           end.
   Qed.
 
   Local Hint Immediate EnsembleOfList_In AbsR_EnsembleOfList_FiniteSetOfList.
@@ -495,46 +551,6 @@ Section FiniteSetHelpers.
     eapply cardinal_Same_set; eassumption.
   Qed.
 
-  Definition FiniteSetAndFunctionOfList {A} (f : W -> A -> A) (a : A)
-             (ls : list W)
-    := List.fold_right
-         (fun w xs_acc =>
-            let xs := fst xs_acc in
-            let acc := snd xs_acc in
-            (fst (CallMethod (projT1 FiniteSetImpl) "Add" xs w),
-             if (snd (CallMethod (projT1 FiniteSetImpl) "In" xs w) : bool)
-             then acc
-             else f w acc))
-         (CallConstructor (projT1 FiniteSetImpl) "Empty" tt,
-          a)
-         ls.
-
-  Definition FiniteSetAndListOfList (ls : list W)
-    := FiniteSetAndFunctionOfList (@cons _) nil ls.
-
-
-  Lemma fst_fold_right {A B A'} (f : B -> A -> A) (g : B -> A * A' -> A') a a' ls
-  : fst (fold_right (fun b aa' => (f b (fst aa'), g b aa')) (a, a') ls)
-    = fold_right f a ls.
-  Proof.
-    induction ls; simpl; trivial.
-    rewrite IHls; reflexivity.
-  Qed.
-
-  Lemma NoListJustFiniteSetOfFunction {A} f a ls
-  : fst (@FiniteSetAndFunctionOfList A f a ls) = FiniteSetOfList ls.
-  Proof.
-    unfold FiniteSetOfList.
-    unfold FiniteSetAndFunctionOfList.
-    simpl.
-    etransitivity; [ | eapply fst_fold_right ].
-    reflexivity.
-  Qed.
-
-  Definition NoListJustFiniteSetOfList ls
-  : fst (FiniteSetAndListOfList ls) = FiniteSetOfList ls
-    := NoListJustFiniteSetOfFunction _ _ _.
-
   (*Lemma FiniteSetAndListOfList_spec1 ls S
   : AbsR (projT2 FiniteSetImpl)
          S
@@ -638,28 +654,32 @@ Section FiniteSetHelpers.
       destruct_head_hnf prod;
       destruct_head_hnf bool;
       t.
-      { (** TODO: Rewrite [FiniteSetOfList] and [EnsembleOfList] and
-            [FiniteSetAndListOfList] to only [Add] things when they're
-            not already in there.  This way, we won't need
-            extensionality_ensembles. *)
-        match goal with
-          | [ H : AbsR _ ?S ?fs |- AbsR _ (Add _ ?S ?a) ?fs ]
-            => rewrite (Extensionality_Ensembles _ (Add _ S a) S);
-              [ exact H | ]
-        end.
-        repeat first [ intro
-                     | split
-                     | assumption
-                     | progress destruct_head_hnf Union
-                     | progress destruct_head_hnf Singleton
-                     | constructor ]. }
-      { handle_calls_then' ltac:(fun H =>
-                                   match goal with
-                                     | [ H' : AbsR _ _ _ |- _ ]
-                                       => specialize (H _ H')
-                                   end).
-        inversion_by computes_to_inv.
-        t. } }
+      { unfold EnsembleOfList in *; simpl in *.
+        rewrite NoFunctionJustFiniteSetOfFunction in *.
+        handle_calls_then' ltac:(fun H =>
+                                   specialize (H _ (AbsR_EnsembleOfList_FiniteSetOfList _))).
+        t.
+        eauto. }
+      { unfold EnsembleOfList in *; simpl in *.
+        rewrite NoFunctionJustFiniteSetOfFunction in *.
+        let th :=
+            handle_calls_then' ltac:(fun H =>
+                                       match goal with
+                                         | [ H' : AbsR _ _ _ |- _ ]
+                                           => specialize (H _ H')
+                                         | _ => specialize (H _ (AbsR_EnsembleOfList_FiniteSetOfList _))
+                                       end) in
+        th;
+          inversion_by computes_to_inv;
+          t;
+          eauto;
+          th;
+          inversion_by computes_to_inv;
+          t;
+          eauto;
+          th;
+          inversion_by computes_to_inv;
+          t. } }
   Qed.
 
 (*  Definition FiniteSetOfFiniteSetAndListOfList ls
@@ -875,7 +895,7 @@ Section FiniteSetHelpers.
     induction ls; simpl; trivial.
     unfold FiniteSetAndListOfList in *.
     rewrite <- IHls.
-    rewrite !NoListJustFiniteSetOfFunction.
+    rewrite !NoFunctionJustFiniteSetOfFunction.
     match goal with
       | [ |- context[if ?x then _ else _] ] => case_eq x; intro
     end;
