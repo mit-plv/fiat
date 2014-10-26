@@ -495,18 +495,22 @@ Section FiniteSetHelpers.
     eapply cardinal_Same_set; eassumption.
   Qed.
 
-  Definition ListAndFiniteSetOfList (ls : list W)
+  Definition FiniteSetAndFunctionOfList {A} (f : W -> A -> A) (a : A)
+             (ls : list W)
     := List.fold_right
-         (fun w xs_ls' =>
-            let xs := fst xs_ls' in
-            let ls' := snd xs_ls' in
+         (fun w xs_acc =>
+            let xs := fst xs_acc in
+            let acc := snd xs_acc in
             (fst (CallMethod (projT1 FiniteSetImpl) "Add" xs w),
              if (snd (CallMethod (projT1 FiniteSetImpl) "In" xs w) : bool)
-             then ls'
-             else w::ls'))
+             then acc
+             else f w acc))
          (CallConstructor (projT1 FiniteSetImpl) "Empty" tt,
-          nil)
+          a)
          ls.
+
+  Definition FiniteSetAndListOfList (ls : list W)
+    := FiniteSetAndFunctionOfList (@cons _) nil ls.
 
 
   Lemma fst_fold_right {A B A'} (f : B -> A -> A) (g : B -> A * A' -> A') a a' ls
@@ -517,22 +521,25 @@ Section FiniteSetHelpers.
     rewrite IHls; reflexivity.
   Qed.
 
-  Lemma NoListJustFiniteSetOfList ls
-  : fst (ListAndFiniteSetOfList ls) = FiniteSetOfList ls.
+  Lemma NoListJustFiniteSetOfFunction {A} f a ls
+  : fst (@FiniteSetAndFunctionOfList A f a ls) = FiniteSetOfList ls.
   Proof.
     unfold FiniteSetOfList.
-    unfold ListAndFiniteSetOfList.
+    unfold FiniteSetAndFunctionOfList.
     simpl.
     etransitivity; [ | eapply fst_fold_right ].
     reflexivity.
   Qed.
 
+  Definition NoListJustFiniteSetOfList ls
+  : fst (FiniteSetAndListOfList ls) = FiniteSetOfList ls
+    := NoListJustFiniteSetOfFunction _ _ _.
 
-  (*Lemma ListAndFiniteSetOfList_spec1 ls S
+  (*Lemma FiniteSetAndListOfList_spec1 ls S
   : AbsR (projT2 FiniteSetImpl)
          S
-         (fst (ListAndFiniteSetOfList ls))
-    <-> EnsembleListEquivalence S (snd (ListAndFiniteSetOfList ls)).
+         (fst (FiniteSetAndListOfList ls))
+    <-> EnsembleListEquivalence S (snd (FiniteSetAndListOfList ls)).
   Proof.
     revert S.
     induction ls.
@@ -619,7 +626,7 @@ Section FiniteSetHelpers.
   Lemma AbsR_EnsembleOfList_FiniteSetOfListOfFiniteSetAndListOfList ls
   : AbsR (projT2 FiniteSetImpl)
          (EnsembleOfList ls)
-         (FiniteSetOfList (snd (ListAndFiniteSetOfList ls))).
+         (FiniteSetOfList (snd (FiniteSetAndListOfList ls))).
   Proof.
     induction ls; simpl.
     { handle_calls_then' ltac:(fun H => idtac).
@@ -632,7 +639,7 @@ Section FiniteSetHelpers.
       destruct_head_hnf bool;
       t.
       { (** TODO: Rewrite [FiniteSetOfList] and [EnsembleOfList] and
-            [ListAndFiniteSetOfList] to only [Add] things when they're
+            [FiniteSetAndListOfList] to only [Add] things when they're
             not already in there.  This way, we won't need
             extensionality_ensembles. *)
         match goal with
@@ -655,8 +662,8 @@ Section FiniteSetHelpers.
         t. } }
   Qed.
 
-(*  Definition FiniteSetOfListAndFiniteSetOfList ls
-  : AbsR (projT2 FiniteSetImpl) (EnsembleOfList ls) (FiniteSetOfList (snd (ListAndFiniteSetOfList ls))).
+(*  Definition FiniteSetOfFiniteSetAndListOfList ls
+  : AbsR (projT2 FiniteSetImpl) (EnsembleOfList ls) (FiniteSetOfList (snd (FiniteSetAndListOfList ls))).
   Proof.
 
 
@@ -753,7 +760,7 @@ Section FiniteSetHelpers.
   Lemma finite_set_handle_EnsembleListEquivalence_iff (ls : list W)
   : refine (S <- { S : Ensemble W | forall x, Ensembles.In _ S x <-> List.In x ls };
             { ls' : _ | EnsembleListEquivalence S ls' })
-           (ret (snd (ListAndFiniteSetOfList ls))).
+           (ret (snd (FiniteSetAndListOfList ls))).
   Proof.
     simpl.
     induction ls; simpl.
@@ -793,7 +800,7 @@ Section FiniteSetHelpers.
   Lemma finite_set_handle_EnsembleListEquivalence_iff' {A} (ls : list W) (f : _ -> Comp A)
   : refine (S <- { S : Ensemble W | forall x, Ensembles.In _ S x <-> List.In x ls };
             Bind { ls' : _ | EnsembleListEquivalence S ls' } f)
-           (f (snd (ListAndFiniteSetOfList ls))).
+           (f (snd (FiniteSetAndListOfList ls))).
   Proof.
     simpl.
     rewrite <- refineEquiv_bind_bind.
@@ -807,7 +814,7 @@ Section FiniteSetHelpers.
 
   Lemma finite_set_handle_EnsembleListEquivalence (ls : list W)
   : refine { ls' : _ | EnsembleListEquivalence (elements ls) ls' }
-           (ret (snd (ListAndFiniteSetOfList ls))).
+           (ret (snd (FiniteSetAndListOfList ls))).
   Proof.
     simpl.
     induction ls; simpl.
@@ -843,10 +850,10 @@ Section FiniteSetHelpers.
         end. } }
   Qed.
 
-  Lemma CallSize_FiniteSetOfListOfListAndFiniteSetOfList ls arg
+  Lemma CallSize_FiniteSetOfListOfFiniteSetAndListOfList ls arg
   : snd
       ((CallMethod (projT1 FiniteSetImpl) "Size")
-         (FiniteSetOfList (snd (ListAndFiniteSetOfList ls)))
+         (FiniteSetOfList (snd (FiniteSetAndListOfList ls)))
          arg)
     = snd ((CallMethod (projT1 FiniteSetImpl) "Size")
              (FiniteSetOfList ls)
@@ -858,6 +865,21 @@ Section FiniteSetHelpers.
           inversion_by computes_to_inv;
           t).
     eapply cardinal_unique; eassumption.
+  Qed.
+
+  Lemma fold_right_snd_FiniteSetAndListOfList {A} (f : W -> A -> A) (a : A) ls
+  : List.fold_right f a (snd (FiniteSetAndListOfList ls))
+    = snd (FiniteSetAndFunctionOfList f a ls).
+  Proof.
+    simpl.
+    induction ls; simpl; trivial.
+    unfold FiniteSetAndListOfList in *.
+    rewrite <- IHls.
+    rewrite !NoListJustFiniteSetOfFunction.
+    match goal with
+      | [ |- context[if ?x then _ else _] ] => case_eq x; intro
+    end;
+      reflexivity.
   Qed.
 End FiniteSetHelpers.
 
@@ -879,7 +901,8 @@ Tactic Notation "finish" "sharpening" "computation" := finish_FullySharpenedComp
 Ltac finite_set_sharpen_step FiniteSetImpl :=
   first [ setoid_rewrite (@finite_set_handle_cardinal FiniteSetImpl)
         | rewrite (@finite_set_handle_EnsembleListEquivalence FiniteSetImpl)
-        | rewrite (@CallSize_FiniteSetOfListOfListAndFiniteSetOfList FiniteSetImpl)
+        | rewrite (@CallSize_FiniteSetOfListOfFiniteSetAndListOfList FiniteSetImpl)
+        | rewrite (@fold_right_snd_FiniteSetAndListOfList FiniteSetImpl)
         | progress autorewrite with refine_monad ].
 
 Tactic Notation "sharpen" "computation" "with" "FiniteSet" "implementation" ":=" constr(FiniteSetImpl) :=
@@ -905,16 +928,9 @@ Proof.
       we've seen, and every time we see something new, we update our
       running sum.  This should be compiled down to a for loop with an
       in-place update. *)
-  exists (snd (List.fold_right
-                 (fun w xs_sum =>
-                    let xs := fst xs_sum in
-                    let acc := snd xs_sum in
-                    if (snd (CallMethod (projT1 FiniteSetImpl) "In" xs w) : bool)
-                    then xs_sum
-                    else (fst (CallMethod (projT1 FiniteSetImpl) "Add" xs w),
-                          wplus acc w))
-                 (CallConstructor (projT1 FiniteSetImpl) "Empty" tt,
-                  wzero)
-                 ls)).
-  admit.
+  begin sharpening computation.
+
+  sharpen computation with FiniteSet implementation := FiniteSetImpl.
+
+  finish sharpening computation.
 Defined.
