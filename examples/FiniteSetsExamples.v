@@ -181,15 +181,18 @@ Definition FiniteSetSpec : ADT FiniteSetSig :=
 
 Definition elements {A} (ls : list A) : Ensemble A := fun x => List.In x ls.
 
+Definition to_list {A} (S : Ensemble A) : Comp (list A) :=
+  { ls : list _ | EnsembleListEquivalence S ls }.
+
 Definition countUniqueSpec (ls : list W) : Comp nat
   := { n : nat | cardinal _ (elements ls) n }.
 
 Definition countUniqueSpec' (ls : list W) : Comp nat
-  := (xs <- { ls' : list W | EnsembleListEquivalence (elements ls) ls' };
+  := (xs <- to_list (elements ls);
       ret (List.length xs)).
 
 Definition sumUniqueSpec (ls : list W) : Comp W
-  := (xs <- { ls' : list W | EnsembleListEquivalence (elements ls) ls' };
+  := (xs <- to_list (elements ls);
       ret (List.fold_right wplus wzero xs)).
 
 Notation FullySharpenedComputation spec
@@ -923,6 +926,7 @@ Ltac finite_set_sharpen_step FiniteSetImpl :=
         | rewrite (@finite_set_handle_EnsembleListEquivalence FiniteSetImpl)
         | rewrite (@CallSize_FiniteSetOfListOfFiniteSetAndListOfList FiniteSetImpl)
         | rewrite (@fold_right_snd_FiniteSetAndListOfList FiniteSetImpl)
+        | progress unfold to_list
         | progress autorewrite with refine_monad ].
 
 Tactic Notation "sharpen" "computation" "with" "FiniteSet" "implementation" ":=" constr(FiniteSetImpl) :=
