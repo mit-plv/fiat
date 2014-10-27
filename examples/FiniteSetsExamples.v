@@ -11,6 +11,9 @@ Definition countUniqueSpec' (ls : list W) : Comp nat
   := (xs <- to_list (elements ls);
       ret (List.length xs)).
 
+Definition uniqueizeSpec (ls : list W) : Comp (list W)
+  := to_list (elements ls).
+
 Definition sumUniqueSpec (ls : list W) : Comp W
   := Ensemble_fold_right wplus wzero (elements ls).
 
@@ -45,6 +48,16 @@ Definition countUniqueImpl' (FiniteSetImpl : FullySharpened FiniteSetSpec) (ls :
 Proof.
   (** We turn the list into a finite set, then back into a list, and then call [Datatypes.length]. *)
   (** TODO: Do we care about optimizing this further at this stage? *)
+  begin sharpening computation.
+
+  sharpen computation with FiniteSet implementation := FiniteSetImpl.
+
+  finish sharpening computation.
+Defined.
+
+Definition uniqueizeImpl (FiniteSetImpl : FullySharpened FiniteSetSpec) (ls : list W)
+: FullySharpenedComputation (uniqueizeSpec ls).
+Proof.
   begin sharpening computation.
 
   sharpen computation with FiniteSet implementation := FiniteSetImpl.
