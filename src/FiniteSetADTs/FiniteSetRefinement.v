@@ -711,12 +711,15 @@ Tactic Notation "begin" "sharpening" "computation" := start_FullySharpenedComput
 Tactic Notation "finish" "sharpening" "computation" := finish_FullySharpenedComputation.
 
 Ltac finite_set_sharpen_step FiniteSetImpl :=
-  first [ setoid_rewrite (@finite_set_handle_cardinal FiniteSetImpl)
+  first [ idtac;
+          (* do an explicit [match] to avoid "Anomaly: Uncaught exception Invalid_argument("decomp_pointwise"). Please report." *)
+          match goal with |- appcontext[@AdditionalEnsembleDefinitions.cardinal] => idtac end;
+          setoid_rewrite (@finite_set_handle_cardinal FiniteSetImpl)
+        | setoid_rewrite Ensemble_fold_right_simpl
+        | setoid_rewrite Ensemble_fold_right_simpl'
         | rewrite (@finite_set_handle_EnsembleListEquivalence FiniteSetImpl)
         | rewrite (@CallSize_FiniteSetOfListOfFiniteSetAndListOfList FiniteSetImpl)
         | rewrite (@fold_right_snd_FiniteSetAndListOfList FiniteSetImpl)
-        | rewrite Ensemble_fold_right_simpl
-        | rewrite Ensemble_fold_right_simpl'
         | progress autounfold with finite_sets
         | progress autorewrite with refine_monad ].
 

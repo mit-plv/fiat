@@ -1,13 +1,9 @@
 (** * Some examples about dealing with finite sets *)
 Require Import ADTSynthesis.FiniteSetADTs.
-(*Require Import Coq.Strings.String Coq.Sets.Ensembles Coq.Sets.Finite_sets Coq.Lists.List Permutation.
-Require Import ADT ADT.ComputationalADT ADTRefinement.Core ADTNotation ADTRefinement.GeneralRefinements QueryStructure.IndexedEnsembles.*)
 
 (** Now we spec out two examples, the count of the unique elements in
     a list, and the sum of the unique elements in a list. *)
-Require Export Computation.Core Computation.Notations ADTRefinement.GeneralRefinements ADTNotation.
-Arguments FiniteSetOfList {_} _.
-Global Open Scope comp_scope.
+
 Definition countUniqueSpec (ls : list W) : Comp nat
   := cardinal ls.
 
@@ -30,6 +26,18 @@ Proof.
   finish sharpening computation.
 Defined.
 
+Definition countUniqueImpl' (FiniteSetImpl : FullySharpened FiniteSetSpec) (ls : list W)
+: FullySharpenedComputation (countUniqueSpec' ls).
+Proof.
+  (** We turn the list into a finite set, then back into a list, and then call [Datatypes.length]. *)
+  (** TODO: Do we care about optimizing this further at this stage? *)
+  begin sharpening computation.
+
+  sharpen computation with FiniteSet implementation := FiniteSetImpl.
+
+  finish sharpening computation.
+Defined.
+
 (** And now we do the same for summing. *)
 
 Definition sumUniqueImpl (FiniteSetImpl : FullySharpened FiniteSetSpec) (ls : list W)
@@ -40,17 +48,6 @@ Proof.
       running sum.  This should be compiled down to a for loop with an
       in-place update. *)
   begin sharpening computation.
-
-  setoid_rewrite (@finite_set_handle_cardinal FiniteSetImpl).
-  first [ setoid_rewrite (@finite_set_handle_cardinal FiniteSetImpl)
-        | rewrite (@finite_set_handle_EnsembleListEquivalence FiniteSetImpl)
-        | rewrite (@CallSize_FiniteSetOfListOfFiniteSetAndListOfList FiniteSetImpl)
-        | rewrite (@fold_right_snd_FiniteSetAndListOfList FiniteSetImpl)
-        | rewrite Ensemble_fold_right_simpl
-        | rewrite Ensemble_fold_right_simpl'
-        | progress autounfold with finite_sets
-        | progress autorewrite with refine_monad ].
-
 
   sharpen computation with FiniteSet implementation := FiniteSetImpl.
 
