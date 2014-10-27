@@ -1,5 +1,6 @@
 Require Import List String FunctionalExtensionality Permutation
          Ensembles AdditionalPermutationLemmas.
+Require Export Common.AdditionalEnsembleDefinitions.
 
 Class UnConstrRelationAbsRClass {A B : Type} :=
   { UnConstrRelationAbsR : Ensemble A -> B -> Prop }.
@@ -38,13 +39,6 @@ Section IndexedEnsembles.
 
   : Prop := ((fst kv) = k /\ exists v, (snd kv) = f v /\ In _ ens (k, v)) \/
             (EnsembleRemove k ens kv). *)
-
-  Definition EnsembleListEquivalence
-             {A}
-             (ensemble : Ensemble A)
-             (seq : list A) :=
-    NoDup seq /\
-    forall x, Ensembles.In _ ensemble x <-> List.In x seq.
 
   Definition UnIndexedEnsembleListEquivalence
              (ensemble : IndexedEnsemble)

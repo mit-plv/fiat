@@ -1,3 +1,4 @@
+Require Import Coq.Lists.List.
 Require Export Setoid RelationClasses Program Morphisms.
 
 Global Set Implicit Arguments.
@@ -519,3 +520,11 @@ Lemma path_sig_hprop {A} {P : A -> Prop} `{forall x : A, IsHProp (P x)}
 Proof.
   destruct_head sig; intros; subst; f_equal; apply allpath_hprop.
 Defined.
+
+Lemma fst_fold_right {A B A'} (f : B -> A -> A) (g : B -> A * A' -> A') a a' ls
+: fst (fold_right (fun b aa' => (f b (fst aa'), g b aa')) (a, a') ls)
+  = fold_right f a ls.
+Proof.
+  induction ls; simpl; trivial.
+  rewrite IHls; reflexivity.
+Qed.
