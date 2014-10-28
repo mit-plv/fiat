@@ -41,6 +41,11 @@ Proof.
   (** We turn the list into a finite set, and then call 'size' *)
   begin sharpening computation.
 
+  (** QUESTION: should we add an extra layer of non-determinism at the
+                end, so that we can do things up to, e.g., [Same_set],
+                and so that [Add] is associative and we can swap
+                [fold_left] and [fold_right] without a [rev]? *)
+
   sharpen computation with FiniteSet implementation := FiniteSetImpl.
 
   finish sharpening computation.
