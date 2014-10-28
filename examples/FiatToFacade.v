@@ -743,13 +743,19 @@ Qed.
 
 Opaque add_remove_many.
 
-Definition LoopBodyOk env (f: W -> W -> W) (sloop_body:Stmt) (vret thead: key) :=
-  forall (acc: W) (head: W),
+
+Definition LoopBodyOk env (f: W -> W -> W) (sloop_body:Stmt) (vret vseq thead vret: key) (precond: State _ -> Prop) :=
+  cond_indep precond vret ->
+  forall (acc: W) (head: W) (seq: list W),
   forall (st1 st2: State (list W)),
-    (st1) [vret >> Facade.SCA (list W) acc] /\
-    (st1) [thead >> Facade.SCA (list W) head] ->
+    precond st1 /\
+    (st1) [vret >> SCA acc] /\
+    (st1) [vseq >> Facade.ADT seq] /\ 
+    (st1) [thead >> SCA head] ->
     RunsTo env sloop_body st1 st2 ->
-    StringMapFacts.M.Equal st2 (add vret (SCA (f acc head)) st1).
+    (st2) [vret >> SCA (f acc head)] /\
+    (st2) [vseq >> Facade.ADT seq] /\
+    precond st2.
 
 Lemma compile_fold' :
   forall env,
@@ -768,7 +774,7 @@ Lemma compile_fold' :
     cond_indep precond vseq ->
     (Word2Spec env pempty = Some (Axiomatic List_empty)) ->
     (Word2Spec env ppop  = Some (Axiomatic List_pop)) ->
-    LoopBodyOk env f sloop_body vret thead ->
+    LoopBodyOk env f sloop_body vret vseq thead vret precond ->
     forall seq init, 
       refine (Pick (fun prog => forall init_state final_state,
                                   init_state[vseq >> ADT seq] /\ 
@@ -882,37 +888,31 @@ Proof.
 
   unfold LoopBodyOk in loop_body_ok.
 
-  specialize (loop_body_ok init a st'1 st'2). 
+  specialize (loop_body_ok precond_indep_vret init a seq st'1 st'2). 
   rewrite st'_init_state in H4. (* Thus st1' = ... *)
 
   (* TODO find prettier way to do these asserts *)
   
-  assert ((st'1) [vret >> Facade.SCA (list W) init]) 
+  assert ((st'1) [vret >> SCA init]) 
     as h1 by (rewrite H4;
               StringMapFacts.map_iff;
               intuition).
   
+  assert ((st'1) [vseq >> Facade.ADT seq]) 
+    as h2 by (rewrite H4; 
+              StringMapFacts.map_iff;
+              intuition).
+
   assert ((st'1) [thead >> Facade.SCA (list W) a])
-    as h2 by (rewrite H4;
+    as h3 by (rewrite H4;
               StringMapFacts.map_iff;
               intuition).
 
-  specialize (loop_body_ok (conj h1 h2) H3); clear h1 h2.
-  rewrite H4 in loop_body_ok.
+  assert (precond st'1) as h4 by (rewrite H4; intuition).
 
-  assert ((st'2) [vseq >> ADT seq])
-    as h1 by (rewrite loop_body_ok;
-              StringMapFacts.map_iff;
-              intuition).
-
-  assert ((st'2) [vret >> SCA (f init a)])
-    as h2 by (rewrite loop_body_ok;
-              StringMapFacts.map_iff;
-              intuition).
-              
-  assert (precond st'2).
-  rewrite loop_body_ok.
-  intuition.
+  specialize (loop_body_ok (conj h4 (conj h1 (conj h2 h3))) H3); clear h1 h2 h3 h4.
+  
+  destruct loop_body_ok as (loop_body_ok1 & loop_body_ok2 & ?).
   
   intuition.
 Qed.
@@ -935,7 +935,7 @@ Lemma compile_fold'' :
     cond_indep postcond vseq ->
     (Word2Spec env pempty = Some (Axiomatic List_empty)) ->
     (Word2Spec env ppop  = Some (Axiomatic List_pop)) ->
-    LoopBodyOk env f sloop_body vret thead ->
+    LoopBodyOk env f sloop_body vret vseq thead vret postcond ->
     forall (seq: list W) (init: W),
     refine (Pick (fun prog => forall init_state final_state,
                                 precond init_state ->
@@ -1048,7 +1048,7 @@ Lemma compile_fold :
                                 RunsTo env prog init_state final_state ->
                                 (final_state[vret >> SCA (List.fold_left f seq init)]
                                  /\ postcond final_state)))
-           (Bind (Pick (fun loop_body => LoopBodyOk env f loop_body vret thead))
+           (Bind (Pick (fun loop_body => LoopBodyOk env f loop_body vret vseq thead vret postcond))
                  (fun sloop_body => 
                     Bind 
                       (Pick (fun pinit => forall init_state inter_state,
@@ -1101,92 +1101,128 @@ Proof.
   eexists.
 
   setoid_rewrite (start_compiling_adt "$ret").  
-
   setoid_rewrite (compile_fold "$init" "$seq" "$head" "$is_empty" WOne WZero); try cleanup_adt;
   unfold Fold.
 
-  Print basic_env.
-  unfold LoopBodyOk.
-  
-Print RunsToCallAx.
-Check refine_pick_forall_Prop.
-
 Lemma pull_forall :
-  forall {A} b av env 
-         (externcond: _ -> _ -> Prop) 
-         (precond postcond: _ -> _ -> State av -> Prop),
-  (forall (x1 x2: A),
-     externcond x1 x2 ->
+  forall {A B} b av env P
+         (precond': State av -> Prop)
+         (precond postcond: A -> A -> B -> State av -> Prop),
+  (forall (x1 x2: A) (x3: B),
+     P precond' ->
      refine (Pick (fun prog => forall (st1 st2: State av),
-                                 precond x1 x2 st1 ->
+                                 precond' st1 /\ precond x1 x2 x3 st1 ->
                                  RunsTo env prog st1 st2 ->
-                                 postcond x1 x2 st2)) b) ->
-  refine (Pick (fun prog => forall x1 x2,
+                                 postcond x1 x2 x3 st2)) b) ->
+  refine (Pick (fun prog => P precond' ->
+                            forall x1 x2 x3,
                             forall (st1 st2: State av),
-                              (externcond x1 x2 /\ precond x1 x2 st1) ->
+                              precond' st1 /\ precond x1 x2 x3 st1 ->
                               RunsTo env prog st1 st2 ->
-                              postcond x1 x2 st2)) b.
+                              postcond x1 x2 x3 st2)) b.
 Proof.
   unfold refine; intros; econstructor; intros.
-
-  destruct H1 as (extern & pre).
-  generalize (H _ _ extern _ H0); intros.
+  generalize (H x1 x2 x3 X _ H0); intros.
   inversion_by computes_to_inv.
-  generalize (H1 _ _ pre H2); auto.
-Qed.
-
-Lemma pull_forall_simple :
-  forall {A} b av env 
-         (precond : A -> A -> State av -> Prop)
-         (postcond: A -> A -> State av -> State av -> Prop),
-  (forall (x1 x2: A) (st1 st2: State av),
-     precond x1 x2 st1 ->
-     refine (Pick (fun prog => RunsTo env prog st1 st2 ->
-                               postcond x1 x2 st1 st2)) b) ->
-  refine (Pick (fun prog => forall x1 x2,
-                            forall (st1 st2: State av),
-                              precond x1 x2 st1 ->
-                              RunsTo env prog st1 st2 ->
-                              postcond x1 x2 st1 st2)) b.
-Proof.
-  unfold refine; intros; econstructor; intros.
-  generalize (H _ _ _ st2 H1 _ H0); intros.
-  inversion_by computes_to_inv.
+  specialize (H3 st1 st2 (conj H4 H5)).
   intuition.
 Qed.
 
-Lemma pull_forall_simple' :
-  forall {A} b av env 
-         (precond : A -> A -> State av -> Prop)
-         (postcond: A -> A -> State av -> State av -> Prop),
-  (forall (x1 x2: A),
-     refine (Pick (fun prog => forall  (st1 st2: State av),
-                                 precond x1 x2 st1 ->
-                                 RunsTo env prog st1 st2 ->
-                                 postcond x1 x2 st1 st2)) b) ->
-  refine (Pick (fun prog => forall x1 x2,
-                            forall (st1 st2: State av),
-                              precond x1 x2 st1 ->
-                              RunsTo env prog st1 st2 ->
-                              postcond x1 x2 st1 st2)) b.
-Proof.
-  unfold refine; intros; econstructor; intros.
-  generalize (H x1 x2 _ H0); intros.
-  inversion_by computes_to_inv.
-  specialize (H3 st1 st2).
-  intuition.
-Qed.
+pose proof (fun b => 
+              @pull_forall W (list W) b (list W) basic_env 
+                           (fun cond => cond_indep cond "$ret") 
+                           (fun _ : State (list W) => True) 
+                           (fun (acc head : W) (seq0 : list W) 
+                                (st1 : State (list W)) => 
+                              (st1) ["$ret" >> Facade.SCA (list W) acc] /\
+                              (st1) ["$seq" >> Facade.ADT seq0] /\
+                              (st1) ["$head" >> Facade.SCA (list W) head])
+                           (fun (acc head : W) (seq0 : list W) 
+                                (st2 : State (list W)) => 
+                              (st2) ["$ret" >> Facade.SCA (list W) (Word.wplus acc head)] /\ (st2) ["$seq" >> Facade.ADT seq0] /\ True)) as pull; simpl in pull.
 
-Show.
-setoid_rewrite pull_forall_simple'.
+unfold SCA, ADT in *.
+setoid_rewrite pull; clear pull.
 
 Focus 2.
-
 intros.
-pose proof (compile_binop IL.Plus "$ret" "$t1" "$t2") as bin.
-specialize (bin _ basic_env (fun st1 => (st1) ["$ret" >> Facade.SCA (list W) x1] /\
-                                        (st1) ["$head" >> Facade.SCA (list W) x2])).
 
+setoid_rewrite (compile_binop IL.Plus "$ret" "$ret" "$head"); try cleanup_adt.
+
+
+Lemma copy_variable :
+  forall {av env},
+  forall k1 k2 val (precond postcond: State av -> Prop), 
+    cond_respects_MapEq postcond ->
+    (forall state, precond state -> state[k1 >> SCA val]) ->
+    (forall x state, precond state -> postcond (add k2 x state)) ->
+    refine (Pick (fun prog => forall init_state final_state,
+                                precond init_state ->
+                                RunsTo env prog init_state final_state ->
+                                final_state[k2 >> SCA val] /\
+                                postcond final_state))
+           (ret (Assign k2 (SyntaxExpr.Var k1))).
+Proof.
+  unfold refine; intros; constructor; intros.
+  inversion_by computes_to_inv; subst.
+  unfold cond_respects_MapEq in *.
+
+  inversion_clear' H4.
+  specialize (H0 _ H3).
+  autorewrite_equal; simpl in *.
+  StringMapFacts.map_iff.
+  rewrite StringMapFacts.find_mapsto_iff in *.
+  rewrite H0 in *; autoinj; subst.
+
+  intuition.
+Qed.
+
+Lemma no_op :
+  forall {av env},
+  forall (precond postcond: State av -> Prop), 
+    (forall state, precond state -> postcond state) ->
+    refine (Pick (fun prog => forall init_state final_state,
+                                precond init_state ->
+                                RunsTo env prog init_state final_state ->
+                                postcond final_state))
+           (ret Skip).
+Proof.
+  unfold refine; intros; constructor; intros.
+  inversion_by computes_to_inv; subst; inversion_clear' H2.
+  intuition.
+Qed.
+
+rewrite no_op; try cleanup_adt.
+rewrite no_op; try cleanup_adt.
+reflexivity.
+
+(*
+  (* TODO: Cleanup should remove redundant clauses from expressions. Otherwise copying $ret to $ret doesn't work. *)
+setoid_rewrite (copy_variable "$ret" "$ret"); cleanup_adt. (* TODO Replace by no-op *)
+setoid_rewrite (copy_variable "$head" "$head"); cleanup_adt. (* TODO Replace by no-op *)
+reflexivity.
+*)
+
+cleanup_adt.
+setoid_rewrite compile_constant; cleanup_adt.
+setoid_rewrite compile_constant; cleanup_adt.
+
+
+cleanup_adt.
+
+intuition. (StringMapFacts.map_iff; intuition).
+
+Lemma copy_variable :
+  forall av env k1 k2 val precond postcond,
+    (forall state, precond state
+
+Check refine_pick_val.
+setoid_rewrite (@refine_pick_val _ Skip).
+setoid_rewrite (compile_constant "$t1"); cleanup.
+setoid_rewrite (compile_constant "$t2"); cleanup.
+reflexivity.
+
+(* TODO: Two different approaches: <> precond and postcond, but forall x, precond x -> postcond (add blah x); and same pre/post cond, with extra conditions *)
 (* TODO: Post-conditions should include the beginning state, too *)  
 
   Lemma refine_pick_forall_Prop
