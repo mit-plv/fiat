@@ -22,33 +22,47 @@ Qed.
 
 Notation "table [ key >> value ]" := (StringMap.MapsTo key value table) (at level 0).
 
-(* Facade notations *)
+(* Facade notations and coercions *)
 
-Notation "A ;; B" := (Seq A B).
+Definition nat_as_word n : Word.word 32 := Word.natToWord 32 n.
+Coercion nat_as_word : nat >-> Word.word.
 
-Notation "y <= f [[ x1 .. xn ]]" := (Call (Some y) (Const f) (cons x1 .. (cons xn nil) ..)) (at level 70, no associativity).
+Definition string_as_var str : Expr := Var str.
+Coercion string_as_var : string >-> Expr.
+
+Notation "A ; B" := (Seq A B) (at level 201,
+                               B at level 201,
+                               left associativity,
+                               format "'[v' A ';' '/' B ']'") : facade_scope.
+Delimit Scope facade_scope with facade.
+    
+Notation "y <= f [[ x1 .. xn ]]" := (Call (Some y) (Const f) (cons x1 .. (cons xn nil) ..))
+                                      (at level 70, no associativity).
+Notation "y <= f  [[]]" := (Call (Some y) (Const f) nil) (at level 70, no associativity).
+Notation "x <- y" := (Assign x y) (at level 70).
+
+Notation "A < B" := (TestE IL.Lt A B).
+Notation "A <= B" := (TestE IL.Le A B).
+Notation "A <> B" := (TestE IL.Ne A B) .
+Notation "A == B" := (TestE IL.Eq A B).
+
+Notation "A * B" := (Binop IL.Times A B).
+Notation "A + B" := (Binop IL.Plus A B).
+Notation "A - B" := (Binop IL.Minus A B).
 
 Notation "' x" := (Var x) (at level 50, no associativity).
-
 Notation "# x" := (Const x) (at level 50, no associativity).
-
-Notation "x !== y" := (TestE IL.Ne x y) (at level 50, no associativity).
-
-Notation "x === y" := (TestE IL.Eq x y) (at level 50, no associativity).
-
-Notation "! x" := (TestE IL.Eq (Var x) (Const WZero)) (at level 50, no associativity).
-
-Notation "x <- y" := (Assign x y) (at level 70).
+Notation "! x" := (Var x == Const 0) (at level 50, no associativity).
 
 Definition Fold (head is_empty seq: StringMap.key) 
                 _pop_ _empty_ loop_body := (
-    is_empty <= _empty_ [[seq]];;
+    is_empty <= _empty_ [[seq]];
     While (!is_empty) (
-        head <= _pop_ [[seq]];;
-        loop_body;;
+        head <= _pop_ [[seq]];
+        loop_body;
         is_empty <= _empty_ [[seq]]
     )
-).
+)%facade.
 
 (* Tactics *)
 
@@ -884,10 +898,10 @@ Lemma compile_fold_no_pick :
                                  (final_state[vseq >> Facade.ADT (List seq)]
                                   /\ final_state[vinit >> wrapper init]
                                   /\ postcond final_state)))
-                      (fun pseq => ret (pinit;;
-                                        pseq;;
-                                        vret <- 'vinit;;
-                                        Fold thead tis_empty vseq ppop pempty sloop_body)))).
+                      (fun pseq => ret (pinit;
+                                        pseq;
+                                        vret <- 'vinit;
+                                        Fold thead tis_empty vseq ppop pempty sloop_body)%facade))).
 Proof.
   unfold refine; intros * vret_vseq vret_tis_empty thead_vret thead_vseq tis_empty_vseq postcond_meaningful postcond_indep_vret postcond_indep_tis_empty postcond_indep_thead postcond_indep_vseq zero_to_empty one_to_pop loop_body_ok * **.
 
@@ -993,10 +1007,10 @@ Lemma compile_fold :
                                       (final_state[vseq >> Facade.ADT (List seq)]
                                        /\ final_state[vinit >> wrapper init]
                                        /\ postcond final_state)))
-                           (fun pseq => ret (pinit;;
-                                             pseq;;
-                                             vret <- 'vinit;;
-                                             Fold thead tis_empty vseq ppop pempty sloop_body))))).
+                           (fun pseq => ret (pinit;
+                                             pseq;
+                                             vret <- 'vinit;
+                                             Fold thead tis_empty vseq ppop pempty sloop_body)%facade)))).
 Proof.
   unfold refine; intros * vret_vseq vret_tis_empty thead_vret thead_vseq tis_empty_vseq postcond_meaningful postcond_indep_vret postcond_indep_tis_empty postcond_indep_thead postcond_indep_vseq zero_to_empty one_to_pop loop_body_ok * ** .
   
@@ -1385,6 +1399,17 @@ Proof.
   + admit.
 Qed.
 
+Add Parametric Morphism {av} :
+  (Facade.If)
+    with signature (eq ==> @ProgEquiv av ==> @ProgEquiv av ==> @ProgEquiv av)
+      as if_morphism.
+Proof.  
+  unfold ProgEquiv; intros * true_equiv * false_equiv ** .
+  split; intro runs_to; inversion_clear' runs_to;
+  [ constructor 3 | constructor 4 | constructor 3 | constructor 4];
+  rewrite ?true_equiv, ?false_equiv in *; try assumption.
+Qed.
+  
 Lemma Skip_Seq av :
   forall prog, 
     @ProgEquiv av prog (Seq Skip prog). 
@@ -1403,12 +1428,6 @@ Proof.
   inversion_clear' H; inversion_clear' H5; eauto.
 Qed.
 
-Definition nat_as_word n : Word.word 32 := Word.natToWord 32 n.
-Coercion nat_as_word : nat >-> Word.word.
-
-Definition string_as_var str : Expr := Var str.
-Coercion string_as_var : string >-> Expr.
-
 Goal forall seq: list W, 
      forall state,
        state["$list" >> Facade.ADT (List seq)] ->
@@ -1416,8 +1435,8 @@ Goal forall seq: list W,
          refine
            (ret (fold_left
                    (fun (acc: list W) (item: W) =>
-                      if (IL.wltb 0 item) then
-                        (Word.wmult item 2 :: acc)
+                      if IL.wltb 0 item then
+                        Word.wmult item 2 :: acc
                       else
                         acc)
                    seq nil)) x.
@@ -1462,26 +1481,28 @@ Proof.
   (* Now for the true part of the if: append the value to the list *)
 
   (* Delegate the cons-ing to an ADT operation specified axiomatically; [3]
-     points to [List_push] in the current environment *)
+     points to [List_push] in the current environment; we pick [$new_head] as
+     the place to temporarily store the new head *)
   rewrite (compile_cons 3 "$new_head"); cleanup_adt.
 
   (* The head needs to be multiplied by two before being pushed into the output
-     list *)
+     list. *)
   setoid_rewrite (compile_binop IL.Times _ "$new_head" "$2"); cleanup_adt.
   rewrite (copy_variable "$head"); cleanup_adt.
   rewrite (compile_constant); cleanup_adt.
 
   (* And the tail is readily available *)
   rewrite no_op; cleanup_adt.
-
+ 
   (* The false part is a lot simpler *)
   rewrite no_op; cleanup_adt.
 
   (* Ok, this loop body looks good :) *)
   reflexivity.
 
-  (* Why are coercions and notations not working here? *)
-  
+  repeat setoid_rewrite <- Skip_Seq.
+  Show.
+    
   (* Yay, a program! *)
   reflexivity.
 Qed.
@@ -1549,13 +1570,14 @@ Proof.
 Qed.  
 
 
-(* TODO: Fix notations display *)
+(* TODO: Multiple Facade ADTs vs single cito ADT *)
 
-(* What's the point of exists2? *)
+(* TODO: Fix notations display look at levels *)
+
 
 (* TODO: Sigma types *)
 
-(* TODO: Coercions to get rid of explicit "'" operator *)
+(* TODO: Coercions to get rid of explicit "'" operator. Look at constants being used *)
 
 (* TODO: Use function names *)
 
