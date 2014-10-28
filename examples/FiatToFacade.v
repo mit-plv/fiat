@@ -36,9 +36,9 @@ Notation "A ; B" := (Seq A B) (at level 201,
                                format "'[v' A ';' '/' B ']'") : facade_scope.
 Delimit Scope facade_scope with facade.
     
-Notation "y <= f [[ x1 .. xn ]]" := (Call (Some y) (Const f) (cons x1 .. (cons xn nil) ..))
+Notation "y <= f [[ x1 , .. , xn ]]" := (Call y (Const f) (cons x1 .. (cons xn nil) ..))
                                       (at level 70, no associativity).
-Notation "y <= f  [[]]" := (Call (Some y) (Const f) nil) (at level 70, no associativity).
+Notation "y <= f  [[]]" := (Call y (Const f) nil) (at level 70, no associativity).
 Notation "x <- y" := (Assign x y) (at level 70).
 
 Notation "A < B" := (TestE IL.Lt A B).
@@ -334,7 +334,7 @@ Lemma compile_binop :
   inversion_clear H6.
 
   unfold cond_respects_MapEq in postcond_meaningful.
-  rewrite H0; clear H0.
+  rewrite H1; clear H1.
 
   unfold eval in H; simpl in H;
   unfold eval_binop_m in H; simpl in H.
@@ -420,7 +420,7 @@ Lemma compile_test : (* Exactly the same proof as compile_binop *)
   inversion_clear H6.
 
   unfold cond_respects_MapEq in postcond_meaningful.
-  rewrite H0; clear H0.
+  rewrite H1; clear H1.
 
   unfold eval in H; simpl in H;
   unfold eval_binop_m in H; simpl in H.
@@ -546,7 +546,7 @@ Proof.
   apply Some_inj, SCA_inj in H1; subst.
 
   unfold cond_respects_MapEq in *.
-  rewrite H4; clear H4.
+  rewrite H5; clear H5.
 
   split.
   apply StringMap.add_1; reflexivity.
@@ -622,6 +622,7 @@ Proof.
   inversion_clear' runs_to; simpl in *; autoinj;
   [ | congruence].
 
+  Print List_pop.
   rewrite ppop_is_pop in *; autoinj;
   unfold List_pop in *; clear ppop_is_pop; simpl in *;
   autodestruct; subst;
@@ -1135,7 +1136,7 @@ Lemma compile_new :
                       RunsTo env prog init_state final_state ->
                       final_state[vret >> Facade.ADT (List nil)] /\
                       postcond final_state))
-           (ret (Call (Some vret) (Const pnew) nil)). 
+           (ret (vret <= pnew [[]])). 
 Proof.
   unfold refine, List_new, cond_respects_MapEq; intros; constructor; intros.
   inversion_by computes_to_inv; subst;
@@ -1151,13 +1152,15 @@ Qed.
 
 Transparent add_remove_many.
 Lemma compile_cons :
-  forall pcons thead ttail,
+  forall pcons tdummy thead ttail,
   forall env,
   forall (precond postcond: State _ -> Prop),
   forall head tail,
+    tdummy <> ttail ->
     Word2Spec env pcons = Some (Axiomatic List_push) ->
     cond_respects_MapEq postcond ->
-    (forall x state, postcond state -> postcond (StringMap.add ttail x state)) ->
+    cond_indep postcond ttail ->
+    cond_indep postcond tdummy ->
     refine (Pick (fun prog => forall init_state final_state,
                                 precond init_state ->
                                 RunsTo env prog init_state final_state ->
@@ -1180,7 +1183,7 @@ Lemma compile_cons :
                                  postcond final_state))
                       (fun ptail => ret (Seq phead  
                                              (Seq ptail
-                                                  (Call None (Const pcons) (ttail :: thead :: nil))))))).
+                                                  (tdummy <= pcons [[ttail, thead]])))))).
 Proof.
   unfold refine, List_push, cond_respects_MapEq; intros; constructor; intros.
   inversion_by computes_to_inv; subst.
@@ -1281,7 +1284,7 @@ Proof.
   setoid_rewrite (compile_constant "$w2"); cleanup.
   rewrite (compile_constant "$ret"); cleanup.
   rewrite (compile_constant "$ret"); cleanup.
-  
+
   reflexivity.
 Qed.
 
@@ -1484,7 +1487,7 @@ Proof.
   (* Delegate the cons-ing to an ADT operation specified axiomatically; [3]
      points to [List_push] in the current environment; we pick [$new_head] as
      the place to temporarily store the new head *)
-  rewrite (compile_cons 3 "$new_head"); cleanup_adt.
+  rewrite (compile_cons 3 "$dummy" "$new_head"); cleanup_adt.
 
   (* The head needs to be multiplied by two before being pushed into the output
      list. *)
@@ -1566,6 +1569,8 @@ Proof.
   rewrite (copy_variable "$head"); cleanup_adt.
   rewrite (no_op); cleanup_adt.
   reflexivity.
+
+  repeat setoid_rewrite Skip_Seq.
 
   reflexivity.
 Qed.  
