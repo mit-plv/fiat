@@ -17,6 +17,9 @@ Definition uniqueizeSpec (ls : list W) : Comp (list W)
 Definition sumUniqueSpec (ls : list W) : Comp W
   := Ensemble_fold_right wplus wzero (elements ls).
 
+Definition sumAllSpec (ls : list W) : Comp W
+  := ret (List.fold_right wplus wzero ls).
+
 Definition unionUniqueSpec1 (ls1 ls2 : list W) : Comp (list W)
   := to_list (elements (ls1 ++ ls2)).
 Definition unionUniqueSpec2 (ls1 ls2 : list W) : Comp (list W)
@@ -74,6 +77,18 @@ Proof.
       we've seen, and every time we see something new, we update our
       running sum.  This should be compiled down to a for loop with an
       in-place update. *)
+  begin sharpening computation.
+
+  sharpen computation with FiniteSet implementation := FiniteSetImpl.
+
+  finish sharpening computation.
+Defined.
+
+Definition sumAllImpl (FiniteSetImpl : FullySharpened FiniteSetSpec) (ls : list W)
+: FullySharpenedComputation (sumAllSpec ls).
+Proof.
+  (** We see that the sharpening does the right thing when there's
+      nothing to do. *)
   begin sharpening computation.
 
   sharpen computation with FiniteSet implementation := FiniteSetImpl.
