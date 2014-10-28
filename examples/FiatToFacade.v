@@ -671,17 +671,70 @@ Proof.
   reflexivity.
 Qed.
 
+Lemma add_noop :
+  forall {A: Type} {k: key} {v: A} {map},
+    find k map = Some v ->
+    Equal (add k v map) map.
+Proof.
+  unfold Equal; intros ** k';
+  destruct (StringMapFacts.M.E.eq_dec k k');
+  subst;
+  [ rewrite StringMapFacts.add_eq_o | rewrite StringMapFacts.add_neq_o ];
+  auto.
+Qed.    
+
+(* TODO: refactor to share code with runsto_pop *)
+Lemma runsto_is_empty :
+  forall seq (vseq tis_empty: key) env (st st': State (list W)) pis_empty,
+    vseq <> tis_empty ->
+    st [vseq >> Facade.ADT seq] ->
+    Word2Spec env pis_empty  = Some (Axiomatic List_empty) ->
+    RunsTo env (tis_empty <= pis_empty [[vseq]]) st st' ->
+    exists ret, 
+      (ret <> SCAZero <-> seq = []) /\
+      StringMapFacts.M.Equal st' (add tis_empty ret st).
+Proof.
+  intros * vseq_tis_empty vseq_init pis_empty_is_is_empty runs_to.
+
+  inversion_clear' runs_to; simpl in *; autoinj;
+  [ | congruence].
+
+  rewrite pis_empty_is_is_empty in *; autoinj;
+  unfold List_pop in *; clear pis_empty_is_is_empty; simpl in *;
+  autodestruct; subst;
+  rewrite StringMapFacts.find_mapsto_iff in * |-;
+                                                unfold sel in *;
+  subst_find; simpl in *; autoinj. (* TODO Make autoinj call simpl in * first *)
+
+  destruct output; [congruence|].
+  simpl in *; autoinj; simpl in *.
+  repeat autorewrite_equal.
+
+  eexists; split; eauto.
+  rewrite (add_noop vseq_init).
+  reflexivity.
+Qed.
+
 Opaque add_remove_many.
+
+Definition LoopBodyOk env (f: W -> W -> W) (sloop_body: key -> key -> Stmt) (vret thead: key) :=
+  forall (acc: W) (head: W),
+  forall (st1 st2: State (list W)),
+    (st1) [vret >> Facade.SCA (list W) acc] /\
+    (st1) [thead >> Facade.SCA (list W) head] ->
+    RunsTo env (sloop_body thead vret) st1 st2 ->
+    StringMapFacts.M.Equal st2 (add vret (SCA (f acc head)) st1).
 
 Lemma compile_fold : 
   forall env,
   forall postcond: State _ -> Prop,
   forall vseq vret,
-  forall thead tis_empty ppop pempty sloop_body,
+  forall thead tis_empty ppop pempty f sloop_body,
     vret <> vseq ->
     vret <> tis_empty ->
     thead <> vret ->
     thead <> vseq ->
+    tis_empty <> vseq ->
     cond_respects_MapEq postcond ->
     cond_indep postcond vret ->
     cond_indep postcond tis_empty ->
@@ -689,18 +742,18 @@ Lemma compile_fold :
     cond_indep postcond vseq ->
     (Word2Spec env pempty = Some (Axiomatic List_empty)) ->
     (Word2Spec env ppop  = Some (Axiomatic List_pop)) ->
+    LoopBodyOk env f sloop_body vret thead ->
     forall seq init, 
       refine (Pick (fun prog => forall init_state final_state,
                                   init_state[vseq >> ADT seq] /\ 
                                   init_state[vret >> SCA init] ->
                                   RunsTo env prog init_state final_state ->
-                                  final_state[vret >> SCA (List.fold_left 
-                                                              (fun x acc => Word.wplus x acc) 
-                                                              seq init)]
+                                  final_state[vret >> 
+                                              SCA (List.fold_left f seq init)]
                                    /\ postcond final_state))
              (ret ((Fold thead vret tis_empty vseq ppop pempty sloop_body))).
 Proof.
-  intros * vret_vseq vret_tis_empty thead_vret thead_vseq postcond_meaningful postcond_indep_vret postcond_indep_tis_empty postcond_indep_thead postcond_indep_vseq zero_to_empty one_to_pop.
+  intros * vret_vseq vret_tis_empty thead_vret thead_vseq tis_empty_vseq postcond_meaningful postcond_indep_vret postcond_indep_tis_empty postcond_indep_thead postcond_indep_vseq zero_to_empty one_to_pop loop_body_ok.
 
   induction seq;
   unfold refine; simpl;
@@ -709,49 +762,49 @@ Proof.
   inversion_by computes_to_inv;
   constructor; intros;
   destruct H0 as (init_vseq & init_vinit);
-  subst.
+  subst;
+  inversion_clear' H1;
 
-  inversion H1; subst; clear H1.
-  inversion H5; subst; clear H5.
+  [ apply (runsto_is_empty nil) in H2 
+  | apply (runsto_is_empty (a :: seq)) in H2 ]; 
+  eauto;
+  destruct H2 as [ret (ret_correct & st'_init_state)];
+
+  rewrite Seq_Skip in H5.
+
+  simpl;
+  (inversion_clear' H5);
+  match goal with
+    | [ H: is_true _ _ |- _] => rnm H test
+    | [ H: is_false _ _ |- _] => rnm H test
+  end;
+  unfold is_true, is_false, eval_bool, eval, eval_binop_m, eval_binop, IL.wneb, IL.evalTest, IL.weqb in test;
+  autorewrite_equal;
+  (rewrite StringMapFacts.add_eq_o in *; trivial);
+  destruct ret; try discriminate;
+  unfold SCAZero, SCAOne in *;
+  autoinj';
+  repeat match goal with
+           | [ H: context[(if ?a then _ else _) = _] |- _ ] => let H' := fresh in destruct a eqn:H'; try discriminate
+         end;
+  [ clear n H test | clear e H test ];
+  match goal with 
+    | [ H: Word.weqb _ _ = _ |- _ ] => 
+      rewrite ?weqb_false_iff, ?Word.weqb_true_iff in H 
+  end;
+  subst.
 
   admit.
 
-  specialize (IHseq (Word.wplus init a) (Fold thead vret tis_empty vseq ppop pempty sloop_body)).
+  specialize (IHseq (f init a) (Fold thead vret tis_empty vseq ppop pempty sloop_body)).
   specialize (IHseq (eq_ret_compute _ _ _ (eq_refl))).
   inversion_by computes_to_inv.
   rnm H IHseq_vret.
   rnm H0 IHseq_postcond.
 
-  inversion_clear' H1.
-  inversion_clear' H2; simpl in *; [ | congruence ].
-
-  autoinj. (* TODO: Use this more *)
-  rewrite zero_to_empty in *.
-  autoinj.
-  unfold sel in *.
-
-  rewrite StringMapFacts.find_mapsto_iff in *;
-    subst_find.
-
-  simpl in *; autoinj.
-  unfold List_empty in *; fold List_empty in zero_to_empty; simpl in *.
-  
-  autodestruct; autoinj.
-  
-  destruct output; [congruence | ].
-  simpl in *; autoinj.
-
-  rewrite length_0 in H0; subst. (* Wonder why rewrite in * doesn't work *)
-
-  rewrite <- unchanged 
-    in H13 by assumption.
-
-  rewrite Seq_Skip in H5.
-
-
   unfold cond_respects_MapEq, cond_indep in *.
 
-  (* Unfold one loop iteration, but keep tha last statement, and merge it back at the beginning of the while, to recreate the induction condition. *)
+  (* Unfold one loop iteration, but keep the last statement, and merge it back at the beginning of the while, to recreate the induction condition. *)
 
   simpl;
   (inversion_clear' H5);
@@ -792,8 +845,13 @@ Proof.
   
   Show.
   
-  apply (runsto_pop a seq) in H1; try eassumption.
-    
+  rewrite <- StringMapFacts.find_mapsto_iff in *.
+  apply (runsto_pop a seq) in H1; [ 
+    | solve [eauto] 
+    | autorewrite_equal;
+      StringMapFacts.map_iff; intuition
+    | solve [eauto] ].
+  
   (* Now the loop body *)
 
   (* Just because it feels nice: specialize the induction hypotheses *)
@@ -814,24 +872,13 @@ Proof.
   specialize (fun pre => IHseq_postcond _ _ pre new_loop).
   (* yay *)
 
-  Definition needed env (f: W -> W -> W) (sloop_body: key -> key -> Stmt) (vret thead: key) :=
-    forall (st1 st2: State (list W)) (acc: W) (head: W),
-      (st1) [vret >> Facade.SCA (list W) acc] ->
-      (st1) [thead >> Facade.SCA (list W) head] ->
-      RunsTo env (sloop_body thead vret) st1 st2 ->
-      StringMapFacts.M.Equal st2 (add vret (SCA (f acc head)) st1).
+  unfold LoopBodyOk in loop_body_ok.
 
-  assert (needed env (@Word.wplus 32) sloop_body vret thead) as loop_body_ok by admit.
-  unfold needed in loop_body_ok.
-
-  specialize (loop_body_ok st'1 st'2 init a). 
+  specialize (loop_body_ok init a st'1 st'2). 
   rewrite H13 in H1. (* Thus st1' = ... *)
 
-  specialize loop_body_ok.
-
   (* TODO find prettier way to do these asserts *)
-  rewrite <- StringMapFacts.find_mapsto_iff in *.
-
+  
   assert ((st'1) [vret >> Facade.SCA (list W) init]) 
     as h1 by (rewrite H1;
               StringMapFacts.map_iff;
@@ -854,7 +901,7 @@ Proof.
   Qed.    
    *)
 
-  specialize (loop_body_ok h1 h2 H2); clear h1 h2.
+  specialize (loop_body_ok (conj h1 h2) H2); clear h1 h2.
   rewrite H1 in loop_body_ok.
 
   assert ((st'2) [vseq >> ADT seq])
@@ -862,62 +909,10 @@ Proof.
               StringMapFacts.map_iff;
               intuition).
 
-  assert ((st'2) [vret >> SCA (Word.wplus init a)])
+  assert ((st'2) [vret >> SCA (f init a)])
     as h2 by (rewrite loop_body_ok;
               StringMapFacts.map_iff;
               intuition).
-
+              
   intuition.
-
-
-                 (st'1) [thead >> Facade.SCA (list W) a]
-  rewrite H1 in loop_body_ok.
-  
-    Focus 2.
-
-  (* Cas de base 
-  (* [] <> [] *)
-  rewrite a_neq_a_False, equiv_false in H3.
-  exfalso; apply H3; trivial.
-
-  (* [] = [] *)
-  rewrite H0 in H14. (* TODO:   autorewrite_equal? *)
-
-  rewrite H14.
-  rewrite StringMapFacts.add_neq_o; [ | congruence].
-  rewrite StringMapFacts.add_eq_o; [ | congruence].
-
-  rewrite <- StringMapFacts.find_mapsto_iff in *.
-  pose proof (MapsTo_unique _ _ _ _ prelude progseq_consistent);
-    subst.
-
-  split; [ congruence | ].
-  apply postcond_indep_tis_empty, postcond_indep_vret; assumption.
-   *)
-  (* Induction starts here *)
-
-  (* Récurrence *)
-
-  (* a :: x <> [] *)
-
-  
-  inversion H0; expand; subst; clear H0.
-  
-  (* Récurrence *)
-
-  Focus 2. (* a :: x = [] *)
-  
-  destruct H3 as (H3, _).
-  specialize (H3 H1).
-  congruence.
-
-  (* a :: x <> [] *)
-
-  inversion H0; expand; subst; clear H0.
-  
-  
-  inversion H5; subst; clear H5.
-  inversion H10; subst; clear H10.
-  inversion H11; subst; clear H11.
-  inversion H12; subst; clear H12.
-  
+Qed.
