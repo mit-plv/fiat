@@ -743,24 +743,27 @@ Qed.
 
 Opaque add_remove_many.
 
-
-Definition LoopBodyOk env (f: W -> W -> W) (sloop_body:Stmt) (vret vseq thead vret: key) (precond: State _ -> Prop) :=
+Definition LoopBodyOk acc_type (wrapper: acc_type -> Value (list W)) env f (sloop_body:Stmt) (vret vseq thead: key) (precond: State _ -> Prop) :=
   cond_indep precond vret ->
-  forall (acc: W) (head: W) (seq: list W),
+  forall (acc: acc_type) (head: W) (seq: list W),
   forall (st1 st2: State (list W)),
     precond st1 /\
-    (st1) [vret >> SCA acc] /\
+    (st1) [vret >> wrapper acc] /\
     (st1) [vseq >> Facade.ADT seq] /\ 
     (st1) [thead >> SCA head] ->
     RunsTo env sloop_body st1 st2 ->
-    (st2) [vret >> SCA (f acc head)] /\
+    (st2) [vret >> wrapper (f acc head)] /\
     (st2) [vseq >> Facade.ADT seq] /\
     precond st2.
 
-Lemma compile_fold' :
+Definition LoopBodyOkSCA := LoopBodyOk W SCA. 
+Definition LoopBodyOkADT := LoopBodyOk (list W) (@ADT (list W)).
+
+Lemma compile_fold_base_SCA :
   forall env,
   forall precond: State _ -> Prop,
   forall vseq vret,
+  forall acc_type wrapper,
   forall thead tis_empty ppop pempty f sloop_body,
     vret <> vseq ->
     vret <> tis_empty ->
@@ -774,14 +777,14 @@ Lemma compile_fold' :
     cond_indep precond vseq ->
     (Word2Spec env pempty = Some (Axiomatic List_empty)) ->
     (Word2Spec env ppop  = Some (Axiomatic List_pop)) ->
-    LoopBodyOk env f sloop_body vret vseq thead vret precond ->
+    LoopBodyOk acc_type wrapper env f sloop_body vret vseq thead precond ->
     forall seq init, 
       refine (Pick (fun prog => forall init_state final_state,
                                   init_state[vseq >> ADT seq] /\ 
-                                  init_state[vret >> SCA init] /\
+                                  init_state[vret >> wrapper init] /\
                                   precond init_state ->
                                   RunsTo env prog init_state final_state ->
-                                  final_state[vret >> SCA (List.fold_left f seq init)]
+                                  final_state[vret >> wrapper (List.fold_left f seq init)]
                                    /\ precond final_state))
              (ret ((Fold thead tis_empty vseq ppop pempty sloop_body))).
 Proof.
@@ -893,7 +896,7 @@ Proof.
 
   (* TODO find prettier way to do these asserts *)
   
-  assert ((st'1) [vret >> SCA init]) 
+  assert ((st'1) [vret >> wrapper init]) 
     as h1 by (rewrite H4;
               StringMapFacts.map_iff;
               intuition).
@@ -917,11 +920,11 @@ Proof.
   intuition.
 Qed.
 
-
 Lemma compile_fold'' : 
   forall {env},
   forall {precond postcond: State _ -> Prop},
   forall vinit vseq {vret},
+  forall acc_type wrapper,
   forall thead tis_empty ppop pempty f sloop_body,
     vret <> vseq ->
     vret <> tis_empty ->
@@ -935,25 +938,25 @@ Lemma compile_fold'' :
     cond_indep postcond vseq ->
     (Word2Spec env pempty = Some (Axiomatic List_empty)) ->
     (Word2Spec env ppop  = Some (Axiomatic List_pop)) ->
-    LoopBodyOk env f sloop_body vret vseq thead vret postcond ->
-    forall (seq: list W) (init: W),
+    LoopBodyOk acc_type wrapper env f sloop_body vret vseq thead postcond ->
+    forall (seq: list W) (init: acc_type),
     refine (Pick (fun prog => forall init_state final_state,
                                 precond init_state ->
                                 RunsTo env prog init_state final_state ->
-                                (final_state[vret >> SCA (List.fold_left f seq init)]
+                                (final_state[vret >> wrapper (List.fold_left f seq init)]
                                  /\ postcond final_state)))
            (Bind (Pick (fun pinit => forall init_state inter_state,
                                        precond init_state ->
                                        RunsTo env pinit init_state inter_state ->
-                                       (inter_state[vinit >> SCA init] /\ precond inter_state)))
+                                       (inter_state[vinit >> wrapper init] /\ precond inter_state)))
                  (fun pinit => 
                     Bind 
                       (Pick (fun pseq => 
                                forall inter_state final_state,
-                                 precond inter_state /\ inter_state[vinit >> SCA init] ->
+                                 precond inter_state /\ inter_state[vinit >> wrapper init] ->
                                  RunsTo env pseq inter_state final_state ->
                                  (final_state[vseq >> ADT seq]
-                                  /\ final_state[vinit >> SCA init]
+                                  /\ final_state[vinit >> wrapper init]
                                   /\ postcond final_state)))
                       (fun pseq => ret {{ pinit;
                                           pseq;
@@ -987,13 +990,13 @@ Proof.
 
   unfold cond_respects_MapEq in *.
 
-  assert ((st'1) [vseq >> ADT seq] /\ (st'1) [vret >> SCA init] /\ postcond st'1) 
+  assert ((st'1) [vseq >> ADT seq] /\ (st'1) [vret >> wrapper init] /\ postcond st'1) 
     as lemma_precond by (rewrite H3;
                          StringMapFacts.map_iff;
                          intuition).
 
-  pose proof (compile_fold' env postcond vseq vret thead tis_empty ppop pempty f sloop_body) as lemma.
-  intuition; (* specializes compile_fold' *)
+  pose proof (compile_fold_base_SCA env postcond vseq vret acc_type wrapper thead tis_empty ppop pempty f sloop_body) as lemma.
+  intuition; (* specializes compile_fold_base *)
     
   match goal with 
     | [ H0: forall _ _, refine _ _ |- _ ] => 
@@ -1029,6 +1032,7 @@ Lemma compile_fold :
   forall {env},
   forall {precond postcond: State _ -> Prop},
   forall vinit vseq {vret},
+  forall acc_type wrapper,
   forall thead tis_empty ppop pempty f,
     vret <> vseq ->
     vret <> tis_empty ->
@@ -1042,27 +1046,27 @@ Lemma compile_fold :
     cond_indep postcond vseq ->
     (Word2Spec env pempty = Some (Axiomatic List_empty)) ->
     (Word2Spec env ppop  = Some (Axiomatic List_pop)) ->
-    forall (seq: list W) (init: W),
+    forall (seq: list W) (init: acc_type),
     refine (Pick (fun prog => forall init_state final_state,
                                 precond init_state ->
                                 RunsTo env prog init_state final_state ->
-                                (final_state[vret >> SCA (List.fold_left f seq init)]
+                                (final_state[vret >> wrapper (List.fold_left f seq init)]
                                  /\ postcond final_state)))
-           (Bind (Pick (fun loop_body => LoopBodyOk env f loop_body vret vseq thead vret postcond))
+           (Bind (Pick (fun loop_body => LoopBodyOk acc_type wrapper env f loop_body vret vseq thead postcond))
                  (fun sloop_body => 
                     Bind 
                       (Pick (fun pinit => forall init_state inter_state,
                                              precond init_state ->
                                              RunsTo env pinit init_state inter_state ->
-                                             (inter_state[vinit >> SCA init] /\ precond inter_state)))
+                                             (inter_state[vinit >> wrapper init] /\ precond inter_state)))
                       (fun pinit =>
                          Bind 
                            (Pick (fun pseq => 
                                     forall inter_state final_state,
-                                      precond inter_state /\ inter_state[vinit >> SCA init] ->
+                                      precond inter_state /\ inter_state[vinit >> wrapper init] ->
                                       RunsTo env pseq inter_state final_state ->
                                       (final_state[vseq >> ADT seq]
-                                       /\ final_state[vinit >> SCA init]
+                                       /\ final_state[vinit >> wrapper init]
                                        /\ postcond final_state)))
                            (fun pseq => ret {{ pinit;
                                                pseq;
@@ -1076,90 +1080,31 @@ Proof.
   
   apply PickComputes_inv in loop_valid.
 
-  pose proof (@compile_fold'' env precond postcond vinit vseq vret thead tis_empty ppop pempty f loop_body) as lemma.
+  pose proof (@compile_fold'' env precond postcond vinit vseq vret acc_type wrapper thead tis_empty ppop pempty f loop_body) as lemma.
   unfold refine in *.
   intuition.
 Qed.
 
-Tactic Notation "cleanup_adt" :=
-  unfold cond_indep, LoopBodyOk; 
-  first [ simplify with monad laws 
-        | spam 
-        | discriminate
-        | match goal with 
-            | [ |- Word2Spec ?env _ = _ ] => unfold env; simpl; intuition
-          end
-        ].
+Definition compile_fold_sca 
+           {env} {precond postcond: State _ -> Prop}
+           vinit vseq {vret} := 
+  @compile_fold env precond postcond vinit vseq vret W SCA.
 
-Definition start_compiling_adt := 
-  fun ret_var => @start_compiling' ret_var _ (basic_env) (empty_state _).
-
-Goal forall seq: list W, 
-     exists x, 
-       refine (ret (fold_left (fun (item sum: W) => Word.wplus item sum) seq WZero)) x.
-Proof.
-  eexists.
-
-  setoid_rewrite (start_compiling_adt "$ret").  
-  setoid_rewrite (compile_fold "$init" "$seq" "$head" "$is_empty" WOne WZero); try cleanup_adt;
-  unfold Fold.
-
-Lemma pull_forall :
-  forall {A B} b av env P
-         (precond': State av -> Prop)
-         (precond postcond: A -> A -> B -> State av -> Prop),
-  (forall (x1 x2: A) (x3: B),
-     P precond' ->
-     refine (Pick (fun prog => forall (st1 st2: State av),
-                                 precond' st1 /\ precond x1 x2 x3 st1 ->
-                                 RunsTo env prog st1 st2 ->
-                                 postcond x1 x2 x3 st2)) b) ->
-  refine (Pick (fun prog => P precond' ->
-                            forall x1 x2 x3,
-                            forall (st1 st2: State av),
-                              precond' st1 /\ precond x1 x2 x3 st1 ->
-                              RunsTo env prog st1 st2 ->
-                              postcond x1 x2 x3 st2)) b.
-Proof.
-  unfold refine; intros; econstructor; intros.
-  generalize (H x1 x2 x3 X _ H0); intros.
-  inversion_by computes_to_inv.
-  specialize (H3 st1 st2 (conj H4 H5)).
-  intuition.
-Qed.
-
-pose proof (fun b => 
-              @pull_forall W (list W) b (list W) basic_env 
-                           (fun cond => cond_indep cond "$ret") 
-                           (fun _ : State (list W) => True) 
-                           (fun (acc head : W) (seq0 : list W) 
-                                (st1 : State (list W)) => 
-                              (st1) ["$ret" >> Facade.SCA (list W) acc] /\
-                              (st1) ["$seq" >> Facade.ADT seq0] /\
-                              (st1) ["$head" >> Facade.SCA (list W) head])
-                           (fun (acc head : W) (seq0 : list W) 
-                                (st2 : State (list W)) => 
-                              (st2) ["$ret" >> Facade.SCA (list W) (Word.wplus acc head)] /\ (st2) ["$seq" >> Facade.ADT seq0] /\ True)) as pull; simpl in pull.
-
-unfold SCA, ADT in *.
-setoid_rewrite pull; clear pull.
-
-Focus 2.
-intros.
-
-setoid_rewrite (compile_binop IL.Plus "$ret" "$ret" "$head"); try cleanup_adt.
-
+Definition compile_fold_adt 
+           {env} {precond postcond: State _ -> Prop}
+           vinit vseq {vret} := 
+  @compile_fold env precond postcond vinit vseq vret (list W) ADT.
 
 Lemma copy_variable :
   forall {av env},
-  forall k1 k2 val (precond postcond: State av -> Prop), 
+  forall k1 {k2} val (precond postcond: State av -> Prop), 
     cond_respects_MapEq postcond ->
-    (forall state, precond state -> state[k1 >> SCA val]) ->
+    (forall state, precond state -> state[k1 >> val]) ->
     (forall x state, precond state -> postcond (add k2 x state)) ->
     refine (Pick (fun prog => forall init_state final_state,
                                 precond init_state ->
                                 RunsTo env prog init_state final_state ->
-                                final_state[k2 >> SCA val] /\
+                                final_state[k2 >> val] /\
                                 postcond final_state))
            (ret (Assign k2 (SyntaxExpr.Var k1))).
 Proof.
@@ -1192,6 +1137,103 @@ Proof.
   intuition.
 Qed.
 
+Tactic Notation "cleanup_adt" :=
+  unfold cond_indep, LoopBodyOk; 
+  first [ simplify with monad laws 
+        | spam 
+        | discriminate
+        | match goal with 
+            | [ |- Word2Spec ?env _ = _ ] => unfold env; simpl; intuition
+          end
+        ].
+
+Lemma pull_forall :
+  forall {A B} b av env P
+         (precond': State av -> Prop)
+         (precond postcond: A -> A -> B -> State av -> Prop),
+  (forall (x1 x2: A) (x3: B),
+     P precond' ->
+     refine (Pick (fun prog => forall (st1 st2: State av),
+                                 precond' st1 /\ precond x1 x2 x3 st1 ->
+                                 RunsTo env prog st1 st2 ->
+                                 postcond x1 x2 x3 st2)) b) ->
+  refine (Pick (fun prog => P precond' ->
+                            forall x1 x2 x3,
+                            forall (st1 st2: State av),
+                              precond' st1 /\ precond x1 x2 x3 st1 ->
+                              RunsTo env prog st1 st2 ->
+                              postcond x1 x2 x3 st2)) b.
+Proof.
+  unfold refine; intros; econstructor; intros.
+  generalize (H x1 x2 x3 X _ H0); intros.
+  inversion_by computes_to_inv.
+  specialize (H3 st1 st2 (conj H4 H5)).
+  intuition.
+Qed.
+
+Check start_compiling'.
+
+Lemma start_compiling_with_precondition ret_var : (* TODO: Supersedes start_compiling *) 
+  forall {av env init_state precond} v,
+    precond init_state ->
+    refine (ret v) 
+           (Bind (Pick (fun prog => 
+                          forall init_state final_state,
+                            precond init_state ->
+                            RunsTo env prog init_state final_state -> 
+                            MapsTo ret_var (Facade.SCA av v) final_state 
+                            /\ (fun x => True) final_state))
+                 (fun prog => 
+                    Bind (Pick (fun final_state => RunsTo env prog init_state final_state))
+                         (fun final_state => Pick (fun x => MapsTo ret_var (Facade.SCA av x) final_state)))).
+  intros.
+  unfold refine.
+  intros.
+  inversion_by computes_to_inv.
+  apply eq_ret_compute.
+
+  apply (H _ _ X) in H1.
+  eapply SCA_inj.
+  eapply MapsTo_unique; eauto.
+Qed.
+
+Definition start_compiling_adt := 
+  fun ret_var => @start_compiling' ret_var _ (basic_env) (empty_state _).
+
+Definition start_compiling_adt_with_precondition := 
+  fun ret_var {init_state precond} proof v => @start_compiling_with_precondition ret_var _ (basic_env) init_state precond v proof.
+
+Goal forall seq: list W, 
+     forall state,
+       state["$list" >> ADT seq] ->
+       exists x, 
+         refine (ret (fold_left (fun (item sum: W) => Word.wplus item sum) seq WZero)) x.
+Proof.
+  intros seq state state_precond; eexists.
+
+  setoid_rewrite (start_compiling_adt_with_precondition "$ret" state_precond).  
+  setoid_rewrite (compile_fold_sca "$init" "$seq" "$head" "$is_empty" WOne WZero); try cleanup_adt;
+  unfold Fold.
+
+setoid_rewrite (
+              @pull_forall W (list W) _ (list W) basic_env 
+                           (fun cond => cond_indep cond "$ret") 
+                           (fun _ : State (list W) => True) 
+                           (fun (acc head : W) (seq0 : list W) 
+                                (st1 : State (list W)) => 
+                              (st1) ["$ret" >> Facade.SCA (list W) acc] /\
+                              (st1) ["$seq" >> Facade.ADT seq0] /\
+                              (st1) ["$head" >> Facade.SCA (list W) head])
+                           (fun (acc head : W) (seq0 : list W) 
+                                (st2 : State (list W)) => 
+                              (st2) ["$ret" >> Facade.SCA (list W) (Word.wplus acc head)] /\ (st2) ["$seq" >> Facade.ADT seq0] /\ True)). 
+
+setoid_rewrite pull; clear pull.
+
+Focus 2.
+intros.
+setoid_rewrite (compile_binop IL.Plus "$ret" "$ret" "$head"); try cleanup_adt.
+
 rewrite no_op; try cleanup_adt.
 rewrite no_op; try cleanup_adt.
 reflexivity.
@@ -1205,64 +1247,14 @@ reflexivity.
 
 cleanup_adt.
 setoid_rewrite compile_constant; cleanup_adt.
-setoid_rewrite compile_constant; cleanup_adt.
+setoid_rewrite (copy_variable "$list"); cleanup_adt.
+reflexivity.
+
 
 
 cleanup_adt.
 
 intuition. (StringMapFacts.map_iff; intuition).
 
-Lemma copy_variable :
-  forall av env k1 k2 val precond postcond,
-    (forall state, precond state
-
-Check refine_pick_val.
-setoid_rewrite (@refine_pick_val _ Skip).
-setoid_rewrite (compile_constant "$t1"); cleanup.
-setoid_rewrite (compile_constant "$t2"); cleanup.
-reflexivity.
-
 (* TODO: Two different approaches: <> precond and postcond, but forall x, precond x -> postcond (add blah x); and same pre/post cond, with extra conditions *)
 (* TODO: Post-conditions should include the beginning state, too *)  
-
-  Lemma refine_pick_forall_Prop
-        B C (Q : C -> Prop) (P : C -> B -> Prop)
-        b
-  :
-    (forall c, Q c -> refine (Pick (P c)) b) ->
-    @refine B (Pick (fun b' => forall c, Q c -> P c b')) b.
-  Proof.
-    unfold refine. intros. econstructor; intros.
-    generalize (H _ H1 _ H0); intros.
-    inversion_by computes_to_inv; assumption.
-  Qed.
-
-  Lemma pick_pull_forall :
-    refine 
-
-
-  solve [ unfold cond_respects_MapEq, Proper, respectful; 
-          first [
-              setoid_rewrite StringMapFacts.find_mapsto_iff;
-              intros; match goal with 
-                          [ H: StringMapFacts.M.Equal _ _ |- _ ] => 
-                          rewrite H in * 
-                      end;
-              intuition 
-            | intuition; 
-              first [
-                  apply StringMapFacts.M.add_2; 
-                  congruence
-                | idtac ] ] ].
-
-Check compile_fold.  
-  setoid_rewrite (compile_if "$cond"); cleanup.
-  setoid_rewrite (compile_test IL.Eq "$cond" "$w1" "$w2"); cleanup.
-  
-  setoid_rewrite (compile_constant "$w1"); cleanup.
-  setoid_rewrite (compile_constant "$w2"); cleanup.
-  rewrite (compile_constant "$ret"); cleanup.
-  rewrite (compile_constant "$ret"); cleanup.
-  
-  reflexivity.
-Qed.
