@@ -518,12 +518,12 @@ Definition basic_env := {| Label2Word := fun _ => None;
                                           else if Word.weqb w WOne then Some (Axiomatic List_pop)
                                                else None |}.
 
-Definition Fold (head acc is_empty seq: key) 
+Definition Fold (head is_empty seq: key) 
                 _pop_ _empty_ loop_body := {{
     is_empty <= _empty_ [[seq]];
     While (!is_empty) {{
         head <= _pop_ [[seq]];
-        loop_body head acc;
+        loop_body;
         is_empty <= _empty_ [[seq]]
     }}
 }}.
@@ -743,12 +743,12 @@ Qed.
 
 Opaque add_remove_many.
 
-Definition LoopBodyOk env (f: W -> W -> W) (sloop_body: key -> key -> Stmt) (vret thead: key) :=
+Definition LoopBodyOk env (f: W -> W -> W) (sloop_body:Stmt) (vret thead: key) :=
   forall (acc: W) (head: W),
   forall (st1 st2: State (list W)),
     (st1) [vret >> Facade.SCA (list W) acc] /\
     (st1) [thead >> Facade.SCA (list W) head] ->
-    RunsTo env (sloop_body thead vret) st1 st2 ->
+    RunsTo env sloop_body st1 st2 ->
     StringMapFacts.M.Equal st2 (add vret (SCA (f acc head)) st1).
 
 Lemma compile_fold' :
@@ -777,7 +777,7 @@ Lemma compile_fold' :
                                   RunsTo env prog init_state final_state ->
                                   final_state[vret >> SCA (List.fold_left f seq init)]
                                    /\ precond final_state))
-             (ret ((Fold thead vret tis_empty vseq ppop pempty sloop_body))).
+             (ret ((Fold thead tis_empty vseq ppop pempty sloop_body))).
 Proof.
   intros * vret_vseq vret_tis_empty thead_vret thead_vseq tis_empty_vseq precond_meaningful precond_indep_vret precond_indep_tis_empty precond_indep_thead precond_indep_vseq zero_to_empty one_to_pop loop_body_ok.
 
@@ -842,7 +842,7 @@ Proof.
   intuition.
 
   (* 4: interesting part of the induction *)
-  specialize (IHseq (f init a) (Fold thead vret tis_empty vseq ppop pempty sloop_body)).
+  specialize (IHseq (f init a) (Fold thead tis_empty vseq ppop pempty sloop_body)).
   specialize (IHseq (eq_ret_compute _ _ _ (eq_refl))).
   inversion_by computes_to_inv.
   rnm H1 IHseq_vret.
@@ -958,7 +958,7 @@ Lemma compile_fold'' :
                       (fun pseq => ret {{ pinit;
                                           pseq;
                                           vret <- 'vinit;
-                                          Fold thead vret tis_empty vseq ppop pempty sloop_body }}))).
+                                          Fold thead tis_empty vseq ppop pempty sloop_body }}))).
 Proof.
   unfold refine; intros * vret_vseq vret_tis_empty thead_vret thead_vseq tis_empty_vseq postcond_meaningful postcond_indep_vret postcond_indep_tis_empty postcond_indep_thead postcond_indep_vseq zero_to_empty one_to_pop loop_body_ok * **.
 
@@ -1000,7 +1000,7 @@ Proof.
       specialize (H0 seq init);
         unfold refine in H0;
         
-        specialize (H0 (Fold thead vret tis_empty vseq ppop pempty sloop_body));
+        specialize (H0 (Fold thead tis_empty vseq ppop pempty sloop_body));
         specialize (H0 (eq_ret_compute _ _ _ (eq_refl)))
   end;
     
@@ -1022,6 +1022,8 @@ Lemma PickComputes_inv: forall {A} (x: A) P,
 Proof.
   intros; inversion_by computes_to_inv; assumption.
 Qed.
+
+Print LoopBodyOk.
 
 Lemma compile_fold : 
   forall {env},
@@ -1065,7 +1067,7 @@ Lemma compile_fold :
                            (fun pseq => ret {{ pinit;
                                                pseq;
                                                vret <- 'vinit;
-                                               Fold thead vret tis_empty vseq ppop pempty sloop_body }})))).
+                                               Fold thead tis_empty vseq ppop pempty sloop_body }})))).
 Proof.
   unfold refine; intros * vret_vseq vret_tis_empty thead_vret thead_vseq tis_empty_vseq postcond_meaningful postcond_indep_vret postcond_indep_tis_empty postcond_indep_thead postcond_indep_vseq zero_to_empty one_to_pop loop_body_ok * ** .
   
@@ -1100,10 +1102,105 @@ Proof.
 
   setoid_rewrite (start_compiling_adt "$ret").  
 
-  setoid_rewrite (compile_fold "$init" "$seq" "$head" "$is_empty" WOne WZero); try cleanup_adt.
+  setoid_rewrite (compile_fold "$init" "$seq" "$head" "$is_empty" WOne WZero); try cleanup_adt;
+  unfold Fold.
 
+  Print basic_env.
   unfold LoopBodyOk.
   
+Print RunsToCallAx.
+Check refine_pick_forall_Prop.
+
+Lemma pull_forall :
+  forall {A} b av env 
+         (externcond: _ -> _ -> Prop) 
+         (precond postcond: _ -> _ -> State av -> Prop),
+  (forall (x1 x2: A),
+     externcond x1 x2 ->
+     refine (Pick (fun prog => forall (st1 st2: State av),
+                                 precond x1 x2 st1 ->
+                                 RunsTo env prog st1 st2 ->
+                                 postcond x1 x2 st2)) b) ->
+  refine (Pick (fun prog => forall x1 x2,
+                            forall (st1 st2: State av),
+                              (externcond x1 x2 /\ precond x1 x2 st1) ->
+                              RunsTo env prog st1 st2 ->
+                              postcond x1 x2 st2)) b.
+Proof.
+  unfold refine; intros; econstructor; intros.
+
+  destruct H1 as (extern & pre).
+  generalize (H _ _ extern _ H0); intros.
+  inversion_by computes_to_inv.
+  generalize (H1 _ _ pre H2); auto.
+Qed.
+
+Lemma pull_forall_simple :
+  forall {A} b av env 
+         (precond : A -> A -> State av -> Prop)
+         (postcond: A -> A -> State av -> State av -> Prop),
+  (forall (x1 x2: A) (st1 st2: State av),
+     precond x1 x2 st1 ->
+     refine (Pick (fun prog => RunsTo env prog st1 st2 ->
+                               postcond x1 x2 st1 st2)) b) ->
+  refine (Pick (fun prog => forall x1 x2,
+                            forall (st1 st2: State av),
+                              precond x1 x2 st1 ->
+                              RunsTo env prog st1 st2 ->
+                              postcond x1 x2 st1 st2)) b.
+Proof.
+  unfold refine; intros; econstructor; intros.
+  generalize (H _ _ _ st2 H1 _ H0); intros.
+  inversion_by computes_to_inv.
+  intuition.
+Qed.
+
+Lemma pull_forall_simple' :
+  forall {A} b av env 
+         (precond : A -> A -> State av -> Prop)
+         (postcond: A -> A -> State av -> State av -> Prop),
+  (forall (x1 x2: A),
+     refine (Pick (fun prog => forall  (st1 st2: State av),
+                                 precond x1 x2 st1 ->
+                                 RunsTo env prog st1 st2 ->
+                                 postcond x1 x2 st1 st2)) b) ->
+  refine (Pick (fun prog => forall x1 x2,
+                            forall (st1 st2: State av),
+                              precond x1 x2 st1 ->
+                              RunsTo env prog st1 st2 ->
+                              postcond x1 x2 st1 st2)) b.
+Proof.
+  unfold refine; intros; econstructor; intros.
+  generalize (H x1 x2 _ H0); intros.
+  inversion_by computes_to_inv.
+  specialize (H3 st1 st2).
+  intuition.
+Qed.
+
+Show.
+setoid_rewrite pull_forall_simple'.
+
+Focus 2.
+
+intros.
+pose proof (compile_binop IL.Plus "$ret" "$t1" "$t2") as bin.
+specialize (bin _ basic_env (fun st1 => (st1) ["$ret" >> Facade.SCA (list W) x1] /\
+                                        (st1) ["$head" >> Facade.SCA (list W) x2])).
+
+(* TODO: Post-conditions should include the beginning state, too *)  
+
+  Lemma refine_pick_forall_Prop
+        B C (Q : C -> Prop) (P : C -> B -> Prop)
+        b
+  :
+    (forall c, Q c -> refine (Pick (P c)) b) ->
+    @refine B (Pick (fun b' => forall c, Q c -> P c b')) b.
+  Proof.
+    unfold refine. intros. econstructor; intros.
+    generalize (H _ H1 _ H0); intros.
+    inversion_by computes_to_inv; assumption.
+  Qed.
+
   Lemma pick_pull_forall :
     refine 
 
