@@ -24,7 +24,7 @@ Notation "table [ key >> value ]" := (StringMap.MapsTo key value table) (at leve
 
 (* Facade notations *)
 
-Notation "{{ x ; .. ; y }}" := (Seq x .. (Seq y Skip) ..) (at level 0).
+Notation "A ;; B" := (Seq A B).
 
 Notation "y <= f [[ x1 .. xn ]]" := (Call (Some y) (Const f) (cons x1 .. (cons xn nil) ..)) (at level 70, no associativity).
 
@@ -41,14 +41,14 @@ Notation "! x" := (TestE IL.Eq (Var x) (Const WZero)) (at level 50, no associati
 Notation "x <- y" := (Assign x y) (at level 70).
 
 Definition Fold (head is_empty seq: StringMap.key) 
-                _pop_ _empty_ loop_body := {{
-    is_empty <= _empty_ [[seq]];
-    While (!is_empty) {{
-        head <= _pop_ [[seq]];
-        loop_body;
+                _pop_ _empty_ loop_body := (
+    is_empty <= _empty_ [[seq]];;
+    While (!is_empty) (
+        head <= _pop_ [[seq]];;
+        loop_body;;
         is_empty <= _empty_ [[seq]]
-    }}
-}}.
+    )
+).
 
 (* Facade lemmas *)
 
@@ -712,7 +712,7 @@ Definition LoopBodyOk acc_type (wrapper: acc_type -> Value FacadeADT) env f (slo
     (st2) [vseq >> Facade.ADT (List seq)] /\
     precond st2.
 
-Lemma compile_fold_base_SCA :
+Lemma compile_fold_base :
   forall env,
   forall precond: State _ -> Prop,
   forall vseq vret,
@@ -758,7 +758,6 @@ Proof.
   eauto;
   destruct H2 as [ret (ret_correct & st'_init_state)];
 
-  rewrite Seq_Skip in H5;
   (inversion_clear' H5;
    match goal with
      | [ H: is_true _ _ |- _] => rnm H test
@@ -827,8 +826,6 @@ Proof.
   (* Just because it feels nice: specialize the induction hypotheses *)
   inversion_clear' H8.
 
-  autoseq_skip.
-  rewrite <- Seq_Skip in H6.
   pose proof (RunsToSeq H9 H6) as new_loop.
   clear H9 H6.
   
@@ -868,7 +865,7 @@ Proof.
   intuition.
 Qed.
 
-Lemma compile_fold'' : 
+Lemma compile_fold_no_pick : 
   forall {env},
   forall {precond postcond: State _ -> Prop},
   forall vinit vseq {vret},
@@ -906,10 +903,10 @@ Lemma compile_fold'' :
                                  (final_state[vseq >> Facade.ADT (List seq)]
                                   /\ final_state[vinit >> wrapper init]
                                   /\ postcond final_state)))
-                      (fun pseq => ret {{ pinit;
-                                          pseq;
-                                          vret <- 'vinit;
-                                          Fold thead tis_empty vseq ppop pempty sloop_body }}))).
+                      (fun pseq => ret (pinit;;
+                                        pseq;;
+                                        vret <- 'vinit;;
+                                        Fold thead tis_empty vseq ppop pempty sloop_body)))).
 Proof.
   unfold refine; intros * vret_vseq vret_tis_empty thead_vret thead_vseq tis_empty_vseq postcond_meaningful postcond_indep_vret postcond_indep_tis_empty postcond_indep_thead postcond_indep_vseq zero_to_empty one_to_pop loop_body_ok * **.
 
@@ -943,7 +940,7 @@ Proof.
                          StringMapFacts.map_iff;
                          intuition).
 
-  pose proof (compile_fold_base_SCA env postcond vseq vret acc_type wrapper thead tis_empty ppop pempty f sloop_body) as lemma.
+  pose proof (compile_fold_base env postcond vseq vret acc_type wrapper thead tis_empty ppop pempty f sloop_body) as lemma.
   intuition; (* specializes compile_fold_base *)
     
   match goal with 
@@ -955,7 +952,6 @@ Proof.
         specialize (H0 (eq_ret_compute _ _ _ (eq_refl)))
   end;
     
-  autoseq_skip;
   inversion_by computes_to_inv;
   
   unfold State in *;
@@ -1016,10 +1012,10 @@ Lemma compile_fold :
                                       (final_state[vseq >> Facade.ADT (List seq)]
                                        /\ final_state[vinit >> wrapper init]
                                        /\ postcond final_state)))
-                           (fun pseq => ret {{ pinit;
-                                               pseq;
-                                               vret <- 'vinit;
-                                               Fold thead tis_empty vseq ppop pempty sloop_body }})))).
+                           (fun pseq => ret (pinit;;
+                                             pseq;;
+                                             vret <- 'vinit;;
+                                             Fold thead tis_empty vseq ppop pempty sloop_body))))).
 Proof.
   unfold refine; intros * vret_vseq vret_tis_empty thead_vret thead_vseq tis_empty_vseq postcond_meaningful postcond_indep_vret postcond_indep_tis_empty postcond_indep_thead postcond_indep_vseq zero_to_empty one_to_pop loop_body_ok * ** .
   
@@ -1028,7 +1024,7 @@ Proof.
   
   apply PickComputes_inv in loop_valid.
 
-  pose proof (@compile_fold'' env precond postcond vinit vseq vret acc_type wrapper thead tis_empty ppop pempty f loop_body) as lemma.
+  pose proof (@compile_fold_no_pick env precond postcond vinit vseq vret acc_type wrapper thead tis_empty ppop pempty f loop_body) as lemma.
   unfold refine in *.
   intuition.
 Qed.
@@ -1038,7 +1034,7 @@ Definition compile_fold_sca
            vinit vseq {vret} := 
   @compile_fold env precond postcond vinit vseq vret W (@Facade.SCA _).
 
-Definition compile_fold_adt 
+Definition compile_fold_adt (* TODO: Rename *)
            {env} {precond postcond: State _ -> Prop}
            vinit vseq {vret} := 
   @compile_fold env precond postcond vinit vseq vret (list W) (fun x => Facade.ADT (List x)).
@@ -1369,6 +1365,9 @@ Proof.
 
   reflexivity.
 Qed.  
+
+
+(* TODO: Fix notations display *)
 
 (* What's the point of exists2? *)
 
