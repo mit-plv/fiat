@@ -50,20 +50,6 @@ Definition Fold (head is_empty seq: StringMap.key)
     )
 ).
 
-(* Facade lemmas *)
-
-Lemma Seq_Skip :
-  forall {ADTValue} env prog (st st': State ADTValue),
-    RunsTo env (Seq prog Skip) st st' <->
-    RunsTo env prog st st'.
-Proof.
-  split; intros ** H.
-  inversion_clear H;
-    inversion H1; subst; clear H1;
-    assumption.
-  econstructor; eauto; constructor.
-Qed.
-
 (* Tactics *)
 
 Ltac autoinj :=
@@ -130,11 +116,6 @@ Ltac autodestruct :=
 
 Ltac inversion_clear' hyp :=
   inversion hyp; expand; subst; clear hyp.
-
-Ltac autoseq_skip :=
-  match goal with
-    | [ H: _ |- _ ] => rewrite Seq_Skip in H
-  end.
 
 Ltac eq_transitive :=
   match goal with
@@ -1338,6 +1319,118 @@ Proof.
   setoid_rewrite (copy_variable "$list"); cleanup_adt.
   reflexivity.
 Qed.
+
+Definition ProgEquiv {av} p1 p2 := 
+  forall env st1 st2,
+    (@RunsTo av env p1 st1 st2 <-> RunsTo env p2 st1 st2). 
+
+Require Import Setoid.
+
+Add Parametric Relation {av} : (Stmt) (@ProgEquiv av)
+    reflexivity proved by _
+    symmetry proved by _
+    transitivity proved by _
+      as prog_equiv. 
+Proof.
+  firstorder.
+  firstorder.
+  unfold Transitive, ProgEquiv; intros; etransitivity; eauto.
+Qed.
+
+Show.
+
+(* Uh? *)
+unfold Transitive, ProgEquiv; intros; etransitivity; eauto.
+
+Add Parametric Morphism {av: Type} :
+  (@RunsTo av)
+    with signature (eq ==> @ProgEquiv av ==> eq ==> eq ==> iff)
+      as runsto_morphism.
+Proof.
+  unfold ProgEquiv; intros * prog_equiv ** ; apply prog_equiv; assumption.
+Qed.
+
+Add Parametric Morphism {av} :
+  (Seq)
+    with signature (@ProgEquiv av ==> @ProgEquiv av ==> @ProgEquiv av)
+      as seq_morphism.
+Proof.  
+  unfold ProgEquiv; intros.
+
+  split; intro runs_to; inversion_clear' runs_to; econstructor; [
+    rewrite <- H | rewrite <- H0 |
+    rewrite -> H | rewrite -> H0 ];
+  eauto; reflexivity.
+Qed.
+
+Add Parametric Morphism {av} :
+  (While)
+    with signature (eq ==> @ProgEquiv av ==> @ProgEquiv av)
+      as while_morphism.
+Proof.  
+  unfold ProgEquiv; intros * prog_equiv ** .
+  split; intro runs_to.
+
+  + do 10 match goal with
+            | [ H: RunsTo _ (While _ _) _ _ |- _ ] => 
+              inversion_clear' H;
+                [ | solve [constructor; eauto] ];
+                match goal with
+                  | [ H': RunsTo _ _ _ _ |- _ ] => rewrite prog_equiv in H'
+                end;
+                econstructor; eauto
+          end.
+    admit.
+
+  + admit.
+Qed.
+
+Lemma Skip_Seq av :
+  forall prog, 
+    @ProgEquiv av prog (Seq Skip prog). 
+Proof.
+  unfold ProgEquiv; split; intros.
+  repeat (econstructor; eauto).
+  inversion_clear' H; inversion_clear' H2; eauto.
+Qed.
+
+Lemma Seq_Skip av :
+  forall prog, 
+    @ProgEquiv av prog (Seq prog Skip).
+Proof.
+  unfold ProgEquiv; split; intros.
+  repeat (econstructor; eauto).
+  inversion_clear' H; inversion_clear' H5; eauto.
+Qed.
+
+(*
+
+Definition ProgEquiv {av} p1 p2 := 
+  forall env st11 st12 st21 st22,
+    StringMap.Equal st11 st21 ->
+    StringMap.Equal st12 st22 ->
+    (@RunsTo av env p1 st11 st12 <-> RunsTo env p2 st21 st22). 
+
+Add Parametric Morphism {av: Type} :
+  (@RunsTo av)
+    with signature (eq ==> @ProgEquiv av ==> @StringMap.Equal (Value av) ==> @StringMap.Equal (Value av) ==> iff)
+      as runsto_morphism.
+Proof.
+  unfold ProgEquiv; intros * prog_equiv ** ; apply prog_equiv; assumption.
+Qed.
+
+Add Parametric Morphism {av} :
+  (Seq)
+    with signature (@ProgEquiv av ==> @ProgEquiv av ==> @ProgEquiv av)
+      as seq_morphism.
+Proof.  
+  unfold ProgEquiv; intros.
+  split; intro runs_to; inversion_clear' runs_to; econstructor; [
+    rewrite <- H with (st11 := st11) | rewrite <- H0 with (st22 := st22) |
+    rewrite -> H with (st11 := st11) | rewrite -> H0 with (st22 := st22) ];
+  eauto; reflexivity.
+Qed.
+*)
 
 Goal forall seq: list W, 
      forall state,
