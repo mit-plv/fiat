@@ -44,7 +44,7 @@ Notation "x <- y" := (Assign x y) (at level 70).
 Notation "A < B" := (TestE IL.Lt A B).
 Notation "A <= B" := (TestE IL.Le A B).
 Notation "A <> B" := (TestE IL.Ne A B) .
-Notation "A == B" := (TestE IL.Eq A B).
+Notation "A === B" := (TestE IL.Eq A B) (at level 70).
 
 Notation "A * B" := (Binop IL.Times A B).
 Notation "A + B" := (Binop IL.Plus A B).
@@ -52,7 +52,7 @@ Notation "A - B" := (Binop IL.Minus A B).
 
 Notation "' x" := (Var x) (at level 50, no associativity).
 Notation "# x" := (Const x) (at level 50, no associativity).
-Notation "! x" := (Var x == Const 0) (at level 50, no associativity).
+Notation "! x" := (Var x === Const 0) (at level 50, no associativity).
 
 Definition Fold (head is_empty seq: StringMap.key) 
                 _pop_ _empty_ loop_body := (
@@ -1412,20 +1412,20 @@ Qed.
   
 Lemma Skip_Seq av :
   forall prog, 
-    @ProgEquiv av prog (Seq Skip prog). 
+    @ProgEquiv av (Seq Skip prog) prog. 
 Proof.
   unfold ProgEquiv; split; intros.
-  repeat (econstructor; eauto).
   inversion_clear' H; inversion_clear' H2; eauto.
+  repeat (econstructor; eauto).
 Qed.
 
 Lemma Seq_Skip av :
   forall prog, 
-    @ProgEquiv av prog (Seq prog Skip).
+    @ProgEquiv av (Seq prog Skip) prog.
 Proof.
   unfold ProgEquiv; split; intros.
-  repeat (econstructor; eauto).
   inversion_clear' H; inversion_clear' H5; eauto.
+  repeat (econstructor; eauto).
 Qed.
 
 Goal forall seq: list W, 
@@ -1500,7 +1500,7 @@ Proof.
   (* Ok, this loop body looks good :) *)
   reflexivity.
 
-  repeat setoid_rewrite <- Skip_Seq.
+  repeat setoid_rewrite Skip_Seq.
   Show.
     
   (* Yay, a program! *)
