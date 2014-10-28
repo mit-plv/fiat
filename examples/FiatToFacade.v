@@ -36,15 +36,18 @@ Coercion word_as_constant : W >-> Expr.
 Definition nat_as_constant n : Expr := Const (Word.natToWord 32 n).
 Coercion nat_as_constant : nat >-> Expr.
 
+Ltac unfold_coercions :=
+  unfold string_as_var, nat_as_constant, nat_as_word, word_as_constant in *.
+
 Notation "A ; B" := (Seq A B) (at level 201,
                                B at level 201,
                                left associativity,
                                format "'[v' A ';' '/' B ']'") : facade_scope.
 Delimit Scope facade_scope with facade.
     
-Notation "y <= f [[ x1 , .. , xn ]]" := (Call y (Const f) (cons x1 .. (cons xn nil) ..))
+Notation "y <= f [[ x1 , .. , xn ]]" := (Call y f (cons x1 .. (cons xn nil) ..))
                                       (at level 70, no associativity).
-Notation "y <= f  [[]]" := (Call y (Const f) nil) (at level 70, no associativity).
+Notation "y <= f  [[]]" := (Call y f nil) (at level 70, no associativity).
 Notation "x <- y" := (Assign x y) (at level 70).
 
 Notation "A < B" := (TestE IL.Lt A B).
@@ -58,7 +61,7 @@ Notation "A - B" := (Binop IL.Minus A B).
 
 (*Notation "' x" := (Var x) (at level 50, no associativity).*)
 (*Notation "# x" := (Const x) (at level 50, no associativity).*)
-Notation "! x" := (Var x === Const 0) (at level 50, no associativity).
+Notation "! x" := (x === 0) (at level 50, no associativity).
 
 Definition Fold (head is_empty seq: StringMap.key) 
                 _pop_ _empty_ loop_body := (
@@ -142,8 +145,19 @@ Ltac eq_transitive :=
     | [ H: ?a = ?b, H': ?a = ?c |- _ ] => 
       let H'' := fresh in
       assert (b = c) as H'' by (rewrite <- H, <- H'; reflexivity)
-  end. (* TODO: Use more *)
+  end. (* TODO: Use more. Extend to cover a single map mapping the same key to two variables *)
 
+Ltac map_iff_solve' fallback :=
+  match goal with
+    | [ |- ?A /\ ?B ] => split; map_iff_solve' fallback
+    | [ |- (?a = ?a /\ _) \/ (?a <> ?a /\ _) ] => left; split; [ apply eq_refl | map_iff_solve' fallback ]
+    | [ |- (?a = ?b /\ _) \/ (?a <> ?b /\ _) ] => right; split; [ congruence | map_iff_solve' fallback ]
+    | _ => fallback
+  end.
+
+Ltac map_iff_solve fallback :=
+  StringMapFacts.map_iff;
+  map_iff_solve' fallback.
   
 Lemma Some_inj : forall A (x y: A),
                    Some x = Some y -> x = y.
@@ -241,7 +255,7 @@ Lemma compile_if :
                                                             (p1)))))))).                
 Proof.
   unfold refine.
-  unfold string_as_var, nat_as_constant, nat_as_word in *.
+  unfold_coercions.
 
   intros av env testvar retvar ret_type wrapper test precond postcond truecase falsecase wrapper_inj ** .
   inversion_by computes_to_inv.
@@ -404,7 +418,7 @@ Lemma compile_test : (* Exactly the same proof as compile_binop *)
                                                           (temp1) 
                                                           (temp2)))))))).
   unfold refine; simpl.
-  unfold string_as_var, nat_as_word, nat_as_constant.
+  unfold_coercions.
   
   intros op retvar temp1 temp2 av env precond postcond w1 w2 postcond_meaningful postcond_indep_retvar ** .
   inversion_by computes_to_inv.
@@ -538,7 +552,7 @@ Lemma start_compiling' ret_var :
 Qed.
 
 Lemma compile_constant :
-  forall retvar av env,
+  forall (retvar: StringMap.key) av env,
   forall w1 (precond postcond: State av -> Prop), 
     cond_respects_MapEq postcond ->
     (forall x state, precond state -> 
@@ -548,11 +562,12 @@ Lemma compile_constant :
                                  RunsTo env prog1 init_state final_state ->
                                  final_state[retvar >> SCA av w1]
                                  /\ postcond final_state))
-           (ret (Assign retvar (SyntaxExpr.Const w1))).
+           (ret (Assign retvar w1)).
 Proof.
   unfold refine; intros; constructor; intros; inversion_by computes_to_inv; subst.
   inversion_clear H3.
   unfold eval in H1.
+  unfold_coercions.
   apply Some_inj, SCA_inj in H1; subst.
 
   unfold cond_respects_MapEq in *.
@@ -689,6 +704,30 @@ Proof.
   reflexivity.
 Qed.
 
+Lemma runsto_copy :
+  forall seq (vseq vcopy: StringMap.key) env (st st': State FacadeADT) pcopy,
+    st [vseq >> Facade.ADT (List seq)] ->
+    Word2Spec env pcopy  = Some (Axiomatic List_copy) ->
+    RunsTo env (vcopy <= pcopy [[vseq]]) st st' ->
+    StringMap.Equal st' (StringMap.add vcopy (Facade.ADT (List seq)) (StringMap.add vseq (Facade.ADT (List seq)) st)).
+Proof.
+  intros * vseq_seq pcopy_is_copy runs_to.
+
+  inversion_clear' runs_to; simpl in *; autoinj;
+  [ | congruence].
+
+  rewrite pcopy_is_copy in *; autoinj;
+  unfold List_copy in *; clear pcopy_is_copy; simpl in *;
+  autodestruct; subst;
+  rewrite StringMapFacts.find_mapsto_iff in * |- ;
+  unfold sel in *.
+
+  subst_find; simpl in *; autoinj. (* TODO Make autoinj call simpl in * first *)
+
+  destruct output; [congruence|].
+  simpl in *; autoinj.
+Qed.
+
 Lemma RunsToAssignKnownValue :
   forall {av env} {k1 k2: StringMap.key} {v} {st st': State av},
     st[k2 >> v] ->
@@ -721,9 +760,9 @@ Definition LoopBodyOk acc_type (wrapper: acc_type -> Value FacadeADT) env f (slo
 Lemma compile_fold_base :
   forall env,
   forall precond: State _ -> Prop,
-  forall vseq vret,
+  forall (vseq vret: StringMap.key),
   forall acc_type wrapper,
-  forall thead tis_empty ppop pempty f sloop_body,
+  forall (thead tis_empty: StringMap.key) ppop pempty f sloop_body,
     vret <> vseq ->
     vret <> tis_empty ->
     thead <> vret ->
@@ -763,7 +802,8 @@ Proof.
   | apply (runsto_is_empty (a :: seq)) in H2 ]; 
   eauto;
   destruct H2 as [ret (ret_correct & st'_init_state)];
-
+  unfold_coercions;
+  
   (inversion_clear' H5;
    match goal with
      | [ H: is_true _ _ |- _] => rnm H test
@@ -804,8 +844,8 @@ Proof.
   (* 2: interesting part of the base case *)
   unfold cond_respects_MapEq in *.
   rewrite st'_init_state.
-  split; 
-    [ StringMapFacts.map_iff | apply precond_indep_tis_empty];
+  split;
+    [ map_iff_solve intuition | apply precond_indep_tis_empty];
   intuition.
 
   (* 4: interesting part of the induction *)
@@ -824,7 +864,7 @@ Proof.
   apply (runsto_pop a seq) in H4; [ 
     | solve [eauto] 
     | autorewrite_equal;
-      StringMapFacts.map_iff; intuition
+      map_iff_solve intuition
     | solve [eauto] ].
   
   (* Now the loop body *)
@@ -848,19 +888,13 @@ Proof.
   (* TODO find prettier way to do these asserts *)
   
   assert ((st'1) [vret >> wrapper init]) 
-    as h1 by (rewrite H4;
-              StringMapFacts.map_iff;
-              intuition).
+    as h1 by (rewrite H4; map_iff_solve intuition).
   
   assert ((st'1) [vseq >> Facade.ADT (List seq)]) 
-    as h2 by (rewrite H4; 
-              StringMapFacts.map_iff;
-              intuition).
+    as h2 by (rewrite H4; map_iff_solve intuition).
 
   assert ((st'1) [thead >> Facade.SCA _ a])
-    as h3 by (rewrite H4;
-              StringMapFacts.map_iff;
-              intuition).
+    as h3 by (rewrite H4; map_iff_solve intuition).
 
   assert (precond st'1) as h4 by (rewrite H4; intuition).
 
@@ -942,9 +976,7 @@ Proof.
   unfold cond_respects_MapEq in *.
 
   assert ((st'1) [vseq >> Facade.ADT (List seq)] /\ (st'1) [vret >> wrapper init] /\ postcond st'1) 
-    as lemma_precond by (rewrite H3;
-                         StringMapFacts.map_iff;
-                         intuition).
+    as lemma_precond by (rewrite H3; map_iff_solve intuition).
 
   pose proof (compile_fold_base env postcond vseq vret acc_type wrapper thead tis_empty ppop pempty f sloop_body) as lemma.
   intuition; (* specializes compile_fold_base *)
@@ -1067,7 +1099,7 @@ Proof.
   autorewrite_equal; simpl in *.
   StringMapFacts.map_iff.
   rewrite StringMapFacts.find_mapsto_iff in *.
-  rewrite H0 in *; autoinj.
+  rewrite H0 in *. autoinj.
 Qed.
 
 Lemma no_op :
@@ -1157,9 +1189,33 @@ Proof.
   match goal with
     | [ H: 0 = List.length _ |- _ ] => rewrite length_0 in H
   end; subst;
-  autorewrite_equal; StringMapFacts.map_iff; intuition.
+  autorewrite_equal; map_iff_solve intuition.
 Qed.
 
+Lemma compile_copy :
+  forall {env} pcopy vfrom vto val,
+  forall (precond postcond: _ -> Prop),
+    Word2Spec env pcopy = Some (Axiomatic List_copy) ->
+    cond_respects_MapEq postcond ->
+    (forall state, precond state ->
+                   postcond (StringMap.add vto (Facade.ADT (List val))
+                                           (StringMap.add vfrom (Facade.ADT (List val)) state))) ->
+    (forall state, precond state -> state[vfrom >> Facade.ADT (List val)]) ->
+    refine (Pick (fun prog => 
+                    forall init_state final_state : State FacadeADT,
+                      precond init_state ->
+                      RunsTo env prog init_state final_state ->
+                      final_state[vto >> Facade.ADT (List val)] /\
+                      postcond final_state))
+           (ret (vto <= pcopy [[vfrom]])). 
+Proof.
+  unfold refine, List_new, cond_respects_MapEq; intros; constructor; intros.
+  inversion_by computes_to_inv; subst.
+
+  eapply runsto_copy in H5; eauto.
+  autorewrite_equal; map_iff_solve intuition.
+Qed.
+  
 Transparent add_remove_many.
 Lemma compile_cons :
   forall pcons tdummy thead ttail,
@@ -1194,9 +1250,9 @@ Lemma compile_cons :
                       (fun ptail => ret (Seq phead  
                                              (Seq ptail
                                                   (tdummy <= pcons [[ttail, thead]])))))).
-Proof.
+Proof. (* TODO: Prove runsto_cons. *)
   unfold refine, List_push, cond_respects_MapEq; intros; constructor; intros.
-  inversion_by computes_to_inv; subst.
+  inversion_by computes_to_inv; subst. 
   inversion_clear' H4.
   inversion_clear' H14.
   inversion_clear' H15; simpl in *; [ | congruence ].
@@ -1217,11 +1273,8 @@ Proof.
 
   repeat progress (autoinj'; autoinj).
 
-  autorewrite_equal; StringMapFacts.map_iff.
-
-  intuition.
+  autorewrite_equal; map_iff_solve intuition.
 Qed.
-
 
 Definition empty_env ADTValue : Env ADTValue := {| Label2Word := fun _ => None; Word2Spec := fun _ => None |}.
 
@@ -1229,14 +1282,16 @@ Definition empty_state ADTValue : State ADTValue := StringMap.empty (Value ADTVa
 
 Definition basic_env := {| Label2Word := fun _ => None; 
                            Word2Spec := fun w => 
-                                          if Word.weqb w WZero then 
+                                          if Word.weqb w 0 then 
                                             Some (Axiomatic List_empty)
-                                          else if Word.weqb w WOne then 
+                                          else if Word.weqb w 1 then 
                                             Some (Axiomatic List_pop)
-                                          else if Word.weqb w WTwo then
+                                          else if Word.weqb w 2 then
                                             Some (Axiomatic List_new)
-                                          else if (Word.weqb w WThree) then
+                                          else if (Word.weqb w 3) then
                                             Some (Axiomatic List_push)
+                                          else if (Word.weqb w 4) then
+                                            Some (Axiomatic List_copy)
                                           else
                                             None |}.
 
@@ -1254,12 +1309,12 @@ Definition start_compiling_adt_with_precondition :=
 Ltac spam :=
   solve [ unfold cond_respects_MapEq, Proper, respectful; 
           first [
-              setoid_rewrite StringMapFacts.find_mapsto_iff;
-              intros; match goal with 
-                          [ H: StringMap.Equal _ _ |- _ ] => 
-                          rewrite H in * 
-                      end;
-              intuition 
+              solve [map_iff_solve ltac:(
+                       intros; try match goal with 
+                                       [ H: StringMap.Equal _ _ |- _ ] => 
+                                       rewrite H in * 
+                                   end;
+                       intuition)]
             | intuition; 
               first [
                   apply StringMap.add_2; 
@@ -1343,7 +1398,8 @@ Proof.
   reflexivity.
 
   setoid_rewrite compile_constant; cleanup_adt.
-  setoid_rewrite (copy_variable "$list"); cleanup_adt.
+  setoid_rewrite (compile_copy 4 "$list"); cleanup_adt.
+
   reflexivity.
 Qed.
 
@@ -1502,7 +1558,7 @@ Proof.
   (* The head needs to be multiplied by two before being pushed into the output
      list. *)
   setoid_rewrite (compile_binop IL.Times _ "$new_head" "$2"); cleanup_adt.
-  rewrite (copy_variable "$head"); cleanup_adt.
+  rewrite (copy_word "$head"); cleanup_adt.
   rewrite (compile_constant); cleanup_adt.
 
   (* And the tail is readily available *)
@@ -1515,8 +1571,7 @@ Proof.
   reflexivity.
 
   repeat setoid_rewrite Skip_Seq.
-  Show.
-    
+  
   (* Yay, a program! *)
   reflexivity.
 Qed.
@@ -1553,12 +1608,12 @@ Proof.
   rewrite (compile_fold_sca "$init" "$seq" "$head" "$is_empty" 1 0); cleanup_adt.
   rewrite (pull_forall (fun cond => cond_indep cond "$max")); cleanup_adt.
   rewrite (compile_constant); cleanup_adt.
-  rewrite (copy_variable "$list"); cleanup_adt.
+  rewrite (compile_copy 4 "$list"); cleanup_adt.
 
   rewrite (compile_fold_sca "$init" "$seq" "$head" "$is_empty" 1 0); cleanup_adt.
   rewrite (pull_forall (fun cond => cond_indep cond "$min")); cleanup_adt.
   rewrite (compile_constant); cleanup_adt.
-  rewrite (copy_variable "$list"); cleanup_adt.
+  rewrite (compile_copy 4 "$list"); cleanup_adt.
 
   Focus 2.
   
@@ -1566,7 +1621,7 @@ Proof.
   rewrite (compile_test IL.Lt "$cond" "$head" "$min"); cleanup_adt.
   rewrite (no_op); cleanup_adt.
   rewrite (no_op); cleanup_adt.
-  rewrite (copy_variable "$head"); cleanup_adt.
+  rewrite (copy_word "$head"); cleanup_adt.
   rewrite (no_op); cleanup_adt.
   reflexivity.
 
@@ -1576,20 +1631,16 @@ Proof.
   rewrite (compile_test IL.Lt "$cond" "$max" "$head"); cleanup_adt.
   rewrite (no_op); cleanup_adt.
   rewrite (no_op); cleanup_adt.
-  rewrite (copy_variable "$head"); cleanup_adt.
+  rewrite (copy_word "$head"); cleanup_adt.
   rewrite (no_op); cleanup_adt.
   reflexivity.
 
   repeat setoid_rewrite Skip_Seq.
 
   reflexivity.
-Qed.  
-
+Qed.
 
 (* TODO: Multiple Facade ADTs vs single cito ADT *)
-
-(* TODO: Fix notations display look at levels *)
-
 
 (* TODO: Sigma types *)
 
@@ -1609,3 +1660,11 @@ reflexivity.
          * Same pre/post cond, with extra conditions (see compile_fold et al.)
          * <> precond and postcond, and postcond indep of modified var (see compile_cons) *)
 (* TODO: Post-conditions should include the beginning state, too *)  
+
+(* TODO: Replace all instances of 
+       precond st1 /\ blah st1 -> RunsTo -> postcond st2 /\ bluh st2
+   by
+       precond st1 -> RunsTo -> postcond st2
+   with additional constraints `precond st1 -> blah st1` and `postcond st2 -> bluh st2` *)
+
+(* TODO: Tweak autorewrite_equal to make it faster *)
