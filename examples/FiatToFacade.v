@@ -1377,26 +1377,27 @@ Proof.
   eauto; reflexivity.
 Qed.
 
+Lemma while_morph {av env} :
+  forall while_p1,
+  forall (st1 st2: State av),
+    RunsTo env (while_p1) st1 st2 ->
+    forall p1 p2 test,
+      while_p1 = While test p1 -> 
+      @ProgEquiv av p1 p2 ->
+      RunsTo env (While test p2) st1 st2.
+Proof.
+  unfold ProgEquiv; induction 1; intros ** equiv; subst; try discriminate; autoinj.
+
+  econstructor; eauto; rewrite <- equiv; assumption.
+  constructor; trivial.
+Qed.  
+  
 Add Parametric Morphism {av} :
   (While)
     with signature (eq ==> @ProgEquiv av ==> @ProgEquiv av)
       as while_morphism.
 Proof.  
-  unfold ProgEquiv; intros * prog_equiv ** .
-  split; intro runs_to.
-
-  + do 10 match goal with
-            | [ H: RunsTo _ (While _ _) _ _ |- _ ] => 
-              inversion_clear' H;
-                [ | solve [constructor; eauto] ];
-                match goal with
-                  | [ H': RunsTo _ _ _ _ |- _ ] => rewrite prog_equiv in H'
-                end;
-                econstructor; eauto
-          end.
-    admit.
-
-  + admit.
+  split; intros; eapply while_morph; eauto; symmetry; assumption.
 Qed.
 
 Add Parametric Morphism {av} :
