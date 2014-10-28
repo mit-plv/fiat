@@ -184,11 +184,11 @@ Proof.
 Qed.
 
 Lemma compile_if :
-  forall { av env } testvar retvar (test: bool) (precond postcond: _ -> Prop) truecase falsecase,
+  forall { av env } testvar {retvar} {ret_type} (wrapper: ret_type -> Value av) (test: bool) (precond postcond: _ -> Prop) truecase falsecase,
   refine (Pick (fun prog => forall init_state final_state,
                               precond init_state ->
-                              RunsTo env prog init_state final_state ->
-                              (StringMap.MapsTo retvar (SCA av (if test then truecase else falsecase)) final_state 
+                              @RunsTo av env prog init_state final_state ->
+                              (StringMap.MapsTo retvar (wrapper (if test then truecase else falsecase)) final_state 
                                /\ postcond final_state)))
          (Bind (Pick (fun progtest => forall init_state inter_state,
                                         precond init_state ->
@@ -201,7 +201,7 @@ Lemma compile_if :
                                                precond inter_state /\ 
                                                StringMap.MapsTo testvar (SCA av (BoolToW test)) inter_state) ->
                                               RunsTo env prog1 inter_state final_state ->
-                                              (StringMap.MapsTo retvar (SCA av truecase) final_state /\
+                                              (StringMap.MapsTo retvar (wrapper truecase) final_state /\
                                                postcond final_state)))
                         (fun p1 => 
                            Bind 
@@ -211,7 +211,7 @@ Lemma compile_if :
                                          precond inter_state /\ 
                                          StringMap.MapsTo testvar (SCA av (BoolToW test)) inter_state) ->
                                         RunsTo env prog2 inter_state final_state ->
-                                        (StringMap.MapsTo retvar (SCA av falsecase) final_state /\
+                                        (StringMap.MapsTo retvar (wrapper falsecase) final_state /\
                                          postcond final_state)))
                              (fun p2 => ret (Seq ptest
                                                  (Facade.If (SyntaxExpr.TestE IL.Eq
@@ -221,7 +221,7 @@ Lemma compile_if :
                                                             (p1)))))))).                
 Proof.
   unfold refine. 
-  intros av env testvar retvar test precond postcond truecase falsecase ** .
+  intros av env testvar retvar test precond postcond ret_type wrapper truecase falsecase wrapper_inj ** .
   inversion_by computes_to_inv.
   rnm x ptest.
   rnm x0 ptrue.
@@ -1403,57 +1403,146 @@ Proof.
   inversion_clear' H; inversion_clear' H5; eauto.
 Qed.
 
-(*
+Definition nat_as_word n : Word.word 32 := Word.natToWord 32 n.
+Coercion nat_as_word : nat >-> Word.word.
 
-Definition ProgEquiv {av} p1 p2 := 
-  forall env st11 st12 st21 st22,
-    StringMap.Equal st11 st21 ->
-    StringMap.Equal st12 st22 ->
-    (@RunsTo av env p1 st11 st12 <-> RunsTo env p2 st21 st22). 
-
-Add Parametric Morphism {av: Type} :
-  (@RunsTo av)
-    with signature (eq ==> @ProgEquiv av ==> @StringMap.Equal (Value av) ==> @StringMap.Equal (Value av) ==> iff)
-      as runsto_morphism.
-Proof.
-  unfold ProgEquiv; intros * prog_equiv ** ; apply prog_equiv; assumption.
-Qed.
-
-Add Parametric Morphism {av} :
-  (Seq)
-    with signature (@ProgEquiv av ==> @ProgEquiv av ==> @ProgEquiv av)
-      as seq_morphism.
-Proof.  
-  unfold ProgEquiv; intros.
-  split; intro runs_to; inversion_clear' runs_to; econstructor; [
-    rewrite <- H with (st11 := st11) | rewrite <- H0 with (st22 := st22) |
-    rewrite -> H with (st11 := st11) | rewrite -> H0 with (st22 := st22) ];
-  eauto; reflexivity.
-Qed.
-*)
+Definition string_as_var str : Expr := Var str.
+Coercion string_as_var : string >-> Expr.
 
 Goal forall seq: list W, 
      forall state,
        state["$list" >> Facade.ADT (List seq)] ->
        exists x, 
-         refine (ret (fold_left (fun (acc: list W) (item: W) => (Word.wmult item WTwo) :: acc) seq nil)) x.
+         refine
+           (ret (fold_left
+                   (fun (acc: list W) (item: W) =>
+                      if (IL.wltb 0 item) then
+                        (Word.wmult item 2 :: acc)
+                      else
+                        acc)
+                   seq nil)) x.
 Proof.
-  intros * state_precond; eexists.
-  
-  setoid_rewrite (start_compiling_adt_with_precondition "$ret" state_precond).  
-  
-  setoid_rewrite (compile_fold_adt "$init" "$seq" "$head" "$is_empty" WOne WZero); cleanup_adt.
-  setoid_rewrite (pull_forall (fun cond => cond_indep cond "$ret")); cleanup_adt.
+  intros * state_precond; eexists. 
 
-  setoid_rewrite (compile_new WTwo); cleanup_adt.
-  setoid_rewrite (copy_variable "$list"); cleanup_adt.
+  (* Start compiling, copying the state_precond precondition to the resulting
+     program's preconditions. Result is stored into [$ret] *)
+  rewrite (start_compiling_adt_with_precondition "$ret" state_precond).
+
+  (* Compile the fold, reading the initial value of the accumulator from
+     [$init], the input data from [$seq], and storing temporary variables in
+     [$head] and [$is_empty]. *)
+  rewrite (compile_fold_adt "$init" "$list" "$head" "$is_empty" 1 0); cleanup_adt.
+
+  (* Extract the quantifiers, and move the loop body to a second goal *)
+  rewrite (pull_forall (fun cond => cond_indep cond "$ret")); cleanup_adt.
+
+  (* The output list is allocated by calling List_new, whose axiomatic
+     specification is stored at address 2 *)
+  setoid_rewrite (compile_new 2); cleanup_adt.
+
+  (* The input list is already stored in [$list] *)
+  rewrite no_op; cleanup_adt.
+
+  (* We're now ready to proceed with the loop's body! *)
 
   Focus 2.
-  setoid_rewrite (compile_cons WThree "$new_head" "$ret"); cleanup_adt.
-  setoid_rewrite (compile_binop IL.Times _ "$head" "$2"); cleanup_adt.
+  
+  (* Compile the if test *)
+  rewrite (compile_if "$cond" (fun x => Facade.ADT (List x))); cleanup_adt.
+
+  (* Extract the comparison to use Facade's comparison operators, storing the
+     operands in [$0] and [$head], and the result of the comparison in
+     [$cond] *)
+  rewrite (compile_test IL.Lt "$cond" "$0" "$head"); cleanup_adt.
+
+  (* The two operands of [<] are easily refined *)
+  rewrite (compile_constant); cleanup_adt.
+  rewrite (no_op); cleanup_adt.
+
+  (* Now for the true part of the if: append the value to the list *)
+
+  (* Delegate the cons-ing to an ADT operation specified axiomatically; [3]
+     points to [List_push] in the current environment *)
+  rewrite (compile_cons 3 "$new_head"); cleanup_adt.
+
+  (* The head needs to be multiplied by two before being pushed into the output
+     list *)
+  setoid_rewrite (compile_binop IL.Times _ "$new_head" "$2"); cleanup_adt.
+  rewrite (copy_variable "$head"); cleanup_adt.
+  rewrite (compile_constant); cleanup_adt.
+
+  (* And the tail is readily available *)
   rewrite no_op; cleanup_adt.
-  rewrite compile_constant; cleanup_adt.
+
+  (* The false part is a lot simpler *)
   rewrite no_op; cleanup_adt.
+
+  (* Ok, this loop body looks good :) *)
+  reflexivity.
+
+  (* Why are coercions and notations not working here? *)
+  
+  (* Yay, a program! *)
+  reflexivity.
+Qed.
+
+Definition max seq :=
+  fold_left
+    (fun (max: W) (item: W) =>
+       if (IL.wltb max item) then
+         item
+       else
+         max) seq 0.
+
+Definition min seq :=
+  fold_left
+    (fun (min: W) (item: W) =>
+       if (IL.wltb item min) then
+         item
+       else
+         min) seq 0.
+
+Goal forall seq: list W, 
+     forall state,
+       state["$list" >> Facade.ADT (List seq)] ->
+       exists x, 
+         refine
+           (ret (Word.wminus (max seq) (min seq))) x.
+Proof.
+  intros * state_precond; eexists. 
+
+  rewrite (start_compiling_sca_with_precondition "$ret" state_precond).
+  unfold min, max;
+    setoid_rewrite (compile_binop IL.Minus "$ret" "$max" "$min"); cleanup_adt.
+
+  rewrite (compile_fold_sca "$init" "$seq" "$head" "$is_empty" 1 0); cleanup_adt.
+  rewrite (pull_forall (fun cond => cond_indep cond "$max")); cleanup_adt.
+  rewrite (compile_constant); cleanup_adt.
+  rewrite (copy_variable "$list"); cleanup_adt.
+
+  rewrite (compile_fold_sca "$init" "$seq" "$head" "$is_empty" 1 0); cleanup_adt.
+  rewrite (pull_forall (fun cond => cond_indep cond "$min")); cleanup_adt.
+  rewrite (compile_constant); cleanup_adt.
+  rewrite (copy_variable "$list"); cleanup_adt.
+
+  Focus 2.
+  
+  rewrite (compile_if "$cond").  
+  rewrite (compile_test IL.Lt "$cond" "$head" "$min"); cleanup_adt.
+  rewrite (no_op); cleanup_adt.
+  rewrite (no_op); cleanup_adt.
+  rewrite (copy_variable "$head"); cleanup_adt.
+  rewrite (no_op); cleanup_adt.
+  reflexivity.
+
+  Focus 2.
+
+  rewrite (compile_if "$cond").  
+  rewrite (compile_test IL.Lt "$cond" "$max" "$head"); cleanup_adt.
+  rewrite (no_op); cleanup_adt.
+  rewrite (no_op); cleanup_adt.
+  rewrite (copy_variable "$head"); cleanup_adt.
+  rewrite (no_op); cleanup_adt.
   reflexivity.
 
   reflexivity.
