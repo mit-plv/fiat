@@ -489,3 +489,37 @@ Proof.
   
   reflexivity.
 Qed.
+
+Require Import SyntaxExpr.
+
+Notation "{{ x ; .. ; y }}" := (Seq x .. (Seq y Skip) ..).
+
+Notation "y <= f [[ x1 .. xn ]]" := (Call (Some y) (Const f) (cons x1 .. (cons xn nil) ..)) (at level 70, no associativity).
+
+Notation "' x" := (Var x) (at level 50, no associativity).
+
+Notation "# x" := (Const x) (at level 50, no associativity).
+
+Notation "x !== y" := (TestE IL.Ne x y) (at level 50, no associativity).
+
+Notation "x === y" := (TestE IL.Eq x y) (at level 50, no associativity).
+
+Notation "! x" := (TestE IL.Eq (Var x) (Const WZero)) (at level 50, no associativity).
+
+Notation "x <- y" := (Assign x y) (at level 70).
+
+Definition basic_env := {| Label2Word := fun _ => None; 
+                           Word2Spec := fun w => 
+                                          if Word.weqb w WZero then Some (Axiomatic List_empty)
+                                          else if Word.weqb w WOne then Some (Axiomatic List_pop)
+                                               else None |}.
+
+Definition Fold (head acc is_empty seq: key) 
+                _pop_ _empty_ loop_body := {{
+    is_empty <= _empty_ [[seq]];
+    While (!is_empty) {{
+        head <= _pop_ [[seq]];
+        loop_body head acc;
+        is_empty <= _empty_ [[seq]]
+    }}
+}}.
