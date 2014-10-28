@@ -34,9 +34,6 @@ Qed.
 Definition cond_respects_MapEq {elt} :=
   Proper (StringMapFacts.M.Equal (elt := elt) ==> iff).
 
-Definition WZero := (Word.wzero 32).
-Definition WOne  := (Word.wone  32).
-
 Definition BoolToW (b: bool) := if b then WOne else WZero.
 
 Definition WToBool (w: @Word.word 32) := negb (Word.weqb w WZero).
@@ -57,8 +54,6 @@ Lemma eval_binop_inv :
 Proof.
   intros; destruct test; simpl; reflexivity.
 Qed.
-Opaque WOne WZero.
-
 Ltac autospecialize :=
   repeat match goal with 
            | [ H: forall a b, ?x a -> ?y a b -> _, H': ?x _, H'': ?y _ _ |- _ ] 
@@ -549,7 +544,8 @@ Proof.
   
   rewrite StringMapFacts.add_eq_o; trivial.
   rewrite StringMapFacts.add_neq_o; trivial.
-Qed.    
+Qed.  
+  
 Opaque add_remove_many.
 
 Ltac expand :=
@@ -645,14 +641,15 @@ Ltac inversion_clear' hyp :=
   inversion hyp; expand; subst; clear hyp.
 
 Transparent add_remove_many.
+
 (* TODO generalize this for is_empty as well *)
 Lemma runsto_pop :
-  forall hd tl (vseq thead: key) env (st st': State (list W)) ppop,
+  forall hd tl (vseq thead: key) env (st st': State FacadeADT) ppop,
     vseq <> thead ->
-    st [vseq >> Facade.ADT (hd :: tl)] ->
+    st [vseq >> Facade.ADT (List (hd :: tl))] ->
     Word2Spec env ppop  = Some (Axiomatic List_pop) ->
     RunsTo env (thead <= ppop [[vseq]]) st st' ->
-    StringMapFacts.M.Equal st' (add thead (Facade.SCA _ hd) (add vseq (Facade.ADT tl) st)).
+    StringMapFacts.M.Equal st' (add thead (Facade.SCA _ hd) (add vseq (Facade.ADT (List tl)) st)).
 Proof.
   intros * vseq_thead vseq_init ppop_is_pop runs_to.
 
@@ -687,13 +684,13 @@ Qed.
 
 (* TODO: refactor to share code with runsto_pop *)
 Lemma runsto_is_empty :
-  forall seq (vseq tis_empty: key) env (st st': State (list W)) pis_empty,
+  forall seq (vseq tis_empty: key) env (st st': State FacadeADT) pis_empty,
     vseq <> tis_empty ->
-    st [vseq >> Facade.ADT seq] ->
+    st [vseq >> Facade.ADT (List seq)] ->
     Word2Spec env pis_empty  = Some (Axiomatic List_empty) ->
     RunsTo env (tis_empty <= pis_empty [[vseq]]) st st' ->
     exists ret, 
-      (ret <> SCAZero <-> seq = []) /\
+      (ret <> SCAZero <-> seq = nil) /\
       StringMapFacts.M.Equal st' (add tis_empty ret st).
 Proof.
   intros * vseq_tis_empty vseq_init pis_empty_is_is_empty runs_to.
@@ -733,22 +730,22 @@ Proof.
 Qed.
 
 Opaque add_remove_many.
-About Facade.SCA.
-Definition LoopBodyOk acc_type (wrapper: acc_type -> Value (list W)) env f (sloop_body:Stmt) (vret vseq thead: key) (precond: State _ -> Prop) :=
+
+Definition LoopBodyOk acc_type (wrapper: acc_type -> Value FacadeADT) env f (sloop_body:Stmt) (vret vseq thead: key) (precond: State _ -> Prop) :=
   cond_indep precond vret ->
   forall (acc: acc_type) (head: W) (seq: list W),
-  forall (st1 st2: State (list W)),
+  forall (st1 st2: State FacadeADT),
     precond st1 /\
     (st1) [vret >> wrapper acc] /\
-    (st1) [vseq >> Facade.ADT seq] /\ 
+    (st1) [vseq >> Facade.ADT (List seq)] /\ 
     (st1) [thead >> Facade.SCA _ head] ->
     RunsTo env sloop_body st1 st2 ->
     (st2) [vret >> wrapper (f acc head)] /\
-    (st2) [vseq >> Facade.ADT seq] /\
+    (st2) [vseq >> Facade.ADT (List seq)] /\
     precond st2.
 
 Definition LoopBodyOkSCA := LoopBodyOk W (Facade.SCA _). 
-Definition LoopBodyOkADT := LoopBodyOk (list W) (@Facade.ADT (list W)).
+Definition LoopBodyOkADT := LoopBodyOk FacadeADT (@Facade.ADT _).
 
 Lemma compile_fold_base_SCA :
   forall env,
@@ -771,7 +768,7 @@ Lemma compile_fold_base_SCA :
     LoopBodyOk acc_type wrapper env f sloop_body vret vseq thead precond ->
     forall seq init, 
       refine (Pick (fun prog => forall init_state final_state,
-                                  init_state[vseq >> Facade.ADT seq] /\ 
+                                  init_state[vseq >> Facade.ADT (List seq)] /\ 
                                   init_state[vret >> wrapper init] /\
                                   precond init_state ->
                                   RunsTo env prog init_state final_state ->
@@ -892,12 +889,12 @@ Proof.
               StringMapFacts.map_iff;
               intuition).
   
-  assert ((st'1) [vseq >> Facade.ADT seq]) 
+  assert ((st'1) [vseq >> Facade.ADT (List seq)]) 
     as h2 by (rewrite H4; 
               StringMapFacts.map_iff;
               intuition).
 
-  assert ((st'1) [thead >> Facade.SCA (list W) a])
+  assert ((st'1) [thead >> Facade.SCA _ a])
     as h3 by (rewrite H4;
               StringMapFacts.map_iff;
               intuition).
@@ -946,7 +943,7 @@ Lemma compile_fold'' :
                                forall inter_state final_state,
                                  precond inter_state /\ inter_state[vinit >> wrapper init] ->
                                  RunsTo env pseq inter_state final_state ->
-                                 (final_state[vseq >> Facade.ADT seq]
+                                 (final_state[vseq >> Facade.ADT (List seq)]
                                   /\ final_state[vinit >> wrapper init]
                                   /\ postcond final_state)))
                       (fun pseq => ret {{ pinit;
@@ -981,7 +978,7 @@ Proof.
 
   unfold cond_respects_MapEq in *.
 
-  assert ((st'1) [vseq >> Facade.ADT seq] /\ (st'1) [vret >> wrapper init] /\ postcond st'1) 
+  assert ((st'1) [vseq >> Facade.ADT (List seq)] /\ (st'1) [vret >> wrapper init] /\ postcond st'1) 
     as lemma_precond by (rewrite H3;
                          StringMapFacts.map_iff;
                          intuition).
@@ -1004,7 +1001,7 @@ Proof.
   unfold State in *;
   
   repeat match goal with
-           | [ H0: forall (a b: t (Value (list W))), _ |- _ ] => 
+           | [ H0: forall (a b: t (Value FacadeADT)), _ |- _ ] => 
              specialize (H0 st'1 final_state) (* Specialize the conditions arising from inversion *)
          end;
 
@@ -1056,7 +1053,7 @@ Lemma compile_fold :
                                     forall inter_state final_state,
                                       precond inter_state /\ inter_state[vinit >> wrapper init] ->
                                       RunsTo env pseq inter_state final_state ->
-                                      (final_state[vseq >> Facade.ADT seq]
+                                      (final_state[vseq >> Facade.ADT (List seq)]
                                        /\ final_state[vinit >> wrapper init]
                                        /\ postcond final_state)))
                            (fun pseq => ret {{ pinit;
@@ -1084,7 +1081,7 @@ Definition compile_fold_sca
 Definition compile_fold_adt 
            {env} {precond postcond: State _ -> Prop}
            vinit vseq {vret} := 
-  @compile_fold env precond postcond vinit vseq vret (list W) (@Facade.ADT _).
+  @compile_fold env precond postcond vinit vseq vret (list W) (fun x => Facade.ADT (List x)).
 
 Lemma copy_variable :
   forall {av env},
@@ -1177,28 +1174,6 @@ Lemma start_compiling_with_precondition ret_var : (* TODO: Supersedes start_comp
   eapply MapsTo_unique; eauto.
 Qed.
 
-Transparent WOne.
-Definition WTwo : W.
-  let wtwo := (eval compute in (Word.wplus WOne WOne)) in
-  apply wtwo.
-Defined.
-Definition WThree : W.
-  let w := (eval compute in (Word.wplus WTwo WOne)) in
-  apply w.
-Defined.
-Opaque WOne WTwo WThree.
-
-Definition List_push : AxiomaticSpec (list W) := 
-  {|
-    PreCond := fun args => 
-                 exists l w, 
-                   args = [Facade.ADT l; Facade.SCA _ w];
-    PostCond := fun args ret => 
-                  exists l w, 
-                    args = [ (Facade.ADT l, Some (Facade.ADT (w :: l))); (Facade.SCA _ w, Some (Facade.SCA _ w)) ] /\ 
-                    ret = Facade.SCA _ w
-  |}.
-
 Definition basic_env := {| Label2Word := fun _ => None; 
                            Word2Spec := fun w => 
                                           if Word.weqb w WZero then 
@@ -1216,7 +1191,7 @@ Definition start_compiling_sca :=
   fun ret_var => @start_compiling' ret_var _ (basic_env) (empty_state _).
 
 Definition start_compiling_sca_with_precondition := 
-  fun ret_var {init_state precond} precond_proof v => @start_compiling_with_precondition ret_var _ (basic_env) init_state precond W (Facade.SCA (list W)) v (@SCA_inj (list W)) precond_proof.
+  fun ret_var {init_state precond} precond_proof v => @start_compiling_with_precondition ret_var _ (basic_env) init_state precond W (Facade.SCA FacadeADT) v (@SCA_inj FacadeADT) precond_proof.
 
 (* TODO: Move up *)
 Lemma ADT_inj :
@@ -1226,8 +1201,16 @@ Proof.
   intros; autoinj; trivial.
 Qed.
 
+Lemma List_inj :
+  forall x y : list W, 
+    Facade.ADT (List x) = Facade.ADT (List y) -> 
+    x = y.
+Proof.
+  intros; autoinj; trivial.
+Qed.
+
 Definition start_compiling_adt_with_precondition := 
-  fun ret_var {init_state precond} precond_proof v => @start_compiling_with_precondition ret_var _ (basic_env) init_state precond (list W) (@Facade.ADT (list W)) v (@ADT_inj (list W)) precond_proof.
+  fun ret_var {init_state precond} precond_proof v => @start_compiling_with_precondition ret_var _ (basic_env) init_state precond (list W) (fun x => Facade.ADT (List x)) v (List_inj) precond_proof.
 
 Tactic Notation "cleanup_adt" :=
   unfold cond_indep, LoopBodyOk, Fold; intros;
@@ -1241,7 +1224,7 @@ Tactic Notation "cleanup_adt" :=
 
 Goal forall seq: list W, 
      forall state,
-       state["$list" >> Facade.ADT seq] ->
+       state["$list" >> Facade.ADT (List seq)] ->
        exists x, 
          refine (ret (fold_left (fun (sum item: W) => Word.wplus item sum) seq WZero)) x.
 Proof.
@@ -1264,13 +1247,14 @@ Qed.
 
 Goal forall seq: list W, 
      forall state,
-       state["$list" >> Facade.ADT seq] ->
+       state["$list" >> Facade.ADT (List seq)] ->
        exists x, 
          refine (ret (fold_left (fun (acc: list W) (item: W) => (Word.wmult item WTwo) :: acc) seq nil)) x.
 Proof.
   intros * state_precond; eexists.
   
   setoid_rewrite (start_compiling_adt_with_precondition "$ret" state_precond).  
+  
   setoid_rewrite (compile_fold_adt "$init" "$seq" "$head" "$is_empty" WOne WZero); cleanup_adt.
   setoid_rewrite (pull_forall (fun cond => cond_indep cond "$ret")); cleanup_adt.
 
@@ -1289,10 +1273,10 @@ Proof.
     cond_respects_MapEq postcond ->
     (forall state x, precond state -> postcond (add vret x state)) ->
     refine (Pick (fun prog => 
-                    forall init_state final_state : State (list W),
+                    forall init_state final_state : State FacadeADT,
                       precond init_state ->
                       RunsTo env prog init_state final_state ->
-                      MapsTo vret (Facade.ADT nil) final_state /\
+                      MapsTo vret (Facade.ADT (List nil)) final_state /\
                       postcond final_state))
            (ret (Call (Some vret) (Const pnew) nil)). 
   Proof.
@@ -1322,7 +1306,7 @@ Proof.
       refine (Pick (fun prog => forall init_state final_state,
                                   precond init_state ->
                                   RunsTo env prog init_state final_state ->
-                                  final_state[ttail >> Facade.ADT (head :: tail)]
+                                  final_state[ttail >> Facade.ADT (List (head :: tail))]
                                    /\ postcond final_state))
              (Bind (Pick (fun phead => forall init_state inter_state,
                                          precond init_state ->
@@ -1336,7 +1320,7 @@ Proof.
                                    precond inter_state /\ 
                                    inter_state[thead >> Facade.SCA _ head] ->
                                    RunsTo env ptail inter_state final_state ->
-                                   final_state[ttail >> Facade.ADT tail] /\ 
+                                   final_state[ttail >> Facade.ADT (List tail)] /\ 
                                    final_state[thead >> Facade.SCA _ head] /\ 
                                    postcond final_state))
                         (fun ptail => ret (Seq phead  
@@ -1391,3 +1375,4 @@ reflexivity.
          * <> precond and postcond, but forall x, precond x -> postcond (add blah x); 
          * Same pre/post cond, with extra conditions (see compile_fold et al.)
          * <> precond and postcond, and postcond indep of modified var (see compile_cons) *)
+(* TODO: Post-conditions should include the beginning state, too *)  
