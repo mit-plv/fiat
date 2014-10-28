@@ -352,7 +352,7 @@ Lemma KeyPreservingUpdateFAsUpdateTermOK {heading}
          (f : @Tuple heading -> @Tuple heading),
     (forall a, List.In a indices -> List.In a indices')
     -> (forall K tup,
-          In K indices'
+          List.In K indices'
           -> f tup (@Attribute _ K) = tup (@Attribute _ K))
     -> ProperAttributesToValidUpdate (@Tuple heading -> @Tuple heading)
                                      (fun upd tup => upd tup)
@@ -585,7 +585,7 @@ Qed.
                 (snd (List.partition (@dec _ _ DT_Dec)
                                      (benumerate store))).
     Proof.
-      simpl; unfold EnsembleDelete, EnsembleBagEquivalence, In, Complement; simpl;
+      simpl; unfold EnsembleDelete, EnsembleBagEquivalence, Ensembles.In, Complement; simpl;
       unfold EnsembleIndexedListEquivalence, UnIndexedEnsembleListEquivalence,
       EnsembleListEquivalence; intros; intuition; destruct_ex; intuition; subst.
       repeat setoid_rewrite get_update_unconstr_eq; simpl; intros.
@@ -608,12 +608,12 @@ Qed.
         (f := fun x0 : IndexedTuple => @dec IndexedTuple (fun t => DeletedTuples (indexedElement t)) _ x0).
         simpl in *; rewrite H; eauto.
       - rewrite get_update_unconstr_eq in H3.
-        destruct H3; unfold In in *.
+        destruct H3; unfold Ensembles.In in *.
         apply H4 in H3; eapply In_partition in H3; intuition; try apply H6.
         apply In_partition_matched in H6; apply dec_decides_P in H6; exfalso; eauto.
       - rewrite get_update_unconstr_eq; constructor.
         eapply H4; eapply In_partition; eauto.
-        unfold In; intros.
+        unfold Ensembles.In; intros.
         apply In_partition_unmatched in H3.
         simpl in *; apply dec_decides_P in H5.
         unfold indexedTuple, QSGetNRelSchemaHeading, GetNRelSchemaHeading, GetNRelSchema in *;
@@ -650,7 +650,7 @@ Qed.
       simpl in *;
         unfold EnsembleListEquivalence, EnsembleIndexedListEquivalence,
         UnConstrFreshIdx, EnsembleDelete, Complement in *; intuition; destruct_ex; intuition; intros.
-      exists x; intros; eapply H; destruct H1; unfold In in *; eauto.
+      exists x; intros; eapply H; destruct H1; unfold List.In in *; eauto.
       unfold UnIndexedEnsembleListEquivalence, EnsembleListEquivalence in *.
       generalize (bdelete_correct store search_term H2); destruct_ex; intuition.
       rewrite partition_filter_neq in H1.
@@ -661,7 +661,7 @@ Qed.
       induction (benumerate (snd (bdelete store search_term))); intros.
       eexists []; simpl; intuition.
       constructor.
-      destruct H; destruct H2; unfold In in *.
+      destruct H; destruct H2; unfold Ensembles.In in *.
       apply H7 in H.
       apply Permutation_nil in H1.
       apply dec_decides_P; rewrite H0.
@@ -699,7 +699,7 @@ Qed.
       rewrite filter_map in H1; rewrite H in H1; simpl in *.
       rewrite H8 in *; simpl in *.
       destruct (IHl DeletedTuples DT_Dec x1
-                    (fun tup => In _ u tup /\ tup <> x)); eauto;
+                    (fun tup => Ensembles.In _ u tup /\ tup <> x)); eauto;
       clear IHl.
       rewrite filter_map; eapply Permutation_cons_inv; eauto.
       apply NoDup_Permutation_rewrite in H; eauto.
@@ -718,30 +718,30 @@ Qed.
       simpl; congruence.
       constructor; eauto.
       unfold not; intros.
-      unfold In in *.
-      apply H10 in H9; inversion H9; subst; unfold In in *;
+      unfold Ensembles.In in *.
+      apply H10 in H9; inversion H9; subst; unfold Ensembles.In in *;
       intuition.
-      unfold In in H9; inversion H9; subst; unfold In in *;
+      unfold Ensembles.In in H9; inversion H9; subst; unfold Ensembles.In in *;
       intuition.
       generalize (Permutation_in _ H (proj1 (H7 _) H11)); intros In_x0.
       destruct In_x0; simpl; subst; eauto.
       right.
-      apply H10; constructor; unfold In; intuition eauto.
+      apply H10; constructor; unfold Ensembles.In; intuition eauto.
       subst; eauto.
       constructor; intros.
       apply H7.
       simpl in *; intuition; subst; eauto.
-      apply H10 in H11; unfold In in *; inversion H11;
-      unfold In in *; subst; intuition eauto.
+      apply H10 in H11; unfold Ensembles.In in *; inversion H11;
+      unfold Ensembles.In in *; subst; intuition eauto.
       apply H7; eauto.
-      unfold In.
+      unfold Ensembles.In.
       simpl in *; intuition; subst; eauto.
       apply dec_decides_P in H11; rewrite H0 in H11;
       unfold BagPlusProofAsBag, QSGetNRelSchemaHeading,
       GetNRelSchemaHeading, GetNRelSchema in *; simpl in *;
       congruence.
-      apply H10 in H12; unfold In in *; inversion H12;
-      unfold In in *; subst; intuition eauto.
+      apply H10 in H12; unfold List.In in *; inversion H12;
+      unfold List.In in *; subst; intuition eauto.
     Qed.
 
     Arguments bdelete : simpl never.
