@@ -30,6 +30,12 @@ Coercion nat_as_word : nat >-> Word.word.
 Definition string_as_var str : Expr := Var str.
 Coercion string_as_var : string >-> Expr.
 
+Definition word_as_constant w : Expr := Const w.
+Coercion word_as_constant : W >-> Expr.
+
+Definition nat_as_constant n : Expr := Const (Word.natToWord 32 n).
+Coercion nat_as_constant : nat >-> Expr.
+
 Notation "A ; B" := (Seq A B) (at level 201,
                                B at level 201,
                                left associativity,
@@ -50,8 +56,8 @@ Notation "A * B" := (Binop IL.Times A B).
 Notation "A + B" := (Binop IL.Plus A B).
 Notation "A - B" := (Binop IL.Minus A B).
 
-Notation "' x" := (Var x) (at level 50, no associativity).
-Notation "# x" := (Const x) (at level 50, no associativity).
+(*Notation "' x" := (Var x) (at level 50, no associativity).*)
+(*Notation "# x" := (Const x) (at level 50, no associativity).*)
 Notation "! x" := (Var x === Const 0) (at level 50, no associativity).
 
 Definition Fold (head is_empty seq: StringMap.key) 
@@ -198,7 +204,7 @@ Proof.
 Qed.
 
 Lemma compile_if :
-  forall { av env } testvar {retvar} {ret_type} (wrapper: ret_type -> Value av) (test: bool) (precond postcond: _ -> Prop) truecase falsecase,
+  forall { av env } (testvar: StringMap.key) {retvar} {ret_type} (wrapper: ret_type -> Value av) (test: bool) (precond postcond: _ -> Prop) truecase falsecase,
   refine (Pick (fun prog => forall init_state final_state,
                               precond init_state ->
                               @RunsTo av env prog init_state final_state ->
@@ -229,13 +235,15 @@ Lemma compile_if :
                                          postcond final_state)))
                              (fun p2 => ret (Seq ptest
                                                  (Facade.If (SyntaxExpr.TestE IL.Eq
-                                                                              (SyntaxExpr.Var testvar) 
-                                                                              (SyntaxExpr.Const WZero))
+                                                                              (testvar) 
+                                                                              (0))
                                                             (p2)
                                                             (p1)))))))).                
 Proof.
-  unfold refine. 
-  intros av env testvar retvar test precond postcond ret_type wrapper truecase falsecase wrapper_inj ** .
+  unfold refine.
+  unfold string_as_var, nat_as_constant, nat_as_word in *.
+
+  intros av env testvar retvar ret_type wrapper test precond postcond truecase falsecase wrapper_inj ** .
   inversion_by computes_to_inv.
   rnm x ptest.
   rnm x0 ptrue.
@@ -255,7 +263,7 @@ Proof.
   unfold is_true, is_false, eval_bool, eval, eval_binop_m in H1;
     rnm st' inter_state;
     (destruct (StringMap.find (elt:=Value av) testvar inter_state) as [ v | ] eqn:testvar_correct; try congruence);
-    (destruct v as [ testw | ]; try congruence);
+  (destruct v as [ testw | ]; try congruence);
     apply Some_inj in H1;
   specialize (ptest_testvar init_state inter_state init_state_consistent H);
   rewrite <- StringMapFacts.find_mapsto_iff in *;
@@ -306,8 +314,8 @@ Lemma compile_binop :
                                                (Assign retvar 
                                                        (SyntaxExpr.Binop 
                                                           op
-                                                          (SyntaxExpr.Var temp1) 
-                                                          (SyntaxExpr.Var temp2)))))))).
+                                                          (temp1) 
+                                                          (temp2)))))))).
   unfold refine; simpl.
   intros op retvar temp1 temp2 av env precond postcond w1 w2 postcond_meaningful postcond_indep_retvar ** .
   inversion_by computes_to_inv.
@@ -363,7 +371,7 @@ Qed.
 
 Lemma compile_test : (* Exactly the same proof as compile_binop *)
   forall op,
-  forall retvar temp1 temp2,
+  forall (retvar temp1 temp2: StringMap.key),
   forall av env,
   forall (precond postcond: State _ -> Prop),
   forall w1 w2,
@@ -393,9 +401,11 @@ Lemma compile_test : (* Exactly the same proof as compile_binop *)
                                                (Assign retvar 
                                                        (SyntaxExpr.TestE 
                                                           op
-                                                          (SyntaxExpr.Var temp1) 
-                                                          (SyntaxExpr.Var temp2)))))))).
+                                                          (temp1) 
+                                                          (temp2)))))))).
   unfold refine; simpl.
+  unfold string_as_var, nat_as_word, nat_as_constant.
+  
   intros op retvar temp1 temp2 av env precond postcond w1 w2 postcond_meaningful postcond_indep_retvar ** .
   inversion_by computes_to_inv.
   rnm x prog1.
@@ -682,7 +692,7 @@ Qed.
 Lemma RunsToAssignKnownValue :
   forall {av env} {k1 k2: StringMap.key} {v} {st st': State av},
     st[k2 >> v] ->
-    @RunsTo av env (k1 <- 'k2) st st' ->
+    @RunsTo av env (k1 <- k2) st st' ->
     StringMap.Equal st' (StringMap.add k1 v st).
 Proof.
   intros * maps_to runs_to;
@@ -864,7 +874,7 @@ Qed.
 Lemma compile_fold_no_pick : 
   forall {env},
   forall {precond postcond: State _ -> Prop},
-  forall vinit vseq {vret},
+  forall (vinit vseq: StringMap.key) {vret},
   forall acc_type wrapper,
   forall thead tis_empty ppop pempty f sloop_body,
     vret <> vseq ->
@@ -901,7 +911,7 @@ Lemma compile_fold_no_pick :
                                   /\ postcond final_state)))
                       (fun pseq => ret (pinit;
                                         pseq;
-                                        vret <- 'vinit;
+                                        vret <- vinit;
                                         Fold thead tis_empty vseq ppop pempty sloop_body)%facade))).
 Proof.
   unfold refine; intros * vret_vseq vret_tis_empty thead_vret thead_vseq tis_empty_vseq postcond_meaningful postcond_indep_vret postcond_indep_tis_empty postcond_indep_thead postcond_indep_vseq zero_to_empty one_to_pop loop_body_ok * **.
@@ -1010,7 +1020,7 @@ Lemma compile_fold :
                                        /\ postcond final_state)))
                            (fun pseq => ret (pinit;
                                              pseq;
-                                             vret <- 'vinit;
+                                             vret <- vinit;
                                              Fold thead tis_empty vseq ppop pempty sloop_body)%facade)))).
 Proof.
   unfold refine; intros * vret_vseq vret_tis_empty thead_vret thead_vseq tis_empty_vseq postcond_meaningful postcond_indep_vret postcond_indep_tis_empty postcond_indep_thead postcond_indep_vseq zero_to_empty one_to_pop loop_body_ok * ** .
@@ -1035,18 +1045,18 @@ Definition compile_fold_adt (* TODO: Rename *)
            vinit vseq {vret} := 
   @compile_fold env precond postcond vinit vseq vret (list W) (fun x => Facade.ADT (List x)).
 
-Lemma copy_variable :
+Lemma copy_word :
   forall {av env},
-  forall k1 {k2} val (precond postcond: State av -> Prop), 
+  forall k1 {k2} w (precond postcond: State av -> Prop), 
     cond_respects_MapEq postcond ->
-    (forall state, precond state -> state[k1 >> val]) ->
+    (forall state, precond state -> state[k1 >> Facade.SCA _ w]) ->
     (forall x state, precond state -> postcond (StringMap.add k2 x state)) ->
     refine (Pick (fun prog => forall init_state final_state,
                                 precond init_state ->
                                 RunsTo env prog init_state final_state ->
-                                final_state[k2 >> val] /\
+                                final_state[k2 >> Facade.SCA _ w] /\
                                 postcond final_state))
-           (ret (Assign k2 (SyntaxExpr.Var k1))).
+           (ret (k2 <- k1)).
 Proof.
   unfold refine; intros; constructor; intros.
   inversion_by computes_to_inv; subst.
@@ -1318,12 +1328,12 @@ Goal forall seq: list W,
      forall state,
        state["$list" >> Facade.ADT (List seq)] ->
        exists x, 
-         refine (ret (fold_left (fun (sum item: W) => Word.wplus item sum) seq WZero)) x.
+         refine (ret (fold_left (fun (sum item: W) => Word.wplus item sum) seq 0)) x.
 Proof.
   intros seq state state_precond; eexists.
 
   setoid_rewrite (start_compiling_sca_with_precondition "$ret" state_precond).  
-  setoid_rewrite (compile_fold_sca "$init" "$seq" "$head" "$is_empty" WOne WZero); cleanup_adt.
+  setoid_rewrite (compile_fold_sca "$init" "$seq" "$head" "$is_empty" 1 0); cleanup_adt.
   setoid_rewrite (pull_forall (fun cond => cond_indep cond "$ret")); cleanup_adt.
 
   Focus 2.
