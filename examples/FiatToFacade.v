@@ -45,33 +45,47 @@ Notation "A ; B" := (Seq A B) (at level 201,
                                format "'[v' A ';' '/' B ']'") : facade_scope.
 Delimit Scope facade_scope with facade.
     
-Notation "y <= f [[ x1 , .. , xn ]]" := (Call y f (cons x1 .. (cons xn nil) ..))
-                                      (at level 70, no associativity).
-Notation "y <= f  [[]]" := (Call y f nil) (at level 70, no associativity).
-Notation "x <- y" := (Assign x y) (at level 70).
+Notation "x <- y" := (Assign x y) (at level 100) : facade_scope.
+Notation "y <- f" := (Call y f nil) (at level 100, no associativity) : facade_scope.
+Notation "y <- f x1 .. xn" := (Call y f (cons x1 .. (cons xn nil) ..))
+                                 (at level 100, no associativity) : facade_scope.
 
-Notation "A < B" := (TestE IL.Lt A B).
-Notation "A <= B" := (TestE IL.Le A B).
-Notation "A <> B" := (TestE IL.Ne A B) .
-Notation "A === B" := (TestE IL.Eq A B) (at level 70).
+Notation "A < B" := (TestE IL.Lt A B) : facade_scope.
+Notation "A <= B" := (TestE IL.Le A B) : facade_scope.
+Notation "A <> B" := (TestE IL.Ne A B) : facade_scope.
+Notation "A = B" := (TestE IL.Eq A B) : facade_scope.
+Notation "! x" := (x = 0)%facade (at level 70, no associativity).
 
-Notation "A * B" := (Binop IL.Times A B).
-Notation "A + B" := (Binop IL.Plus A B).
-Notation "A - B" := (Binop IL.Minus A B).
+Notation "A * B" := (Binop IL.Times A B) : facade_scope.
+Notation "A + B" := (Binop IL.Plus A B) : facade_scope.
+Notation "A - B" := (Binop IL.Minus A B) : facade_scope.
 
-(*Notation "' x" := (Var x) (at level 50, no associativity).*)
-(*Notation "# x" := (Const x) (at level 50, no associativity).*)
-Notation "! x" := (x === 0) (at level 50, no associativity).
+Notation "'While' A B" := (While A B)
+                            (at level 200,
+                             A at level 0,
+                             B at level 1000,
+                             format "'[v    ' 'While'  A '/' B ']'")
+                          : facade_scope.
+  
+Notation "'If' a 'then' b 'else' c" := (Facade.If a b c)
+                                          (at level 200,
+                                           a at level 1000,
+                                           b at level 1000,
+                                           c at level 1000,
+                                          format "'[v' '[v    ' 'If'  a  'then' '/' b ']' '/' '[v    ' 'else' '/' c ']' ']'")
+                                       : facade_scope.
 
 Definition Fold (head is_empty seq: StringMap.key) 
                 _pop_ _empty_ loop_body := (
-    is_empty <= _empty_ [[seq]];
+    Call is_empty _empty_ (seq :: nil);
     While (!is_empty) (
-        head <= _pop_ [[seq]];
+        Call head _pop_ (seq :: nil);
         loop_body;
-        is_empty <= _empty_ [[seq]]
+        Call is_empty _empty_ (seq :: nil)
     )
 )%facade.
+
+Print Fold.
 
 (* Tactics *)
 
@@ -639,7 +653,7 @@ Lemma runsto_pop :
     vseq <> thead ->
     st [vseq >> Facade.ADT (List (hd :: tl))] ->
     Word2Spec env ppop  = Some (Axiomatic List_pop) ->
-    RunsTo env (thead <= ppop [[vseq]]) st st' ->
+    RunsTo env (Call thead ppop (vseq :: nil)) st st' ->
     StringMap.Equal st' (StringMap.add thead (Facade.SCA _ hd) (StringMap.add vseq (Facade.ADT (List tl)) st)).
 Proof.
   intros * vseq_thead vseq_init ppop_is_pop runs_to.
@@ -678,7 +692,7 @@ Lemma runsto_is_empty :
     vseq <> tis_empty ->
     st [vseq >> Facade.ADT (List seq)] ->
     Word2Spec env pis_empty  = Some (Axiomatic List_empty) ->
-    RunsTo env (tis_empty <= pis_empty [[vseq]]) st st' ->
+    RunsTo env (Call tis_empty pis_empty (vseq :: nil)) st st' ->
     exists ret, 
       (ret <> SCAZero <-> seq = nil) /\
       StringMap.Equal st' (StringMap.add tis_empty ret st).
@@ -708,7 +722,7 @@ Lemma runsto_copy :
   forall seq (vseq vcopy: StringMap.key) env (st st': State FacadeADT) pcopy,
     st [vseq >> Facade.ADT (List seq)] ->
     Word2Spec env pcopy  = Some (Axiomatic List_copy) ->
-    RunsTo env (vcopy <= pcopy [[vseq]]) st st' ->
+    RunsTo env (Call vcopy pcopy (vseq :: nil)) st st' ->
     StringMap.Equal st' (StringMap.add vcopy (Facade.ADT (List seq)) (StringMap.add vseq (Facade.ADT (List seq)) st)).
 Proof.
   intros * vseq_seq pcopy_is_copy runs_to.
@@ -731,7 +745,7 @@ Qed.
 Lemma RunsToAssignKnownValue :
   forall {av env} {k1 k2: StringMap.key} {v} {st st': State av},
     st[k2 >> v] ->
-    @RunsTo av env (k1 <- k2) st st' ->
+    @RunsTo av env (Assign k1 k2) st st' ->
     StringMap.Equal st' (StringMap.add k1 v st).
 Proof.
   intros * maps_to runs_to;
@@ -945,7 +959,7 @@ Lemma compile_fold_no_pick :
                                   /\ postcond final_state)))
                       (fun pseq => ret (pinit;
                                         pseq;
-                                        vret <- vinit;
+                                        Assign vret vinit;
                                         Fold thead tis_empty vseq ppop pempty sloop_body)%facade))).
 Proof.
   unfold refine; intros * vret_vseq vret_tis_empty thead_vret thead_vseq tis_empty_vseq postcond_meaningful postcond_indep_vret postcond_indep_tis_empty postcond_indep_thead postcond_indep_vseq zero_to_empty one_to_pop loop_body_ok * **.
@@ -1052,7 +1066,7 @@ Lemma compile_fold :
                                        /\ postcond final_state)))
                            (fun pseq => ret (pinit;
                                              pseq;
-                                             vret <- vinit;
+                                             Assign vret vinit;
                                              Fold thead tis_empty vseq ppop pempty sloop_body)%facade)))).
 Proof.
   unfold refine; intros * vret_vseq vret_tis_empty thead_vret thead_vseq tis_empty_vseq postcond_meaningful postcond_indep_vret postcond_indep_tis_empty postcond_indep_thead postcond_indep_vseq zero_to_empty one_to_pop loop_body_ok * ** .
@@ -1088,7 +1102,7 @@ Lemma copy_word :
                                 RunsTo env prog init_state final_state ->
                                 final_state[k2 >> Facade.SCA _ w] /\
                                 postcond final_state))
-           (ret (k2 <- k1)).
+           (ret (Assign k2 k1)).
 Proof.
   unfold refine; intros; constructor; intros.
   inversion_by computes_to_inv; subst.
@@ -1178,7 +1192,7 @@ Lemma compile_new :
                       RunsTo env prog init_state final_state ->
                       final_state[vret >> Facade.ADT (List nil)] /\
                       postcond final_state))
-           (ret (vret <= pnew [[]])). 
+           (ret (Call vret pnew nil)). 
 Proof.
   unfold refine, List_new, cond_respects_MapEq; intros; constructor; intros.
   inversion_by computes_to_inv; subst;
@@ -1207,7 +1221,7 @@ Lemma compile_copy :
                       RunsTo env prog init_state final_state ->
                       final_state[vto >> Facade.ADT (List val)] /\
                       postcond final_state))
-           (ret (vto <= pcopy [[vfrom]])). 
+           (ret (Call vto pcopy (vfrom :: nil))). 
 Proof.
   unfold refine, List_new, cond_respects_MapEq; intros; constructor; intros.
   inversion_by computes_to_inv; subst.
@@ -1249,7 +1263,7 @@ Lemma compile_cons :
                                  postcond final_state))
                       (fun ptail => ret (Seq phead  
                                              (Seq ptail
-                                                  (tdummy <= pcons [[ttail, thead]])))))).
+                                                  (Call tdummy pcons (ttail :: thead :: nil))))))).
 Proof. (* TODO: Prove runsto_cons. *)
   unfold refine, List_push, cond_respects_MapEq; intros; constructor; intros.
   inversion_by computes_to_inv; subst. 
@@ -1360,8 +1374,8 @@ setoid_rewrite (compile_constant "$ret" _ _ _ (fun s => Word.weqb w1 w2 = false 
 
 Goal exists x, 
        refine (ret (Word.wmult 
-                      (Word.wplus  (IL.natToW 3) (IL.natToW 4)) 
-                      (Word.wminus (IL.natToW 5) (IL.natToW 6)))) x.
+                      (Word.wplus  3 4)
+                      (Word.wminus 5 6))) x.
 Proof.
   eexists.
   
@@ -1376,30 +1390,6 @@ Proof.
   setoid_rewrite (compile_constant "$t21"); cleanup.
   setoid_rewrite (compile_constant "$t22"); cleanup.
   
-  reflexivity.
-Qed.
-
-Goal forall seq: list W, 
-     forall state,
-       state["$list" >> Facade.ADT (List seq)] ->
-       exists x, 
-         refine (ret (fold_left (fun (sum item: W) => Word.wplus item sum) seq 0)) x.
-Proof.
-  intros seq state state_precond; eexists.
-
-  setoid_rewrite (start_compiling_sca_with_precondition "$ret" state_precond).  
-  setoid_rewrite (compile_fold_sca "$init" "$seq" "$head" "$is_empty" 1 0); cleanup_adt.
-  setoid_rewrite (pull_forall (fun cond => cond_indep cond "$ret")); cleanup_adt.
-
-  Focus 2.
-  setoid_rewrite (compile_binop IL.Plus "$ret" "$head" "$ret"); cleanup_adt.
-  rewrite no_op; try cleanup_adt.
-  rewrite no_op; try cleanup_adt.
-  reflexivity.
-
-  setoid_rewrite compile_constant; cleanup_adt.
-  setoid_rewrite (compile_copy 4 "$list"); cleanup_adt.
-
   reflexivity.
 Qed.
 
@@ -1451,9 +1441,9 @@ Lemma while_morph {av env} :
   forall (st1 st2: State av),
     RunsTo env (while_p1) st1 st2 ->
     forall p1 p2 test,
-      while_p1 = While test p1 -> 
+      while_p1 = Facade.While test p1 -> 
       @ProgEquiv av p1 p2 ->
-      RunsTo env (While test p2) st1 st2.
+      RunsTo env (Facade.While test p2) st1 st2.
 Proof.
   unfold ProgEquiv; induction 1; intros ** equiv; subst; try discriminate; autoinj.
 
@@ -1462,7 +1452,7 @@ Proof.
 Qed.  
   
 Add Parametric Morphism {av} :
-  (While)
+  (Facade.While)
     with signature (eq ==> @ProgEquiv av ==> @ProgEquiv av)
       as while_morphism.
 Proof.  
@@ -1496,6 +1486,32 @@ Proof.
   unfold ProgEquiv; split; intros.
   inversion_clear' H; inversion_clear' H5; eauto.
   repeat (econstructor; eauto).
+Qed.
+
+Goal forall seq: list W, 
+     forall state,
+       state["$list" >> Facade.ADT (List seq)] ->
+       exists x, 
+         refine (ret (fold_left (fun (sum item: W) => Word.wplus item sum) seq 0)) x.
+Proof.
+  intros seq state state_precond; eexists.
+
+  setoid_rewrite (start_compiling_sca_with_precondition "$ret" state_precond).  
+  setoid_rewrite (compile_fold_sca "$init" "$seq" "$head" "$is_empty" 1 0); cleanup_adt.
+  setoid_rewrite (pull_forall (fun cond => cond_indep cond "$ret")); cleanup_adt.
+
+  Focus 2.
+  setoid_rewrite (compile_binop IL.Plus "$ret" "$head" "$ret"); cleanup_adt.
+  rewrite no_op; try cleanup_adt.
+  rewrite no_op; try cleanup_adt.
+  reflexivity.
+
+  setoid_rewrite compile_constant; cleanup_adt.
+  setoid_rewrite (compile_copy 4 "$list"); cleanup_adt.
+
+  repeat setoid_rewrite Skip_Seq.
+  
+  reflexivity.
 Qed.
 
 Goal forall seq: list W, 
@@ -1636,7 +1652,6 @@ Proof.
   reflexivity.
 
   repeat setoid_rewrite Skip_Seq.
-
   reflexivity.
 Qed.
 
