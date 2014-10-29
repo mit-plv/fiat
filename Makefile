@@ -5,6 +5,8 @@ SRC_MODULES    := \
 	Common/StringBound \
 	Common/DecideableEnsembles \
 	Common/IterateBoundedIndex \
+	Common/AdditionalEnsembleDefinitions \
+	Common/AdditionalEnsembleLemmas \
 	Computation/Notations \
 	Computation/Core \
 	Computation/Monad \
@@ -94,6 +96,9 @@ SRC_MODULES    := \
 	Common/String_as_OT\
 	QueryStructure/Refinements/Bags/Bags\
 	QueryStructure/Refinements/AutoDB\
+	FiniteSetADTs \
+	FiniteSetADTs/FiniteSetADT \
+	FiniteSetADTs/FiniteSetRefinement \
 	Parsers/ContextFreeGrammar\
 	Parsers/Specification\
 	Parsers/NonComputational
