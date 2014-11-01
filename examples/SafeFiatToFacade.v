@@ -1471,6 +1471,64 @@ Ltac mapsto_eq_add :=
       pose proof H as H';
         apply mapsto_eq_add in H'
   end.
+  
+Lemma Subset_replace_right :
+  forall {elt welt} k v v' state map wrapper,
+    @Subset elt welt state ([k >> v]::map) wrapper ->
+    @Subset elt welt ([k >> v']::state) ([k >> v']::map) wrapper.
+Proof.
+  unfold Subset; intros ** k'' v'' maps_to.
+  destruct (StringMap.E.eq_dec k k''); subst;
+  rewrite StringMapFacts.add_mapsto_iff in *;
+  map_iff_solve idtac; [ | apply H ];
+  map_iff_solve intuition.
+Qed.
+
+Lemma Subset_replace_left :
+  forall {elt welt} k v v' state map wrapper,
+    @Subset elt welt ([k >> v]::state) map wrapper ->
+    @Subset elt welt ([k >> v']::state) ([k >> v']::map) wrapper.
+Proof.
+  unfold Subset; intros ** k'' v'' maps_to.
+  destruct (StringMap.E.eq_dec k k''); subst;
+  rewrite StringMapFacts.add_mapsto_iff in *;
+  map_iff_solve idtac; intuition.
+  specialize (H _ _ H2);
+    rewrite StringMapFacts.add_mapsto_iff in *;
+    intuition.
+Qed.
+
+Lemma AllADTs_replace :
+  forall {av} k v v' state map,
+    @AllADTs av state ([k >> v]::map) ->
+    @AllADTs av ([k >> v']::state) ([k >> v']::map).
+Proof.
+  unfold AllADTs; split; intros;
+  [ eapply Subset_replace_right
+  | eapply Subset_replace_left ];
+  intuition eassumption.
+Qed.
+
+Ltac loop_body_prereqs :=
+  split; [assumption|split];
+  match goal with
+    | [ H: RunsTo _ (Call _ _ _) _ _ |- _ ] =>
+      eapply runsto_pop in H; try eauto;
+      rewrite_Eq_in_goal;
+      try map_iff_solve ltac:(intuition eassumption)
+  end;
+  rewrite_Eq_in_goal;
+  [ apply Subset_swap_left; auto;
+    apply add_sca_pop_adts; map_iff_solve idtac; auto;
+    repeat apply SomeSCAs_chomp;
+    eassumption
+  | apply add_adts_pop_sca; try assumption;
+    map_iff_solve intuition;
+    apply AllADTs_swap; auto;
+    apply add_adts_pop_sca; auto;
+    map_iff_solve intuition;
+    eapply AllADTs_replace;
+    eassumption ].
 
 Definition compile_fold_base_sca :
   forall env,
@@ -1486,6 +1544,7 @@ Definition compile_fold_base_sca :
     tis_empty <> vseq ->
     ~ StringMap.In thead adts ->
     ~ StringMap.In tis_empty adts ->
+    ~ StringMap.In vseq scas ->
     (Word2Spec env pempty = Some (Axiomatic List_empty)) ->
     (Word2Spec env ppop  = Some (Axiomatic List_pop)) ->
     SCALoopBodyOk env loop compiled_loop knowledge scas adts vseq vret thead tis_empty ->
@@ -1498,6 +1557,7 @@ Proof.
   unfold SCALoopBodyOk, Prog, ProgOk, refine; unfold_coercions;
   induction seq as [ | a seq ];
   constructor; intros; destruct_pairs;
+  [ | specialize (fun init => IHseq init _ (eq_ret_compute _ _ _ (eq_refl))) ];
   split;
   inversion_by computes_to_inv;
   subst;
@@ -1544,7 +1604,8 @@ Proof.
           | symmetry; eassumption
           | simpl; eexists; reflexivity
           | map_iff_solve intuition ].
-  
+
+  (* Loop safe *)
   intros.
   compile_fold_induction_is_empty_call; try discriminate.
   mapsto_eq_add.
@@ -1555,7 +1616,8 @@ Proof.
       assumption | | ].
   
   constructor; split.
-  
+
+  (* Pop safe *)
   assert (st' [vseq >> Facade.ADT (List (a :: seq))]) 
     by (rewrite_Eq_in_goal; map_iff_solve intuition).
 
@@ -1573,82 +1635,84 @@ Proof.
   constructor.
   unfold SCALoopBodyOk, Prog in *.
 
+  (* Loop body + next statement safe *)
+
+  repeat match goal with
+           | [ H: (forall acc head seq initial_state,
+                     _ -> (forall final_state, RunsTo _ ?compiled_loop _ _ -> _))
+               |- context[RunsTo _ ?compiled_loop ?initial _] ] =>
+             specialize (fun p final => H init a seq initial p final);
+               match type of H with
+                 | ?cond -> _ => try pose cond as prereq
+               end
+         end.
+
+  assert (prereq) as prereqs; unfold prereq in *; clear prereq.
+  loop_body_prereqs.
+  
+  (* Loop body *)
   split.
   match goal with
     | [ H : context[Safe env compiled_loop _] |- _ ] =>
       eapply H
+  end; eauto.
+
+  (* next statement *)
+  intros.
+  repeat match goal with
+           | [ H: _ -> (forall final_state, _ -> _),
+               H': RunsTo _ compiled_loop _ _ |- _ ] => specialize (H prereqs _ H')
+         end.
+
+  scas_adts_mapsto.
+  eapply safe_call_1; try eassumption.
+  map_iff_solve congruence.
+  simpl; eexists; reflexivity.
+
+  (* Actual loop induction *)
+  intros.
+  
+  Lemma SafeEnv_inv :
+    forall {av env} {a b : Stmt} {st st' : State av},
+      RunsTo env a st st' ->
+      Safe env (Seq a b) st ->
+      Safe env b st'.
+  Proof.    
+    intros * h' h; inversion h. intuition.
+  Qed.    
+
+  do 2 inversion_facade. 
+
+  repeat match goal with
+           | [ H: (forall acc head seq initial_state,
+                     _ -> (forall final_state, RunsTo _ ?compiled_loop _ _ -> _)),
+               H': RunsTo _ ?compiled_loop ?initial _ |- _ ] =>
+             specialize (fun p final => H init a seq initial p final);
+               match type of H with
+                 | ?cond -> _ => try pose cond as prereq
+               end
+         end.
+
+  assert (prereq) as prereqs; unfold prereq in *; clear prereq.
+  loop_body_prereqs.
+
+  repeat match goal with
+           | [ H: _ -> (forall final_state, _ -> _),
+               H': RunsTo _ compiled_loop _ _ |- _ ] => specialize (H prereqs _ H')
+         end.
+
+  match goal with
+    | [ H: RunsTo _ _ _ ?st |- Safe env _ ?st ] => apply (SafeEnv_inv H)
+  end.
+  specialize (IHseq (loop init a)); inversion_by computes_to_inv.
+  match goal with
+    | [ H: context[Fold] |- _ ] => unfold Fold in H; apply H
   end.
 
-  split; [assumption|split];
-  match goal with
-    | [ H: RunsTo _ (Call _ _ _) _ _ |- _ ] =>
-      eapply runsto_pop in H; try eauto;
-      rewrite_Eq_in_goal;
-      try map_iff_solve ltac:(intuition eassumption)
-  end;
-  rewrite_Eq_in_goal.
+  tauto.
 
-  
-  apply Subset_swap_left; try auto.
-  apply add_sca_pop_adts; map_iff_solve idtac; auto.
+  (* Induction case for the loop *)
 
-  admit.
-  repeat apply SomeSCAs_chomp.
-  eassumption.
-  
-  apply add_adts_pop_sca; try assumption;
-  map_iff_solve intuition.
-
-  apply AllADTs_swap; try auto.
-  apply add_adts_pop_sca; try auto.
-  map_iff_solve intuition.
-  
-  Lemma Subset_replace_right :
-    forall {elt welt} k v v' state map wrapper,
-      @Subset elt welt state ([k >> v]::map) wrapper ->
-      @Subset elt welt ([k >> v']::state) ([k >> v']::map) wrapper.
-  Proof.
-    unfold Subset; intros ** k'' v'' maps_to.
-    destruct (StringMap.E.eq_dec k k''); subst;
-    rewrite StringMapFacts.add_mapsto_iff in *;
-    map_iff_solve idtac; [ | apply H ];
-    map_iff_solve intuition.
-  Qed.
-
-  Lemma Subset_replace_left :
-    forall {elt welt} k v v' state map wrapper,
-      @Subset elt welt ([k >> v]::state) map wrapper ->
-      @Subset elt welt ([k >> v']::state) ([k >> v']::map) wrapper.
-  Proof.
-    unfold Subset; intros ** k'' v'' maps_to.
-    destruct (StringMap.E.eq_dec k k''); subst;
-    rewrite StringMapFacts.add_mapsto_iff in *;
-    map_iff_solve idtac; intuition.
-    specialize (H _ _ H2);
-      rewrite StringMapFacts.add_mapsto_iff in *;
-      intuition.
-  Qed.
-
-  Show.
-  Lemma AllADTs_replace :
-    forall {av} k v v' state map,
-      @AllADTs av state ([k >> v]::map) ->
-      @AllADTs av ([k >> v']::state) ([k >> v']::map).
-  Proof.
-    unfold AllADTs; split; intros;
-    [ eapply Subset_replace_right
-    | eapply Subset_replace_left ];
-    intuition eassumption.
-  Qed.
-
-  eapply AllADTs_replace; eassumption.
-  
-  
-  intuition.
-  
-
-  
-  intuition; apply H; map_iff_solve intuition.
 Qed.
 
   
