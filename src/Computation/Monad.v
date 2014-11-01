@@ -39,7 +39,7 @@ Section monad.
     t.
   Qed.
 
-  Lemma unit_bind X (x : Comp X) 
+  Lemma unit_bind X (x : Comp X)
   : (Bind x (@Return X)) ~ x.
   Proof.
     t.
@@ -82,10 +82,15 @@ End monad_refine.
 Create HintDb refine_monad discriminated.
 
 Hint Rewrite @refineEquiv_bind_bind @refineEquiv_bind_unit @refineEquiv_unit_bind : refine_monad.
+(** We guard the [setoid_rewrite] with a [match] to work around
+    "Anomaly: Uncaught exception
+    Invalid_argument("decomp_pointwise"). Please report." *)
 Tactic Notation "autosetoid_rewrite" "with" "refine_monad" :=
-  repeat first [setoid_rewrite refineEquiv_bind_bind |
-                setoid_rewrite refineEquiv_bind_unit |
-                setoid_rewrite refineEquiv_unit_bind] .
+  repeat first [ match goal with |- appcontext[Bind (Bind _ _)] => idtac end;
+                 setoid_rewrite refineEquiv_bind_bind
+               | match goal with |- appcontext[Bind (Return _)] => idtac end;
+                 setoid_rewrite refineEquiv_bind_unit
+               | setoid_rewrite refineEquiv_unit_bind ].
 
 Tactic Notation "simplify" "with" "setoid-y" "monad" "laws" :=
   autosetoid_rewrite with refine_monad.
