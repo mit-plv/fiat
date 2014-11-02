@@ -1550,12 +1550,15 @@ Proof.
 Qed.
 
 Definition compile_fold_base_sca :
-  forall env,
-  forall vseq vret: StringMap.key,
-  forall thead tis_empty: StringMap.key,
-  forall ppop pempty,
-  forall loop compiled_loop,
-  forall knowledge scas adts,
+  forall {env},
+  forall {vseq vret: StringMap.key},
+  forall {thead tis_empty: StringMap.key},
+  forall {ppop pempty},
+  forall {loop compiled_loop},
+  forall {knowledge scas adts},
+    SCALoopBodyOk env loop compiled_loop knowledge scas adts vseq vret thead tis_empty ->
+    (Word2Spec env pempty = Some (Axiomatic List_empty)) ->
+    (Word2Spec env ppop  = Some (Axiomatic List_pop)) ->
     vret <> vseq ->
     vret <> tis_empty ->
     thead <> vret ->
@@ -1564,9 +1567,6 @@ Definition compile_fold_base_sca :
     ~ StringMap.In thead adts ->
     ~ StringMap.In tis_empty adts ->
     ~ StringMap.In vseq scas ->
-    (Word2Spec env pempty = Some (Axiomatic List_empty)) ->
-    (Word2Spec env ppop  = Some (Axiomatic List_pop)) ->
-    SCALoopBodyOk env loop compiled_loop knowledge scas adts vseq vret thead tis_empty ->
     forall seq init, 
       refine (@Prog _ env knowledge
                     ([vret >sca> init]::scas) ([tis_empty >sca> 1]::[vret >sca> List.fold_left loop seq init]::scas)
@@ -1782,166 +1782,103 @@ Proof.
   split; intuition.
 Qed.
 
-Lemma compile_fold_no_pick : 
-  forall {env},
-  forall {precond postcond: State _ -> Prop},
-  forall (vinit vseq: StringMap.key) {vret},
-  forall acc_type wrapper,
-  forall thead tis_empty ppop pempty f sloop_body,
-    vret <> vseq ->
-    vret <> tis_empty ->
-    thead <> vret ->
-    thead <> vseq ->
-    tis_empty <> vseq ->
-    cond_respects_MapEq postcond ->
-    cond_indep postcond vret ->
-    cond_indep postcond tis_empty ->
-    cond_indep postcond thead ->
-    cond_indep postcond vseq ->
-    (Word2Spec env pempty = Some (Axiomatic List_empty)) ->
-    (Word2Spec env ppop  = Some (Axiomatic List_pop)) ->
-    LoopBodyOk acc_type wrapper env f sloop_body vret vseq thead postcond ->
-    forall (seq: list W) (init: acc_type),
-    refine (Pick (fun prog => forall init_state final_state,
-                                precond init_state ->
-                                RunsTo env prog init_state final_state ->
-                                (final_state[vret >> wrapper (List.fold_left f seq init)]
-                                 /\ postcond final_state)))
-           (Bind (Pick (fun pinit => forall init_state inter_state,
-                                       precond init_state ->
-                                       RunsTo env pinit init_state inter_state ->
-                                       (inter_state[vinit >> wrapper init] /\ precond inter_state)))
-                 (fun pinit => 
-                    Bind 
-                      (Pick (fun pseq => 
-                               forall inter_state final_state,
-                                 precond inter_state /\ inter_state[vinit >> wrapper init] ->
-                                 RunsTo env pseq inter_state final_state ->
-                                 (final_state[vseq >> Facade.ADT (List seq)]
-                                  /\ final_state[vinit >> wrapper init]
-                                  /\ postcond final_state)))
-                      (fun pseq => ret (pinit;
-                                        pseq;
-                                        Assign vret vinit;
-                                        Fold thead tis_empty vseq ppop pempty sloop_body)%facade))).
-Proof.
-  unfold refine; intros * vret_vseq vret_tis_empty thead_vret thead_vseq tis_empty_vseq postcond_meaningful postcond_indep_vret postcond_indep_tis_empty postcond_indep_thead postcond_indep_vseq zero_to_empty one_to_pop loop_body_ok * **.
-
-  inversion_by computes_to_inv.
-  rnm x pinit.
-  rnm x0 pseq.
-  rnm H progseq_returns_seq.
-  rnm H3 proginit_returns_init.
-  rnm H5 proginit_consistent.
-  rnm H1 progseq_consistent.
-  rnm H4 progseq_ensures_postcond.
-  constructor; intros.
-
-  rnm H init_state_consistent.
-
-  subst.
-  inversion H0; subst; clear H0.
-  inversion H5; subst; clear H5.
-  inversion H6; subst; clear H6.
-
-  autospecialize.
-  clear H2. (* RunsTo relative to pseq *)
-  clear H1. (* RunsTo relative to pinit *)
-
-  apply (RunsToAssignKnownValue progseq_consistent) in H3.
-
-  unfold cond_respects_MapEq in *.
-
-  assert ((st'1) [vseq >> Facade.ADT (List seq)] /\ (st'1) [vret >> wrapper init] /\ postcond st'1) 
-    as lemma_precond by (rewrite H3; map_iff_solve intuition).
-
-  pose proof (compile_fold_base env postcond vseq vret acc_type wrapper thead tis_empty ppop pempty f sloop_body) as lemma.
-  intuition; (* specializes compile_fold_base *)
-    
-  match goal with 
-    | [ H0: forall _ _, refine _ _ |- _ ] => 
-      specialize (H0 seq init);
-        unfold refine in H0;
-        
-        specialize (H0 (Fold thead tis_empty vseq ppop pempty sloop_body));
-        specialize (H0 (eq_ret_compute _ _ _ (eq_refl)))
-  end;
-    
-  inversion_by computes_to_inv;
-  
-  unfold State in *;
-  
-  repeat match goal with
-           | [ H0: forall (a b: StringMap.t (Value FacadeADT)), _ |- _ ] => 
-             specialize (H0 st'1 final_state) (* Specialize the conditions arising from inversion *)
-         end;
-
-  intuition.
-Qed.
-
 Lemma PickComputes_inv: forall {A} (x: A) P,
                           computes_to (Pick (fun x => P x)) x -> P x.
 Proof.
   intros; inversion_by computes_to_inv; assumption.
 Qed.
 
-Print LoopBodyOk.
+Lemma map_add_remove_swap :
+  forall {elt} k1 k2 v m,
+    k1 <> k2 ->
+    @StringMap.Equal elt
+                     ([k1 >> v]::(StringMap.remove k2 m))
+                     (StringMap.remove k2 ([k1 >> v]::m)).
+Proof.
+  intros; red; intros k3.
+  map_iff_solve idtac.
 
-Lemma compile_fold : 
-  forall {env},
-  forall {precond postcond: State _ -> Prop},
-  forall vinit vseq {vret},
-  forall acc_type wrapper,
-  forall thead tis_empty ppop pempty f,
+  repeat (rewrite ?StringMapFacts.add_o;
+          rewrite ?StringMapFacts.remove_o).
+  destruct (StringMap.E.eq_dec k1 k3), (StringMap.E.eq_dec k2 k3);
+    subst; congruence.
+Qed.
+
+Lemma compile_fold_sca :
+  forall env,
+  forall vseq vret: StringMap.key,
+  forall thead tis_empty: StringMap.key,
+  forall ppop pempty,
+  forall loop,
+  forall knowledge scas adts,
+    (Word2Spec env pempty = Some (Axiomatic List_empty)) ->
+    (Word2Spec env ppop  = Some (Axiomatic List_pop)) ->
     vret <> vseq ->
     vret <> tis_empty ->
     thead <> vret ->
     thead <> vseq ->
     tis_empty <> vseq ->
-    cond_respects_MapEq postcond ->
-    cond_indep postcond vret ->
-    cond_indep postcond tis_empty ->
-    cond_indep postcond thead ->
-    cond_indep postcond vseq ->
-    (Word2Spec env pempty = Some (Axiomatic List_empty)) ->
-    (Word2Spec env ppop  = Some (Axiomatic List_pop)) ->
-    forall (seq: list W) (init: acc_type),
-    refine (Pick (fun prog => forall init_state final_state,
-                                precond init_state ->
-                                RunsTo env prog init_state final_state ->
-                                (final_state[vret >> wrapper (List.fold_left f seq init)]
-                                 /\ postcond final_state)))
-           (Bind (Pick (fun loop_body => LoopBodyOk acc_type wrapper env f loop_body vret vseq thead postcond))
-                 (fun sloop_body => 
-                    Bind 
-                      (Pick (fun pinit => forall init_state inter_state,
-                                             precond init_state ->
-                                             RunsTo env pinit init_state inter_state ->
-                                             (inter_state[vinit >> wrapper init] /\ precond inter_state)))
-                      (fun pinit =>
-                         Bind 
-                           (Pick (fun pseq => 
-                                    forall inter_state final_state,
-                                      precond inter_state /\ inter_state[vinit >> wrapper init] ->
-                                      RunsTo env pseq inter_state final_state ->
-                                      (final_state[vseq >> Facade.ADT (List seq)]
-                                       /\ final_state[vinit >> wrapper init]
-                                       /\ postcond final_state)))
-                           (fun pseq => ret (pinit;
-                                             pseq;
-                                             Assign vret vinit;
-                                             Fold thead tis_empty vseq ppop pempty sloop_body)%facade)))).
+    ~ StringMap.In thead adts ->
+    ~ StringMap.In tis_empty adts ->
+    ~ StringMap.In vseq scas ->
+    ~ StringMap.In tis_empty scas ->
+    forall seq init, 
+      refine (@Prog _ env knowledge
+                    (scas) ([vret >sca> List.fold_left loop seq init]::scas)
+                    ([vseq >adt> List seq]::adts) ([vseq >adt> List nil]::adts))
+             (cloop <- { cloop | SCALoopBodyOk env loop cloop knowledge
+                                               scas adts vseq vret thead tis_empty };
+              pinit <- (@Prog _ env knowledge
+                              scas ([vret >sca> init]::scas)
+                              ([vseq >adt> List seq]::adts) ([vseq >adt> List seq]::adts));
+              ret (pinit; Fold thead tis_empty vseq ppop pempty cloop)%facade)%comp.
 Proof.
-  unfold refine; intros * vret_vseq vret_tis_empty thead_vret thead_vseq tis_empty_vseq postcond_meaningful postcond_indep_vret postcond_indep_tis_empty postcond_indep_thead postcond_indep_vseq zero_to_empty one_to_pop loop_body_ok * ** .
-  
-  apply computes_to_inv in H.
-  destruct H as [loop_body (loop_valid & H)].
-  
-  apply PickComputes_inv in loop_valid.
+  unfold refine; intros.
+  inversion_by computes_to_inv;
+    subst;
+    constructor;
+    match goal with
+      | [ H: _ |- _ ] => apply PickComputes_inv in H; unfold ProgOk in H
+    end; unfold ProgOk in * ;
+    intros; destruct_pairs;
+    specialize_states;
+    destruct_pairs.
 
-  pose proof (@compile_fold_no_pick env precond postcond vinit vseq vret acc_type wrapper thead tis_empty ppop pempty f loop_body) as lemma.
-  unfold refine in *.
-  intuition.
+  match goal with
+    | [ H: context[SCALoopBodyOk], H': context[Word2Spec], H'': context[Word2Spec] |- _ ] =>
+      pose proof (compile_fold_base_sca H H' H'')
+  end.
+  
+  (* TODO: Tactic for this? *)
+  repeat match goal with
+           | [ H: ?a -> _, H': ?a |- _ ] =>
+             match (type of a) with
+               | Prop => specialize (H H')
+             end
+         end.
+
+  unfold refine, Prog, ProgOk in *.
+
+  match goal with
+    | [ H: _ -> _ -> _ |- _ ] => specialize (H seq init _ (eq_ret_compute _ _ _ (eq_refl)))
+  end.
+  inversion_by computes_to_inv.
+  
+  split.
+
+  (* Safe *)
+  constructor; split; intuition.
+
+  (* RunsTo *)
+  intros; destruct_pairs.
+  inversion_facade.
+  specialize_states.
+  split; [ | intuition ].
+  
+  (* Tricks to get rid of is_empty *)
+  rewrite (not_in_remove_eq tis_empty scas); eauto.
+  rewrite map_add_remove_swap; eauto.
+  eapply SomeSCAs_remove; eauto.
 Qed.
 
 Definition compile_fold_sca 
