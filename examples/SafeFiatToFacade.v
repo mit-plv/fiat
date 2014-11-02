@@ -1529,6 +1529,25 @@ Ltac loop_body_prereqs :=
     map_iff_solve intuition;
     eapply AllADTs_replace;
     eassumption ].
+  
+Lemma SafeEnv_inv :
+  forall {av env} {a b : Stmt} {st st' : State av},
+    RunsTo env a st st' ->
+    Safe env (Seq a b) st ->
+    Safe env b st'.
+Proof.    
+  intros * h' h; inversion h. intuition.
+Qed.    
+
+Lemma true_and_false :
+  forall {av} st expr,
+    @is_true av st expr ->
+    @is_false av st expr ->
+    False.
+Proof.
+  unfold is_true, is_false; intros.
+  eq_transitive; discriminate.
+Qed.
 
 Definition compile_fold_base_sca :
   forall env,
@@ -1555,9 +1574,9 @@ Definition compile_fold_base_sca :
              (ret (Fold thead tis_empty vseq ppop pempty compiled_loop)).
 Proof.
   unfold SCALoopBodyOk, Prog, ProgOk, refine; unfold_coercions;
-  induction seq as [ | a seq ];
-  constructor; intros; destruct_pairs;
+  induction seq as [ | a seq ]; intros;
   [ | specialize (fun init => IHseq init _ (eq_ret_compute _ _ _ (eq_refl))) ];
+  constructor; intros; destruct_pairs;
   split;
   inversion_by computes_to_inv;
   subst;
@@ -1671,17 +1690,8 @@ Proof.
 
   (* Actual loop induction *)
   intros.
-  
-  Lemma SafeEnv_inv :
-    forall {av env} {a b : Stmt} {st st' : State av},
-      RunsTo env a st st' ->
-      Safe env (Seq a b) st ->
-      Safe env b st'.
-  Proof.    
-    intros * h' h; inversion h. intuition.
-  Qed.    
 
-  do 2 inversion_facade. 
+  do 2 inversion_facade.
 
   repeat match goal with
            | [ H: (forall acc head seq initial_state,
@@ -1712,184 +1722,64 @@ Proof.
   tauto.
 
   (* Induction case for the loop *)
+  simpl; intros.
+  specialize (IHseq (loop init a)); inversion_by computes_to_inv.
 
-Qed.
+  (* initial_state is at the very beginning of the loop.  We need to unfold one
+     iteration first, and then deduce the new states *)
 
-  
-  match goal with
-    | H:(?st) [?k >> ?v], H':(?st) [?k >> ?v']
-      |- _ =>
-      let h := fresh in
-      pose proof (MapsTo_unique st k v v' H H') as h
-  end.
-  discriminate.
-  Print Ltac 
-  auto_mapsto_unique.
-  
-  apply is_true_eq
-  match goal with
-    | [ H: RunsTo _ (Facade.While _ _) _ _ |- _ ] => pose H
-  end.
-  eapply RunsToWhileFalse in H18.
-  
-  simpl.
-  
-  destruct_conjs.
-  constructor 6.
-  unfold is_false.
-  eapply BoolToW_eval.
-    eapply eval_expr_some_sca.
-      
+  unfold Fold in *.
+  inversion_facade.
 
+  (* TODO: This is a dupe of part of the loop_body_prereqs code *)
   match goal with
-    | [ H: ?h <> _ <-> _ |- _ ] =>
-      try rewrite a_eq_a_True in H;
-        try rewrite a_neq_a_False in H;
-        try symmetry in H;
-        try rewrite equiv_true in H;
-        destruct h;
-        try discriminate;
-        eapply eval_bool_eq_false;
-        try exact H
+    | [ H: RunsTo _ (Call _ _ _) _ _ |- _ ] =>
+      eapply runsto_is_empty in H; eauto;
+      destruct H as [ret (ret_val & state_eq)];
+      destruct ret_val; destruct_pairs; try discriminate (* Remove the list empty case *)
   end.
 
-  rewrite_Eq_in_goal; map_iff_solve intuition.
-  exact H13.
-  apply H13.
+  assert (is_true st' (tis_empty = 0)%facade) by
+      (unfold_coercions; rewrite is_true_eq;
+       rewrite_Eq_in_goal;
+       map_iff_solve intuition). (* TODO this should be a lemma *)
+
+  inversion_facade; try (exfalso; eapply true_and_false; eassumption).
   
-  
-  (* Aborted attempt at avoiding the ugly assert in compile_test.
-  match goal with
-    | |- eval ?state ?expr = Some (Facade.SCA ?av ?sca) =>
-      let t := fresh in
-      match type of (@eval_expr_some_sca av expr state) with
-        | ?t -> _ => assert t
-      end end).
-        [ intuition
-        | let g := fresh in
-          destruct (@eval_expr_some_sca av expr state t) as [ ? g ] ]
-  end.
-  *)
-  
-  split
-  
-  intros * vret_vseq vret_tis_empty thead_vret thead_vseq tis_empty_vseq precond_meaningful precond_indep_vret precond_indep_tis_empty precond_indep_thead precond_indep_vseq zero_to_empty one_to_pop loop_body_ok.
-
-  induction seq;
-  unfold refine; simpl;
-  intros init  ** ;
-
-  inversion_by computes_to_inv;
-  constructor; intros;
-  destruct H0 as (init_vseq & init_vinit);
-  subst;
-  inversion_clear' H1;
-
-  [ apply (runsto_is_empty nil) in H2 
-  | apply (runsto_is_empty (a :: seq)) in H2 ]; 
-  eauto;
-  destruct H2 as [ret (ret_correct & st'_init_state)];
-  unfold_coercions;
-  
-  (inversion_clear' H5;
-   match goal with
-     | [ H: is_true _ _ |- _] => rnm H test
-     | [ H: is_false _ _ |- _] => rnm H test
-   end;
-   unfold 
-     is_true, is_false, eval_bool, 
-     eval, eval_binop_m, eval_binop, 
-     IL.wneb, IL.evalTest, IL.weqb in test;
-   autorewrite_equal;
-   (rewrite StringMapFacts.add_eq_o in * by trivial);
-   (destruct ret; [ | discriminate]); (* ret is SCA *)
-   unfold SCAZero, SCAOne in *;
-     autoinj';
-   repeat match goal with
-            | [ H: context[(if ?a then _ else _) = _] |- _ ] => let H' := fresh in destruct a eqn:H'; try discriminate
-          end;
-   [ clear n H test | clear e H test ];
-   match goal with 
-     | [ H: Word.weqb _ _ = _ |- _ ] => 
-       rewrite ?weqb_false_iff, ?Word.weqb_true_iff in H 
-   end;
-   subst).
-
-  (* 4 cases here: *)
-  (* 1 & 2 are for the base case; 3 & 4, for the induction case *)
-
-  (* 1 *)
-  rewrite a_neq_a_False, a_eq_a_True in ret_correct.
-  tauto.
-
-  (* 4 *)
-  Focus 3.
-  destruct ret_correct as (ret_correct, _).
-  specialize (ret_correct H0). (* TODO: Let specialize pick the right hypothesis? *)
-  congruence.
-
-  (* 2: interesting part of the base case *)
-  unfold cond_respects_MapEq in *.
-  rewrite st'_init_state.
-  split;
-    [ map_iff_solve intuition | apply precond_indep_tis_empty];
-  intuition.
-
-  (* 4: interesting part of the induction *)
-  specialize (IHseq (f init a) (Fold thead tis_empty vseq ppop pempty sloop_body)).
-  specialize (IHseq (eq_ret_compute _ _ _ (eq_refl))).
-  inversion_by computes_to_inv.
-  rnm H1 IHseq_vret.
-  rnm H3 IHseq_precond.
-
-  unfold cond_respects_MapEq, cond_indep in *.
-
   (* Unfold one loop iteration, but keep the last statement, and merge it back at the beginning of the while, to recreate the induction condition. *)
 
-  inversion_clear' H2. (* Start chomping at loop body *)
-  
-  apply (runsto_pop a seq) in H4; [ 
-    | solve [eauto] 
-    | autorewrite_equal;
-      map_iff_solve intuition
-    | solve [eauto] ].
-  
-  (* Now the loop body *)
+  repeat match goal with
+           | [ H: RunsTo _ (Seq _ _) _ _ |- _ ] =>
+             inversion_clear' H
+         end.
 
-  (* Just because it feels nice: specialize the induction hypotheses *)
-  inversion_clear' H8.
+  (* Copied from earlier *)
+  repeat match goal with
+           | [ H: (forall acc head seq initial_state,
+                     _ -> (forall final_state, RunsTo _ ?compiled_loop _ _ -> _)),
+               H': RunsTo _ ?compiled_loop ?initial _ |- _ ] =>
+             specialize (fun p final => H init a seq initial p final);
+               match type of H with
+                 | ?cond -> _ => try pose cond as prereq
+               end
+         end.
 
-  pose proof (RunsToSeq H9 H6) as new_loop.
-  clear H9 H6.
-  
-  unfold Fold in IHseq_vret.
-  specialize (fun pre => IHseq_vret _ _ pre new_loop).
-  specialize (fun pre => IHseq_precond _ _ pre new_loop).
-  (* yay *)
+  assert (prereq) as prereqs; unfold prereq in *; clear prereq.
+  loop_body_prereqs.
 
-  unfold LoopBodyOk in loop_body_ok.
+  repeat match goal with
+           | [ H: _ -> (forall final_state, _ -> _),
+               H': RunsTo _ compiled_loop _ _ |- _ ] => specialize (H prereqs _ H'); pose H
+         end.
+  (* </Copied> *)
 
-  specialize (loop_body_ok precond_indep_vret init a seq st'1 st'2). 
-  rewrite st'_init_state in H4. (* Thus st1' = ... *)
-
-  (* TODO find prettier way to do these asserts *)
-  
-  assert ((st'1) [vret >> wrapper init]) 
-    as h1 by (rewrite H4; map_iff_solve intuition).
-  
-  assert ((st'1) [vseq >> Facade.ADT (List seq)]) 
-    as h2 by (rewrite H4; map_iff_solve intuition).
-
-  assert ((st'1) [thead >> Facade.SCA _ a])
-    as h3 by (rewrite H4; map_iff_solve intuition).
-
-  assert (precond st'1) as h4 by (rewrite H4; intuition).
-
-  specialize (loop_body_ok (conj h4 (conj h1 (conj h2 h3))) H3); clear h1 h2 h3 h4.
-  
-  destruct loop_body_ok as (loop_body_ok1 & loop_body_ok2 & ?).
-  
-  intuition.
+  (* Stick together the last statement and the body of the loop *)
+  match goal with
+    | [ Hlast: RunsTo _ _ ?initial_state ?st, Hloop: RunsTo _ (Facade.While _ _) ?st ?final_state |- _ ] =>
+      pose proof (RunsToSeq Hlast Hloop)
+  end.
+  specialize_states.
+  split; intuition.
 Qed.
 
 Lemma compile_fold_no_pick : 
