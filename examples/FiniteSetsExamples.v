@@ -190,6 +190,7 @@ Proof.
   admit.
 Defined.
 
+
 Definition differenceUniqueImpl (FiniteSetImpl : FullySharpened FiniteSetSpec) (ls1 ls2 : list W)
 : FullySharpenedComputation (differenceUniqueSpec ls1 ls2).
 Proof.
@@ -197,9 +198,7 @@ Proof.
 
   sharpen computation with FiniteSet implementation := FiniteSetImpl.
 
-  exfalso; admit;finish sharpening computation.
-  Grab Existential Variables.
-  admit.
+  finish sharpening computation.
 Defined.
 
 Definition symmetricDifferenceUniqueImpl (FiniteSetImpl : FullySharpened FiniteSetSpec) (ls1 ls2 : list W)
@@ -209,9 +208,7 @@ Proof.
 
   sharpen computation with FiniteSet implementation := FiniteSetImpl.
 
-  exfalso; admit;finish sharpening computation.
-  Grab Existential Variables.
-  admit.
+  finish sharpening computation.
 Defined.
 
 Definition countUniqueLessThanImpl1 (FiniteSetImpl : FullySharpened FiniteSetSpec) (ls : list W) (x : W)
