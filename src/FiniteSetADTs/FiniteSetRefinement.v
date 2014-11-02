@@ -1,5 +1,5 @@
 (** * Refinement of computations involving ensembles, to ones using finite sets *)
-Require Import Coq.Strings.String Coq.Sets.Ensembles Coq.Sets.Finite_sets Coq.Lists.List Coq.Sorting.Permutation.
+Require Import Coq.Strings.String Coq.Sets.Ensembles Coq.Sets.Finite_sets Coq.Lists.List Coq.Sorting.Permutation Coq.Classes.RelationPairs.
 Require Import ADT ADT.ComputationalADT ADTRefinement.Core ADTNotation ADTRefinement.GeneralRefinements Common.AdditionalEnsembleDefinitions Common.AdditionalEnsembleLemmas Computation.
 Require Export FiniteSetADTs.FiniteSetADT.
 Require Import Common.
@@ -149,6 +149,15 @@ Section FiniteSetHelpers.
             else fst (CallMethod (projT1 FiniteSetImpl) sAdd xs w))
          (CallConstructor (projT1 FiniteSetImpl) sEmpty tt)
          ls.
+
+  Definition FunctionOfList {A} (f : W -> A -> A) (a : A)
+             (ls : list W)
+    := snd (FiniteSetAndFunctionOfList f a ls).
+  Lemma NoFiniteSetJustFunctionOfList {A} f a ls
+  : snd (@FiniteSetAndFunctionOfList A f a ls) = FunctionOfList f a ls.
+  Proof.
+    reflexivity.
+  Qed.
 
   Lemma NoFunctionJustFiniteSetOfFunction {A} f a ls
   : fst (@FiniteSetAndFunctionOfList A f a ls) = FiniteSetOfList ls.
@@ -318,6 +327,62 @@ Section FiniteSetHelpers.
                => let lem := constr:(ADTRefinementPreservesConstructors (projT2 impl) {| bindex := idx |} arg) in
                   simpl rewrite <- lem
            end.
+
+  Lemma FiniteSetAndFunctionOfList_proper {A} (R : relation A)
+        (f f' : W -> A -> A) (a a' : A)
+        (ls : list W)
+        (Rf : pointwise_relation _ (respectful R R) f f')
+        (RA : R a a')
+  : R (snd (FiniteSetAndFunctionOfList f a ls))
+      (snd (FiniteSetAndFunctionOfList f' a' ls)).
+  Proof.
+    unfold pointwise_relation, respectful in *.
+    revert a a' RA.
+    induction ls; simpl; trivial.
+    intros.
+    rewrite !NoFunctionJustFiniteSetOfFunction.
+    match goal with
+      | [ |- context[if ?E then _ else _] ] => destruct E; auto
+    end.
+  Qed.
+
+  Local Ltac FunctionOfList_proper_t :=
+    unfold FunctionOfList; intros;
+    apply FiniteSetAndFunctionOfList_proper;
+    unfold pointwise_relation, respectful in *;
+    eauto; try reflexivity.
+
+  Global Add Parametric Morphism A : (@FunctionOfList (Comp A))
+  with signature pointwise_relation _ (respectful refine refine) ==> eq ==> eq ==> refine
+    as refine_FunctionOfList_mor1.
+  Proof. FunctionOfList_proper_t. Qed.
+
+  Global Add Parametric Morphism A : (@FunctionOfList (Comp A))
+  with signature pointwise_relation _ (respectful refineEquiv refineEquiv) ==> eq ==> eq ==> refineEquiv
+    as refineEquiv_FunctionOfList_mor1.
+  Proof. FunctionOfList_proper_t. Qed.
+
+  Global Add Parametric Morphism A f `{Proper _ (pointwise_relation _ (respectful refine refine)) f}
+  : (@FunctionOfList (Comp A) f)
+  with signature refine ==> eq ==> refine
+    as refine_FunctionOfList_mor2.
+  Proof. FunctionOfList_proper_t. Qed.
+
+  Global Add Parametric Morphism A f `{Proper _ (pointwise_relation _ (respectful refineEquiv refineEquiv)) f}
+  : (@FunctionOfList (Comp A) f)
+  with signature refineEquiv ==> eq ==> refineEquiv
+    as refineEquiv_FunctionOfList_mor2.
+  Proof. FunctionOfList_proper_t. Qed.
+
+  Global Add Parametric Morphism A f `{Proper _ (pointwise_relation _ (respectful refine refine)) f}
+  : (@FunctionOfList (Comp A) f)
+  with signature refineEquiv ==> eq ==> refineEquiv
+    as refineEquiv_FunctionOfList_mor2'.
+  Proof.
+    intros; apply refineEquiv_FunctionOfList_mor2; trivial.
+    unfold Proper, pointwise_relation, respectful in *.
+    repeat intro; destruct_head_hnf and; split; eauto.
+ Qed.
 
   Lemma finite_set_handle_cardinal_helper (ls : list W)
   : refine (S <- { S : Ensemble W | forall x, Ensembles.In _ S x <-> List.In x ls  };
@@ -965,6 +1030,75 @@ Section FiniteSetHelpers.
     rewrite refineEquiv_pick_eq.
     reflexivity.
   Qed.
+
+  Lemma Same_set__Intersection_Complement__Setminus {A} (S0 S1 : Ensemble A)
+  : Same_set _ (Intersection _ S0 (Complement _ S1)) (Setminus _ S0 S1).
+  Proof.
+    repeat match goal with
+             | _ => intro
+             | _ => split
+             | _ => progress destruct_head_hnf Intersection
+             | [ H : _ |- _ ] => apply H; solve [ eauto ]
+           end.
+  Qed.
+
+  Global Add Parametric Morphism {A} : (@EnsembleListEquivalence A)
+      with signature Same_set _ ==> eq ==> impl
+        as impl_EnsembleListEquivalence_mor.
+  Proof.
+    repeat intro.
+    eapply EnsembleListEquivalence_Same_set; eassumption.
+  Qed.
+
+  Global Add Parametric Morphism {A} : (@EnsembleListEquivalence A)
+      with signature Same_set _ ==> eq ==> iff
+        as iff_EnsembleListEquivalence_mor.
+  Proof.
+    repeat intro; split; intro;
+    eapply EnsembleListEquivalence_Same_set; first [ eassumption | symmetry; eassumption ].
+  Qed.
+
+  Lemma Same_set_Setminus_fold {A} S0 ls
+  : Same_set _
+             (Setminus A S0 (elements ls))
+             (List.fold_right (fun x S => Subtract _ S x) S0 ls).
+  Proof.
+    revert S0; induction ls; simpl;
+    repeat match goal with
+             | _ => intro
+             | _ => split
+             | _ => progress subst
+             | _ => progress split_and
+             | _ => progress destruct_head_hnf and
+             | _ => progress destruct_head_hnf or
+             | _ => progress destruct_head_hnf Singleton
+             | _ => progress unfold Ensembles.In, elements, Same_set, Included, Setminus, not in *
+             | _ => progress simpl in *
+             | [ H : ~(_ \/ _) |- _ ] => apply Decidable.not_or in H
+             | _ => solve [ eauto ]
+             | [ H : _ |- _ ] => apply H; solve [ eauto ]
+             | [ H : Singleton _ ?x ?x -> False |- _ ] => exfalso; apply H
+           end.
+  Qed.
+
+  Local Ltac to_list_mor_t :=
+    repeat match goal with
+             | _ => progress unfold Included, Ensembles.In, to_list in *
+             | _ => intro
+             | _ => progress inversion_by computes_to_inv
+             | [ |- computes_to (Pick _) _ ] => constructor
+             | [ |- refineEquiv _ _ ] => split
+             | _ => eapply EnsembleListEquivalence_Same_set; first [ eassumption | symmetry; eassumption ]
+           end.
+  Global Add Parametric Morphism {A} : (@to_list A)
+    with signature Same_set _ ==> refine
+      as refine_to_list_Included_mor.
+  Proof. to_list_mor_t. Qed.
+
+  Global Add Parametric Morphism {A} : (@to_list A)
+    with signature Same_set _ ==> refineEquiv
+      as refineEquiv_to_list_Included_mor.
+  Proof. to_list_mor_t. Qed.
 End FiniteSetHelpers.
 
 Create HintDb finite_sets discriminated.
@@ -1000,7 +1134,12 @@ Ltac finite_set_sharpen_step FiniteSetImpl :=
           setoid_rewrite (@finite_set_handle_cardinal FiniteSetImpl)
         | match goal with |- appcontext[@Ensembles.Union] => idtac end;
           setoid_rewrite refineEquivUnion; [ | apply Same_set_ELE ]
+        | match goal with |- appcontext[@Ensembles.Complement] => idtac end;
+          setoid_rewrite Same_set__Intersection_Complement__Setminus
+        | match goal with |- appcontext[@Ensembles.Setminus] => idtac end;
+          setoid_rewrite Same_set_Setminus_fold
         | rewrite filter_fold_right
+        | rewrite !NoFiniteSetJustFunctionOfList
         | match goal with |- appcontext[EnsembleListEquivalence (fun x => Ensembles.In _ _ x /\ _)] => idtac end;
           setoid_rewrite refine_ELE_filter_by_and
         | idtac;
