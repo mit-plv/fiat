@@ -27,30 +27,26 @@ Section IndexedEnsembles.
              (R : Ensemble ElementType)
     := Intersection _ F (Complement _ (fun iel => R (indexedElement iel))).
 
-  (* Definition IndexedEnsembleUpdate
-             (element : ElementType)
+  Definition IndexedEnsembleUpdate
              (ens : IndexedEnsemble)
              (cond : Ensemble ElementType)
-             (f : ElementType -> ElementType)
-  : IndexedEnsemble :=
-    fun element' =>
-        indexedElement element' <> element /\ ens element'.
-
-  : Prop := ((fst kv) = k /\ exists v, (snd kv) = f v /\ In _ ens (k, v)) \/
-            (EnsembleRemove k ens kv). *)
+             (update : ElementType -> ElementType)
+  : IndexedEnsemble
+    := fun e => (exists f: IndexedElement, ((ens f) /\ cond (indexedElement f) /\ (indexedElement e) = (update (indexedElement f))) /\ elementIndex e = elementIndex f) \/
+                ((ens e) /\ Complement _ (fun f => cond (indexedElement f)) e).
 
   Definition EnsembleListEquivalence
              {A}
              (ensemble : Ensemble A)
              (seq : list A) :=
-    NoDup seq /\
     forall x, Ensembles.In _ ensemble x <-> List.In x seq.
 
   Definition UnIndexedEnsembleListEquivalence
              (ensemble : IndexedEnsemble)
              (l : list ElementType)  :=
     exists l', (map indexedElement l') = l /\
-               EnsembleListEquivalence ensemble l'.
+               EnsembleListEquivalence ensemble l' /\
+               NoDup (map elementIndex l').
 
   Definition UnConstrFreshIdx
              (ensemble : IndexedEnsemble)
@@ -81,7 +77,7 @@ Section IndexedEnsembles.
         let eqv_r_n := fresh "eqv_nr" in
         let H' := fresh in
         pose proof H as H';
-        destruct H' as [[bnd fresh_bnd] [lor [eqv_or [NoDup_lor eqv_r_n]]]]
+        destruct H' as [[bnd fresh_bnd] [lor [eqv_or [eqv_r_n NoDup_lor]]]]
     end.
 
   Lemma Permutation_EnsembleIndexedListEquivalence
@@ -97,9 +93,12 @@ Section IndexedEnsembles.
     destruct (permutation_map_base indexedElement H0 _ eqv_ensemble) as [l'' [l''_eq H']].
     econstructor; split; eauto.
     constructor.
-    apply NoDup_modulo_permutation; eauto.
-    intros; rewrite eqv_nr.
-    split; apply Permutation_in; eauto; symmetry; eauto.
+    - unfold EnsembleListEquivalence in *.
+        intros; rewrite eqv_nr.
+        split; apply Permutation_in; intuition.
+    - apply NoDup_modulo_permutation.
+      exists (map elementIndex lensemble).
+      intuition. apply Permutation_map. auto.
   Qed.
 
 End IndexedEnsembles.
@@ -115,5 +114,5 @@ End IndexedEnsembles.
         let eqv_r_n := fresh "eqv_nr" in
         let H' := fresh in
         pose proof H as H';
-        destruct H' as [[bnd fresh_bnd] [lor [eqv_or [NoDup_lor eqv_r_n]]]]
+        destruct H' as [[bnd fresh_bnd] [lor [eqv_or [eqv_r_n NoDup_lor]]]]
     end.

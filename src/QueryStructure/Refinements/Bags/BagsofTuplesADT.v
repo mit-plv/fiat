@@ -396,6 +396,72 @@ Section SharpenedBag.
         rewrite H3 in H5; discriminate.
   Qed.
 
+  Lemma filter_then_map
+  : forall {A B} (m: A -> B) (f: B -> bool) (x: list A),
+      filter f (map m x) = map m (filter (fun t => f (m t)) x).
+  Proof.
+    intros; induction x as [| x' xs'].
+    - simpl; reflexivity.
+    - simpl; case_eq (f (m x')).
+      + simpl; rewrite IHxs'; auto.
+      + auto.
+  Qed.
+
+  Lemma map_then_map
+  : forall {heading} (m: @Tuple heading -> @Tuple heading) (x: list IndexedElement),
+      map m (map indexedElement x) = map indexedElement (map (fun t =>
+         {| indexedElement := m (indexedElement t); elementIndex := elementIndex t|}) x).
+  Proof.
+    intro; induction x as [| x' xs'].
+    - simpl. reflexivity.
+    - simpl. rewrite IHxs'. reflexivity.
+  Qed.
+
+  Lemma permu_exists
+  : forall {heading} br (x: list (@IndexedElement (@Tuple heading))),
+    Permutation br (map indexedElement x) -> exists x', map indexedElement x' = br
+      /\ Permutation x' x.
+  Proof.
+    intros.
+    pose proof (permutation_map_base indexedElement H x).
+    destruct H0.
+    - reflexivity.
+    - exists x0. intuition.
+  Qed.
+
+  Lemma refine_Update_bupdate
+  : forall or nr search_term update_term,
+      or ≃ benumerate nr
+      -> RepInvPlus nr
+      -> ValidUpdatePlus update_term
+      -> IndexedEnsembleUpdate or (fun tup => bfind_matcher search_term tup = true)
+             (bupdate_transform update_term)
+             ≃ benumerate (bupdate nr search_term update_term).
+  Proof.
+    simpl; intros; destruct_EnsembleIndexedListEquivalence;
+    split.
+    - exists bnd; unfold UnConstrFreshIdx in *;
+      intros; destruct H2; destruct H2; intuition.
+      rewrite H4; apply fresh_bnd; auto; intuition.
+    - pose proof (bupdate_correct nr search_term update_term H0 H1).
+      rewrite partition_filter_neq in H2; rewrite partition_filter_eq in H2.
+      unfold UnIndexedEnsembleListEquivalence in *.
+      unfold EnsembleListEquivalence in *.
+      rewrite <- eqv_or in H2.
+      repeat rewrite filter_then_map in H2.
+      rewrite map_then_map in H2.
+      rewrite <- map_app in H2.
+      pose proof (permu_exists _ H2).
+      destruct H3 as [? [? ?]].
+      exists x.
+      intuition.
+      + admit.
+      + admit.
+      (** l ~ map f (K) -> exists l1, l = map f l' ... bring this using destruct and
+          then use it with exists (something) + intuition **)
+      + admit.
+  Qed.
+
   Definition SharpenedBagImpl
   : Sharpened (@BagSpec (@Tuple heading) SearchTermTypePlus
                         bfind_matcher).

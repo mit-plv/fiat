@@ -721,6 +721,7 @@ Section ConstraintCheckRefinements.
 
   Require Import flattenCompListProperties.
 
+  (*
   Lemma In_UnConstrQuery_In {qsSchema} {A}
   : forall (qs : UnConstrQueryStructure qsSchema) Ridx bod results,
       UnConstrQuery_In qs Ridx bod ↝ results
@@ -876,9 +877,11 @@ Section ConstraintCheckRefinements.
       + eapply Permutation_in; symmetry in H3; simpl; eauto.
         simpl; eauto.
   Qed.
+*)
 
 End ConstraintCheckRefinements.
 
+(*
 Lemma For_computes_to_In :
   forall {heading} P,
     (forall a, P a \/ ~ P a) ->
@@ -1123,3 +1126,5 @@ Ltac simplify_trivial_SatisfiesCrossRelationConstraints :=
                    unfold If_Then_Else ]
 
     end.
+
+*)

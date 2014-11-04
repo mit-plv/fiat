@@ -17,7 +17,8 @@ Section BagADT.
         Method "Enumerate" : rep x unit -> rep x list ElementType,
         Method "Insert"    : rep x ElementType -> rep x unit,
         Method "Count"     : rep x SearchTermType  -> rep x nat,
-        Method "Delete"    : rep x SearchTermType  -> rep x (list ElementType)
+        Method "Delete"    : rep x SearchTermType  -> rep x (list ElementType),
+        Method "Update"    : rep x (SearchTermType * (ElementType -> ElementType)) -> rep x unit
   }.
 
   Definition BagSpec : ADT BagSig :=
@@ -50,8 +51,10 @@ Section BagADT.
           ret (EnsembleDelete
                  r
                  (fun tup => SearchTermMatcher f tup = true),
-               filter (SearchTermMatcher f) deleted)
+               filter (SearchTermMatcher f) deleted),
 
-           }.
+        Def Method "Update" (r : rep, f : SearchTermType * (ElementType -> ElementType)) : unit :=
+            ret (IndexedEnsembleUpdate r (fun tup => SearchTermMatcher (fst f) tup = true) (snd f), tt)
+        }.
 
 End BagADT.
