@@ -1374,12 +1374,16 @@ Qed.
 
 Opaque add_remove_many.
 
+Definition SCALoopBodyProgCondition env loop compiled_loop knowledge scas adts (vseq vret thead tis_empty: StringMap.key) (acc head: W) (seq: list W) :=
+  @ProgOk _ env compiled_loop knowledge
+          ([thead >sca> head]::[tis_empty >sca> 0]::[vret >sca> acc]::scas) ([vret >sca> loop acc head]::scas)
+          ([vseq >adt> List seq]::adts) ([vseq >adt> List seq]::adts).
+          
 Definition SCALoopBodyOk env loop compiled_loop knowledge scas adts (vseq vret thead tis_empty: StringMap.key) :=
   forall (acc: W) (head: W) (seq: list W),
-    @ProgOk _ env compiled_loop knowledge
-            ([thead >sca> head]::[tis_empty >sca> 0]::[vret >sca> acc]::scas) ([vret >sca> loop acc head]::scas)
-            ([vseq >adt> List seq]::adts) ([vseq >adt> List seq]::adts).
-
+    SCALoopBodyProgCondition env loop compiled_loop knowledge scas adts vseq
+                             vret thead tis_empty acc head seq.
+    
 Lemma safe_call_1 :
   forall {av} env state adts pointer spec varg arg vout,
     state[varg >> arg] ->
@@ -1573,7 +1577,7 @@ Definition compile_fold_base_sca :
                     ([vseq >adt> List seq]::adts) ([vseq >adt> List nil]::adts))
              (ret (Fold thead tis_empty vseq ppop pempty compiled_loop)).
 Proof.
-  unfold SCALoopBodyOk, Prog, ProgOk, refine; unfold_coercions;
+  unfold SCALoopBodyOk, SCALoopBodyProgCondition, Prog, ProgOk, refine; unfold_coercions;
   induction seq as [ | a seq ]; intros;
   [ | specialize (fun init => IHseq init _ (eq_ret_compute _ _ _ (eq_refl))) ];
   constructor; intros; destruct_pairs;
@@ -1652,7 +1656,6 @@ Proof.
 
   intros.
   constructor.
-  unfold SCALoopBodyOk, Prog in *.
 
   (* Loop body + next statement safe *)
 
@@ -1881,103 +1884,115 @@ Proof.
   eapply SomeSCAs_remove; eauto.
 Qed.
 
-Definition compile_fold_sca 
-           {env} {precond postcond: State _ -> Prop}
-           vinit vseq {vret} := 
-  @compile_fold env precond postcond vinit vseq vret W (@Facade.SCA _).
+Lemma mapsto_eval :
+  forall {av} scas k w,
+    (scas) [k >> SCA av w] ->
+    eval scas k = Some (SCA av w).
+Proof.
+  intros; simpl.
+  subst_find; reflexivity.
+Qed.
 
-Definition compile_fold_adt (* TODO: Rename *)
-           {env} {precond postcond: State _ -> Prop}
-           vinit vseq {vret} := 
-  @compile_fold env precond postcond vinit vseq vret (list W) (fun x => Facade.ADT (List x)).
+Lemma assign_safe :
+  forall {av} state scas adts k w,
+    @SomeSCAs av state scas ->
+    @AllADTs av state adts ->
+    scas[k >> SCA _ w] ->
+    forall k' env,
+      ~ StringMap.In k' adts ->
+      Safe env (Assign k' k) state.
+Proof.      
+  intros. specialize (H _ _ H1).
+  econstructor; unfold_coercions.
+  + eauto using mapsto_eval.
+  + eauto using not_in_adts_not_mapsto_adt.
+Qed.
 
 Lemma copy_word :
   forall {av env},
-  forall k1 {k2} w (precond postcond: State av -> Prop), 
-    cond_respects_MapEq postcond ->
-    (forall state, precond state -> state[k1 >> Facade.SCA _ w]) ->
-    (forall x state, precond state -> postcond (StringMap.add k2 x state)) ->
-    refine (Pick (fun prog => forall init_state final_state,
-                                precond init_state ->
-                                RunsTo env prog init_state final_state ->
-                                final_state[k2 >> Facade.SCA _ w] /\
-                                postcond final_state))
+  forall k1 {k2} w adts scas knowledge,
+    scas[k1 >> SCA _ w] ->
+    ~ StringMap.In k2 adts ->
+    refine (@Prog av env knowledge
+                  scas ([k2 >sca> w]::scas)
+                  adts adts)
            (ret (Assign k2 k1)).
 Proof.
-  unfold refine; intros; constructor; intros.
+  unfold refine, Prog, ProgOk; intros; constructor; intros.
   inversion_by computes_to_inv; subst.
-  unfold cond_respects_MapEq in *.
 
-  inversion_clear' H4.
-  specialize (H0 _ H3).
-  autorewrite_equal; simpl in *.
-  StringMapFacts.map_iff.
-  rewrite StringMapFacts.find_mapsto_iff in *.
-  rewrite H0 in *. autoinj.
+  split.
+
+  (* Safe *)
+  eauto using assign_safe.
+
+  (* RunsTo *) (* TODO: extract to lemma *)
+  intros; inversion_facade; split;
+  rewrite_Eq_in_goal; pose proof (H2 _ _ H). (* TODO: Put in scas_adts_mapsto *)
+  erewrite mapsto_eval in H7 by eauto; autoinj.
+  eauto using SomeSCAs_chomp.
+  eauto using add_adts_pop_sca.
 Qed.
 
 Lemma no_op :
   forall {av env},
-  forall (precond postcond: State av -> Prop), 
-    (forall state, precond state -> postcond state) ->
-    refine (Pick (fun prog => forall init_state final_state,
-                                precond init_state ->
-                                RunsTo env prog init_state final_state ->
-                                postcond final_state))
+  forall adts scas knowledge,
+    refine (@Prog av env knowledge
+                  scas scas
+                  adts adts)
            (ret Skip).
 Proof.
-  unfold refine; intros; constructor; intros.
-  inversion_by computes_to_inv; subst; inversion_clear' H2.
-  intuition.
+  unfold refine, Prog, ProgOk; constructor; intros.
+  inversion_by computes_to_inv; subst.
+  split; [ constructor | intros; inversion_facade; intuition ].
 Qed.
 
 Lemma pull_forall :
-  forall {A B C} {av env} P b 
-         (precond': State av -> Prop)
-         (precond postcond: A -> B -> C -> State av -> Prop),
-  (forall (x1: A) (x2: B) (x3: C),
-     P precond' ->
-     refine (Pick (fun prog => forall (st1 st2: State av),
-                                 precond' st1 /\ precond x1 x2 x3 st1 ->
-                                 RunsTo env prog st1 st2 ->
-                                 postcond x1 x2 x3 st2)) b) ->
-  refine (Pick (fun prog => P precond' ->
-                            forall x1 x2 x3,
-                            forall (st1 st2: State av),
-                              precond' st1 /\ precond x1 x2 x3 st1 ->
-                              RunsTo env prog st1 st2 ->
-                              postcond x1 x2 x3 st2)) b.
+  forall {A B C D} (f: D -> A -> B -> C -> Prop) b,
+    (forall (x1: A) (x2: B) (x3: C),
+       refine { p | f p x1 x2 x3 }%facade
+              b) ->
+    refine { p | forall x1 x2 x3,
+                       f p x1 x2 x3 }%facade
+           b.
 Proof.
   unfold refine; intros; econstructor; intros.
-  generalize (H x1 x2 x3 X _ H0); intros.
+  generalize (H x1 x2 x3 _ H0); intros.
   inversion_by computes_to_inv.
-  specialize (H3 st1 st2 (conj H4 H5)).
-  intuition.
+  assumption.
 Qed.
 
-Lemma start_compiling_with_precondition ret_var : (* TODO: Supersedes start_compiling *) 
-  forall {av env init_state precond} ret_type wrapper (v: ret_type),
-    (forall x y, wrapper x = wrapper y -> x = y) ->
-    precond init_state ->
-    refine (ret v) 
-           (Bind (Pick (fun prog => 
-                          forall init_state final_state,
-                            precond init_state ->
-                            @RunsTo av env prog init_state final_state -> 
-                            final_state[ret_var >> wrapper v]
-                            /\ (fun x => True) final_state))
-                 (fun prog => 
-                    Bind (Pick (fun final_state => RunsTo env prog init_state final_state))
-                         (fun final_state => Pick (fun x => final_state[ret_var >> wrapper x])))).
-  intros * wrapper_inj ** .
-  unfold refine.
-  intros.
-  inversion_by computes_to_inv.
-  apply eq_ret_compute.
+Lemma pull_forall_loop :
+  forall env b loop (cloop: Stmt) knowledge
+         scas adts vseq vret thead tis_empty,
+    (forall head acc seq,
+       refine  { cloop | SCALoopBodyProgCondition env loop cloop knowledge
+                                                  scas adts vseq vret thead tis_empty
+                                                  head acc seq } b) ->
+    refine { cloop | SCALoopBodyOk env loop cloop knowledge
+                                   scas adts vseq vret thead tis_empty }%facade b.
+Proof.
+  eauto using pull_forall.
+Qed.
 
-  apply (H _ _ X) in H1.
-  apply wrapper_inj.
-  eapply MapsTo_unique; eauto.
+Lemma start_compiling_with_precondition : (* TODO: Supersedes start_compiling *) 
+  forall {av env} init_state scas adts vret v,
+    SomeSCAs init_state scas ->
+    AllADTs init_state adts ->
+    refine (ret v) 
+           (prog <- (@Prog av env True
+                           scas ([vret >sca> v]::scas)
+                           adts adts);
+            final_state <- {final_state | RunsTo env prog init_state final_state};
+            {x | final_state[vret >> SCA av x]})%comp.
+Proof.
+  unfold refine, Prog, ProgOk; intros.
+  inversion_by computes_to_inv.
+  pose proof I.
+  specialize_states;
+  scas_adts_mapsto;
+  auto_mapsto_unique;
+  autoinj.
 Qed.
 
 Lemma compile_new :
