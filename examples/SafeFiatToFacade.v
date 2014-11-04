@@ -1981,8 +1981,8 @@ Lemma start_compiling_with_precondition : (* TODO: Supersedes start_compiling *)
     AllADTs init_state adts ->
     refine (ret v) 
            (prog <- (@Prog av env True
-                           scas ([vret >sca> v]::scas)
-                           adts adts);
+                           scas ([vret >sca> v]::∅)
+                           adts ∅);
             final_state <- {final_state | RunsTo env prog init_state final_state};
             {x | final_state[vret >> SCA av x]})%comp.
 Proof.
@@ -1994,31 +1994,211 @@ Proof.
   auto_mapsto_unique;
   autoinj.
 Qed.
-
-Lemma compile_new :
-  forall {env} pnew vret,
-  forall precond postcond,
-    Word2Spec env pnew = Some (Axiomatic List_new) ->
-    cond_respects_MapEq postcond ->
-    (forall state x, precond state -> postcond (StringMap.add vret x state)) ->
-    refine (Pick (fun prog => 
-                    forall init_state final_state : State FacadeADT,
-                      precond init_state ->
-                      RunsTo env prog init_state final_state ->
-                      final_state[vret >> Facade.ADT (List nil)] /\
-                      postcond final_state))
-           (ret (Call vret pnew nil)). 
+    
+Lemma SomeSCAs_mapsto_inv:
+  forall {av} state scas k v,
+    state[k >> SCA av v] ->
+    SomeSCAs state scas ->
+    SomeSCAs state ([k >sca> v]::scas).
 Proof.
-  unfold refine, List_new, cond_respects_MapEq; intros; constructor; intros.
-  inversion_by computes_to_inv; subst;
-  inversion_clear' H3; simpl in *; [ | congruence ].
+  unfold SomeSCAs, Subset; intros * ? * some_scas ** k' v' maps_to.
+  destruct (StringMap.E.eq_dec k k'); rewrite StringMapFacts.add_mapsto_iff in *;
+  subst; intuition; autoinj.
+Qed.
 
-  autoinj; subst;
-  eq_transitive; autoinj; subst; simpl in *;
+Lemma drop_scas_but_last :
+  forall {av env} init_state scas adts adts' vret v,
+    SomeSCAs init_state scas ->
+    AllADTs init_state adts ->
+    refine (@Prog av env True
+                  scas ([vret >sca> v]::∅)
+                  adts adts')
+           (@Prog av env True
+                  scas ([vret >sca> v]::scas)
+                  adts adts').
+Proof.
+  unfold refine, Prog, ProgOk; intros.
+  inversion_by computes_to_inv.
+  constructor; intros; destruct_pairs;
+  split; intros; specialize_states.
+  + intuition.
+  + split; scas_adts_mapsto;
+    eauto using SomeSCAs_mapsto_inv, SomeSCAs_empty.
+Qed.
+
+Print Stmt.
+
+(*
+Definition AllKnown {elt1 elt2} vars scas adts :=
+  forall k, List.In k vars -> @StringMap.In elt1 k scas \/
+                              @StringMap.In elt2 k adts.
+
+Lemma AllKnown_find :
+  forall {av} state scas adts,
+    SomeSCAs state scas ->
+    AllADTs state adts ->
+    forall k,
+    (StringMap.In (elt:=Value av) k scas \/
+     StringMap.In (elt:=Value av) k adts) ->
+    StringMapFacts.M.In (elt:=Value av) k state.
+Proof.
+  intros.
+  destruct k.
+
+ *)
+(*
+Lemma AllKnown_find :
+  forall {av} state scas adts vars,
+    SomeSCAs state scas ->
+    AllADTs state adts ->
+    AllKnown vars scas adts ->
+    forall k,
+      List.In k vars ->
+      exists (v: Value av), StringMap.find k state = Some v.
+Proof.
+  induction vars; intros.
+  exfalso; eauto using in_nil.
+  apply in_inv in H2; destruct H2.
+  + subst. specialize (H1 k (in_eq _ _)). 
+    setoid_rewrite <- StringMapFacts.find_mapsto_iff.
+    apply StringMapFacts.In_MapsTo.
+  
+Lemma AllKnown_mapM :
+  forall {av} state scas adts args,
+    SomeSCAs state scas ->
+    AllADTs state adts ->
+    AllKnown args scas adts ->
+    exists args',
+      mapM (@sel av state) args = Some args'.
+Proof.
+  induction args; intros ** all_known; simpl.
+  + eexists; reflexivity.
+  + unfold sel; specialize (all_known a (in_eq _ _)).
+  induction 
+ *)
+
+Lemma RunsToCallByName :
+  forall {av env},
+  forall scas adts knowledge,
+  forall vret vpointer label args args' v w spec,
+    Label2Word env label = Some w ->
+    Word2Spec env w = Some (Axiomatic spec) ->
+    ~ StringMap.In vpointer adts ->
+    ~ StringMap.In vret adts ->
+    (forall st,
+       SomeSCAs (st) ([vpointer >sca> w]::scas) ->
+       AllADTs st adts ->
+       mapM (sel st) args = Some args') ->
+    PreCond spec args' ->
+    NoDup args ->
+    refine (@Prog av env knowledge
+                  scas ([vret >sca> v]::scas)
+                  adts adts)
+           (ret (Label vpointer label;
+                 Call vret (Var vpointer) args)%facade).
+Proof.
+  unfold refine, Prog, ProgOk; intros;
+  inversion_by computes_to_inv;
+  subst; constructor; split; intros;
+  destruct_pairs.
+
+  (* Safe *)
+  + repeat (constructor; intros).
+    - econstructor; eauto using not_in_adts_not_mapsto_adt.
+    - inversion_facade; mapsto_eq_add;
+      eq_transitive; autoinj;
+      econstructor; eauto 2 using mapsto_eval.
+      apply H3; rewrite_Eq_in_goal; eauto using SomeSCAs_chomp, add_adts_pop_sca.
+      eapply not_in_adts_not_mapsto_adt; try eassumption.
+      rewrite_Eq_in_goal; apply add_adts_pop_sca; eauto.
+
+  (* RunsTo *)
+  + repeat inversion_facade.
+Admitted.
+
+Lemma AllADTs_chomp :
+  forall {av} (state: State av) k v adts,
+    AllADTs state adts ->
+    AllADTs ([k >adt> v]::state) ([k >adt> v]::adts).
+Proof.
+  unfold AllADTs; intros *; split; apply Subset_chomp; destruct_pairs; eassumption.
+Qed.
+    
+Lemma RunsTo_label :
+  forall av env st1 st2 vpointer label w,
+    Label2Word env label = Some w ->
+    @RunsTo av env (Label vpointer label) st1 st2 ->
+    StringMap.Equal st2 ([vpointer >sca> w]::st1).
+Proof.
+  intros.
+  inversion_facade.
+  eq_transitive; autoinj.
+Qed.
+
+Lemma runsto_new :
+  forall env st1 st2 w vpointer vret,
+    Word2Spec env w = Some (Axiomatic List_new) ->
+    st1[vpointer >> SCA _ w] ->
+    RunsTo env (Call vret (Var vpointer) nil) st1 st2 ->
+    StringMap.Equal st2 ([vret >adt> List nil]::st1).
+Proof.
+  intros;
+  inversion_facade;
+  simpl in *;
+  autoinj; rewrite <- StringMapFacts.find_mapsto_iff in *;  (* TODO: Extend auto_mapsto_unique *)
+  auto_mapsto_unique; intros;
+  autoinj; eq_transitive; autoinj; simpl in *;
   match goal with
     | [ H: 0 = List.length _ |- _ ] => rewrite length_0 in H
-  end; subst;
-  autorewrite_equal; map_iff_solve intuition.
+  end; destruct_pairs; subst;
+  [assumption|discriminate].
+Qed.                       
+
+Lemma compile_new :
+  forall {env},
+  forall scas adts knowledge,
+  forall vret vpointer label w,
+    Label2Word env label = Some w ->
+    Word2Spec env w = Some (Axiomatic List_new) ->
+    ~ StringMap.In vpointer adts ->
+    ~ StringMap.In vret adts ->
+    ~ StringMap.In vret scas ->
+    vpointer <> vret ->
+    refine (@Prog _ env knowledge
+                  scas ([vpointer >sca> w]::scas)
+                  adts ([vret >adt> List nil]::adts))
+           (ret (Label vpointer label;
+                 Call vret (Var vpointer) nil)%facade).
+Proof.
+  unfold refine, Prog, ProgOk; intros;
+  inversion_by computes_to_inv;
+  subst; constructor; split; intros;
+  destruct_pairs.
+
+  (* Safe *)
+  + repeat (constructor; intros).
+    - econstructor; eauto using not_in_adts_not_mapsto_adt.
+    - inversion_facade; mapsto_eq_add; (* TODO *)
+      eq_transitive; autoinj;
+      econstructor; eauto 2 using mapsto_eval.
+      constructor. reflexivity.
+      eapply not_in_adts_not_mapsto_adt.
+      rewrite_Eq_in_goal; eauto using add_adts_pop_sca.
+      assumption.
+      reflexivity.
+
+  + inversion_facade.
+    eapply RunsTo_label in H11; eauto.
+
+    mapsto_eq_add.
+    eapply runsto_new in H14; eauto.
+    split; repeat rewrite_Eq_in_goal.
+    
+    apply add_sca_pop_adts, SomeSCAs_chomp; trivial;
+    rewrite StringMapFacts.F.add_neq_in_iff; assumption.
+
+    apply AllADTs_chomp, add_adts_pop_sca; trivial;
+    rewrite StringMapFacts.F.add_neq_in_iff; assumption.
 Qed.
 
 Lemma compile_copy :
