@@ -172,12 +172,6 @@ Proof.
   finish sharpening computation.
 Defined.
 
-Require Import Ensembles.
-Require Import Coq.Strings.String Coq.Sets.Ensembles Coq.Sets.Finite_sets Coq.Lists.List Coq.Sorting.Permutation.
-Require Import ADT ADT.ComputationalADT ADTRefinement.Core ADTNotation ADTRefinement.GeneralRefinements Common.AdditionalEnsembleDefinitions Common.AdditionalEnsembleLemmas Computation.
-Require Export FiniteSetADTs.FiniteSetADT.
-Require Import Common.
-
 Definition intersectionUniqueImpl (FiniteSetImpl : FullySharpened FiniteSetSpec) (ls1 ls2 : list W)
 : FullySharpenedComputation (intersectionUniqueSpec ls1 ls2).
 Proof.
@@ -185,9 +179,7 @@ Proof.
 
   sharpen computation with FiniteSet implementation := FiniteSetImpl.
 
-  exfalso; admit;finish sharpening computation.
-  Grab Existential Variables.
-  admit.
+  finish sharpening computation.
 Defined.
 
 

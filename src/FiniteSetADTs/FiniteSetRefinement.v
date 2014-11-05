@@ -262,6 +262,22 @@ Proof.
   setoid_rewrite H; reflexivity.
 Qed.
 
+Lemma if_app {A} (ls1 ls1' ls2 : list A) (b : bool)
+: (if b then ls1 else ls1') ++ ls2 = if b then (ls1 ++ ls2) else (ls1' ++ ls2).
+Proof.
+  destruct b; reflexivity.
+Qed.
+
+Definition pull_if_dep {A B} (P : forall b : bool, A b -> B b) (a : A true) (a' : A false)
+           (b : bool)
+: P b (if b as b return A b then a else a') =
+  if b as b return B b then P _ a else P _ a'
+  := match b with true => eq_refl | false => eq_refl end.
+
+Definition pull_if {A B} (P : A -> B) (a a' : A) (b : bool)
+: P (if b then a else a') = if b then P a else P a'
+  := pull_if_dep (fun _ => P) a a' b.
+
 Section FiniteSetHelpers.
   Context (FiniteSetImpl : FullySharpened FiniteSetSpec).
 
@@ -312,6 +328,12 @@ Section FiniteSetHelpers.
              (ls : list W)
     := snd (FiniteSetAndFunctionOfList f a ls).
 
+  Definition UniqueListOfList (ls : list W) : list W
+    := FunctionOfList (@cons _) nil ls.
+
+  Definition UniqueFilterOfList (ls : list W) (P : W -> bool) : list W
+    := FunctionOfList (fun x xs => if P x then (x::xs) else xs) nil ls.
+
   Lemma NoFiniteSetJustFunctionOfList {A} f a ls
   : snd (@FiniteSetAndFunctionOfList A f a ls) = FunctionOfList f a ls.
   Proof.
@@ -331,6 +353,18 @@ Section FiniteSetHelpers.
   Definition NoListJustFiniteSetOfList ls
   : fst (FiniteSetAndListOfList ls) = FiniteSetOfList ls
     := NoFunctionJustFiniteSetOfFunction _ _ _.
+
+  Definition NoFiniteSetJustListOfList ls
+  : snd (FiniteSetAndListOfList ls) = UniqueListOfList ls
+    := NoFiniteSetJustFunctionOfList _ _ _.
+
+  Definition FunctionIsListOfList ls
+  : FunctionOfList _ _ _ = UniqueListOfList ls
+    := reflexivity _.
+
+  Definition NoFiniteSetJustFilterFunctionOfList P ls
+  : snd (@FiniteSetAndFunctionOfList _ _ _ ls) = UniqueFilterOfList ls P
+    := reflexivity _.
 
   Lemma FiniteSetAndFunctionOfList_pull_ret {A} (f : W -> A -> A) (a : A)
         (ls : list W)
@@ -1030,6 +1064,13 @@ Section FiniteSetHelpers.
       reflexivity.
   Qed.
 
+  Lemma fold_right_UniqueListOfList {A} (f : W -> A -> A) (a : A) ls
+  : List.fold_right f a (UniqueListOfList ls)
+    = snd (FiniteSetAndFunctionOfList f a ls).
+  Proof.
+    apply fold_right_snd_FiniteSetAndListOfList.
+  Qed.
+
   Lemma refineEquivUnion {T A} P (P_respectful : forall S1 S2 x, Same_set A S1 S2 -> (P S1 x <-> P S2 x))
         (S1 S2 : Ensemble A)
   : refine { x : T | P (Ensembles.Union A S1 S2) x }
@@ -1500,19 +1541,114 @@ Section FiniteSetHelpers.
     apply EnsembleListEquivalence_Intersection_Singleton.
   Qed.
 
-(*
+
+  Lemma In_UniqueFilterOfList f ls x
+  : List.In x (UniqueFilterOfList ls f) <-> f x = true /\ List.In x ls.
+  Proof.
+    unfold UniqueFilterOfList, FunctionOfList; simpl.
+    induction ls.
+    { simpl; split; tauto. }
+    { simpl in *; intros.
+      rewrite !NoFunctionJustFiniteSetOfFunction.
+      rewrite !NoFiniteSetJustFunctionOfList.
+      rewrite !NoFiniteSetJustFunctionOfList in IHls.
+      handle_calls''.
+      rewrite EnsembleOfList_In in *.
+      repeat match goal with
+               | [ H : ?T -> ?U, H' : ?T |- _ ] => specialize (H H')
+               | [ |- _ <-> _ ] => split
+               | [ |- _ /\ _ ] => split
+               | _ => intro
+               | _ => progress simpl in *
+               | _ => progress split_iff
+               | _ => progress split_and
+               | _ => progress destruct_head bool
+               | _ => progress destruct_head_hnf or
+               | [ H : ?x = ?x -> _ |- _ ] => specialize (H eq_refl)
+               | _ => progress subst
+               | _ => right; assumption
+               | [ H : ?x = true, H' : context[?x] |- _ ] => rewrite H in H'
+               | [ H : ?x = true |- context[?x] ] => rewrite H
+               | [ H : false = true -> _ |- _ ] => clear H
+               | [ H : ?T -> false = true |- _ ] => assert (T -> False) by (let t := fresh in intro t; specialize (H t); inversion H); clear H
+               | [ |- false = true ] => exfalso
+               | [ H : false = true |- _ ] => inversion H
+               | _ => tauto
+               | [ H : context[if ?E then _ else _] |- _ ] => revert H; case_eq E
+               | [ |- context[if ?E then _ else _] ] => case_eq E
+             end. }
+  Qed.
+
+  Lemma UniqueListOfUniqueFilterOfList f ls
+  : UniqueListOfList (UniqueFilterOfList ls f) = UniqueFilterOfList ls f.
+  Proof.
+    induction ls;
+    unfold UniqueListOfList, UniqueFilterOfList, FunctionOfList in *; simpl in *; trivial.
+    rewrite !NoFiniteSetJustListOfList in IHls |- *.
+    rewrite !NoFiniteSetJustFunctionOfList.
+    rewrite !(pull_if UniqueListOfList).
+    unfold UniqueListOfList, UniqueFilterOfList, FunctionOfList in *; simpl in *; trivial.
+    rewrite !NoFiniteSetJustFilterFunctionOfList in IHls |- *.
+    rewrite !NoFunctionJustFiniteSetOfFunction.
+    rewrite !NoFiniteSetJustFunctionOfList in IHls |- *.
+    rewrite IHls.
+    repeat handle_calls''.
+    rewrite EnsembleOfList_In in *.
+    rewrite In_UniqueFilterOfList in *.
+    repeat match goal with
+             | [ |- appcontext[if ?E then _ else _] ] => case_eq E
+             | _ => intro
+             | _ => progress subst
+             | _ => reflexivity
+             | [ H : ?x = true, H' : context[?x] |- _ ] => rewrite H in H'
+             | _ => progress split_iff
+             | _ => progress split_and
+             | [ H : ?x = ?x /\ _ -> _ |- _ ] => specialize (fun k => H (conj eq_refl k))
+             | [ H : ?x = ?x -> _ |- _ ] => specialize (H eq_refl)
+             | [ H : ?T -> ?U, H' : ?T |- _ ] => specialize (H H')
+             | _ => congruence
+           end.
+  Qed.
+
+  Lemma UniuqeListOfList_cons_UniqueFilterOfList a f ls
+  : UniqueListOfList (a::UniqueFilterOfList ls f)
+    = if negb (andb (snd ((CallMethod (projT1 FiniteSetImpl) sIn) (FiniteSetOfList ls) a) )
+                    (f a))
+      then a::UniqueFilterOfList ls f
+      else UniqueFilterOfList ls f.
+  Proof.
+    unfold UniqueListOfList, FunctionOfList; simpl.
+    rewrite NoFunctionJustFiniteSetOfFunction.
+    repeat handle_calls''.
+    rewrite EnsembleOfList_In in *.
+    rewrite In_UniqueFilterOfList in *.
+    rewrite !NoFiniteSetJustListOfList.
+    rewrite UniqueListOfUniqueFilterOfList.
+    repeat match goal with
+             | _ => progress simpl in *
+             | _ => progress destruct_head bool
+             | _ => progress destruct_head and
+             | _ => progress destruct_head False
+             | [ H : ?x = ?x -> _ |- _ ] => specialize (H eq_refl)
+             | _ => progress split_iff
+             | [ H : ?x = true |- context[?x] ] => rewrite H
+             | [ H : ?x = false |- context[?x] ] => rewrite H
+             | [ H : ?T -> false = true |- _ ] => assert (T -> False) by (let t := fresh in intro t; specialize (H t); inversion H); clear H
+             | _ => reflexivity
+             | [ H : false = true -> _ |- _ ] => clear H
+             | [ H : _ -> ?x = ?x |- _ ] => clear H
+             | [ H : _ /\ ?T -> ?U, H' : ?T |- _ ] => specialize (fun k => H (conj k H'))
+             | [ H : ?T -> ?U, H' : ?T |- _ ] => specialize (H H')
+             | [ H : _ = true -> False |- _ ] => apply Bool.not_true_is_false in H
+           end.
+  Qed.
+
   Lemma EnsembleListEquivalence_Intersection_elements1_fold
         (ls : list W) (S0 : Ensemble W)
   : refine { ls' : _ | EnsembleListEquivalence (Intersection W (elements ls) S0) ls' }
            (ls_S0 <- to_list S0;
             let fs_S0 := FiniteSetOfList ls_S0 in
-            ret (FunctionOfList
-                   (fun x xs =>
-                      if (snd (CallMethod (projT1 FiniteSetImpl) sIn fs_S0 x) : bool)
-                      then x::xs
-                      else xs)
-                   nil
-                   ls)).
+            ret (UniqueFilterOfList ls (fun x => snd (CallMethod (projT1 FiniteSetImpl) sIn fs_S0 x) : bool))).
   Proof.
     induction ls; simpl.
     { repeat match goal with
@@ -1528,246 +1664,39 @@ Section FiniteSetHelpers.
                | [ |- computes_to (Pick _) _ ] => constructor
                | _ => progress unfold to_list in *
                | _ => split
-               | _ => progress unfold FunctionOfList
+               | _ => progress unfold FunctionOfList, UniqueFilterOfList in *
                | _ => progress simpl in *
                | [ |- NoDup nil ] => constructor
                | _ => solve [ eauto ]
              end. }
     { intros; simpl.
       setoid_rewrite Same_set__elements_cons__Union; simpl.
-setoid_rewrite Same_set_Intersection_Union'.
-SearchAbout EnsembleListEquivalence Union.
-rewrite refineEquivUnion.
-unfold to_list.
-setoid_rewrite EnsembleListEquivalence_Intersection_Singleton; simpl.
-setoid_rewrite IHls; clear IHls.
-simpl.
-autosetoid_rewrite with refine_monad.
-rewrite refine_bind_dedup.
-apply refine_under_bind; intros.
-inversion_by computes_to_inv.
-unfold FunctionOfList; simpl.
-repeat setoid_rewrite NoFunctionJustFiniteSetOfFunction.
-let lhs := match goal with |- ?R ?lhs ?rhs => constr:lhs end in
-let test_in := match lhs with appcontext[if ?test then _ else _] => constr:test end in
-destruct test_in; simpl;
-rewrite !NoFiniteSetJustFunctionOfList.
-
-
-match goal with
-  | [ |- context[
-let lhs := match goal with |- ?R ?lhs ?rhs => constr:lhs end in
-let FOL := lazymatch lhs with appcontext[snd (@FiniteSetAndFunctionOfList ?a ?b ?c ?d)] => constr:(snd (@FiniteSetAndFunctionOfList a b c d)) end in
-generalize FOL; intro.
-generalize FOL.
-unfold Intersection.
-rewrite refineEquivIntersection.
-
-
-      setoid_rewrite Same_set_Union__cons__Union; simpl.
-
-
-
-    match goal with
-      | [ |- _ ≅ {{ ?x }} ∪ {{ ?y }} ∪ ?z ]
-        => rewrite Union_assoc, (Union_sym (Singleton _ x) (Singleton _ y)), <- Union_assoc
-    end.
-    rewrite <- IHxs.
-    rewrite Union_sym at 2.
-      eauto.
-      split; repeat intro.
-
-
-    SearchAbout (Union _ _ (Union _ _ _)).
-    specialize (IHxs a).
-    generalize dependent (elements (a :: xs)); intros.
-
-
-    rewrite IHxs.
-
-
-    Opaque Same_set.
-Typeclasses eauto := debug.
-rewrite (IHxs a).
-    hnf in *.
-    constructor.
-
-
-
-  Lemma Same_set_Intersection_elements_cons {A} (dec_eq : forall x y : A, {x = y} + {x <> y})
-        x xs S0
-  : refineEquiv { ls' : _ | EnsembleListEquivalence (Intersection A (elements (x::xs)) S0) ls' }
-                (ls <- { ls' : _ | EnsembleListEquivalence (Intersection A (elements xs) S0) ls' };
-                 b <- { b : bool | b = true <-> List.In x ls };
-                 b' <- { b : bool | b = true <-> Ensembles.In _ S0 x };
-                 ret (if b then ls else if b' then (x::ls) else ls)).
-  Proof.
-
-
-
-  Lemma Intersection_elements_cons {A} (dec_eq : forall x y : A, {x = y} + {x <> y})
-        x xs S0
-  : refineEquiv { ls' : _ | EnsembleListEquivalence (Intersection A (elements (x::xs)) S0) ls' }
-                (ls <- { ls' : _ | EnsembleListEquivalence (Intersection A (elements xs) S0) ls' };
-                 b <- { b : bool | b = true <-> List.In x ls };
-                 b' <- { b : bool | b = true <-> Ensembles.In _ S0 x };
-                 ret (if b then ls else if b' then (x::ls) else ls)).
-  Proof.
-    revert x; induction xs; simpl.
-    { repeat match goal with
-               | _ => intro
-               | _ => progress destruct_head_hnf False
-               | _ => progress subst
-               | _ => progress simpl in *
-               | _ => progress destruct_head_hnf and
-               | _ => progress destruct_head_hnf ex
-               | _ => progress destruct_head_hnf Intersection
-               | _ => progress destruct_head_hnf bool
-               | _ => progress destruct_head_hnf or
-               | _ => progress split_iff
-               | _ => inversion_by computes_to_inv
-               | [ H : computes_to (Bind _ _) _ |- _ ] => apply computes_to_inv in H
-               | [ H : computes_to (ret _) _ |- _ ] => apply computes_to_inv in H
-               | [ H : ?x = ?x -> _ |- _ ] => specialize (H eq_refl)
-               | [ |- computes_to (Pick _) _ ] => constructor
-               | [ |- computes_to (ret _) _ ] => constructor
-               | _ => progress unfold to_list, Ensembles.In, elements in *
-               | _ => split
-               | _ => progress unfold FunctionOfList
-               | [ |- NoDup nil ] => constructor
-               | [ |- NoDup (_::_) ] => constructor
-               | [ H : cons _ _ = nil |- _ ] => solve [ inversion H ]
-               | _ => setoid_rewrite Intersection_Empty
-               | _ => solve [ eauto ]
-               | [ H : forall _, In _ _ -> _, H' : In _ _ |- _ ] => specialize (H _ H')
-               | [ |- computes_to (ls <- { ls' : _ | EnsembleListEquivalence (fun _ => False) ls' }; _) _ ]
-                 => refine (@BindComputes _ _ _ _ nil _ _ _)
-               | [ |- computes_to (b <- { b : bool | b = true <-> False }; _) _ ]
-                 => refine (@BindComputes _ _ _ _ false _ _ _)
-               | [ H : false = true |- _ ] => solve [ inversion H ]
-             end.
-      let ls := match goal with ls : list _ |- _ => constr:ls end in
-      destruct ls as [ | ? [ | ] ]; [ | | exfalso ].
-      { refine (@BindComputes _ _ _ _ false _ _ _); eauto.
-        constructor; split;
-        let H := fresh in intro H; try solve [ inversion H ].
-        exfalso; eauto.
-        match goal with
-          | [ H : _ |- _ ] => eapply H
-        end.
-        constructor; hnf; eauto. }
-      { simpl in *.
-        match goal with
-          | [ x : A, y : A |- _ ] => destruct (dec_eq x y); subst
-        end.
-        { refine (@BindComputes _ _ _ _ true _ _ _); eauto.
-          constructor; split; intros; eauto.
-          match goal with
-            | [ H : _ |- _ ] => specialize (H _ (or_introl eq_refl))
-          end.
-          destruct_head Intersection; eauto. }
-        { exfalso.
-          match goal with
-            | [ H : _ |- _ ] => specialize (H _ (or_introl eq_refl))
-          end.
-          destruct_head Intersection.
-          destruct_head_hnf or; subst; eauto. } }
-      { match goal with
-          | [ H : NoDup (?a :: ?b :: _), H' : forall x0, _ -> Intersection _ _ _ _ |- _ ]
-            => pose proof (H' a); pose proof (H' b)
-        end; simpl in *.
-        repeat match goal with
-                 | [ H : ?x = ?y \/ _ -> _ |- _ ]
-                   => first [ specialize (H (or_introl eq_refl))
-                            | specialize (fun H' => H (or_intror H')) ]
-                 | [ H : _ \/ ?x = ?y -> _ |- _ ]
-                   => first [ specialize (H (or_intror eq_refl))
-                            | specialize (fun H' => H (or_introl H')) ]
-                 | [ H : _ \/ In _ _ -> _ |- _ ]
-                   => specialize (fun H' => H (or_introl H'))
-                 | _ => progress destruct_head Intersection
-                 | _ => progress destruct_head_hnf or
-                 | _ => progress destruct_head_hnf and
-                 | _ => progress destruct_head_hnf False
-                 | _ => progress subst
-                 | _ => progress simpl in *
-                 | [ H : NoDup (_::_) |- _ ] => inversion H; clear H
-                 | [ H : ~(_ \/ _) |- _ ] => apply Decidable.not_or in H
-                 | [ H : ?x <> ?x |- _ ] => destruct (H eq_refl)
-               end. } }
-    { intro x.
-      setoid_rewrite IHxs.
+      setoid_rewrite Same_set_Intersection_Union'.
+      rewrite refineEquivUnion;
+        [ | let H := fresh in intros ? ? ? H; rewrite H; reflexivity ].
+      unfold to_list.
+      setoid_rewrite EnsembleListEquivalence_Intersection_Singleton; simpl.
+      setoid_rewrite IHls; clear IHls.
+      simpl.
       autosetoid_rewrite with refine_monad.
+      rewrite refine_bind_dedup.
+      apply refine_under_bind; intros.
+      inversion_by computes_to_inv.
+      unfold UniqueFilterOfList, FunctionOfList; simpl.
+      repeat setoid_rewrite NoFunctionJustFiniteSetOfFunction.
+      rewrite finite_set_handle_EnsembleListEquivalence;
+        rewrite !NoFiniteSetJustListOfList.
 
+      rewrite !NoFiniteSetJustFilterFunctionOfList.
+      rewrite if_app; simpl.
+      rewrite (pull_if UniqueListOfList).
 
-      SearchAbout (~(_ \/ _)).
-                   | [ H : _ \/ ?x = ?x |- _ ] => specialize (H (or_intror eq_refl))
-                   | [ H : ?x = ?y \/ _ |- _ ] => specialize (fun H' => H (or_intror H'))
-                   | [ H : _ \/ ?x = ?y |- _ ] => specialize (fun H' => H (or_intror H'))
-
-      end.
-
-      => let H' := fresh in
-         destruct (dec
-
-                     simpl in *.
-                   specialize_all_ways.
-                   refine (@BindComputes _ _ _ _ true _ _ _); eauto.
-                   { constructor; split; intros; eauto;
-                     match goal with
-                       | [ H : false = true |- _ ] => inversion H
-                       | [ |- false = true ] => exfalso
-                     end.
-                     match goal with
-                       | [ H : forall x0, Intersection _ ?S ?S0 _ -> _, H' : ?S0 ?x |- _ ]
-                         => let H'' := fresh in
-                            assert (H'' : Intersection _ S S0 x) by (constructor; hnf; eauto);
-                              specialize (H _ H'')
-                     end.
-                     destruct_head or; congruence. }
-
-                   constructor; hnf; eauto.
-                   => exfalso; eapply H
-                   end.
-                   destruct_head Intersection; eauto. }
-{
-  Hint Constructors Intersection or.
-  Local Hint Extern 0 => hnf.
-  eapply H1;
-    constructor;
-    eauto.
-
-  eexists nil.
-  econstructor.
-  constructor.
-  hnf; simpl.
-  unfold Ensebmles.In.
-
-}
-  { rewrite
-      unfold elements in *.
-  }
-
-
-  repeat intro.
-                   revert x S0.
-                   (Union A (
-                            unfold FunctionOfList in *; simpl in *.
-                            unfold elements; simpl.
-                            SearchAbout
-                              hnf in H.
-                            unfold FunctionOfList; simpl.
-                            unfold elements; simpl.
-                            split; eauto.
-                            constructor.
-
-                            Lemma Same_set_Intersection_False
-                                  SearchAbout Intersection.
-                              eapply EnsembleListEquivalence_Same_set; try eassumption.
-
-                              SearchAbout EnsebmleListEquivalence.
-                              unfold FunctionOfList; simpl.
-*)
+      rewrite UniuqeListOfList_cons_UniqueFilterOfList.
+      rewrite !UniqueListOfUniqueFilterOfList.
+      repeat handle_calls''.
+      rewrite EnsembleOfList_In in *.
+      destruct_head bool; simpl; trivial. }
+  Qed.
 End FiniteSetHelpers.
 
 Create HintDb finite_sets discriminated.
@@ -1808,7 +1737,7 @@ Ltac finite_set_sharpen_step FiniteSetImpl :=
         (*| match goal with |- appcontext[@Ensembles.Setminus] => idtac end;
           setoid_rewrite Same_set_Setminus_fold*)
         | rewrite filter_fold_right
-        | rewrite !NoFiniteSetJustFunctionOfList
+        | progress rewrite ?NoFiniteSetJustFunctionOfList, ?FunctionIsListOfList, ?NoFiniteSetJustListOfList
         | match goal with |- appcontext[EnsembleListEquivalence (fun x => Ensembles.In _ _ x /\ _)] => idtac end;
           setoid_rewrite refine_ELE_filter_by_and
         | match goal with |- appcontext[@FunctionOfList] => idtac end;
@@ -1819,6 +1748,8 @@ Ltac finite_set_sharpen_step FiniteSetImpl :=
           setoid_rewrite (@FunctionOfList_pull_ret FiniteSetImpl)
         | match goal with |- appcontext[@FiniteSetAndFunctionOfList] => idtac end;
           setoid_rewrite (@FiniteSetAndFunctionOfList_pull_ret FiniteSetImpl)
+        | match goal with |- appcontext[@Ensembles.Intersection] => idtac end;
+          setoid_rewrite (@EnsembleListEquivalence_Intersection_elements1_fold FiniteSetImpl)
         | idtac;
           match goal with |- appcontext[@eq bool] => idtac end;
           setoid_rewrite bool_true_iff_bneq_pick
@@ -1827,6 +1758,7 @@ Ltac finite_set_sharpen_step FiniteSetImpl :=
         | rewrite (@finite_set_handle_EnsembleListEquivalence FiniteSetImpl)
         | rewrite (@CallSize_FiniteSetOfListOfFiniteSetAndListOfList FiniteSetImpl)
         | rewrite (@fold_right_snd_FiniteSetAndListOfList FiniteSetImpl)
+        | rewrite (@fold_right_UniqueListOfList FiniteSetImpl)
         | progress autounfold with finite_sets ].
 
 Tactic Notation "sharpen" "computation" "with" "FiniteSet" "implementation" ":=" constr(FiniteSetImpl) :=
