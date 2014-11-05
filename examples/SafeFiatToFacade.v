@@ -2415,6 +2415,84 @@ Proof.
   eapply SomeSCAs_remove; eauto.
 Qed.
 
+Lemma compile_fold_adt :
+  forall env,
+  forall vseq vret: StringMap.key,
+  forall thead tis_empty: StringMap.key,
+  forall ppop pempty,
+  forall loop,
+  forall knowledge scas adts,
+    (Word2Spec env pempty = Some (Axiomatic List_empty)) ->
+    (Word2Spec env ppop  = Some (Axiomatic List_pop)) ->
+    vret <> vseq ->
+    vret <> tis_empty ->
+    thead <> vret ->
+    thead <> vseq ->
+    tis_empty <> vseq ->
+    ~ StringMap.In thead adts ->
+    ~ StringMap.In tis_empty adts ->
+    ~ StringMap.In vseq scas ->
+    ~ StringMap.In tis_empty scas ->
+    forall seq init, 
+      refine (@Prog _ env knowledge
+                    (scas) (scas)
+                    ([vseq >adt> List seq]::adts) ([vret >adt> List.fold_left loop seq init]
+                                                     ::[vseq >adt> List nil]::adts))
+             (cloop <- { cloop | ADTLoopBodyOk env loop cloop knowledge
+                                               scas adts vseq vret thead tis_empty };
+              pinit <- (@Prog _ env knowledge
+                              scas scas
+                              ([vseq >adt> List seq]::adts) ([vret >adt> init]::[vseq >adt> List seq]::adts));
+              ret (pinit; Fold thead tis_empty vseq ppop pempty cloop)%facade)%comp.
+Proof.
+  unfold refine; intros.
+  inversion_by computes_to_inv;
+    subst;
+    constructor;
+    match goal with
+      | [ H: _ |- _ ] => apply PickComputes_inv in H; unfold ProgOk in H
+    end; unfold ProgOk in * ;
+    intros; destruct_pairs;
+    specialize_states;
+    destruct_pairs.
+
+  match goal with
+    | [ H: context[ADTLoopBodyOk], H': context[Word2Spec], H'': context[Word2Spec] |- _ ] =>
+      pose proof (compile_fold_base_adt H H' H'')
+  end.
+  
+  (* TODO: Tactic for this? *)
+  repeat match goal with
+           | [ H: ?a -> _, H': ?a |- _ ] =>
+             match (type of a) with
+               | Prop => specialize (H H')
+             end
+         end.
+
+  unfold refine, Prog, ProgOk in *.
+
+  match goal with
+    | [ H: _ -> _ -> _ |- _ ] => specialize (H seq init _ (eq_ret_compute _ _ _ (eq_refl)))
+  end.
+  inversion_by computes_to_inv.
+  
+  split.
+
+  (* Safe *)
+  constructor; split; intuition.
+
+  (* RunsTo *)
+  intros; destruct_pairs.
+  inversion_facade.
+  specialize_states.
+  split; [ | intuition ].
+  
+  (* Tricks to get rid of is_empty *)
+  rewrite (not_in_remove_eq tis_empty scas); eauto.
+  (* REMOVED rewrite map_add_remove_swap; eauto. *)
+  eapply SomeSCAs_remove; eauto.
+Qed.
+
 Lemma mapsto_eval :
   forall {av} scas k w,
     (scas) [k >> SCA av w] ->
@@ -2878,7 +2956,7 @@ Proof.
   unfold not_mapsto_adt, is_mapsto_adt in *.
   rewrite 
  *)
-
+ 
 Lemma compile_copy :
   forall {env},
   forall scas adts knowledge seq,
@@ -2911,16 +2989,16 @@ Proof.
       econstructor; eauto 2 using mapsto_eval.
       repeat (constructor; eauto).
 
-      scas_adts_mapsto'.
+      scas_adts_mapsto.
       
       apply mapM_MapsTo_1; eauto.
       rewrite_Eq_in_goal.
       map_iff_solve idtac.      
       eassumption.
 
-      eapply not_in_adts_not_mapsto_adt;
-      first [ assumption | reflexivity | rewrite_Eq_in_goal; eauto using add_adts_pop_sca ].
-
+      eapply not_in_adts_not_mapsto_adt.
+      rewrite_Eq_in_goal; eauto using add_adts_pop_sca.
+      assumption.
       simpl; eexists; reflexivity.      
       
   (* RunsTo *)
@@ -2938,7 +3016,7 @@ Proof.
     apply AllADTs_chomp, AllADTs_swap, add_adts_pop_sca; trivial.
     apply AllADTs_add_in; assumption.
     rewrite_Eq_in_goal; map_iff_solve idtac.
-    scas_adts_mapsto'; assumption.
+    scas_adts_mapsto; assumption.
 Qed.
 
 (*
@@ -3245,7 +3323,8 @@ Ltac vacuum' :=
         | _ => vacuum
       end ].
 
-Definition start_sca state vret adts := (@start_compiling_sca_with_precondition _ basic_env state ∅ adts vret).
+Definition start_sca state vret adts :=
+  (@start_compiling_sca_with_precondition _ basic_env state ∅ adts vret).
 
 Goal forall seq: list W, 
      forall state,
