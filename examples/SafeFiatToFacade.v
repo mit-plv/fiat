@@ -1775,7 +1775,7 @@ Add Parametric Relation {av} : (State av) (@AllADTs av)
     reflexivity proved by _
     symmetry proved by _
     transitivity proved by _
-      as prog_equiv. 
+      as all_adts. 
 Proof.
   firstorder.
   firstorder.
@@ -2077,24 +2077,25 @@ Proof.
   split; intuition.
 Qed.
 
-Definition ADTLoopBodyProgCondition env loop compiled_loop knowledge scas adts (vseq vret thead tis_empty: StringMap.key) acc (head: W) (seq: list W) :=
+Definition ADTLoopBodyProgCondition env {acc_type} loop compiled_loop knowledge scas adts (vseq vret thead tis_empty: StringMap.key) (acc: acc_type) wrapper (head: W) (seq: list W) :=
   @ProgOk _ env compiled_loop knowledge
           ([thead >sca> head]::[tis_empty >sca> 0]::scas) (scas)
-          ([vret >adt> acc]::[vseq >adt> List seq]::adts) ([vret >adt> loop acc head]::[vseq >adt> List seq]::adts).
+          ([vret >adt> wrapper acc]::[vseq >adt> List seq]::adts) ([vret >adt> wrapper (loop acc head)]::[vseq >adt> List seq]::adts).
 
-Definition ADTLoopBodyOk env loop compiled_loop knowledge scas adts (vseq vret thead tis_empty: StringMap.key) :=
+Definition ADTLoopBodyOk env {acc_type} loop compiled_loop knowledge scas adts (vseq vret thead tis_empty: StringMap.key) wrapper :=
   forall acc (head: W) (seq: list W),
-    ADTLoopBodyProgCondition env loop compiled_loop knowledge scas adts vseq
-                             vret thead tis_empty acc head seq.
+    @ADTLoopBodyProgCondition env acc_type loop compiled_loop knowledge scas adts vseq
+                              vret thead tis_empty acc wrapper head seq.
 
 Definition compile_fold_base_adt :
   forall {env},
+  forall {acc_type wrapper},
   forall {vseq vret: StringMap.key},
   forall {thead tis_empty: StringMap.key},
   forall {ppop pempty},
   forall {loop compiled_loop},
   forall {knowledge scas adts},
-    ADTLoopBodyOk env loop compiled_loop knowledge scas adts vseq vret thead tis_empty ->
+    @ADTLoopBodyOk env acc_type loop compiled_loop knowledge scas adts vseq vret thead tis_empty wrapper ->
     (Word2Spec env pempty = Some (Axiomatic List_empty)) ->
     (Word2Spec env ppop  = Some (Axiomatic List_pop)) ->
     vret <> vseq ->
@@ -2105,10 +2106,10 @@ Definition compile_fold_base_adt :
     ~ StringMap.In thead adts ->
     ~ StringMap.In tis_empty adts ->
     ~ StringMap.In vseq scas ->
-    forall seq init, 
+    forall seq (init: acc_type), 
       refine (@Prog _ env knowledge
                     (scas) ([tis_empty >sca> 1]::scas)
-                    ([vret >adt> init]::[vseq >adt> List seq]::adts) ([vret >adt> List.fold_left loop seq init]::[vseq >adt> List nil]::adts))
+                    ([vret >adt> wrapper init]::[vseq >adt> List seq]::adts) ([vret >adt> wrapper (List.fold_left loop seq init)]::[vseq >adt> List nil]::adts))
              (ret (Fold thead tis_empty vseq ppop pempty compiled_loop)).
 Proof.
   unfold ADTLoopBodyOk, ADTLoopBodyProgCondition, Prog, ProgOk, refine; unfold_coercions;
@@ -2417,6 +2418,7 @@ Qed.
 
 Lemma compile_fold_adt :
   forall env,
+  forall acc_type wrapper,
   forall vseq vret: StringMap.key,
   forall thead tis_empty: StringMap.key,
   forall ppop pempty,
@@ -2436,13 +2438,13 @@ Lemma compile_fold_adt :
     forall seq init, 
       refine (@Prog _ env knowledge
                     (scas) (scas)
-                    ([vseq >adt> List seq]::adts) ([vret >adt> List.fold_left loop seq init]
+                    ([vseq >adt> List seq]::adts) ([vret >adt> wrapper (List.fold_left loop seq init)]
                                                      ::[vseq >adt> List nil]::adts))
-             (cloop <- { cloop | ADTLoopBodyOk env loop cloop knowledge
-                                               scas adts vseq vret thead tis_empty };
+             (cloop <- { cloop | @ADTLoopBodyOk env acc_type loop cloop knowledge
+                                                scas adts vseq vret thead tis_empty wrapper };
               pinit <- (@Prog _ env knowledge
                               scas scas
-                              ([vseq >adt> List seq]::adts) ([vret >adt> init]::[vseq >adt> List seq]::adts));
+                              ([vseq >adt> List seq]::adts) ([vret >adt> wrapper init]::[vseq >adt> List seq]::adts));
               ret (pinit; Fold thead tis_empty vseq ppop pempty cloop)%facade)%comp.
 Proof.
   unfold refine; intros.
@@ -2571,8 +2573,8 @@ Proof.
   assumption.
 Qed.
 
-Lemma pull_forall_loop :
-  forall env b loop (cloop: Stmt) knowledge
+Lemma pull_forall_loop_sca :
+  forall env b loop knowledge
          scas adts vseq vret thead tis_empty,
     (forall head acc seq,
        refine  { cloop | SCALoopBodyProgCondition env loop cloop knowledge
@@ -2580,6 +2582,19 @@ Lemma pull_forall_loop :
                                                   head acc seq } b) ->
     refine { cloop | SCALoopBodyOk env loop cloop knowledge
                                    scas adts vseq vret thead tis_empty }%facade b.
+Proof.
+  eauto using pull_forall.
+Qed.
+
+Lemma pull_forall_loop_adt :
+  forall  acc_type wrapper env b loop knowledge
+         scas adts vseq vret thead tis_empty,
+    (forall head acc seq,
+       refine  { cloop | @ADTLoopBodyProgCondition env acc_type loop cloop knowledge
+                                                   scas adts vseq vret thead tis_empty
+                                                   head wrapper acc seq } b) ->
+    refine { cloop | @ADTLoopBodyOk env acc_type loop cloop knowledge
+                                    scas adts vseq vret thead tis_empty wrapper }%facade b.
 Proof.
   eauto using pull_forall.
 Qed.
@@ -2603,7 +2618,29 @@ Proof.
   auto_mapsto_unique;
   autoinj.
 Qed.
-    
+
+Lemma start_compiling_adt_with_precondition : (* TODO: Supersedes start_compiling *) 
+  forall {av env} init_state scas adts vret ret_type (v: ret_type) wrapper,
+    (forall x y, wrapper x = wrapper y -> x = y) ->
+    SomeSCAs init_state scas ->
+    AllADTs init_state adts ->
+    refine (ret v) 
+           (prog <- (@Prog av env True
+                           scas (∅)
+                           adts ([vret >adt> wrapper v]::∅));
+            final_state <- {final_state | RunsTo env prog init_state final_state};
+            {x | final_state[vret >> Facade.ADT (wrapper x)]})%comp.
+Proof.
+  unfold refine, Prog, ProgOk; intros.
+  inversion_by computes_to_inv.
+  pose proof I.
+  specialize_states;
+  scas_adts_mapsto;
+  auto_mapsto_unique;
+  autoinj;
+  eauto using eq_ret_compute.
+Qed.
+
 Lemma SomeSCAs_mapsto_inv:
   forall {av} state scas k v,
     state[k >> SCA av v] ->
@@ -3231,6 +3268,32 @@ Proof.
   inversion_facade; specialize_states; intuition.
 Qed.
 
+Lemma compile_add_intermediate_adts_with_ret :
+  forall av env knowledge k v init_scas final_scas init_adts inter_adts final_adts,
+    refine (@Prog av env knowledge
+                  init_scas final_scas
+                  init_adts ([k >adt> v]::final_adts))
+           (p <- (@Prog av env knowledge
+                        init_scas final_scas
+                        init_adts ([k >adt> v]::inter_adts));
+            q <- (@Prog av env knowledge
+                        final_scas final_scas
+                        ([k >adt> v]::inter_adts) ([k >adt> v]::final_adts));
+            ret (Seq p q))%comp.
+Proof.
+  unfold refine, Prog, ProgOk; intros.
+  inversion_by computes_to_inv; subst.
+  constructor; intros; destruct_pairs.
+
+  split; intros.
+
+  (* Safe *)
+  constructor; split; intros; specialize_states; assumption.
+
+  (* RunsTo *)
+  inversion_facade; specialize_states; intuition.
+Qed.
+
 Lemma compile_add_intermediate_scas_with_ret :
   forall av env knowledge k v init_scas inter_scas final_scas init_adts final_adts,
     refine (@Prog av env knowledge
@@ -3241,6 +3304,32 @@ Lemma compile_add_intermediate_scas_with_ret :
                         init_adts final_adts);
             q <- (@Prog av env knowledge
                         ([k >sca> v]::inter_scas) ([k >sca> v]::final_scas)
+                        final_adts final_adts);
+            ret (Seq p q))%comp.
+Proof.
+  unfold refine, Prog, ProgOk; intros.
+  inversion_by computes_to_inv; subst.
+  constructor; intros; destruct_pairs.
+
+  split; intros.
+
+  (* Safe *)
+  constructor; split; intros; specialize_states; try assumption.
+  
+  (* RunsTo *)
+  inversion_facade; specialize_states; intuition.
+Qed.
+
+Lemma compile_add_intermediate_scas :
+  forall av env knowledge init_scas inter_scas final_scas init_adts final_adts,
+    refine (@Prog av env knowledge
+                  init_scas final_scas
+                  init_adts final_adts)
+           (p <- (@Prog av env knowledge
+                        init_scas inter_scas
+                        init_adts final_adts);
+            q <- (@Prog av env knowledge
+                        inter_scas final_scas
                         final_adts final_adts);
             ret (Seq p q))%comp.
 Proof.
@@ -3337,10 +3426,8 @@ Proof.
 
   setoid_rewrite compile_add_intermediate_adts; vacuum'.
   setoid_rewrite (compile_fold_sca basic_env "$list" "$ret" "$head" "$is_empty" 1 0); vacuum'.
-  setoid_rewrite (pull_forall_loop); try vacuum'. 
+  setoid_rewrite (pull_forall_loop_sca); try vacuum'. 
 
-  (* TODO remove extra param in pull_forall_loop *)
-  Focus 2. admit.
   Focus 2.
   setoid_rewrite compile_add_intermediate_scas_with_ret.
   setoid_rewrite (compile_binop IL.Plus "$ret" "$head'" "$ret'"); vacuum'.
@@ -3356,6 +3443,13 @@ Proof.
   rewrite compile_constant; vacuum.
 Admitted.
 
+Definition start_adt state vret {ret_type v} wrapper wrapper_inj adts :=
+  (@start_compiling_adt_with_precondition _ basic_env state ∅ adts vret ret_type v wrapper wrapper_inj).
+
+Lemma List_inj' : forall x y : list W, List x = List y -> x = y.
+  intros * _eq; injection _eq; intros; assumption.
+Qed.
+
 Goal forall seq: list W, 
      forall state,
        AllADTs state (["$list" >adt> List seq]::∅) ->
@@ -3370,26 +3464,26 @@ Goal forall seq: list W,
                    seq nil)) x.
 Proof.
   intros; eexists.
-
-  pose proof (start_sca state "$ret" (["$list" >> Facade.ADT (List seq)]::∅)).
   
-  rewrite H0.
-
   (* Start compiling, copying the state_precond precondition to the resulting
      program's preconditions. Result is stored into [$ret] *)
-  rewrite (start_compiling_adt_with_precondition "$ret" state_precond).
+  rewrite (start_adt state "$ret" List List_inj'); vacuum'.
 
   (* Compile the fold, reading the initial value of the accumulator from
      [$init], the input data from [$seq], and storing temporary variables in
      [$head] and [$is_empty]. *)
-  rewrite (compile_fold_adt "$init" "$list" "$head" "$is_empty" 1 0); cleanup_adt.
+  setoid_rewrite compile_add_intermediate_adts_with_ret; vacuum'.
+  setoid_rewrite (compile_fold_adt _ _ _ "$list" "$ret" "$head" "$is_empty" 1 0); try vacuum'.
 
   (* Extract the quantifiers, and move the loop body to a second goal *)
-  rewrite (pull_forall (fun cond => cond_indep cond "$ret")); cleanup_adt.
-
+  rewrite (pull_forall_loop_adt); vacuum'.
+  
   (* The output list is allocated by calling List_new, whose axiomatic
      specification is stored at address 2 *)
-  setoid_rewrite (compile_new 2); cleanup_adt.
+  setoid_rewrite compile_add_intermediate_scas; vacuum'.
+  setoid_rewrite (compile_new _ _ _ "$ret" "jj" ("??", "List_new")); try vacuum'.
+  rewrite drop_scas_from_precond; try vacuum'.
+  rewrite no_op; try vacuum'.
 
   (* The input list is already stored in [$list] *)
   rewrite no_op; cleanup_adt.
