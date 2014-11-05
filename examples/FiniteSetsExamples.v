@@ -25,14 +25,35 @@ Definition unionUniqueSpec1 (ls1 ls2 : list W) : Comp (list W)
 Definition unionUniqueSpec2 (ls1 ls2 : list W) : Comp (list W)
   := to_list (Ensembles.Union _ (elements ls1) (elements ls2)).
 
+Definition filterLtSpec (ls : list W) (x : W) : Comp (list W)
+  := ret (List.filter (fun y => wlt y x) ls).
+
+Definition filterLtUniqueSpec1 (ls : list W) (x : W) : Comp (list W)
+  := to_list (Ensembles.Setminus _ (elements ls) (fun y => wlt y x = true)).
+
+Definition filterLtUniqueSpec2 (ls : list W) (x : W) : Comp (list W)
+  := to_list (Ensembles.Intersection _ (elements ls) (Ensembles.Complement _ (fun y => wlt y x = true))).
+
+Definition intersectionUniqueSpec (ls1 ls2 : list W) : Comp (list W)
+  := to_list (Ensembles.Intersection _ (elements ls1) (elements ls2)).
+
 Definition differenceUniqueSpec (ls1 ls2 : list W) : Comp (list W)
   := to_list (Ensembles.Setminus _ (elements ls1) (elements ls2)).
 
-Definition symmetricDifferenceUniqueSpec1 (ls1 ls2 : list W) : Comp (list W)
+Definition symmetricDifferenceUniqueSpec (ls1 ls2 : list W) : Comp (list W)
   := to_list (Ensembles.Union
                 _
                 (Ensembles.Setminus _ (elements ls1) (elements ls2))
                 (Ensembles.Setminus _ (elements ls2) (elements ls1))).
+
+Definition countUniqueLessThanSpec1 (ls : list W) (x : W) : Comp nat
+  := (ls' <- to_list (Ensembles.Setminus _ (elements ls) (fun y => wlt y x = true));
+      cardinal ls').
+
+Definition countUniqueLessThanSpec2 (ls : list W) (x : W) : Comp nat
+  := (n <- cardinal ls;
+      n' <- cardinal (List.filter (fun y => negb (wlt y x)) ls);
+      ret (n - n')).
 
 (** Now we refine the implementations. *)
 Definition countUniqueImpl (FiniteSetImpl : FullySharpened FiniteSetSpec) (ls : list W)
@@ -103,6 +124,97 @@ Defined.
 
 Definition unionUniqueImpl1 (FiniteSetImpl : FullySharpened FiniteSetSpec) (ls1 ls2 : list W)
 : FullySharpenedComputation (unionUniqueSpec1 ls1 ls2).
+Proof.
+  begin sharpening computation.
+
+  sharpen computation with FiniteSet implementation := FiniteSetImpl.
+
+  finish sharpening computation.
+Defined.
+
+Definition unionUniqueImpl2 (FiniteSetImpl : FullySharpened FiniteSetSpec) (ls1 ls2 : list W)
+: FullySharpenedComputation (unionUniqueSpec2 ls1 ls2).
+Proof.
+  begin sharpening computation.
+
+  sharpen computation with FiniteSet implementation := FiniteSetImpl.
+
+  finish sharpening computation.
+Defined.
+
+Definition filterLtImpl (FiniteSetImpl : FullySharpened FiniteSetSpec) (ls : list W) (x : W)
+: FullySharpenedComputation (filterLtSpec ls x).
+Proof.
+  begin sharpening computation.
+
+  sharpen computation with FiniteSet implementation := FiniteSetImpl.
+
+  finish sharpening computation.
+Defined.
+
+Definition filterLtUniqueImpl1 (FiniteSetImpl : FullySharpened FiniteSetSpec) (ls : list W) (x : W)
+: FullySharpenedComputation (filterLtUniqueSpec1 ls x).
+Proof.
+  begin sharpening computation.
+
+  sharpen computation with FiniteSet implementation := FiniteSetImpl.
+
+  finish sharpening computation.
+Defined.
+
+Definition filterLtUniqueImpl2 (FiniteSetImpl : FullySharpened FiniteSetSpec) (ls : list W) (x : W)
+: FullySharpenedComputation (filterLtUniqueSpec2 ls x).
+Proof.
+  begin sharpening computation.
+
+  sharpen computation with FiniteSet implementation := FiniteSetImpl.
+
+  finish sharpening computation.
+Defined.
+
+Definition intersectionUniqueImpl (FiniteSetImpl : FullySharpened FiniteSetSpec) (ls1 ls2 : list W)
+: FullySharpenedComputation (intersectionUniqueSpec ls1 ls2).
+Proof.
+  begin sharpening computation.
+
+  sharpen computation with FiniteSet implementation := FiniteSetImpl.
+
+  finish sharpening computation.
+Defined.
+
+
+Definition differenceUniqueImpl (FiniteSetImpl : FullySharpened FiniteSetSpec) (ls1 ls2 : list W)
+: FullySharpenedComputation (differenceUniqueSpec ls1 ls2).
+Proof.
+  begin sharpening computation.
+
+  sharpen computation with FiniteSet implementation := FiniteSetImpl.
+
+  finish sharpening computation.
+Defined.
+
+Definition symmetricDifferenceUniqueImpl (FiniteSetImpl : FullySharpened FiniteSetSpec) (ls1 ls2 : list W)
+: FullySharpenedComputation (symmetricDifferenceUniqueSpec ls1 ls2).
+Proof.
+  begin sharpening computation.
+
+  sharpen computation with FiniteSet implementation := FiniteSetImpl.
+
+  finish sharpening computation.
+Defined.
+
+Definition countUniqueLessThanImpl1 (FiniteSetImpl : FullySharpened FiniteSetSpec) (ls : list W) (x : W)
+: FullySharpenedComputation (countUniqueLessThanSpec1 ls x).
+Proof.
+  begin sharpening computation.
+
+  sharpen computation with FiniteSet implementation := FiniteSetImpl.
+
+  finish sharpening computation.
+Defined.
+
+Definition countUniqueLessThanImpl2 (FiniteSetImpl : FullySharpened FiniteSetSpec) (ls : list W) (x : W)
+: FullySharpenedComputation (countUniqueLessThanSpec2 ls x).
 Proof.
   begin sharpening computation.
 
