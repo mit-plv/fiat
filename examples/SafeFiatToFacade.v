@@ -302,12 +302,60 @@ Ltac map_iff_solve fallback :=
   map_iff_solve' fallback.
 
 Ltac auto_mapsto_unique :=
+  try rewrite <- StringMapFacts.find_mapsto_iff in *;
   repeat progress match goal with
                     | [H: StringMap.MapsTo ?k ?v ?st, H': StringMap.MapsTo ?k ?v' ?st |- _] =>
                       let h := fresh in
                       pose proof (MapsTo_unique st k v v' H H') as h;
                         first [discriminate | injection h; clear H]
-                  end. (* TODO: Use more *)
+                  end.
+
+Ltac simpl_find_add_remove :=
+  match goal with
+    | [ |- context[StringMap.find ?k (StringMap.remove ?k ?m)] ] =>
+      rewrite (@StringMapFacts.remove_eq_o _ m k k) by reflexivity
+    | [ H: ?k <> ?k' |- context[StringMap.find ?k (StringMap.remove ?k' ?m)] ] =>
+      rewrite (@StringMapFacts.remove_neq_o _ m k' k) by congruence
+    | [ H: ?k' <> ?k |- context[StringMap.find ?k (StringMap.remove ?k' ?m)] ] =>
+      rewrite (@StringMapFacts.remove_neq_o _ m k' k) by congruence
+    | [ |- context[StringMap.find ?k (StringMap.add ?k ?v ?m)] ] =>
+      rewrite (@StringMapFacts.add_eq_o _ m k k v (eq_refl _)) by reflexivity
+    | [ H: ?k' <> ?k |- context[StringMap.find ?k (StringMap.add ?k' ?v ?m)] ] =>
+      rewrite (@StringMapFacts.add_neq_o _ m k' k v) by congruence
+    | [ H: ?k <> ?k' |- context[StringMap.find ?k (StringMap.add ?k' ?v ?m)] ] =>
+      rewrite (@StringMapFacts.add_neq_o _ m k' k v) by congruence
+    | [ |- context[StringMap.find ?k (StringMap.empty _)] ] =>
+      rewrite (StringMapFacts.empty_o _ k)
+  end.
+
+Lemma StringMap_remove_add_neq :
+  forall {elt} {k1 k2 v} (map: StringMap.t elt),
+    k1 <> k2 ->
+    StringMap.Equal (StringMap.remove k2 (StringMap.add k1 v map)) (StringMap.add k1 v (StringMap.remove k2 map)).
+Proof.
+  unfold StringMap.Equal; intros ** k'.
+  destruct (StringMap.E.eq_dec k' k1), (StringMap.E.eq_dec k' k2);
+    subst; repeat simpl_find_add_remove; congruence.
+Qed.
+
+Lemma StringMap_remove_add_eq :
+  forall {elt} {k1 k2 v} (map: StringMap.t elt),
+    k1 = k2 ->
+    StringMap.Equal (StringMap.remove k2 (StringMap.add k1 v map)) (StringMap.remove k2 map).
+Proof.
+  unfold StringMap.Equal; intros ** k'.
+  destruct (StringMap.E.eq_dec k' k1), (StringMap.E.eq_dec k' k2);
+    subst; repeat simpl_find_add_remove; congruence.
+Qed.
+
+Lemma StringMap_remove_empty :
+  forall {elt : Type} (k : StringMap.key),
+    StringMap.Equal (StringMap.remove (elt:=elt) k ∅) ∅ .
+Proof.
+  unfold StringMap.Equal; intros ** k'.
+  destruct (StringMap.E.eq_dec k' k);
+    subst; repeat simpl_find_add_remove; congruence.
+Qed.
 
 (* Pre and post-conditions *)
 
@@ -575,15 +623,26 @@ Proof.
   rewrite StringMapFacts.not_in_find; trivial.
 Qed.
 
-Add Parametric Morphism {elt welt} :
-  (@Subset elt welt)
-    with signature (StringMap.Equal ==> StringMap.Equal ==> eq ==> iff)
-      as Subset_morphism.
-  unfold Subset;  intros * eq * eq'; split; intros.
-  rewrite <- ?eq, <- ?eq' in *; intuition.
-  rewrite ?eq, ?eq' in *; intuition.
-Qed.
+Ltac rewrite_Eq_in_all :=
+  repeat match goal with
+           | [ H: StringMap.Equal _ _, H': _ |- _ ] =>
+             progress (try setoid_rewrite H in H';
+                       try setoid_rewrite H)
+           | [ H: pointwise_relation _ _ _ _, H': _ |- _ ] =>
+             progress (try setoid_rewrite H in H';
+                       try setoid_rewrite H)
+           | [ H: _ _ _, H': _ |- _ ] =>
+             progress (try setoid_rewrite H in H';
+                       try setoid_rewrite H)
+         end.
 
+Add Parametric Morphism elt welt :
+  (@Subset elt welt)
+    with signature (StringMap.Equal ==> StringMap.Equal ==> pointwise_relation _ (@eq _) ==> iff)
+      as Subset_morphism.
+  unfold Subset; intros; rewrite_Eq_in_all; reflexivity.
+Qed. 
+  
 Add Parametric Morphism {av} :
   (@SomeSCAs av)
     with signature (StringMap.Equal ==> StringMap.Equal ==> iff)
@@ -600,6 +659,38 @@ Proof.
   unfold AllADTs; intros * eq1 * eq2.
   split; intros (? & ?); split;
   rewrite !eq1, !eq2 in *; assumption.
+Qed.
+
+Lemma Subset_reflexive :
+  forall {elt welt} st wrapper,
+    @Subset elt welt st st wrapper.
+Proof.
+  firstorder.
+Qed.
+
+Lemma SomeSCAs_reflexive :
+  forall {av} st,
+    @SomeSCAs av st st.
+Proof.
+  firstorder.
+Qed.
+
+Lemma Subset_transitive :
+  forall {elt welt} s1 s2 s3 wrapper,
+    @Subset elt welt s1 s2 wrapper ->
+    @Subset elt welt s2 s3 wrapper ->
+    @Subset elt welt s1 s3 wrapper.
+Proof.
+  firstorder.
+Qed.
+
+Lemma SomeSCAs_transitive :
+  forall {av} s1 s2 s3,
+    @SomeSCAs av s1 s2 ->
+    @SomeSCAs av s2 s3 ->
+    @SomeSCAs av s1 s3.
+Proof.
+  firstorder.
 Qed.
 
 Lemma Subset_chomp :
@@ -799,6 +890,20 @@ Ltac rewrite_Eq_in_goal :=
     | [ H: StringMap.Equal _ _ |- StringMap.MapsTo _ _ _ ] =>
       rewrite H              
   end.
+
+(* Additional morphisms *)
+
+Add Parametric Morphism av env :
+  (@Prog av env)
+    with signature (iff ==> StringMap.Equal ==> StringMap.Equal ==> StringMap.Equal ==> StringMap.Equal ==> refine)
+      as Prog_morphism.
+  unfold refine, Prog, ProgOk; intros;
+  inversion_by computes_to_inv;
+  constructor; intros; destruct_pairs.
+  
+  rewrite_Eq_in_all; split; intros;
+  specialize_states; intuition.
+Qed.
 
 Opaque Word.natToWord.
 
@@ -1975,7 +2080,7 @@ Proof.
   eauto using pull_forall.
 Qed.
 
-Lemma start_compiling_with_precondition : (* TODO: Supersedes start_compiling *) 
+Lemma start_compiling_sca_with_precondition : (* TODO: Supersedes start_compiling *) 
   forall {av env} init_state scas adts vret v,
     SomeSCAs init_state scas ->
     AllADTs init_state adts ->
@@ -2006,10 +2111,8 @@ Proof.
   subst; intuition; autoinj.
 Qed.
 
-Lemma drop_scas_but_last :
-  forall {av env} init_state scas adts adts' vret v,
-    SomeSCAs init_state scas ->
-    AllADTs init_state adts ->
+Lemma add_scas_in_postcond :
+  forall {av env} scas adts adts' vret v,
     refine (@Prog av env True
                   scas ([vret >sca> v]::∅)
                   adts adts')
@@ -2026,7 +2129,6 @@ Proof.
     eauto using SomeSCAs_mapsto_inv, SomeSCAs_empty.
 Qed.
 
-Print Stmt.
 
 (*
 Definition AllKnown {elt1 elt2} vars scas adts :=
@@ -2077,6 +2179,7 @@ Proof.
   induction 
  *)
 
+(*
 Lemma RunsToCallByName :
   forall {av env},
   forall scas adts knowledge,
@@ -2114,7 +2217,7 @@ Proof.
 
   (* RunsTo *)
   + repeat inversion_facade.
-Admitted.
+*)
 
 Lemma AllADTs_chomp :
   forall {av} (state: State av) k v adts,
@@ -2154,6 +2257,32 @@ Proof.
   [assumption|discriminate].
 Qed.                       
 
+Lemma runsto_copy_var :
+  forall seq (vseq vcopy: StringMap.key) env (st st': State FacadeADT) pcopy vpointer,
+    st[vpointer >> SCA _ pcopy] ->
+    st[vseq >> Facade.ADT (List seq)] ->
+    Word2Spec env pcopy  = Some (Axiomatic List_copy) ->
+    RunsTo env (Call vcopy (Var vpointer) (vseq :: nil)) st st' ->
+    StringMap.Equal st' ([vcopy >adt> List seq]::[vseq >adt> List seq]::st).
+Proof.
+  intros;
+  inversion_facade;
+  simpl in *;
+  autoinj; rewrite <- StringMapFacts.find_mapsto_iff in *;  (* TODO: Extend auto_mapsto_unique *)
+    auto_mapsto_unique; intros; autoinj; eq_transitive; autoinj; simpl in *.
+
+  autodestruct; subst. simpl in *.
+  destruct output; try discriminate.
+  destruct output; try discriminate.
+  autoinj.
+
+  unfold sel in *.
+  simpl in H16.
+  
+  subst_find; simpl in *. autoinj.
+  discriminate.
+Qed.
+
 Lemma compile_new :
   forall {env},
   forall scas adts knowledge,
@@ -2187,6 +2316,7 @@ Proof.
       assumption.
       reflexivity.
 
+  (* RunsTo *)
   + inversion_facade.
     eapply RunsTo_label in H11; eauto.
 
@@ -2201,30 +2331,271 @@ Proof.
     rewrite StringMapFacts.F.add_neq_in_iff; assumption.
 Qed.
 
-Lemma compile_copy :
-  forall {env} pcopy vfrom vto val,
-  forall (precond postcond: _ -> Prop),
-    Word2Spec env pcopy = Some (Axiomatic List_copy) ->
-    cond_respects_MapEq postcond ->
-    (forall state, precond state ->
-                   postcond (StringMap.add vto (Facade.ADT (List val))
-                                           (StringMap.add vfrom (Facade.ADT (List val)) state))) ->
-    (forall state, precond state -> state[vfrom >> Facade.ADT (List val)]) ->
-    refine (Pick (fun prog => 
-                    forall init_state final_state : State FacadeADT,
-                      precond init_state ->
-                      RunsTo env prog init_state final_state ->
-                      final_state[vto >> Facade.ADT (List val)] /\
-                      postcond final_state))
-           (ret (Call vto pcopy (vfrom :: nil))). 
-Proof.
-  unfold refine, List_new, cond_respects_MapEq; intros; constructor; intros.
-  inversion_by computes_to_inv; subst.
+(*
 
-  eapply runsto_copy in H5; eauto.
-  autorewrite_equal; map_iff_solve intuition.
+Lemma compile_load_pointer :
+  forall {av env}
+         vpointer w label
+         knowledge init_scas final_scas init_adts final_adts,
+    Label2Word env label = Some w ->
+    ~ StringMap.In vpointer init_adts ->
+    refine (@Prog av env knowledge
+                  init_scas final_scas
+                  init_adts final_adts)
+           (p <- (@Prog _ env knowledge
+                        ([vpointer >sca> w]::init_scas) ([vpointer >sca> w]::final_scas)
+                        (init_adts) (final_adts));
+            ret (Label vpointer label; p)%facade)%comp.
+Proof.
+  unfold refine, Prog, ProgOk; intros;
+  inversion_by computes_to_inv;
+  subst; constructor; split; intros;
+  destruct_pairs.
+
+  + repeat (constructor; intros).
+    - econstructor; eauto using not_in_adts_not_mapsto_adt.
+    - eapply RunsTo_label in H7; eauto.
+      setoid_rewrite H7.
+      specialize_states. inversion_facade; mapsto_eq_add; (* TODO *)
+*)
+
+Definition LabelAndCall vpointer vret label args := (Label vpointer label;
+                                                     Call vret (Var vpointer) args)%facade.
+
+(* TODO: Replace mapsto_eq_add *)
+Ltac mapsto_eq_add' :=
+  repeat match goal with
+           | H:StringMap.Equal _ _ |- _ =>
+             let H' := fresh in
+             progress (pose proof H as H'; apply mapsto_eq_add in H'; clear_dups)
+         end.
+
+Lemma mapM_not_in_args :
+  forall {av} (st st': State av) args input k w,
+    ~ List.In k args ->
+    StringMap.Equal st' ([k >sca> w]::st) ->
+    mapM (sel st) args = Some input ->
+    mapM (sel st') args = Some input.
+Proof.
+  induction args; simpl in *; intros.
+  + congruence.
+  + destruct (sel st a) eqn:eq1;
+    destruct (mapM (sel st) args) eqn:eq2;
+    try discriminate.
+    erewrite IHargs; eauto.
+    replace (sel st' a) with (sel st a).
+    rewrite eq1; assumption.
+
+    unfold sel; rewrite H0.
+    symmetry; apply StringMapFacts.add_neq_o; intuition.
 Qed.
+
+Lemma add_add_add :
+  forall {elt} st k v,
+    @StringMap.Equal elt
+                     ([k >> v]::[k >> v]::st)
+                     ([k >> v]::st).
+Proof.
+  intros; unfold StringMap.Equal;
+  intros k'; destruct (StringMap.E.eq_dec k k'); subst.
+  repeat rewrite StringMapFacts.add_eq_o; reflexivity.
+  repeat rewrite StringMapFacts.add_neq_o; congruence.
+Qed.
+
+(*
+Lemma RunsToLabelAndCall :
+  forall ADTValue env,
+  forall (vpointer vret : StringMap.key) (lbl : GLabel.glabel)
+         st st' adts,
+  forall (f : Expr)
+         (args : list StringMap.key)
+         (spec : AxiomaticSpec ADTValue)
+         (input : list (Value ADTValue))
+         (output : list (option ADTValue)) 
+         (ret : Value ADTValue) (f_w : W),
+    ~ List.In vpointer args ->
+    Label2Word env lbl = Some f_w ->
+    not_mapsto_adt vpointer st = true ->
+    StringMapFacts.M.Equal st' ([vpointer >> SCA ADTValue f_w]::st) ->
+    NoDup args ->
+    eval st f = Some (SCA ADTValue f_w) ->
+    Word2Spec env f_w = Some (Axiomatic spec) ->
+    mapM (sel st) args = Some input ->
+    AllADTs st adts ->
+    ~ StringMap.In vret adts ->
+    ~ StringMap.In vpointer adts ->
+    PreCond spec input ->
+    Datatypes.length input = Datatypes.length output ->
+    PostCond spec (combine input output) ret ->
+    let st' :=
+        add_remove_many args input (wrap_output output) st in
+    let st'0 := [vret >> ret]::st' in
+    forall st'' : StringMapFacts.M.t (Value ADTValue),
+      StringMapFacts.M.Equal st'' st'0 ->
+      RunsTo env (LabelAndCall vpointer vret lbl args) st st''.
+Proof.
+  intros.
+  unfold LabelAndCall; econstructor;
+  expand; mapsto_eq_add'.
+  econstructor; eauto.
+  econstructor; eauto using mapsto_eval, mapM_not_in_args. 
+  eapply not_in_adts_not_mapsto_adt; eauto.
+  rewrite_Eq_in_goal.
+  apply add_adts_pop_sca; eauto.
+
+  Transparent add_remove_many.
+
+    Lemma add_remove_many_eq :
+    forall {av} (st st': State av) k v args input output,
+      ~ List.In k args ->
+      StringMapFacts.M.Equal st' ([k >> v]::st) ->
+      StringMap.Equal
+        ([k >> v]::add_remove_many args input (wrap_output output) st)
+        ([k >> v]::add_remove_many args input (wrap_output output) st').
+  Proof.
+    induction args; simpl; intros.
+    rewrite H0; symmetry; apply add_add_add.
+    destruct input; [rewrite H0; symmetry; apply add_add_add | ].
   
+  unfold not_mapsto_adt, is_mapsto_adt in *.
+  rewrite 
+ *)
+
+Lemma mapM_MapsTo_1 :
+  forall av st k v,
+    st [k >> v] ->
+    mapM (@sel av st) (k :: nil) = Some (v :: nil).
+Proof.
+  unfold sel; intros; simpl.
+  subst_find; reflexivity.
+Qed.
+
+Lemma AllADTs_mapsto' :
+  forall {av} k v st adts,
+    @AllADTs av st adts ->
+    adts[k >> Facade.ADT v] ->
+    st[k >> Facade.ADT v].
+Proof.
+  unfold AllADTs; intros * (h & _) ** maps_to.
+  apply (h _ _ maps_to).
+Qed.
+
+Ltac scas_adts_mapsto' := (* TODO merge *)
+  match goal with
+    | [ H: ?adts[?k >> ?v], H': AllADTs ?state ?adts |- _ ] =>
+      pose proof (AllADTs_mapsto' _ _ _ _ H' H)
+  end.
+
+Lemma Subset_add_in_left :
+  forall {elt welt} st bindings k v wrapper,
+    bindings[k >> wrapper v] ->
+    @Subset elt welt st bindings wrapper ->
+    Subset ([k >> wrapper v]::st) bindings wrapper.
+Proof.
+  unfold Subset; intros ** k' v' ? .
+  destruct (StringMap.E.eq_dec k k'); subst;
+  try match goal with (* TODO fix mapsto_unique *) 
+        | H:(?st) [?k >> ?v], H':(?st) [?k >> ?v'] |- _ =>
+          let h := fresh in
+          pose proof (MapsTo_unique st k v v' H H') as h;
+            rewrite !h in *; clear H
+      end; map_iff_solve intuition.
+Qed.
+
+Lemma Subset_add_in_right :
+  forall {elt welt} st bindings k v wrapper,
+    st[k >> wrapper v] ->
+    @Subset elt welt st bindings wrapper ->
+    Subset st ([k >> wrapper v]::bindings) wrapper.
+Proof.
+  unfold Subset; intros ** k' v' ? .
+  destruct (StringMap.E.eq_dec k k'); subst;
+  try match goal with (* TODO fix mapsto_unique *) 
+        | H:(?st) [?k >> ?v], H':(?st) [?k >> ?v'] |- _ =>
+          let h := fresh in
+          pose proof (MapsTo_unique st k v v' H H') as h;
+            rewrite !h in *; clear H
+      end;
+  map_iff_solve intuition;
+  rewrite StringMapFacts.add_mapsto_iff in *; intuition;
+  match goal with
+    | H: wrapper _ = wrapper _ |- _ => rewrite H in *
+  end; intuition.
+Qed.
+
+Lemma AllADTs_add_in :
+  forall {av} st bindings k v,
+    bindings[k >> @Facade.ADT av v] ->
+    AllADTs st bindings ->
+    AllADTs ([k >> Facade.ADT v]::st) bindings.
+Proof.
+  unfold AllADTs; split; intros;
+  destruct_pairs; eauto using Subset_add_in_left, Subset_add_in_right.
+Qed.
+
+Lemma compile_copy :
+  forall {env},
+  forall scas adts knowledge seq,
+  forall vret vfrom vpointer label w,
+    Label2Word env label = Some w ->
+    Word2Spec env w = Some (Axiomatic List_copy) ->
+    ~ StringMap.In vpointer adts ->
+    ~ StringMap.In vret adts ->
+    ~ StringMap.In vret scas ->
+    ~ StringMap.In vfrom scas ->
+    vpointer <> vret ->
+    vpointer <> vfrom ->
+    adts[vfrom >> Facade.ADT (List seq)] ->
+    refine (@Prog _ env knowledge
+                  scas ([vpointer >sca> w]::scas)
+                  adts ([vret >adt> List seq]::adts))
+           (ret (Label vpointer label;
+                 Call vret (Var vpointer) (vfrom :: nil))%facade).
+Proof.
+  unfold refine, Prog, ProgOk; intros;
+  inversion_by computes_to_inv;
+  subst; constructor; split; intros;
+  destruct_pairs.
+
+  (* Safe *)
+  + repeat (constructor; intros).
+    - econstructor; eauto using not_in_adts_not_mapsto_adt.
+    - inversion_facade; mapsto_eq_add; (* TODO *)
+      eq_transitive; autoinj;
+      econstructor; eauto 2 using mapsto_eval.
+      repeat (constructor; eauto).
+
+      scas_adts_mapsto'.
+      
+      apply mapM_MapsTo_1; eauto.
+      rewrite_Eq_in_goal.
+      map_iff_solve idtac.      
+      eassumption.
+
+      eapply not_in_adts_not_mapsto_adt;
+      first [ assumption | reflexivity | rewrite_Eq_in_goal; eauto using add_adts_pop_sca ].
+
+      simpl; eexists; reflexivity.      
+      
+  (* RunsTo *)
+  + inversion_facade.
+    eapply RunsTo_label in H14; eauto.
+
+    mapsto_eq_add.
+
+    eapply runsto_copy_var in H17; eauto.
+    split; repeat rewrite_Eq_in_goal.
+    
+    repeat (apply add_sca_pop_adts; [rewrite StringMapFacts.F.add_neq_in_iff; eassumption | ]).
+    apply SomeSCAs_chomp; trivial.
+    
+    apply AllADTs_chomp, AllADTs_swap, add_adts_pop_sca; trivial.
+    apply AllADTs_add_in; assumption.
+    rewrite_Eq_in_goal; map_iff_solve idtac.
+    scas_adts_mapsto'; assumption.
+Qed.
+
+(*
 Transparent add_remove_many.
 Lemma compile_cons :
   forall pcons tdummy thead ttail,
@@ -2277,44 +2648,15 @@ Proof. (* TODO: Prove runsto_cons. *)
   autoinj.
 
   rewrite StringMapFacts.find_mapsto_iff in *;
-    repeat (subst_find; simpl in *);
+    repeat (subst_find; simpl in;
     rewrite <- StringMapFacts.find_mapsto_iff in *.
 
   repeat progress (autoinj'; autoinj).
 
   autorewrite_equal; map_iff_solve intuition.
 Qed.
-
-Definition empty_env ADTValue : Env ADTValue := {| Label2Word := fun _ => None; Word2Spec := fun _ => None |}.
-
-Definition empty_state ADTValue : State ADTValue := StringMap.empty (Value ADTValue).
-
-Definition basic_env := {| Label2Word := fun _ => None; 
-                           Word2Spec := fun w => 
-                                          if Word.weqb w 0 then 
-                                            Some (Axiomatic List_empty)
-                                          else if Word.weqb w 1 then 
-                                            Some (Axiomatic List_pop)
-                                          else if Word.weqb w 2 then
-                                            Some (Axiomatic List_new)
-                                          else if (Word.weqb w 3) then
-                                            Some (Axiomatic List_push)
-                                          else if (Word.weqb w 4) then
-                                            Some (Axiomatic List_copy)
-                                          else
-                                            None |}.
-
-Definition start_compiling := fun ret_var av => @start_compiling' ret_var av (empty_env av) (empty_state av).
-
-Definition start_compiling_sca := 
-  fun ret_var => @start_compiling' ret_var _ (basic_env) (empty_state _).
-
-Definition start_compiling_sca_with_precondition := 
-  fun ret_var {init_state precond} precond_proof v => @start_compiling_with_precondition ret_var _ (basic_env) init_state precond W (Facade.SCA FacadeADT) v (@SCA_inj FacadeADT) precond_proof.
-
-Definition start_compiling_adt_with_precondition := 
-  fun ret_var {init_state precond} precond_proof v => @start_compiling_with_precondition ret_var _ (basic_env) init_state precond (list W) (fun x => Facade.ADT (List x)) v (List_inj) precond_proof.
-
+*)
+(*
 Ltac spam :=
   solve [ unfold cond_respects_MapEq, Proper, respectful; 
           first [
@@ -2342,52 +2684,8 @@ Tactic Notation "cleanup_adt" :=
             | [ |- Word2Spec ?env _ = _ ] => unfold env; simpl; intuition
           end
         ].
-
-Goal forall w1 w2: W, 
-     exists x, 
-       refine (ret (if Word.weqb w1 w2 then (IL.natToW 3) else (IL.natToW 4))) x.
-Proof.
-  eexists.
-
-  setoid_rewrite (start_compiling "$ret" (list W)).
-  
-  setoid_rewrite (compile_if "$cond"); cleanup.
-  setoid_rewrite (compile_test IL.Eq "$cond" "$w1" "$w2"); cleanup.
-  
-  setoid_rewrite (compile_constant "$w1"); cleanup.
-  setoid_rewrite (compile_constant "$w2"); cleanup.
-  rewrite (compile_constant "$ret"); cleanup.
-  rewrite (compile_constant "$ret"); cleanup.
-
-  reflexivity.
-Qed.
-
-(*
-setoid_rewrite (compile_constant "$ret" _ _ _ (fun s => Word.weqb w1 w2 = true /\ True /\ _ s)); cleanup.
-setoid_rewrite (compile_constant "$ret" _ _ _ (fun s => Word.weqb w1 w2 = false /\ True /\ _ s)); cleanup.
 *)
-
-Goal exists x, 
-       refine (ret (Word.wmult 
-                      (Word.wplus  3 4)
-                      (Word.wminus 5 6))) x.
-Proof.
-  eexists.
   
-  setoid_rewrite (start_compiling "$ret" (list W)).
-  setoid_rewrite (compile_binop IL.Times "$ret" "$t1" "$t2"); cleanup.
-  
-  setoid_rewrite (compile_binop IL.Plus  "$t1" "$t11" "$t12"); cleanup.
-  setoid_rewrite (compile_constant "$t11"); cleanup.
-  setoid_rewrite (compile_constant "$t12"); cleanup. 
-  
-  setoid_rewrite (compile_binop IL.Minus "$t2" "$t21" "$t22"); cleanup.
-  setoid_rewrite (compile_constant "$t21"); cleanup.
-  setoid_rewrite (compile_constant "$t22"); cleanup.
-  
-  reflexivity.
-Qed.
-
 Definition ProgEquiv {av} p1 p2 := 
   forall env st1 st2,
     (@RunsTo av env p1 st1 st2 <-> RunsTo env p2 st1 st2). 
@@ -2483,35 +2781,168 @@ Proof.
   repeat (econstructor; eauto).
 Qed.
 
+Lemma compile_add_intermediate_adts :
+  forall av env knowledge init_scas final_scas init_adts inter_adts final_adts,
+    refine (@Prog av env knowledge
+                  init_scas final_scas
+                  init_adts final_adts)
+           (p <- (@Prog av env knowledge
+                        init_scas final_scas
+                        init_adts inter_adts);
+            q <- (@Prog av env knowledge
+                        final_scas final_scas
+                        inter_adts final_adts);
+            ret (Seq p q))%comp.
+Proof.
+  unfold refine, Prog, ProgOk; intros.
+  inversion_by computes_to_inv; subst.
+  constructor; intros; destruct_pairs.
+
+  split; intros.
+
+  (* Safe *)
+  constructor; split; intros; specialize_states; assumption.
+
+  (* RunsTo *)
+  inversion_facade; specialize_states; intuition.
+Qed.
+
+Lemma compile_add_intermediate_scas_with_ret :
+  forall av env knowledge k v init_scas inter_scas final_scas init_adts final_adts,
+    refine (@Prog av env knowledge
+                  init_scas ([k >sca> v]::final_scas)
+                  init_adts final_adts)
+           (p <- (@Prog av env knowledge
+                        init_scas ([k >sca> v]::inter_scas)
+                        init_adts final_adts);
+            q <- (@Prog av env knowledge
+                        ([k >sca> v]::inter_scas) ([k >sca> v]::final_scas)
+                        final_adts final_adts);
+            ret (Seq p q))%comp.
+Proof.
+  unfold refine, Prog, ProgOk; intros.
+  inversion_by computes_to_inv; subst.
+  constructor; intros; destruct_pairs.
+
+  split; intros.
+
+  (* Safe *)
+  constructor; split; intros; specialize_states; try assumption.
+  
+  (* RunsTo *)
+  inversion_facade; specialize_states; intuition.
+Qed.
+
+Transparent Word.natToWord.
+
+Lemma drop_scas_from_precond : (* TODO: Convert this to a morphism *)
+  forall {av env} scas scas' scas'' adts adts',
+    SomeSCAs scas scas'' ->
+    refine (@Prog av env True
+                  scas scas'
+                  adts adts')
+           (@Prog av env True
+                  scas'' scas'
+                  adts adts').
+Proof.
+  unfold refine, Prog, ProgOk; intros.
+  inversion_by computes_to_inv; subst.
+  constructor; intros; destruct_pairs.
+
+  assert (SomeSCAs initial_state scas'') by
+      eauto using SomeSCAs_transitive.
+
+  split; intros; specialize_states; intuition.
+Qed.
+
+Lemma drop_second_sca_from_precond :
+  forall {av env} scas scas' adts adts' k v k' v',
+    refine (@Prog av env True
+                  ([k >sca> v]::[k' >sca> v']::scas) scas'
+                  adts adts')
+           (@Prog av env True
+                  ([k >sca> v]::(StringMap.remove k' scas)) scas'
+                  adts adts').
+Proof.
+  intros;
+  eauto using drop_scas_from_precond, SomeSCAs_chomp, SomeSCAs_remove, SomeSCAs_reflexive.
+Qed.
+
+(* TODO rename Subset to Superset *)
+
+Ltac trickle_deletion :=
+  repeat match goal with
+    | [ |- context[StringMap.remove _ _] ] =>
+      first [rewrite StringMap_remove_add_neq by congruence |
+             rewrite StringMap_remove_add_neq by congruence |
+             rewrite StringMap_remove_empty |
+             idtac]
+  end.
+
+Ltac map_iff_solve_evar' fallback :=
+  repeat setoid_rewrite not_or;
+  match goal with
+    | |- ?A /\ ?B => split; map_iff_solve_evar' fallback
+    | |- ?a = ?ev /\ ?b = ?b \/ ?a <> ?ev /\ _ =>
+      is_evar ev; left; split; [ apply eq_refl | reflexivity ]
+    | |- ?a = ?a /\ _ \/ ?a <> ?a /\ _ =>
+      left; split; [ apply eq_refl | map_iff_solve_evar' fallback ]
+    | |- ?a = ?b /\ _ \/ ?a <> ?b /\ _ =>
+      right; split; [ | map_iff_solve_evar' fallback ]; congruence
+    | _ => fallback
+  end.
+
+Ltac map_iff_solve_evar fallback :=
+  StringMapFacts.map_iff; map_iff_solve_evar' fallback.
+
+(* TODO extend vacuum *)
+Ltac vacuum' :=
+  first [
+      progress (unfold SCALoopBodyProgCondition; intros) |
+      match goal with
+        | [ |- ?m[?k >> ?v] ] => solve [map_iff_solve_evar intuition]
+        | [ |- SomeSCAs _ ∅ ] => apply SomeSCAs_empty
+        | [ |- SomeSCAs _ _ ] => eassumption
+        | [ |- AllADTs _ _ ] => eassumption
+        | [ |- Word2Spec ?env _ = Some (Axiomatic _) ] => reflexivity
+        | _ => vacuum
+      end ].
+
+Definition start_sca state vret adts := (@start_compiling_sca_with_precondition _ basic_env state ∅ adts vret).
+
 Goal forall seq: list W, 
      forall state,
-       state["$list" >> Facade.ADT (List seq)] ->
+       AllADTs state (["$list" >adt> List seq]::∅) ->
        exists x, 
          refine (ret (fold_left (fun (sum item: W) => Word.wplus item sum) seq 0)) x.
 Proof.
-  intros seq state state_precond; eexists.
+  intros; eexists.
+  setoid_rewrite (start_sca state "$ret"); vacuum'.
 
-  setoid_rewrite (start_compiling_sca_with_precondition "$ret" state_precond).  
-  setoid_rewrite (compile_fold_sca "$init" "$seq" "$head" "$is_empty" 1 0); cleanup_adt.
-  setoid_rewrite (pull_forall (fun cond => cond_indep cond "$ret")); cleanup_adt.
+  setoid_rewrite compile_add_intermediate_adts; vacuum'.
+  setoid_rewrite (compile_fold_sca basic_env "$list" "$ret" "$head" "$is_empty" 1 0); vacuum'.
+  setoid_rewrite (pull_forall_loop); try vacuum'. 
 
+  (* TODO remove extra param in pull_forall_loop *)
+  Focus 2. admit.
   Focus 2.
-  setoid_rewrite (compile_binop IL.Plus "$ret" "$head" "$ret"); cleanup_adt.
-  rewrite no_op; try cleanup_adt.
-  rewrite no_op; try cleanup_adt.
+  setoid_rewrite compile_add_intermediate_scas_with_ret.
+  setoid_rewrite (compile_binop IL.Plus "$ret" "$head'" "$ret'"); vacuum'.
+  rewrite copy_word; vacuum'.
+  rewrite copy_word; vacuum'.
+
+  rewrite drop_second_sca_from_precond; trickle_deletion.
+  rewrite drop_second_sca_from_precond; trickle_deletion.
+  rewrite drop_second_sca_from_precond; trickle_deletion.
+  rewrite no_op; vacuum.
   reflexivity.
 
-  setoid_rewrite compile_constant; cleanup_adt.
-  setoid_rewrite (compile_copy 4 "$list"); cleanup_adt.
-
-  repeat setoid_rewrite Skip_Seq.
-  
-  reflexivity.
-Qed.
+  rewrite compile_constant; vacuum.
+Admitted.
 
 Goal forall seq: list W, 
      forall state,
-       state["$list" >> Facade.ADT (List seq)] ->
+       AllADTs state (["$list" >adt> List seq]::∅) ->
        exists x, 
          refine
            (ret (fold_left
@@ -2522,7 +2953,11 @@ Goal forall seq: list W,
                         acc)
                    seq nil)) x.
 Proof.
-  intros * state_precond; eexists. 
+  intros; eexists.
+
+  pose proof (start_sca state "$ret" (["$list" >> Facade.ADT (List seq)]::∅)).
+  
+  rewrite H0.
 
   (* Start compiling, copying the state_precond precondition to the resulting
      program's preconditions. Result is stored into [$ret] *)
