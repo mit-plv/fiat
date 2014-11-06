@@ -1,9 +1,9 @@
-Require Import List String Ensembles Sorting.Permutation
-        Computation.Core
-        ADT.ADTSig ADT.Core
-        IndexedEnsembles
-        Common.StringBound ADTNotation.BuildADT ADTNotation.BuildADTSig
-        QueryStructure.QueryStructureSchema  QueryStructure.QueryStructure.
+Require Import Coq.Lists.List Coq.Strings.String Coq.Sets.Ensembles Coq.Sorting.Permutation
+        ADTSynthesis.Computation.Core
+        ADTSynthesis.ADT.ADTSig ADTSynthesis.ADT.Core
+        ADTSynthesis.QueryStructure.IndexedEnsembles
+        ADTSynthesis.Common.StringBound ADTSynthesis.ADTNotation.BuildADT ADTSynthesis.ADTNotation.BuildADTSig
+        ADTSynthesis.QueryStructure.QueryStructureSchema  ADTSynthesis.QueryStructure.QueryStructure.
 
 (* Notations and definitions for queries.
    The basic idea is to represent queries as ensembles of lists of returned values.
@@ -82,7 +82,7 @@ Definition foldOption {A: Type} (f : A -> A -> A) seq :=
 
 (* Specs for the min and the max of lists of values. *)
 
-Require Import NArith ZArith.
+Require Import Coq.NArith.NArith Coq.ZArith.ZArith.
 
 Definition FoldAggregateOption {A} (updater: A -> A -> A) (rows: Comp (list A)) :=
   l <- rows;

@@ -1,4 +1,4 @@
-Require Import Common Computation ADT Ensembles.
+Require Import ADTSynthesis.Common ADTSynthesis.Computation ADTSynthesis.ADT Coq.Sets.Ensembles.
 
 Generalizable All Variables.
 Set Implicit Arguments.

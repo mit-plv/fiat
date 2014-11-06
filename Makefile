@@ -1,5 +1,6 @@
 SRC_MODULES    := \
 	Common \
+	Common/ReservedNotations \
 	Common/ilist \
 	Common/i2list \
 	Common/StringBound \
@@ -7,6 +8,12 @@ SRC_MODULES    := \
 	Common/IterateBoundedIndex \
 	Common/AdditionalEnsembleDefinitions \
 	Common/AdditionalEnsembleLemmas \
+	Common/Ensembles \
+	Common/Ensembles/Equivalence \
+	Common/Ensembles/Morphisms \
+	Common/Ensembles/Tactics \
+	Common/Ensembles/CombinatorLaws \
+	Common/Ensembles/Notations \
 	Computation/Notations \
 	Computation/Core \
 	Computation/Monad \

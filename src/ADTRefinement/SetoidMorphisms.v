@@ -1,5 +1,5 @@
-Require Import Common Computation Ensembles.
-Require Import ADT.ADTSig ADT.Core ADTRefinement.Core.
+Require Import ADTSynthesis.Common ADTSynthesis.Computation Coq.Sets.Ensembles.
+Require Import ADTSynthesis.ADT.ADTSig ADTSynthesis.ADT.Core ADTSynthesis.ADTRefinement.Core.
 
 (** Definitions for integrating [refineADT] into the setoid rewriting
     framework. *)

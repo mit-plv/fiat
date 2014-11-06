@@ -1,8 +1,8 @@
-Require Import String Omega List FunctionalExtensionality Ensembles
-        Computation ADT ADTRefinement ADTNotation QueryStructureSchema
-        BuildADTRefinements QueryQSSpecs InsertQSSpecs EmptyQSSpecs
-        QueryStructure GeneralInsertRefinements
-        GeneralQueryRefinements SetEq AdditionalLemmas IndexedEnsembles.
+Require Import Coq.Strings.String Coq.omega.Omega Coq.Lists.List Coq.Logic.FunctionalExtensionality Coq.Sets.Ensembles
+        ADTSynthesis.Computation ADTSynthesis.ADT ADTSynthesis.ADTRefinement ADTSynthesis.ADTNotation ADTSynthesis.QueryStructure.QueryStructureSchema
+        ADTSynthesis.ADTRefinement.BuildADTRefinements ADTSynthesis.QueryStructure.QuerySpecs.QueryQSSpecs ADTSynthesis.QueryStructure.QuerySpecs.InsertQSSpecs ADTSynthesis.QueryStructure.QuerySpecs.EmptyQSSpecs
+        ADTSynthesis.QueryStructure.QueryStructure ADTSynthesis.QueryStructure.Refinements.GeneralInsertRefinements
+        ADTSynthesis.QueryStructure.Refinements.GeneralQueryRefinements ADTSynthesis.QueryStructure.SetEq ADTSynthesis.QueryStructure.AdditionalLemmas ADTSynthesis.QueryStructure.IndexedEnsembles.
 
 Lemma EnsembleIndexedListEquivalence_lift_property {heading} {P: @Tuple heading -> Prop} :
   forall (sequence: list (@Tuple heading)) (ensemble: @IndexedTuple heading -> Prop),

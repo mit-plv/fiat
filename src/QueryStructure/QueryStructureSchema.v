@@ -1,9 +1,9 @@
-Require Import List String Common Arith
-        FunctionalExtensionality Ensembles
-        Common.ilist Common.StringBound Program.
+Require Import Coq.Lists.List Coq.Strings.String ADTSynthesis.Common Coq.Arith.Arith
+        Coq.Logic.FunctionalExtensionality Coq.Sets.Ensembles
+        ADTSynthesis.Common.ilist ADTSynthesis.Common.StringBound Coq.Program.Program.
 Require Export
-        QueryStructure.Notations
-        Heading Tuple Schema Relation.
+        ADTSynthesis.QueryStructure.Notations
+        ADTSynthesis.QueryStructure.Heading ADTSynthesis.QueryStructure.Tuple ADTSynthesis.QueryStructure.Schema ADTSynthesis.QueryStructure.Relation.
 
 (* A Query Structure schema is a set of named relation
    schemas and a set of cross-relation constraints
@@ -130,7 +130,7 @@ Instance Astring_eq : Query_eq string := {| A_eq_dec := string_dec |}.
 
 Instance Anat_eq : Query_eq nat := {| A_eq_dec := eq_nat_dec |}.
 
-Require Import NArith ZArith.
+Require Import Coq.NArith.NArith Coq.ZArith.ZArith.
 Instance AN_eq : Query_eq N := {| A_eq_dec := N.eq_dec |}.
 Instance AZ_eq : Query_eq Z := {| A_eq_dec := Z.eq_dec |}.
 

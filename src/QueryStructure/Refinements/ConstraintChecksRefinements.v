@@ -1,8 +1,8 @@
-Require Export QueryStructureNotations QueryQSSpecs.
-Require Import List Compare_dec AdditionalLemmas
-        AdditionalPermutationLemmas AdditionalMorphisms
-        EnsembleListEquivalenceProperties flattenCompListProperties
-        GeneralQueryRefinements Common.IterateBoundedIndex Common.DecideableEnsembles.
+Require Export ADTSynthesis.QueryStructure.QueryStructureNotations ADTSynthesis.QueryStructure.QuerySpecs.QueryQSSpecs.
+Require Import Coq.Lists.List Coq.Arith.Compare_dec ADTSynthesis.QueryStructure.AdditionalLemmas
+        ADTSynthesis.QueryStructure.AdditionalPermutationLemmas ADTSynthesis.QueryStructure.Refinements.AdditionalMorphisms
+        ADTSynthesis.QueryStructure.Refinements.EnsembleListEquivalenceProperties ADTSynthesis.QueryStructure.Refinements.flattenCompListProperties
+        ADTSynthesis.QueryStructure.Refinements.GeneralQueryRefinements ADTSynthesis.Common.IterateBoundedIndex ADTSynthesis.Common.DecideableEnsembles.
 
 Unset Implicit Arguments.
 
@@ -719,7 +719,7 @@ Section ConstraintCheckRefinements.
     unfold not; intros H'; apply dec_decides_P in H'; congruence.
   Qed.
 
-  Require Import flattenCompListProperties.
+  Require Import ADTSynthesis.QueryStructure.Refinements.flattenCompListProperties.
 
   Lemma In_UnConstrQuery_In {qsSchema} {A}
   : forall (qs : UnConstrQueryStructure qsSchema) Ridx bod results,
@@ -1021,7 +1021,7 @@ Qed.
 Definition refine_foreign_key_check_into_query {schm tbl} :=
   @refine_constraint_check_into_query schm tbl.
 
-Require Import tupleAgree Bool AdditionalRefinementLemmas.
+Require Import ADTSynthesis.QueryStructure.tupleAgree Coq.Bool.Bool ADTSynthesis.QueryStructure.Refinements.AdditionalRefinementLemmas.
 
 Lemma refine_functional_dependency_check_into_query :
   forall {schm : QueryStructureSchema} {tbl} ref args1 args2,

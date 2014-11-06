@@ -1,6 +1,6 @@
-Require Import String Ensembles.
-Require Import Common.
-Require Import Computation.Core Computation.Monad Computation.SetoidMorphisms Computation.Refinements.Tactics.
+Require Import Coq.Strings.String Coq.Sets.Ensembles.
+Require Import ADTSynthesis.Common.
+Require Import ADTSynthesis.Computation.Core ADTSynthesis.Computation.Monad ADTSynthesis.Computation.SetoidMorphisms ADTSynthesis.Computation.Refinements.Tactics.
 
 (** General Lemmas about the behavior of [computes_to], [refine], and
     [refineEquiv]. *)
@@ -407,6 +407,53 @@ Section general_refine_lemmas.
     intros; destruct i; simpl; reflexivity.
   Qed.
 
+  Lemma refineEquiv_swap_bind {A B C} (c1 : Comp A) (c2 : Comp B) (f : A -> B -> Comp C)
+  : refineEquiv (a <- c1; b <- c2; f a b) (b <- c2; a <- c1; f a b).
+  Proof.
+    split; repeat intro;
+    inversion_by computes_to_inv;
+    repeat (econstructor; try eassumption).
+  Qed.
+
+  Lemma refine_bind_dedup {A B} (c1 : Comp A) (f : A -> A -> Comp B)
+  : refine (a <- c1; b <- c1; f a b) (a <- c1; f a a).
+  Proof.
+    repeat intro;
+    inversion_by computes_to_inv;
+    repeat (econstructor; try eassumption).
+  Qed.
+
+  Lemma comp_split_snd {A B} (x : A * B)
+  : refineEquiv (ret (snd x))
+                (ab <- ret x;
+                 ret (snd ab)).
+  Proof.
+    autorewrite with refine_monad; reflexivity.
+  Qed.
+
+  Lemma refine_skip {A B C} (c : Comp A) (f : A -> Comp B) (dummy : A -> Comp C)
+  : refine (Bind c f)
+           (a <- c;
+            dummy a;;
+                  f a).
+  Proof.
+    repeat first [ intro
+                 | inversion_by computes_to_inv
+                 | econstructor; eassumption
+                 | econstructor; try eassumption; [] ].
+  Qed.
+
+  Lemma refine_skip2 {A B} (a : Comp A) (dummy : Comp B)
+  : refine a
+           (dummy;;
+            a).
+  Proof.
+    repeat first [ intro
+                 | inversion_by computes_to_inv
+                 | assumption
+                 | econstructor; eassumption
+                 | econstructor; try eassumption; [] ].
+  Qed.
 End general_refine_lemmas.
 
 Tactic Notation "finalize" "refinement" :=

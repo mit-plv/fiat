@@ -1,8 +1,8 @@
-Require Import List String Ensembles Arith
-        Common.ilist Common.StringBound
-        QueryStructureSchema QueryStructure
-        ConstraintChecksRefinements
-        Common.IterateBoundedIndex Common.DecideableEnsembles.
+Require Import Coq.Lists.List Coq.Strings.String Coq.Sets.Ensembles Coq.Arith.Arith
+        ADTSynthesis.Common.ilist ADTSynthesis.Common.StringBound
+        ADTSynthesis.QueryStructure.QueryStructureSchema ADTSynthesis.QueryStructure.QueryStructure
+        ADTSynthesis.QueryStructure.Refinements.ConstraintChecksRefinements
+        ADTSynthesis.Common.IterateBoundedIndex ADTSynthesis.Common.DecideableEnsembles.
 
 (* We put all these simplification hints into a distinct file
    so we're not unfolding things all willy-nilly. *)

@@ -1,5 +1,5 @@
-Require Import Common.
-Require Import Computation.Core.
+Require Import ADTSynthesis.Common.
+Require Import ADTSynthesis.Computation.Core.
 
 (** General Lemmas about the parametric morphism behavior of
     [computes_to], [refine], and [refineEquiv]. *)

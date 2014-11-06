@@ -1,4 +1,4 @@
-Require Import CachingBags.
+Require Import ADTSynthesis.QueryStructure.Refinements.Bags.CachingBags.
 
 Unset Implicit Arguments.
 (* This also needs to be adapted with update and delete.

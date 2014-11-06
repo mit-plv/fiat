@@ -1,12 +1,12 @@
-Require Import List String FunctionalExtensionality Ensembles Arith
-        Computation.Core
-        ADT.ADTSig ADT.Core
-        Common.ilist Common.StringBound
-        ADTNotation.BuildADT ADTNotation.BuildADTSig
-        QueryStructure.IndexedEnsembles
-        QueryStructure.Notations QueryStructure.Heading
-        QueryStructure.Tuple QueryStructure.Schema QueryStructure.Relation
-        QueryStructure.QueryStructureSchema.
+Require Import Coq.Lists.List Coq.Strings.String Coq.Logic.FunctionalExtensionality Coq.Sets.Ensembles Coq.Arith.Arith
+        ADTSynthesis.Computation.Core
+        ADTSynthesis.ADT.ADTSig ADTSynthesis.ADT.Core
+        ADTSynthesis.Common.ilist ADTSynthesis.Common.StringBound
+        ADTSynthesis.ADTNotation.BuildADT ADTSynthesis.ADTNotation.BuildADTSig
+        ADTSynthesis.QueryStructure.IndexedEnsembles
+        ADTSynthesis.QueryStructure.Notations ADTSynthesis.QueryStructure.Heading
+        ADTSynthesis.QueryStructure.Tuple ADTSynthesis.QueryStructure.Schema ADTSynthesis.QueryStructure.Relation
+        ADTSynthesis.QueryStructure.QueryStructureSchema.
 
 Section BuildQueryStructureConstraints.
   (* Query Structures maintain a set of constraints that enforce

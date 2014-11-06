@@ -1,6 +1,6 @@
-Require Import Common
-        ADT.ADTSig ADT.Core ADT.ADTHide
-        ADTRefinement.Core.
+Require Import ADTSynthesis.Common
+        ADTSynthesis.ADT.ADTSig ADTSynthesis.ADT.Core ADTSynthesis.ADT.ADTHide
+        ADTSynthesis.ADTRefinement.Core.
 
 Lemma RefineHideADT
       extSig'

@@ -1,6 +1,6 @@
-Require Import String Ensembles.
-Require Import Common.
-Require Export Computation.Notations.
+Require Import Coq.Strings.String Coq.Sets.Ensembles.
+Require Import ADTSynthesis.Common.
+Require Export ADTSynthesis.Computation.Notations.
 
 Inductive Comp : Type -> Type :=
 | Return : forall A, A -> Comp A

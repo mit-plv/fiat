@@ -1,6 +1,6 @@
-Require Import String Ensembles.
-Require Import Common.
-Require Import Computation.Core.
+Require Import Coq.Strings.String Coq.Sets.Ensembles.
+Require Import ADTSynthesis.Common.
+Require Import ADTSynthesis.Computation.Core.
 
 (** [Comp] obeys the monad laws, using [computes_to] as the
     notion of equivalence. .*)

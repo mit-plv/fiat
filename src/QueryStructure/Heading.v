@@ -1,6 +1,6 @@
-Require Import List String FunctionalExtensionality Ensembles
-        Common.ilist Common.StringBound Program
-        QueryStructure.Notations.
+Require Import Coq.Lists.List Coq.Strings.String Coq.Logic.FunctionalExtensionality Coq.Sets.Ensembles
+        ADTSynthesis.Common.ilist ADTSynthesis.Common.StringBound Coq.Program.Program
+        ADTSynthesis.QueryStructure.Notations.
 
 (* A heading describes a tuple as a set of Attributes
    and types. *)

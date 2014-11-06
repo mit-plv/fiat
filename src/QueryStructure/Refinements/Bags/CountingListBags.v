@@ -1,4 +1,4 @@
-Require Export BagsInterface.
+Require Export ADTSynthesis.QueryStructure.Refinements.Bags.BagsInterface.
 Unset Implicit Arguments.
 
 Open Scope list.
@@ -213,7 +213,7 @@ Section CountingListBags.
     firstorder.
  Qed.
 
-  Require Import AdditionalLemmas.
+  Require Import ADTSynthesis.QueryStructure.AdditionalLemmas.
 
   Lemma CountingList_BagFindCorrect :
     BagFindCorrect CountingList_RepInv CountingListAsBag_bfind MatchAgainstMany ccontents.
@@ -221,7 +221,7 @@ Section CountingListBags.
     destruct search_term; simpl; [ rewrite filter_all_true | ]; reflexivity.
   Qed.
 
-  Require Import Omega.
+  Require Import Coq.omega.Omega.
   Lemma CountingList_BagCountCorrect_aux :
     forall (container: list TItem) (search_term: list (TItem -> bool)) default,
       length (List.filter (MatchAgainstMany search_term) container) + default =

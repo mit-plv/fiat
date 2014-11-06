@@ -1,8 +1,8 @@
-Require Export Computation.Core.
-Require Export Computation.Monad.
-Require Export Computation.SetoidMorphisms.
-Require Export Computation.ReflectiveMonad.
-Require Export Computation.ApplyMonad.
-Require Export Computation.Refinements.General.
+Require Export ADTSynthesis.Computation.Core.
+Require Export ADTSynthesis.Computation.Monad.
+Require Export ADTSynthesis.Computation.SetoidMorphisms.
+Require Export ADTSynthesis.Computation.ReflectiveMonad.
+Require Export ADTSynthesis.Computation.ApplyMonad.
+Require Export ADTSynthesis.Computation.Refinements.General.
 
 Open Scope comp.

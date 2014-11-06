@@ -1,4 +1,4 @@
-Require Import Omega.
+Require Import Coq.omega.Omega.
 Require Export ADT ADT.Specs ADT.Pick.
 
 Generalizable All Variables.

@@ -1,4 +1,4 @@
-Require Import AutoDB.
+Require Import ADTSynthesis.QueryStructure.Refinements.AutoDB.
 
 Locate EnsembleListEquivalence.
 

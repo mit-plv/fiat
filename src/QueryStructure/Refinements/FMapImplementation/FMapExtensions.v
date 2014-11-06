@@ -1,10 +1,10 @@
-Require Import Program.
+Require Import Coq.Program.Program.
 
-Require Export FMapInterface.
+Require Export Coq.FSets.FMapInterface.
 Require Import Coq.FSets.FMapFacts.
 Require Import Coq.Structures.OrderedTypeEx.
 
-Require Import SetEq SetEqProperties AdditionalLemmas.
+Require Import ADTSynthesis.QueryStructure.SetEq ADTSynthesis.QueryStructure.SetEqProperties ADTSynthesis.QueryStructure.AdditionalLemmas.
 
 Unset Implicit Arguments.
 
@@ -364,7 +364,7 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
     intuition eauto.
   Qed.
 
-  Require Import Permutation AdditionalPermutationLemmas.
+  Require Import Coq.Sorting.Permutation ADTSynthesis.QueryStructure.AdditionalPermutationLemmas.
 
   Lemma InA_mapsto_add {Value} :
     forall bag' kv k' (v' : Value),

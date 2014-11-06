@@ -1,6 +1,6 @@
-Require Import Ensembles List Coq.Lists.SetoidList Program
-        Common Computation.Core
-        SetEq Omega String Arith.
+Require Import Coq.Sets.Ensembles Coq.Lists.List Coq.Lists.SetoidList Coq.Program.Program
+        ADTSynthesis.Common ADTSynthesis.Computation.Core
+        ADTSynthesis.QueryStructure.SetEq Coq.omega.Omega Coq.Strings.String Coq.Arith.Arith.
 
 Unset Implicit Arguments.
 
@@ -518,7 +518,7 @@ Section AdditionalListLemmas.
     intuition.
   Qed.
 
-  Require Import Permutation.
+  Require Import Coq.Sorting.Permutation.
 
   Lemma flat_map_rev_permutation :
     forall {A B} seq (f: A -> list B),
@@ -857,7 +857,7 @@ Section AdditionalListLemmas.
 End AdditionalListLemmas.
 
 Section AdditionalComputeationLemmas.
-  Require Import Computation.Refinements.Tactics.
+  Require Import ADTSynthesis.Computation.Refinements.Tactics.
 
   Lemma ret_computes_to :
     forall {A: Type} (a1 a2: A),

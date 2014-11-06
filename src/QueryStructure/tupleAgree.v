@@ -1,4 +1,4 @@
- Require Import Schema List Program Heading Tuple.
+ Require Import ADTSynthesis.QueryStructure.Schema Coq.Lists.List Coq.Program.Program ADTSynthesis.QueryStructure.Heading ADTSynthesis.QueryStructure.Tuple.
 
 Lemma tupleAgree_empty :
   forall {heading} (tup1 tup2: @Tuple heading),

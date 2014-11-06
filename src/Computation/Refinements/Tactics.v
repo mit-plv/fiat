@@ -1,5 +1,5 @@
-Require Import Common.
-Require Import Computation.Core.
+Require Import ADTSynthesis.Common.
+Require Import ADTSynthesis.Computation.Core.
 
 Ltac t_refine' :=
   first [ progress simpl in *

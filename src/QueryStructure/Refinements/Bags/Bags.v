@@ -1,1 +1,1 @@
-Require Export BagsInterface BagsProperties ListBags TreeBags CachingBags BagsTactics.
+Require Export ADTSynthesis.QueryStructure.Refinements.Bags.BagsInterface ADTSynthesis.QueryStructure.Refinements.Bags.BagsProperties ADTSynthesis.QueryStructure.Refinements.Bags.ListBags ADTSynthesis.QueryStructure.Refinements.Bags.TreeBags ADTSynthesis.QueryStructure.Refinements.Bags.CachingBags ADTSynthesis.QueryStructure.Refinements.Bags.BagsTactics.

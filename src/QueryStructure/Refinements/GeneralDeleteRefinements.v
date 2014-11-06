@@ -1,9 +1,9 @@
-Require Import String Omega List FunctionalExtensionality Ensembles
-        Computation ADT ADTRefinement ADTNotation Schema QueryStructureSchema
-        BuildADTRefinements QueryStructure IndexedEnsembles
-        QuerySpecs.QueryQSSpecs QuerySpecs.DeleteQSSpecs
-        ConstraintChecksRefinements ListQueryStructureRefinements
-        Common.IterateBoundedIndex Common.DecideableEnsembles.
+Require Import Coq.Strings.String Coq.omega.Omega Coq.Lists.List Coq.Logic.FunctionalExtensionality Coq.Sets.Ensembles
+        ADTSynthesis.Computation ADTSynthesis.ADT ADTSynthesis.ADTRefinement ADTSynthesis.ADTNotation ADTSynthesis.QueryStructure.Schema ADTSynthesis.QueryStructure.QueryStructureSchema
+        ADTSynthesis.ADTRefinement.BuildADTRefinements ADTSynthesis.QueryStructure.QueryStructure ADTSynthesis.QueryStructure.IndexedEnsembles
+        ADTSynthesis.QueryStructure.QuerySpecs.QueryQSSpecs ADTSynthesis.QueryStructure.QuerySpecs.DeleteQSSpecs
+        ADTSynthesis.QueryStructure.Refinements.ConstraintChecksRefinements ADTSynthesis.QueryStructure.Refinements.ListImplementation.ListQueryStructureRefinements
+        ADTSynthesis.Common.IterateBoundedIndex ADTSynthesis.Common.DecideableEnsembles.
 
 (* Facts about implements delete operations. *)
 
@@ -661,8 +661,8 @@ Section DeleteRefinements.
     f_equiv.
   Qed.
 
-  Require Import AdditionalPermutationLemmas GeneralQueryRefinements
-          AdditionalLemmas.
+  Require Import ADTSynthesis.QueryStructure.AdditionalPermutationLemmas ADTSynthesis.QueryStructure.Refinements.GeneralQueryRefinements
+          ADTSynthesis.QueryStructure.AdditionalLemmas.
 
   Lemma EnsembleComplementIntersection {A}
   : forall E (P : Ensemble A),

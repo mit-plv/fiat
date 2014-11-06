@@ -1,12 +1,12 @@
-Require Import List Common
-        ADT.ADTSig ADT.Core
-        ADTNotation.BuildADTSig ADTNotation.BuildADT
-        Common.ilist Common.StringBound
-        ADTRefinement.Core ADTRefinement.SetoidMorphisms
-        ADTRefinement.GeneralRefinements
-        ADTRefinement.Refinements.HoneRepresentation
-        ADTRefinement.BuildADTSetoidMorphisms
-        ADTRefinement.Refinements.ADTCache.
+Require Import Coq.Lists.List ADTSynthesis.Common
+        ADTSynthesis.ADT.ADTSig ADTSynthesis.ADT.Core
+        ADTSynthesis.ADTNotation.BuildADTSig ADTSynthesis.ADTNotation.BuildADT
+        ADTSynthesis.Common.ilist ADTSynthesis.Common.StringBound
+        ADTSynthesis.ADTRefinement.Core ADTSynthesis.ADTRefinement.SetoidMorphisms
+        ADTSynthesis.ADTRefinement.GeneralRefinements
+        ADTSynthesis.ADTRefinement.Refinements.HoneRepresentation
+        ADTSynthesis.ADTRefinement.BuildADTSetoidMorphisms
+        ADTSynthesis.ADTRefinement.Refinements.ADTCache.
 
 (* A generic refinement and honing tactic for adding a cache
     to the representation of an ADT built from [BuildADT]. *)

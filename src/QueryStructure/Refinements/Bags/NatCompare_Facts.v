@@ -1,4 +1,4 @@
-Require Import Omega.
+Require Import Coq.omega.Omega.
 
 Hint Rewrite <- nat_compare_lt : hints.
 Hint Rewrite <- nat_compare_gt : hints.

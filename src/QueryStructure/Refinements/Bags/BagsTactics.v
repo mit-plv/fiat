@@ -1,6 +1,6 @@
-Require Import BagsInterface.
-Require Import AdditionalLemmas.
-Require Import IndexedEnsembles.
+Require Import ADTSynthesis.QueryStructure.Refinements.Bags.BagsInterface.
+Require Import ADTSynthesis.QueryStructure.AdditionalLemmas.
+Require Import ADTSynthesis.QueryStructure.IndexedEnsembles.
 
 Ltac is_sumbool expr :=
   match type of expr with
@@ -31,7 +31,7 @@ Ltac prove_extensional_eq :=
   unfold ExtensionalEq;
   destruct_ifs; first [ solve [intuition] | solve [exfalso; intuition] | idtac ].
 
-Require Import String Arith.
+Require Import Coq.Strings.String Coq.Arith.Arith.
 
 Example ifs_destruction :
   forall w x y z,
@@ -40,9 +40,9 @@ Proof.
   destruct_ifs; intuition.
 Qed.
 
-Require Import QueryStructureNotations.
-Require Import ListImplementation.
-Require Import BagsOfTuples.
+Require Import ADTSynthesis.QueryStructure.QueryStructureNotations.
+Require Import ADTSynthesis.QueryStructure.Refinements.ListImplementation.
+Require Import ADTSynthesis.QueryStructure.Refinements.Bags.BagsOfTuples.
 
 Ltac autoconvert func :=
   match goal with

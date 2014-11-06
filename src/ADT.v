@@ -1,1 +1,1 @@
-Require Export ADT.ADTSig ADT.Core.
+Require Export ADTSynthesis.ADT.ADTSig ADTSynthesis.ADT.Core.

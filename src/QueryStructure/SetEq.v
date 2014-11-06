@@ -1,4 +1,4 @@
-Require Import List Bool OrderedType Morphisms Setoid.
+Require Import Coq.Lists.List Coq.Bool.Bool Coq.Structures.OrderedType Coq.Classes.Morphisms Coq.Setoids.Setoid.
 
 Definition SetEq {A: Type} (seq1: list A) (seq2: list A) :=
   forall x,

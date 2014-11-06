@@ -1,5 +1,5 @@
-Require Import Arith List Ensembles String Common
-        Common.ilist Common.StringBound Common.DecideableEnsembles.
+Require Import Coq.Arith.Arith Coq.Lists.List Coq.Sets.Ensembles Coq.Strings.String ADTSynthesis.Common
+        ADTSynthesis.Common.ilist ADTSynthesis.Common.StringBound ADTSynthesis.Common.DecideableEnsembles.
 
 Fixpoint app_assoc {A : Set} (As As' As'' : list A):
   As ++ (As' ++ As'') = (As ++ As') ++ As'' :=

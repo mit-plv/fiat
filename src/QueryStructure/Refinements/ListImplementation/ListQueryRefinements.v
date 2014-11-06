@@ -1,10 +1,10 @@
-Require Import String Omega List FunctionalExtensionality Ensembles
-        Sorting.Permutation Computation ADT ADTRefinement ADTNotation
-        ADTRefinement.GeneralBuildADTRefinements
-        QueryStructureSchema QueryQSSpecs QueryStructure
-        GeneralQueryRefinements AdditionalLemmas SetEq
-        ListQueryStructureRefinements IndexedEnsembles
-        Common.DecideableEnsembles.
+Require Import Coq.Strings.String Coq.omega.Omega Coq.Lists.List Coq.Logic.FunctionalExtensionality Coq.Sets.Ensembles
+        Coq.Sorting.Permutation ADTSynthesis.Computation ADTSynthesis.ADT ADTSynthesis.ADTRefinement ADTSynthesis.ADTNotation
+        ADTSynthesis.ADTRefinement.GeneralBuildADTRefinements
+        ADTSynthesis.QueryStructure.QueryStructureSchema ADTSynthesis.QueryStructure.QuerySpecs.QueryQSSpecs ADTSynthesis.QueryStructure.QueryStructure
+        ADTSynthesis.QueryStructure.Refinements.GeneralQueryRefinements ADTSynthesis.QueryStructure.AdditionalLemmas ADTSynthesis.QueryStructure.SetEq
+        ADTSynthesis.QueryStructure.Refinements.ListImplementation.ListQueryStructureRefinements ADTSynthesis.QueryStructure.IndexedEnsembles
+        ADTSynthesis.Common.DecideableEnsembles.
 
 Lemma refine_SetEq_self {A} :
   forall l : list A,
@@ -138,7 +138,7 @@ Proof.
   reflexivity.
 Qed.
 
-Require Import AdditionalMorphisms.
+Require Import ADTSynthesis.QueryStructure.Refinements.AdditionalMorphisms.
 
 Lemma swap_joins :
   forall {A B} s1 s2,

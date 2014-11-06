@@ -1,18 +1,18 @@
-Require Import List Arith
-        Common Computation ADT.ADTSig ADT.Core
-        ADT.ComputationalADT
-        Common.StringBound Common.ilist IterateBoundedIndex
-        ADTNotation.BuildADTSig ADTNotation.BuildADT
-        ADTNotation.BuildComputationalADT
-        ADTNotation.BuildADTReplaceMethods
-        ADTRefinement.Core ADTRefinement.GeneralRefinements
-        ADTRefinement.SetoidMorphisms ADTRefinement.BuildADTSetoidMorphisms.
+Require Import Coq.Lists.List Coq.Arith.Arith
+        ADTSynthesis.Common ADTSynthesis.Computation ADTSynthesis.ADT.ADTSig ADTSynthesis.ADT.Core
+        ADTSynthesis.ADT.ComputationalADT
+        ADTSynthesis.Common.StringBound ADTSynthesis.Common.ilist ADTSynthesis.Common.IterateBoundedIndex
+        ADTSynthesis.ADTNotation.BuildADTSig ADTSynthesis.ADTNotation.BuildADT
+        ADTSynthesis.ADTNotation.BuildComputationalADT
+        ADTSynthesis.ADTNotation.BuildADTReplaceMethods
+        ADTSynthesis.ADTRefinement.Core ADTSynthesis.ADTRefinement.GeneralRefinements
+        ADTSynthesis.ADTRefinement.SetoidMorphisms ADTSynthesis.ADTRefinement.BuildADTSetoidMorphisms.
 
 (* Notation-friendly versions of the honing tactics in GeneralRefinements. *)
 
 Section BuildADTRefinements.
 
-  Require Import String.
+  Require Import Coq.Strings.String.
   Local Hint Resolve string_dec.
 
   Lemma refineADT_BuildADT_ReplaceConstructor

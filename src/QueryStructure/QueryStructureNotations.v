@@ -1,8 +1,8 @@
-Require Export String Omega List FunctionalExtensionality Ensembles
-        IndexedEnsembles
-        Computation ADT ADTRefinement ADTNotation QueryStructureSchema
-        BuildADTRefinements QueryQSSpecs InsertQSSpecs EmptyQSSpecs
-        DeleteQSSpecs QueryStructure.
+Require Export Coq.Strings.String Coq.omega.Omega Coq.Lists.List Coq.Logic.FunctionalExtensionality Coq.Sets.Ensembles
+        ADTSynthesis.QueryStructure.IndexedEnsembles
+        ADTSynthesis.Computation ADTSynthesis.ADT ADTSynthesis.ADTRefinement ADTSynthesis.ADTNotation ADTSynthesis.QueryStructure.QueryStructureSchema
+        ADTSynthesis.ADTRefinement.BuildADTRefinements ADTSynthesis.QueryStructure.QuerySpecs.QueryQSSpecs ADTSynthesis.QueryStructure.QuerySpecs.InsertQSSpecs ADTSynthesis.QueryStructure.QuerySpecs.EmptyQSSpecs
+        ADTSynthesis.QueryStructure.QuerySpecs.DeleteQSSpecs ADTSynthesis.QueryStructure.QueryStructure.
 
 Open Scope QSSchema.
 Open Scope ADTSig.

@@ -29,10 +29,22 @@ Definition filterLtSpec (ls : list W) (x : W) : Comp (list W)
   := ret (List.filter (fun y => wlt y x) ls).
 
 Definition filterLtUniqueSpec1 (ls : list W) (x : W) : Comp (list W)
-  := to_list (Ensembles.Setminus _ (elements ls) (fun y => wlt y x = true)).
+  := to_list (Ensembles.Setminus _ (elements ls) (fun y => wlt y x = false)).
 
 Definition filterLtUniqueSpec2 (ls : list W) (x : W) : Comp (list W)
-  := to_list (Ensembles.Intersection _ (elements ls) (Ensembles.Complement _ (fun y => wlt y x = true))).
+  := to_list (Ensembles.Intersection _ (elements ls) (Ensembles.Complement _ (fun y => wlt y x = false))).
+
+Definition filterLtUniqueSpec3 (ls : list W) (x : W) : Comp (list W)
+  := to_list (Ensembles.Setminus _ (elements ls) (fun y => ~wlt y x = true)).
+
+Definition filterLtUniqueSpec4 (ls : list W) (x : W) : Comp (list W)
+  := to_list (Ensembles.Intersection _ (elements ls) (Ensembles.Complement _ (fun y => ~wlt y x = true))).
+
+Definition filterLtUniqueSpec5 (ls : list W) (x : W) : Comp (list W)
+  := to_list (Ensembles.Setminus _ (elements ls) (fun y => wlt x y = true)).
+
+Definition filterLtUniqueSpec6 (ls : list W) (x : W) : Comp (list W)
+  := to_list (Ensembles.Intersection _ (elements ls) (fun y => wlt y x = true)).
 
 Definition intersectionUniqueSpec (ls1 ls2 : list W) : Comp (list W)
   := to_list (Ensembles.Intersection _ (elements ls1) (elements ls2)).
@@ -164,6 +176,46 @@ Defined.
 
 Definition filterLtUniqueImpl2 (FiniteSetImpl : FullySharpened FiniteSetSpec) (ls : list W) (x : W)
 : FullySharpenedComputation (filterLtUniqueSpec2 ls x).
+Proof.
+  begin sharpening computation.
+
+  sharpen computation with FiniteSet implementation := FiniteSetImpl.
+
+  finish sharpening computation.
+Defined.
+
+Definition filterLtUniqueImpl3 (FiniteSetImpl : FullySharpened FiniteSetSpec) (ls : list W) (x : W)
+: FullySharpenedComputation (filterLtUniqueSpec3 ls x).
+Proof.
+  begin sharpening computation.
+
+  sharpen computation with FiniteSet implementation := FiniteSetImpl.
+
+  finish sharpening computation.
+Defined.
+
+Definition filterLtUniqueImpl4 (FiniteSetImpl : FullySharpened FiniteSetSpec) (ls : list W) (x : W)
+: FullySharpenedComputation (filterLtUniqueSpec4 ls x).
+Proof.
+  begin sharpening computation.
+
+  sharpen computation with FiniteSet implementation := FiniteSetImpl.
+
+  finish sharpening computation.
+Defined.
+
+Definition filterLtUniqueImpl5 (FiniteSetImpl : FullySharpened FiniteSetSpec) (ls : list W) (x : W)
+: FullySharpenedComputation (filterLtUniqueSpec5 ls x).
+Proof.
+  begin sharpening computation.
+
+  sharpen computation with FiniteSet implementation := FiniteSetImpl.
+
+  finish sharpening computation.
+Defined.
+
+Definition filterLtUniqueImpl6 (FiniteSetImpl : FullySharpened FiniteSetSpec) (ls : list W) (x : W)
+: FullySharpenedComputation (filterLtUniqueSpec6 ls x).
 Proof.
   begin sharpening computation.
 

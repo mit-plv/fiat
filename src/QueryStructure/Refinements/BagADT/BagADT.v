@@ -1,6 +1,6 @@
-Require Import String Omega List FunctionalExtensionality Ensembles
-        IndexedEnsembles Computation ADT ADTRefinement ADTNotation
-        BuildADTRefinements.
+Require Import Coq.Strings.String Coq.omega.Omega Coq.Lists.List Coq.Logic.FunctionalExtensionality Coq.Sets.Ensembles
+        ADTSynthesis.QueryStructure.IndexedEnsembles ADTSynthesis.Computation ADTSynthesis.ADT ADTSynthesis.ADTRefinement ADTSynthesis.ADTNotation
+        ADTSynthesis.ADTRefinement.BuildADTRefinements.
 
 Open Scope string.
 

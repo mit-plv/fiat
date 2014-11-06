@@ -1,5 +1,5 @@
-Require Import Program.
-Require Import Common.
+Require Import Coq.Program.Program.
+Require Import ADTSynthesis.Common.
 (** * Various useful lemmas about logic *)
 
 (** We prove things here mainly for the purpose of [setoid_rewrite]ing with instances of [impl] and [iff]. *)

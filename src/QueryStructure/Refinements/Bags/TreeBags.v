@@ -1,7 +1,7 @@
-Require Import Common.
-Require Export BagsInterface BagsProperties.
-Require Import SetEqProperties FMapExtensions AdditionalLemmas AdditionalPermutationLemmas.
-Require Import FMapInterface Coq.FSets.FMapFacts.
+Require Import ADTSynthesis.Common.
+Require Export ADTSynthesis.QueryStructure.Refinements.Bags.BagsInterface ADTSynthesis.QueryStructure.Refinements.Bags.BagsProperties.
+Require Import ADTSynthesis.QueryStructure.SetEqProperties ADTSynthesis.QueryStructure.Refinements.FMapImplementation.FMapExtensions ADTSynthesis.QueryStructure.AdditionalLemmas ADTSynthesis.QueryStructure.AdditionalPermutationLemmas.
+Require Import Coq.FSets.FMapInterface Coq.FSets.FMapFacts.
 
 Unset Implicit Arguments.
 

@@ -1,5 +1,5 @@
-Require Export IndexedEnsembles.
-Require Import Ensembles List AdditionalPermutationLemmas.
+Require Export ADTSynthesis.QueryStructure.IndexedEnsembles.
+Require Import Coq.Sets.Ensembles Coq.Lists.List ADTSynthesis.QueryStructure.AdditionalPermutationLemmas.
 
 Lemma EnsembleListEquivalence_slice :
   forall {A} a b c (ens: Ensemble A),

@@ -1,5 +1,5 @@
-Require Export QueryStructureNotations QueryQSSpecs.
-Require Import List AdditionalLemmas AdditionalMorphisms.
+Require Export ADTSynthesis.QueryStructure.QueryStructureNotations ADTSynthesis.QueryStructure.QuerySpecs.QueryQSSpecs.
+Require Import Coq.Lists.List ADTSynthesis.QueryStructure.AdditionalLemmas ADTSynthesis.QueryStructure.Refinements.AdditionalMorphisms.
 
 Unset Implicit Arguments.
 

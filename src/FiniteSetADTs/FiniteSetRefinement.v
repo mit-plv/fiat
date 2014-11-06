@@ -1,8 +1,8 @@
 (** * Refinement of computations involving ensembles, to ones using finite sets *)
 Require Import Coq.Strings.String Coq.Sets.Ensembles Coq.Sets.Finite_sets Coq.Lists.List Coq.Sorting.Permutation Coq.Classes.RelationPairs.
-Require Import ADT ADT.ComputationalADT ADTRefinement.Core ADTNotation ADTRefinement.GeneralRefinements Common.AdditionalEnsembleDefinitions Common.AdditionalEnsembleLemmas Computation.
-Require Export FiniteSetADTs.FiniteSetADT.
-Require Import Common.
+Require Import ADTSynthesis.ADT ADTSynthesis.ADT.ComputationalADT ADTSynthesis.ADTRefinement.Core ADTSynthesis.ADTNotation ADTSynthesis.ADTRefinement.GeneralRefinements ADTSynthesis.Common.AdditionalEnsembleDefinitions ADTSynthesis.Common.AdditionalEnsembleLemmas ADTSynthesis.Computation.
+Require Export ADTSynthesis.FiniteSetADTs.FiniteSetADT.
+Require Import ADTSynthesis.Common ADTSynthesis.Common.Ensembles ADTSynthesis.Common.Ensembles.Tactics.
 
 (** TODO: Move this elsewhere *)
 Notation FullySharpenedComputation spec
@@ -11,117 +11,13 @@ Notation FullySharpenedComputation spec
 (** We prove equivalences to handle various operations on ensembles,
     and on lists equivalent to ensembles. *)
 
-Global Instance Same_set_refl {T} : Reflexive (Same_set T).
-Proof.
-  repeat (intro || split); auto.
-Qed.
-
-Global Instance Same_set_sym {T} : Symmetric (Same_set T).
-Proof.
-  repeat (intro || split); destruct_head_hnf and; eauto.
-Qed.
-
-Global Instance Same_set_trans {T} : Transitive (Same_set T).
-Proof.
-  repeat (intro || split); destruct_head_hnf and; eauto.
-Qed.
-
-Global Instance Included_refl {T} : Reflexive (Included T).
-Proof.
-  repeat (intro || split); auto.
-Qed.
-
-Global Instance Included_trans {T} : Transitive (Included T).
-Proof.
-  repeat (intro || split); destruct_head_hnf and; eauto.
-Qed.
-
-Global Add Parametric Relation {T} : _ (@Same_set T)
-    reflexivity proved by reflexivity
-    symmetry proved by symmetry
-    transitivity proved by transitivity
-      as Same_set_rel.
-
-Global Add Parametric Relation {T} : _ (@Included T)
-    reflexivity proved by reflexivity
-    transitivity proved by transitivity
-      as Included_rel.
-
-Local Hint Constructors Singleton Union Intersection.
-
-Local Ltac finish_union_with t :=
-  solve [ t
-        | left; finish_union_with t
-        | right; finish_union_with t ].
-
-Local Ltac Ensemble_mor_t :=
-  repeat match goal with
-           | _ => intro
-           | _ => progress destruct_head_hnf and
-           | _ => progress destruct_head_hnf or
-           | _ => progress destruct_head_hnf False
-           | _ => progress destruct_head_hnf Union
-           | _ => progress destruct_head_hnf Intersection
-           | _ => progress destruct_head_hnf Singleton
-           | _ => progress destruct_head_hnf Ensembles.Empty_set
-           | _ => progress subst
-           | _ => progress unfold Same_set, Included, Ensembles.In in *
-           | [ |- Singleton _ _ _ ] => constructor
-           | [ |- Intersection _ _ _ _ ] => constructor
-           | [ |- _ /\ _ ] => split
-           | _ => solve [ eauto ]
-           | _ => finish_union_with ltac:(eauto)
-           | _ => finish_union_with ltac:(hnf in *; eauto)
-         end.
-
-Add Parametric Morphism {T} : (@Union T)
-    with signature eq ==> Included T ==> Included T
-      as Union_Included2_mor.
-Proof. Ensemble_mor_t. Qed.
-
-Add Parametric Morphism {T} : (@Union T)
-    with signature Included T ==> eq ==> Included T
-      as Union_Included1_mor.
-Proof. Ensemble_mor_t. Qed.
-
-Add Parametric Morphism {T} : (@Union T)
-    with signature Same_set T ==> eq ==> Same_set T
-      as Union_Same_set1_mor.
-Proof. Ensemble_mor_t. Qed.
-
-Add Parametric Morphism {T} : (@Union T)
-    with signature eq ==> Same_set T ==> Same_set T
-      as Union_Same_set2_mor.
-Proof. Ensemble_mor_t. Qed.
-
-
-
-Add Parametric Morphism {T} : (@Intersection T)
-    with signature eq ==> Included T ==> Included T
-      as Intersection_Included2_mor.
-Proof. Ensemble_mor_t. Qed.
-
-Add Parametric Morphism {T} : (@Intersection T)
-    with signature Included T ==> eq ==> Included T
-      as Intersection_Included1_mor.
-Proof. Ensemble_mor_t. Qed.
-
-Add Parametric Morphism {T} : (@Intersection T)
-    with signature Same_set T ==> eq ==> Same_set T
-      as Intersection_Same_set1_mor.
-Proof. Ensemble_mor_t. Qed.
-
-Add Parametric Morphism {T} : (@Intersection T)
-    with signature eq ==> Same_set T ==> Same_set T
-      as Intersection_Same_set2_mor.
-Proof. Ensemble_mor_t. Qed.
-
+Local Open Scope Ensemble_scope.
 
 Lemma Same_set__elements__Union {A} xs
 : Same_set A (elements xs) (List.fold_right (Union _) (Empty_set _) (map (Singleton _) xs)).
 Proof.
   induction xs; [ | simpl; rewrite <- IHxs; clear IHxs ];
-  Ensemble_mor_t.
+  Ensembles_t.
 Qed.
 
 Lemma Same_set__elements_cons__Union {A} x xs
@@ -129,60 +25,6 @@ Lemma Same_set__elements_cons__Union {A} x xs
 Proof.
   rewrite !Same_set__elements__Union; simpl; reflexivity.
 Qed.
-
-Delimit Scope Ensemble_scope with ensemble.
-Bind Scope Ensemble_scope with Ensemble.
-Local Open Scope Ensemble_scope.
-Local Infix "∪" := (Union _) (at level 60, right associativity) : Ensemble_scope.
-Local Infix "∩" := (Intersection _) (at level 60, right associativity) : Ensemble_scope.
-Local Infix "\" := (Setminus _) (at level 50, left associativity) : Ensemble_scope.
-Local Infix "≅" := (Same_set _) (at level 70, right associativity) : Ensemble_scope.
-Local Notation "{{ x }}" := (Singleton _ x) : Ensemble_scope.
-
-Lemma Same_set_Intersection_Union {A} (x y z : Ensemble A)
-: (x ∩ (y ∪ z)) ≅ (x ∩ y) ∪ (x ∩ z).
-Proof. Ensemble_mor_t. Qed.
-
-Lemma Same_set_Union_Intersection {A} (x y z : Ensemble A)
-: (x ∪ (y ∩ z)) ≅ (x ∪ y) ∩ (x ∪ z).
-Proof. Ensemble_mor_t. Qed.
-
-Lemma Union_assoc {A} (x y z : Ensemble A)
-: (x ∪ (y ∪ z)) ≅ ((x ∪ y) ∪ z).
-Proof. Ensemble_mor_t. Qed.
-
-Lemma Union_sym {A} (x y : Ensemble A)
-: (x ∪ y) ≅ (y ∪ x).
-Proof. Ensemble_mor_t. Qed.
-
-Lemma Intersection_sym {A} (x y : Ensemble A)
-: (x ∩ y) ≅ (y ∩ x).
-Proof. Ensemble_mor_t. Qed.
-
-Lemma Same_set_Intersection_Union' {A} (x y z : Ensemble A)
-: ((y ∪ z) ∩ x) ≅ (y ∩ x) ∪ (z ∩ x).
-Proof. Ensemble_mor_t. Qed.
-
-Lemma Same_set_Union_Intersection' {A} (x y z : Ensemble A)
-: ((y ∩ z) ∪ x) ≅ (y ∪ x) ∩ (z ∪ x).
-Proof. Ensemble_mor_t. Qed.
-
-Lemma refineEquiv_swap_bind {A B C} (c1 : Comp A) (c2 : Comp B) (f : A -> B -> Comp C)
-: refineEquiv (a <- c1; b <- c2; f a b) (b <- c2; a <- c1; f a b).
-Proof.
-  split; repeat intro;
-  inversion_by computes_to_inv;
-  repeat (econstructor; try eassumption).
-Qed.
-
-Lemma refine_bind_dedup {A B} (c1 : Comp A) (f : A -> A -> Comp B)
-: refine (a <- c1; b <- c1; f a b) (a <- c1; f a a).
-Proof.
-  repeat intro;
-  inversion_by computes_to_inv;
-  repeat (econstructor; try eassumption).
-Qed.
-
 
 Local Ltac fold_right_refine_mor_t :=
   repeat match goal with
@@ -261,22 +103,6 @@ Proof.
   let H := match goal with H : Same_set _ _ _ |- _ => constr:H end in
   setoid_rewrite H; reflexivity.
 Qed.
-
-Lemma if_app {A} (ls1 ls1' ls2 : list A) (b : bool)
-: (if b then ls1 else ls1') ++ ls2 = if b then (ls1 ++ ls2) else (ls1' ++ ls2).
-Proof.
-  destruct b; reflexivity.
-Qed.
-
-Definition pull_if_dep {A B} (P : forall b : bool, A b -> B b) (a : A true) (a' : A false)
-           (b : bool)
-: P b (if b as b return A b then a else a') =
-  if b as b return B b then P _ a else P _ a'
-  := match b with true => eq_refl | false => eq_refl end.
-
-Definition pull_if {A B} (P : A -> B) (a a' : A) (b : bool)
-: P (if b then a else a') = if b then P a else P a'
-  := pull_if_dep (fun _ => P) a a' b.
 
 Section FiniteSetHelpers.
   Context (FiniteSetImpl : FullySharpened FiniteSetSpec).
@@ -500,39 +326,6 @@ Section FiniteSetHelpers.
 
   Local Hint Immediate EnsembleOfList_In AbsR_EnsembleOfList_FiniteSetOfList.
 
-  Lemma comp_split_snd {A B} (x : A * B)
-  : refineEquiv (ret (snd x))
-                (ab <- ret x;
-                 ret (snd ab)).
-  Proof.
-    autorewrite with refine_monad; reflexivity.
-  Qed.
-
-  Lemma refine_skip {A B C} (c : Comp A) (f : A -> Comp B) (dummy : A -> Comp C)
-  : refine (Bind c f)
-           (a <- c;
-            dummy a;;
-                  f a).
-  Proof.
-    repeat first [ intro
-                 | inversion_by computes_to_inv
-                 | econstructor; eassumption
-                 | econstructor; try eassumption; [] ].
-  Qed.
-
-  Lemma refine_skip2 {A B} (a : Comp A) (dummy : Comp B)
-  : refine a
-           (dummy;;
-            a).
-  Proof.
-    repeat first [ intro
-                 | inversion_by computes_to_inv
-                 | assumption
-                 | econstructor; eassumption
-                 | econstructor; try eassumption; [] ].
-  Qed.
-
-
   Ltac handle_calls :=
     repeat match goal with
              | [ |- context[ret ((CallMethod (projT1 ?impl) ?idx) ?rep ?arg)] ]
@@ -654,48 +447,6 @@ Section FiniteSetHelpers.
     reflexivity.
   Qed.
 
-  (*Lemma reverse_ensemble_list_equivalence (S : Ensemble W)
-  : refineEquiv (ls <- {ls : list W | EnsembleListEquivalence S ls};
-                 ret (elements ls))
-                (ls <- {ls : list W | EnsembleListEquivalence S ls};
-                 { S' : _ | Same_set _ S' S }).
-  Proof.
-    split; repeat intro;
-    inversion_by computes_to_inv;
-    subst.
-    repeat constructor;
-    let x := match goal with H : EnsembleListEquivalence _ ?x |- _ => constr:x end in
-    apply BindComputes with (comp_a_value := x);
-      destruct_head_hnf and;
-      split_iff;
-      repeat constructor;
-      hnf;
-      auto.
-  Qed.
-
-  Lemma reverse_ensemble_list_equivalence' {B} (S : Ensemble W) (f : _ -> Comp B)
-  : refineEquiv (ls <- {ls : list W | EnsembleListEquivalence S ls};
-                 Bind {S0 : Ensemble W | forall x : W, Ensembles.In W S0 x <-> In x ls} f)
-                (ls <- {ls : list W | EnsembleListEquivalence S ls};
-                 Bind { S' : _ | Same_set _ S' S } f).
-  Proof.
-    etransitivity; [ symmetry; apply refineEquiv_bind_bind | ].
-    rewrite reverse_ensemble_list_equivalence.
-    apply refineEquiv_bind_bind.
-  Qed.
-
-  Lemma reverse_ensemble_list_equivalence'' {B} (S : Ensemble W) (f : _ -> Comp B)
-  : refine (ls <- {ls : list W | EnsembleListEquivalence S ls};
-            Bind {S0 : Ensemble W | forall x : W, Ensembles.In W S0 x <-> In x ls} f)
-           ({ls : list W | EnsembleListEquivalence S ls};;
-            Bind { S' : _ | Same_set _ S' S } f).
-  Proof.
-    rewrite reverse_ensemble_list_equivalence'.
-    reflexivity.
-  Qed.*)
-
-
-
   Lemma finite_set_handle_cardinal (S : Ensemble W)
   : refine { n : nat | AdditionalEnsembleDefinitions.cardinal _ S n }
            (ls <- { ls : _ | EnsembleListEquivalence S ls };
@@ -713,94 +464,6 @@ Section FiniteSetHelpers.
     eapply cardinal_Same_set; eassumption.
   Qed.
 
-  (*Lemma FiniteSetAndListOfList_spec1 ls S
-  : AbsR (projT2 FiniteSetImpl)
-         S
-         (fst (FiniteSetAndListOfList ls))
-    <-> EnsembleListEquivalence S (snd (FiniteSetAndListOfList ls)).
-  Proof.
-    revert S.
-    induction ls.
-    { simpl.
-      let lem := match goal with
-                   | [ |- context[CallConstructor (projT1 ?impl) ?idx ?arg] ]
-                     => constr:(ADTRefinementPreservesConstructors (projT2 impl) {| bindex := idx |} arg)
-                   | [ IHls : AbsR _ _ _ |- context[CallMethod (projT1 ?impl) ?idx ?rep ?arg] ]
-                     => constr:(ADTRefinementPreservesMethods (projT2 impl) {| bindex := idx |} _ rep arg IHls)
-                 end in
-      let lem' := constr:(lem  _ (ReturnComputes _)) in
-      pose proof lem';
-        inversion_by computes_to_inv;
-        subst.
-      intros; split.
-      { repeat (intro || split || constructor || simpl in * || auto).
-        match goal with
-          | [ x : W, H1 : AbsR _ _ _, H2 : AbsR _ _ _ |- _ ]
-            => let lem := constr:(ADTRefinementPreservesMethods
-                                    (projT2 FiniteSetImpl)
-                                    {| bindex := sIn |}) in
-               pose proof (lem _ _ x H1 _ (ReturnComputes _));
-                 pose proof (lem _ _ x H2 _ (ReturnComputes _))
-        end.
-        simpl in *.
-        inversion_by computes_to_inv.
-        repeat match goal with
-                 | _ => progress simpl in *
-                 | _ => progress subst
-                 | _ => progress split_iff
-                 | [ H : ?T -> ?U, H' : ?T |- _ ] => specialize (H H')
-                 | [ H : ?x = ?x -> _ |- _ ] => specialize (H eq_refl)
-                 | [ H : (_, _) = (_, _) |- _ ] => inversion H; clear H
-                 | [ H : (_, _) = ?x |- _ ] => destruct x
-                 | _ => progress destruct_head_hnf Empty_set
-               end. }
-      { repeat first [ intro
-                     | split
-                     | constructor
-                     | progress simpl in *
-                     | progress split_iff
-                     | progress destruct_head_hnf and ].
-        (** TODO: eliminate extensionality_ensembles here? *)
-        rewrite (Extensionality_Ensembles _ S (Empty_set _)); trivial.
-        split; hnf; intros; unfold Ensembles.In in *;
-        destruct_head_hnf Empty_set;
-        solve [ exfalso; eauto ]. } }
-    { simpl.
-      match goal with
-        | [ |- context[if ?E then _ else _] ] => case_eq E; intro
-      end; auto.
-      let lem := match goal with
-                   | [ H : appcontext[CallMethod (projT1 ?impl) ?idx ?rep ?arg] |- _ ]
-                     => constr:(fun rep' => ADTRefinementPreservesMethods (projT2 impl) {| bindex := idx |} rep' rep arg)
-                 end in
-      pose proof (fun rep' H => lem rep' H _ (ReturnComputes _));
-        simpl in *.
-      intro S.
-      specialize (H0 (Subtract _ S a)).
-      split.
-      { intro H'.
-
-      unfold refine in H0.
-      simpl in H0.
-      let lem' := constr:(lem  _ (ReturnComputes _)) in
-      pose proof lem';
-        inversion_by computes_to_inv;
-
-
-      edestruct cMethods.
-        exfalso; eauto.
-        unfold Same_set in *.
-        unfold Included in *.
-        unfold iff in *.
- || auto).
-
-
-        hnf in H2, H3.
-        simpl in *.
-
-
-        assert (Ensembles.In _ (Empty_set _) x).
-        *)
   Lemma AbsR_EnsembleOfList_FiniteSetOfListOfFiniteSetAndListOfList ls
   : AbsR (projT2 FiniteSetImpl)
          (EnsembleOfList ls)
@@ -843,15 +506,6 @@ Section FiniteSetHelpers.
           inversion_by computes_to_inv;
           t. } }
   Qed.
-
-(*  Definition FiniteSetOfFiniteSetAndListOfList ls
-  : AbsR (projT2 FiniteSetImpl) (EnsembleOfList ls) (FiniteSetOfList (snd (FiniteSetAndListOfList ls))).
-  Proof.
-
-
-
-                (ret ).
-  Proof.*)
 
   Lemma refine_EnsembleListEquivalenceAdd_iff {T} ls a
   : refine (S <- {S : Ensemble T
@@ -1218,44 +872,19 @@ Section FiniteSetHelpers.
       intuition. }
   Qed.
 
-  Lemma bool_true_iff_bneq (b0 b1 b2 b3 : bool)
-  : (b0 = b1 <-> b2 <> b3) <-> (b0 = (if b1
-                                      then if b3
-                                           then negb b2
-                                           else b2
-                                      else if b3
-                                           then b2
-                                           else negb b2)).
+  Lemma bool_true_iff_beq_pick (b1 b2 b3 : bool)
+  : refineEquiv { b0 : bool | b0 = b1 <-> b2 = b3 }
+                (ret (if b1
+                      then if b3
+                           then b2
+                           else negb b2
+                      else if b3
+                           then negb b2
+                           else b2)).
   Proof.
-    destruct_head_hnf bool; simpl;
-    repeat (split || intro || destruct_head iff || congruence);
-    repeat match goal with
-             | [ H : ?x = ?x -> _ |- _ ] => specialize (H eq_refl)
-             | [ H : ?x <> ?x |- _ ] => specialize (H eq_refl)
-             | [ H : False |- _ ] => destruct H
-             | [ H : ?x <> ?y -> ?T |- _ ] => assert T by (apply H; let H' := fresh in intro H'; inversion H'); clear H
-             | [ H : ?x = ?y |- _ ] => solve [ inversion H ]
-           end.
-  Qed.
-
-  Lemma bool_true_iff_beq (b0 b1 b2 b3 : bool)
-  : (b0 = b1 <-> b2 = b3) <-> (b0 = (if b1
-                                      then if b3
-                                           then b2
-                                           else negb b2
-                                      else if b3
-                                           then negb b2
-                                           else b2)).
-  Proof.
-    destruct_head_hnf bool; simpl;
-    repeat (split || intro || destruct_head iff || congruence);
-    repeat match goal with
-             | [ H : ?x = ?x -> _ |- _ ] => specialize (H eq_refl)
-             | [ H : ?x <> ?x |- _ ] => specialize (H eq_refl)
-             | [ H : False |- _ ] => destruct H
-             | [ H : ?x <> ?y -> ?T |- _ ] => assert T by (apply H; let H' := fresh in intro H'; inversion H'); clear H
-             | [ H : ?x = ?y |- _ ] => solve [ inversion H ]
-           end.
+    setoid_rewrite bool_true_iff_beq.
+    rewrite refineEquiv_pick_eq.
+    reflexivity.
   Qed.
 
   Lemma bool_true_iff_bneq_pick (b1 b2 b3 : bool)
@@ -1273,15 +902,19 @@ Section FiniteSetHelpers.
     reflexivity.
   Qed.
 
-  Lemma Same_set__Intersection_Complement__Setminus {A} (S0 S1 : Ensemble A)
-  : Same_set _ (Intersection _ S0 (Complement _ S1)) (Setminus _ S0 S1).
+  Lemma bool_true_iff_bnneq_pick (b1 b2 b3 : bool)
+  : refineEquiv { b0 : bool | b0 = b1 <-> ~b2 <> b3 }
+                (ret (if b1
+                      then if b3
+                           then b2
+                           else negb b2
+                      else if b3
+                           then negb b2
+                           else b2)).
   Proof.
-    repeat match goal with
-             | _ => intro
-             | _ => split
-             | _ => progress destruct_head_hnf Intersection
-             | [ H : _ |- _ ] => apply H; solve [ eauto ]
-           end.
+    setoid_rewrite bool_true_iff_bnneq.
+    rewrite refineEquiv_pick_eq.
+    reflexivity.
   Qed.
 
   Global Add Parametric Morphism {A} : (@EnsembleListEquivalence A)
@@ -1341,13 +974,6 @@ Section FiniteSetHelpers.
     with signature Same_set _ ==> refineEquiv
       as refineEquiv_to_list_Included_mor.
   Proof. to_list_mor_t. Qed.
-
-  Lemma Intersection_Empty A S0
-  : Same_set A (Intersection A (fun _ : A => False) S0) (fun _ => False).
-  Proof.
-    lazy; split; repeat intro; destruct_head Intersection;
-    destruct_head_hnf False.
-  Qed.
 
   Lemma In_check_impl (S0 : Ensemble W) {T} (f : (W -> Prop) -> Comp T)
         `{fR : Proper _ (respectful (pointwise_relation _ iff) refine) f}
@@ -1710,7 +1336,11 @@ Ltac start_FullySharpenedComputation :=
   end.
 
 Ltac finish_FullySharpenedComputation :=
-  reflexivity.
+  (lazymatch goal with
+  | [ |- refine (ret _) (ret _) ] => reflexivity
+  | [ |- refine ?x (ret _) ] => fail 1 "Not a fully sharpened computation:" x "A fully sharpened computation consists of a single [ret] applied to some term."
+  | [ |- ?G ] => fail 1 "Cannot finish sharpening before it has begun." "Goal" G "is not of the form [refine _ (ret _)]"
+   end).
 
 Notation Sharpening x := (refine x (ret _)).
 
@@ -1734,6 +1364,10 @@ Ltac finite_set_sharpen_step FiniteSetImpl :=
           setoid_rewrite refineEquivUnion; [ | apply Same_set_ELE ]
         | match goal with |- appcontext[@Ensembles.Complement] => idtac end;
           setoid_rewrite Same_set__Intersection_Complement__Setminus
+        | match goal with |- appcontext[@Ensembles.Intersection] => idtac end;
+          first [ setoid_rewrite Same_set__Intersection_beq__Setminus
+                | setoid_rewrite Same_set__Intersection_bneq__Setminus
+                | setoid_rewrite Same_set__Intersection_bnneq__Setminus ]
         (*| match goal with |- appcontext[@Ensembles.Setminus] => idtac end;
           setoid_rewrite Same_set_Setminus_fold*)
         | rewrite filter_fold_right
@@ -1752,7 +1386,9 @@ Ltac finite_set_sharpen_step FiniteSetImpl :=
           setoid_rewrite (@EnsembleListEquivalence_Intersection_elements1_fold FiniteSetImpl)
         | idtac;
           match goal with |- appcontext[@eq bool] => idtac end;
-          setoid_rewrite bool_true_iff_bneq_pick
+          first [ setoid_rewrite bool_true_iff_beq_pick
+                | setoid_rewrite bool_true_iff_bneq_pick
+                | setoid_rewrite bool_true_iff_bnneq_pick ]
         | setoid_rewrite Ensemble_fold_right_simpl
         | setoid_rewrite Ensemble_fold_right_simpl'
         | rewrite (@finite_set_handle_EnsembleListEquivalence FiniteSetImpl)
