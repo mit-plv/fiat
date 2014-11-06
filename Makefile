@@ -99,7 +99,6 @@ SRC_MODULES    := \
 	QueryStructure/Refinements/BagADT/BagADT\
 	QueryStructure/Refinements/BagADT/Refinements\
 	QueryStructure/Refinements/BagADT/BagImplementation\
-	QueryStructure/Refinements/BagADT/DelegateImplementation\
 	Common/String_as_OT\
 	QueryStructure/Refinements/Bags/Bags\
 	QueryStructure/Refinements/AutoDB\
@@ -109,6 +108,8 @@ SRC_MODULES    := \
 	Parsers/ContextFreeGrammar\
 	Parsers/Specification\
 	Parsers/NonComputational
+
+#	QueryStructure/Refinements/BagADT/DelegateImplementation\
 
 EXAMPLE_MODULES := \
 	Bookstore \
