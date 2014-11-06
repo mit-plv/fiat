@@ -359,18 +359,18 @@ Qed.
 
 (* Pre and post-conditions *)
 
-Definition Subset
+Definition Superset
            {elt wrapped_elt}
            (state bindings: StringMap.t wrapped_elt)
            (wrapper: elt -> wrapped_elt) :=
   forall k v, StringMap.MapsTo k (wrapper v) bindings -> StringMap.MapsTo k (wrapper v) state.
 
 Definition SomeSCAs {av} (state : State av) bindings :=
-  Subset state bindings (Facade.SCA av).
+  Superset state bindings (Facade.SCA av).
 
 Definition AllADTs {av} (state: State av) bindings  :=
-  Subset state bindings (@Facade.ADT av) /\
-  Subset bindings state (@Facade.ADT av).
+  Superset state bindings (@Facade.ADT av) /\
+  Superset bindings state (@Facade.ADT av).
   
 Definition ProgOk {av env} prog initial_knowledge initial_scas final_scas initial_adts final_adts :=
   forall initial_state,
@@ -486,12 +486,12 @@ Qed.
 
 (* Pre/post conditions lemmas *)
 
-Lemma Subset_mapsto :
+Lemma Superset_mapsto :
   forall {elt welt} {k v state map} wrapper,
-    @Subset elt welt state ([k >> wrapper v]::map) wrapper ->
+    @Superset elt welt state ([k >> wrapper v]::map) wrapper ->
     state[k >> wrapper v].
 Proof.
-  unfold Subset; intros * add.
+  unfold Superset; intros * add.
   apply add; map_iff_solve intuition.
 Qed.
 
@@ -500,7 +500,7 @@ Lemma SomeSCAs_mapsto :
     SomeSCAs state ([k >sca> v]::map) ->
     state[k >> SCA _ v].
 Proof.
-  intros *; apply Subset_mapsto.
+  intros *; apply Superset_mapsto.
 Qed.
 
 Lemma AllADTs_mapsto :
@@ -508,15 +508,15 @@ Lemma AllADTs_mapsto :
     AllADTs state ([k >adt> v]::map) ->
     state[k >> Facade.ADT v].
 Proof.
-  unfold AllADTs; intros * (? & ?); eapply Subset_mapsto; eauto.
+  unfold AllADTs; intros * (? & ?); eapply Superset_mapsto; eauto.
 Qed.
 
-Lemma Subset_remove :
+Lemma Superset_remove :
   forall {elt welt} {k v state map} wrapper,
-    @Subset elt welt state ([k >> wrapper v]::map) wrapper ->
-    @Subset elt welt state (StringMap.remove k map) wrapper.
+    @Superset elt welt state ([k >> wrapper v]::map) wrapper ->
+    @Superset elt welt state (StringMap.remove k map) wrapper.
 Proof.
-  unfold Subset; intros.
+  unfold Superset; intros.
   apply H. rewrite StringMapFacts.remove_mapsto_iff in *.
   destruct_pairs; map_iff_solve assumption.
 Qed.
@@ -526,24 +526,24 @@ Lemma SomeSCAs_remove :
     SomeSCAs state ([k >sca> v]::map) ->
     SomeSCAs state (StringMap.remove k map).
 Proof.
-  intros *; apply Subset_remove.
+  intros *; apply Superset_remove.
 Qed.
 
 Lemma AllADTs_remove :
   forall {av} {state: State av} {k v map},
     AllADTs state ([k >adt> v]::map) ->
-    Subset state (StringMap.remove k map) (@Facade.ADT _).
+    Superset state (StringMap.remove k map) (@Facade.ADT _).
 Proof.
-  unfold AllADTs; intros * (? & ?); eapply Subset_remove; eauto.
+  unfold AllADTs; intros * (? & ?); eapply Superset_remove; eauto.
 Qed.
 
-Lemma Subset_swap_remove :
+Lemma Superset_swap_remove :
   forall {elt welt} {k1 k2 v state map} wrapper,
     k1 <> k2 ->
-    @Subset elt welt state (StringMap.remove k1 ([k2 >> wrapper v]::map)) wrapper ->
-    @Subset elt welt state ([k2 >> wrapper v]::(StringMap.remove k1 map)) wrapper.
+    @Superset elt welt state (StringMap.remove k1 ([k2 >> wrapper v]::map)) wrapper ->
+    @Superset elt welt state ([k2 >> wrapper v]::(StringMap.remove k1 map)) wrapper.
 Proof.
-  unfold Subset; intros.
+  unfold Superset; intros.
   apply H0. map_iff_solve idtac.
   
   destruct (StringMap.E.eq_dec k k1); subst.
@@ -563,16 +563,16 @@ Lemma SomeSCAs_swap_remove :
     SomeSCAs state (StringMap.remove k1 ([k2 >sca> v]::map)) ->
     SomeSCAs state ([k2 >sca> v]::(StringMap.remove k1 map)).
 Proof.
-  intros *; apply Subset_swap_remove.
+  intros *; apply Superset_swap_remove.
 Qed.
 
 Lemma AllADTs_swap_remove :
   forall {av} {state: State av} {k1 k2 v map},
     k1 <> k2 ->
     AllADTs state (StringMap.remove k1 ([k2 >adt> v]::map)) ->
-    Subset state ([k2 >> Facade.ADT v]::(StringMap.remove k1 map)) (@Facade.ADT _).
+    Superset state ([k2 >> Facade.ADT v]::(StringMap.remove k1 map)) (@Facade.ADT _).
 Proof.
-  unfold AllADTs; intros * ? (? & ?); eapply Subset_swap_remove; eauto.
+  unfold AllADTs; intros * ? (? & ?); eapply Superset_swap_remove; eauto.
 Qed.
 
 Lemma AllADTs_not_in :
@@ -595,18 +595,18 @@ Proof.
   rewrite StringMapFacts.not_find_in_iff; right; assumption.
 Qed.
 
-Lemma Subset_empty :
+Lemma Superset_empty :
   forall {elt welt} state wrapper,
-    @Subset elt welt state ∅ wrapper.
+    @Superset elt welt state ∅ wrapper.
 Proof.
-  unfold Subset; intros; rewrite StringMapFacts.empty_mapsto_iff in *; exfalso; assumption.
+  unfold Superset; intros; rewrite StringMapFacts.empty_mapsto_iff in *; exfalso; assumption.
 Qed.
   
 Lemma SomeSCAs_empty :
   forall {av} state,
     @SomeSCAs av state ∅ .
 Proof.
-  intros; apply Subset_empty.
+  intros; apply Superset_empty.
 Qed.
 
 Lemma not_in_adts_not_mapsto_adt :
@@ -637,10 +637,10 @@ Ltac rewrite_Eq_in_all :=
          end.
 
 Add Parametric Morphism elt welt :
-  (@Subset elt welt)
+  (@Superset elt welt)
     with signature (StringMap.Equal ==> StringMap.Equal ==> pointwise_relation _ (@eq _) ==> iff)
-      as Subset_morphism.
-  unfold Subset; intros; rewrite_Eq_in_all; reflexivity.
+      as Superset_morphism.
+  unfold Superset; intros; rewrite_Eq_in_all; reflexivity.
 Qed. 
   
 Add Parametric Morphism {av} :
@@ -648,7 +648,7 @@ Add Parametric Morphism {av} :
     with signature (StringMap.Equal ==> StringMap.Equal ==> iff)
       as SomeSCAs_morphism.
 Proof.
-  unfold SomeSCAs; intros; apply Subset_morphism; intuition.
+  unfold SomeSCAs; intros; apply Superset_morphism; intuition.
 Qed.
 
 Add Parametric Morphism {av} :
@@ -661,9 +661,9 @@ Proof.
   rewrite !eq1, !eq2 in *; assumption.
 Qed.
 
-Lemma Subset_reflexive :
+Lemma Superset_reflexive :
   forall {elt welt} st wrapper,
-    @Subset elt welt st st wrapper.
+    @Superset elt welt st st wrapper.
 Proof.
   firstorder.
 Qed.
@@ -675,11 +675,11 @@ Proof.
   firstorder.
 Qed.
 
-Lemma Subset_transitive :
+Lemma Superset_transitive :
   forall {elt welt} s1 s2 s3 wrapper,
-    @Subset elt welt s1 s2 wrapper ->
-    @Subset elt welt s2 s3 wrapper ->
-    @Subset elt welt s1 s3 wrapper.
+    @Superset elt welt s1 s2 wrapper ->
+    @Superset elt welt s2 s3 wrapper ->
+    @Superset elt welt s1 s3 wrapper.
 Proof.
   firstorder.
 Qed.
@@ -693,12 +693,12 @@ Proof.
   firstorder.
 Qed.
 
-Lemma Subset_chomp :
+Lemma Superset_chomp :
   forall {elt welt} {k v state map} wrapper,
-    @Subset elt welt state map wrapper ->
-    @Subset elt welt ([k >> wrapper v]::state) ([k >> wrapper v]::map) wrapper.
+    @Superset elt welt state map wrapper ->
+    @Superset elt welt ([k >> wrapper v]::state) ([k >> wrapper v]::map) wrapper.
 Proof.
-  unfold Subset; intros * h ** k' v' maps_to.
+  unfold Superset; intros * h ** k' v' maps_to.
   destruct (StringMap.E.eq_dec k k');
     subst; rewrite StringMapFacts.add_mapsto_iff in *;
     intuition.
@@ -709,7 +709,7 @@ Lemma SomeSCAs_chomp :
     SomeSCAs state scas ->
     SomeSCAs ([k >sca> v]::state) ([k >sca> v]::scas).
 Proof.
-  intros *; apply Subset_chomp.
+  intros *; apply Superset_chomp.
 Qed.
 
 Lemma AllADTs_chomp :
@@ -717,15 +717,15 @@ Lemma AllADTs_chomp :
     AllADTs state adts ->
     AllADTs ([k >adt> v]::state) ([k >adt> v]::adts).
 Proof.
-  unfold AllADTs; split; apply Subset_chomp; tauto.
+  unfold AllADTs; split; apply Superset_chomp; tauto.
 Qed.
 
-Lemma Subset_chomp_remove :
+Lemma Superset_chomp_remove :
   forall {elt welt} {k v state map} wrapper,
-    @Subset elt welt (StringMap.remove k state) (StringMap.remove k map) wrapper ->
-    @Subset elt welt ([k >> wrapper v]::state) ([k >> wrapper v]::map) wrapper.
+    @Superset elt welt (StringMap.remove k state) (StringMap.remove k map) wrapper ->
+    @Superset elt welt ([k >> wrapper v]::state) ([k >> wrapper v]::map) wrapper.
 Proof.
-  unfold Subset; intros * h ** k' v' maps_to.
+  unfold Superset; intros * h ** k' v' maps_to.
   destruct (StringMap.E.eq_dec k k');
     subst; rewrite StringMapFacts.add_mapsto_iff in *;
     setoid_rewrite StringMapFacts.remove_mapsto_iff in h;
@@ -737,7 +737,7 @@ Lemma SomeSCAs_chomp_remove :
     SomeSCAs (StringMap.remove k state) (StringMap.remove k scas) ->
     SomeSCAs ([k >sca> v]::state) ([k >sca> v]::scas).
 Proof.
-  intros *; apply Subset_chomp_remove.
+  intros *; apply Superset_chomp_remove.
 Qed.
 
 Lemma AllADTs_chomp_remove :
@@ -745,7 +745,7 @@ Lemma AllADTs_chomp_remove :
     AllADTs (StringMap.remove k state) (StringMap.remove k adts) ->
     AllADTs ([k >adt> v]::state) ([k >adt> v]::adts).
 Proof.
-  unfold AllADTs; split; apply Subset_chomp_remove; tauto.
+  unfold AllADTs; split; apply Superset_chomp_remove; tauto.
 Qed.
 
 Lemma AllADTs_equiv :
@@ -792,13 +792,13 @@ Proof.
   intuition; discriminate.
 Qed.
 
-Lemma Subset_swap_left :
+Lemma Superset_swap_left :
   forall {elt welt} {k1 k2 v1 v2 state map} wrapper,
     k1 <> k2 ->
-    @Subset elt welt ([k1 >> v1]::[k2 >> v2]::state) map wrapper ->
-    @Subset elt welt ([k2 >> v2]::[k1 >> v1]::state) map wrapper.
+    @Superset elt welt ([k1 >> v1]::[k2 >> v2]::state) map wrapper ->
+    @Superset elt welt ([k2 >> v2]::[k1 >> v1]::state) map wrapper.
 Proof.
-  unfold Subset; intros ** k v mp.
+  unfold Superset; intros ** k v mp.
   destruct (StringMap.E.eq_dec k k1), (StringMap.E.eq_dec k k2);
     subst; map_iff_solve idtac; try discriminates;
     specialize (H0 _ _ mp);
@@ -823,13 +823,13 @@ Proof.
     intuition.
 Qed.
 
-Lemma Subset_swap_right :
+Lemma Superset_swap_right :
   forall {elt welt} {k1 k2 v1 v2 state map} wrapper,
     k1 <> k2 ->
-    @Subset elt welt map ([k1 >> v1]::[k2 >> v2]::state) wrapper ->
-    @Subset elt welt map ([k2 >> v2]::[k1 >> v1]::state) wrapper.
+    @Superset elt welt map ([k1 >> v1]::[k2 >> v2]::state) wrapper ->
+    @Superset elt welt map ([k2 >> v2]::[k1 >> v1]::state) wrapper.
 Proof.
-  unfold Subset; intros ** k v mp.
+  unfold Superset; intros ** k v mp.
   destruct (StringMap.E.eq_dec k k1), (StringMap.E.eq_dec k k2);
     subst; map_iff_solve idtac; try discriminates;
     rewrite MapsTo_swap in mp by auto; specialize (H0 _ _ mp);
@@ -844,8 +844,8 @@ Lemma AllADTs_swap :
     @AllADTs av ([k2 >> v2]::[k1 >> v1]::state) map.
 Proof.
   unfold AllADTs; intros; split; destruct_pairs.
-  apply Subset_swap_left; trivial.
-  apply Subset_swap_right; trivial.
+  apply Superset_swap_left; trivial.
+  apply Superset_swap_right; trivial.
 Qed.
 
 Lemma mapM_MapsTo_1 :
@@ -857,13 +857,13 @@ Proof.
   subst_find; reflexivity.
 Qed.
 
-Lemma Subset_mapsto' :
+Lemma Superset_mapsto' :
   forall {elt welt} k v st map wrapper,
-    @Subset elt welt st map wrapper ->
+    @Superset elt welt st map wrapper ->
     map[k >> wrapper v] ->
     st[k >> wrapper v].
 Proof.
-  unfold Subset; intros * h ** maps_to.
+  unfold Superset; intros * h ** maps_to.
   apply (h _ _ maps_to).
 Qed.
 
@@ -873,7 +873,7 @@ Lemma AllADTs_mapsto' :
     adts[k >> Facade.ADT v] ->
     st[k >> Facade.ADT v].
 Proof.
-  intros * (h & _) **. eauto using Subset_mapsto'. 
+  intros * (h & _) **. eauto using Superset_mapsto'. 
 Qed.
 
 Lemma SomeSCAs_mapsto' :
@@ -882,16 +882,16 @@ Lemma SomeSCAs_mapsto' :
     scas[k >> Facade.SCA _ v] ->
     st[k >> Facade.SCA _ v].
 Proof.
-  eauto using Subset_mapsto'.
+  eauto using Superset_mapsto'.
 Qed.
 
-Lemma Subset_add_in_left :
+Lemma Superset_add_in_left :
   forall {elt welt} st bindings k v wrapper,
     bindings[k >> wrapper v] ->
-    @Subset elt welt st bindings wrapper ->
-    Subset ([k >> wrapper v]::st) bindings wrapper.
+    @Superset elt welt st bindings wrapper ->
+    Superset ([k >> wrapper v]::st) bindings wrapper.
 Proof.
-  unfold Subset; intros ** k' v' ? .
+  unfold Superset; intros ** k' v' ? .
   destruct (StringMap.E.eq_dec k k'); subst;
   try match goal with (* TODO fix mapsto_unique *) 
         | H:(?st) [?k >> ?v], H':(?st) [?k >> ?v'] |- _ =>
@@ -901,13 +901,13 @@ Proof.
       end; map_iff_solve intuition.
 Qed.
 
-Lemma Subset_add_in_right :
+Lemma Superset_add_in_right :
   forall {elt welt} st bindings k v wrapper,
     st[k >> wrapper v] ->
-    @Subset elt welt st bindings wrapper ->
-    Subset st ([k >> wrapper v]::bindings) wrapper.
+    @Superset elt welt st bindings wrapper ->
+    Superset st ([k >> wrapper v]::bindings) wrapper.
 Proof.
-  unfold Subset; intros ** k' v' ? .
+  unfold Superset; intros ** k' v' ? .
   destruct (StringMap.E.eq_dec k k'); subst;
   try match goal with (* TODO fix mapsto_unique *) 
         | H:(?st) [?k >> ?v], H':(?st) [?k >> ?v'] |- _ =>
@@ -929,7 +929,7 @@ Lemma AllADTs_add_in :
     AllADTs ([k >> Facade.ADT v]::st) bindings.
 Proof.
   unfold AllADTs; split; intros;
-  destruct_pairs; eauto using Subset_add_in_left, Subset_add_in_right.
+  destruct_pairs; eauto using Superset_add_in_left, Superset_add_in_right.
 Qed.
 
 (* Specialized tactics *)
@@ -983,7 +983,7 @@ Ltac safe_seq :=
   constructor;
   split; [ specialize_states; assumption | ].
 
-Ltac subsets_mapsto H mapsto remove swap_remove :=
+Ltac supersets_mapsto H mapsto remove swap_remove :=
   progress (let maps_to := fresh "maps_to" in
             let superset := fresh "superset" in
             pose proof mapsto as maps_to;
@@ -994,17 +994,17 @@ Ltac subsets_mapsto H mapsto remove swap_remove :=
 Ltac scas_adts_mapsto :=
   repeat match goal with
            | [ H: SomeSCAs ?state ([?k >sca> ?v]::?map) |- _ ] =>
-             subsets_mapsto H (SomeSCAs_mapsto H) (SomeSCAs_remove H) @SomeSCAs_swap_remove
+             supersets_mapsto H (SomeSCAs_mapsto H) (SomeSCAs_remove H) @SomeSCAs_swap_remove
            | [ H: AllADTs ?state ([?k >adt> ?v]::?map) |- _ ] =>
-             subsets_mapsto H (AllADTs_mapsto H) (AllADTs_remove H) @Subset_swap_remove
-           | [ H: Subset ?state ([?k >> ?wrapper ?v]::?map) ?wrapper |- _ ] =>
-             subsets_mapsto H (Subset_mapsto _ H) (Subset_remove _ H) @Subset_swap_remove
+             supersets_mapsto H (AllADTs_mapsto H) (AllADTs_remove H) @Superset_swap_remove
+           | [ H: Superset ?state ([?k >> ?wrapper ?v]::?map) ?wrapper |- _ ] =>
+             supersets_mapsto H (Superset_mapsto _ H) (Superset_remove _ H) @Superset_swap_remove
            | [ H: ?adts[?k >> ?v], H': AllADTs ?state ?adts |- _ ] =>
              progress (pose proof (AllADTs_mapsto' _ _ _ _ H' H); clear_dups)
            | [ H: ?scas[?k >> ?v], H': SomeSCAs ?state ?adts |- _ ] =>
              progress (pose proof (SomeSCAs_mapsto' _ _ _ _ H' H); clear_dups)
            | [ H: ?scas[?k >> ?v], H': SomeSCAs ?state ?adts |- _ ] =>
-             progress (pose proof (Subset_mapsto' _ _ _ _ H' H); clear_dups)
+             progress (pose proof (Superset_mapsto' _ _ _ _ H' H); clear_dups)
          end.
 
 Ltac rewrite_Eq_in_goal :=
@@ -1399,7 +1399,7 @@ Ltac vacuum := (* TODO: How can I force failures of discriminate  *)
     | [ |- ~ StringMap.In ?k ?s ] =>
       first [ is_evar s | solve [map_iff_solve ltac:(intuition discriminate)] ]
     | [ |- AllADTs ?m ?s ] =>
-      solve [unfold AllADTs, Subset; intros; map_iff_solve intuition]
+      solve [unfold AllADTs, Superset; intros; map_iff_solve intuition]
     | [ |- refine _ _ ] =>
       try simplify with monad laws
   end.
@@ -1760,24 +1760,24 @@ Ltac mapsto_eq_add :=
         apply mapsto_eq_add in H'
   end.
   
-Lemma Subset_replace_right :
+Lemma Superset_replace_right :
   forall {elt welt} k v v' state map wrapper,
-    @Subset elt welt state ([k >> v]::map) wrapper ->
-    @Subset elt welt ([k >> v']::state) ([k >> v']::map) wrapper.
+    @Superset elt welt state ([k >> v]::map) wrapper ->
+    @Superset elt welt ([k >> v']::state) ([k >> v']::map) wrapper.
 Proof.
-  unfold Subset; intros ** k'' v'' maps_to.
+  unfold Superset; intros ** k'' v'' maps_to.
   destruct (StringMap.E.eq_dec k k''); subst;
   rewrite StringMapFacts.add_mapsto_iff in *;
   map_iff_solve idtac; [ | apply H ];
   map_iff_solve intuition.
 Qed.
 
-Lemma Subset_replace_left :
+Lemma Superset_replace_left :
   forall {elt welt} k v v' state map wrapper,
-    @Subset elt welt ([k >> v]::state) map wrapper ->
-    @Subset elt welt ([k >> v']::state) ([k >> v']::map) wrapper.
+    @Superset elt welt ([k >> v]::state) map wrapper ->
+    @Superset elt welt ([k >> v']::state) ([k >> v']::map) wrapper.
 Proof.
-  unfold Subset; intros ** k'' v'' maps_to.
+  unfold Superset; intros ** k'' v'' maps_to.
   destruct (StringMap.E.eq_dec k k''); subst;
   rewrite StringMapFacts.add_mapsto_iff in *;
   map_iff_solve idtac; intuition.
@@ -1792,8 +1792,8 @@ Lemma AllADTs_replace :
     @AllADTs av ([k >> v']::state) ([k >> v']::map).
 Proof.
   unfold AllADTs; split; intros;
-  [ eapply Subset_replace_right
-  | eapply Subset_replace_left ];
+  [ eapply Superset_replace_right
+  | eapply Superset_replace_left ];
   intuition eassumption.
 Qed.
 
@@ -1802,7 +1802,7 @@ Add Parametric Morphism {av k v} :
     with signature (@AllADTs av ==> @AllADTs av)
       as StringMap_add_AllADTs.
 Proof.
-  unfold AllADTs, Subset; intros; split; intros;
+  unfold AllADTs, Superset; intros; split; intros;
   generalize H0; StringMapFacts.map_iff; intuition.
 Qed.
 
@@ -1861,7 +1861,7 @@ Ltac loop_body_prereqs :=
       try map_iff_solve ltac:(intuition eassumption)
   end;
   rewrite_Eq_in_goal;
-  [ apply Subset_swap_left; auto;
+  [ apply Superset_swap_left; auto;
     apply add_sca_pop_adts; map_iff_solve idtac; auto;
     repeat apply SomeSCAs_chomp;
     eassumption
@@ -2700,7 +2700,7 @@ Lemma SomeSCAs_mapsto_inv:
     SomeSCAs state scas ->
     SomeSCAs state ([k >sca> v]::scas).
 Proof.
-  unfold SomeSCAs, Subset; intros * ? * some_scas ** k' v' maps_to.
+  unfold SomeSCAs, Superset; intros * ? * some_scas ** k' v' maps_to.
   destruct (StringMap.E.eq_dec k k'); rewrite StringMapFacts.add_mapsto_iff in *;
   subst; intuition; autoinj.
 Qed.
@@ -3198,7 +3198,7 @@ Add Parametric Morphism {av k} :
     with signature (@AllADTs av ==> @AllADTs av)
       as StringMap_remove_AllADTs.
 Proof.
-  unfold AllADTs, Subset; intros; split; intros;
+  unfold AllADTs, Superset; intros; split; intros;
   generalize H0; StringMapFacts.map_iff; intuition.
 Qed.
 
@@ -3375,13 +3375,13 @@ Proof.
   repeat (econstructor; eauto).
 Qed.
 
-Lemma Subset_not_In_remove :
+Lemma Superset_not_In_remove :
   forall {elt welt} k state map wrapper,
     ~ StringMap.In k map ->
-    @Subset elt welt state map wrapper ->
-    @Subset elt welt (StringMap.remove k state) map wrapper.
+    @Superset elt welt state map wrapper ->
+    @Superset elt welt (StringMap.remove k state) map wrapper.
 Proof.
-  unfold Subset; intros ** k' v' maps_to.
+  unfold Superset; intros ** k' v' maps_to.
   destruct (StringMap.E.eq_dec k k'); subst.
   
   pose proof (StringMapFacts.MapsTo_In maps_to); exfalso; intuition.
@@ -3394,14 +3394,14 @@ Lemma SomeSCAs_not_In_remove :
     @SomeSCAs av state map ->
     @SomeSCAs av (StringMap.remove k state) map.
 Proof.
-  intros *; apply Subset_not_In_remove.
+  intros *; apply Superset_not_In_remove.
 Qed.
 
-Lemma Subset_remove_self :
+Lemma Superset_remove_self :
   forall {elt welt} k state wrapper,
-    @Subset elt welt state (StringMap.remove k state) wrapper.
+    @Superset elt welt state (StringMap.remove k state) wrapper.
 Proof.
-  unfold Subset; intros *; map_iff_solve intuition.
+  unfold Superset; intros *; map_iff_solve intuition.
 Qed.
 
 Lemma AllADTs_not_In_remove_left :
@@ -3412,9 +3412,9 @@ Lemma AllADTs_not_In_remove_left :
 Proof.
   unfold AllADTs; split; intros; destruct_pairs.
 
-  apply  Subset_not_In_remove; intuition.
-  eapply Subset_transitive; try eassumption.
-  eauto using Subset_remove_self.
+  apply  Superset_not_In_remove; intuition.
+  eapply Superset_transitive; try eassumption.
+  eauto using Superset_remove_self.
 Qed.
 
 Lemma AllADTs_not_In_remove_right :
@@ -3431,7 +3431,7 @@ Lemma AllADTs_chomp_remove' :
     @AllADTs av map state ->
     @AllADTs av (StringMap.remove k map) (StringMap.remove k state).
 Proof.
-  unfold AllADTs, Subset; split; intros *; map_iff_solve intuition.
+  unfold AllADTs, Superset; split; intros *; map_iff_solve intuition.
 Qed.
 
 Lemma compile_list_delete :
@@ -3633,8 +3633,6 @@ Proof.
   intros;
   eauto using drop_scas_from_precond, SomeSCAs_chomp, SomeSCAs_remove, SomeSCAs_reflexive.
 Qed.
-
-(* TODO rename Subset to Superset *)
 
 Ltac map_iff_solve_evar' fallback :=
   repeat setoid_rewrite not_or;
