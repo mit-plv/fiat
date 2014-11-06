@@ -1201,20 +1201,18 @@ Lemma compile_test :
   forall {av env},
   forall op vret tw1 tw2,
   forall w1 w2,
-  forall init_knowledge init_scas init_adts post_w1_adts final_adts,
+  forall init_knowledge init_scas inter_scas final_scas init_adts post_w1_adts final_adts,
     tw1 <> tw2 ->
-    ~ StringMap.In tw1 init_scas ->
-    ~ StringMap.In tw2 init_scas ->
     ~ StringMap.In vret final_adts ->
     refine (@Prog av env init_knowledge
-                  init_scas ([vret >sca> BoolToW ((IL.evalTest op) w1 w2)] :: init_scas)
+                  init_scas ([vret >sca> BoolToW ((IL.evalTest op) w1 w2)] :: [tw2 >sca> w2] :: [tw1 >sca> w1] :: final_scas)
                   init_adts final_adts)
            (pw1  <- (@Prog av env init_knowledge
-                           init_scas ([tw1 >sca> w1] :: init_scas)
+                           init_scas ([tw1 >sca> w1] :: inter_scas)
                            init_adts post_w1_adts);
             pw2  <- (@Prog av env init_knowledge
-                           ([tw1 >sca> w1] :: init_scas)
-                           ([tw2 >sca> w2] :: [tw1 >sca> w1] :: init_scas)
+                           ([tw1 >sca> w1] :: inter_scas)
+                           ([tw2 >sca> w2] :: [tw1 >sca> w1] :: final_scas)
                            post_w1_adts final_adts);
             ret (pw1; pw2; Assign vret (TestE op tw1 tw2))%facade)%comp.
 Proof. (* Same proof as compile_binop *)
@@ -1251,79 +1249,8 @@ Proof. (* Same proof as compile_binop *)
 
   split;
     rewrite_Eq_in_goal;
-    [ repeat remove_not_in;
-      apply SomeSCAs_chomp
-    | apply add_adts_pop_sca ];
-    assumption.
-Qed.  
-
-(* 
-Lemma weaken_preconditions :
-  forall av env (old_precond new_precond postcond: State av -> Prop), 
-    (forall s, old_precond s -> new_precond s) ->
-    refine
-      Prog
-      (Pick (fun prog =>
-               (forall init_state,
-                  new_precond init_state ->
-                  Safe env prog init_state) /\
-               (forall init_state final_state,
-                  new_precond init_state ->
-                  RunsTo env prog init_state final_state -> 
-                  postcond final_state))).
-Proof.
-  unfold refine; intros; inversion_by computes_to_inv.
-  constructor; firstorder. 
+  eauto using SomeSCAs_chomp, add_adts_pop_sca.
 Qed.
-
-Lemma drop_preconditions :
-  forall av env (precond postcond: State av -> Prop), 
-    refine 
-      (Pick (fun prog => 
-               (forall init_state,
-                  precond init_state ->
-                  Safe env prog init_state) /\
-               (forall init_state final_state,
-                  precond init_state ->
-                  RunsTo env prog init_state final_state -> 
-                  postcond final_state)))
-      (Pick (fun prog =>
-               (forall init_state,
-                  (fun _ => True) init_state ->
-                  Safe env prog init_state) /\
-               (forall init_state final_state,
-                  (fun _ => True) init_state ->
-                  RunsTo env prog init_state final_state -> 
-                  postcond final_state))).
-Proof.
-  eauto using weaken_preconditions.
-Qed.
-
-Lemma strengthen_postconditions :
-  forall av env (precond old_postcond new_postcond: State av -> Prop), 
-    (forall s, new_postcond s -> old_postcond s) ->
-    refine
-      (Pick (fun prog =>
-               (forall init_state,
-                  precond init_state ->
-                  Safe env prog init_state) /\
-               (forall init_state final_state,
-                  precond init_state ->
-                  RunsTo env prog init_state final_state -> 
-                  old_postcond final_state)))
-      (Pick (fun prog =>
-               (forall init_state,
-                  precond init_state ->
-                  Safe env prog init_state) /\
-               (forall init_state final_state,
-                  precond init_state ->
-                  RunsTo env prog init_state final_state -> 
-                  new_postcond final_state))).
-Proof.
-  unfold refine; intros; inversion_by computes_to_inv.
-  constructor; firstorder.
-Qed.
- *)
 
 Lemma start_compiling' : 
   forall {av env} init_state vret v,
@@ -1484,13 +1411,40 @@ Proof.
   eexists.
 
   setoid_rewrite (start_compiling_sca (list W) "$ret"); vacuum.
-  
   setoid_rewrite (compile_if_sca "$cond"); vacuum.
+
+  Lemma prepare_test :
+    forall av env vret tw1 tw2 w1 w2 knowledge scas init_adts final_adts f,
+    refine (@Prog av env knowledge
+                  scas ([vret >sca> BoolToW (f w1 w2)]::scas)
+                  init_adts final_adts)
+           (p <- (@Prog av env knowledge
+                        scas ([vret >sca> BoolToW (f w1 w2)]
+                                :: [tw2 >sca> w2] :: [tw1 >sca> w1] :: scas)
+                        init_adts final_adts);
+            cleanup <- (@Prog av env knowledge
+                              ([vret >sca> BoolToW (f w1 w2)]
+                                 :: [tw2 >sca> w2] :: [tw1 >sca> w1] :: scas)
+                              ([vret >sca> BoolToW (f w1 w2)]::scas)
+                              final_adts final_adts);
+            ret (p; cleanup)%facade)%comp.
+  Proof.
+    unfold refine, Prog, ProgOk; unfold_coercions; intros.
+    inversion_by computes_to_inv; constructor;
+    split; subst; destruct_pairs.
+
+    constructor; split; intros; specialize_states; eassumption.
+
+    intros; inversion_facade; specialize_states; intuition.
+  Qed.
+
+  rewrite prepare_test; vacuum.
   setoid_rewrite (compile_test IL.Eq "$cond" "$w1" "$w2"); vacuum.
+  rewrite (compile_constant); vacuum.
+  rewrite (compile_constant); vacuum.
+  (*rewrite drop_second_sca_from_precond. etc *)
 
-  setoid_rewrite (compile_constant "$w1"); vacuum.
-  setoid_rewrite (compile_constant "$w2"); vacuum.
-
+(*
   rewrite drop_sca; vacuum. (* NOTE: Could also generalize compile_constant *)
   rewrite (compile_constant "$ret"); vacuum.
 
@@ -1499,9 +1453,10 @@ Proof.
 
   reflexivity.
   vacuum.
-Qed.
+*)
+Admitted.
 
-(* <TODO> *)
+  (* <TODO> *)
 Lemma unchanged : 
   forall av (st: State av) arg val,
     StringMap.find arg st = Some (Facade.ADT val) -> 
@@ -1510,19 +1465,12 @@ Lemma unchanged :
 Proof.
   simpl; intros.
   red; intro arg'.
-  destruct ( StringMap.E.eq_dec arg arg'); subst.
+  destruct (StringMap.E.eq_dec arg arg'); subst.
   
   rewrite StringMapFacts.add_eq_o; trivial.
   rewrite StringMapFacts.add_neq_o; trivial.
 Qed.  
   
-Opaque add_remove_many.
-
-Definition cond_indep {A} cond var :=
-  forall (x: A) state, cond state -> cond (StringMap.add var x state).
-
-Transparent add_remove_many.
-
 (* TODO generalize this for is_empty as well *)
 Lemma runsto_pop :
   forall hd tl (vseq thead: StringMap.key) env (st st': State FacadeADT) ppop,
@@ -1684,7 +1632,7 @@ Proof.
   rewrite maps_to in *; autoinj.
 Qed.
 (* </TODO> *)
-
+Show.
 Goal exists x, 
        refine (ret (Word.wmult 
                       (Word.wplus  3 4)
@@ -3959,7 +3907,7 @@ Proof.
   rewrite (compile_constant); vacuum'.
   rewrite no_op; vacuum'.
   
-  rewrite (compile_push "$ret" "$head'" "$push()" "$discard" ("", "") 3); try vacuum'.
+  rewrite (compile_push "$ret" "$head'" "$push()" "$discard" ("List", "Push") 3); try vacuum'.
 
   (* Cleanup behind compile_push *)
   do 3 (rewrite drop_sca; vacuum').
