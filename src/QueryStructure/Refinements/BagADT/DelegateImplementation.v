@@ -5,49 +5,6 @@ Require Import ADTSynthesis.QueryStructure.Refinements.GeneralQueryRefinements.
 Require Import ADTSynthesis.QueryStructure.QueryStructureNotations ADTSynthesis.QueryStructure.Refinements.ListImplementation.
 Require Import ADTSynthesis.QueryStructure.AdditionalLemmas ADTSynthesis.QueryStructure.AdditionalPermutationLemmas ADTSynthesis.ADT.ComputationalADT Coq.Arith.Arith ADTSynthesis.QueryStructure.Refinements.BagADT.BagADT.
 
-Definition packagedADT (Sig : ADTSig) :=
-  {Rep : Type & prod Rep
-              (prod (forall idx : ConstructorIndex Sig,
-                       cConstructorType Rep (ConstructorDom Sig idx))
-                    (forall idx : MethodIndex Sig,
-                       cMethodType Rep (fst (MethodDomCod Sig idx))
-                                   (snd (MethodDomCod Sig idx))))
-  }.
-
-Definition CallPackagedADTMethod
-           (Sig : ADTSig)
-           (idx : MethodIndex Sig)
-           (d : fst (MethodDomCod Sig idx))
-           (pADT : packagedADT Sig)
-: prod (packagedADT Sig) (snd (MethodDomCod Sig idx))
-  := let results := snd (snd (projT2 pADT)) idx (fst (projT2 pADT)) d in
-     (existT _ (projT1 pADT) (fst results, snd (projT2 pADT)),
-      snd results).
-
-Record cADT (cRep : Type) (Sig : ADTSig) : Type :=
-  {
-
-    (** Constructor implementations *)
-    cConstructors :
-      forall idx : ConstructorIndex Sig,
-        cConstructorType cRep (ConstructorDom Sig idx);
-
-    (** Method implementations *)
-    cMethods :
-      forall idx : MethodIndex Sig,
-        cMethodType cRep (fst (MethodDomCod Sig idx))
-                                (snd (MethodDomCod Sig idx))
-  }.
-
-Definition CallPackagedADTConstructors
-           (Sig : ADTSig)
-           (idx : ConstructorIndex Sig)
-           (d : ConstructorDom Sig idx)
-           (pADT : packagedADT Sig)
-: packagedADT Sig
-  := let results := fst (snd (projT2 pADT)) idx d in
-     existT _ (projT1 pADT) (results, snd (projT2 pADT)).
-
 Section FiniteMapADT.
 
   Variable ValueType : Type.
