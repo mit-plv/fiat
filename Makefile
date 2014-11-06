@@ -17,6 +17,7 @@ SRC_MODULES    := \
 	ComputationalEnsembles \
 	ComputationalEnsembles/Core \
 	ComputationalEnsembles/Laws \
+	ComputationalEnsembles/Morphisms \
 	Computation/Notations \
 	Computation/Core \
 	Computation/Monad \
