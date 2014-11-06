@@ -189,9 +189,8 @@ Section DeleteRefinements.
   Proof.
     unfold UnIndexedEnsembleListEquivalence.
     exists (@nil (@IndexedTuple heading)); simpl; intuition.
-    unfold EnsembleListEquivalence; intuition.
-    - constructor.
     - exfalso; eapply ComplementIntersection; eauto.
+    - constructor.
   Qed.
 
   Lemma QSDeleteSpec_UnConstr_refine' :
@@ -698,9 +697,9 @@ Section DeleteRefinements.
     intuition; subst.
     eexists; intuition.
     unfold EnsembleListEquivalence in *; intuition; eauto with typeclass_instances.
-    + eapply H0; eapply EnsembleComplementIntersection; eauto with typeclass_instances.
+    + eapply H; eapply EnsembleComplementIntersection; eauto with typeclass_instances.
     + eapply EnsembleComplementIntersection; eauto with typeclass_instances.
-      eapply H0; eauto.
+      eapply H; eauto.
   Qed.
 
   Local Transparent Query_For.
@@ -731,74 +730,91 @@ Section DeleteRefinements.
         simpl; split; eauto.
       rewrite Permutation_nil by eauto; reflexivity.
       + unfold EnsembleListEquivalence in *; intuition.
-        destruct H0; eapply H1; eauto.
+        * destruct H0; intuition.
+          unfold In in H; inversion H; subst.
+          apply H0 in H2.
+          destruct x0; simpl in *; congruence.
+        * constructor.
     - inversion_by computes_to_inv; subst.
       unfold UnConstrRelation in u.
-      case_eq (@dec _ P P_dec (indexedElement a)); intros.
+      destruct H0 as [[ | [a' x']] [x_eq [equiv_u_x' NoDup_x']]];
+        simpl in *; [discriminate | injection x_eq; intros x'_eq ?; subst; clear x_eq].
+      case_eq (@dec _ P P_dec a); intros.
       + apply computes_to_inv in H1; simpl in *; intuition.
-        apply dec_decides_P in H; apply H3 in H.
+        apply dec_decides_P in H; apply H0 in H.
         apply computes_to_inv in H; simpl in *; subst; simpl in *.
         pose proof (PermutationConsSplit _ _ _ Perm_l_v); destruct_ex; subst.
-        destruct (H1 (fun x => u x /\ x <> a) (app x0 x2) x1); intuition eauto.
+        unfold UnIndexedEnsembleListEquivalence in *.
+        destruct (H1 (fun x => u x /\ x <> {|indexedElement := a; elementIndex := a' |}) (app x x0) x1); intuition eauto.
         * eapply Permutation_cons_inv; rewrite Permutation_middle; eassumption.
-        * unfold EnsembleListEquivalence in *; intuition.
-          inversion H; subst; eauto.
+        * unfold UnIndexedEnsembleListEquivalence in *; intuition.
+          eexists; intuition; eauto.
           unfold In in *; intuition.
-          apply H5 in H6; destruct H6; subst; eauto; congruence.
+          apply equiv_u_x' in H4; destruct H4; subst; eauto; congruence.
           unfold In; intuition.
-          apply H5; simpl; intuition.
-          inversion H; subst; eauto.
-        * symmetry in H5; pose proof (app_map_inv _ _ _ _ H5); destruct_ex;
+          apply equiv_u_x'; simpl; intuition.
+          inversion NoDup_x'; subst; eauto.
+          apply H7; apply in_map_iff; eexists; split; eauto; simpl; eauto.
+          inversion NoDup_x'; subst; eauto.
+        * symmetry in H4; pose proof (app_map_inv _ _ _ _ H4); destruct_ex;
           intuition; subst.
-          exists (app x4 (a :: x5)); simpl; rewrite map_app; intuition.
-          { unfold EnsembleListEquivalence in *; intuition.
-            - apply NoDup_app_swap; simpl; constructor; eauto.
-              inversion H; subst; unfold not; intros; apply H10.
-              assert (List.In a (x4 ++ x5)) as In_a by
-                                                (apply in_or_app; apply in_app_or in H6; intuition).
-              apply H8 in In_a; destruct In_a; unfold In in *; intuition.
-              apply H7 in H13; simpl in H13; intuition.
-              + apply NoDup_app_swap; eauto.
-            - destruct H6; unfold In in *; apply H7 in H6; simpl in *; intuition.
+          eexists (app x3 ({|indexedElement := a; elementIndex := a' |} :: x4));
+            simpl; rewrite map_app.
+          { simpl; intuition.
+            - destruct H5; unfold In in *; apply equiv_u_x' in H5; simpl in *; intuition.
+              subst.
               apply in_or_app; simpl; intuition.
-              assert (u x0) as u_x0 by (apply H7; eauto).
-              assert (List.In x0 (x4 ++ x5)) as In_x0
-                                               by (apply H8; constructor; unfold In; intuition; subst;
-                                                   inversion H; subst; eauto).
-              apply in_or_app; simpl; apply in_app_or in In_x0; intuition.
+              assert (u x) as u_x by (apply equiv_u_x'; eauto).
+              assert (List.In x (x3 ++ x4)) as In_x 
+                  by (apply H; constructor; unfold In; intuition; subst;
+                      inversion NoDup_x'; subst; eapply H10; apply in_map_iff; eexists;
+                      split; eauto; simpl; eauto).
+              apply in_or_app; simpl; apply in_app_or in In_x; intuition.
             - unfold In.
-              assert (List.In x0 (x4 ++ x5) \/ x0 = a)
+              assert (List.In x (x3 ++ x4) \/ x = {|indexedElement := a; elementIndex := a' |})
                 as In_x0
-                  by (apply in_app_or in H6; simpl in H6; intuition).
+                  by (apply in_app_or in H5; simpl in H5; intuition).
               intuition.
-              apply H8 in H9; destruct H9; unfold In in *; intuition.
-              constructor; eauto.
-              subst; constructor; eauto.
-              apply H7; simpl; eauto.
-              case_eq (@dec _ P P_dec (indexedElement a)); intros.
-              apply dec_decides_P; eauto.
-              assert (~ P (indexedElement a)) as H''
-                               by (unfold not; intros H'; apply dec_decides_P in H'; congruence);
-                apply H4 in H''; discriminate.
+              + apply H in H7; destruct H7; unfold In in *; intuition.
+                constructor; eauto.
+              + subst; constructor; eauto.
+                apply equiv_u_x'; simpl; eauto.
+                case_eq (@dec _ P P_dec a); intros.
+                apply dec_decides_P; eauto.
+                assert (~ P a) as H''
+                    by (unfold not; intros H'; apply dec_decides_P in H'; congruence);
+                apply H3 in H''; discriminate.
+            - rewrite map_app; apply NoDup_app_swap; simpl; constructor; eauto.
+              inversion NoDup_x'; subst; unfold not; intros; apply H8.
+              rewrite <- map_app in H5; apply in_map_iff in H5; destruct_ex; intuition.
+              assert (List.In x (x3 ++ x4)) as In_a by
+                    (apply in_or_app; apply in_app_or in H10; intuition).
+              apply H in In_a; destruct In_a; unfold In in *; intuition.
+              apply equiv_u_x' in H12; simpl in *; intuition.
+              destruct x; simpl in *; subst.
+              apply in_map_iff; eexists; split; eauto; simpl; eauto.
+              apply NoDup_app_swap; rewrite <- map_app; eauto.
           }
       + apply computes_to_inv in H1; simpl in *; intuition.
-        assert (~ P (indexedElement a)) as H''
+        assert (~ P a) as H''
                          by (unfold not; intros H'; apply dec_decides_P in H'; congruence);
-          apply H4 in H''; subst.
-        destruct (H1 (fun x => u x /\ x <> a) v x1); intuition eauto.
-        * unfold EnsembleListEquivalence in *; intuition.
-          inversion H5; subst; eauto.
-          destruct H0; apply H6 in H0; simpl in H0; intuition.
-          simpl in H6; constructor.
-          apply H6; eauto.
-          inversion H5; intros; subst; eauto.
+          apply H3 in H''; subst.
+        destruct (H1 (fun x => u x /\ x <> {|indexedElement := a; elementIndex := a' |}) v x1); intuition eauto.
+        * eexists; intuition; eauto.
+          unfold In in *; intuition.
+          apply equiv_u_x' in H5; destruct H5; subst; eauto; congruence.
+          unfold In; intuition.
+          apply equiv_u_x'; simpl; intuition.
+          inversion NoDup_x'; subst; eauto.
+          apply H8; apply in_map_iff; eexists; split; eauto; simpl; eauto.
+          inversion NoDup_x'; subst; eauto.
         * eexists; split; eauto.
-          unfold EnsembleListEquivalence in *; intuition.
-          destruct H7; intuition.
-          eapply H9; constructor; unfold In in *; subst; intuition.
-          subst; apply_in_hyp dec_decides_P; congruence.
+          unfold UnIndexedEnsembleListEquivalence in *; intuition.
+          destruct H6; intuition.
+          eapply H4; constructor; unfold In in *; subst; intuition.
+          subst; apply_in_hyp dec_decides_P; simpl in *; congruence.
           constructor;
-            apply H9 in H7; destruct H7; unfold In in *; intuition.
+            apply H4 in H6; destruct H6; unfold In in *; intuition.
   Qed.
 
 End DeleteRefinements.

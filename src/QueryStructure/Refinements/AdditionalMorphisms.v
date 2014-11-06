@@ -257,10 +257,12 @@ Add Parametric Morphism {A: Type} (ens: A -> Prop) :
 Proof.
   intros.
   unfold EnsembleListEquivalence in *. intuition.
-  - eapply Permutation_in. apply H. apply H0. auto.
-  - apply H0. eapply Permutation_in. eapply Permutation_sym. apply H. auto.
-  - eapply Permutation_in. eapply Permutation_sym. apply H. apply H0. auto.
-  - apply H0. eapply Permutation_in. apply H. auto.
+  - eauto using NoDup_Permutation_rewrite.
+  - eapply Permutation_in. apply H. apply H2. auto.
+  - apply H2. eapply Permutation_in. eapply Permutation_sym. apply H. auto.
+  - eapply NoDup_Permutation_rewrite; [symmetry | ]; eauto.
+  - eapply Permutation_in. eapply Permutation_sym. apply H. apply H2. auto.
+  - apply H2. eapply Permutation_in. apply H. auto.
 Qed.
 
 Add Morphism

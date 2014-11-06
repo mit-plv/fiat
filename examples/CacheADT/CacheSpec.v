@@ -11,10 +11,10 @@ Section CacheSpec.
 
   Definition CacheSig : ADTSig :=
     ADTsignature {
-        "EmptyCache"  : unit → rep,
-        "AddKey" : rep × (Key * Value) → rep × bool,
-        "UpdateKey" : rep × (Key * (Value -> Value)) → rep × bool,
-        "LookupKey"   : rep × Key → rep × (option Value)
+        "EmptyCache"  : unit -> rep,
+        "AddKey" : rep x (Key * Value) -> rep x bool,
+        "UpdateKey" : rep x (Key * (Value -> Value)) -> rep x bool,
+        "LookupKey"   : rep x Key -> rep x (option Value)
   }.
 
   Definition CacheSpec : ADT CacheSig :=

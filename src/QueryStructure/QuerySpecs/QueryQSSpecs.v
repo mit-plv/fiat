@@ -40,9 +40,9 @@ Definition QueryResultComp
     (* First construct a list that contains each element in the query list
        (expressed as an ensemble) paired with its result list.
        Then flatten the result and compare with [resultList].*)
-    queriedList <- {queriedList | EnsembleListEquivalence queriedEnsemble
+    queriedList <- {queriedList | UnIndexedEnsembleListEquivalence queriedEnsemble
                                                           queriedList };
-    flatten_CompList (map resultEnsemble (map indexedTuple queriedList)).
+    flatten_CompList (map resultEnsemble queriedList).
 
 Definition Query_In {ResultT}
            (qs : QueryStructureHint)

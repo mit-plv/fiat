@@ -39,13 +39,14 @@ Section IndexedEnsembles.
              {A}
              (ensemble : Ensemble A)
              (seq : list A) :=
+    NoDup seq /\
     forall x, Ensembles.In _ ensemble x <-> List.In x seq.
 
   Definition UnIndexedEnsembleListEquivalence
              (ensemble : IndexedEnsemble)
              (l : list ElementType)  :=
     exists l', (map indexedElement l') = l /\
-               EnsembleListEquivalence ensemble l' /\
+               (forall x, Ensembles.In _ ensemble x <-> List.In x l') /\
                NoDup (map elementIndex l').
 
   Definition UnConstrFreshIdx
@@ -93,9 +94,8 @@ Section IndexedEnsembles.
     destruct (permutation_map_base indexedElement H0 _ eqv_ensemble) as [l'' [l''_eq H']].
     econstructor; split; eauto.
     constructor.
-    - unfold EnsembleListEquivalence in *.
-        intros; rewrite eqv_nr.
-        split; apply Permutation_in; intuition.
+    - intros; rewrite eqv_nr.
+      split; apply Permutation_in; intuition.
     - apply NoDup_modulo_permutation.
       exists (map elementIndex lensemble).
       intuition. apply Permutation_map. auto.

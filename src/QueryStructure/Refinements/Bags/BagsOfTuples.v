@@ -494,10 +494,7 @@ Proof.
     [ | apply lt_S];
     intuition. *)
 
-  destruct store_eqv as (indices & [ l' (map & nodup & equiv) ]); eauto.
-
-
-  (* destruct store_eqv as (indices & [ l' (map & nodup & equiv) ]); eauto. *)
+  destruct store_eqv as (indices & [ l' (map & equiv & nodup ) ]); eauto.
 
   destruct (permutation_map_cons indexedElement (binsert_enumerate tuple store store_WF)
                                  {| elementIndex := bound;
@@ -507,16 +504,17 @@ Proof.
   exists l'0.
   split; [ assumption | split ].
 
-  eexists; split; try apply perm.
+  setoid_rewrite perm; setoid_rewrite equiv; 
+  simpl; intuition eauto.
+  
+  eexists (bound :: _); split; try apply perm; eauto.
+  
+  constructor; eauto.
+  unfold not; intros.
+  rewrite in_map_iff in H0; destruct_ex; intuition; subst.
+  apply equiv in H3; apply H in H3; destruct x; simpl in *; omega.
 
-  constructor;
-    [ rewrite <- equiv; intro abs; apply H in abs;
-      simpl in abs; omega | assumption ].
-
-  setoid_rewrite perm.
-  setoid_rewrite equiv.
-  setoid_rewrite eq_sym_iff at 1.
-  reflexivity.
+  setoid_rewrite perm; reflexivity.
 Qed.
 
 Corollary binsertPlus_correct_DB :
@@ -559,15 +557,20 @@ Qed.
       intros; setoid_rewrite DeletedTuplesFor; auto.
       destruct equiv_bag as [[[bound ValidBound] [l [eq_bag [NoDup_l equiv_l]]]] RepInv_bag];
         subst.
-      rewrite refine_List_Query_In by repeat (econstructor; intuition eauto).
+      rewrite refine_List_Query_In. 
       rewrite refine_List_Query_In_Where, refine_List_For_Query_In_Return_Permutation,
       (filter_by_equiv _ _ H), map_id, <- partition_filter_eq.
       rewrite refine_pick_val.
       reflexivity.
-      destruct (bdelete_correct bag search_term RepInv_bag) as [_ Perm_bdelete].
+      destruct (bdelete_correct bag search_term RepInv_bag) as [_ Perm_bdelete];
+        eauto.
+
       unfold BagPlusProofAsBag, QSGetNRelSchemaHeading, GetNRelSchemaHeading,
       GetNRelSchema in *.
-        rewrite Perm_bdelete, eq_bag; reflexivity.
+      rewrite Perm_bdelete; reflexivity.
+      econstructor.
+      eexists _; eauto.
+      unfold UnIndexedEnsembleListEquivalence; eexists; eauto.
     Qed.
 
     Lemma bdelete_correct_DB_snd
@@ -597,27 +600,32 @@ Qed.
         clear; induction x; simpl; eauto.
         unfold indexedTuple in *;
         find_if_inside; simpl; eauto; rewrite <- IHx; reflexivity.
-      - revert H0; clear; induction x; simpl; eauto.
-        intros; inversion H0; subst.
-        case_eq (partition (fun x0 => @dec IndexedTuple (fun t => DeletedTuples (indexedElement t)) _ x0) x); intros; simpl in *; rewrite H.
-        rewrite H in IHx; apply IHx in H3;
-        case_eq (@dec IndexedTuple (fun t => DeletedTuples (indexedElement t)) _ a);
-        intros; simpl in *; rewrite H1; simpl; eauto.
-        constructor; eauto.
-        unfold not; intros; apply H2; eapply In_partition with
-        (f := fun x0 : IndexedTuple => @dec IndexedTuple (fun t => DeletedTuples (indexedElement t)) _ x0).
-        simpl in *; rewrite H; eauto.
       - rewrite get_update_unconstr_eq in H3.
         destruct H3; unfold In in *.
-        apply H4 in H3; eapply In_partition in H3; intuition; try apply H6.
+        apply H0 in H3; eapply In_partition in H3; intuition; try apply H6.
         apply In_partition_matched in H6; apply dec_decides_P in H6; exfalso; eauto.
       - rewrite get_update_unconstr_eq; constructor.
-        eapply H4; eapply In_partition; eauto.
+        eapply H0; eapply In_partition; eauto.
         unfold In; intros.
         apply In_partition_unmatched in H3.
         simpl in *; apply dec_decides_P in H5.
         unfold indexedTuple, QSGetNRelSchemaHeading, GetNRelSchemaHeading, GetNRelSchema in *;
           rewrite H3 in H5; congruence.
+      - revert H4; clear; induction x; simpl; eauto.
+        intros; inversion H4; subst.
+        case_eq (partition (fun x0 => @dec IndexedTuple (fun t => DeletedTuples (indexedElement t)) _ x0) x); intros; simpl in *; rewrite H.
+        rewrite H in IHx; apply IHx in H2;
+        case_eq (@dec IndexedTuple (fun t => DeletedTuples (indexedElement t)) _ a);
+        intros; simpl in *; rewrite H0; simpl; eauto.
+        constructor; eauto.
+        unfold not; intros; apply H1.
+        generalize l l0 H H3; clear; induction x; simpl; intros.
+        + injections; simpl in *; eauto.
+        + case_eq (partition (fun x0 : IndexedTuple => dec (indexedTuple x0)) x).
+          intros; rewrite H0 in H; find_if_inside; injections.
+          eauto.
+          simpl in H3; intuition.
+          eauto.
     Qed.
 
     Require Import AdditionalMorphisms.
@@ -659,17 +667,17 @@ Qed.
       remember (GetUnConstrRelation qs index).
       generalize DeletedTuples DT_Dec x0 u H1 H0 H3 H7; clear.
       induction (benumerate (snd (bdelete store search_term))); intros.
-      eexists []; simpl; intuition.
-      constructor.
-      destruct H; destruct H2; unfold In in *.
-      apply H7 in H.
-      apply Permutation_nil in H1.
-      apply dec_decides_P; rewrite H0.
-      revert H1 H; clear; induction x0; simpl; eauto.
-      case_eq (bfind_matcher (Bag := BagPlus bag_plus) search_term (indexedElement a)); simpl; intros.
-      intuition; subst; eauto.
-      discriminate.
-      assert (exists a',
+      - eexists []; simpl; intuition.
+        + destruct H; destruct H2; unfold In in *.
+          apply H3 in H.
+          apply Permutation_nil in H1.
+          apply dec_decides_P; rewrite H0.
+          revert H1 H; clear; induction x0; simpl; eauto.
+          case_eq (bfind_matcher (Bag := BagPlus bag_plus) search_term (indexedElement a)); simpl; intros.
+          intuition; subst; eauto.
+          discriminate.
+        + constructor.
+      - assert (exists a',
                 List.In a' x0 /\ indexedElement a' = a
                 /\ (bfind_matcher (Bag := BagPlus bag_plus) search_term (indexedElement a') = false)).
       generalize (@Permutation_in _ _ _ a H1 (or_introl (refl_equal _))).
@@ -686,14 +694,16 @@ Qed.
                 ~ List.In x x0').
       {
         intuition; subst.
-        repeat rewrite filter_map; generalize x H2 H3; clear;
+        repeat rewrite filter_map; generalize x H2 H7; clear;
         induction x0; intros; simpl in *|-; intuition; subst; eauto.
-        inversion H3; subst; exists x0; intuition.
-        inversion H3; subst.
-        destruct (IHx0 _ H H4); intuition; eexists (a :: x1).
+        inversion H7; subst; exists x0; intuition.
+        apply H1; apply in_map_iff; eexists; eauto.
+        inversion H7; subst.
+        destruct (IHx0 _ H H3); intuition; eexists (a :: x1).
         rewrite H1; intuition.
         constructor.
         simpl in H0; intuition; subst; eauto.
+        apply H2; apply in_map_iff; eexists; eauto.
       }
       destruct_ex; intuition; subst.
       rewrite filter_map in H1; rewrite H in H1; simpl in *.
@@ -701,47 +711,60 @@ Qed.
       destruct (IHl DeletedTuples DT_Dec x1
                     (fun tup => In _ u tup /\ tup <> x)); eauto;
       clear IHl.
-      rewrite filter_map; eapply Permutation_cons_inv; eauto.
-      apply NoDup_Permutation_rewrite in H; eauto.
-      inversion H; eauto.
-      intuition; intros.
-      destruct H2; apply H7 in H2.
-      eapply Permutation_in in H; eauto.
-      simpl in *; intuition.
-      constructor.
-      eapply H7.
-      symmetry in H; eapply Permutation_in; eauto.
-      simpl; eauto.
-      intros; subst.
-      apply NoDup_Permutation_rewrite in H; eauto.
-      eexists (x :: x2); intuition.
-      simpl; congruence.
-      constructor; eauto.
-      unfold not; intros.
-      unfold In in *.
-      apply H10 in H9; inversion H9; subst; unfold In in *;
-      intuition.
-      unfold In in H9; inversion H9; subst; unfold In in *;
-      intuition.
-      generalize (Permutation_in _ H (proj1 (H7 _) H11)); intros In_x0.
-      destruct In_x0; simpl; subst; eauto.
-      right.
-      apply H10; constructor; unfold In; intuition eauto.
-      subst; eauto.
-      constructor; intros.
-      apply H7.
-      simpl in *; intuition; subst; eauto.
-      apply H10 in H11; unfold In in *; inversion H11;
-      unfold In in *; subst; intuition eauto.
-      apply H7; eauto.
-      unfold In.
-      simpl in *; intuition; subst; eauto.
-      apply dec_decides_P in H11; rewrite H0 in H11;
-      unfold BagPlusProofAsBag, QSGetNRelSchemaHeading,
-      GetNRelSchemaHeading, GetNRelSchema in *; simpl in *;
-      congruence.
-      apply H10 in H12; unfold In in *; inversion H12;
-      unfold In in *; subst; intuition eauto.
+      + rewrite filter_map; eapply Permutation_cons_inv; eauto.
+      + intuition; intros.
+        destruct H2; apply H3 in H2.
+        eapply Permutation_in in H; eauto.
+        simpl in *; intuition.
+        constructor.
+        eapply H3.
+        symmetry in H; eapply Permutation_in; eauto.
+        simpl; eauto.
+        intros; subst; simpl; congruence.
+      + assert (NoDup (map elementIndex (x :: x1))).
+        eapply NoDup_Permutation_rewrite.
+        eapply Permutation_map; eauto.
+        eauto.
+        inversion H2; subst; eauto.
+      + eexists (x :: x2); simpl; intuition.
+        * rewrite H5; auto.
+        * unfold In in H9; inversion H9; subst; unfold In in *.
+          apply H3 in H11; pose proof (Permutation_in _ H H11).
+          simpl in H5; intuition.
+          right; apply Permutation_cons_inv in H1.
+          eapply H2; econstructor; unfold In; intuition.
+          apply H3 in H11; eauto.
+          subst; eauto.
+        * subst; unfold In in *.
+          constructor; unfold In.
+          apply H3. 
+          eapply Permutation_in; eauto.
+          rewrite <- H0 in H8; intros; apply dec_decides_P in H5; congruence.
+        * unfold In; constructor.
+          apply H2 in H11; inversion H11; subst; unfold In in *; intuition.
+          unfold In in *.
+          intros; apply dec_decides_P in H9; subst.
+          apply Permutation_cons_inv in H1.
+          assert (List.In (indexedElement x3) (map indexedElement x2)) as in_x2' by 
+                (rewrite in_map_iff; eauto);
+            pose proof (Permutation_in (indexedElement x3) H1 in_x2').
+          rewrite in_map_iff in H5; destruct_ex; intuition.
+          rewrite filter_In in H13; intuition; subst.
+          rewrite <- H0, H12, H9 in H14; discriminate.
+        * constructor; eauto.
+          intro In_x; subst; apply Permutation_cons_inv in H1.
+          pose proof (permutation_map_base _ H1 _  (refl_equal _));
+            destruct_ex; intuition.         
+          rewrite in_map_iff in *; destruct_ex; intuition.
+          apply H2 in H13; inversion H13; subst; unfold In in *; intuition.
+          apply H3 in H15.
+          pose proof (Permutation_in _ H H15); simpl in *; intuition.
+          assert (~ List.In (elementIndex x) (map elementIndex x1)).
+          { eapply Permutation_map with (f := elementIndex) in H.
+            pose proof (NoDup_Permutation_rewrite _ _ H H7).
+            simpl in *; inversion H5; subst; eauto.
+          }
+          apply H5; rewrite in_map_iff; eexists; split; eauto.
     Qed.
 
     Arguments bdelete : simpl never.
