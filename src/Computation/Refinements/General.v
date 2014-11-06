@@ -391,6 +391,21 @@ Section general_refine_lemmas.
     intros; destruct i; simpl; reflexivity.
   Qed.
 
+  Lemma refineEquiv_swap_bind {A B C} (c1 : Comp A) (c2 : Comp B) (f : A -> B -> Comp C)
+  : refineEquiv (a <- c1; b <- c2; f a b) (b <- c2; a <- c1; f a b).
+  Proof.
+    split; repeat intro;
+    inversion_by computes_to_inv;
+    repeat (econstructor; try eassumption).
+  Qed.
+
+  Lemma refine_bind_dedup {A B} (c1 : Comp A) (f : A -> A -> Comp B)
+  : refine (a <- c1; b <- c1; f a b) (a <- c1; f a a).
+  Proof.
+    repeat intro;
+    inversion_by computes_to_inv;
+    repeat (econstructor; try eassumption).
+  Qed.
 End general_refine_lemmas.
 
 Tactic Notation "finalize" "refinement" :=
