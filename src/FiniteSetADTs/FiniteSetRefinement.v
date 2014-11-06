@@ -2,7 +2,7 @@
 Require Import Coq.Strings.String Coq.Sets.Ensembles Coq.Sets.Finite_sets Coq.Lists.List Coq.Sorting.Permutation Coq.Classes.RelationPairs.
 Require Import ADTSynthesis.ADT ADTSynthesis.ADT.ComputationalADT ADTSynthesis.ADTRefinement.Core ADTSynthesis.ADTNotation ADTSynthesis.ADTRefinement.GeneralRefinements ADTSynthesis.Common.AdditionalEnsembleDefinitions ADTSynthesis.Common.AdditionalEnsembleLemmas ADTSynthesis.Computation.
 Require Export ADTSynthesis.FiniteSetADTs.FiniteSetADT.
-Require Import ADTSynthesis.Common ADTSynthesis.Common.Ensembles ADTSynthesis.Common.Ensembles.Tactics.
+Require Import ADTSynthesis.Common ADTSynthesis.Common.Ensembles ADTSynthesis.Common.Ensembles.Tactics ADTSynthesis.ComputationalEnsembles.
 
 (** TODO: Move this elsewhere *)
 Notation FullySharpenedComputation spec
@@ -1327,7 +1327,7 @@ End FiniteSetHelpers.
 
 Create HintDb finite_sets discriminated.
 
-Hint Unfold FiniteSetADT.to_list FiniteSetADT.cardinal FiniteSetADT.fold_right Ensembles.Setminus filter_pred : finite_sets.
+Hint Unfold to_list cardinal fold_right Ensembles.Setminus filter_pred : finite_sets.
 
 Ltac start_FullySharpenedComputation :=
   eexists;

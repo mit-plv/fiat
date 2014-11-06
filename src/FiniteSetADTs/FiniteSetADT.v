@@ -1,6 +1,6 @@
 (** * Definition of the finite set spec *)
 Require Import Coq.Strings.String Coq.Sets.Ensembles Coq.Sets.Finite_sets Coq.Lists.List Coq.Sorting.Permutation.
-Require Import ADTSynthesis.ADT ADTSynthesis.ADT.ComputationalADT ADTSynthesis.ADTRefinement.Core ADTSynthesis.ADTNotation ADTSynthesis.ADTRefinement.GeneralRefinements ADTSynthesis.Common.AdditionalEnsembleDefinitions ADTSynthesis.Common.AdditionalEnsembleLemmas.
+Require Import ADTSynthesis.ADT ADTSynthesis.ADT.ComputationalADT ADTSynthesis.ADTRefinement.Core ADTSynthesis.ADTNotation ADTSynthesis.ADTRefinement.GeneralRefinements ADTSynthesis.Common.AdditionalEnsembleDefinitions.
 
 Set Implicit Arguments.
 
@@ -112,66 +112,3 @@ Definition FiniteSetSpec : ADT FiniteSetSig :=
           (n <- { n : nat | cardinal _ xs n };
            ret (xs, n))
   }.
-
-
-(** Now we spec out two examples, the count of the unique elements in
-    a list, and the sum of the unique elements in a list. *)
-
-Definition elements {A} (ls : list A) : Ensemble A := fun x => List.In x ls.
-
-Definition cardinal {A} (ls : list A) : Comp nat
-  := Pick (cardinal _ (elements ls)).
-
-Definition to_list {A} (S : Ensemble A) : Comp (list A) :=
-  { ls : list _ | EnsembleListEquivalence S ls }.
-
-(** QUESTION: Should I switch [fold_right] and [Ensemble_fold_right]?
-    Which is more common? *)
-Definition fold_right {A B}
-           (f : A -> B -> Comp B) (b : Comp B) (S : Ensemble A)
-: Comp B
-  := (ls <- to_list S;
-      List.fold_right (fun a b' => Bind b' (f a)) b ls).
-
-Definition Ensemble_fold_right {A B}
-           (f : A -> B -> B) (b : B) (S : Ensemble A)
-: Comp B
-  := fold_right (fun a b => ret (f a b)) (ret b) S.
-
-Lemma Ensemble_fold_right_simpl {A B} (f : A -> B -> B) b S
-: refineEquiv (@fold_right A B (fun a b' => ret (f a b')) (ret b) S)
-              (ls <- to_list S;
-               ret (List.fold_right f b ls)).
-Proof.
-  unfold fold_right.
-  f_equiv; intro ls; simpl.
-  induction ls; simpl; try reflexivity.
-  rewrite IHls.
-  autorewrite with refine_monad.
-  reflexivity.
-Qed.
-
-Lemma Ensemble_fold_right_simpl' {A B} f b S
-: refineEquiv (@Ensemble_fold_right A B f b S)
-              (ls <- to_list S;
-               ret (List.fold_right f b ls)).
-Proof.
-  exact (Ensemble_fold_right_simpl f b S).
-Qed.
-
-Definition list_filter_pred {T} (P : T -> Prop) (ls : list T)
-  := List.fold_right
-       (fun (a : T) (xs : Comp (list T)) =>
-          (xs' <- xs;
-           b <- { b : bool | b = true <-> P a };
-           ret (if b then a::xs' else xs')))
-       (ret nil)
-       ls.
-
-Definition filter_pred {T} (P : T -> Prop) (S : Ensemble T)
-  := fold_right
-       (fun (a : T) (xs : list T) =>
-          (b <- { b : bool | b = true <-> P a };
-           ret (if b then a::xs else xs)))
-       (ret nil)
-       S.
