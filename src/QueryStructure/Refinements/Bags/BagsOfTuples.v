@@ -1,10 +1,10 @@
-Require Export BagsInterface CountingListBags TreeBags Tuple Heading List Program ilist.
-Require Import String_as_OT IndexedEnsembles DecideableEnsembles.
-Require Import Bool String OrderedTypeEx BinNat ZArith_dec Arith.
+Require Export ADTSynthesis.QueryStructure.Refinements.Bags.BagsInterface ADTSynthesis.QueryStructure.Refinements.Bags.CountingListBags ADTSynthesis.QueryStructure.Refinements.Bags.TreeBags ADTSynthesis.QueryStructure.Tuple ADTSynthesis.QueryStructure.Heading Coq.Lists.List Coq.Program.Program ADTSynthesis.Common.ilist.
+Require Import ADTSynthesis.Common.String_as_OT ADTSynthesis.QueryStructure.IndexedEnsembles ADTSynthesis.Common.DecideableEnsembles.
+Require Import Coq.Bool.Bool Coq.Strings.String Coq.Structures.OrderedTypeEx Coq.NArith.BinNat Coq.ZArith.ZArith_dec Coq.Arith.Arith.
 
 Unset Implicit Arguments.
 
-Require Import GeneralQueryRefinements.
+Require Import ADTSynthesis.QueryStructure.Refinements.GeneralQueryRefinements.
 
 Definition TSearchTermMatcher (heading: Heading) := (@Tuple heading -> bool).
 
@@ -22,7 +22,7 @@ Definition TupleDisequalityMatcher
            {ens_dec: DecideableEnsemble (fun x : Domain heading attr => value = x)} :=
   fun tuple => negb (dec (tuple attr)).
 
-Require Import FMapAVL.
+Require Import Coq.FSets.FMapAVL.
 
 Module NIndexedMap := FMapAVL.Make N_as_OT.
 Module ZIndexedMap := FMapAVL.Make Z_as_OT.
@@ -403,8 +403,8 @@ Definition NestedTreeFromAttributesAsCorrectBagPlusProof
 Definition CheckType {heading} (attr: Attributes heading) (rightT: _) :=
   {| Attribute := attr; ProperlyTyped := rightT |}.
 
-Require Import QueryStructureNotations ListImplementation.
-Require Import AdditionalLemmas AdditionalPermutationLemmas Arith.
+Require Import ADTSynthesis.QueryStructure.QueryStructureNotations ADTSynthesis.QueryStructure.Refinements.ListImplementation.
+Require Import ADTSynthesis.QueryStructure.AdditionalLemmas ADTSynthesis.QueryStructure.AdditionalPermutationLemmas Coq.Arith.Arith.
 
 (* An equivalence relation between Ensembles of Tuples and Bags
    which incorporates the bag's representation invariant. *)
@@ -459,7 +459,7 @@ Qed.
 (* We now prove that [binsert] is a valid abstraction of the
    adding a tuple to the ensemble modeling the database. *)
 
-Require Import OperationRefinements.
+Require Import ADTSynthesis.QueryStructure.Refinements.OperationRefinements.
 
 Lemma binsert_correct_DB
       db_schema qs index
@@ -620,7 +620,7 @@ Qed.
           rewrite H3 in H5; congruence.
     Qed.
 
-    Require Import AdditionalMorphisms.
+    Require Import ADTSynthesis.QueryStructure.Refinements.AdditionalMorphisms.
 
     Lemma bdeletePlus_correct_DB_snd
           db_schema qs index

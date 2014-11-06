@@ -1,8 +1,8 @@
 (** * Refinement of computations involving ensembles, to ones using finite sets *)
 Require Import Coq.Strings.String Coq.Sets.Ensembles Coq.Sets.Finite_sets Coq.Lists.List Coq.Sorting.Permutation Coq.Classes.RelationPairs.
-Require Import ADT ADT.ComputationalADT ADTRefinement.Core ADTNotation ADTRefinement.GeneralRefinements Common.AdditionalEnsembleDefinitions Common.AdditionalEnsembleLemmas Computation.
-Require Export FiniteSetADTs.FiniteSetADT.
-Require Import Common.
+Require Import ADTSynthesis.ADT ADTSynthesis.ADT.ComputationalADT ADTSynthesis.ADTRefinement.Core ADTSynthesis.ADTNotation ADTSynthesis.ADTRefinement.GeneralRefinements ADTSynthesis.Common.AdditionalEnsembleDefinitions ADTSynthesis.Common.AdditionalEnsembleLemmas ADTSynthesis.Computation.
+Require Export ADTSynthesis.FiniteSetADTs.FiniteSetADT.
+Require Import ADTSynthesis.Common.
 
 (** TODO: Move this elsewhere *)
 Notation FullySharpenedComputation spec

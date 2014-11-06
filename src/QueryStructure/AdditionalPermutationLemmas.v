@@ -1,5 +1,5 @@
-Require Export Permutation Common.
-Require Import AdditionalLemmas List.
+Require Export Coq.Sorting.Permutation ADTSynthesis.Common.
+Require Import ADTSynthesis.QueryStructure.AdditionalLemmas Coq.Lists.List.
 
 Unset Implicit Arguments.
 
@@ -187,7 +187,7 @@ Proof.
   repeat rewrite <- Permutation_middle; eauto.
 Qed.
 
-Require Import Program.
+Require Import Coq.Program.Program.
 
 Lemma permutation_map_cons :
   forall {A} {B} (f: B -> A) {x1 l2} {shuffled: list A},
@@ -217,7 +217,7 @@ Proof.
   apply Permutation_length_1 in H; congruence.
 Qed.
 
-Require Import SetoidList.
+Require Import Coq.Lists.SetoidList.
 
 Lemma InA_app_swap {A} eqA :
   Equivalence eqA

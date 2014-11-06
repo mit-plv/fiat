@@ -1,9 +1,9 @@
-Require Export BagsOfTuples Bool.
-Require Export ListImplementation.
-Require Export ConstraintChecksRefinements DecideableEnsembles.
-Require Export Bags AdditionalLemmas AdditionalFlatMapLemmas AdditionalRefinementLemmas AdditionalMorphisms Bool tupleAgree IndexedEnsembles.
-Require Export QueryStructureNotations OperationRefinements.
-Require Export Common.IterateBoundedIndex.
+Require Export ADTSynthesis.QueryStructure.Refinements.Bags.BagsOfTuples Coq.Bool.Bool.
+Require Export ADTSynthesis.QueryStructure.Refinements.ListImplementation.
+Require Export ADTSynthesis.QueryStructure.Refinements.ConstraintChecksRefinements ADTSynthesis.Common.DecideableEnsembles.
+Require Export ADTSynthesis.QueryStructure.Refinements.Bags.Bags ADTSynthesis.QueryStructure.AdditionalLemmas ADTSynthesis.QueryStructure.Refinements.AdditionalFlatMapLemmas ADTSynthesis.QueryStructure.Refinements.AdditionalRefinementLemmas ADTSynthesis.QueryStructure.Refinements.AdditionalMorphisms Coq.Bool.Bool ADTSynthesis.QueryStructure.tupleAgree ADTSynthesis.QueryStructure.IndexedEnsembles.
+Require Export ADTSynthesis.QueryStructure.QueryStructureNotations ADTSynthesis.QueryStructure.Refinements.OperationRefinements.
+Require Export ADTSynthesis.Common.IterateBoundedIndex.
 
 Import AdditionalLemmas.
 

@@ -1,4 +1,4 @@
-Require Import AutoDB.
+Require Import ADTSynthesis.QueryStructure.Refinements.AutoDB.
 
 Definition VALUE := "VALUE".
 Definition MEASUREMENT_TYPE := "MEASUREMENT_TYPE".

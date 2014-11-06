@@ -1,9 +1,9 @@
-Require Export BagsInterface CountingListBags TreeBags Tuple Heading List Program ilist i2list.
-Require Import String_as_OT IndexedEnsembles DecideableEnsembles.
-Require Import Bool String OrderedTypeEx BagsOfTuples.
-Require Import GeneralQueryRefinements.
-Require Import QueryStructureNotations ListImplementation.
-Require Import AdditionalLemmas AdditionalPermutationLemmas ADT.ComputationalADT Arith BagADT.
+Require Export ADTSynthesis.QueryStructure.Refinements.Bags.BagsInterface ADTSynthesis.QueryStructure.Refinements.Bags.CountingListBags ADTSynthesis.QueryStructure.Refinements.Bags.TreeBags ADTSynthesis.QueryStructure.Tuple ADTSynthesis.QueryStructure.Heading Coq.Lists.List Coq.Program.Program ADTSynthesis.Common.ilist ADTSynthesis.Common.i2list.
+Require Import ADTSynthesis.Common.String_as_OT ADTSynthesis.QueryStructure.IndexedEnsembles ADTSynthesis.Common.DecideableEnsembles.
+Require Import Coq.Bool.Bool Coq.Strings.String Coq.Structures.OrderedTypeEx ADTSynthesis.QueryStructure.Refinements.Bags.BagsOfTuples.
+Require Import ADTSynthesis.QueryStructure.Refinements.GeneralQueryRefinements.
+Require Import ADTSynthesis.QueryStructure.QueryStructureNotations ADTSynthesis.QueryStructure.Refinements.ListImplementation.
+Require Import ADTSynthesis.QueryStructure.AdditionalLemmas ADTSynthesis.QueryStructure.AdditionalPermutationLemmas ADTSynthesis.ADT.ComputationalADT Coq.Arith.Arith ADTSynthesis.QueryStructure.Refinements.BagADT.BagADT.
 
 Section FiniteMapADT.
 

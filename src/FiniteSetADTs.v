@@ -1,6 +1,6 @@
-Require Export FiniteSetADTs.FiniteSetADT FiniteSetADTs.FiniteSetRefinement.
+Require Export ADTSynthesis.FiniteSetADTs.FiniteSetADT ADTSynthesis.FiniteSetADTs.FiniteSetRefinement.
 (** Files to make examples more plesant *)
-Require Export Computation.Core Computation.Notations ADTRefinement.GeneralRefinements ADTNotation.
+Require Export ADTSynthesis.Computation.Core ADTSynthesis.Computation.Notations ADTSynthesis.ADTRefinement.GeneralRefinements ADTSynthesis.ADTNotation.
 
 (** We don't care about displaying the implementation argument *)
 Arguments FiniteSetOfList {_} _.

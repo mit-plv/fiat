@@ -1,13 +1,13 @@
-Require Import String List Sorting.Permutation
-        FunctionalExtensionality ADTNotation Ensembles Common
-        IndexedEnsembles Common.DecideableEnsembles
-        Computation BuildADTRefinements
-        QueryStructureSchema QueryQSSpecs QueryStructure.
+Require Import Coq.Strings.String Coq.Lists.List Coq.Sorting.Permutation
+        Coq.Logic.FunctionalExtensionality ADTSynthesis.ADTNotation Coq.Sets.Ensembles ADTSynthesis.Common
+        ADTSynthesis.QueryStructure.IndexedEnsembles ADTSynthesis.Common.DecideableEnsembles
+        ADTSynthesis.Computation ADTSynthesis.ADTRefinement.BuildADTRefinements
+        ADTSynthesis.QueryStructure.QueryStructureSchema ADTSynthesis.QueryStructure.QuerySpecs.QueryQSSpecs ADTSynthesis.QueryStructure.QueryStructure.
 
 (* [Query_For] and all aggregates are opaque, so we need to make them
    transparent in order to reason about them. *)
 Local Transparent Query_For Count Max MaxN MaxZ Sum SumN SumZ.
-Require Import NArith ZArith.
+Require Import Coq.NArith.NArith Coq.ZArith.ZArith.
 
 Lemma refine_Count {A} rows
 : refine (@Count A rows)
@@ -391,7 +391,7 @@ Proof.
 Qed.
 
 
-Require Import Arith Omega.
+Require Import Coq.Arith.Arith Coq.omega.Omega.
 
 Lemma refineEquiv_For_DropQSConstraints A qsSchema qs :
   forall bod,

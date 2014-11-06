@@ -1,4 +1,4 @@
-Require Export Program Permutation.
+Require Export Coq.Program.Program Coq.Sorting.Permutation.
 
 Unset Implicit Arguments.
 

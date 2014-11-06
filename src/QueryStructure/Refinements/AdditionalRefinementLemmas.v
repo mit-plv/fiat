@@ -1,6 +1,6 @@
-Require Import Ensembles List Program Common Computation.Core
-        GeneralBuildADTRefinements QueryQSSpecs QueryStructure.
-Require Import AdditionalLemmas InsertQSSpecs AdditionalMorphisms.
+Require Import Coq.Sets.Ensembles Coq.Lists.List Coq.Program.Program ADTSynthesis.Common ADTSynthesis.Computation.Core
+        ADTSynthesis.ADTRefinement.GeneralBuildADTRefinements ADTSynthesis.QueryStructure.QuerySpecs.QueryQSSpecs ADTSynthesis.QueryStructure.QueryStructure.
+Require Import ADTSynthesis.QueryStructure.AdditionalLemmas ADTSynthesis.QueryStructure.QuerySpecs.InsertQSSpecs ADTSynthesis.QueryStructure.Refinements.AdditionalMorphisms.
 
 Unset Implicit Arguments.
 
@@ -18,7 +18,7 @@ Proof.
   intros; subst; reflexivity.
 Qed.
 
-Require Import Computation.Refinements.Tactics.
+Require Import ADTSynthesis.Computation.Refinements.Tactics.
 
 Lemma refine_snd :
   forall {A B: Type} (P: B -> Prop),
@@ -60,7 +60,7 @@ Proof.
   intros; subst; inversion_by computes_to_inv; subst; trivial.
 Qed.
 
-Require Import Computation.Refinements.General.
+Require Import ADTSynthesis.Computation.Refinements.General.
 
 Lemma refine_pick_val' :
   forall {A : Type} (a : A)  (P : A -> Prop),
@@ -69,7 +69,7 @@ Proof.
   intros; apply refine_pick_val; assumption.
 Qed.
 
-Require Import Heading Schema.
+Require Import ADTSynthesis.QueryStructure.Heading ADTSynthesis.QueryStructure.Schema.
 
 Lemma tupleAgree_sym :
   forall (heading: Heading) tup1 tup2 attrs,
@@ -79,7 +79,7 @@ Proof.
   split; intro; setoid_rewrite eq_sym_iff; assumption.
 Qed.
 
-Require Import Bool.
+Require Import Coq.Bool.Bool.
 
 Lemma decides_negb :
   forall b P,
@@ -128,9 +128,9 @@ Qed.
 
 Section AdditionalQueryLemmas.
 
-  Require Import InsertQSSpecs StringBound
-  ADTNotation.BuildADTSig ADTNotation.BuildADT
-  GeneralBuildADTRefinements QueryQSSpecs QueryStructure
+  Require Import ADTSynthesis.QueryStructure.QuerySpecs.InsertQSSpecs ADTSynthesis.Common.StringBound
+  ADTSynthesis.ADTNotation.BuildADTSig ADTSynthesis.ADTNotation.BuildADT
+  ADTSynthesis.ADTRefinement.GeneralBuildADTRefinements ADTSynthesis.QueryStructure.QuerySpecs.QueryQSSpecs ADTSynthesis.QueryStructure.QueryStructure
   .
   Lemma get_update_unconstr_iff {db_schema qs table new_contents} :
     forall x,

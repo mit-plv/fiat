@@ -1,6 +1,6 @@
-Require Import String Ensembles.
-Require Import Common.
-Require Import Computation.Core Computation.Monad Computation.SetoidMorphisms Computation.Refinements.Tactics.
+Require Import Coq.Strings.String Coq.Sets.Ensembles.
+Require Import ADTSynthesis.Common.
+Require Import ADTSynthesis.Computation.Core ADTSynthesis.Computation.Monad ADTSynthesis.Computation.SetoidMorphisms ADTSynthesis.Computation.Refinements.Tactics.
 
 (** General Lemmas about the behavior of [computes_to], [refine], and
     [refineEquiv]. *)

@@ -1,4 +1,4 @@
-Require Import SetEq Setoid AdditionalLemmas List Sorting.Permutation.
+Require Import ADTSynthesis.QueryStructure.SetEq Coq.Setoids.Setoid ADTSynthesis.QueryStructure.AdditionalLemmas Coq.Lists.List Coq.Sorting.Permutation.
 
 Definition IsSetEqSafe {A B: Type} (proc: list A -> list B) :=
   forall (seq1 seq2: list A),

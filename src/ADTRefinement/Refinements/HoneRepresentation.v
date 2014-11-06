@@ -1,7 +1,7 @@
-Require Import Common Computation
-        ADT.ADTSig ADT.Core
-        ADTRefinement.Core ADTRefinement.SetoidMorphisms
-        ADTRefinement.GeneralRefinements.
+Require Import ADTSynthesis.Common ADTSynthesis.Computation
+        ADTSynthesis.ADT.ADTSig ADTSynthesis.ADT.Core
+        ADTSynthesis.ADTRefinement.Core ADTSynthesis.ADTRefinement.SetoidMorphisms
+        ADTSynthesis.ADTRefinement.GeneralRefinements.
 
 (* A generic refinement and honing tactic for switching the
     representation of an ADT. *)

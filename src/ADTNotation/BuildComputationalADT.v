@@ -1,7 +1,7 @@
-Require Import Common Computation Ensembles List String
-        ADT.ADTSig ADT.Core ADT.ComputationalADT
-        Common.StringBound Common.ilist
-        ADTNotation.BuildADTSig ADTNotation.BuildADT.
+Require Import ADTSynthesis.Common ADTSynthesis.Computation Coq.Sets.Ensembles Coq.Lists.List Coq.Strings.String
+        ADTSynthesis.ADT.ADTSig ADTSynthesis.ADT.Core ADTSynthesis.ADT.ComputationalADT
+        ADTSynthesis.Common.StringBound ADTSynthesis.Common.ilist
+        ADTSynthesis.ADTNotation.BuildADTSig ADTSynthesis.ADTNotation.BuildADT.
 
 (* Notations for ADTs. *)
 

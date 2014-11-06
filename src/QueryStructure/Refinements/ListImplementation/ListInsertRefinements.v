@@ -1,9 +1,9 @@
-Require Import String Omega List FunctionalExtensionality Ensembles Bool
-        Computation ADT ADTRefinement ADTNotation QueryStructureSchema
-        QueryQSSpecs InsertQSSpecs QueryStructure
-        ADTRefinement.BuildADTRefinements Common.DecideableEnsembles
-        IndexedEnsembles AdditionalLemmas GeneralQueryRefinements GeneralInsertRefinements
-        GeneralQueryStructureRefinements ListQueryStructureRefinements.
+Require Import Coq.Strings.String Coq.omega.Omega Coq.Lists.List Coq.Logic.FunctionalExtensionality Coq.Sets.Ensembles Coq.Bool.Bool
+        ADTSynthesis.Computation ADTSynthesis.ADT ADTSynthesis.ADTRefinement ADTSynthesis.ADTNotation ADTSynthesis.QueryStructure.QueryStructureSchema
+        ADTSynthesis.QueryStructure.QuerySpecs.QueryQSSpecs ADTSynthesis.QueryStructure.QuerySpecs.InsertQSSpecs ADTSynthesis.QueryStructure.QueryStructure
+        ADTSynthesis.ADTRefinement.BuildADTRefinements ADTSynthesis.Common.DecideableEnsembles
+        ADTSynthesis.QueryStructure.IndexedEnsembles ADTSynthesis.QueryStructure.AdditionalLemmas ADTSynthesis.QueryStructure.Refinements.GeneralQueryRefinements ADTSynthesis.QueryStructure.Refinements.GeneralInsertRefinements
+        ADTSynthesis.QueryStructure.Refinements.GeneralQueryStructureRefinements ADTSynthesis.QueryStructure.Refinements.ListImplementation.ListQueryStructureRefinements.
 
 Class List_Query_eq (As : list Type) :=
   { As_Query_eq : ilist Query_eq As}.

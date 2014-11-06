@@ -1,6 +1,6 @@
-Require Import List.
-Require Import Setoid Morphisms QueryStructure.
-Require Import AdditionalLemmas EnsembleListEquivalenceProperties.
+Require Import Coq.Lists.List.
+Require Import Coq.Setoids.Setoid Coq.Classes.Morphisms ADTSynthesis.QueryStructure.QueryStructure.
+Require Import ADTSynthesis.QueryStructure.AdditionalLemmas ADTSynthesis.QueryStructure.Refinements.EnsembleListEquivalenceProperties.
 
 Unset Implicit Arguments.
 
@@ -55,7 +55,7 @@ Proof.
   erewrite filter_eq_morphism; eauto.
 Qed.
 
-Require Import Permutation.
+Require Import Coq.Sorting.Permutation.
 
 Add Parametric Morphism {A} :
   (@List.length A)
@@ -247,8 +247,8 @@ Proof.
   setoid_rewrite H; reflexivity.
 Qed.
 
-Require Import Program Arith.
-Require Import AdditionalPermutationLemmas.
+Require Import Coq.Program.Program Coq.Arith.Arith.
+Require Import ADTSynthesis.QueryStructure.AdditionalPermutationLemmas.
 
 Add Parametric Morphism {A: Type} (ens: A -> Prop) :
   (EnsembleListEquivalence ens)

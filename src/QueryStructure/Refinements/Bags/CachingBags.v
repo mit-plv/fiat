@@ -1,5 +1,5 @@
-Require Export BagsInterface BagsProperties List Program.
-Require Import AdditionalLemmas.
+Require Export ADTSynthesis.QueryStructure.Refinements.Bags.BagsInterface ADTSynthesis.QueryStructure.Refinements.Bags.BagsProperties Coq.Lists.List Coq.Program.Program.
+Require Import ADTSynthesis.QueryStructure.AdditionalLemmas.
 
 Unset Implicit Arguments.
 

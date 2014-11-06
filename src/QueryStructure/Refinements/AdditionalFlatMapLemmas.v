@@ -1,4 +1,4 @@
-Require Import List Permutation AdditionalLemmas AdditionalMorphisms Program Arith Morphisms.
+Require Import Coq.Lists.List Coq.Sorting.Permutation ADTSynthesis.QueryStructure.AdditionalLemmas ADTSynthesis.QueryStructure.Refinements.AdditionalMorphisms Coq.Program.Program Coq.Arith.Arith Coq.Classes.Morphisms.
 
 Lemma length_flat_map :
   forall {A B} seq (f: A -> list B),

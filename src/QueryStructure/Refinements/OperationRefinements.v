@@ -1,3 +1,3 @@
-Require Export GeneralInsertRefinements GeneralQueryRefinements
-        GeneralQueryStructureRefinements ConstraintChecksRefinements
-        ConstraintChecksUnfoldings GeneralDeleteRefinements.
+Require Export ADTSynthesis.QueryStructure.Refinements.GeneralInsertRefinements ADTSynthesis.QueryStructure.Refinements.GeneralQueryRefinements
+        ADTSynthesis.QueryStructure.Refinements.GeneralQueryStructureRefinements ADTSynthesis.QueryStructure.Refinements.ConstraintChecksRefinements
+        ADTSynthesis.QueryStructure.Refinements.ConstraintChecksUnfoldings ADTSynthesis.QueryStructure.Refinements.GeneralDeleteRefinements.

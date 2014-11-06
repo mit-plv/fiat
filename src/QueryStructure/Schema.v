@@ -1,7 +1,7 @@
-Require Import List String FunctionalExtensionality Ensembles
-        Common.ilist Common.StringBound Program
-        QueryStructure.Notations
-        Heading Tuple.
+Require Import Coq.Lists.List Coq.Strings.String Coq.Logic.FunctionalExtensionality Coq.Sets.Ensembles
+        ADTSynthesis.Common.ilist ADTSynthesis.Common.StringBound Coq.Program.Program
+        ADTSynthesis.QueryStructure.Notations
+        ADTSynthesis.QueryStructure.Heading ADTSynthesis.QueryStructure.Tuple.
 
 (* A relation schema is a heading for the tuples of the
    relation and constraints on the members

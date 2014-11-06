@@ -1,6 +1,6 @@
-Require Import List String FunctionalExtensionality Permutation
-         Ensembles AdditionalPermutationLemmas.
-Require Export Common.AdditionalEnsembleDefinitions.
+Require Import Coq.Lists.List Coq.Strings.String Coq.Logic.FunctionalExtensionality Coq.Sorting.Permutation
+         Coq.Sets.Ensembles ADTSynthesis.QueryStructure.AdditionalPermutationLemmas.
+Require Export ADTSynthesis.Common.AdditionalEnsembleDefinitions.
 
 Class UnConstrRelationAbsRClass {A B : Type} :=
   { UnConstrRelationAbsR : Ensemble A -> B -> Prop }.

@@ -1,7 +1,7 @@
-Require Import Common Computation Ensembles
-        ADT.ADTSig ADT.Core
-        ADTRefinement.Core ADTRefinement.SetoidMorphisms
-        ADTRefinement.GeneralRefinements.
+Require Import ADTSynthesis.Common ADTSynthesis.Computation Coq.Sets.Ensembles
+        ADTSynthesis.ADT.ADTSig ADTSynthesis.ADT.Core
+        ADTSynthesis.ADTRefinement.Core ADTSynthesis.ADTRefinement.SetoidMorphisms
+        ADTSynthesis.ADTRefinement.GeneralRefinements.
 
 Generalizable All Variables.
 Set Implicit Arguments.

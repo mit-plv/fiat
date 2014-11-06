@@ -1,10 +1,10 @@
-Require Import List String Ensembles Arith
-        Computation.Core
-        ADT.ADTSig ADT.Core
-        Common.ilist Common.StringBound IndexedEnsembles
-        ADTNotation.BuildADT ADTNotation.BuildADTSig
-        QueryStructure.QueryStructureSchema QueryStructure.QueryStructure
-        InsertQSSpecs.
+Require Import Coq.Lists.List Coq.Strings.String Coq.Sets.Ensembles Coq.Arith.Arith
+        ADTSynthesis.Computation.Core
+        ADTSynthesis.ADT.ADTSig ADTSynthesis.ADT.Core
+        ADTSynthesis.Common.ilist ADTSynthesis.Common.StringBound ADTSynthesis.QueryStructure.IndexedEnsembles
+        ADTSynthesis.ADTNotation.BuildADT ADTSynthesis.ADTNotation.BuildADTSig
+        ADTSynthesis.QueryStructure.QueryStructureSchema ADTSynthesis.QueryStructure.QueryStructure
+        ADTSynthesis.QueryStructure.QuerySpecs.InsertQSSpecs.
 
 (* Definitions for updating query structures. *)
 

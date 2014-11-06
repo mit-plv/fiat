@@ -1,7 +1,7 @@
-Require Import Common Computation
-        ADT.ADTSig ADT.Core
-        ADTRefinement.Core ADTRefinement.GeneralRefinements
-        ADTRefinement.SetoidMorphisms.
+Require Import ADTSynthesis.Common ADTSynthesis.Computation
+        ADTSynthesis.ADT.ADTSig ADTSynthesis.ADT.Core
+        ADTSynthesis.ADTRefinement.Core ADTSynthesis.ADTRefinement.GeneralRefinements
+        ADTSynthesis.ADTRefinement.SetoidMorphisms.
 
 Section DelegateMethods.
 

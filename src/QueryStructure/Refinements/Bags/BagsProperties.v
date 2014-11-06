@@ -1,5 +1,5 @@
-Require Import BagsInterface AdditionalLemmas.
-Require Import AdditionalMorphisms.
+Require Import ADTSynthesis.QueryStructure.Refinements.Bags.BagsInterface ADTSynthesis.QueryStructure.AdditionalLemmas.
+Require Import ADTSynthesis.QueryStructure.Refinements.AdditionalMorphisms.
 
 Section BagsProperties.
 

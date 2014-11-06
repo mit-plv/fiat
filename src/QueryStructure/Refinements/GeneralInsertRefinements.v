@@ -1,8 +1,8 @@
-Require Import String Omega List FunctionalExtensionality Ensembles
-        Computation ADT ADTRefinement ADTNotation QueryStructureSchema
-        BuildADTRefinements QueryStructure IndexedEnsembles
-        QuerySpecs.QueryQSSpecs QuerySpecs.InsertQSSpecs
-        ConstraintChecksRefinements.
+Require Import Coq.Strings.String Coq.omega.Omega Coq.Lists.List Coq.Logic.FunctionalExtensionality Coq.Sets.Ensembles
+        ADTSynthesis.Computation ADTSynthesis.ADT ADTSynthesis.ADTRefinement ADTSynthesis.ADTNotation ADTSynthesis.QueryStructure.QueryStructureSchema
+        ADTSynthesis.ADTRefinement.BuildADTRefinements ADTSynthesis.QueryStructure.QueryStructure ADTSynthesis.QueryStructure.IndexedEnsembles
+        ADTSynthesis.QueryStructure.QuerySpecs.QueryQSSpecs ADTSynthesis.QueryStructure.QuerySpecs.InsertQSSpecs
+        ADTSynthesis.QueryStructure.Refinements.ConstraintChecksRefinements.
 
 (* Facts about implements insert operations. *)
 

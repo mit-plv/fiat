@@ -1,2 +1,2 @@
-Require Export ADTRefinement.Core ADTRefinement.SetoidMorphisms
-        ADTRefinement.GeneralRefinements ADTRefinement.Refinements.
+Require Export ADTSynthesis.ADTRefinement.Core ADTSynthesis.ADTRefinement.SetoidMorphisms
+        ADTSynthesis.ADTRefinement.GeneralRefinements ADTSynthesis.ADTRefinement.Refinements.

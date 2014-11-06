@@ -1,10 +1,10 @@
 (** * Miscellaneous theorems about ensembles *)
 Require Export Coq.Sets.Ensembles.
 Require Import Coq.Sorting.Permutation Coq.Lists.List.
-Require Export Common.AdditionalEnsembleDefinitions.
-Require Import Common.
+Require Export ADTSynthesis.Common.AdditionalEnsembleDefinitions.
+Require Import ADTSynthesis.Common.
 (** TODO: Move the following out of [QueryStructure] *)
-Require Import QueryStructure.AdditionalPermutationLemmas.
+Require Import ADTSynthesis.QueryStructure.AdditionalPermutationLemmas.
 
 Local Ltac perm_t :=
   repeat match goal with

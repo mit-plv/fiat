@@ -1,5 +1,5 @@
-Require Import List Common Common.ilist ADT.Core ADT.ComputationalADT
-        ADTRefinement.Core ADTRefinement.SetoidMorphisms.
+Require Import Coq.Lists.List ADTSynthesis.Common ADTSynthesis.Common.ilist ADTSynthesis.ADT.Core ADTSynthesis.ADT.ComputationalADT
+        ADTSynthesis.ADTRefinement.Core ADTSynthesis.ADTRefinement.SetoidMorphisms.
 
 (* To derive an ADT interactively from a specification [spec], we can
    build a dependent product [ {adt : _ & refineADT spec adt} ]. The

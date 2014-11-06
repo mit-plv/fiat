@@ -1,4 +1,4 @@
-Require Import Common Computation.Core ADT.Core Ensembles.
+Require Import ADTSynthesis.Common ADTSynthesis.Computation.Core ADTSynthesis.ADT.Core Coq.Sets.Ensembles.
 
 Section HideADT.
 

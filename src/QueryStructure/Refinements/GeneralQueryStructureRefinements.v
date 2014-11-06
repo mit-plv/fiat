@@ -1,11 +1,11 @@
-Require Import String Omega List FunctionalExtensionality Ensembles
-        Sorting.Permutation
-        Computation ADT ADTRefinement ADTNotation BuildADTRefinements
-        QueryStructureSchema QueryStructure
-        IndexedEnsembles
-        QueryQSSpecs InsertQSSpecs EmptyQSSpecs DeleteQSSpecs
-        QueryStructureNotations
-        GeneralQueryRefinements GeneralInsertRefinements GeneralDeleteRefinements.
+Require Import Coq.Strings.String Coq.omega.Omega Coq.Lists.List Coq.Logic.FunctionalExtensionality Coq.Sets.Ensembles
+        Coq.Sorting.Permutation
+        ADTSynthesis.Computation ADTSynthesis.ADT ADTSynthesis.ADTRefinement ADTSynthesis.ADTNotation ADTSynthesis.ADTRefinement.BuildADTRefinements
+        ADTSynthesis.QueryStructure.QueryStructureSchema ADTSynthesis.QueryStructure.QueryStructure
+        ADTSynthesis.QueryStructure.IndexedEnsembles
+        ADTSynthesis.QueryStructure.QuerySpecs.QueryQSSpecs ADTSynthesis.QueryStructure.QuerySpecs.InsertQSSpecs ADTSynthesis.QueryStructure.QuerySpecs.EmptyQSSpecs ADTSynthesis.QueryStructure.QuerySpecs.DeleteQSSpecs
+        ADTSynthesis.QueryStructure.QueryStructureNotations
+        ADTSynthesis.QueryStructure.Refinements.GeneralQueryRefinements ADTSynthesis.QueryStructure.Refinements.GeneralInsertRefinements ADTSynthesis.QueryStructure.Refinements.GeneralDeleteRefinements.
 
 Ltac subst_strings :=
   repeat match goal with

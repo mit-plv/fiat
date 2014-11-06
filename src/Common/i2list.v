@@ -1,7 +1,7 @@
 Generalizable All Variables.
 Set Implicit Arguments.
 
-Require Import List String Arith ilist.
+Require Import Coq.Lists.List Coq.Strings.String Coq.Arith.Arith ADTSynthesis.Common.ilist.
 
 Section i2list.
 

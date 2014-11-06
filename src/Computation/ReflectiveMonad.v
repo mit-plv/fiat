@@ -1,7 +1,7 @@
 (** * Simplification of computation via monad laws, reflectively *)
-Require Import String Ensembles.
-Require Import Common.
-Require Import Computation.Core Computation.SetoidMorphisms Computation.Monad.
+Require Import Coq.Strings.String Coq.Sets.Ensembles.
+Require Import ADTSynthesis.Common.
+Require Import ADTSynthesis.Computation.Core ADTSynthesis.Computation.SetoidMorphisms ADTSynthesis.Computation.Monad.
 
 (** The main tactic is [simplify with monad laws] *)
 

@@ -1,4 +1,4 @@
-Require Export BagsInterface.
+Require Export ADTSynthesis.QueryStructure.Refinements.Bags.BagsInterface.
 Unset Implicit Arguments.
 
 Open Scope list.
@@ -72,7 +72,7 @@ Section ListBags.
     firstorder.
   Qed.
 
-  Require Import Omega.
+  Require Import Coq.omega.Omega.
   Lemma List_BagCountCorrect_aux :
     forall (container: list TItem) (search_term: TSearchTerm) default,
       length (List.filter (bfind_matcher search_term) container) + default =

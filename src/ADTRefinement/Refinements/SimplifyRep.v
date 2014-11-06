@@ -1,6 +1,6 @@
-Require Import Common Computation
-        ADT.ADTSig ADT.Core
-        ADTRefinement.Core ADTRefinement.SetoidMorphisms.
+Require Import ADTSynthesis.Common ADTSynthesis.Computation
+        ADTSynthesis.ADT.ADTSig ADTSynthesis.ADT.Core
+        ADTSynthesis.ADTRefinement.Core ADTSynthesis.ADTRefinement.SetoidMorphisms.
 
 Section SimplifyRep.
 

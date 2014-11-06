@@ -1,5 +1,5 @@
-Require Import Common.ilist Common.StringBound ADT.ADTSig.
-Require Import List String.
+Require Import ADTSynthesis.Common.ilist ADTSynthesis.Common.StringBound ADTSynthesis.ADT.ADTSig.
+Require Import Coq.Lists.List Coq.Strings.String.
 
 (* Notation for ADT Signatures. *)
 

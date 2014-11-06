@@ -1,4 +1,4 @@
-Require Import AutoDB.
+Require Import ADTSynthesis.QueryStructure.Refinements.AutoDB.
 
 (* Our bookstore has two relations (tables):
    - The [Books] relation contains the books in the

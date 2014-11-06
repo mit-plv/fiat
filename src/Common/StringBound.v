@@ -1,4 +1,4 @@
-Require Import List String Arith ilist.
+Require Import Coq.Lists.List Coq.Strings.String Coq.Arith.Arith ADTSynthesis.Common.ilist.
 
 (* Typeclasses for ensuring that a string is included
    in a list (i.e. a set of method names). This allows
@@ -81,7 +81,7 @@ Section IndexBound.
     Variable A_eq_dec :
       forall a a' : A, {a = a'} + {a <> a'}.
 
-    Require Import Eqdep_dec.
+    Require Import Coq.Logic.Eqdep_dec.
 
     Program Definition Opt_A_eq_dec (a a' : option A):
       {a = a'} + {a <> a'} :=
@@ -698,7 +698,7 @@ End ithIndexBound.
 
 Section i2thIndexBound.
 
-  Require Import i2list.
+  Require Import ADTSynthesis.Common.i2list.
 
   (* Given a bounded index [BoundedIndex Bound], we can wrap
      various lookup functions over lists indexed over [Bound].
