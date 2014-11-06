@@ -406,6 +406,38 @@ Section general_refine_lemmas.
     inversion_by computes_to_inv;
     repeat (econstructor; try eassumption).
   Qed.
+
+  Lemma comp_split_snd {A B} (x : A * B)
+  : refineEquiv (ret (snd x))
+                (ab <- ret x;
+                 ret (snd ab)).
+  Proof.
+    autorewrite with refine_monad; reflexivity.
+  Qed.
+
+  Lemma refine_skip {A B C} (c : Comp A) (f : A -> Comp B) (dummy : A -> Comp C)
+  : refine (Bind c f)
+           (a <- c;
+            dummy a;;
+                  f a).
+  Proof.
+    repeat first [ intro
+                 | inversion_by computes_to_inv
+                 | econstructor; eassumption
+                 | econstructor; try eassumption; [] ].
+  Qed.
+
+  Lemma refine_skip2 {A B} (a : Comp A) (dummy : Comp B)
+  : refine a
+           (dummy;;
+            a).
+  Proof.
+    repeat first [ intro
+                 | inversion_by computes_to_inv
+                 | assumption
+                 | econstructor; eassumption
+                 | econstructor; try eassumption; [] ].
+  Qed.
 End general_refine_lemmas.
 
 Tactic Notation "finalize" "refinement" :=

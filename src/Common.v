@@ -544,3 +544,71 @@ Definition pull_if_dep {A B} (P : forall b : bool, A b -> B b) (a : A true) (a' 
 Definition pull_if {A B} (P : A -> B) (a a' : A) (b : bool)
 : P (if b then a else a') = if b then P a else P a'
   := pull_if_dep (fun _ => P) a a' b.
+
+(** From jonikelee@gmail.com on coq-club *)
+Ltac simplify_hyp' H :=
+  let T := type of H in
+  let X := (match eval hnf in T with ?X -> _ => constr:X end) in
+  let H' := fresh in
+  assert (H' : X) by (tauto || congruence);
+    specialize (H H');
+    clear H'.
+
+Ltac simplify_hyps :=
+  repeat match goal with
+           | [ H : ?X -> _ |- _ ] => simplify_hyp' H
+           | [ H : ~?X |- _ ] => simplify_hyp' H
+         end.
+
+Local Ltac bool_eq_t :=
+  destruct_head_hnf bool; simpl;
+  repeat (split || intro || destruct_head iff || congruence);
+  repeat match goal with
+           | [ H : ?x = ?x -> _ |- _ ] => specialize (H eq_refl)
+           | [ H : ?x <> ?x |- _ ] => specialize (H eq_refl)
+           | [ H : False |- _ ] => destruct H
+           | _ => progress simplify_hyps
+           | [ H : ?x = ?y |- _ ] => solve [ inversion H ]
+           | [ H : false = true -> _ |- _ ] => clear H
+         end.
+
+Lemma bool_true_iff_beq (b0 b1 b2 b3 : bool)
+: (b0 = b1 <-> b2 = b3) <-> (b0 = (if b1
+                                   then if b3
+                                        then b2
+                                        else negb b2
+                                   else if b3
+                                        then negb b2
+                                        else b2)).
+Proof. bool_eq_t. Qed.
+
+Lemma bool_true_iff_bneq (b0 b1 b2 b3 : bool)
+: (b0 = b1 <-> b2 <> b3) <-> (b0 = (if b1
+                                    then if b3
+                                         then negb b2
+                                         else b2
+                                    else if b3
+                                         then b2
+                                         else negb b2)).
+Proof. bool_eq_t. Qed.
+
+Lemma bool_true_iff_bnneq (b0 b1 b2 b3 : bool)
+: (b0 = b1 <-> ~b2 <> b3) <-> (b0 = (if b1
+                                     then if b3
+                                          then b2
+                                          else negb b2
+                                     else if b3
+                                          then negb b2
+                                          else b2)).
+Proof. bool_eq_t. Qed.
+
+Lemma dn_eqb (x y : bool) : ~~(x = y) -> x = y.
+Proof.
+  destruct x, y; try congruence;
+  intro H; exfalso; apply H; congruence.
+Qed.
+
+Lemma neq_to_eq_negb (x y : bool) : x <> y -> x = negb y.
+Proof.
+  destruct x, y; try congruence; try tauto.
+Qed.
