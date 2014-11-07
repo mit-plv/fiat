@@ -10,7 +10,8 @@ Lemma start_compiling' :
            (prog <- (@Prog av env True
                            ∅ ([vret >sca> v]::∅)
                            ∅ ∅);
-            final_state <- {final_state | RunsTo env prog init_state final_state};
+            final_state <- {final_state | Safe env prog init_state /\
+                                          RunsTo env prog init_state final_state};
             {x | final_state[vret >> SCA av x]})%comp.
 Proof.
   unfold refine, Prog, ProgOk; intros.
@@ -33,7 +34,8 @@ Lemma start_compiling_sca_with_precondition : (* TODO: Supersedes start_compilin
            (prog <- (@Prog av env True
                            scas ([vret >sca> v]::∅)
                            adts ∅);
-            final_state <- {final_state | RunsTo env prog init_state final_state};
+            final_state <- {final_state | Safe env prog init_state /\
+                                          RunsTo env prog init_state final_state};
             {x | final_state[vret >> SCA av x]})%comp.
 Proof.
   unfold refine, Prog, ProgOk; intros.
@@ -54,7 +56,8 @@ Lemma start_compiling_adt_with_precondition : (* TODO: Supersedes start_compilin
            (prog <- (@Prog av env True
                            scas (∅)
                            adts ([vret >adt> wrapper v]::∅));
-            final_state <- {final_state | RunsTo env prog init_state final_state};
+            final_state <- {final_state | Safe env prog init_state /\
+                                          RunsTo env prog init_state final_state};
             {x | final_state[vret >> ADT (wrapper x)]})%comp.
 Proof.
   unfold refine, Prog, ProgOk; intros.
