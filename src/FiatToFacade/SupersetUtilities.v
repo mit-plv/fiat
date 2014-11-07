@@ -2,6 +2,7 @@ Require Import Program.
 Require Import StringMap.
 Require Import FiatToFacade.Utilities FiatToFacade.Superset FiatToFacade.SupersetMorphisms
                FiatToFacade.StringMapNotations FiatToFacade.StringMapUtilities.
+Require Import Facade.DFacade.
 
 Lemma Superset_mapsto :
   forall {elt welt} {k v state map} wrapper,
@@ -530,3 +531,4 @@ Ltac scas_adts_mapsto :=
                    | [ H: ?scas[?k >> ?v], H': SomeSCAs ?state ?adts |- _ ] =>
                      progress (pose proof (Superset_mapsto' _ _ _ _ H' H); clear_dups)
                  end).
+

@@ -1,5 +1,5 @@
 Require Import FiatToFacade.Superset.
-Require Import Facade.Facade.
+Require Import Facade.Facade Facade.DFacade.
 Require Import Coq.Classes.Morphisms Setoid.
 Require Import StringMap.
 

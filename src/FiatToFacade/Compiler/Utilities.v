@@ -1,31 +1,30 @@
-Require Import Facade.Facade SyntaxExpr StringMap.
 Require Import FiatToFacade.SupersetUtilities.
 Require Import FiatToFacade.StringMapNotations.
 Require Import FiatToFacade.StringMapUtilities.
 Require Import FiatToFacade.Superset.
 Require Import FiatToFacade.FacadeNotations.
 Require Import FiatToFacade.FacadeUtilities.
+Require Import Facade.DFacade SyntaxExpr StringMap GLabelMap.
 
 Ltac safe_seq :=
   constructor;
   split; [ specialize_states; assumption | ].
 
+Require Import Facade.DFacade.
 Lemma safe_call_1 :
-  forall {av} env state adts pointer spec varg arg vout,
+  forall {av} env state adts f spec varg arg vout,
     state[varg >> arg] ->
-    Word2Spec env pointer = Some (Axiomatic spec) ->
+    GLabelMap.find f env = Some (Axiomatic spec) ->
     AllADTs state adts -> 
     ~ StringMap.In (elt:=Value av) vout adts ->
     PreCond spec (arg :: nil) ->
-    @Safe av env (Call vout (Const pointer) (varg :: nil)) state.
+    @Safe av env (Call vout f (varg :: nil)) state.
 Proof.
   intros.
   econstructor.
 
-  repeat constructor; intuition. (* NoDup *)
-  reflexivity.
   eassumption.
-  unfold sel; simpl; subst_find; reflexivity.
+  eauto using mapM_MapsTo_1.
   eapply not_in_adts_not_mapsto_adt; eassumption.
   assumption.
 Qed.

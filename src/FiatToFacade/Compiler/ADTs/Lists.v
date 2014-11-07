@@ -1,258 +1,107 @@
 Require Import FiatToFacade.Compiler.Prerequisites FiatToFacade.Compiler.ADTs.ListsInversion.
 Require Import Facade.FacadeADTs.
-Require Import List.
+Require Import List GLabelMap.
 
 Unset Implicit Arguments.
 
-Lemma compile_push :
+Ltac compile_list_helper runs_to :=
+  unfold refine, Prog, ProgOk; intros;
+  inversion_by computes_to_inv;
+  subst; constructor; split; intros;
+  destruct_pairs; scas_adts_mapsto;
+  [ econstructor; eauto 2 using mapsto_eval;
+    [ scas_adts_mapsto;
+      eauto using mapM_MapsTo_0, mapM_MapsTo_1, mapM_MapsTo_2
+    | eapply not_in_adts_not_mapsto_adt;
+      [ eassumption | map_iff_solve intuition ]
+    | simpl; repeat eexists; reflexivity ]
+  | match goal with
+      | H: context[RunsTo] |- _ => eapply runs_to in H; eauto
+    end; split; repeat rewrite_Eq_in_goal
+  ].
+
+Lemma compile_list_push :
   forall {env},
-  forall vseq vhead vpointer vdiscard label w,
+  forall vseq vhead f vdiscard,
   forall scas adts knowledge head seq,
-    Label2Word env label = Some w ->
-    Word2Spec env w = Some (Axiomatic List_push) ->
-    ~ StringMap.In vpointer adts ->
+    GLabelMap.find f env = Some (Axiomatic List_push) ->
     ~ StringMap.In vdiscard adts ->
     ~ StringMap.In vseq scas ->
-    vpointer <> vseq ->
-    vpointer <> vhead ->
     vhead <> vseq ->
     vseq <> vdiscard ->
     scas[vhead >> SCA _ head] ->
     refine (@Prog _ env knowledge
-                  scas ([vdiscard >sca> 0]::[vpointer >sca> w]::scas)
+                  scas ([vdiscard >sca> 0]::scas)
                   ([vseq >adt> List seq]::adts) ([vseq >adt> List (head :: seq)]::adts))
-           (ret (Label vpointer label;
-                 Call vdiscard (Var vpointer) (vseq :: vhead :: nil))%facade).
+           (ret (Call vdiscard f (vseq :: vhead :: nil))%facade).
 Proof.
-  unfold refine, Prog, ProgOk; intros;
-  inversion_by computes_to_inv;
-  subst; constructor; split; intros;
-  destruct_pairs.
+  compile_list_helper runsto_cons.
 
-  (* Safe *)
-  + repeat (constructor; intros).
-    - econstructor; [ | eapply not_in_adts_not_mapsto_adt ]; try eassumption; map_iff_solve intuition.
-    - inversion_facade; mapsto_eq_add; (* TODO this line above should also work in other similar theorems *)
-      eq_transitive; autoinj;
-      econstructor; eauto 2 using mapsto_eval.
-
-      eauto using NoDup_0, NoDup_1, NoDup_2. (* TO COPY *)
-
-      scas_adts_mapsto.
-
-      try apply mapM_MapsTo_1; (* TODO: this, too, should work in other proofs *)
-        try apply mapM_MapsTo_2;
-        eauto;
-        rewrite_Eq_in_goal;
-        map_iff_solve idtac;
-        eassumption.
-
-      eapply not_in_adts_not_mapsto_adt;
-        [ rewrite_Eq_in_goal; apply add_adts_pop_sca; [ | eassumption ] | ];
-        map_iff_solve intuition.
-      
-      simpl; eexists; try eexists. reflexivity.      
-      
-  (* RunsTo *)
-  + inversion_facade.
-    eapply RunsTo_label in H15; eauto.
-
-    mapsto_eq_add.
-
-    
-    eapply runsto_cons_var in H18; eauto.
-    split; repeat rewrite_Eq_in_goal.
-
-    repeat (first [ apply SomeSCAs_chomp
-                  | apply add_sca_pop_adts; [rewrite StringMapFacts.F.add_neq_in_iff; eassumption | ] ]);
-      trivial.
-    
-    apply add_adts_pop_sca; map_iff_solve trivial.
-    apply AllADTs_chomp_remove.
-
-    rewrite H12.
-    trickle_deletion.
-    apply add_adts_pop_sca. map_iff_solve intuition.
-    reflexivity.
-
-    rewrite_Eq_in_goal; map_iff_solve idtac.
-    scas_adts_mapsto; assumption.
-
-    rewrite_Eq_in_goal; map_iff_solve idtac.
-    scas_adts_mapsto; assumption.
+  eauto using SomeSCAs_chomp, add_sca_pop_adts.
+  apply add_adts_pop_sca; map_iff_solve trivial.
+  apply AllADTs_chomp_remove.
+  match goal with
+    | H: AllADTs _ _ |- _ => rewrite H
+  end; trickle_deletion; reflexivity.
 Qed.
 
-
 Lemma compile_list_delete :
-  forall env label w vpointer vret vseq seq knowledge scas adts adts',
-    Label2Word env label = Some w ->
-    Word2Spec env w = Some (Axiomatic List_delete) ->
-    ~ StringMap.In vpointer adts ->
+  forall env f vret vseq seq knowledge scas adts adts',
+    GLabelMap.find f env = Some (Axiomatic List_delete) ->
     ~ StringMap.In vret adts ->
     ~ StringMap.In vseq scas ->
-    vpointer <> vseq ->
     adts[vseq >> ADT (List seq)] ->
     StringMap.Equal adts' (StringMap.remove vseq adts) ->
     refine (@Prog _ env knowledge
-                  scas ([vret >sca> 0]::[vpointer >> SCA FacadeADT w]::scas)
+                  scas ([vret >sca> 0]::scas)
                   adts adts')
-           (ret (Label vpointer label;
-                 Call vret (Var vpointer) (vseq :: nil)))%facade.
+           (ret (Call vret f (vseq :: nil)))%facade.
 Proof.
-  unfold refine, Prog, ProgOk; intros;
-  inversion_by computes_to_inv;
-  subst; constructor; split; intros;
-  destruct_pairs.
+  compile_list_helper runsto_delete.
 
-  (* Safe *)
-  + repeat (constructor; intros).
-    - econstructor; eauto 2 using not_in_adts_not_mapsto_adt.
-    - inversion_facade; mapsto_eq_add; (* TODO *)
-      eq_transitive; autoinj;
-      econstructor; eauto 2 using mapsto_eval.
-      repeat (constructor; eauto).
-
-      scas_adts_mapsto.
-      
-      apply mapM_MapsTo_1; eauto.
-      rewrite_Eq_in_goal.
-      map_iff_solve idtac.      
-      eassumption.
-
-      eapply not_in_adts_not_mapsto_adt.
-      rewrite_Eq_in_goal; eauto using add_adts_pop_sca.
-      assumption.
-      simpl; eexists; reflexivity.      
-      
-    (* RunsTo *)
-  + inversion_facade.
-    eapply RunsTo_label in H13; eauto.
-
-    mapsto_eq_add.
-
-    eapply runsto_delete' in H16; eauto.
-    split; repeat rewrite_Eq_in_goal.
-
-    repeat (apply SomeSCAs_chomp; trivial; trickle_deletion).
-
-    apply SomeSCAs_not_In_remove; trivial.
-    trickle_deletion.
-    repeat (apply add_adts_pop_sca; [ map_iff_solve intuition | ]).
-    apply AllADTs_chomp_remove'; intuition.
-
-    scas_adts_mapsto.
-    rewrite_Eq_in_goal; map_iff_solve ltac:(intuition eassumption).
+  eauto using SomeSCAs_chomp, SomeSCAs_not_In_remove.
+  
+  apply add_adts_pop_sca.
+  map_iff_solve intuition.
+  eauto using AllADTs_chomp_remove'.
 Qed.
 
-Lemma compile_new :
+Lemma compile_list_new :
   forall {env},
   forall scas adts knowledge,
-  forall vret vpointer label w,
-    Label2Word env label = Some w ->
-    Word2Spec env w = Some (Axiomatic List_new) ->
-    ~ StringMap.In vpointer adts ->
+  forall vret f,
+    GLabelMap.find f env = Some (Axiomatic List_new) ->
     ~ StringMap.In vret adts ->
     ~ StringMap.In vret scas ->
-    vpointer <> vret ->
     refine (@Prog _ env knowledge
-                  scas ([vpointer >sca> w]::scas)
+                  scas scas
                   adts ([vret >adt> List nil]::adts))
-           (ret (Label vpointer label;
-                 Call vret (Var vpointer) nil)%facade).
+           (ret (Call vret f nil)%facade).
 Proof.
-  unfold refine, Prog, ProgOk; intros;
-  inversion_by computes_to_inv;
-  subst; constructor; split; intros;
-  destruct_pairs.
-
-  (* Safe *)
-  + repeat (constructor; intros).
-    - econstructor; eauto 2 using not_in_adts_not_mapsto_adt.
-    - inversion_facade; mapsto_eq_add; (* TODO *)
-      eq_transitive; autoinj;
-      econstructor; eauto 2 using mapsto_eval.
-      constructor. reflexivity.
-      eapply not_in_adts_not_mapsto_adt.
-      rewrite_Eq_in_goal; eauto using add_adts_pop_sca.
-      assumption.
-      reflexivity.
-
-  (* RunsTo *)
-  + inversion_facade.
-    eapply RunsTo_label in H11; eauto.
-
-    mapsto_eq_add.
-    eapply runsto_new in H14; eauto.
-    split; repeat rewrite_Eq_in_goal.
-    
-    apply add_sca_pop_adts, SomeSCAs_chomp; trivial;
-    rewrite StringMapFacts.F.add_neq_in_iff; assumption.
-
-    apply AllADTs_chomp, add_adts_pop_sca; trivial;
-    rewrite StringMapFacts.F.add_neq_in_iff; assumption.
+  compile_list_helper runsto_new.
+  
+  eauto using add_sca_pop_adts.
+  eauto using AllADTs_chomp. 
 Qed.
-
 
 Lemma compile_copy :
   forall {env},
   forall scas adts knowledge seq,
-  forall vret vfrom vpointer label w,
-    Label2Word env label = Some w ->
-    Word2Spec env w = Some (Axiomatic List_copy) ->
-    ~ StringMap.In vpointer adts ->
+  forall vret vfrom f,
+    GLabelMap.find f env = Some (Axiomatic List_copy) ->
     ~ StringMap.In vret adts ->
     ~ StringMap.In vret scas ->
     ~ StringMap.In vfrom scas ->
-    vpointer <> vret ->
-    vpointer <> vfrom ->
     adts[vfrom >> ADT (List seq)] ->
     refine (@Prog _ env knowledge
-                  scas ([vpointer >sca> w]::scas)
+                  scas scas
                   adts ([vret >adt> List seq]::adts))
-           (ret (Label vpointer label;
-                 Call vret (Var vpointer) (vfrom :: nil))%facade).
+           (ret (Call vret f (vfrom :: nil))%facade).
 Proof.
-  unfold refine, Prog, ProgOk; intros;
-  inversion_by computes_to_inv;
-  subst; constructor; split; intros;
-  destruct_pairs.
+  compile_list_helper runsto_copy.
 
-  (* Safe *)
-  + repeat (constructor; intros).
-    - econstructor; eauto 2 using not_in_adts_not_mapsto_adt.
-    - inversion_facade; mapsto_eq_add; (* TODO *)
-      eq_transitive; autoinj;
-      econstructor; eauto 2 using mapsto_eval.
-      repeat (constructor; eauto).
-
-      scas_adts_mapsto.
-      
-      apply mapM_MapsTo_1; eauto.
-      rewrite_Eq_in_goal.
-      map_iff_solve idtac.      
-      eassumption.
-
-      eapply not_in_adts_not_mapsto_adt.
-      rewrite_Eq_in_goal; eauto using add_adts_pop_sca.
-      assumption.
-      simpl; eexists; reflexivity.      
-      
-  (* RunsTo *)
-  + inversion_facade.
-    eapply RunsTo_label in H14; eauto.
-
-    mapsto_eq_add.
-
-    eapply runsto_copy_var in H17; eauto.
-    split; repeat rewrite_Eq_in_goal.
-    
-    repeat (apply add_sca_pop_adts; [rewrite StringMapFacts.F.add_neq_in_iff; eassumption | ]).
-    apply SomeSCAs_chomp; trivial.
-    
-    apply AllADTs_chomp, AllADTs_swap, add_adts_pop_sca; trivial.
-    apply AllADTs_add_in; assumption.
-    rewrite_Eq_in_goal; map_iff_solve idtac.
-    scas_adts_mapsto; assumption.
+  eauto using add_sca_pop_adts.
+  eauto using AllADTs_chomp, AllADTs_add_in.
 Qed.
 
 Lemma compile_pre_push :

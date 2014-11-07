@@ -1,5 +1,5 @@
 Require Import FiatToFacade.Prog FiatToFacade.Utilities.
-Require Import Facade.Facade.
+Require Import Facade.DFacade.
 
 Definition ProgEquiv {av} p1 p2 := 
   forall env st1,

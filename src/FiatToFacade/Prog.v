@@ -1,6 +1,6 @@
 Require Import FiatToFacade.Superset.
 Require Import Computation.Core.
-Require Import Facade.
+Require Import Facade.DFacade.
 
 Definition ProgOk {av env} prog initial_knowledge initial_scas final_scas initial_adts final_adts :=
   forall initial_state,
