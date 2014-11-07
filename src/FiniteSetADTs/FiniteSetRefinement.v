@@ -2,7 +2,7 @@
 Require Import Coq.Strings.String Coq.Sets.Ensembles Coq.Sets.Finite_sets Coq.Lists.List Coq.Sorting.Permutation Coq.Classes.RelationPairs.
 Require Import ADTSynthesis.ADT ADTSynthesis.ADT.ComputationalADT ADTSynthesis.ADTRefinement.Core ADTSynthesis.ADTNotation ADTSynthesis.ADTRefinement.GeneralRefinements ADTSynthesis.Common.AdditionalEnsembleDefinitions ADTSynthesis.Common.AdditionalEnsembleLemmas ADTSynthesis.Computation.
 Require Export ADTSynthesis.FiniteSetADTs.FiniteSetADT.
-Require Import ADTSynthesis.Common ADTSynthesis.Common.Ensembles ADTSynthesis.Common.Ensembles.Tactics.
+Require Import ADTSynthesis.Common ADTSynthesis.Common.Ensembles ADTSynthesis.Common.Ensembles.Tactics ADTSynthesis.ComputationalEnsembles.
 
 (** TODO: Move this elsewhere *)
 Notation FullySharpenedComputation spec
@@ -12,97 +12,6 @@ Notation FullySharpenedComputation spec
     and on lists equivalent to ensembles. *)
 
 Local Open Scope Ensemble_scope.
-
-Lemma Same_set__elements__Union {A} xs
-: Same_set A (elements xs) (List.fold_right (Union _) (Empty_set _) (map (Singleton _) xs)).
-Proof.
-  induction xs; [ | simpl; rewrite <- IHxs; clear IHxs ];
-  Ensembles_t.
-Qed.
-
-Lemma Same_set__elements_cons__Union {A} x xs
-: Same_set A (elements (x::xs)) (Union A (Singleton _ x) (elements xs)).
-Proof.
-  rewrite !Same_set__elements__Union; simpl; reflexivity.
-Qed.
-
-Local Ltac fold_right_refine_mor_t :=
-  repeat match goal with
-           | _ => intro
-           | [ H : EnsembleListEquivalence _ _ |- computes_to (Bind _ _) _ ] => econstructor; [|]; eauto; []; clear H
-           | _ => progress unfold pointwise_relation, fold_right, to_list in *
-           | _ => progress destruct_head_hnf and
-           | _ => progress hnf in *
-           | _ => progress inversion_by computes_to_inv
-         end;
-  match goal with
-    | [ |- computes_to _ ?v ] => generalize dependent v
-  end;
-  match goal with
-    | [ H : list _ |- _ ] => induction H; simpl in *; trivial; intros
-  end;
-  repeat first [ inversion_by computes_to_inv
-               | progress unfold refine in *
-               | solve [ econstructor; eauto ] ].
-
-Local Ltac fold_right_refineEquiv_mor_t :=
-  unfold pointwise_relation,refineEquiv in *; intros;
-  split_and; split;
-  repeat match goal with
-           | [ H : forall a b, refine (?x a b) (?y a b) |- _ ]
-             => change ((pointwise_relation _ (pointwise_relation _ refine)) x y) in H
-         end;
-  match goal with
-    | [ H : _ |- _ ] => rewrite H; reflexivity
-  end.
-
-Add Parametric Morphism A B : (@fold_right A B)
-    with signature (pointwise_relation _ (pointwise_relation _ refine)) ==> eq ==> eq ==> refine
-      as fold_right_refine_mor1.
-Proof. fold_right_refine_mor_t. Qed.
-
-Add Parametric Morphism A B : (@fold_right A B)
-    with signature (pointwise_relation _ (pointwise_relation _ refineEquiv)) ==> eq ==> eq ==> refineEquiv
-      as fold_right_refineEquiv_mor1.
-Proof. fold_right_refineEquiv_mor_t. Qed.
-
-Add Parametric Morphism A B f : (@fold_right A B f)
-    with signature refine ==> eq ==> refine
-      as fold_right_refine_mor2.
-Proof. fold_right_refine_mor_t. Qed.
-
-Add Parametric Morphism A B f : (@fold_right A B f)
-    with signature refineEquiv ==> eq ==> refineEquiv
-      as fold_right_refineEquiv_mor2.
-Proof. fold_right_refineEquiv_mor_t. Qed.
-
-Add Parametric Morphism A B f b : (@fold_right A B f b)
-    with signature Same_set _ ==> refine
-      as fold_right_refine_mor.
-Proof.
-  unfold Same_set, Included;
-  repeat match goal with
-           | _ => intro
-           | [ |- computes_to (Pick _) _ ] => constructor
-           | [ |- and _ _ ] => split
-           | [ H : EnsembleListEquivalence _ _ |- computes_to (Bind _ _) _ ] => econstructor; [|]; eauto; []
-           | _ => progress split_iff
-           | _ => progress unfold pointwise_relation, fold_right, to_list in *
-           | _ => progress destruct_head_hnf and
-           | _ => progress hnf in *
-           | _ => progress inversion_by computes_to_inv
-           | _ => progress unfold Ensembles.In in *
-           | _ => solve [ intuition eauto ]
-         end.
-Qed.
-Add Parametric Morphism A B f b : (@fold_right A B f b)
-    with signature Same_set _ ==> refineEquiv
-      as fold_right_refineEquiv_mor.
-Proof.
-  intros; split;
-  let H := match goal with H : Same_set _ _ _ |- _ => constr:H end in
-  setoid_rewrite H; reflexivity.
-Qed.
 
 Section FiniteSetHelpers.
   Context (FiniteSetImpl : FullySharpened FiniteSetSpec).
@@ -1327,7 +1236,7 @@ End FiniteSetHelpers.
 
 Create HintDb finite_sets discriminated.
 
-Hint Unfold FiniteSetADT.to_list FiniteSetADT.cardinal FiniteSetADT.fold_right Ensembles.Setminus filter_pred : finite_sets.
+Hint Unfold to_list cardinal fold_right Ensembles.Setminus filter_pred : finite_sets.
 
 Ltac start_FullySharpenedComputation :=
   eexists;

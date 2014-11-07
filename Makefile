@@ -14,6 +14,10 @@ SRC_MODULES    := \
 	Common/Ensembles/Tactics \
 	Common/Ensembles/CombinatorLaws \
 	Common/Ensembles/Notations \
+	ComputationalEnsembles \
+	ComputationalEnsembles/Core \
+	ComputationalEnsembles/Laws \
+	ComputationalEnsembles/Morphisms \
 	Computation/Notations \
 	Computation/Core \
 	Computation/Monad \
