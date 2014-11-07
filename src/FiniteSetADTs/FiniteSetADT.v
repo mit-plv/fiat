@@ -80,6 +80,7 @@ Definition sAdd := "Add".
 Definition sRemove := "Remove".
 Definition sIn := "In".
 Definition sSize := "Size".
+Definition sToEnsemble := "ToEnsemble".
 
 (** We define the interface for finite sets *)
 (** QUESTION: Does Facade give us any other methods?  Do we want to
@@ -90,7 +91,8 @@ Definition FiniteSetSig : ADTSig :=
       Method sAdd : rep x W -> rep x unit,
       Method sRemove : rep x W -> rep x unit,
       Method sIn : rep x W -> rep x bool,
-      Method sSize : rep x unit -> rep x nat
+      Method sSize : rep x unit -> rep x nat,
+      Method sToEnsemble : rep x unit -> rep x Ensemble W
     }.
 
 (** And now the spec *)
@@ -110,5 +112,8 @@ Definition FiniteSetSpec : ADT FiniteSetSig :=
 
     Def Method sSize (xs : rep , _ : unit) : nat :=
           (n <- { n : nat | cardinal _ xs n };
-           ret (xs, n))
+           ret (xs, n)),
+
+    Def Method sToEnsemble (xs : rep , _ : unit) : Ensemble W :=
+            (ret (xs, xs))
   }.
