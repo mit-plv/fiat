@@ -146,7 +146,8 @@ COMPILER_MODULES := \
 
 
 EXAMPLE_MODULES := \
-	Bookstore \
+	FiniteSetsExamples
+#	Bookstore \
 	BookstoreSemiAutomatic \
 	Weather \
 	Stocks \
@@ -157,7 +158,7 @@ EXAMPLE_MODULES := \
 	CacheADT/FMapCacheImplementation \
 	CacheADT/LRUCache \
 	BookstoreCache \
-	FiniteSetsExamples
+
 
 COQDEP=coqdep
 COQDOC=coqdoc
