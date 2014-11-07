@@ -115,6 +115,36 @@ SRC_MODULES    := \
 
 #	QueryStructure/Refinements/BagADT/DelegateImplementation\
 
+COMPILER_MODULES := \
+	FiatToFacade/StringMapNotations \
+	FiatToFacade/FacadeNotations \
+	FiatToFacade/Utilities \
+	FiatToFacade/BedrockUtilities \
+	FiatToFacade/StringMapUtilities \
+	FiatToFacade/FacadeUtilities \
+	FiatToFacade/Superset \
+	FiatToFacade/SupersetMorphisms \
+	FiatToFacade/SupersetUtilities \
+	FiatToFacade/Prog \
+	FiatToFacade/ProgEquiv \
+	FiatToFacade/ProgUtilities \
+	FiatToFacade/ProgMorphisms \
+	FiatToFacade/Loop \
+	FiatToFacade/LoopUtilities \
+	FiatToFacade/Compiler/Utilities \
+	FiatToFacade/Compiler/Prerequisites \
+	FiatToFacade/Compiler/Basics \
+	FiatToFacade/Compiler/Cleanup \
+	FiatToFacade/Compiler/NoOp \
+	FiatToFacade/Compiler/Copy \
+	FiatToFacade/Compiler/Constants \
+	FiatToFacade/Compiler/Binops \
+	FiatToFacade/Compiler/Conditionals \
+	FiatToFacade/Compiler/ADTs/ListsInversion \
+	FiatToFacade/Compiler/ADTs/Lists \
+	FiatToFacade/Compiler/ADTs/Folds
+
+
 EXAMPLE_MODULES := \
 	FiniteSetsExamples
 #	Bookstore \
@@ -138,6 +168,9 @@ PREFIXED_SRC_VS	:= $(SRC_MODULES:%=src/%.v)
 SRC_VDS	   	:= $(SRC_MODULES:%=src/%.v.d)
 PREFIXED_SRC_VOS:= $(SRC_MODULES:%=src/%.vo)
 
+COMPILER_VS  := $(COMPILER_MODULES:%=src/%.v)
+COMPILER_VDS := $(COMPILER_MODULES:%=src/%.v.d)
+COMPILER_VOS := $(COMPILER_MODULES:%=src/%.vo)
 
 EXAMPLE_VS          := $(EXAMPLE_MODULES:%=%.v)
 PREFIXED_EXAMPLE_VS := $(EXAMPLE_MODULES:%=examples/%.v)
@@ -166,6 +199,8 @@ TIMER=\$$(if \$$(TIMED), $(STDTIME), $(TIMECMD))
 sources : $(PREFIXED_SRC_VOS)
 
 examples : $(PREFIXED_EXAMPLE_VOS)
+
+compiler : $(COMPILER_VOS)
 
 pdf: Overview/ProjectOverview.pdf Overview/library.pdf
 
