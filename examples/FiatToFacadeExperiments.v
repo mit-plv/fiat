@@ -37,7 +37,39 @@ Definition basic_env := {| Label2Word := fun _ => None;
 Definition start_compiling_sca :=
   fun av => @start_compiling' av empty_env empty_state.
 
-Ltac vacuum := (* TODO: How can I force failures of discriminate?  *)
+Ltac StringMap_remove_add_neq k1 k2 v m :=
+  let H := fresh in
+  let neq := fresh in
+  assert (k2 <> k1) as neq by congruence;
+    pose proof (@StringMap_remove_add_neq _ k2 k1 v m neq) as H;
+    setoid_rewrite H;
+    clear H;
+    clear neq.
+
+Ltac StringMap_remove_add_eq k1 k2 v m :=
+  let H := fresh in
+  let neq := fresh in
+  assert (k2 = k1) as neq by congruence;
+    pose proof (@StringMap_remove_add_eq _ k2 k1 v m neq) as H;
+    setoid_rewrite H;
+    clear H;
+    clear neq.
+
+Ltac trickle_deletion := (* FIXME: overwrite existing trickle_deletion *)
+  repeat
+   match goal with
+   | |- context [StringMap.remove ?k ([?k' >> ?v]::?m)] => first
+     [ StringMap_remove_add_neq k k' v m | StringMap_remove_add_eq k k' v m ]
+   | H:context [StringMap.remove ?k ([?k' >> ?v]::?m)]
+     |- _ => first
+     [ rewrite StringMap_remove_add_eq in H by congruence
+     | rewrite StringMap_remove_add_neq in H by congruence ]
+   | |- context [StringMap.remove _ ∅] => setoid_rewrite StringMap_remove_empty
+   | H:context [StringMap.remove _ ∅] |- _ => rewrite StringMap_remove_empty
+   end.
+
+Ltac vacuum :=
+  trickle_deletion;
   match goal with
     | [ |- ?a <> ?b ] => first [ is_evar a | is_evar b | discriminate ]
     | [ |- ~ StringMap.In ?k ∅ ] => solve [apply not_in_empty]
@@ -45,6 +77,7 @@ Ltac vacuum := (* TODO: How can I force failures of discriminate?  *)
                                              solve [map_iff_solve ltac:(intuition discriminate)] ]
     | [ |- refine _ _ ] => try (simplify with monad laws)
     | [ |- context[SCALoopBodyProgCondition] ] => progress (unfold SCALoopBodyProgCondition; intros)
+    | [ |- context[ADTLoopBodyProgCondition] ] => progress (unfold ADTLoopBodyProgCondition; intros)
     | [ |- ?m[?k >> ?v] ] => solve [map_iff_solve_evar intuition]
     | [ |- SomeSCAs _ ∅ ] => solve [apply SomeSCAs_empty]
     | [ |- SomeSCAs _ _ ] => eassumption
@@ -64,19 +97,9 @@ Proof.
   rewrite (start_compiling_sca False "$ret"); vacuum.
   rewrite (compile_if_sca "$cond"); vacuum.
 
-  setoid_rewrite (compile_test_simple IL.Eq "$cond" "$w1" "$w2"); vacuum.
+  setoid_rewrite (compile_test_general IL.Eq "$cond" "$w1" "$w2"); vacuum.
   rewrite compile_constant; vacuum.
   rewrite compile_constant; vacuum.
-  
-  (*
-  rewrite prepare_test; vacuum.
-  setoid_rewrite (compile_test IL.Eq "$cond" "$w1" "$w2"); vacuum.
-  rewrite compile_constant; vacuum.
-  rewrite compile_constant; vacuum.
-
-  do 2 (rewrite drop_second_sca_from_precond; trickle_deletion).
-  rewrite no_op; vacuum.
-   *)
   
   rewrite drop_sca; vacuum.
   rewrite compile_constant; vacuum.
@@ -95,13 +118,13 @@ Proof.
   eexists.
   
   setoid_rewrite (start_compiling_sca False "$ret"); vacuum.
-  setoid_rewrite (compile_binop_simple IL.Times "$ret" "$t1" "$t2"); vacuum.
+  setoid_rewrite (compile_binop_general IL.Times "$ret" "$t1" "$t2"); vacuum.
   
-  setoid_rewrite (compile_binop_simple IL.Plus  "$t1" "$t11" "$t12"); vacuum.
+  setoid_rewrite (compile_binop_general IL.Plus  "$t1" "$t11" "$t12"); vacuum.
   setoid_rewrite (compile_constant "$t11"); vacuum.
   setoid_rewrite (compile_constant "$t12"); vacuum. 
   
-  setoid_rewrite (compile_binop_simple IL.Minus "$t2" "$t21" "$t22"); vacuum.
+  setoid_rewrite (compile_binop_general IL.Minus "$t2" "$t21" "$t22"); vacuum.
   setoid_rewrite (compile_constant "$t21"); vacuum.
   setoid_rewrite (compile_constant "$t22"); vacuum.
   
@@ -128,7 +151,9 @@ Proof.
 
   Focus 2.
   setoid_rewrite compile_add_intermediate_scas_with_ret.
-  setoid_rewrite (compile_binop IL.Plus "$ret" "$head'" "$ret'"); vacuum.
+  (* TODO: Figure out why compile_binop_general breaks here; this would save the copies *)
+  setoid_rewrite (compile_binop_simple IL.Plus "$ret" "$head'" "$ret'"); vacuum.
+  Require Import FiatToFacade.Compiler.Copy.
   rewrite copy_word; vacuum.
   rewrite copy_word; vacuum.
 
@@ -140,8 +165,9 @@ Proof.
 
   rewrite compile_constant; vacuum.
   rewrite compile_add_intermediate_scas; vacuum.
+  Require Import FiatToFacade.Compiler.ADTs.Lists.
   rewrite (@compile_list_delete basic_env ("", "List_delete") 5 "$pointer" "$discard");
-    try vacuum; cbv beta; try vacuum; trickle_deletion. (* TODO: Find way to get rid of the cbv. *)
+    try vacuum; cbv beta; try vacuum. (* TODO: Find way to get rid of the cbv. *)
   rewrite drop_sca; vacuum; trickle_deletion.
   rewrite drop_sca; vacuum; trickle_deletion.
   rewrite no_op; vacuum.
@@ -176,20 +202,20 @@ Proof.
      [$init], the input data from [$seq], and storing temporary variables in
      [$head] and [$is_empty]. *)
   setoid_rewrite compile_add_intermediate_adts_with_ret; vacuum.
-  setoid_rewrite (compile_fold_adt _ _ _ "$list" "$ret" "$head" "$is_empty" 1 0); try vacuum.
+  setoid_rewrite (compile_fold_adt _ _ _ "$list" "$ret" "$head" "$is_empty" 1 0); vacuum.
   
   (* Extract the quantifiers, and move the loop body to a second goal *)
-  rewrite (pull_forall_loop_adt); vacuum.
+  rewrite pull_forall_loop_adt; vacuum.
   
   (* The output list is allocated by calling List_new, whose axiomatic
      specification is stored at address 2 *)
   setoid_rewrite compile_add_intermediate_scas; vacuum.
-  setoid_rewrite (compile_new _ _ _ "$ret" "new()" ("??", "List_new") 2); try vacuum.
+  setoid_rewrite (compile_new _ _ _ "$ret" "new()" ("Lists", "new") 2); try vacuum.
   rewrite drop_scas_from_precond; try vacuum.
   rewrite no_op; try vacuum.
   
-  rewrite (@compile_list_delete basic_env ("", "List_delete") 5 "$pointer" "$discard" "$list");
-    try vacuum; cbv beta; try vacuum; trickle_deletion. (* TODO: Find way to get rid of the cbv. *)
+  rewrite (@compile_list_delete basic_env ("Lists", "delete") 5 "$pointer" "$discard" "$list");
+    try vacuum; cbv beta; try vacuum. (* TODO: Find way to get rid of the cbv. *)
   rewrite drop_scas_from_precond; try vacuum.
   rewrite no_op; vacuum.
 
@@ -198,9 +224,8 @@ Proof.
   Focus 2. vacuum.
   Focus 2. admit.
   Focus 2.
-  
+
   (* We're now ready to proceed with the loop's body! *)
-  unfold ADTLoopBodyProgCondition.
   
   (* Compile the if test *)
   setoid_rewrite compile_add_intermediate_scas.
@@ -209,7 +234,7 @@ Proof.
   (* Extract the comparison to use Facade's comparison operators, storing the
      operands in [$0] and [$head], and the result of the comparison in
      [$cond] *)
-  rewrite (compile_test IL.Lt "$cond" "$0" "$head'"); vacuum. (* TODO: Overriding in test? *)
+  rewrite (compile_test_simple IL.Lt "$cond" "$0" "$head'"); vacuum. (* TODO: Overriding in test? *)
 
   (* The two operands of [<] are easily refined *)
   rewrite (compile_constant); vacuum.
@@ -226,8 +251,8 @@ Proof.
   
   (* The head needs to be multiplied by two before being pushed into the output
      list. *)
-  setoid_rewrite (compile_binop IL.Times _ "$head'" "$2"); vacuum.
-  rewrite (copy_word "$head"); vacuum.
+  setoid_rewrite (compile_binop_simple IL.Times _ "$head'" "$2"); vacuum.
+  rewrite (copy_word); vacuum.
   rewrite (compile_constant); vacuum.
   rewrite no_op; vacuum.
   
@@ -250,8 +275,11 @@ Proof.
   admit.
   vacuum.
   unfold Fold.
+
+  (*
   repeat setoid_rewrite Seq_Skip.
   repeat setoid_rewrite Skip_Seq.
+   *)
   
   (* Yay, a program! *)
   reflexivity.

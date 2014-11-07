@@ -126,6 +126,7 @@ COMPILER_MODULES := \
 	FiatToFacade/SupersetMorphisms \
 	FiatToFacade/SupersetUtilities \
 	FiatToFacade/Prog \
+	FiatToFacade/ProgEquiv \
 	FiatToFacade/ProgUtilities \
 	FiatToFacade/ProgMorphisms \
 	FiatToFacade/Loop \

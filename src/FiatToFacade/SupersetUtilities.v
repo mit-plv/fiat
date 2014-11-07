@@ -515,17 +515,18 @@ Ltac supersets_mapsto H mapsto remove swap_remove :=
             clear_dups).
 
 Ltac scas_adts_mapsto :=
-  repeat match goal with
-           | [ H: SomeSCAs ?state ([?k >sca> ?v]::?map) |- _ ] =>
-             supersets_mapsto H (SomeSCAs_mapsto H) (SomeSCAs_remove H) @SomeSCAs_swap_remove
-           | [ H: AllADTs ?state ([?k >adt> ?v]::?map) |- _ ] =>
-             supersets_mapsto H (AllADTs_mapsto H) (AllADTs_remove H) @Superset_swap_remove
-           | [ H: Superset ?state ([?k >> ?wrapper ?v]::?map) ?wrapper |- _ ] =>
-             supersets_mapsto H (Superset_mapsto _ H) (Superset_remove _ H) @Superset_swap_remove
-           | [ H: ?adts[?k >> ?v], H': AllADTs ?state ?adts |- _ ] =>
-             progress (pose proof (AllADTs_mapsto' _ _ _ _ H' H); clear_dups)
-           | [ H: ?scas[?k >> ?v], H': SomeSCAs ?state ?adts |- _ ] =>
-             progress (pose proof (SomeSCAs_mapsto' _ _ _ _ H' H); clear_dups)
-           | [ H: ?scas[?k >> ?v], H': SomeSCAs ?state ?adts |- _ ] =>
-             progress (pose proof (Superset_mapsto' _ _ _ _ H' H); clear_dups)
-         end.
+  repeat (trickle_deletion;
+          repeat match goal with
+                   | [ H: SomeSCAs ?state ([?k >sca> ?v]::?map) |- _ ] =>
+                     supersets_mapsto H (SomeSCAs_mapsto H) (SomeSCAs_remove H) @SomeSCAs_swap_remove
+                   | [ H: AllADTs ?state ([?k >adt> ?v]::?map) |- _ ] =>
+                     supersets_mapsto H (AllADTs_mapsto H) (AllADTs_remove H) @Superset_swap_remove
+                   | [ H: Superset ?state ([?k >> ?wrapper ?v]::?map) ?wrapper |- _ ] =>
+                     supersets_mapsto H (Superset_mapsto _ H) (Superset_remove _ H) @Superset_swap_remove
+                   | [ H: ?adts[?k >> ?v], H': AllADTs ?state ?adts |- _ ] =>
+                     progress (pose proof (AllADTs_mapsto' _ _ _ _ H' H); clear_dups)
+                   | [ H: ?scas[?k >> ?v], H': SomeSCAs ?state ?adts |- _ ] =>
+                     progress (pose proof (SomeSCAs_mapsto' _ _ _ _ H' H); clear_dups)
+                   | [ H: ?scas[?k >> ?v], H': SomeSCAs ?state ?adts |- _ ] =>
+                     progress (pose proof (Superset_mapsto' _ _ _ _ H' H); clear_dups)
+                 end).

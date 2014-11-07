@@ -164,12 +164,40 @@ Proof.
     subst; repeat simpl_find_add_remove; congruence.
 Qed.
 
+Lemma remove_remove_eq :
+  forall {elt} k (map: StringMap.t elt),
+    StringMap.Equal
+      (StringMap.remove k (StringMap.remove k map))
+      (StringMap.remove k map).
+Proof.
+  unfold StringMap.Equal; intros ** k'.
+  destruct (StringMap.E.eq_dec k' k);
+    subst; repeat simpl_find_add_remove; congruence.
+Qed.
+
+Lemma remove_remove_swap :
+  forall {elt} k1 k2 (map: StringMap.t elt),
+    StringMap.Equal
+      (StringMap.remove k1 (StringMap.remove k2 map))
+      (StringMap.remove k2 (StringMap.remove k1 map)).
+Proof.
+  unfold StringMap.Equal; intros ** k.
+  destruct (StringMap.E.eq_dec k1 k), (StringMap.E.eq_dec k2 k);
+    subst; repeat simpl_find_add_remove; congruence.
+Qed.
+
 Ltac trickle_deletion :=
   repeat match goal with
            | [ |- context[StringMap.remove ?k (StringMap.add ?k' ?v ?m)] ] =>
              first [ rewrite (@StringMap_remove_add_eq _ k' k) by congruence |
                      rewrite (@StringMap_remove_add_neq _ k' k) by congruence ]
-           | [ |- context[StringMap.remove _ ∅] ] => rewrite StringMap_remove_empty
+           | [ H: context [StringMap.remove ?k ([?k' >> ?v]::?m)] |- _ ] =>
+             first [ rewrite StringMap_remove_add_eq in H by congruence |
+                     rewrite StringMap_remove_add_neq in H by congruence ]
+           | [ |- context[StringMap.remove _ ∅] ] =>
+             rewrite StringMap_remove_empty
+           | [ H: context [StringMap.remove _ ∅]  |- _ ] =>
+             rewrite StringMap_remove_empty
          end.
      
 Lemma MapsTo_swap :

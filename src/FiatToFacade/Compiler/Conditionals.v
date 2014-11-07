@@ -53,7 +53,6 @@ Proof.
     split; assumption.
 Qed.
 
-
 Lemma compile_if_adt :
   forall {av env}
          (vtest: StringMap.key) {vret}

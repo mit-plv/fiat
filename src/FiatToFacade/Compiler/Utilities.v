@@ -44,3 +44,16 @@ Proof.
   + eauto using mapsto_eval.
   + eauto using not_in_adts_not_mapsto_adt.
 Qed.
+
+Lemma assign_expr_safe {av} :
+  forall k env expr state adts,
+    (forall k, List.In k (AllVariables expr) -> exists v, state[k >> SCA av v]) ->
+    ~ StringMap.In k adts ->
+    AllADTs state adts ->
+    Safe env (Assign k expr) state.
+Proof.
+  intros * h.
+  destruct (eval_expr_some_sca expr state h).
+  econstructor; try eassumption.
+  eapply not_in_adts_not_mapsto_adt; eauto.
+Qed.

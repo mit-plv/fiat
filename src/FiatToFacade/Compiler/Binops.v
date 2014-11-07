@@ -33,16 +33,8 @@ Proof.
   specialize_states.
   scas_adts_mapsto.
 
-  (*TODO: Prettier way of doing this? *)
-  assert (forall k : StringMap.key,
-            List.In k (AllVariables (Binop op (Var tw1) (Var tw2))) ->
-            exists v : W, (st'0) [k >> SCA av v])
-    as temp
-    by (unfold AllVariables; simpl; intros; intuition; eexists; subst; eassumption).
-  destruct (eval_expr_some_sca (Binop op (Var tw1) (Var tw2)) st'0 temp).
-
-  econstructor; try eassumption.
-  eapply not_in_adts_not_mapsto_adt; eauto.
+  eapply assign_expr_safe; try eassumption.
+  simpl; intros; intuition; subst; eexists; eassumption.
 
   (* RunsTo *)
   
@@ -92,17 +84,9 @@ Proof.
   repeat (safe_seq; intros).
   specialize_states.
   scas_adts_mapsto.
-
-  (*TODO: Prettier way of doing this? *)
-  assert (forall k : StringMap.key,
-            List.In k (AllVariables (TestE op (Var tw1) (Var tw2))) ->
-            exists v : W, (st'0) [k >> SCA av v])
-    as temp
-    by (unfold AllVariables; simpl; intros; intuition; eexists; subst; eassumption).
-  destruct (eval_expr_some_sca (TestE op (Var tw1) (Var tw2)) st'0 temp).
-
-  econstructor; try eassumption.
-  eapply not_in_adts_not_mapsto_adt; eauto.
+  
+  eapply assign_expr_safe; try eassumption.
+  simpl; intros; intuition; subst; eexists; eassumption.
 
   (* RunsTo *)
   
@@ -150,17 +134,9 @@ Proof. (* Same proof as compile_binop *)
   repeat (safe_seq; intros).
   specialize_states.
   scas_adts_mapsto.
-
-  (*TODO: Prettier way of doing this? *)
-  assert (forall k : StringMap.key,
-            List.In k (AllVariables (Binop op (Var tw1) (Var tw2))) ->
-            exists v : W, (st'0) [k >> SCA av v])
-    as temp
-    by (unfold AllVariables; simpl; intros; intuition; eexists; subst; eassumption).
-  destruct (eval_expr_some_sca (Binop op (Var tw1) (Var tw2)) st'0 temp).
-
-  econstructor; try eassumption.
-  eapply not_in_adts_not_mapsto_adt; eauto.
+  
+  eapply assign_expr_safe; try eassumption.
+  simpl; intros; intuition; subst; eexists; eassumption.
 
   (* RunsTo *)
   
@@ -206,16 +182,8 @@ Proof. (* Same proof as compile_binop *)
   specialize_states.
   scas_adts_mapsto.
 
-  (*TODO: Prettier way of doing this? *)
-  assert (forall k : StringMap.key,
-            List.In k (AllVariables (TestE op (Var tw1) (Var tw2))) ->
-            exists v : W, (st'0) [k >> SCA av v])
-    as temp
-    by (unfold AllVariables; simpl; intros; intuition; eexists; subst; eassumption).
-  destruct (eval_expr_some_sca (TestE op (Var tw1) (Var tw2)) st'0 temp).
-
-  econstructor; try eassumption.
-  eapply not_in_adts_not_mapsto_adt; eauto.
+  eapply assign_expr_safe; try eassumption.
+  simpl; intros; intuition; subst; eexists; eassumption.
 
   (* RunsTo *)
   
@@ -279,3 +247,124 @@ Proof.
   + constructor; split; intros; specialize_states; eassumption.
   + intros; inversion_facade; specialize_states; intuition.
 Qed.
+
+(* TODO: Could we have a procedure to remove duplicates in sequences of StringMap.remove? *)
+Lemma compile_binop_general :
+  forall {av env},
+  forall op vret tw1 tw2,
+  forall w1 w2,
+  forall init_knowledge init_scas final_scas init_adts post_w1_adts final_adts,
+    tw1 <> tw2 ->
+    StringMap.Equal final_scas (StringMap.remove tw1 (StringMap.remove tw2 init_scas)) ->
+    ~ StringMap.In vret final_adts ->
+    refine (@Prog av env init_knowledge
+                  init_scas ([vret >sca> IL.evalBinop op w1 w2] :: final_scas)
+                  init_adts final_adts)
+           (pw1  <- (@Prog av env init_knowledge
+                           init_scas ([tw1 >sca> w1] :: (StringMap.remove tw1 init_scas))
+                           init_adts post_w1_adts);
+            pw2  <- (@Prog av env init_knowledge
+                           ([tw1 >sca> w1] :: (StringMap.remove tw1 init_scas))
+                           ([tw2 >sca> w2] :: (StringMap.remove tw2 ([tw1 >sca> w1] :: (StringMap.remove tw1 init_scas))))
+                           post_w1_adts final_adts);
+            ret (pw1; pw2; Assign vret (Binop op tw1 tw2))%facade)%comp.
+Proof.
+  unfold refine, Prog, ProgOk; unfold_coercions; intros.
+  inversion_by computes_to_inv; constructor;
+  split; subst; destruct_pairs.
+
+  (* Safe *)
+
+  repeat (safe_seq; intros).
+  specialize_states.
+  scas_adts_mapsto.
+  
+  eapply assign_expr_safe; try eassumption.
+  simpl; intros; intuition; subst; eexists; eassumption.
+
+  (* RunsTo *)
+  
+  intros;
+    repeat inversion_facade;
+    specialize_states;
+    scas_adts_mapsto;
+    unfold eval, eval_binop_m in *;
+    repeat (subst_find; simpl in *);
+    autoinj.
+
+  repeat match goal with
+    | H: context[(StringMap.remove ?k (StringMap.remove ?k _))] |- _ =>
+      rewrite remove_remove_eq in H;
+        try rewrite remove_remove_swap in H
+  end.
+  
+  split;
+    rewrite_Eq_in_goal;
+    [ repeat remove_not_in;
+      apply SomeSCAs_chomp
+    | apply add_adts_pop_sca ].
+
+  rewrite_Eq_in_goal; eassumption.
+  eassumption.
+  eassumption.
+Qed.  
+
+Lemma compile_test_general :
+  forall {av env},
+  forall op vret tw1 tw2,
+  forall w1 w2,
+  forall init_knowledge init_scas final_scas init_adts post_w1_adts final_adts,
+    tw1 <> tw2 ->
+    StringMap.Equal final_scas (StringMap.remove tw1 (StringMap.remove tw2 init_scas)) ->
+    ~ StringMap.In vret final_adts ->
+    refine (@Prog av env init_knowledge
+                  init_scas ([vret >sca> BoolToW (IL.evalTest op w1 w2)] :: final_scas)
+                  init_adts final_adts)
+           (pw1  <- (@Prog av env init_knowledge
+                           init_scas ([tw1 >sca> w1] :: (StringMap.remove tw1 init_scas))
+                           init_adts post_w1_adts);
+            pw2  <- (@Prog av env init_knowledge
+                           ([tw1 >sca> w1] :: (StringMap.remove tw1 init_scas))
+                           ([tw2 >sca> w2] :: (StringMap.remove tw2 ([tw1 >sca> w1] :: (StringMap.remove tw1 init_scas))))
+                           post_w1_adts final_adts);
+            ret (pw1; pw2; Assign vret (TestE op tw1 tw2))%facade)%comp.
+Proof.
+  unfold refine, Prog, ProgOk; unfold_coercions; intros.
+  inversion_by computes_to_inv; constructor;
+  split; subst; destruct_pairs.
+
+  (* Safe *)
+
+  repeat (safe_seq; intros).
+  specialize_states.
+  scas_adts_mapsto.
+  
+  eapply assign_expr_safe; try eassumption.
+  simpl; intros; intuition; subst; eexists; eassumption.
+
+  (* RunsTo *)
+  
+  intros;
+    repeat inversion_facade;
+    specialize_states;
+    scas_adts_mapsto;
+    unfold eval, eval_binop_m in *;
+    repeat (subst_find; simpl in *);
+    autoinj.
+
+  repeat match goal with
+    | H: context[(StringMap.remove ?k (StringMap.remove ?k _))] |- _ =>
+      rewrite remove_remove_eq in H;
+        try rewrite remove_remove_swap in H
+  end.
+  
+  split;
+    rewrite_Eq_in_goal;
+    [ repeat remove_not_in;
+      apply SomeSCAs_chomp
+    | apply add_adts_pop_sca ].
+
+  rewrite_Eq_in_goal; eassumption.
+  eassumption.
+  eassumption.
+Qed.  
