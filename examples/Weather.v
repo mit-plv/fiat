@@ -41,16 +41,16 @@ Definition WeatherSchema :=
 
 Definition WeatherSig : ADTSig :=
   ADTsignature {
-      "Init"           : unit                               → rep,
-      "AddCell"        : rep × (WeatherSchema#CELLS)        → rep × bool,
-      "AddMeasurement" : rep × (WeatherSchema#MEASUREMENTS) → rep × bool,
-      "CountCells"     : rep × AreaCode                        → rep × nat,
-      "LocalMax"       : rep × (AreaCode * MeasurementType)    → rep × option Z
+      Constructor "Init"           : unit                               -> rep,
+      Method "AddCell"        : rep x (WeatherSchema#CELLS)        -> rep x bool,
+      Method "AddMeasurement" : rep x (WeatherSchema#MEASUREMENTS) -> rep x bool,
+      Method "CountCells"     : rep x AreaCode                        -> rep x nat,
+      Method "LocalMax"       : rep x (AreaCode * MeasurementType)    -> rep x option Z
     }.
 
 Definition WeatherSpec : ADT WeatherSig :=
   QueryADTRep WeatherSchema {
-    const "Init" (_ : unit) : rep := empty,
+    Def Constructor "Init" (_ : unit) : rep := empty,
 
     update "AddCell" (cell : WeatherSchema#CELLS) : bool :=
         Insert cell into CELLS,

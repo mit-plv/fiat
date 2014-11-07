@@ -11,15 +11,15 @@ Section CacheSpec.
 
   Definition CacheSig : ADTSig :=
     ADTsignature {
-        "EmptyCache"  : unit → rep,
-        "AddKey" : rep × (Key * Value) → rep × bool,
-        "UpdateKey" : rep × (Key * (Value -> Value)) → rep × bool,
-        "LookupKey"   : rep × Key → rep × (option Value)
+        Constructor "EmptyCache"  : unit -> rep,
+        Method "AddKey" : rep x (Key * Value) -> rep x bool,
+        Method "UpdateKey" : rep x (Key * (Value -> Value)) -> rep x bool,
+        Method "LookupKey"   : rep x Key -> rep x (option Value)
   }.
 
   Definition CacheSpec : ADT CacheSig :=
     ADTRep (Ensemble (Key * Value)) {
-        const "EmptyCache" (_ : unit) : rep :=
+        Def Constructor "EmptyCache" (_ : unit) : rep :=
           ret (fun _ => False),
         meth "AddKey" (r : rep, kv : Key * Value) : bool :=
             { r' | (SubEnsembleInsert kv r (fst r')) /\

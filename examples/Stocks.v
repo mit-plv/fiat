@@ -38,18 +38,18 @@ Definition StocksSchema :=
 
 Definition StocksSig : ADTSig :=
   ADTsignature {
-      "Init"               : unit                              → rep,
-      "AddStock"           : rep × (StocksSchema#STOCKS)       → rep × bool,
-      "AddTransaction"     : rep × (StocksSchema#TRANSACTIONS) → rep × bool,
-      "TotalVolume"        : rep × (StockCode * Date)          → rep × N,
-      "MaxPrice"           : rep × (StockCode * Date)          → rep × option N,
-      "TotalActivity"      : rep × (StockCode * Date)          → rep × nat,
-      "LargestTransaction" : rep × (StockType * Date)          → rep × option N
+      Constructor "Init"               : unit                              -> rep,
+      Method "AddStock"           : rep x (StocksSchema#STOCKS)       -> rep x bool,
+      Method "AddTransaction"     : rep x (StocksSchema#TRANSACTIONS) -> rep x bool,
+      Method "TotalVolume"        : rep x (StockCode * Date)          -> rep x N,
+      Method "MaxPrice"           : rep x (StockCode * Date)          -> rep x option N,
+      Method "TotalActivity"      : rep x (StockCode * Date)          -> rep x nat,
+      Method "LargestTransaction" : rep x (StockType * Date)          -> rep x option N
     }.
 
 Definition StocksSpec : ADT StocksSig :=
   QueryADTRep StocksSchema {
-    const "Init" (_: unit) : rep := empty,
+    Def Constructor "Init" (_: unit) : rep := empty,
 
     update "AddStock" (stock: StocksSchema#STOCKS) : bool :=
         Insert stock into STOCKS,

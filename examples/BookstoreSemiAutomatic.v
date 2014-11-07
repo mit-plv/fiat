@@ -1,9 +1,4 @@
 Require Import ADTSynthesis.QueryStructure.Refinements.AutoDB.
-<<<<<<< HEAD
-
-Locate EnsembleListEquivalence.
-=======
->>>>>>> ba9c63bc1b3a4802d15802a2861a79d41550201d
 
 (* Our bookstore has two relations (tables):
    - The [Books] relation contains the books in the

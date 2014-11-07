@@ -24,11 +24,11 @@ Section ProcessSchedulerInterface.
   Definition INIT         := "Init".
 
   Definition ProcessSchedulerSig := ADTsignature {
-    INIT         : unit          → rep,
-    SPAWN        : rep × unit    → rep × bool,
-    ENUMERATE    : rep × State   → rep × list nat,
-    GET_CPU_TIME : rep × nat     → rep × list nat,
-    COUNT        : rep × unit    → rep × nat
+    Constructor INIT         : unit          -> rep,
+    Method SPAWN        : rep x unit    -> rep x bool,
+    Method ENUMERATE    : rep x State   -> rep x list nat,
+    Method GET_CPU_TIME : rep x nat     -> rep x list nat,
+    Method COUNT        : rep x unit    -> rep x nat
   }.
 
   Open Scope comp_scope.
@@ -51,7 +51,7 @@ Section ProcessSchedulerInterface.
   Definition ProcessSchedulerSpec : ADT ProcessSchedulerSig :=
     QueryADTRep
       ProcessSchedulerSchema {
-        const INIT (_ : unit) : rep := empty,
+        Def Constructor INIT (_ : unit) : rep := empty,
 
         update SPAWN (_ : unit) : bool :=
           new_pid <- {n | ∀ p ∈ ``(PROCESSES_TABLE), (n <> p!PID)};

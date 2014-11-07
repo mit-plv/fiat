@@ -55,17 +55,17 @@ Definition Order := TupleDef BookStoreSchema sORDERS.
 (* So, first let's give the type signatures of the methods. *)
 Definition BookStoreSig : ADTSig :=
   ADTsignature {
-      "Init" : unit → rep,
-      "PlaceOrder" : rep × Order → rep × bool,
-      "AddBook" : rep × Book → rep × bool,
-      "GetTitles" : rep × string → rep × list string,
-      "NumOrders" : rep × string → rep × nat
+      Constructor "Init" : unit -> rep,
+      Method "PlaceOrder" : rep x Order -> rep x bool,
+      Method "AddBook" : rep x Book -> rep x bool,
+      Method "GetTitles" : rep x string -> rep x list string,
+      Method "NumOrders" : rep x string -> rep x nat
     }.
 
 (* Now we write what the methods should actually do. *)
 Definition BookStoreSpec : ADT BookStoreSig :=
   QueryADTRep BookStoreSchema {
-    const "Init" (_ : unit) : rep := empty,
+    Def Constructor "Init" (_ : unit) : rep := empty,
 
     update "PlaceOrder" ( o : Order ) : bool :=
         Insert o into sORDERS,
