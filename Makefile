@@ -163,19 +163,15 @@ EXAMPLE_MODULES := \
 COQDEP=coqdep
 COQDOC=coqdoc
 
-SRC_VS         	:= $(SRC_MODULES:%=%.v)
-PREFIXED_SRC_VS	:= $(SRC_MODULES:%=src/%.v)
-SRC_VDS	   	:= $(SRC_MODULES:%=src/%.v.d)
-PREFIXED_SRC_VOS:= $(SRC_MODULES:%=src/%.vo)
+SRC_VS	:= $(SRC_MODULES:%=src/%.v)
+SRC_VOS:= $(SRC_MODULES:%=src/%.vo)
 
 COMPILER_VS  := $(COMPILER_MODULES:%=src/%.v)
 COMPILER_VDS := $(COMPILER_MODULES:%=src/%.v.d)
 COMPILER_VOS := $(COMPILER_MODULES:%=src/%.vo)
 
-EXAMPLE_VS          := $(EXAMPLE_MODULES:%=%.v)
-PREFIXED_EXAMPLE_VS := $(EXAMPLE_MODULES:%=examples/%.v)
-EXAMPLE_VDS	    := $(EXAMPLE_MODULES:%=examples/%.v.d)
-PREFIXED_EXAMPLE_VOS:= $(EXAMPLE_MODULES:%=examples/%.vo)
+EXAMPLE_VS := $(EXAMPLE_MODULES:%=examples/%.v)
+EXAMPLE_VOS:= $(EXAMPLE_MODULES:%=examples/%.vo)
 
 V = 0
 
@@ -196,9 +192,9 @@ TIMER=\$$(if \$$(TIMED), $(STDTIME), $(TIMECMD))
 
 .PHONY: all sources examples html clean pretty-timed pretty-timed-files pdf doc clean-doc
 
-sources : $(PREFIXED_SRC_VOS)
+sources : $(SRC_VOS)
 
-examples : $(PREFIXED_EXAMPLE_VOS)
+examples : $(EXAMPLE_VOS)
 
 compiler : $(COMPILER_VOS)
 
@@ -222,7 +218,7 @@ Overview/ProjectOverview.pdf: $(shell find Overview -name "*.tex" -o -name "*.st
 	cd Overview; pdflatex -synctex=1 ProjectOverview.tex
 
 Makefile.coq: Makefile
-	"$(COQBIN)coq_makefile" $(PREFIXED_SRC_VS) $(PREFIXED_EXAMPLE_VS) COQC = " \$$(SILENCE_COQC)$(TIMER) \"\$$(COQBIN)coqc\"" COQDEP = " \$$(SILENCE_COQDEP)\"\$$(COQBIN)coqdep\" -c" COQDOCFLAGS = "$(COQDOCFLAGS)" -arg -dont-load-proofs -R src ADTSynthesis -R examples ADTExamples -o Makefile.coq
+	"$(COQBIN)coq_makefile" $(SRC_VS) $(EXAMPLE_VS) $(COMPILER_VS) COQC = " \$$(SILENCE_COQC)$(TIMER) \"\$$(COQBIN)coqc\"" COQDEP = " \$$(SILENCE_COQDEP)\"\$$(COQBIN)coqdep\" -c" COQDOCFLAGS = "$(COQDOCFLAGS)" -arg -dont-load-proofs -R src ADTSynthesis -R examples ADTExamples -o Makefile.coq
 
 clean-doc::
 	rm -rf html
