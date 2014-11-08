@@ -108,6 +108,7 @@ SRC_MODULES    := \
 	QueryStructure/Refinements/AutoDB\
 	FiniteSetADTs \
 	FiniteSetADTs/FiniteSetADT \
+	FiniteSetADTs/FiniteSetADTImplementation \
 	FiniteSetADTs/FiniteSetRefinement \
 	Parsers/ContextFreeGrammar\
 	Parsers/Specification\

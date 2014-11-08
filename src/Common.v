@@ -1,4 +1,4 @@
-Require Import Coq.Lists.List.
+Require Import Coq.Lists.List Coq.Lists.SetoidList.
 Require Export Coq.Setoids.Setoid Coq.Classes.RelationClasses Coq.Program.Program Coq.Classes.Morphisms.
 
 Global Set Implicit Arguments.
@@ -611,4 +611,33 @@ Qed.
 Lemma neq_to_eq_negb (x y : bool) : x <> y -> x = negb y.
 Proof.
   destruct x, y; try congruence; try tauto.
+Qed.
+
+Lemma InA_In {A} R (ls : list A) x `{Reflexive _ R}
+: List.In x ls -> InA R x ls.
+Proof.
+  revert x.
+  induction ls; simpl; try tauto.
+  intros ? [?|?]; subst; [ left | right ]; auto.
+Qed.
+
+Lemma InA_In_eq {A} (ls : list A) x
+: InA eq x ls <-> List.In x ls.
+Proof.
+  split; [ | eapply InA_In; exact _ ].
+  revert x.
+  induction ls; simpl.
+  { intros ? H. inversion H. }
+  { intros ? H.
+    inversion H; subst;
+    first [ left; reflexivity
+          | right; eauto ]. }
+Qed.
+
+Lemma NoDupA_NoDup {A} R (ls : list A) `{Reflexive _ R}
+: NoDupA R ls -> NoDup ls.
+Proof.
+  intro H'.
+  induction H'; constructor; auto.
+  intro H''; apply (@InA_In _ R) in H''; intuition.
 Qed.
