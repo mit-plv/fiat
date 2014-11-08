@@ -16,24 +16,24 @@ Module BedrockWordAsOrderedType <: OrderedType.
   Definition lt : t -> t -> Prop := fun x y => wlt x y = true.
   Definition lt_strorder : StrictOrder lt.
   Proof.
-    constructor; lazy; intros.
-    { rewrite ?wlt_irrefl in *; try congruence. }
+    constructor; repeat intro; unfold lt in *.
+    { rewrite ?wlt_irrefl in *; congruence. }
     { eapply wlt_trans; eassumption. }
   Qed.
   Definition lt_compat : Proper (eq ==> eq ==> iff) lt.
   Proof.
-    lazy; repeat intro; subst; tauto.
+    repeat intro; subst; unfold eq in *; subst; reflexivity.
   Qed.
   Definition compare : t -> t -> comparison
     := fun x y => if wlt x y
-                  then Lt
+                  then Datatypes.Lt
                   else if wlt y x
-                       then Gt
-                       else Eq.
+                       then Datatypes.Gt
+                       else Datatypes.Eq.
   Definition compare_spec :
     forall x y : t, CompareSpec (eq x y) (lt x y) (lt y x) (compare x y).
   Proof.
-    lazy; intros x y.
+    unfold lt, eq, t, compare; intros x y.
     case_eq (wlt x y); case_eq (wlt y x); intros;
     constructor; trivial.
     eapply wle_antisym; eassumption.
@@ -44,8 +44,8 @@ Module BedrockWordAsOrderedType <: OrderedType.
             => (if weq x y as weqxy return weq x y = weqxy -> _
                 then fun H => left (proj2 (weq_iff x y) H)
                 else fun H => right _)
-                 eq_refl);
-    abstract (lazy; intros; subst;
+                 eq_refl).
+    abstract (unfold eq; intros; subst;
               pose proof (proj1 (weq_iff y y) eq_refl);
               congruence).
   Defined.
@@ -142,7 +142,7 @@ End FiniteSetADTMSet.
 
 Module MSetAVL_BedrockWord := MSetAVL.Make BedrockWordAsOrderedType.
 Module Export FiniteSetADTMSetAVL := FiniteSetADTMSet MSetAVL_BedrockWord.
-Module MSetLists_BedrockWord := MSetLists.Make BedrockWordAsOrderedType.
-Module Export FiniteSetADTMSetLists := FiniteSetADTMSet MSetLists_BedrockWord.
+Module MSetList_BedrockWord := MSetList.Make BedrockWordAsOrderedType.
+Module Export FiniteSetADTMSetList := FiniteSetADTMSet MSetList_BedrockWord.
 Module MSetRBT_BedrockWord := MSetRBT.Make BedrockWordAsOrderedType.
 Module Export FiniteSetADTMSetRBT := FiniteSetADTMSet MSetRBT_BedrockWord.
