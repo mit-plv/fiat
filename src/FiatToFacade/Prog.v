@@ -1,6 +1,6 @@
 Require Import FiatToFacade.Superset.
 Require Import Computation.Core.
-Require Import Facade.
+Require Import Facade.DFacade.
 
 (*Require Import ADTSynthesis.ADTRefinement.GeneralRefinements.
 Require Import StringMap.

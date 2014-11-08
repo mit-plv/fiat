@@ -16,3 +16,4 @@ Require Export
 Require Export Computation.Core Common.
 Require Export StringMap SyntaxExpr Memory.
 Require Export FiatToFacade.Compiler.Utilities.
+Require Export Facade.DFacade.

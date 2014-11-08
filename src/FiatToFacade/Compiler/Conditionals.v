@@ -1,7 +1,7 @@
 Require Import FiatToFacade.Compiler.Prerequisites.
 
 Unset Implicit Arguments.
-      
+
 Lemma compile_if_sca :
   forall {av env}
          (vtest: StringMap.key) {vret}

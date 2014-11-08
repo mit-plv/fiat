@@ -1,5 +1,5 @@
 Require Import StringMap.
-Require Import Facade.
+Require Import Facade.Facade Facade.DFacade.
         
 Definition Superset
            {elt wrapped_elt}

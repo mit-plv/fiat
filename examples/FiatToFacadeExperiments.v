@@ -9,30 +9,29 @@ Require Import FiatToFacade.Compiler.Conditionals.
 Require Import FiatToFacade.Compiler.Binops.
 Require Import FiatToFacade.Compiler.Cleanup.
 Require Import FiatToFacade.Compiler.NoOp.
+Require Import FiatToFacade.Compiler.ADTs.Folds.
 
 Unset Implicit Arguments.
 
 Definition empty_state {av} : State av := ∅ .
 
-Definition empty_env {av} := {| Label2Word := fun _ => None;
-                                Word2Spec := fun _ => @None (FuncSpec av) |}.
+Require Import GLabelMap.
+
+Definition AddPair {av} pair m :=
+  @GLabelMap.add (FuncSpec av) (fst pair) (snd pair) m.
+Definition MakePair {av} (k: GLabel.glabel) (v: AxiomaticSpec av) := (k, Axiomatic v).
+
+Notation "[[[ p1 ; .. ; pn ]]]" := (AddPair p1 .. (AddPair pn (GLabelMap.empty _)) ..).
+Notation "k ↦ v" := (MakePair k v) (at level 55, no associativity).
+
+Definition empty_env {av} := GLabelMap.empty (FuncSpec av).
                                                       
-Definition basic_env := {| Label2Word := fun _ => None; 
-                           Word2Spec := fun w => 
-                                          if Word.weqb w 0 then 
-                                            Some (Axiomatic List_empty)
-                                          else if Word.weqb w 1 then 
-                                            Some (Axiomatic List_pop)
-                                          else if Word.weqb w 2 then
-                                            Some (Axiomatic List_new)
-                                          else if (Word.weqb w 3) then
-                                            Some (Axiomatic List_push)
-                                          else if (Word.weqb w 4) then
-                                            Some (Axiomatic List_copy)
-                                          else if (Word.weqb w 5) then
-                                            Some (Axiomatic List_delete)
-                                          else
-                                            None |}.
+Definition basic_env := [[[ ("List", "empty") ↦ List_empty;
+                            ("List", "Pop") ↦ List_pop;
+                            ("List", "New") ↦ List_new;
+                            ("List", "Push") ↦ List_push;
+                            ("List", "Copy") ↦ List_copy;
+                            ("List", "Delete") ↦ List_delete ]]].
 
 Definition start_compiling_sca :=
   fun av => @start_compiling' av empty_env empty_state.
@@ -145,8 +144,26 @@ Proof.
   setoid_rewrite (start_sca state "$ret"); vacuum.
 
   setoid_rewrite compile_add_intermediate_adts; vacuum.
-  Require Import FiatToFacade.Compiler.ADTs.Folds.
-  setoid_rewrite (compile_fold_sca basic_env "$list" "$ret" "$head" "$is_empty" 1 0); vacuum.
+  setoid_rewrite (compile_fold_sca basic_env "$list" "$ret" "$head" "$is_empty"); try vacuum.
+
+
+  Focus 2.
+  unfold basic_env, AddPair, MakePair; simpl.
+
+  Require Import GLabelMapFacts.
+
+  Ltac find_label :=
+  match goal with
+    | |- GLabelMap.find ?k (GLabelMap.add ?k' (Axiomatic ?spec) _) = Some (Axiomatic ?spec) =>
+      apply P.F.add_eq_o; try reflexivity
+    | |- GLabelMap.find ?k (GLabelMap.add ?k' (Axiomatic ?spec) _) = Some (Axiomatic ?spec') =>
+      apply P.F.add_eq_o; [ find_label | ]; [ | congruence ]
+  end.
+
+  find_label.
+  Unset Printing Notations.
+  Show.
+  
   setoid_rewrite (pull_forall_loop_sca); vacuum. 
 
   Focus 2.

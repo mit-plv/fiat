@@ -1,6 +1,6 @@
 Require Import FiatToFacade.Compiler.Prerequisites.
 Require Import FiatToFacade.Compiler.ADTs.ListsInversion FiatToFacade.Compiler.ADTs.Lists.
-Require Import Facade.FacadeADTs.
+Require Import Facade.FacadeADTs GLabelMap.
 Require Import QueryStructure.Refinements.AdditionalRefinementLemmas. (* TODO *)
 
 Unset Implicit Arguments.
@@ -45,17 +45,17 @@ Ltac loop_body_prereqs :=
                   reflexivity
             end ]
   ].
-  
+
 Definition compile_fold_base_sca :
   forall {env},
   forall {vseq vret: StringMap.key},
   forall {thead tis_empty: StringMap.key},
-  forall {ppop pempty},
+  forall {fpop fempty},
   forall {loop compiled_loop},
   forall {knowledge scas adts},
     SCALoopBodyOk env loop compiled_loop knowledge scas adts vseq vret thead tis_empty ->
-    (Word2Spec env pempty = Some (Axiomatic List_empty)) ->
-    (Word2Spec env ppop  = Some (Axiomatic List_pop)) ->
+    GLabelMap.find (elt:=FuncSpec _) fempty env = Some (Axiomatic List_empty) ->
+    GLabelMap.find (elt:=FuncSpec _) fpop env = Some (Axiomatic List_pop) ->
     vret <> vseq ->
     vret <> tis_empty ->
     thead <> vret ->
@@ -68,7 +68,7 @@ Definition compile_fold_base_sca :
       refine (@Prog _ env knowledge
                     ([vret >sca> init]::scas) ([tis_empty >sca> 1]::[vret >sca> List.fold_left loop seq init]::scas)
                     ([vseq >adt> List seq]::adts) ([vseq >adt> List nil]::adts))
-             (ret (Fold thead tis_empty vseq ppop pempty compiled_loop)).
+             (ret (Fold thead tis_empty vseq fpop fempty compiled_loop)).
 Proof.
   unfold SCALoopBodyOk, SCALoopBodyProgCondition, Prog, ProgOk, refine; unfold_coercions;
   induction seq as [ | a seq ]; intros;
@@ -84,9 +84,10 @@ Proof.
   split; intros.
 
   (* Call is safe *)
+  
   eapply safe_call_1;
     first [ eassumption
-          | symmetry; eassumption
+          | symmetry; eassumption (* TODO: Can be removed *)
           | simpl; eexists; reflexivity
           | map_iff_solve intuition ].
 
@@ -268,7 +269,7 @@ Proof.
 
   (* Stick together the last statement and the body of the loop *)
   match goal with
-    | [ Hlast: RunsTo _ _ ?initial_state ?st, Hloop: RunsTo _ (Facade.While _ _) ?st ?final_state |- _ ] =>
+    | [ Hlast: RunsTo _ _ ?initial_state ?st, Hloop: RunsTo _ (DFacade.While _ _) ?st ?final_state |- _ ] =>
       pose proof (RunsToSeq Hlast Hloop)
   end.
   specialize_states.
@@ -280,12 +281,12 @@ Definition compile_fold_base_adt :
   forall {acc_type wrapper},
   forall {vseq vret: StringMap.key},
   forall {thead tis_empty: StringMap.key},
-  forall {ppop pempty},
+  forall {fpop fempty},
   forall {loop compiled_loop},
   forall {knowledge scas adts},
     @ADTLoopBodyOk env acc_type loop compiled_loop knowledge scas adts vseq vret thead tis_empty wrapper ->
-    (Word2Spec env pempty = Some (Axiomatic List_empty)) ->
-    (Word2Spec env ppop  = Some (Axiomatic List_pop)) ->
+    GLabelMap.find fempty env = Some (Axiomatic List_empty) ->
+    GLabelMap.find fpop env  = Some (Axiomatic List_pop) ->
     vret <> vseq ->
     vret <> tis_empty ->
     thead <> vret ->
@@ -298,7 +299,7 @@ Definition compile_fold_base_adt :
       refine (@Prog _ env knowledge
                     (scas) ([tis_empty >sca> 1]::scas)
                     ([vret >adt> wrapper init]::[vseq >adt> List seq]::adts) ([vret >adt> wrapper (List.fold_left loop seq init)]::[vseq >adt> List nil]::adts))
-             (ret (Fold thead tis_empty vseq ppop pempty compiled_loop)).
+             (ret (Fold thead tis_empty vseq fpop fempty compiled_loop)).
 Proof.
   unfold ADTLoopBodyOk, ADTLoopBodyProgCondition, Prog, ProgOk, refine; unfold_coercions;
   induction seq as [ | a seq ]; intros;
@@ -498,7 +499,7 @@ Proof.
 
   (* Stick together the last statement and the body of the loop *)
   match goal with
-    | [ Hlast: RunsTo _ _ ?initial_state ?st, Hloop: RunsTo _ (Facade.While _ _) ?st ?final_state |- _ ] =>
+    | [ Hlast: RunsTo _ _ ?initial_state ?st, Hloop: RunsTo _ (DFacade.While _ _) ?st ?final_state |- _ ] =>
       pose proof (RunsToSeq Hlast Hloop)
   end.
   specialize_states.
@@ -527,15 +528,23 @@ Proof.
     subst; congruence.
 Qed.
 
+Ltac autospecialize_simple :=
+  repeat match goal with
+           | [ H: ?a -> _, H': ?a |- _ ] =>
+             match (type of a) with
+               | Prop => specialize (H H')
+             end
+         end.
+
 Lemma compile_fold_sca :
   forall env,
   forall vseq vret: StringMap.key,
   forall thead tis_empty: StringMap.key,
-  forall ppop pempty,
+  forall fpop fempty,
   forall loop,
   forall knowledge scas adts,
-    (Word2Spec env pempty = Some (Axiomatic List_empty)) ->
-    (Word2Spec env ppop  = Some (Axiomatic List_pop)) ->
+    GLabelMap.find fempty env = Some (Axiomatic List_empty) ->
+    GLabelMap.find fpop env   = Some (Axiomatic List_pop) ->
     vret <> vseq ->
     vret <> tis_empty ->
     thead <> vret ->
@@ -554,7 +563,7 @@ Lemma compile_fold_sca :
               pinit <- (@Prog _ env knowledge
                               scas ([vret >sca> init]::scas)
                               ([vseq >adt> List seq]::adts) ([vseq >adt> List seq]::adts));
-              ret (pinit; Fold thead tis_empty vseq ppop pempty cloop)%facade)%comp.
+              ret (pinit; Fold thead tis_empty vseq fpop fempty cloop)%facade)%comp.
 Proof.
   unfold refine; intros.
   inversion_by computes_to_inv;
@@ -568,18 +577,12 @@ Proof.
     destruct_pairs.
 
   match goal with
-    | [ H: context[SCALoopBodyOk], H': context[Word2Spec], H'': context[Word2Spec] |- _ ] =>
+    | [ H: context[SCALoopBodyOk], H': context[GLabelMap.find], H'': context[GLabelMap.find] |- _ ] =>
       pose proof (compile_fold_base_sca H H' H'')
   end.
   
-  (* TODO: Tactic for this? *)
-  repeat match goal with
-           | [ H: ?a -> _, H': ?a |- _ ] =>
-             match (type of a) with
-               | Prop => specialize (H H')
-             end
-         end.
-
+  autospecialize_simple.
+  
   unfold refine, Prog, ProgOk in *.
 
   match goal with
@@ -609,11 +612,11 @@ Lemma compile_fold_adt :
   forall acc_type wrapper,
   forall vseq vret: StringMap.key,
   forall thead tis_empty: StringMap.key,
-  forall ppop pempty,
+  forall fpop fempty,
   forall loop,
   forall knowledge scas adts,
-    (Word2Spec env pempty = Some (Axiomatic List_empty)) ->
-    (Word2Spec env ppop  = Some (Axiomatic List_pop)) ->
+    GLabelMap.find fempty env = Some (Axiomatic List_empty) ->
+    GLabelMap.find fpop env  = Some (Axiomatic List_pop) ->
     vret <> vseq ->
     vret <> tis_empty ->
     thead <> vret ->
@@ -633,7 +636,7 @@ Lemma compile_fold_adt :
               pinit <- (@Prog _ env knowledge
                               scas scas
                               ([vseq >adt> List seq]::adts) ([vret >adt> wrapper init]::[vseq >adt> List seq]::adts));
-              ret (pinit; Fold thead tis_empty vseq ppop pempty cloop)%facade)%comp.
+              ret (pinit; Fold thead tis_empty vseq fpop fempty cloop)%facade)%comp.
 Proof.
   unfold refine; intros.
   inversion_by computes_to_inv;
@@ -647,18 +650,11 @@ Proof.
     destruct_pairs.
 
   match goal with
-    | [ H: context[ADTLoopBodyOk], H': context[Word2Spec], H'': context[Word2Spec] |- _ ] =>
+    | [ H: context[ADTLoopBodyOk], H': context[GLabelMap.find], H'': context[GLabelMap.find] |- _ ] =>
       pose proof (compile_fold_base_adt H H' H'')
   end.
-  
-  (* TODO: Tactic for this? *)
-  repeat match goal with
-           | [ H: ?a -> _, H': ?a |- _ ] =>
-             match (type of a) with
-               | Prop => specialize (H H')
-             end
-         end.
 
+  autospecialize_simple.
   unfold refine, Prog, ProgOk in *.
 
   match goal with

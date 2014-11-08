@@ -381,6 +381,19 @@ Section general_refine_lemmas.
     econstructor; intuition.
   Qed.
 
+  Global Add Parametric Morphism : decides
+      with signature eq ==> iff ==> iff
+        as decides_mor.
+  Proof.
+    repeat intro; split_iff; destruct_head bool; simpl; tauto.
+  Qed.
+
+  Lemma refineEquiv_decides_eqb (b b1 b2 : bool)
+  : decides b (b1 = b2) <-> b = if b2 then b1 else negb b1.
+  Proof.
+    destruct_head bool; simpl; intuition.
+  Qed.
+
   Lemma refine_If_Then_Else_Bind {A B}
   : forall i (t e : Comp A) (b : A -> Comp B),
       refine (a <- If i Then t Else e; b a)

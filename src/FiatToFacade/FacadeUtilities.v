@@ -1,7 +1,7 @@
 Require Import FiatToFacade.Utilities FiatToFacade.BedrockUtilities FiatToFacade.StringMapUtilities.
 Require Import FiatToFacade.FacadeNotations FiatToFacade.StringMapNotations.
-Require Import Bedrock Facade FacadeADTs StringMap.
-Require Import SyntaxExpr.
+Require Import Bedrock.Bedrock Facade.DFacade Facade.FacadeADTs StringMap.
+Require Import Cito.SyntaxExpr.
 Require Import List Program.
 
 Lemma binop_Eq_true_iff :
@@ -98,6 +98,7 @@ Ltac inversion_facade :=
   match goal with
     | [ H: RunsTo _ ?p _ _ |- _ ] =>
       match p with
+<<<<<<< HEAD
         | Skip => idtac
         | Seq _ _ => idtac
         | Facade.If _ _ _ => idtac
@@ -105,6 +106,14 @@ Ltac inversion_facade :=
         | Facade.Call _ _ _ => idtac
         | Label _ _ => idtac
         | Assign _ _ => idtac
+=======
+        | DFacade.Skip => idtac 
+        | DFacade.Seq _ _ => idtac 
+        | DFacade.If _ _ _ => idtac
+        | DFacade.While _ _ => idtac
+        | DFacade.Call _ _ _ => idtac
+        | DFacade.Assign _ _ => idtac
+>>>>>>> 43c250e566c6d83747a3daf162477233abd6febf
         | _ => fail 1
       end; inversion_clear' H
   end.
@@ -114,6 +123,13 @@ Ltac BoolToW_eval_helper :=
         | [ |- true = negb ?a ] => unify a false; reflexivity
         | [ |- false = negb ?a ] => unify a true; reflexivity
       end.
+
+Lemma mapM_MapsTo_0 :
+  forall av st,
+    ListFacts4.mapM (@sel av st) (nil) = Some nil.
+Proof.
+  firstorder.
+Qed.
 
 Lemma mapM_MapsTo_1 :
   forall av st k v,
@@ -228,6 +244,7 @@ Proof.
   intros; constructor; eauto using NoDup_1. simpl; intuition.
 Qed.
 
+(*
 Lemma RunsTo_label :
   forall av env st1 st2 vpointer label w,
     Label2Word env label = Some w ->
@@ -238,6 +255,7 @@ Proof.
   inversion_facade.
   eq_transitive; autoinj.
 Qed.
+ *)
 
 
 Lemma RunsTo_Var :

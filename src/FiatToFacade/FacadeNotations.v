@@ -1,4 +1,4 @@
-Require Export Facade.
+Require Export Facade.Facade Facade.DFacade.
 Require Import StringMap.
 Require Import SyntaxExpr.
 Require Import Memory.
@@ -44,7 +44,7 @@ Notation "'While' A B" := (While A B)
                              format "'[v    ' 'While'  A '/' B ']'")
                           : facade_scope.
   
-Notation "'If' a 'then' b 'else' c" := (Facade.If a b c)
+Notation "'If' a 'then' b 'else' c" := (DFacade.If a b c)
                                           (at level 200,
                                            a at level 1000,
                                            b at level 1000,
