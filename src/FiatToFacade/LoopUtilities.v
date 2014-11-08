@@ -1,4 +1,4 @@
-Require Import Core.
+Require Import Computation Common.
 Require Import FiatToFacade.Loop FiatToFacade.FacadeNotations.
 
 Lemma pull_forall :
@@ -7,7 +7,7 @@ Lemma pull_forall :
        refine { p | f p x1 x2 x3 }%facade
               b) ->
     refine { p | forall x1 x2 x3,
-                       f p x1 x2 x3 }%facade
+                   f p x1 x2 x3 }%facade
            b.
 Proof.
   unfold refine; intros; econstructor; intros.

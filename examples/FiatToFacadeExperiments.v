@@ -198,6 +198,17 @@ Proof.
      program's preconditions. Result is stored into [$ret] *)
   rewrite (start_adt state "$ret" List List_inj'); vacuum.
 
+  Check start_compiling_adt_with_precondition.
+
+  Print State.
+
+  unfold Prog. unfold ProgOk.
+
+  Unset Printing Notations.
+  idtac.
+  
+  Print StringMap.MapsTo.
+  
   (* Compile the fold, reading the initial value of the accumulator from
      [$init], the input data from [$seq], and storing temporary variables in
      [$head] and [$is_empty]. *)

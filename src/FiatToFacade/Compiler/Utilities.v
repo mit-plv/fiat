@@ -14,7 +14,7 @@ Lemma safe_call_1 :
   forall {av} env state adts pointer spec varg arg vout,
     state[varg >> arg] ->
     Word2Spec env pointer = Some (Axiomatic spec) ->
-    AllADTs state adts -> 
+    AllADTs state adts ->
     ~ StringMap.In (elt:=Value av) vout adts ->
     PreCond spec (arg :: nil) ->
     @Safe av env (Call vout (Const pointer) (varg :: nil)) state.
@@ -38,7 +38,7 @@ Lemma assign_safe :
     forall k' env,
       ~ StringMap.In k' adts ->
       Safe env (Assign k' k) state.
-Proof.      
+Proof.
   intros. specialize (H _ _ H1).
   econstructor; unfold_coercions.
   + eauto using mapsto_eval.
