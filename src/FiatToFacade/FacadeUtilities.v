@@ -98,22 +98,12 @@ Ltac inversion_facade :=
   match goal with
     | [ H: RunsTo _ ?p _ _ |- _ ] =>
       match p with
-<<<<<<< HEAD
-        | Skip => idtac
-        | Seq _ _ => idtac
-        | Facade.If _ _ _ => idtac
-        | Facade.While _ _ => idtac
-        | Facade.Call _ _ _ => idtac
-        | Label _ _ => idtac
-        | Assign _ _ => idtac
-=======
         | DFacade.Skip => idtac 
         | DFacade.Seq _ _ => idtac 
         | DFacade.If _ _ _ => idtac
         | DFacade.While _ _ => idtac
         | DFacade.Call _ _ _ => idtac
         | DFacade.Assign _ _ => idtac
->>>>>>> 43c250e566c6d83747a3daf162477233abd6febf
         | _ => fail 1
       end; inversion_clear' H
   end.
@@ -255,8 +245,7 @@ Proof.
   inversion_facade.
   eq_transitive; autoinj.
 Qed.
- *)
-
+ 
 
 Lemma RunsTo_Var :
   forall env st st' vpointer label w args label',
@@ -272,7 +261,7 @@ Proof.
     eq_transitive; autoinj.
   - rewrite H0 in H6; autoinj; econstructor; eauto.
   - rewrite H0 in H6; autoinj; econstructor 10; eauto.
-Qed.
+Qed. *)
 
 Lemma SafeSeq_inv :
   forall {av env} {a b : Stmt} {st st' : State av},

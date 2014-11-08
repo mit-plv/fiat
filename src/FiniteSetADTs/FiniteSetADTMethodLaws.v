@@ -134,7 +134,11 @@ Section method_laws.
            representation we start with is valid in the first place.
            (Because of how we're representing [to_ensemble], we
            actually need something stronger, essentially that [AbsR]
-           respects [Same_set].) *)
+           respects [Same_set].)
+     B.D. Is this actually point true? We can use the [In] method to show that
+     any two sets related to the same [fs] are the [Same_set], w/o
+     relying on a stronger assumption. See  in [FiniteSets]
+    *)
   Lemma Same_set_ToEnsemble_Add' fs S0 x (H : S0 ≃ fs)
   : to_ensemble (fst (CallMethod (projT1 FiniteSetImpl) sAdd fs x)) ≅ Ensembles.Add _ S0 x.
   Proof.
