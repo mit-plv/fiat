@@ -135,10 +135,20 @@ Section method_laws.
            (Because of how we're representing [to_ensemble], we
            actually need something stronger, essentially that [AbsR]
            respects [Same_set].)
-     B.D. Is this actually point true? We can use the [In] method to show that
-     any two sets related to the same [fs] are the [Same_set], w/o
-     relying on a stronger assumption. See  in [FiniteSets]
-    *)
+
+     B.D. Is this actually point true? We can use the [In] method to
+          show that any two sets related to the same [fs] are the
+          [Same_set], w/o relying on a stronger assumption. See in
+          [FiniteSets]
+
+     J.G. Yes.  I do what you say above in [FiniteSet_AbsR_Same_set]
+          (potentially duplicated lemma?).  Here I need to assume the
+          other direction, that if an ensemble [S0] is related to a
+          finite set [fs], then any ensemble [S'] which is the
+          [Same_set] as [S0] is also related to [fs]; this is the
+          [forall S', S' ≅ S0 -> S' ...] bit in [H : exists S0, forall
+          S', S' ≅ S0 -> S' ≃ fs]. *)
+
   Lemma Same_set_ToEnsemble_Add' fs S0 x (H : S0 ≃ fs)
   : to_ensemble (fst (CallMethod (projT1 FiniteSetImpl) sAdd fs x)) ≅ Ensembles.Add _ S0 x.
   Proof.
