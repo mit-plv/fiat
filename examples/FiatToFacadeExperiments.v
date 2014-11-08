@@ -109,26 +109,66 @@ Proof.
   vacuum.
 Qed.
 
+Ltac new_variable_name base :=
+  let base' := (eval compute in base) in
+  (lazymatch goal with
+  | [ |- context[base'] ] => new_variable_name (base' ++ "'")
+  | _ => constr:base'
+   end).
+
+Ltac get_prog_and_var_from G :=
+  (lazymatch G with
+  | refine (prog <- Prog _ _ ([?var >> SCA _ ?p]::_) _ _; _) _ => constr:((var, p))
+   end).
+Ltac get_prog_and_var_in_goal :=
+  let G := match goal with |- ?G => constr:G end in
+  get_prog_and_var_from G.
+
+Tactic Notation "start" "compiling" "constant" :=
+  eexists;
+  setoid_rewrite (start_compiling_sca False "$ret"); vacuum.
+
+
+Ltac compile_step :=
+  first [ let after_tac := (idtac; vacuum) in
+          let p := get_prog_and_var_in_goal in
+          (lazymatch p with
+          | (?var, Word.wmult _ _)
+            => (let t1 := new_variable_name "$t1" in
+                let t2 := new_variable_name "$t2" in
+                first [ rewrite (compile_binop_general IL.Times var t1 t2)
+                      | setoid_rewrite (compile_binop_general IL.Times var t1 t2) ]; after_tac)
+          | (?var, Word.wplus _ _)
+            => (let t1 := new_variable_name "$t1" in
+                let t2 := new_variable_name "$t2" in
+                first [ rewrite (compile_binop_general IL.Plus var t1 t2)
+                      | setoid_rewrite (compile_binop_general IL.Plus var t1 t2) ]; after_tac)
+          | (?var, Word.wminus _ _)
+            => (let t1 := new_variable_name "$t1" in
+                let t2 := new_variable_name "$t2" in
+                first [ rewrite (compile_binop_general IL.Minus var t1 t2)
+                      | setoid_rewrite (compile_binop_general IL.Minus var t1 t2) ]; after_tac)
+          | (?var, nat_as_word _)
+            => (first [ rewrite (compile_constant var)
+                      | setoid_rewrite (compile_constant var) ]; after_tac)
+           end)
+        | progress vacuum ].
+
+Tactic Notation "compile" := repeat compile_step.
+
+Tactic Notation "finish" "compiling" := reflexivity.
+
+
 Goal exists x, 
        refine (ret (Word.wmult 
                       (Word.wplus  3 4)
                       (Word.wminus 5 6))) x.
 Proof.
-  eexists.
-  
-  setoid_rewrite (start_compiling_sca False "$ret"); vacuum.
-  setoid_rewrite (compile_binop_general IL.Times "$ret" "$t1" "$t2"); vacuum.
-  
-  setoid_rewrite (compile_binop_general IL.Plus  "$t1" "$t11" "$t12"); vacuum.
-  setoid_rewrite (compile_constant "$t11"); vacuum.
-  setoid_rewrite (compile_constant "$t12"); vacuum. 
-  
-  setoid_rewrite (compile_binop_general IL.Minus "$t2" "$t21" "$t22"); vacuum.
-  setoid_rewrite (compile_constant "$t21"); vacuum.
-  setoid_rewrite (compile_constant "$t22"); vacuum.
-  
-  reflexivity.
-  vacuum.
+  start compiling constant.
+
+  compile.
+
+  finish compiling.
 Qed.
 
 Definition start_sca state vret adts :=
@@ -148,19 +188,23 @@ Proof.
 
 
   Focus 2.
-  unfold basic_env, AddPair, MakePair; simpl.
-
   Require Import GLabelMapFacts.
 
   Ltac find_label :=
-  match goal with
-    | |- GLabelMap.find ?k (GLabelMap.add ?k' (Axiomatic ?spec) _) = Some (Axiomatic ?spec) =>
-      apply P.F.add_eq_o; try reflexivity
-    | |- GLabelMap.find ?k (GLabelMap.add ?k' (Axiomatic ?spec) _) = Some (Axiomatic ?spec') =>
-      apply P.F.add_eq_o; [ find_label | ]; [ | congruence ]
-  end.
+    unfold basic_env, AddPair, MakePair; simpl;
+    try match goal with
+      | |- GLabelMap.find ?k (GLabelMap.add ?k' (Axiomatic ?spec) _) = Some (Axiomatic ?spec) =>
+        apply P.F.add_eq_o; try reflexivity
+      | |- GLabelMap.find ?k (GLabelMap.add ?k' (Axiomatic ?spec) _) = Some (Axiomatic ?spec') =>
+        rewrite P.F.add_neq_o; [ find_label | ]; [ | congruence ]
+    end.
 
   find_label.
+
+  Focus 2.
+
+  find_label.
+rewrite P.F.add_neq_o.
   Unset Printing Notations.
   Show.
   
