@@ -220,7 +220,7 @@ Overview/ProjectOverview.pdf: $(shell find Overview -name "*.tex" -o -name "*.st
 	cd Overview; pdflatex -synctex=1 ProjectOverview.tex
 
 Makefile.coq: Makefile
-	"$(COQBIN)coq_makefile" $(SRC_VS) $(EXAMPLE_VS) $(COMPILER_VS) COQC = " \$$(SILENCE_COQC)$(TIMER) \"\$$(COQBIN)coqc\"" COQDEP = " \$$(SILENCE_COQDEP)\"\$$(COQBIN)coqdep\" -c" COQDOCFLAGS = "$(COQDOCFLAGS)" -arg -dont-load-proofs -R src ADTSynthesis -R examples ADTExamples -R ../bedrock/platform/cito Cito -R ../bedrock/platform/facade Facade -R ../bedrock/src Bedrock -o Makefile.coq
+	"$(COQBIN)coq_makefile" $(SRC_VS) $(EXAMPLE_VS) $(COMPILER_VS) COQC = " \$$(SILENCE_COQC)$(TIMER) \"\$$(COQBIN)coqc\"" COQDEP = " \$$(SILENCE_COQDEP)\"\$$(COQBIN)coqdep\" -c" COQDOCFLAGS = "$(COQDOCFLAGS)" -arg -dont-load-proofs -R src ADTSynthesis -R examples ADTExamples -o Makefile.coq
 
 clean-doc::
 	rm -rf html
