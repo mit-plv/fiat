@@ -12,7 +12,7 @@ Lemma binop_Eq_true_iff :
 Proof.
   unfold eval_binop, IL.evalTest, IL.wneb, IL.weqb; intros.
   destruct (Word.weqb w1 w2) eqn:eq0;
-  try solve [compute in *; discriminate];  
+  try solve [compute in *; discriminate];
   rewrite ?Word.weqb_true_iff, ?weqb_false_iff in eq0;
   assumption.
 Qed.
@@ -42,8 +42,8 @@ Proof.
 Qed.
 
 Lemma List_inj :
-  forall (x y : list Memory.W), 
-    ADT (List x) = ADT (List y) -> 
+  forall (x y : list Memory.W),
+    ADT (List x) = ADT (List y) ->
     x = y.
 Proof.
   autoinj.
@@ -131,7 +131,7 @@ Proof.
 Qed.
 
 Lemma mapM_MapsTo_2 :
-  forall (av : Type) (st : StringMap.t (Value av)) 
+  forall (av : Type) (st : StringMap.t (Value av))
          (k k' : StringMap.key) (v v' : Value av),
     (st) [k >> v] ->
     (st) [k' >> v'] ->
@@ -140,7 +140,7 @@ Proof.
   intros; unfold sel; simpl.
   repeat subst_find; reflexivity.
 Qed.
-    
+
 Lemma mapM_not_in_args :
   forall {av} (st st': State av) args input k w,
     ~ List.In k args ->
@@ -171,19 +171,19 @@ Proof.
   eq_transitive; discriminate.
 Qed.
 
-Lemma unchanged : 
+Lemma unchanged :
   forall av (st: State av) arg val,
-    StringMap.find arg st = Some (ADT val) -> 
-    StringMap.Equal 
+    StringMap.find arg st = Some (ADT val) ->
+    StringMap.Equal
       st (add_remove_many (arg :: nil) (ADT val :: nil) (Some (ADT val) :: nil) st).
 Proof.
   simpl; intros.
   red; intro arg'.
   destruct (StringMap.E.eq_dec arg arg'); subst.
-  
+
   rewrite StringMapFacts.add_eq_o; trivial.
   rewrite StringMapFacts.add_neq_o; trivial.
-Qed.  
+Qed.
 
 
 Lemma eval_bool_eq_false_sca :
@@ -200,9 +200,9 @@ Lemma is_true_eq :
   forall {av} state var w,
     is_true state (Var var = Const w)%facade <->
     state[var >> SCA av w].
-Proof.  
+Proof.
   unfold is_true, eval_bool, eval, eval_binop_m; split; intros.
-  
+
   destruct (StringMap.find var state) as [ [ | ] | ] eqn:eq0;
     try discriminate;
     apply binop_Eq_true_iff in H;
@@ -224,7 +224,7 @@ Lemma NoDup_1 :
   forall {A} (a: A),
     NoDup (a :: nil).
 Proof.
-  intros; constructor; eauto using NoDup_0. 
+  intros; constructor; eauto using NoDup_0.
 Qed.
 
 Lemma NoDup_2 :
@@ -245,16 +245,32 @@ Proof.
   inversion_facade.
   eq_transitive; autoinj.
 Qed.
- *)
+ 
+
+Lemma RunsTo_Var :
+  forall env st st' vpointer label w args label',
+    Label2Word env label = Some w ->
+    (st) [vpointer >> SCA FacadeADT w]
+    -> RunsTo env (Facade.Call label' (Var vpointer) args) st st'
+    -> RunsTo env (Facade.Call label' w args) st st'.
+Proof.
+  intros.
+  inversion_facade;
+    simpl in *;
+    rewrite StringMapFacts.find_mapsto_iff in *;
+    eq_transitive; autoinj.
+  - rewrite H0 in H6; autoinj; econstructor; eauto.
+  - rewrite H0 in H6; autoinj; econstructor 10; eauto.
+Qed. *)
 
 Lemma SafeSeq_inv :
   forall {av env} {a b : Stmt} {st st' : State av},
     RunsTo env a st st' ->
     Safe env (Seq a b) st ->
     Safe env b st'.
-Proof.    
+Proof.
   intros * h' h; inversion h. intuition.
-Qed.    
+Qed.
 
 Lemma mapsto_eval :
   forall {av} scas k w,

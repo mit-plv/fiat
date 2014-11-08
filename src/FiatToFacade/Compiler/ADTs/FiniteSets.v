@@ -1,6 +1,6 @@
-Require Import FiatToFacade.Compiler.Prerequisites FiatToFacade.Compiler.ADTs.ListsInversion.
+Require Import FiatToFacade.Compiler.Prerequisites.
 Require Import Facade.FacadeADTs.
-Require Import List.
+Require Import GLabelMap List.
 
 Unset Implicit Arguments.
 
@@ -51,300 +51,565 @@ Definition FiniteSetSpec : ADT FiniteSetSig :=
             (ret (xs, xs))
   }.
 
+Section runsto_FiniteSet.
 
-Lemma compile_sAdd
-      (FiniteSetImpl : FullySharpened FiniteSetSpec)
-        : forall {env},
-          forall vens vhead vpointer vdiscard label w r s,
-          forall scas adts knowledge w',
-            Label2Word env label = Some w ->
-            Word2Spec env w = Some (Axiomatic FEnsemble_sAdd) ->
-            ~ StringMap.In vpointer adts ->
-            ~ StringMap.In vdiscard adts ->
-            ~ StringMap.In vens scas ->
-            vpointer <> vens ->
-            vpointer <> vhead ->
-            vhead <> vens ->
-            vens <> vdiscard ->
-            adts[vens >> AxSpec.ADT (FEnsemble s)] ->
-            scas[vhead >> SCA _ w'] ->
-            refine (@Prog _ env knowledge
-                          scas
-                          ([vdiscard >sca> 0]::[vpointer >sca> w]::scas)
-                          ([vens >adt> FEnsemble (snd (CallMethod (projT1 FiniteSetImpl) sToEnsemble r tt)) ] :: adts)
-                          ([vens >adt> FEnsemble (snd (CallMethod  (projT1 FiniteSetImpl) sToEnsemble (fst (CallMethod (projT1 FiniteSetImpl) sAdd r w')) tt)) ] :: adts))
-                   (ret (Label vpointer label;
-                         Call vdiscard (Var vpointer) (vens :: vhead :: nil))%facade).
-Proof.
-  unfold refine, Prog, ProgOk; intros;
-  inversion_by computes_to_inv;
-  subst; constructor; split; intros;
-  destruct_pairs.
+(* Inversion lemmas *)
+Require Import Facade.DFacade.
 
-  (* Safe *)
-  + repeat (constructor; intros).
-    - econstructor; [ | eapply not_in_adts_not_mapsto_adt ]; try eassumption; map_iff_solve intuition.
-    - inversion_facade; mapsto_eq_add; (* TODO this line above should also work in other similar theorems *)
-      eq_transitive; autoinj;
-      econstructor; eauto 2 using mapsto_eval.
+Ltac runsto_prelude :=
+  intros;
+  inversion_facade; simpl in *; autoinj; [ | congruence];
+  eq_transitive; autoinj;
+  unfold sel in *; simpl in *;
+  autodestruct; subst;
+  try subst_find; simpl in *; autoinj; (* TODO Make autoinj call simpl in * first *)
+  repeat (match goal with
+            | H: 0 = length ?a |- _ => destruct a; [|discriminate]
+            | H: S _ = length ?a |- _ => destruct a; [congruence|]
+          end; simpl in *; autoinj; simpl in *).
 
-      eauto using NoDup_0, NoDup_1, NoDup_2. (* TO COPY *)
+  (* Specification of state after running sEmpty. *)
+  Lemma runsto_sEmpty
+  : forall f
+           env
+           x_label
+           (st st' : State FacadeADT),
+      GLabelMap.find (elt:=FuncSpec _) f env = Some (Axiomatic FEnsemble_sEmpty) ->
+      RunsTo env (Call x_label f nil) st st' ->
+      StringMap.Equal st' (StringMap.add x_label (AxSpec.ADT (FEnsemble (Empty_set _))) st).
+  Proof.
+    runsto_prelude.
+  Qed.
 
-      scas_adts_mapsto.
+  (* Specification of state after running sAdd. *)
+  Lemma runsto_sAdd
+  : forall (s_model : Ensemble W)
+           (w_label : StringMap.key)
+           (w_value : W)
+           (s_label : StringMap.key)
+           (x_label : StringMap.key)
+           env
+           (st st' : State FacadeADT) f,
+      s_label <> x_label ->
+      st [s_label >> AxSpec.ADT (FEnsemble s_model)] ->
+      st [w_label >> SCA _ w_value] ->
+      GLabelMap.find (elt:=FuncSpec _) f env = Some (Axiomatic FEnsemble_sAdd) ->
+      RunsTo env (Call x_label f (s_label :: w_label :: nil)) st st' ->
+      StringMap.Equal st'
+                      (StringMap.add x_label SCAZero
+                                     (StringMap.add s_label (AxSpec.ADT (FEnsemble (Add _ s_model w_value))) st)).
+  Proof.
+    runsto_prelude.
+    subst_find; simpl in *; autoinj.
+  Qed.
 
-      try apply mapM_MapsTo_1; (* TODO: this, too, should work in other proofs *)
-        try apply mapM_MapsTo_2;
-        eauto;
-        rewrite_Eq_in_goal;
-        map_iff_solve idtac;
-        eassumption.
+  (* Specification of state after running sRemove. *)
+  Lemma runsto_sRemove
+  : forall (s_model : Ensemble W)
+           (w_label : StringMap.key)
+           (w_value : W)
+           (s_label : StringMap.key)
+           (x_label : StringMap.key)
+           env (st st' : State FacadeADT) f,
+      s_label <> x_label ->
+      st [s_label >> AxSpec.ADT (FEnsemble s_model)] ->
+      st [w_label >> SCA _ w_value] ->
+      GLabelMap.find (elt:=FuncSpec _) f env = Some (Axiomatic FEnsemble_sRemove) ->
+      RunsTo env (Call x_label f (s_label :: w_label :: nil)) st st' ->
+      StringMap.Equal st'
+                      (StringMap.add x_label SCAZero
+                                     (StringMap.add s_label (AxSpec.ADT (FEnsemble (Subtract _ s_model w_value))) st)).
+  Proof.
+    runsto_prelude.
+    subst_find; simpl in *; autoinj.
+  Qed.
 
-      eapply not_in_adts_not_mapsto_adt;
-        [ rewrite_Eq_in_goal; apply add_adts_pop_sca; [ | eassumption ] | ];
-        map_iff_solve intuition.
+  (* Specification of state after running sIn. *)
+  Lemma runsto_sIn
+  : forall (s_model : Ensemble W)
+           (w_label : StringMap.key)
+           (w_value : W)
+           (s_label : StringMap.key)
+           (x_label : StringMap.key)
+           (env : Env FacadeADT)
+           (st st' : State FacadeADT) f,
+      s_label <> x_label ->
+      st [s_label >> AxSpec.ADT (FEnsemble s_model)] ->
+      st [w_label >> SCA _ w_value] ->
+      GLabelMap.find (elt:=FuncSpec _) f env = Some (Axiomatic FEnsemble_sIn) ->
+      RunsTo env (Call x_label f (s_label :: w_label :: nil)) st st' ->
+      exists ret,
+        (ret = SCAZero <-> Ensembles.In _ s_model w_value)
+        /\ (ret = SCAOne <-> ~ Ensembles.In _ s_model w_value)
+        /\ StringMap.Equal st'
+                           (StringMap.add x_label ret
+                                          (StringMap.add s_label (AxSpec.ADT (FEnsemble s_model)) st)).
+  Proof.
+    runsto_prelude.
+    subst_find; simpl in *; autoinj.
+    exists ret; intuition.
+  Qed.
 
-      simpl; eexists; try eexists. reflexivity.
+  Arguments Word.natToWord : simpl never. (* simplifying natToWord causes crazy slowdown. *)
 
-  (* RunsTo *)
-  + inversion_facade.
-    eapply RunsTo_label in H16; eauto.
+  (* Specification of state after running sSize. *)
+  Lemma runsto_sSize
+  : forall (s_model : Ensemble W)
+           (s_label : StringMap.key)
+           (x_label : StringMap.key)
+           (env : Env FacadeADT)
+           (st st' : State FacadeADT) f,
+      s_label <> x_label ->
+      st [s_label >> AxSpec.ADT (FEnsemble s_model)] ->
+      GLabelMap.find (elt:=FuncSpec _) f env = Some (Axiomatic FEnsemble_sSize) ->
+      RunsTo env (Call x_label f (s_label :: nil)) st st' ->
+      exists ret n,
+        cardinal _ s_model n
+        /\ ret = SCA _ (Word.natToWord 32 n)
+        /\ StringMap.Equal st'
+                           (StringMap.add x_label ret
+                                          (StringMap.add s_label (AxSpec.ADT (FEnsemble s_model)) st)).
+  Proof.
+    runsto_prelude.
+    eauto.
+  Qed.
 
-    mapsto_eq_add.
+End runsto_FiniteSet.
 
-    (* Annnnd.... couldn't get any farther. *)
+Section compile_FiniteSet_Methods.
 
-    eapply runsto_cons_var in H19; eauto.
+  Variable FiniteSetImpl : FullySharpened FiniteSetSpec.
 
-    split; repeat rewrite_Eq_in_goal.
+  (* [AbsImpl] maps the state of the sharpend ADT to the Spec. *)
+  Definition AbsImpl r :=
+    fun x => exists s, AbsR (projT2 FiniteSetImpl) s r /\ In _ s x.
 
-    repeat (first [ apply SomeSCAs_chomp
-                  | apply add_sca_pop_adts; [rewrite StringMapFacts.F.add_neq_in_iff; eassumption | ] ]);
-      trivial.
+  Lemma AbsImpl_SameSet :
+    forall s s' r,
+      AbsR (projT2 FiniteSetImpl) s r
+      -> AbsR (projT2 FiniteSetImpl) s' r
+      -> Same_set _ s s'.
+  Proof.
+    intros; split;
+    unfold Included, In; intros;
+    pose proof (ADTRefinementPreservesMethods
+                  (projT2 FiniteSetImpl)
+                  {| bindex := sIn |} _ _ x H (ReturnComputes _)) as ref;
+      unfold refineMethod in ref;
+      pose proof (ADTRefinementPreservesMethods
+                    (projT2 FiniteSetImpl)
+                    {| bindex := sIn |} _ _ x H0 (ReturnComputes _)) as ref';
+      unfold refineMethod in ref';
+      inversion_by computes_to_inv; injections; subst.
+    - rewrite <- H5 in *; injections; rewrite <- H3, H7; eauto.
+    - rewrite <- H5 in *; injections; rewrite <- H7, H3; eauto.
+  Qed.
 
-    apply add_adts_pop_sca; map_iff_solve trivial.
-    apply AllADTs_chomp_remove.
+  (* First we show how to break down the components of an
+     [Add] method call. *)
 
-    rewrite H12.
-    trickle_deletion.
-    apply add_adts_pop_sca. map_iff_solve intuition.
-    reflexivity.
+  Lemma compile_AbsImpl_Add
+  : forall {env},
+    forall vensemble velt,
+    forall init_scas inter_scas final_scas init_adts inter_adts final_adts knowledge rep new_w,
+      velt <> vensemble ->
+      refine (@Prog _ env knowledge
+                    init_scas final_scas
+                    init_adts ([vensemble >adt>
+                                FEnsemble (AbsImpl (fst (CallMethod (projT1 FiniteSetImpl) sAdd rep new_w))) ] :: final_adts))
+             (pnew_w <- (@Prog _ env knowledge
+                               init_scas ([velt >sca> new_w]::init_scas)
+                               init_adts init_adts);
+              p_rep <- (@Prog _ env knowledge
+                              ([velt >sca> new_w]::init_scas) ([velt >sca> new_w]::init_scas)
+                              init_adts ([vensemble >adt> FEnsemble (AbsImpl rep) ]::inter_adts));
+              pAdd <- (@Prog _ env knowledge
+                             ([velt >sca> new_w]::init_scas) inter_scas
+                             ([vensemble >adt> FEnsemble (AbsImpl rep) ]::inter_adts)
+                             ([vensemble >adt> FEnsemble (AbsImpl (fst (CallMethod (projT1 FiniteSetImpl) sAdd rep new_w)))]::final_adts));
+              pclean <- (@Prog _ env knowledge
+                               inter_scas final_scas
+                               ([vensemble >adt> FEnsemble (AbsImpl (fst (CallMethod (projT1 FiniteSetImpl) sAdd rep new_w)))]::final_adts)
+                               ([vensemble >adt> FEnsemble (AbsImpl (fst (CallMethod (projT1 FiniteSetImpl) sAdd rep new_w)))]::final_adts));
+              ret (pnew_w; p_rep; pAdd; pclean)%facade)%comp.
+  Proof.
+    unfold refine, Prog, ProgOk; unfold_coercions; intros;
+    inversion_by computes_to_inv; constructor;
+    split; subst; destruct_pairs.
 
-    rewrite_Eq_in_goal; map_iff_solve idtac.
-    scas_adts_mapsto; assumption.
-
-    rewrite_Eq_in_goal; map_iff_solve idtac.
-    scas_adts_mapsto; assumption.
-Qed.
-
-
-Lemma compile_list_delete :
-  forall env label w vpointer vret vseq seq knowledge scas adts adts',
-    Label2Word env label = Some w ->
-    Word2Spec env w = Some (Axiomatic List_delete) ->
-    ~ StringMap.In vpointer adts ->
-    ~ StringMap.In vret adts ->
-    ~ StringMap.In vseq scas ->
-    vpointer <> vseq ->
-    adts[vseq >> ADT (List seq)] ->
-    StringMap.Equal adts' (StringMap.remove vseq adts) ->
-    refine (@Prog _ env knowledge
-                  scas ([vret >sca> 0]::[vpointer >> SCA FacadeADT w]::scas)
-                  adts adts')
-           (ret (Label vpointer label;
-                 Call vret (Var vpointer) (vseq :: nil)))%facade.
-Proof.
-  unfold refine, Prog, ProgOk; intros;
-  inversion_by computes_to_inv;
-  subst; constructor; split; intros;
-  destruct_pairs.
-
-  (* Safe *)
-  + repeat (constructor; intros).
-    - econstructor; eauto 2 using not_in_adts_not_mapsto_adt.
-    - inversion_facade; mapsto_eq_add; (* TODO *)
-      eq_transitive; autoinj;
-      econstructor; eauto 2 using mapsto_eval.
-      repeat (constructor; eauto).
-
-      scas_adts_mapsto.
-
-      apply mapM_MapsTo_1; eauto.
-      rewrite_Eq_in_goal.
-      map_iff_solve idtac.
-      eassumption.
-
-      eapply not_in_adts_not_mapsto_adt.
-      rewrite_Eq_in_goal; eauto using add_adts_pop_sca.
-      assumption.
-      simpl; eexists; reflexivity.
+    (* Safe *)
+    repeat (constructor; split; intros);
+      try (solve [specialize_states;
+                   try assumption]).
 
     (* RunsTo *)
-  + inversion_facade.
-    eapply RunsTo_label in H13; eauto.
+    intros;
+      repeat inversion_facade;
+      specialize_states;
+      intuition.
+  Qed.
 
-    mapsto_eq_add.
+  (* Next we show that we can push AbsImpl through the spec of [Add].  *)
+  Lemma AbsImpl_Add :
+    forall s r w'
+           (s_r_eqv : AbsR (projT2 FiniteSetImpl) s r),
+      Add W (AbsImpl r) w'
+      = AbsImpl (fst ((CallMethod (projT1 FiniteSetImpl) sAdd) r w')).
+  Proof.
+    intros; apply Extensionality_Ensembles; unfold AbsImpl, Same_set, Included, In, Add; intuition.
+    - pose proof (ADTRefinementPreservesMethods
+                    (projT2 FiniteSetImpl)
+                    {| bindex := sAdd |} _ _ w' s_r_eqv (ReturnComputes _)) as ref;
+      unfold refineMethod in ref; inversion_by computes_to_inv; injections; subst; simpl in *.
+      rewrite <- H3; simpl; eexists; split; eauto.
+      destruct H.
+      constructor;  unfold In in *; destruct_ex; intuition; eapply AbsImpl_SameSet; eauto.
+      constructor 2; eauto.
+    - destruct_ex.
+      intuition.
+      pose proof (ADTRefinementPreservesMethods
+                    (projT2 FiniteSetImpl)
+                    {| bindex := sAdd |} _ _ w' s_r_eqv (ReturnComputes _)) as ref;
+        unfold refineMethod in ref;
+      inversion_by computes_to_inv; injections; subst; simpl in *.
+      rewrite <- H4 in H0; simpl in *.
+      eapply (AbsImpl_SameSet _ _ _ H0 H3) in H1; destruct H1.
+      constructor; exists s; eauto.
+      constructor 2; eauto.
+  Qed.
 
-    eapply runsto_delete' in H16; eauto.
-    split; repeat rewrite_Eq_in_goal.
+  (* Finally we show how to compile the method call, once we have method bodies for its two arguments. *)
 
-    repeat (apply SomeSCAs_chomp; trivial; trickle_deletion).
-
-    apply SomeSCAs_not_In_remove; trivial.
-    trickle_deletion.
-    repeat (apply add_adts_pop_sca; [ map_iff_solve intuition | ]).
-    apply AllADTs_chomp_remove'; intuition.
-
-    scas_adts_mapsto.
-    rewrite_Eq_in_goal; map_iff_solve ltac:(intuition eassumption).
-Qed.
-
-Lemma compile_new :
-  forall {env},
-  forall scas adts knowledge,
-  forall vret vpointer label w,
-    Label2Word env label = Some w ->
-    Word2Spec env w = Some (Axiomatic List_new) ->
-    ~ StringMap.In vpointer adts ->
-    ~ StringMap.In vret adts ->
-    ~ StringMap.In vret scas ->
-    vpointer <> vret ->
-    refine (@Prog _ env knowledge
-                  scas ([vpointer >sca> w]::scas)
-                  adts ([vret >adt> List nil]::adts))
-           (ret (Label vpointer label;
-                 Call vret (Var vpointer) nil)%facade).
-Proof.
+  Ltac compile_helper runs_to :=
   unfold refine, Prog, ProgOk; intros;
   inversion_by computes_to_inv;
   subst; constructor; split; intros;
-  destruct_pairs.
+  destruct_pairs; scas_adts_mapsto;
+  [ econstructor; eauto 2 using mapsto_eval;
+    [ scas_adts_mapsto;
+      eauto using mapM_MapsTo_0, mapM_MapsTo_1, mapM_MapsTo_2
+    | eapply not_in_adts_not_mapsto_adt;
+      [ eassumption | map_iff_solve intuition ]
+    | simpl; repeat eexists; reflexivity ]
+  | match goal with
+      | H: context[RunsTo] |- _ => eapply runs_to in H; eauto
+    end; split; repeat rewrite_Eq_in_goal
+  ].
+  
+  Lemma compile_sAdd
+  : forall {env},
+    forall vens velt vpointer vdiscard r s f,
+    forall scas adts knowledge w'
+           (s_r_eqv : AbsR (projT2 FiniteSetImpl) s r),
+      GLabelMap.find f env = Some (Axiomatic FEnsemble_sAdd) ->
+      ~ StringMap.In vpointer adts ->
+      ~ StringMap.In vdiscard adts ->
+      ~ StringMap.In vens scas ->
+      vpointer <> vens ->
+      vpointer <> velt ->
+      velt <> vens ->
+      vens <> vdiscard ->
+      adts[vens >> AxSpec.ADT (FEnsemble s)] ->
+      scas[velt >> SCA _ w'] ->
+      refine (@Prog _ env knowledge
+                    scas
+                    ([vdiscard >sca> 0]::scas)
+                    ([vens >adt> FEnsemble (AbsImpl r) ] :: adts)
+                    ([vens >adt> FEnsemble (AbsImpl (fst (CallMethod (projT1 FiniteSetImpl) sAdd r w'))) ] :: adts))
+             (ret (Call vdiscard f (vens :: velt :: nil))%facade).
+  Proof.
+    compile_helper runsto_sAdd.
+    eauto using  SomeSCAs_chomp, add_sca_pop_adts.
+    apply add_adts_pop_sca; map_iff_solve trivial.
+    erewrite AbsImpl_Add by eauto.
+    apply AllADTs_chomp_remove.
+    rewrite H12; trickle_deletion; reflexivity.
+  Qed.
 
-  (* Safe *)
-  + repeat (constructor; intros).
-    - econstructor; eauto 2 using not_in_adts_not_mapsto_adt.
-    - inversion_facade; mapsto_eq_add; (* TODO *)
-      eq_transitive; autoinj;
-      econstructor; eauto 2 using mapsto_eval.
-      constructor. reflexivity.
-      eapply not_in_adts_not_mapsto_adt.
-      rewrite_Eq_in_goal; eauto using add_adts_pop_sca.
-      assumption.
-      reflexivity.
+    (* Rinse, Wash, Repeat *)
+  
+  Lemma AbsImpl_sEmpty u:
+    Empty_set _ = AbsImpl ((CallConstructor (projT1 FiniteSetImpl) sEmpty) u).
+  Proof.
+    intros; apply Extensionality_Ensembles; unfold AbsImpl, Same_set, Included, In, Add; intuition.
+    destruct_ex.
+    - pose proof (ADTRefinementPreservesConstructors
+                    (projT2 FiniteSetImpl)
+                    {| bindex := sEmpty |} u (ReturnComputes _)) as ref;
+      unfold refineMethod in ref; inversion_by computes_to_inv; injections; subst; simpl in *.
+      eapply (AbsImpl_SameSet _ _ _ H3 H0); eauto.
+  Qed.
 
-  (* RunsTo *)
-  + inversion_facade.
-    eapply RunsTo_label in H11; eauto.
+  Lemma AbsImpl_sRemove 
+  : forall s r w
+           (s_r_eqv : AbsR (projT2 FiniteSetImpl) s r),
+      Subtract W (AbsImpl r) w = AbsImpl (fst ((CallMethod (projT1 FiniteSetImpl) sRemove) r w)).
+  Proof.
+  Admitted.
+    
+  Lemma compile_AbsImpl_sEmpty
+  : forall {env},
+    forall vensemble f,
+    forall scas adts knowledge u,
+      GLabelMap.find f env = Some (Axiomatic FEnsemble_sEmpty) ->
+      ~ StringMap.In vensemble adts ->
+      ~ StringMap.In vensemble scas ->
+      refine (@Prog _ env knowledge scas scas
+                    adts ([vensemble >adt>
+                           FEnsemble (AbsImpl (CallConstructor (projT1 FiniteSetImpl) sEmpty u)) ] :: adts))
+             (ret (Call vensemble f nil)).
+  Proof.
+    compile_helper runsto_sEmpty.
+    eauto using add_sca_pop_adts.
+    erewrite AbsImpl_sEmpty;  apply AllADTs_chomp_remove.
+    rewrite H5; trickle_deletion; reflexivity.
+  Qed.
 
-    mapsto_eq_add.
-    eapply runsto_new in H14; eauto.
-    split; repeat rewrite_Eq_in_goal.
+  Lemma compile_AbsImpl_Remove
+  : forall {env},
+    forall vensemble velt,
+    forall init_scas inter_scas final_scas init_adts inter_adts final_adts knowledge rep new_w,
+      velt <> vensemble ->
+      refine (@Prog _ env knowledge
+                    init_scas final_scas
+                    init_adts ([vensemble >adt>
+                                FEnsemble (AbsImpl (fst (CallMethod (projT1 FiniteSetImpl) sRemove rep new_w))) ] :: final_adts))
+             (pnew_w <- (@Prog _ env knowledge
+                               init_scas ([velt >sca> new_w]::init_scas)
+                               init_adts init_adts);
+              p_rep <- (@Prog _ env knowledge
+                              ([velt >sca> new_w]::init_scas) ([velt >sca> new_w]::init_scas)
+                              init_adts ([vensemble >adt> FEnsemble (AbsImpl rep) ]::inter_adts));
+              pRemove <- (@Prog _ env knowledge
+                             ([velt >sca> new_w]::init_scas) inter_scas
+                             ([vensemble >adt> FEnsemble (AbsImpl rep) ]::inter_adts)
+                             ([vensemble >adt> FEnsemble (AbsImpl (fst (CallMethod (projT1 FiniteSetImpl) sRemove rep new_w)))]::final_adts));
+              pclean <- (@Prog _ env knowledge
+                               inter_scas final_scas
+                               ([vensemble >adt> FEnsemble (AbsImpl (fst (CallMethod (projT1 FiniteSetImpl) sRemove rep new_w)))]::final_adts)
+                               ([vensemble >adt> FEnsemble (AbsImpl (fst (CallMethod (projT1 FiniteSetImpl) sRemove rep new_w)))]::final_adts));
+              ret (pnew_w; p_rep; pRemove; pclean)%facade)%comp.
+  Proof.
+    unfold refine, Prog, ProgOk; unfold_coercions; intros;
+    inversion_by computes_to_inv; constructor;
+    split; subst; destruct_pairs.
 
-    apply add_sca_pop_adts, SomeSCAs_chomp; trivial;
-    rewrite StringMapFacts.F.add_neq_in_iff; assumption.
+    (* Safe *)
+    repeat (constructor; split; intros);
+      try (solve [specialize_states;
+                   try assumption]).
 
-    apply AllADTs_chomp, add_adts_pop_sca; trivial;
-    rewrite StringMapFacts.F.add_neq_in_iff; assumption.
-Qed.
+    (* RunsTo *)
+    intros;
+      repeat inversion_facade;
+      specialize_states;
+      intuition.
+  Qed.
+
+  Lemma compile_sRemove
+  : forall {env},
+    forall vens velt vpointer vdiscard r s f,
+    forall scas adts knowledge w'
+           (s_r_eqv : AbsR (projT2 FiniteSetImpl) s r),
+      GLabelMap.find f env = Some (Axiomatic FEnsemble_sRemove) ->
+      ~ StringMap.In vpointer adts ->
+      ~ StringMap.In vdiscard adts ->
+      ~ StringMap.In vens scas ->
+      vpointer <> vens ->
+      vpointer <> velt ->
+      velt <> vens ->
+      vens <> vdiscard ->
+      adts[vens >> AxSpec.ADT (FEnsemble s)] ->
+      scas[velt >> SCA _ w'] ->
+      refine (@Prog _ env knowledge
+                    scas
+                    ([vdiscard >sca> 0]::scas)
+                    ([vens >adt> FEnsemble (AbsImpl r) ] :: adts)
+                    ([vens >adt> FEnsemble (AbsImpl (fst (CallMethod (projT1 FiniteSetImpl) sRemove r w'))) ] :: adts))
+             (ret (Call vdiscard f (vens :: velt :: nil))%facade).
+  Proof.
+    compile_helper runsto_sRemove.
+    eauto using  SomeSCAs_chomp, add_sca_pop_adts.
+    apply add_adts_pop_sca; map_iff_solve trivial.
+    erewrite AbsImpl_sRemove by eauto.
+    apply AllADTs_chomp_remove.
+    rewrite H12; trickle_deletion; reflexivity.
+  Qed.
+  
+  Lemma compile_AbsImpl_In
+  : forall {env},
+    forall vensemble velt vin,
+    forall init_scas inter_scas final_scas init_adts inter_adts final_adts knowledge rep new_w,
+      velt <> vensemble ->
+      refine (@Prog _ env knowledge
+                    init_scas final_scas
+                    init_adts ([vensemble >adt>
+                                FEnsemble (AbsImpl (fst (CallMethod (projT1 FiniteSetImpl) sIn rep new_w))) ] :: final_adts))
+             (pnew_w <- (@Prog _ env knowledge
+                               init_scas ([velt >sca> new_w]::init_scas)
+                               init_adts init_adts);
+              p_rep <- (@Prog _ env knowledge
+                              ([velt >sca> new_w]::init_scas) ([velt >sca> new_w]::init_scas)
+                              init_adts ([vensemble >adt> FEnsemble (AbsImpl rep) ]::inter_adts));
+              pRemove <- (@Prog _ env knowledge
+                                ([velt >sca> new_w]::init_scas)
+                                ([vin >sca> (BoolToW (snd (CallMethod (projT1 FiniteSetImpl) sIn rep new_w)))]::inter_scas)
+                                ([vensemble >adt> FEnsemble (AbsImpl rep) ]::inter_adts)
+                                ([vensemble >adt> FEnsemble (AbsImpl (fst (CallMethod (projT1 FiniteSetImpl) sIn rep new_w)))]::final_adts));
+              pclean <- (@Prog _ env knowledge
+                               ([vin >sca> (BoolToW (snd (CallMethod (projT1 FiniteSetImpl) sIn rep new_w)))]::inter_scas)
+                               final_scas
+                               ([vensemble >adt> FEnsemble (AbsImpl (fst (CallMethod (projT1 FiniteSetImpl) sIn rep new_w)))]::final_adts)
+                               ([vensemble >adt> FEnsemble (AbsImpl (fst (CallMethod (projT1 FiniteSetImpl) sIn rep new_w)))]::final_adts));
+              ret (pnew_w; p_rep; pRemove; pclean)%facade)%comp.
+  Proof.
+    unfold refine, Prog, ProgOk; unfold_coercions; intros;
+    inversion_by computes_to_inv; constructor;
+    split; subst; destruct_pairs.
+
+    (* Safe *)
+    repeat (constructor; split; intros);
+      try (solve [specialize_states;
+                   try assumption]).
+
+    (* RunsTo *)
+    intros;
+      repeat inversion_facade;
+      specialize_states;
+      intuition.
+  Qed.
 
 
-Lemma compile_copy :
-  forall {env},
-  forall scas adts knowledge seq,
-  forall vret vfrom vpointer label w,
-    Label2Word env label = Some w ->
-    Word2Spec env w = Some (Axiomatic List_copy) ->
-    ~ StringMap.In vpointer adts ->
-    ~ StringMap.In vret adts ->
-    ~ StringMap.In vret scas ->
-    ~ StringMap.In vfrom scas ->
-    vpointer <> vret ->
-    vpointer <> vfrom ->
-    adts[vfrom >> ADT (List seq)] ->
-    refine (@Prog _ env knowledge
-                  scas ([vpointer >sca> w]::scas)
-                  adts ([vret >adt> List seq]::adts))
-           (ret (Label vpointer label;
-                 Call vret (Var vpointer) (vfrom :: nil))%facade).
-Proof.
-  unfold refine, Prog, ProgOk; intros;
-  inversion_by computes_to_inv;
-  subst; constructor; split; intros;
-  destruct_pairs.
+  Print SCAZero.
+  
+  Lemma AbsImpl_sIn
+  : forall s r w
+           (s_r_eqv : AbsR (projT2 FiniteSetImpl) s r),
+      AbsImpl r = AbsImpl (fst ((CallMethod (projT1 FiniteSetImpl) sIn) r w)) /\
+      (BoolToW (snd ((CallMethod (projT1 FiniteSetImpl) sIn) r w)) = Word.natToWord 32 0 <-> (w ∈ AbsImpl r)%ensemble) /\
+      (BoolToW (snd ((CallMethod (projT1 FiniteSetImpl) sIn) r w)) = Word.natToWord 32 1 <-> ~ (w ∈ AbsImpl r)%ensemble).
+  Proof.
+  Admitted.
+  
+    Lemma compile_sIn
+  : forall {env},
+    forall vens velt vpointer vin r s f,
+    forall scas adts knowledge w'
+           (s_r_eqv : AbsR (projT2 FiniteSetImpl) s r),
+      GLabelMap.find f env = Some (Axiomatic FEnsemble_sIn) ->
+      ~ StringMap.In vpointer adts ->
+      ~ StringMap.In vin adts ->
+      ~ StringMap.In vens scas ->
+      vpointer <> vens ->
+      vpointer <> velt ->
+      velt <> vens ->
+      vens <> vin ->
+      adts[vens >> AxSpec.ADT (FEnsemble s)] ->
+      scas[velt >> SCA _ w'] ->
+      refine (@Prog _ env knowledge
+                    scas
+                    ([vin >sca> (BoolToW (snd (CallMethod (projT1 FiniteSetImpl) sIn r w')))] ::scas)
+                    ([vens >adt> FEnsemble (AbsImpl r) ] :: adts)
+                    ([vens >adt> FEnsemble (AbsImpl (fst (CallMethod (projT1 FiniteSetImpl) sIn r w'))) ] :: adts))
+             (ret (Call vin f (vens :: velt :: nil))%facade).
+  Proof.
+    compile_helper runsto_sIn.
+    destruct_ex; split_and; subst.
+    rewrite H16.
+    destruct (AbsImpl_sIn _ _ w' s_r_eqv) as [r_eqv [x_eq x_neq]];
+      pose ((CallMethod (projT1 FiniteSetImpl) sIn) r w') as p; simpl in *;
+      case_eq p; unfold p in *; intros ? ? H'; rewrite H' in *; clear p; simpl in *.
+    destruct b; simpl in *.
+    rewrite (proj2 H10) by intuition; eauto using SomeSCAs_chomp, add_sca_pop_adts.
+    rewrite (proj2 H14) by intuition; eauto using SomeSCAs_chomp, add_sca_pop_adts.
+    destruct_ex; split_and; subst.
+    destruct (AbsImpl_sIn _ _ w' s_r_eqv) as [r_eqv [x_eq x_neq]];
+      pose ((CallMethod (projT1 FiniteSetImpl) sIn) r w') as p; simpl in *;
+      case_eq p; unfold p in *; intros ? ? H'; rewrite H' in *; clear p; simpl in *.
+    rewrite H16; destruct x.
+    - apply add_adts_pop_sca; map_iff_solve trivial.
+      rewrite r_eqv; apply AllADTs_chomp_remove.
+      rewrite H12; trickle_deletion; reflexivity.
+    - destruct b.
+      pose proof ((proj1 x_neq) (refl_equal _)) as H''; rewrite <- H10 in H''; discriminate.
+      pose proof ((proj1 x_eq) (refl_equal _)) as H''; rewrite <- H14 in H''; discriminate.
+  Qed.
 
-  (* Safe *)
-  + repeat (constructor; intros).
-    - econstructor; eauto 2 using not_in_adts_not_mapsto_adt.
-    - inversion_facade; mapsto_eq_add; (* TODO *)
-      eq_transitive; autoinj;
-      econstructor; eauto 2 using mapsto_eval.
-      repeat (constructor; eauto).
+  Lemma AbsImpl_sSize
+  : forall s r u
+           (s_r_eqv : AbsR (projT2 FiniteSetImpl) s r),
+      AbsImpl r = AbsImpl (fst ((CallMethod (projT1 FiniteSetImpl) sSize) r u)) /\
+      cardinal _ s (snd ((CallMethod (projT1 FiniteSetImpl) sSize) r u)).
+  Proof.
+  Admitted.
 
-      scas_adts_mapsto.
+  Require Import Common.AdditionalEnsembleLemmas Permutation.
+  
+  Lemma EnsembleListEquivalence_length {A} :
+    forall l s s' l',
+      EnsembleListEquivalence s l ->
+      EnsembleListEquivalence s' l' ->
+      Same_set A s s' ->
+      length l = length l'.
+  Proof.
+    intros; apply Permutation_length.
+    eapply EnsembleListEquivalence_Permutation; eauto.
+    eapply EnsembleListEquivalence_Same_set; eauto.
+    symmetry; auto.
+  Qed.      
 
-      apply mapM_MapsTo_1; eauto.
-      rewrite_Eq_in_goal.
-      map_iff_solve idtac.
-      eassumption.
-
-      eapply not_in_adts_not_mapsto_adt.
-      rewrite_Eq_in_goal; eauto using add_adts_pop_sca.
-      assumption.
-      simpl; eexists; reflexivity.
-
-  (* RunsTo *)
-  + inversion_facade.
-    eapply RunsTo_label in H14; eauto.
-
-    mapsto_eq_add.
-
-    eapply runsto_copy_var in H17; eauto.
-    split; repeat rewrite_Eq_in_goal.
-
-    repeat (apply add_sca_pop_adts; [rewrite StringMapFacts.F.add_neq_in_iff; eassumption | ]).
-    apply SomeSCAs_chomp; trivial.
-
-    apply AllADTs_chomp, AllADTs_swap, add_adts_pop_sca; trivial.
-    apply AllADTs_add_in; assumption.
-    rewrite_Eq_in_goal; map_iff_solve idtac.
-    scas_adts_mapsto; assumption.
-Qed.
-
-Lemma compile_pre_push :
-  forall {env},
-  forall vseq vhead,
-  forall init_scas inter_scas final_scas init_adts inter_adts final_adts knowledge head seq,
-    vhead <> vseq ->
-    refine (@Prog _ env knowledge
-                  init_scas final_scas
-                  init_adts ([vseq >adt> List (head :: seq)] :: final_adts))
-           (phead <- (@Prog _ env knowledge
-                            init_scas ([vhead >sca> head]::init_scas)
-                            init_adts init_adts);
-            ptail <- (@Prog _ env knowledge
-                            ([vhead >sca> head]::init_scas) ([vhead >sca> head]::init_scas)
-                            init_adts ([vseq >adt> List seq]::inter_adts));
-            ppush <- (@Prog _ env knowledge
-                            ([vhead >sca> head]::init_scas) inter_scas
-                            ([vseq >adt> List seq]::inter_adts)
-                            ([vseq >adt> List (head :: seq)]::final_adts));
-            pclean <- (@Prog _ env knowledge
-                            inter_scas final_scas
-                            ([vseq >adt> List (head :: seq)]::final_adts)
-                            ([vseq >adt> List (head :: seq)]::final_adts));
-            ret (phead; ptail; ppush; pclean)%facade)%comp.
-Proof.
-  unfold refine, Prog, ProgOk; unfold_coercions; intros.
-  inversion_by computes_to_inv; constructor;
-  split; subst; destruct_pairs.
-
-  (* Safe *)
-  repeat (constructor; split; intros);
-  specialize_states;
-  try assumption.
-
-  (* RunsTo *)
-  intros;
-    repeat inversion_facade;
-    specialize_states;
-    intuition.
-Qed.
+  Lemma Same_set_AbsImpl
+  : forall s r,
+      AbsR (projT2 FiniteSetImpl) s r
+      -> Same_set _ s (AbsImpl r).
+  Proof.
+    intros; split;
+    unfold Included, In; intros;
+    pose proof (ADTRefinementPreservesMethods
+                  (projT2 FiniteSetImpl)
+                  {| bindex := sIn |} _ _ x H (ReturnComputes _)) as ref;
+      unfold refineMethod in ref;
+      inversion_by computes_to_inv; injections; subst; simpl in *.
+    - unfold AbsImpl; eauto.
+    - destruct H0; intuition; subst.
+      eapply AbsImpl_SameSet with (s' := x0) (r := r); eauto.
+  Qed.
+  
+  Lemma compile_sSize
+  : forall {env},
+    forall vens vpointer vsize r s f u,
+    forall scas adts knowledge
+           (s_r_eqv : AbsR (projT2 FiniteSetImpl) s r),
+      GLabelMap.find f env = Some (Axiomatic FEnsemble_sSize) ->
+      ~ StringMap.In vpointer adts ->
+      ~ StringMap.In vsize adts ->
+      ~ StringMap.In vens scas ->
+      vpointer <> vens ->
+      vens <> vsize ->
+      adts[vens >> AxSpec.ADT (FEnsemble s)] ->
+      refine (@Prog _ env knowledge
+                    scas
+                    ([vsize >sca> snd (CallMethod (projT1 FiniteSetImpl) sSize r u)] ::scas)
+                    ([vens >adt> FEnsemble (AbsImpl r) ] :: adts)
+                    ([vens >adt> FEnsemble (AbsImpl (fst (CallMethod (projT1 FiniteSetImpl) sSize r u))) ] :: adts))
+             (ret (Call vsize f (vens :: nil))%facade).
+  Proof.
+    compile_helper runsto_sSize.
+    destruct_ex; split_and; subst.
+    rewrite H12.
+    destruct (AbsImpl_sSize _ _ u s_r_eqv).
+    unfold cardinal in *; destruct_ex; split_and; subst; simpl in *.
+    rewrite <- H14.
+    unfold nat_as_word.
+    erewrite EnsembleListEquivalence_length with (l := x1) (l' := x); eauto.
+    eauto using SomeSCAs_chomp, add_sca_pop_adts.
+    symmetry; eapply Same_set_AbsImpl; eauto.
+    destruct_ex; split_and; subst.
+    rewrite H12.
+    apply add_adts_pop_sca; map_iff_solve trivial.
+    destruct (AbsImpl_sSize _ _ u s_r_eqv) as [r_eqv _].
+    rewrite r_eqv; apply AllADTs_chomp_remove.
+    rewrite H9; trickle_deletion; reflexivity.
+  Qed.
+  
+End compile_FiniteSet_Methods.

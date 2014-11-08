@@ -108,6 +108,7 @@ SRC_MODULES    := \
 	QueryStructure/Refinements/AutoDB\
 	FiniteSetADTs \
 	FiniteSetADTs/FiniteSetADT \
+	FiniteSetADTs/FiniteSetADTImplementation \
 	FiniteSetADTs/FiniteSetRefinement \
 	Parsers/ContextFreeGrammar\
 	Parsers/Specification\
@@ -121,6 +122,7 @@ COMPILER_MODULES := \
 	FiatToFacade/Utilities \
 	FiatToFacade/BedrockUtilities \
 	FiatToFacade/StringMapUtilities \
+	FiatToFacade/FacadeNotations \
 	FiatToFacade/FacadeUtilities \
 	FiatToFacade/Superset \
 	FiatToFacade/SupersetMorphisms \

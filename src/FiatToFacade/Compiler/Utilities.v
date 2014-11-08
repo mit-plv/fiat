@@ -15,7 +15,7 @@ Lemma safe_call_1 :
   forall {av} env state adts f spec varg arg vout,
     state[varg >> arg] ->
     GLabelMap.find f env = Some (Axiomatic spec) ->
-    AllADTs state adts -> 
+    AllADTs state adts ->
     ~ StringMap.In (elt:=Value av) vout adts ->
     PreCond spec (arg :: nil) ->
     @Safe av env (Call vout f (varg :: nil)) state.
@@ -37,7 +37,7 @@ Lemma assign_safe :
     forall k' env,
       ~ StringMap.In k' adts ->
       Safe env (Assign k' k) state.
-Proof.      
+Proof.
   intros. specialize (H _ _ H1).
   econstructor; unfold_coercions.
   + eauto using mapsto_eval.
@@ -52,7 +52,7 @@ Lemma assign_expr_safe {av} :
     Safe env (Assign k expr) state.
 Proof.
   intros * h.
-  destruct (eval_expr_some_sca expr state h).
+  destruct (@eval_expr_some_sca _ expr state h).
   econstructor; try eassumption.
   eapply not_in_adts_not_mapsto_adt; eauto.
 Qed.
