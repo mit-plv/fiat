@@ -82,14 +82,8 @@ Proof.
   sharpen computation with FiniteSet implementation := FiniteSetImpl.
 
   finish sharpening computation.
- 
-Defined.
 
-Goal (forall impl w, projT1 (countUniqueImpl impl w) = projT1 (countUniqueImpl impl w)).
-unfold countUniqueImpl.
-simpl.
-unfold FiniteSetOfList.
-simpl.
+Defined.
 
 Definition countUniqueImpl' (FiniteSetImpl : FullySharpened FiniteSetSpec) (ls : list W)
 : FullySharpenedComputation (countUniqueSpec' ls).
