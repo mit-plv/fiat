@@ -52,7 +52,7 @@ Lemma assign_expr_safe {av} :
     Safe env (Assign k expr) state.
 Proof.
   intros * h.
-  destruct (eval_expr_some_sca expr state h).
+  destruct (@eval_expr_some_sca _ expr state h).
   econstructor; try eassumption.
   eapply not_in_adts_not_mapsto_adt; eauto.
 Qed.
