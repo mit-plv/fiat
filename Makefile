@@ -110,6 +110,9 @@ SRC_MODULES    := \
 	FiniteSetADTs/FiniteSetADT \
 	FiniteSetADTs/FiniteSetADTImplementation \
 	FiniteSetADTs/FiniteSetRefinement \
+	FiniteSetADTs/WordInterface \
+	FiniteSetADTs/NatWord \
+	FiniteSetADTs/BedrockWord \
 	Parsers/ContextFreeGrammar\
 	Parsers/Specification\
 	Parsers/NonComputational

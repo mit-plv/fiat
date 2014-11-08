@@ -1,91 +1,12 @@
 (** * Definition of the finite set spec *)
-Require Import Coq.Strings.String Coq.Sets.Ensembles Coq.Sets.Finite_sets Coq.Lists.List Coq.Sorting.Permutation.
-Require Import ADTSynthesis.ADT ADTSynthesis.ADT.ComputationalADT ADTSynthesis.ADTRefinement.Core ADTSynthesis.ADTNotation ADTSynthesis.ADTRefinement.GeneralRefinements ADTSynthesis.Common.AdditionalEnsembleDefinitions.
-Require Export Bedrock.Memory Bedrock.IL.
+Require Import Coq.Sets.Ensembles.
+Require Import ADTSynthesis.ADT.Core ADTSynthesis.ADT.ComputationalADT ADTSynthesis.ADTNotation.
+Require Import ADTSynthesis.Common.AdditionalEnsembleDefinitions.
+Require Export ADTSynthesis.FiniteSetADTs.BedrockWord.
 
 Set Implicit Arguments.
 
 Local Open Scope string_scope.
-
-(** TODO: Figure out where Facade words live, and use that *)
-Module Type BedrockWordT.
-  Axiom W : Type.
-  Axiom wzero : W.
-  Axiom wplus : W -> W -> W.
-  Axiom weq : W -> W -> bool.
-  Axiom wlt : W -> W -> bool.
-  Axiom weq_iff : forall x y, x = y <-> weq x y = true.
-  Axiom wlt_irrefl : forall x, wlt x x = false.
-  Axiom wlt_trans : forall x y z, wlt x y = true -> wlt y z = true -> wlt x z = true.
-  Axiom wle_antisym : forall x y, wlt x y = false -> wlt y x = false -> x = y.
-  Axiom wle_asym : forall x y, wlt x y = true -> wlt y x = false.
-End BedrockWordT.
-
-Module Export BedrockWordW <: BedrockWordT.
-  Definition W := Memory.W.
-
-  Definition wzero := (@Word.natToWord 32 0).
-  Definition wplus := (@Word.wplus 32).
-  Definition weq := @Word.weqb 32.
-
-  Definition wlt := IL.wltb.
-
-  Lemma weq_iff x : forall y, x = y <-> weq x y = true.
-  Proof.
-    symmetry; apply Word.weqb_true_iff.
-  Qed.
-
-  Lemma wlt_irrefl x : wlt x x = false.
-  Proof.
-    unfold wlt, wltb.
-    destruct (Word.wlt_dec x x).
-    pose proof (Word.lt_le w); congruence.
-    reflexivity.
-  Qed.
-
-  Lemma wlt_true_iff :
-    forall x y,
-      wlt x y = true <-> Word.wlt x y.
-  Proof.
-    intros.
-    unfold wlt, IL.wltb.
-    destruct (Word.wlt_dec x y); intuition.
-  Qed.
-
-  Lemma wlt_false_iff :
-    forall x y,
-      wlt x y = false <-> ~ Word.wlt x y.
-  Proof.
-    intros.
-    unfold wlt, IL.wltb.
-    destruct (Word.wlt_dec x y); intuition.
-  Qed.
-
-  Lemma wlt_trans x : forall y z, wlt x y = true -> wlt y z = true -> wlt x z = true.
-  Proof.
-    intros.
-    rewrite wlt_true_iff in *.
-    unfold Word.wlt in *.
-    eapply BinNat.N.lt_trans; eauto.
-  Qed.
-
-  Lemma wle_antisym x : forall y, wlt x y = false -> wlt y x = false -> x = y.
-  Proof.
-    intros.
-    rewrite wlt_false_iff in *.
-    unfold Word.wlt in *.
-    rewrite BinNat.N.nlt_ge in *.
-    apply Word.wordToN_inj.
-    apply BinNat.N.le_antisymm; intuition.
-  Qed.
-
-  Lemma wle_asym x : forall y, wlt x y = true -> wlt y x = false.
-  Proof.
-    intro y; rewrite wlt_true_iff, wlt_false_iff.
-    unfold Word.wlt.
-    apply BinNat.N.lt_asymm.
-  Qed.
-End BedrockWordW.
 
 (** TODO: Test: Do we get a speedup if we replace these definitions
     with [{| bindex := "$STRING-HERE" |}]? *)
