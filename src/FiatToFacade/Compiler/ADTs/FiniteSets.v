@@ -10,6 +10,8 @@ Require Import AdditionalEnsembleDefinitions.
 Require Import ADT.
 Require Import ADTRefinement.
 Require Import ADTSynthesis.ADTNotation.
+Require Import ADTSynthesis.FiniteSetADTs.FiniteSetADT.
+
 Open Scope string_scope.
 Definition sEmpty := "Empty".
 Definition sAdd := "Add".
@@ -17,39 +19,6 @@ Definition sRemove := "Remove".
 Definition sIn := "In".
 Definition sSize := "Size".
 Definition sToEnsemble := "ToEnsemble".
-
-Definition FiniteSetSig : ADTSig :=
-  ADTsignature {
-      Constructor sEmpty : unit -> rep,
-      Method sAdd : rep x W -> rep x unit,
-      Method sRemove : rep x W -> rep x unit,
-      Method sIn : rep x W -> rep x bool,
-      Method sSize : rep x unit -> rep x nat,
-      Method sToEnsemble : rep x unit -> rep x Ensemble W
-    }%ADTSig.
-
-(** And now the spec *)
-Definition FiniteSetSpec : ADT FiniteSetSig :=
-  ADTRep (Ensemble W) {
-    Def Constructor sEmpty (_ : unit) : rep := ret (Empty_set _),
-
-    Def Method sAdd (xs : rep , x : W) : unit :=
-      ret (Add _ xs x, tt),
-
-    Def Method sRemove (xs : rep , x : W) : unit :=
-      ret (Subtract _ xs x, tt),
-
-    Def Method sIn (xs : rep , x : W) : bool :=
-        (b <- { b : bool | b = true <-> Ensembles.In _ xs x };
-         ret (xs, b)),
-
-    Def Method sSize (xs : rep , _ : unit) : nat :=
-          (n <- { n : nat | cardinal _ xs n };
-           ret (xs, n)),
-
-    Def Method sToEnsemble (xs : rep , _ : unit) : Ensemble W :=
-            (ret (xs, xs))
-  }.
 
 Section runsto_FiniteSet.
 
@@ -361,7 +330,7 @@ Section compile_FiniteSet_Methods.
   Proof.
     compile_helper runsto_sEmpty.
     eauto using add_sca_pop_adts.
-    erewrite AbsImpl_sEmpty;  apply AllADTs_chomp_remove.
+    setoid_rewrite AbsImpl_sEmpty;  apply AllADTs_chomp_remove.
     rewrite H5; trickle_deletion; reflexivity.
   Qed.
 
@@ -613,3 +582,4 @@ Section compile_FiniteSet_Methods.
   Qed.
   
 End compile_FiniteSet_Methods.
+
