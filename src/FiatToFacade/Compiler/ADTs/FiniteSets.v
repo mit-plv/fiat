@@ -492,7 +492,6 @@ Section compile_FiniteSet_Methods.
       vpointer <> velt ->
       velt <> vens ->
       vens <> vin ->
-      adts[vens >> AxSpec.ADT (FEnsemble s)] ->
       scas[velt >> SCA _ w'] ->
       refine (@Prog _ env knowledge
                     scas
@@ -503,24 +502,24 @@ Section compile_FiniteSet_Methods.
   Proof.
     compile_helper runsto_sIn.
     destruct_ex; split_and; subst.
-    rewrite H16.
+    rewrite H15.
     destruct (AbsImpl_sIn _ _ w' s_r_eqv) as [r_eqv [x_eq x_neq]];
       pose ((CallMethod (projT1 FiniteSetImpl) sIn) r w') as p; simpl in *;
       case_eq p; unfold p in *; intros ? ? H'; rewrite H' in *; clear p; simpl in *.
     destruct b; simpl in *.
-    rewrite (proj2 H10) by intuition; eauto using SomeSCAs_chomp, add_sca_pop_adts.
-    rewrite (proj2 H14) by intuition; eauto using SomeSCAs_chomp, add_sca_pop_adts.
+    rewrite (proj2 H9) by intuition; eauto using SomeSCAs_chomp, add_sca_pop_adts.
+    rewrite (proj2 H13) by intuition; eauto using SomeSCAs_chomp, add_sca_pop_adts.
     destruct_ex; split_and; subst.
     destruct (AbsImpl_sIn _ _ w' s_r_eqv) as [r_eqv [x_eq x_neq]];
       pose ((CallMethod (projT1 FiniteSetImpl) sIn) r w') as p; simpl in *;
       case_eq p; unfold p in *; intros ? ? H'; rewrite H' in *; clear p; simpl in *.
-    rewrite H16; destruct x.
+    rewrite H15; destruct x.
     - apply add_adts_pop_sca; map_iff_solve trivial.
       rewrite r_eqv; apply AllADTs_chomp_remove.
-      rewrite H12; trickle_deletion; reflexivity.
+      rewrite H11; trickle_deletion; reflexivity.
     - destruct b.
-      pose proof ((proj1 x_neq) (refl_equal _)) as H''; rewrite <- H10 in H''; discriminate.
-      pose proof ((proj1 x_eq) (refl_equal _)) as H''; rewrite <- H14 in H''; discriminate.
+      pose proof ((proj1 x_neq) (refl_equal _)) as H''; rewrite <- H9 in H''; discriminate.
+      pose proof ((proj1 x_eq) (refl_equal _)) as H''; rewrite <- H13 in H''; discriminate.
   Qed.
 
   Lemma AbsImpl_sSize
