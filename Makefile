@@ -108,6 +108,7 @@ SRC_MODULES    := \
 	QueryStructure/Refinements/AutoDB\
 	FiniteSetADTs \
 	FiniteSetADTs/FiniteSetADT \
+	FiniteSetADTs/FiniteSetADTMethodLaws \
 	FiniteSetADTs/FiniteSetADTImplementation \
 	FiniteSetADTs/FiniteSetRefinement \
 	FiniteSetADTs/WordInterface \
@@ -139,16 +140,18 @@ COMPILER_MODULES := \
 	FiatToFacade/Compiler/Utilities \
 	FiatToFacade/Compiler/Prerequisites \
 	FiatToFacade/Compiler/Basics \
+	FiatToFacade/Compiler/Pairs \
 	FiatToFacade/Compiler/Cleanup \
 	FiatToFacade/Compiler/NoOp \
 	FiatToFacade/Compiler/Copy \
 	FiatToFacade/Compiler/Constants \
 	FiatToFacade/Compiler/Binops \
 	FiatToFacade/Compiler/Conditionals \
+	FiatToFacade/Compiler/ADTs/FiniteSets \
 	FiatToFacade/Compiler/ADTs/ListsInversion \
 	FiatToFacade/Compiler/ADTs/Lists \
-	FiatToFacade/Compiler/ADTs/Folds
-
+	FiatToFacade/Compiler/ADTs/Folds \
+	FiatToFacade/Compiler
 
 EXAMPLE_MODULES := \
 	FiniteSetsExamples

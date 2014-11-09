@@ -41,3 +41,17 @@ Lemma pull_forall_loop_adt :
 Proof.
   eauto using pull_forall.
 Qed.
+
+
+Lemma pull_forall_loop_pair :
+  forall  acc_type wsca wadt env b loop knowledge
+         scas adts vseq vsca vadt thead tis_empty,
+    (forall head acc seq,
+       refine  { cloop | @PairLoopBodyProgCondition env acc_type loop cloop knowledge
+                                                    scas adts vseq vsca vadt thead tis_empty
+                                                    acc wsca wadt head seq } b) ->
+    refine { cloop | @PairLoopBodyOk env acc_type loop cloop knowledge
+                                     scas adts vseq vsca vadt thead tis_empty wsca wadt }%facade b.
+Proof.
+  eauto using pull_forall.
+Qed.
