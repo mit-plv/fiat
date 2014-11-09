@@ -4,12 +4,12 @@ Require Import ADTSynthesis.FiniteSetADTs.
 (** Now we spec out two examples, the count of the unique elements in
     a list, and the sum of the unique elements in a list. *)
 
-Definition countUniqueSpec (ls : list W) : Comp nat
-  := cardinal ls.
+Definition countUniqueSpec (ls : list W) : Comp W
+  := cardinal (elements ls).
 
-Definition countUniqueSpec' (ls : list W) : Comp nat
+Definition countUniqueSpec' (ls : list W) : Comp W
   := (xs <- to_list (elements ls);
-      ret (List.length xs)).
+      ret (from_nat (List.length xs))).
 
 Definition uniqueizeSpec (ls : list W) : Comp (list W)
   := to_list (elements ls).
@@ -58,14 +58,14 @@ Definition symmetricDifferenceUniqueSpec (ls1 ls2 : list W) : Comp (list W)
                 (Ensembles.Setminus _ (elements ls1) (elements ls2))
                 (Ensembles.Setminus _ (elements ls2) (elements ls1))).
 
-Definition countUniqueLessThanSpec1 (ls : list W) (x : W) : Comp nat
+Definition countUniqueLessThanSpec1 (ls : list W) (x : W) : Comp W
   := (ls' <- to_list (Ensembles.Setminus _ (elements ls) (fun y => wlt y x = true));
-      cardinal ls').
+      cardinal (elements ls')).
 
-Definition countUniqueLessThanSpec2 (ls : list W) (x : W) : Comp nat
-  := (n <- cardinal ls;
-      n' <- cardinal (List.filter (fun y => negb (wlt y x)) ls);
-      ret (n - n')).
+Definition countUniqueLessThanSpec2 (ls : list W) (x : W) : Comp W
+  := (n <- cardinal (elements ls);
+      n' <- cardinal (elements (List.filter (fun y => negb (wlt y x)) ls));
+      ret (wminus n n')).
 
 (** Now we refine the implementations. *)
 Definition countUniqueImpl (FiniteSetImpl : FullySharpened FiniteSetSpec) (ls : list W)
@@ -82,7 +82,6 @@ Proof.
   sharpen computation with FiniteSet implementation := FiniteSetImpl.
 
   finish sharpening computation.
-
 Defined.
 
 Definition countUniqueImpl' (FiniteSetImpl : FullySharpened FiniteSetSpec) (ls : list W)

@@ -8,9 +8,12 @@ Module Export BedrockWordW <: BedrockWordT.
 
   Definition wzero := (@Word.natToWord 32 0).
   Definition wplus := (@Word.wplus 32).
+  Definition wminus := (@Word.wminus 32).
   Definition weq := @Word.weqb 32.
 
   Definition wlt := IL.wltb.
+
+  Definition from_nat := @Word.natToWord 32.
 
   Lemma weq_iff x : forall y, x = y <-> weq x y = true.
   Proof.

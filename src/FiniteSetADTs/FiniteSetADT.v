@@ -16,6 +16,10 @@ Definition sRemove := "Remove".
 Definition sIn := "In".
 Definition sSize := "Size".
 
+Definition cardinal (S : Ensemble W) : Comp W
+  := (n <- { n : nat | AdditionalEnsembleDefinitions.cardinal _ S n };
+      ret (from_nat n)).
+
 (** We define the interface for finite sets *)
 (** QUESTION: Does Facade give us any other methods?  Do we want to
     provide any other methods? *)
@@ -25,7 +29,7 @@ Definition FiniteSetSig : ADTSig :=
       Method sAdd : rep x W -> rep x unit,
       Method sRemove : rep x W -> rep x unit,
       Method sIn : rep x W -> rep x bool,
-      Method sSize : rep x unit -> rep x nat
+      Method sSize : rep x unit -> rep x W
     }.
 
 (** And now the spec *)
@@ -43,7 +47,7 @@ Definition FiniteSetSpec : ADT FiniteSetSig :=
         (b <- { b : bool | b = true <-> Ensembles.In _ xs x };
          ret (xs, b)),
 
-    Def Method sSize (xs : rep , _ : unit) : nat :=
-          (n <- { n : nat | cardinal _ xs n };
+    Def Method sSize (xs : rep , _ : unit) : W :=
+          (n <- cardinal xs;
            ret (xs, n))
   }.

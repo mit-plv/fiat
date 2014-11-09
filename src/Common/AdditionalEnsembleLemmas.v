@@ -109,6 +109,15 @@ Proof.
   eapply EnsembleListEquivalence_Same_set; eassumption.
 Qed.
 
+Global Add Parametric Morphism {U} : (cardinal U)
+    with signature Same_set _ ==> eq ==> iff
+      as Same_set_cardinal.
+Proof.
+  intros; split; intros; eapply cardinal_Same_set;
+  try eassumption;
+  split; destruct_head_hnf and; assumption.
+Qed.
+
 Lemma cardinal_unique {U} (A : Ensemble U) x y
       (H : cardinal _ A x) (H' : cardinal _ A y)
 : x = y.
