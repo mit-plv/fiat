@@ -20,7 +20,7 @@ Ltac runsto_prelude :=
           end; simpl in *; autoinj; simpl in *).
 
 Lemma runsto_pop :
-  forall hd tl (vseq thead: StringMap.key) env (st st': State FacadeADT) f,
+  forall hd tl (vseq thead: StringMap.key) env (st st': State ADTValue) f,
     vseq <> thead ->
     st [vseq >> ADT (List (hd :: tl))] ->
     GLabelMap.find (elt:=FuncSpec _) f env = Some (Axiomatic List_pop) ->
@@ -43,7 +43,7 @@ Proof.
 Qed.
 
 Lemma runsto_is_empty :
-  forall seq (vseq tis_empty: StringMap.key) env (st st': State FacadeADT) f,
+  forall seq (vseq tis_empty: StringMap.key) env (st st': State ADTValue) f,
     vseq <> tis_empty ->
     st [vseq >> ADT (List seq)] ->
     GLabelMap.find (elt:=FuncSpec _) f env = Some (Axiomatic List_empty) ->
@@ -53,15 +53,18 @@ Lemma runsto_is_empty :
       StringMap.Equal st' (StringMap.add tis_empty ret st).
 Proof.
   runsto_prelude.
-  
-  eexists; split; eauto.
-  etransitivity; try eassumption.
-  setoid_rewrite add_noop_mapsto at 2; try eassumption.
-  reflexivity.
+
+  unfold Programming.propToWord in *.
+  unfold IF_then_else in *.
+
+  destruct H5; eexists; split; intuition;
+  etransitivity; try eassumption;
+  setoid_rewrite add_noop_mapsto at 2; try eassumption;
+  subst; reflexivity.
 Qed.
 
 Lemma runsto_copy :
-  forall seq (vseq vcopy: StringMap.key) env (st st': State FacadeADT) f,
+  forall seq (vseq vcopy: StringMap.key) env (st st': State ADTValue) f,
     st [vseq >> ADT (List seq)] ->
     GLabelMap.find (elt:=FuncSpec _) f env = Some (Axiomatic List_copy) ->
     RunsTo env (Call vcopy f (vseq :: nil)) st st' ->
@@ -71,7 +74,7 @@ Proof.
 Qed.
 
 Lemma runsto_delete :
-  forall seq (vseq vret: StringMap.key) env (st st': State FacadeADT) f,
+  forall seq (vseq vret: StringMap.key) env (st st': State ADTValue) f,
     st [vseq >> ADT (List seq)] ->
     GLabelMap.find (elt:=FuncSpec _) f env = Some (Axiomatic List_delete) ->
     RunsTo env (Call vret f (vseq :: nil)) st st' ->
@@ -81,7 +84,7 @@ Proof.
 Qed.
 
 Lemma runsto_cons :
-  forall seq head (vseq vhead vdiscard: StringMap.key) env (st st': State FacadeADT) f,
+  forall seq head (vseq vhead vdiscard: StringMap.key) env (st st': State ADTValue) f,
     st [vseq >> ADT (List seq)] ->
     st [vhead >> SCA _ head] ->
     GLabelMap.find (elt:=FuncSpec _) f env = Some (Axiomatic List_push) ->
