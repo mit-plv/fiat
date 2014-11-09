@@ -595,21 +595,24 @@ Section FiniteSetHelpers.
         end. } }
   Qed.
 
-  Lemma CallSize_FiniteSetOfListOfFiniteSetAndListOfList ls arg
-  : snd
-      ((CallMethod (projT1 FiniteSetImpl) sSize)
-         (FiniteSetOfList (snd (FiniteSetAndListOfList ls)))
-         arg)
-    = snd ((CallMethod (projT1 FiniteSetImpl) sSize)
-             (FiniteSetOfList ls)
-             arg).
+  Lemma FiniteSetOfListOfFiniteSetAndListOfList ls
+  : FiniteSetOfList (snd (FiniteSetAndListOfList ls))
+    = FiniteSetOfList ls.
   Proof.
-    do 2 (handle_calls_then' ltac:(fun H =>
-                                     first [ specialize (H _ (AbsR_EnsembleOfList_FiniteSetOfListOfFiniteSetAndListOfList _))
-                                           | specialize (H _ (AbsR_EnsembleOfList_FiniteSetOfList _)) ]);
-          inversion_by computes_to_inv;
-          t).
-    eapply cardinal_unique; eassumption.
+    induction ls; simpl; trivial.
+    rewrite (pull_if FiniteSetOfList); simpl.
+    rewrite IHls.
+    rewrite !NoListJustFiniteSetOfList.
+    match goal with
+      | [ |- context[if ?E then _ else _] ] => destruct E
+    end;
+      reflexivity.
+  Qed.
+
+  Lemma FiniteSetOfUniqueListOfList ls
+  : FiniteSetOfList (UniqueListOfList ls) = FiniteSetOfList ls.
+  Proof.
+    apply FiniteSetOfListOfFiniteSetAndListOfList.
   Qed.
 
   Lemma fold_right_snd_FiniteSetAndListOfList {A} (f : W -> A -> A) (a : A) ls
@@ -1301,7 +1304,8 @@ Ltac finite_set_sharpen_step FiniteSetImpl :=
         | setoid_rewrite Ensemble_fold_right_simpl
         | setoid_rewrite Ensemble_fold_right_simpl'
         | rewrite (@finite_set_handle_EnsembleListEquivalence FiniteSetImpl)
-        | rewrite (@CallSize_FiniteSetOfListOfFiniteSetAndListOfList FiniteSetImpl)
+        | rewrite (@FiniteSetOfListOfFiniteSetAndListOfList FiniteSetImpl)
+        | rewrite (@FiniteSetOfUniqueListOfList FiniteSetImpl)
         | rewrite (@fold_right_snd_FiniteSetAndListOfList FiniteSetImpl)
         | rewrite (@fold_right_UniqueListOfList FiniteSetImpl)
         | progress autounfold with finite_sets ].
