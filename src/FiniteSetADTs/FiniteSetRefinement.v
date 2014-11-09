@@ -1308,6 +1308,7 @@ Ltac finite_set_sharpen_step FiniteSetImpl :=
         | rewrite (@FiniteSetOfUniqueListOfList FiniteSetImpl)
         | rewrite (@fold_right_snd_FiniteSetAndListOfList FiniteSetImpl)
         | rewrite (@fold_right_UniqueListOfList FiniteSetImpl)
+        | progress (simpl negb; cbv iota)
         | progress autounfold with finite_sets ].
 
 Tactic Notation "sharpen" "computation" "with" "FiniteSet" "implementation" ":=" constr(FiniteSetImpl) :=
