@@ -68,8 +68,8 @@ Module FiniteSetADTMSet (FSMSet : SetsOn BedrockWordAsOrderedType).
       Def Method sIn (fs : rep , w : W) : bool :=
         (fs, FSMSet.mem w fs),
 
-      Def Method sSize (fs : rep , _ : unit) : nat :=
-        (fs, FSMSet.cardinal fs)
+      Def Method sSize (fs : rep , _ : unit) : W :=
+        (fs, from_nat (FSMSet.cardinal fs))
     }.
 
   Local Ltac handle_computes_to_step_t :=
@@ -80,8 +80,8 @@ Module FiniteSetADTMSet (FSMSet : SetsOn BedrockWordAsOrderedType).
       | _ => progress destruct_head_hnf prod
       | _ => progress destruct_head_hnf unit
       | [ |- computes_to (Bind _ _) _ ] => refine (BindComputes _ _ _)
-      | [ |- computes_to (Return _) _ ] => refine (ReturnComputes _)
-      | [ |- computes_to (Pick _) _ ] => refine (PickComputes _ _ _)
+      | [ |- computes_to (Return _) _ ] => constructor
+      | [ |- computes_to (Pick _) _ ] => constructor
     end.
 
   Local Ltac t_step :=
@@ -108,7 +108,7 @@ Module FiniteSetADTMSet (FSMSet : SetsOn BedrockWordAsOrderedType).
       | [ |- FSMSet.In _ (FSMSet.remove _ _) ] => apply FSMSet.remove_spec
       | [ H : FSMSet.In _ (FSMSet.remove _ _) |- _ ] => apply FSMSet.remove_spec in H
       | _ => rewrite FSMSet.cardinal_spec
-      | [ |- cardinal _ _ _ ] => eexists
+      | [ |- AdditionalEnsembleDefinitions.cardinal _ _ _ ] => eexists
       | [ |- Datatypes.length _ = Datatypes.length _ ] => reflexivity
       | [ |- EnsembleListEquivalence _ _ ] => split
       | [ |- NoDup (FSMSet.elements _) ] => eapply NoDupA_NoDup; [ | apply FSMSet.elements_spec2w ]; try exact _
@@ -128,14 +128,15 @@ Module FiniteSetADTMSet (FSMSet : SetsOn BedrockWordAsOrderedType).
       | [ |- ?G ] => not has_evar G; left; solve [ hnf; eauto with nocore ]
     end.
 
-  Local Ltac t := repeat repeat t_step.
+  Local Ltac t := repeat repeat repeat t_step.
 
   Definition FiniteSetImpl : FullySharpened FiniteSetSpec.
   Proof.
     exists FiniteSetCImpl.
     exists (fun S0 fs => Same_set _ S0 (fun w => FSMSet.In w fs));
       eapply Iterate_Dep_Type_BoundedIndex_equiv_1; simpl;
-      repeat split; t; intuition.
+      unfold cardinal;
+      repeat split; t.
   Defined.
 
 End FiniteSetADTMSet.

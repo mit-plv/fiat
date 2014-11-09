@@ -303,7 +303,7 @@ Section FiniteSetHelpers.
 
   Lemma finite_set_handle_cardinal_helper (ls : list W)
   : refine (S <- { S : Ensemble W | forall x, Ensembles.In _ S x <-> List.In x ls  };
-            { n : nat | AdditionalEnsembleDefinitions.cardinal _ S n })
+            FiniteSetADT.cardinal S)
            (ret (snd (CallMethod (projT1 FiniteSetImpl) sSize
                                  (FiniteSetOfList ls)
                                  tt))).
@@ -356,8 +356,17 @@ Section FiniteSetHelpers.
     reflexivity.
   Qed.
 
+  Global Add Parametric Morphism : FiniteSetADT.cardinal
+      with signature Same_set _ ==> refineEquiv
+        as Same_set_cardinal.
+  Proof.
+    unfold FiniteSetADT.cardinal.
+    intros x y H.
+    setoid_rewrite H; reflexivity.
+  Qed.
+
   Lemma finite_set_handle_cardinal (S : Ensemble W)
-  : refine { n : nat | AdditionalEnsembleDefinitions.cardinal _ S n }
+  : refine (FiniteSetADT.cardinal S)
            (ls <- { ls : _ | EnsembleListEquivalence S ls };
             ret (snd (CallMethod (projT1 FiniteSetImpl) sSize
                                  (FiniteSetOfList ls)
@@ -368,9 +377,12 @@ Section FiniteSetHelpers.
     rewrite reverse_ensemble_list_equivalence_iff'.
     rewrite <- refine_skip2.
     repeat intro;
-      inversion_by computes_to_inv;
-      constructor.
-    eapply cardinal_Same_set; eassumption.
+      inversion_by computes_to_inv.
+    match goal with
+      | [ H : _ ≅ _, H' : computes_to ?a ?v |- computes_to ?b ?v ]
+        => revert v H'; change (refine b a); rewrite H
+    end.
+    reflexivity.
   Qed.
 
   Lemma AbsR_EnsembleOfList_FiniteSetOfListOfFiniteSetAndListOfList ls
@@ -1239,7 +1251,7 @@ End FiniteSetHelpers.
 
 Create HintDb finite_sets discriminated.
 
-Hint Unfold to_list cardinal fold_right Ensembles.Setminus filter_pred : finite_sets.
+Hint Unfold to_list fold_right Ensembles.Setminus filter_pred : finite_sets.
 
 Ltac start_FullySharpenedComputation :=
   eexists;
@@ -1270,7 +1282,10 @@ Ltac finite_set_sharpen_step FiniteSetImpl :=
           setoid_rewrite refineEquiv_unit_bind
         | idtac;
           (* do an explicit [match] to avoid "Anomaly: Uncaught exception Invalid_argument("decomp_pointwise"). Please report." *)
-          match goal with |- appcontext[@AdditionalEnsembleDefinitions.cardinal] => idtac end;
+          match goal with
+            | |- appcontext[@FiniteSetADT.cardinal] => idtac
+            | |- appcontext[@AdditionalEnsembleDefinitions.cardinal] => idtac
+          end;
           setoid_rewrite (@finite_set_handle_cardinal FiniteSetImpl)
         | match goal with |- appcontext[@Ensembles.Union] => idtac end;
           setoid_rewrite refineEquivUnion; [ | apply Same_set_ELE ]

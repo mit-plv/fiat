@@ -6,6 +6,8 @@ Module Export BedrockWord : BedrockWordT.
   Definition W := nat.
   Definition wzero := 0.
   Definition wplus := plus.
+  Definition wminus := minus.
+  Definition from_nat (x : nat) := x.
   Fixpoint weq (x : nat) (y : nat) : bool :=
     match x, y with
       | 0, 0 => true
