@@ -1,5 +1,5 @@
 Require Import FiatToFacade.Compiler.Prerequisites FiatToFacade.Compiler.ADTs.ListsInversion.
-Require Import Facade.FacadeADTs.
+Require Import Facade.examples.FiatADTs.
 Require Import List GLabelMap.
 
 Unset Implicit Arguments.

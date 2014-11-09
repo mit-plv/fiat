@@ -1,5 +1,5 @@
 Require Import FiatToFacade.Compiler.Prerequisites.
-Require Import Facade.FacadeADTs.
+Require Import Facade.examples.FiatADTs.
 Require Import GLabelMap List.
 
 Unset Implicit Arguments.
@@ -42,7 +42,7 @@ Ltac runsto_prelude :=
   : forall f
            env
            x_label
-           (st st' : State FacadeADT),
+           (st st' : State _),
       GLabelMap.find (elt:=FuncSpec _) f env = Some (Axiomatic FEnsemble_sEmpty) ->
       RunsTo env (Call x_label f nil) st st' ->
       StringMap.Equal st' (StringMap.add x_label (AxSpec.ADT (FEnsemble (Empty_set _))) st).
@@ -58,7 +58,7 @@ Ltac runsto_prelude :=
            (s_label : StringMap.key)
            (x_label : StringMap.key)
            env
-           (st st' : State FacadeADT) f,
+           (st st' : State ADTValue) f,
       s_label <> x_label ->
       st [s_label >> AxSpec.ADT (FEnsemble s_model)] ->
       st [w_label >> SCA _ w_value] ->
@@ -79,7 +79,7 @@ Ltac runsto_prelude :=
            (w_value : W)
            (s_label : StringMap.key)
            (x_label : StringMap.key)
-           env (st st' : State FacadeADT) f,
+           env (st st' : State ADTValue) f,
       s_label <> x_label ->
       st [s_label >> AxSpec.ADT (FEnsemble s_model)] ->
       st [w_label >> SCA _ w_value] ->
@@ -93,6 +93,22 @@ Ltac runsto_prelude :=
     subst_find; simpl in *; autoinj.
   Qed.
 
+  (* Specification of state after running sDelete. *)
+  Lemma runsto_sDelete
+  : forall (s_model : Ensemble W)
+           (s_label : StringMap.key)
+           (x_label : StringMap.key)
+           env (st st' : State ADTValue) f,
+      st [s_label >> AxSpec.ADT (FEnsemble s_model)] ->
+      GLabelMap.find (elt:=FuncSpec _) f env = Some (Axiomatic FEnsemble_sDelete) ->
+      RunsTo env (Call x_label f (s_label :: nil)) st st' ->
+      StringMap.Equal st'
+                      (StringMap.add x_label SCAZero
+                                     (StringMap.remove s_label st)).
+  Proof.
+    runsto_prelude.
+  Qed.
+
   (* Specification of state after running sIn. *)
   Lemma runsto_sIn
   : forall (s_model : Ensemble W)
@@ -100,8 +116,8 @@ Ltac runsto_prelude :=
            (w_value : W)
            (s_label : StringMap.key)
            (x_label : StringMap.key)
-           (env : Env FacadeADT)
-           (st st' : State FacadeADT) f,
+           (env : Env ADTValue)
+           (st st' : State ADTValue) f,
       s_label <> x_label ->
       st [s_label >> AxSpec.ADT (FEnsemble s_model)] ->
       st [w_label >> SCA _ w_value] ->
@@ -126,8 +142,8 @@ Ltac runsto_prelude :=
   : forall (s_model : Ensemble W)
            (s_label : StringMap.key)
            (x_label : StringMap.key)
-           (env : Env FacadeADT)
-           (st st' : State FacadeADT) f,
+           (env : Env ADTValue)
+           (st st' : State ADTValue) f,
       s_label <> x_label ->
       st [s_label >> AxSpec.ADT (FEnsemble s_model)] ->
       GLabelMap.find (elt:=FuncSpec _) f env = Some (Axiomatic FEnsemble_sSize) ->
@@ -580,6 +596,8 @@ Section compile_FiniteSet_Methods.
     rewrite r_eqv; apply AllADTs_chomp_remove.
     rewrite H9; trickle_deletion; reflexivity.
   Qed.
+
+
   
 End compile_FiniteSet_Methods.
 

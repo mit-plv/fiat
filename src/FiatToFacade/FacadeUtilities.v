@@ -1,6 +1,6 @@
 Require Import FiatToFacade.Utilities FiatToFacade.BedrockUtilities FiatToFacade.StringMapUtilities.
 Require Import FiatToFacade.FacadeNotations FiatToFacade.StringMapNotations.
-Require Import Bedrock.Bedrock Facade.DFacade Facade.FacadeADTs StringMap.
+Require Import Bedrock.Bedrock Facade.DFacade Facade.examples.FiatADTs StringMap.
 Require Import Cito.SyntaxExpr.
 Require Import List Program.
 
