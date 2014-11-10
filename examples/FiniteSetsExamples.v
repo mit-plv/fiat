@@ -67,6 +67,44 @@ Definition countUniqueLessThanSpec2 (ls : list W) (x : W) : Comp W
       n' <- cardinal (elements (List.filter (fun y => negb (wlt y x)) ls));
       ret (wminus n n')).
 
+Require Import FiatToFacade.Compiler.
+Require Import FiatToFacade.FacadeNotations.
+Require Import Computation.ApplyMonad.
+Require Import GLabelMapFacts.
+Require Import List.
+Require Import FiniteSetADTs.FiniteSetADTMethodLaws.
+
+Ltac find_label_in_env :=
+  unfold basic_env, AddPair, MakePair; simpl;
+  try match goal with
+        | |- GLabelMap.find ?k (GLabelMap.add ?k' (Axiomatic ?spec) _) = Some (Axiomatic ?spec) =>
+          apply P.F.add_eq_o; try reflexivity
+        | |- GLabelMap.find ?k (GLabelMap.add ?k' (Axiomatic ?spec) _) = Some (Axiomatic ?spec') =>
+          rewrite P.F.add_neq_o; [ find_label_in_env | ]; congruence
+      end.
+
+Ltac vacuum :=
+  trickle_deletion;
+  match goal with
+    | [ |- refine _ _ ] => try (simplify with monad laws)
+    | [ |- ?a <> ?b ] => first [ is_evar a | is_evar b | discriminate ]
+    | [ |- ~ StringMap.In ?k ∅ ] => solve [apply not_in_empty]
+    | [ |- ~ StringMap.In ?k ?s ] => first [ is_evar s | solve [map_iff_solve ltac:(intuition discriminate)] ]
+    | [ |- context[SCALoopBodyProgCondition] ] => progress (unfold SCALoopBodyProgCondition; intros; simpl)
+    | [ |- context[ADTLoopBodyProgCondition] ] => progress (unfold ADTLoopBodyProgCondition; intros; simpl)
+    | [ |- context[PairLoopBodyProgCondition] ] => progress (unfold PairLoopBodyProgCondition; intros; simpl)
+    | [ |- ?m[?k >> ?v] ] => solve [map_iff_solve_evar intuition]
+    | [ |- SomeSCAs _ ∅ ] => solve [apply SomeSCAs_empty]
+    | [ |- SomeSCAs _ _ ] => eassumption
+    | [ |- AllADTs _ _ ] => eassumption
+    | [ |- AllADTs _ _ ] => solve [unfold AllADTs, Superset; intros; map_iff_solve intuition]
+    | [ |- Word2Spec ?env _ = Some (Axiomatic _) ] => reflexivity
+    | [ |- Label2Word ?env _ = Some _ ] => reflexivity
+    | [ |- StringMap.Equal ?a ?b ] => first [ is_evar a | is_evar b | trickle_deletion; reflexivity ]
+    | _ => solve [ find_label_in_env ]
+  end.
+
+
 (** Now we refine the implementations. *)
 Definition countUniqueImpl (FiniteSetImpl : FullySharpened FiniteSetSpec) (ls : list W)
 : FullySharpenedComputation (countUniqueSpec ls).
@@ -81,9 +119,66 @@ Proof.
 
   sharpen computation with FiniteSet implementation := FiniteSetImpl.
 
-  finish sharpening computation.
-Defined.
+  pose (["$ls" >adt> List (rev ls)]::∅) as adts.
+  rewrite (start_sca adts "$ret" adts); try vacuum.
 
+  unfold FiniteSetOfList; simpl.
+  rewrite <- (@rev_involutive _ ls).
+  rewrite !fold_left_rev_right.
+  unfold adts.
+
+  Lemma prepare_sSize' :
+    forall {env knowledge} vens {vret}
+           (FiniteSetImpl : FullySharpened FiniteSetSpec)
+           (r : Core.Rep (ComputationalADT.LiftcADT (projT1 FiniteSetImpl)))
+           (u : fst (ADTSig.MethodDomCod FiniteSetSig ``(sSize))),
+    forall init_adts inter_adts final_adts init_scas inter_scas final_scas,
+    refine
+      (@Prog _ env knowledge
+             init_scas ([vret >> SCA _ (snd ((CallMethod (projT1 FiniteSetImpl) sSize) r u))]::final_scas)
+             init_adts final_adts)
+      (pprep <- (@Prog _ env knowledge
+                       init_scas inter_scas
+                       init_adts ([vens >adt> FEnsemble (AbsImpl FiniteSetImpl r)]::init_adts));
+       pscas <- (@Prog _ env knowledge
+                       inter_scas ([vret >> SCA _ (snd ((CallMethod (projT1 FiniteSetImpl) sSize) r u))]::inter_scas)
+                       ([vens >adt> FEnsemble (AbsImpl FiniteSetImpl r)]::init_adts) inter_adts);
+       pclean <- (@Prog _ env knowledge
+                        ([vret >> SCA _ (snd ((CallMethod (projT1 FiniteSetImpl) sSize) r u))]::inter_scas)
+                        ([vret >> SCA _ (snd ((CallMethod (projT1 FiniteSetImpl) sSize) r u))]::final_scas)
+                        inter_adts final_adts);
+       ret (pprep; pscas; pclean)%facade)%comp.
+  Proof.
+    
+  unfold refine, Prog, ProgOk; unfold_coercions; intros.
+  inversion_by computes_to_inv; constructor;
+  split; subst; destruct_pairs.
+
+  + repeat (safe_seq; intros); specialize_states; assumption.
+  + intros; repeat inversion_facade; specialize_states; intuition.
+  Qed.
+                         
+  rewrite prepare_sSize'; vacuum.
+
+  (*
+  Lemma argh :
+    forall av env k scas scas' adts adts',
+      refine (@Prog av env k scas scas' adts adts')
+             (ret Skip).
+  Admitted.
+
+  rewrite argh; vacuum.
+  
+  rewrite compile_sSize; try vacuum.
+  *)  
+
+Admitted.
+  (*
+  finish sharpening computation.
+
+Defined.
+*)
+  
 Definition countUniqueImpl' (FiniteSetImpl : FullySharpened FiniteSetSpec) (ls : list W)
 : FullySharpenedComputation (countUniqueSpec' ls).
 Proof.
@@ -93,6 +188,8 @@ Proof.
 
   sharpen computation with FiniteSet implementation := FiniteSetImpl.
 
+  (* TODO: convert from_nat length to a fold *)
+  
   finish sharpening computation.
 Defined.
 
@@ -102,10 +199,20 @@ Proof.
   begin sharpening computation.
 
   sharpen computation with FiniteSet implementation := FiniteSetImpl.
+  etransitivity.
 
+  pose (["$ls" >adt> List (rev ls)]::∅) as adts.
+  rewrite (start_adt adts "$ret" List List_inj' adts); try vacuum.
+
+  unfold UniqueListOfList, FunctionOfList, FiniteSetAndFunctionOfList; simpl.
+  (* This uses a fold with two ADTs. *)
+
+Admitted.
+(*
   finish sharpening computation.
 Defined.
-
+*)
+  
 (** And now we do the same for summing. *)
 
 Definition sumUniqueImpl (FiniteSetImpl : FullySharpened FiniteSetSpec) (ls : list W)
@@ -119,8 +226,83 @@ Proof.
 
   sharpen computation with FiniteSet implementation := FiniteSetImpl.
 
-  finish sharpening computation.
-Defined.
+  pose (["$ls" >adt> List (rev ls)]::∅) as adts.
+  rewrite (start_sca adts "$ret" adts); vacuum. (* TODO: Why isn't setoid_rewrite working here? *)
+
+  unfold FunctionOfList, FiniteSetAndFunctionOfList.
+  rewrite <- (@rev_involutive _ ls).
+  rewrite !fold_left_rev_right.
+  
+  setoid_rewrite (compile_pair_sca "$adt" (fun x => FEnsemble (to_ensemble _ (fst x)))); vacuum.
+
+  unfold adts; simpl.
+  rewrite (compile_fold_pair basic_env _ (snd) (fun x => FEnsemble (to_ensemble FiniteSetImpl (fst x))) "$ls" "$ret" "$adt" "$head" "$tis_empty"); vacuum.
+
+  rewrite pull_forall_loop_pair; vacuum.
+  rewrite compile_constant; vacuum.
+  setoid_rewrite compile_AbsImpl_sEmpty; vacuum.
+
+  (* TODO: Do delete here. *)
+
+  Focus 2.
+  rewrite (pull_if_FEnsemble). (* setoid_rewrite without an argument raises an exception here *)
+ 
+  setoid_rewrite (compile_if_parallel "$comp"); vacuum.
+  
+  setoid_rewrite (compile_sIn _ _ _ "TODO REMOVE"); try vacuum.
+
+  Lemma eq_after_In :
+    forall FiniteSetImpl: FullySharpened FiniteSetSpec,
+    forall st key,
+      to_ensemble _ (fst ((CallMethod (projT1 FiniteSetImpl) sIn) st key)) = to_ensemble _ st.
+  Proof.
+    (* Using extensionality? *)
+  Admitted.
+
+  (* True case *)
+  rewrite drop_sca; vacuum.
+  rewrite compile_scas_then_adts; vacuum.
+
+  (* SCAs *)
+  rewrite compile_add_intermediate_scas_with_ret; vacuum.
+  rewrite copy_word; vacuum.
+
+  do 3 (rewrite drop_second_sca_from_precond; trickle_deletion).
+  rewrite no_op; vacuum.
+
+  (* ADTs *)
+  setoid_rewrite eq_after_In.  
+  rewrite no_op; vacuum.
+
+  (* False case *)
+  rewrite drop_sca; vacuum.
+  rewrite compile_scas_then_adts; vacuum.
+
+  (* SCAs *)
+  rewrite compile_add_intermediate_scas_with_ret; vacuum.
+  setoid_rewrite (compile_binop_simple IL.Plus _ "$head'" "$ret'"); try vacuum.
+  rewrite copy_word; vacuum.
+  rewrite copy_word; vacuum.
+
+  do 3 (rewrite drop_second_sca_from_precond; trickle_deletion).
+  rewrite no_op.
+
+  (* ADTs *)
+  (* Note: the cruft around the call to sAdd is pretty generic *)
+  setoid_rewrite compile_add_intermediate_scas; vacuum.
+  rewrite (compile_sAdd _ _ "$head" "TODO: REMOVE THIS PARAMETER" "$discard"); try vacuum.
+  rewrite drop_sca; vacuum.
+  rewrite no_op; vacuum.
+
+  reflexivity.
+
+  (* 1,4: ??
+     2,3: Lemma needs to be fixed *)
+  5: vacuum.
+  5: vacuum.
+
+  (* TODO: Check if it wouldn't be better to overwrite everything in the end, instead of overwriting ret immediately. *)
+Admitted.
 
 Definition sumAllImpl (FiniteSetImpl : FullySharpened FiniteSetSpec) (ls : list W)
 : FullySharpenedComputation (sumAllSpec ls).
@@ -131,6 +313,8 @@ Proof.
 
   sharpen computation with FiniteSet implementation := FiniteSetImpl.
 
+  
+  
   finish sharpening computation.
 Defined.
 

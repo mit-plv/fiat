@@ -115,12 +115,12 @@ Qed.
 
 
 Lemma drop_scas_from_precond : (* TODO: Convert this to a morphism *)
-  forall {av env} scas scas' scas'' adts adts',
+  forall {av env} knowledge scas scas' scas'' adts adts',
     SomeSCAs scas scas'' ->
-    refine (@Prog av env True
+    refine (@Prog av env knowledge
                   scas scas'
                   adts adts')
-           (@Prog av env True
+           (@Prog av env knowledge
                   scas'' scas'
                   adts adts').
 Proof.
@@ -135,11 +135,11 @@ Proof.
 Qed.
 
 Lemma drop_second_sca_from_precond :
-  forall {av env} scas scas' adts adts' k v k' v',
-    refine (@Prog av env True
+  forall {av env} knowledge scas scas' adts adts' k v k' v',
+    refine (@Prog av env knowledge
                   ([k >sca> v]::[k' >sca> v']::scas) scas'
                   adts adts')
-           (@Prog av env True
+           (@Prog av env knowledge
                   ([k >sca> v]::(StringMap.remove k' scas)) scas'
                   adts adts').
 Proof.
@@ -175,11 +175,11 @@ Proof.
 Qed.
 
 Lemma add_scas_in_postcond :
-  forall {av env} scas adts adts' vret v,
-    refine (@Prog av env True
+  forall {av env} knowledge scas adts adts' vret v,
+    refine (@Prog av env knowledge
                   scas ([vret >sca> v]::∅)
                   adts adts')
-           (@Prog av env True
+           (@Prog av env knowledge
                   scas ([vret >sca> v]::scas)
                   adts adts').
 Proof.

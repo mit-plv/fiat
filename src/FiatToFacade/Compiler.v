@@ -34,13 +34,20 @@ Notation "k ↦ v" :=
   (MakePair k v) (at level 55, no associativity).
 
 Definition empty_env {av} := GLabelMap.empty (FuncSpec av).
-                                                      
-Definition basic_env := [[[ ("List", "empty") ↦ List_empty;
+
+Definition basic_env := [[[ ("List", "Empty") ↦ List_empty;
                             ("List", "Pop") ↦ List_pop;
                             ("List", "New") ↦ List_new;
                             ("List", "Push") ↦ List_push;
                             ("List", "Copy") ↦ List_copy;
-                            ("List", "Delete") ↦ List_delete ]]].
+                            ("List", "Delete") ↦ List_delete;
+                            ("FSet", "Empty") ↦ FEnsemble_sEmpty;
+                            ("FSet", "Add") ↦ FEnsemble_sAdd;
+                            ("FSet", "Remove") ↦ FEnsemble_sRemove;
+                            ("FSet", "Delete") ↦ FEnsemble_sDelete;
+                            ("FSet", "In") ↦ FEnsemble_sIn;
+                            ("FSet", "Size") ↦ FEnsemble_sSize
+                          ]]].
 
 Unset Implicit Arguments.
 
