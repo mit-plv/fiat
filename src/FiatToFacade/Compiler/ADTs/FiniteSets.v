@@ -152,7 +152,7 @@ Ltac runsto_prelude :=
       GLabelMap.find (elt:=FuncSpec _) f env = Some (Axiomatic FEnsemble_sSize) ->
       RunsTo env (Call x_label f (s_label :: nil)) st st' ->
       exists ret n,
-        FiatADTs.cardinal s_model n
+        FiatADTs.cardinal _ s_model n
         /\ ret = SCA _ (Word.natToWord 32 n)
         /\ StringMap.Equal st'
                            (StringMap.add x_label ret
@@ -502,7 +502,7 @@ Section compile_FiniteSet_Methods.
     apply Extensionality_Ensembles; unfold AbsImpl, Same_set, Included, In; intuition.
     destruct_ex; intuition; eexists; split; eauto.
     rewrite <- H2; simpl; eauto.
-    assert (x2 = s) by 
+    assert (x2 = s) by
         (apply Extensionality_Ensembles; eapply AbsImpl_SameSet; eauto).
     subst; eauto.
     destruct_ex; intuition; eexists; split; eauto.
@@ -519,7 +519,7 @@ Section compile_FiniteSet_Methods.
       apply Extensionality_Ensembles; unfold AbsImpl, Same_set, Included, In; intuition.
       eexists; eauto.
       destruct_ex; intuition; eauto.
-      assert (x1 = s) by 
+      assert (x1 = s) by
           (apply Extensionality_Ensembles; eapply AbsImpl_SameSet; eauto); subst; eauto.
     - pose proof (ADTRefinementPreservesMethods
                     (projT2 FiniteSetImpl)
@@ -530,30 +530,30 @@ Section compile_FiniteSet_Methods.
       apply Extensionality_Ensembles; unfold AbsImpl, Same_set, Included, In; intuition.
       eexists; eauto.
       destruct_ex; intuition; eauto.
-      assert (x2 = s) by 
+      assert (x2 = s) by
           (apply Extensionality_Ensembles; eapply AbsImpl_SameSet; eauto); subst; eauto.
     - pose proof (ADTRefinementPreservesMethods
                     (projT2 FiniteSetImpl)
                     {| bindex := sIn |} _ _ w s_r_eqv (ReturnComputes _)) as ref;
-      unfold refineMethod in ref; inversion_by computes_to_inv; injections; subst; simpl in *. 
+      unfold refineMethod in ref; inversion_by computes_to_inv; injections; subst; simpl in *.
       rewrite <- H4 in H; simpl in *.
       assert (s = AbsImpl r); subst; eauto; intuition.
       apply Extensionality_Ensembles; unfold AbsImpl, Same_set, Included, In; intuition.
       eexists; eauto.
       destruct_ex; intuition; eauto.
-      assert (x2 = s) by 
+      assert (x2 = s) by
           (apply Extensionality_Ensembles; eapply AbsImpl_SameSet; eauto); subst; eauto.
       subst; discriminate.
     - pose proof (ADTRefinementPreservesMethods
                     (projT2 FiniteSetImpl)
                     {| bindex := sIn |} _ _ w s_r_eqv (ReturnComputes _)) as ref;
-      unfold refineMethod in ref; inversion_by computes_to_inv; injections; subst; simpl in *. 
+      unfold refineMethod in ref; inversion_by computes_to_inv; injections; subst; simpl in *.
       rewrite <- H3; simpl in *.
       assert (s = AbsImpl r); subst; eauto; intuition.
       apply Extensionality_Ensembles; unfold AbsImpl, Same_set, Included, In; intuition.
       eexists; eauto.
       destruct_ex; intuition; eauto.
-      assert (x2 = s) by 
+      assert (x2 = s) by
           (apply Extensionality_Ensembles; eapply AbsImpl_SameSet; eauto); subst; eauto.
       destruct x1; eauto.
       exfalso; eauto.
@@ -607,7 +607,9 @@ Section compile_FiniteSet_Methods.
   : forall s r u
            (s_r_eqv : AbsR (projT2 FiniteSetImpl) s r),
       AbsImpl r = AbsImpl (fst ((CallMethod (projT1 FiniteSetImpl) sSize) r u)) /\
-      FiatADTs.cardinal s (Word.wordToNat (snd ((CallMethod (projT1 FiniteSetImpl) sSize) r u))).
+      forall n,
+        FiatADTs.cardinal _ s n
+        -> Word.natToWord _ n = snd ((CallMethod (projT1 FiniteSetImpl) sSize) r u).
   Proof.
     intros.
     pose proof (ADTRefinementPreservesMethods
@@ -618,18 +620,24 @@ Section compile_FiniteSet_Methods.
     - apply Extensionality_Ensembles; unfold AbsImpl, Same_set, Included, In, Add; intuition.
       destruct_ex; intuition; eexists; split; eauto.
       rewrite <- H2; simpl.
-      assert (x2 = s)  by 
+      assert (x2 = s)  by
           (apply Extensionality_Ensembles; eapply AbsImpl_SameSet; eauto); subst; eauto.
       exists s; destruct_ex; intuition.
       rewrite <- H2 in H3; simpl in *.
-      assert (x2 = s)  by 
+      assert (x2 = s)  by
           (apply Extensionality_Ensembles; eapply AbsImpl_SameSet; eauto); subst; eauto.
     - rewrite <- H2; simpl in *.
       unfold cardinal in *.
       apply computes_to_inv in H0; destruct_ex; intuition.
       apply computes_to_inv in H0; unfold FiatADTs.cardinal, AdditionalEnsembleDefinitions.cardinal in *.
-      destruct_ex; eexists; intuition; eauto.
-      apply computes_to_inv in H3; subst.
+      destruct_ex; split_and; subst;
+      inversion_by computes_to_inv; subst.
+      unfold from_nat in *.
+      repeat match goal with
+               | [ H : (_, _) = (_, _) |- _ ] => inversion H; clear H
+               | [ H : (_, _) = ?x |- _ ] => destruct x
+               | _ => progress subst
+             end.
       (* Problem with switching from nats to words. *)
       admit.
   Qed.
@@ -690,7 +698,8 @@ Section compile_FiniteSet_Methods.
     rewrite H12.
     destruct (AbsImpl_sSize _ _ u s_r_eqv).
     unfold cardinal in *; destruct_ex; split_and; subst; simpl in *.
-    destruct H11; intuition.
+    rewrite H11. rewrite SomeSCAs_chomp; eauto; try reflexivity.
+    admit.
     (* Similar problems with word / nat mismatch. *)
   Admitted.
   (*
