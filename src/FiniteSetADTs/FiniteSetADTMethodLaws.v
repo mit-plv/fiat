@@ -61,6 +61,15 @@ Section method_laws.
       | [ H : ?f ?A ?B, H' : forall a, ?f a ?b -> _ |- _ ] => specialize (H' _ H)
       | _ => solve [ eauto with nocore ]
       | _ => solve [ repeat esplit; eassumption ]
+      | [ |- computes_to (ret ?x) ?y ]
+        => let H := fresh in
+           assert (H : x = y);
+             [
+             | rewrite H; constructor ]
+      | [ |- computes_to (Return _) _ ] => constructor
+      | [ |- computes_to (Bind _ _) _ ] => refine (BindComputes _ _ _)
+      | [ |- computes_to (Pick _) _ ] => constructor
+      | [ |- from_nat _ = from_nat _ ] => apply f_equal
     end.
 
   Lemma FiniteSet_AbsR_Same_set fs (S0 S1 : Ensemble W) (H0 : S0 ≃ fs) (H1 : S1 ≃ fs)
@@ -207,32 +216,16 @@ Section method_laws.
     rewrite refineEquiv_pick_eq; reflexivity.
   Qed.
 
-  Lemma ToEnsemble_Size_iff' fs S0 (H : S0 ≃ fs) n
-  : (snd (CallMethod (projT1 FiniteSetImpl) sSize fs tt)) = n
-    <-> cardinal _ S0 n.
-  Proof.
-    handle_methods; t.
-    eapply cardinal_unique; eassumption.
-  Qed.
-  Lemma ToEnsemble_Size_iff fs (H : exists S0, forall S', S' ≅ S0 -> S' ≃ fs) n
-  : (snd (CallMethod (projT1 FiniteSetImpl) sSize fs tt)) = n
-    <-> cardinal _ (to_ensemble fs) n.
-  Proof.
-    destruct H as [? H].
-    pose proof (H _ (reflexivity _)).
-    apply ToEnsemble_Size_iff', H; t.
-  Qed.
-
   Lemma ToEnsemble_Size_refineEquiv' fs S0 (H : S0 ≃ fs)
   : refineEquiv (ret (snd (CallMethod (projT1 FiniteSetImpl) sSize fs tt)))
-                { n : nat | cardinal _ S0 n }.
+                (cardinal S0).
   Proof.
-    setoid_rewrite <- (@ToEnsemble_Size_iff' fs S0 H).
-    rewrite refineEquiv_pick_eq'; reflexivity.
+    handle_methods; unfold cardinal in *; t.
+    eapply cardinal_unique; eassumption.
   Qed.
   Lemma ToEnsemble_Size_refineEquiv fs (H : exists S0, forall S', S' ≅ S0 -> S' ≃ fs)
   : refineEquiv (ret (snd (CallMethod (projT1 FiniteSetImpl) sSize fs tt)))
-                { n : nat | cardinal _ (to_ensemble fs) n }.
+                (cardinal (to_ensemble fs)).
   Proof.
     destruct H as [? H].
     pose proof (H _ (reflexivity _)).
