@@ -186,18 +186,36 @@ Proof.
     subst; repeat simpl_find_add_remove; congruence.
 Qed.
 
-Ltac trickle_deletion :=
+Ltac StringMap_remove_add_neq k1 k2 v m :=
+  let H := fresh in
+  let neq := fresh in
+  assert (k2 <> k1) as neq by congruence;
+    pose proof (@StringMap_remove_add_neq _ k2 k1 v m neq) as H;
+    setoid_rewrite H;
+    clear H;
+    clear neq.
+
+Ltac StringMap_remove_add_eq k1 k2 v m :=
+  let H := fresh in
+  let neq := fresh in
+  assert (k2 = k1) as neq by congruence;
+    pose proof (@StringMap_remove_add_eq _ k2 k1 v m neq) as H;
+    setoid_rewrite H;
+    clear H;
+    clear neq.
+
+Ltac trickle_deletion := (* FIXME: overwrite existing trickle_deletion *)
   repeat match goal with
-           | [ |- context[StringMap.remove ?k (StringMap.add ?k' ?v ?m)] ] =>
-             first [ rewrite (@StringMap_remove_add_eq _ k' k) by congruence |
-                     rewrite (@StringMap_remove_add_neq _ k' k) by congruence ]
-           | [ H: context [StringMap.remove ?k ([?k' >> ?v]::?m)] |- _ ] =>
-             first [ rewrite StringMap_remove_add_eq in H by congruence |
-                     rewrite StringMap_remove_add_neq in H by congruence ]
+           | [ |- context [StringMap.remove ?k ([?k' >> ?v]::?m)] ] =>
+             first [ StringMap_remove_add_neq k k' v m
+                   | StringMap_remove_add_eq k k' v m ]
+           | [H: context [StringMap.remove ?k ([?k' >> ?v]::?m)] |- _] =>
+             first [ rewrite StringMap_remove_add_eq in H by congruence
+                   | rewrite StringMap_remove_add_neq in H by congruence ]
            | [ |- context[StringMap.remove _ ∅] ] =>
-             rewrite StringMap_remove_empty
+             setoid_rewrite StringMap_remove_empty
            | [ H: context [StringMap.remove _ ∅]  |- _ ] =>
-             rewrite StringMap_remove_empty
+             rewrite StringMap_remove_empty in H
          end.
      
 Lemma MapsTo_swap :
