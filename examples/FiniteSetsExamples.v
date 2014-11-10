@@ -127,26 +127,27 @@ Proof.
   rewrite !fold_left_rev_right.
   unfold adts.
 
+  Unset Implicit Arguments.
   Lemma prepare_sSize' :
     forall {env knowledge} vens {vret}
            (FiniteSetImpl : FullySharpened FiniteSetSpec)
            (r : Core.Rep (ComputationalADT.LiftcADT (projT1 FiniteSetImpl)))
            (u : fst (ADTSig.MethodDomCod FiniteSetSig ``(sSize))),
-    forall init_adts inter_adts final_adts init_scas inter_scas final_scas,
+    forall init_adts inter_adts inter_adts' final_adts init_scas inter_scas final_scas,
     refine
       (@Prog _ env knowledge
              init_scas ([vret >> SCA _ (snd ((CallMethod (projT1 FiniteSetImpl) sSize) r u))]::final_scas)
              init_adts final_adts)
       (pprep <- (@Prog _ env knowledge
                        init_scas inter_scas
-                       init_adts ([vens >adt> FEnsemble (AbsImpl FiniteSetImpl r)]::init_adts));
+                       init_adts ([vens >adt> FEnsemble (AbsImpl FiniteSetImpl r)]::inter_adts));
        pscas <- (@Prog _ env knowledge
                        inter_scas ([vret >> SCA _ (snd ((CallMethod (projT1 FiniteSetImpl) sSize) r u))]::inter_scas)
-                       ([vens >adt> FEnsemble (AbsImpl FiniteSetImpl r)]::init_adts) inter_adts);
+                       ([vens >adt> FEnsemble (AbsImpl FiniteSetImpl r)]::inter_adts) inter_adts');
        pclean <- (@Prog _ env knowledge
                         ([vret >> SCA _ (snd ((CallMethod (projT1 FiniteSetImpl) sSize) r u))]::inter_scas)
                         ([vret >> SCA _ (snd ((CallMethod (projT1 FiniteSetImpl) sSize) r u))]::final_scas)
-                        inter_adts final_adts);
+                        inter_adts' final_adts);
        ret (pprep; pscas; pclean)%facade)%comp.
   Proof.
     
@@ -158,21 +159,49 @@ Proof.
   + intros; repeat inversion_facade; specialize_states; intuition.
   Qed.
                          
-  rewrite prepare_sSize'; vacuum.
+  rewrite (prepare_sSize' "$ens"); vacuum.
 
-  (*
-  Lemma argh :
-    forall av env k scas scas' adts adts',
-      refine (@Prog av env k scas scas' adts adts')
-             (ret Skip).
+  rewrite (compile_fold_adt _ _ (fun x => (FEnsemble (AbsImpl FiniteSetImpl x))) _ _ "$head" "$is_empty"); vacuum.
+
+  rewrite pull_forall_loop_adt; vacuum.
+
+  rewrite compile_AbsImpl_sEmpty; vacuum.
+
+  rewrite compile_sSize; try vacuum.
+
+  (* Do the two deletions *)
+
+  Focus 6.
+
+  rewrite pull_if_FEnsemble.
+  setoid_rewrite (compile_if_adt "$cond").
+
+  setoid_rewrite compile_sIn; try vacuum.
+
+  rewrite drop_sca; vacuum.
+
+  Lemma eq_after_In :
+    forall FiniteSetImpl: FullySharpened FiniteSetSpec,
+    forall st key,
+      to_ensemble _ (fst ((CallMethod (projT1 FiniteSetImpl) sIn) st key)) = to_ensemble _ st.
+  Proof.
+    (* Using extensionality? *)
   Admitted.
 
-  rewrite argh; vacuum.
-  
-  rewrite compile_sSize; try vacuum.
-  *)  
+  setoid_rewrite eq_after_In.
+  rewrite drop_sca; vacuum.
+  rewrite drop_sca; vacuum.
+  rewrite no_op; vacuum.
 
+  rewrite drop_sca; vacuum.
+  setoid_rewrite compile_add_intermediate_scas; vacuum.
+  rewrite (compile_sAdd _ _ "$head" "TODO: REMOVE THIS PARAMETER" "$discard"); try vacuum.
+  rewrite drop_sca; vacuum.
+  do 2 (rewrite drop_sca; vacuum).
+  rewrite no_op; vacuum.
+  
 Admitted.
+
   (*
   finish sharpening computation.
 
@@ -250,14 +279,6 @@ Proof.
   setoid_rewrite (compile_if_parallel "$comp"); vacuum.
   
   setoid_rewrite (compile_sIn _ _ _ "TODO REMOVE"); try vacuum.
-
-  Lemma eq_after_In :
-    forall FiniteSetImpl: FullySharpened FiniteSetSpec,
-    forall st key,
-      to_ensemble _ (fst ((CallMethod (projT1 FiniteSetImpl) sIn) st key)) = to_ensemble _ st.
-  Proof.
-    (* Using extensionality? *)
-  Admitted.
 
   (* True case *)
   rewrite drop_sca; vacuum.
