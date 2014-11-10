@@ -603,3 +603,9 @@ Section compile_FiniteSet_Methods.
   
 End compile_FiniteSet_Methods.
 
+Lemma pull_if_FEnsemble :
+  forall {T} {c: bool} {a b} (f: T -> _),
+    FEnsemble (f (if c then a else b)) = FEnsemble (if c then f a else f b).
+Proof.
+  intros; f_equal; eauto using pull_if.
+Qed.

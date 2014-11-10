@@ -119,3 +119,18 @@ Ltac and_eq_refl :=
   repeat match goal with
            | [ H: context [ ?a = ?a ] |- _ ] => setoid_rewrite and_eq_refl in H
          end.
+
+Lemma pull_if :
+  forall {T T'} {c: bool} {a b} (f: T -> T'),
+    f (if c then a else b) = if c then f a else f b.
+Proof.
+  destruct c; reflexivity.
+Qed.
+
+Lemma swap_if_pair :
+  forall {T T'} (a: bool) (t f: T) (t' f': T'),
+    (if a then t else f, if a then t' else f') =
+    (if a then (t, t') else (f, f')).
+Proof.
+  intros; destruct a; reflexivity.
+Qed.
