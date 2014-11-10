@@ -192,3 +192,28 @@ Proof.
     eauto using SomeSCAs_mapsto_inv, SomeSCAs_empty.
 Qed.
 
+Lemma compile_scas_then_adts :
+  forall av env knowledge init_scas final_scas init_adts final_adts,
+    refine (@Prog av env knowledge
+                  init_scas final_scas
+                  init_adts final_adts)
+           (p <- (@Prog av env knowledge
+                        init_scas final_scas
+                        init_adts init_adts);
+            q <- (@Prog av env knowledge
+                        final_scas final_scas
+                        init_adts final_adts);
+            ret (Seq p q))%comp.
+Proof.
+  unfold refine, Prog, ProgOk; intros.
+  inversion_by computes_to_inv; subst.
+  constructor; intros; destruct_pairs.
+  
+  split; intros.
+  
+  (* Safe *)
+  constructor; split; intros; specialize_states; try assumption.
+  
+  (* RunsTo *)
+  inversion_facade; specialize_states; intuition.
+Qed.

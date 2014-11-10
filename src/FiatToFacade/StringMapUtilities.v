@@ -263,3 +263,14 @@ Proof.
   intros; apply StringMapFacts.Equal_mapsto_iff.
   eauto using MapsTo_swap.
 Qed.
+
+Lemma add_remove_StringMap :
+  forall {elt} k (v: elt) m,
+    StringMap.Equal
+      ([k >> v]::m)
+      ([k >> v]::(StringMap.remove k m)).
+Proof. 
+  unfold StringMap.Equal; intros * k'.
+  destruct (StringMap.E.eq_dec k k'); subst;
+  repeat simpl_find_add_remove; reflexivity.
+Qed.

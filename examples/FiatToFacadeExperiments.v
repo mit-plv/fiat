@@ -1,4 +1,4 @@
-Require Import Facade.FacadeADTs.
+Require Import Facade.examples.FiatADTs.
 Require Import Cito.StringMap.
 Require Import AutoDB.
 
@@ -171,9 +171,6 @@ Proof.
   finish compiling.
 Qed.
 
-Definition start_sca state vret adts :=
-  (@start_compiling_sca_with_precondition _ basic_env state ∅ adts vret).
-
 Goal forall seq: list W, 
      forall state,
        AllADTs state (["$list" >adt> List seq]::∅) ->
@@ -181,11 +178,11 @@ Goal forall seq: list W,
          refine (ret (fold_left (fun (sum item: W) => Word.wplus item sum) seq 0)) x.
 Proof.
   intros; eexists.
+  Require Import Compiler.
   setoid_rewrite (start_sca state "$ret"); vacuum.
 
   setoid_rewrite compile_add_intermediate_adts; vacuum.
   setoid_rewrite (compile_fold_sca basic_env "$list" "$ret" "$head" "$is_empty"); try vacuum.
-
 
   Focus 2.
   Require Import GLabelMapFacts.
