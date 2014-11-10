@@ -124,20 +124,20 @@ Ltac runsto_prelude :=
       GLabelMap.find (elt:=FuncSpec _) f env = Some (Axiomatic FEnsemble_sIn) ->
       RunsTo env (Call x_label f (s_label :: w_label :: nil)) st st' ->
       exists ret,
-        (ret = SCAZero <-> Ensembles.In _ s_model w_value)
-        /\ (ret = SCAOne <-> ~ Ensembles.In _ s_model w_value)
+        (ret = SCAOne <-> Ensembles.In _ s_model w_value)
+        /\ (ret = SCAZero <-> ~ Ensembles.In _ s_model w_value)
         /\ StringMap.Equal st'
                            (StringMap.add x_label ret
                                           (StringMap.add s_label (AxSpec.ADT (FEnsemble s_model)) st)).
   Proof.
     runsto_prelude.
     subst_find; simpl in *; autoinj.
-(*
-    exists ret; intuition.
+    unfold Programming.propToWord, IF_then_else in *; intuition;
+    [eexists SCAOne
+    | eexists SCAZero];
+    eexists; repeat split; intros; subst; eauto 2; intuition; discriminate.
   Qed.
- *)
-  Admitted.
-  
+
   Arguments Word.natToWord : simpl never. (* simplifying natToWord causes crazy slowdown. *)
 
   (* Specification of state after running sSize. *)
@@ -152,7 +152,7 @@ Ltac runsto_prelude :=
       GLabelMap.find (elt:=FuncSpec _) f env = Some (Axiomatic FEnsemble_sSize) ->
       RunsTo env (Call x_label f (s_label :: nil)) st st' ->
       exists ret n,
-        FiatADTs.cardinal _ s_model n
+        FiatADTs.cardinal s_model n
         /\ ret = SCA _ (Word.natToWord 32 n)
         /\ StringMap.Equal st'
                            (StringMap.add x_label ret
@@ -283,7 +283,7 @@ Section compile_FiniteSet_Methods.
       | H: context[RunsTo] |- _ => eapply runs_to in H; eauto
     end; split; repeat rewrite_Eq_in_goal
   ].
-  
+
   Lemma compile_sAdd
   : forall {env},
     forall vens velt vpointer vdiscard r s f,
@@ -315,7 +315,7 @@ Section compile_FiniteSet_Methods.
   Qed.
 
     (* Rinse, Wash, Repeat *)
-  
+
   Lemma AbsImpl_sEmpty u:
     Empty_set _ = AbsImpl ((CallConstructor (projT1 FiniteSetImpl) sEmpty) u).
   Proof.
@@ -328,13 +328,33 @@ Section compile_FiniteSet_Methods.
       eapply (AbsImpl_SameSet _ _ _ H3 H0); eauto.
   Qed.
 
-  Lemma AbsImpl_sRemove 
+  Lemma AbsImpl_sRemove
   : forall s r w
            (s_r_eqv : AbsR (projT2 FiniteSetImpl) s r),
       Subtract W (AbsImpl r) w = AbsImpl (fst ((CallMethod (projT1 FiniteSetImpl) sRemove) r w)).
   Proof.
-  Admitted.
-    
+    intros.
+        intros; apply Extensionality_Ensembles; unfold AbsImpl, Same_set, Included, In, Subtract; intuition.
+    - pose proof (ADTRefinementPreservesMethods
+                    (projT2 FiniteSetImpl)
+                    {| bindex := sRemove |} _ _ w s_r_eqv (ReturnComputes _)) as ref;
+      unfold refineMethod in ref; inversion_by computes_to_inv; injections; subst; simpl in *.
+      rewrite <- H3; simpl; eexists; split; eauto.
+      destruct H.
+      constructor;  unfold In in *; destruct_ex; intuition; eapply AbsImpl_SameSet; eauto.
+    - destruct_ex.
+      intuition.
+      pose proof (ADTRefinementPreservesMethods
+                    (projT2 FiniteSetImpl)
+                    {| bindex := sRemove |} _ _ w s_r_eqv (ReturnComputes _)) as ref;
+        unfold refineMethod in ref;
+      inversion_by computes_to_inv; injections; subst; simpl in *.
+      rewrite <- H4 in H0; simpl in *.
+      eapply (AbsImpl_SameSet _ _ _ H0 H3) in H1; destruct H1.
+      unfold Setminus; intuition; exists s; eauto.
+  Qed.
+
+
   Lemma compile_AbsImpl_sEmpty
   : forall {env},
     forall vensemble f,
@@ -423,7 +443,7 @@ Section compile_FiniteSet_Methods.
     apply AllADTs_chomp_remove.
     rewrite H12; trickle_deletion; reflexivity.
   Qed.
-  
+
   Lemma compile_AbsImpl_In
   : forall {env},
     forall vensemble velt vin,
@@ -467,18 +487,78 @@ Section compile_FiniteSet_Methods.
       intuition.
   Qed.
 
-
-  Print SCAZero.
-  
   Lemma AbsImpl_sIn
   : forall s r w
            (s_r_eqv : AbsR (projT2 FiniteSetImpl) s r),
       AbsImpl r = AbsImpl (fst ((CallMethod (projT1 FiniteSetImpl) sIn) r w)) /\
-      (BoolToW (snd ((CallMethod (projT1 FiniteSetImpl) sIn) r w)) = Word.natToWord 32 0 <-> (w ∈ AbsImpl r)%ensemble) /\
-      (BoolToW (snd ((CallMethod (projT1 FiniteSetImpl) sIn) r w)) = Word.natToWord 32 1 <-> ~ (w ∈ AbsImpl r)%ensemble).
+      (BoolToW (snd ((CallMethod (projT1 FiniteSetImpl) sIn) r w)) = Word.natToWord 32 1 <-> (w ∈ AbsImpl r)%ensemble) /\
+      (BoolToW (snd ((CallMethod (projT1 FiniteSetImpl) sIn) r w)) = Word.natToWord 32 0 <-> ~ (w ∈ AbsImpl r)%ensemble).
   Proof.
-  Admitted.
-  
+    intros; intuition.
+    - pose proof (ADTRefinementPreservesMethods
+                    (projT2 FiniteSetImpl)
+                    {| bindex := sIn |} _ _ w s_r_eqv (ReturnComputes _)) as ref;
+      unfold refineMethod in ref; inversion_by computes_to_inv; injections; subst; simpl in *.
+    apply Extensionality_Ensembles; unfold AbsImpl, Same_set, Included, In; intuition.
+    destruct_ex; intuition; eexists; split; eauto.
+    rewrite <- H2; simpl; eauto.
+    assert (x2 = s) by 
+        (apply Extensionality_Ensembles; eapply AbsImpl_SameSet; eauto).
+    subst; eauto.
+    destruct_ex; intuition; eexists; split; eauto.
+    eapply f_equal with (f := fst) in H2; simpl in *; subst.
+    assert (x2 = s) by
+        (apply Extensionality_Ensembles; eapply AbsImpl_SameSet; eauto).
+    subst; eauto.
+    - pose proof (ADTRefinementPreservesMethods
+                    (projT2 FiniteSetImpl)
+                    {| bindex := sIn |} _ _ w s_r_eqv (ReturnComputes _)) as ref;
+      unfold refineMethod in ref; inversion_by computes_to_inv; injections; subst; simpl in *.
+      rewrite <- H3 in H; destruct x1; simpl in *; try discriminate.
+      assert (s = AbsImpl r); subst; eauto; intuition.
+      apply Extensionality_Ensembles; unfold AbsImpl, Same_set, Included, In; intuition.
+      eexists; eauto.
+      destruct_ex; intuition; eauto.
+      assert (x1 = s) by 
+          (apply Extensionality_Ensembles; eapply AbsImpl_SameSet; eauto); subst; eauto.
+    - pose proof (ADTRefinementPreservesMethods
+                    (projT2 FiniteSetImpl)
+                    {| bindex := sIn |} _ _ w s_r_eqv (ReturnComputes _)) as ref;
+      unfold refineMethod in ref; inversion_by computes_to_inv; injections; subst; simpl in *.
+      rewrite <- H3; simpl; rewrite (proj2 H1); eauto.
+      assert (s = AbsImpl r); subst; eauto; intuition.
+      apply Extensionality_Ensembles; unfold AbsImpl, Same_set, Included, In; intuition.
+      eexists; eauto.
+      destruct_ex; intuition; eauto.
+      assert (x2 = s) by 
+          (apply Extensionality_Ensembles; eapply AbsImpl_SameSet; eauto); subst; eauto.
+    - pose proof (ADTRefinementPreservesMethods
+                    (projT2 FiniteSetImpl)
+                    {| bindex := sIn |} _ _ w s_r_eqv (ReturnComputes _)) as ref;
+      unfold refineMethod in ref; inversion_by computes_to_inv; injections; subst; simpl in *. 
+      rewrite <- H4 in H; simpl in *.
+      assert (s = AbsImpl r); subst; eauto; intuition.
+      apply Extensionality_Ensembles; unfold AbsImpl, Same_set, Included, In; intuition.
+      eexists; eauto.
+      destruct_ex; intuition; eauto.
+      assert (x2 = s) by 
+          (apply Extensionality_Ensembles; eapply AbsImpl_SameSet; eauto); subst; eauto.
+      subst; discriminate.
+    - pose proof (ADTRefinementPreservesMethods
+                    (projT2 FiniteSetImpl)
+                    {| bindex := sIn |} _ _ w s_r_eqv (ReturnComputes _)) as ref;
+      unfold refineMethod in ref; inversion_by computes_to_inv; injections; subst; simpl in *. 
+      rewrite <- H3; simpl in *.
+      assert (s = AbsImpl r); subst; eauto; intuition.
+      apply Extensionality_Ensembles; unfold AbsImpl, Same_set, Included, In; intuition.
+      eexists; eauto.
+      destruct_ex; intuition; eauto.
+      assert (x2 = s) by 
+          (apply Extensionality_Ensembles; eapply AbsImpl_SameSet; eauto); subst; eauto.
+      destruct x1; eauto.
+      exfalso; eauto.
+  Qed.
+
     Lemma compile_sIn
   : forall {env},
     forall vens velt vpointer vin r s f,
@@ -499,16 +579,17 @@ Section compile_FiniteSet_Methods.
                     ([vens >adt> FEnsemble (AbsImpl r) ] :: adts)
                     ([vens >adt> FEnsemble (AbsImpl (fst (CallMethod (projT1 FiniteSetImpl) sIn r w'))) ] :: adts))
              (ret (Call vin f (vens :: velt :: nil))%facade).
-  Proof.
+
+    Proof.
     compile_helper runsto_sIn.
     destruct_ex; split_and; subst.
     rewrite H15.
-    destruct (AbsImpl_sIn _ _ w' s_r_eqv) as [r_eqv [x_eq x_neq]];
+    destruct (AbsImpl_sIn _ _ w' s_r_eqv) as [r_eqv [x_eq x_neq]].
       pose ((CallMethod (projT1 FiniteSetImpl) sIn) r w') as p; simpl in *;
       case_eq p; unfold p in *; intros ? ? H'; rewrite H' in *; clear p; simpl in *.
     destruct b; simpl in *.
-    rewrite (proj2 H9) by intuition; eauto using SomeSCAs_chomp, add_sca_pop_adts.
     rewrite (proj2 H13) by intuition; eauto using SomeSCAs_chomp, add_sca_pop_adts.
+    rewrite (proj2 H9) by intuition; eauto using SomeSCAs_chomp, add_sca_pop_adts.
     destruct_ex; split_and; subst.
     destruct (AbsImpl_sIn _ _ w' s_r_eqv) as [r_eqv [x_eq x_neq]];
       pose ((CallMethod (projT1 FiniteSetImpl) sIn) r w') as p; simpl in *;
@@ -518,20 +599,43 @@ Section compile_FiniteSet_Methods.
       rewrite r_eqv; apply AllADTs_chomp_remove.
       rewrite H11; trickle_deletion; reflexivity.
     - destruct b.
-      pose proof ((proj1 x_neq) (refl_equal _)) as H''; rewrite <- H9 in H''; discriminate.
       pose proof ((proj1 x_eq) (refl_equal _)) as H''; rewrite <- H13 in H''; discriminate.
+      pose proof ((proj1 x_neq) (refl_equal _)) as H''; rewrite <- H9 in H''; discriminate.
   Qed.
 
   Lemma AbsImpl_sSize
   : forall s r u
            (s_r_eqv : AbsR (projT2 FiniteSetImpl) s r),
       AbsImpl r = AbsImpl (fst ((CallMethod (projT1 FiniteSetImpl) sSize) r u)) /\
-      FiatADTs.cardinal _ s (Word.wordToNat (snd ((CallMethod (projT1 FiniteSetImpl) sSize) r u))).
+      FiatADTs.cardinal s (Word.wordToNat (snd ((CallMethod (projT1 FiniteSetImpl) sSize) r u))).
   Proof.
-  Admitted.
+    intros.
+    pose proof (ADTRefinementPreservesMethods
+                  (projT2 FiniteSetImpl)
+                  {| bindex := sSize |} _ _ u s_r_eqv (ReturnComputes _)) as ref;
+      unfold refineMethod in ref; inversion_by computes_to_inv; injections; subst; simpl in *.
+    split.
+    - apply Extensionality_Ensembles; unfold AbsImpl, Same_set, Included, In, Add; intuition.
+      destruct_ex; intuition; eexists; split; eauto.
+      rewrite <- H2; simpl.
+      assert (x2 = s)  by 
+          (apply Extensionality_Ensembles; eapply AbsImpl_SameSet; eauto); subst; eauto.
+      exists s; destruct_ex; intuition.
+      rewrite <- H2 in H3; simpl in *.
+      assert (x2 = s)  by 
+          (apply Extensionality_Ensembles; eapply AbsImpl_SameSet; eauto); subst; eauto.
+    - rewrite <- H2; simpl in *.
+      unfold cardinal in *.
+      apply computes_to_inv in H0; destruct_ex; intuition.
+      apply computes_to_inv in H0; unfold FiatADTs.cardinal, AdditionalEnsembleDefinitions.cardinal in *.
+      destruct_ex; eexists; intuition; eauto.
+      apply computes_to_inv in H3; subst.
+      (* Problem with switching from nats to words. *)
+      admit.
+  Qed.
 
   Require Import Common.AdditionalEnsembleLemmas Permutation.
-  
+
   Lemma EnsembleListEquivalence_length {A} :
     forall l s s' l',
       EnsembleListEquivalence s l ->
@@ -543,7 +647,7 @@ Section compile_FiniteSet_Methods.
     eapply EnsembleListEquivalence_Permutation; eauto.
     eapply EnsembleListEquivalence_Same_set; eauto.
     symmetry; auto.
-  Qed.      
+  Qed.
 
   Lemma Same_set_AbsImpl
   : forall s r,
@@ -561,7 +665,7 @@ Section compile_FiniteSet_Methods.
     - destruct H0; intuition; subst.
       eapply AbsImpl_SameSet with (s' := x0) (r := r); eauto.
   Qed.
-  
+
   Lemma compile_sSize
   : forall {env},
     forall vens vpointer vsize r s f u,
@@ -586,6 +690,8 @@ Section compile_FiniteSet_Methods.
     rewrite H12.
     destruct (AbsImpl_sSize _ _ u s_r_eqv).
     unfold cardinal in *; destruct_ex; split_and; subst; simpl in *.
+    destruct H11; intuition.
+    (* Similar problems with word / nat mismatch. *)
   Admitted.
   (*
     rewrite <- H14.
@@ -602,7 +708,7 @@ Section compile_FiniteSet_Methods.
   Qed.
 *)
 
-  
+
 End compile_FiniteSet_Methods.
 
 Lemma pull_if_FEnsemble :
