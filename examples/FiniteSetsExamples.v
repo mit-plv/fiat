@@ -567,8 +567,8 @@ Proof.
 
   compile.
   
-  finish compiling. 
-Qed.
+  finish compiling.
+Defined.
 
 Definition sumAllImpl (FiniteSetImpl : FullySharpened FiniteSetSpec) (ls : list W)
 : FullySharpenedComputation (sumAllSpec ls).
