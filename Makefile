@@ -137,7 +137,7 @@ COMPILER_MODULES := \
 	FiatToFacade/ProgMorphisms \
 	FiatToFacade/Loop \
 	FiatToFacade/LoopUtilities \
-	FiatToFacade/GLabelMap \
+	FiatToFacade/GLabelMapFacts \
 	FiatToFacade/Compiler/Utilities \
 	FiatToFacade/Compiler/Prerequisites \
 	FiatToFacade/Compiler/Basics \
