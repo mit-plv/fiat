@@ -70,11 +70,12 @@ Lemma compile_list_delete_no_ret :
   forall env f vret vseq seq knowledge scas adts adts',
     GLabelMap.find f env = Some (Axiomatic List_delete) ->
     ~ StringMap.In vret adts ->
+    ~ StringMap.In vret scas ->
     ~ StringMap.In vseq scas ->
     adts[vseq >> ADT (List seq)] ->
     StringMap.Equal adts' (StringMap.remove vseq adts) ->
     refine (@Prog _ env knowledge
-                  scas ([vret >sca> 0]::scas)
+                  scas scas
                   adts adts')
            (ret (Call vret f (vseq :: nil)))%facade.
 Proof.
