@@ -67,7 +67,7 @@ Proof.
 Qed.
 
 Lemma compile_list_delete_no_ret :
-  forall env f vret vseq seq knowledge scas adts adts',
+  forall vret vseq env f seq knowledge scas adts adts',
     GLabelMap.find f env = Some (Axiomatic List_delete) ->
     ~ StringMap.In vret adts ->
     ~ StringMap.In vret scas ->

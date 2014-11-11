@@ -1,9 +1,6 @@
 (** * Some examples about dealing with finite sets *)
 Require Import ADTSynthesis.FiniteSetADTs.
 
-(** Now we spec out two examples, the count of the unique elements in
-    a list, and the sum of the unique elements in a list. *)
-
 Definition countUniqueSpec (ls : list W) : Comp W
   := cardinal (elements ls).
 
@@ -73,37 +70,10 @@ Require Import Computation.ApplyMonad.
 Require Import GLabelMapFacts.
 Require Import List.
 Require Import FiniteSetADTs.FiniteSetADTMethodLaws.
+Require Import FiatToFacade.Compiler.Automation.Vacuum.
 
-Ltac find_label_in_env :=
-  unfold basic_env, AddPair, MakePair; simpl;
-  try match goal with
-        | |- GLabelMap.find ?k (GLabelMap.add ?k' (Axiomatic ?spec) _) = Some (Axiomatic ?spec) =>
-          apply P.F.add_eq_o; try reflexivity
-        | |- GLabelMap.find ?k (GLabelMap.add ?k' (Axiomatic ?spec) _) = Some (Axiomatic ?spec') =>
-          rewrite P.F.add_neq_o; [ find_label_in_env | ]; congruence
-      end.
-
-Ltac vacuum :=
-  trickle_deletion;
-  match goal with
-    | [ |- refine _ _ ] => try (simplify with monad laws)
-    | [ |- ?a <> ?b ] => first [ is_evar a | is_evar b | discriminate ]
-    | [ |- ~ StringMap.In ?k ∅ ] => solve [apply not_in_empty]
-    | [ |- ~ StringMap.In ?k ?s ] => first [ is_evar s | solve [map_iff_solve ltac:(intuition discriminate)] ]
-    | [ |- context[SCALoopBodyProgCondition] ] => progress (unfold SCALoopBodyProgCondition; intros; simpl)
-    | [ |- context[ADTLoopBodyProgCondition] ] => progress (unfold ADTLoopBodyProgCondition; intros; simpl)
-    | [ |- context[PairLoopBodyProgCondition] ] => progress (unfold PairLoopBodyProgCondition; intros; simpl)
-    | [ |- ?m[?k >> ?v] ] => solve [map_iff_solve_evar intuition]
-    | [ |- SomeSCAs _ ∅ ] => solve [apply SomeSCAs_empty]
-    | [ |- SomeSCAs _ _ ] => eassumption
-    | [ |- AllADTs _ _ ] => eassumption
-    | [ |- AllADTs _ _ ] => solve [unfold AllADTs, Superset; intros; map_iff_solve intuition]
-    | [ |- Word2Spec ?env _ = Some (Axiomatic _) ] => reflexivity
-    | [ |- Label2Word ?env _ = Some _ ] => reflexivity
-    | [ |- StringMap.Equal ?a ?b ] => first [ is_evar a | is_evar b | trickle_deletion; reflexivity ]
-    | [ |- Core.AbsR ?impl ?e (projT1 ?fs) ] => exact (proj2_sig (projT2 fs))
-    | _ => solve [ find_label_in_env ]
-  end.
+(** Now we spec out two examples, the count of the unique elements in
+    a list, and the sum of the unique elements in a list. *)
 
 (*
 
@@ -253,111 +223,100 @@ Defined.
 *)
 (** And now we do the same for summing. *)
 
-Notation FullySharpenedFacadeProgramOnListReturningWord spec ls
-  := (sig (fun p => refine (x <- spec;
-                            @Prog _ basic_env True ∅
-                                  (["$ret" >sca> x]::∅)
-                                  (["$ls" >adt> List ls]::∅)
-                                  ∅)
-                           (ret p))).
+Require Import Facade.CompileDFacade.
+Require Import CompileUnit.
+Require Import Compiler.Automation.FacadeHelpers.
+Require Import Compiler.Automation.SpecializedFolds.
+
+Definition ProgramOnListReturningWord_pre :=
+  (fun v1 v2 => exists ls w, v1 = ADT (List ls) /\ v2 = SCA ADTValue w).
+
+Definition ProgramOnListReturningWord_post spec :=
+  (fun v1 v2 retval => exists ls w wret, v1 = ADT (List ls) /\ v2 = SCA ADTValue w /\
+                                         retval = SCA ADTValue wret /\ computes_to (spec ls) wret).
+
+Definition ProgramOnListReturningWord_refinement spec ls retval prog :=
+  refine (r <- spec ls;
+          p <- (@Prog ADTValue basic_imports_wrapped True ∅
+                      ([retvar >sca> r]::∅)
+                      ([argvar1 >adt> List ls]::∅)
+                      ∅);
+          ret (r, p))
+         (ret (retval, prog)).
+
+Lemma FullySharpenedFacadeProgramOnListReturningWordByRefinements spec P :
+  (sigT (fun prog =>
+           (forall ls, exists retval,
+              ProgramOnListReturningWord_refinement spec ls retval prog)
+           /\ P prog)) ->
+  (sigT (fun prog => PairOfConditionsForCompileUnit _ prog
+                                                    ProgramOnListReturningWord_pre
+                                                    (ProgramOnListReturningWord_post spec)
+                                                    basic_imports
+                     /\ P prog)).
+Proof.
+  unfold PairOfConditionsForCompileUnit, ProgramOnListReturningWord_refinement,
+         ProgramOnListReturningWord_pre, ProgramOnListReturningWord_post, Prog.
+  intros [ prog (forall_ls & ?) ].
+  exists prog; split; [ | assumption ]; apply two_conds_as_one; intros st v1 v2 map_eq [ls [w (sv1 & sv2)]]; subst;
+  cbv delta [StringMapFacts.make_map] in *; simpl in *;
+  specialize (forall_ls ls); destruct forall_ls as [retval refi].
+
+  apply pick_compile_helper in refi.
+  destruct refi as (retval_correct & prog_ok); hnf in prog_ok.
+
+  match type of (prog_ok st) with
+    | ?a /\ ?b /\ ?c -> _ =>
+      assert a by apply I; assert b; assert c;
+      try rewrite map_eq;
+      first [ eapply AllADTs_chomp, add_adts_pop_sca; map_iff_solve intuition
+            | apply SomeSCAs_empty
+            | specialize_states; split; try solve [ intuition ] ]
+  end.
+
+  intros; destruct_pairs; specialize_states.
+
+  exists (SCA ADTValue retval).
+  split; intros; destruct_pairs.
+
+  scas_adts_mapsto;
+  unfold StringMapFacts.Submap;
+  setoid_rewrite <- StringMapFacts.find_mapsto_iff; intros *;
+  map_iff_solve intuition.
+
+  split;
+    [ destruct_pairs;
+      intros; eapply not_in_adts_not_mapsto_adt; eauto;
+      try apply not_in_empty
+    | repeat eexists; repeat split; first [ reflexivity | eassumption ] ].
+Qed.       
+
+Definition FullySharpenedFacadeProgramOnListReturningWord spec :=
+  CompileUnit ProgramOnListReturningWord_pre (ProgramOnListReturningWord_post spec).
+
+Lemma CompileUnit_construct av pre_cond post_cond imports:
+  (sigT (fun prog =>
+           PairOfConditionsForCompileUnit av prog pre_cond post_cond imports /\
+           (is_disjoint (assigned prog) (StringSetFacts.of_list argvars) = true /\
+            is_syntax_ok prog = true)) ->
+   CompileUnit pre_cond post_cond).
+Proof.
+  intros [ prog ((? & ?) & ? & ?) ].
+  econstructor; eauto.
+Qed.
 
 Tactic Notation "begin" "sharpening" "facade" "program" :=
-  (lazymatch goal with
-  | [ |- sig (fun p => refine (x <- ?spec; @Prog _ _ _ _ _ _ _) (ret p)) ]
-    => (let T := match type of spec with Comp ?T => constr:T end in
-        let c := fresh in
-        evar (c : T);
-        let H := fresh in
-        assert (H : refine spec (ret c)); subst c;
-        [
-        | eexists; rewrite H; simplify with monad laws ])
-  | [ |- ?G ] => fail "Goal is not about sharpening a facade program." "Goal:" G "is not of the form" "{ p : _ | refine (x <- spec; Prog _ _ _ _ _) (ret p) }"
-   end).
+  idtac;
+  (match goal with
+     | [ |- FullySharpenedFacadeProgramOnListReturningWord ?spec ] =>
+       (unfold FullySharpenedFacadeProgramOnListReturningWord;
+        apply (CompileUnit_construct (imports := basic_imports));
+        apply FullySharpenedFacadeProgramOnListReturningWordByRefinements;
+        econstructor; split; [ intro; eexists; unfold ProgramOnListReturningWord_refinement | ])
+     | [ |- ?G ] => fail "Goal is not about sharpening a facade program."
+                         "Goal:" G "is not of the form" "FullySharpenedFacadeProgramOnListReturningWord _"
+  end).
   
-Lemma compile_FiniteSetAndFunctionOfList_SCA (FiniteSetImpl : FullySharpened FiniteSetSpec)
-      f (x : W) ls
-      tis_empty thead vadt {vret}
-      flistrev flistempty flistpop fsetempty fsetdelete
-      {env}
-      {vls} (vdiscard: StringMap.key)
-      init_knowledge
-      init_scas init_adts
-:
-  GLabelMap.find (elt:=FuncSpec ADTValue) flistrev env = Some (Axiomatic List_rev) ->
-  GLabelMap.find (elt:=FuncSpec ADTValue) flistempty env = Some (Axiomatic List_empty) ->
-  GLabelMap.find (elt:=FuncSpec ADTValue) flistpop env = Some (Axiomatic List_pop) ->
-  GLabelMap.find (elt:=FuncSpec ADTValue) fsetempty env = Some (Axiomatic FEnsemble_sEmpty) ->
-  GLabelMap.find (elt:=FuncSpec ADTValue) fsetdelete env = Some (Axiomatic FEnsemble_sDelete) ->
-  vret <> vadt ->
-  vret <> vls ->
-  vret <> tis_empty ->
-  vadt <> vls ->
-  vadt <> tis_empty ->
-  thead <> vret ->
-  thead <> vadt ->
-  thead <> vls ->
-  vls <> vret ->
-  tis_empty <> vls ->
-  vls <> vdiscard ->
-  ~ StringMap.In vadt init_adts ->
-  ~ StringMap.In vret init_adts ->
-  ~ StringMap.In thead init_adts ->
-  ~ StringMap.In tis_empty init_adts ->
-  ~ StringMap.In vdiscard init_adts ->
-  ~ StringMap.In vdiscard init_scas ->
-  ~ StringMap.In vadt init_scas ->
-  ~ StringMap.In vls init_scas ->
-  ~ StringMap.In tis_empty init_scas ->
-  refine (@Prog _ env init_knowledge
-                init_scas ([vret >sca> (snd (FiniteSetAndFunctionOfList FiniteSetImpl f x ls))] :: init_scas)
-                ([vls >adt> List ls]::init_adts)
-                ([vls >adt> List nil]::init_adts))
-         (cloop <- { cloop : Stmt
-                    | PairLoopBodyOk
-                        basic_env
-                        (fun xs_acc w =>
-                           ValidFiniteSetAndFunctionOfList_body
-                             FiniteSetImpl
-                              f
-                             w
-                             xs_acc)
-                        cloop init_knowledge init_scas init_adts vls vret vadt thead tis_empty snd
-                        (fun xs_acc =>
-                           FEnsemble (to_ensemble FiniteSetImpl (projT1 (fst xs_acc)))) };
-          ret
-            (Seq
-               (Seq (Call vdiscard flistrev (cons vls nil))
-                    (Seq (Assign vret (Const x))
-                         (Seq (Call vadt fsetempty nil)
-                              (Fold thead tis_empty vls flistpop flistempty cloop))))
-               (Call tis_empty fsetdelete (cons vadt nil)))).
-Proof.
-  intros.
-  rewrite FiniteSetAndFunctionOfList_ValidFiniteSetAndFunctionOfList.
-  unfold ValidFiniteSetAndFunctionOfList.
-  rewrite <- (@rev_involutive _ ls).
-  rewrite !fold_left_rev_right.
-  rewrite -> (@rev_involutive _ ls).
-  simpl.
-  
-  rewrite (compile_pair_sca vadt (fun x => FEnsemble (to_ensemble _ (projT1 (fst x))))); vacuum.
-
-  rewrite (fun b => @compile_list_rev_general env flistrev vdiscard vls b _ _ _); try first [ eassumption | rewrite add_add_add'; reflexivity | vacuum ].
-
-  rewrite add_add_add'.
-  setoid_rewrite (compile_fold_pair env _ snd (fun x => FEnsemble (to_ensemble _ (projT1 (fst x)))) vls vret vadt thead tis_empty flistpop flistempty); try first [ eassumption | solve [map_iff_solve intuition] | vacuum ].
-
-  simpl.
-  unfold W.
-  rewrite General.refine_under_bind (* Apply should work here *).
-
-  Focus 2.
-  intros.
-  rewrite compile_constant; vacuum.
-  rewrite compile_AbsImpl_sEmpty; first [ eassumption | solve [map_iff_solve eauto] | vacuum ]. 
-  rewrite compile_AbsImpl_sDelete; try first [ eassumption | solve [map_iff_solve eauto] | vacuum ].
-Admitted.
-
 Lemma eq_ToEnsemble_In (FiniteSetImpl: FullySharpened FiniteSetSpec)
       (st : { st : _ & { S0 : _ | Core.AbsR (projT2 FiniteSetImpl) S0 st }%type})
       key
@@ -371,53 +330,6 @@ Proof.
   apply Same_set_ToEnsemble_AbsR; trivial.
   apply AbsR_ToEnsemble_In; trivial.
 Qed.
-
-
-Lemma compile_list_delete_no_ret :
-  forall vret vseq env f seq knowledge scas adts adts',
-    GLabelMap.find f env = Some (Axiomatic List_delete) ->
-    ~ StringMap.In vret adts ->
-    ~ StringMap.In vret scas ->
-    ~ StringMap.In vseq scas ->
-    adts[vseq >> ADT (List seq)] ->
-    StringMap.Equal adts' (StringMap.remove vseq adts) ->
-    refine (@Prog _ env knowledge
-                  scas scas
-                  adts adts')
-           (ret (Call vret f (vseq :: nil)))%facade.
-Proof.
-  compile_list_helper runsto_delete.
-
-  eauto using SomeSCAs_chomp_left, SomeSCAs_chomp, SomeSCAs_not_In_remove.
-  
-  apply add_adts_pop_sca.
-  map_iff_solve intuition.
-  eauto using AllADTs_chomp_remove'.
-Qed.
-
-(*
-Lemma compile_list_delete_no_return
-      (vret : StringMap.key)
-      (env : GLabelMap.t (FuncSpec ADTValue))
-      (f : GLabelMap.key) (vseq : StringMap.key)
-      (seq : list Memory.W) (knowledge : Prop)
-      (scas adts : StringMap.t (Value ADTValue))
-: GLabelMap.find (elt:=FuncSpec ADTValue) f env =
-  Some (Axiomatic List_delete) ->
-  ~ StringMap.In (elt:=Value ADTValue) vret adts ->
-  ~ StringMap.In (elt:=Value ADTValue) vseq adts ->
-  ~ StringMap.In (elt:=Value ADTValue) vseq scas ->
-  ~ StringMap.In (elt:=Value ADTValue) vret scas ->
-  vret <> vseq ->
-  refine
-    (Prog (env := env) knowledge scas scas ([vseq >> ADT (List seq)]::adts) adts)
-    (Return (Call vret f (cons vseq nil))).
-Proof.
-  intros.
-  eapply compile_list_delete_no_ret; eauto; try vacuum.
-  (* Same as compile_list_delete_no_ret ?*)
-Admitted.
-*)
 
 Ltac new_variable_name base :=
   let base' := (eval compute in base) in
@@ -489,48 +401,6 @@ Ltac solve_SomeSCAs :=
                   end
            end) ].
 
-
-
-(*Ltac get_post_prog_and_var_from G :=
-  (lazymatch G with
-  | refine (prog <- { prog : _ | ProgOk prog _ _ ([?var >> SCA _ ?p]::_) _ _ }; _) _ => constr:((var, p))
-  | refine ({ prog : _ | ProgOk prog _ _ ([?var >> SCA _ ?p]::_) _ _ }) _ => constr:((var, p))
-   end).
-Ltac get_post_prog_and_var_in_goal :=
-  let G := match goal with |- ?G => constr:G end in
-  get_post_prog_and_var_from G.
-
-Ltac get_post_adt_and_var_from G :=
-  (lazymatch G with
-  | refine (prog <- { prog : _ | ProgOk prog _ _ _ _ ([?var >> ADT ?p]::_) }; _) _ => constr:((var, p))
-  | refine ({ prog : _ | ProgOk prog _ _ _ _ ([?var >> ADT ?p]::_) }) _ => constr:((var, p))
-   end).
-
-Ltac get_post_adt_and_var_in_goal :=
-  let G := match goal with |- ?G => constr:G end in
-  get_post_adt_and_var_from G.
-
-
-
-Ltac get_pre_prog_and_var_from G :=
-  (lazymatch G with
-  | refine (prog <- { prog : _ | ProgOk prog _ ([?var >> SCA _ ?p]::_) _ _ _ }; _) _ => constr:((var, p))
-  | refine ({ prog : _ | ProgOk prog _ ([?var >> SCA _ ?p]::_) _ }) _ _ _ => constr:((var, p))
-   end).
-Ltac get_pre_prog_and_var_in_goal :=
-  let G := match goal with |- ?G => constr:G end in
-  get_pre_prog_and_var_from G.
-
-Ltac get_pre_adt_and_var_from G :=
-  (lazymatch G with
-  | refine (prog <- { prog : _ | ProgOk prog _ _ _ ([?var >> ADT ?p]::_) _ }; _) _ => constr:((var, p))
-  | refine ({ prog : _ | ProgOk prog _ _ _ ([?var >> ADT ?p]::_) _ }) _ => constr:((var, p))
-   end).
-
-Ltac get_pre_adt_and_var_in_goal :=
-  let G := match goal with |- ?G => constr:G end in
-  get_pre_adt_and_var_from G.*)
-
 Ltac guarded_compile_step_same_states :=
   idtac;
   let p := get_pre_post_scas_adts_from_goal in
@@ -587,7 +457,8 @@ Ltac compile_step_same_adts_handle_first_post_sca :=
           => (let tis_empty := new_variable_name "$is_empty" in
               let thead     := new_variable_name "$head" in
               let vadt      := new_variable_name "$adt" in
-              let lem       := constr:(@compile_FiniteSetAndFunctionOfList_SCA impl f x ls tis_empty thead vadt var) in
+              let vdiscard  := new_variable_name "$discard" in
+              let lem       := constr:(@compile_FiniteSetAndFunctionOfList_SCA impl f x ls tis_empty thead vadt vdiscard var) in
               first [ rewrite lem
                     | setoid_rewrite lem ])
         | if _ then _ else _
@@ -685,21 +556,20 @@ Ltac compile_step :=
 
 Tactic Notation "compile" := repeat repeat compile_step.
 
-Tactic Notation "finish" "compiling" := reflexivity.
+Tactic Notation "finish" "compiling" := (split; reflexivity). 
 
-Definition sumUniqueImpl (FiniteSetImpl : FullySharpened FiniteSetSpec) (ls : list W)
-: FullySharpenedFacadeProgramOnListReturningWord (sumUniqueSpec ls) ls.
-Proof.
+Definition sumUniqueImpl (FiniteSetImpl : FullySharpened FiniteSetSpec)
+: FullySharpenedFacadeProgramOnListReturningWord sumUniqueSpec.
+Proof.       
   begin sharpening facade program.
-
+  
   sharpen computation with FiniteSet implementation := FiniteSetImpl.
 
-  finish sharpening computation.
-
   Time compile. (* 47 s *)
-
   admit.
-Admitted.
+
+  finish compiling.
+Qed.
 
 Definition sumAllImpl (FiniteSetImpl : FullySharpened FiniteSetSpec) (ls : list W)
 : FullySharpenedComputation (sumAllSpec ls).
@@ -709,8 +579,6 @@ Proof.
   begin sharpening computation.
 
   sharpen computation with FiniteSet implementation := FiniteSetImpl.
-
-
 
   finish sharpening computation.
 Defined.

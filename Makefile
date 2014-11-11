@@ -152,6 +152,9 @@ COMPILER_MODULES := \
 	FiatToFacade/Compiler/ADTs/ListsInversion \
 	FiatToFacade/Compiler/ADTs/Lists \
 	FiatToFacade/Compiler/ADTs/Folds \
+	FiatToFacade/Compiler/Automation/Vacuum \
+	FiatToFacade/Compiler/Automation/FacadeHelpers \
+	FiatToFacade/Compiler/Automation/SpecializedFolds \
 	FiatToFacade/Compiler
 
 EXAMPLE_MODULES := \
