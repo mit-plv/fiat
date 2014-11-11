@@ -109,6 +109,29 @@ Qed.
 
 (* No AllADTs_empty *)
 
+Lemma Superset_chomp_left :
+  forall {elt welt} {k v state map} wrapper,
+    ~ StringMap.In k map ->
+    @Superset elt welt state map wrapper ->
+    @Superset elt welt ([k >> wrapper v]::state) map wrapper.
+Proof.
+  unfold Superset; intros ** k' v' mapsto.
+  destruct (StringMap.E.eq_dec k k'); subst;
+  map_iff_solve idtac; try solve [intuition].
+  exfalso. apply StringMapFacts.MapsTo_In in mapsto; intuition.
+Qed.
+
+Lemma SomeSCAs_chomp_left :
+  forall {av} {k v state map},
+    ~ StringMap.In k map ->
+    @SomeSCAs av state map ->
+    @SomeSCAs av ([k >sca> v]::state) map.
+Proof.
+  intros; apply Superset_chomp_left; intuition.
+Qed.
+
+(* chomp_left could work for AllADTs, if needed, too *)
+
 Lemma Superset_chomp :
   forall {elt welt} {k v state map} wrapper,
     @Superset elt welt state map wrapper ->

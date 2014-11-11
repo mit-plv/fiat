@@ -292,3 +292,15 @@ Proof.
   destruct (StringMap.E.eq_dec k k'); subst;
   repeat simpl_find_add_remove; reflexivity.
 Qed.
+
+Lemma add_noop_mapsto :
+  forall {A: Type} {k: StringMap.key} {v: A} {map},
+    StringMap.MapsTo k v map ->
+    StringMap.Equal (StringMap.add k v map) map.
+Proof.
+  setoid_rewrite StringMapFacts.find_mapsto_iff;
+  unfold StringMap.Equal; intros ** k';
+  destruct (StringMap.E.eq_dec k k');
+  subst; [ rewrite StringMapFacts.add_eq_o | rewrite StringMapFacts.add_neq_o ];
+  auto.
+Qed.

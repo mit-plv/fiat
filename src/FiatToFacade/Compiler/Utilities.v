@@ -4,7 +4,9 @@ Require Import FiatToFacade.StringMapUtilities.
 Require Import FiatToFacade.Superset.
 Require Import FiatToFacade.FacadeNotations.
 Require Import FiatToFacade.FacadeUtilities.
+Require Import FiatToFacade.Prog.
 Require Import Facade.DFacade SyntaxExpr StringMap GLabelMap.
+Require Import ADTSynthesis.ADT.Core.
 
 Ltac safe_seq :=
   constructor;
@@ -55,4 +57,27 @@ Proof.
   destruct (@eval_expr_some_sca _ expr state h).
   econstructor; try eassumption.
   eapply not_in_adts_not_mapsto_adt; eauto.
+Qed.
+
+Lemma drop_retvar :
+  forall av env knowledge scas adts adts' prog vret,
+    ~ StringMap.In vret scas ->
+    (refine (@Prog av env knowledge
+                   scas ([vret >sca> 0]::scas)
+                   adts adts')
+            prog) ->
+    (refine (@Prog av env knowledge
+                   scas scas
+                   adts adts')
+            prog).
+Proof.
+  unfold refine, Prog, ProgOk; intros * ? h ** .
+  specialize (h v H0); inversion_by computes_to_inv.
+  constructor; intros.
+  
+  destruct_pairs.
+  repeat (split; specialize_states; intros; eauto).
+
+  erewrite not_in_remove_eq;
+  try eapply SomeSCAs_remove; eassumption.
 Qed.

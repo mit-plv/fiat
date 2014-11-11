@@ -306,7 +306,7 @@ Section compile_FiniteSet_Methods.
   Qed.
   
   Lemma compile_sAdd_no_ret :
-    forall  vdiscard (FiniteSetImpl : FullySharpened FiniteSetSpec)
+    forall  vdiscard
             (env : GLabelMap.t (FuncSpec ADTValue))
             (vens velt : StringMap.key)
             (r : Core.Rep (ComputationalADT.LiftcADT (projT1 FiniteSetImpl)))
@@ -324,14 +324,13 @@ Section compile_FiniteSet_Methods.
       velt <> vdiscard ->
       (adts) [vens >> ADT (FEnsemble s)] ->
       (scas) [velt >> SCA ADTValue w'] ->
-      refine'
+      refine
         (Prog (env := env) knowledge scas scas
-              ([vens >> ADT (FEnsemble (AbsImpl FiniteSetImpl r))]::adts)
+              ([vens >> ADT (FEnsemble (AbsImpl r))]::adts)
               ([vens >>
                      ADT
                      (FEnsemble
-                        (AbsImpl FiniteSetImpl
-                                 (fst ((CallMethod (projT1 FiniteSetImpl) sAdd) r w'))))]
+                        (AbsImpl (fst ((CallMethod (projT1 FiniteSetImpl) sAdd) r w'))))]
                  ::adts)) (ret (Call vdiscard f (cons vens (cons velt nil)))).
   Proof.
     intros.

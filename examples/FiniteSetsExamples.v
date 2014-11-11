@@ -273,16 +273,42 @@ Tactic Notation "begin" "sharpening" "facade" "program" :=
         | eexists; rewrite H; simplify with monad laws ])
   | [ |- ?G ] => fail "Goal is not about sharpening a facade program." "Goal:" G "is not of the form" "{ p : _ | refine (x <- spec; Prog _ _ _ _ _) (ret p) }"
    end).
-
+  
 Lemma compile_FiniteSetAndFunctionOfList_SCA (FiniteSetImpl : FullySharpened FiniteSetSpec)
       f (x : W) ls
-      tis_empty thead vadt
+      tis_empty thead vadt flistrev flistempty flistpop fsetempty fsetdelete
       {vret}
       {env}
-      {vls}
+      {vls} (vdiscard: StringMap.key)
       init_knowledge
       init_scas init_adts
-: refine (@Prog _ env init_knowledge
+:
+  GLabelMap.find (elt:=FuncSpec ADTValue) flistrev env = Some (Axiomatic List_rev) ->
+  GLabelMap.find (elt:=FuncSpec ADTValue) flistempty env = Some (Axiomatic List_empty) ->
+  GLabelMap.find (elt:=FuncSpec ADTValue) flistpop env = Some (Axiomatic List_pop) ->
+  GLabelMap.find (elt:=FuncSpec ADTValue) fsetempty env = Some (Axiomatic FEnsemble_sEmpty) ->
+  GLabelMap.find (elt:=FuncSpec ADTValue) fsetdelete env = Some (Axiomatic FEnsemble_sDelete) ->
+  vret <> vadt ->
+  vret <> vls ->
+  vret <> tis_empty ->
+  vadt <> vls ->
+  vadt <> tis_empty ->
+  thead <> vret ->
+  thead <> vadt ->
+  thead <> vls ->
+  vls <> vret ->
+  tis_empty <> vls ->
+  vls <> vdiscard ->
+  ~ StringMap.In vadt init_adts ->
+  ~ StringMap.In vret init_adts ->
+  ~ StringMap.In thead init_adts ->
+  ~ StringMap.In tis_empty init_adts ->
+  ~ StringMap.In vdiscard init_adts ->
+  ~ StringMap.In vdiscard init_scas ->
+  ~ StringMap.In vadt init_scas ->
+  ~ StringMap.In vls init_scas ->
+  ~ StringMap.In tis_empty init_scas ->
+  refine (@Prog _ env init_knowledge
                 init_scas ([vret >sca> (snd (FiniteSetAndFunctionOfList FiniteSetImpl f x ls))] :: init_scas)
                 ([vls >adt> List ls]::init_adts)
                 ([vls >adt> List nil]::init_adts))
@@ -292,47 +318,38 @@ Lemma compile_FiniteSetAndFunctionOfList_SCA (FiniteSetImpl : FullySharpened Fin
                         (fun xs_acc w =>
                            ValidFiniteSetAndFunctionOfList_body
                              FiniteSetImpl
-                             (fun w acc => f acc w)
+                              f
                              w
                              xs_acc)
-                        cloop True ∅
-                        ∅ vls vret vadt thead tis_empty snd
+                        cloop init_knowledge init_scas init_adts vls vret vadt thead tis_empty snd
                         (fun xs_acc =>
                            FEnsemble (to_ensemble FiniteSetImpl (projT1 (fst xs_acc)))) };
           ret
-            (Fold thead tis_empty vls ("List", "Pop") ("List", "Empty") cloop)%facade).
+            (Fold thead tis_empty vls flistpop flistempty cloop)%facade).
 Proof.
-  (*replace (List ls) with (List (rev ls)) by admit.
+  intros.
   rewrite FiniteSetAndFunctionOfList_ValidFiniteSetAndFunctionOfList.
   unfold ValidFiniteSetAndFunctionOfList.
   rewrite <- (@rev_involutive _ ls).
   rewrite !fold_left_rev_right.
   rewrite -> (@rev_involutive _ ls).
+  simpl.
+  
+  rewrite (compile_pair_sca vadt (fun x => FEnsemble (to_ensemble _ (projT1 (fst x))))); vacuum.
 
-  setoid_rewrite (compile_pair_sca vadt (fun x => FEnsemble (to_ensemble _ (fst x)))); vacuum.
+  rewrite (fun b => @compile_list_rev_general env flistrev vdiscard vls b _ _ _); try first [ eassumption | rewrite add_add_add'; reflexivity | vacuum ].
 
-  rewrite compile_add_intermediate_adts_with_ret; vacuum.*)
+  rewrite add_add_add'.
+  setoid_rewrite (compile_fold_pair env _ snd (fun x => FEnsemble (to_ensemble _ (projT1 (fst x)))) vls vret vadt thead tis_empty flistpop flistempty); try first [ eassumption | solve [map_iff_solve intuition] | vacuum ].
 
-
-
-(*  rewrite (compile_fold_pair basic_env _ (snd) (fun x => FEnsemble (to_ensemble FiniteSetImpl (fst x))) vls vret vadt thead tis_empty); vacuum.
-
-  rewrite pull_forall_loop_pair; vacuum.
-  rewrite compile_constant; vacuum.
-  setoid_rewrite compile_AbsImpl_sEmpty; vacuum.
-
-  (* TODO: Do delete here. *)
+  simpl; rewrite General.refine_under_bind.
 
   Focus 2.
-  rewrite (pull_if_FEnsemble). (* setoid_rewrite without an argument raises an exception here *)
-
-  setoid_rewrite (compile_if_parallel "$comp"); vacuum.
-
-  setoid_rewrite (compile_sIn _ _ _ "TODO REMOVE"); try vacuum.
-
-*)
+  intros.
+  rewrite compile_constant; vacuum.
+  rewrite compile_AbsImpl_sEmpty; first [ eassumption | solve [map_iff_solve eauto] | vacuum ]. 
+  rewrite compile_AbsImpl_sDelete; try first [ eassumption | solve [map_iff_solve eauto] | vacuum ].
 Admitted.
-
 
 Lemma eq_ToEnsemble_In (FiniteSetImpl: FullySharpened FiniteSetSpec)
       (st : { st : _ & { S0 : _ | Core.AbsR (projT2 FiniteSetImpl) S0 st }%type})
@@ -365,78 +382,7 @@ Lemma compile_list_delete_no_return
     (Return (Call vret f (cons vseq nil))).
 Proof.
   intros.
-  rewrite <- (@compile_list_delete env f vret vseq seq knowledge scas ([vseq >> ADT (List seq)]::adts) adts);
-    trivial;
-    try vacuum.
-  admit.
-  admit.
-  admit.
-Qed.
-
-
-Lemma compile_sAdd_better :
- forall  vdiscard (FiniteSetImpl : FullySharpened FiniteSetSpec)
-         (env : GLabelMap.t (FuncSpec ADTValue))
-         (vens velt : StringMap.key)
-         (r : Core.Rep (ComputationalADT.LiftcADT (projT1 FiniteSetImpl)))
-         (s : Core.Rep FiniteSetSpec) (f : GLabelMap.key)
-         (scas adts : StringMap.t (Value ADTValue))
-         (knowledge : Prop) (w' : Memory.W),
-       Core.AbsR (projT2 FiniteSetImpl) s r ->
-       GLabelMap.find (elt:=FuncSpec ADTValue) f env =
-       Some (Axiomatic FEnsemble_sAdd) ->
-       ~ StringMap.In (elt:=Value ADTValue) vdiscard adts ->
-       ~ StringMap.In (elt:=Value ADTValue) vens scas ->
-       ~ StringMap.In (elt:=Value ADTValue) vdiscard scas ->
-       velt <> vens ->
-       vens <> vdiscard ->
-       (adts) [vens >> ADT (FEnsemble s)] ->
-       (scas) [velt >> SCA ADTValue w'] ->
-       refine'
-         (Prog (env := env) knowledge scas scas
-            ([vens >> ADT (FEnsemble (AbsImpl FiniteSetImpl r))]::adts)
-            ([vens >>
-             ADT
-               (FEnsemble
-                  (AbsImpl FiniteSetImpl
-                     (fst ((CallMethod (projT1 FiniteSetImpl) sAdd) r w'))))]
-             ::adts)) (ret (Call vdiscard f (cons vens (cons velt nil)))).
-Proof.
-Admitted.
-
-Lemma compile_binop_nicer
-: forall (av : Type) (env : Env av) (op : binop)
-         (vret tw1 tw2 : StringMap.key) (w1 w2 : Memory.W)
-         (init_knowledge : Prop)
-         (init_scas init_adts post_w1_adts final_scas
-                    final_adts : StringMap.t (Value av)),
-    tw1 <> tw2 ->
-    ~ StringMap.In (elt:=Value av) tw1 init_scas ->
-    ~ StringMap.In (elt:=Value av) tw2 init_scas ->
-    ~ StringMap.In (elt:=Value av) vret final_adts ->
-    refine
-      (Prog (env := env) init_knowledge init_scas
-            (StringMap.add vret (SCA av (evalBinop op w1 w2)) final_scas)
-            init_adts final_adts)
-      (Bind
-         (Prog (env := env) init_knowledge init_scas
-               (StringMap.add tw1 (SCA av w1) init_scas) init_adts
-               post_w1_adts)
-         (fun pw1 : Stmt =>
-            Bind
-              (Prog (env := env) init_knowledge (StringMap.add tw1 (SCA av w1) init_scas)
-                    (StringMap.add tw2 (SCA av w2)
-                                   (StringMap.add tw1 (SCA av w1) init_scas)) post_w1_adts
-                    final_adts)
-              (fun pw2 : Stmt =>
-                 Bind (Prog (env := env) init_knowledge
-                            ([ vret >sca> evalBinop op w1 w2 ]::init_scas)
-                            (StringMap.add vret (SCA av (evalBinop op w1 w2)) final_scas)
-                            post_w1_adts
-                            final_adts)
-                      (fun pw_clean : Stmt =>
-                         Return (Seq pw1 (Seq pw2 (Seq (Assign vret (Binop op tw1 tw2)) pw_clean))))))).
-Proof.
+  (* Same as compile_list_delete_no_ret ?*)
 Admitted.
 
 
@@ -717,6 +663,24 @@ Proof.
 
   finish sharpening computation.
 
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  
   Time compile. (* 47 s *)
 
   admit.
