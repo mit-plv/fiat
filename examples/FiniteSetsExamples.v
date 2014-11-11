@@ -373,6 +373,37 @@ Proof.
   admit.
 Qed.
 
+
+Lemma compile_sAdd_better :
+ forall  vdiscard (FiniteSetImpl : FullySharpened FiniteSetSpec)
+         (env : GLabelMap.t (FuncSpec ADTValue))
+         (vens velt : StringMap.key)
+         (r : Core.Rep (ComputationalADT.LiftcADT (projT1 FiniteSetImpl)))
+         (s : Core.Rep FiniteSetSpec) (f : GLabelMap.key)
+         (scas adts : StringMap.t (Value ADTValue))
+         (knowledge : Prop) (w' : Memory.W),
+       Core.AbsR (projT2 FiniteSetImpl) s r ->
+       GLabelMap.find (elt:=FuncSpec ADTValue) f env =
+       Some (Axiomatic FEnsemble_sAdd) ->
+       ~ StringMap.In (elt:=Value ADTValue) vdiscard adts ->
+       ~ StringMap.In (elt:=Value ADTValue) vens scas ->
+       ~ StringMap.In (elt:=Value ADTValue) vdiscard scas ->
+       velt <> vens ->
+       vens <> vdiscard ->
+       (adts) [vens >> ADT (FEnsemble s)] ->
+       (scas) [velt >> SCA ADTValue w'] ->
+       refine'
+         (Prog (env := env) knowledge scas scas
+            ([vens >> ADT (FEnsemble (AbsImpl FiniteSetImpl r))]::adts)
+            ([vens >>
+             ADT
+               (FEnsemble
+                  (AbsImpl FiniteSetImpl
+                     (fst ((CallMethod (projT1 FiniteSetImpl) sAdd) r w'))))]
+             ::adts)) (ret (Call vdiscard f (cons vens (cons velt nil)))).
+Proof.
+Admitted.
+
 Lemma compile_binop_nicer
 : forall (av : Type) (env : Env av) (op : binop)
          (vret tw1 tw2 : StringMap.key) (w1 w2 : Memory.W)
@@ -521,8 +552,15 @@ Ltac get_pre_adt_and_var_in_goal :=
   let G := match goal with |- ?G => constr:G end in
   get_pre_adt_and_var_from G.*)
 
-Ltac compile_step_same_states :=
-  setoid_rewrite no_op; vacuum.
+Ltac guarded_compile_step_same_states :=
+  idtac;
+  let p := get_pre_post_scas_adts_from_goal in
+  (lazymatch p with
+  | (?prescas, ?postscas, ?preadts, ?postadts)
+    => (test unify prescas postscas;
+        test unify preadts postadts;
+        setoid_rewrite no_op; vacuum)
+   end).
 
 Ltac guarded_compile_if_parallel :=
   idtac;
@@ -539,93 +577,107 @@ Ltac guarded_compile_if_parallel :=
     in more arguments explicitly to [rewrite].  As it is, we must pass
     [prescas] explicitly to not get error messages about
     meta-variables deep in the βι-normal form of the term. *)
-Ltac compile_step_same_adts_handle_first_post_sca var prog prescas :=
+Ltac compile_step_same_adts_handle_first_post_sca :=
   idtac;
   let after_tac := (idtac; vacuum) in
-  (lazymatch prog with
-  | Word.wmult _ _
-    => (let t1 := new_variable_name "$t1" in
-        let t2 := new_variable_name "$t2" in
-        first [ rewrite (@compile_binop_nicer _ _ IL.Times var t1 t2 _ _ _ prescas)
-              | setoid_rewrite (@compile_binop_nicer _ _ IL.Times var t1 t2 _ _ _ prescas) ]; after_tac)
-  | Word.wplus _ _
-    => (let t1 := new_variable_name "$t1" in
-        let t2 := new_variable_name "$t2" in
-        first [ rewrite (@compile_binop_nicer _ _ IL.Plus var t1 t2 _ _ _ prescas)
-              | setoid_rewrite (@compile_binop_nicer _ _ IL.Plus var t1 t2 _ _ _ prescas) ]; after_tac)
-  | Word.wminus _ _
-    => (let t1 := new_variable_name "$t1" in
-        let t2 := new_variable_name "$t2" in
-        first [ rewrite (@compile_binop_nicer _ _ IL.Minus var t1 t2 _ _ _ prescas)
-              | setoid_rewrite (@compile_binop_nicer _ _ IL.Minus var t1 t2 _ _ _ prescas) ]; after_tac)
-  | nat_as_word _
-    => (first [ rewrite (compile_constant var)
-              | setoid_rewrite (compile_constant var) ]; after_tac)
-  | FunctionOfList _ _ _ _ => unfold FunctionOfList
-  | snd (@FiniteSetAndFunctionOfList ?impl W ?f ?x ?ls)
-    => (let tis_empty := new_variable_name "$is_empty" in
-        let thead     := new_variable_name "$head" in
-        let vadt      := new_variable_name "$adt" in
-        let lem       := constr:(@compile_FiniteSetAndFunctionOfList_SCA impl f x ls tis_empty thead vadt var) in
-        first [ rewrite lem
-              | setoid_rewrite lem ])
-  | if _ then _ else _
-    => (let vcond := new_variable_name "$cond" in
-        setoid_rewrite (compile_if_parallel vcond); try after_tac)
-  | BoolToW (snd ((CallMethod (projT1 ?impl) sIn) ?r ?w'))
-    => (setoid_rewrite (compile_sIn _ _ _ "TODO REMOVE"); try after_tac)
-  | _ (** catch-all case; we look for the value in [prescas] *)
-    => let key := string_map_t_get_key_of_sca_value_in prog prescas in
-       rewrite (@copy_word _ _ key var); [ | solve [ vacuum ]..]
+  let p := get_pre_post_scas_adts_from_goal in
+  (lazymatch p with
+  | (?prescas, [?var >> SCA _ ?prog]::?postscas', ?preadts, ?postadts)
+    => (idtac;
+        (lazymatch prog with
+        | Word.wmult _ _
+          => (let t1 := new_variable_name "$t1" in
+              let t2 := new_variable_name "$t2" in
+              first [ rewrite (@compile_binop_nicer _ _ IL.Times var t1 t2 _ _ _ prescas)
+                    | setoid_rewrite (@compile_binop_nicer _ _ IL.Times var t1 t2 _ _ _ prescas) ]; after_tac)
+        | Word.wplus _ _
+          => (let t1 := new_variable_name "$t1" in
+              let t2 := new_variable_name "$t2" in
+              first [ rewrite (@compile_binop_nicer _ _ IL.Plus var t1 t2 _ _ _ prescas)
+                    | setoid_rewrite (@compile_binop_nicer _ _ IL.Plus var t1 t2 _ _ _ prescas) ]; after_tac)
+        | Word.wminus _ _
+          => (let t1 := new_variable_name "$t1" in
+              let t2 := new_variable_name "$t2" in
+              first [ rewrite (@compile_binop_nicer _ _ IL.Minus var t1 t2 _ _ _ prescas)
+                    | setoid_rewrite (@compile_binop_nicer _ _ IL.Minus var t1 t2 _ _ _ prescas) ]; after_tac)
+        | nat_as_word _
+          => (first [ rewrite (compile_constant var)
+                    | setoid_rewrite (compile_constant var) ]; after_tac)
+        | FunctionOfList _ _ _ _ => unfold FunctionOfList
+        | snd (@FiniteSetAndFunctionOfList ?impl W ?f ?x ?ls)
+          => (let tis_empty := new_variable_name "$is_empty" in
+              let thead     := new_variable_name "$head" in
+              let vadt      := new_variable_name "$adt" in
+              let lem       := constr:(@compile_FiniteSetAndFunctionOfList_SCA impl f x ls tis_empty thead vadt var) in
+              first [ rewrite lem
+                    | setoid_rewrite lem ])
+        | if _ then _ else _
+          => (let vcond := new_variable_name "$cond" in
+              setoid_rewrite (compile_if_parallel vcond); try after_tac)
+        | BoolToW (snd ((CallMethod (projT1 ?impl) sIn) ?r ?w'))
+          => (setoid_rewrite (compile_sIn _ _ _ "TODO REMOVE"); try after_tac)
+        | _ (** catch-all case; we look for the value in [prescas] *)
+          => let key := string_map_t_get_key_of_sca_value_in prog prescas in
+             rewrite (@copy_word _ _ key var); [ | solve [ vacuum ]..]
+         end))
    end).
 
-Ltac compile_step_same_adts prescas postscas :=
-  let after_tac := (idtac; vacuum) in
-  (lazymatch string_map_t_subset postscas prescas with
-  | true
-    => ((** [postscas] is a subset of [prescas] *)
-      first [ rewrite (@drop_scas_from_precond _ _ _ prescas postscas postscas)
-            | setoid_rewrite (@drop_scas_from_precond _ _ _ prescas postscas postscas) ];
-      [
-      | solve_SomeSCAs ])
-  | false
-    => first [ (lazymatch postscas with
-               | [?var >> SCA _ ?prog]::?postscas'
-                 => (*first [ test unify prescas postscas';*)
-                 compile_step_same_adts_handle_first_post_sca var prog prescas
-               (*| not unify prescas postscas';
-                            setoid_rewrite compile_add_intermediate_scas_with_ret ]*)
-                end) ]
-   end).
-
-(*Ltac compile_step_different_adts prescas postscas :=
-  let after_tac := (idtac; vacuum) in
-  (lazymatch string_map_t_subset postscas prescas with
-  | true
-    => ((** [postscas] is a subset of [prescas] *)
-      first [ rewrite (@drop_scas_from_precond _ _ _ prescas postscas postscas)
-            | setoid_rewrite (@drop_scas_from_precond _ _ _ prescas postscas postscas) ];
-      [
-      | solve_SomeSCAs ])
-  | false
-    => first [ (lazymatch postscas with
-               | [?var >> SCA _ ?prog]::prescas
-                 => ((** we require that the rest of [postscas] be the same as [prescas] *)
-                   compile_step_same_adts_handle_first_post_sca var prog)
-                end) ]
-   end).*)
-
-Ltac compile_step_same_scas preadts postadts :=
+Ltac guarded_compile_step_same_adts :=
   idtac;
-  (lazymatch preadts with
-  | [ ?var >adt> List ?val ]::postadts
-    => let vret := new_variable_name "$dummy_ret" in
-       rewrite (@compile_list_delete_no_return vret); try reflexivity
+  let after_tac := (idtac; vacuum) in
+  let p := get_pre_post_scas_adts_from_goal in
+  (lazymatch p with
+  | (?prescas, ?postscas, ?preadts, ?postadts)
+    => (not unify prescas postscas;
+        test unify preadts postadts;
+        (lazymatch string_map_t_subset postscas prescas with
+        | true
+          => ((** [postscas] is a subset of [prescas] *)
+            first [ rewrite (@drop_scas_from_precond _ _ _ prescas postscas postscas)
+                  | setoid_rewrite (@drop_scas_from_precond _ _ _ prescas postscas postscas) ];
+            [
+            | solve_SomeSCAs ])
+        | false
+          => compile_step_same_adts_handle_first_post_sca
+         end))
+   end).
+
+Ltac guarded_compile_step_same_scas :=
+  idtac;
+  let after_tac := (idtac; vacuum) in
+  let p := get_pre_post_scas_adts_from_goal in
+  (lazymatch p with
+  | (?prescas, ?postscas, ?preadts, ?postadts)
+    => (test unify prescas postscas;
+        not unify preadts postadts;
+        (lazymatch constr:((preadts, postadts)) with
+        | ([ ?var >adt> List ?val ]::postadts, _)
+          => (let vret := new_variable_name "$dummy_ret" in
+              rewrite (@compile_list_delete_no_return vret); try reflexivity)
+        | ([ ?var >adt> FEnsemble (to_ensemble ?impl ?fs)]::?rest,
+           [ ?var >adt> FEnsemble (to_ensemble ?impl (fst ((CallMethod (projT1 ?impl) sAdd) ?fs ?head)))]::?rest')
+          => (let dummy := new_variable_name "$dummy_ret" in
+              setoid_rewrite (@compile_sAdd_better dummy))
+         end))
+   end).
+
+Ltac guarded_compile_step_different_adts_different_scas :=
+  idtac;
+  let p := get_pre_post_scas_adts_from_goal in
+  (lazymatch p with
+  | (?prescas, ?postscas, ?preadts, ?postadts)
+    => (not unify prescas postscas;
+        not unify preadts postadts;
+        setoid_rewrite compile_add_intermediate_scas_with_ret;
+        setoid_rewrite compile_add_intermediate_adts; vacuum (** split into scalars and adts *))
    end).
 
 Ltac compile_step :=
   first [ progress change (Word.word 32) with W
+        | progress change AbsImpl with to_ensemble in *
         | progress unfold wplus, wminus in *
+        | progress simpl projT1
+        | progress simpl proj1_sig
         | ((** Calling "In" always yields something equivalent to the original
        ADT; it's always safe to simplify with this fact. *)
           rewrite !eq_ToEnsemble_In)
@@ -640,23 +692,10 @@ Ltac compile_step :=
                                                  end
                           end)
         | guarded_compile_if_parallel
-        | let p := get_pre_post_scas_adts_from_goal in
-          (lazymatch p with
-          | (?prescas, ?postscas, ?preadts, ?postadts)
-            => first [ test unify prescas postscas;
-                       test unify preadts postadts;
-                       compile_step_same_states
-                     | test unify prescas postscas;
-                       not unify preadts postadts;
-                       compile_step_same_scas preadts postadts
-                     | not unify prescas postscas;
-                       test unify preadts postadts;
-                       compile_step_same_adts prescas postscas
-                     | not unify prescas postscas;
-                       not unify preadts postadts;
-                       setoid_rewrite compile_add_intermediate_scas_with_ret;
-                       setoid_rewrite compile_add_intermediate_adts; vacuum (** split into scalars and adts *) ]
-           end)
+        | guarded_compile_step_same_states
+        | guarded_compile_step_same_scas
+        | guarded_compile_step_same_adts
+        | guarded_compile_step_different_adts_different_scas
         | (lazymatch goal with
           | [ |- refine (cloop <- { cloop : Stmt | PairLoopBodyOk _ _ _ _ _ _ _ _ _ _ _ _ _ }; _) (ret _) ]
             => (rewrite pull_forall_loop_pair; vacuum)
@@ -664,53 +703,8 @@ Ltac compile_step :=
             => reflexivity
            end)
         | progress vacuum ].
-(*
 
-
-
-        | let after_tac := (idtac; vacuum) in
-          let p := get_pre_post_scas_adts_from_goal in
-          (lazymatch p with
-          | ([?presvar, [?var >> SCA _ ?preprog]::_, _, _)
-            =>
-            (
-
-
-            | BoolToW (snd ((CallMethod (projT1 ?impl) sIn) ?r ?w'))
-              => (setoid_rewrite (compile_sIn _ _ _ "TODO REMOVE"); try after_tac)
-            | appcontext[?f (if ?c then ?a else ?b)]
-              => rewrite (pull_if f)
-             end)
-           end)
-        | let after_tac := (idtac; vacuum) in
-          let p := get_pre_post_scas_adts_from_goal in
-          (lazymatch p with
-          | (_, _, _, [?var >> ADT ?postprog]::_)
-            =>
-            (lazymatch postprog with
-            | appcontext[?f (if ?c then ?a else ?b)]
-              => not constr_eq f FEnsemble; rewrite (pull_if f)
-             end)
-        | let after_tac := (idtac; vacuum) in
-          let p := get_pre_post_scas_adts_from_goal in
-          (lazymatch p with
-          | (_, [?var >> SCA _ ?preprog]::_, _, _)
-            =>
-            (lazymatch preprog with
-
-
-          let ps := get_post_prog_and_var_in_goal in
-          let pa := get_post_adt_and_var_in_goal in
-          let pspa := constr:((ps, pa)) in
-          (lazymatch pspa with
-          | ((?svar, if ?cond then _ else _), (?avar, FEnsemble (if ?cond then _ else _)))
-            => (let vcond := new_variable_name "$cond" in
-                setoid_rewrite (compile_if_parallel vcond); after_tac)
-           end)
-        | ()
-        | progress vacuum ].*)
-
-Tactic Notation "compile" := repeat compile_step.
+Tactic Notation "compile" := repeat repeat compile_step.
 
 Tactic Notation "finish" "compiling" := reflexivity.
 
@@ -723,58 +717,10 @@ Proof.
 
   finish sharpening computation.
 
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-  2:compile_step.
-  2:compile_step.
-  simpl projT1.
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-  2:compile_step.
-  setoid_rewrite compile_add_intermediate_scas; vacuum.
-  rewrite (compile_sAdd _ _ "$head" "TODO: REMOVE THIS PARAMETER" "$discard"); try vacuum.
-  rewrite drop_sca; vacuum.
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-Admitted.
+  Time compile. (* 47 s *)
 
-Definition sumUniqueImpl (FiniteSetImpl : FullySharpened FiniteSetSpec) (ls : list W)
-: FullySharpenedComputation (sumUniqueSpec ls).
-Proof.
-  (** We fold over the list, using a finite set to keep track of what
-      we've seen, and every time we see something new, we update our
-      running sum.  This should be compiled down to a for loop with an
-      in-place update. *)
-  begin sharpening computation.
-
-  sharpen computation with FiniteSet implementation := FiniteSetImpl.
+  admit.
+Defined.
 
 
 Definition sumAllImpl (FiniteSetImpl : FullySharpened FiniteSetSpec) (ls : list W)
