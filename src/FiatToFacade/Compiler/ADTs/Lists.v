@@ -66,6 +66,119 @@ Proof.
   eauto using AllADTs_chomp_remove'.
 Qed.
 
+Lemma compile_list_delete_no_ret :
+  forall env f vret vseq seq knowledge scas adts adts',
+    GLabelMap.find f env = Some (Axiomatic List_delete) ->
+    ~ StringMap.In vret adts ->
+    ~ StringMap.In vseq scas ->
+    adts[vseq >> ADT (List seq)] ->
+    StringMap.Equal adts' (StringMap.remove vseq adts) ->
+    refine (@Prog _ env knowledge
+                  scas ([vret >sca> 0]::scas)
+                  adts adts')
+           (ret (Call vret f (vseq :: nil)))%facade.
+Proof.
+  compile_list_helper runsto_delete.
+
+  eauto using SomeSCAs_chomp_left, SomeSCAs_chomp, SomeSCAs_not_In_remove.
+  
+  apply add_adts_pop_sca.
+  map_iff_solve intuition.
+  eauto using AllADTs_chomp_remove'.
+Qed.
+
+Lemma compile_list_rev :
+  forall env f vret vseq seq knowledge scas adts adts',
+    vseq <> vret ->
+    GLabelMap.find f env = Some (Axiomatic List_rev) ->
+    ~ StringMap.In vret adts ->
+    ~ StringMap.In vseq scas ->
+    adts[vseq >> ADT (List seq)] ->
+    StringMap.Equal adts' ([vseq >adt> List (rev seq)]::adts) ->
+    refine (@Prog _ env knowledge
+                  scas ([vret >sca> 0]::scas)
+                  adts adts')
+           (ret (Call vret f (vseq :: nil)))%facade.
+Proof.
+  compile_list_helper runsto_rev.
+
+  eauto using SomeSCAs_chomp, add_sca_pop_adts.
+  eapply add_adts_pop_sca, AllADTs_chomp; map_iff_solve intuition.
+Qed.
+
+Lemma compile_list_rev_no_ret :
+  forall env f vret vseq seq knowledge scas adts adts',
+    vseq <> vret ->
+    GLabelMap.find f env = Some (Axiomatic List_rev) ->
+    ~ StringMap.In vret adts ->
+    ~ StringMap.In vret scas ->
+    ~ StringMap.In vseq scas ->
+    adts[vseq >> ADT (List seq)] ->
+    StringMap.Equal adts' ([vseq >adt> List (rev seq)]::adts) ->
+    refine (@Prog _ env knowledge
+                  scas scas
+                  adts adts')
+           (ret (Call vret f (vseq :: nil)))%facade.
+Proof.
+  compile_list_helper runsto_rev.
+
+  eauto using SomeSCAs_chomp_left, SomeSCAs_chomp, add_sca_pop_adts.
+  eapply add_adts_pop_sca, AllADTs_chomp; map_iff_solve intuition.
+Qed.
+
+Lemma compile_list_rev_general :
+  forall env f vret vseq seq knowledge scas scas' adts adts',
+    vseq <> vret ->
+    GLabelMap.find f env = Some (Axiomatic List_rev) ->
+    ~ StringMap.In vret adts ->
+    ~ StringMap.In vret scas ->
+    ~ StringMap.In vseq scas ->
+    adts[vseq >> ADT (List seq)] ->
+    refine (@Prog _ env knowledge
+                  scas scas'
+                  adts adts')
+           (p <- (@Prog _ env knowledge
+                        scas scas'
+                        ([vseq >adt> List (rev seq)]::adts) adts');
+            ret (Call vret f (vseq :: nil); p)%facade)%comp.
+Proof.
+  unfold refine, Prog, ProgOk; intros;
+  constructor; intros; destruct_pairs;
+  inversion_by computes_to_inv;
+  subst.
+
+  split.
+
+  constructor; split; intros.
+  econstructor; eauto 2 using mapsto_eval;
+    [ scas_adts_mapsto;
+      eauto using mapM_MapsTo_0, mapM_MapsTo_1, mapM_MapsTo_2
+    | eapply not_in_adts_not_mapsto_adt;
+      [ eassumption | map_iff_solve intuition ]
+    | simpl; repeat eexists; reflexivity ].
+
+  scas_adts_mapsto.
+  eapply runsto_rev in H11; eauto.
+
+  assert (AllADTs st' ([vseq >> ADT (List (rev seq))]::adts))
+    by (rewrite_Eq_in_goal; eapply add_adts_pop_sca, AllADTs_chomp; map_iff_solve intuition).
+  assert (SomeSCAs st' scas)
+    by (rewrite_Eq_in_goal; eauto using SomeSCAs_chomp_left, add_sca_pop_adts).
+  specialize_states; assumption.
+
+  intros.
+
+  inversion_facade.
+  scas_adts_mapsto.
+  eapply runsto_rev in H14; eauto.
+
+  assert (AllADTs st' ([vseq >> ADT (List (rev seq))]::adts))
+    by (rewrite_Eq_in_goal; eapply add_adts_pop_sca, AllADTs_chomp; map_iff_solve intuition).
+  assert (SomeSCAs st' scas)
+    by (rewrite_Eq_in_goal; eauto using SomeSCAs_chomp_left, add_sca_pop_adts).
+  specialize_states; split; assumption.
+Qed.
+
 Lemma compile_list_new :
   forall {env},
   forall scas adts knowledge,

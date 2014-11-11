@@ -30,16 +30,14 @@ Proof.
   runsto_prelude.
 Qed.
 
-Lemma add_noop_mapsto :
-  forall {A: Type} {k: StringMap.key} {v: A} {map},
-    StringMap.MapsTo k v map ->
-    StringMap.Equal (StringMap.add k v map) map.
+Lemma runsto_rev :
+  forall env seq st st' vseq f tret,
+    st [vseq >> ADT (List seq)] ->
+    GLabelMap.find (elt:=FuncSpec _) f env = Some (Axiomatic List_rev) ->
+    RunsTo env (Call tret f (vseq :: nil)) st st' ->
+    StringMap.Equal st' ([tret >> SCAZero]::[vseq >adt> List (rev seq)]::st).
 Proof.
-  setoid_rewrite StringMapFacts.find_mapsto_iff;
-  unfold StringMap.Equal; intros ** k';
-  destruct (StringMap.E.eq_dec k k');
-  subst; [ rewrite StringMapFacts.add_eq_o | rewrite StringMapFacts.add_neq_o ];
-  auto.
+  runsto_prelude.
 Qed.
 
 Lemma runsto_is_empty :
