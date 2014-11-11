@@ -634,6 +634,38 @@ Section compile_FiniteSet_Methods.
       pose proof ((proj1 x_neq) (refl_equal _)) as H''; rewrite <- H6 in H''; discriminate.
   Qed.
 
+  Require Import Common.AdditionalEnsembleLemmas Permutation.
+
+  Lemma EnsembleListEquivalence_length {A} :
+    forall l s s' l',
+      EnsembleListEquivalence s l ->
+      EnsembleListEquivalence s' l' ->
+      Same_set A s s' ->
+      length l = length l'.
+  Proof.
+    intros; apply Permutation_length.
+    eapply EnsembleListEquivalence_Permutation; eauto.
+    eapply EnsembleListEquivalence_Same_set; eauto.
+    symmetry; auto.
+  Qed.
+
+  Lemma Same_set_AbsImpl
+  : forall s r,
+      AbsR (projT2 FiniteSetImpl) s r
+      -> Same_set _ s (AbsImpl r).
+  Proof.
+    intros; split;
+    unfold Included, In; intros;
+    pose proof (ADTRefinementPreservesMethods
+                  (projT2 FiniteSetImpl)
+                  {| bindex := sIn |} _ _ x H (ReturnComputes _)) as ref;
+      unfold refineMethod in ref;
+      inversion_by computes_to_inv; injections; subst; simpl in *.
+    - unfold AbsImpl; eauto.
+    - destruct H0; intuition; subst.
+      eapply AbsImpl_SameSet with (s' := x0) (r := r); eauto.
+  Qed.
+
   Lemma AbsImpl_sSize
   : forall s r u
            (s_r_eqv : AbsR (projT2 FiniteSetImpl) s r),
@@ -669,40 +701,10 @@ Section compile_FiniteSet_Methods.
                | [ H : (_, _) = ?x |- _ ] => destruct x
                | _ => progress subst
              end.
-      (* Problem with switching from nats to words. *)
-      admit.
-  Qed.
 
-  Require Import Common.AdditionalEnsembleLemmas Permutation.
-
-  Lemma EnsembleListEquivalence_length {A} :
-    forall l s s' l',
-      EnsembleListEquivalence s l ->
-      EnsembleListEquivalence s' l' ->
-      Same_set A s s' ->
-      length l = length l'.
-  Proof.
-    intros; apply Permutation_length.
-    eapply EnsembleListEquivalence_Permutation; eauto.
-    eapply EnsembleListEquivalence_Same_set; eauto.
-    symmetry; auto.
-  Qed.
-
-  Lemma Same_set_AbsImpl
-  : forall s r,
-      AbsR (projT2 FiniteSetImpl) s r
-      -> Same_set _ s (AbsImpl r).
-  Proof.
-    intros; split;
-    unfold Included, In; intros;
-    pose proof (ADTRefinementPreservesMethods
-                  (projT2 FiniteSetImpl)
-                  {| bindex := sIn |} _ _ x H (ReturnComputes _)) as ref;
-      unfold refineMethod in ref;
-      inversion_by computes_to_inv; injections; subst; simpl in *.
-    - unfold AbsImpl; eauto.
-    - destruct H0; intuition; subst.
-      eapply AbsImpl_SameSet with (s' := x0) (r := r); eauto.
+      f_equal.
+      eapply EnsembleListEquivalence_length; eauto.
+      reflexivity.
   Qed.
 
   Lemma compile_sSize
