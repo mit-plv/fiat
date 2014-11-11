@@ -174,7 +174,7 @@ Proof.
 
   rewrite drop_sca; vacuum.
   setoid_rewrite compile_add_intermediate_scas; vacuum.
-  rewrite (compile_sAdd _ _ "$head" "TODO: REMOVE THIS PARAMETER" "$discard"); try vacuum.
+  rewrite (compile_sAdd _ _ "$head" "$discard"); try vacuum.
   rewrite drop_sca; vacuum.
   do 2 (rewrite drop_sca; vacuum).
   rewrite no_op; vacuum.
@@ -465,7 +465,7 @@ Ltac compile_step_same_adts_handle_first_post_sca :=
           => (let vcond := new_variable_name "$cond" in
               setoid_rewrite (compile_if_parallel vcond); try after_tac)
         | BoolToW (snd ((CallMethod (projT1 ?impl) sIn) ?r ?w'))
-          => (setoid_rewrite (compile_sIn _ _ _ "TODO REMOVE"); try after_tac)
+          => (setoid_rewrite (compile_sIn _ _ _); try after_tac) (* TODO precise these placeholders *)
         | _ (** catch-all case; we look for the value in [prescas] *)
           => let key := string_map_t_get_key_of_sca_value_in prog prescas in
              rewrite (@copy_word _ _ key var); [ | solve [ vacuum ]..]
@@ -560,13 +560,16 @@ Tactic Notation "finish" "compiling" := (split; reflexivity).
 
 Definition sumUniqueImpl (FiniteSetImpl : FullySharpened FiniteSetSpec)
 : FullySharpenedFacadeProgramOnListReturningWord sumUniqueSpec.
-Proof.       
+Proof.
   begin sharpening facade program.
   
   sharpen computation with FiniteSet implementation := FiniteSetImpl.
 
   Time compile. (* 47 s *)
+  
   admit.
+
+   unfold Fold.
 
   finish compiling.
 Qed.

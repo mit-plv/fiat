@@ -277,18 +277,14 @@ Section compile_FiniteSet_Methods.
 
   Lemma compile_sAdd
   : forall {env},
-    forall vens velt vpointer vdiscard r s f,
+    forall vens velt vdiscard r s f,
     forall scas adts knowledge w'
            (s_r_eqv : AbsR (projT2 FiniteSetImpl) s r),
       GLabelMap.find f env = Some (Axiomatic FEnsemble_sAdd) ->
-      ~ StringMap.In vpointer adts ->
       ~ StringMap.In vdiscard adts ->
       ~ StringMap.In vens scas ->
-      vpointer <> vens ->
-      vpointer <> velt ->
       velt <> vens ->
       vens <> vdiscard ->
-      adts[vens >> AxSpec.ADT (FEnsemble s)] ->
       scas[velt >> SCA _ w'] ->
       refine (@Prog _ env knowledge
                     scas
@@ -302,7 +298,7 @@ Section compile_FiniteSet_Methods.
     apply add_adts_pop_sca; map_iff_solve trivial.
     erewrite AbsImpl_Add by eauto.
     apply AllADTs_chomp_remove.
-    rewrite H12; trickle_deletion; reflexivity.
+    rewrite H8; trickle_deletion; reflexivity.
   Qed.
   
   Lemma compile_sAdd_no_ret :
@@ -459,15 +455,12 @@ Section compile_FiniteSet_Methods.
 
   Lemma compile_sRemove
   : forall {env},
-    forall vens velt vpointer vdiscard r s f,
+    forall vens velt vdiscard r s f,
     forall scas adts knowledge w'
            (s_r_eqv : AbsR (projT2 FiniteSetImpl) s r),
       GLabelMap.find f env = Some (Axiomatic FEnsemble_sRemove) ->
-      ~ StringMap.In vpointer adts ->
       ~ StringMap.In vdiscard adts ->
       ~ StringMap.In vens scas ->
-      vpointer <> vens ->
-      vpointer <> velt ->
       velt <> vens ->
       vens <> vdiscard ->
       adts[vens >> AxSpec.ADT (FEnsemble s)] ->
@@ -484,7 +477,7 @@ Section compile_FiniteSet_Methods.
     apply add_adts_pop_sca; map_iff_solve trivial.
     erewrite AbsImpl_sRemove by eauto.
     apply AllADTs_chomp_remove.
-    rewrite H12; trickle_deletion; reflexivity.
+    rewrite H9; trickle_deletion; reflexivity.
   Qed.
 
   Lemma compile_AbsImpl_In
@@ -604,15 +597,12 @@ Section compile_FiniteSet_Methods.
 
     Lemma compile_sIn
   : forall {env},
-    forall vens velt vpointer vin r s f,
+    forall vens velt vin r s f,
     forall scas adts knowledge w'
            (s_r_eqv : AbsR (projT2 FiniteSetImpl) s r),
       GLabelMap.find f env = Some (Axiomatic FEnsemble_sIn) ->
-      ~ StringMap.In vpointer adts ->
       ~ StringMap.In vin adts ->
       ~ StringMap.In vens scas ->
-      vpointer <> vens ->
-      vpointer <> velt ->
       velt <> vens ->
       vens <> vin ->
       scas[velt >> SCA _ w'] ->
@@ -622,7 +612,6 @@ Section compile_FiniteSet_Methods.
                     ([vens >adt> FEnsemble (AbsImpl r) ] :: adts)
                     ([vens >adt> FEnsemble (AbsImpl (fst (CallMethod (projT1 FiniteSetImpl) sIn r w'))) ] :: adts))
              (ret (Call vin f (vens :: velt :: nil))%facade).
-
     Proof.
     compile_helper runsto_sIn.
     destruct_ex; split_and; subst.
@@ -719,14 +708,12 @@ Section compile_FiniteSet_Methods.
 
   Lemma compile_sSize
   : forall {env},
-    forall vens vpointer vsize r s f u,
+    forall vens vsize r s f u,
     forall scas adts knowledge
            (s_r_eqv : AbsR (projT2 FiniteSetImpl) s r),
       GLabelMap.find f env = Some (Axiomatic FEnsemble_sSize) ->
-      ~ StringMap.In vpointer adts ->
       ~ StringMap.In vsize adts ->
       ~ StringMap.In vens scas ->
-      vpointer <> vens ->
       vens <> vsize ->
       adts[vens >> AxSpec.ADT (FEnsemble s)] ->
       refine (@Prog _ env knowledge
