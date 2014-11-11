@@ -1,4 +1,6 @@
 Require Import FiatToFacade.Compiler.Prerequisites.
+Require Import FiatToFacade.Compiler.Cleanup.
+Require Import Computation.ApplyMonad.
 
 Unset Implicit Arguments.
 
@@ -368,3 +370,54 @@ Proof.
   eassumption.
   eassumption.
 Qed.  
+
+Lemma compile_binop_generic
+: forall (av : Type) (env : Env av) (op : IL.binop)
+         (vret tw1 tw2 : StringMap.key) (w1 w2 : Memory.W)
+         (init_knowledge : Prop)
+         (init_scas init_adts post_w1_adts post_w2_adts final_scas
+                    final_adts : StringMap.t (Value av)),
+    tw1 <> tw2 ->
+    ~ StringMap.In (elt:=Value av) tw1 init_scas ->
+    ~ StringMap.In (elt:=Value av) tw2 init_scas ->
+    ~ StringMap.In (elt:=Value av) vret post_w2_adts ->
+    refine
+      (Prog (env := env) init_knowledge init_scas
+            (StringMap.add vret (SCA av (IL.evalBinop op w1 w2)) final_scas)
+            init_adts final_adts)
+      (Bind
+         (Prog (env := env) init_knowledge init_scas
+               (StringMap.add tw1 (SCA av w1) init_scas) init_adts
+               post_w1_adts)
+         (fun pw1 : Stmt =>
+            Bind
+              (Prog (env := env) init_knowledge (StringMap.add tw1 (SCA av w1) init_scas)
+                    (StringMap.add tw2 (SCA av w2)
+                                   (StringMap.add tw1 (SCA av w1) init_scas)) post_w1_adts
+                    post_w2_adts)
+              (fun pw2 : Stmt =>
+                 Bind (Prog (env := env) init_knowledge
+                            ([ vret >sca> IL.evalBinop op w1 w2 ]::init_scas)
+                            (StringMap.add vret (SCA av (IL.evalBinop op w1 w2)) final_scas)
+                            post_w2_adts
+                            final_adts)
+                      (fun pw_clean : Stmt =>
+                         Return (Seq (Seq pw1 (Seq pw2 (Assign vret (Binop op tw1 tw2)))) pw_clean))))).
+Proof.
+  intros.
+  
+  rewrite compile_add_intermediate_step_with_ret.
+
+  rewrite (compile_binop_simple op vret tw1 tw2 w1 w2 init_knowledge). (* init_scas init_scas init_scas init_adts post_w1_adts final_adts).*)
+  simplify with monad laws.
+
+  apply General.refine_under_bind; intros.
+  apply General.refine_under_bind; intros.
+  apply General.refine_under_bind; intros.
+
+  reflexivity.
+  eauto.
+  eauto.
+  eauto.
+  eauto.
+Qed.
