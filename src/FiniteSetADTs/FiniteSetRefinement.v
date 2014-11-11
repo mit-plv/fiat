@@ -82,7 +82,33 @@ Section FiniteSetHelpers.
   : @FiniteSetAndFunctionOfList A f a ls
     = (projT1 (fst (@ValidFiniteSetAndFunctionOfList A f a ls)), snd (@ValidFiniteSetAndFunctionOfList A f a ls)).
   Proof.
-  Admitted.
+    unfold FiniteSetAndFunctionOfList, ValidFiniteSetAndFunctionOfList, ValidFiniteSetAndFunctionOfList_body; simpl.
+    let H := fresh in
+    match goal with
+      | [ |- List.fold_right (fun (x : ?X) (acc : ?A * ?B) =>
+                                (@?f0 x acc, @?g x acc))
+                             ?init
+                             ?ls
+             = (projT1 (fst (List.fold_right _ (existT ?P _ ?pf, _) _)), _) ]
+        => let f' := constr:(fun b x a => f0 x (a, b)) in
+           let f'' := (eval simpl in f') in
+           let f''' := match f'' with fun _ => ?f''' => constr:f''' end in
+           pose proof (@fold_right_projT1 A B X P init ls f''' (fun x a b => g x (a, b)) pf) as H
+    end;
+      simpl in *;
+      erewrite H.
+    repeat match goal with
+             | _ => reflexivity
+             | _ => rewrite !push_if_existT
+             | _ => progress simpl in *
+             | [ |- (_, _) = (_, _) ] => apply injective_projections; simpl
+             | [ |- fst _ = fst _ ] => apply f_equal
+             | [ |- snd _ = snd _ ] => apply f_equal
+             | [ |- projT1 _ = projT1 _ ] => apply f_equal
+             | [ |- List.fold_right _ _ _ = List.fold_right _ _ _ ] => apply fold_right_f_eq_mor
+             | _ => intro
+           end.
+  Qed.
 
   Definition FiniteSetAndListOfList (ls : list W)
     := FiniteSetAndFunctionOfList (@cons _) nil ls.
@@ -101,6 +127,62 @@ Section FiniteSetHelpers.
             else fst (CallMethod (projT1 FiniteSetImpl) sAdd xs w))
          (CallConstructor (projT1 FiniteSetImpl) sEmpty tt)
          ls.
+
+  Definition ValidFiniteSetOfList_body
+  : W
+    -> (sigT (fun fs => sig (fun S0 => AbsR (projT2 FiniteSetImpl) S0 fs)))
+    -> (sigT (fun fs => sig (fun S0 => AbsR (projT2 FiniteSetImpl) S0 fs))).
+  Proof.
+    refine (fun w xs =>
+              if (snd (CallMethod (projT1 FiniteSetImpl) sIn (projT1 xs) w) : bool)
+              then xs
+              else (existT _ (fst (CallMethod (projT1 FiniteSetImpl) sAdd (projT1 xs) w)) _)).
+    abstract (
+        destruct xs as [? ?]; subst_body; simpl in *; destruct_head sig;
+        eexists;
+        apply AbsR_ToEnsemble_Add;
+        eassumption
+      ).
+  Defined.
+
+  Definition ValidFiniteSetOfList
+             (ls : list W)
+  : (sigT (fun fs => sig (fun S0 => AbsR (projT2 FiniteSetImpl) S0 fs))).
+  Proof.
+    refine (List.fold_right
+              ValidFiniteSetOfList_body
+              (existT (fun fs => sig (fun S0 => AbsR (projT2 FiniteSetImpl) S0 fs))
+                      (CallConstructor (projT1 FiniteSetImpl) sEmpty tt)
+                      _)
+              ls);
+    eexists; apply AbsR_ToEnsemble_Empty.
+  Defined.
+
+
+  Definition FiniteSetOfList_ValidFiniteSetOfList ls
+  : @FiniteSetOfList ls = projT1 (@ValidFiniteSetOfList ls).
+  Proof.
+    unfold FiniteSetOfList, ValidFiniteSetOfList, ValidFiniteSetOfList_body; simpl.
+    let H := fresh in
+    lazymatch goal with
+      | [ |- List.fold_right ?f ?init ?ls
+             = projT1 (List.fold_right _ (existT ?P _ ?pf) _) ]
+        => pose proof (@fold_right_projT1' _ _ P init ls f pf) as H
+    end;
+      simpl in *;
+      erewrite H.
+    repeat match goal with
+             | _ => reflexivity
+             | _ => rewrite !push_if_existT
+             | _ => progress simpl in *
+             | [ |- (_, _) = (_, _) ] => apply injective_projections; simpl
+             | [ |- fst _ = fst _ ] => apply f_equal
+             | [ |- snd _ = snd _ ] => apply f_equal
+             | [ |- projT1 _ = projT1 _ ] => apply f_equal
+             | [ |- List.fold_right _ _ _ = List.fold_right _ _ _ ] => apply fold_right_f_eq_mor
+             | _ => intro
+           end.
+  Qed.
 
   Definition FunctionOfList {A} (f : W -> A -> A) (a : A)
              (ls : list W)

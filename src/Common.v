@@ -641,3 +641,65 @@ Proof.
   induction H'; constructor; auto.
   intro H''; apply (@InA_In _ R) in H''; intuition.
 Qed.
+
+Lemma push_if_existT {A} (P : A -> Type) (b : bool) (x y : sigT P)
+: (if b then x else y)
+  = existT P
+           (if b then (projT1 x) else (projT1 y))
+           (if b as b return P (if b then (projT1 x) else (projT1 y))
+            then projT2 x
+            else projT2 y).
+Proof.
+  destruct b, x, y; reflexivity.
+Defined.
+
+(** TODO: Find a better place for these *)
+Lemma fold_right_projT1 {A B X} (P : A -> Type) (init : A * B) (ls : list X) (f : X -> A -> A) (g : X -> A -> B -> B) pf pf'
+: List.fold_right (fun (x : X) (acc : A * B) =>
+                     (f x (fst acc), g x (fst acc) (snd acc)))
+                  init
+                  ls
+  = let fr := List.fold_right (fun (x : X) (acc : sigT P * B) =>
+                                 (existT P (f x (projT1 (fst acc))) (pf' x acc),
+                                  g x (projT1 (fst acc)) (snd acc)))
+                              (existT P (fst init) pf, snd init)
+                              ls in
+    (projT1 (fst fr), snd fr).
+Proof.
+  revert init pf.
+  induction ls; simpl; intros [? ?]; trivial; simpl.
+  intro.
+  simpl in *.
+  erewrite IHls; simpl.
+  reflexivity.
+Qed.
+
+Lemma fold_right_projT1' {A X} (P : A -> Type) (init : A) (ls : list X) (f : X -> A -> A) pf pf'
+: List.fold_right f init ls
+  = projT1 (List.fold_right (fun (x : X) (acc : sigT P) =>
+                               existT P (f x (projT1 acc)) (pf' x acc))
+                            (existT P init pf)
+                            ls).
+Proof.
+  revert init pf.
+  induction ls; simpl; intros; trivial; simpl.
+  simpl in *.
+  erewrite IHls; simpl.
+  reflexivity.
+Qed.
+
+Global Add Parametric Morphism {A B} : (@List.fold_right A B)
+    with signature pointwise_relation _ (pointwise_relation _ eq) ==> eq ==> eq ==> eq
+      as fold_right_f_eq_mor.
+Proof.
+  unfold pointwise_relation; intros.
+  let a := match goal with a : A |- _ => constr:a end in
+  revert a.
+  let ls := match goal with ls : list _ |- _ => constr:ls end in
+  induction ls; simpl; trivial.
+  intros.
+  repeat match goal with
+           | [ H : _ |- _ ] => rewrite H
+         end.
+  reflexivity.
+Qed.
