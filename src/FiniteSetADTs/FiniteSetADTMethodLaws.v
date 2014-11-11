@@ -126,6 +126,18 @@ Section method_laws.
     Proof.
       handle_methods; t.
     Qed.
+
+    Lemma AbsR_ToEnsemble_In S0 fs x (H : S0 ≃ fs)
+    : S0 ≃ fst (CallMethod (projT1 FiniteSetImpl) sIn fs x).
+    Proof.
+      handle_methods; t.
+    Qed.
+
+    Lemma AbsR_ToEnsemble_Size S0 fs (H : S0 ≃ fs)
+    : S0 ≃ fst (CallMethod (projT1 FiniteSetImpl) sSize fs tt).
+    Proof.
+      handle_methods; t.
+    Qed.
   End AbsR.
 
   Lemma Same_set_ToEnsemble_AbsR S0 fs (H : S0 ≃ fs)

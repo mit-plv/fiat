@@ -3,6 +3,7 @@ Require Import Coq.Strings.String Coq.Sets.Ensembles Coq.Sets.Finite_sets Coq.Li
 Require Import ADTSynthesis.ADT ADTSynthesis.ADT.ComputationalADT ADTSynthesis.ADTRefinement.Core ADTSynthesis.ADTNotation ADTSynthesis.ADTRefinement.GeneralRefinements ADTSynthesis.Common.AdditionalEnsembleDefinitions ADTSynthesis.Common.AdditionalEnsembleLemmas ADTSynthesis.Computation.
 Require Export ADTSynthesis.FiniteSetADTs.FiniteSetADT.
 Require Import ADTSynthesis.Common ADTSynthesis.Common.Ensembles ADTSynthesis.Common.Ensembles.Tactics ADTSynthesis.ComputationalEnsembles.
+Require Import ADTSynthesis.FiniteSetADTs.FiniteSetADTMethodLaws.
 
 (** TODO: Move this elsewhere *)
 Notation FullySharpenedComputation spec
@@ -40,6 +41,48 @@ Section FiniteSetHelpers.
          (CallConstructor (projT1 FiniteSetImpl) sEmpty tt,
           a)
          ls.
+
+  Definition ValidFiniteSetAndFunctionOfList_body {A} (f : W -> A -> A)
+  : W
+    -> (sigT (fun fs => sig (fun S0 => AbsR (projT2 FiniteSetImpl) S0 fs))) * A
+    -> (sigT (fun fs => sig (fun S0 => AbsR (projT2 FiniteSetImpl) S0 fs))) * A.
+  Proof.
+    refine (fun w xs_acc =>
+              let xs := fst xs_acc in
+              let acc := snd xs_acc in
+              ((if (snd (CallMethod (projT1 FiniteSetImpl) sIn (projT1 xs) w) : bool)
+                then xs
+                else (existT _ (fst (CallMethod (projT1 FiniteSetImpl) sAdd (projT1 xs) w)) _)),
+               (if (snd (CallMethod (projT1 FiniteSetImpl) sIn (projT1 xs) w) : bool)
+                then acc
+                else f w acc))).
+    abstract (
+        destruct xs_acc as [[? ?] ?]; subst_body; simpl in *; destruct_head sig;
+        eexists;
+        apply AbsR_ToEnsemble_Add;
+        eassumption
+      ).
+  Defined.
+
+  Definition ValidFiniteSetAndFunctionOfList {A} (f : W -> A -> A) (a : A)
+             (ls : list W)
+  : (sigT (fun fs => sig (fun S0 => AbsR (projT2 FiniteSetImpl) S0 fs))) * A.
+  Proof.
+    refine (List.fold_right
+              (ValidFiniteSetAndFunctionOfList_body f)
+              (existT (fun fs => sig (fun S0 => AbsR (projT2 FiniteSetImpl) S0 fs))
+                      (CallConstructor (projT1 FiniteSetImpl) sEmpty tt)
+                      _,
+               a)
+              ls);
+    eexists; apply AbsR_ToEnsemble_Empty.
+  Defined.
+
+  Definition FiniteSetAndFunctionOfList_ValidFiniteSetAndFunctionOfList {A} f a ls
+  : @FiniteSetAndFunctionOfList A f a ls
+    = (projT1 (fst (@ValidFiniteSetAndFunctionOfList A f a ls)), snd (@ValidFiniteSetAndFunctionOfList A f a ls)).
+  Proof.
+  Admitted.
 
   Definition FiniteSetAndListOfList (ls : list W)
     := FiniteSetAndFunctionOfList (@cons _) nil ls.

@@ -13,12 +13,6 @@ Require Import ADTSynthesis.ADTNotation.
 Require Import ADTSynthesis.FiniteSetADTs.FiniteSetADT.
 
 Open Scope string_scope.
-Definition sEmpty := "Empty".
-Definition sAdd := "Add".
-Definition sRemove := "Remove".
-Definition sIn := "In".
-Definition sSize := "Size".
-Definition sToEnsemble := "ToEnsemble".
 
 Section runsto_FiniteSet.
 
