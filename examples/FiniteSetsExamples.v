@@ -565,13 +565,9 @@ Proof.
   
   sharpen computation with FiniteSet implementation := FiniteSetImpl.
 
-  Time compile. (* 47 s *)
+  compile.
   
-  admit.
-
-   unfold Fold.
-
-  finish compiling.
+  finish compiling. 
 Qed.
 
 Definition sumAllImpl (FiniteSetImpl : FullySharpened FiniteSetSpec) (ls : list W)
