@@ -318,7 +318,6 @@ Section compile_FiniteSet_Methods.
       velt <> vens ->
       vens <> vdiscard ->
       velt <> vdiscard ->
-      (adts) [vens >> ADT (FEnsemble s)] ->
       (scas) [velt >> SCA ADTValue w'] ->
       refine
         (Prog (env := env) knowledge scas scas
@@ -716,7 +715,6 @@ Section compile_FiniteSet_Methods.
       ~ StringMap.In vsize adts ->
       ~ StringMap.In vens scas ->
       vens <> vsize ->
-      adts[vens >> AxSpec.ADT (FEnsemble s)] ->
       refine (@Prog _ env knowledge
                     scas
                     ([vsize >sca> snd (CallMethod (projT1 FiniteSetImpl) sSize r u)] ::scas)
@@ -726,23 +724,23 @@ Section compile_FiniteSet_Methods.
   Proof.
     compile_helper runsto_sSize.
     destruct_ex; split_and; subst.
-    rewrite H10.
+    rewrite H9.
     destruct (AbsImpl_sSize _ _ u s_r_eqv).
     unfold cardinal in *; destruct_ex; split_and; subst; simpl in *.
-    rewrite H9. rewrite SomeSCAs_chomp; eauto; eauto using add_sca_pop_adts; reflexivity.
+    rewrite H8. rewrite SomeSCAs_chomp; eauto; eauto using add_sca_pop_adts; reflexivity.
 
     unfold FiatADTs.cardinal in *.
     destruct_ex. destruct_pairs. exists x.
     split; trivial.
-    rewrite EnsembleListEquivalence_Same_set; try apply H8.
+    rewrite EnsembleListEquivalence_Same_set; try apply H7.
     symmetry; eapply Same_set_AbsImpl; assumption.
     
     destruct_ex; split_and; subst.
-    rewrite H10.
+    rewrite H9.
     apply add_adts_pop_sca; map_iff_solve trivial.
     destruct (AbsImpl_sSize _ _ u s_r_eqv) as [r_eqv _].
     rewrite r_eqv; apply AllADTs_chomp_remove.
-    rewrite H7; trickle_deletion; reflexivity.    
+    rewrite H6; trickle_deletion; reflexivity.    
   Qed.
 
 End compile_FiniteSet_Methods.
