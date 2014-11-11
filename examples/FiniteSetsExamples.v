@@ -276,8 +276,8 @@ Tactic Notation "begin" "sharpening" "facade" "program" :=
   
 Lemma compile_FiniteSetAndFunctionOfList_SCA (FiniteSetImpl : FullySharpened FiniteSetSpec)
       f (x : W) ls
-      tis_empty thead vadt flistrev flistempty flistpop fsetempty fsetdelete
-      {vret}
+      tis_empty thead vadt {vret}
+      flistrev flistempty flistpop fsetempty fsetdelete
       {env}
       {vls} (vdiscard: StringMap.key)
       init_knowledge
@@ -325,7 +325,12 @@ Lemma compile_FiniteSetAndFunctionOfList_SCA (FiniteSetImpl : FullySharpened Fin
                         (fun xs_acc =>
                            FEnsemble (to_ensemble FiniteSetImpl (projT1 (fst xs_acc)))) };
           ret
-            (Fold thead tis_empty vls flistpop flistempty cloop)%facade).
+            (Seq
+               (Seq (Call vdiscard flistrev (cons vls nil))
+                    (Seq (Assign vret (Const x))
+                         (Seq (Call vadt fsetempty nil)
+                              (Fold thead tis_empty vls flistpop flistempty cloop))))
+               (Call tis_empty fsetdelete (cons vadt nil)))).
 Proof.
   intros.
   rewrite FiniteSetAndFunctionOfList_ValidFiniteSetAndFunctionOfList.
@@ -342,7 +347,9 @@ Proof.
   rewrite add_add_add'.
   setoid_rewrite (compile_fold_pair env _ snd (fun x => FEnsemble (to_ensemble _ (projT1 (fst x)))) vls vret vadt thead tis_empty flistpop flistempty); try first [ eassumption | solve [map_iff_solve intuition] | vacuum ].
 
-  simpl; rewrite General.refine_under_bind.
+  simpl.
+  unfold W.
+  rewrite General.refine_under_bind (* Apply should work here *).
 
   Focus 2.
   intros.
@@ -365,6 +372,30 @@ Proof.
   apply AbsR_ToEnsemble_In; trivial.
 Qed.
 
+
+Lemma compile_list_delete_no_ret :
+  forall vret vseq env f seq knowledge scas adts adts',
+    GLabelMap.find f env = Some (Axiomatic List_delete) ->
+    ~ StringMap.In vret adts ->
+    ~ StringMap.In vret scas ->
+    ~ StringMap.In vseq scas ->
+    adts[vseq >> ADT (List seq)] ->
+    StringMap.Equal adts' (StringMap.remove vseq adts) ->
+    refine (@Prog _ env knowledge
+                  scas scas
+                  adts adts')
+           (ret (Call vret f (vseq :: nil)))%facade.
+Proof.
+  compile_list_helper runsto_delete.
+
+  eauto using SomeSCAs_chomp_left, SomeSCAs_chomp, SomeSCAs_not_In_remove.
+  
+  apply add_adts_pop_sca.
+  map_iff_solve intuition.
+  eauto using AllADTs_chomp_remove'.
+Qed.
+
+(*
 Lemma compile_list_delete_no_return
       (vret : StringMap.key)
       (env : GLabelMap.t (FuncSpec ADTValue))
@@ -374,6 +405,7 @@ Lemma compile_list_delete_no_return
 : GLabelMap.find (elt:=FuncSpec ADTValue) f env =
   Some (Axiomatic List_delete) ->
   ~ StringMap.In (elt:=Value ADTValue) vret adts ->
+  ~ StringMap.In (elt:=Value ADTValue) vseq adts ->
   ~ StringMap.In (elt:=Value ADTValue) vseq scas ->
   ~ StringMap.In (elt:=Value ADTValue) vret scas ->
   vret <> vseq ->
@@ -382,9 +414,10 @@ Lemma compile_list_delete_no_return
     (Return (Call vret f (cons vseq nil))).
 Proof.
   intros.
+  eapply compile_list_delete_no_ret; eauto; try vacuum.
   (* Same as compile_list_delete_no_ret ?*)
 Admitted.
-
+*)
 
 Ltac new_variable_name base :=
   let base' := (eval compute in base) in
@@ -534,18 +567,18 @@ Ltac compile_step_same_adts_handle_first_post_sca :=
         | Word.wmult _ _
           => (let t1 := new_variable_name "$t1" in
               let t2 := new_variable_name "$t2" in
-              first [ rewrite (@compile_binop_nicer _ _ IL.Times var t1 t2 _ _ _ prescas)
-                    | setoid_rewrite (@compile_binop_nicer _ _ IL.Times var t1 t2 _ _ _ prescas) ]; after_tac)
+              first [ rewrite (@compile_binop_generic _ _ IL.Times var t1 t2 _ _ _ prescas)
+                    | setoid_rewrite (@compile_binop_generic _ _ IL.Times var t1 t2 _ _ _ prescas) ]; after_tac)
         | Word.wplus _ _
           => (let t1 := new_variable_name "$t1" in
               let t2 := new_variable_name "$t2" in
-              first [ rewrite (@compile_binop_nicer _ _ IL.Plus var t1 t2 _ _ _ prescas)
-                    | setoid_rewrite (@compile_binop_nicer _ _ IL.Plus var t1 t2 _ _ _ prescas) ]; after_tac)
+              first [ rewrite (@compile_binop_generic _ _ IL.Plus var t1 t2 _ _ _ prescas)
+                    | setoid_rewrite (@compile_binop_generic _ _ IL.Plus var t1 t2 _ _ _ prescas) ]; after_tac)
         | Word.wminus _ _
           => (let t1 := new_variable_name "$t1" in
               let t2 := new_variable_name "$t2" in
-              first [ rewrite (@compile_binop_nicer _ _ IL.Minus var t1 t2 _ _ _ prescas)
-                    | setoid_rewrite (@compile_binop_nicer _ _ IL.Minus var t1 t2 _ _ _ prescas) ]; after_tac)
+              first [ rewrite (@compile_binop_generic _ _ IL.Minus var t1 t2 _ _ _ prescas)
+                    | setoid_rewrite (@compile_binop_generic _ _ IL.Minus var t1 t2 _ _ _ prescas) ]; after_tac)
         | nat_as_word _
           => (first [ rewrite (compile_constant var)
                     | setoid_rewrite (compile_constant var) ]; after_tac)
@@ -599,11 +632,11 @@ Ltac guarded_compile_step_same_scas :=
         (lazymatch constr:((preadts, postadts)) with
         | ([ ?var >adt> List ?val ]::postadts, _)
           => (let vret := new_variable_name "$dummy_ret" in
-              rewrite (@compile_list_delete_no_return vret); try reflexivity)
+              rewrite (@compile_list_delete_no_ret vret var); try reflexivity)
         | ([ ?var >adt> FEnsemble (to_ensemble ?impl ?fs)]::?rest,
            [ ?var >adt> FEnsemble (to_ensemble ?impl (fst ((CallMethod (projT1 ?impl) sAdd) ?fs ?head)))]::?rest')
           => (let dummy := new_variable_name "$dummy_ret" in
-              setoid_rewrite (@compile_sAdd_better dummy))
+              setoid_rewrite (@compile_sAdd_no_ret impl dummy _ var))
          end))
    end).
 
@@ -663,29 +696,10 @@ Proof.
 
   finish sharpening computation.
 
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-  
   Time compile. (* 47 s *)
 
   admit.
-Defined.
-
+Admitted.
 
 Definition sumAllImpl (FiniteSetImpl : FullySharpened FiniteSetSpec) (ls : list W)
 : FullySharpenedComputation (sumAllSpec ls).
