@@ -43,7 +43,7 @@ Ltac runsto_prelude :=
   Proof.
     runsto_prelude.
   Qed.
-
+  
   (* Specification of state after running sAdd. *)
   Lemma runsto_sAdd
   : forall (s_model : Ensemble W)
@@ -89,11 +89,8 @@ Ltac runsto_prelude :=
 
   (* Specification of state after running sDelete. *)
   Lemma runsto_sDelete
-  : forall (s_model : Ensemble W)
-           (s_label : StringMap.key)
-           (x_label : StringMap.key)
+  : forall (s_label x_label : StringMap.key)
            env (st st' : State ADTValue) f,
-      st [s_label >> AxSpec.ADT (FEnsemble s_model)] ->
       GLabelMap.find (elt:=FuncSpec _) f env = Some (Axiomatic FEnsemble_sDelete) ->
       RunsTo env (Call x_label f (s_label :: nil)) st st' ->
       StringMap.Equal st'
@@ -307,6 +304,40 @@ Section compile_FiniteSet_Methods.
     apply AllADTs_chomp_remove.
     rewrite H12; trickle_deletion; reflexivity.
   Qed.
+  
+  Lemma compile_sAdd_no_ret :
+    forall  vdiscard (FiniteSetImpl : FullySharpened FiniteSetSpec)
+            (env : GLabelMap.t (FuncSpec ADTValue))
+            (vens velt : StringMap.key)
+            (r : Core.Rep (ComputationalADT.LiftcADT (projT1 FiniteSetImpl)))
+            (s : Core.Rep FiniteSetSpec) (f : GLabelMap.key)
+            (scas adts : StringMap.t (Value ADTValue))
+            (knowledge : Prop) (w' : Memory.W),
+      Core.AbsR (projT2 FiniteSetImpl) s r ->
+      GLabelMap.find (elt:=FuncSpec ADTValue) f env =
+      Some (Axiomatic FEnsemble_sAdd) ->
+      ~ StringMap.In (elt:=Value ADTValue) vdiscard adts ->
+      ~ StringMap.In (elt:=Value ADTValue) vens scas ->
+      ~ StringMap.In (elt:=Value ADTValue) vdiscard scas ->
+      velt <> vens ->
+      vens <> vdiscard ->
+      velt <> vdiscard ->
+      (adts) [vens >> ADT (FEnsemble s)] ->
+      (scas) [velt >> SCA ADTValue w'] ->
+      refine'
+        (Prog (env := env) knowledge scas scas
+              ([vens >> ADT (FEnsemble (AbsImpl FiniteSetImpl r))]::adts)
+              ([vens >>
+                     ADT
+                     (FEnsemble
+                        (AbsImpl FiniteSetImpl
+                                 (fst ((CallMethod (projT1 FiniteSetImpl) sAdd) r w'))))]
+                 ::adts)) (ret (Call vdiscard f (cons vens (cons velt nil)))).
+  Proof.
+    intros.
+    apply (drop_retvar (vret := vdiscard)); eauto.
+    eapply compile_sAdd; eauto.
+  Qed.
 
     (* Rinse, Wash, Repeat *)
 
@@ -348,6 +379,25 @@ Section compile_FiniteSet_Methods.
       unfold Setminus; intuition; exists s; eauto.
   Qed.
 
+  Lemma compile_AbsImpl_sDelete
+  : forall {env},
+    forall vensemble vdiscard f,
+    forall scas adts knowledge u,
+      vensemble <> vdiscard ->
+      GLabelMap.find f env = Some (Axiomatic FEnsemble_sDelete) ->
+      ~ StringMap.In vensemble adts ->
+      ~ StringMap.In vdiscard adts ->
+      ~ StringMap.In vdiscard scas ->
+      ~ StringMap.In vensemble scas ->
+      refine (@Prog _ env knowledge scas scas
+                    ([vensemble >adt> FEnsemble (AbsImpl u)]::adts) adts)
+             (ret (Call vdiscard f (vensemble :: nil))).
+  Proof.
+    compile_helper runsto_sDelete.
+    eauto using SomeSCAs_chomp_left, SomeSCAs_not_In_remove.
+    eapply add_adts_pop_sca; try eassumption.
+    rewrite H8; trickle_deletion. rewrite <- not_in_remove_eq; first [ eassumption | reflexivity ].
+  Qed.
 
   Lemma compile_AbsImpl_sEmpty
   : forall {env},
