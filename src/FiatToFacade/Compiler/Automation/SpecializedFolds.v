@@ -119,7 +119,7 @@ Proof.
 Qed.
 
 Lemma compile_FiniteSetAndFunctionOfList_ADT (FiniteSetImpl : FullySharpened FiniteSetSpec)
-      f (x : W) ls
+      f ls
       tis_empty thead vadt vdiscard {vret}
       flistrev flistempty flistpop flistnew fsetempty fsetdelete
       {env}

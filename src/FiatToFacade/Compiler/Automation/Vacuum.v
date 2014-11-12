@@ -5,7 +5,7 @@ Require Import Computation.ApplyMonad.
 Ltac find_label_in_env :=
   try match goal with
         | |- GLabelMap.find _ basic_imports_wrapped = _ =>
-          rewrite basic_imports_yield_basic_env; unfold basic_env
+          try rewrite basic_imports_yield_basic_env; unfold basic_env
       end;
   unfold AddPair, MakePair;
   simpl;
@@ -26,6 +26,7 @@ Ltac vacuum :=
     | [ |- context[SCALoopBodyProgCondition] ] => progress (unfold SCALoopBodyProgCondition; intros; simpl)
     | [ |- context[ADTLoopBodyProgCondition] ] => progress (unfold ADTLoopBodyProgCondition; intros; simpl)
     | [ |- context[PairLoopBodyProgCondition] ] => progress (unfold PairLoopBodyProgCondition; intros; simpl)
+    | [ |- context[ADTPairLoopBodyProgCondition] ] => progress (unfold ADTPairLoopBodyProgCondition; intros; simpl)
     | [ |- ?m[?k >> ?v] ] => solve [map_iff_solve_evar intuition]
     | [ |- SomeSCAs _ ∅ ] => solve [apply SomeSCAs_empty]
     | [ |- SomeSCAs _ _ ] => eassumption

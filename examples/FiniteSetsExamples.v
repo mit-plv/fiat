@@ -72,157 +72,6 @@ Require Import List.
 Require Import FiniteSetADTs.FiniteSetADTMethodLaws.
 Require Import FiatToFacade.Compiler.Automation.Vacuum.
 
-(** Now we spec out two examples, the count of the unique elements in
-    a list, and the sum of the unique elements in a list. *)
-
-(*
-
-(** Now we refine the implementations. *)
-Definition countUniqueImpl (FiniteSetImpl : FullySharpened FiniteSetSpec) (ls : list W)
-: FullySharpenedComputation (countUniqueSpec ls).
-Proof.
-  (** We turn the list into a finite set, and then call 'size' *)
-  begin sharpening computation.
-
-  (** QUESTION: should we add an extra layer of non-determinism at the
-                end, so that we can do things up to, e.g., [Same_set],
-                and so that [Add] is associative and we can swap
-                [fold_left] and [fold_right] without a [rev]? *)
-
-  sharpen computation with FiniteSet implementation := FiniteSetImpl.
-
-  pose (["$ls" >adt> List (rev ls)]::∅) as adts.
-  rewrite (start_sca adts "$ret" adts); try vacuum.
-
-  unfold FiniteSetOfList; simpl.
-  rewrite <- (@rev_involutive _ ls).
-  rewrite !fold_left_rev_right.
-  unfold adts.
-
-  Unset Implicit Arguments.
-  Lemma prepare_sSize' :
-    forall {env knowledge} vens {vret}
-           (FiniteSetImpl : FullySharpened FiniteSetSpec)
-           (r : Core.Rep (ComputationalADT.LiftcADT (projT1 FiniteSetImpl)))
-           (u : fst (ADTSig.MethodDomCod FiniteSetSig ``(sSize))),
-    forall init_adts inter_adts inter_adts' final_adts init_scas inter_scas final_scas,
-    refine
-      (@Prog _ env knowledge
-             init_scas ([vret >> SCA _ (snd ((CallMethod (projT1 FiniteSetImpl) sSize) r u))]::final_scas)
-             init_adts final_adts)
-      (pprep <- (@Prog _ env knowledge
-                       init_scas inter_scas
-                       init_adts ([vens >adt> FEnsemble (AbsImpl FiniteSetImpl r)]::inter_adts));
-       pscas <- (@Prog _ env knowledge
-                       inter_scas ([vret >> SCA _ (snd ((CallMethod (projT1 FiniteSetImpl) sSize) r u))]::inter_scas)
-                       ([vens >adt> FEnsemble (AbsImpl FiniteSetImpl r)]::inter_adts) inter_adts');
-       pclean <- (@Prog _ env knowledge
-                        ([vret >> SCA _ (snd ((CallMethod (projT1 FiniteSetImpl) sSize) r u))]::inter_scas)
-                        ([vret >> SCA _ (snd ((CallMethod (projT1 FiniteSetImpl) sSize) r u))]::final_scas)
-                        inter_adts' final_adts);
-       ret (pprep; pscas; pclean)%facade)%comp.
-  Proof.
-
-  unfold refine, Prog, ProgOk; unfold_coercions; intros.
-  inversion_by computes_to_inv; constructor;
-  split; subst; destruct_pairs.
-
-  + repeat (safe_seq; intros); specialize_states; assumption.
-  + intros; repeat inversion_facade; specialize_states; intuition.
-  Qed.
-
-  rewrite (prepare_sSize' "$ens"); vacuum.
-
-  rewrite (compile_fold_adt _ _ (fun x => (FEnsemble (AbsImpl FiniteSetImpl x))) _ _ "$head" "$is_empty"); vacuum.
-
-  rewrite pull_forall_loop_adt; vacuum.
-
-  rewrite compile_AbsImpl_sEmpty; vacuum.
-
-  rewrite compile_sSize; try vacuum.
-
-  (* Do the two deletions *)
-
-  Focus 6.
-
-  rewrite pull_if_FEnsemble.
-  setoid_rewrite (compile_if_adt "$cond").
-
-  setoid_rewrite compile_sIn; try vacuum.
-
-  rewrite drop_sca; vacuum.
-
-  Lemma eq_after_In :
-    forall FiniteSetImpl: FullySharpened FiniteSetSpec,
-    forall st key,
-      to_ensemble _ (fst ((CallMethod (projT1 FiniteSetImpl) sIn) st key))
-      = to_ensemble _ st.
-  Proof.
-    intros.
-    assert (is_valid : exists S0, Core.AbsR (projT2 FiniteSetImpl) S0 st) by admit.
-    apply Coq.Sets.Ensembles.Extensionality_Ensembles.
-    destruct is_valid as [S0 H].
-    transitivity S0; [ | symmetry ];
-    apply Same_set_ToEnsemble_AbsR; trivial.
-    apply AbsR_ToEnsemble_In; trivial.
-  Qed.
-
-  setoid_rewrite eq_after_In.
-  rewrite drop_sca; vacuum.
-  rewrite drop_sca; vacuum.
-  rewrite no_op; vacuum.
-
-  rewrite drop_sca; vacuum.
-  setoid_rewrite compile_add_intermediate_scas; vacuum.
-  rewrite (compile_sAdd _ _ "$head" "$discard"); try vacuum.
-  rewrite drop_sca; vacuum.
-  do 2 (rewrite drop_sca; vacuum).
-  rewrite no_op; vacuum.
-
-Admitted.
-
-  (*
-  finish sharpening computation.
-
-Defined.
-*)
-
-Definition countUniqueImpl' (FiniteSetImpl : FullySharpened FiniteSetSpec) (ls : list W)
-: FullySharpenedComputation (countUniqueSpec' ls).
-Proof.
-  (** We turn the list into a finite set, then back into a list, and then call [Datatypes.length]. *)
-  (** TODO: Do we care about optimizing this further at this stage? *)
-  begin sharpening computation.
-
-  sharpen computation with FiniteSet implementation := FiniteSetImpl.
-
-  (* TODO: convert from_nat length to a fold *)
-
-  finish sharpening computation.
-Defined.
-
-Definition uniqueizeImpl (FiniteSetImpl : FullySharpened FiniteSetSpec) (ls : list W)
-: FullySharpenedComputation (uniqueizeSpec ls).
-Proof.
-  begin sharpening computation.
-
-  sharpen computation with FiniteSet implementation := FiniteSetImpl.
-  etransitivity.
-
-  pose (["$ls" >adt> List (rev ls)]::∅) as adts.
-  rewrite (start_adt adts "$ret" List List_inj' adts); try vacuum.
-
-  unfold UniqueListOfList, FunctionOfList, FiniteSetAndFunctionOfList; simpl.
-  (* This uses a fold with two ADTs. *)
-
-Admitted.
-(*
-  finish sharpening computation.
-Defined.
-*)
-*)
-(** And now we do the same for summing. *)
-
 Require Import Facade.CompileDFacade.
 Require Import CompileUnit.
 Require Import Compiler.Automation.FacadeHelpers.
@@ -282,7 +131,7 @@ Proof.
   scas_adts_mapsto;
   unfold StringMapFacts.Submap;
   setoid_rewrite <- StringMapFacts.find_mapsto_iff; intros *;
-  map_iff_solve intuition.
+  map_iff_solve ltac:(intuition; subst; intuition).
 
   split;
     [ destruct_pairs;
@@ -294,14 +143,35 @@ Qed.
 Definition FullySharpenedFacadeProgramOnListReturningWord spec :=
   CompileUnit ProgramOnListReturningWord_pre (ProgramOnListReturningWord_post spec).
 
+Check Build_CompileUnit.
 Lemma CompileUnit_construct av pre_cond post_cond imports:
   (sigT (fun prog =>
            PairOfConditionsForCompileUnit av prog pre_cond post_cond imports /\
-           (is_disjoint (assigned prog) (StringSetFacts.of_list argvars) = true /\
-            is_syntax_ok prog = true)) ->
+           ((let imported_module_names :=
+                                  map (fun x : String.string * String.string * AxiomaticSpec av => fst (fst x))
+                                      (GLabelMap.elements imports)
+                              in (forallb  (fun x : String.string =>
+                                              negb (ListFacts3.string_bool "dfmodule" x))
+                                           imported_module_names &&
+                                           forallb NameDecoration.is_good_module_name
+                                           imported_module_names)%bool = true) /\
+            sigT (fun p : is_disjoint (assigned prog) (StringSetFacts.of_list argvars) = true =>
+                    sigT (fun q : is_syntax_ok prog = true =>
+                            (FModule.is_syntax_ok
+                               (compile_op
+                                  {|
+                                    ArgVars := argvars;
+                                    RetVar := "ret";
+                                    Body := prog;
+                                    args_no_dup := eq_refl;
+                                    ret_not_in_args := eq_refl;
+                                    DFacade.no_assign_to_args := p;
+                                    args_name_ok := eq_refl;
+                                    ret_name_ok := eq_refl;
+                                    DFacade.syntax_ok := q |}) = true))))) ->
    CompileUnit pre_cond post_cond).
 Proof.
-  intros [ prog ((? & ?) & ? & ?) ].
+  intros [ prog ((? & ?) & ? & ? & ? & ?) ].
   econstructor; eauto.
 Qed.
 
@@ -492,6 +362,52 @@ Ltac guarded_compile_step_same_adts :=
          end))
    end).
 
+  Unset Implicit Arguments.
+
+  Lemma compile_list_push_generic :
+    forall {env knowledge}
+           vseq {vhead} vret head seq
+           scas adts adts' f,
+      GLabelMap.find (elt:=FuncSpec ADTValue) f env = Some (Axiomatic List_push) ->
+      vhead <> vseq ->
+      vseq <> vret ->
+      ~ StringMap.In vret adts ->
+      ~ StringMap.In vret scas ->
+      ~ StringMap.In vseq scas ->
+      scas[vhead >> SCA _ head] ->
+      adts[vseq >> ADT (List seq)] ->
+      StringMap.Equal adts' ([vseq >adt> List (head :: seq)]::adts) ->
+    refine (@Prog _ env knowledge
+                  scas scas
+                  adts adts')
+           (ret (Call vret f (vseq :: vhead :: nil))).
+  Proof.
+    unfold refine, Prog, ProgOk; intros.
+    constructor; intros; destruct_pairs;
+    inversion_by computes_to_inv; subst;
+    specialize_states; scas_adts_mapsto.
+
+    split.
+    
+    econstructor; try eassumption.
+    simpl; unfold sel.
+    repeat subst_find; reflexivity.
+
+    eapply not_in_adts_not_mapsto_adt; eauto.
+    simpl; eexists; eexists; reflexivity.
+
+    intros * h; eapply runsto_cons in h; eauto.
+    split; rewrite_Eq_in_goal.
+
+    eapply SomeSCAs_chomp_left; eauto.
+    eapply add_sca_pop_adts; eauto.
+    
+    apply add_adts_pop_sca; map_iff_solve trivial.
+    rewrite H7; map_iff_solve intuition.
+    rewrite H7; apply AllADTs_chomp.
+    assumption.
+  Qed.
+  
 Ltac guarded_compile_step_same_scas :=
   idtac;
   let after_tac := (idtac; vacuum) in
@@ -500,14 +416,44 @@ Ltac guarded_compile_step_same_scas :=
   | (?prescas, ?postscas, ?preadts, ?postadts)
     => (test unify prescas postscas;
         not unify preadts postadts;
-        (lazymatch constr:((preadts, postadts)) with
-        | ([ ?var >adt> List ?val ]::postadts, _)
+        (match constr:((preadts, postadts)) with
+        | ([?var >adt> List ?val]::postadts, _)
           => (let vret := new_variable_name "$dummy_ret" in
               rewrite (@compile_list_delete_no_ret vret var); try reflexivity)
+               
+        | ([?k >adt> ?v]::[?var >adt> List ?val]::?tail, [?k >adt> ?v]::?tail)
+          => (let vret := new_variable_name "$dummy_ret" in
+              rewrite (@compile_list_delete_no_ret vret var); try reflexivity)
+               
+        | ([?vseq >adt> List ?seq]::_, [?vseq >adt> List (?head::?seq)]::_)
+          => (let vret := new_variable_name "$dummy_ret" in
+              setoid_rewrite (compile_list_push_generic vseq vret head seq); try reflexivity)
+               
+        | ([?k >adt> ?v]::[?vseq >adt> List ?seq]::?tail, [?k >adt> ?v]::[?vseq >adt> List (?head::?seq)]::?tail)
+          => (let vret := new_variable_name "$dummy_ret" in
+              setoid_rewrite (compile_list_push_generic vseq vret head seq); try reflexivity)
+               
         | ([ ?var >adt> FEnsemble (to_ensemble ?impl ?fs)]::?rest,
            [ ?var >adt> FEnsemble (to_ensemble ?impl (fst ((CallMethod (projT1 ?impl) sAdd) ?fs ?head)))]::?rest')
           => (let dummy := new_variable_name "$dummy_ret" in
               setoid_rewrite (@compile_sAdd_no_ret impl dummy _ var))
+               
+        | ([?vls >adt> List ?ls]::_,
+           [?var >adt> List (snd (FiniteSetAndFunctionOfList ?impl ?f nil ?ls))]::_)
+          => (let tis_empty := new_variable_name "$is_empty" in
+              let thead     := new_variable_name "$head" in
+              let vadt      := new_variable_name "$adt" in
+              let vdiscard  := new_variable_name "$discard" in
+              let lem       := constr:(@compile_FiniteSetAndFunctionOfList_ADT impl f ls tis_empty thead vadt vdiscard var) in
+              first [ rewrite lem
+                    | setoid_rewrite lem ])
+               
+        | (_, [ ?var >adt> ?val ]::?postadts_tail)
+          => (not is_evar postadts_tail;
+              rewrite compile_add_intermediate_adts_with_ret)
+               (* Introduce an extra step, to deal with the ADTs separately. 
+                  The evar check prevents a simple infinite loop, but does 
+                  not guard against all cases. *)
          end))
    end).
 
@@ -518,9 +464,23 @@ Ltac guarded_compile_step_different_adts_different_scas :=
   | (?prescas, ?postscas, ?preadts, ?postadts)
     => (not unify prescas postscas;
         not unify preadts postadts;
-        setoid_rewrite compile_add_intermediate_scas_with_ret;
-        setoid_rewrite compile_add_intermediate_adts; vacuum (** split into scalars and adts *))
+        first [setoid_rewrite compile_add_intermediate_scas_with_ret
+              |setoid_rewrite compile_add_intermediate_scas];
+        setoid_rewrite compile_add_intermediate_adts (** split into scalars and adts *))
    end).
+
+Lemma pull_forall_loop_adt_pair :
+  forall  acc_type wsca wadt env b loop knowledge
+         scas adts vseq vsca vadt thead tis_empty,
+    (forall head acc seq,
+       refine  { cloop | @ADTPairLoopBodyProgCondition env acc_type loop cloop knowledge
+                                                    scas adts vseq vsca vadt thead tis_empty
+                                                    acc wsca wadt head seq } b) ->
+    refine { cloop | @ADTPairLoopBodyOk env acc_type loop cloop knowledge
+                                     scas adts vseq vsca vadt thead tis_empty wsca wadt }%facade b.
+Proof.
+  eauto using pull_forall.
+Qed.
 
 Ltac compile_step :=
   first [ progress change (Word.word 32) with W
@@ -528,6 +488,7 @@ Ltac compile_step :=
         | progress unfold wplus, wminus in *
         | progress simpl projT1
         | progress simpl proj1_sig
+        | progress unfold UniqueListOfList, FunctionOfList
         | ((** Calling "In" always yields something equivalent to the original
        ADT; it's always safe to simplify with this fact. *)
           rewrite !eq_ToEnsemble_In)
@@ -549,15 +510,357 @@ Ltac compile_step :=
         | (lazymatch goal with
           | [ |- refine (cloop <- { cloop : Stmt | PairLoopBodyOk _ _ _ _ _ _ _ _ _ _ _ _ _ }; _) (ret _) ]
             => (rewrite pull_forall_loop_pair; vacuum)
+          | [ |- refine (cloop <- { cloop : Stmt | ADTPairLoopBodyOk _ _ _ _ _ _ _ _ _ _ _ _ _ }; _) _ ]
+            => (rewrite pull_forall_loop_adt_pair; vacuum)
           | [ |- refine (ret _) (ret _) ]
             => reflexivity
            end)
         | progress vacuum ].
 
+Definition uniqueizeImpl (FiniteSetImpl : FullySharpened FiniteSetSpec) (ls : list W)
+: FullySharpenedComputation (uniqueizeSpec ls).
+Proof.
+  begin sharpening computation.
+
+  sharpen computation with FiniteSet implementation := FiniteSetImpl.
+Notation refine' := refine.  
+  pose (["$ls" >adt> List ls]::∅) as adts.
+
+  etransitivity.
+
+  setoid_rewrite (start_adt adts "$ret" List List_inj' adts).
+  unfold basic_env.
+
+  unfold adts.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+
+  Lemma compile_if_parallel_adts :
+    forall {av env} (vtest vadt vadt' : StringMap.key)
+           (ret_type ret_type' : Type) (wrapper : ret_type -> av) (wrapper' : ret_type' -> av) (test : bool)
+           (init_knowledge : Prop)
+           (init_scas final_scas init_adts post_test_adts final_adts : StringMap.t (Value av))
+           (adttruecase adtfalsecase : ret_type) (adttruecase' adtfalsecase': ret_type'),
+      refine
+        (@Prog av env init_knowledge
+               init_scas final_scas
+               init_adts
+               ([vadt >adt> (wrapper (if test then adttruecase else adtfalsecase))]
+                  ::[vadt' >adt> (wrapper' (if test then adttruecase' else adtfalsecase'))]
+                  ::final_adts))
+        (ptest <- (@Prog av env init_knowledge init_scas
+                         ([vtest >sca> (BoolToW test)]::init_scas)
+                         init_adts post_test_adts);
+         ptrue <- (@Prog av env (init_knowledge /\ test = true)
+                         ([vtest >sca> (BoolToW test)]::init_scas) final_scas
+                         post_test_adts
+                         ([vadt >adt> (wrapper adttruecase)]
+                            ::[vadt' >adt> (wrapper' adttruecase')]
+                            ::final_adts));
+         pfalse <- (@Prog av env (init_knowledge /\ test = false)
+                          ([vtest >sca> (BoolToW test)]::init_scas) final_scas
+                          post_test_adts
+                          ([vadt >adt> (wrapper adtfalsecase)]
+                             ::[vadt' >adt> (wrapper' adtfalsecase')]
+                             ::final_adts));
+         (ret (ptest;
+              If vtest = 0 then
+                pfalse
+              else
+                ptrue)%facade))%comp.
+  Proof.
+  Admitted.
+
+  setoid_rewrite (compile_if_parallel_adts "$cond").
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step. 
+  compile_step.
+  compile_step.
+
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  2:compile_step.
+  2:compile_step.
+  2:compile_step.
+  2:compile_step.
+  2:compile_step.
+  2:compile_step.
+  compile_step.
+  2:compile_step.
+  2:compile_step.
+  2:compile_step.
+  2:compile_step.
+  2:compile_step.
+  3:compile_step.
+  4:compile_step.
+  2:compile_step.
+  3:compile_step.
+  2:compile_step.
+  2:compile_step.
+  2:compile_step.
+  2:compile_step.
+  2:compile_step.
+  2:compile_step.
+  2:compile_step.
+  2:compile_step.
+  2:compile_step.
+  2:compile_step.
+  2:compile_step.
+  2:compile_step.
+  2:compile_step.
+  2:compile_step.
+  2:compile_step.
+  2:compile_step.
+  2:compile_step.
+  2:compile_step.
+  2:compile_step.
+  2:compile_step.
+  2:compile_step.
+  2:compile_step.
+  2:compile_step.
+  2:compile_step.
+  2:compile_step.
+  2:compile_step.
+  2:compile_step.
+  2:compile_step.
+  2:compile_step.
+  2:compile_step.
+
+  apply StringMapFacts.Equal_mapsto_iff.
+
+  intros.
+  StringMapFacts.map_iff.
+  split; 
+  repeat match goal with
+                    | _ => assumption
+                    | _ => intro
+                    | _ => progress destruct_head or
+                    | _ => progress destruct_head and
+                    | _ => progress subst
+                    | _ => progress map_iff_solve' idtac
+                    | _ => reflexivity
+                  end.
+  admit.
+  (*Needs list_cons, and need it to also work if both arguments being changed are in second position.*)
+Admitted.
+
 Tactic Notation "compile" := repeat repeat compile_step.
 
-Tactic Notation "finish" "compiling" := (split; reflexivity). 
+Ltac solve_one_using_reflexivity :=
+  cbv zeta;
+  match goal with
+    | |- sigT ?P =>
+      match type of P with
+        | ?thm -> _ =>
+          let proof := fresh in
+          assert thm as proof; [ | apply (@existT _ P proof) ]
+      end
+    | |- _ /\ _ => split
+    | |- _ = _  => reflexivity
+  end.
 
+Ltac solve_using_reflexivity :=
+  repeat solve_one_using_reflexivity.
+
+Tactic Notation "finish" "compiling" := solve_using_reflexivity. 
+
+(*
+(** Now we spec out two examples, the count of the unique elements in
+    a list, and the sum of the unique elements in a list. *)
+
+(** Now we refine the implementations. *)
+Definition countUniqueImpl (FiniteSetImpl : FullySharpened FiniteSetSpec) (ls : list W)
+: FullySharpenedComputation (countUniqueSpec ls).
+Proof.
+  (** We turn the list into a finite set, and then call 'size' *)
+  begin sharpening computation.
+
+  (** QUESTION: should we add an extra layer of non-determinism at the
+                end, so that we can do things up to, e.g., [Same_set],
+                and so that [Add] is associative and we can swap
+                [fold_left] and [fold_right] without a [rev]? *)
+
+  sharpen computation with FiniteSet implementation := FiniteSetImpl.
+
+  pose (["$ls" >adt> List (rev ls)]::∅) as adts.
+  rewrite (start_sca adts "$ret" adts); try vacuum.
+
+  Unset Implicit Arguments.
+  Lemma prepare_sSize' :
+    forall {env knowledge} vens {vret}
+           (FiniteSetImpl : FullySharpened FiniteSetSpec)
+           (r : Core.Rep (ComputationalADT.LiftcADT (projT1 FiniteSetImpl)))
+           (u : fst (ADTSig.MethodDomCod FiniteSetSig ``(sSize))),
+    forall init_adts inter_adts inter_adts' final_adts init_scas inter_scas final_scas,
+    refine
+      (@Prog _ env knowledge
+             init_scas ([vret >> SCA _ (snd ((CallMethod (projT1 FiniteSetImpl) sSize) r u))]::final_scas)
+             init_adts final_adts)
+      (pprep <- (@Prog _ env knowledge
+                       init_scas inter_scas
+                       init_adts ([vens >adt> FEnsemble (AbsImpl FiniteSetImpl r)]::inter_adts));
+       pscas <- (@Prog _ env knowledge
+                       inter_scas ([vret >> SCA _ (snd ((CallMethod (projT1 FiniteSetImpl) sSize) r u))]::inter_scas)
+                       ([vens >adt> FEnsemble (AbsImpl FiniteSetImpl r)]::inter_adts) inter_adts');
+       pclean <- (@Prog _ env knowledge
+                        ([vret >> SCA _ (snd ((CallMethod (projT1 FiniteSetImpl) sSize) r u))]::inter_scas)
+                        ([vret >> SCA _ (snd ((CallMethod (projT1 FiniteSetImpl) sSize) r u))]::final_scas)
+                        inter_adts' final_adts);
+       ret (pprep; pscas; pclean)%facade)%comp.
+  Proof.
+
+  unfold refine, Prog, ProgOk; unfold_coercions; intros.
+  inversion_by computes_to_inv; constructor;
+  split; subst; destruct_pairs.
+
+  + repeat (safe_seq; intros); specialize_states; assumption.
+  + intros; repeat inversion_facade; specialize_states; intuition.
+  Qed.
+
+  rewrite (prepare_sSize' "$ens"); vacuum.
+
+  unfold FiniteSetOfList; simpl.
+  rewrite <- (@rev_involutive _ ls).
+  rewrite !fold_left_rev_right.
+  unfold adts.
+Admitted. (*
+  rewrite (compile_fold_adt _ _ (fun x => (FEnsemble (AbsImpl FiniteSetImpl x))) _ _ "$head" "$is_empty"); vacuum.
+
+  rewrite pull_forall_loop_adt; vacuum.
+
+  rewrite compile_AbsImpl_sEmpty; vacuum.
+
+  rewrite compile_sSize; try vacuum.
+
+  (* Do the two deletions *)
+
+  Focus 6.
+
+  rewrite pull_if_FEnsemble.
+  setoid_rewrite (compile_if_adt "$cond").
+
+  setoid_rewrite compile_sIn; try vacuum.
+
+  rewrite drop_sca; vacuum.
+
+  setoid_rewrite eq_after_In.
+  rewrite drop_sca; vacuum.
+  rewrite drop_sca; vacuum.
+  rewrite no_op; vacuum.
+
+  rewrite drop_sca; vacuum.
+  setoid_rewrite compile_add_intermediate_scas; vacuum.
+  rewrite (compile_sAdd _ _ "$head" "$discard"); try vacuum.
+  rewrite drop_sca; vacuum.
+  do 2 (rewrite drop_sca; vacuum).
+  rewrite no_op; vacuum.
+
+Admitted.
+*)
+  (*
+  finish sharpening computation.
+
+Defined.
+*)
+
+Definition countUniqueImpl' (FiniteSetImpl : FullySharpened FiniteSetSpec) (ls : list W)
+: FullySharpenedComputation (countUniqueSpec' ls).
+Proof.
+  (** We turn the list into a finite set, then back into a list, and then call [Datatypes.length]. *)
+  (** TODO: Do we care about optimizing this further at this stage? *)
+  begin sharpening computation.
+
+  sharpen computation with FiniteSet implementation := FiniteSetImpl.
+  (* TODO: convert from_nat length to a fold *)
+
+  finish sharpening computation.
+Defined.
+
+Definition uniqueizeImpl (FiniteSetImpl : FullySharpened FiniteSetSpec) (ls : list W)
+: FullySharpenedComputation (uniqueizeSpec ls).
+Proof.
+  begin sharpening computation.
+
+  sharpen computation with FiniteSet implementation := FiniteSetImpl.
+Notation refine' := refine.  
+  pose (["$ls" >adt> List ls]::∅) as adts.
+
+etransitivity.
+setoid_rewrite (start_adt adts "$ret" List List_inj' adts).
+
+unfold adts.
+compile_step.
+compile_step.
+
+pose (@compile_FiniteSetAndFunctionOfList_ADT FiniteSetImpl cons ls "$tis_empty" "$thead" "$adt" "$dummy" "$ret") as ere.
+
+
+idtac;
+  let after_tac := (idtac; vacuum) in
+  let p := get_pre_post_scas_adts_from_goal in
+  (lazymatch p with
+  | (?prescas, ?postscas, ?preadts, ?postadts)
+    =>(test unify prescas postscas;
+        not unify preadts postadts;
+        (lazymatch constr:((preadts, postadts)) with
+        | ([?vls >adt> List ?ls]::_,
+           [?var >adt> List (snd (FiniteSetAndFunctionOfList ?impl ?f nil ?ls))]::_)
+          => (let tis_empty := new_variable_name "$is_empty" in
+              let thead     := new_variable_name "$head" in
+              let vadt      := new_variable_name "$adt" in
+              let vdiscard  := new_variable_name "$discard" in
+              let lem       := constr:(@compile_FiniteSetAndFunctionOfList_ADT impl f (Word.natToWord 32 0) ls tis_empty thead vadt vdiscard var) in
+              pose lem
+)
+         end))
+   end).
+compile_step.
+setoid_rewrite compile_FiniteSetAndFunctionOfList_ADT.
+compile_step.
+compile_step.
+compile_step.
+unfold UniqueListOfList.
+unfold FunctionOfList.
+
+
+rewrite compile_FiniteSetAndFunctionOfList_ADT.
+
+  (* This uses a fold with two ADTs. *)
+
+Admitted.
+(*
+  finish sharpening computation.
+Defined.
+*)
+(** And now we do the same for summing. *)
+*)
 Definition sumUniqueImpl (FiniteSetImpl : FullySharpened FiniteSetSpec)
 : FullySharpenedFacadeProgramOnListReturningWord sumUniqueSpec.
 Proof.
@@ -566,7 +869,7 @@ Proof.
   sharpen computation with FiniteSet implementation := FiniteSetImpl.
 
   compile.
-  
+
   finish compiling.
 Defined.
 
