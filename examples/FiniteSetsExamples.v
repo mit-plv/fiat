@@ -138,12 +138,11 @@ Proof.
       intros; eapply not_in_adts_not_mapsto_adt; eauto;
       try apply not_in_empty
     | repeat eexists; repeat split; first [ reflexivity | eassumption ] ].
-Qed.       
+Defined.
 
 Definition FullySharpenedFacadeProgramOnListReturningWord spec :=
   CompileUnit ProgramOnListReturningWord_pre (ProgramOnListReturningWord_post spec).
 
-Check Build_CompileUnit.
 Lemma CompileUnit_construct av pre_cond post_cond imports:
   (sigT (fun prog =>
            PairOfConditionsForCompileUnit av prog pre_cond post_cond imports /\
@@ -173,7 +172,7 @@ Lemma CompileUnit_construct av pre_cond post_cond imports:
 Proof.
   intros [ prog ((? & ?) & ? & ? & ? & ?) ].
   econstructor; eauto.
-Qed.
+Defined.
 
 Tactic Notation "begin" "sharpening" "facade" "program" :=
   idtac;

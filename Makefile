@@ -158,7 +158,7 @@ COMPILER_MODULES := \
 	FiatToFacade/Compiler
 
 EXAMPLE_MODULES := \
-	FiniteSetsExamples
+	FiniteSetsExamples ExtractingFiniteSetsExamples
 #	Bookstore \
 	BookstoreSemiAutomatic \
 	Weather \
@@ -256,3 +256,8 @@ repl: examples/repl.ml examples/bookstore.cmxa
 
 naiverepl: examples/repl.ml examples/bookstorenaive.cmxa
 	cd examples && ocamlopt -w -a -o repl unix.cmxa str.cmxa bookstorenaive.cmxa repl.ml
+
+examples/ExtractingFiniteSetsExamples.vo: examples/ExtractingFiniteSetsExamples.v
+	$(COQC) -I ../bedrock/platform -dont-load-proofs -R src ADTSynthesis -R examples ADTExamples \
+		-R ../bedrock/src Bedrock -R ../bedrock/platform/cito Cito -R ../bedrock/platform/facade Facade \
+		examples/ExtractingFiniteSetsExamples

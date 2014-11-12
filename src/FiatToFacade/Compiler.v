@@ -40,36 +40,36 @@ Notation "k ↦ v" :=
 
 Definition empty_env {av} := GLabelMap.empty (FuncSpec av).
 
-Definition basic_imports := [[[ ("List", "Empty") ⇥ List_empty;
-                                ("List", "Pop") ⇥ List_pop;
-                                ("List", "New") ⇥ List_new;
-                                ("List", "Push") ⇥ List_push;
-                                ("List", "Copy") ⇥ List_copy;
-                                ("List", "Delete") ⇥ List_delete;
-                                ("List", "Rev") ⇥ List_rev;
-                                ("FSet", "Empty") ⇥ FEnsemble_sEmpty;
-                                ("FSet", "Add") ⇥ FEnsemble_sAdd;
-                                ("FSet", "Remove") ⇥ FEnsemble_sRemove;
-                                ("FSet", "Delete") ⇥ FEnsemble_sDelete;
-                                ("FSet", "In") ⇥ FEnsemble_sIn;
-                                ("FSet", "Size") ⇥ FEnsemble_sSize
+Definition basic_imports := [[[ ("ADT", "empty") ⇥ List_empty;
+                                ("ADT", "pop") ⇥ List_pop;
+                                ("ADT", "new") ⇥ List_new;
+                                ("ADT", "push") ⇥ List_push;
+                                ("ADT", "copy") ⇥ List_copy;
+                                ("ADT", "delete") ⇥ List_delete;
+                                ("ADT", "rev") ⇥ List_rev;
+                                ("ADT", "sEmpty") ⇥ FEnsemble_sEmpty;
+                                ("ADT", "sAdd") ⇥ FEnsemble_sAdd;
+                                ("ADT", "sRemove") ⇥ FEnsemble_sRemove;
+                                ("ADT", "sDelete") ⇥ FEnsemble_sDelete;
+                                ("ADT", "sIn") ⇥ FEnsemble_sIn;
+                                ("ADT", "sSize") ⇥ FEnsemble_sSize
                               ]]].
 
 Definition basic_imports_wrapped := (GLabelMap.map (@Axiomatic _) basic_imports).
 
-Definition basic_env := [[[ ("List", "Empty") ↦ List_empty;
-                            ("List", "Pop") ↦ List_pop;
-                            ("List", "New") ↦ List_new;
-                            ("List", "Push") ↦ List_push;
-                            ("List", "Copy") ↦ List_copy;
-                            ("List", "Delete") ↦ List_delete;
-                            ("List", "Rev") ↦ List_rev;
-                            ("FSet", "Empty") ↦ FEnsemble_sEmpty;
-                            ("FSet", "Add") ↦ FEnsemble_sAdd;
-                            ("FSet", "Remove") ↦ FEnsemble_sRemove;
-                            ("FSet", "Delete") ↦ FEnsemble_sDelete;
-                            ("FSet", "In") ↦ FEnsemble_sIn;
-                            ("FSet", "Size") ↦ FEnsemble_sSize
+Definition basic_env := [[[ ("ADT", "empty") ↦ List_empty;
+                            ("ADT", "pop") ↦ List_pop;
+                            ("ADT", "new") ↦ List_new;
+                            ("ADT", "push") ↦ List_push;
+                            ("ADT", "copy") ↦ List_copy;
+                            ("ADT", "delete") ↦ List_delete;
+                            ("ADT", "rev") ↦ List_rev;
+                            ("ADT", "sEmpty") ↦ FEnsemble_sEmpty;
+                            ("ADT", "sAdd") ↦ FEnsemble_sAdd;
+                            ("ADT", "sRemove") ↦ FEnsemble_sRemove;
+                            ("ADT", "sDelete") ↦ FEnsemble_sDelete;
+                            ("ADT", "sIn") ↦ FEnsemble_sIn;
+                            ("ADT", "sSize") ↦ FEnsemble_sSize
                           ]]].
 
 Require Import Cito.GLabelMapFacts.

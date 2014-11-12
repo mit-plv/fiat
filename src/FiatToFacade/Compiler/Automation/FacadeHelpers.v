@@ -45,7 +45,7 @@ Proof.
       [ specialize (safe st value1 value2 H0 H1); intuition
       | intros; specialize (runsto st st' value1 value2 H0 H1 H); destruct_ex; eexists; eauto ].
   }
-Qed.
+Defined.
 
 Lemma pick_compile_helper :
     forall (TR TP : Type) (R : Comp TR) (P : TP -> TR -> Prop) 
