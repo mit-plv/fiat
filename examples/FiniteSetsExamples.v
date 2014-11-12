@@ -82,8 +82,9 @@ Require Import FiatToFacade.FacadeNotations.
 Require Import FiatToFacade.Compiler.Automation.Vacuum.
 Require Import Compiler.Automation.FacadeHelpers.
 Require Import Compiler.Automation.SpecializedFolds.
+Require Import Memory.
 
-Definition ProgramOnList_pre :=
+Definition Program_pre :=
   (fun v1 v2 => exists ls w, v1 = ADT (List ls) /\ v2 = SCA ADTValue w).
 
 Definition ProgramOnListReturningWord_post spec :=
@@ -93,6 +94,10 @@ Definition ProgramOnListReturningWord_post spec :=
 Definition ProgramOnListReturningList_post spec :=
   (fun v1 v2 retval => exists ls w aret, v1 = ADT (List ls) /\ v2 = SCA ADTValue w /\
                                          retval = ADT (List aret) /\ computes_to (spec ls) aret).
+
+Definition ProgramOnListAndWordReturningList_post spec :=
+  (fun v1 v2 retval => exists ls w aret, v1 = ADT (List ls) /\ v2 = SCA ADTValue w /\
+                                         retval = ADT (List aret) /\ computes_to (spec ls w) aret).
 
 Definition ProgramOnListReturningWord_refinement spec ls retval prog :=
   refine (r <- spec ls;
@@ -110,19 +115,77 @@ Definition ProgramOnListReturningList_refinement spec ls retval prog :=
           ret (r, p))
          (ret (retval, prog)).
 
+Definition ProgramOnListAndWordReturningList_refinement spec ls w retval prog :=
+  refine (r <- spec ls w;
+          p <- (@Prog ADTValue basic_imports_wrapped True
+                      ([argvar2 >sca> w]::∅) ∅
+                      ([argvar1 >adt> List ls]::∅) ([retvar >adt> List r]::∅));
+          ret (r, p))
+         (ret (retval, prog)).
+
+Lemma FullySharpenedFacadeProgramOnListAndWordReturningListByRefinements spec P :
+  (sigT (fun prog =>
+           (forall ls w, exists retval,
+              ProgramOnListAndWordReturningList_refinement spec ls w retval prog)
+           /\ P prog)) ->
+  (sigT (fun prog => PairOfConditionsForCompileUnit _ prog
+                                                    Program_pre
+                                                    (ProgramOnListAndWordReturningList_post spec)
+                                                    basic_imports
+                     /\ P prog)).
+Proof.
+  unfold PairOfConditionsForCompileUnit, ProgramOnListReturningWord_refinement,
+         Program_pre, ProgramOnListReturningWord_post, Prog.
+  intros [ prog (forall_ls & ?) ].
+  exists prog; split; [ | assumption ]; apply two_conds_as_one; intros st v1 v2 map_eq [ls [w (sv1 & sv2)]]; subst;
+  cbv delta [StringMapFacts.make_map] in *; simpl in *;
+  specialize (forall_ls ls w); destruct forall_ls as [retval refi].
+
+  apply pick_compile_helper in refi.
+  destruct refi as (retval_correct & prog_ok); hnf in prog_ok.
+
+  match type of (prog_ok st) with
+    | ?a /\ ?b /\ ?c -> _ =>
+      assert a by apply I; assert b; assert c;
+      try rewrite map_eq; (* TODO: This superseeds the match in other similar lemmas *)
+      first [ eapply AllADTs_chomp, add_adts_pop_sca; map_iff_solve intuition
+            | eapply add_sca_pop_adts, SomeSCAs_chomp; map_iff_solve intuition; try discriminate
+            | apply SomeSCAs_empty
+            | specialize_states; split; try solve [ intuition ] ]
+  end.
+            
+  intros; destruct_pairs; specialize_states.
+
+  exists (ADT (List retval)).
+  split; intros; destruct_pairs.
+
+  scas_adts_mapsto;
+  unfold StringMapFacts.Submap;
+  setoid_rewrite <- StringMapFacts.find_mapsto_iff; intros *;
+  map_iff_solve ltac:(intuition; subst; intuition).
+
+  split;
+    [ destruct_pairs;
+      intros;
+      eapply not_in_adts_not_mapsto_adt; eauto;
+      try (rewrite StringMapFacts.add_neq_in_iff; eauto);
+      try apply not_in_empty
+    | repeat eexists; repeat split; first [ reflexivity | eassumption ] ].
+Qed. 
+
 Lemma FullySharpenedFacadeProgramOnListReturningListByRefinements spec P :
   (sigT (fun prog =>
            (forall ls, exists retval,
               ProgramOnListReturningList_refinement spec ls retval prog)
            /\ P prog)) ->
   (sigT (fun prog => PairOfConditionsForCompileUnit _ prog
-                                                    ProgramOnList_pre
+                                                    Program_pre
                                                     (ProgramOnListReturningList_post spec)
                                                     basic_imports
                      /\ P prog)).
 Proof.
   unfold PairOfConditionsForCompileUnit, ProgramOnListReturningWord_refinement,
-         ProgramOnList_pre, ProgramOnListReturningWord_post, Prog.
+         Program_pre, ProgramOnListReturningWord_post, Prog.
   intros [ prog (forall_ls & ?) ].
   exists prog; split; [ | assumption ]; apply two_conds_as_one; intros st v1 v2 map_eq [ls [w (sv1 & sv2)]]; subst;
   cbv delta [StringMapFacts.make_map] in *; simpl in *;
@@ -165,13 +228,13 @@ Lemma FullySharpenedFacadeProgramOnListReturningWordByRefinements spec P :
               ProgramOnListReturningWord_refinement spec ls retval prog)
            /\ P prog)) ->
   (sigT (fun prog => PairOfConditionsForCompileUnit _ prog
-                                                    ProgramOnList_pre
+                                                    Program_pre
                                                     (ProgramOnListReturningWord_post spec)
                                                     basic_imports
                      /\ P prog)).
 Proof.
   unfold PairOfConditionsForCompileUnit, ProgramOnListReturningWord_refinement,
-         ProgramOnList_pre, ProgramOnListReturningWord_post, Prog.
+         Program_pre, ProgramOnListReturningWord_post, Prog.
   intros [ prog (forall_ls & ?) ].
   exists prog; split; [ | assumption ]; apply two_conds_as_one; intros st v1 v2 map_eq [ls [w (sv1 & sv2)]]; subst;
   cbv delta [StringMapFacts.make_map] in *; simpl in *;
@@ -204,13 +267,16 @@ Proof.
       intros; eapply not_in_adts_not_mapsto_adt; eauto;
       try apply not_in_empty
     | repeat eexists; repeat split; first [ reflexivity | eassumption ] ].
-Qed.       
+Qed.
 
 Definition FullySharpenedFacadeProgramOnListReturningList spec :=
-  CompileUnit ProgramOnList_pre (ProgramOnListReturningList_post spec).
+  CompileUnit Program_pre (ProgramOnListReturningList_post spec).
 
 Definition FullySharpenedFacadeProgramOnListReturningWord spec :=
-  CompileUnit ProgramOnList_pre (ProgramOnListReturningWord_post spec).
+  CompileUnit Program_pre (ProgramOnListReturningWord_post spec).
+
+Definition FullySharpenedFacadeProgramOnListAndWordReturningList spec :=
+  CompileUnit Program_pre (ProgramOnListAndWordReturningList_post spec).
 
 Lemma CompileUnit_construct av pre_cond post_cond imports:
   (sigT (fun prog =>
@@ -245,12 +311,17 @@ Qed.
 
 Tactic Notation "begin" "sharpening" "facade" "program" :=
   idtac;
-  (match goal with
+  (lazymatch goal with
      | [ |- FullySharpenedFacadeProgramOnListReturningList ?spec ] =>
        (unfold FullySharpenedFacadeProgramOnListReturningList;
         apply (CompileUnit_construct (imports := basic_imports));
         apply FullySharpenedFacadeProgramOnListReturningListByRefinements;
         econstructor; split; [ intro; eexists; unfold ProgramOnListReturningList_refinement | ])
+     | [ |- FullySharpenedFacadeProgramOnListAndWordReturningList ?spec ] =>
+       (unfold FullySharpenedFacadeProgramOnListAndWordReturningList;
+        apply (CompileUnit_construct (imports := basic_imports));
+        apply FullySharpenedFacadeProgramOnListAndWordReturningListByRefinements;
+        econstructor; split; [ intro; eexists; unfold ProgramOnListAndWordReturningList_refinement | ])
      | [ |- FullySharpenedFacadeProgramOnListReturningWord ?spec ] =>
        (unfold FullySharpenedFacadeProgramOnListReturningWord;
         apply (CompileUnit_construct (imports := basic_imports));
@@ -328,6 +399,7 @@ Ltac string_map_t_subset smaller larger :=
            | true => string_map_t_subset smaller' larger
            | false => constr:false
          end
+    | ?other => (* FIXME is_evar other; *) constr:false
   end.
 
 Ltac solve_map_inclusion_step :=
@@ -433,7 +505,7 @@ Ltac compile_step_same_adts_handle_first_post_sca :=
           => (first [ rewrite (compile_constant var)
                     | setoid_rewrite (compile_constant var) ]; after_tac)
         | FunctionOfList _ _ _ _ => unfold FunctionOfList
-        | snd (@FiniteSetAndFunctionOfList ?impl W ?f ?x ?ls)
+        | snd (@FiniteSetAndFunctionOfList ?impl Memory.W ?f ?x ?ls)
           => (let tis_empty := new_variable_name "$is_empty" in
               let thead     := new_variable_name "$head" in
               let vadt      := new_variable_name "$adt" in
@@ -716,6 +788,68 @@ Proof.
 Defined.
  *)
 
+Definition filterLtImpl (FiniteSetImpl : FullySharpened FiniteSetSpec)
+: FullySharpenedFacadeProgramOnListAndWordReturningList filterLtSpec.
+Proof.
+  begin sharpening facade program.
+
+  unfold filterLtSpec.
+  sharpen computation with FiniteSet implementation := FiniteSetImpl.
+
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+
+  replace ls with (rev ls) by admit.
+  rewrite fold_left_rev_right.
+  replace (rev ls) with ls by admit.
+  rewrite (@compile_fold_adt _ _ _ "arg1" "ret" "head" "is_empty").
+  compile_step.
+  rewrite pull_forall_loop_adt.
+  compile_step.
+  compile_step.
+  compile_step.
+  rewrite compile_list_new.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+
+  compile_step.
+  compile_step.
+  rewrite (compile_if_adt "$cond").
+  compile_step.
+  unfold wlt.
+
+(*
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+
+  finish sharpening computation.
+Defined.
+ *)
+Admitted.
+
 Definition uniqueizeImpl (FiniteSetImpl : FullySharpened FiniteSetSpec) (ls : list W)
 : FullySharpenedFacadeProgramOnListReturningList uniqueizeSpec.
 Proof.
@@ -738,20 +872,7 @@ Proof.
   sharpen computation with FiniteSet implementation := FiniteSetImpl.
 
   compile.
-
-  finish compiling.
-Defined.
-
-(** And now we do the same for summing. *)
-Definition sumUniqueImpl (FiniteSetImpl : FullySharpened FiniteSetSpec)
-: FullySharpenedFacadeProgramOnListReturningWord sumUniqueSpec.
-Proof.
-  begin sharpening facade program.
   
-  sharpen computation with FiniteSet implementation := FiniteSetImpl.
-
-  compile.
-
   finish compiling.
 Defined.
 
@@ -788,8 +909,9 @@ Proof.
 Defined.
 
 Definition filterLtImpl (FiniteSetImpl : FullySharpened FiniteSetSpec) (ls : list W) (x : W)
-: FullySharpenedComputation (filterLtSpec ls x).
+: FullySharpenedFacadeProgramOnListAndWordReturningList filterLtSpec.
 Proof.
+  begin sharpening facade program.
   begin sharpening computation.
 
   sharpen computation with FiniteSet implementation := FiniteSetImpl.

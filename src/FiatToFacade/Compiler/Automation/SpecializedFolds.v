@@ -59,7 +59,7 @@ Lemma compile_FiniteSetAndFunctionOfList_SCA (FiniteSetImpl : FullySharpened Fin
                     (Seq (Assign vret (Const x))
                          (Seq (Call vadt fsetempty nil)
                               (Fold thead tis_empty vls flistpop flistempty cloop))))
-               (Call tis_empty fsetdelete (cons vadt nil)))).
+               (Call vdiscard fsetdelete (cons vadt nil)))).
 Proof.
   intros.
   rewrite FiniteSetAndFunctionOfList_ValidFiniteSetAndFunctionOfList.
@@ -176,7 +176,7 @@ Lemma compile_FiniteSetAndFunctionOfList_ADT (FiniteSetImpl : FullySharpened Fin
                     (Seq (Call vret flistnew nil)
                          (Seq (Call vadt fsetempty nil)
                               (Fold thead tis_empty vls flistpop flistempty cloop))))
-               (Call tis_empty fsetdelete (cons vadt nil)))).
+               (Call vdiscard fsetdelete (cons vadt nil)))).
 Proof.
   intros.
   rewrite FiniteSetAndFunctionOfList_ValidFiniteSetAndFunctionOfList.
