@@ -533,6 +533,29 @@ Proof.
   reflexivity.
 Qed.
 
+Lemma swap_adts :
+  forall av env knowl
+         scas scas'
+         adts adts'
+         k v k' v' v'',
+    k <> k' ->
+    refine (@Prog av env knowl scas scas'
+                  ([k >> v]::[k' >> v']::adts) ([k >> v]::[k' >> v'']::adts'))
+           (@Prog av env knowl scas scas'
+                  ([k' >> v']::[k >> v]::adts) ([k' >> v'']::[k >> v]::adts')).
+Proof.
+  unfold refine, Prog, ProgOk; intros.
+  inversion_by computes_to_inv; subst.
+  constructor; intros; destruct_pairs.
+  rewrite add_add_comm in H5 by assumption.
+  specialize_states.
+
+  split; trivial.
+  intros; specialize_states; trivial.
+  rewrite add_add_comm by assumption.
+  intuition.
+Qed.
+
 
 (** N.B. It might be possible to not need [setoid_rewrite] by filling
     in more arguments explicitly to [rewrite].  As it is, we must pass
@@ -688,7 +711,11 @@ Ltac guarded_compile_step_same_scas :=
         | (_, [?vls >adt> ?wrapper (if ?c then ?t else ?f)]::?finaladts)
           => (let tcond := new_variable_name "$cond" in
               rewrite (@compile_if_adt _ _ tcond vls c))
-               
+                    
+        | ([?k >> _]::_, [?k >> _]::[?vls >adt> ?wrapper (if ?c then ?t else ?f)]::?finaladts)
+          => (rewrite swap_adts) (* Swap to expose the right shape to trigger the clause above. 
+                                    Could also use the more generic approach found in list_push_generic *) 
+                     
         | (_, [ ?var >adt> ?val ]::?postadts_tail)
           => (not is_evar postadts_tail;
               rewrite compile_add_intermediate_adts_with_ret)
@@ -899,7 +926,7 @@ Proof.
   finish sharpening computation.
 Defined.
  *)
-
+  
 Definition uniqueizeImpl (FiniteSetImpl : FullySharpened FiniteSetSpec)
 : FullySharpenedFacadeProgramOnListReturningList uniqueizeSpec.
 Proof.
@@ -976,13 +1003,16 @@ Proof.
 Defined.
 
 Definition filterLtUniqueImpl1 (FiniteSetImpl : FullySharpened FiniteSetSpec) (ls : list W) (x : W)
-: FullySharpenedComputation (filterLtUniqueSpec1 ls x).
+: FullySharpenedFacadeProgramOnListAndWordReturningList filterLtUniqueSpec1.
 Proof.
-  begin sharpening computation.
+  begin sharpening facade program.
 
+  unfold filterLtUniqueSpec1.
   sharpen computation with FiniteSet implementation := FiniteSetImpl.
 
-  finish sharpening computation.
+  compile.
+
+  finish compiling.
 Defined.
 
 Definition filterLtUniqueImpl2 (FiniteSetImpl : FullySharpened FiniteSetSpec) (ls : list W) (x : W)
