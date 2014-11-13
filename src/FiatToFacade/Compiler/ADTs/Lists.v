@@ -257,3 +257,47 @@ Proof.
     specialize_states;
     intuition.
 Qed.
+
+Lemma compile_list_push_generic :
+  forall {env knowledge}
+         vseq {vhead} vret head seq
+         scas adts adts' f,
+    GLabelMap.find (elt:=FuncSpec ADTValue) f env = Some (Axiomatic List_push) ->
+    vhead <> vseq ->
+    vseq <> vret ->
+    ~ StringMap.In vret adts ->
+    ~ StringMap.In vret scas ->
+    ~ StringMap.In vseq scas ->
+    scas[vhead >> SCA _ head] ->
+    adts[vseq >> ADT (List seq)] ->
+    StringMap.Equal adts' ([vseq >adt> List (head :: seq)]::adts) ->
+    refine (@Prog _ env knowledge
+                  scas scas
+                  adts adts')
+           (ret (Call vret f (vseq :: vhead :: nil))).
+Proof.
+  unfold refine, Prog, ProgOk; intros.
+  constructor; intros; destruct_pairs;
+  inversion_by computes_to_inv; subst;
+  specialize_states; scas_adts_mapsto.
+
+  split.
+  
+  econstructor; try eassumption.
+  simpl; unfold sel.
+  repeat subst_find; reflexivity.
+
+  eapply not_in_adts_not_mapsto_adt; eauto.
+  simpl; eexists; eexists; reflexivity.
+
+  intros * h; eapply runsto_cons in h; eauto.
+  split; rewrite_Eq_in_goal.
+
+  eapply SomeSCAs_chomp_left; eauto.
+  eapply add_sca_pop_adts; eauto.
+  
+  apply add_adts_pop_sca; map_iff_solve trivial.
+  rewrite H7; map_iff_solve intuition.
+  rewrite H7; apply AllADTs_chomp.
+  assumption.
+Qed.

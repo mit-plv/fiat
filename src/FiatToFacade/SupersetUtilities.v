@@ -4,6 +4,8 @@ Require Import FiatToFacade.Utilities FiatToFacade.Superset FiatToFacade.Superse
                FiatToFacade.StringMapNotations FiatToFacade.StringMapUtilities.
 Require Import Facade.DFacade.
 
+Unset Implicit Arguments.
+
 Lemma Superset_mapsto :
   forall {elt welt} {k v state map} wrapper,
     @Superset elt welt state ([k >> wrapper v]::map) wrapper ->
@@ -283,11 +285,10 @@ Lemma Superset_add_in_left :
 Proof.
   unfold Superset; intros ** k' v' ? .
   destruct (StringMap.E.eq_dec k k'); subst;
-  try match goal with (* TODO fix mapsto_unique *) 
+  try match goal with (* TODO fix auto_mapsto_unique *) 
         | H:(?st) [?k >> ?v], H':(?st) [?k >> ?v'] |- _ =>
           let h := fresh in
-          pose proof (MapsTo_unique st k v v' H H') as h;
-            rewrite !h in *; clear H
+          pose proof (MapsTo_unique st k v v' H H') as h
       end; map_iff_solve intuition.
 Qed.
 

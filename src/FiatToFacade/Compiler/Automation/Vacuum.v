@@ -34,7 +34,7 @@ Ltac vacuum :=
     | [ |- AllADTs _ _ ] => solve [unfold AllADTs, Superset; intros; map_iff_solve intuition]
     | [ |- Word2Spec ?env _ = Some (Axiomatic _) ] => reflexivity
     | [ |- Label2Word ?env _ = Some _ ] => reflexivity
-    | [ |- StringMap.Equal ?a ?b ] => first [ is_evar a | is_evar b | trickle_deletion; reflexivity ]
+    | [ |- StringMap.Equal ?a ?b ] => first [ is_evar a | is_evar b | solve_map_eq ]
     | [ |- Core.AbsR ?impl ?e (projT1 ?fs) ] => exact (proj2_sig (projT2 fs))
     | _ => solve [ find_label_in_env ]
   end.

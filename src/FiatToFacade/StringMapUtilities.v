@@ -2,6 +2,9 @@ Require Import StringMap.
 Require Import StringMapFacts.
 Require Import FiatToFacade.Utilities.
 Require Import FiatToFacade.StringMapNotations.
+Require Import Common.
+
+Unset Implicit Arguments.
 
 Lemma MapsTo_unique :
   forall {A} map key (v1 v2: A),
@@ -107,6 +110,33 @@ Ltac map_iff_solve_evar' fallback :=
 
 Ltac map_iff_solve_evar fallback :=
   StringMapFacts.map_iff; map_iff_solve_evar' fallback.
+
+Ltac solve_map_inclusion_step :=
+  idtac; match goal with
+           | |- ?a = ?a  => reflexivity
+           | |- ?a <> ?a => congruence
+           | |- ?a = ?b  => congruence
+           | _ => assumption
+           | _ => intro
+           | _ => progress destruct_head or
+           | _ => progress destruct_head and
+           | _ => progress subst
+           | _ => progress map_iff_solve' idtac
+         end.
+
+Ltac solve_map_inclusion :=
+  hnf; intros * ;
+  StringMapFacts.map_iff;
+  repeat solve_map_inclusion_step.
+
+Ltac solve_map_eq :=
+  match goal with
+    | |- StringMap.Equal _ _ =>
+      apply StringMapFacts.Equal_mapsto_iff;
+        intros ? ? ;
+        split;
+        solve_map_inclusion
+  end.
 
 Ltac auto_mapsto_unique :=
   try rewrite <- StringMapFacts.find_mapsto_iff in *;

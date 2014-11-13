@@ -28,6 +28,8 @@ Lemma compile_FiniteSetAndFunctionOfList_SCA (FiniteSetImpl : FullySharpened Fin
   vls <> vret ->
   tis_empty <> vls ->
   vls <> vdiscard ->
+  vadt <> vdiscard ->
+  vret <> vdiscard ->
   ~ StringMap.In vadt init_adts ->
   ~ StringMap.In vret init_adts ->
   ~ StringMap.In thead init_adts ->
@@ -59,7 +61,7 @@ Lemma compile_FiniteSetAndFunctionOfList_SCA (FiniteSetImpl : FullySharpened Fin
                     (Seq (Assign vret (Const x))
                          (Seq (Call vadt fsetempty nil)
                               (Fold thead tis_empty vls flistpop flistempty cloop))))
-               (Call tis_empty fsetdelete (cons vadt nil)))).
+               (Call vdiscard fsetdelete (cons vadt nil)))).
 Proof.
   intros.
   rewrite FiniteSetAndFunctionOfList_ValidFiniteSetAndFunctionOfList.
@@ -83,7 +85,7 @@ Proof.
   intros.
   rewrite compile_constant; try vacuum.
   rewrite compile_AbsImpl_sEmpty; first [ eassumption | solve [map_iff_solve eauto] | vacuum ]. 
-  rewrite compile_AbsImpl_sDelete; try first [ eassumption | solve [map_iff_solve eauto] | vacuum ].
+  erewrite (@compile_AbsImpl_sDelete _ _ _ vdiscard); try first [ eassumption | solve [map_iff_solve eauto] | vacuum ].
 
   reflexivity.
 Qed.
@@ -144,6 +146,8 @@ Lemma compile_FiniteSetAndFunctionOfList_ADT (FiniteSetImpl : FullySharpened Fin
   vls <> vret ->
   tis_empty <> vls ->
   vls <> vdiscard ->
+  vadt <> vdiscard ->
+  vret <> vdiscard ->
   ~ StringMap.In vadt init_adts ->
   ~ StringMap.In vret init_adts ->
   ~ StringMap.In thead init_adts ->
@@ -176,7 +180,7 @@ Lemma compile_FiniteSetAndFunctionOfList_ADT (FiniteSetImpl : FullySharpened Fin
                     (Seq (Call vret flistnew nil)
                          (Seq (Call vadt fsetempty nil)
                               (Fold thead tis_empty vls flistpop flistempty cloop))))
-               (Call tis_empty fsetdelete (cons vadt nil)))).
+               (Call vdiscard fsetdelete (cons vadt nil)))).
 Proof.
   intros.
   rewrite FiniteSetAndFunctionOfList_ValidFiniteSetAndFunctionOfList.
@@ -200,7 +204,7 @@ Proof.
   intros.
   rewrite compile_list_new; first [ eassumption | solve [map_iff_solve eauto] | vacuum ]. 
   rewrite compile_AbsImpl_sEmpty; first [ eassumption | solve [map_iff_solve eauto] | vacuum ]. 
-  rewrite compile_AbsImpl_sDelete; try first [ eassumption | solve [map_iff_solve eauto] | vacuum ].
+  erewrite (@compile_AbsImpl_sDelete _ _ _ vdiscard); try first [ eassumption | solve [map_iff_solve eauto] | vacuum ].
 
   reflexivity.
 Qed.
