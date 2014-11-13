@@ -1,5 +1,5 @@
         .equ HEAP_SIZE, 100*1024*1024
-        .equ STACK_OFFSET, 4*HEAP_SIZE+12
+        .equ STACK_OFFSET, 4*HEAP_SIZE
         .equ STACK_START, bedrock_heap+STACK_OFFSET
         .equ LIST_START, 4
         
