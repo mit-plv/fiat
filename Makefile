@@ -272,3 +272,11 @@ examples/SumUnique.ml examples/SumUniqueAMD64.vo: examples/SumUniqueAMD64.v
 		| sed 's/   N.to_nat$$/   fun _ -> O/' \
 		>>$@
 	cat examples/printCode.ml >>$@
+
+examples/SumUnique.s: examples/SumUnique.ml
+	echo ".global bedrock_heap,export_dffun,sys_abort" >$@
+	echo >>$@
+	ocaml -w -x $< >>$@
+
+examples/SumUnique.exe: examples/SumUnique.o examples/bedrock_main.o examples/bedrock_driver.o
+	cc $^ -o $@

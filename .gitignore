@@ -34,3 +34,5 @@ examples/repl
 /src/QueryStructure/QuerySpecs/InsertQSRefinements.v
 /src/QueryStructure/Refinements/AdditionalListLemmas.v
 /src/Overview
+/examples/SumUnique.exe
+/examples/SumUnique.s
