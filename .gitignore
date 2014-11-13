@@ -28,6 +28,7 @@ examples/repl
 /examples/ADTExamples/PLLunch.v
 /examples/ADTExamples/PLLunch2.v
 /examples/ADTExamples/SetoidRewritingAdventures.v
+/examples/SumUnique.ml
 /src/Makefile.coq
 /src/QueryStructure/QuerySpecs/ConstraintCheckUnfoldings.v
 /src/QueryStructure/QuerySpecs/InsertQSRefinements.v

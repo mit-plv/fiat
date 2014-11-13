@@ -261,3 +261,14 @@ examples/ExtractingFiniteSetsExamples.vo: examples/ExtractingFiniteSetsExamples.
 	$(COQC) -I ../bedrock/platform -dont-load-proofs -R src ADTSynthesis -R examples ADTExamples \
 		-R ../bedrock/src Bedrock -R ../bedrock/platform/cito Cito -R ../bedrock/platform/facade Facade \
 		examples/ExtractingFiniteSetsExamples
+
+examples/SumUnique.ml examples/SumUniqueAMD64.vo: examples/SumUniqueAMD64.v
+	cat examples/ignoreFail.ml >$@
+	$(COQC) -I ../bedrock/platform -dont-load-proofs -R src ADTSynthesis -R examples ADTExamples \
+		-R ../bedrock/src Bedrock -R ../bedrock/platform/cito Cito -R ../bedrock/platform/facade Facade \
+		$< 2>/dev/null \
+		| sed '/let coq_Unnamed_thm_/,/module/{/module/!d}' \
+		| sed 's/   allWords_def/   fun _ -> []/' \
+		| sed 's/   N.to_nat$$/   fun _ -> O/' \
+		>>$@
+	cat examples/printCode.ml >>$@
