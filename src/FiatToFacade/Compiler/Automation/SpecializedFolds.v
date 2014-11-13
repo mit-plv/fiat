@@ -208,3 +208,55 @@ Proof.
 
   reflexivity.
 Qed.
+
+Require Import Computation.ApplyMonad.
+
+Lemma compile_fold_right_adt :
+  forall {env : GLabelMap.t (FuncSpec ADTValue)} {acc_type : Type}
+         {wrapper : acc_type -> ADTValue}
+         (vseq vret thead tis_empty vdiscard: StringMap.key) (fpop fempty frev : GLabelMap.key)
+         (loop : W -> acc_type -> acc_type) (knowledge : Prop)
+         (scas adts : StringMap.t (Value ADTValue)),
+    GLabelMap.find (elt:=FuncSpec ADTValue) fempty env = Some (Axiomatic List_empty) ->
+    GLabelMap.find (elt:=FuncSpec ADTValue) fpop env = Some (Axiomatic List_pop) ->
+    GLabelMap.find (elt:=FuncSpec ADTValue) frev env = Some (Axiomatic List_rev) ->
+    vret <> vseq ->
+    vret <> tis_empty ->
+    vseq <> vdiscard ->
+    thead <> vret ->
+    thead <> vseq ->
+    tis_empty <> vseq ->
+    ~ StringMap.In (elt:=Value ADTValue) tis_empty adts ->
+    ~ StringMap.In (elt:=Value ADTValue) tis_empty scas ->
+    ~ StringMap.In (elt:=Value ADTValue) thead adts ->
+    ~ StringMap.In (elt:=Value ADTValue) vdiscard adts ->
+    ~ StringMap.In (elt:=Value ADTValue) vdiscard scas ->
+    ~ StringMap.In (elt:=Value ADTValue) vseq scas ->
+    forall (seq : list W) (init : acc_type),
+      refine
+        (@Prog _ env knowledge
+               scas scas
+               ([vseq >> ADT (List seq)]::adts)
+               ([vret >> ADT (wrapper (fold_right loop init seq))]::[vseq >> ADT (List nil)]::adts))
+        (cloop <- {cloop : Stmt | ADTLoopBodyOk env (fun acc x => loop x acc) cloop knowledge scas adts vseq vret thead tis_empty wrapper};
+         pinit <- (@Prog _ env knowledge
+                         scas scas
+                         ([vseq >> ADT (List (rev seq))]::adts)
+                         ([vret >> ADT (wrapper init)]::[vseq >> ADT (List (rev seq))]::adts));
+         ret (Seq (Call vdiscard frev (cons vseq nil))
+                  (Seq pinit (Fold thead tis_empty vseq fpop fempty cloop)))).
+Proof.
+  intros.
+  erewrite (@compile_list_rev_general _ _ vdiscard vseq seq); first [ eassumption | map_iff_solve intuition ].
+  rewrite add_add_add'.
+  rewrite <- (rev_involutive seq).
+  rewrite fold_left_rev_right.
+  rewrite (rev_involutive seq).
+  rewrite (@compile_fold_adt _ _ _ vseq vret thead tis_empty); eauto.
+  simplify with monad laws.
+
+  apply General.refine_under_bind; intros.
+  apply General.refine_under_bind; intros.
+
+  reflexivity.
+Qed.
