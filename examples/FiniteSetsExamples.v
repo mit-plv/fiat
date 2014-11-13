@@ -123,21 +123,21 @@ Definition ProgramOnListAndWordReturningList_refinement spec ls w retval prog :=
           ret (r, p))
          (ret (retval, prog)).
 
-Lemma FullySharpenedFacadeProgramOnListAndWordReturningListByRefinements spec P :
+Lemma FullySharpenedFacadeProgramOnListAndWordReturningListByRefinements spec Q P :
   (sigT (fun prog =>
-           (forall ls w, exists retval,
-              ProgramOnListAndWordReturningList_refinement spec ls w retval prog)
-           /\ P prog)) ->
-  (sigT (fun prog => PairOfConditionsForCompileUnit _ prog
+           ((forall ls w, exists retval,
+              ProgramOnListAndWordReturningList_refinement spec ls w retval prog) /\ Q prog)
+           * P prog))%type ->
+  (sigT (fun prog => (PairOfConditionsForCompileUnit _ prog
                                                     Program_pre
                                                     (ProgramOnListAndWordReturningList_post spec)
-                                                    basic_imports
-                     /\ P prog)).
+                                                    basic_imports /\ Q prog)
+                     * P prog))%type.
 Proof.
   unfold PairOfConditionsForCompileUnit, ProgramOnListReturningWord_refinement,
          Program_pre, ProgramOnListReturningWord_post, Prog.
-  intros [ prog (forall_ls & ?) ].
-  exists prog; split; [ | assumption ]; apply two_conds_as_one; intros st v1 v2 map_eq [ls [w (sv1 & sv2)]]; subst;
+  intros [ prog ([forall_ls] & ?) ].
+  exists prog; split; [split; [ | assumption ] | assumption ]; apply two_conds_as_one; intros st v1 v2 map_eq [ls [w (sv1 & sv2)]]; subst;
   cbv delta [StringMapFacts.make_map] in *; simpl in *;
   specialize (forall_ls ls w); destruct forall_ls as [retval refi].
 
@@ -173,21 +173,21 @@ Proof.
     | repeat eexists; repeat split; first [ reflexivity | eassumption ] ].
 Defined.
 
-Lemma FullySharpenedFacadeProgramOnListReturningListByRefinements spec P :
+Lemma FullySharpenedFacadeProgramOnListReturningListByRefinements spec Q P :
   (sigT (fun prog =>
-           (forall ls, exists retval,
-              ProgramOnListReturningList_refinement spec ls retval prog)
-           /\ P prog)) ->
-  (sigT (fun prog => PairOfConditionsForCompileUnit _ prog
+           ((forall ls, exists retval,
+              ProgramOnListReturningList_refinement spec ls retval prog) /\ Q prog)
+           * P prog))%type ->
+  (sigT (fun prog => (PairOfConditionsForCompileUnit _ prog
                                                     Program_pre
                                                     (ProgramOnListReturningList_post spec)
-                                                    basic_imports
-                     /\ P prog)).
+                                                    basic_imports /\ Q prog)
+                     * P prog))%type.
 Proof.
   unfold PairOfConditionsForCompileUnit, ProgramOnListReturningWord_refinement,
          Program_pre, ProgramOnListReturningWord_post, Prog.
-  intros [ prog (forall_ls & ?) ].
-  exists prog; split; [ | assumption ]; apply two_conds_as_one; intros st v1 v2 map_eq [ls [w (sv1 & sv2)]]; subst;
+  intros [ prog ([forall_ls] & ?) ].
+  exists prog; split; [ split; [ | assumption ] | assumption ]; apply two_conds_as_one; intros st v1 v2 map_eq [ls [w (sv1 & sv2)]]; subst;
   cbv delta [StringMapFacts.make_map] in *; simpl in *;
   specialize (forall_ls ls); destruct forall_ls as [retval refi].
 
@@ -222,21 +222,21 @@ Proof.
     | repeat eexists; repeat split; first [ reflexivity | eassumption ] ].
 Defined.
 
-Lemma FullySharpenedFacadeProgramOnListReturningWordByRefinements spec P :
+Lemma FullySharpenedFacadeProgramOnListReturningWordByRefinements spec Q P :
   (sigT (fun prog =>
-           (forall ls, exists retval,
-              ProgramOnListReturningWord_refinement spec ls retval prog)
-           /\ P prog)) ->
-  (sigT (fun prog => PairOfConditionsForCompileUnit _ prog
-                                                    Program_pre
-                                                    (ProgramOnListReturningWord_post spec)
-                                                    basic_imports
-                     /\ P prog)).
+           ((forall ls, exists retval,
+               ProgramOnListReturningWord_refinement spec ls retval prog) /\ Q prog)
+           * P prog))%type ->
+  (sigT (fun prog => (PairOfConditionsForCompileUnit _ prog
+                                                     Program_pre
+                                                     (ProgramOnListReturningWord_post spec)
+                                                     basic_imports /\ Q prog)
+                     * P prog))%type.
 Proof.
   unfold PairOfConditionsForCompileUnit, ProgramOnListReturningWord_refinement,
          Program_pre, ProgramOnListReturningWord_post, Prog.
-  intros [ prog (forall_ls & ?) ].
-  exists prog; split; [ | assumption ]; apply two_conds_as_one; intros st v1 v2 map_eq [ls [w (sv1 & sv2)]]; subst;
+  intros [ prog ([forall_ls] & ?) ].
+  exists prog; split; [ split; [ | assumption ] | assumption ]; apply two_conds_as_one; intros st v1 v2 map_eq [ls [w (sv1 & sv2)]]; subst;
   cbv delta [StringMapFacts.make_map] in *; simpl in *;
   specialize (forall_ls ls); destruct forall_ls as [retval refi].
 
@@ -278,19 +278,29 @@ Definition FullySharpenedFacadeProgramOnListReturningWord spec :=
 Definition FullySharpenedFacadeProgramOnListAndWordReturningList spec :=
   CompileUnit Program_pre (ProgramOnListAndWordReturningList_post spec).
 
+Record is_disjoint_r x y := {
+  IDR_dummy : unit;
+  IDR : is_disjoint x y = true
+}.
+
+Record is_syntax_ok_r x : Type := {
+  ISO_dummy : unit;
+  ISO : is_syntax_ok x = true
+}.
+
 Lemma CompileUnit_construct av pre_cond post_cond imports:
   (sigT (fun prog =>
-           PairOfConditionsForCompileUnit av prog pre_cond post_cond imports /\
-           ((let imported_module_names :=
+           ((PairOfConditionsForCompileUnit av prog pre_cond post_cond imports /\
+           (let imported_module_names :=
                                   map (fun x : String.string * String.string * AxiomaticSpec av => fst (fst x))
                                       (GLabelMap.elements imports)
                               in (forallb  (fun x : String.string =>
                                               negb (ListFacts3.string_bool "dfmodule" x))
                                            imported_module_names &&
                                            forallb NameDecoration.is_good_module_name
-                                           imported_module_names)%bool = true) /\
-            sigT (fun p : is_disjoint (assigned prog) (StringSetFacts.of_list argvars) = true =>
-                    sigT (fun q : is_syntax_ok prog = true =>
+                                           imported_module_names)%bool = true)) *
+            sigT (fun p : is_disjoint_r (assigned prog) (StringSetFacts.of_list argvars) =>
+                    sigT (fun q : is_syntax_ok_r prog =>
                             (FModule.is_syntax_ok
                                (compile_op
                                   {|
@@ -299,13 +309,18 @@ Lemma CompileUnit_construct av pre_cond post_cond imports:
                                     Body := prog;
                                     args_no_dup := eq_refl;
                                     ret_not_in_args := eq_refl;
-                                    DFacade.no_assign_to_args := p;
+                                    DFacade.no_assign_to_args := IDR p;
                                     args_name_ok := eq_refl;
                                     ret_name_ok := eq_refl;
-                                    DFacade.syntax_ok := q |}) = true))))) ->
+                                    DFacade.syntax_ok := ISO q |}) = true)))))%type ->
    CompileUnit pre_cond post_cond).
 Proof.
-  intros [ prog ((? & ?) & ? & ? & ? & ?) ].
+  destruct 1 as [prog [ ]].
+  destruct s as [p [q]].
+  destruct p, q.
+  destruct a.
+  destruct H.
+  simpl in *.
   econstructor; eauto.
 Defined.
 
@@ -316,17 +331,17 @@ Tactic Notation "begin" "sharpening" "facade" "program" :=
        (unfold FullySharpenedFacadeProgramOnListReturningList;
         apply (CompileUnit_construct (imports := basic_imports));
         apply FullySharpenedFacadeProgramOnListReturningListByRefinements;
-        econstructor; split; [ intro; eexists; unfold ProgramOnListReturningList_refinement | ])
+        econstructor; split; [ split; [ | reflexivity ]; intro; eexists; unfold ProgramOnListReturningList_refinement | ])
      | [ |- FullySharpenedFacadeProgramOnListAndWordReturningList ?spec ] =>
        (unfold FullySharpenedFacadeProgramOnListAndWordReturningList;
         apply (CompileUnit_construct (imports := basic_imports));
         apply FullySharpenedFacadeProgramOnListAndWordReturningListByRefinements;
-        econstructor; split; [ intro; eexists; unfold ProgramOnListAndWordReturningList_refinement | ])
+        econstructor; split; [ split; [ | reflexivity ]; intro; eexists; unfold ProgramOnListAndWordReturningList_refinement | ])
      | [ |- FullySharpenedFacadeProgramOnListReturningWord ?spec ] =>
        (unfold FullySharpenedFacadeProgramOnListReturningWord;
         apply (CompileUnit_construct (imports := basic_imports));
         apply FullySharpenedFacadeProgramOnListReturningWordByRefinements;
-        econstructor; split; [ intro; eexists; unfold ProgramOnListReturningWord_refinement | ])
+        econstructor; split; [ split; [ | reflexivity ]; intro; eexists; unfold ProgramOnListReturningWord_refinement | ])
      | [ |- ?G ] => fail "Goal is not about sharpening a facade program."
                          "Goal:" G "is not of the form" "FullySharpenedFacadeProgramOnListReturning* _"
   end).
@@ -667,8 +682,7 @@ Ltac solve_one_using_reflexivity :=
           let proof := fresh in
           assert thm as proof; [ | apply (@existT _ P proof) ]
       end
-    | |- _ /\ _ => split
-    | |- _ = _  => reflexivity
+    | _ => constructor
   end.
 
 Ltac solve_using_reflexivity :=
