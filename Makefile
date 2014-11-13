@@ -202,7 +202,7 @@ TIMECMD=
 STDTIME=/usr/bin/time -f \"\$$* (user: %e mem: %M ko)\"
 TIMER=\$$(if \$$(TIMED), $(STDTIME), $(TIMECMD))
 
-.PHONY: all sources examples html clean pretty-timed pretty-timed-files pdf doc clean-doc
+.PHONY: all sources examples html clean pretty-timed pretty-timed-files pdf doc clean-doc cheat
 
 sources : $(SRC_VOS)
 
@@ -280,3 +280,7 @@ examples/SumUnique.s: examples/SumUnique.ml
 
 examples/SumUnique.exe: examples/SumUnique.o examples/bedrock_main.o examples/bedrock_driver.o
 	cc $^ -o $@
+
+cheat:
+	cp examples/SumUnique.pregenerated.ml examples/SumUnique.ml
+	cp examples/SumUnique.pregenerated.s examples/SumUnique.s
