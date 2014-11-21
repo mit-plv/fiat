@@ -48,37 +48,44 @@ Proof.
   unfold QSEmptySpec; simpl rels.
   rewrite Build_EmptyRelation_IsEmpty; simpl.
   rewrite refine_pick_val with
-  (A := list (IndexedTuple)) (a := [])
-    by (repeat econstructor; eauto).
-  simplify with monad laws.
-  rewrite refine_pick_val with
-  (A := list ResultT) (a := []); reflexivity.
+  (A := list Tuple) (a := []).
+  - simplify with monad laws.
+    rewrite refine_pick_val with
+    (A := list ResultT) (a := []); reflexivity.
+  - eexists []; simpl; intuition econstructor.
 Qed.
 
 Lemma Ensemble_List_Equivalence_Insert {A}
-: forall (a : A) (Ens : Ensemble A),
-    ~ In _ Ens a ->
+: forall (a : @IndexedElement A) (Ens : @IndexedEnsemble A),
+    ~ In _ (fun idx => exists a', In _ Ens a' /\ elementIndex a' = elementIndex a) a ->
     refine {l |
-            EnsembleListEquivalence (EnsembleInsert a Ens) l}
+            UnIndexedEnsembleListEquivalence (EnsembleInsert a Ens) l}
            (l <- { l |
-                   EnsembleListEquivalence Ens l};
-            ret (a :: l) ).
+                   UnIndexedEnsembleListEquivalence Ens l};
+            ret ((indexedElement a) :: l) ).
 Proof.
-  unfold EnsembleListEquivalence, refine, In,
+  unfold UnIndexedEnsembleListEquivalence, refine, In,
   EnsembleInsert; intros.
   inversion_by computes_to_inv; subst; econstructor.
   simpl; intuition.
+  exists (a :: x0).
   econstructor; eauto.
-  intuition; eapply H; eapply H3; eauto.
-  right; eapply H3; eauto.
-  right; eapply H3; eauto.
+  intuition; subst; simpl; eauto.
+  right; eapply H0; eauto.
+  simpl in *; intuition.
+  right; eapply H0; eauto.
+  econstructor; eauto.
+  unfold not; intros.
+  rewrite in_map_iff in H1; destruct_ex; intuition.
+  apply H0 in H3.
+  eapply H; eexists; eauto.
 Qed.
+
+Print freshIdx.
 
 Lemma refine_For_In_Insert
 : forall ResultT MySchema R or a tup bod,
-    ~ In _ (GetUnConstrRelation or R)
-      {| elementIndex := a;
-         indexedElement := tup |}
+    (forall tup, GetUnConstrRelation or R tup -> tupleIndex tup <> a)
     -> refine (Query_For
                  (@UnConstrQuery_In
                     ResultT MySchema
@@ -99,19 +106,21 @@ Proof.
   GetUnConstrRelation at 1, UpdateUnConstrRelation.
   rewrite ith_replace_BoundIndex_eq.
   unfold QueryResultComp; simplify with monad laws.
-  rewrite Ensemble_List_Equivalence_Insert by eauto.
-  setoid_rewrite refineEquiv_bind_bind.
-  setoid_rewrite refineEquiv_bind_unit; simpl.
-  simplify with monad laws.
-  Transparent Query_For.
-  unfold Query_For.
-  repeat setoid_rewrite refineEquiv_bind_bind; simpl.
-  unfold refine; intros; inversion_by computes_to_inv.
-  econstructor; eauto.
-  econstructor; eauto.
-  econstructor; eauto.
-  econstructor.
-  rewrite Permutation.Permutation_app_head; eauto.
+  rewrite Ensemble_List_Equivalence_Insert.
+  - setoid_rewrite refineEquiv_bind_bind.
+    setoid_rewrite refineEquiv_bind_unit; simpl.
+    simplify with monad laws.
+    Transparent Query_For.
+    unfold Query_For.
+    repeat setoid_rewrite refineEquiv_bind_bind; simpl.
+    unfold refine; intros; inversion_by computes_to_inv.
+    econstructor; eauto.
+    econstructor; eauto.
+    econstructor; eauto.
+    econstructor.
+    rewrite Permutation.Permutation_app_head; eauto.
+  - simpl; unfold In, not; intros; destruct_ex; intuition.
+    eapply H; eauto.
 Qed.
 
 Ltac start_honing_QueryStructure :=

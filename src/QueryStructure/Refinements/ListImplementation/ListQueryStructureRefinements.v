@@ -13,12 +13,13 @@ Lemma EnsembleIndexedListEquivalence_lift_property {heading} {P: @Tuple heading 
         Ensembles.In _ ensemble item -> P (indexedTuple item))).
 Proof.
   intros * equiv;
-  destruct equiv as [_ [ l' (is_map & _ & equiv) ] ];
-  subst.
+  destruct equiv as [? [ l' (is_map & equiv & ?) ] ];
   setoid_rewrite equiv.
-  setoid_rewrite in_map_iff.
   unfold IndexedTuple, indexedTuple in *.
   split; intros; firstorder; subst; intuition.
+  eapply H1; eapply in_map_iff; eauto.
+  rewrite in_map_iff in H2; destruct_ex; intuition.
+  subst; eauto.
 Qed.
 
 Lemma EnsembleIndexedListEquivalence_pick_new_index {heading} :
@@ -53,11 +54,10 @@ Qed.
     unfold GetRelation, In in *.
     + rewrite Build_EmptyRelation_IsEmpty in *; simpl in *; intuition.
       exists 0; unfold UnConstrFreshIdx; intros; intuition.
-    + eexists []; intuition; econstructor.
+    + eexists []; intuition.
+      - unfold In in *; intuition.
+        rewrite Build_EmptyRelation_IsEmpty in *; simpl in *; intuition.
       - econstructor.
-      - unfold In; split; intros.
-        * rewrite Build_EmptyRelation_IsEmpty in *; simpl in *; intuition.
-        * intuition.
   Qed.
 
 Ltac implement_empty_list constrName RepAbsR :=

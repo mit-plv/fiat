@@ -257,11 +257,11 @@ Qed.
 Lemma permutation_filter {A}
 : forall pred (l f : list A),
     Permutation (filter pred l) f
-    -> exists f', filter pred f' = f 
+    -> exists f', filter pred f' = f
                   /\ Permutation l f'.
 Proof.
   induction l; simpl; intros.
-  - apply Permutation_nil in H; subst; eexists nil; 
+  - apply Permutation_nil in H; subst; eexists nil;
     split; [reflexivity | constructor ].
   - revert H; case_eq (pred a); intros.
     + pose proof (PermutationConsSplit _ _ _ H0).

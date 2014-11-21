@@ -224,8 +224,8 @@ Lemma refine_List_Query_In {ResultT}
 Proof.
   intros; destruct H as [l' [eq_l_l' [eq_l_R equiv_l_R ]]].
   intros; unfold UnConstrQuery_In, QueryResultComp, List_Query_In;
-  rewrite refine_pick_val; eauto; simplify with monad laws.
-  subst; reflexivity.
+  rewrite refine_pick_val; unfold UnIndexedEnsembleListEquivalence; eauto.
+  simplify with monad laws; subst; reflexivity.
 Qed.
 
 Lemma refine_Join_List_Query_In {QueryT ResultT}

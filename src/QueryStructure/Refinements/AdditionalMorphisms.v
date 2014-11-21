@@ -255,12 +255,14 @@ Add Parametric Morphism {A: Type} (ens: A -> Prop) :
     with signature (@Permutation A ==> @iff)
       as ensemble_list_equivalence_morphism.
 Proof.
-  firstorder; try eauto using NoDup_Permutation_rewrite.
-  eapply Permutation_in; eauto; eapply H1; eauto.
-  eapply Permutation_sym in H; eapply H1; eapply Permutation_in; eauto.
-  apply Permutation_sym in H; try eauto using NoDup_Permutation_rewrite.
-  apply Permutation_sym in H; eapply Permutation_in; eauto; eapply H1; eauto.
-  eapply H1; eapply Permutation_in; eauto.
+  intros.
+  unfold EnsembleListEquivalence in *. intuition.
+  - eauto using NoDup_Permutation_rewrite.
+  - eapply Permutation_in. apply H. apply H2. auto.
+  - apply H2. eapply Permutation_in. eapply Permutation_sym. apply H. auto.
+  - eapply NoDup_Permutation_rewrite; [symmetry | ]; eauto.
+  - eapply Permutation_in. eapply Permutation_sym. apply H. apply H2. auto.
+  - apply H2. eapply Permutation_in. apply H. auto.
 Qed.
 
 Add Morphism
