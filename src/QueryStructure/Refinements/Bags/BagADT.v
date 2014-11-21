@@ -8,7 +8,9 @@ Section BagADT.
 
   Variable ElementType : Type.
   Variable SearchTermType : Type.
+  Variable UpdateTermType : Type.
   Variable SearchTermMatcher : SearchTermType -> ElementType -> bool.
+  Variable ApplyUpdateTerm : UpdateTermType -> ElementType -> ElementType.
 
   Definition BagSig : ADTSig :=
     ADTsignature {
@@ -18,7 +20,7 @@ Section BagADT.
         Method "Insert"    : rep x ElementType -> rep x unit,
         Method "Count"     : rep x SearchTermType  -> rep x nat,
         Method "Delete"    : rep x SearchTermType  -> rep x (list ElementType),
-        Method "Update"    : rep x (SearchTermType * (ElementType -> ElementType)) -> rep x unit
+        Method "Update"    : rep x (SearchTermType * UpdateTermType) -> rep x unit
   }.
 
   Definition BagSpec : ADT BagSig :=
@@ -53,8 +55,8 @@ Section BagADT.
                  (fun tup => SearchTermMatcher f tup = true),
                filter (SearchTermMatcher f) deleted),
 
-        Def Method "Update" (r : rep, f : SearchTermType * (ElementType -> ElementType)) : unit :=
-            ret (IndexedEnsembleUpdate r (fun tup => SearchTermMatcher (fst f) tup = true) (snd f), tt)
+        Def Method "Update" (r : rep, f : SearchTermType * UpdateTermType) : unit :=
+            ret (IndexedEnsembleUpdate r (fun tup => SearchTermMatcher (fst f) tup = true) (ApplyUpdateTerm (snd f)), tt)
         }.
 
 End BagADT.
