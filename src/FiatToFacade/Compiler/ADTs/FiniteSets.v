@@ -277,9 +277,9 @@ Section compile_FiniteSet_Methods.
 
   Lemma compile_sAdd
   : forall {env},
-    forall vens velt vdiscard r s f,
-    forall scas adts knowledge w'
-           (s_r_eqv : AbsR (projT2 FiniteSetImpl) s r),
+    forall vens velt vdiscard r f s
+           (s_r_eqv : AbsR (projT2 FiniteSetImpl) s r), 
+    forall scas adts knowledge w',
       GLabelMap.find f env = Some (Axiomatic FEnsemble_sAdd) ->
       ~ StringMap.In vdiscard adts ->
       ~ StringMap.In vens scas ->
@@ -296,7 +296,9 @@ Section compile_FiniteSet_Methods.
     compile_helper runsto_sAdd.
     eauto using  SomeSCAs_chomp, add_sca_pop_adts.
     apply add_adts_pop_sca; map_iff_solve trivial.
-    erewrite AbsImpl_Add by eauto.
+    destruct (AbsImpl_Add _ _ w' s_r_eqv) as [r_eqv [x_eq x_neq]];
+      pose ((CallMethod (projT1 FiniteSetImpl) sIn) r w') as p; simpl in *;
+      case_eq p; unfold p in *; intros ? ? H'. 
     apply AllADTs_chomp_remove.
     rewrite H8; trickle_deletion; reflexivity.
   Qed.

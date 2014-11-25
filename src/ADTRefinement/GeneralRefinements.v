@@ -76,6 +76,7 @@ Proof.
 Qed.
 
 (* Definition for constructing an easily extractible ADT implementation. *)
+
 Definition BuildMostlySharpenedcADT Sig
            (DelegateSigs : list ADTSig)
            (rep : ilist cADT DelegateSigs -> Type)
@@ -91,10 +92,10 @@ Definition BuildMostlySharpenedcADT Sig
                   (fst (MethodDomCod Sig idx))
                   (snd (MethodDomCod Sig idx)))
            (DelegateImpl : ilist cADT DelegateSigs)
-  : cADT Sig :=
-    {| cRep          := rep DelegateImpl;
-       cConstructors := cConstructors DelegateImpl;
-       cMethods      := cMethods DelegateImpl |}.
+: cADT Sig :=
+  existT _ (rep DelegateImpl)
+         {| pcConstructors := cConstructors DelegateImpl;
+            pcMethods      := cMethods DelegateImpl |}.
 
 (* Proof component of the ADT is Qed-ed. *)
 Lemma FullySharpened_BuildMostlySharpenedcADT {Sig}
@@ -149,14 +150,14 @@ Lemma FullySharpened_BuildMostlySharpenedcADT {Sig}
             Sharpened_DelegateSpecs := DelegateSpecs |}.
 Proof.
   intros * cConstructorsRefinesSpec cMethodsRefinesSpec DelegateImpl DelegateImplRefinesSpec.
-  eapply (@refinesADT Sig spec (LiftcADT {|cRep := rep DelegateImpl;
-                                           cConstructors := _;
-                                           cMethods := _|})
+  eapply (@refinesADT Sig spec (LiftcADT (existT _ (rep DelegateImpl)
+                                         {| pcConstructors := _;
+                                            pcMethods := _|}))
                       (cAbsR DelegateImpl DelegateImplRefinesSpec)).
-  - simpl; intros; 
+  - simpl; intros;
     eapply (cConstructorsRefinesSpec _ DelegateImplRefinesSpec idx d).
-  - simpl; intros. 
-    eapply (cMethodsRefinesSpec _ DelegateImplRefinesSpec); eauto. 
+  - simpl; intros.
+    eapply (cMethodsRefinesSpec _ DelegateImplRefinesSpec); eauto.
 Qed.
 
 Definition SharpenFully {Sig}
@@ -218,14 +219,14 @@ Definition Extract_is_computationalADT
            (adt : ADT Sig)
            (adt_is_comp : is_computationalADT adt)
 : cADT Sig :=
-  {| cRep := Rep adt;
-     cConstructors :=
-       fun idx arg =>
-         CallComputationalConstructor adt_is_comp idx arg;
-     cMethods :=
-       fun idx arg rep =>
-         CallComputationalMethod adt_is_comp idx arg rep
-  |}.
+  existT _ (Rep adt)
+         {| pcConstructors :=
+              fun idx arg =>
+                CallComputationalConstructor adt_is_comp idx arg;
+            pcMethods :=
+              fun idx arg rep =>
+                CallComputationalMethod adt_is_comp idx arg rep
+         |}.
 
 (* Honing tactic for refining the observer method with the specified index.
      This version of the tactic takes the new implementation as an argument. *)

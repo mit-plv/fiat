@@ -18,22 +18,35 @@ Definition cMethodType (rep dom cod : Type)
      -> (rep * cod) (* Final model and return value. *).
 
 (** Interface of a computational ADT *)
-Record cADT (Sig : ADTSig) : Type :=
+Record pcADT (Sig : ADTSig)
+       (* Representation Type of the ADT is a parameter to get around
+        Universe problems. *)
+       (cRep : Type)
+: Type :=
   {
-    (** The representation type of the ADT **)
-    cRep : Type;
-
     (** Constructor implementations *)
-    cConstructors :
+    pcConstructors :
       forall idx : ConstructorIndex Sig,
         cConstructorType cRep (ConstructorDom Sig idx);
 
     (** Method implementations *)
-    cMethods :
+    pcMethods :
       forall idx : MethodIndex Sig,
         cMethodType cRep (fst (MethodDomCod Sig idx))
                                 (snd (MethodDomCod Sig idx))
   }.
+
+Definition cADT (Sig : ADTSig) := sigT (pcADT Sig).
+Definition cRep {Sig : ADTSig} (c : cADT Sig) : Type := projT1 c.
+Definition cConstructors {Sig : ADTSig} (c : cADT Sig)
+           (idx : ConstructorIndex Sig)
+: cConstructorType (cRep c) (ConstructorDom Sig idx)
+  := pcConstructors (projT2 c) idx.
+Definition cMethods {Sig : ADTSig} (c : cADT Sig)
+           (idx : MethodIndex Sig) :
+  cMethodType (cRep c) (fst (MethodDomCod Sig idx))
+              (snd (MethodDomCod Sig idx))
+  := pcMethods (projT2 c) idx.
 
 Definition LiftcADT (Sig : ADTSig) (A : cADT Sig) : ADT Sig :=
   {| Rep                := cRep A;

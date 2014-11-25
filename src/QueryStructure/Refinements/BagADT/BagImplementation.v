@@ -26,6 +26,7 @@ Section SharpenedBagImplementation.
       + erewrite benumerate_empty_eq_nil by eauto; reflexivity.
       + repeat constructor; simpl; intros; intuition.
         unfold In in H; destruct H.
+      + constructor.
   Qed.
 
   Lemma refine_Add_binsert
@@ -48,11 +49,6 @@ Section SharpenedBagImplementation.
                     iel lor eq_refl eqv_or)
         as [lor' (eqv_lor' & perm_lor') ].
       exists lor'; intuition; eauto.
-      split; intuition.
-      + setoid_rewrite NoDup_modulo_permutation; eexists (_ :: _); intuition; eauto.
-        constructor; eauto.
-        setoid_rewrite <- eqv_nr; unfold not; intros.
-        unfold In in *; apply H0 in H; exfalso; omega.
       + unfold In, Add in *; eapply Permutation_in;
           [ symmetry; eassumption
           | simpl; rewrite <- eqv_nr; inversion H; subst; intuition;
@@ -60,6 +56,12 @@ Section SharpenedBagImplementation.
       + eapply Permutation_in in H; eauto; simpl in *; intuition.
         * constructor 2; subst; constructor.
         * constructor; rewrite eqv_nr; eauto.
+      + setoid_rewrite NoDup_modulo_permutation; eexists (_ :: _); intuition;
+        [ | rewrite perm_lor'; simpl; reflexivity].
+        constructor; eauto.
+        unfold not; intros.
+        rewrite in_map_iff in *; destruct_ex; intuition; subst.
+        rewrite <- eqv_nr in *; apply_in_hyp H0; omega.
   Qed.
 
   Lemma refine_Delete_bdelete
@@ -81,9 +83,6 @@ Section SharpenedBagImplementation.
                as [l' [l'_eq Perm_l']].
       exists (filter (fun a => negb (bfind_matcher search_term (indexedElement a))) l'); repeat split.
       + rewrite <- l_eq, <- l'_eq, filter_map; reflexivity.
-      + apply NoDupFilter; eapply NoDup_Permutation_rewrite.
-          symmetry; eauto.
-          eauto.
       + unfold In, EnsembleDelete; intros.
         inversion H; subst.
         unfold In, Complement, In in *.
@@ -101,6 +100,12 @@ Section SharpenedBagImplementation.
       + unfold In, Complement, In in *.
         rewrite filter_In in H; intuition.
         rewrite H3 in H5; discriminate.
+      +
+
+        apply NoDupFilter; eapply NoDup_Permutation_rewrite.
+        symmetry; eauto.
+        eauto.
+
   Qed.
 
   Definition SharpenedBagImpl

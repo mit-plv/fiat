@@ -82,11 +82,10 @@ Program Definition BuildcADT
         (consDefs : ilist (@cConsDef Rep) consSigs)
         (methDefs : ilist (@cMethDef Rep) methSigs)
 : cADT (BuildADTSig consSigs methSigs)
-      := {|
-          cRep := Rep;
-          cConstructors idx := getcConsDef consDefs idx;
-          cMethods idx := getcMethDef methDefs idx
-          |}.
+      := existT _ Rep {|
+                  pcConstructors idx := getcConsDef consDefs idx;
+                  pcMethods idx := getcMethDef methDefs idx
+                |}.
 
 (* Notation for ADTs built from [BuildADT]. *)
 

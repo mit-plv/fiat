@@ -112,6 +112,11 @@ Section SharpenedBagImplementation.
                                 (BuildSearchTermTypeFromAttributes Keys')
     end.
 
+Definition packagedADT (Sig : ADTSig) :=
+  {Rep : Type & prod Rep
+              (pcADT Sig Rep)
+  }.
+
   Fixpoint BuildcADTSignaturesFromAttributes
            (Keys : list (@Attributes heading))
   : list ADTSig :=
@@ -124,14 +129,32 @@ Section SharpenedBagImplementation.
           :: BuildcADTSignaturesFromAttributes Keys'
     end.
 
-  Set Printing Universes.
+  Fixpoint BuildDelegateSignatureFromAttributes
+           (Keys : list (@Attributes heading))
+  : ADTSig :=
+    match Keys with
+      | [] => ListSig (@Tuple heading)
+      | Key :: Keys' =>
+        @FiniteMapSig
+          (packagedADT (BuildDelegateSignatureFromAttributes Keys'))
+          (Domain heading Key)
+    end.
+
+  Fixpoint BuildDelegateSignaturesFromAttributes
+           (Keys : list (@Attributes heading))
+  : list ADTSig :=
+    match Keys with
+      | [] => [ListSig (@Tuple heading)]
+      | Key :: Keys' =>
+        BuildDelegateSignatureFromAttributes
+          (Key :: Keys')
+          :: BuildDelegateSignaturesFromAttributes Keys'
+    end.
 
   Definition UnIndexedBagcADT
-             {ListRep}
-             (ListADTImpl : cADT ListRep (ListSig (@Tuple heading)))
-  : cADT ListRep (BagSig (@Tuple heading) (@Tuple heading -> bool)).
-  Admitted.
-   (*:=
+             (ListADTImpl : cADT (ListSig (@Tuple heading)))
+  : cADT (BagSig (@Tuple heading) (@Tuple heading -> bool))
+    :=
     cADTRep (cRep ListADTImpl) {
         Def Constructor "EmptyBag" (u : unit) : rep :=
           CallConstructor ListADTImpl "EmptyList" (),
@@ -159,18 +182,16 @@ Section SharpenedBagImplementation.
         Def Method "Delete" (r : rep, filt : Tuple -> bool)
         : list (@Tuple heading) :=
               CallMethod ListADTImpl "Delete" r filt
-            }. *)
+            }.
 
   Definition AttributeToIndexedBagcADT
              (Key : Attributes heading)
              SubTreeSearchTermType
-             (Sig := BagSig (@Tuple heading) SubTreeSearchTermType)
-             {NodeRep SubTreeRep}
-             (NodeImpl : cADT NodeRep (FiniteMapSig (packagedADT (BagSig (@Tuple heading) SubTreeSearchTermType))
+             (NodeImpl : cADT (FiniteMapSig (packagedADT (BagSig (@Tuple heading) SubTreeSearchTermType))
                                             (Domain heading Key)))
 
-             (SubTreeImpl : cADT SubTreeRep Sig)
-  : cADT NodeRep (@BagSig (@Tuple heading) (option (Domain heading Key) * SubTreeSearchTermType)).
+             (SubTreeImpl : cADT (BagSig (@Tuple heading) SubTreeSearchTermType))
+  : cADT (@BagSig (@Tuple heading) (option (Domain heading Key) * SubTreeSearchTermType)).
   Admitted.
 (*    refine (cADTRep (cRep NodeImpl) {
         Def Constructor "EmptyBag" (u : unit) : rep :=
@@ -298,19 +319,26 @@ Section SharpenedBagImplementation.
 
   Fixpoint NestedTreeFromAttributesAsBagcADT
           (Keys : list (@Attributes heading))
- : ilist (fun Sig => {rep : _ & cADT rep Sig}) (BuildcADTSignaturesFromAttributes Keys) ->
-   {rep :_ & cADT rep (@BagSig (@Tuple heading) (BuildSearchTermTypeFromAttributes Keys))} :=
+ : ilist (fun Sig => cADT Sig) (BuildDelegateSignaturesFromAttributes Keys) ->
+   cADT (@BagSig (@Tuple heading) (BuildSearchTermTypeFromAttributes Keys)) :=
   match Keys return
-         ilist (fun Sig => {rep : _ & cADT rep Sig}) (BuildcADTSignaturesFromAttributes Keys) ->
-         {rep :_ & cADT rep (@BagSig (@Tuple heading) (BuildSearchTermTypeFromAttributes Keys))}
+         ilist cADT (BuildDelegateSignaturesFromAttributes Keys) ->
+         cADT (@BagSig (@Tuple heading) (BuildSearchTermTypeFromAttributes Keys))
    with
-     | [] => fun Impl => existT _ _ (UnIndexedBagcADT (projT2 (ilist_hd Impl)))
+     | [] => fun Impl => UnIndexedBagcADT (ilist_hd Impl)
      | Key :: Keys' =>
        fun SubTreeImpl =>
-         existT _ _ (@AttributeToIndexedBagcADT
-           Key _ _ _ (projT2 (ilist_hd SubTreeImpl))
-           (projT2 (NestedTreeFromAttributesAsBagcADT Keys' (ilist_tl SubTreeImpl))))
+         @AttributeToIndexedBagcADT
+           Key _
+           (ilist_hd SubTreeImpl)
+           (NestedTreeFromAttributesAsBagcADT Keys' (ilist_tl SubTreeImpl))
    end.
+
+  Fixpoint ilistBagFromilistFMap
+           (Keys : ilist (@Attributes heading))
+  : ilist (fun Sig => cADT Sig) (BuildcADTSignaturesFromAttributes Keys)
+
+
 
 
   Variable SearchTermTypePlus : Type.

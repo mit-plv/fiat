@@ -288,15 +288,15 @@ Section BuildADTRefinements.
     intros * cConstructorsRefinesSpec cMethodsRefinesSpec
                                       DelegateImpl DelegateImplRefinesSpec.
     eapply (@refinesADT _ (BuildADT consDefs methDefs)
-                        (LiftcADT {|cRep := rep DelegateImpl;
-                                    cConstructors := _;
-                                    cMethods := _|})
+                        (LiftcADT (existT _ (rep DelegateImpl)
+                                          {| pcConstructors := _;
+                                             pcMethods := _|}))
                         (cAbsR DelegateImpl DelegateImplRefinesSpec)).
-    - simpl; intros.
+    - simpl; unfold ComputationalADT.cConstructors; simpl; intros.
       rewrite <- ith_Bounded_imap; eauto.
       eapply (Iterate_Dep_Type_BoundedIndex_equiv_1
               _ (cConstructorsRefinesSpec DelegateImpl DelegateImplRefinesSpec) idx d).
-    - simpl; intros.
+    - simpl; unfold ComputationalADT.cMethods; simpl; intros.
        rewrite <- ith_Bounded_imap;
          eapply (Iterate_Dep_Type_BoundedIndex_equiv_1
                    _ (cMethodsRefinesSpec DelegateImpl DelegateImplRefinesSpec)
