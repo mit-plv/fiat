@@ -649,6 +649,28 @@ Section ConstraintCheckRefinements.
         reflexivity.
   Qed.
 
+  Lemma tupleAgree_refl :
+  forall (h : Heading)
+         (tup : @Tuple h)
+         (attrlist : list (Attributes h)),
+    tupleAgree tup tup attrlist.
+  Proof.
+    unfold tupleAgree; auto.
+  Qed.
+  
+  Lemma refine_tupleAgree_refl_True :
+    forall (h : Heading)
+           (tup : @Tuple h)
+           (attrlist attrlist' : list (Attributes h)),
+      refine {b |
+              decides b (tupleAgree tup tup attrlist'
+                         -> tupleAgree tup tup attrlist)}
+             (ret true).
+  Proof.
+    unfold refine; intros; inversion_by computes_to_inv.
+    subst; econstructor; simpl; auto using tupleAgree_refl.
+  Qed.
+  
   Lemma refine_SatisfiesCrossConstraints_Pre (Q : Prop)
   : forall qsSchema qs
            (Ridx : @BoundedString (map relName (qschemaSchemas qsSchema)))
@@ -721,7 +743,6 @@ Section ConstraintCheckRefinements.
 
   Require Import ADTSynthesis.QueryStructure.Refinements.flattenCompListProperties.
 
-  (*
   Lemma In_UnConstrQuery_In {qsSchema} {A}
   : forall (qs : UnConstrQueryStructure qsSchema) Ridx bod results,
       UnConstrQuery_In qs Ridx bod ↝ results
@@ -733,21 +754,21 @@ Section ConstraintCheckRefinements.
   Proof.
     unfold UnConstrQuery_In, QueryResultComp; intros;
     inversion_by computes_to_inv.
-    unfold EnsembleListEquivalence in *; intuition.
+    unfold UnIndexedEnsembleListEquivalence in *; destruct_ex; intuition; subst.
     rewrite map_map in H2.
     remember (GetUnConstrRelation qs Ridx); clear Hequ;
-    revert u a results H0 H2 H H3;
-    induction x; simpl in *; intros;
+    revert u a results H0 H2 H H4;
+    induction x0; simpl in *; intros;
     inversion_by computes_to_inv; subst.
     simpl in H0; intuition.
     apply in_app_or in H0; intuition.
-    exists a x0; intuition; eapply H3; eauto.
-    inversion H; subst.
-    destruct (IHx (fun tup => tup <> a /\ u tup) _ _ H1 H4 H7).
+    exists a x; intuition; try eapply H; eauto.    
+    inversion H4; subst.
+    destruct (IHx0 (fun tup => tup <> a /\ u tup) _ _ H1 H3); eauto.
     unfold Ensembles.In; intros; intuition; subst; eauto.
-    eapply H3 in H8; intuition.
-    intuition.
-    apply H3; intuition.
+    eapply H in H8; intuition.
+    apply H6; apply in_map; auto.
+    apply H; intuition.
     destruct_ex; intuition.
     exists x2 x3; intuition.
     apply H5.
@@ -766,22 +787,23 @@ Section ConstraintCheckRefinements.
   Proof.
     unfold UnConstrQuery_In, QueryResultComp, Ensembles.In; intros.
     inversion_by computes_to_inv.
-    unfold EnsembleListEquivalence in *; intuition.
+    unfold UnIndexedEnsembleListEquivalence in *; destruct_ex; intuition; subst.
     rewrite map_map in H3.
     remember (GetUnConstrRelation qs Ridx); clear Hequ;
-    revert u a results H H0 H1 H3 H4;
-    induction x; simpl in *; intros;
+    revert u a results H H0 H1 H3 H5;
+    induction x0; simpl in *; intros;
     inversion_by computes_to_inv; subst.
-    simpl in *; intuition; eapply H4; eauto.
-    apply H4 in H; intuition; subst; apply in_or_app; eauto.
-    right; inversion H1; subst.
-    eapply (IHx (fun tup => tup <> a /\ u tup)); eauto.
+    simpl in *; intuition; eapply H1; eauto.
+    apply H1 in H; intuition; subst; apply in_or_app; eauto.
+    right; inversion H5; subst.
+    eapply (IHx0 (fun tup => tup <> a /\ u tup)); eauto.
     intuition; subst; eauto.
-    apply H4; eauto.
+    apply H7; eauto using in_map.
+    apply H1; eauto.
     unfold Ensembles.In; intuition; intros; eauto.
-    rewrite H4 in H9; intuition.
-    subst; eauto.
-    apply H4; eauto.
+    rewrite H1 in H9; intuition.
+    subst; eauto using in_map.
+    apply H1; eauto.
   Qed.
 
   Lemma DeleteForeignKeysCheck {qsSchema}
@@ -877,11 +899,34 @@ Section ConstraintCheckRefinements.
       + eapply Permutation_in; symmetry in H3; simpl; eauto.
         simpl; eauto.
   Qed.
-*)
 
 End ConstraintCheckRefinements.
 
-(*
+Lemma In_flatten_CompList {A} :
+  forall (P : Ensemble A)
+         (P_dec : forall a, P a \/ ~ P a)
+         (il : list (@IndexedElement A))
+         (l : list A)
+         (a : A),
+    In a l 
+    -> flatten_CompList
+         (map
+            (fun x1 : IndexedElement =>
+               Where (P (indexedElement x1))
+                     Return (indexedElement x1) ) il) ↝ l
+    -> exists a', In a' il /\ indexedElement a' = a.
+Proof.
+  induction il; simpl; intros; inversion_by computes_to_inv; subst; simpl in *; intuition.
+  apply in_app_or in H; intuition.
+  unfold Query_Where in H1; apply computes_to_inv in H1; intuition.
+  destruct (P_dec (indexedElement a)).
+  apply H in H1; unfold Query_Return in *; apply computes_to_inv in H1; subst;
+  simpl in H0; exists a; intuition; eauto.
+  apply H3 in H1; subst; simpl in *; contradiction.
+  destruct (IHil _ _ H0 H2) as [a' [In_a' a'_eq]]; exists a'; split; eauto.
+Qed.
+
+
 Lemma For_computes_to_In :
   forall {heading} P,
     (forall a, P a \/ ~ P a) ->
@@ -904,9 +949,11 @@ Proof.
   destruct in_x0 as [ x0_before [ x0_after ? ] ]; subst.
   symmetry in H4. apply Permutation_cons_app_inv in H4.
 
+  unfold UnIndexedEnsembleListEquivalence in H3; destruct_ex; intuition; subst.
+  
   rewrite map_map in H5.
   destruct (flatten_CompList_app_cons_inv _ excl _ _ _ _ H5) as [ x1_before [ x1_middle [ head' [ x1_after (_eq & in_orig & before & middle & after) ] ] ] ]; subst.
-
+  
   unfold boxed_option in middle; simpl in middle.
   apply computes_to_inv in middle.
   destruct middle as [head'' (middle1 & middle2)].
@@ -919,47 +966,54 @@ Proof.
   apply computes_to_inv in ret_cons; subst.
 
   rewrite singleton_neq_nil in spec2.
-  destruct (excl (indexedTuple head')) as [ H | H ]; try solve [exfalso; intuition].
-  specialize (spec1 H).
+  destruct (excl (indexedTuple head')) as [ H' | H' ]; try solve [exfalso; intuition].
+  specialize (spec1 H').
 
   apply computes_to_inv in spec1.
   injection spec1; intros; subst.
 
   destruct H0.
 
-  - subst x; split; [ | exists head'; split; [ apply H3  | ] ]; auto.
-  - pose proof (EnsembleListEquivalence_slice _ _ _ H3) as smaller_equiv.
-    pose proof (flatten_CompList_app _ _ _ _ before after) as flatten_app.
-    set (smaller_ens := (fun x : IndexedTuple => ens x /\ ~ In x x1_middle)).
-    split.
-
-    + eapply H1; try assumption.
-      econstructor; [ | constructor; symmetry; eassumption ].
-      econstructor.
-      constructor.
-
-      apply smaller_equiv.
-
-      unfold boxed_option in *.
-      rewrite !map_app, !map_map.
-      apply flatten_app.
-    + assert (exists x0 : IndexedTuple, smaller_ens x0 /\ indexedTuple x0 = x) as temp.
-      apply H2; try eassumption.
-      econstructor; [ | constructor; symmetry; eassumption ].
-      econstructor.
-      constructor.
-
-      eassumption.
-      unfold boxed_option in *.
-      rewrite !map_app, !map_map.
-      apply flatten_app.
-
-      destruct temp as [ x0 ( ens_x & _eq ) ]; subst.
-      eexists; split; eauto.
-
-      unfold smaller_ens in ens_x; intuition.
+  - subst x; eauto.
+  - pose proof (flatten_CompList_app _ _ _ _ before after) as flatten_app.
+    eapply H1; try assumption.
+    econstructor; [ | constructor; symmetry; eassumption ].
+    econstructor.
+    pose proof (EnsembleListEquivalence_slice x1_before x1_middle x1_after).
+    instantiate (2 := (fun x0 : IndexedTuple => ens x0 /\ ~ In x0 x1_middle)).
+    econstructor 3 with (v := map indexedElement (x1_before ++ x1_after)).
+    econstructor; split; eauto; intuition.
+    destruct (H3 ens).
+    unfold EnsembleListEquivalence; split; eauto using NoDup_IndexedElement.
+    eapply H9; eauto.
+    unfold Ensembles.In; split.
+    eapply H; apply in_app_or in H6; intuition.
+    intros; apply NoDup_IndexedElement in H7; eapply NoDup_app_inv'; eauto using in_app_or.
+    repeat rewrite map_app in *; eauto using NoDup_slice.
+    unfold boxed_option in *.
+    rewrite !map_app, !map_map.
+    apply flatten_app.
+    
+  - rewrite map_map in *.
+    destruct (In_flatten_CompList P excl x0 (x0_before ++ head :: x0_after) x) as [x1 [In_x1 x1_eq]];
+      eauto.
+    eapply Permutation_in with (l := head :: (x0_before ++ x0_after)).
+    eapply Permutation_middle.
+    simpl in *; intuition; right; eauto using Permutation_in.
+    exists x1; split; eauto.
+    apply H; eauto.
 Qed.
 
+Lemma UnIndexedEnsembleListEquivalence_eqv {A}
+: forall ens l,
+    @UnIndexedEnsembleListEquivalence A ens l ->
+    exists l', 
+      EnsembleListEquivalence ens l' /\ l = map indexedElement l'.
+Proof.
+  unfold UnIndexedEnsembleListEquivalence, EnsembleListEquivalence; intros.
+  destruct_ex; intuition.
+  exists x; intuition; eauto using NoDup_IndexedElement.
+Qed.
 
 Lemma For_computes_to_nil :
   forall {heading} P,
@@ -973,7 +1027,9 @@ Proof.
 
                                             inversion_by computes_to_inv.
   symmetry in H2; apply Permutation_nil in H2; subst.
-  apply H1 in H0.
+  apply UnIndexedEnsembleListEquivalence_eqv in H1; destruct_ex; intuition; subst.
+
+  apply H2 in H0.
   apply in_split in H0.
   destruct H0 as [ x1_before [ x1_after _eq ] ]; subst.
 
@@ -1076,27 +1132,6 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma tupleAgree_refl :
-  forall (h : Heading)
-         (tup : @Tuple h)
-         (attrlist : list (Attributes h)),
-    tupleAgree tup tup attrlist.
-Proof.
-  unfold tupleAgree; auto.
-Qed.
-
-Lemma refine_tupleAgree_refl_True :
-  forall (h : Heading)
-         (tup : @Tuple h)
-         (attrlist attrlist' : list (Attributes h)),
-    refine {b |
-            decides b (tupleAgree tup tup attrlist'
-                       -> tupleAgree tup tup attrlist)}
-           (ret true).
-Proof.
-  unfold refine; intros; inversion_by computes_to_inv.
-  subst; econstructor; simpl; auto using tupleAgree_refl.
-Qed.
 
 Ltac simplify_trivial_SatisfiesSchemaConstraints :=
   simpl;
@@ -1127,4 +1162,3 @@ Ltac simplify_trivial_SatisfiesCrossRelationConstraints :=
 
     end.
 
-*)

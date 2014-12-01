@@ -81,8 +81,6 @@ Proof.
   eapply H; eexists; eauto.
 Qed.
 
-Print freshIdx.
-
 Lemma refine_For_In_Insert
 : forall ResultT MySchema R or a tup bod,
     (forall tup, GetUnConstrRelation or R tup -> tupleIndex tup <> a)

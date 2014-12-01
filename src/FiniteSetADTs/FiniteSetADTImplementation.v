@@ -130,6 +130,9 @@ Module FiniteSetADTMSet (FSMSet : SetsOn BedrockWordAsOrderedType).
 
   Local Ltac t := repeat repeat repeat t_step.
 
+  Local Arguments cConstructors _ _ _ _ / .
+  Local Arguments cMethods _ _ _ _ _ / .
+
   Definition FiniteSetImpl : FullySharpened FiniteSetSpec.
   Proof.
     exists FiniteSetCImpl.

@@ -415,9 +415,10 @@ Proof.
   assumption.
 Qed.
 
-
 Ltac pruneDuplicates :=
-  repeat ((setoid_rewrite refine_trivial_if_then_else || setoid_rewrite key_symmetry || setoid_rewrite refine_tupleAgree_refl_True); try simplify with monad laws).
+  repeat ((setoid_rewrite refine_trivial_if_then_else
+           || setoid_rewrite key_symmetry
+           || setoid_rewrite refine_tupleAgree_refl_True); try simplify with monad laws).
 
 (* Pick a new logical index using [EnsembleBagEquivalence_pick_new_index] *)
 Ltac pickIndex :=

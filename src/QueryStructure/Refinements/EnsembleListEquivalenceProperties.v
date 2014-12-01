@@ -1,4 +1,4 @@
-Require Export ADTSynthesis.QueryStructure.IndexedEnsembles.
+Require Export ADTSynthesis.QueryStructure.IndexedEnsembles ADTSynthesis.QueryStructure.AdditionalLemmas.
 Require Import Coq.Sets.Ensembles Coq.Lists.List ADTSynthesis.QueryStructure.AdditionalPermutationLemmas.
 
 Lemma EnsembleListEquivalence_slice :
@@ -42,4 +42,12 @@ Proof.
   destruct equiv as [NoDup_l equiv];
   setoid_rewrite equiv;
   reflexivity.
+Qed.
+
+Lemma NoDup_IndexedElement {A} :
+  forall (l1 : list (@IndexedElement A)),
+    NoDup (map elementIndex l1) ->
+    NoDup l1.
+Proof.
+  induction l1; simpl; constructor; inversion H; subst; eauto using in_map.
 Qed.

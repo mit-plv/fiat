@@ -481,6 +481,7 @@ Proof.
   rewrite <- H3; eauto.
 Qed.
 
+(* *)
 Ltac ilist_of_evar1 C B As k :=
   match As with
     | nil => k (fun c : C => inil B)
@@ -536,7 +537,19 @@ Ltac FullySharpenEachMethod1 delegateSigs delegateSpecs :=
       cbv beta;
       solve [apply reflexivity].
 
-Ltac make_computational_method :=
+  Ltac make_computational_method' :=
+    let x := match goal with |- ?R (ret ?x) (ret (?f ?a ?b ?c)) => constr:(x) end in
+    let f := match goal with |- ?R (ret ?x) (ret (?f ?a ?b ?c)) => constr:(f) end in
+    let a := match goal with |- ?R (ret ?x) (ret (?f ?a ?b ?c)) => constr:(a) end in
+    let b := match goal with |- ?R (ret ?x) (ret (?f ?a ?b ?c)) => constr:(b) end in
+    let c := match goal with |- ?R (ret ?x) (ret (?f ?a ?b ?c)) => constr:(c) end in
+    let x' := (eval pattern a, b, c in x) in
+    let f' := match x' with ?f' _ _ _ => constr:(f') end in
+    unify f f';
+      cbv beta;
+      solve [apply reflexivity].
+
+  Ltac make_computational_method_pair_rep :=
     let x := match goal with |- ?R (ret ?x) (ret (?f ?a (?b, ?b') ?c)) => constr:(x) end in
     let f := match goal with |- ?R (ret ?x) (ret (?f ?a (?b, ?b') ?c)) => constr:(f) end in
     let a := match goal with |- ?R (ret ?x) (ret (?f ?a (?b, ?b') ?c)) => constr:(a) end in
@@ -548,6 +561,26 @@ Ltac make_computational_method :=
     unify f f';
       cbv beta;
       solve [apply reflexivity].
+
+  Ltac make_computational_method_pair_args :=
+    let x := match goal with |- ?R (ret ?x) (ret (?f ?a ?b (?c, ?c'))) => constr:(x) end in
+    let f := match goal with |- ?R (ret ?x) (ret (?f ?a ?b (?c, ?c'))) => constr:(f) end in
+    let a := match goal with |- ?R (ret ?x) (ret (?f ?a ?b (?c, ?c'))) => constr:(a) end in
+    let b := match goal with |- ?R (ret ?x) (ret (?f ?a ?b (?c, ?c'))) => constr:(b) end in
+    let c := match goal with |- ?R (ret ?x) (ret (?f ?a ?b (?c, ?c'))) => constr:(c) end in
+    let c' := match goal with |- ?R (ret ?x) (ret (?f ?a ?b (?c, ?c'))) => constr:(c') end in
+    let x' := (eval pattern a, b, c, c' in x) in
+    let f' := match x' with ?f' _ _ _ _ => constr:(fun i a b => f' i a (fst b) (snd b)) end in
+    unify f f';
+      cbv beta;
+      solve [apply reflexivity].
+
+  Ltac make_computational_method :=
+    match goal with
+      | |- ?R (ret ?x) (ret (?f ?a ?b (?c, ?c'))) => make_computational_method_pair_args
+      | |- ?R (ret ?x) (ret (?f ?a (?b, ?b') ?c)) => make_computational_method_pair_rep
+      | |- ?R (ret ?x) (ret (?f ?a ?b ?c)) => make_computational_method'
+    end.
 
 Lemma refineIfret {A} :
   forall (cond : bool) (a a' : A),
