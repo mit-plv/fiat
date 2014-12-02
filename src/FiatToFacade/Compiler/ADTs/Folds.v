@@ -1,7 +1,6 @@
 Require Import FiatToFacade.Compiler.Prerequisites.
 Require Import FiatToFacade.Compiler.ADTs.ListsInversion FiatToFacade.Compiler.ADTs.Lists.
 Require Import Facade.examples.FiatADTs GLabelMap.
-Require Import QueryStructure.Refinements.AdditionalRefinementLemmas. (* TODO *)
 
 Unset Implicit Arguments.
 

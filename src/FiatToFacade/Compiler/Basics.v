@@ -1,12 +1,11 @@
 Require Import FiatToFacade.Compiler.Prerequisites.
-Require Import QueryStructure.Refinements.AdditionalRefinementLemmas. (* TODO *)
 
 Unset Implicit Arguments.
 
-Lemma start_compiling' : 
+Lemma start_compiling' :
   forall {av env} init_state vret v,
     AllADTs init_state (StringMap.empty _) ->
-    refine (ret v) 
+    refine (ret v)
            (prog <- (@Prog av env True
                            ∅ ([vret >sca> v]::∅)
                            ∅ ∅);
@@ -25,11 +24,11 @@ Proof.
     autoinj.
 Qed.
 
-Lemma start_compiling_sca_with_precondition : (* TODO: Supersedes start_compiling *) 
+Lemma start_compiling_sca_with_precondition : (* TODO: Supersedes start_compiling *)
   forall {av env} init_state scas adts vret v,
     SomeSCAs init_state scas ->
     AllADTs init_state adts ->
-    refine (ret v) 
+    refine (ret v)
            (prog <- (@Prog av env True
                            scas ([vret >sca> v]::∅)
                            adts ∅);
@@ -46,12 +45,12 @@ Proof.
   autoinj.
 Qed.
 
-Lemma start_compiling_adt_with_precondition : (* TODO: Supersedes start_compiling *) 
+Lemma start_compiling_adt_with_precondition : (* TODO: Supersedes start_compiling *)
   forall {av env} init_state scas adts vret ret_type (v: ret_type) wrapper,
     (forall x y, wrapper x = wrapper y -> x = y) ->
     SomeSCAs init_state scas ->
     AllADTs init_state adts ->
-    refine (ret v) 
+    refine (ret v)
            (prog <- (@Prog av env True
                            scas (∅)
                            adts ([vret >adt> wrapper v]::∅));
@@ -67,5 +66,5 @@ Proof.
   auto_mapsto_unique;
   autoinj;
   erewrite H; eauto.
-  
+
 Qed.

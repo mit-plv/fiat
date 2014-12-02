@@ -1,4 +1,4 @@
-SRC_MODULES    := \
+CORE_MODULES    := \
 	Common \
 	Common/ReservedNotations \
 	Common/ilist \
@@ -23,6 +23,10 @@ SRC_MODULES    := \
 	Common/Ensembles/CombinatorLaws \
 	Common/Ensembles/Notations \
 	Common/PermutationFacts \
+	Common/String_as_OT \
+	Common/FMapExtensions \
+	QueryStructure/SetEq \
+	QueryStructure/SetEqProperties \
 	ComputationalEnsembles \
 	ComputationalEnsembles/Core \
 	ComputationalEnsembles/Laws \
@@ -63,53 +67,50 @@ SRC_MODULES    := \
 	ADTRefinement/BuildADTRefinements/HoneRepresentation \
 	ADTRefinement/BuildADTRefinements/SimplifyRep \
 	ADTRefinement/BuildADTRefinements/AddCache \
-	ADTRefinement/BuildADTRefinements \
-	QueryStructure/Notations \
-	QueryStructure/IndexedEnsembles \
-	QueryStructure/Heading \
-	QueryStructure/Tuple \
-	QueryStructure/Schema \
-	QueryStructure/Relation \
-	QueryStructure/SetEq \
-	QueryStructure/SetEqProperties \
-	QueryStructure/tupleAgree \
-	QueryStructure/FlattenCompList \
-	QueryStructure/QueryStructureSchema \
-	QueryStructure/QueryStructure \
-	QueryStructure/QuerySpecs/EmptyQSSpecs \
-	QueryStructure/QuerySpecs/QueryQSSpecs \
-	QueryStructure/QuerySpecs/InsertQSSpecs \
-	QueryStructure/QuerySpecs/DeleteQSSpecs \
-	QueryStructure/QueryStructureNotations \
-	QueryStructure/Refinements/ConstraintChecksRefinements \
-	QueryStructure/Refinements/GeneralQueryRefinements \
-	QueryStructure/Refinements/GeneralInsertRefinements \
-	QueryStructure/Refinements/GeneralDeleteRefinements \
-	QueryStructure/Refinements/ConstraintChecksUnfoldings \
-	QueryStructure/Refinements/GeneralQueryStructureRefinements \
-	QueryStructure/Refinements/OperationRefinements \
-	QueryStructure/Refinements/ConstraintChecksRefinements \
-	QueryStructure/Refinements/ListImplementation/ListQueryRefinements \
-	QueryStructure/Refinements/ListImplementation/ListInsertRefinements \
-	QueryStructure/Refinements/ListImplementation/ListQueryStructureRefinements \
-	QueryStructure/Refinements/ListImplementation \
-	QueryStructure/Refinements/FMapImplementation/FMapExtensions \
-	QueryStructure/Refinements/Bags/BagsInterface\
-	QueryStructure/Refinements/Bags/BagsProperties\
-	QueryStructure/Refinements/Bags/BagsTactics\
-	QueryStructure/Refinements/Bags/ListBags\
-	QueryStructure/Refinements/Bags/CountingListBags\
-	QueryStructure/Refinements/Bags/TreeBags\
-	QueryStructure/Refinements/Bags/CachingBags\
-	QueryStructure/Refinements/Bags/CacheableFunctions\
-	QueryStructure/Refinements/Bags/BagsOfTuples\
-	QueryStructure/Refinements/BagADT/BagADT\
-	QueryStructure/Refinements/BagADT/Refinements\
-	QueryStructure/Refinements/BagADT/BagImplementation\
-	Common/String_as_OT\
-	QueryStructure/Refinements/Bags/Bags\
-	QueryStructure/Refinements/AutoDB\
-	FiniteSetADTs \
+	ADTRefinement/BuildADTRefinements
+
+QUERYSTRUCTURE_MODULES := \
+	QueryStructure/Specification/Representation/Notations \
+	QueryStructure/Specification/Representation/Heading \
+	QueryStructure/Specification/Representation/Tuple \
+	QueryStructure/Specification/Representation/Schema \
+	QueryStructure/Specification/Representation/Relation \
+	QueryStructure/Specification/Representation/QueryStructureSchema \
+	QueryStructure/Specification/Representation/QueryStructure \
+	QueryStructure/Specification/Representation/QueryStructureNotations \
+	QueryStructure/Specification/Constraints/tupleAgree \
+	QueryStructure/Specification/Operations/FlattenCompList \
+	QueryStructure/Specification/Operations/Empty \
+	QueryStructure/Specification/Operations/Query \
+	QueryStructure/Specification/Operations/Insert \
+	QueryStructure/Specification/Operations/Delete \
+	QueryStructure/Implementation/Constraints/ConstraintChecksRefinements \
+	QueryStructure/Implementation/Constraints/ConstraintChecksUnfoldings \
+	QueryStructure/Implementation/Operations/General/EmptyRefinements \
+	QueryStructure/Implementation/Operations/General/QueryRefinements \
+	QueryStructure/Implementation/Operations/General/InsertRefinements \
+	QueryStructure/Implementation/Operations/General/DeleteRefinements \
+	QueryStructure/Implementation/Operations/General/QueryStructureRefinements \
+	QueryStructure/Implementation/Operations \
+	QueryStructure/Implementation/DataStructures/qListImplementation/ListQueryRefinements \
+	QueryStructure/Implementation/DataStructures/ListImplementation/ListInsertRefinements \
+	QueryStructure/Implementation/ListImplementation \
+	QueryStructure/Implementation/DataStructures/Bags/BagsInterface\
+	QueryStructure/Implementation/DataStructures/Bags/BagsProperties\
+	QueryStructure/Implementation/DataStructures/Bags/BagsTactics\
+	QueryStructure/Implementation/DataStructures/Bags/ListBags\
+	QueryStructure/Implementation/DataStructures/Bags/CountingListBags\
+	QueryStructure/Implementation/DataStructures/Bags/TreeBags\
+	QueryStructure/Implementation/DataStructures/Bags/CachingBags\
+	QueryStructure/Implementation/DataStructures/Bags/CacheableFunctions\
+	QueryStructure/Implementation/DataStructures/Bags/BagsOfTuples\
+	QueryStructure/Implementation/DataStructures/BagADT/BagADT\
+	QueryStructure/Implementation/DataStructures/BagADT/Refinements\
+	QueryStructure/Implementation/DataStructures/BagADT/BagImplementation\
+	QueryStructure/Implementation/BagImplementation\
+	QueryStructure/Implementation/DataStructures/Automation/AutoDB
+
+FINITESET_MODULES := \
 	FiniteSetADTs/FiniteSetADT \
 	FiniteSetADTs/FiniteSetADTMethodLaws \
 	FiniteSetADTs/FiniteSetADTImplementation \
@@ -117,6 +118,8 @@ SRC_MODULES    := \
 	FiniteSetADTs/WordInterface \
 	FiniteSetADTs/NatWord \
 	FiniteSetADTs/BedrockWord \
+
+PARSER_MODULES := \
 	Parsers/ContextFreeGrammar\
 	Parsers/Specification\
 	Parsers/NonComputational
@@ -178,12 +181,24 @@ EXAMPLE_MODULES := \
 COQDEP=coqdep
 COQDOC=coqdoc
 
-SRC_VS	:= $(SRC_MODULES:%=src/%.v)
-SRC_VOS:= $(SRC_MODULES:%=src/%.vo)
+CORE_VS	:= $(CORE_MODULES:%=src/%.v)
+CORE_VOS:= $(CORE_MODULES:%=src/%.vo)
 
 COMPILER_VS  := $(COMPILER_MODULES:%=src/%.v)
 COMPILER_VDS := $(COMPILER_MODULES:%=src/%.v.d)
 COMPILER_VOS := $(COMPILER_MODULES:%=src/%.vo)
+
+QUERYSTRUCTURE_VS  := $(QUERYSTRUCTURE_MODULES:%=src/%.v)
+QUERYSTRUCTURE_VDS := $(QUERYSTRUCTURE_MODULES:%=src/%.v.d)
+QUERYSTRUCTURE_VOS := $(QUERYSTRUCTURE_MODULES:%=src/%.vo)
+
+PARSER_VS  := $(PARSER_MODULES:%=src/%.v)
+PARSER_VDS := $(PARSER_MODULES:%=src/%.v.d)
+PARSER_VOS := $(PARSER_MODULES:%=src/%.vo)
+
+FINITESET_VS  := $(FINITESET_MODULES:%=src/%.v)
+FINITESET_VDS := $(FINITESET_MODULES:%=src/%.v.d)
+FINITESET_VOS := $(FINITESET_MODULES:%=src/%.vo)
 
 EXAMPLE_VS := $(EXAMPLE_MODULES:%=examples/%.v)
 EXAMPLE_VOS:= $(EXAMPLE_MODULES:%=examples/%.vo)
@@ -205,9 +220,15 @@ TIMECMD=
 STDTIME=/usr/bin/time -f \"\$$* (user: %e mem: %M ko)\"
 TIMER=\$$(if \$$(TIMED), $(STDTIME), $(TIMECMD))
 
-.PHONY: all sources examples html clean pretty-timed pretty-timed-files pdf doc clean-doc cheat
+.PHONY: all fiat querystructures parsers finitesets examples html clean pretty-timed pretty-timed-files pdf doc clean-doc cheat
 
-sources : $(SRC_VOS)
+fiat : $(CORE_VOS)
+
+querystructures : $(QUERYSTRUCTURE_VOS)
+
+parsers : $(PARSER_VOS)
+
+finitesets : $(FINITESET_VOS)
 
 examples : $(EXAMPLE_VOS)
 
@@ -233,7 +254,7 @@ Overview/ProjectOverview.pdf: $(shell find Overview -name "*.tex" -o -name "*.st
 	cd Overview; pdflatex -synctex=1 ProjectOverview.tex
 
 Makefile.coq: Makefile
-	"$(COQBIN)coq_makefile" $(SRC_VS) $(EXAMPLE_VS) $(COMPILER_VS) COQC = " \$$(SILENCE_COQC)$(TIMER) \"\$$(COQBIN)coqc\"" COQDEP = " \$$(SILENCE_COQDEP)\"\$$(COQBIN)coqdep\" -c" COQDOCFLAGS = "$(COQDOCFLAGS)" -arg -dont-load-proofs -R src ADTSynthesis -R examples ADTExamples -o Makefile.coq
+	"$(COQBIN)coq_makefile" $(CORE_VS) $(EXAMPLE_VS) $(QUERYSTRUCTURE_VS) $(PARSER_VS) $(FINITESET_VS) $(COMPILER_VS) COQC = " \$$(SILENCE_COQC)$(TIMER) \"\$$(COQBIN)coqc\"" COQDEP = " \$$(SILENCE_COQDEP)\"\$$(COQBIN)coqdep\" -c" COQDOCFLAGS = "$(COQDOCFLAGS)" -arg -dont-load-proofs -R src ADTSynthesis -R examples ADTExamples -o Makefile.coq
 
 clean-doc::
 	rm -rf html
