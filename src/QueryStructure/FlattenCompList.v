@@ -1,12 +1,22 @@
-Require Export ADTSynthesis.QueryStructure.QueryStructureNotations ADTSynthesis.QueryStructure.QuerySpecs.QueryQSSpecs.
-Require Import Coq.Lists.List ADTSynthesis.QueryStructure.AdditionalLemmas ADTSynthesis.QueryStructure.Refinements.AdditionalMorphisms.
+Require Import Coq.Lists.List Coq.Program.Program.
+Require Import ADTSynthesis.Common
+        ADTSynthesis.Common.ListFacts
+        ADTSynthesis.Common.ListMorphisms
+        ADTSynthesis.Common.Ensembles.IndexedEnsembles
+        ADTSynthesis.Computation.
 
 Unset Implicit Arguments.
 
-Definition boxed_option {heading} 
-           (P: @Tuple heading -> Prop) 
-           (x: @IndexedTuple heading) :=
-  Pick (fun l : list Tuple => (P (indexedTuple x) -> ret [indexedTuple x] ↝ l) /\ (~ P (indexedTuple x) -> l = [])).
+Definition flatten_CompList {A} (c : list (Comp (list A))) :=
+  fold_right (fun (b : Comp (list A)) (a : Comp (list A)) =>
+                l <- b;
+              l' <- a;
+              ret (l ++ l')) (ret []) c.
+
+Definition boxed_option {A}
+           (P: A -> Prop)
+           (x:  @IndexedElement A) :=
+  Pick (fun l : list A => (P (indexedElement x) -> ret [indexedElement x] ↝ l) /\ (~ P (indexedElement x) -> l = [])).
 
 Lemma flatten_CompList_app :
   forall {A} x1 x2 x1' x2',
@@ -20,29 +30,28 @@ Proof.
   rewrite !app_nil_l; assumption.
   inversion_by computes_to_inv.
 
-  specialize (IHx1 x2 x0 x2' H2 H0). 
+  specialize (IHx1 x2 x0 x2' H2 H0).
   econstructor; eauto.
   econstructor; eauto.
   subst; rewrite app_assoc; constructor.
 Qed.
 
-Lemma boxed_option_nil :
-  forall {heading} (P: @Tuple heading -> Prop),
+Lemma boxed_option_nil {A} :
+  forall (P: A -> Prop),
   forall x,
-    boxed_option (fun x : Tuple => P x) x ↝ [] ->
-    (~ P (indexedTuple x)).
+    boxed_option (fun x : A => P x) x ↝ [] ->
+    (~ P (indexedElement x)).
 Proof.
   unfold boxed_option; simpl; intros.
   apply computes_to_inv in H.
-  rewrite ret_computes_to, singleton_neq_nil in H.
-  intuition.
+  intuition; inversion_by computes_to_inv; subst; discriminate.
 Qed.
 
-Lemma flatten_CompList_nil :
-  forall {heading} (P: @Tuple heading -> Prop),
-  forall (seq : list (@IndexedTuple heading)),
+Lemma flatten_CompList_nil {A} :
+  forall (P: A -> Prop),
+  forall (seq : list (@IndexedElement A)),
     flatten_CompList (map (boxed_option P) seq) ↝ [] ->
-    forall x, List.In x seq -> (~ P (indexedTuple x)).
+    forall x, List.In x seq -> (~ P (indexedElement x)).
 Proof.
   induction seq; simpl; intros flatten_comp * in_seq.
   - exfalso; assumption.
@@ -54,11 +63,11 @@ Proof.
 Qed.
 
 Lemma flatten_CompList_app_inv :
-  forall {heading} P,
+  forall {A} (P : A -> Prop),
     (forall a, P a \/ ~ P a) ->
     forall x1 x0_before x0_after,
-      flatten_CompList 
-        (map (@boxed_option heading P) x1) ↝ (x0_before ++ x0_after) ->
+      flatten_CompList
+        (map (@boxed_option A P) x1) ↝ (x0_before ++ x0_after) ->
       exists x1_before x1_after,
         x1 = x1_before ++ x1_after /\
         flatten_CompList (map (boxed_option P) x1_before) ↝ x0_before /\
@@ -74,15 +83,15 @@ Proof.
     pose proof H0; unfold boxed_option in H0.
     apply computes_to_inv in H0; simpl in H0.
     destruct H0 as (spec1 & spec2).
-    destruct (excl (indexedTuple a)) as [ Ptrue | Pfalse ];
+    destruct (excl (indexedElement a)) as [ Ptrue | Pfalse ];
       [ specialize (spec1 Ptrue); apply computes_to_inv in spec1
       | specialize (spec2 Pfalse) ]; subst.
-    + rewrite app_singleton in H2. 
+    + rewrite app_singleton in H2.
       destruct x0_before as [ | a' x0_before' ] eqn:eq_before; subst.
       * rewrite app_nil_l in H2.
         destruct x0_after as [ | a' x0_after]; try discriminate.
         injection H2; intros; subst.
-        exists (@nil (@IndexedTuple heading)).
+        exists (@nil (@IndexedElement A)).
         eexists; repeat split; eauto; simpl; repeat econstructor; eauto.
       * rewrite <- app_comm_cons in H2.
         injection H2; intros; subst.
@@ -97,31 +106,31 @@ Proof.
       simpl; repeat split; repeat (first [eassumption | econstructor]).
 Qed.
 
-Lemma flatten_CompList_singleton :
-  forall {heading} P,
-  forall middle (head: @Tuple heading),
+Lemma flatten_CompList_singleton {A}:
+  forall P,
+  forall middle (head: A),
     flatten_CompList (map (boxed_option P) middle) ↝ [head] ->
     exists x,
       List.In x middle /\
       flatten_CompList (map (boxed_option P) [x]) ↝ [head].
 Proof.
   induction middle; unfold flatten_CompList; simpl; intros.
-  - apply ret_computes_to in H; discriminate.
+  - inversion_by computes_to_inv; discriminate.
   - inversion_by computes_to_inv.
     destruct x.
     + rewrite app_nil_l in H2; subst.
       destruct (IHmiddle _ H1) as [ x (x_in & flat_comp) ].
       eexists; eauto.
     + rewrite <- app_comm_cons in H2; injection H2; intros.
-      symmetry in H; rewrite app_eq_nil_iff in H; destruct H; subst. 
+      symmetry in H; rewrite app_eq_nil_iff in H; destruct H; subst.
       exists a; repeat (econstructor; eauto).
 Qed.
 
-Lemma flatten_CompList_app_cons_inv :
-  forall {heading} P,
+Lemma flatten_CompList_app_cons_inv {A}:
+  forall P,
     (forall a, P a \/ ~ P a) ->
-    forall x1 x0_before (head: @Tuple heading) x0_after,
-      flatten_CompList 
+    forall x1 x0_before (head: A) x0_after,
+      flatten_CompList
         (map (boxed_option P) x1) ↝ (x0_before ++ head :: x0_after) ->
       exists x1_before x1_middle head' x1_after,
         x1 = x1_before ++ x1_middle ++ x1_after /\
@@ -138,5 +147,5 @@ Proof.
   apply flatten_CompList_singleton in comp2.
   destruct comp2 as [ head' (in_middle & comp2) ].
   repeat setoid_rewrite in_app_iff.
-  repeat eexists; repeat split; try eassumption; intuition. 
+  repeat eexists; repeat split; try eassumption; intuition.
 Qed.

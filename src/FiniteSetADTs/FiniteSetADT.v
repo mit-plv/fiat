@@ -1,7 +1,9 @@
-(** * Definition of the finite set spec *)
-Require Import Coq.Sets.Ensembles.
-Require Import ADTSynthesis.ADT.Core ADTSynthesis.ADT.ComputationalADT ADTSynthesis.ADTNotation.
-Require Import ADTSynthesis.Common.AdditionalEnsembleDefinitions.
+(* Definition of the finite set spec *)
+Require Import Coq.Sets.Ensembles
+    ADTSynthesis.ADT.Core
+    ADTSynthesis.Common.Ensembles
+    ADTSynthesis.ADT.ComputationalADT
+    ADTSynthesis.ADTNotation.
 Require Export ADTSynthesis.FiniteSetADTs.BedrockWord.
 
 Set Implicit Arguments.
@@ -17,7 +19,7 @@ Definition sIn := "In".
 Definition sSize := "Size".
 
 Definition cardinal (S : Ensemble W) : Comp W
-  := (n <- { n : nat | AdditionalEnsembleDefinitions.cardinal _ S n };
+  := (n <- { n : nat | cardinal _ S n };
       ret (from_nat n)).
 
 (** We define the interface for finite sets *)

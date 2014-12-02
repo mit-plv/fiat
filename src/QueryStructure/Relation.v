@@ -1,5 +1,5 @@
 Require Import Coq.Lists.List Coq.Strings.String Coq.Logic.FunctionalExtensionality Coq.Sets.Ensembles
-        ADTSynthesis.Common.ilist ADTSynthesis.Common.StringBound Coq.Program.Program ADTSynthesis.QueryStructure.IndexedEnsembles
+        ADTSynthesis.Common.ilist ADTSynthesis.Common.StringBound Coq.Program.Program ADTSynthesis.Common.Ensembles.IndexedEnsembles
         ADTSynthesis.QueryStructure.Schema ADTSynthesis.QueryStructure.Heading ADTSynthesis.QueryStructure.Tuple.
 
 (* A relation is a collection of tuples (described by a proposition)

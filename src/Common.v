@@ -1,5 +1,6 @@
 Require Import Coq.Lists.List Coq.Lists.SetoidList.
-Require Export Coq.Setoids.Setoid Coq.Classes.RelationClasses Coq.Program.Program Coq.Classes.Morphisms.
+Require Export Coq.Setoids.Setoid Coq.Classes.RelationClasses
+        Coq.Program.Program Coq.Classes.Morphisms.
 
 Global Set Implicit Arguments.
 Global Generalizable All Variables.

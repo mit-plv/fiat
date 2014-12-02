@@ -1,9 +1,24 @@
-Require Export ADTSynthesis.QueryStructure.Refinements.Bags.BagsInterface ADTSynthesis.QueryStructure.Refinements.Bags.CountingListBags ADTSynthesis.QueryStructure.Refinements.Bags.TreeBags ADTSynthesis.QueryStructure.Tuple ADTSynthesis.QueryStructure.Heading Coq.Lists.List Coq.Program.Program ADTSynthesis.Common.ilist ADTSynthesis.Common.i2list.
-Require Import ADTSynthesis.Common.String_as_OT ADTSynthesis.QueryStructure.IndexedEnsembles ADTSynthesis.Common.DecideableEnsembles.
-Require Import Coq.Bool.Bool Coq.Strings.String Coq.Structures.OrderedTypeEx ADTSynthesis.QueryStructure.Refinements.Bags.BagsOfTuples.
-Require Import ADTSynthesis.QueryStructure.Refinements.GeneralQueryRefinements.
-Require Import ADTSynthesis.QueryStructure.QueryStructureNotations ADTSynthesis.QueryStructure.Refinements.ListImplementation.
-Require Import ADTSynthesis.QueryStructure.AdditionalLemmas ADTSynthesis.QueryStructure.AdditionalPermutationLemmas Coq.Arith.Arith ADTSynthesis.QueryStructure.Refinements.BagADT.BagADT.
+Require Export Coq.Lists.List Coq.Program.Program
+        ADTSynthesis.QueryStructure.Refinements.Bags.BagsInterface
+        ADTSynthesis.QueryStructure.Refinements.Bags.CountingListBags
+        ADTSynthesis.QueryStructure.Refinements.Bags.TreeBags
+        ADTSynthesis.QueryStructure.Tuple
+        ADTSynthesis.QueryStructure.Heading
+        ADTSynthesis.Common.ilist
+        ADTSynthesis.Common.i2list.
+Require Import Coq.Bool.Bool Coq.Strings.String
+        Coq.Structures.OrderedTypeEx Coq.Arith.Arith
+        ADTSynthesis.Common.String_as_OT
+        ADTSynthesis.Common.Ensembles.IndexedEnsembles
+        ADTSynthesis.Common.DecideableEnsembles
+        ADTSynthesis.Common.ListFacts
+        ADTSynthesis.QueryStructure.FlattenCompList
+        ADTSynthesis.QueryStructure.Refinements.Bags.BagsOfTuples
+        ADTSynthesis.QueryStructure.Refinements.GeneralQueryRefinements
+        ADTSynthesis.QueryStructure.QueryStructureNotations
+        ADTSynthesis.QueryStructure.Refinements.ListImplementation
+        ADTSynthesis.Common.PermutationFacts
+        ADTSynthesis.QueryStructure.Refinements.BagADT.BagADT.
 
 Section BagsOfTuplesRefinements.
 
@@ -23,8 +38,6 @@ Section BagsOfTuplesRefinements.
 
   Definition GetIndexedRelation (r_n : IndexedQueryStructure) idx
     := i2th_Bounded relName r_n idx.
-
-
 
   Definition CallBagMethod idx midx r_n :=
     Methods (BagSpec (SearchTermFromAttributesMatcher (ith_Bounded relName indices idx))
@@ -303,7 +316,6 @@ Section BagsOfTuplesRefinements.
                  ret (UpdateIndexedRelation r_n idx (fst l))).
   Proof.
   Admitted.
-
 
 End BagsOfTuplesRefinements.
 

@@ -1,7 +1,13 @@
-Require Import ADTSynthesis.Common.
-Require Export ADTSynthesis.QueryStructure.Refinements.Bags.BagsInterface ADTSynthesis.QueryStructure.Refinements.Bags.BagsProperties.
-Require Import ADTSynthesis.QueryStructure.SetEqProperties ADTSynthesis.QueryStructure.Refinements.FMapImplementation.FMapExtensions ADTSynthesis.QueryStructure.AdditionalLemmas ADTSynthesis.QueryStructure.AdditionalPermutationLemmas.
-Require Import Coq.FSets.FMapInterface Coq.FSets.FMapFacts.
+Require Export ADTSynthesis.QueryStructure.Refinements.Bags.BagsInterface
+        ADTSynthesis.QueryStructure.Refinements.Bags.BagsProperties.
+Require Import
+        Coq.FSets.FMapInterface Coq.FSets.FMapFacts
+        ADTSynthesis.Common
+        ADTSynthesis.Common.ListFacts
+        ADTSynthesis.Common.FlattenList
+        ADTSynthesis.QueryStructure.SetEqProperties
+        ADTSynthesis.QueryStructure.Refinements.FMapImplementation.FMapExtensions
+        ADTSynthesis.Common.PermutationFacts.
 
 Unset Implicit Arguments.
 
@@ -811,13 +817,12 @@ Module TreeBag (Import M: WS).
       unfold IndexedBag_benumerate, IndexedBag_bfind_matcher.
       unfold IndexedBag_RepInv; intros.
 
-      rewrite filter_and'.
-
+      rewrite filter_and.
       rewrite flatten_filter.
 
       simpl.
       rewrite consist.
-      case_eq (find key container); intros.
+      case_eq (M.find key container); intros.
 
       apply bfind_correct.
       eapply containerCorrect; rewrite find_mapsto_iff; eauto.
@@ -1143,7 +1148,7 @@ Module TreeBag (Import M: WS).
             [eapply containerCorrect; rewrite find_mapsto_iff; eauto
             | rewrite H1].
           rewrite partition_filter_eq, partition_filter_eq.
-          rewrite filter_and', flatten_filter, consist, H; eauto.
+          rewrite filter_and, flatten_filter, consist, H; eauto.
         + rewrite partition_filter_neq, flatten_filter.
           unfold Values.
           pose proof (alt_IndexedBag_RepInv _ containerCorrect) as containerCorrect'.
@@ -1251,12 +1256,12 @@ Module TreeBag (Import M: WS).
             eauto.
             eauto.
           *  rewrite partition_filter_eq, partition_filter_eq.
-             rewrite filter_and', flatten_filter, consist, H; eauto.
+             rewrite filter_and, flatten_filter, consist, H; eauto.
           * eapply containerCorrect; rewrite find_mapsto_iff; eauto.
           * eapply valid_update.
           * eauto.
         + rewrite partition_filter_neq, flatten_filter,
-          partition_filter_eq, filter_and', flatten_filter,
+          partition_filter_eq, filter_and, flatten_filter,
           consist, H; simpl; eauto; rewrite app_nil_r.
           pose proof (alt_IndexedBag_RepInv _ containerCorrect) as containerCorrect'.
           rewrite <- not_find_in_iff in H.

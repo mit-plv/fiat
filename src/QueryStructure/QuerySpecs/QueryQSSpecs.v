@@ -1,9 +1,13 @@
 Require Import Coq.Lists.List Coq.Strings.String Coq.Sets.Ensembles Coq.Sorting.Permutation
         ADTSynthesis.Computation.Core
         ADTSynthesis.ADT.ADTSig ADTSynthesis.ADT.Core
-        ADTSynthesis.QueryStructure.IndexedEnsembles
-        ADTSynthesis.Common.StringBound ADTSynthesis.ADTNotation.BuildADT ADTSynthesis.ADTNotation.BuildADTSig
-        ADTSynthesis.QueryStructure.QueryStructureSchema  ADTSynthesis.QueryStructure.QueryStructure.
+        ADTSynthesis.Common.Ensembles.IndexedEnsembles
+        ADTSynthesis.Common.StringBound
+        ADTSynthesis.ADTNotation.BuildADT
+        ADTSynthesis.ADTNotation.BuildADTSig
+        ADTSynthesis.QueryStructure.QueryStructureSchema
+        ADTSynthesis.QueryStructure.QueryStructure
+        ADTSynthesis.QueryStructure.FlattenCompList.
 
 (* Notations and definitions for queries.
    The basic idea is to represent queries as ensembles of lists of returned values.
@@ -25,12 +29,6 @@ Definition Query_For {ResultT}
 Global Opaque Query_For.
 
 Notation "'For' bod" := (Query_For bod) : QuerySpec_scope.
-
-Definition flatten_CompList {A} (c : list (Comp (list A))) :=
-  fold_right (fun (b : Comp (list A)) (a : Comp (list A)) =>
-                l <- b;
-              l' <- a;
-              ret (l ++ l')) (ret []) c.
 
 Definition QueryResultComp
            {heading ResultT}

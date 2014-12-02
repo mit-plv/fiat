@@ -1,12 +1,18 @@
 Require Export ADTSynthesis.QueryStructure.QueryStructureNotations ADTSynthesis.QueryStructure.QuerySpecs.QueryQSSpecs.
-Require Import Coq.Lists.List Coq.Arith.Compare_dec ADTSynthesis.QueryStructure.AdditionalLemmas
-        ADTSynthesis.QueryStructure.AdditionalPermutationLemmas ADTSynthesis.QueryStructure.Refinements.AdditionalMorphisms
-        ADTSynthesis.QueryStructure.Refinements.EnsembleListEquivalenceProperties ADTSynthesis.QueryStructure.Refinements.flattenCompListProperties
-        ADTSynthesis.QueryStructure.Refinements.GeneralQueryRefinements ADTSynthesis.Common.IterateBoundedIndex ADTSynthesis.Common.DecideableEnsembles.
+Require Import Coq.Lists.List Coq.Arith.Compare_dec
+        ADTSynthesis.Common.PermutationFacts
+        ADTSynthesis.Common.ListMorphisms
+        ADTSynthesis.QueryStructure.FlattenCompList
+        ADTSynthesis.Common.Ensembles.EnsembleListEquivalence
+        ADTSynthesis.QueryStructure.Refinements.GeneralQueryRefinements
+        ADTSynthesis.Common.IterateBoundedIndex
+        ADTSynthesis.Common.ListFacts
+        ADTSynthesis.Common.LogicFacts
+        ADTSynthesis.Common.DecideableEnsembles.
 
 Unset Implicit Arguments.
 
-Transparent Count Query_For.
+Local Transparent Count Query_For.
 
 Ltac subst_strings :=
   repeat match goal with
@@ -30,6 +36,13 @@ Section ConstraintCheckRefinements.
   Hint Unfold SatisfiesCrossRelationConstraints
        SatisfiesSchemaConstraints.
 
+  Lemma tupleAgree_sym :
+    forall (heading: Heading) tup1 tup2 attrs,
+      @tupleAgree heading tup1 tup2 attrs <-> @tupleAgree heading tup2 tup1 attrs.
+  Proof.
+    intros; unfold tupleAgree;
+    split; intros; rewrite H; eauto.
+  Qed.
 
   Lemma refine_Iterate_Ensemble {A : Set}
         (A_eq_dec : forall a a' : A, {a = a'} + {a <> a'})
@@ -160,6 +173,15 @@ Section ConstraintCheckRefinements.
   (* So that things play nicely with setoid rewriting *)
   Definition If_Then_Else {A}  (b : bool) (t e : A)
     := if b then t else e.
+
+  Lemma refine_trivial_if_then_else :
+    forall x,
+      refine
+        (If_Then_Else x (ret true) (ret false))
+        (ret x).
+  Proof.
+    destruct x; reflexivity.
+  Qed.
 
   Program Fixpoint Iterate_Decide_Comp' (A : Set)
           (Remaining Visited : list A)
@@ -657,7 +679,7 @@ Section ConstraintCheckRefinements.
   Proof.
     unfold tupleAgree; auto.
   Qed.
-  
+
   Lemma refine_tupleAgree_refl_True :
     forall (h : Heading)
            (tup : @Tuple h)
@@ -670,7 +692,7 @@ Section ConstraintCheckRefinements.
     unfold refine; intros; inversion_by computes_to_inv.
     subst; econstructor; simpl; auto using tupleAgree_refl.
   Qed.
-  
+
   Lemma refine_SatisfiesCrossConstraints_Pre (Q : Prop)
   : forall qsSchema qs
            (Ridx : @BoundedString (map relName (qschemaSchemas qsSchema)))
@@ -741,8 +763,6 @@ Section ConstraintCheckRefinements.
     unfold not; intros H'; apply dec_decides_P in H'; congruence.
   Qed.
 
-  Require Import ADTSynthesis.QueryStructure.Refinements.flattenCompListProperties.
-
   Lemma In_UnConstrQuery_In {qsSchema} {A}
   : forall (qs : UnConstrQueryStructure qsSchema) Ridx bod results,
       UnConstrQuery_In qs Ridx bod ↝ results
@@ -762,7 +782,7 @@ Section ConstraintCheckRefinements.
     inversion_by computes_to_inv; subst.
     simpl in H0; intuition.
     apply in_app_or in H0; intuition.
-    exists a x; intuition; try eapply H; eauto.    
+    exists a x; intuition; try eapply H; eauto.
     inversion H4; subst.
     destruct (IHx0 (fun tup => tup <> a /\ u tup) _ _ H1 H3); eauto.
     unfold Ensembles.In; intros; intuition; subst; eauto.
@@ -908,7 +928,7 @@ Lemma In_flatten_CompList {A} :
          (il : list (@IndexedElement A))
          (l : list A)
          (a : A),
-    In a l 
+    In a l
     -> flatten_CompList
          (map
             (fun x1 : IndexedElement =>
@@ -950,10 +970,10 @@ Proof.
   symmetry in H4. apply Permutation_cons_app_inv in H4.
 
   unfold UnIndexedEnsembleListEquivalence in H3; destruct_ex; intuition; subst.
-  
+
   rewrite map_map in H5.
   destruct (flatten_CompList_app_cons_inv _ excl _ _ _ _ H5) as [ x1_before [ x1_middle [ head' [ x1_after (_eq & in_orig & before & middle & after) ] ] ] ]; subst.
-  
+
   unfold boxed_option in middle; simpl in middle.
   apply computes_to_inv in middle.
   destruct middle as [head'' (middle1 & middle2)].
@@ -964,6 +984,8 @@ Proof.
   apply computes_to_inv in ret_nil; subst.
   rewrite app_nil_r in *; subst.
   apply computes_to_inv in ret_cons; subst.
+
+
 
   rewrite singleton_neq_nil in spec2.
   destruct (excl (indexedTuple head')) as [ H' | H' ]; try solve [exfalso; intuition].
@@ -993,8 +1015,8 @@ Proof.
     unfold boxed_option in *.
     rewrite !map_app, !map_map.
     apply flatten_app.
-    
-  - rewrite map_map in *.
+
+  - rewrite map_map in H5.
     destruct (In_flatten_CompList P excl x0 (x0_before ++ head :: x0_after) x) as [x1 [In_x1 x1_eq]];
       eauto.
     eapply Permutation_in with (l := head :: (x0_before ++ x0_after)).
@@ -1007,7 +1029,7 @@ Qed.
 Lemma UnIndexedEnsembleListEquivalence_eqv {A}
 : forall ens l,
     @UnIndexedEnsembleListEquivalence A ens l ->
-    exists l', 
+    exists l',
       EnsembleListEquivalence ens l' /\ l = map indexedElement l'.
 Proof.
   unfold UnIndexedEnsembleListEquivalence, EnsembleListEquivalence; intros.
@@ -1067,6 +1089,7 @@ Proof.
     destruct x0 as [ | head tail ]; simpl in *; try discriminate; simpl.
 
   pose proof (For_computes_to_nil _ (GetUnConstrRelation c tbl) H0).
+
   rewrite not_exists_forall; intro a; rewrite not_and_implication; intros.
   apply H; trivial.
 
@@ -1112,7 +1135,7 @@ Lemma refine_functional_dependency_check_into_query :
 Proof.
   intros * is_dec ** .
 
-  setoid_replace (forall tup', 
+  setoid_replace (forall tup',
                     GetUnConstrRelation c tbl tup' ->
                     tupleAgree ref (indexedElement tup') args1
                     -> tupleAgree ref (indexedElement tup') args2)
@@ -1161,4 +1184,3 @@ Ltac simplify_trivial_SatisfiesCrossRelationConstraints :=
                    unfold If_Then_Else ]
 
     end.
-

@@ -1,9 +1,23 @@
 (** * Refinement of computations involving ensembles, to ones using finite sets *)
-Require Import Coq.Strings.String Coq.Sets.Ensembles Coq.Sets.Finite_sets Coq.Lists.List Coq.Sorting.Permutation Coq.Classes.RelationPairs.
-Require Import ADTSynthesis.ADT ADTSynthesis.ADT.ComputationalADT ADTSynthesis.ADTRefinement.Core ADTSynthesis.ADTNotation ADTSynthesis.ADTRefinement.GeneralRefinements ADTSynthesis.Common.AdditionalEnsembleDefinitions ADTSynthesis.Common.AdditionalEnsembleLemmas ADTSynthesis.Computation.
+
+Require Import Coq.Strings.String
+   Coq.Sets.Ensembles
+   Coq.Sets.Finite_sets
+   Coq.Lists.List
+   Coq.Sorting.Permutation
+   Coq.Classes.RelationPairs
+   ADTSynthesis.ADT
+   ADTSynthesis.ADT.ComputationalADT
+   ADTSynthesis.ADTRefinement.Core
+   ADTSynthesis.ADTNotation
+   ADTSynthesis.ADTRefinement.GeneralRefinements
+   ADTSynthesis.Computation
+   ADTSynthesis.Common
+   ADTSynthesis.Common.Ensembles
+   ADTSynthesis.Common.Ensembles.Tactics
+   ADTSynthesis.ComputationalEnsembles
+   ADTSynthesis.FiniteSetADTs.FiniteSetADTMethodLaws.
 Require Export ADTSynthesis.FiniteSetADTs.FiniteSetADT.
-Require Import ADTSynthesis.Common ADTSynthesis.Common.Ensembles ADTSynthesis.Common.Ensembles.Tactics ADTSynthesis.ComputationalEnsembles.
-Require Import ADTSynthesis.FiniteSetADTs.FiniteSetADTMethodLaws.
 
 (** TODO: Move this elsewhere *)
 Notation FullySharpenedComputation spec
@@ -296,7 +310,7 @@ Section FiniteSetHelpers.
   Qed.
 
   Lemma EnsembleOfList_In (ls : list W)
-  : forall x, Ensembles.In _ (EnsembleOfList ls) x <-> In x ls.
+  : forall x, Ensembles.In _ (EnsembleOfList ls) x <-> List.In x ls.
   Proof.
     induction ls;
     repeat match goal with
@@ -443,7 +457,7 @@ Section FiniteSetHelpers.
 
   Lemma reverse_ensemble_list_equivalence_iff (S : Ensemble W)
   : refineEquiv (ls <- {ls : list W | EnsembleListEquivalence S ls};
-                 {S0 : Ensemble W | forall x : W, Ensembles.In W S0 x <-> In x ls})
+                 {S0 : Ensemble W | forall x : W, Ensembles.In W S0 x <-> List.In x ls})
                 (ls <- {ls : list W | EnsembleListEquivalence S ls};
                  { S' : _ | Same_set _ S' S }).
   Proof.
@@ -462,7 +476,7 @@ Section FiniteSetHelpers.
 
   Lemma reverse_ensemble_list_equivalence_iff' {B} (S : Ensemble W) (f : _ -> Comp B)
   : refineEquiv (ls <- {ls : list W | EnsembleListEquivalence S ls};
-                 Bind {S0 : Ensemble W | forall x : W, Ensembles.In W S0 x <-> In x ls} f)
+                 Bind {S0 : Ensemble W | forall x : W, Ensembles.In W S0 x <-> List.In x ls} f)
                 (ls <- {ls : list W | EnsembleListEquivalence S ls};
                  Bind { S' : _ | Same_set _ S' S } f).
   Proof.
@@ -473,7 +487,7 @@ Section FiniteSetHelpers.
 
   Lemma reverse_ensemble_list_equivalence_iff'' {B} (S : Ensemble W) (f : _ -> Comp B)
   : refine (ls <- {ls : list W | EnsembleListEquivalence S ls};
-            Bind {S0 : Ensemble W | forall x : W, Ensembles.In W S0 x <-> In x ls} f)
+            Bind {S0 : Ensemble W | forall x : W, Ensembles.In W S0 x <-> List.In x ls} f)
            ({ls : list W | EnsembleListEquivalence S ls};;
             Bind { S' : _ | Same_set _ S' S } f).
   Proof.
@@ -1409,7 +1423,7 @@ Ltac finite_set_sharpen_step FiniteSetImpl :=
           (* do an explicit [match] to avoid "Anomaly: Uncaught exception Invalid_argument("decomp_pointwise"). Please report." *)
           match goal with
             | |- appcontext[@FiniteSetADT.cardinal] => idtac
-            | |- appcontext[@AdditionalEnsembleDefinitions.cardinal] => idtac
+            | |- appcontext[@Ensembles.Cardinal.cardinal] => idtac
           end;
           setoid_rewrite (@finite_set_handle_cardinal FiniteSetImpl)
         | match goal with |- appcontext[@Ensembles.Union] => idtac end;

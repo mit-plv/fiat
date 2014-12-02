@@ -1,18 +1,11 @@
 Require Import Coq.Lists.List.
-Require Import Coq.Setoids.Setoid Coq.Classes.Morphisms ADTSynthesis.QueryStructure.QueryStructure.
-Require Import ADTSynthesis.QueryStructure.AdditionalLemmas ADTSynthesis.QueryStructure.Refinements.EnsembleListEquivalenceProperties.
+Require Import Coq.Setoids.Setoid Coq.Classes.Morphisms.
+Require Import Coq.Sorting.Permutation.
+Require Import ADTSynthesis.Common.Ensembles.EnsembleListEquivalence
+        ADTSynthesis.Common.ListFacts ADTSynthesis.Common.PermutationFacts.
+Require Import ADTSynthesis.Common.FlattenList.
 
 Unset Implicit Arguments.
-
-Add Parametric Morphism {A: Type} :
-  (fun (P: A -> Prop) => exists x, P x)
-    with signature (pointwise_relation A iff ==> iff)
-      as exists_eq_iff_morphism.
-Proof.
-  intros * equiv;
-  split; intro H; destruct H as [x0 H']; exists x0;
-  apply equiv in H'; assumption.
-Qed.
 
 Add Parametric Morphism {A B: Type} :
   (fun comp seq => List.map comp seq)
@@ -54,8 +47,6 @@ Proof.
   intros * equiv;
   erewrite filter_eq_morphism; eauto.
 Qed.
-
-Require Import Coq.Sorting.Permutation.
 
 Add Parametric Morphism {A} :
   (@List.length A)
@@ -247,9 +238,6 @@ Proof.
   setoid_rewrite H; reflexivity.
 Qed.
 
-Require Import Coq.Program.Program Coq.Arith.Arith.
-Require Import ADTSynthesis.QueryStructure.AdditionalPermutationLemmas.
-
 Add Parametric Morphism {A: Type} (ens: A -> Prop) :
   (EnsembleListEquivalence ens)
     with signature (@Permutation A ==> @iff)
@@ -263,13 +251,4 @@ Proof.
   - eapply NoDup_Permutation_rewrite; [symmetry | ]; eauto.
   - eapply Permutation_in. eapply Permutation_sym. apply H. apply H2. auto.
   - apply H2. eapply Permutation_in. apply H. auto.
-Qed.
-
-Add Morphism
-    (decides)
-    with signature (eq ==> iff ==> iff)
-      as decide_eq_iff_iff_morphism.
-Proof.
-  unfold decides; intros b p1 p2 equiv.
-  destruct b; simpl; intuition.
 Qed.

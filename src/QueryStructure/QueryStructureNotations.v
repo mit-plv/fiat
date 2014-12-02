@@ -1,5 +1,5 @@
 Require Export Coq.Strings.String Coq.omega.Omega Coq.Lists.List Coq.Logic.FunctionalExtensionality Coq.Sets.Ensembles
-        ADTSynthesis.QueryStructure.IndexedEnsembles
+        ADTSynthesis.Common.Ensembles.IndexedEnsembles
         ADTSynthesis.Computation ADTSynthesis.ADT ADTSynthesis.ADTRefinement ADTSynthesis.ADTNotation ADTSynthesis.QueryStructure.QueryStructureSchema
         ADTSynthesis.ADTRefinement.BuildADTRefinements ADTSynthesis.QueryStructure.QuerySpecs.QueryQSSpecs ADTSynthesis.QueryStructure.QuerySpecs.InsertQSSpecs ADTSynthesis.QueryStructure.QuerySpecs.EmptyQSSpecs
         ADTSynthesis.QueryStructure.QuerySpecs.DeleteQSSpecs ADTSynthesis.QueryStructure.QueryStructure.

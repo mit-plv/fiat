@@ -1,14 +1,21 @@
-Require Export ADTSynthesis.QueryStructure.Refinements.Bags.BagsOfTuples Coq.Bool.Bool.
-Require Export ADTSynthesis.QueryStructure.Refinements.ListImplementation.
-Require Export ADTSynthesis.QueryStructure.Refinements.ConstraintChecksRefinements ADTSynthesis.Common.DecideableEnsembles.
-Require Export ADTSynthesis.QueryStructure.Refinements.Bags.Bags ADTSynthesis.QueryStructure.AdditionalLemmas ADTSynthesis.QueryStructure.Refinements.AdditionalFlatMapLemmas ADTSynthesis.QueryStructure.Refinements.AdditionalRefinementLemmas ADTSynthesis.QueryStructure.Refinements.AdditionalMorphisms Coq.Bool.Bool ADTSynthesis.QueryStructure.tupleAgree ADTSynthesis.QueryStructure.IndexedEnsembles.
-Require Export ADTSynthesis.QueryStructure.QueryStructureNotations ADTSynthesis.QueryStructure.Refinements.OperationRefinements.
-Require Export ADTSynthesis.Common.IterateBoundedIndex.
-
-Import AdditionalLemmas.
+Require Export Coq.Bool.Bool
+        ADTSynthesis.Common.DecideableEnsembles
+        ADTSynthesis.Common.ListMorphisms
+        ADTSynthesis.Common.ListFacts
+        ADTSynthesis.Common.BoolFacts
+        ADTSynthesis.Common.LogicFacts
+        ADTSynthesis.Common.FlattenList
+        ADTSynthesis.Common.Ensembles.IndexedEnsembles
+        ADTSynthesis.Common.IterateBoundedIndex
+        ADTSynthesis.QueryStructure.Refinements.Bags.BagsOfTuples
+        ADTSynthesis.QueryStructure.Refinements.ListImplementation
+        ADTSynthesis.QueryStructure.Refinements.ConstraintChecksRefinements
+        ADTSynthesis.QueryStructure.Refinements.Bags.Bags
+        ADTSynthesis.QueryStructure.tupleAgree
+        ADTSynthesis.QueryStructure.QueryStructureNotations
+        ADTSynthesis.QueryStructure.Refinements.OperationRefinements.
 
 Global Opaque binsert benumerate bfind bcount.
-
 
 Ltac prove_decidability_for_functional_dependencies :=
   simpl; econstructor; intros;

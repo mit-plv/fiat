@@ -2,7 +2,7 @@ Require Import Coq.Strings.String Coq.omega.Omega Coq.Lists.List Coq.Logic.Funct
         Coq.Sorting.Permutation
         ADTSynthesis.Computation ADTSynthesis.ADT ADTSynthesis.ADTRefinement ADTSynthesis.ADTNotation ADTSynthesis.ADTRefinement.BuildADTRefinements
         ADTSynthesis.QueryStructure.QueryStructureSchema ADTSynthesis.QueryStructure.QueryStructure
-        ADTSynthesis.QueryStructure.IndexedEnsembles
+        ADTSynthesis.Common.Ensembles.IndexedEnsembles
         ADTSynthesis.QueryStructure.QuerySpecs.QueryQSSpecs ADTSynthesis.QueryStructure.QuerySpecs.InsertQSSpecs ADTSynthesis.QueryStructure.QuerySpecs.EmptyQSSpecs ADTSynthesis.QueryStructure.QuerySpecs.DeleteQSSpecs
         ADTSynthesis.QueryStructure.QueryStructureNotations
         ADTSynthesis.QueryStructure.Refinements.GeneralQueryRefinements ADTSynthesis.QueryStructure.Refinements.GeneralInsertRefinements ADTSynthesis.QueryStructure.Refinements.GeneralDeleteRefinements.
@@ -148,13 +148,15 @@ Ltac start_honing_QueryStructure :=
                 end; pose_string_ids)
   end.
 
-Lemma refine_trivial_if_then_else :
-  forall x,
-    refine
-      (If_Then_Else x (ret true) (ret false))
-      (ret x).
-Proof.
-  destruct x; reflexivity.
-Qed.
+
+  Lemma get_update_unconstr_iff {db_schema qs table new_contents} :
+    forall x,
+      Ensembles.In _ (GetUnConstrRelation (@UpdateUnConstrRelation db_schema qs table new_contents) table) x <->
+      Ensembles.In _ new_contents x.
+  Proof.
+    unfold GetUnConstrRelation, UpdateUnConstrRelation, EnsembleInsert.
+    intros. rewrite ith_replace_BoundIndex_eq;
+            reflexivity.
+  Qed.
 
 Tactic Notation "start" "honing" "QueryStructure" := start_honing_QueryStructure.

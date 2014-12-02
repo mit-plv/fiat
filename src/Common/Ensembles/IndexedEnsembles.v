@@ -1,6 +1,7 @@
-Require Import Coq.Lists.List Coq.Strings.String Coq.Logic.FunctionalExtensionality Coq.Sorting.Permutation
-         Coq.Sets.Ensembles ADTSynthesis.QueryStructure.AdditionalPermutationLemmas.
-Require Export ADTSynthesis.Common.AdditionalEnsembleDefinitions.
+Require Import Coq.Lists.List Coq.Strings.String
+        Coq.Logic.FunctionalExtensionality
+        Coq.Sorting.Permutation Coq.Sets.Ensembles
+        ADTSynthesis.Common.PermutationFacts.
 
 Class UnConstrRelationAbsRClass {A B : Type} :=
   { UnConstrRelationAbsR : Ensemble A -> B -> Prop }.
@@ -95,18 +96,26 @@ Section IndexedEnsembles.
       intuition. apply Permutation_map. auto.
   Qed.
 
+  Lemma NoDup_IndexedElement :
+    forall (l1 : list IndexedElement),
+      NoDup (map elementIndex l1) ->
+      NoDup l1.
+  Proof.
+    induction l1; simpl; constructor; inversion H; subst; eauto using in_map.
+  Qed.
+
 End IndexedEnsembles.
 
-  Ltac destruct_EnsembleIndexedListEquivalence :=
-    match goal with
-        H : EnsembleIndexedListEquivalence ?or ?nr |- _ =>
-        let bnd := fresh "bnd" in
-        let fresh_bnd := fresh "fresh_bnd" in
-        let lor := fresh "l" or in
-        let eqv_or := fresh "eqv_" or in
-        let NoDup_lor := fresh "NoDup_" or in
-        let eqv_r_n := fresh "eqv_nr" in
-        let H' := fresh in
-        pose proof H as H';
+Ltac destruct_EnsembleIndexedListEquivalence :=
+  match goal with
+      H : EnsembleIndexedListEquivalence ?or ?nr |- _ =>
+      let bnd := fresh "bnd" in
+      let fresh_bnd := fresh "fresh_bnd" in
+      let lor := fresh "l" or in
+      let eqv_or := fresh "eqv_" or in
+      let NoDup_lor := fresh "NoDup_" or in
+      let eqv_r_n := fresh "eqv_nr" in
+      let H' := fresh in
+      pose proof H as H';
         destruct H' as [[bnd fresh_bnd] [lor [eqv_or [eqv_r_n NoDup_lor]]]]
-    end.
+  end.

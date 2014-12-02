@@ -1,5 +1,5 @@
 Require Export Coq.Sorting.Permutation ADTSynthesis.Common.
-Require Import ADTSynthesis.QueryStructure.AdditionalLemmas Coq.Lists.List.
+Require Import Coq.Lists.List ADTSynthesis.Common.ListFacts.
 
 Unset Implicit Arguments.
 
@@ -275,4 +275,19 @@ Proof.
       eapply Permutation_cons_app; rewrite H3, H4; reflexivity.
     + apply IHl in H0; destruct_ex; intuition.
       eexists (a :: x); intuition; simpl; rewrite H; eauto.
+Qed.
+
+Lemma flat_map_rev_permutation :
+  forall {A B} seq (f: A -> list B),
+    Permutation (flat_map f seq) (flat_map f (rev seq)).
+Proof.
+  induction seq; simpl; intros.
+  - reflexivity.
+  - etransitivity.
+    apply Permutation_app; eauto.
+    clear IHseq; induction (rev seq); simpl; eauto.
+    etransitivity;
+      [ | apply Permutation_app; eauto].
+    repeat rewrite app_assoc;  apply Permutation_app_tail.
+    eauto using Permutation_app_comm.
 Qed.

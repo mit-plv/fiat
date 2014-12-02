@@ -1,6 +1,10 @@
-Require Import ADTSynthesis.QueryStructure.Refinements.Bags.BagsInterface.
-Require Import ADTSynthesis.QueryStructure.AdditionalLemmas.
-Require Import ADTSynthesis.QueryStructure.IndexedEnsembles.
+Require Import Coq.Strings.String Coq.Arith.Arith
+        ADTSynthesis.QueryStructure.Refinements.Bags.BagsInterface
+        ADTSynthesis.Common.Ensembles.IndexedEnsembles
+        ADTSynthesis.QueryStructure.QueryStructureNotations
+        ADTSynthesis.QueryStructure.Refinements.ListImplementation
+        ADTSynthesis.QueryStructure.Refinements.Bags.BagsOfTuples
+        ADTSynthesis.Common.ListFacts.
 
 Ltac is_sumbool expr :=
   match type of expr with
@@ -31,18 +35,12 @@ Ltac prove_extensional_eq :=
   unfold ExtensionalEq;
   destruct_ifs; first [ solve [intuition] | solve [exfalso; intuition] | idtac ].
 
-Require Import Coq.Strings.String Coq.Arith.Arith.
-
 Example ifs_destruction :
   forall w x y z,
     (if (if string_dec w x then true else false) then (if eq_nat_dec y z then false else true) else (if eq_nat_dec z y then true else false)) = (if (if eq_nat_dec y z then true else false) then (if string_dec x w then false else true) else (if string_dec x w then true else false)).
 Proof.
   destruct_ifs; intuition.
 Qed.
-
-Require Import ADTSynthesis.QueryStructure.QueryStructureNotations.
-Require Import ADTSynthesis.QueryStructure.Refinements.ListImplementation.
-Require Import ADTSynthesis.QueryStructure.Refinements.Bags.BagsOfTuples.
 
 Ltac autoconvert func :=
   match goal with

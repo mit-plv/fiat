@@ -1,10 +1,22 @@
-Require Import Coq.Strings.String Coq.omega.Omega Coq.Lists.List Coq.Logic.FunctionalExtensionality Coq.Sets.Ensembles
-        Coq.Sorting.Permutation ADTSynthesis.Computation ADTSynthesis.ADT ADTSynthesis.ADTRefinement ADTSynthesis.ADTNotation
+Require Import Coq.Strings.String Coq.omega.Omega Coq.Lists.List
+        Coq.Logic.FunctionalExtensionality Coq.Sets.Ensembles
+        Coq.Sorting.Permutation
+        ADTSynthesis.Computation
+        ADTSynthesis.ADT
+        ADTSynthesis.ADTRefinement
+        ADTSynthesis.ADTNotation
         ADTSynthesis.ADTRefinement.GeneralBuildADTRefinements
-        ADTSynthesis.QueryStructure.QueryStructureSchema ADTSynthesis.QueryStructure.QuerySpecs.QueryQSSpecs ADTSynthesis.QueryStructure.QueryStructure
-        ADTSynthesis.QueryStructure.Refinements.GeneralQueryRefinements ADTSynthesis.QueryStructure.AdditionalLemmas ADTSynthesis.QueryStructure.SetEq
-        ADTSynthesis.QueryStructure.Refinements.ListImplementation.ListQueryStructureRefinements ADTSynthesis.QueryStructure.IndexedEnsembles
-        ADTSynthesis.Common.DecideableEnsembles.
+        ADTSynthesis.QueryStructure.QueryStructureSchema
+        ADTSynthesis.QueryStructure.QuerySpecs.QueryQSSpecs
+        ADTSynthesis.QueryStructure.QueryStructure
+        ADTSynthesis.QueryStructure.Refinements.GeneralQueryRefinements
+        ADTSynthesis.QueryStructure.SetEq
+        ADTSynthesis.QueryStructure.Refinements.ListImplementation.ListQueryStructureRefinements
+        ADTSynthesis.Common.Ensembles.IndexedEnsembles
+        ADTSynthesis.Common.DecideableEnsembles
+        ADTSynthesis.Common.ListMorphisms
+        ADTSynthesis.Common.FlattenList
+        ADTSynthesis.QueryStructure.FlattenCompList.
 
 Lemma refine_SetEq_self {A} :
   forall l : list A,
@@ -109,6 +121,8 @@ Proof.
   reflexivity.
 Qed.
 
+Require Import ADTSynthesis.Common.ListFacts.
+
 Ltac trickle_swap :=
   (* faster than just calling repeat first [ setoid_rewrite _ | setoid_rewrite _ ] *)
   repeat match goal with
@@ -138,7 +152,6 @@ Proof.
   reflexivity.
 Qed.
 
-Require Import ADTSynthesis.QueryStructure.Refinements.AdditionalMorphisms.
 
 Lemma swap_joins :
   forall {A B} s1 s2,
@@ -207,7 +220,6 @@ Proof.
   setoid_rewrite filter_map.
   reflexivity.
 Qed.
-
 
 Definition List_Query_In
            {QueryT ResultT}

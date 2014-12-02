@@ -1,10 +1,26 @@
-Require Export ADTSynthesis.QueryStructure.Refinements.Bags.BagsInterface ADTSynthesis.QueryStructure.Refinements.Bags.CountingListBags ADTSynthesis.QueryStructure.Refinements.Bags.TreeBags ADTSynthesis.QueryStructure.Tuple ADTSynthesis.QueryStructure.Heading Coq.Lists.List Coq.Program.Program ADTSynthesis.Common.ilist.
-Require Import ADTSynthesis.Common.String_as_OT ADTSynthesis.QueryStructure.IndexedEnsembles ADTSynthesis.Common.DecideableEnsembles.
-Require Import Coq.Bool.Bool Coq.Strings.String Coq.Structures.OrderedTypeEx Coq.NArith.BinNat Coq.ZArith.ZArith_dec Coq.Arith.Arith.
+Require Export ADTSynthesis.QueryStructure.Refinements.Bags.BagsInterface
+        ADTSynthesis.QueryStructure.Refinements.Bags.CountingListBags
+        ADTSynthesis.QueryStructure.Refinements.Bags.TreeBags
+        ADTSynthesis.QueryStructure.Tuple
+        ADTSynthesis.QueryStructure.Heading
+        Coq.Lists.List Coq.Program.Program
+        ADTSynthesis.Common.ilist.
+Require Import Coq.Bool.Bool Coq.Strings.String
+        Coq.Structures.OrderedTypeEx Coq.NArith.BinNat
+        Coq.ZArith.ZArith_dec Coq.Arith.Arith
+        Coq.FSets.FMapAVL
+        ADTSynthesis.Common.String_as_OT
+        ADTSynthesis.Common.ListFacts
+        ADTSynthesis.Common.Ensembles.IndexedEnsembles
+        ADTSynthesis.Common.DecideableEnsembles
+        ADTSynthesis.QueryStructure.Refinements.GeneralQueryRefinements
+        ADTSynthesis.QueryStructure.QueryStructureNotations
+        ADTSynthesis.QueryStructure.Refinements.ListImplementation
+        ADTSynthesis.Common.PermutationFacts
+        ADTSynthesis.QueryStructure.Refinements.OperationRefinements
+        ADTSynthesis.Common.ListMorphisms.
 
 Unset Implicit Arguments.
-
-Require Import ADTSynthesis.QueryStructure.Refinements.GeneralQueryRefinements.
 
 Definition TSearchTermMatcher (heading: Heading) := (@Tuple heading -> bool).
 
@@ -21,8 +37,6 @@ Definition TupleDisequalityMatcher
            (value: Domain heading attr)
            {ens_dec: DecideableEnsemble (fun x : Domain heading attr => value = x)} :=
   fun tuple => negb (dec (tuple attr)).
-
-Require Import Coq.FSets.FMapAVL.
 
 Module NIndexedMap := FMapAVL.Make N_as_OT.
 Module ZIndexedMap := FMapAVL.Make Z_as_OT.
@@ -403,8 +417,6 @@ Definition NestedTreeFromAttributesAsCorrectBagPlusProof
 Definition CheckType {heading} (attr: Attributes heading) (rightT: _) :=
   {| Attribute := attr; ProperlyTyped := rightT |}.
 
-Require Import ADTSynthesis.QueryStructure.QueryStructureNotations ADTSynthesis.QueryStructure.Refinements.ListImplementation.
-Require Import ADTSynthesis.QueryStructure.AdditionalLemmas ADTSynthesis.QueryStructure.AdditionalPermutationLemmas Coq.Arith.Arith.
 
 (* An equivalence relation between Ensembles of Tuples and Bags
    which incorporates the bag's representation invariant. *)
@@ -459,7 +471,6 @@ Qed.
 (* We now prove that [binsert] is a valid abstraction of the
    adding a tuple to the ensemble modeling the database. *)
 
-Require Import ADTSynthesis.QueryStructure.Refinements.OperationRefinements.
 
 Lemma binsert_correct_DB
       db_schema qs index
@@ -478,6 +489,7 @@ Lemma binsert_correct_DB
         (benumerate (binsert (Bag := BagPlus bag_plus) store tuple)).
 Proof.
   intros * store_eqv; destruct store_eqv as (store_eqv, store_WF).
+  Require Import ADTSynthesis.Common.Ensembles.EnsembleListEquivalence.
   unfold EnsembleIndexedTreeEquivalence_AbsR, UnConstrFreshIdx,
   EnsembleBagEquivalence, EnsembleIndexedListEquivalence,
   UnIndexedEnsembleListEquivalence, EnsembleListEquivalence in *.
@@ -504,11 +516,11 @@ Proof.
   exists l'0.
   split; [ assumption | split ].
 
-  setoid_rewrite perm; setoid_rewrite equiv; 
+  setoid_rewrite perm; setoid_rewrite equiv;
   simpl; intuition eauto.
-  
+
   eexists (bound :: _); split; try apply perm; eauto.
-  
+
   constructor; eauto.
   unfold not; intros.
   rewrite in_map_iff in H0; destruct_ex; intuition; subst.
@@ -540,7 +552,7 @@ Proof.
   - eapply binsert_RepInv; apply H.
 Qed.
 
-    Lemma bdelete_correct_DB_fst {qsSchema}
+Lemma bdelete_correct_DB_fst {qsSchema}
     : forall (qs : UnConstrQueryStructure qsSchema)
              (Ridx : @BoundedString (map relName (qschemaSchemas qsSchema)))
              bag_plus
@@ -557,7 +569,7 @@ Qed.
       intros; setoid_rewrite DeletedTuplesFor; auto.
       destruct equiv_bag as [[[bound ValidBound] [l [eq_bag [NoDup_l equiv_l]]]] RepInv_bag];
         subst.
-      rewrite refine_List_Query_In. 
+      rewrite refine_List_Query_In.
       rewrite refine_List_Query_In_Where, refine_List_For_Query_In_Return_Permutation,
       (filter_by_equiv _ _ H), map_id, <- partition_filter_eq.
       rewrite refine_pick_val.
@@ -627,8 +639,6 @@ Qed.
           simpl in H3; intuition.
           eauto.
     Qed.
-
-    Require Import ADTSynthesis.QueryStructure.Refinements.AdditionalMorphisms.
 
     Lemma bdeletePlus_correct_DB_snd
           db_schema qs index
@@ -737,7 +747,7 @@ Qed.
           subst; eauto.
         * subst; unfold In in *.
           constructor; unfold In.
-          apply H3. 
+          apply H3.
           eapply Permutation_in; eauto.
           rewrite <- H0 in H8; intros; apply dec_decides_P in H5; congruence.
         * unfold In; constructor.
@@ -745,7 +755,7 @@ Qed.
           unfold In in *.
           intros; apply dec_decides_P in H9; subst.
           apply Permutation_cons_inv in H1.
-          assert (List.In (indexedElement x3) (map indexedElement x2)) as in_x2' by 
+          assert (List.In (indexedElement x3) (map indexedElement x2)) as in_x2' by
                 (rewrite in_map_iff; eauto);
             pose proof (Permutation_in (indexedElement x3) H1 in_x2').
           rewrite in_map_iff in H5; destruct_ex; intuition.
@@ -754,7 +764,7 @@ Qed.
         * constructor; eauto.
           intro In_x; subst; apply Permutation_cons_inv in H1.
           pose proof (permutation_map_base _ H1 _  (refl_equal _));
-            destruct_ex; intuition.         
+            destruct_ex; intuition.
           rewrite in_map_iff in *; destruct_ex; intuition.
           apply H2 in H13; inversion H13; subst; unfold In in *; intuition.
           apply H3 in H15.

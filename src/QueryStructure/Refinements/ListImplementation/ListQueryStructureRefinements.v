@@ -1,8 +1,19 @@
-Require Import Coq.Strings.String Coq.omega.Omega Coq.Lists.List Coq.Logic.FunctionalExtensionality Coq.Sets.Ensembles
-        ADTSynthesis.Computation ADTSynthesis.ADT ADTSynthesis.ADTRefinement ADTSynthesis.ADTNotation ADTSynthesis.QueryStructure.QueryStructureSchema
-        ADTSynthesis.ADTRefinement.BuildADTRefinements ADTSynthesis.QueryStructure.QuerySpecs.QueryQSSpecs ADTSynthesis.QueryStructure.QuerySpecs.InsertQSSpecs ADTSynthesis.QueryStructure.QuerySpecs.EmptyQSSpecs
-        ADTSynthesis.QueryStructure.QueryStructure ADTSynthesis.QueryStructure.Refinements.GeneralInsertRefinements
-        ADTSynthesis.QueryStructure.Refinements.GeneralQueryRefinements ADTSynthesis.QueryStructure.SetEq ADTSynthesis.QueryStructure.AdditionalLemmas ADTSynthesis.QueryStructure.IndexedEnsembles.
+Require Import Coq.Strings.String Coq.omega.Omega Coq.Lists.List
+        Coq.Logic.FunctionalExtensionality Coq.Sets.Ensembles
+        ADTSynthesis.Computation ADTSynthesis.ADT
+        ADTSynthesis.Common.Ensembles.EnsembleListEquivalence
+        ADTSynthesis.ADTRefinement
+        ADTSynthesis.ADTNotation
+        ADTSynthesis.QueryStructure.QueryStructureSchema
+        ADTSynthesis.ADTRefinement.BuildADTRefinements
+        ADTSynthesis.QueryStructure.QuerySpecs.QueryQSSpecs
+        ADTSynthesis.QueryStructure.QuerySpecs.InsertQSSpecs
+        ADTSynthesis.QueryStructure.QuerySpecs.EmptyQSSpecs
+        ADTSynthesis.QueryStructure.QueryStructure
+        ADTSynthesis.QueryStructure.Refinements.GeneralInsertRefinements
+        ADTSynthesis.QueryStructure.Refinements.GeneralQueryRefinements
+        ADTSynthesis.QueryStructure.SetEq
+        ADTSynthesis.Common.Ensembles.IndexedEnsembles.
 
 Lemma EnsembleIndexedListEquivalence_lift_property {heading} {P: @Tuple heading -> Prop} :
   forall (sequence: list (@Tuple heading)) (ensemble: @IndexedTuple heading -> Prop),
@@ -32,33 +43,35 @@ Proof.
   destruct_ex; eexists x; eauto.
 Qed.
 
-  Lemma EnsembleListEquivalence_Empty :
-    forall qsSchema Ridx,
-      EnsembleListEquivalence
-        (GetUnConstrRelation (DropQSConstraints (QSEmptySpec qsSchema))
-                             Ridx) [].
-  Proof.
-    intros; rewrite GetRelDropConstraints; simpl; split; simpl; intros;
-    unfold GetRelation, In in *.
-    + econstructor.
-    + rewrite Build_EmptyRelation_IsEmpty in *; simpl in *; intuition.
-  Qed.
 
-  Lemma EnsembleIndexedListEquivalence_Empty :
-    forall qsSchema Ridx,
-      EnsembleIndexedListEquivalence
-        (GetUnConstrRelation (DropQSConstraints (QSEmptySpec qsSchema))
-                             Ridx) [].
-  Proof.
-    intros; rewrite GetRelDropConstraints; simpl; split; simpl; intros;
-    unfold GetRelation, In in *.
-    + rewrite Build_EmptyRelation_IsEmpty in *; simpl in *; intuition.
-      exists 0; unfold UnConstrFreshIdx; intros; intuition.
-    + eexists []; intuition.
-      - unfold In in *; intuition.
-        rewrite Build_EmptyRelation_IsEmpty in *; simpl in *; intuition.
-      - econstructor.
-  Qed.
+
+Lemma EnsembleListEquivalence_Empty :
+  forall qsSchema Ridx,
+    EnsembleListEquivalence
+      (GetUnConstrRelation (DropQSConstraints (QSEmptySpec qsSchema))
+                           Ridx) [].
+Proof.
+  intros; rewrite GetRelDropConstraints; simpl; split; simpl; intros;
+  unfold GetRelation, In in *.
+  + econstructor.
+  + rewrite Build_EmptyRelation_IsEmpty in *; simpl in *; intuition.
+Qed.
+
+Lemma EnsembleIndexedListEquivalence_Empty :
+  forall qsSchema Ridx,
+    EnsembleIndexedListEquivalence
+      (GetUnConstrRelation (DropQSConstraints (QSEmptySpec qsSchema))
+                           Ridx) [].
+Proof.
+  intros; rewrite GetRelDropConstraints; simpl; split; simpl; intros;
+  unfold GetRelation, In in *.
+  + rewrite Build_EmptyRelation_IsEmpty in *; simpl in *; intuition.
+    exists 0; unfold UnConstrFreshIdx; intros; intuition.
+  + eexists []; intuition.
+  - unfold In in *; intuition.
+    rewrite Build_EmptyRelation_IsEmpty in *; simpl in *; intuition.
+  - econstructor.
+Qed.
 
 Ltac implement_empty_list constrName RepAbsR :=
   hone constructor constrName;
@@ -70,7 +83,7 @@ Ltac implement_empty_list constrName RepAbsR :=
     repeat (rewrite refine_pick_val;
             [simplify with monad laws
             | apply EnsembleIndexedListEquivalence_Empty]);
-        subst_body; higher_order_1_reflexivity
+    subst_body; higher_order_1_reflexivity
   | ].
 
 (*Tactic Notation "implement" "using" "lists" "under" constr(Rep_AbsR) :=
@@ -91,4 +104,4 @@ Ltac implement_empty_list constrName RepAbsR :=
             first [ implement insert in R with lists under AbsR_Hyp
                   | implement query in R with lists under AbsR_Hyp ]
         end.
-*)
+ *)

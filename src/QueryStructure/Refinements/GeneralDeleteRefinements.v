@@ -1,9 +1,21 @@
 Require Import Coq.Strings.String Coq.omega.Omega Coq.Lists.List Coq.Logic.FunctionalExtensionality Coq.Sets.Ensembles
-        ADTSynthesis.Computation ADTSynthesis.ADT ADTSynthesis.ADTRefinement ADTSynthesis.ADTNotation ADTSynthesis.QueryStructure.Schema ADTSynthesis.QueryStructure.QueryStructureSchema
-        ADTSynthesis.ADTRefinement.BuildADTRefinements ADTSynthesis.QueryStructure.QueryStructure ADTSynthesis.QueryStructure.IndexedEnsembles
-        ADTSynthesis.QueryStructure.QuerySpecs.QueryQSSpecs ADTSynthesis.QueryStructure.QuerySpecs.DeleteQSSpecs
-        ADTSynthesis.QueryStructure.Refinements.ConstraintChecksRefinements ADTSynthesis.QueryStructure.Refinements.ListImplementation.ListQueryStructureRefinements
-        ADTSynthesis.Common.IterateBoundedIndex ADTSynthesis.Common.DecideableEnsembles.
+        ADTSynthesis.Common.ListFacts
+        ADTSynthesis.Computation
+        ADTSynthesis.ADT
+        ADTSynthesis.ADTRefinement ADTSynthesis.ADTNotation
+        ADTSynthesis.QueryStructure.Schema
+        ADTSynthesis.QueryStructure.QueryStructureSchema
+        ADTSynthesis.ADTRefinement.BuildADTRefinements
+        ADTSynthesis.QueryStructure.QueryStructure
+        ADTSynthesis.Common.Ensembles.IndexedEnsembles
+        ADTSynthesis.QueryStructure.QuerySpecs.QueryQSSpecs
+        ADTSynthesis.QueryStructure.QuerySpecs.DeleteQSSpecs
+        ADTSynthesis.QueryStructure.Refinements.ConstraintChecksRefinements
+        ADTSynthesis.Common.IterateBoundedIndex
+        ADTSynthesis.Common.DecideableEnsembles
+        ADTSynthesis.Common.PermutationFacts
+        ADTSynthesis.QueryStructure.Refinements.GeneralQueryRefinements
+        ADTSynthesis.Common.Ensembles.EnsembleListEquivalence.
 
 (* Facts about implements delete operations. *)
 
@@ -660,21 +672,18 @@ Section DeleteRefinements.
     f_equiv.
   Qed.
 
-  Require Import ADTSynthesis.QueryStructure.AdditionalPermutationLemmas ADTSynthesis.QueryStructure.Refinements.GeneralQueryRefinements
-          ADTSynthesis.QueryStructure.AdditionalLemmas.
-
   Lemma EnsembleComplementIntersection {A}
   : forall E (P : Ensemble A),
       DecideableEnsemble P
       -> forall (a : @IndexedElement A),
            (In _ (Intersection _ E
                                (Complement _ (EnsembleDelete E P))) a
-            <-> In _ (Intersection _ E 
+            <-> In _ (Intersection _ E
                                    (fun itup => P (indexedElement itup))) a).
   Proof.
     unfold EnsembleDelete, Complement, In in *; intuition;
     destruct H; constructor; eauto; unfold In in *.
-    - case_eq (dec (indexedElement x)); intros.
+    - case_eq (DecideableEnsembles.dec (indexedElement x)); intros.
       + eapply dec_decides_P; eauto.
       + exfalso; apply H0; constructor; unfold In; eauto.
         intros H'; apply dec_decides_P in H'; congruence.
@@ -688,7 +697,7 @@ Section DeleteRefinements.
       DecideableEnsemble P
       -> refine {x | QSDeletedTuples qs Ridx P x}
                 {x | UnIndexedEnsembleListEquivalence
-                       (Intersection _ (GetUnConstrRelation qs Ridx) 
+                       (Intersection _ (GetUnConstrRelation qs Ridx)
                                      (fun itup => P (indexedElement itup))) x}.
   Proof.
     intros qs Ridx P P_dec v Comp_v; inversion_by computes_to_inv.
@@ -739,7 +748,7 @@ Section DeleteRefinements.
       unfold UnConstrRelation in u.
       destruct H0 as [[ | [a' x']] [x_eq [equiv_u_x' NoDup_x']]];
         simpl in *; [discriminate | injection x_eq; intros x'_eq ?; subst; clear x_eq].
-      case_eq (@dec _ P P_dec a); intros.
+      case_eq (@DecideableEnsembles.dec _ P P_dec a); intros.
       + apply computes_to_inv in H1; simpl in *; intuition.
         apply dec_decides_P in H; apply H0 in H.
         apply computes_to_inv in H; simpl in *; subst; simpl in *.
@@ -765,7 +774,7 @@ Section DeleteRefinements.
               subst.
               apply in_or_app; simpl; intuition.
               assert (u x) as u_x by (apply equiv_u_x'; eauto).
-              assert (List.In x (x3 ++ x4)) as In_x 
+              assert (List.In x (x3 ++ x4)) as In_x
                   by (apply H; constructor; unfold In; intuition; subst;
                       inversion NoDup_x'; subst; eapply H10; apply in_map_iff; eexists;
                       split; eauto; simpl; eauto).
@@ -779,7 +788,7 @@ Section DeleteRefinements.
                 constructor; eauto.
               + subst; constructor; eauto.
                 apply equiv_u_x'; simpl; eauto.
-                case_eq (@dec _ P P_dec a); intros.
+                case_eq (@DecideableEnsembles.dec _ P P_dec a); intros.
                 apply dec_decides_P; eauto.
                 assert (~ P a) as H''
                     by (unfold not; intros H'; apply dec_decides_P in H'; congruence);

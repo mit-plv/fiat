@@ -15,7 +15,7 @@ Ltac compile_fold_induction_is_empty_call :=
             try solve [exfalso; apply H1; reflexivity]; subst
         | intuition .. ]
   end.
-  
+
 Ltac loop_body_prereqs :=
   split; [assumption|split];
   match goal with
@@ -49,7 +49,7 @@ Ltac loop_body_prereqs :=
                                   | solve [eauto] ]);
                           rewrite add_add_add';
                           reflexivity ]
-            end 
+            end
           ]
   ].
 
@@ -77,7 +77,7 @@ Definition compile_fold_base_pair_adt :
     ~ StringMap.In thead adts ->
     ~ StringMap.In tis_empty adts ->
     ~ StringMap.In vseq scas ->
-    forall seq (init: acc_type), 
+    forall seq (init: acc_type),
       refine (@Prog _ env knowledge
                     (scas)
                     ([tis_empty >sca> 1]::scas)
@@ -87,19 +87,22 @@ Definition compile_fold_base_pair_adt :
 Proof.
   unfold ADTPairLoopBodyOk, ADTPairLoopBodyProgCondition, Prog, ProgOk, refine; unfold_coercions;
   induction seq as [ | a seq ]; intros;
-  [ | specialize (fun init => IHseq init _ (eq_ret_compute _ _ _ (eq_refl))) ];
+
+  [ | specialize (fun init => IHseq init _ (ReturnComputes _)) ];
   constructor; intros; destruct_pairs;
   split;
   inversion_by computes_to_inv;
   subst;
   scas_adts_mapsto.
- 
+
+  Require Import Permutation.
+
   (** Safe **)
   constructor.
   split; intros.
 
   (* Call is safe *)
-  
+
   eapply safe_call_1;
     first [ eassumption
           | symmetry; eassumption (* TODO: Can be removed *)
@@ -141,16 +144,16 @@ Proof.
   intros.
   compile_fold_induction_is_empty_call; try discriminate.
   mapsto_eq_add.
-  
+
   constructor;
     [ unfold_coercions;
       rewrite is_true_eq;
       assumption | | ].
-  
+
   constructor; split.
 
   (* Pop safe *)
-  assert (st' [vseq >> ADT (List (a :: seq))]) 
+  assert (st' [vseq >> ADT (List (a :: seq))])
     by (rewrite_Eq_in_goal; map_iff_solve intuition).
 
   eapply safe_call_1.
@@ -179,7 +182,7 @@ Proof.
 
   assert (prereq) as prereqs; unfold prereq in *; clear prereq.
   loop_body_prereqs.
-  
+
   (* Loop body *)
   split.
   eauto.
@@ -191,7 +194,7 @@ Proof.
                H': RunsTo _ compiled_loop _ _ |- _ ] => specialize (H prereqs _ H')
          end.
 
-  
+
   scas_adts_mapsto.
   eapply safe_call_1; try eassumption.
   map_iff_solve congruence.
@@ -254,7 +257,7 @@ Proof.
        map_iff_solve intuition). (* TODO this should be a lemma *)
 
   inversion_facade; try (exfalso; eapply true_and_false; eassumption).
-  
+
   (* Unfold one loop iteration, but keep the last statement, and merge it back at the beginning of the while, to recreate the induction condition. *)
 
   repeat match goal with
@@ -344,7 +347,7 @@ Lemma compile_fold_pair_adt :
     ~ StringMap.In tis_empty adts ->
     ~ StringMap.In vseq scas ->
     ~ StringMap.In tis_empty scas ->
-    forall seq init, 
+    forall seq init,
       refine (@Prog _ env knowledge
                     scas scas
                     ([vseq >adt> List seq]::adts)
@@ -383,22 +386,22 @@ Proof.
   unfold refine, Prog, ProgOk in *.
 
   match goal with
-    | [ H: _ -> _ -> _ |- _ ] => specialize (H seq init _ (eq_ret_compute _ _ _ (eq_refl)))
+    | [ H: _ -> _ -> _ |- _ ] => specialize (H seq init _ (ReturnComputes _))
   end.
   inversion_by computes_to_inv.
-  
+
   split.
 
   (* Safe *)
   repeat (safe_seq; intros).
   specialize_states; intuition.
-  
+
   (* RunsTo *)
   intros; destruct_pairs.
   repeat inversion_facade.
   specialize_states.
   split; [ | intuition ].
-  
+
   (* Tricks to get rid of is_empty *)
   rewrite (not_in_remove_eq tis_empty scas); eauto.
   eapply SomeSCAs_remove; eauto.
@@ -428,7 +431,7 @@ Definition compile_fold_base_pair :
     ~ StringMap.In thead adts ->
     ~ StringMap.In tis_empty adts ->
     ~ StringMap.In vseq scas ->
-    forall seq (init: acc_type), 
+    forall seq (init: acc_type),
       refine (@Prog _ env knowledge
                     ([vsca >sca> wsca init]::scas)
                     ([tis_empty >sca> 1]::[vsca >sca> wsca (List.fold_left loop seq init)]::scas)
@@ -437,19 +440,19 @@ Definition compile_fold_base_pair :
 Proof.
   unfold PairLoopBodyOk, PairLoopBodyProgCondition, Prog, ProgOk, refine; unfold_coercions;
   induction seq as [ | a seq ]; intros;
-  [ | specialize (fun init => IHseq init _ (eq_ret_compute _ _ _ (eq_refl))) ];
+  [ | specialize (fun init => IHseq init _ (ReturnComputes _)) ];
   constructor; intros; destruct_pairs;
   split;
   inversion_by computes_to_inv;
   subst;
   scas_adts_mapsto.
- 
+
   (** Safe **)
   constructor.
   split; intros.
 
   (* Call is safe *)
-  
+
   eapply safe_call_1;
     first [ eassumption
           | symmetry; eassumption (* TODO: Can be removed *)
@@ -491,16 +494,16 @@ Proof.
   intros.
   compile_fold_induction_is_empty_call; try discriminate.
   mapsto_eq_add.
-  
+
   constructor;
     [ unfold_coercions;
       rewrite is_true_eq;
       assumption | | ].
-  
+
   constructor; split.
 
   (* Pop safe *)
-  assert (st' [vseq >> ADT (List (a :: seq))]) 
+  assert (st' [vseq >> ADT (List (a :: seq))])
     by (rewrite_Eq_in_goal; map_iff_solve intuition).
 
   eapply safe_call_1.
@@ -529,7 +532,7 @@ Proof.
 
   assert (prereq) as prereqs; unfold prereq in *; clear prereq.
   loop_body_prereqs.
-  
+
   (* Loop body *)
   split.
   eauto.
@@ -603,7 +606,7 @@ Proof.
        map_iff_solve intuition). (* TODO this should be a lemma *)
 
   inversion_facade; try (exfalso; eapply true_and_false; eassumption).
-  
+
   (* Unfold one loop iteration, but keep the last statement, and merge it back at the beginning of the while, to recreate the induction condition. *)
 
   repeat match goal with
@@ -658,7 +661,7 @@ Definition compile_fold_base_sca :
     ~ StringMap.In thead adts ->
     ~ StringMap.In tis_empty adts ->
     ~ StringMap.In vseq scas ->
-    forall seq init, 
+    forall seq init,
       refine (@Prog _ env knowledge
                     ([vret >sca> init]::scas) ([tis_empty >sca> 1]::[vret >sca> List.fold_left loop seq init]::scas)
                     ([vseq >adt> List seq]::adts) ([vseq >adt> List nil]::adts))
@@ -666,19 +669,19 @@ Definition compile_fold_base_sca :
 Proof.
   unfold SCALoopBodyOk, SCALoopBodyProgCondition, Prog, ProgOk, refine; unfold_coercions;
   induction seq as [ | a seq ]; intros;
-  [ | specialize (fun init => IHseq init _ (eq_ret_compute _ _ _ (eq_refl))) ];
+  [ | specialize (fun init => IHseq init _ (ReturnComputes _)) ];
   constructor; intros; destruct_pairs;
   split;
   inversion_by computes_to_inv;
   subst;
   scas_adts_mapsto.
- 
+
   (** Safe **)
   constructor.
   split; intros.
 
   (* Call is safe *)
-  
+
   eapply safe_call_1;
     first [ eassumption
           | symmetry; eassumption (* TODO: Can be removed *)
@@ -720,16 +723,16 @@ Proof.
   intros.
   compile_fold_induction_is_empty_call; try discriminate.
   mapsto_eq_add.
-  
+
   constructor;
     [ unfold_coercions;
       rewrite is_true_eq;
       assumption | | ].
-  
+
   constructor; split.
 
   (* Pop safe *)
-  assert (st' [vseq >> ADT (List (a :: seq))]) 
+  assert (st' [vseq >> ADT (List (a :: seq))])
     by (rewrite_Eq_in_goal; map_iff_solve intuition).
 
   eapply safe_call_1.
@@ -759,7 +762,7 @@ Proof.
 
   assert (prereq) as prereqs; unfold prereq in *; clear prereq.
   loop_body_prereqs.
-  
+
   (* Loop body *)
   split.
   eauto.
@@ -833,7 +836,7 @@ Proof.
        map_iff_solve intuition). (* TODO this should be a lemma *)
 
   inversion_facade; try (exfalso; eapply true_and_false; eassumption).
-  
+
   (* Unfold one loop iteration, but keep the last statement, and merge it back at the beginning of the while, to recreate the induction condition. *)
 
   repeat match goal with
@@ -889,7 +892,7 @@ Definition compile_fold_base_adt :
     ~ StringMap.In thead adts ->
     ~ StringMap.In tis_empty adts ->
     ~ StringMap.In vseq scas ->
-    forall seq (init: acc_type), 
+    forall seq (init: acc_type),
       refine (@Prog _ env knowledge
                     (scas) ([tis_empty >sca> 1]::scas)
                     ([vret >adt> wrapper init]::[vseq >adt> List seq]::adts) ([vret >adt> wrapper (List.fold_left loop seq init)]::[vseq >adt> List nil]::adts))
@@ -897,13 +900,13 @@ Definition compile_fold_base_adt :
 Proof.
   unfold ADTLoopBodyOk, ADTLoopBodyProgCondition, Prog, ProgOk, refine; unfold_coercions;
   induction seq as [ | a seq ]; intros;
-  [ | specialize (fun init => IHseq init _ (eq_ret_compute _ _ _ (eq_refl))) ];
+  [ | specialize (fun init => IHseq init _ (ReturnComputes _)) ];
   constructor; intros; destruct_pairs;
   split;
   inversion_by computes_to_inv;
   subst;
   scas_adts_mapsto.
-  
+
   (** Safe **)
   constructor.
   split; intros.
@@ -914,7 +917,7 @@ Proof.
           | symmetry; eassumption
           | simpl; eexists; reflexivity
           | map_iff_solve intuition ].
-  
+
   (* (Non-running) loop is safe *)
 
   compile_fold_induction_is_empty_call.
@@ -950,16 +953,16 @@ Proof.
   intros.
   compile_fold_induction_is_empty_call; try discriminate.
   mapsto_eq_add.
-  
+
   constructor;
     [ unfold_coercions;
       rewrite is_true_eq;
       assumption | | ].
-  
+
   constructor; split.
 
   (* Pop safe *)
-  assert (st' [vseq >> ADT (List (a :: seq))]) 
+  assert (st' [vseq >> ADT (List (a :: seq))])
     by (rewrite_Eq_in_goal; map_iff_solve intuition).
 
   eapply safe_call_1.
@@ -989,7 +992,7 @@ Proof.
 
   assert (prereq) as prereqs; unfold prereq in *; clear prereq.
   loop_body_prereqs.
-  
+
   (* Loop body *)
   split.
   eauto.
@@ -1063,7 +1066,7 @@ Proof.
        map_iff_solve intuition). (* TODO this should be a lemma *)
 
   inversion_facade; try (exfalso; eapply true_and_false; eassumption).
-  
+
   (* Unfold one loop iteration, but keep the last statement, and merge it back at the beginning of the while, to recreate the induction condition. *)
 
   repeat match goal with
@@ -1118,7 +1121,7 @@ Lemma compile_fold_sca :
     ~ StringMap.In tis_empty adts ->
     ~ StringMap.In vseq scas ->
     ~ StringMap.In tis_empty scas ->
-    forall seq init, 
+    forall seq init,
       refine (@Prog _ env knowledge
                     (scas) ([vret >sca> List.fold_left loop seq init]::scas)
                     ([vseq >adt> List seq]::adts) ([vseq >adt> List nil]::adts))
@@ -1144,16 +1147,16 @@ Proof.
     | [ H: context[SCALoopBodyOk], H': context[GLabelMap.find], H'': context[GLabelMap.find] |- _ ] =>
       pose proof (compile_fold_base_sca H H' H'')
   end.
-  
+
   autospecialize_simple.
-  
+
   unfold refine, Prog, ProgOk in *.
 
   match goal with
-    | [ H: _ -> _ -> _ |- _ ] => specialize (H seq init _ (eq_ret_compute _ _ _ (eq_refl)))
+    | [ H: _ -> _ -> _ |- _ ] => specialize (H seq init _ (ReturnComputes _))
   end.
   inversion_by computes_to_inv.
-  
+
   split.
 
   (* Safe *)
@@ -1164,7 +1167,7 @@ Proof.
   inversion_facade.
   specialize_states.
   split; [ | intuition ].
-  
+
   (* Tricks to get rid of is_empty *)
   rewrite (not_in_remove_eq tis_empty scas); eauto.
   rewrite map_add_remove_swap; eauto.
@@ -1190,7 +1193,7 @@ Lemma compile_fold_adt :
     ~ StringMap.In tis_empty adts ->
     ~ StringMap.In vseq scas ->
     ~ StringMap.In tis_empty scas ->
-    forall seq init, 
+    forall seq init,
       refine (@Prog _ env knowledge
                     (scas) (scas)
                     ([vseq >adt> List seq]::adts) ([vret >adt> wrapper (List.fold_left loop seq init)]
@@ -1222,10 +1225,10 @@ Proof.
   unfold refine, Prog, ProgOk in *.
 
   match goal with
-    | [ H: _ -> _ -> _ |- _ ] => specialize (H seq init _ (eq_ret_compute _ _ _ (eq_refl)))
+    | [ H: _ -> _ -> _ |- _ ] => specialize (H seq init _ (ReturnComputes _))
   end.
   inversion_by computes_to_inv.
-  
+
   split.
 
   (* Safe *)
@@ -1236,7 +1239,7 @@ Proof.
   inversion_facade.
   specialize_states.
   split; [ | intuition ].
-  
+
   (* Tricks to get rid of is_empty *)
   rewrite (not_in_remove_eq tis_empty scas); eauto.
   (* REMOVED rewrite map_add_remove_swap; eauto. *)
@@ -1266,7 +1269,7 @@ Lemma compile_fold_pair :
     ~ StringMap.In tis_empty adts ->
     ~ StringMap.In vseq scas ->
     ~ StringMap.In tis_empty scas ->
-    forall seq init, 
+    forall seq init,
       refine (@Prog _ env knowledge
                     (scas) ([vsca >sca> wsca (List.fold_left loop seq init)]::scas)
                     ([vseq >adt> List seq]::adts) ([vadt >adt> wadt (List.fold_left loop seq init)]
@@ -1301,10 +1304,10 @@ Proof.
   unfold refine, Prog, ProgOk in *.
 
   match goal with
-    | [ H: _ -> _ -> _ |- _ ] => specialize (H seq init _ (eq_ret_compute _ _ _ (eq_refl)))
+    | [ H: _ -> _ -> _ |- _ ] => specialize (H seq init _ (ReturnComputes _))
   end.
   inversion_by computes_to_inv.
-  
+
   split.
 
   (* Safe *)
@@ -1317,7 +1320,7 @@ Proof.
   repeat inversion_facade.
   specialize_states.
   split; [ | intuition ].
-  
+
   (* Tricks to get rid of is_empty *)
   rewrite (not_in_remove_eq tis_empty scas); eauto.
   rewrite map_add_remove_swap; eauto.

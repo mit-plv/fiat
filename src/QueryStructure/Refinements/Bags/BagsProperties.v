@@ -1,5 +1,7 @@
-Require Import ADTSynthesis.QueryStructure.Refinements.Bags.BagsInterface ADTSynthesis.QueryStructure.AdditionalLemmas.
-Require Import ADTSynthesis.QueryStructure.Refinements.AdditionalMorphisms.
+Require Import Coq.Arith.Arith
+        ADTSynthesis.QueryStructure.Refinements.Bags.BagsInterface
+        ADTSynthesis.Common.ListFacts
+        ADTSynthesis.Common.ListMorphisms.
 
 Section BagsProperties.
 
@@ -62,8 +64,8 @@ Section BagsProperties.
   Lemma _binsert_count : _BagInsertCount.
   Proof.
     unfold _BagInsertCount, _bcount; intros;
-    rewrite binsert_enumerate; simpl; destruct (bfind_matcher search_term item); simpl;
-    eauto; omega.
+    rewrite binsert_enumerate; simpl; destruct (bfind_matcher search_term item); simpl; eauto.
+    rewrite plus_comm; reflexivity.
   Qed.
 
 End BagsProperties.

@@ -1,10 +1,11 @@
-Require Import Coq.Program.Program.
-
 Require Export Coq.FSets.FMapInterface.
-Require Import Coq.FSets.FMapFacts.
-Require Import Coq.Structures.OrderedTypeEx.
-
-Require Import ADTSynthesis.QueryStructure.SetEq ADTSynthesis.QueryStructure.SetEqProperties ADTSynthesis.QueryStructure.AdditionalLemmas.
+Require Import Coq.FSets.FMapFacts
+        Coq.Program.Program
+        Coq.Structures.OrderedTypeEx
+        ADTSynthesis.Common
+        ADTSynthesis.QueryStructure.SetEq
+        ADTSynthesis.QueryStructure.SetEqProperties
+        ADTSynthesis.Common.ListFacts.
 
 Unset Implicit Arguments.
 
@@ -151,8 +152,9 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
       InA eq x seq -> InA (eq_key_elt (elt:=A)) x seq.
   Proof.
     intros.
-    apply InA_In in H.
-    apply (In_InA ); eauto using equiv_eq_key_elt.
+    apply In_InA.
+    apply equiv_eq_key_elt.
+    induction seq; simpl in *; inversion H; subst; eauto.
   Qed.
 
   Lemma in_elements_mapsto :
@@ -364,7 +366,7 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
     intuition eauto.
   Qed.
 
-  Require Import Coq.Sorting.Permutation ADTSynthesis.QueryStructure.AdditionalPermutationLemmas.
+  Require Import Coq.Sorting.Permutation ADTSynthesis.Common.PermutationFacts.
 
   Lemma InA_mapsto_add {Value} :
     forall bag' kv k' (v' : Value),

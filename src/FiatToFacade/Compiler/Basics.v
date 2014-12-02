@@ -16,7 +16,6 @@ Lemma start_compiling' :
 Proof.
   unfold refine, Prog, ProgOk; intros.
   inversion_by computes_to_inv.
-  apply eq_ret_compute.
 
   pose proof I.
   pose proof (SomeSCAs_empty init_state).
@@ -67,5 +66,6 @@ Proof.
   scas_adts_mapsto;
   auto_mapsto_unique;
   autoinj;
-  eauto using eq_ret_compute.
+  erewrite H; eauto.
+  
 Qed.

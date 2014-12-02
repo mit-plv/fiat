@@ -1,6 +1,6 @@
 Require Import Coq.Lists.List Coq.Strings.String Coq.Logic.FunctionalExtensionality Coq.Sets.Ensembles
         ADTSynthesis.Common.ilist ADTSynthesis.Common.StringBound Coq.Program.Program ADTSynthesis.QueryStructure.Heading
-        ADTSynthesis.QueryStructure.IndexedEnsembles ADTSynthesis.QueryStructure.Notations.
+        ADTSynthesis.Common.Ensembles.IndexedEnsembles ADTSynthesis.QueryStructure.Notations.
 
 (* A tuple is a map from attributes to values. *)
 Definition Tuple {Heading : Heading} :=

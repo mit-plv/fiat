@@ -1,11 +1,10 @@
 Require Import FiatToFacade.Compiler.Prerequisites.
 Require Import Facade.examples.FiatADTs.
-Require Import GLabelMap List.
+Require Import GLabelMap List Permutation.
 
 Unset Implicit Arguments.
 
 Require Import Ensembles.
-Require Import AdditionalEnsembleDefinitions.
 
 Require Import ADT.
 Require Import ADTRefinement.
@@ -43,7 +42,7 @@ Ltac runsto_prelude :=
   Proof.
     runsto_prelude.
   Qed.
-  
+
   (* Specification of state after running sAdd. *)
   Lemma runsto_sAdd
   : forall (s_model : Ensemble W)
@@ -278,7 +277,7 @@ Section compile_FiniteSet_Methods.
   Lemma compile_sAdd
   : forall {env},
     forall vens velt vdiscard r f s
-           (s_r_eqv : AbsR (projT2 FiniteSetImpl) s r), 
+           (s_r_eqv : AbsR (projT2 FiniteSetImpl) s r),
     forall scas adts knowledge w',
       GLabelMap.find f env = Some (Axiomatic FEnsemble_sAdd) ->
       ~ StringMap.In vdiscard adts ->
@@ -298,11 +297,11 @@ Section compile_FiniteSet_Methods.
     apply add_adts_pop_sca; map_iff_solve trivial.
     destruct (AbsImpl_Add _ _ w' s_r_eqv) as [r_eqv [x_eq x_neq]];
       pose ((CallMethod (projT1 FiniteSetImpl) sIn) r w') as p; simpl in *;
-      case_eq p; unfold p in *; intros ? ? H'. 
+      case_eq p; unfold p in *; intros ? ? H'.
     apply AllADTs_chomp_remove.
     rewrite H8; trickle_deletion; reflexivity.
   Qed.
-  
+
   Lemma compile_sAdd_no_ret :
     forall  vdiscard
             (env : GLabelMap.t (FuncSpec ADTValue))
@@ -635,7 +634,6 @@ Section compile_FiniteSet_Methods.
       pose proof ((proj1 x_neq) (refl_equal _)) as H''; rewrite <- H6 in H''; discriminate.
   Qed.
 
-  Require Import Common.AdditionalEnsembleLemmas Permutation.
 
   Lemma EnsembleListEquivalence_length {A} :
     forall l s s' l',
@@ -693,7 +691,7 @@ Section compile_FiniteSet_Methods.
     - rewrite <- H2; simpl in *.
       unfold cardinal in *.
       apply computes_to_inv in H0; destruct_ex; intuition.
-      apply computes_to_inv in H0; unfold FiatADTs.cardinal, AdditionalEnsembleDefinitions.cardinal in *.
+      apply computes_to_inv in H0; unfold FiatADTs.cardinal, Cardinal.cardinal in *.
       destruct_ex; split_and; subst;
       inversion_by computes_to_inv; subst.
       unfold from_nat in *.
@@ -736,13 +734,13 @@ Section compile_FiniteSet_Methods.
     split; trivial.
     rewrite EnsembleListEquivalence_Same_set; try apply H7.
     symmetry; eapply Same_set_AbsImpl; assumption.
-    
+
     destruct_ex; split_and; subst.
     rewrite H9.
     apply add_adts_pop_sca; map_iff_solve trivial.
     destruct (AbsImpl_sSize _ _ u s_r_eqv) as [r_eqv _].
     rewrite r_eqv; apply AllADTs_chomp_remove.
-    rewrite H6; trickle_deletion; reflexivity.    
+    rewrite H6; trickle_deletion; reflexivity.
   Qed.
 
 End compile_FiniteSet_Methods.

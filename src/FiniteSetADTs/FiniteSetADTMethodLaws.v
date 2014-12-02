@@ -1,8 +1,18 @@
-(** * Definition of the finite set spec *)
-Require Import Coq.Strings.String Coq.Sets.Ensembles Coq.Sets.Finite_sets Coq.Lists.List Coq.Sorting.Permutation.
-Require Import ADTSynthesis.ADT ADTSynthesis.ADT.ComputationalADT ADTSynthesis.ADTRefinement.Core ADTSynthesis.ADTNotation ADTSynthesis.ADTRefinement.GeneralRefinements ADTSynthesis.Common.AdditionalEnsembleDefinitions.
-Require Import ADTSynthesis.FiniteSetADTs.FiniteSetADT.
-Require Import ADTSynthesis.Common.Ensembles.Notations ADTSynthesis.Common.AdditionalEnsembleLemmas ADTSynthesis.Common.Ensembles.Equivalence.
+(* Definition of the finite set spec *)
+Require Import Coq.Strings.String
+  Coq.Sets.Ensembles
+  Coq.Sets.Finite_sets
+  Coq.Lists.List
+  Coq.Sorting.Permutation
+  ADTSynthesis.ADT
+  ADTSynthesis.ADT.ComputationalADT
+  ADTSynthesis.ADTRefinement.Core
+  ADTSynthesis.ADTNotation
+  ADTSynthesis.ADTRefinement.GeneralRefinements
+  ADTSynthesis.Common.Ensembles
+  ADTSynthesis.FiniteSetADTs.FiniteSetADT
+  ADTSynthesis.Common.Ensembles.Notations
+  ADTSynthesis.Common.Ensembles.Equivalence.
 
 Set Implicit Arguments.
 

@@ -1,10 +1,15 @@
-(** * Miscellaneous theorems about ensembles *)
+Require Import Coq.Lists.List.
 Require Export Coq.Sets.Ensembles.
-Require Import Coq.Sorting.Permutation Coq.Lists.List.
-Require Export ADTSynthesis.Common.AdditionalEnsembleDefinitions.
+Require Import Coq.Sorting.Permutation.
 Require Import ADTSynthesis.Common.
-(** TODO: Move the following out of [QueryStructure] *)
-Require Import ADTSynthesis.QueryStructure.AdditionalPermutationLemmas.
+Require Import ADTSynthesis.Common.PermutationFacts.
+
+Definition EnsembleListEquivalence
+           {A}
+           (ensemble : Ensemble A)
+           (seq : list A) :=
+  NoDup seq /\
+  forall x, Ensembles.In _ ensemble x <-> List.In x seq.
 
 Local Ltac perm_t :=
   repeat match goal with
@@ -92,39 +97,51 @@ Proof.
       pose proof (fun x => @Permutation_in _ _ _ x H'').
       let H := fresh in
       assert (H : NoDup (a::ls'')) by
-          (eapply AdditionalPermutationLemmas.NoDup_Permutation_rewrite;
+          (eapply PermutationFacts.NoDup_Permutation_rewrite;
            try solve [ destruct_head_hnf and; eassumption ]);
         inversion H; subst; clear H.
       perm_t; specialize_all_ways; perm_t. } }
 Qed.
 
-Lemma cardinal_Same_set {U} (A B : Ensemble U) x
-      (H : Same_set _ A B)
-      (H' : cardinal _ A x)
-: cardinal _ B x.
+Lemma EnsembleListEquivalence_slice :
+  forall {A} a b c (ens: Ensemble A),
+    EnsembleListEquivalence ens (a ++ b ++ c) ->
+    EnsembleListEquivalence (fun x => ens x /\ ~ List.In x b) (a ++ c).
 Proof.
-  destruct H' as [ls H'].
-  exists ls.
-  destruct_head and; split; auto.
-  eapply EnsembleListEquivalence_Same_set; eassumption.
+  unfold EnsembleListEquivalence, Ensembles.In; simpl;
+  repeat setoid_rewrite in_app_iff; intros *.
+  split.
+  - intros. intuition.
+    eauto using NoDup_slice.
+  - intros; intuition.
+    + rewrite H1 in H2; intuition.
+    + rewrite H1; intuition.
+    + eapply NoDup_app_inv'; eauto.
+    + rewrite H1; intuition.
+    + eapply NoDup_app_inv'; eauto.
 Qed.
 
-Global Add Parametric Morphism {U} : (cardinal U)
-    with signature Same_set _ ==> eq ==> iff
-      as Same_set_cardinal.
+
+Lemma ensemble_list_equivalence_set_eq_morphism {A : Type} {ens1 ens2 : A -> Prop} :
+  (forall x, Ensembles.In _ ens1 x <-> Ensembles.In _ ens2 x) ->
+  forall (seq : list A),
+    (EnsembleListEquivalence ens1 seq <-> EnsembleListEquivalence ens2 seq).
 Proof.
-  intros; split; intros; eapply cardinal_Same_set;
-  try eassumption;
-  split; destruct_head_hnf and; assumption.
+  intros * equiv *;
+  unfold EnsembleListEquivalence, In in *;
+  setoid_rewrite equiv; reflexivity.
 Qed.
 
-Lemma cardinal_unique {U} (A : Ensemble U) x y
-      (H : cardinal _ A x) (H' : cardinal _ A y)
-: x = y.
+Lemma EnsembleListEquivalence_lift_property {TItem: Type} {P: TItem -> Prop} :
+  forall (sequence: list TItem) (ensemble: TItem -> Prop),
+    EnsembleListEquivalence ensemble sequence ->
+    ((forall item,
+        List.In item sequence -> P item) <->
+     (forall item,
+        Ensembles.In _ ensemble item -> P item)).
 Proof.
-  destruct_head_hnf ex.
-  destruct_head and.
-  subst.
-  apply Permutation_length.
-  eapply EnsembleListEquivalence_Permutation; eassumption.
+  intros * equiv;
+  destruct equiv as [NoDup_l equiv];
+  setoid_rewrite equiv;
+  reflexivity.
 Qed.

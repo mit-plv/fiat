@@ -1,9 +1,23 @@
-Require Export ADTSynthesis.QueryStructure.Refinements.Bags.BagsInterface ADTSynthesis.QueryStructure.Refinements.Bags.CountingListBags ADTSynthesis.QueryStructure.Refinements.Bags.TreeBags ADTSynthesis.QueryStructure.Tuple ADTSynthesis.QueryStructure.Heading Coq.Lists.List Coq.Program.Program ADTSynthesis.Common.ilist ADTSynthesis.Common.i2list.
-Require Import ADTSynthesis.Common.String_as_OT ADTSynthesis.QueryStructure.IndexedEnsembles ADTSynthesis.Common.DecideableEnsembles.
-Require Import Coq.Bool.Bool Coq.Strings.String Coq.Structures.OrderedTypeEx ADTSynthesis.QueryStructure.Refinements.Bags.BagsOfTuples.
-Require Import ADTSynthesis.QueryStructure.Refinements.GeneralQueryRefinements.
-Require Import ADTSynthesis.QueryStructure.QueryStructureNotations ADTSynthesis.QueryStructure.Refinements.ListImplementation.
-Require Import ADTSynthesis.QueryStructure.AdditionalLemmas ADTSynthesis.QueryStructure.AdditionalPermutationLemmas Coq.Arith.Arith ADTSynthesis.QueryStructure.Refinements.BagADT.BagADT.
+Require Export
+        Coq.Lists.List Coq.Program.Program
+        ADTSynthesis.QueryStructure.Refinements.Bags.BagsInterface
+        ADTSynthesis.QueryStructure.Refinements.Bags.CountingListBags
+        ADTSynthesis.QueryStructure.Refinements.Bags.TreeBags
+        ADTSynthesis.QueryStructure.Tuple
+        ADTSynthesis.QueryStructure.Heading
+        ADTSynthesis.Common.ilist
+        ADTSynthesis.Common.i2list.
+Require Import Coq.Bool.Bool Coq.Strings.String
+        Coq.Arith.Arith Coq.Structures.OrderedTypeEx
+        ADTSynthesis.Common.String_as_OT
+        ADTSynthesis.Common.Ensembles.IndexedEnsembles
+        ADTSynthesis.Common.DecideableEnsembles
+        ADTSynthesis.QueryStructure.Refinements.Bags.BagsOfTuples
+        ADTSynthesis.QueryStructure.Refinements.GeneralQueryRefinements
+        ADTSynthesis.QueryStructure.QueryStructureNotations
+        ADTSynthesis.QueryStructure.Refinements.ListImplementation
+        ADTSynthesis.Common.PermutationFacts
+        ADTSynthesis.QueryStructure.Refinements.BagADT.BagADT.
 
 Section SharpenedBagImplementation.
 
@@ -17,7 +31,7 @@ Section SharpenedBagImplementation.
 
   Variable BagPlus : Bag BagTypePlus (@Tuple heading) SearchTermTypePlus UpdateTermTypePlus.
   Variable CorrectBagPlus : CorrectBag RepInvPlus ValidUpdatePlus BagPlus.
-  
+
   Variable CheckUpdatePlusValid : forall u: UpdateTermTypePlus,
                                     CheckUpdatePlus u = true -> ValidUpdatePlus u.
 
@@ -61,7 +75,7 @@ Section SharpenedBagImplementation.
       + eapply Permutation_in in H; eauto; simpl in *; intuition.
         * constructor 2; subst; constructor.
         * constructor; rewrite eqv_nr; eauto.
-      + unfold UnConstrFreshIdx in H0. 
+      + unfold UnConstrFreshIdx in H0.
         apply NoDup_Permutation_rewrite with (l:=map elementIndex (iel :: lor)).
         apply Permutation_map_aux; symmetry; assumption.
         simpl; apply NoDup_cons; clear eqv_or.
@@ -72,9 +86,9 @@ Section SharpenedBagImplementation.
         omega.
         * assumption.
   Qed.
-  
+
   Lemma NoDup_filter_in_map : forall (A B: Type) (f: A -> bool) (m: A -> B) (l: list A),
-    NoDup (map m l) -> NoDup (map m (filter f l)). 
+    NoDup (map m l) -> NoDup (map m (filter f l)).
   Proof.
     intros; induction l.
     - intuition.
@@ -103,6 +117,7 @@ Section SharpenedBagImplementation.
     - exists bnd; unfold UnConstrFreshIdx in *; intros; apply fresh_bnd;
     destruct H; eauto.
     - pose proof (bdelete_correct nr search_term H0); intuition.
+      Require Import ADTSynthesis.Common.ListFacts.
       rewrite partition_filter_neq in H1; symmetry in H1.
       destruct (permutation_filter _ _ _ H1) as [l [l_eq Perm_l]].
       symmetry in Perm_l.
@@ -154,7 +169,7 @@ Section SharpenedBagImplementation.
     - reflexivity.
     - exists x0. intuition.
   Qed.
-  
+
   Lemma permu_filter_rewrite
   : forall (A: Type) (l: list A) (f: A -> bool),
     Permutation l ((filter (fun x => negb (f x)) l) ++ (filter f l)).
@@ -165,11 +180,11 @@ Section SharpenedBagImplementation.
       + rewrite <- Permutation_middle; rewrite <- IHl; reflexivity.
       + rewrite <- IHl; reflexivity.
   Qed.
-  
+
   Lemma NoDup_two_partitions : forall (A B: Type) (m: A -> B) (f: A -> bool) (l: list A),
     NoDup (map m l) ->
     NoDup (map m ((filter (fun x => negb (f x)) l) ++ (filter (fun x => f x) l))).
-  Proof. 
+  Proof.
     induction l; intros; simpl.
     - intuition.
     - simpl in *.
@@ -187,7 +202,7 @@ Section SharpenedBagImplementation.
         pose proof (@Permutation_in _ _ _ _ H3 H2).
         contradiction. assumption.
   Qed.
-  
+
   Lemma refine_Update_bupdate
   : forall or nr search_term update_term,
       or ≃ benumerate nr
@@ -205,6 +220,7 @@ Section SharpenedBagImplementation.
     - pose proof (bupdate_correct nr search_term update_term H0 H1).
       rewrite partition_filter_neq in H2; rewrite partition_filter_eq in H2.
       unfold UnIndexedEnsembleListEquivalence in *.
+      Require Import ADTSynthesis.Common.Ensembles.EnsembleListEquivalence.
       unfold EnsembleListEquivalence in *.
       rewrite <- eqv_or in H2.
       repeat rewrite filter_map in H2.
@@ -221,15 +237,15 @@ Section SharpenedBagImplementation.
           apply in_app_iff; right; apply in_map_iff.
           exists x1; intuition.
           rewrite <- H9; rewrite <- H8; destruct x0; intuition.
-          apply filter_In; intuition. 
+          apply filter_In; intuition.
           apply eqv_nr; apply H6.
           rewrite <- H9; rewrite <- H8; destruct x0; intuition.
-          apply filter_In; intuition. 
+          apply filter_In; intuition.
           apply eqv_nr; apply H6.
         * destruct H6; unfold Complement in H7; unfold not in H7.
           apply in_app_iff; left.
           apply filter_In; intuition; apply eqv_nr; apply H6.
-      + apply Permutation_in with (x:=x0) in H4. 
+      + apply Permutation_in with (x:=x0) in H4.
         rewrite <- H3 in H2.
         unfold In; unfold IndexedEnsembleUpdate.
         apply in_app_iff in H4; destruct H4.
@@ -251,7 +267,7 @@ Section SharpenedBagImplementation.
         * rewrite -> map_app; rewrite -> map_map; simpl; rewrite <- map_app.
           apply NoDup_two_partitions; assumption.
   Qed.
-  
+
   Lemma filter_pred_negb_pred
   : forall (A: Type) pred (l: list A), filter pred (filter (fun x => negb (pred x)) l) = [].
   Proof.
@@ -261,7 +277,7 @@ Section SharpenedBagImplementation.
       + assumption.
       + rewrite -> H; assumption.
   Qed.
-  
+
   Lemma filter_negb_pred_pred
   : forall (A: Type) pred (l: list A), filter (fun x => negb (pred x)) (filter pred l) = [].
   Proof.
@@ -297,18 +313,18 @@ Section SharpenedBagImplementation.
       rewrite -> app_nil_r; repeat rewrite <- H; rewrite -> filter_pred_pred; reflexivity.
     - rewrite <- H; rewrite -> filter_app; rewrite -> filter_negb_pred_pred.
       simpl; repeat rewrite <- H0; rewrite -> filter_pred_pred; reflexivity.
-    - rewrite <- H; rewrite <- H0; rewrite -> Permutation_app_comm. 
+    - rewrite <- H; rewrite <- H0; rewrite -> Permutation_app_comm.
       rewrite <- H2; rewrite <- H3; assumption.
   Qed.
 
   Lemma benumerate_fold_left_sub
-  : forall l a b, RepInvPlus b -> 
+  : forall l a b, RepInvPlus b ->
                 Permutation (a :: benumerate (fold_left (fun b0 i => binsert b0 i) l b))
                             (benumerate (fold_left (fun b0 i => binsert b0 i) l (binsert b a))).
   Proof.
     induction l; intros; simpl in *.
     - rewrite <- binsert_enumerate; intuition.
-    - repeat rewrite <- IHl. 
+    - repeat rewrite <- IHl.
       rewrite -> perm_swap; reflexivity.
       assumption.
       apply binsert_RepInv; assumption.
@@ -319,7 +335,7 @@ Section SharpenedBagImplementation.
   : forall l b, RepInvPlus b ->
                 Permutation (benumerate
                                (fold_left (fun (b0 : BagTypePlus) (i : Tuple) => binsert b0 i) l b))
-                            (l ++ (benumerate b)). 
+                            (l ++ (benumerate b)).
   Proof.
     intros; induction l; simpl in *.
     - intuition.
@@ -388,8 +404,8 @@ Section SharpenedBagImplementation.
       apply bdelete_RepInv; assumption.
       destruct H8. intuition.
       pose proof (permu_exists _ H9); destruct H10 as [? [? ?]]; clear H9.
-      exists x2. 
-      intuition. 
+      exists x2.
+      intuition.
       + unfold In, IndexedEnsembleUpdate in *.
         intuition.
         * destruct H12; intuition.
@@ -401,7 +417,7 @@ Section SharpenedBagImplementation.
           exists x4; intuition.
           rewrite <- H13; rewrite <- H15; destruct x3; reflexivity.
           apply filter_In; intuition.
-        * unfold Complement, not, In in *. 
+        * unfold Complement, not, In in *.
           eapply Permutation_in.
           symmetry; apply H11.
           apply in_app_iff; left.
@@ -410,7 +426,7 @@ Section SharpenedBagImplementation.
       + unfold In, IndexedEnsembleUpdate, Complement.
         apply Permutation_in with (x:=x3) in H11.
         apply in_app_iff in H11; destruct H11.
-        * right; rewrite filter_In in H11; destruct H11; split. rewrite -> eqv_nr; rewrite <- H7. 
+        * right; rewrite filter_In in H11; destruct H11; split. rewrite -> eqv_nr; rewrite <- H7.
           assumption. unfold not, In; intros. rewrite -> H13 in H12; simpl in H12; intuition.
         * left; apply in_map_iff in H11; destruct H11; destruct H11; exists x4.
           rewrite filter_In in H12; destruct H12; intuition.
@@ -424,7 +440,7 @@ Section SharpenedBagImplementation.
         rewrite -> map_app; rewrite -> map_map; simpl; rewrite <- map_app; apply NoDup_two_partitions.
         apply NoDup_Permutation_rewrite in H7; assumption.
   Qed.
-  
+
   Lemma RepInv_fold
   : forall (f: BagTypePlus -> (@Tuple heading) -> BagTypePlus) (l: list (@Tuple heading)) (r: BagTypePlus),
       (forall x y, RepInvPlus x -> RepInvPlus (f x y)) -> RepInvPlus r -> RepInvPlus (fold_left f l r).
@@ -434,7 +450,7 @@ Section SharpenedBagImplementation.
     - simpl; intros.
       apply IHl. apply H. apply H; apply H0.
   Qed.
-  
+
   Definition SharpenedBagImpl
   : Sharpened (@BagSpec (@Tuple heading) SearchTermTypePlus UpdateTermTypePlus
                         bfind_matcher bupdate_transform).
@@ -535,16 +551,16 @@ Section SharpenedBagImplementation.
       split.
       eapply refine_Update_bupdate; intuition.
       apply bupdate_RepInv; intuition.
-      refine pick val (let r := bdelete r_n a in 
+      refine pick val (let r := bdelete r_n a in
                        fold_left (fun b i => binsert b i) (map (bupdate_transform b) (fst r)) (snd r)).
-      intros. 
+      intros.
       simplify with monad laws; intuition.
       simpl; split.
       eapply refine_Update_invalid; intuition.
       apply RepInv_fold.
       apply binsert_RepInv. apply bdelete_RepInv; assumption.
       unfold H.
-      instantiate (1 := fun r_n ab => 
+      instantiate (1 := fun r_n ab =>
                           if CheckUpdatePlus (snd ab)
                           then ret (bupdate r_n (fst ab) (snd ab), ())
                                    else
@@ -554,17 +570,17 @@ Section SharpenedBagImplementation.
                                                   (snd (bdelete r_n (fst ab))), ())).
       reflexivity.
     }
-    FullySharpenEachMethod1 (@nil ADTSig) (inil ADT); 
+    FullySharpenEachMethod1 (@nil ADTSig) (inil ADT);
       try simplify with monad laws; simpl; try refine pick eq; try simplify with monad laws;
-      try first [make_computational_constructor 
+      try first [make_computational_constructor
                 | make_computational_method ].
     rewrite refineIfret; simplify with monad laws;
     make_computational_method_pair_args.
-    
+
   Defined.
 
   Definition BagADTImpl : ComputationalADT.cADT (BagSig (@Tuple heading) SearchTermTypePlus UpdateTermTypePlus).
     extract implementation of SharpenedBagImpl using (inil _).
   Defined.
-  
+
 End SharpenedBagImplementation.

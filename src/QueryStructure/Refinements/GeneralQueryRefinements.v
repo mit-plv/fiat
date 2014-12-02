@@ -1,8 +1,14 @@
 Require Import Coq.Strings.String Coq.Lists.List Coq.Sorting.Permutation
-        Coq.Logic.FunctionalExtensionality ADTSynthesis.ADTNotation Coq.Sets.Ensembles ADTSynthesis.Common
-        ADTSynthesis.QueryStructure.IndexedEnsembles ADTSynthesis.Common.DecideableEnsembles
-        ADTSynthesis.Computation ADTSynthesis.ADTRefinement.BuildADTRefinements
-        ADTSynthesis.QueryStructure.QueryStructureSchema ADTSynthesis.QueryStructure.QuerySpecs.QueryQSSpecs ADTSynthesis.QueryStructure.QueryStructure.
+        Coq.Logic.FunctionalExtensionality
+        ADTSynthesis.ADTNotation Coq.Sets.Ensembles ADTSynthesis.Common
+        ADTSynthesis.Common.Ensembles.IndexedEnsembles
+        ADTSynthesis.Common.DecideableEnsembles
+        ADTSynthesis.Computation
+        ADTSynthesis.ADTRefinement.BuildADTRefinements
+        ADTSynthesis.QueryStructure.QueryStructureSchema
+        ADTSynthesis.QueryStructure.FlattenCompList
+        ADTSynthesis.QueryStructure.QuerySpecs.QueryQSSpecs
+        ADTSynthesis.QueryStructure.QueryStructure.
 
 (* [Query_For] and all aggregates are opaque, so we need to make them
    transparent in order to reason about them. *)

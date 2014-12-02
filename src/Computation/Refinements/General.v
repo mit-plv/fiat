@@ -1,6 +1,11 @@
 Require Import Coq.Strings.String Coq.Sets.Ensembles.
-Require Import ADTSynthesis.Common.
-Require Import ADTSynthesis.Computation.Core ADTSynthesis.Computation.Monad ADTSynthesis.Computation.SetoidMorphisms ADTSynthesis.Computation.Refinements.Tactics.
+Require Import ADTSynthesis.Common
+        ADTSynthesis.Common.BoolFacts
+        ADTSynthesis.Common.LogicFacts
+        ADTSynthesis.Computation.Core
+        ADTSynthesis.Computation.Monad
+        ADTSynthesis.Computation.SetoidMorphisms
+        ADTSynthesis.Computation.Refinements.Tactics.
 
 (** General Lemmas about the behavior of [computes_to], [refine], and
     [refineEquiv]. *)
@@ -87,8 +92,8 @@ Section general_refine_lemmas.
         (PA : A -> Prop) (PB : B -> Prop) (PC : C -> Prop)
   : @refineEquiv _
                  { x | (PA (fst (fst x))
-                                   /\ PB (snd (fst x)))
-                                   /\ PC (snd x)}%comp
+                        /\ PB (snd (fst x)))
+                       /\ PC (snd x)}%comp
                  (a <- { a | PA a };
                   b <- { b | PB b };
                   c <- { c | PC c };
@@ -200,8 +205,8 @@ Section general_refine_lemmas.
 
   Lemma refine_if_bool_eta :
     forall (u : bool),
-    refine (if u then (ret true) else (ret false))
-           (ret u).
+      refine (if u then (ret true) else (ret false))
+             (ret u).
   Proof. destruct u; reflexivity. Qed.
 
   Open Scope comp.
@@ -280,7 +285,7 @@ Section general_refine_lemmas.
       refineEquiv {b | P ta b} ta'
       -> refineEquiv {b | P ea b} ea'
       -> refineEquiv {b | P (if cond then ta else ea) b}
-                (if cond then ta' else ea').
+                     (if cond then ta' else ea').
   Proof.
     intros; setoid_rewrite refineEquiv_if with
             (f := fun cond : bool => {b : B | P (if cond then ta else ea) b}); eauto.
@@ -301,9 +306,9 @@ Section general_refine_lemmas.
             { b | exists a, P a /\ P' a b }%comp
             (a <- { a | P a};
              { b | P' a b })%comp.
-    Proof.
-      t_refine.
-    Qed.
+  Proof.
+    t_refine.
+  Qed.
 
   Definition refineEquiv_pick_ex_computes_to_and A B
              (c : Comp A)
@@ -352,13 +357,22 @@ Section general_refine_lemmas.
   Definition decides (b : bool) (P : Prop)
     := if b then P else ~ P.
 
+  Add Morphism
+      (decides)
+      with signature (eq ==> iff ==> iff)
+        as decide_eq_iff_iff_morphism.
+  Proof.
+    unfold decides; intros b p1 p2 equiv.
+    destruct b; simpl; intuition.
+  Qed.
+
   Lemma refine_pick_decides {A}
   : forall (P : Prop) (c e : Comp A) (t : Comp A),
-    (P -> refine c t)
-    -> (~ P -> refine c e)
-    -> refine c
-         (b <- {b | decides b P};
-          if b then t else e).
+      (P -> refine c t)
+      -> (~ P -> refine c e)
+      -> refine c
+                (b <- {b | decides b P};
+                 if b then t else e).
   Proof.
     unfold refine; intros; apply_in_hyp computes_to_inv;
     destruct_ex; split_and; inversion_by computes_to_inv.
@@ -372,7 +386,7 @@ Section general_refine_lemmas.
                 (~ P -> Q' a)}
            (b <- {b | decides b P};
             if b then
-            {a | Q a}
+              {a | Q a}
             else
               {a | Q' a}).
   Proof.
@@ -399,10 +413,10 @@ Section general_refine_lemmas.
       refine (a <- If i Then t Else e; b a)
              (If i Then (a <- t;
                          b a)
-                   Else (a <- e;
-                         b a)).
+                 Else (a <- e;
+                       b a)).
   Proof.
-      intros; destruct i; simpl; reflexivity.
+    intros; destruct i; simpl; reflexivity.
   Qed.
 
   Lemma refine_If_Opt_Then_Else_Bind {A B C}
@@ -412,7 +426,7 @@ Section general_refine_lemmas.
            (c : B -> Comp C),
       refine (b <- If_Opt_Then_Else i t e; c b)
              (If_Opt_Then_Else i (fun a' =>
-                                      b <- t a';
+                                    b <- t a';
                                   c b)
                                (b <- e;
                                 c b)).
@@ -459,7 +473,7 @@ Section general_refine_lemmas.
   Lemma refine_skip2 {A B} (a : Comp A) (dummy : Comp B)
   : refine a
            (dummy;;
-            a).
+                 a).
   Proof.
     repeat first [ intro
                  | inversion_by computes_to_inv
@@ -467,6 +481,116 @@ Section general_refine_lemmas.
                  | econstructor; eassumption
                  | econstructor; try eassumption; [] ].
   Qed.
+
+  Lemma decides_negb :
+    forall b P,
+      decides (negb b) P -> decides b (~ P).
+  Proof.
+    unfold decides; setoid_rewrite if_negb; simpl; intros.
+    destruct b; simpl in *; intuition.
+  Qed.
+
+
+  Lemma refine_decide_not :
+    forall {A} (P: A -> Prop),
+      refine (Pick (fun (b : bool) =>
+                      decides b (forall (x: A), ~ P x)))
+             (Pick (fun (b : bool) =>
+                      decides (negb b) (exists (x: A), P x))).
+  Proof.
+    unfold refine; intros; inversion_by computes_to_inv.
+    constructor.
+    rewrite <- not_exists_forall; apply decides_negb;
+    assumption.
+  Qed.
+
+  Lemma refine_decide_negb :
+    forall P,
+      refineEquiv (Pick (fun b => decides (negb b) P))
+                  (Bind (Pick (fun b => decides b P))
+                        (fun b => ret (negb b))).
+  Proof.
+    unfold refineEquiv, refine; simpl;
+    split; intros; inversion_by computes_to_inv;
+    subst; repeat econstructor; eauto; rewrite Bool.negb_involutive;
+    [ assumption | constructor ].
+  Qed.
+
+  Lemma refine_decide_negation :
+    forall {A} (P: A -> Prop),
+      refine (Pick (fun (b : bool) =>
+                      decides b (forall (x: A), ~ P x)))
+             (Bind (Pick (fun b => decides b (exists (x: A), P x)))
+                   (fun b => ret (negb b))).
+  Proof.
+    intros;
+    rewrite refine_decide_not, refine_decide_negb; reflexivity.
+  Qed.
+
+
+  Lemma eq_ret_compute :
+    forall (A: Type) (x y: A), x = y -> ret x ↝ y.
+  Proof.
+    intros; subst; apply ReturnComputes; trivial.
+  Qed.
+
+  Lemma refine_eq_ret :
+    forall {A} (a a': A),
+      a = a' ->
+      refineEquiv  (ret a) (ret a').
+  Proof.
+    intros; subst; reflexivity.
+  Qed.
+
+  Require Import ADTSynthesis.Computation.Refinements.Tactics.
+
+  Lemma refine_snd :
+    forall {A B: Type} (P: B -> Prop),
+      refine
+        { pair | P (snd pair) }
+        (_fst <- Pick (fun (x: A) => True);
+         _snd <- Pick (fun (y: B) => P y);
+         ret (_fst, _snd)).
+  Proof.
+    t_refine.
+  Qed.
+
+  Lemma refine_let :
+    forall {A B : Type} (PA : A -> Prop) (PB : B -> Prop),
+      refineEquiv (Pick (fun x: A * B  =>  let (a, b) := x in PA a /\ PB b))
+                  (a <- {a | PA a};
+                   b <- {b | PB b};
+                   ret (a, b)).
+  Proof.
+    t_refine.
+  Qed.
+
+  Lemma refine_ret_eq :
+    forall {A: Type} (a: A) b,
+      b = ret a -> refine (ret a) (b).
+  Proof.
+    t_refine.
+  Qed.
+
+  Lemma refine_eqA_into_ret :
+    forall {A: Type} {eqA: list A -> list A -> Prop},
+      Reflexive eqA ->
+      forall (comp : Comp (list A)) (impl result: list A),
+        comp = ret impl -> (
+          comp ↝ result ->
+          eqA result impl
+        ).
+  Proof.
+    intros; subst; inversion_by computes_to_inv; subst; trivial.
+  Qed.
+
+  Lemma refine_pick_val' :
+    forall {A : Type} (a : A)  (P : A -> Prop),
+      P a -> refine (Pick P) (ret a).
+  Proof.
+    intros; apply refine_pick_val; assumption.
+  Qed.
+
 End general_refine_lemmas.
 
 Tactic Notation "finalize" "refinement" :=

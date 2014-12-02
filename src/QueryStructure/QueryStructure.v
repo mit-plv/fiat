@@ -3,7 +3,7 @@ Require Import Coq.Lists.List Coq.Strings.String Coq.Logic.FunctionalExtensional
         ADTSynthesis.ADT.ADTSig ADTSynthesis.ADT.Core
         ADTSynthesis.Common.ilist ADTSynthesis.Common.StringBound
         ADTSynthesis.ADTNotation.BuildADT ADTSynthesis.ADTNotation.BuildADTSig
-        ADTSynthesis.QueryStructure.IndexedEnsembles
+        ADTSynthesis.Common.Ensembles.IndexedEnsembles
         ADTSynthesis.QueryStructure.Notations ADTSynthesis.QueryStructure.Heading
         ADTSynthesis.QueryStructure.Tuple ADTSynthesis.QueryStructure.Schema ADTSynthesis.QueryStructure.Relation
         ADTSynthesis.QueryStructure.QueryStructureSchema.

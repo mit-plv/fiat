@@ -1,9 +1,16 @@
-(** * Definition of the finite set spec *)
-Require Import Coq.Strings.String Coq.Sets.Ensembles Coq.Sets.Finite_sets Coq.Lists.List Coq.Sorting.Permutation.
-Require Import ADTSynthesis.ADT ADTSynthesis.ADT.ComputationalADT ADTSynthesis.ADTRefinement.Core ADTSynthesis.ADTNotation ADTSynthesis.ADTRefinement.GeneralRefinements ADTSynthesis.Common.AdditionalEnsembleDefinitions.
+(* Definition of the finite set spec *)
 Require Export ADTSynthesis.FiniteSetADTs.FiniteSetADT.
-Require Import ADTSynthesis.Common.IterateBoundedIndex.
-Require Import Coq.MSets.MSetInterface Coq.MSets.MSetAVL Coq.MSets.MSetList Coq.MSets.MSetRBT.
+Require Import Coq.Strings.String Coq.Sets.Ensembles
+  Coq.Sets.Finite_sets Coq.Lists.List
+  Coq.Sorting.Permutation Coq.MSets.MSetInterface
+  Coq.MSets.MSetAVL Coq.MSets.MSetList Coq.MSets.MSetRBT
+  ADTSynthesis.ADT
+  ADTSynthesis.ADT.ComputationalADT
+  ADTSynthesis.ADTRefinement.Core
+  ADTSynthesis.ADTNotation
+  ADTSynthesis.ADTRefinement.GeneralRefinements
+  ADTSynthesis.Common.IterateBoundedIndex
+  ADTSynthesis.Common.Ensembles.EnsembleListEquivalence.
 
 Set Implicit Arguments.
 
@@ -108,13 +115,13 @@ Module FiniteSetADTMSet (FSMSet : SetsOn BedrockWordAsOrderedType).
       | [ |- FSMSet.In _ (FSMSet.remove _ _) ] => apply FSMSet.remove_spec
       | [ H : FSMSet.In _ (FSMSet.remove _ _) |- _ ] => apply FSMSet.remove_spec in H
       | _ => rewrite FSMSet.cardinal_spec
-      | [ |- AdditionalEnsembleDefinitions.cardinal _ _ _ ] => eexists
+      | [ |- Cardinal.cardinal _ _ _ ] => eexists
       | [ |- Datatypes.length _ = Datatypes.length _ ] => reflexivity
       | [ |- EnsembleListEquivalence _ _ ] => split
       | [ |- NoDup (FSMSet.elements _) ] => eapply NoDupA_NoDup; [ | apply FSMSet.elements_spec2w ]; try exact _
-      | [ |- In _ (FSMSet.elements _) ] => apply InA_In_eq
+      | [ |- List.In _ (FSMSet.elements _) ] => apply InA_In_eq
       | [ |- InA _ _ (FSMSet.elements _) ] => apply FSMSet.elements_spec1
-      | [ H : In _ (FSMSet.elements _) |- _ ] => apply InA_In_eq in H
+      | [ H : List.In _ (FSMSet.elements _) |- _ ] => apply InA_In_eq in H
       | [ H : InA _ _ (FSMSet.elements _) |- _ ] => apply FSMSet.elements_spec1 in H
       | [ |- FSMSet.mem _ _ = true ] => apply FSMSet.mem_spec
       | [ H : FSMSet.mem _ _ = true |- _ ] => apply FSMSet.mem_spec in H
@@ -138,7 +145,7 @@ Module FiniteSetADTMSet (FSMSet : SetsOn BedrockWordAsOrderedType).
     exists FiniteSetCImpl.
     exists (fun S0 fs => Same_set _ S0 (fun w => FSMSet.In w fs));
       eapply Iterate_Dep_Type_BoundedIndex_equiv_1; simpl;
-      unfold cardinal;
+      unfold FiniteSetADT.cardinal;
       repeat split; t.
   Defined.
 

@@ -6,14 +6,23 @@ SRC_MODULES    := \
 	Common/StringBound \
 	Common/DecideableEnsembles \
 	Common/IterateBoundedIndex \
-	Common/AdditionalEnsembleDefinitions \
-	Common/AdditionalEnsembleLemmas \
+	Common/BoolFacts \
+	Common/ListFacts \
+	Common/FlattenList \
+	Common/LogicFacts \
+	Common/NatFacts \
+	Common/ListMorphisms \
+	Common/LogicMorphisms \
 	Common/Ensembles \
+	Common/Ensembles/EnsembleListEquivalence \
+	Common/Ensembles/Cardinal \
+	Common/Ensembles/IndexedEnsembles \
 	Common/Ensembles/Equivalence \
 	Common/Ensembles/Morphisms \
 	Common/Ensembles/Tactics \
 	Common/Ensembles/CombinatorLaws \
 	Common/Ensembles/Notations \
+	Common/PermutationFacts \
 	ComputationalEnsembles \
 	ComputationalEnsembles/Core \
 	ComputationalEnsembles/Laws \
@@ -61,6 +70,10 @@ SRC_MODULES    := \
 	QueryStructure/Tuple \
 	QueryStructure/Schema \
 	QueryStructure/Relation \
+	QueryStructure/SetEq \
+	QueryStructure/SetEqProperties \
+	QueryStructure/tupleAgree \
+	QueryStructure/FlattenCompList \
 	QueryStructure/QueryStructureSchema \
 	QueryStructure/QueryStructure \
 	QueryStructure/QuerySpecs/EmptyQSSpecs \
@@ -75,16 +88,6 @@ SRC_MODULES    := \
 	QueryStructure/Refinements/ConstraintChecksUnfoldings \
 	QueryStructure/Refinements/GeneralQueryStructureRefinements \
 	QueryStructure/Refinements/OperationRefinements \
-	QueryStructure/SetEq \
-	QueryStructure/SetEqProperties \
-	QueryStructure/AdditionalLemmas \
-	QueryStructure/AdditionalPermutationLemmas \
-	QueryStructure/tupleAgree \
-	QueryStructure/Refinements/AdditionalRefinementLemmas \
-	QueryStructure/Refinements/EnsembleListEquivalenceProperties \
-	QueryStructure/Refinements/AdditionalMorphisms \
-	QueryStructure/Refinements/AdditionalFlatMapLemmas \
-	QueryStructure/Refinements/flattenCompListProperties \
 	QueryStructure/Refinements/ConstraintChecksRefinements \
 	QueryStructure/Refinements/ListImplementation/ListQueryRefinements \
 	QueryStructure/Refinements/ListImplementation/ListInsertRefinements \
