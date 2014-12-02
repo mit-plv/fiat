@@ -20,6 +20,7 @@ Require Export Cito.GLabelMap.
 Require Export Facade.Facade.
 Require Export Facade.DFacade.
 Require Export Facade.examples.FiatADTs.
+Require Import Cito.GLabelMapFacts.
 
 Unset Implicit Arguments.
 
@@ -72,7 +73,7 @@ Definition basic_env := [[[ ("ADT", "empty") ↦ List_empty;
                             ("ADT", "sSize") ↦ FEnsemble_sSize
                           ]]].
 
-Require Import Cito.GLabelMapFacts.
+
 
 Lemma basic_imports_yield_basic_env :
   GLabelMap.Equal basic_imports_wrapped basic_env.
