@@ -80,9 +80,9 @@ Definition QSDeleteSpec
               DeletedTuples
               (SatisfiesCrossRelationConstraints Ridx' Ridx)))
     /\
-   (* And the updated table is equivalent to the original *)
-   (forall tup, GetRelation qs' Ridx tup <->
-                (GetRelation qsHint Ridx tup))) .
+   (* And all the tables are equivalent to the original *)
+   (forall r tup, GetRelation qs' r tup <->
+                (GetRelation qsHint r tup))) .
 
 (* We augment [QSDeleteSpec] so that delete also returns a list of the
    deleted Tuples. *)
