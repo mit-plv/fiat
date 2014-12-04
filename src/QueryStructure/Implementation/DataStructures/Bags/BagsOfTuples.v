@@ -101,14 +101,14 @@ Fixpoint BuildSearchTermFromAttributes {heading}
          (indices : list (@ProperAttribute heading))
 : Type :=
   match indices with
-      | [] => (list (@Tuple heading -> bool))
-      | idx :: indices' => prod (option (ProperAttributeToFMapKey idx)) (BuildSearchTermFromAttributes indices')
+    | [] => (list (@Tuple heading -> bool))
+    | idx :: indices' => prod (option (ProperAttributeToFMapKey idx)) (BuildSearchTermFromAttributes indices')
   end.
 
 Definition ProperAttribute_eq {heading}
-  (index : @ProperAttribute heading)
-  (k : ProperAttributeToFMapKey index)
-  (attr : Domain heading (Attribute index))
+           (index : @ProperAttribute heading)
+           (k : ProperAttributeToFMapKey index)
+           (attr : Domain heading (Attribute index))
 : bool.
 Proof.
   destruct index; simpl in *.
@@ -134,8 +134,8 @@ Fixpoint SearchTermFromAttributesMatcher {heading}
            (tup : @Tuple heading) =>
          match f with
            | (Some k, index') => (ProperAttribute_eq index k (tup (Attribute index))) && (H index' tup)
-          | (None, index') => H index' tup
-        end) (SearchTermFromAttributesMatcher indices')
+           | (None, index') => H index' tup
+         end) (SearchTermFromAttributesMatcher indices')
   end.
 
 
@@ -164,7 +164,7 @@ Definition ProperAttributeToBag
       => StringTreeBag.IndexedBagAsBag TBagAsBag (fun x => cast cast' (x attr))
   end.
 
- Fixpoint NestedTreeFromAttributesAsBag
+Fixpoint NestedTreeFromAttributesAsBag
          heading
          TUpdateTerm
          (bupdate_transform : TUpdateTerm -> @Tuple heading -> @Tuple heading)
@@ -173,24 +173,24 @@ Definition ProperAttributeToBag
       (@Tuple heading)
       (BuildSearchTermFromAttributes indices)
       TUpdateTerm :=
-   match indices return
-         Bag (NestedTreeFromAttributes indices)
-             (@Tuple heading)
-             (BuildSearchTermFromAttributes indices)
-               TUpdateTerm with
-     | [] => CountingListAsBag bupdate_transform
-     | idx :: indices' => ProperAttributeToBag
-                            _ _ _
-                            (NestedTreeFromAttributesAsBag heading _ bupdate_transform indices') idx
-   end.
+  match indices return
+        Bag (NestedTreeFromAttributes indices)
+            (@Tuple heading)
+            (BuildSearchTermFromAttributes indices)
+            TUpdateTerm with
+    | [] => CountingListAsBag bupdate_transform
+    | idx :: indices' => ProperAttributeToBag
+                           _ _ _
+                           (NestedTreeFromAttributesAsBag heading _ bupdate_transform indices') idx
+  end.
 
- Definition IndexedTreeUpdateTermType heading :=
-   @Tuple heading -> @Tuple heading.
+Definition IndexedTreeUpdateTermType heading :=
+  @Tuple heading -> @Tuple heading.
 
- Definition IndexedTreebupdate_transform heading
- (upd : IndexedTreeUpdateTermType heading)
- (tup : @Tuple heading)
- : @Tuple heading := upd tup.
+Definition IndexedTreebupdate_transform heading
+           (upd : IndexedTreeUpdateTermType heading)
+           (tup : @Tuple heading)
+: @Tuple heading := upd tup.
 
 Instance NestedTreeFromAttributesAsBag'
          {heading}
@@ -262,7 +262,7 @@ Definition ProperAttributeToValidUpdate
       => StringTreeBag.IndexedBag_ValidUpdate TBagAsBag ValidUpdate
   end.
 
- Definition ProperAttributeToCorrectBag
+Definition ProperAttributeToCorrectBag
            {heading}
            TBag TSearchTerm TUpdateTerm
            (TBagAsBag : Bag TBag (@Tuple heading) TSearchTerm TUpdateTerm)
@@ -270,16 +270,16 @@ Definition ProperAttributeToValidUpdate
            (ValidUpdate : TUpdateTerm -> Prop)
            (TBagAsCorrectBag : CorrectBag RepInv ValidUpdate TBagAsBag)
            (pattr : @ProperAttribute heading)
- :  CorrectBag (ProperAttributeToRepInv _ _ _ RepInv TBagAsBag pattr
-                                         (ProperAttributeToProjection pattr))
-               (ProperAttributeToValidUpdate  _ _ _ ValidUpdate TBagAsBag pattr
-                                              (ProperAttributeToProjection pattr))
-               (ProperAttributeToBag TBag TSearchTerm TUpdateTerm TBagAsBag pattr) :=
+:  CorrectBag (ProperAttributeToRepInv _ _ _ RepInv TBagAsBag pattr
+                                       (ProperAttributeToProjection pattr))
+              (ProperAttributeToValidUpdate  _ _ _ ValidUpdate TBagAsBag pattr
+                                             (ProperAttributeToProjection pattr))
+              (ProperAttributeToBag TBag TSearchTerm TUpdateTerm TBagAsBag pattr) :=
   match pattr as pattr' return
         CorrectBag (ProperAttributeToRepInv _ _ _ RepInv TBagAsBag pattr'
                                             (ProperAttributeToProjection pattr'))
-               (ProperAttributeToValidUpdate  _ _ _ ValidUpdate TBagAsBag pattr'
-                                              (ProperAttributeToProjection pattr'))
+                   (ProperAttributeToValidUpdate  _ _ _ ValidUpdate TBagAsBag pattr'
+                                                  (ProperAttributeToProjection pattr'))
                    (ProperAttributeToBag TBag TSearchTerm TUpdateTerm TBagAsBag pattr') with
     | {| Attribute := attr; ProperlyTyped := inleft (inleft (left cast')) |}
       => NTreeBag.IndexedBagAsCorrectBag TBagAsBag RepInv ValidUpdate TBagAsCorrectBag
@@ -289,67 +289,67 @@ Definition ProperAttributeToValidUpdate
                                          (fun x => cast cast' (x attr))
     | {| Attribute := attr; ProperlyTyped := inleft (inright cast') |}
       => NatTreeBag.IndexedBagAsCorrectBag TBagAsBag RepInv ValidUpdate TBagAsCorrectBag
-                                         (fun x => cast cast' (x attr))
+                                           (fun x => cast cast' (x attr))
     | {| Attribute := attr; ProperlyTyped := inright cast' |}
       => StringTreeBag.IndexedBagAsCorrectBag TBagAsBag RepInv ValidUpdate TBagAsCorrectBag
-                                         (fun x => cast cast' (x attr))
+                                              (fun x => cast cast' (x attr))
   end.
 
- Fixpoint ProperAttributesToRepInv
-          {heading}
-          TUpdateTerm
-          (bupdate_transform : TUpdateTerm -> @Tuple heading -> @Tuple heading)
-          (indices : list (@ProperAttribute heading))
- : NestedTreeFromAttributes indices -> Prop :=
-   match indices return NestedTreeFromAttributes indices -> Prop with
-     | [] => CountingList_RepInv
-     | idx :: indices' =>
-       ProperAttributeToRepInv _ _ TUpdateTerm
-         (ProperAttributesToRepInv TUpdateTerm bupdate_transform indices')
-         (NestedTreeFromAttributesAsBag heading TUpdateTerm bupdate_transform indices') idx
-         (ProperAttributeToProjection idx)
-   end.
-
- Fixpoint ProperAttributesToValidUpdate
-          {heading}
-          TUpdateTerm
-          (bupdate_transform : TUpdateTerm -> @Tuple heading -> @Tuple heading)
-          (indices : list (@ProperAttribute heading))
- : TUpdateTerm -> Prop :=
-   match indices return TUpdateTerm -> Prop with
-     | [] => CountingList_ValidUpdate
-     | idx :: indices' =>
-       ProperAttributeToValidUpdate _ _ TUpdateTerm
-         (ProperAttributesToValidUpdate TUpdateTerm bupdate_transform indices')
-         (NestedTreeFromAttributesAsBag heading TUpdateTerm bupdate_transform indices') idx
-         (ProperAttributeToProjection idx)
-   end.
-
- Program Fixpoint NestedTreeFromAttributesAsCorrectBag
-         heading
+Fixpoint ProperAttributesToRepInv
+         {heading}
          TUpdateTerm
          (bupdate_transform : TUpdateTerm -> @Tuple heading -> @Tuple heading)
          (indices : list (@ProperAttribute heading))
- : CorrectBag (ProperAttributesToRepInv TUpdateTerm bupdate_transform indices)
-              (ProperAttributesToValidUpdate TUpdateTerm bupdate_transform indices)
-              (NestedTreeFromAttributesAsBag heading TUpdateTerm
-                                             bupdate_transform indices) :=
-   match indices return
-         CorrectBag (ProperAttributesToRepInv TUpdateTerm bupdate_transform indices)
-                    (ProperAttributesToValidUpdate TUpdateTerm bupdate_transform indices)
-                    (NestedTreeFromAttributesAsBag heading TUpdateTerm
-                                   bupdate_transform indices) with
-     | [] => CountingListAsCorrectBag bupdate_transform
-     | idx :: indices' =>
-       ProperAttributeToCorrectBag
-         _ _ _
-         (NestedTreeFromAttributesAsBag heading TUpdateTerm bupdate_transform indices')
-         (ProperAttributesToRepInv TUpdateTerm bupdate_transform indices')
-         (ProperAttributesToValidUpdate TUpdateTerm bupdate_transform indices')
-         (NestedTreeFromAttributesAsCorrectBag heading TUpdateTerm bupdate_transform
-                                                 indices')
-           idx
-   end.
+: NestedTreeFromAttributes indices -> Prop :=
+  match indices return NestedTreeFromAttributes indices -> Prop with
+    | [] => CountingList_RepInv
+    | idx :: indices' =>
+      ProperAttributeToRepInv _ _ TUpdateTerm
+                              (ProperAttributesToRepInv TUpdateTerm bupdate_transform indices')
+                              (NestedTreeFromAttributesAsBag heading TUpdateTerm bupdate_transform indices') idx
+                              (ProperAttributeToProjection idx)
+  end.
+
+Fixpoint ProperAttributesToValidUpdate
+         {heading}
+         TUpdateTerm
+         (bupdate_transform : TUpdateTerm -> @Tuple heading -> @Tuple heading)
+         (indices : list (@ProperAttribute heading))
+: TUpdateTerm -> Prop :=
+  match indices return TUpdateTerm -> Prop with
+    | [] => CountingList_ValidUpdate
+    | idx :: indices' =>
+      ProperAttributeToValidUpdate _ _ TUpdateTerm
+                                   (ProperAttributesToValidUpdate TUpdateTerm bupdate_transform indices')
+                                   (NestedTreeFromAttributesAsBag heading TUpdateTerm bupdate_transform indices') idx
+                                   (ProperAttributeToProjection idx)
+  end.
+
+Program Fixpoint NestedTreeFromAttributesAsCorrectBag
+        heading
+        TUpdateTerm
+        (bupdate_transform : TUpdateTerm -> @Tuple heading -> @Tuple heading)
+        (indices : list (@ProperAttribute heading))
+: CorrectBag (ProperAttributesToRepInv TUpdateTerm bupdate_transform indices)
+             (ProperAttributesToValidUpdate TUpdateTerm bupdate_transform indices)
+             (NestedTreeFromAttributesAsBag heading TUpdateTerm
+                                            bupdate_transform indices) :=
+  match indices return
+        CorrectBag (ProperAttributesToRepInv TUpdateTerm bupdate_transform indices)
+                   (ProperAttributesToValidUpdate TUpdateTerm bupdate_transform indices)
+                   (NestedTreeFromAttributesAsBag heading TUpdateTerm
+                                                  bupdate_transform indices) with
+    | [] => CountingListAsCorrectBag bupdate_transform
+    | idx :: indices' =>
+      ProperAttributeToCorrectBag
+        _ _ _
+        (NestedTreeFromAttributesAsBag heading TUpdateTerm bupdate_transform indices')
+        (ProperAttributesToRepInv TUpdateTerm bupdate_transform indices')
+        (ProperAttributesToValidUpdate TUpdateTerm bupdate_transform indices')
+        (NestedTreeFromAttributesAsCorrectBag heading TUpdateTerm bupdate_transform
+                                              indices')
+        idx
+  end.
 
 Lemma bupdate_transform_NestedTree :
   forall heading
@@ -401,8 +401,8 @@ Proof.
 Qed.
 
 Instance NestedTreeFromAttributesAsCorrectBag_UpdateF
-          {heading}
-          (indices : list (@ProperAttribute heading))
+         {heading}
+         (indices : list (@ProperAttribute heading))
 : CorrectBag (ProperAttributesToRepInv _ _ indices)
              (ProperAttributesToValidUpdate _ _ indices)
              (NestedTreeFromAttributesAsBag heading
@@ -434,8 +434,8 @@ Definition EnsembleBagEquivalence
   RepInvPlus bagplus store.
 
 Instance EnsembleIndexedTreeEquivalence_AbsR
-           {heading : Heading}
-           {bagplus : BagPlusProof (@Tuple heading)}
+         {heading : Heading}
+         {bagplus : BagPlusProof (@Tuple heading)}
 : @UnConstrRelationAbsRClass (@IndexedTuple heading) (BagTypePlus bagplus) :=
   {| UnConstrRelationAbsR := EnsembleBagEquivalence bagplus |}.
 
@@ -451,8 +451,8 @@ Lemma bempty_correct_DB :
          (ValidUpdate : TUpdateTerm -> Prop),
     CorrectBag RepInv ValidUpdate store_is_bag
     -> EnsembleIndexedListEquivalence
-      (GetUnConstrRelation (DropQSConstraints (QSEmptySpec db_schema)) index)
-      (benumerate bempty).
+         (GetUnConstrRelation (DropQSConstraints (QSEmptySpec db_schema)) index)
+         (benumerate bempty).
 Proof.
   intros.
   erewrite benumerate_empty_eq_nil by eauto.
@@ -482,15 +482,15 @@ Lemma binsert_correct_DB
 :  forall (store: BagTypePlus bag_plus),
      GetUnConstrRelation qs index ≃ store
      -> forall tuple bound
-        (ValidBound : UnConstrFreshIdx (GetUnConstrRelation qs index) bound),
-      EnsembleIndexedListEquivalence
-        (GetUnConstrRelation
-           (@UpdateUnConstrRelation db_schema qs index
-                                   (EnsembleInsert
-                                      {| elementIndex := bound;
-                                         indexedElement := tuple |}
-                                      (GetUnConstrRelation qs index))) index)
-        (benumerate (binsert (Bag := BagPlus bag_plus) store tuple)).
+               (ValidBound : UnConstrFreshIdx (GetUnConstrRelation qs index) bound),
+          EnsembleIndexedListEquivalence
+            (GetUnConstrRelation
+               (@UpdateUnConstrRelation db_schema qs index
+                                        (EnsembleInsert
+                                           {| elementIndex := bound;
+                                              indexedElement := tuple |}
+                                           (GetUnConstrRelation qs index))) index)
+            (benumerate (binsert (Bag := BagPlus bag_plus) store tuple)).
 Proof.
   intros * store_eqv; destruct store_eqv as (store_eqv, store_WF).
   unfold EnsembleIndexedTreeEquivalence_AbsR, UnConstrFreshIdx,
@@ -543,12 +543,12 @@ Corollary binsertPlus_correct_DB :
       tuple bound
       (ValidBound : UnConstrFreshIdx (GetUnConstrRelation qs index) bound),
       GetUnConstrRelation
-       (@UpdateUnConstrRelation db_schema qs index
-                                (EnsembleInsert
-                                   {| elementIndex := bound;
-                                      indexedElement := tuple |}
-                                   (GetUnConstrRelation qs index))) index
-      ≃ binsert (Bag := BagPlus bag_plus) store tuple.
+        (@UpdateUnConstrRelation db_schema qs index
+                                 (EnsembleInsert
+                                    {| elementIndex := bound;
+                                       indexedElement := tuple |}
+                                    (GetUnConstrRelation qs index))) index
+        ≃ binsert (Bag := BagPlus bag_plus) store tuple.
 Proof.
   simpl; intros; constructor.
   - eapply binsert_correct_DB; eauto.
@@ -556,228 +556,228 @@ Proof.
 Qed.
 
 Lemma bdelete_correct_DB_fst {qsSchema}
-    : forall (qs : UnConstrQueryStructure qsSchema)
-             (Ridx : @BoundedString (map relName (qschemaSchemas qsSchema)))
-             bag_plus
-             bag
-             (equiv_bag : EnsembleBagEquivalence bag_plus (GetUnConstrRelation qs Ridx) bag)
-             (DT : Ensemble Tuple)
-             (DT_Dec : DecideableEnsemble DT)
-             search_term,
-        ExtensionalEq (@dec _ _ DT_Dec)
-                              (bfind_matcher (Bag := BagPlus bag_plus) search_term)
-             -> refine {x | QSDeletedTuples qs Ridx DT x}
-                       (ret (fst (bdelete bag search_term))).
-    Proof.
-      intros; setoid_rewrite DeletedTuplesFor; auto.
-      destruct equiv_bag as [[[bound ValidBound] [l [eq_bag [NoDup_l equiv_l]]]] RepInv_bag];
-        subst.
-      rewrite refine_List_Query_In.
-      rewrite refine_List_Query_In_Where, refine_List_For_Query_In_Return_Permutation,
-      (filter_by_equiv _ _ H), map_id, <- partition_filter_eq.
-      rewrite refine_pick_val.
-      reflexivity.
-      destruct (bdelete_correct bag search_term RepInv_bag) as [_ Perm_bdelete];
-        eauto.
+: forall (qs : UnConstrQueryStructure qsSchema)
+         (Ridx : @BoundedString (map relName (qschemaSchemas qsSchema)))
+         bag_plus
+         bag
+         (equiv_bag : EnsembleBagEquivalence bag_plus (GetUnConstrRelation qs Ridx) bag)
+         (DT : Ensemble Tuple)
+         (DT_Dec : DecideableEnsemble DT)
+         search_term,
+    ExtensionalEq (@dec _ _ DT_Dec)
+                  (bfind_matcher (Bag := BagPlus bag_plus) search_term)
+    -> refine {x | QSDeletedTuples qs Ridx DT x}
+              (ret (fst (bdelete bag search_term))).
+Proof.
+  intros; setoid_rewrite DeletedTuplesFor; auto.
+  destruct equiv_bag as [[[bound ValidBound] [l [eq_bag [NoDup_l equiv_l]]]] RepInv_bag];
+    subst.
+  rewrite refine_List_Query_In.
+  rewrite refine_List_Query_In_Where, refine_List_For_Query_In_Return_Permutation,
+  (filter_by_equiv _ _ H), map_id, <- partition_filter_eq.
+  rewrite refine_pick_val.
+  reflexivity.
+  destruct (bdelete_correct bag search_term RepInv_bag) as [_ Perm_bdelete];
+    eauto.
 
-      unfold BagPlusProofAsBag, QSGetNRelSchemaHeading, GetNRelSchemaHeading,
-      GetNRelSchema in *.
-      rewrite Perm_bdelete; reflexivity.
-      econstructor.
-      eexists _; eauto.
-      unfold UnIndexedEnsembleListEquivalence; eexists; eauto.
-    Qed.
+  unfold BagPlusProofAsBag, QSGetNRelSchemaHeading, GetNRelSchemaHeading,
+  GetNRelSchema in *.
+  rewrite Perm_bdelete; reflexivity.
+  econstructor.
+  eexists _; eauto.
+  unfold UnIndexedEnsembleListEquivalence; eexists; eauto.
+Qed.
 
-    Lemma bdelete_correct_DB_snd
-          db_schema qs index
-          (bag_plus : BagPlusProof (@Tuple (@QSGetNRelSchemaHeading db_schema index)))
-    :  forall (store: BagTypePlus bag_plus),
-         GetUnConstrRelation qs index ≃ store
-         -> forall (DeletedTuples : Ensemble (@Tuple (@QSGetNRelSchemaHeading db_schema index)))
-                   (DT_Dec : DecideableEnsemble DeletedTuples),
-              EnsembleIndexedListEquivalence
-                (GetUnConstrRelation
-                   (@UpdateUnConstrRelation db_schema qs index
-                                            (EnsembleDelete (GetUnConstrRelation qs index)
-                                                            DeletedTuples)) index)
-                (snd (List.partition (@dec _ _ DT_Dec)
-                                     (benumerate store))).
-    Proof.
-      simpl; unfold EnsembleDelete, EnsembleBagEquivalence, Ensembles.In, Complement; simpl;
-      unfold EnsembleIndexedListEquivalence, UnIndexedEnsembleListEquivalence,
-      EnsembleListEquivalence; intros; intuition; destruct_ex; intuition; subst.
-      repeat setoid_rewrite get_update_unconstr_eq; simpl; intros.
-      exists x0.
-      unfold UnConstrFreshIdx in *; intros; apply H; destruct H3; eauto.
-      exists (snd (partition (@dec IndexedTuple (fun t => DeletedTuples (indexedElement t)) _ ) x)); intuition.
-      - unfold BagPlusProofAsBag; rewrite <- H2.
-        repeat rewrite partition_filter_neq.
-        clear; induction x; simpl; eauto.
-        unfold indexedTuple in *;
-        find_if_inside; simpl; eauto; rewrite <- IHx; reflexivity.
-      - rewrite get_update_unconstr_eq in H3.
-        destruct H3; unfold In in *.
-        apply H0 in H3; eapply In_partition in H3; intuition; try apply H6.
-        apply In_partition_matched in H6; apply dec_decides_P in H6; exfalso; eauto.
-      - rewrite get_update_unconstr_eq; constructor.
-        eapply H0; eapply In_partition; eauto.
-        unfold In; intros.
-        apply In_partition_unmatched in H3.
-        simpl in *; apply dec_decides_P in H5.
-        unfold indexedTuple, QSGetNRelSchemaHeading, GetNRelSchemaHeading, GetNRelSchema in *;
-          rewrite H3 in H5; congruence.
-      - revert H4; clear; induction x; simpl; eauto.
-        intros; inversion H4; subst.
-        case_eq (partition (fun x0 => @dec IndexedTuple (fun t => DeletedTuples (indexedElement t)) _ x0) x); intros; simpl in *; rewrite H.
-        rewrite H in IHx; apply IHx in H2;
-        case_eq (@dec IndexedTuple (fun t => DeletedTuples (indexedElement t)) _ a);
-        intros; simpl in *; rewrite H0; simpl; eauto.
-        constructor; eauto.
-        unfold not; intros; apply H1.
-        generalize l l0 H H3; clear; induction x; simpl; intros.
-        + injections; simpl in *; eauto.
-        + case_eq (partition (fun x0 : IndexedTuple => dec (indexedTuple x0)) x).
-          intros; rewrite H0 in H; find_if_inside; injections.
-          eauto.
-          simpl in H3; intuition.
-          eauto.
-    Qed.
+Lemma bdelete_correct_DB_snd
+      db_schema qs index
+      (bag_plus : BagPlusProof (@Tuple (@QSGetNRelSchemaHeading db_schema index)))
+:  forall (store: BagTypePlus bag_plus),
+     GetUnConstrRelation qs index ≃ store
+     -> forall (DeletedTuples : Ensemble (@Tuple (@QSGetNRelSchemaHeading db_schema index)))
+               (DT_Dec : DecideableEnsemble DeletedTuples),
+          EnsembleIndexedListEquivalence
+            (GetUnConstrRelation
+               (@UpdateUnConstrRelation db_schema qs index
+                                        (EnsembleDelete (GetUnConstrRelation qs index)
+                                                        DeletedTuples)) index)
+            (snd (List.partition (@dec _ _ DT_Dec)
+                                 (benumerate store))).
+Proof.
+  simpl; unfold EnsembleDelete, EnsembleBagEquivalence, Ensembles.In, Complement; simpl;
+  unfold EnsembleIndexedListEquivalence, UnIndexedEnsembleListEquivalence,
+  EnsembleListEquivalence; intros; intuition; destruct_ex; intuition; subst.
+  repeat setoid_rewrite get_update_unconstr_eq; simpl; intros.
+  exists x0.
+  unfold UnConstrFreshIdx in *; intros; apply H; destruct H3; eauto.
+  exists (snd (partition (@dec IndexedTuple (fun t => DeletedTuples (indexedElement t)) _ ) x)); intuition.
+  - unfold BagPlusProofAsBag; rewrite <- H2.
+    repeat rewrite partition_filter_neq.
+    clear; induction x; simpl; eauto.
+    unfold indexedTuple in *;
+      find_if_inside; simpl; eauto; rewrite <- IHx; reflexivity.
+  - rewrite get_update_unconstr_eq in H3.
+    destruct H3; unfold In in *.
+    apply H0 in H3; eapply In_partition in H3; intuition; try apply H6.
+    apply In_partition_matched in H6; apply dec_decides_P in H6; exfalso; eauto.
+  - rewrite get_update_unconstr_eq; constructor.
+    eapply H0; eapply In_partition; eauto.
+    unfold In; intros.
+    apply In_partition_unmatched in H3.
+    simpl in *; apply dec_decides_P in H5.
+    unfold indexedTuple, QSGetNRelSchemaHeading, GetNRelSchemaHeading, GetNRelSchema in *;
+      rewrite H3 in H5; congruence.
+  - revert H4; clear; induction x; simpl; eauto.
+    intros; inversion H4; subst.
+    case_eq (partition (fun x0 => @dec IndexedTuple (fun t => DeletedTuples (indexedElement t)) _ x0) x); intros; simpl in *; rewrite H.
+    rewrite H in IHx; apply IHx in H2;
+    case_eq (@dec IndexedTuple (fun t => DeletedTuples (indexedElement t)) _ a);
+    intros; simpl in *; rewrite H0; simpl; eauto.
+    constructor; eauto.
+    unfold not; intros; apply H1.
+    generalize l l0 H H3; clear; induction x; simpl; intros.
+    + injections; simpl in *; eauto.
+    + case_eq (partition (fun x0 : IndexedTuple => dec (indexedTuple x0)) x).
+      intros; rewrite H0 in H; find_if_inside; injections.
+      eauto.
+      simpl in H3; intuition.
+      eauto.
+Qed.
 
-    Lemma bdeletePlus_correct_DB_snd
-          db_schema qs index
-          bag_plus
-    :  forall (store: BagTypePlus bag_plus),
-         EnsembleBagEquivalence bag_plus (GetUnConstrRelation qs index) store
-         -> forall (DeletedTuples : Ensemble (@Tuple (@QSGetNRelSchemaHeading db_schema index)))
-                   (DT_Dec : DecideableEnsemble DeletedTuples)
-                   search_term,
-              ExtensionalEq (@dec _ _ DT_Dec)
-                            (bfind_matcher (Bag := BagPlus bag_plus) search_term)
-              -> EnsembleBagEquivalence
-                   bag_plus
-                   (GetUnConstrRelation
-                      (@UpdateUnConstrRelation db_schema qs index
-                                               (EnsembleDelete (GetUnConstrRelation qs index)
-                                                               DeletedTuples)) index)
-                   (snd (bdelete store search_term)).
-    Proof.
-      intros; unfold ExtensionalEq, EnsembleBagEquivalence in *.
-      unfold EnsembleBagEquivalence.
-      repeat rewrite get_update_unconstr_eq; simpl; intros.
+Lemma bdeletePlus_correct_DB_snd
+      db_schema qs index
+      bag_plus
+:  forall (store: BagTypePlus bag_plus),
+     EnsembleBagEquivalence bag_plus (GetUnConstrRelation qs index) store
+     -> forall (DeletedTuples : Ensemble (@Tuple (@QSGetNRelSchemaHeading db_schema index)))
+               (DT_Dec : DecideableEnsemble DeletedTuples)
+               search_term,
+          ExtensionalEq (@dec _ _ DT_Dec)
+                        (bfind_matcher (Bag := BagPlus bag_plus) search_term)
+          -> EnsembleBagEquivalence
+               bag_plus
+               (GetUnConstrRelation
+                  (@UpdateUnConstrRelation db_schema qs index
+                                           (EnsembleDelete (GetUnConstrRelation qs index)
+                                                           DeletedTuples)) index)
+               (snd (bdelete store search_term)).
+Proof.
+  intros; unfold ExtensionalEq, EnsembleBagEquivalence in *.
+  unfold EnsembleBagEquivalence.
+  repeat rewrite get_update_unconstr_eq; simpl; intros.
 
-      split;
-        [
-        | eapply bdelete_RepInv; intuition ].
-      simpl in *;
-        unfold EnsembleListEquivalence, EnsembleIndexedListEquivalence,
-        UnConstrFreshIdx, EnsembleDelete, Complement in *; intuition; destruct_ex; intuition; intros.
-      exists x; intros; eapply H; destruct H1; unfold List.In in *; eauto.
-      unfold UnIndexedEnsembleListEquivalence, EnsembleListEquivalence in *.
-      generalize (bdelete_correct store search_term H2); destruct_ex; intuition.
-      rewrite partition_filter_neq in H1.
-      unfold BagPlusProofAsBag in *; simpl in *; rewrite <- H4 in H1.
-      clear H6 H H2 H4.
-      remember (GetUnConstrRelation qs index).
-      generalize DeletedTuples DT_Dec x0 u H1 H0 H3 H7; clear.
-      induction (benumerate (snd (bdelete store search_term))); intros.
-      - eexists []; simpl; intuition.
-        + destruct H; destruct H2; unfold In in *.
-          apply H3 in H.
-          apply Permutation_nil in H1.
-          apply dec_decides_P; rewrite H0.
-          revert H1 H; clear; induction x0; simpl; eauto.
-          case_eq (bfind_matcher (Bag := BagPlus bag_plus) search_term (indexedElement a)); simpl; intros.
-          intuition; subst; eauto.
-          discriminate.
-        + constructor.
-      - assert (exists a',
-                List.In a' x0 /\ indexedElement a' = a
-                /\ (bfind_matcher (Bag := BagPlus bag_plus) search_term (indexedElement a') = false)).
-      generalize (@Permutation_in _ _ _ a H1 (or_introl (refl_equal _))).
-      rewrite filter_map; clear; induction x0; simpl;
-      intuition.
-      revert H;
-        case_eq (bfind_matcher (Bag := BagPlus bag_plus) search_term (indexedElement a0)); simpl; intros; eauto.
-      apply IHx0 in H0; destruct_ex; intuition eauto.
-      subst; intuition eauto.
-      destruct_ex; intuition eauto.
-      destruct_ex.
-      assert (exists x0',
-                Permutation x0 (x :: x0') /\
-                ~ List.In x x0').
-      {
-        intuition; subst.
-        repeat rewrite filter_map; generalize x H2 H7; clear;
-        induction x0; intros; simpl in *|-; intuition; subst; eauto.
-        inversion H7; subst; exists x0; intuition.
-        apply H1; apply in_map_iff; eexists; eauto.
-        inversion H7; subst.
-        destruct (IHx0 _ H H3); intuition; eexists (a :: x1).
-        rewrite H1; intuition.
-        constructor.
-        simpl in H0; intuition; subst; eauto.
-        apply H2; apply in_map_iff; eexists; eauto.
-      }
-      destruct_ex; intuition; subst.
-      rewrite filter_map in H1; rewrite H in H1; simpl in *.
-      rewrite H8 in *; simpl in *.
-      destruct (IHl DeletedTuples DT_Dec x1
-                    (fun tup => Ensembles.In _ u tup /\ tup <> x)); eauto;
-      clear IHl.
-      + rewrite filter_map; eapply Permutation_cons_inv; eauto.
-      + intuition; intros.
-        destruct H2; apply H3 in H2.
-        eapply Permutation_in in H; eauto.
-        simpl in *; intuition.
-        constructor.
-        eapply H3.
-        symmetry in H; eapply Permutation_in; eauto.
-        simpl; eauto.
-        intros; subst; simpl; congruence.
-      + assert (NoDup (map elementIndex (x :: x1))).
-        eapply NoDup_Permutation_rewrite.
-        eapply Permutation_map; eauto.
-        eauto.
-        inversion H2; subst; eauto.
-      + eexists (x :: x2); simpl; intuition.
-        * rewrite H5; auto.
-        * unfold In in H9; inversion H9; subst; unfold In in *.
-          apply H3 in H11; pose proof (Permutation_in _ H H11).
-          simpl in H5; intuition.
-          right; apply Permutation_cons_inv in H1.
-          eapply H2; econstructor; unfold In; intuition.
-          apply H3 in H11; eauto.
-          subst; eauto.
-        * subst; unfold In in *.
-          constructor; unfold In.
-          apply H3.
-          eapply Permutation_in; eauto.
-          rewrite <- H0 in H8; intros; apply dec_decides_P in H5; congruence.
-        * unfold In; constructor.
-          apply H2 in H11; inversion H11; subst; unfold In in *; intuition.
-          unfold In in *.
-          intros; apply dec_decides_P in H9; subst.
-          apply Permutation_cons_inv in H1.
-          assert (List.In (indexedElement x3) (map indexedElement x2)) as in_x2' by
-                (rewrite in_map_iff; eauto);
-            pose proof (Permutation_in (indexedElement x3) H1 in_x2').
-          rewrite in_map_iff in H5; destruct_ex; intuition.
-          rewrite filter_In in H13; intuition; subst.
-          rewrite <- H0, H12, H9 in H14; discriminate.
-        * constructor; eauto.
-          intro In_x; subst; apply Permutation_cons_inv in H1.
-          pose proof (permutation_map_base _ H1 _  (refl_equal _));
-            destruct_ex; intuition.
-          rewrite in_map_iff in *; destruct_ex; intuition.
-          apply H2 in H13; inversion H13; subst; unfold In in *; intuition.
-          apply H3 in H15.
-          pose proof (Permutation_in _ H H15); simpl in *; intuition.
-          assert (~ List.In (elementIndex x) (map elementIndex x1)).
-          { eapply Permutation_map with (f := elementIndex) in H.
-            pose proof (NoDup_Permutation_rewrite _ _ H H7).
-            simpl in *; inversion H5; subst; eauto.
-          }
-          apply H5; rewrite in_map_iff; eexists; split; eauto.
-    Qed.
+  split;
+    [
+      | eapply bdelete_RepInv; intuition ].
+  simpl in *;
+    unfold EnsembleListEquivalence, EnsembleIndexedListEquivalence,
+    UnConstrFreshIdx, EnsembleDelete, Complement in *; intuition; destruct_ex; intuition; intros.
+  exists x; intros; eapply H; destruct H1; unfold List.In in *; eauto.
+  unfold UnIndexedEnsembleListEquivalence, EnsembleListEquivalence in *.
+  generalize (bdelete_correct store search_term H2); destruct_ex; intuition.
+  rewrite partition_filter_neq in H1.
+  unfold BagPlusProofAsBag in *; simpl in *; rewrite <- H4 in H1.
+  clear H6 H H2 H4.
+  remember (GetUnConstrRelation qs index).
+  generalize DeletedTuples DT_Dec x0 u H1 H0 H3 H7; clear.
+  induction (benumerate (snd (bdelete store search_term))); intros.
+  - eexists []; simpl; intuition.
+    + destruct H; destruct H2; unfold In in *.
+      apply H3 in H.
+      apply Permutation_nil in H1.
+      apply dec_decides_P; rewrite H0.
+      revert H1 H; clear; induction x0; simpl; eauto.
+      case_eq (bfind_matcher (Bag := BagPlus bag_plus) search_term (indexedElement a)); simpl; intros.
+      intuition; subst; eauto.
+      discriminate.
+    + constructor.
+  - assert (exists a',
+              List.In a' x0 /\ indexedElement a' = a
+              /\ (bfind_matcher (Bag := BagPlus bag_plus) search_term (indexedElement a') = false)).
+    generalize (@Permutation_in _ _ _ a H1 (or_introl (refl_equal _))).
+    rewrite filter_map; clear; induction x0; simpl;
+    intuition.
+    revert H;
+      case_eq (bfind_matcher (Bag := BagPlus bag_plus) search_term (indexedElement a0)); simpl; intros; eauto.
+    apply IHx0 in H0; destruct_ex; intuition eauto.
+    subst; intuition eauto.
+    destruct_ex; intuition eauto.
+    destruct_ex.
+    assert (exists x0',
+              Permutation x0 (x :: x0') /\
+              ~ List.In x x0').
+    {
+      intuition; subst.
+      repeat rewrite filter_map; generalize x H2 H7; clear;
+      induction x0; intros; simpl in *|-; intuition; subst; eauto.
+      inversion H7; subst; exists x0; intuition.
+      apply H1; apply in_map_iff; eexists; eauto.
+      inversion H7; subst.
+      destruct (IHx0 _ H H3); intuition; eexists (a :: x1).
+      rewrite H1; intuition.
+      constructor.
+      simpl in H0; intuition; subst; eauto.
+      apply H2; apply in_map_iff; eexists; eauto.
+    }
+    destruct_ex; intuition; subst.
+    rewrite filter_map in H1; rewrite H in H1; simpl in *.
+    rewrite H8 in *; simpl in *.
+    destruct (IHl DeletedTuples DT_Dec x1
+                  (fun tup => Ensembles.In _ u tup /\ tup <> x)); eauto;
+    clear IHl.
+    + rewrite filter_map; eapply Permutation_cons_inv; eauto.
+    + intuition; intros.
+      destruct H2; apply H3 in H2.
+      eapply Permutation_in in H; eauto.
+      simpl in *; intuition.
+      constructor.
+      eapply H3.
+      symmetry in H; eapply Permutation_in; eauto.
+      simpl; eauto.
+      intros; subst; simpl; congruence.
+    + assert (NoDup (map elementIndex (x :: x1))).
+      eapply NoDup_Permutation_rewrite.
+      eapply Permutation_map; eauto.
+      eauto.
+      inversion H2; subst; eauto.
+    + eexists (x :: x2); simpl; intuition.
+      * rewrite H5; auto.
+      * unfold In in H9; inversion H9; subst; unfold In in *.
+        apply H3 in H11; pose proof (Permutation_in _ H H11).
+        simpl in H5; intuition.
+        right; apply Permutation_cons_inv in H1.
+        eapply H2; econstructor; unfold In; intuition.
+        apply H3 in H11; eauto.
+        subst; eauto.
+      * subst; unfold In in *.
+        constructor; unfold In.
+        apply H3.
+        eapply Permutation_in; eauto.
+        rewrite <- H0 in H8; intros; apply dec_decides_P in H5; congruence.
+      * unfold In; constructor.
+        apply H2 in H11; inversion H11; subst; unfold In in *; intuition.
+        unfold In in *.
+        intros; apply dec_decides_P in H9; subst.
+        apply Permutation_cons_inv in H1.
+        assert (List.In (indexedElement x3) (map indexedElement x2)) as in_x2' by
+              (rewrite in_map_iff; eauto);
+          pose proof (Permutation_in (indexedElement x3) H1 in_x2').
+        rewrite in_map_iff in H5; destruct_ex; intuition.
+        rewrite filter_In in H13; intuition; subst.
+        rewrite <- H0, H12, H9 in H14; discriminate.
+      * constructor; eauto.
+        intro In_x; subst; apply Permutation_cons_inv in H1.
+        pose proof (permutation_map_base _ H1 _  (refl_equal _));
+          destruct_ex; intuition.
+        rewrite in_map_iff in *; destruct_ex; intuition.
+        apply H2 in H13; inversion H13; subst; unfold In in *; intuition.
+        apply H3 in H15.
+        pose proof (Permutation_in _ H H15); simpl in *; intuition.
+        assert (~ List.In (elementIndex x) (map elementIndex x1)).
+        { eapply Permutation_map with (f := elementIndex) in H.
+          pose proof (NoDup_Permutation_rewrite _ _ H H7).
+          simpl in *; inversion H5; subst; eauto.
+        }
+        apply H5; rewrite in_map_iff; eexists; split; eauto.
+Qed.
 
-    Arguments bdelete : simpl never.
+Arguments bdelete : simpl never.
