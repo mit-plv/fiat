@@ -1,4 +1,4 @@
-Require Export Coq.Bool.Bool
+Require Export Coq.Bool.Bool Coq.Strings.String
         ADTSynthesis.Common.DecideableEnsembles
         ADTSynthesis.Common.ListMorphisms
         ADTSynthesis.Common.ListFacts
@@ -7,13 +7,13 @@ Require Export Coq.Bool.Bool
         ADTSynthesis.Common.FlattenList
         ADTSynthesis.Common.Ensembles.IndexedEnsembles
         ADTSynthesis.Common.IterateBoundedIndex
-        ADTSynthesis.QueryStructure.Implementation.DataStructures.Bags.BagsOfTuples
-        ADTSynthesis.QueryStructure.Refinements.ListImplementation
-        ADTSynthesis.QueryStructure.Implementation.Constraints.ConstraintChecksRefinements
-        ADTSynthesis.QueryStructure.Implementation.DataStructures.Bags.Bags
-        ADTSynthesis.QueryStructure.Specification.Constraints.tupleAgree
         ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureNotations
-        ADTSynthesis.QueryStructure.Refinements.OperationRefinements.
+        ADTSynthesis.QueryStructure.Implementation.Constraints.ConstraintChecksRefinements
+        ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.BagADT
+        ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.BagImplementation
+        ADTSynthesis.QueryStructure.Implementation.ListImplementation
+        ADTSynthesis.QueryStructure.Specification.Constraints.tupleAgree.
+Require Export ADTSynthesis.QueryStructure.Implementation.Operations.
 
 Global Opaque binsert benumerate bfind bcount.
 
@@ -33,9 +33,6 @@ Ltac prove_decidability_for_functional_dependencies :=
 
 Hint Extern 100 (DecideableEnsemble _) => prove_decidability_for_functional_dependencies : typeclass_instances.
 
-Notation "heading / attr_index" := ((fun x : Attributes heading => x)
-                                       {| bindex := attr_index; indexb := _ |})
-                                      (at level 40, left associativity).
 
 Ltac lmap A f seq :=
   let rec aux seq :=
@@ -48,13 +45,10 @@ Ltac lmap A f seq :=
       end
   in aux seq.
 
-Ltac makeIndex sc table columns :=
+(*Ltac makeIndex sc table columns :=
   set (heading := GetHeading sc table);
   mkIndex heading ltac:(lmap (Attributes heading)%type ltac:(fun x => constr:(heading/x)) columns).
 
-Notation "QSSchema # rel_key" := (TupleDef QSSchema rel_key) (at level 100, no associativity).
-
-Notation "?[ A ]" := (if A then true else false) (at level 50).
 
 (** * Tactics galore! *)
 
@@ -638,4 +632,4 @@ Ltac delete_foreign_key_check_to_Query storage :=
       | auto with typeclass_instances
       | unfold Iterate_Ensemble_BoundedIndex_filter; simpl; intuition
       | simpl; auto
-      ].
+      ]. *)

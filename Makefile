@@ -25,8 +25,8 @@ CORE_MODULES    := \
 	Common/PermutationFacts \
 	Common/String_as_OT \
 	Common/FMapExtensions \
-	QueryStructure/SetEq \
-	QueryStructure/SetEqProperties \
+	Common/SetEq \
+	Common/SetEqProperties \
 	ComputationalEnsembles \
 	ComputationalEnsembles/Core \
 	ComputationalEnsembles/Laws \
@@ -84,6 +84,7 @@ QUERYSTRUCTURE_MODULES := \
 	QueryStructure/Specification/Operations/Query \
 	QueryStructure/Specification/Operations/Insert \
 	QueryStructure/Specification/Operations/Delete \
+	QueryStructure/Specification/Operations/Update \
 	QueryStructure/Implementation/Constraints/ConstraintChecksRefinements \
 	QueryStructure/Implementation/Constraints/ConstraintChecksUnfoldings \
 	QueryStructure/Implementation/Operations/General/EmptyRefinements \
@@ -92,23 +93,25 @@ QUERYSTRUCTURE_MODULES := \
 	QueryStructure/Implementation/Operations/General/DeleteRefinements \
 	QueryStructure/Implementation/Operations/General/QueryStructureRefinements \
 	QueryStructure/Implementation/Operations \
-	QueryStructure/Implementation/DataStructures/qListImplementation/ListQueryRefinements \
-	QueryStructure/Implementation/DataStructures/ListImplementation/ListInsertRefinements \
+	QueryStructure/Implementation/Operations/List/ListQueryRefinements \
+	QueryStructure/Implementation/Operations/List/ListInsertRefinements \
 	QueryStructure/Implementation/ListImplementation \
-	QueryStructure/Implementation/DataStructures/Bags/BagsInterface\
-	QueryStructure/Implementation/DataStructures/Bags/BagsProperties\
-	QueryStructure/Implementation/DataStructures/Bags/BagsTactics\
-	QueryStructure/Implementation/DataStructures/Bags/ListBags\
-	QueryStructure/Implementation/DataStructures/Bags/CountingListBags\
-	QueryStructure/Implementation/DataStructures/Bags/TreeBags\
-	QueryStructure/Implementation/DataStructures/Bags/CachingBags\
-	QueryStructure/Implementation/DataStructures/Bags/CacheableFunctions\
-	QueryStructure/Implementation/DataStructures/Bags/BagsOfTuples\
-	QueryStructure/Implementation/DataStructures/BagADT/BagADT\
-	QueryStructure/Implementation/DataStructures/BagADT/Refinements\
-	QueryStructure/Implementation/DataStructures/BagADT/BagImplementation\
-	QueryStructure/Implementation/BagImplementation\
-	QueryStructure/Implementation/DataStructures/Automation/AutoDB
+	QueryStructure/Implementation/DataStructures/Bags/BagsInterface \
+	QueryStructure/Implementation/DataStructures/Bags/BagsProperties \
+	QueryStructure/Implementation/DataStructures/Bags/BagsTactics \
+	QueryStructure/Implementation/DataStructures/Bags/ListBags \
+	QueryStructure/Implementation/DataStructures/Bags/CountingListBags \
+	QueryStructure/Implementation/DataStructures/Bags/TreeBags \
+	QueryStructure/Implementation/DataStructures/Bags/CachingBags \
+	QueryStructure/Implementation/DataStructures/Bags/CacheableFunctions \
+	QueryStructure/Implementation/DataStructures/Bags/BagsOfTuples \
+	QueryStructure/Implementation/DataStructures/BagADT/BagADT \
+	QueryStructure/Implementation/DataStructures/BagADT/BagImplementation \
+	QueryStructure/Implementation/DataStructures/BagADT/QueryStructureImplementation \
+	QueryStructure/Implementation/DataStructures/BagADT/IndexSearchTerms \
+	QueryStructure/Implementation/Operations/BagADT/Refinements \
+	QueryStructure/Implementation/BagImplementation \
+	QueryStructure/Automation/AutoDB
 
 FINITESET_MODULES := \
 	FiniteSetADTs/FiniteSetADT \
@@ -164,12 +167,13 @@ COMPILER_MODULES := \
 	FiatToFacade/Compiler
 
 EXAMPLE_MODULES := \
-	FiniteSetsExamples ExtractingFiniteSetsExamples
-#	Bookstore \
-	BookstoreSemiAutomatic \
-	Weather \
-	Stocks \
-	ProcessScheduler \
+	FiniteSetsADTS/FiniteSetsExamples \
+	ExtractingFiniteSetsExamples \
+	QueryStructure/Bookstore \
+	QueryStructure/BookstoreSemiAutomatic \
+	QueryStructure/Weather \
+	QueryStructure/Stocks
+#	ProcessScheduler \
 	CacheADT/KVEnsembles \
 	CacheADT/CacheSpec \
 	CacheADT/CacheRefinements \

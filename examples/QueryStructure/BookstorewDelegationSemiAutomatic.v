@@ -1,4 +1,4 @@
-Require Import AutoDB BagADT.
+Require Import Coq.Strings.String AutoDB BagADT.
 
 (* Our bookstore has two relations (tables):
    - The [Books] relation contains the books in the
@@ -61,8 +61,8 @@ Definition BookStoreSig : ADTSig :=
       Method "DeleteOrder" : rep x nat -> rep x list Order,
       (* Method "AddBook" : rep x Book -> rep x bool, *)
       (* Method "DeleteBook" : rep x nat -> rep x list Book, *)
-      Method "GetTitles" : rep x string -> rep x list string
-      (* Method "NumOrders" : rep x string -> rep x nat *)
+      Method "GetTitles" : rep x string -> rep x list string,
+      Method "NumOrders" : rep x string -> rep x nat
     }.
 
 (* Now we write what the methods should actually do. *)
@@ -86,13 +86,13 @@ Definition BookStoreSpec : ADT BookStoreSig :=
     query "GetTitles" ( author : string ) : list string :=
       For (b in sBOOKS)
       Where (author = b!sAUTHOR)
-      Return (b!sTITLE)
+      Return (b!sTITLE) ,
 
-      (* query "NumOrders" ( author : string ) : nat :=
+      query "NumOrders" ( author : string ) : nat :=
         Count (For (o in sORDERS) (b in sBOOKS)
                Where (author = b!sAUTHOR)
                Where (b!sISBN = o!sISBN)
-               Return ()) *)
+               Return ())
 }.
 
 (* Aliases for internal names of the two tables *)
@@ -105,36 +105,31 @@ Definition OrderSchema := QSGetNRelSchemaHeading BookStoreSchema Orders.
 
 (* Now we define an index structure (delegate) for each table. *)
 
-Definition OrderSearchTerm : list (@ProperAttribute OrderSchema).
-  set (src := [ OrderSchema/sISBN  ]);
-  autoconvert (@CheckType OrderSchema).
+Require Import
+        ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.IndexSearchTerms
+        ADTSynthesis.QueryStructure.Implementation.Operations.BagADT.Refinements
+        ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.QueryStructureImplementation.
+
+(* Definition OrderSearchTerm := BuildIndexSearchTerm [ OrderSchema/sISBN  ].
+
+Definition MatchOrderSearchTerm : OrderSearchTerm -> @Tuple OrderSchema -> bool.
+  apply MatchIndexSearchTerm; repeat (econstructor; eauto with typeclass_instances).
 Defined.
 
-Definition OrderSearchTermMatcher :=
-  SearchTermFromAttributesMatcher OrderSearchTerm.
+Definition BookSearchTerm := BuildIndexSearchTerm [ BookSchema/sAUTHOR; BookSchema/sISBN ].
 
-Definition BookSearchTerm : list (@ProperAttribute BookSchema).
-  set (src := [ BookSchema/sAUTHOR; BookSchema/sISBN ]);
-  autoconvert (@CheckType BookSchema).
+Definition MatchBookSearchTerm : BookSearchTerm -> @Tuple BookSchema -> bool.
+  apply MatchIndexSearchTerm; repeat (econstructor; eauto with typeclass_instances).
 Defined.
 
-Definition BookSearchTermMatcher :=
-  SearchTermFromAttributesMatcher BookSearchTerm.
-
-Definition BookStorageDelegate := BagSpec BookSearchTermMatcher.
-Definition OrderStorageDelegate := BagSpec OrderSearchTermMatcher.
+Definition BookStorageDelegate := BagSpec MatchBookSearchTerm id.
+Definition OrderStorageDelegate := BagSpec MatchOrderSearchTerm id.*)
 
 (* In other words, index first on the author field, then the ISBN field.
  * Works especially efficiently for accesses keyed on author. *)
 
-Definition BookStoreIndices :
-  ilist (fun ns : NamedSchema => list (@ProperAttribute (schemaHeading (relSchema ns))))
-        (qschemaSchemas BookStoreSchema) :=
-  icons _ BookSearchTerm (icons _ OrderSearchTerm (inil _)).
 
-Require Import BagsofTuplesADT.
-
-Definition BookStore_AbsR := (@DelegateToBag_AbsR _ BookStoreIndices).
+(*Definition BookStore_AbsR := (@DelegateToBag_AbsR _ BookStoreIndices).*)
 
 (* Lemma BookstorewDelegates_AbsR_Pick :
   forall (qs_schema : QueryStructureSchema)
@@ -152,6 +147,9 @@ Qed. *)
 
 Opaque CallBagMethod.
 
+Arguments BuildIndexSearchTerm : simpl never.
+Arguments MatchIndexSearchTerm : simpl never.
+
 Theorem BookStoreManual :
   Sharpened BookStoreSpec.
 Proof.
@@ -161,60 +159,124 @@ Proof.
   (* First, we unfold various definitions and drop constraints *)
   start honing QueryStructure.
 
-  hone representation using BookStore_AbsR.
+  make simple indexes using [[sAUTHOR; sISBN]; [sISBN]].
 
-  hone constructor "Init". {
+  hone constructor "Init".
+  {
     simplify with monad laws.
     rewrite refine_QSEmptySpec_Initialize_IndexedQueryStructure.
-    simpl; simplify with monad laws.
     finish honing.
   }
 
   hone method "DeleteOrder". {
-    startMethod BookStore_AbsR.
 
-    match goal with
-        [ H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
-          |- context[Pick (QSDeletedTuples ?r_o ?idx ?DeletedTuples)] ] =>
-        let dec := constr:(@DecideableEnsembles.dec _ DeletedTuples _) in
-        let storage := eval simpl in (ith_Bounded relName indices idx) in
-        let fs := fields storage in
-        match type of fs with
-        | list (@Attributes ?SC) =>
-          findGoodTerm SC dec ltac:(fun fds tail =>
-            let tail := eval simpl in tail in
-              makeTerm storage fs SC fds tail
-              ltac:(fun tm =>
-                      rewrite (@refine_BagADT_QSDelete_fst _ _ r_o r_n H idx DeletedTuples _ tm)
-                              by prove_extensional_eq))
+Ltac fields storage :=
+  match eval cbv delta [storage] in storage with
+  | let src := ?X in _ => X
+  end.
+
+  Ltac prove_extensional_eq :=
+  clear;
+  unfold ExtensionalEq;
+  destruct_ifs; first [ solve [intuition] | solve [exfalso; intuition] | idtac ].
+
+
+Ltac findMatchingTerm fds s k :=
+  match fds with
+    | (?fd, ?X) =>
+      let H := fresh in assert (H : bindex s = fd) by reflexivity; clear H;
+        k X
+    | (?fds1, ?fds2) => findMatchingTerm fds1 s k || findMatchingTerm fds2 s k
+  end.
+
+Ltac createTerm f fds tail fs k :=
+  match fs with
+  | nil =>
+    k tail
+  | ?s :: ?fs' =>
+    createTerm f fds tail fs' ltac:(fun rest =>
+      findMatchingTerm fds s ltac:(fun X =>
+        k (Some X, rest))
+      || k (@None (f s), rest))
+  end.
+
+(* Get the heading of SC, then *)
+Ltac makeTerm fs SC fds tail k :=
+  match eval hnf in SC with
+  | Build_Heading ?f =>
+    createTerm f fds tail fs k
+  end.
+
+(* Given a storage schema [SC], a filter [F], and a
+   tactic [k] which processes filters, convert [F] into
+   a search term (a list of boolean functions over the tuples in
+   [SC]. *)
+Ltac findGoodTerm SC F k :=
+  match F with
+    | fun a => ?[@?f a] =>
+      match type of f with
+        | forall a, {?X = _!?fd} + {_} => k (fd, X) (fun _ : @Tuple SC => true)
+        | forall a, {_!?fd = ?X} + {_} => k (fd, X) (fun _ : @Tuple SC => true)
+        | forall a, {?X = _``?fd} + {_} => k (fd, X) (fun _ : @Tuple SC => true)
+        | forall a, {_``?fd = ?X} + {_} => k (fd, X) (fun _ : @Tuple SC => true)
       end
-    end.
+    | fun a => (@?f a) && (@?g a) =>
+      findGoodTerm SC f ltac:(fun fds1 tail1 =>
+                                findGoodTerm SC g ltac:(fun fds2 tail2 =>
+                                                          k (fds1, fds2) (fun tup : @Tuple SC => (tail1 tup) && (tail2 tup))))
+    | _ => k tt (F :: nil)
+  end.
 
-    simplify with monad laws; cbv beta; simpl.
+Check refine_BagADT_QSDelete_fst.
 
-    match goal with
-        [ H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
-          |- context[{r_n' | DelegateToBag_AbsR
-                               (UpdateUnConstrRelation ?r_o ?idx
-                                                       (EnsembleDelete (GetUnConstrRelation ?r_o ?idx)
+match goal with
+    [ H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
+      |- context[Pick (QSDeletedTuples ?r_o ?idx ?DeletedTuples)] ] =>
+    let filter_dec := eval simpl in (@DecideableEnsembles.dec _ DeletedTuples _) in
+    let idx_search_update_term := eval simpl in (ith_Bounded relName indices idx) in
+        let search_term_type := eval simpl in (BagSearchTermType idx_search_update_term) in
+    let search_term_matcher := eval simpl in (BagMatchSearchTerm idx_search_update_term) in
+        let search_term := fresh in
+        evar (search_term : search_term_type);
+          let eqv := fresh in
+          let SC := constr:(QSGetNRelSchemaHeading qs_schema idx) in
+          findGoodTerm SC filter_dec
+                          ltac:(fun fds tail =>
+
+                                              let tail := eval simpl in tail in
+                                                  makeTerm [OrderSchema/sISBN] SC fds tail ltac:(fun tm =>
+                                                                                                   assert (ExtensionalEq filter_dec
+                                                                                                                         (search_term_matcher tm)) as eqv;
+                                                                                                 [ unfold ExtensionalEq, MatchIndexSearchTerm; simpl; intro; try prove_extensional_eq | rewrite (@refine_BagADT_QSDelete_fst _ _ r_o r_n H idx DeletedTuples _ tm) by (eapply eqv)  ]))
+end.
+
+simplify with monad laws; cbv beta; simpl.
+
+
+match goal with
+    [ H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
+      |- context[{r_n' | DelegateToBag_AbsR
+                           (UpdateUnConstrRelation ?r_o ?idx
+                                                   (EnsembleDelete (GetUnConstrRelation ?r_o ?idx)
                                                                        ?DeletedTuples)) r_n'}]] =>
-        let dec := constr:(@DecideableEnsembles.dec _ DeletedTuples _) in
-        let storage := eval simpl in (ith_Bounded relName indices idx) in
-        let fs := fields storage in
-        match type of fs with
-        | list (@Attributes ?SC) =>
-          findGoodTerm SC dec ltac:(fun fds tail =>
-            let tail := eval simpl in tail in
-              makeTerm storage fs SC fds tail
-              ltac:(fun tm =>
-                      let Eqv := fresh in
-                      assert (ExtensionalEq (@DecideableEnsembles.dec (@Tuple SC) DeletedTuples _)
-                                            (SearchTermFromAttributesMatcher storage tm))
-                        as Eqv by prove_extensional_eq;
-                      setoid_rewrite (@refine_BagADT_QSDelete_snd _ _ r_o r_n H idx DeletedTuples _ tm Eqv);
-                      clear Eqv))
-      end
-    end.
+    let filter_dec := eval simpl in (@DecideableEnsembles.dec _ DeletedTuples _) in
+    let idx_search_update_term := eval simpl in (ith_Bounded relName indices idx) in
+        let search_term_type := eval simpl in (BagSearchTermType idx_search_update_term) in
+    let search_term_matcher := eval simpl in (BagMatchSearchTerm idx_search_update_term) in
+        let search_term := fresh in
+        evar (search_term : search_term_type);
+          let eqv := fresh in
+          let SC := constr:(QSGetNRelSchemaHeading qs_schema idx) in
+          findGoodTerm SC filter_dec
+                          ltac:(fun fds tail =>
+
+                                              let tail := eval simpl in tail in
+                                                  makeTerm [OrderSchema/sISBN] SC fds tail ltac:(fun tm =>
+                                                                                                   assert (ExtensionalEq filter_dec
+                                                                                                                         (search_term_matcher tm)) as eqv;
+                                                                                                 [ unfold ExtensionalEq, MatchIndexSearchTerm; simpl; intro; try prove_extensional_eq | pose (@refine_BagADT_QSDelete_snd _ _ r_o r_n H idx DeletedTuples _ tm) as H'; setoid_rewrite (H' eqv)  ]))
+end.
+
     simplify with monad laws; cbv beta; simpl.
 
     finish honing.
@@ -222,10 +284,13 @@ Proof.
   }
 
    hone method "GetTitles". {
-    startMethod BookStore_AbsR.
 
     setoid_rewrite refine_Query_In_Enumerate; eauto.
     setoid_rewrite refine_List_Query_In_Where.
+    simplify with monad laws.
+    Transparent Query_For.
+    unfold Query_For.
+    simplify with monad laws.
 
     match goal with
         [ H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n

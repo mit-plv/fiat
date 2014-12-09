@@ -1,5 +1,10 @@
-Require Import Coq.Strings.String Coq.omega.Omega Coq.Lists.List Coq.Logic.FunctionalExtensionality Coq.Sets.Ensembles
-        ADTSynthesis.Common.Ensembles.IndexedEnsembles ADTSynthesis.Computation ADTSynthesis.ADT ADTSynthesis.ADTRefinement ADTSynthesis.ADTNotation
+Require Import Coq.Strings.String Coq.omega.Omega Coq.Lists.List
+        Coq.Logic.FunctionalExtensionality Coq.Sets.Ensembles
+        ADTSynthesis.Common.Ensembles.IndexedEnsembles
+        ADTSynthesis.Computation
+        ADTSynthesis.ADT
+        ADTSynthesis.ADTRefinement
+        ADTSynthesis.ADTNotation
         ADTSynthesis.ADTRefinement.BuildADTRefinements.
 
 Open Scope string.
@@ -9,7 +14,7 @@ Section BagADT.
   Variable ElementType : Type.
   Variable SearchTermType : Type.
   Variable UpdateTermType : Type.
-  Variable SearchTermMatcher : SearchTermType -> ElementType -> bool.
+  Variable MatchSearchTerm : SearchTermType -> ElementType -> bool.
   Variable ApplyUpdateTerm : UpdateTermType -> ElementType -> ElementType.
 
   Definition BagSig : ADTSig :=
@@ -31,7 +36,7 @@ Section BagADT.
         Def Method "Find" (r : rep, f : SearchTermType)
           : list ElementType :=
             results <- {l | EnsembleIndexedListEquivalence r l};
-        ret (r, filter (SearchTermMatcher f) results),
+        ret (r, filter (MatchSearchTerm f) results),
 
         Def Method "Enumerate" (r : rep, f : unit)
           : list ElementType :=
@@ -45,18 +50,18 @@ Section BagADT.
 
         Def Method "Count" (r : rep, f : SearchTermType) : nat :=
           results <- {l | EnsembleIndexedListEquivalence r l};
-        ret (r, length (filter (SearchTermMatcher f) results)),
+        ret (r, length (filter (MatchSearchTerm f) results)),
 
         Def Method "Delete" (r : rep, f : SearchTermType)
         : list ElementType :=
           deleted <- {l | EnsembleIndexedListEquivalence r l};
           ret (EnsembleDelete
                  r
-                 (fun tup => SearchTermMatcher f tup = true),
-               filter (SearchTermMatcher f) deleted),
+                 (fun tup => MatchSearchTerm f tup = true),
+               filter (MatchSearchTerm f) deleted),
 
         Def Method "Update" (r : rep, f : SearchTermType * UpdateTermType) : unit :=
-            ret (IndexedEnsembleUpdate r (fun tup => SearchTermMatcher (fst f) tup = true) (ApplyUpdateTerm (snd f)), tt)
+            ret (IndexedEnsembleUpdate r (fun tup => MatchSearchTerm (fst f) tup = true) (ApplyUpdateTerm (snd f)), tt)
         }.
 
 End BagADT.

@@ -66,3 +66,12 @@ Proof.
     rewrite Build_EmptyRelation_IsEmpty in *; simpl in *; intuition.
   - econstructor.
 Qed.
+
+Lemma ith_Bounded_BuildEmptyRelations
+: forall ns idx, ith_Bounded relName (Build_EmptyRelations ns) idx = EmptyRelation _.
+Proof.
+  unfold ith_Bounded, nth_Bounded; simpl.
+  destruct idx as [idx [n In_n ]]; simpl in *.
+  revert idx n In_n; clear; induction ns; destruct n; simpl;
+  intros; try discriminate; eauto.
+Qed.

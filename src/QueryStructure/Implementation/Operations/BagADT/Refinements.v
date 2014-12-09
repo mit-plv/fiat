@@ -1,7 +1,4 @@
 Require Export Coq.Lists.List Coq.Program.Program
-        ADTSynthesis.QueryStructure.Implementation.DataStructures.Bags.BagsInterface
-        ADTSynthesis.QueryStructure.Implementation.DataStructures.Bags.CountingListBags
-        ADTSynthesis.QueryStructure.Implementation.DataStructures.Bags.TreeBags
         ADTSynthesis.QueryStructure.Specification.Representation.Tuple
         ADTSynthesis.QueryStructure.Specification.Representation.Heading
         ADTSynthesis.Common.ilist
@@ -13,73 +10,57 @@ Require Import Coq.Bool.Bool Coq.Strings.String
         ADTSynthesis.Common.DecideableEnsembles
         ADTSynthesis.Common.ListFacts
         ADTSynthesis.QueryStructure.Specification.Operations.FlattenCompList
-        ADTSynthesis.QueryStructure.Implementation.DataStructures.Bags.BagsOfTuples
         ADTSynthesis.QueryStructure.Implementation.Operations.General.QueryRefinements
+        ADTSynthesis.QueryStructure.Implementation.Operations.General.EmptyRefinements
         ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureNotations
-        ADTSynthesis.QueryStructure.Refinements.ListImplementation
+        ADTSynthesis.QueryStructure.Implementation.ListImplementation
         ADTSynthesis.Common.PermutationFacts
-        ADTSynthesis.QueryStructure.Refinements.BagADT.BagADT.
+        ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.BagADT
+        ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.QueryStructureImplementation
+        ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.IndexSearchTerms.
 
-Section BagsOfTuplesRefinements.
+Section BagsQueryStructureRefinements.
 
   Variable qs_schema : QueryStructureSchema.
-  Variable UpdateTermType : Heading -> Type.
-  Variable ApplyUpdateTerm :
-    forall heading,
-      UpdateTermType heading -> (@Tuple heading) -> (@Tuple heading).
+  Variable BagIndexKeys :
+    ilist (fun ns => SearchUpdateTerms (schemaHeading (relSchema ns)))
+      (qschemaSchemas qs_schema).
 
-  Definition Bag_index (ns : NamedSchema) :=
-    list (@ProperAttribute (schemaHeading (relSchema ns))).
+  Lemma i2th_Bounded_Initialize_IndexedQueryStructure
+  : forall ns indices v idx,
+      computes_to (@Initialize_IndexedQueryStructure ns indices) v
+      -> i2th_Bounded relName v idx = fun _ => False.
+  Proof.
+    clear.
+    simpl; destruct idx as [idx [n In_n]]; revert v idx n In_n.
+    induction indices; simpl; intros; destruct n; simpl in *; try discriminate;
+    try injection In_n; intros; inversion_by computes_to_inv; subst.
+    - unfold i2th_Bounded, ith_Bounded_rect; simpl; eauto.
+      apply Extensionality_Ensembles; unfold Same_set, Included; simpl; intuition.
+      inversion H.
+    - unfold i2th_Bounded, ith_Bounded_rect; simpl; eapply IHindices; eauto.
+  Qed.
 
-  Variable indices : ilist Bag_index (qschemaSchemas qs_schema).
-
-  Definition IndexedQueryStructure
-    := i2list (A := NamedSchema) (B := Bag_index) (fun ns index => Rep (BagSpec (SearchTermFromAttributesMatcher index) (@ApplyUpdateTerm (schemaHeading (relSchema ns))))) indices.
-
-  Definition GetIndexedRelation (r_n : IndexedQueryStructure) idx
-    := i2th_Bounded relName r_n idx.
-
-  Definition CallBagMethod idx midx r_n :=
-    Methods (BagSpec (SearchTermFromAttributesMatcher (ith_Bounded relName indices idx))
-            (@ApplyUpdateTerm (QSGetNRelSchemaHeading qs_schema idx)))
-            midx
-            (GetIndexedRelation r_n idx).
-
-  Definition DelegateToBag_AbsR
-             (r_o : UnConstrQueryStructure qs_schema)
-             (r_n : IndexedQueryStructure)
-    := forall idx, GetUnConstrRelation r_o idx = GetIndexedRelation r_n idx.
-
-  Fixpoint Initialize_IndexedQueryStructure
-          (ns : list NamedSchema)
-          (indices' : ilist Bag_index ns)
-          {struct indices'}
-  : Comp (i2list (fun ns index => Rep (BagSpec (SearchTermFromAttributesMatcher index) (@ApplyUpdateTerm (schemaHeading (relSchema ns))))) indices')
-    := match indices' return Comp (i2list _ indices') with
-      | inil => ret (i2nil _ _)
-      | icons ns ns' index indices'' =>
-        c <- (Constructors
-                (BagSpec (SearchTermFromAttributesMatcher index) (@ApplyUpdateTerm (schemaHeading (relSchema ns)))) {|bindex := "EmptyBag" |} tt);
-          cs <- (@Initialize_IndexedQueryStructure ns' indices'');
-          ret (i2cons ns index c cs)
-
-    end.
-
-  Lemma refine_QSEmptySpec_Initialize_IndexedQueryStructure
-        : refine {nr' | DelegateToBag_AbsR (DropQSConstraints (QSEmptySpec qs_schema)) nr'}
-                 (Initialize_IndexedQueryStructure indices).
+  Corollary refine_QSEmptySpec_Initialize_IndexedQueryStructure
+  : refine {nr' | DelegateToBag_AbsR (DropQSConstraints (QSEmptySpec qs_schema)) nr'}
+           (Initialize_IndexedQueryStructure BagIndexKeys).
   Proof.
     intros v Comp_v.
     econstructor.
     unfold IndexedQueryStructure, DelegateToBag_AbsR, GetIndexedRelation.
-  Admitted.
+    unfold GetUnConstrRelation.
+    unfold DropQSConstraints, QSEmptySpec.
+    intros; rewrite <- ith_Bounded_imap, ith_Bounded_BuildEmptyRelations,
+    i2th_Bounded_Initialize_IndexedQueryStructure; eauto.
+  Qed.
 
-  Definition UpdateIndexedRelation (r_n : IndexedQueryStructure) idx newRel
-  : IndexedQueryStructure :=
+  Definition UpdateIndexedRelation
+             (r_n : IndexedQueryStructure qs_schema BagIndexKeys) idx newRel
+  : IndexedQueryStructure qs_schema BagIndexKeys  :=
     replace_BoundedIndex2 relName r_n idx newRel.
 
   Lemma get_update_indexed_eq :
-    forall (r_n : IndexedQueryStructure) idx newRel,
+    forall (r_n : IndexedQueryStructure qs_schema BagIndexKeys) idx newRel,
       GetIndexedRelation (UpdateIndexedRelation r_n idx newRel) idx = newRel.
   Proof.
     unfold UpdateIndexedRelation, GetIndexedRelation;
@@ -87,7 +68,7 @@ Section BagsOfTuplesRefinements.
   Qed.
 
   Lemma get_update_indexed_neq :
-    forall (r_n : IndexedQueryStructure) idx idx' newRel,
+    forall (r_n : IndexedQueryStructure qs_schema BagIndexKeys) idx idx' newRel,
       idx <> idx'
       -> GetIndexedRelation (UpdateIndexedRelation r_n idx newRel) idx' =
       GetIndexedRelation r_n idx'.
@@ -98,7 +79,7 @@ Section BagsOfTuplesRefinements.
 
   Lemma refine_Query_In_Enumerate
         (ResultT : Type) :
-    forall r_o r_n,
+    forall r_o (r_n : IndexedQueryStructure qs_schema BagIndexKeys),
       DelegateToBag_AbsR r_o r_n
       -> forall (idx : BoundedString)
                 (resultComp : Tuple -> Comp (list ResultT)),
@@ -140,7 +121,7 @@ Section BagsOfTuplesRefinements.
   Lemma refine_Join_Query_In_Enumerate'
         heading
         (ResultT : Type) :
-    forall r_o r_n,
+    forall r_o (r_n : IndexedQueryStructure qs_schema BagIndexKeys),
       DelegateToBag_AbsR r_o r_n ->
       forall (idx : BoundedString)
              (resultComp : Tuple -> Tuple -> Comp (list ResultT))
@@ -167,7 +148,7 @@ Section BagsOfTuplesRefinements.
 
   Corollary refine_Join_Query_In_Enumerate
         (ResultT : Type) :
-    forall r_o r_n,
+    forall r_o (r_n : IndexedQueryStructure qs_schema BagIndexKeys),
       DelegateToBag_AbsR r_o r_n ->
       forall (idx idx' : BoundedString)
              (resultComp : Tuple -> Tuple -> Comp (list ResultT)),
@@ -204,7 +185,7 @@ Section BagsOfTuplesRefinements.
 
   Lemma refine_Query_For_In_Find
         (ResultT : Type)
-  : forall r_o r_n,
+  : forall r_o (r_n : IndexedQueryStructure qs_schema BagIndexKeys),
       DelegateToBag_AbsR r_o r_n
       ->
       forall (idx : @BoundedString (map relName (qschemaSchemas qs_schema)))
@@ -212,8 +193,7 @@ Section BagsOfTuplesRefinements.
              search_pattern
              (resultComp : Tuple -> Comp (list ResultT)),
         ExtensionalEq filter_dec
-                      (SearchTermFromAttributesMatcher
-                         (ith_Bounded relName indices idx) search_pattern)
+                      (BagMatchSearchTerm (ith_Bounded relName BagIndexKeys idx) search_pattern)
         -> refine (For (l <- CallBagMethod idx {|bindex := "Enumerate" |} r_n ();
                         List_Query_In (filter filter_dec (snd l)) resultComp))
                   (l <- CallBagMethod idx {|bindex := "Find" |} r_n search_pattern;
@@ -229,16 +209,33 @@ Section BagsOfTuplesRefinements.
     intros v Comp_v; econstructor; eauto.
   Qed.
 
+  Instance DecideableEnsemblePair_snd {A B}
+           (P : Ensemble B) 
+           (P_dec : DecideableEnsemble P)
+  : DecideableEnsemble (fun ab : A * B => P (snd ab)) :=
+    {| dec ab := dec (snd ab) |}.
+  Proof.
+    destruct a; simpl; eapply dec_decides_P.
+  Defined.
+
+  Instance DecideableEnsemblePair_fst {A B}
+           (P : Ensemble A) 
+           (P_dec : DecideableEnsemble P)
+  : DecideableEnsemble (fun ab : A * B => P (fst ab)) :=
+    {| dec ab := dec (fst ab) |}.
+  Proof.
+    destruct a; simpl; eapply dec_decides_P.
+  Defined.
+  
   Lemma refine_Join_Lists_Where_snd
         (ResultT : Type) :
-    forall r_n idx idx'
+    forall (r_n : IndexedQueryStructure qs_schema BagIndexKeys) idx idx'
            (DT : Ensemble Tuple)
            (DT_Dec : DecideableEnsemble DT)
            search_pattern
            (resultComp : Tuple -> Tuple -> Comp (list ResultT)),
       ExtensionalEq (@dec _ _ DT_Dec)
-                    (SearchTermFromAttributesMatcher
-                       (ith_Bounded relName indices idx') search_pattern)
+                    (BagMatchSearchTerm (ith_Bounded relName BagIndexKeys idx') search_pattern)
       -> refine (For (l <- CallBagMethod idx {| bindex := "Enumerate" |} r_n ();
                       l' <- CallBagMethod idx' {| bindex := "Enumerate" |} r_n ();
                       List_Query_In (Join_Lists (snd l) (snd l'))
@@ -253,10 +250,15 @@ Section BagsOfTuplesRefinements.
                                        (resultComp (fst tup_pair) (snd tup_pair))))).
   Proof.
     intros; repeat f_equiv; simpl; intro.
-    setoid_rewrite refine_List_Query_In_Where with
-    (P := fun tup_pair => DT (snd tup_pair)).
-  Admitted.
-
+    unfold CallBagMethod; simpl.
+    repeat setoid_rewrite refineEquiv_bind_bind;
+      repeat setoid_rewrite refineEquiv_bind_unit; 
+      f_equiv; unfold pointwise_relation; intro; simpl.
+    setoid_rewrite <- (filter_by_equiv _ _ H).
+    setoid_rewrite refine_List_Query_In_Where; simpl.
+    rewrite <- filter_join_snd; f_equiv.
+  Qed.
+    
   Lemma refine_List_Query_In_Return
         (ResultT : Type) :
     forall l,
@@ -271,41 +273,39 @@ Section BagsOfTuplesRefinements.
   Require Import ADTSynthesis.QueryStructure.Implementation.Operations.General.DeleteRefinements.
 
   Lemma refine_BagADT_QSDelete_fst :
-    forall r_o r_n,
+    forall r_o (r_n : IndexedQueryStructure qs_schema BagIndexKeys),
       DelegateToBag_AbsR r_o r_n
       -> forall (idx : @BoundedString (map relName (qschemaSchemas qs_schema)))
                 (DT : Ensemble Tuple)
                 (DT_Dec : DecideableEnsemble DT)
                 search_pattern,
            ExtensionalEq (@dec _ _ DT_Dec)
-                         (SearchTermFromAttributesMatcher
-                            (ith_Bounded relName indices idx) search_pattern)
+                         (BagMatchSearchTerm (ith_Bounded relName BagIndexKeys idx) search_pattern)
            -> refine {x : list Tuple |
                       QSDeletedTuples r_o idx DT x}
                      (l <- (CallBagMethod idx {|bindex := "Delete" |} r_n search_pattern);
                       ret (snd l)).
   Proof.
-      intros; setoid_rewrite DeletedTuplesFor; auto.
-      rewrite refine_Query_In_Enumerate by eauto.
-      setoid_rewrite refine_List_Query_In_Where.
-      rewrite (refine_Query_For_In_Find H Query_Return H0).
-      setoid_rewrite refine_List_Query_In_Return.
-      unfold CallBagMethod; simpl; simplify with monad laws;
-      setoid_rewrite refineEquiv_bind_bind;
-      setoid_rewrite refineEquiv_bind_unit; simpl;
-      f_equiv; intro.
-    Qed.
+    intros; setoid_rewrite DeletedTuplesFor; auto.
+    rewrite refine_Query_In_Enumerate by eauto.
+    setoid_rewrite refine_List_Query_In_Where.
+    rewrite (refine_Query_For_In_Find H Query_Return H0).
+    setoid_rewrite refine_List_Query_In_Return.
+    unfold CallBagMethod; simpl; simplify with monad laws;
+    setoid_rewrite refineEquiv_bind_bind;
+    setoid_rewrite refineEquiv_bind_unit; simpl;
+    f_equiv; intro.
+  Qed.
 
   Lemma refine_BagADT_QSDelete_snd :
-    forall r_o r_n,
+    forall r_o (r_n : IndexedQueryStructure qs_schema BagIndexKeys),
       DelegateToBag_AbsR r_o r_n
       -> forall (idx : @BoundedString (map relName (qschemaSchemas qs_schema)))
                 (DT : Ensemble Tuple)
                 (DT_Dec : DecideableEnsemble DT)
                 search_pattern,
            ExtensionalEq (@dec _ _ DT_Dec)
-                         (SearchTermFromAttributesMatcher
-                            (ith_Bounded relName indices idx) search_pattern)
+                         (BagMatchSearchTerm (ith_Bounded relName BagIndexKeys idx) search_pattern)
            -> refine
                 {r_n' |
                  DelegateToBag_AbsR
@@ -315,9 +315,25 @@ Section BagsOfTuplesRefinements.
                 (l <- (CallBagMethod idx {|bindex := "Delete" |} r_n search_pattern);
                  ret (UpdateIndexedRelation r_n idx (fst l))).
   Proof.
-  Admitted.
+    intros.
+    constructor; inversion_by computes_to_inv.
+    unfold CallBagMethod in *; simpl in *; inversion_by computes_to_inv; subst.
+    simpl.
+    unfold DelegateToBag_AbsR; intros.
+    destruct (BoundedString_eq_dec idx idx0); subst.
+    - unfold GetUnConstrRelation, UpdateUnConstrRelation;
+      rewrite ith_replace_BoundIndex_eq.
+      unfold GetIndexedRelation, UpdateIndexedRelation;
+      rewrite i2th_replace_BoundIndex_eq.
+      f_equal; eauto.
+      apply Extensionality_Ensembles; unfold Same_set, Included, In;
+      intuition; rewrite <- H0 in *;
+      eapply dec_decides_P; eauto.
+    - unfold GetUnConstrRelation, UpdateUnConstrRelation;
+      rewrite ith_replace_BoundIndex_neq by eauto using string_dec.
+      unfold GetIndexedRelation, UpdateIndexedRelation;
+      rewrite i2th_replace_BoundIndex_neq by eauto using string_dec.
+      apply H.
+  Qed.
 
-End BagsOfTuplesRefinements.
-
-Opaque CallBagMethod.
-Arguments CallBagMethod : simpl never.
+End BagsQueryStructureRefinements.
