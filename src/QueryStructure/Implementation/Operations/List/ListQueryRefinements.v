@@ -340,6 +340,17 @@ Proof.
   constructor; inversion_by computes_to_inv; subst; eauto.
 Qed.
 
+Add Parametric Morphism {A B : Type} (l : list A)
+: (@List_Query_In A B l)
+    with signature (pointwise_relation _ refine ==> refine)
+      as refine_List_Query_In_equiv.
+Proof.
+  unfold pointwise_relation, List_Query_In; intros.
+  induction l; simpl.
+  - reflexivity.
+  - setoid_rewrite H; setoid_rewrite IHl; reflexivity.
+Qed.
+
 (*Lemma Equivalent_Join_Lists {ReturnT TraceT heading}
       qsSchema qs R (l : list (@Tuple heading)) l'
       (bod : Tuple -> Tuple -> Ensemble (ReturnT * TraceT))

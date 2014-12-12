@@ -211,6 +211,34 @@ Proof.
     eapply refine_flatten_CompList_func; eauto.
 Qed.
 
+(*Add Parametric Morphism {A: Type} :
+  (Query_For)
+    with signature (@Equivalent_Ensembles A ==> refine)
+      as refine_Query_For_Equivalent.
+Proof.
+  unfold impl, Query_For, refine; intros.
+  inversion_by computes_to_inv.
+  econstructor; split_iff; split; intros; eauto.
+  apply H; apply H1; auto.
+  apply H2; apply H; auto.
+Qed.
+
+Add Parametric Morphism {A: Type}
+    qsSchema qs R
+:
+  (fun bod => Query_For (@UnConstrQuery_In qsSchema qs _ R bod))
+    with signature ((pointwise_relation Tuple (@Equivalent_Ensembles A) ==> refine ))
+      as refine_Query_For_In_Equivalent.
+Proof.
+  unfold impl, Query_For, pointwise_relation, UnConstrQuery_In, In, refine.
+  intros; inversion_by computes_to_inv.
+  econstructor; split_iff; split; intros; eauto.
+  destruct (H1 _ H0); eexists; intuition; eauto.
+  apply H; auto.
+  destruct_ex; apply H2; eexists; intuition; eauto.
+  apply H; auto.
+Qed. *)
+
 Lemma DropQSConstraintsQuery_In {A} :
   forall qs R bod,
          @Query_In A qs R bod =

@@ -149,26 +149,7 @@ Opaque CallBagMethod.
 
 Arguments BuildIndexSearchTerm : simpl never.
 Arguments MatchIndexSearchTerm : simpl never.
-
-Theorem BookStoreManual :
-  Sharpened BookStoreSpec.
-Proof.
-
-  unfold BookStoreSpec.
-
-  (* First, we unfold various definitions and drop constraints *)
-  start honing QueryStructure.
-
-  make simple indexes using [[sAUTHOR; sISBN]; [sISBN]].
-
-  hone constructor "Init".
-  {
-    simplify with monad laws.
-    rewrite refine_QSEmptySpec_Initialize_IndexedQueryStructure.
-    finish honing.
-  }
-
-  hone method "DeleteOrder". {
+Opaque Initialize_IndexedQueryStructure.
 
 Ltac fields storage :=
   match eval cbv delta [storage] in storage with
@@ -224,99 +205,510 @@ Ltac findGoodTerm SC F k :=
       findGoodTerm SC f ltac:(fun fds1 tail1 =>
                                 findGoodTerm SC g ltac:(fun fds2 tail2 =>
                                                           k (fds1, fds2) (fun tup : @Tuple SC => (tail1 tup) && (tail2 tup))))
-    | _ => k tt (F :: nil)
+    | _ => k tt F
   end.
 
-Check refine_BagADT_QSDelete_fst.
+Ltac find_simple_search_term qs_schema idx filter_dec search_term :=
+  match type of search_term with
+    | BuildIndexSearchTerm ?attr =>
+     let SC := constr:(QSGetNRelSchemaHeading qs_schema idx) in
+              findGoodTerm SC filter_dec
+                           ltac:(fun fds tail =>
+                                   let tail := eval simpl in tail in
+                                       makeTerm attr SC fds tail
+                                                ltac:(fun tm => pose tm; try unify tm search_term;
+                                                      unfold ExtensionalEq, MatchIndexSearchTerm;
+                                                      simpl; intro; try prove_extensional_eq))
+  end.
 
+Ltac implement_QSDeletedTuples find_search_term :=
 match goal with
     [ H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
       |- context[Pick (QSDeletedTuples ?r_o ?idx ?DeletedTuples)] ] =>
     let filter_dec := eval simpl in (@DecideableEnsembles.dec _ DeletedTuples _) in
     let idx_search_update_term := eval simpl in (ith_Bounded relName indices idx) in
-        let search_term_type := eval simpl in (BagSearchTermType idx_search_update_term) in
+    let search_term_type := eval simpl in (BagSearchTermType idx_search_update_term) in
     let search_term_matcher := eval simpl in (BagMatchSearchTerm idx_search_update_term) in
-        let search_term := fresh in
-        evar (search_term : search_term_type);
+        makeEvar search_term_type
+                 ltac: (fun search_term =>
           let eqv := fresh in
-          let SC := constr:(QSGetNRelSchemaHeading qs_schema idx) in
-          findGoodTerm SC filter_dec
-                          ltac:(fun fds tail =>
-
-                                              let tail := eval simpl in tail in
-                                                  makeTerm [OrderSchema/sISBN] SC fds tail ltac:(fun tm =>
-                                                                                                   assert (ExtensionalEq filter_dec
-                                                                                                                         (search_term_matcher tm)) as eqv;
-                                                                                                 [ unfold ExtensionalEq, MatchIndexSearchTerm; simpl; intro; try prove_extensional_eq | rewrite (@refine_BagADT_QSDelete_fst _ _ r_o r_n H idx DeletedTuples _ tm) by (eapply eqv)  ]))
+          assert (ExtensionalEq filter_dec (search_term_matcher search_term)) as eqv;
+            [ find_search_term qs_schema idx filter_dec search_term
+            | let H' := fresh in
+              pose (@refine_BagADT_QSDelete_fst _ _ r_o r_n H idx DeletedTuples _ search_term) as H';
+                setoid_rewrite (H' eqv); clear H' eqv])
 end.
 
-simplify with monad laws; cbv beta; simpl.
+Ltac implement_EnsembleDelete_AbsR find_search_term :=
+  match goal with
+      [ H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
+        |- context[{r_n' | DelegateToBag_AbsR
+                             (UpdateUnConstrRelation ?r_o ?idx
+                                                     (EnsembleDelete (GetUnConstrRelation ?r_o ?idx)
+                                                                     ?DeletedTuples)) r_n'}]] =>
+      let filter_dec := eval simpl in (@DecideableEnsembles.dec _ DeletedTuples _) in
+      let idx_search_update_term := eval simpl in (ith_Bounded relName indices idx) in
+      let search_term_type := eval simpl in (BagSearchTermType idx_search_update_term) in
+      let search_term_matcher := eval simpl in (BagMatchSearchTerm idx_search_update_term) in
+          makeEvar search_term_type
+                   ltac:(fun search_term =>
+                           let eqv := fresh in
+                           assert (ExtensionalEq filter_dec (search_term_matcher search_term)) as eqv;
+                         [ find_search_term qs_schema idx filter_dec search_term
+                         | let H' := fresh in
+                           pose (@refine_BagADT_QSDelete_snd _ _ r_o r_n H idx DeletedTuples _ search_term) as H';
+                             setoid_rewrite (H' eqv); clear H' eqv] )
+  end.
 
+Ltac implement_Enumerate_filter find_search_term :=
+  match goal with
+      [ H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
+        |- context[For (l <- CallBagMethod ?idx {| bindex := "Enumerate"|} ?r_n0 ();
+                        (List_Query_In (filter (@DecideableEnsembles.dec _ ?DeletedTuples _) (snd l))
+                                            ?resultComp))]] =>
+      let filter_dec := eval simpl in (@DecideableEnsembles.dec _ DeletedTuples _) in
+      let idx_search_update_term := eval simpl in (ith_Bounded relName indices idx) in
+      let search_term_type := eval simpl in (BagSearchTermType idx_search_update_term) in
+      let search_term_matcher := eval simpl in (BagMatchSearchTerm idx_search_update_term) in
+          makeEvar search_term_type
+                   ltac:(fun search_term =>
+                           let eqv := fresh in
+                           assert (ExtensionalEq filter_dec (search_term_matcher search_term)) as eqv;
+                         [ find_search_term qs_schema idx filter_dec search_term
+                         | let H' := fresh in
+                           pose (@refine_Query_For_In_Find _ _ string _ _ H idx filter_dec
+                                                           search_term resultComp) as H';
+                         setoid_rewrite (H' eqv); clear H'])
+  end.
 
+Ltac implement_Pick_DelegateToBag_AbsR_observer :=
+  match goal with
+      [H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
+       |- context[{r_n' : IndexedQueryStructure ?qs_schema ?indices | DelegateToBag_AbsR ?r_o r_n'}] ]
+      => setoid_rewrite (refine_pick_val (@DelegateToBag_AbsR qs_schema indices r_o) H)
+  end.
+
+(* implement_In' implements [UnConstrQuery_In] in a variety of contexts. *)
+Ltac implement_In' :=
+  match goal with
+    (* Implement a List_Query_In of a list [l] applied to a UnConstrQuery_In [idx]
+        by enumerating [idx] with a method call and joining the result with [l] *)
+    | [H : @DelegateToBag_AbsR ?qs_schema ?indexes ?r_o ?r_n
+       |- context[fun b' : ?ElementT => List_Query_In (@?l b') (fun b => UnConstrQuery_In (ResultT := ?resultT) ?r_o ?idx (@?f b' b) )] ] =>
+      let H' := eval simpl in
+      (fun (b' : ElementT) => refine_Join_Query_In_Enumerate' H (idx := idx) (f b') (l b')) in
+          setoid_rewrite H'
+
+    (* Implement a 'naked' UnConstrQuery_In as a call to enumerate *)
+    | [H : @DelegateToBag_AbsR ?qs_schema ?indexes ?r_o ?r_n
+       |- context[UnConstrQuery_In (ResultT := ?resultT) ?r_o ?idx ?f] ] =>
+      let H' := eval simpl in (refine_Query_In_Enumerate H (idx := idx) f) in
+          setoid_rewrite H'
+
+    (* Implement a UnConstrQuery_In under a single binder as a call to enumerate *)
+    | [H : @DelegateToBag_AbsR ?qs_schema ?indexes ?r_o ?r_n
+       |- context[fun b => UnConstrQuery_In (ResultT := ?resultT) ?r_o ?idx (@?f b) ] ] =>
+      let H' := eval simpl in
+      (fun b => @refine_Query_In_Enumerate qs_schema indexes _ r_o r_n H idx (f b)) in
+          setoid_rewrite H'
+  end.
+
+Ltac implement_In :=    
+  (* First simplify any large terms [i.e. Rep, BagSpec, snd, and MethodDomCod
+     that might slow down setoid rewriting *)
+  simpl in *;
+  (* The repeatedly implement [In]s *)
+  repeat implement_In'.
+
+Theorem BookStoreManual :
+  Sharpened BookStoreSpec.
+Proof.
+
+  unfold BookStoreSpec.
+
+  (* First, we unfold various definitions and drop constraints *)
+  start honing QueryStructure.
+
+  make simple indexes using [[sAUTHOR; sISBN]; [sISBN]].
+
+  hone constructor "Init".
+  {
+    simplify with monad laws.
+    rewrite refine_QSEmptySpec_Initialize_IndexedQueryStructure.
+    finish honing.
+  }
+
+  Fixpoint Join_ListsT (Ts : list Type) : Type
+    :=
+      match Ts with
+        | [] => unit
+        | [A] => A
+        | A :: Cs => prod A (Join_ListsT Cs)
+      end.
+  
+  Inductive list' (A : Type) : Type :=
+  | nil' : list' A | cons' : A -> list' A -> list' A.
+
+  Fixpoint list'_to_list
+           (A : Type)
+           (l : list' A)
+  : list A :=
+    match l with
+      | nil' => nil
+      | cons' a As => cons a (list'_to_list As)
+    end.
+
+  Fixpoint list_to_list'
+           (A : Type)
+           (l : list A)
+  : list' A :=
+    match l with
+      | nil => nil' A
+      | cons a As => cons' a (list_to_list' As)
+    end.
+
+  Lemma list_to_list'_id {A : Type}
+  : forall l : list' A,
+      list_to_list' (list'_to_list l) = l.
+  Proof.
+    induction l; simpl; congruence.
+  Qed.
+
+  Lemma list'_to_list_id {A : Type}
+  : forall l : list A,
+      list'_to_list (list_to_list' l) = l.
+  Proof.
+    induction l; simpl; congruence.
+  Qed.
+
+  (* Fixpoint Join_Lists''
+           {A : Type}
+           (Ts : list A)
+           (f : A -> Type)
+           (ls : ilist (fun a => list' (f a))  Ts)
+  : @list (ilist f Ts). *)
+
+  Lemma refineEquiv_Join_bind {A B C}
+  : let T := Type in
+    forall (ca : Comp A)
+           (cb : Comp B)
+           (c : A -> B -> Comp C),
+      refine (a <- ca;
+              b <- cb;
+              c a b)
+             (ab <- (a <- ca;
+                     b <- cb;
+                     ret (icons (A := T) (B := id) A a (icons (A := T) (B := id) B b (inil id))));
+              c (ith_default (A := T) (B := id) unit () ab 0)
+                (ith_default (A := T) (B := id) unit () ab 1)).
+  Proof.
+    intros * v Comp_v; inversion_by computes_to_inv; subst;
+    repeat econstructor; eauto.
+  Qed.
+
+  (*Lemma refineEquiv_Join_bind' {A B C} {D D'}
+  : forall (ca : Comp (D * (list A)))
+           (cb : Comp (D' * (list B)))
+           (c : list (A * B) -> Comp C),
+      refine (a <- ca;
+              b <- cb;
+              c (Join_Lists (snd a) (Build_single_Tuple_list (snd b))))
+             (ab <- (a <- ca;
+                     b <- cb;
+                     ret (icons A (list_to_list' (snd a)) (icons B (list_to_list' (snd b)) (inil list'))));
+              c (Join_Lists'' ab)).
+  Proof.
+    intros; rewrite refineEquiv_Join_bind.
+    simpl; intros v Comp_v; inversion_by computes_to_inv; subst.
+    repeat econstructor; eauto.
+    simpl in *; repeat rewrite list'_to_list_id in H1; eauto.
+  Qed. *)
+  
+  hone method "NumOrders".
+  {
+    simplify with monad laws.
+    implement_In.
+    simpl; repeat (setoid_rewrite refine_List_Query_In_Where;
+                   instantiate (1 := _)); simpl; 
+    repeat setoid_rewrite <- filter_and.
+    match goal with
+        |- context[filter ?f _] =>
+        let T := type of f in 
+        makeEvar T
+                 ltac:(fun g =>
+                         let eqv := fresh in 
+                         assert (ExtensionalEq f g) as eqv;
+                       [
+                       | setoid_rewrite (filter_by_equiv f g eqv)])
+    end.
+
+    Lemma ExtensionalEq_andb {A} :
+      forall (f g f' g' : A -> bool),
+        ExtensionalEq f f'
+        -> ExtensionalEq g g'
+        -> ExtensionalEq (fun a => f a && g a) (fun a => f' a && g' a).
+    Proof.
+      unfold ExtensionalEq; intros; congruence.
+    Qed.
+
+    Ltac split_filters k :=
+      match goal with
+          |- ExtensionalEq (fun a => (@?f a) && (@?g a)) ?b =>
+          let fT := type of f in
+          let gT := type of g in
+          makeEvar
+            fT
+            ltac:(fun f' =>
+                    makeEvar gT ltac:(fun g' =>
+                                        apply (@ExtensionalEq_andb _ f g f' g');
+                                      [ first [split_filters | k ] | first [split_filters | k]] ))
+    end.
+
+    split_filters idtac.
+
+    Ltac equate X Y := let H := fresh in assert (H : X = Y) by reflexivity; clear H.
+
+    Definition unit_Heading :=
+      {| Attributes := unit;
+         Domain := fun _ => unit |}.
+
+    Definition unit_Tuple : @Tuple unit_Heading := id.
+
+    Ltac get_ithDefault f n k := 
+      match type of f with
+        | ilist (@Tuple) ?A -> ?C =>
+          let G := fresh "G" in
+          let p := fresh "p" in
+          let H := fresh "H" in
+          let proj := fresh "proj" in
+          let proj := eval simpl in
+          (fun b : ilist (@Tuple) A => ith_default unit_Heading unit_Tuple b n) in
+          evar (G : @Tuple (nth_default unit_Heading A n) -> C);
+             assert (H : forall p,
+                          f p = G (proj p)) by
+              (subst G; intro p;
+               let p' := eval simpl in (proj p) in
+                   pattern p';
+               match goal with
+                 | [ |- (fun t => @?f t = @?g t) _ ] => equate g f; reflexivity
+               end); clear H;
+        let G' := eval unfold G in G in clear G; k G'
+      end.
+
+    Focus 2.
+
+    Ltac get_ithDefault_pair f m n k := 
+      match type of f with
+        | ilist (@Tuple) ?A -> ?C =>
+          let G := fresh "G" in
+          let p := fresh "p" in
+          let H := fresh "H" in
+          let proj1 := fresh "proj" in
+          let proj2 := fresh "proj" in
+          let proj1 := eval simpl in
+          (fun b : ilist (@Tuple) A => ith_default unit_Heading unit_Tuple b m) in 
+          let proj2 := eval simpl in
+          (fun b : ilist (@Tuple) A => ith_default unit_Heading unit_Tuple b n)
+            in evar (G : @Tuple (nth_default unit_Heading A m)
+                         -> @Tuple (nth_default unit_Heading A n)
+                         -> C);
+             assert (H : forall p,
+                           f p = G (proj1 p) (proj2 p)) by 
+              ( subst G; intro p;
+               let p1 := eval simpl in (proj1 p) in
+               let p2 := eval simpl in (proj2 p) in 
+               pattern p1, p2;
+                 match goal with
+                   | [ |- (fun t t' => @?f t t' = @?g t t') _ _ ] => equate f g; reflexivity
+                 end); clear H; 
+             let G' := eval unfold G in G in clear G; k G'
+      end.
+
+ (* Build pairs of fields + their values. *)
+    Ltac findGoodTerm_dep SC F k :=
+  match F with
+  | fun (a : ?T) b => ?[@?f a b] =>
+    match type of f with
+    | forall a b, {@?X a = _!?fd} + {_} => k (fd, X) (fun _ : @Tuple SC => true)
+    | forall a b, {_!?fd = @?X a} + {_} => k (fd, X) (fun _ : @Tuple SC => true)
+    | forall a b, {@?X a = _``?fd} + {_} => k (fd, X) (fun _ : @Tuple SC => true)
+    | forall a b, {_``?fd = @?X a} + {_} => k (fd, X) (fun _ : @Tuple SC => true)
+    end
+  | fun (a : ?T) b => (@?f a b) && (@?g a b) =>
+    findGoodTerm_dep SC f ltac:(fun fds1 tail1 =>
+      findGoodTerm_dep SC g ltac:(fun fds2 tail2 =>
+        k (fds1, fds2) (fun tup : @Tuple SC => (tail1 tup) && (tail2 tup))))
+  | _ => k tt F
+  end.
+
+    (* Build search a search term from the list of attribute + value pairs in fs. *)
+Ltac createTerm_dep dom fs f fds tail k :=
+  match fs with
+  | nil =>
+    k (fun x : dom => tail)
+  | ?s :: ?fs' =>
+    createTerm_dep dom fs' f fds tail
+      ltac:(fun rest =>
+               findMatchingTerm fds s
+                   ltac:(fun X =>
+                           k (fun x : dom => (Some (X x), rest x)))
+                          || k (fun x : dom => (@None (f s), rest x)))
+  end.
+
+(* Get the heading of [SC] before building the search term. *)
+Ltac makeTerm_dep dom fs SC fds tail k :=
+  match eval hnf in SC with
+  | Build_Heading ?f =>
+    createTerm_dep dom fs f fds tail k
+  end.
+
+Ltac find_simple_search_term_dep qs_schema idx dom filter_dec search_term :=
+  match type of search_term with
+    | ?dom -> BuildIndexSearchTerm ?attr =>
+      let SC := constr:(QSGetNRelSchemaHeading qs_schema idx) in
+      findGoodTerm_dep SC filter_dec
+                       ltac:(fun fds tail =>
+                               let tail := eval simpl in tail in
+                                   makeTerm_dep dom attr SC fds tail
+                                                ltac:(fun tm => pose tm;
+                                                      (* unification fails if I don't pose tm first... *) unify tm search_term;
+                                                      unfold ExtensionalEq, MatchIndexSearchTerm; 
+                                                      simpl; intros;
+                                                      try prove_extensional_eq))
+  end.
+
+(* Find the name of a schema [schemas] with the same heading as [heading] *)
+
+Ltac find_equivalent_tuple schemas heading k :=
+  match schemas with
+    | nil => fail
+    | ?sch' :: ?schemas' =>
+      (let H := fresh in
+       assert (schemaHeading (relSchema sch') = heading) as H
+           by reflexivity;
+       clear H;  k (relName sch'))
+        || find_equivalent_tuple schemas' heading k
+  end.
+
+Ltac find_equivalent_search_term_pair m n build_search_term_dep := 
 match goal with
     [ H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
-      |- context[{r_n' | DelegateToBag_AbsR
-                           (UpdateUnConstrRelation ?r_o ?idx
-                                                   (EnsembleDelete (GetUnConstrRelation ?r_o ?idx)
-                                                                       ?DeletedTuples)) r_n'}]] =>
-    let filter_dec := eval simpl in (@DecideableEnsembles.dec _ DeletedTuples _) in
+      |- ExtensionalEq ?f _ ] =>
+    get_ithDefault_pair f m n
+      ltac:(fun filter_dec =>
+        let dom := match type of filter_dec with
+                     | ?A -> ?B -> bool => constr:(A)
+                   end in
+        let heading := match type of filter_dec with
+                         | ?A -> @Tuple ?heading -> bool => constr:(heading)
+                       end in
+        let schemas := eval simpl in (qschemaSchemas qs_schema) in 
+            find_equivalent_tuple schemas heading 
+              ltac:(fun id => let idx' := constr:({| bindex := id |} : BoundedIndex (map relName (qschemaSchemas qs_schema)))
+                              in let idx := eval simpl in idx' in
     let idx_search_update_term := eval simpl in (ith_Bounded relName indices idx) in
-        let search_term_type := eval simpl in (BagSearchTermType idx_search_update_term) in
-    let search_term_matcher := eval simpl in (BagMatchSearchTerm idx_search_update_term) in
-        let search_term := fresh in
-        evar (search_term : search_term_type);
-          let eqv := fresh in
-          let SC := constr:(QSGetNRelSchemaHeading qs_schema idx) in
-          findGoodTerm SC filter_dec
-                          ltac:(fun fds tail =>
+    let search_term_type := eval simpl in (BagSearchTermType idx_search_update_term) in
+        let search_term_matcher := eval simpl in (BagMatchSearchTerm idx_search_update_term) in
+        makeEvar (dom -> search_term_type) 
+                 ltac: (fun search_term =>
+                          let eqv := fresh in
+                          assert (forall a b, filter_dec a b
+                                                = search_term_matcher (search_term a) b) as eqv;
+                        [ build_search_term_dep qs_schema idx
+                          dom filter_dec search_term
+                        | match goal with
+                            |- ExtensionalEq ?f ?search_term' =>
+                            match type of f with
+                                | ?A -> _ => 
+                                  unify search_term' (fun a : A => search_term_matcher (search_term (ith_default unit_Heading unit_Tuple a m))
+            ((ith_default unit_Heading unit_Tuple a n)))
+                            end
+                                                  end;
+                          unfold ExtensionalEq in *; intros;
+                          simpl in *; rewrite eqv; reflexivity
+]))) end.
 
-                                              let tail := eval simpl in tail in
-                                                  makeTerm [OrderSchema/sISBN] SC fds tail ltac:(fun tm =>
-                                                                                                   assert (ExtensionalEq filter_dec
-                                                                                                                         (search_term_matcher tm)) as eqv;
-                                                                                                 [ unfold ExtensionalEq, MatchIndexSearchTerm; simpl; intro; try prove_extensional_eq | pose (@refine_BagADT_QSDelete_snd _ _ r_o r_n H idx DeletedTuples _ tm) as H'; setoid_rewrite (H' eqv)  ]))
+Unset Ltac Debug.
+find_equivalent_search_term_pair 0 1 find_simple_search_term_dep.
+
+Ltac find_equivalent_search_term m build_search_term := 
+match goal with
+    [ H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
+      |- ExtensionalEq ?f _ ] =>
+    get_ithDefault f m 
+      ltac:(fun filter_dec =>
+        let heading := match type of filter_dec with
+                         | @Tuple ?heading -> bool => constr:(heading)
+                       end in
+        let schemas := eval simpl in (qschemaSchemas qs_schema) in 
+            find_equivalent_tuple schemas heading 
+              ltac:(fun id => let idx' := constr:({| bindex := id |} : BoundedIndex (map relName (qschemaSchemas qs_schema)))
+                              in let idx := eval simpl in idx' in
+    let idx_search_update_term := eval simpl in (ith_Bounded relName indices idx) in
+    let search_term_type := eval simpl in (BagSearchTermType idx_search_update_term) in
+        let search_term_matcher := eval simpl in (BagMatchSearchTerm idx_search_update_term) in
+        makeEvar (search_term_type) 
+                 ltac: (fun search_term =>
+                          let eqv := fresh in
+                          assert (forall a, filter_dec a
+                                                = search_term_matcher search_term a) as eqv;
+                        [ build_search_term qs_schema idx
+                          filter_dec search_term
+                        | match goal with
+                              |- ExtensionalEq ?f ?search_term' =>
+                              match type of f with
+                                | ?A -> _ => 
+                                  unify search_term' (fun a : A => search_term_matcher search_term (ith_default unit_Heading unit_Tuple a m))
+                              end
+                          end;
+                          unfold ExtensionalEq in *; intros;
+                          simpl in *; rewrite eqv; reflexivity
+]))) end.
+
+find_equivalent_search_term 0 find_simple_search_term.
+simpl
+Focus 3.
+match goal with
+    |- ExtensionalEq ?f ?b =>
+    get_ithDefault f 0 ltac:(fun l => pose l)
 end.
 
+  hone method "DeleteOrder".
+  {
+    implement_QSDeletedTuples find_simple_search_term.
     simplify with monad laws; cbv beta; simpl.
-
+    implement_EnsembleDelete_AbsR find_simple_search_term.
+    simplify with monad laws.
     finish honing.
-
   }
 
-   hone method "GetTitles". {
 
+
+    setoid_rewrite r.
+    setoid_rewrite refine_Join_Query_In_Enumerate'.
+    refine_List_Query_In_Where.
+    implement_Enumerate_filter find_simple_search_term.
+    simplify with monad laws.
+    simpl; implement_Pick_DelegateToBag_AbsR_observer; simplify with monad laws.
+    setoid_rewrite refine_List_Query_In_Return.
+    simplify with monad laws.
+    finish honing.
+  }
+
+  hone method "GetTitles".
+  {
     setoid_rewrite refine_Query_In_Enumerate; eauto.
     setoid_rewrite refine_List_Query_In_Where.
+    implement_Enumerate_filter find_simple_search_term.
     simplify with monad laws.
-    Transparent Query_For.
-    unfold Query_For.
+    simpl; implement_Pick_DelegateToBag_AbsR_observer; simplify with monad laws.
+    setoid_rewrite refine_List_Query_In_Return.
     simplify with monad laws.
-
-    match goal with
-        [ H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
-          |- context[For (l <- CallBagMethod ?idx {| bindex := "Enumerate"|} ?r_n0 ();
-                          List_Query_In (filter (@DecideableEnsembles.dec _ ?DeletedTuples _) (snd l))
-                                        ?resultComp)]] =>
-        let dec := constr:(@DecideableEnsembles.dec _ DeletedTuples _) in
-        let storage := eval simpl in (ith_Bounded relName indices idx) in
-        let fs := fields storage in
-        match type of fs with
-        | list (@Attributes ?SC) =>
-          findGoodTerm SC dec ltac:(fun fds tail =>
-            let tail := eval simpl in tail in
-              makeTerm storage fs SC fds tail
-                       ltac:(fun tm =>
-                               setoid_rewrite (@refine_Query_For_In_Find _ _ string _ _ H idx dec tm resultComp);
-                      [ | prove_extensional_eq]
-                    ))
-      end
-    end.
-    simplify with monad laws.
-    setoid_rewrite ListQueryRefinements.refine_List_Query_In_Return; simplify with monad laws.
-    simpl.
-    setoid_rewrite (refine_pick_val _ H0); simplify with monad laws.
     finish honing.
   }
+
+  hone method "NumOrders".
+  {
 
   unfold cast, eq_rect_r, eq_rect, eq_sym; simpl.
 
