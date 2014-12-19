@@ -3,6 +3,7 @@ Require Import Coq.Lists.List Coq.Program.Program
         Coq.Structures.OrderedTypeEx Coq.Arith.Arith
         ADTSynthesis.Common.ilist
         ADTSynthesis.Common.i2list
+        ADTSynthesis.Common.Ensembles.IndexedEnsembles
         ADTSynthesis.Computation
         ADTSynthesis.ADT
         ADTSynthesis.ADTRefinement
@@ -50,8 +51,12 @@ Section QueryStructureImplementation.
 
   Definition DelegateToBag_AbsR
              (r_o : UnConstrQueryStructure qs_schema)
-             (r_n : IndexedQueryStructure)
-    := forall idx, GetUnConstrRelation r_o idx = GetIndexedRelation r_n idx.
+             (r_n : IndexedQueryStructure) :=
+    (forall idx, GetUnConstrRelation r_o idx = GetIndexedRelation r_n idx)
+    (* This invariant allows us to justify refinements which drop
+       unused method calls by showing that they are implementable. *)
+    /\ (forall idx,
+        exists l, EnsembleIndexedListEquivalence (GetUnConstrRelation r_o idx) l).
 
   Fixpoint Initialize_IndexedQueryStructure
           (ns : list NamedSchema)

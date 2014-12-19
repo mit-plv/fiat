@@ -569,7 +569,9 @@ Section SharpenedBagImplementation.
                                                   (snd (bdelete r_n (fst ab))), ())).
       reflexivity.
     }
-    FullySharpenEachMethod1 (@nil ADTSig) (inil ADT);
+    FullySharpenEachMethod1
+    (@nil NamedADTSig)
+    (inil (fun nadt => (ADT (namedADTSig nadt))));
       try simplify with monad laws; simpl; try refine pick eq; try simplify with monad laws;
       try first [ unfold ith_Bounded, ith_Bounded'; simpl; make_computational_constructor
                 | unfold ith_Bounded, ith_Bounded'; simpl; make_computational_method ].

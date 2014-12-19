@@ -10,8 +10,8 @@ Require Import
         ADTSynthesis.QueryStructure.Specification.Representation.Tuple
         ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureSchema
         ADTSynthesis.QueryStructure.Specification.Representation.QueryStructure
-        ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.QueryStructureImplementation.
-
+        ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.QueryStructureImplementation
+        ADTSynthesis.ADTRefinement.BuildADTRefinements.HoneRepresentation.
 (* Definitions for building BagADT search terms using decideable equalities
    over named attributes.*)
 
@@ -27,8 +27,8 @@ Fixpoint BuildIndexSearchTerm {heading : Heading}
 
 (* Implements a matcher function for a search term built using [BuildSearchTerm]. *)
 Fixpoint MatchIndexSearchTerm {heading}
-         (indices : list (@Attributes heading))
-         (eq_dec_indices : ilist (fun attr => Query_eq (Domain heading attr)) indices)
+         {indices : list (@Attributes heading)}
+         {eq_dec_indices : ilist (fun attr => Query_eq (Domain heading attr)) indices}
 : BuildIndexSearchTerm indices -> @Tuple heading -> bool :=
   match indices return
         ilist (fun attr => Query_eq (Domain heading attr)) indices
@@ -48,7 +48,7 @@ Fixpoint MatchIndexSearchTerm {heading}
                  then true else false)
                   && (H index' tup)
               | (None, index') => H index' tup
-            end) (MatchIndexSearchTerm (ilist_tl eq_dec_indices))
+            end) (@MatchIndexSearchTerm _ _ (ilist_tl eq_dec_indices))
   end eq_dec_indices.
 
 Tactic Notation "build" "single" "index":=
@@ -85,12 +85,11 @@ Ltac makeIndex' NamedSchemas IndexKeys k :=
                              ltac:(fun st =>
                                      makeIndex' NamedSchemas' IndexKeys'
                                                    ltac:(fun Bs' => k (icons ns
-                                                                             {| BagMatchSearchTerm := MatchIndexSearchTerm st;
+                                                                             {| BagMatchSearchTerm := @MatchIndexSearchTerm _ _ st;
                                                                                 BagApplyUpdateTerm := fun z => z |} Bs')))
       end
   end.
 
-Require Import   ADTSynthesis.ADTRefinement.BuildADTRefinements.HoneRepresentation.
 Tactic Notation "make" "simple" "indexes" "using" constr(attrlist) :=
   match goal with
     | [ |- Sharpened (@BuildADT (UnConstrQueryStructure ?sch) _ _ _ _ )] =>
