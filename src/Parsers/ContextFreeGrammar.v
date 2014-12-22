@@ -26,12 +26,18 @@ Section cfg.
     Definition production := list item.
     Definition productions := list production.
 
-    Definition productions_dec (CharType_eq_dec : forall x y : CharType, {x = y} + {x <> y})
-               (x y : productions) : {x = y} + {x <> y}.
+    Definition production_dec (CharType_eq_dec : forall x y : CharType, {x = y} + {x <> y})
+               (x y : production) : {x = y} + {x <> y}.
     Proof.
       repeat (apply list_eq_dec; intros);
       decide equality.
       apply string_dec.
+    Defined.
+
+    Definition productions_dec (CharType_eq_dec : forall x y : CharType, {x = y} + {x <> y})
+               (x y : productions) : {x = y} + {x <> y}.
+    Proof.
+      apply list_eq_dec; intros; apply production_dec; assumption.
     Defined.
 
     (** A [grammar] consists of [productions] to match a string
