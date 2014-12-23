@@ -21,7 +21,7 @@ Section FiniteMapADT.
 
 (*  Definition FiniteMapSpec : ADT FiniteMapSig :=
     ADTRep (NodeType * ElementType -> Prop) {
-        Def Constructor "EmptyBag" (_ : unit) : rep :=
+        Def Constructor "Empty" (_ : unit) : rep :=
           ret (fun kv => None),
 
         Def Method "Find" (r : rep, key : NodeType)
@@ -67,7 +67,7 @@ Section ListADT.
 
 (*  Definition FiniteMapSpec : ADT FiniteMapSig :=
     ADTRep (NodeType * ElementType -> Prop) {
-        Def Constructor "EmptyBag" (_ : unit) : rep :=
+        Def Constructor "Empty" (_ : unit) : rep :=
           ret (fun kv => None),
 
         Def Method "Find" (r : rep, key : NodeType)
@@ -156,7 +156,7 @@ Definition packagedADT (Sig : ADTSig) :=
   : cADT (BagSig (@Tuple heading) (@Tuple heading -> bool))
     :=
     cADTRep (cRep ListADTImpl) {
-        Def Constructor "EmptyBag" (u : unit) : rep :=
+        Def Constructor "Empty" (u : unit) : rep :=
           CallConstructor ListADTImpl "EmptyList" (),
 
         Def Method "Find" (r : rep, filt : Tuple -> bool)
@@ -194,7 +194,7 @@ Definition packagedADT (Sig : ADTSig) :=
   : cADT (@BagSig (@Tuple heading) (option (Domain heading Key) * SubTreeSearchTermType)).
   Admitted.
 (*    refine (cADTRep (cRep NodeImpl) {
-        Def Constructor "EmptyBag" (u : unit) : rep :=
+        Def Constructor "Empty" (u : unit) : rep :=
           CallConstructor NodeImpl "EmptyMap" u,
 
         Def Method "Find" (r : rep, indices : option (Domain heading Key) * SubTreeSearchTermType)
@@ -250,7 +250,7 @@ Definition packagedADT (Sig : ADTSig) :=
                   | (r', None) =>
                     let new_subtree :=
                         (snd (projT2 SubTreeImpl)) {|bindex := "Insert" |}
-                                  (fst (projT2 SubTreeImpl) {|bindex := "EmptyBag" |} ())
+                                  (fst (projT2 SubTreeImpl) {|bindex := "Empty" |} ())
                                   element in
                     (fst (CallMethod NodeImpl "Insert" r'
                                      (element Key, existT _ (projT1 SubTreeImpl)
@@ -445,7 +445,7 @@ Definition packagedADT (Sig : ADTSig) :=
          (fun r_o r_n =>
             r_o ≃ benumerate (Bag := BagPlus) r_n
             /\ RepInvPlus r_n).
-    hone constructor "EmptyBag".
+    hone constructor "Empty".
     {
       simplify with monad laws.
       refine pick val bempty.

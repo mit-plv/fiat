@@ -459,7 +459,7 @@ Section SharpenedBagImplementation.
          (fun r_o r_n =>
             r_o ≃ benumerate (Bag := BagPlus) r_n
             /\ RepInvPlus r_n).
-    hone constructor "EmptyBag".
+    hone constructor "Empty".
     {
       simplify with monad laws.
       refine pick val bempty.

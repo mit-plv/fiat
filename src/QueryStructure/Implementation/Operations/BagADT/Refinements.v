@@ -1,4 +1,4 @@
-Require Export Coq.Lists.List Coq.Program.Program
+ Require Export Coq.Lists.List Coq.Program.Program
         ADTSynthesis.QueryStructure.Specification.Representation.Tuple
         ADTSynthesis.QueryStructure.Specification.Representation.Heading
         ADTSynthesis.Common.ilist
@@ -37,7 +37,8 @@ Section BagsQueryStructureRefinements.
     try injection In_n; intros; inversion_by computes_to_inv; subst.
     - unfold i2th_Bounded, ith_Bounded_rect; simpl; eauto.
       apply Extensionality_Ensembles; unfold Same_set, Included; simpl; intuition.
-      inversion H.
+      unfold CallBagConstructor in H1; simpl in H1; inversion_by computes_to_inv.
+      subst; simpl in *; destruct H.
     - unfold i2th_Bounded, ith_Bounded_rect; simpl; eapply IHindices; eauto.
   Qed.
 

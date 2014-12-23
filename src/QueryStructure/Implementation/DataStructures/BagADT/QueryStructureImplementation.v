@@ -44,10 +44,10 @@ Section QueryStructureImplementation.
             midx
             (GetIndexedRelation r_n idx).
 
-  Definition CallBagConstructor idx midx :=
-    Constructors (BagSpec (BagMatchSearchTerm (ith_Bounded relName BagIndexKeys idx))
-                          (BagApplyUpdateTerm (ith_Bounded relName BagIndexKeys idx)))
-            midx.
+  Definition CallBagConstructor {heading} (name : string) index cidx :=
+    Constructors (BagSpec (BagMatchSearchTerm (heading := heading) index)
+                          (BagApplyUpdateTerm index))
+            cidx.
 
   Definition DelegateToBag_AbsR
              (r_o : UnConstrQueryStructure qs_schema)
@@ -68,9 +68,7 @@ Section QueryStructureImplementation.
     := match indices' return Comp (i2list _ indices') with
       | inil => ret (i2nil _ _)
       | icons ns ns' index indices'' =>
-        c <- (Constructors
-                (BagSpec (BagMatchSearchTerm index) (BagApplyUpdateTerm index))
-                {|bindex := "EmptyBag" |} tt);
+        c <- (CallBagConstructor (relName ns) index {|bindex := "Empty" |} tt);
           cs <- (@Initialize_IndexedQueryStructure ns' indices'');
           ret (i2cons ns index c cs)
 

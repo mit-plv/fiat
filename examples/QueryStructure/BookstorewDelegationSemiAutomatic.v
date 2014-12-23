@@ -142,6 +142,10 @@ Proof.
 Qed. *)
 
 Opaque CallBagMethod.
+Opaque CallBagConstructor.
+
+Arguments icons {A} {B} {a} {As} _ _.
+Arguments CallBagConstructor {heading} name {index} cidx _.
 
 Theorem BookStoreManual :
   Sharpened BookStoreSpec.
@@ -208,6 +212,511 @@ Proof.
     (Build_IndexedQueryStructure_Impl_cRep Index)
     (@Build_IndexedQueryStructure_Impl_AbsR' BookStoreSchema Index).
 
+  -
+    Print Implicit refine_BagImplConstructor.
+    intros;
+     match goal with
+               |- context[CallBagConstructor ?ridx ?cidx ?d] =>
+               match goal with
+                   |- appcontext[Build_IndexedQueryStructure_Impl_AbsR'
+                                   (qs_schema := ?qs_schema)
+                                   (Index := ?Index)
+                                   (DelegateImpls := ?DelegateImpls) ?ValidImpl] =>
+                   let r_o' := fresh "r_o'" in
+                   let AbsR_r_o' := fresh "AbsR_r_o'" in
+                   let refines_r_o' := fresh "refines_r_o'" in
+                   destruct (@refine_BagImplConstructor
+                               qs_schema Index DelegateImpls
+                               (fun idx =>
+                                  ValidImpl (map_IndexedQS_idx' Index idx))
+                               {|bindex := ridx |} cidx d) as
+                       [r_o' [refines_r_o' AbsR_r_o']] end end.
+                     unfold map_IndexedQS_idx' in refines_r_o', AbsR_r_o'; simpl in refines_r_o', AbsR_r_o';
+                     setoid_rewrite refines_r_o'; simpl in *; simplify with monad laws; simpl
+               end
+           end.
+
+    idtac.
+
+  refine pick val _.
+
+  Focus 2.
+
+  Ltac i2list_of_evar B C As Bs k :=
+    match As with
+      | [] => k (i2nil B C)
+      | ?a :: ?As' =>
+        makeEvar (C a (ilist_hd Bs))
+                 ltac:(fun c =>
+                         i2list_of_evar B C As' (ilist_tl Bs)
+                                       ltac:(fun Cs' => k (i2cons a (ilist_hd Bs) c Cs')))
+    end.
+
+  Fixpoint unroll_ilist {A} {B : A -> Type}
+           (As : list A)
+           (il : ilist B As)
+  : ilist B As :=
+    match As return ilist _ As -> ilist B As with
+      | nil => fun il => inil _
+      | a :: As' =>
+        fun il' => icons a (ilist_hd il') (unroll_ilist (ilist_tl il'))
+    end il.
+
+  Fixpoint build_unrolled_i2list {A} {B} {C}
+        (As : list A)
+        (il : ilist B As)
+        (i2l : i2list C (unroll_ilist il))
+  : i2list C il :=
+    match il return i2list C (unroll_ilist il) -> i2list C il with
+      | inil => fun i2l => i2nil _ _
+      | icons a b As' Bs' =>
+        fun i2l0  =>
+          i2cons a As' (i2list_hd i2l0)
+                 (build_unrolled_i2list Bs' (i2list_tl i2l0))
+    end i2l.
+
+
+  (* Lemma i2th_Bounded_unrolled_i2list {A D} {B} {C}
+        (projAD : A -> D)
+  : forall (As : list A)
+           (il : ilist B As)
+           (i2l : i2list C (unroll_ilist il))
+           idx,
+      i2th_Bounded projAD i2l idx =
+      i2th_Bounded projAD i2l idx.
+
+
+  Fixpoint build_unrolled_i2list {A} {B} {C}
+        (As : list A)
+        (il : ilist B As)
+        (i2l : i2list C (unroll_ilist il))
+  : i2list C il :=
+    match il return i2list C (unroll_ilist il) -> i2list C il with
+      | inil => fun i2l => i2nil _ _
+      | icons a b As' Bs' =>
+        fun i2l0  =>
+          i2cons a As' (i2list_hd i2l0)
+                 (build_unrolled_i2list Bs' (i2list_tl i2l0))
+    end i2l. *)
+
+
+  match goal with
+      |- Build_IndexedQueryStructure_Impl_AbsR' ValidImpl ?r_o ?r_n =>
+      let Index' := match type of r_n with @Build_IndexedQueryStructure_Impl_cRep _  ?Index _ => Index end in
+      let DelegateImpls' := eval simpl in (Build_IndexedQueryStructure_Impl_Specs Index) in
+      let indices := eval simpl in (Build_IndexedQueryStructure_Impl_Sigs Index) in
+      i2list_of_evar (fun ns : NamedADTSig => ComputationalADT.cADT (namedADTSig ns))
+                     (fun (ns : NamedADTSig) (index : ComputationalADT.cADT (namedADTSig ns)) =>
+                        @ComputationalADT.cRep (namedADTSig ns) index)
+                     indices
+                     DelegateImpl
+                     ltac:(fun i2l => unify r_n (build_unrolled_i2list DelegateImpl i2l))
+  end.
+
+  unfold Build_IndexedQueryStructure_Impl_AbsR', Build_IndexedQueryStructure_Impl_AbsR''.
+  eapply Iterate_Dep_Type_BoundedIndex_equiv_1; simpl; intuition.
+  unfold GetIndexedRelation, i2th_Bounded at 1, ith_Bounded_rect at 1; simpl.
+  unfold map_IndexedQS_idx'; simpl.
+  eapply AbsR_r_o'.
+  unfold CallBagImplConstructor in AbsR_r_o'.
+  simpl in AbsR_r_o'.
+  simpl.
+  unfold i2th_Bounded, ith_Bounded_rect; simpl.
+  eapply AbsR_r_o'.
+  eauto.
+  pose proof (Iterate_Dep_Type_BoundedIndex_equiv_1 _ (ADTRefinementPreservesConstructors (ValidImpl 1))) as H; simpl in H; intuition.
+
+
+
+
+  simpl.
+
+
+  Lemma AbsR
+  : forall ns Index DelegateImpls ValidImpl,
+      Build_IndexedQueryStructure_Impl_AbsR'
+        (DelegateImpls := DelegateImpls) ValidImpl
+        (@Initialize_IndexedQueryStructure ns Index)
+        (Build_IndexedQueryStructure_Impl_cRep
+           (Build_IndexedQueryStructure_Impl_Specs Index)
+           DelegateImpls).
+
+
+
+  Focus 3.
+
+  intros; simpl in *; simplify with monad laws.
+  unfold Build_IndexedQueryStructure_Impl_AbsR' in *.
+
+  Definition Join_Lists'
+             {A : Type} {f : A -> Type} {As : list A} {a : A}
+             (l : list (ilist f As)) (c : ilist f As -> list (f a))
+    := flatten (map
+                  (fun l' => map (fun fa : f a => icons a fa l') (c l')) l).
+
+  Lemma Join_Lists_Impl {A : Type} {f : A -> Type} {As : list A} {a : A}
+  : forall (l : list (ilist f As))
+           (c : ilist f As -> Comp (list (f a)))
+           (c' : ilist f As -> list (f a)),
+      (forall a', refine (c a') (ret (c' a')))
+      -> refine (Join_Lists l c) (ret (Join_Lists' l c')).
+  Proof.
+    induction l; unfold Join_Lists, Join_Lists'; simpl; intros.
+    - reflexivity.
+    - rewrite H; simplify with monad laws.
+      setoid_rewrite IHl; eauto; simplify with monad laws.
+      reflexivity.
+  Qed.
+
+    Ltac higher_order_1_reflexivity'' :=
+    let x := match goal with |- ?R (ret ?x) (ret (?f ?a)) => constr:(x) end in
+    let f := match goal with |- ?R (ret ?x) (ret (?f ?a)) => constr:(f) end in
+    let a := match goal with |- ?R (ret ?x) (ret (?f ?a)) => constr:(a) end in
+    let x' := (eval pattern a in x) in
+    let f' := match x' with ?f' _ => constr:(f') end in
+    unify f f';
+      cbv beta;
+      solve [apply reflexivity].
+
+    Ltac higher_order_2_reflexivity'' :=
+      let x := match goal with |- ?R (ret ?x) (ret (?f ?a ?b)) => constr:(x) end in
+      let f := match goal with |- ?R (ret ?x) (ret (?f ?a ?b)) => constr:(f) end in
+      let a := match goal with |- ?R (ret ?x) (ret (?f ?a ?b)) => constr:(a) end in
+      let b := match goal with |- ?R (ret ?x) (ret (?f ?a ?b)) => constr:(b) end in
+      let x' := (eval pattern a, b in x) in
+      let f' := match x' with ?f' _ _ => constr:(f') end in
+      unify f f';
+        cbv beta;
+        solve [apply reflexivity].
+
+  Ltac implement_method_calls :=
+    match goal with
+      | |- refine (ret _) (ret (?f ?a ?b)) => higher_order_2_reflexivity''
+      | |- refine (ret _) (ret (?f ?a)) => higher_order_1_reflexivity''
+
+      |  [ H : Build_IndexedQueryStructure_Impl_AbsR'' (qs_schema := ?qs_schema)
+                                                       (DelegateImpls := ?DelegateImpl)
+                                                       (fun idx => ?ValidImpl (map_IndexedQS_idx' ?Index idx)) ?r_o ?r_n
+           |- context[
+                  { r_n' | Build_IndexedQueryStructure_Impl_AbsR'' (fun idx => ?ValidImpl (map_IndexedQS_idx' ?Index idx)) ?r_o r_n'}
+                ]] => refine pick val _;
+           [ simplify with monad laws |
+             eapply H]
+
+      | H : Build_IndexedQueryStructure_Impl_AbsR'' (qs_schema := ?qs_schema) ?ValidImpl ?r_o ?r_n
+        |- context[CallBagMethod (BagIndexKeys := ?Index') ?ridx ?midx ?r_o ?d] =>
+        let r_o' := fresh "r_o'" in
+        let AbsR_r_o' := fresh "AbsR_r_o'" in
+        let refines_r_o := fresh "refines_r_o'" in
+        destruct (@refine_BagImplMethods qs_schema Index' _ ValidImpl r_o r_n ridx H midx d) as [r_o' [refines_r_o' AbsR_r_o']];
+          unfold map_IndexedQS_idx in refines_r_o', AbsR_r_o'; simpl in refines_r_o', AbsR_r_o';
+          setoid_rewrite refines_r_o'; simpl in *; simplify with monad laws; simpl
+    end.
+
+  implement_method_calls.
+  implement_method_calls.
+  implement_method_calls.
+
+  unfold Build_IndexedQueryStructure_Impl_cRep, Build_IndexedQueryStructure_Impl_Sigs, Index
+<<<<<<< Updated upstream
+    in *; simpl in *; setoid_rewrite H0.
+=======
+    in *; simpl in *; setoid_rewrite H0
+>>>>>>> Stashed changes
+
+
+  match goal with
+      |
+      |  [ H : Build_IndexedQueryStructure_Impl_AbsR'' (qs_schema := ?qs_schema)
+                                                     (DelegateImpls := ?DelegateImpl)
+                                                     (fun idx => ?ValidImpl (map_IndexedQS_idx' ?Index idx)) ?r_o ?r_n,
+         H' : AbsR (?ValidImpl ?idx) ?r_o' ?r_n'
+         |- context[
+                { r_n' | Build_IndexedQueryStructure_Impl_AbsR'' (fun idx => ?ValidImpl (map_IndexedQS_idx' ?Index idx))
+                                                        (UpdateIndexedRelation ?r_o ?idx ?r_o') r_n' }
+              ]] => pose proof (refine_pick_val _ (@Update_Build_IndexedQueryStructure_Impl_AbsR'' qs_schema Index DelegateImpl _ r_o r_n idx r_o' r_n' H H'))
+  end.
+  unfold Build_IndexedQueryStructure_Impl_cRep, Build_IndexedQueryStructure_Impl_Sigs, Index
+    in *; simpl in *; setoid_rewrite H0.
+
+  simplify with monad laws.
+
+
+
+  higher_order_2_reflexivity''.
+
+  Focus 3.
+  split.
+  intros.
+  simplify with monad laws.
+  simpl in *; unfold Build_IndexedQueryStructure_Impl_AbsR' in *.
+
+  match goal with
+      H : Build_IndexedQueryStructure_Impl_AbsR'' (qs_schema := ?qs_schema) ?ValidImpl ?r_o ?r_n
+      |- context[CallBagMethod (BagIndexKeys := ?Index') ?ridx ?midx ?r_o ?d] =>
+      let r_o' := fresh "r_o'" in
+      let AbsR_r_o' := fresh "AbsR_r_o'" in
+      let refines_r_o := fresh "refines_r_o'" in
+      destruct (@refine_BagImplMethods' qs_schema Index' _ ValidImpl r_o r_n ridx H midx d) as [r_o' [refines_r_o' AbsR_r_o']];
+        unfold map_IndexedQS_idx' in refines_r_o', AbsR_r_o'; simpl in refines_r_o', AbsR_r_o';
+        setoid_rewrite refines_r_o'; simpl in *; simplify with monad laws; simpl
+  end.
+<<<<<<< Updated upstream
+
+  match goal with
+    |  [ H : Build_IndexedQueryStructure_Impl_AbsR'' (qs_schema := ?qs_schema)
+                                                     (DelegateImpls := ?DelegateImpl)
+                                                     (fun idx => ?ValidImpl (map_IndexedQS_idx' ?Index idx)) ?r_o ?r_n
+         |- context[
+                { r_n' | Build_IndexedQueryStructure_Impl_AbsR'' (fun idx => ?ValidImpl (map_IndexedQS_idx' ?Index idx)) ?r_o r_n'}
+              ]] => setoid_rewrite (refine_pick_val _ H); simplify with monad laws
+  end.
+
+  higher_order_2_reflexivity''.
+
+=======
+
+  match goal with
+    |  [ H : Build_IndexedQueryStructure_Impl_AbsR'' (qs_schema := ?qs_schema)
+                                                     (DelegateImpls := ?DelegateImpl)
+                                                     (fun idx => ?ValidImpl (map_IndexedQS_idx' ?Index idx)) ?r_o ?r_n
+         |- context[
+                { r_n' | Build_IndexedQueryStructure_Impl_AbsR'' (fun idx => ?ValidImpl (map_IndexedQS_idx' ?Index idx)) ?r_o r_n'}
+              ]] => setoid_rewrite (refine_pick_val _ H); simplify with monad laws
+  end.
+
+  higher_order_2_reflexivity''.
+
+>>>>>>> Stashed changes
+  split.
+
+  intros.
+  simplify with monad laws.
+  simpl in *; unfold Build_IndexedQueryStructure_Impl_AbsR' in *.
+
+  match goal with
+      H : Build_IndexedQueryStructure_Impl_AbsR'' (qs_schema := ?qs_schema) ?ValidImpl ?r_o ?r_n
+      |- context[CallBagMethod (BagIndexKeys := ?Index') ?ridx ?midx ?r_o ?d] =>
+      let r_o' := fresh "r_o'" in
+      let AbsR_r_o' := fresh "AbsR_r_o'" in
+      let refines_r_o' := fresh "refines_r_o'" in
+      destruct (@refine_BagImplMethods' qs_schema Index' _ ValidImpl r_o r_n ridx H midx d) as [r_o' [refines_r_o' AbsR_r_o']];
+        unfold map_IndexedQS_idx' in refines_r_o', AbsR_r_o'; simpl in refines_r_o', AbsR_r_o';
+        setoid_rewrite refines_r_o'; simpl in *; simplify with monad laws; simpl
+  end.
+
+
+    setoid_rewrite Join_Lists_Impl;
+      [ |
+        intros;
+          repeat (match goal with
+                    | |- refine (ret _) (ret (?f ?a)) =>
+                      higher_order_1_reflexivity''
+                    | |- refine (ret _) (ret (?f ?a ?b)) =>
+                      higher_order_2_reflexivity''
+                    | H : Build_IndexedQueryStructure_Impl_AbsR'' (qs_schema := ?qs_schema) ?ValidImpl ?r_o ?r_n
+                      |- context[CallBagMethod (BagIndexKeys := ?Index') ?ridx ?midx ?r_o ?d] =>
+                      let r_o' := fresh "r_o'" in
+                      let AbsR_r_o' := fresh "AbsR_r_o'" in
+                      let refines_r_o' := fresh "refines_r_o'" in
+                      destruct (@refine_BagImplMethods' qs_schema Index' _ ValidImpl r_o r_n ridx H midx d) as [r_o' [refines_r_o' AbsR_r_o']];
+                      unfold map_IndexedQS_idx' in refines_r_o', AbsR_r_o'; simpl in refines_r_o', AbsR_r_o';
+                      setoid_rewrite refines_r_o'; simpl in *; simplify with monad laws; simpl
+                  end)].
+
+    simplify with monad laws.
+
+  match goal with
+    |  [ H : Build_IndexedQueryStructure_Impl_AbsR'' (qs_schema := ?qs_schema)
+                                                     (DelegateImpls := ?DelegateImpl)
+                                                     (fun idx => ?ValidImpl (map_IndexedQS_idx' ?Index idx)) ?r_o ?r_n
+         |- context[
+                { r_n' | Build_IndexedQueryStructure_Impl_AbsR'' (fun idx => ?ValidImpl (map_IndexedQS_idx' ?Index idx)) ?r_o r_n'}
+              ]] => setoid_rewrite (refine_pick_val _ H); simplify with monad laws
+  end.
+
+  higher_order_2_reflexivity''.
+
+  constructor.
+
+
+
+
+
+
+  match goal with
+    |  [ H : Build_IndexedQueryStructure_Impl_AbsR'' (qs_schema := ?qs_schema)
+                                                     (DelegateImpls := ?DelegateImpl)
+                                                     (fun idx => ?ValidImpl (map_IndexedQS_idx' ?Index idx)) ?r_o ?r_n,
+         H' : AbsR (?ValidImpl ?idx) ?r_o' ?r_n'
+         |- context[
+                { r_n' | Build_IndexedQueryStructure_Impl_AbsR'' (fun idx => ?ValidImpl (map_IndexedQS_idx' ?Index idx))
+                                                        (UpdateIndexedRelation ?r_o ?idx ?r_o') r_n' }
+              ]] => pose proof (refine_pick_val _ (@Update_Build_IndexedQueryStructure_Impl_AbsR'' qs_schema Index DelegateImpl _ r_o r_n idx r_o' r_n' H H'))
+  end.
+  unfold Build_IndexedQueryStructure_Impl_cRep, Build_IndexedQueryStructure_Impl_Sigs, Index
+    in *; simpl in *; setoid_rewrite H0.
+
+
+    idtac.
+
+  Focus 2.
+
+
+  match goal with
+      |- forall a,
+  higher_order_1_reflexivity'.
+
+  intros.
+  match goal with
+      H : Build_IndexedQueryStructure_Impl_AbsR'' (qs_schema := ?qs_schema) ?ValidImpl ?r_o ?r_n
+      |- context[CallBagMethod (BagIndexKeys := ?Index') ?ridx ?midx ?r_o ?d] =>
+      let r_o' := fresh "r_o'" in
+      let AbsR_r_o' := fresh "AbsR_r_o'" in
+      let refines_r_o' := fresh "refines_r_o'" in
+      destruct (@refine_BagImplMethods' qs_schema Index' _ ValidImpl r_o r_n ridx H midx d) as [r_o' [refines_r_o' AbsR_r_o']]
+  end.
+
+
+  idtac.
+
+  match goal with
+      H : Build_IndexedQueryStructure_Impl_AbsR'' (DelegateImpls := ?DelegateImpl)
+                                                  ?ValidImpl ?r_o ?r_n
+      |- context[Join_Lists ?l (fun tup : ?T =>
+                                  l <- @CallBagMethod ?qs_schema ?Index
+                                    ?ridx ?midx ?r_o (@?st tup); ret (snd l))]
+      => assert (forall tup : T,
+                   refine (l <- @CallBagMethod qs_schema Index ridx midx r_o (st tup); ret (snd l))
+                          (ret (snd (@CallBagImplMethod qs_schema Index DelegateImpl ridx midx r_n (st tup)))));
+        [let tup := fresh in
+         let r_o' := fresh in
+         let refines_r_o' := fresh in
+         let AbsR_r_o' := fresh in
+         intros tup; destruct (@refine_BagImplMethods' qs_schema Index DelegateImpl ValidImpl r_o r_n ridx H midx (st tup)) as [r_o' [refines_r_o' AbsR_r_o']]; simpl in * | ]
+  end.
+  rewrite H2; simplify with monad laws; simpl.
+  reflexivity.
+
+  simpl in *.
+  setoid_rewrite H0.
+
+
+
+
+
+
+
+
+<<<<<<< Updated upstream
+=======
+  intros; match goal with
+        |- context[CallBagConstructor ?ridx _ ?cidx ?d] =>
+        match goal with
+            |- appcontext[Build_IndexedQueryStructure_Impl_AbsR' (qs_schema := ?qs_schema)
+                                                                 (Index := ?Index)
+                                                                 (DelegateImpls := ?DelegateImpls) ?ValidImpl] =>
+                let r_o' := fresh "r_o'" in
+                let AbsR_r_o' := fresh "AbsR_r_o'" in
+                let refines_r_o := fresh "refines_r_o'" in
+                destruct (@refine_BagImplConstructor qs_schema Index DelegateImpls
+                                                     (fun idx => ValidImpl (map_IndexedQS_idx' Index idx)) {|bindex := ridx |} cidx d) as
+                    [r_o' [refines_r_o' AbsR_r_o']];
+                  unfold map_IndexedQS_idx' in refines_r_o', AbsR_r_o'; simpl in refines_r_o', AbsR_r_o';
+                  setoid_rewrite refines_r_o'; simpl in *; simplify with monad laws; simpl
+        end
+  end.
+
+  refine pick val _.
+
+  Focus 2.
+
+  Ltac i2list_of_evar B C As Bs k :=
+    match As with
+      | [] => k (i2nil B C)
+      | ?a :: ?As' =>
+        makeEvar (C a (ilist_hd Bs))
+                 ltac:(fun c =>
+                         i2list_of_evar B C As' (ilist_tl Bs)
+                                       ltac:(fun Cs' => k (i2cons a (ilist_hd Bs) c Cs')))
+    end.
+
+  Fixpoint unroll_ilist {A} {B : A -> Type}
+           (As : list A)
+           (il : ilist B As)
+  : ilist B As :=
+    match As return ilist _ As -> ilist B As with
+      | nil => fun il => inil _
+      | a :: As' =>
+        fun il' => icons a (ilist_hd il') (unroll_ilist (ilist_tl il'))
+    end il.
+
+  Fixpoint build_unrolled_i2list {A} {B} {C}
+        (As : list A)
+        (il : ilist B As)
+        (i2l : i2list C (unroll_ilist il))
+  : i2list C il :=
+    match il return i2list C (unroll_ilist il) -> i2list C il with
+      | inil => fun i2l => i2nil _ _
+      | icons a b As' Bs' =>
+        fun i2l0  =>
+          i2cons a As' (i2list_hd i2l0)
+                 (build_unrolled_i2list Bs' (i2list_tl i2l0))
+    end i2l.
+
+  Show Existentials.
+
+  Print Build_IndexedQueryStructure_Impl_cRep.
+
+  Definition Initialize_IndexedQueryStructureImpls
+           {indices}
+           Index DelegateImpls
+  : @Build_IndexedQueryStructure_Impl_cRep indices Index DelegateImpls.
+  Admitted.
+
+  Print Implicit Initialize_IndexedQueryStructure.
+
+  Lemma AbsR
+  : forall ns Index DelegateImpls ValidImpl,
+      Build_IndexedQueryStructure_Impl_AbsR'
+        (DelegateImpls := DelegateImpls) ValidImpl
+        (@Initialize_IndexedQueryStructure ns Index)
+        (Build_IndexedQueryStructure_Impl_cRep
+           (Build_IndexedQueryStructure_Impl_Specs Index)
+           DelegateImpls).
+
+
+  match goal with
+      |- Build_IndexedQueryStructure_Impl_AbsR' ValidImpl ?r_o ?r_n =>
+      let Index' := match type of r_n with @Build_IndexedQueryStructure_Impl_cRep _  ?Index _ => Index end in
+      let DelegateImpls' := eval simpl in (Build_IndexedQueryStructure_Impl_Specs Index) in
+      let indices := eval simpl in (Build_IndexedQueryStructure_Impl_Sigs Index) in
+      i2list_of_evar (fun ns : NamedADTSig => ComputationalADT.cADT (namedADTSig ns))
+                     (fun (ns : NamedADTSig) (index : ComputationalADT.cADT (namedADTSig ns)) =>
+                        @ComputationalADT.cRep (namedADTSig ns) index)
+                     indices
+                     DelegateImpl
+                     ltac:(fun i2l => unify r_n (build_unrolled_i2list DelegateImpl i2l))
+  end.
+
+  unfold Build_IndexedQueryStructure_Impl_AbsR', Build_IndexedQueryStructure_Impl_AbsR''.
+  eapply Iterate_Dep_Type_BoundedIndex_equiv_1; simpl; intuition.
+  simpl in AbsR_r_o'.
+  unfold CallBagImplConstructor in AbsR_r_o'.
+  simpl in AbsR_r_o'.
+  simpl.
+  unfold i2th_Bounded, ith_Bounded_rect; simpl.
+  eapply AbsR_r_o'.
+  eauto.
+  pose proof (Iterate_Dep_Type_BoundedIndex_equiv_1 _ (ADTRefinementPreservesConstructors (ValidImpl 1))) as H; simpl in H; intuition.
+
+
+
+
+  simpl.
+>>>>>>> Stashed changes
+
+
   Focus 3.
 
   intros.
@@ -216,7 +725,8 @@ Proof.
   simpl in *. unfold Build_IndexedQueryStructure_Impl_AbsR' in *.
   match goal with
       H : Build_IndexedQueryStructure_Impl_AbsR'' (qs_schema := ?qs_schema) ?ValidImpl ?r_o ?r_n
-      |- context[CallBagMethod (BagIndexKeys := ?Index') ?ridx ?midx ?r_o ?d] =>
+      |- context[CallBagMethod (BagIndexKeys := ?Index  unfold CallConstructor in Abs_r
+') ?ridx ?midx ?r_o ?d] =>
       let r_o' := fresh "r_o'" in
       let AbsR_r_o' := fresh "AbsR_r_o'" in
       let refines_r_o := fresh "refines_r_o'" in
@@ -293,12 +803,168 @@ Proof.
       |- context[CallBagMethod (BagIndexKeys := ?Index') ?ridx ?midx ?r_o ?d] =>
       let r_o' := fresh "r_o'" in
       let AbsR_r_o' := fresh "AbsR_r_o'" in
-      let refines_r_o := fresh "refines_r_o'" in
+      let refines_r_o' := fresh "refines_r_o'" in
       destruct (@refine_BagImplMethods' qs_schema Index' _ ValidImpl r_o r_n ridx H midx d) as [r_o' [refines_r_o' AbsR_r_o']];
         unfold map_IndexedQS_idx' in refines_r_o', AbsR_r_o'; simpl in refines_r_o', AbsR_r_o';
         setoid_rewrite refines_r_o'; simpl in *; simplify with monad laws; simpl
   end.
 
+  Definition Join_Lists'
+             {A : Type} {f : A -> Type} {As : list A} {a : A}
+             (l : list (ilist f As)) (c : ilist f As -> list (f a))
+    := flatten (map
+                  (fun l' => map (fun fa : f a => icons a fa l') (c l')) l).
+
+  Lemma Join_Lists_Impl {A : Type} {f : A -> Type} {As : list A} {a : A}
+  : forall (l : list (ilist f As))
+           (c : ilist f As -> Comp (list (f a)))
+           (c' : ilist f As -> list (f a)),
+      (forall a', refine (c a') (ret (c' a')))
+      -> refine (Join_Lists l c) (ret (Join_Lists' l c')).
+  Proof.
+    induction l; unfold Join_Lists, Join_Lists'; simpl; intros.
+    - reflexivity.
+    - rewrite H; simplify with monad laws.
+      setoid_rewrite IHl; eauto; simplify with monad laws.
+      reflexivity.
+  Qed.
+
+    Ltac higher_order_1_reflexivity'' :=
+    let x := match goal with |- ?R (ret ?x) (ret (?f ?a)) => constr:(x) end in
+    let f := match goal with |- ?R (ret ?x) (ret (?f ?a)) => constr:(f) end in
+    let a := match goal with |- ?R (ret ?x) (ret (?f ?a)) => constr:(a) end in
+    let x' := (eval pattern a in x) in
+    let f' := match x' with ?f' _ => constr:(f') end in
+    unify f f';
+      cbv beta;
+      solve [apply reflexivity].
+
+    setoid_rewrite Join_Lists_Impl;
+      [ |
+        intros;
+          repeat (match goal with
+                    | |- refine (ret _) (ret (?f ?a)) =>
+                      higher_order_1_reflexivity''
+                    | |- refine (ret _) (ret (?f ?a ?b)) =>
+                      higher_order_2_reflexivity''
+                    | H : Build_IndexedQueryStructure_Impl_AbsR'' (qs_schema := ?qs_schema) ?ValidImpl ?r_o ?r_n
+                      |- context[CallBagMethod (BagIndexKeys := ?Index') ?ridx ?midx ?r_o ?d] =>
+                      let r_o' := fresh "r_o'" in
+                      let AbsR_r_o' := fresh "AbsR_r_o'" in
+                      let refines_r_o' := fresh "refines_r_o'" in
+                      destruct (@refine_BagImplMethods' qs_schema Index' _ ValidImpl r_o r_n ridx H midx d) as [r_o' [refines_r_o' AbsR_r_o']];
+                      unfold map_IndexedQS_idx' in refines_r_o', AbsR_r_o'; simpl in refines_r_o', AbsR_r_o';
+                      setoid_rewrite refines_r_o'; simpl in *; simplify with monad laws; simpl
+                  end)].
+
+    simplify with monad laws.
+
+  match goal with
+    |  [ H : Build_IndexedQueryStructure_Impl_AbsR'' (qs_schema := ?qs_schema)
+                                                     (DelegateImpls := ?DelegateImpl)
+                                                     (fun idx => ?ValidImpl (map_IndexedQS_idx' ?Index idx)) ?r_o ?r_n
+         |- context[
+                { r_n' | Build_IndexedQueryStructure_Impl_AbsR'' (fun idx => ?ValidImpl (map_IndexedQS_idx' ?Index idx)) ?r_o r_n'}
+              ]] => setoid_rewrite (refine_pick_val _ H); simplify with monad laws
+  end.
+
+  higher_order_2_reflexivity''.
+
+  constructor.
+
+
+
+
+
+
+  match goal with
+    |  [ H : Build_IndexedQueryStructure_Impl_AbsR'' (qs_schema := ?qs_schema)
+                                                     (DelegateImpls := ?DelegateImpl)
+                                                     (fun idx => ?ValidImpl (map_IndexedQS_idx' ?Index idx)) ?r_o ?r_n,
+         H' : AbsR (?ValidImpl ?idx) ?r_o' ?r_n'
+         |- context[
+                { r_n' | Build_IndexedQueryStructure_Impl_AbsR'' (fun idx => ?ValidImpl (map_IndexedQS_idx' ?Index idx))
+                                                        (UpdateIndexedRelation ?r_o ?idx ?r_o') r_n' }
+              ]] => pose proof (refine_pick_val _ (@Update_Build_IndexedQueryStructure_Impl_AbsR'' qs_schema Index DelegateImpl _ r_o r_n idx r_o' r_n' H H'))
+  end.
+  unfold Build_IndexedQueryStructure_Impl_cRep, Build_IndexedQueryStructure_Impl_Sigs, Index
+    in *; simpl in *; setoid_rewrite H0.
+
+
+    idtac.
+
+  Focus 2.
+
+
+  match goal with
+      |- forall a,
+  higher_order_1_reflexivity'.
+
+  intros.
+  match goal with
+      H : Build_IndexedQueryStructure_Impl_AbsR'' (qs_schema := ?qs_schema) ?ValidImpl ?r_o ?r_n
+      |- context[CallBagMethod (BagIndexKeys := ?Index') ?ridx ?midx ?r_o ?d] =>
+      let r_o' := fresh "r_o'" in
+      let AbsR_r_o' := fresh "AbsR_r_o'" in
+      let refines_r_o' := fresh "refines_r_o'" in
+      destruct (@refine_BagImplMethods' qs_schema Index' _ ValidImpl r_o r_n ridx H midx d) as [r_o' [refines_r_o' AbsR_r_o']]
+  end.
+
+
+  idtac.
+
+  match goal with
+      H : Build_IndexedQueryStructure_Impl_AbsR'' (DelegateImpls := ?DelegateImpl)
+                                                  ?ValidImpl ?r_o ?r_n
+      |- context[Join_Lists ?l (fun tup : ?T =>
+                                  l <- @CallBagMethod ?qs_schema ?Index
+                                    ?ridx ?midx ?r_o (@?st tup); ret (snd l))]
+      => assert (forall tup : T,
+                   refine (l <- @CallBagMethod qs_schema Index ridx midx r_o (st tup); ret (snd l))
+                          (ret (snd (@CallBagImplMethod qs_schema Index DelegateImpl ridx midx r_n (st tup)))));
+        [let tup := fresh in
+         let r_o' := fresh in
+         let refines_r_o' := fresh in
+         let AbsR_r_o' := fresh in
+         intros tup; destruct (@refine_BagImplMethods' qs_schema Index DelegateImpl ValidImpl r_o r_n ridx H midx (st tup)) as [r_o' [refines_r_o' AbsR_r_o']]; simpl in * | ]
+  end.
+  rewrite H2; simplify with monad laws; simpl.
+  reflexivity.
+
+  simpl in *.
+  setoid_rewrite H0.
+
+
+
+  assert (forall tup, refine (l <- c tup; ret (snd l)) (ret (snd (p tup)))).
+
+
+  Check (Call
+
+  assert (forall tup : ilist (@Tuple)
+                         [<sAUTHOR :: string, sTITLE :: string,
+                             sISBN :: nat>%Heading],
+            refine (l <- CallBagMethod ``(sORDERS) ``("Find") r_o
+                         (Some (ilist_hd tup)!sISBN,
+                          fun _ : BookStoreSchema # sORDERS => true);
+                    ret (snd l))
+                   (l <- CallBagImplMethod ``(sORDERS) {| bindex := "Find" |} r_n
+                      (Some (ilist_hd tup)!sISBN,
+                       fun _ : BookStoreSchema # sORDERS => true);
+                    ret (snd l))).
+
+  Lemma Join_Lists_AbsR {A B} {f}
+  : forall As a k
+           (l
+           (k : list (ilist f (a :: As)) -> Comp B),
+      refine
+        (l' <- Join_Lists l c;
+        {r_n'
+         : Build_IndexedQueryStructure_Impl_cRep Index DelegateImpl |
+         Build_IndexedQueryStructure_Impl_AbsR'' ValidImpl r_o' r_n'}
+
+
+                  (Join_Lists l
 
 
   match goal with
@@ -509,8 +1175,8 @@ Proof.
     eauto.
 Defined.
 
-(*Definition BookStoreImpl : ComputationalADT.cADT BookStoreSig.
+Definition BookStoreImpl : ComputationalADT.cADT BookStoreSig.
   extract implementation of BookStoreManual using (inil _).
 Defined.
 
-Print BookStoreImpl. *)
+Print BookStoreImpl.
