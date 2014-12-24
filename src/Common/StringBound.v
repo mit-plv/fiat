@@ -719,7 +719,7 @@ Section i2thIndexBound.
           (idx : BoundedIndex (map projAD As))
   : C (nth_Bounded _ As idx) (ith_Bounded projAD Bs idx) :=
     ith_Bounded_rect projAD (fun _ _ _ => C) idx Bs
-                           (i2th_error Cs (ibound idx)).
+                           (i2th_error' Cs (ibound idx)).
 
   (*Lemma ith_Bounded_imap
         {B B' : A -> Type}
@@ -775,7 +775,7 @@ Section i2thIndexBound.
            (idx : BoundedIndex (map projAD As))
            (new_c : C _ (ith_Bounded projAD Bs idx))
   : i2list C Bs :=
-    replace_Index2 (ibound idx) Cs
+    replace_Index2' (ibound idx) Cs
                    (Some_Dep_Option_elim_P Bs idx new_c).
 
   Definition Dep_Option_elim2_P2
@@ -826,6 +826,15 @@ Section i2thIndexBound.
         | None => fun b_opt e_eq c_opt c_opt' => True
       end b_opt e_eq c_opt c_opt'.
 
+    Lemma ilist_invert' {B} (As : list A) (il : ilist B As) :
+      match As as As' return ilist B As' -> Type with
+        | a :: As' => fun il => { b : _ & {il' : _ & il = icons a b il'}}
+        | nil => fun il => il = inil _
+      end il.
+    Proof.
+      destruct il; eauto.
+    Qed.
+
     Lemma i2th_error_eq
           {B : A -> Type}
           {C : forall a, B a -> Type}
@@ -835,7 +844,7 @@ Section i2thIndexBound.
              (Cs : i2list C Bs),
         i2th_error_eq_P As idx
         (ith_error Bs (ibound idx))
-        (i2th_error Cs (ibound idx))
+        (i2th_error' Cs (ibound idx))
         (nth_error_map _ _ _ (boundi idx))
         (i2th_Bounded Cs idx).
     Proof.
@@ -843,7 +852,7 @@ Section i2thIndexBound.
       destruct idx as [idx [n In_n ]]; simpl in *.
       revert As idx In_n.
       induction n; destruct Cs; simpl; eauto.
-      generalize (IHn As idx In_n Bs Cs);
+      intros; generalize (IHn As idx In_n (ilist_tl Bs) Cs); intro H';
       unfold i2th_Bounded, ith_Bounded_rect; simpl; eauto.
     Qed.
 
@@ -879,7 +888,7 @@ Section i2thIndexBound.
            (c : C' (nth_Bounded _ As idx) (ith_Bounded _ Bs idx)),
         Dep_Option_elim2_P2 (P As Bs Cs idx)
                           (ith_error Bs (ibound idx))
-                          (i2th_error Cs (ibound idx))
+                          (i2th_error' Cs (ibound idx))
                           (Some_Dep_Option_elim_P Bs idx c)
         -> P As Bs Cs idx _ (ith_Bounded _ Bs idx) (i2th_Bounded Cs idx) c
       := fun As idx Bs Cs c H =>
@@ -901,11 +910,11 @@ Section i2thIndexBound.
            | Some a => fun b_opt c_opt c'_opt e_eq d d' c_eq c_eq' => _
            | None => fun b_opt c_opt c'_opt e_eq d d' => None_neq_Some _ e_eq
          end (ith_error Bs (ibound idx))
-             (i2th_error Cs (ibound idx))
+             (i2th_error' Cs (ibound idx))
              (Some_Dep_Option_elim_P _ _ c)
              (nth_error_map projAD (ibound idx) As (boundi idx))
              _ _ (i2th_error_eq _ _) (i2th_error_eq' _ _ _) H.
-
+    
     Program Definition i2th_Bounded_ind2
             {B : A -> Type}
             {C C' : forall a, B a -> Type}
@@ -919,8 +928,8 @@ Section i2thIndexBound.
            (Cs' : i2list C' Bs),
       Dep_Option_elim2_P2 (P As Bs Cs idx)
                           (ith_error Bs (ibound idx))
-                          (i2th_error Cs (ibound idx))
-                          (i2th_error Cs' (ibound idx))
+                          (i2th_error' Cs (ibound idx))
+                          (i2th_error' Cs' (ibound idx))
       -> P As Bs Cs idx _ (ith_Bounded _ Bs idx)
            (i2th_Bounded Cs idx)
            (i2th_Bounded Cs' idx)
@@ -943,11 +952,11 @@ Section i2thIndexBound.
            | Some a => fun b_opt c_opt c'_opt e_eq d d' c_eq c_eq' => _
            | None => fun b_opt c_opt c'_opt e_eq d d' => None_neq_Some _ e_eq
          end (ith_error Bs (ibound idx))
-             (i2th_error Cs (ibound idx))
-             (i2th_error Cs' (ibound idx))
+             (i2th_error' Cs (ibound idx))
+             (i2th_error' Cs' (ibound idx))
              (nth_error_map projAD (ibound idx) As (boundi idx))
              _ _ (i2th_error_eq _ _) (i2th_error_eq _ _) H.
-
+    
   Variable D_eq_dec : forall d d' : D, {d = d'} + {d <> d'}.
 
   Lemma i2th_replace_BoundIndex_neq
@@ -967,7 +976,7 @@ Section i2thIndexBound.
     eapply (i2th_Bounded_ind2
               (fun As Bs Cs idx a b c c' => c = c')).
     unfold replace_BoundedIndex2.
-    rewrite i2th_replace_Index_neq; eauto using idx_ibound_eq, Dep_Option_elim2_P2_refl.
+    rewrite i2th_replace_Index'_neq; eauto using idx_ibound_eq, Dep_Option_elim2_P2_refl.
   Qed.
 
   Lemma i2th_replace_BoundIndex_eq
@@ -986,7 +995,7 @@ Section i2thIndexBound.
     eapply (i2th_Bounded_ind
               (fun As Bs Cs idx a b c c' => c = c')).
     unfold replace_BoundedIndex2.
-    rewrite i2th_replace_Index_eq; eauto using idx_ibound_eq, Dep_Option_elim2_P2_refl.
+    rewrite i2th_replace_Index'_eq; eauto using idx_ibound_eq, Dep_Option_elim2_P2_refl.
   Qed.
 
 End i2thIndexBound.

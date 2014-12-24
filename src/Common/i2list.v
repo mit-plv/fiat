@@ -16,9 +16,10 @@ Section i2list.
   Variable C : forall a, B a ->  Type. (* The type of doubly-indexed elements. *)
 
   Inductive i2list : forall (As : list A), ilist B As -> Type :=
-  | i2cons : forall a As (b : B a) (Bs : ilist B As) (c : C b),
-               i2list Bs -> i2list (icons a b Bs)
-  | i2nil : i2list (@inil A B).
+  | i2cons : forall a As (Bs : ilist B (a :: As))
+                    (c : C (ilist_hd Bs)),
+               i2list (ilist_tl Bs) -> i2list Bs
+  | i2nil : forall Bs : ilist B nil, i2list Bs.
 
   (* Get the car of an i2list. *)
 
@@ -30,8 +31,8 @@ Section i2list.
       | nil => fun _ _ => unit
     end Bs i2l :=
     match i2l with
-      | i2cons a As b Bs c i2l' => c
-      | i2nil => tt
+      | i2cons a As Bs c i2l' => c
+      | i2nil Bs => tt
     end.
 
   (* Get the cdr of an i2list. *)
@@ -44,48 +45,48 @@ Section i2list.
       | nil => fun _ _ => unit
     end Bs i2l :=
     match i2l with
-      | i2cons a As b Bs c i2l' => i2l'
-      | i2nil => tt
+      | i2cons a As Bs c i2l' => i2l'
+      | i2nil Bs => tt
     end.
 
   (* Membership in a doubly-indexed list. *)
-  Inductive i2list_In {a : A} {b : B a} (c : C b)
-  : forall (As : list A) (il : ilist B As) (i2l : i2list il), Prop :=
-  | In2_hd : forall As (Bs : ilist B As) (i2l : i2list Bs),
-              i2list_In c (i2cons c i2l)
-  | In2_tl : forall a' (b' : B a') As (Bs : ilist B As) (c' : C b') (i2l : i2list Bs),
+  Inductive i2list_In
+  : forall {a : A} {b : B a} (c : C b) (As : list A) (il : ilist B As) (i2l : i2list il), Prop :=
+  | In2_hd : forall a' As (Bs : ilist B (a' :: As)) (i2l : i2list (ilist_tl Bs)) c,
+              i2list_In c (i2cons Bs c i2l)
+  | In2_tl : forall a a' As (Bs : ilist B (a' :: As)) (b' : B a) c' (i2l : i2list (ilist_tl Bs)) (c : C b'),
               i2list_In c i2l ->
-              i2list_In c (i2cons c' i2l).
+              i2list_In c (i2cons Bs c' i2l).
 
-  Fixpoint siglist2i2list
-           (As : list A)
-           (il : ilist (fun a => sigT (@C a)) As)
-  : i2list (imap _ (fun a => @projT1 _ (@C a)) il)  :=
-    match il
-          return i2list (imap _ (fun a => @projT1 _ (@C a)) il)
-    with
-      | inil => i2nil
-      | icons a As' (existT b c) il' => i2cons c (siglist2i2list il')
-    end.
+  (* Fixpoint siglist2i2list *)
+  (*          (As : list A) *)
+  (*          (il : ilist (fun a => sigT (@C a)) As) *)
+  (* : i2list (imap _ (fun a => @projT1 _ (@C a)) il)  := *)
+  (*   match il *)
+  (*         return i2list (imap _ (fun a => @projT1 _ (@C a)) il) *)
+  (*   with *)
+  (*     | inil => i2nil *)
+  (*     | icons a As' (existT b c) il' => i2cons c (siglist2i2list il') *)
+  (*   end. *)
 
-  (* and vice versa. *)
-  Fixpoint i2list2siglist {As : list A} {Bs : ilist B As}
-  (i2l : i2list Bs)
-  : ilist (fun a => sigT (@C a)) As :=
-    match i2l in @i2list As' Bs' return ilist (fun a => sigT (@C a)) As' with
-      | i2nil => @inil _ _
-      | i2cons a As b Bs' c Cs' =>
-        icons a (existT _ b c) (i2list2siglist Cs')
-    end.
+  (* (* and vice versa. *) *)
+  (* Fixpoint i2list2siglist {As : list A} {Bs : ilist B As} *)
+  (* (i2l : i2list Bs) *)
+  (* : ilist (fun a => sigT (@C a)) As := *)
+  (*   match i2l in @i2list As' Bs' return ilist (fun a => sigT (@C a)) As' with *)
+  (*     | i2nil => @inil _ _ *)
+  (*     | i2cons a As b Bs' c Cs' => *)
+  (*       icons a (existT _ b c) (i2list2siglist Cs') *)
+  (*   end. *)
 
-  (* i2list2siglist is the inverse of siglist2i2list *)
-  Lemma siglist2i2list_id
-  : forall As (Bs : ilist _ As),
-      i2list2siglist (siglist2i2list Bs) = Bs.
-  Proof.
-    induction Bs; simpl; auto.
-    destruct b; simpl; congruence.
-  Qed.
+  (* (* i2list2siglist is the inverse of siglist2i2list *) *)
+  (* Lemma siglist2i2list_id *)
+  (* : forall As (Bs : ilist _ As), *)
+  (*     i2list2siglist (siglist2i2list Bs) = Bs. *)
+  (* Proof. *)
+  (*   induction Bs; simpl; auto. *)
+  (*   destruct b; simpl; congruence. *)
+  (* Qed. *)
 
   (* and vice-versa.
 
@@ -170,6 +171,32 @@ Section i2list.
                  end
     end Bs i2l.
 
+  Fixpoint i2th_error'
+          (As : list A)
+          (Bs : ilist B As)
+          (i2l : i2list Bs)
+          (n : nat)
+          {struct n}
+  : Dep_Option_elim_P C (ith_error Bs n) :=
+    match n as n' return
+          forall (Bs : ilist B As),
+            i2list Bs
+            -> Dep_Option_elim_P C (ith_error Bs n')
+    with
+      | 0 => fun Bs i2l =>
+               match i2l as i2l' in i2list Bs' return
+                     Dep_Option_elim_P C (ith_error Bs' 0) with
+                 | i2nil _ => I
+                 | i2cons a As' Bs' c i2l' => c
+               end
+      | S n => fun Bs i2l =>
+                 match i2l as i2l' in i2list Bs' return
+                       Dep_Option_elim_P C (ith_error Bs' (S n)) with
+                   | i2nil _ => I
+                   | i2cons a As' Bs' c i2l' => i2th_error' i2l' n
+                 end
+    end Bs i2l.
+
   (* Looking up the ith value, returning a default value
      for indices not in the list. *)
   Fixpoint i2th_default
@@ -196,11 +223,14 @@ Section i2list.
     match Bs as Bs' return i2list Bs' -> Prop with
       | icons a As b Bs' => fun Cs =>
                            exists (c : C b) (Cs' : i2list Bs'),
-                             Cs = i2cons c Cs'
-      | inil => fun Cs => Cs = i2nil
+                             Cs = i2cons (icons a b Bs') c Cs'
+      | inil => fun Cs => Cs = i2nil (inil _)
     end Cs.
   Proof.
-    destruct Cs; eauto.
+    destruct Cs.
+    - destruct (ilist_invert Bs) as [b [Bs' Bs'_eq]]; subst.
+      eexists; eauto.
+    - pose (ilist_invert Bs) as Bs_eq; simpl in Bs_eq; subst; eauto.
   Qed.
 
   Lemma i2th_default_In :
@@ -215,7 +245,8 @@ Section i2list.
       i2list_In (i2th_default default_C Cs n) Cs.
   Proof.
     ith_induction n As; simpl;
-    destruct (i2list_invert Cs) as [c [Cs' Cs_eq]]; subst; constructor;
+    destruct (i2list_invert Cs) as [c [Cs' Cs_eq]]; subst; simpl;
+    [apply (In2_hd (icons a b il) Cs' c) |  constructor 2];
     eauto with arith.
   Qed.
 
@@ -491,7 +522,7 @@ Section i2list_replace.
                    fun il _ => i2nil _ _
                  | icons a b As' Bs' =>
                    fun Cs' new_c =>
-                     i2cons _ _ new_c (i2list_tl Cs')
+                     i2cons _ new_c (i2list_tl Cs')
                end
       | S n => match Bs return
                      i2list C Bs
@@ -500,7 +531,7 @@ Section i2list_replace.
                  | inil => fun il _ => i2nil _ _
                  | icons a As' b Bs' =>
                    fun Cs' new_c =>
-                     i2cons _ _ (i2list_hd Cs')
+                     i2cons _ (i2list_hd Cs')
                             (@replace_Index2 n As' Bs'
                                              (i2list_tl Cs') new_c)
                end
@@ -570,6 +601,67 @@ Section i2list_replace.
       i2th_error (replace_Index2 n Cs new_c) n = new_c.
   Proof.
     induction n; destruct Bs; simpl; auto; intros;
+    destruct new_c; eauto.
+  Qed.
+
+  Program Fixpoint replace_Index2'
+           (n : nat)
+           (As : list A)
+           (Bs : ilist B As)
+           (Cs : i2list C Bs)
+           (new_c : Dep_Option_elim_P C (ith_error Bs n))
+           {struct Cs} : i2list C Bs :=
+    match n return
+          Dep_Option_elim_P C (ith_error Bs n)
+            -> i2list C Bs with
+      | 0 => match Cs in i2list _ Bs return
+                   Dep_Option_elim_P C (ith_error Bs 0)
+                   -> i2list C Bs with
+                 | i2nil Bs =>
+                   fun _ => i2nil _ Bs
+                 | i2cons a As' Bs' c i2l' =>
+                   fun new_c =>
+                     i2cons Bs' new_c i2l'
+               end
+      | S n => match Cs in i2list _ Bs return
+                     Dep_Option_elim_P C (ith_error Bs (S n))
+                     -> i2list C Bs with
+                 | i2nil Bs => fun _ => i2nil _ Bs
+                 | i2cons a As' Bs' c i2l' =>
+                   fun new_c =>
+                     i2cons Bs' c (@replace_Index2' n As' (ilist_tl Bs') i2l' new_c)
+               end
+    end new_c.
+
+  Lemma i2th_replace_Index'_neq
+  : forall
+      (n : nat)
+      (As : list A)
+      (Bs : ilist _ As)
+      (Cs : i2list C Bs)
+      (n' : nat)
+      (new_c : Dep_Option_elim_P C (ith_error Bs n')),
+      n <> n'
+      -> i2th_error' (replace_Index2' n' Cs new_c) n =
+         i2th_error' Cs n.
+  Proof.
+    induction n; simpl; destruct Cs; intros; icons_invert;
+    simpl in *; auto;
+    destruct n'; simpl; try congruence.
+    unfold replace_Index2.
+    eapply IHn; congruence.
+  Qed.
+
+  Lemma i2th_replace_Index'_eq
+  : forall
+      (n : nat)
+      (As : list A)
+      (Bs : ilist _ As)
+      (Cs : i2list C Bs)
+      (new_c : Dep_Option_elim_P C (ith_error Bs n)),
+      i2th_error' (replace_Index2' n Cs new_c) n = new_c.
+  Proof.
+    induction n; destruct Cs; simpl; auto; intros;
     destruct new_c; eauto.
   Qed.
 

@@ -70,8 +70,7 @@ Section QueryStructureImplementation.
       | icons ns ns' index indices'' =>
         c <- (CallBagConstructor (relName ns) index {|bindex := "Empty" |} tt);
           cs <- (@Initialize_IndexedQueryStructure ns' indices'');
-          ret (i2cons ns index c cs)
-
+          ret (i2cons (icons ns index indices'') c cs)
     end.
 
 End QueryStructureImplementation.
