@@ -37,27 +37,4 @@ Section cfg.
          | ParseNonTerminal name str p'
            => (P (Lookup G name) * Forall_parse_of p')%type
        end.
-
-  Inductive is_subparse_of : forall {str pats}, relation (parse_of String G str pats) :=
-  | SubParseHead : forall str pat pats
-                          (p p' : parse_of_production str pat),
-                     is_subparse_of_production p p'
-                     -> is_subparse_of (ParseHead p) (ParseHead p').
-
-
-    Inductive parse_of : String -> productions -> Type :=
-    | ParseHead : forall str pat pats, parse_of_production str pat
-                                       -> parse_of str (pat::pats)
-    | ParseTail : forall str pat pats, parse_of str pats
-                                       -> parse_of str (pat::pats)
-    with parse_of_production : String -> production -> Type :=
-    | ParseProductionNil : parse_of_production (Empty _) nil
-    | ParseProductionCons : forall str pat strs pats,
-                           parse_of_item str pat
-                           -> parse_of_production strs pats
-                           -> parse_of_production (str ++ strs) (pat::pats)
-    with parse_of_item : String -> item -> Type :=
-    | ParseTerminal : forall x, parse_of_item [[ x ]]%string_like (Terminal x)
-    | ParseNonTerminal : forall name str, parse_of str (Lookup G name)
-                                          -> parse_of_item str (NonTerminal name).
 End cfg.

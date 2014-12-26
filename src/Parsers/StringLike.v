@@ -38,6 +38,16 @@ Infix "=s" := (@bool_eq _ _) (at level 70, right associativity) : string_like_sc
 
 Local Hint Extern 0 => match goal with H : S _ = 0 |- _ => destruct (NPeano.Nat.neq_succ_0 _ H) end.
 
+Definition stringlike_dec {CharType} {String : string_like CharType} (s1 s2 : String)
+: { s1 = s2 } + { s1 <> s2 }.
+Proof.
+  case_eq (bool_eq s1 s2); intro H; [ left | right ].
+  { apply bool_eq_correct; exact H. }
+  { intro H'; apply bool_eq_correct in H'.
+    generalize dependent (s1 =s s2)%string_like; clear; intros.
+    abstract congruence. }
+Defined.
+
 Definition string_stringlike : string_like Ascii.ascii.
 Proof.
   refine {| String := string;
