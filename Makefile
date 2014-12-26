@@ -89,6 +89,7 @@ SRC_MODULES    := \
 	QueryStructure/Refinements/AutoDB\
 	Parsers/StringLike\
 	Parsers/ContextFreeGrammar\
+	Parsers/ContextFreeGrammarProperties\
 	Parsers/Specification\
 	Parsers/NonComputational\
 	Parsers/BooleanRecognizer
