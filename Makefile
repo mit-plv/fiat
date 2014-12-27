@@ -92,7 +92,8 @@ SRC_MODULES    := \
 	Parsers/ContextFreeGrammarProperties\
 	Parsers/Specification\
 	Parsers/NonComputational\
-	Parsers/BooleanRecognizer
+	Parsers/BooleanRecognizer\
+	Parsers/WellFoundedParse
 
 EXAMPLE_MODULES := \
 	Bookstore \
