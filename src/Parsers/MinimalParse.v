@@ -1,9 +1,8 @@
 (** * Every parse tree has a corresponding minimal parse tree *)
-Require Import Coq.Lists.List Coq.Program.Program Coq.Program.Wf Coq.Arith.Wf_nat Coq.Arith.Compare_dec Coq.Classes.RelationClasses Coq.Strings.String.
+Require Import Coq.Lists.List Coq.Program.Program.
 Require Import Parsers.ContextFreeGrammar Parsers.ContextFreeGrammarProperties.
-Require Import Common Common.ilist Common.Wf.
-Require Import Eqdep_dec.
 
+Set Implicit Arguments.
 Local Open Scope string_like_scope.
 
 Local Notation "f ∘ g" := (fun x => f (g x)).
@@ -113,6 +112,10 @@ Section cfg.
     Let P : productions CharType -> Prop
       := fun p => is_valid_productions initial_productions_data p = true.
 
+    Let valid_mapT := forall p : productions CharType,
+                        { v : option productions_listT
+                        | v = None \/ exists v', v = Some v' /\ is_valid_productions v' p = true }.
+
     Local Notation alt_option valid str valid_map
       := { p : _ & (is_valid_productions valid p = false /\ P p)
                    * match valid_map p with
@@ -124,7 +127,8 @@ Section cfg.
     : False.
     Proof.
       subst P; simpl in *.
-      destruct ps; intuition.
+      destruct ps as [ ? [ H' _ ] ].
+      revert H'; clear; intros [? ?].
       congruence.
     Qed.
 
@@ -151,10 +155,6 @@ Section cfg.
       clear -H remove_productions_1.
       abstract (rewrite remove_productions_1 by assumption; trivial).
     Defined.*)
-
-    Let valid_mapT := forall p : productions CharType,
-                        { v : option productions_listT
-                        | v = None \/ exists v', v = Some v' /\ is_valid_productions v' p = true }.
 
     Section item.
       Context {str : String} (valid : productions_listT) {it : item CharType}.
@@ -214,6 +214,7 @@ Section cfg.
              {str : String} (valid : productions_listT) {pats : productions CharType}
              (valid_map : valid_mapT)
              (p : parse_of String G str pats)
+             {struct p}
     : Forall_parse_of P p -> (minimal_parse_of valid str pats + alt_option valid str (@proj1_sig _ _ ∘ valid_map))
       := match
           p as p in (parse_of _ _ str pats)
@@ -238,6 +239,7 @@ Section cfg.
              {str : String} (valid : productions_listT) {pat : production CharType}
              (valid_map : valid_mapT)
              (p : parse_of_production String G str pat)
+             {struct p}
     : Forall_parse_of_production P p -> (minimal_parse_of_production valid str pat + alt_option valid str (@proj1_sig _ _ ∘ valid_map))
       := match
           p as p in (parse_of_production _ _ str pat)
@@ -257,22 +259,22 @@ Section cfg.
 
                   match stringlike_dec str0 (Empty _), stringlike_dec str1 (Empty _) with
                     | right pf0, right pf1
-                      => inl (MinParseProductionConsDec valid pf0 pf1 _(*mp0'*) mp1')
+                      => inl (MinParseProductionConsDec valid pf0 pf1 admit (*mp0'*) mp1')
                     | left pf0, left pf1
                       => let eq_pf0 := (_ : str0 = str0 ++ str1) in
                          let eq_pf1 := (_ : str1 = str0 ++ str1) in
-                         (*match mp0, mp1 with
+                         match mp0, mp1 with
                            | inl mp0'', inl mp1''
                              => inl (MinParseProductionConsEmpty01 pf0 pf1 mp0'' mp1'')
                            | inr other, _
-                             => inr (match eq_pf0 in (_ = str1) return (alt_option valid str1) with
+                             => inr (match eq_pf0 in (_ = str1) return (alt_option valid str1 (@proj1_sig _ _ ∘ valid_map)) with
                                        | eq_refl => other
                                      end)
                            | _, inr other
-                             => inr (match eq_pf1 in (_ = str1) return (alt_option valid str1) with
+                             => inr (match eq_pf1 in (_ = str1) return (alt_option valid str1 (@proj1_sig _ _ ∘ valid_map)) with
                                        | eq_refl => other
                                      end)
-                         end*) _
+                         end
                     | left pf0, right pf1
                       => let eq_pf := (_ : str1 = str0 ++ str1) in
                          match mp1 with

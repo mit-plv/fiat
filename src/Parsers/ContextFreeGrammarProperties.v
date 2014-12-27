@@ -1,6 +1,4 @@
 (** * Properties about Context Free Grammars *)
-Require Import Coq.Strings.String Coq.Lists.List Coq.Program.Program.
-Require Import Coq.Relations.Relation_Definitions.
 Require Import Parsers.StringLike Parsers.ContextFreeGrammar.
 
 Set Implicit Arguments.
