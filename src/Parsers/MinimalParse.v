@@ -6,6 +6,8 @@ Require Import Eqdep_dec.
 
 Local Open Scope string_like_scope.
 
+Local Notation "f ∘ g" := (fun x => f (g x)).
+
 Section cfg.
   Context CharType (String : string_like CharType) (G : grammar CharType).
   Context (productions_listT : Type)
@@ -111,11 +113,14 @@ Section cfg.
     Let P : productions CharType -> Prop
       := fun p => is_valid_productions initial_productions_data p = true.
 
-    Local Notation alt_option valid str
-      := { name : _ & (is_valid_productions valid (Lookup G name) = false /\ P (Lookup G name))
-                      * minimal_parse_of initial_productions_data str (Lookup G name) }%type.
+    Local Notation alt_option valid str valid_map
+      := { p : _ & (is_valid_productions valid p = false /\ P p)
+                   * match valid_map p with
+                       | Some v => minimal_parse_of v str p
+                       | None => False
+                     end }%type.
 
-    Lemma not_alt_all {str} (ps : alt_option initial_productions_data str)
+    Lemma not_alt_all {str valid_map} (ps : alt_option initial_productions_data str valid_map)
     : False.
     Proof.
       subst P; simpl in *.
@@ -123,15 +128,15 @@ Section cfg.
       congruence.
     Qed.
 
-    Definition alt_all_elim {str} {T} (ps : T + alt_option initial_productions_data str)
+    Definition alt_all_elim {str valid_map T} (ps : T + alt_option initial_productions_data str valid_map)
     : T.
     Proof.
       destruct ps as [|ps]; [ assumption | exfalso ].
       eapply not_alt_all; eassumption.
     Defined.
 
-    Definition expand_alt_option {str valid pats} (ps : alt_option (remove_productions valid pats) str)
-    : (Lookup G (projT1 ps) = pats) + alt_option valid str.
+(*    Definition expand_alt_option {str valid valid_map pats} (ps : alt_option (remove_productions valid pats) str valid_map)
+    : (projT1 ps = pats) + alt_option valid str valid_map.
     Proof.
       case_eq (is_valid_productions valid pats); [ left | intro H; right ].
       { admit. }
@@ -139,53 +144,66 @@ Section cfg.
                 _
                 (projT1 ps)
                 (let pH := projT2 ps in
+                 (_, snd pH)));
+        simpl in *.
                  (conj (_ (proj1 (fst pH))) (proj2 (fst pH)), snd pH)));
         simpl in *.
       clear -H remove_productions_1.
       abstract (rewrite remove_productions_1 by assumption; trivial).
-    Defined.
+    Defined.*)
+
+    Let valid_mapT := forall p : productions CharType,
+                        { v : option productions_listT
+                        | v = None \/ exists v', v = Some v' /\ is_valid_productions v' p = true }.
 
     Section item.
       Context {str : String} (valid : productions_listT) {it : item CharType}.
+      Context (valid_map : valid_mapT).
 
       Context (minimal_parse_of__of__parse_of
                : forall {str : String} (valid : productions_listT) {pats : productions CharType}
+                        (valid_map : valid_mapT)
                         (p : parse_of String G str pats),
-                   Forall_parse_of P p -> (minimal_parse_of valid str pats + alt_option valid str)).
+                   Forall_parse_of P p -> (minimal_parse_of valid str pats + alt_option valid str (@proj1_sig _ _ ∘ valid_map))).
 
       Definition minimal_parse_of_item__of__parse_of_item'
                  (p : parse_of_item String G str it)
-      : Forall_parse_of_item P p -> (minimal_parse_of_item valid str it + alt_option valid str).
+      : Forall_parse_of_item P p -> (minimal_parse_of_item valid str it + alt_option valid str (@proj1_sig _ _ ∘ valid_map)).
       Proof.
-        refine match p as p' in (parse_of_item _ _ str' it')
+        revert minimal_parse_of__of__parse_of.
+        (*refine match p as p' in (parse_of_item _ _ str' it')
                      return (Forall_parse_of_item P p'
-                             -> minimal_parse_of_item valid str' it' + alt_option valid str')
+                             -> minimal_parse_of_item valid str' it' + alt_option valid str' valid_map)
                with
                  | ParseTerminal x
                    => fun _ => inl (MinParseTerminal _ x)
                  | ParseNonTerminal name str' p'
                    => fun forall_parse
-                      => let mp' := alt_all_elim (minimal_parse_of__of__parse_of initial_productions_data p' (snd forall_parse)) in
+                      => (*let mp' := alt_all_elim (minimal_parse_of__of__parse_of initial_productions_data p' (snd forall_parse)) in*)
                          match minimal_parse_of__of__parse_of (remove_productions valid (G name)) p' (snd forall_parse) with
                            | inl mp
                              => (if is_valid_productions valid (G name) as b
-                                    return (is_valid_productions valid (G name) = b -> _ + alt_option valid str')
+                                    return (is_valid_productions valid (G name) = b -> _ + alt_option valid str' valid_map)
                                  then fun H'
                                       => inl (MinParseNonTerminal name H' mp)
                                  else fun H'
-                                      => inr (existT _ _ (conj H' (fst forall_parse), mp'))) eq_refl
+                                      => _ (inr (existT _ _ (conj H' (fst forall_parse), _)))) eq_refl
                            | inr other
-                             => match expand_alt_option other with
+                             => _ (*match expand_alt_option other with
                                   | inl H' => _
                                   | inr H' => inr H'
-                                end
+                                end*)
                          end
                end.
+        Focus 3.
+        destruct other.
+        simpl.
         clearbody mp'.
         clear minimal_parse_of__of__parse_of.
         destruct other; simpl in *.
 
 
+        admit.*)
         admit.
       Defined.
     End item.
@@ -194,54 +212,56 @@ Section cfg.
 
     Program Fixpoint minimal_parse_of__of__parse_of
              {str : String} (valid : productions_listT) {pats : productions CharType}
+             (valid_map : valid_mapT)
              (p : parse_of String G str pats)
-    : Forall_parse_of P p -> (minimal_parse_of valid str pats + alt_option valid str)
+    : Forall_parse_of P p -> (minimal_parse_of valid str pats + alt_option valid str (@proj1_sig _ _ ∘ valid_map))
       := match
           p as p in (parse_of _ _ str pats)
           return
           (Forall_parse_of P p
-           -> minimal_parse_of valid str pats + alt_option valid str)
+           -> minimal_parse_of valid str pats + alt_option valid str (@proj1_sig _ _ ∘ valid_map))
         with
           | ParseHead _ pat' pats' p'
             => fun forall_parse
-               => match minimal_parse_of_production__of__parse_of_production valid p' forall_parse with
+               => match minimal_parse_of_production__of__parse_of_production valid valid_map p' forall_parse with
                     | inl mp => inl (MinParseHead pats' mp)
                     | inr other => inr other
                   end
           | ParseTail _ pat' pats' p'
             => fun forall_parse
-               => match minimal_parse_of__of__parse_of valid p' forall_parse with
+               => match minimal_parse_of__of__parse_of valid valid_map p' forall_parse with
                     | inl mp => inl (MinParseTail pat' mp)
                     | inr other => inr other
                   end
         end
     with minimal_parse_of_production__of__parse_of_production
              {str : String} (valid : productions_listT) {pat : production CharType}
+             (valid_map : valid_mapT)
              (p : parse_of_production String G str pat)
-    : Forall_parse_of_production P p -> (minimal_parse_of_production valid str pat + alt_option valid str)
+    : Forall_parse_of_production P p -> (minimal_parse_of_production valid str pat + alt_option valid str (@proj1_sig _ _ ∘ valid_map))
       := match
           p as p in (parse_of_production _ _ str pat)
           return
           (Forall_parse_of_production P p
-           -> minimal_parse_of_production valid str pat + alt_option valid str)
+           -> minimal_parse_of_production valid str pat + alt_option valid str (@proj1_sig _ _ ∘ valid_map))
         with
           | ParseProductionNil
             => fun _ => inl (MinParseProductionNil _)
           | ParseProductionCons str0 pat' str1 pats' p0' p1'
             => fun forall_parse
-               => let mp0 := minimal_parse_of_item__of__parse_of_item' valid (@minimal_parse_of__of__parse_of) p0' (fst forall_parse) in
-                  let mp1 := minimal_parse_of_production__of__parse_of_production valid p1' (snd forall_parse) in
-                  let mp0' := alt_all_elim (minimal_parse_of_item__of__parse_of_item' initial_productions_data (@minimal_parse_of__of__parse_of) p0' (fst forall_parse)) in
-                  let mp1' := alt_all_elim (minimal_parse_of_production__of__parse_of_production initial_productions_data p1' (snd forall_parse)) in
+               => let mp0 := minimal_parse_of_item__of__parse_of_item' valid valid_map (@minimal_parse_of__of__parse_of) p0' (fst forall_parse) in
+                  let mp1 := minimal_parse_of_production__of__parse_of_production valid valid_map p1' (snd forall_parse) in
+                  let mp0' := alt_all_elim (minimal_parse_of_item__of__parse_of_item' initial_productions_data valid_map (@minimal_parse_of__of__parse_of) p0' (fst forall_parse)) in
+                  let mp1' := alt_all_elim (minimal_parse_of_production__of__parse_of_production initial_productions_data valid_map p1' (snd forall_parse)) in
 
 
                   match stringlike_dec str0 (Empty _), stringlike_dec str1 (Empty _) with
                     | right pf0, right pf1
-                      => inl (MinParseProductionConsDec valid pf0 pf1 mp0' mp1')
+                      => inl (MinParseProductionConsDec valid pf0 pf1 _(*mp0'*) mp1')
                     | left pf0, left pf1
                       => let eq_pf0 := (_ : str0 = str0 ++ str1) in
                          let eq_pf1 := (_ : str1 = str0 ++ str1) in
-                         match mp0, mp1 with
+                         (*match mp0, mp1 with
                            | inl mp0'', inl mp1''
                              => inl (MinParseProductionConsEmpty01 pf0 pf1 mp0'' mp1'')
                            | inr other, _
@@ -252,31 +272,43 @@ Section cfg.
                              => inr (match eq_pf1 in (_ = str1) return (alt_option valid str1) with
                                        | eq_refl => other
                                      end)
-                         end
+                         end*) _
                     | left pf0, right pf1
                       => let eq_pf := (_ : str1 = str0 ++ str1) in
                          match mp1 with
                            | inl mp1''
-                             => inl (MinParseProductionConsEmpty0 pf0 pf1 mp0' mp1'')
+                             => inl (MinParseProductionConsEmpty0 pf0 pf1 _(*mp0'*) mp1'')
                            | inr other
-                             => inr (match eq_pf in (_ = str0) return (alt_option valid str0) with
+                             => inr (match eq_pf in (_ = str0) return (alt_option valid str0 (@proj1_sig _ _ ∘ valid_map)) with
                                        | eq_refl => other
                                      end)
                          end
                     | right pf0, left pf1
                       => let eq_pf := (_ : str0 = str0 ++ str1) in
-                         match mp0 with
+                         _ (*match mp0 with
                            | inl mp0''
                              => inl (MinParseProductionConsEmpty1 pf0 pf1 mp0'' mp1')
                            | inr other
                              => inr (match eq_pf in (_ = str0) return (alt_option valid str0) with
                                        | eq_refl => other
                                      end)
-                         end
+                         end*)
                   end
         end.
     Obligation 1 of minimal_parse_of_production__of__parse_of_production.
+    Axiom forall_extensionality : forall {A P P'}, (forall x : A, P x = P' x) -> (forall x, P x) = (forall x, P' x).
+    Unset Printing All.
 
+    repeat (apply forall_extensionality; intro).
+    repeat match goal with
+             | [ |- (forall x : ?T, @?P x) = (forall x : ?T, @?P' x) ]
+               => apply (@forall_extensionality T P P'); intro
+             | _ => progress f_equal; []
+             | _ => apply functional_extensionality_dep; intro
+           end.
+    repeat (
+    .
+    apply forall_extensionality.
     admit.
     Defined.
     Obligation 2 of minimal_parse_of_production__of__parse_of_production.
