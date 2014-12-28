@@ -1,6 +1,6 @@
 (** * Every parse tree has a corresponding minimal parse tree *)
 Require Import Coq.Strings.String Coq.Lists.List Coq.Program.Program Coq.Classes.RelationClasses Coq.Classes.Morphisms Coq.Setoids.Setoid.
-Require Import Parsers.ContextFreeGrammar Parsers.ContextFreeGrammarProperties.
+Require Import Parsers.ContextFreeGrammar Parsers.ContextFreeGrammarProperties Parsers.WellFoundedParse.
 
 Set Implicit Arguments.
 Local Open Scope string_like_scope.
@@ -293,15 +293,12 @@ Section cfg.
     Let P : productions CharType -> Prop
       := fun p => is_valid_productions initial_productions_data p = true.
 
-    Let valid_mapT := forall name : _,
-                        { v : productions_listT
-                        | is_valid_productions v (Lookup G name) = true }.
-
-    Local Notation alt_option valid str valid_map
+    Local Notation alt_option h valid str
       := { name : _ & (is_valid_productions valid (Lookup G name) = false /\ P (Lookup G name))
-                      * minimal_parse_of (remove_productions (valid_map name) (Lookup G name)) str (Lookup G name) }%type.
+                      * { p : parse_of String G str (Lookup G name)
+                        | height_of_parse p < h } }%type.
 
-    Lemma not_alt_all {str valid_map} (ps : alt_option initial_productions_data str valid_map)
+    Lemma not_alt_all {h str} (ps : alt_option h initial_productions_data str)
     : False.
     Proof.
       subst P; simpl in *.
@@ -310,11 +307,36 @@ Section cfg.
       congruence.
     Qed.
 
-    Definition alt_all_elim {str valid_map T} (ps : T + alt_option initial_productions_data str valid_map)
+    Definition alt_all_elim {h str T} (ps : T + alt_option h initial_productions_data str)
     : T.
     Proof.
       destruct ps as [|ps]; [ assumption | exfalso ].
       eapply not_alt_all; eassumption.
+    Defined.
+
+    Definition expand_alt_option {h h' str valid valid'}
+               (H : h <= h') (H' : sub_productions_listT valid' valid)
+    : alt_option h valid str -> alt_option h' valid' str.
+    Proof.
+      hnf in H'.
+      repeat match goal with
+               | [ |- sigT _ -> _ ] => intros []
+               | [ |- sig _ -> _ ] => intros []
+               | [ |- prod _ _ -> _ ] => intros []
+               | [ |- and _ _ -> _ ] => intros []
+               | _ => intro
+               | [ |- sigT _ ] => esplit
+               | [ |- sig _ ] => esplit
+               | [ |- prod _ _ ] => esplit
+               | [ |- and _ _ ] => esplit
+               | [ H : _ = false |- _ = false ]
+                 => apply Bool.not_true_iff_false in H;
+                   apply Bool.not_true_iff_false;
+                   intro; apply H
+               | _ => eapply H'; eassumption
+               | _ => assumption
+               | [ |- _ < _ ] => eapply Lt.lt_le_trans; eassumption
+             end.
     Defined.
 
     (*
@@ -350,31 +372,33 @@ Section cfg.
     Defined.*)
 
     Section item.
+      Context (h : nat).
       Context {str : String} (valid : productions_listT) {it : item CharType}.
-      Context (valid_map : valid_mapT).
       (*Context (valid_map_sub : forall name, sub_productions_listT valid (proj1_sig (valid_map name))).*)
 
       Context (minimal_parse_of__of__parse_of
                : forall {str : String} (valid : productions_listT) {pats : productions CharType}
-                        (valid_map : valid_mapT)
-                        (*(valid_map_sub : forall name, sub_productions_listT valid (proj1_sig (valid_map name)))*)
-                        (p : parse_of String G str pats),
-                   Forall_parse_of P p -> (minimal_parse_of valid str pats + alt_option valid str (@proj1_sig _ _ ∘ valid_map))).
+                        (p : parse_of String G str pats)
+                        (p_small : height_of_parse p < h),
+                   Forall_parse_of P p -> (minimal_parse_of valid str pats + alt_option h valid str)).
 
       Definition minimal_parse_of_item__of__parse_of_item'
                  (p : parse_of_item String G str it)
-      : Forall_parse_of_item P p -> (minimal_parse_of_item valid str it + alt_option valid str (@proj1_sig _ _ ∘ valid_map)).
+      : Forall_parse_of_item P p -> (minimal_parse_of_item valid str it + alt_option h valid str).
       Proof.
-        refine match p as p' in (parse_of_item _ _ str' it')
-                     return (Forall_parse_of_item P p'
-                             -> minimal_parse_of_item valid str' it' + alt_option valid str' (@proj1_sig _ _ ∘ valid_map))
+        SearchAbout ({_ = true} + {_ = false}).
+
+Sumbool.sumbool_of_bool
+        refine match p as p in (parse_of_item _ _ str it)
+                     return (Forall_parse_of_item P p
+                             -> minimal_parse_of_item valid str it + alt_option h valid str)
                with
                  | ParseTerminal x
                    => fun _ => inl (MinParseTerminal _ x)
                  | ParseNonTerminal name str' p'
                    => fun forall_parse
                       => (if is_valid_productions valid (G name) as b
-                             return (is_valid_productions valid (G name) = b -> _ + alt_option valid str' (@proj1_sig _ _ ∘ valid_map))
+                             return (is_valid_productions valid (G name) = b -> _ + alt_option h valid str')
                           then fun H'
                                => match minimal_parse_of__of__parse_of
                                           (remove_productions valid (G name))
@@ -429,8 +453,7 @@ Section cfg.
                                   end
                           else fun H'
                                => match minimal_parse_of__of__parse_of
-                                          (proj1_sig (valid_map name))
-                                          valid_map
+                                          valid
                                           (*_*)
                                           p' (snd forall_parse) with
                                     | inl mp
