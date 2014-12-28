@@ -381,23 +381,47 @@ Section cfg.
                         (p : parse_of String G str pats)
                         (p_small : height_of_parse p < h),
                    Forall_parse_of P p -> (minimal_parse_of valid str pats + alt_option h valid str)).
-
+SearchAbout (S _ < _).
       Definition minimal_parse_of_item__of__parse_of_item'
                  (p : parse_of_item String G str it)
-      : Forall_parse_of_item P p -> (minimal_parse_of_item valid str it + alt_option h valid str).
+      : height_of_parse_item p < h -> Forall_parse_of_item P p -> (minimal_parse_of_item valid str it + alt_option h valid str).
       Proof.
-        SearchAbout ({_ = true} + {_ = false}).
-
-Sumbool.sumbool_of_bool
-        refine match p as p in (parse_of_item _ _ str it)
-                     return (Forall_parse_of_item P p
-                             -> minimal_parse_of_item valid str it + alt_option h valid str)
-               with
-                 | ParseTerminal x
-                   => fun _ => inl (MinParseTerminal _ x)
-                 | ParseNonTerminal name str' p'
-                   => fun forall_parse
-                      => (if is_valid_productions valid (G name) as b
+        refine (match h as h, p as p in (parse_of_item _ _ str it)
+                      return ((forall str valid pats (p : parse_of String G str pats)
+                                      (p_small : height_of_parse p < h),
+                                 Forall_parse_of P p
+                                 -> (minimal_parse_of valid str pats + alt_option h valid str))
+                              -> height_of_parse_item p < h
+                              -> Forall_parse_of_item P p
+                              -> minimal_parse_of_item valid str it + alt_option h valid str)
+        with
+                  | _, ParseTerminal x
+                    => fun _ _ _ => inl (MinParseTerminal _ x)
+                  | 0, ParseNonTerminal _ _ _
+                    => fun _ H' _ => match Lt.lt_n_0 _ H' : False with end
+                  | S h', ParseNonTerminal name str' p'
+                    => fun minimal_parse_of__of__parse_of p_small forall_parse
+                       => match @minimal_parse_of__of__parse_of
+                                  _ (remove_productions valid (G name)) _
+                                  p'
+                                  (NPeano.Nat.lt_succ_l _ _ p_small)
+                                  (snd forall_parse),
+                                Sumbool.sumbool_of_bool (is_valid_productions valid (G name))
+                          with
+                            | inl mp, left H'
+                              => inl (MinParseNonTerminal name H' mp)
+                            | inr (existT name' other), left H'
+                              => _
+                            | inr (existT name' other), right H'
+                              => _
+                            | inl mp, right H'
+                              => inr (existT
+                                        _ name
+                                        (conj H' (fst forall_parse),
+                                         _))
+                          end
+                end (@minimal_parse_of__of__parse_of)).
+        SearchAbout (_ < 0).
                              return (is_valid_productions valid (G name) = b -> _ + alt_option h valid str')
                           then fun H'
                                => match minimal_parse_of__of__parse_of
