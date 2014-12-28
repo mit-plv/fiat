@@ -18,7 +18,7 @@ Section rel.
     Fixpoint height_of_parse {str pats} (p : parse_of String G str pats) : nat
       := match p with
            | ParseHead _ _ _ p' => S (height_of_parse_production p')
-           | ParseTail _ _ _ p' => height_of_parse p'
+           | ParseTail _ _ _ p' => S (height_of_parse p')
          end
     with height_of_parse_production {str pat} (p : parse_of_production String G str pat) : nat
          := match p with

@@ -93,7 +93,8 @@ SRC_MODULES    := \
 	Parsers/Specification\
 	Parsers/NonComputational\
 	Parsers/BooleanRecognizer\
-	Parsers/WellFoundedParse
+	Parsers/WellFoundedParse\
+	Parsers/MinimalParse
 
 EXAMPLE_MODULES := \
 	Bookstore \
