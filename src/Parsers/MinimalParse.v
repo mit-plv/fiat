@@ -120,33 +120,41 @@ Section cfg.
        end
   with parse_of_production__of__minimal_parse_of_production {valid str pat} (p : minimal_parse_of_production valid str pat)
        : parse_of_production String G str pat
-       := let parse_of_item__of__minimal_parse_of_item {valid str it} (p : minimal_parse_of_item valid str it)
-              := match p in (minimal_parse_of_item valid str it) return parse_of_item String G str it with
-                   | MinParseTerminal valid x
-                     => ParseTerminal String G x
-                   | MinParseNonTerminal valid name str H p'
-                     => ParseNonTerminal name (parse_of__of__minimal_parse_of p')
-                 end in
-          match p with
-            | MinParseProductionNil valid
-              => ParseProductionNil _ _
-            | MinParseProductionConsDec valid str pat strs pats _ _ p' p''
-              => ParseProductionCons
-                   (parse_of_item__of__minimal_parse_of_item p')
-                   (parse_of_production__of__minimal_parse_of_production p'')
-            | MinParseProductionConsEmpty0 valid str pat strs pats _ _ p' p''
-              => ParseProductionCons
-                   (parse_of_item__of__minimal_parse_of_item p')
-                   (parse_of_production__of__minimal_parse_of_production p'')
-            | MinParseProductionConsEmpty1 valid str pat strs pats _ _ p' p''
-              => ParseProductionCons
-                   (parse_of_item__of__minimal_parse_of_item p')
-                   (parse_of_production__of__minimal_parse_of_production p'')
-            | MinParseProductionConsEmpty01 valid str pat strs pats _ _ p' p''
-              => ParseProductionCons
-                   (parse_of_item__of__minimal_parse_of_item p')
-                   (parse_of_production__of__minimal_parse_of_production p'')
-          end.
+       := (let parse_of_item__of__minimal_parse_of_item {valid str it} (p : minimal_parse_of_item valid str it)
+               := match p in (minimal_parse_of_item valid str it) return parse_of_item String G str it with
+                    | MinParseTerminal valid x
+                      => ParseTerminal String G x
+                    | MinParseNonTerminal valid name str H p'
+                      => ParseNonTerminal name (parse_of__of__minimal_parse_of p')
+                  end in
+                   match p with
+                     | MinParseProductionNil valid
+                       => ParseProductionNil _ _
+                     | MinParseProductionConsDec valid str pat strs pats _ _ p' p''
+                       => ParseProductionCons
+                            (parse_of_item__of__minimal_parse_of_item p')
+                            (parse_of_production__of__minimal_parse_of_production p'')
+                     | MinParseProductionConsEmpty0 valid str pat strs pats _ _ p' p''
+                       => ParseProductionCons
+                            (parse_of_item__of__minimal_parse_of_item p')
+                            (parse_of_production__of__minimal_parse_of_production p'')
+                     | MinParseProductionConsEmpty1 valid str pat strs pats _ _ p' p''
+                       => ParseProductionCons
+                            (parse_of_item__of__minimal_parse_of_item p')
+                            (parse_of_production__of__minimal_parse_of_production p'')
+                     | MinParseProductionConsEmpty01 valid str pat strs pats _ _ p' p''
+                       => ParseProductionCons
+                            (parse_of_item__of__minimal_parse_of_item p')
+                            (parse_of_production__of__minimal_parse_of_production p'')
+                   end).
+
+  Definition parse_of_item__of__minimal_parse_of_item {valid str it} (p : minimal_parse_of_item valid str it)
+    := match p in (minimal_parse_of_item valid str it) return parse_of_item String G str it with
+         | MinParseTerminal valid x
+           => ParseTerminal String G x
+         | MinParseNonTerminal valid name str H p'
+           => ParseNonTerminal name (parse_of__of__minimal_parse_of p')
+       end.
 
   Definition sub_productions_listT (x y : productions_listT) : Prop
     := forall p, is_valid_productions x p = true -> is_valid_productions y p = true.
@@ -293,10 +301,11 @@ Section cfg.
     Let P : productions CharType -> Prop
       := fun p => is_valid_productions initial_productions_data p = true.
 
-    Local Notation alt_option h valid str
+    Let alt_option h valid str
       := { name : _ & (is_valid_productions valid (Lookup G name) = false /\ P (Lookup G name))
                       * { p : parse_of String G str (Lookup G name)
-                        | height_of_parse p < h } }%type.
+                              & (height_of_parse p < h)
+                                * Forall_parse_of P p } }%type.
 
     Lemma not_alt_all {h str} (ps : alt_option h initial_productions_data str)
     : False.
@@ -315,10 +324,10 @@ Section cfg.
     Defined.
 
     Definition expand_alt_option {h h' str valid valid'}
-               (H : h <= h') (H' : sub_productions_listT valid' valid)
+               (H : h < h') (H' : sub_productions_listT valid' valid)
     : alt_option h valid str -> alt_option h' valid' str.
     Proof.
-      hnf in H'.
+      hnf in H'; unfold alt_option.
       repeat match goal with
                | [ |- sigT _ -> _ ] => intros []
                | [ |- sig _ -> _ ] => intros []
@@ -335,7 +344,7 @@ Section cfg.
                    intro; apply H
                | _ => eapply H'; eassumption
                | _ => assumption
-               | [ |- _ < _ ] => eapply Lt.lt_le_trans; eassumption
+               | [ |- _ < _ ] => eapply Lt.lt_trans; eassumption
              end.
     Defined.
 
@@ -371,243 +380,380 @@ Section cfg.
       abstract (rewrite remove_productions_1 by assumption; trivial).
     Defined.*)
 
-    Section item.
-      Context (h : nat).
-      Context {str : String} (valid : productions_listT) {it : item CharType}.
-      (*Context (valid_map_sub : forall name, sub_productions_listT valid (proj1_sig (valid_map name))).*)
+    Section wf_parts.
+      Let of_parse_T h
+        := forall {str : String} (valid : productions_listT) {pats : productions CharType}
+                  (p : parse_of String G str pats)
+                  (p_small : height_of_parse p < h),
+             Forall_parse_of P p
+             -> ({ p' : minimal_parse_of valid str pats
+                        & (height_of_parse (parse_of__of__minimal_parse_of p') <= height_of_parse p)
+                          * Forall_parse_of P (parse_of__of__minimal_parse_of p') })%type
+                + alt_option (height_of_parse p) valid str.
 
-      Context (minimal_parse_of__of__parse_of
-               : forall {str : String} (valid : productions_listT) {pats : productions CharType}
-                        (p : parse_of String G str pats)
-                        (p_small : height_of_parse p < h),
-                   Forall_parse_of P p -> (minimal_parse_of valid str pats + alt_option h valid str)).
-SearchAbout (S _ < _).
-      Definition minimal_parse_of_item__of__parse_of_item'
-                 (p : parse_of_item String G str it)
-      : height_of_parse_item p < h -> Forall_parse_of_item P p -> (minimal_parse_of_item valid str it + alt_option h valid str).
-      Proof.
-        refine (match h as h, p as p in (parse_of_item _ _ str it)
-                      return ((forall str valid pats (p : parse_of String G str pats)
-                                      (p_small : height_of_parse p < h),
-                                 Forall_parse_of P p
-                                 -> (minimal_parse_of valid str pats + alt_option h valid str))
-                              -> height_of_parse_item p < h
-                              -> Forall_parse_of_item P p
-                              -> minimal_parse_of_item valid str it + alt_option h valid str)
-        with
-                  | _, ParseTerminal x
-                    => fun _ _ _ => inl (MinParseTerminal _ x)
-                  | 0, ParseNonTerminal _ _ _
-                    => fun _ H' _ => match Lt.lt_n_0 _ H' : False with end
-                  | S h', ParseNonTerminal name str' p'
-                    => fun minimal_parse_of__of__parse_of p_small forall_parse
-                       => match @minimal_parse_of__of__parse_of
-                                  _ (remove_productions valid (G name)) _
-                                  p'
-                                  (NPeano.Nat.lt_succ_l _ _ p_small)
-                                  (snd forall_parse),
-                                Sumbool.sumbool_of_bool (is_valid_productions valid (G name))
-                          with
-                            | inl mp, left H'
-                              => inl (MinParseNonTerminal name H' mp)
-                            | inr (existT name' other), left H'
-                              => _
-                            | inr (existT name' other), right H'
-                              => _
-                            | inl mp, right H'
-                              => inr (existT
-                                        _ name
-                                        (conj H' (fst forall_parse),
-                                         _))
-                          end
-                end (@minimal_parse_of__of__parse_of)).
-        SearchAbout (_ < 0).
-                             return (is_valid_productions valid (G name) = b -> _ + alt_option h valid str')
-                          then fun H'
-                               => match minimal_parse_of__of__parse_of
-                                          (remove_productions valid (G name))
-                                          (fun name'
-                                           => match productions_dec chartype_dec (G name) (G name') with
-                                                | left pf => match pf in (_ = y) return {v : productions_listT | is_valid_productions v y = true} with
-                                                              | eq_refl => exist _ valid H'
-                                                            end
-                                                | right _ => valid_map name'
-                                              end)
-                                          (*_*)
-                                          p' (snd forall_parse) with
-                                    | inl mp
-                                      => inl (MinParseNonTerminal name H' mp)
-                                    | inr (existT name' other)
-                                      => match productions_dec chartype_dec (G name) (G name') as s1
-                                               return
-                                               (_ * minimal_parse_of (remove_productions (` (match s1 with
-                                                                                               | left pf => match pf in (_ = y) return {v : productions_listT | is_valid_productions v y = true} with
-                                                                                                              | eq_refl => exist _ valid H'
-                                                                                                            end
-                                                                                               | right _ => valid_map name'
-                                                                                             end)) _) _ _ -> _)
-                                         with
-                                           | left e
-                                             => fun other
-                                                => let f := fun p
-                                                            => (match e as e in (_ = y)
-                                                                      return
-                                                                      ((is_valid_productions _ y = false /\ P y) *
-                                                                       minimal_parse_of
-                                                                         (remove_productions
-                                                                            (proj1_sig (match e in (_ = y) return {v : productions_listT | is_valid_productions v y = true} with
-                                                                                          | eq_refl => _
-                                                                                        end)) y) str' y
-                                                                       -> minimal_parse_of_item valid str' (NonTerminal CharType name) +
-                                                                          alt_option valid str' (@proj1_sig _ _ ∘ valid_map))
-                                                                with
-                                                                  | eq_refl
-                                                                    => fun other
-                                                                       => inl (MinParseNonTerminal name H' (p other))
-                                                                end other) in
-                                                   f (@snd _ _)
-                                           | right n =>
-                                             fun other
-                                             => inr (existT _ name' (conj (match proj1 (remove_productions_2 _ _ _) (proj1 (fst other)) with
-                                                                             | or_introl H' => H'
-                                                                             | or_intror H' => match n H' : False with end
-                                                                           end) (proj2 (fst other)),
-                                                                     (snd other)))
-                                         end other
-                                  end
-                          else fun H'
-                               => match minimal_parse_of__of__parse_of
-                                          valid
-                                          (*_*)
-                                          p' (snd forall_parse) with
-                                    | inl mp
-                                      => inr (existT
-                                           _ name
-                                           (conj H' (fst forall_parse),
-                                            _))
-                                    | inr (existT name' other)
-                                      => (*inr (existT _ name' other)*) _
-                                  end) eq_refl
-               end.
-        Focus 2.
-        refine (MinParseNonTerminal name _ _).
-        (*{ clear -H' valid_map_sub remove_productions_1.
-          abstract (
-              repeat match goal with
-                       | [ |- appcontext[match ?E with _ => _ end] ] => case_eq E
-                       | _ => progress simpl in *
-                       | _ => intro
-                       | _ => (eapply remove_productions_1; eassumption)
-                       | _ => (eapply valid_map_sub, remove_productions_1; eassumption)
-                     end
-            ). }*)
+      Definition of_parse_T_resp {h h'} (H : h' < h) (parse : of_parse_T h)
+      : of_parse_T h'
+        := fun str' valid' pats' p' p_small'
+           => @parse str' valid' pats' p' (Lt.lt_trans _ _ _ p_small' H).
 
- (*
+      Let of_parse_item_T {str valid it} (p : parse_of_item String G str it) h
+        := height_of_parse_item p < h
+           -> Forall_parse_of_item P p
+           -> ({ p' : minimal_parse_of_item valid str it
+                      & (height_of_parse_item (parse_of_item__of__minimal_parse_of_item p') <= height_of_parse_item p)
+                        * Forall_parse_of_item P (parse_of_item__of__minimal_parse_of_item p') })%type
+              + alt_option (height_of_parse_item p) valid str.
 
+      Section item.
+        Context {str : String} (valid : productions_listT) {it : item CharType}.
 
-(*let mp' := alt_all_elim (minimal_parse_of__of__parse_of initial_productions_data p' (snd forall_parse)) in*)
-                         match minimal_parse_of__of__parse_of (valid := remove_productions valid (G name))
-                                                              (fun name'
-                                                               => if productions_dec chartype_dec (G name) (G name')
-                                                                  then (exist _ valid _)
-                                                                  else (valid_map name'))
-                                                              _
-                                                              p' (snd forall_parse) with
-                           | inl mp
-                             => (if is_valid_productions valid (G name) as b
-                                    return (is_valid_productions valid (G name) = b -> _ + alt_option valid str' (@proj1_sig _ _ ∘ valid_map))
-                                 then fun H'
-                                      => inl (MinParseNonTerminal name H' mp)
-                                 else fun H'
-                                      => inr (existT _ _ (conj H' (fst forall_parse),
-                                                          expand_minimal_parse_of
-                                                            (valid_map_sub name)
-                                                            (expand_minimal_parse_of
-                                                               (sub_productions_listT_remove (ps:=G name))
-                                                               mp))))
-                                  eq_refl
+        Let rec_T str it h
+          := forall h', h' < h -> of_parse_T h' -> forall p, @of_parse_item_T str valid it p h'.
+
+        Section helper.
+          Context (h : nat)
+                  (minimal_parse_of_item__of__parse_of_item_rec : rec_T str it h)
+                  (minimal_parse_of__of__parse_of : of_parse_T h).
+
+          Definition minimal_parse_of_item__of__parse_of_item'_helper
+                     (p : parse_of_item String G str it)
+          : of_parse_item_T p h
+            := match h as h, p as p in (parse_of_item _ _ str it)
+                     return (rec_T str it h -> of_parse_T h -> of_parse_item_T p h)
+               with
+                 | _, ParseTerminal x
+                   => fun _ _ H' _ => inl (existT _ (MinParseTerminal _ x) (le_n _, tt))
+                 | 0, ParseNonTerminal _ _ _
+                   => fun _ _ H' _ => match Lt.lt_n_0 _ H' : False with end
+                 | S h', ParseNonTerminal name str' p'
+                   => fun minimal_parse_of_item__of__parse_of_item_rec
+                          minimal_parse_of__of__parse_of
+                          p_small forall_parse
+                      => match @minimal_parse_of__of__parse_of
+                                 _ (remove_productions valid (G name)) _
+                                 p'
+                                 (NPeano.Nat.lt_succ_l _ _ p_small)
+                                 (snd forall_parse)
+                         with
+                           | inl (existT mp (H0, H0_forall))
+                             => match Sumbool.sumbool_of_bool (is_valid_productions valid (G name)) with
+                                  | left H'
+                                    => inl (existT _ (MinParseNonTerminal name H' mp) (Le.le_n_S _ _ H0, (fst forall_parse, H0_forall)))
+                                  | right H'
+                                    => inr (existT
+                                              _ name
+                                              (conj H' (fst forall_parse),
+                                               existT
+                                                 _ (parse_of__of__minimal_parse_of mp)
+                                                 (Lt.le_lt_n_Sm _ _ H0, H0_forall)))
+                                end
                            | inr (existT name' other)
-                             => match productions_dec chartype_dec (G name) (G name') as s1
-                                      return
-                                      (_ * minimal_parse_of (` (if s1 then _ else _)) _ _ -> _)
-                                with
-                                  | left e
-                                    => match e in (_ = y)
-                                             return
-                                             ((is_valid_productions _ y = false /\ P y) *
-                                              minimal_parse_of _ str' y
-                                              -> minimal_parse_of_item valid str' (NonTerminal CharType name) +
-                                                 alt_option valid str' (@proj1_sig _ _ ∘ valid_map))
-                                       with
-                                         | eq_refl
-                                           => fun other
-                                              => (if is_valid_productions valid (G name) as b
-                                                     return (is_valid_productions valid (G name) = b -> _ + alt_option valid str' (@proj1_sig _ _ ∘ valid_map))
-                                                  then fun H'
-                                                       => inl (MinParseNonTerminal name H' _)
-                                                  else fun H'
-                                                       => _)
-                                                   eq_refl
+                             => match productions_dec chartype_dec (G name) (G name') with
+                                  | right pf
+                                    => inr (existT
+                                              _ name'
+                                              (conj
+                                                 (eq_trans (eq_sym (remove_productions_5 valid pf)) (proj1 (fst other)))
+                                                 (proj2 (fst other)),
+                                               (existT
+                                                  _ (projT1 (snd other))
+                                                  (Lt.lt_S _ _ (fst (projT2 (snd other))), snd (projT2 (snd other))))))
+                                  | left pf
+                                    => match Sumbool.sumbool_of_bool (is_valid_productions valid (G name)) with
+                                         | left H'
+                                           => let other' :=
+                                                  (match eq_sym pf in (_ = y)
+                                                         return (is_valid_productions (remove_productions valid (G name)) y =
+                                                                 false /\ P y) *
+                                                                { p0 : parse_of String G _ y
+                                                                       & ((height_of_parse p0 < height_of_parse _) * Forall_parse_of P p0)%type }
+                                                   with
+                                                     | eq_refl => other
+                                                   end) in
+                                              let p'' := (@minimal_parse_of_item__of__parse_of_item_rec
+                                                            _ p_small
+                                                            (of_parse_T_resp p_small minimal_parse_of__of__parse_of)
+                                                            (ParseNonTerminal name (projT1 (snd other')))
+                                                            (Lt.lt_n_S _ _ (fst (projT2 (snd other'))))
+                                                            (proj2 (fst other'), snd (projT2 (snd other')))) in
+
+                                              match p'' with
+                                                | inl (existT p''' (H'', H''_forall))
+                                                  => inl (existT
+                                                            _ p'''
+                                                            (Le.le_trans _ _ _ H'' (Lt.lt_le_weak _ _ (Lt.lt_n_S _ _ (fst (projT2 (snd other'))))), H''_forall))
+                                                | inr p'''
+                                                  => inr (expand_alt_option
+                                                            (Lt.lt_n_S _ _ (fst (projT2 (snd other'))))
+                                                            (reflexivity _)
+                                                            p''')
+                                              end
+                                         | right H'
+                                           => inr (existT
+                                                     _ name'
+                                                     (conj
+                                                        (match pf in (_ = y)
+                                                               return is_valid_productions valid y = false
+                                                         with
+                                                           | eq_refl => H'
+                                                         end)
+                                                        (proj2 (fst other)),
+                                                      (existT
+                                                         _ (projT1 (snd other))
+                                                         (Lt.lt_S _ _ (fst (projT2 (snd other))), snd (projT2 (snd other))))))
                                        end
-                                  | right n =>
-                                    fun other
-                                    => inr (existT _ name' (conj (match proj1 (remove_productions_2 _ _ _) (proj1 (fst other)) with
-                                                                    | or_introl H' => H'
-                                                                    | or_intror H' => match n H' : False with end
-                                                                  end) (proj2 (fst other)),
-                                                            snd other))
-                                end other
+                                end
+                         end
+               end
+                 (@minimal_parse_of_item__of__parse_of_item_rec)
+                 (@minimal_parse_of__of__parse_of).
+        End helper.
+
+        Definition minimal_parse_of_item__of__parse_of_item'
+        : forall (h : nat)
+                 (minimal_parse_of__of__parse_of : of_parse_T h)
+                 (p : parse_of_item String G str it),
+            of_parse_item_T p h
+          := Fix Wf_nat.lt_wf _ minimal_parse_of_item__of__parse_of_item'_helper.
+      End item.
+
+      Section production.
+        Let of_parse_production_T {str valid pat} (p : parse_of_production String G str pat) h
+          := height_of_parse_production p < h
+             -> Forall_parse_of_production P p
+             -> ({ p' : minimal_parse_of_production valid str pat
+                        & (height_of_parse_production (parse_of_production__of__minimal_parse_of_production p') <= height_of_parse_production p)
+                          * Forall_parse_of_production P (parse_of_production__of__minimal_parse_of_production p') })%type
+                + alt_option (height_of_parse_production p) valid str.
+
+        Let rec_T h
+          := forall h', h' < h -> of_parse_T h' -> forall str valid pat p, @of_parse_production_T str valid pat p h'.
+
+        Context {str : String} (valid : productions_listT) {pat : production CharType}.
 
 
+        Section helper.
+          Context (h : nat)
+                  (minimal_parse_of_production__of__parse_of_production_rec : rec_T h)
+                  (minimal_parse_of__of__parse_of : of_parse_T h).
+
+          Let minimal_parse_of_production__of__parse_of_production h' H
+          : forall {str} valid {pat} (p : parse_of_production String G str pat),
+              of_parse_production_T p h'
+            := @minimal_parse_of_production__of__parse_of_production_rec
+                 h' H (of_parse_T_resp H (@minimal_parse_of__of__parse_of)).
+
+          Let minimal_parse_of_item__of__parse_of_item {str valid it}
+            := @minimal_parse_of_item__of__parse_of_item' str valid it h minimal_parse_of__of__parse_of.
+
+          Definition minimal_parse_of_production__of__parse_of_production'_helper
+                     (p : parse_of_production String G str pat)
+          : @of_parse_production_T str valid pat p h.
+          Proof.
+            refine (
+                match h as h, p as p in (parse_of_production _ _ str pat)
+                      return ((forall h' (H : h' < h) str valid pat (p : parse_of_production String G str pat),
+                                 of_parse_production_T p h')
+                              -> (forall str valid it p', @of_parse_item_T str valid it p' h) -> of_parse_production_T p h)
+                with
+                  | 0, _ => fun _ _ H' _ => match Lt.lt_n_0 _ H' : False with end
+                  | S h', ParseProductionNil
+                    => fun _ _ p_small forall_parse
+                       => inl (existT
+                                 _ (MinParseProductionNil _)
+                                 (reflexivity _, forall_parse))
+                  | S h', ParseProductionCons str0 pat' str1 pats' p0' p1'
+                    => fun minimal_parse_of_production__of__parse_of_production
+                           minimal_parse_of_item__of__parse_of_item
+                           p_small forall_parse
+                       => let mp0 := @minimal_parse_of_item__of__parse_of_item _ valid _ p0' (NPeano.Nat.lt_succ_l _ _ (proj1 (proj1 (NPeano.Nat.max_lub_lt_iff _ _ _) p_small))) (fst forall_parse) in
+                          let mp0' := alt_all_elim (@minimal_parse_of_item__of__parse_of_item _ initial_productions_data _ p0' (NPeano.Nat.lt_succ_l _ _ (proj1 (proj1 (NPeano.Nat.max_lub_lt_iff _ _ _) p_small))) (fst forall_parse)) in
+                          let mp1 := (@minimal_parse_of_production__of__parse_of_production _ p_small _ valid _ p1' (Max.le_max_r _ _) (snd forall_parse)) in
+                          let mp1' := alt_all_elim (@minimal_parse_of_production__of__parse_of_production _ p_small _ initial_productions_data _ p1' (Max.le_max_r _ _) (snd forall_parse)) in
+                          match stringlike_dec str0 (Empty _), stringlike_dec str1 (Empty _) with
+                            | right pf0, right pf1
+                              => inl (existT
+                                        _ (MinParseProductionConsDec valid pf0 pf1 _ (*mp0'*) _(*mp1'*))
+                                        _)
+                            | left pf0, left pf1
+                              => let eq_pf0 := (_ : str0 = str0 ++ str1) in
+                                 let eq_pf1 := (_ : str1 = str0 ++ str1) in
+                                 match mp0, mp1 with
+                                   | inl mp0'', inl mp1''
+                                     => inl (existT
+                                               _ (MinParseProductionConsEmpty01 pf0 pf1 _(*mp0''*) _(*mp1''*))
+                                               _)
+                                   | inr other, _
+                                     => inr (match eq_pf0 in (_ = str1) return (alt_option _ valid str1) with
+                                               | eq_refl => _(*other*)
+                                             end)
+                                   | _, inr other
+                                     => inr (match eq_pf1 in (_ = str1) return (alt_option _ valid str1) with
+                                               | eq_refl => _(*other*)
+                                             end)
+                                 end
+                            | left pf0, right pf1
+                              => let eq_pf := (_ : str1 = str0 ++ str1) in
+                                 match mp1 with
+                                   | inl mp1''
+                                     => inl (existT
+                                               _ (MinParseProductionConsEmpty0 pf0 pf1 _(*mp0'*) _(*mp1''*))
+                                               _)
+                                   | inr other
+                                     => inr (match eq_pf in (_ = str0) return (alt_option _ valid str0) with
+                                               | eq_refl => _(*other*)
+                                             end)
+                                 end
+                            | right pf0, left pf1
+                              => let eq_pf := (_ : str0 = str0 ++ str1) in
+                                 _ (*match mp0 with
+                           | inl mp0''
+                             => inl (MinParseProductionConsEmpty1 pf0 pf1 mp0'' mp1')
+                           | inr other
+                             => inr (match eq_pf in (_ = str0) return (alt_option valid str0) with
+                                       | eq_refl => other
+                                     end)
                          end*)
-
-        admit.
-        { destruct e.
-          simpl in *.
-
-
-
-.
-                 | _ => solve [ eapply remove_productions_1; eauto ]
-                 |
-        admit.
-
-
-
-        admit.
-
-        Show Proof.
-        simpl in *.
-        destruct (string_dec name name'); [ left | right ].
-        destruct e.
-        Show Proof.
-        refine (match string_dec name name' as b
-                      return ({name0 : string &
-          ((is_valid_productions (remove_productions valid (G name))
-              (G name0) = false /\ P (G name0)) *
-           minimal_parse_of
-             (`
-              (if string_dec name name0
-               then valid_map name0
-               else valid_map name0)) str' (G name0))%type}
-        eapply expand_minimal_parse_of.
-        apply valid_map_sub.
-        eapply expand_minimal_parse_of.
-        apply sub_productions_listT_remove.
-        exact mp.
-        Show Proof.xo
-        Focus 3.
-        destruct other.
-        simpl.
-        clearbody mp'.
-        clear minimal_parse_of__of__parse_of.
-        destruct other; simpl in *.
+                          end
+                end
+                  (@minimal_parse_of_production__of__parse_of_production)
+                  (@minimal_parse_of_item__of__parse_of_item));
+            simpl in *.
+            Print height_of_parse_production.
+            refine (let mp1 := (@minimal_parse_of_production__of__parse_of_production0 _ p_small _ valid _ p1' (Max.le_max_r _ _) (snd forall_parse)) in
+                    _).
+            hnf in *.
+SearchAbout max.
+SearchAbout (?x < ?y -> ?y <= ?z -> ?x < ?z).
+SearchAbout (?x <= max _ ?x).
 
 
-        admit.*)
-        admit.
-      Defined.
-    End item.
+
+ valid valid_map p1' (snd forall_parse) in
+            change (max (S (height_of_parse_item' (@height_of_parse _ _ _) p0'))
+                        (height_of_parse_production p1') < S h') in p_small.
+            SearchAbout (S ?x < ?y -> ?x < ?y).
+            refine () in
+                    _).
+
+          p as p in (parse_of_production _ _ str pat)
+          return
+          (Forall_parse_of_production P p
+           -> minimal_parse_of_production valid str pat + alt_option valid str (@proj1_sig _ _ ∘ valid_map))
+        with
+          | ParseProductionNil
+            => fun _ => inl (MinParseProductionNil _)
+          | ParseProductionCons str0 pat' str1 pats' p0' p1'
+            => fun forall_parse
+               => let mp0 := minimal_parse_of_item__of__parse_of_item' valid valid_map (@minimal_parse_of__of__parse_of) p0' (fst forall_parse) in
+                  let mp1 := minimal_parse_of_production__of__parse_of_production valid valid_map p1' (snd forall_parse) in
+                  let mp0' := alt_all_elim (minimal_parse_of_item__of__parse_of_item' initial_productions_data (fun _ => None) (@minimal_parse_of__of__parse_of) p0' (fst forall_parse)) in
+                  let mp1' := alt_all_elim (minimal_parse_of_production__of__parse_of_production initial_productions_data (fun _ => None) p1' (snd forall_parse)) in
+
+
+                  match stringlike_dec str0 (Empty _), stringlike_dec str1 (Empty _) with
+                    | right pf0, right pf1
+                      => inl (MinParseProductionConsDec valid pf0 pf1 admit (*mp0'*) mp1')
+                    | left pf0, left pf1
+                      => let eq_pf0 := (_ : str0 = str0 ++ str1) in
+                         let eq_pf1 := (_ : str1 = str0 ++ str1) in
+                         match mp0, mp1 with
+                           | inl mp0'', inl mp1''
+                             => inl (MinParseProductionConsEmpty01 pf0 pf1 mp0'' mp1'')
+                           | inr other, _
+                             => inr (match eq_pf0 in (_ = str1) return (alt_option valid str1 (@proj1_sig _ _ ∘ valid_map)) with
+                                       | eq_refl => other
+                                     end)
+                           | _, inr other
+                             => inr (match eq_pf1 in (_ = str1) return (alt_option valid str1 (@proj1_sig _ _ ∘ valid_map)) with
+                                       | eq_refl => other
+                                     end)
+                         end
+                    | left pf0, right pf1
+                      => let eq_pf := (_ : str1 = str0 ++ str1) in
+                         match mp1 with
+                           | inl mp1''
+                             => inl (MinParseProductionConsEmpty0 pf0 pf1 _(*mp0'*) mp1'')
+                           | inr other
+                             => inr (match eq_pf in (_ = str0) return (alt_option valid str0 (@proj1_sig _ _ ∘ valid_map)) with
+                                       | eq_refl => other
+                                     end)
+                         end
+                    | right pf0, left pf1
+                      => let eq_pf := (_ : str0 = str0 ++ str1) in
+                         _ (*match mp0 with
+                           | inl mp0''
+                             => inl (MinParseProductionConsEmpty1 pf0 pf1 mp0'' mp1')
+                           | inr other
+                             => inr (match eq_pf in (_ = str0) return (alt_option valid str0) with
+                                       | eq_refl => other
+                                     end)
+                         end*)
+                  end
+        end.
+
+      minimal_parse_of_production__of__parse_of_production
+             {str : String} (valid : productions_listT) {pat : production CharType}
+             (valid_map : valid_mapT)
+             (p : parse_of_production String G str pat)
+             {struct p}
+    : Forall_parse_of_production P p -> (minimal_parse_of_production valid str pat + alt_option valid str (@proj1_sig _ _ ∘ valid_map))
+      := match
+          p as p in (parse_of_production _ _ str pat)
+          return
+          (Forall_parse_of_production P p
+           -> minimal_parse_of_production valid str pat + alt_option valid str (@proj1_sig _ _ ∘ valid_map))
+        with
+          | ParseProductionNil
+            => fun _ => inl (MinParseProductionNil _)
+          | ParseProductionCons str0 pat' str1 pats' p0' p1'
+            => fun forall_parse
+               => let mp0 := minimal_parse_of_item__of__parse_of_item' valid valid_map (@minimal_parse_of__of__parse_of) p0' (fst forall_parse) in
+                  let mp1 := minimal_parse_of_production__of__parse_of_production valid valid_map p1' (snd forall_parse) in
+                  let mp0' := alt_all_elim (minimal_parse_of_item__of__parse_of_item' initial_productions_data (fun _ => None) (@minimal_parse_of__of__parse_of) p0' (fst forall_parse)) in
+                  let mp1' := alt_all_elim (minimal_parse_of_production__of__parse_of_production initial_productions_data (fun _ => None) p1' (snd forall_parse)) in
+
+
+                  match stringlike_dec str0 (Empty _), stringlike_dec str1 (Empty _) with
+                    | right pf0, right pf1
+                      => inl (MinParseProductionConsDec valid pf0 pf1 admit (*mp0'*) mp1')
+                    | left pf0, left pf1
+                      => let eq_pf0 := (_ : str0 = str0 ++ str1) in
+                         let eq_pf1 := (_ : str1 = str0 ++ str1) in
+                         match mp0, mp1 with
+                           | inl mp0'', inl mp1''
+                             => inl (MinParseProductionConsEmpty01 pf0 pf1 mp0'' mp1'')
+                           | inr other, _
+                             => inr (match eq_pf0 in (_ = str1) return (alt_option valid str1 (@proj1_sig _ _ ∘ valid_map)) with
+                                       | eq_refl => other
+                                     end)
+                           | _, inr other
+                             => inr (match eq_pf1 in (_ = str1) return (alt_option valid str1 (@proj1_sig _ _ ∘ valid_map)) with
+                                       | eq_refl => other
+                                     end)
+                         end
+                    | left pf0, right pf1
+                      => let eq_pf := (_ : str1 = str0 ++ str1) in
+                         match mp1 with
+                           | inl mp1''
+                             => inl (MinParseProductionConsEmpty0 pf0 pf1 _(*mp0'*) mp1'')
+                           | inr other
+                             => inr (match eq_pf in (_ = str0) return (alt_option valid str0 (@proj1_sig _ _ ∘ valid_map)) with
+                                       | eq_refl => other
+                                     end)
+                         end
+                    | right pf0, left pf1
+                      => let eq_pf := (_ : str0 = str0 ++ str1) in
+                         _ (*match mp0 with
+                           | inl mp0''
+                             => inl (MinParseProductionConsEmpty1 pf0 pf1 mp0'' mp1')
+                           | inr other
+                             => inr (match eq_pf in (_ = str0) return (alt_option valid str0) with
+                                       | eq_refl => other
+                                     end)
+                         end*)
+                  end
+        end.
 
     Local Obligation Tactic := program_simpl; rewrite ?LeftId, ?RightId; trivial.
 

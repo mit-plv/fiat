@@ -7,28 +7,29 @@ Section rel.
 
   Section height.
 
+    Definition height_of_parse_item'
+               (height_of_parse : forall {str pats} (p : parse_of String G str pats), nat)
+               {str it} (p : parse_of_item String G str it) : nat
+      := match p with
+           | ParseTerminal _ => 0
+           | ParseNonTerminal _ _ p' => S (height_of_parse p')
+         end.
+
     Fixpoint height_of_parse {str pats} (p : parse_of String G str pats) : nat
       := match p with
            | ParseHead _ _ _ p' => S (height_of_parse_production p')
            | ParseTail _ _ _ p' => height_of_parse p'
          end
     with height_of_parse_production {str pat} (p : parse_of_production String G str pat) : nat
-         := let height_of_parse_item {str it} (p : parse_of_item String G str it) : nat
-                := match p with
-                     | ParseTerminal _ => 0
-                     | ParseNonTerminal _ _ p' => S (height_of_parse p')
-                   end in
-            match p with
+         := match p with
               | ParseProductionNil => 0
               | ParseProductionCons _ _ _ _ p' p''
-                => max (S (height_of_parse_item p')) (height_of_parse_production p'')
+                => max (S (height_of_parse_item' (@height_of_parse) p')) (S (height_of_parse_production p''))
             end.
 
-    Definition height_of_parse_item {str it} (p : parse_of_item String G str it) : nat
-      := match p with
-           | ParseTerminal _ => 0
-           | ParseNonTerminal _ _ p' => S (height_of_parse p')
-         end.
+    Definition height_of_parse_item
+               {str it} (p : parse_of_item String G str it) : nat
+      := @height_of_parse_item' (@height_of_parse) str it p.
   End height.
 
   Definition parse_of_lt {str pats} : relation (parse_of String G str pats)
