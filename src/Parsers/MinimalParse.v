@@ -60,6 +60,13 @@ Section cfg.
     congruence.
   Qed.
 
+  Lemma remove_productions_6
+        ls ps
+  : is_valid_productions (remove_productions ls ps) ps = false.
+  Proof.
+    apply remove_productions_2; right; reflexivity.
+  Qed.
+
   Inductive minimal_parse_of
   : productions_listT -> String -> productions CharType -> Type :=
   | MinParseHead : forall valid str pat pats,
