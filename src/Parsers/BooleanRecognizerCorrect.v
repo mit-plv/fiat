@@ -478,9 +478,9 @@ Section sound.
                 (p : String * productions_listT) (str : String)
                 (Hv_init_rem : forall p', Pv (remove_productions initial_productions_data p') p')
                 (Hv_rem : forall p', Pv (remove_productions (snd p) p') p')
-                (*(Hv_expand
+                (Hv_expand
                  : forall str p' valid,
-                     Pv valid
+                     Pv valid p'
                      -> minimal_parse_of
                           String G initial_productions_data
                           is_valid_productions remove_productions valid str
@@ -488,8 +488,8 @@ Section sound.
                      -> minimal_parse_of
                           String G initial_productions_data
                           is_valid_productions remove_productions initial_productions_data str
-                          p')*)
-                (*(Hv_valid_init : forall ls, Pv ls -> H_subT ls)*)
+                          p')
+                (Hv_valid_init : forall ls p', Pv ls p' -> Pv initial_productions_data p')
                 (split_string_for_production_complete : forall valid0 valid1 str0 pf prod, @split_list_completeT str valid0 valid1 str0 pf (split_string_for_production str0 prod) prod)
                 (pf : str ≤s fst p)
                 (prod : production CharType)
@@ -508,8 +508,18 @@ Section sound.
             revert str split_string_for_production_complete pf prod prods H_prods H_init.
             let Acca := match goal with |- context[@Fix4 _ _ _ _ _ _ ?Rwf _ _ ?a _ _ _ _] => constr:(Rwf a) end in
             induction (Acca) as [? ? IHr];
-              intros str split_string_for_production_complete pf prod prods H_prods.
-            rewrite Fix4_eq.
+              intros str split_string_for_production_complete pf prod prods H_prods H_init.
+            rewrite Fix4_eq;
+              [
+              | repeat match goal with
+                       | _ => intro
+                       | _ => reflexivity
+                       | [ |- context[match ?E with _ => _ end] ] => destruct E
+                       | [ H : _ |- _ ] => rewrite H; reflexivity
+                       | _ => apply parse_productions_step_ext; auto
+                       | _ => apply (@if_ext (fun _ => bool)); intros
+                     end ];
+              [].
             { match goal with
                 | [ |- context[if lt_dec ?a ?b then _ else _] ] => destruct (lt_dec a b)
               end.
@@ -519,34 +529,40 @@ Section sound.
                 intros valid str0 pf0 prod0 prods0 H'; simpl.
                 intro mp.
                 eapply IHr;
-                try solve [ exact H' | eassumption | reflexivity | simpl; trivial ].
-
-                eapply expand_minimal_parse_of with (valid' := initial_productions_data) in mp;
-                  [
-                  | solve [ eassumption
-                          | apply Hv_valid_init; assumption
-                          | apply sub_productions_listT_remove_3; try eassumption;
-                            apply Hv_valid_init; assumption ].. ].
-                eapply IHr;
-                try solve [ exact H' | eassumption | reflexivity | simpl; trivial ].
+                try solve [ exact H'
+                          | eassumption
+                          | reflexivity
+                          | simpl in *; trivial
+                          | eapply Hv_expand; eassumption
+                          | eapply Hv_valid_init; eassumption ].
                 { left; assumption. }
                 { intros; apply split_string_for_production_complete.
                   etransitivity; eassumption. } }
-              { simpl.
-                rewrite H_prods; simpl.
-                (*let ivp := match goal with |- context[is_valid_productions ?x ?y] => constr:(is_valid_productions x y) end in
+              { let ivp := match goal with |- context[is_valid_productions ?x ?y] => constr:(is_valid_productions x y) end in
                 set (ivp' := ivp);
                   assert (ivp = ivp') by reflexivity;
                   clearbody ivp';
-                  destruct ivp'.*)
+                  destruct ivp'.
                 { intros.
                   hnf in pf.
                   apply or_to_sumbool in pf.
                   destruct pf as [ pf | pf ]; [ exfalso; hnf in *; solve [ auto ] | subst ].
                   eapply parse_productions_step_complete;
                     try solve [ eassumption | instantiate; intros; eauto ]; hnf; [].
-                  intros valid H_sub0 str0 pf0 prod0 prods0 H' H''; simpl.
+                  intros valid str0 pf0 prod0 prods0 H'; simpl.
                   intro mp.
+                  eapply IHr;
+                    try solve [ exact H'
+                              | eassumption
+                              | simpl; trivial
+                              | intros; eapply Hv_rem; eassumption
+                              | intros; eapply Hv_init_rem; eassumption ];
+                    admit. (*
+                  Focus 4.
+                  simpl in *.
+
+                  eapply H
+
                   eapply expand_minimal_parse_of in mp;
                     [
                     | solve [ eassumption | apply Hv_valid_init; assumption ].. ].
@@ -564,7 +580,7 @@ Section sound.
                   (** XXX Need to rework the assumptions / induction
                           to ensure that we can get this parse tree.
                           What to do? *)
-                    admit. } }
+                    admit. }*) }
                 { (** INTERESTING CASE HERE - need to show that if not
                       [is_valid_productions], then we can't have a
                       parse tree. *)
