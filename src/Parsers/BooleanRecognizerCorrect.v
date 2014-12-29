@@ -25,12 +25,23 @@ Section sound.
             (remove_productions_dec : forall ls prods, is_valid_productions ls prods = true
                                                        -> productions_listT_R (remove_productions ls prods) ls)
             (ntl_wf : well_founded productions_listT_R)
+            (remove_productions_1
+             : forall ls ps ps',
+                 is_valid_productions (remove_productions ls ps) ps' = true
+                 -> is_valid_productions ls ps' = true)
+            (remove_productions_2
+             : forall ls ps ps',
+                 is_valid_productions (remove_productions ls ps) ps' = false
+                 <-> is_valid_productions ls ps' = false \/ ps = ps')
             (split_string_for_production
              : forall (str0 : String) (prod : production CharType), list (String * String))
             (split_string_for_production_correct
              : forall str0 prod,
                  List.Forall (fun s1s2 => fst s1s2 ++ snd s1s2 =s str0)
                              (split_string_for_production str0 prod)).
+
+    Let P : productions CharType -> Prop
+      := fun p => is_valid_productions initial_productions_data p = true.
 
     Section parts.
       Local Hint Constructors parse_of_item parse_of parse_of_production.
@@ -44,8 +55,9 @@ Section sound.
                                 -> parse_of _ G str (prod::prods).
 
         Definition str_matches_productions_completeT
-          := forall prod prods, parse_of _ G str (prod::prods)
-                                -> str_matches_productions prod prods = true.
+          := forall valid prod prods,
+               minimal_parse_of _ G initial_productions_data is_valid_productions remove_productions valid str (prod::prods)
+               -> str_matches_productions prod prods = true.
 
         Lemma parse_item_sound
               (str_matches_productions_sound : str_matches_productions_soundT)
@@ -66,18 +78,20 @@ Section sound.
         Defined.
 
         Lemma parse_item_complete
+              valid
               (str_matches_productions_complete : str_matches_productions_completeT)
               (it : item CharType)
-        : parse_of_item _ G str it -> parse_item String G str str_matches_productions it = true.
+        : minimal_parse_of_item _ G initial_productions_data is_valid_productions remove_productions valid str it
+          -> parse_item String G str str_matches_productions it = true.
         Proof.
           unfold parse_item, str_matches_productions_completeT in *.
           repeat match goal with
                    | _ => intro
                    | _ => reflexivity
-                   | [ H : parse_of_item _ _ ?s ?i |- _ ] => atomic s; atomic i; destruct H
+                   | [ H : minimal_parse_of_item _ _ _ _ _ _ ?s ?i |- _ ] => atomic s; atomic i; destruct H
                    | [ |- _ = true ] => apply bool_eq_correct
                    | [ H : context[?E] |- context[match ?E with _ => _ end] ] => destruct E
-                   | [ H : parse_of _ _ _ [] |- _ ] => solve [ inversion H ]
+                   | [ H : minimal_parse_of _ _ _ _ _ _ _ [] |- _ ] => solve [ inversion H ]
                    | _ => solve [ eauto ]
                end.
         Qed.
@@ -115,8 +129,8 @@ Section sound.
                -> parse_of _ G str (prod::prods).
 
         Definition parse_productions_completeT
-          := forall str pf prod prods,
-               parse_of _ G str (prod::prods)
+          := forall valid str pf prod prods,
+               minimal_parse_of _ G initial_productions_data is_valid_productions remove_productions valid str (prod::prods)
                -> @parse_productions str pf prod prods = true.
 
         Definition split_correctT
@@ -128,6 +142,7 @@ Section sound.
           := List.Forall (@split_correctT str1) split_list.
 
         Definition split_list_completeT
+                   valid1 valid2
                    (str : String) (pf : str ≤s str0)
                    (split_list : list (String * String))
                    (prod : production CharType)
@@ -135,12 +150,12 @@ Section sound.
                | nil => True
                | it::its => ({ s1s2 : String * String
                                       & (fst s1s2 ++ snd s1s2 =s str)
-                                        * (parse_of_item _ G (fst s1s2) it)
-                                        * (parse_of_production _ G (snd s1s2) its) }%type)
+                                        * (minimal_parse_of_item _ G initial_productions_data is_valid_productions remove_productions valid1 (fst s1s2) it)
+                                        * (minimal_parse_of_production _ G initial_productions_data is_valid_productions remove_productions valid2 (snd s1s2) its) }%type)
                             -> ({ s1s2 : String * String
                                          & (In s1s2 split_list)
-                                           * (parse_of_item _ G (fst s1s2) it)
-                                           * (parse_of_production _ G (snd s1s2) its) }%type)
+                                           * (minimal_parse_of_item _ G initial_productions_data is_valid_productions remove_productions valid1 (fst s1s2) it)
+                                           * (minimal_parse_of_production _ G initial_productions_data is_valid_productions remove_productions valid2 (snd s1s2) its) }%type)
              end.
 
         Lemma parse_production_sound
@@ -180,15 +195,16 @@ Section sound.
         Defined.
 
         Lemma parse_production_complete
-                 (parse_productions_complete : parse_productions_completeT)
-                 (split_string_for_production_complete : forall str pf prod, @split_list_completeT str pf (split_string_for_production str prod) prod)
-                 (str : String) (pf : str ≤s str0)
-                 (prod : production CharType)
-        : parse_of_production _ G str prod
+              valid
+              (parse_productions_complete : parse_productions_completeT)
+              (split_string_for_production_complete : forall valid1 valid2 str pf prod, @split_list_completeT valid1 valid2 str pf (split_string_for_production str prod) prod)
+              (str : String) (pf : str ≤s str0)
+              (prod : production CharType)
+        : minimal_parse_of_production _ G initial_productions_data is_valid_productions remove_productions valid str prod
           -> parse_production G split_string_for_production split_string_for_production_correct parse_productions pf prod = true.
         Proof.
           change (forall str0 prod, split_list_correctT str0 (split_string_for_production str0 prod)) in split_string_for_production_correct.
-          revert str pf; induction prod;
+          revert valid str pf; induction prod;
           repeat match goal with
                    | _ => intro
                    | _ => progress simpl in *
@@ -197,7 +213,7 @@ Section sound.
                    | [ H : fold_right orb false (map _ _) = true |- _ ] => apply fold_right_orb_map_sig1 in H
                    | [ H : (_ || _)%bool = true |- _ ] => apply Bool.orb_true_elim in H
                    | [ H : (_ && _)%bool = true |- _ ] => apply Bool.andb_true_iff in H
-                   | [ H : parse_of_production _ _ _ nil |- _ ] => inversion_clear H
+                   | [ H : minimal_parse_of_production _ _ _ _ _ _ _ nil |- _ ] => inversion_clear H
                    | [ |- (_ =s _) = true ] => apply bool_eq_correct
                    | _ => progress destruct_head_hnf sumbool
                    | _ => progress destruct_head_hnf and
@@ -212,15 +228,17 @@ Section sound.
                         pose proof H as H';
                           apply bool_eq_correct in H';
                           progress subst
-                   | [ H : parse_of_production _ _ _ (_::_) |- _ ] => inversion H; clear H; subst
+                   | [ H : minimal_parse_of_production _ _ _ _ _ _ _ (_::_) |- _ ] => inversion H; clear H; subst
                    | [ H : ?s ≤s _ |- context[split_string_for_production_correct ?s ?p] ]
-                     => specialize (fun a b p0 p1 p2
-                                    => @split_string_for_production_complete s H p (existT _ (a, b) (p0, p1, p2)))
+                     => specialize (fun a b p0 v1 p1 v2 p2
+                                    => @split_string_for_production_complete v1 v2 s H p (existT _ (a, b) (p0, p1, p2)))
                    | [ H : forall a b, is_true (a ++ b =s _ ++ _) -> _ |- _ ]
                      => specialize (H _ _ (proj2 (@bool_eq_correct _ _ _ _) eq_refl))
                    | [ H : ?a -> ?b, H' : ?a |- _ ] => specialize (H H')
+                   | [ H : forall v : productions_listT, @?a v -> @?b v |- _ ]
+                     => pose proof (H valid); pose proof (H initial_productions_data); clear H
                    | [ |- fold_right orb false (map _ _) = true ] => apply fold_right_orb_map_sig2
-                 end.
+                 end;
           match goal with
             | [ H : In (?s1, ?s2) (split_string_for_production ?str ?prod)
                 |- { x : { s1s2 : _ | (fst s1s2 ++ snd s1s2 =s ?str) = true } | _ } ]
@@ -229,17 +247,21 @@ Section sound.
                    unfold split_correctT in H';
                    refine (exist _ (exist _ (s1, s2) _) _);
                    simpl in *
-          end.
+          end;
           repeat match goal with
                    | _ => split
                    | [ |- (_ && _)%bool = true ] => apply Bool.andb_true_iff
                    | _ => eapply parse_item_complete; try eassumption;
                           hnf in parse_productions_complete |- *;
-                          solve [ apply parse_productions_complete ]
+                          solve [ apply parse_productions_complete
+                                | intro; apply parse_productions_complete ]
                    | _ => eapply IHprod; eassumption
+                   | [ |- In _ (combine_sig _) ] => apply In_combine_sig
                  end.
-          apply In_combine_sig.
           Grab Existential Variables.
+          assumption.
+          assumption.
+          assumption.
           assumption.
         Qed.
       End production.
@@ -291,6 +313,8 @@ Section sound.
                      | _ => progress subst
                      | [ H : parse_of _ _ _ nil |- _ ] => solve [ inversion H ]
                      | [ H : parse_of _ _ _ (_::_) |- _ ] => inversion H; clear H; subst
+                     | [ H : minimal_parse_of _ _ _ _ _ _ _ nil |- _ ] => solve [ inversion H ]
+                     | [ H : minimal_parse_of _ _ _ _ _ _ _ (_::_) |- _ ] => inversion H; clear H; subst
                      | [ H : parse_production _ _ _ _ _ _ = true |- _ ] => apply parse_production_sound in H; try eassumption; []
                      | _ => solve [ eauto ]
                    end.
@@ -315,25 +339,28 @@ Section sound.
 
           Lemma parse_productions_step_complete
                 (parse_productions_complete : parse_productions_completeT parse_productions)
-                (split_string_for_production_complete : forall str pf prod, @split_list_completeT str0 str pf (split_string_for_production str prod) prod)
+                (split_string_for_production_complete : forall valid1 valid2 str pf prod, @split_list_completeT str0 valid1 valid2 str pf (split_string_for_production str prod) prod)
+                valid
                 (str : String) (pf : str ≤s str0) (prod : production CharType) (prods : productions CharType)
-          : parse_of _ G str (prod::prods)
+          : minimal_parse_of _ G initial_productions_data is_valid_productions remove_productions valid str (prod::prods)
             -> parse_productions_step G split_string_for_production split_string_for_production_correct parse_productions pf (prod::prods) = true.
           Proof.
             unfold parse_productions_step.
             revert prod.
             induction prods; simpl; auto.
             { parse_productions_step_t.
-              left; apply parse_production_complete; assumption. }
-            { parse_productions_step_t.
+              left; eapply parse_production_complete; eassumption. }
+            { parse_productions_step_t;
               match goal with
-                | [ H : forall prod, parse_of _ _ ?s (prod::_) -> _,
-                      H' : parse_of_production _ _ ?s ?prod |- _ ]
-                  => specialize (H prod (ParseHead _ H'))
-              end.
-              parse_productions_step_t.
-              right.
-              parse_productions_step_t. }
+                | [ H : forall prod, minimal_parse_of _ _ _ _ _ _ ?s (prod::_) -> _,
+                      H' : minimal_parse_of_production _ _ _ _ _ _ ?s ?prod |- _ ]
+                  => specialize (H prod (MinParseHead _ H'))
+                | [ H : forall prod, minimal_parse_of _ _ _ _ _ _ ?s (prod::?prods) -> _,
+                      H' : minimal_parse_of _ _ _ _ _ _ ?s ?prods |- _ ]
+                  => specialize (fun prod => H prod (MinParseTail _ H'))
+              end;
+              parse_productions_step_t;
+              solve [ right; parse_productions_step_t]. }
           Qed.
         End step.
 
@@ -431,12 +458,13 @@ Section sound.
           Defined.
 
           Lemma parse_productions_or_abort_helper_complete
+                valid
                 (p : String * productions_listT) (str : String)
-                (split_string_for_production_complete : forall str0 pf prod, @split_list_completeT str str0 pf (split_string_for_production str0 prod) prod)
+                (split_string_for_production_complete : forall valid0 valid1 str0 pf prod, @split_list_completeT str valid0 valid1 str0 pf (split_string_for_production str0 prod) prod)
                 (pf : str ≤s fst p)
                 (prod : production CharType)
                 (prods : productions CharType)
-          : parse_of _ G str (prod::prods)
+          : minimal_parse_of _ G initial_productions_data is_valid_productions remove_productions valid str (prod::prods)
             -> parse_productions_or_abort_helper G initial_productions_data is_valid_productions remove_productions
                                               remove_productions_dec ntl_wf split_string_for_production
                                               split_string_for_production_correct
@@ -444,10 +472,10 @@ Section sound.
                = true.
           Proof.
             unfold parse_productions_or_abort_helper.
-            revert str split_string_for_production_complete pf prod prods.
+            revert valid str split_string_for_production_complete pf prod prods.
             let Acca := match goal with |- context[@Fix4 _ _ _ _ _ _ ?Rwf _ _ ?a _ _ _ _] => constr:(Rwf a) end in
             induction (Acca) as [? ? IHr];
-              intros str split_string_for_production_complete pf prod prods.
+              intros valid str split_string_for_production_complete pf prod prods.
             rewrite Fix4_eq.
             { match goal with
                 | [ |- context[if lt_dec ?a ?b then _ else _] ] => destruct (lt_dec a b)
@@ -505,10 +533,11 @@ Section sound.
           Defined.
 
           Lemma parse_productions_complete
+                valid
                 (str : String)
-                (split_string_for_production_complete : forall str0 pf prod, @split_list_completeT str str0 pf (split_string_for_production str0 prod) prod)
+                (split_string_for_production_complete : forall valid0 valid1 str0 pf prod, @split_list_completeT str valid0 valid1 str0 pf (split_string_for_production str0 prod) prod)
                 (prods : productions CharType)
-          : parse_of _ G str prods
+          : minimal_parse_of _ G initial_productions_data is_valid_productions remove_productions valid str prods
             -> parse_productions _ G initial_productions_data is_valid_productions remove_productions
                                  remove_productions_dec ntl_wf split_string_for_production
                                  split_string_for_production_correct
@@ -541,9 +570,9 @@ Section brute_force_spliter.
       refine (@in_map _ _ _ _ (s1, s2) _).
       auto. }
   Qed.
-
+Check split_list_completeT.
   Lemma make_all_single_splits_complete
-  : forall G str0 str pf prod, @split_list_completeT _ string_stringlike G str0 str pf (@make_all_single_splits str) prod.
+  : forall G productions_listT initial_productions_data is_valid_productions remove_productions str0 valid0 valid1 str pf prod, @split_list_completeT _ string_stringlike G productions_listT initial_productions_data is_valid_productions remove_productions str0 valid0 valid1 str pf (@make_all_single_splits str) prod.
   Proof.
     intros; hnf.
     destruct prod; trivial.
@@ -570,12 +599,14 @@ Section brute_force_make_parse_of.
   Defined.
 
   Definition brute_force_make_parse_of_complete
+             valid
              (str : @String Ascii.ascii string_stringlike)
              (prods : productions Ascii.ascii)
-  : parse_of _ G str prods -> brute_force_make_parse_of G str prods = true.
+  : minimal_parse_of _ G (Valid_nonterminals G) (rdp_list_is_valid_productions Ascii.ascii_dec) (rdp_list_remove_productions Ascii.ascii_dec) valid str prods
+    -> brute_force_make_parse_of G str prods = true.
   Proof.
-    unfold brute_force_make_parse_of.
-    apply parse_productions_complete.
+    unfold brute_force_make_parse_of; simpl; intro.
+    eapply parse_productions_complete; try eassumption.
     apply make_all_single_splits_complete.
   Defined.
 End brute_force_make_parse_of.
