@@ -195,6 +195,15 @@ Section cfg.
     etransitivity; eauto using sub_productions_listT_remove.
   Qed.
 
+  Lemma sub_productions_listT_remove_3 ls ls' p
+        (H0 : is_valid_productions ls p = false)
+        (H1 : sub_productions_listT ls ls')
+  : sub_productions_listT ls (remove_productions ls' p).
+  Proof.
+    intros p' H'.
+    rewrite remove_productions_5; intuition (subst; eauto; congruence).
+  Qed.
+
   Fixpoint expand_minimal_parse_of {valid valid' str pats} (H : sub_productions_listT valid valid') (p : minimal_parse_of valid str pats)
   : minimal_parse_of valid' str pats
     := match p in (minimal_parse_of valid str pats) return (sub_productions_listT valid valid' -> _) with
