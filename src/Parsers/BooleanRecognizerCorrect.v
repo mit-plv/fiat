@@ -537,13 +537,15 @@ Section sound.
                   { intros; apply split_string_for_production_complete.
                     etransitivity; eassumption. }
                   { simpl.
-                    (** XXX Need to re
- }
+
+                  (** XXX Need to rework the assumptions / induction
+                          to ensure that we can get this parse tree.
+                          What to do? *)
+                    admit. } }
                 { (** INTERESTING CASE HERE - need to show that if not
                       [is_valid_productions], then we can't have a
                       parse tree. *)
-                  move x at bottom.
-                  hnf in pf;
+                  Print minimal_parse_of.
                   exfalso; clear; admit. } } }
             { repeat match goal with
                        | _ => intro
