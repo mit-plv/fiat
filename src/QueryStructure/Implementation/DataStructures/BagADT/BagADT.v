@@ -26,7 +26,7 @@ Section BagADT.
         Method "Insert"    : rep x ElementType -> rep x unit,
         Method "Count"     : rep x SearchTermType  -> rep x nat,
         Method "Delete"    : rep x SearchTermType  -> rep x (list ElementType),
-        Method "Update"    : rep x (SearchTermType * UpdateTermType) -> rep x unit
+        Method "Update"    : rep x (SearchTermType * UpdateTermType) -> rep x (list ElementType)
   }.
 
   (* Indentation? *)
@@ -63,8 +63,10 @@ Section BagADT.
                  (fun tup => MatchSearchTerm f tup = true),
                filter (MatchSearchTerm f) deleted),
 
-        Def Method "Update" (r : rep, f : SearchTermType * UpdateTermType) : unit :=
-            ret (IndexedEnsembleUpdate r (fun tup => MatchSearchTerm (fst f) tup = true) (ApplyUpdateTerm (snd f)), tt)
+        Def Method "Update" (r : rep, f : SearchTermType * UpdateTermType) : list ElementType :=
+            updated <- {l | EnsembleIndexedListEquivalence r l};
+            ret (IndexedEnsembleUpdate r (fun tup => MatchSearchTerm (fst f) tup = true) (ApplyUpdateTerm (snd f)),
+                 filter (MatchSearchTerm (fst f)) updated)
         }.
 
 End BagADT.

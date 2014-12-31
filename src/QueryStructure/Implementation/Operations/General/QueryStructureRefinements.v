@@ -3,7 +3,7 @@ Require Import Coq.Strings.String Coq.omega.Omega Coq.Lists.List Coq.Logic.Funct
         ADTSynthesis.Computation ADTSynthesis.ADT ADTSynthesis.ADTRefinement ADTSynthesis.ADTNotation ADTSynthesis.ADTRefinement.BuildADTRefinements
         ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureSchema ADTSynthesis.QueryStructure.Specification.Representation.QueryStructure
         ADTSynthesis.Common.Ensembles.IndexedEnsembles
-        ADTSynthesis.QueryStructure.Specification.Operations.Query ADTSynthesis.QueryStructure.Specification.Operations.Insert ADTSynthesis.QueryStructure.Specification.Operations.Empty ADTSynthesis.QueryStructure.Specification.Operations.Delete (* Add Update *)
+        ADTSynthesis.QueryStructure.Specification.Operations.Query ADTSynthesis.QueryStructure.Specification.Operations.Insert ADTSynthesis.QueryStructure.Specification.Operations.Empty ADTSynthesis.QueryStructure.Specification.Operations.Delete ADTSynthesis.QueryStructure.Specification.Operations.Update
         ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureNotations
         ADTSynthesis.QueryStructure.Implementation.Operations.General.QueryRefinements ADTSynthesis.QueryStructure.Implementation.Operations.General.InsertRefinements ADTSynthesis.QueryStructure.Implementation.Operations.General.DeleteRefinements. (* Add Update *)
 

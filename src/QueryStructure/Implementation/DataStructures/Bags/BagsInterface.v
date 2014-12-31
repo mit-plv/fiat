@@ -92,16 +92,19 @@ Definition BagUpdateCorrect
            (bfind_matcher : TSearchTerm -> TItem -> bool)
            (benumerate : TContainer -> list TItem)
            (bupdate_transform : TUpdateTerm -> TItem -> TItem)
-           (bupdate    : TContainer -> TSearchTerm -> TUpdateTerm -> TContainer) :=
+           (bupdate    : TContainer -> TSearchTerm -> TUpdateTerm -> list TItem * TContainer) :=
   forall container search_term update_term
          (containerCorrect : RepInv container)
          (valid_update : ValidUpdate update_term),
-    Permutation (benumerate (bupdate container search_term update_term))
+    Permutation (benumerate (snd (bupdate container search_term update_term)))
                    ((snd (List.partition (bfind_matcher search_term)
                                          (benumerate container)))
                       ++ List.map (bupdate_transform update_term)
                       (fst (List.partition (bfind_matcher search_term)
-                                           (benumerate container)))).
+                                           (benumerate container))))
+    /\ Permutation (fst (bupdate container search_term update_term))
+                   (fst (List.partition (bfind_matcher search_term)
+                                     (benumerate container))).
 
 Definition binsert_Preserves_RepInv
            {TContainer TItem: Type}
@@ -120,14 +123,14 @@ Definition bdelete_Preserves_RepInv
        RepInv (snd (bdelete container search_term)).
 
 Definition bupdate_Preserves_RepInv
-           {TContainer TSearchTerm TUpdateTerm : Type}
+           {TContainer TItem TSearchTerm TUpdateTerm : Type}
            (RepInv : TContainer -> Prop)
            (ValidUpdate       : TUpdateTerm -> Prop)
-           (bupdate    : TContainer -> TSearchTerm -> TUpdateTerm -> TContainer)
+           (bupdate    : TContainer -> TSearchTerm -> TUpdateTerm -> (list TItem) * TContainer)
   := forall container search_term update_term
             (containerCorrect : RepInv container)
             (valid_update : ValidUpdate update_term),
-       RepInv (bupdate container search_term update_term).
+       RepInv (snd (bupdate container search_term update_term)).
 
 Class Bag (BagType TItem SearchTermType UpdateTermType : Type) :=
   {
@@ -142,7 +145,7 @@ Class Bag (BagType TItem SearchTermType UpdateTermType : Type) :=
     binsert    : BagType -> TItem -> BagType;
     bcount     : BagType -> SearchTermType -> nat;
     bdelete    : BagType -> SearchTermType -> (list TItem) * BagType;
-    bupdate    : BagType -> SearchTermType -> UpdateTermType -> BagType
+    bupdate    : BagType -> SearchTermType -> UpdateTermType -> (list TItem) * BagType
   }.
 
 
@@ -229,7 +232,8 @@ Proof.
   (* bupdate *)
   - intros x search_term update_term; destruct x; destruct update_term;
     econstructor.
-    eapply bupdate_RepInv0.
+    eapply (fst (bupdate0 x search_term x0)).
+    econstructor; eapply bupdate_RepInv0.
     apply r.
     apply v.
     Grab Existential Variables.
@@ -259,4 +263,7 @@ Proof.
   (* bupdate_correct *)
   destruct container; simpl; intros.
   destruct update_term; eauto.
+  eapply bupdate_correct0.
+  eapply r.
+  eapply v.
 Qed.
