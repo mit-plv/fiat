@@ -124,18 +124,21 @@ Section sound.
       End item_ext.
 
       Section production.
-        Context (str0 : String).
-        Local Notation parse_nameT := (forall (str : String), str ≤s str0 -> string -> bool).
+        Context (p0 : String * names_listT)
+                (parse_name : forall p : String * names_listT,
+                                prod_relation (ltof String Length) names_listT_R p p0 ->
+                                string -> bool).
 
-        Definition parse_name_soundT (parse_name : parse_nameT)
-          := forall str pf name,
-               @parse_name str pf name = true
-               -> parse_of_item _ G str (NonTerminal _ name).
 
-        Definition parse_name_completeT (parse_name : parse_nameT) Pv valid
-          := forall str pf name (Hv : Pv valid name),
-               minimal_parse_of_item _ G initial_names_data is_valid_name remove_name valid str (NonTerminal _ name)
-               -> @parse_name str pf name = true.
+        Definition parse_name_soundT
+          := forall p pf name,
+               @parse_name p pf name = true
+               -> parse_of_item _ G (fst p) (NonTerminal _ name).
+
+        Definition parse_name_completeT Pv p
+          := forall pf name (Hv : Pv (snd p) name),
+               minimal_parse_of_item _ G initial_names_data is_valid_name remove_name (snd p) (fst p) (NonTerminal _ name)
+               -> @parse_name p pf name = true.
 
         Definition split_correctT
                    (str1 : String)
@@ -147,7 +150,7 @@ Section sound.
 
         Definition split_list_completeT
                    valid1 valid2
-                   (str : String) (pf : str ≤s str0)
+                   (str : String) (pf : str ≤s fst p0)
                    (split_list : list (String * String))
                    (prod : production CharType)
           := match prod return Type with
@@ -163,15 +166,15 @@ Section sound.
              end.
 
         Lemma parse_production_sound
-              parse_name
-              (parse_name_sound : parse_name_soundT parse_name)
-              (str : String) (pf : str ≤s str0)
+              (p : String * names_listT)
+              (parse_name_sound : parse_name_soundT)
+              (pf : prod_relation (ltof String Length) names_listT_R p p0)
               (prod : production CharType)
-        : parse_production split_string_for_production split_string_for_production_correct parse_name pf prod = true
-          -> parse_of_production _ G str prod.
+        : parse_production String initial_names_data split_string_for_production split_string_for_production_correct parse_name pf prod = true
+          -> parse_of_production _ G (fst p) prod.
         Proof.
           change (forall str0 prod, split_list_correctT str0 (split_string_for_production str0 prod)) in split_string_for_production_correct.
-          revert str pf; induction prod;
+          revert p parse_name_sound pf; induction prod;
           repeat match goal with
                    | _ => intro
                    | _ => progress simpl in *
@@ -183,6 +186,7 @@ Section sound.
                    | _ => progress destruct_head sumbool
                    | _ => progress destruct_head and
                    | _ => progress destruct_head sig
+                   | _ => progress destruct_head Datatypes.prod
                    | _ => progress simpl in *
                    | _ => progress subst
                    | [ H : (_ =s _) = true |- _ ] => apply bool_eq_correct in H
@@ -193,10 +197,18 @@ Section sound.
                           progress subst
                  end.
           { constructor;
-            solve [ eapply IHprod; eassumption
-                  | eapply parse_item_sound; try eassumption;
-                    hnf in parse_name_sound |- *;
-                    apply parse_name_sound ]. }
+            [ eapply parse_item_sound; [..| eassumption ]; hnf
+            | eapply (IHprod (_, _)); [..| eassumption ] ];
+            repeat match goal with
+                     | _ => progress unfold parse_name_soundT in *
+                     | _ => eassumption
+                     | _ => progress simpl in *
+                     | [ |- appcontext[match dec ?E with _ => _ end] ] => case (dec E)
+                     | [ |- appcontext[match dec ?E with _ => _ end] ] => destruct (dec E)
+                     | _ => solve [ trivial ]
+                     | [ |- forall _, _ ] => intro
+                   end.
+            eapply (parse_name_sound (_, _)). eassumption. }
         Defined.
 
         Lemma parse_production_complete
@@ -219,7 +231,7 @@ Section sound.
           -> parse_production split_string_for_production split_string_for_production_correct (parse_name valid) pf prod = true.
         Proof.
           change (forall str0 prod, split_list_correctT str0 (split_string_for_production str0 prod)) in split_string_for_production_correct.
-          revert valid H_is_valid parse_name_complete str pf; induction prod;
+          revert valid H_is_valid parse_name_complete str pf; induction prod; [ admit | ]; simpl.
           repeat match goal with
                    | _ => intro
                    | _ => progress simpl in *
@@ -230,20 +242,20 @@ Section sound.
                    | [ H : (_ && _)%bool = true |- _ ] => apply Bool.andb_true_iff in H
                    | [ H : minimal_parse_of_production _ _ _ _ _ _ _ nil |- _ ] => inversion_clear H
                    | [ |- (_ =s _) = true ] => apply bool_eq_correct
-                   | _ => progress destruct_head_hnf sumbool
                    | _ => progress destruct_head_hnf and
                    | _ => progress destruct_head_hnf sig
                    | _ => progress destruct_head_hnf sigT
                    | _ => progress destruct_head_hnf Datatypes.prod
-                   | _ => progress simpl in *
-                   | _ => progress subst
                    | [ H : (_ =s _) = true |- _ ] => apply bool_eq_correct in H
                    | [ H : (_ =s _) = true |- _ ]
                      => let H' := fresh in
                         pose proof H as H';
                           apply bool_eq_correct in H';
                           progress subst
-                   | [ H : minimal_parse_of_production _ _ _ _ _ _ _ (_::_) |- _ ] => inversion H; clear H; subst
+                   | [ H : ?a -> ?b, H' : ?a |- _ ] => specialize (H H')
+                   | [ |- fold_right orb false (map _ _) = true ] => apply fold_right_orb_map_sig2
+                   | [ H : forall v : names_listT, @?a v -> @?b v |- _ ]
+                     => pose proof (H valid); pose proof (H initial_names_data); clear H
                    | [ H : H_subT initial_names_data -> _ |- _ ]
                      => specialize (H (reflexivity _))
                    | [ H : ?s ≤s _ |- context[split_string_for_production_correct ?s ?p] ]
@@ -251,11 +263,11 @@ Section sound.
                                     => @split_string_for_production_complete v1 v2 s H p (existT _ (a, b) (p0, p1, p2)))
                    | [ H : forall a b, is_true (a ++ b =s _ ++ _) -> _ |- _ ]
                      => specialize (H _ _ (proj2 (@bool_eq_correct _ _ _ _) eq_refl))
-                   | [ H : ?a -> ?b, H' : ?a |- _ ] => specialize (H H')
-                   | [ H : forall v : names_listT, @?a v -> @?b v |- _ ]
-                     => pose proof (H valid); pose proof (H initial_names_data); clear H
-                   | [ |- fold_right orb false (map _ _) = true ] => apply fold_right_orb_map_sig2
+                   | _ => progress destruct_head_hnf sumbool
+                   | [ H : minimal_parse_of_production _ _ _ _ _ _ _ (_::_) |- _ ] => inversion H; clear H; subst
                  end.
+          Print minimal_parse_of_production.
+          Focus 4.
           match goal with
             | [ H : In (?s1, ?s2) (split_string_for_production ?str ?prod)
                 |- { x : { s1s2 : _ | (fst s1s2 ++ snd s1s2 =s ?str) = true } | _ } ]

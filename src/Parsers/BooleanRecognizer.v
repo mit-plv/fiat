@@ -39,57 +39,107 @@ Section recursive_descent_parser.
       End item.
 
       Section production.
-        Variable str0 : String.
-        Variable parse_name : forall (str : String),
-                                str ≤s str0
+        Variable p0 : String * names_listT.
+        Variable parse_name : forall (p : String * names_listT),
+                                prod_relation (ltof _ Length) names_listT_R p p0
                                 -> string -> bool.
+
+        (** TODO: Move this elsewhere *)
+        Lemma lt_plus_l {a b c} : a + b < c -> a < c.
+        Proof. omega. Qed.
+
+        Lemma lt_plus_r {a b c} : a + b < c -> b < c.
+        Proof. omega. Qed.
 
         (** To match a [production], we must match all of its items.
             But we may do so on any particular split. *)
         Fixpoint parse_production
-                 (str : String) (pf : str ≤s str0)
+                 (p : String * names_listT)
+                 (pf : prod_relation (ltof _ Length) names_listT_R p p0)
                  (prod : production CharType)
         : bool.
         Proof.
           refine match prod with
                    | nil =>
                      (** 0-length production, only accept empty *)
-                     str =s Empty _
+                     fst p =s Empty _
                    | it::its
-                     => let parse_production' := fun str pf => @parse_production str pf its in
+                     => let parse_production' p pf := @parse_production p pf its in
                         fold_right
                           orb
                           false
-                          (map (fun s1s2p => (parse_item (fst (proj1_sig s1s2p))
-                                                         (@parse_name (fst (proj1_sig s1s2p))
-                                                                             _)
-                                                         it)
-                                               && parse_production' (snd (proj1_sig s1s2p)) _)%bool
-                               (combine_sig (split_string_for_production_correct str prod)))
+                          (map (fun s1s2p =>
+                                  let s1 := fst (proj1_sig s1s2p) in
+                                  let s2 := snd (proj1_sig s1s2p) in
+                                  let v1v2 :=
+                                      (match Sumbool.sumbool_of_bool (bool_eq s1 (Empty _)),
+                                             Sumbool.sumbool_of_bool (bool_eq s2 (Empty _)) with
+                                         | left pf1, left pf2 => (snd p, snd p)
+                                         | left pf1, right pf2 => (initial_names_data, snd p)
+                                         | right pf1, left pf2 => (snd p, initial_names_data)
+                                         | right pf1, right pf2 => (initial_names_data, initial_names_data)
+                                       end) in
+                                  ((parse_item
+                                      s1
+                                      (@parse_name (s1, fst v1v2) _)
+                                      it)
+                                     && parse_production' (s2, snd v1v2) _)%bool)
+                               (combine_sig (split_string_for_production_correct (fst p) prod)))
                  end;
           revert pf; clear; intros;
           abstract (
-              repeat first [ progress destruct_head sig
-                           | progress destruct_head and
-                           | etransitivity; eassumption
-                           | etransitivity; try eassumption; []
-                           | progress subst
-                           | idtac; match goal with H : (_ =s _) = true |- _ => apply bool_eq_correct in H end
-                           | apply str_le1_append
-                           | apply str_le2_append ]
+              repeat
+                match goal with
+                  | [ H : (_ =s _) = true |- _ ]
+                    => apply bool_eq_correct in H
+                  | [ H : (?x =s ?x) = false |- _ ]
+                    => (assert ((x =s x) = true) by (apply bool_eq_correct; reflexivity); congruence)
+                  | [ H : _ |- _ ] => rewrite <- !Length_correct in H
+                  | [ H : _ |- _ ] => progress rewrite ?Length_Empty, ?LeftId, ?RightId, ?plus_0_r in H
+                  | [ H : appcontext[fst ?x] |- _ ]
+                    => (destruct x; simpl in *; idtac)
+                  | [ H : Length _ = 0 |- _ ] => apply Empty_Length in H
+                  | _ => first [ progress destruct_head sig
+                               | progress destruct_head_hnf and
+                               | progress destruct_head_hnf or
+                               | etransitivity; eassumption
+                               | etransitivity; try eassumption; []
+                               | progress subst
+                               | progress subst_body
+                               | progress simpl in *
+                               | progress unfold prod_relation, ltof in *
+                               | rewrite <- !Length_correct
+                               | progress rewrite ?Length_Empty, ?LeftId, ?RightId, ?plus_0_r
+                               | apply str_le1_append
+                               | apply str_le2_append
+                               | left; assumption
+                               | left; reflexivity
+                               | split; (reflexivity || assumption)
+                               | right; split; (reflexivity || assumption) ]
+                  | [ |- appcontext[match ?E with left _ => _ | right _ => _ end] ]
+                    => destruct E
+                  | [ H : _ < _ |- _ ] => unique pose proof (NPeano.Nat.lt_lt_0 _ _ H)
+                  | [ H : _ < _ |- _ ] => unique pose proof (lt_plus_l H)
+                  | [ H : _ < _ |- _ ] => unique pose proof (lt_plus_r H)
+                  | [ |- 0 < ?n \/ _ ] => (destruct (zerop n); [ right | left; assumption ])
+                  | [ |- ?x < ?y + ?x \/ _ ] => (destruct (zerop y); [ right | left; omega ])
+                  | [ |- ?x < ?x + ?y \/ _ ] => (destruct (zerop y); [ right | left; omega ])
+                end
             ).
         Defined.
       End production.
 
       Section productions.
         Section step.
-          Variable str0 : String.
-          Variable parse_name : forall (str : String)
-                                       (pf : str ≤s str0),
-                                  string -> bool.
+          Variable p0 : String * names_listT.
+          Variable parse_name : forall (p : String * names_listT),
+                                  prod_relation (ltof _ Length) names_listT_R p p0
+                                  -> string -> bool.
 
           (** To parse as a given list of [production]s, we must parse as one of the [production]s. *)
-          Definition parse_name_step (str : String) (pf : str ≤s str0) (name : string)
+          Definition parse_name_step (p : String * names_listT)
+                     (pf : prod_relation (ltof _ Length) names_listT_R p p0)
+                     (name : string)
           : bool
             := fold_right orb
                           false
@@ -100,12 +150,11 @@ Section recursive_descent_parser.
         Section wf.
           (** TODO: add comment explaining signature *)
           Definition parse_name_or_abort
-          : forall (p : String * names_listT) (str : String),
-              str ≤s fst p
-              -> string
+          : forall (p : String * names_listT),
+              string
               -> bool
-            := @Fix3
-                 (prod String names_listT) _ _ _
+            := @Fix1
+                 (prod String names_listT) (fun _ => string)
                  _ (@well_founded_prod_relation
                       String
                       names_listT
@@ -113,38 +162,24 @@ Section recursive_descent_parser.
                       _
                       (well_founded_ltof _ Length)
                       ntl_wf)
-                 _
-                 (fun sl parse_name str pf (name : string)
+                 (fun _ _ => bool)
+                 (fun sl parse_name (name : string)
                   => let str0 := fst sl in
                      let valid_list := snd sl in
                      match Sumbool.sumbool_of_bool (is_valid_name valid_list name) with
                        | right H' (** the name isn't valid, so we say, no parse *)
                          => false
                        | left H'
-                         => match lt_dec (Length str) (Length str0) with
-                              | left pf' =>
-                                (** [str] got smaller, so we reset the valid productions list *)
-                                parse_name_step
-                                  (parse_name
-                                     (str, initial_names_data)
-                                     (or_introl pf'))
-                                  (or_intror eq_refl)
-                                  name
-                              | right pf' =>
-                                (** [str] didn't get smaller, so we cache the fact that we've hit this name already *)
-                                parse_name_step
-                                  (parse_name
-                                     (str0, remove_name valid_list name)
-                                     (or_intror (conj eq_refl (remove_name_dec H'))))
-                                  (or_intror eq_refl)
-                                  name
-                            end
+                         => parse_name_step
+                              (p := (str0, remove_name valid_list name))
+                              parse_name
+                              (or_intror (conj eq_refl (remove_name_dec H')))
+                              name
                      end).
 
           Definition parse_name (str : String) (name : string)
           : bool
-            := @parse_name_or_abort (str, initial_names_data) str
-                                    (or_intror eq_refl) name.
+            := @parse_name_or_abort (str, initial_names_data) name.
         End wf.
       End productions.
     End parts.
@@ -347,12 +382,46 @@ Section examples.
                                  bool
       := @brute_force_make_parse_of ab_star_grammar.
 
-
-
     Definition parse : string -> bool
       := fun str => make_parse_of str ab_star_grammar.
 
-    Time Eval lazy in parse "".
+    (*Goal True.
+      Opaque Forall_forall1_transparent.
+      (*unfold make_all_single_splits_correct_seq.
+      unfold make_all_single_splits_correct_seq.*)
+      pose proof (eq_refl (parse "")) as s.
+      unfold parse in s.
+      unfold make_parse_of in s.
+      unfold brute_force_make_parse_of in s.
+      cbv beta zeta delta [parse_name] in s.
+      cbv beta zeta delta [parse_name_or_abort] in s.
+      rewrite Fix1_eq in s.
+      simpl in s.
+      Opaque Fix1.
+      Ltac do_compute_in c H :=
+        let c' := (eval compute in c) in
+        change c with c' in H.
+      Opaque parse_name_step.
+      simpl in s.
+      Transparent parse_name_step.
+      cbv beta zeta delta [parse_name_step] in s.
+      Opaque parse_production.
+      do_compute_in (ab_star_grammar "ab_star") s.
+      unfold map in s.
+      unfold fold_right in s.
+      Transparent parse_production.
+      unfold parse_production in s.
+      unfold combine_sig in s.
+      unfold combine_sig_helper in s.
+      simpl in s.
+
+      unfold map in s.
+      simpl fst in s.
+      do_compute_in ( "ab_star") s.
+
+      Transparent Fix3.
+
+    (*Time Eval lazy in parse "".
     Check eq_refl : parse "" = true.
     Time Eval lazy in parse "a".
     Check eq_refl : parse "a" = false.
@@ -427,6 +496,6 @@ Section examples.
     do_compute_in (lt_dec (Length string_stringlike "abab"%string) (Length string_stringlike "abab"%string)) s.
     change (if in_right then ?x else ?y) with y in s.
     cbv beta zeta delta [rdp_list_is_valid_name] in s.
-                       *)
+                       *)*)*)
   End ab_star.
 End examples.
