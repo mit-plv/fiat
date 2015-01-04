@@ -37,11 +37,11 @@ Section ListBags.
   Definition ListAsBag_bupdate
              (container   : list TItem)
              (search_term : TSearchTerm)
-             (update_term : TUpdateTerm) :=
-    ((snd (List.partition (bfind_matcher search_term) container))
-      ++ List.map (bupdate_transform update_term)
-      (fst (List.partition (bfind_matcher search_term)
-                           container)), (fst (List.partition (bfind_matcher search_term) container))).
+             (update_term : TUpdateTerm) := 
+    ((fst (List.partition (bfind_matcher search_term) container)), 
+     ((snd (List.partition (bfind_matcher search_term) container))
+        ++ List.map (bupdate_transform update_term)
+        (fst (List.partition (bfind_matcher search_term) container)))).
 
   Definition ListBag_RepInv (_ : list TItem) := True.
   Definition ListBag_ValidUpdate (_ : TUpdateTerm) := True.
@@ -106,8 +106,7 @@ Section ListBags.
     BagUpdateCorrect ListBag_RepInv ListBag_ValidUpdate
                      ListAsBag_bfind bfind_matcher id bupdate_transform ListAsBag_bupdate.
   Proof.
-    admit.
-    (* firstorder. *)
+    firstorder.
   Qed.
 
   Global Instance ListAsBag
