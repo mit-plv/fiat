@@ -91,7 +91,7 @@ Definition SmtpSpec : ADT SmtpSig :=
 
     update "Helo" (arg: UUID * string) : Reply := 
       let (id, domain) := arg in
-      q <- UpdateX c from sCONNECTIONS
+      q <- Update c from sCONNECTIONS
         making [ sSTATE |= S_Mail; sDOMAIN |= domain ]
         where (c!sID = id /\ c!sSTATE = S_Helo);
       let (updated, affected) := q in
@@ -99,7 +99,7 @@ Definition SmtpSpec : ADT SmtpSig :=
 
     update "Mail" (arg: UUID * string) : Reply := 
       let (id, mailfrom) := arg in
-      q <- UpdateX c from sCONNECTIONS
+      q <- Update c from sCONNECTIONS
         making [ sSTATE |= S_Rcpt; sMAILFROM |= mailfrom ]
         where (c!sID = id /\ c!sSTATE = S_Mail);
       let (updated, affected) := q in
@@ -107,14 +107,14 @@ Definition SmtpSpec : ADT SmtpSig :=
 
     update "Rcpt" (arg: UUID * string) : Reply := 
       let (id, rcptto) := arg in
-      q <- UpdateX c from sCONNECTIONS
+      q <- Update c from sCONNECTIONS
         making sRCPTTO :+= rcptto
         where (c!sID = id /\ c!sSTATE = S_Rcpt);
       let (updated, affected) := q in
       ret (updated, standardReplyExists(affected)),
 
     update "Data" (id: UUID) : Reply := 
-      q <- UpdateX c from sCONNECTIONS
+      q <- Update c from sCONNECTIONS
         making sSTATE |= S_Data
         where (c!sID = id /\ c!sSTATE = S_Rcpt /\ nonEmpty(c!sRCPTTO) = true);
       let (updated, affected) := q in
@@ -122,21 +122,21 @@ Definition SmtpSpec : ADT SmtpSig :=
 
     update "MoreData" (arg: UUID * string) : Reply := 
       let (id, data) := arg in
-      q <- UpdateX c from sCONNECTIONS
+      q <- Update c from sCONNECTIONS
         making sBODY ++= data
         where (c!sID = id /\ c!sSTATE = S_Data);
       let (updated, affected) := q in
       ret (updated, standardReplyExists(affected)),
 
     update "Rset" (id: UUID) : bool := 
-      q <- UpdateX c from sCONNECTIONS
+      q <- Update c from sCONNECTIONS
         making [ sSTATE |= S_Mail; sMAILFROM |= ""; sRCPTTO |= @nil string; sBODY |= "" ]
         where (c!sID = id /\ c!sSTATE <> S_Helo /\ c!sSTATE <> S_Inactive);
       let (updated, affected) := q in
       ret (updated, nonEmpty(affected)),
 
     update "Quit" (id: UUID) : bool := 
-      q <- UpdateX c from sCONNECTIONS
+      q <- Update c from sCONNECTIONS
         making [ sSTATE |= S_Inactive; sMAILFROM |= ""; sRCPTTO |= @nil string; sBODY |= "" ]
         where c!sID = id;
       let (updated, affected) := q in

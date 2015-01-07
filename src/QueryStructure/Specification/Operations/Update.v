@@ -131,6 +131,6 @@ Notation "a :+= b" := (@UpdateTuple _ {|attrName := a; attrType := list _|}
 Notation "[ a ; .. ; c ]" := (compose a .. (compose c id) ..) : Update_scope.
 
 Delimit Scope Update_scope with Update.
-Notation "'UpdateX' b 'from' Ridx 'making' Trans 'where' Ens" :=
+Notation "'Update' b 'from' Ridx 'making' Trans 'where' Ens" :=
   (QSUpdate _ {|bindex := Ridx%comp |} (fun b => Ens) Trans%Update)
     (at level 80) : QuerySpec_scope.
