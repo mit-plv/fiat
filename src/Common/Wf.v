@@ -144,57 +144,6 @@ End Fix_rect.
 
 (** A variant of [Fix] that has a nice [Fix_eq] for functions which
     doesn't require [functional_extensionality]. *)
-Section Fix1.
-  Context A (B : A -> Type)
-          (R : A -> A -> Prop) (Rwf : well_founded R)
-          (P : forall a, B a -> Type)
-          (F : forall x : A, (forall y : A, R y x -> forall b, P y b) -> forall b, P x b).
-
-  Definition Fix1 a b : @P a b
-    := @Fix { a : A & B a }
-            (fun x y => R (projT1 x) (projT1 y))
-            (well_founded_projT1_relation Rwf)
-            (fun ab => P (projT2 ab))
-            (fun x f => @F (projT1 x) (fun y r b => f (existT _ y b) r) _)
-            (existT _ a b).
-
-  Definition Fix1_eq
-             (F_ext : forall x (f g : forall y, R y x -> forall b, @P y b),
-                        (forall y (p : R y x) b, f y p b = g y p b)
-                        -> forall b, @F x f b = @F x g b)
-  : forall a b, @Fix1 a b = @F a (fun y (_ : R y a) b => @Fix1 y b) b.
-  Proof.
-    intros.
-    unfold Fix1; simpl.
-    match goal with
-      | [ |- @Fix ?A ?R ?Rwf ?P ?F ?x = _ ]
-        => refine (@Coq.Init.Wf.Fix_eq A R Rwf P F _ x)
-    end.
-    intros; apply F_ext; intros.
-    match goal with
-      | [ H : forall y p, ?f y p = ?g y p
-                          |- ?f ?y ?p = ?g ?y ?p ]
-        => exact (H y p)
-    end.
-  Defined.
-
-  Definition Fix1_rect
-             (Q : forall a b, @P a b -> Type)
-             (H : forall x, (forall y, R y x -> forall b, @Q y b (@Fix1 y b))
-                            -> forall b, @Q x b (@F x (fun (y : A) (_ : R y x) => @Fix1 y) b))
-             (F_ext : forall x (f g : forall y, R y x -> forall b, @P y b),
-                        (forall y (p : R y x) b, f y p b = g y p b)
-                        -> forall b, @F x f b = @F x g b)
-             a b
-  : @Q a b (@Fix1 a b).
-  Proof.
-    induction (Rwf a).
-    rewrite Fix1_eq; auto.
-  Defined.
-End Fix1.
-
-(** A variant of [Fix] that has a nice [Fix_eq] for functions which
-    doesn't require [functional_extensionality]. *)
 Section Fix3.
   Context A (B : A -> Type) (C : forall a, B a -> Type) (D : forall a b, C a b -> Type)
           (R : A -> A -> Prop) (Rwf : well_founded R)
