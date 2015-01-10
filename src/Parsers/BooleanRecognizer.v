@@ -10,14 +10,14 @@ Local Open Scope string_like_scope.
 (** TODO: move this elsewhere *)
 Section recursive_descent_parser.
   Context CharType (String : string_like CharType) (G : grammar CharType).
-  Context (names_listT : Type)
-          (initial_names_data : names_listT)
-          (is_valid_name : names_listT -> string -> bool)
-          (remove_name : names_listT -> string -> names_listT)
-          (names_listT_R : names_listT -> names_listT -> Prop)
-          (remove_name_dec : forall ls name, is_valid_name ls name = true
-                                                     -> names_listT_R (remove_name ls name) ls)
-          (ntl_wf : well_founded names_listT_R).
+  Context (productions_listT : Type)
+          (initial_productions_data : productions_listT)
+          (is_valid_productions : productions_listT -> productions CharType -> bool)
+          (remove_productions : productions_listT -> productions CharType -> productions_listT)
+          (productions_listT_R : productions_listT -> productions_listT -> Prop)
+          (remove_productions_dec : forall ls prods, is_valid_productions ls prods = true
+                                                     -> productions_listT_R (remove_productions ls prods) ls)
+          (ntl_wf : well_founded productions_listT_R).
   Section bool.
     Context (split_string_for_production
              : forall (str0 : String) (prod : production CharType), list (String * String))
@@ -28,21 +28,29 @@ Section recursive_descent_parser.
 
     Section parts.
       Section item.
+        (** We require that the list of productions be non-empty; we
+            do this by passing the first element separately, rather
+            than invoking dependent types and proofs. *)
         Context (str : String)
-                (str_matches_name : string -> bool).
+                (str_matches_productions : production CharType -> productions CharType -> bool).
 
         Definition parse_item (it : item CharType) : bool
           := match it with
                | Terminal ch => [[ ch ]] =s str
-               | NonTerminal name => str_matches_name name
+               | NonTerminal name => match Lookup G name with
+                                       | nil => (** No string can match an empty nonterminal *) false
+                                       | p::ps => str_matches_productions p ps
+                                     end
              end.
       End item.
 
       Section production.
         Variable str0 : String.
-        Variable parse_name : forall (str : String),
-                                str ≤s str0
-                                -> string -> bool.
+        Variable parse_productions : forall (str : String),
+                                       str ≤s str0
+                                       -> production CharType
+                                       -> productions CharType
+                                       -> bool.
 
         (** To match a [production], we must match all of its items.
             But we may do so on any particular split. *)
@@ -61,7 +69,7 @@ Section recursive_descent_parser.
                           orb
                           false
                           (map (fun s1s2p => (parse_item (fst (proj1_sig s1s2p))
-                                                         (@parse_name (fst (proj1_sig s1s2p))
+                                                         (@parse_productions (fst (proj1_sig s1s2p))
                                                                              _)
                                                          it)
                                                && parse_production' (snd (proj1_sig s1s2p)) _)%bool
@@ -84,67 +92,80 @@ Section recursive_descent_parser.
       Section productions.
         Section step.
           Variable str0 : String.
-          Variable parse_name : forall (str : String)
-                                       (pf : str ≤s str0),
-                                  string -> bool.
+          Variable parse_productions : forall (str : String)
+                                              (pf : str ≤s str0),
+                                         production CharType -> productions CharType -> bool.
 
           (** To parse as a given list of [production]s, we must parse as one of the [production]s. *)
-          Definition parse_name_step (str : String) (pf : str ≤s str0) (name : string)
+          Definition parse_productions_step (str : String) (pf : str ≤s str0) (prods : productions CharType)
           : bool
             := fold_right orb
                           false
-                          (map (parse_production parse_name pf)
-                               (Lookup G name)).
+                          (map (parse_production parse_productions pf)
+                               prods).
         End step.
 
         Section wf.
           (** TODO: add comment explaining signature *)
-          Definition parse_name_or_abort
-          : forall (p : String * names_listT) (str : String),
+          Definition parse_productions_or_abort_helper
+          : forall (p : String * productions_listT) (str : String),
               str ≤s fst p
-              -> string
+              -> production CharType
+              -> productions CharType
               -> bool
-            := @Fix3
-                 (prod String names_listT) _ _ _
+            := @Fix4
+                 (prod String productions_listT) _ _ _ _
                  _ (@well_founded_prod_relation
                       String
-                      names_listT
+                      productions_listT
                       _
                       _
                       (well_founded_ltof _ Length)
                       ntl_wf)
                  _
-                 (fun sl parse_name str pf (name : string)
+                 (fun sl parse_productions str pf (prod : production CharType) (prods : productions CharType)
                   => let str0 := fst sl in
                      let valid_list := snd sl in
-                     match Sumbool.sumbool_of_bool (is_valid_name valid_list name) with
-                       | right H' (** the name isn't valid, so we say, no parse *)
-                         => false
-                       | left H'
-                         => match lt_dec (Length str) (Length str0) with
-                              | left pf' =>
-                                (** [str] got smaller, so we reset the valid productions list *)
-                                parse_name_step
-                                  (parse_name
-                                     (str, initial_names_data)
-                                     (or_introl pf'))
-                                  (or_intror eq_refl)
-                                  name
-                              | right pf' =>
-                                (** [str] didn't get smaller, so we cache the fact that we've hit this name already *)
-                                parse_name_step
-                                  (parse_name
-                                     (str0, remove_name valid_list name)
-                                     (or_intror (conj eq_refl (remove_name_dec H'))))
-                                  (or_intror eq_refl)
-                                  name
-                            end
+                     match lt_dec (Length str) (Length str0) with
+                       | left pf' =>
+                         (** [str] got smaller, so we reset the valid productions list *)
+                         parse_productions_step
+                           (parse_productions
+                              (str, initial_productions_data)
+                              (or_introl pf'))
+                           (or_intror eq_refl)
+                           (prod::prods)
+                       | right pf' =>
+                         (** [str] didn't get smaller, so we cache the fact that we've hit this productions already *)
+                         (if is_valid_productions valid_list (prod::prods) as is_valid
+                             return is_valid_productions valid_list (prod::prods) = is_valid -> _
+                          then (** It was valid, so we can remove it *)
+                            fun H' =>
+                              parse_productions_step
+                                (parse_productions
+                                   (str0, remove_productions valid_list (prod::prods))
+                                   (or_intror (conj eq_refl (remove_productions_dec H'))))
+                                (or_intror eq_refl)
+                                (prod::prods)
+                          else (** oops, we already saw this productions in the past.  ABORT! *)
+                            fun _ => false
+                         ) eq_refl
                      end).
 
-          Definition parse_name (str : String) (name : string)
+          Definition parse_productions_or_abort (str0 str : String)
+                     (valid_list : productions_listT)
+                     (pf : str ≤s str0)
+                     (prods : productions CharType)
           : bool
-            := @parse_name_or_abort (str, initial_names_data) str
-                                    (or_intror eq_refl) name.
+            := match prods with
+                 | nil => false
+                 | p::ps => parse_productions_or_abort_helper (str0, valid_list) pf p ps
+               end.
+
+          Definition parse_productions (str : String) (prods : productions CharType)
+          : bool
+            := @parse_productions_or_abort str str initial_productions_data
+                                           (or_intror eq_refl) prods.
         End wf.
       End productions.
     End parts.
@@ -153,13 +174,14 @@ End recursive_descent_parser.
 
 Section recursive_descent_parser_list.
   Context {CharType} {String : string_like CharType} {G : grammar CharType}.
-  Definition rdp_list_names_listT : Type := list string.
-  Definition rdp_list_is_valid_name : rdp_list_names_listT -> string -> bool
-    := fun ls nt => if in_dec string_dec nt ls then true else false.
-  Definition rdp_list_remove_name : rdp_list_names_listT -> string -> rdp_list_names_listT
+  Variable (CharType_eq_dec : forall x y : CharType, {x = y} + {x <> y}).
+  Definition rdp_list_productions_listT : Type := list (productions CharType).
+  Definition rdp_list_is_valid_productions : rdp_list_productions_listT -> productions CharType -> bool
+    := fun ls nt => if in_dec (productions_dec CharType_eq_dec) nt ls then true else false.
+  Definition rdp_list_remove_productions : rdp_list_productions_listT -> productions CharType -> rdp_list_productions_listT
     := fun ls nt =>
-         filter (fun x => if string_dec nt x then false else true) ls.
-  Definition rdp_list_names_listT_R : rdp_list_names_listT -> rdp_list_names_listT -> Prop
+         filter (fun x => if productions_dec CharType_eq_dec nt x then false else true) ls.
+  Definition rdp_list_productions_listT_R : rdp_list_productions_listT -> rdp_list_productions_listT -> Prop
     := ltof _ (@List.length _).
   Lemma filter_list_dec {T} f (ls : list T) : List.length (filter f ls) <= List.length ls.
   Proof.
@@ -170,22 +192,21 @@ Section recursive_descent_parser_list.
              | [ |- _ <= S _ ] => solve [ apply le_S; auto ]
            end.
   Qed.
-  Lemma rdp_list_remove_name_dec
-  : forall ls name,
-      @rdp_list_is_valid_name ls name = true
-      -> @rdp_list_names_listT_R (@rdp_list_remove_name ls name) ls.
+  Lemma rdp_list_remove_productions_dec : forall ls prods,
+                                            @rdp_list_is_valid_productions ls prods = true
+                                            -> @rdp_list_productions_listT_R (@rdp_list_remove_productions ls prods) ls.
   Proof.
     intros.
-    unfold rdp_list_is_valid_name, rdp_list_names_listT_R, rdp_list_remove_name, ltof in *.
-    edestruct in_dec; [ | discriminate ].
+    unfold rdp_list_is_valid_productions, rdp_list_productions_listT_R, rdp_list_remove_productions, ltof in *.
+    destruct (in_dec (productions_dec CharType_eq_dec) prods ls); [ | discriminate ].
     match goal with
-      | [ H : In ?name ?ls |- context[filter ?f ?ls] ]
-        => assert (~In name (filter f ls))
+      | [ H : In ?prods ?ls |- context[filter ?f ?ls] ]
+        => assert (~In prods (filter f ls))
     end.
     { intro H'.
       apply filter_In in H'.
       destruct H' as [? H'].
-      edestruct string_dec; congruence. }
+      destruct (productions_dec CharType_eq_dec prods prods); congruence. }
     { match goal with
         | [ |- context[filter ?f ?ls] ] => generalize dependent f; intros
       end.
@@ -203,9 +224,9 @@ Section recursive_descent_parser_list.
                | [ H : _ -> _ -> ?G |- ?G ] => apply H; auto
              end. }
   Qed.
-  Lemma rdp_list_ntl_wf : well_founded rdp_list_names_listT_R.
+  Lemma rdp_list_ntl_wf : well_founded rdp_list_productions_listT_R.
   Proof.
-    unfold rdp_list_names_listT_R.
+    unfold rdp_list_productions_listT_R.
     intro.
     apply well_founded_ltof.
   Defined.
@@ -262,32 +283,32 @@ Section example_parse_string_grammar.
   Variable G : grammar Ascii.ascii.
 
   Definition brute_force_make_parse_of : @String Ascii.ascii string_stringlike
-                                         -> string
+                                         -> productions Ascii.ascii
                                          -> bool
-    := @parse_name
+    := @parse_productions
          _
          _
          G
          _
-         (Valid_nonterminal_symbols G)
-         rdp_list_is_valid_name
-         rdp_list_remove_name
+         (Valid_nonterminals G)
+         (rdp_list_is_valid_productions Ascii.ascii_dec)
+         (rdp_list_remove_productions Ascii.ascii_dec)
          _
-         rdp_list_remove_name_dec rdp_list_ntl_wf
+         (rdp_list_remove_productions_dec Ascii.ascii_dec) rdp_list_ntl_wf
          (fun (str : string_stringlike) _ => make_all_single_splits str)
          (fun str0 _ => make_all_single_splits_correct_seq str0).
 End example_parse_string_grammar.
 
 Module example_parse_empty_grammar.
   Definition make_parse_of : forall (str : string)
-                                    (name : string),
+                                    (prods : productions Ascii.ascii),
                                bool
     := @brute_force_make_parse_of (trivial_grammar _).
 
 
 
   Definition parse : string -> bool
-    := fun str => make_parse_of str (trivial_grammar string_stringlike).
+    := fun str => make_parse_of str (trivial_grammar _).
 
   Time Compute parse "".
   Check eq_refl : true = parse "".
@@ -343,7 +364,7 @@ Section examples.
          Valid_nonterminal_symbols := (""::"ab"::"ab_star"::nil)%string |}.
 
     Definition make_parse_of : forall (str : string)
-                                      (name : string),
+                                      (prods : productions Ascii.ascii),
                                  bool
       := @brute_force_make_parse_of ab_star_grammar.
 
@@ -357,52 +378,7 @@ Section examples.
     Time Eval lazy in parse "a".
     Check eq_refl : parse "a" = false.
     Time Eval lazy in parse "ab".
-  (*Goal True.
-    pose proof (eq_refl (parse "ab")) as s.
-    unfold parse in s.
-    unfold make_parse_of in s.
-    unfold brute_force_make_parse_of in s.
-    cbv beta zeta delta [parse_name] in s.
-    cbv beta zeta delta [parse_name_or_abort] in s.
-    rewrite Fix3_eq in s.
-    Opaque Fix3.
-    Ltac do_compute_in c H :=
-      let c' := (eval compute in c) in
-      change c with c' in H.
-    Opaque parse_name_step.
-    simpl in s.
-    Transparent parse_name_step.
-    cbv beta zeta delta [parse_name_step] in s.
-    Opaque parse_production.
-    do_compute_in (ab_star_grammar "ab_star") s.
-    unfold map in s.
-    unfold fold_right in s.
-    Transparent parse_production.
-    unfold parse_production in s.
-    Transparent Fix3.
-
-    Opaque parse_item.
-
-    simpl in s.
-    do_compute_in (combine_sig (make_all_single_splits_correct_seq "ab")) s.
-    Unset Printing Notations.
-    do_compute_in ($< "" >$)%production s.
-    cbv beta zeta delta [parse_production] in s.
-    simpl ab_star_grammar
-    unfold map in s.
-    cbv beta in s.
-    lazy in s.
-
-     parse_name_step.
-
-    simpl dec in s.
-    simpl lt_dec in s.
-
-    do_compute_in (lt_dec (Length string_stringlike "abab"%string) (Length string_stringlike "abab"%string)) s.
-    change (if in_right then ?x else ?y) with y in s.
-    cbv beta zeta delta [rdp_list_is_valid_name] in s.
-
-    Check eq_refl : parse "ab" = true.*)
+    Check eq_refl : parse "ab" = true.
     Time Eval lazy in parse "aa".
     Check eq_refl : parse "aa" = false.
     Time Eval lazy in parse "ba".
@@ -411,7 +387,7 @@ Section examples.
     Check eq_refl : parse "aba" = false.
     Time Eval lazy in parse "abab".
     Time Eval lazy in parse "ababab".
-    (*Check eq_refl : parse "ababab" = true.*)
+    Check eq_refl : parse "ababab" = true.
   (* For debugging: *)(*
   Goal True.
     pose proof (eq_refl (parse "abab")) as s.
@@ -426,7 +402,7 @@ Section examples.
       change c with c' in H.
     do_compute_in (lt_dec (Length string_stringlike "abab"%string) (Length string_stringlike "abab"%string)) s.
     change (if in_right then ?x else ?y) with y in s.
-    cbv beta zeta delta [rdp_list_is_valid_name] in s.
+    cbv beta zeta delta [rdp_list_is_valid_productions] in s.
                        *)
   End ab_star.
 End examples.
