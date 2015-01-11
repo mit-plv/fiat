@@ -1,6 +1,7 @@
 (** * Definition of Context Free Grammars *)
 Require Import Coq.Strings.String Coq.Lists.List Coq.Program.Program.
 Require Import Coq.Setoids.Setoid Coq.Classes.Morphisms.
+Require Import Coq.Logic.EqdepFacts.
 Require Import Omega.
 
 Set Implicit Arguments.
@@ -156,3 +157,172 @@ Proof.
         discriminate
       ). }
 Defined.
+
+(** TODO: Move these *)
+Lemma le_pred n m (H : n <= m) : pred n <= pred m.
+Proof.
+  induction H.
+  { constructor. }
+  { destruct m; simpl in *; try constructor; assumption. }
+Defined.
+
+Lemma le_SS n m (H : n <= m) : S n <= S m.
+Proof.
+  induction H.
+  { constructor. }
+  { constructor; assumption. }
+Defined.
+
+Lemma le_canonical n m : {n <= m} + {~n <= m}.
+Proof.
+  revert n; induction m; intro n.
+  { destruct n.
+    { left; constructor. }
+    { right; clear.
+      abstract auto with arith. } }
+  { destruct (IHm n) as [IHm'|IHm'].
+    { left; constructor; assumption. }
+    { clear IHm'.
+      specialize (IHm (pred n)).
+      destruct IHm as [IHm|IHm], n; simpl in *.
+      { left; constructor; assumption. }
+      { left; apply le_SS; assumption. }
+      { exfalso.
+        abstract auto with arith. }
+      { right; intro H.
+        abstract (apply le_pred in H; simpl in *; auto). } } }
+Defined.
+
+Lemma le_canonical_nn {n} : le_canonical n n = left (le_n _).
+Proof.
+  induction n; simpl; try reflexivity.
+  rewrite IHn; clear IHn.
+  edestruct le_canonical; [ exfalso | reflexivity ].
+  { eapply le_Sn_n; eassumption. }
+Qed.
+
+Lemma le_canonical_nS {n m pf} (H : le_canonical n m = left pf)
+: le_canonical n (S m) = left (le_S _ _ pf).
+Proof.
+  simpl; rewrite H; reflexivity.
+Qed.
+
+Fixpoint le_proof_irrelevance_left {n m} (pf : n <= m)
+: left pf = le_canonical n m.
+Proof.
+  destruct pf.
+  { clear. rewrite le_canonical_nn; reflexivity. }
+  { erewrite le_canonical_nS; [ reflexivity | ].
+    symmetry.
+    apply le_proof_irrelevance_left. }
+Defined.
+
+Lemma le_proof_irrelevance' {n m} (pf : {n <= m} + {~n <= m})
+: le_canonical n m = match pf, le_canonical n m with
+                       | left pf', _ => left pf'
+                       | _, right pf' => right pf'
+                       | right pf', left pf'' => match pf' pf'' with end
+                     end.
+Proof.
+  destruct pf.
+  { erewrite <- le_proof_irrelevance_left; reflexivity. }
+  { edestruct le_canonical; try reflexivity.
+    exfalso; eauto. }
+Qed.
+
+Lemma le_proof_irrelevance {n m} (pf pf' : n <= m) : pf = pf'.
+Proof.
+  transitivity (match le_canonical n m with
+                  | left pf' => pf'
+                  | right pf' => match pf' pf with end
+                end).
+  { rewrite (le_proof_irrelevance' (left pf)); reflexivity. }
+  { rewrite (le_proof_irrelevance' (left pf')); reflexivity. }
+Qed.
+
+Lemma Eq_rect_eq_UIP_helper {U x y} (p : x = y :> U)
+: p = match p in (_ = y) return (x = y) with eq_refl => eq_refl end.
+Proof.
+  destruct p; reflexivity.
+Defined.
+
+Lemma Eq_rect_eq_UIP_ U : Eq_rect_eq U -> UIP_ U.
+Proof.
+  lazy; intro H.
+  intros x y p1 p2.
+  destruct p2.
+  specialize (H x (fun y => x = y) eq_refl p1); simpl in *.
+  rewrite <- Eq_rect_eq_UIP_helper in H.
+  symmetry; assumption.
+Qed.
+
+Definition dec_eq_adjust' {U x} (p : forall y : U, {x = y} + {x <> y}) y
+: {x = y} + {x <> y}
+  := match p x, p y with
+       | left pf, left pf' => left (eq_trans (eq_sym pf) pf')
+       | right pf, _ => match pf eq_refl with end
+       | _, right pf => right pf
+     end.
+
+Lemma concat_Vp {U x y} (p : x = y :> U)
+: eq_trans (eq_sym p) p = eq_refl.
+Proof.
+  destruct p; reflexivity.
+Defined.
+
+Lemma dec_eq_uip' {U x y} (pf : x = y)
+      (p : forall y : U, {x = y} + {x <> y})
+: pf = match dec_eq_adjust' p y with
+         | left pf' => pf'
+         | right pf' => match pf' pf with end
+       end.
+Proof.
+  destruct pf.
+  unfold dec_eq_adjust'.
+  destruct (p x) as [|n].
+  { symmetry; apply concat_Vp. }
+  { destruct (n eq_refl). }
+Defined.
+
+Lemma dec_eq_uip {U x}
+      (dec : forall y : U, {x = y} + {x <> y})
+      y
+      (p q : x = y :> U)
+: p = q.
+Proof.
+  etransitivity; [ | symmetry ].
+  { apply (dec_eq_uip' _ dec). }
+  { etransitivity; [ apply (dec_eq_uip' _ dec) | ].
+    edestruct @dec_eq_adjust' as [|n]; try reflexivity.
+    destruct (n p). }
+Qed.
+
+Section strle_choose.
+  Context {CharType} {String : string_like CharType}
+          (s1 s2 : String) (f : String -> nat)
+          (H : f s1 < f s2 \/ s1 = s2).
+
+  Definition strle_left (H' : f s1 < f s2)
+  : H = or_introl H'.
+  Proof.
+    destruct H as [H''|H'']; subst; [ apply f_equal | exfalso ].
+    { apply le_proof_irrelevance. }
+    { eapply lt_irrefl; eassumption. }
+  Qed.
+
+  Definition strle_right (H' : s1 = s2)
+  : H = or_intror H'.
+  Proof.
+    destruct H as [H''|H'']; [ subst; exfalso | apply f_equal ].
+    { eapply lt_irrefl; eassumption. }
+    { apply dec_eq_uip.
+      clear.
+      intro y.
+      destruct (Bool.bool_dec (bool_eq s1 y) true) as [H|H].
+      { left.
+        apply bool_eq_correct; assumption. }
+      { right; intro H'.
+        apply bool_eq_correct in H'.
+        auto. } }
+  Qed.
+End strle_choose.
