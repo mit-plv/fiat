@@ -130,3 +130,29 @@ Proof.
   destruct (NPeano.Nat.eq_dec (Length s1) 0);
   str_le_append_t.
 Qed.
+
+Lemma length_le_trans {CharType} {String : string_like CharType}
+      {a b c : String} (H : Length a < Length b) (H' : b ≤s c)
+: Length a < Length c.
+Proof.
+  destruct H'; subst.
+  { etransitivity; eassumption. }
+  { assumption. }
+Qed.
+
+Lemma strle_to_sumbool {CharType} {String : string_like CharType}
+      (s1 s2 : String) (f : String -> nat)
+      (H : f s1 < f s2 \/ s1 = s2)
+: {f s1 < f s2} + {s1 = s2}.
+Proof.
+  case_eq (s1 =s s2).
+  { intro H'; right.
+    abstract (apply bool_eq_correct in H'; exact H'). }
+  { intro H'; left.
+    abstract (
+        destruct H; trivial;
+        apply bool_eq_correct in H;
+        generalize dependent (s1 =s s2)%string_like; intros; subst;
+        discriminate
+      ). }
+Defined.
