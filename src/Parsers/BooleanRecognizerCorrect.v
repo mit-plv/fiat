@@ -57,10 +57,10 @@ Section sound.
           := forall name, str_matches_name name = true
                           -> parse_of_item _ G str (NonTerminal _ name).
 
-        (*Definition str_matches_name_completeT P
+        Definition str_matches_name_completeT P
           := forall valid name (H_sub : P valid name),
                minimal_parse_of_item _ G initial_names_data is_valid_name remove_name valid str (NonTerminal _ name)
-               -> str_matches_name name = true.*)
+               -> str_matches_name name = true.
 
         Lemma parse_item_sound
               (str_matches_name_sound : str_matches_name_soundT)
@@ -79,26 +79,31 @@ Section sound.
                  end.
         Defined.
 
-        (*Lemma parse_item_complete
+        Lemma parse_item_complete
               valid Pv
               (H_sub : forall p, Pv (remove_name valid p) p)
               (str_matches_name_complete : str_matches_name_completeT Pv)
               (it : item CharType)
         : minimal_parse_of_item _ G initial_names_data is_valid_name remove_name valid str it
-          -> parse_item String G str str_matches_name it = true.
+          -> parse_item String str str_matches_name it = true.
         Proof.
           unfold parse_item, str_matches_name_completeT in *.
           repeat match goal with
                    | _ => intro
                    | _ => reflexivity
-                   | [ H : minimal_parse_of_item _ _ _ _ _ _ ?s ?i |- _ ] => atomic s; atomic i; destruct H
                    | [ |- _ = true ] => apply bool_eq_correct
+                   | [ H : minimal_parse_of_item _ _ _ _ _ _ _ (Terminal _) |- _ ] => inversion_clear H
                    | [ H : context[?E] |- context[match ?E with _ => _ end] ] => destruct E
                    | [ H : minimal_parse_of _ _ _ _ _ _ _ [] |- _ ] => solve [ inversion H ]
-                   | [ |- str_matches_name _ _ = true ]
+                   | [ |- str_matches_name _ = true ]
                      => eapply str_matches_name_complete; [..| eassumption ]
+                   | [ H : minimal_parse_of_item _ _ _ _ _ _ _ (Terminal _) |- _ ] => inversion_clear H
+                 end.
                    | _ => solve [ eauto using expand_minimal_parse_of, sub_names_listT_remove, remove_name_6 ]
                end.
+          inversion X; subst.
+          eapply str_matches_name_complete; [..| eassumption ]
+          eapply str_matches_name_complete.
         Qed.*)
       End item.
 

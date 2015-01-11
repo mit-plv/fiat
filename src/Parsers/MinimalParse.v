@@ -66,97 +66,110 @@ Section cfg.
     apply remove_name_2; right; reflexivity.
   Qed.
 
+  (** The [names_listT] is the current list of valid names to compare
+      against; the extra [String] argument to some of these is the
+      [String] we're using to do well-founded recursion, which the
+      current [String] must be no longer than. *)
   Inductive minimal_parse_of
-  : names_listT -> String -> productions CharType -> Type :=
-  | MinParseHead : forall valid str pat pats,
-                     minimal_parse_of_production valid str pat
-                     -> minimal_parse_of valid str (pat::pats)
-  | MinParseTail : forall valid str pat pats,
-                     minimal_parse_of valid str pats
-                     -> minimal_parse_of valid str (pat::pats)
+  : forall (str0 : String) (valid : names_listT)
+           (str : String),
+      productions CharType -> Type :=
+  | MinParseHead : forall str0 valid str pat pats,
+                     @minimal_parse_of_production str0 valid str pat
+                     -> @minimal_parse_of str0 valid str (pat::pats)
+  | MinParseTail : forall str0 valid str pat pats,
+                     @minimal_parse_of str0 valid str pats
+                     -> @minimal_parse_of str0 valid str (pat::pats)
   with minimal_parse_of_production
-  : names_listT -> String -> production CharType -> Type :=
-  | MinParseProductionNil : forall valid,
-                              minimal_parse_of_production valid (Empty _) nil
-  | MinParseProductionConsDec : forall valid str pat strs pats,
-                                  str <> Empty _
-                                  -> strs <> Empty _
-                                  -> minimal_parse_of_item initial_names_data str pat
-                                  -> minimal_parse_of_production initial_names_data strs pats
-                                  -> minimal_parse_of_production valid (str ++ strs) (pat::pats)
-  | MinParseProductionConsEmpty0 : forall valid str pat strs pats,
-                                     str = Empty _
-                                     -> strs <> Empty _
-                                     -> minimal_parse_of_item initial_names_data str pat
-                                     -> minimal_parse_of_production valid strs pats
-                                     -> minimal_parse_of_production valid (str ++ strs) (pat::pats)
-  | MinParseProductionConsEmpty1 : forall valid str pat strs pats,
-                                     str <> Empty _
-                                     -> strs = Empty _
-                                     -> minimal_parse_of_item valid str pat
-                                     -> minimal_parse_of_production initial_names_data strs pats
-                                     -> minimal_parse_of_production valid (str ++ strs) (pat::pats)
-  | MinParseProductionConsEmpty01 : forall valid str pat strs pats,
-                                     str = Empty _
-                                     -> strs = Empty _
-                                     -> minimal_parse_of_item valid str pat
-                                     -> minimal_parse_of_production valid strs pats
-                                     -> minimal_parse_of_production valid (str ++ strs) (pat::pats)
+  : forall (str0 : String) (valid : names_listT)
+           (str : String),
+      production CharType -> Type :=
+  | MinParseProductionNil : forall str0 valid,
+                              @minimal_parse_of_production str0 valid (Empty _) nil
+  | MinParseProductionCons : forall str0 valid str strs pat pats,
+                               @minimal_parse_of_item str0 valid str pat
+                               -> @minimal_parse_of_production str0 valid strs pats
+                               -> @minimal_parse_of_production str0 valid (str ++ strs) (pat::pats)
   with minimal_parse_of_item
-  : names_listT -> String -> item CharType -> Type :=
-  | MinParseTerminal : forall valid x,
-                         minimal_parse_of_item valid [[ x ]]%string_like (Terminal x)
+  : forall (str0 : String) (valid : names_listT)
+           (str : String),
+      item CharType -> Type :=
+  | MinParseTerminal : forall str0 valid x,
+                         @minimal_parse_of_item str0 valid [[ x ]]%string_like (Terminal x)
   | MinParseNonTerminal
-    : forall valid name str,
+    : forall str0 valid str name,
+        @minimal_parse_of_name str0 valid str name
+        -> @minimal_parse_of_item str0 valid str (NonTerminal CharType name)
+  with minimal_parse_of_name
+  : forall (str0 : String) (valid : names_listT)
+           (str : String),
+      string -> Type :=
+  | MinParseNonTerminalStrLt
+    : forall str0 valid name str,
+        Length str < Length str0
+        -> @minimal_parse_of str initial_names_data str (Lookup G name)
+        -> @minimal_parse_of_name str0 valid str name
+  | MinParseNonTerminalStrEq
+    : forall str valid name,
         is_valid_name valid name = true
-        -> minimal_parse_of (remove_name valid name) str (Lookup G name)
-        -> minimal_parse_of_item valid str (NonTerminal CharType name).
+        -> @minimal_parse_of str (remove_name valid name) str (Lookup G name)
+        -> @minimal_parse_of_name str valid str name.
 
-  Fixpoint parse_of__of__minimal_parse_of {valid str pats} (p : minimal_parse_of valid str pats)
+  Definition parse_of_item_name__of__minimal_parse_of_name'
+             (parse_of__of__minimal_parse_of
+              : forall str0 valid str prods,
+                  @minimal_parse_of str0 valid str prods -> parse_of String G str prods)
+             {str0 valid str name} (p : @minimal_parse_of_name str0 valid str name)
+  : parse_of_item String G str (NonTerminal _ name)
+    := match p in (@minimal_parse_of_name str0 valid str name) return parse_of_item String G str (NonTerminal _ name) with
+         | MinParseNonTerminalStrLt str0 valid name str pf p'
+           => ParseNonTerminal name (@parse_of__of__minimal_parse_of _ _ _ _ p')
+         | MinParseNonTerminalStrEq str valid name H p'
+           => ParseNonTerminal name (@parse_of__of__minimal_parse_of _ _ _ _ p')
+       end.
+
+  Definition parse_of_item__of__minimal_parse_of_item'
+             (parse_of__of__minimal_parse_of
+              : forall str0 valid str prods,
+                  @minimal_parse_of str0 valid str prods -> parse_of String G str prods)
+             {str0 valid str it} (p : @minimal_parse_of_item str0 valid str it)
+  : parse_of_item String G str it
+    := match p in (@minimal_parse_of_item str0 valid str it) return parse_of_item String G str it with
+         | MinParseTerminal str0 valid x
+           => ParseTerminal String G x
+         | MinParseNonTerminal str0 valid _ _ p'
+           => @parse_of_item_name__of__minimal_parse_of_name' (@parse_of__of__minimal_parse_of) _ _ _ _ p'
+       end.
+
+  Fixpoint parse_of__of__minimal_parse_of {str0 valid str pats} (p : @minimal_parse_of str0 valid str pats)
   : parse_of String G str pats
     := match p with
-         | MinParseHead valid str pat pats p'
+         | MinParseHead str0 valid str pat pats p'
            => ParseHead pats (parse_of_production__of__minimal_parse_of_production p')
-         | MinParseTail valid str pat pats p'
+         | MinParseTail str0 valid str pat pats p'
            => ParseTail pat (parse_of__of__minimal_parse_of p')
        end
-  with parse_of_production__of__minimal_parse_of_production {valid str pat} (p : minimal_parse_of_production valid str pat)
+  with parse_of_production__of__minimal_parse_of_production {str0 valid str pat} (p : @minimal_parse_of_production str0 valid str pat)
        : parse_of_production String G str pat
-       := (let parse_of_item__of__minimal_parse_of_item {valid str it} (p : minimal_parse_of_item valid str it)
-               := match p in (minimal_parse_of_item valid str it) return parse_of_item String G str it with
-                    | MinParseTerminal valid x
-                      => ParseTerminal String G x
-                    | MinParseNonTerminal valid name str H p'
-                      => ParseNonTerminal name (parse_of__of__minimal_parse_of p')
-                  end in
-                   match p with
-                     | MinParseProductionNil valid
-                       => ParseProductionNil _ _
-                     | MinParseProductionConsDec valid str pat strs pats _ _ p' p''
-                       => ParseProductionCons
-                            (parse_of_item__of__minimal_parse_of_item p')
-                            (parse_of_production__of__minimal_parse_of_production p'')
-                     | MinParseProductionConsEmpty0 valid str pat strs pats _ _ p' p''
-                       => ParseProductionCons
-                            (parse_of_item__of__minimal_parse_of_item p')
-                            (parse_of_production__of__minimal_parse_of_production p'')
-                     | MinParseProductionConsEmpty1 valid str pat strs pats _ _ p' p''
-                       => ParseProductionCons
-                            (parse_of_item__of__minimal_parse_of_item p')
-                            (parse_of_production__of__minimal_parse_of_production p'')
-                     | MinParseProductionConsEmpty01 valid str pat strs pats _ _ p' p''
-                       => ParseProductionCons
-                            (parse_of_item__of__minimal_parse_of_item p')
-                            (parse_of_production__of__minimal_parse_of_production p'')
-                   end).
+       := match p with
+            | MinParseProductionNil str0 valid
+              => ParseProductionNil _ _
+            | MinParseProductionCons str0 valid str strs pat pats p' p''
+              => ParseProductionCons
+                   (parse_of_item__of__minimal_parse_of_item' (@parse_of__of__minimal_parse_of) p')
+                   (parse_of_production__of__minimal_parse_of_production p'')
+          end.
 
-  Definition parse_of_item__of__minimal_parse_of_item {valid str it} (p : minimal_parse_of_item valid str it)
-    := match p in (minimal_parse_of_item valid str it) return parse_of_item String G str it with
-         | MinParseTerminal valid x
-           => ParseTerminal String G x
-         | MinParseNonTerminal valid name str H p'
-           => ParseNonTerminal name (parse_of__of__minimal_parse_of p')
-       end.
+  Definition parse_of_item_name__of__minimal_parse_of_name
+  : forall {str0 valid str name} (p : @minimal_parse_of_name str0 valid str name),
+      parse_of_item String G str (NonTerminal _ name)
+    := @parse_of_item_name__of__minimal_parse_of_name' (@parse_of__of__minimal_parse_of).
+
+  Definition parse_of_item__of__minimal_parse_of_item
+  : forall {str0 valid str it},
+      @minimal_parse_of_item str0 valid str it
+      -> parse_of_item String G str it
+    := @parse_of_item__of__minimal_parse_of_item' (@parse_of__of__minimal_parse_of).
 
   Definition sub_names_listT (x y : names_listT) : Prop
     := forall p, is_valid_name x p = true -> is_valid_name y p = true.
@@ -203,16 +216,190 @@ Section cfg.
     rewrite remove_name_5; intuition (subst; eauto; congruence).
   Qed.
 
-  Fixpoint expand_minimal_parse_of {valid valid' str pats} (H : sub_names_listT valid valid') (p : minimal_parse_of valid str pats)
-  : minimal_parse_of valid' str pats
-    := match p in (minimal_parse_of valid str pats) return (sub_names_listT valid valid' -> _) with
-         | MinParseHead valid str pat pats p'
-           => fun H => MinParseHead pats (expand_minimal_parse_of_production H p')
-         | MinParseTail valid str pat pats p'
-           => fun H => MinParseTail pat (expand_minimal_parse_of H p')
-       end H
-  with expand_minimal_parse_of_production {valid valid' str pat} (H : sub_names_listT valid valid') (p : minimal_parse_of_production valid str pat)
-       : minimal_parse_of_production valid' str pat
+
+  Definition expand_minimal_parse_of_name'
+             (expand_minimal_parse_of
+              : forall {str0 str0' valid valid' str name}
+                       (Hstr : str0 ≤s str0')
+                       (H : sub_names_listT valid valid')
+                       (p : @minimal_parse_of_name str0 valid str name),
+                  @minimal_parse_of_name str0' valid' str name)
+             {str0 str0' valid valid' str name}
+             (Hstr : str0 ≤s str0')
+             (H : sub_names_listT valid valid')
+             (p : @minimal_parse_of_name str0 valid str name)
+  : @minimal_parse_of_name str0' valid' str name.
+  Proof.
+    destruct p.
+    { apply
+
+:
+
+         | MinParseNonTerminalStrLt str0 valid name str pf p'
+           => fun Hstr H'
+              => @MinParseNonTerminalStrLt
+                   str0' valid' name str
+                   (length_le_trans pf Hstr)
+                   (@expand_minimal_parse_of _ _ _ _ _ _ (reflexivity _) (reflexivity _) p')
+         | MinParseNonTerminalStrEq str valid name H p'
+           => fun Hstr H'
+              => match strle_to_sumbool _ Hstr with
+                   | left pf
+                     => @MinParseNonTerminalStrLt
+                          str0' valid' name str
+                          pf
+                          (@expand_minimal_parse_of _ _ _ _ _ _ (reflexivity _) (_) p')
+                   | right pf  => _
+                 end(*@MinParseNonTerminalStrEq str0' valid' name _ pf' _ _(*(@expand_minimal_parse_of _ _ _ _ _ _ _ _ _ p')*)*)
+       end Hstr H).
+  Section expand_parts.
+    Context {str0 str0' valid valid'}
+            (expand_minimal_parse_of_name
+             : forall {str name}
+                      (Hstr : str0 ≤s str0')
+                      (H : sub_names_listT valid valid')
+                      (p : @minimal_parse_of_name str0 valid str name),
+                 @minimal_parse_of_name str0' valid' str name).
+
+    Definition expand_minimal_parse_of_item'
+               {str it}
+               (Hstr : str0 ≤s str0')
+               (H : sub_names_listT valid valid')
+               (p : @minimal_parse_of_item str0 valid str it)
+    : @minimal_parse_of_item str0' valid' str it
+      := match p in (@minimal_parse_of_item str0 valid str it)
+               return ((forall {str name}
+                               (Hstr : str0 ≤s str0')
+                               (H : sub_names_listT valid valid')
+                               (p : @minimal_parse_of_name str0 valid str name),
+                          @minimal_parse_of_name str0' valid' str name)
+                       -> forall (Hstr : str0 ≤s str0'),
+                         sub_names_listT valid valid'
+                         -> @minimal_parse_of_item str0' valid' str it)
+         with
+           | MinParseTerminal str0 valid x
+             => fun _ Hstr _ => @MinParseTerminal str0' valid' x
+           | MinParseNonTerminal str0 valid str name p'
+             => fun expand_minimal_parse_of_name Hstr H'
+                => @MinParseNonTerminal str0' valid' str name (@expand_minimal_parse_of_name _ _ Hstr H' p')
+         end expand_minimal_parse_of_name Hstr H.
+
+    Fixpoint expand_minimal_parse_of {str0 str0' valid valid' str pf pf' pats} (H : sub_names_listT valid valid') (p : @minimal_parse_of str0 valid str pats)
+  : @minimal_parse_of str0' valid' str pf' pats
+    := match p in (@minimal_parse_of str0 valid str pats)
+             return (forall pf' : str ≤s str0',
+                       sub_names_listT valid valid'
+                       -> @minimal_parse_of str0' valid' str pf' pats)
+       with
+         | MinParseHead str0 valid str pat pats p'
+           => fun pf' H => MinParseHead pats (expand_minimal_parse_of_production H p')
+         | MinParseTail str0 valid str pat pats p'
+           => fun pf' H => MinParseTail pat (expand_minimal_parse_of H p')
+       end pf' H
+  with expand_minimal_parse_of_production {str0 str0' valid valid' str pf pf' pat} (H : sub_names_listT valid valid') (p : @minimal_parse_of_production str0 valid str pat)
+       : @minimal_parse_of_production str0' valid' str pf' pat
+       := (let expand_minimal_parse_of_item {valid valid' str it} (H : sub_names_listT valid valid') (p : minimal_parse_of_item valid str it)
+               := match p in (minimal_parse_of_item valid str it) return (sub_names_listT valid valid' -> minimal_parse_of_item valid' str it) with
+                    | MinParseTerminal valid x
+                      => fun _ => MinParseTerminal valid' x
+                    | MinParseNonTerminal valid name str H p'
+                      => fun H' => MinParseNonTerminal (H' _ H) (expand_minimal_parse_of (remove_name_mor H' eq_refl) p')
+                  end H in
+                   match p in (minimal_parse_of_production valid str pats) return (sub_names_listT valid valid' -> minimal_parse_of_production valid' str pats) with
+                     | MinParseProductionNil valid
+                       => fun _ => MinParseProductionNil valid'
+                     | MinParseProductionConsDec valid str pat strs pats pf pf' p' p''
+                       => fun H => MinParseProductionConsDec
+                                     valid'
+                                     pf pf'
+                                     (expand_minimal_parse_of_item (reflexivity _) p')
+                                     (expand_minimal_parse_of_production (reflexivity _) p'')
+                     | MinParseProductionConsEmpty0 valid str pat strs pats pf pf' p' p''
+                       => fun H => MinParseProductionConsEmpty0
+                                     (valid := valid')
+                                     pf pf'
+                                     (expand_minimal_parse_of_item (reflexivity _) p')
+                                     (expand_minimal_parse_of_production (fun p H0 => H _ H0) p'')
+                     | MinParseProductionConsEmpty1 valid str pat strs pats pf pf' p' p''
+                       => fun H => MinParseProductionConsEmpty1
+                                     (valid := valid')
+                                     pf pf'
+                                     (expand_minimal_parse_of_item (fun p H0 => H _ H0) p')
+                                     (expand_minimal_parse_of_production (reflexivity _) p'')
+                     | MinParseProductionConsEmpty01 valid str pat strs pats pf pf' p' p''
+                       => fun H => MinParseProductionConsEmpty01
+                                     (valid := valid')
+                                     pf pf'
+                                     (expand_minimal_parse_of_item (fun p H0 => H _ H0) p')
+                                     (expand_minimal_parse_of_production (fun p H0 => H _ H0) p'')
+                   end H).
+
+
+
+    pose ().
+
+    Show Proof.
+
+
+  Definition expand_minimal_parse_of_name'
+             (expand_minimal_parse_of
+              : forall {str0 str0' valid valid' str pats}
+                       (Hstr : str0 ≤s str0')
+                       (H : sub_names_listT valid valid')
+                       (p : @minimal_parse_of str0 valid str pats),
+                  @minimal_parse_of str0' valid' str pats)
+             {str0 str0' valid valid' str name}
+             (Hstr : str0 ≤s str0')
+             (H : sub_names_listT valid valid')
+             (p : @minimal_parse_of_name str0 valid str name)
+  : @minimal_parse_of_name str0' valid' str name.
+  Proof.
+    refine (match p in (@minimal_parse_of_name str0 valid str name)
+             return (forall (Hstr : str0 ≤s str0'),
+                       sub_names_listT valid valid'
+                       -> @minimal_parse_of_item str0' valid' str name)
+       with
+         | MinParseTerminal str0 valid x
+           => fun Hstr _ => @MinParseTerminal str0' valid' x
+         | MinParseNonTerminalStrLt str0 valid name str pf p'
+           => fun Hstr H'
+              => @MinParseNonTerminalStrLt
+                   str0' valid' name str
+                   (length_le_trans pf Hstr)
+                   (@expand_minimal_parse_of _ _ _ _ _ _ (reflexivity _) (reflexivity _) p')
+         | MinParseNonTerminalStrEq str valid name H p'
+           => fun Hstr H'
+              => match strle_to_sumbool _ Hstr with
+                   | left pf
+                     => @MinParseNonTerminalStrLt
+                          str0' valid' name str
+                          pf
+                          (@expand_minimal_parse_of _ _ _ _ _ _ (reflexivity _) (_) p')
+                   | right pf  => _
+                 end(*@MinParseNonTerminalStrEq str0' valid' name _ pf' _ _(*(@expand_minimal_parse_of _ _ _ _ _ _ _ _ _ p')*)*)
+       end Hstr H).
+
+
+
+
+(remove_name_mor H' eq_refl)
+
+(remove_name_mor H' eq_refl)
+
+  Fixpoint expand_minimal_parse_of {str0 str0' valid valid' str pf pf' pats} (H : sub_names_listT valid valid') (p : @minimal_parse_of str0 valid str pats)
+  : @minimal_parse_of str0' valid' str pf' pats
+    := match p in (@minimal_parse_of str0 valid str pats)
+             return (forall pf' : str ≤s str0',
+                       sub_names_listT valid valid'
+                       -> @minimal_parse_of str0' valid' str pf' pats)
+       with
+         | MinParseHead str0 valid str pat pats p'
+           => fun pf' H => MinParseHead pats (expand_minimal_parse_of_production H p')
+         | MinParseTail str0 valid str pat pats p'
+           => fun pf' H => MinParseTail pat (expand_minimal_parse_of H p')
+       end pf' H
+  with expand_minimal_parse_of_production {str0 str0' valid valid' str pf pf' pat} (H : sub_names_listT valid valid') (p : @minimal_parse_of_production str0 valid str pat)
+       : @minimal_parse_of_production str0' valid' str pf' pat
        := (let expand_minimal_parse_of_item {valid valid' str it} (H : sub_names_listT valid valid') (p : minimal_parse_of_item valid str it)
                := match p in (minimal_parse_of_item valid str it) return (sub_names_listT valid valid' -> minimal_parse_of_item valid' str it) with
                     | MinParseTerminal valid x
@@ -255,7 +442,7 @@ Section cfg.
            => fun _ => MinParseTerminal valid' x
          | MinParseNonTerminal valid name str H p'
            => fun H' => MinParseNonTerminal (H' _ H) (expand_minimal_parse_of (remove_name_mor H' eq_refl) p')
-       end H.
+       end H.*)
 
   Section minimize.
     Let P : string -> Prop
@@ -311,54 +498,73 @@ Section cfg.
 
     Section wf_parts.
       Let of_parse_T' h
-          {str : String} (valid : names_listT) {pats : productions CharType}
+          {str0 str : String} (pf : str ≤s str0)
+          (valid : names_listT) {pats : productions CharType}
           (p : parse_of String G str pats)
-
         := forall (p_small : height_of_parse p < h),
              Forall_parse_of P p
-             -> ({ p' : minimal_parse_of valid str pats
+             -> ({ p' : @minimal_parse_of str0 valid str pats
                         & (height_of_parse (parse_of__of__minimal_parse_of p') <= height_of_parse p)
                           * Forall_parse_of P (parse_of__of__minimal_parse_of p') })%type
                 + alt_option (height_of_parse p) valid str.
 
-      Let of_parse_T h
-        := forall str valid pats p, @of_parse_T' h str valid pats p.
+      Let of_parse_T str0 h
+        := forall str pf valid pats p, @of_parse_T' h str0 str pf valid pats p.
 
-      Definition of_parse_T_resp {h h'} (H : h' < h) (parse : of_parse_T h)
-      : of_parse_T h'
-        := fun str' valid' pats' p' p_small'
-           => @parse str' valid' pats' p' (Lt.lt_trans _ _ _ p_small' H).
+      Definition of_parse_T_resp {str0 str0'} {h h'} (Hstr : str0' ≤s str0) (H : h' < h)
+                 (parse : of_parse_T str0 h)
+      : of_parse_T str0' h'.
+      Proof.
+        intros str' pf' valid' pats' p' p_small' H'.
+        pose (@parse str' (transitivity pf' Hstr) valid' pats' p' (Lt.lt_trans _ _ _ p_small' H) H') as p''.
+        Set Printing Implicit.
 
-      Let of_parse_item_T {str valid it} (p : parse_of_item String G str it) h
+      Let of_parse_item_T {str0 str pf valid it} (p : parse_of_item String G str it) h
         := height_of_parse_item p < h
            -> Forall_parse_of_item P p
-           -> ({ p' : minimal_parse_of_item valid str it
+           -> ({ p' : @minimal_parse_of_item str0 valid str it
                       & (height_of_parse_item (parse_of_item__of__minimal_parse_of_item p') <= height_of_parse_item p)
                         * Forall_parse_of_item P (parse_of_item__of__minimal_parse_of_item p') })%type
               + alt_option (height_of_parse_item p) valid str.
 
       Section item.
-        Context {str : String} (valid : names_listT) {it : item CharType}.
+        Context {str0 str : String} (pf : str ≤s str0) (valid : names_listT) {it : item CharType}.
 
-        Let rec_T str it h
-          := forall h', h' < h -> of_parse_T h' -> forall p, @of_parse_item_T str valid it p h'.
+        Let rec_T str0 str pf it h
+          := forall h', h' < h -> of_parse_T h' -> forall p, @of_parse_item_T str0 str pf valid it p h'.
 
         Section helper.
           Context (h : nat)
-                  (minimal_parse_of_item__of__parse_of_item_rec : rec_T str it h)
+                  (minimal_parse_of_item__of__parse_of_item_rec : rec_T pf it h)
                   (minimal_parse_of__of__parse_of : of_parse_T h).
 
           Definition minimal_parse_of_item__of__parse_of_item'_helper
                      (p : parse_of_item String G str it)
-          : of_parse_item_T p h
-            := match h as h, p as p in (parse_of_item _ _ str it)
-                     return (rec_T str it h -> of_parse_T h -> of_parse_item_T p h)
+          : @of_parse_item_T str0 str pf valid it p h.
+            refine
+              (match h as h, p as p in (parse_of_item _ _ str it)
+                     return (forall pf : str ≤s str0,
+                               @rec_T str0 str pf it h
+                               -> @of_parse_T h
+                               -> @of_parse_item_T str0 str pf valid it p h)
                with
                  | _, ParseTerminal x
-                   => fun _ _ H' _ => inl (existT _ (MinParseTerminal _ x) (le_n _, tt))
+                   => fun pf _ _ H' _ => inl (existT _ (@MinParseTerminal str0 valid x pf) (le_n _, tt))
                  | 0, ParseNonTerminal _ _ _
-                   => fun _ _ H' _ => match Lt.lt_n_0 _ H' : False with end
+                   => fun _ _ _ H' _ => match Lt.lt_n_0 _ H' : False with end
                  | S h', ParseNonTerminal name str' p'
+                   => fun pf
+                          minimal_parse_of_item__of__parse_of_item_rec
+                          minimal_parse_of__of__parse_of
+                          p_small forall_parse
+                      => _
+               end
+                 pf
+                 (@minimal_parse_of_item__of__parse_of_item_rec)
+                 (@minimal_parse_of__of__parse_of)).
+            exists ).
+inl (existT _ (MinParseTerminal _ x) )
+                 | S h',
                    => fun minimal_parse_of_item__of__parse_of_item_rec
                           minimal_parse_of__of__parse_of
                           p_small forall_parse
@@ -440,7 +646,7 @@ Section cfg.
                          end
                end
                  (@minimal_parse_of_item__of__parse_of_item_rec)
-                 (@minimal_parse_of__of__parse_of).
+                 (@minimal_parse_of__of__parse_of)).
         End helper.
 
         Definition minimal_parse_of_item__of__parse_of_item'
