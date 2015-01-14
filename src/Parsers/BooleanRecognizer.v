@@ -86,20 +86,55 @@ Section recursive_descent_parser.
         Defined.
       End production.
 
+      Section productions.
+        Variable str0 : String.
+        Variable parse_name : forall (str : String)
+                                     (pf : str ≤s str0),
+                                string -> bool.
+
+        (** To parse as a given list of [production]s, we must parse as one of the [production]s. *)
+        Definition parse_productions (str : String) (pf : str ≤s str0) (prods : productions CharType)
+        : bool
+          := fold_right orb
+                        false
+                        (map (parse_production parse_name pf)
+                             prods).
+      End productions.
+
+
       Section names.
         Section step.
-          Variable str0 : String.
-          Variable parse_name : forall (str : String)
-                                       (pf : str ≤s str0),
-                                  string -> bool.
+          Context (str0 : String) (valid_list : names_listT)
+                  (parse_name
+                   : forall (p : String * names_listT),
+                       prod_relation (ltof String Length) names_listT_R p (str0, valid_list)
+                       -> forall str : String, str ≤s fst p -> string -> bool).
 
-          (** To parse as a given list of [production]s, we must parse as one of the [production]s. *)
-          Definition parse_name_step (str : String) (pf : str ≤s str0) (name : string)
+          Definition parse_name_step
+                     (str : String) (pf : str ≤s str0) (name : string)
           : bool
-            := fold_right orb
-                          false
-                          (map (parse_production parse_name pf)
-                               (Lookup G name)).
+            := match lt_dec (Length str) (Length str0), Sumbool.sumbool_of_bool (is_valid_name valid_list name) with
+                 | left pf', _ =>
+                   (** [str] got smaller, so we reset the valid names list *)
+                   parse_productions
+                     (@parse_name
+                        (str, initial_names_data)
+                        (or_introl pf'))
+                     (or_intror eq_refl)
+                     (Lookup G name)
+                 | right pf', left H' =>
+                   (** [str] didn't get smaller, so we cache the fact that we've hit this name already *)
+                   (** It was valid, so we can remove it *)
+                   parse_productions
+                     (@parse_name
+                        (str0, remove_name valid_list name)
+                        (or_intror (conj eq_refl (remove_name_dec H'))))
+                     (or_intror eq_refl)
+                     (Lookup G name)
+                 | right _, right _
+                   => (** oops, we already saw this name in the past.  ABORT! *)
+                   false
+               end.
         End step.
 
         Section wf.
@@ -119,31 +154,7 @@ Section recursive_descent_parser.
                       (well_founded_ltof _ Length)
                       ntl_wf)
                  _
-                 (fun sl parse_name str pf (name : string)
-                  => let str0 := fst sl in
-                     let valid_list := snd sl in
-                     match lt_dec (Length str) (Length str0), Sumbool.sumbool_of_bool (is_valid_name valid_list name) with
-                       | left pf', _ =>
-                         (** [str] got smaller, so we reset the valid names list *)
-                         parse_name_step
-                           (parse_name
-                              (str, initial_names_data)
-                              (or_introl pf'))
-                           (or_intror eq_refl)
-                           name
-                       | right pf', left H' =>
-                         (** [str] didn't get smaller, so we cache the fact that we've hit this name already *)
-                         (** It was valid, so we can remove it *)
-                         parse_name_step
-                           (parse_name
-                              (str0, remove_name valid_list name)
-                              (or_intror (conj eq_refl (remove_name_dec H'))))
-                           (or_intror eq_refl)
-                           name
-                       | right _, right _
-                         => (** oops, we already saw this name in the past.  ABORT! *)
-                         false
-                     end).
+                 (fun sl => @parse_name_step (fst sl) (snd sl)).
 
           Definition parse_name (str : String) (name : string)
           : bool
