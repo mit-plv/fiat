@@ -1,6 +1,8 @@
 (** * Every parse tree has a corresponding minimal parse tree *)
-Require Import Coq.Strings.String Coq.Lists.List Coq.Program.Program Coq.Classes.RelationClasses Coq.Classes.Morphisms Coq.Setoids.Setoid.
+Require Import Coq.Strings.String Coq.Lists.List Coq.Program.Program Coq.Classes.RelationClasses Coq.Classes.Morphisms Coq.Setoids.Setoid Coq.Arith.Compare_dec.
+Require Import Coq.Program.Wf Coq.Arith.Wf_nat.
 Require Import Parsers.ContextFreeGrammar Parsers.ContextFreeGrammarProperties Parsers.WellFoundedParse.
+Require Import Common.Wf.
 
 Set Implicit Arguments.
 Local Open Scope string_like_scope.
@@ -13,6 +15,10 @@ Section cfg.
           (initial_names_data : names_listT)
           (is_valid_name : names_listT -> string -> bool)
           (remove_name : names_listT -> string -> names_listT)
+          (names_listT_R : names_listT -> names_listT -> Prop)
+          (remove_name_dec : forall ls name,
+                               is_valid_name ls name = true
+                               -> names_listT_R (remove_name ls name) ls)
           (remove_name_1
            : forall ls ps ps',
                is_valid_name (remove_name ls ps) ps' = true
@@ -20,7 +26,16 @@ Section cfg.
           (remove_name_2
            : forall ls ps ps',
                is_valid_name (remove_name ls ps) ps' = false
-               <-> is_valid_name ls ps' = false \/ ps = ps').
+               <-> is_valid_name ls ps' = false \/ ps = ps')
+          (ntl_wf : well_founded names_listT_R).
+
+  Definition sub_names_listT (x y : names_listT) : Prop
+    := forall p, is_valid_name x p = true -> is_valid_name y p = true.
+
+  Context (names_listT_R_respectful : forall x y,
+                                        sub_names_listT x y
+                                        -> x <> y
+                                        -> names_listT_R x y).
 
   Lemma remove_name_3
         ls ps ps' (H : is_valid_name ls ps = false)
@@ -170,9 +185,6 @@ Section cfg.
       @minimal_parse_of_item str0 valid str it
       -> parse_of_item String G str it
     := @parse_of_item__of__minimal_parse_of_item' (@parse_of__of__minimal_parse_of).
-
-  Definition sub_names_listT (x y : names_listT) : Prop
-    := forall p, is_valid_name x p = true -> is_valid_name y p = true.
 
   Global Instance sub_names_listT_Reflexive : Reflexive sub_names_listT
     := fun x y f => f.
@@ -377,7 +389,6 @@ Section cfg.
     Defined.
 
     Section wf_parts.
-      (*Let of_parse_name_T'
       Let of_parse_T' h
           {str0 str : String} (pf : str ≤s str0)
           (valid : names_listT) {pats : productions CharType}
@@ -391,6 +402,9 @@ Section cfg.
 
       Let of_parse_T str0 h
         := forall str pf valid pats p, @of_parse_T' h str0 str pf valid pats p.
+
+(*Let of_parse_name_T'
+
 
       (*Definition of_parse_T_resp {str0 str0'} {h h'} (Hstr : str0' ≤s str0) (H : h' < h)
                  (parse : of_parse_T str0 h)
@@ -408,13 +422,204 @@ Section cfg.
                         * Forall_parse_of_item P (parse_of_item__of__minimal_parse_of_item p') })%type
               + alt_option (height_of_parse_item p) valid str.
 
-      Let of_parse_name_T {str0 str valid name} (p : parse_of_item String G str (NonTerminal _ name)) h
-        := height_of_parse_item p < h
-           -> Forall_parse_of_item P p
-           -> ({ p' : @minimal_parse_of_item str0 valid str (NonTerminal _ name)
-                      & (height_of_parse_item (parse_of_item__of__minimal_parse_of_item p') <= height_of_parse_item p)
-                        * Forall_parse_of_item P (parse_of_item__of__minimal_parse_of_item p') })%type
-              + alt_option (height_of_parse_item p) valid str.
+      Let of_parse_name_T {str0 str valid name} (p : parse_of String G str (Lookup G name)) h
+        := height_of_parse_item (ParseNonTerminal name p) < h
+           -> str ≤s str0
+           -> Forall_parse_of_item P (ParseNonTerminal name p)
+           -> ({ p' : @minimal_parse_of_name str0 valid str name
+                      & (height_of_parse_item (parse_of_item__of__minimal_parse_of_item (MinParseNonTerminal p')) <= height_of_parse_item (ParseNonTerminal name p))
+                        * Forall_parse_of_item P (parse_of_item__of__minimal_parse_of_item (MinParseNonTerminal p')) })%type
+              + alt_option (height_of_parse_item (ParseNonTerminal name p)) valid str.
+
+      Section name.
+        Section step.
+          Axiom minimal_parse_of_productions__of__parse_of_productions
+          : forall str h, of_parse_T str h.
+          (*Context (str0 : String) (valid_list : names_listT)
+                  (parse_name
+                   : forall (p : String * names_listT),
+                       prod_relation (ltof String Length) names_listT_R p (str0, valid_list)
+                       -> forall str : String, str ≤s fst p -> string -> bool).*)
+
+          Definition minimal_parse_of_name__of__parse_of_name_step
+                     {str0 str valid name}
+                     (Hinit : sub_names_listT valid initial_names_data)
+                     (p : parse_of String G str (Lookup G name)) h
+          : @of_parse_name_T str0 str valid name p h.
+          Proof.
+            destruct h as [|h]; [ clear; repeat intro; exfalso; omega | ].
+            intros pf Hstr H_forall.
+            let H := match goal with H : str ≤s str0 |- _ => constr:H end in
+            destruct (strle_to_sumbool _ H) as [pf_lt|pf_eq].
+            { (** [str] got smaller, so we reset the valid names list *)
+              destruct (@minimal_parse_of_productions__of__parse_of_productions str h str (reflexivity _) initial_names_data (Lookup G name) p (Lt.lt_S_n _ _ pf) (snd H_forall)) as [p'|p'].
+              { left.
+                exists (MinParseNonTerminalStrLt _ valid _ pf_lt (projT1 p'));
+                  simpl.
+                simpl in *.
+                split;
+                  [ exact (Le.le_n_S _ _ (fst (projT2 p')))
+                  | split;
+                    [ exact (fst H_forall)
+                    | exact (snd (projT2 p')) ] ]. }
+              { simpl.
+                right; eapply expand_alt_option; [..| exact p' ];
+                solve [ apply Lt.lt_n_Sn
+                      | assumption
+                      | reflexivity ]. } }
+            { (** [str] didn't get smaller, so we cache the fact that we've hit this name already *)
+              destruct (Sumbool.sumbool_of_bool (is_valid_name valid name)) as [ Hvalid | Hinvalid ].
+              { subst str.
+                destruct (@minimal_parse_of_productions__of__parse_of_productions str0 h str0 (reflexivity _) (remove_name valid name) (Lookup G name) p (Lt.lt_S_n _ _ pf) (snd H_forall)) as [p'|p'].
+                { left.
+                  eexists (MinParseNonTerminalStrEq Hvalid (projT1 p')).
+                  simpl in *.
+                  split;
+                    [ exact (Le.le_n_S _ _ (fst (projT2 p')))
+                    | split;
+                      [ exact (fst H_forall)
+                      | exact (snd (projT2 p')) ] ]. }
+                { destruct p' as [name' p'].
+                  destruct (string_dec name name') as [|n].
+                  { subst name; simpl.
+                    admit. }
+                  { right.
+                    exists name'.
+                    destruct p' as [p'H p'p].
+                    split.
+                    { rewrite remove_name_5 in p'H by assumption.
+                      exact p'H. }
+                    { exists (projT1 p'p).
+                      split; [ exact (Lt.lt_S _ _ (fst (projT2 p'p)))
+                             | exact (snd (projT2 p'p)) ]. } } } }
+              { (** oops, we already saw this name in the past.  ABORT! *)
+                right.
+                exists name.
+                destruct H_forall.
+                split; [ split; assumption
+                       | ].
+                exists p.
+                split; solve [ assumption
+                             | apply Lt.lt_n_Sn ]. } }
+          Defined.
+                      SearchAbout (?x < ?y -> ?x < S ?y).
+                    apply p'.
+
+                    SearchAbout remove_name is_valid_name.
+
+right; eapply expand_alt_option; [..| exact p' ];
+                  try solve [ apply Lt.lt_n_Sn
+                        | assumption
+                        | reflexivity ]. } }
+
+                SearchAbout (?s < S ?s).
+                eapply
+                SearchAbout (_ -> S _ <= S _).
+                : minimal_parse_of_name str0 valid str name).
+
+            let H := match goal with
+            destruct (lt_dec (Length str) (Length str0)).
+            { (** [str] got smaller, so we reset the valid names list *)
+                   repe
+
+            refine match lt_dec (Length str) (Length str0), Sumbool.sumbool_of_bool (is_valid_name valid_list name) with
+                     | left pf', _ =>
+
+                       parse_productions
+                         (@parse_name
+                            (str, initial_names_data)
+                            (or_introl pf'))
+                         (or_intror eq_refl)
+                         (Lookup G name)
+                     | right pf', left H' =>
+
+                       (** It was valid, so we can remove it *)
+                       parse_productions
+                         (@parse_name
+                            (str0, remove_name valid_list name)
+                            (or_intror (conj eq_refl (remove_name_dec H'))))
+                         (or_intror eq_refl)
+                         (Lookup G name)
+                     | right _, right _
+                       => (** oops, we already saw this name in the past.  ABORT! *)
+                       false
+                   end.
+            repeat intro; simpl in *.
+            edestruct minimal_parse_of_productions__of__parse_of_productions as [p0|p0].
+            Focus 4.
+
+            hnf.
+            simpl.
+            intros.
+            left.
+
+            refine (@Fix3
+                      (prod String names_listT) _ _ _
+                      _ (@well_founded_prod_relation
+                           String
+                           names_listT
+                           _
+                           _
+                           (well_founded_ltof _ Length)
+                           ntl_wf)
+                      _ _).
+                      (fun sl => @parse_name_step (fst sl) (snd sl)).
+
+          Definition parse_name_step
+                     (str : String) (pf : str ≤s str0) (name : string)
+          : bool
+            := match lt_dec (Length str) (Length str0), Sumbool.sumbool_of_bool (is_valid_name valid_list name) with
+                 | left pf', _ =>
+                   (** [str] got smaller, so we reset the valid names list *)
+                   parse_productions
+                     (@parse_name
+                        (str, initial_names_data)
+                        (or_introl pf'))
+                     (or_intror eq_refl)
+                     (Lookup G name)
+                 | right pf', left H' =>
+                   (** [str] didn't get smaller, so we cache the fact that we've hit this name already *)
+                   (** It was valid, so we can remove it *)
+                   parse_productions
+                     (@parse_name
+                        (str0, remove_name valid_list name)
+                        (or_intror (conj eq_refl (remove_name_dec H'))))
+                     (or_intror eq_refl)
+                     (Lookup G name)
+                 | right _, right _
+                   => (** oops, we already saw this name in the past.  ABORT! *)
+                   false
+               end.
+        End step.
+
+        Section wf.
+          (** TODO: add comment explaining signature *)
+          Definition parse_name_or_abort
+          : forall (p : String * names_listT) (str : String),
+              str ≤s fst p
+              -> string
+              -> bool
+            := @Fix3
+                 (prod String names_listT) _ _ _
+                 _ (@well_founded_prod_relation
+                      String
+                      names_listT
+                      _
+                      _
+                      (well_founded_ltof _ Length)
+                      ntl_wf)
+                 _
+                 (fun sl => @parse_name_step (fst sl) (snd sl)).
+
+          Definition parse_name (str : String) (name : string)
+          : bool
+            := @parse_name_or_abort (str, initial_names_data) str
+                                    (or_intror eq_refl) name.
+        End wf.
+      End names.
+    End parts.
+  End bool.
+
 
       Section item.
         Context {str0 str : String} (valid : names_listT) {it : item CharType}.
@@ -434,6 +639,128 @@ Section cfg.
           { eapply minimal_parse_of_name__of__parse_of_name; try assumption. }
         Defined.
       End item.
+
+
+
+      Section production.
+        Let of_parse_production_T {str0 str valid pat} (p : parse_of_production String G str pat) h
+          := height_of_parse_production p < h
+             -> Forall_parse_of_production P p
+             -> ({ p' : minimal_parse_of_production str0 valid str pat
+                        & (height_of_parse_production (parse_of_production__of__minimal_parse_of_production p') <= height_of_parse_production p)
+                          * Forall_parse_of_production P (parse_of_production__of__minimal_parse_of_production p') })%type
+                + alt_option (height_of_parse_production p) valid str.
+
+        (*Let rec_T h
+          := forall h', h' < h -> of_parse_T h' -> forall str valid pat p, @of_parse_production_T str valid pat p h'.*)
+
+        Section helper.
+          Context (h : nat)
+                  (minimal_parse_of_production__of__parse_of_production_rec : rec_T h)
+                  (minimal_parse_of__of__parse_of : of_parse_T h).
+
+          Let minimal_parse_of_production__of__parse_of_production h' H
+          : forall {str} valid {pat} (p : parse_of_production String G str pat),
+              of_parse_production_T p h'
+            := @minimal_parse_of_production__of__parse_of_production_rec
+                 h' H (of_parse_T_resp H (@minimal_parse_of__of__parse_of)).
+
+          Let minimal_parse_of_item__of__parse_of_item {str} valid {it}
+            := @minimal_parse_of_item__of__parse_of_item' str valid it h minimal_parse_of__of__parse_of.
+
+          Context {str : String} (valid : names_listT) {pat : production CharType}.
+
+          Definition minimal_parse_of_production__of__parse_of_production'_helper
+                     (p : parse_of_production String G str pat)
+          : @of_parse_production_T str valid pat p h.
+          Proof.
+            refine (
+                match h as h, p as p in (parse_of_production _ _ str pat)
+                      return ((forall h' (H : h' < h) str valid pat (p : parse_of_production String G str pat),
+                                 of_parse_production_T p h')
+                              -> (forall str valid it p', @of_parse_item_T str valid it p' h) -> of_parse_production_T p h)
+                with
+                  | 0, _ => fun _ _ H' _ => match Lt.lt_n_0 _ H' : False with end
+                  | S h', ParseProductionNil
+                    => fun _ _ p_small forall_parse
+                       => inl (existT
+                                 _ (MinParseProductionNil _)
+                                 (reflexivity _, forall_parse))
+                  | S h', ParseProductionCons str0 pat' str1 pats' p0' p1'
+                    => fun minimal_parse_of_production__of__parse_of_production
+                           minimal_parse_of_item__of__parse_of_item
+                           p_small forall_parse
+                       => let mp0 := @minimal_parse_of_item__of__parse_of_item _ valid _ p0' (NPeano.Nat.lt_succ_l _ _ (proj1 (proj1 (NPeano.Nat.max_lub_lt_iff _ _ _) p_small))) (fst forall_parse) in
+                          let mp0' := alt_all_elim (@minimal_parse_of_item__of__parse_of_item _ initial_names_data _ p0' (NPeano.Nat.lt_succ_l _ _ (proj1 (proj1 (NPeano.Nat.max_lub_lt_iff _ _ _) p_small))) (fst forall_parse)) in
+                          let mp1 := (@minimal_parse_of_production__of__parse_of_production _ p_small _ valid _ p1' (Max.le_max_r _ _) (snd forall_parse)) in
+                          let mp1' := alt_all_elim (@minimal_parse_of_production__of__parse_of_production _ p_small _ initial_names_data _ p1' (Max.le_max_r _ _) (snd forall_parse)) in
+                          match stringlike_dec str0 (Empty _), stringlike_dec str1 (Empty _) with
+                            | right pf0, right pf1
+                              => inl (existT
+                                        _ (MinParseProductionConsDec valid pf0 pf1 (projT1 mp0') (projT1 mp1'))
+                                        (NPeano.Nat.max_le_compat _ _ _ _ (Le.le_n_S _ _ (fst (projT2 mp0'))) (Le.le_n_S _ _ (fst (projT2 mp1'))),
+                                         (snd (projT2 mp0'), snd (projT2 mp1'))))
+                            | left pf0, left pf1
+                              => let eq_pf0 := (_ : str0 = str0 ++ str1) in
+                                 let eq_pf1 := (_ : str1 = str0 ++ str1) in
+                                 match mp0, mp1 with
+                                   | inl mp0'', inl mp1''
+                                     => inl (existT
+                                               _ (MinParseProductionConsEmpty01 pf0 pf1 (projT1 mp0'') (projT1 mp1''))
+                                               (NPeano.Nat.max_le_compat _ _ _ _ (Le.le_n_S _ _ (fst (projT2 mp0''))) (Le.le_n_S _ _ (fst (projT2 mp1''))),
+                                                (snd (projT2 mp0''), snd (projT2 mp1''))))
+                                   | inr other, _
+                                     => inr (expand_alt_option
+                                               (Max.le_max_l _ _)
+                                               (reflexivity _)
+                                               eq_pf0
+                                               other)
+                                   | _, inr other
+                                     => inr (expand_alt_option
+                                               (Max.le_max_r _ _)
+                                               (reflexivity _)
+                                               eq_pf1
+                                               other)
+                                 end
+                            | left pf0, right pf1
+                              => let eq_pf := (_ : str1 = str0 ++ str1) in
+                                 match mp1 with
+                                   | inl mp1''
+                                     => inl (existT
+                                               _ (MinParseProductionConsEmpty0 pf0 pf1 (projT1 mp0') (projT1 mp1''))
+                                               (NPeano.Nat.max_le_compat _ _ _ _ (Le.le_n_S _ _ (fst (projT2 mp0'))) (Le.le_n_S _ _ (fst (projT2 mp1''))),
+                                                (snd (projT2 mp0'), snd (projT2 mp1''))))
+                                   | inr other
+                                     => inr (expand_alt_option
+                                               (Max.le_max_r _ _)
+                                               (reflexivity _)
+                                               eq_pf
+                                               other)
+                                 end
+                            | right pf0, left pf1
+                              => let eq_pf := (_ : str0 = str0 ++ str1) in
+                                 match mp0 with
+                                   | inl mp0''
+                                     => inl (existT
+                                               _ (MinParseProductionConsEmpty1 pf0 pf1 (projT1 mp0'') (projT1 mp1'))
+                                               (NPeano.Nat.max_le_compat _ _ _ _ (Le.le_n_S _ _ (fst (projT2 mp0''))) (Le.le_n_S _ _ (fst (projT2 mp1'))),
+                                                (snd (projT2 mp0''), snd (projT2 mp1'))))
+                                   | inr other
+                                     => inr (expand_alt_option
+                                               (Max.le_max_l _ _)
+                                               (reflexivity _)
+                                               eq_pf
+                                               other)
+                                 end
+                          end
+                end
+                  (@minimal_parse_of_production__of__parse_of_production)
+                  (@minimal_parse_of_item__of__parse_of_item));
+            simpl in *;
+            try solve [ subst; rewrite ?LeftId, ?RightId; trivial ].
+          Defined.
+        End helper.
+
 
         (*Let rec_T str0 str pf it h
           := forall h', h' < h -> of_parse_T h' -> forall p, @of_parse_item_T str0 str pf valid it p h'.
