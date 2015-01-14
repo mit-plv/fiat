@@ -444,7 +444,12 @@ Section cfg.
           Definition minimal_parse_of_name__of__parse_of_name_step
                      {str0 str valid name}
                      (Hinit : sub_names_listT valid initial_names_data)
-                     (p : parse_of String G str (Lookup G name)) h
+                     h
+                     (minimal_parse_of_name__of__parse_of_name
+                      : forall h' (pf : h' < h)
+                               (p : parse_of String G str (Lookup G name)),
+                          @of_parse_name_T str0 str valid name p h')
+                     (p : parse_of String G str (Lookup G name))
           : @of_parse_name_T str0 str valid name p h.
           Proof.
             destruct h as [|h]; [ clear; repeat intro; exfalso; omega | ].
@@ -469,9 +474,9 @@ Section cfg.
                       | reflexivity ]. } }
             { (** [str] didn't get smaller, so we cache the fact that we've hit this name already *)
               destruct (Sumbool.sumbool_of_bool (is_valid_name valid name)) as [ Hvalid | Hinvalid ].
-              { subst str.
-                destruct (@minimal_parse_of_productions__of__parse_of_productions str0 h str0 (reflexivity _) (remove_name valid name) (Lookup G name) p (Lt.lt_S_n _ _ pf) (snd H_forall)) as [p'|p'].
+              { destruct (@minimal_parse_of_productions__of__parse_of_productions str h str (reflexivity _) (remove_name valid name) (Lookup G name) p (Lt.lt_S_n _ _ pf) (snd H_forall)) as [p'|p'].
                 { left.
+                  subst str.
                   eexists (MinParseNonTerminalStrEq Hvalid (projT1 p')).
                   simpl in *.
                   split;
@@ -481,8 +486,31 @@ Section cfg.
                       | exact (snd (projT2 p')) ] ]. }
                 { destruct p' as [name' p'].
                   destruct (string_dec name name') as [|n].
-                  { subst name; simpl.
-                    admit. }
+                  { subst name; simpl in *.
+                    edestruct (minimal_parse_of_name__of__parse_of_name (S (height_of_parse p)) pf (projT1 (snd p'))) as [p''|p''];
+                    try solve [ apply Lt.lt_n_S, (fst (projT2 (snd p')))
+                              | subst; reflexivity
+                              | split; [ exact (proj2 (fst p'))
+                                       | exact (snd (projT2 (snd p'))) ] ];
+                    [|].
+                    { left.
+                      exists (projT1 p'').
+                      split.
+                      { etransitivity;
+                        [ exact (fst (projT2 p''))
+                        | exact (Lt.lt_le_weak _ _ (Lt.lt_n_S _ _ (fst (projT2 (snd p'))))) ]. }
+                      { exact (snd (projT2 p'')). } }
+                    { right.
+                      exists (projT1 p'').
+                      split;
+                        [ exact (fst (projT2 p''))
+                        | ].
+                      exists (projT1 (snd (projT2 p''))).
+                      split;
+                        [ etransitivity;
+                          [ exact (fst (projT2 (snd (projT2 p''))))
+                          | exact (Lt.lt_n_S _ _ (fst (projT2 (snd p')))) ]
+                        | exact (snd (projT2 (snd (projT2 p'')))) ]. } }
                   { right.
                     exists name'.
                     destruct p' as [p'H p'p].
@@ -502,68 +530,20 @@ Section cfg.
                 split; solve [ assumption
                              | apply Lt.lt_n_Sn ]. } }
           Defined.
-                      SearchAbout (?x < ?y -> ?x < S ?y).
-                    apply p'.
+        End step.
 
-                    SearchAbout remove_name is_valid_name.
-
-right; eapply expand_alt_option; [..| exact p' ];
-                  try solve [ apply Lt.lt_n_Sn
-                        | assumption
-                        | reflexivity ]. } }
-
-                SearchAbout (?s < S ?s).
-                eapply
-                SearchAbout (_ -> S _ <= S _).
-                : minimal_parse_of_name str0 valid str name).
-
-            let H := match goal with
-            destruct (lt_dec (Length str) (Length str0)).
-            { (** [str] got smaller, so we reset the valid names list *)
-                   repe
-
-            refine match lt_dec (Length str) (Length str0), Sumbool.sumbool_of_bool (is_valid_name valid_list name) with
-                     | left pf', _ =>
-
-                       parse_productions
-                         (@parse_name
-                            (str, initial_names_data)
-                            (or_introl pf'))
-                         (or_intror eq_refl)
-                         (Lookup G name)
-                     | right pf', left H' =>
-
-                       (** It was valid, so we can remove it *)
-                       parse_productions
-                         (@parse_name
-                            (str0, remove_name valid_list name)
-                            (or_intror (conj eq_refl (remove_name_dec H'))))
-                         (or_intror eq_refl)
-                         (Lookup G name)
-                     | right _, right _
-                       => (** oops, we already saw this name in the past.  ABORT! *)
-                       false
-                   end.
-            repeat intro; simpl in *.
-            edestruct minimal_parse_of_productions__of__parse_of_productions as [p0|p0].
-            Focus 4.
-
-            hnf.
-            simpl.
-            intros.
-            left.
-
-            refine (@Fix3
-                      (prod String names_listT) _ _ _
-                      _ (@well_founded_prod_relation
-                           String
-                           names_listT
-                           _
-                           _
-                           (well_founded_ltof _ Length)
-                           ntl_wf)
-                      _ _).
-                      (fun sl => @parse_name_step (fst sl) (snd sl)).
+        Section wf.
+          Definition minimal_parse_of_name__of__parse_of_name
+                     {str0 str valid name}
+                     (Hinit : sub_names_listT valid initial_names_data)
+          : forall h (p : parse_of String G str (Lookup G name)),
+              @of_parse_name_T str0 str valid name p h
+            := @Fix
+                 _ lt lt_wf
+                 (fun h => forall (p : parse_of String G str (Lookup G name)),
+                             @of_parse_name_T str0 str valid name p h)
+                 (@minimal_parse_of_name__of__parse_of_name_step str0 str valid name Hinit).
+        End wf.
 
           Definition parse_name_step
                      (str : String) (pf : str ≤s str0) (name : string)
