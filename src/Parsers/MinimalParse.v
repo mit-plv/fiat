@@ -403,17 +403,20 @@ Section cfg.
       Let of_parse_T str0 h
         := forall str pf valid pats p, @of_parse_T' h str0 str pf valid pats p.
 
-(*Let of_parse_name_T'
+      Let of_parse_production_T' h
+          {str0 str : String} (pf : str ≤s str0)
+          (valid : names_listT) {pat : production CharType}
+          (p : parse_of_production String G str pat)
+        := forall (p_small : height_of_parse_production p < h),
+             Forall_parse_of_production P p
+             -> ({ p' : @minimal_parse_of_production str0 valid str pat
+                        & (height_of_parse_production (parse_of_production__of__minimal_parse_of_production p') <= height_of_parse_production p)
+                          * Forall_parse_of_production P (parse_of_production__of__minimal_parse_of_production p') })%type
+                + alt_option (height_of_parse_production p) valid str.
 
+      Let of_parse_production_T str0 h
+        := forall str pf valid pat p, @of_parse_production_T' h str0 str pf valid pat p.
 
-      (*Definition of_parse_T_resp {str0 str0'} {h h'} (Hstr : str0' ≤s str0) (H : h' < h)
-                 (parse : of_parse_T str0 h)
-      : of_parse_T str0' h'.
-      Proof.
-        intros str' pf' valid' pats' p' p_small' H'.
-        pose (@parse str' (transitivity pf' Hstr) valid' pats' p' (Lt.lt_trans _ _ _ p_small' H) H') as p''.
-        Set Printing Implicit.*)
-*)
       Let of_parse_item_T {str0 str valid it} (p : parse_of_item String G str it) h
         := height_of_parse_item p < h
            -> Forall_parse_of_item P p
@@ -430,6 +433,38 @@ Section cfg.
                       & (height_of_parse_item (parse_of_item__of__minimal_parse_of_item (MinParseNonTerminal p')) <= height_of_parse_item (ParseNonTerminal name p))
                         * Forall_parse_of_item P (parse_of_item__of__minimal_parse_of_item (MinParseNonTerminal p')) })%type
               + alt_option (height_of_parse_item (ParseNonTerminal name p)) valid str.
+
+      Section productions.
+        Axiom minimal_parse_of_production__of__parse_of_production
+        : forall str h, of_parse_production_T str h.
+        Context {str0 str valid name}
+                (Hinit : sub_names_listT valid initial_names_data)
+                h
+                (minimal_parse_of_name__of__parse_of_name
+                 : forall h' (pf : h' < h)
+                          (p : parse_of String G str (Lookup G name)),
+                     @of_parse_name_T str0 str valid name p h').
+
+
+        Definition minimal_parse_of_productions__of__parse_of_productions
+        : of_parse_T str h.
+        Proof.
+          intros str' pf valid' pats p H_h H_forall.
+          destruct h as [|h']; [ exfalso; omega | ].
+          destruct p as [str' pat pats p'|p'].
+          { edestruct (minimal_parse_of_production__of__parse_of_production (h := h') pf valid p');
+            try solve [ exact (Lt.lt_S_n _ _ H_h)
+                      | exact H_forall ];
+            [|].
+            { left. (* HERE *)
+            SearchAbout (S _ < S _ -> _).
+            hnf.
+            change (S (S (height_of_parse_production p')) <= h) in H_h.
+            simpl in H_h.
+            unfold height_of_parse in H_h.
+            simpl in H_h.
+          hnf; simpl.
+      End productions.
 
       Section name.
         Section step.
