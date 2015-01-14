@@ -377,6 +377,7 @@ Section cfg.
     Defined.
 
     Section wf_parts.
+      (*Let of_parse_name_T'
       Let of_parse_T' h
           {str0 str : String} (pf : str ≤s str0)
           (valid : names_listT) {pats : productions CharType}
@@ -391,15 +392,15 @@ Section cfg.
       Let of_parse_T str0 h
         := forall str pf valid pats p, @of_parse_T' h str0 str pf valid pats p.
 
-      Definition of_parse_T_resp {str0 str0'} {h h'} (Hstr : str0' ≤s str0) (H : h' < h)
+      (*Definition of_parse_T_resp {str0 str0'} {h h'} (Hstr : str0' ≤s str0) (H : h' < h)
                  (parse : of_parse_T str0 h)
       : of_parse_T str0' h'.
       Proof.
         intros str' pf' valid' pats' p' p_small' H'.
         pose (@parse str' (transitivity pf' Hstr) valid' pats' p' (Lt.lt_trans _ _ _ p_small' H) H') as p''.
-        Set Printing Implicit.
-
-      Let of_parse_item_T {str0 str pf valid it} (p : parse_of_item String G str it) h
+        Set Printing Implicit.*)
+*)
+      Let of_parse_item_T {str0 str valid it} (p : parse_of_item String G str it) h
         := height_of_parse_item p < h
            -> Forall_parse_of_item P p
            -> ({ p' : @minimal_parse_of_item str0 valid str it
@@ -407,10 +408,34 @@ Section cfg.
                         * Forall_parse_of_item P (parse_of_item__of__minimal_parse_of_item p') })%type
               + alt_option (height_of_parse_item p) valid str.
 
-      Section item.
-        Context {str0 str : String} (pf : str ≤s str0) (valid : names_listT) {it : item CharType}.
+      Let of_parse_name_T {str0 str valid name} (p : parse_of_item String G str (NonTerminal _ name)) h
+        := height_of_parse_item p < h
+           -> Forall_parse_of_item P p
+           -> ({ p' : @minimal_parse_of_item str0 valid str (NonTerminal _ name)
+                      & (height_of_parse_item (parse_of_item__of__minimal_parse_of_item p') <= height_of_parse_item p)
+                        * Forall_parse_of_item P (parse_of_item__of__minimal_parse_of_item p') })%type
+              + alt_option (height_of_parse_item p) valid str.
 
-        Let rec_T str0 str pf it h
+      Section item.
+        Context {str0 str : String} (valid : names_listT) {it : item CharType}.
+
+        Definition minimal_parse_of_item__of__parse_of_item
+                   h
+                   (minimal_parse_of_name__of__parse_of_name
+                    : forall name p, @of_parse_name_T str0 str valid name p h)
+                   (p : parse_of_item String G str it)
+        : @of_parse_item_T str0 str valid it p h.
+        Proof.
+          intros pf H_forall.
+          destruct p as [|name str' p'].
+          { left.
+            eexists (MinParseTerminal _ _ _).
+            split; simpl; solve [ constructor ]. }
+          { eapply minimal_parse_of_name__of__parse_of_name; try assumption. }
+        Defined.
+      End item.
+
+        (*Let rec_T str0 str pf it h
           := forall h', h' < h -> of_parse_T h' -> forall p, @of_parse_item_T str0 str pf valid it p h'.
 
         Section helper.
