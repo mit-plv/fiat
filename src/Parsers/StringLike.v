@@ -353,14 +353,14 @@ Local Ltac lt_nonempty_t :=
          end.
 
 Lemma strle_to_lt_nonempty_r {CharType} {String : string_like CharType}
-      (a b c : String)
+      {a b c : String}
       (H : a <> Empty _)
       (H' : a ++ b ≤s c)
 : Length b < Length c.
 Proof. lt_nonempty_t. Qed.
 
 Lemma strle_to_lt_nonempty_l {CharType} {String : string_like CharType}
-      (a b c : String)
+      {a b c : String}
       (H : b <> Empty _)
       (H' : a ++ b ≤s c)
 : Length a < Length c.
