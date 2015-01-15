@@ -403,104 +403,108 @@ Section sound.
 
       Section names.
         Section step.
-          Variable str0 : String.
-          Variable parse_name : forall (str : String)
-                                       (pf : str ≤s str0),
-                                  string -> bool.
+          Context (str0 : String) (valid : names_listT)
+                  (parse_name
+                   : forall (p : String * names_listT),
+                       prod_relation (ltof String Length) names_listT_R p (str0, valid)
+                       -> forall str : String, str ≤s fst p -> string -> bool).
 
-          (** To parse as a given name, we must parse as one of the [production]s that is associated to that name. *)
           Lemma parse_name_step_sound
-                (parse_name_sound : parse_name_soundT parse_name)
-                (valid : names_listT)
+                (parse_name_sound : forall p pf, parse_name_soundT (@parse_name p pf))
                 (str : String) (pf : str ≤s str0) (name : string)
-          : Type.
-            pose (@parse_name_step _ String G names_listT initial_names_data is_valid_name remove_name names_listT_R remove_name_dec split_string_for_production split_string_for_production_correct str0 valid). parse_name pf name).
-          : parse_name_step G split_string_for_production split_string_for_production_correct parse_name pf name = true
+          : parse_name_step G initial_names_data is_valid_name remove_name
+                            remove_name_dec split_string_for_production
+                            split_string_for_production_correct parse_name pf name
+            = true
             -> parse_of_item _ G str (NonTerminal _ name).
           Proof.
             unfold parse_name_step.
             intro H'; constructor; revert H'.
-            generalize (Lookup G name); clear name.
-            intros [|prod prods]; simpl; auto; [].
-            revert prod.
-            induction prods; simpl; auto; intros.
-            { parse_name_step_t. }
-            { parse_name_step_t.
-              apply ParseTail.
-              apply IHprods; clear IHprods.
-              parse_name_step_t. }
+            edestruct lt_dec as [|n].
+            { intro H'.
+              apply parse_productions_sound in H'; trivial. }
+            { edestruct dec; [ | intro H''; exfalso; clear -H'';
+                                 abstract discriminate ].
+              apply strle_to_sumbool in pf.
+              destruct pf as [pf|]; subst.
+              { destruct (n pf). }
+              { intro H'.
+                apply parse_productions_sound in H'; trivial. } }
           Defined.
 
-          (*Lemma parse_name_step_complete
-                valid Pv
-                (Hv_init_rem : forall p, Pv (remove_name initial_names_data p) p)
-                (Hv_rem : forall p, Pv (remove_name valid p) p)
-                (parse_name_complete : parse_name_completeT parse_name Pv)
-                (split_string_for_production_complete : forall valid1 valid2 str pf prod, @split_list_completeT str0 valid1 valid2 str pf (split_string_for_production str prod) prod)
-                (str : String) (pf : str ≤s str0) (prod : production CharType) (prods : names CharType)
-          : minimal_parse_of _ G initial_names_data is_valid_name remove_name valid str (prod::prods)
-            -> parse_name_step G split_string_for_production split_string_for_production_correct parse_name pf (prod::prods) = true.
+          Lemma parse_name_step_complete
+                Pv
+                (parse_name_complete : forall p pf, parse_name_completeT (@parse_name p pf) Pv)
+                (split_string_for_production_complete : forall str0 valid1 valid2 str pf prod, @split_list_completeT str0 valid1 valid2 str pf (split_string_for_production str prod) prod)
+                (str : String) (pf : str ≤s str0) (name : string)
+                (Hinit : forall str1,
+                           str1 ≤s str ->
+                           forall name0,
+                             minimal_parse_of_name String G initial_names_data is_valid_name
+                                                   remove_name str initial_names_data str1 name0 ->
+                             Pv str initial_names_data name0)
+                (Hinit' : forall str,
+                            str ≤s str0 ->
+                            forall name0 : string,
+                              minimal_parse_of_name String G initial_names_data is_valid_name remove_name
+                                                    str0 (remove_name valid name) str name0 ->
+                              Pv str0 (remove_name valid name) name0)
+          : minimal_parse_of_name _ G initial_names_data is_valid_name remove_name str0 valid str name
+            -> parse_name_step G initial_names_data is_valid_name remove_name
+                            remove_name_dec split_string_for_production
+                            split_string_for_production_correct parse_name pf name
+            = true.
           Proof.
             unfold parse_name_step.
-            revert prod.
-            induction prods; simpl; auto.
-            { parse_name_step_t.
-              left; eapply parse_production_complete with (Pv := Pv); [..| eassumption ];
-              solve [ eassumption | trivial ]. }
-            { parse_name_step_t;
-              match goal with
-                | [ H : forall prod, minimal_parse_of _ _ _ _ _ _ ?s (prod::_) -> _,
-                      H' : minimal_parse_of_production _ _ _ _ _ _ ?s ?prod |- _ ]
-                  => specialize (H prod (MinParseHead _ H'))
-                | [ H : forall prod, minimal_parse_of _ _ _ _ _ _ ?s (prod::?prods) -> _,
-                      H' : minimal_parse_of _ _ _ _ _ _ ?s ?prods |- _ ]
-                  => specialize (fun prod => H prod (MinParseTail _ H'))
-              end;
-              parse_name_step_t;
-              solve [ right; parse_name_step_t]. }
-          Qed.*)
+            edestruct lt_dec as [|n].
+            { intro H'.
+              destruct H'.
+              { eapply parse_productions_complete; [ .. | eassumption ];
+                trivial. }
+              { match goal with
+                  | [ H : ?x < ?x |- _ ] => exfalso; clear -H; abstract omega
+                end. } }
+            { destruct pf as [pf|]; subst.
+              { destruct (n pf). }
+              { edestruct dec as [|pf']; simpl.
+                { intro H'.
+                  inversion_clear H'.
+                  { match goal with
+                      | [ H : ?T, H' : ~?T |- _ ] => destruct (H' H)
+                    end. }
+                  { let H' := match goal with H : minimal_parse_of _ _ _ _ _ _ _ _ _ |- _ => constr:H end in
+                    eapply parse_productions_complete in H'; eauto.
+                    eapply (@parse_name_complete (_, _)). } }
+                { intro H''; exfalso; clear -H'' pf'.
+                  abstract (
+                      inversion_clear H'';
+                      (omega || congruence)
+                    ). } } }
+          Qed.
         End step.
 
         Section step_extensional.
-          Lemma parse_name_step_ext (str0 : String)
-                (parse_name1 parse_name2 : forall (str : String)
-                                                  (pf : str ≤s str0),
-                                             string -> bool)
+          Lemma parse_name_step_ext (str0 : String) (valid : names_listT)
+                (parse_name1 parse_name2: forall (p : String * names_listT),
+                                            prod_relation (ltof String Length) names_listT_R p (str0, valid)
+                                            -> forall str : String, str ≤s fst p -> string -> bool)
                 (str : String) (pf : str ≤s str0) (name : string)
-                (ext : forall str' pf' name', parse_name1 str' pf' name'
-                                              = parse_name2 str' pf' name')
-          : parse_name_step G split_string_for_production split_string_for_production_correct parse_name1 pf name
-            = parse_name_step G split_string_for_production split_string_for_production_correct parse_name2 pf name.
+                (ext : forall p pf0 str' pf' name', parse_name1 p pf0 str' pf' name'
+                                                    = parse_name2 p pf0 str' pf' name')
+          : parse_name_step G initial_names_data is_valid_name remove_name
+                            remove_name_dec split_string_for_production
+                            split_string_for_production_correct parse_name1 pf name
+            = parse_name_step G initial_names_data is_valid_name remove_name
+                              remove_name_dec split_string_for_production
+                              split_string_for_production_correct parse_name2 pf name.
           Proof.
             unfold parse_name_step.
-            f_equal.
-            apply map_ext; intros.
-            apply parse_production_ext; auto.
+            edestruct lt_dec.
+            { apply parse_productions_ext; auto. }
+            { edestruct dec; trivial.
+              apply parse_productions_ext; auto. }
           Qed.
         End step_extensional.
-
-        (** TODO: move this elsewhere *)
-        Lemma or_to_sumbool (s1 s2 : String) (f : String -> nat)
-              (H : f s1 < f s2 \/ s1 = s2)
-        : {f s1 < f s2} + {s1 = s2}.
-        Proof.
-          case_eq (s1 =s s2).
-          { intro H'; right; apply bool_eq_correct in H'; exact H'. }
-          { intro H'; left; destruct H; trivial.
-            apply bool_eq_correct in H.
-            generalize dependent (s1 =s s2)%string_like; intros; subst.
-            discriminate. }
-        Qed.
-
-        (** TODO: move this elsewhere *)
-        Lemma if_ext {T} (b : bool) (f1 f2 : b = true -> T true) (g1 g2 : b = false -> T false)
-              (ext_f : forall H, f1 H = f2 H)
-              (ext_g : forall H, g1 H = g2 H)
-        : (if b as b' return (b = b' -> T b') then f1 else g1) eq_refl
-          = (if b as b' return (b = b' -> T b') then f2 else g2) eq_refl.
-        Proof.
-          destruct b; auto.
-        Defined.
 
         Section wf.
           Lemma parse_name_or_abort_sound
@@ -520,39 +524,55 @@ Section sound.
             induction (Acca) as [? ? IHr];
               intros str pf name.
             rewrite Fix3_eq.
-            { match goal with
-                | [ |- context[match lt_dec ?a ?b with _ => _ end] ] => destruct (lt_dec a b) as [Hlt|Hlt]
-              end.
-              { apply parse_name_step_sound; try assumption; simpl.
-                hnf.
-                intros str0 pf0 name0 H'; eapply IHr;
-                try first [ exact H' | eassumption ].
-                left; assumption. }
-              { match goal with
-                  | [ |- context[match Sumbool.sumbool_of_bool ?b with _ => _ end] ] => destruct (Sumbool.sumbool_of_bool b)
-                end;
-                [ | solve [ auto ] ].
-                intros.
-                hnf in pf.
-                apply or_to_sumbool in pf.
-                destruct pf as [ pf | pf ]; [ exfalso; hnf in *; solve [ auto ] | subst ].
-                eapply parse_name_step_sound; try eassumption.
-                hnf.
-                intros str0 pf0 name0 H'; eapply IHr;
-                try first [ exact H' | eassumption ].
-                right; split; trivial; simpl.
-                apply remove_name_dec; assumption. } }
-            { repeat match goal with
-                       | _ => intro
-                       | _ => reflexivity
-                       | [ |- context[match ?E with _ => _ end] ] => destruct E
-                       | [ H : _ |- _ ] => rewrite H; reflexivity
-                       | _ => apply parse_name_step_ext; auto
-                       | _ => apply (@if_ext (fun _ => bool)); intros
-                     end. }
+            { apply parse_name_step_sound; assumption. }
+            { intros.
+              apply parse_name_step_ext.
+              trivial. }
           Defined.
 
-          (*Lemma parse_name_or_abort_helper_complete
+          Lemma parse_name_or_abort_complete
+                (str0 : String) (valid : names_listT)
+                (split_string_for_production_complete : forall str0 valid1 valid2 str pf prod, @split_list_completeT str0 valid1 valid2 str pf (split_string_for_production str prod) prod)
+                (p : String * names_listT) (str : String)
+                (pf : str ≤s fst p)
+                (name : string)
+          : minimal_parse_of_name _ G initial_names_data is_valid_name remove_name str0 valid str name
+            -> parse_name_or_abort G initial_names_data is_valid_name remove_name
+                                   remove_name_dec ntl_wf split_string_for_production
+                                   split_string_for_production_correct
+                                   p pf name
+               = true.
+          Proof.
+            unfold parse_name_or_abort.
+            revert str0 str valid pf name.
+            let Acca := match goal with |- context[@Fix3 _ _ _ _ _ ?Rwf _ _ ?a _ _ _] => constr:(Rwf a) end in
+            induction (Acca) as [? ? IHr];
+              intros str0 str valid pf name.
+            rewrite Fix3_eq;
+              [
+              | solve [ intros;
+                        apply parse_name_step_ext;
+                        trivial ] ].
+            { intro; eapply (parse_name_step_complete) with (Pv := (fun _ _ _ => True)); trivial.
+              { repeat intro.
+                eapply IHr; try eassumption. }
+              { eapply expand_minimal_parse_of_name; [ .. | eassumption ];
+                trivial.
+                Focus 2.
+                exact X0.
+              Focus 5.
+ try eassumption;
+              eauto.
+              Focus 2.
+              { intros.
+                eapply IHr.
+              eauto.
+            { intros.
+              apply parse_name_step_ext.
+              trivial. }
+          Defined.
+
+          Lemma parse_name_or_abort_helper_complete
                 Pv
                 (p : String * names_listT) (str : String)
                 (Hv_init_rem : forall p', Pv (remove_name initial_names_data p') p')
