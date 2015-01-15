@@ -704,7 +704,10 @@ Section cfg.
             "alternate" option, by expanding the valid list to the
             initial data.  Luckily(?!), in the case where [s1] is
             non-empty, [s0] is strictly smaller than [s0 ++ s1], and
-            thus we can rebuild the minimal parse tree to contract it. *)
+            thus we can rebuild the minimal parse tree to contract it.
+            This, finally, allows us to either build a minimal parse
+            tree for the thing we are asked about (or to contract the
+            "alternate option" parse tree, passing it back up?). *)
 
         Fixpoint minimal_parse_of_production__of__parse_of_production
                  h
