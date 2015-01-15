@@ -520,7 +520,8 @@ Section cfg.
           (valid : names_listT) {it : item CharType}
           (p : parse_of_item String G str it)
         := forall (p_small : size_of_parse_item p < h),
-             Forall_parse_of_item P p
+             sub_names_listT valid initial_names_data
+             -> Forall_parse_of_item P p
              -> ({ p' : @minimal_parse_of_item str0 valid str it
                         & (size_of_parse_item (parse_of_item__of__minimal_parse_of_item p') <= size_of_parse_item p)
                           * Forall_parse_of_item P (parse_of_item__of__minimal_parse_of_item p') })%type
@@ -534,7 +535,8 @@ Section cfg.
           (valid : names_listT) {pat : production CharType}
           (p : parse_of_production String G str pat)
         := forall (p_small : size_of_parse_production p < h),
-             Forall_parse_of_production P p
+             sub_names_listT valid initial_names_data
+             -> Forall_parse_of_production P p
              -> ({ p' : @minimal_parse_of_production str0 valid str pat
                         & (size_of_parse_production (parse_of_production__of__minimal_parse_of_production p') <= size_of_parse_production p)
                           * Forall_parse_of_production P (parse_of_production__of__minimal_parse_of_production p') })%type
@@ -548,7 +550,8 @@ Section cfg.
           (valid : names_listT) {pats : productions CharType}
           (p : parse_of String G str pats)
         := forall (p_small : size_of_parse p < h),
-             Forall_parse_of P p
+             sub_names_listT valid initial_names_data
+             -> Forall_parse_of P p
              -> ({ p' : @minimal_parse_of str0 valid str pats
                         & (size_of_parse (parse_of__of__minimal_parse_of p') <= size_of_parse p)
                           * Forall_parse_of P (parse_of__of__minimal_parse_of p') })%type
@@ -560,21 +563,48 @@ Section cfg.
       Let of_parse_name_T {str0 str valid name} (p : parse_of String G str (Lookup G name)) h
         := size_of_parse_item (ParseNonTerminal name p) < h
            -> str ≤s str0
+           -> sub_names_listT valid initial_names_data
            -> Forall_parse_of_item P (ParseNonTerminal name p)
            -> ({ p' : @minimal_parse_of_name str0 valid str name
                       & (size_of_parse_item (parse_of_item__of__minimal_parse_of_item (MinParseNonTerminal p')) <= size_of_parse_item (ParseNonTerminal name p))
                         * Forall_parse_of_item P (parse_of_item__of__minimal_parse_of_item (MinParseNonTerminal p')) })%type
               + alt_option (size_of_parse_item (ParseNonTerminal name p)) valid str.
 
+      Section item.
+        Context {str0 str : String} {valid : names_listT}
+                (Hinit : sub_names_listT valid initial_names_data).
+
+        Definition minimal_parse_of_item__of__parse_of_item
+                   h
+                   (minimal_parse_of_name__of__parse_of_name
+                    : forall h' (pf : h' < S (S h)) {str0 str valid name}
+                             (Hinit : sub_names_listT valid initial_names_data)
+                             (p : parse_of String G str (Lookup G name)),
+                        @of_parse_name_T str0 str valid name p h')
+        : of_parse_item_T str h.
+        Proof.
+          intros str' pf valid' pats p H_h Hinit' H_forall.
+          destruct h as [|h']; [ exfalso; omega | ].
+          destruct p as [|name' str'' p'].
+          { left.
+            eexists (MinParseTerminal _ _ _);
+              split; simpl; constructor. }
+          { edestruct (fun pf pf' => @minimal_parse_of_name__of__parse_of_name (S h') pf str _ valid' _ pf' p') as [ [p'' H''] | p'' ];
+            try solve [ repeat (apply Lt.lt_n_Sn || apply Lt.lt_S)
+                      | exact Hinit'
+                      | exact H_h
+                      | exact H_forall
+                      | exact pf ];
+            [|];
+            [ left | right ].
+            { exists (MinParseNonTerminal p'').
+              simpl in *.
+              exact H''. }
+            { exact p''. } }
+        Defined.
+      End item.
+
       Section production.
-        Axiom minimal_parse_of_item__of__parse_of_item
-        : forall {str} h
-                 (minimal_parse_of_name__of__parse_of_name
-                  : forall h' (pf : h' < S (S h)) {str0 valid name}
-                           (Hinit : sub_names_listT valid initial_names_data)
-                           (p : parse_of String G str (Lookup G name)),
-                      @of_parse_name_T str0 str valid name p h'),
-            of_parse_item_T str h.
         Context {str0 str : String} {valid : names_listT}
                 (Hinit : sub_names_listT valid initial_names_data).
 
@@ -663,14 +693,14 @@ Section cfg.
         Fixpoint minimal_parse_of_production__of__parse_of_production
                  h
                  (minimal_parse_of_name__of__parse_of_name
-                  : forall h' (pf : h' < S (S h)) {str0 valid name}
+                  : forall h' (pf : h' < S (S h)) {str0 str valid name}
                            (Hinit : sub_names_listT valid initial_names_data)
                            (p : parse_of String G str (Lookup G name)),
                       @of_parse_name_T str0 str valid name p h')
                  {struct h}
         : of_parse_production_T str h.
         Proof.
-          intros str' pf valid' pats p H_h H_forall.
+          intros str' pf valid' pats p H_h Hinit' H_forall.
           destruct h as [|h']; [ exfalso; omega | ].
           destruct p as [| str' strs' str'' pat' p0' p1' ].
           { clear minimal_parse_of_production__of__parse_of_production.
@@ -687,31 +717,31 @@ Section cfg.
             pose proof (Lt.le_lt_trans _ _ _ (Plus.le_plus_l _ _) H_h) as H_h0.
             pose proof (Lt.le_lt_trans _ _ _ (Plus.le_plus_r _ _) H_h) as H_h1.
             clear H_h.
-            pose proof (fun valid => @minimal_parse_of_item__of__parse_of_item _ h'  minimal_parse_of_name__of__parse_of_name _ (transitivity (str_le1_append _ _ _) pf) valid _ p0' H_h0 (fst H_forall)) as p_it.
-            pose proof (fun valid => @minimal_parse_of_production__of__parse_of_production h' minimal_parse_of_name__of__parse_of_name _ (transitivity (str_le2_append _ _ _) pf) valid _ p1' H_h1 (snd H_forall)) as p_prod.
+            pose proof (fun valid Hinit => @minimal_parse_of_item__of__parse_of_item _ h'  minimal_parse_of_name__of__parse_of_name _ (transitivity (str_le1_append _ _ _) pf) valid _ p0' H_h0 Hinit (fst H_forall)) as p_it.
+            pose proof (fun valid Hinit => @minimal_parse_of_production__of__parse_of_production h' minimal_parse_of_name__of__parse_of_name _ (transitivity (str_le2_append _ _ _) pf) valid _ p1' H_h1 Hinit (snd H_forall)) as p_prod.
             destruct (stringlike_dec str' (Empty _)), (stringlike_dec str'' (Empty _));
               subst.
             { (* empty, empty *)
-              specialize (p_it valid'); specialize (p_prod valid').
+              specialize (p_it valid' Hinit'); specialize (p_prod valid' Hinit').
               destruct p_it as [ [ p0'' H0''] |], p_prod as [ [ p1'' H1'' ] |];
                 [ | | | ];
                 min_parse_prod_t. }
             { (* empty, nonempty *)
-              specialize (p_it initial_names_data); specialize (p_prod valid').
+              specialize (p_it initial_names_data (reflexivity _)); specialize (p_prod valid' Hinit').
               destruct p_it as [ [ p0'' H0''] |], p_prod as [ [ p1'' H1'' ] |];
                 [ | | | ];
                 min_parse_prod_t;
                 min_parse_prod_pose_t;
                 min_parse_prod_t. }
             { (* nonempty, empty *)
-              specialize (p_it valid'); specialize (p_prod initial_names_data).
+              specialize (p_it valid' Hinit'); specialize (p_prod initial_names_data (reflexivity _)).
               destruct p_it as [ [ p0'' H0''] |], p_prod as [ [ p1'' H1'' ] |];
                 [ | | | ];
                 min_parse_prod_t;
                 min_parse_prod_pose_t;
                 min_parse_prod_t. }
             { (* nonempty, nonempty *)
-              specialize (p_it initial_names_data); specialize (p_prod initial_names_data).
+              specialize (p_it initial_names_data (reflexivity _)); specialize (p_prod initial_names_data (reflexivity _)).
               destruct p_it as [ [ p0'' H0''] |], p_prod as [ [ p1'' H1'' ] |];
                 [ | | | ];
                 min_parse_prod_t;
@@ -729,18 +759,18 @@ Section cfg.
         Fixpoint minimal_parse_of_productions__of__parse_of_productions
                  h
                  (minimal_parse_of_name__of__parse_of_name
-                  : forall h' (pf : h' < S h) {str0 valid name}
+                  : forall h' (pf : h' < S h) {str0 str valid name}
                            (Hinit : sub_names_listT valid initial_names_data)
                            (p : parse_of String G str (Lookup G name)),
                       @of_parse_name_T str0 str valid name p h')
                  {struct h}
         : of_parse_T str h.
         Proof.
-          intros str' pf valid' pats p H_h H_forall.
+          intros str' pf valid' pats p H_h Hinit' H_forall.
           destruct h as [|h']; [ exfalso; omega | ].
           destruct p as [str' pat pats p' | str' pat pats p'].
           { clear minimal_parse_of_productions__of__parse_of_productions.
-            edestruct (minimal_parse_of_production__of__parse_of_production (h := h') minimal_parse_of_name__of__parse_of_name pf valid' p') as [ [p'' p''H] | [name' H'] ];
+            edestruct (minimal_parse_of_production__of__parse_of_production (h := h') minimal_parse_of_name__of__parse_of_name pf valid' Hinit' p') as [ [p'' p''H] | [name' H'] ];
             try solve [ exact (Lt.lt_S_n _ _ H_h)
                       | exact H_forall ];
             [|].
@@ -790,7 +820,7 @@ Section cfg.
                      {str}
                      h
                      (minimal_parse_of_name__of__parse_of_name
-                      : forall h' (pf : h' < h) {str0 valid name}
+                      : forall h' (pf : h' < h) {str0 str valid name}
                                (Hinit : sub_names_listT valid initial_names_data)
                                (p : parse_of String G str (Lookup G name)),
                           @of_parse_name_T str0 str valid name p h')
