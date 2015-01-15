@@ -773,7 +773,7 @@ Functional Scheme fold_right_rect := Induction for fold_right Sort Type.
 
 Lemma ascii_dec_refl a : Ascii.ascii_dec a a = left eq_refl.
 Proof.
-  destruct a as [b0 b1 b2 b3 b4 b5 b6 b7].
+  destruct a as [b0 b1 b2 b3 b4 b5 b6 b7];
   repeat match goal with
            | [ H : bool |- _ ] => case H; clear H
          end;
@@ -801,3 +801,12 @@ Proof.
            | _ => auto
          end.
 Qed.
+
+Lemma if_ext {T} (b : bool) (f1 f2 : b = true -> T true) (g1 g2 : b = false -> T false)
+      (ext_f : forall H, f1 H = f2 H)
+      (ext_g : forall H, g1 H = g2 H)
+: (if b as b' return (b = b' -> T b') then f1 else g1) eq_refl
+  = (if b as b' return (b = b' -> T b') then f2 else g2) eq_refl.
+Proof.
+  destruct b; trivial.
+Defined.
