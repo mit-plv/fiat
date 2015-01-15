@@ -102,7 +102,8 @@ Section cfg.
   | MinParseProductionNil : forall str0 valid,
                               @minimal_parse_of_production str0 valid (Empty _) nil
   | MinParseProductionCons : forall str0 valid str strs pat pats,
-                               @minimal_parse_of_item str0 valid str pat
+                               str ++ strs ≤s str0
+                               -> @minimal_parse_of_item str0 valid str pat
                                -> @minimal_parse_of_production str0 valid strs pats
                                -> @minimal_parse_of_production str0 valid (str ++ strs) (pat::pats)
   with minimal_parse_of_item
@@ -129,6 +130,29 @@ Section cfg.
         is_valid_name valid name = true
         -> @minimal_parse_of str (remove_name valid name) str (Lookup G name)
         -> @minimal_parse_of_name str valid str name.
+
+  Lemma strle_from_min_parse_of_production {str0 valid strs pats}
+        (p1 : @minimal_parse_of_production str0 valid strs pats)
+  : strs ≤s str0.
+  Proof.
+    destruct p1; trivial; [].
+    destruct (stringlike_dec str0 (Empty _)) as [|n];
+      subst; [ reflexivity | left ].
+    rewrite Length_Empty.
+    case_eq (Length str0); intro H; [ exfalso | ];
+    eauto using Empty_Length with arith.
+  Qed.
+
+  (*Definition MinParseProductionConsDec0 {str0 valid str strs pat pats}
+             (H0 : str = Empty _)
+             (H1 : strs <> Empty _)
+             (p0 : @minimal_parse_of_item str0 initial_names_data str pat)
+             (p1 : @minimal_parse_of_production str0 valid strs pats)
+  : @minimal_parse_of_production str0 valid (str ++ strs) (pat::pats).
+  Proof.
+    inversion p0; subst.
+    { exfalso; eapply Not_Singleton_Empty; eassumption. }*)
+
 
   Definition parse_of_item_name__of__minimal_parse_of_name'
              (parse_of__of__minimal_parse_of
@@ -169,7 +193,7 @@ Section cfg.
        := match p with
             | MinParseProductionNil str0 valid
               => ParseProductionNil _ _
-            | MinParseProductionCons str0 valid str strs pat pats p' p''
+            | MinParseProductionCons str0 valid str strs pat pats pf p' p''
               => ParseProductionCons
                    (parse_of_item__of__minimal_parse_of_item' (@parse_of__of__minimal_parse_of) p')
                    (parse_of_production__of__minimal_parse_of_production p'')
@@ -312,8 +336,9 @@ Section cfg.
           with
             | MinParseProductionNil str0 valid
               => fun _ _ => MinParseProductionNil str0' valid'
-            | MinParseProductionCons str0 valid str strs pat pats p' p''
+            | MinParseProductionCons str0 valid str strs pat pats pf p' p''
               => fun Hstr H => MinParseProductionCons
+                                 (transitivity pf Hstr)
                                  (expand_minimal_parse_of_item' (@expand_minimal_parse_of) Hstr H Hinit p')
                                  (expand_minimal_parse_of_production Hstr H Hinit p'')
           end Hstr H.
@@ -362,8 +387,8 @@ Section cfg.
       eapply not_alt_all; eassumption.
     Defined.
 
-    Definition expand_alt_option {h h' str str' valid valid'}
-               (H : h < h') (H' : sub_names_listT valid' valid) (H'' : str = str')
+    Definition expand_alt_option' {h h' str str' valid valid'}
+               (H : h <= h') (H' : sub_names_listT valid' valid) (H'' : str = str')
     : alt_option h valid str -> alt_option h' valid' str'.
     Proof.
       hnf in H'; unfold alt_option.
@@ -385,7 +410,16 @@ Section cfg.
                | _ => eapply H'; eassumption
                | _ => assumption
                | [ |- _ < _ ] => eapply Lt.lt_trans; eassumption
+               | [ |- _ < _ ] => eapply Lt.lt_le_trans; eassumption
              end.
+    Defined.
+
+    Definition expand_alt_option {h h' str str' valid valid'}
+               (H : h < h') (H' : sub_names_listT valid' valid) (H'' : str = str')
+    : alt_option h valid str -> alt_option h' valid' str'.
+    Proof.
+      apply expand_alt_option'; try assumption.
+      apply Lt.lt_le_weak; assumption.
     Defined.
 
     Section wf_parts.
@@ -483,27 +517,68 @@ Section cfg.
             pose proof (fun valid => @minimal_parse_of_production__of__parse_of_production h' minimal_parse_of_name__of__parse_of_name _ (transitivity (str_le2_append _ _ _) pf) valid _ p1' H_h1 (snd H_forall)) as p_prod.
             destruct (stringlike_dec str' (Empty _)), (stringlike_dec str'' (Empty _));
               subst.
+            Local Ltac min_parse_prod_t' :=
+              idtac;
+              match goal with
+                | _
+                  => assumption
+                | [ |- ?R ?x ?x ]
+                  => reflexivity
+                | _
+                  => progress destruct_head prod
+                | [ H : False |- _ ]
+                  => solve [ destruct H ]
+                | [ H : alt_option _ initial_names_data _ |- _ ]
+                  => apply not_alt_all in H
+                | [ p0 : minimal_parse_of_item _ _ ?s0 ?pat,
+                         p1 : minimal_parse_of_production _ _ ?s1 ?pats,
+                              H : ?s0 ++ ?s1 ≤s ?s'
+                    |- ({ p' : minimal_parse_of_production ?s' _ (?s0 ++ ?s1) (?pat :: ?pats) & _ } + _)%type ]
+                  => left; exists (MinParseProductionCons H p0 p1)
+                | [ |- (_ * _)%type ]
+                  => split
+                | [ H : _ <= _ |- _ <= _ ] => apply H
+                | _ => apply Le.le_n_S
+                | _ => apply Plus.plus_le_compat
+                | [ H0 : Forall_parse_of_item _ _,
+                         H1 : Forall_parse_of_production _ _
+                    |- Forall_parse_of_production _ _ ]
+                  => exact (H0, H1)
+                | [ H : alt_option _ ?v ?x
+                    |- (_ + alt_option _ ?v (?x ++ Empty _))%type ]
+                  => right; eapply expand_alt_option'; [ .. | exact H ]
+                | [ H : alt_option _ ?v ?x
+                    |- (_ + alt_option _ ?v (Empty _ ++ ?x))%type ]
+                  => right; eapply expand_alt_option'; [ .. | exact H ]
+                | [ |- _ = _ ]
+                  => progress rewrite ?LeftId, ?RightId
+                | _
+                  => solve [ eauto using le_S, Le.le_trans, Plus.le_plus_l, Plus.le_plus_r with nocore ]
+              end.
+            Local Ltac min_parse_prod_t := repeat min_parse_prod_t'.
             { (* empty, empty *)
               specialize (p_it valid'); specialize (p_prod valid').
               destruct p_it as [ [ p0'' H0''] |], p_prod as [ [ p1'' H1'' ] |];
                 [ | | | ];
-              repeat match goal with
-                       | _
-                         => progress destruct_head prod
-                       | [ p0 : minimal_parse_of_item _ _ ?s0 ?pat,
-                                p1 : minimal_parse_of_production _ _ ?s1 ?pats
-                           |- ({ p' : minimal_parse_of_production _ _ (?s0 ++ ?s1) (?pat :: ?pats) & _ } + _)%type ]
-                         => left; exists (MinParseProductionCons p0'' p1'')
-                       | [ |- (_ * _)%type ]
-                         => split
-                       | [ H : _ <= _ |- _ <= _ ] => apply H
-                       | _ => apply Le.le_n_S
-                       | _ => apply Plus.plus_le_compat
-                       | [ H0 : Forall_parse_of_item _ _,
-                                H1 : Forall_parse_of_production _ _
-                           |- Forall_parse_of_production _ _ ]
-                         => exact (H0, H1)
-                     end.
+                min_parse_prod_t. }
+            { (* empty, nonempty *)
+              specialize (p_it initial_names_data); specialize (p_prod valid').
+              destruct p_it as [ [ p0'' H0''] |], p_prod as [ [ p1'' H1'' ] |];
+                [ | | | ];
+                min_parse_prod_t.
+              Focus 2.
+              lazymatch goal with
+                | [ p0 : minimal_parse_of_item _ _ ?s0 ?pat,
+                         p1 : minimal_parse_of_production _ _ ?s1 ?pats
+                    |- ({ p' : minimal_parse_of_production _ _ (?s0 ++ ?s1) (?pat :: ?pats) & _ } + _)%type ]
+                  => left; exists (MinParseProductionCons p0 p1)
+              end.
+
+ }
+
+
+              SearchAbout (_ <= _ + _).
+
                        | [ H : Forall_parse_of_production _ _ |- Forall_parse_of_production _ _ ]
                          => apply H
                        | [ H : Forall_parse_of_production _ _ |- _ ]
