@@ -687,6 +687,25 @@ Section cfg.
         Local Ltac min_parse_prod_pose_t := repeat min_parse_prod_pose_t'.
         Local Ltac min_parse_prod_t := repeat min_parse_prod_t'.
 
+        (** This is the proof where we pay the proof for conceptual
+            mismatch.  We are, conceptually, simultaneously
+            "minimizing parse trees" and "producing parse traces".  It
+            is marginally nicer(!!) to contain the ugliness in this
+            single proof, rather than have it infect everything.  So
+            we must conceptually minimize the passed parse tree while
+            in fact building a trace of the parse algorithm.  To do
+            this, in the cons case, we need to figure out how we're
+            decreasing.  According with conceptual minimization, when
+            we have parsed [s0 ++ s1] as a cons of [p0] and [p1],
+            having a smaller parse tree for, say [s0], with any other
+            pattern, does us no good, unless [s1] is empty (and [s0 =
+            s0 ++ s1]), when we can simply pass that smaller parse up
+            the function call tree.  So we must eliminate the
+            "alternate" option, by expanding the valid list to the
+            initial data.  Luckily(?!), in the case where [s1] is
+            non-empty, [s0] is strictly smaller than [s0 ++ s1], and
+            thus we can rebuild the minimal parse tree to contract it. *)
+
         Fixpoint minimal_parse_of_production__of__parse_of_production
                  h
                  (minimal_parse_of_name__of__parse_of_name
