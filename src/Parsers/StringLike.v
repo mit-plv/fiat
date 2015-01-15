@@ -328,3 +328,40 @@ Section strle_choose.
         auto. } }
   Qed.
 End strle_choose.
+
+
+Lemma NonEmpty_Length {CharType} {String : string_like CharType}
+      (a : String)
+      (H : a <> Empty _)
+: Length a > 0.
+Proof.
+  case_eq (Length a); intro H'; try omega.
+  apply Empty_Length in H'; subst.
+  destruct (H eq_refl).
+Qed.
+
+Local Ltac lt_nonempty_t :=
+  repeat match goal with
+           | [ H : _ ≤s _ |- _ ] => destruct H
+           | [ H : _ |- _ ] => progress rewrite ?plus_O_n, <- ?Length_correct in H
+           | _ => progress rewrite ?plus_O_n, <- ?Length_correct
+           | _ => assumption
+           | _ => intro
+           | _ => progress subst
+           | _ => omega
+           | [ H : _ <> Empty _ |- _ ] => apply NonEmpty_Length in H
+         end.
+
+Lemma strle_to_lt_nonempty_r {CharType} {String : string_like CharType}
+      (a b c : String)
+      (H : a <> Empty _)
+      (H' : a ++ b ≤s c)
+: Length b < Length c.
+Proof. lt_nonempty_t. Qed.
+
+Lemma strle_to_lt_nonempty_l {CharType} {String : string_like CharType}
+      (a b c : String)
+      (H : b <> Empty _)
+      (H' : a ++ b ≤s c)
+: Length a < Length c.
+Proof. lt_nonempty_t. Qed.
