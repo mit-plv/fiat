@@ -114,24 +114,6 @@ Arguments parse_of_grammar _%type_scope _ _%string_like _.
 
 Local Hint Extern 0 => match goal with H : S _ = 0 |- _ => destruct (NPeano.Nat.neq_succ_0 _ H) end.
 
-Definition string_stringlike : string_like Ascii.ascii.
-Proof.
-  refine {| String := string;
-            Singleton := fun x => String.String x EmptyString;
-            Empty := EmptyString;
-            Concat := append;
-            Length := String.length;
-            bool_eq x y := if string_dec x y then true else false |};
-  solve [ abstract (let x := fresh "x" in
-                    let IHx := fresh "IHx" in
-                    intro x; induction x as [|? ? IHx]; try reflexivity; simpl;
-                    intros;
-                    f_equal;
-                    auto)
-        | intros; split; congruence
-        | intros; edestruct string_dec; split; congruence ].
-Defined.
-
 Section examples.
   Section generic.
     Variable CharType : Type.
