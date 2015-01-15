@@ -771,13 +771,19 @@ Qed.
 
 Functional Scheme fold_right_rect := Induction for fold_right Sort Type.
 
+Lemma bool_dec_refl b : Bool.bool_dec b b = left eq_refl.
+Proof.
+  destruct b; reflexivity.
+Qed.
+
 Lemma ascii_dec_refl a : Ascii.ascii_dec a a = left eq_refl.
 Proof.
   destruct a as [b0 b1 b2 b3 b4 b5 b6 b7];
   repeat match goal with
-           | [ H : bool |- _ ] => case H; clear H
-         end;
-    reflexivity.
+           | _ => reflexivity
+           | [ |- ?a = ?b ] => let a' := (eval hnf in a) in progress change (a' = b)
+           | _ => rewrite bool_dec_refl
+         end.
 Qed.
 
 Lemma string_dec_refl a : string_dec a a = left eq_refl.
