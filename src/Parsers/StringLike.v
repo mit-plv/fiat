@@ -25,7 +25,8 @@ Record string_like (CharType : Type) :=
     RightId : forall x, x ++ Empty = x;
     Length_correct : forall s1 s2, Length s1 + Length s2 = Length (s1 ++ s2);
     Length_Empty : Length Empty = 0;
-    Empty_Length : forall s1, Length s1 = 0 -> s1 = Empty
+    Empty_Length : forall s1, Length s1 = 0 -> s1 = Empty;
+    Not_Singleton_Empty : forall x, Singleton x <> Empty
   }.
 
 Delimit Scope string_like_scope with string_like.
@@ -64,7 +65,8 @@ Proof.
                     f_equal;
                     auto)
         | intros; split; congruence
-        | intros; edestruct string_dec; split; congruence ].
+        | intros; edestruct string_dec; split; congruence
+        | abstract (repeat intro; exfalso; congruence) ].
 Defined.
 
 Definition str_le {CharType} {String : string_like CharType} (s1 s2 : String)
