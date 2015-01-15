@@ -143,17 +143,6 @@ Section cfg.
     eauto using Empty_Length with arith.
   Qed.
 
-  (*Definition MinParseProductionConsDec0 {str0 valid str strs pat pats}
-             (H0 : str = Empty _)
-             (H1 : strs <> Empty _)
-             (p0 : @minimal_parse_of_item str0 initial_names_data str pat)
-             (p1 : @minimal_parse_of_production str0 valid strs pats)
-  : @minimal_parse_of_production str0 valid (str ++ strs) (pat::pats).
-  Proof.
-    inversion p0; subst.
-    { exfalso; eapply Not_Singleton_Empty; eassumption. }*)
-
-
   Definition parse_of_item_name__of__minimal_parse_of_name'
              (parse_of__of__minimal_parse_of
               : forall str0 valid str prods,
@@ -209,6 +198,88 @@ Section cfg.
       @minimal_parse_of_item str0 valid str it
       -> parse_of_item String G str it
     := @parse_of_item__of__minimal_parse_of_item' (@parse_of__of__minimal_parse_of).
+
+  Section contract.
+    Local Hint Constructors minimal_parse_of_name.
+
+    Definition contract_minimal_parse_of_name_lt
+               {str0 str valid valid' name}
+               (Hlt : Length str < Length str0)
+               (p : @minimal_parse_of_name str0 valid str name)
+    : @minimal_parse_of_name str0 valid' str name.
+    Proof.
+      destruct p.
+      { constructor (assumption). }
+      { exfalso; clear -Hlt; omega. }
+    Defined.
+
+    Definition contract_minimal_parse_of_item_lt
+               {str0 str valid valid' it}
+               (Hlt : Length str < Length str0)
+               (p : @minimal_parse_of_item str0 valid str it)
+    : @minimal_parse_of_item str0 valid' str it.
+    Proof.
+      destruct p as [p|p].
+      { constructor. }
+      { constructor (eapply contract_minimal_parse_of_name_lt; eassumption). }
+    Defined.
+
+    Definition contract_minimal_parse_of_production_lt
+               {str0 str valid valid' pat}
+               (Hlt : Length str < Length str0)
+               (p : @minimal_parse_of_production str0 valid str pat)
+    : @minimal_parse_of_production str0 valid' str pat.
+    Proof.
+      induction p.
+      { constructor. }
+      { constructor;
+        try first [ eapply contract_minimal_parse_of_item_lt; try eassumption
+                  | eapply IHp; try eassumption
+                  | assumption ];
+        clear -Hlt;
+        abstract (
+            rewrite <- Length_correct in Hlt;
+            eauto using le_S, Lt.le_lt_trans, Plus.le_plus_l, Plus.le_plus_r with nocore
+          ). }
+    Defined.
+
+    Definition contract_minimal_parse_of_productions_lt
+               {str0 str valid valid' pats}
+               (Hlt : Length str < Length str0)
+               (p : @minimal_parse_of str0 valid str pats)
+    : @minimal_parse_of str0 valid' str pats.
+    Proof.
+      induction p.
+      { constructor (eapply contract_minimal_parse_of_production_lt; eassumption). }
+      { constructor (eapply IHp; assumption). }
+    Defined.
+
+    Section contract_eq.
+      Context {str0 str : String} {valid valid' : names_listT}
+              {Hlt : Length str < Length str0}.
+
+      Lemma parse_of_contract_minimal_parse_of_item_lt
+            {it}
+            (p : @minimal_parse_of_item str0 valid str it)
+      : parse_of_item__of__minimal_parse_of_item
+          (contract_minimal_parse_of_item_lt (valid' := valid') Hlt p)
+        = parse_of_item__of__minimal_parse_of_item p.
+      Proof.
+        destruct_head minimal_parse_of_item; simpl; try reflexivity.
+        destruct_head minimal_parse_of_name; try reflexivity.
+        unfold False_rect.
+        match goal with
+          | [ |- appcontext[match ?e with end] ] => destruct e
+        end.
+      Qed.
+        unfold contract_minimal_parse_of_name_lt.
+        unfold contract_minimal_parse_of_item_lt.
+
+    : @minimal_parse_of_name str0 valid' str name.
+
+
+    End contract_eq.
+  End contract.
 
   Global Instance sub_names_listT_Reflexive : Reflexive sub_names_listT
     := fun x y f => f.
@@ -566,6 +637,8 @@ Section cfg.
               destruct p_it as [ [ p0'' H0''] |], p_prod as [ [ p1'' H1'' ] |];
                 [ | | | ];
                 min_parse_prod_t.
+              pose (fun valid' pf => contract_minimal_parse_of_item_lt (valid' := valid') pf p0'').
+
               Focus 2.
               lazymatch goal with
                 | [ p0 : minimal_parse_of_item _ _ ?s0 ?pat,
