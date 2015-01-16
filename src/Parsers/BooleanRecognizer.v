@@ -20,18 +20,20 @@ Section recursive_descent_parser.
                                -> names_listT_R (remove_name ls name) ls)
           (ntl_wf : well_founded names_listT_R).
   Section bool.
-    Context (split_string_for_production
-             : forall (str0 : String) (prod : production CharType), list (String * String))
+    Context {split_stateT}
+            (initial_split_state : split_stateT)
+            (split_string_for_production
+             : forall (st : split_stateT)
+                      (str0 : String)
+                      (prod : production CharType),
+                 list ((split_stateT * String) * (split_stateT * String)))
             (split_string_for_production_correct
-             : forall str0 prod,
-                 List.Forall (fun s1s2 => (fst s1s2 ++ snd s1s2 =s str0) = true)
-                             (split_string_for_production str0 prod)).
+             : forall st str0 prod,
+                 List.Forall (fun s1s2 => (snd (fst s1s2) ++ snd (snd s1s2) =s str0) = true)
+                             (split_string_for_production st str0 prod)).
 
     Section parts.
       Section item.
-        (** We require that the list of names be non-empty; we
-            do this by passing the first element separately, rather
-            than invoking dependent types and proofs. *)
         Context (str : String)
                 (str_matches_name : string -> bool).
 
@@ -43,57 +45,91 @@ Section recursive_descent_parser.
       End item.
 
       Section production.
-        Variable str0 : String.
-        Variable parse_name : forall (str : String),
-                                       str ≤s str0
-                                       -> string
-                                       -> bool.
+        Context (str0 : String).
 
-        (** To match a [production], we must match all of its items.
-            But we may do so on any particular split. *)
-        Fixpoint parse_production
-                 (str : String) (pf : str ≤s str0)
-                 (prod : production CharType)
-        : bool.
-        Proof.
-          refine match prod with
-                   | nil =>
-                     (** 0-length production, only accept empty *)
-                     str =s Empty _
-                   | it::its
-                     => let parse_production' := fun str pf => @parse_production str pf its in
-                        fold_right
-                          orb
-                          false
-                          (map (fun s1s2p => (parse_item (fst (proj1_sig s1s2p))
-                                                         (@parse_name (fst (proj1_sig s1s2p))
-                                                                             _)
-                                                         it)
-                                               && parse_production' (snd (proj1_sig s1s2p)) _)%bool
-                               (combine_sig (split_string_for_production_correct str prod)))
-                 end;
-          revert pf; clear; intros;
-          abstract (
-              repeat first [ progress destruct_head sig
-                           | progress destruct_head and
-                           | etransitivity; eassumption
-                           | etransitivity; try eassumption; []
-                           | progress subst
-                           | idtac; match goal with H : (_ =s _) = true |- _ => apply bool_eq_correct in H end
-                           | apply str_le1_append
-                           | apply str_le2_append ]
-            ).
-        Defined.
+        Section general.
+          Context (parse_item : split_stateT
+                                -> forall (str : String),
+                                     str ≤s str0 -> item CharType -> bool).
+
+          (** To match a [production], we must match all of its items.
+              But we may do so on any particular split. *)
+          Fixpoint parse_production_parameterized
+                   (st : split_stateT)
+                   (str : String) (pf : str ≤s str0)
+                   (prod : production CharType)
+          : bool.
+          Proof.
+            refine match prod with
+                     | nil =>
+                       (** 0-length production, only accept empty *)
+                       str =s Empty _
+                     | it::its
+                       => let parse_production' := fun st str pf => @parse_production_parameterized st str pf its in
+                          fold_right
+                            orb
+                            false
+                            (map (fun s1s2p => let s1s2 := proj1_sig s1s2p in
+                                               let st_s1 := fst s1s2 in
+                                               let st_s2 := snd s1s2 in
+                                               (@parse_item (fst st_s1)
+                                                            (snd st_s1)
+                                                            _
+                                                            it)
+                                                 && (parse_production'
+                                                       (fst st_s2)
+                                                       (snd st_s2)
+                                                       _))%bool
+                                 (combine_sig (split_string_for_production_correct st str prod)))
+                   end;
+            clear -pf;
+            abstract (
+                repeat first [ progress destruct_head sig
+                             | progress destruct_head and
+                             | etransitivity; eassumption
+                             | etransitivity; try eassumption; []
+                             | progress subst
+                             | idtac; match goal with H : (_ =s _) = true |- _ => apply bool_eq_correct in H end
+                             | apply str_le1_append
+                             | apply str_le2_append ]
+              ).
+          Defined.
+        End general.
+
+        Section default.
+          Context (parse_name : forall (st : split_stateT)
+                                       (str : String),
+                                  str ≤s str0
+                                  -> string
+                                  -> bool).
+
+          Definition parse_production
+          : forall (st : split_stateT)
+                   (str : String) (pf : str ≤s str0)
+                   (prod : production CharType),
+              bool
+            := @parse_production_parameterized
+                 (fun st str pf => @parse_item str (@parse_name st str pf)).
+        End default.
       End production.
 
       Section productions.
-        Variable str0 : String.
+        Context (str0 : String).
+        Section general.
+
+
+          Check parse_production.
         Variable parse_name : forall (str : String)
                                      (pf : str ≤s str0),
                                 string -> bool.
 
         (** To parse as a given list of [production]s, we must parse as one of the [production]s. *)
-        Definition parse_productions (str : String) (pf : str ≤s str0) (prods : productions CharType)
+        Definition parse_productions
+                   (st : split_stateT)
+                   (str : String)
+                   (pf : str ≤s str0)
+                   (parse_production : split_stateT -> production CharType -> bool)
+                   (prods : productions CharType)
         : bool
           := fold_right orb
                         false
