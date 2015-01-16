@@ -434,7 +434,7 @@ Section sound.
 
           Lemma parse_name_step_complete
                 Pv
-                (parse_name_complete : forall p pf, parse_name_completeT (@parse_name p pf) Pv)
+                (parse_name_complete : forall p pf, parse_name_completeT (@parse_name p pf) (Pv p))
                 (split_string_for_production_complete : forall str0 valid1 valid2 str pf prod, @split_list_completeT str0 valid1 valid2 str pf (split_string_for_production str prod) prod)
                 (str : String) (pf : str ≤s str0) (name : string)
                 (Hinit : forall str1,
@@ -442,13 +442,13 @@ Section sound.
                            forall name0,
                              minimal_parse_of_name String G initial_names_data is_valid_name
                                                    remove_name str initial_names_data str1 name0 ->
-                             Pv str initial_names_data name0)
+                             Pv (str, initial_names_data) str initial_names_data name0)
                 (Hinit' : forall str,
                             str ≤s str0 ->
                             forall name0 : string,
                               minimal_parse_of_name String G initial_names_data is_valid_name remove_name
                                                     str0 (remove_name valid name) str name0 ->
-                              Pv str0 (remove_name valid name) name0)
+                              Pv (str0, remove_name valid name) str0 (remove_name valid name) name0)
           : minimal_parse_of_name _ G initial_names_data is_valid_name remove_name str0 valid str name
             -> parse_name_step G initial_names_data is_valid_name remove_name
                             remove_name_dec split_string_for_production
@@ -530,32 +530,66 @@ Section sound.
               trivial. }
           Defined.
 
-          Lemma parse_name_or_abort_complete
-                (str0 : String) (valid : names_listT)
+          Lemma prod_relation_elim_helper {A R x} {valid : A}
+          : prod_relation (ltof String Length) R
+                          (fst x, valid) x
+            -> R valid (snd x).
+          Proof.
+            intros [ H | [? H] ].
+            { exfalso; simpl in *; clear -H.
+              unfold ltof in H; simpl in H.
+              abstract omega. }
+            { exact H. }
+          Qed.
+
+          Lemma parse_name_or_abort_complete'
                 (split_string_for_production_complete : forall str0 valid1 valid2 str pf prod, @split_list_completeT str0 valid1 valid2 str pf (split_string_for_production str prod) prod)
-                (p : String * names_listT) (str : String)
-                (pf : str ≤s fst p)
-                (name : string)
-          : minimal_parse_of_name _ G initial_names_data is_valid_name remove_name str0 valid str name
-            -> parse_name_or_abort G initial_names_data is_valid_name remove_name
+                (Pv := fun (p : String * names_listT)
+                           (str0 : String) (valid0 : names_listT) (_ : string) =>
+                         True(*sub_names_listT is_valid_name (snd p) initial_names_data
+                         /\ sub_names_listT is_valid_name valid0 initial_names_data*)(*
+                         /\ prod_relation (ltof String Length) (sub_names_listT is_valid_name)
+                                       (str0, valid0) p*))
+                (p : String * names_listT)
+                (*H_sub_init : sub_names_listT is_valid_name (snd p) initial_names_data*)
+          : @parse_name_completeT
+              (fst p)
+              (parse_name_or_abort G initial_names_data is_valid_name remove_name
                                    remove_name_dec ntl_wf split_string_for_production
                                    split_string_for_production_correct
-                                   p pf name
-               = true.
+                                   p)
+              (Pv p).
           Proof.
             unfold parse_name_or_abort.
-            revert str0 str valid pf name.
-            let Acca := match goal with |- context[@Fix3 _ _ _ _ _ ?Rwf _ _ ?a _ _ _] => constr:(Rwf a) end in
-            induction (Acca) as [? ? IHr];
-              intros str0 str valid pf name.
+            let Acca := match goal with |- context[@Fix3 _ _ _ _ _ ?Rwf _ _ ?a] => constr:(Rwf a) end in
+            induction (Acca) as [x ? IHr];
+              intros valid str pf name ?.
             rewrite Fix3_eq;
               [
               | solve [ intros;
                         apply parse_name_step_ext;
                         trivial ] ].
-            { intro; eapply (parse_name_step_complete) with (Pv := (fun _ _ _ => True)); trivial.
-              { repeat intro.
-                eapply IHr; try eassumption. }
+            match goal with
+              | [ H : appcontext[?f]
+                  |- _ -> parse_name_step _ _ _ _ _ _ _ (fun y _ b c d => ?f y b c d) _ _ = true ]
+                => revert H;
+                  generalize f;
+                  let H' := fresh "parse_name_step'" in
+                  intros H' H
+            end.
+            destruct_head_hnf and.
+            intro; eapply parse_name_step_complete with (Pv := Pv); subst Pv;
+            [ intros; eapply IHr | .. ];
+            instantiate;
+            trivial; simpl;
+            try (intros; reflexivity).
+            Focus 2.
+            repeat match goal with
+            subst Pv; simpl in *.
+            intros; reflexivity.
+
+            { repeat intro.
+              eapply IHr; try eassumption. }
               { eapply expand_minimal_parse_of_name; [ .. | eassumption ];
                 trivial.
                 Focus 2.
@@ -571,6 +605,17 @@ Section sound.
               apply parse_name_step_ext.
               trivial. }
           Defined.
+
+
+(str : String)
+                (pf : str ≤s fst p)
+                (name : string)
+          : minimal_parse_of_name _ G initial_names_data is_valid_name remove_name (fst p) (snd p) str name
+            -> parse_name_or_abort G initial_names_data is_valid_name remove_name
+                                   remove_name_dec ntl_wf split_string_for_production
+                                   split_string_for_production_correct
+                                   p pf name
+               = true.
 
           Lemma parse_name_or_abort_helper_complete
                 Pv
