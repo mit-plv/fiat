@@ -223,6 +223,47 @@ Section recursive_descent_parser_list.
     intro.
     apply well_founded_ltof.
   Defined.
+
+  Lemma rdp_list_remove_name_1
+  : forall ls ps ps',
+      rdp_list_is_valid_name (rdp_list_remove_name ls ps) ps' = true
+      -> rdp_list_is_valid_name ls ps' = true.
+  Proof.
+    unfold rdp_list_is_valid_name, rdp_list_remove_name.
+    repeat match goal with
+             | _ => exfalso; congruence
+             | _ => reflexivity
+             | [ |- appcontext[if ?E then _ else _] ] => destruct E
+             | _ => intro
+             | [ H : In _ (filter _ _) |- _ ] => apply filter_In in H
+             | [ H : _ /\ _ |- _ ] => destruct H
+             | [ H : ?T, H' : ~?T |- _ ] => destruct (H' H)
+           end.
+  Qed.
+
+  Lemma rdp_list_remove_name_2
+  : forall ls ps ps',
+      rdp_list_is_valid_name (rdp_list_remove_name ls ps) ps' = false
+      <-> rdp_list_is_valid_name ls ps' = false \/ ps = ps'.
+  Proof.
+    unfold rdp_list_is_valid_name, rdp_list_remove_name.
+    repeat match goal with
+             | _ => exfalso; congruence
+             | _ => reflexivity
+             | _ => progress subst
+             | _ => intro
+             | [ H : context[In _ (filter _ _)] |- _ ] => rewrite filter_In in H
+             | [ H : _ /\ _ |- _ ] => destruct H
+             | [ H : ?T, H' : ~?T |- _ ] => destruct (H' H)
+             | [ |- true = false \/ _ ] => right
+             | [ |- ?x = ?x \/ _ ] => left; reflexivity
+             | [ H : ~(_ /\ ?x = ?x) |- _ ] => specialize (fun y => H (conj y eq_refl))
+             | [ H : _ \/ _ |- _ ] => destruct H
+             | [ |- _ <-> _ ] => split
+             | [ H : appcontext[if ?E then _ else _] |- _ ] => destruct E
+             | [ |- appcontext[if ?E then _ else _] ] => destruct E
+           end.
+  Qed.
 End recursive_descent_parser_list.
 
 (** TODO: move this elsewhere *)

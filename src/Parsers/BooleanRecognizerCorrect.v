@@ -1,6 +1,7 @@
 (** * Definition of a boolean-returning CFG parser-recognizer *)
 Require Import Coq.Lists.List Coq.Program.Program Coq.Program.Wf Coq.Arith.Wf_nat Coq.Arith.Compare_dec Coq.Classes.RelationClasses Coq.Strings.String.
 Require Import Parsers.ContextFreeGrammar Parsers.Specification Parsers.BooleanRecognizer Parsers.MinimalParse.
+Require Import Parsers.ContextFreeGrammarProperties Parsers.WellFoundedParse.
 Require Import Common Common.ilist Common.Wf.
 Require Import Eqdep_dec.
 
@@ -542,11 +543,13 @@ Section sound.
             { exact H. }
           Qed.
 
-          Lemma parse_name_or_abort_complete'
+          Lemma parse_name_or_abort_complete
                 (split_string_for_production_complete : forall str0 valid1 valid2 str pf prod, @split_list_completeT str0 valid1 valid2 str pf (split_string_for_production str prod) prod)
                 (Pv := fun (p : String * names_listT)
                            (str0 : String) (valid0 : names_listT) (_ : string) =>
-                         True(*sub_names_listT is_valid_name (snd p) initial_names_data
+                         sub_names_listT is_valid_name valid0 (snd p)
+                         /\ sub_names_listT is_valid_name (snd p) initial_names_data
+                         (*sub_names_listT is_valid_name (snd p) initial_names_data
                          /\ sub_names_listT is_valid_name valid0 initial_names_data*)(*
                          /\ prod_relation (ltof String Length) (sub_names_listT is_valid_name)
                                        (str0, valid0) p*))
@@ -581,164 +584,15 @@ Section sound.
             intro; eapply parse_name_step_complete with (Pv := Pv); subst Pv;
             [ intros; eapply IHr | .. ];
             instantiate;
-            trivial; simpl;
-            try (intros; reflexivity).
-            Focus 2.
-            repeat match goal with
-            subst Pv; simpl in *.
-            intros; reflexivity.
-
-            { repeat intro.
-              eapply IHr; try eassumption. }
-              { eapply expand_minimal_parse_of_name; [ .. | eassumption ];
-                trivial.
-                Focus 2.
-                exact X0.
-              Focus 5.
- try eassumption;
-              eauto.
-              Focus 2.
-              { intros.
-                eapply IHr.
-              eauto.
-            { intros.
-              apply parse_name_step_ext.
-              trivial. }
+            trivial; simpl in *;
+            try solve [ intros; reflexivity
+                      | intros; split; reflexivity
+                      | intros; split; try reflexivity;
+                        etransitivity; [ apply sub_names_listT_remove; assumption | assumption ] ].
+            { eapply expand_minimal_parse_of_name; [ .. | eassumption ];
+              trivial;
+              try reflexivity. }
           Defined.
-
-
-(str : String)
-                (pf : str ≤s fst p)
-                (name : string)
-          : minimal_parse_of_name _ G initial_names_data is_valid_name remove_name (fst p) (snd p) str name
-            -> parse_name_or_abort G initial_names_data is_valid_name remove_name
-                                   remove_name_dec ntl_wf split_string_for_production
-                                   split_string_for_production_correct
-                                   p pf name
-               = true.
-
-          Lemma parse_name_or_abort_helper_complete
-                Pv
-                (p : String * names_listT) (str : String)
-                (Hv_init_rem : forall p', Pv (remove_name initial_names_data p') p')
-                (Hv_rem : forall p', Pv (remove_name (snd p) p') p')
-                (Hv_expand
-                 : forall str p' valid,
-                     Pv valid p'
-                     -> minimal_parse_of
-                          String G initial_names_data
-                          is_valid_name remove_name valid str
-                          p'
-                     -> minimal_parse_of
-                          String G initial_names_data
-                          is_valid_name remove_name initial_names_data str
-                          p')
-                (Hv_valid_init : forall ls p', Pv ls p' -> Pv initial_names_data p')
-                (split_string_for_production_complete : forall valid0 valid1 str0 pf prod, @split_list_completeT str valid0 valid1 str0 pf (split_string_for_production str0 prod) prod)
-                (pf : str ≤s fst p)
-                (prod : production CharType)
-                (prods : names CharType)
-                (H_prods : Pv (snd p) (prod::prods))
-                (H_init : Pv initial_names_data (prod::prods))
-                (*(H_prods : is_valid_name (snd p) (prod::prods) = true)*)
-          : minimal_parse_of _ G initial_names_data is_valid_name remove_name (snd p) str (prod::prods)
-            -> parse_name_or_abort_helper G initial_names_data is_valid_name remove_name
-                                              remove_name_dec ntl_wf split_string_for_production
-                                              split_string_for_production_correct
-                                              p pf prod prods
-               = true.
-          Proof.
-            unfold parse_name_or_abort_helper.
-            revert str split_string_for_production_complete pf prod prods H_prods H_init.
-            let Acca := match goal with |- context[@Fix4 _ _ _ _ _ _ ?Rwf _ _ ?a _ _ _ _] => constr:(Rwf a) end in
-            induction (Acca) as [? ? IHr];
-              intros str split_string_for_production_complete pf prod prods H_prods H_init.
-            rewrite Fix4_eq;
-              [
-              | repeat match goal with
-                       | _ => intro
-                       | _ => reflexivity
-                       | [ |- context[match ?E with _ => _ end] ] => destruct E
-                       | [ H : _ |- _ ] => rewrite H; reflexivity
-                       | _ => apply parse_name_step_ext; auto
-                       | _ => apply (@if_ext (fun _ => bool)); intros
-                     end ];
-              [].
-            { match goal with
-                | [ |- context[if lt_dec ?a ?b then _ else _] ] => destruct (lt_dec a b)
-              end.
-              { (eapply parse_name_step_complete;
-                 try solve [ eassumption | instantiate; intros; eauto ]);
-                try solve [ eassumption | instantiate; intros; eauto ]; hnf; [].
-                intros valid str0 pf0 prod0 prods0 H'; simpl.
-                intro mp.
-                eapply IHr;
-                try solve [ exact H'
-                          | eassumption
-                          | reflexivity
-                          | simpl in *; trivial
-                          | eapply Hv_expand; eassumption
-                          | eapply Hv_valid_init; eassumption ].
-                { left; assumption. }
-                { intros; apply split_string_for_production_complete.
-                  etransitivity; eassumption. } }
-              { let ivp := match goal with |- context[is_valid_name ?x ?y] => constr:(is_valid_name x y) end in
-                set (ivp' := ivp);
-                  assert (ivp = ivp') by reflexivity;
-                  clearbody ivp';
-                  destruct ivp'.
-                { intros.
-                  hnf in pf.
-                  apply or_to_sumbool in pf.
-                  destruct pf as [ pf | pf ]; [ exfalso; hnf in *; solve [ auto ] | subst ].
-                  eapply parse_name_step_complete;
-                    try solve [ eassumption | instantiate; intros; eauto ]; hnf; [].
-                  intros valid str0 pf0 prod0 prods0 H'; simpl.
-                  intro mp.
-                  eapply IHr;
-                    try solve [ exact H'
-                              | eassumption
-                              | simpl; trivial
-                              | intros; eapply Hv_rem; eassumption
-                              | intros; eapply Hv_init_rem; eassumption ];
-                    admit. (*
-                  Focus 4.
-                  simpl in *.
-
-                  eapply H
-
-                  eapply expand_minimal_parse_of in mp;
-                    [
-                    | solve [ eassumption | apply Hv_valid_init; assumption ].. ].
-
-                  eapply IHr.
-                    try solve [ exact H' | eassumption | simpl; trivial ].
-                  { right; split; trivial; simpl.
-                    apply remove_name_dec; assumption. }
-                  { simpl. eauto. }
-                  { intros; apply split_string_for_production_complete.
-                    etransitivity; eassumption. }
-                  { simpl. hnf in Hv_valid_init; eapply Hv_valid_init; eassumption. } }
-                  { simpl.
-
-                  (** XXX Need to rework the assumptions / induction
-                          to ensure that we can get this parse tree.
-                          What to do? *)
-                    admit. }*) }
-                { (** INTERESTING CASE HERE - need to show that if not
-                      [is_valid_name], then we can't have a
-                      parse tree. *)
-                  Print minimal_parse_of.
-                  exfalso; clear; admit. } } }
-            { repeat match goal with
-                       | _ => intro
-                       | _ => reflexivity
-                       | [ |- context[match ?E with _ => _ end] ] => destruct E
-                       | [ H : _ |- _ ] => rewrite H; reflexivity
-                       | _ => apply parse_name_step_ext; auto
-                       | _ => apply (@if_ext (fun _ => bool)); intros
-                     end. }
-          Defined.*)
 
           Lemma parse_name_sound
                 (str : String) (name : string)
@@ -753,22 +607,23 @@ Section sound.
             apply parse_name_or_abort_sound.
           Defined.
 
-          (*Lemma parse_name_complete
-                valid
+          Lemma parse_name_complete
+                (split_string_for_production_complete : forall str0 valid1 valid2 str pf prod, @split_list_completeT str0 valid1 valid2 str pf (split_string_for_production str prod) prod)
                 (str : String)
-                (split_string_for_production_complete : forall valid0 valid1 str0 pf prod, @split_list_completeT str valid0 valid1 str0 pf (split_string_for_production str0 prod) prod)
-                (prods : names CharType)
-          : minimal_parse_of _ G initial_names_data is_valid_name remove_name valid str prods
+                (name : string)
+          : minimal_parse_of_name String G initial_names_data is_valid_name remove_name str initial_names_data str name
             -> parse_name _ G initial_names_data is_valid_name remove_name
-                                 remove_name_dec ntl_wf split_string_for_production
-                                 split_string_for_production_correct
-                                 str prods
+                          remove_name_dec ntl_wf split_string_for_production
+                          split_string_for_production_correct
+                          str name
                = true.
           Proof.
-            unfold parse_name, parse_name_or_abort.
-            destruct prods; [ solve [ intro H'; inversion H' ] | ].
-            apply parse_name_or_abort_helper_complete; try assumption.
-          Defined.*)
+            unfold parse_name.
+            eapply (@parse_name_or_abort_complete
+                    split_string_for_production_complete
+                    (str, initial_names_data)).
+            split; reflexivity.
+          Defined.
         End wf.
       End names.
     End parts.
@@ -792,7 +647,7 @@ Section brute_force_spliter.
       auto. }
   Qed.
 
-  (*Lemma make_all_single_splits_complete
+  Lemma make_all_single_splits_complete
   : forall G names_listT initial_names_data is_valid_name remove_name str0 valid0 valid1 str pf prod, @split_list_completeT _ string_stringlike G names_listT initial_names_data is_valid_name remove_name str0 valid0 valid1 str pf (@make_all_single_splits str) prod.
   Proof.
     intros; hnf.
@@ -804,7 +659,7 @@ Section brute_force_spliter.
         apply make_all_single_splits_complete_helper;
         assumption
       ).
-  Defined.*)
+  Defined.
 End brute_force_spliter.
 
 Section brute_force_make_parse_of.
@@ -819,15 +674,49 @@ Section brute_force_make_parse_of.
     apply parse_name_sound.
   Defined.
 
-  (*Definition brute_force_make_parse_of_complete
-             valid
+  Definition brute_force_make_parse_of_complete
              (str : @String Ascii.ascii string_stringlike)
              (name : string)
-  : minimal_parse_of _ G (Valid_nonterminals G) rdp_list_is_valid_name (rdp_list_remove_name Ascii.ascii_dec) valid str name
+  : minimal_parse_of_name _ G (Valid_nonterminal_symbols G) rdp_list_is_valid_name rdp_list_remove_name str (Valid_nonterminal_symbols G) str name
     -> brute_force_make_parse_of G str name = true.
   Proof.
     unfold brute_force_make_parse_of; simpl; intro.
     eapply parse_name_complete; try eassumption.
-    apply make_all_single_splits_complete.
-  Defined.*)
+    { apply rdp_list_remove_name_1. }
+    { apply rdp_list_remove_name_2. }
+    { apply make_all_single_splits_complete. }
+  Defined.
+
+  Definition brute_force_make_parse_of_complete_p
+             (str : @String Ascii.ascii string_stringlike)
+             (name : string)
+             (p : parse_of _ G str (Lookup G name))
+             (H_valid_name : rdp_list_is_valid_name (Valid_nonterminal_symbols G) name = true)
+             (H_valid_tree : Forall_parse_of
+                               (fun p =>
+                                  rdp_list_is_valid_name (Valid_nonterminal_symbols G) p = true) p)
+  : brute_force_make_parse_of G str name = true.
+  Proof.
+    apply brute_force_make_parse_of_complete.
+    pose proof (@minimal_parse_of_name__of__parse_of_name
+                  _ string_stringlike G
+                  rdp_list_names_listT
+                  (Valid_nonterminal_symbols G)
+                  rdp_list_is_valid_name rdp_list_remove_name
+                  rdp_list_remove_name_1
+                  rdp_list_remove_name_2
+                  (S (size_of_parse_item (ParseNonTerminal name p)))
+                  str str
+                  (Valid_nonterminal_symbols G)
+                  name
+                  p
+                  (Lt.lt_n_Sn _)
+                  (reflexivity _)
+                  (reflexivity _)
+                  (H_valid_name, H_valid_tree))
+      as p'.
+    destruct p' as [ [ p' ] | [ name' [ [ H0 H1 ] ] ] ].
+    { exact p'. }
+    { exfalso; congruence. }
+  Qed.
 End brute_force_make_parse_of.
