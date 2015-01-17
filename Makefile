@@ -17,6 +17,8 @@ SRC_MODULES    := \
 	ADT \
 	Common/ilist \
 	Common/Wf \
+	Common/Le \
+	Common/UIP \
 	ADTNotation/StringBound \
 	ADTNotation/BuildADTSig \
 	ADTNotation/BuildADT \
@@ -88,6 +90,9 @@ SRC_MODULES    := \
 	QueryStructure/Refinements/Bags/Bags\
 	QueryStructure/Refinements/AutoDB\
 	Parsers/StringLike\
+	Parsers/StringLike/Core\
+	Parsers/StringLike/Properties\
+	Parsers/StringLike/Examples\
 	Parsers/ContextFreeGrammar\
 	Parsers/ContextFreeGrammarProperties\
 	Parsers/Specification\
