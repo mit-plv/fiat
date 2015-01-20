@@ -28,17 +28,133 @@ FIXME *)*)
 
 Local Open Scope string_like_scope.
 
+Local Coercion is_true : bool >-> Sortclass.
+
 Section recursive_descent_parser.
   Context CharType (String : string_like CharType) (G : grammar CharType).
-  Context (productions_listT : String -> Type)
-          (initial_productions_data : forall str, productions_listT str)
-          (is_valid_productions : forall str, productions_listT str -> productions CharType -> bool)
-          (remove_productions : forall str, productions_listT str -> productions CharType -> productions_listT str)
-          (productions_listT_R : forall str, productions_listT str -> productions_listT str -> Prop)
-          (remove_productions_dec : forall str ls nt, is_valid_productions str ls nt = true
-                                                  -> productions_listT_R str (remove_productions str ls nt) ls)
-          (ntl_wf : forall str, well_founded (productions_listT_R str)).
+  Context (names_listT : Type)
+          (initial_names_data : names_listT)
+          (is_valid_name : names_listT -> string -> bool)
+          (remove_name : names_listT -> string -> names_listT)
+          (names_listT_R : names_listT -> names_listT -> Prop)
+          (remove_name_dec : forall ls name,
+                               is_valid_name ls name = true
+                               -> names_listT_R (remove_name ls name) ls)
+          (ntl_wf : well_founded names_listT_R)
+          (split_stateT : Type).
+
   Section generic.
+    Context (split_string_for_production
+             : forall (str0 : StringWithSplitState String split_stateT) (prod : production CharType), list (StringWithSplitState String split_stateT * StringWithSplitState String split_stateT))
+            (split_string_for_production_correct
+             : forall (str0 : StringWithSplitState String split_stateT) prod,
+                 List.Forall (fun s1s2 : StringWithSplitState String split_stateT * StringWithSplitState String split_stateT
+                              => (fst s1s2 ++ snd s1s2 =s str0) = true)
+                             (split_string_for_production str0 prod)).
+
+    Section parts.
+      Section item.
+        Context (str : StringWithSplitState String split_stateT)
+                {T_name_success T_name_failure : string -> Type}
+                {T_item_success T_item_failure : item CharType -> Type}
+                (lift_success : forall name, T_name_success name -> T_item_success (NonTerminal _ name))
+                (lift_failure : forall name, T_name_failure name -> T_item_failure (NonTerminal _ name))
+                (parse_terminal_success : forall ch, [[ ch ]] =s str -> T_item_success (Terminal ch))
+                (parse_terminal_failure : forall ch, ([[ ch ]] =s str) = false -> T_item_failure (Terminal ch))
+                (str_matches_name : forall name, sum (T_name_success name) (T_name_failure name)).
+
+        Let T_name := fun name => sum (T_name_success name) (T_name_failure name).
+        Let T_item := fun it => sum (T_item_success it) (T_item_failure it).
+
+        Definition parse_item (it : item CharType) : T_item it
+          := match it as it return T_item it with
+               | Terminal ch
+                 => match Sumbool.sumbool_of_bool ([[ ch ]] =s str) with
+                      | left pf => inl (parse_terminal_success ch pf)
+                      | right pf => inr (parse_terminal_failure ch pf)
+                    end
+               | NonTerminal name
+                 => match str_matches_name name with
+                      | inl ret => inl (lift_success ret)
+                      | inr ret => inr (lift_failure ret)
+                    end
+             end.
+      End item.
+
+      Section production.
+        Context (str0 : StringWithSplitState String split_stateT)
+                {T_name_success T_name_failure : string -> Type}
+                {T_item_success T_item_failure : item CharType -> Type}
+                (lift_success : forall name, T_name_success name -> T_item_success (NonTerminal _ name))
+                (lift_failure : forall name, T_name_failure name -> T_item_failure (NonTerminal _ name))
+                (parse_terminal_success : forall (str : StringWithSplitState String split_stateT) ch,
+                                            [[ ch ]] =s str -> T_item_success (Terminal ch))
+                (parse_terminal_failure : forall (str : StringWithSplitState String split_stateT)
+                                                 ch, ([[ ch ]] =s str) = false -> T_item_failure (Terminal ch))
+                {T_production_success T_production_failure
+                 : forall (str : StringWithSplitState String split_stateT)
+                          (pf : str ≤s str0)
+                          (prod : production CharType),
+                     Type}
+                (parse_name : forall (str : StringWithSplitState String split_stateT),
+                                str ≤s str0
+                                -> forall name,
+                                     sum (T_name_success name) (T_name_failure name))
+                (parse_empty_success : forall (str : StringWithSplitState String split_stateT) pf, str =s Empty _ -> T_production_success str pf nil)
+                (parse_empty_failure : forall (str : StringWithSplitState String split_stateT) pf, (str =s Empty _) = false -> T_production_failure str pf nil).
+
+        Let T_name := fun name => sum (T_name_success name) (T_name_failure name).
+        Let T_item := fun it => sum (T_item_success it) (T_item_failure it).
+        Let T_production := fun str pf prod => sum (T_production_success str pf prod) (T_production_failure str pf prod).
+
+        (** To match a [production], we must match all of its items.
+            But we may do so on any particular split. *)
+        Fixpoint parse_production
+                 (str : StringWithSplitState String split_stateT)
+                 (pf : str ≤s str0)
+                 (prod : production CharType)
+        : T_production str pf prod.
+        Proof.
+          refine match prod as prod return T_production str pf prod with
+                   | nil
+                     (** 0-length production, only accept empty *)
+                     => match Sumbool.sumbool_of_bool (str =s Empty _) with
+                          | left pf' => inl (parse_empty_success str pf pf')
+                          | right pf' => inr (parse_empty_failure str pf pf')
+                        end
+                   | it::its
+                     => _
+                 end.
+                     => let parse_production' := fun str pf => @parse_production str pf its in
+                        fold_right
+                          orb
+                          false
+                          (map (fun s1s2p => (parse_item (fst (proj1_sig s1s2p))
+                                                         (@parse_name (fst (proj1_sig s1s2p))
+                                                                             _)
+                                                         it)
+                                               && parse_production' (snd (proj1_sig s1s2p)) _)%bool
+                               (combine_sig (split_string_for_production_correct str prod)))
+                 end;
+          revert pf; clear; intros;
+          abstract (
+              destruct str;
+              repeat first [ progress destruct_head sig
+                           | progress destruct_head and
+                           | etransitivity; eassumption
+                           | etransitivity; try eassumption; []
+                           | progress subst
+                           | idtac; match goal with H : (_ =s _) = true |- _ => apply bool_eq_correct in H end
+                           | apply str_le1_append
+                           | apply str_le2_append ]
+            ).
+        Defined.
+      End production.
+
+
+
+
+
     Context (T_success T_failure : String -> productions CharType -> Type)
             (T_success_reverse_lookup : forall str name, T_success str (Lookup G name) -> T_success str [ [ NonTerminal _ name ] ])
             (T_failure_reverse_lookup : forall str name, T_failure str (Lookup G name) -> T_failure str [ [ NonTerminal _ name ] ])
@@ -70,6 +186,10 @@ Section recursive_descent_parser.
                                ilist (fun pat => T str [ pat ]) pats
                                -> T str pats).
     Context (make_abort : forall str nt valid_list, @is_valid_productions str valid_list nt = false -> T_failure str nt).
+
+
+
+
 
 
     Section parts.
