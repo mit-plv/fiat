@@ -42,16 +42,15 @@ Section recursive_descent_parser.
                                -> names_listT_R (remove_name ls name) ls)
           (ntl_wf : well_founded names_listT_R)
           (split_stateT : Type).
+  Context (split_string_for_production
+           : forall (str0 : StringWithSplitState String split_stateT) (prod : production CharType), list (StringWithSplitState String split_stateT * StringWithSplitState String split_stateT))
+          (split_string_for_production_correct
+           : forall (str0 : StringWithSplitState String split_stateT) prod,
+               List.Forall (fun s1s2 : StringWithSplitState String split_stateT * StringWithSplitState String split_stateT
+                            => (fst s1s2 ++ snd s1s2 =s str0) = true)
+                           (split_string_for_production str0 prod)).
 
   Section generic.
-    Context (split_string_for_production
-             : forall (str0 : StringWithSplitState String split_stateT) (prod : production CharType), list (StringWithSplitState String split_stateT * StringWithSplitState String split_stateT))
-            (split_string_for_production_correct
-             : forall (str0 : StringWithSplitState String split_stateT) prod,
-                 List.Forall (fun s1s2 : StringWithSplitState String split_stateT * StringWithSplitState String split_stateT
-                              => (fst s1s2 ++ snd s1s2 =s str0) = true)
-                             (split_string_for_production str0 prod)).
-
     Section parts.
       Section item.
         Context (str : StringWithSplitState String split_stateT)
@@ -80,6 +79,70 @@ Section recursive_descent_parser.
                     end
              end.
       End item.
+    End parts.
+  End generic.
+
+  Require Import Parsers.MinimalParse.
+  Section minimal.
+    Section parts.
+      Section item.
+        Context (str0 : StringWithSplitState String split_stateT)
+                (valid : names_listT) {P : Type}.
+        Context (str : StringWithSplitState String split_stateT).
+
+        Let T_name_success (name : string) : Type
+          := minimal_parse_of_name String G initial_names_data is_valid_name remove_name
+                                   str0 valid str name.
+        Let T_name_failure (name : string) : Type
+          := T_name_success name -> False.
+
+        Context (str_matches_name : forall name, sum (T_name_success name) (T_name_failure name)).
+
+        Let T_item_success (it : item CharType) : Type
+          := minimal_parse_of_item String G initial_names_data is_valid_name remove_name
+                                   str0 valid str it.
+        Let T_item_failure (it : item CharType) : Type
+          := T_item_success it -> False.
+
+        Let lift_success name (H : T_name_success name) : T_item_success (NonTerminal _ name)
+          := MinParseNonTerminal H.
+
+        Definition lift_failure name (H : T_name_failure name) : T_item_failure (NonTerminal _ name).
+        Proof.
+          intro s.
+          apply H.
+          hnf in s.
+          hnf.
+
+          inversion s; subst name.
+          hnf.
+          assumption.
+        Defined.
+        Print lift_failure.
+
+        Let parse_terminal_success : forall ch, [[ ch ]] =s str -> T_item_success (Terminal ch))
+                (parse_terminal_failure : forall ch, ([[ ch ]] =s str) = false -> T_item_failure (Terminal ch))
+
+
+        Let T_name := fun name => sum (T_name_success name) (T_name_failure name).
+        Let T_item := fun it => sum (T_item_success it) (T_item_failure it).
+
+        Definition parse_item (it : item CharType) : T_item it
+          := match it as it return T_item it with
+               | Terminal ch
+                 => match Sumbool.sumbool_of_bool ([[ ch ]] =s str) with
+                      | left pf => inl (parse_terminal_success ch pf)
+                      | right pf => inr (parse_terminal_failure ch pf)
+                    end
+               | NonTerminal name
+                 => match str_matches_name name with
+                      | inl ret => inl (lift_success ret)
+                      | inr ret => inr (lift_failure ret)
+                    end
+             end.
+      End item.
+    End parts.
+
 
       Section production.
         Context (str0 : StringWithSplitState String split_stateT)
