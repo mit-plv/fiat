@@ -109,7 +109,12 @@ Ltac simpl_transitivity :=
     speed things up. *)
 Ltac destruct_all_matches_then matcher tac :=
   repeat match goal with
-           | [ H : ?T |- _ ] => matcher T; destruct H; tac
+           | [ H : ?T |- _ ]
+             => matcher T; destruct H;
+                try match type of H with
+                      | T => clear H
+                    end;
+                tac
          end.
 
 Ltac destruct_all_matches matcher := destruct_all_matches_then matcher ltac:(simpl in *).

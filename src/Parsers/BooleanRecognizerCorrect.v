@@ -26,6 +26,7 @@ Section sound.
             (remove_name_dec : forall ls name, is_valid_name ls name = true
                                                -> names_listT_R (remove_name ls name) ls)
             (ntl_wf : well_founded names_listT_R)
+            (split_stateT : Type)
             (remove_name_1
              : forall ls ps ps',
                  is_valid_name (remove_name ls ps) ps' = true
@@ -35,10 +36,11 @@ Section sound.
                  is_valid_name (remove_name ls ps) ps' = false
                  <-> is_valid_name ls ps' = false \/ ps = ps')
             (split_string_for_production
-             : forall (str0 : String) (prod : production CharType), list (String * String))
+             : forall (str0 : StringWithSplitState String split_stateT) (prod : production CharType), list (StringWithSplitState String split_stateT * StringWithSplitState String split_stateT))
             (split_string_for_production_correct
-             : forall str0 prod,
-                 List.Forall (fun s1s2 => fst s1s2 ++ snd s1s2 =s str0)
+             : forall (str0 : StringWithSplitState String split_stateT) prod,
+                 List.Forall (fun s1s2 : StringWithSplitState String split_stateT * StringWithSplitState String split_stateT
+                              => fst s1s2 ++ snd s1s2 =s str0)
                              (split_string_for_production str0 prod)).
 
     Let P : string -> Prop
@@ -51,7 +53,7 @@ Section sound.
         := sub_productions_listT is_valid_name valid initial_names_data.*)
 
       Section item.
-        Context (str : String)
+        Context (str : StringWithSplitState String split_stateT)
                 (str_matches_name : string -> bool).
 
         Definition str_matches_name_soundT
@@ -66,7 +68,7 @@ Section sound.
         Lemma parse_item_sound
               (str_matches_name_sound : str_matches_name_soundT)
               (it : item CharType)
-        : parse_item String str str_matches_name it = true -> parse_of_item _ G str it.
+        : parse_item str str_matches_name it = true -> parse_of_item _ G str it.
         Proof.
           unfold parse_item, str_matches_name_soundT in *.
           repeat match goal with
@@ -75,8 +77,9 @@ Section sound.
                    | [ |- context[match ?E with _ => _ end] ] => atomic E; destruct E
                    | [ H : _ = true |- _ ] => apply bool_eq_correct in H
                    | [ H : context[match ?E with _ => _ end] |- context[?E] ] => destruct E
-                   | _ => progress subst
+                   | _ => progress (simpl in *; subst)
                    | _ => solve [ eauto ]
+                   | [ H : StringWithSplitState _ _ |- _ ] => destruct H
                  end.
         Defined.
 
@@ -89,7 +92,7 @@ Section sound.
                          minimal_parse_of_name String G initial_names_data is_valid_name remove_name str0 valid str name
                          -> Pv str0 valid name)
         : minimal_parse_of_item _ G initial_names_data is_valid_name remove_name str0 valid str it
-          -> parse_item String str str_matches_name it = true.
+          -> parse_item str str_matches_name it = true.
         Proof.
           unfold parse_item, str_matches_name_completeT in *.
           repeat
@@ -117,12 +120,12 @@ Section sound.
 
       Section item_ext.
         Lemma parse_item_ext
-              (str : String)
+              (str : StringWithSplitState String split_stateT)
               (str_matches_name1 str_matches_name2 : string -> bool)
               (it : item CharType)
               (ext : forall x, str_matches_name1 x = str_matches_name2 x)
-        : parse_item String str str_matches_name1 it
-          = parse_item String str str_matches_name2 it.
+        : parse_item str str_matches_name1 it
+          = parse_item str str_matches_name2 it.
         Proof.
           unfold parse_item.
           destruct it; auto;
@@ -134,8 +137,8 @@ Section sound.
       End item_ext.
 
       Section production.
-        Context (str0 : String)
-                (parse_name : forall (str : String),
+        Context (str0 : StringWithSplitState String split_stateT)
+                (parse_name : forall (str : StringWithSplitState String split_stateT),
                                 str ≤s str0
                                 -> string
                                 -> bool).
@@ -146,30 +149,30 @@ Section sound.
                -> parse_of_item _ G str (NonTerminal _ name).
 
         Definition parse_name_completeT P
-          := forall valid str pf name (H_sub : P str0 valid name),
+          := forall valid (str : StringWithSplitState String split_stateT) pf name (H_sub : P str0 valid name),
                minimal_parse_of_name _ G initial_names_data is_valid_name remove_name str0 valid str name
                -> @parse_name str pf name = true.
 
         Definition split_correctT
-                   (str1 : String)
-                   (split : String * String)
+                   (str1 : StringWithSplitState String split_stateT)
+                   (split : StringWithSplitState String split_stateT * StringWithSplitState String split_stateT)
           := fst split ++ snd split =s str1.
 
-        Definition split_list_correctT str1 (split_list : list (String * String))
+        Definition split_list_correctT str1 (split_list : list (StringWithSplitState String split_stateT * StringWithSplitState String split_stateT))
           := List.Forall (@split_correctT str1) split_list.
 
         Definition split_list_completeT
                    valid1 valid2
-                   (str : String) (pf : str ≤s str0)
-                   (split_list : list (String * String))
+                   (str : StringWithSplitState String split_stateT) (pf : str ≤s str0)
+                   (split_list : list (StringWithSplitState String split_stateT * StringWithSplitState String split_stateT))
                    (prod : production CharType)
           := match prod return Type with
                | nil => True
-               | it::its => ({ s1s2 : String * String
+               | it::its => ({ s1s2 : StringWithSplitState String split_stateT * StringWithSplitState String split_stateT
                                       & (fst s1s2 ++ snd s1s2 =s str)
                                         * (minimal_parse_of_item _ G initial_names_data is_valid_name remove_name str0 valid1 (fst s1s2) it)
                                         * (minimal_parse_of_production _ G initial_names_data is_valid_name remove_name str0 valid2 (snd s1s2) its) }%type)
-                            -> ({ s1s2 : String * String
+                            -> ({ s1s2 : StringWithSplitState String split_stateT * StringWithSplitState String split_stateT
                                          & (In s1s2 split_list)
                                            * (minimal_parse_of_item _ G initial_names_data is_valid_name remove_name str0 valid1 (fst s1s2) it)
                                            * (minimal_parse_of_production _ G initial_names_data is_valid_name remove_name str0 valid2 (snd s1s2) its) }%type)
@@ -177,9 +180,9 @@ Section sound.
 
         Lemma parse_production_sound
                  (parse_name_sound : parse_name_soundT)
-                 (str : String) (pf : str ≤s str0)
+                 (str : StringWithSplitState String split_stateT) (pf : str ≤s str0)
                  (prod : production CharType)
-        : parse_production split_string_for_production split_string_for_production_correct parse_name pf prod = true
+        : parse_production split_string_for_production split_string_for_production_correct str0 parse_name str pf prod = true
           -> parse_of_production _ G str prod.
         Proof.
           change (forall str0 prod, split_list_correctT str0 (split_string_for_production str0 prod)) in split_string_for_production_correct.
@@ -195,6 +198,7 @@ Section sound.
                    | _ => progress destruct_head sumbool
                    | _ => progress destruct_head and
                    | _ => progress destruct_head sig
+                   | _ => progress destruct_head StringWithSplitState
                    | _ => progress simpl in *
                    | _ => progress subst
                    | [ H : (_ =s _) = true |- _ ] => apply bool_eq_correct in H
@@ -218,10 +222,10 @@ Section sound.
               (Hinit : forall str (pf : str ≤s str0) name,
                          minimal_parse_of_name String G initial_names_data is_valid_name remove_name str0 valid str name
                          -> Pv str0 valid name)
-              (str : String) (pf : str ≤s str0)
+              (str : StringWithSplitState String split_stateT) (pf : str ≤s str0)
               (prod : production CharType)
         : minimal_parse_of_production _ G initial_names_data is_valid_name remove_name str0 valid str prod
-          -> parse_production split_string_for_production split_string_for_production_correct parse_name pf prod = true.
+          -> parse_production split_string_for_production split_string_for_production_correct str0 parse_name str pf prod = true.
         Proof.
           change (forall str0 prod, split_list_correctT str0 (split_string_for_production str0 prod)) in split_string_for_production_correct.
           revert valid str Hinit pf; induction prod;
@@ -229,6 +233,7 @@ Section sound.
                    | _ => intro
                    | _ => progress simpl in *
                    | _ => progress subst
+                   | _ => progress destruct_head StringWithSplitState
                    | _ => solve [ auto ]
                    | [ H : fold_right orb false (map _ _) = true |- _ ] => apply fold_right_orb_map_sig1 in H
                    | [ H : (_ || _)%bool = true |- _ ] => apply Bool.orb_true_elim in H
@@ -249,11 +254,11 @@ Section sound.
                           apply bool_eq_correct in H';
                           progress subst
                    | [ H : minimal_parse_of_production _ _ _ _ _ _ _ _ (_::_) |- _ ] => inversion H; clear H; subst
-                   | [ H : ?s ≤s _ |- context[split_string_for_production_correct ?s ?p] ]
+                   | [ H : ?s ≤s _ |- context[split_string_for_production_correct {| string_val := ?s ; state_val := ?st |} ?p] ]
                      => specialize (fun a b p0 v1 p1 v2 p2
-                                    => @split_string_for_production_complete v1 v2 s H p (existT _ (a, b) (p0, p1, p2)))
-                   | [ H : forall a b, is_true (a ++ b =s _ ++ _) -> _ |- _ ]
-                     => specialize (H _ _ (proj2 (@bool_eq_correct _ _ _ _) eq_refl))
+                                    => @split_string_for_production_complete v1 v2 {| string_val := s ; state_val := st |} H p (existT _ (a, b) (p0, p1, p2)))
+                   | [ H : forall a b, is_true (string_val a ++ string_val b =s _ ++ _) -> _ |- _ ]
+                     => specialize (fun st0 st1 => H {| state_val := st0 |} {| state_val := st1 |} (proj2 (@bool_eq_correct _ _ _ _) eq_refl))
                    | [ H : ?a -> ?b, H' : ?a |- _ ] => specialize (H H')
                    | [ H : forall v : names_listT, @?a v -> @?b v |- _ ]
                      => pose proof (H valid); pose proof (H initial_names_data); clear H
@@ -262,10 +267,10 @@ Section sound.
                    | [ |- (_ =s _) = true ] => apply bool_eq_correct
                  end;
           match goal with
-            | [ H : In (?s1, ?s2) (split_string_for_production ?str ?prod)
-                |- { x : { s1s2 : _ | (fst s1s2 ++ snd s1s2 =s ?str) = true } | _ } ]
+            | [ H : In (?s1, ?s2) (split_string_for_production {| string_val := ?str ; state_val := ?st |} ?prod)
+                |- { x : { s1s2 : _ | (?f (fst s1s2) ++ ?f (snd s1s2) =s ?str) = true } | _ } ]
               => let H' := fresh in
-                 pose proof (proj1 (@Forall_forall _ _ _) (@split_string_for_production_correct str prod) _ H) as H';
+                 pose proof (proj1 (@Forall_forall _ _ _) (@split_string_for_production_correct {| string_val := str ; state_val := st |} prod) _ H) as H';
                    unfold split_correctT in H';
                    refine (exist _ (exist _ (s1, s2) _) _);
                    simpl in *
@@ -294,16 +299,16 @@ Section sound.
 
       Section production_ext.
         Lemma parse_production_ext
-              (str0 : String)
-              (parse_name1 parse_name2 : forall (str : String),
+              (str0 : StringWithSplitState String split_stateT)
+              (parse_name1 parse_name2 : forall (str : StringWithSplitState String split_stateT),
                                            str ≤s str0
                                            -> string
                                            -> bool)
-              (str : String) (pf : str ≤s str0) (prod : production CharType)
+              (str : StringWithSplitState String split_stateT) (pf : str ≤s str0) (prod : production CharType)
               (ext : forall str' pf' name', parse_name1 str' pf' name'
                                             = parse_name2 str' pf' name')
-        : parse_production split_string_for_production split_string_for_production_correct parse_name1 pf prod
-          = parse_production split_string_for_production split_string_for_production_correct parse_name2 pf prod.
+        : parse_production split_string_for_production split_string_for_production_correct str0 parse_name1 str pf prod
+          = parse_production split_string_for_production split_string_for_production_correct str0 parse_name2 str pf prod.
         Proof.
           revert str pf.
           induction prod as [|? ? IHprod]; simpl; intros; try reflexivity; [].
@@ -315,8 +320,8 @@ Section sound.
       End production_ext.
 
       Section productions.
-        Context (str0 : String)
-                (parse_name : forall (str : String),
+        Context (str0 : StringWithSplitState String split_stateT)
+                (parse_name : forall (str : StringWithSplitState String split_stateT),
                                 str ≤s str0
                                 -> string
                                 -> bool).
@@ -340,19 +345,20 @@ Section sound.
                    | [ H : parse_of _ _ _ (_::_) |- _ ] => inversion H; clear H; subst
                    | [ H : minimal_parse_of _ _ _ _ _ _ _ _ nil |- _ ] => solve [ inversion H ]
                    | [ H : minimal_parse_of _ _ _ _ _ _ _ _ (_::_) |- _ ] => inversion H; clear H; subst
-                   | [ H : parse_production _ _ _ _ _ = true |- _ ] => apply parse_production_sound in H; try eassumption; []
+                   | [ H : parse_production _ _ _ _ _ _ _ = true |- _ ] => apply parse_production_sound in H; try eassumption; []
                    | _ => left; eapply parse_production_complete; eassumption
                    | _ => solve [ eauto ]
                  end.
 
         Lemma parse_productions_sound
-                 (parse_name_sound : parse_name_soundT parse_name)
-                 (str : String) (pf : str ≤s str0)
+                 (parse_name_sound : parse_name_soundT str0 parse_name)
+                 (str : StringWithSplitState String split_stateT) (pf : str ≤s str0)
                  (prods : productions CharType)
-        : parse_productions split_string_for_production split_string_for_production_correct parse_name pf prods = true
+        : parse_productions split_string_for_production split_string_for_production_correct str0 parse_name str pf prods = true
           -> parse_of _ G str prods.
         Proof.
           change (forall str0 prod, split_list_correctT str0 (split_string_for_production str0 prod)) in split_string_for_production_correct.
+          destruct str as [str ?].
           revert str pf; induction prods; simpl.
           { unfold parse_productions; simpl; intros ?? H; exfalso; clear -H.
             abstract discriminate. }
@@ -362,17 +368,18 @@ Section sound.
 
         Lemma parse_productions_complete
               valid Pv
-              (parse_name_complete : parse_name_completeT parse_name Pv)
+              (parse_name_complete : parse_name_completeT str0 parse_name Pv)
               (split_string_for_production_complete : forall valid1 valid2 str pf prod, @split_list_completeT str0 valid1 valid2 str pf (split_string_for_production str prod) prod)
               (Hinit : forall str (pf : str ≤s str0) name,
                          minimal_parse_of_name String G initial_names_data is_valid_name remove_name str0 valid str name
                          -> Pv str0 valid name)
-              (str : String) (pf : str ≤s str0)
+              (str : StringWithSplitState String split_stateT) (pf : str ≤s str0)
               (prods : productions CharType)
         : minimal_parse_of _ G initial_names_data is_valid_name remove_name str0 valid str prods
-          -> parse_productions split_string_for_production split_string_for_production_correct parse_name pf prods = true.
+          -> parse_productions split_string_for_production split_string_for_production_correct str0 parse_name str pf prods = true.
         Proof.
           change (forall str0 prod, split_list_correctT str0 (split_string_for_production str0 prod)) in split_string_for_production_correct.
+          destruct str as [str ?].
           revert str pf; induction prods; simpl.
           { unfold parse_productions; simpl; intros ?? H; exfalso; clear -H.
             abstract inversion H. }
@@ -383,16 +390,16 @@ Section sound.
 
       Section productions_ext.
         Lemma parse_productions_ext
-              (str0 : String)
-              (parse_name1 parse_name2 : forall (str : String),
+              (str0 : StringWithSplitState String split_stateT)
+              (parse_name1 parse_name2 : forall (str : StringWithSplitState String split_stateT),
                                            str ≤s str0
                                            -> string
                                            -> bool)
-              (str : String) (pf : str ≤s str0) (prods : productions CharType)
+              (str : StringWithSplitState String split_stateT) (pf : str ≤s str0) (prods : productions CharType)
               (ext : forall str' pf' name', parse_name1 str' pf' name'
                                             = parse_name2 str' pf' name')
-        : parse_productions split_string_for_production split_string_for_production_correct parse_name1 pf prods
-          = parse_productions split_string_for_production split_string_for_production_correct parse_name2 pf prods.
+        : parse_productions split_string_for_production split_string_for_production_correct str0 parse_name1 str pf prods
+          = parse_productions split_string_for_production split_string_for_production_correct str0 parse_name2 str pf prods.
         Proof.
           revert str pf.
           induction prods as [|? ? IHprod]; simpl; intros; try reflexivity; [].
@@ -404,18 +411,18 @@ Section sound.
 
       Section names.
         Section step.
-          Context (str0 : String) (valid : names_listT)
+          Context (str0 : StringWithSplitState String split_stateT) (valid : names_listT)
                   (parse_name
-                   : forall (p : String * names_listT),
-                       prod_relation (ltof String Length) names_listT_R p (str0, valid)
-                       -> forall str : String, str ≤s fst p -> string -> bool).
+                   : forall (p : StringWithSplitState String split_stateT * names_listT),
+                       prod_relation (ltof _ (fun s : StringWithSplitState String split_stateT => Length s)) names_listT_R p (str0, valid)
+                       -> forall str : StringWithSplitState String split_stateT, str ≤s fst p -> string -> bool).
 
           Lemma parse_name_step_sound
-                (parse_name_sound : forall p pf, parse_name_soundT (@parse_name p pf))
-                (str : String) (pf : str ≤s str0) (name : string)
+                (parse_name_sound : forall p pf, parse_name_soundT _ (@parse_name p pf))
+                (str : StringWithSplitState String split_stateT) (pf : str ≤s str0) (name : string)
           : parse_name_step G initial_names_data is_valid_name remove_name
                             remove_name_dec split_string_for_production
-                            split_string_for_production_correct parse_name pf name
+                            split_string_for_production_correct parse_name _ pf name
             = true
             -> parse_of_item _ G str (NonTerminal _ name).
           Proof.
@@ -430,14 +437,15 @@ Section sound.
               destruct pf as [pf|]; subst.
               { destruct (n pf). }
               { intro H'.
-                apply parse_productions_sound in H'; trivial. } }
+                apply parse_productions_sound in H'; trivial;
+                destruct_head StringWithSplitState; subst; trivial. } }
           Defined.
 
           Lemma parse_name_step_complete
                 Pv
-                (parse_name_complete : forall p pf, parse_name_completeT (@parse_name p pf) (Pv p))
+                (parse_name_complete : forall p pf, parse_name_completeT _ (@parse_name p pf) (Pv p))
                 (split_string_for_production_complete : forall str0 valid1 valid2 str pf prod, @split_list_completeT str0 valid1 valid2 str pf (split_string_for_production str prod) prod)
-                (str : String) (pf : str ≤s str0) (name : string)
+                (str : StringWithSplitState String split_stateT) (pf : str ≤s str0) (name : string)
                 (Hinit : forall str1,
                            str1 ≤s str ->
                            forall name0,
@@ -453,16 +461,17 @@ Section sound.
           : minimal_parse_of_name _ G initial_names_data is_valid_name remove_name str0 valid str name
             -> parse_name_step G initial_names_data is_valid_name remove_name
                             remove_name_dec split_string_for_production
-                            split_string_for_production_correct parse_name pf name
+                            split_string_for_production_correct parse_name _ pf name
             = true.
           Proof.
             unfold parse_name_step.
             edestruct lt_dec as [|n].
-            { intro H'.
-              destruct H'.
+            { intros H'.
+              inversion H'; clear H'; subst. (* Work around Anomaly: Evar ?425 was not declared. Please report. *)
               { eapply parse_productions_complete; [ .. | eassumption ];
                 trivial. }
-              { match goal with
+              { destruct_head StringWithSplitState; subst.
+                match goal with
                   | [ H : ?x < ?x |- _ ] => exfalso; clear -H; abstract omega
                 end. } }
             { destruct pf as [pf|]; subst.
@@ -476,7 +485,7 @@ Section sound.
                   { let H' := match goal with H : minimal_parse_of _ _ _ _ _ _ _ _ _ |- _ => constr:H end in
                     eapply parse_productions_complete in H'; eauto.
                     eapply (@parse_name_complete (_, _)). } }
-                { intro H''; exfalso; clear -H'' pf'.
+                { intro H''; exfalso; clear -n H'' pf'.
                   abstract (
                       inversion_clear H'';
                       (omega || congruence)
@@ -485,19 +494,19 @@ Section sound.
         End step.
 
         Section step_extensional.
-          Lemma parse_name_step_ext (str0 : String) (valid : names_listT)
-                (parse_name1 parse_name2: forall (p : String * names_listT),
-                                            prod_relation (ltof String Length) names_listT_R p (str0, valid)
-                                            -> forall str : String, str ≤s fst p -> string -> bool)
-                (str : String) (pf : str ≤s str0) (name : string)
+          Lemma parse_name_step_ext (str0 : StringWithSplitState String split_stateT) (valid : names_listT)
+                (parse_name1 parse_name2: forall (p : StringWithSplitState String split_stateT * names_listT),
+                                            prod_relation (ltof _ (fun s : StringWithSplitState String split_stateT => Length s)) names_listT_R p (str0, valid)
+                                            -> forall str : StringWithSplitState String split_stateT, str ≤s fst p -> string -> bool)
+                (str : StringWithSplitState String split_stateT) (pf : str ≤s str0) (name : string)
                 (ext : forall p pf0 str' pf' name', parse_name1 p pf0 str' pf' name'
                                                     = parse_name2 p pf0 str' pf' name')
           : parse_name_step G initial_names_data is_valid_name remove_name
                             remove_name_dec split_string_for_production
-                            split_string_for_production_correct parse_name1 pf name
+                            split_string_for_production_correct parse_name1 _ pf name
             = parse_name_step G initial_names_data is_valid_name remove_name
                               remove_name_dec split_string_for_production
-                              split_string_for_production_correct parse_name2 pf name.
+                              split_string_for_production_correct parse_name2 _ pf name.
           Proof.
             unfold parse_name_step.
             edestruct lt_dec.
@@ -509,13 +518,13 @@ Section sound.
 
         Section wf.
           Lemma parse_name_or_abort_sound
-                (p : String * names_listT) (str : String)
+                (p : StringWithSplitState String split_stateT * names_listT) (str : StringWithSplitState String split_stateT)
                 (pf : str ≤s fst p)
                 (name : string)
           : parse_name_or_abort G initial_names_data is_valid_name remove_name
                                 remove_name_dec ntl_wf split_string_for_production
                                 split_string_for_production_correct
-                                p pf name
+                                p _ pf name
             = true
             -> parse_of_item _ G str (NonTerminal _ name).
           Proof.
@@ -545,16 +554,11 @@ Section sound.
 
           Lemma parse_name_or_abort_complete
                 (split_string_for_production_complete : forall str0 valid1 valid2 str pf prod, @split_list_completeT str0 valid1 valid2 str pf (split_string_for_production str prod) prod)
-                (Pv := fun (p : String * names_listT)
-                           (str0 : String) (valid0 : names_listT) (_ : string) =>
+                (Pv := fun (p : StringWithSplitState String split_stateT * names_listT)
+                           (str0 : StringWithSplitState String split_stateT) (valid0 : names_listT) (_ : string) =>
                          sub_names_listT is_valid_name valid0 (snd p)
-                         /\ sub_names_listT is_valid_name (snd p) initial_names_data
-                         (*sub_names_listT is_valid_name (snd p) initial_names_data
-                         /\ sub_names_listT is_valid_name valid0 initial_names_data*)(*
-                         /\ prod_relation (ltof String Length) (sub_names_listT is_valid_name)
-                                       (str0, valid0) p*))
-                (p : String * names_listT)
-                (*H_sub_init : sub_names_listT is_valid_name (snd p) initial_names_data*)
+                         /\ sub_names_listT is_valid_name (snd p) initial_names_data)
+                (p : StringWithSplitState String split_stateT * names_listT)
           : @parse_name_completeT
               (fst p)
               (parse_name_or_abort G initial_names_data is_valid_name remove_name
@@ -574,7 +578,7 @@ Section sound.
                         trivial ] ].
             match goal with
               | [ H : appcontext[?f]
-                  |- _ -> parse_name_step _ _ _ _ _ _ _ (fun y _ b c d => ?f y b c d) _ _ = true ]
+                  |- _ -> parse_name_step _ _ _ _ _ _ _ (fun y _ b c d => ?f y b c d) _ _ _ = true ]
                 => revert H;
                   generalize f;
                   let H' := fresh "parse_name_step'" in
@@ -595,8 +599,8 @@ Section sound.
           Defined.
 
           Lemma parse_name_sound
-                (str : String) (name : string)
-          : parse_name _ G initial_names_data is_valid_name remove_name
+                (str : StringWithSplitState String split_stateT) (name : string)
+          : parse_name G initial_names_data is_valid_name remove_name
                        remove_name_dec ntl_wf split_string_for_production
                        split_string_for_production_correct
                        str name
@@ -609,10 +613,10 @@ Section sound.
 
           Lemma parse_name_complete
                 (split_string_for_production_complete : forall str0 valid1 valid2 str pf prod, @split_list_completeT str0 valid1 valid2 str pf (split_string_for_production str prod) prod)
-                (str : String)
+                (str : StringWithSplitState String split_stateT)
                 (name : string)
           : minimal_parse_of_name String G initial_names_data is_valid_name remove_name str initial_names_data str name
-            -> parse_name _ G initial_names_data is_valid_name remove_name
+            -> parse_name G initial_names_data is_valid_name remove_name
                           remove_name_dec ntl_wf split_string_for_production
                           split_string_for_production_correct
                           str name
@@ -632,23 +636,23 @@ End sound.
 
 Section brute_force_spliter.
   Lemma make_all_single_splits_complete_helper
-  : forall (str : string_stringlike)
-           (s1s2 : string_stringlike * string_stringlike),
+  : forall (str : String_with_no_state string_stringlike)
+           (s1s2 : String_with_no_state string_stringlike * String_with_no_state string_stringlike),
       fst s1s2 ++ snd s1s2 =s str -> In s1s2 (make_all_single_splits str).
   Proof.
-    intros str [s1 s2] H.
-    apply bool_eq_correct in H; subst.
+    intros [str [] ] [ [s1 [] ] [s2 [] ] ] H.
+    apply bool_eq_correct in H; simpl in *; subst.
     revert s2.
     induction s1; simpl in *.
     { intros.
-      destruct s2; left; reflexivity. }
+      destruct s2; left; simpl; reflexivity. }
     { intros; right.
-      refine (@in_map _ _ _ _ (s1, s2) _).
-      auto. }
+      refine (@in_map _ _ _ _ ({| string_val := s1 |}, {| string_val := s2 |}) _).
+      apply IHs1. }
   Qed.
 
   Lemma make_all_single_splits_complete
-  : forall G names_listT initial_names_data is_valid_name remove_name str0 valid0 valid1 str pf prod, @split_list_completeT _ string_stringlike G names_listT initial_names_data is_valid_name remove_name str0 valid0 valid1 str pf (@make_all_single_splits str) prod.
+  : forall G names_listT initial_names_data is_valid_name remove_name str0 valid0 valid1 str pf prod, @split_list_completeT _ string_stringlike G names_listT initial_names_data is_valid_name remove_name _ str0 valid0 valid1 str pf (@make_all_single_splits str) prod.
   Proof.
     intros; hnf.
     destruct prod; trivial.

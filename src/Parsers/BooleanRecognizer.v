@@ -18,13 +18,20 @@ Section recursive_descent_parser.
           (remove_name_dec : forall ls name,
                                is_valid_name ls name = true
                                -> names_listT_R (remove_name ls name) ls)
-          (ntl_wf : well_founded names_listT_R).
+          (ntl_wf : well_founded names_listT_R)
+          (split_stateT : Type).
+
+  Record StringWithSplitState :=
+    { string_val :> String;
+      state_val :> split_stateT }.
+
   Section bool.
     Context (split_string_for_production
-             : forall (str0 : String) (prod : production CharType), list (String * String))
+             : forall (str0 : StringWithSplitState) (prod : production CharType), list (StringWithSplitState * StringWithSplitState))
             (split_string_for_production_correct
-             : forall str0 prod,
-                 List.Forall (fun s1s2 => (fst s1s2 ++ snd s1s2 =s str0) = true)
+             : forall (str0 : StringWithSplitState) prod,
+                 List.Forall (fun s1s2 : StringWithSplitState * StringWithSplitState
+                              => (fst s1s2 ++ snd s1s2 =s str0) = true)
                              (split_string_for_production str0 prod)).
 
     Section parts.
@@ -32,7 +39,7 @@ Section recursive_descent_parser.
         (** We require that the list of names be non-empty; we
             do this by passing the first element separately, rather
             than invoking dependent types and proofs. *)
-        Context (str : String)
+        Context (str : StringWithSplitState)
                 (str_matches_name : string -> bool).
 
         Definition parse_item (it : item CharType) : bool
@@ -43,8 +50,8 @@ Section recursive_descent_parser.
       End item.
 
       Section production.
-        Variable str0 : String.
-        Variable parse_name : forall (str : String),
+        Variable str0 : StringWithSplitState.
+        Variable parse_name : forall (str : StringWithSplitState),
                                        str ≤s str0
                                        -> string
                                        -> bool.
@@ -52,7 +59,7 @@ Section recursive_descent_parser.
         (** To match a [production], we must match all of its items.
             But we may do so on any particular split. *)
         Fixpoint parse_production
-                 (str : String) (pf : str ≤s str0)
+                 (str : StringWithSplitState) (pf : str ≤s str0)
                  (prod : production CharType)
         : bool.
         Proof.
@@ -74,6 +81,7 @@ Section recursive_descent_parser.
                  end;
           revert pf; clear; intros;
           abstract (
+              destruct str;
               repeat first [ progress destruct_head sig
                            | progress destruct_head and
                            | etransitivity; eassumption
@@ -87,48 +95,52 @@ Section recursive_descent_parser.
       End production.
 
       Section productions.
-        Variable str0 : String.
-        Variable parse_name : forall (str : String)
+        Variable str0 : StringWithSplitState.
+        Variable parse_name : forall (str : StringWithSplitState)
                                      (pf : str ≤s str0),
                                 string -> bool.
 
         (** To parse as a given list of [production]s, we must parse as one of the [production]s. *)
-        Definition parse_productions (str : String) (pf : str ≤s str0) (prods : productions CharType)
+        Definition parse_productions (str : StringWithSplitState) (pf : str ≤s str0) (prods : productions CharType)
         : bool
           := fold_right orb
                         false
-                        (map (parse_production parse_name pf)
+                        (map (parse_production str0 parse_name str pf)
                              prods).
       End productions.
 
 
       Section names.
         Section step.
-          Context (str0 : String) (valid_list : names_listT)
+          Context (str0 : StringWithSplitState) (valid_list : names_listT)
                   (parse_name
-                   : forall (p : String * names_listT),
-                       prod_relation (ltof String Length) names_listT_R p (str0, valid_list)
-                       -> forall str : String, str ≤s fst p -> string -> bool).
+                   : forall (p : StringWithSplitState * names_listT),
+                       prod_relation (ltof StringWithSplitState Length) names_listT_R p (str0, valid_list)
+                       -> forall str : StringWithSplitState, str ≤s fst p -> string -> bool).
 
           Definition parse_name_step
-                     (str : String) (pf : str ≤s str0) (name : string)
+                     (str : StringWithSplitState) (pf : str ≤s str0) (name : string)
           : bool
             := match lt_dec (Length str) (Length str0), Sumbool.sumbool_of_bool (is_valid_name valid_list name) with
                  | left pf', _ =>
                    (** [str] got smaller, so we reset the valid names list *)
                    parse_productions
+                     _
                      (@parse_name
                         (str, initial_names_data)
                         (or_introl pf'))
+                     _
                      (or_intror eq_refl)
                      (Lookup G name)
                  | right pf', left H' =>
                    (** [str] didn't get smaller, so we cache the fact that we've hit this name already *)
                    (** It was valid, so we can remove it *)
                    parse_productions
+                     _
                      (@parse_name
                         (str0, remove_name valid_list name)
                         (or_intror (conj eq_refl (remove_name_dec H'))))
+                     _
                      (or_intror eq_refl)
                      (Lookup G name)
                  | right _, right _
@@ -140,23 +152,23 @@ Section recursive_descent_parser.
         Section wf.
           (** TODO: add comment explaining signature *)
           Definition parse_name_or_abort
-          : forall (p : String * names_listT) (str : String),
+          : forall (p : StringWithSplitState * names_listT) (str : StringWithSplitState),
               str ≤s fst p
               -> string
               -> bool
             := @Fix3
-                 (prod String names_listT) _ _ _
+                 (prod StringWithSplitState names_listT) _ _ _
                  _ (@well_founded_prod_relation
-                      String
+                      StringWithSplitState
                       names_listT
                       _
                       _
-                      (well_founded_ltof _ Length)
+                      (well_founded_ltof _ (fun s : StringWithSplitState => Length s))
                       ntl_wf)
                  _
                  (fun sl => @parse_name_step (fst sl) (snd sl)).
 
-          Definition parse_name (str : String) (name : string)
+          Definition parse_name (str : StringWithSplitState) (name : string)
           : bool
             := @parse_name_or_abort (str, initial_names_data) str
                                     (or_intror eq_refl) name.
@@ -266,46 +278,67 @@ Section recursive_descent_parser_list.
   Qed.
 End recursive_descent_parser_list.
 
+Definition String_with_no_state {CharType} (String : string_like CharType) := StringWithSplitState String True.
+
+Definition default_String_with_no_state {CharType} (String : string_like CharType) (s : String) : String_with_no_state String
+  := {| string_val := s ; state_val := I |}.
+
+Coercion default_string_with_no_state (s : string) : String_with_no_state string_stringlike
+  := default_String_with_no_state string_stringlike s.
+
+Identity Coercion unfold_String_with_no_state : String_with_no_state >-> StringWithSplitState.
+
 (** TODO: move this elsewhere *)
 Section example_parse_string_grammar.
-  Fixpoint make_all_single_splits (str : string) : list (string * string)
-    := ((""%string, str))
+  Fixpoint make_all_single_splits' (str : string) : list (String_with_no_state string_stringlike * String_with_no_state string_stringlike)
+    := ((""%string : String_with_no_state string_stringlike),
+        (str : String_with_no_state string_stringlike))
          ::(match str with
               | ""%string => nil
               | String.String ch str' =>
-                map (fun p => (String.String ch (fst p), snd p))
-                    (make_all_single_splits str')
+                map (fun p : String_with_no_state string_stringlike * String_with_no_state string_stringlike
+                     => ((String.String ch (string_val (fst p)) : String_with_no_state string_stringlike),
+                         snd p))
+                    (make_all_single_splits' str')
             end).
 
-  Lemma make_all_single_splits_correct_eq str
-  : List.Forall (fun strs => fst strs ++ snd strs = str)%string (make_all_single_splits str).
+  Definition make_all_single_splits (str : String_with_no_state string_stringlike)
+    := make_all_single_splits' (string_val str).
+
+  Lemma make_all_single_splits_correct_eq (str : String_with_no_state string_stringlike)
+  : List.Forall (fun strs : String_with_no_state string_stringlike * String_with_no_state string_stringlike
+                 => string_val (fst strs) ++ string_val (snd strs) = string_val str)%string (make_all_single_splits str).
   Proof.
-    induction str; simpl; constructor; auto.
+    destruct str as [str ?].
+    induction str; simpl in *; constructor; auto.
     apply Forall_map.
-    unfold compose; simpl.
+    unfold compose; simpl in *.
     revert IHstr; apply Forall_impl; intros.
     subst; trivial.
   Qed.
 
   Local Opaque string_dec.
-  Lemma make_all_single_splits_correct_seq str
-  : List.Forall (fun strs : string_stringlike * string_stringlike
+  Lemma make_all_single_splits_correct_seq (str : String_with_no_state string_stringlike)
+  : List.Forall (fun strs : String_with_no_state string_stringlike * String_with_no_state string_stringlike
                  => (fst strs ++ snd strs =s str) = true)%string_like (make_all_single_splits str).
   Proof.
+    destruct str as [str ?].
     induction str; simpl; constructor; simpl; auto.
     { rewrite string_dec_refl; reflexivity. }
     { apply Forall_map.
       unfold compose; simpl.
       revert IHstr; apply Forall_impl; intros.
       match goal with H : (_ =s _) = true |- _ => apply bool_eq_correct in H end.
-      subst; rewrite string_dec_refl; reflexivity. }
+      simpl in *; subst; rewrite string_dec_refl; reflexivity. }
   Qed.
 
-  Lemma make_all_single_splits_correct_str_le (str : string_stringlike)
-  : List.Forall (fun strs => fst strs ≤s str /\ snd strs ≤s str)%string (make_all_single_splits str).
+  Lemma make_all_single_splits_correct_str_le (str : String_with_no_state string_stringlike)
+  : List.Forall (fun strs : String_with_no_state string_stringlike * String_with_no_state string_stringlike
+                 => fst strs ≤s str /\ snd strs ≤s str)%string (make_all_single_splits str).
   Proof.
     generalize (make_all_single_splits_correct_eq str).
     apply Forall_impl.
+    destruct str as [str ?]; simpl.
     intros; subst; split;
     first [ apply str_le1_append
           | apply str_le2_append ].
@@ -329,7 +362,8 @@ Section example_parse_string_grammar.
          rdp_list_remove_name
          _
          rdp_list_remove_name_dec rdp_list_ntl_wf
-         (fun (str : string_stringlike) _ => make_all_single_splits str)
+         _
+         (fun (str : String_with_no_state string_stringlike) _ => make_all_single_splits str)
          (fun str0 _ => make_all_single_splits_correct_seq str0).
 End example_parse_string_grammar.
 
