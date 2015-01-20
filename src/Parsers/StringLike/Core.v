@@ -39,3 +39,8 @@ Infix "=s" := (@bool_eq _ _) (at level 70, right associativity) : string_like_sc
 Definition str_le {CharType} {String : string_like CharType} (s1 s2 : String)
   := Length s1 < Length s2 \/ s1 = s2.
 Infix "≤s" := str_le (at level 70, right associativity).
+
+
+Record StringWithSplitState {CharType} (String : string_like CharType) (split_stateT : Type) :=
+  { string_val :> String;
+    state_val : split_stateT }.

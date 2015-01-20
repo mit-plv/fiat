@@ -21,16 +21,12 @@ Section recursive_descent_parser.
           (ntl_wf : well_founded names_listT_R)
           (split_stateT : Type).
 
-  Record StringWithSplitState :=
-    { string_val :> String;
-      state_val :> split_stateT }.
-
   Section bool.
     Context (split_string_for_production
-             : forall (str0 : StringWithSplitState) (prod : production CharType), list (StringWithSplitState * StringWithSplitState))
+             : forall (str0 : StringWithSplitState String split_stateT) (prod : production CharType), list (StringWithSplitState String split_stateT * StringWithSplitState String split_stateT))
             (split_string_for_production_correct
-             : forall (str0 : StringWithSplitState) prod,
-                 List.Forall (fun s1s2 : StringWithSplitState * StringWithSplitState
+             : forall (str0 : StringWithSplitState String split_stateT) prod,
+                 List.Forall (fun s1s2 : StringWithSplitState String split_stateT * StringWithSplitState String split_stateT
                               => (fst s1s2 ++ snd s1s2 =s str0) = true)
                              (split_string_for_production str0 prod)).
 
@@ -39,7 +35,7 @@ Section recursive_descent_parser.
         (** We require that the list of names be non-empty; we
             do this by passing the first element separately, rather
             than invoking dependent types and proofs. *)
-        Context (str : StringWithSplitState)
+        Context (str : StringWithSplitState String split_stateT)
                 (str_matches_name : string -> bool).
 
         Definition parse_item (it : item CharType) : bool
@@ -50,8 +46,8 @@ Section recursive_descent_parser.
       End item.
 
       Section production.
-        Variable str0 : StringWithSplitState.
-        Variable parse_name : forall (str : StringWithSplitState),
+        Variable str0 : StringWithSplitState String split_stateT.
+        Variable parse_name : forall (str : StringWithSplitState String split_stateT),
                                        str ≤s str0
                                        -> string
                                        -> bool.
@@ -59,7 +55,7 @@ Section recursive_descent_parser.
         (** To match a [production], we must match all of its items.
             But we may do so on any particular split. *)
         Fixpoint parse_production
-                 (str : StringWithSplitState) (pf : str ≤s str0)
+                 (str : StringWithSplitState String split_stateT) (pf : str ≤s str0)
                  (prod : production CharType)
         : bool.
         Proof.
@@ -95,13 +91,13 @@ Section recursive_descent_parser.
       End production.
 
       Section productions.
-        Variable str0 : StringWithSplitState.
-        Variable parse_name : forall (str : StringWithSplitState)
+        Variable str0 : StringWithSplitState String split_stateT.
+        Variable parse_name : forall (str : StringWithSplitState String split_stateT)
                                      (pf : str ≤s str0),
                                 string -> bool.
 
         (** To parse as a given list of [production]s, we must parse as one of the [production]s. *)
-        Definition parse_productions (str : StringWithSplitState) (pf : str ≤s str0) (prods : productions CharType)
+        Definition parse_productions (str : StringWithSplitState String split_stateT) (pf : str ≤s str0) (prods : productions CharType)
         : bool
           := fold_right orb
                         false
@@ -112,14 +108,14 @@ Section recursive_descent_parser.
 
       Section names.
         Section step.
-          Context (str0 : StringWithSplitState) (valid_list : names_listT)
+          Context (str0 : StringWithSplitState String split_stateT) (valid_list : names_listT)
                   (parse_name
-                   : forall (p : StringWithSplitState * names_listT),
-                       prod_relation (ltof StringWithSplitState Length) names_listT_R p (str0, valid_list)
-                       -> forall str : StringWithSplitState, str ≤s fst p -> string -> bool).
+                   : forall (p : StringWithSplitState String split_stateT * names_listT),
+                       prod_relation (ltof _ (fun s : StringWithSplitState _ _ => Length s)) names_listT_R p (str0, valid_list)
+                       -> forall str : StringWithSplitState String split_stateT, str ≤s fst p -> string -> bool).
 
           Definition parse_name_step
-                     (str : StringWithSplitState) (pf : str ≤s str0) (name : string)
+                     (str : StringWithSplitState String split_stateT) (pf : str ≤s str0) (name : string)
           : bool
             := match lt_dec (Length str) (Length str0), Sumbool.sumbool_of_bool (is_valid_name valid_list name) with
                  | left pf', _ =>
@@ -152,23 +148,23 @@ Section recursive_descent_parser.
         Section wf.
           (** TODO: add comment explaining signature *)
           Definition parse_name_or_abort
-          : forall (p : StringWithSplitState * names_listT) (str : StringWithSplitState),
+          : forall (p : StringWithSplitState String split_stateT * names_listT) (str : StringWithSplitState String split_stateT),
               str ≤s fst p
               -> string
               -> bool
             := @Fix3
-                 (prod StringWithSplitState names_listT) _ _ _
+                 (prod (StringWithSplitState String split_stateT) names_listT) _ _ _
                  _ (@well_founded_prod_relation
-                      StringWithSplitState
+                      (StringWithSplitState String split_stateT)
                       names_listT
                       _
                       _
-                      (well_founded_ltof _ (fun s : StringWithSplitState => Length s))
+                      (well_founded_ltof _ (fun s : StringWithSplitState String split_stateT => Length s))
                       ntl_wf)
                  _
                  (fun sl => @parse_name_step (fst sl) (snd sl)).
 
-          Definition parse_name (str : StringWithSplitState) (name : string)
+          Definition parse_name (str : StringWithSplitState String split_stateT) (name : string)
           : bool
             := @parse_name_or_abort (str, initial_names_data) str
                                     (or_intror eq_refl) name.

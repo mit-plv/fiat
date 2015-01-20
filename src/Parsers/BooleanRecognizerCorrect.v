@@ -198,7 +198,7 @@ Section sound.
                    | _ => progress destruct_head sumbool
                    | _ => progress destruct_head and
                    | _ => progress destruct_head sig
-                   | _ => progress destruct_head StringWithSplitState
+                   | _ => progress destruct_head @StringWithSplitState
                    | _ => progress simpl in *
                    | _ => progress subst
                    | [ H : (_ =s _) = true |- _ ] => apply bool_eq_correct in H
@@ -233,7 +233,7 @@ Section sound.
                    | _ => intro
                    | _ => progress simpl in *
                    | _ => progress subst
-                   | _ => progress destruct_head StringWithSplitState
+                   | _ => progress destruct_head @StringWithSplitState
                    | _ => solve [ auto ]
                    | [ H : fold_right orb false (map _ _) = true |- _ ] => apply fold_right_orb_map_sig1 in H
                    | [ H : (_ || _)%bool = true |- _ ] => apply Bool.orb_true_elim in H
@@ -438,7 +438,7 @@ Section sound.
               { destruct (n pf). }
               { intro H'.
                 apply parse_productions_sound in H'; trivial;
-                destruct_head StringWithSplitState; subst; trivial. } }
+                destruct_head @StringWithSplitState; subst; trivial. } }
           Defined.
 
           Lemma parse_name_step_complete
@@ -470,7 +470,7 @@ Section sound.
               inversion H'; clear H'; subst. (* Work around Anomaly: Evar ?425 was not declared. Please report. *)
               { eapply parse_productions_complete; [ .. | eassumption ];
                 trivial. }
-              { destruct_head StringWithSplitState; subst.
+              { destruct_head @StringWithSplitState; subst.
                 match goal with
                   | [ H : ?x < ?x |- _ ] => exfalso; clear -H; abstract omega
                 end. } }
