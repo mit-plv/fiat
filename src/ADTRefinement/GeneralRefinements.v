@@ -35,6 +35,28 @@ Record NamedADTSig :=
   { ADTSigname : string;
     namedADTSig : ADTSig }.
 
+Record SharpenedUnderDelegates (Sig : ADTSig)
+  : Type
+  := Build_SharpenedUnderDelegates
+       { Sharpened_DelegateSigs : list NamedADTSig;
+         Sharpened_Implementation :
+           forall (DelegateReps : ilist (fun nadt : NamedADTSig => Type) Sharpened_DelegateSigs)
+                  (DelegateImpls : i2list (fun (nadt : NamedADTSig) rep => ComputationalADT.pcADT (namedADTSig nadt) rep) DelegateReps),
+             ComputationalADT.cADT Sig;
+         Sharpened_DelegateSpecs : ilist (fun nadt : NamedADTSig => ADT (namedADTSig nadt))
+                                         Sharpened_DelegateSigs }.
+
+Definition FullySharpenedUnderDelegates'
+           (Sig : ADTSig) (spec : ADT Sig) (adt : SharpenedUnderDelegates' Sig)
+  := forall (DelegateReps : ilist (fun nadt : NamedADTSig => Type) (Sharpened_DelegateSigs adt))
+            (DelegateImpls : i2list (fun (nadt : NamedADTSig) rep => ComputationalADT.pcADT (namedADTSig nadt) rep) DelegateReps)
+            (ValidImpls : forall idx : BoundedIndex (map ADTSigname (Sharpened_DelegateSigs adt)),
+                            refineADT (ith_Bounded ADTSigname (Sharpened_DelegateSpecs adt) idx)
+                                      (ComputationalADT.LiftcADT
+                                         (existT _ _ (i2th_Bounded ADTSigname DelegateImpls idx)))),
+  refineADT spec
+            (ComputationalADT.LiftcADT (Sharpened_Implementation adt DelegateImpls)).
+
 Record SharpenedUnderDelegates Sig :=
   { Sharpened_DelegateSigs : list NamedADTSig;
     Sharpened_Implementation :
@@ -48,8 +70,6 @@ Record SharpenedUnderDelegates Sig :=
 
 (* Shiny New Sharpened Definition includes proof that the
    ADT produced is sharpened modulo a set of 'Delegated ADTs'. *)
-
-
 
 Definition FullySharpenedUnderDelegates
            {Sig}

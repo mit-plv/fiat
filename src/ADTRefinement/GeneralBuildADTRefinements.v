@@ -234,16 +234,17 @@ Section BuildADTRefinements.
                         (imap _ (@Build_cConsDef (rep DelegateImpl)) (cConstructors DelegateImpl))
                         (imap _ (@Build_cMethDef (rep DelegateImpl)) (cMethods DelegateImpl)).
 
+  Print refineMethod.
+
   Definition Notation_Friendly_FullySharpened_BuildMostlySharpenedcADT
              (RepT : Type)
              (consSigs : list consSig)
              (methSigs : list methSig)
              (consDefs : ilist (@consDef RepT) consSigs)
              (methDefs : ilist (@methDef RepT) methSigs)
-  : forall
-      (DelegateSigs : list NamedADTSig)
-      (rep : ilist (fun nadt  => cADT (namedADTSig nadt)) DelegateSigs
-             -> Type)
+             (DelegateSigs : list NamedADTSig)
+             (rep : ilist (fun nadt  => cADT (namedADTSig nadt)) DelegateSigs
+                    -> Type)
       (cConstructors :
          forall DelegateImpl : ilist (fun nadt  => cADT (namedADTSig nadt)) DelegateSigs,
            ilist (fun Sig => cConstructorType (rep DelegateImpl) (consDom Sig)) consSigs)
@@ -256,18 +257,19 @@ Section BuildADTRefinements.
                  (forall idx,
                     refineADT (ith_Bounded ADTSigname DelegateSpecs idx)
                               (LiftcADT (ith_Bounded ADTSigname DelegateImpl idx)))
-                 -> RepT -> rep DelegateImpl -> Prop),
-      (forall (DelegateImpl : ilist (fun nadt  => cADT (namedADTSig nadt)) DelegateSigs)
+                 -> RepT -> rep DelegateImpl -> Prop)
+    : (forall (DelegateImpl : ilist (fun nadt  => cADT (namedADTSig nadt)) DelegateSigs)
               (ValidImpl :
                  (forall idx,
                     refineADT (ith_Bounded ADTSigname DelegateSpecs idx)
                               (LiftcADT (ith_Bounded ADTSigname DelegateImpl idx)))),
          Iterate_Dep_Type_BoundedIndex
            (fun idx =>
-              @refineConstructor
-                RepT (rep DelegateImpl) (cAbsR _ ValidImpl) _
-                (getConsDef consDefs idx)
-                (fun d => ret (ith_Bounded _ (cConstructors DelegateImpl) idx d))))
+              forall d ,
+                exists r_o',
+                cAbsR _ ValidImpl r_o' (ith_Bounded _ (cConstructors DelegateImpl) idx d) /\
+                computes_to (getConsDef consDefs idx d) r_o'
+                            ))
       -> (forall (DelegateImpl : ilist (fun nadt  => cADT (namedADTSig nadt)) DelegateSigs)
               (ValidImpl :
                  (forall idx,
@@ -275,10 +277,13 @@ Section BuildADTRefinements.
                               (LiftcADT (ith_Bounded ADTSigname DelegateImpl idx)))),
             Iterate_Dep_Type_BoundedIndex
               (fun idx =>
-                 @refineMethod
-                   (RepT) (rep DelegateImpl) (cAbsR _ ValidImpl) _ _
-                   (getMethDef methDefs idx)
-                   (fun r_n d => ret (ith_Bounded _ (cMethods DelegateImpl) idx r_n d))))
+                 forall d r_o r_n,
+                   cAbsR _ ValidImpl r_o r_n ->
+                   exists r_o',
+                     cAbsR _ ValidImpl r_o' (fst (ith_Bounded _ (cMethods DelegateImpl) idx r_n d)) /\
+                     computes_to (getMethDef methDefs idx r_o d)
+                                 (r_o',
+                                  (snd (ith_Bounded _ (cMethods DelegateImpl) idx r_n d)))))
       -> FullySharpenedUnderDelegates
            (BuildADT consDefs methDefs)
            {|
@@ -296,13 +301,21 @@ Section BuildADTRefinements.
                         (cAbsR DelegateImpl DelegateImplRefinesSpec)).
     - simpl; unfold ComputationalADT.cConstructors; simpl; intros.
       rewrite <- ith_Bounded_imap; eauto.
-      eapply (Iterate_Dep_Type_BoundedIndex_equiv_1
-              _ (cConstructorsRefinesSpec DelegateImpl DelegateImplRefinesSpec) idx d).
+      destruct (Iterate_Dep_Type_BoundedIndex_equiv_1
+              _ (cConstructorsRefinesSpec DelegateImpl DelegateImplRefinesSpec) idx d) as [c [AbsR_c computes_c]].
+      unfold refine; intros; inversion_by computes_to_inv; subst.
+      econstructor; eauto.
     - simpl; unfold ComputationalADT.cMethods; simpl; intros.
-       rewrite <- ith_Bounded_imap;
-         eapply (Iterate_Dep_Type_BoundedIndex_equiv_1
-                   _ (cMethodsRefinesSpec DelegateImpl DelegateImplRefinesSpec)
-                   idx r_o r_n d H).
+       rewrite <- ith_Bounded_imap.
+       destruct (Iterate_Dep_Type_BoundedIndex_equiv_1
+               _ (cMethodsRefinesSpec DelegateImpl DelegateImplRefinesSpec)
+               idx d r_o r_n H) as [r_o' [AbsR_r_o' computes_r_o']].
+       unfold refine; intros; inversion_by computes_to_inv; subst;
+       econstructor; eauto.
+       econstructor; eauto.
+       case_eq ((ith_Bounded methID (cMethods DelegateImpl) idx r_n d));
+         simpl; intros; eauto.
+       rewrite H0; eauto.
   Qed.
 
   Definition Notation_Friendly_SharpenFully
@@ -329,28 +342,32 @@ Section BuildADTRefinements.
                -> RepT -> rep DelegateImpl -> Prop)
     (cConstructorsRefinesSpec :
        forall (DelegateImpl : ilist (fun nadt  => cADT (namedADTSig nadt)) DelegateSigs)
-              (ValidImpl :
-                 (forall idx,
+               (ValidImpl :
+                  (forall idx,
                     refineADT (ith_Bounded ADTSigname DelegateSpecs idx)
                               (LiftcADT (ith_Bounded ADTSigname DelegateImpl idx)))),
          Iterate_Dep_Type_BoundedIndex
            (fun idx =>
-              @refineConstructor
-                RepT (rep DelegateImpl) (cAbsR _ ValidImpl) _
-                (getConsDef consDefs idx)
-                (fun d => ret (ith_Bounded _ (cConstructors DelegateImpl) idx d))))
-    (cMethodsRefinesSpec :
-       forall (DelegateImpl : ilist (fun nadt  => cADT (namedADTSig nadt)) DelegateSigs)
-              (ValidImpl :
-                 (forall idx,
-                    refineADT (ith_Bounded ADTSigname DelegateSpecs idx)
-                              (LiftcADT (ith_Bounded ADTSigname DelegateImpl idx)))),
-         Iterate_Dep_Type_BoundedIndex
-           (fun idx =>
-              @refineMethod
-                (RepT) (rep DelegateImpl) (cAbsR _ ValidImpl) _ _
-                (getMethDef methDefs idx)
-                (fun r_n d => ret (ith_Bounded _ (cMethods DelegateImpl) idx r_n d))))
+              forall d ,
+                exists r_o',
+                cAbsR _ ValidImpl r_o' (ith_Bounded _ (cConstructors DelegateImpl) idx d) /\
+                computes_to (getConsDef consDefs idx d) r_o'
+           ))
+  (cMethodsRefinesSpec :
+     forall (DelegateImpl : ilist (fun nadt  => cADT (namedADTSig nadt)) DelegateSigs)
+            (ValidImpl :
+               (forall idx,
+                  refineADT (ith_Bounded ADTSigname DelegateSpecs idx)
+                            (LiftcADT (ith_Bounded ADTSigname DelegateImpl idx)))),
+       Iterate_Dep_Type_BoundedIndex
+         (fun idx =>
+            forall d r_o r_n,
+              cAbsR _ ValidImpl r_o r_n ->
+              exists r_o',
+                cAbsR _ ValidImpl r_o' (fst (ith_Bounded _ (cMethods DelegateImpl) idx r_n d)) /\
+                computes_to (getMethDef methDefs idx r_o d)
+                            (r_o',
+                             (snd (ith_Bounded _ (cMethods DelegateImpl) idx r_n d)))))
   :  Sharpened (BuildADT consDefs methDefs)
     :=
       existT _ _

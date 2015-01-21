@@ -5,8 +5,7 @@ Require Export
         ADTSynthesis.QueryStructure.Implementation.DataStructures.Bags.TreeBags
         ADTSynthesis.QueryStructure.Specification.Representation.Tuple
         ADTSynthesis.QueryStructure.Specification.Representation.Heading
-        ADTSynthesis.Common.ilist
-        ADTSynthesis.Common.i2list.
+        ADTSynthesis.Common.ilist.
 Require Import Coq.Bool.Bool Coq.Strings.String
         Coq.Arith.Arith Coq.Structures.OrderedTypeEx
         ADTSynthesis.Common.String_as_OT
@@ -573,12 +572,42 @@ Section SharpenedBagImplementation.
     (@nil NamedADTSig)
     (inil (fun nadt => (ADT (namedADTSig nadt))));
       try simplify with monad laws; simpl; try refine pick eq; try simplify with monad laws;
-      try first [ unfold ith_Bounded, ith_Bounded'; simpl; make_computational_constructor
-                | unfold ith_Bounded, ith_Bounded'; simpl; make_computational_method ].
-    rewrite refineIfret; simplify with monad laws;
-    unfold ith_Bounded, ith_Bounded'; simpl;
-    make_computational_method.
-
+      try first [ unfold ith_Bounded, ith_Bounded'; simpl].
+    exists bempty; split; eauto.
+  Ltac make_computational_constructor :=
+    let x := match goal with |- ?R ?x (?f ?a ?b) => constr:(x) end in
+    let f := match goal with |- ?R ?x (?f ?a ?b) => constr:(f) end in
+    let a := match goal with |- ?R ?x (?f ?a ?b) => constr:(a) end in
+    let b := match goal with |- ?R ?x (?f ?a ?b) => constr:(b) end in
+    let x' := (eval pattern a, b in x) in
+    let f' := match x' with ?f' _ _ => constr:(f') end in
+    unify f f';
+      cbv beta;
+      solve [apply reflexivity].
+  make_computational_constructor.
+  instantiate (1 := fun _ r_n d => (r_n, bfind r_n d));
+  eexists r_n; split;
+    simpl; eauto.
+  instantiate (1 := fun _ r_n d => (r_n, benumerate r_n));
+  eexists r_n; split;
+  simpl; eauto.
+  instantiate (1 := fun _ r_n d => (binsert r_n d, ()));
+  eexists _; split;
+  simpl; eauto.
+  instantiate (1 := fun _ r_n d => (r_n, bcount r_n d));
+  eexists _; split;
+  simpl; eauto.
+  instantiate (1 := fun _ r_n d => (snd (bdelete r_n d), fst (bdelete r_n d)));
+  eexists _; split;
+  simpl; eauto.
+  instantiate (1 := fun _ r_n d => if CheckUpdatePlus (snd d)
+      then (bupdate r_n (fst d) (snd d), ())
+      else
+         (fold_left (fun (b0 : BagTypePlus) (i : Tuple) => binsert b0 i)
+            (map (bupdate_transform (snd d)) (fst (bdelete r_n (fst d))))
+            (snd (bdelete r_n (fst d))), ()));
+    eexists _; split; simpl; eauto.
+  find_if_inside; simpl; eauto.
   Defined.
 
   Definition BagADTImpl : ComputationalADT.cADT (BagSig (@Tuple heading) SearchTermTypePlus UpdateTermTypePlus).

@@ -914,7 +914,7 @@ Section i2thIndexBound.
              (Some_Dep_Option_elim_P _ _ c)
              (nth_error_map projAD (ibound idx) As (boundi idx))
              _ _ (i2th_error_eq _ _) (i2th_error_eq' _ _ _) H.
-    
+
     Program Definition i2th_Bounded_ind2
             {B : A -> Type}
             {C C' : forall a, B a -> Type}
@@ -956,7 +956,7 @@ Section i2thIndexBound.
              (i2th_error' Cs' (ibound idx))
              (nth_error_map projAD (ibound idx) As (boundi idx))
              _ _ (i2th_error_eq _ _) (i2th_error_eq _ _) H.
-    
+
   Variable D_eq_dec : forall d d' : D, {d = d'} + {d <> d'}.
 
   Lemma i2th_replace_BoundIndex_neq
@@ -999,5 +999,256 @@ Section i2thIndexBound.
   Qed.
 
 End i2thIndexBound.
+
+Section i2th2IndexBound.
+
+  Require Import ADTSynthesis.Common.i2list2.
+
+  (* Given a bounded index [BoundedIndex Bound], we can wrap
+     various lookup functions over lists indexed over [Bound].
+   *)
+
+  Context {A : Type} {D : Set}.
+  Variable (projAD : A -> D).
+
+  (* Given a [BoundedIndex] for a list [Bound], we can always return
+     an element of a list indexed by [Bound]. *)
+
+  Definition i2th2_Bounded
+          {B : A -> Type}
+          {C : forall a, B a -> Type}
+          {As}
+          (Bs : ilist B As)
+          (Cs : i2list2 C Bs)
+          (idx : BoundedIndex (map projAD As))
+  : C (nth_Bounded _ As idx) (ith_Bounded projAD Bs idx) :=
+    ith_Bounded_rect projAD (fun _ _ _ => C) idx Bs
+                           (i2th_error2' Cs (ibound idx)).
+
+  Definition replace2_BoundedIndex2
+           {B : A -> Type}
+           {C : forall a, B a -> Type}
+           {As}
+           (Bs : ilist B As)
+           (Cs : i2list2 C Bs)
+           (idx : BoundedIndex (map projAD As))
+           (new_c : C _ (ith_Bounded projAD Bs idx))
+  : i2list2 C Bs :=
+    replace_2Index2' (ibound idx) Cs
+                   (Some_Dep_Option_elim_P projAD Bs idx new_c).
+
+  Definition Dep_Option_2elim2_P2
+             {B : A -> Type}
+             {C C' : forall a, B a -> Type}
+             (P : forall a b, C a b -> C' a b -> Prop)
+             (a_opt : option A)
+    := match a_opt return
+             forall (b : Dep_Option B a_opt),
+               Dep_Option_elim_P C (a_opt := a_opt) b
+               -> Dep_Option_elim_P C' (a_opt := a_opt) b -> Prop with
+         | Some a => fun b => P a (Dep_Option_elim b)
+         | None => fun _ _ _ => True
+       end .
+
+  Lemma Dep_Option_2elim2_P2_refl
+        {B : A -> Type}
+        {C C' : forall a, B a -> Type}
+  : forall a_opt b_opt c_opt,
+      Dep_Option_2elim2_P2 (fun (a : A) (b : B a) (c c' : C a b) => c = c')
+                          (a_opt := a_opt) b_opt c_opt c_opt.
+    unfold Dep_Option_2elim2_P2; destruct a_opt; eauto.
+  Qed.
+
+  Definition i2th_error2_eq_P
+             {B : A -> Type}
+             {C : forall a, B a -> Type}
+             (As : list A)
+             (idx : BoundedIndex (map projAD As))
+             (a_opt : option A)
+             (b_opt : Dep_Option B a_opt)
+             (c_opt : Dep_Option_elim_P C b_opt)
+             (e_eq : option_map projAD a_opt = Some (bindex idx))
+             (c_opt' : C (nth_Bounded' projAD As a_opt e_eq)
+                         (ith_Bounded' projAD As e_eq b_opt))
+  : Type :=
+      match a_opt as a_opt'
+        return
+        forall (b_opt : Dep_Option B a_opt')
+               (e_eq : option_map projAD a_opt' = Some (bindex idx)),
+          Dep_Option_elim_P C b_opt ->
+          C (nth_Bounded' projAD As a_opt' e_eq)
+            (ith_Bounded' projAD As e_eq b_opt)
+          -> Type
+      with
+        | Some a =>
+          fun b_opt e_eq c_opt c_opt' => c_opt = c_opt'
+        | None => fun b_opt e_eq c_opt c_opt' => True
+      end b_opt e_eq c_opt c_opt'.
+
+    Lemma i2th_error2_eq
+          {B : A -> Type}
+          {C : forall a, B a -> Type}
+    : forall (As : list A)
+             (idx : BoundedIndex (map projAD As))
+             (Bs : ilist B As)
+             (Cs : i2list2 C Bs),
+        i2th_error2_eq_P As idx
+        (ith_error Bs (ibound idx))
+        (i2th_error2' Cs (ibound idx))
+        (nth_error_map _ _ _ (boundi idx))
+        (i2th2_Bounded Cs idx).
+    Proof.
+      unfold i2th_error2_eq_P; simpl.
+      destruct idx as [idx [n In_n ]]; simpl in *.
+      revert As idx In_n.
+      induction n; destruct Cs; simpl; eauto.
+      intros; generalize (IHn As idx In_n (ilist_tl Bs) Cs); intro H';
+      unfold i2th_Bounded, ith_Bounded_rect; simpl; eauto.
+    Qed.
+
+    Definition i2th_error2_eq'
+               {B : A -> Type}
+               {C : forall a, B a -> Type}
+    : forall (As : list A)
+             (idx : BoundedIndex (map projAD As))
+             (Bs : ilist B As)
+             (c : C (nth_Bounded _ As idx) (ith_Bounded _ Bs idx)),
+        i2th_error2_eq_P As idx (ith_error Bs (ibound idx))
+                        (Some_Dep_Option_elim_P projAD Bs idx c)
+                        (nth_error_map projAD (ibound idx) As (boundi idx)) c.
+    Proof.
+      unfold i2th_error2_eq_P; simpl.
+      destruct idx as [idx [n In_n ]]; simpl in *.
+      revert As idx In_n.
+      induction n; destruct Bs; simpl; eauto.
+      generalize (IHn As idx In_n Bs);
+      unfold i2th_Bounded, ith_Bounded_rect; simpl; eauto.
+    Qed.
+
+    Program Definition i2th_Bounded2_ind
+            {B : A -> Type}
+            {C C' : forall a, B a -> Type}
+            (P : forall As (Bs : ilist B As) (Cs : i2list2 C Bs),
+                   BoundedIndex (map projAD As)
+                   -> forall (a : A) (b : B a), C a b -> C' a b -> Prop)
+    : forall (As : list A)
+           (idx : BoundedIndex (map projAD As))
+           (Bs : ilist B As)
+           (Cs : i2list2 C Bs)
+           (c : C' (nth_Bounded _ As idx) (ith_Bounded _ Bs idx)),
+        Dep_Option_elim2_P2 (P As Bs Cs idx)
+                          (ith_error Bs (ibound idx))
+                          (i2th_error2' Cs (ibound idx))
+                          (Some_Dep_Option_elim_P projAD Bs idx c)
+        -> P As Bs Cs idx _ (ith_Bounded _ Bs idx) (i2th2_Bounded Cs idx) c
+      := fun As idx Bs Cs c H =>
+         match (nth_error As (ibound idx)) as e
+               return
+               forall (b_opt : Dep_Option B e) (c_opt : Dep_Option_elim_P C b_opt)
+                       (c'_opt : Dep_Option_elim_P C' b_opt)
+                       (e_eq : option_map projAD e = Some (bindex idx))
+                       (d : C (nth_Bounded' projAD As e e_eq)
+                              (ith_Bounded' projAD As e_eq b_opt))
+                       (d' : C' (nth_Bounded' projAD As e e_eq)
+                                (ith_Bounded' projAD As e_eq b_opt)),
+                 i2th_error2_eq_P As idx b_opt c_opt e_eq d ->
+                 i2th_error2_eq_P As idx b_opt c'_opt e_eq d' ->
+                 Dep_Option_elim2_P2 (P As Bs Cs idx) b_opt c_opt c'_opt ->
+                  P As Bs Cs idx (nth_Bounded' projAD _ e e_eq)
+                    (ith_Bounded' projAD _ e_eq _) d d'
+         with
+           | Some a => fun b_opt c_opt c'_opt e_eq d d' c_eq c_eq' => _
+           | None => fun b_opt c_opt c'_opt e_eq d d' => None_neq_Some _ e_eq
+         end (ith_error Bs (ibound idx))
+             (i2th_error2' Cs (ibound idx))
+             (Some_Dep_Option_elim_P projAD _ _ c)
+             (nth_error_map projAD (ibound idx) As (boundi idx))
+             _ _ (i2th_error2_eq _ _) (i2th_error2_eq' _ _ _) H.
+
+    Program Definition i2th_Bounded2_ind2
+            {B : A -> Type}
+            {C C' : forall a, B a -> Type}
+            (P : forall As (Bs : ilist B As) (Cs : i2list2 C Bs),
+                   BoundedIndex (map projAD As)
+                   -> forall (a : A) (b : B a), C a b -> C' a b -> Prop)
+  : forall (As : list A)
+           (idx : BoundedIndex (map projAD As))
+           (Bs : ilist B As)
+           (Cs : i2list2 C Bs)
+           (Cs' : i2list2 C' Bs),
+      Dep_Option_elim2_P2 (P As Bs Cs idx)
+                          (ith_error Bs (ibound idx))
+                          (i2th_error2' Cs (ibound idx))
+                          (i2th_error2' Cs' (ibound idx))
+      -> P As Bs Cs idx _ (ith_Bounded _ Bs idx)
+           (i2th2_Bounded Cs idx)
+           (i2th2_Bounded Cs' idx)
+      := fun As idx Bs Cs Cs' H =>
+         match (nth_error As (ibound idx)) as e
+               return
+               forall (b_opt : Dep_Option B e) (c_opt : Dep_Option_elim_P C b_opt)
+                       (c'_opt : Dep_Option_elim_P C' b_opt)
+                       (e_eq : option_map projAD e = Some (bindex idx))
+                       (d : C (nth_Bounded' projAD As e e_eq)
+                              (ith_Bounded' projAD As e_eq b_opt))
+                       (d' : C' (nth_Bounded' projAD As e e_eq)
+                                (ith_Bounded' projAD As e_eq b_opt)),
+                 i2th_error2_eq_P As idx b_opt c_opt e_eq d ->
+                 i2th_error2_eq_P As idx b_opt c'_opt e_eq d' ->
+                 Dep_Option_elim2_P2 (P As Bs Cs idx) b_opt c_opt c'_opt ->
+                  P As Bs Cs idx (nth_Bounded' projAD _ e e_eq)
+                    (ith_Bounded' projAD _ e_eq _) d d'
+         with
+           | Some a => fun b_opt c_opt c'_opt e_eq d d' c_eq c_eq' => _
+           | None => fun b_opt c_opt c'_opt e_eq d d' => None_neq_Some _ e_eq
+         end (ith_error Bs (ibound idx))
+             (i2th_error2' Cs (ibound idx))
+             (i2th_error2' Cs' (ibound idx))
+             (nth_error_map projAD (ibound idx) As (boundi idx))
+             _ _ (i2th_error2_eq _ _) (i2th_error2_eq _ _) H.
+
+  Variable D_eq_dec : forall d d' : D, {d = d'} + {d <> d'}.
+
+  Lemma i2th_replace2_BoundIndex_neq
+        {B : A -> Type}
+        {C : forall a, B a -> Type}
+  : forall
+      {As}
+      (Bs : ilist B As)
+      (Cs : i2list2 C Bs)
+      (idx idx' : BoundedIndex (map projAD As))
+      (new_c : C _ (ith_Bounded projAD Bs idx')),
+      idx <> idx'
+      -> i2th2_Bounded (replace2_BoundedIndex2 Cs idx' new_c) idx =
+         i2th2_Bounded Cs idx.
+  Proof.
+    intros.
+    pose (i2th_Bounded2_ind2 (B := B) (C' := C)
+              (fun As Bs Cs idx a b c c' => c = c')).
+    unfold replace2_BoundedIndex2.
+    unfold i2th2_Bounded.
+    rewrite i2th_replace_2Index2'_neq; eauto using idx_ibound_eq, Dep_Option_elim2_P2_refl.
+  Qed.
+
+  Lemma i2th_replace2_BoundIndex_eq
+        {B : A -> Type}
+        {C : forall a, B a -> Type}
+  : forall
+      {As}
+      (Bs : ilist B As)
+      (Cs : i2list2 C Bs)
+      (idx : BoundedIndex (map projAD As))
+      (new_c : C _ (ith_Bounded projAD Bs idx)),
+      i2th2_Bounded (replace2_BoundedIndex2 Cs idx new_c) idx =
+      new_c.
+  Proof.
+    intros.
+    eapply (i2th_Bounded2_ind
+              (fun As Bs Cs idx a b c c' => c = c')).
+    unfold replace2_BoundedIndex2.
+    rewrite i2th_replace_2Index2'_eq; eauto using idx_ibound_eq, Dep_Option_elim2_P2_refl.
+  Qed.
+
+End i2th2IndexBound.
 
 Arguments BoundedString [_].

@@ -1,6 +1,7 @@
 Require Export Coq.Bool.Bool Coq.Strings.String
         ADTSynthesis.Common.DecideableEnsembles
         ADTSynthesis.Common.ListMorphisms
+        ADTSynthesis.Common.i2list2
         ADTSynthesis.Common.ListFacts
         ADTSynthesis.Common.BoolFacts
         ADTSynthesis.Common.LogicFacts
@@ -132,7 +133,7 @@ Definition Build_IndexedQueryStructure_Impl_cRep
            (DelegateImpls : ilist (fun ns => cADT (namedADTSig ns)) (@Build_IndexedQueryStructure_Impl_Sigs indices Index))
 : Type
   :=
-    i2list
+    i2list2
       (fun (ns : NamedADTSig)
            (index : cADT (namedADTSig ns)) => cRep index) DelegateImpls.
 
@@ -330,7 +331,7 @@ Definition Build_IndexedQueryStructure_Impl_AbsR
   forall idx,
     AbsR (ValidImpl idx)
          (map_IndexedQS_Rep Index idx (GetIndexedRelation r_o (map_IndexedQS_idx Index idx)))
-         (i2th_Bounded ADTSigname r_n idx).
+         (i2th2_Bounded ADTSigname r_n idx).
 
 Definition map_IndexedQS_Rep''
            {indices}
@@ -368,7 +369,7 @@ Definition Build_IndexedQueryStructure_Impl_AbsR''
   forall idx,
     AbsR (ValidImpl idx)
          (map_IndexedQS_Rep'' Index idx (GetIndexedRelation r_o idx))
-         (i2th_Bounded ADTSigname r_n (map_IndexedQS_idx' Index idx)).
+         (i2th2_Bounded ADTSigname r_n (map_IndexedQS_idx' Index idx)).
 
 Definition CallBagImplMethod
            {qs_schema : QueryStructureSchema}
@@ -377,7 +378,7 @@ Definition CallBagImplMethod
                                   (Build_IndexedQueryStructure_Impl_Sigs Index))
            idx midx
            (r_n : Build_IndexedQueryStructure_Impl_cRep Index DelegateImpls) :=
-  cMethods (ith_Bounded ADTSigname _ idx) midx (i2th_Bounded _ r_n idx).
+  cMethods (ith_Bounded ADTSigname _ idx) midx (i2th2_Bounded _ r_n idx).
 
 Definition CallBagImplConstructor
            {qs_schema : QueryStructureSchema}
@@ -614,12 +615,12 @@ Lemma Update_Build_IndexedQueryStructure_Impl_AbsR''
     -> Build_IndexedQueryStructure_Impl_AbsR''
          ValidImpl
          (UpdateIndexedRelation r_o idx (map_IndexedQS_Rep' _ _ r_o'))
-         (replace_BoundedIndex2 _ r_n (map_IndexedQS_idx' _ idx) r_n').
+         (replace2_BoundedIndex2 _ r_n (map_IndexedQS_idx' _ idx) r_n').
 Proof.
   intros; intro idx'.
   destruct (BoundedString_eq_dec idx idx'); subst.
-  - rewrite i2th_replace_BoundIndex_eq, get_update_indexed_eq, map_indexedqs_Rep'_id; eauto.
-  - rewrite i2th_replace_BoundIndex_neq, get_update_indexed_neq; eauto using string_dec.
+  - rewrite i2th_replace2_BoundIndex_eq, get_update_indexed_eq, map_indexedqs_Rep'_id; eauto.
+  - rewrite i2th_replace2_BoundIndex_neq, get_update_indexed_neq; eauto using string_dec.
     intuition; apply n.
     destruct idx as [idx [m nth_m]]; destruct idx' as [idx' [n' nth_n']]; simpl in *.
     injection H1; intros; subst; repeat f_equal.
@@ -662,7 +663,7 @@ Proof.
   pose proof (ADTRefinementPreservesMethods (ValidImpl ridx) midx'
                                             (map_IndexedQS_Rep'' Index ridx
                                                                  (GetIndexedRelation r_o ridx))
-                                            (i2th_Bounded _ r_n ridx') d' (H ridx) (ReturnComputes _)).
+                                            (i2th2_Bounded _ r_n ridx') d' (H ridx) (ReturnComputes _)).
   Local Arguments map_IndexedQS_Rep : simpl never.
   inversion_by computes_to_inv; subst.
   exists (fst x);
@@ -716,7 +717,7 @@ Lemma refine_BagImplMethods
          /\ Build_IndexedQueryStructure_Impl_AbsR''
               ValidImpl
               (UpdateIndexedRelation r_o ridx (map_IndexedQS_Rep' _ _ r_o'))
-              (replace_BoundedIndex2 _ r_n ridx' (fst (CallBagImplMethod ridx' midx' r_n d'))) .
+              (replace2_BoundedIndex2 _ r_n ridx' (fst (CallBagImplMethod ridx' midx' r_n d'))) .
 Proof.
   intros; destruct (@refine_BagImplMethods' _ Index DelegateImpls ValidImpl r_o r_n ridx H midx d)
     as [r_o' [refines_r_o' AbsR_r_o']].
@@ -1452,9 +1453,9 @@ Fixpoint Initialize_IndexedQueryStructureImpls'
   match Index return
         forall DelegateImpls, Build_IndexedQueryStructure_Impl_cRep Index DelegateImpls
   with
-    | inil => i2nil _
+    | inil => i2nil2 _
     | icons a b As Bs => fun DelegateImpls =>
-                           i2cons _
+                           i2cons2 _
                                   (ComputationalADT.cConstructors (ilist_hd DelegateImpls)
                                                                   {| bindex := "Empty" |} ())
                                   (Initialize_IndexedQueryStructureImpls' Bs (ilist_tl DelegateImpls))
