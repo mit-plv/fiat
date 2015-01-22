@@ -226,17 +226,42 @@ Section recursive_descent_parser.
           Defined.
         End production.
 
-        (*Section productions.
+        Section productions.
+          Context (H_prod_split : forall str prod, H_prod_split_T str prod (split_string_for_production str)).
+
+          Context {T_productions_success T_productions_failure
+                   : forall (str : StringWithSplitState String split_stateT)
+                            (prods : productions CharType),
+                       Type}.
+
+          Context (fail_parse_nil_productions : forall {str}, T_productions_failure str [])
+                  (lift_prods_success_head : forall {str prod prods}, @T_production_success str prod -> @T_productions_success str (prod::prods))
+                  (lift_prods_success_tail : forall {str prod prods}, @T_productions_success str prods -> @T_productions_success str (prod::prods))
+                  (lift_prods_failure : forall {str prod prods}, @T_production_failure str prod -> @T_productions_failure str prods -> @T_productions_failure str (prod::prods)).
+
+          Let T_productions := fun str prods => sum (T_productions_success str prods) (T_productions_failure str prods).
+
           Fixpoint parse_productions
                    (str : StringWithSplitState String split_stateT)
                    (pf : str ≤s str0)
                    (prods : productions CharType)
-        : bool
-          := fold_right orb
-                        false
-                        (map (parse_production str0 parse_name str pf)
-                             prods).
-          *)
+          : T_productions str prods.
+          Proof.
+            refine match prods as prods return T_productions str prods with
+                     | nil => inr (fail_parse_nil_productions str)
+                     | prod'::prods'
+                       => match @parse_production str pf H_prod_split prod',
+                                @parse_productions str pf prods' with
+                            | inl prod_success, _
+                              => inl (lift_prods_success_head _ prod_success)
+                            | _, inl prods_success
+                              => inl (lift_prods_success_tail _ prods_success)
+                            | inr prod_failure, inr prods_failure
+                              => inr (lift_prods_failure prod_failure prods_failure)
+                          end
+                   end.
+          Defined.
+        End productions.
       End production_and_productions.
     End parts.
   End generic.
@@ -329,6 +354,38 @@ Section recursive_descent_parser.
           Proof.
             clear -H; abstract t.
           Defined.
+
+          Definition T_productions_success (prods : productions CharType) : Type
+            := minimal_parse_of String G initial_names_data is_valid_name remove_name
+                                str0 valid str prods.
+
+          Definition T_productions_failure (prods : productions CharType) : Type
+            := T_productions_success prods -> False.
+
+          Definition fail_parse_nil_productions : T_productions_failure [].
+          Proof.
+            intro H.
+            inversion H.
+          Qed.
+
+          Definition lift_prods_success_head {prod prods}
+          : @T_production_success prod -> @T_productions_success (prod::prods)
+            := @MinParseHead _ _ _ _ _ _ _ _ _ _ _ _.
+
+          Definition lift_prods_success_tail {prod prods}
+          : @T_productions_success prods -> @T_productions_success (prod::prods)
+            := @MinParseTail _ _ _ _ _ _ _ _ _ _ _ _.
+
+          Definition lift_prods_failure {prod prods}
+                     (H1 : @T_production_failure prod)
+                     (H2 : @T_productions_failure prods)
+          : @T_productions_failure (prod::prods).
+          Proof.
+            clear -H1 H2.
+            intro H'.
+            inversion H'; subst;
+            eauto.
+          Qed.
         End with_str.
 
         Definition cons_success (s1 s2 str : StringWithSplitState String split_stateT) (pf : str ≤s str0) (H : s1 ++ s2 =s str) it its
@@ -477,6 +534,43 @@ Section recursive_descent_parser.
                (fun str prod => @H_prod_split str0 valid str prod (fun pf => split_list_complete str pf prod))
                prod.
       End production.
+
+      Section production.
+        Context (str0 : StringWithSplitState String split_stateT)
+                (valid : names_listT).
+        Context (parse_name : forall (str : StringWithSplitState String split_stateT),
+                                str ≤s str0
+                                -> forall name,
+                                     sum (@T_name_success str0 valid str name) (@T_name_failure str0 valid str name)).
+        Context (split_list_complete : forall str pf prod, @split_list_completeT str0 valid valid str pf (split_string_for_production str prod) prod).
+
+        Let T_production := fun str prod => sum (@T_production_success str0 valid str prod) (@T_production_failure str0 valid str prod).
+
+        (** To match a [production], we must match all of its items.
+            But we may do so on any particular split. *)
+        Definition minimal_parse_production
+                 (str : StringWithSplitState String split_stateT)
+                 (pf : str ≤s str0)
+                 (prod : production CharType)
+        : T_production str prod
+          := @parse_production
+               str0
+               (@T_name_success str0 valid) (@T_name_failure str0 valid)
+               (@T_item_success str0 valid) (@T_item_failure str0 valid)
+               (@lift_success str0 valid) (@lift_failure str0 valid)
+               (@parse_terminal_success str0 valid)
+               (@parse_terminal_failure str0 valid)
+               (@T_production_success str0 valid)
+               (@T_production_failure str0 valid)
+               parse_name
+               (@parse_empty_success str0 valid)
+               (@parse_empty_failure str0 valid)
+               (@cons_success str0 valid)
+               str pf
+               (fun str prod => @H_prod_split str0 valid str prod (fun pf => split_list_complete str pf prod))
+               prod.
+      End production.
+
     End parts.
   End minimal.
 
