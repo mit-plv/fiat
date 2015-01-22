@@ -1,7 +1,10 @@
 Require Import Coq.Lists.List Coq.Arith.Arith
         ADTSynthesis.Common ADTSynthesis.Computation ADTSynthesis.ADT.ADTSig ADTSynthesis.ADT.Core
         ADTSynthesis.ADT.ComputationalADT
-        ADTSynthesis.Common.StringBound ADTSynthesis.Common.ilist ADTSynthesis.Common.IterateBoundedIndex
+        ADTSynthesis.Common.StringBound
+        ADTSynthesis.Common.ilist
+        ADTSynthesis.Common.i2list
+        ADTSynthesis.Common.IterateBoundedIndex
         ADTSynthesis.ADTNotation.BuildADTSig ADTSynthesis.ADTNotation.BuildADT
         ADTSynthesis.ADTNotation.BuildComputationalADT
         ADTSynthesis.ADTNotation.BuildADTReplaceMethods
@@ -215,170 +218,222 @@ Section BuildADTRefinements.
   (* Notation-Friendly Lemmas for constructing an easily extractible
      ADT implementation. *)
 
-  Definition Notation_Friendly_BuildMostlySharpenedcADT
-             (consSigs : list consSig)
-             (methSigs : list methSig)
-             (DelegateSigs : list NamedADTSig)
-             (rep : ilist (fun nadt  => cADT (namedADTSig nadt)) DelegateSigs
-                    -> Type)
-             (cConstructors :
-                forall DelegateImpl : ilist (fun nadt  => cADT (namedADTSig nadt)) DelegateSigs,
-                  ilist (fun Sig => cConstructorType (rep DelegateImpl) (consDom Sig)) consSigs)
-             (cMethods :
-                forall DelegateImpl : ilist (fun nadt  => cADT (namedADTSig nadt)) DelegateSigs,
-                  ilist (fun Sig => cMethodType (rep DelegateImpl) (methDom Sig) (methCod Sig)) methSigs)
-             (DelegateImpl : ilist (fun nadt => cADT (namedADTSig nadt))
-                                    DelegateSigs)
-  : cADT (BuildADTSig consSigs methSigs) :=
-             @BuildcADT (rep DelegateImpl) consSigs methSigs
-                        (imap _ (@Build_cConsDef (rep DelegateImpl)) (cConstructors DelegateImpl))
-                        (imap _ (@Build_cMethDef (rep DelegateImpl)) (cMethods DelegateImpl)).
+Definition Notation_Friendly_BuildMostlySharpenedcADT
+           (consSigs : list consSig) (methSigs : list methSig)
+           (DelegateSigs : list NamedADTSig)
+           (rep : ilist (fun nadt : NamedADTSig => Type) DelegateSigs ->
+                  Type
+           (* ADTSynthesis.ADTRefinement.GeneralBuildADTRefinements.2502 *))
+           (cConstructors :
+              forall
+                (DelegateReps : ilist (fun nadt : NamedADTSig => Type) DelegateSigs)
+                (DelegateImpls : i2list (fun (nadt : NamedADTSig) rep => ComputationalADT.pcADT (namedADTSig nadt) rep) DelegateReps),
+                ilist
+                  (fun Sig : consSig =>
+                     ComputationalADT.cConstructorType (rep DelegateReps) (consDom Sig))
+                  consSigs)
+           (cMethods :
+              forall
+                (DelegateReps : ilist (fun nadt : NamedADTSig => Type) DelegateSigs)
+                (DelegateImpls : i2list (fun (nadt : NamedADTSig) rep => ComputationalADT.pcADT (namedADTSig nadt) rep) DelegateReps),
+        ilist
+          (fun Sig : methSig =>
+           ComputationalADT.cMethodType (rep DelegateReps)
+                                        (methDom Sig) (methCod Sig)) methSigs)
+           (DelegateReps : ilist (fun nadt : NamedADTSig => Type) DelegateSigs)
+           (DelegateImpls : i2list (fun (nadt : NamedADTSig) rep => ComputationalADT.pcADT (namedADTSig nadt) rep) DelegateReps)
+: ComputationalADT.cADT (BuildADTSig consSigs methSigs) :=
+  BuildcADT
+    (imap cConsDef (Build_cConsDef (Rep:=rep DelegateReps))
+          (cConstructors DelegateReps DelegateImpls))
+    (imap cMethDef (Build_cMethDef (Rep:=rep DelegateReps))
+          (cMethods DelegateReps DelegateImpls)).
 
-  Print refineMethod.
-
-  Definition Notation_Friendly_FullySharpened_BuildMostlySharpenedcADT
-             (RepT : Type)
-             (consSigs : list consSig)
-             (methSigs : list methSig)
-             (consDefs : ilist (@consDef RepT) consSigs)
-             (methDefs : ilist (@methDef RepT) methSigs)
-             (DelegateSigs : list NamedADTSig)
-             (rep : ilist (fun nadt  => cADT (namedADTSig nadt)) DelegateSigs
-                    -> Type)
-      (cConstructors :
-         forall DelegateImpl : ilist (fun nadt  => cADT (namedADTSig nadt)) DelegateSigs,
-           ilist (fun Sig => cConstructorType (rep DelegateImpl) (consDom Sig)) consSigs)
-      (cMethods :
-         forall DelegateImpl : ilist (fun nadt  => cADT (namedADTSig nadt)) DelegateSigs,
-           ilist (fun Sig => cMethodType (rep DelegateImpl) (methDom Sig) (methCod Sig)) methSigs)
-      (DelegateSpecs : ilist (fun nadt => ADT (namedADTSig nadt))
-                             DelegateSigs)
-      (cAbsR : forall DelegateImpl,
-                 (forall idx,
+Definition Notation_Friendly_FullySharpened_BuildMostlySharpenedcADT
+           (RepT : Type
+           (* ADTSynthesis.ADTRefinement.GeneralBuildADTRefinements.2538 *))
+           (consSigs : list consSig) (methSigs : list methSig)
+           (consDefs : ilist consDef consSigs)
+           (methDefs : ilist methDef methSigs)
+           (DelegateSigs : list NamedADTSig)
+           (rep : ilist (fun nadt : NamedADTSig => Type) DelegateSigs ->
+                  Type
+           (* ADTSynthesis.ADTRefinement.GeneralBuildADTRefinements.2563 *))
+           (cConstructors : forall
+                              (DelegateReps : ilist (fun nadt : NamedADTSig => Type) DelegateSigs)
+                              (DelegateImpls : i2list (fun (nadt : NamedADTSig) rep => ComputationalADT.pcADT (namedADTSig nadt) rep) DelegateReps),
+                              ilist
+                                (fun Sig : consSig =>
+                                   ComputationalADT.cConstructorType
+                                     (rep DelegateReps) (consDom Sig)) consSigs)
+           (cMethods : forall
+                         (DelegateReps : ilist (fun nadt : NamedADTSig => Type) DelegateSigs)
+                         (DelegateImpls : i2list (fun (nadt : NamedADTSig) rep => ComputationalADT.pcADT (namedADTSig nadt) rep) DelegateReps),
+                         ilist
+                           (fun Sig : methSig =>
+                              ComputationalADT.cMethodType
+                                (rep DelegateReps) (methDom Sig)
+                                (methCod Sig)) methSigs)
+           (DelegateSpecs : ilist
+                              (fun (nadt : NamedADTSig) => ADT (namedADTSig nadt))
+                              DelegateSigs)
+           (cAbsR : forall
+                      (DelegateReps : ilist (fun nadt : NamedADTSig => Type) DelegateSigs)
+                      (DelegateImpls : i2list (fun (nadt : NamedADTSig) rep => ComputationalADT.pcADT (namedADTSig nadt) rep) DelegateReps),
+                      (forall idx : BoundedIndex (map ADTSigname DelegateSigs),
+                         refineADT (ith_Bounded ADTSigname DelegateSpecs idx)
+                                   (ComputationalADT.LiftcADT
+                                      (existT _ _ (i2th_Bounded ADTSigname DelegateImpls idx)))) ->
+                      RepT -> rep DelegateReps -> Prop)
+: (forall
+    (DelegateReps : ilist (fun nadt : NamedADTSig => Type) DelegateSigs)
+    (DelegateImpls : i2list (fun (nadt : NamedADTSig) rep => ComputationalADT.pcADT (namedADTSig nadt) rep) DelegateReps)
+    (ValidImpls : forall idx : BoundedIndex (map ADTSigname DelegateSigs),
                     refineADT (ith_Bounded ADTSigname DelegateSpecs idx)
-                              (LiftcADT (ith_Bounded ADTSigname DelegateImpl idx)))
-                 -> RepT -> rep DelegateImpl -> Prop)
-    : (forall (DelegateImpl : ilist (fun nadt  => cADT (namedADTSig nadt)) DelegateSigs)
-              (ValidImpl :
-                 (forall idx,
+                              (ComputationalADT.LiftcADT
+                                 (existT _ _ (i2th_Bounded ADTSigname DelegateImpls idx)))),
+    Iterate_Dep_Type_BoundedIndex
+      (fun idx : BoundedIndex (map consID consSigs) =>
+         forall d : consDom (nth_Bounded consID consSigs idx),
+         exists r_o' : RepT,
+           cAbsR DelegateReps DelegateImpls ValidImpls r_o'
+                 (ith_Bounded consID (cConstructors DelegateReps DelegateImpls) idx d) /\
+           getConsDef consDefs idx d ↝ r_o')) ->
+(forall
+    (DelegateReps : ilist (fun nadt : NamedADTSig => Type) DelegateSigs)
+    (DelegateImpls : i2list (fun (nadt : NamedADTSig) rep => ComputationalADT.pcADT (namedADTSig nadt) rep) DelegateReps)
+    (ValidImpls : forall idx : BoundedIndex (map ADTSigname DelegateSigs),
                     refineADT (ith_Bounded ADTSigname DelegateSpecs idx)
-                              (LiftcADT (ith_Bounded ADTSigname DelegateImpl idx)))),
-         Iterate_Dep_Type_BoundedIndex
-           (fun idx =>
-              forall d ,
-                exists r_o',
-                cAbsR _ ValidImpl r_o' (ith_Bounded _ (cConstructors DelegateImpl) idx d) /\
-                computes_to (getConsDef consDefs idx d) r_o'
-                            ))
-      -> (forall (DelegateImpl : ilist (fun nadt  => cADT (namedADTSig nadt)) DelegateSigs)
-              (ValidImpl :
-                 (forall idx,
-                    refineADT (ith_Bounded ADTSigname DelegateSpecs idx)
-                              (LiftcADT (ith_Bounded ADTSigname DelegateImpl idx)))),
-            Iterate_Dep_Type_BoundedIndex
-              (fun idx =>
-                 forall d r_o r_n,
-                   cAbsR _ ValidImpl r_o r_n ->
-                   exists r_o',
-                     cAbsR _ ValidImpl r_o' (fst (ith_Bounded _ (cMethods DelegateImpl) idx r_n d)) /\
-                     computes_to (getMethDef methDefs idx r_o d)
-                                 (r_o',
-                                  (snd (ith_Bounded _ (cMethods DelegateImpl) idx r_n d)))))
-      -> FullySharpenedUnderDelegates
-           (BuildADT consDefs methDefs)
-           {|
-             Sharpened_DelegateSigs := DelegateSigs;
-             Sharpened_Implementation := Notation_Friendly_BuildMostlySharpenedcADT rep
-                                           cConstructors cMethods;
-             Sharpened_DelegateSpecs := DelegateSpecs |}.
+                              (ComputationalADT.LiftcADT
+                                 (existT _ _ (i2th_Bounded ADTSigname DelegateImpls idx)))),
+    Iterate_Dep_Type_BoundedIndex
+      (fun idx : BoundedIndex (map methID methSigs) =>
+         forall (d : methDom (nth_Bounded methID methSigs idx))
+                (r_o : RepT) (r_n : rep DelegateReps),
+           cAbsR DelegateReps DelegateImpls ValidImpls r_o r_n ->
+           exists r_o' : RepT,
+             cAbsR DelegateReps DelegateImpls ValidImpls r_o'
+                   (fst (ith_Bounded methID (cMethods DelegateReps DelegateImpls) idx r_n d)) /\
+             getMethDef methDefs idx r_o d
+                        ↝ (r_o',
+                           snd (ith_Bounded methID (cMethods DelegateReps DelegateImpls) idx r_n d)))) ->
+FullySharpenedUnderDelegates (BuildADT consDefs methDefs)
+                              {|
+                                Sharpened_DelegateSigs := DelegateSigs;
+                                Sharpened_Implementation := Notation_Friendly_BuildMostlySharpenedcADT
+                                                              rep cConstructors cMethods;
+                                Sharpened_DelegateSpecs := DelegateSpecs |}.
   Proof.
     intros * cConstructorsRefinesSpec cMethodsRefinesSpec
-                                      DelegateImpl DelegateImplRefinesSpec.
+                                      DelegateReps DelegateImpls DelegateImplRefinesSpec.
     eapply (@refinesADT _ (BuildADT consDefs methDefs)
-                        (LiftcADT (existT _ (rep DelegateImpl)
+                        (LiftcADT (existT _ (rep DelegateReps)
                                           {| pcConstructors := _;
                                              pcMethods := _|}))
-                        (cAbsR DelegateImpl DelegateImplRefinesSpec)).
+                        (cAbsR DelegateReps DelegateImpls DelegateImplRefinesSpec)).
     - simpl; unfold ComputationalADT.cConstructors; simpl; intros.
       rewrite <- ith_Bounded_imap; eauto.
       destruct (Iterate_Dep_Type_BoundedIndex_equiv_1
-              _ (cConstructorsRefinesSpec DelegateImpl DelegateImplRefinesSpec) idx d) as [c [AbsR_c computes_c]].
+                  _ (cConstructorsRefinesSpec DelegateReps DelegateImpls DelegateImplRefinesSpec) idx d)
+        as [c [AbsR_c computes_c]].
       unfold refine; intros; inversion_by computes_to_inv; subst.
       econstructor; eauto.
     - simpl; unfold ComputationalADT.cMethods; simpl; intros.
        rewrite <- ith_Bounded_imap.
        destruct (Iterate_Dep_Type_BoundedIndex_equiv_1
-               _ (cMethodsRefinesSpec DelegateImpl DelegateImplRefinesSpec)
+               _ (cMethodsRefinesSpec DelegateReps DelegateImpls DelegateImplRefinesSpec)
                idx d r_o r_n H) as [r_o' [AbsR_r_o' computes_r_o']].
        unfold refine; intros; inversion_by computes_to_inv; subst;
        econstructor; eauto.
        econstructor; eauto.
-       case_eq ((ith_Bounded methID (cMethods DelegateImpl) idx r_n d));
+       case_eq ((ith_Bounded methID (cMethods DelegateReps DelegateImpls) idx r_n d));
          simpl; intros; eauto.
        rewrite H0; eauto.
   Qed.
 
   Definition Notation_Friendly_SharpenFully
-    (RepT : Type)
-    (consSigs : list consSig)
-    (methSigs : list methSig)
-    (consDefs : ilist (@consDef RepT) consSigs)
-    (methDefs : ilist (@methDef RepT) methSigs)
-    (DelegateSigs : list NamedADTSig)
-    (rep : ilist (fun nadt  => cADT (namedADTSig nadt)) DelegateSigs
-           -> Type)
-    (cConstructors :
-       forall DelegateImpl : ilist (fun nadt  => cADT (namedADTSig nadt)) DelegateSigs,
-         ilist (fun Sig => cConstructorType (rep DelegateImpl) (consDom Sig)) consSigs)
-    (cMethods :
-       forall DelegateImpl : ilist (fun nadt  => cADT (namedADTSig nadt)) DelegateSigs,
-         ilist (fun Sig => cMethodType (rep DelegateImpl) (methDom Sig) (methCod Sig)) methSigs)
-    (DelegateSpecs : ilist (fun nadt => ADT (namedADTSig nadt))
-                           DelegateSigs)
-    (cAbsR : forall DelegateImpl,
-               (forall idx,
-                  refineADT (ith_Bounded ADTSigname DelegateSpecs idx)
-                            (LiftcADT (ith_Bounded ADTSigname DelegateImpl idx)))
-               -> RepT -> rep DelegateImpl -> Prop)
-    (cConstructorsRefinesSpec :
-       forall (DelegateImpl : ilist (fun nadt  => cADT (namedADTSig nadt)) DelegateSigs)
-               (ValidImpl :
-                  (forall idx,
-                    refineADT (ith_Bounded ADTSigname DelegateSpecs idx)
-                              (LiftcADT (ith_Bounded ADTSigname DelegateImpl idx)))),
-         Iterate_Dep_Type_BoundedIndex
-           (fun idx =>
-              forall d ,
-                exists r_o',
-                cAbsR _ ValidImpl r_o' (ith_Bounded _ (cConstructors DelegateImpl) idx d) /\
-                computes_to (getConsDef consDefs idx d) r_o'
-           ))
-  (cMethodsRefinesSpec :
-     forall (DelegateImpl : ilist (fun nadt  => cADT (namedADTSig nadt)) DelegateSigs)
-            (ValidImpl :
-               (forall idx,
-                  refineADT (ith_Bounded ADTSigname DelegateSpecs idx)
-                            (LiftcADT (ith_Bounded ADTSigname DelegateImpl idx)))),
-       Iterate_Dep_Type_BoundedIndex
-         (fun idx =>
-            forall d r_o r_n,
-              cAbsR _ ValidImpl r_o r_n ->
-              exists r_o',
-                cAbsR _ ValidImpl r_o' (fst (ith_Bounded _ (cMethods DelegateImpl) idx r_n d)) /\
-                computes_to (getMethDef methDefs idx r_o d)
-                            (r_o',
-                             (snd (ith_Bounded _ (cMethods DelegateImpl) idx r_n d)))))
-  :  Sharpened (BuildADT consDefs methDefs)
-    :=
-      existT _ _
-             (Notation_Friendly_FullySharpened_BuildMostlySharpenedcADT
-                consDefs methDefs rep cConstructors cMethods
-                DelegateSpecs cAbsR
-                cConstructorsRefinesSpec cMethodsRefinesSpec).
+         (RepT : Type)
+         (consSigs : list consSig) (methSigs : list methSig)
+         (consDefs : ilist consDef consSigs)
+         (methDefs : ilist methDef methSigs)
+         (DelegateSigs : list NamedADTSig)
+         (rep : ilist (fun nadt : NamedADTSig => Type) DelegateSigs -> Type)
+         (cConstructors :
+            forall
+              (DelegateReps : ilist (fun nadt : NamedADTSig => Type) DelegateSigs)
+              (DelegateImpls : i2list (fun (nadt : NamedADTSig) rep => ComputationalADT.pcADT (namedADTSig nadt) rep) DelegateReps),
+              ilist
+                (fun Sig : consSig =>
+                   ComputationalADT.cConstructorType
+                     (rep DelegateReps) (consDom Sig)) consSigs)
+         (cMethods :
+            forall
+              (DelegateReps : ilist (fun nadt : NamedADTSig => Type) DelegateSigs)
+              (DelegateImpls : i2list (fun (nadt : NamedADTSig) rep => ComputationalADT.pcADT (namedADTSig nadt) rep) DelegateReps),
+              ilist
+                (fun Sig : methSig =>
+                   ComputationalADT.cMethodType
+                     (rep DelegateReps) (methDom Sig)
+                     (methCod Sig)) methSigs)
+         (DelegateSpecs : ilist
+                            (fun nadt : NamedADTSig => ADT (namedADTSig nadt))
+                            DelegateSigs)
+         (cAbsR : forall
+                    (DelegateReps : ilist (fun nadt : NamedADTSig => Type) DelegateSigs)
+                    (DelegateImpls : i2list (fun (nadt : NamedADTSig) rep => ComputationalADT.pcADT (namedADTSig nadt) rep) DelegateReps),
+                    (forall idx : BoundedIndex (map ADTSigname DelegateSigs),
+                       refineADT (ith_Bounded ADTSigname DelegateSpecs idx)
+                                 (ComputationalADT.LiftcADT
+                                    (existT _ _ (i2th_Bounded ADTSigname DelegateImpls idx)))) ->
+                    RepT -> rep DelegateReps -> Prop)
+         (cConstructorsRefinesSpec :
+            forall
+              (DelegateReps : ilist (fun nadt : NamedADTSig => Type) DelegateSigs)
+              (DelegateImpls : i2list (fun (nadt : NamedADTSig) rep => ComputationalADT.pcADT (namedADTSig nadt) rep) DelegateReps)
+              (ValidImpls : forall idx : BoundedIndex (map ADTSigname DelegateSigs),
+                              refineADT (ith_Bounded ADTSigname DelegateSpecs idx)
+                                        (ComputationalADT.LiftcADT
+                                           (existT _ _ (i2th_Bounded ADTSigname DelegateImpls idx)))),
+              Iterate_Dep_Type_BoundedIndex
+                (fun idx : BoundedIndex (map consID consSigs) =>
+                   forall d : consDom (nth_Bounded consID consSigs idx),
+                   exists r_o' : RepT,
+                     cAbsR DelegateReps DelegateImpls ValidImpls r_o'
+                           (ith_Bounded consID (cConstructors DelegateReps DelegateImpls) idx d) /\
+                     getConsDef consDefs idx d ↝ r_o'))
+         (cMethodsRefinesSpec :
+            forall
+              (DelegateReps : ilist (fun nadt : NamedADTSig => Type) DelegateSigs)
+              (DelegateImpls : i2list (fun (nadt : NamedADTSig) rep => ComputationalADT.pcADT (namedADTSig nadt) rep) DelegateReps)
+              (ValidImpls : forall idx : BoundedIndex (map ADTSigname DelegateSigs),
+                              refineADT (ith_Bounded ADTSigname DelegateSpecs idx)
+                                        (ComputationalADT.LiftcADT
+                                           (existT _ _ (i2th_Bounded ADTSigname DelegateImpls idx)))),
+              Iterate_Dep_Type_BoundedIndex
+                (fun idx : BoundedIndex (map methID methSigs) =>
+                   forall (d : methDom (nth_Bounded methID methSigs idx))
+                          (r_o : RepT) (r_n : rep DelegateReps),
+                     cAbsR DelegateReps DelegateImpls ValidImpls r_o r_n ->
+                     exists r_o' : RepT,
+                       cAbsR DelegateReps DelegateImpls ValidImpls r_o'
+                             (fst (ith_Bounded methID (cMethods DelegateReps DelegateImpls) idx r_n d)) /\
+                       getMethDef methDefs idx r_o d
+                                  ↝ (r_o',
+                                     snd (ith_Bounded methID (cMethods DelegateReps DelegateImpls) idx r_n d))))
+       : (sigT (fun adt => FullySharpenedUnderDelegates (BuildADT consDefs methDefs) adt))  :=
+  existT (FullySharpenedUnderDelegates (BuildADT consDefs methDefs))
+  {|
+  Sharpened_DelegateSigs := DelegateSigs;
+  Sharpened_Implementation := Notation_Friendly_BuildMostlySharpenedcADT rep
+                                cConstructors cMethods;
+  Sharpened_DelegateSpecs := DelegateSpecs |}
+  (Notation_Friendly_FullySharpened_BuildMostlySharpenedcADT consDefs
+     methDefs rep cConstructors cMethods DelegateSpecs cAbsR
+     cConstructorsRefinesSpec cMethodsRefinesSpec).
 
 End BuildADTRefinements.
 
-Arguments Notation_Friendly_BuildMostlySharpenedcADT _ _ _ _ _ _ _ / .
+Arguments Notation_Friendly_BuildMostlySharpenedcADT _ _ _ _ _ _ _ _ / .
 
 Tactic Notation "extract" "implementation" "of" constr(adtImpl) "using" open_constr(delegateImpl) :=
   let Impl :=
@@ -499,59 +554,54 @@ Proof.
   rewrite <- H3; eauto.
 Qed.
 
-(* *)
-Ltac ilist_of_evar1 C B As k :=
-  match As with
-    | nil => k (fun c : C => inil B)
-    | cons ?a ?As' =>
-      makeEvar (forall c : C, B a)
-               ltac:(fun b =>
-                       ilist_of_evar1
-                         C B As'
-                         ltac:(fun Bs' => k (fun c : C => icons a (b c) (Bs' c))))
-  end.
+    Ltac ilist_of_evar' C D B As k :=
+      match As with
+        | nil => k (fun (c : C) (d : D c) => inil B)
+        | cons ?a ?As' =>
+          makeEvar (forall (c : C) (d : D c), B a)
+                   ltac:(fun b =>
+                           ilist_of_evar'
+                             C D B As'
+                             ltac:(fun Bs' => k (fun (c : C) (d : D c) => icons a (b c d) (Bs' c d))))
+      end.
 
-Ltac FullySharpenEachMethod1 delegateSigs delegateSpecs :=
-    match goal with
-      |- Sharpened (@BuildADT ?Rep ?consSigs ?methSigs ?consDefs ?methDefs) =>
-      ilist_of_evar1
-        (ilist (fun nadt => ComputationalADT.cADT (namedADTSig nadt)) delegateSigs)
-        (fun Sig => ComputationalADT.cMethodType Rep (methDom Sig) (methCod Sig))
-        methSigs
-        ltac:(fun cMeths =>
-                ilist_of_evar1
-                  (ilist (fun nadt => ComputationalADT.cADT (namedADTSig nadt)) delegateSigs)
-                  (fun Sig => ComputationalADT.cConstructorType Rep (consDom Sig))
-                  consSigs
-                  ltac:(fun cCons =>
-                          eapply
-                            (@Notation_Friendly_SharpenFully
-                               Rep
-                               consSigs
-                               methSigs
-                               consDefs
-                               methDefs
-                               delegateSigs
-                               (fun _ => Rep)
-                               cCons
-                               cMeths
-                               delegateSpecs
-                               (fun (DelegateImpl : ilist
-                                                      (fun nadt : NamedADTSig =>
-                                                         ComputationalADT.cADT
-                                                           (namedADTSig nadt)) _)
-                                    (ValidImpl :
-                                       (forall idx : BoundedIndex (map ADTSigname []),
-                                          refineADT
-                                            (ith_Bounded ADTSigname
-                                                         (inil
-                                                            (fun nadt : NamedADTSig => ADT (namedADTSig nadt)))
-                                                         idx)
-                                            (ComputationalADT.LiftcADT
-                                               (ith_Bounded ADTSigname DelegateImpl idx)))) => @eq _))));
-        unfold ADTSynthesis.Common.IterateBoundedIndex.Dep_Type_BoundedIndex_app_comm_cons; simpl;
-        intuition; intros; subst
-  end.
+    Ltac FullySharpenEachMethod1 delegateSigs delegateSpecs :=
+      match goal with
+          |- Sharpened (@BuildADT ?Rep ?consSigs ?methSigs ?consDefs ?methDefs) =>
+          ilist_of_evar'
+            (ilist (fun nadt => Type) delegateSigs)
+            (fun D => i2list (fun (nadt : NamedADTSig) rep => ComputationalADT.pcADT (namedADTSig nadt) rep) (As := delegateSigs) D)
+            (fun Sig => ComputationalADT.cMethodType Rep (methDom Sig) (methCod Sig))
+            methSigs
+            ltac:(fun cMeths =>
+                    ilist_of_evar'
+                      (ilist (fun nadt => Type) delegateSigs)
+                      (fun D => i2list (fun (nadt : NamedADTSig) rep => ComputationalADT.pcADT (namedADTSig nadt) rep) (As := delegateSigs) D)
+                      (fun Sig => ComputationalADT.cConstructorType Rep (consDom Sig))
+                      consSigs
+                      ltac:(fun cCons =>
+                              eapply
+                                (@Notation_Friendly_SharpenFully
+                                   Rep
+                                   consSigs
+                                   methSigs
+                                   consDefs
+                                   methDefs
+                                   delegateSigs
+                                   (fun _ => Rep)
+                                   cCons
+                                   cMeths
+                                   delegateSpecs
+                                   (fun
+                                       (DelegateReps : ilist (fun nadt : NamedADTSig => Type) delegateSigs)
+                                       (DelegateImpls : i2list (fun (nadt : NamedADTSig) rep => ComputationalADT.pcADT (namedADTSig nadt) rep) DelegateReps)
+                                       (ValidImpls : forall idx : BoundedIndex (map ADTSigname delegateSigs),
+                                                       refineADT (ith_Bounded ADTSigname delegateSpecs idx)
+                                                                 (ComputationalADT.LiftcADT
+                                                                    (existT _ _ (i2th_Bounded ADTSigname DelegateImpls idx)))) => @eq _))));
+            unfold ADTSynthesis.Common.IterateBoundedIndex.Dep_Type_BoundedIndex_app_comm_cons; simpl;
+            intuition; intros; subst
+      end.
 
   Ltac make_computational_constructor :=
     let x := match goal with |- ?R (ret ?x) (ret (?f ?a ?b)) => constr:(x) end in

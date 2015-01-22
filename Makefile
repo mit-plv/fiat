@@ -3,6 +3,7 @@ CORE_MODULES    := \
 	Common/ReservedNotations \
 	Common/ilist \
 	Common/i2list \
+	Common/ilist2 \
 	Common/i2list2 \
 	Common/StringBound \
 	Common/DecideableEnsembles \
