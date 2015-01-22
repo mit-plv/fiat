@@ -107,18 +107,27 @@ Ltac simpl_transitivity :=
 
     The [tac] part exists so that you can, e.g., [simpl in *], to
     speed things up. *)
-Ltac destruct_all_matches_then matcher tac :=
+Ltac do_all_matches_then matcher do_tac tac :=
   repeat match goal with
            | [ H : ?T |- _ ]
-             => matcher T; destruct H;
+             => matcher T; do_tac H;
                 try match type of H with
                       | T => clear H
                     end;
                 tac
          end.
 
+Ltac destruct_all_matches_then matcher tac :=
+  do_all_matches_then matcher ltac:(fun H => destruct H) tac.
+
+Ltac inversion_all_matches_then matcher tac :=
+  do_all_matches_then matcher ltac:(fun H => inversion H; subst) tac.
+
 Ltac destruct_all_matches matcher := destruct_all_matches_then matcher ltac:(simpl in *).
 Ltac destruct_all_matches' matcher := destruct_all_matches_then matcher idtac.
+
+Ltac inversion_all_matches matcher := inversion_all_matches_then matcher ltac:(simpl in *).
+Ltac inversion_all_matches' matcher := inversion_all_matches_then matcher idtac.
 
 (* matches anything whose type has a [T] in it *)
 Ltac destruct_type_matcher T HT :=
@@ -135,12 +144,19 @@ Ltac destruct_head_matcher T HT :=
 Ltac destruct_head T := destruct_all_matches ltac:(destruct_head_matcher T).
 Ltac destruct_head' T := destruct_all_matches' ltac:(destruct_head_matcher T).
 
+Ltac inversion_head T := inversion_all_matches ltac:(destruct_head_matcher T).
+Ltac inversion_head' T := inversion_all_matches' ltac:(destruct_head_matcher T).
+
+
 Ltac destruct_head_hnf_matcher T HT :=
   match head_hnf HT with
     | T => idtac
   end.
 Ltac destruct_head_hnf T := destruct_all_matches ltac:(destruct_head_hnf_matcher T).
 Ltac destruct_head_hnf' T := destruct_all_matches' ltac:(destruct_head_hnf_matcher T).
+
+Ltac inversion_head_hnf T := inversion_all_matches ltac:(destruct_head_hnf_matcher T).
+Ltac inversion_head_hnf' T := inversion_all_matches' ltac:(destruct_head_hnf_matcher T).
 
 Ltac destruct_sig_matcher HT :=
   match eval hnf in HT with
