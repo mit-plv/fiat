@@ -79,70 +79,6 @@ Section recursive_descent_parser.
                     end
              end.
       End item.
-    End parts.
-  End generic.
-
-  Require Import Parsers.MinimalParse.
-  Section minimal.
-    Section parts.
-      Section item.
-        Context (str0 : StringWithSplitState String split_stateT)
-                (valid : names_listT) {P : Type}.
-        Context (str : StringWithSplitState String split_stateT).
-
-        Let T_name_success (name : string) : Type
-          := minimal_parse_of_name String G initial_names_data is_valid_name remove_name
-                                   str0 valid str name.
-        Let T_name_failure (name : string) : Type
-          := T_name_success name -> False.
-
-        Context (str_matches_name : forall name, sum (T_name_success name) (T_name_failure name)).
-
-        Let T_item_success (it : item CharType) : Type
-          := minimal_parse_of_item String G initial_names_data is_valid_name remove_name
-                                   str0 valid str it.
-        Let T_item_failure (it : item CharType) : Type
-          := T_item_success it -> False.
-
-        Let lift_success name (H : T_name_success name) : T_item_success (NonTerminal _ name)
-          := MinParseNonTerminal H.
-
-        Definition lift_failure name (H : T_name_failure name) : T_item_failure (NonTerminal _ name).
-        Proof.
-          intro s.
-          apply H.
-          hnf in s.
-          hnf.
-
-          inversion s; subst name.
-          hnf.
-          assumption.
-        Defined.
-        Print lift_failure.
-
-        Let parse_terminal_success : forall ch, [[ ch ]] =s str -> T_item_success (Terminal ch))
-                (parse_terminal_failure : forall ch, ([[ ch ]] =s str) = false -> T_item_failure (Terminal ch))
-
-
-        Let T_name := fun name => sum (T_name_success name) (T_name_failure name).
-        Let T_item := fun it => sum (T_item_success it) (T_item_failure it).
-
-        Definition parse_item (it : item CharType) : T_item it
-          := match it as it return T_item it with
-               | Terminal ch
-                 => match Sumbool.sumbool_of_bool ([[ ch ]] =s str) with
-                      | left pf => inl (parse_terminal_success ch pf)
-                      | right pf => inr (parse_terminal_failure ch pf)
-                    end
-               | NonTerminal name
-                 => match str_matches_name name with
-                      | inl ret => inl (lift_success ret)
-                      | inr ret => inr (lift_failure ret)
-                    end
-             end.
-      End item.
-    End parts.
-
 
       Section production.
         Context (str0 : StringWithSplitState String split_stateT)
@@ -213,6 +149,82 @@ Section recursive_descent_parser.
             ).
         Defined.
       End production.
+    End parts.
+  End generic.
+
+  Require Import Parsers.MinimalParse.
+  Section minimal.
+    Section parts.
+      Section item.
+        Context (str0 : StringWithSplitState String split_stateT)
+                (valid : names_listT) {P : Type}.
+        Context (str : StringWithSplitState String split_stateT).
+
+        Let T_name_success (name : string) : Type
+          := minimal_parse_of_name String G initial_names_data is_valid_name remove_name
+                                   str0 valid str name.
+        Let T_name_failure (name : string) : Type
+          := T_name_success name -> False.
+
+        Let T_item_success (it : item CharType) : Type
+          := minimal_parse_of_item String G initial_names_data is_valid_name remove_name
+                                   str0 valid str it.
+        Let T_item_failure (it : item CharType) : Type
+          := T_item_success it -> False.
+
+        Let lift_success name (H : T_name_success name) : T_item_success (NonTerminal _ name)
+          := MinParseNonTerminal H.
+
+        Let lift_failure name (H : T_name_failure name) : T_item_failure (NonTerminal _ name).
+        Proof.
+          intro s.
+          apply H.
+          hnf in s.
+          hnf.
+          clear -s.
+          abstract (
+              inversion s; subst name;
+              hnf;
+              assumption
+            ).
+        Defined.
+
+        Let parse_terminal_success ch (H : [[ ch ]] =s str)
+        : T_item_success (Terminal ch).
+        Proof.
+          apply bool_eq_correct in H.
+          hnf.
+          case H.
+          constructor.
+        Defined.
+
+        Let parse_terminal_failure ch (H : ([[ ch ]] =s str) = false)
+        : T_item_failure (Terminal ch).
+        Proof.
+          hnf.
+          intro H'.
+          hnf in H'.
+          clear -H H'.
+          abstract (
+              inversion H'; destruct str; simpl in *; subst;
+              rewrite (proj2 (bool_eq_correct String [[ ch ]] _) eq_refl) in H;
+              congruence
+            ).
+        Defined.
+
+        Context (str_matches_name : forall name, sum (T_name_success name) (T_name_failure name)).
+
+        Let T_name := fun name => sum (T_name_success name) (T_name_failure name).
+        Let T_item := fun it => sum (T_item_success it) (T_item_failure it).
+
+        Definition minimal_parse_item (it : item CharType) : T_item it
+          := @parse_item str T_name_success T_name_failure T_item_success T_item_failure lift_success lift_failure parse_terminal_success parse_terminal_failure str_matches_name it.
+      End item.
+    End parts.
+  End minimal.
+
+
+
 
 
 
