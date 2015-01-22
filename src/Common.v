@@ -837,3 +837,19 @@ Lemma if_ext {T} (b : bool) (f1 f2 : b = true -> T true) (g1 g2 : b = false -> T
 Proof.
   destruct b; trivial.
 Defined.
+
+Class constr_eq_helper {T0 T1} (a : T0) (b : T1) := mkconstr_eq : True.
+Hint Extern 0 (constr_eq_helper ?a ?b) => constr_eq a b; exact I : typeclass_instances.
+(** return the first hypothesis with head [h] *)
+Ltac hyp_with_head h
+  := match goal with
+       | [ H : ?T |- _ ] => let h' := head T in
+                            let test := constr:(_ : constr_eq_helper h' h) in
+                            constr:H
+     end.
+Ltac hyp_with_head_hnf h
+  := match goal with
+       | [ H : ?T |- _ ] => let h' := head_hnf T in
+                            let test := constr:(_ : constr_eq_helper h' h) in
+                            constr:H
+     end.
