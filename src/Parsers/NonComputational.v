@@ -154,6 +154,7 @@ Section recursive_descent_parser.
                      {struct splits}
             : T_production str (it::its).
             Proof.
+              (** TODO: make this mirror BooleanRecognizer more *)
               specialize (H_prod_split pf).
               subst_body; simpl in *.
               destruct splits as [ | [s1 s2] splits ]; simpl in *.
