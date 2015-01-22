@@ -7,7 +7,7 @@ Require Import Common Common.ilist Common.Wf.
 Set Implicit Arguments.
 Local Open Scope string_like_scope.
 
-(** TODO: move this elsewhere *)
+(** TODO: Allow stubbing out of individual sub-parse methods *)
 Section recursive_descent_parser.
   Context CharType (String : string_like CharType) (G : grammar CharType).
   Context (names_listT : Type)
