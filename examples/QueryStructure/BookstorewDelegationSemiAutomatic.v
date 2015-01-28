@@ -59,7 +59,7 @@ Definition BookStoreSig : ADTSig :=
   ADTsignature {
       Constructor "Init" : unit -> rep,
       (* Method "PlaceOrder" : rep x Order -> rep x bool, *)
-      Method "DeleteOrder" : rep x nat -> rep x list Order,
+      (*Method "DeleteOrder" : rep x nat -> rep x list Order, *)
       (* Method "AddBook" : rep x Book -> rep x bool, *)
       (* Method "DeleteBook" : rep x nat -> rep x list Book, *)
       Method "GetTitles" : rep x string -> rep x list string,
@@ -75,8 +75,8 @@ Definition BookStoreSpec : ADT BookStoreSig :=
     (*update "PlaceOrder" ( o : Order ) : bool :=
         Insert o into sORDERS, *)
 
-    update "DeleteOrder" ( oid : nat ) : list Order :=
-      Delete o from sORDERS where o!sISBN = oid,
+    (*update "DeleteOrder" ( oid : nat ) : list Order :=
+      Delete o from sORDERS where o!sISBN = oid, *)
 
     (*update "AddBook" ( b : Book ) : bool :=
         Insert b into sBOOKS , *)
@@ -96,7 +96,7 @@ Definition BookStoreSpec : ADT BookStoreSig :=
                  Return ())
 }.
 
-Definition BooksSearchTerm :=
+(*Definition BooksSearchTerm :=
 {|
              BagSearchTermType := @BuildIndexSearchTerm
                                     <sAUTHOR :: string,
@@ -2547,7 +2547,7 @@ Check ((let Init := "Init" in
     ()))).
 
    Print Universes.
- Defined. *)
+ Defined. *) *)
 
 Theorem BookStoreManual :
   Sharpened BookStoreSpec.
@@ -2596,18 +2596,16 @@ Proof.
     finish honing.
 }
 
-  hone method "DeleteOrder".
+  (*hone method "DeleteOrder".
   {
     implement_QSDeletedTuples find_simple_search_term.
     simplify with monad laws; cbv beta; simpl.
     implement_EnsembleDelete_AbsR find_simple_search_term.
     simplify with monad laws.
     finish honing.
-  }
+  } *)
 
-  (* At this point our implementation is fully computational: we're done! *)
-
-Ltac ilist_of_dep_evar C D B As k :=
+  Ltac ilist_of_dep_evar C D B As k :=
   match As with
     | nil => k (fun (c : C) (d : D c) => inil (B c d))
     | cons ?a ?As' =>
@@ -2618,105 +2616,270 @@ Ltac ilist_of_dep_evar C D B As k :=
                          ltac:(fun Bs' => k (fun c (d : D c) => @icons _ _ a As' (b c d) (Bs' c d))))
   end.
 
-  Check Build_IndexedQueryStructure_Impl_AbsR''.
-
-Definition Build_IndexedQueryStructure_Impl_AbsR''
-           {qs_schema : QueryStructureSchema}
-           (Index : ilist (fun ns : NamedSchema => SearchUpdateTerms (schemaHeading (relSchema ns))) (qschemaSchemas qs_schema) )
-           (DelegateReps : ilist (fun nadt : NamedADTSig => Type)
-                                 (Build_IndexedQueryStructure_Impl_Sigs Index))
-           (DelegateImpls : i2list (fun (nadt : NamedADTSig) rep => ComputationalADT.pcADT (namedADTSig nadt) rep) DelegateReps)
-         (ValidImpls :
-              forall idx : BoundedIndex (map relName (qschemaSchemas qs_schema)),
-                refineADT (ith_Bounded ADTSigname
-                                       (Build_IndexedQueryStructure_Impl_Specs Index) (map_IndexedQS_idx' Index idx))
-                          (ComputationalADT.LiftcADT
-                             (existT _ _ (i2th_Bounded ADTSigname DelegateImpls (map_IndexedQS_idx' Index idx)))))
-           (r_o : IndexedQueryStructure qs_schema Index)
-           (r_n : Build_IndexedQueryStructure_Impl_cRep Index DelegateReps)
-: Prop.
-  assert (forall idx, ith_Bounded ADTSigname r_n (map_IndexedQS_idx' Index idx) = Rep
-    (ComputationalADT.LiftcADT
-       (existT
-          (fun rep : Type (* ADTSynthesis.ADT.ComputationalADT.10 *) =>
-           ComputationalADT.pcADT
-             (namedADTSig
-                (nth_Bounded ADTSigname
-                   (Build_IndexedQueryStructure_Impl_Sigs Index)
-                   (map_IndexedQS_idx' Index idx))) rep)
-          (ith_Bounded ADTSigname DelegateReps (map_IndexedQS_idx' Index idx))
-          (i2th_Bounded ADTSigname DelegateImpls
-             (map_IndexedQS_idx' Index idx))))).
-  simpl.
-  unfold Build_IndexedQueryStructure_Impl_cRep in r_n.
-  unfold DelegateReps.
-  refine (forall idx : BoundedIndex (map relName (qschemaSchemas qs_schema)),
-    AbsR (ValidImpls idx)
-         (map_IndexedQS_Rep'' Index idx (GetIndexedRelation r_o idx))
-         (ith_Bounded ADTSigname r_n (map_IndexedQS_idx' Index idx))).
-
-Definition Build_IndexedQueryStructure_Impl_AbsR'
-           {qs_schema : QueryStructureSchema}
-           (Index : ilist (fun ns : NamedSchema => SearchUpdateTerms (schemaHeading (relSchema ns))) (qschemaSchemas qs_schema) )
-           (DelegateImpls : ilist (fun ns => cADT (namedADTSig ns))
-                                  (Build_IndexedQueryStructure_Impl_Sigs Index))
-           (ValidImpl :
-              forall idx,
-                refineADT (ith_Bounded ADTSigname
-                                       (Build_IndexedQueryStructure_Impl_Specs Index) idx)
-                          (LiftcADT (ith_Bounded ADTSigname DelegateImpls idx)))
-           (r_o : IndexedQueryStructure qs_schema Index)
-           (r_n : Build_IndexedQueryStructure_Impl_cRep Index DelegateImpls)
-: Prop :=
-  @Build_IndexedQueryStructure_Impl_AbsR''
-    qs_schema Index DelegateImpls
-    (fun idx => ValidImpl (map_IndexedQS_idx' Index idx))
-    r_o
-    r_n.
-
-Ltac FullySharpenQueryStructure qs_schema Index :=
+  Ltac FullySharpenQueryStructure qs_schema Index :=
   let delegateSigs := constr:(Build_IndexedQueryStructure_Impl_Sigs Index) in
   let delegateSpecs := constr:(Build_IndexedQueryStructure_Impl_Specs Index) in
   let cRep' := constr:(Build_IndexedQueryStructure_Impl_cRep Index) in
-  let cAbsR' := constr:(@Build_IndexedQueryStructure_Impl_AbsR' qs_schema Index) in
+  let cAbsR' := constr:(@Build_IndexedQueryStructure_Impl_AbsR qs_schema Index) in
+  let DelegateIDs := constr:(map relName (qschemaSchemas qs_schema)) in
   match goal with
       |- Sharpened (@BuildADT ?Rep ?consSigs ?methSigs ?consDefs ?methDefs) =>
       ilist_of_dep_evar
-        (ilist (fun nadt => Type) delegateSigs)
-        (fun DelegateImpls => i2list (fun (nadt : NamedADTSig) rep => ComputationalADT.pcADT (namedADTSig nadt) rep) (As := delegateSigs) DelegateImpls)
-        (fun DelegateReps
-             (DelegateImpls : i2list (fun (nadt : NamedADTSig) rep => ComputationalADT.pcADT (namedADTSig nadt) rep) DelegateReps)
-             Sig => ComputationalADT.cMethodType (cRep' DelegateReps) (methDom Sig) (methCod Sig))
+        (@BoundedString DelegateIDs -> Type)
+        (fun D =>
+           forall idx,
+             ComputationalADT.pcADT (delegateSigs idx) (D idx))
+        (fun (DelegateReps : @BoundedString DelegateIDs -> Type)
+             (DelegateImpls : forall idx,
+                                ComputationalADT.pcADT (delegateSigs idx) (DelegateReps idx))
+             (Sig : methSig) => ComputationalADT.cMethodType (cRep' DelegateReps)
+                                                             (methDom Sig) (methCod Sig))
         methSigs
         ltac:(fun cMeths =>
                 ilist_of_dep_evar
-                  (ilist (fun nadt => Type) delegateSigs)
-                  (fun DelegateImpls => i2list (fun (nadt : NamedADTSig) rep => ComputationalADT.pcADT (namedADTSig nadt) rep) (As := delegateSigs) DelegateImpls)
-                  (fun DelegateReps
-                       (DelegateImpls : i2list (fun (nadt : NamedADTSig) rep => ComputationalADT.pcADT (namedADTSig nadt) rep) DelegateReps)
-                       Sig => ComputationalADT.cConstructorType (cRep' DelegateReps) (consDom Sig))
+                  (@BoundedString DelegateIDs -> Type)
+                  (fun D =>
+                     forall idx,
+                       ComputationalADT.pcADT (delegateSigs idx) (D idx))
+                  (fun (DelegateReps : @BoundedString DelegateIDs -> Type)
+                       (DelegateImpls : forall idx,
+                                          ComputationalADT.pcADT (delegateSigs idx) (DelegateReps idx))
+                       (Sig : consSig) =>
+                     ComputationalADT.cConstructorType (cRep' DelegateReps) (consDom Sig))
                   consSigs
                   ltac:(fun cCons =>
                           eapply
-                              (@Notation_Friendly_SharpenFully
+                              (@Notation_Friendly_SharpenFully'
                                _
                                consSigs
                                methSigs
                                consDefs
                                methDefs
+                               DelegateIDs
                                delegateSigs
                                cRep'
                                cCons
                                cMeths
-                               delegateSpecs)));
+                               delegateSpecs
+                               cAbsR'
+                              )));
         unfold Dep_Type_BoundedIndex_app_comm_cons
-  end; simpl; intros;
-  [ repeat split; intros; try exact tt; implement_bag_constructors
-  | repeat split; intros; try exact tt; implement_bag_methods ].
-
-  Unset Ltac Debug.
+  end; simpl; intros.
 
   FullySharpenQueryStructure BookStoreSchema Index.
+
+  Definition Initialize_IndexedQueryStructureImpls'
+         {indices}
+         Index
+         (DelegateReps : @BoundedString (map relName indices) -> Type)
+         (DelegateImpls : forall idx,
+                            ComputationalADT.pcADT (Build_IndexedQueryStructure_Impl_Sigs Index idx) (DelegateReps idx))
+: @Build_IndexedQueryStructure_Impl_cRep _ Index DelegateReps :=
+    (fun idx => ComputationalADT.pcConstructors (DelegateImpls idx)
+                                                {| bindex := "Empty" |} ()).
+
+Ltac higher_order_1_reflexivity'' :=
+  let x := match goal with |- ?R (ret ?x) (ret (?f ?a)) => constr:(x) end in
+  let f := match goal with |- ?R (ret ?x) (ret (?f ?a)) => constr:(f) end in
+  let a := match goal with |- ?R (ret ?x) (ret (?f ?a)) => constr:(a) end in
+  let x' := (eval pattern a in x) in
+  let f' := match x' with ?f' _ => constr:(f') end in
+  unify f f';
+    cbv beta;
+    solve [apply reflexivity].
+
+Ltac higher_order_2_reflexivity'' :=
+  let x := match goal with |- ?R (ret ?x) (ret (?f ?a ?b)) => constr:(x) end in
+  let f := match goal with |- ?R (ret ?x) (ret (?f ?a ?b)) => constr:(f) end in
+  let a := match goal with |- ?R (ret ?x) (ret (?f ?a ?b)) => constr:(a) end in
+  let b := match goal with |- ?R (ret ?x) (ret (?f ?a ?b)) => constr:(b) end in
+  let x' := (eval pattern a, b in x) in
+  let f' := match x' with ?f' _ _ => constr:(f') end in
+  unify f f';
+    cbv beta;
+    solve [apply reflexivity].
+
+Definition CallBagImplMethod
+           {qs_schema : QueryStructureSchema}
+           (Index : ilist (fun ns : NamedSchema => SearchUpdateTerms (schemaHeading (relSchema ns))) (qschemaSchemas qs_schema) )
+           (DelegateReps : @BoundedString (map relName (qschemaSchemas qs_schema)) -> Type)
+           (DelegateImpls : forall idx,
+                              ComputationalADT.pcADT (Build_IndexedQueryStructure_Impl_Sigs Index idx) (DelegateReps idx))
+           idx midx
+           (r_n : Build_IndexedQueryStructure_Impl_cRep Index DelegateReps) :=
+  ComputationalADT.pcMethods (DelegateImpls idx) midx (r_n idx).
+
+Definition CallBagImplConstructor
+           {qs_schema : QueryStructureSchema}
+           (Index : ilist (fun ns : NamedSchema => SearchUpdateTerms (schemaHeading (relSchema ns))) (qschemaSchemas qs_schema) )
+           (DelegateReps : @BoundedString (map relName (qschemaSchemas qs_schema)) -> Type)
+           (DelegateImpls : forall idx,
+                              ComputationalADT.pcADT (Build_IndexedQueryStructure_Impl_Sigs Index idx) (DelegateReps idx))
+           idx cidx :=
+  ComputationalADT.pcConstructors (DelegateImpls idx) cidx.
+
+Lemma refine_BagImplConstructor
+      {qs_schema : QueryStructureSchema}
+      (indices := qschemaSchemas qs_schema)
+      (Index : ilist (fun ns : NamedSchema => SearchUpdateTerms (schemaHeading (relSchema ns))) (qschemaSchemas qs_schema) )
+      (DelegateReps : @BoundedString (map relName (qschemaSchemas qs_schema)) -> Type)
+      (DelegateImpls : forall idx,
+                         ComputationalADT.pcADT (Build_IndexedQueryStructure_Impl_Sigs Index idx) (DelegateReps idx))
+      (ValidImpls
+       : forall idx,
+           refineADT (Build_IndexedQueryStructure_Impl_Specs Index idx)
+                     (ComputationalADT.LiftcADT (existT _ _ (DelegateImpls idx))))
+:  forall (ridx : BoundedIndex (map relName (qschemaSchemas qs_schema))) cidx d,
+   exists r_o' ,
+     refine (@CallBagConstructor _ (bindex ridx) (ith_Bounded relName Index ridx) cidx d)
+            (ret r_o') /\
+         AbsR (ValidImpls ridx) r_o' (CallBagImplConstructor DelegateReps DelegateImpls cidx d).
+Proof.
+  intros.
+  pose proof (ADTRefinementPreservesConstructors (ValidImpls ridx) cidx d (ReturnComputes _)).
+  inversion_by computes_to_inv; subst.
+  exists x;
+    unfold CallBagImplConstructor; simpl in *.
+  split; simpl.
+  - intros v Comp_v; inversion_by computes_to_inv; subst.
+    generalize d v H0; clear.
+    eapply (fun P H => Iterate_Dep_Type_BoundedIndex_equiv_1 P H cidx).
+    simpl; intuition.
+  - eapply H1.
+Qed.
+
+Ltac implement_bag_constructors :=
+  repeat match goal with
+           | |- context[ Pick (fun r_n : @Build_IndexedQueryStructure_Impl_cRep ?qs_schema ?Index ?DelegateReps =>
+                                 @Build_IndexedQueryStructure_Impl_AbsR
+                                   _ _ ?DelegateReps ?DelegateImpls
+                                   ?ValidImpls ?r_o r_n)] =>
+             refine pick val (@Initialize_IndexedQueryStructureImpls' qs_schema Index DelegateReps DelegateImpls);
+               [ higher_order_2_reflexivity'' |
+                 unfold Build_IndexedQueryStructure_Impl_AbsR;
+                   eapply Iterate_Dep_Type_BoundedIndex_equiv_1; simpl; intuition ]
+           | |- context[CallBagConstructor ?ridx ?cidx ?d] =>
+             match goal with
+                 |- appcontext[@Build_IndexedQueryStructure_Impl_AbsR
+                                 ?qs_schema ?Index
+                                 ?DelegateReps ?DelegateImpls ?ValidImpls] =>
+                 let r_o' := fresh "r_o'" in
+                 let AbsR_r_o' := fresh "AbsR_r_o'" in
+                 let refines_r_o' := fresh "refines_r_o'" in
+                 destruct (@refine_BagImplConstructor
+                             qs_schema Index DelegateReps DelegateImpls ValidImpls
+                             {|bindex := ridx |} cidx d) as [r_o' [refines_r_o' AbsR_r_o']];
+                   setoid_rewrite refines_r_o'; simpl in *; simplify with monad laws; simpl
+             end
+         end.
+repeat split; intros; try exact tt; implement_bag_constructors.
+repeat split; intros; try exact tt.
+
+Definition Join_Lists'
+           {A : Type} {f : A -> Type} {As : list A} {a : A}
+           (l : list (ilist f As)) (c : ilist f As -> list (f a))
+  := flatten (map
+                (fun l' => map (fun fa : f a => icons fa l') (c l')) l).
+
+Lemma Join_Lists_Impl {A : Type} {f : A -> Type} {As : list A} {a : A}
+: forall (l : list (ilist f As))
+         (c : ilist f As -> Comp (list (f a)))
+         (c' : ilist f As -> list (f a)),
+    (forall a', refine (c a') (ret (c' a')))
+    -> refine (Join_Lists l c) (ret (Join_Lists' l c')).
+Proof.
+  induction l; unfold Join_Lists, Join_Lists'; simpl; intros.
+  - reflexivity.
+  - rewrite H; simplify with monad laws.
+    setoid_rewrite IHl; eauto; simplify with monad laws.
+    reflexivity.
+Qed.
+
+Lemma refine_BagImplMethods
+      {qs_schema : QueryStructureSchema}
+      (indices := qschemaSchemas qs_schema)
+      (Index : ilist (fun ns : NamedSchema => SearchUpdateTerms (schemaHeading (relSchema ns))) (qschemaSchemas qs_schema) )
+      (DelegateReps : @BoundedString (map relName (qschemaSchemas qs_schema)) -> Type)
+      (DelegateImpls : forall idx,
+                         ComputationalADT.pcADT (Build_IndexedQueryStructure_Impl_Sigs Index idx) (DelegateReps idx))
+      (ValidImpls
+       : forall idx,
+           refineADT (Build_IndexedQueryStructure_Impl_Specs Index idx)
+                     (ComputationalADT.LiftcADT (existT _ _ (DelegateImpls idx))))
+:  forall (r_o : IndexedQueryStructure qs_schema Index)
+          (r_n : Build_IndexedQueryStructure_Impl_cRep Index DelegateReps)
+          ridx,
+     Build_IndexedQueryStructure_Impl_AbsR DelegateImpls ValidImpls r_o r_n ->
+     forall midx
+            d,
+       exists r_o',
+         refine (CallBagMethod ridx midx r_o d)
+                (ret (r_o',
+                      (snd (CallBagImplMethod DelegateImpls midx r_n d))))
+         /\ AbsR (ValidImpls ridx) r_o' (fst (CallBagImplMethod DelegateImpls midx r_n d)).
+Proof.
+  intros.
+  pose proof (ADTRefinementPreservesMethods (ValidImpls ridx) midx
+                                            (GetIndexedRelation r_o ridx)
+                                            (r_n ridx) d (H ridx) (ReturnComputes _)).
+  inversion_by computes_to_inv; subst.
+  exists (fst x);
+    unfold CallBagImplMethod; simpl in *.
+  split; simpl.
+  - pose proof (f_equal snd H3) as eq_x; simpl in eq_x.
+    assert (refine (CallBagMethod ridx midx r_o d)
+                   (ret (fst x, snd x)));
+      [ | rewrite eq_x in H3;
+          unfold ComputationalADT.cMethods in eq_x; simpl in *; rewrite <- eq_x; eapply H0].
+    intros v Comp_v; simpl in *; inversion_by computes_to_inv; subst.
+    destruct x; simpl @fst in *; simpl @snd in *.
+    generalize d i m H1 H2; clear.
+    eapply (fun P H => Iterate_Dep_Type_BoundedIndex_equiv_1 P H midx).
+    simpl; intuition.
+  - unfold ComputationalADT.cMethods in H3; simpl in *; rewrite <- H3; eapply H2.
+Qed.
+
+Ltac implement_bag_methods :=
+  repeat
+    match goal with
+      | |- refine (ret _) (ret (?f ?a ?b)) => higher_order_2_reflexivity''
+      | |- refine (ret _) (ret (?f ?a)) => higher_order_1_reflexivity''
+      | H : @Build_IndexedQueryStructure_Impl_AbsR ?qs_schema ?Index ?DelegateReps ?DelegateImpls
+                                                   ?ValidImpls ?r_o ?r_n
+        |- context[
+               { r_n' | @Build_IndexedQueryStructure_Impl_AbsR ?qs_schema ?Index ?DelegateReps ?DelegateImpls
+                                                   ?ValidImpls ?r_o r_n'}
+                ] => refine pick val _;
+           [ simplify with monad laws |
+             eapply H]
+
+      | H : @Build_IndexedQueryStructure_Impl_AbsR ?qs_schema ?Index ?DelegateReps ?DelegateImpls
+                                                   ?ValidImpls ?r_o ?r_n
+        |- context[CallBagMethod (BagIndexKeys := ?Index') ?ridx ?midx ?r_o ?d] =>
+        let r_o' := fresh "r_o'" in
+        let AbsR_r_o' := fresh "AbsR_r_o'" in
+        let refines_r_o' := fresh "refines_r_o'" in
+        destruct (@refine_BagImplMethods qs_schema Index' DelegateReps DelegateImpls ValidImpls r_o r_n ridx H midx d) as [r_o' [refines_r_o' AbsR_r_o']];
+          simpl in refines_r_o', AbsR_r_o';
+          setoid_rewrite refines_r_o'; simpl in *; simplify with monad laws; simpl
+
+      | H : @Build_IndexedQueryStructure_Impl_AbsR ?qs_schema ?Index ?DelegateReps ?DelegateImpls
+                                                   ?ValidImpls ?r_o ?r_n
+        |- context[Join_Lists (As := ?As) (f := ?f) (a := ?a) ?l ?c ] =>
+        makeEvar (ilist f As -> list (f a))
+                 ltac:(fun c' =>
+                         let refines_c' := fresh in
+                         assert (forall a', refine (c a') (ret (c' a'))) as refines_c';
+                       [intros; try implement_bag_methods
+                       | setoid_rewrite (Join_Lists_Impl l c c' refines_c');
+                         simpl in *; setoid_rewrite (refineEquiv_bind_unit);
+                         implement_bag_methods
+                       ])
+
+    end.
+
+implement_bag_methods.
+implement_bag_methods.
 
 Defined.
 

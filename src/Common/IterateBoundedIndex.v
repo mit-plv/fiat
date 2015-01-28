@@ -125,7 +125,7 @@ Section Iterate_Ensemble.
                   {| bindex := a; indexb := {| ibound := n; boundi := nth |}|}
                   eq_refl); simpl; intros; subst.
     erewrite (eq_proofs_unicity_Opt_A A_eq_dec nth'); reflexivity.
-  Qed.
+  Defined.
 
   Lemma Ensemble_BoundedIndex_nth_eq {A : Set}
         (A_eq_dec : forall a a' : A, {a = a'} + {a <> a'})
@@ -142,7 +142,7 @@ Section Iterate_Ensemble.
                   {| bindex := a; indexb := {| ibound := n; boundi := nth |}|}
                   eq_refl); simpl; intros; subst.
     erewrite (eq_proofs_unicity_Opt_A A_eq_dec nth'); eassumption.
-  Qed.
+  Defined.
 
   Lemma nth_error_app {A : Set} :
     forall (a : A) (As As' : list A) n,
@@ -250,6 +250,25 @@ Section Iterate_Ensemble.
       apply nth_error_app; eassumption.
   Qed.
 
+  Fixpoint app_nil_r'
+           {A : Type}
+           (n : nat)
+           (l : list A)
+           (a_opt : option A)
+           (nth_l : nth_error (l ++ []) n = a_opt)
+  :  nth_error l n = a_opt :=
+    match l return nth_error (l ++ []) n = a_opt
+                   -> nth_error l n = a_opt with
+      | nil => fun nth_l => nth_l
+      | a :: l' => match n return
+                         nth_error ((a :: l') ++ []) n = a_opt
+                         -> nth_error (a :: l') n = a_opt
+                   with
+                     | 0 => fun nth_l => nth_l
+                     | S n' => @app_nil_r' A n' l' a_opt
+                   end
+    end nth_l.
+
   Lemma Iterate_Ensemble_equiv' {A : Set}
         (A_eq_dec : forall a a' : A, {a = a'} + {a <> a'})
   : forall (Remaining Visited : list A)
@@ -271,7 +290,7 @@ Section Iterate_Ensemble.
       unfold Ensemble_BoundedIndex_app_comm_cons, eq_rect; destruct (app_comm_cons' a Visited Remaining).
       intros; erewrite (eq_proofs_unicity_Opt_A A_eq_dec nth_n); eauto.
       Grab Existential Variables.
-      rewrite app_nil_r in nth_n; assumption.
+      apply app_nil_r'; assumption.
   Qed.
 
   Lemma Iterate_Ensemble_equiv'' {A : Set}
@@ -345,7 +364,7 @@ Section Iterate_Ensemble.
         clear H.
         intros; erewrite (eq_proofs_unicity_Opt_A A_eq_dec nth_n); eauto.
         Grab Existential Variables.
-        rewrite app_nil_r in nth_n; assumption.
+        apply app_nil_r'; assumption.
   Qed.
 
   Lemma Iterate_Ensemble_equiv_filter'' {A : Set}
@@ -532,7 +551,7 @@ Section Iterate_Dep_Type.
                   {| bindex := a; indexb := {| ibound := n; boundi := nth |}|}
                   eq_refl); simpl; intros; subst.
     erewrite (eq_proofs_unicity_Opt_A A_eq_dec nth'); eassumption.
-  Qed.
+  Defined.
 
   Lemma Dep_Type_nth_error_app
         {A : Set}
@@ -631,29 +650,46 @@ Section Iterate_Dep_Type.
       apply nth_error_app; eassumption.
   Qed.
 
-  Lemma Iterate_Dep_Type_equiv' {A : Set}
+  Fixpoint Iterate_Dep_Type_equiv' {A : Set}
         (A_eq_dec : forall a a' : A, {a = a'} + {a <> a'})
-  : forall (Remaining Visited : list A)
-           (P : Dep_Type (BoundedIndex (Visited ++ Remaining))),
-      (forall a n (nth : nth_error Visited n = Some a),
-         P {| bindex := a;
-              indexb := {| ibound := n;
-                           boundi := nth_error_app _ _ _ nth |} |})
-      -> (Iterate_Dep_Type_BoundedIndex' Visited Remaining P ->
-          forall idx, P idx).
-    intros; destruct idx as [idx [n nth_n] ]; simpl in *.
-    revert Visited P X X0 idx n nth_n; induction Remaining; simpl; intros.
-    - eapply Dep_Type_BoundedIndex_nth_eq with (a := idx); auto.
-    - split_and.
-      assert (nth_error ((Visited ++ (a :: nil)) ++ Remaining) n = Some idx)
+        (Remaining Visited : list A)
+        (P : Dep_Type (BoundedIndex (Visited ++ Remaining)))
+        (X : forall a n (nth : nth_error Visited n = Some a),
+               P {| bindex := a;
+                    indexb := {| ibound := n;
+                                 boundi := nth_error_app _ _ _ nth |} |})
+        (X0 : Iterate_Dep_Type_BoundedIndex' Visited Remaining P)
+        idx n nth_n
+        {struct Remaining}
+  : P {| bindex := idx;
+         indexb := {| ibound := n;
+                      boundi := nth_n |} |}.
+  refine (match Remaining return
+                forall (P : Dep_Type (BoundedIndex (Visited ++ Remaining)))
+                       (X : forall a n (nth : nth_error Visited n = Some a),
+                              P {| bindex := a;
+                                   indexb := {| ibound := n;
+                                                boundi := nth_error_app _ _ _ nth |} |})
+                       (X0 : Iterate_Dep_Type_BoundedIndex' Visited Remaining P)
+                       idx n (nth_n : nth_error (Visited ++ Remaining) n = Some idx),
+                  P {| bindex := idx;
+                       indexb := {| ibound := n;
+                                    boundi := nth_n |} |}
+          with
+            | nil => _
+            | a :: Remaining' => _
+          end P X X0 idx n nth_n); intros; eauto.
+  - intros; eapply Dep_Type_BoundedIndex_nth_eq with (a := idx0); eauto.
+  - split_and.
+      assert (nth_error ((Visited ++ (a :: nil)) ++ Remaining') n0 = Some idx0)
         as nth_n'
           by (rewrite <- app_assoc; simpl; assumption).
-      generalize (IHRemaining _ _ (Dep_Type_nth_error_app A_eq_dec _ _ _ P (fst X0) X) (snd X0) _ _ nth_n').
-      unfold Dep_Type_BoundedIndex_app_comm_cons, eq_rect; destruct (app_comm_cons' a Visited Remaining).
-      intros; erewrite (eq_proofs_unicity_Opt_A A_eq_dec nth_n); eauto.
+      generalize (Iterate_Dep_Type_equiv' _ A_eq_dec _ _ _ (Dep_Type_nth_error_app A_eq_dec _ _ _ P0 (fst X2) X1) (snd X2) _ _ nth_n').
+      unfold Dep_Type_BoundedIndex_app_comm_cons, eq_rect; destruct (app_comm_cons' a Visited Remaining').
+      intros; erewrite (eq_proofs_unicity_Opt_A A_eq_dec nth_n0); eauto.
       Grab Existential Variables.
-      rewrite app_nil_r in nth_n; assumption.
-  Qed.
+      apply app_nil_r'; assumption.
+  Defined.
 
   Lemma Iterate_Dep_Type_equiv'' {A : Set}
         (A_eq_dec : forall a a' : A, {a = a'} + {a <> a'})
@@ -668,9 +704,9 @@ Section Iterate_Dep_Type.
     eapply Dep_Type_BoundedIndex_app_equiv_1; eauto.
     Grab Existential Variables.
     rewrite <- app_assoc in nth_n; simpl in nth_n; eassumption.
-  Qed.
+  Defined.
 
-  Lemma Iterate_Dep_Type_equiv_filter' {A : Set}
+    Lemma Iterate_Dep_Type_equiv_filter' {A : Set}
         (A_eq_dec : forall a a' : A, {a = a'} + {a <> a'})
   : forall (Remaining Visited : list A)
            (P : Dep_Type (BoundedIndex (Visited ++ Remaining)))
@@ -765,10 +801,10 @@ Section Iterate_Dep_Type.
       Iterate_Dep_Type_BoundedIndex P ->
       forall idx, P idx.
   Proof.
-    intros.
-    eapply Iterate_Dep_Type_equiv' with (Visited := nil);
-      eauto using string_dec; destruct n; simpl; discriminate.
-  Qed.
+    destruct idx as [idx [n nth_n]].
+    eapply (Iterate_Dep_Type_equiv' string_dec Bound nil P); eauto;
+    destruct n0; simpl; discriminate.
+  Defined.
 
   Corollary Iterate_Dep_Type_BoundedIndex_equiv_2
   : forall (Bound : list string)

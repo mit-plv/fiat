@@ -51,7 +51,7 @@ Section IndexBound.
     induction n; destruct As; simpl; intros;
     try auto with arith; try discriminate.
     apply lt_n_S; eauto with arith.
-  Qed.
+  Defined.
 
   Definition BoundedIndex_nil
              (AnyT : Type)
@@ -61,7 +61,7 @@ Section IndexBound.
     destruct idx as [idx [n nth_n]].
     elimtype False; eapply lt_n_0.
     apply (lt_nth _ _ nth_n).
-  Qed.
+  Defined.
 
   Lemma indexb_ibound_eq :
     forall Bound (bidx bidx' : BoundedIndex Bound),
@@ -73,7 +73,7 @@ Section IndexBound.
     - destruct bidx as [bindex [n nth_n]];
       destruct bidx' as [bindex' [n' nth_n']]; simpl in *; subst.
       congruence.
-  Qed.
+  Defined.
 
   Section Bounded_Index_Dec_Eq.
   (* If equality on A is decideable, so is equality
@@ -107,7 +107,7 @@ Section IndexBound.
       : forall (a a' : option A) (p1 p2 : a = a'), p1 = p2.
       apply eq_proofs_unicity; intros.
       destruct (Opt_A_eq_dec x y); auto.
-    Qed.
+    Defined.
 
     Corollary idx_ibound_eq
     : forall Bound (idx idx' : BoundedIndex Bound),
@@ -1003,7 +1003,7 @@ End i2thIndexBound.
 Section ith2IndexBound.
 
   Require Import ADTSynthesis.Common.ilist2.
-  
+
   (* Given a bounded index [BoundedIndex Bound], we can wrap
      various lookup functions over lists indexed over [Bound].
    *)
@@ -1422,7 +1422,7 @@ Section i2th2IndexBound.
       | None => fun nth_n b b_opt b_eq c => I
     end (nth_error_map _ _ _ (boundi idx))
         _ _ (ith2_error_eq _ _ _) c_opt.
-  
+
   Definition replace2_BoundedIndex2
            {B : A -> Type}
            {C : forall a, B a -> Type}

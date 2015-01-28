@@ -1,8 +1,6 @@
 Require Export Coq.Bool.Bool Coq.Strings.String
         ADTSynthesis.Common.DecideableEnsembles
         ADTSynthesis.Common.ListMorphisms
-        ADTSynthesis.Common.ilist2
-        ADTSynthesis.Common.i2list2
         ADTSynthesis.Common.ListFacts
         ADTSynthesis.Common.BoolFacts
         ADTSynthesis.Common.LogicFacts
@@ -38,7 +36,6 @@ Ltac prove_decidability_for_functional_dependencies :=
   reflexivity.
 
 Hint Extern 100 (DecideableEnsemble _) => prove_decidability_for_functional_dependencies : typeclass_instances.
-
 
 Ltac lmap A f seq :=
   let rec aux seq :=
@@ -83,52 +80,37 @@ Ltac FullySharpenEachMethod delegateSigs delegateSpecs cRep' cAbsR' :=
         unfold Dep_Type_BoundedIndex_app_comm_cons
   end; simpl; repeat split.
 
-Fixpoint Build_IndexedQueryStructure_Impl_Sigs
+Definition Build_IndexedQueryStructure_Impl_Sigs
          {indices : list NamedSchema}
          (Index : ilist (fun ns : NamedSchema => SearchUpdateTerms (schemaHeading (relSchema ns))) indices)
-: list NamedADTSig :=
-  match indices as indices return ilist _ indices -> list NamedADTSig with
-    | nil => fun _ => nil
-    | cons ns indices' =>
-      fun Index =>
-        {| ADTSigname := relName ns;
-           namedADTSig :=
-             BagSig (@Tuple (schemaHeading (relSchema ns))) (BagSearchTermType (ilist_hd Index)) (BagUpdateTermType (ilist_hd Index)) |}
-          :: @Build_IndexedQueryStructure_Impl_Sigs indices' (ilist_tl Index)
-  end Index.
+         (idx : @BoundedString (map relName indices))
+: ADTSig :=
+  BagSig (@Tuple (schemaHeading (relSchema (nth_Bounded relName indices idx))))
+         (BagSearchTermType (ith_Bounded _ Index idx))
+         (BagUpdateTermType (ith_Bounded _ Index idx)).
 
-Fixpoint Build_IndexedQueryStructure_Impl_Specs
+Definition Build_IndexedQueryStructure_Impl_Specs
          {indices : list NamedSchema}
          (Index : ilist (fun ns : NamedSchema => SearchUpdateTerms (schemaHeading (relSchema ns))) indices)
-: ilist (fun ns => ADT (namedADTSig ns)) (@Build_IndexedQueryStructure_Impl_Sigs indices Index) :=
-  match indices as indices return
-        forall (Index : ilist _ indices),
-          ilist (fun ns : NamedADTSig => ADT (namedADTSig ns))
-                (@Build_IndexedQueryStructure_Impl_Sigs indices Index)
-  with
-    | nil => fun _ => inil _
-    | cons ns indices' =>
-      fun Index => icons {| ADTSigname := relName ns;
-                            namedADTSig := _ |}
-                         (@BagSpec (@Tuple (schemaHeading (relSchema ns)))
-                                   (BagSearchTermType (ilist_hd Index))
-                                   (BagUpdateTermType (ilist_hd Index))
-                                   (BagMatchSearchTerm (ilist_hd Index))
-                                   (BagApplyUpdateTerm (ilist_hd Index)))
-                         (@Build_IndexedQueryStructure_Impl_Specs indices' (ilist_tl Index))
-  end Index.
+         (idx : @BoundedString (map relName indices))
+: ADT (@Build_IndexedQueryStructure_Impl_Sigs indices Index idx) :=
+  @BagSpec (@Tuple (schemaHeading (relSchema (nth_Bounded relName indices idx))))
+            (BagSearchTermType (ith_Bounded _ Index idx))
+            (BagUpdateTermType (ith_Bounded _ Index idx))
+            (BagMatchSearchTerm (ith_Bounded _ Index idx))
+            (BagApplyUpdateTerm (ith_Bounded _ Index idx)).
 
-Fixpoint unroll_ilist2 {A} {B : A -> Type}
+Fixpoint unroll_ilist {A} {B : A -> Type}
          (As : list A)
-         (il : ilist2 B As)
-: ilist2 B As :=
-  match As return ilist2 _ As -> ilist2 B As with
-    | nil => fun il => inil2 _
+         (il : ilist B As)
+: ilist B As :=
+  match As return ilist _ As -> ilist B As with
+    | nil => fun il => inil _
     | a :: As' =>
-      fun il' => icons2 a (ilist2_hd il') (unroll_ilist2 (ilist2_tl il'))
+      fun il' => icons a (ilist_hd il') (unroll_ilist (ilist_tl il'))
   end il.
 
-Fixpoint map_IndexedQS_idx_boundi
+(*Fixpoint map_IndexedQS_idx_boundi
          {indices}
 : forall
     n
@@ -174,7 +156,7 @@ Definition map_IndexedQS_idx
   {| bindex := bindex idx;
      indexb := {| ibound := ibound (indexb idx);
                   boundi := map_IndexedQS_idx_boundi _ Index (boundi (indexb idx))|} |}.
-
+*)
 (* Begin BookStore Defs*)
 Definition sBOOKS := "Books".
 Definition sAUTHOR := "Authors".
@@ -390,26 +372,33 @@ Definition BookSchema' :=
 
 Set Printing Universes.
 
-Print Universes.
-
-Fixpoint ilist2ilist A B As (il : @ilist A B As) : @ilist2 A B As :=
-  match il with
-    | inil => inil2 _
-    | icons a As b Bs => icons2 a b (ilist2ilist Bs)
-  end.
-
-Check ilist2ilist.
-
 Definition
   Build_IndexedQueryStructure_Impl_cRep
   (indices : list NamedSchema)
   (Index : ilist
              (fun ns : NamedSchema =>
                 SearchUpdateTerms (schemaHeading (relSchema ns))) indices)
-  (DelegateReps : ilist (fun ns : NamedADTSig => Type) (Build_IndexedQueryStructure_Impl_Sigs Index)) := 
-  i2list2 (fun bs T => T) (ilist2ilist DelegateReps).
+  (DelegateReps : @BoundedString (map relName indices) -> Type)
+: Type :=
+  forall (idx : @BoundedString (map relName indices)), DelegateReps idx.
 
-Print Build_IndexedQueryStructure_Impl_cRep.
+
+Definition Build_IndexedQueryStructure_Impl_AbsR
+           {qs_schema : QueryStructureSchema}
+           (Index : ilist (fun ns : NamedSchema => SearchUpdateTerms (schemaHeading (relSchema ns))) (qschemaSchemas qs_schema) )
+           (DelegateReps : @BoundedString (map relName (qschemaSchemas qs_schema)) -> Type)
+           (DelegateImpls : forall idx,
+                              ComputationalADT.pcADT (Build_IndexedQueryStructure_Impl_Sigs Index idx) (DelegateReps idx))
+           (ValidImpls
+            : forall idx,
+                refineADT (Build_IndexedQueryStructure_Impl_Specs Index idx)
+                          (ComputationalADT.LiftcADT (existT _ _ (DelegateImpls idx))))
+           (r_o : IndexedQueryStructure qs_schema Index)
+           (r_n : Build_IndexedQueryStructure_Impl_cRep Index DelegateReps)
+: Prop :=
+  forall idx : @BoundedString (map relName (qschemaSchemas qs_schema)),
+    AbsR (ValidImpls idx)
+         (GetIndexedRelation r_o idx) (r_n idx).
 
 Check ((let Init := "Init" in
  let Empty := "Empty" in
@@ -435,11 +424,12 @@ Check ((let Init := "Init" in
         (@inil NamedSchema
            (fun ns : NamedSchema =>
             SearchUpdateTerms (schemaHeading (relSchema ns))))) in
- @Notation_Friendly_SharpenFully
+ (@Notation_Friendly_SharpenFully'
    (IndexedQueryStructure BookStoreSchema Index) []
    []
    (@inil consSig (@consDef (IndexedQueryStructure BookStoreSchema Index)))
    (@ilist.inil methSig (@methDef (IndexedQueryStructure BookStoreSchema Index)))
+   _
    (@Build_IndexedQueryStructure_Impl_Sigs
       [relation sBOOKS has (BookSchema')%NamedSchema;
       relation sORDERS has (schema <sISBN :: nat, sDATE :: nat>)%NamedSchema]
@@ -447,9 +437,18 @@ Check ((let Init := "Init" in
    (@Build_IndexedQueryStructure_Impl_cRep
       [relation sBOOKS has (BookSchema')%NamedSchema;
       relation sORDERS has (schema <sISBN :: nat, sDATE :: nat>)%NamedSchema]
-      Index))).
+      Index)
+   (fun _ _ => @inil _ _)
+   (fun _ _ => @inil _ _)
+   (@Build_IndexedQueryStructure_Impl_Specs
+      [relation sBOOKS has (BookSchema')%NamedSchema;
+        relation sORDERS has (schema <sISBN :: nat, sDATE :: nat>)%NamedSchema]
+      Index)
+   (@Build_IndexedQueryStructure_Impl_AbsR BookStoreSchema
+      Index)))).
+(*
 
-Fixpoint map_IndexedQS_idx_boundi'
+(*Fixpoint map_IndexedQS_idx_boundi'
          {indices}
 : forall
     n
@@ -583,15 +582,37 @@ Defined.
 Definition Build_IndexedQueryStructure_Impl_AbsR
            {qs_schema : QueryStructureSchema}
            (Index : ilist (fun ns : NamedSchema => SearchUpdateTerms (schemaHeading (relSchema ns))) (qschemaSchemas qs_schema) )
-           (DelegateReps : ilist2 (fun ns : NamedADTSig => Type) (Build_IndexedQueryStructure_Impl_Sigs Index))
+           (DelegateReps : @BoundedString (map relName (qschemaSchemas qs_schema)) -> Type)
+           (DelegateImpls : forall idx,
+                              ComputationalADT.pcADT (Build_IndexedQueryStructure_Impl_Sigs Index idx) (DelegateReps idx))
+           (ValidImpls
+            : forall idx,
+                refineADT (Build_IndexedQueryStructure_Impl_Specs Index idx)
+                          (ComputationalADT.LiftcADT (existT _ _ (DelegateImpls idx))))
+           (r_o : IndexedQueryStructure qs_schema Index)
+           (r_n : Build_IndexedQueryStructure_Impl_cRep Index DelegateReps)
+: Prop.
+  cut (forall idx, Rep
+   (LiftcADT
+      (existT (pcADT (Build_IndexedQueryStructure_Impl_Sigs Index idx))
+         (DelegateReps idx) (DelegateImpls idx)))). intros bob.
+  refine (forall idx : @BoundedString (map relName (qschemaSchemas qs_schema)),
+            AbsR (ValidImpls idx)
+                 (GetIndexedRelation r_o idx) (bob idx)).
+  simpl.
+                 ).
+         (i2th2_Bounded ADTSigname r_n idx).
+
+Definition Build_IndexedQueryStructure_Impl_AbsR
+           {qs_schema : QueryStructureSchema}
+           (Index : ilist (fun ns : NamedSchema => SearchUpdateTerms (schemaHeading (relSchema ns))) (qschemaSchemas qs_schema) )
+           (DelegateReps : ilist (fun ns : NamedADTSig => Type) (Build_IndexedQueryStructure_Impl_Sigs Index))
            (DelegateImpls : i2list2 (fun (nadt : NamedADTSig) rep => ComputationalADT.pcADT (namedADTSig nadt) rep) DelegateReps)
            (ValidImpls
              : forall idx,
                  refineADT (ith2_Bounded ADTSigname (Build_IndexedQueryStructure_Impl_Specs Index) idx)
                            (ComputationalADT.LiftcADT
                               (existT _ _ (i2th2_Bounded ADTSigname DelegateImpls idx))))
-           (r_o : IndexedQueryStructure qs_schema Index)
-           (r_n : Build_IndexedQueryStructure_Impl_cRep Index DelegateReps)
 : Prop :=
   forall idx,
     AbsR (ValidImpls idx)
@@ -621,7 +642,7 @@ Defined.
 Definition Build_IndexedQueryStructure_Impl_AbsR''
            {qs_schema : QueryStructureSchema}
            (Index : ilist (fun ns : NamedSchema => SearchUpdateTerms (schemaHeading (relSchema ns))) (qschemaSchemas qs_schema) )
-           (DelegateReps : ilist2 (fun ns : NamedADTSig => Type) (Build_IndexedQueryStructure_Impl_Sigs Index))
+           (DelegateReps : ilist (fun ns : NamedADTSig => Type) (Build_IndexedQueryStructure_Impl_Sigs Index))
            (DelegateImpls : i2list2 (fun (nadt : NamedADTSig) rep => ComputationalADT.pcADT (namedADTSig nadt) rep) DelegateReps)
            (ValidImpls
              : forall idx,
@@ -634,12 +655,13 @@ Definition Build_IndexedQueryStructure_Impl_AbsR''
   forall idx,
     AbsR (ValidImpls idx)
          (map_IndexedQS_Rep'' Index idx (GetIndexedRelation r_o idx))
-         (i2th2_Bounded ADTSigname r_n (map_IndexedQS_idx' Index idx)).
+         (i2th2_Bounded ADTSigname r_n (map_IndexedQS_idx' Index idx)). *)
+
 
 Definition CallBagImplMethod
            {qs_schema : QueryStructureSchema}
            (Index : ilist (fun ns : NamedSchema => SearchUpdateTerms (schemaHeading (relSchema ns))) (qschemaSchemas qs_schema))
-           (DelegateReps : ilist2 (fun ns : NamedADTSig => Type) (Build_IndexedQueryStructure_Impl_Sigs Index))
+           (DelegateReps : ilist (fun ns : NamedADTSig => Type) (Build_IndexedQueryStructure_Impl_Sigs Index))
            (DelegateImpls : i2list2 (fun (nadt : NamedADTSig) rep => ComputationalADT.pcADT (namedADTSig nadt) rep) DelegateReps)
            idx midx
            (r_n : Build_IndexedQueryStructure_Impl_cRep Index DelegateReps) :=
@@ -648,7 +670,7 @@ Definition CallBagImplMethod
 Definition CallBagImplConstructor
            {qs_schema : QueryStructureSchema}
            (Index : ilist (fun ns : NamedSchema => SearchUpdateTerms (schemaHeading (relSchema ns))) (qschemaSchemas qs_schema))
-           (DelegateReps : ilist2 (fun ns : NamedADTSig => Type) (Build_IndexedQueryStructure_Impl_Sigs Index))
+           (DelegateReps : ilist (fun ns : NamedADTSig => Type) (Build_IndexedQueryStructure_Impl_Sigs Index))
            (DelegateImpls : i2list2 (fun (nadt : NamedADTSig) rep => ComputationalADT.pcADT (namedADTSig nadt) rep) DelegateReps)
            idx midx :=
   pcConstructors (i2th2_Bounded ADTSigname DelegateImpls idx) midx .
@@ -898,7 +920,7 @@ Qed.
 Lemma refine_BagImplMethods'
       {qs_schema : QueryStructureSchema}
       (Index : ilist (fun ns : NamedSchema => SearchUpdateTerms (schemaHeading (relSchema ns))) (qschemaSchemas qs_schema) )
-      (DelegateImpls : ilist2 (fun ns => cADT (namedADTSig ns))
+      (DelegateImpls : ilist (fun ns => cADT (namedADTSig ns))
                              (Build_IndexedQueryStructure_Impl_Sigs Index))
       ValidImpl
 :  forall (r_o : IndexedQueryStructure qs_schema Index)
@@ -955,7 +977,7 @@ Qed.
 Lemma refine_BagImplMethods
       {qs_schema : QueryStructureSchema}
       (Index : ilist (fun ns : NamedSchema => SearchUpdateTerms (schemaHeading (relSchema ns))) (qschemaSchemas qs_schema) )
-      (DelegateImpls : ilist2 (fun ns => cADT (namedADTSig ns))
+      (DelegateImpls : ilist (fun ns => cADT (namedADTSig ns))
                              (Build_IndexedQueryStructure_Impl_Sigs Index))
       ValidImpl
 :  forall (r_o : IndexedQueryStructure qs_schema Index)
@@ -1078,7 +1100,7 @@ Qed.
 Lemma refine_BagImplConstructor
       {qs_schema : QueryStructureSchema}
       (Index : ilist (fun ns : NamedSchema => SearchUpdateTerms (schemaHeading (relSchema ns))) (qschemaSchemas qs_schema) )
-      (DelegateImpls : ilist2 (fun ns => cADT (namedADTSig ns))
+      (DelegateImpls : ilist (fun ns => cADT (namedADTSig ns))
                              (Build_IndexedQueryStructure_Impl_Sigs Index))
       (ValidImpl : forall
                      idx : BoundedIndex
@@ -1129,7 +1151,7 @@ Opaque CallBagConstructor.
 Definition Build_IndexedQueryStructure_Impl_AbsR'
            {qs_schema : QueryStructureSchema}
            (Index : ilist (fun ns : NamedSchema => SearchUpdateTerms (schemaHeading (relSchema ns))) (qschemaSchemas qs_schema) )
-           (DelegateImpls : ilist2 (fun ns => cADT (namedADTSig ns))
+           (DelegateImpls : ilist (fun ns => cADT (namedADTSig ns))
                                   (Build_IndexedQueryStructure_Impl_Sigs Index))
            (ValidImpl :
               forall idx,
@@ -1143,7 +1165,7 @@ Definition Build_IndexedQueryStructure_Impl_AbsR'
     qs_schema Index DelegateImpls
     (fun idx => ValidImpl (map_IndexedQS_idx' Index idx))
     r_o
-    r_n.
+    r_n. *)
 
 Arguments BuildIndexSearchTerm : simpl never.
 Arguments MatchIndexSearchTerm : simpl never.
@@ -1425,13 +1447,13 @@ Definition unit_Tuple : @Tuple unit_Heading := id.
 
 Ltac get_ithDefault f n k :=
   match type of f with
-    | ilist2 (@Tuple) ?A -> ?C =>
+    | ilist (@Tuple) ?A -> ?C =>
       let G := fresh "G" in
       let p := fresh "p" in
       let H := fresh "H" in
       let proj := fresh "proj" in
       let proj := eval simpl in
-      (fun b : ilist2 (@Tuple) A => ith_default unit_Heading unit_Tuple b n) in
+      (fun b : ilist (@Tuple) A => ith_default unit_Heading unit_Tuple b n) in
           evar (G : @Tuple (nth_default unit_Heading A n) -> C);
         assert (H : forall p,
                       f p = G (proj p)) by
@@ -1446,16 +1468,16 @@ Ltac get_ithDefault f n k :=
 
 Ltac get_ithDefault_pair f m n k :=
   match type of f with
-    | ilist2 (@Tuple) ?A -> ?C =>
+    | ilist (@Tuple) ?A -> ?C =>
       let G := fresh "G" in
       let p := fresh "p" in
       let H := fresh "H" in
       let proj1 := fresh "proj" in
       let proj2 := fresh "proj" in
       let proj1 := eval simpl in
-      (fun b : ilist2 (@Tuple) A => ith_default unit_Heading unit_Tuple b m) in
+      (fun b : ilist (@Tuple) A => ith_default unit_Heading unit_Tuple b m) in
           let proj2 := eval simpl in
-          (fun b : ilist2 (@Tuple) A => ith_default unit_Heading unit_Tuple b n)
+          (fun b : ilist (@Tuple) A => ith_default unit_Heading unit_Tuple b n)
             in evar (G : @Tuple (nth_default unit_Heading A m)
                          -> @Tuple (nth_default unit_Heading A n)
                          -> C);
@@ -1647,7 +1669,7 @@ Ltac convert_filter_to_find':=
   match goal with
     | H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
       |- context[l <- CallBagMethod ?idx ``("Enumerate") ?r_n ();
-                  List_Query_In (filter (fun a => MatchIndexSearchTerm ?st (ilist2_hd a) && @?filter_rest a)
+                  List_Query_In (filter (fun a => MatchIndexSearchTerm ?st (ilist_hd a) && @?filter_rest a)
                                         (Build_single_Tuple_list (snd l))) ?resultComp] =>
       let b := fresh in
       pose proof (@refine_Query_For_In_Find_single _ _ _ r_o r_n H idx st resultComp filter_rest) as b;
@@ -1656,7 +1678,7 @@ Ltac convert_filter_to_find':=
     | H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
       |- context[l <- CallBagMethod ?idx ``("Enumerate") ?r_n ();
                   l' <- Join_Lists (Build_single_Tuple_list (snd l)) ?cl;
-                  List_Query_In (filter (fun a => MatchIndexSearchTerm ?st (ilist2_hd (ilist2_tl a)) && @?filter_rest a)
+                  List_Query_In (filter (fun a => MatchIndexSearchTerm ?st (ilist_hd (ilist_tl a)) && @?filter_rest a)
                                         l') ?resultComp] =>
       let b := fresh in
       pose proof (fun foo => @refine_Join_Lists_filter_search_term_fst _ _ _ r_n idx _ cl st resultComp foo filter_rest) as b;
@@ -1671,14 +1693,14 @@ Ltac convert_filter_to_find':=
     | H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
       |- context[l <- CallBagMethod ?idx ``("Find") ?r_n ?st;
                   l' <- Join_Lists (Build_single_Tuple_list (snd l))
-                     (fun _ : ilist2 (@Tuple) [?heading] =>
+                     (fun _ : ilist (@Tuple) [?heading] =>
                         l <- CallBagMethod ?idx' ``("Enumerate") ?r_n ();
                       ret (snd l));
-                  List_Query_In (filter (fun a => MatchIndexSearchTerm (Dep_SearchTerm_Wrapper ?st' (ilist2_hd (ilist2_tl a)))
-                                                                       (ilist2_hd a) && @?filter_rest a) l') ?resultComp] =>
+                  List_Query_In (filter (fun a => MatchIndexSearchTerm (Dep_SearchTerm_Wrapper ?st' (ilist_hd (ilist_tl a)))
+                                                                       (ilist_hd a) && @?filter_rest a) l') ?resultComp] =>
       let b := fresh in
       pose proof (@refine_Join_Lists_filter_filter_search_term_snd_dep' _ _ _ r_n idx idx'
-                                                                        (fun a => Dep_SearchTerm_Wrapper st' (ilist2_hd a))
+                                                                        (fun a => Dep_SearchTerm_Wrapper st' (ilist_hd a))
                                                                         resultComp filter_rest st) as b;
         unfold Dep_SearchTerm_Wrapper in b; simpl in b; setoid_rewrite b; clear b
     (* The final case replaces the last filter and the Return statement. *)
@@ -1711,8 +1733,7 @@ Global Opaque CallBagConstructor.
 Arguments icons {A} {B} {a} {As} _ _.
 Arguments CallBagConstructor {heading} name {index} cidx _.
 
-
-Fixpoint Initialize_IndexedQueryStructureImpls'
+(*Fixpoint Initialize_IndexedQueryStructureImpls'
          {indices}
          Index DelegateImpls
          {struct Index}
@@ -1723,9 +1744,9 @@ Fixpoint Initialize_IndexedQueryStructureImpls'
     | inil => i2nil2 _
     | icons a b As Bs => fun DelegateImpls =>
                            i2cons2 _
-                                  (ComputationalADT.cConstructors (ilist2_hd DelegateImpls)
+                                  (ComputationalADT.cConstructors (ilist_hd DelegateImpls)
                                                                   {| bindex := "Empty" |} ())
-                                  (Initialize_IndexedQueryStructureImpls' Bs (ilist2_tl DelegateImpls))
+                                  (Initialize_IndexedQueryStructureImpls' Bs (ilist_tl DelegateImpls))
   end DelegateImpls.
 
 Ltac higher_order_1_reflexivity'' :=
@@ -1825,7 +1846,7 @@ Ltac implement_bag_methods :=
 
       | H : Build_IndexedQueryStructure_Impl_AbsR'' (qs_schema := ?qs_schema) ?ValidImpl ?r_o ?r_n
         |- context[Join_Lists (As := ?As) (f := ?f) (a := ?a) ?l ?c ] =>
-        makeEvar (ilist2 f As -> list (f a))
+        makeEvar (ilist f As -> list (f a))
                  ltac:(fun c' =>
                          let refines_c' := fresh in
                          assert (forall a', refine (c a') (ret (c' a'))) as refines_c';
@@ -1846,12 +1867,12 @@ Ltac FullySharpenQueryStructure qs_schema Index :=
   match goal with
       |- Sharpened (@BuildADT ?Rep ?consSigs ?methSigs ?consDefs ?methDefs) =>
       ilist_of_evar
-        (ilist2 (fun nadt => ComputationalADT.cADT (namedADTSig nadt)) delegateSigs)
+        (ilist (fun nadt => ComputationalADT.cADT (namedADTSig nadt)) delegateSigs)
         (fun DelegateImpl Sig => ComputationalADT.cMethodType (cRep' DelegateImpl) (methDom Sig) (methCod Sig))
         methSigs
         ltac:(fun cMeths =>
                 ilist_of_evar
-                  (ilist2 (fun nadt => ComputationalADT.cADT (namedADTSig nadt)) delegateSigs)
+                  (ilist (fun nadt => ComputationalADT.cADT (namedADTSig nadt)) delegateSigs)
                   (fun DelegateImpl Sig => ComputationalADT.cConstructorType (cRep' DelegateImpl) (consDom Sig))
                   consSigs
                   ltac:(fun cCons =>
@@ -1871,4 +1892,4 @@ Ltac FullySharpenQueryStructure qs_schema Index :=
         unfold Dep_Type_BoundedIndex_app_comm_cons
   end; simpl; intros;
   [ repeat split; intros; try exact tt; implement_bag_constructors
-  | repeat split; intros; try exact tt; implement_bag_methods ].
+  | repeat split; intros; try exact tt; implement_bag_methods ]. *)

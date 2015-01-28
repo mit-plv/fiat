@@ -584,89 +584,100 @@ Section SharpenedBagImplementation.
                              ltac:(fun Bs' => k (fun (c : C) (d : D c) => icons a (b c d) (Bs' c d))))
       end.
 
-    Ltac FullySharpenEachMethod1 delegateSigs delegateSpecs :=
+    Ltac FullySharpenEachMethod1 DelegateIDs' DelegateSigs' DelegateReps' delegateSpecs :=
+      let Delegatees := constr:(Build_NamedDelegatees DelegateIDs' DelegateSigs' DelegateReps') in
+      let DelegateIDs := constr:(map delegateeName Delegatees) in
+      let DelegateSigs := constr:(fun idx =>
+                                    delegateeSig (nth_Bounded delegateeName Delegatees idx)) in
+      let DelegateReps := constr:(fun idx =>
+                                    delegateeRep (nth_Bounded delegateeName Delegatees idx)) in
+      let DelegateSpecs := constr:(ith_Bounded delegateeName delegateSpecs) in
       match goal with
           |- Sharpened (@BuildADT ?Rep ?consSigs ?methSigs ?consDefs ?methDefs) =>
           ilist_of_evar'
-            (ilist (fun nadt => Type) delegateSigs)
-            (fun D => i2list (fun (nadt : NamedADTSig) rep => ComputationalADT.pcADT (namedADTSig nadt) rep) (As := delegateSigs) D)
+            (@BoundedString DelegateIDs -> Type)
+            (fun D =>
+               forall idx,
+                 ComputationalADT.pcADT (DelegateSigs idx) (D idx))
             (fun Sig => ComputationalADT.cMethodType Rep (methDom Sig) (methCod Sig))
             methSigs
             ltac:(fun cMeths =>
                     ilist_of_evar'
-                      (ilist (fun nadt => Type) delegateSigs)
-                      (fun D => i2list (fun (nadt : NamedADTSig) rep => ComputationalADT.pcADT (namedADTSig nadt) rep) (As := delegateSigs) D)
+                      (@BoundedString DelegateIDs -> Type)
+                      (fun D =>
+                         forall idx,
+                           ComputationalADT.pcADT (DelegateSigs idx) (D idx))
                       (fun Sig => ComputationalADT.cConstructorType Rep (consDom Sig))
                       consSigs
                       ltac:(fun cCons =>
-                              eapply
+                              try eapply
                                 (@Notation_Friendly_SharpenFully
                                    Rep
                                    consSigs
                                    methSigs
                                    consDefs
                                    methDefs
-                                   delegateSigs
+                                   DelegateIDs'
+                                   DelegateSigs'
+                                   DelegateReps'
                                    (fun _ => Rep)
                                    cCons
                                    cMeths
                                    delegateSpecs
                                    (fun
-                                       (DelegateReps : ilist (fun nadt : NamedADTSig => Type) delegateSigs)
-                                       (DelegateImpls : i2list (fun (nadt : NamedADTSig) rep => ComputationalADT.pcADT (namedADTSig nadt) rep) DelegateReps)
-                                       (ValidImpls : forall idx : BoundedIndex (map ADTSigname delegateSigs),
-                                                       refineADT (ith_Bounded ADTSigname delegateSpecs idx)
-                                                                 (ComputationalADT.LiftcADT
-                                                                    (existT _ _ (i2th_Bounded ADTSigname DelegateImpls idx)))) => @eq _))));
-            unfold ADTSynthesis.Common.IterateBoundedIndex.Dep_Type_BoundedIndex_app_comm_cons; simpl;
-            intuition; intros; subst
+                                       (DelegateReps : @BoundedString DelegateIDs -> Type)
+                                       (DelegateImpls : forall idx,
+                                                          ComputationalADT.pcADT (DelegateSigs idx) (DelegateReps idx))
+                                       (ValidImpls
+                                        : forall idx : @BoundedString DelegateIDs,
+                                            refineADT (DelegateSpecs idx)
+                                                      (ComputationalADT.LiftcADT (existT _ _ (DelegateImpls idx))))
+                                     => @eq _))));
+            try (unfold ADTSynthesis.Common.IterateBoundedIndex.Dep_Type_BoundedIndex_app_comm_cons; simpl;
+            intuition; intros; subst)
   end.
 
-
 FullySharpenEachMethod1
-  (@nil NamedADTSig)
-  (inil (fun nadt => (ADT (namedADTSig nadt))));
+  (@nil string)
+  (@nil ADTSig)
+  (@nil Type)
+  (inil (fun nadt => ADT (delegateeSig nadt)));
   try simplify with monad laws; simpl; try refine pick eq; try simplify with monad laws;
   try first [ unfold ith_Bounded, ith_Bounded'; simpl].
-    exists bempty; split; eauto.
+
   Ltac make_computational_constructor :=
-    let x := match goal with |- ?R ?x (?f ?a ?b) => constr:(x) end in
-    let f := match goal with |- ?R ?x (?f ?a ?b) => constr:(f) end in
-    let a := match goal with |- ?R ?x (?f ?a ?b) => constr:(a) end in
-    let b := match goal with |- ?R ?x (?f ?a ?b) => constr:(b) end in
-    let x' := (eval pattern a, b in x) in
-    let f' := match x' with ?f' _ _ => constr:(f') end in
+    let x := match goal with |- ?R (ret ?x) (ret (?f ?a ?b ?c)) => constr:(x) end in
+    let f := match goal with |- ?R (ret ?x) (ret (?f ?a ?b ?c)) => constr:(f) end in
+    let a := match goal with |- ?R (ret ?x) (ret (?f ?a ?b ?c)) => constr:(a) end in
+    let b := match goal with |- ?R (ret ?x) (ret (?f ?a ?b ?c)) => constr:(b) end in
+    let c := match goal with |- ?R (ret ?x) (ret (?f ?a ?b ?c)) => constr:(c) end in
+    let x' := (eval pattern a, b, c in x) in
+    let f' := match x' with ?f' _ _ _ => constr:(f') end in
     unify f f';
       cbv beta;
       solve [apply reflexivity].
   make_computational_constructor.
   instantiate (1 := fun _ _ r_n d => (r_n, bfind r_n d));
-  eexists r_n; split;
-    simpl; eauto.
+    simpl; reflexivity.
   instantiate (1 := fun _ _ r_n d => (r_n, benumerate r_n));
-  eexists r_n; split;
-  simpl; eauto.
+    simpl; reflexivity.
   instantiate (1 := fun _ _ r_n d => (binsert r_n d, ()));
-  eexists _; split;
-  simpl; eauto.
+    simpl; reflexivity.
   instantiate (1 := fun _ _ r_n d => (r_n, bcount r_n d));
-  eexists _; split;
-  simpl; eauto.
-  instantiate (1 := fun _ _ r_n d => (snd (bdelete r_n d), fst (bdelete r_n d)));
-  eexists _; split;
-  simpl; eauto.
+    simpl; reflexivity.
+  instantiate (1 := fun _ _ r_n d => (snd (bdelete r_n d), fst (bdelete r_n d))); simpl; reflexivity.
   instantiate (1 := fun _ _ r_n d => if CheckUpdatePlus (snd d)
       then (bupdate r_n (fst d) (snd d), ())
       else
          (fold_left (fun (b0 : BagTypePlus) (i : Tuple) => binsert b0 i)
             (map (bupdate_transform (snd d)) (fst (bdelete r_n (fst d))))
             (snd (bdelete r_n (fst d))), ()));
-    eexists _; split; simpl; eauto.
-  find_if_inside; simpl; eauto.
+    simpl.
+  find_if_inside; simplify with monad laws; simpl; reflexivity.
   Defined.
 
   Definition BagADTImpl : ComputationalADT.cADT (BagSig (@Tuple heading) SearchTermTypePlus UpdateTermTypePlus).
-    extract implementation of SharpenedBagImpl using (i2nil _ (inil _)).
+    extract implementation of SharpenedBagImpl using (inil (fun nadt => ComputationalADT.pcADT (delegateeSig nadt) (delegateeRep nadt))).
   Defined.
 
 End SharpenedBagImplementation.
