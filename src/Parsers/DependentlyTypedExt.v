@@ -44,8 +44,9 @@ Section recursive_descent_parser.
 
   Local Ltac t := repeat t'.
 
+  Context (extra_types extra_types' : @parser_dependent_types_extra_dataT _ String G).
+
   Lemma parse_item_ext
-        (extra_types extra_types' : @parser_dependent_types_extra_dataT _ _ G)
         str0 str valid str_matches_name
         str0' str' valid' str_matches_name'
         (it : item CharType)
@@ -61,20 +62,151 @@ Section recursive_descent_parser.
   Qed.
 
   Lemma parse_production_helper_ext
+        str0 valid parse_name str pf
+        str0' valid' parse_name' str' pf'
+        (it : item CharType)
+        (its : production CharType)
+        (splits splits' : list
+                            (StringWithSplitState String split_stateT *
+                             StringWithSplitState String split_stateT))
+        parse_production parse_production'
+        H_prod_split H_prod_split'
+        splits_correct splits_correct'
+        (p_prod := @parse_production_helper _ String G _ str0 valid parse_name str pf it its splits parse_production H_prod_split splits_correct)
+        (p_prod' := @parse_production_helper _ String G _ str0' valid' parse_name' str' pf' it its splits' parse_production' H_prod_split' splits_correct')
+        (splits_ext : ((fun A B => (A -> B) * (B -> A))%type)
+                        { s : _ & In s splits * T_item_success str0 (fst s) valid it * T_production_success str0 (snd s) valid its }%type
+                        { s : _ & In s splits' * T_item_success str0' (fst s) valid' it * T_production_success str0' (snd s) valid' its }%type)
 
-                     (str : StringWithSplitState String split_stateT)
-                     (pf : str ≤s str0)
-                     (it : item CharType)
-                     (its : production CharType)
-                     (splits : list
-                                 (StringWithSplitState String split_stateT *
-                                  StringWithSplitState String split_stateT))
-                     (parse_production : forall str1 : StringWithSplitState String split_stateT,
-                                           str1 ≤s str0 -> T_production str1 its)
-                     (H_prod_split' : H_prod_split_T str0 str valid (it::its) (fun _ => splits))
-                     (splits_correct : List.Forall (fun s1s2 : StringWithSplitState String split_stateT * StringWithSplitState String split_stateT
-                                                    => (fst s1s2 ++ snd s1s2 =s str) = true)
-                                                   splits)
+  : p_prod = p_prod' :> bool.
+  Proof.
+    subst p_prod p_prod'.
+    induction splits as [|[s1 s2] splits];
+      induction splits' as [|[s1' s2'] splits']; try reflexivity;
+      simpl in *.
+    { repeat match goal with
+               | [ |- appcontext[match ?E with _ => _ end] ] => case_eq E
+             end;
+      try solve [ repeat match goal with
+               | _ => reflexivity
+               | _ => intro
+               | _ => progress simpl in *
+               | _ => progress destruct_head False
+               | _ => progress destruct_head prod
+               | _ => progress destruct_head sigT
+               | [ H : sigT _ -> _ |- _ ] => specialize (fun a b => H (existT _ a b))
+               | [ H : (_ * _)%type -> _ |- _ ] => specialize (fun a b => H (a, b))
+               | [ H : forall x, (_ * _)%type -> _ |- _ ] => specialize (fun x a b => H x (a, b))
+               | [ H : forall x y, (_ * _)%type -> _ |- _ ] => specialize (fun x y a b => H x y (a, b))
+               | [ H : forall x y z, (_ * _)%type -> _ |- _ ] => specialize (fun x y z a b => H x y z (a, b))
+               | [ H : forall x y p, T_item_success _ _ _ _ -> T_production_success _ _ _ _ -> _, p_it : T_item_success _ _ _ _, p_prod : T_production_success _ _ _ _ |- _ ]
+                 => specialize (fun p => H _ _ p p_it p_prod)
+               | [ H : (?x = ?x \/ _) -> _ |- _ ] => specialize (H (or_introl eq_refl))
+
+             end ];
+      intros.
+      { rewrite <- IHsplits'; trivial.
+        split; intro;
+        destruct_head sigT;
+        destruct_head prod;
+        destruct_head False.
+        apply s2.
+        eexists (_, _).
+        repeat split; try eassumption.
+        right; assumption. }
+      { rewrite <- IHsplits'; trivial.
+        split; intro;
+        destruct_head sigT;
+        destruct_head prod;
+        destruct_head False.
+        apply s2.
+        eexists (_, _).
+        repeat split; try eassumption.
+        right; assumption. }
+      { rewrite <- IHsplits'; trivial.
+        split; intro;
+        destruct_head sigT;
+        destruct_head prod;
+        destruct_head False.
+        apply s2.
+        eexists (_, _).
+        repeat split; try eassumption.
+        right; assumption. } }
+    { repeat match goal with
+               | [ |- appcontext[match ?E with _ => _ end] ] => case_eq E
+             end;
+      try solve [ repeat match goal with
+               | _ => reflexivity
+               | _ => intro
+               | _ => progress simpl in *
+               | _ => progress destruct_head False
+               | _ => progress destruct_head prod
+               | _ => progress destruct_head sigT
+               | [ H : sigT _ -> _ |- _ ] => specialize (fun a b => H (existT _ a b))
+               | [ H : (_ * _)%type -> _ |- _ ] => specialize (fun a b => H (a, b))
+               | [ H : forall x, (_ * _)%type -> _ |- _ ] => specialize (fun x a b => H x (a, b))
+               | [ H : forall x y, (_ * _)%type -> _ |- _ ] => specialize (fun x y a b => H x y (a, b))
+               | [ H : forall x y z, (_ * _)%type -> _ |- _ ] => specialize (fun x y z a b => H x y z (a, b))
+               | [ H : forall x y p, T_item_success _ _ _ _ -> T_production_success _ _ _ _ -> _, p_it : T_item_success _ _ _ _, p_prod : T_production_success _ _ _ _ |- _ ]
+                 => specialize (fun p => H _ _ p p_it p_prod)
+               | [ H : (?x = ?x \/ _) -> _ |- _ ] => specialize (H (or_introl eq_refl))
+
+             end ];
+      intros.
+      { rewrite -> IHsplits; trivial.
+        split; intro;
+        destruct_head sigT;
+        destruct_head prod;
+        destruct_head False.
+        match goal with H : _ |- _ => apply H end.
+        eexists (_, _).
+        repeat split; try eassumption.
+        right; assumption. }
+      { rewrite -> IHsplits; trivial.
+        split; intro;
+        destruct_head sigT;
+        destruct_head prod;
+        destruct_head False.
+        match goal with H : _ |- _ => apply H end.
+        eexists (_, _).
+        repeat split; try eassumption.
+        right; assumption. }
+      { rewrite -> IHsplits; trivial.
+        split; intro;
+        destruct_head sigT;
+        destruct_head prod;
+        destruct_head False.
+        match goal with H : _ |- _ => apply H end.
+        eexists (_, _).
+        repeat split; try eassumption.
+        right; assumption. } }
+    {
+      { rewrite <- IHsplits'; trivial.
+        split; intro;
+        destruct_head sigT;
+        destruct_head prod;
+        destruct_head False.
+        apply s2.
+        eexists (_, _).
+        repeat split; try eassumption.
+        right; assumption. }
+split; intro;
+        destruct_head sigT;
+        destruct_head prod;
+        destruct_head False.
+
+        split.
+        2:apply t2.
+        specialize (fun s1 s2 p => s0 (existT _ (s1, s2) p)); simpl in *.
+      specialize (fun s1 s2 a b c => s0 s1 s2 (a, b, c)); simpl in *.
+      specialize (fun p => s0 _ _ p t t0).
+    unfold parse_production_helper.
+    (parse_production : forall str1 : StringWithSplitState String split_stateT,
+                              str1 ≤s str0 -> T_production str1 its)
+        (H_prod_split' : H_prod_split_T str0 str valid (it::its) (fun _ => splits))
+        (splits_correct : List.Forall (fun s1s2 : StringWithSplitState String split_stateT * StringWithSplitState String split_stateT
+                                       => (fst s1s2 ++ snd s1s2 =s str) = true)
+                                      splits)
 
 
         (methods methods' : parser_computational_dataT String)
