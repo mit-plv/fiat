@@ -81,296 +81,24 @@ Ltac FullySharpenEachMethod delegateSigs delegateSpecs cRep' cAbsR' :=
   end; simpl; repeat split.
 
 Definition Build_IndexedQueryStructure_Impl_Sigs
-         {indices : list NamedSchema}
-         (Index : ilist (fun ns : NamedSchema => SearchUpdateTerms (schemaHeading (relSchema ns))) indices)
-         (idx : @BoundedString (map relName indices))
+           {indices : list NamedSchema}
+           (Index : ilist (fun ns : NamedSchema => SearchUpdateTerms (schemaHeading (relSchema ns))) indices)
+           (idx : @BoundedString (map relName indices))
 : ADTSig :=
   BagSig (@Tuple (schemaHeading (relSchema (nth_Bounded relName indices idx))))
          (BagSearchTermType (ith_Bounded _ Index idx))
          (BagUpdateTermType (ith_Bounded _ Index idx)).
 
 Definition Build_IndexedQueryStructure_Impl_Specs
-         {indices : list NamedSchema}
-         (Index : ilist (fun ns : NamedSchema => SearchUpdateTerms (schemaHeading (relSchema ns))) indices)
-         (idx : @BoundedString (map relName indices))
+           {indices : list NamedSchema}
+           (Index : ilist (fun ns : NamedSchema => SearchUpdateTerms (schemaHeading (relSchema ns))) indices)
+           (idx : @BoundedString (map relName indices))
 : ADT (@Build_IndexedQueryStructure_Impl_Sigs indices Index idx) :=
   @BagSpec (@Tuple (schemaHeading (relSchema (nth_Bounded relName indices idx))))
-            (BagSearchTermType (ith_Bounded _ Index idx))
-            (BagUpdateTermType (ith_Bounded _ Index idx))
-            (BagMatchSearchTerm (ith_Bounded _ Index idx))
-            (BagApplyUpdateTerm (ith_Bounded _ Index idx)).
-
-Fixpoint unroll_ilist {A} {B : A -> Type}
-         (As : list A)
-         (il : ilist B As)
-: ilist B As :=
-  match As return ilist _ As -> ilist B As with
-    | nil => fun il => inil _
-    | a :: As' =>
-      fun il' => icons a (ilist_hd il') (unroll_ilist (ilist_tl il'))
-  end il.
-
-(*Fixpoint map_IndexedQS_idx_boundi
-         {indices}
-: forall
-    n
-    (Index : ilist
-               (fun ns : NamedSchema =>
-                  SearchUpdateTerms (schemaHeading (relSchema ns)))
-               indices)
-    idx,
-    nth_error
-      (map ADTSigname (Build_IndexedQueryStructure_Impl_Sigs Index))
-      n = Some idx
-    ->  nth_error (map relName indices) n = Some idx.
-Proof.
-  refine (match indices with
-            | nil => _
-            | ns :: indices' =>
-              fun n =>
-                match n return
-                      forall
-                        (Index : ilist
-                                   (fun ns : NamedSchema =>
-                                      SearchUpdateTerms (schemaHeading (relSchema ns)))
-                                   (ns :: indices'))
-                        idx,
-                        nth_error (map ADTSigname (Build_IndexedQueryStructure_Impl_Sigs Index)) n =
-                        Some idx ->
-                        nth_error (map relName (ns :: indices')) n = Some idx
-                with
-                  | 0 => fun Index idx nth_n => nth_n
-                  | S n' => fun Index => (map_IndexedQS_idx_boundi indices' n' (ilist_tl Index))
-                end
-          end);
-  simpl; intros; try discriminate; eauto.
-Defined.
-
-Definition map_IndexedQS_idx
-           indices
-           (Index : ilist (fun ns : NamedSchema => SearchUpdateTerms (schemaHeading (relSchema ns))) indices )
-           (idx : BoundedIndex
-                    (map ADTSigname
-                         (Build_IndexedQueryStructure_Impl_Sigs Index)))
-: BoundedIndex (map relName indices) :=
-  {| bindex := bindex idx;
-     indexb := {| ibound := ibound (indexb idx);
-                  boundi := map_IndexedQS_idx_boundi _ Index (boundi (indexb idx))|} |}.
-*)
-(* Begin BookStore Defs*)
-Definition sBOOKS := "Books".
-Definition sAUTHOR := "Authors".
-Definition sTITLE := "Title".
-Definition sISBN := "ISBN".
-Definition sORDERS := "Orders".
-Definition sDATE := "Date".
-
-Definition BookStoreSchema :=
-  (Query Structure Schema
-    [ relation sBOOKS has
-              schema <sAUTHOR :: string,
-                      sTITLE :: string,
-                      sISBN :: nat>
-                      where attributes [sTITLE; sAUTHOR] depend on [(@Build_BoundedIndex _ _ sISBN%string _)];
-      relation sORDERS has
-              schema <sISBN :: nat,
-                      sDATE :: nat> ]
-    enforcing [attribute sISBN for sORDERS references sBOOKS])%Schema.
-Definition Book := TupleDef BookStoreSchema sBOOKS.
-Definition Order := TupleDef BookStoreSchema sORDERS.
-Definition BookStoreSig : ADTSig :=
-  ADTsignature {
-      Constructor "Init" : unit -> rep,
-      Method "DeleteOrder" : rep x nat -> rep x list Order,
-      Method "GetTitles" : rep x string -> rep x list string,
-      Method "NumOrders" : rep x string -> rep x nat
-    }.
-Definition BookStoreSpec : ADT BookStoreSig :=
-  QueryADTRep BookStoreSchema {
-    Def Constructor "Init" (_ : unit) : rep := empty,
-
-    (*update "PlaceOrder" ( o : Order ) : bool :=
-        Insert o into sORDERS, *)
-
-    update "DeleteOrder" ( oid : nat ) : list Order :=
-      Delete o from sORDERS where o!sISBN = oid,
-
-    (*update "AddBook" ( b : Book ) : bool :=
-        Insert b into sBOOKS , *)
-
-    (* update "DeleteBook" ( id : nat ) : list Book :=
-        Delete book from sBOOKS where book!sISBN = id , *)
-
-    query "GetTitles" ( author : string ) : list string :=
-      For (b in sBOOKS)
-      Where (author = b!sAUTHOR)
-      Return (b!sTITLE) ,
-
-    query "NumOrders" ( author : string ) : nat :=
-      Count (For (o in sORDERS) (b in sBOOKS)
-                 Where (author = b!sAUTHOR)
-                 Where (b!sISBN = o!sISBN)
-                 Return ())
-}.
-
-Definition BooksSearchTerm :=
-{|
-             BagSearchTermType := @BuildIndexSearchTerm
-                                    <sAUTHOR :: string,
-                                       sTITLE :: string,
-                                       sISBN :: nat>%Heading
-                                    [sAUTHOR; sISBN]%SchemaConstraints;
-             BagMatchSearchTerm := @MatchIndexSearchTerm
-                                     <sAUTHOR :: string,
-                                        sTITLE :: string,
-                                        sISBN :: nat>%Heading
-                                     [sAUTHOR; sISBN]%SchemaConstraints
-                                     (@icons
-                                        (@BoundedString
-                                           [sAUTHOR; sTITLE; sISBN])
-                                        (fun
-                                           attr : @BoundedString
-                                                  [sAUTHOR; sTITLE; sISBN] =>
-                                         Query_eq
-                                           (attrType
-                                              (@nth_Bounded Attribute string
-                                                 attrName
-                                                 [(sAUTHOR :: string)%Attribute;
-                                                 (sTITLE :: string)%Attribute;
-                                                 (sISBN :: nat)%Attribute]
-                                                 attr))) ``
-                                        (sAUTHOR) [(@Build_BoundedIndex _ _ sISBN%string _)]%SchemaConstraints
-                                        Astring_eq
-                                        (@icons
-                                           (@BoundedString
-                                              [sAUTHOR; sTITLE; sISBN])
-                                           (fun
-                                              attr :
-                                               @BoundedString
-                                                 [sAUTHOR; sTITLE; sISBN] =>
-                                            Query_eq
-                                              (attrType
-                                                 (@nth_Bounded Attribute
-                                                  string attrName
-                                                  [
-                                                  (sAUTHOR :: string)%Attribute;
-                                                  (sTITLE :: string)%Attribute;
-                                                  (sISBN :: nat)%Attribute]
-                                                  attr))) ``
-                                           (sISBN)
-                                           [] Anat_eq
-                                           (@inil
-                                              (@BoundedString
-                                                 [sAUTHOR; sTITLE; sISBN])
-                                              (fun
-                                                 attr :
-                                                  @BoundedString
-                                                  [sAUTHOR; sTITLE; sISBN] =>
-                                               Query_eq
-                                                 (attrType
-                                                  (@nth_Bounded Attribute
-                                                  string attrName
-                                                  [
-                                                  (sAUTHOR :: string)%Attribute;
-                                                  (sTITLE :: string)%Attribute;
-                                                  (sISBN :: nat)%Attribute]
-                                                  attr))))));
-             BagUpdateTermType := @Tuple
-                                    <sAUTHOR :: string,
-                                       sTITLE :: string,
-                                       sISBN :: nat>%Heading ->
-                                  @Tuple
-                                    <sAUTHOR :: string,
-                                       sTITLE :: string,
-                                       sISBN :: nat>%Heading;
-             BagApplyUpdateTerm := fun
-                                     z : @Tuple
-                                           <sAUTHOR :: string,
-                                              sTITLE :: string,
-                                              sISBN :: nat>%Heading ->
-                                         @Tuple
-                                           <sAUTHOR :: string,
-                                              sTITLE :: string,
-                                              sISBN :: nat>%Heading => z |}.
-
-Definition OrderSearchTerm :=
-  {|
-                BagSearchTermType := @BuildIndexSearchTerm
-                                       <sISBN :: nat,
-                                          sDATE :: nat>%Heading
-                                       [(@Build_BoundedIndex _ _ sISBN%string _)]%SchemaConstraints;
-                BagMatchSearchTerm := @MatchIndexSearchTerm
-                                        <sISBN :: nat,
-                                           sDATE :: nat>%Heading
-                                        [(@Build_BoundedIndex _ _ sISBN%string _)]%SchemaConstraints
-                                        (@icons
-                                           (@BoundedString [sISBN; sDATE])
-                                           (fun
-                                              attr :
-                                               @BoundedString
-                                                 [sISBN; sDATE] =>
-                                            Query_eq
-                                              (attrType
-                                                 (@nth_Bounded Attribute
-                                                  string attrName
-                                                  [
-                                                  (sISBN :: nat)%Attribute;
-                                                  (sDATE :: nat)%Attribute]
-                                                  attr))) ``
-                                           (sISBN)
-                                           [] Anat_eq
-                                           (@inil
-                                              (@BoundedString [sISBN; sDATE])
-                                              (fun
-                                                 attr :
-                                                  @BoundedString
-                                                  [sISBN; sDATE] =>
-                                               Query_eq
-                                                 (attrType
-                                                  (@nth_Bounded Attribute
-                                                  string attrName
-                                                  [
-                                                  (sISBN :: nat)%Attribute;
-                                                  (sDATE :: nat)%Attribute]
-                                                  attr)))));
-                BagUpdateTermType := @Tuple
-                                       <sISBN :: nat,
-                                          sDATE :: nat>%Heading ->
-                                     @Tuple
-                                       <sISBN :: nat,
-                                          sDATE :: nat>%Heading;
-                BagApplyUpdateTerm := fun
-                                        z : @Tuple
-                                              <sISBN :: nat,
-                                                 sDATE :: nat>%Heading ->
-                                            @Tuple
-                                              <sISBN :: nat,
-                                                 sDATE :: nat>%Heading => z |}.
-
-Definition BookSchema' :=
-  ({|
-                  schemaHeading := <sAUTHOR :: string,
-                                      sTITLE :: string,
-                                      sISBN :: nat>%Heading;
-                  schemaConstraints := @Some
-                                         (@Tuple
-                                            <sAUTHOR :: string,
-                                               sTITLE :: string,
-                                               sISBN :: nat>%Heading ->
-                                          @Tuple
-                                            <sAUTHOR :: string,
-                                               sTITLE :: string,
-                                               sISBN :: nat>%Heading -> Prop)
-                                         (@FunctionalDependency_P
-                                            <sAUTHOR :: string,
-                                               sTITLE :: string,
-                                               sISBN :: nat>%Heading
-                                            [sTITLE; sAUTHOR]%SchemaConstraints
-                                            [(@Build_BoundedIndex _ _ sISBN%string _)]%SchemaConstraints) |})%NamedSchema.
-
-(* End BookStore Defs*)
-
-Set Printing Universes.
+           (BagSearchTermType (ith_Bounded _ Index idx))
+           (BagUpdateTermType (ith_Bounded _ Index idx))
+           (BagMatchSearchTerm (ith_Bounded _ Index idx))
+           (BagApplyUpdateTerm (ith_Bounded _ Index idx)).
 
 Definition
   Build_IndexedQueryStructure_Impl_cRep
@@ -399,773 +127,6 @@ Definition Build_IndexedQueryStructure_Impl_AbsR
   forall idx : @BoundedString (map relName (qschemaSchemas qs_schema)),
     AbsR (ValidImpls idx)
          (GetIndexedRelation r_o idx) (r_n idx).
-
-Check ((let Init := "Init" in
- let Empty := "Empty" in
- let DeleteOrder := "DeleteOrder" in
- let sDelete := "Delete" in
- let Find := "Find" in
- let Enumerate := "Enumerate" in
- let GetTitles := "GetTitles" in
- let NumOrders := "NumOrders" in
- let Index :=
-   @icons NamedSchema
-     (fun ns : NamedSchema =>
-      SearchUpdateTerms (schemaHeading (relSchema ns)))
-     relation sBOOKS has (BookSchema')%NamedSchema
-     [relation sORDERS has (schema <sISBN :: nat, sDATE :: nat>)%NamedSchema]
-     BooksSearchTerm
-     (@icons NamedSchema
-        (fun ns : NamedSchema =>
-         SearchUpdateTerms (schemaHeading (relSchema ns)))
-        relation sORDERS has (schema <sISBN :: nat,
-                                        sDATE :: nat>)%NamedSchema
-        [] OrderSearchTerm
-        (@inil NamedSchema
-           (fun ns : NamedSchema =>
-            SearchUpdateTerms (schemaHeading (relSchema ns))))) in
- (@Notation_Friendly_SharpenFully'
-   (IndexedQueryStructure BookStoreSchema Index) []
-   []
-   (@inil consSig (@consDef (IndexedQueryStructure BookStoreSchema Index)))
-   (@ilist.inil methSig (@methDef (IndexedQueryStructure BookStoreSchema Index)))
-   _
-   (@Build_IndexedQueryStructure_Impl_Sigs
-      [relation sBOOKS has (BookSchema')%NamedSchema;
-      relation sORDERS has (schema <sISBN :: nat, sDATE :: nat>)%NamedSchema]
-      Index)
-   (@Build_IndexedQueryStructure_Impl_cRep
-      [relation sBOOKS has (BookSchema')%NamedSchema;
-      relation sORDERS has (schema <sISBN :: nat, sDATE :: nat>)%NamedSchema]
-      Index)
-   (fun _ _ => @inil _ _)
-   (fun _ _ => @inil _ _)
-   (@Build_IndexedQueryStructure_Impl_Specs
-      [relation sBOOKS has (BookSchema')%NamedSchema;
-        relation sORDERS has (schema <sISBN :: nat, sDATE :: nat>)%NamedSchema]
-      Index)
-   (@Build_IndexedQueryStructure_Impl_AbsR BookStoreSchema
-      Index)))).
-(*
-
-(*Fixpoint map_IndexedQS_idx_boundi'
-         {indices}
-: forall
-    n
-    (Index : ilist
-               (fun ns : NamedSchema =>
-                  SearchUpdateTerms (schemaHeading (relSchema ns)))
-               indices)
-    idx,
-    nth_error (map relName indices) n = Some idx
-    -> nth_error
-         (map ADTSigname (Build_IndexedQueryStructure_Impl_Sigs Index))
-         n = Some idx.
-Proof.
-  refine (match indices with
-            | nil => _
-            | ns :: indices' =>
-              fun n =>
-                match n return
-                      forall
-                        (Index : ilist
-                                   (fun ns : NamedSchema =>
-                                      SearchUpdateTerms (schemaHeading (relSchema ns)))
-                                   (ns :: indices'))
-                        idx,
-                        nth_error (map relName (ns :: indices')) n = Some idx
-                        -> nth_error (map ADTSigname (Build_IndexedQueryStructure_Impl_Sigs Index)) n = Some idx
-                with
-                  | 0 => fun Index idx nth_n => nth_n
-                  | S n' => fun Index => (map_IndexedQS_idx_boundi' indices' n' (ilist_tl Index))
-                end
-          end);
-  simpl; intros; try discriminate; eauto.
-Defined.
-
-Definition map_IndexedQS_idx'
-           indices
-           (Index : ilist (fun ns : NamedSchema => SearchUpdateTerms (schemaHeading (relSchema ns))) indices )
-           (idx : BoundedIndex (map relName indices))
-: BoundedIndex
-    (map ADTSigname
-         (Build_IndexedQueryStructure_Impl_Sigs Index)) :=
-  {| bindex := bindex idx;
-     indexb := {| ibound := ibound (indexb idx);
-                  boundi := map_IndexedQS_idx_boundi' _ Index (boundi (indexb idx))|} |}.
-
-Lemma ith_Build_IndexedQueryStructure_Impl_Sigs_eq
-      {indices}
-: forall
-    (Index : ilist (fun ns : NamedSchema => SearchUpdateTerms (schemaHeading (relSchema ns))) indices )
-    (idx : BoundedIndex
-             (map ADTSigname
-                  (Build_IndexedQueryStructure_Impl_Sigs Index))),
-    (BagSig (@Tuple (schemaHeading (relSchema ((nth_Bounded relName indices (map_IndexedQS_idx Index idx))))))
-            (BagSearchTermType
-               (ith_Bounded relName Index (map_IndexedQS_idx Index idx)))
-            (BagUpdateTermType
-               (ith_Bounded relName Index (map_IndexedQS_idx Index idx))))
-    = namedADTSig
-        (nth_Bounded ADTSigname (Build_IndexedQueryStructure_Impl_Sigs Index) idx).
-Proof.
-  destruct idx as [idx [n nth_n]].
-  revert Index idx n nth_n.
-  induction indices; destruct n; simpl; intros; try discriminate; eauto.
-  eapply (IHindices (ilist_tl Index) idx n nth_n).
-Defined.
-
-Lemma ith_Build_IndexedQueryStructure_Impl_Specs_eq
-      {indices}
-: forall
-    (Index : ilist (fun ns : NamedSchema => SearchUpdateTerms (schemaHeading (relSchema ns))) indices )
-    (idx : BoundedIndex
-             (map ADTSigname
-                  (Build_IndexedQueryStructure_Impl_Sigs Index))),
-    ith2_Bounded ADTSigname (Build_IndexedQueryStructure_Impl_Specs Index) idx =
-    eq_rect _ ADT
-            (@BagSpec (@Tuple (schemaHeading (relSchema (@nth_Bounded NamedSchema string relName
-                                                                      indices (map_IndexedQS_idx Index idx)))))
-                      (BagSearchTermType (ith_Bounded _ Index (map_IndexedQS_idx Index idx)))
-                      (BagUpdateTermType (ith_Bounded _ Index (map_IndexedQS_idx Index idx)))
-                      (BagMatchSearchTerm (ith_Bounded _ Index (map_IndexedQS_idx Index idx)))
-                      (BagApplyUpdateTerm (ith_Bounded _ Index (map_IndexedQS_idx Index idx))))
-            _ (ith_Build_IndexedQueryStructure_Impl_Sigs_eq Index idx).
-Proof.
-  destruct idx as [idx [n nth_n]].
-  revert Index idx n nth_n.
-  induction indices; destruct n; simpl; intros; try discriminate; eauto.
-  eapply (IHindices (ilist_tl Index) idx n nth_n).
-Defined.
-
-Definition map_IndexedQS_Rep
-           {indices}
-           (Index : ilist (fun ns : NamedSchema => SearchUpdateTerms (schemaHeading (relSchema ns))) indices )
-           idx
-           (rep : @IndexedEnsemble
-                    (@Tuple
-                       (schemaHeading
-                          (relSchema
-                             (@nth_Bounded NamedSchema string relName
-                                           indices (map_IndexedQS_idx Index idx) )))))
-: Rep
-    (ith2_Bounded ADTSigname
-                 (Build_IndexedQueryStructure_Impl_Specs Index) idx).
-Proof.
-  destruct idx as [idx [n nth_n]].
-  revert Index idx n nth_n rep.
-  induction indices; destruct n; simpl; intros; try discriminate; eauto.
-  eapply IHindices; eauto.
-Defined.
-
-Definition map_IndexedQS_Rep'
-           {indices}
-           (Index : ilist (fun ns : NamedSchema => SearchUpdateTerms (schemaHeading (relSchema ns))) indices )
-           idx
-           (rep : Rep
-                    (ith2_Bounded ADTSigname
-                                 (Build_IndexedQueryStructure_Impl_Specs Index)
-                                 (map_IndexedQS_idx' Index idx)))
-: @IndexedEnsemble
-    (@Tuple
-       (schemaHeading
-          (relSchema
-             (@nth_Bounded NamedSchema string relName
-                           indices idx )))).
-Proof.
-  destruct idx as [idx [n nth_n]].
-  revert Index idx n nth_n rep.
-  induction indices; destruct n; simpl; intros; try discriminate; eauto.
-  eapply (IHindices (ilist_tl Index)); eauto.
-Defined.
-
-Definition Build_IndexedQueryStructure_Impl_AbsR
-           {qs_schema : QueryStructureSchema}
-           (Index : ilist (fun ns : NamedSchema => SearchUpdateTerms (schemaHeading (relSchema ns))) (qschemaSchemas qs_schema) )
-           (DelegateReps : @BoundedString (map relName (qschemaSchemas qs_schema)) -> Type)
-           (DelegateImpls : forall idx,
-                              ComputationalADT.pcADT (Build_IndexedQueryStructure_Impl_Sigs Index idx) (DelegateReps idx))
-           (ValidImpls
-            : forall idx,
-                refineADT (Build_IndexedQueryStructure_Impl_Specs Index idx)
-                          (ComputationalADT.LiftcADT (existT _ _ (DelegateImpls idx))))
-           (r_o : IndexedQueryStructure qs_schema Index)
-           (r_n : Build_IndexedQueryStructure_Impl_cRep Index DelegateReps)
-: Prop.
-  cut (forall idx, Rep
-   (LiftcADT
-      (existT (pcADT (Build_IndexedQueryStructure_Impl_Sigs Index idx))
-         (DelegateReps idx) (DelegateImpls idx)))). intros bob.
-  refine (forall idx : @BoundedString (map relName (qschemaSchemas qs_schema)),
-            AbsR (ValidImpls idx)
-                 (GetIndexedRelation r_o idx) (bob idx)).
-  simpl.
-                 ).
-         (i2th2_Bounded ADTSigname r_n idx).
-
-Definition Build_IndexedQueryStructure_Impl_AbsR
-           {qs_schema : QueryStructureSchema}
-           (Index : ilist (fun ns : NamedSchema => SearchUpdateTerms (schemaHeading (relSchema ns))) (qschemaSchemas qs_schema) )
-           (DelegateReps : ilist (fun ns : NamedADTSig => Type) (Build_IndexedQueryStructure_Impl_Sigs Index))
-           (DelegateImpls : i2list2 (fun (nadt : NamedADTSig) rep => ComputationalADT.pcADT (namedADTSig nadt) rep) DelegateReps)
-           (ValidImpls
-             : forall idx,
-                 refineADT (ith2_Bounded ADTSigname (Build_IndexedQueryStructure_Impl_Specs Index) idx)
-                           (ComputationalADT.LiftcADT
-                              (existT _ _ (i2th2_Bounded ADTSigname DelegateImpls idx))))
-: Prop :=
-  forall idx,
-    AbsR (ValidImpls idx)
-         (map_IndexedQS_Rep Index idx (GetIndexedRelation r_o (map_IndexedQS_idx Index idx)))
-         (i2th2_Bounded ADTSigname r_n idx).
-
-Definition map_IndexedQS_Rep''
-           {indices}
-           (Index : ilist (fun ns : NamedSchema => SearchUpdateTerms (schemaHeading (relSchema ns))) indices )
-           idx
-           (rep : @IndexedEnsemble
-                    (@Tuple
-                       (schemaHeading
-                          (relSchema
-                             (@nth_Bounded NamedSchema string relName
-                                           indices idx)))))
-: Rep
-    (ith2_Bounded ADTSigname
-                 (Build_IndexedQueryStructure_Impl_Specs Index) (map_IndexedQS_idx' Index idx)).
-Proof.
-  destruct idx as [idx [n nth_n]].
-  revert Index idx n nth_n rep.
-  induction indices; destruct n; simpl; intros; try discriminate; eauto.
-  eapply IHindices; eauto.
-Defined.
-
-Definition Build_IndexedQueryStructure_Impl_AbsR''
-           {qs_schema : QueryStructureSchema}
-           (Index : ilist (fun ns : NamedSchema => SearchUpdateTerms (schemaHeading (relSchema ns))) (qschemaSchemas qs_schema) )
-           (DelegateReps : ilist (fun ns : NamedADTSig => Type) (Build_IndexedQueryStructure_Impl_Sigs Index))
-           (DelegateImpls : i2list2 (fun (nadt : NamedADTSig) rep => ComputationalADT.pcADT (namedADTSig nadt) rep) DelegateReps)
-           (ValidImpls
-             : forall idx,
-                 refineADT (ith2_Bounded ADTSigname (Build_IndexedQueryStructure_Impl_Specs Index) (map_IndexedQS_idx' Index idx))
-                           (ComputationalADT.LiftcADT
-                              (existT _ _ (i2th2_Bounded ADTSigname DelegateImpls (map_IndexedQS_idx' Index idx)))))
-           (r_o : IndexedQueryStructure qs_schema Index)
-           (r_n : Build_IndexedQueryStructure_Impl_cRep Index DelegateReps)
-: Prop :=
-  forall idx,
-    AbsR (ValidImpls idx)
-         (map_IndexedQS_Rep'' Index idx (GetIndexedRelation r_o idx))
-         (i2th2_Bounded ADTSigname r_n (map_IndexedQS_idx' Index idx)). *)
-
-
-Definition CallBagImplMethod
-           {qs_schema : QueryStructureSchema}
-           (Index : ilist (fun ns : NamedSchema => SearchUpdateTerms (schemaHeading (relSchema ns))) (qschemaSchemas qs_schema))
-           (DelegateReps : ilist (fun ns : NamedADTSig => Type) (Build_IndexedQueryStructure_Impl_Sigs Index))
-           (DelegateImpls : i2list2 (fun (nadt : NamedADTSig) rep => ComputationalADT.pcADT (namedADTSig nadt) rep) DelegateReps)
-           idx midx
-           (r_n : Build_IndexedQueryStructure_Impl_cRep Index DelegateReps) :=
-  pcMethods (i2th2_Bounded ADTSigname DelegateImpls idx) midx (i2th2_Bounded _ r_n idx).
-
-Definition CallBagImplConstructor
-           {qs_schema : QueryStructureSchema}
-           (Index : ilist (fun ns : NamedSchema => SearchUpdateTerms (schemaHeading (relSchema ns))) (qschemaSchemas qs_schema))
-           (DelegateReps : ilist (fun ns : NamedADTSig => Type) (Build_IndexedQueryStructure_Impl_Sigs Index))
-           (DelegateImpls : i2list2 (fun (nadt : NamedADTSig) rep => ComputationalADT.pcADT (namedADTSig nadt) rep) DelegateReps)
-           idx midx :=
-  pcConstructors (i2th2_Bounded ADTSigname DelegateImpls idx) midx .
-
-Fixpoint Build_IndexedQueryStructure_Impl_midx
-         {indices}
-         (P : ADTSig -> Type)
-: forall (Index : ilist (fun ns : NamedSchema => SearchUpdateTerms (schemaHeading (relSchema ns))) indices)
-         ridx
-         (midx : P
-                   (BagSig (@Tuple (schemaHeading
-                                      (relSchema
-                                         (@nth_Bounded NamedSchema string relName
-                                                       indices (map_IndexedQS_idx Index ridx ) ))))
-                           (BagSearchTermType
-                              (ith_Bounded relName Index (map_IndexedQS_idx Index ridx)))
-                           (BagUpdateTermType
-                              (ith_Bounded relName Index (map_IndexedQS_idx Index ridx))))),
-    P
-      (namedADTSig
-         (nth_Bounded ADTSigname (Build_IndexedQueryStructure_Impl_Sigs Index)
-                      ridx)) :=
-  match indices return
-        forall (Index : ilist
-                          (fun ns : NamedSchema =>
-                             SearchUpdateTerms (schemaHeading (relSchema ns)))
-                          indices)
-               (ridx : BoundedIndex
-                         (map ADTSigname (Build_IndexedQueryStructure_Impl_Sigs Index)))
-               (midx : P
-                         (BagSig (@Tuple (schemaHeading
-                                            (relSchema
-                                               (@nth_Bounded NamedSchema string relName
-                                                             indices (map_IndexedQS_idx Index ridx ) ))))
-                                 (BagSearchTermType
-                                    (ith_Bounded relName Index (map_IndexedQS_idx Index ridx)))
-                                 (BagUpdateTermType
-                                    (ith_Bounded relName Index (map_IndexedQS_idx Index ridx))))),
-          P
-            (namedADTSig
-               (nth_Bounded ADTSigname (Build_IndexedQueryStructure_Impl_Sigs Index)
-                            ridx))
-  with
-    | nil => fun _ ridx => BoundedIndex_nil _ ridx
-    | ns :: indices' =>
-      fun Index ridx =>
-        match ridx with
-          | {| bindex := ridx;
-               indexb := {|ibound := n;
-                           boundi := nth_n |}|} =>
-            match n return
-                  forall
-                    (Index' : ilist
-                                (fun ns : NamedSchema =>
-                                   SearchUpdateTerms (schemaHeading (relSchema ns))) (ns :: indices'))
-                    ridx nth_n,
-                    let idx := {| bindex := ridx;
-                                  indexb := {|ibound := n;
-                                              boundi := nth_n |}|} in
-                    P
-                      (BagSig (@Tuple (schemaHeading
-                                         (relSchema
-                                            (@nth_Bounded NamedSchema string relName
-                                                          (ns :: indices') (map_IndexedQS_idx Index' idx ) ))))
-                              (BagSearchTermType
-                                 (ith_Bounded relName Index' (map_IndexedQS_idx Index' idx)))
-                              (BagUpdateTermType
-                                 (ith_Bounded relName Index' (map_IndexedQS_idx Index' idx)))) ->
-                    P
-                      (namedADTSig
-                         (nth_Bounded ADTSigname (Build_IndexedQueryStructure_Impl_Sigs Index')
-                                      {| bindex := ridx;
-                                         indexb := {|ibound := n;
-                                                     boundi := nth_n |}|}))
-            with
-              | 0 => fun Index idx nth_n midx => midx
-              | S n' => fun Index idx nth_n midx =>
-                          (@Build_IndexedQueryStructure_Impl_midx
-                             indices' P (ilist_tl Index)
-                             {| bindex := idx;
-                                indexb := {|ibound := n';
-                                            boundi := nth_n |}|}
-                             midx)
-            end Index ridx nth_n
-        end
-  end.
-
-Definition Build_IndexedQueryStructure_Impl_MethodDom
-           {indices}
-: forall (Index : ilist (fun ns : NamedSchema => SearchUpdateTerms (schemaHeading (relSchema ns))) indices)
-         ridx
-         midx,
-    fst (MethodDomCod
-           (BagSig (@Tuple (schemaHeading (relSchema (nth_Bounded relName indices  ridx))))
-                   (BagSearchTermType
-                      (ith_Bounded relName Index ridx))
-                   (BagUpdateTermType
-                      (ith_Bounded relName Index ridx)))
-           midx)
-    -> fst
-         (MethodDomCod
-            (namedADTSig
-               (nth_Bounded ADTSigname
-                            (Build_IndexedQueryStructure_Impl_Sigs Index) (map_IndexedQS_idx' Index ridx)))
-            (Build_IndexedQueryStructure_Impl_midx MethodIndex Index (map_IndexedQS_idx' Index ridx) midx)).
-Proof.
-  destruct ridx as [idx [n nth_n]]; revert Index idx n nth_n.
-  induction indices.
-  - destruct n; simpl; discriminate.
-  - destruct n; simpl; eauto.
-    intros; eapply (IHindices (ilist_tl Index) idx n nth_n); eauto.
-Defined.
-
-Definition Build_IndexedQueryStructure_Impl_MethodCod
-           {indices}
-: forall (Index : ilist (fun ns : NamedSchema => SearchUpdateTerms (schemaHeading (relSchema ns))) indices)
-         ridx
-         midx,
-    snd
-      (MethodDomCod
-         (namedADTSig
-            (nth_Bounded ADTSigname
-                         (Build_IndexedQueryStructure_Impl_Sigs Index) (map_IndexedQS_idx' Index ridx)))
-         (Build_IndexedQueryStructure_Impl_midx MethodIndex Index (map_IndexedQS_idx' Index ridx) midx))
-    ->       snd (MethodDomCod
-                    (BagSig (@Tuple (schemaHeading (relSchema (nth_Bounded relName indices  ridx))))
-                            (BagSearchTermType
-                               (ith_Bounded relName Index ridx))
-                            (BagUpdateTermType
-                               (ith_Bounded relName Index ridx)))
-                    midx)
-.
-Proof.
-  destruct ridx as [idx [n nth_n]]; revert Index idx n nth_n.
-  induction indices.
-  - destruct n; simpl; discriminate.
-  - destruct n; simpl; eauto.
-    intros; eapply (IHindices (ilist_tl Index) idx n nth_n); eauto.
-Defined.
-
-Lemma ith_Build_IndexedQueryStructure_Impl_Methods
-      {indices}
-: forall
-    (Index : ilist (fun ns : NamedSchema => SearchUpdateTerms (schemaHeading (relSchema ns))) indices )
-    (idx : BoundedIndex
-             (map ADTSigname
-                  (Build_IndexedQueryStructure_Impl_Sigs Index))),
-    Methods (ith2_Bounded ADTSigname (Build_IndexedQueryStructure_Impl_Specs Index) idx) =
-    eq_rect _ (fun r => forall idx, methodType (Rep r) _ _ )
-            (Methods (eq_rect _ ADT
-                              (@BagSpec (@Tuple (schemaHeading (relSchema (@nth_Bounded NamedSchema string relName
-                                                                                        indices (map_IndexedQS_idx Index idx)))))
-                                        (BagSearchTermType (ith_Bounded _ Index (map_IndexedQS_idx Index idx)))
-                                        (BagUpdateTermType (ith_Bounded _ Index (map_IndexedQS_idx Index idx)))
-                                        (BagMatchSearchTerm (ith_Bounded _ Index (map_IndexedQS_idx Index idx)))
-                                        (BagApplyUpdateTerm (ith_Bounded _ Index (map_IndexedQS_idx Index idx))))
-                              _ (ith_Build_IndexedQueryStructure_Impl_Sigs_eq Index idx)))
-            _ (eq_sym (ith_Build_IndexedQueryStructure_Impl_Specs_eq Index idx)).
-Proof.
-  destruct idx as [idx [n nth_n]].
-  revert Index idx n nth_n.
-  induction indices; destruct n; simpl; intros; try discriminate; eauto.
-  eapply (IHindices (ilist_tl Index) idx n nth_n).
-Defined.
-
-Lemma refine_Mapped_Methods
-      {indices}
-      (Index : ilist (fun ns : NamedSchema => SearchUpdateTerms (schemaHeading (relSchema ns))) (indices) )
-:  forall
-    ridx,
-  forall
-    (r_o : @IndexedEnsemble (@Tuple (schemaHeading (relSchema (nth_Bounded relName indices ridx)))))
-    midx
-    d r s,
-    let ridx' := map_IndexedQS_idx' Index ridx in
-    let midx' := Build_IndexedQueryStructure_Impl_midx MethodIndex Index ridx' midx in
-    let d' := Build_IndexedQueryStructure_Impl_MethodDom Index ridx _ d in
-    Methods
-      (ith2_Bounded ADTSigname (Build_IndexedQueryStructure_Impl_Specs Index) ridx') midx'
-      (map_IndexedQS_Rep'' Index ridx r_o) d'
-      ↝ (r, s) ->
-    Methods
-      (BagSpec (BagMatchSearchTerm (ith_Bounded relName Index ridx))
-               (BagApplyUpdateTerm (ith_Bounded relName Index ridx))) midx r_o d
-      ↝ (map_IndexedQS_Rep' Index ridx r,
-         Build_IndexedQueryStructure_Impl_MethodCod Index ridx midx s).
-Proof.
-  intros; pose proof (ith_Build_IndexedQueryStructure_Impl_Methods Index ridx') as H';
-  rewrite H' in H; revert H; clear H'.
-  unfold d', midx', ridx' in *; clear ridx' midx' d'.
-  revert r_o d r s.
-  intro; eapply (Iterate_Dep_Type_BoundedIndex_equiv_1) with (idx := midx);
-  simpl.
-  intuition;
-    simpl in *;
-    first [revert midx r_o d r s H
-          | revert midx r_o b a r s H ];
-    try (destruct ridx as [idx [n nth_n]];
-         revert idx n nth_n;
-         unfold IndexedQueryStructure, GetIndexedRelation in *;
-           unfold list_ind, list_rect in *;
-           induction indices; destruct n; simpl; try (intros; discriminate); eauto;
-         eapply IHindices).
-Qed.
-
-Lemma map_indexedqs_Rep'_id
-      {indices}
-: forall Index idx r_o,
-    map_IndexedQS_Rep'' (indices := indices) Index idx (map_IndexedQS_Rep' Index idx r_o) = r_o.
-Proof.
-  destruct idx as [idx [n nth_n]]; revert Index idx n nth_n.
-  induction indices; simpl; intros.
-  - destruct n; discriminate.
-  - destruct n; simpl in *; eauto.
-    eapply (IHindices (ilist_tl Index)).
-Qed.
-
-
-
-Lemma Update_Build_IndexedQueryStructure_Impl_AbsR''
-      {qs_schema}
-      Index
-: forall
-    DelegateImpl
-    ValidImpl
-    (r_o : IndexedQueryStructure qs_schema Index)
-    (r_n : Build_IndexedQueryStructure_Impl_cRep Index DelegateImpl)
-    idx r_o' r_n',
-    Build_IndexedQueryStructure_Impl_AbsR'' ValidImpl r_o r_n
-    -> AbsR (ValidImpl idx) r_o' r_n'
-    -> Build_IndexedQueryStructure_Impl_AbsR''
-         ValidImpl
-         (UpdateIndexedRelation r_o idx (map_IndexedQS_Rep' _ _ r_o'))
-         (replace2_BoundedIndex2 _ r_n (map_IndexedQS_idx' _ idx) r_n').
-Proof.
-  intros; intro idx'.
-  destruct (BoundedString_eq_dec idx idx'); subst.
-  - rewrite i2th_replace2_BoundIndex_eq, get_update_indexed_eq, map_indexedqs_Rep'_id; eauto.
-  - rewrite i2th_replace2_BoundIndex_neq, get_update_indexed_neq; eauto using string_dec.
-    intuition; apply n.
-    destruct idx as [idx [m nth_m]]; destruct idx' as [idx' [n' nth_n']]; simpl in *.
-    injection H1; intros; subst; repeat f_equal.
-    unfold map_IndexedQS_idx' in H1; simpl in H1.
-    apply eq_proofs_unicity_Opt_A; eauto using string_dec.
-Qed.
-
-Lemma refine_BagImplMethods'
-      {qs_schema : QueryStructureSchema}
-      (Index : ilist (fun ns : NamedSchema => SearchUpdateTerms (schemaHeading (relSchema ns))) (qschemaSchemas qs_schema) )
-      (DelegateImpls : ilist (fun ns => cADT (namedADTSig ns))
-                             (Build_IndexedQueryStructure_Impl_Sigs Index))
-      ValidImpl
-:  forall (r_o : IndexedQueryStructure qs_schema Index)
-          (r_n : Build_IndexedQueryStructure_Impl_cRep Index DelegateImpls)
-          ridx,
-     let ridx' := map_IndexedQS_idx' Index ridx in
-     Build_IndexedQueryStructure_Impl_AbsR'' ValidImpl r_o r_n ->
-     forall (midx : MethodIndex
-                      (BagSig Tuple
-                              (BagSearchTermType
-                                 (ith_Bounded relName Index (map_IndexedQS_idx Index ridx')))
-                              (BagUpdateTermType
-                                 (ith_Bounded relName Index (map_IndexedQS_idx Index ridx')))))
-            (d : fst
-                   (MethodDomCod
-                      (BagSig (@Tuple (schemaHeading (relSchema (nth_Bounded relName (qschemaSchemas qs_schema) ridx))))
-                              (BagSearchTermType (ith_Bounded relName Index ridx))
-                              (BagUpdateTermType (ith_Bounded relName Index ridx))) midx)),
-       let midx' := Build_IndexedQueryStructure_Impl_midx MethodIndex Index ridx' midx in
-       let d' := Build_IndexedQueryStructure_Impl_MethodDom Index ridx _ d in
-       exists r_o',
-         refine (CallBagMethod ridx midx r_o d)
-                (ret (map_IndexedQS_Rep' _ _ r_o',
-                      Build_IndexedQueryStructure_Impl_MethodCod Index ridx _
-                                                                 (snd (CallBagImplMethod (map_IndexedQS_idx' Index ridx) midx' r_n d'))))
-         /\ AbsR (ValidImpl ridx) r_o' (fst (CallBagImplMethod ridx' midx' r_n d')).
-Proof.
-  intros.
-  pose proof (ADTRefinementPreservesMethods (ValidImpl ridx) midx'
-                                            (map_IndexedQS_Rep'' Index ridx
-                                                                 (GetIndexedRelation r_o ridx))
-                                            (i2th2_Bounded _ r_n ridx') d' (H ridx) (ReturnComputes _)).
-  Local Arguments map_IndexedQS_Rep : simpl never.
-  inversion_by computes_to_inv; subst.
-  exists (fst x);
-    unfold CallBagImplMethod; simpl in *.
-  split; simpl.
-  - pose proof (f_equal snd H3) as eq_x; simpl in eq_x.
-    assert (refine (CallBagMethod ridx midx r_o d)
-                   (ret
-                      (map_IndexedQS_Rep' Index ridx (fst x),
-                       Build_IndexedQueryStructure_Impl_MethodCod Index ridx midx (snd x))));
-      [ | rewrite eq_x in H0;  eapply H0 ].
-    intros v Comp_v; simpl in *; inversion_by computes_to_inv; subst.
-    destruct x; simpl @fst in *; simpl @snd in *.
-    unfold ridx' in *.
-    revert H1.
-    Local Transparent CallBagMethod.
-    eapply refine_Mapped_Methods.
-  - pose proof (f_equal fst H3) as eq_x0; simpl in eq_x0.
-    rewrite eq_x0 in H2; simpl in H2; apply H2.
-Qed.
-
-Lemma refine_BagImplMethods
-      {qs_schema : QueryStructureSchema}
-      (Index : ilist (fun ns : NamedSchema => SearchUpdateTerms (schemaHeading (relSchema ns))) (qschemaSchemas qs_schema) )
-      (DelegateImpls : ilist (fun ns => cADT (namedADTSig ns))
-                             (Build_IndexedQueryStructure_Impl_Sigs Index))
-      ValidImpl
-:  forall (r_o : IndexedQueryStructure qs_schema Index)
-          (r_n : Build_IndexedQueryStructure_Impl_cRep Index DelegateImpls)
-          ridx,
-     let ridx' := map_IndexedQS_idx' Index ridx in
-     Build_IndexedQueryStructure_Impl_AbsR'' ValidImpl r_o r_n ->
-     forall (midx : MethodIndex
-                      (BagSig Tuple
-                              (BagSearchTermType
-                                 (ith_Bounded relName Index (map_IndexedQS_idx Index ridx')))
-                              (BagUpdateTermType
-                                 (ith_Bounded relName Index (map_IndexedQS_idx Index ridx')))))
-            (d : fst
-                   (MethodDomCod
-                      (BagSig (@Tuple (schemaHeading (relSchema (nth_Bounded relName (qschemaSchemas qs_schema) ridx))))
-                              (BagSearchTermType (ith_Bounded relName Index ridx))
-                              (BagUpdateTermType (ith_Bounded relName Index ridx))) midx)),
-       let midx' := Build_IndexedQueryStructure_Impl_midx MethodIndex Index ridx' midx in
-       let d' := Build_IndexedQueryStructure_Impl_MethodDom Index ridx _ d in
-       exists r_o',
-         refine (CallBagMethod ridx midx r_o d)
-                (ret (map_IndexedQS_Rep' Index _ r_o',
-                      Build_IndexedQueryStructure_Impl_MethodCod Index ridx _
-                                                                 (snd (CallBagImplMethod (map_IndexedQS_idx' Index ridx) midx' r_n d'))))
-         /\ Build_IndexedQueryStructure_Impl_AbsR''
-              ValidImpl
-              (UpdateIndexedRelation r_o ridx (map_IndexedQS_Rep' _ _ r_o'))
-              (replace2_BoundedIndex2 _ r_n ridx' (fst (CallBagImplMethod ridx' midx' r_n d'))) .
-Proof.
-  intros; destruct (@refine_BagImplMethods' _ Index DelegateImpls ValidImpl r_o r_n ridx H midx d)
-    as [r_o' [refines_r_o' AbsR_r_o']].
-  exists r_o'; split; eauto.
-  eauto using Update_Build_IndexedQueryStructure_Impl_AbsR''.
-Qed.
-
-Definition Build_IndexedQueryStructure_Impl_ConstructorDom
-           {indices}
-: forall (Index : ilist (fun ns : NamedSchema => SearchUpdateTerms (schemaHeading (relSchema ns))) indices)
-         ridx
-         cidx,
-    ConstructorDom
-      (BagSig (@Tuple (schemaHeading (relSchema (nth_Bounded relName indices  ridx))))
-              (BagSearchTermType
-                 (ith_Bounded relName Index ridx))
-              (BagUpdateTermType
-                 (ith_Bounded relName Index ridx)))
-      cidx
-    ->       ConstructorDom
-               (namedADTSig
-                  (nth_Bounded ADTSigname
-                               (Build_IndexedQueryStructure_Impl_Sigs Index) (map_IndexedQS_idx' Index ridx)))
-               (Build_IndexedQueryStructure_Impl_midx ConstructorIndex Index (map_IndexedQS_idx' Index ridx) cidx).
-Proof.
-  destruct ridx as [idx [n nth_n]]; revert Index idx n nth_n.
-  induction indices.
-  - destruct n; simpl; discriminate.
-  - destruct n; simpl; eauto.
-    intros; eapply (IHindices (ilist_tl Index) idx n nth_n); eauto.
-Defined.
-
-Lemma ith_Build_IndexedQueryStructure_Impl_Constructors
-      {indices}
-: forall
-    (Index : ilist (fun ns : NamedSchema => SearchUpdateTerms (schemaHeading (relSchema ns))) indices )
-    (idx : BoundedIndex
-             (map ADTSigname
-                  (Build_IndexedQueryStructure_Impl_Sigs Index))),
-    Constructors (ith2_Bounded ADTSigname (Build_IndexedQueryStructure_Impl_Specs Index) idx) =
-    eq_rect _ (fun r => forall idx, constructorType (Rep r) _ )
-            (Constructors (eq_rect _ ADT
-                                   (@BagSpec (@Tuple (schemaHeading (relSchema (@nth_Bounded NamedSchema string relName
-                                                                                             indices (map_IndexedQS_idx Index idx)))))
-                                             (BagSearchTermType (ith_Bounded _ Index (map_IndexedQS_idx Index idx)))
-                                             (BagUpdateTermType (ith_Bounded _ Index (map_IndexedQS_idx Index idx)))
-                                             (BagMatchSearchTerm (ith_Bounded _ Index (map_IndexedQS_idx Index idx)))
-                                             (BagApplyUpdateTerm (ith_Bounded _ Index (map_IndexedQS_idx Index idx))))
-                                   _ (ith_Build_IndexedQueryStructure_Impl_Sigs_eq Index idx)))
-            _ (eq_sym (ith_Build_IndexedQueryStructure_Impl_Specs_eq Index idx)).
-Proof.
-  destruct idx as [idx [n nth_n]].
-  revert Index idx n nth_n.
-  induction indices; destruct n; simpl; intros; try discriminate; eauto.
-  eapply (IHindices (ilist_tl Index) idx n nth_n).
-Defined.
-
-Lemma refine_Mapped_Constructor
-      {indices}
-      (Index : ilist (fun ns : NamedSchema => SearchUpdateTerms (schemaHeading (relSchema ns))) (indices) )
-:  forall
-    ridx cidx d r,
-    let ridx' := map_IndexedQS_idx' Index ridx in
-    let cidx' := Build_IndexedQueryStructure_Impl_midx ConstructorIndex Index ridx' cidx in
-    let d' := Build_IndexedQueryStructure_Impl_ConstructorDom Index ridx _ d in
-    Constructors
-      (ith2_Bounded ADTSigname (Build_IndexedQueryStructure_Impl_Specs Index) ridx') cidx' d' ↝ r ->
-    Constructors
-      (BagSpec (BagMatchSearchTerm (ith_Bounded relName Index ridx))
-               (BagApplyUpdateTerm (ith_Bounded relName Index ridx))) cidx d
-      ↝ map_IndexedQS_Rep' Index ridx r.
-Proof.
-  intros; pose proof (ith_Build_IndexedQueryStructure_Impl_Constructors Index ridx') as H';
-  rewrite H' in H; revert H; clear H'.
-  unfold d', cidx', ridx' in *; clear ridx' cidx' d'.
-  revert d r.
-  eapply (fun P H => Iterate_Dep_Type_BoundedIndex_equiv_1 P H cidx).
-  simpl.
-  intuition;
-    simpl in *;
-    first [revert cidx d r H
-          | revert cidx b a r H ];
-    try (destruct ridx as [idx [n nth_n]];
-         revert idx n nth_n;
-         unfold IndexedQueryStructure, GetIndexedRelation in *;
-           unfold list_ind, list_rect in *;
-           induction indices; destruct n; simpl; try (intros; discriminate); eauto;
-         eapply IHindices).
-Qed.
-
-Lemma refine_BagImplConstructor
-      {qs_schema : QueryStructureSchema}
-      (Index : ilist (fun ns : NamedSchema => SearchUpdateTerms (schemaHeading (relSchema ns))) (qschemaSchemas qs_schema) )
-      (DelegateImpls : ilist (fun ns => cADT (namedADTSig ns))
-                             (Build_IndexedQueryStructure_Impl_Sigs Index))
-      (ValidImpl : forall
-                     idx : BoundedIndex
-                             (map relName (qschemaSchemas qs_schema)),
-                     refineADT
-                       (ith2_Bounded ADTSigname
-                                    (Build_IndexedQueryStructure_Impl_Specs Index)
-                                    (map_IndexedQS_idx' Index idx))
-                       (LiftcADT
-                          (ith2_Bounded ADTSigname DelegateImpls
-                                       (map_IndexedQS_idx' Index idx))))
-:  forall (ridx : BoundedIndex (map relName (qschemaSchemas qs_schema))),
-     let ridx' := map_IndexedQS_idx' Index ridx in
-     forall (cidx : ConstructorIndex
-                      (BagSig Tuple
-                              (BagSearchTermType
-                                 (ith_Bounded relName Index (map_IndexedQS_idx Index ridx')))
-                              (BagUpdateTermType
-                                 (ith_Bounded relName Index (map_IndexedQS_idx Index ridx')))))
-            (d : ConstructorDom
-                   (BagSig (@Tuple (schemaHeading (relSchema (nth_Bounded relName (qschemaSchemas qs_schema) ridx))))
-                           (BagSearchTermType (ith_Bounded relName Index ridx))
-                           (BagUpdateTermType (ith_Bounded relName Index ridx))) cidx),
-       let cidx' := Build_IndexedQueryStructure_Impl_midx ConstructorIndex Index ridx' cidx in
-       let d' := Build_IndexedQueryStructure_Impl_ConstructorDom Index ridx _ d in
-       exists r_o' : Rep
-                       (ith2_Bounded ADTSigname
-                                    (Build_IndexedQueryStructure_Impl_Specs Index)
-                                    (map_IndexedQS_idx' Index ridx)),
-         refine (@CallBagConstructor _ (bindex ridx) (ith_Bounded relName Index ridx) cidx d)
-                (ret (map_IndexedQS_Rep' Index _ r_o')) /\
-         AbsR (ValidImpl ridx) r_o' (CallBagImplConstructor Index DelegateImpls ridx' cidx' d').
-Proof.
-  intros.
-  pose proof (ADTRefinementPreservesConstructors (ValidImpl ridx) cidx' d' (ReturnComputes _)).
-  Local Arguments map_IndexedQS_Rep : simpl never.
-  inversion_by computes_to_inv; subst.
-  exists x;
-    unfold CallBagImplConstructor; simpl in *.
-  split; simpl.
-  intros v Comp_v; inversion_by computes_to_inv; subst.
-  eapply refine_Mapped_Constructor; eauto.
-  eapply H1.
-Qed.
-
-Opaque CallBagConstructor.
-
-Definition Build_IndexedQueryStructure_Impl_AbsR'
-           {qs_schema : QueryStructureSchema}
-           (Index : ilist (fun ns : NamedSchema => SearchUpdateTerms (schemaHeading (relSchema ns))) (qschemaSchemas qs_schema) )
-           (DelegateImpls : ilist (fun ns => cADT (namedADTSig ns))
-                                  (Build_IndexedQueryStructure_Impl_Sigs Index))
-           (ValidImpl :
-              forall idx,
-                refineADT (ith2_Bounded ADTSigname
-                                       (Build_IndexedQueryStructure_Impl_Specs Index) idx)
-                          (LiftcADT (ith2_Bounded ADTSigname DelegateImpls idx)))
-           (r_o : IndexedQueryStructure qs_schema Index)
-           (r_n : Build_IndexedQueryStructure_Impl_cRep Index DelegateImpls)
-: Prop :=
-  @Build_IndexedQueryStructure_Impl_AbsR''
-    qs_schema Index DelegateImpls
-    (fun idx => ValidImpl (map_IndexedQS_idx' Index idx))
-    r_o
-    r_n. *)
 
 Arguments BuildIndexSearchTerm : simpl never.
 Arguments MatchIndexSearchTerm : simpl never.
@@ -1727,27 +688,26 @@ Ltac commit :=
         simplify with monad laws
   end.
 
-Global Opaque CallBagMethod.
-Global Opaque CallBagConstructor.
+Ltac ilist_of_dep_evar C D B As k :=
+  match As with
+    | nil => k (fun (c : C) (d : D c) => inil (B c d))
+    | cons ?a ?As' =>
+      makeEvar (forall c (d : D c), B c d a)
+               ltac:(fun b =>
+                       ilist_of_dep_evar
+                         C D B As'
+                         ltac:(fun Bs' => k (fun c (d : D c) => @icons _ _ a As' (b c d) (Bs' c d))))
+  end.
 
-Arguments icons {A} {B} {a} {As} _ _.
-Arguments CallBagConstructor {heading} name {index} cidx _.
-
-(*Fixpoint Initialize_IndexedQueryStructureImpls'
-         {indices}
-         Index DelegateImpls
-         {struct Index}
-: @Build_IndexedQueryStructure_Impl_cRep indices Index DelegateImpls :=
-  match Index return
-        forall DelegateImpls, Build_IndexedQueryStructure_Impl_cRep Index DelegateImpls
-  with
-    | inil => i2nil2 _
-    | icons a b As Bs => fun DelegateImpls =>
-                           i2cons2 _
-                                  (ComputationalADT.cConstructors (ilist_hd DelegateImpls)
-                                                                  {| bindex := "Empty" |} ())
-                                  (Initialize_IndexedQueryStructureImpls' Bs (ilist_tl DelegateImpls))
-  end DelegateImpls.
+Definition Initialize_IndexedQueryStructureImpls'
+           {indices}
+           Index
+           (DelegateReps : @BoundedString (map relName indices) -> Type)
+           (DelegateImpls : forall idx,
+                              ComputationalADT.pcADT (Build_IndexedQueryStructure_Impl_Sigs Index idx) (DelegateReps idx))
+: @Build_IndexedQueryStructure_Impl_cRep _ Index DelegateReps :=
+  (fun idx => ComputationalADT.pcConstructors (DelegateImpls idx)
+                                              {| bindex := "Empty" |} ()).
 
 Ltac higher_order_1_reflexivity'' :=
   let x := match goal with |- ?R (ret ?x) (ret (?f ?a)) => constr:(x) end in
@@ -1770,40 +730,60 @@ Ltac higher_order_2_reflexivity'' :=
     cbv beta;
     solve [apply reflexivity].
 
-Ltac implement_bag_constructors :=
-  repeat match goal with
-           | |- context[ Pick (fun r_n : Build_IndexedQueryStructure_Impl_cRep ?Index ?DelegateImpls =>
-                                 Build_IndexedQueryStructure_Impl_AbsR' ?ValidImpl ?r_o r_n)] =>
-             refine pick val (Initialize_IndexedQueryStructureImpls' Index DelegateImpls);
-               [ higher_order_2_reflexivity'' |
-                 unfold Build_IndexedQueryStructure_Impl_AbsR', Build_IndexedQueryStructure_Impl_AbsR'';
-                   eapply Iterate_Dep_Type_BoundedIndex_equiv_1; simpl; intuition ]
+Definition CallBagImplMethod
+           {qs_schema : QueryStructureSchema}
+           (Index : ilist (fun ns : NamedSchema => SearchUpdateTerms (schemaHeading (relSchema ns))) (qschemaSchemas qs_schema) )
+           (DelegateReps : @BoundedString (map relName (qschemaSchemas qs_schema)) -> Type)
+           (DelegateImpls : forall idx,
+                              ComputationalADT.pcADT (Build_IndexedQueryStructure_Impl_Sigs Index idx) (DelegateReps idx))
+           idx midx
+           (r_n : Build_IndexedQueryStructure_Impl_cRep Index DelegateReps) :=
+  ComputationalADT.pcMethods (DelegateImpls idx) midx (r_n idx).
 
-           | |- context[CallBagConstructor ?ridx ?cidx ?d] =>
-             match goal with
-                 |- appcontext[Build_IndexedQueryStructure_Impl_AbsR'
-                                 (qs_schema := ?qs_schema)
-                                 (Index := ?Index)
-                                 (DelegateImpls := ?DelegateImpls) ?ValidImpl] =>
-                 let r_o' := fresh "r_o'" in
-                 let AbsR_r_o' := fresh "AbsR_r_o'" in
-                 let refines_r_o' := fresh "refines_r_o'" in
-                 destruct (@refine_BagImplConstructor
-                             qs_schema Index DelegateImpls
-                             (fun idx =>
-                                ValidImpl (map_IndexedQS_idx' Index idx))
-                             {|bindex := ridx |} cidx d) as
-                     [r_o' [refines_r_o' AbsR_r_o']];
-                   unfold map_IndexedQS_idx' in refines_r_o', AbsR_r_o'; simpl in refines_r_o', AbsR_r_o';
-                   setoid_rewrite refines_r_o'; simpl in *; simplify with monad laws; simpl
-             end
-         end.
+Definition CallBagImplConstructor
+           {qs_schema : QueryStructureSchema}
+           (Index : ilist (fun ns : NamedSchema => SearchUpdateTerms (schemaHeading (relSchema ns))) (qschemaSchemas qs_schema) )
+           (DelegateReps : @BoundedString (map relName (qschemaSchemas qs_schema)) -> Type)
+           (DelegateImpls : forall idx,
+                              ComputationalADT.pcADT (Build_IndexedQueryStructure_Impl_Sigs Index idx) (DelegateReps idx))
+           idx cidx :=
+  ComputationalADT.pcConstructors (DelegateImpls idx) cidx.
+
+Lemma refine_BagImplConstructor
+      {qs_schema : QueryStructureSchema}
+      (indices := qschemaSchemas qs_schema)
+      (Index : ilist (fun ns : NamedSchema => SearchUpdateTerms (schemaHeading (relSchema ns))) (qschemaSchemas qs_schema) )
+      (DelegateReps : @BoundedString (map relName (qschemaSchemas qs_schema)) -> Type)
+      (DelegateImpls : forall idx,
+                         ComputationalADT.pcADT (Build_IndexedQueryStructure_Impl_Sigs Index idx) (DelegateReps idx))
+      (ValidImpls
+       : forall idx,
+           refineADT (Build_IndexedQueryStructure_Impl_Specs Index idx)
+                     (ComputationalADT.LiftcADT (existT _ _ (DelegateImpls idx))))
+:  forall (ridx : BoundedIndex (map relName (qschemaSchemas qs_schema))) cidx d,
+   exists r_o' ,
+     refine (@CallBagConstructor _ (bindex ridx) (ith_Bounded relName Index ridx) cidx d)
+            (ret r_o') /\
+     AbsR (ValidImpls ridx) r_o' (CallBagImplConstructor DelegateReps DelegateImpls cidx d).
+Proof.
+  intros.
+  pose proof (ADTRefinementPreservesConstructors (ValidImpls ridx) cidx d (ReturnComputes _)).
+  inversion_by computes_to_inv; subst.
+  exists x;
+    unfold CallBagImplConstructor; simpl in *.
+  split; simpl.
+  - intros v Comp_v; inversion_by computes_to_inv; subst.
+    generalize d v H0; clear.
+    eapply (fun P H => Iterate_Dep_Type_BoundedIndex_equiv_1 P H cidx).
+    simpl; intuition.
+  - eapply H1.
+Qed.
 
 Definition Join_Lists'
            {A : Type} {f : A -> Type} {As : list A} {a : A}
            (l : list (ilist f As)) (c : ilist f As -> list (f a))
   := flatten (map
-                (fun l' => map (fun fa : f a => icons fa l') (c l')) l).
+                (fun l' => map (fun fa : f a => icons _ fa l') (c l')) l).
 
 Lemma Join_Lists_Impl {A : Type} {f : A -> Type} {As : list A} {a : A}
 : forall (l : list (ilist f As))
@@ -1819,32 +799,107 @@ Proof.
     reflexivity.
 Qed.
 
+Lemma refine_BagImplMethods
+      {qs_schema : QueryStructureSchema}
+      (indices := qschemaSchemas qs_schema)
+      (Index : ilist (fun ns : NamedSchema => SearchUpdateTerms (schemaHeading (relSchema ns))) (qschemaSchemas qs_schema) )
+      (DelegateReps : @BoundedString (map relName (qschemaSchemas qs_schema)) -> Type)
+      (DelegateImpls : forall idx,
+                         ComputationalADT.pcADT (Build_IndexedQueryStructure_Impl_Sigs Index idx) (DelegateReps idx))
+      (ValidImpls
+       : forall idx,
+           refineADT (Build_IndexedQueryStructure_Impl_Specs Index idx)
+                     (ComputationalADT.LiftcADT (existT _ _ (DelegateImpls idx))))
+:  forall (r_o : IndexedQueryStructure qs_schema Index)
+          (r_n : Build_IndexedQueryStructure_Impl_cRep Index DelegateReps)
+          ridx,
+     Build_IndexedQueryStructure_Impl_AbsR DelegateImpls ValidImpls r_o r_n ->
+     forall midx
+            d,
+     exists r_o',
+       refine (CallBagMethod ridx midx r_o d)
+              (ret (r_o',
+                    (snd (CallBagImplMethod DelegateImpls midx r_n d))))
+       /\ AbsR (ValidImpls ridx) r_o' (fst (CallBagImplMethod DelegateImpls midx r_n d)).
+Proof.
+  intros.
+  pose proof (ADTRefinementPreservesMethods (ValidImpls ridx) midx
+                                            (GetIndexedRelation r_o ridx)
+                                            (r_n ridx) d (H ridx) (ReturnComputes _)).
+  inversion_by computes_to_inv; subst.
+  exists (fst x);
+    unfold CallBagImplMethod; simpl in *.
+  split; simpl.
+  - pose proof (f_equal snd H3) as eq_x; simpl in eq_x.
+    assert (refine (CallBagMethod ridx midx r_o d)
+                   (ret (fst x, snd x)));
+      [ | rewrite eq_x in H3;
+          unfold ComputationalADT.cMethods in eq_x; simpl in *; rewrite <- eq_x; eapply H0].
+    intros v Comp_v; simpl in *; inversion_by computes_to_inv; subst.
+    destruct x; simpl @fst in *; simpl @snd in *.
+    generalize d i m H1 H2; clear.
+    eapply (fun P H => Iterate_Dep_Type_BoundedIndex_equiv_1 P H midx).
+    simpl; intuition.
+  - unfold ComputationalADT.cMethods in H3; simpl in *; rewrite <- H3; eapply H2.
+Qed.
+
+Global Opaque CallBagMethod.
+Global Opaque CallBagConstructor.
+
+Arguments icons {A} {B} {a} {As} _ _.
+Arguments CallBagConstructor {heading} name {index} cidx _.
+
+Ltac implement_bag_constructors :=
+  repeat match goal with
+           | |- context[ Pick (fun r_n : @Build_IndexedQueryStructure_Impl_cRep ?qs_schema ?Index ?DelegateReps =>
+                                 @Build_IndexedQueryStructure_Impl_AbsR
+                                   _ _ ?DelegateReps ?DelegateImpls
+                                   ?ValidImpls ?r_o r_n)] =>
+             refine pick val (@Initialize_IndexedQueryStructureImpls' qs_schema Index DelegateReps DelegateImpls);
+               [ higher_order_2_reflexivity'' |
+                 unfold Build_IndexedQueryStructure_Impl_AbsR;
+                   eapply Iterate_Dep_Type_BoundedIndex_equiv_1; simpl; intuition ]
+           | |- context[CallBagConstructor ?ridx ?cidx ?d] =>
+             match goal with
+                 |- appcontext[@Build_IndexedQueryStructure_Impl_AbsR
+                                 ?qs_schema ?Index
+                                 ?DelegateReps ?DelegateImpls ?ValidImpls] =>
+                 let r_o' := fresh "r_o'" in
+                 let AbsR_r_o' := fresh "AbsR_r_o'" in
+                 let refines_r_o' := fresh "refines_r_o'" in
+                 destruct (@refine_BagImplConstructor
+                             qs_schema Index DelegateReps DelegateImpls ValidImpls
+                             {|bindex := ridx |} cidx d) as [r_o' [refines_r_o' AbsR_r_o']];
+                   setoid_rewrite refines_r_o'; simpl in *; simplify with monad laws; simpl
+             end
+         end.
+
 Ltac implement_bag_methods :=
-  unfold Build_IndexedQueryStructure_Impl_AbsR' in *;
   repeat
     match goal with
       | |- refine (ret _) (ret (?f ?a ?b)) => higher_order_2_reflexivity''
       | |- refine (ret _) (ret (?f ?a)) => higher_order_1_reflexivity''
+      | H : @Build_IndexedQueryStructure_Impl_AbsR ?qs_schema ?Index ?DelegateReps ?DelegateImpls
+                                                   ?ValidImpls ?r_o ?r_n
+        |- context[
+               { r_n' | @Build_IndexedQueryStructure_Impl_AbsR ?qs_schema ?Index ?DelegateReps ?DelegateImpls
+                                                               ?ValidImpls ?r_o r_n'}
+             ] => refine pick val _;
+          [ simplify with monad laws |
+            eapply H]
 
-      |  [ H : Build_IndexedQueryStructure_Impl_AbsR'' (qs_schema := ?qs_schema)
-                                                       (DelegateImpls := ?DelegateImpl)
-                                                       (fun idx => ?ValidImpl (map_IndexedQS_idx' ?Index idx)) ?r_o ?r_n
-           |- context[
-                  { r_n' | Build_IndexedQueryStructure_Impl_AbsR'' (fun idx => ?ValidImpl (map_IndexedQS_idx' ?Index idx)) ?r_o r_n'}
-                ]] => refine pick val _;
-           [ simplify with monad laws |
-             eapply H]
-
-      | H : Build_IndexedQueryStructure_Impl_AbsR'' (qs_schema := ?qs_schema) ?ValidImpl ?r_o ?r_n
+      | H : @Build_IndexedQueryStructure_Impl_AbsR ?qs_schema ?Index ?DelegateReps ?DelegateImpls
+                                                   ?ValidImpls ?r_o ?r_n
         |- context[CallBagMethod (BagIndexKeys := ?Index') ?ridx ?midx ?r_o ?d] =>
         let r_o' := fresh "r_o'" in
         let AbsR_r_o' := fresh "AbsR_r_o'" in
         let refines_r_o' := fresh "refines_r_o'" in
-        destruct (@refine_BagImplMethods qs_schema Index' _ ValidImpl r_o r_n ridx H midx d) as [r_o' [refines_r_o' AbsR_r_o']];
-          unfold map_IndexedQS_idx in refines_r_o', AbsR_r_o'; simpl in refines_r_o', AbsR_r_o';
+        destruct (@refine_BagImplMethods qs_schema Index' DelegateReps DelegateImpls ValidImpls r_o r_n ridx H midx d) as [r_o' [refines_r_o' AbsR_r_o']];
+          simpl in refines_r_o', AbsR_r_o';
           setoid_rewrite refines_r_o'; simpl in *; simplify with monad laws; simpl
 
-      | H : Build_IndexedQueryStructure_Impl_AbsR'' (qs_schema := ?qs_schema) ?ValidImpl ?r_o ?r_n
+      | H : @Build_IndexedQueryStructure_Impl_AbsR ?qs_schema ?Index ?DelegateReps ?DelegateImpls
+                                                   ?ValidImpls ?r_o ?r_n
         |- context[Join_Lists (As := ?As) (f := ?f) (a := ?a) ?l ?c ] =>
         makeEvar (ilist f As -> list (f a))
                  ltac:(fun c' =>
@@ -1858,38 +913,54 @@ Ltac implement_bag_methods :=
 
     end.
 
-
 Ltac FullySharpenQueryStructure qs_schema Index :=
   let delegateSigs := constr:(Build_IndexedQueryStructure_Impl_Sigs Index) in
   let delegateSpecs := constr:(Build_IndexedQueryStructure_Impl_Specs Index) in
   let cRep' := constr:(Build_IndexedQueryStructure_Impl_cRep Index) in
-  let cAbsR' := constr:(@Build_IndexedQueryStructure_Impl_AbsR' qs_schema Index) in
+  let cAbsR' := constr:(@Build_IndexedQueryStructure_Impl_AbsR qs_schema Index) in
+  let DelegateIDs := constr:(map relName (qschemaSchemas qs_schema)) in
   match goal with
       |- Sharpened (@BuildADT ?Rep ?consSigs ?methSigs ?consDefs ?methDefs) =>
-      ilist_of_evar
-        (ilist (fun nadt => ComputationalADT.cADT (namedADTSig nadt)) delegateSigs)
-        (fun DelegateImpl Sig => ComputationalADT.cMethodType (cRep' DelegateImpl) (methDom Sig) (methCod Sig))
+      ilist_of_dep_evar
+        (@BoundedString DelegateIDs -> Type)
+        (fun D =>
+           forall idx,
+             ComputationalADT.pcADT (delegateSigs idx) (D idx))
+        (fun (DelegateReps : @BoundedString DelegateIDs -> Type)
+             (DelegateImpls : forall idx,
+                                ComputationalADT.pcADT (delegateSigs idx) (DelegateReps idx))
+             (Sig : methSig) => ComputationalADT.cMethodType (cRep' DelegateReps)
+                                                             (methDom Sig) (methCod Sig))
         methSigs
         ltac:(fun cMeths =>
-                ilist_of_evar
-                  (ilist (fun nadt => ComputationalADT.cADT (namedADTSig nadt)) delegateSigs)
-                  (fun DelegateImpl Sig => ComputationalADT.cConstructorType (cRep' DelegateImpl) (consDom Sig))
+                ilist_of_dep_evar
+                  (@BoundedString DelegateIDs -> Type)
+                  (fun D =>
+                     forall idx,
+                       ComputationalADT.pcADT (delegateSigs idx) (D idx))
+                  (fun (DelegateReps : @BoundedString DelegateIDs -> Type)
+                       (DelegateImpls : forall idx,
+                                          ComputationalADT.pcADT (delegateSigs idx) (DelegateReps idx))
+                       (Sig : consSig) =>
+                     ComputationalADT.cConstructorType (cRep' DelegateReps) (consDom Sig))
                   consSigs
                   ltac:(fun cCons =>
                           eapply
-                            (@Notation_Friendly_SharpenFully
+                            (@Notation_Friendly_SharpenFully'
                                _
                                consSigs
                                methSigs
                                consDefs
                                methDefs
+                               DelegateIDs
                                delegateSigs
                                cRep'
                                cCons
                                cMeths
                                delegateSpecs
-                               cAbsR')));
+                               cAbsR'
+                            )));
         unfold Dep_Type_BoundedIndex_app_comm_cons
   end; simpl; intros;
-  [ repeat split; intros; try exact tt; implement_bag_constructors
-  | repeat split; intros; try exact tt; implement_bag_methods ]. *)
+  [repeat split; intros; try exact tt; implement_bag_constructors
+  | repeat split; intros; try exact tt; implement_bag_methods].
