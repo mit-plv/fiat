@@ -146,14 +146,20 @@ Module TreeBag (Import M: WS).
                (container: IndexedBag)
                (key_searchterm: (option TKey) * SearchTermType)
                (updateTerm : UpdateTermType)
-    : IndexedBag :=
+    : (list TItem) * IndexedBag :=
       let (key_option, search_term) := key_searchterm in
       match key_option with
         | Some k => match find k container with
-                      | Some bag => add k (bupdate bag search_term updateTerm) container
-                      | None => container
+                      | Some bag =>
+                        let (d,r) := bupdate bag search_term updateTerm in
+                        (d, add k r container)
+                      | None => (nil, container)
                     end
-        | None => map (fun bag => bupdate bag search_term updateTerm) container
+        | None => fold (fun k bag (res : (list TItem) * (t BagType)) =>
+                          match bupdate bag search_term updateTerm with
+                            | (d, r) => let (d', r') := res in
+                                        (d ++ d', add k r r')
+                          end) (container) ([], empty BagType)
       end.
 
     Definition IndexedBag_RepInv (fmap : IndexedBag) :=
@@ -258,40 +264,45 @@ Module TreeBag (Import M: WS).
     Proof.
       unfold bupdate_Preserves_RepInv, IndexedBag_RepInv.
       intros; destruct search_term; destruct o; simpl in *.
+      destruct valid_update as [valid_update valid_update'].
       - case_eq (find t0 container); intros; rewrite H0 in *.
         rewrite <- find_mapsto_iff in H0.
         assert (RepInv b) as WF_b by (eapply containerCorrect; eauto).
+        case_eq (bupdate b s update_term); intros; rewrite H1 in *; simpl in *.
+        pose proof (bupdate_RepInv b s update_term WF_b valid_update) as RepInv_H1.
+        rewrite H1 in RepInv_H1.
         intuition.
         + rewrite add_mapsto_iff in H; intuition.
           unfold IndexedBag_ValidUpdate in *.
-          rewrite <- H2; eapply bupdate_RepInv; intuition.
+          rewrite <- H3; intuition.
           eapply containerCorrect; eauto.
         + rewrite add_mapsto_iff in H; intuition.
-          rewrite <- H3 in H1.
-          destruct valid_update as [valid_update valid_update'].
-          pose proof (bupdate_correct b s update_term WF_b valid_update).
-          rewrite <- H.
-          pose proof (Permutation_in _ H2 H1) as H4;
-            apply in_app_or in H4; destruct H4.
-          * pose proof ((proj2 (In_partition _ _ _)) (or_intror H4));
+          pose proof (bupdate_correct b s update_term WF_b valid_update); simpl in *; intuition.
+          rewrite <- H4 in H2.
+          rewrite <- H; rewrite H1 in H5; simpl in *.
+          pose proof (Permutation_in _ H5 H2);
+            apply in_app_or in H3; destruct H3.
+          * pose proof ((proj2 (In_partition _ _ _)) (or_intror H3));
             eapply containerCorrect; eauto.
-          * apply in_map_iff in H4; destruct H4 as [item' [item'_eq In_item']].
+          * apply in_map_iff in H3; destruct H3 as [item' [item'_eq In_item']].
             rewrite <- item'_eq in *.
             eapply valid_update'.
             eapply containerCorrect; eauto; eapply In_partition; eauto.
           * eapply containerCorrect; eauto.
         + eapply containerCorrect; eauto.
-      - rewrite map_mapsto_iff in H;
+      - rewrite fold_pair in H; simpl in H.
+        rewrite FMap_Insert_fold_add_map_eq in H.
+        rewrite map_mapsto_iff in H;
         destruct H as [bag' [bag'_eq MapsTo_key0]]; subst.
         assert (RepInv bag') as WF_bag' by (eapply containerCorrect; eauto).
           destruct valid_update as [valid_update valid_update'].
         pose proof (bupdate_correct bag' s update_term WF_bag' valid_update); intuition.
         apply bupdate_RepInv; eauto.
-        pose proof (Permutation_in _ H H0) as H4;
+        pose proof (Permutation_in _ H0 H) as H4;
           apply in_app_or in H4; destruct H4.
-        + pose proof ((proj2 (In_partition _ _ _)) (or_intror H1));
+        + pose proof ((proj2 (In_partition _ _ _)) (or_intror H2));
           eapply containerCorrect; eauto.
-        + rewrite in_map_iff in H1; destruct H1 as [item' [item'_eq In_item']].
+        + rewrite in_map_iff in H2; destruct H2 as [item' [item'_eq In_item']].
           rewrite <- item'_eq in *.
           eapply valid_update'.
           eapply containerCorrect; eauto; eapply In_partition; eauto.
@@ -1214,6 +1225,39 @@ Module TreeBag (Import M: WS).
           intros; apply containerCorrect; rewrite elements_mapsto_iff; auto.
     Qed.
 
+    Lemma fold_left_fst_partition_update :
+      forall search_term update_term (valid_update: ValidUpdate update_term) l l' l'',
+      (forall (key0 : TKey) (bag : BagType),
+                InA (@eq_key_elt _) (key0, bag) l ->
+                RepInv bag /\
+                (forall item : TItem,
+                   List.In item (benumerate bag) ->
+                   E.eq (projection item) key0))
+      -> Permutation l''
+                    (fst
+                       (List.partition (fun item : TItem => bfind_matcher search_term item)
+                                       l'))
+        -> Permutation
+             (fold_left
+                (fun (a : list TItem) (p : key * BagType) =>
+                   fst (bupdate (snd p) search_term update_term) ++ a) l l'')
+          (fst
+             (List.partition (fun item : TItem => bfind_matcher search_term item)
+                             (l' ++ (flatten
+                                      ((List.map benumerate (List.map snd l))))))).
+    Proof.
+      induction l; simpl; intros.
+      rewrite app_nil_r; eauto.
+      rewrite app_assoc.
+      rewrite <- IHl; f_equiv.
+      intros; eapply H; constructor 2; eauto.
+      rewrite H0, partition_app; simpl.
+      rewrite Permutation_app_comm; f_equiv.
+      apply bupdate_correct.
+      destruct a; eapply H; repeat constructor; eauto.
+      assumption.
+    Qed.
+
     Lemma IndexedBag_BagUpdateCorrect :
       BagUpdateCorrect IndexedBag_RepInv IndexedBag_ValidUpdate
                        IndexedBag_bfind IndexedBag_bfind_matcher
@@ -1227,12 +1271,14 @@ Module TreeBag (Import M: WS).
       (* Key provided *)
 
       - case_eq (find key container); simpl; intros.
+          destruct valid_update as [valid_update valid_update'].
 
         + rewrite partition_filter_neq.
           repeat rewrite <- flat_map_flatten;
             rewrite filter_flat_map; repeat rewrite flat_map_flatten.
-          pose proof (bupdate_correct b search_term); intuition.
+          pose proof (bupdate_correct b search_term update_term); intuition.
           repeat rewrite Permutation_map_Values.
+          destruct (bupdate b search_term update_term); simpl in *.
           erewrite map_add.
 
           rewrite Permutation_Partition_App by
@@ -1246,6 +1292,7 @@ Module TreeBag (Import M: WS).
           rewrite consist''.
           rewrite Permutation_app_comm.
           rewrite Values_empty; simpl.
+          destruct H0. eapply containerCorrect; rewrite find_mapsto_iff; eauto. intuition.
           repeat rewrite flatten_app; simpl; rewrite H0.
           rewrite app_nil_r, !app_assoc, Permutation_app; eauto.
           * rewrite Permutation_map_filter_negb; rewrite consist'; f_equiv.
@@ -1258,50 +1305,59 @@ Module TreeBag (Import M: WS).
           *  rewrite partition_filter_eq, partition_filter_eq.
              rewrite filter_and, flatten_filter, consist, H; eauto.
           * eapply containerCorrect; rewrite find_mapsto_iff; eauto.
-          * eapply valid_update.
-          * eauto.
+          * destruct (bupdate b search_term update_term); simpl in *.
+            destruct H0. eapply containerCorrect; rewrite find_mapsto_iff; eauto. intuition.
+            rewrite H1; rewrite partition_filter_eq, partition_filter_eq.
+            rewrite filter_and, flatten_filter, consist, H; eauto.
         + rewrite partition_filter_neq, flatten_filter,
           partition_filter_eq, filter_and, flatten_filter,
           consist, H; simpl; eauto; rewrite app_nil_r.
           pose proof (alt_IndexedBag_RepInv _ containerCorrect) as containerCorrect'.
           rewrite <- not_find_in_iff in H.
           rewrite elements_in_iff in H.
-          unfold Values; induction (elements container); simpl.
+          unfold Values; induction (elements container); simpl; intuition.
+          rewrite <- (fun x y => proj1 (IHl x y)); f_equiv.
+          assert (forall item : TItem,
+                    List.In item (benumerate (snd a)) -> E.eq (projection item) (fst a))
+            by (intros; eapply containerCorrect'; eauto; repeat constructor; reflexivity).
+          assert (~ E.eq key (fst a))
+            by (unfold not; intros; apply H; eexists; repeat econstructor; eauto).
+          revert H0 H1.
+          clear; induction (benumerate (snd a)); simpl; intros.
+          constructor.
+          case_eq (KeyFilter key a0); simpl.
+          intros; apply KeyFilter_true in H; rewrite <- H in H1.
+          exfalso; apply H1; apply H0; eauto.
+          rewrite <- IHl; eauto.
+          unfold not; intros H1; apply H; destruct H1;
+          econstructor; constructor 2; eauto.
+          intros; eapply containerCorrect'; eauto.
+      - unfold IndexedBag_benumerate, IndexedBag_bfind_matcher; simpl; intros.
+        rewrite fold_pair with (f := fun _ y => bupdate y search_term update_term).
+        unfold Values; simpl; intuition.
+        + rewrite !FMap_Insert_fold_add, elements_empty, app_nil_r by
+              eauto using empty_In.
+          rewrite !List.map_map; simpl.
+          pose proof (alt_IndexedBag_RepInv _ containerCorrect) as containerCorrect'.
+          induction (elements container); simpl.
           * constructor.
-          * rewrite <- IHl; f_equiv.
-            assert (forall item : TItem,
-                      List.In item (benumerate (snd a)) -> E.eq (projection item) (fst a))
-              by (intros; eapply containerCorrect'; eauto; repeat constructor; reflexivity).
-            assert (~ E.eq key (fst a))
-              by (unfold not; intros; apply H; eexists; repeat econstructor; eauto).
-            revert H0 H1.
-            clear; induction (benumerate (snd a)); simpl; intros.
-            constructor.
-            case_eq (KeyFilter key a0); simpl.
-            intros; apply KeyFilter_true in H; rewrite <- H in H1.
-            exfalso; apply H1; apply H0; eauto.
-            rewrite <- IHl; eauto.
-            unfold not; intros H1; apply H; destruct H1;
-            econstructor; constructor 2; eauto.
-            intros; eapply containerCorrect'; eauto.
-      - intros; rewrite <- !Permutation_map_Values.
-        pose proof (alt_IndexedBag_RepInv _ containerCorrect) as containerCorrect'.
-        unfold Values; induction (elements container); simpl.
-        + constructor.
-        + rewrite IHl, partition_app; simpl.
-          destruct valid_update as [valid_update valid_update'].
-          rewrite Permutation_app by
-              (try (apply bupdate_correct; try eassumption;
-                    destruct a; eapply containerCorrect'; repeat constructor; eauto);
-              eauto).
-          rewrite <- !app_assoc.
-          apply Permutation_app;
-            [f_equiv
-             | rewrite Permutation_app_comm, <- app_assoc].
-          apply Permutation_app;
-            [f_equiv
-            | rewrite Permutation_app_comm, map_app; f_equiv].
-          intros; apply containerCorrect'; constructor 2; eauto.
+          * rewrite IHl, partition_app; simpl.
+            destruct valid_update as [valid_update valid_update'].
+            rewrite Permutation_app by
+                (try (apply bupdate_correct; try eassumption;
+                      destruct a; eapply containerCorrect'; repeat constructor; eauto);
+                 eauto).
+            rewrite <- !app_assoc.
+            apply Permutation_app;
+              [f_equiv
+              | rewrite Permutation_app_comm, <- app_assoc].
+            apply Permutation_app;
+              [f_equiv
+              | rewrite Permutation_app_comm, map_app; f_equiv].
+            intros; apply containerCorrect'; constructor 2; eauto.
+        + rewrite fold_1; rewrite fold_left_fst_partition_update with (l' := []);
+          try reflexivity; try apply valid_update.
+          intros; apply containerCorrect; rewrite elements_mapsto_iff; auto.
     Qed.
 
   End TreeBagDefinitions.

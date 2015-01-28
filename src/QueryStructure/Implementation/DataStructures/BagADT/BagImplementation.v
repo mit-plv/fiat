@@ -209,7 +209,7 @@ Section SharpenedBagImplementation.
       -> ValidUpdatePlus update_term
       -> IndexedEnsembleUpdate or (fun tup => bfind_matcher search_term tup = true)
              (bupdate_transform update_term)
-             ≃ benumerate (bupdate nr search_term update_term).
+             ≃ benumerate (snd (bupdate nr search_term update_term)).
   Proof.
     simpl; intros; destruct_EnsembleIndexedListEquivalence;
     split.
@@ -225,6 +225,7 @@ Section SharpenedBagImplementation.
       repeat rewrite filter_map in H2.
       rewrite map_then_map in H2.
       rewrite <- map_app in H2.
+      destruct H2 as [H2 H2'].
       pose proof (permu_exists _ H2).
       destruct H3 as [? [? ?]].
       exists x.
@@ -543,30 +544,42 @@ Section SharpenedBagImplementation.
       pose proof (bupdate_correct (CorrectBag:=CorrectBagPlus) r_n a b H2).
       etransitivity.
       apply refine_if with (b:=CheckUpdatePlus b).
-      intros; apply CheckUpdatePlusValid in H3.
-      simpl.
-      refine pick val (bupdate r_n a b).
-      simplify with monad laws; intuition.
+      intros; apply CheckUpdatePlusValid in H3; simpl.
+      pose proof (H0 H3); destruct H4.
+      rewrite partition_filter_eq in H5; symmetry in H5.
+      destruct (permutation_filter _ _ _ H5) as [l [l_eq Perm_l]].
+      refine pick val l.
+      simplify with monad laws.
+      refine pick val (snd (bupdate r_n a b)).
+      simplify with monad laws.
+      rewrite l_eq; reflexivity.
       split.
       eapply refine_Update_bupdate; intuition.
       apply bupdate_RepInv; intuition.
+      eapply Permutation_EnsembleIndexedListEquivalence; eauto.
+      intros G; pose proof (bdelete_correct (CorrectBag:=CorrectBagPlus) r_n a H2).
+      destruct H3. rewrite partition_filter_eq in H4; symmetry in H4.
+      destruct (permutation_filter _ _ _ H4) as [l [l_eq Perm_l]].
+      refine pick val l.
+      simplify with monad laws.
       refine pick val (let r := bdelete r_n a in
                        fold_left (fun b i => binsert b i) (map (bupdate_transform b) (fst r)) (snd r)).
-      intros.
-      simplify with monad laws; intuition.
-      simpl; split.
+      simplify with monad laws; intuition; simpl.
+      rewrite l_eq; reflexivity.
+      split.
       eapply refine_Update_invalid; intuition.
       apply RepInv_fold.
       apply binsert_RepInv. apply bdelete_RepInv; assumption.
+      eapply Permutation_EnsembleIndexedListEquivalence; eauto.
       unfold H.
       instantiate (1 := fun r_n ab =>
                           if CheckUpdatePlus (snd ab)
-                          then ret (bupdate r_n (fst ab) (snd ab), ())
+                          then ret (snd (bupdate r_n (fst ab) (snd ab)), fst (bupdate r_n (fst ab) (snd ab)))
                                    else
                                      ret
                                        (fold_left (fun (b0 : BagTypePlus) (i : Tuple) => binsert b0 i)
                                                   (map (bupdate_transform (snd ab)) (fst (bdelete r_n (fst ab))))
-                                                  (snd (bdelete r_n (fst ab))), ())).
+                                                  (snd (bdelete r_n (fst ab))), fst (bdelete r_n (fst ab)))).
       reflexivity.
     }
 
@@ -666,13 +679,15 @@ FullySharpenEachMethod1
   instantiate (1 := fun _ _ r_n d => (r_n, bcount r_n d));
     simpl; reflexivity.
   instantiate (1 := fun _ _ r_n d => (snd (bdelete r_n d), fst (bdelete r_n d))); simpl; reflexivity.
-  instantiate (1 := fun _ _ r_n d => if CheckUpdatePlus (snd d)
-      then (bupdate r_n (fst d) (snd d), ())
-      else
-         (fold_left (fun (b0 : BagTypePlus) (i : Tuple) => binsert b0 i)
-            (map (bupdate_transform (snd d)) (fst (bdelete r_n (fst d))))
-            (snd (bdelete r_n (fst d))), ()));
-    simpl.
+  instantiate (1 :=
+                 fun _ _ r_n d =>
+                   if CheckUpdatePlus (snd d)
+                   then (snd (bupdate r_n (fst d) (snd d)), fst (bupdate r_n (fst d) (snd d)))
+                   else
+        (fold_left (fun (b0 : BagTypePlus) (i : Tuple) => binsert b0 i)
+                   (map (bupdate_transform (snd d)) (fst (bdelete r_n (fst d))))
+                   (snd (bdelete r_n (fst d))),
+         fst (bdelete r_n (fst d)))); simpl.
   find_if_inside; simplify with monad laws; simpl; reflexivity.
   Defined.
 
