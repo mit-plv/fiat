@@ -26,11 +26,16 @@ Tactic Notation "clear" "abstract" constr(cls) :=
 (** fail if [x] is a function application, a dependent product ([fun _
     => _]), or a sigma type ([forall _, _]) *)
 Ltac atomic x :=
+  idtac;
   match x with
+    | _ => is_evar x; fail 1 x "is not atomic (evar)"
     | ?f _ => fail 1 x "is not atomic (application)"
     | (fun _ => _) => fail 1 x "is not atomic (fun)"
     | forall _, _ => fail 1 x "is not atomic (forall)"
+    | let x := _ in _ => fail 1 x "is not atomic (let in)"
+    | match _ with _ => _ end => fail 1 x "is not atomic (match)"
     | _ => is_fix x; fail 1 x "is not atomic (fix)"
+    | context[?E] => (* catch-all *) (not constr_eq E x); fail 1 x "is not atomic (has subterm" E ")"
     | _ => idtac
   end.
 
@@ -107,26 +112,36 @@ Ltac simpl_transitivity :=
 
     The [tac] part exists so that you can, e.g., [simpl in *], to
     speed things up. *)
+Ltac do_one_match_then matcher do_tac tac :=
+  idtac;
+  match goal with
+    | [ H : ?T |- _ ]
+      => matcher T; do_tac H;
+         try match type of H with
+               | T => clear H
+             end;
+         tac
+  end.
+
 Ltac do_all_matches_then matcher do_tac tac :=
-  repeat match goal with
-           | [ H : ?T |- _ ]
-             => matcher T; do_tac H;
-                try match type of H with
-                      | T => clear H
-                    end;
-                tac
-         end.
+  repeat do_one_match_then matcher do_tac tac.
 
 Ltac destruct_all_matches_then matcher tac :=
   do_all_matches_then matcher ltac:(fun H => destruct H) tac.
+Ltac destruct_one_match_then matcher tac :=
+  do_one_match_then matcher ltac:(fun H => destruct H) tac.
 
 Ltac inversion_all_matches_then matcher tac :=
   do_all_matches_then matcher ltac:(fun H => inversion H; subst) tac.
+Ltac inversion_one_match_then matcher tac :=
+  do_one_match_then matcher ltac:(fun H => inversion H; subst) tac.
 
 Ltac destruct_all_matches matcher := destruct_all_matches_then matcher ltac:(simpl in *).
+Ltac destruct_one_match matcher := destruct_one_match_then matcher ltac:(simpl in *).
 Ltac destruct_all_matches' matcher := destruct_all_matches_then matcher idtac.
 
 Ltac inversion_all_matches matcher := inversion_all_matches_then matcher ltac:(simpl in *).
+Ltac inversion_one_match matcher := inversion_one_match_then matcher ltac:(simpl in *).
 Ltac inversion_all_matches' matcher := inversion_all_matches_then matcher idtac.
 
 (* matches anything whose type has a [T] in it *)
@@ -142,9 +157,11 @@ Ltac destruct_head_matcher T HT :=
     | T => idtac
   end.
 Ltac destruct_head T := destruct_all_matches ltac:(destruct_head_matcher T).
+Ltac destruct_one_head T := destruct_one_match ltac:(destruct_head_matcher T).
 Ltac destruct_head' T := destruct_all_matches' ltac:(destruct_head_matcher T).
 
 Ltac inversion_head T := inversion_all_matches ltac:(destruct_head_matcher T).
+Ltac inversion_one_head T := inversion_one_match ltac:(destruct_head_matcher T).
 Ltac inversion_head' T := inversion_all_matches' ltac:(destruct_head_matcher T).
 
 
@@ -153,9 +170,11 @@ Ltac destruct_head_hnf_matcher T HT :=
     | T => idtac
   end.
 Ltac destruct_head_hnf T := destruct_all_matches ltac:(destruct_head_hnf_matcher T).
+Ltac destruct_one_head_hnf T := destruct_one_match ltac:(destruct_head_hnf_matcher T).
 Ltac destruct_head_hnf' T := destruct_all_matches' ltac:(destruct_head_hnf_matcher T).
 
 Ltac inversion_head_hnf T := inversion_all_matches ltac:(destruct_head_hnf_matcher T).
+Ltac inversion_one_head_hnf T := inversion_one_match ltac:(destruct_head_hnf_matcher T).
 Ltac inversion_head_hnf' T := inversion_all_matches' ltac:(destruct_head_hnf_matcher T).
 
 Ltac destruct_sig_matcher HT :=

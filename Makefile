@@ -96,7 +96,8 @@ SRC_MODULES    := \
 	Parsers/ContextFreeGrammar\
 	Parsers/ContextFreeGrammarProperties\
 	Parsers/Specification\
-	Parsers/NonComputational\
+	Parsers/DependentlyTyped\
+	Parsers/DependentlyTypedMinimal\
 	Parsers/BooleanRecognizer\
 	Parsers/WellFoundedParse\
 	Parsers/MinimalParse\
