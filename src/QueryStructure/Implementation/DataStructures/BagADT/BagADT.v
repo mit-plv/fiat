@@ -29,8 +29,6 @@ Section BagADT.
         Method "Update"    : rep x (SearchTermType * UpdateTermType) -> rep x (list ElementType)
   }.
 
-  (* Indentation? *)
-
   Definition BagSpec : ADT BagSig :=
     ADTRep (IndexedEnsemble) {
         Def Constructor "Empty" (_ : unit) : rep :=

@@ -744,6 +744,7 @@ Section BagsQueryStructureRefinements.
     repeat rewrite filter_map; f_equiv.
   Qed.
 
+
   Require Import ADTSynthesis.QueryStructure.Implementation.Operations.General.DeleteRefinements.
 
   Lemma refine_BagADT_QSDelete_fst :
@@ -810,7 +811,6 @@ Section BagsQueryStructureRefinements.
       + case_eq (f (indexedElement a0)); simpl; intros; intuition.
   Qed.
 
-
   Lemma refine_BagADT_QSDelete_snd :
     forall r_o (r_n : IndexedQueryStructure qs_schema BagIndexKeys),
       DelegateToBag_AbsR r_o r_n
@@ -841,7 +841,7 @@ Section BagsQueryStructureRefinements.
           rewrite i2th_replace_BoundIndex_eq.
         f_equal; eauto.
         * eapply H.
-        * apply Extensionality_Ensembles; unfold Same_set, Included, In;
+        * apply Extensionality_Ensembles. unfold Same_set, Included, In;
           intuition; rewrite <- H0 in *;
           eapply dec_decides_P; eauto.
       + unfold GetUnConstrRelation, UpdateUnConstrRelation;
@@ -870,6 +870,64 @@ Section BagsQueryStructureRefinements.
               eapply Decides_false in H'; eauto ].
           eapply NoDup_filter_map with (f := fun a => negb (dec a)); eauto.
       + rewrite get_update_unconstr_neq; eauto.
+  Qed.
+
+  Lemma refine_BagADT_QSInsert :
+    forall r_o (r_n : IndexedQueryStructure qs_schema BagIndexKeys),
+      DelegateToBag_AbsR r_o r_n
+      -> forall (idx : @BoundedString (map relName (qschemaSchemas qs_schema)))
+                t,
+          refine
+            (u <- { freshIdx | UnConstrFreshIdx (GetUnConstrRelation r_o idx) freshIdx };
+             {r_n' |
+              DelegateToBag_AbsR
+                (UpdateUnConstrRelation r_o idx (
+                                          EnsembleInsert
+                                            {| indexedElement := t; elementIndex := u |}
+                                            (GetUnConstrRelation r_o idx))) r_n'})
+            (l <- (CallBagMethod idx {|bindex := "Insert" |} r_n t);
+             ret (UpdateIndexedRelation r_n idx (fst l))).
+  Proof.
+    intros; unfold CallBagMethod, DelegateToBag_AbsR; simpl; destruct H as [H H'].
+    repeat setoid_rewrite (refineEquiv_bind_bind);
+      repeat setoid_rewrite refineEquiv_bind_unit; simpl.
+    rewrite H.
+    apply refine_bind_pick; intros.
+    unfold GetUnConstrRelation, UpdateUnConstrRelation in *;
+    unfold GetIndexedRelation, UpdateIndexedRelation in *;
+    refine pick val _; try reflexivity; try split;
+    intros; destruct (BoundedString_eq_dec idx idx0); subst.
+    - rewrite ith_replace_BoundIndex_eq; rewrite i2th_replace_BoundIndex_eq.
+      unfold Add, EnsembleInsert; apply Extensionality_Ensembles; split;
+      unfold Included; intros; unfold In in *; destruct H1.
+      + rewrite H1; apply Union_intror; intuition.
+      + apply Union_introl; unfold In; exact H1.
+      + right; unfold In in H1; exact H1.
+      + left; unfold In in H1; eapply Singleton_ind; eauto; symmetry; exact H1.
+    - rewrite ith_replace_BoundIndex_neq by eauto using string_dec;
+      rewrite i2th_replace_BoundIndex_neq by eauto using string_dec; apply H.
+    - rewrite ith_replace_BoundIndex_eq.
+      destruct (H' idx0) as [l [[bnd fresh_bnd] [l' [l'_eq [l_eqv NoDup_l']]]]].
+      exists (t :: l); split.
+      + exists (S a); unfold UnConstrFreshIdx in *; intros.
+               unfold EnsembleInsert in H1; destruct H1.
+               * rewrite H1; simpl; omega.
+               * apply H0 in H1; omega.
+      + unfold UnIndexedEnsembleListEquivalence;
+        exists ({| indexedElement := t; elementIndex := a |} :: l'); intuition.
+        * simpl; rewrite l'_eq; trivial.
+        * simpl; destruct H1;
+          [ left; symmetry; exact H1 | right; apply l_eqv; rewrite H; apply H1 ].
+        * unfold EnsembleInsert; destruct H1;
+          [ rewrite <- H1; left; trivial |
+          right; rewrite <- H; apply l_eqv in H1; unfold In in H1; exact H1 ].
+        * simpl; apply NoDup_cons;
+          [ unfold not; intros;
+            apply in_map_iff in H1; destruct H1; destruct H1;
+            apply l_eqv in H2; rewrite <- H in H0; unfold UnConstrFreshIdx in H0;
+              unfold In in H2; apply H0 in H2; omega | exact NoDup_l' ].
+    - rewrite ith_replace_BoundIndex_neq.
+      apply H'. apply string_dec. unfold not in *; intros; rewrite H1 in n; intuition.
   Qed.
 
 End BagsQueryStructureRefinements.
