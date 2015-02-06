@@ -36,11 +36,13 @@ Definition QSInsertSpec
      Ridx <> Ridx' ->
      GetRelation qsHint Ridx' = GetRelation qs' Ridx') /\
   (* If [tup] is consistent with the schema constraints, *)
-  (SatisfiesSchemaConstraints Ridx (indexedElement tup) (indexedElement tup))
-  -> (forall tup', GetRelation qsHint Ridx tup' ->
-                SatisfiesSchemaConstraints Ridx (indexedElement tup) (indexedElement tup'))
-  -> (forall tup', GetRelation qsHint Ridx tup' ->
-    SatisfiesSchemaConstraints Ridx (indexedElement tup') (indexedElement tup))
+  (SatisfiesAttributeConstraints Ridx (indexedElement tup))
+  -> (forall tup',
+        GetRelation qsHint Ridx tup'
+        -> SatisfiesTupleConstraints Ridx (indexedElement tup) (indexedElement tup'))
+  -> (forall tup',
+        GetRelation qsHint Ridx tup'
+        -> SatisfiesTupleConstraints Ridx (indexedElement tup') (indexedElement tup))
   (* and [tup] is consistent with the other tables per the cross-relation
      constraints, *)
   -> (forall Ridx', SatisfiesCrossRelationConstraints Ridx Ridx' (indexedElement tup)

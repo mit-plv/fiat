@@ -180,9 +180,16 @@ Qed.
 
 Definition decides (b : bool) (P : Prop) := if b then P else ~ P.
 
-Definition SatisfiesSchemaConstraints
+Definition SatisfiesAttributeConstraints
+           {qsSchema} Ridx tup :=
+  match (attrConstraints (QSGetNRelSchema qsSchema Ridx)) with
+      Some Constr => Constr tup
+    | None => True
+  end.
+
+Definition SatisfiesTupleConstraints
            {qsSchema} Ridx tup tup' :=
-  match (schemaConstraints (QSGetNRelSchema qsSchema Ridx)) with
+  match (tupleConstraints (QSGetNRelSchema qsSchema Ridx)) with
       Some Constr => Constr tup tup'
     | None => True
   end.

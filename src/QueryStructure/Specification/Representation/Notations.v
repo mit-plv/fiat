@@ -27,7 +27,12 @@ Reserved Notation "'schema' headings"
   (at level 0, headings at level 0, constraints at level 50).
 
 Reserved Notation "'schema' headings 'where' constraints"
-  (at level 0, headings at level 0, constraints at level 50).
+         (at level 0, headings at level 0, constraints at level 50).
+
+Reserved Notation "'schema' headings 'where' aconstraints 'and' tupconstraints"
+         (at level 0, headings at level 0,
+          aconstraints at level 50,
+          tupconstraints at level 50).
 
 Reserved Notation "'Query' 'Structure' 'Schema' relList "
          (at level 0).

@@ -9,7 +9,8 @@ Require Import Coq.Lists.List Coq.Arith.Compare_dec Coq.Bool.Bool String
         ADTSynthesis.Common.ListFacts
         ADTSynthesis.Common.LogicFacts
         ADTSynthesis.Common.DecideableEnsembles
-        ADTSynthesis.QueryStructure.Specification.Constraints.tupleAgree.
+        ADTSynthesis.QueryStructure.Specification.Constraints.tupleAgree
+        ADTSynthesis.QueryStructure.Specification.Operations.Mutate.
 
 Unset Implicit Arguments.
 
@@ -35,7 +36,8 @@ Ltac pose_string_ids :=
 Section ConstraintCheckRefinements.
   Hint Resolve AC_eq_nth_In AC_eq_nth_NIn crossConstr.
   Hint Unfold SatisfiesCrossRelationConstraints
-       SatisfiesSchemaConstraints.
+       SatisfiesAttributeConstraints
+       SatisfiesTupleConstraints.
 
   Lemma tupleAgree_sym :
     forall (heading: Heading) tup1 tup2 attrs,
@@ -557,23 +559,39 @@ Section ConstraintCheckRefinements.
 
   (* Consequences of ith_replace_BoundIndex_neq and ith_replace_BoundIndex_eq on updates *)
 
-  Lemma refine_SatisfiesSchemaConstraints_self
+  Lemma refine_SatisfiesAttributeConstraints_self
   : forall qsSchema
            (Ridx : @BoundedString (map relName (qschemaSchemas qsSchema)))
-           (tup tup' : @Tuple (schemaHeading (QSGetNRelSchema qsSchema Ridx))),
-      refine {b | decides b (SatisfiesSchemaConstraints Ridx tup tup')}
-             match (schemaConstraints (QSGetNRelSchema qsSchema Ridx)) with
-                 Some Constr => {b | decides b (Constr tup tup') }
+           (tup : @Tuple (schemaHeading (QSGetNRelSchema qsSchema Ridx))),
+      refine {b | decides b (SatisfiesAttributeConstraints Ridx tup )}
+             match (attrConstraints (QSGetNRelSchema qsSchema Ridx)) with
+                 Some Constr => {b | decides b (Constr tup) }
                | None => ret true
              end.
   Proof.
-    unfold SatisfiesSchemaConstraints.
-    intros; destruct (schemaConstraints (QSGetNRelSchema qsSchema Ridx));
+    unfold SatisfiesAttributeConstraints.
+    intros; destruct (attrConstraints (QSGetNRelSchema qsSchema Ridx));
     eauto using decides_True.
     reflexivity.
   Qed.
 
-  Lemma refine_SatisfiesSchemaConstraints
+  Lemma refine_SatisfiesTupleConstraints_self
+  : forall qsSchema
+           (Ridx : @BoundedString (map relName (qschemaSchemas qsSchema)))
+           (tup tup' : @Tuple (schemaHeading (QSGetNRelSchema qsSchema Ridx))),
+      refine {b | decides b (SatisfiesTupleConstraints Ridx tup tup')}
+             match (tupleConstraints (QSGetNRelSchema qsSchema Ridx)) with
+                 Some Constr => {b | decides b (Constr tup tup') }
+               | None => ret true
+             end.
+  Proof.
+    unfold SatisfiesTupleConstraints.
+    intros; destruct (tupleConstraints (QSGetNRelSchema qsSchema Ridx));
+    eauto using decides_True.
+    reflexivity.
+  Qed.
+
+  Lemma refine_SatisfiesTupleConstraints
   : forall qsSchema qs
            (Ridx : @BoundedString (map relName (qschemaSchemas qsSchema)))
            (tup : @Tuple (schemaHeading (QSGetNRelSchema qsSchema Ridx))),
@@ -581,11 +599,11 @@ Section ConstraintCheckRefinements.
                     b
                     (forall tup',
                        GetUnConstrRelation qs Ridx tup'
-                       -> SatisfiesSchemaConstraints
+                       -> SatisfiesTupleConstraints
                             Ridx
                             tup
                             (indexedElement tup'))}
-             match (schemaConstraints (QSGetNRelSchema qsSchema Ridx)) with
+             match (tupleConstraints (QSGetNRelSchema qsSchema Ridx)) with
                  Some Constr =>
                  {b | decides b (forall tup',
                                    GetUnConstrRelation qs Ridx tup'
@@ -593,22 +611,22 @@ Section ConstraintCheckRefinements.
                | None => ret true
              end.
   Proof.
-    unfold SatisfiesSchemaConstraints.
-    intros; destruct (schemaConstraints (QSGetNRelSchema qsSchema Ridx));
+    unfold SatisfiesTupleConstraints.
+    intros; destruct (tupleConstraints (QSGetNRelSchema qsSchema Ridx));
     eauto using decides_True.
     reflexivity.
     apply decides_2_True.
   Qed.
 
-  Lemma refine_SatisfiesSchemaConstraints'
+  Lemma refine_SatisfiesTupleConstraints'
   : forall qsSchema qs
            (Ridx : @BoundedString (map relName (qschemaSchemas qsSchema)))
            (tup : @Tuple (schemaHeading (QSGetNRelSchema qsSchema Ridx))),
       refine {b | decides b
                           (forall tup',
                              GetUnConstrRelation qs Ridx tup'
-                             -> SatisfiesSchemaConstraints Ridx (indexedElement tup') tup)}
-             match (schemaConstraints (QSGetNRelSchema qsSchema Ridx)) with
+                             -> SatisfiesTupleConstraints Ridx (indexedElement tup') tup)}
+             match (tupleConstraints (QSGetNRelSchema qsSchema Ridx)) with
                  Some Constr =>
                  {b | decides b (forall tup',
                                    GetUnConstrRelation qs Ridx tup'
@@ -616,8 +634,8 @@ Section ConstraintCheckRefinements.
                | None => ret true
              end.
   Proof.
-    unfold SatisfiesSchemaConstraints.
-    intros; destruct (schemaConstraints (QSGetNRelSchema qsSchema Ridx));
+    unfold SatisfiesTupleConstraints.
+    intros; destruct (tupleConstraints (QSGetNRelSchema qsSchema Ridx));
     eauto using decides_True.
     reflexivity.
     apply decides_2_True.
@@ -719,7 +737,6 @@ Section ConstraintCheckRefinements.
     destruct BuildQueryStructureConstraints; reflexivity.
   Qed.
 
-
   Lemma DeletePrimaryKeysOK {qsSchema}
   : forall (qs : UnConstrQueryStructure qsSchema)
            (Ridx : @BoundedString (map relName (qschemaSchemas qsSchema)))
@@ -729,13 +746,13 @@ Section ConstraintCheckRefinements.
                           GetUnConstrRelation qs Ridx tup
                           -> GetUnConstrRelation qs Ridx tup'
                           -> (FunctionalDependency_P attrlist1 attrlist2 (indexedElement tup) (indexedElement tup')))
-                     -> decides b (DeletePreservesSchemaConstraints
-                                      (GetUnConstrRelation qs Ridx)
-                                      DeletedTuples
-                                      (FunctionalDependency_P attrlist1 attrlist2))}
+                  -> decides b (MutationPreservesTupleConstraints
+                                  (EnsembleDelete (GetUnConstrRelation qs Ridx) DeletedTuples)
+                                  (FunctionalDependency_P attrlist1 attrlist2)
+                               )}
              (ret true).
   Proof.
-    unfold DeletePreservesSchemaConstraints, FunctionalDependency_P;
+    unfold MutationPreservesTupleConstraints, FunctionalDependency_P;
     intros * v Comp_v; inversion_by computes_to_inv; subst.
     constructor; simpl.
     intros.
@@ -852,11 +869,10 @@ Section ConstraintCheckRefinements.
       refine {b' |
               P ->
                decides b'
-                       (DeletePreservesCrossConstraints
-                       (GetUnConstrRelation qs Ridx)
-                       (GetUnConstrRelation qs Ridx')
-                       DeletedTuples
-                       (ForeignKey_P attr' attr tupmap))}
+                       (MutationPreservesCrossConstraints
+                          (GetUnConstrRelation qs Ridx')
+                          (EnsembleDelete (GetUnConstrRelation qs Ridx) DeletedTuples)
+                          (ForeignKey_P attr' attr tupmap))}
              (x <- Count (For (UnConstrQuery_In
                                  qs Ridx'
                                  (fun tup' =>
@@ -877,7 +893,7 @@ Section ConstraintCheckRefinements.
     unfold Count in *; inversion_by computes_to_inv.
     destruct x0; simpl in *; subst; inversion_by computes_to_inv; subst;
     constructor; simpl; unfold not;
-    unfold DeletePreservesCrossConstraints; intros.
+    unfold MutationPreservesCrossConstraints; intros.
     - destruct (ForeignKey_P_P H _ H1) as [tup2 [In_tup2 Agree_tup2]].
       eexists; intuition eauto.
       unfold EnsembleDelete; constructor; unfold In; intros; eauto.

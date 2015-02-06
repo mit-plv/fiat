@@ -7,12 +7,20 @@ Require Import Coq.Lists.List Coq.Strings.String Coq.Logic.FunctionalExtensional
 
 Record Relation (RelationSchema : Schema) :=
   { rel : @IndexedEnsemble (@Tuple (schemaHeading RelationSchema));
-    constr :
-      match (schemaConstraints RelationSchema) with
+    attrconstr :
+      match (attrConstraints RelationSchema) with
+        | Some Constr =>
+          forall tup,
+            rel tup -> Constr (indexedTuple tup)
+        | None => True
+      end;
+    tupleconstr :
+      match (tupleConstraints RelationSchema) with
         | Some Constr =>
          forall tup tup',
-           rel tup 
-           -> rel tup' 
+           rel tup
+           -> rel tup'
+           -> elementIndex tup <> elementIndex tup'
            -> Constr (indexedTuple tup) (indexedTuple tup')
         | None => True
       end

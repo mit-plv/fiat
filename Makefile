@@ -86,6 +86,7 @@ QUERYSTRUCTURE_MODULES := \
 	QueryStructure/Specification/Operations/Query \
 	QueryStructure/Specification/Operations/Insert \
 	QueryStructure/Specification/Operations/Delete \
+	QueryStructure/Specification/Operations/Mutate \
 	QueryStructure/Specification/Operations/Update \
 	QueryStructure/Implementation/Constraints/ConstraintChecksRefinements \
 	QueryStructure/Implementation/Constraints/ConstraintChecksUnfoldings \

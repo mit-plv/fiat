@@ -8,9 +8,12 @@ Require Import Coq.Lists.List Coq.Strings.String Coq.Sets.Ensembles Coq.Arith.Ar
 Local Obligation Tactic := intuition.
 
 Program Definition EmptyRelation (sch : Schema) : Relation sch :=
-  Build_Relation sch (fun T : @IndexedTuple (schemaHeading sch) => False) _.
+  Build_Relation sch (fun T : @IndexedTuple (schemaHeading sch) => False) _ _.
 Next Obligation.
-  destruct (schemaConstraints sch); intuition.
+  destruct (attrConstraints sch); intuition.
+Qed.
+Next Obligation.
+  destruct (tupleConstraints sch); intuition.
 Qed.
 
 Fixpoint Build_EmptyRelations (schemas : list NamedSchema) :

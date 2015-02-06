@@ -9,9 +9,11 @@ Require Import Coq.Lists.List Coq.Strings.String Coq.Logic.FunctionalExtensional
 
 Record Schema :=
   { schemaHeading : Heading;
-    schemaConstraints: option (@Tuple schemaHeading
-                               -> @Tuple schemaHeading
-                               -> Prop)
+    attrConstraints: option (@Tuple schemaHeading
+                             -> Prop);
+    tupleConstraints: option (@Tuple schemaHeading
+                             -> @Tuple schemaHeading
+                             -> Prop)
   }.
 
 Class HeadingHint :=
@@ -53,9 +55,22 @@ Notation "'attributes' attrlist1 'depend' 'on' attrlist2 " :=
 
 (* Notations for Schemas. *)
 
+Notation "'schema' headings 'where' aconstraints 'and' tupconstraints" :=
+  {| schemaHeading := headings%Heading;
+     attrConstraints := @Some (@Tuple headings%Heading
+                               -> Prop) (let hHint := {|headingHint := headings%Heading |} in
+                                         aconstraints%SchemaConstraints);
+     tupleConstraints :=
+       @Some (@Tuple headings%Heading
+              -> @Tuple headings%Heading
+              -> Prop) (let hHint := {|headingHint := headings%Heading |} in
+                        tupconstraints%SchemaConstraints) |} : Schema_scope.
+
+
 Notation "'schema' headings 'where' constraints" :=
   {| schemaHeading := headings%Heading;
-     schemaConstraints :=
+     attrConstraints := None;
+     tupleConstraints :=
        @Some (@Tuple headings%Heading
               -> @Tuple headings%Heading
               -> Prop) (let hHint := {|headingHint := headings%Heading |} in
@@ -63,4 +78,5 @@ Notation "'schema' headings 'where' constraints" :=
 
 Notation "'schema' headings" :=
   {| schemaHeading := headings%Heading;
-     schemaConstraints := None |} : Schema_scope.
+     attrConstraints := None;
+     tupleConstraints := None |} : Schema_scope.

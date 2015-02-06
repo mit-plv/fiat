@@ -23,7 +23,8 @@ Create HintDb refine_keyconstraints discriminated.
 (*Hint Rewrite refine_Any_DecideableSB_True : refine_keyconstraints.*)
 
 Arguments ith_Bounded _ _ _ _ _ _ _ / .
-Arguments SatisfiesSchemaConstraints _ _ _ _ / .
+Arguments SatisfiesAttributeConstraints _ _ _ / .
+Arguments SatisfiesTupleConstraints _ _ _ _ / .
 Arguments GetUnConstrRelation : simpl never.
 Arguments UpdateUnConstrRelation : simpl never.
 Arguments replace_BoundedIndex : simpl never.
