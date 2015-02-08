@@ -37,17 +37,19 @@ Section recursive_descent_parser.
           {String : string_like CharType}
           {G : grammar CharType}.
 
+  Class parser_computational_predataT :=
+    { nonterminal_names_listT : Type;
+      initial_nonterminal_names_data : nonterminal_names_listT;
+      is_valid_nonterminal_name : nonterminal_names_listT -> string -> bool;
+      remove_nonterminal_name : nonterminal_names_listT -> string -> nonterminal_names_listT;
+      nonterminal_names_listT_R : nonterminal_names_listT -> nonterminal_names_listT -> Prop;
+      remove_nonterminal_name_dec : forall ls nonterminal_name,
+                             is_valid_nonterminal_name ls nonterminal_name = true
+                             -> nonterminal_names_listT_R (remove_nonterminal_name ls nonterminal_name) ls;
+      ntl_wf : well_founded nonterminal_names_listT_R }.
   Class parser_computational_dataT :=
-    { names_listT : Type;
-      initial_names_data : names_listT;
-      is_valid_name : names_listT -> string -> bool;
-      remove_name : names_listT -> string -> names_listT;
-      names_listT_R : names_listT -> names_listT -> Prop;
-      remove_name_dec : forall ls name,
-                             is_valid_name ls name = true
-                             -> names_listT_R (remove_name ls name) ls;
-      ntl_wf : well_founded names_listT_R;
-      split_stateT : Type;
+    { premethods :> parser_computational_predataT;
+      split_stateT : String -> Type;
       split_string_for_production
       : forall (str0 : StringWithSplitState String split_stateT) (prod : production CharType),
           list (StringWithSplitState String split_stateT * StringWithSplitState String split_stateT);
@@ -61,26 +63,26 @@ Section recursive_descent_parser.
     Section parts.
       Class parser_dependent_types_dataT :=
         { methods :> parser_computational_dataT;
-          T_name_success : forall (str0 str : StringWithSplitState String split_stateT) (valid : names_listT),
+          T_nonterminal_name_success : forall (str0 str : StringWithSplitState String split_stateT) (valid : nonterminal_names_listT),
                              string -> Type;
-          T_name_failure : forall (str0 str : StringWithSplitState String split_stateT) (valid : names_listT),
+          T_nonterminal_name_failure : forall (str0 str : StringWithSplitState String split_stateT) (valid : nonterminal_names_listT),
                              string -> Type;
-          T_item_success : forall (str0 str : StringWithSplitState String split_stateT) (valid : names_listT),
+          T_item_success : forall (str0 str : StringWithSplitState String split_stateT) (valid : nonterminal_names_listT),
                              item CharType -> Type;
-          T_item_failure : forall (str0 str : StringWithSplitState String split_stateT) (valid : names_listT),
+          T_item_failure : forall (str0 str : StringWithSplitState String split_stateT) (valid : nonterminal_names_listT),
                              item CharType -> Type;
           T_production_success
           : forall (str0 str : StringWithSplitState String split_stateT)
-                   (valid : names_listT)
+                   (valid : nonterminal_names_listT)
                    (prod : production CharType),
               Type;
           T_production_failure
           : forall (str0 str : StringWithSplitState String split_stateT)
-                   (valid : names_listT)
+                   (valid : nonterminal_names_listT)
                    (prod : production CharType),
               Type;
 
-          split_string_lift_T (str0 str : StringWithSplitState String split_stateT) (valid : names_listT) (it : item CharType) (its : production CharType)
+          split_string_lift_T (str0 str : StringWithSplitState String split_stateT) (valid : nonterminal_names_listT) (it : item CharType) (its : production CharType)
                               (split : production CharType ->
                                        list
                                          (StringWithSplitState String split_stateT *
@@ -104,19 +106,19 @@ Section recursive_descent_parser.
 
           T_productions_success
           : forall (str0 str : StringWithSplitState String split_stateT)
-                   (valid : names_listT)
+                   (valid : nonterminal_names_listT)
                    (prods : productions CharType),
               Type;
           T_productions_failure
           : forall (str0 str : StringWithSplitState String split_stateT)
-                   (valid : names_listT)
+                   (valid : nonterminal_names_listT)
                    (prods : productions CharType),
               Type }.
 
       Class parser_dependent_types_extra_dataT :=
         { types :> parser_dependent_types_dataT;
-          lift_success : forall {str0 str valid} name, @T_name_success _ str0 str valid name -> @T_item_success _ str0 str valid (NonTerminal _ name);
-          lift_failure : forall {str0 str valid} name, @T_name_failure _ str0 str valid name -> @T_item_failure _ str0 str valid (NonTerminal _ name);
+          lift_success : forall {str0 str valid} nonterminal_name, @T_nonterminal_name_success _ str0 str valid nonterminal_name -> @T_item_success _ str0 str valid (NonTerminal _ nonterminal_name);
+          lift_failure : forall {str0 str valid} nonterminal_name, @T_nonterminal_name_failure _ str0 str valid nonterminal_name -> @T_item_failure _ str0 str valid (NonTerminal _ nonterminal_name);
           parse_terminal_success : forall {str0 str : StringWithSplitState String split_stateT} {valid} ch,
                                      [[ ch ]] =s str -> @T_item_success _ str0 str valid (Terminal ch);
           parse_terminal_failure : forall {str0 str : StringWithSplitState String split_stateT} {valid}
@@ -133,24 +135,24 @@ Section recursive_descent_parser.
 
           H_prod_split : forall str0 str valid prod, H_prod_split_T str0 str valid prod (split_string_for_production str);
 
-          lift_parse_name_success_lt : forall {str0 str : StringWithSplitState String split_stateT} {valid name}, Length str < Length str0 -> @T_productions_success _ str str initial_names_data (Lookup G name) -> @T_name_success _ str0 str valid name;
-          lift_parse_name_failure_lt : forall {str0 str : StringWithSplitState String split_stateT} {valid name}, Length str < Length str0 -> @T_productions_failure _ str str initial_names_data (Lookup G name) -> @T_name_failure _ str0 str valid name;
-          lift_parse_name_success_eq : forall {str0 str : StringWithSplitState String split_stateT} {valid name},
-                                         str = str0 :> String -> is_valid_name valid name = true -> @T_productions_success _ str0 str0 (remove_name valid name) (Lookup G name) -> @T_name_success _ str0 str valid name;
-          lift_parse_name_failure_eq : forall {str0 str : StringWithSplitState String split_stateT} {valid name},
-                                         ~Length str < Length str0 -> @T_productions_failure _ str0 str0 (remove_name valid name) (Lookup G name) -> @T_name_failure _ str0 str valid name;
-          elim_parse_name_failure : forall {str0 str : StringWithSplitState String split_stateT} {valid name},
-                                      str ≤s str0 -> ~ Length str < Length str0 -> is_valid_name valid name = false -> @T_name_failure _ str0 str valid name
+          lift_parse_nonterminal_name_success_lt : forall {str0 str : StringWithSplitState String split_stateT} {valid nonterminal_name}, Length str < Length str0 -> @T_productions_success _ str str initial_nonterminal_names_data (Lookup G nonterminal_name) -> @T_nonterminal_name_success _ str0 str valid nonterminal_name;
+          lift_parse_nonterminal_name_failure_lt : forall {str0 str : StringWithSplitState String split_stateT} {valid nonterminal_name}, Length str < Length str0 -> @T_productions_failure _ str str initial_nonterminal_names_data (Lookup G nonterminal_name) -> @T_nonterminal_name_failure _ str0 str valid nonterminal_name;
+          lift_parse_nonterminal_name_success_eq : forall {str0 str : StringWithSplitState String split_stateT} {valid nonterminal_name},
+                                         str = str0 :> String -> is_valid_nonterminal_name valid nonterminal_name = true -> @T_productions_success _ str0 str0 (remove_nonterminal_name valid nonterminal_name) (Lookup G nonterminal_name) -> @T_nonterminal_name_success _ str0 str valid nonterminal_name;
+          lift_parse_nonterminal_name_failure_eq : forall {str0 str : StringWithSplitState String split_stateT} {valid nonterminal_name},
+                                         ~Length str < Length str0 -> @T_productions_failure _ str0 str0 (remove_nonterminal_name valid nonterminal_name) (Lookup G nonterminal_name) -> @T_nonterminal_name_failure _ str0 str valid nonterminal_name;
+          elim_parse_nonterminal_name_failure : forall {str0 str : StringWithSplitState String split_stateT} {valid nonterminal_name},
+                                      str ≤s str0 -> ~ Length str < Length str0 -> is_valid_nonterminal_name valid nonterminal_name = false -> @T_nonterminal_name_failure _ str0 str valid nonterminal_name
         }.
 
       Context `{types_data : parser_dependent_types_extra_dataT}.
 
       Section item.
         Context (str0 str : StringWithSplitState String split_stateT)
-                (valid : names_listT)
-                (str_matches_name : forall name, sum (T_name_success str0 str valid name) (T_name_failure str0 str valid name)).
+                (valid : nonterminal_names_listT)
+                (str_matches_nonterminal_name : forall nonterminal_name, sum (T_nonterminal_name_success str0 str valid nonterminal_name) (T_nonterminal_name_failure str0 str valid nonterminal_name)).
 
-        Let T_name := fun name => sum (T_name_success str0 str valid name) (T_name_failure str0 str valid name).
+        Let T_nonterminal_name := fun nonterminal_name => sum (T_nonterminal_name_success str0 str valid nonterminal_name) (T_nonterminal_name_failure str0 str valid nonterminal_name).
         Let T_item := fun it => sum (T_item_success str0 str valid it) (T_item_failure str0 str valid it).
 
         (** TODO: Use [refine] and [if] to make this less scary *)
@@ -161,8 +163,8 @@ Section recursive_descent_parser.
                       | left pf => inl (@parse_terminal_success _ _ _ _ ch pf)
                       | right pf => inr (@parse_terminal_failure _ _ _ _ ch pf)
                     end
-               | NonTerminal name
-                 => match str_matches_name name with
+               | NonTerminal nonterminal_name
+                 => match str_matches_nonterminal_name nonterminal_name with
                       | inl ret => inl (lift_success _ ret)
                       | inr ret => inr (lift_failure _ ret)
                     end
@@ -171,11 +173,11 @@ Section recursive_descent_parser.
 
       Section production_and_productions.
         Context (str0 : StringWithSplitState String split_stateT)
-                (valid : names_listT).
-        Context (parse_name : forall (str : StringWithSplitState String split_stateT),
+                (valid : nonterminal_names_listT).
+        Context (parse_nonterminal_name : forall (str : StringWithSplitState String split_stateT),
                                 str ≤s str0
-                                -> forall name,
-                                     sum (@T_name_success _ str0 str valid name) (@T_name_failure _ str0 str valid name)).
+                                -> forall nonterminal_name,
+                                     sum (@T_nonterminal_name_success _ str0 str valid nonterminal_name) (@T_nonterminal_name_failure _ str0 str valid nonterminal_name)).
 
         Let T_production := fun str prod => sum (T_production_success str0 str valid prod) (T_production_failure str0 str valid prod).
 
@@ -212,7 +214,7 @@ Section recursive_descent_parser.
                         let Hs2 := _ in
                         match (@parse_item str0 s1
                                            valid
-                                           (@parse_name s1 Hs1)
+                                           (@parse_nonterminal_name s1 Hs1)
                                            it),
                               (@parse_production s2 Hs2) with
                           | inl p_it, inl p_its => inl (@cons_success _ str0 s1 s2 _ valid pf _ _ _ _ _)
@@ -291,59 +293,59 @@ Section recursive_descent_parser.
         End productions.
       End production_and_productions.
 
-      Section names.
+      Section nonterminal_names.
         Let T_productions := fun str0 str valid prods => sum (T_productions_success str0 str valid prods) (T_productions_failure str0 str valid prods).
 
-        Let T_name := fun str0 str valid name => sum (@T_name_success _ str0 str valid name) (@T_name_failure _ str0 str valid name).
+        Let T_nonterminal_name := fun str0 str valid nonterminal_name => sum (@T_nonterminal_name_success _ str0 str valid nonterminal_name) (@T_nonterminal_name_failure _ str0 str valid nonterminal_name).
 
         Section step.
           Context (str0 : StringWithSplitState String split_stateT)
-                  (valid : names_listT).
+                  (valid : nonterminal_names_listT).
 
-          Context (parse_name
-                   : forall (p : StringWithSplitState String split_stateT * names_listT),
-                       prod_relation (ltof _ (fun s : StringWithSplitState _ _ => Length s)) names_listT_R p (str0, valid)
+          Context (parse_nonterminal_name
+                   : forall (p : StringWithSplitState String split_stateT * nonterminal_names_listT),
+                       prod_relation (ltof _ (fun s : StringWithSplitState _ _ => Length s)) nonterminal_names_listT_R p (str0, valid)
                        -> forall (str : StringWithSplitState String split_stateT)
                                  (pf : str ≤s fst p)
-                                 (name : string),
-                            T_name (fst p) str (snd p) name).
+                                 (nonterminal_name : string),
+                            T_nonterminal_name (fst p) str (snd p) nonterminal_name).
 
-          Definition parse_name_step
-                     (str : StringWithSplitState String split_stateT) (pf : str ≤s str0) (name : string)
-          : T_name str0 str valid name.
+          Definition parse_nonterminal_name_step
+                     (str : StringWithSplitState String split_stateT) (pf : str ≤s str0) (nonterminal_name : string)
+          : T_nonterminal_name str0 str valid nonterminal_name.
           Proof.
-            refine match lt_dec (Length str) (Length str0), Sumbool.sumbool_of_bool (is_valid_name valid name) with
+            refine match lt_dec (Length str) (Length str0), Sumbool.sumbool_of_bool (is_valid_nonterminal_name valid nonterminal_name) with
                      | left pf', _ =>
-                       (** [str] got smaller, so we reset the valid names list *)
+                       (** [str] got smaller, so we reset the valid nonterminal_names list *)
                        match (@parse_productions
                                 _
                                 _
-                                (@parse_name
-                                   (str, initial_names_data)
+                                (@parse_nonterminal_name
+                                   (str, initial_nonterminal_names_data)
                                    (or_introl pf'))
                                 str
                                 (or_intror eq_refl)
-                                (Lookup G name)) with
-                         | inl success => inl (@lift_parse_name_success_lt _ str0 str valid name pf' success)
-                         | inr failure => inr (@lift_parse_name_failure_lt _ str0 str valid name pf' failure)
+                                (Lookup G nonterminal_name)) with
+                         | inl success => inl (@lift_parse_nonterminal_name_success_lt _ str0 str valid nonterminal_name pf' success)
+                         | inr failure => inr (@lift_parse_nonterminal_name_failure_lt _ str0 str valid nonterminal_name pf' failure)
                        end
                      | right pf', left H' =>
-                       (** [str] didn't get smaller, so we cache the fact that we've hit this name already *)
+                       (** [str] didn't get smaller, so we cache the fact that we've hit this nonterminal_name already *)
                        (** It was valid, so we can remove it *)
                        match (@parse_productions
                                 _ _
-                                (@parse_name
-                                   (str0, remove_name valid name)
-                                   (or_intror (conj eq_refl (@remove_name_dec _ _ _ H'))))
+                                (@parse_nonterminal_name
+                                   (str0, remove_nonterminal_name valid nonterminal_name)
+                                   (or_intror (conj eq_refl (@remove_nonterminal_name_dec _ _ _ H'))))
                                 _
                                 (or_intror eq_refl)
-                                (Lookup G name)) with
-                         | inl success => inl (@lift_parse_name_success_eq _ _ _ _ _ _ H' success)
-                         | inr failure => inr (@lift_parse_name_failure_eq _ _ _ _ _ pf' failure)
+                                (Lookup G nonterminal_name)) with
+                         | inl success => inl (@lift_parse_nonterminal_name_success_eq _ _ _ _ _ _ H' success)
+                         | inr failure => inr (@lift_parse_nonterminal_name_failure_eq _ _ _ _ _ pf' failure)
                        end
                      | right pf', right pf''
-                       => (** oops, we already saw this name in the past.  ABORT! *)
-                         inr (@elim_parse_name_failure _ _ _ _ _ pf pf' pf'')
+                       => (** oops, we already saw this nonterminal_name in the past.  ABORT! *)
+                         inr (@elim_parse_nonterminal_name_failure _ _ _ _ _ pf pf' pf'')
                    end;
             try solve [ destruct_head_hnf or; try assumption; exfalso; eauto with nocore ].
           Defined.
@@ -351,29 +353,29 @@ Section recursive_descent_parser.
 
         Section wf.
           (** TODO: add comment explaining signature *)
-          Definition parse_name_or_abort
-          : forall (p : StringWithSplitState String split_stateT * names_listT) (str : StringWithSplitState String split_stateT)
+          Definition parse_nonterminal_name_or_abort
+          : forall (p : StringWithSplitState String split_stateT * nonterminal_names_listT) (str : StringWithSplitState String split_stateT)
                    (pf : str ≤s fst p)
-                   (name : string),
-              T_name (fst p) str (snd p) name
+                   (nonterminal_name : string),
+              T_nonterminal_name (fst p) str (snd p) nonterminal_name
             := @Fix3
-                 (prod (StringWithSplitState String split_stateT) names_listT) _ _ _
+                 (prod (StringWithSplitState String split_stateT) nonterminal_names_listT) _ _ _
                  _ (@well_founded_prod_relation
                       (StringWithSplitState String split_stateT)
-                      names_listT
+                      nonterminal_names_listT
                       _
                       _
                       (well_founded_ltof _ (fun s : StringWithSplitState String split_stateT => Length s))
                       ntl_wf)
                  _
-                 (fun sl => @parse_name_step (fst sl) (snd sl)).
+                 (fun sl => @parse_nonterminal_name_step (fst sl) (snd sl)).
 
-          Definition parse_name (str : StringWithSplitState String split_stateT) (name : string)
-          : T_name str str initial_names_data name
-            := @parse_name_or_abort (str, initial_names_data) str
-                                    (or_intror eq_refl) name.
+          Definition parse_nonterminal_name (str : StringWithSplitState String split_stateT) (nonterminal_name : string)
+          : T_nonterminal_name str str initial_nonterminal_names_data nonterminal_name
+            := @parse_nonterminal_name_or_abort (str, initial_nonterminal_names_data) str
+                                    (or_intror eq_refl) nonterminal_name.
         End wf.
-      End names.
+      End nonterminal_names.
     End parts.
   End generic.
 End recursive_descent_parser.
