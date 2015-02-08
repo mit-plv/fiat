@@ -30,6 +30,8 @@ Local Open Scope string_like_scope.
 
 Local Coercion is_true : bool >-> Sortclass.
 
+(** TODO: Replace "name" with "nonterminal" *)
+
 Section recursive_descent_parser.
   Context {CharType : Type}
           {String : string_like CharType}
@@ -47,7 +49,8 @@ Section recursive_descent_parser.
       ntl_wf : well_founded names_listT_R;
       split_stateT : Type;
       split_string_for_production
-      : forall (str0 : StringWithSplitState String split_stateT) (prod : production CharType), list (StringWithSplitState String split_stateT * StringWithSplitState String split_stateT);
+      : forall (str0 : StringWithSplitState String split_stateT) (prod : production CharType),
+          list (StringWithSplitState String split_stateT * StringWithSplitState String split_stateT);
       split_string_for_production_correct
       : forall (str0 : StringWithSplitState String split_stateT) prod,
           List.Forall (fun s1s2 : StringWithSplitState String split_stateT * StringWithSplitState String split_stateT
@@ -150,6 +153,7 @@ Section recursive_descent_parser.
         Let T_name := fun name => sum (T_name_success str0 str valid name) (T_name_failure str0 str valid name).
         Let T_item := fun it => sum (T_item_success str0 str valid it) (T_item_failure str0 str valid it).
 
+        (** TODO: Use [refine] and [if] to make this less scary *)
         Definition parse_item (it : item CharType) : T_item it
           := match it as it return T_item it with
                | Terminal ch
@@ -243,6 +247,7 @@ Section recursive_descent_parser.
                    {struct prod}
           : T_production str prod.
           Proof.
+            (** TODO: [as] might not be needed *)
             refine match prod as prod return T_production str prod with
                      | nil
                        (** 0-length production, only accept empty *)
