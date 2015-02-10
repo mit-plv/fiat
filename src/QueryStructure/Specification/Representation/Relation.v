@@ -17,11 +17,11 @@ Record Relation (RelationSchema : Schema) :=
     tupleconstr :
       match (tupleConstraints RelationSchema) with
         | Some Constr =>
-         forall tup tup',
-           rel tup
-           -> rel tup'
-           -> elementIndex tup <> elementIndex tup'
-           -> Constr (indexedTuple tup) (indexedTuple tup')
+          forall tup tup',
+            elementIndex tup <> elementIndex tup'
+            -> rel tup
+            -> rel tup'
+            -> Constr (indexedTuple tup) (indexedTuple tup')
         | None => True
       end
   }.

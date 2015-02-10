@@ -15,9 +15,9 @@ Definition MutationPreservesTupleConstraints
            (Constr : Tuple -> Tuple -> Prop)
   :=
     forall tup tup',
-      MutatedTuples tup
+      elementIndex tup <> elementIndex tup'
+      -> MutatedTuples tup
       -> MutatedTuples tup'
-      -> elementIndex tup <> elementIndex tup'
       -> Constr (indexedElement tup) (indexedElement tup').
 
 (* AND the tuples in the resulting Ensemble satisfy the attribute
@@ -112,6 +112,6 @@ Definition QSMutate (qs : QueryStructureHint) Ridx MutatedTuples :=
                         (Intersection _
                                       (GetRelation qsHint Ridx)
                                       (Complement _ (GetRelation qs' Ridx))));
-   ret (qs', deleted))%comp.
+   ret (qs', mutated))%comp.
 
 Opaque QSMutate.

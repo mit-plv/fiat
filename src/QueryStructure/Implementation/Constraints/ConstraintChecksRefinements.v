@@ -215,7 +215,7 @@ Section ConstraintCheckRefinements.
   : forall (Remaining Visited : list A)
            (P : Ensemble (BoundedIndex (Visited ++ Remaining))),
       refine {b | decides b (Iterate_Ensemble_BoundedIndex' Visited Remaining P)}
-             (Iterate_Decide_Comp' _ Remaining Visited P).
+                  (Iterate_Decide_Comp' _ Remaining Visited P).
   Proof.
     induction Remaining; simpl; intros.
     - econstructor; inversion_by computes_to_inv; subst; simpl; auto.
@@ -756,7 +756,7 @@ Section ConstraintCheckRefinements.
     intros * v Comp_v; inversion_by computes_to_inv; subst.
     constructor; simpl.
     intros.
-    unfold EnsembleDelete in *; destruct H0; destruct H1; eauto.
+    unfold EnsembleDelete in *; destruct H1; destruct H2; eauto.
   Qed.
 
   Local Transparent Count.

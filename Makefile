@@ -93,6 +93,7 @@ QUERYSTRUCTURE_MODULES := \
 	QueryStructure/Implementation/Operations/General/EmptyRefinements \
 	QueryStructure/Implementation/Operations/General/QueryRefinements \
 	QueryStructure/Implementation/Operations/General/InsertRefinements \
+	QueryStructure/Implementation/Operations/General/MutateRefinements \
 	QueryStructure/Implementation/Operations/General/DeleteRefinements \
 	QueryStructure/Implementation/Operations/General/QueryStructureRefinements \
 	QueryStructure/Implementation/Operations \
