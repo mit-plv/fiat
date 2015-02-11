@@ -1,7 +1,7 @@
 (** * Definition of a boolean-returning CFG parser-recognizer *)
 Require Import Omega.
 Require Import Coq.Lists.List Coq.Program.Program Coq.Program.Wf Coq.Arith.Wf_nat Coq.Arith.Compare_dec Coq.Classes.RelationClasses Coq.Strings.String.
-Require Import Parsers.ContextFreeGrammar Parsers.Specification.
+Require Import Parsers.ContextFreeGrammar Parsers.Specification Parsers.ContextFreeGrammarNotations.
 Require Import Common Common.ilist Common.Wf.
 
 Set Implicit Arguments.
@@ -384,40 +384,7 @@ End example_parse_empty_grammar.
 
 Section examples.
   Section ab_star.
-
-    Fixpoint production_of_string (s : string) : production Ascii.ascii
-      := match s with
-           | EmptyString => nil
-           | String.String ch s' => (Terminal ch)::production_of_string s'
-         end.
-
-    Coercion production_of_string : string >-> production.
-
-    Fixpoint list_to_productions {T} (default : T) (ls : list (string * T)) : string -> T
-      := match ls with
-           | nil => fun _ => default
-           | (str, t)::ls' => fun s => if string_dec str s
-                                       then t
-                                       else list_to_productions default ls' s
-         end.
-
-    Delimit Scope item_scope with item.
-    Bind Scope item_scope with item.
-    Delimit Scope production_scope with production.
-    Delimit Scope production_assignment_scope with prod_assignment.
-    Bind Scope production_scope with production.
-    Delimit Scope productions_scope with productions.
-    Delimit Scope productions_assignment_scope with prods_assignment.
-    Bind Scope productions_scope with productions.
-    Notation "n0 ::== r0" := ((n0 : string)%string, (r0 : productions _)%productions) (at level 100) : production_assignment_scope.
-    Notation "[[[ x ;; .. ;; y ]]]" :=
-      (list_to_productions (nil::nil) (cons x%prod_assignment .. (cons y%prod_assignment nil) .. )) : productions_assignment_scope.
-
     Local Open Scope string_scope.
-    Notation "<< x | .. | y >>" :=
-      (@cons (production _) (x)%production .. (@cons (production _) (y)%production nil) .. ) : productions_scope.
-
-    Notation "$< x $ .. $ y >$" := (cons (NonTerminal _ x) .. (cons (NonTerminal _ y) nil) .. ) : production_scope.
 
     Definition ab_star_grammar : grammar Ascii.ascii :=
       {| Start_symbol := "ab_star";

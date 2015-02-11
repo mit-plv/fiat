@@ -1,3 +1,22 @@
+SRC_GRAMMAR_MODULES := \
+	Parsers/ContextFreeGrammar\
+	Parsers/ContextFreeGrammarProperties\
+	Parsers/ContextFreeGrammarNotations
+
+SRC_PARSERS_MODULES := \
+	Parsers/StringLike\
+	Parsers/StringLike/Core\
+	Parsers/StringLike/Properties\
+	Parsers/StringLike/Examples\
+	Parsers/Specification\
+	Parsers/DependentlyTyped\
+	Parsers/DependentlyTypedMinimal\
+	Parsers/BooleanRecognizer\
+	Parsers/WellFoundedParse\
+	Parsers/MinimalParse\
+	Parsers/BooleanRecognizerCorrect\
+	$(SRC_GRAMMAR_MODULES)
+
 SRC_MODULES    := \
 	Common \
 	Computation/Notations \
@@ -89,19 +108,7 @@ SRC_MODULES    := \
 	Common/String_as_OT\
 	QueryStructure/Refinements/Bags/Bags\
 	QueryStructure/Refinements/AutoDB\
-	Parsers/StringLike\
-	Parsers/StringLike/Core\
-	Parsers/StringLike/Properties\
-	Parsers/StringLike/Examples\
-	Parsers/ContextFreeGrammar\
-	Parsers/ContextFreeGrammarProperties\
-	Parsers/Specification\
-	Parsers/DependentlyTyped\
-	Parsers/DependentlyTypedMinimal\
-	Parsers/BooleanRecognizer\
-	Parsers/WellFoundedParse\
-	Parsers/MinimalParse\
-	Parsers/BooleanRecognizerCorrect
+	$(SRC_PARSERS_MODULES)
 
 EXAMPLE_MODULES := \
 	Bookstore \
@@ -125,6 +132,7 @@ SRC_VS         	:= $(SRC_MODULES:%=%.v)
 PREFIXED_SRC_VS	:= $(SRC_MODULES:%=src/%.v)
 SRC_VDS	   	:= $(SRC_MODULES:%=src/%.v.d)
 PREFIXED_SRC_VOS:= $(SRC_MODULES:%=src/%.vo)
+PREFIXED_SRC_PARSERS_VOS:= $(SRC_PARSERS_MODULES:%=src/%.vo)
 
 
 EXAMPLE_VS          := $(EXAMPLE_MODULES:%=%.v)
@@ -149,11 +157,13 @@ TIMECMD=
 STDTIME=/usr/bin/time -f \"\$$* (user: %e mem: %M ko)\"
 TIMER=\$$(if \$$(TIMED), $(STDTIME), $(TIMECMD))
 
-.PHONY: all sources examples html clean pretty-timed pretty-timed-files pdf doc clean-doc
+.PHONY: all sources examples html clean pretty-timed pretty-timed-files pdf doc clean-doc parsers
 
 sources : $(PREFIXED_SRC_VOS)
 
 examples : $(PREFIXED_EXAMPLE_VOS)
+
+parsers : $(PREFIXED_SRC_PARSERS_VOS)
 
 pdf: Overview/ProjectOverview.pdf Overview/library.pdf
 

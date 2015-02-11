@@ -26,7 +26,7 @@ Section sound.
             (remove_name_dec : forall ls name, is_valid_name ls name = true
                                                -> names_listT_R (remove_name ls name) ls)
             (ntl_wf : well_founded names_listT_R)
-            (split_stateT : Type)
+            (split_stateT : String -> Type)
             (remove_name_1
              : forall ls ps ps',
                  is_valid_name (remove_name ls ps) ps' = true
@@ -168,7 +168,7 @@ Section sound.
                    (prod : production CharType)
           := match prod return Type with
                | nil => True
-               | it::its => ({ s1s2 : StringWithSplitState String split_stateT * StringWithSplitState String split_stateT
+               | it::its => ({ s1s2 : String * String
                                       & (fst s1s2 ++ snd s1s2 =s str)
                                         * (minimal_parse_of_item _ G initial_names_data is_valid_name remove_name str0 valid1 (fst s1s2) it)
                                         * (minimal_parse_of_production _ G initial_names_data is_valid_name remove_name str0 valid2 (snd s1s2) its) }%type)
@@ -259,6 +259,8 @@ Section sound.
                                     => @split_string_for_production_complete v1 v2 {| string_val := s ; state_val := st |} H p (existT _ (a, b) (p0, p1, p2)))
                    | [ H : forall a b, is_true (string_val a ++ string_val b =s _ ++ _) -> _ |- _ ]
                      => specialize (fun st0 st1 => H {| state_val := st0 |} {| state_val := st1 |} (proj2 (@bool_eq_correct _ _ _ _) eq_refl))
+                   | [ H : forall a b, is_true (a ++ b =s _ ++ _) -> _ |- _ ]
+                     => specialize (H _ _ (proj2 (@bool_eq_correct _ _ _ _) eq_refl))
                    | [ H : ?a -> ?b, H' : ?a |- _ ] => specialize (H H')
                    | [ H : forall v : names_listT, @?a v -> @?b v |- _ ]
                      => pose proof (H valid); pose proof (H initial_names_data); clear H
@@ -358,9 +360,9 @@ Section sound.
           -> parse_of _ G str prods.
         Proof.
           change (forall str0 prod, split_list_correctT str0 (split_string_for_production str0 prod)) in split_string_for_production_correct.
-          destruct str as [str ?].
-          revert str pf; induction prods; simpl.
-          { unfold parse_productions; simpl; intros ?? H; exfalso; clear -H.
+          destruct str as [str st]; simpl in *.
+          revert str pf st; induction prods; simpl.
+          { unfold parse_productions; simpl; intros ??? H; exfalso; clear -H.
             abstract discriminate. }
           { unfold parse_productions in *; simpl in *.
             parse_productions_t. }
@@ -379,9 +381,9 @@ Section sound.
           -> parse_productions split_string_for_production split_string_for_production_correct str0 parse_name str pf prods = true.
         Proof.
           change (forall str0 prod, split_list_correctT str0 (split_string_for_production str0 prod)) in split_string_for_production_correct.
-          destruct str as [str ?].
-          revert str pf; induction prods; simpl.
-          { unfold parse_productions; simpl; intros ?? H; exfalso; clear -H.
+          destruct str as [str st]; simpl in *.
+          revert str pf st; induction prods; simpl.
+          { unfold parse_productions; simpl; intros ??? H; exfalso; clear -H.
             abstract inversion H. }
           { unfold parse_productions in *; simpl in *.
             parse_productions_t. }
@@ -656,8 +658,8 @@ Section brute_force_spliter.
   Proof.
     intros; hnf.
     destruct prod; trivial.
-    intros [ s1s2 [ [ p1 p2 ] p3 ] ].
-    exists s1s2.
+    intros [ [s1 s2] [ [ p1 p2 ] p3 ] ].
+    exists ({| string_val := s1 ; state_val := I |}, {| string_val := s2 ; state_val := I |}).
     abstract (
         repeat split; try assumption;
         apply make_all_single_splits_complete_helper;
