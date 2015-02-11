@@ -47,9 +47,8 @@ Section recursive_descent_parser.
                              is_valid_nonterminal_name ls nonterminal_name = true
                              -> nonterminal_names_listT_R (remove_nonterminal_name ls nonterminal_name) ls;
       ntl_wf : well_founded nonterminal_names_listT_R }.
-  Class parser_computational_dataT :=
-    { premethods :> parser_computational_predataT;
-      split_stateT : String -> Type;
+  Class parser_computational_dataT' `{parser_computational_predataT} :=
+    { split_stateT : String -> Type;
       split_string_for_production
       : forall (str0 : StringWithSplitState String split_stateT) (prod : production CharType),
           list (StringWithSplitState String split_stateT * StringWithSplitState String split_stateT);
@@ -58,6 +57,10 @@ Section recursive_descent_parser.
           List.Forall (fun s1s2 : StringWithSplitState String split_stateT * StringWithSplitState String split_stateT
                        => (fst s1s2 ++ snd s1s2 =s str0) = true)
                       (split_string_for_production str0 prod) }.
+
+  Class parser_computational_dataT :=
+    { premethods :> parser_computational_predataT;
+      methods' :> parser_computational_dataT' }.
 
   Section generic.
     Section parts.
