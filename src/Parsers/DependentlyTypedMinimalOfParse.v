@@ -14,9 +14,48 @@ Section recursive_descent_parser.
           (String : string_like CharType)
           (G : grammar CharType).
   Context {premethods : parser_computational_predataT}.
-Locate StringWithSplitState.
-  Local Instance methods : @parser_computational_dataT _ String
-    := {| split_stateT s := { parse_of
+  Variable orig_methods : @parser_computational_dataT' CharType String premethods.
+  Variable gen_state : forall s, split_stateT s.
+
+  Axiom prod_dec : forall p1 p2 : production CharType, {p1 = p2} + {p1 <> p2}.
+  Local Program Instance methods : @parser_computational_dataT' _ String premethods
+    := {| split_stateT s := option { prod : production CharType & parse_of_production String G s prod };
+          split_string_for_production s p
+          := _ |}.
+  Next Obligation.
+    refine (let orig_splits := map (fun s1s2 =>
+                                      ({| string_val := string_val (fst s1s2);
+                                          state_val := None |},
+                                       {| string_val := string_val (snd s1s2);
+                                          state_val := None |}))
+                                   (@split_string_for_production _ _ _ orig_methods {| state_val := (gen_state (string_val s)) |} p) in
+            match state_val s with
+              | None => orig_splits
+              | Some st => if prod_dec (projT1 st) p
+                           then _
+                           else orig_splits
+            end).
+    { destruct st as [p' parse]; simpl in *.
+      destruct parse.
+      { exact nil. }
+      { let str := match goal with H : parse_of_item _ _ ?str ?pat |- _ => constr:str end in
+        let strs := match goal with H : parse_of_production _ _ ?strs ?pats |- _  => constr:strs end in
+        let pats := match goal with H : parse_of_production _ _ ?strs ?pats |- _  => constr:pats end in
+        let p' := match goal with H : parse_of_production _ _ ?strs ?pats |- _  => constr:H end in
+        refine (({| string_val := str ; state_val := _ |},
+                 {| string_val := strs ; state_val := Some (existT _ pats p') |})::nil).
+        { let p' := match goal with H : parse_of_item _ _ _ _ |- _  => constr:H end in
+          destruct p'.
+          { exact None. }
+          {
+ }
+          [ | refine (existT _ pats _) ].
+
+
+
+    Print parse_of_production.
+
+  Print parser_computational_dataT'.
       split_string_for_production
       : forall (str0 : StringWithSplitState String split_stateT) (prod : production CharType),
           list (StringWithSplitState String split_stateT * StringWithSplitState String split_stateT);
