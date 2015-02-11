@@ -149,12 +149,23 @@ Section cfg.
                   @minimal_parse_of str0 valid str prods -> parse_of String G str prods)
              {str0 valid str name} (p : @minimal_parse_of_name str0 valid str name)
   : parse_of_item String G str (NonTerminal _ name)
-    := match p in (@minimal_parse_of_name str0 valid str name) return parse_of_item String G str (NonTerminal _ name) with
-         | MinParseNonTerminalStrLt str0 valid name str pf p'
-           => ParseNonTerminal name (@parse_of__of__minimal_parse_of _ _ _ _ p')
-         | MinParseNonTerminalStrEq str valid name H p'
-           => ParseNonTerminal name (@parse_of__of__minimal_parse_of _ _ _ _ p')
-       end.
+    := ParseNonTerminal
+         name
+         (@parse_of__of__minimal_parse_of
+            _ _ _ _
+            (match p as p in (@minimal_parse_of_name str0 valid str name)
+                   return minimal_parse_of (match p with
+                                              | MinParseNonTerminalStrLt _ _ _ _ _ _ => _
+                                              | MinParseNonTerminalStrEq _ _ _ _ _ => _
+                                            end)
+                                           (match p with
+                                              | MinParseNonTerminalStrLt _ _ _ _ _ _ => _
+                                              | MinParseNonTerminalStrEq _ _ _ _ _ => _
+                                            end)
+                                           str (Lookup G name) with
+               | MinParseNonTerminalStrLt str0 valid name str pf p' => p'
+               | MinParseNonTerminalStrEq str valid name H p' => p'
+             end)).
 
   Definition parse_of_item__of__minimal_parse_of_item'
              (parse_of__of__minimal_parse_of
