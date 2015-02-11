@@ -19,7 +19,7 @@ Section recursive_descent_parser.
                                is_valid_name ls name = true
                                -> names_listT_R (remove_name ls name) ls)
           (ntl_wf : well_founded names_listT_R)
-          (split_stateT : Type).
+          (split_stateT : String -> Type).
 
   Section bool.
     Context (split_string_for_production
@@ -274,7 +274,7 @@ Section recursive_descent_parser_list.
   Qed.
 End recursive_descent_parser_list.
 
-Definition String_with_no_state {CharType} (String : string_like CharType) := StringWithSplitState String True.
+Definition String_with_no_state {CharType} (String : string_like CharType) := StringWithSplitState String (fun _ => True).
 
 Definition default_String_with_no_state {CharType} (String : string_like CharType) (s : String) : String_with_no_state String
   := {| string_val := s ; state_val := I |}.
