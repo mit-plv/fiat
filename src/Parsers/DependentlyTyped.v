@@ -68,6 +68,26 @@ Section recursive_descent_parser.
           let P f := List.Forall f (@split_string_for_production it its str0) in
           P (fun s1s2 => (fst s1s2 ++ snd s1s2 =s str0) = true) }.
 
+  Class parser_computational_strdataT `{parser_computational_dataT'} :=
+    { lower_nonterminal_name_state
+      : forall {nonterminal_name} s,
+          split_stateT (NonTerminal _ nonterminal_name) s -> split_stateT (include_nonterminal_name _ nonterminal_name) s;
+
+      lower_string_head
+      : forall {prod : production CharType}
+               {prods : productions CharType}
+               s,
+          split_stateT (prod::prods : productions CharType) s -> split_stateT prod s;
+      lower_string_tail
+      : forall {prod : production CharType}
+               {prods : productions CharType}
+               s,
+          split_stateT (prod::prods : productions CharType) s -> split_stateT prods s;
+
+      lift_lookup_nonterminal_name_state
+      : forall {nonterminal_name} s,
+          split_stateT (include_nonterminal_name _ nonterminal_name) s -> split_stateT (Lookup G nonterminal_name) s }.
+
   Class parser_computational_dataT :=
     { premethods :> parser_computational_predataT;
       methods' :> parser_computational_dataT' }.
@@ -140,9 +160,7 @@ Section recursive_descent_parser.
 
       Class parser_dependent_types_extra_dataT :=
         { types :> parser_dependent_types_dataT;
-          lower_nonterminal_name_state
-          : forall {nonterminal_name} s,
-              split_stateT (NonTerminal _ nonterminal_name) s -> split_stateT (include_nonterminal_name _ nonterminal_name) s;
+          strdata :> parser_computational_strdataT;
           lift_success
           : forall {str0 valid} nonterminal_name {str},
               @T_nonterminal_name_success _ str0 valid nonterminal_name (lift_StringWithSplitState lower_nonterminal_name_state str)
@@ -174,17 +192,6 @@ Section recursive_descent_parser.
               let ret := @T_production_success _ str0 valid (it::its) str in
               str ≤s str0 -> s1 ++ s2 =s str -> a1 -> a2 -> ret;
 
-          lower_string_head
-          : forall {prod : production CharType}
-                   {prods : productions CharType}
-                   s,
-              split_stateT (prod::prods : productions CharType) s -> split_stateT prod s;
-          lower_string_tail
-          : forall {prod : production CharType}
-                   {prods : productions CharType}
-                   s,
-              split_stateT (prod::prods : productions CharType) s -> split_stateT prods s;
-
           fail_parse_nil_productions
           : forall {str0 valid str}, T_productions_failure str0 valid [] str;
           lift_prods_success_head
@@ -205,10 +212,6 @@ Section recursive_descent_parser.
               a1 -> a2 -> ret;
 
           H_prod_split : forall str0 valid it its str, split_string_lift_T str0 valid it its str (split_string_for_production it its str);
-
-          lift_lookup_nonterminal_name_state
-          : forall {nonterminal_name} s,
-              split_stateT (include_nonterminal_name _ nonterminal_name) s -> split_stateT (Lookup G nonterminal_name) s;
 
 
           lift_parse_nonterminal_name_success_lt
