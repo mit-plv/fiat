@@ -58,10 +58,10 @@ Definition Order := TupleDef BookStoreSchema sORDERS.
 Definition BookStoreSig : ADTSig :=
   ADTsignature {
       Constructor "Init" : unit -> rep,
-      (* Method "PlaceOrder" : rep x Order -> rep x bool, *)
-      (*Method "DeleteOrder" : rep x nat -> rep x list Order, *)
-      (* Method "AddBook" : rep x Book -> rep x bool, *)
-      (* Method "DeleteBook" : rep x nat -> rep x list Book, *)
+      Method "PlaceOrder" : rep x Order -> rep x bool,
+      Method "DeleteOrder" : rep x nat -> rep x list Order,
+      Method "AddBook" : rep x Book -> rep x bool,
+      Method "DeleteBook" : rep x nat -> rep x list Book,
       Method "GetTitles" : rep x string -> rep x list string,
       Method "NumOrders" : rep x string -> rep x nat
     }.
@@ -72,17 +72,17 @@ Definition BookStoreSpec : ADT BookStoreSig :=
   QueryADTRep BookStoreSchema {
     Def Constructor "Init" (_ : unit) : rep := empty,
 
-    (*update "PlaceOrder" ( o : Order ) : bool :=
-        Insert o into sORDERS, *)
+    update "PlaceOrder" ( o : Order ) : bool :=
+        Insert o into sORDERS,
 
-    (*update "DeleteOrder" ( oid : nat ) : list Order :=
-      Delete o from sORDERS where o!sISBN = oid, *)
+    update "DeleteOrder" ( oid : nat ) : list Order :=
+      Delete o from sORDERS where o!sISBN = oid,
 
-    (*update "AddBook" ( b : Book ) : bool :=
-        Insert b into sBOOKS , *)
+    update "AddBook" ( b : Book ) : bool :=
+        Insert b into sBOOKS ,
 
-    (* update "DeleteBook" ( id : nat ) : list Book :=
-        Delete book from sBOOKS where book!sISBN = id , *)
+     update "DeleteBook" ( id : nat ) : list Book :=
+        Delete book from sBOOKS where book!sISBN = id ,
 
     query "GetTitles" ( author : string ) : list string :=
       For (b in sBOOKS)
@@ -143,14 +143,41 @@ Proof.
     finish honing.
 }
 
-  (*hone method "DeleteOrder".
+  hone method "DeleteOrder".
   {
     implement_QSDeletedTuples find_simple_search_term.
     simplify with monad laws; cbv beta; simpl.
     implement_EnsembleDelete_AbsR find_simple_search_term.
     simplify with monad laws.
     finish honing.
-  } *)
+  }
+
+  hone method "DeleteBook".
+  {
+    simplify with monad laws.
+    implement_In.
+    setoid_rewrite refine_Join_Enumerate_Swap; eauto.
+    convert_Where_to_search_term.
+
+    find_equivalent_search_term 1 find_simple_search_term.
+    find_equivalent_search_term_pair 1 0 find_simple_search_term_dep.
+
+    convert_filter_to_find.
+    Implement_Aggregates.
+    simplify with monad laws.
+
+    implement_Delete_branches.
+    finish honing.
+  }
+
+    hone method "AddBook".
+  {
+    repeat first
+           [setoid_rewrite FunctionalDependency_symmetry
+           | fundepToQuery; try simplify with monad laws
+           | foreignToQuery; try simplify with monad laws
+           | setoid_rewrite refine_trivial_if_then_else; simplify with monad laws
+           ].
 
   FullySharpenQueryStructure BookStoreSchema Index.
 

@@ -13,87 +13,8 @@ Require Import Coq.Strings.String Coq.omega.Omega Coq.Lists.List Coq.Logic.Funct
         ADTSynthesis.Common.Ensembles.EnsembleListEquivalence
         ADTSynthesis.QueryStructure.Implementation.Operations.General.QueryRefinements
         ADTSynthesis.QueryStructure.Implementation.Operations.General.InsertRefinements
-        ADTSynthesis.QueryStructure.Implementation.Operations.General.QueryStructureRefinements.
-
-Class List_Query_eq (As : list Type) :=
-  { As_Query_eq : ilist Query_eq As}.
-
-Instance nil_List_Query_eq :
-  List_Query_eq [] :=
-  {| As_Query_eq := inil _ |}.
-
-Instance cons_List_Query_eq
-         {A : Type}
-         {As : list Type}
-         {A_Query_eq : Query_eq A}
-         {As_Query_eq' : List_Query_eq As}
-:
-  List_Query_eq (A :: As) :=
-  {| As_Query_eq := icons _ A_Query_eq As_Query_eq |}.
-
-Fixpoint Tuple_Agree_eq'
-         (h : Heading)
-         (attrlist : list (Attributes h))
-         (attr_eq_dec : ilist (fun attr => Query_eq (Domain h attr)) attrlist)
-         (tup tup' : @Tuple h)
-: bool :=
-  match attr_eq_dec with
-      | inil => true
-      | icons a attrlist' a_eq_dec attr_eq_dec' =>
-        if @A_eq_dec _ a_eq_dec (tup a) (tup' a)
-        then Tuple_Agree_eq' attr_eq_dec' tup tup'
-        else false
-  end.
-
-Program Fixpoint ilist_map {A C : Type} {B : C -> Type}
-           (As : list A)
-           (f : A -> C)
-           (il : ilist B (map f As))
-: ilist (fun a => B (f a)) As :=
-  match As as As' return ilist B (map f As') -> ilist (fun a => B (f a)) As' with
-      | nil => fun _ => inil _
-      | a :: As' => fun il => icons _ (ilist_hd il)
-                                    (ilist_map As' f (ilist_tl il))
-  end il.
-
-Program Definition Tuple_Agree_eq h (attrlist : list (Attributes h))
-        (attr_eq_dec : List_Query_eq (map (Domain h) attrlist)) tup tup' :=
-  Tuple_Agree_eq' (ilist_map _ _ (@As_Query_eq _ attr_eq_dec)) tup tup'.
-
-Lemma Tuple_Agree_eq_dec h attrlist attr_eq_dec (tup tup' : @Tuple h) :
-  tupleAgree tup tup' attrlist <->
-  Tuple_Agree_eq attrlist attr_eq_dec tup tup' = true.
-Proof.
-  destruct attr_eq_dec.
-  induction attrlist; unfold tupleAgree in *; simpl in *; simpl;
-  intuition;
-  unfold Tuple_Agree_eq in *; simpl in *; find_if_inside; simpl; subst; eauto;
-  try (eapply IHattrlist; eauto; fail);
-  discriminate.
-Qed.
-
-Lemma Tuple_Agree_eq_dec' h attrlist attr_eq_dec (tup tup' : @Tuple h) :
-  ~ tupleAgree tup tup' attrlist <->
-  Tuple_Agree_eq attrlist attr_eq_dec tup tup' = false.
-Proof.
-  destruct attr_eq_dec.
-  induction attrlist; unfold tupleAgree in *; simpl in *; simpl;
-  intuition;
-  unfold Tuple_Agree_eq in *; simpl in *; intuition;
-  find_if_inside; simpl; subst; eauto.
-  try (eapply IHattrlist; intros; eapply H).
-  intros; intuition; subst; auto.
-  eapply IHattrlist; intros; eauto.
-Qed.
-
-Definition Tuple_Agree_dec h attrlist
-           (attr_eq_dec : List_Query_eq (map (Domain h) attrlist)) (tup tup' : @Tuple h)
-: {tupleAgree tup tup' attrlist} + {~ tupleAgree tup tup' attrlist}.
-Proof.
-  case_eq (Tuple_Agree_eq attrlist attr_eq_dec tup tup').
-  left; eapply Tuple_Agree_eq_dec; eauto.
-  right; eapply Tuple_Agree_eq_dec'; eauto.
-Defined.
+        ADTSynthesis.QueryStructure.Implementation.Operations.General.QueryStructureRefinements
+        ADTSynthesis.QueryStructure.Implementation.Constraints.ConstraintChecksRefinements.
 
 Fixpoint Check_List_Prop {A}
          (cond : A -> bool)
@@ -165,15 +86,15 @@ Proof.
   (P := fun tup' : Tuple => tupleAgree tup tup' attrlist'
                             -> tupleAgree tup tup' attrlist) in H; eauto.
   intuition.
-  apply (proj1 (Tuple_Agree_eq_dec _ _ _ _ )) in H3;
+  apply (proj1 (Tuple_Agree_eq_dec _ _ _ _ _ )) in H3;
     rewrite H3 in * ; simpl in *; eapply Tuple_Agree_eq_dec; eauto.
-  destruct (Tuple_Agree_dec _ attr_eq_dec tup a); auto;
-  [ apply (proj1 (Tuple_Agree_eq_dec _ _ _ _ )) in t; rewrite t, orb_true_r
-  | apply (proj1 (Tuple_Agree_eq_dec' _ _ _ _ )) in n; rewrite n, orb_false_r]; auto.
-  destruct (Tuple_Agree_dec _ attr_eq_dec' tup a); auto;
-  [ apply (proj1 (Tuple_Agree_eq_dec _ _ _ _ )) in t; rewrite t
-  | apply (proj1 (Tuple_Agree_eq_dec' _ _ _ _ )) in n0; rewrite n0]; auto.
-  elimtype False; eapply (Tuple_Agree_eq_dec' _ attr_eq_dec); eauto.
+  destruct (Tuple_Agree_dec _ _ attr_eq_dec tup a); auto;
+  [ apply (proj1 (Tuple_Agree_eq_dec _ _ _ _ _ )) in t; rewrite t, orb_true_r
+  | apply (proj1 (Tuple_Agree_eq_dec' _ _ _ _ _ )) in n; rewrite n, orb_false_r]; auto.
+  destruct (Tuple_Agree_dec _ _ attr_eq_dec' tup a); auto;
+  [ apply (proj1 (Tuple_Agree_eq_dec _ _ _ _ _ )) in t; rewrite t
+  | apply (proj1 (Tuple_Agree_eq_dec' _ _ _ _ _ )) in n0; rewrite n0]; auto.
+  elimtype False; eapply (Tuple_Agree_eq_dec' _ _ attr_eq_dec); eauto.
   apply H2; eapply Tuple_Agree_eq_dec; eauto.
 Qed.
 
@@ -195,9 +116,9 @@ Proof.
           ~ tupleAgree tup tup' attrlist' \/
           tupleAgree tup tup' attrlist) in H; eauto.
   destruct_ex; intuition; eauto.
-  intros; destruct (Tuple_Agree_dec _ attr_eq_dec' tup a); auto;
-  [ apply (proj1 (Tuple_Agree_eq_dec _ _ _ _ )) in t; rewrite t |
-    apply (proj1 (Tuple_Agree_eq_dec' _ _ _ _ )) in n; rewrite n];
+  intros; destruct (Tuple_Agree_dec _ _ attr_eq_dec' tup a); auto;
+  [ apply (proj1 (Tuple_Agree_eq_dec _ _ _ _ _ )) in t; rewrite t |
+    apply (proj1 (Tuple_Agree_eq_dec' _ _ _ _ _ )) in n; rewrite n];
   simpl; intuition.
   right;   eapply Tuple_Agree_eq_dec; eauto.
   elimtype False; apply H1; eapply Tuple_Agree_eq_dec; eauto.
@@ -324,14 +245,14 @@ Lemma refine_foreign_key_check
                        (exists tup' : @IndexedTuple h,
                           rel tup' /\
                           P (indexedElement tup'))}
-              (ret (Check_List_Ex_Prop dec l)).
+              (ret (Check_List_Ex_Prop (DecideableEnsembles.dec) l)).
 Proof.
   intros.
   unfold refine; intros; inversion_by computes_to_inv;
   subst; econstructor.
-  case_eq (Check_List_Ex_Prop dec l); simpl; intros.
+  case_eq (Check_List_Ex_Prop DecideableEnsembles.dec l); simpl; intros.
   destruct H as [l' [fresh_l' [l'_eq [equiv_l_l' _]]]]; subst.
-  destruct (Check_List_Ex_Prop_dec dec P _ dec_decides_P H0);
+  destruct (Check_List_Ex_Prop_dec DecideableEnsembles.dec P _ dec_decides_P H0);
     intuition.
   apply in_map_iff in H1; destruct_ex; intuition; subst.
   eexists; intuition; eauto; eapply equiv_l_l'; eauto.

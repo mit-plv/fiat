@@ -840,6 +840,13 @@ Tactic Notation "drop" "constraints" "from" "insert" constr(methname) :=
     [ | reflexivity |
       unfold pointwise_relation; intros;
       repeat remove_trivial_insertion_constraints;
+      (* These simplify and implement nontrivial constraint checks *)
+      repeat first
+             [setoid_rewrite FunctionalDependency_symmetry
+             | fundepToQuery; try simplify with monad laws
+             | foreignToQuery; try simplify with monad laws
+             | setoid_rewrite refine_trivial_if_then_else; simplify with monad laws
+             ];
       higher_order_1_reflexivity ];
     finish honing
   | ].

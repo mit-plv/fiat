@@ -964,3 +964,30 @@ Ltac FullySharpenQueryStructure qs_schema Index :=
   end; simpl; intros;
   [repeat split; intros; try exact tt; implement_bag_constructors
   | repeat split; intros; try exact tt; implement_bag_methods].
+
+    Ltac implement_Delete_branches :=
+    repeat setoid_rewrite refine_If_Then_Else_Bind;
+    match goal with
+        |- context[If _ Then ?t Else ?e] =>
+        let B := type of t in
+        makeEvar
+          B
+          ltac:(fun t' =>
+                  makeEvar B
+                           ltac:(fun e' =>
+                                   setoidreplace (refine e e') idtac;
+                                 [ setoidreplace (refine t t') idtac
+                                 | ] ) )
+    end;
+    [
+    | (* Refine the then branch *)
+    implement_QSDeletedTuples find_simple_search_term;
+      simplify with monad laws;
+      cbv beta; simpl;
+      implement_EnsembleDelete_AbsR find_simple_search_term;
+      simplify with monad laws;
+      reflexivity
+    | (* Refine the else branch *)
+    simplify with monad laws;
+      simpl; commit; reflexivity
+    ].

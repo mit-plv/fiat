@@ -1,5 +1,6 @@
 Require Export ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureNotations ADTSynthesis.QueryStructure.Specification.Operations.Query.
 Require Import Coq.Lists.List Coq.Arith.Compare_dec Coq.Bool.Bool String
+        ADTSynthesis.Common.BoolFacts
         ADTSynthesis.Common.PermutationFacts
         ADTSynthesis.Common.ListMorphisms
         ADTSynthesis.QueryStructure.Specification.Operations.FlattenCompList
@@ -29,8 +30,8 @@ Ltac pose_string_ids :=
              let str := fresh "StringId" in
              set (String R R') as str in *
            | |- context [ ``(?R) ] =>
-             let idx := fresh in
-             set ``(R) as fresh in *
+             let idx := fresh "idx" in
+             set ``(R) as idx in *
          end.
 
 Section ConstraintCheckRefinements.
@@ -38,6 +39,74 @@ Section ConstraintCheckRefinements.
   Hint Unfold SatisfiesCrossRelationConstraints
        SatisfiesAttributeConstraints
        SatisfiesTupleConstraints.
+
+Fixpoint Tuple_Agree_eq'
+         {h : Heading}
+         {attrlist : list (Attributes h)}
+         (attr_eq_dec : ilist (fun attr => Query_eq (Domain h attr)) attrlist)
+         (tup tup' : @Tuple h)
+: bool :=
+  match attr_eq_dec with
+      | inil => true
+      | icons a attrlist' a_eq_dec attr_eq_dec' =>
+        if @A_eq_dec _ a_eq_dec (tup a) (tup' a)
+        then Tuple_Agree_eq' attr_eq_dec' tup tup'
+        else false
+  end.
+
+Program Fixpoint ilist_map {A C : Type} {B : C -> Type}
+           (As : list A)
+           (f : A -> C)
+           (il : ilist B (map f As))
+: ilist (fun a => B (f a)) As :=
+  match As as As' return ilist B (map f As') -> ilist (fun a => B (f a)) As' with
+      | nil => fun _ => inil _
+      | a :: As' => fun il => icons _ (ilist_hd il)
+                                    (ilist_map As' f (ilist_tl il))
+  end il.
+
+Class List_Query_eq (As : list Type) :=
+  { As_Query_eq : ilist Query_eq As}.
+
+Program Definition Tuple_Agree_eq {h} (attrlist : list (Attributes h))
+        (attr_eq_dec : List_Query_eq (map (Domain h) attrlist)) tup tup' :=
+  Tuple_Agree_eq' (ilist_map _ _ (@As_Query_eq _ attr_eq_dec)) tup tup'.
+
+Lemma Tuple_Agree_eq_dec h attrlist attr_eq_dec (tup tup' : @Tuple h) :
+  tupleAgree tup tup' attrlist <->
+  Tuple_Agree_eq attrlist attr_eq_dec tup tup' = true.
+Proof.
+  destruct attr_eq_dec.
+  induction attrlist; unfold tupleAgree in *; simpl in *; simpl;
+  intuition;
+  unfold Tuple_Agree_eq in *; simpl in *; find_if_inside; simpl; subst; eauto;
+  try (eapply IHattrlist; eauto; fail);
+  discriminate.
+Qed.
+
+Lemma Tuple_Agree_eq_dec' h attrlist attr_eq_dec (tup tup' : @Tuple h) :
+  ~ tupleAgree tup tup' attrlist <->
+  Tuple_Agree_eq attrlist attr_eq_dec tup tup' = false.
+Proof.
+  destruct attr_eq_dec.
+  induction attrlist; unfold tupleAgree in *; simpl in *; simpl;
+  intuition;
+  unfold Tuple_Agree_eq in *; simpl in *; intuition;
+  find_if_inside; simpl; subst; eauto.
+  try (eapply IHattrlist; intros; eapply H).
+  intros; intuition; subst; auto.
+  eapply IHattrlist; intros; eauto.
+Qed.
+
+Definition Tuple_Agree_dec h attrlist
+           (attr_eq_dec : List_Query_eq (map (Domain h) attrlist)) (tup tup' : @Tuple h)
+: {tupleAgree tup tup' attrlist} + {~ tupleAgree tup tup' attrlist}.
+Proof.
+  case_eq (Tuple_Agree_eq attrlist attr_eq_dec tup tup').
+  left; eapply Tuple_Agree_eq_dec; eauto.
+  right; eapply Tuple_Agree_eq_dec'; eauto.
+Defined.
+
 
   Lemma tupleAgree_sym :
     forall (heading: Heading) tup1 tup2 attrs,
@@ -743,16 +812,17 @@ Section ConstraintCheckRefinements.
            DeletedTuples
            attrlist1 attrlist2,
       refine {b | (forall tup tup',
-                          GetUnConstrRelation qs Ridx tup
-                          -> GetUnConstrRelation qs Ridx tup'
-                          -> (FunctionalDependency_P attrlist1 attrlist2 (indexedElement tup) (indexedElement tup')))
-                  -> decides b (MutationPreservesTupleConstraints
+                     elementIndex tup <> elementIndex tup'
+                     -> GetUnConstrRelation qs Ridx tup
+                     -> GetUnConstrRelation qs Ridx tup'
+                     -> (FunctionalDependency_P attrlist1 attrlist2 (indexedElement tup) (indexedElement tup')))
+                  -> decides b (Mutate.MutationPreservesTupleConstraints
                                   (EnsembleDelete (GetUnConstrRelation qs Ridx) DeletedTuples)
                                   (FunctionalDependency_P attrlist1 attrlist2)
                                )}
              (ret true).
   Proof.
-    unfold MutationPreservesTupleConstraints, FunctionalDependency_P;
+    unfold Mutate.MutationPreservesTupleConstraints, FunctionalDependency_P;
     intros * v Comp_v; inversion_by computes_to_inv; subst.
     constructor; simpl.
     intros.
@@ -858,7 +928,7 @@ Section ConstraintCheckRefinements.
                             DeletedTuples tup ->
                             DeletedTuples tup')
            (attr_eq_dec : Query_eq (Domain (schemaHeading (QSGetNRelSchema _ Ridx)) attr))
-                      (P : Prop)
+           (P : Prop)
            (ForeignKey_P_P :
               P -> (forall tup' : IndexedTuple,
                         GetUnConstrRelation qs Ridx' tup' ->
@@ -1085,51 +1155,49 @@ Proof.
     [ rewrite dec_decides_P in eqdec | rewrite Decides_false in eqdec ]; intuition.
 Qed.
 
-Lemma refine_constraint_check_into_query :
-  forall {schm tbl} P (P_dec : DecideableEnsemble P),
-  forall (c : UnConstrQueryStructure schm),
-    refine
-      (Pick (fun (b : bool) =>
-               decides b
-                       (exists tup2: @IndexedTuple _,
-                          (GetUnConstrRelation c tbl tup2 /\ P (indexedTuple tup2)))))
-      (Bind
-         (Count (For (UnConstrQuery_In c tbl (fun tup => Where (P tup) Return tup))))
-         (fun count => ret (negb (beq_nat count 0)))).
-Proof.
-  unfold refine, Count, UnConstrQuery_In; intros * excl * pick_comp ** .
-  inversion_by computes_to_inv; subst.
+    Lemma refine_constraint_check_into_query :
+    forall {schm tbl} P (c : UnConstrQueryStructure schm)
+           (P_dec : DecideableEnsemble P),
+        refine
+          (Pick (fun (b : bool) =>
+                   decides b
+                           (exists tup2: @IndexedTuple _,
+                              (GetUnConstrRelation c tbl tup2 /\ P (indexedTuple tup2)))))
+          (Bind
+             (Count (For (UnConstrQuery_In c tbl (fun tup => Where (P tup) Return tup))))
+             (fun count => ret (negb (beq_nat count 0)))).
+    Proof.
+      Local Transparent Count.
+      unfold refine, Count, UnConstrQuery_In; intros * excl * pick_comp ** .
+      inversion_by computes_to_inv; subst.
 
-  constructor.
+      constructor.
 
-  destruct (Datatypes.length x0) eqn:eq_length;
-    destruct x0 as [ | head tail ]; simpl in *; try discriminate; simpl.
+      destruct (Datatypes.length x0) eqn:eq_length;
+        destruct x0 as [ | head tail ]; simpl in *; try discriminate; simpl.
 
-  pose proof (For_computes_to_nil _ (GetUnConstrRelation c tbl) H0).
+      pose proof (For_computes_to_nil _ (GetUnConstrRelation c tbl) H0).
+      rewrite not_exists_forall; intro a; rewrite not_and_implication; intros.
+      apply H; trivial.
 
-  rewrite not_exists_forall; intro a; rewrite not_and_implication; intros.
-  apply H; trivial.
+      apply For_computes_to_In with (x := head) in H0; try solve [intuition].
+      destruct H0 as ( p & [ x0 ( in_ens & _eq ) ] ); subst.
+      eexists; split; eauto.
 
-  apply For_computes_to_In with (x := head) in H0; try solve [intuition].
-  destruct H0 as ( p & [ x0 ( in_ens & _eq ) ] ); subst.
-  eexists; split; eauto.
-
-  apply decidable_excl; assumption.
-Qed.
+      apply decidable_excl; assumption.
+    Qed.
 
 Definition refine_foreign_key_check_into_query {schm tbl} :=
   @refine_constraint_check_into_query schm tbl.
 
 Lemma refine_functional_dependency_check_into_query :
-  forall {schm : QueryStructureSchema} {tbl} ref args1 args2,
+  forall {schm : QueryStructureSchema} {tbl} ref args1 args2 (c : UnConstrQueryStructure schm),
     DecideableEnsemble (fun x : Tuple => tupleAgree_computational ref x args1 /\
                                          ~ tupleAgree_computational ref x args2) ->
-    forall c : UnConstrQueryStructure schm,
       ((forall tup' : IndexedTuple,
           GetUnConstrRelation c tbl tup'
-          -> tupleAgree ref (indexedElement tup') args1
-          -> tupleAgree ref (indexedElement tup') args2) <->
-       (forall tup' : IndexedTuple,
+          -> FunctionalDependency_P args2 args1 ref (indexedElement tup'))
+       <-> (forall tup' : IndexedTuple,
           ~ (GetUnConstrRelation c tbl tup'
              /\ tupleAgree ref (indexedElement tup') args1
              /\ ~ tupleAgree ref (indexedElement tup') args2))) ->
@@ -1138,8 +1206,7 @@ Lemma refine_functional_dependency_check_into_query :
                  decides b
                          (forall tup' : IndexedTuple,
                             GetUnConstrRelation c tbl tup' ->
-                            tupleAgree ref (indexedElement tup') args1 ->
-                            tupleAgree ref (indexedElement tup') args2)))
+                            FunctionalDependency_P args2 args1 ref (indexedElement tup'))))
         (Bind (Count
                  For (UnConstrQuery_In c tbl
                                        (fun tup : Tuple =>
@@ -1150,17 +1217,16 @@ Lemma refine_functional_dependency_check_into_query :
 Proof.
   intros * is_dec ** .
 
-  setoid_replace (forall tup',
-                    GetUnConstrRelation c tbl tup' ->
-                    tupleAgree ref (indexedElement tup') args1
-                    -> tupleAgree ref (indexedElement tup') args2)
+  setoid_replace (forall tup', GetUnConstrRelation c tbl tup' ->
+                               tupleAgree ref (indexedElement tup') args1
+                               -> tupleAgree ref (indexedElement tup') args2)
   with           (forall tup', ~ (GetUnConstrRelation c tbl tup' /\
                                   tupleAgree ref (indexedElement tup') args1 /\
                                   ~ tupleAgree ref (indexedElement tup') args2)); eauto.
 
   setoid_rewrite refine_decide_negation.
   setoid_rewrite tupleAgree_equivalence.
-  setoid_rewrite (refine_constraint_check_into_query
+  setoid_rewrite (@refine_constraint_check_into_query _ _
                     (fun (x: Tuple ) => tupleAgree_computational ref x args1 /\
                                         ~ tupleAgree_computational ref x args2)); try assumption.
 
@@ -1170,6 +1236,80 @@ Proof.
   reflexivity.
 Qed.
 
+Lemma refine_functional_dependency_check_into_query' :
+  forall {schm : QueryStructureSchema} {tbl} ref args1 args2 (c : UnConstrQueryStructure schm),
+    DecideableEnsemble (fun x : Tuple => tupleAgree_computational x ref args1 /\
+                                         ~ tupleAgree_computational x ref args2) ->
+      ((forall tup' : IndexedTuple,
+          GetUnConstrRelation c tbl tup'
+          -> FunctionalDependency_P args2 args1 (indexedElement tup') ref)
+       <-> (forall tup' : IndexedTuple,
+          ~ (GetUnConstrRelation c tbl tup'
+             /\ tupleAgree (indexedElement tup') ref args1
+             /\ ~ tupleAgree (indexedElement tup') ref args2))) ->
+      refine
+        (Pick (fun (b : bool) =>
+                 decides b
+                         (forall tup' : IndexedTuple,
+                            GetUnConstrRelation c tbl tup' ->
+                            FunctionalDependency_P args2 args1 (indexedElement tup') ref)))
+        (Bind (Count
+                 For (UnConstrQuery_In c tbl
+                                       (fun tup : Tuple =>
+                                          Where (tupleAgree_computational tup ref args1 /\
+                                                 ~ tupleAgree_computational tup ref args2)
+                                                Return tup)))
+              (fun count => ret (beq_nat count 0))).
+Proof.
+  intros * is_dec ** .
+
+  setoid_replace (forall tup', GetUnConstrRelation c tbl tup' ->
+                               tupleAgree (indexedElement tup') ref args1
+                               -> tupleAgree (indexedElement tup') ref args2)
+  with           (forall tup', ~ (GetUnConstrRelation c tbl tup' /\
+                                  tupleAgree (indexedElement tup') ref args1 /\
+                                  ~ tupleAgree (indexedElement tup') ref args2)); eauto.
+
+  setoid_rewrite refine_decide_negation.
+  setoid_rewrite tupleAgree_equivalence.
+  setoid_rewrite (@refine_constraint_check_into_query _ _
+                    (fun (x: Tuple ) => tupleAgree_computational x ref args1 /\
+                                        ~ tupleAgree_computational x ref args2)); try assumption.
+
+  Opaque Query_For Count.
+  simplify with monad laws.
+  setoid_rewrite negb_involutive.
+  reflexivity.
+Qed.
+
+
+Theorem FunctionalDependency_symmetry
+: forall A H (f : _ -> _ -> Comp A) (P : _ -> Prop) attrlist1 attrlist2 n,
+    refine (x1 <- {b | decides b
+                               (forall tup' : @IndexedTuple H,
+                                  P tup'
+                                  -> FunctionalDependency_P attrlist1 attrlist2 n (indexedElement tup'))};
+            x2 <- {b | decides b (forall tup' : @IndexedTuple H,
+                                    P tup'
+                                    -> FunctionalDependency_P attrlist1 attrlist2 (indexedElement tup') n)};
+            f x1 x2)
+           (x1 <- {b | decides b (forall tup' : @IndexedTuple H,
+                                    P tup'
+                                    -> FunctionalDependency_P attrlist1 attrlist2 n (indexedElement tup'))};
+            f x1 x1).
+Proof.
+  unfold refine, FunctionalDependency_P; intros.
+  apply computes_to_inv in H0; firstorder.
+  apply computes_to_inv in H0; firstorder.
+  econstructor.
+  eauto.
+  econstructor.
+  econstructor.
+  instantiate (1 := x).
+  eapply decide_eq_iff_iff_morphism; eauto.
+  unfold tupleAgree; intuition auto using sym_eq.
+  assumption.
+Qed.
 
 Ltac simplify_trivial_SatisfiesSchemaConstraints :=
   simpl;
@@ -1199,3 +1339,99 @@ Ltac simplify_trivial_SatisfiesCrossRelationConstraints :=
                    unfold If_Then_Else ]
 
     end.
+
+Ltac foreignToQuery :=
+  match goal with
+    | [ |- context[{ b' | decides b' (ForeignKey_P ?AttrID ?AttrID' ?tupmap ?n (@GetUnConstrRelation ?qs_schema ?or ?TableID))}] ]
+      =>
+      setoid_rewrite (@refine_constraint_check_into_query
+                        qs_schema TableID
+                        (fun tup : Tuple => n AttrID = tupmap (tup AttrID')) or _);
+        simplify with monad laws; cbv beta; simpl
+  end.
+
+Ltac dec_tauto :=
+    clear; intuition eauto;
+    eapply Tuple_Agree_eq_dec;
+    match goal with
+      | [ |- ?E = true ] => case_eq E; intuition idtac; [ exfalso ]
+    end;
+    match goal with
+      | [ H : _ |- _ ] => apply Tuple_Agree_eq_dec' in H; solve [ eauto ]
+    end.
+
+Ltac prove_decidability_for_functional_dependencies :=
+  simpl; econstructor; intros;
+  try setoid_rewrite <- eq_nat_dec_bool_true_iff;
+  try setoid_rewrite <- eq_N_dec_bool_true_iff;
+  try setoid_rewrite <- eq_Z_dec_bool_true_iff;
+  try setoid_rewrite <- string_dec_bool_true_iff;
+  setoid_rewrite and_True;
+  repeat progress (
+           try setoid_rewrite <- andb_true_iff;
+           try setoid_rewrite not_true_iff_false;
+           try setoid_rewrite <- negb_true_iff);
+  rewrite bool_equiv_true;
+  reflexivity.
+
+Hint Extern 100 (DecideableEnsemble _) => prove_decidability_for_functional_dependencies : typeclass_instances.
+
+Global Instance nil_List_Query_eq :
+  List_Query_eq [] :=
+  {| As_Query_eq := inil _ |}.
+
+Global Instance cons_List_Query_eq
+         {A : Type}
+         {As : list Type}
+         {A_Query_eq : Query_eq A}
+         {As_Query_eq' : List_Query_eq As}
+:
+  List_Query_eq (A :: As) :=
+  {| As_Query_eq := icons _ A_Query_eq As_Query_eq |}.
+
+Ltac fundepToQuery :=
+  match goal with
+    | [ |- context[Pick
+                     (fun b => decides
+                                 b
+                                 (forall tup', GetUnConstrRelation ?or ?Ridx _
+                                               -> @FunctionalDependency_P ?heading ?attrlist1 ?attrlist2 ?n _))] ] =>
+      let H' := fresh in
+      let H'' := fresh in
+      let refine_fundep := fresh in
+      assert ((forall tup' : IndexedTuple,
+                 GetUnConstrRelation or Ridx tup'
+                 -> @FunctionalDependency_P heading attrlist1 attrlist2 n (indexedElement tup'))
+              <-> (forall tup' : IndexedTuple,
+                     ~ (GetUnConstrRelation or Ridx tup'
+                        /\ tupleAgree n (indexedElement tup') attrlist2
+                        /\ ~ tupleAgree n (indexedElement tup') attrlist1))) as H'
+          by (unfold FunctionalDependency_P; dec_tauto);
+        assert (DecideableEnsemble (fun x : Tuple =>
+                                      tupleAgree_computational n x attrlist2 /\
+                                      ~ tupleAgree_computational n x attrlist1)) as H''
+          by prove_decidability_for_functional_dependencies;
+        pose proof (@refine_functional_dependency_check_into_query _ _ n attrlist2 attrlist1 or H'' H')
+          as refine_fundep; simpl in refine_fundep; setoid_rewrite refine_fundep; clear refine_fundep H'' H'
+    | [ |- context[Pick
+                     (fun b => decides
+                                 b
+                                 (forall tup', GetUnConstrRelation ?or ?Ridx _
+                                               -> @FunctionalDependency_P ?heading ?attrlist1 ?attrlist2 _ ?n ))] ] =>
+      let H' := fresh in
+      let H'' := fresh in
+      let refine_fundep := fresh in
+      assert ((forall tup' : IndexedTuple,
+                 GetUnConstrRelation or Ridx tup'
+                 -> @FunctionalDependency_P heading attrlist1 attrlist2 (indexedElement tup') n)
+              <-> (forall tup' : IndexedTuple,
+                     ~ (GetUnConstrRelation or Ridx tup'
+                        /\ tupleAgree (indexedElement tup') n attrlist2
+                        /\ ~ tupleAgree (indexedElement tup') n attrlist1))) as H'
+          by (unfold FunctionalDependency_P; dec_tauto);
+        assert (DecideableEnsemble (fun x : Tuple =>
+                                      tupleAgree_computational x n attrlist2 /\
+                                      ~ tupleAgree_computational x n attrlist1)) as H''
+          by prove_decidability_for_functional_dependencies;
+        pose proof (@refine_functional_dependency_check_into_query' _ _ n attrlist2 attrlist1 or H'' H') as refine_fundep; simpl in refine_fundep; setoid_rewrite refine_fundep; clear refine_fundep H'' H'
+  end; try simplify with monad laws.
