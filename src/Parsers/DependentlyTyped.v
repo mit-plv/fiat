@@ -86,8 +86,7 @@ Section recursive_descent_parser.
               Type;
 
           split_string_lift_T (str0 str : StringWithSplitState String split_stateT) (valid : nonterminal_names_listT) (it : item CharType) (its : production CharType)
-                              (split : production CharType ->
-                                       list
+                              (split : list
                                          (StringWithSplitState String split_stateT *
                                           StringWithSplitState String split_stateT))
           := str ≤s str0
@@ -98,7 +97,7 @@ Section recursive_descent_parser.
                                    ((T_item_failure str0 s1 valid it * T_production_failure str0 s2 valid its)
                                     + (T_item_success str0 s1 valid it * T_production_failure str0 s2 valid its)
                                     + (T_item_failure str0 s1 valid it * T_production_success str0 s2 valid its))%type)
-                                (split (it::its)))
+                                split)
              -> T_production_failure str0 str valid (it::its);
 
           H_prod_split_T str0 str valid prod split :=
@@ -136,7 +135,7 @@ Section recursive_descent_parser.
           lift_prods_success_tail : forall {str0 str valid prod prods}, @T_productions_success _ str0 str valid prods -> @T_productions_success _ str0 str valid (prod::prods);
           lift_prods_failure : forall {str0 str valid prod prods}, @T_production_failure _ str0 str valid prod -> @T_productions_failure _ str0 str valid prods -> @T_productions_failure _ str0 str valid (prod::prods);
 
-          H_prod_split : forall str0 str valid prod, H_prod_split_T str0 str valid prod (split_string_for_production str);
+          H_prod_split : forall str0 str valid prod, H_prod_split_T str0 str valid prod (split_string_for_production str prod);
 
           lift_parse_nonterminal_name_success_lt : forall {str0 str : StringWithSplitState String split_stateT} {valid nonterminal_name}, Length str < Length str0 -> @T_productions_success _ str str initial_nonterminal_names_data (Lookup G nonterminal_name) -> @T_nonterminal_name_success _ str0 str valid nonterminal_name;
           lift_parse_nonterminal_name_failure_lt : forall {str0 str : StringWithSplitState String split_stateT} {valid nonterminal_name}, Length str < Length str0 -> @T_productions_failure _ str str initial_nonterminal_names_data (Lookup G nonterminal_name) -> @T_nonterminal_name_failure _ str0 str valid nonterminal_name;
@@ -204,7 +203,7 @@ Section recursive_descent_parser.
                                   StringWithSplitState String split_stateT))
                      (parse_production : forall str1 : StringWithSplitState String split_stateT,
                                            str1 ≤s str0 -> T_production str1 its)
-                     (H_prod_split' : H_prod_split_T str0 str valid (it::its) (fun _ => splits))
+                     (H_prod_split' : H_prod_split_T str0 str valid (it::its) splits)
                      (splits_correct : List.Forall (fun s1s2 : StringWithSplitState String split_stateT * StringWithSplitState String split_stateT
                                                     => (fst s1s2 ++ snd s1s2 =s str) = true)
                                                    splits)
