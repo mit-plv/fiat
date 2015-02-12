@@ -156,9 +156,9 @@ Section recursive_descent_parser.
       end.
 
     Section parts.
-      Let alt_option h valid str
+      Let alt_option valid str
         := { nonterminal_name : _ & (is_valid_nonterminal_name valid nonterminal_name = false /\ P nonterminal_name)
-                                    * { p : p_parse str (Lookup G nonterminal_name) | size_of_parse (projT1 p) < h } }%type.
+                                    * p_parse str (Lookup G nonterminal_name) }%type.
 
       Section common.
         Section types.
@@ -178,14 +178,13 @@ Section recursive_descent_parser.
               := prefix str match state_val str with
                               | None => ret
                               | Some p => ({ p' : ret
-                                                  & (size_of_parse_item (parse_of_item__of__minimal_parse_of_item (MinParseNonTerminal p')) <= size_of_parse_item (projT1 p))
-                                                    * Forall_parse_of_item P (parse_of_item__of__minimal_parse_of_item (MinParseNonTerminal p')) })%type
+                                                  & Forall_parse_of_item P (parse_of_item__of__minimal_parse_of_item (MinParseNonTerminal p')) })%type
                             end.
 
             Definition T_nonterminal_name_failure : Type
               := prefix str match state_val str with
                               | None => ret -> False
-                              | Some p => alt_option (size_of_parse_item (projT1 p)) valid str
+                              | Some p => alt_option valid str
                             end.
           End T_nonterminal_name.
 
@@ -198,13 +197,12 @@ Section recursive_descent_parser.
               := prefix str match state_val str with
                               | None => ret
                               | Some p => ({ p' : ret
-                                                  & (size_of_parse_item (parse_of_item__of__minimal_parse_of_item p') <= size_of_parse_item (projT1 p))
-                                                    * Forall_parse_of_item P (parse_of_item__of__minimal_parse_of_item p') })%type
+                                                  & Forall_parse_of_item P (parse_of_item__of__minimal_parse_of_item p') })%type
                             end.
             Definition T_item_failure : Type
               := prefix str match state_val str with
                               | None => ret -> False
-                              | Some p => alt_option (size_of_parse_item (projT1 p)) valid str
+                              | Some p => alt_option valid str
                             end.
           End T_item.
 
@@ -217,13 +215,12 @@ Section recursive_descent_parser.
               := prefix str match state_val str with
                               | None => ret
                               | Some p => ({ p' : ret
-                                                  & (size_of_parse_production (parse_of_production__of__minimal_parse_of_production p') <= size_of_parse_production (projT1 p))
-                                                    * Forall_parse_of_production P (parse_of_production__of__minimal_parse_of_production p') })%type
+                                                  & Forall_parse_of_production P (parse_of_production__of__minimal_parse_of_production p') })%type
                             end.
             Definition T_production_failure : Type
               := prefix str match state_val str with
                               | None => ret -> False
-                              | Some p => alt_option (size_of_parse_production (projT1 p)) valid str
+                              | Some p => alt_option valid str
                             end.
           End T_production.
 
@@ -236,14 +233,13 @@ Section recursive_descent_parser.
               := prefix str match state_val str with
                               | None => ret
                               | Some p => ({ p' : ret
-                                                  & (size_of_parse (parse_of__of__minimal_parse_of p') <= size_of_parse (projT1 p))
-                                                    * Forall_parse_of P (parse_of__of__minimal_parse_of p') })%type
+                                                  & Forall_parse_of P (parse_of__of__minimal_parse_of p') })%type
                             end.
 
             Definition T_productions_failure : Type
               := prefix str match state_val str with
                               | None => ret -> False
-                              | Some p => alt_option (size_of_parse (projT1 p)) valid str
+                              | Some p => alt_option valid str
                             end.
           End T_productions.
         End types.
@@ -366,7 +362,6 @@ Section recursive_descent_parser.
           idtac;
           match goal with
             | _ => intro
-            | _ => progress simpl in *
             | [ H : ?A -> ?B, H' : ?A |- _ ] => specialize (H H')
             | [ H : _ ≤s _ -> ?B, H' : _ |- _ ]
               => first [ specialize (H (transitivity (str_le1_append _ _ _) H'))
@@ -377,6 +372,7 @@ Section recursive_descent_parser.
             | [ H : prod _ _ |- _ ] => destruct H
             | _ => progress subst
             | _ => change unit; constructor
+            | _ => progress simpl in *
             | [ H : _ |- _ ] =>
               match goal with
                 | [ H' : _ = H |- _ ] => destruct H'
@@ -384,7 +380,6 @@ Section recursive_descent_parser.
             | [ H : (_ =s _) = true |- _ ] => apply bool_eq_correct in H
             | [ H : is_true (_ =s _) |- _ ] => apply bool_eq_correct in H
             | [ H : ?A -> False |- _ ] => let A' := (eval hnf in A) in change (A' -> False) in H
-            | _ => t''0
             | [ x : _ |- @sigT ?A _ ]
               => exists (MinParseNonTerminal x : A)
             | [ |- @sigT ?A _ ]
@@ -394,9 +389,13 @@ Section recursive_descent_parser.
               => exists (MinParseProductionCons H x y : A)
             | [ H : parse_of_item _ _ ?s (Terminal ?ch) |- _ ] => atomic s; inversion H
             | [ H : parse_of_production _ _ ?s []  |- _ ] => atomic s; inversion H
-            | [ |- (_ * _)%type ] => split
+            | [ H : parse_of _ _ _ []  |- _ ] => exfalso; clear -H; abstract inversion H
             | _ => progress trivial
             | _ => progress auto with arith
+            | [ a : _, b : Forall_parse_of_production _ _ |- Forall_parse_of_production _ _ ]
+              => exact (a, b)
+            | _ => t''0
+            | [ |- (_ * _)%type ] => split
           end.
 
         (*Local Ltac should_
@@ -445,8 +444,19 @@ Section recursive_descent_parser.
         Next Obligation. t. Defined.
         Next Obligation. t. Defined.
         Next Obligation. t. Defined.
+        Obligation 8. t. Defined.
+        repeat t''.
+        inversion x.
+ Defined.
+        Obligations.
         Next Obligation. Show Profile.
-                         t''.
+                         repeat t''.
+
+                         Time match goal with
+
+                         end.
+
+                         exact (f2, f0).
                          t''.
                          t''.
                          t''.
