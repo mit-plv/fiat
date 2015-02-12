@@ -172,7 +172,7 @@ COMPILER_MODULES := \
 
 EXAMPLE_MODULES := \
 	QueryStructure/BookstorewDelegationSemiAutomatic
-#	FiniteSetsADTS/FiniteSetsExamples \
+#	FiniteSetsADTs/FiniteSetsExamples \
 	ExtractingFiniteSetsExamples \
 	QueryStructure/Bookstore \
 	QueryStructure/BookstoreSemiAutomatic \
