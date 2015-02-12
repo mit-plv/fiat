@@ -362,24 +362,21 @@ Section recursive_descent_parser.
           idtac;
           match goal with
             | _ => intro
-            | [ H : ?A -> ?B, H' : ?A |- _ ] => specialize (H H')
-            | [ H : _ ≤s _ -> ?B, H' : _ |- _ ]
+            | [ H : False |- _ ] => solve [ destruct H ]
+            | _ => solve [ change unit; constructor ]
+            | [ a : _, b : Forall_parse_of_production _ _ |- Forall_parse_of_production _ _ ]
+              => exact (a, b)
+            | [ H : parse_of _ _ _ []  |- _ ] => solve [ exfalso; clear -H; abstract inversion H ]
+            | [ H : {| state_val := Some _ |} = {| state_val := None |} |- _ ]
+              => solve [ destruct (neq_some_none_state_val H) ]
+            | [ H : {| state_val := None |} = {| state_val := Some _ |} |- _ ]
+              => solve [ destruct (neq_some_none_state_val (eq_sym H)) ]
+            | [ H : _ \/ False |- _ ] => apply or_False in H
+            | [ H : _ ≤s _ -> ?B, H' : _ \/ _ |- _ ]
               => first [ specialize (H (transitivity (str_le1_append _ _ _) H'))
                        | specialize (H (transitivity (str_le2_append _ _ _) H')) ]
             | _ => progress hnf in *
             | _ => progress eauto with minimal_instance_db
-            | [ H : sigT _ |- _ ] => destruct H
-            | [ H : prod _ _ |- _ ] => destruct H
-            | _ => progress subst
-            | _ => change unit; constructor
-            | _ => progress simpl in *
-            | [ H : _ |- _ ] =>
-              match goal with
-                | [ H' : _ = H |- _ ] => destruct H'
-              end
-            | [ H : (_ =s _) = true |- _ ] => apply bool_eq_correct in H
-            | [ H : is_true (_ =s _) |- _ ] => apply bool_eq_correct in H
-            | [ H : ?A -> False |- _ ] => let A' := (eval hnf in A) in change (A' -> False) in H
             | [ x : _ |- @sigT ?A _ ]
               => exists (MinParseNonTerminal x : A)
             | [ |- @sigT ?A _ ]
@@ -387,13 +384,30 @@ Section recursive_descent_parser.
                        | (exists (MinParseProductionNil _ _ _ _ _ _ _ : A)) ]
             | [ x : minimal_parse_of_item _ _ _ _ _ _ _ _ _, y : minimal_parse_of_production _ _ _ _ _ _ _ _ _, H : _ \/ _ |- @sigT ?A _ ]
               => exists (MinParseProductionCons H x y : A)
+            | [ x : minimal_parse_of_production _ _ _ _ _ _ _ _ _
+                |- @sigT ?A _ ]
+              => exists (MinParseHead _ x : A); assumption
+            | [ x : minimal_parse_of _ _ _ _ _ _ _ _ _
+                |- @sigT ?A _ ]
+              => exists (MinParseTail _ x : A); assumption
+            | [ H : sigT _ |- _ ] => destruct H
+            | [ H : prod _ _ |- _ ] => destruct H
+            | [ H : and _ _ |- _ ] => destruct H
+            | [ H : (_, _) = (_, _) |- _ ] => apply path_prod' in H
+            | _ => progress subst
+            | _ => progress simpl in *
+            | [ H : _ |- _ ] =>
+              match goal with
+                | [ H' : _ = H |- _ ] => destruct H'
+              end
+            | [ H : (_ =s _) = true |- _ ] => apply bool_eq_correct in H
+            | [ H : is_true (_ =s _) |- _ ] => apply bool_eq_correct in H
             | [ H : parse_of_item _ _ ?s (Terminal ?ch) |- _ ] => atomic s; inversion H
             | [ H : parse_of_production _ _ ?s []  |- _ ] => atomic s; inversion H
-            | [ H : parse_of _ _ _ []  |- _ ] => exfalso; clear -H; abstract inversion H
+            | [ H : ?A -> ?B, H' : ?A |- _ ] => specialize (H H')
+            | [ H : ?A -> False |- _ ] => let A' := (eval hnf in A) in change (A' -> False) in H
             | _ => progress trivial
             | _ => progress auto with arith
-            | [ a : _, b : Forall_parse_of_production _ _ |- Forall_parse_of_production _ _ ]
-              => exact (a, b)
             | _ => t''0
             | [ |- (_ * _)%type ] => split
           end.
@@ -427,6 +441,33 @@ Section recursive_descent_parser.
                    )
           end.
 
+        Lemma cons_success
+              (str0 : String) (valid : nonterminal_names_listT)
+              (it : item CharType) (its : production CharType)
+              (s1 : StringWithSplitState String (split_stateT it))
+              (s2 : StringWithSplitState String (split_stateT its))
+              (str : StringWithSplitState String (split_stateT (it :: its : production CharType)))
+        : let a1 := DependentlyTyped.T_item_success str0 valid it s1 in
+          let a2 := DependentlyTyped.T_production_success str0 valid its s2 in
+          let ret :=
+              DependentlyTyped.T_production_success str0 valid (it :: its) str in
+          str ≤s str0 ->
+          s1 ++ s2 =s str ->
+          In (s1, s2) (split_string_for_production it its str) -> a1 -> a2 -> ret.
+        Proof.
+          destruct str as [ ? [ ] ]; simpl.
+          { intros ? ? H.
+            apply or_False in H.
+            apply path_prod' in H.
+            simpl in H.
+            destruct H as [H' H''].
+            apply neq_some_none_state_val in H'.
+            apply neq_some_none_state_val in H''.
+            simpl in *.
+            repeat t''. }
+          { repeat t''. }
+        Defined.
+
         Local Ltac t :=
           repeat t''0;
           try solve [ exfalso; t_false
@@ -437,14 +478,124 @@ Section recursive_descent_parser.
         Start Profiling.
         Time Global Program Instance minimal_parser_dependent_types_extra_data
                (*(split_list_complete : forall str0 valid it its str pf, @split_list_completeT str0 valid valid it its str pf (split_string_for_production it its str))*)
-        : @parser_dependent_types_extra_dataT _ String G.
+        : @parser_dependent_types_extra_dataT _ String G
+          := {| cons_success := cons_success |}.
         Next Obligation. t. Defined.
         Next Obligation. t. Defined.
         Next Obligation. t. Defined.
         Next Obligation. t. Defined.
         Next Obligation. t. Defined.
         Next Obligation. t. Defined.
+        Next Obligation. t. Defined.
+        Obligations.
+        Next Obligation.
+          repeat t''.
+          subst_body.
+          repeat t''.
+          dependent destruction x; t.
+          repeat t''.
+
+          Print minimal_parse_of.
+          Focus 2.
+          lazymatch goal with
+          end.
+
+
+
+        Obligation 16. t. repeat t''.
+        subst_body. simpl in *.
+ Defined. subst_body. repeat t''.
+
+ Defined.
+        Next Obligation.
+repeat t''.
+
+ Defined.
+        Next Obligation. t. Defined.
+        Next Obligation. t. Defined.
+
+
+        Defined.
+        Next Obligation. t. Defined.
+
+          Next Obligation
+          simpl.
+ do 25 try t''.
+                         t''.
+                         t''.
+                         t''.
+                         t''.
+                         t''.
+                         t''.
+                         t''.
+                         t''.
+                         t''.
+                         t''.
+                         t''.
+                         t''.
+                         t''.
+                         t''.
+                         t''.
+                         t''.
+                         t''.
+                         subst_body.
+                         simpl in *.
+                         t''.
+                         t''.
+                         t''.
+                         t''.
+                         t''.
+                         t''.
+                         t''.
+                         t''.
+                         Show Profile.
+                         t''.
+
+      (s1 s2 : StringWithSplitState A (fun x => option (P x)))
+:
+                         match goal with
+                           | [ H : {| state_val := Some _ |} = {| state_val := None |} |- _ ]
+                             => exfalso; clear -H
+                         end.
+                         apply (f_equal_dep (@state_val _ _)) in H0.
+                         refine (_, f0).
+                         exact f.
+                         match goal with
+            | [ b : Forall_parse_of_production _ _ |- Forall_parse_of_production _ _ ]
+              => refine (_, b)
+end.
+                         t''.
+
+                         lazymatch goal with
+                         | [ x : minimal_parse_of_item _ _ _ _ _ _ _ _ _, y : minimal_parse_of_production _ _ _ _ _ _ _ _ _, H : _ \/ _ |- _ ] => idtac end.
+                         match goal with [ |- @sigT ?A _ ]
+                           => idtac
+                         end.
+
+exists (MinParseProductionCons H x y : A)
+
+t000.
+Show Profile.
+                         :
+                         SearchAbout ((_, _) = (_, _)).
+                         t''.
+                         t''.
+                         t''.
+                         t''.
+                         t''.
+                         t''.
+                         do 10 try t''.
+                         t''.
+                         let H := match goal with H : _ \/ False |- _ => constr:H end.
+
+                         t''.
+                         Show Profile.
+          simpl.
         Obligation 8. t. Defined.
+        Obligation 9. t. Defined.
+        Obligation 10. t. Defined.
+        Obligation 8. t. Defined.
+        Obligations.
         repeat t''.
         inversion x.
  Defined.

@@ -170,3 +170,16 @@ Lemma strle_to_lt_nonempty_l {CharType} {String : string_like CharType}
       (H' : a ++ b ≤s c)
 : Length a < Length c.
 Proof. lt_nonempty_t. Qed.
+
+Lemma neq_some_none_state_val {CharType} {String : string_like CharType} {P}
+      {s1 s2 : StringWithSplitState String (fun x => option (P x))}
+      (H : s1 = s2)
+: match state_val s1, state_val s2 with
+    | None, Some _ => False
+    | Some _, None => False
+    | _, _ => True
+  end.
+Proof.
+  destruct H.
+  destruct (state_val s1); exact I.
+Qed.
