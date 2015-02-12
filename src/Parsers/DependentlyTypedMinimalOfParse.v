@@ -21,11 +21,20 @@ Section recursive_descent_parser.
   Let P : string -> Prop
     := fun p => is_valid_nonterminal_name initial_nonterminal_names_data p = true.
 
+  Let p_parse_item s it
+    := { p' : parse_of_item String G s it & Forall_parse_of_item P p' }.
+  Let p_parse_production s p
+    := { p' : parse_of_production String G s p & Forall_parse_of_production P p' }.
+  Let p_parse s prods
+    := { p' : parse_of String G s prods & Forall_parse_of P p' }.
+  Let p_parse_nonterminal_name s nonterminal_name
+    := { p' : parse_of_item String G  s (NonTerminal _ nonterminal_name) & Forall_parse_of_item P p' }.
+
   Definition split_parse_of_production {str it its}
-             (p : { p' : parse_of_production String G str (it::its) & Forall_parse_of_production P p' })
+             (p : p_parse_production str (it::its))
   : { s1s2 : String * String & (fst s1s2 ++ snd s1s2 =s str)
-                               * { p' : parse_of_item String G (fst s1s2) it & Forall_parse_of_item P p' }
-                               * { p' : parse_of_production String G (snd s1s2) its & Forall_parse_of_production P p' } }%type.
+                               * p_parse_item (fst s1s2) it
+                               * p_parse_production (snd s1s2) its }%type.
   Proof.
     destruct p as [p H]; revert p H.
     pattern (it :: its).
@@ -48,15 +57,6 @@ Section recursive_descent_parser.
       { exact (fst H''). }
       { exact (snd H''). } }
   Defined.
-
-  Let p_parse_item s it
-    := { p' : parse_of_item String G s it & Forall_parse_of_item P p' }.
-  Let p_parse_production s p
-    := { p' : parse_of_production String G s p & Forall_parse_of_production P p' }.
-  Let p_parse s prods
-    := { p' : parse_of String G s prods & Forall_parse_of P p' }.
-  Let p_parse_nonterminal_name s nonterminal_name
-    := { p' : parse_of_item String G  s (NonTerminal _ nonterminal_name) & Forall_parse_of_item P p' }.
 
   Local Instance methods' : @parser_computational_dataT' _ String premethods
     := {| split_stateT g s
