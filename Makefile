@@ -171,13 +171,14 @@ COMPILER_MODULES := \
 	FiatToFacade/Compiler
 
 EXAMPLE_MODULES := \
-	FiniteSetsADTS/FiniteSetsExamples \
+	QueryStructure/BookstorewDelegationSemiAutomatic
+#	FiniteSetsADTS/FiniteSetsExamples \
 	ExtractingFiniteSetsExamples \
 	QueryStructure/Bookstore \
 	QueryStructure/BookstoreSemiAutomatic \
 	QueryStructure/Weather \
-	QueryStructure/Stocks
-#	ProcessScheduler \
+	QueryStructure/Stocks \
+	ProcessScheduler \
 	CacheADT/KVEnsembles \
 	CacheADT/CacheSpec \
 	CacheADT/CacheRefinements \
