@@ -872,3 +872,27 @@ Ltac hyp_with_head_hnf h
                             let test := constr:(_ : constr_eq_helper h' h) in
                             constr:H
      end.
+
+Lemma or_False {A} (H : A \/ False) : A.
+Proof.
+  destruct H as [ a | [] ].
+  exact a.
+Qed.
+
+Lemma False_or {A} (H : False \/ A) : A.
+Proof.
+  destruct H as [ [] | a ].
+  exact a.
+Qed.
+
+Lemma path_prod {A B} {x y : A * B}
+      (H : x = y)
+: fst x = fst y /\ snd x = snd y.
+Proof.
+  destruct H; split; reflexivity.
+Defined.
+
+Definition path_prod' {A B} {x x' : A} {y y' : B}
+           (H : (x, y) = (x', y'))
+: x = x' /\ y = y'
+  := path_prod H.
