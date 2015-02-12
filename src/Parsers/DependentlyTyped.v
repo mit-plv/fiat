@@ -190,7 +190,7 @@ Section recursive_descent_parser.
               let a1 := @T_item_success _ str0 valid it s1 in
               let a2 := @T_production_success _ str0 valid its s2 in
               let ret := @T_production_success _ str0 valid (it::its) str in
-              str ≤s str0 -> s1 ++ s2 =s str -> a1 -> a2 -> ret;
+              str ≤s str0 -> s1 ++ s2 =s str -> In (s1, s2) (split_string_for_production it its str) -> a1 -> a2 -> ret;
 
           fail_parse_nil_productions
           : forall {str0 valid str}, T_productions_failure str0 valid [] str;
@@ -309,6 +309,7 @@ Section recursive_descent_parser.
                      (splits : list
                                  (StringWithSplitState String (split_stateT it) *
                                   StringWithSplitState String (split_stateT its)))
+                     (splits_included : forall s1s2, In s1s2 splits -> In s1s2 (split_string_for_production it its str))
                      (parse_production : forall str1,
                                            let ret := T_production its str1 in
                                            str1 ≤s str0 -> ret)
@@ -328,13 +329,15 @@ Section recursive_descent_parser.
                                            s1
                                            (@parse_nonterminal_name s1 Hs1)),
                               (@parse_production s2 Hs2) with
-                          | inl p_it, inl p_its => inl (@cons_success _ str0 valid _ _ s1 s2 _ pf _ _ _)
-                          | inl p_it, inr p_its => parse_production_helper it its str pf splits parse_production _ _
-                          | inr p_it, inl p_its => parse_production_helper it its str pf splits parse_production _ _
-                          | inr p_it, inr p_its => parse_production_helper it its str pf splits parse_production _ _
+                          | inl p_it, inl p_its => inl (@cons_success _ str0 valid _ _ s1 s2 _ pf _ _ _ _)
+                          | inl p_it, inr p_its => parse_production_helper it its str pf splits _ parse_production _ _
+                          | inr p_it, inl p_its => parse_production_helper it its str pf splits _ parse_production _ _
+                          | inr p_it, inr p_its => parse_production_helper it its str pf splits _ parse_production _ _
                         end);
                 clear parse_production_helper;
                 try solve [ assumption
+                          | apply splits_included; left; reflexivity
+                          | intros; apply splits_included; right; assumption
                           | clear -pf splits_correct;
                             abstract (
                                 inversion splits_correct; subst;
@@ -348,7 +351,8 @@ Section recursive_descent_parser.
                           | clear -splits_correct;
                             abstract (inversion splits_correct; subst; assumption)
                           | (intros ? H'; apply H_prod_split'; try assumption; split; [ | exact H' ]);
-                            left_right_t ]. }
+                            left_right_t ].
+              }
             Defined.
           End helper.
 
@@ -368,6 +372,7 @@ Section recursive_descent_parser.
             { exact (@parse_production_helper
                        it its str pf
                        (split_string_for_production it its str)
+                       (fun _ H => H)
                        (@parse_production its)
                        (H_prod_split valid it its _)
                        (split_string_for_production_correct it its str)). }
