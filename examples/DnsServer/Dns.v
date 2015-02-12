@@ -1,10 +1,7 @@
 Require Import AutoDB BagADT.
 Require Import Vector Ascii Bool Bvector List.
 
-Record label :=
-  { length : nat;
-    word : string }.
-Definition name := list label.
+Definition name := list string.
 
 Inductive type := A | CNAME | NS | MX.
 Inductive class := IN | CH | HS.
@@ -19,16 +16,11 @@ Record answer :=
     atype : type;
     aclass : class;
     ttl : nat;
-    rdlength : nat;
     rdata : string }.
 
 Record packet :=
   { id : Bvector 16;
     flags : Bvector 16;
-    qdcount : nat;
-    ancount : nat;
-    nscount : nat;
-    arcount : nat;
     questions : question; (* `list question` in case we can have multiple questions? *)
     answers : list answer;
     authority : list answer;
@@ -39,7 +31,6 @@ Definition sNAME := "Name".
 Definition sTTL := "TTL".
 Definition sCLASS := "Class".
 Definition sTYPE := "Type".
-Definition sDLENGTH := "DLength".
 Definition sDATA := "Data".
 
 Definition DnsSchema :=
@@ -63,14 +54,12 @@ Definition DnsSig : ADTSig :=
   }.
 
 Definition beq_string (p s : string) := if string_dec p s then true else false.
-Definition beq_label (p s : label) :=
-  andb (beq_nat (length p) (length s)) (beq_string (word p) (word s)).
 
 Definition prefixProp (p s : name) := exists ps, List.app p ps = s.
 Fixpoint prefixBool (p s : name) :=
   match p, s with
     | List.nil, _ => true 
-    | List.cons p' ps', List.cons s' ss' => andb (beq_label p' s') (prefixBool ps' ss')
+    | List.cons p' ps', List.cons s' ss' => andb (beq_string p' s') (prefixBool ps' ss')
     | _, _ => false
   end.
 
@@ -81,10 +70,6 @@ Lemma zero_lt_sixteen : lt 0 16. omega. Qed.
 Definition buildempty (p : packet) :=
   {| id := id p;
      flags := replace_order (flags p) zero_lt_sixteen true; (* set QR bit *)
-     qdcount := qdcount p;
-     ancount := 0;
-     nscount := 0;
-     arcount := 0;
      questions := questions p;
      answers := List.nil;
      authority := List.nil;
@@ -95,16 +80,11 @@ Definition toAnswer (t: DnsTuple) :=
      atype := t!sTYPE;
      aclass := t!sCLASS;
      ttl := t!sTTL;
-     rdlength := 0 (* INCORRECT *);
      rdata := t!sDATA |}.
 
 Definition addan (p : packet) (t : DnsTuple) :=
   {| id := id p;
      flags := flags p;
-     qdcount := qdcount p;
-     ancount := (ancount p) + 1;
-     nscount := nscount p;
-     arcount := arcount p;
      questions := questions p;
      answers := (toAnswer t) :: answers p;
      authority := authority p;
@@ -113,10 +93,6 @@ Definition addan (p : packet) (t : DnsTuple) :=
 Definition addns (p : packet) (t : DnsTuple) :=
   {| id := id p;
      flags := flags p;
-     qdcount := qdcount p;
-     ancount := ancount p;
-     nscount := (nscount p) + 1;
-     arcount := arcount p;
      questions := questions p;
      answers := answers p;
      authority := (toAnswer t) :: (authority p);
@@ -139,16 +115,12 @@ Add Parametric Morphism A R i
 Proof.
   simpl; induction i; intros; simpl.
   - assumption.
-  - apply H.
-    apply IHi.
-    + apply H.
-    + apply H0.
+  - apply H; apply IHi; [ apply H | apply H0 ].
 Qed.
 
 Arguments Fix : simpl never.
 
 Notation "'Filter' xs | p" := (Pick (fun xs' => forall x, List.In x xs' <-> List.In x xs /\ p x)) (at level 70) : comp_scope.
-Notation "'if' p ->> s 'otherwise' ->> s' 'fi'" := (Bind (Pick (fun x => x = true <-> p)) (fun x => if x then s else s')) (at level 70).
 Notation "'unique' b , p ->> s 'otherwise' ->> s'" := 
   (Bind (Pick (fun b' => forall b, b' = Some b <-> p)) (fun b' =>
    match b' with
@@ -168,17 +140,18 @@ Definition DnsSpec : ADT DnsSig :=
             Where (prefixProp r!sNAME n)
             Return r;
          bfrs <- Filter rs | (fun x : DnsTuple => upperbound x rs);
-         if forall b, List.In b bfrs -> n = b!sNAME ->> 
+         b <- { b | decides b (forall r, List.In r bfrs -> n = r!sNAME) };
+         if b
+         then
            unique b, List.In b bfrs /\ b!sTYPE = CNAME /\ t <> CNAME ->>
              bfrs' <- Filter bfrs | (fun x : DnsTuple => x!sTYPE = t);
              p' <- rec b!sNAME;
              ret (List.fold_left addan bfrs' p')
            otherwise ->>
              ret (List.fold_left addan bfrs (buildempty p))
-         otherwise ->> 
+         else
            bfrs' <- Filter bfrs | (fun x : DnsTuple => x!sTYPE = NS);
            ret (List.fold_left addns bfrs' (buildempty p))
-         fi
       ) (ret (buildempty p)) (qname (questions p))
   }.
 
@@ -189,11 +162,6 @@ Definition DnsTerm :=
      BagMatchSearchTerm := SearchTerm;
      BagUpdateTermType := name;
      BagApplyUpdateTerm := fun _ x => x |}.
-
-Lemma foo :
-  forall or (n : DnsTuple),
-  refine {b : bool | (forall tup' : @IndexedTuple (QSGetNRelSchemaHeading DnsSchema {| bindex := sCOLLECTIONS |}), (or!sCOLLECTIONS)%QueryImpl tup' -> n!sNAME = (indexedElement tup')!sNAME -> n!sTYPE <> CNAME /\ (indexedElement tup')!sTYPE <> CNAME)}
-         (ret true).
 
 Theorem DnsManual :
   Sharpened DnsSpec.
@@ -213,6 +181,7 @@ Proof.
   hone method "AddData".
   {
     simplify with monad laws.
+  }
   
   hone method "Process".
   {
