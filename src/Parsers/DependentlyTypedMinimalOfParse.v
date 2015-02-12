@@ -18,24 +18,53 @@ Section recursive_descent_parser.
   Variable orig_methods : @parser_computational_dataT' CharType String premethods.
   Variable gen_state : forall (prod : production CharType) s, split_stateT prod s.
 
-  Definition split_parse_of_production {str it its} (p : parse_of_production String G str (it::its))
+  Let P : string -> Prop
+    := fun p => is_valid_nonterminal_name initial_nonterminal_names_data p = true.
+
+  Definition split_parse_of_production {str it its}
+             (p : { p' : parse_of_production String G str (it::its) & Forall_parse_of_production P p' })
   : { s1s2 : String * String & (fst s1s2 ++ snd s1s2 =s str)
-                               * parse_of_item String G (fst s1s2) it
-                               * parse_of_production String G (snd s1s2) its }%type.
+                               * { p' : parse_of_item String G (fst s1s2) it & Forall_parse_of_item P p' }
+                               * { p' : parse_of_production String G (snd s1s2) its & Forall_parse_of_production P p' } }%type.
   Proof.
-    inversion p; subst.
-    eexists (_, _); simpl.
-    repeat esplit; try eassumption.
-    apply bool_eq_correct; reflexivity.
+    destruct p as [p H]; revert p H.
+    pattern (it :: its).
+    match goal with
+      | [ |- ?P ?ls ]
+        => set (prods := ls);
+          change it with (hd it prods);
+          change its with (tl prods);
+          assert (H' : ls = prods) by reflexivity;
+          clearbody prods;
+          simpl
+    end.
+    intro p.
+    destruct p.
+    { exfalso; clear -H'; abstract inversion H'. }
+    { intro H''.
+      eexists (_, _); simpl.
+      repeat split; try match goal with H : _ |- _ => exists H end.
+      { apply bool_eq_correct; reflexivity. }
+      { exact (fst H''). }
+      { exact (snd H''). } }
   Defined.
+
+  Let p_parse_item s it
+    := { p' : parse_of_item String G s it & Forall_parse_of_item P p' }.
+  Let p_parse_production s p
+    := { p' : parse_of_production String G s p & Forall_parse_of_production P p' }.
+  Let p_parse s prods
+    := { p' : parse_of String G s prods & Forall_parse_of P p' }.
+  Let p_parse_nonterminal_name s nonterminal_name
+    := { p' : parse_of_item String G  s (NonTerminal _ nonterminal_name) & Forall_parse_of_item P p' }.
 
   Local Instance methods' : @parser_computational_dataT' _ String premethods
     := {| split_stateT g s
           := option (match g return Type with
-                       | include_item it => parse_of_item String G s it
-                       | include_production p => parse_of_production String G s p
-                       | include_productions prods => parse_of String G s prods
-                       | include_nonterminal_name nonterminal_name => parse_of_item String G  s (NonTerminal _ nonterminal_name)
+                       | include_item it => p_parse_item s it
+                       | include_production p => p_parse_production s p
+                       | include_productions prods => p_parse s prods
+                       | include_nonterminal_name nonterminal_name => p_parse_nonterminal_name s nonterminal_name
                      end);
           split_string_for_production it its s
           := let orig_splits := map (fun s1s2 =>
@@ -68,30 +97,40 @@ Section recursive_descent_parser.
       ).
   Defined.
 
-  Definition parse_of__of__parse_of_item {str nonterminal_name}
-             (p : parse_of_item String G str (NonTerminal CharType nonterminal_name))
-  : parse_of String G str (Lookup G nonterminal_name).
+  Definition parse_of__of__parse_of_item' {str nonterminal_name}
+             (p : p_parse_nonterminal_name str nonterminal_name)
+  : P nonterminal_name * p_parse str (Lookup G nonterminal_name).
   Proof.
-    inversion_clear p; assumption.
+    refine (match projT1 p as p' in parse_of_item _ _ str' it'
+                  return match it' with
+                           | Terminal _ => True
+                           | NonTerminal nonterminal_name' => Forall_parse_of_item P p' -> P nonterminal_name' * p_parse str' (Lookup G nonterminal_name')
+                         end
+            with
+              | ParseTerminal _ => I
+              | ParseNonTerminal _ _ p' => fun H' => (fst H', existT _ p' (snd H'))
+            end (projT2 p)).
   Defined.
+  Definition parse_of__of__parse_of_item {str nonterminal_name} p
+    := snd (@parse_of__of__parse_of_item' str nonterminal_name p).
 
   Local Instance strdata : @parser_computational_strdataT _ String G _ _
     := {| lower_nonterminal_name_state nonterminal_name str st := st;
           lower_string_head prod prods str st
           := match st with
                | None => None
-               | Some p => match p in parse_of _ _ str' prods' return option (parse_of_production _ _ str' (hd prod prods')) with
-                             | ParseHead _ _ _ p' => Some p'
-                             | ParseTail _ _ _ _ => None
-                           end
+               | Some p => match projT1 p as p' in parse_of _ _ str' prods' return Forall_parse_of P p' -> option (p_parse_production str' (hd prod prods')) with
+                             | ParseHead _ _ _ p' => fun H => Some (existT _ p' H)
+                             | ParseTail _ _ _ _ => fun _ => None
+                           end (projT2 p)
              end;
           lower_string_tail prod prods str st
           := match st with
                | None => None
-               | Some p => match p in parse_of _ _ str' prods' return option (parse_of _ _ str' (tl prods')) with
-                             | ParseTail _ _ _ p' => Some p'
-                             | ParseHead _ _ _ _ => None
-                           end
+               | Some p => match projT1 p as p' in parse_of _ _ str' prods' return Forall_parse_of P p' -> option (p_parse str' (tl prods')) with
+                             | ParseTail _ _ _ p' => fun H => Some (existT _ p' H)
+                             | ParseHead _ _ _ _ => fun _ => None
+                           end (projT2 p)
              end;
           lift_lookup_nonterminal_name_state nonterminal_name str := option_map parse_of__of__parse_of_item |}.
 
@@ -117,114 +156,96 @@ Section recursive_descent_parser.
       end.
 
     Section parts.
-      Let P : string -> Prop
-        := fun p => is_valid_nonterminal_name initial_nonterminal_names_data p = true.
-
       Let alt_option h valid str
         := { nonterminal_name : _ & (is_valid_nonterminal_name valid nonterminal_name = false /\ P nonterminal_name)
-                                    * { p : parse_of String G str (Lookup G nonterminal_name)
-                                            & (size_of_parse p < h)
-                                              * Forall_parse_of P p } }%type.
+                                    * { p : p_parse str (Lookup G nonterminal_name) | size_of_parse (projT1 p) < h } }%type.
 
       Section common.
         Section types.
           Context (str0 : String)
                   (valid : nonterminal_names_listT).
 
-          Definition T_nonterminal_name_success (name : string) (str : StringWithSplitState String (split_stateT (include_nonterminal_name _ name))) : Type
-            := let ret := minimal_parse_of_name String G initial_nonterminal_names_data is_valid_nonterminal_name remove_nonterminal_name str0 valid str name in
-               match state_val str with
-                 | None => ret
-                 | Some p =>
-                   (*size_of_parse_item (ParseNonTerminal name p) < h
+          Let prefix str T := (*size_of_parse_item (ParseNonTerminal name p) < h
                          ->*) str ≤s str0
                               -> sub_names_listT is_valid_nonterminal_name valid initial_nonterminal_names_data
-                              -> Forall_parse_of_item P p
-                              -> ({ p' : ret
-                                         & (size_of_parse_item (parse_of_item__of__minimal_parse_of_item (MinParseNonTerminal p')) <= size_of_parse_item p)
-                                           * Forall_parse_of_item P (parse_of_item__of__minimal_parse_of_item (MinParseNonTerminal p')) })%type
-               end.
+                              -> T.
 
-          Definition T_nonterminal_name_failure (name : string) str : Type
-            := match state_val str with
-                 | None => @T_nonterminal_name_success name str -> False
-                 | Some p =>
-                   (*size_of_parse_item (ParseNonTerminal name p) < h
-                         ->*) str ≤s str0
-                              -> sub_names_listT is_valid_nonterminal_name valid initial_nonterminal_names_data
-                              -> Forall_parse_of_item P p
-                              -> alt_option (size_of_parse_item p) valid str
-               end.
+          Section T_nonterminal_name.
+            Context (name : string) (str : StringWithSplitState String (split_stateT (include_nonterminal_name _ name))).
+            Let ret := minimal_parse_of_name String G initial_nonterminal_names_data is_valid_nonterminal_name remove_nonterminal_name str0 valid str name.
 
-          Definition T_item_success (it : item CharType) (str : StringWithSplitState String (split_stateT it)) : Type
-            := let ret := minimal_parse_of_item String G initial_nonterminal_names_data is_valid_nonterminal_name remove_nonterminal_name str0 valid str it in
-               match state_val str with
-                 | None => ret
-                 | Some p =>
-                   (*size_of_parse_item (ParseNonTerminal name p) < h
-                         ->*) str ≤s str0
-                              -> sub_names_listT is_valid_nonterminal_name valid initial_nonterminal_names_data
-                              -> Forall_parse_of_item P p
-                              -> ({ p' : ret
-                                         & (size_of_parse_item (parse_of_item__of__minimal_parse_of_item p') <= size_of_parse_item p)
-                                           * Forall_parse_of_item P (parse_of_item__of__minimal_parse_of_item p') })%type
-               end.
-          Definition T_item_failure (it : item CharType) str : Type
-            := match state_val str with
-                 | None => @T_item_success it str -> False
-                 | Some p =>
-                   (*size_of_parse_item (ParseNonTerminal name p) < h
-                         ->*) str ≤s str0
-                              -> sub_names_listT is_valid_nonterminal_name valid initial_nonterminal_names_data
-                              -> Forall_parse_of_item P p
-                              -> alt_option (size_of_parse_item p) valid str
-               end.
+            Definition T_nonterminal_name_success  : Type
+              := prefix str match state_val str with
+                              | None => ret
+                              | Some p => ({ p' : ret
+                                                  & (size_of_parse_item (parse_of_item__of__minimal_parse_of_item (MinParseNonTerminal p')) <= size_of_parse_item (projT1 p))
+                                                    * Forall_parse_of_item P (parse_of_item__of__minimal_parse_of_item (MinParseNonTerminal p')) })%type
+                            end.
 
-          Definition T_production_success (prod : production CharType) (str : StringWithSplitState String (split_stateT prod)) : Type
-            := let ret := minimal_parse_of_production String G initial_nonterminal_names_data is_valid_nonterminal_name remove_nonterminal_name str0 valid str prod in
-               match state_val str with
-                 | None => ret
-                 | Some p =>
-                   (*forall (p_small : size_of_parse_production p < h),*)
-                   sub_names_listT is_valid_nonterminal_name valid initial_nonterminal_names_data
-                   -> Forall_parse_of_production P p
-                   -> ({ p' : ret
-                              & (size_of_parse_production (parse_of_production__of__minimal_parse_of_production p') <= size_of_parse_production p)
-                                * Forall_parse_of_production P (parse_of_production__of__minimal_parse_of_production p') })%type
-               end.
+            Definition T_nonterminal_name_failure : Type
+              := prefix str match state_val str with
+                              | None => ret -> False
+                              | Some p => alt_option (size_of_parse_item (projT1 p)) valid str
+                            end.
+          End T_nonterminal_name.
 
-          Definition T_production_failure (prod : production CharType) str : Type
-            := match state_val str with
-                 | None => @T_production_success prod str -> False
-                 | Some p =>
-                   (*forall (p_small : size_of_parse_production p < h),*)
-                   sub_names_listT is_valid_nonterminal_name valid initial_nonterminal_names_data
-                   -> Forall_parse_of_production P p
-                   -> alt_option (size_of_parse_production p) valid str
-               end.
+          Section T_item.
+            Context (it : item CharType) (str : StringWithSplitState String (split_stateT it)).
 
-          Definition T_productions_success (prods : productions CharType) (str : StringWithSplitState String (split_stateT prods)) : Type
-            := let ret := minimal_parse_of String G initial_nonterminal_names_data is_valid_nonterminal_name remove_nonterminal_name str0 valid str prods in
-               match state_val str with
-                 | None => ret
-                 | Some p =>
-                   (*forall (p_small : size_of_parse p < h),*)
-                   sub_names_listT is_valid_nonterminal_name valid initial_nonterminal_names_data
-                   -> Forall_parse_of P p
-                   -> ({ p' : ret
-                              & (size_of_parse (parse_of__of__minimal_parse_of p') <= size_of_parse p)
-                                * Forall_parse_of P (parse_of__of__minimal_parse_of p') })%type
-               end.
+            Let ret := minimal_parse_of_item String G initial_nonterminal_names_data is_valid_nonterminal_name remove_nonterminal_name str0 valid str it.
 
-          Definition T_productions_failure (prods : productions CharType) str : Type
-            := match state_val str with
-                 | None => @T_productions_success prods str -> False
-                 | Some p =>
-                   (*forall (p_small : size_of_parse p < h),*)
-                   sub_names_listT is_valid_nonterminal_name valid initial_nonterminal_names_data
-                   -> Forall_parse_of P p
-                   -> alt_option (size_of_parse p) valid str
-               end.
+            Definition T_item_success : Type
+              := prefix str match state_val str with
+                              | None => ret
+                              | Some p => ({ p' : ret
+                                                  & (size_of_parse_item (parse_of_item__of__minimal_parse_of_item p') <= size_of_parse_item (projT1 p))
+                                                    * Forall_parse_of_item P (parse_of_item__of__minimal_parse_of_item p') })%type
+                            end.
+            Definition T_item_failure : Type
+              := prefix str match state_val str with
+                              | None => ret -> False
+                              | Some p => alt_option (size_of_parse_item (projT1 p)) valid str
+                            end.
+          End T_item.
+
+          Section T_production.
+            Context (prod : production CharType) (str : StringWithSplitState String (split_stateT prod)).
+
+            Let ret := minimal_parse_of_production String G initial_nonterminal_names_data is_valid_nonterminal_name remove_nonterminal_name str0 valid str prod.
+
+            Definition T_production_success : Type
+              := prefix str match state_val str with
+                              | None => ret
+                              | Some p => ({ p' : ret
+                                                  & (size_of_parse_production (parse_of_production__of__minimal_parse_of_production p') <= size_of_parse_production (projT1 p))
+                                                    * Forall_parse_of_production P (parse_of_production__of__minimal_parse_of_production p') })%type
+                            end.
+            Definition T_production_failure : Type
+              := prefix str match state_val str with
+                              | None => ret -> False
+                              | Some p => alt_option (size_of_parse_production (projT1 p)) valid str
+                            end.
+          End T_production.
+
+          Section T_productions.
+            Context (prods : productions CharType) (str : StringWithSplitState String (split_stateT prods)).
+
+            Let ret := minimal_parse_of String G initial_nonterminal_names_data is_valid_nonterminal_name remove_nonterminal_name str0 valid str prods.
+
+            Definition T_productions_success : Type
+              := prefix str match state_val str with
+                              | None => ret
+                              | Some p => ({ p' : ret
+                                                  & (size_of_parse (parse_of__of__minimal_parse_of p') <= size_of_parse (projT1 p))
+                                                    * Forall_parse_of P (parse_of__of__minimal_parse_of p') })%type
+                            end.
+
+            Definition T_productions_failure : Type
+              := prefix str match state_val str with
+                              | None => ret -> False
+                              | Some p => alt_option (size_of_parse (projT1 p)) valid str
+                            end.
+          End T_productions.
         End types.
 
         Global Instance minimal_parser_dependent_types_data
@@ -329,25 +350,69 @@ Section recursive_descent_parser.
             try match goal with H : _ |- _ => exact H end. }
         Qed.*)
 
-        Hint Constructors minimal_parse_of minimal_parse_of_name minimal_parse_of_production minimal_parse_of_item unit : minimal_instance_db.
+        Hint Constructors minimal_parse_of minimal_parse_of_name minimal_parse_of_production minimal_parse_of_item unit prod unit : minimal_instance_db.
+
+        Local Ltac t''0 :=
+          first [ intro
+                | match goal with
+                    | [ H : StringWithSplitState _ _ |- _ ] => destruct H; simpl in *
+                    | [ H : ?T |- _ ] => match eval hnf in T with
+                                           | StringWithSplitState _ _ => destruct H; simpl in *
+                                         end
+                    | [ H : option _ |- _ ] => destruct H; simpl in *
+                  end ].
 
         Local Ltac t'' :=
-          first [ intro
-                | progress hnf in *
-                | progress eauto with minimal_instance_db
-                | progress destruct_head @StringWithSplitState
-                | progress simpl in *
-                | progress subst
-                | match goal with H : (_ =s _) = true |- _ => apply bool_eq_correct in H end ].
+          idtac;
+          match goal with
+            | _ => intro
+            | _ => progress simpl in *
+            | [ H : ?A -> ?B, H' : ?A |- _ ] => specialize (H H')
+            | [ H : _ ≤s _ -> ?B, H' : _ |- _ ]
+              => first [ specialize (H (transitivity (str_le1_append _ _ _) H'))
+                       | specialize (H (transitivity (str_le2_append _ _ _) H')) ]
+            | _ => progress hnf in *
+            | _ => progress eauto with minimal_instance_db
+            | [ H : sigT _ |- _ ] => destruct H
+            | [ H : prod _ _ |- _ ] => destruct H
+            | _ => progress subst
+            | _ => change unit; constructor
+            | [ H : _ |- _ ] =>
+              match goal with
+                | [ H' : _ = H |- _ ] => destruct H'
+              end
+            | [ H : (_ =s _) = true |- _ ] => apply bool_eq_correct in H
+            | [ H : is_true (_ =s _) |- _ ] => apply bool_eq_correct in H
+            | [ H : ?A -> False |- _ ] => let A' := (eval hnf in A) in change (A' -> False) in H
+            | _ => t''0
+            | [ x : _ |- @sigT ?A _ ]
+              => exists (MinParseNonTerminal x : A)
+            | [ |- @sigT ?A _ ]
+              => first [ (exists (MinParseTerminal _ _ _ _ _ _ _ _ : A))
+                       | (exists (MinParseProductionNil _ _ _ _ _ _ _ : A)) ]
+            | [ x : minimal_parse_of_item _ _ _ _ _ _ _ _ _, y : minimal_parse_of_production _ _ _ _ _ _ _ _ _, H : _ \/ _ |- @sigT ?A _ ]
+              => exists (MinParseProductionCons H x y : A)
+            | [ H : parse_of_item _ _ ?s (Terminal ?ch) |- _ ] => atomic s; inversion H
+            | [ H : parse_of_production _ _ ?s []  |- _ ] => atomic s; inversion H
+            | [ |- (_ * _)%type ] => split
+            | _ => progress trivial
+            | _ => progress auto with arith
+          end.
+
+        (*Local Ltac should_
+        Local Ltac pre_congruence_avoid_anomalies
+          := repeat match goal with
+                      | [ H : ?T |- _ ]*)
 
         Local Ltac t' :=
           first [ t''
-                | congruence
+                (*| congruence*)
+                | match goal with H : true = false |- _ => exfalso; clear -H; congruence end
                 | omega
                 | match goal with H : (?x =s ?x) = false |- _ => erewrite (proj2 (bool_eq_correct _ _ _)) in H by reflexivity end ].
 
-        Local Ltac t :=
-          repeat intro;
+        Local Ltac t_false :=
+          idtac;
           match goal with
             | [ |- False ]
               => abstract (
@@ -361,15 +426,273 @@ Section recursive_descent_parser.
                      do 2 try inversion_one_head_hnf @minimal_parse_of;
                      repeat t'
                    )
-            | _ => try solve [ repeat t'' ]
           end.
 
-        Local Obligation Tactic := t.
+        Local Ltac t :=
+          repeat t''0;
+          try solve [ exfalso; t_false
+                    | repeat t''; try t_false ].
 
-        Global Program Instance minimal_parser_dependent_types_extra_data
+        Local Obligation Tactic := idtac.
+
+        Start Profiling.
+        Time Global Program Instance minimal_parser_dependent_types_extra_data
                (*(split_list_complete : forall str0 valid it its str pf, @split_list_completeT str0 valid valid it its str pf (split_string_for_production it its str))*)
         : @parser_dependent_types_extra_dataT _ String G.
+        Next Obligation. t. Defined.
+        Next Obligation. t. Defined.
+        Next Obligation. t. Defined.
+        Next Obligation. t. Defined.
+        Next Obligation. t. Defined.
+        Next Obligation. t. Defined.
+        Next Obligation. Show Profile.
+                         t''.
+                         t''.
+                         t''.
+                         t''.
+                         t''.
+                         t''.
+                         t''.
+                         t''.
+                         t''.
+                         t''.
+                         t''.
+                         t''.
+                         t''.
+                         t''.
+                         t''.
+                         t''.
+                         t''.
+                         t''.
+                         t''.
+                         t''.
+                         t''.
+                         t''.
+                         t''.
+                         t''.
+                         t''.
+                         t''.
+                         t''.
+                         t''.
+                         t''.
+                         t''.
+                         t''.
+                         t''.
+                         t''.
+                         t''.
+                         subst_body.
+                         t''.
+                         t''.
+                         t''.
+                         t''.
+                         t''.
+
+                         repeat t''.
+                         subst_body.
+                         progress t''.
+                         progress t''.
+                         progress t''.
+                         progress t''.
+                         dest
+                         progress t''.
+                         progress t''.
+                         progress t''.
+                         progress t''.
+                         progress t''.
+                         progress t''.
+                         progress t''.
+                         progress t''.
+                         progress t''.
+                         progress t''.
+                         progress t''.
+                         progress t''.
+                         progress t''.
+                         progress t''.
+                         progress t''.
+                         progress t''.
+                         progress t''.
+                         progress t''.
+                         progress t''.
+                         progress t''.
+                         progress t''.
+                         progress t''.
+                         progress t''.
+Time match goal with
+                           .
+Show
+
+ Defined.
+        Next Obligation. t. Defined.
+        Next Obligation. t. Defined.
+        Next Obligation. t. Defined.
+        Next Obligation. t. Defined.
+        Next Obligation. t. Defined.
+        Next Obligation. t. Defined.
+        Next Obligation. t. Defined.
+        Next Obligation. t. Defined.
+        Next Obligation. t. Defined.
+        Next Obligation. t. Defined.
+        Show Profile.
+        Obligations.
         Next Obligation.
+          repeat t''.
+          subst_body; simpl in *.
+          specialize (X (transitivity (str_le1_append _ _ _) H)).
+          SearchAbout (_ ≤s _).
+          subst_body; simpl.
+
+          do 2 try inversion_one_head_hnf @minimal_parse_of_production.
+
+          repeat t''.
+          change unit.
+          unfold parse_of_production__of__minimal_parse_of_production.
+          hnf.
+          unfold Forall_parse_of_production.
+
+          constructor.
+          unfold parse_of_production__of__minimal_parse_of_production.
+          constructor.
+        Solve Obligation 1 using t.
+        Solve Obligation 2 using t.
+        Solve Obligation 3 using t.
+        Solve Obligation 4 using t.
+        Solve Obligation 5 using t.
+        Solve Obligation 6 using t.
+        Solve Obligation 7 using t.
+        Solve Obligation 8 using t.
+        Solve Obligation 9 using t.
+        Solve Obligation 10 using t.
+        Solve Obligation 11 using t.
+        Solve Obligation 12 using t.
+        Solve Obligation 13 using t.
+        Solve Obligation 14 using t.
+        Solve Obligation 1 using t.
+        Solve Obligation 1 using t.
+        Obligations.
+        Next Obligation.
+          t.
+          repeat t''.
+          Print minimal_parse_of_production.
+          exists (MinParseProductionNil _ _ _ _ _ _ _).
+          exists (MinParseProductionNil _ _ _ _ _ _ _).
+          exfalso.
+          repeat t'.
+          t''.
+          t''.
+          t''.
+          t''.
+          t''.
+          t''.
+          t''.
+          t''.
+
+          repeat t''.
+          t'.
+          exfalso; t.
+
+          SearchAbout (?x =s _).
+
+          t''.
+          t''.
+
+
+          t''.
+          t''.
+          t''.
+          t''.
+          t''.
+          t''.
+          t''.
+          t''.
+
+          exfalso; t.
+        Defined.
+        Next Obligation.
+          t.
+        Defined.
+        Next Obligation.
+          t.
+        Defined.
+        Next Obligation.
+
+          t.
+          repeat t''; t.
+        Defined.
+
+        Next Obligation.
+          t.
+
+          repeat t''.
+          match goal with |- _ * _ => split end.
+          t''.
+          repeat t''.
+
+
+
+          match goal with
+            | [ H : parse_of_item _ _ ?s (Terminal ch) |- _ ] => atomic s; inversion H
+          end.
+          subst x.
+          destruct H2.
+        Defined.
+
+          repeat t''.
+          t.
+          unfold T_nonterminal_name_success in *.
+          t''.
+          t.
+          t''.
+        Defined.
+
+          t'.
+          t'.
+          t'.
+          t'.
+          t'.
+          t'.
+          t'.
+          t'.
+          t'.
+          t'.
+          t'.
+          t'.
+          t'.
+          t'.
+          t'.
+          t'.
+          t'.
+          first [ t''
+                | congruence
+                | omega
+                | match goal with x : _ |- _ => exists (MinParseNonTerminal x) end
+                | match goal with H : (?x =s ?x) = false |- _ => erewrite (proj2 (bool_eq_correct _ _ _)) in H by reflexivity end ].
+          first [ intro
+                | match goal with H : ?A -> ?B, H' : ?A |- _ => specialize (H H') end
+                | progress hnf in *
+                | progress eauto with minimal_instance_db
+                | progress destruct_head @StringWithSplitState
+                | progress destruct_head option
+                | progress destruct_head sigT
+                | progress destruct_head prod
+                | progress simpl in *
+                | progress subst ].
+
+          t'.
+          t'.
+          t'.
+
+          Print minimal_parse_of_item.
+          destruct x.
+          unfold parse_of_item_name__of__minimal_parse_of_name' in f.
+          hnf in f.
+          unfold parse_of_item
+
+          t'.
+
+          simpl in *.
+
+          unfold T_nonterminal_name_success
+          hnf in *.
 
           eapply H_prod_split'; eauto.
           Grab Existential Variables.
