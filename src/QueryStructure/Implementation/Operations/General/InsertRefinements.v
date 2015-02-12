@@ -255,10 +255,10 @@ Section InsertRefinements.
                                         -> SatisfiesCrossRelationConstraints
                                        Ridx' Ridx (indexedElement tup')
                                        (EnsembleInsert tup (GetUnConstrRelation qs Ridx))));
-            ret match schConstr_self, schConstr, schConstr', qsConstr, qsConstr' with
+            match schConstr_self, schConstr, schConstr', qsConstr, qsConstr' with
               | true, true, true, true, true =>
-                (UpdateUnConstrRelation qs Ridx (EnsembleInsert tup (GetUnConstrRelation qs Ridx)), true)
-              | _, _, _, _, _ => (qs, false)
+                ret (UpdateUnConstrRelation qs Ridx (EnsembleInsert tup (GetUnConstrRelation qs Ridx)), true)
+              | _, _, _, _, _ => ret (qs, false)
             end).
   Proof.
     intros.
@@ -438,14 +438,14 @@ Section InsertRefinements.
           schConstr' <- refined_schConstr';
           qsConstr <- refined_qsConstr ;
           qsConstr' <- (refined_qsConstr' idx);
-          ret match schConstr_self, schConstr, schConstr', qsConstr, qsConstr' with
+          match schConstr_self, schConstr, schConstr', qsConstr, qsConstr' with
                 | true, true, true, true, true =>
-                  (UpdateUnConstrRelation qs Ridx
+                  ret (UpdateUnConstrRelation qs Ridx
                                           (EnsembleInsert
                                              {| elementIndex := idx;
                                                 indexedElement := tup |}
                                                    (GetUnConstrRelation qs Ridx)), true)
-                | _, _, _, _, _ => (qs, false)
+                | _, _, _, _, _ => ret (qs, false)
               end)).
   Proof.
     intros.
@@ -572,14 +572,14 @@ Section InsertRefinements.
                                                                            (GetUnConstrRelation qs Ridx))))
                                                | None => None
                                       end));
-                   ret match schConstr_self, schConstr, schConstr', qsConstr, qsConstr' with
-                         | true, true, true, true, true =>
-                           (UpdateUnConstrRelation qs Ridx
+                   match schConstr_self, schConstr, schConstr', qsConstr, qsConstr' with
+                     | true, true, true, true, true =>
+                       ret (UpdateUnConstrRelation qs Ridx
                                                    (EnsembleInsert
                                                       {| elementIndex := idx;
                                                          indexedElement := tup |}
                                                       (GetUnConstrRelation qs Ridx)), true)
-                         | _, _, _, _, _ => (qs, false)
+                     | _, _, _, _, _ => ret (qs, false)
                        end)
               | Some aConstr, None =>
                 idx <- {idx | UnConstrFreshIdx (GetUnConstrRelation qs Ridx) idx} ;
@@ -608,14 +608,14 @@ Section InsertRefinements.
                                                                            (GetUnConstrRelation qs Ridx))))
                                                | None => None
                                       end));
-                   ret match schConstr_self, qsConstr, qsConstr' with
-                         | true, true, true =>
-                           (UpdateUnConstrRelation qs Ridx
+                   match schConstr_self, qsConstr, qsConstr' with
+                     | true, true, true =>
+                       ret (UpdateUnConstrRelation qs Ridx
                                                    (EnsembleInsert
                                                       {| elementIndex := idx;
                                                          indexedElement := tup |}
                                                       (GetUnConstrRelation qs Ridx)), true)
-                         | _, _, _ => (qs, false)
+                     | _, _, _ => ret (qs, false)
                        end)
               | None, Some tConstr =>
                 idx <- {idx | UnConstrFreshIdx (GetUnConstrRelation qs Ridx) idx} ;
@@ -651,14 +651,14 @@ Section InsertRefinements.
                                                                            (GetUnConstrRelation qs Ridx))))
                                                | None => None
                                       end));
-                   ret match schConstr, schConstr', qsConstr, qsConstr' with
+                   match schConstr, schConstr', qsConstr, qsConstr' with
                          | true, true, true, true =>
-                           (UpdateUnConstrRelation qs Ridx
+                           ret (UpdateUnConstrRelation qs Ridx
                                                    (EnsembleInsert
                                                       {| elementIndex := idx;
                                                          indexedElement := tup |}
                                                       (GetUnConstrRelation qs Ridx)), true)
-                         | _, _, _, _ => (qs, false)
+                         | _, _, _, _ => ret (qs, false)
                        end)
               | None, None =>
                 idx <- {idx | UnConstrFreshIdx (GetUnConstrRelation qs Ridx) idx} ;
@@ -686,14 +686,14 @@ Section InsertRefinements.
                                                                            (GetUnConstrRelation qs Ridx))))
                                                | None => None
                                       end));
-                   ret match qsConstr, qsConstr' with
+                   match qsConstr, qsConstr' with
                          | true, true =>
-                           (UpdateUnConstrRelation qs Ridx
+                           ret (UpdateUnConstrRelation qs Ridx
                                                    (EnsembleInsert
                                                       {| elementIndex := idx;
                                                          indexedElement := tup |}
                                                       (GetUnConstrRelation qs Ridx)), true)
-                         | _, _ => (qs, false)
+                         | _, _ => ret (qs, false)
                        end)
         end.
     unfold QSInsert.
@@ -847,7 +847,7 @@ Tactic Notation "drop" "constraints" "from" "insert" constr(methname) :=
              | foreignToQuery; try simplify with monad laws
              | setoid_rewrite refine_trivial_if_then_else; simplify with monad laws
              ];
-      higher_order_1_reflexivity ];
+             higher_order_1_reflexivity ];
     finish honing
   | ].
 

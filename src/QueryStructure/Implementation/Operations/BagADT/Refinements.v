@@ -930,4 +930,13 @@ Section BagsQueryStructureRefinements.
       apply H'. apply string_dec. unfold not in *; intros; rewrite H1 in n; intuition.
   Qed.
 
+  Lemma refine_If_Then_Else_ret {A} :
+    forall i (t e : A),
+      refine (@If_Then_Else (Comp A) i (ret t) (ret e))
+             (ret (@If_Then_Else A i t e)).
+  Proof.
+    destruct i; reflexivity.
+  Qed.
+
+
 End BagsQueryStructureRefinements.

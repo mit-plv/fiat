@@ -1,6 +1,8 @@
 Require Import Coq.Strings.String.
 Require Import AutoDB.
 
+Locate Build_IndexedQueryStructure_Impl_cRep.
+
 (* Our bookstore has two relations (tables):
    - The [Books] relation contains the books in the
      inventory, represented as a tuple with
@@ -107,6 +109,41 @@ Proof.
 
   make simple indexes using [[sAUTHOR; sISBN]; [sISBN]].
 
+    hone method "AddBook".
+    {
+      Implement_Insert_Checks.
+
+      setoid_rewrite refineEquiv_swap_bind.
+
+      implement_In.
+      convert_Where_to_search_term.
+      find_equivalent_search_term 0 find_simple_search_term.
+      convert_filter_to_find.
+      Implement_Aggregates.
+      simplify with monad laws.
+
+      implement_Insert_branches.
+
+      finish honing.
+    }
+
+    hone method "PlaceOrder".
+    {
+      Implement_Insert_Checks.
+
+      setoid_rewrite refineEquiv_swap_bind.
+
+      implement_In.
+      convert_Where_to_search_term.
+      find_equivalent_search_term 0 find_simple_search_term.
+      convert_filter_to_find.
+      Implement_Aggregates.
+      simplify with monad laws.
+
+      implement_Insert_branches.
+      finish honing.
+    }
+
   hone constructor "Init".
   {
     simplify with monad laws.
@@ -120,12 +157,17 @@ Proof.
     simplify with monad laws.
     implement_In.
     setoid_rewrite refine_Join_Enumerate_Swap; eauto.
-    convert_Where_to_search_term.
 
+    convert_Where_to_search_term.
     find_equivalent_search_term 1 find_simple_search_term.
+    setoid_rewrite andb_true_r.
+
+    convert_Where_to_search_term.
     find_equivalent_search_term_pair 1 0 find_simple_search_term_dep.
 
-    convert_filter_to_find.
+    setoid_rewrite <- filter_and.
+    repeat convert_filter_to_find.
+
     Implement_Aggregates.
     commit.
     finish honing.
@@ -158,11 +200,15 @@ Proof.
     implement_In.
     setoid_rewrite refine_Join_Enumerate_Swap; eauto.
     convert_Where_to_search_term.
-
     find_equivalent_search_term 1 find_simple_search_term.
+    setoid_rewrite andb_true_r.
+
+    convert_Where_to_search_term.
     find_equivalent_search_term_pair 1 0 find_simple_search_term_dep.
 
+    setoid_rewrite <- filter_and.
     convert_filter_to_find.
+
     Implement_Aggregates.
     simplify with monad laws.
 
@@ -170,16 +216,75 @@ Proof.
     finish honing.
   }
 
-    hone method "AddBook".
-  {
-    repeat first
-           [setoid_rewrite FunctionalDependency_symmetry
-           | fundepToQuery; try simplify with monad laws
-           | foreignToQuery; try simplify with monad laws
-           | setoid_rewrite refine_trivial_if_then_else; simplify with monad laws
-           ].
 
-  FullySharpenQueryStructure BookStoreSchema Index.
+  FullySharpenQueryStructure' BookStoreSchema Index.
+
+  { simplify with monad laws.
+
+    Implement_Bound_Bag_Call.
+    Implement_If_Then_Else.
+    simplify with monad laws.
+    Implement_Bound_Bag_Call.
+    Implement_AbsR_Relation.
+    reflexivity.
+    simplify with monad laws.
+    Implement_AbsR_Relation.
+    reflexivity.
+    Implement_If_Then_Else.
+    higher_order_4_reflexivity''.
+  }
+
+  { simplify with monad laws.
+    Implement_Bound_Bag_Call.
+    Implement_Bound_Bag_Call.
+    Implement_AbsR_Relation.
+    higher_order_4_reflexivity''.
+  }
+
+  { simplify with monad laws.
+    Implement_Bound_Bag_Call.
+    Implement_If_Then_Else.
+
+    simplify with monad laws.
+    Implement_Bound_Bag_Call.
+    Implement_AbsR_Relation.
+    reflexivity.
+
+    simplify with monad laws.
+    Implement_AbsR_Relation.
+    reflexivity.
+    Implement_If_Then_Else.
+
+    higher_order_4_reflexivity''.
+  }
+
+  { simplify with monad laws.
+    Implement_Bound_Bag_Call.
+
+    Implement_Bound_Join_Lists.
+
+    Implement_Bound_Bag_Call.
+    higher_order_1_reflexivity''.
+
+    Implement_If_Then_Else.
+
+    simplify with monad laws.
+    Implement_Bound_Bag_Call.
+    Implement_Bound_Bag_Call.
+
+    Implement_AbsR_Relation.
+    reflexivity.
+
+    simplify with monad laws.
+    Implement_AbsR_Relation.
+    reflexivity.
+
+    Implement_If_Then_Else.
+
+    higher_order_4_reflexivity''.  }
+
+  implement_bag_methods.
+  implement_bag_methods.
 
 Defined.
 
