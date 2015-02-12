@@ -118,6 +118,7 @@ QUERYSTRUCTURE_MODULES := \
 	QueryStructure/Automation/AutoDB
 
 FINITESET_MODULES := \
+	FiniteSetADTs \
 	FiniteSetADTs/FiniteSetADT \
 	FiniteSetADTs/FiniteSetADTMethodLaws \
 	FiniteSetADTs/FiniteSetADTImplementation \
