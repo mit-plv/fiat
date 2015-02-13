@@ -15,11 +15,11 @@ Section recursive_descent_parser.
           (String : string_like CharType)
           (G : grammar CharType).
   Context {premethods : parser_computational_predataT}.
-  Context (remove_name_1
+  Context (remove_nonterminal_name_1
            : forall ls ps ps',
                is_valid_nonterminal_name (remove_nonterminal_name ls ps) ps' = true
                -> is_valid_nonterminal_name ls ps' = true)
-          (remove_name_2
+          (remove_nonterminal_name_2
            : forall ls ps ps',
                is_valid_nonterminal_name (remove_nonterminal_name ls ps) ps' = false
                <-> is_valid_nonterminal_name ls ps' = false \/ ps = ps').
@@ -201,6 +201,10 @@ Section recursive_descent_parser.
                               -> sub_names_listT is_valid_nonterminal_name valid initial_nonterminal_names_data
                               -> T.
 
+          Let alt := False (*{ nonterminal_name : string
+                     | is_valid_nonterminal_name initial_nonterminal_names_data nonterminal_name = true
+                       /\ is_valid_nonterminal_name valid nonterminal_name = false }*).
+
           Section T_nonterminal_name.
             Context (name : string) (str : StringWithSplitState String (split_stateT (include_nonterminal_name _ name))).
             Let ret := mp_parse_nonterminal_name str0 valid str name.
@@ -211,7 +215,7 @@ Section recursive_descent_parser.
             Definition T_nonterminal_name_failure : Type
               := prefix str match state_val str with
                               | None => ret -> False
-                              | Some p => False
+                              | Some p => alt
                             end.
           End T_nonterminal_name.
 
@@ -225,7 +229,7 @@ Section recursive_descent_parser.
             Definition T_item_failure : Type
               := prefix str match state_val str with
                               | None => ret -> False
-                              | Some p => False
+                              | Some p => alt
                             end.
           End T_item.
 
@@ -239,7 +243,7 @@ Section recursive_descent_parser.
             Definition T_production_failure : Type
               := prefix str match state_val str with
                               | None => ret -> False
-                              | Some p => False
+                              | Some p => alt
                             end.
           End T_production.
 
@@ -254,7 +258,7 @@ Section recursive_descent_parser.
             Definition T_productions_failure : Type
               := prefix str match state_val str with
                               | None => ret -> False
-                              | Some p => False
+                              | Some p => alt
                             end.
           End T_productions.
         End types.
@@ -364,20 +368,35 @@ Section recursive_descent_parser.
         Hint Constructors minimal_parse_of minimal_parse_of_name minimal_parse_of_production minimal_parse_of_item unit prod unit : minimal_instance_db.
         Hint Unfold T_item_success T_item_failure T_production_success T_production_failure T_productions_success T_productions_failure T_nonterminal_name_success T_nonterminal_name_failure
              DependentlyTyped.T_item_success DependentlyTyped.T_item_failure DependentlyTyped.T_production_success DependentlyTyped.T_production_failure DependentlyTyped.T_productions_success DependentlyTyped.T_productions_failure DependentlyTyped.T_nonterminal_name_success DependentlyTyped.T_nonterminal_name_failure
-             p_parse_production mp_parse_production p_parse mp_parse p_parse_item mp_parse_item p_parse_nonterminal_name mp_parse_nonterminal_name string_val : minimal_instance_db.
+             p_parse_production p_parse p_parse_item p_parse_nonterminal_name
+             mp_parse_production mp_parse mp_parse_item mp_parse_nonterminal_name : minimal_instance_db.
 
         Local Ltac t''0 :=
-          first [ intro
-                | progress subst_body
+          first [ progress cbv zeta
+                | intro
+                (*| progress subst_body*)
+                | let H := (match goal with
+                              | [ H : StringWithSplitState _ _ |- _ ] => constr:H
+                              | [ H : ?T |- _ ] => match eval hnf in T with
+                                                     | StringWithSplitState _ _
+                                                       => constr:H
+                                                   end
+                            end) in
+                  let s := fresh "s" in
+                  let st := fresh "st" in
+                  destruct H as [s st];
+                    change (StringLike.Core.string_val {| string_val := s |}) with s in *;
+                    change (StringLike.Core.state_val {| state_val := st |}) with st in *;
+                    simpl
                 | match goal with
-                    | [ H : StringWithSplitState _ _ |- _ ] => destruct H; simpl
-                    | [ H : ?T |- _ ] => match eval hnf in T with
-                                           | StringWithSplitState _ _ => destruct H; simpl
-                                         end
                     | [ H : option _ |- _ ] => destruct H; simpl
                     | [ H : ?T |- _ ] => match eval hnf in T with
                                            | option _ => destruct H; simpl
                                          end
+                  end
+                | match goal with
+                    | [ H : appcontext[StringLike.Core.string_val {| string_val := ?s |}] |- _ ] => change (StringLike.Core.string_val {| string_val := s |}) with s in *
+                    | [ H : appcontext[StringLike.Core.state_val {| state_val := ?s |}] |- _ ] => change (StringLike.Core.state_val {| state_val := s |}) with s in *
                   end ].
 
         Local Ltac t'' :=
@@ -409,8 +428,11 @@ Section recursive_descent_parser.
             | [ H : sub_names_listT _ ?x ?y -> _ |- _ ] => specialize (H (reflexivity _))
             | [ H : sub_names_listT _ _ _, H' : sub_names_listT _ _ _ -> _ |- _ ]
               => specialize (fun arg => H' (sub_names_listT_remove_2 _ arg _ H))
-            (*| _ => progress hnf in * *)
+            | [ H : context[map _ nil] |- _ ] => progress simpl in H
+            | [ H : context[map _ (_::_)] |- _ ] => progress simpl in H
+            | [ H : appcontext[split_string_for_production _ _ {| state_val := Some _ |} ] |- _ ] => progress simpl in H
             | _ => progress autounfold with minimal_instance_db in *
+            (*| _ => progress hnf in * *)
             | [ H : ?T |- _ ] => match head T with
                                    | match _ with _ => _ end => progress hnf in H
                                  end
@@ -429,9 +451,13 @@ Section recursive_descent_parser.
                 |- @sigT ?A _ ]
               => exists (MinParseTail _ x : A); assumption
             | [ H : sigT _ |- _ ] => destruct H
+            | [ H : sig _ |- _ ] => destruct H
             | [ H : prod _ _ |- _ ] => destruct H
             | [ H : and _ _ |- _ ] => destruct H
             | [ H : (_, _) = (_, _) |- _ ] => apply path_prod' in H
+            | [ H : ?T |- _ ] => match eval hnf in T with
+                                   | (_ * _)%type => destruct H
+                                 end
             | _ => progress subst
             | _ => progress simpl
             | [ H : _ = _ |- _ ] => progress simpl in H (* work around [simpl in *] causing ~everything, even [admit], to error with "Anomaly: Cannot take the successor of a non variable universe:
@@ -443,8 +469,9 @@ Please report." *)
               end
             | [ H : (_ =s _) = true |- _ ] => apply bool_eq_correct in H
             | [ H : is_true (_ =s _) |- _ ] => apply bool_eq_correct in H
-            | [ H : parse_of_item _ _ ?s (Terminal ?ch) |- _ ] => atomic s; inversion H
-            | [ H : parse_of_production _ _ ?s []  |- _ ] => atomic s; inversion H
+            | [ H : parse_of_item _ _ _ (NonTerminal _ _) |- _ ] => (* work around 4035 *) let H' := fresh in rename H into H'; dependent destruction H'
+            | [ H : parse_of_item _ _ _ (Terminal _) |- _ ] => (* work around 4035 *) let H' := fresh in rename H into H'; dependent destruction H'
+            | [ H : parse_of_production _ _ _ [] |- _ ] => (* work around 4035 *) let H' := fresh in rename H into H'; dependent destruction H'
             | [ H : ?A -> ?B, H' : ?A |- _ ] => specialize (H H')
             | [ H : ?A -> False |- _ ] => let A' := (eval hnf in A) in progress change (A' -> False) in H
             | _ => progress trivial
@@ -467,7 +494,8 @@ Please report." *)
           first [ t''
                 (*| congruence*)
                 | match goal with H : true = false |- _ => exfalso; clear -H; congruence end
-                | omega
+                | match goal with H : ?x = false, H' : ?x = true |- _ => exfalso; clear -H H'; abstract congruence end
+                | abstract omega
                 | match goal with H : (?x =s ?x) = false |- _ => erewrite (proj2 (bool_eq_correct _ _ _)) in H by reflexivity end
                 | match goal with H : _ -> False |- False => apply H end;
                   abstract (repeat t'') ].
@@ -525,6 +553,22 @@ Please report." *)
         Let H_prod_splitT' str0 valid it its str st
           := split_string_lift_T str0 valid it its {| string_val := str ; state_val := st |} (split_string_for_production it its {| string_val := str ; state_val := st |}).
 
+        Lemma H_prod_split_helper str0 valid it its str st
+        : @H_prod_splitT' str0 valid it its str (Some st).
+        Proof.
+          subst_body; simpl in *.
+          intros ? H.
+          simpl in H.
+          destruct_head prod.
+          destruct_head sum;
+            destruct_head prod;
+            unfold T_item_failure, T_production_failure in *;
+            simpl in *.
+          { repeat t''. }
+          { repeat t''. }
+          { repeat t''. }
+        Defined.
+
         Start Profiling.
         Time Global Program Instance minimal_parser_dependent_types_extra_data
              (H_prod_split' : forall str0 valid it its str, @H_prod_splitT' str0 valid it its str None)
@@ -536,14 +580,180 @@ Please report." *)
                      | {| string_val := str' ; state_val := st' |}
                        => match st' with
                             | None => @H_prod_split' str0 valid it its str'
-                            | Some st => _
+                            | Some st => @H_prod_split_helper str0 valid it its str' st
                           end
                    end |}.
         Obligation 12. t. Defined.
         Obligation 13. t. Defined.
         Obligation 14. t. Defined.
-        Obligation 15. t. Defined.
+        Obligation 11. t. Defined.
+        Obligation 1. t. Defined.
+        Obligation 2. t. Defined.
+        Obligation 3. t. Defined.
+        Obligation 4. t. Defined.
+        Obligation 5. t. Defined.
+        Obligation 6. t. Defined.
+        Obligation 7. t. Defined.
+        Obligation 8. t. Defined.
+        Obligation 9. t. Defined.
+        Obligation 10. t. Defined.
+        Obligation 15.
+        simpl.
+        intros.
+        assert (str = str0 :> String).
+        { destruct_head @str_le.
+          { exfalso; eauto with nocore. }
+          { assumption. } }
+        subst.
+        clear H H0.
+        hnf.
+        repeat t''0; [ | solve [ t ] ].
+        clear H.
+        hnf in p.
+        destruct p.
+        dependent destruction x.
+        destruct f.
+
+        hnf in p0.
+
+
+        do 10 t''.
+        t''.
+        t''.
+        t''.
+        t''.
+        t''.
+        t''.
+        destruct_head prod.
+        destruct_head sum; repeat t''.
+        t''.
+        match goal with
+        end.
+        simpl split_string_for_production in *.
+        t''.
+        t''.
+        simpl in X.
+        destruct_head prod.
+        destruct_head sum.
+        repeat t''.
+        repeat t''.
+        repeat t''.
+simpl in *.
+        do 10 (simpl in *; t'').
+        t''.
+        t''.
+        t''.
+        t''.
+        t''.
+        t''.
+        t''; simpl in *.
+        t''; simpl in *.
+        t''; simpl in *.
+        t''; simpl in *.
+        t''; simpl in *.
+        t''; simpl in *.
+        t''; simpl in *.
+        t''; simpl in *.
+        simpl in X.
+        t''.
+        t''.
+        t''.
+        t''.
+        t''.
+        t''.
+        t''.
+        t''.
+        t''.
+        t''.
+        t''.
+        t''.
+        t''.
+
+        t''.
+        simpl in s.
+t. Defined.
+        Obligation 16. t. Defined.
+        Next Obligation. t. Defined.
+        Next Obligation. t. Defined.
+        Next Obligation. t. Defined.
+        Next Obligation. t. Defined.
+        Next Obligation. t. Defined.
+        Next Obligation. t. Defined.
+        Next Obligation. t. Defined.
+        Next Obligation. t. Defined.
+        Next Obligation. t. Defined.
+        Next Obligation. t. Defined.
+        Next Obligation. simpl.
+                        do 5 t''.
+                        do 5 t''.
+                        do 5 t''.
+                        t''.
+                        t''.
+                        t''.
+                        t''.
+                        t''.
+                        t''.
+                        t''.
+                        t''.
+                        t''.
+                        match goal with
+                        end.
+                        t''.
+                        do 5 t''.
+                        do 5 t''.
+                        do 5 t''.
+                        do 5 t''.
+                        do 5 t''.
+t. Defined.
+
+        Obligation 15.
+   (forall (str0 : String) (valid : nonterminal_names_listT)
+      (it : item CharType) (its : production CharType)
+      (str : String), H_prod_splitT' str0 valid None) ->
+   forall (str0 : String) (valid : nonterminal_names_listT)
+     (nonterminal_name : string)
+     (str : StringWithSplitState String
+              (split_stateT
+                 (include_nonterminal_name CharType nonterminal_name))),
+   let ret :=
+     DependentlyTyped.T_nonterminal_name_failure str0 valid nonterminal_name
+       str in
+   let arg :=
+     DependentlyTyped.T_productions_failure str0
+       (remove_nonterminal_name valid nonterminal_name)
+       (G nonterminal_name)
+       (lift_StringWithSplitState lift_lookup_nonterminal_name_state str) in
+   ~ Length str < Length str0 -> arg -> ret
+
+
+
+t. repeat t''.
+        apply remove_nonterminal_name_2 in H3.
+
+        exists x.
+        repeat t''.
+        destruct H3.
+        repeat t''.
+        split.
+        repeat t''.
+        repeat t''.
+        hnf in p0.
+        repeat t''.
+        hnf in p0.
+        SerachAbout
+
+
+        dependent destruction x.
+        repeat t''.
+        destruct f.
+        hnf in p0.
+        SearchAbout sub_names_listT.
+        pose (sub_names_listT_remove is_valid_nonterminal_name remove_nonterminal_name remove_name_1 _ _ _ H3).
+        SearchAbout sub_names_listT.
+        unique pose proof (
+ Defined.
         Obligation 16.
+
         t.
         { repeat t''.
           dependent destruction x.
