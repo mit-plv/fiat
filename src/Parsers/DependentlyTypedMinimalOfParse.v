@@ -30,6 +30,15 @@ Section recursive_descent_parser.
   Let p_parse_nonterminal_name s nonterminal_name
     := { p' : parse_of_item String G  s (NonTerminal _ nonterminal_name) & Forall_parse_of_item P p' }.
 
+  Let mp_parse_item str0 valid str it
+    := { p' : minimal_parse_of_item String G initial_nonterminal_names_data is_valid_nonterminal_name remove_nonterminal_name str0 valid str it & Forall_parse_of_item P (parse_of_item__of__minimal_parse_of_item p') }.
+  Let mp_parse_production str0 valid str prod
+    := { p' : minimal_parse_of_production String G initial_nonterminal_names_data is_valid_nonterminal_name remove_nonterminal_name str0 valid str prod & Forall_parse_of_production P (parse_of_production__of__minimal_parse_of_production p') }.
+  Let mp_parse str0 valid str prods
+    := { p' : minimal_parse_of String G initial_nonterminal_names_data is_valid_nonterminal_name remove_nonterminal_name str0 valid str prods & Forall_parse_of P (parse_of__of__minimal_parse_of p') }.
+  Let mp_parse_nonterminal_name str0 valid str nonterminal_name
+    := { p' : minimal_parse_of_name String G initial_nonterminal_names_data is_valid_nonterminal_name remove_nonterminal_name str0 valid str nonterminal_name & Forall_parse_of_item P (parse_of_item_name__of__minimal_parse_of_name p') }.
+
   Definition split_parse_of_production {str it its}
              (p : p_parse_production str (it::its))
   : { s1s2 : String * String & (fst s1s2 ++ snd s1s2 =s str)
@@ -172,14 +181,10 @@ Section recursive_descent_parser.
 
           Section T_nonterminal_name.
             Context (name : string) (str : StringWithSplitState String (split_stateT (include_nonterminal_name _ name))).
-            Let ret := minimal_parse_of_name String G initial_nonterminal_names_data is_valid_nonterminal_name remove_nonterminal_name str0 valid str name.
+            Let ret := mp_parse_nonterminal_name str0 valid str name.
 
             Definition T_nonterminal_name_success  : Type
-              := prefix str match state_val str with
-                              | None => ret
-                              | Some p => ({ p' : ret
-                                                  & Forall_parse_of_item P (parse_of_item__of__minimal_parse_of_item (MinParseNonTerminal p')) })%type
-                            end.
+              := prefix str ret.
 
             Definition T_nonterminal_name_failure : Type
               := prefix str match state_val str with
@@ -191,14 +196,10 @@ Section recursive_descent_parser.
           Section T_item.
             Context (it : item CharType) (str : StringWithSplitState String (split_stateT it)).
 
-            Let ret := minimal_parse_of_item String G initial_nonterminal_names_data is_valid_nonterminal_name remove_nonterminal_name str0 valid str it.
+            Let ret := mp_parse_item str0 valid str it.
 
             Definition T_item_success : Type
-              := prefix str match state_val str with
-                              | None => ret
-                              | Some p => ({ p' : ret
-                                                  & Forall_parse_of_item P (parse_of_item__of__minimal_parse_of_item p') })%type
-                            end.
+              := prefix str ret.
             Definition T_item_failure : Type
               := prefix str match state_val str with
                               | None => ret -> False
@@ -209,14 +210,10 @@ Section recursive_descent_parser.
           Section T_production.
             Context (prod : production CharType) (str : StringWithSplitState String (split_stateT prod)).
 
-            Let ret := minimal_parse_of_production String G initial_nonterminal_names_data is_valid_nonterminal_name remove_nonterminal_name str0 valid str prod.
+            Let ret := mp_parse_production str0 valid str prod.
 
             Definition T_production_success : Type
-              := prefix str match state_val str with
-                              | None => ret
-                              | Some p => ({ p' : ret
-                                                  & Forall_parse_of_production P (parse_of_production__of__minimal_parse_of_production p') })%type
-                            end.
+              := prefix str ret.
             Definition T_production_failure : Type
               := prefix str match state_val str with
                               | None => ret -> False
@@ -227,14 +224,10 @@ Section recursive_descent_parser.
           Section T_productions.
             Context (prods : productions CharType) (str : StringWithSplitState String (split_stateT prods)).
 
-            Let ret := minimal_parse_of String G initial_nonterminal_names_data is_valid_nonterminal_name remove_nonterminal_name str0 valid str prods.
+            Let ret := mp_parse str0 valid str prods.
 
             Definition T_productions_success : Type
-              := prefix str match state_val str with
-                              | None => ret
-                              | Some p => ({ p' : ret
-                                                  & Forall_parse_of P (parse_of__of__minimal_parse_of p') })%type
-                            end.
+              := prefix str ret.
 
             Definition T_productions_failure : Type
               := prefix str match state_val str with
@@ -351,11 +344,14 @@ Section recursive_descent_parser.
         Local Ltac t''0 :=
           first [ intro
                 | match goal with
-                    | [ H : StringWithSplitState _ _ |- _ ] => destruct H; simpl in *
+                    | [ H : StringWithSplitState _ _ |- _ ] => destruct H; simpl
                     | [ H : ?T |- _ ] => match eval hnf in T with
-                                           | StringWithSplitState _ _ => destruct H; simpl in *
+                                           | StringWithSplitState _ _ => destruct H; simpl
                                          end
-                    | [ H : option _ |- _ ] => destruct H; simpl in *
+                    | [ H : option _ |- _ ] => destruct H; simpl
+                    | [ H : ?T |- _ ] => match eval hnf in T with
+                                           | option _ => destruct H; simpl
+                                         end
                   end ].
 
         Local Ltac t'' :=
@@ -376,7 +372,7 @@ Section recursive_descent_parser.
               => first [ specialize (H (transitivity (str_le1_append _ _ _) H'))
                        | specialize (H (transitivity (str_le2_append _ _ _) H')) ]
             | _ => progress hnf in *
-            | _ => progress eauto with minimal_instance_db
+            | [ |- ?T ] => (not constr_eq False T); solve [ eauto with minimal_instance_db ] (* work around bugged tactic universe successor anomaly *)
             | [ x : _ |- @sigT ?A _ ]
               => exists (MinParseNonTerminal x : A)
             | [ |- @sigT ?A _ ]
@@ -395,7 +391,10 @@ Section recursive_descent_parser.
             | [ H : and _ _ |- _ ] => destruct H
             | [ H : (_, _) = (_, _) |- _ ] => apply path_prod' in H
             | _ => progress subst
-            | _ => progress simpl in *
+            | _ => progress simpl
+            | [ H : _ = _ |- _ ] => progress simpl in H (* work around [simpl in *] causing ~everything, even [admit], to error with "Anomaly: Cannot take the successor of a non variable universe:
+(maybe a bugged tactic).
+Please report." *)
             | [ H : _ |- _ ] =>
               match goal with
                 | [ H' : _ = H |- _ ] => destruct H'
@@ -404,8 +403,10 @@ Section recursive_descent_parser.
             | [ H : is_true (_ =s _) |- _ ] => apply bool_eq_correct in H
             | [ H : parse_of_item _ _ ?s (Terminal ?ch) |- _ ] => atomic s; inversion H
             | [ H : parse_of_production _ _ ?s []  |- _ ] => atomic s; inversion H
+            | [ H : minimal_parse_of_item _ _ _ _ _ _ _ _ (NonTerminal _ _) |- _ ] => (* work around 4035 *) let H' := fresh in rename H into H'; dependent destruction H'
+            | [ H : minimal_parse_of_item _ _ _ _ _ _ _ _ (Terminal _) |- _ ] => (* work around 4035 *) let H' := fresh in rename H into H'; dependent destruction H'
             | [ H : ?A -> ?B, H' : ?A |- _ ] => specialize (H H')
-            | [ H : ?A -> False |- _ ] => let A' := (eval hnf in A) in change (A' -> False) in H
+            | [ H : ?A -> False |- _ ] => let A' := (eval hnf in A) in progress change (A' -> False) in H
             | _ => progress trivial
             | _ => progress auto with arith
             | _ => t''0
@@ -422,7 +423,9 @@ Section recursive_descent_parser.
                 (*| congruence*)
                 | match goal with H : true = false |- _ => exfalso; clear -H; congruence end
                 | omega
-                | match goal with H : (?x =s ?x) = false |- _ => erewrite (proj2 (bool_eq_correct _ _ _)) in H by reflexivity end ].
+                | match goal with H : (?x =s ?x) = false |- _ => erewrite (proj2 (bool_eq_correct _ _ _)) in H by reflexivity end
+                | match goal with H : _ -> False |- False => apply H end;
+                  abstract (repeat t'') ].
 
         Local Ltac t_false :=
           idtac;
@@ -487,8 +490,43 @@ Section recursive_descent_parser.
         Next Obligation. t. Defined.
         Next Obligation. t. Defined.
         Next Obligation. t. Defined.
+        Next Obligation. t. Defined.
+        Next Obligation. t. Defined.
+        Next Obligation. t. repeat t''.
+                         simpl in H.
+                         simpl in *.
+                         Focus 2.
+                         simpl in *.
+                         subst_body.
+                         simpl in *.
+                         repeat t''.
+                         dependent destruction x.
+                         repeat t''.
+                         simpl in *.
+                         t.
+                         apply X.
+                         exists m.
+                         t.
+                         t.
+                         simpl in *.
+                         apply X0.
+                         exists x.
+                         t.
+                         simpl in *.
+                         repeat t'.
+                         dependent destruction x.
+                         simpl in *.
+                         repeat t''.
+                         repeat t'.
+
+                         Obligations.
+Defined.
+        Next Obligation. t. Defined.
+        Next Obligation. t. Defined.
         Obligations.
         Next Obligation.
+          subst_body; simpl in *.
+
           repeat t''.
           subst_body.
           repeat t''.
