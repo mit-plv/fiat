@@ -270,16 +270,30 @@ Definition parse_of__of__parse_of_item' {str0 valid str nonterminal_name}
       destruct (stringlike_dec str' (Empty _)) as [e|e], (stringlike_dec strs' (Empty _)) as [e'|e'];
       try (assert (pf0 : ~Length str' < Length str0)
             by (clear -pf e'; abstract (subst strs'; rewrite ?RightId, ?LeftId in pf; exact pf));
-           pose proof (@deloop_once_item' (deloop_once) str0 valid _ nonterminal_name pat' p' pf0 (fst H)) as deloop_once_item);
-      clear deloop_once;
-      first [ assert (pf1 : ~Length strs' < Length str0)
-              by (clear -pf e; abstract (subst str'; rewrite ?RightId, ?LeftId in pf; exact pf));
-              specialize (deloop_once_production str0 valid _ nonterminal_name pats' p'' pf1 (snd H))
-            | clear deloop_once_production ].
+           pose proof (@deloop_once_item' (deloop_once) str0 valid _ nonterminal_name pat' p' pf0 (fst H)) as deloop_once_item;
+           clear deloop_once);
+      try (assert (pf1 : ~Length strs' < Length str0)
+            by (clear -pf e; abstract (subst str'; rewrite ?RightId, ?LeftId in pf; exact pf));
+           specialize (deloop_once_production str0 valid _ nonterminal_name pats' p'' pf1 (snd H)));
+      try (destruct deloop_once_item as [ret|ret];
+           [ | right; subst; rewrite ?LeftId, ?RightId; assumption ]);
+      try (destruct deloop_once_production as [ret'|ret'];
+           [ | right; subst; rewrite ?LeftId, ?RightId; assumption ]).
       { (** empty, empty *)
-        destruct deloop_once_item as [ret|ret];
-        [ | right; subst; rewrite ?LeftId, ?RightId; assumption ].
+        left.
+        exists (ParseProductionCons (projT1 ret) (projT1 ret')).
+        exact (projT2 ret, projT2 ret'). }
+      { (** empty, nonempty *)
+        left.
+        exists (ParseProductionCons p' (projT1 ret')).
+        refine (expand_forall_parse_of_item _ (fst H), projT2 ret').
+        hnf.
+        pose proof (@deloop_once_item' (deloop_once) str' valid _ nonterminal_name pat' p' pf0 (fst H)) as deloop_once_item;
+           clear deloop_once
 
+
+
+        constructor (assumption).
         Focus 2.
         specialize (fun pf X
         simpl in H.
