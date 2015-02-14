@@ -90,17 +90,10 @@ Section recursive_descent_parser.
       : forall {str0 valid nonterminal_name s} (pf : Length s < Length str0),
           split_stateT str0 valid (include_nonterminal_name _ nonterminal_name) s -> split_stateT s initial_nonterminal_names_data (Lookup G nonterminal_name) s;
 
-      lift_lookup_nonterminal_name_state_eq1
-      : forall {str0 valid nonterminal_name s}
-               (pf : ~Length s < Length str0),
-          split_stateT str0 valid (include_nonterminal_name _ nonterminal_name) s -> split_stateT str0 (remove_nonterminal_name valid nonterminal_name) (Lookup G nonterminal_name) s;
-
-      lift_lookup_nonterminal_name_state_eq0
+      lift_lookup_nonterminal_name_state_eq
       : forall {str0 valid nonterminal_name s}
                (pf : s = str0 :> String),
-          _
-      := fun str0 valid nonterminal_name s pf
-         => @lift_lookup_nonterminal_name_state_eq1 str0 valid nonterminal_name s (lt_irrefl' (f_equal Length pf)) }.
+          split_stateT str0 valid (include_nonterminal_name _ nonterminal_name) s -> split_stateT str0 (remove_nonterminal_name valid nonterminal_name) (Lookup G nonterminal_name) s }.
 
   Class parser_computational_dataT :=
     { premethods :> parser_computational_predataT;
@@ -244,14 +237,14 @@ Section recursive_descent_parser.
           : forall {str0 valid nonterminal_name str},
               let ret := @T_nonterminal_name_success _ str0 valid nonterminal_name str in
               forall (pf : str = str0 :> String),
-                let arg := @T_productions_success _ str0 (remove_nonterminal_name valid nonterminal_name) (Lookup G nonterminal_name) (lift_StringWithSplitState str (lift_lookup_nonterminal_name_state_eq0 pf)) in
+                let arg := @T_productions_success _ str0 (remove_nonterminal_name valid nonterminal_name) (Lookup G nonterminal_name) (lift_StringWithSplitState str (lift_lookup_nonterminal_name_state_eq pf)) in
 
                 is_valid_nonterminal_name valid nonterminal_name = true -> arg -> ret;
           lift_parse_nonterminal_name_failure_eq
           : forall {str0 valid nonterminal_name str},
               let ret := @T_nonterminal_name_failure _ str0 valid nonterminal_name str in
-              forall (pf : ~Length str < Length str0),
-                let arg := @T_productions_failure _ str0 (remove_nonterminal_name valid nonterminal_name) (Lookup G nonterminal_name) (lift_StringWithSplitState str (lift_lookup_nonterminal_name_state_eq1 pf)) in
+              forall (pf : str = str0 :> String),
+                let arg := @T_productions_failure _ str0 (remove_nonterminal_name valid nonterminal_name) (Lookup G nonterminal_name) (lift_StringWithSplitState str (lift_lookup_nonterminal_name_state_eq pf)) in
                 arg -> ret;
 
           elim_parse_nonterminal_name_failure
@@ -471,7 +464,7 @@ Section recursive_descent_parser.
                                     {| string_val := str1 ; state_val := st |}
                                     pf)
                               (Lookup G nonterminal_name)
-                              (lift_StringWithSplitState str (lift_lookup_nonterminal_name_state_eq0 (or_not_l pf _)))
+                              (lift_StringWithSplitState str (lift_lookup_nonterminal_name_state_eq (or_not_l pf _)))
                               (or_intror _))
                         then inl (lift_parse_nonterminal_name_success_eq _ _ _)
                         else inr (lift_parse_nonterminal_name_failure_eq _ _)
