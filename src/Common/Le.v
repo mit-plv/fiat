@@ -1,5 +1,6 @@
 (** * Common facts about [≤] *)
 Require Import Coq.Arith.Le.
+Require Import Coq.omega.Omega.
 
 Set Implicit Arguments.
 
@@ -83,3 +84,15 @@ Proof.
   { rewrite (le_proof_irrelevance' (left pf)); reflexivity. }
   { rewrite (le_proof_irrelevance' (left pf')); reflexivity. }
 Qed.
+
+Lemma not_lt_plus {x y z} (H : ~ x < y + z) : (~ x < y) /\ (~x < z).
+Proof. split; omega. Qed.
+
+Lemma not_le_plus {x y z} (H : ~ x <= y + z) : (~ x <= y) /\ (~x <= z).
+Proof. split; omega. Qed.
+
+Lemma not_lt_add_r {a b} (H : ~a < a + b) : b = 0.
+Proof. omega. Qed.
+
+Lemma not_lt_add_l {a b} (H : ~a < b + a) : b = 0.
+Proof. omega. Qed.

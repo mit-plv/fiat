@@ -1,4 +1,5 @@
 Require Import Coq.Lists.List Coq.Strings.String.
+Require Import Coq.omega.Omega.
 Require Export Setoid RelationClasses Program Morphisms.
 
 Global Set Implicit Arguments.
