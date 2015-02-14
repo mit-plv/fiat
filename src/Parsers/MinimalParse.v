@@ -465,11 +465,11 @@ Section cfg.
     := @expand_minimal_parse_of_item' (@expand_minimal_parse_of).
 
   Section minimize.
-    Let P : string -> Prop
-      := fun p => is_valid_name initial_names_data p = true.
+    Let P : String -> string -> Prop
+      := fun _ p => is_valid_name initial_names_data p = true.
 
     Let alt_option h valid str
-      := { name : _ & (is_valid_name valid name = false /\ P name)
+      := { name : _ & (is_valid_name valid name = false /\ P str name)
                       * { p : parse_of String G str (Lookup G name)
                               & (size_of_parse p < h)
                                 * Forall_parse_of P p } }%type.

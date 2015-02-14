@@ -699,7 +699,7 @@ Section brute_force_make_parse_of.
              (p : parse_of _ G str (Lookup G name))
              (H_valid_name : rdp_list_is_valid_name (Valid_nonterminal_symbols G) name = true)
              (H_valid_tree : Forall_parse_of
-                               (fun p =>
+                               (fun _ p =>
                                   rdp_list_is_valid_name (Valid_nonterminal_symbols G) p = true) p)
   : brute_force_make_parse_of G str name = true.
   Proof.

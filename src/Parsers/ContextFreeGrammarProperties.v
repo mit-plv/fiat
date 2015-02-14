@@ -7,7 +7,7 @@ Delimit Scope string_like_scope with string_like.
 
 Section cfg.
   Context CharType (String : string_like CharType) (G : grammar CharType)
-          (P : String.string -> Type).
+          (P : String -> String.string -> Type).
 
   Fixpoint Forall_parse_of {str pats} (p : parse_of String G str pats)
     := match p with
@@ -21,7 +21,7 @@ Section cfg.
               := match p return Type with
                    | ParseTerminal x => unit
                    | ParseNonTerminal name str p'
-                     => (P name * Forall_parse_of p')%type
+                     => (P str name * Forall_parse_of p')%type
                  end in
           match p return Type with
             | ParseProductionNil => unit
@@ -33,6 +33,6 @@ Section cfg.
     := match p return Type with
          | ParseTerminal x => unit
          | ParseNonTerminal name str p'
-           => (P name * Forall_parse_of p')%type
+           => (P str name * Forall_parse_of p')%type
        end.
 End cfg.

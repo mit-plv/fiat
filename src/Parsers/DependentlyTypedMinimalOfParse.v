@@ -24,10 +24,18 @@ Section recursive_descent_parser.
                is_valid_nonterminal_name (remove_nonterminal_name ls ps) ps' = false
                <-> is_valid_nonterminal_name ls ps' = false \/ ps = ps').
   Variable orig_methods : @parser_computational_dataT' CharType String premethods.
-  Variable gen_state : forall (prod : production CharType) s, split_stateT prod s.
+  Variable gen_state : forall str0 valid (prod : production CharType) s, split_stateT str0 valid prod s.
 
-  Let P : string -> Prop
-    := fun p => is_valid_nonterminal_name initial_nonterminal_names_data p = true.
+  Let P str0 valid : String -> string -> Prop
+    := fun str p =>
+         is_valid_nonterminal_name
+           (if lt_dec (Length str) (Length str0)
+            then initial_nonterminal_names_data
+            else valid)
+           p = true.
+
+         then  initial_nonterminal_names_data p = true
+         else
 
   Let p_parse_item s it
     := { p' : parse_of_item String G s it & Forall_parse_of_item P p' }.
