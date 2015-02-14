@@ -29,7 +29,7 @@ Section recursive_descent_parser.
   Variable gen_state : forall str0 valid (prod : production CharType) s, split_stateT str0 valid prod s.
 
   Variable top_methods' : @parser_computational_dataT' _ String _.
-  Let leaf_methods' : @parser_computational_dataT' _ String _
+  Definition leaf_methods' : @parser_computational_dataT' _ String _
     := @methods' _ _ (@methods _ _ (@types _ _ _ leaves_extra_data)).
 
   (** some helper lemmas to help Coq with inference *)
@@ -72,10 +72,61 @@ Section recursive_descent_parser.
                            lift_StringWithSplitState (snd s1s2) (@inr _ _)))
                        (@split_string_for_production _ _ _ leaf_methods' str0 valid it its {| string_val := string_val s ; state_val := st |})
             end }.
-  Proof. abstract t_sum. Defined.
+  Proof. clear; abstract t_sum. Defined.
 
-  Local Instance strdata : @parser_computational_strdataT _ String G _ _
-    := {| lower_nonterminal_name_state str0 valid nonterminal_name str st := st;
+  Check @parser_computational_strdataT.
+
+  Definition top_methods : @parser_computational_dataT _ String
+    := {| DependentlyTyped.methods' := top_methods' |}.
+  Definition leaf_methods : @parser_computational_dataT _ String
+    := @methods _ _ (@types _ _ _ leaves_extra_data).
+
+  Record top_strdataT :=
+    { top_lower_nonterminal_name_state
+      : forall {str0 valid nonterminal_name s},
+          @split_stateT _ _ _ top_methods' str0 valid (NonTerminal _ nonterminal_name) s -> option (@split_stateT _ _ _ top_methods' str0 valid (include_nonterminal_name _ nonterminal_name) s);
+
+      top_lower_string_head
+      : forall {str0 valid}
+               {prod : production CharType}
+               {prods : productions CharType}
+               {s},
+          @split_stateT _ _ _ top_methods' str0 valid (prod::prods : productions CharType) s -> option (@split_stateT _ _ _ top_methods' str0 valid prod s);
+      top_lower_string_tail
+      : forall {str0 valid}
+               {prod : production CharType}
+               {prods : productions CharType}
+               {s},
+          @split_stateT _ _ _ top_methods' str0 valid (prod::prods : productions CharType) s -> option (@split_stateT _ _ _ top_methods' str0 valid prods s);
+
+      top_lift_lookup_nonterminal_name_state_lt
+      : forall {str0 valid nonterminal_name s} (pf : Length s < Length str0),
+          @split_stateT _ _ _ top_methods' str0 valid (include_nonterminal_name _ nonterminal_name) s -> @split_stateT _ _ _ top_methods' s initial_nonterminal_names_data (Lookup G nonterminal_name) s;
+
+      lift_lookup_nonterminal_name_state_eq
+      : forall {str0 valid nonterminal_name s}
+               (pf : s = str0 :> String),
+          split_stateT str0 valid (include_nonterminal_name _ nonterminal_name) s -> split_stateT str0 (remove_nonterminal_name valid nonterminal_name) (Lookup G nonterminal_name) s }.
+
+  Variable top_strdata : @parser_computational_strdataT _ String G top_methods.
+  Definition leaf_strdata : @parser_computational_strdataT _ String G leaf_methods
+    := @strdata _ _ _ leaves_extra_data.
+
+  Local Instance methods : parser_computational_dataT := { methods' := methods' }.
+
+Definition functor_sum {A A' B B'} (f : A -> A') (g : B -> B') (x : sum A B) : sum A' B' :=
+  match x with
+    | inl a => inl (f a)
+    | inr b => inr (g b)
+  end.
+
+  Local Instance strdata : @parser_computational_strdataT _ String G methods
+    := { lower_nonterminal_name_state str0 valid nonterminal_name str
+         := functor_sum
+              (@lower_nonterminal_name_state _ _ _ _ top_strdata _ _ _ _)
+              (@lower_nonterminal_name_state _ _ _ _ leaf_strdata _ _ _ _) }.
+         (lower_nonterminal_name_state str0 valid nonterminal_name str) }.
+                                                                         ;
           lower_string_head str0 valid prod prods str st
           := match st with
                | None => None

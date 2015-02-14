@@ -10,6 +10,7 @@ SRC_PARSERS_MODULES := \
 	Parsers/StringLike/Examples\
 	Parsers/Specification\
 	Parsers/DependentlyTyped\
+	Parsers/DependentlyTypedOption\
 	Parsers/DependentlyTypedMinimal\
 	Parsers/DependentlyTypedMinimalOfParse\
 	Parsers/BooleanRecognizer\

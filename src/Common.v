@@ -938,3 +938,9 @@ Ltac find_eassumption :=
   end.
 
 Ltac pre_eassumption := idtac; let x := find_eassumption in idtac.
+
+Definition functor_sum {A A' B B'} (f : A -> A') (g : B -> B') (x : sum A B) : sum A' B' :=
+  match x with
+    | inl a => inl (f a)
+    | inr b => inr (g b)
+  end.
