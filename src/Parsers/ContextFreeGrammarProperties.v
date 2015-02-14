@@ -74,7 +74,12 @@ Section cfg.
                               expand_forall_parse_of_production p'' (snd ab))
             end.
 
+    Global Arguments expand_forall_parse_of : simpl never.
+    Global Arguments expand_forall_parse_of_production : simpl never.
+
     Definition expand_forall_parse_of_item {str it} (p : parse_of_item String G str it)
       := @expand_forall_parse_of_item' _ (@expand_forall_parse_of) str it p.
+
+    Global Arguments expand_forall_parse_of_item : simpl never.
   End expand.
 End cfg.
