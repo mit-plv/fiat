@@ -185,6 +185,7 @@ Section recursive_descent_parser.
           match goal with
             | [ |- False ]
               => abstract (
+                     subst_body;
                      repeat t';
                      do 2 try inversion_one_head_hnf @minimal_parse_of_name;
                      repeat t';
