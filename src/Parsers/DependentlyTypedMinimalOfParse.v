@@ -28,7 +28,8 @@ Section recursive_descent_parser.
 
   Let P (str0 : String) valid : String -> string -> Prop
     := fun str p =>
-         sub_names_listT is_valid_nonterminal_name valid initial_nonterminal_names_data
+         str ≤s str0
+         /\ sub_names_listT is_valid_nonterminal_name valid initial_nonterminal_names_data
          /\ is_valid_nonterminal_name
               (if lt_dec (Length str) (Length str0)
                then initial_nonterminal_names_data
@@ -40,8 +41,8 @@ Section recursive_descent_parser.
         (H : P str0 valid str name')
   : P str0 (remove_nonterminal_name valid name) str name'.
   Proof.
-    destruct H.
-    split.
+    destruct H as [ ? [ ? ? ] ].
+    split; [ assumption | split ].
     { apply sub_names_listT_remove_2; assumption. }
     { destruct lt_dec; try assumption.
       match goal with
@@ -163,7 +164,7 @@ Section recursive_descent_parser.
                          end
             with
               | ParseTerminal _ => I
-              | ParseNonTerminal _ _ p' => fun pf' H' => (fst H', existT _ p' (expand_forall_parse_of _ (snd H')))
+              | ParseNonTerminal _ _ p' => fun pf' H' => (fst H', existT _ p' (expand_forall_parse_of _ _ (snd H')))
             end pf (projT2 p)).
     clear -pf'; subst P; simpl;
     abstract (intros ??; do 2 edestruct lt_dec; intuition).
@@ -287,6 +288,12 @@ Definition parse_of__of__parse_of_item' {str0 valid str nonterminal_name}
         left.
         exists (ParseProductionCons p' (projT1 ret')).
         refine (expand_forall_parse_of_item _ (fst H), projT2 ret').
+        admit. }
+      admit.
+      admit. }
+  Defined.
+  (*
+        clear -e e'.
         hnf.
         pose proof (@deloop_once_item' (deloop_once) str' valid _ nonterminal_name pat' p' pf0 (fst H)) as deloop_once_item;
            clear deloop_once
@@ -415,7 +422,7 @@ refine (match
 
     Definition expand_forall_parse_of_item {str it} {p : parse_of_item String G str it}
       := @expand_forall_parse_of_item' _ (@expand_forall_parse_of) str it p.
-
+*)
 
   Local Instance strdata : @parser_computational_strdataT _ String G _ _
     := {| lower_nonterminal_name_state str0 valid nonterminal_name str st := st;
