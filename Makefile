@@ -11,9 +11,11 @@ SRC_PARSERS_MODULES := \
 	Parsers/Specification\
 	Parsers/DependentlyTyped\
 	Parsers/DependentlyTypedMinimal\
+	Parsers/DependentlyTypedMinimalOfParse\
 	Parsers/BooleanRecognizer\
 	Parsers/WellFoundedParse\
 	Parsers/MinimalParse\
+	Parsers/MinimalParseOfParse\
 	Parsers/BooleanRecognizerCorrect\
 	$(SRC_GRAMMAR_MODULES)
 
