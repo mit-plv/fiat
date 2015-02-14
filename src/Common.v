@@ -896,3 +896,44 @@ Definition path_prod' {A B} {x x' : A} {y y' : B}
            (H : (x, y) = (x', y'))
 : x = x' /\ y = y'
   := path_prod H.
+
+Lemma lt_irrefl' {n m} (H : n = m) : ~n < m.
+Proof.
+  subst; apply Lt.lt_irrefl.
+Qed.
+
+Lemma or_not_l {A B} (H : A \/ B) (H' : ~A) : B.
+Proof.
+  destruct H; intuition.
+Qed.
+
+Lemma or_not_r {A B} (H : A \/ B) (H' : ~B) : A.
+Proof.
+  destruct H; intuition.
+Qed.
+
+Ltac instantiate_evar :=
+  instantiate;
+  match goal with
+    | [ H : appcontext[?E] |- _ ]
+      => is_evar E;
+        match goal with
+          | [ H' : _ |- _ ] => unify E H'
+        end
+    | [ |- appcontext[?E] ]
+      => is_evar E;
+        match goal with
+          | [ H' : _ |- _ ] => unify E H'
+        end
+  end;
+  instantiate.
+
+Ltac instantiate_evars :=
+  repeat instantiate_evar.
+
+Ltac find_eassumption :=
+  match goal with
+    | [ H : ?T |- ?T' ] => constr:(H : T')
+  end.
+
+Ltac pre_eassumption := idtac; let x := find_eassumption in idtac.
