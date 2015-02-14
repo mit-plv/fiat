@@ -39,7 +39,7 @@ Section cfg.
   End definitions.
 
   Section expand.
-    Context (P P' : String -> String.string -> Type)
+    Context {P P' : String -> String.string -> Type}
             (f : forall str n, P str n -> P' str n).
 
     Definition expand_forall_parse_of_item'
@@ -57,27 +57,27 @@ Section cfg.
 
     Global Arguments expand_forall_parse_of_item' : simpl never.
 
-    Fixpoint expand_forall_parse_of {str pats} (p : parse_of String G str pats)
+    Fixpoint expand_forall_parse_of {str pats} {p : parse_of String G str pats}
     : Forall_parse_of P p -> Forall_parse_of P' p
       := match p return Forall_parse_of P p -> Forall_parse_of P' p with
            | ParseHead str pat pats p'
-             => expand_forall_parse_of_production p'
+             => @expand_forall_parse_of_production _ _ p'
            | ParseTail _ _ _ p'
-             => expand_forall_parse_of p'
+             => @expand_forall_parse_of _ _ p'
          end
-    with expand_forall_parse_of_production {str pat} (p : parse_of_production String G str pat)
+    with expand_forall_parse_of_production {str pat} {p : parse_of_production String G str pat}
          : Forall_parse_of_production P p -> Forall_parse_of_production P' p
          := match p return Forall_parse_of_production P p -> Forall_parse_of_production P' p with
               | ParseProductionNil => fun x => x
               | ParseProductionCons str pat strs pats p' p''
                 => fun ab => (expand_forall_parse_of_item' (@expand_forall_parse_of) (fst ab),
-                              expand_forall_parse_of_production p'' (snd ab))
+                              expand_forall_parse_of_production (snd ab))
             end.
 
     Global Arguments expand_forall_parse_of : simpl never.
     Global Arguments expand_forall_parse_of_production : simpl never.
 
-    Definition expand_forall_parse_of_item {str it} (p : parse_of_item String G str it)
+    Definition expand_forall_parse_of_item {str it} {p : parse_of_item String G str it}
       := @expand_forall_parse_of_item' _ (@expand_forall_parse_of) str it p.
 
     Global Arguments expand_forall_parse_of_item : simpl never.
