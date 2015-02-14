@@ -68,7 +68,11 @@ Section recursive_descent_parser.
           let P f := List.Forall f (@split_string_for_production str0 valid it its str) in
           P (fun s1s2 => (fst s1s2 ++ snd s1s2 =s str) = true) }.
 
-  Class parser_computational_strdataT `{parser_computational_dataT'} :=
+  Class parser_computational_dataT :=
+    { premethods :> parser_computational_predataT;
+      methods' :> parser_computational_dataT' }.
+
+  Class parser_computational_strdataT `{parser_computational_dataT} :=
     { lower_nonterminal_name_state
       : forall {str0 valid nonterminal_name s},
           split_stateT str0 valid (NonTerminal _ nonterminal_name) s -> split_stateT str0 valid (include_nonterminal_name _ nonterminal_name) s;
@@ -95,14 +99,10 @@ Section recursive_descent_parser.
                (pf : s = str0 :> String),
           split_stateT str0 valid (include_nonterminal_name _ nonterminal_name) s -> split_stateT str0 (remove_nonterminal_name valid nonterminal_name) (Lookup G nonterminal_name) s }.
 
-  Class parser_computational_dataT :=
-    { premethods :> parser_computational_predataT;
-      methods' :> parser_computational_dataT' }.
-
   Section generic.
     Section parts.
-      Class parser_dependent_types_dataT :=
-        { methods :> parser_computational_dataT;
+      Class parser_dependent_types_dataT' `{parser_computational_dataT} :=
+        { (*methods :> parser_computational_dataT;*)
           T_nonterminal_name_success
           : forall (str0 : String) (valid : nonterminal_names_listT)
                    (name : string)
@@ -165,57 +165,62 @@ Section recursive_descent_parser.
                    (str : StringWithSplitState String (split_stateT str0 valid prods)),
               Type }.
 
-      Class parser_dependent_types_extra_dataT :=
-        { types :> parser_dependent_types_dataT;
-          strdata :> parser_computational_strdataT;
+      Class parser_dependent_types_dataT :=
+        { methods :> parser_computational_dataT;
+          types' :> parser_dependent_types_dataT' }.
+
+
+      Class parser_dependent_types_extra_dataT' `{types : parser_dependent_types_dataT, @parser_computational_strdataT (@methods types)} :=
+        { (*types :> parser_dependent_types_dataT;
+          strdata :> parser_computational_strdataT;*)
           lift_success
           : forall {str0 valid} nonterminal_name {str},
-              @T_nonterminal_name_success _ str0 valid nonterminal_name (lift_StringWithSplitState str lower_nonterminal_name_state)
-              -> @T_item_success _ str0 valid (NonTerminal _ nonterminal_name) str;
+              @T_nonterminal_name_success _ _ str0 valid nonterminal_name (lift_StringWithSplitState str lower_nonterminal_name_state)
+              -> @T_item_success _ _ str0 valid (NonTerminal _ nonterminal_name) str;
           lift_failure
           : forall {str0 valid} nonterminal_name {str},
-              @T_nonterminal_name_failure _ str0 valid nonterminal_name (lift_StringWithSplitState str lower_nonterminal_name_state)
-              -> @T_item_failure _ str0 valid (NonTerminal _ nonterminal_name) str;
+              @T_nonterminal_name_failure _ _ str0 valid nonterminal_name (lift_StringWithSplitState str lower_nonterminal_name_state)
+              -> @T_item_failure _ _ str0 valid (NonTerminal _ nonterminal_name) str;
           parse_terminal_success
           : forall {str0 valid} ch {str},
-              let ret := @T_item_success _ str0 valid (Terminal ch) str in
+              let ret := @T_item_success _ _ str0 valid (Terminal ch) str in
               [[ ch ]] =s str -> ret;
           parse_terminal_failure
           : forall {str0 valid} ch {str},
-              let ret := @T_item_failure _ str0 valid (Terminal ch) str in
+              let ret := @T_item_failure _ _ str0 valid (Terminal ch) str in
               ([[ ch ]] =s str) = false -> ret;
           parse_empty_success
           : forall {str0 valid str},
-              let ret := @T_production_success _ str0 valid nil str in
+              let ret := @T_production_success _ _ str0 valid nil str in
               str =s Empty _ -> ret;
           parse_empty_failure
           : forall {str0 valid str},
-              let ret := @T_production_failure _ str0 valid nil str in
+              let ret := @T_production_failure _ _ str0 valid nil str in
               str ≤s str0 -> (str =s Empty _) = false -> ret;
           cons_success
           : forall {str0 valid} it its {s1 s2 str},
-              let a1 := @T_item_success _ str0 valid it s1 in
-              let a2 := @T_production_success _ str0 valid its s2 in
-              let ret := @T_production_success _ str0 valid (it::its) str in
+              let a1 := @T_item_success _ _ str0 valid it s1 in
+              let a2 := @T_production_success _ _ str0 valid its s2 in
+              let ret := @T_production_success _ _ str0 valid (it::its) str in
               str ≤s str0 -> s1 ++ s2 =s str -> In (s1, s2) (split_string_for_production str0 valid it its str) -> a1 -> a2 -> ret;
 
           fail_parse_nil_productions
           : forall {str0 valid str}, T_productions_failure str0 valid [] str;
           lift_prods_success_head
           : forall {str0 valid prod prods str},
-              let ret := @T_productions_success _ str0 valid (prod::prods) str in
-              let arg := @T_production_success _ str0 valid prod (lift_StringWithSplitState str lower_string_head) in
+              let ret := @T_productions_success _ _ str0 valid (prod::prods) str in
+              let arg := @T_production_success _ _ str0 valid prod (lift_StringWithSplitState str lower_string_head) in
               arg -> ret;
           lift_prods_success_tail
           : forall {str0 valid prod prods str},
-              let ret := @T_productions_success _ str0 valid (prod::prods) str in
-              let arg := @T_productions_success _ str0 valid prods (lift_StringWithSplitState str lower_string_tail) in
+              let ret := @T_productions_success _ _ str0 valid (prod::prods) str in
+              let arg := @T_productions_success _ _ str0 valid prods (lift_StringWithSplitState str lower_string_tail) in
               arg -> ret;
           lift_prods_failure
           : forall {str0 valid prod prods str},
-              let ret := @T_productions_failure _ str0 valid (prod::prods) str in
-              let a1 := @T_production_failure _ str0 valid prod (lift_StringWithSplitState str lower_string_head) in
-              let a2 := @T_productions_failure _ str0 valid prods (lift_StringWithSplitState str lower_string_tail) in
+              let ret := @T_productions_failure _ _ str0 valid (prod::prods) str in
+              let a1 := @T_production_failure _ _ str0 valid prod (lift_StringWithSplitState str lower_string_head) in
+              let a2 := @T_productions_failure _ _ str0 valid prods (lift_StringWithSplitState str lower_string_tail) in
               a1 -> a2 -> ret;
 
           H_prod_split : forall str0 valid it its str, split_string_lift_T str0 valid it its str (split_string_for_production str0 valid it its str);
@@ -223,38 +228,43 @@ Section recursive_descent_parser.
 
           lift_parse_nonterminal_name_success_lt
           : forall {str0 valid nonterminal_name str},
-              let ret := @T_nonterminal_name_success _ str0 valid nonterminal_name str in
+              let ret := @T_nonterminal_name_success _ _ str0 valid nonterminal_name str in
               forall (pf : Length str < Length str0),
-                let arg := @T_productions_success _ str initial_nonterminal_names_data (Lookup G nonterminal_name) (lift_StringWithSplitState str (lift_lookup_nonterminal_name_state_lt pf)) in
+                let arg := @T_productions_success _ _ str initial_nonterminal_names_data (Lookup G nonterminal_name) (lift_StringWithSplitState str (lift_lookup_nonterminal_name_state_lt pf)) in
                 arg -> ret;
           lift_parse_nonterminal_name_failure_lt
           : forall {str0 valid nonterminal_name str},
-              let ret := @T_nonterminal_name_failure _ str0 valid nonterminal_name str in
+              let ret := @T_nonterminal_name_failure _ _ str0 valid nonterminal_name str in
               forall (pf : Length str < Length str0),
-                let arg := @T_productions_failure _ str initial_nonterminal_names_data (Lookup G nonterminal_name) (lift_StringWithSplitState str (lift_lookup_nonterminal_name_state_lt pf)) in
+                let arg := @T_productions_failure _ _ str initial_nonterminal_names_data (Lookup G nonterminal_name) (lift_StringWithSplitState str (lift_lookup_nonterminal_name_state_lt pf)) in
                 arg -> ret;
           lift_parse_nonterminal_name_success_eq
           : forall {str0 valid nonterminal_name str},
-              let ret := @T_nonterminal_name_success _ str0 valid nonterminal_name str in
+              let ret := @T_nonterminal_name_success _ _ str0 valid nonterminal_name str in
               forall (pf : str = str0 :> String),
-                let arg := @T_productions_success _ str0 (remove_nonterminal_name valid nonterminal_name) (Lookup G nonterminal_name) (lift_StringWithSplitState str (lift_lookup_nonterminal_name_state_eq pf)) in
+                let arg := @T_productions_success _ _ str0 (remove_nonterminal_name valid nonterminal_name) (Lookup G nonterminal_name) (lift_StringWithSplitState str (lift_lookup_nonterminal_name_state_eq pf)) in
 
                 is_valid_nonterminal_name valid nonterminal_name = true -> arg -> ret;
           lift_parse_nonterminal_name_failure_eq
           : forall {str0 valid nonterminal_name str},
-              let ret := @T_nonterminal_name_failure _ str0 valid nonterminal_name str in
+              let ret := @T_nonterminal_name_failure _ _ str0 valid nonterminal_name str in
               forall (pf : str = str0 :> String),
-                let arg := @T_productions_failure _ str0 (remove_nonterminal_name valid nonterminal_name) (Lookup G nonterminal_name) (lift_StringWithSplitState str (lift_lookup_nonterminal_name_state_eq pf)) in
+                let arg := @T_productions_failure _ _ str0 (remove_nonterminal_name valid nonterminal_name) (Lookup G nonterminal_name) (lift_StringWithSplitState str (lift_lookup_nonterminal_name_state_eq pf)) in
                 arg -> ret;
 
           elim_parse_nonterminal_name_failure
           : forall {str0 valid nonterminal_name str},
-              let ret := @T_nonterminal_name_failure _ str0 valid nonterminal_name str in
+              let ret := @T_nonterminal_name_failure _ _ str0 valid nonterminal_name str in
               str ≤s str0
               -> ~ Length str < Length str0
               -> is_valid_nonterminal_name valid nonterminal_name = false
               -> ret
         }.
+
+      Class parser_dependent_types_extra_dataT :=
+        { types :> parser_dependent_types_dataT;
+          strdata :> parser_computational_strdataT;
+          extradata :> parser_dependent_types_extra_dataT' }.
 
       Context `{types_data : parser_dependent_types_extra_dataT}.
 
@@ -297,7 +307,7 @@ Section recursive_descent_parser.
                      str ≤s str0
                      -> forall nonterminal_name st,
                           let s := {| string_val := str ; state_val := st |} in
-                          sum (@T_nonterminal_name_success _ str0 valid nonterminal_name s) (@T_nonterminal_name_failure _ str0 valid nonterminal_name s)).
+                          sum (@T_nonterminal_name_success _ _ str0 valid nonterminal_name s) (@T_nonterminal_name_failure _ _ str0 valid nonterminal_name s)).
 
         Let T_production := fun prod str => sum (T_production_success str0 valid prod str) (T_production_failure str0 valid prod str).
 
@@ -339,7 +349,7 @@ Section recursive_descent_parser.
                                            s1
                                            (@parse_nonterminal_name s1 Hs1)),
                               (@parse_production s2 Hs2) with
-                          | inl p_it, inl p_its => inl (@cons_success _ str0 valid _ _ s1 s2 _ pf _ _ _ _)
+                          | inl p_it, inl p_its => inl (@cons_success _ _ _ str0 valid _ _ s1 s2 _ pf _ _ _ _)
                           | inl p_it, inr p_its => parse_production_helper it its str pf splits _ parse_production _ _
                           | inr p_it, inl p_its => parse_production_helper it its str pf splits _ parse_production _ _
                           | inr p_it, inr p_its => parse_production_helper it its str pf splits _ parse_production _ _
@@ -414,7 +424,7 @@ Section recursive_descent_parser.
       Section nonterminal_names.
         Let T_productions := fun str0 valid prods str => sum (T_productions_success str0 valid prods str) (T_productions_failure str0 valid prods str).
 
-        Let T_nonterminal_name := fun str0 valid nonterminal_name str => sum (@T_nonterminal_name_success _ str0 valid nonterminal_name str) (@T_nonterminal_name_failure _ str0 valid nonterminal_name str).
+        Let T_nonterminal_name := fun str0 valid nonterminal_name str => sum (@T_nonterminal_name_success _ _ str0 valid nonterminal_name str) (@T_nonterminal_name_failure _ _ str0 valid nonterminal_name str).
 
         Section step.
           Context (str0 : String)

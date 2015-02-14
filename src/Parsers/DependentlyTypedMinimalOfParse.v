@@ -339,26 +339,29 @@ Section recursive_descent_parser.
   Definition parse_of__of__parse_of_item_eq {str0 valid str nonterminal_name} pf p
     := snd (@parse_of__of__parse_of_item_eq' str0 valid str nonterminal_name pf p).
 
-  Local Instance strdata : @parser_computational_strdataT _ String G _ _
-    := {| lower_nonterminal_name_state str0 valid nonterminal_name str st := st;
-          lower_string_head str0 valid prod prods str st
-          := match st with
-               | None => None
-               | Some p => match projT1 p as p' in parse_of _ _ str' prods' return Forall_parse_of (P str0 valid) p' -> option (p_parse_production str0 valid str' (hd prod prods')) with
-                             | ParseHead _ _ _ p' => fun H => Some (existT _ p' H)
-                             | ParseTail _ _ _ _ => fun _ => None
-                           end (projT2 p)
-             end;
-          lower_string_tail str0 valid prod prods str st
-          := match st with
-               | None => None
-               | Some p => match projT1 p as p' in parse_of _ _ str' prods' return Forall_parse_of (P str0 valid) p' -> option (p_parse str0 valid str' (tl prods')) with
-                             | ParseTail _ _ _ p' => fun H => Some (existT _ p' H)
-                             | ParseHead _ _ _ _ => fun _ => None
-                           end (projT2 p)
-             end;
-          lift_lookup_nonterminal_name_state_lt str0 valid nonterminal_name str pf := option_map (parse_of__of__parse_of_item_lt pf);
-          lift_lookup_nonterminal_name_state_eq str0 valid nonterminal_name str pf := option_map (parse_of__of__parse_of_item_eq pf) |}.
+  Local Instance methods : @parser_computational_dataT _ String
+    := { methods' := methods' }.
+
+  Local Instance strdata : @parser_computational_strdataT _ String G methods
+    := { lower_nonterminal_name_state str0 valid nonterminal_name str st := st;
+         lower_string_head str0 valid prod prods str st
+         := match st with
+              | None => None
+              | Some p => match projT1 p as p' in parse_of _ _ str' prods' return Forall_parse_of (P str0 valid) p' -> option (p_parse_production str0 valid str' (hd prod prods')) with
+                            | ParseHead _ _ _ p' => fun H => Some (existT _ p' H)
+                            | ParseTail _ _ _ _ => fun _ => None
+                          end (projT2 p)
+            end;
+         lower_string_tail str0 valid prod prods str st
+         := match st with
+              | None => None
+              | Some p => match projT1 p as p' in parse_of _ _ str' prods' return Forall_parse_of (P str0 valid) p' -> option (p_parse str0 valid str' (tl prods')) with
+                            | ParseTail _ _ _ p' => fun H => Some (existT _ p' H)
+                            | ParseHead _ _ _ _ => fun _ => None
+                          end (projT2 p)
+            end;
+         lift_lookup_nonterminal_name_state_lt str0 valid nonterminal_name str pf := option_map (parse_of__of__parse_of_item_lt pf);
+         lift_lookup_nonterminal_name_state_eq str0 valid nonterminal_name str pf := option_map (parse_of__of__parse_of_item_eq pf) }.
 
   Section minimal.
     Local Ltac t' :=
@@ -454,17 +457,20 @@ Section recursive_descent_parser.
           End T_productions.
         End types.
 
+        Global Instance minimal_parser_dependent_types_data'
+        : @parser_dependent_types_dataT' _ String methods
+          := { T_nonterminal_name_success := T_nonterminal_name_success;
+               T_nonterminal_name_failure := T_nonterminal_name_failure;
+               T_item_success := T_item_success;
+               T_item_failure := T_item_failure;
+               T_production_success := T_production_success;
+               T_production_failure := T_production_failure;
+               T_productions_success := T_productions_success;
+               T_productions_failure := T_productions_failure }.
+
         Global Instance minimal_parser_dependent_types_data
         : @parser_dependent_types_dataT _ String
-          := {| methods := Build_parser_computational_dataT methods';
-                T_nonterminal_name_success := T_nonterminal_name_success;
-                T_nonterminal_name_failure := T_nonterminal_name_failure;
-                T_item_success := T_item_success;
-                T_item_failure := T_item_failure;
-                T_production_success := T_production_success;
-                T_production_failure := T_production_failure;
-                T_productions_success := T_productions_success;
-                T_productions_failure := T_productions_failure |}.
+          := { types' := minimal_parser_dependent_types_data' }.
 
         Hint Constructors minimal_parse_of minimal_parse_of_name minimal_parse_of_production minimal_parse_of_item unit prod unit : minimal_instance_db.
         Hint Unfold T_item_success T_item_failure T_production_success T_production_failure T_productions_success T_productions_failure T_nonterminal_name_success T_nonterminal_name_failure
@@ -667,9 +673,9 @@ Please report." *)
           { repeat t''. }
         Defined.
 
-        Global Program Instance minimal_parser_dependent_types_extra_data
+        Global Program Instance minimal_parser_dependent_types_extra_data'
                (H_prod_split' : forall str0 valid it its str, @H_prod_splitT' str0 valid it its str None)
-        : @parser_dependent_types_extra_dataT _ String G
+        : @parser_dependent_types_extra_dataT' _ String G _ _
           := {| cons_success := cons_success;
                 H_prod_split str0 valid it its str
                 := match str with
@@ -694,6 +700,10 @@ Please report." *)
         Obligation 13. t. Defined.
         Obligation 14. t. Defined.
         Obligation 15. t. Defined.
+
+        Global Instance minimal_parser_dependent_types_extra_data H_prod_split'
+        : @parser_dependent_types_extra_dataT _ String G
+          := { extradata := minimal_parser_dependent_types_extra_data' H_prod_split' }.
       End common.
     End parts.
 

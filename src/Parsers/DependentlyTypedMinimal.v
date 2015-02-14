@@ -14,7 +14,7 @@ Section recursive_descent_parser.
           (String : string_like CharType)
           (G : grammar CharType).
   Context {methods : @parser_computational_dataT _ String}
-          {strdata : @parser_computational_strdataT _ String G _ _}.
+          {strdata : @parser_computational_strdataT _ String G _}.
 
   Section minimal.
     Local Ltac t' :=
@@ -72,8 +72,8 @@ Section recursive_descent_parser.
             := T_productions_success prods str -> False.
         End types.
 
-        Global Instance minimal_parser_dependent_types_data
-        : @parser_dependent_types_dataT _ String
+        Global Instance minimal_parser_dependent_types_data'
+        : @parser_dependent_types_dataT' _ String _
           := {| T_nonterminal_name_success := T_nonterminal_name_success;
                 T_nonterminal_name_failure := T_nonterminal_name_failure;
                 T_item_success := T_item_success;
@@ -83,6 +83,9 @@ Section recursive_descent_parser.
                 T_productions_success := T_productions_success;
                 T_productions_failure := T_productions_failure |}.
 
+        Global Instance minimal_parser_dependent_types_data
+        : @parser_dependent_types_dataT _ String
+          := { types' := minimal_parser_dependent_types_data' }.
 
         Definition split_list_completeT
                    (str0 : String)
@@ -140,7 +143,7 @@ Section recursive_descent_parser.
                    (str : StringWithSplitState String (split_stateT str0 valid (it::its : production CharType)))
                    pf
                    (split_list_complete : @split_list_completeT str0 valid it its str pf (split_string_for_production str0 valid it its str))
-        : @split_string_lift_T _ String _ str0 valid it its str (split_string_for_production str0 valid it its str).
+        : @split_string_lift_T _ String _ _ str0 valid it its str (split_string_for_production str0 valid it its str).
         Proof.
           clear -split_list_complete.
           intros H pf' H'; hnf in H', split_list_complete.
@@ -201,14 +204,18 @@ Section recursive_descent_parser.
 
         Local Obligation Tactic := t.
 
-        Global Program Instance minimal_parser_dependent_types_extra_data
+        Global Program Instance minimal_parser_dependent_types_extra_data'
                 (split_list_complete : forall str0 valid it its str pf, @split_list_completeT str0 valid it its str pf (split_string_for_production str0 valid it its str))
-        : @parser_dependent_types_extra_dataT _ String G.
+        : @parser_dependent_types_extra_dataT' _ String G _ _.
         Next Obligation.
           eapply H_prod_split'; eauto.
           Grab Existential Variables.
           assumption.
         Defined.
+
+        Global Instance minimal_parser_dependent_types_extra_data split_list_complete
+        : @parser_dependent_types_extra_dataT _ String G
+          := { extradata := minimal_parser_dependent_types_extra_data' split_list_complete }.
       End common.
 
       Definition minimal_parse_nonterminal_name
