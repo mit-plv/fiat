@@ -668,8 +668,7 @@ Please report." *)
         Defined.
 
         Global Program Instance minimal_parser_dependent_types_extra_data
-             (H_prod_split' : forall str0 valid it its str, @H_prod_splitT' str0 valid it its str None)
-               (*(split_list_complete : forall str0 valid it its str pf, @split_list_completeT str0 valid valid it its str pf (split_string_for_production it its str))*)
+               (H_prod_split' : forall str0 valid it its str, @H_prod_splitT' str0 valid it its str None)
         : @parser_dependent_types_extra_dataT _ String G
           := {| cons_success := cons_success;
                 H_prod_split str0 valid it its str
@@ -697,5 +696,31 @@ Please report." *)
         Obligation 15. t. Defined.
       End common.
     End parts.
+
+    Definition minimal_parse_nonterminal_name__of__parse
+               (H_prod_split' : forall str0 valid it its str, @H_prod_splitT' str0 valid it its str None)
+               (nonterminal_name : string)
+               (s : String)
+               (p : parse_of_item String G s (NonTerminal _ nonterminal_name))
+               (H : Forall_parse_of_item
+                      (fun _ n => is_valid_nonterminal_name initial_nonterminal_names_data n = true)
+                      p)
+    : minimal_parse_of_name String G initial_nonterminal_names_data is_valid_nonterminal_name remove_nonterminal_name s initial_nonterminal_names_data s nonterminal_name.
+    Proof.
+      pose proof (fun H' => @parse_nonterminal_name _ String G (minimal_parser_dependent_types_extra_data H_prod_split') nonterminal_name s (Some (existT _ p (expand_forall_parse_of_item H' H)))) as H0.
+      simpl in *.
+      unfold T_nonterminal_name_success, T_nonterminal_name_failure in *.
+      simpl in *.
+      edestruct H0; unfold P;
+        repeat match goal with
+                 | _ => assumption
+                 | [ H : _ -> _ |- _ ] => specialize (H (reflexivity _))
+                 | [ H : False |- _ ] => destruct H
+                 | _ => intro
+                 | [ |- _ /\ _ ] => split
+                 | [ |- appcontext[if lt_dec ?a ?b then _ else _] ]
+                   => destruct (lt_dec a b)
+               end.
+    Defined.
   End minimal.
 End recursive_descent_parser.
