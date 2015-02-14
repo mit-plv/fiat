@@ -26,7 +26,7 @@ Section recursive_descent_parser.
   Variable orig_methods : @parser_computational_dataT' CharType String premethods.
   Variable gen_state : forall str0 valid (prod : production CharType) s, split_stateT str0 valid prod s.
 
-  Let P str0 valid : String -> string -> Prop
+  Let P (str0 : String) valid : String -> string -> Prop
     := fun str p =>
          is_valid_nonterminal_name
            (if lt_dec (Length str) (Length str0)
@@ -34,17 +34,14 @@ Section recursive_descent_parser.
             else valid)
            p = true.
 
-         then  initial_nonterminal_names_data p = true
-         else
-
-  Let p_parse_item s it
-    := { p' : parse_of_item String G s it & Forall_parse_of_item P p' }.
-  Let p_parse_production s p
-    := { p' : parse_of_production String G s p & Forall_parse_of_production P p' }.
-  Let p_parse s prods
-    := { p' : parse_of String G s prods & Forall_parse_of P p' }.
-  Let p_parse_nonterminal_name s nonterminal_name
-    := { p' : parse_of_item String G  s (NonTerminal _ nonterminal_name) & Forall_parse_of_item P p' }.
+  Let p_parse_item str0 valid s it
+    := { p' : parse_of_item String G s it & Forall_parse_of_item (P str0 valid) p' }.
+  Let p_parse_production str0 valid s p
+    := { p' : parse_of_production String G s p & Forall_parse_of_production (P str0 valid) p' }.
+  Let p_parse str0 valid s prods
+    := { p' : parse_of String G s prods & Forall_parse_of (P str0 valid) p' }.
+  Let p_parse_nonterminal_name str0 valid s nonterminal_name
+    := { p' : parse_of_item String G  s (NonTerminal _ nonterminal_name) & Forall_parse_of_item (P str0 valid) p' }.
 
   Let mp_parse_item str0 valid str it
     := (*{ p' :*) minimal_parse_of_item String G initial_nonterminal_names_data is_valid_nonterminal_name remove_nonterminal_name str0 valid str it(* & Forall_parse_of_item P (parse_of_item__of__minimal_parse_of_item p') }*).
@@ -55,11 +52,11 @@ Section recursive_descent_parser.
   Let mp_parse_nonterminal_name str0 valid str nonterminal_name
     := (*{ p' : *)minimal_parse_of_name String G initial_nonterminal_names_data is_valid_nonterminal_name remove_nonterminal_name str0 valid str nonterminal_name(* & Forall_parse_of_item P (parse_of_item_name__of__minimal_parse_of_name p') }*).
 
-  Definition split_parse_of_production {str it its}
-             (p : p_parse_production str (it::its))
+  Definition split_parse_of_production {str0 valid str it its}
+             (p : p_parse_production str0 valid str (it::its))
   : { s1s2 : String * String & (fst s1s2 ++ snd s1s2 =s str)
-                               * p_parse_item (fst s1s2) it
-                               * p_parse_production (snd s1s2) its }%type.
+                               * p_parse_item str0 valid (fst s1s2) it
+                               * p_parse_production str0 valid (snd s1s2) its }%type.
   Proof.
     destruct p as [p H]; revert p H.
     pattern (it :: its).
@@ -83,35 +80,35 @@ Section recursive_descent_parser.
       { exact (snd H''). } }
   Defined.
 
-  Lemma split_parse_of_production_le1 {str it its p}
-  : fst (projT1 (@split_parse_of_production str it its p)) ≤s str.
+  Lemma split_parse_of_production_le1 {str0 valid str it its p}
+  : fst (projT1 (@split_parse_of_production str0 valid str it its p)) ≤s str.
   Proof.
     etransitivity; [ eapply str_le1_append | right; apply bool_eq_correct ].
     exact (fst (fst (projT2 (split_parse_of_production p)))).
   Qed.
 
-  Lemma split_parse_of_production_le2 {str it its p}
-  : snd (projT1 (@split_parse_of_production str it its p)) ≤s str.
+  Lemma split_parse_of_production_le2 {str0 valid str it its p}
+  : snd (projT1 (@split_parse_of_production str0 valid str it its p)) ≤s str.
   Proof.
     etransitivity; [ eapply str_le2_append | right; apply bool_eq_correct ].
     exact (fst (fst (projT2 (split_parse_of_production p)))).
   Qed.
 
   Local Instance methods' : @parser_computational_dataT' _ String premethods
-    := {| split_stateT g s
+    := {| split_stateT str0 valid g s
           := option (match g return Type with
-                       | include_item it => p_parse_item s it
-                       | include_production p => p_parse_production s p
-                       | include_productions prods => p_parse s prods
-                       | include_nonterminal_name nonterminal_name => p_parse_nonterminal_name s nonterminal_name
+                       | include_item it => p_parse_item str0 valid s it
+                       | include_production p => p_parse_production str0 valid s p
+                       | include_productions prods => p_parse str0 valid s prods
+                       | include_nonterminal_name nonterminal_name => p_parse_nonterminal_name str0 valid s nonterminal_name
                      end);
-          split_string_for_production it its s
+          split_string_for_production str0 valid it its s
           := let orig_splits := map (fun s1s2 =>
                                        ({| string_val := string_val (fst s1s2);
                                            state_val := None |},
                                         {| string_val := string_val (snd s1s2);
                                            state_val := None |}))
-                                    (@split_string_for_production _ _ _ orig_methods it its {| state_val := (gen_state (it::its) (string_val s)) |}) in
+                                    (@split_string_for_production _ _ _ orig_methods str0 valid it its {| state_val := (gen_state str0 valid (it::its) (string_val s)) |}) in
              match state_val s with
                | None => orig_splits
                | Some st => let st' := split_parse_of_production st in
@@ -130,48 +127,86 @@ Section recursive_descent_parser.
                  | [ |- Forall _ nil ] => constructor
                  | [ |- Forall _ (_::_) ] => constructor
                  | [ |- Forall _ (map _ _) ] => apply Forall_map
-                 | _ => refine (split_string_for_production_correct _ _ {| state_val := _ |})
+                 | _ => refine (split_string_for_production_correct _ _ _ _ {| state_val := _ |})
                  | _ => exact (fst (fst (projT2 (split_parse_of_production _))))
                end
       ).
   Defined.
 
-  Definition parse_of__of__parse_of_item' {str nonterminal_name}
-             (p : p_parse_nonterminal_name str nonterminal_name)
-  : P nonterminal_name * p_parse str (Lookup G nonterminal_name).
+  Definition parse_of__of__parse_of_item'_lt {str0 valid str nonterminal_name}
+             (pf : Length str < Length str0)
+             (p : p_parse_nonterminal_name str0 valid str nonterminal_name)
+  : P str0 valid str nonterminal_name * p_parse str initial_nonterminal_names_data str (Lookup G nonterminal_name).
   Proof.
     refine (match projT1 p as p' in parse_of_item _ _ str' it'
                   return match it' with
                            | Terminal _ => True
-                           | NonTerminal nonterminal_name' => Forall_parse_of_item P p' -> P nonterminal_name' * p_parse str' (Lookup G nonterminal_name')
+                           | NonTerminal nonterminal_name' => Length str' < Length str0 -> Forall_parse_of_item (P str0 valid) p' -> P str0 valid str' nonterminal_name' * p_parse str' initial_nonterminal_names_data str' (Lookup G nonterminal_name')
+                         end
+            with
+              | ParseTerminal _ => I
+              | ParseNonTerminal _ _ p' => fun pf' H' => (fst H', existT _ p' (_ (snd H')))
+            end pf (projT2 p)).
+    unfold P.
+
+  hnf.
+Defined.
+Definition parse_of__of__parse_of_item' {str0 valid str nonterminal_name}
+           (p : p_parse_nonterminal_name str0 valid str nonterminal_name)
+  : P str0 valid str nonterminal_name * p_parse str0 valid str (Lookup G nonterminal_name).
+  Proof.
+    refine (match projT1 p as p' in parse_of_item _ _ str' it'
+                  return match it' with
+                           | Terminal _ => True
+                           | NonTerminal nonterminal_name' => Forall_parse_of_item (P str0 valid) p' -> P str0 valid str' nonterminal_name' * p_parse str0 valid str' (Lookup G nonterminal_name')
                          end
             with
               | ParseTerminal _ => I
               | ParseNonTerminal _ _ p' => fun H' => (fst H', existT _ p' (snd H'))
             end (projT2 p)).
   Defined.
-  Definition parse_of__of__parse_of_item {str nonterminal_name} p
-    := snd (@parse_of__of__parse_of_item' str nonterminal_name p).
+  Definition parse_of__of__parse_of_item {str0 valid str nonterminal_name} p
+    := snd (@parse_of__of__parse_of_item' str0 valid str nonterminal_name p).
 
   Local Instance strdata : @parser_computational_strdataT _ String G _ _
-    := {| lower_nonterminal_name_state nonterminal_name str st := st;
-          lower_string_head prod prods str st
+    := {| lower_nonterminal_name_state str0 valid nonterminal_name str st := st;
+          lower_string_head str0 valid prod prods str st
           := match st with
                | None => None
-               | Some p => match projT1 p as p' in parse_of _ _ str' prods' return Forall_parse_of P p' -> option (p_parse_production str' (hd prod prods')) with
+               | Some p => match projT1 p as p' in parse_of _ _ str' prods' return Forall_parse_of (P str0 valid) p' -> option (p_parse_production str0 valid str' (hd prod prods')) with
                              | ParseHead _ _ _ p' => fun H => Some (existT _ p' H)
                              | ParseTail _ _ _ _ => fun _ => None
                            end (projT2 p)
              end;
-          lower_string_tail prod prods str st
+          lower_string_tail str0 valid prod prods str st
           := match st with
                | None => None
-               | Some p => match projT1 p as p' in parse_of _ _ str' prods' return Forall_parse_of P p' -> option (p_parse str' (tl prods')) with
+               | Some p => match projT1 p as p' in parse_of _ _ str' prods' return Forall_parse_of (P str0 valid) p' -> option (p_parse str0 valid str' (tl prods')) with
                              | ParseTail _ _ _ p' => fun H => Some (existT _ p' H)
                              | ParseHead _ _ _ _ => fun _ => None
                            end (projT2 p)
              end;
-          lift_lookup_nonterminal_name_state nonterminal_name str := option_map parse_of__of__parse_of_item |}.
+          lift_lookup_nonterminal_name_state_lt str0 valid nonterminal_name str pf := option_map _(*parse_of__of__parse_of_item*);
+          lift_lookup_nonterminal_name_state_eq1 str0 valid nonterminal_name str pf := option_map _(*parse_of__of__parse_of_item*) |}.
+
+  Definition parse_of__of__parse_of_item'_lt {str0 valid str nonterminal_name}
+             (pf : Length str < Length str0)
+             (p : parse_of_item String G str (NonTerminal CharType nonterminal_name))
+             (H : Forall_parse_of_item (P str0 valid) p)
+: P str0 valid str nonterminal_name * p_parse str initial_nonterminal_names_data str (Lookup G nonterminal_name).
+Proof.
+  refine (match p in parse_of_item _ _ str' it'
+                return match it' with
+                         | Terminal _ => True
+                         | NonTerminal nonterminal_name' => Length str' < Length str0 -> Forall_parse_of_item (P str0 valid) p -> P str0 valid str' nonterminal_name' * p_parse str' initial_nonterminal_names_data str' (Lookup G nonterminal_name')
+                       end
+          with
+            | ParseTerminal _ => I
+            | ParseNonTerminal _ _ p' => fun pf' H' => (fst H', _(*existT _ p' (snd H'*))
+          end pf H).
+  hnf.
+Defined.
+
 
   Section minimal.
     Local Ltac t' :=
