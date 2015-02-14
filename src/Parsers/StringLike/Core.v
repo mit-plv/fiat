@@ -46,8 +46,8 @@ Record StringWithSplitState {CharType} (String : string_like CharType) (split_st
     state_val : split_stateT string_val }.
 
 Definition lift_StringWithSplitState {CharType String A B}
-           (lift : forall s, A s -> B s)
            (s0 : @StringWithSplitState CharType String A)
+           (lift : A (string_val s0) -> B (string_val s0))
 : @StringWithSplitState CharType String B
   := {| string_val := string_val s0;
-        state_val := lift _ (state_val s0) |}.
+        state_val := lift (state_val s0) |}.
