@@ -182,6 +182,8 @@ Section recursive_descent_parser.
   Local Instance sum_types : @parser_dependent_types_dataT _ String
     := { ftypes' := sum_failure_types' }.
 
+  Context (top_success_data' : @parser_dependent_types_extra_success_dataT' _ String _ top_success_types top_strdata).
+
 
 
         Global Program Instance minimal_parser_dependent_types_extra_data
