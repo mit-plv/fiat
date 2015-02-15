@@ -4,6 +4,7 @@ Require Import Coq.Arith.Lt.
 Require Import Coq.Numbers.Natural.Peano.NPeano.
 Require Import Coq.omega.Omega.
 Require Import Parsers.StringLike.Core Common.Le Common.UIP.
+Require Import Common.Equality.
 
 Set Implicit Arguments.
 
@@ -182,4 +183,78 @@ Lemma neq_some_none_state_val {CharType} {String : string_like CharType} {P}
 Proof.
   destruct H.
   destruct (state_val s1); exact I.
+Qed.
+
+Definition string_val_path {CharType String A}
+      {s0 s1 : @StringWithSplitState CharType String A}
+      (H : s0 = s1)
+: string_val s0 = string_val s1
+  := f_equal (@string_val _ _ _) H.
+
+Definition state_val_path {CharType String A}
+      {s0 s1 : @StringWithSplitState CharType String A}
+      (H : s0 = s1)
+: eq_rect _ _ (state_val s0) _ (string_val_path H) = state_val s1.
+Proof.
+  destruct H; reflexivity.
+Defined.
+
+(** This proof would be so much easier to read if we were using HoTT conventions, tactics, and lemmas. *)
+Lemma lift_StringWithSplitState_injective {CharType String A B}
+           (s0 s1 : @StringWithSplitState CharType String A)
+           (lift : forall s, A s -> B s)
+           (lift_injective : forall s a1 a2, lift s a1 = lift s a2 -> a1 = a2)
+           (H : lift_StringWithSplitState s0 (lift _) = lift_StringWithSplitState s1 (lift _))
+: s0 = s1.
+Proof.
+  pose proof (state_val_path H) as H'.
+  generalize dependent (string_val_path H); clear H.
+  destruct s0, s1; simpl in *.
+  intro H'.
+  destruct H'; simpl.
+  intro H'.
+  apply lift_injective in H'.
+  destruct H'.
+  reflexivity.
+Qed.
+
+Lemma lift_StringWithSplitState_pair_injective {CharType String A A' B B'}
+           (s0 s1 : @StringWithSplitState CharType String A * @StringWithSplitState CharType String A')
+           (lift : forall s, A s -> B s)
+           (lift' : forall s, A' s -> B' s)
+           (lift_injective : forall s a1 a2, lift s a1 = lift s a2 -> a1 = a2)
+           (lift'_injective : forall s a1 a2, lift' s a1 = lift' s a2 -> a1 = a2)
+           (H : (lift_StringWithSplitState (fst s0) (lift _),
+                 lift_StringWithSplitState (snd s0) (lift' _))
+                =
+                (lift_StringWithSplitState (fst s1) (lift _),
+                 lift_StringWithSplitState (snd s1) (lift' _)))
+: s0 = s1.
+Proof.
+  pose proof (f_equal (@fst _ _) H) as H0.
+  pose proof (f_equal (@snd _ _) H) as H1.
+  clear H; simpl in *.
+  apply lift_StringWithSplitState_injective in H0; [ | assumption.. ].
+  apply lift_StringWithSplitState_injective in H1; [ | assumption.. ].
+  apply injective_projections; assumption.
+Qed.
+
+Lemma in_lift_pair_StringWithSplitState_iff_injective {CharType String A A' B B'}
+      {s0s1 : @StringWithSplitState CharType String A * @StringWithSplitState CharType String A'}
+      {lift : forall s, A s -> B s}
+      {lift' : forall s, A' s -> B' s}
+      {lift_injective : forall s a1 a2, lift s a1 = lift s a2 -> a1 = a2}
+      {lift'_injective : forall s a1 a2, lift' s a1 = lift' s a2 -> a1 = a2}
+      {ls : list (StringWithSplitState String A * StringWithSplitState String A')}
+      (H : List.In (lift_StringWithSplitState (fst s0s1) (lift _),
+                    lift_StringWithSplitState (snd s0s1) (lift' _))
+                   (List.map (fun s0s1 =>
+                                (lift_StringWithSplitState (fst s0s1) (lift _),
+                                 lift_StringWithSplitState (snd s0s1) (lift' _)))
+                             ls))
+: List.In s0s1 ls.
+Proof.
+  eapply in_map_iff_injective; [ | exact H ].
+  simpl; intro.
+  apply lift_StringWithSplitState_pair_injective; assumption.
 Qed.

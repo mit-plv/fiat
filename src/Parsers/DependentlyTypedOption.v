@@ -1,8 +1,9 @@
 (** * Transform CFG parser into an optional one *)
 Require Import Coq.Lists.List Coq.Program.Program Coq.Classes.RelationClasses Coq.Strings.String.
 Require Import Parsers.ContextFreeGrammar Parsers.Specification.
+Require Import Parsers.StringLike.Properties.
 Require Import Parsers.DependentlyTyped.
-Require Import Common.
+Require Import Common Common.Equality.
 
 Set Implicit Arguments.
 
@@ -35,6 +36,7 @@ Section recursive_descent_parser.
       | _ => progress destruct_head' option
       | [ |- Forall _ (map _ _) ] => apply Forall_map
       | _ => progress autounfold with dtp_option_db in *
+      | _ => progress simpl in *
       | _ => solve [ eauto with dtp_option_db ]
     end.
 
@@ -74,7 +76,7 @@ Section recursive_descent_parser.
          lift_lookup_nonterminal_name_state_eq str0 valid nonterminal_name s pf
          := option_map (@lift_lookup_nonterminal_name_state_eq _ _ _ _ strdata _ _ _ _ pf) }.
 
-  Context (types_success_data' : @parser_dependent_types_success_dataT' _ String orig_methods).
+  Context (stypes' : @parser_dependent_types_success_dataT' _ String orig_methods).
 
   Definition option_rect_str {A} {B : StringWithSplitState String (fun s => option (A s)) -> Type}
              (f : forall x : StringWithSplitState String A, B (lift_StringWithSplitState x (@Some _)))
@@ -89,196 +91,139 @@ Section recursive_descent_parser.
 
   Global Instance option_stypes' : @parser_dependent_types_success_dataT' _ String option_methods
     := { T_nonterminal_name_success str0 valid name
-         := option_rect_str (@T_nonterminal_name_success _ _ _ types_success_data' str0 valid name) (fun _ => True);
+         := option_rect_str (@T_nonterminal_name_success _ _ _ stypes' str0 valid name) (fun _ => True);
          T_item_success str0 valid it
-         := option_rect_str (@T_item_success _ _ _ types_success_data' str0 valid it) (fun _ => True);
+         := option_rect_str (@T_item_success _ _ _ stypes' str0 valid it) (fun _ => True);
          T_production_success str0 valid prod
-         := option_rect_str (@T_production_success _ _ _ types_success_data' str0 valid prod) (fun _ => True) ;
+         := option_rect_str (@T_production_success _ _ _ stypes' str0 valid prod) (fun _ => True) ;
          T_productions_success str0 valid prods
-         := option_rect_str (@T_productions_success _ _ _ types_success_data' str0 valid prods) (fun _ => True)  }.
+         := option_rect_str (@T_productions_success _ _ _ stypes' str0 valid prods) (fun _ => True)  }.
 
-  Definition option_types_success_data : @parser_dependent_types_success_dataT _ String :=
-    {| methods := option_methods;
-       stypes' := option_stypes' |}.
+  Definition option_stypes : @parser_dependent_types_success_dataT _ String
+    := {| methods := option_methods;
+          DependentlyTyped.stypes' := option_stypes' |}.
 
-  Global Instance option_types_failure_data' : @parser_dependent_types_failure_dataT' _ String option_methods
+  Context (ftypes' : @parser_dependent_types_failure_dataT' _ String {| DependentlyTyped.stypes' := stypes' |}).
+
+  Global Instance option_ftypes' : @parser_dependent_types_failure_dataT' _ String option_stypes
     := { T_nonterminal_name_failure str0 valid name
-         := option_rect_str (@T_nonterminal_name_failure _ _ _ types_failure_data' str0 valid name) (fun _ => True);
+         := option_rect_str (@T_nonterminal_name_failure _ _ _ ftypes' str0 valid name) (fun _ => True);
          T_item_failure str0 valid it
-         := option_rect_str (@T_item_failure _ _ _ types_failure_data' str0 valid it) (fun _ => True);
+         := option_rect_str (@T_item_failure _ _ _ ftypes' str0 valid it) (fun _ => True);
          T_production_failure str0 valid prod
-         := option_rect_str (@T_production_failure _ _ _ types_failure_data' str0 valid prod) (fun _ => True) ;
+         := option_rect_str (@T_production_failure _ _ _ ftypes' str0 valid prod) (fun _ => True) ;
          T_productions_failure str0 valid prods
-         := option_rect_str (@T_productions_failure _ _ _ types_failure_data' str0 valid prods) (fun _ => True)  }.
-          : forall (str0 : String) (valid : nonterminal_names_listT)
-                   (name : string)
-                   (str : StringWithSplitState String (split_stateT str0 valid (include_nonterminal_name _ name))),
-              Type;
-          T_item_failure
-          : forall (str0 : String) (valid : nonterminal_names_listT)
-                   (it : item CharType)
-                   (str : StringWithSplitState String (split_stateT str0 valid it)),
-              Type;
-          T_production_success
-          : forall (str0 : String) (valid : nonterminal_names_listT)
-                   (prod : production CharType)
-                   (str : StringWithSplitState String (split_stateT str0 valid prod)),
-              Type;
+         := option_rect_str (@T_productions_failure _ _ _ ftypes' str0 valid prods) (fun _ => True)  }.
 
-          T_productions_success
-          : forall (str0 : String) (valid : nonterminal_names_listT)
-                   (prods : productions CharType)
-                   (str : StringWithSplitState String (split_stateT str0 valid prods)),
-              Type }.
+  Definition option_types : @parser_dependent_types_dataT _ String
+    := {| DependentlyTyped.stypes := option_stypes;
+          DependentlyTyped.ftypes' := option_ftypes' |}.
 
-      Class parser_dependent_types_success_dataT :=
-        { methods :> parser_computational_dataT;
-          stypes' :> parser_dependent_types_success_dataT' }.
+  Context (extra_success_data : @parser_dependent_types_extra_success_dataT' _ String G {| DependentlyTyped.stypes' := stypes' |} strdata).
 
-      Class parser_dependent_types_failure_dataT' `{parser_dependent_types_success_dataT} :=
-        { T_nonterminal_name_failure
-          : forall (str0 : String) (valid : nonterminal_names_listT)
-                   (name : string)
-                   (str : StringWithSplitState String (split_stateT str0 valid (include_nonterminal_name _ name))),
-              Type;
-          T_item_failure
-          : forall (str0 : String) (valid : nonterminal_names_listT)
-                   (it : item CharType)
-                   (str : StringWithSplitState String (split_stateT str0 valid it)),
-              Type;
-          T_production_failure
-          : forall (str0 : String) (valid : nonterminal_names_listT)
-                   (prod : production CharType)
-                   (str : StringWithSplitState String (split_stateT str0 valid prod)),
-              Type;
+  Local Notation eta s := {| string_val := string_val s ; state_val := state_val s |}.
 
-          split_string_lift_T
-            (str0 : String) (valid : nonterminal_names_listT)
-            (it : item CharType) (its : production CharType)
-            (str : StringWithSplitState String (split_stateT str0 valid (it::its : production CharType)))
-            (split : list
-                       (StringWithSplitState String (split_stateT str0 valid it) *
-                        StringWithSplitState String (split_stateT str0 valid its)))
-          := str ≤s str0
-             -> fold_right
-                  Datatypes.prod
-                  unit
-                  (map (fun s1s2 =>
-                          let s1 := fst s1s2 in
-                          let s2 := snd s1s2 in
-                          ((T_item_failure str0 valid it s1 * T_production_failure str0 valid its s2)
-                           + (T_item_success str0 valid it s1 * T_production_failure str0 valid its s2)
-                           + (T_item_failure str0 valid it s1 * T_production_success str0 valid its s2))%type)
-                       split)
-             -> T_production_failure str0 valid (it::its) str;
+  Lemma impossible_in_str {A B}
+        {s0s1 : StringWithSplitState String (fun s => option (A s))
+                * StringWithSplitState String (fun s => option (B s))}
+        {ls : list (StringWithSplitState String A * StringWithSplitState String B)}
+        (H : state_val (fst s0s1) = None \/ state_val (snd s0s1) = None)
+  : ~(In
+        s0s1
+        (map (fun s1s2 =>
+                (lift_StringWithSplitState (fst s1s2) Some,
+                 lift_StringWithSplitState (snd s1s2) Some))
+             ls)).
+  Proof.
+    intro H'.
+    apply in_map_iff in H'.
+    destruct H' as [? [H' _] ].
+    destruct s0s1 as [ [? ?] [? ?] ]; simpl in *;
+    destruct H; subst;
+    [ apply (f_equal (@fst _ _)) in H'
+    | apply (f_equal (@snd _ _)) in H' ];
+    pose proof (state_val_path H') as H''; simpl in *;
+    set (H''' := string_val_path H') in *;
+    simpl in *; clearbody H'''; clear -H'' H''';
+    destruct H''';
+    simpl in *;
+    congruence.
+  Qed.
 
-          T_productions_failure
-          : forall (str0 : String) (valid : nonterminal_names_listT)
-                   (prods : productions CharType)
-                   (str : StringWithSplitState String (split_stateT str0 valid prods)),
-              Type }.
+  Local Obligation Tactic :=
+    try (simpl; intros;
+         solve [ repeat intro; exact I
+               | assumption
+               | exfalso; eapply impossible_in_str; eauto; instantiate; eauto
+               | apply Some_injective; assumption ]).
 
-      Class parser_dependent_types_dataT :=
-        { stypes :> parser_dependent_types_success_dataT;
-          ftypes' :> parser_dependent_types_failure_dataT' }.
+  Global Program Instance option_extra_success_data : @parser_dependent_types_extra_success_dataT' _ String G option_stypes option_strdata
+    := { lift_success str0 valid nonterminal_name
+         := option_rect_str (fun str => @lift_success _ _ _ _ _ extra_success_data _ _ _ (eta str)) _;
+         parse_terminal_success str0 valid ch
+         := option_rect_str (fun str => @parse_terminal_success _ _ _ _ _ extra_success_data _ _ _ (eta str)) _;
+         parse_empty_success str0 valid
+         := option_rect_str (fun str => @parse_empty_success _ _ _ _ _ extra_success_data _ _ (eta str)) _;
+         cons_success str0 valid it its
+         := option_rect_str
+              (fun s1 =>
+                 option_rect_str
+                   (fun s2 =>
+                      option_rect_str
+                        (fun str pf H' H'' =>
+                           @cons_success
+                             _ _ _ _ _ extra_success_data _ _ _ _ (eta s1) (eta s2) (eta str) pf H'
+                             (in_lift_pair_StringWithSplitState_iff_injective
+                                (lift := fun _ => Some) (lift' := fun _ => Some)
+                                _))
+                        _)
+                   (fun s2 => option_rect_str _ _))
+              (fun s1 => option_rect_str
+                           (fun s2 => option_rect_str _ _)
+                           (fun s2 => option_rect_str _ _));
+         lift_prods_success_head str0 valid prod prods
+         := option_rect_str (fun str => @lift_prods_success_head _ _ _ _ _ extra_success_data _ _ _ _ (eta str)) _;
+         lift_prods_success_tail str0 valid prod prods
+         := option_rect_str (fun str => @lift_prods_success_tail _ _ _ _ _ extra_success_data _ _ _ _ (eta str)) _;
+         lift_parse_nonterminal_name_success_lt str0 valid nonterminal_name
+         := option_rect_str (fun str => @lift_parse_nonterminal_name_success_lt _ _ _ _ _ extra_success_data _ _ _ (eta str)) _;
+         lift_parse_nonterminal_name_success_eq str0 valid nonterminal_name
+         := option_rect_str (fun str => @lift_parse_nonterminal_name_success_eq _ _ _ _ _ extra_success_data _ _ _ (eta str)) _
+       }.
 
-      Class parser_dependent_types_extra_success_dataT' `{types : parser_dependent_types_success_dataT, @parser_computational_strdataT (@methods types)} :=
-        { lift_success
-          : forall {str0 valid} nonterminal_name {str},
-              @T_nonterminal_name_success _ _ str0 valid nonterminal_name (lift_StringWithSplitState str lower_nonterminal_name_state)
-              -> @T_item_success _ _ str0 valid (NonTerminal _ nonterminal_name) str;
-          parse_terminal_success
-          : forall {str0 valid} ch {str},
-              let ret := @T_item_success _ _ str0 valid (Terminal ch) str in
-              [[ ch ]] =s str -> ret;
-          parse_empty_success
-          : forall {str0 valid str},
-              let ret := @T_production_success _ _ str0 valid nil str in
-              str =s Empty _ -> ret;
-          cons_success
-          : forall {str0 valid} it its {s1 s2 str},
-              let a1 := @T_item_success _ _ str0 valid it s1 in
-              let a2 := @T_production_success _ _ str0 valid its s2 in
-              let ret := @T_production_success _ _ str0 valid (it::its) str in
-              str ≤s str0 -> s1 ++ s2 =s str -> In (s1, s2) (split_string_for_production str0 valid it its str) -> a1 -> a2 -> ret;
+  Context (extra_failure_data : @parser_dependent_types_extra_failure_dataT' _ String G {| DependentlyTyped.ftypes' := ftypes' |} strdata).
 
-          lift_prods_success_head
-          : forall {str0 valid prod prods str},
-              let ret := @T_productions_success _ _ str0 valid (prod::prods) str in
-              let arg := @T_production_success _ _ str0 valid prod (lift_StringWithSplitState str lower_string_head) in
-              arg -> ret;
-          lift_prods_success_tail
-          : forall {str0 valid prod prods str},
-              let ret := @T_productions_success _ _ str0 valid (prod::prods) str in
-              let arg := @T_productions_success _ _ str0 valid prods (lift_StringWithSplitState str lower_string_tail) in
-              arg -> ret;
+  Global Program Instance option_extra_failure_data : @parser_dependent_types_extra_failure_dataT' _ String G option_types option_strdata
+    := { lift_failure str0 valid nonterminal_name
+         := option_rect_str (fun str => @lift_failure _ _ _ _ _ extra_failure_data _ _ _ (eta str)) _;
+         parse_terminal_failure str0 valid ch
+         := option_rect_str (fun str => @parse_terminal_failure _ _ _ _ _ extra_failure_data _ _ _ (eta str)) _;
+         parse_empty_failure str0 valid
+         := option_rect_str (fun str => @parse_empty_failure _ _ _ _ _ extra_failure_data _ _ (eta str)) _;
+         fail_parse_nil_productions str0 valid
+         := option_rect_str (fun str => @fail_parse_nil_productions _ _ _ _ _ extra_failure_data _ _ (eta str)) _;
+         lift_prods_failure str0 valid prod prods
+         := option_rect_str (fun str => @lift_prods_failure _ _ _ _ _ extra_failure_data _ _ _ _ (eta str)) _;
+         H_prod_split str0 valid it its
+         := option_rect_str (fun str pf => (@H_prod_split _ _ _ _ _ extra_failure_data _ _ _ _ (eta str) pf)
+                                             ∘ (fun H => eq_rect _ _ H _ _)) _;
+         lift_parse_nonterminal_name_failure_lt str0 valid nonterminal_name
+         := option_rect_str (fun str => @lift_parse_nonterminal_name_failure_lt _ _ _ _ _ extra_failure_data _ _ _ (eta str)) _;
+         lift_parse_nonterminal_name_failure_eq str0 valid nonterminal_name
+         := option_rect_str (fun str => @lift_parse_nonterminal_name_failure_eq _ _ _ _ _ extra_failure_data _ _ _ (eta str)) _;
+         elim_parse_nonterminal_name_failure str0 valid nonterminal_name
+         := option_rect_str (fun str => @elim_parse_nonterminal_name_failure _ _ _ _ _ extra_failure_data _ _ _ (eta str)) _
+       }.
+  Next Obligation.
+  Proof.
+    intros; simpl.
+    rewrite map_map; apply map_ext; simpl.
+    intros [ [? ?] [? ?] ]; reflexivity.
+  Defined.
 
-          lift_parse_nonterminal_name_success_lt
-          : forall {str0 valid nonterminal_name str},
-              let ret := @T_nonterminal_name_success _ _ str0 valid nonterminal_name str in
-              forall (pf : Length str < Length str0),
-                let arg := @T_productions_success _ _ str initial_nonterminal_names_data (Lookup G nonterminal_name) (lift_StringWithSplitState str (lift_lookup_nonterminal_name_state_lt pf)) in
-                arg -> ret;
-          lift_parse_nonterminal_name_success_eq
-          : forall {str0 valid nonterminal_name str},
-              let ret := @T_nonterminal_name_success _ _ str0 valid nonterminal_name str in
-              forall (pf : str = str0 :> String),
-                let arg := @T_productions_success _ _ str0 (remove_nonterminal_name valid nonterminal_name) (Lookup G nonterminal_name) (lift_StringWithSplitState str (lift_lookup_nonterminal_name_state_eq pf)) in
-
-                is_valid_nonterminal_name valid nonterminal_name = true -> arg -> ret
-        }.
-
-      Class parser_dependent_types_extra_failure_dataT' `{types : parser_dependent_types_dataT, @parser_computational_strdataT (@methods (@stypes types))} :=
-        { lift_failure
-          : forall {str0 valid} nonterminal_name {str},
-              @T_nonterminal_name_failure _ _ str0 valid nonterminal_name (lift_StringWithSplitState str lower_nonterminal_name_state)
-              -> @T_item_failure _ _ str0 valid (NonTerminal _ nonterminal_name) str;
-          parse_terminal_failure
-          : forall {str0 valid} ch {str},
-              let ret := @T_item_failure _ _ str0 valid (Terminal ch) str in
-              ([[ ch ]] =s str) = false -> ret;
-          parse_empty_failure
-          : forall {str0 valid str},
-              let ret := @T_production_failure _ _ str0 valid nil str in
-              str ≤s str0 -> (str =s Empty _) = false -> ret;
-
-          fail_parse_nil_productions
-          : forall {str0 valid str}, T_productions_failure str0 valid [] str;
-          lift_prods_failure
-          : forall {str0 valid prod prods str},
-              let ret := @T_productions_failure _ _ str0 valid (prod::prods) str in
-              let a1 := @T_production_failure _ _ str0 valid prod (lift_StringWithSplitState str lower_string_head) in
-              let a2 := @T_productions_failure _ _ str0 valid prods (lift_StringWithSplitState str lower_string_tail) in
-              a1 -> a2 -> ret;
-
-          H_prod_split : forall str0 valid it its str, split_string_lift_T str0 valid it its str (split_string_for_production str0 valid it its str);
-
-
-          lift_parse_nonterminal_name_failure_lt
-          : forall {str0 valid nonterminal_name str},
-              let ret := @T_nonterminal_name_failure _ _ str0 valid nonterminal_name str in
-              forall (pf : Length str < Length str0),
-                let arg := @T_productions_failure _ _ str initial_nonterminal_names_data (Lookup G nonterminal_name) (lift_StringWithSplitState str (lift_lookup_nonterminal_name_state_lt pf)) in
-                arg -> ret;
-          lift_parse_nonterminal_name_failure_eq
-          : forall {str0 valid nonterminal_name str},
-              let ret := @T_nonterminal_name_failure _ _ str0 valid nonterminal_name str in
-              forall (pf : str = str0 :> String),
-                let arg := @T_productions_failure _ _ str0 (remove_nonterminal_name valid nonterminal_name) (Lookup G nonterminal_name) (lift_StringWithSplitState str (lift_lookup_nonterminal_name_state_eq pf)) in
-                arg -> ret;
-
-          elim_parse_nonterminal_name_failure
-          : forall {str0 valid nonterminal_name str},
-              let ret := @T_nonterminal_name_failure _ _ str0 valid nonterminal_name str in
-              str ≤s str0
-              -> ~ Length str < Length str0
-              -> is_valid_nonterminal_name valid nonterminal_name = false
-              -> ret
-        }.
-
-      Class parser_dependent_types_extra_dataT :=
-        { types :> parser_dependent_types_dataT;
-          strdata :> parser_computational_strdataT;
-          extra_success_data :> parser_dependent_types_extra_success_dataT';
-          extra_failure_data :> parser_dependent_types_extra_failure_dataT' }.
+  Definition option_extra_data : @parser_dependent_types_extra_dataT _ String G
+    := {| DependentlyTyped.types := option_types;
+          DependentlyTyped.strdata := option_strdata;
+          DependentlyTyped.extra_success_data := option_extra_success_data;
+          DependentlyTyped.extra_failure_data := option_extra_failure_data |}.
 End recursive_descent_parser.

@@ -22,6 +22,7 @@ SRC_PARSERS_MODULES := \
 
 SRC_MODULES    := \
 	Common \
+	Common/Equality \
 	Computation/Notations \
 	Computation/Core \
 	Computation/Monad \
