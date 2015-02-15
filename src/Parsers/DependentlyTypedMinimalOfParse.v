@@ -457,20 +457,28 @@ Section recursive_descent_parser.
           End T_productions.
         End types.
 
-        Global Instance minimal_parser_dependent_types_data'
-        : @parser_dependent_types_dataT' _ String methods
+        Global Instance minimal_parser_dependent_types_success_data'
+        : @parser_dependent_types_success_dataT' _ String _
           := { T_nonterminal_name_success := T_nonterminal_name_success;
-               T_nonterminal_name_failure := T_nonterminal_name_failure;
                T_item_success := T_item_success;
-               T_item_failure := T_item_failure;
                T_production_success := T_production_success;
+               T_productions_success := T_productions_success }.
+
+        Global Instance minimal_parser_dependent_types_success_data
+        : @parser_dependent_types_success_dataT _ String
+          := { stypes' := minimal_parser_dependent_types_success_data' }.
+
+        Global Instance minimal_parser_dependent_types_failure_data'
+        : @parser_dependent_types_failure_dataT' _ String _
+          := { T_nonterminal_name_failure := T_nonterminal_name_failure;
+               T_item_failure := T_item_failure;
                T_production_failure := T_production_failure;
-               T_productions_success := T_productions_success;
                T_productions_failure := T_productions_failure }.
 
         Global Instance minimal_parser_dependent_types_data
         : @parser_dependent_types_dataT _ String
-          := { types' := minimal_parser_dependent_types_data' }.
+          := { stypes := minimal_parser_dependent_types_success_data;
+               ftypes' := minimal_parser_dependent_types_failure_data' }.
 
         Hint Constructors minimal_parse_of minimal_parse_of_name minimal_parse_of_production minimal_parse_of_item unit prod unit : minimal_instance_db.
         Hint Unfold T_item_success T_item_failure T_production_success T_production_failure T_productions_success T_productions_failure T_nonterminal_name_success T_nonterminal_name_failure
@@ -621,33 +629,6 @@ Please report." *)
                    )
           end.
 
-        Lemma cons_success
-              (str0 : String) (valid : nonterminal_names_listT)
-              (it : item CharType) (its : production CharType)
-              (s1 : StringWithSplitState String (split_stateT str0 valid it))
-              (s2 : StringWithSplitState String (split_stateT str0 valid its))
-              (str : StringWithSplitState String (split_stateT str0 valid (it :: its : production CharType)))
-        : let a1 := DependentlyTyped.T_item_success str0 valid it s1 in
-          let a2 := DependentlyTyped.T_production_success str0 valid its s2 in
-          let ret :=
-              DependentlyTyped.T_production_success str0 valid (it :: its) str in
-          str ≤s str0 ->
-          s1 ++ s2 =s str ->
-          In (s1, s2) (split_string_for_production str0 valid it its str) -> a1 -> a2 -> ret.
-        Proof.
-          destruct str as [ ? [ ] ]; simpl.
-          { intros ? ? H.
-            apply or_False in H.
-            apply path_prod' in H.
-            simpl in H.
-            destruct H as [H' H''].
-            apply neq_some_none_state_val in H'.
-            apply neq_some_none_state_val in H''.
-            simpl in *.
-            repeat t''. }
-          { repeat t''. }
-        Defined.
-
         Local Ltac t :=
           repeat t''0;
           try solve [ repeat t''; exfalso; t_false ].
@@ -673,37 +654,27 @@ Please report." *)
           { repeat t''. }
         Defined.
 
-        Global Program Instance minimal_parser_dependent_types_extra_data'
-               (H_prod_split' : forall str0 valid it its str, @H_prod_splitT' str0 valid it its str None)
-        : @parser_dependent_types_extra_dataT' _ String G _ _
-          := {| cons_success := cons_success;
-                H_prod_split str0 valid it its str
-                := match str with
-                     | {| string_val := str' ; state_val := st' |}
-                       => match st' with
-                            | None => @H_prod_split' str0 valid it its str'
-                            | Some st => @H_prod_split_helper str0 valid it its str' st
-                          end
-                   end |}.
-        Obligation 1. t. Defined.
-        Obligation 2. t. Defined.
-        Obligation 3. t. Defined.
-        Obligation 4. t. Defined.
-        Obligation 5. t. Defined.
-        Obligation 6. t. Defined.
-        Obligation 7. t. Defined.
-        Obligation 8. t. Defined.
-        Obligation 9. t. Defined.
-        Obligation 10. t. Defined.
-        Obligation 11. t. Defined.
-        Obligation 12. t. Defined.
-        Obligation 13. t. Defined.
-        Obligation 14. t. Defined.
-        Obligation 15. t. Defined.
+        Local Obligation Tactic := t.
 
-        Global Instance minimal_parser_dependent_types_extra_data H_prod_split'
+        Global Program Instance minimal_parser_dependent_types_extra_success_data'
+        : @parser_dependent_types_extra_success_dataT' _ String G _ _.
+
+        Global Program Instance minimal_parser_dependent_types_extra_failure_data'
+               (H_prod_split' : forall str0 valid it its str, @H_prod_splitT' str0 valid it its str None)
+        : @parser_dependent_types_extra_failure_dataT' _ String G _ _
+          := { H_prod_split str0 valid it its str
+               := match str with
+                    | {| string_val := str' ; state_val := st' |}
+                      => match st' with
+                           | None => @H_prod_split' str0 valid it its str'
+                           | Some st => @H_prod_split_helper str0 valid it its str' st
+                         end
+                  end }.
+
+        Global Instance minimal_parser_dependent_types_extra_data split_list_complete
         : @parser_dependent_types_extra_dataT _ String G
-          := { extradata := minimal_parser_dependent_types_extra_data' H_prod_split' }.
+          := { extra_failure_data := minimal_parser_dependent_types_extra_failure_data' split_list_complete;
+               extra_success_data := minimal_parser_dependent_types_extra_success_data' }.
       End common.
     End parts.
 

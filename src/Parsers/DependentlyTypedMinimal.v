@@ -72,20 +72,28 @@ Section recursive_descent_parser.
             := T_productions_success prods str -> False.
         End types.
 
-        Global Instance minimal_parser_dependent_types_data'
-        : @parser_dependent_types_dataT' _ String _
-          := {| T_nonterminal_name_success := T_nonterminal_name_success;
-                T_nonterminal_name_failure := T_nonterminal_name_failure;
-                T_item_success := T_item_success;
-                T_item_failure := T_item_failure;
-                T_production_success := T_production_success;
-                T_production_failure := T_production_failure;
-                T_productions_success := T_productions_success;
-                T_productions_failure := T_productions_failure |}.
+        Global Instance minimal_parser_dependent_types_success_data'
+        : @parser_dependent_types_success_dataT' _ String _
+          := { T_nonterminal_name_success := T_nonterminal_name_success;
+               T_item_success := T_item_success;
+               T_production_success := T_production_success;
+               T_productions_success := T_productions_success }.
+
+        Global Instance minimal_parser_dependent_types_success_data
+        : @parser_dependent_types_success_dataT _ String
+          := { stypes' := minimal_parser_dependent_types_success_data' }.
+
+        Global Instance minimal_parser_dependent_types_failure_data'
+        : @parser_dependent_types_failure_dataT' _ String _
+          := { T_nonterminal_name_failure := T_nonterminal_name_failure;
+               T_item_failure := T_item_failure;
+               T_production_failure := T_production_failure;
+               T_productions_failure := T_productions_failure }.
 
         Global Instance minimal_parser_dependent_types_data
         : @parser_dependent_types_dataT _ String
-          := { types' := minimal_parser_dependent_types_data' }.
+          := { stypes := minimal_parser_dependent_types_success_data;
+               ftypes' := minimal_parser_dependent_types_failure_data' }.
 
         Definition split_list_completeT
                    (str0 : String)
@@ -204,9 +212,12 @@ Section recursive_descent_parser.
 
         Local Obligation Tactic := t.
 
-        Global Program Instance minimal_parser_dependent_types_extra_data'
-                (split_list_complete : forall str0 valid it its str pf, @split_list_completeT str0 valid it its str pf (split_string_for_production str0 valid it its str))
-        : @parser_dependent_types_extra_dataT' _ String G _ _.
+        Global Program Instance minimal_parser_dependent_types_extra_success_data'
+        : @parser_dependent_types_extra_success_dataT' _ String G _ _.
+
+        Global Program Instance minimal_parser_dependent_types_extra_failure_data'
+               (split_list_complete : forall str0 valid it its str pf, @split_list_completeT str0 valid it its str pf (split_string_for_production str0 valid it its str))
+        : @parser_dependent_types_extra_failure_dataT' _ String G _ _.
         Next Obligation.
           eapply H_prod_split'; eauto.
           Grab Existential Variables.
@@ -215,7 +226,8 @@ Section recursive_descent_parser.
 
         Global Instance minimal_parser_dependent_types_extra_data split_list_complete
         : @parser_dependent_types_extra_dataT _ String G
-          := { extradata := minimal_parser_dependent_types_extra_data' split_list_complete }.
+          := { extra_failure_data := minimal_parser_dependent_types_extra_failure_data' split_list_complete;
+               extra_success_data := minimal_parser_dependent_types_extra_success_data' }.
       End common.
 
       Definition minimal_parse_nonterminal_name
