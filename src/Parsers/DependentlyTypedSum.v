@@ -2,6 +2,7 @@
 Require Import Coq.Lists.List Coq.Program.Program Coq.Program.Wf Coq.Arith.Wf_nat Coq.Arith.Compare_dec Coq.Classes.RelationClasses Coq.Strings.String.
 Require Import Parsers.ContextFreeGrammar Parsers.Specification Parsers.DependentlyTyped.
 Require Import Parsers.WellFoundedParse Parsers.ContextFreeGrammarProperties.
+Require Import Parsers.DependentlyTypedOption.
 Require Import Common Common.ilist Common.Wf Common.Le.
 
 Start Profiling.
@@ -26,17 +27,13 @@ Section recursive_descent_parser.
            : forall ls ps ps',
                is_valid_nonterminal_name (remove_nonterminal_name ls ps) ps' = false
                <-> is_valid_nonterminal_name ls ps' = false \/ ps = ps').
-  Variable gen_state : forall str0 valid (prod : production CharType) s, split_stateT str0 valid prod s.
+  Variable gen_state : forall str0 valid g s, split_stateT str0 valid g s.
 
   Variable top_methods' : @parser_computational_dataT' _ String _.
   Definition leaf_methods' : @parser_computational_dataT' _ String _
     := @methods' _ _ (@methods _ _ (@types _ _ _ leaves_extra_data)).
 
   (** some helper lemmas to help Coq with inference *)
-  Definition split_string_for_production_correct'
-             H0 H1 str0 valid it its str st
-    := @split_string_for_production_correct CharType String H0 H1 str0 valid it its {| string_val := str ; state_val := st |}.
-
   Hint Unfold compose : dtp_sum_db.
   Hint Extern 1 => apply split_string_for_production_correct' : dtp_sum_db.
 
@@ -54,7 +51,7 @@ Section recursive_descent_parser.
 
   Local Ltac t_sum := repeat t_sum'.
 
-  Local Instance methods' : @parser_computational_dataT' _ String premethods
+  Local Instance sum_methods' : @parser_computational_dataT' _ String premethods
     := { split_stateT str0 valid g s
          := @split_stateT _ _ _ top_methods' str0 valid g s
             + @split_stateT _ _ _ leaf_methods' str0 valid g s;
@@ -74,99 +71,60 @@ Section recursive_descent_parser.
             end }.
   Proof. clear; abstract t_sum. Defined.
 
-  Check @parser_computational_strdataT.
-
   Definition top_methods : @parser_computational_dataT _ String
     := {| DependentlyTyped.methods' := top_methods' |}.
   Definition leaf_methods : @parser_computational_dataT _ String
     := @methods _ _ (@types _ _ _ leaves_extra_data).
 
-  Record top_strdataT :=
-    { top_lower_nonterminal_name_state
-      : forall {str0 valid nonterminal_name s},
-          @split_stateT _ _ _ top_methods' str0 valid (NonTerminal _ nonterminal_name) s -> option (@split_stateT _ _ _ top_methods' str0 valid (include_nonterminal_name _ nonterminal_name) s);
-
-      top_lower_string_head
-      : forall {str0 valid}
-               {prod : production CharType}
-               {prods : productions CharType}
-               {s},
-          @split_stateT _ _ _ top_methods' str0 valid (prod::prods : productions CharType) s -> option (@split_stateT _ _ _ top_methods' str0 valid prod s);
-      top_lower_string_tail
-      : forall {str0 valid}
-               {prod : production CharType}
-               {prods : productions CharType}
-               {s},
-          @split_stateT _ _ _ top_methods' str0 valid (prod::prods : productions CharType) s -> option (@split_stateT _ _ _ top_methods' str0 valid prods s);
-
-      top_lift_lookup_nonterminal_name_state_lt
-      : forall {str0 valid nonterminal_name s} (pf : Length s < Length str0),
-          @split_stateT _ _ _ top_methods' str0 valid (include_nonterminal_name _ nonterminal_name) s -> @split_stateT _ _ _ top_methods' s initial_nonterminal_names_data (Lookup G nonterminal_name) s;
-
-      lift_lookup_nonterminal_name_state_eq
-      : forall {str0 valid nonterminal_name s}
-               (pf : s = str0 :> String),
-          split_stateT str0 valid (include_nonterminal_name _ nonterminal_name) s -> split_stateT str0 (remove_nonterminal_name valid nonterminal_name) (Lookup G nonterminal_name) s }.
-
-  Variable top_strdata : @parser_computational_strdataT _ String G top_methods.
+  Variable top_strdata : @parser_computational_strdataT _ String G (@option_methods _ _ _ top_methods').
   Definition leaf_strdata : @parser_computational_strdataT _ String G leaf_methods
     := @strdata _ _ _ leaves_extra_data.
 
-  Local Instance methods : parser_computational_dataT := { methods' := methods' }.
+  Local Instance sum_methods : parser_computational_dataT := { methods' := sum_methods' }.
 
-Definition functor_sum {A A' B B'} (f : A -> A') (g : B -> B') (x : sum A B) : sum A' B' :=
-  match x with
-    | inl a => inl (f a)
-    | inr b => inr (g b)
-  end.
+  Definition functor_cross_sum {A A' B B'} (f : option A -> option A') (g : B -> B') (default : B') (x : sum A B) : sum A' B' :=
+    match x with
+      | inl a => match f (Some a) with
+                   | Some a' => inl a'
+                   | None => inr default
+                 end
+      | inr b => inr (g b)
+    end.
 
-  Local Instance strdata : @parser_computational_strdataT _ String G methods
+  Local Instance sum_strdata : @parser_computational_strdataT _ String G sum_methods
     := { lower_nonterminal_name_state str0 valid nonterminal_name str
-         := functor_sum
+         := functor_cross_sum
               (@lower_nonterminal_name_state _ _ _ _ top_strdata _ _ _ _)
-              (@lower_nonterminal_name_state _ _ _ _ leaf_strdata _ _ _ _) }.
-         (lower_nonterminal_name_state str0 valid nonterminal_name str) }.
-                                                                         ;
-          lower_string_head str0 valid prod prods str st
-          := match st with
-               | None => None
-               | Some p => match projT1 p as p' in parse_of _ _ str' prods' return Forall_parse_of (P str0 valid) p' -> option (p_parse_production str0 valid str' (hd prod prods')) with
-                             | ParseHead _ _ _ p' => fun H => Some (existT _ p' H)
-                             | ParseTail _ _ _ _ => fun _ => None
-                           end (projT2 p)
-             end;
-          lower_string_tail str0 valid prod prods str st
-          := match st with
-               | None => None
-               | Some p => match projT1 p as p' in parse_of _ _ str' prods' return Forall_parse_of (P str0 valid) p' -> option (p_parse str0 valid str' (tl prods')) with
-                             | ParseTail _ _ _ p' => fun H => Some (existT _ p' H)
-                             | ParseHead _ _ _ _ => fun _ => None
-                           end (projT2 p)
-             end;
-          lift_lookup_nonterminal_name_state_lt str0 valid nonterminal_name str pf := option_map (parse_of__of__parse_of_item_lt pf);
-          lift_lookup_nonterminal_name_state_eq str0 valid nonterminal_name str pf := option_map (parse_of__of__parse_of_item_eq pf) |}.
+              (@lower_nonterminal_name_state _ _ _ _ leaf_strdata _ _ _ _)
+              (gen_state _ _ _ _);
+         lower_string_head str0 valid prod prods str
+         := functor_cross_sum
+              (@lower_string_head _ _ _ _ top_strdata _ _ _ _ _)
+              (@lower_string_head _ _ _ _ leaf_strdata _ _ _ _ _)
+              (gen_state _ _ _ _);
+         lower_string_tail str0 valid prod prods str
+         := functor_cross_sum
+              (@lower_string_tail _ _ _ _ top_strdata _ _ _ _ _)
+              (@lower_string_tail _ _ _ _ leaf_strdata _ _ _ _ _)
+              (gen_state _ _ _ _);
+         lift_lookup_nonterminal_name_state_lt str0 valid nonterminal_name str pf
+         := functor_cross_sum
+              (@lift_lookup_nonterminal_name_state_lt _ _ _ _ top_strdata _ _ _ _ pf)
+              (@lift_lookup_nonterminal_name_state_lt _ _ _ _ leaf_strdata _ _ _ _ pf)
+              (gen_state _ _ _ _);
+         lift_lookup_nonterminal_name_state_eq str0 valid nonterminal_name str pf
+         := functor_cross_sum
+              (@lift_lookup_nonterminal_name_state_eq _ _ _ _ top_strdata _ _ _ _ pf)
+              (@lift_lookup_nonterminal_name_state_eq _ _ _ _ leaf_strdata _ _ _ _ pf)
+              (gen_state _ _ _ _) }.
+
+  Variable top_types' : @parser_dependent_types_dataT' _ String top_methods.
+  Definition leaf_types' : @parser_dependent_types_dataT' _ String leaf_methods
+    := @types' _ _ (@types _ _ _ leaves_extra_data).
+
+
 
   Section minimal.
-    Local Ltac t' :=
-      idtac;
-      match goal with
-        | _ => intro
-        | _ => progress hnf in *
-        | _ => progress simpl in *
-        | _ => progress subst_body
-        | _ => progress subst
-        | [ H : ?A -> ?B, H' : ?A |- _ ] => specialize (H H')
-        | [ H : ?A -> ?B |- _ ] => let A' := (eval hnf in A) in
-                                   progress change (A' -> B) in H
-        | _ => progress destruct_head StringWithSplitState
-        | _ => progress destruct_head False
-        | [ H : context[?x =s ?x] |- _ ]
-          => rewrite (proj2 (bool_eq_correct _ x x) eq_refl) in H
-        | [ H : true = false |- _ ] => exfalso; discriminate
-        | _ => progress inversion_head @minimal_parse_of_item
-        | _ => progress inversion_head @minimal_parse_of_production
-      end.
-
     Section parts.
       Section common.
         Section types.

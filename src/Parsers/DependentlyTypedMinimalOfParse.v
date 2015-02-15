@@ -404,13 +404,13 @@ Section recursive_descent_parser.
             Let ret := mp_parse_nonterminal_name str0 valid str name.
 
             Definition T_nonterminal_name_success  : Type
-              := prefix str ret.
+              := ret.
 
             Definition T_nonterminal_name_failure : Type
-              := prefix str match state_val str with
-                              | None => ret -> False
-                              | Some p => alt
-                            end.
+              := match state_val str with
+                   | None => ret -> False
+                   | Some p => prefix str alt
+                 end.
           End T_nonterminal_name.
 
           Section T_item.
@@ -419,12 +419,12 @@ Section recursive_descent_parser.
             Let ret := mp_parse_item str0 valid str it.
 
             Definition T_item_success : Type
-              := prefix str ret.
+              := ret.
             Definition T_item_failure : Type
-              := prefix str match state_val str with
-                              | None => ret -> False
-                              | Some p => alt
-                            end.
+              := match state_val str with
+                   | None => ret -> False
+                   | Some p => prefix str alt
+                 end.
           End T_item.
 
           Section T_production.
@@ -433,12 +433,12 @@ Section recursive_descent_parser.
             Let ret := mp_parse_production str0 valid str prod.
 
             Definition T_production_success : Type
-              := prefix str ret.
+              := ret.
             Definition T_production_failure : Type
-              := prefix str match state_val str with
-                              | None => ret -> False
-                              | Some p => alt
-                            end.
+              := match state_val str with
+                   | None => ret -> False
+                   | Some p => prefix str alt
+                 end.
           End T_production.
 
           Section T_productions.
@@ -447,13 +447,13 @@ Section recursive_descent_parser.
             Let ret := mp_parse str0 valid str prods.
 
             Definition T_productions_success : Type
-              := prefix str ret.
+              := ret.
 
             Definition T_productions_failure : Type
-              := prefix str match state_val str with
-                              | None => ret -> False
-                              | Some p => alt
-                            end.
+              := match state_val str with
+                   | None => ret -> False
+                   | Some p => prefix str alt
+                 end.
           End T_productions.
         End types.
 
