@@ -72,32 +72,61 @@ Section recursive_descent_parser.
     { premethods :> parser_computational_predataT;
       methods' :> parser_computational_dataT' }.
 
-  Class parser_computational_strdataT `{parser_computational_dataT} :=
-    { lower_nonterminal_name_state
+  Class MonadT := Build_MonadT : Type -> Type.
+  Global Instance idM : MonadT | 10000 := fun x => x.
+  Global Strategy -1000 [idM].
+
+  Class parser_computational_prestrdataT `{parser_computational_dataT} `{M : MonadT} :=
+    { prelower_nonterminal_name_state
       : forall {str0 valid nonterminal_name s},
-          split_stateT str0 valid (NonTerminal _ nonterminal_name) s -> split_stateT str0 valid (include_nonterminal_name _ nonterminal_name) s;
+          split_stateT str0 valid (NonTerminal _ nonterminal_name) s -> M (split_stateT str0 valid (include_nonterminal_name _ nonterminal_name) s);
 
-      lower_string_head
+      prelower_string_head
       : forall {str0 valid}
                {prod : production CharType}
                {prods : productions CharType}
                {s},
-          split_stateT str0 valid (prod::prods : productions CharType) s -> split_stateT str0 valid prod s;
-      lower_string_tail
+          split_stateT str0 valid (prod::prods : productions CharType) s -> M (split_stateT str0 valid prod s);
+      prelower_string_tail
       : forall {str0 valid}
                {prod : production CharType}
                {prods : productions CharType}
                {s},
-          split_stateT str0 valid (prod::prods : productions CharType) s -> split_stateT str0 valid prods s;
+          split_stateT str0 valid (prod::prods : productions CharType) s -> M (split_stateT str0 valid prods s);
 
-      lift_lookup_nonterminal_name_state_lt
+      prelift_lookup_nonterminal_name_state_lt
       : forall {str0 valid nonterminal_name s} (pf : Length s < Length str0),
-          split_stateT str0 valid (include_nonterminal_name _ nonterminal_name) s -> split_stateT s initial_nonterminal_names_data (Lookup G nonterminal_name) s;
+          split_stateT str0 valid (include_nonterminal_name _ nonterminal_name) s -> M (split_stateT s initial_nonterminal_names_data (Lookup G nonterminal_name) s);
 
-      lift_lookup_nonterminal_name_state_eq
+      prelift_lookup_nonterminal_name_state_eq
       : forall {str0 valid nonterminal_name s}
                (pf : s = str0 :> String),
-          split_stateT str0 valid (include_nonterminal_name _ nonterminal_name) s -> split_stateT str0 (remove_nonterminal_name valid nonterminal_name) (Lookup G nonterminal_name) s }.
+          split_stateT str0 valid (include_nonterminal_name _ nonterminal_name) s -> M (split_stateT str0 (remove_nonterminal_name valid nonterminal_name) (Lookup G nonterminal_name) s) }.
+
+  Definition parser_computational_strdataT `{parser_computational_dataT} : Type
+    := parser_computational_prestrdataT.
+  Existing Class parser_computational_strdataT.
+
+  Definition lower_nonterminal_name_state `{methods : parser_computational_dataT, strdata : @parser_computational_strdataT methods}
+  : forall {str0 valid nonterminal_name s},
+      split_stateT _ _ _ _ -> split_stateT _ _ _ _
+    := @prelower_nonterminal_name_state methods (fun x => x) strdata.
+  Definition lower_string_head `{methods : parser_computational_dataT, strdata : @parser_computational_strdataT methods}
+  : forall {str0 valid prod prods s},
+      split_stateT _ _ _ _ -> split_stateT _ _ _ _
+    := @prelower_string_head methods (fun x => x) strdata.
+  Definition lower_string_tail `{methods : parser_computational_dataT, strdata : @parser_computational_strdataT methods}
+  : forall {str0 valid prod prods s},
+      split_stateT _ _ _ _ -> split_stateT _ _ _ _
+    := @prelower_string_tail methods (fun x => x) strdata.
+  Definition lift_lookup_nonterminal_name_state_lt `{methods : parser_computational_dataT, strdata : @parser_computational_strdataT methods}
+  : forall {str0 valid nonterminal_name s} pf,
+      split_stateT _ _ _ _ -> split_stateT _ _ _ _
+    := @prelift_lookup_nonterminal_name_state_lt methods (fun x => x) strdata.
+  Definition lift_lookup_nonterminal_name_state_eq `{methods : parser_computational_dataT, strdata : @parser_computational_strdataT methods}
+  : forall {str0 valid nonterminal_name s} pf,
+      split_stateT _ _ _ _ -> split_stateT _ _ _ _
+    := @prelift_lookup_nonterminal_name_state_eq methods (fun x => x) strdata.
 
   Section generic.
     Section parts.
@@ -530,3 +559,5 @@ Section recursive_descent_parser.
     End parts.
   End generic.
 End recursive_descent_parser.
+
+Existing Class parser_computational_strdataT.

@@ -964,3 +964,22 @@ Lemma impl_sum_match_match_option {A B ret s s' n r}
 Proof.
   destruct x; assumption.
 Defined.
+
+Lemma impl_match_option {A ret s n}
+      {x : option A}
+      (f : forall x', s x' -> ret)
+      (g : n -> ret)
+: match x with
+    | Some x' => s x'
+    | None => n
+  end -> ret.
+Proof.
+  destruct x; eauto.
+Defined.
+
+Definition option_bind {A} {B} (f : A -> option B) (x : option A)
+: option B
+  := match x with
+       | None => None
+       | Some a => f a
+     end.

@@ -103,32 +103,34 @@ Section recursive_descent_parser.
            => g {| string_val := s ; state_val := st |}
        end.
 
-  Local Instance sum_strdata : @parser_computational_strdataT _ String G sum_methods
-    := { lower_nonterminal_name_state str0 valid nonterminal_name str
+  Local Instance sum_prestrdata : @parser_computational_prestrdataT _ String G sum_methods idM
+    := { prelower_nonterminal_name_state str0 valid nonterminal_name str
          := functor_cross_sum
               (@lower_nonterminal_name_state _ _ _ _ top_strdata _ _ _ _)
               (@lower_nonterminal_name_state _ _ _ _ leaf_strdata _ _ _ _)
               (gen_state _ _ _ _);
-         lower_string_head str0 valid prod prods str
+         prelower_string_head str0 valid prod prods str
          := functor_cross_sum
               (@lower_string_head _ _ _ _ top_strdata _ _ _ _ _)
               (@lower_string_head _ _ _ _ leaf_strdata _ _ _ _ _)
               (gen_state _ _ _ _);
-         lower_string_tail str0 valid prod prods str
+         prelower_string_tail str0 valid prod prods str
          := functor_cross_sum
               (@lower_string_tail _ _ _ _ top_strdata _ _ _ _ _)
               (@lower_string_tail _ _ _ _ leaf_strdata _ _ _ _ _)
               (gen_state _ _ _ _);
-         lift_lookup_nonterminal_name_state_lt str0 valid nonterminal_name str pf
+         prelift_lookup_nonterminal_name_state_lt str0 valid nonterminal_name str pf
          := functor_cross_sum
               (@lift_lookup_nonterminal_name_state_lt _ _ _ _ top_strdata _ _ _ _ pf)
               (@lift_lookup_nonterminal_name_state_lt _ _ _ _ leaf_strdata _ _ _ _ pf)
               (gen_state _ _ _ _);
-         lift_lookup_nonterminal_name_state_eq str0 valid nonterminal_name str pf
+         prelift_lookup_nonterminal_name_state_eq str0 valid nonterminal_name str pf
          := functor_cross_sum
               (@lift_lookup_nonterminal_name_state_eq _ _ _ _ top_strdata _ _ _ _ pf)
               (@lift_lookup_nonterminal_name_state_eq _ _ _ _ leaf_strdata _ _ _ _ pf)
               (gen_state _ _ _ _) }.
+
+  Local Instance sum_strdata : @parser_computational_strdataT _ String G sum_methods := sum_prestrdata.
 
   Context (top_stypes' : @parser_dependent_types_success_dataT' _ String top_methods).
   Definition top_stypes : @parser_dependent_types_success_dataT _ String

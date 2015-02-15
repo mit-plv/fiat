@@ -62,19 +62,21 @@ Section recursive_descent_parser.
 
   Local Notation orig_methods := {| DependentlyTyped.methods' := methods' |}.
 
-  Context (strdata : @parser_computational_strdataT _ String G orig_methods).
+  Context (prestrdata : @parser_computational_prestrdataT _ String G orig_methods option).
 
-  Global Instance option_strdata : @parser_computational_strdataT _ String G option_methods
-    := { lower_nonterminal_name_state str0 valid nonterminal_name s
-         := option_map (@lower_nonterminal_name_state _ _ _ _ strdata _ _ _ _);
-         lower_string_head str0 valid prod prods s
-         := option_map (@lower_string_head _ _ _ _ strdata _ _ _ _ _);
-         lower_string_tail str0 valid prod prods s
-         := option_map (@lower_string_tail _ _ _ _ strdata _ _ _ _ _);
-         lift_lookup_nonterminal_name_state_lt str0 valid nonterminal_name s pf
-         := option_map (@lift_lookup_nonterminal_name_state_lt _ _ _ _ strdata _ _ _ _ pf);
-         lift_lookup_nonterminal_name_state_eq str0 valid nonterminal_name s pf
-         := option_map (@lift_lookup_nonterminal_name_state_eq _ _ _ _ strdata _ _ _ _ pf) }.
+  Global Instance option_prestrdata : @parser_computational_prestrdataT _ String G option_methods idM
+    := { prelower_nonterminal_name_state str0 valid nonterminal_name s
+         := option_bind (@prelower_nonterminal_name_state _ _ _ _ _ prestrdata _ _ _ _);
+         prelower_string_head str0 valid prod prods s
+         := option_bind (@prelower_string_head _ _ _ _ _ prestrdata _ _ _ _ _);
+         prelower_string_tail str0 valid prod prods s
+         := option_bind (@prelower_string_tail _ _ _ _ _ prestrdata _ _ _ _ _);
+         prelift_lookup_nonterminal_name_state_lt str0 valid nonterminal_name s pf
+         := option_bind (@prelift_lookup_nonterminal_name_state_lt _ _ _ _ _ prestrdata _ _ _ _ pf);
+         prelift_lookup_nonterminal_name_state_eq str0 valid nonterminal_name s pf
+         := option_bind (@prelift_lookup_nonterminal_name_state_eq _ _ _ _ _ prestrdata _ _ _ _ pf) }.
+
+  Global Instance option_strdata : @parser_computational_strdataT _ String G option_methods := option_prestrdata.
 
   Context (stypes' : @parser_dependent_types_success_dataT' _ String orig_methods).
 
@@ -118,7 +120,7 @@ Section recursive_descent_parser.
   Definition option_types : @parser_dependent_types_dataT _ String
     := {| DependentlyTyped.stypes := option_stypes;
           DependentlyTyped.ftypes' := option_ftypes' |}.
-
+(*
   Context (extra_success_data : @parser_dependent_types_extra_success_dataT' _ String G {| DependentlyTyped.stypes' := stypes' |} strdata).
 
   Local Notation eta s := {| string_val := string_val s ; state_val := state_val s |}.
@@ -225,5 +227,5 @@ Section recursive_descent_parser.
     := {| DependentlyTyped.types := option_types;
           DependentlyTyped.strdata := option_strdata;
           DependentlyTyped.extra_success_data := option_extra_success_data;
-          DependentlyTyped.extra_failure_data := option_extra_failure_data |}.
+          DependentlyTyped.extra_failure_data := option_extra_failure_data |}.*)
 End recursive_descent_parser.

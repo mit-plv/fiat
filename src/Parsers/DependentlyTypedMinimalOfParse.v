@@ -342,9 +342,9 @@ Section recursive_descent_parser.
   Local Instance methods : @parser_computational_dataT _ String
     := { methods' := methods' }.
 
-  Local Instance strdata : @parser_computational_strdataT _ String G methods
-    := { lower_nonterminal_name_state str0 valid nonterminal_name str st := st;
-         lower_string_head str0 valid prod prods str st
+  Local Instance prestrdata : @parser_computational_prestrdataT _ String G methods idM
+    := { prelower_nonterminal_name_state str0 valid nonterminal_name str st := st;
+         prelower_string_head str0 valid prod prods str st
          := match st with
               | None => None
               | Some p => match projT1 p as p' in parse_of _ _ str' prods' return Forall_parse_of (P str0 valid) p' -> option (p_parse_production str0 valid str' (hd prod prods')) with
@@ -352,7 +352,7 @@ Section recursive_descent_parser.
                             | ParseTail _ _ _ _ => fun _ => None
                           end (projT2 p)
             end;
-         lower_string_tail str0 valid prod prods str st
+         prelower_string_tail str0 valid prod prods str st
          := match st with
               | None => None
               | Some p => match projT1 p as p' in parse_of _ _ str' prods' return Forall_parse_of (P str0 valid) p' -> option (p_parse str0 valid str' (tl prods')) with
@@ -360,8 +360,11 @@ Section recursive_descent_parser.
                             | ParseHead _ _ _ _ => fun _ => None
                           end (projT2 p)
             end;
-         lift_lookup_nonterminal_name_state_lt str0 valid nonterminal_name str pf := option_map (parse_of__of__parse_of_item_lt pf);
-         lift_lookup_nonterminal_name_state_eq str0 valid nonterminal_name str pf := option_map (parse_of__of__parse_of_item_eq pf) }.
+         prelift_lookup_nonterminal_name_state_lt str0 valid nonterminal_name str pf := option_map (parse_of__of__parse_of_item_lt pf);
+         prelift_lookup_nonterminal_name_state_eq str0 valid nonterminal_name str pf := option_map (parse_of__of__parse_of_item_eq pf) }.
+
+  Local Instance strdata : @parser_computational_strdataT _ String G methods
+    := prestrdata.
 
   Section minimal.
     Local Ltac t' :=
