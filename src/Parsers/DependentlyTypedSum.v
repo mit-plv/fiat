@@ -76,15 +76,15 @@ Section recursive_descent_parser.
   Definition leaf_methods : @parser_computational_dataT _ String
     := @methods _ _ (@stypes _ _ (@types _ _ _ leaves_extra_data)).
 
-  Variable top_strdata : @parser_computational_strdataT _ String G (@option_methods _ _ _ top_methods').
+  Variable top_prestrdata : @parser_computational_prestrdataT _ String G top_methods option.
   Definition leaf_strdata : @parser_computational_strdataT _ String G leaf_methods
     := @strdata _ _ _ leaves_extra_data.
 
   Local Instance sum_methods : parser_computational_dataT := { methods' := sum_methods' }.
 
-  Definition functor_cross_sum {A A' B B'} (f : option A -> option A') (g : B -> B') (default : B') (x : sum A B) : sum A' B' :=
+  Definition functor_cross_sum {A A' B B'} (f : A -> option A') (g : B -> B') (default : B') (x : sum A B) : sum A' B' :=
     match x with
-      | inl a => match f (Some a) with
+      | inl a => match f a with
                    | Some a' => inl a'
                    | None => inr default
                  end
@@ -106,27 +106,27 @@ Section recursive_descent_parser.
   Local Instance sum_prestrdata : @parser_computational_prestrdataT _ String G sum_methods idM
     := { prelower_nonterminal_name_state str0 valid nonterminal_name str
          := functor_cross_sum
-              (@lower_nonterminal_name_state _ _ _ _ top_strdata _ _ _ _)
+              (@prelower_nonterminal_name_state _ _ _ _ _ top_prestrdata _ _ _ _)
               (@lower_nonterminal_name_state _ _ _ _ leaf_strdata _ _ _ _)
               (gen_state _ _ _ _);
          prelower_string_head str0 valid prod prods str
          := functor_cross_sum
-              (@lower_string_head _ _ _ _ top_strdata _ _ _ _ _)
+              (@prelower_string_head _ _ _ _ _ top_prestrdata _ _ _ _ _)
               (@lower_string_head _ _ _ _ leaf_strdata _ _ _ _ _)
               (gen_state _ _ _ _);
          prelower_string_tail str0 valid prod prods str
          := functor_cross_sum
-              (@lower_string_tail _ _ _ _ top_strdata _ _ _ _ _)
+              (@prelower_string_tail _ _ _ _ _ top_prestrdata _ _ _ _ _)
               (@lower_string_tail _ _ _ _ leaf_strdata _ _ _ _ _)
               (gen_state _ _ _ _);
          prelift_lookup_nonterminal_name_state_lt str0 valid nonterminal_name str pf
          := functor_cross_sum
-              (@lift_lookup_nonterminal_name_state_lt _ _ _ _ top_strdata _ _ _ _ pf)
+              (@prelift_lookup_nonterminal_name_state_lt _ _ _ _ _ top_prestrdata _ _ _ _ pf)
               (@lift_lookup_nonterminal_name_state_lt _ _ _ _ leaf_strdata _ _ _ _ pf)
               (gen_state _ _ _ _);
          prelift_lookup_nonterminal_name_state_eq str0 valid nonterminal_name str pf
          := functor_cross_sum
-              (@lift_lookup_nonterminal_name_state_eq _ _ _ _ top_strdata _ _ _ _ pf)
+              (@prelift_lookup_nonterminal_name_state_eq _ _ _ _ _ top_prestrdata _ _ _ _ pf)
               (@lift_lookup_nonterminal_name_state_eq _ _ _ _ leaf_strdata _ _ _ _ pf)
               (gen_state _ _ _ _) }.
 
@@ -186,7 +186,7 @@ Section recursive_descent_parser.
   Local Instance sum_types : @parser_dependent_types_dataT _ String
     := { ftypes' := sum_ftypes' }.
 
-  Context (top_success_data' : @parser_dependent_types_extra_success_dataT' _ String _ (option_stypes top_stypes') top_strdata).
+  Context (top_success_data' : @parser_dependent_types_extra_success_dataT' _ String _ (option_stypes top_stypes') (option_strdata top_prestrdata)).
   Definition leaf_success_data' : @parser_dependent_types_extra_success_dataT' _ String _ (@stypes _ _ (@types _ _ _ leaves_extra_data)) _
     := @extra_success_data _ _ _ leaves_extra_data.
 
@@ -350,7 +350,7 @@ Section recursive_descent_parser.
     { intros; eapply inr_injective; eassumption. }
   Defined.
 
-  Context (top_failure_data' : @parser_dependent_types_extra_failure_dataT' _ String G (option_types (@ftypes' _ _ top_types)) top_strdata).
+  Context (top_failure_data' : @parser_dependent_types_extra_failure_dataT' _ String G (option_types (@ftypes' _ _ top_types)) (option_strdata top_prestrdata)).
 
   Definition leaf_failure_data' : @parser_dependent_types_extra_failure_dataT' _ String _ (@types _ _ _ leaves_extra_data) _
     := @extra_failure_data _ _ _ leaves_extra_data.
