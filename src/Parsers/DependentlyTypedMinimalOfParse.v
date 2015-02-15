@@ -409,7 +409,7 @@ Section recursive_descent_parser.
             Definition T_nonterminal_name_failure : Type
               := match state_val str with
                    | None => ret -> False
-                   | Some p => prefix str alt
+                   | Some p => alt
                  end.
           End T_nonterminal_name.
 
@@ -423,7 +423,7 @@ Section recursive_descent_parser.
             Definition T_item_failure : Type
               := match state_val str with
                    | None => ret -> False
-                   | Some p => prefix str alt
+                   | Some p => alt
                  end.
           End T_item.
 
@@ -437,7 +437,7 @@ Section recursive_descent_parser.
             Definition T_production_failure : Type
               := match state_val str with
                    | None => ret -> False
-                   | Some p => prefix str alt
+                   | Some p => alt
                  end.
           End T_production.
 
@@ -452,7 +452,7 @@ Section recursive_descent_parser.
             Definition T_productions_failure : Type
               := match state_val str with
                    | None => ret -> False
-                   | Some p => prefix str alt
+                   | Some p => alt
                  end.
           End T_productions.
         End types.
