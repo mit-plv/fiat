@@ -31,7 +31,7 @@ Section recursive_descent_parser.
 
   Variable top_methods' : @parser_computational_dataT' _ String _.
   Definition leaf_methods' : @parser_computational_dataT' _ String _
-    := @methods' _ _ (@methods _ _ (@types _ _ _ leaves_extra_data)).
+    := @methods' _ _ (@methods _ _ (@stypes _ _ (@types _ _ _ leaves_extra_data))).
 
   (** some helper lemmas to help Coq with inference *)
   Hint Unfold compose : dtp_sum_db.
@@ -74,7 +74,7 @@ Section recursive_descent_parser.
   Definition top_methods : @parser_computational_dataT _ String
     := {| DependentlyTyped.methods' := top_methods' |}.
   Definition leaf_methods : @parser_computational_dataT _ String
-    := @methods _ _ (@types _ _ _ leaves_extra_data).
+    := @methods _ _ (@stypes _ _ (@types _ _ _ leaves_extra_data)).
 
   Variable top_strdata : @parser_computational_strdataT _ String G (@option_methods _ _ _ top_methods').
   Definition leaf_strdata : @parser_computational_strdataT _ String G leaf_methods
@@ -128,43 +128,60 @@ Section recursive_descent_parser.
               (@lift_lookup_nonterminal_name_state_eq _ _ _ _ leaf_strdata _ _ _ _ pf)
               (gen_state _ _ _ _) }.
 
-  Variable top_types' : @parser_dependent_types_dataT' _ String top_methods.
-  Definition leaf_types' : @parser_dependent_types_dataT' _ String leaf_methods
-    := @types' _ _ (@types _ _ _ leaves_extra_data).
-About T_nonterminal_name_success.
-  Local Instance sum_types' : @parser_dependent_types_dataT' _ String sum_methods
+  Context (top_success_types' : @parser_dependent_types_success_dataT' _ String top_methods).
+  Definition top_success_types : @parser_dependent_types_success_dataT _ String
+    := {| stypes' := top_success_types' |}.
+  Context (top_failure_types' : @parser_dependent_types_failure_dataT' _ String top_success_types).
+  Definition leaf_success_types' : @parser_dependent_types_success_dataT' _ String leaf_methods
+    := @stypes' _ _ (@stypes _ _ (@types _ _ _ leaves_extra_data)).
+  Definition leaf_failure_types' : @parser_dependent_types_failure_dataT' _ String _
+    := @ftypes' _ _ (@types _ _ _ leaves_extra_data).
+  Definition leaf_success_types : @parser_dependent_types_success_dataT _ String
+    := @stypes _ _ (@types _ _ _ leaves_extra_data).
+  Definition top_types : @parser_dependent_types_dataT _ String
+    := {| ftypes' := top_failure_types' |}.
+  Definition leaf_types : @parser_dependent_types_dataT _ String
+    := @types _ _ _ leaves_extra_data.
+
+  Local Instance sum_success_types' : @parser_dependent_types_success_dataT' _ String sum_methods
     := { T_nonterminal_name_success str0 valid name
          := functor_str_sum_type
-              (@T_nonterminal_name_success _ _ _ top_types' _ _ _)
-              (@T_nonterminal_name_success _ _ _ leaf_types' _ _ _);
-         T_nonterminal_name_failure str0 valid name
-         := functor_str_sum_type
-              (@T_nonterminal_name_failure _ _ _ top_types' _ _ _)
-              (@T_nonterminal_name_failure _ _ _ leaf_types' _ _ _);
+              (@T_nonterminal_name_success _ _ _ top_success_types' _ _ _)
+              (@T_nonterminal_name_success _ _ _ leaf_success_types' _ _ _);
          T_item_success str0 valid it
          := functor_str_sum_type
-              (@T_item_success _ _ _ top_types' _ _ _)
-              (@T_item_success _ _ _ leaf_types' _ _ _);
-         T_item_failure str0 valid it
-         := functor_str_sum_type
-              (@T_item_failure _ _ _ top_types' _ _ _)
-              (@T_item_failure _ _ _ leaf_types' _ _ _);
+              (@T_item_success _ _ _ top_success_types' _ _ _)
+              (@T_item_success _ _ _ leaf_success_types' _ _ _);
          T_production_success str0 valid prod
          := functor_str_sum_type
-              (@T_production_success _ _ _ top_types' _ _ _)
-              (@T_production_success _ _ _ leaf_types' _ _ _);
-         T_production_failure str0 valid prod
-         := functor_str_sum_type
-              (@T_production_failure _ _ _ top_types' _ _ _)
-              (@T_production_failure _ _ _ leaf_types' _ _ _);
+              (@T_production_success _ _ _ top_success_types' _ _ _)
+              (@T_production_success _ _ _ leaf_success_types' _ _ _);
          T_productions_success str0 valid prods
          := functor_str_sum_type
-              (@T_productions_success _ _ _ top_types' _ _ _)
-              (@T_productions_success _ _ _ leaf_types' _ _ _);
+              (@T_productions_success _ _ _ top_success_types' _ _ _)
+              (@T_productions_success _ _ _ leaf_success_types' _ _ _) }.
+  Local Instance sum_success_types : @parser_dependent_types_success_dataT _ String
+    := {| stypes' := sum_success_types' |}.
+  Local Instance sum_failure_types' : @parser_dependent_types_failure_dataT' _ String sum_success_types
+    := { T_nonterminal_name_failure str0 valid name
+         := functor_str_sum_type
+              (@T_nonterminal_name_failure _ _ _ top_failure_types' _ _ _)
+              (@T_nonterminal_name_failure _ _ _ leaf_failure_types' _ _ _);
+         T_item_failure str0 valid it
+         := functor_str_sum_type
+              (@T_item_failure _ _ _ top_failure_types' _ _ _)
+              (@T_item_failure _ _ _ leaf_failure_types' _ _ _);
+         T_production_failure str0 valid prod
+         := functor_str_sum_type
+              (@T_production_failure _ _ _ top_failure_types' _ _ _)
+              (@T_production_failure _ _ _ leaf_failure_types' _ _ _);
          T_productions_failure str0 valid prods
          := functor_str_sum_type
-              (@T_productions_failure _ _ _ top_types' _ _ _)
-              (@T_productions_failure _ _ _ leaf_types' _ _ _) }.
+              (@T_productions_failure _ _ _ top_failure_types' _ _ _)
+              (@T_productions_failure _ _ _ leaf_failure_types' _ _ _) }.
+  Local Instance sum_types : @parser_dependent_types_dataT _ String
+    := { ftypes' := sum_failure_types' }.
+
 
 
         Global Program Instance minimal_parser_dependent_types_extra_data

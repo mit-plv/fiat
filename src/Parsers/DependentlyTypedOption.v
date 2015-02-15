@@ -57,4 +57,18 @@ Section recursive_descent_parser.
 
   Local Instance option_methods : @parser_computational_dataT _ String
     := { methods' := option_methods' }.
+
+  Context (strdata : @parser_computational_strdataT _ String G {| DependentlyTyped.methods' := methods' |}).
+
+  Local Instance option_strdata : @parser_computational_strdataT _ String G option_methods
+    := { lower_nonterminal_name_state str0 valid nonterminal_name s
+         := option_map (@lower_nonterminal_name_state _ _ _ _ strdata _ _ _ _);
+         lower_string_head str0 valid prod prods s
+         := option_map (@lower_string_head _ _ _ _ strdata _ _ _ _ _);
+         lower_string_tail str0 valid prod prods s
+         := option_map (@lower_string_tail _ _ _ _ strdata _ _ _ _ _);
+         lift_lookup_nonterminal_name_state_lt str0 valid nonterminal_name s pf
+         := option_map (@lift_lookup_nonterminal_name_state_lt _ _ _ _ strdata _ _ _ _ pf);
+         lift_lookup_nonterminal_name_state_eq str0 valid nonterminal_name s pf
+         := option_map (@lift_lookup_nonterminal_name_state_eq _ _ _ _ strdata _ _ _ _ pf) }.
 End recursive_descent_parser.
