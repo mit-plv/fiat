@@ -944,3 +944,23 @@ Definition functor_sum {A A' B B'} (f : A -> A') (g : B -> B') (x : sum A B) : s
     | inl a => inl (f a)
     | inr b => inr (g b)
   end.
+
+Lemma impl_sum_match_match_option {A B ret s s' n r}
+      {x : option A}
+      (f : match x with
+             | Some x' => s x'
+             | None => n
+           end -> ret)
+      (g : s' r -> ret)
+: match
+    match x return A + B with
+      | Some x' => inl x'
+      | None => inr r
+    end
+  with
+    | inl x' => s x'
+    | inr x' => s' x'
+  end -> ret.
+Proof.
+  destruct x; assumption.
+Defined.

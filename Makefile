@@ -11,6 +11,7 @@ SRC_PARSERS_MODULES := \
 	Parsers/Specification\
 	Parsers/DependentlyTyped\
 	Parsers/DependentlyTypedOption\
+	Parsers/DependentlyTypedSum\
 	Parsers/DependentlyTypedMinimal\
 	Parsers/DependentlyTypedMinimalOfParse\
 	Parsers/BooleanRecognizer\
