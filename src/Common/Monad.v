@@ -67,7 +67,7 @@ Instance monad_laws_of_transformer T `{MonadTransformerLaws T}
   := _.
 Coercion monad_laws_of_transformer : MonadTransformerLaws >-> MonadLaws.
 
-Instance optionT : MonadTransformerOps (fun M => M ∘ option)
+Instance optionT : MonadTransformerOps (fun M => M ∘ option) | 2
   := { Tops M H := {| ret A x := ret (Some x);
                       bind A B x f := _ |};
        lift M H A x := bind x (fun a => ret (Some a)) }.
@@ -91,7 +91,7 @@ Local Ltac t_option :=
            | _ => progress autorewrite with monad; try assumption; []
          end.
 
-Instance optionTLaws : MonadTransformerLaws (fun M => M ∘ option)
+Instance optionTLaws : MonadTransformerLaws (fun M => M ∘ option) | 2
   := { Tlaws M H L := _ }.
 Proof.
   { constructor; simpl; t_option. }
@@ -99,5 +99,10 @@ Proof.
   { simpl; t_option. }
 Defined.
 
-Instance optionM : MonadOps option := optionT.
-Instance optionLaws : MonadLaws option := optionTLaws.
+Instance optionM : MonadOps option | 2 := optionT.
+Instance optionLaws : MonadLaws option | 2 := optionTLaws.
+
+Definition liftA {T} `{MonadTransformerOps T} {M} `{MonadOps M} {A B}
+           (f : M A -> M B)
+: T M A -> T M B
+  := fun x => y <- x; lift (f (ret y)).
