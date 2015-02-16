@@ -967,8 +967,8 @@ Defined.
 
 Lemma impl_match_option {A ret s n}
       {x : option A}
-      (f : forall x', s x' -> ret)
-      (g : n -> ret)
+      (f : forall x', x = Some x' -> s x' -> ret)
+      (g : x = None -> n -> ret)
 : match x with
     | Some x' => s x'
     | None => n
