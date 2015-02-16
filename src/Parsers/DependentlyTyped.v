@@ -57,9 +57,12 @@ Section recursive_descent_parser.
                              -> nonterminal_names_listT_R (remove_nonterminal_name ls nonterminal_name) ls;
       ntl_wf : well_founded nonterminal_names_listT_R }.
 
-  Class parser_computational_dataT' `{parser_computational_predataT} :=
-    { split_stateT : String -> nonterminal_names_listT -> any_grammar CharType -> String -> Type;
-      split_string_for_production
+  Class parser_computational_types_dataT :=
+    { predata :> parser_computational_predataT;
+      split_stateT : String -> nonterminal_names_listT -> any_grammar CharType -> String -> Type }.
+
+  Class parser_computational_dataT' `{parser_computational_types_dataT} :=
+    { split_string_for_production
       : forall (str0 : String) (valid : nonterminal_names_listT) (it : item CharType) (its : production CharType) (str : StringWithSplitState String (split_stateT str0 valid (it::its : production CharType))),
           list (StringWithSplitState String (split_stateT str0 valid it)
                 * StringWithSplitState String (split_stateT str0 valid its));
@@ -69,7 +72,7 @@ Section recursive_descent_parser.
           P (fun s1s2 => (fst s1s2 ++ snd s1s2 =s str) = true) }.
 
   Class parser_computational_dataT :=
-    { premethods :> parser_computational_predataT;
+    { premethods :> parser_computational_types_dataT;
       methods' :> parser_computational_dataT' }.
 
   Class MonadT := Build_MonadT : Type -> Type.

@@ -29,13 +29,18 @@ Section recursive_descent_parser.
                <-> is_valid_nonterminal_name ls ps' = false \/ ps = ps').
   Variable gen_state : forall str0 valid g s, split_stateT str0 valid g s.
 
-  Variable top_methods' : @parser_computational_dataT' _ String _.
-  Definition leaf_methods' : @parser_computational_dataT' _ String _
+  Context top_split_stateT
+          (top_methods' : @parser_computational_dataT' _ String {| split_stateT := top_split_stateT |}).
+  Local Instance top_premethods : @parser_computational_types_dataT _ String
+    := {| split_stateT := top_split_stateT |}.
+  Definition leaf_premethods : @parser_computational_types_dataT _ String
+    := @premethods _ _ (@methods _ _ (@stypes _ _ (@types _ _ _ leaves_extra_data))).
+  Definition leaf_methods' : @parser_computational_dataT' _ String premethods
     := @methods' _ _ (@methods _ _ (@stypes _ _ (@types _ _ _ leaves_extra_data))).
 
   (** some helper lemmas to help Coq with inference *)
   Hint Unfold compose : dtp_sum_db.
-  Hint Extern 1 => apply split_string_for_production_correct' : dtp_sum_db.
+  Hint Extern 1 => refine (split_string_for_production_correct' _ _ _ _ _ _ _) : dtp_sum_db.
 
   Local Ltac t_sum' :=
     idtac;
@@ -51,12 +56,13 @@ Section recursive_descent_parser.
 
   Local Ltac t_sum := repeat t_sum'.
 
-  Local Instance sum_methods' : @parser_computational_dataT' _ String premethods
+  Local Instance sum_types_data' : @parser_computational_types_dataT _ String
     := { split_stateT str0 valid g s
-         := @split_stateT _ _ _ top_methods' str0 valid g s
-            + @split_stateT _ _ _ leaf_methods' str0 valid g s;
+         := @split_stateT _ _ top_premethods str0 valid g s
+            + @split_stateT _ _ leaf_premethods str0 valid g s }.
 
-         split_string_for_production str0 valid it its s
+  Local Instance sum_methods' : @parser_computational_dataT' _ String sum_types_data'
+    := { split_string_for_production str0 valid it its s
          := match state_val s with
               | inl st
                 => map (fun s1s2 =>

@@ -15,6 +15,9 @@ Section recursive_descent_parser.
           (String : string_like CharType)
           (G : grammar CharType).
   Context {premethods : parser_computational_predataT}.
+  Local Instance types_methods : @parser_computational_types_dataT _ String
+    := { predata := premethods;
+         split_stateT str0 valid g str := unit }.
   Context (remove_nonterminal_name_1
            : forall ls ps ps',
                is_valid_nonterminal_name (remove_nonterminal_name ls ps) ps' = true
@@ -23,8 +26,7 @@ Section recursive_descent_parser.
            : forall ls ps ps',
                is_valid_nonterminal_name (remove_nonterminal_name ls ps) ps' = false
                <-> is_valid_nonterminal_name ls ps' = false \/ ps = ps').
-  Variable orig_methods : @parser_computational_dataT' CharType String premethods.
-  Variable gen_state : forall str0 valid (prod : production CharType) s, split_stateT str0 valid prod s.
+  Variable orig_methods : @parser_computational_dataT' CharType String types_methods.
 
   Definition P (str0 : String) valid : String -> string -> Prop
     := fun str p =>
@@ -112,21 +114,24 @@ Section recursive_descent_parser.
     exact (fst (fst (projT2 (split_parse_of_production p)))).
   Qed.
 
-  Local Instance methods' : @parser_computational_dataT' _ String premethods
-    := {| split_stateT str0 valid g s
-          := option (match g return Type with
-                       | include_item it => p_parse_item str0 valid s it
-                       | include_production p => p_parse_production str0 valid s p
-                       | include_productions prods => p_parse str0 valid s prods
-                       | include_nonterminal_name nonterminal_name => p_parse_nonterminal_name str0 valid s nonterminal_name
-                     end);
-          split_string_for_production str0 valid it its s
+  Local Instance types_methods' : @parser_computational_types_dataT _ String
+    := { predata := premethods;
+         split_stateT str0 valid g s
+         := option (match g return Type with
+                      | include_item it => p_parse_item str0 valid s it
+                      | include_production p => p_parse_production str0 valid s p
+                      | include_productions prods => p_parse str0 valid s prods
+                      | include_nonterminal_name nonterminal_name => p_parse_nonterminal_name str0 valid s nonterminal_name
+                    end) }.
+
+  Local Instance methods' : @parser_computational_dataT' _ String types_methods'
+    := {| split_string_for_production str0 valid it its s
           := let orig_splits := map (fun s1s2 =>
                                        ({| string_val := string_val (fst s1s2);
                                            state_val := None |},
                                         {| string_val := string_val (snd s1s2);
                                            state_val := None |}))
-                                    (@split_string_for_production _ _ _ orig_methods str0 valid it its {| state_val := (gen_state str0 valid (it::its) (string_val s)) |}) in
+                                    (@split_string_for_production _ _ _ orig_methods str0 valid it its {| string_val := string_val s ; state_val := tt |}) in
              match state_val s with
                | None => orig_splits
                | Some st => let st' := split_parse_of_production st in

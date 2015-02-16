@@ -16,7 +16,7 @@ Section recursive_descent_parser.
           {String : string_like CharType}
           {G : grammar CharType}.
 
-  Context {predata : parser_computational_predataT}.
+  Context {predata : @parser_computational_types_dataT _ String}.
   Context {methods' : @parser_computational_dataT' _ String predata}.
 
   (** some helper lemmas to help Coq with inference *)
@@ -42,9 +42,12 @@ Section recursive_descent_parser.
 
   Local Ltac t_option := repeat t_option'.
 
-  Local Instance option_methods' : @parser_computational_dataT' _ String predata
-    := { split_stateT str0 valid g str := option (split_stateT str0 valid g str);
-         split_string_for_production str0 valid it its str
+  Local Instance option_types_data : @parser_computational_types_dataT _ String
+    := { split_stateT str0 valid g str := option (split_stateT str0 valid g str) }.
+
+Set Printing Implicit.
+  Local Instance option_methods' : @parser_computational_dataT' _ String option_types_data
+    := { split_string_for_production str0 valid it its str
          := match state_val str with
               | None
                 => nil
@@ -53,7 +56,7 @@ Section recursive_descent_parser.
                      (fun s1s2 =>
                         (lift_StringWithSplitState (fst s1s2) (@Some _),
                          lift_StringWithSplitState (snd s1s2) (@Some _)))
-                     (split_string_for_production str0 valid it its {| string_val := string_val str ; state_val := st |})
+                     (@split_string_for_production _ _ predata methods' str0 valid it its {| string_val := string_val str ; state_val := st |})
             end }.
   Proof. clear; abstract t_option. Defined.
 
