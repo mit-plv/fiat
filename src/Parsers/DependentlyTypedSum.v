@@ -18,7 +18,28 @@ Section recursive_descent_parser.
   Context (CharType : Type)
           (String : string_like CharType)
           (G : grammar CharType).
-  Context {leaves_extra_data : @parser_dependent_types_extra_dataT _ String G}.
+  Context (leaf_predata : parser_computational_predataT).
+  Local Instance leaf_types_data : @parser_computational_types_dataT _ String
+    := {| predata := leaf_predata;
+          split_stateT str0 valid g str := unit |}.
+  Context (leaf_methods' : @parser_computational_dataT' _ String leaf_types_data).
+  Local Instance leaf_methods : @parser_computational_dataT _ String
+    := {| methods' := leaf_methods' |}.
+  Context (leaf_stypes' : @parser_dependent_types_success_dataT' _ String leaf_methods).
+  Local Instance leaf_stypes : @parser_dependent_types_success_dataT _ String
+    := {| stypes' := leaf_stypes' |}.
+  Context (leaf_ftypes' : @parser_dependent_types_failure_dataT' _ String leaf_stypes).
+  Local Instance leaf_types : @parser_dependent_types_dataT _ String
+    := {| ftypes' := leaf_ftypes' |}.
+  Context (leaf_strdata : @parser_computational_strdataT _ String G leaf_methods).
+  Context (leaf_extra_success_data : @parser_dependent_types_extra_success_dataT' _ String G leaf_stypes leaf_strdata).
+  Context (leaf_extra_failure_data : @parser_dependent_types_extra_failure_dataT' _ String G leaf_types leaf_strdata).
+
+  Local Instance leaf_extra_data : @parser_dependent_types_extra_dataT _ String G
+    := {| types := leaf_types;
+          strdata := leaf_strdata;
+          extra_success_data := leaf_extra_success_data;
+          extra_failure_data := leaf_extra_failure_data |}.
   Context (remove_nonterminal_name_1
            : forall ls ps ps',
                is_valid_nonterminal_name (remove_nonterminal_name ls ps) ps' = true
@@ -27,20 +48,16 @@ Section recursive_descent_parser.
            : forall ls ps ps',
                is_valid_nonterminal_name (remove_nonterminal_name ls ps) ps' = false
                <-> is_valid_nonterminal_name ls ps' = false \/ ps = ps').
-  Variable gen_state : forall str0 valid g s, split_stateT str0 valid g s.
 
   Context top_split_stateT
           (top_methods' : @parser_computational_dataT' _ String {| split_stateT := top_split_stateT |}).
   Local Instance top_premethods : @parser_computational_types_dataT _ String
     := {| split_stateT := top_split_stateT |}.
-  Definition leaf_premethods : @parser_computational_types_dataT _ String
-    := @premethods _ _ (@methods _ _ (@stypes _ _ (@types _ _ _ leaves_extra_data))).
-  Definition leaf_methods' : @parser_computational_dataT' _ String premethods
-    := @methods' _ _ (@methods _ _ (@stypes _ _ (@types _ _ _ leaves_extra_data))).
 
   (** some helper lemmas to help Coq with inference *)
   Hint Unfold compose : dtp_sum_db.
-  Hint Extern 1 => refine (split_string_for_production_correct' _ _ _ _ _ _ _) : dtp_sum_db.
+  Hint Extern 1 => refine (@split_string_for_production_correct' _ String leaf_types_data leaf_methods' _ _ _ _ _ _) : dtp_sum_db.
+  Hint Extern 1 => refine (@split_string_for_production_correct' _ _ _ _ _ _ _ _ _ _) : dtp_sum_db.
 
   Local Ltac t_sum' :=
     idtac;
@@ -49,6 +66,7 @@ Section recursive_descent_parser.
       | _ => progress intros
       | _ => progress destruct_head' @StringWithSplitState
       | _ => progress destruct_head' sum
+      | _ => progress destruct_head' option
       | [ |- Forall _ (map _ _) ] => apply Forall_map
       | _ => progress autounfold with dtp_sum_db in *
       | _ => solve [ eauto with dtp_sum_db ]
@@ -58,33 +76,28 @@ Section recursive_descent_parser.
 
   Local Instance sum_types_data' : @parser_computational_types_dataT _ String
     := { split_stateT str0 valid g s
-         := @split_stateT _ _ top_premethods str0 valid g s
-            + @split_stateT _ _ leaf_premethods str0 valid g s }.
+         := option (@split_stateT _ _ top_premethods str0 valid g s) }.
 
   Local Instance sum_methods' : @parser_computational_dataT' _ String sum_types_data'
     := { split_string_for_production str0 valid it its s
          := match state_val s with
-              | inl st
+              | Some st
                 => map (fun s1s2 =>
-                          (lift_StringWithSplitState (fst s1s2) (@inl _ _),
-                           lift_StringWithSplitState (snd s1s2) (@inl _ _)))
+                          (lift_StringWithSplitState (fst s1s2) Some,
+                           lift_StringWithSplitState (snd s1s2) Some))
                        (@split_string_for_production _ _ _ top_methods' str0 valid it its {| string_val := string_val s ; state_val := st |})
-              | inr st
+              | None
                 => map (fun s1s2 =>
-                          (lift_StringWithSplitState (fst s1s2) (@inr _ _),
-                           lift_StringWithSplitState (snd s1s2) (@inr _ _)))
-                       (@split_string_for_production _ _ _ leaf_methods' str0 valid it its {| string_val := string_val s ; state_val := st |})
+                          (lift_StringWithSplitState (fst s1s2) (fun _ => None),
+                           lift_StringWithSplitState (snd s1s2) (fun _ => None)))
+                       (@split_string_for_production _ _ _ leaf_methods' str0 valid it its {| string_val := string_val s ; state_val := tt |})
             end }.
   Proof. clear; abstract t_sum. Defined.
 
   Definition top_methods : @parser_computational_dataT _ String
     := {| DependentlyTyped.methods' := top_methods' |}.
-  Definition leaf_methods : @parser_computational_dataT _ String
-    := @methods _ _ (@stypes _ _ (@types _ _ _ leaves_extra_data)).
 
   Variable top_prestrdata : @parser_computational_prestrdataT _ String G top_methods option.
-  Definition leaf_strdata : @parser_computational_strdataT _ String G leaf_methods
-    := @strdata _ _ _ leaves_extra_data.
 
   Local Instance sum_methods : parser_computational_dataT := { methods' := sum_methods' }.
 
@@ -111,30 +124,15 @@ Section recursive_descent_parser.
 
   Local Instance sum_prestrdata : @parser_computational_prestrdataT _ String G sum_methods idM
     := { prelower_nonterminal_name_state str0 valid nonterminal_name str
-         := functor_cross_sum
-              (@prelower_nonterminal_name_state _ _ _ _ _ top_prestrdata _ _ _ _)
-              (@lower_nonterminal_name_state _ _ _ _ leaf_strdata _ _ _ _)
-              (gen_state _ _ _ _);
+         := option_bind (@prelower_nonterminal_name_state _ _ _ _ _ top_prestrdata _ _ _ _);
          prelower_string_head str0 valid prod prods str
-         := functor_cross_sum
-              (@prelower_string_head _ _ _ _ _ top_prestrdata _ _ _ _ _)
-              (@lower_string_head _ _ _ _ leaf_strdata _ _ _ _ _)
-              (gen_state _ _ _ _);
+         := option_bind (@prelower_string_head _ _ _ _ _ top_prestrdata _ _ _ _ _);
          prelower_string_tail str0 valid prod prods str
-         := functor_cross_sum
-              (@prelower_string_tail _ _ _ _ _ top_prestrdata _ _ _ _ _)
-              (@lower_string_tail _ _ _ _ leaf_strdata _ _ _ _ _)
-              (gen_state _ _ _ _);
+         := option_bind (@prelower_string_tail _ _ _ _ _ top_prestrdata _ _ _ _ _);
          prelift_lookup_nonterminal_name_state_lt str0 valid nonterminal_name str pf
-         := functor_cross_sum
-              (@prelift_lookup_nonterminal_name_state_lt _ _ _ _ _ top_prestrdata _ _ _ _ pf)
-              (@lift_lookup_nonterminal_name_state_lt _ _ _ _ leaf_strdata _ _ _ _ pf)
-              (gen_state _ _ _ _);
+         := option_bind (@prelift_lookup_nonterminal_name_state_lt _ _ _ _ _ top_prestrdata _ _ _ _ pf);
          prelift_lookup_nonterminal_name_state_eq str0 valid nonterminal_name str pf
-         := functor_cross_sum
-              (@prelift_lookup_nonterminal_name_state_eq _ _ _ _ _ top_prestrdata _ _ _ _ pf)
-              (@lift_lookup_nonterminal_name_state_eq _ _ _ _ leaf_strdata _ _ _ _ pf)
-              (gen_state _ _ _ _) }.
+         := option_bind (@prelift_lookup_nonterminal_name_state_eq _ _ _ _ _ top_prestrdata _ _ _ _ pf) }.
 
   Local Instance sum_strdata : @parser_computational_strdataT _ String G sum_methods := sum_prestrdata.
 
