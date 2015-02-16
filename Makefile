@@ -15,6 +15,7 @@ SRC_PARSERS_MODULES := \
 	Parsers/DependentlyTypedMinimal\
 	Parsers/DependentlyTypedMinimalOfParse\
 	Parsers/DependentlyTypedMinimalOfParseFactored\
+	Parsers/DependentlyTypedMinimalOfParseFactoredFull\
 	Parsers/BooleanRecognizer\
 	Parsers/WellFoundedParse\
 	Parsers/MinimalParse\

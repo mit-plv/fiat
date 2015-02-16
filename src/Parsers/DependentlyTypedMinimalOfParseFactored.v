@@ -1,7 +1,7 @@
 (** * Definition of a [comp]-based non-computational CFG parser *)
 Require Import Coq.Lists.List Coq.Program.Program Coq.Program.Wf Coq.Arith.Wf_nat Coq.Arith.Compare_dec Coq.Classes.RelationClasses Coq.Strings.String.
 Require Import Parsers.ContextFreeGrammar Parsers.Specification Parsers.DependentlyTyped Parsers.MinimalParse.
-Require Import Parsers.DependentlyTypedMinimal Parsers.DependentlyTypedOption Parsers.DependentlyTypedSum.
+Require Import Parsers.DependentlyTypedMinimal Parsers.DependentlyTypedSum.
 Require Import Parsers.WellFoundedParse Parsers.ContextFreeGrammarProperties.
 Require Import Common Common.ilist Common.Wf Common.Le.
 
@@ -378,7 +378,7 @@ Section recursive_descent_parser.
          top_prestrdata
          _ _ _ _ _ _ _ _ _.
 
-  Definition minimal_parse_nonterminal_name__of__parse
+  Definition minimal_parse_nonterminal_name__of__parse'
              (nonterminal_name : string)
              (s : String)
              (p : parse_of_item String G s (NonTerminal _ nonterminal_name))
