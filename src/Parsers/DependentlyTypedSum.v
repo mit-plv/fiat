@@ -149,11 +149,11 @@ Section recursive_descent_parser.
          T_productions_success str0 valid prods str
          := @T_productions_success _ _ _ leaf_stypes' str0 valid prods (etas str) }.
 
-  Local Notation Is str := {| string_val := str ; state_val := I |}.
+  Local Notation tts str := {| string_val := str ; state_val := I |}.
   Local Notation T_failureT FT :=
     (fun str0 valid arg =>
        option_rect_str (fun _ => False)
-                       (fun str => FT _ _ _ leaf_ftypes' str0 valid arg (Is str))) (only parsing).
+                       (fun str => FT _ _ _ leaf_ftypes' str0 valid arg (tts str))) (only parsing).
   Local Instance sum_stypes : @parser_dependent_types_success_dataT _ String
     := {| stypes' := sum_stypes' |}.
   Local Instance sum_ftypes' : @parser_dependent_types_failure_dataT' _ String sum_stypes
@@ -178,38 +178,38 @@ Section recursive_descent_parser.
            end.
 
   Section impossible.
-    Context {A A' B B'}
-            {s0s1 : StringWithSplitState String (fun s => A s + B s) * StringWithSplitState String (fun s => A' s + B' s)}.
+    Context {A A'}
+            {s0s1 : StringWithSplitState String (fun s => option (A s)) * StringWithSplitState String (fun s => option (A' s))}.
     Local Notation discr_T refl refr s0s1
-      := (match (refl : True + True), (refr : True + True), state_val (fst s0s1), state_val (snd s0s1) with
-            | inr _, _, inr _, _ => True
-            | _, inr _, _, inr _ => True
-            | inl _, _, inl _, _ => True
-            | _, inl _, _, inl _ => True
+      := (match (refl : option True), (refr : option True), state_val (fst s0s1), state_val (snd s0s1) with
+            | Some _, _, Some _, _ => True
+            | _, Some _, _, Some _ => True
+            | None, _, None, _ => True
+            | _, None, _, None => True
             | _, _, _, _ => False
           end) (only parsing).
     Local Notation retT s0s1 f g ls
       := (~(In s0s1
                (map
-                  (fun s1s2 =>
+                  (fun s1s2 : StringWithSplitState String A * StringWithSplitState String A' =>
                      (lift_StringWithSplitState (fst s1s2) f,
                       lift_StringWithSplitState (snd s1s2) g))
                   ls))) (only parsing).
 
-    Lemma impossible_in_str_ll {ls} (H : discr_T (inr I) (inr I) s0s1)
-    : retT s0s1 (@inl _ _) (@inl _ _) ls.
+    Lemma impossible_in_str_ll {ls} (H : discr_T None None s0s1)
+    : retT s0s1 Some Some ls.
     Proof. t_impossible. Qed.
 
-    Lemma impossible_in_str_lr {ls} (H : discr_T (inr I) (inl I) s0s1)
-    : retT s0s1 (@inl _ _) (@inr _ _) ls.
+    Lemma impossible_in_str_lr {ls} (H : discr_T None (Some I) s0s1)
+    : retT s0s1 Some (fun _ => None) ls.
     Proof. t_impossible. Qed.
 
-    Lemma impossible_in_str_rl {ls} (H : discr_T (inl I) (inr I) s0s1)
-    : retT s0s1 (@inr _ _) (@inl _ _) ls.
+    Lemma impossible_in_str_rl {ls} (H : discr_T (Some I) None s0s1)
+    : retT s0s1 (fun _ => None) Some ls.
     Proof. t_impossible. Qed.
 
-    Lemma impossible_in_str_rr {ls} (H : discr_T (inl I) (inl I) s0s1)
-    : retT s0s1 (@inr _ _) (@inr _ _) ls.
+    Lemma impossible_in_str_rr {ls} (H : discr_T (Some I) (Some I) s0s1)
+    : retT s0s1 (fun _ => None) (fun _ => None) ls.
     Proof. t_impossible. Qed.
   End impossible.
 
@@ -224,11 +224,11 @@ Section recursive_descent_parser.
                | simpl;
                  match goal with | [ |- _ = _ ] => idtac end;
                  rewrite !map_map; apply map_ext; simpl;
-                 intros [ [? ?] [? ?] ]; reflexivity ]). (*
+                 intros [ [? ?] [? ?] ]; reflexivity
                | exfalso; eapply impossible_in_str_ll; eauto; simpl; eauto
                | exfalso; eapply impossible_in_str_lr; eauto; simpl; eauto
                | exfalso; eapply impossible_in_str_rl; eauto; simpl; eauto
-               | exfalso; eapply impossible_in_str_rr; eauto; simpl; eauto ]).*)
+               | exfalso; eapply impossible_in_str_rr; eauto; simpl; eauto ]).
 
   Definition liftA_str_tt {f g : StringWithSplitState String (fun _ => True) -> Type}
              {s1 s2 t0 t1}
@@ -252,33 +252,35 @@ Section recursive_descent_parser.
          parse_empty_success str0 valid str
          := @parse_empty_success _ _ _ _ _ leaf_extra_success_data _ _ (etas str);
          cons_success str0 valid it its
-         := option_rect_str
-              (fun s1 =>
-                 sum_rect_str
-                   (fun s2 =>
-                      sum_rect_str
-                        (fun str pf H' H'' =>
+         := _ }.
+  Next Obligation.
+    simpl.
+
+ option_rect_str
+              (fun str =>
+                 option_rect_str
+                   (fun s1 =>
+                      option_rect_str
+                        (fun s2 pf H' H'' =>
                            @cons_success
-                             _ _ _ _ _ top_success_data' _ _ _ _ (etas s1) (etas s2) (etas str) pf H'
+                             _ _ _ _ _ leaf_extra_success_data _ _ _ _ (etas str) (etas s1) (etas s2) pf H'
                              (in_lift_pair_StringWithSplitState_iff_injective
                                 (lift := fun _ => Some) (lift' := fun _ => Some)
                                 _))
                         _)
-                   (fun s2 => sum_rect_str _ _))
-              (fun s1 =>
-                 sum_rect_str
-                   (fun s2 => sum_rect_str _ _)
-                   (fun s2 =>
-                      sum_rect_str
+                   (fun s1 => option_rect_str _ _))
+              (fun str =>
+                 option_rect_str
+                   (fun s1 => option_rect_str _ _)
+                   (fun s1 =>
+                      option_rect_str
                         _
-                        (fun str pf H' H'' =>
+                        (fun s2 pf H' H'' =>
                            @cons_success
-                             _ _ _ _ _ leaf_success_data' _ _ _ _ (eta s1) (eta s2) (eta str) pf H'
+                             _ _ _ _ _ leaf_extra_success_data _ _ _ _ (tts str) (tts s1) (tts s2) pf H'
                              (in_lift_pair_StringWithSplitState_iff_injective
                                 (lift := fun _ => Some) (lift' := fun _ => Some)
-                                _))));
-:= option_rect_str _ _ } .
-
+                                _)))) }.
   Next Obligation.
     simpl.
     refine (@cons_success _ _ _ _ _ leaf_extra_success_data str0 valid it its _ _ _ _ _ _ _ _).
