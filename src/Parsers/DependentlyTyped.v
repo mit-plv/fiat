@@ -225,7 +225,7 @@ Section recursive_descent_parser.
               let a1 := @T_item_success _ _ str0 valid it s1 in
               let a2 := @T_production_success _ _ str0 valid its s2 in
               let ret := @T_production_success _ _ str0 valid (it::its) str in
-              str ≤s str0 -> s1 ++ s2 =s str -> In (s1, s2) (split_string_for_production str0 valid it its str) -> a1 -> a2 -> ret;
+              str ≤s str0 -> s1 ++ s2 =s str -> a1 -> a2 -> ret;
 
           lift_prods_success_head
           : forall {str0 valid prod prods str},
@@ -390,7 +390,7 @@ Section recursive_descent_parser.
                                            s1
                                            (@parse_nonterminal_name s1 Hs1)),
                               (@parse_production s2 Hs2) with
-                          | inl p_it, inl p_its => inl (@cons_success _ _ _ str0 valid _ _ _ s1 s2 pf _ _ _ _)
+                          | inl p_it, inl p_its => inl (@cons_success _ _ _ str0 valid _ _ _ s1 s2 pf _ _ _)
                           | inl p_it, inr p_its => parse_production_helper it its str pf splits _ parse_production _ _
                           | inr p_it, inl p_its => parse_production_helper it its str pf splits _ parse_production _ _
                           | inr p_it, inr p_its => parse_production_helper it its str pf splits _ parse_production _ _
