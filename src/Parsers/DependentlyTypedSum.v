@@ -21,7 +21,7 @@ Section recursive_descent_parser.
   Context (leaf_predata : parser_computational_predataT).
   Local Instance leaf_types_data : @parser_computational_types_dataT _ String
     := {| predata := leaf_predata;
-          split_stateT str0 valid g str := unit |}.
+          split_stateT str0 valid g str := True |}.
   Context (leaf_methods' : @parser_computational_dataT' _ String leaf_types_data).
   Local Instance leaf_methods : @parser_computational_dataT _ String
     := {| methods' := leaf_methods' |}.
@@ -90,7 +90,7 @@ Section recursive_descent_parser.
                 => map (fun s1s2 =>
                           (lift_StringWithSplitState (fst s1s2) (fun _ => None),
                            lift_StringWithSplitState (snd s1s2) (fun _ => None)))
-                       (@split_string_for_production _ _ _ leaf_methods' str0 valid it its {| string_val := string_val s ; state_val := tt |})
+                       (@split_string_for_production _ _ _ leaf_methods' str0 valid it its {| string_val := string_val s ; state_val := I |})
             end }.
   Proof. clear; abstract t_sum. Defined.
 
@@ -101,26 +101,26 @@ Section recursive_descent_parser.
 
   Local Instance sum_methods : parser_computational_dataT := { methods' := sum_methods' }.
 
-  Definition functor_cross_sum {A A' B B'} (f : A -> option A') (g : B -> B') (default : B') (x : sum A B) : sum A' B' :=
-    match x with
-      | inl a => match f a with
-                   | Some a' => inl a'
-                   | None => inr default
-                 end
-      | inr b => inr (g b)
-    end.
-
-  Definition sum_rect_str {A B} {P : StringWithSplitState String (fun s => A s + B s) -> Type}
-             (f : forall x : StringWithSplitState String A, P (lift_StringWithSplitState x (@inl _ _)))
-             (g : forall x : StringWithSplitState String B, P (lift_StringWithSplitState x (@inr _ _)))
-             x
-  : P x
-    := match x return P x with
-         | {| string_val := s ; state_val := inl st |}
+  Definition option_rect_str {A} {B : StringWithSplitState String (fun s => option (A s)) -> Type}
+             (f : forall x : StringWithSplitState String A, B (lift_StringWithSplitState x (@Some _)))
+             (none_case : forall s, B {| string_val := s; state_val := None |})
+             (x : StringWithSplitState String (fun s => option (A s)))
+  : B x
+    := match x return B x with
+         | {| string_val := s ; state_val := None |} => none_case s
+         | {| string_val := s ; state_val := Some st |}
            => f {| string_val := s ; state_val := st |}
-         | {| string_val := s ; state_val := inr st |}
-           => g {| string_val := s ; state_val := st |}
        end.
+
+  (*Definition True_rect_str {B : StringWithSplitState String (fun s => True) -> Type}
+             (f : forall s, B (lift_StringWithSplitState x (fun _ => I)))
+             (x : StringWithSplitState String (fun s => True))
+  : B x
+    := match x return B x with
+         | {| string_val := s ; state_val := I |} => f {| string_val := s ; state_val := I |}
+         | {| string_val := s ; state_val := Some st |}
+           => f {| string_val := s ; state_val := st |}
+       end.*)
 
   Local Instance sum_prestrdata : @parser_computational_prestrdataT _ String G sum_methods idM
     := { prelower_nonterminal_name_state str0 valid nonterminal_name str
@@ -136,66 +136,33 @@ Section recursive_descent_parser.
 
   Local Instance sum_strdata : @parser_computational_strdataT _ String G sum_methods := sum_prestrdata.
 
-  Context (top_stypes' : @parser_dependent_types_success_dataT' _ String top_methods).
-  Definition top_stypes : @parser_dependent_types_success_dataT _ String
-    := {| stypes' := top_stypes' |}.
-  Context (top_ftypes' : @parser_dependent_types_failure_dataT' _ String top_stypes).
-  Definition leaf_stypes' : @parser_dependent_types_success_dataT' _ String leaf_methods
-    := @stypes' _ _ (@stypes _ _ (@types _ _ _ leaves_extra_data)).
-  Definition leaf_ftypes' : @parser_dependent_types_failure_dataT' _ String _
-    := @ftypes' _ _ (@types _ _ _ leaves_extra_data).
-  Definition leaf_stypes : @parser_dependent_types_success_dataT _ String
-    := @stypes _ _ (@types _ _ _ leaves_extra_data).
-  Definition top_types : @parser_dependent_types_dataT _ String
-    := {| ftypes' := top_ftypes' |}.
-  Definition leaf_types : @parser_dependent_types_dataT _ String
-    := @types _ _ _ leaves_extra_data.
+  Local Notation eta s := {| string_val := string_val s ; state_val := state_val s |}.
+  Local Notation etas str := (lift_StringWithSplitState str (fun _ => I)).
 
   Local Instance sum_stypes' : @parser_dependent_types_success_dataT' _ String sum_methods
-    := { T_nonterminal_name_success str0 valid name
-         := sum_rect_str
-              (@T_nonterminal_name_success _ _ _ top_stypes' _ _ _)
-              (@T_nonterminal_name_success _ _ _ leaf_stypes' _ _ _);
-         T_item_success str0 valid it
-         := sum_rect_str
-              (@T_item_success _ _ _ top_stypes' _ _ _)
-              (@T_item_success _ _ _ leaf_stypes' _ _ _);
-         T_production_success str0 valid prod
-         := sum_rect_str
-              (@T_production_success _ _ _ top_stypes' _ _ _)
-              (@T_production_success _ _ _ leaf_stypes' _ _ _);
-         T_productions_success str0 valid prods
-         := sum_rect_str
-              (@T_productions_success _ _ _ top_stypes' _ _ _)
-              (@T_productions_success _ _ _ leaf_stypes' _ _ _) }.
+    := { T_nonterminal_name_success str0 valid name str
+         := @T_nonterminal_name_success _ _ _ leaf_stypes' str0 valid name (etas str);
+         T_item_success str0 valid it str
+         := @T_item_success _ _ _ leaf_stypes' str0 valid it (etas str);
+         T_production_success str0 valid prod str
+         := @T_production_success _ _ _ leaf_stypes' str0 valid prod (etas str);
+         T_productions_success str0 valid prods str
+         := @T_productions_success _ _ _ leaf_stypes' str0 valid prods (etas str) }.
+
+  Local Notation Is str := {| string_val := str ; state_val := I |}.
+  Local Notation T_failureT FT :=
+    (fun str0 valid arg =>
+       option_rect_str (fun _ => False)
+                       (fun str => FT _ _ _ leaf_ftypes' str0 valid arg (Is str))) (only parsing).
   Local Instance sum_stypes : @parser_dependent_types_success_dataT _ String
     := {| stypes' := sum_stypes' |}.
   Local Instance sum_ftypes' : @parser_dependent_types_failure_dataT' _ String sum_stypes
-    := { T_nonterminal_name_failure str0 valid name
-         := sum_rect_str
-              (@T_nonterminal_name_failure _ _ _ top_ftypes' _ _ _)
-              (@T_nonterminal_name_failure _ _ _ leaf_ftypes' _ _ _);
-         T_item_failure str0 valid it
-         := sum_rect_str
-              (@T_item_failure _ _ _ top_ftypes' _ _ _)
-              (@T_item_failure _ _ _ leaf_ftypes' _ _ _);
-         T_production_failure str0 valid prod
-         := sum_rect_str
-              (@T_production_failure _ _ _ top_ftypes' _ _ _)
-              (@T_production_failure _ _ _ leaf_ftypes' _ _ _);
-         T_productions_failure str0 valid prods
-         := sum_rect_str
-              (@T_productions_failure _ _ _ top_ftypes' _ _ _)
-              (@T_productions_failure _ _ _ leaf_ftypes' _ _ _) }.
+    := { T_nonterminal_name_failure := T_failureT (@T_nonterminal_name_failure);
+         T_item_failure := T_failureT (@T_item_failure);
+         T_production_failure := T_failureT (@T_production_failure);
+         T_productions_failure := T_failureT (@T_productions_failure) }.
   Local Instance sum_types : @parser_dependent_types_dataT _ String
     := { ftypes' := sum_ftypes' }.
-
-  Context (top_success_data' : @parser_dependent_types_extra_success_dataT' _ String _ (option_stypes top_stypes') (option_strdata top_prestrdata)).
-  Definition leaf_success_data' : @parser_dependent_types_extra_success_dataT' _ String _ (@stypes _ _ (@types _ _ _ leaves_extra_data)) _
-    := @extra_success_data _ _ _ leaves_extra_data.
-
-  Local Notation eta s := {| string_val := string_val s ; state_val := state_val s |}.
-  Local Notation etas s := (lift_StringWithSplitState s Some).
 
   Local Ltac t_impossible :=
     repeat match goal with
@@ -214,7 +181,7 @@ Section recursive_descent_parser.
     Context {A A' B B'}
             {s0s1 : StringWithSplitState String (fun s => A s + B s) * StringWithSplitState String (fun s => A' s + B' s)}.
     Local Notation discr_T refl refr s0s1
-      := (match (refl : unit + unit), (refr : unit + unit), state_val (fst s0s1), state_val (snd s0s1) with
+      := (match (refl : True + True), (refr : True + True), state_val (fst s0s1), state_val (snd s0s1) with
             | inr _, _, inr _, _ => True
             | _, inr _, _, inr _ => True
             | inl _, _, inl _, _ => True
@@ -229,19 +196,19 @@ Section recursive_descent_parser.
                       lift_StringWithSplitState (snd s1s2) g))
                   ls))) (only parsing).
 
-    Lemma impossible_in_str_ll {ls} (H : discr_T (inr tt) (inr tt) s0s1)
+    Lemma impossible_in_str_ll {ls} (H : discr_T (inr I) (inr I) s0s1)
     : retT s0s1 (@inl _ _) (@inl _ _) ls.
     Proof. t_impossible. Qed.
 
-    Lemma impossible_in_str_lr {ls} (H : discr_T (inr tt) (inl tt) s0s1)
+    Lemma impossible_in_str_lr {ls} (H : discr_T (inr I) (inl I) s0s1)
     : retT s0s1 (@inl _ _) (@inr _ _) ls.
     Proof. t_impossible. Qed.
 
-    Lemma impossible_in_str_rl {ls} (H : discr_T (inl tt) (inr tt) s0s1)
+    Lemma impossible_in_str_rl {ls} (H : discr_T (inl I) (inr I) s0s1)
     : retT s0s1 (@inr _ _) (@inl _ _) ls.
     Proof. t_impossible. Qed.
 
-    Lemma impossible_in_str_rr {ls} (H : discr_T (inl tt) (inl tt) s0s1)
+    Lemma impossible_in_str_rr {ls} (H : discr_T (inl I) (inl I) s0s1)
     : retT s0s1 (@inr _ _) (@inr _ _) ls.
     Proof. t_impossible. Qed.
   End impossible.
@@ -257,33 +224,67 @@ Section recursive_descent_parser.
                | simpl;
                  match goal with | [ |- _ = _ ] => idtac end;
                  rewrite !map_map; apply map_ext; simpl;
-                 intros [ [? ?] [? ?] ]; reflexivity
+                 intros [ [? ?] [? ?] ]; reflexivity ]). (*
                | exfalso; eapply impossible_in_str_ll; eauto; simpl; eauto
                | exfalso; eapply impossible_in_str_lr; eauto; simpl; eauto
                | exfalso; eapply impossible_in_str_rl; eauto; simpl; eauto
-               | exfalso; eapply impossible_in_str_rr; eauto; simpl; eauto ]).
+               | exfalso; eapply impossible_in_str_rr; eauto; simpl; eauto ]).*)
+
+  Definition liftA_str_tt {f g : StringWithSplitState String (fun _ => True) -> Type}
+             {s1 s2 t0 t1}
+             (F : f {| string_val := string_val s1 ; state_val := t0 |}
+                  -> g {| string_val := string_val s2 ; state_val := t1 |})
+  : f s1 -> g s2.
+  Proof.
+    destruct s1 as [ ? [] ], s2 as [ ? [] ], t0, t1. exact F.
+  Defined.
 
   Global Program Instance sum_extra_success_data
-         lift_success_cross
+         (*lift_success_cross
          lift_prods_success_head_cross lift_prods_success_tail_cross
          lift_parse_nonterminal_name_success_lt_cross
-         lift_parse_nonterminal_name_success_eq_cross
+         lift_parse_nonterminal_name_success_eq_cross*)
   : @parser_dependent_types_extra_success_dataT' _ String G sum_stypes sum_strdata
-    := { lift_success str0 valid nonterminal_name
-         := sum_rect_str
-              (fun str => impl_sum_match_match_option
-                            (@lift_success _ _ _ _ _ top_success_data' _ _ _ (etas str))
-                            (lift_success_cross str0 valid nonterminal_name str))
-              (fun str => @lift_success _ _ _ _ _ leaf_success_data' _ _ _ (eta str));
-         parse_terminal_success str0 valid ch
-         := sum_rect_str
-              (fun str => @parse_terminal_success _ _ _ _ _ top_success_data' _ _ _ (etas str))
-              (fun str => @parse_terminal_success _ _ _ _ _ leaf_success_data' _ _ _ (eta str));
-         parse_empty_success str0 valid
-         := sum_rect_str
-              (fun str => @parse_empty_success _ _ _ _ _ top_success_data' _ _ (etas str))
-              (fun str => @parse_empty_success _ _ _ _ _ leaf_success_data' _ _ (eta str));
+    := { lift_success str0 valid nonterminal_name str
+         := liftA_str_tt (@lift_success _ _ _ _ _ leaf_extra_success_data _ _ _ (etas str));
+         parse_terminal_success str0 valid ch str
+         := @parse_terminal_success _ _ _ _ _ leaf_extra_success_data _ _ _ (etas str);
+         parse_empty_success str0 valid str
+         := @parse_empty_success _ _ _ _ _ leaf_extra_success_data _ _ (etas str);
          cons_success str0 valid it its
+         := option_rect_str
+              (fun s1 =>
+                 sum_rect_str
+                   (fun s2 =>
+                      sum_rect_str
+                        (fun str pf H' H'' =>
+                           @cons_success
+                             _ _ _ _ _ top_success_data' _ _ _ _ (etas s1) (etas s2) (etas str) pf H'
+                             (in_lift_pair_StringWithSplitState_iff_injective
+                                (lift := fun _ => Some) (lift' := fun _ => Some)
+                                _))
+                        _)
+                   (fun s2 => sum_rect_str _ _))
+              (fun s1 =>
+                 sum_rect_str
+                   (fun s2 => sum_rect_str _ _)
+                   (fun s2 =>
+                      sum_rect_str
+                        _
+                        (fun str pf H' H'' =>
+                           @cons_success
+                             _ _ _ _ _ leaf_success_data' _ _ _ _ (eta s1) (eta s2) (eta str) pf H'
+                             (in_lift_pair_StringWithSplitState_iff_injective
+                                (lift := fun _ => Some) (lift' := fun _ => Some)
+                                _))));
+:= option_rect_str _ _ } .
+
+  Next Obligation.
+    simpl.
+    refine (@cons_success _ _ _ _ _ leaf_extra_success_data str0 valid it its _ _ _ _ _ _ _ _).
+simpl in *.
+ (etas s1) (etas s2) (etas str)).
+@cons_success _ _ _ _ _ leaf_extra_success_data _ _ _ _ (etas s1) (etas s2) (etas str) }.
          := sum_rect_str
               (fun s1 =>
                  sum_rect_str
