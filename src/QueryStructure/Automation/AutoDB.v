@@ -176,15 +176,20 @@ Ltac prove_extensional_eq :=
   unfold ExtensionalEq;
   destruct_ifs; first [ solve [intuition] | solve [exfalso; intuition] | idtac ].
 
-
+(* Recurse over [fds] to find an attribute matching s *)
 Ltac findMatchingTerm fds s k :=
   match fds with
     | (?fd, ?X) =>
+      (* Check if this field name is equal to s; process [X] with [k] if so. *)
       let H := fresh in assert (H : bindex s = fd) by reflexivity; clear H;
                         k X
     | (?fds1, ?fds2) => findMatchingTerm fds1 s k || findMatchingTerm fds2 s k
   end.
 
+(* Recurse over the list of search term attributes [fs],
+ consulting the list of attribute name and value pairs in [fds] to
+ find matching search terms via [findMatchingTerm].
+ *)
 Ltac createTerm f fds tail fs k :=
   match fs with
     | nil =>
@@ -196,44 +201,70 @@ Ltac createTerm f fds tail fs k :=
                                                                       || k (@None (f s), rest))
   end.
 
-(* Get the heading of SC, then *)
+(* Using a list of search term attributes [fs],
+   a list of attribute name and value pairs [fds],
+   use [createTerm] to recurse over [fs]
+   using the schema for [SC]
+ *)
 Ltac makeTerm fs SC fds tail k :=
   match eval hnf in SC with
     | Build_Heading ?f =>
       createTerm f fds tail fs k
   end.
 
-(* Given a storage schema [SC], a filter [F], and a
+(* Given a storage schema [SC], a filter [F],
+   a list of indexed attributes [search_attrs] and a
    tactic [k] which processes filters, convert [F] into
    a search term (a list of boolean functions over the tuples in
    [SC]). *)
-Ltac findGoodTerm SC F k :=
+
+Ltac findGoodTerm SC F indexed_attrs k :=
   match F with
     | fun a => ?[@?f a] =>
       match type of f with
-        | forall a, {?X = _!?fd} + {_} => k (fd, X) (fun _ : @Tuple SC => true)
-        | forall a, {_!?fd = ?X} + {_} => k (fd, X) (fun _ : @Tuple SC => true)
-        | forall a, {?X = _``?fd} + {_} => k (fd, X) (fun _ : @Tuple SC => true)
-        | forall a, {_``?fd = ?X} + {_} => k (fd, X) (fun _ : @Tuple SC => true)
+        | forall a, {?X = _!?fd} + {_} =>
+          let H := fresh in
+          assert (List.In fd indexed_attrs) as H
+              by (clear; simpl; intuition);
+            k (fd, X) (fun _ : @Tuple SC => true)
+        | forall a, {_!?fd = ?X} + {_} =>
+          let H := fresh in
+          assert (List.In fd indexed_attrs) as H
+              by (clear; simpl; intuition);
+            k (fd, X) (fun _ : @Tuple SC => true)
+        | forall a, {?X = _``?fd} + {_} =>
+          let H := fresh in
+          assert (List.In fd indexed_attrs) as H
+              by (clear; simpl; intuition);
+            k (fd, X) (fun _ : @Tuple SC => true)
+        | forall a, {_``?fd = ?X} + {_} =>
+          let H := fresh in
+          assert (List.In fd indexed_attrs) as H
+              by (clear; simpl; intuition);
+            k (fd, X) (fun _ : @Tuple SC => true)
       end
     | fun a => (@?f a) && (@?g a) =>
-      findGoodTerm SC f ltac:(fun fds1 tail1 =>
-                                findGoodTerm SC g ltac:(fun fds2 tail2 =>
-                                                          k (fds1, fds2) (fun tup : @Tuple SC => (tail1 tup) && (tail2 tup))))
+      findGoodTerm SC f indexed_attrs
+                   ltac:(fun fds1 tail1 =>
+                           findGoodTerm SC g indexed_attrs
+                                        ltac:(fun fds2 tail2 =>
+                                                k (fds1, fds2) (fun tup : @Tuple SC => (tail1 tup) && (tail2 tup))))
     | _ => k tt F
   end.
 
 Ltac find_simple_search_term qs_schema idx filter_dec search_term :=
   match type of search_term with
-    | BuildIndexSearchTerm ?attr =>
-      let SC := constr:(QSGetNRelSchemaHeading qs_schema idx) in
-      findGoodTerm SC filter_dec
-                   ltac:(fun fds tail =>
-                           let tail := eval simpl in tail in
-                               makeTerm attr SC fds tail
-                                        ltac:(fun tm => pose tm; try unify tm search_term;
-                                              unfold ExtensionalEq, MatchIndexSearchTerm;
-                                              simpl; intro; try prove_extensional_eq))
+    | BuildIndexSearchTerm ?indexed_attrs =>
+      let indexed_attrs' :=
+          eval simpl in (map (@bindex string _) indexed_attrs) in
+          let SC := constr:(QSGetNRelSchemaHeading qs_schema idx) in
+          findGoodTerm SC filter_dec indexed_attrs'
+                       ltac:(fun fds tail =>
+                               let tail := eval simpl in tail in
+                                   makeTerm indexed_attrs SC fds tail
+                                            ltac:(fun tm => try unify tm search_term;
+                                                  unfold ExtensionalEq, MatchIndexSearchTerm;
+                                                  simpl; intro; try prove_extensional_eq))
   end.
 
 Ltac implement_QSDeletedTuples find_search_term :=
@@ -417,8 +448,13 @@ Ltac split_filters k :=
 
 Ltac convert_Where_to_search_term :=
   (* First replace the Where clause with a test function. *)
-  simpl; setoid_rewrite refine_List_Query_In_Where;
-  instantiate (1 := _); simpl;
+  simpl;
+  match goal with
+      |- context[List_Query_In _ (fun b : ?QueryT => Where (@?P b) (@?resultComp b))]
+      =>
+      let P_dec := fresh in
+      setoid_rewrite (fun l => @refine_List_Query_In_Where QueryT _ l P resultComp _)
+  end; simpl;
   (* Find search term replacements for the function. *)
   match goal with
       |- context [List_Query_In (filter ?f _) _] =>
@@ -1220,7 +1256,7 @@ Ltac implement_Delete_branches :=
     ].
 
 Ltac implement_Insert_branches :=
-      repeat setoid_rewrite refine_If_Then_Else_Bind;
+  repeat setoid_rewrite refine_If_Then_Else_Bind;
       repeat setoid_rewrite Bind_refine_If_Then_Else;
       repeat setoid_rewrite refineEquiv_bind_unit; simpl;
       match goal with

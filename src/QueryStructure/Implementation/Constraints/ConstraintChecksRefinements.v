@@ -1155,7 +1155,41 @@ Proof.
     [ rewrite dec_decides_P in eqdec | rewrite Decides_false in eqdec ]; intuition.
 Qed.
 
-    Lemma refine_constraint_check_into_query :
+Lemma refine_constraint_check_into_query' :
+  forall {schm tbl} (c : UnConstrQueryStructure schm) P' P
+         (P_dec : DecideableEnsemble P),
+    Same_set _ (fun tup => P (indexedElement tup)) P'
+    -> refine
+         (Pick (fun (b : bool) =>
+                  decides b
+                          (exists tup2: @IndexedTuple _,
+                             (GetUnConstrRelation c tbl tup2 /\ P' tup2))))
+         (Bind
+            (Count (For (UnConstrQuery_In c tbl (fun tup => Where (P tup) Return tup))))
+            (fun count => ret (negb (beq_nat count 0)))).
+Proof.
+  Local Transparent Count.
+  unfold refine, Count, UnConstrQuery_In;
+    intros * excl * P_iff_P' pick_comp ** .
+  inversion_by computes_to_inv; subst.
+
+  constructor.
+
+  destruct (Datatypes.length x0) eqn:eq_length;
+    destruct x0 as [ | head tail ]; simpl in *; try discriminate; simpl.
+
+  pose proof (For_computes_to_nil _ (GetUnConstrRelation c tbl) H0).
+  rewrite not_exists_forall; intro a; rewrite not_and_implication; intros.
+  unfold not; intros; eapply H; eauto; apply P_iff_P'; eauto.
+
+  apply For_computes_to_In with (x := head) in H0; try solve [intuition].
+  destruct H0 as ( p & [ x0 ( in_ens & _eq ) ] ); subst.
+  eexists; split; eauto; apply P_iff_P'; eauto.
+
+  apply decidable_excl; assumption.
+Qed.
+
+    Corollary refine_constraint_check_into_query :
     forall {schm tbl} P (c : UnConstrQueryStructure schm)
            (P_dec : DecideableEnsemble P),
         refine
@@ -1167,24 +1201,11 @@ Qed.
              (Count (For (UnConstrQuery_In c tbl (fun tup => Where (P tup) Return tup))))
              (fun count => ret (negb (beq_nat count 0)))).
     Proof.
-      Local Transparent Count.
-      unfold refine, Count, UnConstrQuery_In; intros * excl * pick_comp ** .
-      inversion_by computes_to_inv; subst.
 
-      constructor.
-
-      destruct (Datatypes.length x0) eqn:eq_length;
-        destruct x0 as [ | head tail ]; simpl in *; try discriminate; simpl.
-
-      pose proof (For_computes_to_nil _ (GetUnConstrRelation c tbl) H0).
-      rewrite not_exists_forall; intro a; rewrite not_and_implication; intros.
-      apply H; trivial.
-
-      apply For_computes_to_In with (x := head) in H0; try solve [intuition].
-      destruct H0 as ( p & [ x0 ( in_ens & _eq ) ] ); subst.
-      eexists; split; eauto.
-
-      apply decidable_excl; assumption.
+      intros.
+      setoid_rewrite refine_constraint_check_into_query'; eauto.
+      reflexivity.
+      unfold Same_set, Included; intuition.
     Qed.
 
 Definition refine_foreign_key_check_into_query {schm tbl} :=
@@ -1388,6 +1409,28 @@ Global Instance cons_List_Query_eq
 :
   List_Query_eq (A :: As) :=
   {| As_Query_eq := icons _ A_Query_eq As_Query_eq |}.
+
+Tactic Notation "refine" "existence" "check" "into" "query" :=
+      match goal with
+          |- context[{b | decides b
+                                  (exists tup : @IndexedTuple ?heading,
+                                     (@GetUnConstrRelation ?qs_schema ?qs ?tbl tup /\ @?P tup))}]
+          =>
+          let H1 := fresh in
+          let H2 := fresh in
+            makeEvar (Ensemble (@Tuple heading))
+                     ltac:(fun P' => assert (Same_set (@IndexedTuple heading) (fun t => P' (indexedElement t)) P) as H1;
+            [unfold Same_set, Included, Ensembles.In;
+              split; [intros x H; pattern (indexedElement x);
+                      match goal with
+                          |- ?P'' (indexedElement x) => unify P' P'';
+                            simpl; eauto
+                      end
+                     | eauto]
+            |
+            assert (DecideableEnsemble P') as H2;
+              [ simpl; eauto with typeclass_instances (* Discharge DecideableEnsemble w/ intances. *)
+              | setoid_rewrite (@refine_constraint_check_into_query' qs_schema tbl qs P P' H2 H1); clear H1 H2 ] ]) end.
 
 Ltac fundepToQuery :=
   match goal with

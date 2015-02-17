@@ -249,7 +249,7 @@ Section general_refine_lemmas.
     forall (f : bool -> Comp A) (b : bool) ta ea,
       refineEquiv (f true) ta
       -> refineEquiv (f false) ea
-      -> refineEquiv (f b) (if b then ta else ea).
+      -> refineEquiv (f b) (If b Then ta Else ea).
   Proof.
     destruct b; simpl; auto.
   Qed.
@@ -258,12 +258,13 @@ Section general_refine_lemmas.
     forall Pc (Pt Pa : Ensemble A),
       refine { a | (Pc -> Pt a) /\ Pa a}
              (b <- {b | Pc -> b = true};
-              if b then { a | Pt a /\ Pa a}
-              else { a | Pa a}).
+              If b Then { a | Pt a /\ Pa a}
+              Else { a | Pa a}).
   Proof.
     unfold refine; intros.
     apply computes_to_inv in H; destruct_ex; constructor; intuition.
     apply computes_to_inv in H0; apply H0 in X; subst.
+    unfold If_Then_Else in *.
     inversion_by computes_to_inv; eauto.
 
     t_refine.
@@ -274,7 +275,7 @@ Section general_refine_lemmas.
     forall (c : Comp A) (b : bool) ta ea,
       (b = true -> refine c ta)
       -> (b = false -> refine c ea)
-      -> refine c (if b then ta else ea).
+      -> refine c (If b Then ta Else ea).
   Proof.
     destruct b; simpl; auto.
   Qed.
@@ -284,18 +285,18 @@ Section general_refine_lemmas.
     forall (cond : bool) (ta ea : A) ta' ea',
       refineEquiv {b | P ta b} ta'
       -> refineEquiv {b | P ea b} ea'
-      -> refineEquiv {b | P (if cond then ta else ea) b}
-                     (if cond then ta' else ea').
+      -> refineEquiv {b | P (If cond Then ta Else ea) b}
+                     (If cond Then ta' Else ea').
   Proof.
     intros; setoid_rewrite refineEquiv_if with
-            (f := fun cond : bool => {b : B | P (if cond then ta else ea) b}); eauto.
+            (f := fun cond : bool => {b : B | P (If cond Then ta Else ea) b}); eauto.
     reflexivity.
   Qed.
 
   Lemma refineEquiv_if_ret {A}
   : forall (cond : bool) (ta ea : A),
-      refineEquiv (ret (if cond then ta else ea))
-                  (if cond then ret ta else ret ea).
+      refineEquiv (ret (If cond Then ta Else ea))
+                  (If cond Then ret ta Else ret ea).
   Proof.
     split; destruct cond; reflexivity.
   Qed.
@@ -355,7 +356,7 @@ Section general_refine_lemmas.
   Qed.
 
   Definition decides (b : bool) (P : Prop)
-    := if b then P else ~ P.
+    := If b Then P Else ~ P.
 
   Add Morphism
       (decides)
@@ -372,7 +373,7 @@ Section general_refine_lemmas.
       -> (~ P -> refine c e)
       -> refine c
                 (b <- {b | decides b P};
-                 if b then t else e).
+                 If b Then t Else e).
   Proof.
     unfold refine; intros; apply_in_hyp computes_to_inv;
     destruct_ex; split_and; inversion_by computes_to_inv.
@@ -385,9 +386,9 @@ Section general_refine_lemmas.
   : refine {a | (P -> Q a) /\
                 (~ P -> Q' a)}
            (b <- {b | decides b P};
-            if b then
+            If b Then
               {a | Q a}
-            else
+            Else
               {a | Q' a}).
   Proof.
     eapply refine_pick_decides;
@@ -403,7 +404,7 @@ Section general_refine_lemmas.
   Qed.
 
   Lemma refineEquiv_decides_eqb (b b1 b2 : bool)
-  : decides b (b1 = b2) <-> b = if b2 then b1 else negb b1.
+  : decides b (b1 = b2) <-> b = If b2 Then b1 Else negb b1.
   Proof.
     destruct_head bool; simpl; intuition.
   Qed.
@@ -625,16 +626,16 @@ Tactic Notation "refine" "pick" "pair" :=
           end
       end ]; rewrite refineEquiv_pick_pair.
 
-  Tactic Notation "refine" "pick" "val" open_constr(v) :=
-    let T := type of v in
-    rewrite refine_pick_val with
-    (A := T)
-      (a := v).
+Tactic Notation "refine" "pick" "val" open_constr(v) :=
+  let T := type of v in
+  rewrite refine_pick_val with
+  (A := T)
+    (a := v).
 
-  Tactic Notation "refine" "pick" "eq" :=
-    match goal with
-      | |- context[Pick (fun x => x = _)] =>
-        setoid_rewrite refineEquiv_pick_eq
-      | |- context[Pick (fun x => _ = x)] =>
-        setoid_rewrite refineEquiv_pick_eq'
-    end.
+Tactic Notation "refine" "pick" "eq" :=
+  match goal with
+    | |- context[Pick (fun x => x = _)] =>
+      setoid_rewrite refineEquiv_pick_eq
+    | |- context[Pick (fun x => _ = x)] =>
+      setoid_rewrite refineEquiv_pick_eq'
+  end.
