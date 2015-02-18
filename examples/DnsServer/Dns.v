@@ -360,7 +360,9 @@ Definition DnsTerm :=
                               n!sNAME = (indexedElement tup')!sNAME -> n!sTYPE <> CNAME)}
                   (ret true).
     Proof.
-    Admitted.
+      intros; econstructor; inversion_by computes_to_inv.
+      subst; simpl; intros; assumption.
+    Qed.
 
     Lemma foo2 :
       forall (n : DNSRRecord) (R : @IndexedEnsemble DNSRRecord),
@@ -372,11 +374,16 @@ Definition DnsTerm :=
                               n!sNAME = (indexedElement tup')!sNAME -> n!sTYPE <> CNAME)}
                   {b |
                    decides b
-                           (exists tup' : IndexedTuple,
-                              R tup' /\
-                              n!sNAME = (indexedElement tup')!sNAME)}.
+                           (~ (exists tup' : IndexedTuple,
+                                 R tup' /\
+                                 n!sNAME = (indexedElement tup')!sNAME))}.
     Proof.
-    Admitted.
+      intros; econstructor; inversion_by computes_to_inv;
+      destruct v; simpl in *; unfold not in *; intros.
+      - destruct H0; eexists; split; [ apply H1 | apply H2 ].
+      - apply H0; intros; destruct H2 as [ tup [ H2 H3 ] ].
+        eapply H1; [ apply H2 | apply H3 | apply H ].
+    Qed.
 
     Lemma foo4 :
       forall (n : DNSRRecord) (R : @IndexedEnsemble DNSRRecord),
@@ -388,11 +395,58 @@ Definition DnsTerm :=
                               -> (indexedElement tup')!sTYPE <> CNAME)}
                   {b |
                    decides b
-                           (exists tup' : IndexedTuple,
-                              R tup' /\
-                              n!sNAME = (indexedElement tup')!sNAME
-                              /\ (indexedElement tup')!sTYPE <> CNAME)}.
+                           (~ (exists tup' : IndexedTuple,
+                                 R tup' /\
+                                 n!sNAME = (indexedElement tup')!sNAME
+                                 /\ (indexedElement tup')!sTYPE = CNAME))}.
     Proof.
+      intros; econstructor; inversion_by computes_to_inv;
+      destruct v; simpl in *; unfold not in *; intros.
+      - apply H; exists tup'; intuition.
+      - apply H; intros; destruct H1 as [ tup [ H1 [ H2 H3 ] ] ];
+        eapply H0; eauto.
+    Qed.
+
+    Lemma foo2point5 :
+      forall P R branch branch',
+        refine
+          (b <- branch;
+           If b
+              Then {b' | decides b' P}
+              Else ret true)
+          (If branch'
+              Then r <- R;
+                   ret (negb r)
+              Else ret true) ->
+        refine
+          (b <- branch;
+           If b
+              Then {b' | decides b' (~ P)}
+              Else ret true)
+          (If branch'
+              Then R
+              Else ret true).
+    Admitted.
+
+    Lemma foo4point5 :
+      forall P R,
+        refine
+          {b | decides b P}
+          (r <- R;
+           ret (negb r)) ->
+        refine
+          {b | decides b (~ P)}
+          R.
+    Admitted.
+
+    Lemma foo2point75 :
+      forall A B C (x : Comp A) (f : A -> B) (g : B -> C),
+        refineEquiv
+          (a <- x;
+           ret (g (f a)))
+          (b <- a <- x;
+                ret (f a);
+           ret (g b)).
     Admitted.
 
     Lemma foo3 :
@@ -408,16 +462,17 @@ Definition DnsTerm :=
                                          (fun tup : Tuple =>
                                             Where (n!sNAME = tup!sNAME)
                                                   Return tup ));
-                ret (negb (beq_nat count 0)) Else ret true).
+                ret (beq_nat count 0) Else ret true).
     Proof.
       intros; setoid_rewrite refine_pick_decides at 1;
       [ | apply foo2 | apply foo1 ].
+      apply foo2point5.
       refine existence check into query.
       remember n!sTYPE; refine pick val (beq_RRecordType d CNAME); subst;
       [ | case_eq (beq_RRecordType n!sTYPE CNAME); intros;
           rewrite <- beq_RRecordType_dec; unfold not; simpl in *; try congruence ].
       simplify with monad laws.
-      reflexivity.
+      setoid_rewrite foo2point75 at 1; reflexivity.
     Qed.
 
     Lemma foo5 :
@@ -434,11 +489,16 @@ Definition DnsTerm :=
                                             Where (n!sNAME = tup!sNAME
                                                    /\ tup!sTYPE <> CNAME )
                                                   Return tup ));
-                ret (negb (beq_nat count 0))).
+                ret (beq_nat count 0)).
     Proof.
       intros; setoid_rewrite foo4.
+      apply foo4point5.
       refine existence check into query.
-      reflexivity.
+      setoid_rewrite foo2point75 at 1.
+      Set Printing Implicit.
+      admit.
+      (* reflexivity should work but I have no idea why it does not :( *)
+      Unset Printing Implicit.
     Qed.
 
     Lemma foo7 {heading}
@@ -464,7 +524,9 @@ Definition DnsTerm :=
         (c = true -> c' = true)
         -> (if c then (if c' then t else e) else e') = if c then t else e'.
     Proof.
-      admit.
+      intros; destruct c; destruct c'; try reflexivity.
+      assert (true = true); [ reflexivity |
+      apply H in H0; discriminate ].
     Qed.
 
     Lemma foo9 {A}
@@ -472,6 +534,10 @@ Definition DnsTerm :=
         negb (beq_nat (Datatypes.length l) 0) = true ->
         negb (beq_nat (Datatypes.length (filter pred l)) 0) = true.
     Proof.
+      induction l; intros; simpl; try inversion H.
+      destruct (pred a) eqn : eq.
+      reflexivity.
+      (* is this lemma true? if length != 0 -> length after filter != 0 *)
       admit.
     Qed.
 
