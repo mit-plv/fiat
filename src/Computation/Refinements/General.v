@@ -245,6 +245,16 @@ Section general_refine_lemmas.
     econstructor; eauto.
   Qed.
 
+  (* This helper lemma makes terms more ameneable to
+     setoid_rewriting. *)
+  Lemma refine_if_If {A}
+  : forall (c : bool) (t e : Comp A),
+      refine (if c then t else e)
+             (If c Then t Else e).
+  Proof.
+    reflexivity.
+  Qed.
+
   Lemma refineEquiv_if A :
     forall (f : bool -> Comp A) (b : bool) ta ea,
       refineEquiv (f true) ta

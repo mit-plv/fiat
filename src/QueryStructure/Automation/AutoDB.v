@@ -710,7 +710,7 @@ Proof.
   apply refine_Join_Lists_filter_search_term_snd_dep.
 Qed.
 
-Ltac convert_filter_to_find':=
+Ltac convert_filter_to_find' :=
   try match goal with
           |- context[filter (fun a => (_ && _) && true) _] =>
           setoid_rewrite <- andb_assoc; simpl
@@ -718,7 +718,7 @@ Ltac convert_filter_to_find':=
   match goal with
     | H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
       |- context[l <- CallBagMethod ?idx ``("Enumerate") ?r_n ();
-                  List_Query_In (filter (fun a => MatchIndexSearchTerm ?st (ilist_hd a) && @?filter_rest a)
+                  List_Query_In (filter (fun a => ?MatchIndexSearchTerm ?st (ilist_hd a) && @?filter_rest a)
                                         (Build_single_Tuple_list (snd l))) ?resultComp] =>
       let b := fresh in
       pose proof (@refine_Query_For_In_Find_single _ _ _ r_o r_n H idx st resultComp filter_rest) as b;
@@ -727,7 +727,7 @@ Ltac convert_filter_to_find':=
     | H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
       |- context[l <- CallBagMethod ?idx ``("Enumerate") ?r_n ();
                   l' <- Join_Lists (Build_single_Tuple_list (snd l)) ?cl;
-                  List_Query_In (filter (fun a => MatchIndexSearchTerm ?st (ilist_hd (ilist_tl a)) && @?filter_rest a)
+                  List_Query_In (filter (fun a => ?MatchIndexSearchTerm ?st (ilist_hd (ilist_tl a)) && @?filter_rest a)
                                         l') ?resultComp] =>
       let b := fresh in
       pose proof (fun foo => @refine_Join_Lists_filter_search_term_fst _ _ _ r_n idx _ cl st resultComp foo filter_rest) as b;
@@ -745,7 +745,7 @@ Ltac convert_filter_to_find':=
                      (fun _ : ilist (@Tuple) [?heading] =>
                         l <- CallBagMethod ?idx' ``("Enumerate") ?r_n ();
                       ret (snd l));
-                  List_Query_In (filter (fun a => MatchIndexSearchTerm (Dep_SearchTerm_Wrapper ?st' (ilist_hd (ilist_tl a)))
+                  List_Query_In (filter (fun a => ?MatchIndexSearchTerm (Dep_SearchTerm_Wrapper ?st' (ilist_hd (ilist_tl a)))
                                                                        (ilist_hd a) && @?filter_rest a) l') ?resultComp] =>
       let b := fresh in
       pose proof (@refine_Join_Lists_filter_filter_search_term_snd_dep' _ _ _ r_n idx idx'
@@ -1306,3 +1306,23 @@ Ltac implement_Insert_branches :=
                  | |- _ => setoid_rewrite <- refineEquiv_bind_bind
                end
         ].
+
+  Ltac Focused_refine_Query' :=
+          match goal with
+            | |- context[ Count (@Query_For ?ResultT ?body) ] =>
+              makeEvar (Comp (list ResultT))
+                       ltac:(fun body' =>
+                               let refine_body' := fresh in
+                               assert (refine (@Query_For ResultT body) body') as refine_body';
+                             [
+                             | setoid_rewrite refine_Count; setoid_rewrite refine_body']
+                            )
+            | |- context[ @Query_For ?ResultT ?body ] =>
+              makeEvar (Comp (list ResultT))
+                       ltac:(fun body' =>
+                               let refine_body' := fresh in
+                               assert (refine (@Query_For ResultT body) body') as refine_body';
+                             [
+                             | setoid_rewrite refine_body']
+                            )
+          end.

@@ -6,12 +6,6 @@ Reserved Notation "< col1 , .. , coln >"
          (at level 0, col1, coln at level 60,
           format "< '[v  ' col1 ,  .. ,  coln ']' >").
 
-(* Class used to overload equality test notation (==) in queries. *)
-Class Query_eq (A : Type) :=
-      {A_eq_dec : forall a a' : A, {a = a'} + {a <> a'}}.
-
-Infix "==" := (A_eq_dec) (at level 1).
-
 Reserved Notation "ro ≃ rn"  (at level 70).
 
 Reserved Notation "'attributes' attrlist1 'depend' 'on' attrlist2 "
