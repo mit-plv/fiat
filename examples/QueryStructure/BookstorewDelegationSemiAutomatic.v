@@ -1,5 +1,5 @@
 Require Import Coq.Strings.String.
-Require Import AutoDB.
+Require Import QueryStructures.Automation.AutoDB.
 
 Locate Build_IndexedQueryStructure_Impl_cRep.
 

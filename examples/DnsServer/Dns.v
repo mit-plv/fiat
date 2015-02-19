@@ -1,4 +1,5 @@
-Require Import AutoDB BagADT.
+Require Import ADTSynthesis.QueryStructure.Automation.AutoDB
+        ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.BagADT.
 Require Import Coq.Vectors.Vector Ascii Bool Bvector List.
 
 Section packet.
@@ -48,7 +49,7 @@ Section packet.
     destruct a; destruct b; simpl; congruence.
   Qed.
 
-    (* Instances used in DecideableEnsemble. *)
+  (* Instances used in DecideableEnsemble. *)
   Global Instance Query_eq_RRecordType :
     Query_eq RRecordType := {| A_eq_dec := RRecordType_dec |}.
 
@@ -111,10 +112,10 @@ Section packet.
   (* DNS Resource Records. *)
   Definition DNSRRecord :=
     @Tuple <sNAME :: name,
-            sTYPE :: RRecordType,
-            sCLASS :: RRecordClass,
-            sTTL :: nat,
-            sDATA :: string>%Heading.
+    sTYPE :: RRecordType,
+    sCLASS :: RRecordClass,
+    sTTL :: nat,
+    sDATA :: string>%Heading.
 
   Definition toAnswer (t: DNSRRecord) :=
     {| aname := t!sNAME;
@@ -145,19 +146,19 @@ Definition DnsSchema :=
   Query Structure Schema
         [ relation sCOLLECTIONS has
                    schema <sNAME :: name,
-                      sTYPE :: RRecordType,
-                      sCLASS :: RRecordClass,
-                      sTTL :: nat,
-                      sDATA :: string>
-            where (fun t t' => t!sNAME = t'!sNAME -> t!sTYPE <> CNAME)]
-          enforcing [ ].
+          sTYPE :: RRecordType,
+          sCLASS :: RRecordClass,
+          sTTL :: nat,
+          sDATA :: string>
+          where (fun t t' => t!sNAME = t'!sNAME -> t!sTYPE <> CNAME)]
+        enforcing [ ].
 
-  Definition DnsSig : ADTSig :=
-    ADTsignature {
-        Constructor "Init" : unit -> rep,
-        Method "AddData" : rep x DNSRRecord -> rep x bool,
-        Method "Process" : rep x packet -> rep x packet
-  }.
+Definition DnsSig : ADTSig :=
+  ADTsignature {
+      Constructor "Init" : unit -> rep,
+                           Method "AddData" : rep x DNSRRecord -> rep x bool,
+                                              Method "Process" : rep x packet -> rep x packet
+    }.
 
 Definition prefixProp (p s : name) := exists ps, p ++ ps = s.
 Fixpoint prefixBool (p s : name) :=
@@ -187,6 +188,11 @@ Global Instance DecideablePrefix {n}
 : DecideableEnsemble (fun tup => prefixProp tup n) :=
   {| dec n' :=  prefixBool n' n;
      dec_decides_P n' := prefixBool_eq n' n|}.
+
+Global Instance DecideablePrefix_sym {A} (f : A -> name) {n}
+: DecideableEnsemble (fun tup => prefixProp n (f tup)) :=
+  {| dec n' :=  prefixBool n (f n');
+     dec_decides_P n' := prefixBool_eq n (f n')|}.
 
 Definition upperbound (r : DNSRRecord) (rs : list DNSRRecord) :=
   forall r', List.In r' rs -> List.length r!sNAME >= List.length r'!sNAME.
@@ -299,40 +305,50 @@ Notation "[ x 'in' xs | P ]" := (filtered_list xs (fun x => P)) (at level 70) : 
 (* Agree on this notation. *)
 Notation "'unique' b , P ->> s 'otherwise' ->> s'" :=
   (b' <- {b' | forall b, b' = Some b <-> P};
-   (match b' with
-      | Some b => s
-      | None => s'
-    end)) (at level 70).
+   If_Opt_Then_Else b' (fun b => s) s') (at level 70).
+
+Definition is_empty {A} (l : list A) :=
+  match l with nil => true | _ => false end.
 
 Definition DnsSpec : ADT DnsSig :=
   QueryADTRep DnsSchema {
     Def Constructor "Init" (_ : unit) : rep := empty,
+
     update "AddData" (t : DNSRRecord) : bool :=
       Insert t into sCOLLECTIONS,
+
     query "Process" (p : packet) : packet :=
       let t := qtype (questions p) in
-      Repeat (*7 *) 1 initializing n with qname (questions p)
-                                                (* setting this to 1 until we work out the setoid *)
-                                                (* rewriting machinery *)
-               defaulting rec with (ret (buildempty p))
+      Repeat (*7 *) 1 initializing n with qname (questions p) (* setting this to 1 until we work *)
+                      defaulting rec with (ret (buildempty p))(* out the setoid rewriting machinery*)
          {{ rs <- For (r in sCOLLECTIONS)      (* Bind a list of all the DNS entries *)
                   Where (prefixProp n r!sNAME) (* prefixed with [n] to [rs] *)
                   Return r;
-           bfrs <- [r in rs | upperbound r rs]; (* Find the best match (largest prefix) in [rs] *)
-           b <- { b | decides b (forall r, List.In r bfrs -> n = r!sNAME) };
-                            (* If there is an exact match *)
-           if b
-           then
-             unique b, List.In b bfrs /\ b!sTYPE = CNAME /\ t <> CNAME ->> (* *)
-             bfrs' <- [x in bfrs | x!sTYPE = t];
-             p' <- rec b!sNAME;
-             ret (List.fold_left addan bfrs' p')
-           otherwise ->>
-             ret (List.fold_left addan bfrs (buildempty p))
-         else
-           bfrs' <- [x in bfrs | x!sTYPE = NS];
-           ret (List.fold_left addns bfrs' (buildempty p))
-      }} }.
+            If (is_empty rs)        (* Are there any matching records? *)
+            Then
+              bfrs <- [r in rs | upperbound r rs]; (* Find the best match (largest prefix) in [rs] *)
+              b <- { b | decides b (forall r, List.In r bfrs -> n = r!sNAME) };
+              if b                (* If the record's QNAME is an exact match  *)
+              then
+                unique b,
+                List.In b bfrs /\ b!sTYPE = CNAME     (* If the record is a CNAME, *)
+                               /\ t <> CNAME ->>      (* and the query did not request a CNAME *)
+
+                  bfrs' <- [x in bfrs | x!sTYPE = t]; (* Find any matching records that do have *)
+                                                      (* the requested type.  *)
+                                                      (* ?? Isn't this always empty when there's a *)
+                                                      (* matching CNAME?? *)
+
+                  p' <- rec b!sNAME;                  (* Recursively find records matching the CNAME *)
+                                                    (* ?? Shouldn't this use the sDATA ?? *)
+                  ret (List.fold_left addan bfrs' p')
+                otherwise ->>     (* Copy the records into the answer section of an empty response *)
+                  ret (List.fold_left addan bfrs (buildempty p))
+              else
+                bfrs' <- [x in bfrs | x!sTYPE = NS];
+                ret (List.fold_left addns bfrs' (buildempty p))
+            Else ret (buildempty p) (* No matching records! *)
+          }} }.
 
 (* Search Terms are pairs of prefixes and filter functions. *)
 Record PrefixSearchTerm := { pst_name : name;
@@ -344,194 +360,331 @@ Definition PrefixSearchTermMatcher (search_term : PrefixSearchTerm)
 Definition DnsSearchUpdateTerm :=
   {| BagSearchTermType := PrefixSearchTerm;
      BagMatchSearchTerm := PrefixSearchTermMatcher;
-     BagUpdateTermType := name;
-     BagApplyUpdateTerm := fun _ x => x |}.
+     BagUpdateTermType := DNSRRecord -> DNSRRecord;
+     BagApplyUpdateTerm := fun f x => f x |}.
+
+    Require Import ADTSynthesis.QueryStructure.Implementation.DataStructures.Bags.ListBags.
+
+  Definition SharpenedPrefixBagImpl :
+    Sharpened (@BagSpec _
+                        (BagSearchTermType DnsSearchUpdateTerm)
+                        (BagUpdateTermType DnsSearchUpdateTerm)
+                        (BagMatchSearchTerm DnsSearchUpdateTerm)
+                        (BagApplyUpdateTerm DnsSearchUpdateTerm)).
+  Proof.
+    eapply (SharpenedBagImpl (fun _ => true) (BagPlus := @ListAsBag
+             _
+             (BagSearchTermType DnsSearchUpdateTerm)
+             (BagUpdateTermType DnsSearchUpdateTerm)
+             {| pst_name := nil;
+                pst_filter := fun _ => true |}
+             (BagMatchSearchTerm DnsSearchUpdateTerm)
+             (BagApplyUpdateTerm DnsSearchUpdateTerm) ) _
+                             (RepInvPlus := fun _ => True)
+                             (ValidUpdatePlus := fun _ => True)).
+    eauto.
+    Grab Existential Variables.
+    eapply ListAsBagCorrect.
+    simpl.
+    apply (fun x => x).
+    reflexivity.
+  Defined.
 
 (* Parade of admitted refinement lemmas. Should go in a DNS Refinements file. *)
 
-    Lemma foo1 :
-      forall (n : DNSRRecord) (R : @IndexedEnsemble DNSRRecord),
-        n!sTYPE <> CNAME
-        -> refine {b |
-                   decides b
-                           (forall tup' : IndexedTuple,
-                              R tup' ->
-                              n!sNAME = (indexedElement tup')!sNAME -> n!sTYPE <> CNAME)}
-                  (ret true).
+Lemma foo1 :
+  forall (n : DNSRRecord) (R : @IndexedEnsemble DNSRRecord),
+    n!sTYPE <> CNAME
+    -> refine {b |
+               decides b
+                       (forall tup' : IndexedTuple,
+                          R tup' ->
+                          n!sNAME = (indexedElement tup')!sNAME -> n!sTYPE <> CNAME)}
+              (ret true).
+Proof.
+  intros; econstructor; inversion_by computes_to_inv.
+  subst; simpl; intros; assumption.
+Qed.
+
+Lemma foo2 :
+  forall (n : DNSRRecord) (R : @IndexedEnsemble DNSRRecord),
+    n!sTYPE = CNAME
+    -> refine {b |
+               decides b
+                       (forall tup' : IndexedTuple,
+                          R tup' ->
+                          n!sNAME = (indexedElement tup')!sNAME -> n!sTYPE <> CNAME)}
+              (b <- {b |
+                     decides b
+                             (exists tup' : IndexedTuple,
+                                R tup' /\
+                                n!sNAME = (indexedElement tup')!sNAME)};
+               ret (negb b)).
+Proof.
+  intros; subst.
+  intros v Comp_v; inversion_by computes_to_inv; subst.
+  destruct x; simpl in *; econstructor; simpl.
+  unfold not; intros.
+  destruct_ex; intuition.
+  eapply H0; eauto.
+  unfold not; intros; apply H1.
+  eexists; eauto.
+Qed.
+
+Lemma foo4 :
+  forall (n : DNSRRecord) (R : @IndexedEnsemble DNSRRecord),
+    refine {b |
+            decides b
+                    (forall tup' : IndexedTuple,
+                       R tup' ->
+                       (indexedElement tup')!sNAME = n!sNAME
+                       -> (indexedElement tup')!sTYPE <> CNAME)}
+           (b <- {b |
+                  decides b
+                          (exists tup' : IndexedTuple,
+                             R tup' /\
+                             n!sNAME = (indexedElement tup')!sNAME
+                             /\ (indexedElement tup')!sTYPE = CNAME)};
+            ret (negb b)).
+Proof.
+  intros; subst.
+  intros v Comp_v; inversion_by computes_to_inv; subst.
+  destruct x; simpl in *; econstructor; simpl.
+  unfold not; intros.
+  destruct_ex; intuition eauto.
+  unfold not; intros; apply H0.
+  eexists; eauto.
+Qed.
+
+Lemma foo3 :
+  forall (n : DNSRRecord) (r : UnConstrQueryStructure DnsSchema),
+    refine {b |
+            decides b
+                    (forall tup' : @IndexedTuple (GetHeading DnsSchema sCOLLECTIONS),
+                       (r!sCOLLECTIONS)%QueryImpl tup' ->
+                       n!sNAME = (indexedElement tup')!sNAME -> n!sTYPE <> CNAME)}
+           (If (beq_RRecordType n!sTYPE CNAME)
+               Then count <- Count
+               For (UnConstrQuery_In r ``(sCOLLECTIONS)
+                                     (fun tup : Tuple =>
+                                        Where (n!sNAME = tup!sNAME)
+                                              Return tup ));
+            ret (beq_nat count 0) Else ret true).
+Proof.
+  intros; setoid_rewrite refine_pick_decides at 1;
+  [ | apply foo2 | apply foo1 ].
+  refine existence check into query.
+  remember n!sTYPE; refine pick val (beq_RRecordType d CNAME); subst;
+  [ | case_eq (beq_RRecordType n!sTYPE CNAME); intros;
+      rewrite <- beq_RRecordType_dec in H; find_if_inside;
+      unfold not; simpl in *; try congruence ].
+  simplify with monad laws.
+  f_equiv; simplify with monad laws.
+  setoid_rewrite negb_involutive.
+  f_equiv.
+Qed.
+
+Lemma foo5 :
+  forall (n : DNSRRecord) (r : UnConstrQueryStructure DnsSchema),
+    refine {b |
+            decides b
+                    (forall tup' : @IndexedTuple (GetHeading DnsSchema sCOLLECTIONS),
+                       (r!sCOLLECTIONS)%QueryImpl tup' ->
+                       (indexedElement tup')!sNAME = n!sNAME
+                       -> (indexedElement tup')!sTYPE <> CNAME)}
+           (count <- Count
+                  For (UnConstrQuery_In r ``(sCOLLECTIONS)
+                                        (fun tup : Tuple =>
+                                           Where (n!sNAME = tup!sNAME
+                                                  /\ tup!sTYPE = CNAME )
+                                                 Return tup ));
+            ret (beq_nat count 0)).
+Proof.
+  intros; setoid_rewrite foo4.
+  refine existence check into query.
+  simplify with monad laws.
+  setoid_rewrite negb_involutive; f_equiv.
+Qed.
+
+Lemma foo7 {heading}
+: forall (R : Ensemble (@IndexedTuple heading))
+         (P : Ensemble Tuple)
+         (l : list Tuple),
+    For (QueryResultComp
+           R
+           (fun tup => Where (P tup)
+                             (Return tup))) ↝ l  ->
+    forall (P' : Ensemble Tuple) (P'_dec : DecideableEnsemble P'),
+      refine (For (QueryResultComp
+                     R
+                     (fun tup => Where (P tup /\ P' tup)
+                                       (Return tup))))
+             (ret (filter DecideableEnsembles.dec l)).
+Proof.
+  admit.
+Qed.
+
+Lemma foo8 {A}
+: forall (c c' : bool) (t e e' : A),
+    (c = true -> c' = true)
+    -> (if c then (if c' then t else e) else e') = if c then t else e'.
+Proof.
+  intros; destruct c; destruct c'; try reflexivity.
+  assert (true = true); [ reflexivity |
+                          apply H in H0; discriminate ].
+Qed.
+
+Lemma foo9 {A}
+: forall (l : list A) (pred : A -> bool),
+    beq_nat (Datatypes.length l) 0 = true
+    ->  beq_nat (Datatypes.length (filter pred l)) 0 = true.
+Proof.
+  induction l; intros; simpl; try inversion H.
+  reflexivity.
+  (* is this lemma true? if length != 0 -> length after filter != 0 *)
+Qed.
+
+Lemma foo10
+:
+  forall (a n : DNSRRecord),
+    ?[list_eq_dec string_dec n!sNAME a!sNAME] =
+    PrefixSearchTermMatcher
+      {|
+        pst_name := n!sNAME;
+        pst_filter := fun tup : DNSRRecord =>
+                        ?[list_eq_dec string_dec n!sNAME tup!sNAME] |} a.
+Admitted.
+
+Lemma foo11 {heading}
+: forall l,
+    map (ilist_hd (As:=cons heading nil ))
+        (Build_single_Tuple_list l) = l.
+Proof.
+  induction l; simpl; congruence.
+Qed.
+
+Lemma foo12 :
+  forall l l' : name,
+    prefixBool l l' = false ->
+    ?[list_eq_dec string_dec l l'] = false.
+Proof.
+  induction l; simpl; destruct l'; intros; eauto.
+  repeat find_if_inside; eauto; injections.
+  rewrite <- (IHl _ H).
+  clear; induction l'; simpl; eauto.
+  find_if_inside; congruence.
+  congruence.
+Qed.
+
+Lemma foo13 : forall l (a : DNSRRecord),
+                prefixBool l (a!sNAME) =
+                PrefixSearchTermMatcher
+                  {|
+                    pst_name := l;
+                    pst_filter := fun _ : DNSRRecord => true |} a.
+Proof.
+  admit.
+Qed.
+
+    Definition find_upperbound (ns : list DNSRRecord) : list DNSRRecord.
+    Admitted.
+
+    Lemma find_upperbound_upperbound :
+      forall ns n, In n (find_upperbound ns) <-> upperbound n ns.
+    Admitted.
+
+    Corollary refine_find_upperbound
+    : forall (ns : list DNSRRecord),
+        refine ([n in ns | upperbound n ns])
+               (ret (find_upperbound ns)).
     Proof.
     Admitted.
 
-    Lemma foo2 :
-      forall (n : DNSRRecord) (R : @IndexedEnsemble DNSRRecord),
-        n!sTYPE = CNAME
-        -> refine {b |
-                   decides b
-                           (forall tup' : IndexedTuple,
-                              R tup' ->
-                              n!sNAME = (indexedElement tup')!sNAME -> n!sTYPE <> CNAME)}
-                  (b <- {b |
-                   decides b
-                           (exists tup' : IndexedTuple,
-                              R tup' /\
-                              n!sNAME = (indexedElement tup')!sNAME)};
-                   ret (negb b)).
+    Lemma foo16 :
+      forall n ns,
+        In n (find_upperbound ns)
+        -> forall n', In n' (find_upperbound ns)
+                      -> n!sNAME = n'!sNAME.
+
+
+
+    Lemma refine_decides_forall_In :
+      forall {A} l (P: A -> Prop) (P_Dec : DecideableEnsemble P),
+        refine {b | decides b (forall (x: A), In x l -> P x)}
+               {b | decides b (~ exists (x : A), In x l /\ ~ P x)}.
     Proof.
-      intros; subst.
-      intros v Comp_v; inversion_by computes_to_inv; subst.
-      destruct x; simpl in *; econstructor; simpl.
-      unfold not; intros.
-      destruct_ex; intuition.
-      eapply H0; eauto.
-      unfold not; intros; apply H1.
-      eexists; eauto.
+      unfold refine; intros; inversion_by computes_to_inv.
+      constructor.
+      destruct v; simpl in *; intros.
+      case_eq (dec x); intros; try rewrite <- (dec_decides_P); eauto.
+      elimtype False; eapply H; eexists; intuition eauto.
+      rewrite <- dec_decides_P in H2; congruence.
+      unfold not in *; intros.
+      eapply H; intros.
+      destruct H1; intuition.
     Qed.
 
-    Lemma foo4 :
-      forall (n : DNSRRecord) (R : @IndexedEnsemble DNSRRecord),
-        refine {b |
-                   decides b
-                           (forall tup' : IndexedTuple,
-                              R tup' ->
-                              (indexedElement tup')!sNAME = n!sNAME
-                              -> (indexedElement tup')!sTYPE <> CNAME)}
-               (b <- {b |
-                   decides b
-                           (exists tup' : IndexedTuple,
-                              R tup' /\
-                              n!sNAME = (indexedElement tup')!sNAME
-                              /\ (indexedElement tup')!sTYPE = CNAME)};
-                ret (negb b)).
+      (* Implement the check for an exact match *)
+      Lemma foo19
+      : forall ns n,
+          refine {b : bool |
+                  decides b
+                          (~
+                             (exists x : Tuple,
+                                In x (find_upperbound ns) /\ n <> x!sNAME))}
+                 (ret match find_upperbound ns with
+                        | nil => true
+                        | n' :: _ => ?[n == (n'!sNAME)]
+                      end).
+      Proof.
+      Admitted.
+
+            Lemma foo20
+      : forall ns n,
+          refine {b' |
+                  forall b : Tuple,
+                    b' = Some b <->
+                    In b (find_upperbound ns) /\
+                    b!sTYPE = CNAME /\ n <> CNAME}
+                 (ret match (find_upperbound ns) with
+                        | nil => None
+                        | n' :: _ => if CNAME == (n'!sTYPE) then
+                                       if n == CNAME then
+                                         Some n' else None else None
+                      end).
+      Admitted.
+
+
+
+    Lemma refine_filtered_list {A}
+    : forall (xs : list A)
+             (P : Ensemble A)
+             (P_dec : DecideableEnsemble P),
+        refine (filtered_list xs P)
+               (ret (filter dec xs)).
     Proof.
-      intros; subst.
-      intros v Comp_v; inversion_by computes_to_inv; subst.
-      destruct x; simpl in *; econstructor; simpl.
-      unfold not; intros.
-      destruct_ex; intuition eauto.
-      unfold not; intros; apply H0.
-      eexists; eauto.
+      induction xs; unfold filtered_list; simpl; intros.
+      - reflexivity.
+      - setoid_rewrite IHxs; simplify with monad laws.
+        case_eq (dec a); unfold Query_Where; intros.
+        + setoid_rewrite dec_decides_P in H.
+          refine pick val [ a ]; intuition eauto.
+          simplify with monad laws; reflexivity.
+          constructor.
+        + rewrite Decides_false in H.
+          refine pick val [ ]; intuition eauto.
+          simplify with monad laws; reflexivity.
     Qed.
 
-    Lemma foo3 :
-      forall (n : DNSRRecord) (r : UnConstrQueryStructure DnsSchema),
-        refine {b |
-                decides b
-                        (forall tup' : @IndexedTuple (GetHeading DnsSchema sCOLLECTIONS),
-                           (r!sCOLLECTIONS)%QueryImpl tup' ->
-                           n!sNAME = (indexedElement tup')!sNAME -> n!sTYPE <> CNAME)}
-               (If (beq_RRecordType n!sTYPE CNAME)
-                   Then count <- Count
-                   For (UnConstrQuery_In r ``(sCOLLECTIONS)
-                                         (fun tup : Tuple =>
-                                            Where (n!sNAME = tup!sNAME)
-                                                  Return tup ));
-                ret (beq_nat count 0) Else ret true).
+    Lemma refine_If_Opt_Then_Else_ret {A B} :
+      forall i (t : A -> B) (e : B),
+        refine (@If_Opt_Then_Else A (Comp B) i (fun a => ret (t a)) (ret e))
+               (ret (@If_Opt_Then_Else A B i t e)).
     Proof.
-      intros; setoid_rewrite refine_pick_decides at 1;
-      [ | apply foo2 | apply foo1 ].
-      refine existence check into query.
-      remember n!sTYPE; refine pick val (beq_RRecordType d CNAME); subst;
-      [ | case_eq (beq_RRecordType n!sTYPE CNAME); intros;
-          rewrite <- beq_RRecordType_dec in H; find_if_inside;
-          unfold not; simpl in *; try congruence ].
-      simplify with monad laws.
-      f_equiv; simplify with monad laws.
-      setoid_rewrite negb_involutive.
-      f_equiv.
+      destruct i; reflexivity.
     Qed.
 
-    Lemma foo5 :
-      forall (n : DNSRRecord) (r : UnConstrQueryStructure DnsSchema),
-        refine {b |
-                decides b
-                        (forall tup' : @IndexedTuple (GetHeading DnsSchema sCOLLECTIONS),
-                           (r!sCOLLECTIONS)%QueryImpl tup' ->
-                           (indexedElement tup')!sNAME = n!sNAME
-                           -> (indexedElement tup')!sTYPE <> CNAME)}
-               (count <- Count
-                   For (UnConstrQuery_In r ``(sCOLLECTIONS)
-                                         (fun tup : Tuple =>
-                                            Where (n!sNAME = tup!sNAME
-                                                   /\ tup!sTYPE = CNAME )
-                                                  Return tup ));
-                ret (beq_nat count 0)).
-    Proof.
-      intros; setoid_rewrite foo4.
-      refine existence check into query.
-      simplify with monad laws.
-      setoid_rewrite negb_involutive; f_equiv.
-    Qed.
-
-    Lemma foo7 {heading}
-    : forall (R : Ensemble (@IndexedTuple heading))
-             (P : Ensemble Tuple)
-             (l : list Tuple),
-        For (QueryResultComp
-               R
-               (fun tup => Where (P tup)
-                                 (Return tup))) ↝ l  ->
-        forall (P' : Ensemble Tuple) (P'_dec : DecideableEnsemble P'),
-        refine (For (QueryResultComp
-                  R
-                  (fun tup => Where (P tup /\ P' tup)
-                                    (Return tup))))
-               (ret (filter DecideableEnsembles.dec l)).
-    Proof.
-      admit.
-    Qed.
-
-    Lemma foo8 {A}
-    : forall (c c' : bool) (t e e' : A),
-        (c = true -> c' = true)
-        -> (if c then (if c' then t else e) else e') = if c then t else e'.
-    Proof.
-      admit.
-    Qed.
-
-    Lemma foo9 {A}
-    : forall (l : list A) (pred : A -> bool),
-        beq_nat (Datatypes.length l) 0 = true
-        ->  beq_nat (Datatypes.length (filter pred l)) 0 = true.
-    Proof.
-      induction l; simpl; intros.
-      reflexivity.
-      discriminate.
-    Qed.
-
-        Lemma foo10
-        :
-          forall (a n : DNSRRecord),
-            ?[list_eq_dec string_dec n!sNAME a!sNAME] =
-            PrefixSearchTermMatcher
-              {|
-                pst_name := n!sNAME;
-                pst_filter := fun tup : DNSRRecord =>
-                                ?[list_eq_dec string_dec n!sNAME tup!sNAME] |} a.
-        Admitted.
-
-        Lemma foo11 {heading}
-        : forall l,
-            map (ilist_hd (As:=cons heading nil ))
-                (Build_single_Tuple_list l) = l.
-        Proof.
-          induction l; simpl; congruence.
-        Qed.
-
-          Lemma foo12 :
-            forall l l' : name,
-              prefixBool l l' = false ->
-              ?[list_eq_dec string_dec l l'] = false.
-          Proof.
-            induction l; simpl; destruct l'; intros; eauto.
-            repeat find_if_inside; eauto; injections.
-            rewrite <- (IHl _ H).
-            clear; induction l'; simpl; eauto.
-            find_if_inside; congruence.
-            congruence.
-          Qed.
-
-
-
-    Transparent FueledFix.
+Transparent FueledFix.
 
 Theorem DnsManual :
   Sharpened DnsSpec.
@@ -575,6 +728,81 @@ Proof.
     finish honing.
   }
 
+  hone method "Process".
+  {
+    simplify with monad laws.
+    Focused_refine_Query'.
+
+    implement_In.
+
+    convert_Where_to_search_term.
+    find_equivalent_search_term 0 ltac:(fun _ _ _ _ => idtac).
+    { instantiate (1 := {| pst_name := qname (questions n);
+                           pst_filter := fun tup => true |}).
+
+      simpl.
+      intros; apply foo13.
+    }
+
+    convert_filter_to_find.
+    Implement_Aggregates.
+
+    setoid_rewrite foo11.
+    reflexivity.
+
+    (* Find the upperbound of the results. *)
+    setoid_rewrite refine_find_upperbound.
+    simplify with monad laws.
+    etransitivity.
+    (* Should Conditional honing under bind should be it's own tactic? *)
+    apply refine_under_bind; intros.
+    (* Should honing if branches also be their own tactic? *)
+    etransitivity.
+    setoid_rewrite refine_If_Then_Else_Bind.
+    apply refine_If_Then_Else_if.
+    - reflexivity.
+    - simplify with monad laws.
+      rewrite refine_decides_forall_In.
+
+      setoid_rewrite foo19.
+      simplify with monad laws.
+      setoid_rewrite refine_if_If.
+      setoid_rewrite refine_If_Then_Else_Bind.
+      etransitivity.
+      apply refine_If_Then_Else_if.
+      reflexivity.
+      simplify with monad laws.
+
+      setoid_rewrite foo20.
+      simplify with monad laws.
+      setoid_rewrite refine_If_Opt_Then_Else_Bind.
+      apply refine_If_Opt_Then_Else.
+      unfold pointwise_relation; intros.
+      rewrite refine_filtered_list.
+      simplify with monad laws.
+      simpl.
+      refine pick val _; eauto.
+      simplify with monad laws.
+      higher_order_1_reflexivity.
+      simplify with monad laws.
+      refine pick val _; eauto.
+      simplify with monad laws.
+      reflexivity.
+      rewrite refine_filtered_list.
+      simplify with monad laws.
+      refine pick val _; eauto.
+      simplify with monad laws.
+      reflexivity.
+      reflexivity.
+      eauto with typeclass_instances.
+    - simplify with monad laws.
+      refine pick val _; eauto.
+      simplify with monad laws.
+      simpl; reflexivity.
+    - finish honing.
+    - simpl. finish honing.
+  }
+
   hone method "AddData".
   {
     etransitivity.
@@ -590,7 +818,7 @@ Proof.
            in lieu of this idtac. *)
         find_equivalent_search_term 0 ltac:(fun _ _ _ _ => idtac).
         { instantiate (1 := {| pst_name := n!sNAME;
-                             pst_filter := fun tup => ?[list_eq_dec string_dec n!sNAME tup!sNAME] |}).
+                               pst_filter := fun tup => ?[list_eq_dec string_dec n!sNAME tup!sNAME] |}).
           intros; apply foo10.
         }
 
@@ -614,8 +842,8 @@ Proof.
         convert_Where_to_search_term.
         (* TODO: Reuse tactic from above to build this search term. *)
         instantiate (1 := fun a => PrefixSearchTermMatcher {| pst_name := n!sNAME;
-                           pst_filter := fun tup => ?[list_eq_dec string_dec n!sNAME tup!sNAME]
-                                                     && (?[CNAME == (tup!sTYPE)]) |} (ilist_hd a)).
+                                                              pst_filter := fun tup => ?[list_eq_dec string_dec n!sNAME tup!sNAME]
+                                                                                        && (?[CNAME == (tup!sTYPE)]) |} (ilist_hd a)).
         { intro; unfold PrefixSearchTermMatcher; simpl.
           match goal
           with |- context [ prefixBool ?l ?l' ] => case_eq (prefixBool l l');
@@ -637,235 +865,141 @@ Proof.
         setoid_rewrite refine_if_If.
         implement_Insert_branches.
         reflexivity.
-      - reflexivity.
-      - finish honing.
+    - reflexivity.
+    - finish honing.
   }
 
-  hone method "Process".
+  FullySharpenQueryStructure' DnsSchema
+(icons DnsSearchUpdateTerm
+       (inil
+          (fun ns : NamedSchema =>
+             SearchUpdateTerms (schemaHeading (relSchema ns))))).
+
+  {
+    setoid_rewrite refine_If_Then_Else_Bind.
+    etransitivity.
+    apply refine_If_Then_Else_if.
+    reflexivity.
+    simplify with monad laws.
+    Implement_Bound_Bag_Call.
+    setoid_rewrite refine_If_Then_Else_Bind.
+    etransitivity.
+    apply refine_If_Then_Else_if.
+    reflexivity.
+    simplify with monad laws.
+    Implement_Bound_Bag_Call.
+    Implement_AbsR_Relation.
+    simpl; reflexivity.
+    simplify with monad laws.
+    simpl; Implement_AbsR_Relation.
+    reflexivity.
+    apply refine_If_Then_Else_ret.
+    simplify with monad laws.
+    Implement_Bound_Bag_Call.
+    setoid_rewrite refine_If_Then_Else_Bind.
+    etransitivity.
+    apply refine_If_Then_Else_if.
+    reflexivity.
+    simplify with monad laws.
+    Implement_Bound_Bag_Call.
+    Implement_AbsR_Relation.
+    reflexivity.
+    simplify with monad laws.
+    Implement_AbsR_Relation.
+    reflexivity.
+    apply refine_If_Then_Else_ret.
+    etransitivity.
+    apply refine_If_Then_Else_ret.
+    higher_order_4_reflexivity''.
+  }
+
   {
     simplify with monad laws.
-    Focused_refine_Query'.
+    Implement_Bound_Bag_Call.
 
-    implement_In.
-    idtac.
+    setoid_rewrite refine_If_Then_Else_Bind.
+    etransitivity.
+    apply refine_If_Then_Else.
+    setoid_rewrite refine_If_Then_Else_Bind.
+    etransitivity.
+    apply refine_If_Then_Else.
+    setoid_rewrite refine_If_Opt_Then_Else_Bind.
+    etransitivity.
+    apply refine_If_Opt_Then_Else.
+    intro; simplify with monad laws.
+    simpl; Implement_AbsR_Relation.
+    higher_order_1_reflexivity.
+    intro; simplify with monad laws.
+    simpl; Implement_AbsR_Relation.
+    reflexivity.
 
-    Global Instance DecideablePrefix_sym {A} (f : A -> name) {n}
-    : DecideableEnsemble (fun tup => prefixProp n (f tup)) :=
-      {| dec n' :=  prefixBool n (f n');
-         dec_decides_P n' := prefixBool_eq n (f n')|}.
-
-
-    convert_Where_to_search_term.
-        find_equivalent_search_term 0 ltac:(fun _ _ _ _ => idtac).
-        { instantiate (1 := {| pst_name := qname (questions n);
-                             pst_filter := fun tup => true |}).
-
-          Lemma foo13 : forall l (a : DNSRRecord),
-                          prefixBool l (a!sNAME) =
-                          PrefixSearchTermMatcher
-                            {|
-                              pst_name := l;
-                              pst_filter := fun _ : DNSRRecord => true |} a.
-          Proof.
-            admit.
-          Qed.
-          simpl.
-          intros; apply foo13.
-        }
-
-        convert_filter_to_find.
-        Implement_Aggregates.
-
-        setoid_rewrite foo11.
-        reflexivity.
-
-        simplify with monad laws.
-
-        setoid_rewrite refine_if_If.
-
-
-        implement_Insert_branches.
-        reflexivity.
-
-    convert_Where_to_search_term.
-
-    prefixProp
-
-
-  }
-
-
-      apply refine_bind; [ reflexivity
-                         | unfold pointwise_relation; intros].
-
-
-    setoid_rewrite refineEquiv_swap_bind.
-
-
-    Ltac Implement_If_Then_Else :=
-    match goal with
-      | |- refine (Bind (If ?i Then ?t Else ?e) ?k) _ =>
-        etransitivity;
-          [ apply (refine_If_Then_Else_Bind i t e k)
-          | etransitivity;
-            [ apply refine_If_Then_Else_if;
-              [ reflexivity | | ]
-            | ]
-          ]
-      | |- refine (If_Then_Else ?i (ret ?t) (ret ?e)) _ =>
-        etransitivity;
-          [ apply (refine_If_Then_Else_ret i t e)
-          | ]
-    end.
-
-    Implement_If_Then_Else.
+    apply refine_If_Opt_Then_Else_ret.
     simplify with monad laws.
+    simpl; Implement_AbsR_Relation.
+    reflexivity.
 
-
-    idtac.
-
-      Focus 2.
-      setoid_rewrite r0.
-      simpl in *.
-
-
-      intuition eauto.
-      pattern (indexedElement x).
-      setoid_rewrite (r0 _ _ _).
-
-      pose (refine_constraint_check_into_query' (c:=r)
-                                                          (P':=fun tup' : @IndexedElement DNSRRecord =>
-                                                                 n!sNAME = (indexedElement tup')!sNAME)).
-
-      intros; apply foo1.
-      apply foo2.
-      eauto using foo1, foo2.
-      cut (sigT (refine {b0 : bool |
-                            decides b0
-                                    (exists tup' : IndexedTuple,
-                                       (r!sCOLLECTIONS)%QueryImpl tup' /\
-                                       n!sNAME = (indexedElement tup')!sNAME)})).
-      intros.
-      destruct X.
-      simpl in *.
-      etransitivity.
-      setoid_rewrite r0 at .
-      eapply refine_bind.
-
-      reflexivity.
-      setoid_rewrite r0.
-      simpl in *; unfold pointwise_relation; intros.
-      rewrite r0.
-      apply refine_If_Then_Else.
-      apply r0.
-
-      Add Parametric Morphism A (c : bool)
-      : (If_Then_Else c)
-          with signature
-          (@refine A ==> @refine A ==> @refine A )
-            as refine_If_Then_Else.
-      Proof.
-        unfold If_Then_Else; intros.
-        destruct c; eassumption.
-      Qed.
-
-      cut (refine (ret true) (ret false)).
-      intros.
-      cut (refine {b : bool |
-           decides b
-             (exists tup' : IndexedTuple,
-                (r!sCOLLECTIONS)%QueryImpl tup' /\
-                n!sNAME = (indexedElement tup')!sNAME)}
-          (ret true)); intros.
-      rewrite H0.
-      setoid_rewrite (refine_constraint_check_into_query' (c:=r)
-                                                          (P':=fun tup' : @IndexedElement DNSRRecord =>
-                                                                 n!sNAME = (indexedElement tup')!sNAME) _) at 1.
-
-      cut (Proper (refine ==> flip impl)
-                   (refine
-                      (If a
-                          Then {b : bool |
-                                decides b
-                                        (exists
-                                            tup' : IndexedTuple,
-                                                (r!sCOLLECTIONS)%QueryImpl
-                                                  tup' /\
-                                                n!sNAME =
-                                                (indexedElement tup')!sNAME)}
-                                      Else ret true))).
-      intros.
-      setoid_rewrite (refine_constraint_check_into_query' (c:=r)
-                                                          (P':=fun tup' : @IndexedElement DNSRRecord =>
-                                                                 n!sNAME = (indexedElement tup')!sNAME) _) at 1.
-
-      unfold Proper; simpl.
-      unfold respectful, flip, impl.
-      econstructor.
-      intros.
-
-
-      setoid_rewrite (refine_constraint_check_into_query' (c:=r)
-                                                          (P':=fun tup' : @IndexedElement DNSRRecord =>
-                                                                 n!sNAME = (indexedElement tup')!sNAME) _) at 1.
-
-      match goal with
-          |- context[{b | decides b
-                                  (exists tup : @IndexedTuple ?heading,
-                                     (GetUnConstrRelation ?qs ?tbl tup /\ @?P tup))}]
-          =>
-          pose (@refine_constraint_check_into_query' _ tbl qs P)
-      end.
-
-      setoid_rewrite (H _ _ _).
-      cut (DecideableEnsemble (fun tup' => n!sNAME = tup'!sNAME)).
-      cut (Same_set IndexedElement
-         (fun tup : IndexedElement =>
-          (fun tup' : Tuple => n!sNAME = tup'!sNAME) (indexedElement tup))
-         (fun tup' : IndexedTuple => n!sNAME = (indexedElement tup')!sNAME)).
-      intros.
-      pose (H _ X H0).
-      setoid_rewrite r0.
-      Check string_dec_bool_true_iff.
-        simpl; econstructor; intros;
-        try setoid_rewrite <- eq_nat_dec_bool_true_iff;
-        try setoid_rewrite <- eq_N_dec_bool_true_iff;
-        try setoid_rewrite <- eq_Z_dec_bool_true_iff;
-        try setoid_rewrite <- string_dec_bool_true_iff;
-        try setoid_rewrite and_True;
-        repeat progress (
-                 try setoid_rewrite <- andb_true_iff;
-                 try setoid_rewrite not_true_iff_false;
-                 try setoid_rewrite <- negb_true_iff).
-        rewrite bool_equiv_true;
-        reflexivity.
-      prove_decidability_for_functional_dependencies.
-      tauto_dec.
-      econstructor 1 with (fun b => if string_dec a b then true else false).
-      eauto with typeclass_instances.
-      setoid_rewrite (H (fun tup' => n!sNAME = tup'!sNAME)).
-      Focus 3.
-      reflexivity.
-
-    (Pick (fun (b : bool) =>
-                   decides b
-                           (exists tup2: @IndexedTuple _,
-                              (GetUnConstrRelation c tbl tup2 /\ P (indexedTuple tup2)))))
-
-        <-> ((n!sType = CNAME ->
-             exists (tup' : IndexedTuple),
-               (or!sCOLLECTIONS)%QueryImpl tup' /\
-               n!sNAME = (indexedElement tup')!sNAME)
-               /\ (n!sType <> CNAME -> True))
-
-    Implement_Insert_Checks.
-  }
-
-  hone method "Process".
-  {
+    apply refine_If_Then_Else_ret.
     simplify with monad laws.
-    implement_In.
-  }
+    simpl; Implement_AbsR_Relation.
+    reflexivity.
 
+    apply refine_If_Then_Else_ret.
+  }
 Defined.
-  FullySharpenQueryStructure DnsSchema Index.
+
+  Definition foo :
+    ComputationalADT.cADT
+      (BagSig (DnsSchema # sCOLLECTIONS)
+              (BagSearchTermType DnsSearchUpdateTerm)
+              (BagUpdateTermType DnsSearchUpdateTerm)).
+  Proof.
+    refine (Sharpened_Implementation (projT1 SharpenedPrefixBagImpl) (fun _ => unit) _).
+    intros; apply @BoundedIndex_nil with (A := string).
+    unfold BoundedString in idx.
+    unfold SharpenedPrefixBagImpl in idx.
+    simpl in idx.
+    exact idx.
+  Defined.
+  
+  Definition bar
+  : forall idx : BoundedString,
+      ComputationalADT.pcADT
+     (Build_IndexedQueryStructure_Impl_Sigs
+        (icons DnsSearchUpdateTerm
+           (inil
+              (fun ns : NamedSchema =>
+               SearchUpdateTerms (schemaHeading (relSchema ns))))) idx)
+     (delegateeRep
+        (nth_Bounded delegateeName
+           [{|
+            delegateeName := sCOLLECTIONS;
+            delegateeSig := BagSig (DnsSchema # sCOLLECTIONS)
+                              (BagSearchTermType DnsSearchUpdateTerm)
+                              (BagUpdateTermType DnsSearchUpdateTerm);
+            delegateeRep := projT1 foo |}] idx)).
+  Proof.
+    eapply Iterate_Dep_Type_BoundedIndex_equiv_1.
+    unfold Build_IndexedQueryStructure_Impl_Sigs; simpl.
+    split.
+    pose (projT2 foo).
+    simpl in p.
+    apply p.
+    constructor.
+  Defined.
+
+Definition DNSImpl : ComputationalADT.cADT DnsSig.
+  let Impl := eval simpl in 
+  (Sharpened_Implementation (projT1 DnsManual)
+                             _
+                             bar) in
+      exact Impl.
+Defined.
+    
+Print DNSImpl.
+
+Goal (DNSImpl = DNSImpl).
+unfold DNSImpl at 1.
+unfold Build_IndexedQueryStructure_Impl_cRep.
+
+
+Print CallBagImplMethod.

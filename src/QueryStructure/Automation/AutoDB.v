@@ -100,6 +100,12 @@ Definition Build_IndexedQueryStructure_Impl_Specs
            (BagMatchSearchTerm (ith_Bounded _ Index idx))
            (BagApplyUpdateTerm (ith_Bounded _ Index idx)).
 
+Print ilist.
+
+Check ith_Bounded.
+
+string -> Type.
+
 Definition
   Build_IndexedQueryStructure_Impl_cRep
   (indices : list NamedSchema)
@@ -108,6 +114,7 @@ Definition
                 SearchUpdateTerms (schemaHeading (relSchema ns))) indices)
   (DelegateReps : @BoundedString (map relName indices) -> Type)
 : Type :=
+  ilist2 (map relName indices).
   forall (idx : @BoundedString (map relName indices)), DelegateReps idx.
 
 
@@ -1172,22 +1179,21 @@ Ltac FullySharpenQueryStructure' qs_schema Index :=
     match goal with
       | H : @Build_IndexedQueryStructure_Impl_AbsR ?qs_schema ?Index ?DelegateReps ?DelegateImpls
                                                    ?ValidImpls ?r_o ?r_n
-        |- refine (Bind (If ?i Then ?t Else ?e) ?k) _ =>
-        etransitivity;
-          [ apply (refine_If_Then_Else_Bind i t e k)
-          | etransitivity;
-            [ apply refine_If_Then_Else_if;
-              [ reflexivity | | ]
-            | ]
-          ]
-      | H : @Build_IndexedQueryStructure_Impl_AbsR ?qs_schema ?Index ?DelegateReps ?DelegateImpls
-                                                   ?ValidImpls ?r_o ?r_n
         |- refine (If_Then_Else ?i (ret ?t) (ret ?e)) _ =>
         etransitivity;
           [ apply (refine_If_Then_Else_ret i t e)
           | ]
+      | H : @Build_IndexedQueryStructure_Impl_AbsR ?qs_schema ?Index ?DelegateReps ?DelegateImpls
+                                                   ?ValidImpls ?r_o ?r_n
+        |- refine (Bind (If ?i Then ?t Else ?e) ?k) _ =>
+        etransitivity;
+          [ apply (refine_If_Then_Else_Bind i t e k)
+          | etransitivity;
+            [ apply refine_If_Then_Else;
+              [ reflexivity | | ]
+            | ]
+          ]
     end.
-
 
   Ltac Implement_AbsR_Relation :=
     match goal with

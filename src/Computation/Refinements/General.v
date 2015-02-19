@@ -602,6 +602,23 @@ Section general_refine_lemmas.
     intros; apply refine_pick_val; assumption.
   Qed.
 
+  Lemma refine_If_Then_Else_ret {A} :
+    forall i (t e : A),
+      refine (@If_Then_Else (Comp A) i (ret t) (ret e))
+             (ret (@If_Then_Else A i t e)).
+  Proof.
+    destruct i; reflexivity.
+  Qed.
+
+  Lemma refine_If_Opt_Then_Else_ret {A B} :
+    forall i (t : A -> B) (e : B),
+      refine (@If_Opt_Then_Else A (Comp B) i (fun a => ret (t a)) (ret e))
+             (ret (@If_Opt_Then_Else A B i t e)).
+  Proof.
+    destruct i; reflexivity.
+  Qed.
+
+
 End general_refine_lemmas.
 
 Tactic Notation "finalize" "refinement" :=

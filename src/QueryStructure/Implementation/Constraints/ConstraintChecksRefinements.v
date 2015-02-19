@@ -442,16 +442,6 @@ Defined.
     congruence.
   Qed.
 
-  Global Add Parametric Morphism A
-  : If_Then_Else
-      with signature
-      (@eq bool) ==> (@refine A) ==> (@refine A) ==> (@refine A)
-        as refine_If_Then_Else_if.
-  Proof.
-    compute.
-    intros; destruct_head bool; intros; eauto.
-  Qed.
-
   Definition Ensemble_opt_BoundedIndex_app_comm_cons {A : Set}
     (a : A)
     (As As' : list A)
