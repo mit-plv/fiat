@@ -203,8 +203,9 @@ Section FueledFix.
   Variable A : Type. (* Argument Type *)
   Variable R : Type. (* Return Type *)
 
-  Fixpoint FueledFix (fuel : nat) (base : R) (body : (A -> R) -> A -> R) (arg : A)
-  : R :=
+  Fixpoint FueledFix (fuel : nat) (base : Comp R)
+                     (body : (A -> Comp R) -> A -> Comp R) (arg : A)
+  : Comp R :=
     match fuel with
       | O => base
       | S fuel' => body (FueledFix fuel' base body) arg
@@ -217,8 +218,10 @@ as the condition on the body is not a proper relation. :p *)
    proper (i.e. reflexive and transitive) relation.
  *)
 
-(* Definition pointwise_refine {A R}
- (f g : (A -> Comp R) -> A -> Comp R) :=
+Print respectful.
+
+Definition pointwise_refine {A R}
+  (f g : (A -> Comp R) -> A -> Comp R) :=
   forall (rec rec' : A -> Comp R) (a : A),
     pointwise_relation A (@refine R) rec rec'
     -> refine (f rec a) (g rec' a).
@@ -238,10 +241,10 @@ Proof.
   etransitivity.
   apply H; eauto.
   apply H0. reflexivity.
-Qed. *)
+Qed.
 
-(* Add Parametric Morphism A R i
-: (@FueledFix A (Comp R) i)
+Add Parametric Morphism A R i
+: (@FueledFix A R i)
     with signature
     ((@refine R)
        ==> (@pointwise_refine A R)
@@ -254,9 +257,8 @@ Proof.
   - unfold pointwise_refine, pointwise_relation, Proper, respectful in *.
     eapply H0.
     intros.
-    generalize (IHi _ _ H _ _ H0 y1); clear.
-    apply H; apply IHi; [ apply H | apply H0 ].
-Qed. *)
+    generalize (IHi _ _ H _ _ H0 a); eauto.
+Qed.
 
 
 (* TODO: Agree on a notation for our fueled fix function. *)
@@ -404,55 +406,51 @@ Proof.
   subst; simpl; intros; assumption.
 Qed.
 
-Lemma foo2 :
-  forall (n : DNSRRecord) (R : @IndexedEnsemble DNSRRecord),
-    n!sTYPE = CNAME
-    -> refine {b |
-               decides b
-                       (forall tup' : IndexedTuple,
-                          R tup' ->
-                          n!sNAME = (indexedElement tup')!sNAME -> n!sTYPE <> CNAME)}
-              (b <- {b |
-                     decides b
-                             (exists tup' : IndexedTuple,
-                                R tup' /\
-                                n!sNAME = (indexedElement tup')!sNAME)};
-               ret (negb b)).
-Proof.
-  intros; subst.
-  intros v Comp_v; inversion_by computes_to_inv; subst.
-  destruct x; simpl in *; econstructor; simpl.
-  unfold not; intros.
-  destruct_ex; intuition.
-  eapply H0; eauto.
-  unfold not; intros; apply H1.
-  eexists; eauto.
-Qed.
 
-Lemma foo4 :
-  forall (n : DNSRRecord) (R : @IndexedEnsemble DNSRRecord),
-    refine {b |
-            decides b
-                    (forall tup' : IndexedTuple,
-                       R tup' ->
-                       (indexedElement tup')!sNAME = n!sNAME
-                       -> (indexedElement tup')!sTYPE <> CNAME)}
-           (b <- {b |
-                  decides b
-                          (exists tup' : IndexedTuple,
-                             R tup' /\
-                             n!sNAME = (indexedElement tup')!sNAME
-                             /\ (indexedElement tup')!sTYPE = CNAME)};
-            ret (negb b)).
-Proof.
-  intros; subst.
-  intros v Comp_v; inversion_by computes_to_inv; subst.
-  destruct x; simpl in *; econstructor; simpl.
-  unfold not; intros.
-  destruct_ex; intuition eauto.
-  unfold not; intros; apply H0.
-  eexists; eauto.
-Qed.
+    Lemma foo2 :
+      forall (n : DNSRRecord) (R : @IndexedEnsemble DNSRRecord),
+        n!sTYPE = CNAME
+        -> refine {b |
+                   decides b
+                           (forall tup' : IndexedTuple,
+                              R tup' ->
+                              n!sNAME = (indexedElement tup')!sNAME -> n!sTYPE <> CNAME)}
+                  (b <- {b |
+                        decides b
+                                (exists tup' : IndexedTuple,
+                                      R tup' /\
+                                      n!sNAME = (indexedElement tup')!sNAME)};
+                  ret (negb b)).
+    Proof.
+      intros; econstructor; inversion_by computes_to_inv;
+      destruct v; simpl in *; unfold not in *; intros.
+      - destruct x; simpl in H1; destruct H1; inversion H2; eauto.
+      - destruct x; simpl in H1; destruct H1; inversion H2; eapply H0;
+        intros; destruct H2 as [ tup [ H2 H3 ] ]; intuition eauto.
+    Qed.
+
+    Lemma foo4 :
+      forall (n : DNSRRecord) (R : @IndexedEnsemble DNSRRecord),
+        refine {b |
+                   decides b
+                           (forall tup' : IndexedTuple,
+                              R tup' ->
+                              (indexedElement tup')!sNAME = n!sNAME
+                              -> (indexedElement tup')!sTYPE <> CNAME)}
+                  (b <- {b |
+                   decides b
+                           (exists tup' : IndexedTuple,
+                                 R tup' /\
+                                 n!sNAME = (indexedElement tup')!sNAME
+                                 /\ (indexedElement tup')!sTYPE = CNAME)};
+                  ret (negb b)).
+    Proof.
+      intros; econstructor; inversion_by computes_to_inv;
+      destruct v; simpl in *; unfold not in *; intros; destruct x;
+      simpl in H1; inversion H1.
+      - apply H0; exists tup'; intuition.
+      - intros; destruct H0 as [ tup [ ? [ ? ? ] ] ]; eapply H; eauto.
+    Qed.
 
 Lemma foo3 :
   forall (n : DNSRRecord) (r : UnConstrQueryStructure DnsSchema),
@@ -477,9 +475,10 @@ Proof.
       rewrite <- beq_RRecordType_dec in H; find_if_inside;
       unfold not; simpl in *; try congruence ].
   simplify with monad laws.
-  f_equiv; simplify with monad laws.
+  setoid_rewrite refineEquiv_bind_bind.
+  setoid_rewrite refineEquiv_bind_unit.
   setoid_rewrite negb_involutive.
-  f_equiv.
+  reflexivity.
 Qed.
 
 Lemma foo5 :
@@ -561,29 +560,6 @@ Proof.
   induction l; simpl; congruence.
 Qed.
 
-Lemma foo12 :
-  forall l l' : name,
-    prefixBool l l' = false ->
-    ?[list_eq_dec string_dec l l'] = false.
-Proof.
-  induction l; simpl; destruct l'; intros; eauto.
-  repeat find_if_inside; eauto; injections.
-  rewrite <- (IHl _ H).
-  clear; induction l'; simpl; eauto.
-  find_if_inside; congruence.
-  congruence.
-Qed.
-
-Lemma foo13 : forall l (a : DNSRRecord),
-                prefixBool l (a!sNAME) =
-                PrefixSearchTermMatcher
-                  {|
-                    pst_name := l;
-                    pst_filter := fun _ : DNSRRecord => true |} a.
-Proof.
-  admit.
-Qed.
-
     Definition find_upperbound (ns : list DNSRRecord) : list DNSRRecord.
     Admitted.
 
@@ -603,24 +579,54 @@ Qed.
         In n (find_upperbound ns)
         -> forall n', In n' (find_upperbound ns)
                       -> n!sNAME = n'!sNAME.
-
-
+    Proof.
+    Admitted.
 
     Lemma refine_decides_forall_In :
       forall {A} l (P: A -> Prop) (P_Dec : DecideableEnsemble P),
         refine {b | decides b (forall (x: A), In x l -> P x)}
                {b | decides b (~ exists (x : A), In x l /\ ~ P x)}.
-    Proof.
-      unfold refine; intros; inversion_by computes_to_inv.
-      constructor.
-      destruct v; simpl in *; intros.
-      case_eq (dec x); intros; try rewrite <- (dec_decides_P); eauto.
-      elimtype False; eapply H; eexists; intuition eauto.
-      rewrite <- dec_decides_P in H2; congruence.
-      unfold not in *; intros.
-      eapply H; intros.
-      destruct H1; intuition.
-    Qed.
+    Lemma foo2point5 :
+      forall P R branch branch',
+        refine
+          (b <- branch;
+           If b
+              Then {b' | decides b' P}
+              Else ret true)
+          (If branch'
+              Then r <- R;
+                   ret (negb r)
+              Else ret true) ->
+        refine
+          (b <- branch;
+           If b
+              Then {b' | decides b' (~ P)}
+              Else ret true)
+          (If branch'
+              Then R
+              Else ret true).
+    Admitted.
+
+    Lemma foo4point5 :
+      forall P R,
+        refine
+          {b | decides b P}
+          (r <- R;
+           ret (negb r)) ->
+        refine
+          {b | decides b (~ P)}
+          R.
+    Admitted.
+
+    Lemma foo2point75 :
+      forall A B C (x : Comp A) (f : A -> B) (g : B -> C),
+        refineEquiv
+          (a <- x;
+           ret (g (f a)))
+          (b <- a <- x;
+                ret (f a);
+           ret (g b)).
+    Admitted.
 
       (* Implement the check for an exact match *)
       Lemma foo19
@@ -652,8 +658,6 @@ Qed.
                       end).
       Admitted.
 
-
-
     Lemma refine_filtered_list {A}
     : forall (xs : list A)
              (P : Ensemble A)
@@ -678,9 +682,45 @@ Qed.
       forall i (t : A -> B) (e : B),
         refine (@If_Opt_Then_Else A (Comp B) i (fun a => ret (t a)) (ret e))
                (ret (@If_Opt_Then_Else A B i t e)).
-    Proof.
-      destruct i; reflexivity.
-    Qed.
+
+Lemma foo13 : forall l (a : DNSRRecord),
+                prefixBool l (a!sNAME) =
+                PrefixSearchTermMatcher
+                  {|
+                    pst_name := l;
+                    pst_filter := fun _ : DNSRRecord => true |} a.
+Proof.
+  admit.
+Qed.
+
+Lemma foo12 :
+  forall l l' : name,
+    prefixBool l l' = false ->
+    ?[list_eq_dec string_dec l l'] = false.
+Proof.
+  induction l; simpl; destruct l'; intros; eauto.
+  repeat find_if_inside; eauto; injections.
+  rewrite <- (IHl _ H).
+  clear; induction l'; simpl; eauto.
+  find_if_inside; congruence.
+  congruence.
+Qed.
+
+Lemma refine_decides_forall_In' :
+  forall {A} l (P: A -> Prop) (P_Dec : DecideableEnsemble P),
+    refine {b | decides b (forall (x: A), In x l -> P x)}
+           {b | decides b (~ exists (x : A), In x l /\ ~ P x)}.
+Proof.
+  unfold refine; intros; inversion_by computes_to_inv.
+  constructor.
+  destruct v; simpl in *; intros.
+  case_eq (dec x); intros; try rewrite <- (dec_decides_P); eauto.
+  elimtype False; eapply H; eexists; intuition eauto.
+  rewrite <- dec_decides_P in H2; congruence.
+  unfold not in *; intros.
+  eapply H; intros.
+  destruct H1; intuition.
+Qed.
 
 Transparent FueledFix.
 
@@ -699,8 +739,7 @@ Proof.
     setoid_rewrite refine_If_Then_Else_Bind.
     setoid_rewrite Bind_refine_If_Then_Else.
     etransitivity.
-    apply refine_If_Then_Else_if.
-    - reflexivity.
+    apply refine_If_Then_Else.
     - simplify with monad laws.
       apply refine_under_bind; intros.
       setoid_rewrite refine_Count; simplify with monad laws.
@@ -757,24 +796,23 @@ Proof.
     (* Should honing if branches also be their own tactic? *)
     etransitivity.
     setoid_rewrite refine_If_Then_Else_Bind.
-    apply refine_If_Then_Else_if.
-    - reflexivity.
+    apply refine_If_Then_Else.
     - simplify with monad laws.
-      rewrite refine_decides_forall_In.
+
+      rewrite refine_decides_forall_In'.
 
       setoid_rewrite foo19.
       simplify with monad laws.
       setoid_rewrite refine_if_If.
       setoid_rewrite refine_If_Then_Else_Bind.
       etransitivity.
-      apply refine_If_Then_Else_if.
-      reflexivity.
+      apply refine_If_Then_Else.
       simplify with monad laws.
 
       setoid_rewrite foo20.
       simplify with monad laws.
       setoid_rewrite refine_If_Opt_Then_Else_Bind.
-      apply refine_If_Opt_Then_Else.
+     apply refine_If_Opt_Then_Else.
       unfold pointwise_relation; intros.
       rewrite refine_filtered_list.
       simplify with monad laws.
@@ -806,8 +844,7 @@ Proof.
     etransitivity.
     setoid_rewrite refine_If_Then_Else_Bind.
     etransitivity.
-    - apply refine_If_Then_Else_if.
-      + reflexivity.
+    - apply refine_If_Then_Else.
       + simplify with monad laws.
         Focused_refine_Query'.
         implement_In.
@@ -849,6 +886,7 @@ Proof.
           intros; f_equal.
           repeat find_if_inside; simpl; try congruence.
 
+
           intros; rewrite foo12; simpl; eauto.
         }
 
@@ -876,14 +914,12 @@ Proof.
   {
     setoid_rewrite refine_If_Then_Else_Bind.
     etransitivity.
-    apply refine_If_Then_Else_if.
-    reflexivity.
+    apply refine_If_Then_Else.
     simplify with monad laws.
     Implement_Bound_Bag_Call.
     setoid_rewrite refine_If_Then_Else_Bind.
     etransitivity.
-    apply refine_If_Then_Else_if.
-    reflexivity.
+    apply refine_If_Then_Else.
     simplify with monad laws.
     Implement_Bound_Bag_Call.
     Implement_AbsR_Relation.
@@ -896,8 +932,7 @@ Proof.
     Implement_Bound_Bag_Call.
     setoid_rewrite refine_If_Then_Else_Bind.
     etransitivity.
-    apply refine_If_Then_Else_if.
-    reflexivity.
+    apply refine_If_Then_Else.
     simplify with monad laws.
     Implement_Bound_Bag_Call.
     Implement_AbsR_Relation.
