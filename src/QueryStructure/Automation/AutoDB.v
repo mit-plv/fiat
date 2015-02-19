@@ -100,11 +100,32 @@ Definition Build_IndexedQueryStructure_Impl_Specs
            (BagMatchSearchTerm (ith_Bounded _ Index idx))
            (BagApplyUpdateTerm (ith_Bounded _ Index idx)).
 
-Print ilist.
+Print BoundedIndex.
 
-Check ith_Bounded.
+Fixpoint BoundedStringFun2StringFun {A}
+         (a : A)
+         (l : list string)
+         (f : @BoundedString l -> A)
+         {struct l} : string -> A :=
+match l as l0 return ((BoundedString -> A) -> string -> A) with
+  | [] => fun (_ : BoundedString -> A) (_ : string) => a
+  | a' :: l' =>
+      fun f' a'' =>
+        if string_dec a' a''
+        then
+          f' {| bindex := a';
+                indexb := {| ibound := 0;
+                             boundi := @eq_refl _ (nth_error (a' :: l') 0)|} |}
+        else
+          BoundedStringFun2StringFun a 
+                                     (fun i => f' {| bindex := bindex i;
+                                                     indexb := @IndexBound_tail _ _ a' l' (indexb i) |})
+                                     a''
+  end f.
 
-string -> Type.
+Print BoundedStringFun2StringFun.
+Print BoundedIndex.
+
 
 Definition
   Build_IndexedQueryStructure_Impl_cRep

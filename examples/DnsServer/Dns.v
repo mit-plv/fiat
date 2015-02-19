@@ -334,10 +334,8 @@ Definition DnsSpec : ADT DnsSig :=
                 List.In b bfrs /\ b!sTYPE = CNAME     (* If the record is a CNAME, *)
                                /\ t <> CNAME ->>      (* and the query did not request a CNAME *)
 
-                  bfrs' <- [x in bfrs | x!sTYPE = t]; (* Find any matching records that do have *)
+                  bfrs' <- [x in bfrs | x!sTYPE = CNAME]; (* Find any matching records that do have *)
                                                       (* the requested type.  *)
-                                                      (* ?? Isn't this always empty when there's a *)
-                                                      (* matching CNAME?? *)
 
                   p' <- rec b!sNAME;                  (* Recursively find records matching the CNAME *)
                                                     (* ?? Shouldn't this use the sDATA ?? *)
@@ -960,7 +958,7 @@ Defined.
     simpl in idx.
     exact idx.
   Defined.
-  
+
   Definition bar
   : forall idx : BoundedString,
       ComputationalADT.pcADT
@@ -988,13 +986,13 @@ Defined.
   Defined.
 
 Definition DNSImpl : ComputationalADT.cADT DnsSig.
-  let Impl := eval simpl in 
+  let Impl := eval simpl in
   (Sharpened_Implementation (projT1 DnsManual)
                              _
                              bar) in
       exact Impl.
 Defined.
-    
+
 Print DNSImpl.
 
 Goal (DNSImpl = DNSImpl).
