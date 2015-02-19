@@ -177,8 +177,9 @@ Section FueledFix.
   Variable A : Type. (* Argument Type *)
   Variable R : Type. (* Return Type *)
 
-  Fixpoint FueledFix (fuel : nat) (base : R) (body : (A -> R) -> A -> R) (arg : A)
-  : R :=
+  Fixpoint FueledFix (fuel : nat) (base : Comp R)
+                     (body : (A -> Comp R) -> A -> Comp R) (arg : A)
+  : Comp R :=
     match fuel with
       | O => base
       | S fuel' => body (FueledFix fuel' base body) arg
@@ -191,8 +192,10 @@ as the condition on the body is not a proper relation. :p *)
    proper (i.e. reflexive and transitive) relation.
  *)
 
-(* Definition pointwise_refine {A R}
- (f g : (A -> Comp R) -> A -> Comp R) :=
+Print respectful.
+
+Definition pointwise_refine {A R}
+  (f g : (A -> Comp R) -> A -> Comp R) :=
   forall (rec rec' : A -> Comp R) (a : A),
     pointwise_relation A (@refine R) rec rec'
     -> refine (f rec a) (g rec' a).
@@ -212,10 +215,10 @@ Proof.
   etransitivity.
   apply H; eauto.
   apply H0. reflexivity.
-Qed. *)
+Qed.
 
-(* Add Parametric Morphism A R i
-: (@FueledFix A (Comp R) i)
+Add Parametric Morphism A R i
+: (@FueledFix A R i)
     with signature
     ((@refine R)
        ==> (@pointwise_refine A R)
@@ -228,9 +231,8 @@ Proof.
   - unfold pointwise_refine, pointwise_relation, Proper, respectful in *.
     eapply H0.
     intros.
-    generalize (IHi _ _ H _ _ H0 y1); clear.
-    apply H; apply IHi; [ apply H | apply H0 ].
-Qed. *)
+    generalize (IHi _ _ H _ _ H0 a); eauto.
+Qed.
 
 
 (* TODO: Agree on a notation for our fueled fix function. *)
@@ -372,17 +374,18 @@ Definition DnsTerm :=
                            (forall tup' : IndexedTuple,
                               R tup' ->
                               n!sNAME = (indexedElement tup')!sNAME -> n!sTYPE <> CNAME)}
-                  {b |
-                   decides b
-                           (~ (exists tup' : IndexedTuple,
-                                 R tup' /\
-                                 n!sNAME = (indexedElement tup')!sNAME))}.
+                  (b <- {b |
+                        decides b
+                                (exists tup' : IndexedTuple,
+                                      R tup' /\
+                                      n!sNAME = (indexedElement tup')!sNAME)};
+                  ret (negb b)).
     Proof.
       intros; econstructor; inversion_by computes_to_inv;
       destruct v; simpl in *; unfold not in *; intros.
-      - destruct H0; eexists; split; [ apply H1 | apply H2 ].
-      - apply H0; intros; destruct H2 as [ tup [ H2 H3 ] ].
-        eapply H1; [ apply H2 | apply H3 | apply H ].
+      - destruct x; simpl in H1; destruct H1; inversion H2; eauto.
+      - destruct x; simpl in H1; destruct H1; inversion H2; eapply H0;
+        intros; destruct H2 as [ tup [ H2 H3 ] ]; intuition eauto.
     Qed.
 
     Lemma foo4 :
@@ -393,61 +396,20 @@ Definition DnsTerm :=
                               R tup' ->
                               (indexedElement tup')!sNAME = n!sNAME
                               -> (indexedElement tup')!sTYPE <> CNAME)}
-                  {b |
+                  (b <- {b |
                    decides b
-                           (~ (exists tup' : IndexedTuple,
+                           (exists tup' : IndexedTuple,
                                  R tup' /\
                                  n!sNAME = (indexedElement tup')!sNAME
-                                 /\ (indexedElement tup')!sTYPE = CNAME))}.
+                                 /\ (indexedElement tup')!sTYPE = CNAME)};
+                  ret (negb b)).
     Proof.
       intros; econstructor; inversion_by computes_to_inv;
-      destruct v; simpl in *; unfold not in *; intros.
-      - apply H; exists tup'; intuition.
-      - apply H; intros; destruct H1 as [ tup [ H1 [ H2 H3 ] ] ];
-        eapply H0; eauto.
+      destruct v; simpl in *; unfold not in *; intros; destruct x;
+      simpl in H1; inversion H1.
+      - apply H0; exists tup'; intuition.
+      - intros; destruct H0 as [ tup [ ? [ ? ? ] ] ]; eapply H; eauto.
     Qed.
-
-    Lemma foo2point5 :
-      forall P R branch branch',
-        refine
-          (b <- branch;
-           If b
-              Then {b' | decides b' P}
-              Else ret true)
-          (If branch'
-              Then r <- R;
-                   ret (negb r)
-              Else ret true) ->
-        refine
-          (b <- branch;
-           If b
-              Then {b' | decides b' (~ P)}
-              Else ret true)
-          (If branch'
-              Then R
-              Else ret true).
-    Admitted.
-
-    Lemma foo4point5 :
-      forall P R,
-        refine
-          {b | decides b P}
-          (r <- R;
-           ret (negb r)) ->
-        refine
-          {b | decides b (~ P)}
-          R.
-    Admitted.
-
-    Lemma foo2point75 :
-      forall A B C (x : Comp A) (f : A -> B) (g : B -> C),
-        refineEquiv
-          (a <- x;
-           ret (g (f a)))
-          (b <- a <- x;
-                ret (f a);
-           ret (g b)).
-    Admitted.
 
     Lemma foo3 :
       forall (n : DNSRRecord) (r : UnConstrQueryStructure DnsSchema),
@@ -466,13 +428,14 @@ Definition DnsTerm :=
     Proof.
       intros; setoid_rewrite refine_pick_decides at 1;
       [ | apply foo2 | apply foo1 ].
-      apply foo2point5.
       refine existence check into query.
       remember n!sTYPE; refine pick val (beq_RRecordType d CNAME); subst;
       [ | case_eq (beq_RRecordType n!sTYPE CNAME); intros;
           rewrite <- beq_RRecordType_dec; unfold not; simpl in *; try congruence ].
       simplify with monad laws.
-      setoid_rewrite foo2point75 at 1; reflexivity.
+      setoid_rewrite refineEquiv_bind_bind;
+      setoid_rewrite refineEquiv_bind_unit;
+      setoid_rewrite negb_involutive; reflexivity.
     Qed.
 
     Lemma foo5 :
@@ -487,18 +450,16 @@ Definition DnsTerm :=
                    For (UnConstrQuery_In r ``(sCOLLECTIONS)
                                          (fun tup : Tuple =>
                                             Where (n!sNAME = tup!sNAME
-                                                   /\ tup!sTYPE <> CNAME )
+                                                   /\ tup!sTYPE = CNAME )
                                                   Return tup ));
                 ret (beq_nat count 0)).
     Proof.
-      intros; setoid_rewrite foo4.
-      apply foo4point5.
+      intros; setoid_rewrite foo4;
       refine existence check into query.
-      setoid_rewrite foo2point75 at 1.
-      Set Printing Implicit.
-      admit.
-      (* reflexivity should work but I have no idea why it does not :( *)
-      Unset Printing Implicit.
+      setoid_rewrite refineEquiv_bind_bind;
+      setoid_rewrite refineEquiv_bind_unit;
+      setoid_rewrite negb_involutive.
+      reflexivity.
     Qed.
 
     Lemma foo7 {heading}
@@ -516,8 +477,10 @@ Definition DnsTerm :=
                                     (Return tup))))
                (ret (filter DecideableEnsembles.dec l)).
     Proof.
-      admit.
-    Qed.
+      Local Transparent Query_For.
+      induction l; unfold refine, Query_For, Query_Where, QueryResultComp;
+      intros; inversion_by computes_to_inv; subst.
+    Admitted.
 
     Lemma foo8 {A}
     : forall (c c' : bool) (t e e' : A),
@@ -531,14 +494,10 @@ Definition DnsTerm :=
 
     Lemma foo9 {A}
     : forall (l : list A) (pred : A -> bool),
-        negb (beq_nat (Datatypes.length l) 0) = true ->
-        negb (beq_nat (Datatypes.length (filter pred l)) 0) = true.
+        beq_nat (Datatypes.length l) 0 = true ->
+        beq_nat (Datatypes.length (filter pred l)) 0 = true.
     Proof.
-      induction l; intros; simpl; try inversion H.
-      destruct (pred a) eqn : eq.
-      reflexivity.
-      (* is this lemma true? if length != 0 -> length after filter != 0 *)
-      admit.
+      induction l; intros; simpl; [ reflexivity | inversion H ].
     Qed.
 
     Transparent FueledFix.
