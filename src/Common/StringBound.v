@@ -386,7 +386,7 @@ Section ithIndexBound.
       simpl; eauto; intros.
       eapply IHBound.
     Defined.
-
+    
     (* [ith_Bounded_rect] builds a function whose type depends
      on [ith_Bounded] by reducing to a case with [ith_error],
      which is easier to work/reason with. *)
@@ -419,6 +419,35 @@ Section ithIndexBound.
                     (ith_Bounded il idx)
                     (ith_error_eq idx il).
 
+    Program Definition nth_Bounded_ind 
+            (P : forall As, BoundedIndex (map projAC As)
+                            -> A -> Prop)
+    : forall (Bound : list A)
+             (idx : BoundedIndex (map projAC Bound)),
+        match nth_error Bound (ibound idx) with
+          | Some a => P Bound idx a
+          | _ => True
+        end
+        -> P Bound idx (nth_Bounded _ idx) :=
+      fun Bound idx =>
+        match (nth_error Bound (ibound idx)) as e return
+              (forall (f : option_map _ e = Some (bindex idx)),
+                 (match e with
+                    | Some a => P Bound idx a
+                    | _ => True
+                  end)
+                 -> P Bound idx
+                      (match e as e'' return
+                             option_map _ e'' = Some (bindex idx)
+                             -> A
+                       with
+                         | Some a => fun _ => a
+                         | _ => fun f => _
+                       end f)) with
+          | Some a => fun _ H => _
+          | _ => fun f => _
+        end (nth_error_map _ _ (boundi idx)).   
+    
     (* [ith_Bounded_ind] builds a proof whose type depends
      on both [nth_Bounded] and an occurence of [ith_Bounded] by reducing
      it to a case with an [ith_error], which is easier to reason with. *)

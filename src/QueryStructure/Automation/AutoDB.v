@@ -76,8 +76,7 @@ Ltac FullySharpenEachMethod delegateSigs delegateSpecs cRep' cAbsR' :=
                                cCons
                                cMeths
                                delegateSpecs
-                               cAbsR')));
-        unfold Dep_Type_BoundedIndex_app_comm_cons
+                               cAbsR')))
   end; simpl; repeat split.
 
 Definition Build_IndexedQueryStructure_Impl_Sigs
@@ -100,33 +99,6 @@ Definition Build_IndexedQueryStructure_Impl_Specs
            (BagMatchSearchTerm (ith_Bounded _ Index idx))
            (BagApplyUpdateTerm (ith_Bounded _ Index idx)).
 
-Print BoundedIndex.
-
-Fixpoint BoundedStringFun2StringFun {A}
-         (a : A)
-         (l : list string)
-         (f : @BoundedString l -> A)
-         {struct l} : string -> A :=
-match l as l0 return ((BoundedString -> A) -> string -> A) with
-  | [] => fun (_ : BoundedString -> A) (_ : string) => a
-  | a' :: l' =>
-      fun f' a'' =>
-        if string_dec a' a''
-        then
-          f' {| bindex := a';
-                indexb := {| ibound := 0;
-                             boundi := @eq_refl _ (nth_error (a' :: l') 0)|} |}
-        else
-          BoundedStringFun2StringFun a 
-                                     (fun i => f' {| bindex := bindex i;
-                                                     indexb := @IndexBound_tail _ _ a' l' (indexb i) |})
-                                     a''
-  end f.
-
-Print BoundedStringFun2StringFun.
-Print BoundedIndex.
-
-
 Definition
   Build_IndexedQueryStructure_Impl_cRep
   (indices : list NamedSchema)
@@ -135,9 +107,24 @@ Definition
                 SearchUpdateTerms (schemaHeading (relSchema ns))) indices)
   (DelegateReps : @BoundedString (map relName indices) -> Type)
 : Type :=
-  ilist2 (map relName indices).
-  forall (idx : @BoundedString (map relName indices)), DelegateReps idx.
+  Iterate_Dep_Type_BoundedIndex DelegateReps.
 
+Definition
+  GetIndexedQueryStructureRelation
+  {indices : list NamedSchema}
+  {Index : ilist
+             (fun ns : NamedSchema =>
+                SearchUpdateTerms (schemaHeading (relSchema ns))) indices}
+  {DelegateReps : @BoundedString (map relName indices) -> Type}
+  (r_n : Build_IndexedQueryStructure_Impl_cRep Index DelegateReps)
+  idx
+: DelegateReps idx :=
+  match idx with
+      {|bindex := idx;
+        indexb := {| ibound := n;
+                     boundi := nth_n |} |} =>
+      Lookup_Iterate_Dep_Type string_dec DelegateReps r_n n nth_n
+  end.
 
 Definition Build_IndexedQueryStructure_Impl_AbsR
            {qs_schema : QueryStructureSchema}
@@ -154,20 +141,19 @@ Definition Build_IndexedQueryStructure_Impl_AbsR
 : Prop :=
   forall idx : @BoundedString (map relName (qschemaSchemas qs_schema)),
     AbsR (ValidImpls idx)
-         (GetIndexedRelation r_o idx) (r_n idx).
+         (GetIndexedRelation r_o idx) (GetIndexedQueryStructureRelation r_n idx).
 
   Definition Update_Build_IndexedQueryStructure_Impl_cRep
              qs_schema Index DelegateReps
              (r_n : Build_IndexedQueryStructure_Impl_cRep (indices := qs_schema) Index DelegateReps)
              TableID (r_n' : DelegateReps TableID)
-  : Build_IndexedQueryStructure_Impl_cRep Index DelegateReps.
-    unfold Build_IndexedQueryStructure_Impl_cRep.
-    refine (fun idx => match BoundedString_eq_dec TableID idx return DelegateReps idx with
-                         | left eq' => _
-                         | right eq' => r_n idx
-                       end).
-    rewrite eq' in r_n'; exact r_n'.
-  Defined.
+  : Build_IndexedQueryStructure_Impl_cRep Index DelegateReps :=
+    match TableID return DelegateReps TableID -> _ with
+        {|bindex := idx;
+          indexb := {| ibound := n;
+                       boundi := nth_n |} |} =>
+        Update_Iterate_Dep_Type string_dec DelegateReps r_n n nth_n
+    end r_n'.
 
   Lemma Update_Build_IndexedQueryStructure_Impl_AbsR
   : forall qs_schema Index DelegateReps DelegateImpls
@@ -178,15 +164,24 @@ Definition Build_IndexedQueryStructure_Impl_AbsR
       -> @Build_IndexedQueryStructure_Impl_AbsR
            qs_schema Index DelegateReps DelegateImpls
            ValidImpls (UpdateIndexedRelation r_o TableID r_o')
-           (Update_Build_IndexedQueryStructure_Impl_cRep r_n TableID r_n').
+           (Update_Build_IndexedQueryStructure_Impl_cRep _ _ r_n TableID r_n').
   Proof.
     unfold Build_IndexedQueryStructure_Impl_AbsR,
     Update_Build_IndexedQueryStructure_Impl_cRep; intros.
     destruct (BoundedString_eq_dec TableID idx); subst.
-    unfold eq_rect, UpdateIndexedRelation, GetIndexedRelation;
+    - destruct idx as [idx [n nth_n]]; simpl.
+      erewrite Lookup_Update_Iterate_Dep_Type_eq.
+      unfold UpdateIndexedRelation, GetIndexedRelation;
       rewrite i2th_replace_BoundIndex_eq; eassumption.
-    unfold eq_rect, UpdateIndexedRelation, GetIndexedRelation;
-      rewrite i2th_replace_BoundIndex_neq; eauto using string_dec.
+    - destruct TableID as [TableID' [t' nth_t']]; simpl.
+        unfold UpdateIndexedRelation, GetIndexedRelation;
+        rewrite i2th_replace_BoundIndex_neq; eauto using string_dec.
+        destruct idx as [idx [n' nth_n']]; simpl.
+        erewrite Lookup_Update_Iterate_Dep_Type_neq.
+        apply H.
+        clear r_o' r_n' H0.
+        unfold not; intros; subst; eapply n.
+        apply idx_ibound_eq; simpl; eauto using string_dec.
   Qed.
 
 
@@ -822,8 +817,9 @@ Definition Initialize_IndexedQueryStructureImpls'
            (DelegateImpls : forall idx,
                               ComputationalADT.pcADT (Build_IndexedQueryStructure_Impl_Sigs Index idx) (DelegateReps idx))
 : @Build_IndexedQueryStructure_Impl_cRep _ Index DelegateReps :=
-  (fun idx => ComputationalADT.pcConstructors (DelegateImpls idx)
-                                              {| bindex := "Empty" |} ()).
+  Iterate_Dep_Type_equiv' string_dec _
+    (fun idx => ComputationalADT.pcConstructors (DelegateImpls idx)
+                                                {| bindex := "Empty" |} ()).
 
 Ltac higher_order_1_reflexivity'' :=
   let x := match goal with |- ?R (ret ?x) (ret (?f ?a)) => constr:(x) end in
@@ -854,7 +850,7 @@ Definition CallBagImplMethod
                               ComputationalADT.pcADT (Build_IndexedQueryStructure_Impl_Sigs Index idx) (DelegateReps idx))
            idx midx
            (r_n : Build_IndexedQueryStructure_Impl_cRep Index DelegateReps) :=
-  ComputationalADT.pcMethods (DelegateImpls idx) midx (r_n idx).
+  ComputationalADT.pcMethods (DelegateImpls idx) midx (GetIndexedQueryStructureRelation r_n idx).
 
 Definition CallBagImplConstructor
            {qs_schema : QueryStructureSchema}
@@ -929,19 +925,19 @@ Lemma refine_BagImplMethods
 :  forall (r_o : IndexedQueryStructure qs_schema Index)
           (r_n : Build_IndexedQueryStructure_Impl_cRep Index DelegateReps)
           ridx,
-     Build_IndexedQueryStructure_Impl_AbsR DelegateImpls ValidImpls r_o r_n ->
+     Build_IndexedQueryStructure_Impl_AbsR DelegateReps DelegateImpls ValidImpls r_o r_n ->
      forall midx
             d,
      exists r_o',
        refine (CallBagMethod ridx midx r_o d)
               (ret (r_o',
-                    (snd (CallBagImplMethod DelegateImpls midx r_n d))))
-       /\ AbsR (ValidImpls ridx) r_o' (fst (CallBagImplMethod DelegateImpls midx r_n d)).
+                    (snd (CallBagImplMethod DelegateReps DelegateImpls midx r_n d))))
+       /\ AbsR (ValidImpls ridx) r_o' (fst (CallBagImplMethod DelegateReps DelegateImpls midx r_n d)).
 Proof.
   intros.
   pose proof (ADTRefinementPreservesMethods (ValidImpls ridx) midx
                                             (GetIndexedRelation r_o ridx)
-                                            (r_n ridx) d (H ridx) (ReturnComputes _)).
+                                            (GetIndexedQueryStructureRelation r_n ridx) d (H ridx) (ReturnComputes _)).
   inversion_by computes_to_inv; subst.
   exists (fst x);
     unfold CallBagImplMethod; simpl in *.
@@ -1075,8 +1071,7 @@ Ltac FullySharpenQueryStructure qs_schema Index :=
                                cMeths
                                delegateSpecs
                                cAbsR'
-                            )));
-        unfold Dep_Type_BoundedIndex_app_comm_cons
+                            )))
   end; simpl; intros;
   [repeat split; intros; try exact tt; implement_bag_constructors
   | repeat split; intros; try exact tt; implement_bag_methods].
@@ -1127,8 +1122,7 @@ Ltac FullySharpenQueryStructure' qs_schema Index :=
                                cMeths
                                delegateSpecs
                                cAbsR'
-                            )));
-        unfold Dep_Type_BoundedIndex_app_comm_cons
+                            )))
   end; simpl; intros;
   [repeat split; intros; try exact tt; implement_bag_constructors
   | repeat split; intros; try exact tt ].

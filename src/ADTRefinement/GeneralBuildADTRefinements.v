@@ -615,7 +615,7 @@ Ltac FullySharpenEachMethod delegateSigs delegateSpecs :=
                                       with (DelegateSpecs := delegateSpecs)
                                              (cConstructors := cCons)
                                              (cMethods := cMeths)));
-        unfold Dep_Type_BoundedIndex_app_comm_cons; simpl;
+        simpl;
         intros; repeat econstructor
   end.
 
@@ -717,7 +717,7 @@ Ltac FullySharpenEachMethod1 delegateSigs delegateSpecs :=
                                                    refineADT (ith_Bounded ADTSigname delegateSpecs idx)
                                                              (ComputationalADT.LiftcADT
                                                                 (existT _ _ (i2th_Bounded ADTSigname DelegateImpls idx)))) => @eq _))));
-        unfold ADTSynthesis.Common.IterateBoundedIndex.Dep_Type_BoundedIndex_app_comm_cons; simpl;
+        simpl;
         intuition; intros; subst
   end.
 

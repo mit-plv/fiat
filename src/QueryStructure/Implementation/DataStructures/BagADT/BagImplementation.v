@@ -646,8 +646,7 @@ Section SharpenedBagImplementation.
                                             refineADT (DelegateSpecs idx)
                                                       (ComputationalADT.LiftcADT (existT _ _ (DelegateImpls idx))))
                                      => @eq _))));
-            try (unfold ADTSynthesis.Common.IterateBoundedIndex.Dep_Type_BoundedIndex_app_comm_cons; simpl;
-            intuition; intros; subst)
+            try (simpl; intuition; intros; subst)
   end.
 
 FullySharpenEachMethod1

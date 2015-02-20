@@ -1,7 +1,5 @@
 Require Import Coq.Strings.String.
-Require Import ADTSynthesis.QueryStructures.Automation.AutoDB.
-
-Locate Build_IndexedQueryStructure_Impl_cRep.
+Require Import ADTSynthesis.QueryStructure.Automation.AutoDB.
 
 (* Our bookstore has two relations (tables):
    - The [Books] relation contains the books in the
@@ -62,7 +60,7 @@ Definition BookStoreSig : ADTSig :=
       Constructor "Init" : unit -> rep,
       Method "PlaceOrder" : rep x Order -> rep x bool,
       Method "DeleteOrder" : rep x nat -> rep x list Order,
-      Method "AddBook" : rep x Book -> rep x bool,
+                             (* Method "AddBook" : rep x Book -> rep x bool, *)
       Method "DeleteBook" : rep x nat -> rep x list Book,
       Method "GetTitles" : rep x string -> rep x list string,
       Method "NumOrders" : rep x string -> rep x nat
@@ -80,8 +78,8 @@ Definition BookStoreSpec : ADT BookStoreSig :=
     update "DeleteOrder" ( oid : nat ) : list Order :=
       Delete o from sORDERS where o!sISBN = oid,
 
-    update "AddBook" ( b : Book ) : bool :=
-        Insert b into sBOOKS ,
+      (* update "AddBook" ( b : Book ) : bool :=
+        Insert b into sBOOKS , *)
 
      update "DeleteBook" ( id : nat ) : list Book :=
         Delete book from sBOOKS where book!sISBN = id ,
@@ -109,13 +107,14 @@ Proof.
 
   make simple indexes using [[sAUTHOR; sISBN]; [sISBN]].
 
-    hone method "AddBook".
+    (* hone method "AddBook".
     {
       Implement_Insert_Checks.
 
       setoid_rewrite refineEquiv_swap_bind.
 
       implement_In.
+
       convert_Where_to_search_term.
       find_equivalent_search_term 0 find_simple_search_term.
       convert_filter_to_find.
@@ -125,7 +124,7 @@ Proof.
       implement_Insert_branches.
 
       finish honing.
-    }
+    } *)
 
     hone method "PlaceOrder".
     {
@@ -216,10 +215,11 @@ Proof.
     finish honing.
   }
 
-
   FullySharpenQueryStructure' BookStoreSchema Index.
 
-  { simplify with monad laws.
+  { simpl.
+    (* Still. Patching up proofs for new representation. *)
+    simplify with monad laws.
 
     Implement_Bound_Bag_Call.
     Implement_If_Then_Else.
