@@ -60,7 +60,7 @@ Definition BookStoreSig : ADTSig :=
       Constructor "Init" : unit -> rep,
       Method "PlaceOrder" : rep x Order -> rep x bool,
       Method "DeleteOrder" : rep x nat -> rep x list Order,
-                             (* Method "AddBook" : rep x Book -> rep x bool, *)
+      Method "AddBook" : rep x Book -> rep x bool, 
       Method "DeleteBook" : rep x nat -> rep x list Book,
       Method "GetTitles" : rep x string -> rep x list string,
       Method "NumOrders" : rep x string -> rep x nat
@@ -78,8 +78,8 @@ Definition BookStoreSpec : ADT BookStoreSig :=
     update "DeleteOrder" ( oid : nat ) : list Order :=
       Delete o from sORDERS where o!sISBN = oid,
 
-      (* update "AddBook" ( b : Book ) : bool :=
-        Insert b into sBOOKS , *)
+    update "AddBook" ( b : Book ) : bool :=
+        Insert b into sBOOKS ,
 
      update "DeleteBook" ( id : nat ) : list Book :=
         Delete book from sBOOKS where book!sISBN = id ,
@@ -107,39 +107,43 @@ Proof.
 
   make simple indexes using [[sAUTHOR; sISBN]; [sISBN]].
 
-    (* hone method "AddBook".
+  hone method "AddBook".
     {
       Implement_Insert_Checks.
 
-      setoid_rewrite refineEquiv_swap_bind.
-
-      implement_In.
-
-      convert_Where_to_search_term.
-      find_equivalent_search_term 0 find_simple_search_term.
-      convert_filter_to_find.
-      Implement_Aggregates.
+      Focused_refine_Query. (* With Focused_refine_Query: 7 seconds. *)
+      { implement_In;       (* Without Focused_refine_Query: 12 seconds*)
+        convert_Where_to_search_term;
+        [ find_equivalent_search_term 0 find_simple_search_term | ]; cbv beta; simpl;
+        convert_filter_to_find;
+        Implement_Aggregates;
+        reflexivity.
+      }
+      
       simplify with monad laws.
-
+      setoid_rewrite refineEquiv_swap_bind.
       implement_Insert_branches.
 
       finish honing.
-    } *)
+    } 
 
     hone method "PlaceOrder".
     {
       Implement_Insert_Checks.
 
-      setoid_rewrite refineEquiv_swap_bind.
-
-      implement_In.
-      convert_Where_to_search_term.
-      find_equivalent_search_term 0 find_simple_search_term.
-      convert_filter_to_find.
-      Implement_Aggregates.
+      Focused_refine_Query. (* With Focused_refine_Query: 7 seconds. *)
+        { implement_In;       (* Surprisingly, without Focused_refine_Query: 12 seconds*)
+          convert_Where_to_search_term;
+          [ find_equivalent_search_term 0 find_simple_search_term | ]; cbv beta; simpl;
+          convert_filter_to_find;
+          Implement_Aggregates;
+          reflexivity.
+        }
+        
       simplify with monad laws.
-
+      setoid_rewrite refineEquiv_swap_bind.
       implement_Insert_branches.
+
       finish honing.
     }
 
@@ -154,20 +158,27 @@ Proof.
   hone method "NumOrders".
   {
     simplify with monad laws.
-    implement_In.
-    setoid_rewrite refine_Join_Enumerate_Swap; eauto.
 
-    convert_Where_to_search_term.
-    find_equivalent_search_term 1 find_simple_search_term.
-    setoid_rewrite andb_true_r.
-
-    convert_Where_to_search_term.
-    find_equivalent_search_term_pair 1 0 find_simple_search_term_dep.
-
-    setoid_rewrite <- filter_and.
-    repeat convert_filter_to_find.
-
-    Implement_Aggregates.
+    Time Focused_refine_Query; (* Focused Version: 52 seconds*)
+      [ implement_In;   (* Unfocused Version: 69 seconds. *)
+        setoid_rewrite refine_Join_Enumerate_Swap; eauto;
+        
+        convert_Where_to_search_term;
+        [ find_equivalent_search_term 1 find_simple_search_term
+        | cbv beta; simpl; setoid_rewrite andb_true_r];
+        
+        convert_Where_to_search_term; 
+        [ find_equivalent_search_term_pair 1 0 find_simple_search_term_dep
+        | cbv beta; simpl ];
+        
+        setoid_rewrite <- filter_and;
+        repeat convert_filter_to_find;
+        
+        Implement_Aggregates;
+        reflexivity
+      | ].
+    simplify with monad laws.
+    simpl.
     commit.
     finish honing.
   }
@@ -175,11 +186,16 @@ Proof.
   hone method "GetTitles".
   {
     simplify with monad laws.
-    implement_In.
-    convert_Where_to_search_term.
-    find_equivalent_search_term 0 find_simple_search_term.
-    convert_filter_to_find.
-    Implement_Aggregates.
+    Time Focused_refine_Query; (* With Focused_refine_Query: 7 seconds. *)
+      [ implement_In;       (* Without Focused_refine_Query: 9 seconds*)
+        convert_Where_to_search_term;
+        [ find_equivalent_search_term 0 find_simple_search_term | ]; cbv beta; simpl;
+        convert_filter_to_find;
+        Implement_Aggregates;
+        reflexivity
+      | ].
+    simplify with monad laws.
+    simpl.
     commit.
     finish honing.
 }
@@ -196,6 +212,8 @@ Proof.
   hone method "DeleteBook".
   {
     simplify with monad laws.
+    Focused_refine_Query.
+    { 
     implement_In.
     setoid_rewrite refine_Join_Enumerate_Swap; eauto.
     convert_Where_to_search_term.
@@ -209,12 +227,14 @@ Proof.
     convert_filter_to_find.
 
     Implement_Aggregates.
+    reflexivity.
+    }
+    
     simplify with monad laws.
-
     implement_Delete_branches.
     finish honing.
   }
-
+  
   FullySharpenQueryStructure' BookStoreSchema Index.
 
   { simpl.

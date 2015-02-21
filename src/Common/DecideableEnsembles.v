@@ -51,3 +51,47 @@ Instance DecideableEnsemble_NEqDec
 Proof.
   intros; find_if_inside; intuition.
 Defined.
+
+Instance DecideableEnsemble_Not
+         {A : Type}
+         (P : Ensemble A)
+         {P_dec : DecideableEnsemble P}
+: DecideableEnsemble (fun a => ~ P a) :=
+  {| dec a := negb (dec a) |}.
+Proof.
+  intros; case_eq (dec a); intros; intuition eauto.
+  - discriminate.
+  - rewrite dec_decides_P in H; intuition.
+  - rewrite <- dec_decides_P in H1; congruence.
+Defined.
+
+Instance DecideableEnsemble_True
+         {A : Type}
+: DecideableEnsemble (fun a : A => True) :=
+  {| dec a := true |}.
+Proof.
+  intros; intuition eauto.
+Defined.
+
+Instance DecideableEnsemble_False
+         {A : Type}
+: DecideableEnsemble (fun a : A => False) :=
+  {| dec a := false |}.
+Proof.
+  intros; intuition eauto; discriminate.
+Defined.
+
+Instance DecideableEnsemble_Or
+         {A : Type}
+         (P P' : Ensemble A)
+         {P_dec : DecideableEnsemble P}
+         {P'_dec : DecideableEnsemble P'}
+: DecideableEnsemble (fun a : A => P a \/ P' a) :=
+  {| dec a := if dec (P := P) a then true else dec (P := P') a |}.
+Proof.
+  intros; case_eq (dec (P := P) a);
+  [ rewrite dec_decides_P | rewrite Decides_false];
+  intuition.
+  setoid_rewrite dec_decides_P in H0; intuition.
+  setoid_rewrite dec_decides_P; intuition.
+Defined.
