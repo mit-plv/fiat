@@ -441,6 +441,16 @@ Ltac higher_order_1_reflexivity :=
   solve [ higher_order_1_reflexivity'
         | sym_higher_order_1_reflexivity' ].
 
+Ltac higher_order_f_1_reflexivity :=
+  let a := match goal with |- ?R (?g ?a) (?g (?f ?x)) => constr:(a) end in
+  let f := match goal with |- ?R (?g ?a) (?g (?f ?x)) => constr:(f) end in
+  let x := match goal with |- ?R (?g ?a) (?g (?f ?x)) => constr:(x) end in
+  let a' := (eval pattern x in a) in
+  let f' := match a' with ?f' _ => constr:(f') end in
+  unify f f';
+    cbv beta;
+    solve [apply reflexivity].
+
   (* This applies reflexivity after refining a method. *)
 
 Ltac higher_order_2_reflexivity' :=
@@ -468,6 +478,80 @@ Ltac sym_higher_order_2_reflexivity' :=
 Ltac higher_order_2_reflexivity :=
   solve [ higher_order_2_reflexivity'
         | sym_higher_order_2_reflexivity' ].
+
+Ltac higher_order_2_f_reflexivity :=
+  let x := match goal with |- ?R (?g ?x) (?g (?f ?a ?b)) => constr:(x) end in
+  let f := match goal with |- ?R (?g ?x) (?g (?f ?a ?b)) => constr:(f) end in
+  let a := match goal with |- ?R (?g ?x) (?g (?f ?a ?b)) => constr:(a) end in
+  let b := match goal with |- ?R (?g ?x) (?g (?f ?a ?b)) => constr:(b) end in
+  let x' := (eval pattern a, b in x) in
+  let f' := match x' with ?f' _ _ => constr:(f') end in
+  unify f f';
+    cbv beta;
+    solve [apply reflexivity].
+
+Ltac higher_order_3_reflexivity :=
+  let x := match goal with |- ?R ?x (?f ?a ?b ?c) => constr:(x) end in
+  let f := match goal with |- ?R ?x (?f ?a ?b ?c) => constr:(f) end in
+  let a := match goal with |- ?R ?x (?f ?a ?b ?c) => constr:(a) end in
+  let b := match goal with |- ?R ?x (?f ?a ?b ?c) => constr:(b) end in
+  let c := match goal with |- ?R ?x (?f ?a ?b ?c) => constr:(c) end in
+  let x' := (eval pattern a, b, c in x) in
+  let f' := match x' with ?f' _ _ _ => constr:(f') end in
+  unify f f';
+    cbv beta;
+    solve [apply reflexivity].
+
+Ltac higher_order_3_f_reflexivity :=
+  let x := match goal with |- ?R (?g ?x) (?g (?f ?a ?b ?c)) => constr:(x) end in
+  let f := match goal with |- ?R (?g ?x) (?g (?f ?a ?b ?c)) => constr:(f) end in
+  let a := match goal with |- ?R (?g ?x) (?g (?f ?a ?b ?c)) => constr:(a) end in
+  let b := match goal with |- ?R (?g ?x) (?g (?f ?a ?b ?c)) => constr:(b) end in
+  let c := match goal with |- ?R (?g ?x) (?g (?f ?a ?b ?c)) => constr:(c) end in
+  let x' := (eval pattern a, b, c in x) in
+  let f' := match x' with ?f' _ _ _ => constr:(f') end in
+  unify f f';
+    cbv beta;
+    solve [apply reflexivity].
+
+Ltac higher_order_4_reflexivity :=
+  let x := match goal with |- ?R ?x (?f ?a ?b ?c ?d) => constr:(x) end in
+  let f := match goal with |- ?R ?x (?f ?a ?b ?c ?d) => constr:(f) end in
+  let a := match goal with |- ?R ?x (?f ?a ?b ?c ?d) => constr:(a) end in
+  let b := match goal with |- ?R ?x (?f ?a ?b ?c ?d) => constr:(b) end in
+  let c := match goal with |- ?R ?x (?f ?a ?b ?c ?d) => constr:(c) end in
+  let d := match goal with |- ?R ?x (?f ?a ?b ?c ?d) => constr:(d) end in
+  let x' := (eval pattern a, b, c, d in x) in
+  let f' := match x' with ?f' _ _ _ _ => constr:(f') end in
+  unify f f';
+    cbv beta;
+    solve [apply reflexivity].
+
+Ltac higher_order_4_f_reflexivity :=
+  let x := match goal with |- ?R (?g ?x) (?g (?f ?a ?b ?c ?d)) => constr:(x) end in
+  let f := match goal with |- ?R (?g ?x) (?g (?f ?a ?b ?c ?d)) => constr:(f) end in
+  let a := match goal with |- ?R (?g ?x) (?g (?f ?a ?b ?c ?d)) => constr:(a) end in
+  let b := match goal with |- ?R (?g ?x) (?g (?f ?a ?b ?c ?d)) => constr:(b) end in
+  let c := match goal with |- ?R (?g ?x) (?g (?f ?a ?b ?c ?d)) => constr:(c) end in
+  let d := match goal with |- ?R (?g ?x) (?g (?f ?a ?b ?c ?d)) => constr:(d) end in
+  let x' := (eval pattern a, b, c, d in x) in
+  let f' := match x' with ?f' _ _ _ _ => constr:(f') end in
+  unify f f';
+    cbv beta;
+    solve [apply reflexivity].
+
+Ltac higher_order_reflexivity :=
+  match goal with
+    | |- ?R (?g ?x) (?g (?f ?a ?b ?c ?d)) =>  higher_order_4_f_reflexivity
+    | |- ?R (?g ?x) (?g (?f ?a ?b ?c))    =>  higher_order_3_f_reflexivity
+    | |- ?R (?g ?x) (?g (?f ?a ?b))       =>  higher_order_2_f_reflexivity
+    | |- ?R (?g ?x) (?g (?f ?a))          =>  higher_order_1_f_reflexivity
+
+    | |- ?R ?x (?f ?a ?b ?c ?d)           =>  higher_order_4_reflexivity
+    | |- ?R ?x (?f ?a ?b ?c)              =>  higher_order_4_reflexivity
+    | |- ?R ?x (?f ?a ?b)                 =>  higher_order_4_reflexivity
+    | |- ?R ?x (?f ?a)                    =>  higher_order_4_reflexivity
+  end.
 
 Axiom IsHProp : Type -> Type.
 Existing Class IsHProp.
