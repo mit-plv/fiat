@@ -268,6 +268,8 @@ TIMER=\$$(if \$$(TIMED), $(STDTIME), $(TIMECMD))
 
 .PHONY: all fiat querystructures parsers finitesets examples html clean pretty-timed pretty-timed-files pdf doc clean-doc cheat
 
+all : fiat querystructures parsers examples
+
 fiat : $(CORE_VOS)
 
 querystructures : $(QUERYSTRUCTURE_VOS)
