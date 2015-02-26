@@ -1,3 +1,139 @@
+CORE_MODULES    := \
+	Common \
+	Common/Equality \
+	Common/Monad \
+	Common/ReservedNotations \
+	Common/ilist \
+	Common/i2list \
+	Common/ilist2 \
+	Common/i2list2 \
+	Common/StringBound \
+	Common/DecideableEnsembles \
+	Common/IterateBoundedIndex \
+	Common/BoolFacts \
+	Common/ListFacts \
+	Common/FlattenList \
+	Common/LogicFacts \
+	Common/NatFacts \
+	Common/ListMorphisms \
+	Common/LogicMorphisms \
+	Common/Ensembles \
+	Common/Ensembles/EnsembleListEquivalence \
+	Common/Ensembles/Cardinal \
+	Common/Ensembles/IndexedEnsembles \
+	Common/Ensembles/Equivalence \
+	Common/Ensembles/Morphisms \
+	Common/Ensembles/Tactics \
+	Common/Ensembles/CombinatorLaws \
+	Common/Ensembles/Notations \
+	Common/PermutationFacts \
+	Common/String_as_OT \
+	Common/FMapExtensions \
+	Common/SetEq \
+	Common/SetEqProperties \
+	ComputationalEnsembles \
+	ComputationalEnsembles/Core \
+	ComputationalEnsembles/Laws \
+	ComputationalEnsembles/Morphisms \
+	Computation/Notations \
+	Computation/Core \
+	Computation/Monad \
+	Computation/LogicLemmas \
+	Computation/SetoidMorphisms \
+	Computation/ReflectiveMonad \
+	Computation/ApplyMonad \
+	Computation/Refinements/General \
+	Computation/Refinements/Tactics \
+	Computation \
+	ADT/ADTSig \
+	ADT/Core \
+	ADT/ADTHide \
+	ADT/ComputationalADT \
+	ADT \
+	Common/ilist \
+	Common/Wf \
+	Common/Le \
+	Common/UIP \
+	ADTNotation/StringBound \
+	ADTNotation/BuildADTSig \
+	ADTNotation/BuildADT \
+	ADTNotation/BuildComputationalADT \
+	ADTNotation/BuildADTReplaceMethods \
+	ADTNotation \
+	ADTRefinement/Core \
+	ADTRefinement/SetoidMorphisms \
+	ADTRefinement/BuildADTSetoidMorphisms \
+	ADTRefinement/GeneralRefinements \
+	ADTRefinement/GeneralBuildADTRefinements \
+	ADTRefinement \
+	ADTRefinement/Refinements/DelegateMethods \
+	ADTRefinement/Refinements/HoneRepresentation \
+	ADTRefinement/Refinements/SimplifyRep \
+	ADTRefinement/Refinements/ADTRepInv \
+	ADTRefinement/Refinements/ADTCache \
+	ADTRefinement/Refinements/RefineHideADT \
+	ADTRefinement/Refinements \
+	ADTRefinement/BuildADTRefinements/HoneRepresentation \
+	ADTRefinement/BuildADTRefinements/SimplifyRep \
+	ADTRefinement/BuildADTRefinements/AddCache \
+	ADTRefinement/BuildADTRefinements
+
+QUERYSTRUCTURE_MODULES := \
+	QueryStructure/Specification/Representation/Notations \
+	QueryStructure/Specification/Representation/Heading \
+	QueryStructure/Specification/Representation/Tuple \
+	QueryStructure/Specification/Representation/Schema \
+	QueryStructure/Specification/Representation/Relation \
+	QueryStructure/Specification/Representation/QueryStructureSchema \
+	QueryStructure/Specification/Representation/QueryStructure \
+	QueryStructure/Specification/Representation/QueryStructureNotations \
+	QueryStructure/Specification/Constraints/tupleAgree \
+	QueryStructure/Specification/Operations/FlattenCompList \
+	QueryStructure/Specification/Operations/Empty \
+	QueryStructure/Specification/Operations/Query \
+	QueryStructure/Specification/Operations/Insert \
+	QueryStructure/Specification/Operations/Delete \
+	QueryStructure/Specification/Operations/Mutate \
+	QueryStructure/Specification/Operations/Update \
+	QueryStructure/Implementation/Constraints/ConstraintChecksRefinements \
+	QueryStructure/Implementation/Constraints/ConstraintChecksUnfoldings \
+	QueryStructure/Implementation/Operations/General/EmptyRefinements \
+	QueryStructure/Implementation/Operations/General/QueryRefinements \
+	QueryStructure/Implementation/Operations/General/InsertRefinements \
+	QueryStructure/Implementation/Operations/General/MutateRefinements \
+	QueryStructure/Implementation/Operations/General/DeleteRefinements \
+	QueryStructure/Implementation/Operations/General/QueryStructureRefinements \
+	QueryStructure/Implementation/Operations \
+	QueryStructure/Implementation/Operations/List/ListQueryRefinements \
+	QueryStructure/Implementation/Operations/List/ListInsertRefinements \
+	QueryStructure/Implementation/ListImplementation \
+	QueryStructure/Implementation/DataStructures/Bags/BagsInterface \
+	QueryStructure/Implementation/DataStructures/Bags/BagsProperties \
+	QueryStructure/Implementation/DataStructures/Bags/BagsTactics \
+	QueryStructure/Implementation/DataStructures/Bags/ListBags \
+	QueryStructure/Implementation/DataStructures/Bags/CountingListBags \
+	QueryStructure/Implementation/DataStructures/Bags/TreeBags \
+	QueryStructure/Implementation/DataStructures/Bags/CachingBags \
+	QueryStructure/Implementation/DataStructures/Bags/CacheableFunctions \
+	QueryStructure/Implementation/DataStructures/Bags/BagsOfTuples \
+	QueryStructure/Implementation/DataStructures/BagADT/BagADT \
+	QueryStructure/Implementation/DataStructures/BagADT/BagImplementation \
+	QueryStructure/Implementation/DataStructures/BagADT/QueryStructureImplementation \
+	QueryStructure/Implementation/DataStructures/BagADT/IndexSearchTerms \
+	QueryStructure/Implementation/Operations/BagADT/Refinements \
+	QueryStructure/Implementation/BagImplementation \
+	QueryStructure/Automation/AutoDB
+
+FINITESET_MODULES := \
+	FiniteSetADTs \
+	FiniteSetADTs/FiniteSetADT \
+	FiniteSetADTs/FiniteSetADTMethodLaws \
+	FiniteSetADTs/FiniteSetADTImplementation \
+	FiniteSetADTs/FiniteSetRefinement \
+	FiniteSetADTs/WordInterface \
+	FiniteSetADTs/NatWord \
+	FiniteSetADTs/BedrockWord \
+
 SRC_GRAMMAR_MODULES := \
 	Parsers/ContextFreeGrammar\
 	Parsers/ContextFreeGrammarProperties\
@@ -23,130 +159,95 @@ SRC_PARSERS_MODULES := \
 	Parsers/BooleanRecognizerCorrect\
 	$(SRC_GRAMMAR_MODULES)
 
-SRC_MODULES    := \
-	Common \
-	Common/Equality \
-	Common/Monad \
-	Computation/Notations \
-	Computation/Core \
-	Computation/Monad \
-	Computation/LogicLemmas \
-	Computation/SetoidMorphisms \
-	Computation/ReflectiveMonad \
-	Computation/ApplyMonad \
-	Computation/Refinements/General \
-	Computation/Refinements/Tactics \
-	Computation \
-	ADT/ADTSig \
-	ADT/Core \
-	ADT/ADTHide \
-	ADT/ComputationalADT \
-	ADT \
-	Common/ilist \
-	Common/Wf \
-	Common/Le \
-	Common/UIP \
-	ADTNotation/StringBound \
-	ADTNotation/BuildADTSig \
-	ADTNotation/BuildADT \
-	ADTNotation/BuildADTReplaceMethods \
-	ADTNotation \
-	ADTRefinement/Core \
-	ADTRefinement/SetoidMorphisms \
-	ADTRefinement/BuildADTSetoidMorphisms \
-	ADTRefinement/GeneralRefinements \
-	ADTRefinement/GeneralBuildADTRefinements \
-	ADTRefinement \
-	ADTRefinement/Refinements/DelegateMethods \
-	ADTRefinement/Refinements/HoneRepresentation \
-	ADTRefinement/Refinements/SimplifyRep \
-	ADTRefinement/Refinements/ADTRepInv \
-	ADTRefinement/Refinements/ADTCache \
-	ADTRefinement/Refinements/RefineHideADT \
-	ADTRefinement/Refinements \
-	ADTRefinement/BuildADTRefinements/HoneRepresentation \
-	ADTRefinement/BuildADTRefinements/SimplifyRep \
-	ADTRefinement/BuildADTRefinements/AddCache \
-	ADTRefinement/BuildADTRefinements \
-	QueryStructure/Notations \
-	QueryStructure/Heading \
-	QueryStructure/Tuple \
-	QueryStructure/Schema \
-	QueryStructure/Relation \
-	QueryStructure/QueryStructureSchema \
-	QueryStructure/QueryStructure \
-	QueryStructure/QuerySpecs/EmptyQSSpecs \
-	QueryStructure/QuerySpecs/QueryQSSpecs \
-	QueryStructure/QuerySpecs/InsertQSSpecs \
-	QueryStructure/QuerySpecs/DeleteQSSpecs \
-	QueryStructure/QuerySpecs/EnsembleListEquivalence \
-	QueryStructure/QueryStructureNotations \
-	QueryStructure/Refinements/ConstraintChecksRefinements \
-	QueryStructure/Refinements/GeneralQueryRefinements \
-	QueryStructure/Refinements/GeneralInsertRefinements \
-	QueryStructure/Refinements/GeneralDeleteRefinements \
-	QueryStructure/Refinements/ConstraintChecksUnfoldings \
-	QueryStructure/Refinements/GeneralQueryStructureRefinements \
-	QueryStructure/Refinements/OperationRefinements \
-	QueryStructure/SetEq \
-	QueryStructure/SetEqProperties \
-	QueryStructure/AdditionalLemmas \
-	QueryStructure/tupleAgree \
-	QueryStructure/Refinements/AdditionalRefinementLemmas \
-	QueryStructure/Refinements/AdditionalPermutationLemmas \
-	QueryStructure/Refinements/EnsembleListEquivalenceProperties \
-	QueryStructure/Refinements/AdditionalMorphisms \
-	QueryStructure/Refinements/AdditionalFlatMapLemmas \
-	QueryStructure/Refinements/flattenCompListProperties \
-	QueryStructure/Refinements/ConstraintChecksRefinements \
-	QueryStructure/Refinements/ListImplementation/ListQueryRefinements \
-	QueryStructure/Refinements/ListImplementation/ListInsertRefinements \
-	QueryStructure/Refinements/ListImplementation/ListQueryStructureRefinements \
-	QueryStructure/Refinements/ListImplementation \
-	QueryStructure/Refinements/FMapImplementation/FMapExtensions \
-	QueryStructure/Refinements/Bags/BagsInterface\
-	QueryStructure/Refinements/Bags/BagsProperties\
-	QueryStructure/Refinements/Bags/BagsTactics\
-	QueryStructure/Refinements/Bags/ListBags\
-	QueryStructure/Refinements/Bags/CountingListBags\
-	QueryStructure/Refinements/Bags/TreeBags\
-	QueryStructure/Refinements/Bags/CachingBags\
-	QueryStructure/Refinements/Bags/CacheableFunctions\
-	QueryStructure/Refinements/Bags/BagsOfTuples\
-	Common/String_as_OT\
-	QueryStructure/Refinements/Bags/Bags\
-	QueryStructure/Refinements/AutoDB\
-	$(SRC_PARSERS_MODULES)
+#	QueryStructure/Refinements/BagADT/DelegateImplementation\
+
+COMPILER_MODULES := \
+	FiatToFacade/StringMapNotations \
+	FiatToFacade/FacadeNotations \
+	FiatToFacade/Utilities \
+	FiatToFacade/BedrockUtilities \
+	FiatToFacade/StringMapUtilities \
+	FiatToFacade/FacadeNotations \
+	FiatToFacade/FacadeUtilities \
+	FiatToFacade/Superset \
+	FiatToFacade/SupersetMorphisms \
+	FiatToFacade/SupersetUtilities \
+	FiatToFacade/Prog \
+	FiatToFacade/ProgEquiv \
+	FiatToFacade/ProgUtilities \
+	FiatToFacade/ProgMorphisms \
+	FiatToFacade/Loop \
+	FiatToFacade/LoopUtilities \
+	FiatToFacade/GLabelMapFacts \
+	FiatToFacade/Compiler/Utilities \
+	FiatToFacade/Compiler/Prerequisites \
+	FiatToFacade/Compiler/Basics \
+	FiatToFacade/Compiler/Pairs \
+	FiatToFacade/Compiler/Cleanup \
+	FiatToFacade/Compiler/NoOp \
+	FiatToFacade/Compiler/Copy \
+	FiatToFacade/Compiler/Constants \
+	FiatToFacade/Compiler/Binops \
+	FiatToFacade/Compiler/Conditionals \
+	FiatToFacade/Compiler/ADTs/FiniteSets \
+	FiatToFacade/Compiler/ADTs/ListsInversion \
+	FiatToFacade/Compiler/ADTs/Lists \
+	FiatToFacade/Compiler/ADTs/Folds \
+	FiatToFacade/Compiler/Automation/Vacuum \
+	FiatToFacade/Compiler/Automation/FacadeHelpers \
+	FiatToFacade/Compiler/Automation/SpecializedFolds \
+	FiatToFacade/Compiler
 
 EXAMPLE_MODULES := \
-	Bookstore \
-	BookstoreSemiAutomatic \
-	Weather \
-	Stocks \
-	FacadeTest
-#	ProcessScheduler \
-#	CacheADT/KVEnsembles \
-#	CacheADT/CacheSpec \
-#	CacheADT/CacheRefinements \
-#	CacheADT/FMapCacheImplementation \
-#	CacheADT/LRUCache \
-#	BookstoreCache
+	QueryStructure/BookstorewDelegationSemiAutomatic \
+	QueryStructure/WeatherwDelegation \
+	QueryStructure/StockswDelegation
+#FiniteSetsADTs/FiniteSetsExamples \
+	ExtractingFiniteSetsExamples \
+	QueryStructure/Bookstore \
+	QueryStructure/BookstoreSemiAutomatic \
+	QueryStructure/Weather \
+	QueryStructure/Stocks \
+	ProcessScheduler \
+	CacheADT/KVEnsembles \
+	CacheADT/CacheSpec \
+	CacheADT/CacheRefinements \
+	CacheADT/FMapCacheImplementation \
+	CacheADT/LRUCache \
+	BookstoreCache \
+
 
 COQDEP=coqdep
 COQDOC=coqdoc
 CITO_ARGS=
 
-SRC_VS         	:= $(SRC_MODULES:%=%.v)
-PREFIXED_SRC_VS	:= $(SRC_MODULES:%=src/%.v)
-SRC_VDS	   	:= $(SRC_MODULES:%=src/%.v.d)
-PREFIXED_SRC_VOS:= $(SRC_MODULES:%=src/%.vo)
+UNPREFIXED_CORE_VS := $(CORE_MODULES:%=%.v)
+UNPREFIXED_CORE_VOS:= $(CORE_MODULES:%=%.vo)
+UNPREFIXED_CORE_VD := $(CORE_MODULES:%=%.v.d)
+
+CORE_VS := $(CORE_MODULES:%=src/%.v)
+CORE_VOS:= $(CORE_MODULES:%=src/%.vo)
+CORE_VDS:= $(CORE_MODULES:%=src/%.v.d)
+
+COMPILER_VS  := $(COMPILER_MODULES:%=src/%.v)
+COMPILER_VDS := $(COMPILER_MODULES:%=src/%.v.d)
+COMPILER_VOS := $(COMPILER_MODULES:%=src/%.vo)
+
+QUERYSTRUCTURE_VS  := $(QUERYSTRUCTURE_MODULES:%=src/%.v)
+QUERYSTRUCTURE_VDS := $(QUERYSTRUCTURE_MODULES:%=src/%.v.d)
+QUERYSTRUCTURE_VOS := $(QUERYSTRUCTURE_MODULES:%=src/%.vo)
+
+SRC_PARSERS_VS  := $(SRC_PARSERS_MODULES:%=src/%.v)
+SRC_PARSERS_VDS := $(SRC_PARSERS_MODULES:%=src/%.v.d)
+SRC_PARSERS_VOS := $(SRC_PARSERS_MODULES:%=src/%.vo)
 PREFIXED_SRC_PARSERS_VOS:= $(SRC_PARSERS_MODULES:%=src/%.vo)
 
+FINITESET_VS  := $(FINITESET_MODULES:%=src/%.v)
+FINITESET_VDS := $(FINITESET_MODULES:%=src/%.v.d)
+FINITESET_VOS := $(FINITESET_MODULES:%=src/%.vo)
 
-EXAMPLE_VS          := $(EXAMPLE_MODULES:%=%.v)
-PREFIXED_EXAMPLE_VS := $(EXAMPLE_MODULES:%=examples/%.v)
-EXAMPLE_VDS	    := $(EXAMPLE_MODULES:%=examples/%.v.d)
-PREFIXED_EXAMPLE_VOS:= $(EXAMPLE_MODULES:%=examples/%.vo)
+EXAMPLE_VS := $(EXAMPLE_MODULES:%=examples/%.v)
+EXAMPLE_VOS:= $(EXAMPLE_MODULES:%=examples/%.vo)
 
 V = 0
 
@@ -165,11 +266,17 @@ TIMECMD=
 STDTIME=/usr/bin/time -f \"\$$* (user: %e mem: %M ko)\"
 TIMER=\$$(if \$$(TIMED), $(STDTIME), $(TIMECMD))
 
-.PHONY: all sources examples html clean pretty-timed pretty-timed-files pdf doc clean-doc parsers
+.PHONY: all fiat querystructures parsers finitesets examples html clean pretty-timed pretty-timed-files pdf doc clean-doc cheat
 
-sources : $(PREFIXED_SRC_VOS)
+fiat : $(CORE_VOS)
 
-examples : $(PREFIXED_EXAMPLE_VOS)
+querystructures : $(QUERYSTRUCTURE_VOS)
+
+finitesets : $(FINITESET_VOS)
+
+examples : $(EXAMPLE_VOS)
+
+compiler : $(COMPILER_VOS)
 
 parsers : $(PREFIXED_SRC_PARSERS_VOS)
 
@@ -193,7 +300,7 @@ Overview/ProjectOverview.pdf: $(shell find Overview -name "*.tex" -o -name "*.st
 	cd Overview; pdflatex -synctex=1 ProjectOverview.tex
 
 Makefile.coq: Makefile
-	"$(COQBIN)coq_makefile" $(PREFIXED_SRC_VS) $(PREFIXED_EXAMPLE_VS) COQC = " \$$(SILENCE_COQC)$(TIMER) \"\$$(COQBIN)coqc\"" COQDEP = " \$$(SILENCE_COQDEP)\"\$$(COQBIN)coqdep\" -c" COQDOCFLAGS = "$(COQDOCFLAGS)" -arg -dont-load-proofs -R src ADTSynthesis -R examples ADTExamples $(CITO_ARGS) -o Makefile.coq
+	"$(COQBIN)coq_makefile" $(CORE_VS) $(EXAMPLE_VS) $(QUERYSTRUCTURE_VS) $(SRC_PARSERS_VS) $(FINITESET_VS) $(COMPILER_VS) COQC = " \$$(SILENCE_COQC)$(TIMER) \"\$$(COQBIN)coqc\"" COQDEP = " \$$(SILENCE_COQDEP)\"\$$(COQBIN)coqdep\" -c" COQDOCFLAGS = "$(COQDOCFLAGS)" -arg -dont-load-proofs -R src ADTSynthesis -R examples ADTExamples -o Makefile.coq
 
 clean-doc::
 	rm -rf html
@@ -219,3 +326,31 @@ repl: examples/repl.ml examples/bookstore.cmxa
 
 naiverepl: examples/repl.ml examples/bookstorenaive.cmxa
 	cd examples && ocamlopt -w -a -o repl unix.cmxa str.cmxa bookstorenaive.cmxa repl.ml
+
+examples/ExtractingFiniteSetsExamples.vo: examples/ExtractingFiniteSetsExamples.v
+	$(COQC) -I ../bedrock/platform -dont-load-proofs -R src ADTSynthesis -R examples ADTExamples \
+		-R ../bedrock/src Bedrock -R ../bedrock/platform/cito Cito -R ../bedrock/platform/facade Facade \
+		examples/ExtractingFiniteSetsExamples
+
+examples/SumUnique.ml examples/SumUniqueAMD64.vo: examples/SumUniqueAMD64.v
+	cat examples/ignoreFail.ml >$@
+	$(COQC) -I ../bedrock/platform -dont-load-proofs -R src ADTSynthesis -R examples ADTExamples \
+		-R ../bedrock/src Bedrock -R ../bedrock/platform/cito Cito -R ../bedrock/platform/facade Facade \
+		$< 2>/dev/null \
+		| sed '/let coq_Unnamed_thm_/,/module/{/module/!d}' \
+		| sed 's/   allWords_def/   fun _ -> []/' \
+		| sed 's/   N.to_nat$$/   fun _ -> O/' \
+		>>$@
+	cat examples/printCode.ml >>$@
+
+examples/SumUnique.s: examples/SumUnique.ml
+	echo ".global bedrock_heap,export_dffun,sys_abort" >$@
+	echo >>$@
+	ocaml -w -x $< >>$@
+
+examples/SumUnique.exe: examples/SumUnique.o examples/bedrock_main.o examples/bedrock_driver.o
+	cc $^ -o $@
+
+cheat:
+	cp examples/SumUnique.pregenerated.ml examples/SumUnique.ml
+	cp examples/SumUnique.pregenerated.s examples/SumUnique.s

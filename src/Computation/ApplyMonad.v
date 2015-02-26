@@ -1,7 +1,7 @@
 (** * A variant of the [Comp] monad laws using [apply] *)
-Require Import String Ensembles.
-Require Import Common.
-Require Import Computation.Core Computation.Monad Computation.SetoidMorphisms.
+Require Import Coq.Strings.String Coq.Sets.Ensembles.
+Require Import ADTSynthesis.Common.
+Require Import ADTSynthesis.Computation.Core ADTSynthesis.Computation.Monad ADTSynthesis.Computation.SetoidMorphisms.
 
 (** ** Helper monad laws, on the left side of a [refine] *)
 

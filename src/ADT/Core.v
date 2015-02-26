@@ -1,5 +1,5 @@
-Require Export Common Computation ADTSig.
-Require Import Ensembles.
+Require Export ADTSynthesis.Common ADTSynthesis.Computation ADTSynthesis.ADT.ADTSig.
+Require Import Coq.Sets.Ensembles.
 
 Generalizable All Variables.
 Set Implicit Arguments.

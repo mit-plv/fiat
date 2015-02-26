@@ -23,13 +23,40 @@
 examples/bookstore.ml
 examples/bookstore.mli
 examples/repl
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
 /ADT-Synthesis-Submitted.tiff
 /examples/*coq*
 /examples/ADTExamples/PLLunch.v
 /examples/ADTExamples/PLLunch2.v
 /examples/ADTExamples/SetoidRewritingAdventures.v
+/examples/SumUnique.ml
 /src/Makefile.coq
 /src/QueryStructure/QuerySpecs/ConstraintCheckUnfoldings.v
 /src/QueryStructure/QuerySpecs/InsertQSRefinements.v
 /src/QueryStructure/Refinements/AdditionalListLemmas.v
 /src/Overview
+/examples/SumUnique.exe
+/examples/SumUnique.s
+=======
+=======
+>>>>>>> Stashed changes
+ADT-Synthesis-Submitted.tiff
+examples/*coq*
+examples/ADTExamples/PLLunch.v
+examples/ADTExamples/PLLunch2.v
+examples/ADTExamples/SetoidRewritingAdventures.v
+src/Makefile.coq
+src/QueryStructure/QuerySpecs/ConstraintCheckUnfoldings.v
+src/QueryStructure/QuerySpecs/InsertQSRefinements.v
+src/QueryStructure/Refinements/AdditionalListLemmas.v
+Overview
+web
+src/Bellmania
+<<<<<<< Updated upstream
+artifact
+>>>>>>> Stashed changes
+=======
+artifact
+>>>>>>> Stashed changes
+/examples/QueryStructure/*coq*

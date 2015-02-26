@@ -4,7 +4,8 @@ Require Import Parsers.ContextFreeGrammar Parsers.Specification Parsers.Dependen
 Require Import Parsers.WellFoundedParse Parsers.ContextFreeGrammarProperties.
 Require Import Common Common.ilist Common.Wf Common.Le Common.Equality.
 
-Start Profiling.
+(* This requires the profiling module.  *)
+(* Start Profiling. *)
 
 Set Implicit Arguments.
 

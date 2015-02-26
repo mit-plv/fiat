@@ -1,6 +1,7 @@
 Require Import Coq.Lists.List Coq.Strings.String.
-Require Import Coq.omega.Omega.
-Require Export Setoid RelationClasses Program Morphisms.
+Require Import Coq.omega.Omega Coq.Lists.SetoidList.
+Require Export Coq.Setoids.Setoid Coq.Classes.RelationClasses
+        Coq.Program.Program Coq.Classes.Morphisms.
 
 Global Set Implicit Arguments.
 Global Generalizable All Variables.
@@ -481,6 +482,16 @@ Ltac higher_order_1_reflexivity :=
   solve [ higher_order_1_reflexivity'
         | sym_higher_order_1_reflexivity' ].
 
+Ltac higher_order_1_f_reflexivity :=
+  let a := match goal with |- ?R (?g ?a) (?g (?f ?x)) => constr:(a) end in
+  let f := match goal with |- ?R (?g ?a) (?g (?f ?x)) => constr:(f) end in
+  let x := match goal with |- ?R (?g ?a) (?g (?f ?x)) => constr:(x) end in
+  let a' := (eval pattern x in a) in
+  let f' := match a' with ?f' _ => constr:(f') end in
+  unify f f';
+    cbv beta;
+    solve [apply reflexivity].
+
   (* This applies reflexivity after refining a method. *)
 
 Ltac higher_order_2_reflexivity' :=
@@ -509,57 +520,259 @@ Ltac higher_order_2_reflexivity :=
   solve [ higher_order_2_reflexivity'
         | sym_higher_order_2_reflexivity' ].
 
-Axiom IsHProp : Type -> Type.
-Existing Class IsHProp.
-Instance : forall A, IsHProp (IsHProp A).
-Admitted.
+Ltac higher_order_2_f_reflexivity :=
+  let x := match goal with |- ?R (?g ?x) (?g (?f ?a ?b)) => constr:(x) end in
+  let f := match goal with |- ?R (?g ?x) (?g (?f ?a ?b)) => constr:(f) end in
+  let a := match goal with |- ?R (?g ?x) (?g (?f ?a ?b)) => constr:(a) end in
+  let b := match goal with |- ?R (?g ?x) (?g (?f ?a ?b)) => constr:(b) end in
+  let x' := (eval pattern a, b in x) in
+  let f' := match x' with ?f' _ _ => constr:(f') end in
+  unify f f';
+    cbv beta;
+    solve [apply reflexivity].
 
-Axiom allpath_hprop : forall `{H : IsHProp A} (x y : A), x = y.
-Axiom hprop_allpath : forall (A : Type), (forall (x y : A), x = y) -> IsHProp A.
+Ltac higher_order_3_reflexivity :=
+  let x := match goal with |- ?R ?x (?f ?a ?b ?c) => constr:(x) end in
+  let f := match goal with |- ?R ?x (?f ?a ?b ?c) => constr:(f) end in
+  let a := match goal with |- ?R ?x (?f ?a ?b ?c) => constr:(a) end in
+  let b := match goal with |- ?R ?x (?f ?a ?b ?c) => constr:(b) end in
+  let c := match goal with |- ?R ?x (?f ?a ?b ?c) => constr:(c) end in
+  let x' := (eval pattern a, b, c in x) in
+  let f' := match x' with ?f' _ _ _ => constr:(f') end in
+  unify f f';
+    cbv beta;
+    solve [apply reflexivity].
+
+Ltac higher_order_3_f_reflexivity :=
+  let x := match goal with |- ?R (?g ?x) (?g (?f ?a ?b ?c)) => constr:(x) end in
+  let f := match goal with |- ?R (?g ?x) (?g (?f ?a ?b ?c)) => constr:(f) end in
+  let a := match goal with |- ?R (?g ?x) (?g (?f ?a ?b ?c)) => constr:(a) end in
+  let b := match goal with |- ?R (?g ?x) (?g (?f ?a ?b ?c)) => constr:(b) end in
+  let c := match goal with |- ?R (?g ?x) (?g (?f ?a ?b ?c)) => constr:(c) end in
+  let x' := (eval pattern a, b, c in x) in
+  let f' := match x' with ?f' _ _ _ => constr:(f') end in
+  unify f f';
+    cbv beta;
+    solve [apply reflexivity].
+
+Ltac higher_order_4_reflexivity :=
+  let x := match goal with |- ?R ?x (?f ?a ?b ?c ?d) => constr:(x) end in
+  let f := match goal with |- ?R ?x (?f ?a ?b ?c ?d) => constr:(f) end in
+  let a := match goal with |- ?R ?x (?f ?a ?b ?c ?d) => constr:(a) end in
+  let b := match goal with |- ?R ?x (?f ?a ?b ?c ?d) => constr:(b) end in
+  let c := match goal with |- ?R ?x (?f ?a ?b ?c ?d) => constr:(c) end in
+  let d := match goal with |- ?R ?x (?f ?a ?b ?c ?d) => constr:(d) end in
+  let x' := (eval pattern a, b, c, d in x) in
+  let f' := match x' with ?f' _ _ _ _ => constr:(f') end in
+  unify f f';
+    cbv beta;
+    solve [apply reflexivity].
+
+Ltac higher_order_4_f_reflexivity :=
+  let x := match goal with |- ?R (?g ?x) (?g (?f ?a ?b ?c ?d)) => constr:(x) end in
+  let f := match goal with |- ?R (?g ?x) (?g (?f ?a ?b ?c ?d)) => constr:(f) end in
+  let a := match goal with |- ?R (?g ?x) (?g (?f ?a ?b ?c ?d)) => constr:(a) end in
+  let b := match goal with |- ?R (?g ?x) (?g (?f ?a ?b ?c ?d)) => constr:(b) end in
+  let c := match goal with |- ?R (?g ?x) (?g (?f ?a ?b ?c ?d)) => constr:(c) end in
+  let d := match goal with |- ?R (?g ?x) (?g (?f ?a ?b ?c ?d)) => constr:(d) end in
+  let x' := (eval pattern a, b, c, d in x) in
+  let f' := match x' with ?f' _ _ _ _ => constr:(f') end in
+  unify f f';
+    cbv beta;
+    solve [apply reflexivity].
+
+Ltac higher_order_reflexivity :=
+  match goal with
+    | |- ?R (?g ?x) (?g (?f ?a ?b ?c ?d)) =>  higher_order_4_f_reflexivity
+    | |- ?R (?g ?x) (?g (?f ?a ?b ?c))    =>  higher_order_3_f_reflexivity
+    | |- ?R (?g ?x) (?g (?f ?a ?b))       =>  higher_order_2_f_reflexivity
+    | |- ?R (?g ?x) (?g (?f ?a))          =>  higher_order_1_f_reflexivity
+
+    | |- ?R ?x (?f ?a ?b ?c ?d)           =>  higher_order_4_reflexivity
+    | |- ?R ?x (?f ?a ?b ?c)              =>  higher_order_3_reflexivity
+    | |- ?R ?x (?f ?a ?b)                 =>  higher_order_2_reflexivity
+    | |- ?R ?x (?f ?a)                    =>  higher_order_1_reflexivity
+
+    | |- _                                =>  reflexivity
+  end.
+
 
 Global Arguments f_equal {A B} f {x y} _ .
 
-(*Definition Sect {A B : Type} (s : A -> B) (r : B -> A) :=
-  forall x : A, r (s x) = x.
 
-Class IsEquiv {A B : Type} (f : A -> B) := BuildIsEquiv {
-  equiv_inv : B -> A ;
-  eisretr : Sect equiv_inv f;
-  eissect : Sect f equiv_inv;
-  eisadj : forall x : A, eisretr (f x) = f_equal f (eissect x)
-}.
-
-Arguments eisretr {A B} f {_} _.
-Arguments eissect {A B} f {_} _.
-Arguments eisadj {A B} f {_} _.
-
-Definition apD10 {A} {B:A->Type} {f g : forall x, B x} (h:f=g)
-  : forall x, f x = g x
-  := fun x => match h with eq_refl => eq_refl end.
-
-Class Funext :=
-  { isequiv_apD10 :> forall (A : Type) (P : A -> Type) f g, IsEquiv (@apD10 A P f g) }. *)
-
-(* We'll just assume functional extensionality for now. *)
-
-Global Instance trunc_forall `{P : A -> Type} `{forall a, IsHProp (P a)}
-  : IsHProp (forall a, P a) | 100.
-Admitted.
-
-Instance trunc_prod `{IsHProp A, IsHProp B} : IsHProp (A * B).
-Admitted.
-
-Record hProp := hp { hproptype :> Type ; isp : IsHProp hproptype}.
-Existing Instance isp.
-
-Instance : forall A : hProp, IsHProp A.
-Admitted.
-
-Lemma path_sig_hprop {A} {P : A -> Prop} `{forall x : A, IsHProp (P x)}
-      (x y : sig P)
-: proj1_sig x = proj1_sig y -> x = y.
+Lemma fst_fold_right {A B A'} (f : B -> A -> A) (g : B -> A * A' -> A') a a' ls
+: fst (fold_right (fun b aa' => (f b (fst aa'), g b aa')) (a, a') ls)
+  = fold_right f a ls.
 Proof.
-  destruct_head sig; intros; subst; f_equal; apply allpath_hprop.
+  induction ls; simpl; trivial.
+  rewrite IHls; reflexivity.
+Qed.
+
+Lemma if_app {A} (ls1 ls1' ls2 : list A) (b : bool)
+: (if b then ls1 else ls1') ++ ls2 = if b then (ls1 ++ ls2) else (ls1' ++ ls2).
+Proof.
+  destruct b; reflexivity.
+Qed.
+
+Definition pull_if_dep {A B} (P : forall b : bool, A b -> B b) (a : A true) (a' : A false)
+           (b : bool)
+: P b (if b as b return A b then a else a') =
+  if b as b return B b then P _ a else P _ a'
+  := match b with true => eq_refl | false => eq_refl end.
+
+Definition pull_if {A B} (P : A -> B) (a a' : A) (b : bool)
+: P (if b then a else a') = if b then P a else P a'
+  := pull_if_dep (fun _ => P) a a' b.
+
+(** From jonikelee@gmail.com on coq-club *)
+Ltac simplify_hyp' H :=
+  let T := type of H in
+  let X := (match eval hnf in T with ?X -> _ => constr:X end) in
+  let H' := fresh in
+  assert (H' : X) by (tauto || congruence);
+    specialize (H H');
+    clear H'.
+
+Ltac simplify_hyps :=
+  repeat match goal with
+           | [ H : ?X -> _ |- _ ] => simplify_hyp' H
+           | [ H : ~?X |- _ ] => simplify_hyp' H
+         end.
+
+Local Ltac bool_eq_t :=
+  destruct_head_hnf bool; simpl;
+  repeat (split || intro || destruct_head iff || congruence);
+  repeat match goal with
+           | [ H : ?x = ?x -> _ |- _ ] => specialize (H eq_refl)
+           | [ H : ?x <> ?x |- _ ] => specialize (H eq_refl)
+           | [ H : False |- _ ] => destruct H
+           | _ => progress simplify_hyps
+           | [ H : ?x = ?y |- _ ] => solve [ inversion H ]
+           | [ H : false = true -> _ |- _ ] => clear H
+         end.
+
+Lemma bool_true_iff_beq (b0 b1 b2 b3 : bool)
+: (b0 = b1 <-> b2 = b3) <-> (b0 = (if b1
+                                   then if b3
+                                        then b2
+                                        else negb b2
+                                   else if b3
+                                        then negb b2
+                                        else b2)).
+Proof. bool_eq_t. Qed.
+
+Lemma bool_true_iff_bneq (b0 b1 b2 b3 : bool)
+: (b0 = b1 <-> b2 <> b3) <-> (b0 = (if b1
+                                    then if b3
+                                         then negb b2
+                                         else b2
+                                    else if b3
+                                         then b2
+                                         else negb b2)).
+Proof. bool_eq_t. Qed.
+
+Lemma bool_true_iff_bnneq (b0 b1 b2 b3 : bool)
+: (b0 = b1 <-> ~b2 <> b3) <-> (b0 = (if b1
+                                     then if b3
+                                          then b2
+                                          else negb b2
+                                     else if b3
+                                          then negb b2
+                                          else b2)).
+Proof. bool_eq_t. Qed.
+
+Lemma dn_eqb (x y : bool) : ~~(x = y) -> x = y.
+Proof.
+  destruct x, y; try congruence;
+  intro H; exfalso; apply H; congruence.
+Qed.
+
+Lemma neq_to_eq_negb (x y : bool) : x <> y -> x = negb y.
+Proof.
+  destruct x, y; try congruence; try tauto.
+Qed.
+
+Lemma InA_In {A} R (ls : list A) x `{Reflexive _ R}
+: List.In x ls -> InA R x ls.
+Proof.
+  revert x.
+  induction ls; simpl; try tauto.
+  intros ? [?|?]; subst; [ left | right ]; auto.
+Qed.
+
+Lemma InA_In_eq {A} (ls : list A) x
+: InA eq x ls <-> List.In x ls.
+Proof.
+  split; [ | eapply InA_In; exact _ ].
+  revert x.
+  induction ls; simpl.
+  { intros ? H. inversion H. }
+  { intros ? H.
+    inversion H; subst;
+    first [ left; reflexivity
+          | right; eauto ]. }
+Qed.
+
+Lemma NoDupA_NoDup {A} R (ls : list A) `{Reflexive _ R}
+: NoDupA R ls -> NoDup ls.
+Proof.
+  intro H'.
+  induction H'; constructor; auto.
+  intro H''; apply (@InA_In _ R) in H''; intuition.
+Qed.
+
+Lemma push_if_existT {A} (P : A -> Type) (b : bool) (x y : sigT P)
+: (if b then x else y)
+  = existT P
+           (if b then (projT1 x) else (projT1 y))
+           (if b as b return P (if b then (projT1 x) else (projT1 y))
+            then projT2 x
+            else projT2 y).
+Proof.
+  destruct b, x, y; reflexivity.
+Defined.
+
+(** TODO: Find a better place for these *)
+Lemma fold_right_projT1 {A B X} (P : A -> Type) (init : A * B) (ls : list X) (f : X -> A -> A) (g : X -> A -> B -> B) pf pf'
+: List.fold_right (fun (x : X) (acc : A * B) =>
+                     (f x (fst acc), g x (fst acc) (snd acc)))
+                  init
+                  ls
+  = let fr := List.fold_right (fun (x : X) (acc : sigT P * B) =>
+                                 (existT P (f x (projT1 (fst acc))) (pf' x acc),
+                                  g x (projT1 (fst acc)) (snd acc)))
+                              (existT P (fst init) pf, snd init)
+                              ls in
+    (projT1 (fst fr), snd fr).
+Proof.
+  revert init pf.
+  induction ls; simpl; intros [? ?]; trivial; simpl.
+  intro.
+  simpl in *.
+  erewrite IHls; simpl.
+  reflexivity.
+Qed.
+
+Lemma fold_right_projT1' {A X} (P : A -> Type) (init : A) (ls : list X) (f : X -> A -> A) pf pf'
+: List.fold_right f init ls
+  = projT1 (List.fold_right (fun (x : X) (acc : sigT P) =>
+                               existT P (f x (projT1 acc)) (pf' x acc))
+                            (existT P init pf)
+                            ls).
+Proof.
+  revert init pf.
+  induction ls; simpl; intros; trivial; simpl.
+  simpl in *.
+  erewrite IHls; simpl.
+  reflexivity.
+Qed.
+
+Global Add Parametric Morphism {A B} : (@List.fold_right A B)
+    with signature pointwise_relation _ (pointwise_relation _ eq) ==> eq ==> eq ==> eq
+      as fold_right_f_eq_mor.
+Proof.
+  destruct_head sig; intros; subst; f_equal.
+  repeat (apply functional_extensionality; intros); eapply H.
 Defined.
 
 Fixpoint combine_sig_helper {T} {P : T -> Prop} (ls : list T) : (forall x, In x ls -> P x) -> list (sig P).

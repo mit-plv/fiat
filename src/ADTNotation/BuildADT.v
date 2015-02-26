@@ -1,7 +1,7 @@
-Require Import Common Computation Ensembles List String
-        ADT.ADTSig ADT.Core ADT.ComputationalADT
-        ADTNotation.StringBound Common.ilist
-        ADTNotation.BuildADTSig.
+Require Import ADTSynthesis.Common ADTSynthesis.Computation Coq.Sets.Ensembles Coq.Lists.List Coq.Strings.String
+        ADTSynthesis.ADT.ADTSig ADTSynthesis.ADT.Core ADTSynthesis.ADT.ComputationalADT
+        ADTSynthesis.Common.StringBound ADTSynthesis.Common.ilist
+        ADTSynthesis.ADTNotation.BuildADTSig.
 
 (* Notations for ADTs. *)
 
@@ -24,18 +24,18 @@ Class CoDHint := {codHint : Type}.
 Record methDef {Rep : Type} (Sig : methSig) :=
   { methBody :> methodType Rep (methDom Sig) (methCod Sig)}.
 
-Notation "'meth' id ( r : 'rep' , x : dom ) : cod := bod" :=
+Notation "'Def' 'Method' id ( r : 'rep' , x : dom ) : cod := bod" :=
   (Build_methDef {| methID := id; methDom := dom; methCod := cod |} (fun (r : repHint) x => let cod := {| codHint := cod |} in bod%comp))
     (no associativity, id at level 0, r at level 0, x at level 0, dom at level 0,
      cod at level 0, only parsing,
-     at level 94, format "'meth'  id  ( r  :  'rep' ,  x  :  dom )  :  cod  := '/' '[  '   bod ']' " ) :
+     at level 94, format "'Def'  'Method'  id  ( r  :  'rep' ,  x  :  dom )  :  cod  := '/' '[  '   bod ']' " ) :
 methDefParsing_scope.
 
-Notation "'meth' id ( r : 'rep' , x : dom ) : cod := bod" :=
+Notation "'Def' 'Method' id ( r : 'rep' , x : dom ) : cod := bod" :=
   (Build_methDef {| methID := id; methDom := dom; methCod := cod |} (fun r x => bod%comp))
     (no associativity, id at level 0, r at level 0, x at level 0, dom at level 0,
      cod at level 0,
-     at level 94, format "'meth'  id  ( r  :  'rep' ,  x  :  dom )  :  cod  :=  '/' '[  '   bod ']' " ) :
+     at level 94, format "'Def'  'Method'  id  ( r  :  'rep' ,  x  :  dom )  :  cod  :=  '/' '[  '   bod ']' " ) :
 methDef_scope.
 
 Delimit Scope methDefParsing_scope with methDefParsing.
@@ -44,11 +44,11 @@ Delimit Scope methDef_scope with methDef.
 Record consDef {Rep : Type} (Sig : consSig) :=
   { consBody :> constructorType Rep (consDom Sig) }.
 
-Notation "'const' id ( x : dom ) : 'rep' := bod" :=
+Notation "'Def' 'Constructor' id ( x : dom ) : 'rep' := bod" :=
   (Build_consDef {| consID := id; consDom := dom |} (fun x => bod%comp))
     (no associativity, at level 94, id at level 0, r at level 0,
      x at level 0, dom at level 0,
-     format "'const'  id  ( x :  dom )  :  'rep'  :=  '/' '[  '   bod ']' " ) :
+     format "'Def'  'Constructor'  id  ( x :  dom )  :  'rep'  :=  '/' '[  '   bod ']' " ) :
 consDef_scope.
 
 Delimit Scope consDef_scope with consDef.
@@ -124,7 +124,3 @@ Notation "'ADTRep' r { cons1 , meth1 , .. , methn } " :=
 (* Notations for method calls. *)
 Notation callMeth adt idx := (Methods adt {| bindex := idx |}).
 Notation callCons adt idx := (Constructors adt {| bindex := idx |}).
-Notation CallMethod CompADT idx r i :=
-  (CallComputationalMethod CompADT {|bindex := idx |} r i).
-Notation CallConstructor CompADT idx i :=
-  (CallComputationalConstructor CompADT {|bindex := idx |} i).

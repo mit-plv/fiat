@@ -1,4 +1,4 @@
-Require Export Common Computation.
+Require Export ADTSynthesis.Common ADTSynthesis.Computation.
 
 (** Type of a constructor. *)
 Definition constructorType (rep dom : Type)

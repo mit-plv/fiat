@@ -1,5 +1,5 @@
-Require Import Common.
-Require Import Computation.Core.
+Require Import ADTSynthesis.Common.
+Require Import ADTSynthesis.Computation.Core.
 
 (** General Lemmas about the parametric morphism behavior of
     [computes_to], [refine], and [refineEquiv]. *)
@@ -113,14 +113,14 @@ Proof.
 Qed.
 
 Notation "'If' c 'Then' t 'Else' e" :=
-  (If_Then_Else c t e) 
+  (If_Then_Else c t e)
     (at level 70).
 
 Definition If_Opt_Then_Else {A B}
            (c : option A)
            (t : A -> B)
            (e : B) :=
-  match c with 
+  match c with
     | Some a => t a
     | None => e
   end.
@@ -129,7 +129,7 @@ Add Parametric Morphism A B (c : option A)
 : (@If_Opt_Then_Else A (Comp B) c)
     with signature
     ((pointwise_relation A (@refine B))
-       ==> @refine B 
+       ==> @refine B
        ==> @refine B )
       as refine_If_Opt_Then_Else.
 Proof.
@@ -138,7 +138,7 @@ Proof.
 Qed.
 
 Notation "'Ifopt' c 'as' c' 'Then' t 'Else' e" :=
-  (If_Opt_Then_Else c (fun c' => t) e) 
+  (If_Opt_Then_Else c (fun c' => t) e)
     (at level 70).
 
 Add Parametric Morphism A

@@ -1,5 +1,11 @@
-Require Import Common ADT.Core ADT.ComputationalADT
-        ADTRefinement.Core ADTRefinement.SetoidMorphisms.
+Require Import Coq.Lists.List Coq.Strings.String
+        ADTSynthesis.Common
+        ADTSynthesis.Common.ilist
+        ADTSynthesis.Common.i2list
+        ADTSynthesis.Common.StringBound
+        ADTSynthesis.ADT.Core ADTSynthesis.ADT.ComputationalADT
+        ADTSynthesis.ADTRefinement.Core
+        ADTSynthesis.ADTRefinement.SetoidMorphisms.
 
 (* To derive an ADT interactively from a specification [spec], we can
    build a dependent product [ {adt : _ & refineADT spec adt} ]. The
@@ -24,9 +30,46 @@ Require Import Common ADT.Core ADT.ComputationalADT
    knives), so I'm carrying on the naming convention with a
    'Sharpened' notation for the dependent products. *)
 
-Notation Sharpened spec := {adt : _ & refineADT spec adt}.
+Notation FullySharpened spec := {adt : _ & refineADT spec (LiftcADT adt)}.
 
-Notation FullySharpened spec := {adt : _ & prod (refineADT spec adt) (is_computationalADT adt)}.
+Record NamedADTSig :=
+  { ADTSigname : string;
+    namedADTSig : ADTSig }.
+
+Record SharpenedUnderDelegates (Sig : ADTSig)
+  : Type
+  := Build_SharpenedUnderDelegates
+       { Sharpened_DelegateIDs : list string;
+         Sharpened_DelegateSigs : @BoundedString Sharpened_DelegateIDs -> ADTSig;
+         Sharpened_Implementation :
+           forall (DelegateReps : @BoundedString Sharpened_DelegateIDs -> Type)
+                  (DelegateImpls : forall idx,
+                                      pcADT (Sharpened_DelegateSigs idx) (DelegateReps idx)),
+             cADT Sig;
+         Sharpened_DelegateSpecs : forall idx, ADT (Sharpened_DelegateSigs idx) }.
+
+Definition FullySharpenedUnderDelegates
+           (Sig : ADTSig)
+           (spec : ADT Sig)
+           (adt : SharpenedUnderDelegates Sig)
+  := forall (DelegateReps : @BoundedString (Sharpened_DelegateIDs adt) -> Type)
+            (DelegateImpls : forall idx,
+                               pcADT (Sharpened_DelegateSigs adt idx) (DelegateReps idx))
+            (ValidImpls
+             : forall idx : @BoundedString (Sharpened_DelegateIDs adt),
+                 refineADT (Sharpened_DelegateSpecs adt idx)
+                           (LiftcADT (existT _ _ (DelegateImpls idx)))),
+       refineADT spec
+                 (LiftcADT (Sharpened_Implementation adt DelegateReps DelegateImpls)).
+
+(* Old Deprecated Sharpened Definition *)
+(* Notation Sharpened spec := {adt : _ & refineADT spec adt}. *)
+
+(* Shiny New Sharpened Definition includes proof that the
+   ADT produced is sharpened modulo a set of 'Delegated ADTs'. *)
+
+Notation Sharpened spec :=
+  {adt : _ & @FullySharpenedUnderDelegates _ spec adt}.
 
 (* A single refinement step. *)
 Definition SharpenStep Sig adt :
@@ -35,25 +78,213 @@ Definition SharpenStep Sig adt :
     Sharpened adt' ->
     Sharpened adt.
 Proof.
-  intros adt' refineA SpecA';
-  eexists (projT1 SpecA').
-  (* rewrite refineA. *)
-  eapply transitivityT; [ eassumption | ].
-  exact (projT2 SpecA').
+  intros adt' refineA adt''.
+  exists (projT1 adt'').
+  unfold FullySharpenedUnderDelegates in *.
+  intros * idx; eapply transitivityT;
+  [ eassumption | exact (projT2 adt'' _ DelegateImpls idx)].
 Defined.
 
-Definition SharpenFully Sig adt :
-  forall adt',
-    refineADT (Sig := Sig) adt adt' ->
-    Sharpened adt' ->
-    is_computationalADT adt' ->
-    FullySharpened adt.
+Lemma projT1_SharpenStep
+: forall Sig adt adt' refine_adt_adt' Sharpened_adt',
+    projT1 (@SharpenStep Sig adt adt' refine_adt_adt' Sharpened_adt') =
+    projT1 Sharpened_adt'.
 Proof.
-  eauto.
-Defined.
+  reflexivity.
+Qed.
 
-(* A tactic for finishing a derivation. Probably needs a better name.*)
-Tactic Notation "finish" "sharpening" := eexists; solve [ reflexivity | eapply reflexivityT ].
+(* Definition for constructing an easily extractible ADT implementation. *)
+
+Definition BuildMostlySharpenedcADT
+           Sig
+           (DelegateIDs : list string)
+           (DelegateSigs : @BoundedString DelegateIDs -> ADTSig)
+           (rep : (@BoundedString DelegateIDs -> Type) -> Type)
+           (cConstructors :
+              forall
+                (DelegateReps : @BoundedString DelegateIDs -> Type)
+                (DelegateImpls : forall idx,
+                                   pcADT (DelegateSigs idx) (DelegateReps idx)) idx,
+                cConstructorType
+                  (rep DelegateReps)
+                  (ConstructorDom Sig idx))
+           (cMethods :
+              forall
+                (DelegateReps : @BoundedString DelegateIDs -> Type)
+                (DelegateImpls : forall idx,
+                                   pcADT (DelegateSigs idx) (DelegateReps idx)) idx,
+                cMethodType
+                  (rep DelegateReps)
+                  (fst (MethodDomCod Sig idx))
+                  (snd (MethodDomCod Sig idx)))
+           (DelegateReps : @BoundedString DelegateIDs -> Type)
+           (DelegateImpls : forall idx,
+                              pcADT (DelegateSigs idx) (DelegateReps idx))
+: cADT Sig :=
+  existT _ (rep DelegateReps)
+         {| pcConstructors := cConstructors DelegateReps DelegateImpls;
+            pcMethods      := cMethods DelegateReps DelegateImpls |}.
+
+(* Proof component of the ADT is Qed-ed. *)
+Lemma FullySharpened_BuildMostlySharpenedcADT {Sig}
+: forall
+    (spec : ADT Sig)
+    (DelegateIDs : list string)
+    (DelegateSigs : @BoundedString DelegateIDs -> ADTSig)
+    (rep : (@BoundedString DelegateIDs -> Type) -> Type)
+    (cConstructors :
+       forall
+         (DelegateReps : @BoundedString DelegateIDs -> Type)
+         (DelegateImpls : forall idx,
+                            pcADT (DelegateSigs idx) (DelegateReps idx)) idx,
+         cConstructorType
+           (rep DelegateReps)
+           (ConstructorDom Sig idx))
+    (cMethods :
+       forall
+         (DelegateReps : @BoundedString DelegateIDs -> Type)
+         (DelegateImpls : forall idx,
+                            pcADT (DelegateSigs idx) (DelegateReps idx)) idx,
+         cMethodType
+           (rep DelegateReps)
+           (fst (MethodDomCod Sig idx))
+           (snd (MethodDomCod Sig idx)))
+    (DelegateSpecs : forall idx, ADT (DelegateSigs idx))
+    (cAbsR :
+       forall
+         (DelegateReps : @BoundedString DelegateIDs -> Type)
+         (DelegateImpls : forall idx,
+                            pcADT (DelegateSigs idx) (DelegateReps idx))
+         (ValidImpls
+          : forall idx : @BoundedString DelegateIDs,
+              refineADT (DelegateSpecs idx)
+                        (LiftcADT (existT _ _ (DelegateImpls idx)))),
+         Rep spec -> rep DelegateReps -> Prop),
+    (forall
+        (DelegateReps : @BoundedString DelegateIDs -> Type)
+        (DelegateImpls : forall idx,
+                           pcADT (DelegateSigs idx) (DelegateReps idx))
+        (ValidImpls
+         : forall idx : @BoundedString DelegateIDs,
+             refineADT (DelegateSpecs idx)
+                       (LiftcADT (existT _ _ (DelegateImpls idx)))),
+      forall idx : ConstructorIndex Sig,
+        @refineConstructor
+          (Rep spec) (rep DelegateReps) (cAbsR _ _ ValidImpls)
+          (ConstructorDom Sig idx)
+          (Constructors spec idx)
+         (fun d => ret (cConstructors DelegateReps DelegateImpls idx d)))
+    -> (forall
+           (DelegateReps : @BoundedString DelegateIDs -> Type)
+           (DelegateImpls : forall idx,
+                              pcADT (DelegateSigs idx) (DelegateReps idx))
+           (ValidImpls
+            : forall idx : @BoundedString DelegateIDs,
+                refineADT (DelegateSpecs idx)
+                          (LiftcADT (existT _ _ (DelegateImpls idx)))),
+        forall idx,
+          @refineMethod
+            (Rep spec) (rep DelegateReps) (cAbsR _ _ ValidImpls)
+            (fst (MethodDomCod Sig idx)) (snd (MethodDomCod Sig idx))
+            (Methods spec idx)
+            (fun r_n d => ret (cMethods DelegateReps DelegateImpls idx r_n d)))
+    -> FullySharpenedUnderDelegates
+         spec
+         {| Sharpened_DelegateSigs := DelegateSigs;
+            Sharpened_Implementation := BuildMostlySharpenedcADT Sig DelegateSigs rep cConstructors
+                                                                 cMethods;
+            Sharpened_DelegateSpecs := DelegateSpecs |}.
+Proof.
+  intros * cConstructorsRefinesSpec cMethodsRefinesSpec DelegateReps DelegateImpls DelegateImplRefinesSpec.
+  eapply (@refinesADT Sig spec (LiftcADT (existT _ (rep DelegateReps)
+                                         {| pcConstructors := _;
+                                            pcMethods := _|}))
+                      (cAbsR DelegateReps DelegateImpls DelegateImplRefinesSpec)).
+  - simpl; intros;
+    eapply (cConstructorsRefinesSpec _ _ DelegateImplRefinesSpec idx d).
+  - simpl; intros.
+    eapply (cMethodsRefinesSpec _ _ DelegateImplRefinesSpec); eauto.
+Qed.
+
+Definition SharpenFully {Sig}
+    (spec : ADT Sig)
+    (DelegateIDs : list string)
+    (DelegateSigs : @BoundedString DelegateIDs -> ADTSig)
+    (rep : (@BoundedString DelegateIDs -> Type) -> Type)
+    (cConstructors :
+       forall
+         (DelegateReps : @BoundedString DelegateIDs -> Type)
+         (DelegateImpls : forall idx,
+                            pcADT (DelegateSigs idx) (DelegateReps idx)) idx,
+         cConstructorType
+           (rep DelegateReps)
+           (ConstructorDom Sig idx))
+    (cMethods :
+       forall
+         (DelegateReps : @BoundedString DelegateIDs -> Type)
+         (DelegateImpls : forall idx,
+                            pcADT (DelegateSigs idx) (DelegateReps idx)) idx,
+         cMethodType
+           (rep DelegateReps)
+           (fst (MethodDomCod Sig idx))
+           (snd (MethodDomCod Sig idx)))
+    (DelegateSpecs : forall idx, ADT (DelegateSigs idx))
+    (cAbsR :
+       forall
+         (DelegateReps : @BoundedString DelegateIDs -> Type)
+         (DelegateImpls : forall idx,
+                            pcADT (DelegateSigs idx) (DelegateReps idx))
+         (ValidImpls
+          : forall idx : @BoundedString DelegateIDs,
+              refineADT (DelegateSpecs idx)
+                        (LiftcADT (existT _ _ (DelegateImpls idx)))),
+         Rep spec -> rep DelegateReps -> Prop)
+    (cConstructorsRefinesSpec : forall
+        (DelegateReps : @BoundedString DelegateIDs -> Type)
+        (DelegateImpls : forall idx,
+                           pcADT (DelegateSigs idx) (DelegateReps idx))
+        (ValidImpls
+         : forall idx : @BoundedString DelegateIDs,
+             refineADT (DelegateSpecs idx)
+                       (LiftcADT (existT _ _ (DelegateImpls idx)))),
+      forall idx : ConstructorIndex Sig,
+        @refineConstructor
+          (Rep spec) (rep DelegateReps) (cAbsR _ _ ValidImpls)
+          (ConstructorDom Sig idx)
+          (Constructors spec idx)
+         (fun d => ret (cConstructors DelegateReps DelegateImpls idx d)))
+    (cMethodsRefinesSpec : forall
+           (DelegateReps : @BoundedString DelegateIDs -> Type)
+           (DelegateImpls : forall idx,
+                              pcADT (DelegateSigs idx) (DelegateReps idx))
+           (ValidImpls
+            : forall idx : @BoundedString DelegateIDs,
+                refineADT (DelegateSpecs idx)
+                          (LiftcADT (existT _ _ (DelegateImpls idx)))),
+        forall idx,
+          @refineMethod
+            (Rep spec) (rep DelegateReps) (cAbsR _ _ ValidImpls)
+            (fst (MethodDomCod Sig idx)) (snd (MethodDomCod Sig idx))
+            (Methods spec idx)
+            (fun r_n d => ret (cMethods DelegateReps DelegateImpls idx r_n d)))
+    : Sharpened spec :=
+  existT _ _ (FullySharpened_BuildMostlySharpenedcADT spec _ rep cConstructors
+                                                      cMethods DelegateSpecs cAbsR
+                                                      cConstructorsRefinesSpec cMethodsRefinesSpec).
+
+Definition Extract_is_computationalADT
+           {Sig}
+           (adt : ADT Sig)
+           (adt_is_comp : is_computationalADT adt)
+: cADT Sig :=
+  existT _ (Rep adt)
+         {| pcConstructors :=
+              fun idx arg =>
+                CallComputationalConstructor adt_is_comp idx arg;
+            pcMethods :=
+              fun idx arg rep =>
+                CallComputationalMethod adt_is_comp idx arg rep
+         |}.
 
 (* Honing tactic for refining the observer method with the specified index.
      This version of the tactic takes the new implementation as an argument. *)

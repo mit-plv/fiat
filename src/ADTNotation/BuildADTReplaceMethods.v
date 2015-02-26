@@ -1,7 +1,7 @@
-Require Import Common List String
-        ADT.ADTSig ADT.Core 
-        ADTNotation.StringBound Common.ilist
-        ADTNotation.BuildADTSig ADTNotation.BuildADT.
+Require Import ADTSynthesis.Common Coq.Lists.List Coq.Strings.String
+        ADTSynthesis.ADT.ADTSig ADTSynthesis.ADT.Core
+        ADTSynthesis.Common.StringBound ADTSynthesis.Common.ilist
+        ADTSynthesis.ADTNotation.BuildADTSig ADTSynthesis.ADTNotation.BuildADT.
 
 (* Definitions for replacing method bodies of ADTs built
    from [BuildADT] . *)

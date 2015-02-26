@@ -1,4 +1,4 @@
-Require Import Omega String Ascii.
+Require Import Coq.omega.Omega Coq.Strings.String Coq.Strings.Ascii.
 Require Import Coq.Structures.OrderedType.
 
 Lemma nat_compare_eq_refl : forall x, nat_compare x x = Eq.

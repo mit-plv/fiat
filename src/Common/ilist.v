@@ -1,8 +1,8 @@
 Generalizable All Variables.
 Set Implicit Arguments.
 
-Require Import List String Arith.
-Require Import Common.
+Require Import Coq.Lists.List Coq.Strings.String Coq.Arith.Arith.
+Require Import ADTSynthesis.Common.
 
 Section ilist.
 
@@ -137,6 +137,7 @@ Section ilist.
       | Some a => B a
       | None => unit
     end.
+
   Definition Dep_Option_elim (a_opt : option A)
             (b_opt : Dep_Option a_opt) :=
     match b_opt in Dep_Option a_opt' return
@@ -144,6 +145,16 @@ Section ilist.
       | Dep_Some a b => b
       | Dep_None => tt
     end.
+
+  Definition Dep_Option_elim_P
+             (P : forall a, B a -> Type)
+             (a_opt : option A)
+             (b_opt : Dep_Option a_opt)
+    := match a_opt as a' return
+             Dep_Option_elimT a' -> Type with
+         | Some a => P a
+         | None => fun _ => True
+       end (Dep_Option_elim b_opt).
 
   Fixpoint ith_error
           (As : list A)
@@ -285,6 +296,7 @@ Section ilist_map.
          | inil => nil
          | icons _ _ x xs => (f _ x)::map_ilist f xs
        end.
+
 End ilist_map.
 
 Section of_list.
@@ -581,6 +593,19 @@ Section ilist_replace.
                Dep_Option_elimT B a_opt -> Dep_Option_elimT B' a_opt -> Prop with
            | Some a => P a
            | None => fun _ _ => True
+         end (Dep_Option_elim b_opt) (Dep_Option_elim b'_opt).
+
+  Definition Dep_Option_elim_T2
+             {A : Type}
+             {B B' : A -> Type}
+             (P : forall a, B a -> B' a -> Type)
+             (a_opt : option A)
+             (b_opt : Dep_Option B a_opt)
+             (b'_opt : Dep_Option B' a_opt)
+      := match a_opt return
+               Dep_Option_elimT B a_opt -> Dep_Option_elimT B' a_opt -> Type with
+           | Some a => P a
+           | None => fun _ _ => unit
          end (Dep_Option_elim b_opt) (Dep_Option_elim b'_opt).
 
   Lemma Dep_Option_P2_refl

@@ -1,3 +1,5 @@
+*.v text eol=lf
+
 /Overview export-ignore
 /paper export-ignore
 /etc export-ignore
