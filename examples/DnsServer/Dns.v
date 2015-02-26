@@ -142,7 +142,8 @@ Section packet.
 
 End packet.
 
-Definition prefixProp (p s : name) := exists ps, p ++ ps = s.
+Definition
+  prefixProp (p s : name) := exists ps, p ++ ps = s.
 Fixpoint prefixBool (p s : name) :=
   match p, s with
     | [ ], _ => true
@@ -176,8 +177,8 @@ Global Instance DecideablePrefix_sym {A} (f : A -> name) {n}
   {| dec n' :=  prefixBool n (f n');
      dec_decides_P n' := prefixBool_eq n (f n')|}.
 
-Definition upperbound (r : DNSRRecord) (rs : list DNSRRecord) :=
-  forall r', List.In r' rs -> List.length r!sNAME >= List.length r'!sNAME.
+Definition upperbound {A} (f : A -> nat) (rs : list A) (r : A) :=
+  forall r', List.In r' rs -> f r >= f r'.
 
 Section FueledFix.
   (* TODO: Find a home for these more definitions in the Common folder. *)
@@ -199,7 +200,7 @@ as the condition on the body is not a proper relation. :p *)
 (* TODO: figure out a definition for pointwise_refine that is a
    proper (i.e. reflexive and transitive) relation.
  *)
-
+(*
 Print respectful.
 
 Definition pointwise_refine {A R}
@@ -241,7 +242,7 @@ Proof.
     intros.
     generalize (IHi _ _ H _ _ H0 a); eauto.
 Qed.
-
+*)
 
 (* TODO: Agree on a notation for our fueled fix function. *)
 Notation "'Repeat' fuel 'initializing' a 'with' arg 'defaulting' rec 'with' base {{ bod }} " :=
@@ -275,12 +276,17 @@ Section FueledFixRefinements.
 End FueledFixRefinements.
 
 Section FilteredList.
-  (* TODO: Move FlattenComp to the Computation directory and find a
-     home for this definition. *)
+
   Definition filtered_list {A}
              (xs : list A)
              (P : Ensemble A)
-    := FlattenCompList.flatten_CompList (map (fun x => Where (P x) (Return x)) xs).
+    := fold_right (fun (a : A) (l : Comp (list A)) =>
+                     l' <- l;
+                     b <- { b | decides b (P a) };
+                     if b
+                     then ret (a :: l')
+                     else ret l'
+                  ) (ret nil) xs.
 
 End FilteredList.
 
@@ -292,8 +298,10 @@ Notation "'unique' b , P ->> s 'otherwise' ->> s'" :=
 Definition is_empty {A} (l : list A) :=
   match l with nil => true | _ => false end.
 
-Notation "[[ x 'in' xs | P ]]" := (filtered_list xs (fun x => P)) (at level 70) : comp_scope.
+Definition get_name (r : DNSRRecord) : list string := r!sNAME.
+Definition name_length (r : DNSRRecord) := List.length (get_name r).
 
+Notation "[[ x 'in' xs | P ]]" := (filtered_list xs (fun x => P)) (at level 70) : comp_scope.
 
 Definition DnsSchema :=
   Query Structure Schema
@@ -312,7 +320,6 @@ Definition DnsSig : ADTSig :=
       Method "AddData" : rep x DNSRRecord -> rep x bool,
       Method "Process" : rep x packet -> rep x packet
     }.
-
 Definition DnsSpec : ADT DnsSig :=
   QueryADTRep DnsSchema {
     Def Constructor "Init" (_ : unit) : rep := empty,
@@ -330,7 +337,7 @@ Definition DnsSpec : ADT DnsSig :=
                   Return r;
             If (is_empty rs)        (* Are there any matching records? *)
             Then
-              bfrs <- [[r in rs | upperbound r rs]]; (* Find the best match (largest prefix) in [rs] *)
+              bfrs <- [[r in rs | upperbound name_length rs r]]; (* Find the best match (largest prefix) in [rs] *)
               b <- { b | decides b (forall r, List.In r bfrs -> n = r!sNAME) };
               if b                (* If the record's QNAME is an exact match  *)
               then
@@ -480,6 +487,7 @@ Proof.
   reflexivity.
 Qed.
 
+
 Lemma foo5 :
   forall (n : DNSRRecord) (r : UnConstrQueryStructure DnsSchema),
     refine {b |
@@ -517,6 +525,9 @@ Lemma foo7 {heading}
                                        (Return tup))))
              (ret (filter DecideableEnsembles.dec l)).
 Proof.
+  Local Transparent Query_For.
+  unfold Query_For, QueryResultComp.
+  (* induction? *)
   admit.
 Qed.
 
@@ -526,8 +537,7 @@ Lemma foo8 {A}
     -> (if c then (if c' then t else e) else e') = if c then t else e'.
 Proof.
   intros; destruct c; destruct c'; try reflexivity.
-  assert (true = true); [ reflexivity |
-                          apply H in H0; discriminate ].
+  assert (true = true); [ reflexivity | apply H in H0; discriminate ].
 Qed.
 
 Lemma foo9 {A}
@@ -537,19 +547,25 @@ Lemma foo9 {A}
 Proof.
   induction l; intros; simpl; try inversion H.
   reflexivity.
-  (* is this lemma true? if length != 0 -> length after filter != 0 *)
 Qed.
 
 Lemma foo10
-:
-  forall (a n : DNSRRecord),
+: forall (a n : DNSRRecord),
     ?[list_eq_dec string_dec n!sNAME a!sNAME] =
     PrefixSearchTermMatcher
       {|
         pst_name := n!sNAME;
         pst_filter := fun tup : DNSRRecord =>
                         ?[list_eq_dec string_dec n!sNAME tup!sNAME] |} a.
-Admitted.
+Proof.
+  intros a n; unfold PrefixSearchTermMatcher.
+  case_eq (list_eq_dec string_dec n!sNAME a!sNAME); intros e H; simpl.
+  - symmetry; apply andb_true_iff; split.
+    + apply prefixBool_eq; setoid_rewrite e; eexists; apply app_nil_r.
+    + find_if_inside; [ reflexivity | contradiction ].
+  - symmetry; apply andb_false_iff.
+    right; find_if_inside; [ contradiction | reflexivity ].
+Qed.
 
 Lemma foo11 {heading}
 : forall l,
@@ -559,104 +575,6 @@ Proof.
   induction l; simpl; congruence.
 Qed.
 
-    Definition find_upperbound (ns : list DNSRRecord) : list DNSRRecord.
-    Admitted.
-
-    Lemma find_upperbound_upperbound :
-      forall ns n, In n (find_upperbound ns) <-> upperbound n ns.
-    Admitted.
-
-    Corollary refine_find_upperbound
-    : forall (ns : list DNSRRecord),
-        refine ([n in ns | upperbound n ns])
-               (ret (find_upperbound ns)).
-    Proof.
-    Admitted.
-
-    Lemma foo16 :
-      forall n ns,
-        In n (find_upperbound ns)
-        -> forall n', In n' (find_upperbound ns)
-                      -> n!sNAME = n'!sNAME.
-    Proof.
-    Admitted.
-
-    Lemma refine_decides_forall_In :
-      forall {A} l (P: A -> Prop) (P_Dec : DecideableEnsemble P),
-        refine {b | decides b (forall (x: A), In x l -> P x)}
-               {b | decides b (~ exists (x : A), In x l /\ ~ P x)}.
-    Lemma foo2point5 :
-      forall P R branch branch',
-        refine
-          (b <- branch;
-           If b
-              Then {b' | decides b' P}
-              Else ret true)
-          (If branch'
-              Then r <- R;
-                   ret (negb r)
-              Else ret true) ->
-        refine
-          (b <- branch;
-           If b
-              Then {b' | decides b' (~ P)}
-              Else ret true)
-          (If branch'
-              Then R
-              Else ret true).
-    Admitted.
-
-    Lemma foo4point5 :
-      forall P R,
-        refine
-          {b | decides b P}
-          (r <- R;
-           ret (negb r)) ->
-        refine
-          {b | decides b (~ P)}
-          R.
-    Admitted.
-
-    Lemma foo2point75 :
-      forall A B C (x : Comp A) (f : A -> B) (g : B -> C),
-        refineEquiv
-          (a <- x;
-           ret (g (f a)))
-          (b <- a <- x;
-                ret (f a);
-           ret (g b)).
-    Admitted.
-
-      (* Implement the check for an exact match *)
-      Lemma foo19
-      : forall ns n,
-          refine {b : bool |
-                  decides b
-                          (~
-                             (exists x : Tuple,
-                                In x (find_upperbound ns) /\ n <> x!sNAME))}
-                 (ret match find_upperbound ns with
-                        | nil => true
-                        | n' :: _ => ?[n == (n'!sNAME)]
-                      end).
-      Proof.
-      Admitted.
-
-            Lemma foo20
-      : forall ns n,
-          refine {b' |
-                  forall b : Tuple,
-                    b' = Some b <->
-                    In b (find_upperbound ns) /\
-                    b!sTYPE = CNAME /\ n <> CNAME}
-                 (ret match (find_upperbound ns) with
-                        | nil => None
-                        | n' :: _ => if CNAME == (n'!sTYPE) then
-                                       if n == CNAME then
-                                         Some n' else None else None
-                      end).
-      Admitted.
-
     Lemma refine_filtered_list {A}
     : forall (xs : list A)
              (P : Ensemble A)
@@ -664,33 +582,195 @@ Qed.
         refine (filtered_list xs P)
                (ret (filter dec xs)).
     Proof.
-      induction xs; unfold filtered_list; simpl; intros.
+      unfold filtered_list;
+      induction xs; intros.
       - reflexivity.
-      - setoid_rewrite IHxs; simplify with monad laws.
-        case_eq (dec a); unfold Query_Where; intros.
-        + setoid_rewrite dec_decides_P in H.
-          refine pick val [ a ]; intuition eauto.
+      - simpl; setoid_rewrite IHxs.
+        simplify with monad laws.
+        destruct (dec a) eqn: eq_dec_a.
+        + setoid_rewrite dec_decides_P in eq_dec_a.
+          refine pick val true; auto.
           simplify with monad laws; reflexivity.
-          constructor.
-        + rewrite Decides_false in H.
-          refine pick val [ ]; intuition eauto.
+        + setoid_rewrite Decides_false in eq_dec_a.
+          refine pick val false; auto.
           simplify with monad laws; reflexivity.
+    Qed.
+
+    Definition find_upperbound {A} (f : A -> nat) (ns : list A) : list A :=
+      let max := fold_right
+                   (fun n acc => max (f n) acc) O ns in
+      filter (fun n => beq_nat max (f n)) ns.
+
+    Lemma fold_right_max_is_max {A}
+    : forall (f : A -> nat) ns n,
+        In n ns -> f n <= fold_right (fun n acc => max (f n) acc) 0 ns.
+    Proof.
+      induction ns; intros; inversion H; subst; simpl;
+      apply NPeano.Nat.max_le_iff; [ left | right ]; auto.
+    Qed.
+
+    Lemma fold_right_higher_is_higher {A}
+    : forall (f : A -> nat) ns x,
+        (forall r, In r ns -> f r <= x) ->
+        fold_right (fun n acc => max (f n) acc) 0 ns <= x.
+    Proof.
+      induction ns; simpl; intros; [ apply le_0_n | ].
+      apply NPeano.Nat.max_lub.
+      apply H; left; auto.
+      apply IHns; intros; apply H; right; auto.
+    Qed.
+
+    Lemma find_upperbound_highest_length {A}
+    : forall (f : A -> nat) ns n,
+        In n (find_upperbound f ns) -> forall n', In n' ns -> (f n) >= (f n').
+    Proof.
+      unfold ge, find_upperbound; intros.
+      apply filter_In in H; destruct H; apply beq_nat_true_iff in H1.
+      rewrite <- H1; clear H1 H n.
+      apply fold_right_max_is_max; auto.
+    Qed.
+
+    Lemma find_upperbound_upperbound {A}
+    : forall (f : A -> nat) ns n, In n (find_upperbound f ns) <->
+                                    In n ns /\ upperbound f ns n.
+    Proof.
+      unfold upperbound, ge; intros; split; intros; try split.
+      - unfold find_upperbound in H; apply filter_In in H; tauto.
+      - apply find_upperbound_highest_length; auto.
+      - destruct H; unfold find_upperbound.
+        apply filter_In; split; try assumption.
+        apply beq_nat_true_iff.
+        pose proof (fold_right_max_is_max f _ _ H).
+        pose proof (fold_right_higher_is_higher f _ H0).
+        eapply le_antisym; eauto.
+    Qed.
+
+    Instance DecideableEnsembleUpperbound {A} (f : A -> nat) ns :
+      DecideableEnsemble (upperbound f ns) :=
+      let max := fold_right
+                   (fun n acc => max (f n) acc) O ns in
+      {| dec n := beq_nat max (f n) |}.
+    Proof.
+      admit.
+    Defined.
+
+    Corollary refine_find_upperbound {A}
+    : forall (f : A -> nat) ns,
+        refine ([[n in ns | upperbound f ns n]])
+               (ret (find_upperbound f ns)).
+    Proof.
+      intros.
+      setoid_rewrite refine_filtered_list with (P_dec := DecideableEnsembleUpperbound f ns).
+      reflexivity.
+    Qed.
+
+    Lemma foo16 :
+      forall ns s,
+        (forall n', In n' ns -> prefixProp (get_name n') s)
+        -> forall n n', In n (find_upperbound name_length ns)
+                        -> In n' (find_upperbound name_length ns)
+                        -> get_name n = get_name n'.
+    Proof.
+      unfold find_upperbound, name_length; intros ns s H0 n n' H H1.
+      apply filter_In in H; destruct H; apply filter_In in H1; destruct H1.
+      pose proof (H0 _ H); pose proof (H0 _ H1).
+      apply beq_nat_true in H2; apply beq_nat_true in H3; rewrite H2 in H3.
+      unfold prefixProp in *; destruct H4; destruct H5; rewrite <- H5 in H4.
+      clear H H2 H0 H1 H5 s ns.
+      remember (get_name n); remember (get_name n'); clear Heql Heql0.
+      revert x0 l l0 H4 H3.
+      induction x; destruct x0; intros.
+      - repeat rewrite app_nil_r in H4; assumption.
+      - apply f_equal with (f := @Datatypes.length string) in H4.
+        repeat rewrite app_length in H4; subst; exfalso; simpl in *; omega.
+      - apply f_equal with (f := @Datatypes.length string) in H4.
+        repeat rewrite app_length in H4; subst; exfalso; simpl in *; omega.
+      - rewrite app_comm_cons' with (As := l) in H4.
+        rewrite app_comm_cons' with (As := l0) in H4.
+        apply IHx in H4; [ apply app_inj_tail in H4; destruct H4; auto |
+        repeat rewrite app_length; rewrite H3; reflexivity ].
+    Qed.
+
+    Ltac find_if_inside_eqn :=
+      match goal with
+        | [ |- context[if ?X then _ else _] ] => destruct X eqn: ?
+        | [ H : context[if ?X then _ else _] |- _ ]=> destruct X eqn: ?
+      end.
+
+    (* Implement the check for an exact match *)
+    Lemma foo19
+    : forall ns s,
+        (forall n', In n' ns -> prefixProp (get_name n') s) ->
+        refine {b : bool |
+                decides b
+                        (~
+                           (exists x : DNSRRecord,
+                              In x (find_upperbound name_length ns) /\ s <> (get_name x)))}
+               (ret match find_upperbound name_length ns with
+                      | nil => true
+                      | n' :: _ => ?[s == (get_name n')]
+                    end).
+    Proof.
+      econstructor; simpl in H; intros; apply computes_to_inv in H0.
+      subst; unfold decides; pose proof (foo16 ns H); clear H.
+      remember (find_upperbound name_length ns) as l.
+      find_if_inside_eqn.
+      - unfold not; intros; repeat destruct H; apply H1; clear H1; destruct l;
+        [ inversion H | subst; apply H0 with (n := d) in H ];
+        [ find_if_inside; [ subst; auto | inversion Heqb ] | simpl; left; auto ].
+      - unfold not; intros; apply H; clear H; destruct l; try inversion Heqb.
+        exists d; split; [ simpl; left; auto | intros; rewrite <- H in Heqb ].
+        find_if_inside; [ discriminate | unfold not in *; apply n; auto ].
+    Qed.
+
+    Lemma foo20
+    : forall ns n s
+        (HH : forall t t' n m,  n <> m
+                           -> nth_error ns n =  Some t
+                           -> nth_error ns m = Some t'
+                           -> get_name t = get_name t' -> t!sTYPE <> CNAME),
+        (forall n', In n' ns -> prefixProp (get_name n') s) ->
+        refine {b' |
+                forall b : Tuple,
+                  b' = Some b <->
+                  In b (find_upperbound name_length ns) /\
+                  b!sTYPE = CNAME /\ n <> CNAME}
+               (ret match (find_upperbound name_length ns) with
+                      | nil => None
+                      | n' :: _ => if CNAME == (n'!sTYPE)
+                                   then if n == CNAME
+                                        then None
+                                        else Some n'
+                                   else None
+                    end).
+    Proof.
+      unfold refine; intros; pose proof (foo16 ns H); clear H.
+      remember (find_upperbound name_length ns) as l; clear Heql.
+      apply computes_to_inv in H0; econstructor; split; intros.
+      - destruct l; [ subst; inversion H | ].
+        repeat find_if_inside_eqn; subst; try inversion H; subst.
+        repeat split; [ simpl; left | symmetry | ]; auto.
+      - destruct H as [? [? ?] ]; destruct l; [ inversion H | subst ].
+        admit.
     Qed.
 
     Lemma refine_If_Opt_Then_Else_ret {A B} :
       forall i (t : A -> B) (e : B),
         refine (@If_Opt_Then_Else A (Comp B) i (fun a => ret (t a)) (ret e))
                (ret (@If_Opt_Then_Else A B i t e)).
+    Proof.
+      destruct i; reflexivity.
+    Qed.
 
-Lemma foo13 : forall l (a : DNSRRecord),
+    Lemma foo13 : forall l (a : DNSRRecord),
                 prefixBool l (a!sNAME) =
                 PrefixSearchTermMatcher
                   {|
                     pst_name := l;
                     pst_filter := fun _ : DNSRRecord => true |} a.
-Proof.
-  admit.
-Qed.
+    Proof.
+      symmetry; apply andb_true_r.
+    Qed.
 
 Lemma foo12 :
   forall l l' : name,
