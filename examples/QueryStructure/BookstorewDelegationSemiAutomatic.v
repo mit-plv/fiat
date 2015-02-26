@@ -115,7 +115,7 @@ Proof.
   (* Having selected a more concrete data-representation, we start
      the actual refinement with the constructor, in a fully automated way *)
   hone constructor "Init".
-  { initializer. }
+  { abstract initializer. }
 
   (* We then move on to the "NumOrders" method, which we decide to
      implement semi-manually *)

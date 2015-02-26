@@ -81,12 +81,22 @@ Proof.
   make simple indexes using [[AREA_CODE]; [MEASUREMENT_TYPE; CELL_ID]].
 
   Time plan.
+  Check "Finished Planning.". (* 220 seconds *)
 
   FullySharpenQueryStructure WeatherSchema Index.
+  Check "Finished AutoSharpening.".
 
-    Time implement_bag_methods.
-    Time implement_bag_methods.
-    Time implement_bag_methods.
-    Time implement_bag_methods.
+  Time implement_bag_methods.
+  Check "Finished Sharpening AddCell.".
 
-    Time Defined.
+  Time implement_bag_methods.
+  Check "Finished AutoSharpening AddMeasurement.".
+
+  Time implement_bag_methods.
+  Check "Finished AutoSharpening CountCells.".
+
+  Time implement_bag_methods.
+  Check "Finished AutoSharpening LocalMax.".
+
+Time Defined.
+Check "Finished Synthesizing Weather Example.".
