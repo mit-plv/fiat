@@ -242,7 +242,9 @@ Definition Initialize_IndexedQueryStructureImpls'
                               ComputationalADT.pcADT (Build_IndexedQueryStructure_Impl_Sigs Index idx) (DelegateReps idx))
 : @Build_IndexedQueryStructure_Impl_cRep _ Index DelegateReps :=
   Iterate_Dep_Type_equiv'
-    string_dec _
+    string_dec
+    (fun idx : @BoundedString (map relName schemas) =>
+       DelegateReps idx)
     (fun idx : @BoundedString (map relName schemas) =>
        CallBagImplConstructor DelegateReps DelegateImpls BagEmpty ()).
 
