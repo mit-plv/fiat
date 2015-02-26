@@ -172,8 +172,10 @@ COMPILER_MODULES := \
 	FiatToFacade/Compiler
 
 EXAMPLE_MODULES := \
-	QueryStructure/BookstorewDelegationSemiAutomatic
-#	FiniteSetsADTs/FiniteSetsExamples \
+	QueryStructure/BookstorewDelegationSemiAutomatic \
+	QueryStructure/WeatherwDelegation \
+	QueryStructure/StockswDelegation
+	#FiniteSetsADTs/FiniteSetsExamples \
 	ExtractingFiniteSetsExamples \
 	QueryStructure/Bookstore \
 	QueryStructure/BookstoreSemiAutomatic \

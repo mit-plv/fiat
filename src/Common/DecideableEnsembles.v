@@ -52,6 +52,15 @@ Proof.
   intros; find_if_inside; intuition.
 Defined.
 
+Instance DecideableEnsemble_EqDec {A B : Type}
+         (B_eq_dec : Query_eq B)
+         (f f' : A -> B)
+: DecideableEnsemble (fun a => eq (f a) (f' a)) :=
+  {| dec a := if A_eq_dec (f a) (f' a) then true else false |}.
+Proof.
+  intros; find_if_inside; split; congruence.
+Defined.
+
 Instance DecideableEnsemble_Not
          {A : Type}
          (P : Ensemble A)

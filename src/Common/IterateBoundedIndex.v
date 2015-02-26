@@ -622,6 +622,26 @@ Definition Dep_Type_BoundedIndex_nth_eq {A : Set}
     intros; destruct (Opt_A_eq_dec A_eq_dec x0 y0); eauto.
   Qed.
 
+  Lemma Dep_Type_BoundedIndex_nth_eq_refl {A : Set}
+        (A_eq_dec : forall a a' : A, {a = a'} + {a <> a'})
+  : forall
+      (As : list A)
+      (P : BoundedIndex As -> Type)
+      a n nth_n
+      (p : P {| bindex := a; indexb := {| ibound := n; boundi := nth_n |}|}),
+        (Dep_Type_BoundedIndex_nth_eq (a' := a) A_eq_dec P n nth_n nth_n p)
+      = p.
+  Proof.
+    intros.
+    unfold Dep_Type_BoundedIndex_nth_eq, eq_rect_r, eq_rect, eq_sym.
+    match goal with
+        |- context [indexb_ibound_eq ?a ?a' ?eq'] =>
+        rewrite (fun A => Eqdep_dec.eq_proofs_unicity A (indexb_ibound_eq a a' eq') eq_refl)
+    end.
+    rewrite eq_proof_unicity_eq with (eq_nth := eq_refl); reflexivity.
+    intros; destruct (A_eq_dec x y); eauto.
+  Defined.
+
   Lemma Dep_Type_BoundedIndex_nth_eq_iso {A : Set}
         (A_eq_dec : forall a a' : A, {a = a'} + {a <> a'})
   : forall

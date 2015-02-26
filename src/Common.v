@@ -441,7 +441,7 @@ Ltac higher_order_1_reflexivity :=
   solve [ higher_order_1_reflexivity'
         | sym_higher_order_1_reflexivity' ].
 
-Ltac higher_order_f_1_reflexivity :=
+Ltac higher_order_1_f_reflexivity :=
   let a := match goal with |- ?R (?g ?a) (?g (?f ?x)) => constr:(a) end in
   let f := match goal with |- ?R (?g ?a) (?g (?f ?x)) => constr:(f) end in
   let x := match goal with |- ?R (?g ?a) (?g (?f ?x)) => constr:(x) end in
@@ -548,63 +548,16 @@ Ltac higher_order_reflexivity :=
     | |- ?R (?g ?x) (?g (?f ?a))          =>  higher_order_1_f_reflexivity
 
     | |- ?R ?x (?f ?a ?b ?c ?d)           =>  higher_order_4_reflexivity
-    | |- ?R ?x (?f ?a ?b ?c)              =>  higher_order_4_reflexivity
-    | |- ?R ?x (?f ?a ?b)                 =>  higher_order_4_reflexivity
-    | |- ?R ?x (?f ?a)                    =>  higher_order_4_reflexivity
+    | |- ?R ?x (?f ?a ?b ?c)              =>  higher_order_3_reflexivity
+    | |- ?R ?x (?f ?a ?b)                 =>  higher_order_2_reflexivity
+    | |- ?R ?x (?f ?a)                    =>  higher_order_1_reflexivity
+
+    | |- _                                =>  reflexivity
   end.
 
-Axiom IsHProp : Type -> Type.
-Existing Class IsHProp.
-Instance : forall A, IsHProp (IsHProp A).
-Admitted.
-
-Axiom allpath_hprop : forall `{H : IsHProp A} (x y : A), x = y.
-Axiom hprop_allpath : forall (A : Type), (forall (x y : A), x = y) -> IsHProp A.
 
 Global Arguments f_equal {A B} f {x y} _ .
 
-(*Definition Sect {A B : Type} (s : A -> B) (r : B -> A) :=
-  forall x : A, r (s x) = x.
-
-Class IsEquiv {A B : Type} (f : A -> B) := BuildIsEquiv {
-  equiv_inv : B -> A ;
-  eisretr : Sect equiv_inv f;
-  eissect : Sect f equiv_inv;
-  eisadj : forall x : A, eisretr (f x) = f_equal f (eissect x)
-}.
-
-Arguments eisretr {A B} f {_} _.
-Arguments eissect {A B} f {_} _.
-Arguments eisadj {A B} f {_} _.
-
-Definition apD10 {A} {B:A->Type} {f g : forall x, B x} (h:f=g)
-  : forall x, f x = g x
-  := fun x => match h with eq_refl => eq_refl end.
-
-Class Funext :=
-  { isequiv_apD10 :> forall (A : Type) (P : A -> Type) f g, IsEquiv (@apD10 A P f g) }. *)
-
-(* We'll just assume functional extensionality for now. *)
-
-Global Instance trunc_forall `{P : A -> Type} `{forall a, IsHProp (P a)}
-  : IsHProp (forall a, P a) | 100.
-Admitted.
-
-Instance trunc_prod `{IsHProp A, IsHProp B} : IsHProp (A * B).
-Admitted.
-
-Record hProp := hp { hproptype :> Type ; isp : IsHProp hproptype}.
-Existing Instance isp.
-
-Instance : forall A : hProp, IsHProp A.
-Admitted.
-
-Lemma path_sig_hprop {A} {P : A -> Prop} `{forall x : A, IsHProp (P x)}
-      (x y : sig P)
-: proj1_sig x = proj1_sig y -> x = y.
-Proof.
-  destruct_head sig; intros; subst; f_equal; apply allpath_hprop.
-Defined.
 
 Lemma fst_fold_right {A B A'} (f : B -> A -> A) (g : B -> A * A' -> A') a a' ls
 : fst (fold_right (fun b aa' => (f b (fst aa'), g b aa')) (a, a') ls)

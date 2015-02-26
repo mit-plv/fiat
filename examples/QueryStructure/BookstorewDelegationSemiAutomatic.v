@@ -60,7 +60,7 @@ Definition BookStoreSig : ADTSig :=
       Constructor "Init" : unit -> rep,
       Method "PlaceOrder" : rep x Order -> rep x bool,
       Method "DeleteOrder" : rep x nat -> rep x list Order,
-      Method "AddBook" : rep x Book -> rep x bool, 
+      Method "AddBook" : rep x Book -> rep x bool,
       Method "DeleteBook" : rep x nat -> rep x list Book,
       Method "GetTitles" : rep x string -> rep x list string,
       Method "NumOrders" : rep x string -> rep x nat
@@ -105,100 +105,78 @@ Proof.
   (* First, we unfold various definitions and drop constraints *)
   start honing QueryStructure.
 
+
+  (* Then we define an index structure for each table using Bag ADTs *)
   make simple indexes using [[sAUTHOR; sISBN]; [sISBN]].
+  (* In other words, implement the Book table with a Bag ADT
+    indexed first on the author field, then the ISBN field
+    and the Orders table with a Bag ADT indexed on just the ISBN field. *)
 
-  hone method "AddBook".
-    {
-      Implement_Insert_Checks.
-
-      Focused_refine_Query. (* With Focused_refine_Query: 7 seconds. *)
-      { implement_In;       (* Without Focused_refine_Query: 12 seconds*)
-        convert_Where_to_search_term;
-        [ find_equivalent_search_term 0 find_simple_search_term | ]; cbv beta; simpl;
-        convert_filter_to_find;
-        Implement_Aggregates;
-        reflexivity.
-      }
-      
-      simplify with monad laws.
-      setoid_rewrite refineEquiv_swap_bind.
-      implement_Insert_branches.
-
-      finish honing.
-    } 
-
-    hone method "PlaceOrder".
-    {
-      Implement_Insert_Checks.
-
-      Focused_refine_Query. (* With Focused_refine_Query: 7 seconds. *)
-        { implement_In;       (* Surprisingly, without Focused_refine_Query: 12 seconds*)
-          convert_Where_to_search_term;
-          [ find_equivalent_search_term 0 find_simple_search_term | ]; cbv beta; simpl;
-          convert_filter_to_find;
-          Implement_Aggregates;
-          reflexivity.
-        }
-        
-      simplify with monad laws.
-      setoid_rewrite refineEquiv_swap_bind.
-      implement_Insert_branches.
-
-      finish honing.
-    }
-
+  (* Having selected a more concrete data-representation, we start
+     the actual refinement with the constructor, in a fully automated way *)
   hone constructor "Init".
+  { initializer. }
+
+  (* We then move on to the "NumOrders" method, which we decide to
+     implement semi-manually *)
+  hone method "NumOrders".
   {
-    simplify with monad laws.
-    rewrite refine_QSEmptySpec_Initialize_IndexedQueryStructure.
-    simpl.
+    (* First we generate a new goal to just focus on refining the query. *)
+    Focused_refine_Query. (* With Focused_refine_Query: 7 seconds. *)
+    { (* Step 1: Implement [In] by enumeration. *)
+      implement_In.
+      (* Step 2: Convert where clauses into compositions of filters. *)
+      repeat convert_Where_to_filter.
+      (* Step 3: Do some simplication.*)
+      repeat setoid_rewrite <- filter_and.
+      try setoid_rewrite andb_true_r.
+      (* Step 4: Move filters to the outermost [Join_Comp_Lists] to which *)
+      (* they can be applied. *)
+      repeat setoid_rewrite Join_Filtered_Comp_Lists_id.
+      distribute_filters_to_joins.
+      (* Step 5: Convert filter function on topmost [Join_Filtered_Comp_Lists] to an
+               equivalent search term matching function.  *)
+      implement_filters_with_find.
+    }
+    (* Do some more simplication using the monad laws. *)
+    simpl; simplify with monad laws.
+    (* Satisfied with the query, we now implement the new data
+       representation (in this case, it is unchanged).
+     *)
+    simpl; commit.
+    (* And we're done! *)
     finish honing.
   }
 
-  hone method "NumOrders".
+  (* We'll now refine a insertion operation. *)
+  hone method "AddBook".
+  {
+    (* First Convert Integrity Checks to Queries. *)
+    Implement_Insert_Checks.
+
+    (* These queries can be implemented using the [implement_Query] tactic *)
+    (* which automatically concretizes queries. *)
+    implement_Query.
+
+    simpl; simplify with monad laws.
+
+    setoid_rewrite refineEquiv_swap_bind.
+    implement_Insert_branches.
+
+    finish honing.
+  }
+
+  hone method "DeleteBook".
   {
     simplify with monad laws.
-
-    Time Focused_refine_Query; (* Focused Version: 52 seconds*)
-      [ implement_In;   (* Unfocused Version: 69 seconds. *)
-        setoid_rewrite refine_Join_Enumerate_Swap; eauto;
-        
-        convert_Where_to_search_term;
-        [ find_equivalent_search_term 1 find_simple_search_term
-        | cbv beta; simpl; setoid_rewrite andb_true_r];
-        
-        convert_Where_to_search_term; 
-        [ find_equivalent_search_term_pair 1 0 find_simple_search_term_dep
-        | cbv beta; simpl ];
-        
-        setoid_rewrite <- filter_and;
-        repeat convert_filter_to_find;
-        
-        Implement_Aggregates;
-        reflexivity
-      | ].
-    simplify with monad laws.
-    simpl.
-    commit.
+    implement_Query.
+    simpl; simplify with monad laws.
+    implement_Delete_branches.
     finish honing.
   }
 
   hone method "GetTitles".
-  {
-    simplify with monad laws.
-    Time Focused_refine_Query; (* With Focused_refine_Query: 7 seconds. *)
-      [ implement_In;       (* Without Focused_refine_Query: 9 seconds*)
-        convert_Where_to_search_term;
-        [ find_equivalent_search_term 0 find_simple_search_term | ]; cbv beta; simpl;
-        convert_filter_to_find;
-        Implement_Aggregates;
-        reflexivity
-      | ].
-    simplify with monad laws.
-    simpl.
-    commit.
-    finish honing.
-}
+  { observer. }
 
   hone method "DeleteOrder".
   {
@@ -209,104 +187,68 @@ Proof.
     finish honing.
   }
 
-  hone method "DeleteBook".
+  hone method "PlaceOrder".
   {
-    simplify with monad laws.
-    Focused_refine_Query.
-    { 
-    implement_In.
-    setoid_rewrite refine_Join_Enumerate_Swap; eauto.
-    convert_Where_to_search_term.
-    find_equivalent_search_term 1 find_simple_search_term.
-    setoid_rewrite andb_true_r.
-
-    convert_Where_to_search_term.
-    find_equivalent_search_term_pair 1 0 find_simple_search_term_dep.
-
-    setoid_rewrite <- filter_and.
-    convert_filter_to_find.
-
-    Implement_Aggregates.
-    reflexivity.
-    }
-    
-    simplify with monad laws.
-    implement_Delete_branches.
-    finish honing.
-  }
-  
-  FullySharpenQueryStructure' BookStoreSchema Index.
-
-  { simpl.
-    (* Still. Patching up proofs for new representation. *)
-    simplify with monad laws.
-
-    Implement_Bound_Bag_Call.
-    Implement_If_Then_Else.
-    simplify with monad laws.
-    Implement_Bound_Bag_Call.
-    Implement_AbsR_Relation.
-    reflexivity.
-    simplify with monad laws.
-    Implement_AbsR_Relation.
-    reflexivity.
-    Implement_If_Then_Else.
-    higher_order_4_reflexivity''.
-  }
-
-  { simplify with monad laws.
-    Implement_Bound_Bag_Call.
-    Implement_Bound_Bag_Call.
-    Implement_AbsR_Relation.
-    higher_order_4_reflexivity''.
-  }
-
-  { simplify with monad laws.
-    Implement_Bound_Bag_Call.
-    Implement_If_Then_Else.
-
-    simplify with monad laws.
-    Implement_Bound_Bag_Call.
-    Implement_AbsR_Relation.
-    reflexivity.
-
-    simplify with monad laws.
-    Implement_AbsR_Relation.
-    reflexivity.
-    Implement_If_Then_Else.
-
-    higher_order_4_reflexivity''.
+  repeat first
+         [setoid_rewrite FunctionalDependency_symmetry
+         | cbv beta; simpl; simplify with monad laws
+         | setoid_rewrite if_duplicate_cond_eq
+         | fundepToQuery
+         | foreignToQuery
+         | setoid_rewrite refine_trivial_if_then_else
+         ].
+    etransitivity;
+      [ repeat match goal with
+                 | |- context[Query_For _] =>
+                   setoid_rewrite refineEquiv_swap_bind at 1;
+                     implement_Query;
+                     eapply refine_under_bind; intros
+               end;
+        repeat setoid_rewrite refine_if_If at 1;
+        repeat setoid_rewrite refine_If_Then_Else_Bind at 1;
+        repeat setoid_rewrite Bind_refine_If_Then_Else at 1;
+        repeat eapply refine_If_Then_Else;
+        try simplify with monad laws; cbv beta; simpl;
+        match goal with
+          (* Implement the then branch *)
+          | [ H : DelegateToBag_AbsR ?r_o ?r_n
+              |- context[{r_n' |
+                          DelegateToBag_AbsR
+                            (UpdateUnConstrRelation ?r_o ?TableID
+                                                    (EnsembleInsert
+                                                       {| elementIndex := _; indexedElement := ?tup |}
+                                                       (GetUnConstrRelation ?r_o ?TableID))) r_n'}]]
+            => repeat setoid_rewrite <- refineEquiv_bind_bind;
+              setoid_rewrite (@refine_BagADT_QSInsert _ _ r_o r_n H TableID tup);
+              try (simplify with monad laws; higher_order_reflexivity)
+          (* Implement the else branch *)
+          | [ H : DelegateToBag_AbsR ?r_o ?r_n
+              |- context[{r_n' | DelegateToBag_AbsR ?r_o r_n'}]] =>
+            match goal with
+            | |- context[{idx | UnConstrFreshIdx (GetUnConstrRelation r_o ?TableID) idx}] =>
+              destruct ((proj2 H) TableID) as [l [[bnd fresh_bnd] _]];
+                refine pick val bnd;
+                [ simplify with monad laws;
+                  refine pick val r_n;
+                  [ simplify with monad laws;
+                    higher_order_reflexivity
+                  | eassumption ]
+                | eassumption]
+            end
+        end
+      | cbv beta; simpl; try simplify with monad laws; finish honing ].
   }
 
-  { simplify with monad laws.
-    Implement_Bound_Bag_Call.
+  FullySharpenQueryStructure BookStoreSchema Index.
 
-    Implement_Bound_Join_Lists.
+  Time implement_bag_methods. (*  42 seconds*)
+  Time implement_bag_methods. (*  28 seconds *)
+  Time implement_bag_methods. (*  30 seconds *)
+  Time implement_bag_methods. (*  87 seconds *)
+  Time implement_bag_methods. (*   9 seconds *)
+  Time implement_bag_methods. (*  27 seconds *)
 
-    Implement_Bound_Bag_Call.
-    higher_order_1_reflexivity''.
-
-    Implement_If_Then_Else.
-
-    simplify with monad laws.
-    Implement_Bound_Bag_Call.
-    Implement_Bound_Bag_Call.
-
-    Implement_AbsR_Relation.
-    reflexivity.
-
-    simplify with monad laws.
-    Implement_AbsR_Relation.
-    reflexivity.
-
-    Implement_If_Then_Else.
-
-    higher_order_4_reflexivity''.  }
-
-  implement_bag_methods.
-  implement_bag_methods.
-
-Defined.
+  Time Defined.
 
 (* Need to add better automation for extracting Query Structure Implementations. *)
 (* Definition BookStoreImpl : ComputationalADT.cADT BookStoreSig.

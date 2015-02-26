@@ -106,6 +106,24 @@ Proof.
       simpl; repeat split; repeat (first [eassumption | econstructor]).
 Qed.
 
+Lemma flatten_CompList_app_inv'
+      {A : Type}
+: forall (l l' : list (Comp (list A))) v,
+    flatten_CompList (l ++ l') ↝ v
+    -> exists e e',
+         v = app e e'
+         /\ flatten_CompList l ↝ e
+         /\ flatten_CompList l' ↝ e'.
+Proof.
+  induction l; simpl; intros.
+  - eexists []; exists v; simpl; intuition.
+  - inversion_by computes_to_inv; subst.
+    destruct (IHl _ _ H1) as [e [e' [v_eq [Comp_l Comp_l']]]].
+    rewrite v_eq.
+    exists (app x e); exists e'; intuition.
+    repeat econstructor; eauto.
+Qed.
+
 Lemma flatten_CompList_singleton {A}:
   forall P,
   forall middle (head: A),

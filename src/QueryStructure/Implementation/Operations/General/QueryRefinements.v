@@ -1,6 +1,8 @@
 Require Import Coq.Strings.String Coq.Lists.List Coq.Sorting.Permutation
+        Coq.Bool.Bool Coq.Sets.Ensembles
         Coq.Logic.FunctionalExtensionality
-        ADTSynthesis.ADTNotation Coq.Sets.Ensembles ADTSynthesis.Common
+        ADTSynthesis.ADTNotation ADTSynthesis.Common
+        ADTSynthesis.Common.ListFacts
         ADTSynthesis.Common.Ensembles.IndexedEnsembles
         ADTSynthesis.Common.DecideableEnsembles
         ADTSynthesis.Computation
@@ -112,43 +114,43 @@ Proof.
 Qed.
 
 Add Morphism Max
-  with signature (refine ==> refine)
-    as Max_refine_refine_Morphism.
+    with signature (refine ==> refine)
+      as Max_refine_refine_Morphism.
 Proof.
   t_morphism Max.
 Qed.
 
 Add Morphism MaxN
-  with signature (refine ==> refine)
-    as MaxN_refine_refine_Morphism.
+    with signature (refine ==> refine)
+      as MaxN_refine_refine_Morphism.
 Proof.
   t_morphism MaxN.
 Qed.
 
 Add Morphism MaxZ
-  with signature (refine ==> refine)
-    as MaxZ_refine_refine_Morphism.
+    with signature (refine ==> refine)
+      as MaxZ_refine_refine_Morphism.
 Proof.
   t_morphism MaxZ.
 Qed.
 
 Add Morphism Sum
-  with signature (refine ==> refine)
-    as Sum_refine_refine_Morphism.
+    with signature (refine ==> refine)
+      as Sum_refine_refine_Morphism.
 Proof.
   t_morphism Sum.
 Qed.
 
 Add Morphism SumN
-  with signature (refine ==> refine)
-    as SumN_refine_refine_Morphism.
+    with signature (refine ==> refine)
+      as SumN_refine_refine_Morphism.
 Proof.
   t_morphism SumN.
 Qed.
 
 Add Morphism SumZ
-  with signature (refine ==> refine)
-    as SumZ_refine_refine_Morphism.
+    with signature (refine ==> refine)
+      as SumZ_refine_refine_Morphism.
 Proof.
   t_morphism SumZ.
 Qed.
@@ -176,13 +178,13 @@ Definition UnConstrQuery_In {ResultT}
            (bod : @Tuple (schemaHeading (relSchema
                                            (StringBound.nth_Bounded relName (qschemaSchemas qsSchema) R))) -> Comp (list ResultT))
   :=
-  QueryResultComp (GetUnConstrRelation qs R) bod.
+    QueryResultComp (GetUnConstrRelation qs R) bod.
 
 Lemma refine_flatten_CompList_func {A B}
 : forall (l : list A) (f f' : A -> Comp (list B)),
     pointwise_relation _ refine f f'
     -> refine (flatten_CompList (map f l))
-           (flatten_CompList (map f' l)).
+              (flatten_CompList (map f' l)).
 Proof.
   induction l; simpl; intros.
   + reflexivity.
@@ -205,11 +207,566 @@ Add Parametric Morphism {ResultT} qsSchema qs R
       as refine_UnConstrQuery_In.
 Proof.
   intros; unfold UnConstrQuery_In, QueryResultComp.
-    apply refine_bind.
-    reflexivity.
-    unfold pointwise_relation; intros;
-    eapply refine_flatten_CompList_func; eauto.
+  apply refine_bind.
+  reflexivity.
+  unfold pointwise_relation; intros;
+  eapply refine_flatten_CompList_func; eauto.
 Qed.
+
+(* Cross product of lists using heterogenous lists. *)
+Definition Join_Comp_Lists
+           {A : Type}
+           {f : A -> Type}
+           {As : list A}
+           {a : A}
+           (l' : list (ilist f As))
+           (c : ilist f As -> Comp (list (f a)))
+: Comp (list (ilist f (a :: As))) :=
+  flatten_CompList (map (fun l' => l <- c l'; ret (map (fun fa => icons _ fa l') l)) l').
+
+Definition Build_single_Tuple_list
+           {heading}
+           (l : list (@Tuple heading))
+: list (ilist (@Tuple) [heading])
+  := map (fun a => icons _ a (inil _)) l.
+
+Lemma filter_and_join_ilist_tail
+      {A}
+      {a}
+      {As}
+      (f' : A -> Type)
+: forall
+    (f : (ilist f' As) -> bool)
+    (s1 : list (ilist f' As))
+    (s2 : ilist f' As -> Comp (list (f' a)))
+    filter_rest,
+    (forall a, List.In a s1 -> exists v, computes_to (s2 a) v)
+    -> refineEquiv (l <- (Join_Comp_Lists s1 s2);
+                    ret (filter (fun x : ilist f' (a :: As) => f (ilist_tl x) && filter_rest x) l))
+                   (l <- Join_Comp_Lists (filter f s1) s2;
+                    ret (filter filter_rest l)).
+Proof.
+  split; induction s1; unfold Join_Comp_Lists in *; simpl in *; intros; eauto.
+  - simplify with monad laws; simpl; intros v Comp_v;
+    inversion_by computes_to_inv; subst; repeat econstructor.
+  - simplify with monad laws; intros v.
+    case_eq (f a0); simpl; intros a0_eq Comp_v.
+    + inversion_by computes_to_inv; subst; econstructor; eauto.
+      pose (IHs1 (fun a In_a => H _ (or_intror In_a)) _ (BindComputes _ H3 (ReturnComputes _))); inversion_by computes_to_inv; subst.
+      econstructor; eauto.
+      repeat rewrite filter_app, filter_map; rewrite H4; simpl.
+      rewrite a0_eq, filter_and, filter_true; eauto.
+    + pose (IHs1 (fun a In_a => H _ (or_intror In_a)) _ Comp_v); inversion_by computes_to_inv; subst.
+      destruct (H a0); eauto.
+      repeat (econstructor; eauto).
+      rewrite filter_app, filter_map; simpl; intros;
+      rewrite a0_eq, filter_false; constructor.
+  - intros v Comp_v; inversion_by computes_to_inv; subst; eauto.
+  - intros v Comp_v; inversion_by computes_to_inv; subst.
+    pose proof (IHs1 (fun a In_a => H _ (or_intror In_a)) _
+                     (BindComputes _ H3 (ReturnComputes _))).
+    inversion_by computes_to_inv.
+    case_eq (f a0); intros a0_eq; simpl.
+    + repeat (econstructor; eauto).
+      repeat rewrite filter_app, filter_map; rewrite H4, filter_and; simpl.
+      rewrite a0_eq, filter_and, filter_true; eauto.
+    + repeat (econstructor; eauto).
+      repeat rewrite filter_app, filter_map, filter_and; rewrite H4; simpl.
+      rewrite a0_eq, filter_false; eauto.
+Qed.
+
+Definition List_Query_In
+           {QueryT ResultT}
+           (queriedList : list QueryT)
+           (resultComp : QueryT -> Comp (list ResultT))
+  :=
+    flatten_CompList (map resultComp queriedList).
+
+Corollary filter_join_ilist_tail
+          {A}
+          {a}
+          {As}
+          (f' : A -> Type)
+: forall
+    (f : (ilist f' As) -> bool)
+    (s1 : list (ilist f' As))
+    (s2 : ilist f' As -> Comp (list (f' a))),
+    (forall a, List.In a s1 -> exists v, computes_to (s2 a) v)
+    -> refineEquiv (l <- (Join_Comp_Lists s1 s2);
+                    ret (filter (fun x : ilist f' (a :: As) => f (ilist_tl x)) l))
+                   (Join_Comp_Lists (filter f s1) s2).
+Proof.
+  intros; pose proof (filter_and_join_ilist_tail f s1 s2 (fun _ => true)).
+  setoid_rewrite filter_and in H0; setoid_rewrite filter_true in H0.
+  setoid_rewrite H0; eauto; setoid_rewrite refineEquiv_unit_bind; reflexivity.
+Qed.
+
+
+Lemma refine_Join_Comp_Lists_filter_tail
+: forall (heading : Heading)
+         (headings : list Heading)
+         (f : ilist (@Tuple) (headings) -> bool)
+         (filter_rest : ilist (@Tuple) (heading :: headings) -> bool)
+         (ResultT : Type)
+         (resultComp : _ -> Comp (list ResultT))
+         (l2 : ilist (@Tuple) headings
+               -> Comp (list (@Tuple heading))),
+    (forall a : ilist (@Tuple) headings,
+     exists v : list (@Tuple heading),
+       refine (l2 a) (ret v))
+    ->
+    forall l1,
+      refine
+        (l' <- Join_Comp_Lists l1 l2;
+         List_Query_In
+           (filter (fun (a : ilist (@Tuple) (heading :: headings))
+                    => f (ilist_tl a) && (filter_rest a)) l')
+           resultComp)
+        (l' <- Join_Comp_Lists (filter f l1) l2;
+         List_Query_In (filter filter_rest l') resultComp).
+Proof.
+  intros; revert l2 H.
+  unfold Join_Comp_Lists; induction l1; simpl;
+  intros; simplify with monad laws.
+  - setoid_rewrite refineEquiv_bind_unit; reflexivity.
+  - case_eq (f a); simpl; intros a_eq v Comp_v.
+    + inversion_by computes_to_inv; subst; econstructor; eauto.
+      rewrite filter_app, filter_map in H2.
+      unfold List_Query_In in H2.
+      repeat rewrite map_app, map_map in H2.
+      apply flatten_CompList_app_inv' in H2.
+      destruct_ex; split_and.
+      pose (IHl1 l2 H _ (BindComputes _ H3 H5)); inversion_by computes_to_inv; subst.
+      econstructor; eauto.
+      unfold List_Query_In.
+      repeat rewrite filter_app, filter_map.
+      repeat rewrite map_app, map_map; simpl.
+      rewrite filter_and, a_eq, filter_true.
+      eapply FlattenCompList.flatten_CompList_app; eauto.
+    + destruct (H a); eauto.
+      inversion_by computes_to_inv; subst; econstructor; eauto.
+      pose (IHl1 l2 H _ (BindComputes _ H2 H3)); inversion_by computes_to_inv; subst.
+      econstructor; eauto.
+      unfold List_Query_In.
+      repeat rewrite filter_app, filter_map.
+      repeat rewrite map_app, map_map; simpl.
+      rewrite filter_and, a_eq, filter_false; simpl; eauto.
+Qed.
+
+(* A version of [refine_Join_Comp_Lists_filter_tail] for the case that
+      the realizeablity of [l2] depends on the elements of [l1]*)
+Lemma refine_Join_Comp_Lists_filter_tail_cond
+: forall (heading : Heading)
+         (headings : list Heading)
+         (f : ilist (@Tuple) (headings) -> bool)
+         (filter_rest : ilist (@Tuple) (heading :: headings) -> bool)
+         (ResultT : Type)
+         (resultComp : _ -> Comp (list ResultT))
+         (l1 : list (ilist (@Tuple) headings))
+         (l2 : ilist (@Tuple) headings
+               -> Comp (list (@Tuple heading))),
+    (forall a : ilist (@Tuple) headings,
+       List.In a l1 -> exists v : list (@Tuple heading),
+                         refine (l2 a) (ret v))
+    -> refine
+         (l' <- Join_Comp_Lists l1 l2;
+          List_Query_In
+            (filter (fun (a : ilist (@Tuple) (heading :: headings))
+                     => f (ilist_tl a) && (filter_rest a)) l')
+            resultComp)
+         (l' <- Join_Comp_Lists (filter f l1) l2;
+          List_Query_In (filter filter_rest l') resultComp).
+Proof.
+  unfold Join_Comp_Lists; induction l1; simpl;
+  intros; simplify with monad laws.
+  - setoid_rewrite refineEquiv_bind_unit; reflexivity.
+  - case_eq (f a); simpl; intros a_eq v Comp_v.
+    + inversion_by computes_to_inv; subst; econstructor; eauto.
+      rewrite filter_app, filter_map in H2.
+      unfold List_Query_In in H2.
+      rewrite map_app, map_map in H2.
+      apply flatten_CompList_app_inv' in H2.
+      destruct_ex; split_and.
+      pose (IHl1 l2 (fun a In_a => H _ (or_intror In_a)) _ (BindComputes _ H3 H5)); inversion_by computes_to_inv; subst.
+      econstructor; eauto.
+      unfold List_Query_In.
+      repeat rewrite filter_app, filter_map.
+      repeat rewrite map_app, map_map; simpl.
+      rewrite filter_and, a_eq, filter_true.
+      eapply FlattenCompList.flatten_CompList_app; eauto.
+    + destruct (H a); eauto.
+      inversion_by computes_to_inv; subst; econstructor; eauto.
+      pose (IHl1 l2 (fun a In_a => H _ (or_intror In_a)) _ (BindComputes _ H2 H3)); inversion_by computes_to_inv; subst.
+      econstructor; eauto.
+      unfold List_Query_In.
+      repeat rewrite filter_app, filter_map.
+      repeat rewrite map_app, map_map; simpl.
+      rewrite filter_and, a_eq, filter_false; simpl; eauto.
+Qed.
+
+Definition Join_Filtered_Comp_Lists
+           {A : Type}
+           {f : A -> Type}
+           {As : list A}
+           {a : A}
+           (l' : list (ilist f As))
+           (c : ilist f As -> Comp (list (f a)))
+           (cond : ilist f (a :: As) -> bool)
+: Comp (list (ilist f (a :: As))) :=
+  l <- Join_Comp_Lists l' c;
+  ret (filter cond l).
+
+Lemma Join_Filtered_Comp_Lists_id
+      {A : Type}
+      {f : A -> Type}
+      {As : list A}
+      {a : A}
+: forall (l' : list (ilist f As))
+         (c : ilist f As -> Comp (list (f a))),
+    refine (Join_Comp_Lists l' c)
+           (Join_Filtered_Comp_Lists l' c (fun _ => true)).
+  unfold Join_Filtered_Comp_Lists; setoid_rewrite filter_true.
+  intros; rewrite refineEquiv_unit_bind; reflexivity.
+Qed.
+
+Lemma refine_Join_Filtered_Comp_Lists_filter_tail_andb
+: forall (heading : Heading) (headings : list Heading)
+         (f g : ilist (@Tuple) (heading :: headings) -> bool)
+         (ResultT : Type)
+         (resultComp : ilist (@Tuple) (heading :: headings) ->
+                       Comp (list ResultT))
+         (l2 : ilist (@Tuple) headings -> Comp (list Tuple))
+         (cond : ilist (@Tuple) (heading :: headings) -> bool),
+  forall l1 : list (ilist (@Tuple) headings),
+    refine
+      (l' <- Join_Filtered_Comp_Lists l1 l2 cond;
+       List_Query_In (filter (fun a => f a && g a) l') resultComp)
+      (l' <- Join_Filtered_Comp_Lists l1 l2 (fun a => cond a && f a);
+       List_Query_In (filter g l') resultComp).
+Proof.
+  intros; revert l2.
+  unfold Join_Filtered_Comp_Lists, Join_Comp_Lists; induction l1; simpl;
+  intros; simplify with monad laws.
+  - repeat setoid_rewrite refineEquiv_bind_unit; simpl; reflexivity.
+  - repeat setoid_rewrite refineEquiv_bind_bind.
+    repeat setoid_rewrite refineEquiv_bind_unit.
+    repeat (f_equiv; intro).
+    rewrite !filter_and; f_equiv.
+Qed.
+
+Corollary refine_Join_Filtered_Comp_Lists_filter_tail
+: forall (heading : Heading) (headings : list Heading)
+         (f : ilist (@Tuple) (heading :: headings) -> bool)
+         (ResultT : Type)
+         (resultComp : ilist (@Tuple) (heading :: headings) ->
+                       Comp (list ResultT))
+         (l2 : ilist (@Tuple) headings -> Comp (list Tuple))
+         (cond : ilist (@Tuple) (heading :: headings) -> bool),
+  forall l1 : list (ilist (@Tuple) headings),
+    refine
+      (l' <- Join_Filtered_Comp_Lists l1 l2 cond;
+       List_Query_In (filter f l') resultComp)
+      (l' <- Join_Filtered_Comp_Lists l1 l2 (fun a => cond a && f a);
+       List_Query_In l' resultComp).
+Proof.
+  intros;
+  pose proof (@refine_Join_Filtered_Comp_Lists_filter_tail_andb
+                _ _ f (fun _ => true) _ resultComp l2 cond l1) as r.
+  setoid_rewrite filter_true in r.
+  intros v Comp_v.
+  apply r in Comp_v.
+  inversion_by computes_to_inv; subst.
+  rewrite filter_and, filter_true in H1.
+  eauto.
+Qed.
+
+Lemma refine_Join_Filtered_Comp_Lists_filter_hd_andb
+: forall (heading : Heading) (headings : list Heading)
+         (f : ilist (@Tuple) headings -> bool)
+         (g : ilist (@Tuple) (heading :: headings) -> bool)
+         (ResultT : Type)
+         (resultComp : ilist (@Tuple) (heading :: headings) ->
+                       Comp (list ResultT))
+         (l2 : ilist (@Tuple) headings -> Comp (list Tuple))
+         (cond : ilist (@Tuple) (heading :: headings) -> bool),
+    (forall a : ilist (@Tuple) headings,
+     exists v : list Tuple, refine (l2 a) (ret v)) ->
+    forall l1 : list (ilist (@Tuple) headings),
+      refine
+        (l' <- Join_Filtered_Comp_Lists l1 l2 cond;
+         List_Query_In
+           (filter
+              (fun a : ilist (@Tuple) (heading :: headings) =>
+                 (f (ilist_tl a) && g a)) l') resultComp)
+        (l' <- Join_Filtered_Comp_Lists (filter f l1) l2 cond;
+         List_Query_In (filter g l') resultComp).
+Proof.
+  intros; revert l2 H.
+  unfold Join_Filtered_Comp_Lists, Join_Comp_Lists; induction l1; simpl;
+  intros; simplify with monad laws.
+  - repeat setoid_rewrite refineEquiv_bind_unit; simpl; reflexivity.
+  - case_eq (f a); simpl; intros a_eq v Comp_v.
+    + inversion_by computes_to_inv; subst; econstructor; eauto.
+      unfold List_Query_In in H2.
+      rewrite !filter_app, !filter_map, !map_app, !map_map in H2.
+      apply FlattenCompList.flatten_CompList_app_inv' in H2.
+      destruct_ex; split_and.
+      assert (computes_to (l' <- l <- FlattenCompList.flatten_CompList
+                              (map
+                                 (fun l' : ilist (@Tuple) headings =>
+                                    l <- l2 l';
+                                  ret (map (fun fa : Tuple => icons _ fa l') l))
+                                 (filter f l1));
+                           ret (filter cond l);
+                           List_Query_In (filter g l') resultComp) x0)
+        as H'
+          by (setoid_rewrite <- filter_and in H5;
+              repeat econstructor; eauto;
+              setoid_rewrite <- filter_and; eauto).
+      pose (IHl1 l2 H _ H'); inversion_by computes_to_inv; subst.
+      econstructor; eauto.
+      unfold List_Query_In.
+      repeat rewrite filter_app, filter_map.
+      repeat rewrite map_app, map_map; simpl.
+      rewrite filter_and, a_eq, filter_true.
+      eapply FlattenCompList.flatten_CompList_app; eauto.
+    + destruct (H a); eauto.
+      inversion_by computes_to_inv; subst; econstructor; eauto.
+      assert (computes_to (l' <- l <- FlattenCompList.flatten_CompList
+                              (map
+                                 (fun l' : ilist (@Tuple) headings =>
+                                    l <- l2 l';
+                                  ret (map (fun fa : Tuple => icons _ fa l') l))
+                                 (filter f l1));
+                           ret (filter cond l);
+                           List_Query_In (filter g l') resultComp) v)
+        as H' by  (repeat econstructor; eauto).
+      pose (IHl1 l2 H _ H'); inversion_by computes_to_inv; subst.
+      econstructor; eauto.
+      unfold List_Query_In.
+      repeat rewrite filter_app, filter_map.
+      repeat rewrite map_app, map_map; simpl.
+      rewrite a_eq, filter_false; simpl; eauto.
+Qed.
+
+Lemma refine_Join_Filtered_Comp_Lists_filter_hd
+: forall (heading : Heading) (headings : list Heading)
+         (f : ilist (@Tuple) headings -> bool)
+         (ResultT : Type)
+         (resultComp : ilist (@Tuple) (heading :: headings) ->
+                       Comp (list ResultT))
+         (l2 : ilist (@Tuple) headings -> Comp (list Tuple))
+         (cond : ilist (@Tuple) (heading :: headings) -> bool),
+    (forall a : ilist (@Tuple) headings,
+     exists v : list Tuple, refine (l2 a) (ret v)) ->
+    forall l1 : list (ilist (@Tuple) headings),
+      refine
+        (l' <- Join_Filtered_Comp_Lists l1 l2 cond;
+         List_Query_In
+           (filter
+              (fun a : ilist (@Tuple) (heading :: headings) =>
+                 f (ilist_tl a)) l') resultComp)
+        (l' <- Join_Filtered_Comp_Lists (filter f l1) l2 cond;
+         List_Query_In l' resultComp).
+Proof.
+  intros; pose proof (@refine_Join_Filtered_Comp_Lists_filter_hd_andb
+                        _ _ f (fun _ => true) _ resultComp l2 cond H l1) as r.
+  setoid_rewrite filter_true in r.
+  intros v Comp_v.
+  apply r in Comp_v.
+  inversion_by computes_to_inv; subst.
+  rewrite filter_and, filter_true in H2.
+  eauto.
+Qed.
+
+Lemma Join_Filtered_Comp_Lists_ExtensionalEq_filters
+      {A : Type}
+      {f : A -> Type}
+      {As : list A}
+      {a : A}
+: forall (l' : list (ilist f As))
+         (c : ilist f As -> Comp (list (f a)))
+         (g g' : ilist f (a :: As) -> bool),
+    ExtensionalEq g g'
+    -> refine (Join_Filtered_Comp_Lists l' c g)
+              (Join_Filtered_Comp_Lists l' c g').
+Proof.
+  unfold Join_Filtered_Comp_Lists; intros.
+  f_equiv; intro.
+  f_equiv; apply filter_by_equiv; eauto.
+Qed.
+
+
+Lemma refine_Join_Join_Filtered_Comp_Lists_filter_tail_andb
+: forall (heading1 heading2 : Heading) (headings : list Heading)
+         (f g : ilist (@Tuple) (heading1 :: headings) -> bool)
+         (l2 : ilist (@Tuple) headings -> Comp (list Tuple))
+         (l2' : ilist (@Tuple) (heading1 :: headings) -> Comp (list Tuple))
+         (cond1 : ilist (@Tuple) (heading1 :: headings) -> bool)
+         (cond2 : ilist (@Tuple) (heading2 :: heading1 :: headings) -> bool),
+  forall l1 : list (ilist (@Tuple) headings),
+    refine
+      (l <- Join_Filtered_Comp_Lists l1 l2 cond1;
+       Join_Filtered_Comp_Lists (filter (fun a => f a && g a) l) l2' cond2)
+      (l <- Join_Filtered_Comp_Lists l1 l2 (fun a => cond1 a && f a);
+       Join_Filtered_Comp_Lists (filter g l) l2' cond2).
+Proof.
+  intros; revert l2 l2'.
+  unfold Join_Filtered_Comp_Lists, Join_Comp_Lists; induction l1; simpl;
+  intros; simplify with monad laws.
+  - repeat setoid_rewrite refineEquiv_bind_unit; simpl; reflexivity.
+  - repeat setoid_rewrite refineEquiv_bind_bind.
+    repeat setoid_rewrite refineEquiv_bind_unit.
+    repeat setoid_rewrite <- filter_and.
+    repeat (f_equiv; intro).
+    setoid_rewrite andb_assoc.
+    eauto.
+Qed.
+
+Corollary refine_Join_Join_Filtered_Comp_Lists_filter_tail
+: forall (heading1 heading2 : Heading) (headings : list Heading)
+         (f : ilist (@Tuple) (heading1 :: headings) -> bool)
+         (l2 : ilist (@Tuple) headings -> Comp (list Tuple))
+         (l2' : ilist (@Tuple) (heading1 :: headings) -> Comp (list Tuple))
+         (cond1 : ilist (@Tuple) (heading1 :: headings) -> bool)
+         (cond2 : ilist (@Tuple) (heading2 :: heading1 :: headings) -> bool),
+  forall l1 : list (ilist (@Tuple) headings),
+    refine
+      (l <- Join_Filtered_Comp_Lists l1 l2 cond1;
+       Join_Filtered_Comp_Lists (filter f l) l2' cond2)
+      (l <- Join_Filtered_Comp_Lists l1 l2 (fun a => cond1 a && f a);
+       Join_Filtered_Comp_Lists l l2' cond2).
+Proof.
+  intros;
+  pose proof (@refine_Join_Join_Filtered_Comp_Lists_filter_tail_andb
+                _ _ _ f (fun _ => true) l2 l2' cond1 cond2 l1) as r.
+  setoid_rewrite filter_true in r.
+  intros v Comp_v.
+  apply r in Comp_v.
+  inversion_by computes_to_inv; subst.
+  rewrite filter_and, filter_true in H1.
+  eauto.
+Qed.
+
+Lemma refine_Join_Join_Filtered_Comp_Lists_filter_hd_andb
+: forall (heading1 heading2 : Heading) (headings : list Heading)
+         (f : ilist (@Tuple) headings -> bool)
+         (g : ilist (@Tuple) (heading1 :: headings) -> bool)
+         (l2 : ilist (@Tuple) headings -> Comp (list Tuple))
+         (l2' : ilist (@Tuple) (heading1 :: headings) -> Comp (list Tuple))
+         (cond1 : ilist (@Tuple) (heading1 :: headings) -> bool)
+         (cond2 : ilist (@Tuple) (heading2 :: heading1 :: headings) -> bool),
+    (forall a : ilist (@Tuple) headings,
+     exists v : list Tuple, refine (l2 a) (ret v)) ->
+    forall l1 : list (ilist (@Tuple) headings),
+      refine
+        (l <- Join_Filtered_Comp_Lists l1 l2 cond1;
+         Join_Filtered_Comp_Lists  (filter (fun a : ilist (@Tuple) (_ :: _) => f (ilist_tl a) && g a) l) l2' cond2)
+        (l <- Join_Filtered_Comp_Lists (filter f l1) l2 cond1;
+         Join_Filtered_Comp_Lists (filter g l) l2' cond2).
+Proof.
+  intros; revert l2 l2' cond1 cond2 H.
+  unfold Join_Filtered_Comp_Lists, Join_Comp_Lists; induction l1; simpl;
+  intros; simplify with monad laws.
+  - repeat setoid_rewrite refineEquiv_bind_unit; simpl; reflexivity.
+  - case_eq (f a); simpl; intros a_eq v Comp_v.
+    + inversion_by computes_to_inv; subst; econstructor; eauto.
+      rewrite !filter_app, !filter_map, !map_app, !map_map in H2.
+      apply FlattenCompList.flatten_CompList_app_inv' in H2.
+      destruct_ex; split_and; subst.
+      assert (computes_to (l <- l <- FlattenCompList.flatten_CompList
+                             (map
+                                (fun l' : ilist (@Tuple) headings =>
+                                   l <- l2 l';
+                                 ret (map (fun fa : Tuple => icons _ fa l') l))
+                                (filter f l1));
+                           ret (filter cond1 l);
+                           l0 <- FlattenCompList.flatten_CompList
+                              (map
+                                 (fun l' : ilist (@Tuple) (heading1 :: headings) =>
+                                    l0 <- l2' l';
+                                  ret (map (fun fa : Tuple => icons _ fa l') l0))
+                                 (filter g l));
+                           ret (filter cond2 l0)) (filter cond2 x1)) as H'
+          by (repeat econstructor; eauto).
+      pose (IHl1 l2 l2' cond1 cond2 H _ H'); inversion_by computes_to_inv; subst.
+      econstructor; eauto.
+      econstructor.
+      repeat rewrite filter_app, filter_map.
+      repeat rewrite map_app, map_map; simpl.
+      rewrite filter_and, a_eq, filter_true.
+      eapply FlattenCompList.flatten_CompList_app; eauto.
+      rewrite !filter_app, H7; econstructor.
+    + destruct (H a); eauto.
+      inversion_by computes_to_inv; subst; econstructor; eauto.
+      assert (computes_to (l <- l <- FlattenCompList.flatten_CompList
+                             (map
+                                (fun l' : ilist (@Tuple) headings =>
+                                   l <- l2 l';
+                                 ret (map (fun fa : Tuple => icons _ fa l') l))
+                                (filter f l1));
+                           ret (filter cond1 l);
+                           l0 <- FlattenCompList.flatten_CompList
+                              (map
+                                 (fun l' : ilist (@Tuple) (heading1 :: headings) =>
+                                    l0 <- l2' l';
+                                  ret (map (fun fa : Tuple => icons _ fa l') l0))
+                                 (filter g l));
+                           ret (filter cond2 l0)) (filter cond2 x1)) as H'
+          by (repeat econstructor; eauto).
+      pose (IHl1 l2 l2' cond1 cond2 H _ H'); inversion_by computes_to_inv; subst.
+      econstructor; eauto.
+      econstructor.
+      repeat rewrite filter_app, filter_map.
+      repeat rewrite map_app, map_map; simpl.
+      rewrite a_eq, filter_false; simpl; eauto.
+      rewrite H6; eauto.
+Qed.
+
+
+Lemma refine_Join_Join_Filtered_Comp_Lists_filter_hd
+: forall (heading1 heading2 : Heading) (headings : list Heading)
+         (f : ilist (@Tuple) headings -> bool)
+         (l2 : ilist (@Tuple) headings -> Comp (list Tuple))
+         (l2' : ilist (@Tuple) (heading1 :: headings) -> Comp (list Tuple))
+         (cond1 : ilist (@Tuple) (heading1 :: headings) -> bool)
+         (cond2 : ilist (@Tuple) (heading2 :: heading1 :: headings) -> bool),
+    (forall a : ilist (@Tuple) headings,
+     exists v : list Tuple, refine (l2 a) (ret v)) ->
+    forall l1 : list (ilist (@Tuple) headings),
+      refine
+        (l <- Join_Filtered_Comp_Lists l1 l2 cond1;
+         Join_Filtered_Comp_Lists  (filter (fun a : ilist (@Tuple) (_ :: _) => f (ilist_tl a)) l) l2' cond2)
+        (l <- Join_Filtered_Comp_Lists (filter f l1) l2 cond1;
+         Join_Filtered_Comp_Lists l l2' cond2).
+Proof.
+  intros; pose proof (@refine_Join_Join_Filtered_Comp_Lists_filter_hd_andb
+                        _ _ _ f (fun _ => true) l2 l2' cond1 cond2 H l1) as r.
+  setoid_rewrite filter_true in r.
+  intros v Comp_v.
+  apply r in Comp_v.
+  inversion_by computes_to_inv; subst.
+  rewrite filter_and, filter_true in H2.
+  eauto.
+Qed.
+
+
+Lemma List_Query_In_Return
+      {ResultT}
+      headings
+      (l : list (ilist (@Tuple) headings))
+      (r : ilist (@Tuple) headings -> ResultT)
+: refine (List_Query_In l (fun tup => (Return (r tup))%QuerySpec))
+         (ret (map r l)).
+Proof.
+  unfold List_Query_In; induction l; simpl; eauto.
+  - reflexivity.
+  - setoid_rewrite IHl; simplify with monad laws.
+    reflexivity.
+Qed.
+
+
+
 
 (*Add Parametric Morphism {A: Type} :
   (Query_For)
@@ -241,8 +798,8 @@ Qed. *)
 
 Lemma DropQSConstraintsQuery_In {A} :
   forall qs R bod,
-         @Query_In A qs R bod =
-         UnConstrQuery_In (DropQSConstraints qsHint) R bod.
+    @Query_In A qs R bod =
+    UnConstrQuery_In (DropQSConstraints qsHint) R bod.
 Proof.
   reflexivity.
 Qed.
@@ -396,14 +953,22 @@ Proof.
   destruct b; simplify with monad laws; reflexivity.
 Qed.
 
-Instance DecideableEnsemble_EqDec {A B : Type}
-         (B_eq_dec : Query_eq B)
-         (f f' : A -> B)
-         : DecideableEnsemble (fun a => eq (f a) (f' a)) :=
-  {| dec a := if A_eq_dec (f a) (f' a) then true else false |}.
+Add Parametric Morphism
+    (A : Type)
+    (f : A -> Type)
+    (As : list A)
+    (a : A)
+    (l' : list (ilist f As))
+: (@Join_Comp_Lists A f As a l')
+    with signature
+    (pointwise_relation _ refine) ==> refine
+      as refine_Join_Comp_Lists.
 Proof.
-  intros; find_if_inside; split; congruence.
-Defined.
+  unfold pointwise_relation; simpl; intros.
+  induction l'; unfold Join_Comp_Lists; simpl.
+  - reflexivity.
+  - rewrite H; setoid_rewrite IHl'; reflexivity.
+Qed.
 
 Lemma refine_Where {A B} :
   forall (P : Ensemble A)
@@ -429,23 +994,23 @@ Require Import Coq.Arith.Arith Coq.omega.Omega.
 
 Lemma refineEquiv_For_DropQSConstraints A qsSchema qs :
   forall bod,
-      refine
-     {H1 |
-      exists or' : QueryStructure qsSchema * list A,
-       (queryRes <- (For bod)%QuerySpec;
-        ret (qs, queryRes)) ↝ or' /\
-       DropQSConstraints_AbsR (fst or') (fst H1) /\ snd or' = snd H1}
-     (b <- (For bod)%QuerySpec;
-      ret (DropQSConstraints qs, b) ) .
+    refine
+      {H1 |
+       exists or' : QueryStructure qsSchema * list A,
+                    (queryRes <- (For bod)%QuerySpec;
+                     ret (qs, queryRes)) ↝ or' /\
+                    DropQSConstraints_AbsR (fst or') (fst H1) /\ snd or' = snd H1}
+      (b <- (For bod)%QuerySpec;
+       ret (DropQSConstraints qs, b) ) .
 Proof.
   setoid_rewrite refineEquiv_pick_ex_computes_to_bind_and;
   intros; f_equiv; unfold pointwise_relation; intros.
   setoid_rewrite refineEquiv_pick_ex_computes_to_and;
-  setoid_rewrite refineEquiv_bind_unit; simpl;
-  unfold DropQSConstraints_AbsR;
-  setoid_rewrite refineEquiv_pick_pair;
-  setoid_rewrite refineEquiv_pick_eq';
-  simplify with monad laws; f_equiv.
+    setoid_rewrite refineEquiv_bind_unit; simpl;
+    unfold DropQSConstraints_AbsR;
+    setoid_rewrite refineEquiv_pick_pair;
+    setoid_rewrite refineEquiv_pick_eq';
+    simplify with monad laws; f_equiv.
 Qed.
 
 Global Instance IndexedDecideableEnsemble

@@ -220,13 +220,6 @@ Proof.
   reflexivity.
 Qed.
 
-Definition List_Query_In
-           {QueryT ResultT}
-           (queriedList : list QueryT)
-           (resultComp : QueryT -> Comp (list ResultT))
-  :=
-    flatten_CompList (map resultComp queriedList).
-
 Lemma refine_List_Query_In {ResultT}
       qsSchema qs R l resultComp
 : EnsembleIndexedListEquivalence (GetUnConstrRelation qs R) l

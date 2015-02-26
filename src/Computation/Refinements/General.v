@@ -1,4 +1,6 @@
-Require Import Coq.Strings.String Coq.Sets.Ensembles.
+Require Import Coq.Strings.String
+        Coq.Sets.Ensembles
+        Coq.Bool.Bool.
 Require Import ADTSynthesis.Common
         ADTSynthesis.Common.BoolFacts
         ADTSynthesis.Common.LogicFacts
@@ -253,6 +255,15 @@ Section general_refine_lemmas.
              (If c Then t Else e).
   Proof.
     reflexivity.
+  Qed.
+
+  Lemma refine_if_andb {A}
+  : forall (i i' : bool)
+           (t e : A),
+      (if i then (if i' then t else e) else e) =
+      if i && i' then t else e.
+  Proof.
+    destruct i; destruct i'; reflexivity.
   Qed.
 
   Lemma refineEquiv_if A :

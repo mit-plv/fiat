@@ -142,24 +142,6 @@ Section packet.
 
 End packet.
 
-Definition DnsSchema :=
-  Query Structure Schema
-        [ relation sCOLLECTIONS has
-                   schema <sNAME :: name,
-          sTYPE :: RRecordType,
-          sCLASS :: RRecordClass,
-          sTTL :: nat,
-          sDATA :: string>
-          where (fun t t' => t!sNAME = t'!sNAME -> t!sTYPE <> CNAME)]
-        enforcing [ ].
-
-Definition DnsSig : ADTSig :=
-  ADTsignature {
-      Constructor "Init" : unit -> rep,
-                           Method "AddData" : rep x DNSRRecord -> rep x bool,
-                                              Method "Process" : rep x packet -> rep x packet
-    }.
-
 Definition prefixProp (p s : name) := exists ps, p ++ ps = s.
 Fixpoint prefixBool (p s : name) :=
   match p, s with
@@ -302,8 +284,6 @@ Section FilteredList.
 
 End FilteredList.
 
-Notation "[ x 'in' xs | P ]" := (filtered_list xs (fun x => P)) (at level 70) : comp_scope.
-
 (* Agree on this notation. *)
 Notation "'unique' b , P ->> s 'otherwise' ->> s'" :=
   (b' <- {b' | forall b, b' = Some b <-> P};
@@ -311,6 +291,27 @@ Notation "'unique' b , P ->> s 'otherwise' ->> s'" :=
 
 Definition is_empty {A} (l : list A) :=
   match l with nil => true | _ => false end.
+
+Notation "[[ x 'in' xs | P ]]" := (filtered_list xs (fun x => P)) (at level 70) : comp_scope.
+
+
+Definition DnsSchema :=
+  Query Structure Schema
+        [ relation sCOLLECTIONS has
+                   schema <sNAME :: name,
+          sTYPE :: RRecordType,
+          sCLASS :: RRecordClass,
+          sTTL :: nat,
+          sDATA :: string>
+          where (fun t t' => t!sNAME = t'!sNAME -> t!sTYPE <> CNAME) ]
+        enforcing [ ].
+
+Definition DnsSig : ADTSig :=
+  ADTsignature {
+      Constructor "Init" : unit -> rep,
+      Method "AddData" : rep x DNSRRecord -> rep x bool,
+      Method "Process" : rep x packet -> rep x packet
+    }.
 
 Definition DnsSpec : ADT DnsSig :=
   QueryADTRep DnsSchema {
@@ -321,14 +322,15 @@ Definition DnsSpec : ADT DnsSig :=
 
     query "Process" (p : packet) : packet :=
       let t := qtype (questions p) in
-      Repeat (*7 *) 1 initializing n with qname (questions p) (* setting this to 1 until we work *)
-                      defaulting rec with (ret (buildempty p))(* out the setoid rewriting machinery*)
+      Repeat 7 initializing n with qname (questions p)
+               defaulting rec with (ret (buildempty p))
+                                                                 
          {{ rs <- For (r in sCOLLECTIONS)      (* Bind a list of all the DNS entries *)
                   Where (prefixProp n r!sNAME) (* prefixed with [n] to [rs] *)
                   Return r;
             If (is_empty rs)        (* Are there any matching records? *)
             Then
-              bfrs <- [r in rs | upperbound r rs]; (* Find the best match (largest prefix) in [rs] *)
+              bfrs <- [[r in rs | upperbound r rs]]; (* Find the best match (largest prefix) in [rs] *)
               b <- { b | decides b (forall r, List.In r bfrs -> n = r!sNAME) };
               if b                (* If the record's QNAME is an exact match  *)
               then
@@ -336,16 +338,13 @@ Definition DnsSpec : ADT DnsSig :=
                 List.In b bfrs /\ b!sTYPE = CNAME     (* If the record is a CNAME, *)
                                /\ t <> CNAME ->>      (* and the query did not request a CNAME *)
 
-                  bfrs' <- [x in bfrs | x!sTYPE = CNAME]; (* Find any matching records that do have *)
-                                                      (* the requested type.  *)
-
                   p' <- rec b!sNAME;                  (* Recursively find records matching the CNAME *)
                                                     (* ?? Shouldn't this use the sDATA ?? *)
-                  ret (List.fold_left addan bfrs' p')
+                  ret (addan p' b)
                 otherwise ->>     (* Copy the records into the answer section of an empty response *)
                   ret (List.fold_left addan bfrs (buildempty p))
               else
-                bfrs' <- [x in bfrs | x!sTYPE = NS];
+                bfrs' <- [[x in bfrs | x!sTYPE = NS]];
                 ret (List.fold_left addns bfrs' (buildempty p))
             Else ret (buildempty p) (* No matching records! *)
           }} }.
@@ -768,25 +767,25 @@ Proof.
   hone method "Process".
   {
     simplify with monad laws.
-    Focused_refine_Query'.
+    Focused_refine_Query.
+    {
+      implement_In.
 
-    implement_In.
+      convert_Where_to_search_term.
+      find_equivalent_search_term 0 ltac:(fun _ _ _ _ => idtac).
+      { instantiate (1 := {| pst_name := qname (questions n);
+                             pst_filter := fun tup => true |}).
 
-    convert_Where_to_search_term.
-    find_equivalent_search_term 0 ltac:(fun _ _ _ _ => idtac).
-    { instantiate (1 := {| pst_name := qname (questions n);
-                           pst_filter := fun tup => true |}).
+        simpl.
+        intros; apply foo13.
+      }
 
-      simpl.
-      intros; apply foo13.
+      convert_filter_to_find.
+      Implement_Aggregates.
+
+      setoid_rewrite foo11.
+      reflexivity.
     }
-
-    convert_filter_to_find.
-    Implement_Aggregates.
-
-    setoid_rewrite foo11.
-    reflexivity.
-
     (* Find the upperbound of the results. *)
     setoid_rewrite refine_find_upperbound.
     simplify with monad laws.
@@ -846,22 +845,24 @@ Proof.
     etransitivity.
     - apply refine_If_Then_Else.
       + simplify with monad laws.
-        Focused_refine_Query'.
-        implement_In.
-        convert_Where_to_search_term.
-        (* TODO: Create a tactic that builds the search term to use
+        Focused_refine_Query.
+        {
+          implement_In.
+          convert_Where_to_search_term.
+          (* TODO: Create a tactic that builds the search term to use
            in lieu of this idtac. *)
-        find_equivalent_search_term 0 ltac:(fun _ _ _ _ => idtac).
-        { instantiate (1 := {| pst_name := n!sNAME;
-                               pst_filter := fun tup => ?[list_eq_dec string_dec n!sNAME tup!sNAME] |}).
-          intros; apply foo10.
+          find_equivalent_search_term 0 ltac:(fun _ _ _ _ => idtac).
+          { instantiate (1 := {| pst_name := n!sNAME;
+                                 pst_filter := fun tup => ?[list_eq_dec string_dec n!sNAME tup!sNAME] |}).
+            intros; apply foo10.
+          }
+
+          convert_filter_to_find.
+          Implement_Aggregates.
+
+          setoid_rewrite foo11.
+          reflexivity.
         }
-
-        convert_filter_to_find.
-        Implement_Aggregates.
-
-        setoid_rewrite foo11.
-        reflexivity.
 
         simplify with monad laws.
         setoid_rewrite refineEquiv_swap_bind.
@@ -871,29 +872,30 @@ Proof.
         reflexivity.
       + simplify with monad laws.
 
-        Focused_refine_Query'.
-        implement_In.
+        Focused_refine_Query.
+        { implement_In.
 
-        convert_Where_to_search_term.
-        (* TODO: Reuse tactic from above to build this search term. *)
-        instantiate (1 := fun a => PrefixSearchTermMatcher {| pst_name := n!sNAME;
-                                                              pst_filter := fun tup => ?[list_eq_dec string_dec n!sNAME tup!sNAME]
-                                                                                        && (?[CNAME == (tup!sTYPE)]) |} (ilist_hd a)).
-        { intro; unfold PrefixSearchTermMatcher; simpl.
-          match goal
-          with |- context [ prefixBool ?l ?l' ] => case_eq (prefixBool l l');
-                 simpl end.
-          intros; f_equal.
-          repeat find_if_inside; simpl; try congruence.
+          convert_Where_to_search_term.
+          (* TODO: Reuse tactic from above to build this search term. *)
+          instantiate (1 := fun a => PrefixSearchTermMatcher {| pst_name := n!sNAME;
+                                                                pst_filter := fun tup => ?[list_eq_dec string_dec n!sNAME tup!sNAME]
+                                                                                          && (?[CNAME == (tup!sTYPE)]) |} (ilist_hd a)).
+          { intro; unfold PrefixSearchTermMatcher; simpl.
+            match goal
+            with |- context [ prefixBool ?l ?l' ] => case_eq (prefixBool l l');
+                   simpl end.
+            intros; f_equal.
+            repeat find_if_inside; simpl; try congruence.
 
 
-          intros; rewrite foo12; simpl; eauto.
+            intros; rewrite foo12; simpl; eauto.
+          }
+
+          convert_filter_to_find.
+          Implement_Aggregates.
+          setoid_rewrite foo11.
+          reflexivity.
         }
-
-        convert_filter_to_find.
-        Implement_Aggregates.
-        setoid_rewrite foo11.
-        reflexivity.
 
         simplify with monad laws.
         setoid_rewrite refineEquiv_swap_bind.
