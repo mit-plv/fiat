@@ -54,7 +54,6 @@ CORE_MODULES    := \
 	Common/Wf \
 	Common/Le \
 	Common/UIP \
-	ADTNotation/StringBound \
 	ADTNotation/BuildADTSig \
 	ADTNotation/BuildADT \
 	ADTNotation/BuildComputationalADT \
