@@ -460,7 +460,7 @@ Section SharpenedBagImplementation.
          (fun r_o r_n =>
             r_o ≃ benumerate (Bag := BagPlus) r_n
             /\ RepInvPlus r_n).
-    hone constructor "Empty".
+    hone constructor sEmpty.
     {
       simplify with monad laws.
       refine pick val bempty.
@@ -468,7 +468,7 @@ Section SharpenedBagImplementation.
       intuition eauto using bempty_RepInv; eapply refine_Empty_set_bempty.
     }
 
-    hone method "Enumerate".
+    hone method sEnumerate.
     {
       simplify with monad laws.
       refine pick val (benumerate r_n); intuition;
@@ -478,7 +478,7 @@ Section SharpenedBagImplementation.
       finish honing.
     }
 
-    hone method "Count".
+    hone method sCount.
     {
       simplify with monad laws.
       refine pick val (benumerate r_n); intuition;
@@ -491,7 +491,7 @@ Section SharpenedBagImplementation.
       finish honing.
     }
 
-    hone method "Insert".
+    hone method sInsert.
     {
       simplify with monad laws; intuition.
       destruct_EnsembleIndexedListEquivalence.
@@ -503,7 +503,7 @@ Section SharpenedBagImplementation.
       eapply refine_Add_binsert; simpl; eauto.
     }
 
-    hone method "Find".
+    hone method sFind.
     {
       simplify with monad laws.
       intuition.
@@ -518,7 +518,7 @@ Section SharpenedBagImplementation.
       eapply Permutation_EnsembleIndexedListEquivalence; simpl; eauto.
     }
 
-    hone method "Delete".
+    hone method sDelete.
     {
       simplify with monad laws; intuition.
       destruct (bdelete_correct r_n n H2).
@@ -538,7 +538,7 @@ Section SharpenedBagImplementation.
       eapply Permutation_EnsembleIndexedListEquivalence; simpl; eauto.
     }
 
-    hone method "Update".
+    hone method sUpdate.
     {
       simplify with monad laws; intuition.
       pose proof (bupdate_correct (CorrectBag:=CorrectBagPlus) r_n a b H2).

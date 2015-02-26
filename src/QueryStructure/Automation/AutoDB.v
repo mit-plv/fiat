@@ -23,8 +23,6 @@ Require Import ADTNotation.BuildComputationalADT.
 Require Import ADT.ComputationalADT.
 Require Import Eqdep_dec.
 
-Global Opaque binsert benumerate bfind bcount.
-
 Ltac prove_decidability_for_functional_dependencies :=
   simpl; econstructor; intros;
   try setoid_rewrite <- eq_nat_dec_bool_true_iff;
@@ -243,8 +241,10 @@ Definition Initialize_IndexedQueryStructureImpls'
            (DelegateImpls : forall idx,
                               ComputationalADT.pcADT (Build_IndexedQueryStructure_Impl_Sigs Index idx) (DelegateReps idx))
 : @Build_IndexedQueryStructure_Impl_cRep _ Index DelegateReps :=
-  Iterate_Dep_Type_equiv' string_dec _
-                          (fun idx => CallBagImplConstructor DelegateReps DelegateImpls {|bindex := "Empty" |} ()).
+  Iterate_Dep_Type_equiv'
+    string_dec _
+    (fun idx : @BoundedString (map relName schemas) =>
+       CallBagImplConstructor DelegateReps DelegateImpls BagEmpty ()).
 
 Lemma Initialize_IndexedQueryStructureImpls_AbsR
       {qs_schema : QueryStructureSchema}
@@ -273,13 +273,13 @@ Proof.
     simpl; simplify with monad laws.
     pose proof (IHqschemaSchemas
                   Index'
-                  (fun idx =>
+                  (fun idx : @BoundedString (map relName qschemaSchemas) =>
                      (DelegateReps {|bindex := bindex idx;
                                      indexb := @IndexBound_tail _ _ _ _ (indexb idx) |}))
-                  (fun idx =>
+                  (fun idx : @BoundedString (map relName qschemaSchemas) =>
                      (DelegateImpls {|bindex := bindex idx;
                                      indexb := @IndexBound_tail _ _ _ _ (indexb idx) |}))
-                  (fun idx =>
+                  (fun idx : @BoundedString (map relName qschemaSchemas)=>
                      (ValidImpls {|bindex := bindex idx;
                                    indexb := @IndexBound_tail _ _ _ _ (indexb idx) |}))
                _ (ReturnComputes _)).
@@ -288,7 +288,7 @@ Proof.
     econstructor.
     intros.
     pose proof (fun d => @refine_BagImplConstructor
-                        _ _  DelegateReps DelegateImpls ValidImpls idx {| bindex := "Empty" |} d).
+                        _ _  DelegateReps DelegateImpls ValidImpls idx BagEmpty d).
     intros; destruct idx as [idx [n nth_n]].
     destruct n; simpl in *.
     + unfold i2th_Bounded, ith_Bounded_rect; simpl.
@@ -507,7 +507,7 @@ Ltac implement_EnsembleDelete_AbsR find_search_term :=
 Ltac implement_Enumerate_filter find_search_term :=
   match goal with
       [ H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
-        |- context[For (l <- CallBagMethod ?idx {| bindex := "Enumerate"|} ?r_n0 ();
+        |- context[For (l <- CallBagMethod ?idx BagEmpty ?r_n0 ();
                         (List_Query_In (filter (@DecideableEnsembles.dec _ ?DeletedTuples _) (snd l))
                                        ?resultComp))]] =>
       let filter_dec := eval simpl in (@DecideableEnsembles.dec _ DeletedTuples _) in
@@ -646,18 +646,6 @@ Lemma if_duplicate_cond_eq {A}
     (if i then (if i then t else e) else e) = if i then t else e.
 Proof.
   destruct i; reflexivity.
-Qed.
-
-Lemma Bind_refine_If_Then_Else {A B}
-: forall i (t e : A -> Comp B) (ca : Comp A),
-    refine (a <- ca;
-            If i Then t a Else e a)
-           (If i Then (a <- ca;
-                       t a)
-               Else (a <- ca;
-                     e a)).
-Proof.
-  intros; destruct i; simpl; reflexivity.
 Qed.
 
 Ltac equate X Y := let H := fresh in assert (H : X = Y) by reflexivity; clear H.
@@ -911,30 +899,6 @@ Ltac find_equivalent_search_term m build_search_term :=
                                                                                                           ]))) end.
 
 
-Corollary refine_Join_Comp_Lists_filter_filter_search_term_snd_dep'
-          qs_schema BagIndexKeys
-          (ResultT : Type) :
-  forall (r_n : IndexedQueryStructure qs_schema BagIndexKeys)
-         idx idx'
-         (search_pattern : _ -> _)
-         (resultComp : ilist (@Tuple) [_; _] -> Comp (list ResultT))
-         filter_rest st,
-    refine (cl <- CallBagMethod idx {| bindex := "Find" |} r_n st;
-            l' <- (Join_Comp_Lists (Build_single_Tuple_list (snd cl))
-                                   (fun _ => l <- CallBagMethod idx' {| bindex := "Enumerate" |} r_n ();
-                                    ret (snd l)));
-            List_Query_In (filter (fun a : ilist (@Tuple) [_ ; _] => BagMatchSearchTerm _ (search_pattern (ilist_tl a)) (ilist_hd a) && filter_rest a) l')
-                          resultComp)
-           (cl <- CallBagMethod idx {| bindex := "Find" |} r_n st;
-            l' <- (Join_Comp_Lists (Build_single_Tuple_list (snd cl))
-                                   (fun tup => l <- CallBagMethod idx' {| bindex := "Find" |} r_n (search_pattern tup);
-                                    ret (snd l)));
-            List_Query_In (filter filter_rest l') resultComp).
-Proof.
-  intros; f_equiv; intro;
-  apply refine_Join_Comp_Lists_filter_search_term_snd_dep.
-Qed.
-
 Ltac convert_filter_to_find' :=
   try match goal with
           |- context[filter (fun a => (_ && _) && true) _] =>
@@ -1049,7 +1013,6 @@ Proof.
     setoid_rewrite IHl; eauto; simplify with monad laws.
     reflexivity.
 Qed.
-
 
 Arguments icons {A} {B} {a} {As} _ _.
 Arguments CallBagConstructor {heading} name {index} cidx _.

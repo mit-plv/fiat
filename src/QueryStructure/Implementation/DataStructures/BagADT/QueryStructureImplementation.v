@@ -38,6 +38,41 @@ Section QueryStructureImplementation.
   Definition GetIndexedRelation (r_n : IndexedQueryStructure) idx
     := i2th_Bounded relName r_n idx.
 
+  Definition BagEmpty
+             {heading : Heading} {index : SearchUpdateTerms heading}
+  : (ConstructorIndex (BagSig (@Tuple heading) (BagSearchTermType index) (BagUpdateTermType index)))
+    := {| bindex := "Empty" |}.
+
+  Definition BagEnumerate
+             {heading : Heading} {index : SearchUpdateTerms heading}
+  : (MethodIndex (BagSig (@Tuple heading) (BagSearchTermType index) (BagUpdateTermType index)))
+    := {| bindex := "Enumerate" |}.
+
+  Definition BagFind
+             {heading : Heading} {index : SearchUpdateTerms heading}
+  : (MethodIndex (BagSig (@Tuple heading) (BagSearchTermType index) (BagUpdateTermType index)))
+    := {| bindex := "Find" |}.
+
+  Definition BagCount
+             {heading : Heading} {index : SearchUpdateTerms heading}
+  : (MethodIndex (BagSig (@Tuple heading) (BagSearchTermType index) (BagUpdateTermType index)))
+    := {| bindex := "Count" |}.
+
+  Definition BagInsert
+             {heading : Heading} {index : SearchUpdateTerms heading}
+  : (MethodIndex (BagSig (@Tuple heading) (BagSearchTermType index) (BagUpdateTermType index)))
+    := {| bindex := "Insert" |}.
+
+  Definition BagUpdate
+             {heading : Heading} {index : SearchUpdateTerms heading}
+  : (MethodIndex (BagSig (@Tuple heading) (BagSearchTermType index) (BagUpdateTermType index)))
+    := {| bindex := "Update" |}.
+
+  Definition BagDelete
+             {heading : Heading} {index : SearchUpdateTerms heading}
+  : (MethodIndex (BagSig (@Tuple heading) (BagSearchTermType index) (BagUpdateTermType index)))
+    := {| bindex := "Delete" |}.
+
   Definition CallBagMethod idx midx r_n :=
     Methods (BagSpec (BagMatchSearchTerm (ith_Bounded relName BagIndexKeys idx))
                      (BagApplyUpdateTerm (ith_Bounded relName BagIndexKeys idx)))
@@ -67,10 +102,10 @@ Section QueryStructureImplementation.
                                   (BagApplyUpdateTerm index))) indices')
     := match indices' return Comp (i2list _ indices') with
       | inil => ret (i2nil _ _)
-      | icons ns ns' index indices'' =>
-        c <- (CallBagConstructor (relName ns) index {|bindex := "Empty" |} tt);
+      | icons ns ns' index' indices'' =>
+        c <- (CallBagConstructor (relName ns) index' BagEmpty tt);
           cs <- (@Initialize_IndexedQueryStructure ns' indices'');
-          ret (i2cons (icons ns index indices'') c cs)
+          ret (i2cons (icons ns index' indices'') c cs)
     end.
 
 End QueryStructureImplementation.

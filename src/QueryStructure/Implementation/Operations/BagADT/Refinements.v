@@ -89,7 +89,7 @@ Section BagsQueryStructureRefinements.
            refine (UnConstrQuery_In r_o idx resultComp)
                   (l <- Join_Comp_Lists [ inil _ ]
                      (fun _ =>
-                        l <- CallBagMethod idx {|bindex := "Enumerate" |} r_n ();
+                        l <- CallBagMethod idx BagEnumerate r_n ();
                       (ret (snd l)));
                    (List_Query_In l (fun tup : ilist (@Tuple) [ _ ]=> resultComp (ilist_hd tup)))) .
   Proof.
@@ -118,9 +118,9 @@ Section BagsQueryStructureRefinements.
       DelegateToBag_AbsR r_o r_n
       -> forall (idx : BoundedString)
                 (f : _ -> Comp (list ResultT)),
-           refine (For (l <- CallBagMethod idx {|bindex := "Enumerate" |} r_n ();
+           refine (For (l <- CallBagMethod idx BagEnumerate r_n ();
                         f l))
-                  (l <- CallBagMethod idx {|bindex := "Enumerate" |} r_n ();
+                  (l <- CallBagMethod idx BagEnumerate r_n ();
                    For (f l)).
   Proof.
     simpl; intros; unfold Query_For.
@@ -142,7 +142,7 @@ Section BagsQueryStructureRefinements.
              l,
         refine (List_Query_In l (fun tup : ilist (@Tuple) headings =>
                                    UnConstrQuery_In r_o idx (resultComp tup)))
-               (l' <- (Join_Comp_Lists l (fun _ => l <- (CallBagMethod idx {|bindex := "Enumerate" |} r_n ());
+               (l' <- (Join_Comp_Lists l (fun _ => l <- (CallBagMethod idx BagEnumerate r_n ());
                                           ret (snd l)));
                 List_Query_In l' (fun tup_pair => (resultComp (ilist_tl tup_pair) (ilist_hd tup_pair)))).
   Proof.
@@ -169,13 +169,13 @@ Section BagsQueryStructureRefinements.
       DelegateToBag_AbsR r_o r_n ->
       forall (idx idx' : BoundedString)
              (resultComp : Tuple -> Tuple -> Comp (list ResultT)),
-        refine (l <- CallBagMethod idx {|bindex := "Enumerate" |} r_n ();
+        refine (l <- CallBagMethod idx BagEnumerate r_n ();
                 List_Query_In (Build_single_Tuple_list (snd l))
                               (fun tup =>
                                  UnConstrQuery_In r_o idx' (resultComp (ilist_hd tup))))
-               (l <- CallBagMethod idx {|bindex := "Enumerate" |} r_n ();
+               (l <- CallBagMethod idx BagEnumerate r_n ();
                 l' <- (Join_Comp_Lists (Build_single_Tuple_list (snd l))
-                                       (fun _ => l <- (CallBagMethod idx' {|bindex := "Enumerate" |} r_n ());
+                                       (fun _ => l <- (CallBagMethod idx' BagEnumerate r_n ());
                                         ret (snd l)));
                 List_Query_In l' (fun tup_pair => (resultComp (ilist_hd (ilist_tl tup_pair)) (ilist_hd tup_pair)))).
   Proof.
@@ -190,14 +190,14 @@ Section BagsQueryStructureRefinements.
       DelegateToBag_AbsR r_o r_n ->
       forall (idx idx' : BoundedString)
              (resultComp : _ -> Comp (list ResultT)),
-        refine (l <- CallBagMethod idx {|bindex := "Enumerate" |} r_n ();
+        refine (l <- CallBagMethod idx BagEnumerate r_n ();
                 l' <- (Join_Comp_Lists (Build_single_Tuple_list (snd l))
-                                       (fun _ => l <- (CallBagMethod idx' {|bindex := "Enumerate" |} r_n ());
+                                       (fun _ => l <- (CallBagMethod idx' BagEnumerate r_n ());
                                         ret (snd l)));
                 List_Query_In l' resultComp)
-               (l <- CallBagMethod idx' {|bindex := "Enumerate" |} r_n ();
+               (l <- CallBagMethod idx' BagEnumerate r_n ();
                 l' <- (Join_Comp_Lists (Build_single_Tuple_list (snd l))
-                                       (fun _ => l <- (CallBagMethod idx {|bindex := "Enumerate" |} r_n ());
+                                       (fun _ => l <- (CallBagMethod idx BagEnumerate r_n ());
                                         ret (snd l)));
                 List_Query_In l' (fun tup_pair => (resultComp (icons _ (ilist_hd (ilist_tl tup_pair)) (icons _ (ilist_hd tup_pair) (inil _)))))).
   Proof.
@@ -230,9 +230,9 @@ Section BagsQueryStructureRefinements.
              (resultComp : Tuple -> Comp (list ResultT)),
         ExtensionalEq filter_dec
                       (BagMatchSearchTerm (ith_Bounded relName BagIndexKeys idx) search_pattern)
-        -> refine (l <- CallBagMethod idx {|bindex := "Enumerate" |} r_n ();
+        -> refine (l <- CallBagMethod idx BagEnumerate r_n ();
                    List_Query_In (filter filter_dec (snd l)) resultComp)
-                  (l <- CallBagMethod idx {|bindex := "Find" |} r_n search_pattern;
+                  (l <- CallBagMethod idx BagFind r_n search_pattern;
                    List_Query_In (snd l) resultComp).
   Proof.
     unfold UnConstrQuery_In, QueryResultComp, CallBagMethod, Query_For;
@@ -254,12 +254,12 @@ Section BagsQueryStructureRefinements.
                 search_pattern,
            refine (Join_Filtered_Comp_Lists l1
                                             (fun _ =>
-                                               l <- CallBagMethod idx {|bindex := "Enumerate" |} r_n ();
+                                               l <- CallBagMethod idx BagEnumerate r_n ();
                                              ret (snd l))
                                             (fun a => BagMatchSearchTerm (ith_Bounded relName BagIndexKeys idx) search_pattern (ilist_hd a) && true))
                   (Join_Comp_Lists l1
                                    (fun _ =>
-                                      l <- CallBagMethod idx {|bindex := "Find" |} r_n search_pattern;
+                                      l <- CallBagMethod idx BagFind r_n search_pattern;
                                     ret (snd l))) .
   Proof.
     unfold Join_Filtered_Comp_Lists, Join_Comp_Lists; intros; simpl.
@@ -295,13 +295,13 @@ Section BagsQueryStructureRefinements.
                 (search_pattern : ilist (@Tuple) headings -> _),
            refine (Join_Filtered_Comp_Lists l1
                                             (fun _ =>
-                                               l <- CallBagMethod idx {|bindex := "Enumerate" |} r_n ();
+                                               l <- CallBagMethod idx BagEnumerate r_n ();
                                              ret (snd l))
                                             (fun a => BagMatchSearchTerm (ith_Bounded relName BagIndexKeys idx)
                                                                          (search_pattern (ilist_tl a)) (ilist_hd a) && true))
                   (Join_Comp_Lists l1
                                    (fun a =>
-                                      l <- CallBagMethod idx {|bindex := "Find" |} r_n (search_pattern a);
+                                      l <- CallBagMethod idx BagFind r_n (search_pattern a);
                                     ret (snd l))) .
   Proof.
     unfold Join_Filtered_Comp_Lists, Join_Comp_Lists; intros; simpl.
@@ -441,10 +441,10 @@ Section BagsQueryStructureRefinements.
              (resultComp : _ -> Comp (list ResultT)),
         ExtensionalEq filter_dec
                       (BagMatchSearchTerm (ith_Bounded relName BagIndexKeys idx) search_pattern)
-        -> refine (l <- CallBagMethod idx {|bindex := "Enumerate" |} r_n ();
+        -> refine (l <- CallBagMethod idx BagEnumerate r_n ();
                    List_Query_In (filter (fun tup : ilist (@Tuple) [_] => filter_dec (ilist_hd tup)) (Build_single_Tuple_list (snd l)))
                                  resultComp)
-                  (l <- CallBagMethod idx {|bindex := "Find" |} r_n search_pattern;
+                  (l <- CallBagMethod idx BagFind r_n search_pattern;
                    List_Query_In (Build_single_Tuple_list (snd l)) resultComp).
   Proof.
     simpl; intros.
@@ -467,10 +467,10 @@ Section BagsQueryStructureRefinements.
              search_pattern
              (resultComp : _ -> Comp (list ResultT))
              filter_rest,
-        refine (l <- CallBagMethod idx {|bindex := "Enumerate" |} r_n ();
+        refine (l <- CallBagMethod idx BagEnumerate r_n ();
                 List_Query_In (filter (fun a : ilist (@Tuple) [_] => BagMatchSearchTerm _ search_pattern (ilist_hd a) && filter_rest a) (Build_single_Tuple_list (snd l)))
                               resultComp)
-               (l <- CallBagMethod idx {|bindex := "Find" |} r_n search_pattern;
+               (l <- CallBagMethod idx BagFind r_n search_pattern;
                 List_Query_In (filter filter_rest (Build_single_Tuple_list (snd l))) resultComp).
   Proof.
     unfold CallBagMethod; simpl; intros.
@@ -528,12 +528,12 @@ Section BagsQueryStructureRefinements.
            filter_rest
            cl,
       refine (l' <- (Join_Comp_Lists cl
-                                     (fun _ => l <- CallBagMethod idx' {| bindex := "Enumerate" |} r_n ();
+                                     (fun _ => l <- CallBagMethod idx' BagEnumerate r_n ();
                                       ret (snd l)));
               List_Query_In (filter (fun a : ilist (@Tuple) (_ :: headings) => BagMatchSearchTerm _ search_pattern (ilist_hd a) && filter_rest a) l')
                             resultComp)
              (l' <- (Join_Comp_Lists cl
-                                     (fun _ => l <- CallBagMethod idx' {| bindex := "Find" |} r_n search_pattern;
+                                     (fun _ => l <- CallBagMethod idx' BagFind r_n search_pattern;
                                       ret (snd l)));
               List_Query_In (filter filter_rest l') resultComp).
   Proof.
@@ -562,15 +562,15 @@ Section BagsQueryStructureRefinements.
            search_pattern
            (resultComp : ilist (@Tuple) [_; _] -> Comp (list ResultT))
            filter_rest,
-      refine (cl <- CallBagMethod idx {| bindex := "Enumerate" |} r_n ();
+      refine (cl <- CallBagMethod idx BagEnumerate r_n ();
               l' <- (Join_Comp_Lists (Build_single_Tuple_list (snd cl))
-                                     (fun _ => l <- CallBagMethod idx' {| bindex := "Enumerate" |} r_n ();
+                                     (fun _ => l <- CallBagMethod idx' BagEnumerate r_n ();
                                       ret (snd l)));
               List_Query_In (filter (fun a : ilist (@Tuple) [_ ; _] => BagMatchSearchTerm _ search_pattern (ilist_hd a) && filter_rest a) l')
                             resultComp)
-             (cl <- CallBagMethod idx {| bindex := "Enumerate" |} r_n ();
+             (cl <- CallBagMethod idx BagEnumerate r_n ();
               l' <- (Join_Comp_Lists (Build_single_Tuple_list (snd cl))
-                                     (fun _ => l <- CallBagMethod idx' {| bindex := "Find" |} r_n search_pattern;
+                                     (fun _ => l <- CallBagMethod idx' BagFind r_n search_pattern;
                                       ret (snd l)));
               List_Query_In (filter filter_rest l') resultComp).
   Proof.
@@ -636,12 +636,12 @@ Section BagsQueryStructureRefinements.
            filter_rest
            (cl : list (ilist (@Tuple) headings)),
       refine (l' <- (Join_Comp_Lists cl
-                                     (fun _ => l <- CallBagMethod idx' {| bindex := "Enumerate" |} r_n ();
+                                     (fun _ => l <- CallBagMethod idx' BagEnumerate r_n ();
                                       ret (snd l)));
               List_Query_In (filter (fun a : ilist (@Tuple) (_ :: headings) => BagMatchSearchTerm _ (search_pattern (ilist_tl a)) (ilist_hd a) && filter_rest a) l')
                             resultComp)
              (l' <- (Join_Comp_Lists cl
-                                     (fun tup => l <- CallBagMethod idx' {| bindex := "Find" |} r_n (search_pattern tup);
+                                     (fun tup => l <- CallBagMethod idx' BagFind r_n (search_pattern tup);
                                       ret (snd l)));
               List_Query_In (filter filter_rest l') resultComp).
   Proof.
@@ -671,7 +671,7 @@ Section BagsQueryStructureRefinements.
       DelegateToBag_AbsR r_o r_n ->
       exists v : list Tuple,
         refine
-          (l <- CallBagMethod idx {| bindex := "Enumerate"|} r_n ();
+          (l <- CallBagMethod idx BagEnumerate r_n ();
            ret (snd l))
           (ret v).
   Proof.
@@ -689,7 +689,7 @@ Section BagsQueryStructureRefinements.
       idx st,
       DelegateToBag_AbsR r_o r_n ->
       exists v : list Tuple,
-        refine (l <- CallBagMethod idx {| bindex := "Find"|} r_n st;
+        refine (l <- CallBagMethod idx BagFind r_n st;
                 ret (snd l))
                (ret v).
   Proof.
@@ -706,15 +706,15 @@ Section BagsQueryStructureRefinements.
            (search_pattern : _ -> _)
            (resultComp : ilist (@Tuple) [_; _] -> Comp (list ResultT))
            filter_rest,
-      refine (cl <- CallBagMethod idx {| bindex := "Enumerate" |} r_n ();
+      refine (cl <- CallBagMethod idx BagEnumerate r_n ();
               l' <- (Join_Comp_Lists (Build_single_Tuple_list (snd cl))
-                                     (fun _ => l <- CallBagMethod idx' {| bindex := "Enumerate" |} r_n ();
+                                     (fun _ => l <- CallBagMethod idx' BagEnumerate r_n ();
                                       ret (snd l)));
               List_Query_In (filter (fun a : ilist (@Tuple) [_ ; _] => BagMatchSearchTerm _ (search_pattern (ilist_tl a)) (ilist_hd a) && filter_rest a) l')
                             resultComp)
-             (cl <- CallBagMethod idx {| bindex := "Enumerate" |} r_n ();
+             (cl <- CallBagMethod idx BagEnumerate r_n ();
               l' <- (Join_Comp_Lists (Build_single_Tuple_list (snd cl))
-                                     (fun tup => l <- CallBagMethod idx' {| bindex := "Find" |} r_n (search_pattern tup);
+                                     (fun tup => l <- CallBagMethod idx' BagFind r_n (search_pattern tup);
                                       ret (snd l)));
               List_Query_In (filter filter_rest l') resultComp).
   Proof.
@@ -732,11 +732,11 @@ Section BagsQueryStructureRefinements.
            (resultComp : ilist (@Tuple) [heading ; _] -> Comp (list ResultT))
            (cl_realizable : forall a, exists v, computes_to (cl a) v)
            filter_rest,
-      refine (l <- CallBagMethod idx {| bindex := "Enumerate" |} r_n ();
+      refine (l <- CallBagMethod idx BagEnumerate r_n ();
               l' <- Join_Comp_Lists (Build_single_Tuple_list (snd l)) cl;
               List_Query_In (filter (fun a : ilist (@Tuple) [_ ; _] => (BagMatchSearchTerm _ search_pattern (ilist_hd (ilist_tl a)) && filter_rest a)) l')
                             resultComp)
-             (l <- CallBagMethod idx {| bindex := "Find" |} r_n search_pattern;
+             (l <- CallBagMethod idx BagFind r_n search_pattern;
               l' <- Join_Comp_Lists (Build_single_Tuple_list (snd l)) cl;
               List_Query_In (filter filter_rest l') resultComp).
   Proof.
@@ -786,7 +786,7 @@ Section BagsQueryStructureRefinements.
                          (BagMatchSearchTerm (ith_Bounded relName BagIndexKeys idx) search_pattern)
            -> refine {x : list Tuple |
                       QSDeletedTuples r_o idx DT x}
-                     (l <- (CallBagMethod idx {|bindex := "Delete" |} r_n search_pattern);
+                     (l <- (CallBagMethod idx BagDelete r_n search_pattern);
                       ret (snd l)).
   Proof.
     intros; setoid_rewrite DeletedTuplesFor; auto.
@@ -859,7 +859,7 @@ Section BagsQueryStructureRefinements.
                    (UpdateUnConstrRelation r_o idx (EnsembleDelete
                                                       (GetUnConstrRelation r_o idx)
                                                       DT)) r_n'}
-                (l <- (CallBagMethod idx {|bindex := "Delete" |} r_n search_pattern);
+                (l <- (CallBagMethod idx BagDelete r_n search_pattern);
                  ret (UpdateIndexedRelation r_n idx (fst l))).
   Proof.
     intros.
@@ -918,7 +918,7 @@ Section BagsQueryStructureRefinements.
                                            EnsembleInsert
                                              {| indexedElement := t; elementIndex := u |}
                                              (GetUnConstrRelation r_o idx))) r_n'})
-             (l <- (CallBagMethod idx {|bindex := "Insert" |} r_n t);
+             (l <- (CallBagMethod idx BagInsert r_n t);
               ret (UpdateIndexedRelation r_n idx (fst l))).
   Proof.
     intros; unfold CallBagMethod, DelegateToBag_AbsR; simpl; destruct H as [H H'].
@@ -962,5 +962,28 @@ Section BagsQueryStructureRefinements.
                - rewrite ith_replace_BoundIndex_neq.
                  apply H'. apply string_dec. unfold not in *; intros; rewrite H1 in n; intuition.
   Qed.
+
+Corollary refine_Join_Comp_Lists_filter_filter_search_term_snd_dep'
+          (ResultT : Type) :
+  forall (r_n : IndexedQueryStructure qs_schema BagIndexKeys)
+         idx idx'
+         (search_pattern : _ -> _)
+         (resultComp : ilist (@Tuple) [_; _] -> Comp (list ResultT))
+         filter_rest st,
+    refine (cl <- CallBagMethod idx BagFind r_n st;
+            l' <- (Join_Comp_Lists (Build_single_Tuple_list (snd cl))
+                                   (fun _ => l <- CallBagMethod idx' BagEnumerate r_n ();
+                                    ret (snd l)));
+            List_Query_In (filter (fun a : ilist (@Tuple) [_ ; _] => BagMatchSearchTerm _ (search_pattern (ilist_tl a)) (ilist_hd a) && filter_rest a) l')
+                          resultComp)
+           (cl <- CallBagMethod idx BagFind r_n st;
+            l' <- (Join_Comp_Lists (Build_single_Tuple_list (snd cl))
+                                   (fun tup => l <- CallBagMethod idx' BagFind r_n (search_pattern tup);
+                                    ret (snd l)));
+            List_Query_In (filter filter_rest l') resultComp).
+Proof.
+  intros; f_equiv; intro;
+  apply refine_Join_Comp_Lists_filter_search_term_snd_dep.
+Qed.
 
 End BagsQueryStructureRefinements.

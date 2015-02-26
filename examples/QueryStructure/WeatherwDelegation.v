@@ -80,7 +80,7 @@ Proof.
   start honing QueryStructure.
   make simple indexes using [[AREA_CODE]; [MEASUREMENT_TYPE; CELL_ID]].
 
-  plan. (* 220 seconds *)
+  Time plan. (* 220 seconds *)
 
   FullySharpenQueryStructure WeatherSchema Index.
 
