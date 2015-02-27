@@ -33,3 +33,7 @@ package-parsing-parses:
 	$(MAKE) create-parsing-parses
 	$(MAKE) do-package-parsing-parses
 	$(MAKE) test-package-parsing-parses
+
+clean::
+	rm -f parsing-parses.tar.gz
+	rm -rf parsing-parses
