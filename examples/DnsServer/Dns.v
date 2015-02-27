@@ -140,8 +140,6 @@ Section packet.
        authority := (toAnswer t) :: (authority p);
        additional := additional p |}.
 
-End packet.
-
 Definition
   prefixProp (p s : name) := exists ps, p ++ ps = s.
 Fixpoint prefixBool (p s : name) :=
@@ -599,7 +597,7 @@ Qed.
     Definition find_upperbound {A} (f : A -> nat) (ns : list A) : list A :=
       let max := fold_right
                    (fun n acc => max (f n) acc) O ns in
-      filter (fun n => beq_nat max (f n)) ns.
+      filter (fun n => NPeano.leb max (f n)) ns.
 
     Lemma fold_right_max_is_max {A}
     : forall (f : A -> nat) ns n,
@@ -625,12 +623,12 @@ Qed.
         In n (find_upperbound f ns) -> forall n', In n' ns -> (f n) >= (f n').
     Proof.
       unfold ge, find_upperbound; intros.
-      apply filter_In in H; destruct H; apply beq_nat_true_iff in H1.
+      apply filter_In in H; destruct H; apply NPeano.leb_le in H1.
       rewrite <- H1; clear H1 H n.
       apply fold_right_max_is_max; auto.
     Qed.
 
-    Lemma find_upperbound_upperbound {A}
+    (* Lemma find_upperbound_upperbound {A}
     : forall (f : A -> nat) ns n, In n (find_upperbound f ns) <->
                                     In n ns /\ upperbound f ns n.
     Proof.
@@ -639,19 +637,20 @@ Qed.
       - apply find_upperbound_highest_length; auto.
       - destruct H; unfold find_upperbound.
         apply filter_In; split; try assumption.
-        apply beq_nat_true_iff.
+        apply NPeano.leb_le.
         pose proof (fold_right_max_is_max f _ _ H).
         pose proof (fold_right_higher_is_higher f _ H0).
-        eapply le_antisym; eauto.
-    Qed.
+        auto.
+    Qed. *)
 
     Instance DecideableEnsembleUpperbound {A} (f : A -> nat) ns :
       DecideableEnsemble (upperbound f ns) :=
-      let max := fold_right
-                   (fun n acc => max (f n) acc) O ns in
-      {| dec n := beq_nat max (f n) |}.
+      {| dec n := NPeano.leb (fold_right (fun n acc => max (f n) acc) O ns) (f n) |}.
     Proof.
-      admit.
+      unfold upperbound, ge; intros; rewrite NPeano.leb_le; intuition.
+      - remember (f a); clear Heqn; subst; eapply le_trans;
+        [ apply fold_right_max_is_max; apply H0 | assumption ].
+      - eapply fold_right_higher_is_higher; eauto.
     Defined.
 
     Corollary refine_find_upperbound {A}
@@ -674,9 +673,14 @@ Qed.
       unfold find_upperbound, name_length; intros ns s H0 n n' H H1.
       apply filter_In in H; destruct H; apply filter_In in H1; destruct H1.
       pose proof (H0 _ H); pose proof (H0 _ H1).
-      apply beq_nat_true in H2; apply beq_nat_true in H3; rewrite H2 in H3.
+      apply NPeano.leb_le in H2; apply NPeano.leb_le in H3.
+      pose proof (fold_right_max_is_max name_length ns n H) as H2'.
+      pose proof (fold_right_max_is_max name_length ns n' H1) as H3'.
+      unfold name_length in *.
+      apply (le_antisym _ _ H2') in H2; apply (le_antisym _ _ H3') in H3.
+      rewrite <- H2 in H3.
       unfold prefixProp in *; destruct H4; destruct H5; rewrite <- H5 in H4.
-      clear H H2 H0 H1 H5 s ns.
+      clear H2' H3' H H2 H0 H1 H5 s ns.
       remember (get_name n); remember (get_name n'); clear Heql Heql0.
       revert x0 l l0 H4 H3.
       induction x; destruct x0; intros.
@@ -723,12 +727,27 @@ Qed.
         find_if_inside; [ discriminate | unfold not in *; apply n; auto ].
     Qed.
 
+    Lemma in_list_exists {A}
+    : forall (xs : list A) x, In x xs -> exists n, nth_error xs n = Some x.
+    Proof.
+      intros; induction xs; inversion H; subst.
+      exists 0; reflexivity.
+      apply IHxs in H0; destruct_ex; exists (1 + x0); auto.
+    Qed.
+
+    Lemma in_list_preserve_filter {A}
+    : forall (f : A -> bool) xs x, In x (filter f xs) -> In x xs.
+    Proof.
+      intros; apply (filter_In f x xs) in H; tauto.
+    Qed.
+
     Lemma foo20
     : forall ns n s
-        (HH : forall t t' n m,  n <> m
-                           -> nth_error ns n =  Some t
-                           -> nth_error ns m = Some t'
-                           -> get_name t = get_name t' -> t!sTYPE <> CNAME),
+             (HH : forall t t' n n', n <> n'
+                                     -> nth_error ns n =  Some t
+                                     -> nth_error ns n' = Some t'
+                                     -> get_name t = get_name t'
+                                     -> t!sTYPE <> CNAME),
         (forall n', In n' ns -> prefixProp (get_name n') s) ->
         refine {b' |
                 forall b : Tuple,
@@ -744,14 +763,24 @@ Qed.
                                    else None
                     end).
     Proof.
-      unfold refine; intros; pose proof (foo16 ns H); clear H.
-      remember (find_upperbound name_length ns) as l; clear Heql.
+      unfold refine, not; intros; pose proof (foo16 ns H); clear H.
+      remember (find_upperbound name_length ns) as l.
       apply computes_to_inv in H0; econstructor; split; intros.
       - destruct l; [ subst; inversion H | ].
         repeat find_if_inside_eqn; subst; try inversion H; subst.
         repeat split; [ simpl; left | symmetry | ]; auto.
       - destruct H as [? [? ?] ]; destruct l; [ inversion H | subst ].
-        admit.
+        inversion H; unfold not in *.
+        + repeat find_if_inside; subst; auto; exfalso; auto.
+        + assert (d = b).
+          * pose proof (in_eq d l).
+            pose proof H; rewrite Heql in H5; pose proof (in_list_preserve_filter _ ns b H5); clear H5.
+            pose proof H4; rewrite Heql in H5; pose proof (in_list_preserve_filter _ ns d H5); clear H5.
+            pose proof (in_list_exists ns b H6); pose proof (in_list_exists ns d H7); destruct_ex; pose proof (H1 d b H4 H).
+            destruct (beq_nat x0 x) eqn: eq; [ rewrite beq_nat_true_iff in eq; subst; rewrite H8 in H5; inversion H5; auto | ].
+            rewrite beq_nat_false_iff in eq; symmetry in H9.
+            pose proof (HH b d x0 x eq H5 H8 H9); exfalso; auto.
+          * repeat find_if_inside; subst; [ exfalso; apply H3 | | exfalso; apply n0 ]; auto.
     Qed.
 
     Lemma refine_If_Opt_Then_Else_ret {A B} :
