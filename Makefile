@@ -138,12 +138,11 @@ SRC_GRAMMAR_MODULES := \
 	Parsers/ContextFreeGrammarProperties\
 	Parsers/ContextFreeGrammarNotations
 
-SRC_PARSERS_MODULES := \
+SRC_PARSERS_BASE_MODULES := \
 	Parsers/StringLike\
 	Parsers/StringLike/Core\
 	Parsers/StringLike/Properties\
 	Parsers/StringLike/Examples\
-	Parsers/Specification\
 	Parsers/DependentlyTyped\
 	Parsers/DependentlyTypedOption\
 	Parsers/DependentlyTypedSum\
@@ -155,7 +154,11 @@ SRC_PARSERS_MODULES := \
 	Parsers/WellFoundedParse\
 	Parsers/MinimalParse\
 	Parsers/MinimalParseOfParse\
-	Parsers/BooleanRecognizerCorrect\
+	Parsers/BooleanRecognizerCorrect
+
+SRC_PARSERS_MODULES := \
+	Parsers/Specification\
+	$(SRC_PARSERS_BASE_MODULES)\
 	$(SRC_GRAMMAR_MODULES)
 
 #	QueryStructure/Refinements/BagADT/DelegateImplementation\
@@ -241,6 +244,11 @@ SRC_PARSERS_VDS := $(SRC_PARSERS_MODULES:%=src/%.v.d)
 SRC_PARSERS_VOS := $(SRC_PARSERS_MODULES:%=src/%.vo)
 PREFIXED_SRC_PARSERS_VOS:= $(SRC_PARSERS_MODULES:%=src/%.vo)
 
+SRC_PARSERS_BASE_VS  := $(SRC_PARSERS_BASE_MODULES:%=src/%.v)
+SRC_PARSERS_BASE_VDS := $(SRC_PARSERS_BASE_MODULES:%=src/%.v.d)
+SRC_PARSERS_BASE_VOS := $(SRC_PARSERS_BASE_MODULES:%=src/%.vo)
+PREFIXED_SRC_PARSERS_BASE_VOS:= $(SRC_PARSERS_BASE_MODULES:%=src/%.vo)
+
 FINITESET_VS  := $(FINITESET_MODULES:%=src/%.v)
 FINITESET_VDS := $(FINITESET_MODULES:%=src/%.v.d)
 FINITESET_VOS := $(FINITESET_MODULES:%=src/%.vo)
@@ -258,14 +266,36 @@ SILENCE_COQDEP_0 = @echo "COQDEP $<"; #
 SILENCE_COQDEP_1 =
 SILENCE_COQDEP = $(SILENCE_COQDEP_$(V))
 
-COQDOCFLAGS=-interpolate -utf8
+SILENCE_OCAMLC_0 = @echo "OCAMLC $<"; #
+SILENCE_OCAMLC_1 =
+SILENCE_OCAMLC = $(SILENCE_OCAMLC_$(V))
+
+SILENCE_OCAMLDEP_0 = @echo "OCAMLDEP $<"; #
+SILENCE_OCAMLDEP_1 =
+SILENCE_OCAMLDEP = $(SILENCE_OCAMLDEP_$(V))
+
+SILENCE_OCAMLOPT_0 = @echo "OCAMLOPT $<"; #
+SILENCE_OCAMLOPT_1 =
+SILENCE_OCAMLOPT = $(SILENCE_OCAMLOPT_$(V))
+
+Q_0 := @
+Q_1 :=
+Q = $(Q_$(V))
+
+VECHO_0 := @echo
+VECHO_1 := @true
+VECHO = $(VECHO_$(V))
 
 TIMED=
 TIMECMD=
-STDTIME=/usr/bin/time -f \"\$$* (user: %e mem: %M ko)\"
-TIMER=\$$(if \$$(TIMED), $(STDTIME), $(TIMECMD))
+STDTIME?=/usr/bin/time -f "$* (real: %e, user: %U, sys: %S, mem: %M ko)"
+TIMER=$(if $(TIMED), $(STDTIME), $(TIMECMD))
 
-.PHONY: all fiat querystructures parsers finitesets examples html clean pretty-timed pretty-timed-files pdf doc clean-doc cheat
+COQDOCFLAGS=-interpolate -utf8
+
+FAST_TARGETS := clean archclean printenv clean-old
+
+.PHONY: all fiat querystructures parsers finitesets examples html clean pretty-timed pretty-timed-files pdf doc clean-doc cheat parsers-base
 
 all : fiat querystructures parsers examples
 
@@ -280,6 +310,8 @@ examples : $(EXAMPLE_VOS)
 compiler : $(COMPILER_VOS)
 
 parsers : $(PREFIXED_SRC_PARSERS_VOS)
+
+parsers-base : $(PREFIXED_SRC_PARSERS_BASE_VOS)
 
 pdf: Overview/ProjectOverview.pdf Overview/library.pdf
 
@@ -301,14 +333,39 @@ Overview/ProjectOverview.pdf: $(shell find Overview -name "*.tex" -o -name "*.st
 	cd Overview; pdflatex -synctex=1 ProjectOverview.tex
 
 Makefile.coq: Makefile
-	"$(COQBIN)coq_makefile" $(CORE_VS) $(EXAMPLE_VS) $(QUERYSTRUCTURE_VS) $(SRC_PARSERS_VS) $(FINITESET_VS) $(COMPILER_VS) COQC = " \$$(SILENCE_COQC)$(TIMER) \"\$$(COQBIN)coqc\"" COQDEP = " \$$(SILENCE_COQDEP)\"\$$(COQBIN)coqdep\" -c" COQDOCFLAGS = "$(COQDOCFLAGS)" -arg -dont-load-proofs -R src ADTSynthesis -R examples ADTExamples -o Makefile.coq
+	$(VECHO) "COQ_MAKEFILE > $@"
+	$(Q)"$(COQBIN)coq_makefile" $(CORE_VS) $(EXAMPLE_VS) $(QUERYSTRUCTURE_VS) $(SRC_PARSERS_VS) $(FINITESET_VS) $(COMPILER_VS) COQC = "\$$(SILENCE_COQC)\$$(TIMER) \"\$$(COQBIN)coqc\"" COQDEP = "\$$(SILENCE_COQDEP)\"\$$(COQBIN)coqdep\" -c" COQDOCFLAGS = "$(COQDOCFLAGS)" -arg -dont-load-proofs -R src ADTSynthesis -R examples ADTExamples | sed s'/^\(-include.*\)$$/ifneq ($$(filter-out $(FAST_TARGETS),$$(MAKECMDGOALS)),)\n\1\nelse\nifeq ($$(MAKECMDGOALS),)\n\1\nendif\nendif/g' | sed s'/^clean:$$/clean-old::/g' | sed s'/^Makefile: /Makefile-old: /g' > $@
+
+-include Makefile.coq
+
+# overwrite OCAMLC, OCAMLOPT, OCAMLDEP to make `make` quieter
+OCAMLC_OLD := $(OCAMLC)
+OCAMLC = $(SILENCE_OCAMLC)$(OCAMLC_OLD)
+
+OCAMLDEP_OLD := $(OCAMLDEP)
+OCAMLDEP = $(SILENCE_OCAMLDEP)$(OCAMLDEP_OLD)
+
+OCAMLOPT_OLD := $(OCAMLOPT)
+OCAMLOPT = $(SILENCE_OCAMLOPT)$(OCAMLOPT_OLD)
+
+clean::
+	$(VECHO) "RM *.CMO *.CMI *.CMA"
+	$(Q)rm -f $(ALLCMOFILES) $(CMIFILES) $(CMAFILES)
+	$(VECHO) "RM *.CMX *.CMXS *.CMXA *.O *.A"
+	$(Q)rm -f $(ALLCMOFILES:.cmo=.cmx) $(CMXAFILES) $(CMXSFILES) $(ALLCMOFILES:.cmo=.o) $(CMXAFILES:.cmxa=.a)
+	$(VECHO) "RM *.ML.D *.MLI.D *.ML4.D *.MLLIB.D"
+	$(Q)rm -f $(addsuffix .d,$(MLFILES) $(MLIFILES) $(ML4FILES) $(MLLIBFILES) $(MLPACKFILES))
+	$(VECHO) "RM *.VO *.VI *.G *.V.D *.V.BEAUTIFIED *.V.OLD"
+	$(Q)rm -f $(VOFILES) $(VIFILES) $(GFILES) $(VFILES:.v=.v.d) $(VFILES:=.beautified) $(VFILES:=.old)
+	$(VECHO) "RM *.PS *.PDF *.GLOB *.TEX *.G.TEX"
+	$(Q)rm -f all.ps all-gal.ps all.pdf all-gal.pdf all.glob $(VFILES:.v=.glob) $(VFILES:.v=.tex) $(VFILES:.v=.g.tex) all-mli.tex
+	- rm -rf html mlihtml
+	rm -f Makefile.coq .depend
 
 clean-doc::
 	rm -rf html
 	rm -f all.pdf Overview/library.pdf Overview/ProjectOverview.pdf Overview/coqdoc.sty coqdoc.sty
 	rm -f $(shell find Overview -name "*.log" -o -name "*.aux" -o -name "*.bbl" -o -name "*.blg" -o -name "*.synctex.gz" -o -name "*.out" -o -name "*.toc")
-
--include Makefile.coq
 
 examples/BookstoreExtraction.vo : examples/BookstoreExtraction.v examples/Bookstore.vo
 	coqc -R src ADTSynthesis -R examples ADTExamples examples/BookstoreExtraction.v

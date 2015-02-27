@@ -4,7 +4,7 @@ Require Import Parsers.ContextFreeGrammar Parsers.Specification Parsers.Dependen
 Require Parsers.BooleanRecognizer Parsers.BooleanRecognizerCorrect.
 Require Import Parsers.DependentlyTypedMinimalOfParseFactored.
 Require Import Parsers.WellFoundedParse Parsers.ContextFreeGrammarProperties.
-Require Import Common Common.ilist Common.Wf Common.Le.
+Require Import Common Common.Wf Common.Le.
 
 Set Implicit Arguments.
 

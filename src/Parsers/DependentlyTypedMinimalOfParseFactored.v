@@ -3,7 +3,7 @@ Require Import Coq.Lists.List Coq.Program.Program Coq.Program.Wf Coq.Arith.Wf_na
 Require Import Parsers.ContextFreeGrammar Parsers.Specification Parsers.DependentlyTyped Parsers.MinimalParse.
 Require Import Parsers.DependentlyTypedMinimal Parsers.DependentlyTypedSum.
 Require Import Parsers.WellFoundedParse Parsers.ContextFreeGrammarProperties.
-Require Import Common Common.ilist Common.Wf Common.Le.
+Require Import Common Common.Wf Common.Le.
 
 Set Implicit Arguments.
 
