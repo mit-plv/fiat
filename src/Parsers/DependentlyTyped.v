@@ -1,6 +1,6 @@
 (** * Definition of a [comp]-based non-computational CFG parser *)
 Require Import Coq.Lists.List Coq.Program.Program Coq.Program.Wf Coq.Arith.Wf_nat Coq.Arith.Compare_dec Coq.Classes.RelationClasses Coq.Strings.String.
-Require Import Parsers.ContextFreeGrammar Parsers.Specification.
+Require Import Parsers.ContextFreeGrammar.
 Require Import Common Common.Wf.
 
 Set Implicit Arguments.

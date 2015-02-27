@@ -293,9 +293,9 @@ TIMER=$(if $(TIMED), $(STDTIME), $(TIMECMD))
 
 COQDOCFLAGS=-interpolate -utf8
 
-FAST_TARGETS := clean archclean printenv clean-old
+FAST_TARGETS := clean archclean printenv clean-old package-parsing-parses
 
-.PHONY: all fiat querystructures parsers finitesets examples html clean pretty-timed pretty-timed-files pdf doc clean-doc cheat parsers-base
+.PHONY: all fiat querystructures parsers finitesets examples html clean pretty-timed pretty-timed-files pdf doc clean-doc cheat parsers-base package-parsing-parses
 
 all : fiat querystructures parsers examples
 
@@ -316,6 +316,8 @@ parsers-base : $(PREFIXED_SRC_PARSERS_BASE_VOS)
 pdf: Overview/ProjectOverview.pdf Overview/library.pdf
 
 doc: pdf html
+
+-include Makefile.package-parsing-parses
 
 Overview/library.tex: all.pdf
 	cp "$<" "$@"

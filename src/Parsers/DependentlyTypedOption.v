@@ -1,6 +1,6 @@
 (** * Transform CFG parser into an optional one *)
 Require Import Coq.Lists.List Coq.Program.Program Coq.Classes.RelationClasses Coq.Strings.String.
-Require Import Parsers.ContextFreeGrammar Parsers.Specification.
+Require Import Parsers.ContextFreeGrammar.
 Require Import Parsers.StringLike.Properties.
 Require Import Parsers.DependentlyTyped.
 Require Import Common Common.Equality.
