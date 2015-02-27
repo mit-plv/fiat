@@ -32,9 +32,6 @@ Section recursive_descent_parser.
 
     Section parts.
       Section item.
-        (** We require that the list of names be non-empty; we
-            do this by passing the first element separately, rather
-            than invoking dependent types and proofs. *)
         Context (str : StringWithSplitState String split_stateT)
                 (str_matches_name : string -> bool).
 

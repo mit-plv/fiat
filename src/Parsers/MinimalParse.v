@@ -1,4 +1,4 @@
-(** * Every parse tree has a corresponding minimal parse tree *)
+(** * Definition of minimal parse trees *)
 Require Import Coq.Strings.String Coq.Lists.List Coq.Setoids.Setoid.
 Require Import Parsers.ContextFreeGrammar.
 

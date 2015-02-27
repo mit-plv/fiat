@@ -1,11 +1,8 @@
-(** * Definition of a [comp]-based non-computational CFG parser *)
+(** * Specialization of the dependently typed parser to interleaving splitters *)
 Require Import Coq.Lists.List Coq.Program.Program Coq.Program.Wf Coq.Arith.Wf_nat Coq.Arith.Compare_dec Coq.Classes.RelationClasses Coq.Strings.String.
 Require Import Parsers.ContextFreeGrammar Parsers.DependentlyTyped.
 Require Import Parsers.WellFoundedParse Parsers.ContextFreeGrammarProperties.
 Require Import Common Common.Wf Common.Le Common.Equality.
-
-(* This requires the profiling module.  *)
-(* Start Profiling. *)
 
 Set Implicit Arguments.
 
