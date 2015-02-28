@@ -1,9 +1,9 @@
 (** * Definition of a boolean-returning CFG parser-recognizer *)
 Require Import Coq.Lists.List Coq.Program.Program Coq.Program.Wf Coq.Arith.Wf_nat Coq.Arith.Compare_dec Coq.Classes.RelationClasses Coq.Strings.String.
-Require Import Parsers.ContextFreeGrammar Parsers.Specification Parsers.BooleanRecognizer Parsers.MinimalParse.
+Require Import Parsers.ContextFreeGrammar Parsers.BooleanRecognizer Parsers.MinimalParse.
 Require Import Parsers.MinimalParseOfParse.
 Require Import Parsers.ContextFreeGrammarProperties Parsers.WellFoundedParse.
-Require Import Common Common.ilist Common.Wf.
+Require Import Common Common.Wf.
 Require Import Eqdep_dec.
 
 Local Hint Extern 0 =>

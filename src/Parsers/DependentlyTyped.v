@@ -1,30 +1,9 @@
-(** * Definition of a [comp]-based non-computational CFG parser *)
+(** * Definition of the interface and implementation of the dependently-typed CFG parser *)
 Require Import Coq.Lists.List Coq.Program.Program Coq.Program.Wf Coq.Arith.Wf_nat Coq.Arith.Compare_dec Coq.Classes.RelationClasses Coq.Strings.String.
-Require Import Parsers.ContextFreeGrammar Parsers.Specification.
-Require Import Common Common.ilist Common.Wf.
+Require Import Parsers.ContextFreeGrammar.
+Require Import Common Common.Wf.
 
 Set Implicit Arguments.
-(*(** We implement a generic recursive descent parser.  We parameterize
-    over a number of parameters:
-
-    - [T : Type] - the type of results of successful parsing.
-      Parameterizing over this allows, e.g., higher-order parsing.
-
-      TODO?: generalize this to use continuations instead, so we can
-      do monadic side-effects when parsing.
-
-    - [aggregate : String → T → String → T → T] - takes the results of
-      two successful adjacent parses and combines them.
-
-    - [pick_parses : String → productions → list (list String)] - A
-      non-terminal is a list of production-objectss.  This function will break up
-      a string into a list of possible splits; a split is an
-      assignment of a part of the string to each production.
-
-
-    The basic idea is that
-
-FIXME *)*)
 
 Local Open Scope string_like_scope.
 

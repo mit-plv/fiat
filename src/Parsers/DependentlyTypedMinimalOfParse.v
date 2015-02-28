@@ -1,8 +1,8 @@
-(** * Definition of a [comp]-based non-computational CFG parser *)
+(** * Specialization of the dependently typed parser to minimal parse trees, taking in parse trees *)
 Require Import Coq.Lists.List Coq.Program.Program Coq.Program.Wf Coq.Arith.Wf_nat Coq.Arith.Compare_dec Coq.Classes.RelationClasses Coq.Strings.String.
-Require Import Parsers.ContextFreeGrammar Parsers.Specification Parsers.DependentlyTyped Parsers.MinimalParse.
+Require Import Parsers.ContextFreeGrammar Parsers.DependentlyTyped Parsers.MinimalParse.
 Require Import Parsers.WellFoundedParse Parsers.ContextFreeGrammarProperties.
-Require Import Common Common.ilist Common.Wf Common.Le.
+Require Import Common Common.Wf Common.Le.
 
 Set Implicit Arguments.
 
@@ -64,13 +64,13 @@ Section recursive_descent_parser.
     := { p' : parse_of_item String G  s (NonTerminal _ nonterminal_name) & Forall_parse_of_item (P str0 valid) p' }.
 
   Definition mp_parse_item str0 valid str it
-    := (*{ p' :*) minimal_parse_of_item String G initial_nonterminal_names_data is_valid_nonterminal_name remove_nonterminal_name str0 valid str it(* & Forall_parse_of_item P (parse_of_item__of__minimal_parse_of_item p') }*).
+    := minimal_parse_of_item String G initial_nonterminal_names_data is_valid_nonterminal_name remove_nonterminal_name str0 valid str it.
   Definition mp_parse_production str0 valid str prod
-    := (*{ p' : *)minimal_parse_of_production String G initial_nonterminal_names_data is_valid_nonterminal_name remove_nonterminal_name str0 valid str prod(* & Forall_parse_of_production P (parse_of_production__of__minimal_parse_of_production p') }*).
+    := minimal_parse_of_production String G initial_nonterminal_names_data is_valid_nonterminal_name remove_nonterminal_name str0 valid str prod.
   Definition mp_parse str0 valid str prods
-    := (*{ p' : *)minimal_parse_of String G initial_nonterminal_names_data is_valid_nonterminal_name remove_nonterminal_name str0 valid str prods(* & Forall_parse_of P (parse_of__of__minimal_parse_of p') }*).
+    := minimal_parse_of String G initial_nonterminal_names_data is_valid_nonterminal_name remove_nonterminal_name str0 valid str prods.
   Definition mp_parse_nonterminal_name str0 valid str nonterminal_name
-    := (*{ p' : *)minimal_parse_of_name String G initial_nonterminal_names_data is_valid_nonterminal_name remove_nonterminal_name str0 valid str nonterminal_name(* & Forall_parse_of_item P (parse_of_item_name__of__minimal_parse_of_name p') }*).
+    := minimal_parse_of_name String G initial_nonterminal_names_data is_valid_nonterminal_name remove_nonterminal_name str0 valid str nonterminal_name.
 
   Definition split_parse_of_production {str0 valid str it its}
              (p : p_parse_production str0 valid str (it::its))
@@ -398,14 +398,11 @@ Section recursive_descent_parser.
           Context (str0 : String)
                   (valid : nonterminal_names_listT).
 
-          Let prefix str T := (*size_of_parse_item (ParseNonTerminal name p) < h
-                         ->*) str ≤s str0
+          Let prefix str T := str ≤s str0
                               -> sub_names_listT is_valid_nonterminal_name valid initial_nonterminal_names_data
                               -> T.
 
-          Let alt := False (*{ nonterminal_name : string
-                     | is_valid_nonterminal_name initial_nonterminal_names_data nonterminal_name = true
-                       /\ is_valid_nonterminal_name valid nonterminal_name = false }*).
+          Let alt := False.
 
           Section T_nonterminal_name.
             Context (name : string) (str : StringWithSplitState String (split_stateT str0 valid (include_nonterminal_name _ name))).
@@ -497,7 +494,6 @@ Section recursive_descent_parser.
         Local Ltac t''0 :=
           first [ progress cbv zeta
                 | intro
-                (*| progress subst_body*)
                 | let H := (match goal with
                               | [ H : StringWithSplitState _ _ |- _ ] => constr:H
                               | [ H : ?T |- _ ] => match eval hnf in T with
@@ -555,7 +551,6 @@ Section recursive_descent_parser.
             | [ H : context[map _ (_::_)] |- _ ] => progress simpl in H
             | [ H : appcontext[split_string_for_production _ _ {| state_val := Some _ |} ] |- _ ] => progress simpl in H
             | _ => progress autounfold with minimal_instance_db in *
-            (*| _ => progress hnf in * *)
             | [ H : ?T |- _ ] => match head T with
                                    | match _ with _ => _ end => progress hnf in H
                                  end

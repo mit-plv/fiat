@@ -1,10 +1,10 @@
-(** * Definition of a [comp]-based non-computational CFG parser *)
+(** * Fully instantiated specialization of the dependently typed parser to minimal parse trees, taking in parse trees, using the factored abstraction barrier *)
 Require Import Coq.Lists.List Coq.Program.Program Coq.Program.Wf Coq.Arith.Wf_nat Coq.Arith.Compare_dec Coq.Classes.RelationClasses Coq.Strings.String.
-Require Import Parsers.ContextFreeGrammar Parsers.Specification Parsers.DependentlyTyped Parsers.MinimalParse.
+Require Import Parsers.ContextFreeGrammar Parsers.DependentlyTyped Parsers.MinimalParse.
 Require Parsers.BooleanRecognizer Parsers.BooleanRecognizerCorrect.
 Require Import Parsers.DependentlyTypedMinimalOfParseFactored.
 Require Import Parsers.WellFoundedParse Parsers.ContextFreeGrammarProperties.
-Require Import Common Common.ilist Common.Wf Common.Le.
+Require Import Common Common.Wf Common.Le.
 
 Set Implicit Arguments.
 
