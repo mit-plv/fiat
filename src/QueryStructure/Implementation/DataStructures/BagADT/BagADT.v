@@ -7,9 +7,9 @@ Require Import Coq.Strings.String Coq.omega.Omega Coq.Lists.List
         ADTSynthesis.ADTNotation
         ADTSynthesis.ADTRefinement.BuildADTRefinements.
 
-Open Scope string.
-
 Section BagADT.
+
+  Local Open Scope string.
 
   Variable ElementType : Type.
   Variable SearchTermType : Type.

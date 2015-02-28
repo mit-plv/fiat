@@ -101,7 +101,7 @@ Fixpoint BuildSearchTermFromAttributes {heading}
          (indices : list (@ProperAttribute heading))
 : Type :=
   match indices with
-    | [] => (list (@Tuple heading -> bool))
+    | [] => (@Tuple heading -> bool)
     | idx :: indices' => prod (option (ProperAttributeToFMapKey idx)) (BuildSearchTermFromAttributes indices')
   end.
 
@@ -126,7 +126,7 @@ Fixpoint SearchTermFromAttributesMatcher {heading}
   match indices return
         BuildSearchTermFromAttributes indices -> @Tuple heading -> bool
   with
-    | nil => fun f tup => MatchAgainstMany f tup
+    | nil => fun f tup => f tup
     | index :: indices' =>
       (fun (H : BuildSearchTermFromAttributes indices' -> @Tuple heading -> bool)
            (f : prod (option (ProperAttributeToFMapKey index))

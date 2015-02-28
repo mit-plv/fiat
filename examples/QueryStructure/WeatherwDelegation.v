@@ -72,7 +72,7 @@ Definition WeatherSpec : ADT WeatherSig :=
               Return measurement!VALUE)
 }.
 
-Definition WeatherStation :
+Definition SharpenedWeatherStation :
   Sharpened WeatherSpec.
 Proof.
   unfold WeatherSpec.
@@ -89,4 +89,9 @@ Proof.
   implement_bag_methods.
   implement_bag_methods.
 
-Defined.
+Time Defined.
+
+Definition WeatherStationImpl : SharpenedUnderDelegates WeatherSig.
+  Time let Impl := eval simpl in (projT1 SharpenedWeatherStation) in
+           exact Impl.
+Time Defined.

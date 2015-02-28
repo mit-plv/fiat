@@ -121,7 +121,8 @@ QUERYSTRUCTURE_MODULES := \
 	QueryStructure/Implementation/DataStructures/BagADT/IndexSearchTerms \
 	QueryStructure/Implementation/Operations/BagADT/Refinements \
 	QueryStructure/Implementation/BagImplementation \
-	QueryStructure/Automation/AutoDB
+	QueryStructure/Automation/AutoDB \
+	QueryStructure/Automation/QSImplementation
 
 FINITESET_MODULES := \
 	FiniteSetADTs \
@@ -267,7 +268,7 @@ TIMER=\$$(if \$$(TIMED), $(STDTIME), $(TIMECMD))
 
 .PHONY: all fiat querystructures parsers finitesets examples html clean pretty-timed pretty-timed-files pdf doc clean-doc cheat
 
-all : fiat querystructures parsers examples
+all : fiat querystructures parsers finitesets examples
 
 fiat : $(CORE_VOS)
 

@@ -3,7 +3,10 @@ Require Import Coq.Lists.List Coq.Strings.String ADTSynthesis.Common Coq.Arith.A
         ADTSynthesis.Common.ilist ADTSynthesis.Common.StringBound Coq.Program.Program.
 Require Export
         ADTSynthesis.QueryStructure.Specification.Representation.Notations
-        ADTSynthesis.QueryStructure.Specification.Representation.Heading ADTSynthesis.QueryStructure.Specification.Representation.Tuple ADTSynthesis.QueryStructure.Specification.Representation.Schema ADTSynthesis.QueryStructure.Specification.Representation.Relation.
+        ADTSynthesis.QueryStructure.Specification.Representation.Heading
+        ADTSynthesis.QueryStructure.Specification.Representation.Tuple
+        ADTSynthesis.QueryStructure.Specification.Representation.Schema
+        ADTSynthesis.QueryStructure.Specification.Representation.Relation.
 
 (* A Query Structure schema is a set of named relation
    schemas and a set of cross-relation constraints

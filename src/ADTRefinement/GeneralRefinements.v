@@ -71,19 +71,25 @@ Definition FullySharpenedUnderDelegates
 Notation Sharpened spec :=
   {adt : _ & @FullySharpenedUnderDelegates _ spec adt}.
 
-(* A single refinement step. *)
-Definition SharpenStep Sig adt :
-  forall adt',
-    refineADT (Sig := Sig) adt adt' ->
-    Sharpened adt' ->
-    Sharpened adt.
+(* The proof componentn of a single refinement step. *)
+Lemma SharpenStep_Proof Sig adt :
+  forall adt'
+         (refine_adt' : refineADT (Sig := Sig) adt adt')
+         (adt'' : Sharpened adt'),
+    FullySharpenedUnderDelegates adt (projT1 adt'').
 Proof.
-  intros adt' refineA adt''.
-  exists (projT1 adt'').
   unfold FullySharpenedUnderDelegates in *.
-  intros * idx; eapply transitivityT;
-  [ eassumption | exact (projT2 adt'' _ DelegateImpls idx)].
-Defined.
+  intros; eapply transitivityT.
+  eassumption.
+  apply (projT2 adt'' DelegateReps DelegateImpls ValidImpls).
+Qed.
+
+(* A single refinement step. *)
+Definition SharpenStep Sig adt adt'
+      (refine_adt' : refineADT (Sig := Sig) adt adt')
+      (adt'' : Sharpened adt')
+: Sharpened adt :=
+  existT _ (projT1 adt'') (SharpenStep_Proof refine_adt' adt'').
 
 Lemma projT1_SharpenStep
 : forall Sig adt adt' refine_adt_adt' Sharpened_adt',

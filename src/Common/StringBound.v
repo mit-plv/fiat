@@ -419,6 +419,45 @@ Section ithIndexBound.
                     (ith_Bounded il idx)
                     (ith_error_eq idx il).
 
+    Definition ith_Bounded_rect2
+               {B B' : A -> Type}               
+        (P : forall As, BoundedIndex (map projAC As)
+                        -> ilist B As
+                        -> ilist B' As
+                        -> forall a : A, B a -> B' a -> Type)
+        (Bound : list A)
+        (idx : BoundedIndex (map projAC Bound))
+        (il : ilist B Bound)
+        (il' : ilist B' Bound)
+    : Dep_Option_elim_T2 (P Bound idx il il')
+                         (ith_error il (ibound idx))
+                         (ith_error il' (ibound idx))
+      -> P Bound idx il il' _ 
+           (ith_Bounded il idx)
+           (ith_Bounded il' idx) :=
+      match (nth_error Bound (ibound idx)) as e
+                 return
+                 forall (b : Dep_Option B e)
+                        (b' : Dep_Option B' e)
+                        (c : option_map _ e = Some (bindex idx))
+                        d d',
+                   (ith_error_eq_P Bound idx b c d)
+                   -> (ith_error_eq_P Bound idx b' c d')
+                   -> Dep_Option_elim_T2 (P Bound idx il il') b b' ->
+                   P _ _ _ _ (@nth_Bounded' _ _ _ c) d d' with
+        | Some a => fun b b' e_eq d d' d_eq d'_eq =>
+                      match d_eq, d'_eq with 
+                        | eq_refl, eq_refl => fun b_opt => b_opt
+                      end
+        | None => fun b b' e_eq d d' d_eq d'_eq => None_neq_Some _ e_eq
+           end (ith_error il (ibound idx))
+               (ith_error il' (ibound idx) )
+               _
+               (ith_Bounded il idx)
+               (ith_Bounded il' idx)
+               (ith_error_eq idx il)
+               (ith_error_eq idx il').
+    
     Program Definition nth_Bounded_ind 
             (P : forall As, BoundedIndex (map projAC As)
                             -> A -> Prop)
@@ -1145,6 +1184,45 @@ Section ith2IndexBound.
                     (ith2_Bounded il idx)
                     (ith2_error_eq idx il).
 
+    Definition ith2_Bounded_rect2
+               {B B' : A -> Type}               
+        (P : forall As, BoundedIndex (map projAC As)
+                        -> ilist2 B As
+                        -> ilist2 B' As
+                        -> forall a : A, B a -> B' a -> Type)
+        (Bound : list A)
+        (idx : BoundedIndex (map projAC Bound))
+        (il : ilist2 B Bound)
+        (il' : ilist2 B' Bound)
+    : Dep_Option_elim_T2 (P Bound idx il il')
+                         (ith2_error il (ibound idx))
+                         (ith2_error il' (ibound idx))
+      -> P Bound idx il il' _ 
+           (ith2_Bounded il idx)
+           (ith2_Bounded il' idx) :=
+      match (nth_error Bound (ibound idx)) as e
+                 return
+                 forall (b : Dep_Option B e)
+                        (b' : Dep_Option B' e)
+                        (c : option_map _ e = Some (bindex idx))
+                        d d',
+                   (ith2_error_eq_P Bound idx b c d)
+                   -> (ith2_error_eq_P Bound idx b' c d')
+                   -> Dep_Option_elim_T2 (P Bound idx il il') b b' ->
+                   P _ _ _ _ (@nth_Bounded' _ _ projAC _ _ _ c) d d' with
+        | Some a => fun b b' e_eq d d' d_eq d'_eq =>
+                      match d_eq, d'_eq with 
+                        | eq_refl, eq_refl => fun b_opt => b_opt
+                      end
+        | None => fun b b' e_eq d d' d_eq d'_eq => None_neq_Some _ e_eq
+           end (ith2_error il (ibound idx))
+               (ith2_error il' (ibound idx) )
+               _
+               (ith2_Bounded il idx)
+               (ith2_Bounded il' idx)
+               (ith2_error_eq idx il)
+               (ith2_error_eq idx il').
+
     (* [ith2_Bounded_ind] builds a proof whose type depends
      on both [nth_Bounded] and an occurence of [ith2_Bounded] by reducing
      it to a case with an [ith2_error], which is easier to reason with. *)
@@ -1415,17 +1493,20 @@ Section i2th2IndexBound.
      an element of a list indexed by [Bound]. *)
 
   Definition i2th2_Bounded
-          {B : A -> Type}
-          {C : forall a, B a -> Type}
+          {B B' : A -> Type}
+          {C : forall a, B a -> B' a -> Type}
           {As}
-          (Bs : ilist2 B As)
-          (Cs : i2list2 C Bs)
+          (Bs : ilist B As)
+          (Bs' : ilist B' As)
+          (Cs : i2list2 C Bs Bs')
           (idx : BoundedIndex (map projAD As))
-  : C (nth_Bounded _ As idx) (ith2_Bounded projAD Bs idx) :=
-    ith2_Bounded_rect projAD (fun _ _ _ => C) idx Bs
-                           (i2th_error2' Cs (ibound idx)).
+  : C (nth_Bounded _ As idx)
+      (ith_Bounded projAD Bs idx)
+      (ith_Bounded projAD Bs' idx) :=
+    ith_Bounded_rect2 projAD (fun _ _ _ _ => C) idx Bs Bs'
+                       (i2th_error2' Cs (ibound idx)).
 
-  Definition Some_Dep_Option_elim_P2
+  (*Definition Some_Dep_Option_elim_P2
              {B : A -> Type}
              {C : forall a, B a -> Type}
              (As : list A)
@@ -1674,7 +1755,7 @@ Section i2th2IndexBound.
               (fun As Bs Cs idx a b c c' => c = c')).
     unfold replace2_BoundedIndex2.
     rewrite i2th_replace_2Index2'_eq; eauto using idx_ibound_eq, Dep_Option_elim2_P2_refl.
-  Qed.
+  Qed. *)
 
 End i2th2IndexBound.
 

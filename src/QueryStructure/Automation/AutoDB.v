@@ -1,5 +1,6 @@
-Require Export Coq.Bool.Bool Coq.Strings.String
-        ADTSynthesis.Common.DecideableEnsembles
+Require Export Coq.Bool.Bool Coq.Strings.String.
+Open Scope string.
+Require Export ADTSynthesis.Common.DecideableEnsembles
         ADTSynthesis.Common.ListMorphisms
         ADTSynthesis.Common.ListFacts
         ADTSynthesis.Common.BoolFacts
@@ -1075,26 +1076,6 @@ Ltac Implement_Bound_Join_Comp_Lists :=
                        ]]; cbv beta; simpl in * )
   end.
 
-Ltac Implement_Bound_Bag_Call :=
-  match goal with
-    | H : @Build_IndexedQueryStructure_Impl_AbsR ?qs_schema ?Index ?DelegateReps ?DelegateImpls
-                                                 ?ValidImpls ?r_o ?r_n
-      |- refine (Bind (CallBagMethod (BagIndexKeys := ?Index') ?ridx ?midx ?r_o ?d) _) _ =>
-      let r_o' := fresh "r_o'" in
-      let AbsR_r_o' := fresh "AbsR_r_o'" in
-      let refines_r_o' := fresh "refines_r_o'" in
-      destruct (@refine_BagImplMethods qs_schema Index' DelegateReps DelegateImpls ValidImpls r_o r_n ridx H midx d) as [r_o' [refines_r_o' AbsR_r_o']];
-        simpl in refines_r_o', AbsR_r_o';
-        etransitivity;
-        [ apply refine_bind;
-          [apply refines_r_o'
-          | unfold pointwise_relation; intros; higher_order_reflexivity
-          ]
-        | etransitivity;
-          [ apply (proj1 (refineEquiv_bind_unit _ _)) | simpl]
-        ]; cbv beta; simpl in *
-  end.
-
 Ltac Implement_If_Then_Else :=
   match goal with
     | H : @Build_IndexedQueryStructure_Impl_AbsR ?qs_schema ?Index ?DelegateReps ?DelegateImpls
@@ -1235,15 +1216,66 @@ Ltac implement_Insert_branches :=
            end
   ].
 
+Ltac remove_spurious_Dep_Type_BoundedIndex_nth_eq :=
+  match goal with
+    | |- context[Dep_Type_BoundedIndex_nth_eq ?A_eq_dec (As := ?As) ?P ?n ?nth ?nth ?p] =>
+      rewrite (@Dep_Type_BoundedIndex_nth_eq_refl _ A_eq_dec As P _ n nth p)
+    (* Handle the case when the two equalities are eq_refl, but one use the Specif.value
+       and the other uses option. *)
+    | |- context[Dep_Type_BoundedIndex_nth_eq ?A_eq_dec (As := ?As) ?P ?n eq_refl eq_refl ?p] =>
+      unfold Specif.value; simpl;
+      match goal with
+        | |- context[Dep_Type_BoundedIndex_nth_eq ?A_eq_dec (As := As) ?P ?n ?nth ?nth ?p] =>
+          rewrite (@Dep_Type_BoundedIndex_nth_eq_refl _ A_eq_dec As P _ n nth p)
+      end
+  end.
+
+Ltac Implement_Bound_Bag_Call :=
+  match goal with
+    | H : @Build_IndexedQueryStructure_Impl_AbsR ?qs_schema ?Index ?DelegateReps ?DelegateImpls
+                                                 ?ValidImpls ?r_o ?r_n
+      |- refine (Bind (CallBagMethod (BagIndexKeys := ?Index') ?ridx ?midx ?r_o ?d) _) _ =>
+      let r_o' := fresh "r_o'" in
+      let AbsR_r_o' := fresh "AbsR_r_o'" in
+      let refines_r_o' := fresh "refines_r_o'" in
+      destruct (@refine_BagImplMethods qs_schema Index' DelegateReps DelegateImpls ValidImpls r_o r_n ridx H midx d) as [r_o' [refines_r_o' AbsR_r_o']];
+        simpl in refines_r_o', AbsR_r_o';
+        etransitivity;
+        [ apply refine_bind;
+          [apply refines_r_o'
+          | unfold pointwise_relation; intros; higher_order_reflexivity
+          ]
+        | etransitivity;
+          [ (* Simplify [CallBagImplMethod], get rid of the spurious cast,
+               and reduce the bound [ret] *)
+            unfold CallBagImplMethod; cbv beta; simpl;
+            remove_spurious_Dep_Type_BoundedIndex_nth_eq;
+            apply (proj1 (refineEquiv_bind_unit _ _))
+          | simpl]
+        ]; cbv beta; simpl in *
+  end.
+
 Ltac implement_bag_methods :=
 etransitivity;
     [ repeat first [
-             simpl; simplify with monad laws
-           | Implement_If_Then_Else
-           | Implement_Bound_Bag_Call
-           | Implement_Bound_Join_Comp_Lists
-           | Implement_AbsR_Relation
-           | higher_order_reflexivity ] |];
+               simpl; simplify with monad laws
+              | remove_spurious_Dep_Type_BoundedIndex_nth_eq
+              | Implement_If_Then_Else
+              | Implement_Bound_Bag_Call
+              | Implement_Bound_Join_Comp_Lists
+              | Implement_AbsR_Relation
+              | match goal with
+                    |- context[CallBagImplMethod _ _ _ _ _] =>
+                    unfold CallBagImplMethod; cbv beta; simpl
+                end
+              | higher_order_reflexivity ] |];
+    (* Clean up any leftover CallBagImplMethods *)
+      repeat (cbv beta; simpl;
+          match goal with
+              |- appcontext[CallBagImplMethod] =>
+              unfold CallBagImplMethod; cbv beta; simpl;
+              try remove_spurious_Dep_Type_BoundedIndex_nth_eq
+          end);
     higher_order_reflexivity.
 
 Ltac FullySharpenQueryStructure' qs_schema Index :=
@@ -1346,7 +1378,14 @@ Ltac FullySharpenQueryStructure' qs_schema Index :=
                             )))
   end; simpl; intros;
   [ repeat split; intros; try exact tt;
-    try eapply (@Initialize_IndexedQueryStructureImpls_AbsR qs_schema Index)
+    try (etransitivity;
+         [eapply (@Initialize_IndexedQueryStructureImpls_AbsR qs_schema Index)
+         | ];
+         cbv beta;
+         unfold Initialize_IndexedQueryStructureImpls',
+         CallBagImplConstructor; simpl;
+         higher_order_reflexivity
+        )
   | repeat split; intros; try exact tt
   ].
 

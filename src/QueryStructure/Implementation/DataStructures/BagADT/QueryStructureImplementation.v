@@ -8,8 +8,10 @@ Require Import Coq.Lists.List Coq.Program.Program
         ADTSynthesis.ADT
         ADTSynthesis.ADTRefinement
         ADTSynthesis.ADTNotation
+        ADTSynthesis.QueryStructure.Specification.Representation.Notations
         ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureSchema
         ADTSynthesis.QueryStructure.Specification.Representation.QueryStructure
+        ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureNotations
         ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.BagADT.
 
 Section QueryStructureImplementation.

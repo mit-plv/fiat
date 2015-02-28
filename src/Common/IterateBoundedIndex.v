@@ -567,6 +567,7 @@ Definition Dep_Type_BoundedIndex_nth_eq {A : Set}
           end P X0 idx n nth_n); intros; eauto.
   - destruct n0; simpl in *; discriminate.
   - destruct n0; simpl in *.
+
     eapply (Dep_Type_BoundedIndex_nth_eq A_eq_dec _ _ _ _ (fst X1)).
     apply (Iterate_Dep_Type_equiv A A_eq_dec Bound' _ (snd X1) idx0 n0 nth_n0).
   Defined.

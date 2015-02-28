@@ -29,26 +29,11 @@ Section CountingListBags.
       clength := 0;
       ccontents := @nil TItem
     |}.
-
-  (* This seems inefficient -- why aren't we converting these lists
-      once and for all?
-  *)
-
-  Fixpoint MatchAgainstMany
-           (search_terms : list (TItem -> bool))
-           (item: TItem) :=
-    match search_terms with
-      | nil                      => true
-      | cons is_match more_terms => andb (is_match item) (MatchAgainstMany more_terms item)
-    end.
-
+  
   Definition CountingListAsBag_bfind
              (container: CountingList)
-             (search_terms: list (TItem -> bool)) :=
-    match search_terms with
-      | nil                      => ccontents container
-      | cons is_match more_terms => List.filter (MatchAgainstMany search_terms) (ccontents container)
-    end.
+             (search_terms: TItem -> bool) :=
+    List.filter search_terms (ccontents container).
 
   Definition CountingListAsBag_binsert
              (container: CountingList)
@@ -58,12 +43,9 @@ Section CountingListBags.
 
   Definition CountingListAsBag_bcount
              (container: CountingList)
-             (search_terms: list (TItem -> bool)) :=
-    match search_terms with
-      | nil => clength container
-      | _   => List.fold_left (fun acc x => acc + if (MatchAgainstMany search_terms x) then 1 else 0)
-                              (ccontents container) 0
-    end.
+             (search_terms: TItem -> bool) :=
+    List.fold_left (fun acc x => acc + if search_terms x then 1 else 0)
+                              (ccontents container) 0.
 
   Fixpoint CountingListPartition
            (contents : list TItem)
@@ -80,8 +62,8 @@ Section CountingListBags.
 
   Definition CountingListAsBag_bdelete
              (container : CountingList)
-             (search_terms : list (TItem -> bool)) :=
-    let (d, r) := (CountingListPartition (ccontents container) (MatchAgainstMany search_terms))
+             (search_terms : TItem -> bool) :=
+    let (d, r) := (CountingListPartition (ccontents container) (search_terms))
     in (ccontents d, r).
 
   Definition CountingListMap
@@ -93,10 +75,10 @@ Section CountingListBags.
 
   Definition CountingListAsBag_bupdate
           (container : CountingList)
-          (search_terms : list (TItem -> bool))
+          (search_terms : TItem -> bool)
           (update_term : TUpdateTerm)
   : list TItem * CountingList :=
-    let (d, r) := (CountingListPartition (ccontents container) (MatchAgainstMany search_terms))
+    let (d, r) := (CountingListPartition (ccontents container) search_terms)
     in (ccontents d,
         {| clength := clength container;
            ccontents :=
@@ -104,12 +86,12 @@ Section CountingListBags.
        ).
 
   Instance CountingListAsBag
-  : Bag CountingList TItem _ _ :=
+  : Bag CountingList TItem (TItem -> bool) _ :=
     {|
 
       bempty := CountingList_empty;
-      bstar  := nil;
-      bfind_matcher := MatchAgainstMany;
+      bstar item := true;
+      bfind_matcher f := f;
       bupdate_transform := bupdate_transform;
 
       benumerate := ccontents;
@@ -167,13 +149,13 @@ Section CountingListBags.
   Proof.
     unfold bdelete_Preserves_RepInv, CountingList_RepInv, CountingListAsBag_bdelete;
     destruct container as [n l]; revert n; induction l; intros; simpl in *; eauto.
-    destruct (MatchAgainstMany search_term a); simpl.
+    destruct (search_term a); simpl.
     destruct n; simpl in *; [ discriminate | injection containerCorrect]; intros.
     pose proof (IHl n search_term H).
-    destruct (CountingListPartition l (MatchAgainstMany search_term)); simpl in *; eauto.
+    destruct (CountingListPartition l search_term); simpl in *; eauto.
     destruct n; simpl in *; [ discriminate | injection containerCorrect]; intros.
     pose proof (IHl n search_term H).
-    destruct (CountingListPartition l (MatchAgainstMany search_term)); simpl in *; eauto.
+    destruct (CountingListPartition l search_term); simpl in *; eauto.
   Qed.
 
   Lemma CountingList_bupdate_Preserves_RepInv
@@ -181,10 +163,10 @@ Section CountingListBags.
   Proof.
     unfold bupdate_Preserves_RepInv, CountingList_RepInv, CountingListAsBag_bupdate.
     destruct container as [n l]; simpl; revert n; induction l; intros; simpl in *; eauto.
-    destruct (MatchAgainstMany search_term a); simpl.
+    destruct (search_term a); simpl.
     destruct n; simpl in *; [ discriminate | injection containerCorrect]; intros.
     pose proof (IHl n search_term update_term).
-    destruct (CountingListPartition l (MatchAgainstMany search_term)); simpl in *; eauto.
+    destruct (CountingListPartition l search_term); simpl in *; eauto.
     apply H0 in H.
     assert (forall {A: Type} a (b: A) c, (length (a ++ b :: c) = S (length (a ++ c)))).
     induction a0; intros; auto; simpl; rewrite IHa0; reflexivity.
@@ -192,7 +174,7 @@ Section CountingListBags.
     apply valid_update.
     destruct n; simpl in *; [ discriminate | injection containerCorrect]; intros.
     pose proof (IHl n search_term update_term).
-    destruct (CountingListPartition l (MatchAgainstMany search_term)); simpl in *; eauto.
+    destruct (CountingListPartition l search_term); simpl in *; eauto.
   Qed.
 
   Lemma CountingList_BagInsertEnumerate :
@@ -214,29 +196,30 @@ Section CountingListBags.
   Qed.
 
   Lemma CountingList_BagFindStar :
-      BagFindStar CountingList_RepInv CountingListAsBag_bfind ccontents nil.
+      BagFindStar CountingList_RepInv CountingListAsBag_bfind ccontents (fun _ => true).
   Proof.
-    firstorder.
- Qed.
+    unfold BagFindStar; simpl; intros.
+    unfold CountingListAsBag_bfind; rewrite filter_true; reflexivity.
+  Qed.
 
   Lemma CountingList_BagFindCorrect :
-    BagFindCorrect CountingList_RepInv CountingListAsBag_bfind MatchAgainstMany ccontents.
+    BagFindCorrect CountingList_RepInv CountingListAsBag_bfind apply ccontents.
   Proof.
-    destruct search_term; simpl; [ rewrite filter_all_true | ]; reflexivity.
+    intros; unfold BagFindCorrect, CountingListAsBag_bfind; reflexivity.
   Qed.
 
   Lemma CountingList_BagCountCorrect_aux :
-    forall (container: list TItem) (search_term: list (TItem -> bool)) default,
-      length (List.filter (MatchAgainstMany search_term) container) + default =
+    forall (container: list TItem) (search_term: TItem -> bool) default,
+      length (List.filter search_term container) + default =
       List.fold_left
         (fun (acc : nat) (x : TItem) =>
-           acc + (if MatchAgainstMany search_term x then 1 else 0))
+           acc + (if search_term x then 1 else 0))
         container default.
   Proof.
     induction container; intros.
 
     + trivial.
-    + simpl; destruct (MatchAgainstMany search_term a);
+    + simpl; destruct (search_term a);
       simpl; rewrite <- IHcontainer; simpl; eauto.
       rewrite (plus_comm 1); eauto using plus_assoc.
   Qed.
@@ -248,11 +231,11 @@ Section CountingListBags.
     CountingList_RepInv; intros;
     pose proof (CountingList_BagCountCorrect_aux (ccontents container) search_term 0) as temp;
     rewrite plus_0_r in temp; simpl in temp.
-    destruct search_term; simpl; [ apply containerCorrect | apply temp ].
+    simpl; [ apply temp ].
   Qed.
 
   Lemma CountingList_BagDeleteCorrect :
-      BagDeleteCorrect CountingList_RepInv CountingListAsBag_bfind MatchAgainstMany ccontents
+      BagDeleteCorrect CountingList_RepInv CountingListAsBag_bfind apply ccontents
                        CountingListAsBag_bdelete.
   Proof.
     unfold BagDeleteCorrect, CountingList_RepInv; destruct container as [n l];
@@ -261,19 +244,20 @@ Section CountingListBags.
     + constructor.
     + simpl in *; destruct (IHl _ search_term (refl_equal _)).
       unfold CountingListAsBag_bdelete in *; simpl in *.
-      destruct (MatchAgainstMany search_term a);
-        destruct (CountingListPartition l (MatchAgainstMany search_term));
-        destruct (List.partition (MatchAgainstMany search_term) l); simpl; auto.
+      unfold apply in *.
+      destruct (search_term a);
+        destruct (CountingListPartition l (search_term));
+        destruct (List.partition (search_term) l); simpl; auto.
     +  simpl in *; destruct (IHl _ search_term (refl_equal _)).
-      unfold CountingListAsBag_bdelete in *; simpl in *.
-      destruct (MatchAgainstMany search_term a);
-        destruct (CountingListPartition l (MatchAgainstMany search_term));
-        destruct (List.partition (MatchAgainstMany search_term) l); simpl; auto.
+      unfold CountingListAsBag_bdelete in *; unfold apply in *; simpl in *.
+      destruct (search_term a);
+        destruct (CountingListPartition l (search_term));
+        destruct (List.partition (search_term) l); simpl; auto.
   Qed.
 
   Lemma CountingList_BagUpdateCorrect :
     BagUpdateCorrect CountingList_RepInv CountingList_ValidUpdate
-                     CountingListAsBag_bfind MatchAgainstMany ccontents
+                     CountingListAsBag_bfind apply ccontents
                      bupdate_transform CountingListAsBag_bupdate.
   Proof.
     unfold BagUpdateCorrect, CountingList_RepInv. destruct container as [n l].
@@ -283,17 +267,19 @@ Section CountingListBags.
     - unfold CountingListAsBag_bupdate in *; simpl in *.
       destruct (IHl _ search_term update_term (refl_equal _) ).
       apply valid_update.
-      destruct (MatchAgainstMany search_term a);
-        destruct (CountingListPartition l (MatchAgainstMany search_term));
-        destruct (List.partition (MatchAgainstMany search_term) l); simpl; auto.
+      unfold apply in *.
+      destruct (search_term a);
+        destruct (CountingListPartition l (search_term));
+        destruct (List.partition (search_term) l); simpl; auto.
       rewrite Permutation_app_comm; simpl.
       apply Permutation_cons_app; rewrite Permutation_app_comm; auto.
     - simpl in *; destruct (IHl _ search_term update_term (refl_equal _)).
       apply valid_update.
       unfold CountingListAsBag_bupdate in *; simpl in *.
-      destruct (MatchAgainstMany search_term a);
-        destruct (CountingListPartition l (MatchAgainstMany search_term));
-        destruct (List.partition (MatchAgainstMany search_term) l); simpl; auto.
+      unfold apply in *;
+      destruct (search_term a);
+        destruct (CountingListPartition l (search_term));
+        destruct (List.partition (search_term) l); simpl; auto.
   Qed.
 
   Instance CountingListAsCorrectBag
