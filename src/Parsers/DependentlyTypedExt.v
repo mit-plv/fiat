@@ -29,8 +29,8 @@ Section recursive_descent_parser.
       | [ H : false = true |- _ ] => solve [ inversion H ]
       | [ H : inl _ = inl _ |- _ ] => inversion H; clear H
       | [ H : inr _ = inr _ |- _ ] => inversion H; clear H
-      | [ H : ?f _ = ?x, H' : ?f' _ = ?y, ext : forall k, bool_of_sum (?f k) = bool_of_sum (?f' k) |- _]
-        => assert (x = y :> bool) by (rewrite <- H, <- H', ext; reflexivity); clear H H'
+      | [ H : ?f _ _ = ?x, H' : ?f' _ _ = ?y, ext : forall k k' k'', bool_of_sum (?f k k') = bool_of_sum (?f' k k'') |- _]
+        => assert (x = y :> bool) by (erewrite <- H, <- H', ext; reflexivity); clear H H'
       | [ H : (?x =s ?y) = true |- _ ]
         => not constr_eq x y;
           let H' := fresh in
@@ -39,6 +39,8 @@ Section recursive_descent_parser.
             progress subst
       | [ |- appcontext[match ?E with _ => _ end] ]
         => case_eq E
+      | [ |- appcontext[match ?E with _ => _ end] ]
+        => atomic E; destruct E
       | _ => intro
     end.
 
@@ -47,13 +49,15 @@ Section recursive_descent_parser.
   Context (extra_types extra_types' : @parser_dependent_types_extra_dataT _ String G).
 
   Lemma parse_item_ext
-        str0 str valid str_matches_name
-        str0' str' valid' str_matches_name'
+        str0 valid
+        str0' valid'
         (it : item CharType)
-        (pi := @parse_item CharType String G extra_types str0 str valid str_matches_name it)
-        (pi' := @parse_item CharType String G extra_types' str0' str' valid' str_matches_name' it)
+        str str_matches_name
+        str' str_matches_name'
+        (pi := @parse_item CharType String G extra_types str0 valid it str str_matches_name)
+        (pi' := @parse_item CharType String G extra_types' str0' valid' it str' str_matches_name')
         (str_ext : str = str' :> String)
-        (str_matches_name_ext : forall name, str_matches_name name = str_matches_name' name :> bool)
+        (str_matches_name_ext : forall name st st', str_matches_name name st = str_matches_name' name st' :> bool)
   : pi = pi' :> bool.
   Proof.
     subst pi pi'.
@@ -62,73 +66,85 @@ Section recursive_descent_parser.
   Qed.
 
   Lemma parse_production_helper_ext
-        str0 valid parse_name str pf
-        str0' valid' parse_name' str' pf'
+        str0 valid
+        str0' valid'
         (it : item CharType)
         (its : production CharType)
-        (splits splits' : list
-                            (StringWithSplitState String split_stateT *
-                             StringWithSplitState String split_stateT))
+        parse_name str pf
+        parse_name' str' pf'
+        (splits splits' : list (_ * _))
+        splits_included splits_included'
         parse_production parse_production'
         H_prod_split H_prod_split'
         splits_correct splits_correct'
-        (p_prod := @parse_production_helper _ String G _ str0 valid parse_name str pf it its splits parse_production H_prod_split splits_correct)
-        (p_prod' := @parse_production_helper _ String G _ str0' valid' parse_name' str' pf' it its splits' parse_production' H_prod_split' splits_correct')
+        (p_prod := @parse_production_helper _ String G _ str0 valid parse_name it its str pf splits splits_included parse_production H_prod_split splits_correct)
+        (p_prod' := @parse_production_helper _ String G _ str0' valid' parse_name' it its str' pf' splits' splits_included' parse_production' H_prod_split' splits_correct')
         (splits_ext : ((fun A B => (A -> B) * (B -> A))%type)
-                        { s : _ & In s splits * T_item_success str0 (fst s) valid it * T_production_success str0 (snd s) valid its }%type
-                        { s : _ & In s splits' * T_item_success str0' (fst s) valid' it * T_production_success str0' (snd s) valid' its }%type)
+                        { s : _ & In s splits * T_item_success str0 valid it (fst s) * T_production_success str0 valid its (snd s) }%type
+                        { s : _ & In s splits' * T_item_success str0' valid' it (fst s) * T_production_success str0' valid' its (snd s) }%type)
 
   : p_prod = p_prod' :> bool.
   Proof.
     subst p_prod p_prod'.
+    generalize dependent splits'.
     induction splits as [|[s1 s2] splits];
-      induction splits' as [|[s1' s2'] splits']; try reflexivity;
-      simpl in *.
-    { repeat match goal with
-               | [ |- appcontext[match ?E with _ => _ end] ] => case_eq E
-             end;
-      try solve [ repeat match goal with
-               | _ => reflexivity
-               | _ => intro
-               | _ => progress simpl in *
-               | _ => progress destruct_head False
-               | _ => progress destruct_head prod
-               | _ => progress destruct_head sigT
-               | [ H : sigT _ -> _ |- _ ] => specialize (fun a b => H (existT _ a b))
-               | [ H : (_ * _)%type -> _ |- _ ] => specialize (fun a b => H (a, b))
-               | [ H : forall x, (_ * _)%type -> _ |- _ ] => specialize (fun x a b => H x (a, b))
-               | [ H : forall x y, (_ * _)%type -> _ |- _ ] => specialize (fun x y a b => H x y (a, b))
-               | [ H : forall x y z, (_ * _)%type -> _ |- _ ] => specialize (fun x y z a b => H x y z (a, b))
-               | [ H : forall x y p, T_item_success _ _ _ _ -> T_production_success _ _ _ _ -> _, p_it : T_item_success _ _ _ _, p_prod : T_production_success _ _ _ _ |- _ ]
-                 => specialize (fun p => H _ _ p p_it p_prod)
-               | [ H : (?x = ?x \/ _) -> _ |- _ ] => specialize (H (or_introl eq_refl))
-
-             end ];
+      simpl in *;
       intros.
+    { induction splits' as [|[s1' s2'] splits'];
+      simpl in *;
+      intros;
+      try reflexivity.
+      repeat match goal with
+               | [ |- appcontext[match ?E with _ => _ end] ] => case_eq E
+             end; simpl;
+        try solve [ repeat match goal with
+                             | _ => reflexivity
+                             | _ => intro
+                             | _ => progress simpl in *
+                             | _ => progress destruct_head False
+                             | _ => progress destruct_head prod
+                             | _ => progress destruct_head sigT
+                             | [ H : sigT _ -> _ |- _ ] => specialize (fun a b => H (existT _ a b))
+                             | [ H : (_ * _)%type -> _ |- _ ] => specialize (fun a b => H (a, b))
+                             | [ H : forall x, (_ * _)%type -> _ |- _ ] => specialize (fun x a b => H x (a, b))
+                             | [ H : forall x y, (_ * _)%type -> _ |- _ ] => specialize (fun x y a b => H x y (a, b))
+                             | [ H : forall x y z, (_ * _)%type -> _ |- _ ] => specialize (fun x y z a b => H x y z (a, b))
+                             | [ H : forall x y p, T_item_success _ _ _ _ -> T_production_success _ _ _ _ -> _, p_it : T_item_success _ _ _ _, p_prod : T_production_success _ _ _ _ |- _ ]
+                               => specialize (fun p => H _ _ p p_it p_prod)
+                             | [ H : (?x = ?x \/ _) -> _ |- _ ] => specialize (H (or_introl eq_refl))
+
+                           end ];
+        intros.
       { rewrite <- IHsplits'; trivial.
         split; intro;
+        revert splits_ext;
         destruct_head sigT;
         destruct_head prod;
-        destruct_head False.
-        apply s2.
+        destruct_head False;
+        intro splits_ext.
+        apply splits_ext.
         eexists (_, _).
         repeat split; try eassumption.
         right; assumption. }
       { rewrite <- IHsplits'; trivial.
         split; intro;
+        revert splits_ext;
         destruct_head sigT;
         destruct_head prod;
-        destruct_head False.
-        apply s2.
+        destruct_head False;
+        intro splits_ext.
+        apply splits_ext.
         eexists (_, _).
         repeat split; try eassumption.
         right; assumption. }
       { rewrite <- IHsplits'; trivial.
         split; intro;
+        revert splits_ext;
         destruct_head sigT;
         destruct_head prod;
-        destruct_head False.
-        apply s2.
+        destruct_head False;
+        intro splits_ext.
+        apply splits_ext.
         eexists (_, _).
         repeat split; try eassumption.
         right; assumption. } }
@@ -180,7 +196,69 @@ Section recursive_descent_parser.
         eexists (_, _).
         repeat split; try eassumption.
         right; assumption. } }
-    {
+    { repeat match goal with
+               | [ |- appcontext[match ?E with _ => _ end] ] => case_eq E
+             end;
+      try solve [ repeat match goal with
+               | _ => reflexivity
+               | _ => intro
+               | _ => progress simpl in *
+               | _ => progress destruct_head False
+               | _ => progress destruct_head prod
+               | _ => progress destruct_head sigT
+               | [ H : sigT _ -> _ |- _ ] => specialize (fun a b => H (existT _ a b))
+               | [ H : (_ * _)%type -> _ |- _ ] => specialize (fun a b => H (a, b))
+               | [ H : forall x, (_ * _)%type -> _ |- _ ] => specialize (fun x a b => H x (a, b))
+               | [ H : forall x y, (_ * _)%type -> _ |- _ ] => specialize (fun x y a b => H x y (a, b))
+               | [ H : forall x y z, (_ * _)%type -> _ |- _ ] => specialize (fun x y z a b => H x y z (a, b))
+               | [ H : forall x y p, T_item_success _ _ _ _ -> T_production_success _ _ _ _ -> _, p_it : T_item_success _ _ _ _, p_prod : T_production_success _ _ _ _ |- _ ]
+                 => specialize (fun p => H _ _ p p_it p_prod)
+               | [ H : (?x = ?x \/ _) -> _ |- _ ] => specialize (H (or_introl eq_refl))
+
+             end ];
+      intros.
+      { simpl in *.
+        rewrite <- IHsplits'; clear IHsplits IHsplits'.
+        { repeat match goal with H : _ |- _ => rewrite H; [] end.
+          reflexivity. }
+        {
+split; intro;
+          destruct_head sigT;
+          destruct_head prod;
+          destruct_head or;
+          destruct_head False;
+          match goal with
+            | [ H : _ -> ?T |- context[In _ ?splits] ]
+              => match T with
+                   | context[In _ splits] => eexists (projT1 (H _))
+                 end
+          end;
+          match goal with
+            | [ |- appcontext[projT1 ?x] ] => pose proof (projT2 x)
+          end;
+          simpl in *;
+          destruct_head prod;
+          repeat split;
+          destruct_head or;
+          try assumption.
+          { inversion H4; subst; clear H4.
+          Focus 3.
+          repeat split.
+          match goal with
+            | [ |- appcontext[projT
+          exists (s1', s2');
+            destruct_head or;
+            repeat split.
+          apply
+          match goal with H : _ |- _ => apply H end.
+          eexists (_, _).
+          repeat split; try eassumption.
+          right; assumption. }
+                 | H
+        rewrite H0.
+erewrite IHsplits'.
+      erewrite <- IHsplits.
+
       { rewrite <- IHsplits'; trivial.
         split; intro;
         destruct_head sigT;

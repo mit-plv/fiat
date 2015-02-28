@@ -31,6 +31,7 @@ CORE_MODULES    := \
 	Common/FMapExtensions \
 	Common/SetEq \
 	Common/SetEqProperties \
+	Common/Match \
 	ComputationalEnsembles \
 	ComputationalEnsembles/Core \
 	ComputationalEnsembles/Laws \
