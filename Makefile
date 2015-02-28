@@ -31,7 +31,6 @@ CORE_MODULES    := \
 	Common/FMapExtensions \
 	Common/SetEq \
 	Common/SetEqProperties \
-	Common/Match \
 	ComputationalEnsembles \
 	ComputationalEnsembles/Core \
 	ComputationalEnsembles/Laws \
@@ -337,9 +336,6 @@ Overview/ProjectOverview.pdf: $(shell find Overview -name "*.tex" -o -name "*.st
 	cd Overview; bibtex ProjectOverview
 	cd Overview; pdflatex -interaction=batchmode -synctex=1 ProjectOverview.tex || true
 	cd Overview; pdflatex -synctex=1 ProjectOverview.tex
-
-Makefile.coq: Makefile
-	"$(COQBIN)coq_makefile" $(CORE_VS) $(EXAMPLE_VS) $(QUERYSTRUCTURE_VS) $(SRC_PARSERS_VS) $(FINITESET_VS) $(COMPILER_VS) COQC = " \$$(SILENCE_COQC)$(TIMER) \"\$$(COQBIN)coqc\"" COQDEP = " \$$(SILENCE_COQDEP)\"\$$(COQBIN)coqdep\" -c" COQDOCFLAGS = "$(COQDOCFLAGS)" -arg -dont-load-proofs -R src ADTSynthesis -R examples ADTExamples -o Makefile.coq
 
 Makefile.coq: Makefile
 	"$(COQBIN)coq_makefile" $(CORE_VS) $(EXAMPLE_VS) $(QUERYSTRUCTURE_VS) $(SRC_PARSERS_VS) $(FINITESET_VS) $(COMPILER_VS) COQC = " \$$(SILENCE_COQC)$(TIMER) \"\$$(COQBIN)coqc\"" COQDEP = " \$$(SILENCE_COQDEP)\"\$$(COQBIN)coqdep\" -c" COQDOCFLAGS = "$(COQDOCFLAGS)" -arg -dont-load-proofs -R src ADTSynthesis -R examples ADTExamples -o Makefile.coq
