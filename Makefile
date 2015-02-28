@@ -290,7 +290,7 @@ VECHO = $(VECHO_$(V))
 
 TIMED=
 TIMECMD=
-STDTIME=/usr/bin/time -f \"\$$* (real: %e, user: %U, sys: %S, mem: %M ko)\"
+STDTIME=/usr/bin/time -f \"\$$* (user: %e mem: %M ko)\"
 TIMER=\$$(if \$$(TIMED), $(STDTIME), $(TIMECMD))
 
 COQDOCFLAGS=-interpolate -utf8
