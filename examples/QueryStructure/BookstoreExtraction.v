@@ -1,6 +1,10 @@
 Require Import Computation.Core ADT ADTRefinement ADTNotation BuildADTRefinements.
-Require Import Bool String String_as_OT OrderedTypeEx BookstorewDelegation.
+Require Import Bool String String_as_OT OrderedTypeEx.
 Require Import ExtrOcamlBasic ExtrOcamlNatInt ExtrOcamlZInt ExtrOcamlString.
+
+Require Import ADTSynthesis.QueryStructure.Automation.AutoDB
+        ADTSynthesis.QueryStructure.Automation.QSImplementation
+        BookstorewDelegation.
 
 Extract Inlined Constant fst => fst.
 Extract Inlined Constant snd => snd.
@@ -49,7 +53,7 @@ Definition BookStoreDelegateImpls
   BuildQSDelegateImpls BookStoreImpl.
 Defined.
 
-Definition ExtractWorthyBookStorempl : ComputationalADT.cADT BookStoreSig.
+Definition ExtractWorthyBookStoreImpl : ComputationalADT.cADT BookStoreSig.
   let s := eval unfold BookStoreImpl in BookStoreImpl in
       let Impl := eval simpl in
       (Sharpened_Implementation s

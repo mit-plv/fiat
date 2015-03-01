@@ -202,10 +202,11 @@ COMPILER_MODULES := \
 	FiatToFacade/Compiler
 
 EXAMPLE_MODULES := \
-	QueryStructure/BookstorewDelegationSemiAutomatic \
+	QueryStructure/BookstorewDelegation \
 	QueryStructure/WeatherwDelegation \
 	QueryStructure/StockswDelegation \
 	QueryStructure/WeatherExtraction \
+	QueryStructure/BookstoreExtraction \
 	QueryStructure/StocksExtraction
 #FiniteSetsADTs/FiniteSetsExamples \
 	ExtractingFiniteSetsExamples \

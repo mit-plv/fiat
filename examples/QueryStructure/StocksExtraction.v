@@ -30,7 +30,7 @@ Require Import ADTSynthesis.QueryStructure.Automation.AutoDB
       BuildQSDelegateImpls StocksImpl.
     Defined.
 
-    Definition ExtractWorthyStocksmpl : ComputationalADT.cADT StocksSig.
+    Definition ExtractWorthyStocksImpl : ComputationalADT.cADT StocksSig.
       let s := eval unfold StocksImpl in StocksImpl in
           let Impl := eval simpl in
           (Sharpened_Implementation s
