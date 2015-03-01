@@ -84,7 +84,7 @@ Definition StocksSpec : ADT StocksSig :=
             Return (N.mul transaction!PRICE transaction!VOLUME))
 }.
 
-Definition SharpenedStocks :
+Definition StocksDB :
   Sharpened StocksSpec.
 Proof.
 
@@ -95,20 +95,89 @@ Proof.
 
   make simple indexes using [[TYPE; STOCK_CODE]; [DATE; STOCK_CODE]].
 
-  plan. (* ~10 minutes*)
+  hone constructor "Init".
+  {
+    initializer.
+  }
 
-  FullySharpenQueryStructure StocksSchema Index.
+  hone method "LargestTransaction".
+  {
+    observer.
+  }
 
-  implement_bag_methods. (* 106 seconds *)
-  implement_bag_methods. (* 228 seconds *)
-  implement_bag_methods. (*  37 seconds *)
-  implement_bag_methods. (*  33 seconds *)
-  implement_bag_methods. (*  31 seconds *)
-  implement_bag_methods. (*  90 seconds*)
+  hone method "TotalVolume".
+  {
+    observer.
+  }
 
-Defined.
 
-Definition StocksImpl : SharpenedUnderDelegates StocksSig.
-  Time let
-      Impl := eval simpl in (projT1 SharpenedStocks) in exact Impl.
+  hone method "AddStock".
+  {
+
+    Implement_Insert_Checks.
+
+    implement_Query.
+
+    simpl; simplify with monad laws.
+    setoid_rewrite refineEquiv_swap_bind.
+
+    implement_Insert_branches.
+
+    finish honing.
+  }
+
+
+    hone method "AddTransaction".
+    {
+      Implement_Insert_Checks.
+
+      implement_Query.
+      simpl; simplify with monad laws.
+
+      implement_Query.
+      simpl; simplify with monad laws.
+
+      repeat setoid_rewrite refine_if_andb.
+
+      setoid_rewrite refineEquiv_swap_bind.
+      etransitivity.
+      apply refine_bind;
+        [reflexivity
+        | unfold pointwise_relation; intros ].
+      etransitivity.
+
+      setoid_rewrite refineEquiv_swap_bind.
+      etransitivity.
+      apply refine_bind;
+        [reflexivity
+        | unfold pointwise_relation; intros ].
+      etransitivity.
+
+      implement_Insert_branches.
+      reflexivity.
+      higher_order_1_reflexivity.
+      reflexivity.
+      higher_order_1_reflexivity.
+      finish honing.
+    }
+
+    hone method "MaxPrice".
+    {
+      implement_Query.
+      simpl; simplify with monad laws.
+      simpl; commit.
+      finish honing.
+    }
+
+    hone method "TotalActivity".
+    {
+      implement_Query.
+      simpl; simplify with monad laws.
+      simpl; commit.
+      finish honing.
+    }
+
+    idtac.
+
+  finish sharpening.
 Defined.

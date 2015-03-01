@@ -94,4 +94,4 @@ Time Defined.
 Definition WeatherStationImpl : SharpenedUnderDelegates WeatherSig.
   Time let Impl := eval simpl in (projT1 SharpenedWeatherStation) in
            exact Impl.
-Time Defined.
+Defined.

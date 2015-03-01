@@ -204,7 +204,9 @@ COMPILER_MODULES := \
 EXAMPLE_MODULES := \
 	QueryStructure/BookstorewDelegationSemiAutomatic \
 	QueryStructure/WeatherwDelegation \
-	QueryStructure/StockswDelegation
+	QueryStructure/StockswDelegation \
+	QueryStructure/WeatherExtraction \
+	QueryStructure/StocksExtraction
 #FiniteSetsADTs/FiniteSetsExamples \
 	ExtractingFiniteSetsExamples \
 	QueryStructure/Bookstore \

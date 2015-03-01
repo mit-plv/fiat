@@ -96,7 +96,7 @@ Definition BookStoreSpec : ADT BookStoreSig :=
                  Return ())
 }.
 
-Theorem BookStoreManual :
+Theorem SharpenedBookStore :
   Sharpened BookStoreSpec.
 Proof.
 
@@ -249,6 +249,11 @@ Proof.
   implement_bag_methods. (*  27 seconds *)
 
 Defined.
+
+Definition BookStoreImpl : SharpenedUnderDelegates BookStoreSig.
+  Time let Impl := eval simpl in (projT1 SharpenedBookStore) in
+           exact Impl.
+Time Defined.
 
 (* Need to add better automation for extracting Query Structure Implementations. *)
 (* Definition BookStoreImpl : ComputationalADT.cADT BookStoreSig.
