@@ -292,14 +292,19 @@ VECHO = $(VECHO_$(V))
 
 TIMED=
 TIMECMD=
-STDTIME=/usr/bin/time -f \"\$$* (user: %e mem: %M ko)\"
-TIMER=\$$(if \$$(TIMED), $(STDTIME), $(TIMECMD))
+STDTIME?=/usr/bin/time -f "$* (real: %e, user: %U, sys: %S, mem: %M ko)"
+TIMER=$(if $(TIMED), $(STDTIME), $(TIMECMD))
 
 COQDOCFLAGS=-interpolate -utf8
 
-FAST_TARGETS := clean archclean printenv clean-old package-parsing-parses
+# `make` on Mac OS doesn't like `\n`
+define NEWLINE
 
-.PHONY: all fiat querystructures parsers finitesets examples html clean pretty-timed pretty-timed-files pdf doc clean-doc cheat parsers-base package-parsing-parses
+
+endef
+export NEWLINE
+
+FAST_TARGETS := clean archclean printenv clean-old package-parsing-parses
 
 .PHONY: all fiat querystructures parsers finitesets examples html clean pretty-timed pretty-timed-files pdf doc clean-doc cheat parsers-base package-parsing-parses
 
@@ -341,11 +346,14 @@ Overview/ProjectOverview.pdf: $(shell find Overview -name "*.tex" -o -name "*.st
 	cd Overview; pdflatex -synctex=1 ProjectOverview.tex
 
 Makefile.coq: Makefile
-	"$(COQBIN)coq_makefile" $(CORE_VS) $(EXAMPLE_VS) $(QUERYSTRUCTURE_VS) $(SRC_PARSERS_VS) $(FINITESET_VS) $(COMPILER_VS) COQC = " \$$(SILENCE_COQC)$(TIMER) \"\$$(COQBIN)coqc\"" COQDEP = " \$$(SILENCE_COQDEP)\"\$$(COQBIN)coqdep\" -c" COQDOCFLAGS = "$(COQDOCFLAGS)" -arg -dont-load-proofs -R src ADTSynthesis -R examples ADTExamples -o Makefile.coq
-
-# The following is broken on my machine (may be sed related)
-#	$(VECHO) "COQ_MAKEFILE > $@"
-#	$(Q)"$(COQBIN)coq_makefile" $(CORE_VS) $(EXAMPLE_VS) $(QUERYSTRUCTURE_VS) $(SRC_PARSERS_VS) $(FINITESET_VS) $(COMPILER_VS) COQC = "\$$(SILENCE_COQC)\$$(TIMER) \"\$$(COQBIN)coqc\"" COQDEP = "\$$(SILENCE_COQDEP)\"\$$(COQBIN)coqdep\" -c" COQDOCFLAGS = "$(COQDOCFLAGS)" -arg -dont-load-proofs -R src ADTSynthesis -R examples ADTExamples | sed s'/^\(-include.*\)$$/ifneq ($$(filter-out $(FAST_TARGETS),$$(MAKECMDGOALS)),)\n\1\nelse\nifeq ($$(MAKECMDGOALS),)\n\1\nendif\nendif/g' | sed s'/^clean:$$/clean-old::/g' | sed s'/^Makefile: /Makefile-old: /g' > $@
+	$(VECHO) "COQ_MAKEFILE > $@"
+	$(Q)"$(COQBIN)coq_makefile" $(CORE_VS) $(EXAMPLE_VS) $(QUERYSTRUCTURE_VS) $(SRC_PARSERS_VS) $(FINITESET_VS) $(COMPILER_VS) COQC = "\$$(SILENCE_COQC)\$$(TIMER) \"\$$(COQBIN)coqc\"" COQDEP = "\$$(SILENCE_COQDEP)\"\$$(COQBIN)coqdep\" -c" COQDOCFLAGS = "$(COQDOCFLAGS)" -arg -dont-load-proofs -R src ADTSynthesis -R examples ADTExamples | sed s'/^\(-include.*\)$$/ifneq ($$(filter-out $(FAST_TARGETS),$$(MAKECMDGOALS)),)\
+\1\
+else\
+ifeq ($$(MAKECMDGOALS),)\
+\1\
+endif\
+endif/g' | sed s'/^clean:$$/clean-old::/g' | sed s'/^Makefile: /Makefile-old: /g' > $@
 
 -include Makefile.coq
 
@@ -359,7 +367,7 @@ OCAMLDEP = $(SILENCE_OCAMLDEP)$(OCAMLDEP_OLD)
 OCAMLOPT_OLD := $(OCAMLOPT)
 OCAMLOPT = $(SILENCE_OCAMLOPT)$(OCAMLOPT_OLD)
 
-clean:
+clean::
 	$(VECHO) "RM *.CMO *.CMI *.CMA"
 	$(Q)rm -f $(ALLCMOFILES) $(CMIFILES) $(CMAFILES)
 	$(VECHO) "RM *.CMX *.CMXS *.CMXA *.O *.A"
@@ -373,7 +381,7 @@ clean:
 	- rm -rf html mlihtml
 	rm -f Makefile.coq .depend
 
-clean-doc:
+clean-doc::
 	rm -rf html
 	rm -f all.pdf Overview/library.pdf Overview/ProjectOverview.pdf Overview/coqdoc.sty coqdoc.sty
 	rm -f $(shell find Overview -name "*.log" -o -name "*.aux" -o -name "*.bbl" -o -name "*.blg" -o -name "*.synctex.gz" -o -name "*.out" -o -name "*.toc")
