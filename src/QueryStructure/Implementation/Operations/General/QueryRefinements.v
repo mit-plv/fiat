@@ -2,7 +2,7 @@ Require Import Coq.Strings.String Coq.Lists.List Coq.Sorting.Permutation
         Coq.Bool.Bool Coq.Sets.Ensembles
         Coq.Logic.FunctionalExtensionality
         ADTSynthesis.ADTNotation ADTSynthesis.Common
-        ADTSynthesis.Common.ListFacts
+        ADTSynthesis.Common.List.ListFacts
         ADTSynthesis.Common.Ensembles.IndexedEnsembles
         ADTSynthesis.Common.DecideableEnsembles
         ADTSynthesis.Computation

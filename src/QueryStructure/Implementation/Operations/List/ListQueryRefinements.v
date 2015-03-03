@@ -13,8 +13,8 @@ Require Import Coq.Strings.String Coq.omega.Omega Coq.Lists.List
         ADTSynthesis.Common.SetEq
         ADTSynthesis.Common.Ensembles.IndexedEnsembles
         ADTSynthesis.Common.DecideableEnsembles
-        ADTSynthesis.Common.ListMorphisms
-        ADTSynthesis.Common.FlattenList
+        ADTSynthesis.Common.List.ListMorphisms
+        ADTSynthesis.Common.List.FlattenList
         ADTSynthesis.QueryStructure.Specification.Operations.FlattenCompList.
 
 Lemma refine_SetEq_self {A} :
@@ -120,7 +120,7 @@ Proof.
   reflexivity.
 Qed.
 
-Require Import ADTSynthesis.Common.ListFacts.
+Require Import ADTSynthesis.Common.List.ListFacts.
 
 Ltac trickle_swap :=
   (* faster than just calling repeat first [ setoid_rewrite _ | setoid_rewrite _ ] *)

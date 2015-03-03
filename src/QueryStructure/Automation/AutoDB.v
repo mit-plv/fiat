@@ -1,11 +1,11 @@
 Require Export Coq.Bool.Bool Coq.Strings.String.
 Open Scope string.
 Require Export ADTSynthesis.Common.DecideableEnsembles
-        ADTSynthesis.Common.ListMorphisms
-        ADTSynthesis.Common.ListFacts
+        ADTSynthesis.Common.List.ListMorphisms
+        ADTSynthesis.Common.List.ListFacts
         ADTSynthesis.Common.BoolFacts
         ADTSynthesis.Common.LogicFacts
-        ADTSynthesis.Common.FlattenList
+        ADTSynthesis.Common.List.FlattenList
         ADTSynthesis.Common.Ensembles.IndexedEnsembles
         ADTSynthesis.Common.IterateBoundedIndex
         ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureNotations

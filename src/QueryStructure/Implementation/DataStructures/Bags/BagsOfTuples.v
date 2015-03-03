@@ -11,14 +11,14 @@ Require Import Coq.Bool.Bool Coq.Strings.String
         Coq.FSets.FMapAVL
         ADTSynthesis.Common.Ensembles.EnsembleListEquivalence
         ADTSynthesis.Common.String_as_OT
-        ADTSynthesis.Common.ListFacts
+        ADTSynthesis.Common.List.ListFacts
         ADTSynthesis.Common.Ensembles.IndexedEnsembles
         ADTSynthesis.Common.DecideableEnsembles
         ADTSynthesis.QueryStructure.Implementation.Operations.General.QueryRefinements
         ADTSynthesis.QueryStructure.Implementation.Operations.General.EmptyRefinements
         ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureNotations
         ADTSynthesis.Common.PermutationFacts
-        ADTSynthesis.Common.ListMorphisms
+        ADTSynthesis.Common.List.ListMorphisms
         ADTSynthesis.QueryStructure.Specification.Operations.Delete
         ADTSynthesis.QueryStructure.Implementation.Operations.General.DeleteRefinements
         ADTSynthesis.QueryStructure.Implementation.Operations.List.ListQueryRefinements.

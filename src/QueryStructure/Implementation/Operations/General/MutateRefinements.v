@@ -1,5 +1,5 @@
 Require Import Coq.Strings.String Coq.omega.Omega Coq.Lists.List Coq.Logic.FunctionalExtensionality Coq.Sets.Ensembles
-        ADTSynthesis.Common.ListFacts
+        ADTSynthesis.Common.List.ListFacts
         ADTSynthesis.Computation
         ADTSynthesis.ADT
         ADTSynthesis.ADTRefinement ADTSynthesis.ADTNotation

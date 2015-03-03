@@ -8,7 +8,7 @@ Require Import Coq.Bool.Bool Coq.Strings.String
         ADTSynthesis.Common.String_as_OT
         ADTSynthesis.Common.Ensembles.IndexedEnsembles
         ADTSynthesis.Common.DecideableEnsembles
-        ADTSynthesis.Common.ListFacts
+        ADTSynthesis.Common.List.ListFacts
         ADTSynthesis.QueryStructure.Specification.Operations.FlattenCompList
         ADTSynthesis.QueryStructure.Implementation.Operations.General.QueryRefinements
         ADTSynthesis.QueryStructure.Implementation.Operations.General.EmptyRefinements

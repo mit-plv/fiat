@@ -1,5 +1,5 @@
 Require Import Coq.Setoids.Setoid Coq.Lists.List Coq.Sorting.Permutation
-        ADTSynthesis.Common.FlattenList
+        ADTSynthesis.Common.List.FlattenList
         ADTSynthesis.Common.SetEq.
 
 Definition IsSetEqSafe {A B: Type} (proc: list A -> list B) :=

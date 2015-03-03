@@ -5,7 +5,7 @@ Require Import Coq.FSets.FMapFacts
         ADTSynthesis.Common
         ADTSynthesis.Common.SetEq
         ADTSynthesis.Common.SetEqProperties
-        ADTSynthesis.Common.ListFacts.
+        ADTSynthesis.Common.List.ListFacts.
 
 Unset Implicit Arguments.
 

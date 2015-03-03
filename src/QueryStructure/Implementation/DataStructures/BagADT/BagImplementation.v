@@ -116,7 +116,7 @@ Section SharpenedBagImplementation.
     - exists bnd; unfold UnConstrFreshIdx in *; intros; apply fresh_bnd;
     destruct H; eauto.
     - pose proof (bdelete_correct nr search_term H0); intuition.
-      Require Import ADTSynthesis.Common.ListFacts.
+      Require Import ADTSynthesis.Common.List.ListFacts.
       rewrite partition_filter_neq in H1; symmetry in H1.
       destruct (permutation_filter _ _ _ H1) as [l [l_eq Perm_l]].
       symmetry in Perm_l.

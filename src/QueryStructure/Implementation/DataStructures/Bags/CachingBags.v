@@ -1,7 +1,7 @@
 Require Export Coq.Lists.List Coq.Program.Program
         ADTSynthesis.QueryStructure.Implementation.DataStructures.Bags.BagsInterface
         ADTSynthesis.QueryStructure.Implementation.DataStructures.Bags.BagsProperties.
-Require Import ADTSynthesis.Common.ListFacts.
+Require Import ADTSynthesis.Common.List.ListFacts.
 
 Unset Implicit Arguments.
 

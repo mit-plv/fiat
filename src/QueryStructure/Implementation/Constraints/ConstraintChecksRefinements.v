@@ -2,12 +2,12 @@ Require Export ADTSynthesis.QueryStructure.Specification.Representation.QueryStr
 Require Import Coq.Lists.List Coq.Arith.Compare_dec Coq.Bool.Bool String
         ADTSynthesis.Common.BoolFacts
         ADTSynthesis.Common.PermutationFacts
-        ADTSynthesis.Common.ListMorphisms
+        ADTSynthesis.Common.List.ListMorphisms
         ADTSynthesis.QueryStructure.Specification.Operations.FlattenCompList
         ADTSynthesis.Common.Ensembles.EnsembleListEquivalence
         ADTSynthesis.QueryStructure.Implementation.Operations.General.QueryRefinements
         ADTSynthesis.Common.IterateBoundedIndex
-        ADTSynthesis.Common.ListFacts
+        ADTSynthesis.Common.List.ListFacts
         ADTSynthesis.Common.LogicFacts
         ADTSynthesis.Common.DecideableEnsembles
         ADTSynthesis.QueryStructure.Specification.Constraints.tupleAgree

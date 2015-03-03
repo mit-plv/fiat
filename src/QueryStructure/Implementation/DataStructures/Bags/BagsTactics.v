@@ -5,7 +5,7 @@ Require Import Coq.Strings.String Coq.Arith.Arith
         ADTSynthesis.QueryStructure.Implementation.ListImplementation
         ADTSynthesis.QueryStructure.Implementation.DataStructures.Bags.BagsOfTuples
         ADTSynthesis.QueryStructure.Implementation.Operations.General.EmptyRefinements
-        ADTSynthesis.Common.ListFacts.
+        ADTSynthesis.Common.List.ListFacts.
 
 Ltac is_sumbool expr :=
   match type of expr with

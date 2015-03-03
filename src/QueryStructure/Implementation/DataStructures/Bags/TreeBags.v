@@ -3,8 +3,8 @@ Require Export ADTSynthesis.QueryStructure.Implementation.DataStructures.Bags.Ba
 Require Import
         Coq.FSets.FMapInterface Coq.FSets.FMapFacts
         ADTSynthesis.Common
-        ADTSynthesis.Common.ListFacts
-        ADTSynthesis.Common.FlattenList
+        ADTSynthesis.Common.List.ListFacts
+        ADTSynthesis.Common.List.FlattenList
         ADTSynthesis.Common.SetEqProperties
         ADTSynthesis.Common.FMapExtensions
         ADTSynthesis.Common.PermutationFacts.

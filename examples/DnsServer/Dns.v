@@ -1,144 +1,12 @@
+Require Import Coq.Vectors.Vector
+        Coq.Strings.Ascii Coq.Bool.Bool
+        Coq.Bool.Bvector Coq.Lists.List.
+
 Require Import ADTSynthesis.QueryStructure.Automation.AutoDB
-        ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.BagADT.
-Require Import Coq.Vectors.Vector Ascii Bool Bvector List.
+        ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.BagADT
+        ADTExamples.DnsServer.packet.
 
-Section packet.
-  (* TODO: Move this section into a seperate file for basic
-     packet and DNS Record definitions. *)
-
-  Definition name := list string.
-
-  Definition beq_name (a b : name) : bool :=
-    if (list_eq_dec string_dec a b) then true else false.
-
-  Lemma beq_name_dec
-  : forall (a b : name), beq_name a b = true <-> a = b.
-  Proof.
-    unfold beq_name; intros; find_if_inside; intuition; intros; congruence.
-  Qed.
-
-  Inductive RRecordType := A | CNAME | NS | MX.
-
-  Definition beq_RRecordType (a b : RRecordType) :=
-    match a, b with
-      | A, A => true
-      | CNAME, CNAME => true
-      | NS, NS => true
-      | MX, MX => true
-      | _, _ => false
-    end.
-
-  Lemma RRecordType_dec
-  : forall (a b : RRecordType), {a = b} + {a <> b}.
-  Proof.
-    destruct a; destruct b; simpl; intuition; intros;
-    try first [right; discriminate | left; reflexivity].
-  Qed.
-
-  Lemma beq_RRecordType_sym :
-    forall rrT rrT', beq_RRecordType rrT rrT' = beq_RRecordType rrT' rrT.
-  Proof.
-    destruct rrT; destruct rrT'; simpl; congruence.
-  Qed.
-
-  Lemma beq_RRecordType_dec :
-    forall a b, ?[RRecordType_dec a b] = beq_RRecordType a b.
-  Proof.
-    intros; find_if_inside; subst.
-    destruct b; simpl; reflexivity.
-    destruct a; destruct b; simpl; congruence.
-  Qed.
-
-  (* Instances used in DecideableEnsemble. *)
-  Global Instance Query_eq_RRecordType :
-    Query_eq RRecordType := {| A_eq_dec := RRecordType_dec |}.
-
-  Inductive RRecordClass := IN | CH | HS.
-
-  Definition beq_RRecordClass (a b : RRecordClass) :=
-    match a, b with
-      | IN, IN => true
-      | CH, CH => true
-      | HS, HS => true
-      | _, _ => false
-    end.
-  Lemma RRecordClass_dec
-  : forall (a b : RRecordClass), {a = b} + {a <> b}.
-  Proof.
-    destruct a; destruct b; simpl; intuition; intros;
-    try first [right; discriminate | left; reflexivity ].
-  Qed.
-
-  (* Instances used in DecideableEnsemble. *)
-  Global Instance Query_eq_RRecordClass :
-    Query_eq RRecordClass := {| A_eq_dec := RRecordClass_dec |}.
-
-  Record question :=
-    { qname : name;
-      qtype : RRecordType;
-      qclass : RRecordClass }.
-
-  Record answer :=
-    { aname : name;
-      atype : RRecordType;
-      aclass : RRecordClass;
-      ttl : nat;
-      rdata : string }.
-
-  Record packet :=
-    { id : Bvector 16;
-      flags : Bvector 16;
-      questions : question; (* `list question` in case we can have multiple questions? *)
-      answers : list answer;
-      authority : list answer;
-      additional : list answer }.
-
-  Lemma zero_lt_sixteen : lt 0 16. omega. Qed.
-  Definition buildempty (p : packet) :=
-    {| id := id p;
-       flags := replace_order (flags p) zero_lt_sixteen true; (* set QR bit *)
-       questions := questions p;
-       answers := [ ];
-       authority := [ ];
-       additional := [ ] |}.
-
-  Definition sCOLLECTIONS := "Collections".
-  Definition sNAME := "Name".
-  Definition sTTL := "TTL".
-  Definition sCLASS := "Class".
-  Definition sTYPE := "Type".
-  Definition sDATA := "Data".
-
-  (* DNS Resource Records. *)
-  Definition DNSRRecord :=
-    @Tuple <sNAME :: name,
-    sTYPE :: RRecordType,
-    sCLASS :: RRecordClass,
-    sTTL :: nat,
-    sDATA :: string>%Heading.
-
-  Definition toAnswer (t: DNSRRecord) :=
-    {| aname := t!sNAME;
-       atype := t!sTYPE;
-       aclass := t!sCLASS;
-       ttl := t!sTTL;
-       rdata := t!sDATA |}.
-
-  Definition addan (p : packet) (t : DNSRRecord) :=
-    {| id := id p;
-       flags := flags p;
-       questions := questions p;
-       answers := (toAnswer t) :: answers p;
-       authority := authority p;
-       additional := additional p |}.
-
-  Definition addns (p : packet) (t : DNSRRecord) :=
-    {| id := id p;
-       flags := flags p;
-       questions := questions p;
-       answers := answers p;
-       authority := (toAnswer t) :: (authority p);
-       additional := additional p |}.
+Open Scope list.
 
 Definition
   prefixProp (p s : name) := exists ps, p ++ ps = s.
@@ -327,9 +195,9 @@ Definition DnsSpec : ADT DnsSig :=
 
     query "Process" (p : packet) : packet :=
       let t := qtype (questions p) in
-      Repeat 7 initializing n with qname (questions p)
+      Repeat 1 initializing n with qname (questions p)
                defaulting rec with (ret (buildempty p))
-                                                                 
+
          {{ rs <- For (r in sCOLLECTIONS)      (* Bind a list of all the DNS entries *)
                   Where (prefixProp n r!sNAME) (* prefixed with [n] to [rs] *)
                   Return r;
@@ -352,7 +220,7 @@ Definition DnsSpec : ADT DnsSig :=
                 bfrs' <- [[x in bfrs | x!sTYPE = NS]];
                 ret (List.fold_left addns bfrs' (buildempty p))
             Else ret (buildempty p) (* No matching records! *)
-          }} }.
+          }}}.
 
 (* Search Terms are pairs of prefixes and filter functions. *)
 Record PrefixSearchTerm := { pst_name : name;
@@ -601,7 +469,7 @@ Qed.
 
     Lemma fold_right_max_is_max {A}
     : forall (f : A -> nat) ns n,
-        In n ns -> f n <= fold_right (fun n acc => max (f n) acc) 0 ns.
+        List.In n ns -> f n <= fold_right (fun n acc => max (f n) acc) 0 ns.
     Proof.
       induction ns; intros; inversion H; subst; simpl;
       apply NPeano.Nat.max_le_iff; [ left | right ]; auto.
@@ -609,7 +477,7 @@ Qed.
 
     Lemma fold_right_higher_is_higher {A}
     : forall (f : A -> nat) ns x,
-        (forall r, In r ns -> f r <= x) ->
+        (forall r, List.In r ns -> f r <= x) ->
         fold_right (fun n acc => max (f n) acc) 0 ns <= x.
     Proof.
       induction ns; simpl; intros; [ apply le_0_n | ].
@@ -620,7 +488,7 @@ Qed.
 
     Lemma find_upperbound_highest_length {A}
     : forall (f : A -> nat) ns n,
-        In n (find_upperbound f ns) -> forall n', In n' ns -> (f n) >= (f n').
+        List.In n (find_upperbound f ns) -> forall n', List.In n' ns -> (f n) >= (f n').
     Proof.
       unfold ge, find_upperbound; intros.
       apply filter_In in H; destruct H; apply NPeano.leb_le in H1.
@@ -629,14 +497,14 @@ Qed.
     Qed.
 
     (* Lemma find_upperbound_upperbound {A}
-    : forall (f : A -> nat) ns n, In n (find_upperbound f ns) <->
-                                    In n ns /\ upperbound f ns n.
+    : forall (f : A -> nat) ns n, List.In n (find_upperbound f ns) <->
+                                    List.In n ns /\ upperbound f ns n.
     Proof.
       unfold upperbound, ge; intros; split; intros; try split.
-      - unfold find_upperbound in H; apply filter_In in H; tauto.
+      - unfold find_upperbound in H; apply filter_List.In in H; tauto.
       - apply find_upperbound_highest_length; auto.
       - destruct H; unfold find_upperbound.
-        apply filter_In; split; try assumption.
+        apply filter_List.In; split; try assumption.
         apply NPeano.leb_le.
         pose proof (fold_right_max_is_max f _ _ H).
         pose proof (fold_right_higher_is_higher f _ H0).
@@ -665,9 +533,9 @@ Qed.
 
     Lemma foo16 :
       forall ns s,
-        (forall n', In n' ns -> prefixProp (get_name n') s)
-        -> forall n n', In n (find_upperbound name_length ns)
-                        -> In n' (find_upperbound name_length ns)
+        (forall n', List.In n' ns -> prefixProp (get_name n') s)
+        -> forall n n', List.In n (find_upperbound name_length ns)
+                        -> List.In n' (find_upperbound name_length ns)
                         -> get_name n = get_name n'.
     Proof.
       unfold find_upperbound, name_length; intros ns s H0 n n' H H1.
@@ -704,12 +572,12 @@ Qed.
     (* Implement the check for an exact match *)
     Lemma foo19
     : forall ns s,
-        (forall n', In n' ns -> prefixProp (get_name n') s) ->
+        (forall n', List.In n' ns -> prefixProp (get_name n') s) ->
         refine {b : bool |
                 decides b
                         (~
                            (exists x : DNSRRecord,
-                              In x (find_upperbound name_length ns) /\ s <> (get_name x)))}
+                              List.In x (find_upperbound name_length ns) /\ s <> (get_name x)))}
                (ret match find_upperbound name_length ns with
                       | nil => true
                       | n' :: _ => ?[s == (get_name n')]
@@ -728,7 +596,7 @@ Qed.
     Qed.
 
     Lemma in_list_exists {A}
-    : forall (xs : list A) x, In x xs -> exists n, nth_error xs n = Some x.
+    : forall (xs : list A) x, List.In x xs -> exists n, nth_error xs n = Some x.
     Proof.
       intros; induction xs; inversion H; subst.
       exists 0; reflexivity.
@@ -736,7 +604,7 @@ Qed.
     Qed.
 
     Lemma in_list_preserve_filter {A}
-    : forall (f : A -> bool) xs x, In x (filter f xs) -> In x xs.
+    : forall (f : A -> bool) xs x, List.In x (filter f xs) -> List.In x xs.
     Proof.
       intros; apply (filter_In f x xs) in H; tauto.
     Qed.
@@ -748,11 +616,11 @@ Qed.
                                      -> nth_error ns n' = Some t'
                                      -> get_name t = get_name t'
                                      -> t!sTYPE <> CNAME),
-        (forall n', In n' ns -> prefixProp (get_name n') s) ->
+        (forall n', List.In n' ns -> prefixProp (get_name n') s) ->
         refine {b' |
                 forall b : Tuple,
                   b' = Some b <->
-                  In b (find_upperbound name_length ns) /\
+                  List.In b (find_upperbound name_length ns) /\
                   b!sTYPE = CNAME /\ n <> CNAME}
                (ret match (find_upperbound name_length ns) with
                       | nil => None
@@ -816,8 +684,8 @@ Qed.
 
 Lemma refine_decides_forall_In' :
   forall {A} l (P: A -> Prop) (P_Dec : DecideableEnsemble P),
-    refine {b | decides b (forall (x: A), In x l -> P x)}
-           {b | decides b (~ exists (x : A), In x l /\ ~ P x)}.
+    refine {b | decides b (forall (x: A), List.In x l -> P x)}
+           {b | decides b (~ exists (x : A), List.In x l /\ ~ P x)}.
 Proof.
   unfold refine; intros; inversion_by computes_to_inv.
   constructor.
@@ -831,6 +699,7 @@ Proof.
 Qed.
 
 Transparent FueledFix.
+Opaque Query_For.
 
 Theorem DnsManual :
   Sharpened DnsSpec.
@@ -843,7 +712,6 @@ Proof.
   {
     setoid_rewrite foo3.
     setoid_rewrite foo5.
-    simplify with monad laws.
     setoid_rewrite refine_If_Then_Else_Bind.
     setoid_rewrite Bind_refine_If_Then_Else.
     etransitivity.
@@ -879,21 +747,71 @@ Proof.
     Focused_refine_Query.
     {
       implement_In.
-
-      convert_Where_to_search_term.
+      (* Step 2: Convert where clauses into compositions of filters. *)
+      repeat convert_Where_to_filter.
+      (* Step 3: Do some simplication.*)
+      repeat setoid_rewrite <- filter_and;
+        try setoid_rewrite andb_true_r.
+      (* Step 4: Move filters to the outermost [Join_Comp_Lists] to which *)
+      (* they can be applied. *)
+      repeat setoid_rewrite Join_Filtered_Comp_Lists_id.
+      distribute_filters_to_joins.
+      (* Step 5: Convert filter function on topmost [Join_Filtered_Comp_Lists] to an
+               equivalent search term matching function.  *)
+      convert_filter_to_search_term.
       find_equivalent_search_term 0 ltac:(fun _ _ _ _ => idtac).
-      { instantiate (1 := {| pst_name := qname (questions n);
+      {
+        (* TODO: a tactic that solves this goal and can be plugged in
+           for the idtac above.
+         *)
+        instantiate (1 := {| pst_name := qname (questions n);
                              pst_filter := fun tup => true |}).
-
         simpl.
         intros; apply foo13.
       }
+      simpl.
+      match goal with
+        | H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
+          |- refine (l <- Join_Filtered_Comp_Lists (a := ?heading) (As := ?headings) ?l1
+                       (fun _ => l' <- CallBagMethod ?idx BagEnumerate ?r_n ();
+                        ret (snd l')) ?f;
+                     _) _ =>
+      match f with
+        (* Try non-dependent search term first *)
+        | fun a => (?MatchIndexSearchTerm ?st (ilist_hd a)) && true =>
+          let r := fresh in
+          pose proof (@refine_Join_Comp_Lists_To_Find _ _ r_o r_n H _ l1 idx st) as r;
+            simpl in r; rewrite r; clear r
+        (* Then do dependent search term  *)
+        | fun a => (?MatchIndexSearchTerm (@?st a) (ilist_hd a)) && true =>
+          let stT := type of st in
+          match stT with _ -> ?stT =>
+                         makeEvar (ilist (@Tuple) headings -> stT)
+                                  ltac:(fun st_dep =>
+                                          let eqv := fresh in
+                                          let a := fresh in
+                                          assert (forall (a : ilist _ (_ :: _)),
+                                                    st a = st_dep (ilist_tl a) ) as eqv;
+                                        [intro a; simpl;
+                                         match goal with
+                                             |- ?st' = _ =>
 
-      convert_filter_to_find.
-      Implement_Aggregates.
+                                             let st'' := eval pattern (ilist_tl a) in st' in                                                     match st'' with | ?f (ilist_tl a) =>
+                                                                                                                                                                   let f' := eval simpl in f in unify f' st_dep end
+                                         end; simpl; reflexivity |
+                                         let r := fresh in
+                                         pose proof (refine_Join_Comp_Lists_To_Find_dep
+                                                       H l1 idx
+                                                       st_dep) as r;
+                                           simpl in r; rewrite r; clear r eqv
+                                        ]
+                                       )
+          end
+            (* If we can't coerce [f] to a search term, leave it unchanged. *)
+      end end.
 
-      setoid_rewrite foo11.
-      reflexivity.
+      apply refine_under_bind.
+      intros; apply List_Query_In_Return.
     }
     (* Find the upperbound of the results. *)
     setoid_rewrite refine_find_upperbound.
@@ -907,7 +825,7 @@ Proof.
     apply refine_If_Then_Else.
     - simplify with monad laws.
 
-      rewrite refine_decides_forall_In'.
+      rewrite (@refine_decides_forall_In' _ _ _ _).
 
       setoid_rewrite foo19.
       simplify with monad laws.
@@ -920,25 +838,36 @@ Proof.
       setoid_rewrite foo20.
       simplify with monad laws.
       setoid_rewrite refine_If_Opt_Then_Else_Bind.
-     apply refine_If_Opt_Then_Else.
+      apply refine_If_Opt_Then_Else.
       unfold pointwise_relation; intros.
-      rewrite refine_filtered_list.
       simplify with monad laws.
-      simpl.
       refine pick val _; eauto.
       simplify with monad laws.
       higher_order_1_reflexivity.
       simplify with monad laws.
+      simpl.
       refine pick val _; eauto.
       simplify with monad laws.
       reflexivity.
-      rewrite refine_filtered_list.
+      idtac.
+      clear H.
+      admit.
+      simpl.
+      intros.
+      instantiate (1 := qname (questions n)).
+      clear H.
+      admit.
+      simplify with monad laws.
+      setoid_rewrite (@refine_filtered_list _ _ _ _).
       simplify with monad laws.
       refine pick val _; eauto.
       simplify with monad laws.
       reflexivity.
       reflexivity.
-      eauto with typeclass_instances.
+      intro.
+      rewrite map_app, map_map; simpl.
+      clear H.
+      admit.
     - simplify with monad laws.
       refine pick val _; eauto.
       simplify with monad laws.
@@ -957,21 +886,69 @@ Proof.
         Focused_refine_Query.
         {
           implement_In.
-          convert_Where_to_search_term.
-          (* TODO: Create a tactic that builds the search term to use
-           in lieu of this idtac. *)
+          (* Step 2: Convert where clauses into compositions of filters. *)
+          repeat convert_Where_to_filter.
+          (* Step 3: Do some simplication.*)
+          repeat setoid_rewrite <- filter_and;
+            try setoid_rewrite andb_true_r.
+          (* Step 4: Move filters to the outermost [Join_Comp_Lists] to which *)
+          (* they can be applied. *)
+          repeat setoid_rewrite Join_Filtered_Comp_Lists_id.
+          distribute_filters_to_joins.
+          (* Step 5: Convert filter function on topmost [Join_Filtered_Comp_Lists] to an
+               equivalent search term matching function.  *)
+          convert_filter_to_search_term.
+          (* TODO: Reuse tactic from above to build this search term. *)
           find_equivalent_search_term 0 ltac:(fun _ _ _ _ => idtac).
           { instantiate (1 := {| pst_name := n!sNAME;
                                  pst_filter := fun tup => ?[list_eq_dec string_dec n!sNAME tup!sNAME] |}).
             intros; apply foo10.
           }
 
-          convert_filter_to_find.
-          Implement_Aggregates.
+          simpl.
+          match goal with
+        | H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
+          |- refine (l <- Join_Filtered_Comp_Lists (a := ?heading) (As := ?headings) ?l1
+                       (fun _ => l' <- CallBagMethod ?idx BagEnumerate ?r_n ();
+                        ret (snd l')) ?f;
+                     _) _ =>
+      match f with
+        (* Try non-dependent search term first *)
+        | fun a => (?MatchIndexSearchTerm ?st (ilist_hd a)) && true =>
+          let r := fresh in
+          pose proof (@refine_Join_Comp_Lists_To_Find _ _ r_o r_n H _ l1 idx st) as r;
+            simpl in r; rewrite r; clear r
+        (* Then do dependent search term  *)
+        | fun a => (?MatchIndexSearchTerm (@?st a) (ilist_hd a)) && true =>
+          let stT := type of st in
+          match stT with _ -> ?stT =>
+                         makeEvar (ilist (@Tuple) headings -> stT)
+                                  ltac:(fun st_dep =>
+                                          let eqv := fresh in
+                                          let a := fresh in
+                                          assert (forall (a : ilist _ (_ :: _)),
+                                                    st a = st_dep (ilist_tl a) ) as eqv;
+                                        [intro a; simpl;
+                                         match goal with
+                                             |- ?st' = _ =>
 
-          setoid_rewrite foo11.
-          reflexivity.
-        }
+                                             let st'' := eval pattern (ilist_tl a) in st' in                                                     match st'' with | ?f (ilist_tl a) =>
+                                                                                                                                                                   let f' := eval simpl in f in unify f' st_dep end
+                                         end; simpl; reflexivity |
+                                         let r := fresh in
+                                         pose proof (refine_Join_Comp_Lists_To_Find_dep
+                                                       H l1 idx
+                                                       st_dep) as r;
+                                           simpl in r; rewrite r; clear r eqv
+                                        ]
+                                       )
+          end
+            (* If we can't coerce [f] to a search term, leave it unchanged. *)
+      end end.
+
+      apply refine_under_bind.
+      intros; apply List_Query_In_Return.
+    }
 
         simplify with monad laws.
         setoid_rewrite refineEquiv_swap_bind.
@@ -983,29 +960,80 @@ Proof.
 
         Focused_refine_Query.
         { implement_In.
-
-          convert_Where_to_search_term.
-          (* TODO: Reuse tactic from above to build this search term. *)
-          instantiate (1 := fun a => PrefixSearchTermMatcher {| pst_name := n!sNAME;
-                                                                pst_filter := fun tup => ?[list_eq_dec string_dec n!sNAME tup!sNAME]
-                                                                                          && (?[CNAME == (tup!sTYPE)]) |} (ilist_hd a)).
-          { intro; unfold PrefixSearchTermMatcher; simpl.
+          (* Step 2: Convert where clauses into compositions of filters. *)
+          repeat convert_Where_to_filter.
+          (* Step 3: Do some simplication.*)
+          repeat setoid_rewrite <- filter_and;
+            try setoid_rewrite andb_true_r.
+          (* Step 4: Move filters to the outermost [Join_Comp_Lists] to which *)
+          (* they can be applied. *)
+          repeat setoid_rewrite Join_Filtered_Comp_Lists_id.
+          distribute_filters_to_joins.
+          (* Step 5: Convert filter function on topmost [Join_Filtered_Comp_Lists] to an
+               equivalent search term matching function.  *)
+          convert_filter_to_search_term.
+          find_equivalent_search_term 0 ltac:(fun _ _ _ _ => idtac).
+          {
+            (* TODO: Reuse tactic from above to build this search term as well. *)
+            intro.
+            instantiate (1 := {| pst_name := n!sNAME;
+                                 pst_filter := fun tup => ?[list_eq_dec string_dec n!sNAME tup!sNAME]
+                                                           && (?[CNAME == (tup!sTYPE)]) |}).
+            unfold PrefixSearchTermMatcher; simpl.
             match goal
             with |- context [ prefixBool ?l ?l' ] => case_eq (prefixBool l l');
                    simpl end.
             intros; f_equal.
             repeat find_if_inside; simpl; try congruence.
 
-
             intros; rewrite foo12; simpl; eauto.
           }
 
-          convert_filter_to_find.
-          Implement_Aggregates.
-          setoid_rewrite foo11.
-          reflexivity.
-        }
+          simpl.
+          match goal with
+        | H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
+          |- refine (l <- Join_Filtered_Comp_Lists (a := ?heading) (As := ?headings) ?l1
+                       (fun _ => l' <- CallBagMethod ?idx BagEnumerate ?r_n ();
+                        ret (snd l')) ?f;
+                     _) _ =>
+      match f with
+        (* Try non-dependent search term first *)
+        | fun a => (?MatchIndexSearchTerm ?st (ilist_hd a)) && true =>
+          let r := fresh in
+          pose proof (@refine_Join_Comp_Lists_To_Find _ _ r_o r_n H _ l1 idx st) as r;
+            simpl in r; rewrite r; clear r
+        (* Then do dependent search term  *)
+        | fun a => (?MatchIndexSearchTerm (@?st a) (ilist_hd a)) && true =>
+          let stT := type of st in
+          match stT with _ -> ?stT =>
+                         makeEvar (ilist (@Tuple) headings -> stT)
+                                  ltac:(fun st_dep =>
+                                          let eqv := fresh in
+                                          let a := fresh in
+                                          assert (forall (a : ilist _ (_ :: _)),
+                                                    st a = st_dep (ilist_tl a) ) as eqv;
+                                        [intro a; simpl;
+                                         match goal with
+                                             |- ?st' = _ =>
 
+                                             let st'' := eval pattern (ilist_tl a) in st' in                                                     match st'' with | ?f (ilist_tl a) =>
+                                                                                                                                                                   let f' := eval simpl in f in unify f' st_dep end
+                                         end; simpl; reflexivity |
+                                         let r := fresh in
+                                         pose proof (refine_Join_Comp_Lists_To_Find_dep
+                                                       H l1 idx
+                                                       st_dep) as r;
+                                           simpl in r; rewrite r; clear r eqv
+                                        ]
+                                       )
+          end
+            (* If we can't coerce [f] to a search term, leave it unchanged. *)
+      end end.
+
+      apply refine_under_bind.
+      intros; apply List_Query_In_Return.
+    }
+          
         simplify with monad laws.
         setoid_rewrite refineEquiv_swap_bind.
 
@@ -1016,8 +1044,8 @@ Proof.
     - finish honing.
   }
 
-  FullySharpenQueryStructure' DnsSchema
-(icons DnsSearchUpdateTerm
+  FullySharpenQueryStructure DnsSchema
+  (icons DnsSearchUpdateTerm
        (inil
           (fun ns : NamedSchema =>
              SearchUpdateTerms (schemaHeading (relSchema ns))))).
@@ -1098,7 +1126,7 @@ Defined.
               (BagUpdateTermType DnsSearchUpdateTerm)).
   Proof.
     refine (Sharpened_Implementation (projT1 SharpenedPrefixBagImpl) (fun _ => unit) _).
-    intros; apply @BoundedIndex_nil with (A := string).
+    intros; apply @BoundedList.Index_nil with (A := string).
     unfold BoundedString in idx.
     unfold SharpenedPrefixBagImpl in idx.
     simpl in idx.
@@ -1108,7 +1136,7 @@ Defined.
   Definition bar
   : forall idx : BoundedString,
       ComputationalADT.pcADT
-     (Build_IndexedQueryStructure_Impl_Sigs
+     (Build_List.IndexedQueryStructure_Impl_Sigs
         (icons DnsSearchUpdateTerm
            (inil
               (fun ns : NamedSchema =>
@@ -1122,8 +1150,8 @@ Defined.
                               (BagUpdateTermType DnsSearchUpdateTerm);
             delegateeRep := projT1 foo |}] idx)).
   Proof.
-    eapply Iterate_Dep_Type_BoundedIndex_equiv_1.
-    unfold Build_IndexedQueryStructure_Impl_Sigs; simpl.
+    eapply Iterate_Dep_Type_BoundedList.Index_equiv_1.
+    unfold Build_List.IndexedQueryStructure_Impl_Sigs; simpl.
     split.
     pose (projT2 foo).
     simpl in p.
@@ -1143,7 +1171,7 @@ Print DNSImpl.
 
 Goal (DNSImpl = DNSImpl).
 unfold DNSImpl at 1.
-unfold Build_IndexedQueryStructure_Impl_cRep.
+unfold Build_List.IndexedQueryStructure_Impl_cRep.
 
 
 Print CallBagImplMethod.

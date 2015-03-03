@@ -1,7 +1,7 @@
 Require Import Coq.Lists.List Coq.Program.Program.
 Require Import ADTSynthesis.Common
-        ADTSynthesis.Common.ListFacts
-        ADTSynthesis.Common.ListMorphisms
+        ADTSynthesis.Common.List.ListFacts
+        ADTSynthesis.Common.List.ListMorphisms
         ADTSynthesis.Common.Ensembles.IndexedEnsembles
         ADTSynthesis.Computation.
 

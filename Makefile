@@ -11,11 +11,14 @@ CORE_MODULES    := \
 	Common/DecideableEnsembles \
 	Common/IterateBoundedIndex \
 	Common/BoolFacts \
-	Common/ListFacts \
-	Common/FlattenList \
+	Common/List/ListFacts \
+	Common/List/FlattenList \
+	Common/List/ListMorphisms \
+	Common/List/PermutationFacts \
+	Common/List/Prefix \
+	Common/List/UpperBound \
 	Common/LogicFacts \
 	Common/NatFacts \
-	Common/ListMorphisms \
 	Common/LogicMorphisms \
 	Common/Ensembles \
 	Common/Ensembles/EnsembleListEquivalence \
@@ -26,7 +29,6 @@ CORE_MODULES    := \
 	Common/Ensembles/Tactics \
 	Common/Ensembles/CombinatorLaws \
 	Common/Ensembles/Notations \
-	Common/PermutationFacts \
 	Common/String_as_OT \
 	Common/FMapExtensions \
 	Common/SetEq \
@@ -201,6 +203,10 @@ COMPILER_MODULES := \
 	FiatToFacade/Compiler/Automation/SpecializedFolds \
 	FiatToFacade/Compiler
 
+DNS_MODULES := \
+	DnsServer/packet \
+	DnsServer/Dns
+
 EXAMPLE_MODULES := \
 	QueryStructure/BookstorewDelegation \
 	QueryStructure/WeatherwDelegation \
@@ -253,6 +259,10 @@ SRC_PARSERS_BASE_VDS := $(SRC_PARSERS_BASE_MODULES:%=src/%.v.d)
 SRC_PARSERS_BASE_VOS := $(SRC_PARSERS_BASE_MODULES:%=src/%.vo)
 PREFIXED_SRC_PARSERS_BASE_VOS:= $(SRC_PARSERS_BASE_MODULES:%=src/%.vo)
 
+DNS_VS  := $(DNS_MODULES:%=examples/%.v)
+DNS_VDS := $(DNS_MODULES:%=examples/%.v.d)
+DNS_VOS := $(DNS_MODULES:%=examples/%.vo)
+
 FINITESET_VS  := $(FINITESET_MODULES:%=src/%.v)
 FINITESET_VDS := $(FINITESET_MODULES:%=src/%.v.d)
 FINITESET_VOS := $(FINITESET_MODULES:%=src/%.vo)
@@ -299,7 +309,7 @@ COQDOCFLAGS=-interpolate -utf8
 
 FAST_TARGETS := clean archclean printenv clean-old package-parsing-parses
 
-.PHONY: all fiat querystructures parsers finitesets examples html clean pretty-timed pretty-timed-files pdf doc clean-doc cheat parsers-base package-parsing-parses
+.PHONY: all fiat querystructures parsers finitesets dns examples html clean pretty-timed pretty-timed-files pdf doc clean-doc cheat parsers-base package-parsing-parses
 
 all : fiat querystructures parsers finitesets examples
 
@@ -312,6 +322,8 @@ finitesets : $(FINITESET_VOS)
 examples : $(EXAMPLE_VOS)
 
 compiler : $(COMPILER_VOS)
+
+dns : $(DNS_VOS)
 
 parsers : $(PREFIXED_SRC_PARSERS_VOS)
 

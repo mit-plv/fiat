@@ -2,7 +2,7 @@ Require Export ADTSynthesis.QueryStructure.Implementation.DataStructures.Bags.Ba
 Unset Implicit Arguments.
 
 Require Import Coq.Arith.Arith
-        ADTSynthesis.Common.ListFacts.
+        ADTSynthesis.Common.List.ListFacts.
 
 Open Scope list.
 

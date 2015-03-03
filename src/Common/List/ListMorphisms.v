@@ -2,8 +2,8 @@ Require Import Coq.Lists.List.
 Require Import Coq.Setoids.Setoid Coq.Classes.Morphisms.
 Require Import Coq.Sorting.Permutation.
 Require Import ADTSynthesis.Common.Ensembles.EnsembleListEquivalence
-        ADTSynthesis.Common.ListFacts ADTSynthesis.Common.PermutationFacts.
-Require Import ADTSynthesis.Common.FlattenList.
+        ADTSynthesis.Common.List.ListFacts ADTSynthesis.Common.PermutationFacts.
+Require Import ADTSynthesis.Common.List.FlattenList.
 
 Unset Implicit Arguments.
 
