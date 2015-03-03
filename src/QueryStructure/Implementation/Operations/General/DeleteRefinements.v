@@ -14,7 +14,7 @@ Require Import Coq.Strings.String Coq.omega.Omega Coq.Lists.List Coq.Logic.Funct
         ADTSynthesis.QueryStructure.Implementation.Constraints.ConstraintChecksRefinements
         ADTSynthesis.Common.IterateBoundedIndex
         ADTSynthesis.Common.DecideableEnsembles
-        ADTSynthesis.Common.PermutationFacts
+        ADTSynthesis.Common.List.PermutationFacts
         ADTSynthesis.QueryStructure.Implementation.Operations.General.QueryRefinements
         ADTSynthesis.QueryStructure.Implementation.Operations.General.MutateRefinements
         ADTSynthesis.Common.Ensembles.EnsembleListEquivalence.

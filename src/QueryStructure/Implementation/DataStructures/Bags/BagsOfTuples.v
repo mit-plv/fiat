@@ -17,7 +17,7 @@ Require Import Coq.Bool.Bool Coq.Strings.String
         ADTSynthesis.QueryStructure.Implementation.Operations.General.QueryRefinements
         ADTSynthesis.QueryStructure.Implementation.Operations.General.EmptyRefinements
         ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureNotations
-        ADTSynthesis.Common.PermutationFacts
+        ADTSynthesis.Common.List.PermutationFacts
         ADTSynthesis.Common.List.ListMorphisms
         ADTSynthesis.QueryStructure.Specification.Operations.Delete
         ADTSynthesis.QueryStructure.Implementation.Operations.General.DeleteRefinements

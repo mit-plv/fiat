@@ -7,7 +7,7 @@ Require Import
         ADTSynthesis.Common.List.FlattenList
         ADTSynthesis.Common.SetEqProperties
         ADTSynthesis.Common.FMapExtensions
-        ADTSynthesis.Common.PermutationFacts.
+        ADTSynthesis.Common.List.PermutationFacts.
 
 Unset Implicit Arguments.
 

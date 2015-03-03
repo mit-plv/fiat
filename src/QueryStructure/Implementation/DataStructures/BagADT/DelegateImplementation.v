@@ -3,7 +3,7 @@ Require Import ADTSynthesis.Common.String_as_OT ADTSynthesis.Common.Ensembles.In
 Require Import Coq.Bool.Bool Coq.Strings.String Coq.Structures.OrderedTypeEx ADTSynthesis.QueryStructure.Implementation.DataStructures.Bags.BagsOfTuples.
 Require Import ADTSynthesis.QueryStructure.Implementation.Operations.General.QueryRefinements.
 Require Import ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureNotations ADTSynthesis.QueryStructure.Implementation.DataStructures.ListImplementation.
-Require Import ADTSynthesis.QueryStructure.AdditionalLemmas ADTSynthesis.Common.PermutationFacts ADTSynthesis.ADT.ComputationalADT Coq.Arith.Arith ADTSynthesis.QueryStructure.Refinements.BagADT.BagADT.
+Require Import ADTSynthesis.QueryStructure.AdditionalLemmas ADTSynthesis.Common.List.PermutationFacts ADTSynthesis.ADT.ComputationalADT Coq.Arith.Arith ADTSynthesis.QueryStructure.Refinements.BagADT.BagADT.
 
 Section FiniteMapADT.
 

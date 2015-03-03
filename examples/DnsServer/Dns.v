@@ -1033,7 +1033,7 @@ Proof.
       apply refine_under_bind.
       intros; apply List_Query_In_Return.
     }
-          
+
         simplify with monad laws.
         setoid_rewrite refineEquiv_swap_bind.
 

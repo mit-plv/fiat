@@ -14,7 +14,7 @@ Require Import Coq.Bool.Bool Coq.Strings.String
         ADTSynthesis.QueryStructure.Implementation.Operations.General.EmptyRefinements
         ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureNotations
         ADTSynthesis.QueryStructure.Implementation.ListImplementation
-        ADTSynthesis.Common.PermutationFacts
+        ADTSynthesis.Common.List.PermutationFacts
         ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.BagADT
         ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.QueryStructureImplementation
         ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.IndexSearchTerms.

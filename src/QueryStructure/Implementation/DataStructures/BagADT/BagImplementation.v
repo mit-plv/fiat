@@ -15,7 +15,7 @@ Require Import Coq.Bool.Bool Coq.Strings.String
         ADTSynthesis.QueryStructure.Implementation.DataStructures.Bags.BagsOfTuples
         ADTSynthesis.QueryStructure.Implementation.Operations.General.QueryRefinements
         ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureNotations
-        ADTSynthesis.Common.PermutationFacts
+        ADTSynthesis.Common.List.PermutationFacts
         ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.BagADT.
 
 Section SharpenedBagImplementation.

@@ -366,7 +366,7 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
     intuition eauto.
   Qed.
 
-  Require Import Coq.Sorting.Permutation ADTSynthesis.Common.PermutationFacts.
+  Require Import Coq.Sorting.Permutation ADTSynthesis.Common.List.PermutationFacts.
 
   Lemma InA_mapsto_add {Value} :
     forall bag' kv k' (v' : Value),

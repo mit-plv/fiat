@@ -1,7 +1,7 @@
 Require Export ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureNotations ADTSynthesis.QueryStructure.Specification.Operations.Query.
 Require Import Coq.Lists.List Coq.Arith.Compare_dec Coq.Bool.Bool String
         ADTSynthesis.Common.BoolFacts
-        ADTSynthesis.Common.PermutationFacts
+        ADTSynthesis.Common.List.PermutationFacts
         ADTSynthesis.Common.List.ListMorphisms
         ADTSynthesis.QueryStructure.Specification.Operations.FlattenCompList
         ADTSynthesis.Common.Ensembles.EnsembleListEquivalence
