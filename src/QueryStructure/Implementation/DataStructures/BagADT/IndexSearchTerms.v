@@ -44,7 +44,7 @@ Fixpoint MatchIndexSearchTerm {heading}
               (tup : @Tuple heading) =>
             match f with
               | (Some k, index') =>
-                (if (A_eq_dec (Query_eq := ilist_hd eq_dec_indices) k (tup index))
+                (if (A_eq_dec (Query_eq := ilist_hd eq_dec_indices) k (GetAttribute tup index))
                  then true else false)
                   && (H index' tup)
               | (None, index') => H index' tup

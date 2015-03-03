@@ -25,7 +25,7 @@ Definition tupleAgree
            (tup1 tup2 : @Tuple h) attrlist :=
   forall attr,
     List.In attr attrlist ->
-    tup1 attr = tup2 attr.
+    GetAttribute tup1 attr = GetAttribute tup2 attr.
 
 Definition AttributeList {hHint : HeadingHint}
   := list (Attributes headingHint).
