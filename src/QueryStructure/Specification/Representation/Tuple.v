@@ -2,9 +2,8 @@ Require Import Coq.Lists.List Coq.Strings.String Coq.Logic.FunctionalExtensional
         ADTSynthesis.Common.ilist ADTSynthesis.Common.StringBound Coq.Program.Program ADTSynthesis.QueryStructure.Specification.Representation.Heading
         ADTSynthesis.Common.Ensembles.IndexedEnsembles ADTSynthesis.QueryStructure.Specification.Representation.Notations.
 
-(* A tuple is a map from attributes to values. *)
-Definition Tuple {Heading : Heading} :=
-  forall (i : Attributes Heading), Domain Heading i.
+Definition Tuple {heading : Heading} :=
+  ilist attrType (AttrList heading).
 
 (* Notations for tuple field. *)
 
@@ -20,12 +19,14 @@ Bind Scope Component_scope with Component.
 
 (* Notation-friendly tuple definition. *)
 
-Definition BuildTuple
-        (attrs : list Attribute)
-        (components : ilist Component attrs)
+Fixpoint BuildTuple
+         (attrs : list Attribute)
+         (components : ilist Component attrs)
 : @Tuple (BuildHeading attrs) :=
-  fun idx =>
-    value (ith_Bounded _ components idx).
+  match components with
+    | icons _ _ x xs => icons _ (value x) (BuildTuple xs)
+    | inil => inil _
+  end.
 
 (* Notation for tuples built from [BuildTuple]. *)
 
@@ -33,22 +34,18 @@ Notation "< col1 , .. , coln >" :=
   (@BuildTuple _ (icons _ col1%Component .. (icons _ coln%Component (inil _)) ..))
   : Tuple_scope.
 
-Definition GetAttribute
-           {heading}
-           (tup : @Tuple heading)
-           (attr : Attributes heading)
-: Domain heading attr :=
-  tup attr.
+Definition GetAttribute {heading}
+: @Tuple heading -> forall attr : Attributes heading, Domain heading attr :=
+  ith_Bounded attrName.
 
 Definition getHeading {Bound} (tup : @Tuple (BuildHeading Bound))
 : list string := map attrName Bound.
 
-Definition GetAttribute'
-           {heading}
-           (tup : @Tuple (BuildHeading heading))
-           (attr : @BoundedString (map attrName heading))
-: Domain (BuildHeading heading) attr :=
-  tup attr.
+Definition GetAttribute' {heading}
+: @Tuple (BuildHeading heading) ->
+  forall attr : @BoundedString (map attrName heading),
+    Domain (BuildHeading heading) attr :=
+  ith_Bounded attrName.
 
 Notation "t ! R" :=
   (GetAttribute' t%Tuple (@Build_BoundedIndex _ _ R%string _))
