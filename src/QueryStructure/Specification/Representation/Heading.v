@@ -2,13 +2,6 @@ Require Import Coq.Lists.List Coq.Strings.String Coq.Logic.FunctionalExtensional
         ADTSynthesis.Common.ilist ADTSynthesis.Common.StringBound Coq.Program.Program
         ADTSynthesis.QueryStructure.Specification.Representation.Notations.
 
-(* A heading describes a tuple as a set of Attributes
-   and types. *)
-Record Heading :=
-  { Attributes : Set;
-    Domain : Attributes -> Type
-  }.
-
 (* Notations for attributes. *)
 
 Record Attribute :=
@@ -22,13 +15,24 @@ Bind Scope Attribute_scope with Attribute.
 Definition attrName_eq (cs : Attribute) (idx : string) :=
   if (string_dec (attrName cs) idx) then true else false .
 
+(* A heading describes a tuple as a set of Attributes
+   and types. *)
+Record Heading :=
+  { AttrList : list Attribute }.
+
+Definition Attributes (heading : Heading) : Set :=
+  @BoundedString (map attrName (AttrList heading)).
+
+Definition Domain (heading : Heading) (idx : Attributes heading) : Type :=
+  attrType (nth_Bounded _ (AttrList heading) idx).
+Arguments Domain : clear implicits.
+
 (* Notations for schemas. *)
 
 Definition BuildHeading
            (attrs : list Attribute)
 : Heading :=
-  {| Attributes := @BoundedString (map attrName attrs);
-     Domain idx := attrType (nth_Bounded _ attrs idx) |}.
+  {| AttrList := attrs |}.
 
 (* Notation for schemas built from [BuildHeading]. *)
 
