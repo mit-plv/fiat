@@ -907,7 +907,7 @@ Time Defined.
 
     Definition DnsImpl : SharpenedUnderDelegates DnsSig.
       Time let
-          Impl := eval simpl in (projT1 DNSManual) in exact Impl.
+          Impl := eval simpl in (projT1 DnsManual) in exact Impl.
     Defined.
     
     Definition ExtractWorthyDNSImpl : ComputationalADT.cADT DnsSig.
