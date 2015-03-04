@@ -51,6 +51,12 @@ Notation "t ! R" :=
   (GetAttribute' t%Tuple (@Build_BoundedIndex _ _ R%string _))
   : Tuple_scope.
 
+Definition SetAttribute {heading}
+: @Tuple heading ->
+  forall attr : Attributes heading,
+    Domain heading attr -> @Tuple heading :=
+  replace_BoundedIndex attrName (Bound:=AttrList heading).
+
 Definition IndexedTuple {heading} := @IndexedElement (@Tuple heading).
 Definition tupleIndex {heading} (I : @IndexedTuple heading) : nat :=
   elementIndex I.
