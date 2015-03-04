@@ -763,9 +763,9 @@ Section BagsQueryStructureRefinements.
   : forall (r_n : IndexedQueryStructure qs_schema BagIndexKeys) idx,
       refineEquiv (Join_Comp_Lists [inil (@Tuple)]
                                    (fun _ : ilist (@Tuple) [] =>
-                                      l <- CallBagMethod idx ``("Enumerate") r_n ();
+                                      l <- CallBagMethod idx BagEnumerate r_n ();
                                     ret (snd l)))
-                  (l <- CallBagMethod idx ``("Enumerate") r_n ();
+                  (l <- CallBagMethod idx BagEnumerate r_n ();
                    ret (Build_single_Tuple_list (snd l))) .
   Proof.
     unfold Join_Comp_Lists, Build_single_Tuple_list; simpl; intros;

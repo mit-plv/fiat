@@ -1357,7 +1357,8 @@ Ltac foreignToQuery :=
       =>
       setoid_rewrite (@refine_constraint_check_into_query
                         qs_schema TableID
-                        (fun tup : Tuple => n AttrID = tupmap (tup AttrID')) or _);
+                        (fun tup : Tuple => GetAttribute n AttrID =
+                                            tupmap (GetAttribute tup AttrID')) or _);
         simplify with monad laws; cbv beta; simpl
   end.
 

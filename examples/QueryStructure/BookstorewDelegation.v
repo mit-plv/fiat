@@ -102,7 +102,6 @@ Proof.
 
   unfold BookStoreSpec.
 
-  (* First, we unfold various definitions and drop constraints *)
   start honing QueryStructure.
 
   make simple indexes using [[sAUTHOR; sISBN]; [sISBN]].

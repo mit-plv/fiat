@@ -399,7 +399,7 @@ Ltac createTerm f fds tail fs k :=
       createTerm f fds tail fs' ltac:(fun rest =>
                                         findMatchingTerm fds s ltac:(fun X =>
                                                                        k (Some X, rest))
-                                                                      || k (@None (f s), rest))
+                                                                      || k (@None (Domain f s), rest))
   end.
 
 (* Using a list of search term attributes [fs],
@@ -410,7 +410,7 @@ Ltac createTerm f fds tail fs k :=
 Ltac makeTerm fs SC fds tail k :=
   match eval hnf in SC with
     | Build_Heading ?f =>
-      createTerm f fds tail fs k
+      createTerm (Build_Heading f) fds tail fs k
   end.
 
 (* Given a storage schema [SC], a filter [F],
@@ -716,14 +716,14 @@ Ltac createTerm_dep dom f fds tail fs k :=
                              findMatchingTerm fds s
                                               ltac:(fun X =>
                                                       k (fun x : dom => (Some (X x), rest x)))
-                                                     || k (fun x : dom => (@None (f s), rest x)))
+                                                     || k (fun x : dom => (@None (Domain f s), rest x)))
   end.
 
 (* Get the heading of [SC] before building the search term. *)
 Ltac makeTerm_dep dom fs SC fds tail k :=
   match eval hnf in SC with
     | Build_Heading ?f =>
-      createTerm_dep dom f fds tail fs k
+      createTerm_dep dom (Build_Heading f) fds tail fs k
   end.
 
 
@@ -908,7 +908,7 @@ Ltac convert_filter_to_find' :=
   match goal with
     | H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
 
-      |- context[l <- CallBagMethod ?idx ``("Enumerate") ?r_n ();
+      |- context[l <- CallBagMethod ?idx BagEnumerate ?r_n ();
                   List_Query_In (filter (fun a => @?f a && @?filter_rest a)
                                         (Build_single_Tuple_list (snd l))) ?resultComp] =>
       match f with
@@ -919,7 +919,7 @@ Ltac convert_filter_to_find' :=
       end
 
     | H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
-      |- context[l <- CallBagMethod ?idx ``("Enumerate") ?r_n ();
+      |- context[l <- CallBagMethod ?idx BagEnumerate ?r_n ();
                   l' <- Join_Comp_Lists (Build_single_Tuple_list (snd l)) ?cl;
                   List_Query_In (filter (fun a => @?f a && @?filter_rest a)
                                         l') ?resultComp] =>
@@ -930,18 +930,18 @@ Ltac convert_filter_to_find' :=
             simpl in b; setoid_rewrite b;
             [ clear b
             | match goal with
-                | |- context [CallBagMethod ?idx' ``("Enumerate") _ _] =>
+                | |- context [CallBagMethod ?idx' BagEnumerate _ _] =>
                   intros; eapply (realizeable_Enumerate (r_o := r_o) (r_n := r_n) idx' H)
-                | |- context [CallBagMethod ?idx' ``("Find") _ _] =>
+                | |- context [CallBagMethod ?idx' BagFind _ _] =>
                   intros; eapply (realizeable_Find (r_o := r_o) (r_n := r_n) idx' H)
               end]
       end
 
     | H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
-      |- context[l <- CallBagMethod ?idx ``("Find") ?r_n ?st;
+      |- context[l <- CallBagMethod ?idx BagFind ?r_n ?st;
                   l' <- Join_Comp_Lists (Build_single_Tuple_list (snd l))
                      (fun _ : ilist (@Tuple) [?heading] =>
-                        l <- CallBagMethod ?idx' ``("Enumerate") ?r_n ();
+                        l <- CallBagMethod ?idx' BagEnumerate ?r_n ();
                       ret (snd l));
                   List_Query_In (filter (fun a => @?f a && @?filter_rest a) l') ?resultComp] =>
       match f with
@@ -1498,12 +1498,12 @@ Ltac find_equiv_tl a As f g :=
 Ltac Realize_CallBagMethods :=
   match goal with
     | H : @DelegateToBag_AbsR ?qs_schema ?BagIndexKeys ?r_o ?r_n
-      |- context [CallBagMethod ?idx' ``("Enumerate") _ _] =>
+      |- context [CallBagMethod ?idx' BagEnumerate _ _] =>
       generalize H; clear;
       intros; eapply (@realizeable_Enumerate qs_schema BagIndexKeys r_n r_o idx' H)
 
     | H : @DelegateToBag_AbsR ?qs_schema ?BagIndexKeys ?r_o ?r_n
-      |- context [CallBagMethod ?idx' ``("Find") _ ?st] =>
+      |- context [CallBagMethod ?idx' BagFind _ ?st] =>
       generalize H; clear;
       intros; eapply (@realizeable_Find qs_schema BagIndexKeys r_n r_o idx' st H)
   end.
@@ -1635,7 +1635,7 @@ Ltac convert_filter_search_term_to_find :=
   match goal with
     | H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
       |- refine (l <- Join_Filtered_Comp_Lists (a := ?heading) (As := ?headings) ?l1
-                   (fun _ => l' <- CallBagMethod ?idx ``("Enumerate") ?r_n ();
+                   (fun _ => l' <- CallBagMethod ?idx BagEnumerate ?r_n ();
                     ret (snd l')) ?f;
                  _) _ =>
       match f with

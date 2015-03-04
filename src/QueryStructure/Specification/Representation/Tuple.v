@@ -2,6 +2,7 @@ Require Import Coq.Lists.List Coq.Strings.String Coq.Logic.FunctionalExtensional
         ADTSynthesis.Common.ilist ADTSynthesis.Common.StringBound Coq.Program.Program ADTSynthesis.QueryStructure.Specification.Representation.Heading
         ADTSynthesis.Common.Ensembles.IndexedEnsembles ADTSynthesis.QueryStructure.Specification.Representation.Notations.
 
+(* A tuple is a heterogeneous list indexed by a heading. *)
 Definition Tuple {heading : Heading} :=
   ilist attrType (AttrList heading).
 
@@ -48,7 +49,7 @@ Definition GetAttribute' {heading}
   ith_Bounded attrName.
 
 Notation "t ! R" :=
-  (GetAttribute' t%Tuple (@Build_BoundedIndex _ _ R%string _))
+  (GetAttribute t%Tuple (@Build_BoundedIndex _ _ R%string _))
   : Tuple_scope.
 
 Definition SetAttribute {heading}
