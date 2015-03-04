@@ -653,11 +653,9 @@ Qed.
 
 Ltac equate X Y := let H := fresh in assert (H : X = Y) by reflexivity; clear H.
 
-Definition unit_Heading :=
-  {| Attributes := unit;
-     Domain := fun _ => unit |}.
+Definition unit_Heading := BuildHeading [].
 
-Definition unit_Tuple : @Tuple unit_Heading := id.
+Definition unit_Tuple : @Tuple unit_Heading := BuildTuple (inil _).
 
 Ltac get_ithDefault f n k :=
   match type of f with
