@@ -867,11 +867,11 @@ Ltac find_equivalent_search_term_pair build_search_term_dep :=
                                                                                                                      )) ]) end
   end.
 
-Ltac find_equivalent_search_term m build_search_term :=
+Ltac find_equivalent_search_term build_search_term :=
   match goal with
       [ H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
         |- ExtensionalEq ?f _ ] =>
-      get_ithDefault f m
+      get_ithDefault f 0
                      ltac:(fun filter_dec =>
                              let heading := match type of filter_dec with
                                               | @Tuple ?heading -> bool => constr:(heading)
@@ -894,7 +894,7 @@ Ltac find_equivalent_search_term m build_search_term :=
                                                                                                                 |- ExtensionalEq ?f ?search_term' =>
                                                                                                                 match type of f with
                                                                                                                   | ?A -> _ =>
-                                                                                                                    unify search_term' (fun a : A => search_term_matcher search_term (ith_default unit_Heading unit_Tuple a m))
+                                                                                                                    unify search_term' (fun a : A => search_term_matcher search_term (ith_default unit_Heading unit_Tuple a 0))
                                                                                                                 end
                                                                                                             end;
                                                                                                             unfold ExtensionalEq in *; intros;
@@ -910,7 +910,7 @@ Ltac convert_filter_to_find' :=
   match goal with
     | H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
 
-      |- context[l <- CallBagMethod ?idx ``("Enumerate") ?r_n ();
+      |- context[l <- CallBagMethod ?idx BagEnumerate ?r_n ();
                   List_Query_In (filter (fun a => @?f a && @?filter_rest a)
                                         (Build_single_Tuple_list (snd l))) ?resultComp] =>
       match f with
@@ -921,7 +921,7 @@ Ltac convert_filter_to_find' :=
       end
 
     | H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
-      |- context[l <- CallBagMethod ?idx ``("Enumerate") ?r_n ();
+      |- context[l <- CallBagMethod ?idx BagEnumerate ?r_n ();
                   l' <- Join_Comp_Lists (Build_single_Tuple_list (snd l)) ?cl;
                   List_Query_In (filter (fun a => @?f a && @?filter_rest a)
                                         l') ?resultComp] =>
@@ -932,18 +932,18 @@ Ltac convert_filter_to_find' :=
             simpl in b; setoid_rewrite b;
             [ clear b
             | match goal with
-                | |- context [CallBagMethod ?idx' ``("Enumerate") _ _] =>
+                | |- context [CallBagMethod ?idx' BagEnumerate _ _] =>
                   intros; eapply (realizeable_Enumerate (r_o := r_o) (r_n := r_n) idx' H)
-                | |- context [CallBagMethod ?idx' ``("Find") _ _] =>
+                | |- context [CallBagMethod ?idx' BagFind _ _] =>
                   intros; eapply (realizeable_Find (r_o := r_o) (r_n := r_n) idx' H)
               end]
       end
 
     | H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
-      |- context[l <- CallBagMethod ?idx ``("Find") ?r_n ?st;
+      |- context[l <- CallBagMethod ?idx BagFind ?r_n ?st;
                   l' <- Join_Comp_Lists (Build_single_Tuple_list (snd l))
                      (fun _ : ilist (@Tuple) [?heading] =>
-                        l <- CallBagMethod ?idx' ``("Enumerate") ?r_n ();
+                        l <- CallBagMethod ?idx' BagEnumerate ?r_n ();
                       ret (snd l));
                   List_Query_In (filter (fun a => @?f a && @?filter_rest a) l') ?resultComp] =>
       match f with
@@ -1093,6 +1093,27 @@ Ltac Implement_If_Then_Else :=
             [
               | ]
           | eapply refine_If_Then_Else_ret
+          ]
+        ]
+  end.
+
+Ltac Implement_If_Opt_Then_Else :=
+  match goal with
+    | H : @Build_IndexedQueryStructure_Impl_AbsR ?qs_schema ?Index ?DelegateReps ?DelegateImpls
+                                                 ?ValidImpls ?r_o ?r_n
+      |- refine (Ifopt ?i as a Then (ret (@?t a)) Else (ret ?e)) _ =>
+      apply (refine_If_Opt_Then_Else_ret i t e)
+
+    | H : @Build_IndexedQueryStructure_Impl_AbsR ?qs_schema ?Index ?DelegateReps ?DelegateImpls
+                                                 ?ValidImpls ?r_o ?r_n
+      |- refine (Bind (Ifopt ?i as a Then (@?t a) Else ?e) ?k) _ =>
+      etransitivity;
+        [ apply (refine_If_Opt_Then_Else_Bind i t e k)
+        | etransitivity;
+          [ apply refine_If_Opt_Then_Else;
+            [ unfold pointwise_relation; intros
+              | ]
+          | eapply refine_If_Opt_Then_Else_ret
           ]
         ]
   end.
@@ -1261,6 +1282,7 @@ etransitivity;
                simpl; simplify with monad laws
               | remove_spurious_Dep_Type_BoundedIndex_nth_eq
               | Implement_If_Then_Else
+              | Implement_If_Opt_Then_Else
               | Implement_Bound_Bag_Call
               | Implement_Bound_Join_Comp_Lists
               | Implement_AbsR_Relation
@@ -1500,12 +1522,12 @@ Ltac find_equiv_tl a As f g :=
 Ltac Realize_CallBagMethods :=
   match goal with
     | H : @DelegateToBag_AbsR ?qs_schema ?BagIndexKeys ?r_o ?r_n
-      |- context [CallBagMethod ?idx' ``("Enumerate") _ _] =>
+      |- context [CallBagMethod ?idx' BagEnumerate _ _] =>
       generalize H; clear;
       intros; eapply (@realizeable_Enumerate qs_schema BagIndexKeys r_n r_o idx' H)
 
     | H : @DelegateToBag_AbsR ?qs_schema ?BagIndexKeys ?r_o ?r_n
-      |- context [CallBagMethod ?idx' ``("Find") _ ?st] =>
+      |- context [CallBagMethod ?idx' BagFind _ ?st] =>
       generalize H; clear;
       intros; eapply (@realizeable_Find qs_schema BagIndexKeys r_n r_o idx' st H)
   end.
@@ -1637,7 +1659,7 @@ Ltac convert_filter_search_term_to_find :=
   match goal with
     | H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
       |- refine (l <- Join_Filtered_Comp_Lists (a := ?heading) (As := ?headings) ?l1
-                   (fun _ => l' <- CallBagMethod ?idx ``("Enumerate") ?r_n ();
+                   (fun _ => l' <- CallBagMethod ?idx BagEnumerate ?r_n ();
                     ret (snd l')) ?f;
                  _) _ =>
       match f with
@@ -1674,15 +1696,15 @@ Ltac convert_filter_search_term_to_find :=
             (* If we can't coerce [f] to a search term, leave it unchanged. *)
       end end.
 
-Ltac implement_filters_with_find :=
+Ltac implement_filters_with_find k k_dep:=
   repeat (try (convert_filter_to_search_term; (* This will fail if there's no filter on the join. *)
-               [first [find_equivalent_search_term 0 find_simple_search_term
-                      | find_equivalent_search_term_pair find_simple_search_term_dep]
+               [first [find_equivalent_search_term k
+                      | find_equivalent_search_term_pair k_dep]
                | cbv beta; simpl; convert_filter_search_term_to_find]);
           apply refine_under_bind; intros);
   apply List_Query_In_Return.
 
-Ltac implement_Query :=
+Ltac implement_Query' k k_dep:=
   Focused_refine_Query;
   [ (* Step 1: Implement [In] by enumeration. *)
     implement_In;
@@ -1697,9 +1719,12 @@ Ltac implement_Query :=
     distribute_filters_to_joins;
     (* Step 5: Convert filter function on topmost [Join_Filtered_Comp_Lists] to an
                equivalent search term matching function.  *)
-    implement_filters_with_find
+    implement_filters_with_find k k_dep
   |
   ].
+
+Ltac implement_Query :=
+  implement_Query' find_simple_search_term find_simple_search_term_dep.
 
 Ltac observer :=
   implement_Query;

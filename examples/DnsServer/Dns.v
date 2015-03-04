@@ -744,75 +744,10 @@ Proof.
   hone method "Process".
   {
     simplify with monad laws.
-    Focused_refine_Query.
-    {
-      implement_In.
-      (* Step 2: Convert where clauses into compositions of filters. *)
-      repeat convert_Where_to_filter.
-      (* Step 3: Do some simplication.*)
-      repeat setoid_rewrite <- filter_and;
-        try setoid_rewrite andb_true_r.
-      (* Step 4: Move filters to the outermost [Join_Comp_Lists] to which *)
-      (* they can be applied. *)
-      repeat setoid_rewrite Join_Filtered_Comp_Lists_id.
-      distribute_filters_to_joins.
-      (* Step 5: Convert filter function on topmost [Join_Filtered_Comp_Lists] to an
-               equivalent search term matching function.  *)
-      convert_filter_to_search_term.
-      find_equivalent_search_term 0 ltac:(fun _ _ _ _ => idtac).
-      {
-        (* TODO: a tactic that solves this goal and can be plugged in
-           for the idtac above.
-         *)
-        instantiate (1 := {| pst_name := qname (questions n);
-                             pst_filter := fun tup => true |}).
-        simpl.
-        intros; apply foo13.
-      }
-      simpl.
-      match goal with
-        | H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
-          |- refine (l <- Join_Filtered_Comp_Lists (a := ?heading) (As := ?headings) ?l1
-                       (fun _ => l' <- CallBagMethod ?idx BagEnumerate ?r_n ();
-                        ret (snd l')) ?f;
-                     _) _ =>
-      match f with
-        (* Try non-dependent search term first *)
-        | fun a => (?MatchIndexSearchTerm ?st (ilist_hd a)) && true =>
-          let r := fresh in
-          pose proof (@refine_Join_Comp_Lists_To_Find _ _ r_o r_n H _ l1 idx st) as r;
-            simpl in r; rewrite r; clear r
-        (* Then do dependent search term  *)
-        | fun a => (?MatchIndexSearchTerm (@?st a) (ilist_hd a)) && true =>
-          let stT := type of st in
-          match stT with _ -> ?stT =>
-                         makeEvar (ilist (@Tuple) headings -> stT)
-                                  ltac:(fun st_dep =>
-                                          let eqv := fresh in
-                                          let a := fresh in
-                                          assert (forall (a : ilist _ (_ :: _)),
-                                                    st a = st_dep (ilist_tl a) ) as eqv;
-                                        [intro a; simpl;
-                                         match goal with
-                                             |- ?st' = _ =>
-
-                                             let st'' := eval pattern (ilist_tl a) in st' in                                                     match st'' with | ?f (ilist_tl a) =>
-                                                                                                                                                                   let f' := eval simpl in f in unify f' st_dep end
-                                         end; simpl; reflexivity |
-                                         let r := fresh in
-                                         pose proof (refine_Join_Comp_Lists_To_Find_dep
-                                                       H l1 idx
-                                                       st_dep) as r;
-                                           simpl in r; rewrite r; clear r eqv
-                                        ]
-                                       )
-          end
-            (* If we can't coerce [f] to a search term, leave it unchanged. *)
-      end end.
-
-      apply refine_under_bind.
-      intros; apply List_Query_In_Return.
-    }
+  implement_Query' ltac:(fun _ _ _ _ =>
+                                      instantiate (1 := {| pst_name := qname (questions n);
+                                                           pst_filter := fun tup => true |}); cbv beta; simpl; intros; apply foo13)
+                          ltac:(fun _ _ _ _ _ => idtac).
     (* Find the upperbound of the results. *)
     setoid_rewrite refine_find_upperbound.
     simplify with monad laws.
@@ -883,72 +818,11 @@ Proof.
     etransitivity.
     - apply refine_If_Then_Else.
       + simplify with monad laws.
-        Focused_refine_Query.
-        {
-          implement_In.
-          (* Step 2: Convert where clauses into compositions of filters. *)
-          repeat convert_Where_to_filter.
-          (* Step 3: Do some simplication.*)
-          repeat setoid_rewrite <- filter_and;
-            try setoid_rewrite andb_true_r.
-          (* Step 4: Move filters to the outermost [Join_Comp_Lists] to which *)
-          (* they can be applied. *)
-          repeat setoid_rewrite Join_Filtered_Comp_Lists_id.
-          distribute_filters_to_joins.
-          (* Step 5: Convert filter function on topmost [Join_Filtered_Comp_Lists] to an
-               equivalent search term matching function.  *)
-          convert_filter_to_search_term.
-          (* TODO: Reuse tactic from above to build this search term. *)
-          find_equivalent_search_term 0 ltac:(fun _ _ _ _ => idtac).
-          { instantiate (1 := {| pst_name := n!sNAME;
-                                 pst_filter := fun tup => ?[list_eq_dec string_dec n!sNAME tup!sNAME] |}).
-            intros; apply foo10.
-          }
-
-          simpl.
-          match goal with
-        | H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
-          |- refine (l <- Join_Filtered_Comp_Lists (a := ?heading) (As := ?headings) ?l1
-                       (fun _ => l' <- CallBagMethod ?idx BagEnumerate ?r_n ();
-                        ret (snd l')) ?f;
-                     _) _ =>
-      match f with
-        (* Try non-dependent search term first *)
-        | fun a => (?MatchIndexSearchTerm ?st (ilist_hd a)) && true =>
-          let r := fresh in
-          pose proof (@refine_Join_Comp_Lists_To_Find _ _ r_o r_n H _ l1 idx st) as r;
-            simpl in r; rewrite r; clear r
-        (* Then do dependent search term  *)
-        | fun a => (?MatchIndexSearchTerm (@?st a) (ilist_hd a)) && true =>
-          let stT := type of st in
-          match stT with _ -> ?stT =>
-                         makeEvar (ilist (@Tuple) headings -> stT)
-                                  ltac:(fun st_dep =>
-                                          let eqv := fresh in
-                                          let a := fresh in
-                                          assert (forall (a : ilist _ (_ :: _)),
-                                                    st a = st_dep (ilist_tl a) ) as eqv;
-                                        [intro a; simpl;
-                                         match goal with
-                                             |- ?st' = _ =>
-
-                                             let st'' := eval pattern (ilist_tl a) in st' in                                                     match st'' with | ?f (ilist_tl a) =>
-                                                                                                                                                                   let f' := eval simpl in f in unify f' st_dep end
-                                         end; simpl; reflexivity |
-                                         let r := fresh in
-                                         pose proof (refine_Join_Comp_Lists_To_Find_dep
-                                                       H l1 idx
-                                                       st_dep) as r;
-                                           simpl in r; rewrite r; clear r eqv
-                                        ]
-                                       )
-          end
-            (* If we can't coerce [f] to a search term, leave it unchanged. *)
-      end end.
-
-      apply refine_under_bind.
-      intros; apply List_Query_In_Return.
-    }
+        implement_Query' ltac:(fun _ _ _ _ =>
+                                 instantiate (1 := {| pst_name := n!sNAME;
+                                                      pst_filter := fun tup => ?[list_eq_dec string_dec n!sNAME tup!sNAME] |});
+                               intros; apply foo10)
+                                ltac:(fun _ _ _ _ _ => idtac).
 
         simplify with monad laws.
         setoid_rewrite refineEquiv_swap_bind.
@@ -957,82 +831,20 @@ Proof.
         implement_Insert_branches.
         reflexivity.
       + simplify with monad laws.
-
-        Focused_refine_Query.
-        { implement_In.
-          (* Step 2: Convert where clauses into compositions of filters. *)
-          repeat convert_Where_to_filter.
-          (* Step 3: Do some simplication.*)
-          repeat setoid_rewrite <- filter_and;
-            try setoid_rewrite andb_true_r.
-          (* Step 4: Move filters to the outermost [Join_Comp_Lists] to which *)
-          (* they can be applied. *)
-          repeat setoid_rewrite Join_Filtered_Comp_Lists_id.
-          distribute_filters_to_joins.
-          (* Step 5: Convert filter function on topmost [Join_Filtered_Comp_Lists] to an
-               equivalent search term matching function.  *)
-          convert_filter_to_search_term.
-          find_equivalent_search_term 0 ltac:(fun _ _ _ _ => idtac).
-          {
-            (* TODO: Reuse tactic from above to build this search term as well. *)
-            intro.
-            instantiate (1 := {| pst_name := n!sNAME;
-                                 pst_filter := fun tup => ?[list_eq_dec string_dec n!sNAME tup!sNAME]
-                                                           && (?[CNAME == (tup!sTYPE)]) |}).
-            unfold PrefixSearchTermMatcher; simpl.
-            match goal
-            with |- context [ prefixBool ?l ?l' ] => case_eq (prefixBool l l');
-                   simpl end.
-            intros; f_equal.
-            repeat find_if_inside; simpl; try congruence.
-
-            intros; rewrite foo12; simpl; eauto.
-          }
-
-          simpl.
-          match goal with
-        | H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
-          |- refine (l <- Join_Filtered_Comp_Lists (a := ?heading) (As := ?headings) ?l1
-                       (fun _ => l' <- CallBagMethod ?idx BagEnumerate ?r_n ();
-                        ret (snd l')) ?f;
-                     _) _ =>
-      match f with
-        (* Try non-dependent search term first *)
-        | fun a => (?MatchIndexSearchTerm ?st (ilist_hd a)) && true =>
-          let r := fresh in
-          pose proof (@refine_Join_Comp_Lists_To_Find _ _ r_o r_n H _ l1 idx st) as r;
-            simpl in r; rewrite r; clear r
-        (* Then do dependent search term  *)
-        | fun a => (?MatchIndexSearchTerm (@?st a) (ilist_hd a)) && true =>
-          let stT := type of st in
-          match stT with _ -> ?stT =>
-                         makeEvar (ilist (@Tuple) headings -> stT)
-                                  ltac:(fun st_dep =>
-                                          let eqv := fresh in
-                                          let a := fresh in
-                                          assert (forall (a : ilist _ (_ :: _)),
-                                                    st a = st_dep (ilist_tl a) ) as eqv;
-                                        [intro a; simpl;
-                                         match goal with
-                                             |- ?st' = _ =>
-
-                                             let st'' := eval pattern (ilist_tl a) in st' in                                                     match st'' with | ?f (ilist_tl a) =>
-                                                                                                                                                                   let f' := eval simpl in f in unify f' st_dep end
-                                         end; simpl; reflexivity |
-                                         let r := fresh in
-                                         pose proof (refine_Join_Comp_Lists_To_Find_dep
-                                                       H l1 idx
-                                                       st_dep) as r;
-                                           simpl in r; rewrite r; clear r eqv
-                                        ]
-                                       )
-          end
-            (* If we can't coerce [f] to a search term, leave it unchanged. *)
-      end end.
-
-      apply refine_under_bind.
-      intros; apply List_Query_In_Return.
-    }
+        implement_Query'
+          ltac:(fun _ _ _ _ =>
+                  intro;
+                instantiate (1 := {| pst_name := n!sNAME;
+                                     pst_filter := fun tup => ?[list_eq_dec string_dec n!sNAME tup!sNAME]
+                                                               && (?[CNAME == (tup!sTYPE)]) |});
+                unfold PrefixSearchTermMatcher; simpl;
+                match goal
+                with |- context [ prefixBool ?l ?l' ] => case_eq (prefixBool l l');
+                     simpl end;
+                intros; f_equal;
+                repeat find_if_inside; simpl; try congruence;
+                intros; rewrite foo12; simpl; eauto)
+                 ltac:(fun _ _ _ _ _ => idtac).
 
         simplify with monad laws.
         setoid_rewrite refineEquiv_swap_bind.
@@ -1049,129 +861,62 @@ Proof.
        (inil
           (fun ns : NamedSchema =>
              SearchUpdateTerms (schemaHeading (relSchema ns))))).
+  - implement_bag_methods.
+  - implement_bag_methods.
+Time Defined.
 
-  {
-    setoid_rewrite refine_If_Then_Else_Bind.
-    etransitivity.
-    apply refine_If_Then_Else.
-    simplify with monad laws.
-    Implement_Bound_Bag_Call.
-    setoid_rewrite refine_If_Then_Else_Bind.
-    etransitivity.
-    apply refine_If_Then_Else.
-    simplify with monad laws.
-    Implement_Bound_Bag_Call.
-    Implement_AbsR_Relation.
-    simpl; reflexivity.
-    simplify with monad laws.
-    simpl; Implement_AbsR_Relation.
-    reflexivity.
-    apply refine_If_Then_Else_ret.
-    simplify with monad laws.
-    Implement_Bound_Bag_Call.
-    setoid_rewrite refine_If_Then_Else_Bind.
-    etransitivity.
-    apply refine_If_Then_Else.
-    simplify with monad laws.
-    Implement_Bound_Bag_Call.
-    Implement_AbsR_Relation.
-    reflexivity.
-    simplify with monad laws.
-    Implement_AbsR_Relation.
-    reflexivity.
-    apply refine_If_Then_Else_ret.
-    etransitivity.
-    apply refine_If_Then_Else_ret.
-    higher_order_4_reflexivity''.
-  }
+    Definition DnsDelegateReps
+    : ilist (fun ns => Type) (qschemaSchemas DnsSchema).
+      simpl; econstructor; [ | econstructor ].
+      exact (list (@Tuple
+           <sNAME :: name, sTYPE :: RRecordType, sCLASS :: RRecordClass, 
+              sTTL :: nat, sDATA :: string>%Heading)).
+    Defined.
 
-  {
-    simplify with monad laws.
-    Implement_Bound_Bag_Call.
+    Definition DnsDelegateSearchUpdateTerms
+    : ilist (fun ns => SearchUpdateTerms (schemaHeading (relSchema ns)))
+             (qschemaSchemas DnsSchema).
+      simpl; econstructor; [ | econstructor ].
+      exact  DnsSearchUpdateTerm.
+    Defined.
 
-    setoid_rewrite refine_If_Then_Else_Bind.
-    etransitivity.
-    apply refine_If_Then_Else.
-    setoid_rewrite refine_If_Then_Else_Bind.
-    etransitivity.
-    apply refine_If_Then_Else.
-    setoid_rewrite refine_If_Opt_Then_Else_Bind.
-    etransitivity.
-    apply refine_If_Opt_Then_Else.
-    intro; simplify with monad laws.
-    simpl; Implement_AbsR_Relation.
-    higher_order_1_reflexivity.
-    intro; simplify with monad laws.
-    simpl; Implement_AbsR_Relation.
-    reflexivity.
+    Require Import ADTSynthesis.QueryStructure.Automation.QSImplementation.
 
-    apply refine_If_Opt_Then_Else_ret.
-    simplify with monad laws.
-    simpl; Implement_AbsR_Relation.
-    reflexivity.
+    Definition DnsDelegateImpls
+    : i2list2 (fun ns (SearchTerm : SearchUpdateTerms (schemaHeading (relSchema ns)))
+                   (Rep : Type) =>
+                 ComputationalADT.pcADT
+                   (BagSig (@Tuple (schemaHeading (relSchema ns)))
+                           (BagSearchTermType SearchTerm)
+                           (BagUpdateTermType SearchTerm))
+                   Rep)
+              DnsDelegateSearchUpdateTerms
+              DnsDelegateReps.
+      simpl; econstructor; [ | econstructor ].
+      let p := eval simpl in (projT2 (BagADTImpl (fun _ => true)
+                         (@ListAsBag
+                            _
+                            (BagSearchTermType DnsSearchUpdateTerm)
+                            (BagUpdateTermType DnsSearchUpdateTerm)
+                            {| pst_name := nil;
+                               pst_filter := fun _ => true |}
+                            (BagMatchSearchTerm DnsSearchUpdateTerm)
+                            (BagApplyUpdateTerm DnsSearchUpdateTerm) ))) in
+          exact p.
+    Defined.
 
-    apply refine_If_Then_Else_ret.
-    simplify with monad laws.
-    simpl; Implement_AbsR_Relation.
-    reflexivity.
+    Definition DnsImpl : SharpenedUnderDelegates DnsSig.
+      Time let
+          Impl := eval simpl in (projT1 DNSManual) in exact Impl.
+    Defined.
+    
+    Definition ExtractWorthyDNSImpl : ComputationalADT.cADT DnsSig.
+      let s := eval unfold DnsImpl in DnsImpl in
+          pose s.
+          let Impl := eval simpl in
+          (Sharpened_Implementation s
+                                    (LookupQSDelegateReps DnsDelegateReps)
+                                    (LookupQSDelegateImpls DnsDelegateImpls)) in exact Impl.
+    Defined.
 
-    apply refine_If_Then_Else_ret.
-  }
-Defined.
-
-  Definition foo :
-    ComputationalADT.cADT
-      (BagSig (DnsSchema # sCOLLECTIONS)
-              (BagSearchTermType DnsSearchUpdateTerm)
-              (BagUpdateTermType DnsSearchUpdateTerm)).
-  Proof.
-    refine (Sharpened_Implementation (projT1 SharpenedPrefixBagImpl) (fun _ => unit) _).
-    intros; apply @BoundedList.Index_nil with (A := string).
-    unfold BoundedString in idx.
-    unfold SharpenedPrefixBagImpl in idx.
-    simpl in idx.
-    exact idx.
-  Defined.
-
-  Definition bar
-  : forall idx : BoundedString,
-      ComputationalADT.pcADT
-     (Build_List.IndexedQueryStructure_Impl_Sigs
-        (icons DnsSearchUpdateTerm
-           (inil
-              (fun ns : NamedSchema =>
-               SearchUpdateTerms (schemaHeading (relSchema ns))))) idx)
-     (delegateeRep
-        (nth_Bounded delegateeName
-           [{|
-            delegateeName := sCOLLECTIONS;
-            delegateeSig := BagSig (DnsSchema # sCOLLECTIONS)
-                              (BagSearchTermType DnsSearchUpdateTerm)
-                              (BagUpdateTermType DnsSearchUpdateTerm);
-            delegateeRep := projT1 foo |}] idx)).
-  Proof.
-    eapply Iterate_Dep_Type_BoundedList.Index_equiv_1.
-    unfold Build_List.IndexedQueryStructure_Impl_Sigs; simpl.
-    split.
-    pose (projT2 foo).
-    simpl in p.
-    apply p.
-    constructor.
-  Defined.
-
-Definition DNSImpl : ComputationalADT.cADT DnsSig.
-  let Impl := eval simpl in
-  (Sharpened_Implementation (projT1 DnsManual)
-                             _
-                             bar) in
-      exact Impl.
-Defined.
-
-Print DNSImpl.
-
-Goal (DNSImpl = DNSImpl).
-unfold DNSImpl at 1.
-unfold Build_List.IndexedQueryStructure_Impl_cRep.
-
-
-Print CallBagImplMethod.
+    Print ExtractWorthyDNSImpl.

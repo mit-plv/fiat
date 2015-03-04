@@ -468,6 +468,18 @@ Section general_refine_lemmas.
     intros; destruct i; simpl; reflexivity.
   Qed.
 
+  Lemma Bind_refine_If_Opt_Then_Else {A B C}
+  : forall i (t : A -> B -> Comp C) (e : A -> Comp C) (ca : Comp A),
+      refine (a <- ca;
+              Ifopt i as b Then t a b Else e a)
+             (Ifopt i as b Then (a <- ca;
+                                 t a b)
+                           Else (a <- ca;
+                                 e a)).
+  Proof.
+    intros; destruct i; simpl; reflexivity.
+  Qed.
+
   Lemma refineEquiv_swap_bind {A B C} (c1 : Comp A) (c2 : Comp B) (f : A -> B -> Comp C)
   : refineEquiv (a <- c1; b <- c2; f a b) (b <- c2; a <- c1; f a b).
   Proof.
