@@ -133,7 +133,7 @@ Fixpoint SearchTermFromAttributesMatcher {heading}
                      (BuildSearchTermFromAttributes indices'))
            (tup : @Tuple heading) =>
          match f with
-           | (Some k, index') => (ProperAttribute_eq index k (tup (Attribute index))) && (H index' tup)
+           | (Some k, index') => (ProperAttribute_eq index k (GetAttribute tup (Attribute index))) && (H index' tup)
            | (None, index') => H index' tup
          end) (SearchTermFromAttributesMatcher indices')
   end.
@@ -155,13 +155,13 @@ Definition ProperAttributeToBag
         Bag (ProperAttributeToFMap pattr' TBag) (@Tuple heading)
             (prod (option (ProperAttributeToFMapKey pattr')) TSearchTerm) TUpdateTerm with
     | {| Attribute := attr; ProperlyTyped := inleft (inleft (left cast')) |}
-      => NTreeBag.IndexedBagAsBag TBagAsBag (fun x => cast cast' (x attr))
+      => NTreeBag.IndexedBagAsBag TBagAsBag (fun x => cast cast' (GetAttribute x attr))
     | {| Attribute := attr; ProperlyTyped := inleft (inleft (right cast')) |}
-      => ZTreeBag.IndexedBagAsBag TBagAsBag (fun x => cast cast' (x attr))
+      => ZTreeBag.IndexedBagAsBag TBagAsBag (fun x => cast cast' (GetAttribute x attr))
     | {| Attribute := attr; ProperlyTyped := inleft (inright cast') |}
-      => NatTreeBag.IndexedBagAsBag TBagAsBag (fun x => cast cast' (x attr))
+      => NatTreeBag.IndexedBagAsBag TBagAsBag (fun x => cast cast' (GetAttribute x attr))
     | {| Attribute := attr; ProperlyTyped := inright cast' |}
-      => StringTreeBag.IndexedBagAsBag TBagAsBag (fun x => cast cast' (x attr))
+      => StringTreeBag.IndexedBagAsBag TBagAsBag (fun x => cast cast' (GetAttribute x attr))
   end.
 
 Fixpoint NestedTreeFromAttributesAsBag
@@ -232,13 +232,13 @@ Definition ProperAttributeToProjection
   match pattr as pattr' return
         @Tuple heading -> ProperAttributeToFMapKey pattr' with
     | {| Attribute := attr; ProperlyTyped := inleft (inleft (left cast')) |}
-      => fun x => cast cast' (x attr)
+      => fun x => cast cast' (GetAttribute x attr)
     | {| Attribute := attr; ProperlyTyped := inleft (inleft (right cast')) |}
-      => fun x => cast cast' (x attr)
+      => fun x => cast cast' (GetAttribute x attr)
     | {| Attribute := attr; ProperlyTyped := inleft (inright cast') |}
-      => fun x => cast cast' (x attr)
+      => fun x => cast cast' (GetAttribute x attr)
     | {| Attribute := attr; ProperlyTyped := inright cast' |}
-      => fun x => cast cast' (x attr)
+      => fun x => cast cast' (GetAttribute x attr)
   end.
 
 Definition ProperAttributeToValidUpdate
@@ -283,16 +283,16 @@ Definition ProperAttributeToCorrectBag
                    (ProperAttributeToBag TBag TSearchTerm TUpdateTerm TBagAsBag pattr') with
     | {| Attribute := attr; ProperlyTyped := inleft (inleft (left cast')) |}
       => NTreeBag.IndexedBagAsCorrectBag TBagAsBag RepInv ValidUpdate TBagAsCorrectBag
-                                         (fun x => cast cast' (x attr))
+                                         (fun x => cast cast' (GetAttribute x attr))
     | {| Attribute := attr; ProperlyTyped := inleft (inleft (right cast')) |}
       => ZTreeBag.IndexedBagAsCorrectBag TBagAsBag RepInv ValidUpdate TBagAsCorrectBag
-                                         (fun x => cast cast' (x attr))
+                                         (fun x => cast cast' (GetAttribute x attr))
     | {| Attribute := attr; ProperlyTyped := inleft (inright cast') |}
       => NatTreeBag.IndexedBagAsCorrectBag TBagAsBag RepInv ValidUpdate TBagAsCorrectBag
-                                           (fun x => cast cast' (x attr))
+                                           (fun x => cast cast' (GetAttribute x attr))
     | {| Attribute := attr; ProperlyTyped := inright cast' |}
       => StringTreeBag.IndexedBagAsCorrectBag TBagAsBag RepInv ValidUpdate TBagAsCorrectBag
-                                              (fun x => cast cast' (x attr))
+                                              (fun x => cast cast' (GetAttribute x attr))
   end.
 
 Fixpoint ProperAttributesToRepInv
@@ -370,7 +370,7 @@ Lemma KeyPreservingUpdateFAsUpdateTermOK {heading}
     (forall a, List.In a indices -> List.In a indices')
     -> (forall K tup,
           List.In K indices'
-          -> f tup (@Attribute _ K) = tup (@Attribute _ K))
+          -> GetAttribute (f tup) (@Attribute _ K) = GetAttribute tup (@Attribute _ K))
     -> ProperAttributesToValidUpdate (@Tuple heading -> @Tuple heading)
                                      (fun upd tup => upd tup)
                                      indices f.

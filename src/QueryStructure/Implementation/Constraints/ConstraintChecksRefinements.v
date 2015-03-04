@@ -49,7 +49,7 @@ Fixpoint Tuple_Agree_eq'
   match attr_eq_dec with
       | inil => true
       | icons a attrlist' a_eq_dec attr_eq_dec' =>
-        if @A_eq_dec _ a_eq_dec (tup a) (tup' a)
+        if @A_eq_dec _ a_eq_dec (GetAttribute tup a) (GetAttribute tup' a)
         then Tuple_Agree_eq' attr_eq_dec' tup tup'
         else false
   end.
@@ -940,7 +940,7 @@ Defined.
                                       qs Ridx
                                       (fun tup =>
                                          Where (DeletedTuples tup)
-                                         Where (tupmap (tup attr) = tup' attr')
+                                         Where (tupmap (GetAttribute tup attr) = GetAttribute tup' attr')
                                          Return ()))));
               ret (match x with
                        0  => true
@@ -966,7 +966,7 @@ Defined.
       unfold Query_Where in H5; apply computes_to_inv in H6;
       simpl in *; intuition.
       apply computes_to_inv in H6; split_and.
-      rewrite Agree_tup2 in H9; pose proof (H9 (refl_equal _)) as H';
+      replace (GetAttribute (indexedElement tup') attr') with (tupmap (GetAttribute (indexedTuple tup2) attr)) in H9; pose proof (H9 (refl_equal _)) as H';
       apply computes_to_inv in H'; simpl in *; subst; simpl; eauto.
     - unfold Query_For in *; inversion_by computes_to_inv.
       eapply In_UnConstrQuery_In with (a := u) in H2; destruct_ex;
@@ -983,8 +983,8 @@ Defined.
       + apply Delete_dec in H0; pose proof (H14 H0) as H'.
         apply computes_to_inv in H'; split_and.
         unfold indexedTuple in *.
-        rewrite H10 in *.
-        destruct (A_eq_dec (indexedElement x5 attr) (indexedElement x3 attr)).
+        replace (GetAttribute (indexedElement x1) attr') with (tupmap (GetAttribute (indexedElement x3) attr)) in *.
+        destruct (A_eq_dec (GetAttribute (indexedElement x5) attr) (GetAttribute (indexedElement x3) attr)).
         * rewrite e in *;
           pose proof (H16 (refl_equal _)) as e'; apply computes_to_inv in e'; simpl in *; subst.
           apply H13; eapply AgreeDelete; eauto.
@@ -1357,7 +1357,8 @@ Ltac foreignToQuery :=
       =>
       setoid_rewrite (@refine_constraint_check_into_query
                         qs_schema TableID
-                        (fun tup : Tuple => n AttrID = tupmap (tup AttrID')) or _);
+                        (fun tup : Tuple => GetAttribute n AttrID =
+                                            tupmap (GetAttribute tup AttrID')) or _);
         simplify with monad laws; cbv beta; simpl
   end.
 

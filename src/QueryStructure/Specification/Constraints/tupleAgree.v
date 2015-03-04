@@ -10,7 +10,7 @@ Qed.
 Lemma tupleAgree_unfold :
   forall {heading} (tup1 tup2: @Tuple heading) attr more,
     tupleAgree tup1 tup2 (attr :: more) <->
-    (tup1 attr = tup2 attr) /\ tupleAgree tup1 tup2 more.
+    (GetAttribute tup1 attr = GetAttribute tup2 attr) /\ tupleAgree tup1 tup2 more.
 Proof.
   unfold tupleAgree; simpl; split; intros; intuition; subst; intuition.
 Qed.
@@ -21,7 +21,7 @@ Fixpoint tupleAgree_computational
          (attrlist : list (Attributes h)) :=
   match attrlist with
     | [] => True
-    | attr :: more => tup1 attr = tup2 attr /\ tupleAgree_computational tup1 tup2 more
+    | attr :: more => GetAttribute tup1 attr = GetAttribute tup2 attr /\ tupleAgree_computational tup1 tup2 more
   end.
 
 Lemma tupleAgree_equivalence :
