@@ -105,6 +105,38 @@ Proof.
 
   make simple indexes using [[sAUTHOR; sISBN]; [sISBN]].
 
+    hone method "PlaceOrder".
+    {
+      Implement_Insert_Checks.
+
+      implement_Query.
+      simpl; simplify with monad laws.
+
+      setoid_rewrite refineEquiv_swap_bind.
+      implement_Insert_branches.
+
+      cleanup_Count.
+      finish honing.
+    }
+
+  hone constructor "Init".
+  {
+    simplify with monad laws.
+    rewrite refine_QSEmptySpec_Initialize_IndexedQueryStructure.
+    simpl.
+    finish honing.
+  }
+
+  hone method "DeleteOrder".
+  {
+    implement_QSDeletedTuples find_simple_search_term.
+    simplify with monad laws; cbv beta; simpl.
+    implement_EnsembleDelete_AbsR find_simple_search_term.
+    simplify with monad laws.
+    cleanup_Count.
+    finish honing.
+  }
+ 
   hone method "AddBook".
   {
     Implement_Insert_Checks.
@@ -149,39 +181,6 @@ Proof.
         repeat setoid_rewrite map_length.
       finish honing.
     }
-
-    hone method "PlaceOrder".
-    {
-      Implement_Insert_Checks.
-
-      implement_Query.
-      simpl; simplify with monad laws.
-
-      setoid_rewrite refineEquiv_swap_bind.
-      implement_Insert_branches.
-
-      cleanup_Count.
-      finish honing.
-    }
-
-  hone constructor "Init".
-  {
-    simplify with monad laws.
-    rewrite refine_QSEmptySpec_Initialize_IndexedQueryStructure.
-    simpl.
-    finish honing.
-  }
-
-  hone method "DeleteOrder".
-  {
-    implement_QSDeletedTuples find_simple_search_term.
-    simplify with monad laws; cbv beta; simpl.
-    implement_EnsembleDelete_AbsR find_simple_search_term.
-    simplify with monad laws.
-    cleanup_Count.
-    finish honing.
-  }
-
 
   FullySharpenQueryStructure BookStoreSchema Index.
 
