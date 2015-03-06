@@ -909,10 +909,10 @@ Time Defined.
       Time let
           Impl := eval simpl in (projT1 DnsManual) in exact Impl.
     Defined.
-    
+
+    Print DnsImpl.
     Definition ExtractWorthyDNSImpl : ComputationalADT.cADT DnsSig.
       let s := eval unfold DnsImpl in DnsImpl in
-          pose s.
           let Impl := eval simpl in
           (Sharpened_Implementation s
                                     (LookupQSDelegateReps DnsDelegateReps)
@@ -920,3 +920,5 @@ Time Defined.
     Defined.
 
     Print ExtractWorthyDNSImpl.
+
+    Extraction "bar.ml" ExtractWorthyDNSImpl.

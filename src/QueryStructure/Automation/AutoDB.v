@@ -10,6 +10,13 @@ Require Export ADTSynthesis.Common.DecideableEnsembles
         ADTSynthesis.Common.IterateBoundedIndex
         ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureNotations
         ADTSynthesis.QueryStructure.Implementation.Constraints.ConstraintChecksRefinements
+        ADTSynthesis.QueryStructure.Automation.General.QueryAutomation
+        ADTSynthesis.QueryStructure.Automation.General.InsertAutomation
+        ADTSynthesis.QueryStructure.Automation.General.DeleteAutomation
+        ADTSynthesis.QueryStructure.Automation.General.QueryStructureAutomation
+        ADTSynthesis.QueryStructure.Automation.Constraints.TrivialConstraintAutomation
+        ADTSynthesis.QueryStructure.Automation.Constraints.FunctionalDependencyAutomation
+        ADTSynthesis.QueryStructure.Automation.Constraints.ForeignKeyAutomation
         ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.BagADT
         ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.BagImplementation
         ADTSynthesis.QueryStructure.Implementation.ListImplementation
@@ -179,16 +186,16 @@ Lemma refine_BagImplConstructor
      AbsR (ValidImpls ridx) r_o' (CallBagImplConstructor DelegateReps DelegateImpls cidx d).
 Proof.
   intros.
-  pose proof (ADTRefinementPreservesConstructors (ValidImpls ridx) cidx d (ReturnComputes _)).
-  inversion_by computes_to_inv; subst.
-  exists x;
-    unfold CallBagImplConstructor; simpl in *.
+  pose proof (ADTRefinementPreservesConstructors (ValidImpls ridx) cidx d _ (ReturnComputes _)).
+   computes_to_inv; subst.
+  exists v;
+    unfold CallBagImplConstructor in *; simpl in *.
   split; simpl.
-  - intros v Comp_v; inversion_by computes_to_inv; subst.
-    generalize d v H0; clear.
+  - intros v' Comp_v;  computes_to_inv; subst.
+    generalize d v' H; clear.
     eapply (fun P H => Iterate_Dep_Type_BoundedIndex_equiv_1 P H cidx).
     simpl; intuition.
-  - eapply H1.
+  - eapply H'.
 Qed.
 
 Lemma refine_BagImplMethods
@@ -217,22 +224,23 @@ Proof.
   intros.
   pose proof (ADTRefinementPreservesMethods (ValidImpls ridx) midx
                                             (GetIndexedRelation r_o ridx)
-                                            (GetIndexedQueryStructureRelation r_n ridx) d (H ridx) (ReturnComputes _)).
-  inversion_by computes_to_inv; subst.
-  exists (fst x);
+                                            (GetIndexedQueryStructureRelation r_n ridx) d (H ridx) _ (ReturnComputes _)).
+   computes_to_inv; subst.
+  exists (fst v);
     unfold CallBagImplMethod; simpl in *.
   split; simpl.
-  - pose proof (f_equal snd H3) as eq_x; simpl in eq_x.
+  - pose proof (f_equal snd H0'') as eq_x; simpl in eq_x.
     assert (refine (CallBagMethod ridx midx r_o d)
-                   (ret (fst x, snd x)));
-      [ | rewrite eq_x in H3;
-          unfold ComputationalADT.cMethods in eq_x; simpl in *; rewrite <- eq_x; eapply H0].
-    intros v Comp_v; simpl in *; inversion_by computes_to_inv; subst.
-    destruct x; simpl @fst in *; simpl @snd in *.
-    generalize d i m H1 H2; clear.
+                   (ret (fst v, snd v)));
+      [ | rewrite eq_x in H0'';
+          unfold ComputationalADT.cMethods in eq_x; simpl in *; rewrite <- eq_x].
+    intros v' Comp_v; simpl in *;  computes_to_inv; subst.
+    destruct v; simpl @fst in *; simpl @snd in *.
+    generalize d i m H H0; clear.
     eapply (fun P H => Iterate_Dep_Type_BoundedIndex_equiv_1 P H midx).
     simpl; intuition.
-  - unfold ComputationalADT.cMethods in H3; simpl in *; rewrite <- H3; eapply H2.
+    eassumption.
+  - unfold ComputationalADT.cMethods in *; simpl in *; rewrite <- H0''; eapply H0'.
 Qed.
 
 Definition Initialize_IndexedQueryStructureImpls'
@@ -259,7 +267,7 @@ Lemma Initialize_IndexedQueryStructureImpls_AbsR
           : forall idx,
               refineADT (Build_IndexedQueryStructure_Impl_Specs Index idx)
                         (ComputationalADT.LiftcADT (existT _ _ (DelegateImpls idx)))),
-    refine (r_o <- Initialize_IndexedQueryStructure Index;
+    refine (r_o <- @Initialize_IndexedQueryStructure _ Index;
            {r_n | Build_IndexedQueryStructure_Impl_AbsR DelegateReps DelegateImpls ValidImpls r_o r_n})
            (ret (Initialize_IndexedQueryStructureImpls' DelegateReps DelegateImpls)).
 Proof.
@@ -269,7 +277,7 @@ Proof.
   induction qschemaSchemas; intros;
   pose proof (ilist_invert Index) as H'; simpl in H'; subst.
   - simpl; simplify with monad laws.
-    econstructor; inversion_by computes_to_inv; subst.
+    computes_to_econstructor;  computes_to_inv; subst.
     eapply (fun P H => Iterate_Dep_Type_BoundedIndex_equiv_1 P H); simpl.
     econstructor.
   - destruct H' as [idx' [Index' Index_eq]]; subst.
@@ -286,18 +294,18 @@ Proof.
                      (ValidImpls {|bindex := bindex idx;
                                    indexb := @IndexBound_tail _ _ _ _ (indexb idx) |}))
                _ (ReturnComputes _)).
-    unfold refine; intros; inversion_by computes_to_inv; subst.
-    econstructor; eauto.
-    econstructor.
+    unfold refine; intros;  computes_to_inv; subst.
+    computes_to_econstructor; eauto.
+    computes_to_econstructor.
     intros.
     pose proof (fun d => @refine_BagImplConstructor
                         _ _  DelegateReps DelegateImpls ValidImpls idx BagEmpty d).
     intros; destruct idx as [idx [n nth_n]].
     destruct n; simpl in *.
     + unfold i2th_Bounded, ith_Bounded_rect; simpl.
-      destruct (H ()) as [r_o' [refines_r_o' AbsR_r_o']].
+      destruct (H0 ()) as [r_o' [refines_r_o' AbsR_r_o']].
       pose proof (refines_r_o' _ (ReturnComputes _)).
-      unfold CallBagConstructor in H0; simpl in H0; inversion_by computes_to_inv; subst.
+      unfold CallBagConstructor in H1; simpl in H1;  computes_to_inv; subst.
       revert AbsR_r_o'; clear.
       unfold Dep_Type_BoundedIndex_nth_eq, eq_rect_r, eq_rect, eq_sym.
       pose eq_proofs_unicity.
@@ -316,7 +324,7 @@ Proof.
             rewrite (@eq_proof_unicity_eq _ string_dec ((relName a) :: map relName qschemaSchemas) (relName a) 0 nth_n nth_n eq_refl); eauto
       end.
       intros; destruct (string_dec x y); intuition.
-    + apply (H2 {| bindex := idx;
+    + apply (H' {| bindex := idx;
                   indexb := {| ibound := n;
                                boundi := nth_n |} |}).
 Qed.
@@ -643,13 +651,6 @@ Ltac convert_Where_to_filter :=
       let P_dec := fresh in
       setoid_rewrite (fun l => @refine_List_Query_In_Where QueryT _ l P resultComp _)
   end; simpl.
-
-Lemma if_duplicate_cond_eq {A}
-: forall (i : bool) (t e : A),
-    (if i then (if i then t else e) else e) = if i then t else e.
-Proof.
-  destruct i; reflexivity.
-Qed.
 
 Ltac equate X Y := let H := fresh in assert (H : X = Y) by reflexivity; clear H.
 
@@ -1018,7 +1019,7 @@ Proof.
 Qed.
 
 Arguments icons {A} {B} {a} {As} _ _.
-Arguments CallBagConstructor {heading} name {index} cidx _.
+Arguments CallBagConstructor {heading} name {index} cidx _ _.
 
 Ltac implement_bag_constructors :=
   repeat match goal with
@@ -1422,8 +1423,8 @@ Ltac Focused_refine_Query :=
                        assert (refine body body') as refine_body';
                      [ |
                        setoid_rewrite refine_body';
-                         setoid_rewrite (@refine_For_List ResultT body');
-                         setoid_rewrite (@refine_Count ResultT body');
+                         setoid_rewrite (@refine_For_List ResultT body') at 1;
+                         setoid_rewrite (@refine_Count ResultT body') at 1;
                          clear refine_body' ] )
 
     | |- context[ MaxN (@Query_For ?ResultT ?body) ] =>
@@ -1433,8 +1434,8 @@ Ltac Focused_refine_Query :=
                        assert (refine body body') as refine_body';
                      [ |
                        setoid_rewrite refine_body';
-                         setoid_rewrite (@refine_For_List ResultT body');
-                         setoid_rewrite (@refine_MaxN body');
+                         setoid_rewrite (@refine_For_List ResultT body') at 1;
+                         setoid_rewrite (@refine_MaxN body') at 1;
                          clear refine_body' ] )
 
     | |- context[ SumN (@Query_For ?ResultT ?body) ] =>
@@ -1444,8 +1445,8 @@ Ltac Focused_refine_Query :=
                        assert (refine body body') as refine_body';
                      [ |
                        setoid_rewrite refine_body';
-                         setoid_rewrite (@refine_For_List ResultT body');
-                         setoid_rewrite (@refine_SumN body');
+                         setoid_rewrite (@refine_For_List ResultT body') at 1;
+                         setoid_rewrite (@refine_SumN body') at 1;
                          clear refine_body' ] )
 
     | |- context[ MaxZ (@Query_For ?ResultT ?body) ] =>
@@ -1455,8 +1456,8 @@ Ltac Focused_refine_Query :=
                        assert (refine body body') as refine_body';
                      [ |
                        setoid_rewrite refine_body';
-                         setoid_rewrite (@refine_For_List ResultT body');
-                         setoid_rewrite (@refine_MaxZ body');
+                         setoid_rewrite (@refine_For_List ResultT body') at 1;
+                         setoid_rewrite (@refine_MaxZ body') at 1;
                          clear refine_body' ] )
 
     | |- context[ SumZ (@Query_For ?ResultT ?body) ] =>
@@ -1466,8 +1467,8 @@ Ltac Focused_refine_Query :=
                        assert (refine body body') as refine_body';
                      [ |
                        setoid_rewrite refine_body';
-                         setoid_rewrite (@refine_For_List ResultT body');
-                         setoid_rewrite (@refine_SumZ body');
+                         setoid_rewrite (@refine_For_List ResultT body') at 1;
+                         setoid_rewrite (@refine_SumZ body') at 1;
                          clear refine_body' ] )
 
     | |- context[ Max (@Query_For ?ResultT ?body) ] =>
@@ -1477,8 +1478,8 @@ Ltac Focused_refine_Query :=
                        assert (refine body body') as refine_body';
                      [ |
                        setoid_rewrite refine_body';
-                         setoid_rewrite (@refine_For_List ResultT body');
-                         setoid_rewrite (@refine_Max body');
+                         setoid_rewrite (@refine_For_List ResultT body') at 1;
+                         setoid_rewrite (@refine_Max body') at 1;
                          clear refine_body' ] )
 
     | |- context[ Sum (@Query_For ?ResultT ?body) ] =>
@@ -1488,8 +1489,8 @@ Ltac Focused_refine_Query :=
                        assert (refine body body') as refine_body';
                      [ |
                        setoid_rewrite refine_body';
-                         setoid_rewrite (@refine_For_List ResultT body');
-                         setoid_rewrite (@refine_Sum body');
+                         setoid_rewrite (@refine_For_List ResultT body') at 1;
+                         setoid_rewrite (@refine_Sum body') at 1;
                          clear refine_body' ] )
 
     | |- context[ @Query_For ?ResultT ?body ] =>
@@ -1499,7 +1500,7 @@ Ltac Focused_refine_Query :=
                        assert (refine body body') as refine_body';
                      [ |
                        setoid_rewrite refine_body';
-                         setoid_rewrite (@refine_For_List ResultT body');
+                         setoid_rewrite (@refine_For_List ResultT body') at 1;
                          clear refine_body' ] )
 
   end.
@@ -1726,13 +1727,19 @@ Ltac implement_Query' k k_dep:=
 Ltac implement_Query :=
   implement_Query' find_simple_search_term find_simple_search_term_dep.
 
+Ltac cleanup_Count :=
+  repeat first [ setoid_rewrite app_nil_r
+               | setoid_rewrite filter_true
+               | setoid_rewrite map_map
+               | setoid_rewrite map_app
+               | setoid_rewrite map_length
+               ].
+
 Ltac observer :=
   implement_Query;
   simpl; simplify with monad laws;
   cbv beta; simpl; commit;
-  repeat setoid_rewrite filter_true;
-  repeat setoid_rewrite app_nil_r;
-  repeat setoid_rewrite map_length;
+  cleanup_Count;
   finish honing.
 
 Ltac initializer :=
@@ -1783,7 +1790,7 @@ Ltac insertion :=
                 | eassumption]
             end
         end
-      | cbv beta; simpl; try simplify with monad laws; finish honing ].
+      | cbv beta; simpl; try simplify with monad laws; cleanup_Count; finish honing ].
 
 Ltac method :=
   match goal with

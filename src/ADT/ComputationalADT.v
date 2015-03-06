@@ -52,28 +52,3 @@ Definition LiftcADT (Sig : ADTSig) (A : cADT Sig) : ADT Sig :=
   {| Rep                := cRep A;
      Constructors idx d := ret (cConstructors A idx d);
      Methods idx r d    := ret (cMethods A idx r d) |}.
-
-Definition is_computationalADT (Sig : ADTSig) (A : ADT Sig) :=
-  (forall (idx : ConstructorIndex Sig) i,
-     is_computational (Constructors A idx i))
-  /\ (forall (idx : MethodIndex Sig) i r,
-        is_computational (Methods A idx i r)).
-
-Definition CallComputationalMethod
-           (Sig : ADTSig)
-           (A : ADT Sig)
-           (CompA : is_computationalADT A)
-           (idx : MethodIndex Sig)
-           (r : Rep A)
-           (i : fst (MethodDomCod Sig idx))
-: Rep A * snd (MethodDomCod Sig idx) :=
-  is_computational_val (proj2 CompA idx r i).
-
-Definition CallComputationalConstructor
-           (Sig : ADTSig)
-           (A : ADT Sig)
-           (CompA : is_computationalADT A)
-           (idx : ConstructorIndex Sig)
-           (i : ConstructorDom Sig idx)
-: Rep A :=
-  is_computational_val (proj1 CompA idx i).

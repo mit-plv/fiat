@@ -78,8 +78,8 @@ Definition getMethDef
   methBody (@ith_Bounded _ _ _ (@methDef Rep) methSigs methDefs idx).
 
 (* Always simplify method lookup when the index is specified. *)
-Arguments getConsDef [_] [_] _ idx%string / _ .
-Arguments getMethDef [_] [_] _ idx%string / _ _ .
+Arguments getConsDef [_] [_] _ idx%string / _ _ .
+Arguments getMethDef [_] [_] _ idx%string / _ _ _ .
 
 (* [BuildADT] constructs an ADT from a single constructor
    definition and a list of method signatures,

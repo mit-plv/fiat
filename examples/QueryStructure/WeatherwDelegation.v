@@ -81,6 +81,7 @@ Proof.
   make simple indexes using [[AREA_CODE]; [MEASUREMENT_TYPE; CELL_ID]].
 
   Time plan. (* 220 seconds *)
+  idtac.
 
   FullySharpenQueryStructure WeatherSchema Index.
 

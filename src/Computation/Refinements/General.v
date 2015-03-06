@@ -18,17 +18,9 @@ Section general_refine_lemmas.
 
   Lemma refine_under_bind {A B}
   : forall c (x y : A -> Comp B),
-      (forall a, computes_to c a -> refine (x a) (y a))
+      (forall a, c ↝ a -> refine (x a) (y a))
       -> refine (a <- c; x a) (a <- c; y a).
-  Proof. t_refine. Qed.
-
-  Lemma refineEquiv_is_computational {A} {c} (CompC : @is_computational A c)
-  : @refineEquiv _ c (ret (is_computational_val CompC)).
-  Proof.
-    unfold refineEquiv, refine.
-    pose proof (is_computational_val_computes_to CompC).
-    t_refine.
-  Qed.
+  Proof. t_refine.  Qed.
 
   Lemma refine_pick A (P : A -> Prop) c (H : forall x, c ↝ x -> P x)
   : @refine A ({x : A | P x })%comp
@@ -80,7 +72,9 @@ Section general_refine_lemmas.
                  (b <- { b | PB b };
                   a <- { a | PA (a, b) };
                   ret (a, b))%comp.
-  Proof. t_refine. Qed.
+  Proof.
+    t_refine.
+  Qed.
 
   Lemma refineEquiv_pick_pair_snd_dep A B (PA : A -> Prop) (PB : A * B -> Prop)
   : @refineEquiv _
@@ -108,7 +102,12 @@ Section general_refine_lemmas.
                  { b | exists a, P a /\ P' a b }%comp
                  (a <- { a | P a /\ exists b, P' a b };
                   { b | P' a b })%comp.
-  Proof. t_refine. Qed.
+  Proof.
+    split; intros v Comp_v; computes_to_inv;
+    intuition; destruct_ex;
+    repeat (computes_to_econstructor; eauto);
+    intuition eauto.
+  Qed.
 
   Definition refineEquiv_pick_contr_ret A (P : A -> Prop)
              (x : A) (H : unique P x)
@@ -134,7 +133,13 @@ Section general_refine_lemmas.
       @refineEquiv _ { b | exists a, P a /\ b = f a}%comp
                    (a <- { a | P a};
                     ret (f a))%comp.
-  Proof. t_refine. Qed.
+  Proof.
+    split; intros v Comp_v; computes_to_inv;
+    intuition; destruct_ex;
+    repeat (computes_to_econstructor; eauto);
+    intuition eauto.
+    subst; eauto.
+  Qed.
 
   Definition refineEquiv_split_func_ex2
              A A' B (P : A -> Prop) (P' : A' -> Prop)
@@ -143,7 +148,13 @@ Section general_refine_lemmas.
                 (a <- { a | P a};
                  a' <- { a' | P' a'};
                  ret (f a a')).
-  Proof. t_refine. Qed.
+  Proof.
+    split; intros v Comp_v; computes_to_inv;
+    intuition; destruct_ex;
+    computes_to_econstructor; eauto;
+    intuition; destruct_ex; intuition; subst;
+    computes_to_econstructor; eauto.
+  Qed.
 
   Definition refineEquiv_split_func_ex2'
              A A' B (P : A -> Prop) (P' : A' -> Prop)
@@ -152,7 +163,13 @@ Section general_refine_lemmas.
                 (a <- { a | P a};
                  a' <- { a' | P' a'};
                  ret (f a a')).
-  Proof. t_refine. Qed.
+  Proof.
+    split; intros v Comp_v; computes_to_inv;
+    intuition; destruct_ex;
+    computes_to_econstructor; eauto;
+    intuition; destruct_ex; intuition; subst;
+    computes_to_econstructor; eauto.
+  Qed.
 
   Definition refineEquiv_pick_computes_to A (c : Comp A)
   : refineEquiv { v | c ↝ v } c.
@@ -228,12 +245,12 @@ Section general_refine_lemmas.
         A B C (a : A) (Q : C -> A -> Prop) (P : A -> C -> B -> Prop)
         b
   :
-    (forall c, Q c a -> refine (Pick (P a c)) b) ->
-    @refine B (Pick (fun b' => forall c, Q c a -> P a c b')) b.
+    (forall c : C, Q c a -> refine {x : B | P a c x} b) ->
+    refine {b' : B | forall c : C, Q c a -> P a c b'} b.
   Proof.
-    unfold refine; intros; econstructor; intros.
+    unfold refine; intros; computes_to_econstructor; intros.
     generalize (H _ H1 _ H0); intros.
-    inversion_by computes_to_inv; assumption.
+    computes_to_inv; assumption.
   Qed.
 
   Lemma refine_pick_eq_ex_bind {A B : Type}
@@ -243,8 +260,7 @@ Section general_refine_lemmas.
             {b | P a' b})
            {b | P a b}.
   Proof.
-    unfold refine; intros; inversion_by computes_to_inv;
-    econstructor; eauto.
+    t_refine.
   Qed.
 
   (* This helper lemma makes terms more ameneable to
@@ -282,14 +298,9 @@ Section general_refine_lemmas.
               If b Then { a | Pt a /\ Pa a}
               Else { a | Pa a}).
   Proof.
-    unfold refine; intros.
-    apply computes_to_inv in H; destruct_ex; constructor; intuition.
-    apply computes_to_inv in H0; apply H0 in X; subst.
-    unfold If_Then_Else in *.
-    inversion_by computes_to_inv; eauto.
-
-    t_refine.
-    destruct x;  t_refine.
+    intros * v Comp_v; computes_to_inv.
+    computes_to_econstructor; intuition; subst;
+    try destruct v0; simpl in *; eauto; computes_to_inv; intuition.
   Qed.
 
   Lemma refine_if A :
@@ -347,7 +358,9 @@ Section general_refine_lemmas.
   : refineEquiv { d | exists a, (b <- cB; c b) ↝ a /\ P a d}
                 (b <- cB;
                  { d | exists a, c b ↝ a /\ P a d}).
-  Proof. t_refine. Qed.
+  Proof.
+    split; intros * v Comp_v; computes_to_inv; destruct_ex; intuition;
+    t_refine. Qed.
 
   Lemma refine_Pick_If_Then_Opt {A B}
   : forall (P : Ensemble B) (c e : Comp A) (t : B -> Comp A),
@@ -358,8 +371,9 @@ Section general_refine_lemmas.
                              (b = Some b' -> P b')};
                  Ifopt b as b' Then t b' Else e).
   Proof.
-    unfold refine; intros; apply computes_to_inv in H1; destruct_ex; intuition.
-    destruct x; inversion_by computes_to_inv; eauto.
+    t_refine.
+    destruct v0; t_refine.
+    eapply H; eauto.
   Qed.
 
   Lemma refine_Pick_Some_dec {A B}
@@ -372,8 +386,11 @@ Section general_refine_lemmas.
                              /\ (b = None -> forall b', ~ P b')};
                  Ifopt b as b' Then t b' Else e) .
   Proof.
-    unfold refine; intros; apply computes_to_inv in H1; destruct_ex; intuition.
-    destruct x; inversion_by computes_to_inv; eauto.
+    unfold refine; intros; computes_to_inv;
+    destruct v0; simpl in *; computes_to_inv; eauto.
+    eapply H; eauto.
+    eapply H1; eauto.
+    eapply H0; eauto; intros; eapply H1; eauto.
   Qed.
 
   Definition decides (b : bool) (P : Prop)
@@ -396,9 +413,9 @@ Section general_refine_lemmas.
                 (b <- {b | decides b P};
                  If b Then t Else e).
   Proof.
-    unfold refine; intros; apply_in_hyp computes_to_inv;
-    destruct_ex; split_and; inversion_by computes_to_inv.
-    destruct x; simpl in *; eauto.
+    unfold refine; intros; computes_to_inv;
+    destruct_ex; split_and; computes_to_inv.
+    destruct v0; simpl in *; eauto.
   Qed.
 
   Lemma refine_pick_decides' {A}
@@ -413,7 +430,7 @@ Section general_refine_lemmas.
               {a | Q' a}).
   Proof.
     eapply refine_pick_decides;
-    unfold refine; intros; apply_in_hyp computes_to_inv;
+    unfold refine; intros; computes_to_inv;
     econstructor; intuition.
   Qed.
 
@@ -484,7 +501,7 @@ Section general_refine_lemmas.
   : refineEquiv (a <- c1; b <- c2; f a b) (b <- c2; a <- c1; f a b).
   Proof.
     split; repeat intro;
-    inversion_by computes_to_inv;
+    computes_to_inv;
     repeat (econstructor; try eassumption).
   Qed.
 
@@ -492,7 +509,7 @@ Section general_refine_lemmas.
   : refine (a <- c1; b <- c1; f a b) (a <- c1; f a a).
   Proof.
     repeat intro;
-    inversion_by computes_to_inv;
+    computes_to_inv;
     repeat (econstructor; try eassumption).
   Qed.
 
@@ -511,9 +528,10 @@ Section general_refine_lemmas.
                   f a).
   Proof.
     repeat first [ intro
-                 | inversion_by computes_to_inv
-                 | econstructor; eassumption
-                 | econstructor; try eassumption; [] ].
+                 | computes_to_inv
+                 | computes_to_econstructor; eassumption
+                 | computes_to_econstructor; try eassumption; [] ].
+    computes_to_econstructor; eauto.
   Qed.
 
   Lemma refine_skip2 {A B} (a : Comp A) (dummy : Comp B)
@@ -522,10 +540,11 @@ Section general_refine_lemmas.
                  a).
   Proof.
     repeat first [ intro
-                 | inversion_by computes_to_inv
+                 | computes_to_inv
                  | assumption
                  | econstructor; eassumption
                  | econstructor; try eassumption; [] ].
+    eauto.
   Qed.
 
   Lemma decides_negb :
@@ -544,8 +563,8 @@ Section general_refine_lemmas.
              (Pick (fun (b : bool) =>
                       decides (negb b) (exists (x: A), P x))).
   Proof.
-    unfold refine; intros; inversion_by computes_to_inv.
-    constructor.
+    unfold refine; intros; computes_to_inv.
+    computes_to_constructor.
     rewrite <- not_exists_forall; apply decides_negb;
     assumption.
   Qed.
@@ -557,8 +576,8 @@ Section general_refine_lemmas.
                         (fun b => ret (negb b))).
   Proof.
     unfold refineEquiv, refine; simpl;
-    split; intros; inversion_by computes_to_inv;
-    subst; repeat econstructor; eauto; rewrite Bool.negb_involutive;
+    split; intros; computes_to_inv;
+    subst; repeat computes_to_econstructor; eauto; rewrite Bool.negb_involutive;
     [ assumption | constructor ].
   Qed.
 
@@ -627,7 +646,7 @@ Section general_refine_lemmas.
           eqA result impl
         ).
   Proof.
-    intros; subst; inversion_by computes_to_inv; subst; trivial.
+    intros; subst; computes_to_inv; subst; trivial.
   Qed.
 
   Lemma refine_pick_val' :

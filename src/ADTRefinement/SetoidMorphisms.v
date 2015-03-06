@@ -7,14 +7,14 @@ Require Import ADTSynthesis.ADT.ADTSig ADTSynthesis.ADT.Core ADTSynthesis.ADTRef
 Instance refineConstructor_refl rep Dom
 : Reflexive (@refineConstructor rep rep eq Dom).
 Proof.
-  intro; simpl; intros; subst; econstructor; eauto.
+  intro; simpl; intros; subst; computes_to_econstructor; eauto.
 Qed.
 
 Instance refineMethod_refl rep Dom Cod
 : Reflexive (@refineMethod rep rep eq Dom Cod).
 Proof.
   intro; simpl; unfold refine; intros; subst;
-  repeat econstructor; try destruct v; eauto.
+  repeat computes_to_econstructor; try destruct v; eauto.
 Qed.
 
 Global Instance refineADT_PreOrder Sig : PreOrderT (refineADT (Sig := Sig)).
@@ -32,7 +32,7 @@ Proof.
       simpl in *; intros.
     + destruct_ex; intuition; rewrite_rev_hyp; eauto.
       autorewrite with refine_monad; f_equiv; unfold pointwise_relation;
-      intros; econstructor; inversion_by computes_to_inv;
+      intros; econstructor; computes_to_inv;
       eauto.
     + destruct_ex; intuition; rewrite_rev_hyp; eauto.
       autorewrite with refine_monad; f_equiv; unfold pointwise_relation.

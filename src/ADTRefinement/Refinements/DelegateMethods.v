@@ -56,11 +56,11 @@ Section DelegateMethods.
     unfold ADTwDelegatedMethods; destruct delegatorADT;
     eapply refineADT_Build_ADT_Rep with
     (AbsR := fun or nr => or = fst nr); simpl; intros; subst.
-    - unfold refine; intros; inversion_by computes_to_inv; subst;
-      econstructor; eauto.
+    - unfold refine; intros; computes_to_inv; subst;
+      computes_to_econstructor; eauto.
     - f_equiv; unfold pointwise_relation, refine; intros.
-      inversion_by computes_to_inv; subst;
-      repeat econstructor; eauto.
+      computes_to_inv; subst.
+      repeat computes_to_econstructor; eauto.
   Qed.
 
 End DelegateMethods.

@@ -22,8 +22,8 @@ Lemma refine_SetEq_self {A} :
     refine {l' | SetEq l' l}%comp
            (ret l).
 Proof.
-  unfold SetEq, refine; intros; inversion_by computes_to_inv.
-  econstructor; subst; split; eauto.
+  unfold SetEq, refine; intros; computes_to_inv.
+  computes_to_econstructor; subst; split; eauto.
 Qed.
 
 (* [Query_For] is opaque, so we need to make it transparent in
@@ -288,7 +288,7 @@ Lemma refine_For_List {ResultT : Type}
       (bod : Comp (list ResultT))
 : refine (Query_For bod) bod.
 Proof.
-  unfold Query_For, refine; intros; econstructor;
+  unfold Query_For, refine; intros; computes_to_econstructor;
   eauto.
 Qed.
 
@@ -321,7 +321,7 @@ Lemma refine_List_For_Query_In_Return_Permutation :
       (Pick (fun l' => Permutation (map proj l) l')).
 Proof.
   intros; rewrite refine_List_Query_In_Return;
-  unfold Query_For; econstructor; eauto.
+  unfold Query_For; computes_to_econstructor; eauto.
 Qed.
 
 Lemma refine_Permutation_Reflexivity :
@@ -330,7 +330,7 @@ Lemma refine_Permutation_Reflexivity :
       (Pick (fun l' => Permutation l l'))
       (ret l).
 Proof.
-  constructor; inversion_by computes_to_inv; subst; eauto.
+  computes_to_constructor;  computes_to_inv; subst; eauto.
 Qed.
 
 Add Parametric Morphism {A B : Type} (l : list A)
@@ -402,7 +402,7 @@ Lemma refine_For_List_Return {ReturnT TraceT}
             List.In (fst (snd el)) l /\ Return (extract (fst (snd el))) (fst el, tt)))%QuerySpec
     (ret (map extract l)).
 Proof.
-  unfold refine; intros; inversion_by computes_to_inv; subst.
+  unfold refine; intros;  computes_to_inv; subst.
   econstructor; unfold In, Query_Return.
   eexists (map (fun el => (extract el, (el, tt))) l); split.
   rewrite map_map; simpl; f_equal.

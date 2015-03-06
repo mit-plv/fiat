@@ -94,8 +94,8 @@ Section RepInv.
     refineEquiv {r_n | repInvAbsR r_o r_n}
                 (ret r_o).
   Proof.
-    unfold repInvAbsR; split; intros v CompV; inversion_by computes_to_inv; intuition;
-    subst; econstructor; eauto.
+    unfold repInvAbsR; split; intros v CompV; computes_to_inv; intuition;
+    subst; computes_to_econstructor; eauto.
   Qed.
 
   Lemma refine_pick_repInvAbsR' :
@@ -103,7 +103,7 @@ Section RepInv.
     refineEquiv {r_o | repInvAbsR r_o r_n}
                 (ret r_n).
   Proof.
-    unfold repInvAbsR; split; intros v CompV; inversion_by computes_to_inv; intuition;
+    unfold repInvAbsR; split; intros v CompV; computes_to_inv; intuition;
     subst; econstructor; eauto.
   Qed.
 

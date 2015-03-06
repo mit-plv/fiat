@@ -89,8 +89,6 @@ Definition SharpenedStocks :
 Proof.
 
   unfold StocksSpec.
-
-  (* First, we unfold various definitions and drop constraints *)
   start honing QueryStructure.
 
   make simple indexes using [[TYPE; STOCK_CODE]; [DATE; STOCK_CODE]].

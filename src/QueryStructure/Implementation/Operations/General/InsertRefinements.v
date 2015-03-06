@@ -142,23 +142,23 @@ Section InsertRefinements.
               | _, _ , _, _, _ => default
             end).
   Proof.
-    intros qsSchema qs Ridx tup default v Comp_v.
-    do 5 (apply_in_hyp computes_to_inv; destruct_ex; split_and);
-      destruct x;
-      [ destruct x0;
-        [ destruct x1;
-          [ destruct x2;
-            [ destruct x3;
-              [ repeat (apply_in_hyp computes_to_inv; destruct_ex; split_and); simpl in *;
-                econstructor; unfold QSInsertSpec; eauto |
+    intros qsSchema qs Ridx tup default v Comp_v;
+    computes_to_inv;
+      destruct v0;
+      [ destruct v1;
+        [ destruct v2;
+          [ destruct v3;
+            [ destruct v4;
+              [ repeat (computes_to_inv; destruct_ex; split_and); simpl in *;
+                computes_to_econstructor; unfold QSInsertSpec; eauto |
               ]
             | ]
           | ]
         |  ]
       |  ];
       cbv delta [decides] beta in *; simpl in *;
-      repeat (apply_in_hyp computes_to_inv; destruct_ex); eauto;
-      econstructor; unfold QSInsertSpec; intros;
+      repeat (computes_to_inv; destruct_ex); eauto;
+      computes_to_econstructor; unfold QSInsertSpec; intros;
       solve [elimtype False; intuition].
   Qed.
 
@@ -266,7 +266,7 @@ Section InsertRefinements.
     unfold DropQSConstraints_AbsR in *; intros; subst.
     rewrite QSInsertSpec_refine with (default := ret or).
     unfold refine; intros; subst.
-      do 5 (apply_in_hyp computes_to_inv; destruct_ex; split_and).
+      computes_to_inv.
       repeat rewrite GetRelDropConstraints in *.
       (* These assert are gross. Need to eliminate them. *)
       assert ((fun Ridx' : BoundedIndex (map relName (qschemaSchemas qsSchema)) =>
@@ -276,7 +276,7 @@ Section InsertRefinements.
                  SatisfiesCrossRelationConstraints Ridx Ridx' (indexedElement tup)
                                                    (GetRelation or Ridx'))) as rewriteSat
         by (apply functional_extensionality; intros; rewrite GetRelDropConstraints;
-            reflexivity); rewrite rewriteSat in H3; clear rewriteSat.
+            reflexivity); rewrite rewriteSat in H'''; clear rewriteSat.
       assert ((fun Ridx' : BoundedIndex (map relName (qschemaSchemas qsSchema)) =>
           Ridx' <> Ridx ->
           forall
@@ -300,14 +300,14 @@ Section InsertRefinements.
                                         (EnsembleInsert tup (GetRelation or Ridx))))
           as rewriteSat
             by (apply functional_extensionality; intros; rewrite GetRelDropConstraints;
-                reflexivity); rewrite rewriteSat in H4; clear rewriteSat.
+                reflexivity); rewrite rewriteSat in H''''; clear rewriteSat.
       (* Resume not-terribleness *)
-      generalize (Iterate_Decide_Comp_BoundedIndex _ _ _ H3) as H3';
-      generalize (Iterate_Decide_Comp_BoundedIndex _ _ _ H4) as H4'; intros.
-      revert H3 H4.
-      repeat apply_in_hyp computes_to_inv.
-      econstructor 2 with
-      (comp_a_value := match x as x', x0 as x0', x1 as x1', x2 as x2', x3 as x3'
+      generalize (Iterate_Decide_Comp_BoundedIndex _ _ _ H''') as H3';
+      generalize (Iterate_Decide_Comp_BoundedIndex _ _ _ H'''') as H4'; intros.
+      revert H''' H''''.
+      computes_to_inv.
+      intros.
+      eapply BindComputes with (a := match v0 as x', v1 as x0', v2 as x1', v3 as x2', v4 as x3'
                               return decides x' _ ->
                                      decides x0' _ ->
                                      decides x1' _ ->
@@ -317,8 +317,9 @@ Section InsertRefinements.
                           | true, true, true, true, true =>
                             fun H H0 H1 H2 H3 => (@Insert_Valid _ or Ridx tup H0 H1 H H2 H3, true)
                           | _, _, _, _, _ => fun _ _ _ _ _ => (or, false)
-                        end H0 H1 H2 H3' H4').
-      econstructor 2 with (comp_a_value :=  match x as x', x0 as x0', x1 as x1', x2 as x2', x3 as x3'
+                        end H H' H'' H3' H4').
+      eapply BindComputes with (a :=
+                                  match v0 as x', v1 as x0', v2 as x1', v3 as x2', v4 as x3'
                               return decides x' _ ->
                                      decides x0' _ ->
                                      decides x1' _ ->
@@ -328,16 +329,16 @@ Section InsertRefinements.
                           | true, true, true, true, true =>
                             fun H H0 H1 H2 H3 => @Insert_Valid _ or Ridx tup H0 H1 H H2 H3
                           | _, _, _, _, _ => fun _ _ _ _ _ => or
-                        end H0 H1 H2 H3' H4').
-      repeat (econstructor; eauto).
-      repeat find_if_inside; try econstructor; simpl in *.
+                        end H H' H'' H3' H4').
+      repeat (computes_to_econstructor; eauto).
+      repeat find_if_inside; try computes_to_econstructor; simpl in *.
       unfold GetRelation, Insert_Valid, UpdateUnConstrRelation,
       UpdateRelation, EnsembleInsert ; simpl; split; intros; eauto.
       rewrite ith_replace_BoundIndex_neq; eauto using string_dec; simpl.
       rewrite ith_replace_BoundIndex_eq; unfold EnsembleInsert, GetRelation;
       simpl; intuition.
-      econstructor.
-      econstructor 3 with (v :=  match x as x', x0 as x0', x1 as x1', x2 as x2', x3 as x3'
+      computes_to_econstructor.
+      eapply PickComputes with (a :=  match v0 as x', v1 as x0', v2 as x1', v3 as x2', v4 as x3'
                               return decides x' _ ->
                                      decides x0' _ ->
                                      decides x1' _ ->
@@ -347,7 +348,7 @@ Section InsertRefinements.
                           | true, true, true, true, true =>
                             fun H H0 H1 H2 H3 => true
                           | _, _, _, _, _ => fun _ _ _ _ _ => false
-                        end H0 H1 H2 H3' H4').
+                        end H H' H'' H3' H4').
       repeat find_if_inside; simpl;
       try (solve [unfold not; let H := fresh in intros H; eapply NIntup; eapply H;
       unfold EnsembleInsert; eauto]).
@@ -357,13 +358,18 @@ Section InsertRefinements.
       rewrite <- ith_Bounded_imap, ith_replace_BoundIndex_eq; simpl;
       tauto.
 
-      repeat find_if_inside; subst; repeat econstructor.
+      repeat find_if_inside; subst; repeat computes_to_econstructor.
 
       simpl.
-      repeat find_if_inside; subst; repeat econstructor.
+      repeat find_if_inside; subst; repeat computes_to_econstructor.
       unfold DropQSConstraints, Insert_Valid, EnsembleInsert; simpl.
       unfold GetRelation, Insert_Valid, UpdateUnConstrRelation,
       UpdateRelation; rewrite imap_replace_BoundedIndex; simpl; eauto using string_dec.
+      eauto.
+      eauto.
+      eauto.
+      eauto.
+      eauto.
   Qed.
 
   Lemma freshIdx2UnConstr {qsSchema} qs Ridx
@@ -372,8 +378,8 @@ Section InsertRefinements.
                       tupleIndex tup <> bound}
            {bound | UnConstrFreshIdx (GetUnConstrRelation qs Ridx) bound}.
   Proof.
-    unfold UnConstrFreshIdx; intros v Comp_v; econstructor.
-    inversion_by computes_to_inv; intros.
+    unfold UnConstrFreshIdx; intros v Comp_v; computes_to_econstructor.
+    computes_to_inv; intros.
     unfold tupleIndex in *; apply Comp_v in H; omega.
   Qed.
 
@@ -721,141 +727,11 @@ Section InsertRefinements.
 
 End InsertRefinements.
 
-  (* When we insert a tuple into a relation which has another relation has
-     a foreign key into, we need to show that we haven't messed up any
-     references (which is, of course, trivial. We should bake this into
-     our the [QSInsertSpec_refine'] refinement itself by filtering out the
-     irrelevant constraints somehow, but for now we can use the following
-     tactic to rewrite them away. *)
-
-  Ltac remove_trivial_insertion_constraints :=
-          repeat     match goal with
-          |- context[EnsembleInsert _ (GetUnConstrRelation _ _) ] =>
-          match goal with
-              AbsR : @DropQSConstraints_AbsR ?schm ?or ?nr
-              |- context [
-                     Pick
-                       (fun b =>
-                          decides
-                            b
-                            (forall tup' : @IndexedTuple ?heading,
-                               (@GetUnConstrRelation ?schm ?r ?Ridx) tup' ->
-                               ForeignKey_P ?attr ?attr' ?tup_map
-                                            (indexedElement tup')
-                                            (EnsembleInsert ?tup (GetUnConstrRelation ?r ?Ridx'))))] =>
-              let neq := fresh in
-              assert (Ridx <> Ridx') by (subst_strings; discriminate);
-              let refine_trivial := fresh in
-              assert (refine {b' |
-                         decides b'
-                                 (forall tup' : IndexedTuple,
-                                    (GetUnConstrRelation r Ridx) tup' ->
-                                    @ForeignKey_P heading
-                                                  (schemaHeading (GetNRelSchema (qschemaSchemas schm) Ridx'))
-                                                  attr attr' tup_map
-                                                  (indexedElement tup')
-                                                  (EnsembleInsert tup (GetUnConstrRelation r Ridx')))}
-                      (ret true)) as refine_trivial;
-                [ unfold ForeignKey_P;
-                  let v := fresh in
-                  let Comp_v := fresh in
-                  intros v Comp_v;
-                    apply computes_to_inv in Comp_v;
-                    rewrite <- AbsR; subst;
-                    repeat rewrite GetRelDropConstraints;
-                    let tup' := fresh in
-                    let In_tup' := fresh in
-                    econstructor; simpl map; simpl; intros tup' In_tup';
-                    unfold EnsembleInsert;
-                    let H' := fresh in
-                    pose proof (@crossConstr _ or Ridx Ridx' tup' neq In_tup') as H';
-                      simpl map in *; simpl in *;
-                      destruct H' as [? [? ?]]; eauto
-                | subst_strings; setoid_rewrite refine_trivial;
-                  clear refine_trivial;
-                  pose_string_ids; simplify with monad laws
-                ] end end.
-
-Tactic Notation "remove" "trivial" "insertion" "checks" :=
-  (* Move all the binds we can outside the exists / computes
-   used for abstraction, stopping when we've rewritten
-         the bind in [QSInsertSpec]. *)
-  repeat rewrite refineEquiv_bind_bind;
-  etransitivity;
-  [ repeat (apply refine_bind;
-            [reflexivity
-            | match goal with
-                | |- context [Bind (Insert _ into _)%QuerySpec _] =>
-                  unfold pointwise_relation; intros
-                    end
-                 ] );
-    (* Pull out the relation we're inserting into and then
-     rewrite [QSInsertSpec] *)
-    match goal with
-        H : DropQSConstraints_AbsR _ ?r_n
-        |- context [(Insert ?n into ?R)%QuerySpec] =>
-        let H' := fresh in
-          (* If we try to eapply [QSInsertSpec_UnConstr_refine] directly
-                   after we've drilled under a bind, this tactic will fail because
-                   typeclass resolution breaks down. Generalizing and applying gets
-                   around this problem for reasons unknown. *)
-        let H' := fresh in
-        pose proof (@QSInsertSpec_UnConstr_refine_opt
-                      _ r_n {| bindex := R |} n _ H) as H';
-          apply H'
-    end
-  | cbv beta; simpl tupleConstraints; simpl attrConstraints; cbv iota;
-    simpl map; simpl app;
-    simpl relName in *; simpl schemaHeading in *;
-    pose_string_ids; simpl;
-    simplify with monad laws;
-    try rewrite <- GetRelDropConstraints;
-    repeat match goal with
-             | H : DropQSConstraints_AbsR ?qs ?uqs |- _ =>
-               rewrite H in *
-           end
-  ].
-
-Tactic Notation "Split" "Constraint" "Checks" :=
-  repeat (let b := match goal with
-                     | [ |- context[if ?X then _ else _] ] => constr:(X)
-                     | [ H : context[if ?X then _ else _] |- _ ]=> constr:(X)
-                   end in
-          let b_eq := fresh in
-          eapply (@refine_if _ _ b); intros b_eq;
-          simpl in *; repeat rewrite b_eq; simpl).
-
-Tactic Notation "implement" "failed" "insert" :=
-  repeat (rewrite refine_pick_val, refineEquiv_bind_unit; eauto);
-  reflexivity.
-
-
-Tactic Notation "drop" "constraints" "from" "insert" constr(methname) :=
-  hone method methname;
-  [ remove trivial insertion checks;
-    (* The trivial insertion checks involve the fresh id,
-       so we need to drill under the binder before
-       attempting to remove them. *)
-    rewrite refine_bind;
-    [ | reflexivity |
-      unfold pointwise_relation; intros;
-      repeat remove_trivial_insertion_constraints;
-      (* These simplify and implement nontrivial constraint checks *)
-      repeat first
-             [setoid_rewrite FunctionalDependency_symmetry
-             | fundepToQuery; try simplify with monad laws
-             | foreignToQuery; try simplify with monad laws
-             | setoid_rewrite refine_trivial_if_then_else; simplify with monad laws
-             ];
-             higher_order_1_reflexivity ];
-    finish honing
-  | ].
-
 
 (* We should put all these simplification hints into a distinct file
    so we're not unfolding things all willy-nilly. *)
-Arguments Iterate_Decide_Comp _ _ / .
-Arguments Iterate_Decide_Comp' _ _ _ _ / .
+Arguments Iterate_Decide_Comp _ _ / _.
+Arguments Iterate_Decide_Comp' _ _ _ _ / _.
 Arguments SatisfiesCrossRelationConstraints  _ _ _ _ _ / .
 Arguments BuildQueryStructureConstraints  _ _ _ / .
 Arguments BuildQueryStructureConstraints'  _ _ _ _ / .

@@ -25,14 +25,12 @@ Lemma flatten_CompList_app :
     @flatten_CompList A (x1 ++ x2) ↝ (x1' ++ x2').
 Proof.
   induction x1; simpl; intros.
-  inversion_by computes_to_inv; subst.
+   computes_to_inv; subst.
 
   rewrite !app_nil_l; assumption.
-  inversion_by computes_to_inv.
-
-  specialize (IHx1 x2 x0 x2' H2 H0).
-  econstructor; eauto.
-  econstructor; eauto.
+   computes_to_inv.
+  specialize (IHx1 x2 _ _ H' H0).
+  repeat (computes_to_econstructor; eauto).
   subst; rewrite app_assoc; constructor.
 Qed.
 
@@ -43,8 +41,8 @@ Lemma boxed_option_nil {A} :
     (~ P (indexedElement x)).
 Proof.
   unfold boxed_option; simpl; intros.
-  apply computes_to_inv in H.
-  intuition; inversion_by computes_to_inv; subst; discriminate.
+  apply Pick_inv in H; intuition.
+  computes_to_inv; intuition; discriminate.
 Qed.
 
 Lemma flatten_CompList_nil {A} :
@@ -55,8 +53,9 @@ Lemma flatten_CompList_nil {A} :
 Proof.
   induction seq; simpl; intros flatten_comp * in_seq.
   - exfalso; assumption.
-  - inversion_by computes_to_inv.
-    symmetry in H2; rewrite app_eq_nil_iff in H2; destruct H2; subst.
+  - computes_to_inv; subst.
+    symmetry in flatten_comp''; rewrite app_eq_nil_iff in flatten_comp'';
+    destruct flatten_comp''; subst.
     destruct in_seq; subst.
     + apply boxed_option_nil; assumption.
     + apply IHseq; assumption.
@@ -75,32 +74,31 @@ Lemma flatten_CompList_app_inv :
 Proof.
   intros * excl; induction x1; simpl; intros.
 
-  - inversion_by computes_to_inv.
+  -  computes_to_inv.
     rewrite app_eq_nil_iff in H.
     setoid_rewrite app_eq_nil_iff.
     eexists; eexists; intuition; subst; intuition constructor.
-  - inversion_by computes_to_inv.
-    pose proof H0; unfold boxed_option in H0.
-    apply computes_to_inv in H0; simpl in H0.
-    destruct H0 as (spec1 & spec2).
+  -  computes_to_inv.
+    pose proof H; unfold boxed_option in H0.
+    computes_to_inv; destruct H0 as (spec1 & spec2).
     destruct (excl (indexedElement a)) as [ Ptrue | Pfalse ];
-      [ specialize (spec1 Ptrue); apply computes_to_inv in spec1
+      [ specialize (spec1 Ptrue); computes_to_inv
       | specialize (spec2 Pfalse) ]; subst.
-    + rewrite app_singleton in H2.
+    + rewrite app_singleton in H''.
       destruct x0_before as [ | a' x0_before' ] eqn:eq_before; subst.
-      * rewrite app_nil_l in H2.
+      * rewrite app_nil_l in H''.
         destruct x0_after as [ | a' x0_after]; try discriminate.
-        injection H2; intros; subst.
+        injection H''; intros; subst.
         exists (@nil (@IndexedElement A)).
         eexists; repeat split; eauto; simpl; repeat econstructor; eauto.
-      * rewrite <- app_comm_cons in H2.
-        injection H2; intros; subst.
-        destruct (IHx1 x0_before' x0_after H1) as [ x1_before [ x1_after (_eq & comp1 & comp2) ] ];
+      * rewrite <- app_comm_cons in H''.
+        injection H''; intros; subst.
+        destruct (IHx1 x0_before' x0_after H') as [ x1_before [ x1_after (_eq & comp1 & comp2) ] ];
           subst.
         exists (a :: x1_before); exists x1_after.
         simpl; repeat split; repeat (first [eassumption | econstructor]).
-    + rewrite app_nil_l in H2; subst.
-      destruct (IHx1 x0_before x0_after H1) as [ x1_before [ x1_after (_eq & comp1 & comp2) ] ];
+    + rewrite app_nil_l in H''; subst.
+      destruct (IHx1 x0_before x0_after H') as [ x1_before [ x1_after (_eq & comp1 & comp2) ] ];
         subst.
       exists (a :: x1_before); exists x1_after.
       simpl; repeat split; repeat (first [eassumption | econstructor]).
@@ -117,11 +115,11 @@ Lemma flatten_CompList_app_inv'
 Proof.
   induction l; simpl; intros.
   - eexists []; exists v; simpl; intuition.
-  - inversion_by computes_to_inv; subst.
-    destruct (IHl _ _ H1) as [e [e' [v_eq [Comp_l Comp_l']]]].
-    rewrite v_eq.
-    exists (app x e); exists e'; intuition.
-    repeat econstructor; eauto.
+  -  computes_to_inv; subst.
+     destruct (IHl _ _ H') as [e [e' [v_eq [Comp_l Comp_l']]]].
+     rewrite v_eq.
+     eexists (app v0 e), e'; intuition.
+     repeat computes_to_econstructor; eauto.
 Qed.
 
 Lemma flatten_CompList_singleton {A}:
@@ -133,14 +131,14 @@ Lemma flatten_CompList_singleton {A}:
       flatten_CompList (map (boxed_option P) [x]) ↝ [head].
 Proof.
   induction middle; unfold flatten_CompList; simpl; intros.
-  - inversion_by computes_to_inv; discriminate.
-  - inversion_by computes_to_inv.
-    destruct x.
-    + rewrite app_nil_l in H2; subst.
-      destruct (IHmiddle _ H1) as [ x (x_in & flat_comp) ].
+  -  computes_to_inv; discriminate.
+  -  computes_to_inv.
+    destruct v.
+    + rewrite app_nil_l in H''; subst.
+      destruct (IHmiddle _ H') as [ x (x_in & flat_comp) ].
       eexists; eauto.
-    + rewrite <- app_comm_cons in H2; injection H2; intros.
-      symmetry in H; rewrite app_eq_nil_iff in H; destruct H; subst.
+    + rewrite <- app_comm_cons in H''; injection H''; intros.
+      symmetry in H0; rewrite app_eq_nil_iff in H0; destruct H0; subst.
       exists a; repeat (econstructor; eauto).
 Qed.
 
@@ -165,5 +163,5 @@ Proof.
   apply flatten_CompList_singleton in comp2.
   destruct comp2 as [ head' (in_middle & comp2) ].
   repeat setoid_rewrite in_app_iff.
-  repeat eexists; repeat split; try eassumption; intuition.
+  eexists _, _ ,_ ,_; repeat split; intuition; try eassumption; intuition.
 Qed.

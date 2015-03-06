@@ -25,20 +25,10 @@ Section monad.
 
   (** XXX This is a terribly ugly tactic that should be improved *)
   Local Ltac t2 :=
-    intros;
-    repeat match goal with
-             | [ H : _ |- _ ] => specialize (H _ (reflexivity _))
-             | [ H : _ |- _ ] => pose proof (fun x => H x _ (reflexivity _)); clear H
-           end;
-    repeat intro;
+    unfold refine; intros;
     specialize_all_ways;
-    repeat match goal with
-             | [ H : _ |- _ ] => apply computes_to_inv in H;
-                                progress (destruct_head ex;
-                                          destruct_head and)
-           end;
-    unfold refine in *;
-    econstructor; eauto.
+    computes_to_inv; eauto;
+    computes_to_econstructor; eauto.
 
   Lemma refine_under_bind_helper X Y (f f' : X -> Comp Y) x x' y
   : (forall y, refine x y -> refine x' y)

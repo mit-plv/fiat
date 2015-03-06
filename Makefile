@@ -42,7 +42,6 @@ CORE_MODULES    := \
 	Computation/Monad \
 	Computation/LogicLemmas \
 	Computation/SetoidMorphisms \
-	Computation/ReflectiveMonad \
 	Computation/ApplyMonad \
 	Computation/Refinements/General \
 	Computation/Refinements/Tactics \
@@ -123,6 +122,13 @@ QUERYSTRUCTURE_MODULES := \
 	QueryStructure/Implementation/DataStructures/BagADT/IndexSearchTerms \
 	QueryStructure/Implementation/Operations/BagADT/Refinements \
 	QueryStructure/Implementation/BagImplementation \
+	QueryStructure/Automation/General/QueryAutomation \
+	QueryStructure/Automation/General/InsertAutomation \
+	QueryStructure/Automation/General/DeleteAutomation \
+	QueryStructure/Automation/General/QueryStructureAutomation \
+	QueryStructure/Automation/Constraints/TrivialConstraintAutomation \
+	QueryStructure/Automation/Constraints/FunctionalDependencyAutomation \
+	QueryStructure/Automation/Constraints/ForeignKeyAutomation \
 	QueryStructure/Automation/AutoDB \
 	QueryStructure/Automation/QSImplementation
 

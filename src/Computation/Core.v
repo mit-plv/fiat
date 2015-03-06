@@ -2,15 +2,27 @@ Require Import Coq.Strings.String Coq.Sets.Ensembles.
 Require Import ADTSynthesis.Common.
 Require Export ADTSynthesis.Computation.Notations.
 
-Inductive Comp : Type -> Type :=
-| Return : forall A, A -> Comp A
-| Bind : forall A B, Comp A -> (A -> Comp B) -> Comp B
-| Pick : forall A, Ensemble A -> Comp A.
+Definition Comp := @Ensemble.
+
+Definition Return (A : Type) : A -> Comp A :=
+  Singleton A.
+
+Definition Bind (A B : Type)
+           (ca : Comp A)
+           (k : A -> Comp B)
+: Comp B :=
+  fun b =>
+    exists a : A,
+      In A ca a /\ In B (k a) b.
+
+Definition Pick (A : Type)
+           (P : Ensemble A)
+: Comp A := P.
 
 Bind Scope comp_scope with Comp.
-Arguments Bind [A%type B%type] _%comp _.
-Arguments Return [_] _.
-Arguments Pick [_] _.
+Arguments Bind [A%type B%type] ca%comp k _.
+Arguments Return [_] _ _.
+Arguments Pick [_] _ _.
 
 Notation ret := Return.
 
@@ -24,121 +36,65 @@ Notation "x ;; z" := (Bind x%comp (fun _ => z%comp))
 Notation "{ x  |  P }" := (@Pick _ (fun x => P)) : comp_scope.
 Notation "{ x : A  |  P }" := (@Pick A%type (fun x => P)) : comp_scope.
 
-Section comp.
-  Definition Lift `{ctx : Context} A B (f : A -> B)
-  : Comp A -> Comp B
-    := fun x => (x' <- x;
-                 Return (f x'))%comp.
-
-  Definition Or `{ctx : Context}
-  : Comp bool -> Comp bool -> Comp bool
-    := fun c1 c2 =>
-         (b1 <- c1;
-          if b1
-          then Return true
-          else c2)%comp.
-End comp.
-
-Section computes_to.
-
-  Inductive computes_to : forall A, Comp A -> A -> Prop :=
-  | ReturnComputes : forall A v, @computes_to A (Return v) v
-  | BindComputes : forall A B comp_a f comp_a_value comp_b_value,
-                     @computes_to A comp_a comp_a_value
-                     -> @computes_to B (f comp_a_value) comp_b_value
-                     -> @computes_to B (Bind comp_a f) comp_b_value
-  | PickComputes : forall A (P : Ensemble A) v, P v -> @computes_to A (Pick P) v.
-
-  Theorem computes_to_inv A (c : Comp A) v
-  : computes_to c v -> match c in (Comp A) return A -> Prop with
-                         | Return _ x => @eq _ x
-                         | Bind _ _ x f => fun v => exists comp_a_value,
-                                                      computes_to x comp_a_value
-                                                      /\ computes_to (f comp_a_value) v
-                         | Pick _ P => P
-                       end v.
-  Proof.
-    destruct 1; eauto.
-  Qed.
-End computes_to.
+Definition computes_to {A : Type} (ca : Comp A) (a : A) : Prop := ca a.
 
 Notation "c ↝ v" := (computes_to c v).
 
-Section is_computational.
+Lemma ReturnComputes
+      {A : Type}
+: forall (a : A),
+    ret a ↝ a.
+Proof.
+  constructor.
+Qed.
 
-  (** A [Comp] is maximally computational if it could be written without [Pick]. *)
-  Inductive is_computational : forall A, Comp A -> Prop :=
-  | Return_is_computational : forall A (x : A), is_computational (Return x)
-  | Bind_is_computational : forall A B (cA : Comp A) (f : A -> Comp B),
-                              is_computational cA
-                              -> (forall a,
-                                    @computes_to _ cA a -> is_computational (f a))
-                              -> is_computational (Bind cA f).
+Lemma BindComputes
+      {A B: Type}
+: forall (ca : Comp A)
+         (f : A -> Comp B)
+         (a : A)
+         (b : B),
+    ca ↝ a ->
+    f a ↝ b ->
+    (ca >>= f) ↝ b.
+Proof.
+  econstructor; eauto.
+Qed.
 
-  Theorem is_computational_inv A (c : Comp A)
-  : is_computational c
-    -> match c with
-         | Return _ _ => True
-         | Bind _ _ x f => is_computational x
-                           /\ forall v, x ↝ v
-                                        -> is_computational (f v)
-         | Pick _ _ => False
-       end.
-  Proof.
-    destruct 1; eauto.
-  Qed.
+Lemma PickComputes {A : Type}
+: forall (P : Ensemble A)
+         (a : A),
+    P a ->
+    {a' | P a'} ↝ a.
+Proof.
+  intros; eauto.
+Qed.
 
-  (** It's possible to extract the value from a fully detiministic computation *)
-  Fixpoint is_computational_unique_val A (c : Comp A) {struct c}
-  : is_computational c -> { a | unique (computes_to c) a }.
-  Proof.
-    refine match c as c return is_computational c -> { a | unique (computes_to c) a } with
-             | Return T x => fun _ => exist (unique (computes_to (ret x)))
-                                            x
-                                            _
-             | Pick _ _ => fun H => match is_computational_inv H with end
-             | Bind _ _ x f
-               => fun H
-                  => let H' := is_computational_inv H in
-                     let xv := @is_computational_unique_val _ _ (proj1 H') in
-                     let fxv := @is_computational_unique_val _ _ (proj2 H' _ (proj1 (proj2_sig xv))) in
-                     exist (unique (computes_to _))
-                           (proj1_sig fxv)
-                           _
-           end;
-    clearbodies;
-    clear is_computational_unique_val;
-    first [ abstract (repeat econstructor; intros; inversion_by computes_to_inv; eauto)
-          | abstract (
-                simpl in *;
-                unfold unique in *;
-                destruct_sig;
-                repeat econstructor;
-                intros;
-                eauto;
-                inversion_by computes_to_inv;
-                apply_hyp;
-                do_with_hyp ltac:(fun H => erewrite H by eassumption);
-                eassumption
-          ) ].
-  Defined.
+Lemma Return_inv {A : Type}
+: forall (a v : A),
+    ret a ↝ v -> a = v.
+Proof.
+  destruct 1; reflexivity.
+Qed.
 
-  Definition is_computational_val A (c : Comp A) (H : is_computational c) : A
-    := proj1_sig (@is_computational_unique_val A c H).
-  Definition is_computational_val_computes_to A (c : Comp A) (H : is_computational c) : c ↝ (is_computational_val H)
-    := proj1 (proj2_sig (@is_computational_unique_val A c H)).
-  Definition is_computational_val_unique A (c : Comp A) (H : is_computational c)
-  : forall x, c ↝ x -> is_computational_val H = x
-    := proj2 (proj2_sig (@is_computational_unique_val A c H)).
-  Definition is_computational_val_all_eq A (c : Comp A) (H : is_computational c)
-  : forall x y, c ↝ x -> c ↝ y -> x = y.
-  Proof.
-    intros.
-    transitivity (@is_computational_val A c H); [ symmetry | ];
-    apply is_computational_val_unique;
-    assumption.
-  Qed.
-End is_computational.
+Lemma Bind_inv {A B: Type}
+: forall (ca : Comp A)
+         (f : A -> Comp B)
+         (v : B),
+    ca >>= f ↝ v ->
+  exists a',
+    ca ↝ a' /\ f a' ↝ v.
+Proof.
+  destruct 1; eauto.
+Qed.
+
+Lemma Pick_inv {A : Type}
+: forall (P : Ensemble A)
+         (v : A),
+    {a | P a} ↝ v -> P v.
+Proof.
+  eauto.
+Qed.
 
 (** The old program might be non-deterministic, and the new program
       less so.  This means we want to say that if [new] can compute to
@@ -166,11 +122,48 @@ Definition refineEquiv {A}
            (new : Comp A)
   := refine old new /\ refine new old.
 
-Local Obligation Tactic := repeat first [ solve [ eauto ]
+Local Ltac t := repeat first [ solve [ unfold computes_to in *; eauto ]
                                         | progress hnf in *
                                         | intro
                                         | split
                                         | progress split_and ].
 
-Global Program Instance refine_PreOrder A : PreOrder (@refine A).
-Global Program Instance refineEquiv_Equivalence A : Equivalence (@refineEquiv A).
+Global Instance refine_PreOrder A : PreOrder (@refine A).
+t.
+Qed.
+
+Global Instance refineEquiv_Equivalence A : Equivalence (@refineEquiv A).
+t.
+Qed.
+
+Global Opaque Return.
+Global Opaque Bind.
+Global Opaque Pick.
+Global Opaque computes_to.
+
+Global Hint Resolve ReturnComputes.
+Global Hint Resolve BindComputes.
+Global Hint Resolve PickComputes.
+
+Ltac computes_to_inv :=
+  repeat match goal with
+           | H : {a' | @?P a'} ↝ _ |- _ => apply Pick_inv in H
+           | H : Return ?a ↝ _ |- _ => apply Return_inv in H
+           | H : Bind (A := ?A) ?ca ?k ↝ _ |- _ =>
+             apply Bind_inv in H;
+               let a' := fresh "v" in
+               let H' := fresh H "'" in
+               destruct H as [a' [H H']]
+         end.
+
+Ltac computes_to_econstructor :=
+  first
+    [ unfold refine; intros; eapply @ReturnComputes
+    | unfold refine; intros; eapply @BindComputes
+    | unfold refine; intros; eapply @PickComputes ].
+
+Ltac computes_to_constructor :=
+  first
+    [ unfold refine; intros; apply @ReturnComputes
+    | unfold refine; intros; apply @BindComputes
+    | unfold refine; intros; apply @PickComputes ].

@@ -20,13 +20,11 @@ Proof.
     simpl; intros.
   - destruct_ex; intuition.
     rewrite_rev_hyp; try eassumption; [].
-    autorewrite with refine_monad; f_equiv;
-    unfold pointwise_relation; intros.
-    econstructor; inversion_by computes_to_inv; eauto.
+    autorewrite with refine_monad; f_equiv.
   - destruct_ex; intuition.
     rewrite_rev_hyp; try eassumption; [].
-    autorewrite with refine_monad; f_equiv;
-    unfold pointwise_relation; intros.
-    intros v Comp_v; inversion_by computes_to_inv; subst; simpl in *;
+    autorewrite with refine_monad; f_equiv.
+    unfold pointwise_relation; intros;
+    intros v Comp_v; computes_to_inv; subst; simpl in *;
     eauto.
 Qed.

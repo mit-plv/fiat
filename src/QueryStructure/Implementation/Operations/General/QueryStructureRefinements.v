@@ -7,19 +7,6 @@ Require Import Coq.Strings.String Coq.omega.Omega Coq.Lists.List Coq.Logic.Funct
         ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureNotations
         ADTSynthesis.QueryStructure.Implementation.Operations.General.QueryRefinements ADTSynthesis.QueryStructure.Implementation.Operations.General.InsertRefinements ADTSynthesis.QueryStructure.Implementation.Operations.General.DeleteRefinements. (* Add Update *)
 
-Ltac subst_strings :=
-  repeat match goal with
-           | [ H : string |- _ ] => subst H
-         end.
-
-Ltac pose_string_ids :=
-  subst_strings;
-  repeat match goal with
-           | |- context [String ?R ?R'] =>
-             let str := fresh "StringId" in
-             set (String R R') as str in *
-         end.
-
 Lemma Constructor_DropQSConstraints {MySchema} {Dom}
 : forall oldConstructor (d : Dom),
     refine
@@ -29,8 +16,8 @@ Lemma Constructor_DropQSConstraints {MySchema} {Dom}
         (or' <- oldConstructor d;
          ret (DropQSConstraints or')).
 Proof.
-  unfold refine; intros; inversion_by computes_to_inv.
-  repeat econstructor; eauto.
+  unfold refine; intros; computes_to_inv.
+  repeat computes_to_econstructor; eauto.
 Qed.
 
 (* Queries over an empty relation return empty lists. *)
@@ -66,10 +53,9 @@ Lemma Ensemble_List_Equivalence_Insert {A}
 Proof.
   unfold UnIndexedEnsembleListEquivalence, refine, In,
   EnsembleInsert; intros.
-  inversion_by computes_to_inv; subst; econstructor.
-  simpl; intuition.
-  exists (a :: x0).
-  econstructor; eauto.
+   computes_to_inv; subst; computes_to_econstructor.
+   destruct_ex; simpl; intuition.
+  exists (a :: x).
   intuition; subst; simpl; eauto.
   right; eapply H0; eauto.
   simpl in *; intuition.
@@ -77,7 +63,7 @@ Proof.
   econstructor; eauto.
   unfold not; intros.
   rewrite in_map_iff in H1; destruct_ex; intuition.
-  apply H0 in H3.
+  apply H0 in H4.
   eapply H; eexists; eauto.
 Qed.
 
@@ -111,43 +97,12 @@ Proof.
     Transparent Query_For.
     unfold Query_For.
     repeat setoid_rewrite refineEquiv_bind_bind; simpl.
-    unfold refine; intros; inversion_by computes_to_inv.
-    econstructor; eauto.
-    econstructor; eauto.
-    econstructor; eauto.
-    econstructor.
+    unfold refine; intros;  computes_to_inv.
+    repeat computes_to_econstructor; eauto.
     rewrite Permutation.Permutation_app_head; eauto.
   - simpl; unfold In, not; intros; destruct_ex; intuition.
     eapply H; eauto.
 Qed.
-
-Ltac start_honing_QueryStructure :=
-  pose_string_ids;
-  match goal with
-      |- context [@BuildADT (QueryStructure ?Rep) _ _ _ _] =>
-      hone representation using (@DropQSConstraints_AbsR Rep);
-        match goal with
-            |- context [Build_consDef (@Build_consSig ?Id _)
-                                      (@absConstructor _ _ _ _ _)] =>
-            hone constructor Id;
-              [ etransitivity;
-                [apply Constructor_DropQSConstraints |
-                 simplify with monad laws; finish honing]
-              | ]
-        end; pose_string_ids;
-        repeat (match goal with
-                  | |- context [Build_methDef (@Build_methSig ?Id _ _)
-                                              (absMethod _ (fun _ _ => Insert _ into _))] =>
-                    drop constraints from insert Id
-                  | |- context [Build_methDef (@Build_methSig ?Id _ _)
-                                              (absMethod _ (fun _ _ => Delete _ from _ where _))] =>
-                    drop constraints from delete Id
-                  | |- context [Build_methDef (@Build_methSig ?Id _ _)
-                                              (@absMethod _ _ _ _ _ _)] =>
-                    drop constraints from query Id
-                end; pose_string_ids)
-  end.
-
 
   Lemma get_update_unconstr_iff {db_schema qs table new_contents} :
     forall x,
@@ -158,5 +113,3 @@ Ltac start_honing_QueryStructure :=
     intros. rewrite ith_replace_BoundIndex_eq;
             reflexivity.
   Qed.
-
-Tactic Notation "start" "honing" "QueryStructure" := start_honing_QueryStructure.

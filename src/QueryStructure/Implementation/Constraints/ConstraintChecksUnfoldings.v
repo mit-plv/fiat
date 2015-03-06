@@ -8,8 +8,8 @@ Require Import Coq.Lists.List Coq.Strings.String Coq.Sets.Ensembles Coq.Arith.Ar
 
 (* We put all these simplification hints into a distinct file
    so we're not unfolding things all willy-nilly. *)
-Arguments Iterate_Decide_Comp _ _ / .
-Arguments Iterate_Decide_Comp' _ _ _ _ / .
+Arguments Iterate_Decide_Comp _ _ / _ .
+Arguments Iterate_Decide_Comp' _ _ _ _ / _ .
 Arguments Ensemble_BoundedIndex_app_comm_cons  _ _ _ _ _ _ / .
 Arguments SatisfiesCrossRelationConstraints  _ _ _ _ _ / .
 Arguments BuildQueryStructureConstraints  _ _ _ / .

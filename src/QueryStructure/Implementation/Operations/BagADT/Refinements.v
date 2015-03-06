@@ -34,20 +34,20 @@ Section BagsQueryStructureRefinements.
     clear.
     simpl; destruct idx as [idx [n In_n]]; revert v idx n In_n.
     induction indices; simpl; intros; destruct n; simpl in *; try discriminate;
-    try injection In_n; intros; inversion_by computes_to_inv; subst.
+    try injection In_n; intros;  computes_to_inv; subst.
     - unfold i2th_Bounded, ith_Bounded_rect; simpl; eauto.
       apply Extensionality_Ensembles; unfold Same_set, Included; simpl; intuition.
-      unfold CallBagConstructor in H1; simpl in H1; inversion_by computes_to_inv.
-      subst; simpl in *; destruct H.
+      unfold CallBagConstructor in H; simpl in H;  computes_to_inv.
+      subst; simpl in *; destruct H0.
     - unfold i2th_Bounded, ith_Bounded_rect; simpl; eapply IHindices; eauto.
   Qed.
 
   Corollary refine_QSEmptySpec_Initialize_IndexedQueryStructure
   : refine {nr' | DelegateToBag_AbsR (DropQSConstraints (QSEmptySpec qs_schema)) nr'}
-           (Initialize_IndexedQueryStructure BagIndexKeys).
+           (@Initialize_IndexedQueryStructure _ BagIndexKeys).
   Proof.
     intros v Comp_v.
-    econstructor.
+    computes_to_econstructor.
     unfold IndexedQueryStructure, DelegateToBag_AbsR, GetIndexedRelation.
     unfold GetUnConstrRelation.
     unfold DropQSConstraints, QSEmptySpec; split.
@@ -98,16 +98,16 @@ Section BagsQueryStructureRefinements.
     setoid_rewrite refineEquiv_bind_bind;
       setoid_rewrite refineEquiv_bind_unit; simpl.
     unfold List_Query_In.
-    intros v Comp_v; inversion_by computes_to_inv;
+    intros v Comp_v;  computes_to_inv;
     unfold EnsembleIndexedListEquivalence,
     UnIndexedEnsembleListEquivalence in *.
     intuition; destruct_ex; intuition; subst.
-    econstructor; eauto.
-    econstructor; rewrite ((proj1 H) idx); eauto.
+    computes_to_econstructor; eauto.
+    computes_to_econstructor; rewrite ((proj1 H) idx); eauto.
     rewrite map_map.
-    repeat setoid_rewrite map_app in H3;
-      repeat setoid_rewrite map_map in H3; simpl in *;
-      rewrite app_nil_r in H3; eauto.
+    repeat setoid_rewrite map_app in Comp_v'';
+      repeat setoid_rewrite map_map in Comp_v''; simpl in *;
+      rewrite app_nil_r in Comp_v''; eauto.
   Qed.
 
   Local Transparent Query_For.
@@ -126,8 +126,8 @@ Section BagsQueryStructureRefinements.
     simpl; intros; unfold Query_For.
     simplify with monad laws.
     unfold CallBagMethod; simpl.
-    unfold refine; intros; inversion_by computes_to_inv.
-    subst; econstructor; econstructor; eauto.
+    unfold refine; intros;  computes_to_inv.
+    subst; repeat computes_to_econstructor; eauto.
   Qed.
 
   Lemma refine_Join_Query_In_Enumerate'
@@ -148,17 +148,17 @@ Section BagsQueryStructureRefinements.
   Proof.
     intros.
     unfold List_Query_In; induction l; unfold Join_Comp_Lists; simpl.
-    - intros v Comp_v; inversion_by computes_to_inv; subst; eauto.
+    - intros v Comp_v;  computes_to_inv; subst; eauto.
     - setoid_rewrite IHl; rewrite refine_Query_In_Enumerate; eauto.
       unfold List_Query_In.
       setoid_rewrite refineEquiv_bind_bind at 1.
       setoid_rewrite refineEquiv_bind_bind at 2.
-      intros v Comp_v; inversion_by computes_to_inv.
+      intros v Comp_v;  computes_to_inv.
       subst.
-      rewrite map_app, map_map in H2; simpl in *.
-      econstructor; eauto.
-      apply flatten_CompList_app_inv' in H2; destruct_ex; intuition.
-      subst; repeat (econstructor; eauto).
+      rewrite map_app, map_map in Comp_v'; simpl in *.
+      computes_to_econstructor; eauto.
+      apply flatten_CompList_app_inv' in Comp_v'; destruct_ex; intuition.
+      subst; repeat (computes_to_econstructor; eauto).
       unfold Build_single_Tuple_list in *.
       rewrite !map_app, !map_map, app_nil_r; simpl; eauto.
   Qed.
@@ -215,7 +215,7 @@ Section BagsQueryStructureRefinements.
                         resultComp l l')).
   Proof.
     split; simpl; intros; f_equiv; intros v Comp_v;
-    inversion_by computes_to_inv; subst;
+     computes_to_inv; subst;
     repeat (econstructor; eauto).
   Qed.*)
 
@@ -277,9 +277,9 @@ Section BagsQueryStructureRefinements.
       setoid_rewrite refineEquiv_bind_bind at 1.
       repeat setoid_rewrite refineEquiv_bind_unit; simpl.
       intros v Comp_v.
-      inversion_by computes_to_inv; subst.
-      generalize (IHl1 _ H1); intros; inversion_by computes_to_inv.
-      econstructor; subst; eauto.
+       computes_to_inv; subst.
+       generalize (IHl1 _ Comp_v); intros;  computes_to_inv.
+       computes_to_econstructor; subst; eauto.
       rewrite filter_app, filter_map.
       simpl.
       erewrite filter_by_equiv; eauto.
@@ -319,9 +319,9 @@ Section BagsQueryStructureRefinements.
       setoid_rewrite refineEquiv_bind_bind at 1.
       repeat setoid_rewrite refineEquiv_bind_unit; simpl.
       intros v Comp_v.
-      inversion_by computes_to_inv; subst.
-      generalize (IHl1 _ H1); intros; inversion_by computes_to_inv.
-      econstructor; subst; eauto.
+       computes_to_inv; subst.
+      generalize (IHl1 _ Comp_v); intros;  computes_to_inv.
+      computes_to_econstructor; subst; eauto.
       rewrite filter_app, filter_map.
       simpl.
       erewrite filter_by_equiv; eauto.
@@ -385,21 +385,21 @@ Section BagsQueryStructureRefinements.
     - simplify with monad laws; rewrite refineEquiv_bind_unit;
       reflexivity.
     - simplify with monad laws; intros v Comp_v;
-      inversion_by computes_to_inv; subst; econstructor; eauto.
-      pose (IHs1 _ (BindComputes _ H2 (ReturnComputes _))).
-      inversion_by computes_to_inv; subst.
-      repeat (econstructor; eauto).
+       computes_to_inv; subst; computes_to_econstructor; eauto.
+      pose (IHs1 _ (BindComputes _ (fun x => ret (filter filter_rest x)) _ _ Comp_v'0 (ReturnComputes _))).
+       computes_to_inv; subst.
+      repeat (computes_to_econstructor; eauto).
       repeat rewrite filter_app, filter_map; simpl; eauto.
-      rewrite <- filter_and, H3; eauto.
-    - intros v Comp_v; inversion_by computes_to_inv; subst; eauto.
+      rewrite <- filter_and, c'; eauto.
+    - intros v Comp_v;  computes_to_inv; subst; eauto.
     - simplify with monad laws; intros v Comp_v;
-      inversion_by computes_to_inv; subst; econstructor; eauto.
-      pose proof (IHs1 _ (BindComputes _ H2 (ReturnComputes _))).
-      inversion_by computes_to_inv; subst.
-      repeat (econstructor; eauto).
+       computes_to_inv; subst; computes_to_econstructor; eauto.
+      pose proof (IHs1 _ (BindComputes _ (fun x => ret (_ x)) _ _ Comp_v'0 (ReturnComputes _))).
+       computes_to_inv; subst.
+      repeat (computes_to_econstructor; eauto).
       rewrite filter_app, filter_map; simpl; eauto.
       repeat rewrite filter_app, filter_map; simpl; eauto.
-      rewrite <- filter_and, H3; eauto.
+      rewrite <- filter_and, H'; eauto.
   Qed.
 
   Corollary filter_join_ilist_hd
@@ -514,7 +514,7 @@ Section BagsQueryStructureRefinements.
   Proof.
     split; rewrite refineEquiv_bind_bind;
     setoid_rewrite refineEquiv_bind_unit;
-    intros v Comp_v; inversion_by computes_to_inv;
+    intros v Comp_v;  computes_to_inv;
     try econstructor; eauto.
   Qed.
 
@@ -609,21 +609,21 @@ Section BagsQueryStructureRefinements.
     split; induction s1; unfold Join_Comp_Lists in *; simpl in *; intros; eauto.
     - simplify with monad laws; rewrite refineEquiv_bind_unit; reflexivity.
     - simplify with monad laws; intros v Comp_v;
-      inversion_by computes_to_inv; subst; econstructor; eauto.
-      pose (IHs1 _ (BindComputes _ H2 (ReturnComputes _))).
-      inversion_by computes_to_inv; subst.
-      repeat (econstructor; eauto).
+       computes_to_inv; subst; computes_to_econstructor; eauto.
+      pose (IHs1 _ (BindComputes _ (fun x => ret (_ x)) _ _ Comp_v'0 (ReturnComputes _))).
+       computes_to_inv; subst.
+      repeat (computes_to_econstructor; eauto).
       repeat rewrite filter_app, filter_map; simpl; eauto.
-      rewrite <- filter_and, H3; eauto.
-    - intros v Comp_v; inversion_by computes_to_inv; subst; eauto.
+      rewrite <- filter_and, c'; eauto.
+    - intros v Comp_v;  computes_to_inv; subst; eauto.
     - simplify with monad laws; intros v Comp_v;
-      inversion_by computes_to_inv; subst; econstructor; eauto.
-      pose proof (IHs1 _ (BindComputes _ H2 (ReturnComputes _))).
-      inversion_by computes_to_inv; subst.
-      repeat (econstructor; eauto).
+       computes_to_inv; subst; computes_to_econstructor; eauto.
+      pose proof (IHs1 _ (BindComputes _ (fun x => ret (_ x)) _ _ Comp_v'0 (ReturnComputes _))).
+       computes_to_inv; subst.
+      repeat (computes_to_econstructor; eauto).
       rewrite filter_app, filter_map; simpl; eauto.
       repeat rewrite filter_app, filter_map; simpl; eauto.
-      rewrite <- filter_and, H3; eauto.
+      rewrite <- filter_and, H'; eauto.
   Qed.
 
   Lemma refine_Join_Comp_Lists_filter_search_term_snd_dep
@@ -679,7 +679,7 @@ Section BagsQueryStructureRefinements.
     rewrite (r_o_eq idx) in l_eqv.
     Local Transparent CallBagMethod.
     eexists l; unfold CallBagMethod; simpl; simplify with monad laws.
-    econstructor; inversion_by computes_to_inv; subst; eauto.
+    computes_to_econstructor;  computes_to_inv; subst; eauto.
   Qed.
 
   Lemma realizeable_Find
@@ -696,7 +696,7 @@ Section BagsQueryStructureRefinements.
     intros; destruct H as [r_o_eq H]; destruct (H idx) as [l l_eqv].
     rewrite (r_o_eq idx) in l_eqv.
     eexists (filter _ l); unfold CallBagMethod; simpl; eauto.
-    econstructor; eauto.
+    computes_to_econstructor; eauto.
   Qed.
 
   Corollary refine_Join_Comp_Lists_filter_search_term_snd_dep'
@@ -863,8 +863,8 @@ Section BagsQueryStructureRefinements.
                  ret (UpdateIndexedRelation r_n idx (fst l))).
   Proof.
     intros.
-    constructor; inversion_by computes_to_inv.
-    unfold CallBagMethod in *; simpl in *; inversion_by computes_to_inv; subst.
+    computes_to_constructor;  computes_to_inv.
+    unfold CallBagMethod in *; simpl in *;  computes_to_inv; subst.
     simpl.
     unfold DelegateToBag_AbsR; split; intros.
     - destruct (BoundedString_eq_dec idx idx0); subst.
@@ -885,7 +885,7 @@ Section BagsQueryStructureRefinements.
     - destruct H.
       destruct (BoundedString_eq_dec idx idx0); subst.
       + rewrite get_update_unconstr_eq.
-        destruct (H1 idx0) as [l [[bnd fresh_bnd] [l' [l'_eq [l_eqv NoDup_l']]]]].
+        destruct (H2 idx0) as [l [[bnd fresh_bnd] [l' [l'_eq [l_eqv NoDup_l']]]]].
         exists (filter (fun a => negb (dec a)) l); split.
         * exists bnd; unfold EnsembleDelete, UnConstrFreshIdx; intros.
           inversion H3; subst; eauto.

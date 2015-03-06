@@ -33,7 +33,7 @@ Add Parametric Morphism A
     as refine_refineEquiv.
 Proof. t. Qed.
 
-Hint Constructors computes_to.
+
 
 Add Parametric Morphism A B
 : (@Bind A B)
@@ -46,8 +46,8 @@ Proof.
   simpl; intros.
   unfold pointwise_relation, refine in *; simpl in *.
   intros.
-  inversion_by computes_to_inv.
-  eauto.
+  computes_to_inv.
+  computes_to_econstructor; eauto.
 Qed.
 
 Add Parametric Morphism A B
@@ -63,8 +63,8 @@ Proof.
   unfold pointwise_relation, refineEquiv, refine in *.
   split_and; simpl in *.
   split; intros;
-  inversion_by computes_to_inv;
-  eauto.
+  computes_to_inv;
+  computes_to_econstructor; eauto.
 Qed.
 
 Add Parametric Morphism A
@@ -77,8 +77,8 @@ Proof.
   simpl; intros.
   unfold pointwise_relation, refine, impl in *; simpl in *.
   intros.
-  inversion_by computes_to_inv.
-  eauto.
+  computes_to_inv.
+  computes_to_econstructor; eauto.
 Qed.
 
 Add Parametric Morphism A
@@ -91,8 +91,8 @@ Proof.
   simpl; intros.
   unfold pointwise_relation, refine, impl in *; simpl in *.
   intros.
-  inversion_by computes_to_inv.
-  eauto.
+  computes_to_inv.
+  computes_to_econstructor; eauto.
 Qed.
 
 (* We have to define a wrapper for if then else in
@@ -179,9 +179,9 @@ Proof.
   repeat match goal with
            | [ H : computes_to _ _ |- _ ] => apply computes_to_inv in H
          end.
-  constructor.
-  destruct_head ex.
-  eauto.
+  computes_to_econstructor.
+  apply_in_hyp_no_cbv_match @Pick_inv.
+  destruct_ex; eauto.
 Qed.
 
 Instance refine_refineEquiv_subrelation A

@@ -278,20 +278,6 @@ Definition SharpenFully {Sig}
                                                       cMethods DelegateSpecs cAbsR
                                                       cConstructorsRefinesSpec cMethodsRefinesSpec).
 
-Definition Extract_is_computationalADT
-           {Sig}
-           (adt : ADT Sig)
-           (adt_is_comp : is_computationalADT adt)
-: cADT Sig :=
-  existT _ (Rep adt)
-         {| pcConstructors :=
-              fun idx arg =>
-                CallComputationalConstructor adt_is_comp idx arg;
-            pcMethods :=
-              fun idx arg rep =>
-                CallComputationalMethod adt_is_comp idx arg rep
-         |}.
-
 (* Honing tactic for refining the observer method with the specified index.
      This version of the tactic takes the new implementation as an argument. *)
 

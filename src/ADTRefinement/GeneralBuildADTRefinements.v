@@ -63,7 +63,7 @@ Section BuildADTRefinements.
   Proof.
     eapply refineADT_BuildADT_ReplaceConstructor;
     simpl; unfold refine; intros; subst; eauto.
-    repeat econstructor; try destruct v; eauto.
+    repeat computes_to_econstructor; try destruct v; eauto.
   Qed.
 
   Corollary SharpenStep_BuildADT_ReplaceConstructor_eq
@@ -236,7 +236,7 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
     simpl; intros; subst; try reflexivity;
     setoid_rewrite H; setoid_rewrite refineEquiv_pick_eq';
     simplify with monad laws.
-    econstructor; eauto.
+    computes_to_econstructor; eauto.
     destruct v; simpl; econstructor.
   Defined.
 
@@ -265,7 +265,7 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
     eapply refineADT_BuildADT_ReplaceMethod with
     (AbsR := fun r_o r_n => proj1_sig r_o = proj1_sig r_n); eauto;
     simpl in *; intros; subst; eauto.
-    intro; econstructor; eauto.
+    computes_to_econstructor; eauto.
   Qed.
 
   (* Notation-Friendly Lemmas for constructing an easily extractible
@@ -716,13 +716,13 @@ Lemma refineCallMethod {Sig}
 Proof.
   intros.
   pose proof (H _ (ComputesToLiftcADT cadt idx r_n d));
-    inversion_by computes_to_inv; subst.
-  exists x; intuition.
-  intros c Comp_v; inversion_by computes_to_inv; subst; auto.
-  rewrite <- H3; refine pick val x0; simpl; eauto.
+    computes_to_inv; subst.
+  eexists v ; intuition.
+  intros c Comp_v; computes_to_inv; subst; auto.
+  rewrite <- H0''; refine pick val _; simpl; eauto.
   reflexivity.
-  rewrite <- H3; eauto.
-  rewrite <- H3; eauto.
+  rewrite <- H0''; eauto.
+  rewrite <- H0''; eauto.
 Qed.
 
 Ltac ilist_of_evar' C D B As k :=

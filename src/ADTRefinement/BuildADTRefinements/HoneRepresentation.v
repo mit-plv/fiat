@@ -49,13 +49,13 @@ Section HoneRepresentation.
     - unfold getConsDef.
       rewrite <- ith_Bounded_imap.
       unfold absConsDef, absConstructor, refineConstructor, refine; simpl; intros.
-      inversion_by computes_to_inv; eauto.
+      computes_to_inv; eauto.
     - unfold getMethDef.
       rewrite <- ith_Bounded_imap.
       unfold absMethDef, absMethod, refineMethod, refine; simpl; intros.
-      inversion_by computes_to_inv; eauto.
+      computes_to_inv; eauto.
       destruct (H0 _ H) as [or' [Comp_or [AbsR_or'' or''_eq] ] ];
-        subst; repeat econstructor; eauto.
+        subst; repeat computes_to_econstructor; eauto.
       destruct v; simpl in *; subst; econstructor.
   Qed.
 
@@ -73,9 +73,9 @@ Section HoneRepresentation.
       -> refine (absMethod (Cod := Cod) AbsR oldMethod nr d)
                 (refinedMeth nr d).
   Proof.
-    unfold absMethod, refine; intros * H v ComputesTo_v; econstructor;
+    unfold absMethod, refine; intros * H v ComputesTo_v; computes_to_econstructor;
     intros or AbsR_or.
-    pose proof (H _ AbsR_or v ComputesTo_v); inversion_by computes_to_inv;
+    pose proof (H _ AbsR_or v ComputesTo_v); computes_to_inv;
     subst.
     eexists; split; eauto.
   Qed.
@@ -92,10 +92,10 @@ Section HoneRepresentation.
                    (refinedMeth nr d)).
   Proof.
     unfold absMethod, refine; intros * H or AbsR_or v ComputesTo_v.
-    pose proof (H v ComputesTo_v); inversion_by computes_to_inv;
+    pose proof (H v ComputesTo_v); computes_to_inv;
     subst.
     destruct (H0 _ AbsR_or); intuition; subst.
-    repeat econstructor; eauto.
+    repeat computes_to_econstructor; eauto.
     rewrite H4; destruct v; econstructor.
   Qed.
 
@@ -110,8 +110,8 @@ Section HoneRepresentation.
       -> refine (absConstructor AbsR oldConstructor d)
                 (refinedConstructor d).
   Proof.
-    unfold absConstructor, refine; intros * H v ComputesTo_v; econstructor.
-    pose proof (H v ComputesTo_v); inversion_by computes_to_inv;
+    unfold absConstructor, refine; intros * H v ComputesTo_v; computes_to_econstructor.
+    pose proof (H v ComputesTo_v); computes_to_inv;
     subst.
     eexists; split; eauto.
   Qed.
@@ -125,9 +125,8 @@ Section HoneRepresentation.
                  (refinedConstructor d)).
   Proof.
     unfold absConstructor, refine; intros * H v ComputesTo_v.
-    pose proof (H v ComputesTo_v); inversion_by computes_to_inv;
-    subst.
-    repeat econstructor; eauto.
+    pose proof (H v ComputesTo_v); computes_to_inv;
+    destruct_ex; intuition; subst.
   Qed.
 
 End HoneRepresentation.

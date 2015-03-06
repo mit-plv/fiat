@@ -58,8 +58,8 @@ Section SimplifyRep.
     econstructor 1 with (AbsR := AbsR); simpl in *; eauto; intros.
     - rewrite <- ith_Bounded_imap.
       unfold simplifyConstrDef, simplifyConstructor; simpl.
-      intros v Comp_v; inversion_by computes_to_inv;
-      repeat econstructor; subst; eauto.
+      intros v Comp_v; computes_to_inv;
+      repeat computes_to_econstructor; subst; eauto.
     - rewrite <- ith_Bounded_imap.
       rewrite H0; eauto; reflexivity.
   Qed.

@@ -48,9 +48,9 @@ Section addCache.
                   (addCacheToMethod oldMethod).
   Proof.
     unfold refineMethod, addCacheToMethod, refine; intros.
-    inversion_by computes_to_inv; subst.
+    computes_to_inv; subst.
     destruct H; subst.
-    repeat econstructor; eauto.
+    repeat computes_to_econstructor; eauto; split; eauto.
   Qed.
 
   (* A similar approach works for constructors. *)
@@ -71,8 +71,8 @@ Section addCache.
                   (addCacheToConstructor oldConstr).
   Proof.
     unfold refineConstructor, addCacheToConstructor, refine; intros.
-    inversion_by computes_to_inv; subst.
-    repeat econstructor; eauto.
+    computes_to_inv; subst.
+    repeat computes_to_econstructor; eauto; split; eauto.
   Qed.
 
   (* We can refine an ADT using the default caching implementations
@@ -101,7 +101,7 @@ Section addCache.
                      cachedVal := cv |}).
   Proof.
     unfold refine; intros or v ComputesTo_v;
-    inversion_by computes_to_inv; subst; econstructor.
+    computes_to_inv; subst; econstructor;
     unfold cachedRep_AbsR; simpl; intuition.
   Qed.
 

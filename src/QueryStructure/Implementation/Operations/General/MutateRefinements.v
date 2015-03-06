@@ -214,36 +214,33 @@ Section MutateRefinements.
          end).
   Proof.
     intros qsSchema qs Ridx MutatedTuples v Comp_v.
-    do 4 (apply_in_hyp computes_to_inv; destruct_ex; split_and).
-    repeat (apply_in_hyp computes_to_inv; destruct_ex; split_and); simpl in *.
-
-    assert (decides x
+    computes_to_inv.
+    assert (decides v0
                       (MutationPreservesAttributeConstraints
                          MutatedTuples
                        (SatisfiesAttributeConstraints Ridx)))
-      as H0'
-        by
-          (apply H0;
+      as H0' by
+          (apply Comp_v;
            unfold SatisfiesAttributeConstraints, QSGetNRelSchema, GetNRelSchema;
-           pose proof (attrconstr ((ith_Bounded relName (rels qs) Ridx))) as H';
+           pose proof (attrconstr ((ith_Bounded relName (rels qs) Ridx))) as H'; simpl;
            destruct (attrConstraints
                        (relSchema (nth_Bounded relName (qschemaSchemas qsSchema) Ridx)));
-           [apply H' | ]; eauto); clear H0.
+           [apply H' | ]; eauto); clear Comp_v.
 
-    assert (decides x0
+    assert (decides v1
                     (MutationPreservesTupleConstraints
                        MutatedTuples
                        (SatisfiesTupleConstraints Ridx)))
       as H1'
         by
-          (apply H1;
+          (apply Comp_v';
            unfold SatisfiesTupleConstraints, QSGetNRelSchema, GetNRelSchema;
-           pose proof (tupleconstr ((ith_Bounded relName (rels qs) Ridx))) as H';
+           pose proof (tupleconstr ((ith_Bounded relName (rels qs) Ridx))) as H'; simpl;
            destruct (tupleConstraints
                        (relSchema (nth_Bounded relName (qschemaSchemas qsSchema) Ridx)));
-           [apply H' | ]; eauto); clear H1.
+           [apply H' | ]; eauto); clear Comp_v'.
 
-    assert (decides x1
+    assert (decides v2
                     (forall Ridx' : BoundedString,
                        Ridx' <> Ridx ->
                        MutationPreservesCrossConstraints
@@ -251,12 +248,12 @@ Section MutateRefinements.
                          MutatedTuples
                          (SatisfiesCrossRelationConstraints Ridx' Ridx)))
       as H2' by
-          (apply H2; intros;
+          (apply Comp_v''; intros;
            pose proof (crossConstr qs Ridx' Ridx);
-           unfold SatisfiesCrossRelationConstraints;
-           destruct (BuildQueryStructureConstraints qsSchema Ridx' Ridx); eauto); clear H2.
+           unfold SatisfiesCrossRelationConstraints; simpl;
+           destruct (BuildQueryStructureConstraints qsSchema Ridx' Ridx); eauto); clear Comp_v''.
 
-    assert (decides x2
+    assert (decides v3
                     (forall Ridx' : BoundedString,
                        Ridx' <> Ridx ->
                        MutationPreservesCrossConstraints
@@ -264,19 +261,20 @@ Section MutateRefinements.
                          (GetRelation qs Ridx')
                          (SatisfiesCrossRelationConstraints Ridx Ridx')))
       as H3' by
-          (apply H3; intros;
+          (apply Comp_v'''; intros;
            pose proof (crossConstr qs Ridx Ridx');
-           unfold SatisfiesCrossRelationConstraints;
-           destruct (BuildQueryStructureConstraints qsSchema Ridx Ridx'); eauto); clear H3.
+           unfold SatisfiesCrossRelationConstraints; simpl;
+           destruct (BuildQueryStructureConstraints qsSchema Ridx Ridx'); eauto); clear Comp_v'''.
 
-    destruct x; destruct x0; destruct x1; destruct x2;
+    destruct v0; destruct v1; destruct v2; destruct v3;
     try solve
-        [econstructor; unfold QSMutateSpec; simpl in *; right; subst; intuition].
-    econstructor; unfold QSMutateSpec; simpl in *; left; intuition;
-    [ rewrite <- H; eauto
-    | rewrite <- H; eauto
-    | unfold Same_set, Included, In; eauto; intuition; eapply H0; eauto
-    | rewrite H; intuition] .
+        [computes_to_econstructor; computes_to_inv; subst; unfold QSMutateSpec; simpl in *; right; subst; intuition].
+    computes_to_inv; subst;
+    computes_to_econstructor; unfold QSMutateSpec; simpl in *; left; intuition eauto.
+    - rewrite <- H; eauto.
+    - rewrite <- H; eauto.
+    - unfold Same_set, Included, In; eauto; intuition; eapply H0; eauto.
+    - rewrite H; intuition.
   Qed.
 
   Lemma QSMutateSpec_UnConstr_refine' :
@@ -348,8 +346,8 @@ Section MutateRefinements.
     f_equiv; unfold pointwise_relation; intros.
     f_equiv; unfold pointwise_relation; intros.
     f_equiv; unfold pointwise_relation; intros.
-    { intros v Comp_v; subst; inversion_by computes_to_inv;
-      unfold decides in *; find_if_inside; intros; econstructor; intros.
+    { intros v Comp_v; subst; computes_to_inv;
+      unfold decides in *; find_if_inside; intros; computes_to_econstructor; intros.
       - rewrite <- GetRelDropConstraints in *; eapply Comp_v; intros; eauto;
         eapply H; eauto; rewrite <- GetRelDropConstraints; eauto.
       - unfold not; intros; eapply Comp_v; intros; rewrite <- GetRelDropConstraints in *.
@@ -357,8 +355,8 @@ Section MutateRefinements.
         + rewrite GetRelDropConstraints; eauto.
     }
     f_equiv; unfold pointwise_relation; intros.
-    { intros v Comp_v; subst; inversion_by computes_to_inv;
-      unfold decides in *; find_if_inside; intros; econstructor; intros.
+    { intros v Comp_v; subst; computes_to_inv;
+      unfold decides in *; find_if_inside; intros; computes_to_econstructor; intros.
       - rewrite <- GetRelDropConstraints in *; eapply Comp_v; intros; eauto.
         rewrite GetRelDropConstraints; eapply H; eauto.
       - unfold not; intros; eapply Comp_v; intros; rewrite <- GetRelDropConstraints in *.
@@ -366,7 +364,7 @@ Section MutateRefinements.
         + rewrite GetRelDropConstraints; eauto.
     }
     repeat find_if_inside; try reflexivity.
-    intros v Comp_v; inversion_by computes_to_inv; subst; econstructor;
+    intros v Comp_v; computes_to_inv; subst; computes_to_econstructor;
     simpl.
     rewrite <- GetRelDropConstraints;
       setoid_rewrite <- GetRelDropConstraints; subst; rewrite Comp_v;
@@ -613,7 +611,7 @@ Section MutateRefinements.
              try simplify with monad laws
            | eauto using ComplementIntersectionIndexedList]; reflexivity
           ].
-    inversion_by computes_to_inv; simpl in *.
+     computes_to_inv; simpl in *.
     unfold DropQSConstraints_AbsR in *; subst.
     repeat rewrite (fun Ridx => GetRelDropConstraints or Ridx) in *.
     refine pick val
@@ -665,7 +663,7 @@ Section MutateRefinements.
   Proof.
     intros; unfold MutationPreservesAttributeConstraints, SatisfiesAttributeConstraints;
     destruct (attrConstraints (QSGetNRelSchema qsSchema Ridx)); try reflexivity.
-    intros v Comp_v; econstructor; inversion_by computes_to_inv; subst;
+    intros v Comp_v; computes_to_econstructor; computes_to_inv; subst;
     simpl; tauto.
   Qed.
 
@@ -700,8 +698,8 @@ Section MutateRefinements.
   Proof.
     intros; unfold MutationPreservesTupleConstraints, SatisfiesTupleConstraints;
     destruct (tupleConstraints (QSGetNRelSchema qsSchema Ridx)); try reflexivity.
-    intros v Comp_v; econstructor; inversion_by computes_to_inv; subst;
-    econstructor; inversion_by computes_to_inv; subst; simpl; tauto.
+    intros v Comp_v; computes_to_econstructor;  computes_to_inv; subst;
+    econstructor;  computes_to_inv; subst; simpl; tauto.
   Qed.
 
   Lemma refine_SatisfiesCrossConstraintsMutate

@@ -143,8 +143,8 @@ Lemma refine_unused_key_check
               (ret (Check_Attr_Depend _ _ attr_eq_dec attr_eq_dec' tup l)).
 Proof.
   intros.
-  unfold refine; intros; inversion_by computes_to_inv;
-  subst; econstructor.
+  unfold refine; intros;  computes_to_inv;
+  subst; computes_to_econstructor.
   case_eq (Check_Attr_Depend _ _ attr_eq_dec attr_eq_dec' tup l); simpl; intros.
   eapply Check_Attr_Depend_dec; try apply H; eauto.
   destruct H as [l' [fresh_l' [l'_eq [equiv_l_l' _]]]]; subst.
@@ -176,8 +176,8 @@ Lemma refine_unused_key_check'
               (ret (Check_Attr_Depend _ _ attr_eq_dec attr_eq_dec' tup l)).
 Proof.
   intros.
-  unfold refine; intros; inversion_by computes_to_inv;
-  subst; econstructor.
+  unfold refine; intros;  computes_to_inv;
+  subst; computes_to_econstructor.
   case_eq (Check_Attr_Depend _ _ attr_eq_dec attr_eq_dec' tup l); simpl; intros.
   unfold tupleAgree in *; intros; apply sym_eq.
   eapply (Check_Attr_Depend_dec _ attr_eq_dec attr_eq_dec'); unfold tupleAgree;
@@ -248,8 +248,8 @@ Lemma refine_foreign_key_check
               (ret (Check_List_Ex_Prop (DecideableEnsembles.dec) l)).
 Proof.
   intros.
-  unfold refine; intros; inversion_by computes_to_inv;
-  subst; econstructor.
+  unfold refine; intros;  computes_to_inv;
+  subst; computes_to_econstructor.
   case_eq (Check_List_Ex_Prop DecideableEnsembles.dec l); simpl; intros.
   destruct H as [l' [fresh_l' [l'_eq [equiv_l_l' _]]]]; subst.
   destruct (Check_List_Ex_Prop_dec DecideableEnsembles.dec P _ dec_decides_P H0);
@@ -318,7 +318,7 @@ Lemma ImplementListInsert_eq qsSchema Ridx
                                                      (GetUnConstrRelation or Ridx))) Ridx) a}
        (ret (tup :: nr)).
 Proof.
-  unfold refine; intros; inversion_by computes_to_inv; subst; constructor.
+  unfold refine; intros;  computes_to_inv; subst; computes_to_constructor.
   unfold GetUnConstrRelation, UpdateUnConstrRelation in *.
   rewrite ith_replace_BoundIndex_eq.
   unfold EnsembleInsert, In, EnsembleIndexedListEquivalence, UnConstrFreshIdx in *;
@@ -326,7 +326,7 @@ Proof.
   exists (S bound); unfold In in *; destruct_ex; subst; simpl.
   intros; intuition; subst.
   simpl. omega.
-  destruct H2 as [l' [l'_eq [equiv_l' NoDup_l']]];
+  destruct H2 as [l' [l'_eq [equiv_l' NoDup_l']]].
     econstructor 1 with ({| elementIndex := bound;
                             indexedElement := tup|} :: l'); split; eauto.
   simpl; subst; reflexivity.
@@ -360,7 +360,7 @@ Lemma ImplementListInsert_neq qsSchema Ridx Ridx'
  (GetUnConstrRelation or Ridx'))) Ridx) a}
        (ret nr).
 Proof.
-  unfold refine; intros; inversion_by computes_to_inv; subst; constructor.
+  unfold refine; intros;  computes_to_inv; subst; computes_to_constructor.
   unfold GetUnConstrRelation, UpdateUnConstrRelation in *.
   rewrite ith_replace_BoundIndex_neq; eauto using string_dec.
 Qed.
@@ -406,24 +406,3 @@ Ltac implement_foreign_key_check_w_lists H :=
               [ simplify with monad laws |
                 unfold H in *; split_and; eauto ]
           end).
-
-Tactic Notation "implement" "insert" "in" constr(relName) "with" "lists" "under" hyp(Rep_AbsR) :=
-    hone method relName;
-    [
-      setoid_rewrite refineEquiv_split_ex;
-      setoid_rewrite refineEquiv_pick_computes_to_and;
-      simplify with monad laws;
-      implement_foreign_key_check_w_lists Rep_AbsR;
-      try (setoid_rewrite refine_foreign_key_check;
-           [ | unfold Rep_AbsR in *; intuition; eauto ]);
-      try simplify with monad laws;
-      rewrite refine_pick_eq_ex_bind; unfold Rep_AbsR in *;
-      split_and; simpl;
-      rewrite refineEquiv_pick_pair_pair;
-      setoid_rewrite refineEquiv_pick_eq';
-      simplify with monad laws; simpl;
-      Split Constraint Checks;
-        first [
-          implement insert for lists; congruence
-      | repeat (rewrite refine_pick_val; [rewrite refineEquiv_bind_unit | eassumption]); reflexivity ]
-    | ].

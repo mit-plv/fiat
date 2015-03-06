@@ -165,11 +165,10 @@ Lemma refine_Count_bind_bind_app {A}
             ret (len + len')).
 Proof.
   intros; unfold Count.
-  unfold refine; intros; inversion_by computes_to_inv; subst.
-  econstructor; eauto.
-  rewrite app_length; econstructor.
+  unfold refine; intros; computes_to_inv; subst.
+  computes_to_econstructor; eauto.
+  rewrite app_length; computes_to_econstructor.
 Qed.
-
 
 Definition UnConstrQuery_In {ResultT}
            qsSchema (qs : UnConstrQueryStructure qsSchema)
@@ -198,7 +197,7 @@ Add Parametric Morphism {ResultT} P
       as refine_Query_Where_In.
 Proof.
   unfold Query_Where, refine; intros;
-  inversion_by computes_to_inv; econstructor; intuition.
+  computes_to_inv; econstructor; intuition.
 Qed.
 
 Add Parametric Morphism {ResultT} qsSchema qs R
@@ -248,31 +247,31 @@ Lemma filter_and_join_ilist_tail
 Proof.
   split; induction s1; unfold Join_Comp_Lists in *; simpl in *; intros; eauto.
   - simplify with monad laws; simpl; intros v Comp_v;
-    inversion_by computes_to_inv; subst; repeat econstructor.
+    computes_to_inv; subst; repeat econstructor.
   - simplify with monad laws; intros v.
     case_eq (f a0); simpl; intros a0_eq Comp_v.
-    + inversion_by computes_to_inv; subst; econstructor; eauto.
-      pose (IHs1 (fun a In_a => H _ (or_intror In_a)) _ (BindComputes _ H3 (ReturnComputes _))); inversion_by computes_to_inv; subst.
-      econstructor; eauto.
-      repeat rewrite filter_app, filter_map; rewrite H4; simpl.
+    + computes_to_inv; subst; computes_to_econstructor; eauto.
+      pose (IHs1 (fun a In_a => H _ (or_intror In_a)) _ (BindComputes _ (fun x => ret (filter filter_rest x)) _ _ Comp_v'0 (ReturnComputes _))) ;  computes_to_inv; subst.
+      computes_to_econstructor; eauto.
+      rewrite !filter_app, !filter_map, c'; simpl.
       rewrite a0_eq, filter_and, filter_true; eauto.
-    + pose (IHs1 (fun a In_a => H _ (or_intror In_a)) _ Comp_v); inversion_by computes_to_inv; subst.
+    + pose (IHs1 (fun a In_a => H _ (or_intror In_a)) _ Comp_v);  computes_to_inv; subst.
       destruct (H a0); eauto.
-      repeat (econstructor; eauto).
+      repeat (computes_to_econstructor; eauto).
       rewrite filter_app, filter_map; simpl; intros;
-      rewrite a0_eq, filter_false; constructor.
-  - intros v Comp_v; inversion_by computes_to_inv; subst; eauto.
-  - intros v Comp_v; inversion_by computes_to_inv; subst.
+      rewrite a0_eq, filter_false, c'; simpl; computes_to_econstructor.
+  - intros v Comp_v;  computes_to_inv; subst; eauto.
+  - intros v Comp_v;  computes_to_inv; subst.
     pose proof (IHs1 (fun a In_a => H _ (or_intror In_a)) _
-                     (BindComputes _ H3 (ReturnComputes _))).
-    inversion_by computes_to_inv.
+                     (BindComputes _ (fun x => ret (_ x)) _ _ Comp_v'0 (ReturnComputes _))).
+     computes_to_inv.
     case_eq (f a0); intros a0_eq; simpl.
-    + repeat (econstructor; eauto).
-      repeat rewrite filter_app, filter_map; rewrite H4, filter_and; simpl.
+    + repeat (computes_to_econstructor; eauto).
+      rewrite !filter_app, !filter_map, H0', filter_and; simpl.
       rewrite a0_eq, filter_and, filter_true; eauto.
-    + repeat (econstructor; eauto).
-      repeat rewrite filter_app, filter_map, filter_and; rewrite H4; simpl.
-      rewrite a0_eq, filter_false; eauto.
+    + repeat (computes_to_econstructor; eauto).
+      rewrite !filter_app, !filter_map, !filter_and, H0'; simpl.
+      rewrite a0_eq, filter_false, <- filter_and; eauto.
 Qed.
 
 Definition List_Query_In
@@ -330,23 +329,23 @@ Proof.
   intros; simplify with monad laws.
   - setoid_rewrite refineEquiv_bind_unit; reflexivity.
   - case_eq (f a); simpl; intros a_eq v Comp_v.
-    + inversion_by computes_to_inv; subst; econstructor; eauto.
-      rewrite filter_app, filter_map in H2.
-      unfold List_Query_In in H2.
-      repeat rewrite map_app, map_map in H2.
-      apply flatten_CompList_app_inv' in H2.
+    + computes_to_inv; subst; computes_to_econstructor; eauto.
+      rewrite filter_app, filter_map in Comp_v'.
+      unfold List_Query_In in Comp_v'.
+      repeat rewrite map_app, map_map in Comp_v'.
+      apply flatten_CompList_app_inv' in Comp_v'.
       destruct_ex; split_and.
-      pose (IHl1 l2 H _ (BindComputes _ H3 H5)); inversion_by computes_to_inv; subst.
-      econstructor; eauto.
+      pose (IHl1 l2 H _ (BindComputes _ _ _ _ Comp_v'0 H3));  computes_to_inv; subst.
+      computes_to_econstructor; eauto.
       unfold List_Query_In.
       repeat rewrite filter_app, filter_map.
       repeat rewrite map_app, map_map; simpl.
       rewrite filter_and, a_eq, filter_true.
       eapply FlattenCompList.flatten_CompList_app; eauto.
     + destruct (H a); eauto.
-      inversion_by computes_to_inv; subst; econstructor; eauto.
-      pose (IHl1 l2 H _ (BindComputes _ H2 H3)); inversion_by computes_to_inv; subst.
-      econstructor; eauto.
+       computes_to_inv; subst; computes_to_econstructor; eauto.
+      pose (IHl1 l2 H _ (BindComputes _ _ _ _ Comp_v Comp_v'));  computes_to_inv; subst.
+      computes_to_econstructor; eauto.
       unfold List_Query_In.
       repeat rewrite filter_app, filter_map.
       repeat rewrite map_app, map_map; simpl.
@@ -381,23 +380,23 @@ Proof.
   intros; simplify with monad laws.
   - setoid_rewrite refineEquiv_bind_unit; reflexivity.
   - case_eq (f a); simpl; intros a_eq v Comp_v.
-    + inversion_by computes_to_inv; subst; econstructor; eauto.
-      rewrite filter_app, filter_map in H2.
-      unfold List_Query_In in H2.
-      rewrite map_app, map_map in H2.
-      apply flatten_CompList_app_inv' in H2.
+    + computes_to_inv; subst; computes_to_econstructor; eauto.
+      rewrite filter_app, filter_map in Comp_v'.
+      unfold List_Query_In in Comp_v'.
+      rewrite map_app, map_map in Comp_v'.
+      apply flatten_CompList_app_inv' in Comp_v'.
       destruct_ex; split_and.
-      pose (IHl1 l2 (fun a In_a => H _ (or_intror In_a)) _ (BindComputes _ H3 H5)); inversion_by computes_to_inv; subst.
-      econstructor; eauto.
+      pose (IHl1 l2 (fun a In_a => H _ (or_intror In_a)) _ (BindComputes _ _ _ _ Comp_v'0 H3));  computes_to_inv; subst.
+      computes_to_econstructor; eauto.
       unfold List_Query_In.
       repeat rewrite filter_app, filter_map.
       repeat rewrite map_app, map_map; simpl.
       rewrite filter_and, a_eq, filter_true.
       eapply FlattenCompList.flatten_CompList_app; eauto.
     + destruct (H a); eauto.
-      inversion_by computes_to_inv; subst; econstructor; eauto.
-      pose (IHl1 l2 (fun a In_a => H _ (or_intror In_a)) _ (BindComputes _ H2 H3)); inversion_by computes_to_inv; subst.
-      econstructor; eauto.
+       computes_to_inv; subst; computes_to_econstructor; eauto.
+      pose (IHl1 l2 (fun a In_a => H _ (or_intror In_a)) _ (BindComputes _ _ _ _ Comp_v Comp_v'));  computes_to_inv; subst.
+      computes_to_econstructor; eauto.
       unfold List_Query_In.
       repeat rewrite filter_app, filter_map.
       repeat rewrite map_app, map_map; simpl.
@@ -475,8 +474,8 @@ Proof.
   setoid_rewrite filter_true in r.
   intros v Comp_v.
   apply r in Comp_v.
-  inversion_by computes_to_inv; subst.
-  rewrite filter_and, filter_true in H1.
+   computes_to_inv; subst.
+  rewrite filter_and, filter_true in Comp_v'.
   eauto.
 Qed.
 
@@ -506,10 +505,10 @@ Proof.
   intros; simplify with monad laws.
   - repeat setoid_rewrite refineEquiv_bind_unit; simpl; reflexivity.
   - case_eq (f a); simpl; intros a_eq v Comp_v.
-    + inversion_by computes_to_inv; subst; econstructor; eauto.
-      unfold List_Query_In in H2.
-      rewrite !filter_app, !filter_map, !map_app, !map_map in H2.
-      apply FlattenCompList.flatten_CompList_app_inv' in H2.
+    +  computes_to_inv; subst; computes_to_econstructor; eauto.
+      unfold List_Query_In in Comp_v'.
+      rewrite !filter_app, !filter_map, !map_app, !map_map in Comp_v'.
+      apply FlattenCompList.flatten_CompList_app_inv' in Comp_v'.
       destruct_ex; split_and.
       assert (computes_to (l' <- l <- FlattenCompList.flatten_CompList
                               (map
@@ -520,18 +519,18 @@ Proof.
                            ret (filter cond l);
                            List_Query_In (filter g l') resultComp) x0)
         as H'
-          by (setoid_rewrite <- filter_and in H5;
+          by (setoid_rewrite <- filter_and in H3;
               repeat econstructor; eauto;
               setoid_rewrite <- filter_and; eauto).
-      pose (IHl1 l2 H _ H'); inversion_by computes_to_inv; subst.
-      econstructor; eauto.
+      pose (IHl1 l2 H _ H');  computes_to_inv; subst.
+      computes_to_econstructor; eauto.
       unfold List_Query_In.
       repeat rewrite filter_app, filter_map.
       repeat rewrite map_app, map_map; simpl.
       rewrite filter_and, a_eq, filter_true.
       eapply FlattenCompList.flatten_CompList_app; eauto.
     + destruct (H a); eauto.
-      inversion_by computes_to_inv; subst; econstructor; eauto.
+       computes_to_inv; subst; computes_to_econstructor; eauto.
       assert (computes_to (l' <- l <- FlattenCompList.flatten_CompList
                               (map
                                  (fun l' : ilist (@Tuple) headings =>
@@ -541,7 +540,7 @@ Proof.
                            ret (filter cond l);
                            List_Query_In (filter g l') resultComp) v)
         as H' by  (repeat econstructor; eauto).
-      pose (IHl1 l2 H _ H'); inversion_by computes_to_inv; subst.
+      pose (IHl1 l2 H _ H');  computes_to_inv; subst.
       econstructor; eauto.
       unfold List_Query_In.
       repeat rewrite filter_app, filter_map.
@@ -574,8 +573,8 @@ Proof.
   setoid_rewrite filter_true in r.
   intros v Comp_v.
   apply r in Comp_v.
-  inversion_by computes_to_inv; subst.
-  rewrite filter_and, filter_true in H2.
+   computes_to_inv; subst.
+  rewrite filter_and, filter_true in Comp_v'.
   eauto.
 Qed.
 
@@ -643,8 +642,8 @@ Proof.
   setoid_rewrite filter_true in r.
   intros v Comp_v.
   apply r in Comp_v.
-  inversion_by computes_to_inv; subst.
-  rewrite filter_and, filter_true in H1.
+   computes_to_inv; subst.
+  rewrite filter_and, filter_true in Comp_v'.
   eauto.
 Qed.
 
@@ -670,9 +669,9 @@ Proof.
   intros; simplify with monad laws.
   - repeat setoid_rewrite refineEquiv_bind_unit; simpl; reflexivity.
   - case_eq (f a); simpl; intros a_eq v Comp_v.
-    + inversion_by computes_to_inv; subst; econstructor; eauto.
-      rewrite !filter_app, !filter_map, !map_app, !map_map in H2.
-      apply FlattenCompList.flatten_CompList_app_inv' in H2.
+    +  computes_to_inv; subst; computes_to_econstructor; eauto.
+      rewrite !filter_app, !filter_map, !map_app, !map_map in Comp_v'.
+      apply FlattenCompList.flatten_CompList_app_inv' in Comp_v'.
       destruct_ex; split_and; subst.
       assert (computes_to (l <- l <- FlattenCompList.flatten_CompList
                              (map
@@ -687,18 +686,18 @@ Proof.
                                     l0 <- l2' l';
                                   ret (map (fun fa : Tuple => icons _ fa l') l0))
                                  (filter g l));
-                           ret (filter cond2 l0)) (filter cond2 x1)) as H'
-          by (repeat econstructor; eauto).
-      pose (IHl1 l2 l2' cond1 cond2 H _ H'); inversion_by computes_to_inv; subst.
-      econstructor; eauto.
-      econstructor.
+                           ret (filter cond2 l0)) (filter cond2 x0)) as H'
+          by (repeat computes_to_econstructor; eauto).
+      pose (IHl1 l2 l2' cond1 cond2 H _ H');  computes_to_inv; subst.
+      computes_to_econstructor; eauto.
+      computes_to_econstructor.
       repeat rewrite filter_app, filter_map.
       repeat rewrite map_app, map_map; simpl.
       rewrite filter_and, a_eq, filter_true.
       eapply FlattenCompList.flatten_CompList_app; eauto.
-      rewrite !filter_app, H7; econstructor.
+      rewrite !filter_app, c''; eauto.
     + destruct (H a); eauto.
-      inversion_by computes_to_inv; subst; econstructor; eauto.
+       computes_to_inv; subst; computes_to_econstructor; eauto.
       assert (computes_to (l <- l <- FlattenCompList.flatten_CompList
                              (map
                                 (fun l' : ilist (@Tuple) headings =>
@@ -712,15 +711,15 @@ Proof.
                                     l0 <- l2' l';
                                   ret (map (fun fa : Tuple => icons _ fa l') l0))
                                  (filter g l));
-                           ret (filter cond2 l0)) (filter cond2 x1)) as H'
+                           ret (filter cond2 l0)) (filter cond2 v1)) as H'
           by (repeat econstructor; eauto).
-      pose (IHl1 l2 l2' cond1 cond2 H _ H'); inversion_by computes_to_inv; subst.
-      econstructor; eauto.
-      econstructor.
+      pose (IHl1 l2 l2' cond1 cond2 H _ H');  computes_to_inv; subst.
+      computes_to_econstructor; eauto.
+      computes_to_econstructor.
       repeat rewrite filter_app, filter_map.
       repeat rewrite map_app, map_map; simpl.
       rewrite a_eq, filter_false; simpl; eauto.
-      rewrite H6; eauto.
+      rewrite c''; eauto.
 Qed.
 
 
@@ -745,8 +744,8 @@ Proof.
   setoid_rewrite filter_true in r.
   intros v Comp_v.
   apply r in Comp_v.
-  inversion_by computes_to_inv; subst.
-  rewrite filter_and, filter_true in H2.
+   computes_to_inv; subst.
+  rewrite filter_and, filter_true in Comp_v'.
   eauto.
 Qed.
 
@@ -774,7 +773,7 @@ Qed.
       as refine_Query_For_Equivalent.
 Proof.
   unfold impl, Query_For, refine; intros.
-  inversion_by computes_to_inv.
+   computes_to_inv.
   econstructor; split_iff; split; intros; eauto.
   apply H; apply H1; auto.
   apply H2; apply H; auto.
@@ -788,7 +787,7 @@ Add Parametric Morphism {A: Type}
       as refine_Query_For_In_Equivalent.
 Proof.
   unfold impl, Query_For, pointwise_relation, UnConstrQuery_In, In, refine.
-  intros; inversion_by computes_to_inv.
+  intros;  computes_to_inv.
   econstructor; split_iff; split; intros; eauto.
   destruct (H1 _ H0); eexists; intuition; eauto.
   apply H; auto.
@@ -833,7 +832,7 @@ Lemma Equivalent_Swap_In {ResultT}
                                              (fun tup' => bod tup' tup))).
 Proof.
   unfold UnConstrQuery_In, QueryResultComp, In; intros.
-  unfold refine; intros; inversion_by computes_to_inv; subst.
+  unfold refine; intros;  computes_to_inv; subst.
   econstructor.
   econstructor; eauto.
   econstructor 2 with (comp_a_value := x0).
@@ -843,7 +842,7 @@ Proof.
              {resultList : list ResultT |
               Permutation.Permutation resultList
                                       (flatten (map queryBod enumR))}) ↝ x0 a).
-  { intros; generalize (H1 a); intros; inversion_by computes_to_inv.
+  { intros; generalize (H1 a); intros;  computes_to_inv.
     econstructor.
     econstructor.
     intros; apply H4.
@@ -870,7 +869,7 @@ Proof.
   setoid_rewrite refine_pick_forall_Prop. refine_pick_forall; try eassumption.
 
   rewrite computes_
-  inversion_by computes_to_inv; subst.
+   computes_to_inv; subst.
 
   induction x; simpl; subst.
   constructor 2 with (comp_a_value := []).
@@ -922,7 +921,7 @@ Add Parametric Morphism {A: Type} :
       as refine_Query_For_Equivalent.
 Proof.
   unfold impl, Query_For, refine; intros.
-  inversion_by computes_to_inv.
+   computes_to_inv.
   econstructor; split_iff; split; intros; eauto.
   apply H; apply H1; auto.
   apply H2; apply H; auto.
@@ -936,7 +935,7 @@ Add Parametric Morphism {A: Type}
       as refine_Query_For_In_Equivalent.
 Proof.
   unfold impl, Query_For, pointwise_relation, UnConstrQuery_In, In, refine.
-  intros; inversion_by computes_to_inv.
+  intros;  computes_to_inv.
   econstructor; split_iff; split; intros; eauto.
   destruct (H1 _ H0); eexists; intuition; eauto.
   apply H; auto.
@@ -982,11 +981,11 @@ Lemma refine_Where {A B} :
               (ret [])).
 Proof.
   unfold refine, Query_Where; intros.
-  caseEq (dec a); rewrite H0 in H; econstructor;
+  caseEq (dec a); rewrite H0 in H; computes_to_econstructor;
   split; intros; eauto.
   apply dec_decides_P in H0; intuition.
   apply Decides_false in H0; intuition.
-  inversion_by computes_to_inv; eauto.
+   computes_to_inv; eauto.
 Qed.
 
 
@@ -1022,235 +1021,3 @@ Global Instance IndexedDecideableEnsemble
 Proof.
   intuition; eapply dec_decides_P; simpl in *; eauto.
 Defined.
-
-Ltac subst_strings :=
-  repeat match goal with
-           | [ H : string |- _ ] => subst H
-           | [ H : BoundedIndex _ |- _ ] => subst H
-         end.
-
-Ltac pose_string_ids :=
-  subst_strings;
-  repeat match goal with
-           | |- context [String ?R ?R'] =>
-             let str := fresh "StringId" in
-             set (String R R') as str in *
-           | |- context [ ``(?R) ] =>
-             let idx := fresh in
-             set ``(R) as fresh in *
-         end.
-
-Tactic Notation "drop" "constraints" "from" "query" constr(methname) :=
-  hone method methname;
-  [ simplify with monad laws;
-    subst_strings; repeat (setoid_rewrite DropQSConstraintsQuery_In; simpl);
-    repeat setoid_rewrite DropQSConstraintsQuery_In_UnderBinder;
-    simpl; pose_string_ids;
-    setoid_rewrite refineEquiv_pick_eq';
-    simplify with monad laws; cbv beta; simpl;
-    match goal with
-        H : DropQSConstraints_AbsR _ _ |- _ =>
-        unfold DropQSConstraints_AbsR in H; rewrite H
-    end;
-    finish honing | ].
-
-(*
-Require Import String List FunctionalExtensionality Ensembles Common
-        Computation BuildADTRefinements
-        QueryStructureSchema QueryQSSpecs QueryStructure
-        EnsembleListEquivalence.
-
-Definition UnConstrQuery_In
-           qsSchema
-           (qs : UnConstrQueryStructure qsSchema)
-           {ReturnT TraceT}
-           (R : _)
-           (bod : @Tuple _ -> Ensemble (ReturnT * TraceT))
-           (el : ReturnT * (Tuple * TraceT))
-  :=
-  GetUnConstrRelation qs R (fst (snd el))
-  /\ bod (fst (snd el)) (fst el, snd (snd el)).
-
-Lemma DropQSConstraintsQuery_In {ReturnT TraceT} :
-  forall qs R bod,
-         @Query_In ReturnT TraceT qs R bod =
-         UnConstrQuery_In (DropQSConstraints qsHint) R bod.
-Proof.
-  reflexivity.
-Qed.
-
-Lemma DropQSConstraintsQuery_In_UnderBinder {ReturnT TraceT B} :
-  forall qs R bod,
-    (fun b : B => @Query_In ReturnT TraceT qs R (bod b)) =
-    (fun b : B => UnConstrQuery_In (DropQSConstraints qsHint) R (bod b)).
-Proof.
-  reflexivity.
-Qed.
-
-Definition Equivalent_Ensembles {ReturnT TraceT TraceT' : Type}
-           (P : Ensemble (ReturnT * TraceT))
-           (Q : Ensemble (ReturnT * TraceT')) :=
-  { TraceT_map : TraceT -> TraceT';
-     TraceT'_map : TraceT' -> TraceT;
-     TraceT_map_inv : forall trace, TraceT'_map (TraceT_map trace) = trace;
-     TraceT'_map_inv : forall trace, TraceT_map (TraceT'_map trace) = trace;
-     TraceT_map_inj : forall trace trace', TraceT_map trace = TraceT_map trace'
-                                           -> trace = trace';
-     TraceT'_map_inj : forall trace trace', TraceT'_map trace = TraceT'_map trace'
-                                           -> trace = trace';
-     TraceT_map_valid : forall el, P el -> Q (fst el, TraceT_map (snd el));
-     TraceT'_map_valid : forall el, Q el -> P (fst el, TraceT'_map (snd el))
-  }.
-
-Ltac destruct_pairs :=
-  repeat match goal with
-             H : prod _ _ |- _ => destruct H
-         end.
-
-Lemma Equivalent_Swap_In {ReturnT TraceT}
-      qsSchema qs R R' (bod : Tuple -> Tuple -> Ensemble (ReturnT * TraceT))
-:
-  Equivalent_Trace_Ensembles
-    (@UnConstrQuery_In qsSchema qs _ _ R (fun tup => @UnConstrQuery_In qsSchema qs _ _ R' (fun tup' => bod tup tup')))
-    (@UnConstrQuery_In qsSchema qs _ _ R' (fun tup => @UnConstrQuery_In qsSchema qs _ _ R
-                                             (fun tup' => bod tup' tup))).
-Proof.
-  econstructor 1 with (TraceT_map := fun el => (fst (snd el), (fst el, snd (snd el))))
-                        (TraceT'_map := fun el => (fst (snd el), (fst el, snd (snd el))));
-  simpl; intros; destruct_pairs; simpl in *; injections; auto;
-  unfold UnConstrQuery_In in *; intuition.
-Qed.
-
-Lemma Equivalent_Swap_In_Where {ReturnT TraceT}
-      qsSchema qs R {heading}
-      (bod : @Tuple heading -> Tuple -> Ensemble (ReturnT * TraceT))
-      (P : @Tuple heading -> Prop)
-:
-  forall tup',
-    Equivalent_Trace_Ensembles
-      (@UnConstrQuery_In qsSchema qs _ _ R
-                  (fun tup => Query_Where (P tup') (bod tup' tup)))
-      (Query_Where (P tup') (@UnConstrQuery_In qsSchema qs _ _ R (bod tup'))).
-Proof.
-  econstructor 1 with (TraceT_map := id)
-                      (TraceT'_map := id);
-  intros; destruct_pairs; unfold id in *; simpl in *; auto;
-  unfold UnConstrQuery_In, Query_Where in *; intuition.
-Qed.
-
-Lemma Equivalent_Under_In {ReturnT TraceT TraceT'}
-      qsSchema qs R
-      (bod : Tuple -> Ensemble (ReturnT * TraceT))
-      (bod' : Tuple -> Ensemble (ReturnT * TraceT'))
-:
-  (forall tup, Equivalent_Trace_Ensembles (bod tup) (bod' tup))
-  -> Equivalent_Trace_Ensembles
-      (@UnConstrQuery_In qsSchema qs _ _ R (fun tup => bod tup))
-      (@UnConstrQuery_In qsSchema qs _ _ R (fun tup => bod' tup)).
-Proof.
-  intros H.
-  econstructor 1 with
-  (TraceT_map :=
-     (fun el : Tuple * TraceT =>
-        (fst el, (TraceT_map (Equivalent_Trace_Ensembles := H (fst el)))
-          (snd el))))
-  (TraceT'_map :=
-     (fun el : Tuple * TraceT' =>
-        (fst el, (TraceT'_map (Equivalent_Trace_Ensembles := H (fst el)))
-          (snd el))));
-  intros; destruct_pairs; unfold id in *; simpl in *; auto;
-  unfold UnConstrQuery_In, Query_Where in *; intuition;
-  simpl in *; eauto.
-  - f_equal; apply (TraceT_map_inv t0).
-  - f_equal; apply (TraceT'_map_inv t0).
-  - injection H0; intros; subst; f_equal; eauto using TraceT_map_inj.
-  - injection H0; intros; subst; f_equal; eauto using TraceT'_map_inj.
-  - eapply (TraceT_map_valid (r, t0)); eauto.
-  - eapply (TraceT'_map_valid (r, t0)); eauto.
-Qed.
-
-Class DecideableEnsemble {A} (P : Ensemble A) :=
-  { dec : A -> bool;
-    dec_decides_P : forall a, dec a = true <-> P a}.
-
-Instance DecideableEnsemble_EqDec {A B : Type}
-         (B_eq_dec : Query_eq B)
-         (f f' : A -> B)
-         : DecideableEnsemble (fun a => eq (f a) (f' a)) :=
-  {| dec a := if A_eq_dec (f a) (f' a) then true else false |}.
-Proof.
-  intros; find_if_inside; split; congruence.
-Defined.
-
-Require Import Arith Omega.
-
-Instance DecideableEnsemble_gt {A} (f f' : A -> nat)
-  : DecideableEnsemble (fun a => f a > f' a) :=
-  {| dec a := if le_lt_dec (f a) (f' a) then false else true |}.
-Proof.
-  intros; find_if_inside; intuition.
-Defined.
-
-Lemma refine_For_Equivalent_Trace_Ensembles
-      {ReturnT TraceT TraceT' : Type} :
-  forall bod bod',
-    @Equivalent_Trace_Ensembles ReturnT TraceT TraceT' bod bod' ->
-    refine (For bod)%QuerySpec
-           (For bod')%QuerySpec.
-Proof.
-  intros; unfold Query_For, refine;
-  intros; inversion_by computes_to_inv; subst; econstructor.
-  {
-    exists (map (fun el => (fst el, TraceT'_map (snd el))) x); intuition.
-    rewrite map_map; f_equal.
-    unfold EnsembleListEquivalence.EnsembleListEquivalence in *; intuition.
-    clear H0; induction x; simpl; inversion H; subst; constructor; eauto.
-    unfold not; intros; apply H2.
-    destruct ((proj1 (in_map_iff _ _ _ )) H0); intuition; injections; subst.
-    apply_in_hyp TraceT'_map_inj; destruct a; destruct x0; simpl in *; subst; eauto.
-    rewrite <- (TraceT_map_inv b); eapply in_map_iff; eexists (_, _); split;
-    simpl; try reflexivity.
-    eapply H0; eapply (TraceT_map_valid (_, _)); eassumption.
-    rewrite <- (TraceT_map_inv b).
-    eapply (TraceT'_map_valid (_, _)).
-    eapply H0.
-    destruct ((proj1 (in_map_iff _ _ _ )) H1); intuition; injections; subst.
-    destruct x0; rewrite <- (TraceT'_map_inv t) in H4; eauto.
-  }
-Qed.
-
-Lemma refineEquiv_For_DropQSConstraints {ReturnT TraceT : Type}
-      qsSchema qs :
-  forall (bod : Ensemble (ReturnT * TraceT)),
-      refine
-     {H1 |
-      exists or' : QueryStructure qsSchema * list ReturnT,
-                   (queryRes <- (For bod)%QuerySpec;
-                    ret (qs, queryRes)) ↝ or' /\
-                   DropQSConstraints_AbsR (fst or') (fst H1) /\ snd or' = snd H1}
-     (b <- (For bod)%QuerySpec;
-      ret (DropQSConstraints qs, b) ) .
-Proof.
-  setoid_rewrite refineEquiv_pick_ex_computes_to_bind_and;
-  intros; f_equiv; unfold pointwise_relation; intros.
-  setoid_rewrite refineEquiv_pick_ex_computes_to_and;
-  setoid_rewrite refineEquiv_bind_unit; simpl;
-  unfold DropQSConstraints_AbsR;
-  setoid_rewrite refineEquiv_pick_pair;
-  setoid_rewrite refineEquiv_pick_eq';
-  simplify with monad laws; f_equiv.
-Qed.
-
-Tactic Notation "drop" "constraints" "from" "query" constr(methname) :=
-  hone method methname;
-  [ setoid_rewrite refineEquiv_pick_ex_computes_to_and;
-    simplify with monad laws;
-    setoid_rewrite DropQSConstraintsQuery_In;
-    repeat setoid_rewrite DropQSConstraintsQuery_In_UnderBinder;
-    setoid_rewrite refineEquiv_pick_pair; simpl;
-    setoid_rewrite refineEquiv_pick_eq';
-    match goal with
-        H : DropQSConstraints_AbsR _ _ |- _ =>
-        unfold DropQSConstraints_AbsR in H; rewrite H
-    end; simplify with monad laws;
-    finish honing | ]. *)

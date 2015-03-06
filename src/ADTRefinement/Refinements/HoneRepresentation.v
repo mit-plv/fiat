@@ -37,9 +37,9 @@ Section HoneRepresentation.
                    (absMethod oldMethod).
   Proof.
     unfold refineMethod, absMethod, refine; intros.
-    inversion_by computes_to_inv.
+    computes_to_inv.
     destruct (H0 _ H) as [or' [Comp_or [AbsR_or'' eq_or''] ] ].
-    repeat econstructor; eauto.
+    repeat computes_to_econstructor; eauto.
     destruct v; simpl in *; subst; econstructor.
   Qed.
 
@@ -61,7 +61,7 @@ Section HoneRepresentation.
                     (absConstructor oldConstr).
   Proof.
     unfold refineConstructor, absConstructor, refine; intros.
-    inversion_by computes_to_inv; eauto.
+    computes_to_inv; eauto.
   Qed.
 
   Hint Resolve refine_absConstructor.

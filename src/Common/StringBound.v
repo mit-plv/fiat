@@ -386,7 +386,7 @@ Section ithIndexBound.
       simpl; eauto; intros.
       eapply IHBound.
     Defined.
-    
+
     (* [ith_Bounded_rect] builds a function whose type depends
      on [ith_Bounded] by reducing to a case with [ith_error],
      which is easier to work/reason with. *)
@@ -420,7 +420,7 @@ Section ithIndexBound.
                     (ith_error_eq idx il).
 
     Definition ith_Bounded_rect2
-               {B B' : A -> Type}               
+               {B B' : A -> Type}
         (P : forall As, BoundedIndex (map projAC As)
                         -> ilist B As
                         -> ilist B' As
@@ -432,7 +432,7 @@ Section ithIndexBound.
     : Dep_Option_elim_T2 (P Bound idx il il')
                          (ith_error il (ibound idx))
                          (ith_error il' (ibound idx))
-      -> P Bound idx il il' _ 
+      -> P Bound idx il il' _
            (ith_Bounded il idx)
            (ith_Bounded il' idx) :=
       match (nth_error Bound (ibound idx)) as e
@@ -446,7 +446,7 @@ Section ithIndexBound.
                    -> Dep_Option_elim_T2 (P Bound idx il il') b b' ->
                    P _ _ _ _ (@nth_Bounded' _ _ _ c) d d' with
         | Some a => fun b b' e_eq d d' d_eq d'_eq =>
-                      match d_eq, d'_eq with 
+                      match d_eq, d'_eq with
                         | eq_refl, eq_refl => fun b_opt => b_opt
                       end
         | None => fun b b' e_eq d d' d_eq d'_eq => None_neq_Some _ e_eq
@@ -457,8 +457,8 @@ Section ithIndexBound.
                (ith_Bounded il' idx)
                (ith_error_eq idx il)
                (ith_error_eq idx il').
-    
-    Program Definition nth_Bounded_ind 
+
+    Program Definition nth_Bounded_ind
             (P : forall As, BoundedIndex (map projAC As)
                             -> A -> Prop)
     : forall (Bound : list A)
@@ -485,8 +485,8 @@ Section ithIndexBound.
                        end f)) with
           | Some a => fun _ H => _
           | _ => fun f => _
-        end (nth_error_map _ _ (boundi idx)).   
-    
+        end (nth_error_map _ _ (boundi idx)).
+
     (* [ith_Bounded_ind] builds a proof whose type depends
      on both [nth_Bounded] and an occurence of [ith_Bounded] by reducing
      it to a case with an [ith_error], which is easier to reason with. *)
@@ -1185,7 +1185,7 @@ Section ith2IndexBound.
                     (ith2_error_eq idx il).
 
     Definition ith2_Bounded_rect2
-               {B B' : A -> Type}               
+               {B B' : A -> Type}
         (P : forall As, BoundedIndex (map projAC As)
                         -> ilist2 B As
                         -> ilist2 B' As
@@ -1197,7 +1197,7 @@ Section ith2IndexBound.
     : Dep_Option_elim_T2 (P Bound idx il il')
                          (ith2_error il (ibound idx))
                          (ith2_error il' (ibound idx))
-      -> P Bound idx il il' _ 
+      -> P Bound idx il il' _
            (ith2_Bounded il idx)
            (ith2_Bounded il' idx) :=
       match (nth_error Bound (ibound idx)) as e
@@ -1211,7 +1211,7 @@ Section ith2IndexBound.
                    -> Dep_Option_elim_T2 (P Bound idx il il') b b' ->
                    P _ _ _ _ (@nth_Bounded' _ _ projAC _ _ _ c) d d' with
         | Some a => fun b b' e_eq d d' d_eq d'_eq =>
-                      match d_eq, d'_eq with 
+                      match d_eq, d'_eq with
                         | eq_refl, eq_refl => fun b_opt => b_opt
                       end
         | None => fun b b' e_eq d d' d_eq d'_eq => None_neq_Some _ e_eq
@@ -1759,4 +1759,20 @@ Section i2th2IndexBound.
 
 End i2th2IndexBound.
 
+Ltac subst_strings :=
+  repeat match goal with
+           | [ H : string |- _ ] => subst H
+           | [ H : BoundedIndex _ |- _ ] => subst H
+         end.
+
+Ltac pose_string_ids :=
+  subst_strings;
+  repeat match goal with
+           | |- context [String ?R ?R'] =>
+             let str := fresh "StringId" in
+             set (String R R') as str in *
+           (*| |- context [ ``(?R) ] =>
+             let idx := fresh in
+             set ``(R) as fresh in * *)
+         end.
 Arguments BoundedString [_].

@@ -1,4 +1,3 @@
-Require Import Coq.Strings.String.
 Require Import ADTSynthesis.QueryStructure.Automation.AutoDB.
 
 (* Our bookstore has two relations (tables):
@@ -107,11 +106,26 @@ Proof.
 
   make simple indexes using [[sAUTHOR; sISBN]; [sISBN]].
 
+  hone method "AddBook".
+  {
+    Implement_Insert_Checks.
+
+    implement_Query.
+    simpl; simplify with monad laws.
+    setoid_rewrite refineEquiv_swap_bind.
+    implement_Insert_branches.
+
+    cleanup_Count.
+    finish honing.
+  }
+
   hone method "DeleteBook".
   {
     implement_Query.
     simpl; simplify with monad laws.
     implement_Delete_branches.
+
+    cleanup_Count.
     finish honing.
   }
 
@@ -137,19 +151,6 @@ Proof.
       finish honing.
     }
 
-  hone method "AddBook".
-    {
-      Implement_Insert_Checks.
-
-      implement_Query.
-      simpl; simplify with monad laws.
-
-      setoid_rewrite refineEquiv_swap_bind.
-      implement_Insert_branches.
-
-      finish honing.
-    }
-
     hone method "PlaceOrder".
     {
       Implement_Insert_Checks.
@@ -160,6 +161,7 @@ Proof.
       setoid_rewrite refineEquiv_swap_bind.
       implement_Insert_branches.
 
+      cleanup_Count.
       finish honing.
     }
 
@@ -177,9 +179,11 @@ Proof.
     simplify with monad laws; cbv beta; simpl.
     implement_EnsembleDelete_AbsR find_simple_search_term.
     simplify with monad laws.
+    cleanup_Count.
     finish honing.
   }
 
+  idtac.
 
   FullySharpenQueryStructure BookStoreSchema Index.
 
