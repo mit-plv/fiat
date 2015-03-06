@@ -32,7 +32,7 @@ Fixpoint Tuple_Agree_eq'
   match attr_eq_dec with
       | inil => true
       | icons a attrlist' a_eq_dec attr_eq_dec' =>
-        if @A_eq_dec _ a_eq_dec (tup a) (tup' a)
+        if @A_eq_dec _ a_eq_dec (GetAttribute tup a) (GetAttribute tup' a)
         then Tuple_Agree_eq' attr_eq_dec' tup tup'
         else false
   end.
@@ -922,7 +922,7 @@ Defined.
                                       qs Ridx
                                       (fun tup =>
                                          Where (DeletedTuples tup)
-                                         Where (tupmap (tup attr) = tup' attr')
+                                         Where (tupmap (GetAttribute tup attr) = GetAttribute tup' attr')
                                          Return ()))));
               ret (match x with
                        0  => true
@@ -949,6 +949,8 @@ Defined.
       unfold Query_Where in H5; computes_to_inv;
       simpl in *; intuition.
       computes_to_inv; split_and.
+      simpl in H4.
+      unfold QSGetNRelSchema, GetNRelSchema in Agree_tup2; simpl in *.
       rewrite Agree_tup2 in H4; pose proof (H4 (refl_equal _)) as H';
       computes_to_inv; simpl in *; subst; simpl; eauto.
       apply Return_inv in H'; subst; simpl; intuition.
@@ -967,13 +969,17 @@ Defined.
       + apply Delete_dec in H1; pose proof (H13 H1) as H'.
         computes_to_inv; split_and.
         unfold indexedTuple in *.
-        destruct (A_eq_dec (indexedElement x3 attr) (indexedElement x1 attr)).
-        * rewrite e, H9 in *; subst;
+        destruct (A_eq_dec (GetAttribute (indexedElement x3) attr)
+                           (GetAttribute (indexedElement x1) attr)).
+        * rewrite e, <- H9 in *; subst;
           pose proof (H15 (refl_equal _)) as e'; computes_to_inv; simpl in *; subst.
           apply H12; eapply AgreeDelete; eauto.
           unfold tupleAgree; simpl; intros attr'' In_attr''; destruct In_attr'';
           [rewrite H17 in *; eauto | intuition ].
-        * rewrite H16 in H11 by (rewrite H9; eauto); simpl in *; eauto.
+        * rewrite H16 in H11; simpl in *; eauto.
+          intros;
+          unfold QSGetNRelSchema, GetNRelSchema in *; simpl in *;
+          rewrite <- H17 in H9; eauto.
       + rewrite H14 in H11; simpl in *; eauto.
         intros H'; apply dec_decides_P in H'; congruence.
       + eapply Permutation_in; symmetry in Comp_v'; simpl; eauto.

@@ -727,7 +727,6 @@ Section InsertRefinements.
 
 End InsertRefinements.
 
-
 (* We should put all these simplification hints into a distinct file
    so we're not unfolding things all willy-nilly. *)
 Arguments Iterate_Decide_Comp _ _ / _.

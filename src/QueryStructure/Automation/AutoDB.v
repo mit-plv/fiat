@@ -407,7 +407,7 @@ Ltac createTerm f fds tail fs k :=
       createTerm f fds tail fs' ltac:(fun rest =>
                                         findMatchingTerm fds s ltac:(fun X =>
                                                                        k (Some X, rest))
-                                                                      || k (@None (f s), rest))
+                                                                      || k (@None (Domain f s), rest))
   end.
 
 (* Using a list of search term attributes [fs],
@@ -418,7 +418,7 @@ Ltac createTerm f fds tail fs k :=
 Ltac makeTerm fs SC fds tail k :=
   match eval hnf in SC with
     | Build_Heading ?f =>
-      createTerm f fds tail fs k
+      createTerm (Build_Heading f) fds tail fs k
   end.
 
 (* Given a storage schema [SC], a filter [F],
@@ -654,11 +654,9 @@ Ltac convert_Where_to_filter :=
 
 Ltac equate X Y := let H := fresh in assert (H : X = Y) by reflexivity; clear H.
 
-Definition unit_Heading :=
-  {| Attributes := unit;
-     Domain := fun _ => unit |}.
+Definition unit_Heading := BuildHeading [].
 
-Definition unit_Tuple : @Tuple unit_Heading := id.
+Definition unit_Tuple : @Tuple unit_Heading := BuildTuple (inil _).
 
 Ltac get_ithDefault f n k :=
   match type of f with
@@ -719,14 +717,14 @@ Ltac createTerm_dep dom f fds tail fs k :=
                              findMatchingTerm fds s
                                               ltac:(fun X =>
                                                       k (fun x : dom => (Some (X x), rest x)))
-                                                     || k (fun x : dom => (@None (f s), rest x)))
+                                                     || k (fun x : dom => (@None (Domain f s), rest x)))
   end.
 
 (* Get the heading of [SC] before building the search term. *)
 Ltac makeTerm_dep dom fs SC fds tail k :=
   match eval hnf in SC with
     | Build_Heading ?f =>
-      createTerm_dep dom f fds tail fs k
+      createTerm_dep dom (Build_Heading f) fds tail fs k
   end.
 
 

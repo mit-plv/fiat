@@ -111,6 +111,22 @@ Tactic Notation "implement" "failed" "insert" :=
   repeat (rewrite refine_pick_val, refineEquiv_bind_unit; eauto);
   reflexivity.
 
+Ltac drop_symmetric_functional_dependencies :=
+  match goal with
+         |- context[x <- {b | decides b (forall tup',
+                                           @?P tup'
+                                           -> FunctionalDependency_P ?attrlist1 ?attrlist2 ?n
+                                                                     (indexedElement tup'))};
+                     y <- {b | decides b (forall tup',
+                                            @?P tup'
+                                           -> FunctionalDependency_P ?attrlist1 ?attrlist2
+                                                                     (indexedElement tup') ?n)};
+                     @?f x y] =>
+         setoid_rewrite (@FunctionalDependency_symmetry _ _ f P attrlist1 attrlist2 n) at 1;
+           try setoid_rewrite if_duplicate_cond_eq
+  end.
+
+
 Ltac drop_constraints_from_insert methname :=
   hone method methname;
   [ remove trivial insertion checks;
@@ -124,8 +140,7 @@ Ltac drop_constraints_from_insert methname :=
       subst_strings;
       (* These simplify and implement nontrivial constraint checks *)
       repeat first
-             [setoid_rewrite FunctionalDependency_symmetry at 1;
-               try setoid_rewrite if_duplicate_cond_eq
+             [ drop_symmetric_functional_dependencies
              | fundepToQuery; try simplify with monad laws
              | foreignToQuery; try simplify with monad laws
              | setoid_rewrite refine_trivial_if_then_else; simplify with monad laws
