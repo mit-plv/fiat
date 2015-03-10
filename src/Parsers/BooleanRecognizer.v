@@ -1,7 +1,7 @@
 (** * Definition of a boolean-returning CFG parser-recognizer *)
 Require Import Omega.
 Require Import Coq.Lists.List Coq.Program.Program Coq.Program.Wf Coq.Arith.Wf_nat Coq.Arith.Compare_dec Coq.Classes.RelationClasses Coq.Strings.String.
-Require Import Parsers.ContextFreeGrammar Parsers.ContextFreeGrammarNotations.
+Require Import Parsers.ContextFreeGrammar Parsers.ContextFreeGrammarNotations Parsers.BaseTypes.
 Require Import Common Common.Wf.
 
 Set Implicit Arguments.
@@ -9,69 +9,75 @@ Local Open Scope string_like_scope.
 
 (** TODO: Allow stubbing out of individual sub-parse methods *)
 Section recursive_descent_parser.
-  Context CharType (String : string_like CharType) (G : grammar CharType).
-  Context (names_listT : Type)
-          (initial_names_data : names_listT)
-          (is_valid_name : names_listT -> string -> bool)
-          (remove_name : names_listT -> string -> names_listT)
-          (names_listT_R : names_listT -> names_listT -> Prop)
-          (remove_name_dec : forall ls name,
-                               is_valid_name ls name = true
-                               -> names_listT_R (remove_name ls name) ls)
-          (ntl_wf : well_founded names_listT_R)
-          (split_stateT : String -> Type).
+  Context {CharType}
+          {String : string_like CharType}
+          {G : grammar CharType}.
+  Class boolean_parser_dataT :=
+    { predata :> parser_computational_predataT;
+      split_stateT : String -> Type;
+      data' :> _ := {| BaseTypes.predata := predata ; BaseTypes.split_stateT := fun _ _ _ => split_stateT |};
+      split_string_for_production
+      : forall it its,
+          StringWithSplitState String split_stateT
+          -> list (StringWithSplitState String split_stateT * StringWithSplitState String split_stateT);
+      split_string_for_production_correct
+      : forall it its (str : StringWithSplitState String split_stateT),
+          let P f := List.Forall f (split_string_for_production it its str) in
+          P (fun s1s2 =>
+               (fst s1s2 ++ snd s1s2 =s str) = true);
+      premethods :> parser_computational_dataT'
+      := @Build_parser_computational_dataT'
+           _ String data'
+           (fun _ _ => split_string_for_production)
+           (fun _ _ => split_string_for_production_correct) }.
+  Context `{data : boolean_parser_dataT}.
 
   Section bool.
-    Context (split_string_for_production
-             : forall (str0 : StringWithSplitState String split_stateT) (prod : production CharType), list (StringWithSplitState String split_stateT * StringWithSplitState String split_stateT))
-            (split_string_for_production_correct
-             : forall (str0 : StringWithSplitState String split_stateT) prod,
-                 List.Forall (fun s1s2 : StringWithSplitState String split_stateT * StringWithSplitState String split_stateT
-                              => (fst s1s2 ++ snd s1s2 =s str0) = true)
-                             (split_string_for_production str0 prod)).
-
     Section parts.
-      Section item.
-        Context (str : StringWithSplitState String split_stateT)
-                (str_matches_name : string -> bool).
-
-        Definition parse_item (it : item CharType) : bool
-          := match it with
-               | Terminal ch => [[ ch ]] =s str
-               | NonTerminal name => str_matches_name name
-             end.
-      End item.
+      Definition parse_item
+                 (str_matches_nonterminal : string -> bool)
+                 (str : StringWithSplitState String split_stateT)
+                 (it : item CharType)
+      : bool
+        := match it with
+             | Terminal ch => [[ ch ]] =s str
+             | NonTerminal nt => str_matches_nonterminal nt
+           end.
 
       Section production.
-        Variable str0 : StringWithSplitState String split_stateT.
-        Variable parse_name : forall (str : StringWithSplitState String split_stateT),
-                                       str ≤s str0
-                                       -> string
-                                       -> bool.
+        Context {str0}
+                (parse_nonterminal
+                 : forall (str : StringWithSplitState String split_stateT),
+                     str ≤s str0
+                     -> string
+                     -> bool).
 
         (** To match a [production], we must match all of its items.
             But we may do so on any particular split. *)
         Fixpoint parse_production
-                 (str : StringWithSplitState String split_stateT) (pf : str ≤s str0)
+                 (str : StringWithSplitState String split_stateT)
+                 (pf : str ≤s str0)
                  (prod : production CharType)
         : bool.
         Proof.
-          refine match prod with
-                   | nil =>
-                     (** 0-length production, only accept empty *)
-                     str =s Empty _
-                   | it::its
-                     => let parse_production' := fun str pf => @parse_production str pf its in
-                        fold_right
-                          orb
-                          false
-                          (map (fun s1s2p => (parse_item (fst (proj1_sig s1s2p))
-                                                         (@parse_name (fst (proj1_sig s1s2p))
-                                                                             _)
-                                                         it)
-                                               && parse_production' (snd (proj1_sig s1s2p)) _)%bool
-                               (combine_sig (split_string_for_production_correct str prod)))
-                 end;
+          refine
+            match prod with
+              | nil =>
+                (** 0-length production, only accept empty *)
+                str =s Empty _
+              | it::its
+                => let parse_production' := fun str pf => parse_production str pf its in
+                   fold_right
+                     orb
+                     false
+                     (let mapF f := map f (combine_sig (split_string_for_production_correct it its str)) in
+                      mapF (fun s1s2p =>
+                              (parse_item
+                                 (parse_nonterminal (fst (proj1_sig s1s2p)) _)
+                                 (fst (proj1_sig s1s2p))
+                                 it)
+                                && parse_production' (snd (proj1_sig s1s2p)) _)%bool)
+            end;
           revert pf; clear; intros;
           abstract (
               destruct str;
@@ -88,98 +94,104 @@ Section recursive_descent_parser.
       End production.
 
       Section productions.
-        Variable str0 : StringWithSplitState String split_stateT.
-        Variable parse_name : forall (str : StringWithSplitState String split_stateT)
-                                     (pf : str ≤s str0),
-                                string -> bool.
+        Context {str0}
+                (parse_nonterminal
+                 : forall (str : StringWithSplitState String split_stateT)
+                          (pf : str ≤s str0),
+                     string -> bool).
 
         (** To parse as a given list of [production]s, we must parse as one of the [production]s. *)
-        Definition parse_productions (str : StringWithSplitState String split_stateT) (pf : str ≤s str0) (prods : productions CharType)
+        Definition parse_productions
+                   (str : StringWithSplitState String split_stateT)
+                   (pf : str ≤s str0)
+                   (prods : productions CharType)
         : bool
           := fold_right orb
                         false
-                        (map (parse_production str0 parse_name str pf)
+                        (map (parse_production parse_nonterminal str pf)
                              prods).
       End productions.
 
 
-      Section names.
+      Section nonterminals.
         Section step.
-          Context (str0 : StringWithSplitState String split_stateT) (valid_list : names_listT)
-                  (parse_name
-                   : forall (p : StringWithSplitState String split_stateT * names_listT),
-                       prod_relation (ltof _ (fun s : StringWithSplitState _ _ => Length s)) names_listT_R p (str0, valid_list)
-                       -> forall str : StringWithSplitState String split_stateT, str ≤s fst p -> string -> bool).
+          Context {str0 valid}
+                  (parse_nonterminal
+                   : forall (p : String * nonterminals_listT),
+                       prod_relation (ltof _ Length) nonterminals_listT_R p (str0, valid)
+                       -> forall str : StringWithSplitState String split_stateT,
+                            str ≤s fst p -> string -> bool).
 
-          Definition parse_name_step
-                     (str : StringWithSplitState String split_stateT) (pf : str ≤s str0) (name : string)
-          : bool
-            := match lt_dec (Length str) (Length str0), Sumbool.sumbool_of_bool (is_valid_name valid_list name) with
-                 | left pf', _ =>
-                   (** [str] got smaller, so we reset the valid names list *)
+          Definition parse_nonterminal_step
+                     (str : StringWithSplitState String split_stateT)
+                     (pf : str ≤s str0)
+                     (nt : string)
+          : bool.
+          Proof.
+            refine
+              (if lt_dec (Length str) (Length str0)
+               then (** [str] got smaller, so we reset the valid nonterminals list *)
+                 parse_productions
+                   (@parse_nonterminal
+                      (str : String, initial_nonterminals_data)
+                      (or_introl _))
+                   _
+                   (or_intror eq_refl)
+                   (Lookup G nt)
+               else (** [str] didn't get smaller, so we cache the fact that we've hit this nonterminal already *)
+                 if Sumbool.sumbool_of_bool (is_valid_nonterminal valid nt)
+                 then (** It was valid, so we can remove it *)
                    parse_productions
+                     (@parse_nonterminal
+                        (str0 : String, remove_nonterminal valid nt)
+                        (or_intror (conj eq_refl (remove_nonterminal_dec _ nt _))))
+                     str
                      _
-                     (@parse_name
-                        (str, initial_names_data)
-                        (or_introl pf'))
-                     _
-                     (or_intror eq_refl)
-                     (Lookup G name)
-                 | right pf', left H' =>
-                   (** [str] didn't get smaller, so we cache the fact that we've hit this name already *)
-                   (** It was valid, so we can remove it *)
-                   parse_productions
-                     _
-                     (@parse_name
-                        (str0, remove_name valid_list name)
-                        (or_intror (conj eq_refl (remove_name_dec H'))))
-                     _
-                     (or_intror eq_refl)
-                     (Lookup G name)
-                 | right _, right _
-                   => (** oops, we already saw this name in the past.  ABORT! *)
-                   false
-               end.
+                     (Lookup G nt)
+                 else (** oops, we already saw this nonterminal in the past.  ABORT! *)
+                   false);
+            assumption.
+          Defined.
         End step.
 
         Section wf.
           (** TODO: add comment explaining signature *)
-          Definition parse_name_or_abort
-          : forall (p : StringWithSplitState String split_stateT * names_listT) (str : StringWithSplitState String split_stateT),
+          Definition parse_nonterminal_or_abort
+          : forall (p : String * nonterminals_listT)
+                   (str : StringWithSplitState String split_stateT),
               str ≤s fst p
               -> string
               -> bool
-            := @Fix3
-                 (prod (StringWithSplitState String split_stateT) names_listT) _ _ _
-                 _ (@well_founded_prod_relation
-                      (StringWithSplitState String split_stateT)
-                      names_listT
-                      _
-                      _
-                      (well_founded_ltof _ (fun s : StringWithSplitState String split_stateT => Length s))
-                      ntl_wf)
+            := Fix3
+                 _ _ _
+                 (well_founded_prod_relation
+                    (well_founded_ltof _ Length)
+                    ntl_wf)
                  _
-                 (fun sl => @parse_name_step (fst sl) (snd sl)).
+                 (fun sl => @parse_nonterminal_step (fst sl) (snd sl)).
 
-          Definition parse_name (str : StringWithSplitState String split_stateT) (name : string)
+          Definition parse_nonterminal
+                     (str : StringWithSplitState String split_stateT)
+                     (nt : string)
           : bool
-            := @parse_name_or_abort (str, initial_names_data) str
-                                    (or_intror eq_refl) name.
+            := @parse_nonterminal_or_abort
+                 (str : String, initial_nonterminals_data) str
+                 (or_intror eq_refl) nt.
         End wf.
-      End names.
+      End nonterminals.
     End parts.
   End bool.
 End recursive_descent_parser.
 
 Section recursive_descent_parser_list.
   Context {CharType} {String : string_like CharType} {G : grammar CharType}.
-  Definition rdp_list_names_listT : Type := list string.
-  Definition rdp_list_is_valid_name : rdp_list_names_listT -> string -> bool
+  Definition rdp_list_nonterminals_listT : Type := list string.
+  Definition rdp_list_is_valid_nonterminal : rdp_list_nonterminals_listT -> string -> bool
     := fun ls nt => if in_dec string_dec nt ls then true else false.
-  Definition rdp_list_remove_name : rdp_list_names_listT -> string -> rdp_list_names_listT
+  Definition rdp_list_remove_nonterminal : rdp_list_nonterminals_listT -> string -> rdp_list_nonterminals_listT
     := fun ls nt =>
          filter (fun x => if string_dec nt x then false else true) ls.
-  Definition rdp_list_names_listT_R : rdp_list_names_listT -> rdp_list_names_listT -> Prop
+  Definition rdp_list_nonterminals_listT_R : rdp_list_nonterminals_listT -> rdp_list_nonterminals_listT -> Prop
     := ltof _ (@List.length _).
   Lemma filter_list_dec {T} f (ls : list T) : List.length (filter f ls) <= List.length ls.
   Proof.
@@ -190,12 +202,12 @@ Section recursive_descent_parser_list.
              | [ |- _ <= S _ ] => solve [ apply le_S; auto ]
            end.
   Qed.
-  Lemma rdp_list_remove_name_dec : forall ls prods,
-                                            @rdp_list_is_valid_name ls prods = true
-                                            -> @rdp_list_names_listT_R (@rdp_list_remove_name ls prods) ls.
+  Lemma rdp_list_remove_nonterminal_dec : forall ls prods,
+                                            @rdp_list_is_valid_nonterminal ls prods = true
+                                            -> @rdp_list_nonterminals_listT_R (@rdp_list_remove_nonterminal ls prods) ls.
   Proof.
     intros.
-    unfold rdp_list_is_valid_name, rdp_list_names_listT_R, rdp_list_remove_name, ltof in *.
+    unfold rdp_list_is_valid_nonterminal, rdp_list_nonterminals_listT_R, rdp_list_remove_nonterminal, ltof in *.
     edestruct in_dec; [ | discriminate ].
     match goal with
       | [ H : In ?prods ?ls |- context[filter ?f ?ls] ]
@@ -222,19 +234,19 @@ Section recursive_descent_parser_list.
                | [ H : _ -> _ -> ?G |- ?G ] => apply H; auto
              end. }
   Qed.
-  Lemma rdp_list_ntl_wf : well_founded rdp_list_names_listT_R.
+  Lemma rdp_list_ntl_wf : well_founded rdp_list_nonterminals_listT_R.
   Proof.
-    unfold rdp_list_names_listT_R.
+    unfold rdp_list_nonterminals_listT_R.
     intro.
     apply well_founded_ltof.
   Defined.
 
-  Lemma rdp_list_remove_name_1
+  Lemma rdp_list_remove_nonterminal_1
   : forall ls ps ps',
-      rdp_list_is_valid_name (rdp_list_remove_name ls ps) ps' = true
-      -> rdp_list_is_valid_name ls ps' = true.
+      rdp_list_is_valid_nonterminal (rdp_list_remove_nonterminal ls ps) ps' = true
+      -> rdp_list_is_valid_nonterminal ls ps' = true.
   Proof.
-    unfold rdp_list_is_valid_name, rdp_list_remove_name.
+    unfold rdp_list_is_valid_nonterminal, rdp_list_remove_nonterminal.
     repeat match goal with
              | _ => exfalso; congruence
              | _ => reflexivity
@@ -246,12 +258,12 @@ Section recursive_descent_parser_list.
            end.
   Qed.
 
-  Lemma rdp_list_remove_name_2
+  Lemma rdp_list_remove_nonterminal_2
   : forall ls ps ps',
-      rdp_list_is_valid_name (rdp_list_remove_name ls ps) ps' = false
-      <-> rdp_list_is_valid_name ls ps' = false \/ ps = ps'.
+      rdp_list_is_valid_nonterminal (rdp_list_remove_nonterminal ls ps) ps' = false
+      <-> rdp_list_is_valid_nonterminal ls ps' = false \/ ps = ps'.
   Proof.
-    unfold rdp_list_is_valid_name, rdp_list_remove_name.
+    unfold rdp_list_is_valid_nonterminal, rdp_list_remove_nonterminal.
     repeat match goal with
              | _ => exfalso; congruence
              | _ => reflexivity
@@ -269,6 +281,19 @@ Section recursive_descent_parser_list.
              | [ |- appcontext[if ?E then _ else _] ] => destruct E
            end.
   Qed.
+
+  Global Instance rdp_list_predata : parser_computational_predataT
+    := { nonterminals_listT := rdp_list_nonterminals_listT;
+         initial_nonterminals_data := Valid_nonterminals G;
+         is_valid_nonterminal := rdp_list_is_valid_nonterminal;
+         remove_nonterminal := rdp_list_remove_nonterminal;
+         nonterminals_listT_R := rdp_list_nonterminals_listT_R;
+         remove_nonterminal_dec := rdp_list_remove_nonterminal_dec;
+         ntl_wf := rdp_list_ntl_wf }.
+
+  Global Instance rdp_list_data' : @parser_computational_types_dataT _ String
+    := { predata := rdp_list_predata;
+         split_stateT := fun _ _ _ _ => True }.
 End recursive_descent_parser_list.
 
 Definition String_with_no_state {CharType} (String : string_like CharType) := StringWithSplitState String (fun _ => True).
@@ -340,36 +365,32 @@ Section example_parse_string_grammar.
   Local Hint Resolve NPeano.Nat.lt_lt_add_l NPeano.Nat.lt_lt_add_r NPeano.Nat.lt_add_pos_r NPeano.Nat.lt_add_pos_l : arith.
   Local Hint Resolve str_le1_append str_le2_append.
 
-  Variable G : grammar Ascii.ascii.
+  Context (G : grammar Ascii.ascii).
 
-  Definition brute_force_make_parse_of : @String Ascii.ascii string_stringlike
-                                         -> string
-                                         -> bool
-    := @parse_name
-         _
-         _
-         G
-         _
-         (Valid_nonterminal_symbols G)
-         rdp_list_is_valid_name
-         rdp_list_remove_name
-         _
-         rdp_list_remove_name_dec rdp_list_ntl_wf
-         _
-         (fun (str : String_with_no_state string_stringlike) _ => make_all_single_splits str)
-         (fun str0 _ => make_all_single_splits_correct_seq str0).
+  Global Instance brute_force_premethods : @parser_computational_dataT' _ string_stringlike (@rdp_list_data' _ _ G)
+    := { split_string_for_production str0 valid it its := make_all_single_splits;
+         split_string_for_production_correct str0 valid it its := make_all_single_splits_correct_seq }.
+
+  Global Instance brute_force_data : @boolean_parser_dataT _ string_stringlike
+    := { predata := @rdp_list_predata _ G;
+         split_stateT str := True;
+         split_string_for_production it its := make_all_single_splits;
+         split_string_for_production_correct it its := make_all_single_splits_correct_seq }.
+
+  Definition brute_force_parse_nonterminal
+  : @String Ascii.ascii string_stringlike
+    -> string
+    -> bool
+    := parse_nonterminal (G := G).
+
+  Definition brute_force_parse
+  : string -> bool
+    := fun str => brute_force_parse_nonterminal str G.
 End example_parse_string_grammar.
 
 Module example_parse_empty_grammar.
-  Definition make_parse_of : forall (str : string)
-                                    (name : string),
-                               bool
-    := @brute_force_make_parse_of (trivial_grammar _).
-
-
-
   Definition parse : string -> bool
-    := fun str => make_parse_of str (trivial_grammar string).
+    := brute_force_parse (trivial_grammar _).
 
   Time Compute parse "".
   Check eq_refl : true = parse "".
@@ -389,17 +410,10 @@ Section examples.
                        ("ab" ::== << "ab" >>) ;;
                        ("ab_star" ::== << $< "" >$
                                         | $< "ab" $ "ab_star" >$ >> ) ]]]%prods_assignment;
-         Valid_nonterminal_symbols := (""::"ab"::"ab_star"::nil)%string |}.
-
-    Definition make_parse_of : forall (str : string)
-                                      (name : string),
-                                 bool
-      := @brute_force_make_parse_of ab_star_grammar.
-
-
+         Valid_nonterminals := (""::"ab"::"ab_star"::nil)%string |}.
 
     Definition parse : string -> bool
-      := fun str => make_parse_of str ab_star_grammar.
+      := brute_force_parse ab_star_grammar.
 
     Time Eval lazy in parse "".
     Check eq_refl : parse "" = true.
@@ -417,20 +431,39 @@ Section examples.
     Time Eval lazy in parse "ababab".
     Check eq_refl : parse "ababab" = true.
   (* For debugging: *)(*
-  Goal True.
-    pose proof (eq_refl (parse "abab")) as s.
+    Goal True.
+    pose proof (eq_refl (parse "")) as s.
     unfold parse in s.
-    unfold make_parse_of in s.
-    unfold brute_force_make_parse_of in s.
-    cbv beta zeta delta [parse_names] in s.
-    cbv beta zeta delta [parse_names_or_abort] in s.
-    rewrite Init.Wf.Fix_eq in s.
+    unfold brute_force_parse, brute_force_parse_nonterminal in s.
+    cbv beta zeta delta [parse_nonterminal] in s.
+    cbv beta zeta delta [parse_nonterminal_or_abort] in s.
+    rewrite Fix3_eq in s.
     Ltac do_compute_in c H :=
-      let c' := (eval compute in c) in
-      change c with c' in H.
-    do_compute_in (lt_dec (Length string_stringlike "abab"%string) (Length string_stringlike "abab"%string)) s.
+      let c' := fresh in
+      set (c' := c) in H;
+        compute in c';
+        subst c'.
+    Tactic Notation "do_compute" open_constr(c) "in" ident(H) :=
+      match type of H with
+        | appcontext[?c0] => unify c c0
+      end;
+      do_compute_in c H.
+    cbv beta zeta delta [parse_nonterminal_step] in s.
+    change (fst (?a, ?b)) with a in s.
+    change (snd (?a, ?b)) with b in s.
+    unfold split_stateT, brute_force_data, default_string_with_no_state, default_String_with_no_state in s.
+    repeat change (string_val {| string_val := ?x |}) with x in s.
+    do_compute_in (Start_symbol ab_star_grammar) s.
+    do_compute_in (@Length Ascii.ascii string_stringlike "ab_star") s.
+    do_compute (lt_dec _ _) in s.
+    cbv beta iota zeta in s.
+    unfold is_valid_nonterminal, initial_nonterminals_data in s.
+    do_compute (is_valid_nonterminal initial_nonterminals_data "") in s.
+    set (n := @Length Ascii.ascii string_stringlike ab_star_grammar) in s.
+    pose ((Length ab_star_grammar)).
+    do_compute_in (Length ab_star_grammar) s.
+    do_compute_in (lt_dec (Length ab_star_grammar) (Length string_stringlike "abab"%string)) s.
     change (if in_right then ?x else ?y) with y in s.
-    cbv beta zeta delta [rdp_list_is_valid_name] in s.
-                       *)
+    cbv beta zeta delta [rdp_list_is_valid_nonterminal] in s.*)
   End ab_star.
 End examples.

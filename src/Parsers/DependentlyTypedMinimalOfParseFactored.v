@@ -1,7 +1,7 @@
 (** * Specialization of the dependently typed parser to minimal parse trees, taking in parse trees, split up with an abstraction barrier *)
 Require Import Coq.Lists.List Coq.Program.Program Coq.Program.Wf Coq.Arith.Wf_nat Coq.Arith.Compare_dec Coq.Classes.RelationClasses Coq.Strings.String.
 Require Import Parsers.ContextFreeGrammar Parsers.DependentlyTyped Parsers.MinimalParse.
-Require Import Parsers.DependentlyTypedMinimal Parsers.DependentlyTypedSum.
+Require Import Parsers.DependentlyTypedMinimal Parsers.DependentlyTypedSum Parsers.BaseTypes.
 Require Import Parsers.WellFoundedParse Parsers.ContextFreeGrammarProperties.
 Require Import Common Common.Wf Common.Le.
 
@@ -25,28 +25,28 @@ Section recursive_descent_parser.
   Local Instance orig_methods : @parser_computational_dataT _ String
     := { methods' := methods' }.
 
-  Context (remove_nonterminal_name_1
+  Context (remove_nonterminal_1
            : forall ls ps ps',
-               is_valid_nonterminal_name (remove_nonterminal_name ls ps) ps' = true
-               -> is_valid_nonterminal_name ls ps' = true)
-          (remove_nonterminal_name_2
+               is_valid_nonterminal (remove_nonterminal ls ps) ps' = true
+               -> is_valid_nonterminal ls ps' = true)
+          (remove_nonterminal_2
            : forall ls ps ps',
-               is_valid_nonterminal_name (remove_nonterminal_name ls ps) ps' = false
-               <-> is_valid_nonterminal_name ls ps' = false \/ ps = ps').
+               is_valid_nonterminal (remove_nonterminal ls ps) ps' = false
+               <-> is_valid_nonterminal ls ps' = false \/ ps = ps').
 
   Definition P (str0 : String) valid : String -> string -> Prop
     := fun str p =>
-         sub_names_listT is_valid_nonterminal_name valid initial_nonterminal_names_data
-         /\ is_valid_nonterminal_name
+         sub_names_listT is_valid_nonterminal valid initial_nonterminals_data
+         /\ is_valid_nonterminal
               (if lt_dec (Length str) (Length str0)
-               then initial_nonterminal_names_data
+               then initial_nonterminals_data
                else valid)
               p = true.
 
   Lemma P_remove_impl {str0 valid str name name'}
         (H0 : name <> name')
         (H : P str0 valid str name')
-  : P str0 (remove_nonterminal_name valid name) str name'.
+  : P str0 (remove_nonterminal valid name) str name'.
   Proof.
     destruct_head_hnf and.
     repeat split; try assumption.
@@ -56,7 +56,7 @@ Section recursive_descent_parser.
         | [ |- ?b = true ] => case_eq b; try reflexivity
       end.
       intro H'; exfalso.
-      apply remove_nonterminal_name_2 in H'.
+      apply remove_nonterminal_2 in H'.
       destruct H'; congruence. }
   Qed.
 
@@ -66,8 +66,8 @@ Section recursive_descent_parser.
     := { p' : parse_of_production String G s p & Forall_parse_of_production (P str0 valid) p' }.
   Definition p_parse str0 valid s prods
     := { p' : parse_of String G s prods & Forall_parse_of (P str0 valid) p' }.
-  Definition p_parse_nonterminal_name str0 valid s nonterminal_name
-    := { p' : parse_of_item String G  s (NonTerminal _ nonterminal_name) & Forall_parse_of_item (P str0 valid) p' }.
+  Definition p_parse_nonterminal str0 valid s nonterminal
+    := { p' : parse_of_item String G  s (NonTerminal _ nonterminal) & Forall_parse_of_item (P str0 valid) p' }.
 
   Definition split_parse_of_production {str0 valid str it its}
              (p : p_parse_production str0 valid str (it::its))
@@ -117,7 +117,7 @@ Section recursive_descent_parser.
               | include_item it => p_parse_item str0 valid s it
               | include_production p => p_parse_production str0 valid s p
               | include_productions prods => p_parse str0 valid s prods
-              | include_nonterminal_name nonterminal_name => p_parse_nonterminal_name str0 valid s nonterminal_name
+              | include_nonterminal nonterminal => p_parse_nonterminal str0 valid s nonterminal
             end }.
 
   Local Instance top_methods' : @parser_computational_dataT' _ String top_types_data
@@ -130,15 +130,15 @@ Section recursive_descent_parser.
     abstract (do 2 try constructor; edestruct @split_parse_of_production; simpl; intuition).
   Defined.
 
-  Definition parse_of__of__parse_of_item_lt' {str0 valid str nonterminal_name}
+  Definition parse_of__of__parse_of_item_lt' {str0 valid str nonterminal}
              (pf : Length str < Length str0)
-             (p : p_parse_nonterminal_name str0 valid str nonterminal_name)
-  : P str0 valid str nonterminal_name * p_parse str initial_nonterminal_names_data str (Lookup G nonterminal_name).
+             (p : p_parse_nonterminal str0 valid str nonterminal)
+  : P str0 valid str nonterminal * p_parse str initial_nonterminals_data str (Lookup G nonterminal).
   Proof.
     refine (match projT1 p as p' in parse_of_item _ _ str' it'
                   return match it' with
                            | Terminal _ => True
-                           | NonTerminal nonterminal_name' => Length str' < Length str0 -> Forall_parse_of_item (P str0 valid) p' -> P str0 valid str' nonterminal_name' * p_parse str' initial_nonterminal_names_data str' (Lookup G nonterminal_name')
+                           | NonTerminal nonterminal' => Length str' < Length str0 -> Forall_parse_of_item (P str0 valid) p' -> P str0 valid str' nonterminal' * p_parse str' initial_nonterminals_data str' (Lookup G nonterminal')
                          end
             with
               | ParseTerminal _ => I
@@ -147,45 +147,45 @@ Section recursive_descent_parser.
     clear -pf'; unfold P in *; simpl;
     abstract (intros ??; do 2 edestruct lt_dec; intuition).
   Defined.
-  Definition parse_of__of__parse_of_item_lt {str0 valid str nonterminal_name} pf p
-    := snd (@parse_of__of__parse_of_item_lt' str0 valid str nonterminal_name pf p).
+  Definition parse_of__of__parse_of_item_lt {str0 valid str nonterminal} pf p
+    := snd (@parse_of__of__parse_of_item_lt' str0 valid str nonterminal pf p).
 
-  Definition deloop_right str0 valid str nonterminal_name
-    := p_parse str0 (remove_nonterminal_name valid nonterminal_name) str (Lookup G nonterminal_name).
+  Definition deloop_right str0 valid str nonterminal
+    := p_parse str0 (remove_nonterminal valid nonterminal) str (Lookup G nonterminal).
 
   Definition deloop_onceT
-    := forall str0 valid str nonterminal_name prods
+    := forall str0 valid str nonterminal prods
               (p : parse_of String G str prods)
               (pf : str = str0 :> String)
               (H : Forall_parse_of (P str0 valid) p),
-         p_parse str0 (remove_nonterminal_name valid nonterminal_name) str prods
-         + deloop_right str0 valid str nonterminal_name.
+         p_parse str0 (remove_nonterminal valid nonterminal) str prods
+         + deloop_right str0 valid str nonterminal.
 
   Definition deloop_once_productionT
-    := forall str0 valid str nonterminal_name prod
+    := forall str0 valid str nonterminal prod
               (p : parse_of_production String G str prod)
               (pf : str = str0 :> String)
               (H : Forall_parse_of_production (P str0 valid) p),
-         p_parse_production str0 (remove_nonterminal_name valid nonterminal_name) str prod
-         + deloop_right str0 valid str nonterminal_name.
+         p_parse_production str0 (remove_nonterminal valid nonterminal) str prod
+         + deloop_right str0 valid str nonterminal.
 
   Definition deloop_once_item'
              (deloop_once : deloop_onceT)
-             {str0 valid str nonterminal_name}
+             {str0 valid str nonterminal}
              {it}
              (p : parse_of_item String G str it)
              (pf : str = str0 :> String)
              (H : Forall_parse_of_item (P str0 valid) p)
-  : p_parse_item str0 (remove_nonterminal_name valid nonterminal_name) str it
-    + deloop_right str0 valid str nonterminal_name.
+  : p_parse_item str0 (remove_nonterminal valid nonterminal) str it
+    + deloop_right str0 valid str nonterminal.
   Proof.
-    destruct p as [ | nonterminal_name' str'' p' ].
+    destruct p as [ | nonterminal' str'' p' ].
     { exact (inl (existT _ (ParseTerminal _ _ _) tt)). }
-    { refine (if string_dec nonterminal_name nonterminal_name'
-              then inr (if @deloop_once _ _ _ nonterminal_name' _ p' pf (snd H)
+    { refine (if string_dec nonterminal nonterminal'
+              then inr (if @deloop_once _ _ _ nonterminal' _ p' pf (snd H)
                         then _
                         else _)
-              else match @deloop_once _ _ _ nonterminal_name _ p' pf (snd H) with
+              else match @deloop_once _ _ _ nonterminal _ p' pf (snd H) with
                      | inl p''' => inl (existT _ (ParseNonTerminal _ (projT1 p''')) (P_remove_impl _ (fst H), projT2 p'''))
                      | inr ret => inr ret
                    end);
@@ -199,13 +199,13 @@ Section recursive_descent_parser.
              (deloop_once_production : deloop_once_productionT)
   : deloop_onceT.
   Proof.
-    intros str0 valid str nonterminal_name pats p pf H.
+    intros str0 valid str nonterminal pats p pf H.
     destruct p as [ str' pat' pats' p' | str' pat' pats' p' ].
-    { refine match deloop_once_production str0 valid str' nonterminal_name _ p' pf H with
+    { refine match deloop_once_production str0 valid str' nonterminal _ p' pf H with
                | inl ret => inl (existT _ (ParseHead pats' (projT1 ret)) (projT2 ret))
                | inr ret => inr ret
              end. }
-    { refine match deloop_once str0 valid str' nonterminal_name _ p' pf H with
+    { refine match deloop_once str0 valid str' nonterminal _ p' pf H with
                | inl ret => inl (existT _ (ParseTail _ (projT1 ret)) (projT2 ret))
                | inr ret => inr ret
              end. }
@@ -224,7 +224,7 @@ Section recursive_descent_parser.
              | [ H : _ < 0 |- _ ] => destruct (Lt.lt_n_0 _ H)
              | _ => progress destruct_head and
              | [ |- _ /\ _ ] => split
-             | [ H : sub_names_listT _ _ _ |- is_valid_nonterminal_name _ _ = true ]
+             | [ H : sub_names_listT _ _ _ |- is_valid_nonterminal _ _ = true ]
                => (apply H; eapply sub_names_listT_remove; eassumption)
              | [ H : ~0 < ?n |- _ ]
                => (let H' := fresh in
@@ -246,18 +246,18 @@ Section recursive_descent_parser.
              (deloop_once_production : deloop_once_productionT)
   : deloop_once_productionT.
   Proof.
-    intros str0 valid str nonterminal_name pat p pf H.
+    intros str0 valid str nonterminal pat p pf H.
     destruct p as [ | str' pat' strs' pats' p' p'' ].
     { refine (inl (existT _ (ParseProductionNil _ _) tt)). }
     { (** We must discriminate based on whether or not [str] has already gotten shorter *)
       destruct (stringlike_dec str' (Empty _)) as [e|e], (stringlike_dec strs' (Empty _)) as [e'|e'];
       try (assert (pf0 : str' = str0)
             by (clear -pf e'; abstract (subst strs'; rewrite ?RightId, ?LeftId in pf; exact pf));
-           pose proof (@deloop_once_item' (deloop_once) str0 valid _ nonterminal_name pat' p' pf0 (fst H)) as deloop_once_item;
+           pose proof (@deloop_once_item' (deloop_once) str0 valid _ nonterminal pat' p' pf0 (fst H)) as deloop_once_item;
            clear deloop_once);
       try (assert (pf1 : strs' = str0)
             by (clear -pf e; abstract (subst str'; rewrite ?RightId, ?LeftId in pf; exact pf));
-           specialize (deloop_once_production str0 valid _ nonterminal_name pats' p'' pf1 (snd H)));
+           specialize (deloop_once_production str0 valid _ nonterminal pats' p'' pf1 (snd H)));
       try (destruct deloop_once_item as [ret|ret];
            [ | right; repeat first [ subst str' | subst strs' ]; rewrite ?LeftId, ?RightId; assumption ]);
       try (destruct deloop_once_production as [ret'|ret'];
@@ -270,55 +270,55 @@ Section recursive_descent_parser.
         refine (existT _ (ParseProductionCons p' (projT1 ret'))
                        (expand_forall_parse_of_item _ (fst H), projT2 ret')).
         unfold P in *; simpl.
-        clear -e e' pf1 remove_nonterminal_name_1 remove_nonterminal_name_2.
+        clear -e e' pf1 remove_nonterminal_1 remove_nonterminal_2.
         abstract (intros; edestruct lt_dec; deloop_t). }
       { (** nonempty, empty *)
         refine (existT _ (ParseProductionCons (projT1 ret) p'')
                        (projT2 ret, expand_forall_parse_of_production _ _ (snd H))).
         unfold P in *; simpl.
-        clear -e e' pf0 remove_nonterminal_name_1 remove_nonterminal_name_2.
+        clear -e e' pf0 remove_nonterminal_1 remove_nonterminal_2.
         abstract (intros; edestruct lt_dec; deloop_t). }
       { (** nonempty, nonempty *)
         refine (existT _ (ParseProductionCons p' p'')
                        (expand_forall_parse_of_item _ (fst H),
                         expand_forall_parse_of_production _ _ (snd H)));
         unfold P in *; simpl;
-        clear -e e' pf remove_nonterminal_name_1 remove_nonterminal_name_2;
+        clear -e e' pf remove_nonterminal_1 remove_nonterminal_2;
         abstract (intros; edestruct lt_dec; deloop_t). } }
   Defined.
 
-  Fixpoint deloop_once {str0 valid str nonterminal_name pats} (p : parse_of String G str pats)
-    := @deloop_once' (@deloop_once) (@deloop_once_production) str0 valid str nonterminal_name pats p
-  with deloop_once_production {str0 valid str nonterminal_name pat} (p : parse_of_production String G str pat)
-       := @deloop_once_production' (@deloop_once) (@deloop_once_production) str0 valid str nonterminal_name pat p.
-  Definition deloop_once_item {str0 valid str nonterminal_name it} (p : parse_of_item String G str it)
-    := @deloop_once_item' (@deloop_once) str0 valid str nonterminal_name it p.
+  Fixpoint deloop_once {str0 valid str nonterminal pats} (p : parse_of String G str pats)
+    := @deloop_once' (@deloop_once) (@deloop_once_production) str0 valid str nonterminal pats p
+  with deloop_once_production {str0 valid str nonterminal pat} (p : parse_of_production String G str pat)
+       := @deloop_once_production' (@deloop_once) (@deloop_once_production) str0 valid str nonterminal pat p.
+  Definition deloop_once_item {str0 valid str nonterminal it} (p : parse_of_item String G str it)
+    := @deloop_once_item' (@deloop_once) str0 valid str nonterminal it p.
 
-  Definition parse_of__of__parse_of_item_eq' {str0 valid str nonterminal_name}
+  Definition parse_of__of__parse_of_item_eq' {str0 valid str nonterminal}
              (pf : str = str0 :> String)
-             (p : p_parse_nonterminal_name str0 valid str nonterminal_name)
-  : P str0 valid str nonterminal_name * p_parse str0 (remove_nonterminal_name valid nonterminal_name) str (Lookup G nonterminal_name).
+             (p : p_parse_nonterminal str0 valid str nonterminal)
+  : P str0 valid str nonterminal * p_parse str0 (remove_nonterminal valid nonterminal) str (Lookup G nonterminal).
   Proof.
     refine (match projT1 p as p' in parse_of_item _ _ str' it'
                   return match it' with
                            | Terminal _ => True
-                           | NonTerminal nonterminal_name' => str' = str0 -> Forall_parse_of_item (P str0 valid) p' -> P str0 valid str' nonterminal_name' * p_parse str0 (remove_nonterminal_name valid nonterminal_name') str' (Lookup G nonterminal_name')
+                           | NonTerminal nonterminal' => str' = str0 -> Forall_parse_of_item (P str0 valid) p' -> P str0 valid str' nonterminal' * p_parse str0 (remove_nonterminal valid nonterminal') str' (Lookup G nonterminal')
                          end
             with
               | ParseTerminal _ => I
-              | ParseNonTerminal nonterminal_name' _ p'
-                => fun pf' H' => (fst H', if @deloop_once str0 valid _ nonterminal_name' _ p' pf' (snd H') then _ else _)
+              | ParseNonTerminal nonterminal' _ p'
+                => fun pf' H' => (fst H', if @deloop_once str0 valid _ nonterminal' _ p' pf' (snd H') then _ else _)
             end pf (projT2 p));
     assumption.
   Defined.
-  Definition parse_of__of__parse_of_item_eq {str0 valid str nonterminal_name} pf p
-    := snd (@parse_of__of__parse_of_item_eq' str0 valid str nonterminal_name pf p).
+  Definition parse_of__of__parse_of_item_eq {str0 valid str nonterminal} pf p
+    := snd (@parse_of__of__parse_of_item_eq' str0 valid str nonterminal pf p).
 
   Definition top_methods : @parser_computational_dataT _ String
-    := {| DependentlyTyped.methods' := top_methods' |}.
+    := {| BaseTypes.methods' := top_methods' |}.
 
   Local Instance top_prestrdata : @parser_computational_prestrdataT _ String G top_methods option
-    := { prelower_nonterminal_name_state str0 valid nonterminal_name str st := Some st;
+    := { prelower_nonterminal_state str0 valid nonterminal str st := Some st;
          prelower_string_head str0 valid prod prods str st
          := match projT1 st as p' in parse_of _ _ str' prods' return Forall_parse_of (P str0 valid) p' -> option (p_parse_production str0 valid str' (hd prod prods')) with
               | ParseHead _ _ _ p' => fun H => Some (existT _ p' H)
@@ -329,8 +329,8 @@ Section recursive_descent_parser.
               | ParseTail _ _ _ p' => fun H => Some (existT _ p' H)
               | ParseHead _ _ _ _ => fun _ => None
             end (projT2 st);
-         prelift_lookup_nonterminal_name_state_lt str0 valid nonterminal_name str pf := Some ∘ parse_of__of__parse_of_item_lt pf;
-         prelift_lookup_nonterminal_name_state_eq str0 valid nonterminal_name str pf := Some ∘ parse_of__of__parse_of_item_eq pf }.
+         prelift_lookup_nonterminal_state_lt str0 valid nonterminal str pf := Some ∘ parse_of__of__parse_of_item_lt pf;
+         prelift_lookup_nonterminal_state_eq str0 valid nonterminal str pf := Some ∘ parse_of__of__parse_of_item_eq pf }.
 
   Context (split_list_complete : forall str0 valid it its str pf, @split_list_completeT _ String G _ str0 valid it its str pf (split_string_for_production str0 valid it its str)).
 
@@ -378,18 +378,18 @@ Section recursive_descent_parser.
          top_prestrdata
          _ _ _ _ _ _ _ _ _.
 
-  Definition minimal_parse_nonterminal_name__of__parse'
-             (nonterminal_name : string)
+  Definition minimal_parse_nonterminal__of__parse'
+             (nonterminal : string)
              (s : String)
-             (p : parse_of_item String G s (NonTerminal _ nonterminal_name))
+             (p : parse_of_item String G s (NonTerminal _ nonterminal))
              (H : Forall_parse_of_item
-                    (fun _ n => is_valid_nonterminal_name initial_nonterminal_names_data n = true)
+                    (fun _ n => is_valid_nonterminal initial_nonterminals_data n = true)
                     p)
-  : minimal_parse_of_name String G initial_nonterminal_names_data is_valid_nonterminal_name remove_nonterminal_name s initial_nonterminal_names_data s nonterminal_name.
+  : minimal_parse_of_name String G initial_nonterminals_data is_valid_nonterminal remove_nonterminal s initial_nonterminals_data s nonterminal.
   Proof.
-    pose proof (fun H' => @parse_nonterminal_name _ String G minimal_of_parse_parser_dependent_types_extra_data' nonterminal_name s (Some (existT _ p (expand_forall_parse_of_item H' H)))) as H0.
+    pose proof (fun H' => @parse_nonterminal _ String G minimal_of_parse_parser_dependent_types_extra_data' nonterminal s (Some (existT _ p (expand_forall_parse_of_item H' H)))) as H0.
     simpl in *.
-    unfold T_nonterminal_name_success, T_nonterminal_name_failure in *.
+    unfold T_nonterminal_success, T_nonterminal_failure in *.
     simpl in *.
     destruct H0; destruct_head False; try assumption; [ clear ].
     unfold P in *; simpl in *.

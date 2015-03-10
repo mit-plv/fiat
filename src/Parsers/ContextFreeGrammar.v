@@ -14,10 +14,10 @@ Section cfg.
   Section definitions.
     (** An [item] is the basic building block of a context-free
         grammar; it is either a terminal ([CharType]-literal) or a
-        nonterminal of a given name. *)
+        nonterminal ([string]). *)
     Inductive item :=
     | Terminal (_ : CharType)
-    | NonTerminal (name : string).
+    | NonTerminal (_ : string).
 
     (** A [productions] is a list of possible [production]s; a
         [production] is a list of [item]s.  A string matches a
@@ -47,9 +47,9 @@ Section cfg.
       {
         Start_symbol :> string;
         Lookup :> string -> productions;
-        Start_production :> productions := Lookup Start_symbol;
-        Valid_nonterminal_symbols : list string;
-        Valid_nonterminals : list productions := map Lookup Valid_nonterminal_symbols
+        Start_productions :> productions := Lookup Start_symbol;
+        Valid_nonterminals : list string;
+        Valid_productions : list productions := map Lookup Valid_nonterminals
       }.
   End definitions.
 
@@ -73,8 +73,8 @@ Section cfg.
                            -> parse_of_production (str ++ strs) (pat::pats)
     with parse_of_item : String -> item -> Type :=
     | ParseTerminal : forall x, parse_of_item [[ x ]]%string_like (Terminal x)
-    | ParseNonTerminal : forall name str, parse_of str (Lookup G name)
-                                          -> parse_of_item str (NonTerminal name).
+    | ParseNonTerminal : forall nt str, parse_of str (Lookup G nt)
+                                        -> parse_of_item str (NonTerminal nt).
 
     Definition ParseProductionSingleton str it (p : parse_of_item str it) : parse_of_production str [ it ].
     Proof.
@@ -121,7 +121,7 @@ Section examples.
     Definition trivial_grammar : grammar CharType :=
       {| Start_symbol := "";
          Lookup := fun _ => nil::nil;
-         Valid_nonterminal_symbols := ""%string::nil |}.
+         Valid_nonterminals := ""%string::nil |}.
 
     Definition trivial_grammar_parses_empty_string : parse_of_grammar _ (Empty String) trivial_grammar.
     Proof.

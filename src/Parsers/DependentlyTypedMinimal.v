@@ -1,6 +1,6 @@
 (** * Specialization of the dependently typed parser to minimal parse trees *)
 Require Import Coq.Lists.List Coq.Program.Program Coq.Program.Wf Coq.Arith.Wf_nat Coq.Arith.Compare_dec Coq.Classes.RelationClasses Coq.Strings.String.
-Require Import Parsers.ContextFreeGrammar Parsers.DependentlyTyped Parsers.MinimalParse.
+Require Import Parsers.ContextFreeGrammar Parsers.DependentlyTyped Parsers.MinimalParse Parsers.BaseTypes.
 Require Import Common Common.Wf.
 
 Set Implicit Arguments.
@@ -43,29 +43,29 @@ Section recursive_descent_parser.
       Section common.
         Section types.
           Context (str0 : String)
-                  (valid : nonterminal_names_listT).
+                  (valid : nonterminals_listT).
 
-          Definition T_nonterminal_name_success (name : string) (str : StringWithSplitState String (split_stateT str0 valid (include_nonterminal_name _ name))) : Type
-            := minimal_parse_of_name String G initial_nonterminal_names_data is_valid_nonterminal_name remove_nonterminal_name
+          Definition T_nonterminal_success (name : string) (str : StringWithSplitState String (split_stateT str0 valid (include_nonterminal _ name))) : Type
+            := minimal_parse_of_name String G initial_nonterminals_data is_valid_nonterminal remove_nonterminal
                                      str0 valid str name.
-          Definition T_nonterminal_name_failure (name : string) str : Type
-            := T_nonterminal_name_success name str -> False.
+          Definition T_nonterminal_failure (name : string) str : Type
+            := T_nonterminal_success name str -> False.
 
           Definition T_item_success (it : item CharType) (str : StringWithSplitState String (split_stateT str0 valid it)) : Type
-            := minimal_parse_of_item String G initial_nonterminal_names_data is_valid_nonterminal_name remove_nonterminal_name
+            := minimal_parse_of_item String G initial_nonterminals_data is_valid_nonterminal remove_nonterminal
                                      str0 valid str it.
           Definition T_item_failure (it : item CharType) str : Type
             := T_item_success it str -> False.
 
           Definition T_production_success (prod : production CharType) (str : StringWithSplitState String (split_stateT str0 valid prod)) : Type
-            := minimal_parse_of_production String G initial_nonterminal_names_data is_valid_nonterminal_name remove_nonterminal_name
+            := minimal_parse_of_production String G initial_nonterminals_data is_valid_nonterminal remove_nonterminal
                                            str0 valid str prod.
 
           Definition T_production_failure (prod : production CharType) str : Type
             := T_production_success prod str -> False.
 
           Definition T_productions_success (prods : productions CharType) (str : StringWithSplitState String (split_stateT str0 valid prods)) : Type
-            := minimal_parse_of String G initial_nonterminal_names_data is_valid_nonterminal_name remove_nonterminal_name
+            := minimal_parse_of String G initial_nonterminals_data is_valid_nonterminal remove_nonterminal
                                 str0 valid str prods.
 
           Definition T_productions_failure (prods : productions CharType) str : Type
@@ -74,7 +74,7 @@ Section recursive_descent_parser.
 
         Global Instance minimal_parser_dependent_types_success_data'
         : @parser_dependent_types_success_dataT' _ String _
-          := { T_nonterminal_name_success := T_nonterminal_name_success;
+          := { T_nonterminal_success := T_nonterminal_success;
                T_item_success := T_item_success;
                T_production_success := T_production_success;
                T_productions_success := T_productions_success }.
@@ -85,7 +85,7 @@ Section recursive_descent_parser.
 
         Global Instance minimal_parser_dependent_types_failure_data'
         : @parser_dependent_types_failure_dataT' _ String _
-          := { T_nonterminal_name_failure := T_nonterminal_name_failure;
+          := { T_nonterminal_failure := T_nonterminal_failure;
                T_item_failure := T_item_failure;
                T_production_failure := T_production_failure;
                T_productions_failure := T_productions_failure }.
@@ -104,21 +104,21 @@ Section recursive_descent_parser.
                    (split_list : list (StringWithSplitState String (split_stateT str0 valid it) * StringWithSplitState String (split_stateT str0 valid its)))
           := ({ s1s2 : String * String
                        & (fst s1s2 ++ snd s1s2 =s str)
-                         * (minimal_parse_of_item _ G initial_nonterminal_names_data is_valid_nonterminal_name remove_nonterminal_name str0 valid (fst s1s2) it)
-                         * (minimal_parse_of_production _ G initial_nonterminal_names_data is_valid_nonterminal_name remove_nonterminal_name str0 valid (snd s1s2) its) }%type)
+                         * (minimal_parse_of_item _ G initial_nonterminals_data is_valid_nonterminal remove_nonterminal str0 valid (fst s1s2) it)
+                         * (minimal_parse_of_production _ G initial_nonterminals_data is_valid_nonterminal remove_nonterminal str0 valid (snd s1s2) its) }%type)
              -> ({ s1s2 : _
                           & (In s1s2 split_list)
-                            * (minimal_parse_of_item _ G initial_nonterminal_names_data is_valid_nonterminal_name remove_nonterminal_name str0 valid (fst s1s2) it)
-                            * (minimal_parse_of_production _ G initial_nonterminal_names_data is_valid_nonterminal_name remove_nonterminal_name str0 valid (snd s1s2) its) }%type).
+                            * (minimal_parse_of_item _ G initial_nonterminals_data is_valid_nonterminal remove_nonterminal str0 valid (fst s1s2) it)
+                            * (minimal_parse_of_production _ G initial_nonterminals_data is_valid_nonterminal remove_nonterminal str0 valid (snd s1s2) its) }%type).
 
         Lemma H_prod_split'_helper
               (str0 : String)
-              (valid : nonterminal_names_listT)
+              (valid : nonterminals_listT)
               (it : item CharType) (its : production CharType)
               (str : StringWithSplitState String (split_stateT str0 valid it))
               (strs : StringWithSplitState String (split_stateT str0 valid its))
-              (p_it : minimal_parse_of_item String G initial_nonterminal_names_data is_valid_nonterminal_name remove_nonterminal_name str0 valid str it)
-              (p_its : minimal_parse_of_production String G initial_nonterminal_names_data is_valid_nonterminal_name remove_nonterminal_name str0 valid strs its)
+              (p_it : minimal_parse_of_item String G initial_nonterminals_data is_valid_nonterminal remove_nonterminal str0 valid str it)
+              (p_its : minimal_parse_of_production String G initial_nonterminals_data is_valid_nonterminal remove_nonterminal str0 valid strs its)
               (ls : list
                       (StringWithSplitState String (split_stateT str0 valid it) *
                        StringWithSplitState String (split_stateT str0 valid its)))
@@ -146,7 +146,7 @@ Section recursive_descent_parser.
 
         Definition H_prod_split'
                    (str0 : String)
-                   (valid : nonterminal_names_listT)
+                   (valid : nonterminals_listT)
                    it its
                    (str : StringWithSplitState String (split_stateT str0 valid (it::its : production CharType)))
                    pf
@@ -230,17 +230,17 @@ Section recursive_descent_parser.
                extra_success_data := minimal_parser_dependent_types_extra_success_data' }.
       End common.
 
-      Definition minimal_parse_nonterminal_name
+      Definition minimal_parse_nonterminal
                  (split_list_complete
                   : forall str0 valid it its str pf,
                       @split_list_completeT str0 valid it its str pf (split_string_for_production str0 valid it its str))
-      : forall (nonterminal_name : string)
+      : forall (nonterminal : string)
                (s : String)
-               (st : split_stateT s _ (include_nonterminal_name _ nonterminal_name) s)
+               (st : split_stateT s _ (include_nonterminal _ nonterminal) s)
                (str := {| string_val := s ; state_val := st |}),
-          sum (T_nonterminal_name_success str initial_nonterminal_names_data nonterminal_name str)
-              (T_nonterminal_name_failure str initial_nonterminal_names_data nonterminal_name str)
-        := @parse_nonterminal_name _ String G (minimal_parser_dependent_types_extra_data split_list_complete).
+          sum (T_nonterminal_success str initial_nonterminals_data nonterminal str)
+              (T_nonterminal_failure str initial_nonterminals_data nonterminal str)
+        := @parse_nonterminal _ String G (minimal_parser_dependent_types_extra_data split_list_complete).
     End parts.
   End minimal.
 End recursive_descent_parser.

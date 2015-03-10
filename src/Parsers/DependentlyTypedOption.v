@@ -2,7 +2,7 @@
 Require Import Coq.Lists.List Coq.Program.Program Coq.Classes.RelationClasses Coq.Strings.String.
 Require Import Parsers.ContextFreeGrammar.
 Require Import Parsers.StringLike.Properties.
-Require Import Parsers.DependentlyTyped.
+Require Import Parsers.DependentlyTyped Parsers.BaseTypes.
 Require Import Common Common.Equality.
 
 Set Implicit Arguments.
@@ -63,21 +63,21 @@ Set Printing Implicit.
   Local Instance option_methods : @parser_computational_dataT _ String
     := { methods' := option_methods' }.
 
-  Local Notation orig_methods := {| DependentlyTyped.methods' := methods' |}.
+  Local Notation orig_methods := {| BaseTypes.methods' := methods' |}.
 
   Context (prestrdata : @parser_computational_prestrdataT _ String G orig_methods option).
 
   Global Instance option_prestrdata : @parser_computational_prestrdataT _ String G option_methods idM
-    := { prelower_nonterminal_name_state str0 valid nonterminal_name s
-         := option_bind (@prelower_nonterminal_name_state _ _ _ _ _ prestrdata _ _ _ _);
+    := { prelower_nonterminal_state str0 valid nonterminal s
+         := option_bind (@prelower_nonterminal_state _ _ _ _ _ prestrdata _ _ _ _);
          prelower_string_head str0 valid prod prods s
          := option_bind (@prelower_string_head _ _ _ _ _ prestrdata _ _ _ _ _);
          prelower_string_tail str0 valid prod prods s
          := option_bind (@prelower_string_tail _ _ _ _ _ prestrdata _ _ _ _ _);
-         prelift_lookup_nonterminal_name_state_lt str0 valid nonterminal_name s pf
-         := option_bind (@prelift_lookup_nonterminal_name_state_lt _ _ _ _ _ prestrdata _ _ _ _ pf);
-         prelift_lookup_nonterminal_name_state_eq str0 valid nonterminal_name s pf
-         := option_bind (@prelift_lookup_nonterminal_name_state_eq _ _ _ _ _ prestrdata _ _ _ _ pf) }.
+         prelift_lookup_nonterminal_state_lt str0 valid nonterminal s pf
+         := option_bind (@prelift_lookup_nonterminal_state_lt _ _ _ _ _ prestrdata _ _ _ _ pf);
+         prelift_lookup_nonterminal_state_eq str0 valid nonterminal s pf
+         := option_bind (@prelift_lookup_nonterminal_state_eq _ _ _ _ _ prestrdata _ _ _ _ pf) }.
 
   Global Instance option_strdata : @parser_computational_strdataT _ String G option_methods := option_prestrdata.
 
@@ -95,8 +95,8 @@ Set Printing Implicit.
        end.
 
   Global Instance option_stypes' : @parser_dependent_types_success_dataT' _ String option_methods
-    := { T_nonterminal_name_success str0 valid name
-         := option_rect_str (@T_nonterminal_name_success _ _ _ stypes' str0 valid name) (fun _ => True);
+    := { T_nonterminal_success str0 valid name
+         := option_rect_str (@T_nonterminal_success _ _ _ stypes' str0 valid name) (fun _ => True);
          T_item_success str0 valid it
          := option_rect_str (@T_item_success _ _ _ stypes' str0 valid it) (fun _ => True);
          T_production_success str0 valid prod
@@ -111,8 +111,8 @@ Set Printing Implicit.
   Context (ftypes' : @parser_dependent_types_failure_dataT' _ String {| DependentlyTyped.stypes' := stypes' |}).
 
   Global Instance option_ftypes' : @parser_dependent_types_failure_dataT' _ String option_stypes
-    := { T_nonterminal_name_failure str0 valid name
-         := option_rect_str (@T_nonterminal_name_failure _ _ _ ftypes' str0 valid name) (fun _ => True);
+    := { T_nonterminal_failure str0 valid name
+         := option_rect_str (@T_nonterminal_failure _ _ _ ftypes' str0 valid name) (fun _ => True);
          T_item_failure str0 valid it
          := option_rect_str (@T_item_failure _ _ _ ftypes' str0 valid it) (fun _ => True);
          T_production_failure str0 valid prod
@@ -163,7 +163,7 @@ Set Printing Implicit.
                | apply Some_injective; assumption ]).
 
   Global Program Instance option_extra_success_data : @parser_dependent_types_extra_success_dataT' _ String G option_stypes option_strdata
-    := { lift_success str0 valid nonterminal_name
+    := { lift_success str0 valid nonterminal
          := option_rect_str (fun str => @lift_success _ _ _ _ _ extra_success_data _ _ _ (eta str)) _;
          parse_terminal_success str0 valid ch
          := option_rect_str (fun str => @parse_terminal_success _ _ _ _ _ extra_success_data _ _ _ (eta str)) _;
@@ -190,16 +190,16 @@ Set Printing Implicit.
          := option_rect_str (fun str => @lift_prods_success_head _ _ _ _ _ extra_success_data _ _ _ _ (eta str)) _;
          lift_prods_success_tail str0 valid prod prods
          := option_rect_str (fun str => @lift_prods_success_tail _ _ _ _ _ extra_success_data _ _ _ _ (eta str)) _;
-         lift_parse_nonterminal_name_success_lt str0 valid nonterminal_name
-         := option_rect_str (fun str => @lift_parse_nonterminal_name_success_lt _ _ _ _ _ extra_success_data _ _ _ (eta str)) _;
-         lift_parse_nonterminal_name_success_eq str0 valid nonterminal_name
-         := option_rect_str (fun str => @lift_parse_nonterminal_name_success_eq _ _ _ _ _ extra_success_data _ _ _ (eta str)) _
+         lift_parse_nonterminal_success_lt str0 valid nonterminal
+         := option_rect_str (fun str => @lift_parse_nonterminal_success_lt _ _ _ _ _ extra_success_data _ _ _ (eta str)) _;
+         lift_parse_nonterminal_success_eq str0 valid nonterminal
+         := option_rect_str (fun str => @lift_parse_nonterminal_success_eq _ _ _ _ _ extra_success_data _ _ _ (eta str)) _
        }.
 
   Context (extra_failure_data : @parser_dependent_types_extra_failure_dataT' _ String G {| DependentlyTyped.ftypes' := ftypes' |} strdata).
 
   Global Program Instance option_extra_failure_data : @parser_dependent_types_extra_failure_dataT' _ String G option_types option_strdata
-    := { lift_failure str0 valid nonterminal_name
+    := { lift_failure str0 valid nonterminal
          := option_rect_str (fun str => @lift_failure _ _ _ _ _ extra_failure_data _ _ _ (eta str)) _;
          parse_terminal_failure str0 valid ch
          := option_rect_str (fun str => @parse_terminal_failure _ _ _ _ _ extra_failure_data _ _ _ (eta str)) _;
@@ -212,12 +212,12 @@ Set Printing Implicit.
          H_prod_split str0 valid it its
          := option_rect_str (fun str pf => (@H_prod_split _ _ _ _ _ extra_failure_data _ _ _ _ (eta str) pf)
                                              ∘ (fun H => eq_rect _ _ H _ _)) _;
-         lift_parse_nonterminal_name_failure_lt str0 valid nonterminal_name
-         := option_rect_str (fun str => @lift_parse_nonterminal_name_failure_lt _ _ _ _ _ extra_failure_data _ _ _ (eta str)) _;
-         lift_parse_nonterminal_name_failure_eq str0 valid nonterminal_name
-         := option_rect_str (fun str => @lift_parse_nonterminal_name_failure_eq _ _ _ _ _ extra_failure_data _ _ _ (eta str)) _;
-         elim_parse_nonterminal_name_failure str0 valid nonterminal_name
-         := option_rect_str (fun str => @elim_parse_nonterminal_name_failure _ _ _ _ _ extra_failure_data _ _ _ (eta str)) _
+         lift_parse_nonterminal_failure_lt str0 valid nonterminal
+         := option_rect_str (fun str => @lift_parse_nonterminal_failure_lt _ _ _ _ _ extra_failure_data _ _ _ (eta str)) _;
+         lift_parse_nonterminal_failure_eq str0 valid nonterminal
+         := option_rect_str (fun str => @lift_parse_nonterminal_failure_eq _ _ _ _ _ extra_failure_data _ _ _ (eta str)) _;
+         elim_parse_nonterminal_failure str0 valid nonterminal
+         := option_rect_str (fun str => @elim_parse_nonterminal_failure _ _ _ _ _ extra_failure_data _ _ _ (eta str)) _
        }.
   Next Obligation.
   Proof.
