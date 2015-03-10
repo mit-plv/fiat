@@ -41,12 +41,17 @@ Section first_char_splitter.
   : list (StringT * StringT)
     := match its with
          | nil => [(str, "" : StringT)]
-         | _::_ => match it, string_val str with
-                     | Terminal _, String.String ch str'
-                       => [(String.String ch "" : StringT, str' : StringT)]
-                     | _, ""
-                       => [("" : StringT, "" : StringT)]
-                     | NonTerminal _, _
+         | _::_ => match it with
+                     | Terminal _
+                       => [((match string_val str return string with
+                               | String.String ch str' => String.String ch ""
+                               | "" => ""
+                             end : StringT),
+                            (match string_val str return string with
+                               | String.String ch str' => str'
+                               | "" => ""
+                             end : StringT))]
+                     | NonTerminal _
                        => fallback_split it its str
                    end
        end.
@@ -93,6 +98,59 @@ Section first_char_splitter.
          split_string_for_production_correct it its str := first_char_split_correct_seq (fallback_split_correct_eq it its str) }.
 End first_char_splitter.
 
+Local Opaque string_dec.
+
+Local Ltac unroll_valid_nonterminals :=
+  intros;
+  let H := match goal with H : is_true (is_valid_nonterminal _ _) |- _ => constr:H end in
+  simpl in H;
+    unfold rdp_list_is_valid_nonterminal in H; simpl in H;
+    repeat match type of H with
+             | context[string_dec ?str ?nt] => atomic nt; destruct (string_dec str nt); subst
+             | is_true false => hnf in H; clear -H; exfalso; abstract discriminate
+           end.
+
+Local Ltac split_productions_cases :=
+  repeat match goal with
+           | _ => progress simpl in *
+           | [ |- context[string_dec ?x ?x] ] => rewrite string_dec_refl
+           | [ H : context[string_dec ?x ?x] |- _ ] => rewrite string_dec_refl in H
+           | [ |- (_ * _)%type ] => split
+           | _ => solve [ constructor ]
+           | [ p : sigT ?P' |- sigT ?P ]
+             => refine (existT
+                          P
+                          ({| string_val := fst (projT1 p) ; state_val := I |},
+                           {| string_val := snd (projT1 p) ; state_val := I |})
+                          (_, snd (fst (projT2 p)), snd (projT2 p)))
+           | _ => intro
+           | [ |- _ \/ False ] => left
+           | [ |- _ = _ :> (_ * _)%type ] => apply f_equal2
+           | [ |- _ = _ :> StringT ] => apply StringT_eq
+         end.
+
+Local Ltac t_equality :=
+  repeat match goal with
+           | _ => intro
+           | _ => reflexivity
+           | [ H : is_true false |- _ ] => hnf in H; clear -H; exfalso; abstract discriminate
+           | _ => progress simpl in *
+           | _ => progress subst
+           | _ => progress destruct_head sigT
+           | _ => progress destruct_head prod
+           | _ => progress destruct_head @StringWithSplitState
+           | [ |- _ = _ :> (_ * _)%type ] => apply f_equal2
+           | [ |- _ = _ :> StringT ] => apply StringT_eq
+           | [ |- _ \/ False ] => left
+           | [ H : context[(_ ++ "")%string] |- _ ] => generalize dependent H; simpl rewrite (RightId string_stringlike)
+           | [ H : context[string_dec ?str ?x] |- _ ] => atomic x; destruct (string_dec str x)
+           | [ |- context[match ?s with _ => _ end] ] => atomic s; destruct s
+           | [ H : minimal_parse_of_item _ _ _ _ _ _ _ _ (Terminal _) |- _ ] => inversion H; clear H
+           | [ H : minimal_parse_of_item _ _ _ _ _ _ _ _ (NonTerminal _) |- _ ] => inversion H; clear H
+           | [ H : minimal_parse_of_production _ _ _ _ _ _ _ _ (_::_) |- _ ] => inversion H; clear H
+           | [ H : minimal_parse_of_production _ _ _ _ _ _ _ _ nil |- _ ] => inversion H; clear H
+         end.
+
 Section on_ab_star.
   Definition ab_star_linear_split := first_char_split (fun _ _ _ => nil).
   Definition ab_star_linear_split_correct_seq {it its str} : List.Forall _ _
@@ -102,59 +160,6 @@ Section on_ab_star.
     := first_char_premethods (fun _ _ _ => nil) ab_star_grammar (fun _ _ _ => Forall_nil _).
   Global Instance ab_star_data : @boolean_parser_dataT _ string_stringlike
     := first_char_data (fun _ _ _ => nil) ab_star_grammar (fun _ _ _ => Forall_nil _).
-
-  Local Opaque string_dec.
-
-  Local Ltac unroll_valid_nonterminals :=
-    intros;
-    let H := match goal with H : is_true (is_valid_nonterminal _ _) |- _ => constr:H end in
-    simpl in H;
-      unfold rdp_list_is_valid_nonterminal in H; simpl in H;
-      repeat match type of H with
-               | context[string_dec ?str ?nt] => atomic nt; destruct (string_dec str nt); subst
-               | is_true false => hnf in H; clear -H; exfalso; abstract discriminate
-             end.
-
-  Local Ltac split_productions_cases :=
-    repeat match goal with
-             | _ => progress simpl in *
-             | [ |- context[string_dec ?x ?x] ] => rewrite string_dec_refl
-             | [ H : context[string_dec ?x ?x] |- _ ] => rewrite string_dec_refl in H
-             | [ |- (_ * _)%type ] => split
-             | _ => solve [ constructor ]
-             | [ p : sigT ?P' |- sigT ?P ]
-               => refine (existT
-                            P
-                            ({| string_val := fst (projT1 p) ; state_val := I |},
-                             {| string_val := snd (projT1 p) ; state_val := I |})
-                            (_, snd (fst (projT2 p)), snd (projT2 p)))
-             | _ => intro
-             | [ |- _ \/ False ] => left
-             | [ |- _ = _ :> (_ * _)%type ] => apply f_equal2
-             | [ |- _ = _ :> StringT ] => apply StringT_eq
-           end.
-
-  Local Ltac t_equality :=
-    repeat match goal with
-             | _ => intro
-             | _ => reflexivity
-             | [ H : is_true false |- _ ] => hnf in H; clear -H; exfalso; abstract discriminate
-             | _ => progress simpl in *
-             | _ => progress subst
-             | _ => progress destruct_head sigT
-             | _ => progress destruct_head prod
-             | _ => progress destruct_head @StringWithSplitState
-             | [ |- _ = _ :> (_ * _)%type ] => apply f_equal2
-             | [ |- _ = _ :> StringT ] => apply StringT_eq
-             | [ |- _ \/ False ] => left
-             | [ H : context[(_ ++ "")%string] |- _ ] => generalize dependent H; simpl rewrite (RightId string_stringlike)
-             | [ H : context[string_dec ?str ?x] |- _ ] => atomic x; destruct (string_dec str x)
-             | [ |- context[match ?s with _ => _ end] ] => atomic s; destruct s
-             | [ H : minimal_parse_of_item _ _ _ _ _ _ _ _ (Terminal _) |- _ ] => inversion H; clear H
-             | [ H : minimal_parse_of_item _ _ _ _ _ _ _ _ (NonTerminal _) |- _ ] => inversion H; clear H
-             | [ H : minimal_parse_of_production _ _ _ _ _ _ _ _ (_::_) |- _ ] => inversion H; clear H
-             | [ H : minimal_parse_of_production _ _ _ _ _ _ _ _ nil |- _ ] => inversion H; clear H
-           end.
 
   Lemma ab_star_split_complete
   : forall str0 valid str pf nt,
@@ -174,8 +179,50 @@ Section on_ab_star.
       t_equality.
   Qed.
 
-  Global Instance ab_star_cdata : @boolean_parser_completeness_dataT' _ _ ab_star_grammar ab_star_data
+  Global Instance ab_star_cdata' : @boolean_parser_completeness_dataT' _ _ ab_star_grammar ab_star_data
     := { remove_nonterminal_1 := rdp_list_remove_nonterminal_1;
          remove_nonterminal_2 := rdp_list_remove_nonterminal_2;
          split_string_for_production_complete := @ab_star_split_complete }.
+
+  Global Instance ab_star_cdata : @boolean_parser_correctness_dataT _ _ ab_star_grammar
+    := { data := ab_star_data;
+         cdata' := ab_star_cdata' }.
 End on_ab_star.
+
+Section on_ab_star'.
+  Definition ab_star'_linear_split := first_char_split (fun _ _ _ => nil).
+  Definition ab_star'_linear_split_correct_seq {it its str} : List.Forall _ _
+    := @first_char_split_correct_seq (fun _ _ _ => nil) it its str (Forall_nil _).
+
+  Global Instance ab_star'_premethods : @parser_computational_dataT' _ string_stringlike (@rdp_list_data' _ _ ab_star_grammar')
+    := first_char_premethods (fun _ _ _ => nil) ab_star_grammar' (fun _ _ _ => Forall_nil _).
+  Global Instance ab_star'_data : @boolean_parser_dataT _ string_stringlike
+    := first_char_data (fun _ _ _ => nil) ab_star_grammar' (fun _ _ _ => Forall_nil _).
+
+  Lemma ab_star'_split_complete
+  : forall str0 valid str pf nt,
+      is_valid_nonterminal initial_nonterminals_data nt ->
+      ForallT
+        (Forall_tails
+           (fun prod =>
+              match prod with
+                | [] => True
+                | it :: its =>
+                  @split_list_completeT _ string_stringlike ab_star_grammar' ab_star'_data str0 valid str pf
+                                        (@ab_star'_linear_split it its str) it its
+              end)) (Lookup ab_star_grammar' nt).
+  Proof.
+    unroll_valid_nonterminals.
+    split_productions_cases;
+      t_equality.
+  Qed.
+
+  Global Instance ab_star'_cdata' : @boolean_parser_completeness_dataT' _ _ ab_star_grammar' ab_star'_data
+    := { remove_nonterminal_1 := rdp_list_remove_nonterminal_1;
+         remove_nonterminal_2 := rdp_list_remove_nonterminal_2;
+         split_string_for_production_complete := @ab_star'_split_complete }.
+
+  Global Instance ab_star'_cdata : @boolean_parser_correctness_dataT _ _ ab_star_grammar'
+    := { data := ab_star'_data;
+         cdata' := ab_star'_cdata' }.
+End on_ab_star'.

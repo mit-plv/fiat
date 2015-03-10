@@ -12,6 +12,11 @@ Section ab_star.
        Lookup := [[[ ("(ab)*" ::== << nil
                                      | $< "a"%char $ "b"%char $ "(ab)*" >$ >> ) ]]]%prods_assignment;
        Valid_nonterminals := ("(ab)*"::nil)%string |}.
+
+  Definition ab_star_grammar' : grammar Ascii.ascii :=
+    {| Start_symbol := "(ab)*";
+       Lookup := fun _ => nil::(Terminal "a"%char::Terminal "b"%char::NonTerminal _ "(ab)*"%string::nil)::nil;
+       Valid_nonterminals := ("(ab)*"::nil)%string |}.
 End ab_star.
 
 Create HintDb cfg discriminated.
