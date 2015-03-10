@@ -21,6 +21,9 @@ Definition item_ascii := item Ascii.ascii.
 Coercion item_of_char (ch : Ascii.ascii) : item_ascii := Terminal ch.
 Coercion item_of_string (nt : string) : item_ascii := NonTerminal _ nt.
 Definition item_ascii_cons : item_ascii -> production Ascii.ascii -> production Ascii.ascii := cons.
+Global Arguments item_ascii_cons / .
+Global Arguments item_of_char / .
+Global Arguments item_of_string / .
 
 Delimit Scope item_scope with item.
 Bind Scope item_scope with item.

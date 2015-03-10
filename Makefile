@@ -158,6 +158,7 @@ SRC_PARSERS_BASE_MODULES := \
 	Parsers/BooleanBaseTypes\
 	Parsers/Splitters/RDPList\
 	Parsers/Splitters/BruteForce\
+	Parsers/Splitters/FirstChar\
 	Parsers/DependentlyTyped\
 	Parsers/DependentlyTypedOption\
 	Parsers/DependentlyTypedSum\
