@@ -20,14 +20,34 @@ Section sound.
   Section general.
     Context CharType (String : string_like CharType) (G : grammar CharType).
     Context `{data : @boolean_parser_dataT CharType String}.
-    Context (remove_nonterminal_1
-             : forall ls ps ps',
-                 is_valid_nonterminal (remove_nonterminal ls ps) ps' = true
-                 -> is_valid_nonterminal ls ps' = true)
-            (remove_nonterminal_2
-             : forall ls ps ps',
-                 is_valid_nonterminal (remove_nonterminal ls ps) ps' = false
-                 <-> is_valid_nonterminal ls ps' = false \/ ps = ps').
+
+    Definition split_list_completeT
+               {str0 valid}
+               (str : StringWithSplitState String split_stateT) (pf : str ≤s str0)
+               (split_list : list (StringWithSplitState String split_stateT * StringWithSplitState String split_stateT))
+               (it : item CharType) (its : production CharType)
+      := ({ s1s2 : String * String
+                   & (fst s1s2 ++ snd s1s2 =s str)
+                     * (minimal_parse_of_item _ G initial_nonterminals_data is_valid_nonterminal remove_nonterminal str0 valid (fst s1s2) it)
+                     * (minimal_parse_of_production _ G initial_nonterminals_data is_valid_nonterminal remove_nonterminal str0 valid (snd s1s2) its) }%type)
+         -> ({ s1s2 : StringWithSplitState String split_stateT * StringWithSplitState String split_stateT
+                      & (In s1s2 split_list)
+                        * (minimal_parse_of_item _ G initial_nonterminals_data is_valid_nonterminal remove_nonterminal str0 valid (fst s1s2) it)
+                        * (minimal_parse_of_production _ G initial_nonterminals_data is_valid_nonterminal remove_nonterminal str0 valid (snd s1s2) its) }%type).
+
+    Class boolean_parser_completeness_dataT' :=
+      { remove_nonterminal_1
+        : forall ls ps ps',
+            is_valid_nonterminal (remove_nonterminal ls ps) ps' = true
+            -> is_valid_nonterminal ls ps' = true;
+        remove_nonterminal_2
+        : forall ls ps ps',
+            is_valid_nonterminal (remove_nonterminal ls ps) ps' = false
+            <-> is_valid_nonterminal ls ps' = false \/ ps = ps';
+        split_string_for_production_complete
+        : forall str0 valid str pf it its, @split_list_completeT str0 valid str pf (split_string_for_production it its str) it its }.
+
+    Context `{cdata : boolean_parser_completeness_dataT'}.
 
     Let P : string -> Prop
       := fun p => is_valid_nonterminal initial_nonterminals_data p = true.
@@ -139,23 +159,6 @@ Section sound.
                minimal_parse_of_name _ G initial_nonterminals_data is_valid_nonterminal remove_nonterminal str0 valid str nonterminal
                -> @parse_nonterminal str pf nonterminal = true.
 
-        Definition split_list_completeT
-                   valid
-                   (str : StringWithSplitState String split_stateT) (pf : str ≤s str0)
-                   (split_list : list (StringWithSplitState String split_stateT * StringWithSplitState String split_stateT))
-                   (prod : production CharType)
-          := match prod return Type with
-               | nil => True
-               | it::its => ({ s1s2 : String * String
-                                      & (fst s1s2 ++ snd s1s2 =s str)
-                                        * (minimal_parse_of_item _ G initial_nonterminals_data is_valid_nonterminal remove_nonterminal str0 valid (fst s1s2) it)
-                                        * (minimal_parse_of_production _ G initial_nonterminals_data is_valid_nonterminal remove_nonterminal str0 valid (snd s1s2) its) }%type)
-                            -> ({ s1s2 : StringWithSplitState String split_stateT * StringWithSplitState String split_stateT
-                                         & (In s1s2 split_list)
-                                           * (minimal_parse_of_item _ G initial_nonterminals_data is_valid_nonterminal remove_nonterminal str0 valid (fst s1s2) it)
-                                           * (minimal_parse_of_production _ G initial_nonterminals_data is_valid_nonterminal remove_nonterminal str0 valid (snd s1s2) its) }%type)
-             end.
-
         Lemma parse_production_sound
                  (parse_nonterminal_sound : parse_nonterminal_soundT)
                  (str : StringWithSplitState String split_stateT) (pf : str ≤s str0)
@@ -163,7 +166,6 @@ Section sound.
         : parse_production parse_nonterminal str pf prod = true
           -> parse_of_production _ G str prod.
         Proof.
-          (*change (forall str0 it its, split_list_correctT str0 (split_string_for_production it its)) in split_string_for_production_correct.*)
           revert str pf; induction prod;
           repeat match goal with
                    | _ => intro
@@ -202,7 +204,6 @@ Section sound.
         Lemma parse_production_complete
               valid Pv
               (parse_nonterminal_complete : parse_nonterminal_completeT Pv)
-              (split_string_for_production_complete : forall valid str pf it its, @split_list_completeT valid str pf (split_string_for_production it its str) (it::its))
               (Hinit : forall str (pf : str ≤s str0) nonterminal,
                          minimal_parse_of_name String G initial_nonterminals_data is_valid_nonterminal remove_nonterminal str0 valid str nonterminal
                          -> Pv str0 valid nonterminal)
@@ -238,8 +239,10 @@ Section sound.
                           progress subst
                    | [ H : minimal_parse_of_production _ _ _ _ _ _ _ _ (_::_) |- _ ] => inversion H; clear H; subst
                    | [ H : ?s ≤s _ |- context[split_string_for_production_correct ?it ?p {| string_val := ?s ; state_val := ?st |}] ]
-                     => specialize (fun a b p0 v p1 p2
-                                    => @split_string_for_production_complete v {| string_val := s ; state_val := st |} H it p (existT _ (a, b) (p0, p1, p2)))
+                     => pose proof
+                             (fun a b p0 v p1 p2
+                              => @split_string_for_production_complete _ _ v {| string_val := s ; state_val := st |} H it p (existT _ (a, b) (p0, p1, p2)));
+                       clear cdata
                    | [ H : forall a b, is_true (string_val a ++ string_val b =s _ ++ _) -> _ |- _ ]
                      => specialize (fun st0 st1 => H {| state_val := st0 |} {| state_val := st1 |} (proj2 (@bool_eq_correct _ _ _ _) eq_refl))
                    | [ H : forall a b, is_true (a ++ b =s _ ++ _) -> _ |- _ ]
@@ -352,7 +355,6 @@ Section sound.
         Lemma parse_productions_complete
               valid Pv
               (parse_nonterminal_complete : parse_nonterminal_completeT parse_nonterminal Pv)
-              (split_string_for_production_complete : forall valid str pf it its, @split_list_completeT str0 valid str pf (split_string_for_production it its str) (it::its))
               (Hinit : forall str (pf : str ≤s str0) nonterminal,
                          minimal_parse_of_name String G initial_nonterminals_data is_valid_nonterminal remove_nonterminal str0 valid str nonterminal
                          -> Pv str0 valid nonterminal)
@@ -424,7 +426,6 @@ Section sound.
           Lemma parse_nonterminal_step_complete
                 Pv
                 (parse_nonterminal_complete : forall p pf, parse_nonterminal_completeT (@parse_nonterminal p pf) (Pv p))
-                (split_string_for_production_complete : forall str0 valid str pf it its, @split_list_completeT str0 valid str pf (split_string_for_production it its str) (it::its))
                 (str : StringWithSplitState String split_stateT) (pf : str ≤s str0) (nonterminal : string)
                 (Hinit : forall str1,
                            str1 ≤s str ->
@@ -524,7 +525,6 @@ Section sound.
           Qed.
 
           Lemma parse_nonterminal_or_abort_complete
-                (split_string_for_production_complete : forall str0 valid str pf it its, @split_list_completeT str0 valid str pf (split_string_for_production it its str) (it::its))
                 (Pv := fun (p : String * nonterminals_listT)
                            (str0 : String) (valid0 : nonterminals_listT) (_ : string) =>
                          sub_names_listT is_valid_nonterminal valid0 (snd p)
@@ -557,14 +557,17 @@ Section sound.
             [ intros; eapply IHr | .. ];
             instantiate;
             trivial; simpl in *;
-            try solve [ intros; reflexivity
+            try solve [ assumption
+                      | intros; reflexivity
                       | intros; split; reflexivity
                       | intros; split; try reflexivity;
-                        etransitivity; [ apply sub_names_listT_remove; assumption | assumption ] ];
+                        etransitivity; [ apply sub_names_listT_remove; apply remove_nonterminal_1 | assumption ] ];
             [].
             { eapply expand_minimal_parse_of_name; [ .. | eassumption ];
               trivial;
-              try reflexivity. }
+              try solve [ reflexivity
+                        | apply remove_nonterminal_1
+                        | apply remove_nonterminal_2 ]. }
           Defined.
 
           Lemma parse_nonterminal_sound
@@ -577,8 +580,7 @@ Section sound.
             apply parse_nonterminal_or_abort_sound.
           Defined.
 
-          Lemma parse_nonterminal_complete
-                (split_string_for_production_complete : forall str0 valid str pf it its, @split_list_completeT str0 valid str pf (split_string_for_production it its str) (it::its))
+          Lemma parse_nonterminal_complete'
                 (str : StringWithSplitState String split_stateT)
                 (nonterminal : string)
           : minimal_parse_of_name String G initial_nonterminals_data is_valid_nonterminal remove_nonterminal str initial_nonterminals_data str nonterminal
@@ -587,15 +589,71 @@ Section sound.
           Proof.
             unfold parse_nonterminal.
             eapply (@parse_nonterminal_or_abort_complete
-                    split_string_for_production_complete
                     (str : String, initial_nonterminals_data)).
             split; reflexivity.
           Defined.
+
+          Lemma parse_nonterminal_complete
+                (str : StringWithSplitState String split_stateT)
+                (nonterminal : string)
+                (p : parse_of _ G str (Lookup G nonterminal))
+                (H_valid_tree : Forall_parse_of_item
+                                  (fun _ p =>
+                                     is_valid_nonterminal initial_nonterminals_data p = true) (ParseNonTerminal _ p))
+          : parse_nonterminal (G := G) str nonterminal = true.
+          Proof.
+            apply parse_nonterminal_complete'; try assumption.
+            pose proof (@minimal_parse_of_name__of__parse_of_name
+                          _ String G
+                          nonterminals_listT
+                          initial_nonterminals_data
+                          is_valid_nonterminal remove_nonterminal
+                          remove_nonterminal_1
+                          remove_nonterminal_2
+                          (S (size_of_parse_item (ParseNonTerminal _ p)))
+                          str str
+                          initial_nonterminals_data
+                          nonterminal
+                          p
+                          (Lt.lt_n_Sn _)
+                          (reflexivity _)
+                          (reflexivity _)
+                          H_valid_tree)
+              as p'.
+            destruct p' as [ [ p' ] | [ nonterminal' [ [ H0 H1 ] ] ] ].
+            { exact p'. }
+            { exfalso; congruence. }
+          Qed.
         End wf.
       End nonterminals.
     End parts.
   End general.
 End sound.
+
+Section correct.
+  Context {CharType} {String : string_like CharType} {G : grammar CharType}.
+
+  Class boolean_parser_correctness_dataT :=
+    { data :> @boolean_parser_dataT CharType String;
+      cdata' :> @boolean_parser_completeness_dataT' _ _ G _ }.
+
+  Context `{cdata : boolean_parser_correctness_dataT}.
+  Context (str : StringWithSplitState String split_stateT)
+          (nt : string).
+
+  Definition parse_nonterminal_correct
+  : (parse_nonterminal (G := G) str nt -> parse_of_item String G str (NonTerminal _ nt))
+    * (forall p : parse_of String G str (G nt),
+         Forall_parse_of_item
+           (fun _ nt => is_valid_nonterminal initial_nonterminals_data nt)
+           (ParseNonTerminal _ p)
+         -> parse_nonterminal (G := G) str nt).
+  Proof.
+    split.
+    { apply parse_nonterminal_sound. }
+    { apply parse_nonterminal_complete; exact _. }
+  Defined.
+End correct.
 
 Section brute_force_spliter.
   Lemma make_all_single_splits_complete_helper
@@ -615,10 +673,9 @@ Section brute_force_spliter.
   Qed.
 
   Lemma make_all_single_splits_complete
-  : forall G str0 valid str pf prod, @split_list_completeT _ string_stringlike G (brute_force_data G) str0 valid str pf (@make_all_single_splits str) prod.
+  : forall G str0 valid str pf it its, @split_list_completeT _ string_stringlike G (brute_force_data G) str0 valid str pf (@make_all_single_splits str) it its.
   Proof.
     intros; hnf.
-    destruct prod; trivial.
     intros [ [s1 s2] [ [ p1 p2 ] p3 ] ].
     exists ({| string_val := s1 ; state_val := I |}, {| string_val := s2 ; state_val := I |}).
     abstract (
@@ -640,6 +697,11 @@ Section brute_force_make_parse_of.
     apply parse_nonterminal_sound.
   Defined.
 
+  Global Instance brute_force_cdata : @boolean_parser_completeness_dataT' _ _ G (brute_force_data G)
+    := { remove_nonterminal_1 := rdp_list_remove_nonterminal_1;
+         remove_nonterminal_2 := rdp_list_remove_nonterminal_2;
+         split_string_for_production_complete := @make_all_single_splits_complete G }.
+
   Definition brute_force_parse_complete'
              (str : @String Ascii.ascii string_stringlike)
   : minimal_parse_of_name _ G (Valid_nonterminals G) rdp_list_is_valid_nonterminal rdp_list_remove_nonterminal str (Valid_nonterminals G) str G
@@ -647,41 +709,18 @@ Section brute_force_make_parse_of.
   Proof.
     unfold brute_force_parse, brute_force_parse_nonterminal.
     simpl; intro.
-    eapply parse_nonterminal_complete; try eassumption.
-    { apply rdp_list_remove_nonterminal_1. }
-    { apply rdp_list_remove_nonterminal_2. }
-    { intros; apply make_all_single_splits_complete. }
+    eapply parse_nonterminal_complete'; try eassumption; try exact _.
   Defined.
 
   Definition brute_force_parse_complete
              (str : @String Ascii.ascii string_stringlike)
              (p : parse_of _ G str G)
-             (H_valid_nonterminal : rdp_list_is_valid_nonterminal (Valid_nonterminals G) G = true)
-             (H_valid_tree : Forall_parse_of
+             (H_valid_tree : Forall_parse_of_item
                                (fun _ p =>
-                                  rdp_list_is_valid_nonterminal (Valid_nonterminals G) p = true) p)
+                                  rdp_list_is_valid_nonterminal (Valid_nonterminals G) p = true) (ParseNonTerminal _ p))
   : brute_force_parse G str = true.
   Proof.
-    apply brute_force_parse_complete'.
-    pose proof (@minimal_parse_of_name__of__parse_of_name
-                  _ string_stringlike G
-                  rdp_list_nonterminals_listT
-                  (Valid_nonterminals G)
-                  rdp_list_is_valid_nonterminal rdp_list_remove_nonterminal
-                  rdp_list_remove_nonterminal_1
-                  rdp_list_remove_nonterminal_2
-                  (S (size_of_parse_item (ParseNonTerminal G p)))
-                  str str
-                  (Valid_nonterminals G)
-                  G
-                  p
-                  (Lt.lt_n_Sn _)
-                  (reflexivity _)
-                  (reflexivity _)
-                  (H_valid_nonterminal, H_valid_tree))
-      as p'.
-    destruct p' as [ [ p' ] | [ nonterminal' [ [ H0 H1 ] ] ] ].
-    { exact p'. }
-    { exfalso; congruence. }
+    unfold brute_force_parse, brute_force_parse_nonterminal.
+    eapply parse_nonterminal_complete; try eassumption; try exact _.
   Qed.
 End brute_force_make_parse_of.

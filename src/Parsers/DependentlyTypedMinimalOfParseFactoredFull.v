@@ -58,7 +58,7 @@ Section recursive_descent_parser.
     apply (@BooleanRecognizerCorrect.make_all_single_splits_complete
              G str0 valid
              str
-             pf (it::its : production _)).
+             pf it its).
     assumption.
   Defined.
 
