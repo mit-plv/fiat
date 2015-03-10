@@ -1221,3 +1221,22 @@ Fixpoint Forall_tails_all {T} {P : list T -> Type} (p : forall t, P t) {ls}
        | nil => p _
        | x::xs => (p _, @Forall_tails_all T P p xs)
      end.
+
+Lemma substring_correct3 {s : string} m (H : length s < m)
+: substring 0 m s = s.
+Proof.
+  revert m H.
+  induction s; simpl.
+  { intros; destruct m; trivial. }
+  { intros; destruct m.
+    { apply Lt.lt_n_0 in H.
+      destruct H. }
+    { rewrite IHs; trivial.
+      apply Lt.lt_S_n; trivial. } }
+Qed.
+
+Lemma substring_correct3' {s : string}
+: substring 0 (S (length s)) s = s.
+Proof.
+  apply substring_correct3, Lt.lt_n_Sn.
+Qed.

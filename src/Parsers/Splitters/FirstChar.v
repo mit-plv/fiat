@@ -43,14 +43,11 @@ Section first_char_splitter.
          | nil => [(str, "" : StringT)]
          | _::_ => match it with
                      | Terminal _
-                       => [((match string_val str return string with
-                               | String.String ch str' => String.String ch ""
-                               | "" => ""
+                       => [((match String.get 0 (string_val str) return string with
+                               | Some ch => String.String ch ""
+                               | None => ""
                              end : StringT),
-                            (match string_val str return string with
-                               | String.String ch str' => str'
-                               | "" => ""
-                             end : StringT))]
+                            (substring 1 (length (string_val str)) (string_val str) : StringT))]
                      | NonTerminal _
                        => fallback_split it its str
                    end
@@ -74,7 +71,10 @@ Section first_char_splitter.
                => atomic s; destruct s
              | [ |- context[(_ ++ "")%string] ]
                => simpl rewrite (RightId string_stringlike)
+             | _ => rewrite substring_correct3'
              | [ |- context[string_dec ?x ?x] ] => rewrite string_dec_refl
+             | [ |- context[String.get 0 ?s] ] => atomic s; destruct s
+             | [ |- context[String.get 0 (string_val ?s)] ] => atomic s; destruct s
              | [ |- List.Forall _ [] ] => constructor
              | [ |- List.Forall _ (_::_) ] => constructor
            end.
@@ -145,6 +145,7 @@ Local Ltac t_equality :=
            | [ H : context[(_ ++ "")%string] |- _ ] => generalize dependent H; simpl rewrite (RightId string_stringlike)
            | [ H : context[string_dec ?str ?x] |- _ ] => atomic x; destruct (string_dec str x)
            | [ |- context[match ?s with _ => _ end] ] => atomic s; destruct s
+           | _ => rewrite substring_correct3'
            | [ H : minimal_parse_of_item _ _ _ _ _ _ _ _ (Terminal _) |- _ ] => inversion H; clear H
            | [ H : minimal_parse_of_item _ _ _ _ _ _ _ _ (NonTerminal _) |- _ ] => inversion H; clear H
            | [ H : minimal_parse_of_production _ _ _ _ _ _ _ _ (_::_) |- _ ] => inversion H; clear H
