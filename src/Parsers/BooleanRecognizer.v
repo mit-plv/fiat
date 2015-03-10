@@ -1,8 +1,10 @@
 (** * Definition of a boolean-returning CFG parser-recognizer *)
 Require Import Omega.
 Require Import Coq.Lists.List Coq.Program.Program Coq.Program.Wf Coq.Arith.Wf_nat Coq.Arith.Compare_dec Coq.Classes.RelationClasses Coq.Strings.String.
-Require Import Parsers.ContextFreeGrammar Parsers.ContextFreeGrammarNotations Parsers.BaseTypes.
+Require Import Parsers.ContextFreeGrammar Parsers.ContextFreeGrammarNotations.
+Require Import Parsers.BaseTypes Parsers.BooleanBaseTypes.
 Require Import Parsers.Grammars.Trivial Parsers.Grammars.ABStar.
+Require Import Parsers.Splitters.RDPList Parsers.Splitters.BruteForce.
 Require Import Common Common.Wf.
 
 Set Implicit Arguments.
@@ -13,25 +15,7 @@ Section recursive_descent_parser.
   Context {CharType}
           {String : string_like CharType}
           {G : grammar CharType}.
-  Class boolean_parser_dataT :=
-    { predata :> parser_computational_predataT;
-      split_stateT : String -> Type;
-      data' :> _ := {| BaseTypes.predata := predata ; BaseTypes.split_stateT := fun _ _ _ => split_stateT |};
-      split_string_for_production
-      : forall it its,
-          StringWithSplitState String split_stateT
-          -> list (StringWithSplitState String split_stateT * StringWithSplitState String split_stateT);
-      split_string_for_production_correct
-      : forall it its (str : StringWithSplitState String split_stateT),
-          let P f := List.Forall f (split_string_for_production it its str) in
-          P (fun s1s2 =>
-               (fst s1s2 ++ snd s1s2 =s str) = true);
-      premethods :> parser_computational_dataT'
-      := @Build_parser_computational_dataT'
-           _ String data'
-           (fun _ _ => split_string_for_production)
-           (fun _ _ => split_string_for_production_correct) }.
-  Context `{data : boolean_parser_dataT}.
+  Context `{data : @boolean_parser_dataT _ String}.
 
   Section bool.
     Section parts.
@@ -184,205 +168,15 @@ Section recursive_descent_parser.
   End bool.
 End recursive_descent_parser.
 
-Section recursive_descent_parser_list.
-  Context {CharType} {String : string_like CharType} {G : grammar CharType}.
-  Definition rdp_list_nonterminals_listT : Type := list string.
-  Definition rdp_list_is_valid_nonterminal : rdp_list_nonterminals_listT -> string -> bool
-    := fun ls nt => if in_dec string_dec nt ls then true else false.
-  Definition rdp_list_remove_nonterminal : rdp_list_nonterminals_listT -> string -> rdp_list_nonterminals_listT
-    := fun ls nt =>
-         filter (fun x => if string_dec nt x then false else true) ls.
-  Definition rdp_list_nonterminals_listT_R : rdp_list_nonterminals_listT -> rdp_list_nonterminals_listT -> Prop
-    := ltof _ (@List.length _).
-  Lemma filter_list_dec {T} f (ls : list T) : List.length (filter f ls) <= List.length ls.
-  Proof.
-    induction ls; trivial; simpl in *.
-    repeat match goal with
-             | [ |- context[if ?a then _ else _] ] => destruct a; simpl in *
-             | [ |- S _ <= S _ ] => solve [ apply Le.le_n_S; auto ]
-             | [ |- _ <= S _ ] => solve [ apply le_S; auto ]
-           end.
-  Qed.
-  Lemma rdp_list_remove_nonterminal_dec : forall ls prods,
-                                            @rdp_list_is_valid_nonterminal ls prods = true
-                                            -> @rdp_list_nonterminals_listT_R (@rdp_list_remove_nonterminal ls prods) ls.
-  Proof.
-    intros.
-    unfold rdp_list_is_valid_nonterminal, rdp_list_nonterminals_listT_R, rdp_list_remove_nonterminal, ltof in *.
-    edestruct in_dec; [ | discriminate ].
-    match goal with
-      | [ H : In ?prods ?ls |- context[filter ?f ?ls] ]
-        => assert (~In prods (filter f ls))
-    end.
-    { intro H'.
-      apply filter_In in H'.
-      destruct H' as [? H'].
-      edestruct string_dec; congruence. }
-    { match goal with
-        | [ |- context[filter ?f ?ls] ] => generalize dependent f; intros
-      end.
-      induction ls; simpl in *; try congruence.
-      repeat match goal with
-               | [ |- context[if ?x then _ else _] ] => destruct x; simpl in *
-               | [ H : _ \/ _ |- _ ] => destruct H
-               | _ => progress subst
-               | [ H : ~(_ \/ _) |- _ ] => apply Decidable.not_or in H
-               | [ H : _ /\ _ |- _ ] => destruct H
-               | [ H : ?x <> ?x |- _ ] => exfalso; apply (H eq_refl)
-               | _ => apply Lt.lt_n_S
-               | _ => apply Le.le_n_S
-               | _ => apply filter_list_dec
-               | [ H : _ -> _ -> ?G |- ?G ] => apply H; auto
-             end. }
-  Qed.
-  Lemma rdp_list_ntl_wf : well_founded rdp_list_nonterminals_listT_R.
-  Proof.
-    unfold rdp_list_nonterminals_listT_R.
-    intro.
-    apply well_founded_ltof.
-  Defined.
-
-  Lemma rdp_list_remove_nonterminal_1
-  : forall ls ps ps',
-      rdp_list_is_valid_nonterminal (rdp_list_remove_nonterminal ls ps) ps' = true
-      -> rdp_list_is_valid_nonterminal ls ps' = true.
-  Proof.
-    unfold rdp_list_is_valid_nonterminal, rdp_list_remove_nonterminal.
-    repeat match goal with
-             | _ => exfalso; congruence
-             | _ => reflexivity
-             | [ |- appcontext[if ?E then _ else _] ] => destruct E
-             | _ => intro
-             | [ H : In _ (filter _ _) |- _ ] => apply filter_In in H
-             | [ H : _ /\ _ |- _ ] => destruct H
-             | [ H : ?T, H' : ~?T |- _ ] => destruct (H' H)
-           end.
-  Qed.
-
-  Lemma rdp_list_remove_nonterminal_2
-  : forall ls ps ps',
-      rdp_list_is_valid_nonterminal (rdp_list_remove_nonterminal ls ps) ps' = false
-      <-> rdp_list_is_valid_nonterminal ls ps' = false \/ ps = ps'.
-  Proof.
-    unfold rdp_list_is_valid_nonterminal, rdp_list_remove_nonterminal.
-    repeat match goal with
-             | _ => exfalso; congruence
-             | _ => reflexivity
-             | _ => progress subst
-             | _ => intro
-             | [ H : context[In _ (filter _ _)] |- _ ] => rewrite filter_In in H
-             | [ H : _ /\ _ |- _ ] => destruct H
-             | [ H : ?T, H' : ~?T |- _ ] => destruct (H' H)
-             | [ |- true = false \/ _ ] => right
-             | [ |- ?x = ?x \/ _ ] => left; reflexivity
-             | [ H : ~(_ /\ ?x = ?x) |- _ ] => specialize (fun y => H (conj y eq_refl))
-             | [ H : _ \/ _ |- _ ] => destruct H
-             | [ |- _ <-> _ ] => split
-             | [ H : appcontext[if ?E then _ else _] |- _ ] => destruct E
-             | [ |- appcontext[if ?E then _ else _] ] => destruct E
-           end.
-  Qed.
-
-  Global Instance rdp_list_predata : parser_computational_predataT
-    := { nonterminals_listT := rdp_list_nonterminals_listT;
-         initial_nonterminals_data := Valid_nonterminals G;
-         is_valid_nonterminal := rdp_list_is_valid_nonterminal;
-         remove_nonterminal := rdp_list_remove_nonterminal;
-         nonterminals_listT_R := rdp_list_nonterminals_listT_R;
-         remove_nonterminal_dec := rdp_list_remove_nonterminal_dec;
-         ntl_wf := rdp_list_ntl_wf }.
-
-  Global Instance rdp_list_data' : @parser_computational_types_dataT _ String
-    := { predata := rdp_list_predata;
-         split_stateT := fun _ _ _ _ => True }.
-End recursive_descent_parser_list.
-
-Definition String_with_no_state {CharType} (String : string_like CharType) := StringWithSplitState String (fun _ => True).
-
-Definition default_String_with_no_state {CharType} (String : string_like CharType) (s : String) : String_with_no_state String
-  := {| string_val := s ; state_val := I |}.
-
-Coercion default_string_with_no_state (s : string) : String_with_no_state string_stringlike
-  := default_String_with_no_state string_stringlike s.
-
-Identity Coercion unfold_String_with_no_state : String_with_no_state >-> StringWithSplitState.
-
 (** TODO: move this elsewhere *)
 Section example_parse_string_grammar.
-  Fixpoint make_all_single_splits' (str : string) : list (String_with_no_state string_stringlike * String_with_no_state string_stringlike)
-    := ((""%string : String_with_no_state string_stringlike),
-        (str : String_with_no_state string_stringlike))
-         ::(match str with
-              | ""%string => nil
-              | String.String ch str' =>
-                map (fun p : String_with_no_state string_stringlike * String_with_no_state string_stringlike
-                     => ((String.String ch (string_val (fst p)) : String_with_no_state string_stringlike),
-                         snd p))
-                    (make_all_single_splits' str')
-            end).
-
-  Definition make_all_single_splits (str : String_with_no_state string_stringlike)
-    := make_all_single_splits' (string_val str).
-
-  Lemma make_all_single_splits_correct_eq (str : String_with_no_state string_stringlike)
-  : List.Forall (fun strs : String_with_no_state string_stringlike * String_with_no_state string_stringlike
-                 => string_val (fst strs) ++ string_val (snd strs) = string_val str)%string (make_all_single_splits str).
-  Proof.
-    destruct str as [str ?].
-    induction str; simpl in *; constructor; auto.
-    apply Forall_map.
-    unfold compose; simpl in *.
-    revert IHstr; apply Forall_impl; intros.
-    subst; trivial.
-  Qed.
-
-  Local Opaque string_dec.
-  Lemma make_all_single_splits_correct_seq (str : String_with_no_state string_stringlike)
-  : List.Forall (fun strs : String_with_no_state string_stringlike * String_with_no_state string_stringlike
-                 => (fst strs ++ snd strs =s str) = true)%string_like (make_all_single_splits str).
-  Proof.
-    destruct str as [str ?].
-    induction str; simpl; constructor; simpl; auto.
-    { rewrite string_dec_refl; reflexivity. }
-    { apply Forall_map.
-      unfold compose; simpl.
-      revert IHstr; apply Forall_impl; intros.
-      match goal with H : (_ =s _) = true |- _ => apply bool_eq_correct in H end.
-      simpl in *; subst; rewrite string_dec_refl; reflexivity. }
-  Qed.
-
-  Lemma make_all_single_splits_correct_str_le (str : String_with_no_state string_stringlike)
-  : List.Forall (fun strs : String_with_no_state string_stringlike * String_with_no_state string_stringlike
-                 => fst strs ≤s str /\ snd strs ≤s str)%string (make_all_single_splits str).
-  Proof.
-    generalize (make_all_single_splits_correct_eq str).
-    apply Forall_impl.
-    destruct str as [str ?]; simpl.
-    intros; subst; split;
-    first [ apply str_le1_append
-          | apply str_le2_append ].
-  Qed.
-
-  Local Hint Resolve NPeano.Nat.lt_lt_add_l NPeano.Nat.lt_lt_add_r NPeano.Nat.lt_add_pos_r NPeano.Nat.lt_add_pos_l : arith.
-  Local Hint Resolve str_le1_append str_le2_append.
-
   Context (G : grammar Ascii.ascii).
-
-  Global Instance brute_force_premethods : @parser_computational_dataT' _ string_stringlike (@rdp_list_data' _ _ G)
-    := { split_string_for_production str0 valid it its := make_all_single_splits;
-         split_string_for_production_correct str0 valid it its := make_all_single_splits_correct_seq }.
-
-  Global Instance brute_force_data : @boolean_parser_dataT _ string_stringlike
-    := { predata := @rdp_list_predata _ G;
-         split_stateT str := True;
-         split_string_for_production it its := make_all_single_splits;
-         split_string_for_production_correct it its := make_all_single_splits_correct_seq }.
 
   Definition brute_force_parse_nonterminal
   : @String Ascii.ascii string_stringlike
     -> string
     -> bool
-    := parse_nonterminal (G := G).
+    := let data := @brute_force_data G in parse_nonterminal (G := G).
 
   Definition brute_force_parse
   : string -> bool

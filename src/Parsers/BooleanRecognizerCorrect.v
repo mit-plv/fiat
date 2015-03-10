@@ -1,6 +1,8 @@
 (** * Definition of a boolean-returning CFG parser-recognizer *)
 Require Import Coq.Lists.List Coq.Program.Program Coq.Program.Wf Coq.Arith.Wf_nat Coq.Arith.Compare_dec Coq.Classes.RelationClasses Coq.Strings.String.
-Require Import Parsers.BaseTypes Parsers.ContextFreeGrammar Parsers.BooleanRecognizer Parsers.MinimalParse.
+Require Import Parsers.ContextFreeGrammar Parsers.BooleanRecognizer Parsers.MinimalParse.
+Require Import Parsers.BaseTypes Parsers.BooleanBaseTypes.
+Require Import Parsers.Splitters.RDPList Parsers.Splitters.BruteForce.
 Require Import Parsers.MinimalParseOfParse.
 Require Import Parsers.ContextFreeGrammarProperties Parsers.WellFoundedParse.
 Require Import Common Common.Wf.
@@ -12,7 +14,7 @@ match goal with
   | [ H : true = false |- _ ] => solve [ destruct (Bool.diff_true_false H) ]
 end.
 
-Coercion is_true (b : bool) := b = true.
+Local Coercion is_true : bool >-> Sortclass.
 
 Local Open Scope string_like_scope.
 
@@ -20,34 +22,7 @@ Section sound.
   Section general.
     Context CharType (String : string_like CharType) (G : grammar CharType).
     Context `{data : @boolean_parser_dataT CharType String}.
-
-    Definition split_list_completeT
-               {str0 valid}
-               (str : StringWithSplitState String split_stateT) (pf : str ≤s str0)
-               (split_list : list (StringWithSplitState String split_stateT * StringWithSplitState String split_stateT))
-               (it : item CharType) (its : production CharType)
-      := ({ s1s2 : String * String
-                   & (fst s1s2 ++ snd s1s2 =s str)
-                     * (minimal_parse_of_item _ G initial_nonterminals_data is_valid_nonterminal remove_nonterminal str0 valid (fst s1s2) it)
-                     * (minimal_parse_of_production _ G initial_nonterminals_data is_valid_nonterminal remove_nonterminal str0 valid (snd s1s2) its) }%type)
-         -> ({ s1s2 : StringWithSplitState String split_stateT * StringWithSplitState String split_stateT
-                      & (In s1s2 split_list)
-                        * (minimal_parse_of_item _ G initial_nonterminals_data is_valid_nonterminal remove_nonterminal str0 valid (fst s1s2) it)
-                        * (minimal_parse_of_production _ G initial_nonterminals_data is_valid_nonterminal remove_nonterminal str0 valid (snd s1s2) its) }%type).
-
-    Class boolean_parser_completeness_dataT' :=
-      { remove_nonterminal_1
-        : forall ls ps ps',
-            is_valid_nonterminal (remove_nonterminal ls ps) ps' = true
-            -> is_valid_nonterminal ls ps' = true;
-        remove_nonterminal_2
-        : forall ls ps ps',
-            is_valid_nonterminal (remove_nonterminal ls ps) ps' = false
-            <-> is_valid_nonterminal ls ps' = false \/ ps = ps';
-        split_string_for_production_complete
-        : forall str0 valid str pf it its, @split_list_completeT str0 valid str pf (split_string_for_production it its str) it its }.
-
-    Context `{cdata : boolean_parser_completeness_dataT'}.
+    Context `{cdata : @boolean_parser_completeness_dataT' _ String G data}.
 
     Let P : string -> Prop
       := fun p => is_valid_nonterminal initial_nonterminals_data p = true.
@@ -241,7 +216,7 @@ Section sound.
                    | [ H : ?s ≤s _ |- context[split_string_for_production_correct ?it ?p {| string_val := ?s ; state_val := ?st |}] ]
                      => pose proof
                              (fun a b p0 v p1 p2
-                              => @split_string_for_production_complete _ _ v {| string_val := s ; state_val := st |} H it p (existT _ (a, b) (p0, p1, p2)));
+                              => @split_string_for_production_complete _ _ _ _ _ _ v {| string_val := s ; state_val := st |} H it p (existT _ (a, b) (p0, p1, p2)));
                        clear cdata
                    | [ H : forall a b, is_true (string_val a ++ string_val b =s _ ++ _) -> _ |- _ ]
                      => specialize (fun st0 st1 => H {| state_val := st0 |} {| state_val := st1 |} (proj2 (@bool_eq_correct _ _ _ _) eq_refl))
@@ -632,12 +607,7 @@ End sound.
 
 Section correct.
   Context {CharType} {String : string_like CharType} {G : grammar CharType}.
-
-  Class boolean_parser_correctness_dataT :=
-    { data :> @boolean_parser_dataT CharType String;
-      cdata' :> @boolean_parser_completeness_dataT' _ _ G _ }.
-
-  Context `{cdata : boolean_parser_correctness_dataT}.
+  Context `{cdata : @boolean_parser_correctness_dataT _ String G}.
   Context (str : StringWithSplitState String split_stateT)
           (nt : string).
 
@@ -655,37 +625,6 @@ Section correct.
   Defined.
 End correct.
 
-Section brute_force_spliter.
-  Lemma make_all_single_splits_complete_helper
-  : forall (str : String_with_no_state string_stringlike)
-           (s1s2 : String_with_no_state string_stringlike * String_with_no_state string_stringlike),
-      fst s1s2 ++ snd s1s2 =s str -> In s1s2 (make_all_single_splits str).
-  Proof.
-    intros [str [] ] [ [s1 [] ] [s2 [] ] ] H.
-    apply bool_eq_correct in H; simpl in *; subst.
-    revert s2.
-    induction s1; simpl in *.
-    { intros.
-      destruct s2; left; simpl; reflexivity. }
-    { intros; right.
-      refine (@in_map _ _ _ _ ({| string_val := s1 |}, {| string_val := s2 |}) _).
-      apply IHs1. }
-  Qed.
-
-  Lemma make_all_single_splits_complete
-  : forall G str0 valid str pf it its, @split_list_completeT _ string_stringlike G (brute_force_data G) str0 valid str pf (@make_all_single_splits str) it its.
-  Proof.
-    intros; hnf.
-    intros [ [s1 s2] [ [ p1 p2 ] p3 ] ].
-    exists ({| string_val := s1 ; state_val := I |}, {| string_val := s2 ; state_val := I |}).
-    abstract (
-        repeat split; try assumption;
-        apply make_all_single_splits_complete_helper;
-        assumption
-      ).
-  Defined.
-End brute_force_spliter.
-
 Section brute_force_make_parse_of.
   Variable G : grammar Ascii.ascii.
 
@@ -696,11 +635,6 @@ Section brute_force_make_parse_of.
     unfold brute_force_parse, brute_force_parse_nonterminal.
     apply parse_nonterminal_sound.
   Defined.
-
-  Global Instance brute_force_cdata : @boolean_parser_completeness_dataT' _ _ G (brute_force_data G)
-    := { remove_nonterminal_1 := rdp_list_remove_nonterminal_1;
-         remove_nonterminal_2 := rdp_list_remove_nonterminal_2;
-         split_string_for_production_complete := @make_all_single_splits_complete G }.
 
   Definition brute_force_parse_complete'
              (str : @String Ascii.ascii string_stringlike)

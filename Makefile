@@ -155,6 +155,9 @@ SRC_PARSERS_BASE_MODULES := \
 	Parsers/StringLike/Properties\
 	Parsers/StringLike/Examples\
 	Parsers/BaseTypes\
+	Parsers/BooleanBaseTypes\
+	Parsers/Splitters/RDPList\
+	Parsers/Splitters/BruteForce\
 	Parsers/DependentlyTyped\
 	Parsers/DependentlyTypedOption\
 	Parsers/DependentlyTypedSum\

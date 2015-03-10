@@ -1,7 +1,7 @@
 (** * Fully instantiated specialization of the dependently typed parser to minimal parse trees, taking in parse trees, using the factored abstraction barrier *)
 Require Import Coq.Lists.List Coq.Program.Program Coq.Program.Wf Coq.Arith.Wf_nat Coq.Arith.Compare_dec Coq.Classes.RelationClasses Coq.Strings.String.
 Require Import Parsers.ContextFreeGrammar Parsers.DependentlyTyped Parsers.MinimalParse Parsers.BaseTypes.
-Require Parsers.BooleanRecognizer Parsers.BooleanRecognizerCorrect.
+Require Import Parsers.Splitters.BruteForce Parsers.Splitters.RDPList.
 Require Import Parsers.DependentlyTypedMinimalOfParseFactored.
 Require Import Parsers.WellFoundedParse Parsers.ContextFreeGrammarProperties.
 Require Import Common Common.Wf Common.Le.
@@ -16,22 +16,22 @@ Section recursive_descent_parser.
   Context (G : grammar Ascii.ascii).
 
   Local Instance predata : parser_computational_predataT
-    := { nonterminals_listT := BooleanRecognizer.rdp_list_nonterminals_listT;
+    := { nonterminals_listT := rdp_list_nonterminals_listT;
          initial_nonterminals_data := Valid_nonterminals G;
-         is_valid_nonterminal := BooleanRecognizer.rdp_list_is_valid_nonterminal;
-         remove_nonterminal := BooleanRecognizer.rdp_list_remove_nonterminal;
-         nonterminals_listT_R := BooleanRecognizer.rdp_list_nonterminals_listT_R;
-         remove_nonterminal_dec := BooleanRecognizer.rdp_list_remove_nonterminal_dec;
-         ntl_wf := BooleanRecognizer.rdp_list_ntl_wf }.
+         is_valid_nonterminal := rdp_list_is_valid_nonterminal;
+         remove_nonterminal := rdp_list_remove_nonterminal;
+         nonterminals_listT_R := rdp_list_nonterminals_listT_R;
+         remove_nonterminal_dec := rdp_list_remove_nonterminal_dec;
+         ntl_wf := rdp_list_ntl_wf }.
 
   Local Instance types_data : @parser_computational_types_dataT _ string_stringlike
     := {| predata := predata;
           split_stateT str0 valid g str := True |}.
 
   Local Instance methods' : @parser_computational_dataT' _ string_stringlike types_data
-    := { split_string_for_production str0 valid it its := BooleanRecognizer.make_all_single_splits;
+    := { split_string_for_production str0 valid it its := make_all_single_splits;
          split_string_for_production_correct str0 valid it its str
-         := Forall_impl _ _ (BooleanRecognizer.make_all_single_splits_correct_eq str)
+         := Forall_impl _ _ (make_all_single_splits_correct_eq str)
 }.
   Proof.
     intros; apply bool_eq_correct; assumption.
@@ -55,8 +55,8 @@ Section recursive_descent_parser.
   Proof.
     simpl.
     repeat intro.
-    apply (@BooleanRecognizerCorrect.make_all_single_splits_complete
-             G str0 valid
+    apply (@make_all_single_splits_complete
+             _ G str0 valid
              str
              pf it its).
     assumption.
@@ -67,7 +67,7 @@ Section recursive_descent_parser.
     := @minimal_of_parse_parser_dependent_types_extra_data'
          _ string_stringlike G
          predata methods' strdata
-         BooleanRecognizer.rdp_list_remove_nonterminal_1 BooleanRecognizer.rdp_list_remove_nonterminal_2
+         rdp_list_remove_nonterminal_1 rdp_list_remove_nonterminal_2
          rdp_list_complete'.
 
   Definition minimal_parse_nonterminal__of__parse
@@ -81,8 +81,8 @@ Section recursive_descent_parser.
   Proof.
     eapply @minimal_parse_nonterminal__of__parse'.
     exact strdata.
-    exact BooleanRecognizer.rdp_list_remove_nonterminal_1.
-    exact BooleanRecognizer.rdp_list_remove_nonterminal_2.
+    exact rdp_list_remove_nonterminal_1.
+    exact rdp_list_remove_nonterminal_2.
     exact rdp_list_complete'.
     exact H.
   Defined.
