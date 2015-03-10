@@ -122,5 +122,10 @@ Section brute_force_splitter.
   Global Instance brute_force_cdata : @boolean_parser_completeness_dataT' _ _ G brute_force_data
     := { remove_nonterminal_1 := rdp_list_remove_nonterminal_1;
          remove_nonterminal_2 := rdp_list_remove_nonterminal_2;
-         split_string_for_production_complete := @make_all_single_splits_complete G }.
+         split_string_for_production_complete str0 valid str pf it its
+         := ForallT_all (fun _ => Forall_tails_all (fun prod => _)) }.
+  Proof.
+    destruct prod; try solve [ constructor ].
+    apply (@make_all_single_splits_complete G str0 valid str pf).
+  Defined.
 End brute_force_splitter.

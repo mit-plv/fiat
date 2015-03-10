@@ -128,14 +128,14 @@ Section recursive_descent_parser.
               let ret := @T_nonterminal_success _ _ str0 valid nonterminal str in
               forall (pf : Length str < Length str0),
                 let arg := @T_productions_success _ _ str initial_nonterminals_data (Lookup G nonterminal) (lift_StringWithSplitState str (lift_lookup_nonterminal_state_lt pf)) in
-                arg -> ret;
+                is_valid_nonterminal initial_nonterminals_data nonterminal = true -> arg -> ret;
           lift_parse_nonterminal_success_eq
           : forall {str0 valid nonterminal str},
               let ret := @T_nonterminal_success _ _ str0 valid nonterminal str in
               forall (pf : str = str0 :> String),
                 let arg := @T_productions_success _ _ str0 (remove_nonterminal valid nonterminal) (Lookup G nonterminal) (lift_StringWithSplitState str (lift_lookup_nonterminal_state_eq pf)) in
 
-                is_valid_nonterminal valid nonterminal = true -> arg -> ret
+                is_valid_nonterminal initial_nonterminals_data nonterminal = true -> is_valid_nonterminal valid nonterminal = true -> arg -> ret
         }.
 
       Class parser_dependent_types_extra_failure_dataT' `{types : parser_dependent_types_dataT, @parser_computational_strdataT _ _ _ (@methods (@stypes types))} :=
@@ -169,19 +169,25 @@ Section recursive_descent_parser.
               let ret := @T_nonterminal_failure _ _ str0 valid nonterminal str in
               forall (pf : Length str < Length str0),
                 let arg := @T_productions_failure _ _ str initial_nonterminals_data (Lookup G nonterminal) (lift_StringWithSplitState str (lift_lookup_nonterminal_state_lt pf)) in
-                arg -> ret;
+                is_valid_nonterminal initial_nonterminals_data nonterminal = true -> arg -> ret;
           lift_parse_nonterminal_failure_eq
           : forall {str0 valid nonterminal str},
               let ret := @T_nonterminal_failure _ _ str0 valid nonterminal str in
               forall (pf : str = str0 :> String),
                 let arg := @T_productions_failure _ _ str0 (remove_nonterminal valid nonterminal) (Lookup G nonterminal) (lift_StringWithSplitState str (lift_lookup_nonterminal_state_eq pf)) in
-                arg -> ret;
+                is_valid_nonterminal initial_nonterminals_data nonterminal = true -> arg -> ret;
 
+          elim_parse_nonterminal_failure_init
+          : forall {str0 valid nonterminal str},
+              let ret := @T_nonterminal_failure _ _ str0 valid nonterminal str in
+              str ≤s str0
+              -> is_valid_nonterminal initial_nonterminals_data nonterminal = false
+              -> ret;
           elim_parse_nonterminal_failure
           : forall {str0 valid nonterminal str},
               let ret := @T_nonterminal_failure _ _ str0 valid nonterminal str in
               str ≤s str0
-              -> ~ Length str < Length str0
+              -> ~Length str < Length str0
               -> is_valid_nonterminal valid nonterminal = false
               -> ret
         }.
@@ -370,44 +376,51 @@ Section recursive_descent_parser.
                      (pf : str ≤s str0)
           : T_nonterminal str0 valid nonterminal str.
           Proof.
-            refine (if lt_dec (Length str) (Length str0)
-                    then (** [str] got smaller, so we reset the valid nonterminals list *)
-                      if (@parse_productions
-                            _
-                            _
-                            (fun str1 pf nonterminal st
-                             => @parse_nonterminal
-                                  (str : String, initial_nonterminals_data)
-                                  (or_introl _)
-                                  nonterminal
-                                  {| string_val := str1 ; state_val := st |}
-                                  pf)
-                            (Lookup G nonterminal)
-                            (lift_StringWithSplitState str (lift_lookup_nonterminal_state_lt _))
-                            (or_intror eq_refl))
-                      then inl (lift_parse_nonterminal_success_lt _ _)
-                      else inr (lift_parse_nonterminal_failure_lt _ _)
-                    else (** [str] didn't get smaller, so we cache the fact that we've hit this nonterminal already *)
-                      if Sumbool.sumbool_of_bool (is_valid_nonterminal valid nonterminal)
-                      then (** It was valid, so we can remove it *)
+            hnf.
+            refine (if Sumbool.sumbool_of_bool (is_valid_nonterminal initial_nonterminals_data nonterminal)
+                    then
+                      if lt_dec (Length str) (Length str0)
+                      then (** [str] got smaller, so we reset the valid nonterminals list *)
                         if (@parse_productions
-                              _ _
-                              (fun str1 (pf : str1 ≤s str0) nonterminal' st
+                              _
+                              _
+                              (fun str1 pf nonterminal st
                                => @parse_nonterminal
-                                    (str0, remove_nonterminal valid nonterminal)
-                                    (or_intror (conj eq_refl (@remove_nonterminal_dec _ _ _ _)))
-                                    nonterminal'
+                                    (str : String, initial_nonterminals_data)
+                                    (or_introl _)
+                                    nonterminal
                                     {| string_val := str1 ; state_val := st |}
                                     pf)
                               (Lookup G nonterminal)
-                              (lift_StringWithSplitState str (lift_lookup_nonterminal_state_eq (or_not_l pf _)))
-                              (or_intror _))
-                        then inl (lift_parse_nonterminal_success_eq _ _ _)
-                        else inr (lift_parse_nonterminal_failure_eq _ _)
-                      else (** oops, we already saw this nonterminal in the past.  ABORT! *)
-                        inr (elim_parse_nonterminal_failure _ _ _));
+                              (lift_StringWithSplitState str (lift_lookup_nonterminal_state_lt _))
+                              (or_intror eq_refl))
+                        then inl (lift_parse_nonterminal_success_lt _ _ _)
+                        else inr (lift_parse_nonterminal_failure_lt _ _ _)
+                      else (** [str] didn't get smaller, so we cache the fact that we've hit this nonterminal already *)
+                        if Sumbool.sumbool_of_bool (is_valid_nonterminal valid nonterminal)
+                        then (** It was valid, so we can remove it *)
+                          if (@parse_productions
+                                _ _
+                                (fun str1 (pf : str1 ≤s str0) nonterminal' st
+                                 => @parse_nonterminal
+                                      (str0, remove_nonterminal valid nonterminal)
+                                      (or_intror (conj eq_refl (@remove_nonterminal_dec _ _ _ _)))
+                                      nonterminal'
+                                      {| string_val := str1 ; state_val := st |}
+                                      pf)
+                                (Lookup G nonterminal)
+                                (lift_StringWithSplitState str (lift_lookup_nonterminal_state_eq (or_not_l pf _)))
+                                (or_intror _))
+                          then inl (lift_parse_nonterminal_success_eq _ _ _ _)
+                          else inr (lift_parse_nonterminal_failure_eq _ _ _)
+                        else (** oops, we already saw this nonterminal in the past.  ABORT! *)
+                          inr (elim_parse_nonterminal_failure _ _ _)
+                    else (** completely invalid grammar; nonterminal not in list of nonterminals *)
+                      inr (elim_parse_nonterminal_failure_init _ _));
             try solve [ pre_eassumption; instantiate_evars; eassumption
-                      | destruct_head_hnf or; try assumption; exfalso; eauto with nocore ].
+                      | intros; destruct_head_hnf or; try assumption; exfalso; eauto with nocore
+                      | intros; assumption
+                      | intros; destruct str_seq_lt_false; assumption ].
           Defined.
         End step.
 

@@ -2,6 +2,7 @@
 Require Import Coq.Lists.List Coq.Program.Program Coq.Classes.RelationClasses Coq.Strings.String.
 Require Import Parsers.BaseTypes Parsers.ContextFreeGrammar.
 Require Import Parsers.MinimalParse.
+Require Import Common.
 
 Local Coercion is_true : bool >-> Sortclass.
 
@@ -53,7 +54,17 @@ Section general.
           is_valid_nonterminal (remove_nonterminal ls ps) ps' = false
           <-> is_valid_nonterminal ls ps' = false \/ ps = ps';
       split_string_for_production_complete
-      : forall str0 valid str pf it its, @split_list_completeT _ str0 valid str pf (split_string_for_production it its str) it its }.
+      : forall str0 valid str pf nt,
+          is_valid_nonterminal initial_nonterminals_data nt
+          -> ForallT
+               (Forall_tails
+                  (fun prod
+                   => match prod return Type with
+                        | nil => True
+                        | it::its
+                          => @split_list_completeT _ str0 valid str pf (split_string_for_production it its str) it its
+                      end))
+               (Lookup G nt) }.
 
   Class boolean_parser_correctness_dataT :=
     { data :> boolean_parser_dataT;

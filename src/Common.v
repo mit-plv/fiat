@@ -1196,3 +1196,28 @@ Definition option_bind {A} {B} (f : A -> option B) (x : option A)
        | None => None
        | Some a => f a
      end.
+
+Fixpoint ForallT {T} (P : T -> Type) (ls : list T) : Type
+  := match ls return Type with
+       | nil => True
+       | x::xs => (P x * ForallT P xs)%type
+     end.
+Fixpoint Forall_tails {T} (P : list T -> Type) (ls : list T) : Type
+  := match ls with
+       | nil => P nil
+       | x::xs => (P (x::xs) * Forall_tails P xs)%type
+     end.
+
+Fixpoint ForallT_all {T} {P : T -> Type} (p : forall t, P t) {ls}
+: ForallT P ls
+  := match ls with
+       | nil => I
+       | x::xs => (p _, @ForallT_all T P p xs)
+     end.
+
+Fixpoint Forall_tails_all {T} {P : list T -> Type} (p : forall t, P t) {ls}
+: Forall_tails P ls
+  := match ls with
+       | nil => p _
+       | x::xs => (p _, @Forall_tails_all T P p xs)
+     end.

@@ -188,10 +188,10 @@ Section recursive_descent_parser.
          := liftA_str_I (@lift_prods_success_head _ _ _ _ _ leaf_extra_success_data _ _ _ _ (etas str));
          lift_prods_success_tail str0 valid prod prods str
          := liftA_str_I (@lift_prods_success_tail _ _ _ _ _ leaf_extra_success_data _ _ _ _ (etas str));
-         lift_parse_nonterminal_success_lt str0 valid nonterminal str pf
-         := liftA_str_I (@lift_parse_nonterminal_success_lt _ _ _ _ _ leaf_extra_success_data _ _ _ (etas str) pf);
-         lift_parse_nonterminal_success_eq str0 valid nonterminal str pf H
-         := liftA_str_I (@lift_parse_nonterminal_success_eq _ _ _ _ _ leaf_extra_success_data _ _ _ (etas str) pf H) }.
+         lift_parse_nonterminal_success_lt str0 valid nonterminal str pf Hinit
+         := liftA_str_I (@lift_parse_nonterminal_success_lt _ _ _ _ _ leaf_extra_success_data _ _ _ (etas str) pf Hinit);
+         lift_parse_nonterminal_success_eq str0 valid nonterminal str pf H H'
+         := liftA_str_I (@lift_parse_nonterminal_success_eq _ _ _ _ _ leaf_extra_success_data _ _ _ (etas str) pf H H') }.
 
   Local Obligation Tactic :=
     simpl;
@@ -209,6 +209,7 @@ Section recursive_descent_parser.
                                  @split_string_for_production _ _ _ top_methods' str0 valid it its (eta str) <> nil)
          lift_parse_nonterminal_failure_lt_cross
          lift_parse_nonterminal_failure_eq_cross
+         elim_parse_nonterminal_failure_init_cross
          elim_parse_nonterminal_failure_cross
   : @parser_dependent_types_extra_failure_dataT' _ String G sum_types sum_strdata
     := { lift_failure str0 valid nonterminal
@@ -240,12 +241,16 @@ Section recursive_descent_parser.
 
          lift_parse_nonterminal_failure_lt str0 valid nonterminal
          := option_rect_str
-              (fun str pf => impl_match_option _ (lift_parse_nonterminal_failure_lt_cross str0 valid nonterminal str pf))
-              (fun str pf => liftA_str_I (@lift_parse_nonterminal_failure_lt _ _ _ _ _ leaf_extra_failure_data _ _ _ (tts str) pf));
+              (fun str pf H => impl_match_option _ (lift_parse_nonterminal_failure_lt_cross str0 valid nonterminal str pf H))
+              (fun str pf H => liftA_str_I (@lift_parse_nonterminal_failure_lt _ _ _ _ _ leaf_extra_failure_data _ _ _ (tts str) pf H));
          lift_parse_nonterminal_failure_eq str0 valid nonterminal
          := option_rect_str
-              (fun str pf => impl_match_option _ (lift_parse_nonterminal_failure_eq_cross str0 valid nonterminal str pf))
-              (fun str pf => liftA_str_I (@lift_parse_nonterminal_failure_eq _ _ _ _ _ leaf_extra_failure_data _ _ _ (tts str) pf));
+              (fun str pf H => impl_match_option _ (lift_parse_nonterminal_failure_eq_cross str0 valid nonterminal str pf H))
+              (fun str pf H => liftA_str_I (@lift_parse_nonterminal_failure_eq _ _ _ _ _ leaf_extra_failure_data _ _ _ (tts str) pf H));
+         elim_parse_nonterminal_failure_init str0 valid nonterminal
+         := option_rect_str
+              (fun str => elim_parse_nonterminal_failure_init_cross str0 valid nonterminal str)
+              (fun str => @elim_parse_nonterminal_failure_init _ _ _ _ _ leaf_extra_failure_data _ _ _ (tts str));
          elim_parse_nonterminal_failure str0 valid nonterminal
          := option_rect_str
               (fun str => elim_parse_nonterminal_failure_cross str0 valid nonterminal str)
@@ -285,6 +290,7 @@ Section recursive_descent_parser.
              H_prod_split_cross
              lift_parse_nonterminal_failure_lt_cross
              lift_parse_nonterminal_failure_eq_cross
+             elim_parse_nonterminal_failure_init_cross
              elim_parse_nonterminal_failure_cross
   : @parser_dependent_types_extra_dataT _ String G
     := {| DependentlyTyped.types := sum_types;
@@ -299,5 +305,6 @@ Section recursive_descent_parser.
                H_prod_split_cross
                lift_parse_nonterminal_failure_lt_cross
                lift_parse_nonterminal_failure_eq_cross
+               elim_parse_nonterminal_failure_init_cross
                elim_parse_nonterminal_failure_cross |}.
 End recursive_descent_parser.

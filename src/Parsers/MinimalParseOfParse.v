@@ -64,16 +64,16 @@ Section cfg.
             _ _ _ _
             (match p as p in (@MinimalParse.minimal_parse_of_name _ _ _ _ _ _ _ str0 valid str name)
                    return minimal_parse_of (match p with
-                                              | MinParseNonTerminalStrLt _ _ _ _ _ _ => _
-                                              | MinParseNonTerminalStrEq _ _ _ _ _ => _
+                                              | MinParseNonTerminalStrLt _ _ _ _ _ _ _ => _
+                                              | MinParseNonTerminalStrEq _ _ _ _ _ _ => _
                                             end)
                                            (match p with
-                                              | MinParseNonTerminalStrLt _ _ _ _ _ _ => _
-                                              | MinParseNonTerminalStrEq _ _ _ _ _ => _
+                                              | MinParseNonTerminalStrLt _ _ _ _ _ _ _ => _
+                                              | MinParseNonTerminalStrEq _ _ _ _ _ _ => _
                                             end)
                                            str (Lookup G name) with
-               | MinParseNonTerminalStrLt str0 valid name str pf p' => p'
-               | MinParseNonTerminalStrEq str valid name H p' => p'
+               | MinParseNonTerminalStrLt str0 valid name str pf pf' p' => p'
+               | MinParseNonTerminalStrEq str valid name H H' p' => p'
              end)).
 
   Definition parse_of_item__of__minimal_parse_of_item'
@@ -734,7 +734,7 @@ Section cfg.
             { (** [str] got smaller, so we reset the valid names list *)
               destruct (@minimal_parse_of_productions__of__parse_of_productions str h minimal_parse_of_name__of__parse_of_name str (reflexivity _) initial_names_data (Lookup G name) p (Lt.lt_S_n _ _ pf) (reflexivity _) (snd H_forall)) as [p'|p'].
               { left.
-                exists (MinParseNonTerminalStrLt _ valid _ pf_lt (projT1 p'));
+                exists (MinParseNonTerminalStrLt _ valid _ pf_lt (fst H_forall) (projT1 p'));
                   simpl.
                 simpl in *.
                 split;
@@ -752,7 +752,7 @@ Section cfg.
               { destruct (@minimal_parse_of_productions__of__parse_of_productions str h minimal_parse_of_name__of__parse_of_name str (reflexivity _) (remove_name valid name) (Lookup G name) p (Lt.lt_S_n _ _ pf) (transitivity (R := sub_names_listT is_valid_name) (@sub_names_listT_remove _ is_valid_name _ remove_name_1 _ _) Hinit') (snd H_forall)) as [p'|p'].
                 { left.
                   subst str.
-                  eexists (@MinimalParse.MinParseNonTerminalStrEq _ _ _ _ _ _ _ _ _ _ Hvalid (projT1 p')).
+                  eexists (@MinimalParse.MinParseNonTerminalStrEq _ _ _ _ _ _ _ _ _ _ (fst H_forall) Hvalid (projT1 p')).
                   simpl in *.
                   split;
                     [ exact (Le.le_n_S _ _ (fst (projT2 p')))

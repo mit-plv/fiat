@@ -547,6 +547,8 @@ Section recursive_descent_parser.
             | [ H : sub_names_listT _ ?x ?y -> _ |- _ ] => specialize (H (reflexivity _))
             | [ H : sub_names_listT _ _ _, H' : sub_names_listT _ _ _ -> _ |- _ ]
               => specialize (fun arg => H' (sub_names_listT_remove_2 _ arg _ H))
+            | [ H : sub_names_listT _ _ _, H' : is_valid_nonterminal _ _ = true |- _ ]
+              => unique pose proof (H _ H')
             | [ H : context[map _ nil] |- _ ] => progress simpl in H
             | [ H : context[map _ (_::_)] |- _ ] => progress simpl in H
             | [ H : appcontext[split_string_for_production _ _ {| state_val := Some _ |} ] |- _ ] => progress simpl in H

@@ -356,6 +356,8 @@ Section recursive_descent_parser.
       | [ H : parse_of _ _ _ (_::_) |- _ ] => ddestruct H
       | [ H : parse_of _ _ _ nil |- _ ] => ddestruct H
       | [ H : appcontext[if lt_dec ?a ?b then _ else _] |- _ ] => destruct (lt_dec a b)
+      | [ H : sub_names_listT _ _ _, H' : is_valid_nonterminal _ _ = true |- _ ]
+        => unique pose proof (H _ H')
     end.
 
   Local Ltac t := repeat t'.
@@ -376,7 +378,7 @@ Section recursive_descent_parser.
          _
          top_methods'
          top_prestrdata
-         _ _ _ _ _ _ _ _ _.
+         _ _ _ _ _ _ _ _ _ _.
 
   Definition minimal_parse_nonterminal__of__parse'
              (nonterminal : string)

@@ -119,11 +119,13 @@ Section cfg.
   | MinParseNonTerminalStrLt
     : forall str0 valid name str,
         Length str < Length str0
+        -> is_valid_name initial_names_data name = true
         -> @minimal_parse_of str initial_names_data str (Lookup G name)
         -> @minimal_parse_of_name str0 valid str name
   | MinParseNonTerminalStrEq
     : forall str valid name,
-        is_valid_name valid name = true
+        is_valid_name initial_names_data name = true
+        -> is_valid_name valid name = true
         -> @minimal_parse_of str (remove_name valid name) str (Lookup G name)
         -> @minimal_parse_of_name str valid str name.
 

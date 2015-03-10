@@ -172,6 +172,16 @@ Lemma strle_to_lt_nonempty_l {CharType} {String : string_like CharType}
 : Length a < Length c.
 Proof. lt_nonempty_t. Qed.
 
+Lemma str_seq_lt_false {CharType} {String : string_like CharType}
+      {a b : String}
+      (H : Length a < Length b)
+      (H' : (a =s b) = true)
+: False.
+Proof.
+  apply bool_eq_correct in H'; subst.
+  apply lt_irrefl in H; assumption.
+Qed.
+
 Lemma neq_some_none_state_val {CharType} {String : string_like CharType} {P}
       {s1 s2 : StringWithSplitState String (fun x => option (P x))}
       (H : s1 = s2)
