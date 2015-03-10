@@ -112,23 +112,3 @@ Arguments parse_of_production _%type_scope _ _ _%string_like _.
 Arguments parse_of_grammar _%type_scope _ _%string_like _.
 
 Local Hint Extern 0 => match goal with H : S _ = 0 |- _ => destruct (NPeano.Nat.neq_succ_0 _ H) end.
-
-Section examples.
-  Section generic.
-    Variable CharType : Type.
-    Variable String : string_like CharType.
-
-    Definition trivial_grammar : grammar CharType :=
-      {| Start_symbol := "";
-         Lookup := fun _ => nil::nil;
-         Valid_nonterminals := ""%string::nil |}.
-
-    Definition trivial_grammar_parses_empty_string : parse_of_grammar _ (Empty String) trivial_grammar.
-    Proof.
-      hnf.
-      simpl.
-      apply ParseHead.
-      constructor.
-    Qed.
-  End generic.
-End examples.

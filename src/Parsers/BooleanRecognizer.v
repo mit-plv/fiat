@@ -2,6 +2,7 @@
 Require Import Omega.
 Require Import Coq.Lists.List Coq.Program.Program Coq.Program.Wf Coq.Arith.Wf_nat Coq.Arith.Compare_dec Coq.Classes.RelationClasses Coq.Strings.String.
 Require Import Parsers.ContextFreeGrammar Parsers.ContextFreeGrammarNotations Parsers.BaseTypes.
+Require Import Parsers.Grammars.Trivial Parsers.Grammars.ABStar.
 Require Import Common Common.Wf.
 
 Set Implicit Arguments.
@@ -403,14 +404,6 @@ End example_parse_empty_grammar.
 Section examples.
   Section ab_star.
     Local Open Scope string_scope.
-
-    Definition ab_star_grammar : grammar Ascii.ascii :=
-      {| Start_symbol := "ab_star";
-         Lookup := [[[ ("" ::== (<< "" >>)) ;;
-                       ("ab" ::== << "ab" >>) ;;
-                       ("ab_star" ::== << $< "" >$
-                                        | $< "ab" $ "ab_star" >$ >> ) ]]]%prods_assignment;
-         Valid_nonterminals := (""::"ab"::"ab_star"::nil)%string |}.
 
     Definition parse : string -> bool
       := brute_force_parse ab_star_grammar.

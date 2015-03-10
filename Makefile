@@ -145,7 +145,9 @@ FINITESET_MODULES := \
 SRC_GRAMMAR_MODULES := \
 	Parsers/ContextFreeGrammar\
 	Parsers/ContextFreeGrammarProperties\
-	Parsers/ContextFreeGrammarNotations
+	Parsers/ContextFreeGrammarNotations\
+	Parsers/Grammars/Trivial\
+	Parsers/Grammars/ABStar
 
 SRC_PARSERS_BASE_MODULES := \
 	Parsers/StringLike\

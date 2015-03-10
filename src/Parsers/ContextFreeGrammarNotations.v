@@ -17,6 +17,11 @@ Fixpoint list_to_productions {T} (default : T) (ls : list (string * T)) : string
                                    else list_to_productions default ls' s
      end.
 
+Definition item_ascii := item Ascii.ascii.
+Coercion item_of_char (ch : Ascii.ascii) : item_ascii := Terminal ch.
+Coercion item_of_string (nt : string) : item_ascii := NonTerminal _ nt.
+Definition item_ascii_cons : item_ascii -> production Ascii.ascii -> production Ascii.ascii := cons.
+
 Delimit Scope item_scope with item.
 Bind Scope item_scope with item.
 Delimit Scope production_scope with production.
@@ -33,4 +38,4 @@ Local Open Scope string_scope.
 Notation "<< x | .. | y >>" :=
   (@cons (production _) (x)%production .. (@cons (production _) (y)%production nil) .. ) : productions_scope.
 
-Notation "$< x $ .. $ y >$" := (cons (NonTerminal _ x) .. (cons (NonTerminal _ y) nil) .. ) : production_scope.
+Notation "$< x $ .. $ y >$" := (item_ascii_cons x .. (item_ascii_cons y nil) .. ) : production_scope.
