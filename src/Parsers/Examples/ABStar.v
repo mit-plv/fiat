@@ -95,24 +95,28 @@ Section on_ab_star'.
     simpl in p.
   Abort.*)
 
+  Arguments parse_production_subproof {_ _ _ _ _ _ _}.
+  Arguments or_intror {_ _ _}.
+  Arguments conj {_ _ _ _}.
+  Notation or_introrh := (or_intror _).
+  Infix "<wf" := (Wf.prod_relation _ _) (at level 50).
+
   Definition simplified_parse' (str : string) : bool.
   Proof.
     pose (parse' str) as p.
-    unfold parse', parse_nonterminal, parse_nonterminal_or_abort, parse_nonterminal_step, parse_productions, combine_sig in p.
+    unfold parse', parse_nonterminal, parse_nonterminal_or_abort, parse_nonterminal_step, parse_productions, combine_sig, rdp_list_is_valid_nonterminal in p.
     simpl in p.
-    Arguments parse_production_subproof {_ _ _ _ _ _ _}.
-    Arguments or_intror {_ _ _}.
-    Arguments conj {_ _ _ _}.
-    Notation or_introrh := (or_intror _).
-    Infix "<wf" := Wf.prod_relation (at level 50).
+    unfold rdp_list_is_valid_nonterminal, rdp_list_remove_nonterminal, rdp_list_nonterminals_listT, rdp_list_ntl_wf, rdp_list_nonterminals_listT in p.
     let p' := (eval unfold p in p) in
     exact p'.
   Defined.
 
   Definition simplified_parse'' := Eval cbv beta iota zeta delta [simplified_parse' Common.Wf.Fix3] in simplified_parse'.
+
+  Print simplified_parse'.
 End on_ab_star'.
 
-(*Require Import ExtrOcamlString.
+Require Import ExtrOcamlString.
 Require Import ExtrOcamlBasic.
 Require Import ExtrOcamlNatInt.
 
@@ -121,4 +125,4 @@ Definition test1 := simplified_parse'' "ab".
 Definition str400 := "abababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababab".
 Definition test2 := simplified_parse'' (str400 ++ str400 ++ str400 ++ str400).
 
-Recursive Extraction test0 test1 test2.*)
+Recursive Extraction test0 test1 test2.
