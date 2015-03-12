@@ -17,6 +17,9 @@ Section Packet.
     unfold beq_name; intros; find_if_inside; intuition; intros; congruence.
   Qed.
 
+  Global Instance Query_eq_name :
+    Query_eq name := {| A_eq_dec := list_eq_dec string_dec |}.
+
   Inductive RRecordType := A | CNAME | NS | MX.
 
   Definition beq_RRecordType (a b : RRecordType) :=

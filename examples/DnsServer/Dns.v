@@ -33,6 +33,14 @@ Proof.
     + injections; find_if_inside; intuition eauto.
 Qed.
 
+Lemma prefixBool_reflexive :
+  forall l, true = prefixBool l l.
+Proof.
+  induction l.
+  - reflexivity.
+  - simpl; rewrite string_dec_refl; assumption.
+Qed.
+
 Global Instance DecideablePrefix {n}
 : DecideableEnsemble (fun tup => prefixProp tup n) :=
   {| dec n' :=  prefixBool n' n;
@@ -235,32 +243,32 @@ Definition DnsSearchUpdateTerm :=
      BagUpdateTermType := DNSRRecord -> DNSRRecord;
      BagApplyUpdateTerm := fun f x => f x |}.
 
-    Require Import ADTSynthesis.QueryStructure.Implementation.DataStructures.Bags.ListBags.
+Require Import ADTSynthesis.QueryStructure.Implementation.DataStructures.Bags.ListBags.
 
-  Definition SharpenedPrefixBagImpl :
-    Sharpened (@BagSpec _
-                        (BagSearchTermType DnsSearchUpdateTerm)
-                        (BagUpdateTermType DnsSearchUpdateTerm)
-                        (BagMatchSearchTerm DnsSearchUpdateTerm)
-                        (BagApplyUpdateTerm DnsSearchUpdateTerm)).
-  Proof.
-    eapply (SharpenedBagImpl (fun _ => true) (BagPlus := @ListAsBag
-             _
-             (BagSearchTermType DnsSearchUpdateTerm)
-             (BagUpdateTermType DnsSearchUpdateTerm)
-             {| pst_name := nil;
-                pst_filter := fun _ => true |}
-             (BagMatchSearchTerm DnsSearchUpdateTerm)
-             (BagApplyUpdateTerm DnsSearchUpdateTerm) ) _
-                             (RepInvPlus := fun _ => True)
-                             (ValidUpdatePlus := fun _ => True)).
-    eauto.
-    Grab Existential Variables.
-    eapply ListAsBagCorrect.
-    simpl.
-    apply (fun x => x).
-    reflexivity.
-  Defined.
+Definition SharpenedPrefixBagImpl :
+  Sharpened (@BagSpec _
+                      (BagSearchTermType DnsSearchUpdateTerm)
+                      (BagUpdateTermType DnsSearchUpdateTerm)
+                      (BagMatchSearchTerm DnsSearchUpdateTerm)
+                      (BagApplyUpdateTerm DnsSearchUpdateTerm)).
+Proof.
+  eapply (SharpenedBagImpl (fun _ => true) (BagPlus := @ListAsBag
+          _
+          (BagSearchTermType DnsSearchUpdateTerm)
+          (BagUpdateTermType DnsSearchUpdateTerm)
+          {| pst_name := nil;
+             pst_filter := fun _ => true |}
+          (BagMatchSearchTerm DnsSearchUpdateTerm)
+          (BagApplyUpdateTerm DnsSearchUpdateTerm) ) _
+                           (RepInvPlus := fun _ => True)
+                           (ValidUpdatePlus := fun _ => True)).
+  eauto.
+  Grab Existential Variables.
+  eapply ListAsBagCorrect.
+  simpl.
+  apply (fun x => x).
+  reflexivity.
+Defined.
 
 (* Parade of admitted refinement lemmas. Should go in a DNS Refinements file. *)
 
@@ -274,55 +282,55 @@ Lemma foo1 :
                           n!sNAME = (indexedElement tup')!sNAME -> n!sTYPE <> CNAME)}
               (ret true).
 Proof.
-  intros; econstructor; inversion_by computes_to_inv.
-  subst; simpl; intros; assumption.
+  intros; refine pick val true; [ reflexivity | simpl; intros; assumption ].
 Qed.
 
+Lemma foo2 :
+  forall (n : DNSRRecord) (R : @IndexedEnsemble DNSRRecord),
+    n!sTYPE = CNAME
+    -> refine {b |
+               decides b
+                       (forall tup' : IndexedTuple,
+                          R tup' ->
+                          n!sNAME = (indexedElement tup')!sNAME -> n!sTYPE <> CNAME)}
+              (b <- {b |
+                     decides b
+                             (exists tup' : IndexedTuple,
+                                R tup' /\
+                                n!sNAME = (indexedElement tup')!sNAME)};
+               ret (negb b)).
+Proof.
+   repeat match goal with
+    | _ : _ ↝ _ |- _ => computes_to_inv
+    | _ : negb ?v = _ |- _ => destruct v; simpl in *; subst
+    | _ : ex _ |- _ => destruct_ex
+    | _ => progress first [ intro | computes_to_econstructor | simpl; intuition; eauto ]
+          end.
+Qed.
 
-    Lemma foo2 :
-      forall (n : DNSRRecord) (R : @IndexedEnsemble DNSRRecord),
-        n!sTYPE = CNAME
-        -> refine {b |
-                   decides b
-                           (forall tup' : IndexedTuple,
-                              R tup' ->
-                              n!sNAME = (indexedElement tup')!sNAME -> n!sTYPE <> CNAME)}
-                  (b <- {b |
-                        decides b
-                                (exists tup' : IndexedTuple,
-                                      R tup' /\
-                                      n!sNAME = (indexedElement tup')!sNAME)};
-                  ret (negb b)).
-    Proof.
-      intros; econstructor; inversion_by computes_to_inv;
-      destruct v; simpl in *; unfold not in *; intros.
-      - destruct x; simpl in H1; destruct H1; inversion H2; eauto.
-      - destruct x; simpl in H1; destruct H1; inversion H2; eapply H0;
-        intros; destruct H2 as [ tup [ H2 H3 ] ]; intuition eauto.
-    Qed.
-
-    Lemma foo4 :
-      forall (n : DNSRRecord) (R : @IndexedEnsemble DNSRRecord),
-        refine {b |
-                   decides b
-                           (forall tup' : IndexedTuple,
-                              R tup' ->
-                              (indexedElement tup')!sNAME = n!sNAME
-                              -> (indexedElement tup')!sTYPE <> CNAME)}
-                  (b <- {b |
-                   decides b
-                           (exists tup' : IndexedTuple,
-                                 R tup' /\
-                                 n!sNAME = (indexedElement tup')!sNAME
-                                 /\ (indexedElement tup')!sTYPE = CNAME)};
-                  ret (negb b)).
-    Proof.
-      intros; econstructor; inversion_by computes_to_inv;
-      destruct v; simpl in *; unfold not in *; intros; destruct x;
-      simpl in H1; inversion H1.
-      - apply H0; exists tup'; intuition.
-      - intros; destruct H0 as [ tup [ ? [ ? ? ] ] ]; eapply H; eauto.
-    Qed.
+Lemma foo4 :
+  forall (n : DNSRRecord) (R : @IndexedEnsemble DNSRRecord),
+    refine {b |
+            decides b
+                    (forall tup' : IndexedTuple,
+                       R tup' ->
+                       (indexedElement tup')!sNAME = n!sNAME
+                       -> (indexedElement tup')!sTYPE <> CNAME)}
+           (b <- {b |
+                  decides b
+                          (exists tup' : IndexedTuple,
+                             R tup' /\
+                             n!sNAME = (indexedElement tup')!sNAME
+                             /\ (indexedElement tup')!sTYPE = CNAME)};
+            ret (negb b)).
+Proof.
+  repeat match goal with
+    | _ : _ ↝ _ |- _ => computes_to_inv
+    | _ : negb ?v = _ |- _ => destruct v; simpl in *; subst
+    | _ : ex _ |- _ => destruct_ex
+    | _ => progress first [ intro | computes_to_econstructor | simpl; intuition; eauto ]
+         end.
+Qed.
 
 Lemma foo3 :
   forall (n : DNSRRecord) (r : UnConstrQueryStructure DnsSchema),
@@ -341,14 +349,33 @@ Lemma foo3 :
 Proof.
   intros; setoid_rewrite refine_pick_decides at 1;
   [ | apply foo2 | apply foo1 ].
-  refine existence check into query.
+  (* refine existence check into query. *)
+  match goal with
+      |- context[{b | decides b
+                              (exists tup : @IndexedTuple ?heading,
+                                 (@GetUnConstrRelation ?qs_schema ?qs ?tbl tup /\ @?P tup))}]
+      =>
+      let H1 := fresh in
+      let H2 := fresh in
+      makeEvar (Ensemble (@Tuple heading))
+               ltac:(fun P' => assert (Same_set (@IndexedTuple heading) (fun t => P' (indexedElement t)) P) as H1;
+                     [unfold Same_set, Included, Ensembles.In;
+                       split; [intros x H; pattern (indexedElement x);
+                               match goal with
+                                   |- ?P'' (indexedElement x) => unify P' P'';
+                                     simpl; eauto
+                               end
+                              | eauto]
+                     |
+                     assert (DecideableEnsemble P') as H2;
+                       [ simpl; eauto with typeclass_instances (* Discharge DecideableEnsemble w/ intances. *)
+                       | setoid_rewrite (@refine_constraint_check_into_query' qs_schema tbl qs P P' H2 H1); clear H1 H2 ] ]) end.
   remember n!sTYPE; refine pick val (beq_RRecordType d CNAME); subst;
   [ | case_eq (beq_RRecordType n!sTYPE CNAME); intros;
       rewrite <- beq_RRecordType_dec in H; find_if_inside;
       unfold not; simpl in *; try congruence ].
   simplify with monad laws.
-  setoid_rewrite refineEquiv_bind_bind.
-  setoid_rewrite refineEquiv_bind_unit.
+  autorewrite with monad laws.
   setoid_rewrite negb_involutive.
   reflexivity.
 Qed.
@@ -371,7 +398,30 @@ Lemma foo5 :
             ret (beq_nat count 0)).
 Proof.
   intros; setoid_rewrite foo4.
-  refine existence check into query.
+  (*refine existence check into query. *)
+  match goal with
+      |- context[{b | decides b
+                              (exists tup : @IndexedTuple ?heading,
+                                 (@GetUnConstrRelation ?qs_schema ?qs ?tbl tup /\ @?P tup))}]
+      =>
+      let H1 := fresh in
+      let H2 := fresh in
+      makeEvar (Ensemble (@Tuple heading))
+               ltac:(fun P' => assert (Same_set (@IndexedTuple heading) (fun t => P' (indexedElement t)) P) as H1;
+                     [unfold Same_set, Included, Ensembles.In;
+                       split; [intros x H; pattern (indexedElement x);
+                               match goal with
+                                   |- ?P'' (indexedElement x) => unify P' P'';
+                                     simpl; eauto
+                               end
+                              | eauto]
+                     |
+                     assert (DecideableEnsemble P') as H2;
+                       [ simpl; eauto with typeclass_instances (* Discharge DecideableEnsemble w/ intances. *)
+                       | setoid_rewrite (@refine_constraint_check_into_query' qs_schema tbl qs P P' H2 H1); clear H1 H2 ] ]) end.
+  (* apply @DecideableEnsemble_And.  apply DecideableEnsemble_EqDec.
+  apply Query_eq_list. apply DecideableEnsemble_EqDec. apply Query_eq_RRecordType.
+  Print Instances DecideableEnsemble. *)
   simplify with monad laws.
   setoid_rewrite negb_involutive; f_equiv.
 Qed.
@@ -392,9 +442,24 @@ Lemma foo7 {heading}
              (ret (filter DecideableEnsembles.dec l)).
 Proof.
   Local Transparent Query_For.
-  unfold Query_For, QueryResultComp.
-  (* induction? *)
-  admit.
+  unfold Query_For, QueryResultComp;
+    intros; computes_to_inv; generalize dependent l;
+    generalize dependent R; generalize dependent v.
+  induction v0; intros; simplify with monad laws.
+  refine pick val _; eauto; simplify with monad laws.
+  - simpl in H'0; refine pick val _; eauto;
+    computes_to_inv; subst; apply Permutation_nil in H'; subst; reflexivity.
+  - admit. (* simpl in H'0; computes_to_inv; subst.
+    unfold Query_Where, Query_Return in H'0.
+    computes_to_inv; intuition.
+    pose proof (IHv0 _ H'0' ); clear IHv0 H'0'.
+    assert (HH : (UnIndexedEnsembleListEquivalence (Setminus _ R (fun x => indexedTuple x = a)) v0)). admit.
+    pose proof (H2 _ HH); clear H2 HH.
+    apply permutation_app_destruct in H'; repeat destruct_ex; intuition.
+    pose proof (H3 _ H2); clear H3 H2; unfold refine; intros.
+    repeat (computes_to_econstructor; eauto).
+    repeat split.
+    intuition. *)
 Qed.
 
 Lemma foo8 {A}
@@ -415,22 +480,76 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma foo10
-: forall (a n : DNSRRecord),
-    ?[list_eq_dec string_dec n!sNAME a!sNAME] =
-    PrefixSearchTermMatcher
-      {|
-        pst_name := n!sNAME;
-        pst_filter := fun tup : DNSRRecord =>
-                        ?[list_eq_dec string_dec n!sNAME tup!sNAME] |} a.
+Lemma andb_implication_preserve :
+  forall a b, (a = true -> b = true) -> a = b && a.
 Proof.
-  intros a n; unfold PrefixSearchTermMatcher.
-  case_eq (list_eq_dec string_dec n!sNAME a!sNAME); intros e H; simpl.
-  - symmetry; apply andb_true_iff; split.
-    + apply prefixBool_eq; setoid_rewrite e; eexists; apply app_nil_r.
-    + find_if_inside; [ reflexivity | contradiction ].
-  - symmetry; apply andb_false_iff.
-    right; find_if_inside; [ contradiction | reflexivity ].
+  intros; destruct a; destruct b; symmetry; auto.
+Qed.
+Ltac PrefixSearchTermFinderEqSolve :=
+  intros; unfold PrefixSearchTermMatcher; simpl;
+   apply andb_implication_preserve; find_if_inside; intros;
+   match goal with
+     | H : _ = _ |- _ =>
+       setoid_rewrite H;
+         erewrite prefixBool_reflexive; reflexivity
+     | _ => erewrite prefixBool_reflexive; reflexivity
+     | _ => discriminate
+   end.
+(* need to be smarter the case where we want `and` on the equality / prefix
+   e.g. ?[list_dec string_dec n!sNAME a!sNAME] && ?[type_dec a!sTYPE CNAME] *)
+Ltac PrefixSearchTermFinder :=
+  match goal with
+    (* case prefix match *)
+    | |- forall a, prefixBool ?n a!sNAME = PrefixSearchTermMatcher ?st a =>
+      instantiate (1 := {| pst_name := n; pst_filter := fun _ => true |});
+              intros; unfold PrefixSearchTermMatcher; rewrite andb_comm; reflexivity
+    (* case equality *)
+    | |- forall a, ?[list_eq_dec string_dec ?n a!sNAME] =
+                   PrefixSearchTermMatcher ?st a =>
+      instantiate
+        (1 := {| pst_name := n;
+                 pst_filter := fun a => ?[list_eq_dec string_dec n a!sNAME] |});
+        PrefixSearchTermFinderEqSolve
+    | |- forall a, ?[list_eq_dec string_dec a!sNAME ?n] =
+                   PrefixSearchTermMatcher ?st a =>
+      instantiate
+        (1 := {| pst_name := n;
+                 pst_filter := fun a => ?[list_eq_dec string_dec a!sNAME n] |});
+        PrefixSearchTermFinderEqSolve
+    (* catch all case; ignore search term, use only the filter *)
+    | |- forall a, @?f a = PrefixSearchTermMatcher ?st a =>
+      instantiate (1 := {| pst_name := nil; pst_filter := f |}); reflexivity
+  end.
+
+(* foo10-13 is just for testing PrefixSearchTermFinder*)
+Lemma foo10
+: forall n : DNSRRecord, exists st, forall a : DNSRRecord,
+    ?[list_eq_dec string_dec n!sNAME a!sNAME] =
+    PrefixSearchTermMatcher st a.
+Proof.
+  eexists; PrefixSearchTermFinder.
+Qed.
+Lemma foo10' : forall n : DNSRRecord, exists st, forall a : DNSRRecord,
+    ?[list_eq_dec string_dec a!sNAME n!sNAME] =
+    PrefixSearchTermMatcher st a.
+Proof.
+  eexists; PrefixSearchTermFinder.
+Qed.
+Lemma foo13
+: forall n : DNSRRecord, exists st, forall a : DNSRRecord,
+    prefixBool (n!sNAME) (a!sNAME) =
+    PrefixSearchTermMatcher st a.
+Proof.
+  eexists; PrefixSearchTermFinder.
+Qed.
+
+Lemma foo12 :
+  forall l l' : name,
+    prefixBool l l' = false ->
+    ?[list_eq_dec string_dec l l'] = false.
+Proof.
+  intros; find_if_inside; subst;
+  [ rewrite <- prefixBool_reflexive in H | ]; auto.
 Qed.
 
 Lemma foo11 {heading}
@@ -448,18 +567,14 @@ Qed.
         refine (filtered_list xs P)
                (ret (filter dec xs)).
     Proof.
-      unfold filtered_list;
-      induction xs; intros.
+      unfold filtered_list; induction xs; intros.
       - reflexivity.
       - simpl; setoid_rewrite IHxs.
         simplify with monad laws.
-        destruct (dec a) eqn: eq_dec_a.
-        + setoid_rewrite dec_decides_P in eq_dec_a.
-          refine pick val true; auto.
-          simplify with monad laws; reflexivity.
-        + setoid_rewrite Decides_false in eq_dec_a.
-          refine pick val false; auto.
-          simplify with monad laws; reflexivity.
+        destruct (dec a) eqn: eq_dec_a;
+          [ setoid_rewrite dec_decides_P in eq_dec_a; refine pick val true |
+            setoid_rewrite Decides_false in eq_dec_a; refine pick val false ];
+          auto; simplify with monad laws; reflexivity.
     Qed.
 
     Definition find_upperbound {A} (f : A -> nat) (ns : list A) : list A :=
@@ -583,7 +698,7 @@ Qed.
                       | n' :: _ => ?[s == (get_name n')]
                     end).
     Proof.
-      econstructor; simpl in H; intros; apply computes_to_inv in H0.
+      computes_to_econstructor; simpl in H; intros; computes_to_inv.
       subst; unfold decides; pose proof (foo16 ns H); clear H.
       remember (find_upperbound name_length ns) as l.
       find_if_inside_eqn.
@@ -633,7 +748,7 @@ Qed.
     Proof.
       unfold refine, not; intros; pose proof (foo16 ns H); clear H.
       remember (find_upperbound name_length ns) as l.
-      apply computes_to_inv in H0; econstructor; split; intros.
+      computes_to_inv; computes_to_econstructor; split; intros.
       - destruct l; [ subst; inversion H | ].
         repeat find_if_inside_eqn; subst; try inversion H; subst.
         repeat split; [ simpl; left | symmetry | ]; auto.
@@ -659,36 +774,13 @@ Qed.
       destruct i; reflexivity.
     Qed.
 
-    Lemma foo13 : forall l (a : DNSRRecord),
-                prefixBool l (a!sNAME) =
-                PrefixSearchTermMatcher
-                  {|
-                    pst_name := l;
-                    pst_filter := fun _ : DNSRRecord => true |} a.
-    Proof.
-      symmetry; apply andb_true_r.
-    Qed.
-
-Lemma foo12 :
-  forall l l' : name,
-    prefixBool l l' = false ->
-    ?[list_eq_dec string_dec l l'] = false.
-Proof.
-  induction l; simpl; destruct l'; intros; eauto.
-  repeat find_if_inside; eauto; injections.
-  rewrite <- (IHl _ H).
-  clear; induction l'; simpl; eauto.
-  find_if_inside; congruence.
-  congruence.
-Qed.
-
 Lemma refine_decides_forall_In' :
   forall {A} l (P: A -> Prop) (P_Dec : DecideableEnsemble P),
     refine {b | decides b (forall (x: A), List.In x l -> P x)}
            {b | decides b (~ exists (x : A), List.In x l /\ ~ P x)}.
 Proof.
-  unfold refine; intros; inversion_by computes_to_inv.
-  constructor.
+  unfold refine; intros; computes_to_inv.
+  computes_to_constructor.
   destruct v; simpl in *; intros.
   case_eq (dec x); intros; try rewrite <- (dec_decides_P); eauto.
   elimtype False; eapply H; eexists; intuition eauto.
@@ -744,10 +836,7 @@ Proof.
   hone method "Process".
   {
     simplify with monad laws.
-  implement_Query' ltac:(fun _ _ _ _ =>
-                                      instantiate (1 := {| pst_name := qname (questions n);
-                                                           pst_filter := fun tup => true |}); cbv beta; simpl; intros; apply foo13)
-                          ltac:(fun _ _ _ _ _ => idtac).
+    implement_Query' ltac:(fun _ _ _ _ => PrefixSearchTermFinder) ltac:(fun _ _ _ _ _ => idtac).
     (* Find the upperbound of the results. *)
     setoid_rewrite refine_find_upperbound.
     simplify with monad laws.
@@ -818,20 +907,15 @@ Proof.
     etransitivity.
     - apply refine_If_Then_Else.
       + simplify with monad laws.
-        implement_Query' ltac:(fun _ _ _ _ =>
-                                 instantiate (1 := {| pst_name := n!sNAME;
-                                                      pst_filter := fun tup => ?[list_eq_dec string_dec n!sNAME tup!sNAME] |});
-                               intros; apply foo10)
-                                ltac:(fun _ _ _ _ _ => idtac).
-
+        implement_Query' ltac:(fun _ _ _ _ => PrefixSearchTermFinder) ltac:(fun _ _ _ _ _ => idtac).
         simplify with monad laws.
         setoid_rewrite refineEquiv_swap_bind.
-
         setoid_rewrite refine_if_If.
         implement_Insert_branches.
         reflexivity.
       + simplify with monad laws.
-        implement_Query'
+        implement_Query' ltac:(fun _ _ _ _ => PrefixSearchTermFinder) ltac:(fun _ _ _ _ _ => idtac).
+        (* right now manually choose SearchTerm gives more effeicient implementation
           ltac:(fun _ _ _ _ =>
                   intro;
                 instantiate (1 := {| pst_name := n!sNAME;
@@ -844,18 +928,15 @@ Proof.
                 intros; f_equal;
                 repeat find_if_inside; simpl; try congruence;
                 intros; rewrite foo12; simpl; eauto)
-                 ltac:(fun _ _ _ _ _ => idtac).
-
+                 ltac:(fun _ _ _ _ _ => idtac). *)
         simplify with monad laws.
         setoid_rewrite refineEquiv_swap_bind.
-
         setoid_rewrite refine_if_If.
         implement_Insert_branches.
         reflexivity.
     - reflexivity.
     - finish honing.
   }
-
   FullySharpenQueryStructure DnsSchema
   (icons DnsSearchUpdateTerm
        (inil
