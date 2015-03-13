@@ -6,25 +6,6 @@ Require Import ADTSynthesis.QueryStructure.Automation.AutoDB
         ADTSynthesis.QueryStructure.Automation.QSImplementation
         BookstorewDelegation.
 
-Extract Inlined Constant fst => fst.
-Extract Inlined Constant snd => snd.
-Extract Inlined Constant negb => not.
-Extract Inlined Constant List.length => "List.length".
-Extract Inlined Constant app => "( @ )".
-Extract Constant String_as_OT.eq_dec  => "(=)".
-Extract Constant Nat_as_OT.eq_dec     => "(=)".
-
-Extract Constant String_as_OT.compare => "fun a b -> let comp = compare a b in
-                                          if comp = 0 then EQ else if comp < 0 then LT else GT".
-Extract Constant Nat_as_OT.compare    => "fun (a: int) (b: int) -> let comp = compare a b in
-                                          if comp = 0 then EQ else if comp < 0 then LT else GT".
-Extract Constant String_as_OT.string_compare => "fun a b -> let comp = compare a b in
-                                                 if comp = 0 then Eq else if comp < 0 then Lt else Gt".
-
-Extract Inductive reflect            => bool [ true false ].
-Extract Inlined Constant iff_reflect => "".
-
-
 Definition BookStoreDelegateReps
 : ilist (fun ns => Type) (qschemaSchemas BookStoreSchema).
   simpl.
@@ -64,6 +45,9 @@ Defined.
 
 (* And we get a result worthy of extraction! *)
 Print ExtractWorthyBookStoreImpl.
+
+
+
 
 (*
 Open Scope string.

@@ -1,5 +1,5 @@
-Require Import Coq.Strings.String.
-Require Import ADTSynthesis.QueryStructure.Automation.AutoDB.
+Require Import ADTSynthesis.QueryStructure.Automation.AutoDB
+        ADTSynthesis.QueryStructure.Automation.IndexSelection.
 
 Definition VALUE := "VALUE".
 Definition MEASUREMENT_TYPE := "MEASUREMENT_TYPE".
@@ -78,7 +78,12 @@ Proof.
   unfold WeatherSpec.
 
   start honing QueryStructure.
-  make simple indexes using [[AREA_CODE]; [MEASUREMENT_TYPE; CELL_ID]].
+
+  (* Old, explicit index selection*)
+  (* make simple indexes using [[AREA_CODE]; [MEASUREMENT_TYPE; CELL_ID]]. *)
+
+  (* Shiny new automatic index selection*)
+  GenerateIndexesForAll ltac:(fun l => make simple indexes using l).
 
   Time plan. (* 220 seconds *)
   idtac.

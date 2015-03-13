@@ -1,5 +1,5 @@
-Require Import Coq.Strings.String.
-Require Import AutoDB.
+Require Import ADTSynthesis.QueryStructure.Automation.AutoDB
+        ADTSynthesis.QueryStructure.Automation.IndexSelection.
 
 Definition Market := string.
 Definition StockType := nat.
@@ -91,7 +91,13 @@ Proof.
   unfold StocksSpec.
   start honing QueryStructure.
 
-  make simple indexes using [[TYPE; STOCK_CODE]; [DATE; STOCK_CODE]].
+  (* Old, explicit index selection*)
+  (* make simple indexes using [[TYPE; STOCK_CODE]; [DATE; STOCK_CODE]]. *)
+
+  (* Shiny new automatic index selection*)
+  GenerateIndexesForAll ltac:(fun l => make simple indexes using l).
+
+
 
   plan. (* ~10 minutes*)
 

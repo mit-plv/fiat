@@ -1,4 +1,5 @@
-Require Import ADTSynthesis.QueryStructure.Automation.AutoDB.
+Require Import ADTSynthesis.QueryStructure.Automation.AutoDB
+        ADTSynthesis.QueryStructure.Automation.IndexSelection.
 
 (* Our bookstore has two relations (tables):
    - The [Books] relation contains the books in the
@@ -103,7 +104,7 @@ Proof.
 
   start honing QueryStructure.
 
-  make simple indexes using [[sAUTHOR; sISBN]; [sISBN]].
+  GenerateIndexesForAll ltac:(fun l => make simple indexes using l).
 
     hone method "PlaceOrder".
     {
@@ -136,7 +137,7 @@ Proof.
     cleanup_Count.
     finish honing.
   }
- 
+
   hone method "AddBook".
   {
     Implement_Insert_Checks.
@@ -182,13 +183,8 @@ Proof.
       finish honing.
     }
 
-  FullySharpenQueryStructure BookStoreSchema Index.
+  FullySharpenQueryStructure BookStoreSchema Index;
 
-  implement_bag_methods.
-  implement_bag_methods.
-  implement_bag_methods.
-  implement_bag_methods.
-  implement_bag_methods.
   implement_bag_methods.
 
 Time Defined.

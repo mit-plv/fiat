@@ -129,6 +129,7 @@ QUERYSTRUCTURE_MODULES := \
 	QueryStructure/Automation/Constraints/TrivialConstraintAutomation \
 	QueryStructure/Automation/Constraints/FunctionalDependencyAutomation \
 	QueryStructure/Automation/Constraints/ForeignKeyAutomation \
+	QueryStructure/Automation/IndexSelection \
 	QueryStructure/Automation/AutoDB \
 	QueryStructure/Automation/QSImplementation
 
