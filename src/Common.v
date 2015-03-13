@@ -1062,6 +1062,16 @@ Proof.
          end.
 Qed.
 
+Lemma fold_right_andb_map_in {A P} {ls : list A} (H : fold_right andb true (map P ls) = true)
+: forall x, List.In x ls -> P x = true.
+Proof.
+  induction ls; simpl; auto.
+  simpl in *.
+  apply Bool.andb_true_iff in H; destruct H as [H0 H1].
+  specialize (IHls H1).
+  intros x [?|?]; subst; simpl in *; auto.
+Qed.
+
 Lemma if_ext {T} (b : bool) (f1 f2 : b = true -> T true) (g1 g2 : b = false -> T false)
       (ext_f : forall H, f1 H = f2 H)
       (ext_g : forall H, g1 H = g2 H)
