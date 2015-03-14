@@ -1250,3 +1250,71 @@ Lemma substring_correct3' {s : string}
 Proof.
   apply substring_correct3, Lt.lt_n_Sn.
 Qed.
+
+Lemma substring_correct0 {s : string} {n}
+: substring n 0 s = ""%string.
+Proof.
+  revert n; induction s; intro n; destruct n; simpl; trivial.
+Qed.
+
+Lemma substring_correct0' {s : string} {n m} (H : length s <= n)
+: substring n m s = ""%string.
+Proof.
+  revert n m H; induction s; simpl; intros n m H.
+  { destruct n, m; trivial. }
+  { destruct n, m; trivial.
+    { apply le_Sn_0 in H; destruct H. }
+    { rewrite IHs; eauto with arith. }
+    { rewrite IHs; eauto with arith. } }
+Qed.
+
+Lemma substring_correct4 {s : string} {n m m'}
+      (H : length s < n + m) (H' : length s < n + m')
+: substring n m s = substring n m' s.
+Proof.
+  revert n m m' H H'.
+  induction s; simpl in *.
+  { intros; destruct m, m', n; trivial. }
+  { intros; destruct m, m', n; trivial; simpl in *;
+    try (apply Lt.lt_n_0 in H; destruct H);
+    try (apply Lt.lt_n_0 in H'; destruct H');
+    try apply Lt.lt_S_n in H;
+    try apply Lt.lt_S_n in H';
+    try solve [ try rewrite plus_comm in H;
+                try rewrite plus_comm in H';
+                simpl in *;
+                rewrite !substring_correct0' by auto with arith; trivial ].
+    { apply f_equal.
+      apply IHs; trivial. }
+    { apply IHs; trivial. } }
+Qed.
+
+Lemma string_concat_empty_r {s} : (s ++ "" = s)%string.
+Proof.
+  induction s; simpl; f_equal; trivial.
+Qed.
+
+Lemma string_concat_empty_l {s} : ("" ++ s = s)%string.
+Proof.
+  reflexivity.
+Qed.
+
+Lemma substring_concat {x y z} {s : string}
+: (substring x y s ++ substring (x + y) z s)%string = substring x (y + z) s.
+Proof.
+  revert x y z.
+  induction s; simpl; intros.
+  { destruct (y + z), x, y, z; reflexivity. }
+  { destruct x, y, z; try reflexivity; simpl;
+    rewrite ?plus_0_r, ?substring_correct0, ?string_concat_empty_r;
+    try reflexivity.
+    { apply f_equal.
+      apply IHs. }
+    { rewrite IHs; simpl; reflexivity. } }
+Qed.
+
+Lemma substring_concat' {y z} {s : string}
+: (substring 0 y s ++ substring y z s)%string = substring 0 (y + z) s.
+Proof.
+  rewrite <- substring_concat; reflexivity.
+Qed.
