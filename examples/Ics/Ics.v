@@ -27,14 +27,16 @@ Ltac implement1 := intros;
                                             rewrite H in Hcases; clear H
          | [ H : (?x >=? ?y) = _ |- _ ] => let Hcases := fresh in generalize (Zge_cases x y); intro Hcases;
                                              rewrite H in Hcases; clear H
+         | [ H : _ = Lt |- _ ] => apply (proj1 (Z.compare_lt_iff _ _)) in H
          | [ H : _ = Gt |- _ ] => apply Z.compare_gt_iff in H
          | [ H : context[Z.abs ?N] |- _ ] =>
            generalize (Zabs_spec N); generalize dependent (Z.abs N); intuition
          end.
 
-Ltac implement2 := intuition; try congruence;
+Ltac implement2 := simpl in *; intuition; try congruence;
   repeat match goal with
          | [ |- context[(?x - ?x)%Z] ] => rewrite <- (Zminus_diag_reverse x); simpl
+         | [ H : _ = Lt |- _ ] => apply (proj1 (Z.compare_lt_iff _ _)) in H
          | [ H : _ = Gt |- _ ] => apply Z.compare_gt_iff in H
          | [ H : context[Z.abs ?N] |- _ ] =>
            generalize (Zabs_spec N); generalize dependent (Z.abs N); intuition
