@@ -40,11 +40,19 @@ Proof.
   implement.
 Qed.
 
+Lemma repair : forall A B (x : A * B), (fst x, snd x) = x.
+Proof.
+  destruct x; auto.
+Qed.
+
 Ltac simplify :=
   repeat rewrite refine_if_If;
-  repeat (rewrite refine_If_Then_Else_Bind
-          || rewrite refineEquiv_bind_unit
-          || rewrite refine_trivial_pick);
+  repeat (match goal with
+          | [ |- context[(fst ?X, snd ?X)] ] => rewrite (repair X)
+          | _ => rewrite refine_If_Then_Else_Bind
+          | _ => rewrite refineEquiv_bind_unit
+          | _ => rewrite refine_trivial_pick
+          end; simpl);
   repeat rewrite <- refineEquiv_if_ret;
   unfold If_Then_Else; simpl.
 
@@ -57,6 +65,22 @@ Ltac ilist_of_evar' B As k :=
                      ilist_of_evar' B As'
                                     ltac:(fun Bs' => k (icons a b Bs')))
   end.
+
+Ltac finished' :=
+  match goal with
+  | [ |- refine (ret ?E) (ret ?F) ] =>
+      unify E F
+  | [ |- refine (ret ?E) (ret (?F ?X)) ] =>
+    let E' := eval pattern X in E in
+      match E' with
+      | ?F' _ => unify F F'
+      end
+  | [ |- refine (ret ?E) (ret (?F ?X ?Y)) ] =>
+    let E' := eval pattern X, Y in E in
+      match E' with
+      | ?F' _ _ => unify F F'
+      end
+  end; reflexivity.
 
 Ltac finished :=
   let delegateSpecs := constr:(inil (fun nadt : NamedDelegatee => ADT (delegateeSig nadt))) in
@@ -79,16 +103,9 @@ Ltac finished :=
                                                     (cConstructors := fun _ _ => cCons)));
       simpl; intros; repeat match goal with
                             | [ |- unit ] => constructor
-                            | [ |- (_ * _)%type ] => constructor
+                            | [ |- ((forall x, _) * _)%type ] => constructor
                             end; intros; subst; unfold StringBound.ith_Bounded; simpl;
-      simplify; match goal with
-                | _ => finish honing
-                | [ |- refine (ret ?E) (ret (?F ?X ?Y)) ] =>
-                  let E' := eval pattern X, Y in E in
-                    match E' with
-                    | ?F' _ _ => unify F F'
-                    end; cbv beta; finish honing
-                end
+      simplify; finished'
   end.
 
 Lemma StringBound_contra : @StringBound.BoundedString nil -> False.
