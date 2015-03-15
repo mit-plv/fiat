@@ -20,19 +20,27 @@ Ltac implement1 := intros;
   repeat match goal with
          | [ |- context[if ?b then _ else _] ] => case_eq b; intros
          | [ H : _ && _ = true |- _ ] => apply andb_true_iff in H; destruct H
+         | [ H : _ && _ = false |- _ ] => apply andb_false_iff in H; destruct H
          | [ H : (?x <? ?y) = _ |- _ ] => let Hcases := fresh in generalize (Zlt_cases x y); intro Hcases;
                                             rewrite H in Hcases; clear H
          | [ H : (?x >? ?y) = _ |- _ ] => let Hcases := fresh in generalize (Zgt_cases x y); intro Hcases;
                                             rewrite H in Hcases; clear H
-         end.
-
-Ltac implement2 := intuition; try congruence;
-  repeat match goal with
+         | [ H : (?x >=? ?y) = _ |- _ ] => let Hcases := fresh in generalize (Zge_cases x y); intro Hcases;
+                                             rewrite H in Hcases; clear H
+         | [ H : _ = Gt |- _ ] => apply Z.compare_gt_iff in H
          | [ H : context[Z.abs ?N] |- _ ] =>
            generalize (Zabs_spec N); generalize dependent (Z.abs N); intuition
          end.
 
-Ltac implement := implement1; try apply refine_pick_val; implement2.
+Ltac implement2 := intuition; try congruence;
+  repeat match goal with
+         | [ |- context[(?x - ?x)%Z] ] => rewrite <- (Zminus_diag_reverse x); simpl
+         | [ H : _ = Gt |- _ ] => apply Z.compare_gt_iff in H
+         | [ H : context[Z.abs ?N] |- _ ] =>
+           generalize (Zabs_spec N); generalize dependent (Z.abs N); intuition
+         end.
+
+Ltac implement := implement1; try apply refine_pick_val; implement2; Tactics.t_refine; implement2; auto.
 
 Lemma refine_trivial_pick : forall A (x : A),
   refine {y | x = y} (ret x).
