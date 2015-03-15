@@ -24,7 +24,10 @@ Record string_like (CharType : Type) :=
     Length_correct : forall s1 s2, Length s1 + Length s2 = Length (s1 ++ s2);
     Length_Empty : Length Empty = 0;
     Empty_Length : forall s1, Length s1 = 0 -> s1 = Empty;
-    Not_Singleton_Empty : forall x, Singleton x <> Empty
+    Not_Singleton_Empty : forall x, Singleton x <> Empty;
+    SplitAt : nat -> String -> String * String;
+    SplitAt_correct : forall n s, fst (SplitAt n s) ++ snd (SplitAt n s) = s;
+    SplitAtLength_correct : forall n s, Length (fst (SplitAt n s)) = min (Length s) n
   }.
 
 Delimit Scope string_like_scope with string_like.
