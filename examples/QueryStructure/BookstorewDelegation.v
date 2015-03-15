@@ -104,6 +104,37 @@ Proof.
 
   start honing QueryStructure.
 
+  hone method "PlaceOrder".
+  {
+    Print "For".
+
+    Ltac bob con A :=
+      let c := context con[A] in
+      match goal with
+          |- c => pose "works!"
+      end.
+
+    Ltac bar :=
+      match goal with
+          |- context foo [@Query_For ?A ?B] =>
+          bob foo (@Query_For A B)
+      end.
+    bar.
+
+    bob (For (UnConstrQuery_In r_n ``(sBOOKS)
+                     (fun tup : Tuple =>
+                      Where (n!sISBN = tup!sISBN)
+                      Return tup ))).
+
+        @Query_For nat (ret [1])).
+
+    match goal with
+        |- context foo [@Query_For ?A ?B] =>
+        makeEvar (Comp (list A))
+                 ltac:(fun a => let x := fun a => context foo [a] in pose x)
+    end.
+  }
+
   GenerateIndexesForAll ltac:(fun l => make simple indexes using l).
 
     hone method "PlaceOrder".
