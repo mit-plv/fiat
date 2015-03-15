@@ -45,7 +45,7 @@ Module Deterministic.
         ret (trueLevel, tt)
       else
         (* The sensor broke the rules!  Change the state arbitrarily to make anything safe. *)
-        trueLevel' <- {x | True};
+        trueLevel' <- {_ | True};
         ret (trueLevel', tt),
     Def Method "timestep"(trueLevel : rep, targetLevel : Z) : action :=
       act <- {act | match act with
@@ -71,7 +71,7 @@ Module Deterministic.
   Lemma newSensorOk : forall sensor trueLevel,
     refine (p <- (if Z.abs (sensor - trueLevel) <? sensorAccuracy
                   then ret (trueLevel, ())
-                  else trueLevel' <- {_ : Z | True};
+                  else trueLevel' <- {_ | True};
                        ret (trueLevel', ()));
             sensor' <- {nr' : Z | Z.abs (nr' - fst p) <= sensorAccuracy};
             ret (sensor', snd p))
@@ -192,7 +192,7 @@ Module Nondeterministic.
         ret (trueLevel, tt)
       else
         (* The sensor broke the rules!  Change the state arbitrarily to make anything safe. *)
-        trueLevel' <- {x | True};
+        trueLevel' <- {_ | True};
         ret (trueLevel', tt),
     Def Method "timestep"(trueLevel : rep, r : request) : action :=
       act <- {act | match act with
@@ -204,8 +204,8 @@ Module Nondeterministic.
                                   -> minEmpty <= EmptyRate r <= maxEmpty
                                   -> match act with
                                      | Nothing => trueLevel' = trueLevel
-                                     | Fill => trueLevel + minFill <= trueLevel' <= trueLevel + maxFill
-                                     | Empty => trueLevel - maxEmpty <= trueLevel' <= trueLevel - minEmpty
+                                     | Fill => trueLevel' = trueLevel + FillRate r
+                                     | Empty => trueLevel' = trueLevel - EmptyRate r
                                      end};
       ret (trueLevel', act)
   }.
@@ -215,7 +215,7 @@ Module Nondeterministic.
     Min : Z;
     Max : Z
   }.
-    
+
   (** A basic fact about interval approximation: it's always OK to give the exact answer! *)
   Lemma easy_approx : forall (d : Z),
     refine {i | Min i <= d <= Max i} (ret (Interval d d)).
@@ -227,7 +227,7 @@ Module Nondeterministic.
   Lemma newSensorOk : forall sensor trueLevel,
     refine (p <- (if Z.abs (sensor - trueLevel) <? sensorAccuracy
                   then ret (trueLevel, ())
-                  else trueLevel' <- {_ : Z | True};
+                  else trueLevel' <- {_ | True};
                        ret (trueLevel', ()));
             sensor' <- {i | Min i <= fst p <= Max i};
             ret (sensor', snd p))
@@ -250,10 +250,8 @@ Module Nondeterministic.
                                     minEmpty <= EmptyRate r <= maxEmpty ->
                                     match act with
                                     | Nothing => trueLevel' = trueLevel
-                                    | Fill =>
-                                      trueLevel + minFill <= trueLevel' <= trueLevel + maxFill
-                                    | Empty =>
-                                      trueLevel - maxEmpty <= trueLevel' <= trueLevel - minEmpty
+                                    | Fill => trueLevel' = trueLevel + FillRate r
+                                    | Empty => trueLevel' = trueLevel - EmptyRate r
                                     end};
                      ret (trueLevel', act));
                sensor' <- {sensor' : interval | Min sensor' <= fst p <= Max sensor'};
@@ -271,34 +269,24 @@ Module Nondeterministic.
     assert ((minFill <= FillRate r <= maxFill /\ minEmpty <= EmptyRate r <= maxEmpty)
             \/ ~(minFill <= FillRate r <= maxFill /\ minEmpty <= EmptyRate r <= maxEmpty))
       by (destruct (Z_le_gt_dec minFill (FillRate r)), (Z_le_gt_dec (FillRate r) maxFill),
-          (Z_le_gt_dec minEmpty (EmptyRate r)), (Z_le_gt_dec (EmptyRate r) maxEmpty); omega);
+          (Z_le_gt_dec minEmpty (EmptyRate r)), (Z_le_gt_dec (EmptyRate r) maxEmpty); omega).
+
     intuition; implement1;
     (simplify with monad laws;
      do 2 intro;
-     repeat computes_to_inv; subst; simpl in *; econstructor; split;
-     repeat match goal with
-            | [ |- Ensembles.In _ _ _ ] => econstructor; split
-            end; [ | |
-                   match goal with
-                   | [ _ : Min _ <= ?trueLevel, r : request |- _ ] =>
-                     match goal with
-                     | [ |- context[maxFill] ] =>
-                       match goal with
-                       | [ _ : _ <= _ -> _ |- _ ] => 
-                         instantiate (1 := trueLevel + minFill)
-                       | _ =>
-                         instantiate (1 := trueLevel + FillRate r)
-                       end
-                     | [ |- context[maxEmpty] ] =>
-                       match goal with
-                       | [ _ : _ <= _ -> _ |- _ ] => 
-                         instantiate (1 := trueLevel - minEmpty)
-                       | _ =>
-                         instantiate (1 := trueLevel - EmptyRate r)
-                       end
-                     | _ => instantiate (1 := trueLevel)
-                     end
-                   end ]; implement; generalize fillBounds, emptyBounds; cbv beta in *; omega).
+     repeat computes_to_inv; subst; simpl in *;
+       solve [ econstructor; split;
+               repeat match goal with
+                      | [ |- Ensembles.In _ _ _ ] => econstructor; split
+                      end; repeat implement; generalize fillBounds, emptyBounds; omega
+             | econstructor; split;
+               repeat match goal with
+                      | [ |- Ensembles.In _ _ _ ] => econstructor; split
+                      end; 
+               try match goal with
+                   | [ |- Ensembles.In _ _ {| Min := ?min; Max := _ |} ] => instantiate (1 := min)
+                   end;
+               repeat implement; generalize fillBounds, emptyBounds; omega ]).
   Qed.
 
   (** Now we derive the overall implementation. *)
