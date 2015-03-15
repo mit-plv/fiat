@@ -217,6 +217,10 @@ COMPILER_MODULES := \
 	FiatToFacade/Compiler/Automation/SpecializedFolds \
 	FiatToFacade/Compiler
 
+ICS_MODULES := \
+	Ics/Ics \
+	Ics/WaterTank
+
 DNS_MODULES := \
 	DnsServer/packet \
 	DnsServer/Dns
@@ -272,6 +276,10 @@ SRC_PARSERS_BASE_VS  := $(SRC_PARSERS_BASE_MODULES:%=src/%.v)
 SRC_PARSERS_BASE_VDS := $(SRC_PARSERS_BASE_MODULES:%=src/%.v.d)
 SRC_PARSERS_BASE_VOS := $(SRC_PARSERS_BASE_MODULES:%=src/%.vo)
 PREFIXED_SRC_PARSERS_BASE_VOS:= $(SRC_PARSERS_BASE_MODULES:%=src/%.vo)
+
+ICS_VS  := $(ICS_MODULES:%=examples/%.v)
+ICS_VDS := $(ICS_MODULES:%=examples/%.v.d)
+ICS_VOS := $(ICS_MODULES:%=examples/%.vo)
 
 DNS_VS  := $(DNS_MODULES:%=examples/%.v)
 DNS_VDS := $(DNS_MODULES:%=examples/%.v.d)
@@ -336,6 +344,8 @@ finitesets : $(FINITESET_VOS)
 examples : $(EXAMPLE_VOS)
 
 compiler : $(COMPILER_VOS)
+
+ics : $(ICS_VOS)
 
 dns : $(DNS_VOS)
 
