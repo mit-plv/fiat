@@ -1318,3 +1318,5 @@ Lemma substring_concat' {y z} {s : string}
 Proof.
   rewrite <- substring_concat; reflexivity.
 Qed.
+
+Coercion bool_of_sumbool {A B} (x : {A} + {B}) : bool := if x then true else false.

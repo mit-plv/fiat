@@ -5,28 +5,28 @@ Require Import Parsers.StringLike.Core Parsers.StringLike.Properties.
 Require Import Common Common.Equality.
 
 Set Implicit Arguments.
+Local Open Scope bool_scope.
+
+Local Infix "<=?" := Compare_dec.le_dec : bool_scope.
+Local Infix "=?" := Nat.eq_dec (at level 70, right associativity) : bool_scope.
+Local Infix "<?" := Compare_dec.lt_dec : bool_scope.
+Local Infix ">?" := Compare_dec.gt_dec (at level 70, right associativity) : bool_scope.
+Local Infix ">=?" := Compare_dec.ge_dec (at level 70, right associativity) : bool_scope.
 
 Section indexed.
-  Context {CharType} {String0 : string_like CharType}.
+  Context {CharType} {String0 : string_like CharType} (base : String0).
 
-  Definition empty_unique start length (str : String0)
-    := (if (implb (str =s Empty _)%string_like
-                  ((if Nat.eq_dec start 0 then true else false)
-                     && (if Nat.eq_dec length 0 then true else false)))
-             && (implb (if Nat.eq_dec length 0 then true else false)
-                       (str =s Empty _)%string_like)
-        then True
-        else False)%bool.
-
-  Local Arguments empty_unique / .
+  Definition is_valid_index start len : bool
+    := (start <=? len) && (len <? Length base) && ((start =? 0) || (start <? len)).
 
   Local Notation String1
-    := ({ s : (nat * nat) * String0 (* (start_char, length, string) *)
-        | empty_unique (fst (fst s)) (snd (fst s)) (snd s) }) (only parsing).
+    := ({ start_length : nat * nat
+        | if is_valid_index (fst start_length) (snd start_length) then True else False })
+         (only parsing).
 
   Definition singleton (x : CharType) : String1.
   Proof.
-    exists (0, 1, Singleton String0 x); simpl.
+    exists (0, 1); simpl.
     abstract
       (
         case_eq ([[ x ]] =s Empty String0)%string_like; try constructor; [];
