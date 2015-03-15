@@ -1,13 +1,20 @@
-Require Import ADTNotation.BuildADT ADTRefinement.GeneralRefinements.
-Require Import ADT.ComputationalADT Core.
+Require Import ADTNotation.BuildADT ADTNotation.BuildComputationalADT ADTNotation.BuildADTSig.
+Require Import ADTRefinement.GeneralRefinements ADTSynthesis.Common.ilist.
+Require Import ADTRefinement.BuildADTRefinements.HoneRepresentation.
+Require Import ADT.ComputationalADT Core ADTRefinement.GeneralBuildADTRefinements.
 
-Require Import Bool ZArith List.
+Require Import Bool ZArith.
 
-Export ADTNotation.BuildADT ADTRefinement.GeneralRefinements ADT.ComputationalADT Core.
-Export Bool ZArith List.
+Export ADTNotation.BuildADT ADTNotation.BuildComputationalADT ADTNotation.BuildADTSig.
+Export ADTRefinement.GeneralRefinements ADT.ComputationalADT Core.
+Export ADTRefinement.BuildADTRefinements.HoneRepresentation ADTRefinement.GeneralBuildADTRefinements.
+Export Bool ZArith String List.
 
 Global Open Scope Z_scope.
 Global Open Scope ADT_scope.
+Global Open Scope string_scope.
+Global Open Scope list_scope.
+Global Open Scope ADTSig_scope.
 
 Ltac implement1 := intros;
   repeat match goal with
@@ -26,3 +33,71 @@ Ltac implement2 := intuition; try congruence;
          end.
 
 Ltac implement := implement1; try apply refine_pick_val; implement2.
+
+Lemma refine_trivial_pick : forall A (x : A),
+  refine {y | x = y} (ret x).
+Proof.
+  implement.
+Qed.
+
+Ltac simplify :=
+  repeat rewrite refine_if_If;
+  repeat (rewrite refine_If_Then_Else_Bind
+          || rewrite refineEquiv_bind_unit
+          || rewrite refine_trivial_pick);
+  repeat rewrite <- refineEquiv_if_ret;
+  unfold If_Then_Else; simpl.
+
+Ltac ilist_of_evar' B As k :=
+  match As with
+  | [] => k (inil B)
+  | ?a :: ?As' =>
+    makeEvar (B a)
+             ltac:(fun b =>
+                     ilist_of_evar' B As'
+                                    ltac:(fun Bs' => k (icons a b Bs')))
+  end.
+
+Ltac finished :=
+  let delegateSpecs := constr:(inil (fun nadt : NamedDelegatee => ADT (delegateeSig nadt))) in
+  match goal with
+  | |- Sharpened (@BuildADT ?Rep ?consSigs ?methSigs ?consDefs ?methDefs) =>
+    ilist_of_evar' (fun Sig =>
+                      cMethodType Rep (BuildADTSig.methDom Sig) (BuildADTSig.methCod Sig))
+                   methSigs
+                   ltac:(fun cMeths =>
+                           ilist_of_evar' (fun Sig => cConstructorType Rep (BuildADTSig.consDom Sig))
+                                          consSigs
+                                          ltac:(fun cCons =>
+                                                  eapply Notation_Friendly_SharpenFully with
+                                                  (DelegateIDs' := nil)
+                                                    (DelegateSigs' := nil)
+                                                    (DelegateReps' := nil)
+                                                    (DelegateSpecs' := delegateSpecs)
+                                                    (cMethods := fun _ _ => cMeths)
+                                                    (cAbsR := fun _ _ _ => eq)
+                                                    (cConstructors := fun _ _ => cCons)));
+      simpl; intros; repeat match goal with
+                            | [ |- unit ] => constructor
+                            | [ |- (_ * _)%type ] => constructor
+                            end; intros; subst; unfold StringBound.ith_Bounded; simpl;
+      simplify; match goal with
+                | _ => finish honing
+                | [ |- refine (ret ?E) (ret (?F ?X ?Y)) ] =>
+                  let E' := eval pattern X, Y in E in
+                    match E' with
+                    | ?F' _ _ => unify F F'
+                    end; cbv beta; finish honing
+                end
+  end.
+
+Lemma StringBound_contra : @StringBound.BoundedString nil -> False.
+Proof.
+  destruct 1 as [ ? [ [ ] ] ]; simpl in *; discriminate.
+Qed.
+
+Ltac extract impl :=
+  let Impl := eval simpl in (Sharpened_Implementation (projT1 impl)
+                                                      (fun _ => unit)
+                                                      (fun idx => match StringBound_contra idx with end)) in
+    exact Impl.

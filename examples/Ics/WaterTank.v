@@ -19,6 +19,19 @@ Module OneSensor.
   Parameter sensorAccuracy : Z.
   (** Our one sensor must be at least this close to the true water value. *)
 
+  (** Type signature of an implementation *)
+  Definition sig : ADTSig :=
+    ADTsignature {
+      Constructor "new" : Z -> rep,
+      (** Initialize, with starting sensor value. *)
+
+      Method "update" : rep x Z -> rep x unit,
+      (** Record new sensor reading. *)
+
+      Method "timestep" : rep x Z -> rep x action
+      (** Decide what to do over the next second. *)
+    }.
+
   (** In this spec, the rep state is the current sensor value. *)
   Definition spec := ADTRep Z {
     Def Constructor "new"(reading : Z) : rep :=
@@ -33,6 +46,7 @@ Module OneSensor.
       ret (sensor, act)
   }.
 
+  (** Here's one conservative strategy for picking an action. *)
   Lemma conservativeFill : forall (sensor targetLevel : Z),
     refine {act | act = Fill ->
                   forall level, Zabs (sensor - level) < sensorAccuracy
@@ -46,6 +60,27 @@ Module OneSensor.
   Proof.
     implement.
   Qed.
+
+  (** Now we derive the overall implementation. *)
+  Definition impl : Sharpened spec.
+  Proof.
+    unfold spec.
+
+    hone method "timestep". {
+      rewrite conservativeFill with (targetLevel := n).
+      simplify.
+      finish honing.
+    }
+
+    finished.
+  Defined.
+
+  Definition impl' : cADT sig.
+  Proof.
+    extract impl.
+  Defined.
+
+  Print impl'.
 End OneSensor.
 
 
