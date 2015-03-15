@@ -112,3 +112,11 @@ Section sum.
   Definition inr_injective {x y : B} : inr x = inr y -> x = y
     := sum_encode.
 End sum.
+
+Definition prod_dec {A B}
+           (HA : forall a b : A, {a = b} + {a <> b})
+           (HB : forall a b : B, {a = b} + {a <> b})
+: forall a b : A * B, {a = b} + {a <> b}.
+Proof.
+  decide equality.
+Defined.

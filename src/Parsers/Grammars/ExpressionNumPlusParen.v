@@ -6,16 +6,16 @@ Set Implicit Arguments.
 
 Section num_plus_paren.
   Local Open Scope string_scope.
+  Local Open Scope grammar_scope.
 
+  (** TODO: Update notation so [[[ ... ]]] is the entire grammar *)
   Definition plus_expr_grammar : grammar Ascii.ascii :=
-    {| Start_symbol := "expr";
-       Lookup := [[[ ("d" ::== << $< "0"%char >$ | $< "1"%char >$ | $< "2"%char >$ | $< "3"%char >$ | $< "4"%char >$ | $< "5"%char >$ | $< "6"%char >$ | $< "7"%char >$ | $< "8"%char >$ | $< "9"%char >$ >>);;
-                     ("n" ::== << $< "d" >$ | $< "d" $ "n" >$ >>);;
-                     ("expr" ::== << $< "n" >$
-                                   | $< "("%char $ "expr" $ ")"%char >$
-                                   | $< "expr" $ "+"%char $ "expr" >$ >>)
-                 ]]]%prods_assignment;
-       Valid_nonterminals := ("expr"::"d"::"n"::nil)%string |}.
+    [[[ ("expr" ::== << $< "number" >$
+                      | $< #"(" $ "expr" $ #")" >$
+                      | $< "expr" $ #"+" $ "expr" >$ >>);;
+        ("digit" ::== << $< #"0" >$ | $< #"1" >$ | $< #"2" >$ | $< #"3" >$ | $< #"4" >$ | $< #"5" >$ | $< #"6" >$ | $< #"7" >$ | $< #"8" >$ | $< #"9" >$ >>);;
+        ("number" ::== << $< "digit" >$ | $< "digit" $ "number" >$ >>)
+    ]]].
 End num_plus_paren.
 
 Section tests.
