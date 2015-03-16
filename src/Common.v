@@ -1320,3 +1320,22 @@ Proof.
 Qed.
 
 Coercion bool_of_sumbool {A B} (x : {A} + {B}) : bool := if x then true else false.
+
+Lemma substring_concat0 {s1 s2 : string}
+: substring 0 (length s1) (s1 ++ s2) = s1.
+Proof.
+  induction s1; simpl.
+  { rewrite substring_correct0; trivial. }
+  { rewrite IHs1; trivial. }
+Qed.
+
+Lemma substring_concat_length {s1 s2 : string}
+: substring (length s1) (S (length (s1 ++ s2))) (s1 ++ s2) = s2.
+Proof.
+  induction s1; simpl.
+  { rewrite substring_correct3'; trivial. }
+  { erewrite substring_correct4.
+    { exact IHs1. }
+    { auto with arith. }
+    { auto with arith. } }
+Qed.

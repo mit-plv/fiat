@@ -27,11 +27,15 @@ Proof.
         | intros; split; congruence
         | intros; edestruct string_dec; split; congruence
         | abstract (repeat intro; exfalso; congruence)
-        | abstract (simpl; intros; rewrite substring_concat', substring_correct3; auto with arith)
+        | abstract (
+              simpl; intros;
+              rewrite ?substring_concat', ?substring_correct3, ?substring_concat_length, ?substring_concat0 by auto with arith;
+              auto with arith
+            )
         | abstract (
               simpl;
               intros n s; revert n;
               induction s; intro n; destruct n; simpl; try reflexivity;
               rewrite IHs; reflexivity
-            ) ].
+        ) ].
 Defined.
