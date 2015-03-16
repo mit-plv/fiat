@@ -53,6 +53,7 @@ Section StringT.
              | _ => rewrite LeftId
              | [ H : context[string_dec ?str ?x] |- _ ] => atomic x; destruct (string_dec str x)
              | [ |- context[match ?s with _ => _ end] ] => atomic s; destruct s
+             | [ H : context[match ?s with _ => _ end] |- _ ] => atomic s; destruct s
              | _ => rewrite substring_correct3'
              | [ |- context[SplitAt _ ?n (?s1 ++ ?s2)] ]
                => replace n with (Length s1) by (rewrite Singleton_Length; trivial);
@@ -61,6 +62,7 @@ Section StringT.
              | [ H : minimal_parse_of_item _ _ _ _ _ _ _ _ (NonTerminal _) |- _ ] => inversion H; clear H
              | [ H : minimal_parse_of_production _ _ _ _ _ _ _ _ (_::_) |- _ ] => inversion H; clear H
              | [ H : minimal_parse_of_production _ _ _ _ _ _ _ _ nil |- _ ] => inversion H; clear H
+             | _ => solve [ eauto ]
            end.
 
   Section first_char_splitter.
@@ -153,16 +155,11 @@ Section StringT.
     Proof.
       apply (split_complete_simple first_char_valid_prod).
       { intros ? ? ? p.
-        induction p; simpl; t_equality; auto. }
-      { simpl.
-        intros f x xs.
-        destruct x; simpl; trivial.
-        destruct xs; simpl; trivial.
-        congruence. }
+        induction p; t_equality. }
+      { t_equality. }
       { intros.
         exists (I, I).
         unfold first_char_split.
-        simpl in *.
         t_equality. }
       { exact H. }
     Qed.
