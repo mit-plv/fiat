@@ -148,7 +148,10 @@ SRC_GRAMMAR_MODULES := \
 	Parsers/ContextFreeGrammarProperties\
 	Parsers/ContextFreeGrammarNotations\
 	Parsers/Grammars/Trivial\
-	Parsers/Grammars/ABStar
+	Parsers/Grammars/ABStar\
+	Parsers/Grammars/ExpressionNumPlus\
+	Parsers/Grammars/ExpressionParen\
+	Parsers/Grammars/ExpressionNumPlusParen
 
 SRC_PARSERS_BASE_MODULES := \
 	Parsers/StringLike\
