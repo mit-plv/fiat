@@ -159,6 +159,7 @@ SRC_PARSERS_BASE_MODULES := \
 	Parsers/BooleanBaseTypes\
 	Parsers/Splitters/RDPList\
 	Parsers/Splitters/BruteForce\
+	Parsers/Splitters/Reflective\
 	Parsers/Splitters/FirstChar\
 	Parsers/DependentlyTyped\
 	Parsers/DependentlyTypedOption\
@@ -175,6 +176,7 @@ SRC_PARSERS_BASE_MODULES := \
 
 SRC_PARSERS_MODULES := \
 	Parsers/Specification\
+	Parsers/Examples/ABStar\
 	$(SRC_PARSERS_BASE_MODULES)\
 	$(SRC_GRAMMAR_MODULES)
 

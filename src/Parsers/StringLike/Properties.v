@@ -18,6 +18,14 @@ Proof.
     abstract congruence. }
 Defined.
 
+Lemma stringlike_uip {CharType} {String : string_like CharType} {s1 s2 : String}
+      (p q : s1 = s2)
+: p = q.
+Proof.
+  apply dec_eq_uip.
+  apply stringlike_dec.
+Qed.
+
 Global Instance str_le_refl {CharType String} : Reflexive (@str_le CharType String).
 Proof.
   repeat intro; right; reflexivity.

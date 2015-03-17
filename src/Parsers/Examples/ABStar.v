@@ -18,7 +18,8 @@ Local Open Scope string_like_scope.
 Local Coercion is_true : bool >-> Sortclass.
 Local Notation StringT := (StringWithSplitState string_stringlike (fun _ => True)).
 
-Local Coercion StringT_of_string : string >-> StringWithSplitState.
+Local Coercion StringT_of_string (str : string) : StringT
+  := {| string_val := str : string_stringlike ; state_val := I |}.
 
 Section on_ab_star.
   Definition parse (str : string) : bool

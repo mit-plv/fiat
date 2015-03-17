@@ -21,10 +21,15 @@ Record string_like (CharType : Type) :=
     Associativity : forall x y z, (x ++ y) ++ z = x ++ (y ++ z);
     LeftId : forall x, Empty ++ x = x;
     RightId : forall x, x ++ Empty = x;
+    Singleton_Length : forall x, Length (Singleton x) = 1;
     Length_correct : forall s1 s2, Length s1 + Length s2 = Length (s1 ++ s2);
     Length_Empty : Length Empty = 0;
     Empty_Length : forall s1, Length s1 = 0 -> s1 = Empty;
-    Not_Singleton_Empty : forall x, Singleton x <> Empty
+    Not_Singleton_Empty : forall x, Singleton x <> Empty;
+    SplitAt : nat -> String -> String * String;
+    SplitAt_correct : forall n s, fst (SplitAt n s) ++ snd (SplitAt n s) = s;
+    SplitAt_concat_correct : forall s1 s2, SplitAt (Length s1) (s1 ++ s2) = (s1, s2);
+    SplitAtLength_correct : forall n s, Length (fst (SplitAt n s)) = min (Length s) n
   }.
 
 Delimit Scope string_like_scope with string_like.
