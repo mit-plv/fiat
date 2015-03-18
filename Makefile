@@ -2,6 +2,7 @@ COMPATIBILITY_FILE=src/Common/Coq__8_4__8_5__Compat.v
 STDTIME?=/usr/bin/time -f "$* (real: %e, user: %U, sys: %S, mem: %M ko)"
 
 .PHONY: fiat fiat-core querystructures parsers parsers-all finitesets dns compiler facade-test ics fiat4monitors examples \
+	fiat-quick fiat-core-quick querystructures-quick parsers-quick parsers-all-quick finitesets-quick dns-quick compiler-quick facade-test-quick ics-quick fiat4monitors-quick examples-quick \
 	install install-fiat install-fiat-core install-querystructures install-parsers install-finitesets install-dns install-compiler install-ics install-fiat4monitors install-examples \
 	pdf doc clean-doc
 
@@ -103,6 +104,19 @@ facade-test: $(FACADE_TEST_VO)
 ics: $(ICS_VO)
 fiat4monitors: $(FIAT4MONITORS_VO)
 examples:  $(EXAMPLES_VO)
+
+fiat-quick: $(addsuffix .vio,$(basename $(FIAT_VO)))
+fiat-core-quick: $(addsuffix .vio,$(basename $(FIAT_CORE_VO)))
+querystructures-quick: $(addsuffix .vio,$(basename $(QUERYSTRUCTURES_VO)))
+parsers-quick: $(addsuffix .vio,$(basename $(PARSERS_VO)))
+parsers-all-quick: $(addsuffix .vio,$(basename $(PARSERS_ALL_VO)))
+finitesets-quick: $(addsuffix .vio,$(basename $(FINITESETS_VO)))
+dns-quick: $(addsuffix .vio,$(basename $(DNS_VO)))
+compiler-quick: $(addsuffix .vio,$(basename $(COMPILER_VO)))
+facade-test-quick: $(addsuffix .vio,$(basename $(FACADE_TEST_VO)))
+ics-quick: $(addsuffix .vio,$(basename $(ICS_VO)))
+fiat4monitors-quick: $(addsuffix .vio,$(basename $(FIAT4MONITORS_VO)))
+examples-quick: $(addsuffix .vio,$(basename $(EXAMPLES_VO)))
 
 install-fiat: T = $(FIAT_VO)
 install-fiat-core: T = $(FIAT_CORE_VO)
