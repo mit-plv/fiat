@@ -67,4 +67,3 @@ Definition ADTPairLoopBodyOk
   forall acc (head: W) (seq: list W),
     @ADTPairLoopBodyProgCondition env acc_type loop compiled_loop knowledge scas adts
                                   vseq vadt1 vadt2 thead tis_empty acc wadt1 wadt2 head seq.
-

@@ -526,4 +526,3 @@ Section BoundedCacheFMap.
   Qed.
 
 End BoundedCacheFMap.
-

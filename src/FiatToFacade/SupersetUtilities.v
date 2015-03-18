@@ -558,4 +558,3 @@ Ltac scas_adts_mapsto_one :=
 
 Ltac scas_adts_mapsto :=
   repeat (scas_adts_mapsto_one; scas_adts_mapsto_one); try scas_adts_mapsto_one.
-
