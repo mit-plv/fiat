@@ -15,10 +15,10 @@ Reserved Notation "'attribute' attr 'for' rel1 'references' rel2 "
          (at level 50).
 
 Reserved Notation "'relation' name 'has' sch"
-  (at level 0, name at level 8, schema at level 0).
+  (at level 0, name at level 8).
 
 Reserved Notation "'schema' headings"
-  (at level 0, headings at level 0, constraints at level 50).
+  (at level 0, headings at level 0).
 
 Reserved Notation "'schema' headings 'where' constraints"
          (at level 0, headings at level 0, constraints at level 50).
@@ -43,7 +43,7 @@ Reserved Notation "'Return' t"
           format "'Return'  t" ).
 
 Reserved Notation "'Where' p bod"
-         (right associativity, at level 3, x at level 3, p at level 3,
+         (right associativity, at level 3, p at level 3,
           format "'Where'  p '//' bod " ).
 
 Reserved Notation "'For' bod"
