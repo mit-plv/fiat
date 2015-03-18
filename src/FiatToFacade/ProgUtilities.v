@@ -8,5 +8,5 @@ Ltac rewrite_Eq_in_goal :=
     | [ H: StringMap.Equal _ _ |- AllADTs _ _ ] =>
       rewrite H
     | [ H: StringMap.Equal _ _ |- StringMap.MapsTo _ _ _ ] =>
-      rewrite H              
+      rewrite H
   end.

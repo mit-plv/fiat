@@ -104,7 +104,7 @@ Proof.
 
   (* Safe *)
   constructor; split; intros; specialize_states; try assumption.
-  
+
   (* RunsTo *)
   inversion_facade; specialize_states; intuition.
 Qed.
@@ -130,7 +130,7 @@ Proof.
 
   (* Safe *)
   constructor; split; intros; specialize_states; try assumption.
-  
+
   (* RunsTo *)
   inversion_facade; specialize_states; intuition.
 Qed.
@@ -152,7 +152,7 @@ Proof.
 
   assert (SomeSCAs initial_state scas'') by
       (eapply some_scas_Transitive; eauto).
-      
+
   split; intros; specialize_states; intuition.
 Qed.
 
@@ -230,12 +230,12 @@ Proof.
   unfold refine, Prog, ProgOk; intros.
   inversion_by computes_to_inv; subst.
   constructor; intros; destruct_pairs.
-  
+
   split; intros.
-  
+
   (* Safe *)
   constructor; split; intros; specialize_states; try assumption.
-  
+
   (* RunsTo *)
   inversion_facade; specialize_states; intuition.
 Qed.

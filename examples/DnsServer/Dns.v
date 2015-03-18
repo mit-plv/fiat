@@ -950,7 +950,7 @@ Time Defined.
     : ilist (fun ns => Type) (qschemaSchemas DnsSchema).
       simpl; econstructor; [ | econstructor ].
       exact (list (@Tuple
-           <sNAME :: name, sTYPE :: RRecordType, sCLASS :: RRecordClass, 
+           <sNAME :: name, sTYPE :: RRecordType, sCLASS :: RRecordClass,
               sTTL :: nat, sDATA :: string>%Heading)).
     Defined.
 

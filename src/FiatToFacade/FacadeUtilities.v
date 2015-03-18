@@ -98,8 +98,8 @@ Ltac inversion_facade :=
   match goal with
     | [ H: RunsTo _ ?p _ _ |- _ ] =>
       match p with
-        | DFacade.Skip => idtac 
-        | DFacade.Seq _ _ => idtac 
+        | DFacade.Skip => idtac
+        | DFacade.Seq _ _ => idtac
         | DFacade.If _ _ _ => idtac
         | DFacade.While _ _ => idtac
         | DFacade.Call _ _ _ => idtac
@@ -245,7 +245,7 @@ Proof.
   inversion_facade.
   eq_transitive; autoinj.
 Qed.
- 
+
 
 Lemma RunsTo_Var :
   forall env st st' vpointer label w args label',

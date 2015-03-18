@@ -14,7 +14,7 @@ Section UpperBound.
   Variable R_MinA : forall a : A, R MinA a.
 
   Definition find_max
-             (As : list A) : A := 
+             (As : list A) : A :=
     fold_right (fun a acc => if R_dec a acc then acc else a) MinA As.
 
   Lemma fold_right_max_is_max
@@ -26,7 +26,7 @@ Section UpperBound.
     - reflexivity.
     - etransitivity; eauto.
   Qed.
-  
+
   Definition find_upperbound
              (As : list A) : list A :=
     let max := find_max As in

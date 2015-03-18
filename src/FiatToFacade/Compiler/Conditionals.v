@@ -34,12 +34,12 @@ Proof.
     [ solve [intuition] |
       intros;
         destruct test;
-        and_eq_refl; (* Clean up 'true = true' style conditions *) 
+        and_eq_refl; (* Clean up 'true = true' style conditions *)
         [ apply SafeIfFalse | apply SafeIfTrue ];
         specialize_states;
         scas_adts_mapsto; (* Extract value of vtest *)
         first [ assumption | eapply BoolToW_eval; trivial] ].
-  
+
   (* RunsTo *)
   intros;
     repeat inversion_facade;
@@ -53,7 +53,7 @@ Proof.
     split; assumption.
 Qed.
 
-(* FIXME remove 
+(* FIXME remove
 Lemma compile_if_adt :
   forall {av env}
          (vtest: StringMap.key) {vret}
@@ -86,12 +86,12 @@ Proof.
     [ solve [intuition] |
       intros;
         destruct test;
-        and_eq_refl; (* Clean up 'true = true' style conditions *) 
+        and_eq_refl; (* Clean up 'true = true' style conditions *)
         [ apply SafeIfFalse | apply SafeIfTrue ];
         specialize_states;
         scas_adts_mapsto; (* Extract value of vtest *)
         first [ assumption | eapply BoolToW_eval; trivial] ].
-  
+
   (* RunsTo *)
   intros;
     repeat inversion_facade;
@@ -138,12 +138,12 @@ Proof.
     [ solve [intuition] |
       intros;
         destruct test;
-        and_eq_refl; (* Clean up 'true = true' style conditions *) 
+        and_eq_refl; (* Clean up 'true = true' style conditions *)
         [ apply SafeIfFalse | apply SafeIfTrue ];
         specialize_states;
         scas_adts_mapsto; (* Extract value of vtest *)
         first [ assumption | eapply BoolToW_eval; trivial] ].
-  
+
   (* RunsTo *)
   intros;
     repeat inversion_facade;
@@ -193,12 +193,12 @@ Proof.
     [ solve [intuition] |
       intros;
         destruct test;
-        and_eq_refl; (* Clean up 'true = true' style conditions *) 
+        and_eq_refl; (* Clean up 'true = true' style conditions *)
         [ apply SafeIfFalse | apply SafeIfTrue ];
         specialize_states;
         scas_adts_mapsto; (* Extract value of vtest *)
         first [ assumption | eapply BoolToW_eval; trivial] ].
-  
+
   (* RunsTo *)
   intros;
     repeat inversion_facade;
@@ -210,7 +210,7 @@ Proof.
     eapply BoolToW_eval in maps_to;
     BoolToW_eval_helper; try (eq_transitive; congruence);
     split; try assumption.
-Qed. 
+Qed.
 
 Lemma compile_if_parallel_adts :
   forall {av env} (vtest vadt vadt' : StringMap.key)
@@ -256,12 +256,12 @@ Proof.
     [ solve [intuition] |
       intros;
         destruct test;
-        and_eq_refl; (* Clean up 'true = true' style conditions *) 
+        and_eq_refl; (* Clean up 'true = true' style conditions *)
         [ apply SafeIfFalse | apply SafeIfTrue ];
         specialize_states;
         scas_adts_mapsto; (* Extract value of vtest *)
         first [ assumption | eapply BoolToW_eval; trivial] ].
-  
+
   (* RunsTo *)
   intros;
     repeat inversion_facade;

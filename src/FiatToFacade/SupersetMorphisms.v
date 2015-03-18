@@ -21,8 +21,8 @@ Add Parametric Morphism elt welt :
     with signature (StringMap.Equal ==> StringMap.Equal ==> pointwise_relation _ (@eq _) ==> iff)
       as Superset_morphism.
   unfold Superset; intros; rewrite_Eq_in_all; reflexivity.
-Qed. 
-  
+Qed.
+
 Add Parametric Morphism {av} :
   (@SomeSCAs av)
     with signature (StringMap.Equal ==> StringMap.Equal ==> iff)
@@ -73,7 +73,7 @@ Qed.
 
 Add Parametric Relation {av} : (State av) (@AllADTs av)
     reflexivity proved by _
-    symmetry proved by _                             
+    symmetry proved by _
     transitivity proved by _
 as all_adts.
 Proof.

@@ -63,7 +63,7 @@ Definition countUniqueLessThanSpec2 (ls : list W) (x : W) : Comp W
   := (n <- cardinal (elements ls);
       n' <- cardinal (elements (List.filter (fun y => negb (wlt y x)) ls));
       ret (wminus n n')).
- 
+
 Require Import StringMapNotations.
 
 Require Import StringMap StringMapFacts String.
@@ -153,7 +153,7 @@ Proof.
             | apply SomeSCAs_empty
             | specialize_states; split; try solve [ intuition ] ]
   end.
-            
+
   intros; destruct_pairs; specialize_states.
 
   exists (ADT (List retval)).
@@ -345,7 +345,7 @@ Tactic Notation "begin" "sharpening" "facade" "program" :=
      | [ |- ?G ] => fail "Goal is not about sharpening a facade program."
                          "Goal:" G "is not of the form" "FullySharpenedFacadeProgramOnListReturning* _"
   end).
-  
+
 Lemma eq_ToEnsemble_In (FiniteSetImpl: FullySharpened FiniteSetSpec)
       (st : { st : _ & { S0 : _ | Core.AbsR (projT2 FiniteSetImpl) S0 st }%type})
       key
@@ -672,28 +672,28 @@ Ltac guarded_compile_step_same_scas :=
         | ([?var >adt> List ?val]::postadts, _)
           => (let vret := new_variable_name "$dummy_ret" in
               rewrite (@compile_list_delete_no_ret vret var); try reflexivity)
-               
+
         | ([?k >adt> ?v]::[?var >adt> List ?val]::?tail, [?k >adt> ?v]::?tail)
           => (let vret := new_variable_name "$dummy_ret" in
               rewrite (@compile_list_delete_no_ret vret var); try reflexivity)
-               
+
         | ([?vseq >adt> List ?seq]::_, [?vseq >adt> List (?head::?seq)]::_)
           => (let vret := new_variable_name "$dummy_ret" in
               first [ let vhead := string_map_t_get_key_of_sca_value_in head prescas in
                       rewrite (@compile_list_push_generic _ _ vseq vhead vret head seq prescas preadts postadts)
                     | setoid_rewrite (compile_list_push_generic vseq vret head seq) ]; try reflexivity)
-               
+
         | ([?k >adt> ?v]::[?vseq >adt> List ?seq]::?tail, [?k >adt> ?v]::[?vseq >adt> List (?head::?seq)]::?tail)
           => (let vret := new_variable_name "$dummy_ret" in
               first [ let vhead := string_map_t_get_key_of_sca_value_in head prescas in
                       rewrite (@compile_list_push_generic _ _ vseq vhead vret head seq prescas preadts postadts)
                     | setoid_rewrite (compile_list_push_generic vseq vret head seq) ]; try reflexivity)
-               
+
         | ([ ?var >adt> FEnsemble (to_ensemble ?impl ?fs)]::?rest,
            [ ?var >adt> FEnsemble (to_ensemble ?impl (fst ((CallMethod (projT1 ?impl) sAdd) ?fs ?head)))]::?rest')
           => (let dummy := new_variable_name "$dummy_ret" in
               setoid_rewrite (@compile_sAdd_no_ret impl dummy _ var))
-               
+
         | ([?vls >adt> List ?ls]::_,
            [?var >adt> List (snd (FiniteSetAndFunctionOfList ?impl ?f nil ?ls))]::_)
           => (let tis_empty := new_variable_name "$is_empty" in
@@ -703,7 +703,7 @@ Ltac guarded_compile_step_same_scas :=
               let lem       := constr:(@compile_FiniteSetAndFunctionOfList_ADT impl f ls tis_empty thead vadt vdiscard var) in
               first [ rewrite lem
                     | setoid_rewrite lem ])
-               
+
         | ([?vls >adt> List ?ls]::_,
            [?var >adt> List (fold_right ?f ?init ?ls)]::_)
           => (let tis_empty := new_variable_name "$is_empty" in
@@ -720,22 +720,22 @@ Ltac guarded_compile_step_same_scas :=
                | (false, false) => rewrite compile_list_new
                | _ => fail
              end
-             (* TODO: This perhaps shouldn't be a lazy match -- 
+             (* TODO: This perhaps shouldn't be a lazy match --
                 right now it doesn't matter because we're never refining pops *)
 
         | (_, [?vls >adt> ?wrapper (if ?c then ?t else ?f)]::?finaladts)
           => (let tcond := new_variable_name "$cond" in
               rewrite (@compile_if_adt _ _ tcond vls c))
-                    
+
         | ([?k >> _]::_, [?k >> _]::[?vls >adt> ?wrapper (if ?c then ?t else ?f)]::?finaladts)
-          => (rewrite swap_adts) (* Swap to expose the right shape to trigger the clause above. 
-                                    Could also use the more generic approach found in list_push_generic *) 
-                     
+          => (rewrite swap_adts) (* Swap to expose the right shape to trigger the clause above.
+                                    Could also use the more generic approach found in list_push_generic *)
+
         | (_, [ ?var >adt> ?val ]::?postadts_tail)
           => (not is_evar postadts_tail;
               rewrite compile_add_intermediate_adts_with_ret)
-               (* Introduce an extra step, to deal with the ADTs separately. 
-                  The evar check prevents a simple infinite loop, but does 
+               (* Introduce an extra step, to deal with the ADTs separately.
+                  The evar check prevents a simple infinite loop, but does
                   not guard against all cases. *)
          end))
    end).
@@ -827,7 +827,7 @@ Ltac solve_one_using_reflexivity :=
 Ltac solve_using_reflexivity :=
   repeat solve_one_using_reflexivity.
 
-Tactic Notation "finish" "compiling" := solve_using_reflexivity. 
+Tactic Notation "finish" "compiling" := solve_using_reflexivity.
 
 (** Now we spec out two examples, the count of the unique elements in
     a list, and the sum of the unique elements in a list. *)
@@ -940,7 +940,7 @@ Proof.
   finish sharpening computation.
 Defined.
  *)
-  
+
 Definition uniqueizeImpl (FiniteSetImpl : FullySharpened FiniteSetSpec)
 : FullySharpenedFacadeProgramOnListReturningList uniqueizeSpec.
 Proof.
@@ -959,11 +959,11 @@ Definition sumUniqueImpl (FiniteSetImpl : FullySharpened FiniteSetSpec)
 : FullySharpenedFacadeProgramOnListReturningWord sumUniqueSpec.
 Proof.
   begin sharpening facade program.
-  
+
   sharpen computation with FiniteSet implementation := FiniteSetImpl.
 
   compile.
-  
+
   finish compiling.
 Defined.
 
@@ -1012,7 +1012,7 @@ Proof.
   sharpen computation with FiniteSet implementation := FiniteSetImpl.
 
   Time compile.
-  
+
   finish compiling.
 Defined.
 

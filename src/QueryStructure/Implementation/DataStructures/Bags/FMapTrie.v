@@ -48,17 +48,17 @@ Section Elt.
              -> TrieOK subtrie)
        -> TrieOK trie.
 
-  
-  Lemma SubTrieMapBST 
+
+  Lemma SubTrieMapBST
   : forall o m,
       TrieOK (Node o m)
       -> XMap.Raw.bst m.
   Proof.
     intros; inversion H; eauto.
   Qed.
-  
+
   Hint Resolve SubTrieMapBST.
-  
+
   Lemma SubTrieOK
   : forall trie k subtrie,
       TrieOK trie
@@ -82,7 +82,7 @@ Section Elt.
   Qed.
 
   Hint Resolve SubTrieOK.
-  
+
   Definition t := Trie.
 
   (* Emptiness *)
@@ -120,8 +120,8 @@ Section Elt.
   : bool :=
     match TrieNode trie with
       | Some _ => true
-      | None => 
-        match k with 
+      | None =>
+        match k with
           | nil => false
           | key :: k' =>
             match XMap.Raw.find key (SubTries trie) with
@@ -140,7 +140,7 @@ Section Elt.
         XMap.Raw.MapsTo k subtrie subtries
         -> In_trie keys' subtrie
         -> In_trie (k :: keys') (Node e_opt subtries).
-  
+
   Definition In := In_trie.
 
   Lemma mem_1 : forall x m, TrieOK m -> In x m -> mem x m = true.
@@ -175,7 +175,7 @@ Section Elt.
            (trie : Trie)
   : option elt :=
     match k with
-      | nil => TrieNode trie                        
+      | nil => TrieNode trie
       | key :: k' =>
         match XMap.Raw.find key (SubTries trie) with
           | Some subtrie =>
@@ -265,8 +265,8 @@ Section Elt.
       eapply find_in; eauto using SubTrieOK.
       congruence.
   Qed.
-    
-  Lemma find_2 
+
+  Lemma find_2
   : forall (k : key) (e : elt) (trie : Trie),
       TrieOK trie
       -> find k trie = Some e -> MapsTo k e trie.
@@ -281,13 +281,13 @@ Section Elt.
         * subst; econstructor 3.
           intros; apply XMap.Raw.Proofs.find_1 in H2; eauto.
           rewrite H0 in H2; injections.
-          intro; eapply in_find; 
+          intro; eapply in_find;
           try eapply SubTrieOK; eauto.
       + subst; econstructor 3.
         intros; apply XMap.Raw.Proofs.find_1 in H1; eauto.
         congruence.
   Qed.
-    
+
   (* Addition *)
 
   Fixpoint add
@@ -299,7 +299,7 @@ Section Elt.
       | nil => Node (Some e) (SubTries trie)
       | k' :: st' =>
         Node (TrieNode trie)
-             
+
              ((fix list_add (l : list (X.t * Trie)) : list (X.t * Trie) :=
                  match l with
                    | nil => (k', add st' e empty) :: nil

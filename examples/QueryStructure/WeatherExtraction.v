@@ -31,7 +31,7 @@ Require Import ADTSynthesis.QueryStructure.Automation.AutoDB
     Defined.
 
     Definition ExtractWorthyWeatherStationImpl : ComputationalADT.cADT WeatherSig.
-      let s := eval unfold WeatherStationImpl in WeatherStationImpl in 
+      let s := eval unfold WeatherStationImpl in WeatherStationImpl in
           let Impl := eval simpl in
           (Sharpened_Implementation s
                                     (LookupQSDelegateReps WeatherStationDelegateReps)

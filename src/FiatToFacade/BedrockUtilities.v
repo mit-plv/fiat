@@ -22,7 +22,7 @@ Lemma weqb_refl :
     @Word.weqb sz w w = true.
 Proof.
   induction w.
-  
+
   reflexivity.
   destruct b; simpl; rewrite IHw; reflexivity.
 Qed.

@@ -10,8 +10,8 @@ Inductive State : Set :=
 | S_Data
 | S_Inactive.
 
-Record Reply := 
-  { status:    string; 
+Record Reply :=
+  { status:    string;
     message:   string }.
 
 Definition sCONNECTIONS := "Connections".
@@ -58,7 +58,7 @@ Definition SmtpSig : ADTSig :=
     }.
 
 Definition standardReply (success: bool) : Reply :=
-  if success 
+  if success
   then {| status := "250"; message := "Requested mail action okay, completed" |}
   else {| status := "503"; message := "Bad sequence of commands" |}.
 Definition nonEmpty {A: Type} (l: list A) := negb (beq_nat (length l) 0).
@@ -73,7 +73,7 @@ Definition SmtpSpec : ADT SmtpSig :=
                 Where (id = c!sID)
                 Return (c!sSTATE));
       ret (hd_error q),
-      
+
     query "GetConnection" (id: UUID) : option Connection :=
       q <- (For (c in sCONNECTIONS)
                 For (c in sCONNECTIONS)
@@ -89,7 +89,7 @@ Definition SmtpSpec : ADT SmtpSig :=
       let (updated, deleted) := q in
       ret (updated, nonEmpty deleted),
 
-    update "Helo" (arg: UUID * string) : Reply := 
+    update "Helo" (arg: UUID * string) : Reply :=
       let (id, domain) := arg in
       q <- Update c from sCONNECTIONS
         making [ sSTATE |= S_Mail; sDOMAIN |= domain ]
@@ -97,7 +97,7 @@ Definition SmtpSpec : ADT SmtpSig :=
       let (updated, affected) := q in
       ret (updated, standardReplyExists(affected)),
 
-    update "Mail" (arg: UUID * string) : Reply := 
+    update "Mail" (arg: UUID * string) : Reply :=
       let (id, mailfrom) := arg in
       q <- Update c from sCONNECTIONS
         making [ sSTATE |= S_Rcpt; sMAILFROM |= mailfrom ]
@@ -105,7 +105,7 @@ Definition SmtpSpec : ADT SmtpSig :=
       let (updated, affected) := q in
       ret (updated, standardReplyExists(affected)),
 
-    update "Rcpt" (arg: UUID * string) : Reply := 
+    update "Rcpt" (arg: UUID * string) : Reply :=
       let (id, rcptto) := arg in
       q <- Update c from sCONNECTIONS
         making sRCPTTO :+= rcptto
@@ -113,14 +113,14 @@ Definition SmtpSpec : ADT SmtpSig :=
       let (updated, affected) := q in
       ret (updated, standardReplyExists(affected)),
 
-    update "Data" (id: UUID) : Reply := 
+    update "Data" (id: UUID) : Reply :=
       q <- Update c from sCONNECTIONS
         making sSTATE |= S_Data
         where (c!sID = id /\ c!sSTATE = S_Rcpt /\ nonEmpty(c!sRCPTTO) = true);
       let (updated, affected) := q in
       ret (updated, standardReplyExists(affected)),
 
-    update "MoreData" (arg: UUID * string) : Reply := 
+    update "MoreData" (arg: UUID * string) : Reply :=
       let (id, data) := arg in
       q <- Update c from sCONNECTIONS
         making sBODY ++= data
@@ -128,14 +128,14 @@ Definition SmtpSpec : ADT SmtpSig :=
       let (updated, affected) := q in
       ret (updated, standardReplyExists(affected)),
 
-    update "Rset" (id: UUID) : bool := 
+    update "Rset" (id: UUID) : bool :=
       q <- Update c from sCONNECTIONS
         making [ sSTATE |= S_Mail; sMAILFROM |= ""; sRCPTTO |= @nil string; sBODY |= "" ]
         where (c!sID = id /\ c!sSTATE <> S_Helo /\ c!sSTATE <> S_Inactive);
       let (updated, affected) := q in
       ret (updated, nonEmpty(affected)),
 
-    update "Quit" (id: UUID) : bool := 
+    update "Quit" (id: UUID) : bool :=
       q <- Update c from sCONNECTIONS
         making [ sSTATE |= S_Inactive; sMAILFROM |= ""; sRCPTTO |= @nil string; sBODY |= "" ]
         where c!sID = id;

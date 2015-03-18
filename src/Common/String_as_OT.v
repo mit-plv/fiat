@@ -9,14 +9,14 @@ Hint Rewrite <- nat_compare_lt : nat_comp_hints.
 Hint Rewrite <- nat_compare_gt : nat_comp_hints.
 Hint Rewrite    nat_compare_eq_iff : nat_comp_hints.
 Hint Rewrite <- nat_compare_eq_iff : nat_comp_hints.
-Hint Rewrite    nat_compare_eq_refl : nat_comp_hints. 
+Hint Rewrite    nat_compare_eq_refl : nat_comp_hints.
 
 Ltac autorewrite_nat_compare :=
   autorewrite with nat_comp_hints in *.
 
-Lemma nat_compare_consistent : 
+Lemma nat_compare_consistent :
   forall n0 n1,
-    { nat_compare n0 n1 = Lt /\ nat_compare n1 n0 = Gt } 
+    { nat_compare n0 n1 = Lt /\ nat_compare n1 n0 = Gt }
     + { nat_compare n0 n1 = Eq /\ nat_compare n1 n0 = Eq }
     + { nat_compare n0 n1 = Gt /\ nat_compare n1 n0 = Lt }.
 Proof.
@@ -36,7 +36,7 @@ Module String_as_OT <: OrderedType.
       | EmptyString, EmptyString => Eq
       | EmptyString, _           => Lt
       | _, EmptyString           => Gt
-      | String char1 tail1, String char2 tail2 => 
+      | String char1 tail1, String char2 tail2 =>
         match nat_compare (nat_of_ascii char1) (nat_of_ascii char2) with
           | Eq => string_compare tail1 tail2
           | Lt => Lt
@@ -45,8 +45,8 @@ Module String_as_OT <: OrderedType.
     end.
 
   Lemma string_compare_eq_refl : forall x, string_compare x x = Eq.
-    intro x; 
-    induction x; 
+    intro x;
+    induction x;
       simpl; trivial;
       autorewrite_nat_compare.
       trivial.
@@ -54,7 +54,7 @@ Module String_as_OT <: OrderedType.
 
   Ltac comparisons_minicrush :=
     autorewrite_nat_compare;
-    match goal with 
+    match goal with
       | [ |- context [nat_compare ?a ?b] ] =>
         let H := fresh in
         first [
@@ -66,16 +66,16 @@ Module String_as_OT <: OrderedType.
 
   Ltac destruct_comparisons :=
     repeat match goal with
-             | [ H: match ?pred ?a ?b with 
-                      | Lt => _ | Gt => _ | Eq => _ end = _  
-                 |- _] => 
+             | [ H: match ?pred ?a ?b with
+                      | Lt => _ | Gt => _ | Eq => _ end = _
+                 |- _] =>
                let H := fresh in
-               destruct (pred a b) eqn:H; 
+               destruct (pred a b) eqn:H;
                  try discriminate
-           end. 
+           end.
 
   Ltac exfalso_from_equalities :=
-    match goal with 
+    match goal with
       | [ H1: ?a = ?b, H2: ?a = ?c |- _ ] => assert (b = c) by congruence; discriminate
     end.
 
@@ -83,12 +83,12 @@ Module String_as_OT <: OrderedType.
 
   Hint Resolve string_compare_eq_refl.
 
-  Lemma eq_Eq : forall x y, x = y -> string_compare x y = Eq. 
+  Lemma eq_Eq : forall x y, x = y -> string_compare x y = Eq.
   Proof.
     intros; subst; auto.
   Qed.
 
-  Lemma nat_of_ascii_injective : 
+  Lemma nat_of_ascii_injective :
     forall a b, nat_of_ascii a = nat_of_ascii b <-> a = b.
   Proof.
     intros a b; split; intro H;
@@ -103,12 +103,12 @@ Module String_as_OT <: OrderedType.
       destruct y;
       simpl;
       first [ discriminate
-            | intros; 
+            | intros;
               f_equal;
               destruct_comparisons;
               autorewrite_nat_compare;
               rewrite nat_of_ascii_injective in *
-            | idtac ]; 
+            | idtac ];
       intuition.
   Qed.
 
@@ -118,9 +118,9 @@ Module String_as_OT <: OrderedType.
   Qed.
 
   Definition eq_refl := @eq_refl string.
-  
+
   Definition eq_sym := @eq_sym string.
-  
+
   Definition eq_trans := @eq_trans string.
 
   Definition lt x y :=
@@ -128,17 +128,17 @@ Module String_as_OT <: OrderedType.
 
   Lemma lt_trans : forall x y z : t, lt x y -> lt y z -> lt x z.
   Proof.
-    intros x y z; 
-    generalize x z; 
+    intros x y z;
+    generalize x z;
     clear x z;
 
     induction y;
     destruct x;
     destruct z;
-      intros; 
+      intros;
       unfold lt in *;
       simpl in *;
-      first [ discriminate 
+      first [ discriminate
             | destruct_comparisons; comparisons_minicrush
             | trivial ]; intuition.
   Qed.
@@ -150,24 +150,24 @@ Module String_as_OT <: OrderedType.
     rewrite Eq_eq_iff in *;
     exfalso_from_equalities.
   Qed.
-  
+
   Lemma Lt_Gt : forall x y, string_compare x y = Gt <-> string_compare y x = Lt.
   Proof.
-    intros x; 
+    intros x;
     induction x as [ | x0 x' Hind ];
-      intros y; 
+      intros y;
       destruct y as [ | y0 y' ];
-      
-      simpl; 
-      split; 
+
+      simpl;
+      split;
       first [ discriminate | trivial ];
-    
-      destruct (nat_compare_consistent 
-                  (nat_of_ascii x0) 
-                  (nat_of_ascii y0)) 
+
+      destruct (nat_compare_consistent
+                  (nat_of_ascii x0)
+                  (nat_of_ascii y0))
           as [ [ (H1, H2) | (H1, H2) ] | (H1, H2) ];
-        rewrite H1, H2; 
-        try rewrite Hind; 
+        rewrite H1, H2;
+        try rewrite Hind;
         auto.
   Qed.
 
@@ -176,7 +176,7 @@ Module String_as_OT <: OrderedType.
     destruct (string_compare x y) eqn:comp;
       unfold lt;
       [ constructor 2; apply Eq_eq
-      | constructor 1 
+      | constructor 1
       | constructor 3; apply Lt_Gt];
       trivial.
   Defined.
@@ -186,23 +186,23 @@ Module String_as_OT <: OrderedType.
     intros;
     destruct (string_compare x y) eqn:eq0;
       first [
-          left; 
-          apply Eq_eq; 
+          left;
+          apply Eq_eq;
           solve [trivial]
         | right;
-          unfold not; 
+          unfold not;
           rewrite Eq_eq_iff;
-          intros; 
+          intros;
           exfalso_from_equalities
         ].
-  Qed.    
+  Qed.
 End String_as_OT.
 
 (* Usage example:
 Require Import FMapAVL.
 Require Import Coq.Structures.OrderedTypeEx.
 
-Module StringIndexedMap := FMapAVL.Make(String_as_OT). 
+Module StringIndexedMap := FMapAVL.Make(String_as_OT).
 Definition String2Nat := StringIndexedMap.t nat.
 
 Definition find key (map: String2Nat) := StringIndexedMap.find key map.

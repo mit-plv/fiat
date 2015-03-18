@@ -29,7 +29,7 @@ Section CountingListBags.
       clength := 0;
       ccontents := @nil TItem
     |}.
-  
+
   Definition CountingListAsBag_bfind
              (container: CountingList)
              (search_terms: TItem -> bool) :=

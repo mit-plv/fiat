@@ -5,7 +5,7 @@ Unset Implicit Arguments.
 Lemma compile_constant :
   forall {av env} (vret: StringMap.key),
   forall (w: W) init_knowledge init_scas init_adts,
-    ~ StringMap.In vret init_adts -> 
+    ~ StringMap.In vret init_adts ->
     refine (@Prog av env init_knowledge
                   init_scas ([vret >sca> w]::init_scas)
                   init_adts init_adts)
@@ -26,7 +26,7 @@ Proof.
   (* RunsTo *)
   intros; inversion_facade.
   split; rewrite_Eq_in_goal.
-  
+
   match goal with
     | [ H: eval _ (Const _) = Some _ |- _ ] => injection H; intros; subst
   end; apply SomeSCAs_chomp; assumption.

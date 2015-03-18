@@ -12,7 +12,7 @@ Definition SCALoopBodyProgCondition
           ([vret >sca> loop acc head]::scas)
           ([vseq >adt> List seq]::adts)
           ([vseq >adt> List seq]::adts).
-          
+
 Definition SCALoopBodyOk
            env loop compiled_loop knowledge scas adts
            (vseq vret thead tis_empty: StringMap.key) :=

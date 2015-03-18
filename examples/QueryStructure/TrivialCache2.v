@@ -129,7 +129,7 @@ Proof.
       (* If so, insert this query into the cache. *)
       intros; rewrite refine_pick_cachedRep.
       simpl; simplify with monad laws.
-      rewrite refine_pick_val with 
+      rewrite refine_pick_val with
       (A := Ensemble (string * nat))
         (a := EnsembleInsert (n, a) (cachedVal r_n)).
       simplify with  monad laws.
@@ -137,7 +137,7 @@ Proof.
       unfold BreedCacheSpec, EnsembleInsert; intros;
       intuition.
       subst; simpl.
-      intros v Comp_v; apply computes_to_inv in Comp_v; 
+      intros v Comp_v; apply computes_to_inv in Comp_v;
       subst; eauto.
       (* If not, Check and see if there are any Breeds in the cache with
        smaller populations. *)

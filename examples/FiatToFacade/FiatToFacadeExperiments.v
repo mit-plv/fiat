@@ -25,7 +25,7 @@ Notation "[[[ p1 ; .. ; pn ]]]" := (AddPair p1 .. (AddPair pn (GLabelMap.empty _
 Notation "k ↦ v" := (MakePair k v) (at level 55, no associativity).
 
 Definition empty_env {av} := GLabelMap.empty (FuncSpec av).
-                                                      
+
 Definition basic_env := [[[ ("List", "empty") ↦ List_empty;
                             ("List", "Pop") ↦ List_pop;
                             ("List", "New") ↦ List_new;
@@ -87,8 +87,8 @@ Ltac vacuum :=
     | [ |- StringMap.Equal ?a ?b ] => first [ is_evar a | is_evar b | trickle_deletion; reflexivity ]
   end.
 
-Goal forall w1 w2: W, 
-     exists x, 
+Goal forall w1 w2: W,
+     exists x,
        refine (ret (if Word.weqb w1 w2 then (IL.natToW 3) else (IL.natToW 4))) x.
 Proof.
   eexists.
@@ -99,12 +99,12 @@ Proof.
   setoid_rewrite (compile_test_general IL.Eq "$cond" "$w1" "$w2"); vacuum.
   rewrite compile_constant; vacuum.
   rewrite compile_constant; vacuum.
-  
+
   rewrite drop_sca; vacuum.
   rewrite compile_constant; vacuum.
   rewrite drop_sca; vacuum.
   rewrite compile_constant; vacuum.
-  
+
   reflexivity.
   vacuum.
 Qed.
@@ -159,8 +159,8 @@ Tactic Notation "compile" := repeat compile_step.
 Tactic Notation "finish" "compiling" := reflexivity.
 
 
-Goal exists x, 
-       refine (ret (Word.wmult 
+Goal exists x,
+       refine (ret (Word.wmult
                       (Word.wplus  3 4)
                       (Word.wminus 5 6))) x.
 Proof.
@@ -171,10 +171,10 @@ Proof.
   finish compiling.
 Qed.
 
-Goal forall seq: list W, 
+Goal forall seq: list W,
      forall state,
        AllADTs state (["$list" >adt> List seq]::∅) ->
-       exists x, 
+       exists x,
          refine (ret (fold_left (fun (sum item: W) => Word.wplus item sum) seq 0)) x.
 Proof.
   intros; eexists.
@@ -204,8 +204,8 @@ Proof.
 rewrite P.F.add_neq_o.
   Unset Printing Notations.
   Show.
-  
-  setoid_rewrite (pull_forall_loop_sca); vacuum. 
+
+  setoid_rewrite (pull_forall_loop_sca); vacuum.
 
   Focus 2.
   setoid_rewrite compile_add_intermediate_scas_with_ret.
@@ -237,10 +237,10 @@ Qed.
 Definition start_adt state vret {ret_type v} wrapper wrapper_inj adts :=
   (@start_compiling_adt_with_precondition _ basic_env state ∅ adts vret ret_type v wrapper wrapper_inj).
 
-Goal forall seq: list W, 
+Goal forall seq: list W,
      forall state,
        AllADTs state (["$list" >adt> List seq]::∅) ->
-       exists x, 
+       exists x,
          refine
            (ret (fold_left
                    (fun (acc: list W) (item: W) =>
@@ -251,7 +251,7 @@ Goal forall seq: list W,
                    seq nil)) x.
 Proof.
   intros; eexists.
-  
+
   (* Start compiling, copying the state_precond precondition to the resulting
      program's preconditions. Result is stored into [$ret] *)
   rewrite (start_adt state "$ret" List List_inj'); vacuum.
@@ -264,25 +264,25 @@ Proof.
 
   Unset Printing Notations.
   idtac.
-  
+
   Print StringMap.MapsTo.
-  
+
   (* Compile the fold, reading the initial value of the accumulator from
      [$init], the input data from [$seq], and storing temporary variables in
      [$head] and [$is_empty]. *)
   setoid_rewrite compile_add_intermediate_adts_with_ret; vacuum.
   setoid_rewrite (compile_fold_adt _ _ _ "$list" "$ret" "$head" "$is_empty" 1 0); vacuum.
-  
+
   (* Extract the quantifiers, and move the loop body to a second goal *)
   rewrite pull_forall_loop_adt; vacuum.
-  
+
   (* The output list is allocated by calling List_new, whose axiomatic
      specification is stored at address 2 *)
   setoid_rewrite compile_add_intermediate_scas; vacuum.
   setoid_rewrite (compile_new _ _ _ "$ret" "new()" ("Lists", "new") 2); try vacuum.
   rewrite drop_scas_from_precond; try vacuum.
   rewrite no_op; try vacuum.
-  
+
   rewrite (@compile_list_delete basic_env ("Lists", "delete") 5 "$pointer" "$discard" "$list");
     try vacuum; cbv beta; try vacuum. (* TODO: Find way to get rid of the cbv. *)
   rewrite drop_scas_from_precond; try vacuum.
@@ -295,7 +295,7 @@ Proof.
   Focus 2.
 
   (* We're now ready to proceed with the loop's body! *)
-  
+
   (* Compile the if test *)
   setoid_rewrite compile_add_intermediate_scas.
   rewrite (compile_if_adt' "$cond"); vacuum.
@@ -317,27 +317,27 @@ Proof.
   setoid_rewrite (compile_pre_push "$ret" "$head'"); vacuum.
 
   (* TODO unify cons/push terminology *)
-  
+
   (* The head needs to be multiplied by two before being pushed into the output
      list. *)
   setoid_rewrite (compile_binop_simple IL.Times _ "$head'" "$2"); vacuum.
   rewrite (copy_word); vacuum.
   rewrite (compile_constant); vacuum.
   rewrite no_op; vacuum.
-  
+
   rewrite (compile_push "$ret" "$head'" "$push()" "$discard" ("List", "Push") 3); try vacuum.
 
   (* Cleanup behind compile_push *)
   do 3 (rewrite drop_sca; vacuum).
   rewrite no_op; vacuum.
-  
+
   (* The false part is a lot simpler *)
   rewrite no_op; vacuum.
 
   (* Leftover from generalizing before the if *)
   repeat (rewrite drop_sca; vacuum).
   rewrite no_op; vacuum.
-  
+
   (* Ok, this loop body looks good :) *)
   reflexivity.
 
@@ -349,7 +349,7 @@ Proof.
   repeat setoid_rewrite Seq_Skip.
   repeat setoid_rewrite Skip_Seq.
    *)
-  
+
   (* Yay, a program! *)
   reflexivity.
 Qed.
@@ -370,14 +370,14 @@ Definition min seq :=
        else
          min) seq 0.
 
-Goal forall seq: list W, 
+Goal forall seq: list W,
      forall state,
        state["$list" >> ADT (List seq)] ->
-       exists x, 
+       exists x,
          refine
            (ret (Word.wminus (max seq) (min seq))) x.
 Proof.
-  intros * state_precond; eexists. 
+  intros * state_precond; eexists.
 
   rewrite (start_compiling_sca_with_precondition "$ret" state_precond).
   unfold min, max;
@@ -394,8 +394,8 @@ Proof.
   rewrite (compile_copy 4 "$list"); cleanup_adt.
 
   Focus 2.
-  
-  rewrite (compile_if "$cond").  
+
+  rewrite (compile_if "$cond").
   rewrite (compile_test IL.Lt "$cond" "$head" "$min"); cleanup_adt.
   rewrite (no_op); cleanup_adt.
   rewrite (no_op); cleanup_adt.
@@ -405,7 +405,7 @@ Proof.
 
   Focus 2.
 
-  rewrite (compile_if "$cond").  
+  rewrite (compile_if "$cond").
   rewrite (compile_test IL.Lt "$cond" "$max" "$head"); cleanup_adt.
   rewrite (no_op); cleanup_adt.
   rewrite (no_op); cleanup_adt.
@@ -432,13 +432,13 @@ setoid_rewrite (copy_variable "$head" "$head"); cleanup_adt. (* TODO Replace by 
 reflexivity.
    *)
 
-(* TODO: Three different approaches: 
-         * <> precond and postcond, but forall x, precond x -> postcond (add blah x); 
+(* TODO: Three different approaches:
+         * <> precond and postcond, but forall x, precond x -> postcond (add blah x);
          * Same pre/post cond, with extra conditions (see compile_fold et al.)
          * <> precond and postcond, and postcond indep of modified var (see compile_cons) *)
-(* TODO: Post-conditions should include the beginning state, too *)  
+(* TODO: Post-conditions should include the beginning state, too *)
 
-(* TODO: Replace all instances of 
+(* TODO: Replace all instances of
        precond st1 /\ blah st1 -> RunsTo -> postcond st2 /\ bluh st2
    by
        precond st1 -> RunsTo -> postcond st2

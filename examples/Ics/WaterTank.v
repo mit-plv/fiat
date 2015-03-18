@@ -110,7 +110,7 @@ Module Deterministic.
   Proof.
     implement.
   Qed.
-    
+
   (** Now we derive the overall implementation. *)
   Definition impl : Sharpened spec.
   Proof.
@@ -282,7 +282,7 @@ Module Nondeterministic.
              | econstructor; split;
                repeat match goal with
                       | [ |- Ensembles.In _ _ _ ] => econstructor; split
-                      end; 
+                      end;
                try match goal with
                    | [ |- Ensembles.In _ _ {| Min := ?min; Max := _ |} ] => instantiate (1 := min)
                    end;

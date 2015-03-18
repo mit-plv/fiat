@@ -46,7 +46,7 @@ Lemma runsto_is_empty :
     st [vseq >> ADT (List seq)] ->
     GLabelMap.find (elt:=FuncSpec _) f env = Some (Axiomatic List_empty) ->
     RunsTo env (Call tis_empty f (vseq :: nil)) st st' ->
-    exists ret, 
+    exists ret,
       ((ret = SCAZero /\ seq <> nil) \/ (ret = SCAOne /\ seq = nil)) /\
       StringMap.Equal st' (StringMap.add tis_empty ret st).
 Proof.
@@ -100,4 +100,4 @@ Lemma runsto_new :
     StringMap.Equal st2 ([vret >adt> List nil]::st1).
 Proof.
   runsto_prelude.
-Qed.                       
+Qed.

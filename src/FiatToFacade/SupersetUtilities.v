@@ -65,7 +65,7 @@ Lemma Superset_swap_remove :
 Proof.
   unfold Superset; intros.
   apply H0. map_iff_solve idtac.
-  
+
   destruct (StringMap.E.eq_dec k k1); subst.
   rewrite StringMapFacts.add_neq_mapsto_iff in * by congruence.
   rewrite StringMapFacts.remove_mapsto_iff in *; destruct_pairs; assumption.
@@ -101,7 +101,7 @@ Lemma Superset_empty :
 Proof.
   unfold Superset; intros; rewrite StringMapFacts.empty_mapsto_iff in *; exfalso; assumption.
 Qed.
-  
+
 Lemma SomeSCAs_empty :
   forall {av} state,
     @SomeSCAs av state ∅ .
@@ -274,7 +274,7 @@ Lemma AllADTs_mapsto' :
     adts[k >> ADT v] ->
     st[k >> ADT v].
 Proof.
-  intros * (h & _) **. eauto using Superset_mapsto'. 
+  intros * (h & _) **. eauto using Superset_mapsto'.
 Qed.
 
 Lemma Superset_add_in_left :
@@ -285,7 +285,7 @@ Lemma Superset_add_in_left :
 Proof.
   unfold Superset; intros ** k' v' ? .
   destruct (StringMap.E.eq_dec k k'); subst;
-  try match goal with (* TODO fix auto_mapsto_unique *) 
+  try match goal with (* TODO fix auto_mapsto_unique *)
         | H:(?st) [?k >> ?v], H':(?st) [?k >> ?v'] |- _ =>
           let h := fresh in
           pose proof (MapsTo_unique st k v v' H H') as h
@@ -300,7 +300,7 @@ Lemma Superset_add_in_right :
 Proof.
   unfold Superset; intros ** k' v' ? .
   destruct (StringMap.E.eq_dec k k'); subst;
-  try match goal with (* TODO fix mapsto_unique *) 
+  try match goal with (* TODO fix mapsto_unique *)
         | H:(?st) [?k >> ?v], H':(?st) [?k >> ?v'] |- _ =>
           let h := fresh in
           pose proof (MapsTo_unique st k v v' H H') as h;
@@ -331,7 +331,7 @@ Lemma Superset_not_In_remove :
 Proof.
   unfold Superset; intros ** k' v' maps_to.
   destruct (StringMap.E.eq_dec k k'); subst.
-  
+
   pose proof (StringMapFacts.MapsTo_In maps_to); exfalso; intuition.
   map_iff_solve intuition.
 Qed.
@@ -351,7 +351,7 @@ Lemma AllADTs_not_In_remove_left :
 Proof.
   unfold AllADTs; split; intros; destruct_pairs.
 
-  apply Superset_not_In_remove; intuition.  
+  apply Superset_not_In_remove; intuition.
   eapply superset_Transitive; try eassumption.
   eauto using Superset_remove_self.
 Qed.
@@ -502,7 +502,7 @@ Proof.
   intros * h h'.
   destruct (AllADTs_not_in h h') as [ [ v sbst ] | ];
     [ rewrite sbst; trivial  | ].
-  
+
   rewrite StringMapFacts.not_in_find; trivial.
 Qed.
 
@@ -515,7 +515,7 @@ Ltac specialize_initial_state :=
                      AllADTs initial_state ?init_adts -> _),
                Hknowledge: ?init_knowledge,
                Hscas: SomeSCAs ?initial_state ?init_scas,
-               Hadts: AllADTs ?initial_state ?init_adts                   
+               Hadts: AllADTs ?initial_state ?init_adts
                |- _] => specialize (H _ (conj Hknowledge (conj Hscas Hadts)))
          end.
 

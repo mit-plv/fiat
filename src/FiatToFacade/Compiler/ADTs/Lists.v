@@ -60,7 +60,7 @@ Proof.
   compile_list_helper runsto_delete.
 
   eauto using SomeSCAs_chomp, SomeSCAs_not_In_remove.
-  
+
   apply add_adts_pop_sca.
   map_iff_solve intuition.
   eauto using AllADTs_chomp_remove'.
@@ -82,7 +82,7 @@ Proof.
   compile_list_helper runsto_delete.
 
   eauto using SomeSCAs_chomp_left, SomeSCAs_chomp, SomeSCAs_not_In_remove.
-  
+
   apply add_adts_pop_sca.
   map_iff_solve intuition.
   eauto using AllADTs_chomp_remove'.
@@ -193,9 +193,9 @@ Lemma compile_list_new :
            (ret (Call vret f nil)%facade).
 Proof.
   compile_list_helper runsto_new.
-  
+
   eauto using add_sca_pop_adts.
-  eauto using AllADTs_chomp. 
+  eauto using AllADTs_chomp.
 Qed.
 
 Lemma compile_copy :
@@ -250,7 +250,7 @@ Proof.
   repeat (constructor; split; intros);
   specialize_states;
   try assumption.
-  
+
   (* RunsTo *)
   intros;
     repeat inversion_facade;
@@ -282,7 +282,7 @@ Proof.
   specialize_states; scas_adts_mapsto.
 
   split.
-  
+
   econstructor; try eassumption.
   simpl; unfold sel.
   repeat subst_find; reflexivity.
@@ -295,7 +295,7 @@ Proof.
 
   eapply SomeSCAs_chomp_left; eauto.
   eapply add_sca_pop_adts; eauto.
-  
+
   apply add_adts_pop_sca; map_iff_solve trivial.
   rewrite H7; map_iff_solve intuition.
   rewrite H7; apply AllADTs_chomp.

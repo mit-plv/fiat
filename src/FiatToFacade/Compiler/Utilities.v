@@ -74,7 +74,7 @@ Proof.
   unfold refine, Prog, ProgOk; intros * ? h ** .
   specialize (h v H0); inversion_by computes_to_inv.
   constructor; intros.
-  
+
   destruct_pairs.
   repeat (split; specialize_states; intros; eauto).
 

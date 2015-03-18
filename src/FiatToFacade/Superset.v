@@ -1,6 +1,6 @@
 Require Import StringMap.
 Require Import Facade.Facade Facade.DFacade.
-        
+
 Definition Superset
            {elt wrapped_elt}
            (state bindings: StringMap.t wrapped_elt)
