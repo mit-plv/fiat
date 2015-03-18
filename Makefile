@@ -51,7 +51,6 @@ CORE_MODULES    := \
 	ADT/ADTHide \
 	ADT/ComputationalADT \
 	ADT \
-	Common/ilist \
 	Common/Wf \
 	Common/Le \
 	Common/UIP \
@@ -191,7 +190,6 @@ COMPILER_MODULES := \
 	FiatToFacade/Utilities \
 	FiatToFacade/BedrockUtilities \
 	FiatToFacade/StringMapUtilities \
-	FiatToFacade/FacadeNotations \
 	FiatToFacade/FacadeUtilities \
 	FiatToFacade/Superset \
 	FiatToFacade/SupersetMorphisms \
