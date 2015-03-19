@@ -940,7 +940,7 @@ Local Ltac fold_right_orb_map_sig_t :=
            | [ H : _ = true |- _ ] => rewrite H
            | [ H : (_ || _)%bool = true |- _ ] => apply Bool.orb_true_elim in H
            | [ H : ?a, H' : ?a -> ?b |- _ ] => specialize (H' H)
-           | [ H : ?a, H' : @sig ?a ?P -> ?b |- _ ] => specialize (fun b => H' (exist P H b))
+           | [ H : ?a, H' : @sig ?a ?P -> ?b |- _ ] => specialize (fun b' => H' (exist P H b'))
            | [ H' : _ /\ _ -> _ |- _ ] => specialize (fun a b => H' (conj a b))
            | [ |- (?a || true)%bool = true ] => destruct a; reflexivity
            | _ => solve [ eauto ]
