@@ -128,3 +128,15 @@ Ltac extract impl :=
                                                       (fun _ => unit)
                                                       (fun idx => match StringBound_contra idx with end)) in
     exact Impl.
+
+Ltac extractConstructor impl name :=
+  let new := eval simpl in (CallConstructor impl name) in 
+  let new := eval unfold cConstructors in new in
+  let new := eval simpl in new in
+    exact new.
+
+Ltac extractMethod impl name :=
+  let new := eval simpl in (CallMethod impl name) in 
+  let new := eval unfold cMethods in new in
+  let new := eval simpl in new in
+    exact new.

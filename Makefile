@@ -348,7 +348,10 @@ examples : $(EXAMPLE_VOS)
 
 compiler : $(COMPILER_VOS)
 
-ics : $(ICS_VOS)
+ics : $(ICS_VOS) examples/Ics/WaterTank.ml
+
+examples/Ics/WaterTank.ml: $(ICS_VOS) examples/Ics/WaterTankExtract.v
+	coqc -R src ADTSynthesis -R examples ADTExamples examples/Ics/WaterTankExtract >$@
 
 dns : $(DNS_VOS)
 
