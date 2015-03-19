@@ -1,15 +1,15 @@
 (** * Simplified parser for (ab)* *)
 Require Import Coq.Lists.List Coq.Strings.String.
-Require Import Parsers.ContextFreeGrammar.
-Require Import Parsers.BaseTypes Parsers.BooleanBaseTypes.
-Require Import Parsers.Splitters.RDPList.
-Require Import Common.
+Require Import ADTSynthesis.Parsers.ContextFreeGrammar.
+Require Import ADTSynthesis.Parsers.BaseTypes ADTSynthesis.Parsers.BooleanBaseTypes.
+Require Import ADTSynthesis.Parsers.Splitters.RDPList.
+Require Import ADTSynthesis.Common.
 
-Require Import Parsers.MinimalParse.
-Require Import Parsers.ContextFreeGrammarNotations.
-Require Import Parsers.Grammars.ABStar.
+Require Import ADTSynthesis.Parsers.MinimalParse.
+Require Import ADTSynthesis.Parsers.ContextFreeGrammarNotations.
+Require Import ADTSynthesis.Parsers.Grammars.ABStar.
 
-Require Import Parsers.BooleanRecognizer Parsers.BooleanRecognizerCorrect Parsers.Splitters.FirstChar Parsers.ContextFreeGrammarProperties.
+Require Import ADTSynthesis.Parsers.BooleanRecognizer ADTSynthesis.Parsers.BooleanRecognizerCorrect ADTSynthesis.Parsers.Splitters.FirstChar ADTSynthesis.Parsers.ContextFreeGrammarProperties.
 
 Set Implicit Arguments.
 Local Open Scope string_scope.
@@ -117,9 +117,9 @@ Section on_ab_star'.
   Print simplified_parse'.
 End on_ab_star'.
 
-Require Import ExtrOcamlString.
-Require Import ExtrOcamlBasic.
-Require Import ExtrOcamlNatInt.
+Require Import Coq.extraction.ExtrOcamlString.
+Require Import Coq.extraction.ExtrOcamlBasic.
+Require Import Coq.extraction.ExtrOcamlNatInt.
 
 Definition test0 := simplified_parse'' "".
 Definition test1 := simplified_parse'' "ab".

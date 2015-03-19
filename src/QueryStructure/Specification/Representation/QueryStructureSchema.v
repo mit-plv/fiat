@@ -128,7 +128,7 @@ Notation "'Query' 'Structure' 'Schema' relList " :=
   (@Build_QueryStructureSchema relList%NamedSchema []) : QSSchema_scope.
 
 Bind Scope QSSchema_scope with QueryStructureSchema.
-Require Export Common.DecideableEnsembles.
+Require Export ADTSynthesis.Common.DecideableEnsembles.
 
 Instance Astring_eq : Query_eq string := {| A_eq_dec := string_dec |}.
 

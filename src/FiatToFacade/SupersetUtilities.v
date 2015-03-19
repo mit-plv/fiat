@@ -1,5 +1,5 @@
-Require Import Program.
-Require Import StringMap.
+Require Import Coq.Program.Program.
+Require Import Bedrock.Platform.Cito.StringMap.
 Require Import FiatToFacade.Utilities FiatToFacade.Superset FiatToFacade.SupersetMorphisms
                FiatToFacade.StringMapNotations FiatToFacade.StringMapUtilities.
 Require Import Facade.DFacade.

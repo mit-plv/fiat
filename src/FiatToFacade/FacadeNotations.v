@@ -1,8 +1,8 @@
-Require Export Facade.Facade Facade.DFacade.
-Require Import StringMap.
-Require Import SyntaxExpr.
-Require Import Memory.
-Require Import String.
+Require Export Bedrock.Platform.Facade.Facade Bedrock.Platform.Facade.DFacade.
+Require Import Bedrock.Platform.Cito.StringMap.
+Require Import Bedrock.Platform.Cito.SyntaxExpr.
+Require Import Bedrock.Memory.
+Require Import Coq.Strings.String.
 
 Definition nat_as_word n : Word.word 32 := Word.natToWord 32 n.
 Coercion nat_as_word : nat >-> Word.word.

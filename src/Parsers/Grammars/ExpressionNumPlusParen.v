@@ -1,6 +1,6 @@
 (** * Definition of grammar for expressions involving parentheses and plus *)
 Require Import Coq.Strings.String Coq.Strings.Ascii Coq.Lists.List.
-Require Import Parsers.ContextFreeGrammar Parsers.ContextFreeGrammarNotations.
+Require Import ADTSynthesis.Parsers.ContextFreeGrammar ADTSynthesis.Parsers.ContextFreeGrammarNotations.
 
 Set Implicit Arguments.
 

@@ -1,7 +1,7 @@
-Require Import FiatToFacade.Superset.
-Require Import Facade.Facade Facade.DFacade.
-Require Import Coq.Classes.Morphisms Setoid.
-Require Import StringMap.
+Require Import ADTSynthesis.FiatToFacade.Superset.
+Require Import Bedrock.Platform.Facade.Facade Bedrock.Platform.Facade.DFacade.
+Require Import Coq.Classes.Morphisms Coq.Setoids.Setoid.
+Require Import Bedrock.Platform.Cito.StringMap.
 
 Ltac rewrite_Eq_in_all :=
   repeat match goal with

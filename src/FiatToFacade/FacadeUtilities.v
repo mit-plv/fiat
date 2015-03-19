@@ -1,8 +1,8 @@
-Require Import FiatToFacade.Utilities FiatToFacade.BedrockUtilities FiatToFacade.StringMapUtilities.
-Require Import FiatToFacade.FacadeNotations FiatToFacade.StringMapNotations.
-Require Import Bedrock.Bedrock Facade.DFacade Facade.examples.FiatADTs StringMap.
-Require Import Cito.SyntaxExpr.
-Require Import List Program.
+Require Import ADTSynthesis.FiatToFacade.Utilities ADTSynthesis.FiatToFacade.BedrockUtilities ADTSynthesis.FiatToFacade.StringMapUtilities.
+Require Import ADTSynthesis.FiatToFacade.FacadeNotations ADTSynthesis.FiatToFacade.StringMapNotations.
+Require Import Bedrock.Bedrock Bedrock.Platform.Facade.DFacade Bedrock.Platform.Facade.examples.FiatADTs Bedrock.Platform.Cito.StringMap.
+Require Import Bedrock.Platform.Cito.SyntaxExpr.
+Require Import Coq.Lists.List Coq.Program.Program.
 
 Lemma binop_Eq_true_iff :
   forall w1 w2,
@@ -61,7 +61,7 @@ Proof.
   intros; destruct test; simpl; reflexivity.
 Qed.
 
-Require Import SyntaxExpr.
+Require Import Bedrock.Platform.Cito.SyntaxExpr.
 
 Fixpoint AllVariables expr :=
   match expr with

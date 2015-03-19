@@ -3,8 +3,8 @@ Require Import Coq.Setoids.Setoid.
 Require Import Coq.Arith.Lt.
 Require Import Coq.Numbers.Natural.Peano.NPeano.
 Require Import Coq.omega.Omega.
-Require Import Parsers.StringLike.Core Common.Le Common.UIP.
-Require Import Common.Equality.
+Require Import ADTSynthesis.Parsers.StringLike.Core ADTSynthesis.Common.Le ADTSynthesis.Common.UIP.
+Require Import ADTSynthesis.Common.Equality.
 
 Set Implicit Arguments.
 

@@ -1,8 +1,8 @@
-Require Import StringMap.
-Require Import StringMapFacts.
-Require Import FiatToFacade.Utilities.
-Require Import FiatToFacade.StringMapNotations.
-Require Import Common.
+Require Import Bedrock.Platform.Cito.StringMap.
+Require Import Bedrock.Platform.Cito.StringMapFacts.
+Require Import ADTSynthesis.FiatToFacade.Utilities.
+Require Import ADTSynthesis.FiatToFacade.StringMapNotations.
+Require Import ADTSynthesis.Common.
 
 Unset Implicit Arguments.
 

@@ -81,7 +81,7 @@ Section FlattenList.
     intuition.
   Qed.
 
-  Require Import Arith.
+  Require Import Coq.Arith.Arith.
 
   Lemma length_flatten_aux :
     forall {A} seq,

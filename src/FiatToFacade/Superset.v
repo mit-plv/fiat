@@ -1,5 +1,5 @@
-Require Import StringMap.
-Require Import Facade.Facade Facade.DFacade.
+Require Import Bedrock.Platform.Cito.StringMap.
+Require Import Bedrock.Platform.Facade.Facade Bedrock.Platform.Facade.DFacade.
 
 Definition Superset
            {elt wrapped_elt}

@@ -1,5 +1,5 @@
-Require Import FiatToFacade.Prog FiatToFacade.Utilities.
-Require Import Facade.DFacade.
+Require Import ADTSynthesis.FiatToFacade.Prog ADTSynthesis.FiatToFacade.Utilities.
+Require Import Bedrock.Platform.Facade.DFacade.
 
 Definition ProgEquiv {av} p1 p2 :=
   forall env st1,
@@ -7,8 +7,8 @@ Definition ProgEquiv {av} p1 p2 :=
     forall st2,
       (@RunsTo av env p1 st1 st2 <-> RunsTo env p2 st1 st2).
 
-Require Import Setoid.
-Require Import Program.
+Require Import Coq.Setoids.Setoid.
+Require Import Coq.Program.Program.
 
 Add Parametric Relation {av} : (Stmt) (@ProgEquiv av)
     reflexivity proved by _
@@ -54,7 +54,7 @@ Proof.
   unfold ProgEquiv; intros * prog_equiv ** ; apply prog_equiv; assumption.
 Qed.
 
-Require Import Common.
+Require Import ADTSynthesis.Common.
 
 Add Parametric Morphism {av} :
   (Seq)

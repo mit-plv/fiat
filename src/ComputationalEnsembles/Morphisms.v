@@ -1,7 +1,7 @@
 Require Import Coq.Sets.Ensembles.
 Require Import ADTSynthesis.Computation ADTSynthesis.Common.Ensembles
         ADTSynthesis.ComputationalEnsembles.Core ADTSynthesis.ComputationalEnsembles.Laws.
-Require Import Common.
+Require Import ADTSynthesis.Common.
 
 Set Implicit Arguments.
 

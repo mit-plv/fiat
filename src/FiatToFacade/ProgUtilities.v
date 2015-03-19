@@ -1,5 +1,5 @@
-Require Import Superset.
-Require Import StringMap.
+Require Import ADTSynthesis.FiatToFacade.Superset.
+Require Import Bedrock.Platform.Cito.StringMap.
 
 Ltac rewrite_Eq_in_goal :=
   match goal with

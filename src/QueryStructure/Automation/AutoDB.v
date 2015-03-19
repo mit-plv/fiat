@@ -27,9 +27,9 @@ Require Export ADTSynthesis.Common.DecideableEnsembles
 
 Require Export ADTSynthesis.QueryStructure.Implementation.Operations.
 
-Require Import ADTNotation.BuildComputationalADT.
-Require Import ADT.ComputationalADT.
-Require Import Eqdep_dec.
+Require Import ADTSynthesis.ADTNotation.BuildComputationalADT.
+Require Import ADTSynthesis.ADT.ComputationalADT.
+Require Import Coq.Logic.Eqdep_dec.
 
 Ltac prove_decidability_for_functional_dependencies :=
   simpl; econstructor; intros;

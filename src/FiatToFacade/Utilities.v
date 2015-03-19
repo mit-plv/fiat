@@ -1,5 +1,5 @@
 Unset Implicit Arguments.
-Require Import List Program.
+Require Import Coq.Lists.List Coq.Program.Program.
 
 Lemma length_0 :
   forall {A: Type} (l: list A),

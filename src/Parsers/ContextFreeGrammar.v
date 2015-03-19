@@ -1,6 +1,6 @@
 (** * Definition of Context Free Grammars *)
 Require Import Coq.Strings.String Coq.Lists.List Coq.Program.Program.
-Require Export Parsers.StringLike.
+Require Export ADTSynthesis.Parsers.StringLike.
 
 Set Implicit Arguments.
 Local Set Boolean Equality Schemes.
