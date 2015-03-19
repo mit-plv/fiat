@@ -1,11 +1,11 @@
 Require Import FiatToFacade.Compiler.Prerequisites.
-Require Import Facade.examples.FiatADTs.
+Require Import Bedrock.Platform.Facade.examples.FiatADTs.
 Require Import List GLabelMap.
 
 Unset Implicit Arguments.
 
 (* Inversion lemmas *)
-Require Import Facade.DFacade.
+Require Import Bedrock.Platform.Facade.DFacade.
 
 Ltac runsto_prelude :=
   intros;

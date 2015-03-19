@@ -70,7 +70,7 @@ Require Import StringMap StringMapFacts String.
 
 Require Import FiatToFacade.Utilities.
 
-Require Import Facade.CompileDFacade.
+Require Import Bedrock.Platform.Facade.CompileDFacade.
 Require Import CompileUnit.
 
 Require Import Computation.ApplyMonad.

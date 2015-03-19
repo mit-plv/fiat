@@ -1,4 +1,4 @@
-Require Import Facade.examples.FiatADTs.
+Require Import Bedrock.Platform.Facade.examples.FiatADTs.
 Require Import Cito.StringMap.
 Require Import AutoDB.
 

@@ -5,14 +5,14 @@ Require Import FiatToFacade.Superset.
 Require Import FiatToFacade.FacadeNotations.
 Require Import FiatToFacade.FacadeUtilities.
 Require Import FiatToFacade.Prog.
-Require Import Facade.DFacade SyntaxExpr StringMap GLabelMap.
+Require Import Bedrock.Platform.Facade.DFacade SyntaxExpr StringMap GLabelMap.
 Require Import ADTSynthesis.ADT.Core.
 
 Ltac safe_seq :=
   constructor;
   split; [ specialize_states; assumption | ].
 
-Require Import Facade.DFacade.
+Require Import Bedrock.Platform.Facade.DFacade.
 Lemma safe_call_1 :
   forall {av} env state adts f spec varg arg vout,
     state[varg >> arg] ->

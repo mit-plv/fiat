@@ -1,13 +1,13 @@
 Require Import ADTSynthesis.FiniteSetADTs.FiniteSetADTImplementation.
 Require Import ADTExamples.FiniteSetsExamples.
 
-Require Import Facade.DFacadeToBedrock.
-Require Import Facade.examples.FiatADTs.
-Require Import Facade.examples.FiatRepInv.
+Require Import Bedrock.Platform.Facade.DFacadeToBedrock.
+Require Import Bedrock.Platform.Facade.examples.FiatADTs.
+Require Import Bedrock.Platform.Facade.examples.FiatRepInv.
 
 Module Import FA := DFacadeToBedrock.Make FiatADTs.Adt FiatRepInv.Ri.
 
-Require Import Facade.CompileUnit Facade.examples.FiatImpl.
+Require Import Bedrock.Platform.Facade.CompileUnit Bedrock.Platform.Facade.examples.FiatImpl.
 
 Module sumUnique.
   Definition input := sumUniqueImpl FiniteSetImpl.
