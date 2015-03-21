@@ -1,4 +1,4 @@
-Require Import Memory IL.
+Require Import Bedrock.Memory Bedrock.IL.
 
 Lemma weqb_false_iff :
   forall {sz} (w1 w2: @Word.word sz),
@@ -22,7 +22,7 @@ Lemma weqb_refl :
     @Word.weqb sz w w = true.
 Proof.
   induction w.
-  
+
   reflexivity.
   destruct b; simpl; rewrite IHw; reflexivity.
 Qed.

@@ -1,19 +1,19 @@
 (** * Definition of a boolean-returning CFG parser-recognizer *)
 Require Import Coq.Lists.List Coq.Strings.String.
-Require Import Parsers.ContextFreeGrammar.
-Require Import Parsers.BaseTypes Parsers.BooleanBaseTypes.
-Require Import Parsers.Splitters.RDPList.
-Require Import Common.
+Require Import ADTSynthesis.Parsers.ContextFreeGrammar.
+Require Import ADTSynthesis.Parsers.BaseTypes ADTSynthesis.Parsers.BooleanBaseTypes.
+Require Import ADTSynthesis.Parsers.Splitters.RDPList.
+Require Import ADTSynthesis.Common.
 
 Require Import Coq.Init.Wf.
 Require Import Coq.Arith.Wf_nat.
-Require Import Common.Wf.
+Require Import ADTSynthesis.Common.Wf.
 
-Require Import Parsers.Splitters.Reflective.
+Require Import ADTSynthesis.Parsers.Splitters.Reflective.
 
-Require Import Parsers.MinimalParse.
-Require Import Parsers.ContextFreeGrammarNotations.
-Require Import Parsers.Grammars.ABStar.
+Require Import ADTSynthesis.Parsers.MinimalParse.
+Require Import ADTSynthesis.Parsers.ContextFreeGrammarNotations.
+Require Import ADTSynthesis.Parsers.Grammars.ABStar.
 
 Set Implicit Arguments.
 Local Open Scope string_scope.

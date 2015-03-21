@@ -1,8 +1,8 @@
 (** * Specialization of the dependently typed parser to minimal parse trees, taking in parse trees *)
 Require Import Coq.Lists.List Coq.Program.Program Coq.Program.Wf Coq.Arith.Wf_nat Coq.Arith.Compare_dec Coq.Classes.RelationClasses Coq.Strings.String.
-Require Import Parsers.ContextFreeGrammar Parsers.DependentlyTyped Parsers.MinimalParse.
-Require Import Parsers.WellFoundedParse Parsers.ContextFreeGrammarProperties Parsers.BaseTypes.
-Require Import Common Common.Wf Common.Le.
+Require Import ADTSynthesis.Parsers.ContextFreeGrammar ADTSynthesis.Parsers.DependentlyTyped ADTSynthesis.Parsers.MinimalParse.
+Require Import ADTSynthesis.Parsers.WellFoundedParse ADTSynthesis.Parsers.ContextFreeGrammarProperties ADTSynthesis.Parsers.BaseTypes.
+Require Import ADTSynthesis.Common ADTSynthesis.Common.Wf ADTSynthesis.Common.Le.
 
 Set Implicit Arguments.
 

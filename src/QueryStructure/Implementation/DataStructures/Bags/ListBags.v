@@ -35,8 +35,8 @@ Section ListBags.
   Definition ListAsBag_bupdate
              (container   : list TItem)
              (search_term : TSearchTerm)
-             (update_term : TUpdateTerm) := 
-    ((fst (List.partition (bfind_matcher search_term) container)), 
+             (update_term : TUpdateTerm) :=
+    ((fst (List.partition (bfind_matcher search_term) container)),
      ((snd (List.partition (bfind_matcher search_term) container))
         ++ List.map (bupdate_transform update_term)
         (fst (List.partition (bfind_matcher search_term) container)))).

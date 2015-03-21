@@ -1,8 +1,8 @@
-Require Export Facade.Facade Facade.DFacade.
-Require Import StringMap.
-Require Import SyntaxExpr.
-Require Import Memory.
-Require Import String.
+Require Export Bedrock.Platform.Facade.Facade Bedrock.Platform.Facade.DFacade.
+Require Import Bedrock.Platform.Cito.StringMap.
+Require Import Bedrock.Platform.Cito.SyntaxExpr.
+Require Import Bedrock.Memory.
+Require Import Coq.Strings.String.
 
 Definition nat_as_word n : Word.word 32 := Word.natToWord 32 n.
 Coercion nat_as_word : nat >-> Word.word.
@@ -43,7 +43,7 @@ Notation "'While' A B" := (While A B)
                              B at level 1000,
                              format "'[v    ' 'While'  A '/' B ']'")
                           : facade_scope.
-  
+
 Notation "'If' a 'then' b 'else' c" := (DFacade.If a b c)
                                           (at level 200,
                                            a at level 1000,
@@ -52,7 +52,7 @@ Notation "'If' a 'then' b 'else' c" := (DFacade.If a b c)
                                           format "'[v' '[v    ' 'If'  a  'then' '/' b ']' '/' '[v    ' 'else' '/' c ']' ']'")
                                        : facade_scope.
 
-Definition Fold (head is_empty seq: StringMap.key) 
+Definition Fold (head is_empty seq: StringMap.key)
                 _pop_ _empty_ loop_body := (
     Call is_empty _empty_ (seq :: nil);
     While (!is_empty) (

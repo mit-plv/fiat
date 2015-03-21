@@ -1,6 +1,6 @@
 (** * Definition of the common part of the interface of the CFG parser *)
 Require Import Coq.Lists.List Coq.Init.Wf Coq.Strings.String.
-Require Import Parsers.ContextFreeGrammar.
+Require Import ADTSynthesis.Parsers.ContextFreeGrammar.
 
 Set Implicit Arguments.
 

@@ -31,7 +31,7 @@ Proof.
 Qed.
  *)
 Unset Implicit Arguments.
-      
+
 Lemma compile_pair_sca :
   forall {pair_type av env knowledge} vadt (wadt: pair_type -> av) {vsca} {wsca: pair_type -> W} adts inter_adts final_adts scas pair,
     refine

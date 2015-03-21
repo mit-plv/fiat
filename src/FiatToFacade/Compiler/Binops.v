@@ -39,7 +39,7 @@ Proof.
   simpl; intros; intuition; subst; eexists; eassumption.
 
   (* RunsTo *)
-  
+
   intros;
     repeat inversion_facade;
     specialize_states;
@@ -54,7 +54,7 @@ Proof.
       apply SomeSCAs_chomp
     | apply add_adts_pop_sca ];
     assumption.
-Qed.  
+Qed.
 
 Lemma compile_test_simple :
   forall {av env},
@@ -86,12 +86,12 @@ Proof.
   repeat (safe_seq; intros).
   specialize_states.
   scas_adts_mapsto.
-  
+
   eapply assign_expr_safe; try eassumption.
   simpl; intros; intuition; subst; eexists; eassumption.
 
   (* RunsTo *)
-  
+
   intros;
     repeat inversion_facade;
     specialize_states;
@@ -106,7 +106,7 @@ Proof.
       apply SomeSCAs_chomp
     | apply add_adts_pop_sca ];
     assumption.
-Qed.  
+Qed.
 
 Lemma compile_binop :
   forall {av env},
@@ -136,12 +136,12 @@ Proof. (* Same proof as compile_binop *)
   repeat (safe_seq; intros).
   specialize_states.
   scas_adts_mapsto.
-  
+
   eapply assign_expr_safe; try eassumption.
   simpl; intros; intuition; subst; eexists; eassumption.
 
   (* RunsTo *)
-  
+
   intros;
     repeat inversion_facade;
     specialize_states;
@@ -188,7 +188,7 @@ Proof. (* Same proof as compile_binop *)
   simpl; intros; intuition; subst; eexists; eassumption.
 
   (* RunsTo *)
-  
+
   intros;
     repeat inversion_facade;
     specialize_states;
@@ -280,12 +280,12 @@ Proof.
   repeat (safe_seq; intros).
   specialize_states.
   scas_adts_mapsto.
-  
+
   eapply assign_expr_safe; try eassumption.
   simpl; intros; intuition; subst; eexists; eassumption.
 
   (* RunsTo *)
-  
+
   intros;
     repeat inversion_facade;
     specialize_states;
@@ -299,7 +299,7 @@ Proof.
       rewrite remove_remove_eq in H;
         try rewrite remove_remove_swap in H
   end.
-  
+
   split;
     rewrite_Eq_in_goal;
     [ repeat remove_not_in;
@@ -309,7 +309,7 @@ Proof.
   rewrite_Eq_in_goal; eassumption.
   eassumption.
   eassumption.
-Qed.  
+Qed.
 
 Lemma compile_test_general :
   forall {av env},
@@ -340,12 +340,12 @@ Proof.
   repeat (safe_seq; intros).
   specialize_states.
   scas_adts_mapsto.
-  
+
   eapply assign_expr_safe; try eassumption.
   simpl; intros; intuition; subst; eexists; eassumption.
 
   (* RunsTo *)
-  
+
   intros;
     repeat inversion_facade;
     specialize_states;
@@ -359,7 +359,7 @@ Proof.
       rewrite remove_remove_eq in H;
         try rewrite remove_remove_swap in H
   end.
-  
+
   split;
     rewrite_Eq_in_goal;
     [ repeat remove_not_in;
@@ -369,7 +369,7 @@ Proof.
   rewrite_Eq_in_goal; eassumption.
   eassumption.
   eassumption.
-Qed.  
+Qed.
 
 Lemma compile_binop_generic
 : forall (av : Type) (env : Env av) (op : IL.binop)
@@ -405,7 +405,7 @@ Lemma compile_binop_generic
                          Return (Seq (Seq pw1 (Seq pw2 (Assign vret (Binop op tw1 tw2)))) pw_clean))))).
 Proof.
   intros.
-  
+
   rewrite compile_add_intermediate_step_with_ret.
 
   rewrite (compile_binop_simple op vret tw1 tw2 w1 w2 init_knowledge). (* init_scas init_scas init_scas init_adts post_w1_adts final_adts).*)

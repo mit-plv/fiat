@@ -1,8 +1,8 @@
-Require Import StringMap.
-Require Import Memory.
-Require Import Facade.examples.FiatADTs.
-Require Import FiatToFacade.FacadeNotations.
-Require Import FiatToFacade.Prog FiatToFacade.StringMapNotations.
+Require Import Bedrock.Platform.Cito.StringMap.
+Require Import Bedrock.Memory.
+Require Import Bedrock.Platform.Facade.examples.FiatADTs.
+Require Import ADTSynthesis.FiatToFacade.FacadeNotations.
+Require Import ADTSynthesis.FiatToFacade.Prog ADTSynthesis.FiatToFacade.StringMapNotations.
 
 Definition SCALoopBodyProgCondition
            env loop compiled_loop knowledge scas adts
@@ -12,7 +12,7 @@ Definition SCALoopBodyProgCondition
           ([vret >sca> loop acc head]::scas)
           ([vseq >adt> List seq]::adts)
           ([vseq >adt> List seq]::adts).
-          
+
 Definition SCALoopBodyOk
            env loop compiled_loop knowledge scas adts
            (vseq vret thead tis_empty: StringMap.key) :=
@@ -67,4 +67,3 @@ Definition ADTPairLoopBodyOk
   forall acc (head: W) (seq: list W),
     @ADTPairLoopBodyProgCondition env acc_type loop compiled_loop knowledge scas adts
                                   vseq vadt1 vadt2 thead tis_empty acc wadt1 wadt2 head seq.
-

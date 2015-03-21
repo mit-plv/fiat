@@ -1,6 +1,6 @@
 (** * Definition of minimal parse trees *)
 Require Import Coq.Strings.String Coq.Lists.List Coq.Setoids.Setoid.
-Require Import Parsers.ContextFreeGrammar.
+Require Import ADTSynthesis.Parsers.ContextFreeGrammar.
 
 Set Implicit Arguments.
 Local Open Scope string_like_scope.

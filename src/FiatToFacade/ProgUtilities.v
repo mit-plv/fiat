@@ -1,5 +1,5 @@
-Require Import Superset.
-Require Import StringMap.
+Require Import ADTSynthesis.FiatToFacade.Superset.
+Require Import Bedrock.Platform.Cito.StringMap.
 
 Ltac rewrite_Eq_in_goal :=
   match goal with
@@ -8,5 +8,5 @@ Ltac rewrite_Eq_in_goal :=
     | [ H: StringMap.Equal _ _ |- AllADTs _ _ ] =>
       rewrite H
     | [ H: StringMap.Equal _ _ |- StringMap.MapsTo _ _ _ ] =>
-      rewrite H              
+      rewrite H
   end.

@@ -1,27 +1,31 @@
 Require Import Ics.
 
 
-Parameter tankMax : Z.
-(** How high (m) may the water rise safely? *)
-
-Parameter sensorAccuracy : Z.
-(** Our one sensor must be at least this close to the true water value. *)
-
-Axiom sensorAccuracy_positive : 0 <= sensorAccuracy.
-Local Hint Extern 1 (0 <= sensorAccuracy) => apply sensorAccuracy_positive.
-
 Inductive action := Nothing | Fill | Empty.
 (** What the controller may do in each timestep (lasting 1 s) *)
 
 (** * As a warmup, consider a controller in a very friendly world where physics is entirely predictable.
     * Whenever the controller asks for filling or emptying, it is easy to predict precisely
     * how much will happen in 1 second. *)
-Module Deterministic.
+
+Module Type DETERMINISTIC.
+  Parameter tankMax : Z.
+  (** How high (m) may the water rise safely? *)
+
+  Parameter sensorAccuracy : Z.
+  (** Our one sensor must be at least this close to the true water value. *)
+
+  Axiom sensorAccuracy_positive : 0 <= sensorAccuracy.
+
   Parameter fillRate : Z.
   (** Rate (m/s) at which tank fills on request *)
 
   Parameter emptyRate : Z.
   (** Rate (m/s) at which tank empties on request *)
+End DETERMINISTIC.
+
+Module Deterministic(Import M : DETERMINISTIC).
+  Local Hint Extern 1 (0 <= sensorAccuracy) => apply sensorAccuracy_positive.
 
   (** Type signature of an implementation *)
   Definition sig : ADTSig :=
@@ -110,7 +114,7 @@ Module Deterministic.
   Proof.
     implement.
   Qed.
-    
+
   (** Now we derive the overall implementation. *)
   Definition impl : Sharpened spec.
   Proof.
@@ -154,12 +158,25 @@ End Deterministic.
 
 
 (** * Now let's move to a more realistic world, where we only have bounds on filling/emptying speeds. *)
-Module Nondeterministic.
+
+Module Type NONDETERMINISTIC.
+  Parameter tankMax : Z.
+  (** How high (m) may the water rise safely? *)
+
+  Parameter sensorAccuracy : Z.
+  (** Our one sensor must be at least this close to the true water value. *)
+
+  Axiom sensorAccuracy_positive : 0 <= sensorAccuracy.
+
   (** Bounds on how much filling or emptying will happen in 1 second *)
   Parameters minFill maxFill minEmpty maxEmpty : Z.
 
   Axiom fillBounds : minFill <= maxFill.
   Axiom emptyBounds : minEmpty <= maxEmpty.
+End NONDETERMINISTIC.
+
+Module Nondeterministic(Import M : NONDETERMINISTIC).
+  Local Hint Extern 1 (0 <= sensorAccuracy) => apply sensorAccuracy_positive.
 
   (** We use this type as input to the main controller method.
     * Only the [TargetLevel] field would actually be present at runtime;
@@ -282,7 +299,7 @@ Module Nondeterministic.
              | econstructor; split;
                repeat match goal with
                       | [ |- Ensembles.In _ _ _ ] => econstructor; split
-                      end; 
+                      end;
                try match goal with
                    | [ |- Ensembles.In _ _ {| Min := ?min; Max := _ |} ] => instantiate (1 := min)
                    end;

@@ -15,9 +15,9 @@ Proof.
   unfold tupleAgree; simpl; split; intros; intuition; subst; intuition.
 Qed.
 
-Fixpoint tupleAgree_computational 
+Fixpoint tupleAgree_computational
          {h : Heading}
-         (tup1 tup2 : @Tuple h) 
+         (tup1 tup2 : @Tuple h)
          (attrlist : list (Attributes h)) :=
   match attrlist with
     | [] => True

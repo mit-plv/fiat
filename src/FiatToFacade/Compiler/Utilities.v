@@ -1,18 +1,18 @@
-Require Import FiatToFacade.SupersetUtilities.
-Require Import FiatToFacade.StringMapNotations.
-Require Import FiatToFacade.StringMapUtilities.
-Require Import FiatToFacade.Superset.
-Require Import FiatToFacade.FacadeNotations.
-Require Import FiatToFacade.FacadeUtilities.
-Require Import FiatToFacade.Prog.
-Require Import Facade.DFacade SyntaxExpr StringMap GLabelMap.
+Require Import ADTSynthesis.FiatToFacade.SupersetUtilities.
+Require Import ADTSynthesis.FiatToFacade.StringMapNotations.
+Require Import ADTSynthesis.FiatToFacade.StringMapUtilities.
+Require Import ADTSynthesis.FiatToFacade.Superset.
+Require Import ADTSynthesis.FiatToFacade.FacadeNotations.
+Require Import ADTSynthesis.FiatToFacade.FacadeUtilities.
+Require Import ADTSynthesis.FiatToFacade.Prog.
+Require Import Bedrock.Platform.Facade.DFacade Bedrock.Platform.Cito.SyntaxExpr Bedrock.Platform.Cito.StringMap Bedrock.Platform.Cito.GLabelMap.
 Require Import ADTSynthesis.ADT.Core.
 
 Ltac safe_seq :=
   constructor;
   split; [ specialize_states; assumption | ].
 
-Require Import Facade.DFacade.
+Require Import Bedrock.Platform.Facade.DFacade.
 Lemma safe_call_1 :
   forall {av} env state adts f spec varg arg vout,
     state[varg >> arg] ->
@@ -74,7 +74,7 @@ Proof.
   unfold refine, Prog, ProgOk; intros * ? h ** .
   specialize (h v H0); inversion_by computes_to_inv.
   constructor; intros.
-  
+
   destruct_pairs.
   repeat (split; specialize_states; intros; eauto).
 

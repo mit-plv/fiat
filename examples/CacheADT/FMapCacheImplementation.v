@@ -9,7 +9,7 @@ Definition MapStringNat := StringIndexedMap.t nat.
 
 Section StringKEnsembles.
 
-(* Implementation of Ensembles of String + Value pairs using 
+(* Implementation of Ensembles of String + Value pairs using
    finite maps. *)
 
   Variable Value : Type.
@@ -526,4 +526,3 @@ Section BoundedCacheFMap.
   Qed.
 
 End BoundedCacheFMap.
-

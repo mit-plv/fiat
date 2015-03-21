@@ -1,10 +1,8 @@
 (** * Definition of a [comp]-based non-computational CFG parser *)
 Require Import Coq.Lists.List Coq.Program.Program Coq.Program.Wf Coq.Arith.Wf_nat Coq.Arith.Compare_dec Coq.Classes.RelationClasses Coq.Strings.String.
-Require Import Parsers.ContextFreeGrammar.
-Require Import Common Common.ilist.
+Require Import ADTSynthesis.Parsers.ContextFreeGrammar.ADTSynthesis.Parsers.Specificationn Common.ilist.
 
-Set Implicit Arguments.
-(*(** We implement a generic recursive descent parser.  We parameterize
+ADTSynthesis.CommonpADTSynthesis.Common.ilistnADTSynthesis.Common.Wf We implement a generic recursive descent parser.  We parameterize
     over a number of parameters:
 
     - [T : Type] - the type of results of successful parsing.

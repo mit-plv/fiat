@@ -1,7 +1,7 @@
 Require Import FiatToFacade.Compiler.
 Require Import Cito.GLabelMapFacts.
 Require Import Computation.ApplyMonad.
-        
+
 Ltac find_label_in_env :=
   try match goal with
         | |- GLabelMap.find _ basic_imports_wrapped = _ =>

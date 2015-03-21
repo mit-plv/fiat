@@ -1,14 +1,14 @@
 Require Import AutoDB.
 
-Definition SC := 
-  Query Structure Schema [ 
+Definition SC :=
+  Query Structure Schema [
     relation "Books" has schema <"Author" :: string,
                                  "Title"  :: string,
                                  "ISBN"   :: nat>
-                     where attributes ["Title"; "Author"] 
+                     where attributes ["Title"; "Author"]
                             depend on ["ISBN"];
     relation "Orders" has schema <"ISBN" :: nat,
-                                  "Date" :: nat> 
+                                  "Date" :: nat>
   ] enforcing [attribute "ISBN" for "Orders" references "Books"].
 
 Definition BookstoreSig : ADTSig :=
@@ -22,9 +22,9 @@ Definition BookstoreSig : ADTSig :=
 
 Definition BookstoreSpec : ADT BookstoreSig :=
   QueryADTRep SC {
-    const "Init"        (_: unit)            : rep := 
+    const "Init"        (_: unit)            : rep :=
       empty,
-      
+
     update "AddBook"    (book: SC#"Books")   : bool :=
       Insert book into "Books",
 

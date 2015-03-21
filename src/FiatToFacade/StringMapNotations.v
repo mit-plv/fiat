@@ -1,5 +1,5 @@
-Require Export Facade.
-Require Import StringMap.
+Require Export Bedrock.Platform.Facade.Facade.
+Require Import Bedrock.Platform.Cito.StringMap.
 
 Notation "table [ key >> value ]" := (StringMap.MapsTo key value table) (at level 0) : map_scope.
 Notation "∅" := (StringMap.empty _) : map_scope.

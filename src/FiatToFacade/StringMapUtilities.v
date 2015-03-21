@@ -1,15 +1,15 @@
-Require Import StringMap.
-Require Import StringMapFacts.
-Require Import FiatToFacade.Utilities.
-Require Import FiatToFacade.StringMapNotations.
-Require Import Common.
+Require Import Bedrock.Platform.Cito.StringMap.
+Require Import Bedrock.Platform.Cito.StringMapFacts.
+Require Import ADTSynthesis.FiatToFacade.Utilities.
+Require Import ADTSynthesis.FiatToFacade.StringMapNotations.
+Require Import ADTSynthesis.Common.
 
 Unset Implicit Arguments.
 
 Lemma MapsTo_unique :
   forall {A} map key (v1 v2: A),
-    StringMap.MapsTo key v1 map ->  
-    StringMap.MapsTo key v2 map ->  
+    StringMap.MapsTo key v1 map ->
+    StringMap.MapsTo key v2 map ->
     v1 = v2.
 Proof.
   intros;
@@ -20,7 +20,7 @@ Qed.
 Lemma not_in_remove_eq :
   forall {elt} k m,
     ~ @StringMap.In elt k m ->
-    StringMap.Equal 
+    StringMap.Equal
       m (StringMap.remove k m).
 Proof.
   unfold StringMap.Equal; intros ** k'.
@@ -61,16 +61,16 @@ Ltac remove_not_in :=
     | [ H: ~ StringMap.In ?k ?m, H': context[StringMap.remove ?k ?m] |- _] =>
       setoid_rewrite <- (not_in_remove_eq k m H) in H'
   end.
- 
+
 Ltac subst_find :=
-  match goal with 
-    | [H: StringMap.find ?a ?b = _, 
+  match goal with
+    | [H: StringMap.find ?a ?b = _,
        H': context[StringMap.find ?a ?b] |- _] =>
       setoid_rewrite H in H'
     | [H: StringMap.find ?a ?b = _
        |- context[StringMap.find ?a ?b]] =>
       setoid_rewrite H
-    | [H: StringMap.MapsTo ?k ?v ?m, 
+    | [H: StringMap.MapsTo ?k ?v ?m,
        H': context[StringMap.find ?k ?m] |- _] =>
       rewrite StringMapFacts.find_mapsto_iff in H;
         setoid_rewrite H in H';
@@ -247,7 +247,7 @@ Ltac trickle_deletion := (* FIXME: overwrite existing trickle_deletion *)
            | [ H: context [StringMap.remove _ ∅]  |- _ ] =>
              rewrite StringMap_remove_empty in H
          end.
-     
+
 Lemma MapsTo_swap :
   forall {elt} {k1 k2 v1 v2} {map: StringMap.t elt},
     k1 <> k2 ->
@@ -317,7 +317,7 @@ Lemma add_remove_StringMap :
     StringMap.Equal
       ([k >> v]::m)
       ([k >> v]::(StringMap.remove k m)).
-Proof. 
+Proof.
   unfold StringMap.Equal; intros * k'.
   destruct (StringMap.E.eq_dec k k'); subst;
   repeat simpl_find_add_remove; reflexivity.

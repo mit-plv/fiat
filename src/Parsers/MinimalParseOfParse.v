@@ -1,9 +1,9 @@
 (** * Every parse tree has a corresponding minimal parse tree *)
 Require Import Coq.Strings.String Coq.Lists.List Coq.Program.Program Coq.Classes.RelationClasses Coq.Classes.Morphisms Coq.Setoids.Setoid Coq.Arith.Compare_dec.
 Require Import Coq.Program.Wf Coq.Arith.Wf_nat.
-Require Import Parsers.ContextFreeGrammar Parsers.ContextFreeGrammarProperties Parsers.WellFoundedParse.
-Require Export Parsers.MinimalParse.
-Require Import Common Common.Wf.
+Require Import ADTSynthesis.Parsers.ContextFreeGrammar ADTSynthesis.Parsers.ContextFreeGrammarProperties ADTSynthesis.Parsers.WellFoundedParse.
+Require Export ADTSynthesis.Parsers.MinimalParse.
+Require Import ADTSynthesis.Common ADTSynthesis.Common.Wf.
 
 Set Implicit Arguments.
 Local Open Scope string_like_scope.

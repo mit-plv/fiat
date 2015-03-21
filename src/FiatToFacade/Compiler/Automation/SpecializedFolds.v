@@ -70,8 +70,8 @@ Proof.
   rewrite !fold_left_rev_right.
   rewrite -> (@rev_involutive _ ls).
   simpl.
-  
-  rewrite (compile_pair_sca vadt (fun x => FEnsemble (to_ensemble _ (projT1 (fst x))))). 
+
+  rewrite (compile_pair_sca vadt (fun x => FEnsemble (to_ensemble _ (projT1 (fst x))))).
 
   rewrite (fun b => @compile_list_rev_general env flistrev vdiscard vls b _ _ _); try first [ eassumption | rewrite add_add_add'; reflexivity | vacuum ].
 
@@ -84,7 +84,7 @@ Proof.
 
   intros.
   rewrite compile_constant; try vacuum.
-  rewrite compile_AbsImpl_sEmpty; first [ eassumption | solve [map_iff_solve eauto] | vacuum ]. 
+  rewrite compile_AbsImpl_sEmpty; first [ eassumption | solve [map_iff_solve eauto] | vacuum ].
   erewrite (@compile_AbsImpl_sDelete _ _ _ vdiscard); try first [ eassumption | solve [map_iff_solve eauto] | vacuum ].
 
   reflexivity.
@@ -189,7 +189,7 @@ Proof.
   rewrite !fold_left_rev_right.
   rewrite -> (@rev_involutive _ ls).
   simpl.
-  
+
   setoid_rewrite (compile_adt_pair vadt vret (fun x => FEnsemble (to_ensemble _ (projT1 (fst x)))) (fun x => List (snd x))).
 
   rewrite (fun b => @compile_list_rev_general env flistrev vdiscard vls b _ _ _); try first [ eassumption | rewrite add_add_add'; reflexivity | vacuum ].
@@ -202,8 +202,8 @@ Proof.
   apply General.refine_under_bind.
 
   intros.
-  rewrite compile_list_new; first [ eassumption | solve [map_iff_solve eauto] | vacuum ]. 
-  rewrite compile_AbsImpl_sEmpty; first [ eassumption | solve [map_iff_solve eauto] | vacuum ]. 
+  rewrite compile_list_new; first [ eassumption | solve [map_iff_solve eauto] | vacuum ].
+  rewrite compile_AbsImpl_sEmpty; first [ eassumption | solve [map_iff_solve eauto] | vacuum ].
   erewrite (@compile_AbsImpl_sDelete _ _ _ vdiscard); try first [ eassumption | solve [map_iff_solve eauto] | vacuum ].
 
   reflexivity.

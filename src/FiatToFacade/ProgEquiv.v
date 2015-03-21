@@ -1,20 +1,20 @@
-Require Import FiatToFacade.Prog FiatToFacade.Utilities.
-Require Import Facade.DFacade.
+Require Import ADTSynthesis.FiatToFacade.Prog ADTSynthesis.FiatToFacade.Utilities.
+Require Import Bedrock.Platform.Facade.DFacade.
 
-Definition ProgEquiv {av} p1 p2 := 
+Definition ProgEquiv {av} p1 p2 :=
   forall env st1,
-    (@Safe av env p1 st1 <-> Safe env p2 st1) /\ 
+    (@Safe av env p1 st1 <-> Safe env p2 st1) /\
     forall st2,
-      (@RunsTo av env p1 st1 st2 <-> RunsTo env p2 st1 st2). 
+      (@RunsTo av env p1 st1 st2 <-> RunsTo env p2 st1 st2).
 
-Require Import Setoid.
-Require Import Program.
-  
+Require Import Coq.Setoids.Setoid.
+Require Import Coq.Program.Program.
+
 Add Parametric Relation {av} : (Stmt) (@ProgEquiv av)
     reflexivity proved by _
     symmetry proved by _
     transitivity proved by _
-      as prog_equiv. 
+      as prog_equiv.
 Proof.
   firstorder.
   firstorder.
@@ -54,13 +54,13 @@ Proof.
   unfold ProgEquiv; intros * prog_equiv ** ; apply prog_equiv; assumption.
 Qed.
 
-Require Import Common.
+Require Import ADTSynthesis.Common.
 
 Add Parametric Morphism {av} :
   (Seq)
     with signature (@ProgEquiv av ==> @ProgEquiv av ==> @ProgEquiv av)
       as seq_morphism.
-Proof.  
+Proof.
   unfold ProgEquiv; intros.
 
   split;
@@ -90,7 +90,7 @@ Lemma while_morph {av env} :
   forall (st1 st2: State av),
     RunsTo env (while_p1) st1 st2 ->
     forall p1 p2 test,
-      while_p1 = Facade.While test p1 -> 
+      while_p1 = Facade.While test p1 ->
       @ProgEquiv av p1 p2 ->
       RunsTo env (Facade.While test p2) st1 st2.
 Proof.
@@ -98,13 +98,13 @@ Proof.
 
   econstructor; eauto; rewrite <- equiv; assumption.
   constructor; trivial.
-Qed.  
-  
+Qed.
+
 Add Parametric Morphism {av} :
   (Facade.While)
     with signature (eq ==> @ProgEquiv av ==> @ProgEquiv av)
       as while_morphism.
-Proof.  
+Proof.
   split; intros; eapply while_morph; eauto; symmetry; assumption.
 Qed.
 
@@ -112,16 +112,16 @@ Add Parametric Morphism {av} :
   (Facade.If)
     with signature (eq ==> @ProgEquiv av ==> @ProgEquiv av ==> @ProgEquiv av)
       as if_morphism.
-Proof.  
+Proof.
   unfold ProgEquiv; intros * true_equiv * false_equiv ** .
   split; intro runs_to; inversion_clear' runs_to;
   [ constructor 3 | constructor 4 | constructor 3 | constructor 4];
   rewrite ?true_equiv, ?false_equiv in *; try assumption.
 Qed.
-  
+
 Lemma Skip_Seq av :
-  forall prog, 
-    @ProgEquiv av (Seq Skip prog) prog. 
+  forall prog,
+    @ProgEquiv av (Seq Skip prog) prog.
 Proof.
   unfold ProgEquiv; split; intros.
   inversion_clear' H; inversion_clear' H2; eauto.
@@ -129,7 +129,7 @@ Proof.
 Qed.
 
 Lemma Seq_Skip av :
-  forall prog, 
+  forall prog,
     @ProgEquiv av (Seq prog Skip) prog.
 Proof.
   unfold ProgEquiv; split; intros.

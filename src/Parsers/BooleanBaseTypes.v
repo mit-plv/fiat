@@ -1,8 +1,8 @@
 (** * Definition of a boolean-returning CFG parser-recognizer *)
 Require Import Coq.Lists.List Coq.Program.Program Coq.Classes.RelationClasses Coq.Strings.String.
-Require Import Parsers.BaseTypes Parsers.ContextFreeGrammar.
-Require Import Parsers.MinimalParse.
-Require Import Common.
+Require Import ADTSynthesis.Parsers.BaseTypes ADTSynthesis.Parsers.ContextFreeGrammar.
+Require Import ADTSynthesis.Parsers.MinimalParse.
+Require Import ADTSynthesis.Common.
 
 Local Coercion is_true : bool >-> Sortclass.
 

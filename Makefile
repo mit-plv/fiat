@@ -51,7 +51,6 @@ CORE_MODULES    := \
 	ADT/ADTHide \
 	ADT/ComputationalADT \
 	ADT \
-	Common/ilist \
 	Common/Wf \
 	Common/Le \
 	Common/UIP \
@@ -148,7 +147,10 @@ SRC_GRAMMAR_MODULES := \
 	Parsers/ContextFreeGrammarProperties\
 	Parsers/ContextFreeGrammarNotations\
 	Parsers/Grammars/Trivial\
-	Parsers/Grammars/ABStar
+	Parsers/Grammars/ABStar\
+	Parsers/Grammars/ExpressionNumPlus\
+	Parsers/Grammars/ExpressionParen\
+	Parsers/Grammars/ExpressionNumPlusParen
 
 SRC_PARSERS_BASE_MODULES := \
 	Parsers/StringLike\
@@ -188,7 +190,6 @@ COMPILER_MODULES := \
 	FiatToFacade/Utilities \
 	FiatToFacade/BedrockUtilities \
 	FiatToFacade/StringMapUtilities \
-	FiatToFacade/FacadeNotations \
 	FiatToFacade/FacadeUtilities \
 	FiatToFacade/Superset \
 	FiatToFacade/SupersetMorphisms \
@@ -347,7 +348,10 @@ examples : $(EXAMPLE_VOS)
 
 compiler : $(COMPILER_VOS)
 
-ics : $(ICS_VOS)
+ics : $(ICS_VOS) examples/Ics/WaterTank.ml
+
+examples/Ics/WaterTank.ml: $(ICS_VOS) examples/Ics/WaterTankExtract.v
+	coqc -R src ADTSynthesis -R examples ADTExamples examples/Ics/WaterTankExtract >$@
 
 dns : $(DNS_VOS)
 

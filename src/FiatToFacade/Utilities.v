@@ -1,7 +1,7 @@
 Unset Implicit Arguments.
-Require Import List Program.
+Require Import Coq.Lists.List Coq.Program.Program.
 
-Lemma length_0 : 
+Lemma length_0 :
   forall {A: Type} (l: list A),
     0 = Datatypes.length l <-> l = [].
 Proof.
@@ -23,7 +23,7 @@ Proof.
   intuition.
 Qed.
 
-Lemma equiv_true : 
+Lemma equiv_true :
   forall P : Prop, (True <-> P) <-> P.
   intuition.
 Qed.
@@ -53,38 +53,38 @@ Qed.
 
 Ltac autoinj :=
   intros; repeat (match goal with
-                    | [ H: ?f ?a = ?f ?b |- _ ] => 
+                    | [ H: ?f ?a = ?f ?b |- _ ] =>
                       (injection H; intros; clear H)
-                    | [ H: ?f ?x ?a = ?f ?x ?b |- _ ] => 
+                    | [ H: ?f ?x ?a = ?f ?x ?b |- _ ] =>
                       (injection H; intros; clear H)
-                    | [ H: ?f ?a1 ?b1 = ?f ?a2 ?b2 |- _ ] => 
+                    | [ H: ?f ?a1 ?b1 = ?f ?a2 ?b2 |- _ ] =>
                       (injection H; intros; clear H)
                   end; try subst); try solve [intuition].
 
 Ltac autoinj' := (* TODO: Needed? *)
-  intros; 
+  intros;
   repeat match goal with
-           | [ H: context[?f ?A _ = ?f ?A _] |- _ ] => 
+           | [ H: context[?f ?A _ = ?f ?A _] |- _ ] =>
              let H' := fresh in
-             assert (forall x y, f A x = f A y <-> x = y) 
+             assert (forall x y, f A x = f A y <-> x = y)
                as H'
                  by (
                      let H'' := fresh in
-                     split; 
+                     split;
                      intros ** H'';
-                     [injection H'' | rewrite H'']; 
+                     [injection H'' | rewrite H''];
                      intuition);
                try rewrite H' in *; clear H'
          end;
   try solve [intuition].
 
 Ltac autospecialize := (* TODO: Needed? *)
-  repeat match goal with 
-           | [ H: forall a b, ?x a -> ?y a b -> _, H': ?x _, H'': ?y _ _ |- _ ] 
-             => specialize (H _ _ H' H'') 
-           | [ H: forall a b, ?x a /\ ?x' a -> ?y a b -> _, H'1: ?x _, H'2: ?x' _, H'': ?y _ _ |- _ ] 
+  repeat match goal with
+           | [ H: forall a b, ?x a -> ?y a b -> _, H': ?x _, H'': ?y _ _ |- _ ]
+             => specialize (H _ _ H' H'')
+           | [ H: forall a b, ?x a /\ ?x' a -> ?y a b -> _, H'1: ?x _, H'2: ?x' _, H'': ?y _ _ |- _ ]
              => specialize (H _ _ (conj H'1 H'2) H'')
-           | [ H: forall a b, ?x a /\ ?x' a /\ ?x'' a -> ?y a b -> _, H'1: ?x _, H'2: ?x' _, H'3: ?x'' _, H'': ?y _ _ |- _ ] 
+           | [ H: forall a b, ?x a /\ ?x' a /\ ?x'' a -> ?y a b -> _, H'1: ?x _, H'2: ?x' _, H'3: ?x'' _, H'': ?y _ _ |- _ ]
              => specialize (H _ _ (conj H'1 (conj H'2 H'3)) H'')
          end.
 
@@ -104,7 +104,7 @@ Ltac inversion_clear' hyp :=  (* TODO: Needed? *)
 
 Ltac eq_transitive :=
   match goal with
-    | [ H: ?a = ?b, H': ?a = ?c |- _ ] => 
+    | [ H: ?a = ?b, H': ?a = ?c |- _ ] =>
       let H'' := fresh in
       assert (b = c) as H'' by (rewrite <- H, <- H'; reflexivity)
   end. (* TODO: Use more. Extend to cover a single map mapping the same key to two variables *)

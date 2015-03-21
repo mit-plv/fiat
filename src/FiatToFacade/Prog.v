@@ -1,6 +1,6 @@
-Require Import FiatToFacade.Superset.
-Require Import Computation.Core.
-Require Import Facade.DFacade.
+Require Import ADTSynthesis.FiatToFacade.Superset.
+Require Import ADTSynthesis.Computation.Core.
+Require Import Bedrock.Platform.Facade.DFacade.
 
 (*Require Import ADTSynthesis.ADTRefinement.GeneralRefinements.
 Require Import StringMap.
