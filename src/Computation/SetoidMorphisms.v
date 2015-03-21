@@ -5,19 +5,6 @@ Require Import Fiat.Computation.Core.
 (** General Lemmas about the parametric morphism behavior of
     [computes_to], [refine], and [refineEquiv]. *)
 
-Add Parametric Relation A
-: (Comp A) (@refine A)
-  reflexivity proved by reflexivity
-  transitivity proved by transitivity
-    as refine_rel.
-
-Add Parametric Relation A
-: (Comp A) (@refineEquiv A)
-  reflexivity proved by reflexivity
-  symmetry proved by symmetry
-  transitivity proved by transitivity
-    as refineEquiv_rel.
-
 Local Ltac t := unfold impl; intros; repeat (eapply_hyp || etransitivity).
 
 Add Parametric Morphism A
