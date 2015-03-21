@@ -233,15 +233,14 @@ Lemma InA_app_cons_swap {A} eqA :
   -> forall (a a' : A) l l',
        InA eqA a (l ++ (a' :: l')) <-> InA eqA a ((a' :: l) ++ l').
 Proof.
-  split; intros.
-  - eapply InA_app_swap; eauto.
-    intros; eapply InA_app_iff;
-    eapply InA_app_iff in H0; eauto; intuition.
-    inversion H; subst; eauto.
-  - eapply InA_app_swap; eauto.
-    intros; eapply InA_app_iff;
-    eapply InA_app_iff in H0; eauto; intuition.
-    inversion H; subst; eauto.
+  split; intros;
+  [ eapply InA_app_swap; eauto
+  | ];
+  let H := match goal with H : InA _ _ _ |- _ => constr:H end in
+  intros; eapply InA_app_iff;
+  eapply InA_app_iff in H; eauto; intuition;
+  let H := match goal with H : InA _ _ _ |- _ => constr:H end in
+  inversion H; subst; eauto.
 Qed.
 
 Lemma PermutationConsSplit {A} :
