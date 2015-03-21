@@ -90,7 +90,6 @@ Section CountingListBags.
     {|
 
       bempty := CountingList_empty;
-      bstar item := true;
       bfind_matcher f := f;
       bupdate_transform := bupdate_transform;
 
@@ -195,13 +194,6 @@ Section CountingListBags.
     firstorder.
   Qed.
 
-  Lemma CountingList_BagFindStar :
-      BagFindStar CountingList_RepInv CountingListAsBag_bfind ccontents (fun _ => true).
-  Proof.
-    unfold BagFindStar; simpl; intros.
-    unfold CountingListAsBag_bfind; rewrite filter_true; reflexivity.
-  Qed.
-
   Lemma CountingList_BagFindCorrect :
     BagFindCorrect CountingList_RepInv CountingListAsBag_bfind apply ccontents.
   Proof.
@@ -292,7 +284,6 @@ Section CountingListBags.
 
        binsert_enumerate := CountingList_BagInsertEnumerate;
        benumerate_empty  := CountingList_BagEnumerateEmpty;
-       bfind_star        := CountingList_BagFindStar;
        bfind_correct     := CountingList_BagFindCorrect;
        bcount_correct    := CountingList_BagCountCorrect;
        bdelete_correct   := CountingList_BagDeleteCorrect;

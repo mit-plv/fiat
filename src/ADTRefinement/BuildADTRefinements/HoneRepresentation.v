@@ -174,7 +174,11 @@ Tactic Notation "hone" "constructor" constr(consIdx) :=
                               |}
                               _
              ));
-    [ intros; simpl in *; set_evars; simpl in *;
+    [ intros; simpl in *;
+      match goal with
+        |  |- refine _ (?E ?d) => is_evar E; let H := fresh in set (H := E)
+        | _ => idtac
+      end; simpl in *;
       match goal with
         |  |- refine (absConstructor ?AbsR ?oldConstructor ?d)
                      (?H ?d) =>
@@ -222,7 +226,11 @@ Tactic Notation "hone" "method" constr(methIdx) :=
                                _
                               ));
     [ intros;
-      simpl in *; set_evars; simpl in *;
+      simpl in *;
+      match goal with
+        |  |- refine _ (?E ?nr ?d) => is_evar E; let H := fresh in set (H := E)
+        | _ => idtac
+      end; simpl in *;
       match goal with
         |  |- refine (@absMethod ?oldRep ?newRep ?AbsR ?Dom ?Cod ?oldMethod ?nr ?d)
                      (?H ?nr ?d) => eapply (@refine_AbsMethod oldRep newRep AbsR Dom Cod oldMethod)

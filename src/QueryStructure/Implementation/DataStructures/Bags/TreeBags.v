@@ -69,9 +69,6 @@ Module TreeBag (Import M: WS).
 
     Definition IndexedBag_bempty := empty BagType.
 
-    Definition IndexedBag_bstar :=
-      (@None TKey, bstar).
-
     Definition IndexedBag_bfind_matcher
                (key_searchterm: (option TKey) * SearchTermType) (item: TItem) :=
       let (key_option, search_term) := key_searchterm in
@@ -308,217 +305,11 @@ Module TreeBag (Import M: WS).
           eapply containerCorrect; eauto; eapply In_partition; eauto.
     Defined.
 
-    Definition KeyBasedPartitioningFunction BagType reference :=
-      fun key (_: BagType) => if E.eq_dec key reference then true else false.
-
-    Lemma KeyBasedPartitioningFunction_Proper :
-      forall BagType reference,
-        Proper (E.eq ==> eq ==> eq) (KeyBasedPartitioningFunction BagType reference).
-    Proof.
-      intros;
-      unfold KeyBasedPartitioningFunction, Proper, respectful; intros x y E_eq **; subst;
-      destruct (F.eq_dec x _), (F.eq_dec y _); rewrite E_eq in *; intuition.
-    Qed.
-
-    Lemma negb_KeyBasedPartitioningFunction_Proper :
-      forall BagType reference,
-        Proper (E.eq ==> eq ==> eq)
-               (fun k e => negb (KeyBasedPartitioningFunction BagType reference k e)).
-    Proof.
-      intros;
-      unfold KeyBasedPartitioningFunction, Proper, respectful; intros x y E_eq **; subst;
-      destruct (F.eq_dec x _), (F.eq_dec y _); rewrite E_eq in *; intuition.
-    Qed.
-
-    Lemma eq_dec_refl :
-      forall x,
-        (if E.eq_dec x x then true else false) = true.
-    Proof.
-      intros; destruct (E.eq_dec _ _); eauto using E.eq_refl.
-    Qed.
-
-    Lemma eq_dec_comm :
-      forall x y,
-        (if E.eq_dec x y then true else false) = (if E.eq_dec y x then true else false).
-    Proof.
-      intros; destruct (E.eq_dec x y), (E.eq_dec y x); intuition.
-    Qed.
-
-    Lemma KeyBasedPartitioningFunction_eq_true :
-      forall TValue k k' v,
-        E.eq k k' <->
-        KeyBasedPartitioningFunction TValue k k' v = true.
-    Proof.
-      intros; unfold KeyBasedPartitioningFunction; destruct (E.eq_dec _ _); intuition.
-    Qed.
-
-    Lemma KeyBasedPartitioningFunction_eq_false :
-      forall TValue k k' v,
-        ~ E.eq k k' <->
-        KeyBasedPartitioningFunction TValue k k' v = false.
-    Proof.
-      intros; unfold KeyBasedPartitioningFunction; destruct (E.eq_dec _ _); intuition.
-    Qed.
-
-    Lemma KeyBasedPartitioningFunction_refl :
-      forall TValue k k' v,
-        KeyBasedPartitioningFunction TValue k k' v = KeyBasedPartitioningFunction TValue k' k v.
-    Proof.
-      intros; unfold KeyBasedPartitioningFunction; rewrite eq_dec_comm; reflexivity.
-    Qed.
-
-    (* The value [v] mapped to by [k] is the unique value [k] maps to. *)
-    Lemma KeyBasedPartition_fst_singleton :
-      forall {TValue} k v (m: t TValue),
-        MapsTo k v m ->
-        Equal (fst (partition (KeyBasedPartitioningFunction TValue k) m)) (add k v (empty TValue)).
-    Proof.
-      intros.
-      symmetry.
-      unfold Equal; intro key.
-
-      destruct (E.eq_dec key k) as [ eq_k_proj | neq_k_proj ].
-
-      rewrite eq_k_proj;
-        rewrite add_eq_o by eauto;
-        symmetry; rewrite <- find_mapsto_iff;
-        rewrite partition_iff_1 with (f := KeyBasedPartitioningFunction TValue k) (m := m);
-        intuition (try rewrite <- KeyBasedPartitioningFunction_eq_true;
-                   eauto using E.eq_refl, KeyBasedPartitioningFunction_Proper).
-
-      rewrite add_neq_o by eauto.
-      rewrite empty_o.
-      destruct (find key _) eqn:eqfind';
-        [ exfalso | eauto ].
-      rewrite <- find_mapsto_iff in eqfind'.
-      rewrite partition_iff_1 with (f := KeyBasedPartitioningFunction TValue k) (m := m) in eqfind'.
-      destruct eqfind' as (maps_to & kvpf_true).
-      apply neq_k_proj.
-      erewrite KeyBasedPartitioningFunction_eq_true.
-      rewrite KeyBasedPartitioningFunction_refl.
-      eauto.
-      eauto using KeyBasedPartitioningFunction_Proper.
-      reflexivity.
-    Qed.
-
-    (* If [k'] maps to a value in the first half of a map partitioned on [k],
-       it is equivalent to [k]. *)
-    Lemma MapsTo_KeyBasedPartition_fst :
-      forall {TValue} k k' v (m: t TValue),
-        MapsTo k' v (fst (partition (KeyBasedPartitioningFunction TValue k) m)) ->
-        E.eq k k'.
-    Proof.
-      intros * maps_to.
-      rewrite partition_iff_1
-      with (f := KeyBasedPartitioningFunction TValue k) (m := m)
-        in maps_to; eauto using KeyBasedPartitioningFunction_Proper.
-      destruct maps_to as (_ & kbpf_true).
-      rewrite <- KeyBasedPartitioningFunction_eq_true in kbpf_true.
-      trivial.
-    Qed.
-
-    Lemma In_KeyBasedPartition_fst :
-      forall {TValue} k k' (m: t TValue),
-        In k' (fst (partition (KeyBasedPartitioningFunction TValue k) m)) ->
-        E.eq k k'.
-    Proof.
-      intros * in_singleton.
-      apply In_MapsTo in in_singleton.
-      destruct in_singleton as [ val (maps_to & _) ].
-      eapply MapsTo_KeyBasedPartition_fst; eauto.
-    Qed.
-
-    (* If [k'] maps to a value in the second half of a map partitioned on [k],
-       it is *not* equivalent to [k]. *)
-    Lemma MapsTo_KeyBasedPartition_snd :
-      forall {TValue} k k' v (m: t TValue),
-        MapsTo k' v (snd (partition (KeyBasedPartitioningFunction TValue k) m)) ->
-        ~ E.eq k k'.
-    Proof.
-      intros * maps_to.
-      rewrite partition_iff_2
-      with (f := KeyBasedPartitioningFunction TValue k) (m := m)
-        in maps_to; eauto using KeyBasedPartitioningFunction_Proper.
-      destruct maps_to as (_ & kbpf_false).
-      rewrite <- KeyBasedPartitioningFunction_eq_false in kbpf_false.
-      trivial.
-    Qed.
-
-    Lemma In_KeyBasedPartition_snd :
-      forall {TValue} k k' (m: t TValue),
-        In k' (snd (partition (KeyBasedPartitioningFunction TValue k) m)) ->
-        ~ E.eq k k'.
-    Proof.
-      intros * in_falses.
-      apply In_MapsTo in in_falses.
-      destruct in_falses as [ val ( maps_to' & _ ) ].
-      eapply MapsTo_KeyBasedPartition_snd; eauto.
-    Qed.
-
-    (* Paritioning a finite map [m] augmented with a key [k] over [k]
-       will produce a map containing just [k] and a map equivalent to [m]. *)
-    Lemma partition_after_KeyBasedPartition_and_add :
-      forall {TValue} k v' (m: t TValue),
-        Partition (add k v' m)
-                  (add k v' (fst (partition (KeyBasedPartitioningFunction TValue k) m)))
-                  (snd (partition (KeyBasedPartitioningFunction TValue k) m)).
-    Proof.
-      unfold Partition.
-      split.
-
-      {
-        unfold Disjoint.
-        intros key (in_modified & in_unmodified).
-        rewrite add_in_iff in in_modified.
-
-        assert (E.eq k key)
-          by (
-              destruct in_modified;
-              [ assumption | eapply In_KeyBasedPartition_fst; eauto ]
-            ); clear in_modified.
-
-        apply In_KeyBasedPartition_snd in in_unmodified.
-
-        intuition.
-      }
-
-      split; intros * maps_to'.
-      rewrite add_mapsto_iff in maps_to'.
-      destruct maps_to' as [ (keq & veq) | (kneq & maps_to') ]; subst.
-
-      left;
-        apply add_1; eauto.
-      right;
-        rewrite partition_iff_2
-        with (f := KeyBasedPartitioningFunction TValue k) (m := m)
-        by (eauto using KeyBasedPartitioningFunction_Proper);
-        rewrite <- KeyBasedPartitioningFunction_eq_false;
-        intuition.
-
-      destruct maps_to' as [ maps_to' | maps_to' ].
-
-      rewrite add_mapsto_iff in maps_to';
-        destruct maps_to' as [ (keq & veq) | (kneq & maps_to') ];
-        [ subst; apply add_1; assumption | ].
-
-      exfalso.
-      apply MapsTo_KeyBasedPartition_fst in maps_to'.
-      intuition.
-
-      pose proof maps_to'.
-      apply MapsTo_KeyBasedPartition_snd in maps_to'.
-      apply add_2;
-        [ assumption | eapply MapsTo_partition_snd; eauto using KeyBasedPartitioningFunction_Proper ].
-    Qed.
-
     Lemma IndexedBag_BagInsertEnumerate :
       BagInsertEnumerate IndexedBag_RepInv IndexedBag_benumerate IndexedBag_binsert.
     Proof.
       unfold BagInsertEnumerate, IndexedBag_benumerate, IndexedBag_binsert.
       intros; simpl in *.
-
-      pose proof bfind_star.
-      unfold BagFindStar in H.
 
       match goal with
         | [ |- context[FindWithDefault ?a ?b ?c] ] =>
@@ -639,19 +430,6 @@ Module TreeBag (Import M: WS).
       intros;
       unfold BagEnumerateEmpty, IndexedBag_benumerate, flatten; simpl.
       unfold IndexedBag_bempty; rewrite Values_empty; tauto.
-    Qed.
-
-    Lemma IndexedBag_BagFindStar :
-      BagFindStar IndexedBag_RepInv IndexedBag_bfind IndexedBag_benumerate IndexedBag_bstar.
-    Proof.
-      unfold IndexedBag_RepInv, BagFindStar, IndexedBag_benumerate; simpl.
-      intros.
-      pose proof (alt_IndexedBag_RepInv _ containerCorrect) as containerCorrect'.
-      revert TBagCorrect containerCorrect' ; clear.
-      unfold Values; induction (elements container); intros; simpl; trivial.
-      rewrite bfind_star.
-      f_equal; trivial; eauto.
-      destruct a; eapply containerCorrect'; repeat econstructor; eauto.
     Qed.
 
     (* Enumerating the values for each key in an indexed bag [container]
@@ -1370,7 +1148,6 @@ Module TreeBag (Import M: WS).
     {|
 
        bempty            := IndexedBag_bempty;
-       bstar             := IndexedBag_bstar TBag;
        bfind_matcher     := IndexedBag_bfind_matcher TBag projection;
        bupdate_transform := bupdate_transform;
 
@@ -1400,7 +1177,6 @@ Module TreeBag (Import M: WS).
 
        binsert_enumerate := IndexedBag_BagInsertEnumerate TBag RepInv _ CorrectTBag projection;
        benumerate_empty  := IndexedBag_BagEnumerateEmpty TBag projection;
-       bfind_star        := IndexedBag_BagFindStar TBag _ _ CorrectTBag projection;
        bfind_correct     := IndexedBag_BagFindCorrect TBag _ _ CorrectTBag projection;
        bcount_correct    := IndexedBag_BagCountCorrect TBag _ _ CorrectTBag projection;
        bdelete_correct   := IndexedBag_BagDeleteCorrect TBag _ _ CorrectTBag projection;

@@ -8,11 +8,9 @@ Section ListBags.
   Context {TItem : Type}
           {TSearchTerm : Type}
           {TUpdateTerm : Type}
-          (star: TSearchTerm)
           (bid : TUpdateTerm)
           (bfind_matcher: TSearchTerm -> TItem -> bool)
-          (bupdate_transform : TUpdateTerm -> TItem -> TItem)
-          (find_star: forall (i: TItem), bfind_matcher star i = true).
+          (bupdate_transform : TUpdateTerm -> TItem -> TItem).
 
   Definition ListAsBag_bfind
              (container: list TItem)
@@ -56,14 +54,6 @@ Section ListBags.
     BagEnumerateEmpty id (@nil TItem).
   Proof.
     firstorder.
-  Qed.
-
-  Lemma List_BagFindStar :
-    BagFindStar ListBag_RepInv ListAsBag_bfind id star.
-  Proof.
-    intros; unfold ListBag_RepInv;
-    induction container; simpl;
-    [ | rewrite find_star, IHcontainer]; trivial.
   Qed.
 
   Lemma List_BagFindCorrect :
@@ -113,7 +103,6 @@ Section ListBags.
   : Bag (list TItem) TItem TSearchTerm TUpdateTerm :=
     {|
       bempty            := nil;
-      bstar             := star;
       bfind_matcher     := bfind_matcher;
       bupdate_transform := bupdate_transform;
 
@@ -131,7 +120,7 @@ Section ListBags.
 
       binsert_enumerate := List_BagInsertEnumerate;
       benumerate_empty  := List_BagEnumerateEmpty;
-      bfind_star        := List_BagFindStar;
+
       bfind_correct     := List_BagFindCorrect;
       bcount_correct    := List_BagCountCorrect;
       bdelete_correct   := List_BagDeleteCorrect;

@@ -39,17 +39,6 @@ Definition BagFindCorrect
       (List.filter (bfind_matcher search_term) (benumerate container))
       (bfind container search_term).
 
-(* The [bstar] search term matches every item in a bag. *)
-Definition BagFindStar
-           {TContainer TItem TSearchTerm: Type}
-           (RepInv : TContainer -> Prop)
-           (bfind : TContainer -> TSearchTerm -> list TItem)
-           (benumerate : TContainer -> list TItem)
-           (bstar : TSearchTerm) :=
-  forall container
-    (containerCorrect : RepInv container),
-      bfind container bstar = benumerate container.
-
 (* [bcount] returns the number of elements in a bag which match
    a search term [search_term]. *)
 Definition BagCountCorrect
@@ -136,7 +125,6 @@ Class Bag (BagType TItem SearchTermType UpdateTermType : Type) :=
   {
 
     bempty            : BagType;
-    bstar             : SearchTermType;
     bfind_matcher     : SearchTermType -> TItem -> bool;
     bupdate_transform : UpdateTermType -> TItem -> TItem;
 
@@ -160,8 +148,6 @@ Class CorrectBag
   binsert_RepInv    : binsert_Preserves_RepInv RepInv binsert;
   bdelete_RepInv    : bdelete_Preserves_RepInv RepInv bdelete ;
   bupdate_RepInv    : bupdate_Preserves_RepInv RepInv ValidUpdate bupdate;
-
-  bfind_star        : BagFindStar RepInv bfind benumerate bstar;
 
   benumerate_empty  : BagEnumerateEmpty benumerate bempty;
   binsert_enumerate : BagInsertEnumerate RepInv benumerate binsert;
@@ -254,7 +240,6 @@ Proof.
                bdelete_Preserves_RepInv
                BagInsertEnumerate
                BagEnumerateEmpty
-               BagFindStar
                BagFindCorrect
                BagCountCorrect
                BagDeleteCorrect
