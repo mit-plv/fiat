@@ -87,7 +87,7 @@ Section CountingListBags.
 
   Instance CountingListAsBag
   : Bag CountingList TItem (TItem -> bool) _ :=
-    {|
+    {
 
       bempty := CountingList_empty;
       bfind_matcher f := f;
@@ -99,7 +99,7 @@ Section CountingListBags.
       bcount     := CountingListAsBag_bcount;
       bdelete    := CountingListAsBag_bdelete;
       bupdate    := CountingListAsBag_bupdate
-    |}.
+    }.
 
   Definition CountingList_RepInv (container : CountingList) :=
     List.length (ccontents container) = clength container.
@@ -276,7 +276,7 @@ Section CountingListBags.
 
   Instance CountingListAsCorrectBag
   : CorrectBag CountingList_RepInv CountingList_ValidUpdate CountingListAsBag :=
-    {|
+    {
        bempty_RepInv     := CountingList_Empty_RepInv;
        binsert_RepInv    := CountingList_binsert_Preserves_RepInv;
        bdelete_RepInv    := CountingList_bdelete_Preserves_RepInv;
@@ -288,6 +288,6 @@ Section CountingListBags.
        bcount_correct    := CountingList_BagCountCorrect;
        bdelete_correct   := CountingList_BagDeleteCorrect;
        bupdate_correct   := CountingList_BagUpdateCorrect
-    |}.
+    }.
 
 End CountingListBags.

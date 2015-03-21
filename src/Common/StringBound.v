@@ -15,15 +15,15 @@ Section IndexBound.
 
   Global Instance IndexBound_head (a : A) (Bound : list A)
   : IndexBound a (a :: Bound) :=
-    {| ibound := 0;
-       boundi := eq_refl|}.
+    { ibound := 0;
+      boundi := eq_refl}.
 
   Global Instance IndexBound_tail
            (a a' : A) (Bound : list A)
            {sB' : IndexBound a Bound}
   : IndexBound a (a' :: Bound) :=
-    {| ibound := S ibound;
-       boundi := boundi |}.
+    { ibound := S ibound;
+      boundi := boundi }.
 
   Definition tail_IndexBound
            (a : A) (Bound : list A)
