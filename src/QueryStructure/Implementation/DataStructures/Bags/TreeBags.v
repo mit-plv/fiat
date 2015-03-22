@@ -1169,7 +1169,7 @@ Module TreeBag (Import M: WS).
   : CorrectBag (IndexedBag_RepInv _ RepInv projection)
                (IndexedBag_ValidUpdate _ ValidUpdate projection)
                (IndexedBagAsBag TBag projection ) :=
-    {|
+    {
        bempty_RepInv     := IndexedBag_Empty_RepInv TBag RepInv projection;
        binsert_RepInv    := IndexedBag_binsert_Preserves_RepInv TBag _ _ _ projection;
        bdelete_RepInv    := IndexedBag_bdelete_Preserves_RepInv TBag _ _ _ projection;
@@ -1181,6 +1181,6 @@ Module TreeBag (Import M: WS).
        bcount_correct    := IndexedBag_BagCountCorrect TBag _ _ CorrectTBag projection;
        bdelete_correct   := IndexedBag_BagDeleteCorrect TBag _ _ CorrectTBag projection;
        bupdate_correct   := IndexedBag_BagUpdateCorrect TBag _ _ CorrectTBag projection
-    |}.
+    }.
 
 End TreeBag.
