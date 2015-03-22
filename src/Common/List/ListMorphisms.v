@@ -211,7 +211,7 @@ Add Parametric Morphism {A: Type} :
     with signature (@Permutation A ==> @Permutation A)
       as rev_permutation_permutation_morphism.
 Proof.
-  apply Permutation_rev'_Proper.
+  exact (_ : Proper (Permutation (A:=A) ==> Permutation (A:=A)) (rev (A:=A))).
 Qed.
 
 Definition pointwise2_relation :=
