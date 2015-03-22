@@ -597,7 +597,7 @@ Module TreeBag (Import M: WS).
     Lemma IndexedBag_BagFindCorrect :
       BagFindCorrect IndexedBag_RepInv IndexedBag_bfind IndexedBag_bfind_matcher IndexedBag_benumerate.
     Proof.
-      intros.
+      intros; hnf.
       destruct search_term as (option_key, search_term).
       destruct option_key as [ key | ].
 
@@ -892,7 +892,7 @@ Module TreeBag (Import M: WS).
       BagDeleteCorrect IndexedBag_RepInv IndexedBag_bfind IndexedBag_bfind_matcher
         IndexedBag_benumerate IndexedBag_bdelete.
     Proof.
-
+      hnf.
       destruct search_term as [option_key search_term];
       destruct option_key as [ key | ]; simpl.
 
@@ -1041,7 +1041,7 @@ Module TreeBag (Import M: WS).
                        IndexedBag_bfind IndexedBag_bfind_matcher
                        IndexedBag_benumerate bupdate_transform IndexedBag_bupdate.
     Proof.
-
+      hnf.
       destruct search_term as [option_key search_term];
       destruct option_key as [ key | ];
       unfold IndexedBag_benumerate, IndexedBag_bfind_matcher; simpl.
