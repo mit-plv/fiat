@@ -124,7 +124,7 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
   Proof.
     intros; intuition.
     rewrite InA_app_iff;
-      [intuition | apply equiv_eq_key_elt].
+      [intuition | apply equiv_eq_key_elt .. ].
   Qed.
 
   Lemma InA_tail_InA :
@@ -134,7 +134,7 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
   Proof.
     intros; intuition.
     rewrite InA_app_iff;
-      [intuition | apply equiv_eq_key_elt].
+      [intuition | apply equiv_eq_key_elt .. ].
   Qed.
 
   Lemma InA_front_tail_InA :
