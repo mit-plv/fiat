@@ -46,7 +46,7 @@ Record consDef {Rep : Type} (Sig : consSig) :=
 
 Notation "'Def' 'Constructor' id ( x : dom ) : 'rep' := bod" :=
   (Build_consDef {| consID := id; consDom := dom |} (fun x => bod%comp))
-    (no associativity, at level 94, id at level 0, r at level 0,
+    (no associativity, at level 94, id at level 0,
      x at level 0, dom at level 0,
      format "'Def'  'Constructor'  id  ( x :  dom )  :  'rep'  :=  '/' '[  '   bod ']' " ) :
 consDef_scope.
