@@ -1,19 +1,19 @@
 Require Export
-        FiatToFacade.StringMapNotations
-        FiatToFacade.FacadeNotations
-        FiatToFacade.Utilities
-        FiatToFacade.BedrockUtilities
-        FiatToFacade.StringMapUtilities
-        FiatToFacade.FacadeUtilities
-        FiatToFacade.Superset
-        FiatToFacade.SupersetMorphisms
-        FiatToFacade.SupersetUtilities
-        FiatToFacade.Prog
-        FiatToFacade.ProgUtilities
-        FiatToFacade.ProgMorphisms
-        FiatToFacade.Loop
-        FiatToFacade.LoopUtilities.
-Require Export Computation.Core Common.
-Require Export StringMap SyntaxExpr Memory.
-Require Export FiatToFacade.Compiler.Utilities.
-Require Export Facade.DFacade.
+        ADTSynthesis.FiatToFacade.StringMapNotations
+        ADTSynthesis.FiatToFacade.FacadeNotations
+        ADTSynthesis.FiatToFacade.Utilities
+        ADTSynthesis.FiatToFacade.BedrockUtilities
+        ADTSynthesis.FiatToFacade.StringMapUtilities
+        ADTSynthesis.FiatToFacade.FacadeUtilities
+        ADTSynthesis.FiatToFacade.Superset
+        ADTSynthesis.FiatToFacade.SupersetMorphisms
+        ADTSynthesis.FiatToFacade.SupersetUtilities
+        ADTSynthesis.FiatToFacade.Prog
+        ADTSynthesis.FiatToFacade.ProgUtilities
+        ADTSynthesis.FiatToFacade.ProgMorphisms
+        ADTSynthesis.FiatToFacade.Loop
+        ADTSynthesis.FiatToFacade.LoopUtilities.
+Require Export ADTSynthesis.Computation.Core ADTSynthesis.Common.
+Require Export Bedrock.Platform.Cito.StringMap Bedrock.Platform.Cito.SyntaxExpr Bedrock.Memory.
+Require Export ADTSynthesis.FiatToFacade.Compiler.Utilities.
+Require Export Bedrock.Platform.Facade.DFacade.
