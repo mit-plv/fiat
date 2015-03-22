@@ -862,7 +862,7 @@ Section i2thIndexBound.
 
   Lemma Dep_Option_elim2_P2_refl
         {B : A -> Type}
-        {C C' : forall a, B a -> Type}
+        {C : forall a, B a -> Type}
   : forall a_opt b_opt c_opt,
       Dep_Option_elim2_P2 (fun (a : A) (b : B a) (c c' : C a b) => c = c')
                           (a_opt := a_opt) b_opt c_opt c_opt.
