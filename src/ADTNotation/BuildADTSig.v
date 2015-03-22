@@ -27,13 +27,13 @@ Notation "'Method' id : 'rep' 'x' dom '->' 'rep' 'x' cod " :=
   {| methID := id;
      methDom := dom;
      methCod := cod |}
-    (id at level 0, dom at level 59, rep at level 59, at level 93)
+    (id at level 0, dom at level 59, at level 93)
   : methSig_scope.
 
 Notation "'Constructor' id ':' dom '->' 'rep'" :=
   {| consID := id;
      consDom := dom |}
-    (id at level 0, dom at level 59, rep at level 59, at level 93)
+    (id at level 0, dom at level 59, at level 93)
   : consSig_scope.
 
 (* [BuildADTSig] constructs an ADT signature from a list of
