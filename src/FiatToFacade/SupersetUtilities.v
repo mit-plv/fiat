@@ -117,7 +117,7 @@ Lemma Superset_chomp_left :
     @Superset elt welt state map wrapper ->
     @Superset elt welt ([k >> wrapper v]::state) map wrapper.
 Proof.
-  unfold Superset; intros ** k' v' mapsto.
+  unfold Superset; intros ????????? k' v' mapsto.
   destruct (StringMap.E.eq_dec k k'); subst;
   map_iff_solve idtac; try solve [intuition].
   exfalso. apply StringMapFacts.MapsTo_In in mapsto; intuition.
@@ -139,7 +139,7 @@ Lemma Superset_chomp :
     @Superset elt welt state map wrapper ->
     @Superset elt welt ([k >> wrapper v]::state) ([k >> wrapper v]::map) wrapper.
 Proof.
-  unfold Superset; intros * h ** k' v' maps_to.
+  unfold Superset; intros ???????? k' v' maps_to.
   destruct (StringMap.E.eq_dec k k');
     subst; rewrite StringMapFacts.add_mapsto_iff in *;
     intuition.
@@ -166,7 +166,7 @@ Lemma Superset_chomp_remove :
     @Superset elt welt (StringMap.remove k state) (StringMap.remove k map) wrapper ->
     @Superset elt welt ([k >> wrapper v]::state) ([k >> wrapper v]::map) wrapper.
 Proof.
-  unfold Superset; intros * h ** k' v' maps_to.
+  unfold Superset; intros ??????? h k' v' maps_to.
   destruct (StringMap.E.eq_dec k k');
     subst; rewrite StringMapFacts.add_mapsto_iff in *;
     setoid_rewrite StringMapFacts.remove_mapsto_iff in h;
@@ -196,7 +196,7 @@ Lemma Superset_swap_left :
     @Superset elt welt ([k1 >> v1]::[k2 >> v2]::state) map wrapper ->
     @Superset elt welt ([k2 >> v2]::[k1 >> v1]::state) map wrapper.
 Proof.
-  unfold Superset; intros ** k v mp.
+  unfold Superset; intros ?? k1 k2 ?????? H0 k v mp.
   destruct (StringMap.E.eq_dec k k1), (StringMap.E.eq_dec k k2);
     subst; map_iff_solve idtac; try discriminates;
     specialize (H0 _ _ mp);
@@ -210,7 +210,7 @@ Lemma Superset_swap_right :
     @Superset elt welt map ([k1 >> v1]::[k2 >> v2]::state) wrapper ->
     @Superset elt welt map ([k2 >> v2]::[k1 >> v1]::state) wrapper.
 Proof.
-  unfold Superset; intros ** k v mp.
+  unfold Superset; intros ?? k1 k2 ?????? H0 k v mp.
   destruct (StringMap.E.eq_dec k k1), (StringMap.E.eq_dec k k2);
     subst; map_iff_solve idtac; try discriminates;
     rewrite MapsTo_swap in mp by auto; specialize (H0 _ _ mp);
@@ -255,7 +255,7 @@ Lemma Superset_mapsto' :
     map[k >> wrapper v] ->
     st[k >> wrapper v].
 Proof.
-  unfold Superset; intros * h ** maps_to.
+  unfold Superset; intros ??????? h maps_to.
   apply (h _ _ maps_to).
 Qed.
 
@@ -283,7 +283,7 @@ Lemma Superset_add_in_left :
     @Superset elt welt st bindings wrapper ->
     Superset ([k >> wrapper v]::st) bindings wrapper.
 Proof.
-  unfold Superset; intros ** k' v' ? .
+  unfold Superset; intros ???? k ???? k' v' ? .
   destruct (StringMap.E.eq_dec k k'); subst;
   try match goal with (* TODO fix auto_mapsto_unique *)
         | H:(?st) [?k >> ?v], H':(?st) [?k >> ?v'] |- _ =>
@@ -298,7 +298,7 @@ Lemma Superset_add_in_right :
     @Superset elt welt st bindings wrapper ->
     Superset st ([k >> wrapper v]::bindings) wrapper.
 Proof.
-  unfold Superset; intros ** k' v' ? .
+  unfold Superset; intros ???? k ???? k' v' ? .
   destruct (StringMap.E.eq_dec k k'); subst;
   try match goal with (* TODO fix mapsto_unique *)
         | H:(?st) [?k >> ?v], H':(?st) [?k >> ?v'] |- _ =>
@@ -329,7 +329,7 @@ Lemma Superset_not_In_remove :
     @Superset elt welt state map wrapper ->
     @Superset elt welt (StringMap.remove k state) map wrapper.
 Proof.
-  unfold Superset; intros ** k' v' maps_to.
+  unfold Superset; intros ?? k ????? k' v' maps_to.
   destruct (StringMap.E.eq_dec k k'); subst.
 
   pose proof (StringMapFacts.MapsTo_In maps_to); exfalso; intuition.
@@ -383,7 +383,7 @@ Lemma add_adts_pop_sca :
     AllADTs ([k >sca> v]::state) map.
 Proof.
   setoid_rewrite AllADTs_equiv.
-  intros ** k' v'.
+  intros ? k ????? k' v'.
   destruct (StringMap.E.eq_dec k k'); subst;
   split; intros H';
   rewrite StringMapFacts.add_mapsto_iff in *;
@@ -418,7 +418,7 @@ Lemma SomeSCAs_mapsto_inv:
     SomeSCAs state scas ->
     SomeSCAs state ([k >sca> v]::scas).
 Proof.
-  unfold SomeSCAs, Superset; intros * ? * some_scas ** k' v' maps_to.
+  unfold SomeSCAs, Superset; intros ??? k ?? some_scas k' v' maps_to.
   destruct (StringMap.E.eq_dec k k'); rewrite StringMapFacts.add_mapsto_iff in *;
   subst; intuition. autoinj.
 Qed.
@@ -428,7 +428,7 @@ Lemma Superset_replace_right :
     @Superset elt welt state ([k >> v]::map) wrapper ->
     @Superset elt welt ([k >> v']::state) ([k >> v']::map) wrapper.
 Proof.
-  unfold Superset; intros ** k'' v'' maps_to.
+  unfold Superset; intros ?? k ?????? k'' v'' maps_to.
   destruct (StringMap.E.eq_dec k k''); subst;
   rewrite StringMapFacts.add_mapsto_iff in *;
   map_iff_solve idtac; [ | apply H ];
@@ -440,7 +440,7 @@ Lemma Superset_replace_left :
     @Superset elt welt ([k >> v]::state) map wrapper ->
     @Superset elt welt ([k >> v']::state) ([k >> v']::map) wrapper.
 Proof.
-  unfold Superset; intros ** k'' v'' maps_to.
+  unfold Superset; intros ?? k ?????? k'' v'' maps_to.
   destruct (StringMap.E.eq_dec k k''); subst;
   rewrite StringMapFacts.add_mapsto_iff in *;
   map_iff_solve idtac; intuition.

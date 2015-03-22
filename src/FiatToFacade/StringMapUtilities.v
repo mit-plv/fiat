@@ -23,7 +23,7 @@ Lemma not_in_remove_eq :
     StringMap.Equal
       m (StringMap.remove k m).
 Proof.
-  unfold StringMap.Equal; intros ** k'.
+  unfold StringMap.Equal; intros ? k ? ? k'.
   destruct (StringMap.E.eq_dec k k'); subst.
 
   rewrite StringMapFacts.not_in_find, StringMapFacts.remove_eq_o by trivial;
@@ -170,7 +170,7 @@ Lemma StringMap_remove_add_neq :
     k1 <> k2 ->
     StringMap.Equal (StringMap.remove k2 (StringMap.add k1 v map)) (StringMap.add k1 v (StringMap.remove k2 map)).
 Proof.
-  unfold StringMap.Equal; intros ** k'.
+  unfold StringMap.Equal; intros ? k1 k2 ? ? ? k'.
   destruct (StringMap.E.eq_dec k' k1), (StringMap.E.eq_dec k' k2);
     subst; repeat simpl_find_add_remove; congruence.
 Qed.
@@ -180,7 +180,7 @@ Lemma StringMap_remove_add_eq :
     k1 = k2 ->
     StringMap.Equal (StringMap.remove k2 (StringMap.add k1 v map)) (StringMap.remove k2 map).
 Proof.
-  unfold StringMap.Equal; intros ** k'.
+  unfold StringMap.Equal; intros ? k1 k2 ? ? ? k'.
   destruct (StringMap.E.eq_dec k' k1), (StringMap.E.eq_dec k' k2);
     subst; repeat simpl_find_add_remove; congruence.
 Qed.
@@ -189,7 +189,7 @@ Lemma StringMap_remove_empty :
   forall {elt : Type} (k : StringMap.key),
     StringMap.Equal (StringMap.remove (elt:=elt) k ∅) ∅ .
 Proof.
-  unfold StringMap.Equal; intros ** k'.
+  unfold StringMap.Equal; intros ? k k'.
   destruct (StringMap.E.eq_dec k' k);
     subst; repeat simpl_find_add_remove; congruence.
 Qed.
@@ -200,7 +200,7 @@ Lemma remove_remove_eq :
       (StringMap.remove k (StringMap.remove k map))
       (StringMap.remove k map).
 Proof.
-  unfold StringMap.Equal; intros ** k'.
+  unfold StringMap.Equal; intros ? k ? k'.
   destruct (StringMap.E.eq_dec k' k);
     subst; repeat simpl_find_add_remove; congruence.
 Qed.
@@ -211,7 +211,7 @@ Lemma remove_remove_swap :
       (StringMap.remove k1 (StringMap.remove k2 map))
       (StringMap.remove k2 (StringMap.remove k1 map)).
 Proof.
-  unfold StringMap.Equal; intros ** k.
+  unfold StringMap.Equal; intros ? k1 k2 ? k.
   destruct (StringMap.E.eq_dec k1 k), (StringMap.E.eq_dec k2 k);
     subst; repeat simpl_find_add_remove; congruence.
 Qed.
@@ -294,7 +294,7 @@ Lemma add_noop :
     StringMap.find k map = Some v ->
     StringMap.Equal (StringMap.add k v map) map.
 Proof.
-  unfold StringMap.Equal; intros ** k';
+  unfold StringMap.Equal; intros ? k ? ? ? k';
   destruct (StringMap.E.eq_dec k k');
   subst;
   [ rewrite StringMapFacts.add_eq_o | rewrite StringMapFacts.add_neq_o ];
@@ -318,7 +318,7 @@ Lemma add_remove_StringMap :
       ([k >> v]::m)
       ([k >> v]::(StringMap.remove k m)).
 Proof.
-  unfold StringMap.Equal; intros * k'.
+  unfold StringMap.Equal; intros ? k ? ? k'.
   destruct (StringMap.E.eq_dec k k'); subst;
   repeat simpl_find_add_remove; reflexivity.
 Qed.
@@ -329,7 +329,7 @@ Lemma add_noop_mapsto :
     StringMap.Equal (StringMap.add k v map) map.
 Proof.
   setoid_rewrite StringMapFacts.find_mapsto_iff;
-  unfold StringMap.Equal; intros ** k';
+  unfold StringMap.Equal; intros ? k ? ? ? k';
   destruct (StringMap.E.eq_dec k k');
   subst; [ rewrite StringMapFacts.add_eq_o | rewrite StringMapFacts.add_neq_o ];
   auto.

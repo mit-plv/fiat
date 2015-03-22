@@ -127,7 +127,7 @@ Add Parametric Morphism {A B : Type} :
     with signature (pointwise_relation A (@Permutation B) ==> @eq (list A) ==> @Permutation B)
       as flatten_map_permutation_eq_permutation_morphism.
 Proof.
-  intros * equiv * seq.
+  intros * equiv seq.
 
   induction seq; simpl.
   constructor.
@@ -185,7 +185,7 @@ Add Parametric Morphism {A B} :
     with signature (pointwise_relation A eq ==> eq ==> eq)
       as flat_map_pointwiseeq_eq_eq_morphism_Proper.
 Proof.
-  intros * equiv ** seq.
+  intros * equiv seq.
   induction seq; simpl; [ | rewrite equiv, IHseq ]; reflexivity.
 Qed.
 
@@ -194,7 +194,7 @@ Add Parametric Morphism {A B} :
     with signature (pointwise_relation A eq ==> eq ==> eq)
       as flat_map_pair_pointwiseeq_eq_eq_morphism.
 Proof.
-  intros * equiv ** seq.
+  intros * equiv seq.
   induction seq; simpl; [ | rewrite IHseq, equiv ]; reflexivity.
 Qed.
 

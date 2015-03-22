@@ -1158,7 +1158,7 @@ Lemma decidable_excl :
   forall {A : Type} (P : Ensemble A) (P_dec : DecideableEnsemble P),
     (forall (a: A), P a \/ ~ P a).
 Proof.
-  intros ** a.
+  intros ??? a.
   destruct (dec a) eqn:eqdec;
     [ rewrite dec_decides_P in eqdec | rewrite Decides_false in eqdec ]; intuition.
 Qed.
