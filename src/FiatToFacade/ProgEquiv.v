@@ -10,32 +10,22 @@ Definition ProgEquiv {av} p1 p2 :=
 Require Import Coq.Setoids.Setoid.
 Require Import Coq.Program.Program.
 
-Add Parametric Relation {av} : (Stmt) (@ProgEquiv av)
-    reflexivity proved by _
-    symmetry proved by _
-    transitivity proved by _
-      as prog_equiv.
+Global Instance: forall {av}, Reflexive (@ProgEquiv av).
 Proof.
   firstorder.
-  firstorder.
-  unfold Transitive, ProgEquiv; split;
-  specialize (H env st1); specialize (H0 env st1); destruct_pairs.
-  rewrite H, <- H0; reflexivity.
-  intros; rewrite H2, <- H1; reflexivity.
 Qed.
 
-(* Uh? *)
+Global Instance: forall {av}, Symmetric (@ProgEquiv av).
+Proof.
+  firstorder.
+Qed.
+
+Global Instance: forall {av}, Transitive (@ProgEquiv av).
 Proof.
   unfold Transitive, ProgEquiv; split;
   specialize (H env st1); specialize (H0 env st1); destruct_pairs.
   rewrite H, <- H0; reflexivity.
   intros; rewrite H2, <- H1; reflexivity.
-Qed.
-Proof.
-  firstorder.
-Qed.
-Proof.
-  firstorder.
 Qed.
 
 Add Parametric Morphism {av: Type} :

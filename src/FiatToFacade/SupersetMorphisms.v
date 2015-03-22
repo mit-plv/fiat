@@ -44,57 +44,41 @@ Proof.
   rewrite !eq1, !eq2 in *; assumption.
 Qed.
 
-Add Parametric Relation {elt welt wrapper} : (StringMap.t welt) (fun a b => @Superset elt welt a b wrapper)
-    reflexivity proved by _
-    transitivity proved by _
-as superset.
-Proof.
-  firstorder.
-  firstorder.
-Qed.
-
-(* Uh? *)
-Proof.
-  firstorder.
-Qed.
+Global Instance: forall {elt welt wrapper}, Reflexive (fun a b => @Superset elt welt a b wrapper).
 Proof.
   firstorder.
 Qed.
 
-Add Parametric Relation {av} : (Facade.State av) (@SomeSCAs av)
-    reflexivity proved by _
-    transitivity proved by _
-as some_scas.
+Global Instance: forall {elt welt wrapper}, Transitive (fun a b => @Superset elt welt a b wrapper).
 Proof.
   firstorder.
 Qed.
 
-(* Uh? *)
+Global Instance: forall {av}, Reflexive (@SomeSCAs av).
 Proof.
-firstorder.
-Qed.
-
-Add Parametric Relation {av} : (State av) (@AllADTs av)
-    reflexivity proved by _
-    symmetry proved by _
-    transitivity proved by _
-as all_adts.
-Proof.
-  firstorder.
-  firstorder.
   firstorder.
 Qed.
 
-(* Uh? *)
+Global Instance: forall {av}, Transitive (@SomeSCAs av).
 Proof.
   firstorder.
 Qed.
+
+Global Instance: forall {av}, Reflexive (@AllADTs av).
 Proof.
   firstorder.
 Qed.
+
+Global Instance: forall {av}, Symmetric (@AllADTs av).
 Proof.
   firstorder.
 Qed.
+
+Global Instance: forall {av}, Transitive (@AllADTs av).
+Proof.
+  firstorder.
+Qed.
+
 
 Add Parametric Morphism av :
   (@AllADTs av)
