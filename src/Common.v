@@ -1704,6 +1704,12 @@ Proof.
   case_eq b1; case_eq b2; case_eq b3; case_eq b4; try reflexivity; simpl; intros; exfalso; subst; eauto.
 Qed.
 
+Ltac eassumption' :=
+  eassumption
+    || match goal with
+         | [ H : _ |- _ ] => exact H
+       end.
+
 Ltac progress_subgoal top tac cont :=
   top; (tac; try (cont ()) || (try (cont ()))).
 

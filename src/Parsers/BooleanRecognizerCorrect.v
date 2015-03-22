@@ -331,7 +331,7 @@ Section sound.
                    | [ H : minimal_parse_of _ _ _ nil |- _ ] => solve [ inversion H ]
                    | [ H : minimal_parse_of _ _ _ (_::_) |- _ ] => inversion H; clear H; subst
                    | [ H : parse_production' _ _ _ _ = true |- _ ] => apply parse_production_sound' in H; try eassumption; []
-                   | _ => left; eapply parse_production_complete'; (eassumption || reflexivity)
+                   | _ => left; eapply parse_production_complete'; (eassumption' || reflexivity)
                    | _ => solve [ eauto ]
                  end.
 
