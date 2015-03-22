@@ -848,7 +848,7 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
     apply Permutation_Equivalence.
 
     unfold Proper, respectful; intros; simpl;
-    subst; apply Permutation_cons; assumption.
+    subst; apply Permutation_cons; try reflexivity; assumption.
 
     unfold transpose_neqkey; intros; simpl;
     constructor.
