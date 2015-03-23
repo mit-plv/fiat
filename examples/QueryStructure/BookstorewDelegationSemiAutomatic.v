@@ -100,14 +100,16 @@ Theorem SharpenedBookStore :
   Sharpened BookStoreSpec.
 Proof.
 
+  Unset Ltac Debug.
   unfold BookStoreSpec.
 
   (* First, we unfold various definitions and drop constraints *)
   start honing QueryStructure.
 
-
   (* Then we define an index structure for each table using Bag ADTs *)
-  make simple indexes using [[sAUTHOR; sISBN]; [sISBN]].
+
+Unset Ltac Debug.
+  make simple indexes using [[(EqualityIndex, sAUTHOR); (EqualityIndex, sISBN); (UnIndex, sISBN)]; [(EqualityIndex, sISBN); (UnIndex, sISBN) ]].
   (* In other words, implement the Book table with a Bag ADT
     indexed first on the author field, then the ISBN field
     and the Orders table with a Bag ADT indexed on just the ISBN field. *)
@@ -134,9 +136,12 @@ Proof.
       (* they can be applied. *)
       repeat setoid_rewrite Join_Filtered_Comp_Lists_id.
       distribute_filters_to_joins.
+
       (* Step 5: Convert filter function on topmost [Join_Filtered_Comp_Lists] to an
                equivalent search term matching function.  *)
-      implement_filters_with_find.
+      implement_filters_with_find
+        find_simple_search_term
+        find_simple_search_term_dep.
     }
     (* Do some more simplication using the monad laws. *)
     simpl; simplify with monad laws.
@@ -188,56 +193,7 @@ Proof.
   }
 
   hone method "PlaceOrder".
-  {
-  repeat first
-         [setoid_rewrite FunctionalDependency_symmetry
-         | cbv beta; simpl; simplify with monad laws
-         | setoid_rewrite if_duplicate_cond_eq
-         | fundepToQuery
-         | foreignToQuery
-         | setoid_rewrite refine_trivial_if_then_else
-         ].
-    etransitivity;
-      [ repeat match goal with
-                 | |- context[Query_For _] =>
-                   setoid_rewrite refineEquiv_swap_bind at 1;
-                     implement_Query;
-                     eapply refine_under_bind; intros
-               end;
-        repeat setoid_rewrite refine_if_If at 1;
-        repeat setoid_rewrite refine_If_Then_Else_Bind at 1;
-        repeat setoid_rewrite Bind_refine_If_Then_Else at 1;
-        repeat eapply refine_If_Then_Else;
-        try simplify with monad laws; cbv beta; simpl;
-        match goal with
-          (* Implement the then branch *)
-          | [ H : DelegateToBag_AbsR ?r_o ?r_n
-              |- context[{r_n' |
-                          DelegateToBag_AbsR
-                            (UpdateUnConstrRelation ?r_o ?TableID
-                                                    (EnsembleInsert
-                                                       {| elementIndex := _; indexedElement := ?tup |}
-                                                       (GetUnConstrRelation ?r_o ?TableID))) r_n'}]]
-            => repeat setoid_rewrite <- refineEquiv_bind_bind;
-              setoid_rewrite (@refine_BagADT_QSInsert _ _ r_o r_n H TableID tup);
-              try (simplify with monad laws; higher_order_reflexivity)
-          (* Implement the else branch *)
-          | [ H : DelegateToBag_AbsR ?r_o ?r_n
-              |- context[{r_n' | DelegateToBag_AbsR ?r_o r_n'}]] =>
-            match goal with
-            | |- context[{idx | UnConstrFreshIdx (GetUnConstrRelation r_o ?TableID) idx}] =>
-              destruct ((proj2 H) TableID) as [l [[bnd fresh_bnd] _]];
-                refine pick val bnd;
-                [ simplify with monad laws;
-                  refine pick val r_n;
-                  [ simplify with monad laws;
-                    higher_order_reflexivity
-                  | eassumption ]
-                | eassumption]
-            end
-        end
-      | cbv beta; simpl; try simplify with monad laws; finish honing ].
-  }
+  { insertion. }
 
   FullySharpenQueryStructure BookStoreSchema Index.
 

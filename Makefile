@@ -87,6 +87,7 @@ QUERYSTRUCTURE_MODULES := \
 	QueryStructure/Specification/Representation/QueryStructure \
 	QueryStructure/Specification/Representation/QueryStructureNotations \
 	QueryStructure/Specification/Constraints/tupleAgree \
+	QueryStructure/Specification/SearchTerms/ListInclusion \
 	QueryStructure/Specification/Operations/FlattenCompList \
 	QueryStructure/Specification/Operations/Empty \
 	QueryStructure/Specification/Operations/Query \
@@ -128,6 +129,7 @@ QUERYSTRUCTURE_MODULES := \
 	QueryStructure/Automation/Constraints/TrivialConstraintAutomation \
 	QueryStructure/Automation/Constraints/FunctionalDependencyAutomation \
 	QueryStructure/Automation/Constraints/ForeignKeyAutomation \
+	QueryStructure/Automation/SearchTerms/InvertedSearchTerms \
 	QueryStructure/Automation/IndexSelection \
 	QueryStructure/Automation/AutoDB \
 	QueryStructure/Automation/QSImplementation
