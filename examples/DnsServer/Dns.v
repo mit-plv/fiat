@@ -891,7 +891,7 @@ Proof.
       apply refine_under_bind; intros.
       setoid_rewrite refine_Count; simplify with monad laws.
       apply refine_under_bind; intros.
-      (* remove duplicate check *)Check foo7.
+      (* remove duplicate check *)
       setoid_rewrite foo7; eauto.
       simplify with monad laws.
       rewrite foo8 by apply foo9.

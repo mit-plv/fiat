@@ -119,6 +119,7 @@ QUERYSTRUCTURE_MODULES := \
 	QueryStructure/Implementation/DataStructures/BagADT/BagImplementation \
 	QueryStructure/Implementation/DataStructures/BagADT/QueryStructureImplementation \
 	QueryStructure/Implementation/DataStructures/BagADT/IndexSearchTerms \
+	QueryStructure/Implementation/DataStructures/BagADT/PrefixSearchTerms \
 	QueryStructure/Implementation/Operations/BagADT/Refinements \
 	QueryStructure/Implementation/BagImplementation \
 	QueryStructure/Automation/General/QueryAutomation \
