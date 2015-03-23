@@ -398,7 +398,8 @@ Section SharpenedBagImplementation.
                           bfind_matcher search_term (indexedElement t)) x0)))).
       rewrite -> benumerate_fold_left.
       rewrite <- H1; rewrite <- H4; rewrite -> map_app.
-      rewrite <- filter_map with (f:=fun t => negb (bfind_matcher search_term t)).
+      let lem := constr:(fun A => @filter_map A _ (fun t => negb (bfind_matcher search_term t))) in
+      rewrite <- lem.
       rewrite <- map_then_map; rewrite <- filter_map.
       repeat rewrite <- H6; rewrite -> Permutation_app_comm; intuition.
       apply bdelete_RepInv; assumption.
