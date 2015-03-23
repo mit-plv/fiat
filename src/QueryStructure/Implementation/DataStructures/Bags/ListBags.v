@@ -101,7 +101,7 @@ Section ListBags.
 
   Global Instance ListAsBag
   : Bag (list TItem) TItem TSearchTerm TUpdateTerm :=
-    {|
+    {
       bempty            := nil;
       bfind_matcher     := bfind_matcher;
       bupdate_transform := bupdate_transform;
@@ -112,7 +112,7 @@ Section ListBags.
       bcount     := ListAsBag_bcount;
       bdelete    := ListAsBag_bdelete;
       bupdate    := ListAsBag_bupdate
-    |}.
+    }.
 
   Global Instance ListAsBagCorrect
   : CorrectBag ListBag_RepInv ListBag_ValidUpdate ListAsBag :=

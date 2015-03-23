@@ -112,7 +112,7 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
     forall elt,
       Equivalence (eq_key (elt:=elt)).
   Proof.
-    intros; unfold eq_key; intuition.
+    intros; unfold eq_key; split; intuition.
     unfold Transitive; firstorder.
     transitivity (fst y); trivial.
   Qed.

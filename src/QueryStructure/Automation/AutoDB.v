@@ -23,6 +23,7 @@ Require Export ADTSynthesis.Common.DecideableEnsembles
         ADTSynthesis.QueryStructure.Implementation.ListImplementation
         ADTSynthesis.QueryStructure.Specification.Constraints.tupleAgree
         ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.IndexSearchTerms
+        ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.PrefixSearchTerms
         ADTSynthesis.QueryStructure.Implementation.Operations.BagADT.Refinements
         ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.QueryStructureImplementation
         ADTSynthesis.QueryStructure.Automation.SearchTerms.InvertedSearchTerms.

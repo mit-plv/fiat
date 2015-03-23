@@ -5,15 +5,18 @@ Require Import Bedrock.Platform.Cito.StringMap.
 
 Ltac rewrite_Eq_in_all :=
   repeat match goal with
-           | [ H: StringMap.Equal _ _, H': _ |- _ ] =>
-             progress (try setoid_rewrite H in H';
-                       try setoid_rewrite H)
-           | [ H: pointwise_relation _ _ _ _, H': _ |- _ ] =>
-             progress (try setoid_rewrite H in H';
-                       try setoid_rewrite H)
-           | [ H: _ _ _, H': _ |- _ ] =>
-             progress (try setoid_rewrite H in H';
-                       try setoid_rewrite H)
+           | [ H: StringMap.Equal ?x _, H': appcontext[?x] |- _ ]
+             => setoid_rewrite H in H'
+           | [ H: StringMap.Equal ?x _ |- appcontext[?x] ]
+             => setoid_rewrite H
+           | [ H: pointwise_relation _ _ ?x _, H': appcontext[?x] |- _ ]
+             => setoid_rewrite H in H'
+           | [ H: pointwise_relation _ _ ?x _ |- appcontext[?x] ]
+             => setoid_rewrite H
+           | [ H: ?R ?x _, H': appcontext[?x] |- _ ]
+             => setoid_rewrite H in H'
+           | [ H: ?R ?x _ |- appcontext[?x] ]
+             => setoid_rewrite H
          end.
 
 Add Parametric Morphism elt welt :

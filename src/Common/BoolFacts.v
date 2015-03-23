@@ -1,4 +1,4 @@
-Require Import Coq.Strings.String Coq.Arith.Arith Coq.ZArith.BinInt Coq.NArith.BinNat.
+Require Import Coq.Strings.String Coq.Arith.Arith Coq.ZArith.BinInt Coq.NArith.BinNat Coq.Bool.Bool.
 
 Section BoolFacts.
   Lemma collapse_ifs_dec :
@@ -55,5 +55,16 @@ Section BoolFacts.
     forall {A} (b: bool) (x y: A), (if negb b then x else y) = (if b then y else x).
   Proof.
     intros; destruct b; simpl; reflexivity.
+  Qed.
+
+  Lemma andb_implication_preserve :
+    forall a b, (a = true -> b = true) -> a = b && a.
+  Proof. intros; destruct a; destruct b; symmetry; auto. Qed.
+
+  Lemma andb_permute :
+    forall a b c, a && (b && c) = b && (a && c).
+  Proof.
+    intros; repeat rewrite andb_assoc;
+    replace (a && b) with (b && a) by apply andb_comm; reflexivity.
   Qed.
 End BoolFacts.

@@ -597,7 +597,7 @@ Module TreeBag (Import M: WS).
     Lemma IndexedBag_BagFindCorrect :
       BagFindCorrect IndexedBag_RepInv IndexedBag_bfind IndexedBag_bfind_matcher IndexedBag_benumerate.
     Proof.
-      intros.
+      intros; hnf.
       destruct search_term as (option_key, search_term).
       destruct option_key as [ key | ].
 
@@ -892,7 +892,7 @@ Module TreeBag (Import M: WS).
       BagDeleteCorrect IndexedBag_RepInv IndexedBag_bfind IndexedBag_bfind_matcher
         IndexedBag_benumerate IndexedBag_bdelete.
     Proof.
-
+      hnf.
       destruct search_term as [option_key search_term];
       destruct option_key as [ key | ]; simpl.
 
@@ -1041,7 +1041,7 @@ Module TreeBag (Import M: WS).
                        IndexedBag_bfind IndexedBag_bfind_matcher
                        IndexedBag_benumerate bupdate_transform IndexedBag_bupdate.
     Proof.
-
+      hnf.
       destruct search_term as [option_key search_term];
       destruct option_key as [ key | ];
       unfold IndexedBag_benumerate, IndexedBag_bfind_matcher; simpl.
@@ -1169,7 +1169,7 @@ Module TreeBag (Import M: WS).
   : CorrectBag (IndexedBag_RepInv _ RepInv projection)
                (IndexedBag_ValidUpdate _ ValidUpdate projection)
                (IndexedBagAsBag TBag projection ) :=
-    {|
+    {
        bempty_RepInv     := IndexedBag_Empty_RepInv TBag RepInv projection;
        binsert_RepInv    := IndexedBag_binsert_Preserves_RepInv TBag _ _ _ projection;
        bdelete_RepInv    := IndexedBag_bdelete_Preserves_RepInv TBag _ _ _ projection;
@@ -1181,6 +1181,6 @@ Module TreeBag (Import M: WS).
        bcount_correct    := IndexedBag_BagCountCorrect TBag _ _ CorrectTBag projection;
        bdelete_correct   := IndexedBag_BagDeleteCorrect TBag _ _ CorrectTBag projection;
        bupdate_correct   := IndexedBag_BagUpdateCorrect TBag _ _ CorrectTBag projection
-    |}.
+    }.
 
 End TreeBag.

@@ -1,5 +1,6 @@
 (** * Specialization of the dependently typed parser to minimal parse trees, taking in parse trees *)
 Require Import Coq.Lists.List Coq.Program.Program Coq.Program.Wf Coq.Arith.Wf_nat Coq.Arith.Compare_dec Coq.Classes.RelationClasses Coq.Strings.String.
+Require Import Coq.omega.Omega.
 Require Import ADTSynthesis.Parsers.ContextFreeGrammar ADTSynthesis.Parsers.DependentlyTyped ADTSynthesis.Parsers.MinimalParse.
 Require Import ADTSynthesis.Parsers.WellFoundedParse ADTSynthesis.Parsers.ContextFreeGrammarProperties ADTSynthesis.Parsers.BaseTypes.
 Require Import ADTSynthesis.Common ADTSynthesis.Common.Wf ADTSynthesis.Common.Le.
@@ -125,7 +126,7 @@ Section recursive_descent_parser.
                     end) }.
 
   Local Instance methods' : @parser_computational_dataT' _ String types_methods'
-    := {| split_string_for_production str0 valid it its s
+    := { split_string_for_production str0 valid it its s
           := let orig_splits := map (fun s1s2 =>
                                        ({| string_val := string_val (fst s1s2);
                                            state_val := None |},
@@ -137,7 +138,7 @@ Section recursive_descent_parser.
                | Some st => let st' := split_parse_of_production st in
                             ({| string_val := fst (projT1 st') ; state_val := Some (snd (fst (projT2 st'))) |},
                              {| string_val := snd (projT1 st') ; state_val := Some (snd (projT2 st')) |})::nil
-             end |}.
+             end }.
   Proof.
     intros; subst_body; simpl in *.
     abstract (

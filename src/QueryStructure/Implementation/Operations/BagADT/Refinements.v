@@ -336,7 +336,7 @@ Section BagsQueryStructureRefinements.
            (P : Ensemble (ilist f As))
            (P_dec : DecideableEnsemble P)
   : DecideableEnsemble (fun ab : ilist f (a :: As) => P (ilist_tl ab)) :=
-    {| dec ab := dec (ilist_tl ab) |}.
+    { dec ab := dec (ilist_tl ab) }.
   Proof.
     intro; apply (dec_decides_P (DecideableEnsemble := P_dec) (ilist_tl a0)).
   Defined.
@@ -349,7 +349,7 @@ Section BagsQueryStructureRefinements.
            (P : Ensemble (f a))
            (P_dec : DecideableEnsemble P)
   : DecideableEnsemble (fun ab : ilist f (a :: As) => P (ilist_hd ab)) :=
-    {| dec ab := dec (ilist_hd ab) |}.
+    { dec ab := dec (ilist_hd ab) }.
   Proof.
     intro; apply (dec_decides_P (DecideableEnsemble := P_dec) (ilist_hd a0)).
   Defined.

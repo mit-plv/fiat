@@ -86,8 +86,9 @@ Proof.
   (P := fun tup' : Tuple => tupleAgree tup tup' attrlist'
                             -> tupleAgree tup tup' attrlist) in H; eauto.
   intuition.
-  apply (proj1 (Tuple_Agree_eq_dec _ _ _ _ _ )) in H3;
-    rewrite H3 in * ; simpl in *; eapply Tuple_Agree_eq_dec; eauto.
+  let H := match goal with H : tupleAgree _ _ _ |- _ => constr:H end in
+  apply (proj1 (Tuple_Agree_eq_dec _ _ _ _ _ )) in H;
+    rewrite H in * ; simpl in *; eapply Tuple_Agree_eq_dec; eauto.
   destruct (Tuple_Agree_dec _ _ attr_eq_dec tup a); auto;
   [ apply (proj1 (Tuple_Agree_eq_dec _ _ _ _ _ )) in t; rewrite t, orb_true_r
   | apply (proj1 (Tuple_Agree_eq_dec' _ _ _ _ _ )) in n; rewrite n, orb_false_r]; auto.
@@ -95,7 +96,10 @@ Proof.
   [ apply (proj1 (Tuple_Agree_eq_dec _ _ _ _ _ )) in t; rewrite t
   | apply (proj1 (Tuple_Agree_eq_dec' _ _ _ _ _ )) in n0; rewrite n0]; auto.
   elimtype False; eapply (Tuple_Agree_eq_dec' _ _ attr_eq_dec); eauto.
-  apply H2; eapply Tuple_Agree_eq_dec; eauto.
+  match goal with
+    | [ H : _ |- _ ]
+      => apply H; eapply Tuple_Agree_eq_dec; solve [ eauto ]
+  end.
 Qed.
 
 Lemma Check_Attr_Depend_dec'
@@ -121,7 +125,10 @@ Proof.
     apply (proj1 (Tuple_Agree_eq_dec' _ _ _ _ _ )) in n; rewrite n];
   simpl; intuition.
   right;   eapply Tuple_Agree_eq_dec; eauto.
-  elimtype False; apply H1; eapply Tuple_Agree_eq_dec; eauto.
+  elimtype False;
+    match goal with
+      | [ H : _ |- _ ] => apply H; eapply Tuple_Agree_eq_dec; eauto
+    end.
   eapply Tuple_Agree_eq_dec; eauto.
   left; eapply Tuple_Agree_eq_dec'; eauto.
 Qed.
