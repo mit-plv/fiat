@@ -83,7 +83,9 @@ Proof.
   (* make simple indexes using [[AREA_CODE]; [MEASUREMENT_TYPE; CELL_ID]]. *)
 
   (* Shiny new automatic index selection*)
-  GenerateIndexesForAll ltac:(fun l => make simple indexes using l).
+  make simple indexes using [[(EqualityIndex, AREA_CODE); (UnIndex, AREA_CODE)]; [(EqualityIndex, MEASUREMENT_TYPE); (EqualityIndex, CELL_ID); (UnIndex, CELL_ID) ]].
+
+  (*GenerateIndexesForAll ltac:(fun l => make simple indexes using l). *)
 
   Time plan. (* 220 seconds *)
   idtac.

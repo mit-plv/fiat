@@ -104,7 +104,8 @@ Proof.
 
   start honing QueryStructure.
 
-  GenerateIndexesForAll ltac:(fun l => make simple indexes using l).
+  make simple indexes using [[(EqualityIndex, sAUTHOR); (EqualityIndex, sISBN); (UnIndex, sISBN)]; [(EqualityIndex, sISBN); (UnIndex, sISBN) ]].
+  (* GenerateIndexesForAll ltac:(fun l => make simple indexes using l). *)
 
     hone method "PlaceOrder".
     {
@@ -153,7 +154,25 @@ Proof.
 
   hone method "DeleteBook".
   {
-    implement_Query.
+    Focused_refine_Query. (* With Focused_refine_Query: 7 seconds. *)
+    { (* Step 1: Implement [In] by enumeration. *)
+      implement_In.
+      (* Step 2: Convert where clauses into compositions of filters. *)
+      repeat convert_Where_to_filter.
+      (* Step 3: Do some simplication.*)
+      repeat setoid_rewrite <- filter_and.
+      try setoid_rewrite andb_true_r.
+      (* Step 4: Move filters to the outermost [Join_Comp_Lists] to which *)
+      (* they can be applied. *)
+      repeat setoid_rewrite Join_Filtered_Comp_Lists_id.
+      distribute_filters_to_joins.
+      (* Step 5: Convert filter function on topmost [Join_Filtered_Comp_Lists] to an
+               equivalent search term matching function.  *)
+      implement_filters_with_find
+        find_simple_search_term
+        find_simple_search_term_dep.
+    }
+
     simpl; simplify with monad laws.
     implement_Delete_branches.
 

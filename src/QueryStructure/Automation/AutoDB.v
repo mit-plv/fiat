@@ -404,7 +404,7 @@ Ltac findMatchingTerm fds kind s k :=
       assert (H : s = fd) by reflexivity; clear H;
       assert (H : kind = IndexType) by reflexivity; clear H;
       k X
-    | (?fds1, ?fds2) => findMatchingTerm kind fds1 s k || findMatchingTerm kind fds2 s k
+    | (?fds1, ?fds2) => findMatchingTerm fds1 kind s k || findMatchingTerm fds2 kind s k
   end.
 
 (* Recurse over the list of search term indexes [fs],
@@ -793,7 +793,7 @@ Ltac createTerm_dep dom f fds tail fs k :=
           KindNameName := ?s|} :: ?fs' =>
       createTerm_dep dom f fds tail fs'
                      ltac:(fun rest =>
-                             findMatchingTerm fds s
+                             findMatchingTerm fds kind s
                                               ltac:(fun X =>
                                                       match kind with
                                                         | EqualityIndex =>
@@ -901,8 +901,6 @@ Ltac findGoodTerm_dep SC F indexed_attrs visited_attrs k :=
                                  KindNameName := fd |}, X)
                              (fun (a : T) (_ : @Tuple SC) => true)
               | left _ => k visited_attrs tt F
-                            k ({| KindNameKind := InclusionIndex;
-                                  KindNameName := fd|}, X) (fun _ : @Tuple SC => true)
             end
       end
     | fun (a : ?T) b => (@?f a b) && (@?g a b) =>

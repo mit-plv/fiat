@@ -93,6 +93,7 @@ Proof.
 
   (* Old, explicit index selection*)
   (* make simple indexes using [[TYPE; STOCK_CODE]; [DATE; STOCK_CODE]]. *)
+  make simple indexes using [[(EqualityIndex, TYPE); (EqualityIndex, STOCK_CODE); (UnIndex, STOCK_CODE)]; [(EqualityIndex, DATE); (EqualityIndex, STOCK_CODE); (UnIndex, STOCK_CODE) ]].
 
   (* Shiny new automatic index selection*)
   GenerateIndexesForAll ltac:(fun l => make simple indexes using l).
