@@ -184,8 +184,8 @@ Section Upperbound.
 End Upperbound.
 
 (* notation for upperbound *)
-Notation "{ x 'in' xs | P 'forall' y }" := (pick_upperbound (fun x y => P) xs) (at level 70) : comp_scope.
-Notation "{ x 'in' xs | P 'forall' y } : A" := (@pick_upperbound A (fun x y => P) xs) (at level 70) : comp_scope.
+Notation "{{ x 'in' xs | P 'forall' y }}" := (pick_upperbound (fun x y => P) xs) (at level 70) : comp_scope.
+Notation "{{ x 'in' xs | P 'forall' y }} : A" := (@pick_upperbound A (fun x y => P) xs) (at level 70) : comp_scope.
 
 Section ADT.
   (* Rule schema *)
@@ -222,6 +222,7 @@ Section ADT.
   ADTsignature {
       Constructor "Init" : unit -> rep,
       Method "AddRule" : rep x RuleRecord -> rep x bool,
+      Method "DeletePrefix" : rep x Ip -> rep x list RuleRecord,
       Method "Classify" : rep x Packet -> rep x Response
     }.
 
@@ -232,6 +233,9 @@ Section ADT.
     update "AddRule" (r : RuleRecord) : bool :=
       Insert r into RULES,
 
+    update "DeletePrefix" (ip : Ip) : list RuleRecord :=
+      Delete r from RULES where prefix_prop r!DESTINATION ip,
+
     query "Classify" (p : Packet) : Response :=
       rs <- For (r in RULES)
             (* the rule's ip must be a prefix of the packet's ip *)
@@ -240,7 +244,7 @@ Section ADT.
                    policy_prop r!PROTOCOL (protocol p))
             Return r;
       (* try to choose one rule that has the highest priority *)
-      r <- { r in rs | r'!PRIORITY <= r!PRIORITY forall r' } : RuleRecord;
+      r <- {{ r in rs | r'!PRIORITY <= r!PRIORITY forall r' }} : RuleRecord;
       (* return its accept / deny if such rule exists, otherwise uncertain *)
       Ifopt
         r as r
@@ -296,12 +300,23 @@ Section ADT.
       insertion.
     }
 
+    hone method "DeletePrefix".
+    {
+      simplify with monad laws.
+      simpl.
+      implement_QSDeletedTuples ltac:(fun _ _ _ _ => PrefixSearchTermFinder).
+      simplify with monad laws.
+      implement_EnsembleDelete_AbsR ltac:(fun _ _ _ _ => PrefixSearchTermFinder).
+      finish honing.
+    }
+
     FullySharpenQueryStructure ClassifierSchema
     (icons (@PrefixSearchUpdateTerm _ ascii_dec (GetHeading ClassifierSchema RULES) get_destination')
            (inil
               (fun ns : NamedSchema =>
                  SearchUpdateTerms (schemaHeading (relSchema ns))))).
 
+    implement_bag_methods.
     implement_bag_methods.
     implement_bag_methods.
   Defined.
