@@ -77,7 +77,7 @@ Section SharpenedBagImplementation.
         * constructor; rewrite eqv_nr; eauto.
       + unfold UnConstrFreshIdx in H0.
         apply NoDup_Permutation_rewrite with (l:=map elementIndex (iel :: lor)).
-        apply Permutation_map_aux; symmetry; assumption.
+        apply Permutation_map; symmetry; assumption.
         simpl; apply NoDup_cons; clear eqv_or.
         unfold not; intros.
         apply in_map_iff in H; destruct H; destruct H.
@@ -142,7 +142,7 @@ Section SharpenedBagImplementation.
       + unfold In, Complement, In in *.
         rewrite filter_In in H; intuition.
         rewrite H3 in H5; discriminate.
-      + apply Permutation_map_aux with (f:=elementIndex) in Perm_l'.
+      + apply Permutation_map with (f:=elementIndex) in Perm_l'.
         symmetry in Perm_l'; apply NoDup_Permutation_rewrite in Perm_l'.
         apply NoDup_filter_in_map; assumption.
         assumption.
@@ -194,11 +194,11 @@ Section SharpenedBagImplementation.
       + rewrite -> map_app; apply NoDup_app_swap; rewrite <- map_app; simpl.
         apply NoDup_cons. unfold not; intros. pose proof (permu_filter_rewrite l f).
         rewrite Permutation_app_comm in H3.
-        apply Permutation_map_aux with (f:=m) in H3; symmetry in H3.
+        apply Permutation_map with (f:=m) in H3; symmetry in H3.
         pose proof (@Permutation_in _ _ _ _ H3 H2). contradiction.
         rewrite -> map_app; apply NoDup_app_swap; rewrite <- map_app; assumption.
       + apply NoDup_cons. unfold not; intros. pose proof (permu_filter_rewrite l f).
-        apply Permutation_map_aux with (f:=m) in H3; symmetry in H3.
+        apply Permutation_map with (f:=m) in H3; symmetry in H3.
         pose proof (@Permutation_in _ _ _ _ H3 H2).
         contradiction. assumption.
   Qed.
@@ -260,7 +260,7 @@ Section SharpenedBagImplementation.
           rewrite <- H4; intuition.
           rewrite <- H4; intuition.
         * assumption.
-      + apply Permutation_map_aux with (f:=elementIndex) in H4.
+      + apply Permutation_map with (f:=elementIndex) in H4.
         symmetry in H4.
         apply NoDup_Permutation_rewrite in H4.
         * assumption.
@@ -434,8 +434,8 @@ Section SharpenedBagImplementation.
           rewrite <- H11; intuition.
           rewrite <- H11; intuition.
         * assumption.
-      + apply Permutation_map_aux with (f:=elementIndex) in H7; symmetry in H7.
-        apply Permutation_map_aux with (f:=elementIndex) in H11.
+      + apply Permutation_map with (f:=elementIndex) in H7; symmetry in H7.
+        apply Permutation_map with (f:=elementIndex) in H11.
         eapply NoDup_Permutation_rewrite. symmetry; apply H11.
         rewrite -> map_app; rewrite -> map_map; simpl; rewrite <- map_app; apply NoDup_two_partitions.
         apply NoDup_Permutation_rewrite in H7; assumption.

@@ -230,7 +230,7 @@ Section BagsQueryStructureRefinements.
     eapply Permutation_map; eauto.
     setoid_rewrite <- H1.
     eexists x; intuition eauto.
-    eapply Permutation_map_aux in H1.
+    eapply Permutation_map in H1.
     symmetry in H1.
     eapply NoDup_Permutation_rewrite; eauto.
     rewrite map_map.
