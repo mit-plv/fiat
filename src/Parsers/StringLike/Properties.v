@@ -282,4 +282,71 @@ Section String.
     rewrite LeftId.
     reflexivity.
   Qed.
+
+  Lemma SplitAtPastEnd_Length_fst {n} {s : String} (H : Length s <= n) : Length (fst (SplitAt n s)) = Length s.
+  Proof.
+    rewrite SplitAtLength_correct.
+    auto with arith.
+  Qed.
+
+
+  Lemma SplitAtPastEnd' {n} (s : String) (H : Length s <= n) : snd (SplitAt n s) = Empty _.
+  Proof.
+    apply Empty_Length.
+    pose proof (f_equal (fun l => l + Length (snd (SplitAt n s))) (SplitAtPastEnd_Length_fst H)) as H0.
+    simpl in *.
+    rewrite Length_correct in H0.
+    rewrite SplitAt_correct in H0.
+    omega.
+  Qed.
+
+  Lemma SplitAt_gives_Empty {n} {s : String}
+  : snd (SplitAt n s) = Empty _ -> fst (SplitAt n s) = s.
+  Proof.
+    intro H.
+    pose proof (SplitAt_correct String n s) as H'.
+    rewrite H in H'; simpl in *.
+    rewrite RightId in H'.
+    assumption.
+  Qed.
+
+  Lemma SplitAtPastEnd {n} {s : String} (H : Length s <= n) : SplitAt n s = (s, Empty _).
+  Proof.
+    apply injective_projections; simpl;
+    [ apply SplitAt_gives_Empty | ];
+    apply SplitAtPastEnd'; assumption.
+  Qed.
+
+  Lemma SplitAtEnd {s : String} : SplitAt (Length s) s = (s, Empty _).
+  Proof.
+    apply SplitAtPastEnd.
+    reflexivity.
+  Qed.
+
+  Lemma SplitAt_min_length {n} {s : String} : SplitAt (min (Length s) n) s = SplitAt n s.
+  Proof.
+    apply Min.min_case_strong; intro H.
+    { rewrite SplitAtEnd, (SplitAtPastEnd H); reflexivity. }
+    { reflexivity. }
+  Qed.
+
+  Lemma SplitAtS {n} ch (s : String)
+  : SplitAt (S n) ([[ ch ]] ++ s) = ([[ ch ]] ++ fst (SplitAt n s), snd (SplitAt n s)).
+  Proof.
+    rewrite <- SplitAt_concat_correct.
+    rewrite <- Length_correct.
+    rewrite Singleton_Length; simpl.
+    rewrite SplitAtLength_correct.
+    rewrite Associativity.
+    rewrite SplitAt_correct.
+    replace (S (min (Length s) n)) with (min (Length ([[ ch ]] ++ s)) (S n)).
+    { rewrite SplitAt_min_length; reflexivity. }
+    { rewrite <- Length_correct, Singleton_Length; reflexivity. }
+  Qed.
+
+  Lemma SplitAtEmpty {n} : SplitAt n (Empty String) = (Empty _, Empty _).
+  Proof.
+    rewrite SplitAtPastEnd; trivial.
+    rewrite Length_Empty; auto with arith.
+  Qed.
 End String.
