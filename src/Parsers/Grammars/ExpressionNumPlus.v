@@ -10,7 +10,7 @@ Section num_plus.
 
   Definition plus_expr_grammar : grammar Ascii.ascii :=
     [[[ ("expr" ::== << $< "number" >$
-                      | $< "expr" $ #"+" $ "expr" >$ >>);;
+                      | $< "number" $ #"+" $ "expr" >$ >>);;
         ("digit" ::== << $< #"0" >$ | $< #"1" >$ | $< #"2" >$ | $< #"3" >$ | $< #"4" >$ | $< #"5" >$ | $< #"6" >$ | $< #"7" >$ | $< #"8" >$ | $< #"9" >$ >>);;
         ("number" ::== << $< "digit" >$ | $< "digit" $ "number" >$ >>)
     ]]].
@@ -35,7 +35,7 @@ Section tests.
     match goal with
       | [ |- parse_of_production _ _ ?s _ ] => set (n := s)
     end.
-    change n with (((("1"))) ++ ("+" ++ ((((((("2"))) ++ ("+" ++ ("3"))))) ++ ("+" ++ ("4" ++ ("+" ++ "5"))))))%string; subst n.
+    change n with ("1" ++ ("+" ++ ("2" ++ ("+" ++ ("3" ++ ("+" ++ ("4" ++ ("+" ++ "5"))))))))%string; subst n.
     fin.
   Defined.
 End tests.
