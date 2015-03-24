@@ -16,9 +16,11 @@ Proof.
             Concat := append;
             Length := String.length;
             bool_eq x y := if string_dec x y then true else false;
-            SplitAt n s := (substring 0 n s, substring n (S (String.length s)) s)
+            SplitAt n s := (substring 0 n s, substring n (S (String.length s)) s);
+            Fold P Pnil Pcons s := string_rect P Pnil Pcons s
          |};
-  solve [ abstract (let x := fresh "x" in
+  solve [ reflexivity
+            | abstract (let x := fresh "x" in
                     let IHx := fresh "IHx" in
                     intro x; induction x as [|? ? IHx]; try reflexivity; simpl;
                     intros;

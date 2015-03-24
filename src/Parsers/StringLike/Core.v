@@ -18,6 +18,8 @@ Record string_like (CharType : Type) :=
     bool_eq : String -> String -> bool;
     bool_eq_correct : forall x y : String, bool_eq x y = true <-> x = y;
     Length : String -> nat;
+    Fold : forall (P : String -> Type) (Pnil : P Empty) (Pcons : forall x y, P y -> P (Singleton x ++ y)) (s : String),
+             P s;
     Associativity : forall x y z, (x ++ y) ++ z = x ++ (y ++ z);
     LeftId : forall x, Empty ++ x = x;
     RightId : forall x, x ++ Empty = x;
@@ -26,6 +28,8 @@ Record string_like (CharType : Type) :=
     Length_Empty : Length Empty = 0;
     Empty_Length : forall s1, Length s1 = 0 -> s1 = Empty;
     Not_Singleton_Empty : forall x, Singleton x <> Empty;
+    Fold_compute_empty : forall P Pnil Pcons, Fold P Pnil Pcons Empty = Pnil;
+    Fold_compute_cons : forall P Pnil Pcons x s, Fold P Pnil Pcons (Singleton x ++ s) = Pcons x s (Fold P Pnil Pcons s);
     SplitAt : nat -> String -> String * String;
     SplitAt_correct : forall n s, fst (SplitAt n s) ++ snd (SplitAt n s) = s;
     SplitAt_concat_correct : forall s1 s2, SplitAt (Length s1) (s1 ++ s2) = (s1, s2);
