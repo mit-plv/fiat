@@ -18,7 +18,7 @@ Section Packet.
   Global Instance Query_eq_Protocol :
     Query_eq Protocol := {| A_eq_dec := Protocol_dec |}.
 
-  (* a Policy of P is either enforcing some constant P, or accept any *)
+  (* a Policy of P is either enforcing some constant P, or accepting any *)
   Section Packet_Protocol.
     Variable (P : Type).
     Context {P_eq_dec : Query_eq P}.

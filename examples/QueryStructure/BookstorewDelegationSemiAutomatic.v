@@ -100,7 +100,6 @@ Theorem SharpenedBookStore :
   Sharpened BookStoreSpec.
 Proof.
 
-  Unset Ltac Debug.
   unfold BookStoreSpec.
 
   (* First, we unfold various definitions and drop constraints *)
@@ -108,7 +107,6 @@ Proof.
 
   (* Then we define an index structure for each table using Bag ADTs *)
 
-Unset Ltac Debug.
   make simple indexes using [[(EqualityIndex, sAUTHOR); (EqualityIndex, sISBN); (UnIndex, sISBN)]; [(EqualityIndex, sISBN); (UnIndex, sISBN) ]].
   (* In other words, implement the Book table with a Bag ADT
     indexed first on the author field, then the ISBN field
@@ -118,79 +116,24 @@ Unset Ltac Debug.
      the actual refinement with the constructor, in a fully automated way *)
   hone constructor "Init".
   { initializer. }
+  
+  hone method "DeleteBook".
+  { deletion. }
 
   (* We then move on to the "NumOrders" method, which we decide to
      implement semi-manually *)
   hone method "NumOrders".
-  {
-    (* First we generate a new goal to just focus on refining the query. *)
-    Focused_refine_Query. (* With Focused_refine_Query: 7 seconds. *)
-    { (* Step 1: Implement [In] by enumeration. *)
-      implement_In.
-      (* Step 2: Convert where clauses into compositions of filters. *)
-      repeat convert_Where_to_filter.
-      (* Step 3: Do some simplication.*)
-      repeat setoid_rewrite <- filter_and.
-      try setoid_rewrite andb_true_r.
-      (* Step 4: Move filters to the outermost [Join_Comp_Lists] to which *)
-      (* they can be applied. *)
-      repeat setoid_rewrite Join_Filtered_Comp_Lists_id.
-      distribute_filters_to_joins.
-
-      (* Step 5: Convert filter function on topmost [Join_Filtered_Comp_Lists] to an
-               equivalent search term matching function.  *)
-      implement_filters_with_find
-        find_simple_search_term
-        find_simple_search_term_dep.
-    }
-    (* Do some more simplication using the monad laws. *)
-    simpl; simplify with monad laws.
-    (* Satisfied with the query, we now implement the new data
-       representation (in this case, it is unchanged).
-     *)
-    simpl; commit.
-    (* And we're done! *)
-    finish honing.
-  }
+  { observer. }
 
   (* We'll now refine a insertion operation. *)
   hone method "AddBook".
-  {
-    (* First Convert Integrity Checks to Queries. *)
-    Implement_Insert_Checks.
-
-    (* These queries can be implemented using the [implement_Query] tactic *)
-    (* which automatically concretizes queries. *)
-    implement_Query.
-
-    simpl; simplify with monad laws.
-
-    setoid_rewrite refineEquiv_swap_bind.
-    implement_Insert_branches.
-
-    finish honing.
-  }
-
-  hone method "DeleteBook".
-  {
-    simplify with monad laws.
-    implement_Query.
-    simpl; simplify with monad laws.
-    implement_Delete_branches.
-    finish honing.
-  }
+  { insertion. }
 
   hone method "GetTitles".
   { observer. }
 
   hone method "DeleteOrder".
-  {
-    implement_QSDeletedTuples find_simple_search_term.
-    simplify with monad laws; cbv beta; simpl.
-    implement_EnsembleDelete_AbsR find_simple_search_term.
-    simplify with monad laws.
-    finish honing.
-  }
+  { deletion. }
 
   hone method "PlaceOrder".
   { insertion. }

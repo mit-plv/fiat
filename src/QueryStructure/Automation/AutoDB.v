@@ -1947,11 +1947,29 @@ Ltac initializer :=
   finish honing.
 
 Ltac deletion :=
-  try simplify with monad laws;
-  implement_QSDeletedTuples find_simple_search_term;
-  simpl;
-  implement_EnsembleDelete_AbsR find_simple_search_term;
-  finish honing.
+    try simplify with monad laws;
+      etransitivity;
+      [ repeat match goal with
+                 | |- context[Query_For _] =>
+                   implement_Query;
+                     eapply refine_under_bind; intros
+               end;
+        repeat setoid_rewrite refine_if_If at 1;
+        repeat setoid_rewrite refine_If_Then_Else_Bind at 1;
+        repeat setoid_rewrite Bind_refine_If_Then_Else at 1;
+        repeat eapply refine_If_Then_Else;
+        try simplify with monad laws; cbv beta; simpl;
+        (
+         (implement_QSDeletedTuples find_simple_search_term;
+         try simplify with monad laws;
+         cbv beta; simpl;
+         implement_EnsembleDelete_AbsR find_simple_search_term;
+         simplify with monad laws;
+         reflexivity) ||
+                     
+           (try simplify with monad laws;
+          simpl; commit; reflexivity))
+      | cbv beta; simpl; try simplify with monad laws; cleanup_Count; finish honing ].
 
 Ltac insertion :=
       Implement_Insert_Checks;
@@ -2000,6 +2018,7 @@ Ltac method :=
   match goal with
     | [ |- context[EnsembleInsert _ _]] => insertion
     | [ |- context[Query_For _]] => observer
+    | [ |- context[EnsembleDelete _ _]] => deletion
   end.
 
 Ltac honeOne :=

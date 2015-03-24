@@ -93,91 +93,33 @@ Proof.
   (* First, we unfold various definitions and drop constraints *)
   start honing QueryStructure.
 
-  make simple indexes using [[TYPE; STOCK_CODE]; [DATE; STOCK_CODE]].
+  make simple indexes using [[(EqualityIndex, TYPE); (EqualityIndex, STOCK_CODE)];
+                             [(EqualityIndex, DATE); (EqualityIndex, STOCK_CODE)]].
 
   hone constructor "Init".
-  {
-    initializer.
-  }
+  { initializer. }
 
   hone method "LargestTransaction".
-  {
-    observer.
-  }
+  { observer. }
 
   hone method "TotalVolume".
-  {
-    observer.
-  }
+  { observer. }
 
 
   hone method "AddStock".
-  {
-
-    Implement_Insert_Checks.
-
-    implement_Query.
-
-    simpl; simplify with monad laws.
-    setoid_rewrite refineEquiv_swap_bind.
-
-    implement_Insert_branches.
-
-    finish honing.
-  }
+  { insertion. }
 
 
-    hone method "AddTransaction".
-    {
-      Implement_Insert_Checks.
+  hone method "AddTransaction".
+  { insertion. }
+  
+  hone method "MaxPrice".
+  { observer. }
 
-      implement_Query.
-      simpl; simplify with monad laws.
-
-      implement_Query.
-      simpl; simplify with monad laws.
-
-      repeat setoid_rewrite refine_if_andb.
-
-      setoid_rewrite refineEquiv_swap_bind.
-      etransitivity.
-      apply refine_bind;
-        [reflexivity
-        | unfold pointwise_relation; intros ].
-      etransitivity.
-
-      setoid_rewrite refineEquiv_swap_bind.
-      etransitivity.
-      apply refine_bind;
-        [reflexivity
-        | unfold pointwise_relation; intros ].
-      etransitivity.
-
-      implement_Insert_branches.
-      reflexivity.
-      higher_order_1_reflexivity.
-      reflexivity.
-      higher_order_1_reflexivity.
-      finish honing.
-    }
-
-    hone method "MaxPrice".
-    {
-      implement_Query.
-      simpl; simplify with monad laws.
-      simpl; commit.
-      finish honing.
-    }
-
-    hone method "TotalActivity".
-    {
-      implement_Query.
-      simpl; simplify with monad laws.
-      simpl; commit.
-      finish honing.
-    }
-
-    idtac.
-
+  hone method "TotalActivity".
+  { observer. }
+  
+  idtac.
+  
   finish sharpening.
 Defined.
