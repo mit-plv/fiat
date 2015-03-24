@@ -1,5 +1,5 @@
 Require Import Coq.Lists.List Coq.Lists.SetoidList Coq.Bool.Bool
-        ADTSynthesis.Common.
+        ADTSynthesis.Common ADTSynthesis.Common.List.Operations.
 
 Unset Implicit Arguments.
 
@@ -487,6 +487,22 @@ Section ListFacts.
     trivial;
     f_equal;
     trivial.
+  Qed.
+
+  Lemma drop_map {A B n} (f : A -> B) ls
+  : drop n (map f ls) = map f (drop n ls).
+  Proof.
+    revert n; induction ls; simpl.
+    { destruct n; reflexivity. }
+    { destruct n; simpl; rewrite ?IHls; reflexivity. }
+  Qed.
+
+  Lemma take_map {A B n} (f : A -> B) ls
+  : take n (map f ls) = map f (take n ls).
+  Proof.
+    revert n; induction ls; simpl.
+    { destruct n; reflexivity. }
+    { destruct n; simpl; rewrite ?IHls; reflexivity. }
   Qed.
 
 End ListFacts.
