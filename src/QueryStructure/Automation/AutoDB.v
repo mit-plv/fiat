@@ -1946,6 +1946,13 @@ Ltac initializer :=
   try simplify with monad laws;
   finish honing.
 
+Ltac deletion :=
+  try simplify with monad laws;
+  implement_QSDeletedTuples find_simple_search_term;
+  simpl;
+  implement_EnsembleDelete_AbsR find_simple_search_term;
+  finish honing.
+
 Ltac insertion :=
       Implement_Insert_Checks;
     etransitivity;
