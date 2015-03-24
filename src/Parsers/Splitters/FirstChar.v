@@ -55,7 +55,7 @@ Section StringT.
              | [ |- context[match ?s with _ => _ end] ] => atomic s; destruct s
              | [ H : context[match ?s with _ => _ end] |- _ ] => atomic s; destruct s
              | _ => rewrite substring_correct3'
-             | [ |- context[SplitAt _ ?n (?s1 ++ ?s2)] ]
+             | [ |- context[SplitAt ?n (?s1 ++ ?s2)] ]
                => replace n with (Length s1) by (rewrite Singleton_Length; trivial);
                  rewrite SplitAt_concat_correct
              | [ H : minimal_parse_of_item _ _ _ _ _ _ _ _ (Terminal _) |- _ ] => inversion H; clear H
@@ -81,8 +81,8 @@ Section StringT.
            | nil => [(str, (Empty _ : String') : StringT)]
            | _::_ => match it with
                        | Terminal _
-                         => [(((fst (SplitAt _ 1 str) : String') : StringT),
-                              ((snd (SplitAt _ 1 str) : String') : StringT))]
+                         => [(((fst (SplitAt 1 str) : String') : StringT),
+                              ((snd (SplitAt 1 str) : String') : StringT))]
                        | NonTerminal _
                          => fallback_split it its str
                      end

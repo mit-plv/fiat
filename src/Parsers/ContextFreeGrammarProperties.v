@@ -91,16 +91,16 @@ Section cfg.
                        => (_ : Forall_parse_of_item' _ (@Forall_parse_of _) _,
                            expand_forall_parse_of_production
                              _
-                             (fun str'' pf'' => f' str'' (transitivity pf'' (str_le2_append _ _ _)))
+                             (fun str'' pf'' => f' str'' (transitivity pf'' (str_le2_append _ _)))
                              _ _
                              (snd ab))
                 end f).
         destruct p'; simpl.
         { exact tt. }
-        { refine (f' _ (str_le1_append _ _ _) _ (fst (fst ab)),
+        { refine (f' _ (str_le1_append _ _) _ (fst (fst ab)),
                   expand_forall_parse_of _ _ _ _ (snd (fst ab))).
           intros ??; apply f'.
-          etransitivity; [ eassumption | exact (str_le1_append _ _ _) ]. } }
+          etransitivity; [ eassumption | exact (str_le1_append _ _) ]. } }
     Defined.
 
     Global Arguments expand_forall_parse_of : simpl never.

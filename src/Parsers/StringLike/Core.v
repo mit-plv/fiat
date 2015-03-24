@@ -41,6 +41,7 @@ Bind Scope string_like_scope with String.
 Arguments Concat {_%type_scope _} (_ _)%string_like.
 Arguments bool_eq {_%type_scope _} (_ _)%string_like.
 Arguments Length {_%type_scope _} _%string_like.
+Arguments SplitAt {_%type_scope _} _%nat_scope _%string_like.
 Notation "[[ x ]]" := (@Singleton _ _ x) : string_like_scope.
 Infix "++" := (@Concat _ _) : string_like_scope.
 Infix "=s" := (@bool_eq _ _) (at level 70, right associativity) : string_like_scope.

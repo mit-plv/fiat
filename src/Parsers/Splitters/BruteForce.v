@@ -71,8 +71,8 @@ Section brute_force_splitter.
     apply Forall_impl.
     destruct str as [str ?]; simpl.
     intros; subst; split;
-    first [ apply str_le1_append
-          | apply str_le2_append ].
+    first [ apply @str_le1_append
+          | apply @str_le2_append ].
   Qed.
 
   Local Hint Resolve NPeano.Nat.lt_lt_add_l NPeano.Nat.lt_lt_add_r NPeano.Nat.lt_add_pos_r NPeano.Nat.lt_add_pos_l : arith.
