@@ -1,4 +1,4 @@
-Require Export Coq.Bool.Bool Coq.Strings.String.
+Require Export Coq.Bool.Bool Coq.Strings.String Coq.Strings.Ascii.
 Open Scope string.
 Require Export ADTSynthesis.Common.DecideableEnsembles
         ADTSynthesis.Common.List.ListMorphisms
@@ -10,6 +10,7 @@ Require Export ADTSynthesis.Common.DecideableEnsembles
         ADTSynthesis.Common.IterateBoundedIndex
         ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureNotations
         ADTSynthesis.QueryStructure.Specification.SearchTerms.ListInclusion
+        ADTSynthesis.QueryStructure.Specification.SearchTerms.ListPrefix
         ADTSynthesis.QueryStructure.Implementation.Constraints.ConstraintChecksRefinements
         ADTSynthesis.QueryStructure.Automation.General.QueryAutomation
         ADTSynthesis.QueryStructure.Automation.General.InsertAutomation
@@ -23,10 +24,10 @@ Require Export ADTSynthesis.Common.DecideableEnsembles
         ADTSynthesis.QueryStructure.Implementation.ListImplementation
         ADTSynthesis.QueryStructure.Specification.Constraints.tupleAgree
         ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.IndexSearchTerms
-        ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.PrefixSearchTerms
         ADTSynthesis.QueryStructure.Implementation.Operations.BagADT.Refinements
         ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.QueryStructureImplementation
-        ADTSynthesis.QueryStructure.Automation.SearchTerms.InvertedSearchTerms.
+        ADTSynthesis.QueryStructure.Automation.SearchTerms.InvertedSearchTerms
+        ADTSynthesis.QueryStructure.Automation.SearchTerms.FindPrefixSearchTerms.
 
 Require Export ADTSynthesis.QueryStructure.Implementation.Operations.
 
@@ -40,6 +41,7 @@ Ltac prove_decidability_for_functional_dependencies :=
   try setoid_rewrite <- eq_N_dec_bool_true_iff;
   try setoid_rewrite <- eq_Z_dec_bool_true_iff;
   try setoid_rewrite <- string_dec_bool_true_iff;
+  try setoid_rewrite <- ascii_dec_bool_true_iff;
   setoid_rewrite and_True;
   repeat progress (
            try setoid_rewrite <- andb_true_iff;
@@ -419,7 +421,6 @@ Ltac createTerm f fds tail fs k :=
       (* *)
       match kind with
         | UnIndex => k tail
-
         | InclusionIndex =>
           (findMatchingTerm
              fds kind s
@@ -427,9 +428,16 @@ Ltac createTerm f fds tail fs k :=
                                ItemSearchTerm := tail |}))
             || k {| IndexSearchTerm := nil;
                     ItemSearchTerm := tail |}
+        | FindPrefixIndex =>
+          (findMatchingTerm
+             fds kind s
+             ltac:(fun X => k {| IndexSearchTerm := Some X;
+                                 ItemSearchTerm := tail |}))
+            || k {| IndexSearchTerm := @None string;
+                    ItemSearchTerm := tail |}
       end
     | {| KindNameKind := ?kind;
-          KindNameName := ?s|} :: ?fs' =>
+         KindNameName := ?s|} :: ?fs' =>
       createTerm
         f fds tail fs'
         ltac:(fun rest =>
@@ -441,6 +449,8 @@ Ltac createTerm f fds tail fs k :=
                               k (Some X, rest)
                             | InclusionIndex =>
                               k (X, rest)
+                            | FindPrefixIndex =>
+                              k (Some X, rest)
                           end)
                          ||
                          match kind with
@@ -448,6 +458,8 @@ Ltac createTerm f fds tail fs k :=
                              k (@None (Domain f {| bindex := s |} ), rest)
                            | InclusionIndex =>
                              k (@nil string, rest)
+                           | FindPrefixIndex =>
+                             k (@None string, rest)
                          end)
   end.
 
@@ -477,7 +489,7 @@ Ltac findGoodTerm SC F indexed_attrs k :=
           assert (List.In {| KindNameKind := EqualityIndex;
                              KindNameName := fd|} indexed_attrs) as H
               by (clear; simpl; intuition eauto); clear H;
-            k ({| KindNameKind := EqualityIndex;
+          k ({| KindNameKind := EqualityIndex;
                   KindNameName := fd|}, X) (fun _ : @Tuple SC => true)
         | forall a, {_!?fd = ?X} + {_} =>
           let H := fresh in
@@ -515,6 +527,22 @@ Ltac findGoodTerm SC F indexed_attrs k :=
                              KindNameName := fd|} indexed_attrs) as H
               by (clear; simpl; intuition eauto); clear H;
             k ({| KindNameKind := InclusionIndex;
+                  KindNameName := fd|}, X) (fun _ : @Tuple SC => true)
+
+        (* FindPrefix Search Terms *)
+        | forall a, {IsPrefix (_!?fd) ?X} + {_} =>
+          let H := fresh in
+          assert (List.In {| KindNameKind := FindPrefixIndex;
+                             KindNameName := fd|} indexed_attrs) as H
+              by (clear; simpl; intuition eauto); clear H;
+            k ({| KindNameKind := FindPrefixIndex;
+                  KindNameName := fd|}, X) (fun _ : @Tuple SC => true)
+        | forall a, {IsPrefix (_!``?fd) ?X} + {_} =>
+          let H := fresh in
+          assert (List.In {| KindNameKind := FindPrefixIndex;
+                             KindNameName := fd|} indexed_attrs) as H
+              by (clear; simpl; intuition eauto); clear H;
+            k ({| KindNameKind := FindPrefixIndex;
                   KindNameName := fd|}, X) (fun _ : @Tuple SC => true)
 
       end
@@ -788,6 +816,13 @@ Ltac createTerm_dep dom f fds tail fs k :=
                                                  ItemSearchTerm := tail x |}))
                     || k (fun x : dom => {| IndexSearchTerm := nil;
                                             ItemSearchTerm := tail x |}))
+        | FindPrefixIndex =>
+          (findMatchingTerm
+             fds kind s
+             ltac:(fun X => k (fun x : dom => {| IndexSearchTerm := Some (X x);
+                                                 ItemSearchTerm := tail x |}))
+                    || k (fun x : dom => {| IndexSearchTerm := None;
+                                            ItemSearchTerm := tail x |}))
       end
     | {| KindNameKind := ?kind;
           KindNameName := ?s|} :: ?fs' =>
@@ -898,6 +933,34 @@ Ltac findGoodTerm_dep SC F indexed_attrs visited_attrs k :=
                   (in_dec string_dec fd visited_attrs) with
               | right _ => k (fd :: visited_attrs)
                              ({| KindNameKind := InclusionIndex;
+                                 KindNameName := fd |}, X)
+                             (fun (a : T) (_ : @Tuple SC) => true)
+              | left _ => k visited_attrs tt F
+            end
+
+        (* FindPrefix Search Terms *)
+        | forall a b, {IsPrefix (_!?fd) (@?X a)} + {_} =>
+          let H := fresh in
+          assert (List.In {| KindNameKind := FindPrefixIndex;
+                             KindNameName := fd|} indexed_attrs) as H
+              by (clear; simpl; intuition eauto); clear H;
+          match eval simpl in
+                (in_dec string_dec fd visited_attrs) with
+            | right _ => k (fd :: visited_attrs)
+                           ({| KindNameKind := FindPrefixIndex;
+                               KindNameName := fd |}, X)
+                           (fun (a : T) (_ : @Tuple SC) => true)
+            | left _ => k visited_attrs tt F
+          end
+        | forall a b, {IsPrefix (_!``?fd) (@?X a)} + {_} =>
+          let H := fresh in
+          assert (List.In {| KindNameKind := FindPrefixIndex;
+                             KindNameName := fd|} indexed_attrs) as H
+              by (clear; simpl; intuition eauto);
+            match eval simpl in
+                  (in_dec string_dec fd visited_attrs) with
+              | right _ => k (fd :: visited_attrs)
+                             ({| KindNameKind := FindPrefixIndex;
                                  KindNameName := fd |}, X)
                              (fun (a : T) (_ : @Tuple SC) => true)
               | left _ => k visited_attrs tt F

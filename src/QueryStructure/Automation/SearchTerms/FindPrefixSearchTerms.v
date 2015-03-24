@@ -1,18 +1,17 @@
 Require Import
         ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureNotations
-        ADTSynthesis.QueryStructure.Specification.SearchTerms.ListInclusion
-        ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.IndexSearchTerms
-.
+        ADTSynthesis.QueryStructure.Specification.SearchTerms.ListPrefix
+        ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.IndexSearchTerms.
 
 (* Instances for building indexes with make simple indexes. *)
-(* Every Kind of index is keyed on an inductive type with a single constructor *)
-Inductive InclusionIndex : Set := inclusionIndex.
+(* Every Kind of index is keyed on an inductive type with a single constructor*)
+Inductive FindPrefixIndex : Set := findPrefixIndex.
 
 (* This is our search term type. *)
-Record InvertedSearchTerm
+Record FindPrefixSearchTerm
        (heading : Heading)
   :=
-    { IndexSearchTerm : list string;
+    { IndexSearchTerm : option (list string);
       ItemSearchTerm : @Tuple heading -> bool }.
 
 (* This builds the type of searchterms and the matching function on them *)
@@ -20,15 +19,20 @@ Global Instance IndexedIndexDenotation
        (heading : Heading)
        (index : @Attributes heading)
        (projection : @Tuple heading -> list string)
-: @IndexDenotation InclusionIndex heading index :=
-  {| DenoteIndex := InvertedSearchTerm heading; (* Pick search term type *)
+: @IndexDenotation FindPrefixIndex heading index :=
+  {| DenoteIndex := FindPrefixSearchTerm heading; (* Pick search term type *)
      MatchIndex search_term item := (* matching function : DenoteIndex -> Tuple heading -> bool *)
-       if IncludedIn_dec (IndexSearchTerm search_term) (projection item) then
-         ItemSearchTerm search_term item
-       else false |}.
+       match IndexSearchTerm search_term with
+         | Some indexSearchTerm =>
+           if IsPrefix_dec (projection item) indexSearchTerm then
+             ItemSearchTerm search_term item
+           else false
+         | None =>
+           ItemSearchTerm search_term item
+       end |}.
 
 (* Extra type class magic for inverted indices. *)
-Hint Extern 10 (@IndexDenotation InclusionIndex ?heading ?index) =>
+Hint Extern 10 (@IndexDenotation FindPrefixIndex ?heading ?index) =>
 let index_domain := eval hnf in (@Domain heading index) in
 match index_domain with
   | list string =>

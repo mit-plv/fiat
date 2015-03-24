@@ -166,7 +166,7 @@ Proof.
 
 Time Defined.
 
-Definition WeatherStationImpl : SharpenedUnderDelegates WeatherSig.
-  Time let Impl := eval simpl in (projT1 SharpenedWeatherStation) in
+Definition MessagesImpl : SharpenedUnderDelegates MessagesSig.
+  Time let Impl := eval simpl in (projT1 SharpenedMessages) in
            exact Impl.
 Defined.

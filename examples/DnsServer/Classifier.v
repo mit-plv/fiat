@@ -1,28 +1,14 @@
 Require Import ADTSynthesis.QueryStructure.Automation.AutoDB
-        ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.BagADT
-        ADTSynthesis.Common.List.Prefix.
+        ADTSynthesis.QueryStructure.Automation.IndexSelection
+        ADTSynthesis.QueryStructure.Specification.SearchTerms.ListPrefix.
 
 Require Import Coq.Strings.Ascii.
 
 Open Scope list.
 
 Section Packet.
-  (* an Ip address is a list of 8-bit integer *)
-  Definition Ip := list ascii.
-
-  Lemma Ip_dec : forall a b : Ip, {a = b} + {a <> b}.
-  Proof. apply list_eq_dec; apply ascii_dec. Qed.
-
-  Global Instance Query_eq_Ip :
-    Query_eq Ip := {| A_eq_dec := Ip_dec |}.
-
-  Global Instance DecideablePrefix_Ip_f {T : Type}
-  : forall (f : T -> Ip) (n : Ip), DecideableEnsemble (fun tup => prefix_prop (f tup) n)
-    := DecideablePrefix_f. apply ascii_dec. Defined.
-
-  Global Instance DecideablePrefix_Ip_b {T : Type}
-  : forall (f : T -> Ip) (n : Ip), DecideableEnsemble (fun tup => prefix_prop n (f tup))
-    := DecideablePrefix_b. apply ascii_dec. Defined.
+  (* an Ip address is a list of strings each of which represents a group *)
+  Definition Ip := list string.
     
   (* a Protocol can be either tcp or udp *)
   Inductive Protocol := tcp | udp.
@@ -35,42 +21,35 @@ Section Packet.
 
   (* a Policy of P is either enforcing some constant P, or accept any *)
   Section Packet_Protocol.
-    Variable P : Type.
-    Variable P_dec : forall a b : P, {a = b} + {a <> b}.
+    Variable (P : Type).
+    Context {P_eq_dec : Query_eq P}.
     
     Inductive Policy :=
     | enforce : P -> Policy
     | wildcard.
     
-    Definition policy_prop (p : Policy) (s : P) :=
+    Definition FollowPolicy (p : Policy) (s : P) :=
       match p with
         | enforce p' => p' = s
         | wildcard => True
       end.
     
-    Definition policy_bool (p: Policy) (s : P) :=
-      match p with
-        | enforce p' => ?[P_dec p' s]
-        | wildcard => true
-      end.
+    Definition FollowPolicy_dec (p: Policy) (s : P) : {FollowPolicy p s} + {~ FollowPolicy p s}.
+      refine (match p with
+                | enforce p' =>
+                  if A_eq_dec p' s then
+                    left _
+                  else
+                    right _
+                | wildcard => left _
+              end); simpl; intuition eauto. Defined.
     
-    Lemma policy_bool_eq :
-      forall p s, policy_bool p s = true <-> policy_prop p s.
-    Proof.
-      destruct p; simpl; split; try find_if_inside; intuition.
-    Qed.
-    
-    Global Instance DecideablePolicy {T} (f : T -> Policy) {n}
-    : DecideableEnsemble (fun tup => policy_prop (f tup) n) :=
-      {| dec n' :=  policy_bool (f n') n;
-         dec_decides_P n' := policy_bool_eq (f n') n|}.
+    Global Instance DecideableFollowPolicy {T} (f : T -> Policy) {n}
+    : DecideableEnsemble (fun tup => FollowPolicy (f tup) n) :=
+      {| dec n' :=  ?[FollowPolicy_dec (f n') n] |}. intuition; find_if_inside; intuition. Defined.
   End Packet_Protocol.
-  
-  Global Instance DecideablePolicy_Protocol {T : Type}
-  : forall (f : T -> Policy Protocol) (n : Protocol), DecideableEnsemble (fun tup => policy_prop (f tup) n) :=
-    DecideablePolicy Protocol_dec.
 
-  (* a `simple` Packet consists of only Ip and Protocol *)
+  (* a `simple` Packet consists of Ip and Protocol *)
   Record Packet :=
     { destination : Ip;
       protocol : Protocol }.
@@ -210,9 +189,6 @@ Section ADT.
           ACTION :: bool> ]
         enforcing [ ].
 
-  Definition get_destination (r : RuleRecord) : Ip := r!DESTINATION.
-  Definition get_destination' : @Tuple (GetHeading ClassifierSchema RULES) -> Ip := get_destination.
-
   (* probably we should use typeclasses to solve this issue *)
   Definition priority_lt_dec :
           forall a b : RuleRecord, sumbool (b!PRIORITY <= a!PRIORITY) (~ b!PRIORITY <= a!PRIORITY)
@@ -234,14 +210,14 @@ Section ADT.
       Insert r into RULES,
 
     update "DeletePrefix" (ip : Ip) : list RuleRecord :=
-      Delete r from RULES where prefix_prop r!DESTINATION ip,
+      Delete r from RULES where IsPrefix r!DESTINATION ip,
 
     query "Classify" (p : Packet) : Response :=
       rs <- For (r in RULES)
             (* the rule's ip must be a prefix of the packet's ip *)
-            Where (prefix_prop r!DESTINATION (destination p) /\
+            Where (IsPrefix r!DESTINATION (destination p) /\
             (* the rule's protocol must match the packet's protocol *)
-                   policy_prop r!PROTOCOL (protocol p))
+                   FollowPolicy r!PROTOCOL (protocol p))
             Return r;
       (* try to choose one rule that has the highest priority *)
       r <- {{ r in rs | r'!PRIORITY <= r!PRIORITY forall r' }} : RuleRecord;
@@ -257,7 +233,7 @@ Section ADT.
           ret Deny
       Else
         ret Uncertain
-    }.
+  }.
 
   Theorem ClassifierManual :
     Sharpened ClassifierSpec.
@@ -265,10 +241,7 @@ Section ADT.
     unfold ClassifierSpec.
     start honing QueryStructure.
 
-    hone representation using
-         (@DelegateToBag_AbsR ClassifierSchema
-         (* using prefix index on field `DESTINATION` of table `RULES` *)
-         (icons (@PrefixSearchUpdateTerm _ ascii_dec (GetHeading ClassifierSchema RULES) get_destination') (inil _))).
+    make simple indexes using [[(FindPrefixIndex, DESTINATION)]].
 
     hone constructor "Init".
     {
@@ -279,8 +252,7 @@ Section ADT.
 
     hone method "Classify".
     {
-      simplify with monad laws.
-      implement_Query' ltac:(fun _ _ _ _ => PrefixSearchTermFinder) ltac:(fun _ _ _ _ _ => idtac).
+      implement_Query.
       simplify with monad laws.
       etransitivity.
       apply refine_under_bind; intros.
@@ -295,29 +267,28 @@ Section ADT.
     }
 
     hone method "AddRule".
-    {
-      simplify with monad laws.
-      insertion.
-    }
+    { insertion. }
 
     hone method "DeletePrefix".
     {
+      simplify with monad laws. simpl.
+      implement_QSDeletedTuples find_simple_search_term.
       simplify with monad laws.
-      simpl.
-      implement_QSDeletedTuples ltac:(fun _ _ _ _ => PrefixSearchTermFinder).
-      simplify with monad laws.
-      implement_EnsembleDelete_AbsR ltac:(fun _ _ _ _ => PrefixSearchTermFinder).
+      implement_EnsembleDelete_AbsR find_simple_search_term.
       finish honing.
     }
 
-    FullySharpenQueryStructure ClassifierSchema
-    (icons (@PrefixSearchUpdateTerm _ ascii_dec (GetHeading ClassifierSchema RULES) get_destination')
-           (inil
-              (fun ns : NamedSchema =>
-                 SearchUpdateTerms (schemaHeading (relSchema ns))))).
+    FullySharpenQueryStructure ClassifierSchema Index.
 
     implement_bag_methods.
     implement_bag_methods.
-    implement_bag_methods.
+    implement_bag_methods.  
+  (* 124 seconds *)
+  Time Defined.
+
+  Definition ClassifierImpl : SharpenedUnderDelegates ClassifierSig.  
+    (* 33 seconds *)
+    Time let Impl := eval simpl in (projT1 ClassifierManual) in
+             exact Impl.
   Defined.
 End ADT.
