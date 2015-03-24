@@ -1,45 +1,42 @@
 Require Import
         ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureNotations
-        ADTSynthesis.QueryStructure.Specification.SearchTerms.ListPrefix
-        ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.IndexSearchTerms
-        Coq.Strings.Ascii.
+        ADTSynthesis.QueryStructure.Specification.SearchTerms.InRange
+        ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.IndexSearchTerms.
 
 (* Instances for building indexes with make simple indexes. *)
 (* Every Kind of index is keyed on an inductive type with a single constructor*)
-Inductive FindPrefixIndex : Set := findPrefixIndex.
+Inductive RangeIndex : Set := rangeIndex.
 
 (* This is our search term type. *)
-Record FindPrefixSearchTerm
+Record RangeSearchTerm
        (heading : Heading)
   :=
-    { IndexSearchTerm : option (list ascii);
+    { IndexSearchTerm : option (nat * nat);
       ItemSearchTerm : @Tuple heading -> bool }.
 
-Global Instance Aascii_eq : Query_eq ascii := {| A_eq_dec := ascii_dec |}.
-
 (* This builds the type of searchterms and the matching function on them *)
-Global Instance FindPrefixIndexDenotation
+Global Instance RangeIndexDenotation
        (heading : Heading)
        (index : @Attributes heading)
-       (projection : @Tuple heading -> list ascii)
-: @IndexDenotation FindPrefixIndex heading index :=
-  {| DenoteIndex := FindPrefixSearchTerm heading; (* Pick search term type *)
+       (projection : @Tuple heading -> nat)
+: @IndexDenotation RangeIndex heading index :=
+  {| DenoteIndex := RangeSearchTerm heading; (* Pick search term type *)
      MatchIndex search_term item := (* matching function : DenoteIndex -> Tuple heading -> bool *)
        match IndexSearchTerm search_term with
          | Some indexSearchTerm =>
-           if IsPrefix_dec (projection item) indexSearchTerm then
+           if InRange_dec (projection item) indexSearchTerm then
              ItemSearchTerm search_term item
            else false
          | None =>
            ItemSearchTerm search_term item
        end |}.
 
-(* Extra type class magic for prefix indices. *)
-Hint Extern 10 (@IndexDenotation FindPrefixIndex ?heading ?index) =>
+(* Extra type class magic for range indices. *)
+Hint Extern 10 (@IndexDenotation RangeIndex ?heading ?index) =>
 let index_domain := eval hnf in (@Domain heading index) in
 match index_domain with
-  | list ascii =>
-    apply (@FindPrefixIndexDenotation
+  | nat =>
+    apply (@RangeIndexDenotation
              heading index
              (fun tup => GetAttribute tup index ))
 end

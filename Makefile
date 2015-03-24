@@ -88,6 +88,7 @@ QUERYSTRUCTURE_MODULES := \
 	QueryStructure/Specification/Constraints/tupleAgree \
 	QueryStructure/Specification/SearchTerms/ListInclusion \
 	QueryStructure/Specification/SearchTerms/ListPrefix \
+	QueryStructure/Specification/SearchTerms/InRange \
 	QueryStructure/Specification/Operations/FlattenCompList \
 	QueryStructure/Specification/Operations/Empty \
 	QueryStructure/Specification/Operations/Query \
@@ -131,6 +132,7 @@ QUERYSTRUCTURE_MODULES := \
 	QueryStructure/Automation/Constraints/ForeignKeyAutomation \
 	QueryStructure/Automation/SearchTerms/InvertedSearchTerms \
 	QueryStructure/Automation/SearchTerms/FindPrefixSearchTerms \
+	QueryStructure/Automation/SearchTerms/RangeSearchTerms \
 	QueryStructure/Automation/IndexSelection \
 	QueryStructure/Automation/AutoDB \
 	QueryStructure/Automation/QSImplementation

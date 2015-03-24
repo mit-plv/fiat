@@ -114,29 +114,7 @@ Proof.
 
   (* Having selected a more concrete data-representation, we start
      the actual refinement with the constructor, in a fully automated way *)
-  hone constructor "Init".
-  { initializer. }
-  
-  hone method "DeleteBook".
-  { deletion. }
-
-  (* We then move on to the "NumOrders" method, which we decide to
-     implement semi-manually *)
-  hone method "NumOrders".
-  { observer. }
-
-  (* We'll now refine a insertion operation. *)
-  hone method "AddBook".
-  { insertion. }
-
-  hone method "GetTitles".
-  { observer. }
-
-  hone method "DeleteOrder".
-  { deletion. }
-
-  hone method "PlaceOrder".
-  { insertion. }
+  plan.
 
   FullySharpenQueryStructure BookStoreSchema Index.
 
