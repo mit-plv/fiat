@@ -136,7 +136,7 @@ Section ADT.
     unfold ClassifierSpec.
     start honing QueryStructure.
 
-    GenerateIndexesForAll matchClauseToIndex ltac:(fun l => make simple indexes using l).
+    GenerateIndexesForAll matchFindPrefixIndex ltac:(fun l => make simple indexes using l).
 
     hone constructor "Init".
     { initializer. }

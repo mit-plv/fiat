@@ -6,14 +6,6 @@ Require Import Coq.Sorting.Mergesort Coq.Structures.Orders
         ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureNotations
         ADTSynthesis.QueryStructure.Implementation.Operations.
 
-Require Import
-        ADTSynthesis.QueryStructure.Specification.SearchTerms.InRange
-        ADTSynthesis.QueryStructure.Automation.SearchTerms.RangeSearchTerms
-        ADTSynthesis.QueryStructure.Specification.SearchTerms.ListInclusion
-        ADTSynthesis.QueryStructure.Automation.SearchTerms.InvertedSearchTerms
-        ADTSynthesis.QueryStructure.Specification.SearchTerms.ListPrefix
-        ADTSynthesis.QueryStructure.Automation.SearchTerms.FindPrefixSearchTerms.
-
 Module AttrCountOrder <: TotalLeBool.
   Definition t := (prod (string * (string * string)) nat).
 
@@ -92,6 +84,14 @@ Ltac ClauseAttributes WhereClause kTerm k :=
       let attrs2 := TermAttributes C2 in
       k (map (fun a12 => ("EqualityIndex", (fst a12, snd a12)))
              (app attrs1 attrs2))
+    | fun tups => @?C1 tups = _ =>
+      let attrs1 := TermAttributes C1 in
+      k (map (fun a12 => ("EqualityIndex", (fst a12, snd a12)))
+             (attrs1))
+    | fun tups => _ = @?C1 tups =>
+      let attrs1 := TermAttributes C1 in
+      k (map (fun a12 => ("EqualityIndex", (fst a12, snd a12)))
+             (attrs1))
     | _ => kTerm WhereClause k
     | _ => k (@nil (string * (string * string)))
   end.

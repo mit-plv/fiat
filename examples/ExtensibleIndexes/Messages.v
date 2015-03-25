@@ -72,6 +72,7 @@ Proof.
 
   start honing QueryStructure.
 
+<<<<<<< variant A
   Ltac matchInclusionClause WhereClause k :=
     match WhereClause with
       | fun tups => IncludedIn _ (@?C1 tups) =>
@@ -97,6 +98,15 @@ Proof.
 (*
   make simple indexes using [[(EqualityIndex, PHONE_NUMBER); (InclusionIndex, MESSAGE)]; [(EqualityIndex, NAME); (UnIndex, NAME)]].
  *)
+>>>>>>> variant B
+  GenerateIndexesForAll matchInclusionIndex ltac:(fun l => make simple indexes using l).
+####### Ancestor
+  GenerateIndexesForAll matchClauseToIndex ltac:(fun l => make simple indexes using l).
+
+(*
+  make simple indexes using [[(EqualityIndex, PHONE_NUMBER); (InclusionIndex, MESSAGE)]; [(EqualityIndex, NAME); (UnIndex, NAME)]].
+ *)
+======= end
 
   plan.
 

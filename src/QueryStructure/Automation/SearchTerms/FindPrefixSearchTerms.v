@@ -2,6 +2,7 @@ Require Import
         ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureNotations
         ADTSynthesis.QueryStructure.Specification.SearchTerms.ListPrefix
         ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.IndexSearchTerms
+        ADTSynthesis.QueryStructure.Automation.IndexSelection
         Coq.Strings.Ascii.
 
 (* Instances for building indexes with make simple indexes. *)
@@ -44,3 +45,11 @@ match index_domain with
              (fun tup => GetAttribute tup index ))
 end
 : typeclass_instances.
+
+Ltac matchFindPrefixIndex WhereClause k :=
+  match WhereClause with
+    | fun tups => IsPrefix (@?C1 tups) _ =>
+      let attrs1 := TermAttributes C1 in
+      k (map (fun a12 => (FindPrefixIndex, (fst a12, snd a12)))
+             (attrs1))
+  end.

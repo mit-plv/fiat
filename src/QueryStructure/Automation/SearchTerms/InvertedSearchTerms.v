@@ -2,7 +2,8 @@ Require Import
         Coq.Strings.String
         ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureNotations
         ADTSynthesis.QueryStructure.Specification.SearchTerms.ListInclusion
-        ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.IndexSearchTerms.
+        ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.IndexSearchTerms
+        ADTSynthesis.QueryStructure.Automation.IndexSelection.
 
 (* Instances for building indexes with make simple indexes. *)
 (* Every Kind of index is keyed on an inductive type with a single constructor*)
@@ -38,3 +39,11 @@ match index_domain with
              (fun tup => GetAttribute tup index ))
 end
 : typeclass_instances.
+
+Ltac matchInclusionIndex WhereClause k :=
+  match WhereClause with
+    | fun tups => IncludedIn _ (@?C1 tups) =>
+      let attrs1 := TermAttributes C1 in
+      k (map (fun a12 => (InclusionIndex, (fst a12, snd a12)))
+             (attrs1))
+  end.
