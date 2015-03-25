@@ -83,6 +83,14 @@ Ltac ClauseAttributes WhereClause TermAttributes kTerm k :=
       let attrs2 := TermAttributes C2 in
       k (map (fun a12 => ("EqualityIndex", (fst a12, snd a12)))
              (app attrs1 attrs2))
+    | fun tups => @?C1 tups = _ =>
+      let attrs1 := TermAttributes C1 in
+      k (map (fun a12 => ("EqualityIndex", (fst a12, snd a12)))
+             (attrs1))
+    | fun tups => _ = @?C1 tups =>
+      let attrs1 := TermAttributes C1 in
+      k (map (fun a12 => ("EqualityIndex", (fst a12, snd a12)))
+             (attrs1))
     | _ => kTerm WhereClause k
     | _ => k (@nil (string * (string * string)))
   end.
