@@ -505,4 +505,28 @@ Section ListFacts.
     { destruct n; simpl; rewrite ?IHls; reflexivity. }
   Qed.
 
+  Lemma take_all {A n} {ls : list A} (H : List.length ls <= n) : take n ls = ls.
+  Proof.
+    revert n H.
+    induction ls; simpl.
+    { destruct n; reflexivity. }
+    { intros n H.
+      destruct n.
+      { exfalso; omega. }
+      { simpl.
+        rewrite IHls; auto with arith. } }
+  Qed.
+
+  Lemma drop_all {A n} {ls : list A} (H : List.length ls <= n) : drop n ls = nil.
+  Proof.
+    revert n H.
+    induction ls; simpl.
+    { destruct n; reflexivity. }
+    { intros n H.
+      destruct n.
+      { exfalso; omega. }
+      { simpl.
+        rewrite IHls; auto with arith. } }
+  Qed.
+
 End ListFacts.
