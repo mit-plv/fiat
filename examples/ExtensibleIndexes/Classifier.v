@@ -5,6 +5,9 @@ Require Import ADTSynthesis.QueryStructure.Automation.AutoDB
 
 Open Scope list.
 
+(* This is an internet packet classifier example. We model a packet with its ip address and 
+   network protocol. The ADT has one relation (table) named [Rules], which contains classification rules *)
+
 Section Packet.
   (* an Ip address is a list of ascii each of which represents a group *)
   Definition Ip := list ascii.
@@ -48,7 +51,7 @@ Section Packet.
       {| dec n' :=  ?[FollowPolicy_dec (f n') n] |}. intuition; find_if_inside; intuition. Defined.
   End Packet_Protocol.
 
-  (* a `simple` Packet consists of Ip and Protocol *)
+  (* a Packet consists of Ip and Protocol *)
   Record Packet :=
     { destination : Ip;
       protocol : Protocol }.
@@ -143,6 +146,8 @@ Section ADT.
     hone method "DeletePrefix".
     { deletion. }
 
+    (* This method involves complex opertations, such as finding the highest priority rules.
+       Some of the deriviations need to be guided manually *)
     hone method "Classify".
     {
       implement_Query.

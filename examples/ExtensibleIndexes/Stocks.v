@@ -90,36 +90,12 @@ Proof.
 
   unfold StocksSpec.
 
-  (* First, we unfold various definitions and drop constraints *)
   start honing QueryStructure.
 
   make simple indexes using [[(EqualityIndex, TYPE); (EqualityIndex, STOCK_CODE)];
                              [(EqualityIndex, DATE); (EqualityIndex, STOCK_CODE)]].
 
-  hone constructor "Init".
-  { initializer. }
-
-  hone method "LargestTransaction".
-  { observer. }
-
-  hone method "TotalVolume".
-  { observer. }
-
-
-  hone method "AddStock".
-  { insertion. }
-
-
-  hone method "AddTransaction".
-  { insertion. }
-  
-  hone method "MaxPrice".
-  { observer. }
-
-  hone method "TotalActivity".
-  { observer. }
-  
-  idtac.
+  plan.
   
   finish sharpening.
 Defined.

@@ -1,4 +1,4 @@
-Require Import ADTSynthesis.QueryStructure.Refinements.AutoDB.
+Require Import ADTSynthesis.QueryStructure.Automation.AutoDB.
 
 Definition Market := string.
 Definition StockType := nat.

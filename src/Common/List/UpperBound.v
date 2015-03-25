@@ -1,5 +1,118 @@
 (* UpperBound of a list.*)
-Require Import Coq.Lists.List ADTSynthesis.Common.
+Require Import Coq.Lists.List Coq.Bool.Bool ADTSynthesis.Common ADTSynthesis.Computation.Core ADTSynthesis.Computation.Refinements.General.
+
+Open Scope list.
+
+Section Upperbound.
+  Variable A : Type.
+  Variable R : A -> A -> Prop.
+  Variable R_dec : forall a b, {R a b} + {~ R a b}.
+
+  (* every element in xs is `rel` to x *)
+  Definition upperbound  (x : A) (xs : list A) :=
+    forall x', List.In x' xs -> R x x'.
+
+  (* if you decide to pick some x', it must be the upperbound of the list *)
+  Definition pick_upperbound (xs : list A) : Comp (option A) :=
+    Pick (fun x => forall x', x = Some x' -> List.In x' xs /\ upperbound x' xs).
+
+  (* an uninteresting way to implement pick_upperbound *)
+  Definition choose_upperbound_boring (xs : list A) : option A := None.
+
+  Theorem refine_pick_upperbound_boring :
+    forall (xs : list A),
+      refine (pick_upperbound xs) (ret (choose_upperbound_boring xs)).
+  Proof.
+    unfold pick_upperbound, choose_upperbound_boring; intuition;
+    refine pick val None; [ reflexivity | intros; discriminate ].
+  Qed.
+
+  (* an inefficient but more interesting way to implement pick_upperbound *)
+  Fixpoint check_upperbound_ineff (v : A) (xs : list A) : bool :=
+    match xs with
+      | [ ] => true
+      | x :: xs' => andb (if R_dec v x then true else false)
+                         (check_upperbound_ineff v xs')
+    end.
+
+  Fixpoint choose_upperbound_ineff' (xs : list A) (ys : list A) : option A :=
+    match ys with
+      | [ ] => None
+      | y :: ys' => match choose_upperbound_ineff' xs ys' with
+                      | None => if check_upperbound_ineff y xs
+                                then Some y
+                                else None
+                      | Some v => Some v
+                    end
+    end.
+
+  Definition choose_upperbound_ineff (xs : list A) : option A :=
+    choose_upperbound_ineff' xs xs.
+
+  Lemma choose_upperbound_ineff'_close :
+    forall xs ys x, choose_upperbound_ineff' xs ys = Some x -> List.In x ys.
+  Proof.
+    induction ys; intuition; try discriminate; simpl in *;
+    remember (choose_upperbound_ineff' xs ys) as c; destruct c;
+    [ right | destruct (check_upperbound_ineff a xs); inversion H ]; intuition.
+  Qed.
+
+  Corollary choose_upperbound_ineff_close :
+    forall xs x, choose_upperbound_ineff xs = Some x -> List.In x xs.
+  Proof.
+    unfold choose_upperbound_ineff; intuition;
+    eapply choose_upperbound_ineff'_close; eauto.
+  Qed.
+
+  Lemma check_upperbound_ineff_sound :
+    forall v xs, check_upperbound_ineff v xs = true -> upperbound v xs.
+  Proof.
+    unfold upperbound; induction xs; simpl in *; intuition;
+    apply andb_true_iff in H; intuition; subst;
+    find_if_inside; intuition.
+  Qed.
+
+  Lemma choose_upperbound_ineff'_is_upperbound :
+    forall xs ys x, choose_upperbound_ineff' xs ys = Some x -> upperbound x xs.
+  Proof.
+    induction ys; intuition; try discriminate; simpl in *;
+    remember (choose_upperbound_ineff' xs ys) as c; destruct c; [
+      apply IHys |
+      remember (check_upperbound_ineff a xs) as c'; destruct c'; inversion H;
+      apply check_upperbound_ineff_sound; symmetry; subst ]; trivial.      
+  Qed.
+
+  Corollary choose_upperbound_ineff_is_upperbound :
+    forall xs x, choose_upperbound_ineff xs = Some x -> upperbound x xs.
+  Proof.
+    unfold choose_upperbound_ineff; intuition;
+    eapply choose_upperbound_ineff'_is_upperbound; eauto.
+  Qed.
+
+  Theorem refine_pick_upperbound_ineff :
+    forall (xs : list A),
+      refine (pick_upperbound xs)
+             (ret (choose_upperbound_ineff xs)).
+  Proof.
+    unfold pick_upperbound, choose_upperbound_ineff; intuition;
+    refine pick val _; try reflexivity; intuition;
+    [ apply choose_upperbound_ineff_close | apply choose_upperbound_ineff_is_upperbound ]; trivial.
+  Qed.
+
+  Lemma rel_dec_map {X} :
+    forall (f : X -> A), forall a b : X, {R (f a) (f b)} + {~ R (f a) (f b)}.
+  Proof. intuition. Qed.
+
+  Lemma rel_dec_comm :
+    forall a b, {R b a} + {~ R b a}.
+  Proof. intuition. Qed.
+End Upperbound.
+
+(* notation for upperbound *)
+Notation "{{ x 'in' xs | P 'forall' y }}" := (pick_upperbound (fun x y => P) xs) (at level 70) : comp_scope.
+Notation "{{ x 'in' xs | P 'forall' y }} : A" := (@pick_upperbound A (fun x y => P) xs) (at level 70) : comp_scope.
+
+(* Old definition of upperbound 
 Section UpperBound.
 
   Context {A : Type}.
@@ -55,4 +168,4 @@ Section UpperBound.
     discriminate.
   Qed.
 
-End UpperBound.
+End UpperBound. *)

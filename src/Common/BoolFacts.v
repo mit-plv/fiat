@@ -1,4 +1,4 @@
-Require Import Coq.Strings.String Coq.Arith.Arith Coq.ZArith.BinInt Coq.NArith.BinNat Coq.Bool.Bool.
+Require Import Coq.Strings.String Coq.Strings.Ascii Coq.Arith.Arith Coq.ZArith.BinInt Coq.NArith.BinNat Coq.Bool.Bool.
 
 Section BoolFacts.
   Lemma collapse_ifs_dec :
@@ -22,6 +22,14 @@ Section BoolFacts.
       (if string_dec s1 s2 then true else false) = true <-> s1 = s2.
   Proof.
     intros s1 s2; destruct (string_dec s1 s2); simpl; intuition.
+    discriminate.
+  Qed.
+
+  Lemma ascii_dec_bool_true_iff :
+    forall s1 s2,
+      (if ascii_dec s1 s2 then true else false) = true <-> s1 = s2.
+  Proof.
+    intros s1 s2; destruct (ascii_dec s1 s2); simpl; intuition.
     discriminate.
   Qed.
 

@@ -17,12 +17,12 @@ Record InvertedSearchTerm
       ItemSearchTerm : @Tuple heading -> bool }.
 
 (* This builds the type of searchterms and the matching function on them *)
-Global Instance IndexedIndexDenotation
+Global Instance InvertedIndexDenotation
        (heading : Heading)
        (index : @Attributes heading)
        (projection : @Tuple heading -> list string)
 : @IndexDenotation InclusionIndex heading index :=
-  {| DenoteIndex := InvertedSearchTerm heading; (* Pick search term type*)
+  {| DenoteIndex := InvertedSearchTerm heading; (* Pick search term type *)
      MatchIndex search_term item := (* matching function : DenoteIndex -> Tuple heading -> bool *)
        if IncludedIn_dec (IndexSearchTerm search_term) (projection item) then
          ItemSearchTerm search_term item
@@ -33,7 +33,7 @@ Hint Extern 10 (@IndexDenotation InclusionIndex ?heading ?index) =>
 let index_domain := eval hnf in (@Domain heading index) in
 match index_domain with
   | list string =>
-    apply (@IndexedIndexDenotation
+    apply (@InvertedIndexDenotation
              heading index
              (fun tup => GetAttribute tup index ))
 end

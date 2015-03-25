@@ -67,95 +67,26 @@ Definition SharpenedMessages :
   Sharpened MessagesSpec.
 Proof.
 
-  Unset Ltac Debug.
   unfold MessagesSpec.
 
   start honing QueryStructure.
 
-  (* Old, explicit index selection*)
-
   make simple indexes using [[(EqualityIndex, PHONE_NUMBER); (InclusionIndex, MESSAGE)]; [(EqualityIndex, NAME); (UnIndex, NAME)]].
 
-  hone method "RelevantMessages".
-  {
-    (* implement_Query. *)
-    (* First we generate a new goal to just focus on refining the query. *)
-    Focused_refine_Query. (* With Focused_refine_Query: 7 seconds. *)
-    { (* Step 1: Implement [In] by enumeration. *)
-      implement_In.
-      (* Step 2: Convert where clauses into compositions of filters. *)
-      repeat convert_Where_to_filter.
-      (* Step 3: Do some simplication.*)
-      repeat setoid_rewrite <- filter_and.
-      try setoid_rewrite andb_true_r.
-      (* Step 4: Move filters to the outermost [Join_Comp_Lists] to which *)
-      (* they can be applied. *)
-      repeat setoid_rewrite Join_Filtered_Comp_Lists_id.
-      distribute_filters_to_joins.
-
-      (* implement_filters_with_find
-        find_simple_search_term find_simple_search_term_dep. *)
-
-      implement_filters_with_find
-        find_simple_search_term
-        find_simple_search_term_dep.
-    }
-    (* Do some more simplication using the monad laws. *)
-    simpl; simplify with monad laws.
-    (* Satisfied with the query, we now implement the new data
-       representation (in this case, it is unchanged).
-     *)
-    simpl; commit.
-    repeat setoid_rewrite filter_true;
-      repeat setoid_rewrite app_nil_r;
-      repeat setoid_rewrite map_length.
-    finish honing.
-  }
+  hone constructor "Init".
+  { initializer. }
 
   hone method "ContactMessages".
-  {
-    implement_Query.
-    simpl; simplify with monad laws.
-    simpl; commit.
-    repeat setoid_rewrite filter_true;
-      repeat setoid_rewrite app_nil_r;
-      repeat setoid_rewrite map_length.
-    finish honing.
-  }
+  { observer. }
 
-  hone constructor "Init".
-  {
-    simplify with monad laws.
-    rewrite refine_QSEmptySpec_Initialize_IndexedQueryStructure.
-    simpl.
-    finish honing.
-  }
+  hone method "RelevantMessages".
+  { observer. }
 
   hone method "AddMessage".
-  {
-    Implement_Insert_Checks.
-
-    implement_Query.
-    simpl; simplify with monad laws.
-    setoid_rewrite refineEquiv_swap_bind.
-    implement_Insert_branches.
-
-    cleanup_Count.
-    finish honing.
-  }
+  { insertion. }
 
   hone method "AddContact".
-  {
-    Implement_Insert_Checks.
-
-    implement_Query.
-    simpl; simplify with monad laws.
-    setoid_rewrite refineEquiv_swap_bind.
-    implement_Insert_branches.
-
-    cleanup_Count.
-    finish honing.
-  }
+  { insertion. }
 
   FullySharpenQueryStructure MessagesSchema Index.
 

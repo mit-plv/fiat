@@ -15,7 +15,6 @@ CORE_MODULES    := \
 	Common/List/FlattenList \
 	Common/List/ListMorphisms \
 	Common/List/PermutationFacts \
-	Common/List/Prefix \
 	Common/List/UpperBound \
 	Common/LogicFacts \
 	Common/NatFacts \
@@ -88,6 +87,8 @@ QUERYSTRUCTURE_MODULES := \
 	QueryStructure/Specification/Representation/QueryStructureNotations \
 	QueryStructure/Specification/Constraints/tupleAgree \
 	QueryStructure/Specification/SearchTerms/ListInclusion \
+	QueryStructure/Specification/SearchTerms/ListPrefix \
+	QueryStructure/Specification/SearchTerms/InRange \
 	QueryStructure/Specification/Operations/FlattenCompList \
 	QueryStructure/Specification/Operations/Empty \
 	QueryStructure/Specification/Operations/Query \
@@ -120,7 +121,6 @@ QUERYSTRUCTURE_MODULES := \
 	QueryStructure/Implementation/DataStructures/BagADT/BagImplementation \
 	QueryStructure/Implementation/DataStructures/BagADT/QueryStructureImplementation \
 	QueryStructure/Implementation/DataStructures/BagADT/IndexSearchTerms \
-	QueryStructure/Implementation/DataStructures/BagADT/PrefixSearchTerms \
 	QueryStructure/Implementation/Operations/BagADT/Refinements \
 	QueryStructure/Implementation/BagImplementation \
 	QueryStructure/Automation/General/QueryAutomation \
@@ -131,6 +131,8 @@ QUERYSTRUCTURE_MODULES := \
 	QueryStructure/Automation/Constraints/FunctionalDependencyAutomation \
 	QueryStructure/Automation/Constraints/ForeignKeyAutomation \
 	QueryStructure/Automation/SearchTerms/InvertedSearchTerms \
+	QueryStructure/Automation/SearchTerms/FindPrefixSearchTerms \
+	QueryStructure/Automation/SearchTerms/RangeSearchTerms \
 	QueryStructure/Automation/IndexSelection \
 	QueryStructure/Automation/AutoDB \
 	QueryStructure/Automation/QSImplementation

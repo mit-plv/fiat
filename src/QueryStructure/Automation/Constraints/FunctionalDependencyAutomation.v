@@ -1,5 +1,5 @@
 Require Export ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureNotations ADTSynthesis.QueryStructure.Specification.Operations.Query.
-Require Import Coq.Lists.List Coq.Arith.Compare_dec Coq.Bool.Bool Coq.Strings.String
+Require Import Coq.Lists.List Coq.Arith.Compare_dec Coq.Bool.Bool Coq.Strings.String Coq.Strings.Ascii
         ADTSynthesis.Common.BoolFacts
         ADTSynthesis.Common.List.PermutationFacts
         ADTSynthesis.Common.List.ListMorphisms
@@ -30,6 +30,7 @@ Ltac prove_decidability_for_functional_dependencies :=
   try setoid_rewrite <- eq_N_dec_bool_true_iff;
   try setoid_rewrite <- eq_Z_dec_bool_true_iff;
   try setoid_rewrite <- string_dec_bool_true_iff;
+  try setoid_rewrite <- ascii_dec_bool_true_iff;
   setoid_rewrite and_True;
   repeat progress (
            try setoid_rewrite <- andb_true_iff;
