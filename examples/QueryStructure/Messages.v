@@ -1,3 +1,4 @@
+Require Import Coq.Strings.String.
 Require Import ADTSynthesis.QueryStructure.Automation.AutoDB
         ADTSynthesis.QueryStructure.Automation.IndexSelection
         ADTSynthesis.QueryStructure.Specification.SearchTerms.ListInclusion.
@@ -74,7 +75,7 @@ Proof.
 
   (* Old, explicit index selection*)
 
-  make simple indexes using [[(EqualityIndex, PHONE_NUMBER); (InclusionIndex, MESSAGE)]; [(EqualityIndex, NAME); (UnIndex, NAME)]].
+  GenerateIndexesForAll matchInclusion ltac:(fun l => make simple indexes using l).
 
   hone method "RelevantMessages".
   {
@@ -95,6 +96,34 @@ Proof.
 
       (* implement_filters_with_find
         find_simple_search_term find_simple_search_term_dep. *)
+
+
+ implement_filters_with_find
+        find_simple_search_term find_simple_search_term_dep.
+
+
+find_equivalent_search_term find_simple_search_term.
+simpl.
+
+unfold ExtensionalEq, MatchIndexSearchTerm; simpl.
+reflexivity.
+simpl.
+
+try unify tm search_term;
+                                                  unfold ExtensionalEq, MatchIndexSearchTerm;
+                                                  simpl; intro; try prove_extensional_eq
+
+let indexed_attrs' := unfold l in l in
+    let SC := unfold h in h in
+        let fds := unfold b in b in
+            let tail := unfold p in p in
+                makeTerm indexed_attrs' SC fds tail
+                         ltac:(fun tm => try unify tm search_term;
+                               unfold ExtensionalEq, MatchIndexSearchTerm;
+                               simpl; intro; try prove_extensional_eq).
+    end.
+
+
 
       implement_filters_with_find
         find_simple_search_term
