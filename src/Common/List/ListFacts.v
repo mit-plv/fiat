@@ -529,4 +529,26 @@ Section ListFacts.
         rewrite IHls; auto with arith. } }
   Qed.
 
+  Lemma take_append {A n} {ls ls' : list A}
+  : take n (ls ++ ls') = take n ls ++ take (n - List.length ls) ls'.
+  Proof.
+    revert n ls'.
+    induction ls; simpl.
+    { destruct n; reflexivity. }
+    { destruct n; simpl; try reflexivity.
+      intro ls'.
+      rewrite IHls; reflexivity. }
+  Qed.
+
+  Lemma drop_append {A n} {ls ls' : list A}
+  : drop n (ls ++ ls') = drop n ls ++ drop (n - List.length ls) ls'.
+  Proof.
+    revert n ls'.
+    induction ls; simpl.
+    { destruct n; reflexivity. }
+    { destruct n; simpl; try reflexivity.
+      intro ls'.
+      rewrite IHls; reflexivity. }
+  Qed.
+
 End ListFacts.

@@ -44,27 +44,34 @@ Section StringT.
       The transient list stores where the corresponding ')' is for
       higher levels. *)
 
-  Definition list_of_next_bin_ops_closes (s : String) (higher_closes : list nat)
-  : list (option nat) * list nat
+  Definition list_of_next_bin_ops_closes (s : String) (next_op__higher_closes : option nat * list nat)
+  : list (option nat) * (option nat * list nat)
     := Fold
          String
-         (fun _ => list (option nat) * list nat)%type
-         (nil, higher_closes)
-         (fun ch _ table_higher_closes =>
-            let '(table, higher_closes) := (fst table_higher_closes, map S (snd table_higher_closes)) in
-            let '(cur_mark, new_higher_closes)
+         (fun _ => list (option nat) * (option nat * list nat))%type
+         (nil, next_op__higher_closes)
+         (fun ch _ table_op_higher_closes =>
+            let '(table, (next_op, higher_closes))
+                := (fst table_op_higher_closes,
+                    (option_map S (fst (snd table_op_higher_closes)),
+                     map S (snd (snd table_op_higher_closes)))) in
+            let '(cur_mark, new_next_op, new_higher_closes)
                 := (if is_bin_op ch
                     then (Some 0,
+                          Some 0,
                           higher_closes)
                     else if is_close ch
                          then (None,
+                               None,
                                0::higher_closes)
                          else if is_open ch
                               then ((hd None (map Some higher_closes)),
+                                    None,
                                     tl higher_closes)
-                              else (option_map S (hd None table),
+                              else (next_op,
+                                    next_op,
                                     higher_closes)) in
-            (cur_mark::table, new_higher_closes))
+            (cur_mark::table, (new_next_op, new_higher_closes)))
          s.
 
   Lemma list_of_next_bin_ops_closes_compute_empty {hc}
@@ -77,23 +84,33 @@ Section StringT.
 
   Lemma list_of_next_bin_ops_closes_compute_cons {ch s hc}
   : list_of_next_bin_ops_closes ([[ ch ]] ++ s) hc
-    = (let table_higher_closes := list_of_next_bin_ops_closes s hc in
-       let '(table, higher_closes) := (fst table_higher_closes, map S (snd table_higher_closes)) in
+    = (let table_op_higher_closes := list_of_next_bin_ops_closes s hc in
+       let '(table, (next_op, higher_closes))
+           := (fst table_op_higher_closes,
+               (option_map S (fst (snd table_op_higher_closes)),
+                map S (snd (snd table_op_higher_closes)))) in
        ((if is_bin_op ch
          then Some 0
          else if is_close ch
               then None
               else if is_open ch
                    then hd None (map Some higher_closes)
-                   else option_map S (hd None table))
+                   else next_op)
           ::table,
-        (if is_bin_op ch
-         then higher_closes
-         else if is_close ch
-              then 0::higher_closes
-              else if is_open ch
-                   then tl higher_closes
-                   else higher_closes))).
+        ((if is_bin_op ch
+          then Some 0
+          else if is_close ch
+               then None
+               else if is_open ch
+                    then None
+                    else next_op),
+         (if is_bin_op ch
+          then higher_closes
+          else if is_close ch
+               then 0::higher_closes
+               else if is_open ch
+                    then tl higher_closes
+                    else higher_closes)))).
   Proof.
     unfold list_of_next_bin_ops_closes; simpl.
     rewrite Fold_compute_cons; simpl.
@@ -121,16 +138,8 @@ Section StringT.
     { intros ch ? IHs s2.
       rewrite Associativity.
       rewrite !list_of_next_bin_ops_closes_compute_cons, !IHs; simpl.
-      destruct (is_bin_op ch), (is_open ch), (is_close ch); simpl;
-      try reflexivity.
-      apply injective_projections; try reflexivity; simpl; [].
-      apply f_equal2; try reflexivity; simpl; [].
-      apply f_equal; [].
-
-      repeat (f_equal; []).
-
-
-    apply Fold.
+      reflexivity. }
+  Qed.
 
   Lemma length_fst_list_of_next_bin_ops_closes {s hc}
   : List.length (fst (list_of_next_bin_ops_closes s hc)) = Length s.
@@ -147,7 +156,7 @@ Section StringT.
                                                         | exists hc, ls = fst (list_of_next_bin_ops_closes s hc) })).
 
   Definition StringT_of_string (s : String') : StringT
-    := {| string_val := s ; state_val := exist _ (fst (list_of_next_bin_ops_closes s nil)) (ex_intro _ nil eq_refl) |}.
+    := {| string_val := s ; state_val := exist _ (fst (list_of_next_bin_ops_closes s (None, nil))) (ex_intro _ _ eq_refl) |}.
 
   Lemma drop_list_of_next_bin_ops_closes {s n hc}
   : drop n (fst (list_of_next_bin_ops_closes s hc)) =
@@ -171,39 +180,60 @@ Section StringT.
         rewrite list_of_next_bin_ops_closes_compute_cons; simpl; reflexivity. } }
   Qed.
 
-  Definition SplitAtT (n : nat) (s : StringT) : StringT * StringT.
+  Lemma take_list_of_next_bin_ops_closes {s n hc}
+  : take n (fst (list_of_next_bin_ops_closes s hc)) =
+    fst
+      (list_of_next_bin_ops_closes (fst (SplitAt n s))
+                                   (snd (list_of_next_bin_ops_closes (snd (SplitAt n s)) hc))).
   Proof.
-    refine (let s' := SplitAt n s in
-            ({| string_val := fst s';
-                state_val := exist _ (take n (proj1_sig (state_val s))) _ |},
-             {| string_val := snd s';
-                state_val := exist _ (drop n (proj1_sig (state_val s))) _ |}));
-    subst s'.
-    { destruct (state_val s) as [ table [ hc H ] ].
-      exists (snd (list_of_next_bin_ops_closes (snd (SplitAt n s)) hc)).
-      subst; simpl.
-      rewrite <- (SplitAt_correct String n s) at 1.
-      generalize (SplitAtLength_correct String n s).
-      apply NPeano.Nat.min_case_strong.
-      { intros H H'.
-        rewrite SplitAtPastEnd by assumption; simpl.
-        rewrite RightId.
-        rewrite list_of_next_bin_ops_closes_compute_empty; simpl.
-        rewrite take_all by (rewrite length_fst_list_of_next_bin_ops_closes; assumption).
-        reflexivity. }
-      { intros _.
-        destruct (SplitAt n s) as [s1 s2]; simpl; clear s.
+    rewrite <- (SplitAt_correct String n s) at 1.
+    generalize (SplitAtLength_correct String n s).
+    apply NPeano.Nat.min_case_strong.
+    { intros H H'.
+      rewrite SplitAtPastEnd by assumption; simpl.
+      rewrite RightId.
+      rewrite list_of_next_bin_ops_closes_compute_empty; simpl.
+      rewrite take_all by (rewrite length_fst_list_of_next_bin_ops_closes; assumption).
+      reflexivity. }
+    { intros _.
+      rewrite list_of_next_bin_ops_closes_compute_append; simpl.
+      intro H.
+      rewrite take_append; simpl.
+      rewrite length_fst_list_of_next_bin_ops_closes, H, Minus.minus_diag; simpl.
+      rewrite take_all by (rewrite length_fst_list_of_next_bin_ops_closes, H; reflexivity).
+      rewrite app_nil_r; reflexivity. }
+  Qed.
 
-    { destruct (state_val s) as [ table [ hc H ] ].
+  Section SplitAtT.
+    Context (n : nat) (s : StringT).
+
+    Definition SplitAtT_fst
+    : exists hc : option nat * list nat,
+        take n (` (state_val s)) =
+        fst (list_of_next_bin_ops_closes (fst (SplitAt n s)) hc).
+    Proof.
+      destruct (state_val s) as [ table [ hc H ] ].
+      exists (snd (list_of_next_bin_ops_closes (snd (SplitAt n s)) hc)); simpl.
+      abstract (subst; apply take_list_of_next_bin_ops_closes).
+    Defined.
+
+    Definition SplitAtT_snd
+    : exists hc : option nat * list nat,
+        drop n (` (state_val s)) =
+        fst (list_of_next_bin_ops_closes (snd (SplitAt n s)) hc).
+    Proof.
+      destruct (state_val s) as [ table [ hc H ] ].
       exists hc; simpl.
-      subst.
-      apply drop_list_of_next_bin_ops_closes. }
-    {
+      abstract (subst; apply drop_list_of_next_bin_ops_closes).
+    Defined.
 
-    {
-
-
-    SearchAbout list.
+    Definition SplitAtT : StringT * StringT
+      := let s' := SplitAt n s in
+         ({| string_val := fst s';
+             state_val := exist _ (take n (proj1_sig (state_val s))) SplitAtT_fst |},
+          {| string_val := snd s';
+             state_val := exist _ (drop n (proj1_sig (state_val s))) SplitAtT_snd |}).
+  End SplitAtT.
 
   Definition first_char_split
              (it : item CharType)
