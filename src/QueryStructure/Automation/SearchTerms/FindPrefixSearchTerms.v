@@ -35,7 +35,7 @@ Global Instance FindPrefixIndexDenotation
        end |}.
 
 (* Extra type class magic for prefix indices. *)
-Hint Extern 10 (@IndexDenotation FindPrefixIndex ?heading ?index) =>
+Hint Extern 10 (@IndexDenotation "FindPrefixIndex" ?heading ?index) =>
 let index_domain := eval hnf in (@Domain heading index) in
 match index_domain with
   | list ascii =>

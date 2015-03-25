@@ -1,3 +1,4 @@
+Require Import Coq.Strings.String.
 Require Import ADTSynthesis.QueryStructure.Automation.AutoDB
         ADTSynthesis.QueryStructure.Automation.IndexSelection
         ADTSynthesis.QueryStructure.Specification.SearchTerms.ListPrefix
@@ -135,7 +136,7 @@ Section ADT.
     unfold ClassifierSpec.
     start honing QueryStructure.
 
-    make simple indexes using [[(FindPrefixIndex, DESTINATION)]].
+    GenerateIndexesForAll matchClauseToIndex ltac:(fun l => make simple indexes using l).
 
     hone constructor "Init".
     { initializer. }
