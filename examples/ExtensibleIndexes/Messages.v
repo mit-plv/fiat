@@ -72,11 +72,7 @@ Proof.
 
   start honing QueryStructure.
 
-  GenerateIndexesForAll matchClauseToIndex ltac:(fun l => make simple indexes using l).
-
-(*
-  make simple indexes using [[(EqualityIndex, PHONE_NUMBER); (InclusionIndex, MESSAGE)]; [(EqualityIndex, NAME); (UnIndex, NAME)]].
- *)
+  GenerateIndexesForAll matchInclusionIndex ltac:(fun l => make simple indexes using l).
 
   plan.
 

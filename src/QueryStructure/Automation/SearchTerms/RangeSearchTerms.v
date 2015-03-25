@@ -1,7 +1,8 @@
 Require Import
         ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureNotations
         ADTSynthesis.QueryStructure.Specification.SearchTerms.InRange
-        ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.IndexSearchTerms.
+        ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.IndexSearchTerms
+        ADTSynthesis.QueryStructure.Automation.IndexSelection.
 
 (* Instances for building indexes with make simple indexes. *)
 (* Every Kind of index is keyed on an inductive type with a single constructor*)
@@ -41,3 +42,11 @@ match index_domain with
              (fun tup => GetAttribute tup index ))
 end
 : typeclass_instances.
+
+Ltac matchRangeIndex WhereClause k :=
+  match WhereClause with
+    | fun tups => InRange (@?C1 tups) _ =>
+      let attrs1 := TermAttributes C1 in
+      k (map (fun a12 => (RangeIndex, (fst a12, snd a12)))
+             (attrs1))
+  end.

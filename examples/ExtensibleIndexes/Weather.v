@@ -1,3 +1,4 @@
+Require Import Coq.Strings.String.
 Require Import ADTSynthesis.QueryStructure.Automation.AutoDB
         ADTSynthesis.QueryStructure.Automation.IndexSelection.
 
@@ -79,11 +80,7 @@ Proof.
 
   start honing QueryStructure.
 
-  (* Old, explicit index selection *)
-  (* make simple indexes using [[AREA_CODE]; [MEASUREMENT_TYPE; CELL_ID]]. *)
-
-  (* Shiny new automatic index selection *)
-  make simple indexes using [[(EqualityIndex, AREA_CODE); (UnIndex, AREA_CODE)]; [(EqualityIndex, MEASUREMENT_TYPE); (EqualityIndex, CELL_ID); (UnIndex, CELL_ID) ]].
+  GenerateIndexesForAll ltac:(fun _ _ => idtac) ltac:(fun l => make simple indexes using l).
 
   Time plan. (* 220 seconds *)
   idtac.
