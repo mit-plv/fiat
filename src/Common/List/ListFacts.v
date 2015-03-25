@@ -489,66 +489,55 @@ Section ListFacts.
     trivial.
   Qed.
 
+  Local Ltac drop_take_t' :=
+    idtac;
+    match goal with
+      | _ => reflexivity
+      | _ => intro
+      | _ => progress simpl in *
+      | [ |- context[drop ?n []] ] => atomic n; destruct n
+      | [ |- context[take ?n []] ] => atomic n; destruct n
+      | [ |- context[drop ?n (_::_)] ] => atomic n; destruct n
+      | [ |- context[take ?n (_::_)] ] => atomic n; destruct n
+      | [ H : _ |- _ ] => rewrite H
+      | _ => solve [ eauto with arith ]
+      | _ => exfalso; omega
+    end.
+
+  Local Ltac drop_take_t := repeat drop_take_t'.
+
   Lemma drop_map {A B n} (f : A -> B) ls
   : drop n (map f ls) = map f (drop n ls).
   Proof.
-    revert n; induction ls; simpl.
-    { destruct n; reflexivity. }
-    { destruct n; simpl; rewrite ?IHls; reflexivity. }
+    revert n; induction ls; drop_take_t.
   Qed.
 
   Lemma take_map {A B n} (f : A -> B) ls
   : take n (map f ls) = map f (take n ls).
   Proof.
-    revert n; induction ls; simpl.
-    { destruct n; reflexivity. }
-    { destruct n; simpl; rewrite ?IHls; reflexivity. }
+    revert n; induction ls; drop_take_t.
   Qed.
 
   Lemma take_all {A n} {ls : list A} (H : List.length ls <= n) : take n ls = ls.
   Proof.
-    revert n H.
-    induction ls; simpl.
-    { destruct n; reflexivity. }
-    { intros n H.
-      destruct n.
-      { exfalso; omega. }
-      { simpl.
-        rewrite IHls; auto with arith. } }
+    revert n H; induction ls; drop_take_t.
   Qed.
 
   Lemma drop_all {A n} {ls : list A} (H : List.length ls <= n) : drop n ls = nil.
   Proof.
-    revert n H.
-    induction ls; simpl.
-    { destruct n; reflexivity. }
-    { intros n H.
-      destruct n.
-      { exfalso; omega. }
-      { simpl.
-        rewrite IHls; auto with arith. } }
+    revert n H; induction ls; drop_take_t.
   Qed.
 
   Lemma take_append {A n} {ls ls' : list A}
   : take n (ls ++ ls') = take n ls ++ take (n - List.length ls) ls'.
   Proof.
-    revert n ls'.
-    induction ls; simpl.
-    { destruct n; reflexivity. }
-    { destruct n; simpl; try reflexivity.
-      intro ls'.
-      rewrite IHls; reflexivity. }
+    revert n ls'; induction ls; drop_take_t.
   Qed.
 
   Lemma drop_append {A n} {ls ls' : list A}
   : drop n (ls ++ ls') = drop n ls ++ drop (n - List.length ls) ls'.
   Proof.
-    revert n ls'.
-    induction ls; simpl.
-    { destruct n; reflexivity. }
-    { destruct n; simpl; try reflexivity.
-      intro ls'.
-      rewrite IHls; reflexivity. }
+    revert n ls'; induction ls; drop_take_t.
   Qed.
 
 End ListFacts.
