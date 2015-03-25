@@ -1,12 +1,13 @@
 Require Import
+        Coq.Strings.String
         ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureNotations
         ADTSynthesis.QueryStructure.Specification.SearchTerms.ListInclusion
-        ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.IndexSearchTerms
-.
+        ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.IndexSearchTerms.
 
 (* Instances for building indexes with make simple indexes. *)
 (* Every Kind of index is keyed on an inductive type with a single constructor*)
-Inductive InclusionIndex : Set := inclusionIndex.
+Open Scope string.
+Definition InclusionIndex : string := "inclusionIndex".
 
 (* This is our search term type. *)
 Record InvertedSearchTerm

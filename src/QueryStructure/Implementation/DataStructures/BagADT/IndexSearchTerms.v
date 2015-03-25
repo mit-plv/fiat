@@ -1,5 +1,8 @@
 Require Import
-        Coq.Lists.List Coq.Program.Program Coq.Bool.Bool
+        Coq.Lists.List
+        Coq.Program.Program
+        Coq.Bool.Bool
+        Coq.Strings.String
         ADTSynthesis.Common.ilist
         ADTSynthesis.Common.DecideableEnsembles
         ADTSynthesis.Common.StringBound
@@ -19,14 +22,15 @@ Require Import
    values given a list of attributes. *)
 
 Class IndexDenotation
-      (A : Set)
+      (A : string)
       (heading : Heading)
       (index : Attributes heading)
   := { DenoteIndex : Type;
        MatchIndex : DenoteIndex -> @Tuple heading -> bool
   }.
 
-Inductive EqualityIndex : Set := equalityIndex.
+Open Scope string.
+Definition EqualityIndex : string := "Eq".
 
 Global Instance EqualityIndexDenotation
        (heading : Heading)
@@ -44,7 +48,7 @@ Global Instance EqualityIndexDenotation
        end
   |}.
 
-Inductive UnIndex : Set := unIndex.
+Definition UnIndex : string := "unIndex".
 Global Instance UnIndexDenotation
        (heading : Heading)
        (index : Attributes heading)
