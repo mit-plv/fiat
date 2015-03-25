@@ -12,8 +12,8 @@ Inductive FindPrefixIndex : Set := findPrefixIndex.
 Record FindPrefixSearchTerm
        (heading : Heading)
   :=
-    { IndexSearchTerm : option (list ascii);
-      ItemSearchTerm : @Tuple heading -> bool }.
+    { FindPrefixIndexSearchTerm : option (list ascii);
+      FindPrefixItemSearchTerm : @Tuple heading -> bool }.
 
 Global Instance Aascii_eq : Query_eq ascii := {| A_eq_dec := ascii_dec |}.
 
@@ -25,13 +25,13 @@ Global Instance FindPrefixIndexDenotation
 : @IndexDenotation FindPrefixIndex heading index :=
   {| DenoteIndex := FindPrefixSearchTerm heading; (* Pick search term type *)
      MatchIndex search_term item := (* matching function : DenoteIndex -> Tuple heading -> bool *)
-       match IndexSearchTerm search_term with
+       match FindPrefixIndexSearchTerm search_term with
          | Some indexSearchTerm =>
            if IsPrefix_dec (projection item) indexSearchTerm then
-             ItemSearchTerm search_term item
+             FindPrefixItemSearchTerm search_term item
            else false
          | None =>
-           ItemSearchTerm search_term item
+           FindPrefixItemSearchTerm search_term item
        end |}.
 
 (* Extra type class magic for prefix indices. *)

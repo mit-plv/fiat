@@ -432,13 +432,17 @@ Ltac createTerm f fds tail fs k :=
         | FindPrefixIndex =>
           (findMatchingTerm
              fds kind s
-             ltac:(fun X => k (Build_FindPrefixSearchTerm (Some X) tail)))
-            || k (Build_FindPrefixSearchTerm (@None string) tail)
+             ltac:(fun X => k {| FindPrefixIndexSearchTerm := Some X;
+                                 FindPrefixItemSearchTerm := tail |}))
+            || k {| FindPrefixIndexSearchTerm := None;
+                    FindPrefixItemSearchTerm := tail |}
         | RangeIndex =>
           (findMatchingTerm
              fds kind s
-             ltac:(fun X => k (Build_RangeSearchTerm (Some X) tail)))
-            || k (Build_RangeSearchTerm None tail)
+             ltac:(fun X => k {| RangeIndexSearchTerm := Some X;
+                                 RangeItemSearchTerm := tail |}))
+            || k {| RangeIndexSearchTerm := None;
+                    RangeItemSearchTerm := tail |}
       end
     | {| KindNameKind := ?kind;
          KindNameName := ?s|} :: ?fs' =>
@@ -465,7 +469,7 @@ Ltac createTerm f fds tail fs k :=
                            | InclusionIndex =>
                              k (@nil string, rest)
                            | FindPrefixIndex =>
-                             k (@None string, rest)
+                             k (@None (list ascii), rest)
                            | RangeIndex =>
                              k (@None (nat * nat), rest)
                          end)
@@ -529,7 +533,7 @@ Ltac findGoodTerm SC F indexed_attrs k :=
               by (clear; simpl; intuition eauto); clear H;
             k ({| KindNameKind := InclusionIndex;
                   KindNameName := fd|}, X) (fun _ : @Tuple SC => true)
-        | forall a, {IncludedIn ?X (_!``?fd)} + {_} =>
+        | forall a, {IncludedIn ?X (_``?fd)} + {_} =>
           let H := fresh in
           assert (List.In {| KindNameKind := InclusionIndex;
                              KindNameName := fd|} indexed_attrs) as H
@@ -545,7 +549,7 @@ Ltac findGoodTerm SC F indexed_attrs k :=
               by (clear; simpl; intuition eauto); clear H;
             k ({| KindNameKind := FindPrefixIndex;
                   KindNameName := fd|}, X) (fun _ : @Tuple SC => true)
-        | forall a, {IsPrefix (_!``?fd) ?X} + {_} =>
+        | forall a, {IsPrefix (_``?fd) ?X} + {_} =>
           let H := fresh in
           assert (List.In {| KindNameKind := FindPrefixIndex;
                              KindNameName := fd|} indexed_attrs) as H
@@ -843,15 +847,17 @@ Ltac createTerm_dep dom f fds tail fs k :=
         | FindPrefixIndex =>
           (findMatchingTerm
              fds kind s
-             ltac:(fun X => k (fun x : dom => Build_FindPrefixSearchTerm
-                                                 (Some (X x)) (tail x)))
-                    || k (fun x : dom => Build_FindPrefixSearchTerm None (tail x)))
+             ltac:(fun X => k (fun x : dom => {| FindPrefixIndexSearchTerm := Some (X x);
+                                                 FindPrefixItemSearchTerm := tail x |}))
+                    || k (fun x : dom => {| FindPrefixIndexSearchTerm := None;
+                                            FindPrefixItemSearchTerm := tail x |}))
         | RangeIndex =>
           (findMatchingTerm
              fds kind s
-             ltac:(fun X => k (fun x : dom => Build_RangeSearchTerm
-                                                (Some (X x)) (tail x)))
-                    || k (fun x : dom => Build_RangeSearchTerm None (tail x)))
+             ltac:(fun X => k (fun x : dom => {| RangeIndexSearchTerm := Some (X x);
+                                                 RangeItemSearchTerm := tail x |}))
+                    || k (fun x : dom => {| RangeIndexSearchTerm := None;
+                                            RangeItemSearchTerm := tail x |}))
       end
     | {| KindNameKind := ?kind;
           KindNameName := ?s|} :: ?fs' =>
@@ -953,7 +959,7 @@ Ltac findGoodTerm_dep SC F indexed_attrs visited_attrs k :=
                            (fun (a : T) (_ : @Tuple SC) => true)
             | left _ => k visited_attrs tt F
           end
-        | forall a b, {IncludedIn (@?X a) (_!``?fd)} + {_} =>
+        | forall a b, {IncludedIn (@?X a) (_``?fd)} + {_} =>
           let H := fresh in
           assert (List.In {| KindNameKind := InclusionIndex;
                              KindNameName := fd|} indexed_attrs) as H
@@ -981,7 +987,7 @@ Ltac findGoodTerm_dep SC F indexed_attrs visited_attrs k :=
                            (fun (a : T) (_ : @Tuple SC) => true)
             | left _ => k visited_attrs tt F
           end
-        | forall a b, {IsPrefix (_!``?fd) (@?X a)} + {_} =>
+        | forall a b, {IsPrefix (_``?fd) (@?X a)} + {_} =>
           let H := fresh in
           assert (List.In {| KindNameKind := FindPrefixIndex;
                              KindNameName := fd|} indexed_attrs) as H
@@ -1009,7 +1015,7 @@ Ltac findGoodTerm_dep SC F indexed_attrs visited_attrs k :=
                            (fun (a : T) (_ : @Tuple SC) => true)
             | left _ => k visited_attrs tt F
           end
-        | forall a b, {InRange (_!``?fd) (@?X a)} + {_} =>
+        | forall a b, {InRange (_``?fd) (@?X a)} + {_} =>
           let H := fresh in
           assert (List.In {| KindNameKind := RangeIndex;
                              KindNameName := fd|} indexed_attrs) as H

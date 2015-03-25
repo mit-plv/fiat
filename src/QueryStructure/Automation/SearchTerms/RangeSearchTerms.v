@@ -11,8 +11,8 @@ Inductive RangeIndex : Set := rangeIndex.
 Record RangeSearchTerm
        (heading : Heading)
   :=
-    { IndexSearchTerm : option (nat * nat);
-      ItemSearchTerm : @Tuple heading -> bool }.
+    { RangeIndexSearchTerm : option (nat * nat);
+      RangeItemSearchTerm : @Tuple heading -> bool }.
 
 (* This builds the type of searchterms and the matching function on them *)
 Global Instance RangeIndexDenotation
@@ -22,13 +22,13 @@ Global Instance RangeIndexDenotation
 : @IndexDenotation RangeIndex heading index :=
   {| DenoteIndex := RangeSearchTerm heading; (* Pick search term type *)
      MatchIndex search_term item := (* matching function : DenoteIndex -> Tuple heading -> bool *)
-       match IndexSearchTerm search_term with
+       match RangeIndexSearchTerm search_term with
          | Some indexSearchTerm =>
            if InRange_dec (projection item) indexSearchTerm then
-             ItemSearchTerm search_term item
+             RangeItemSearchTerm search_term item
            else false
          | None =>
-           ItemSearchTerm search_term item
+           RangeItemSearchTerm search_term item
        end |}.
 
 (* Extra type class magic for range indices. *)
