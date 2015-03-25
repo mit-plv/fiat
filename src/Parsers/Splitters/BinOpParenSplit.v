@@ -4,7 +4,7 @@ Require Import Parsers.ContextFreeGrammar.
 Require Import Parsers.BaseTypes Parsers.BooleanBaseTypes.
 Require Import Parsers.Splitters.RDPList.
 Require Import Common.
-Require Import Common.List.Operations.
+Require Import Common.List.Operations Common.List.ListFacts.
 
 Require Import Coq.Init.Wf.
 Require Import Coq.Arith.Wf_nat.
@@ -67,6 +67,14 @@ Section StringT.
             (cur_mark::table, new_higher_closes))
          s.
 
+  Lemma list_of_next_bin_ops_closes_compute_empty {hc}
+  : list_of_next_bin_ops_closes (Empty String) hc
+    = (nil, hc).
+  Proof.
+    unfold list_of_next_bin_ops_closes.
+    rewrite Fold_compute_empty; reflexivity.
+  Qed.
+
   Lemma list_of_next_bin_ops_closes_compute_cons {ch s hc}
   : list_of_next_bin_ops_closes ([[ ch ]] ++ s) hc
     = (let table_higher_closes := list_of_next_bin_ops_closes s hc in
@@ -91,6 +99,47 @@ Section StringT.
     rewrite Fold_compute_cons; simpl.
     destruct (is_bin_op ch), (is_close ch), (is_open ch); simpl;
     reflexivity.
+  Qed.
+
+  Lemma list_of_next_bin_ops_closes_compute_append {s1 s2 hc}
+  : list_of_next_bin_ops_closes (s1 ++ s2) hc
+    = (let table_hc' := list_of_next_bin_ops_closes s2 hc in
+       let '(table, hc') := (fst table_hc', snd table_hc') in
+       ((fst (list_of_next_bin_ops_closes s1 hc') ++ table)%list,
+        snd (list_of_next_bin_ops_closes s1 hc'))).
+  Proof.
+    simpl.
+    revert s1 s2.
+    match goal with
+      | [ |- forall s, @?P s ]
+        => refine (Fold _ P _ _)
+    end.
+    { intro s2.
+      rewrite list_of_next_bin_ops_closes_compute_empty; simpl.
+      rewrite LeftId.
+      apply injective_projections; reflexivity. }
+    { intros ch ? IHs s2.
+      rewrite Associativity.
+      rewrite !list_of_next_bin_ops_closes_compute_cons, !IHs; simpl.
+      destruct (is_bin_op ch), (is_open ch), (is_close ch); simpl;
+      try reflexivity.
+      apply injective_projections; try reflexivity; simpl; [].
+      apply f_equal2; try reflexivity; simpl; [].
+      apply f_equal; [].
+
+      repeat (f_equal; []).
+
+
+    apply Fold.
+
+  Lemma length_fst_list_of_next_bin_ops_closes {s hc}
+  : List.length (fst (list_of_next_bin_ops_closes s hc)) = Length s.
+  Proof.
+    revert s.
+    apply Fold.
+    { rewrite list_of_next_bin_ops_closes_compute_empty, Length_Empty; reflexivity. }
+    { intros ? ? H; rewrite list_of_next_bin_ops_closes_compute_cons; simpl.
+      rewrite <- Length_correct, Singleton_Length, H; reflexivity. }
   Qed.
 
   Let String' : Type := String.
@@ -134,10 +183,16 @@ Section StringT.
       exists (snd (list_of_next_bin_ops_closes (snd (SplitAt n s)) hc)).
       subst; simpl.
       rewrite <- (SplitAt_correct String n s) at 1.
-      pose proof (Min.le_min_r (Length s) n) as H'.
-      rewrite <- SplitAtLength_correct in H'.
-      revert H'.
-      destruct (SplitAt n s) as [s1 s2]; simpl; clear s.
+      generalize (SplitAtLength_correct String n s).
+      apply NPeano.Nat.min_case_strong.
+      { intros H H'.
+        rewrite SplitAtPastEnd by assumption; simpl.
+        rewrite RightId.
+        rewrite list_of_next_bin_ops_closes_compute_empty; simpl.
+        rewrite take_all by (rewrite length_fst_list_of_next_bin_ops_closes; assumption).
+        reflexivity. }
+      { intros _.
+        destruct (SplitAt n s) as [s1 s2]; simpl; clear s.
 
     { destruct (state_val s) as [ table [ hc H ] ].
       exists hc; simpl.
