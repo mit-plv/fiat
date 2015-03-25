@@ -4,12 +4,12 @@ Require Import ADTSynthesis.QueryStructure.Automation.AutoDB
         ADTSynthesis.QueryStructure.Specification.SearchTerms.InRange.
 
 Definition PHOTOS := "Photos".
-Definition PEOPLE := "Places".
+Definition EVENTS := "Events".
 
 Definition IMAGE_DATA := "ImageData".
-Definition TAGS := "Tags".
-Definition NAME := "Name".
-Definition AGE := "Age".
+Definition PERSONS := "Persons".
+Definition EVENT_NAME := "EventName".
+Definition DATE := "Date".
 
 (* Represents image data by a list of byte characters *)
 Definition DataT := list ascii.
@@ -18,13 +18,13 @@ Definition AlbumSchema :=
   Query Structure Schema
     [ relation PHOTOS has
                schema <IMAGE_DATA :: DataT,
-                       TAGS :: list string,
-                       NAME :: string>;
-      relation PEOPLE has
-               schema <NAME :: string,
-                       AGE :: nat>
+                       PERSONS :: list string,
+                       EVENT_NAME :: string>;
+      relation EVENTS has
+               schema <EVENT_NAME :: string,
+                       DATE :: nat>
     ]
-    enforcing [attribute NAME for PHOTOS references PEOPLE].
+    enforcing [attribute EVENT_NAME for PHOTOS references EVENTS].
 
 Definition AlbumSig : ADTSig :=
   ADTsignature {
@@ -32,11 +32,11 @@ Definition AlbumSig : ADTSig :=
            : unit                             -> rep,
       Method "AddPhoto"
            : rep x (AlbumSchema#PHOTOS)       -> rep x bool,
-      Method "AddPerson"
-           : rep x (AlbumSchema#PEOPLE)       -> rep x bool,
-      Method "PhotosByAgeRange"
+      Method "AddEvent"
+           : rep x (AlbumSchema#EVENTS)       -> rep x bool,
+      Method "PhotosByDateRange"
            : rep x (nat * nat)                -> rep x list (AlbumSchema#PHOTOS),
-      Method "PhotosByTags"
+      Method "PhotosByPersons"
            : rep x list string                -> rep x list (AlbumSchema#PHOTOS)
     }.
 
@@ -47,19 +47,19 @@ Definition AlbumSpec : ADT AlbumSig :=
     update "AddPhoto" (photo : AlbumSchema#PHOTOS) : bool :=
       Insert photo into PHOTOS,
 
-    update "AddPerson" (person : AlbumSchema#PEOPLE) : bool :=
-      Insert person into PEOPLE,
+    update "AddEvent" (event : AlbumSchema#EVENTS) : bool :=
+      Insert event into EVENTS,
 
-    query "PhotosByAgeRange" (range : nat * nat) : list (AlbumSchema#PHOTOS) :=
+    query "PhotosByDateRange" (range : nat * nat) : list (AlbumSchema#PHOTOS) :=
       For (photo in PHOTOS)
-          (person in PEOPLE)
-          Where (person!NAME = photo!NAME)
-          Where (InRange person!AGE range)
+          (event in EVENTS)
+          Where (event!EVENT_NAME = photo!EVENT_NAME)
+          Where (InRange event!DATE range)
           Return photo,
           
-    query "PhotosByTags" (search_tags : list string) : list (AlbumSchema#PHOTOS) :=
+    query "PhotosByPersons" (search_tags : list string) : list (AlbumSchema#PHOTOS) :=
       For (photo in PHOTOS)
-          Where (IncludedIn search_tags photo!TAGS)
+          Where (IncludedIn search_tags photo!PERSONS)
           Return photo
 }.
 
@@ -70,22 +70,9 @@ Proof.
 
   start honing QueryStructure.
 
-  make simple indexes using [[(EqualityIndex, NAME); (InclusionIndex, TAGS)]; [(RangeIndex, AGE)]].
+  make simple indexes using [[(EqualityIndex, EVENT_NAME); (InclusionIndex, PERSONS)]; [(RangeIndex, DATE)]].
 
-  hone constructor "Init".
-  { initializer. }
-
-  hone method "PhotosByTags".
-  { observer. }
-
-  hone method "PhotosByAgeRange".
-  { observer. }
-
-  hone method "AddPhoto".
-  { insertion. }
-
-  hone method "AddPerson".
-  { insertion. }
+  plan.
 
   FullySharpenQueryStructure AlbumSchema Index.
 
