@@ -66,6 +66,7 @@ Definition GetIndexes
                      indices))
       (qschemaSchemas qs_schema).
 
+
 Ltac TermAttributes Term :=
   match Term with
     | fun tups => @GetAttribute _ (@?f tups) {|bindex := ?Aidx |} =>
@@ -78,12 +79,12 @@ Ltac TermAttributes Term :=
     | _ => constr:(@nil (string * (string * string)))
   end.
 
-Ltac ClauseAttributes WhereClause TermAttributes kTerm k :=
+Ltac ClauseAttributes WhereClause kTerm k :=
   match WhereClause with
     | fun tups => @?C1 tups /\ @?C2 tups =>
-      ClauseAttributes C1 TermAttributes kTerm
+      ClauseAttributes C1 kTerm
                        ltac:(fun attrs1 =>
-                               ClauseAttributes C2 TermAttributes kTerm
+                               ClauseAttributes C2 kTerm
                                                 ltac:(fun attrs2 =>
                                                         k (app attrs2 attrs1)))
     | fun tups => @?C1 tups = @?C2 tups =>
@@ -95,23 +96,22 @@ Ltac ClauseAttributes WhereClause TermAttributes kTerm k :=
     | _ => k (@nil (string * (string * string)))
   end.
 
-Ltac QueryAttributes ClauseAttributes QueryBody k :=
+Ltac QueryAttributes QueryBody kTerm k :=
   match QueryBody with
     | @UnConstrQuery_In _ ?qsSchema _ {|bindex := ?Ridx |} ?QueryBody' => (* Initial "Naked" Case *)
       let QueryBody'' := eval cbv beta in (fun tup : @Tuple (GetHeading qsSchema Ridx) => QueryBody' tup) in
-          QueryAttributes ClauseAttributes
-                          QueryBody'' k  (* Simply recurse under binder *)
+          QueryAttributes QueryBody'' kTerm k  (* Simply recurse under binder *)
     | fun tups : ?A =>
         @UnConstrQuery_In _ ?qsSchema _ {| bindex := ?Ridx |}
                           (@?f tups) => (* Already Under binder *)
       let join := eval cbv beta in
       (fun joinedtups : prod A (@Tuple (GetHeading qsSchema Ridx)) =>
          f (fst joinedtups) (snd joinedtups)) in
-          QueryAttributes ClauseAttributes join k
+          QueryAttributes join kTerm k
     | fun tups => Where (@?P tups) (@?QueryBody' tups) =>
-        let attrs := ClauseAttributes P in
-        QueryAttributes ClauseAttributes QueryBody'
-                        ltac:(fun attrs' => k (app attrs attrs'))
+      ClauseAttributes P kTerm
+                       ltac:(fun attrs =>
+                               QueryAttributes QueryBody' kTerm ltac:(fun attrs' => k (app attrs attrs')))
     | _ => k (@nil (string * (string * string)))
   end.
 
@@ -120,9 +120,7 @@ Ltac MethodAttributes meth kTerm l :=
   [ match goal with
         |- context[For ?Q] =>
         QueryAttributes
-          ltac:(fun wc => ClauseAttributes wc TermAttributes kTerm ltac:(fun a => a))
-
-                 Q ltac:(fun attrs => let attrs' := eval simpl in attrs in
+                 Q kTerm ltac:(fun attrs => let attrs' := eval simpl in attrs in
                                           unify l attrs')
       | _ => unify l (@nil (string * (string * string)))
     end; finish honing | ].
@@ -150,22 +148,6 @@ Ltac GenerateIndexesFor meths kTerm k :=
                      let l' := eval compute in
                      (GetIndexes qs_schema (CountAttributes l)) in
                          k l')
-  end.
-
-Ltac matchClauseToIndex WhereClause k :=
-  match WhereClause with
-    | fun tups => IncludedIn _ (@?C1 tups) =>
-      let attrs1 := TermAttributes C1 in
-      k (map (fun a12 => (InclusionIndex, (fst a12, snd a12)))
-             (attrs1))
-    | fun tups => IsPrefix (@?C1 tups) _ =>
-      let attrs1 := TermAttributes C1 in
-      k (map (fun a12 => (FindPrefixIndex, (fst a12, snd a12)))
-             (attrs1))
-    | fun tups => InRange (@?C1 tups) _ =>
-      let attrs1 := TermAttributes C1 in
-      k (map (fun a12 => (RangeIndex, (fst a12, snd a12)))
-             (attrs1))
   end.
 
 Ltac GenerateIndexesForAll kTerm k :=

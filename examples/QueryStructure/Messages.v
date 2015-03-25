@@ -75,7 +75,15 @@ Proof.
 
   (* Old, explicit index selection*)
 
-  GenerateIndexesForAll matchInclusion ltac:(fun l => make simple indexes using l).
+    Ltac matchInclusionClause WhereClause k :=
+    match WhereClause with
+      | fun tups => IncludedIn _ (@?C1 tups) =>
+        let attrs1 := TermAttributes C1 in
+        k (map (fun a12 => (InclusionIndex, (fst a12, snd a12)))
+               (attrs1))
+    end.
+
+  GenerateIndexesForAll matchInclusionClause ltac:(fun l => make simple indexes using l).
 
   hone method "RelevantMessages".
   {
@@ -94,40 +102,16 @@ Proof.
       repeat setoid_rewrite Join_Filtered_Comp_Lists_id.
       distribute_filters_to_joins.
 
-      (* implement_filters_with_find
-        find_simple_search_term find_simple_search_term_dep. *)
-
-
- implement_filters_with_find
-        find_simple_search_term find_simple_search_term_dep.
-
-
-find_equivalent_search_term find_simple_search_term.
-simpl.
-
-unfold ExtensionalEq, MatchIndexSearchTerm; simpl.
-reflexivity.
-simpl.
-
-try unify tm search_term;
-                                                  unfold ExtensionalEq, MatchIndexSearchTerm;
-                                                  simpl; intro; try prove_extensional_eq
-
-let indexed_attrs' := unfold l in l in
-    let SC := unfold h in h in
-        let fds := unfold b in b in
-            let tail := unfold p in p in
-                makeTerm indexed_attrs' SC fds tail
-                         ltac:(fun tm => try unify tm search_term;
-                               unfold ExtensionalEq, MatchIndexSearchTerm;
-                               simpl; intro; try prove_extensional_eq).
-    end.
-
-
-
       implement_filters_with_find
-        find_simple_search_term
-        find_simple_search_term_dep.
+        ltac:(find_simple_search_term InclusionIndexUse
+                                      createLastInclusionTerm
+                                      createEarlyInclusionTerm)
+               ltac:(find_simple_search_term_dep
+                       InclusionIndexUse_dep
+                       createLastInclusionTerm_dep
+                       createEarlyInclusionTerm_dep
+                    ).
+
     }
     (* Do some more simplication using the monad laws. *)
     simpl; simplify with monad laws.
@@ -143,6 +127,29 @@ let indexed_attrs' := unfold l in l in
 
   hone method "ContactMessages".
   {
+    Focused_refine_Query. (* With Focused_refine_Query: 7 seconds. *)
+    { (* Step 1: Implement [In] by enumeration. *)
+      implement_In.
+      (* Step 2: Convert where clauses into compositions of filters. *)
+      repeat convert_Where_to_filter.
+      (* Step 3: Do some simplication.*)
+      repeat setoid_rewrite <- filter_and.
+      try setoid_rewrite andb_true_r.
+      (* Step 4: Move filters to the outermost [Join_Comp_Lists] to which *)
+      (* they can be applied. *)
+      repeat setoid_rewrite Join_Filtered_Comp_Lists_id.
+      distribute_filters_to_joins.
+
+            implement_filters_with_find
+        ltac:(find_simple_search_term InclusionIndexUse
+                                      createLastInclusionTerm
+                                      createEarlyInclusionTerm)
+               ltac:(find_simple_search_term_dep
+                       InclusionIndexUse_dep
+                       createLastInclusionTerm_dep
+                       createEarlyInclusionTerm_dep
+                    ).
+
     implement_Query.
     simpl; simplify with monad laws.
     simpl; commit.

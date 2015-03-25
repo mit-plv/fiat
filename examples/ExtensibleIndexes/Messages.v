@@ -72,7 +72,27 @@ Proof.
 
   start honing QueryStructure.
 
-  GenerateIndexesForAll matchClauseToIndex ltac:(fun l => make simple indexes using l).
+  Ltac matchInclusionClause WhereClause k :=
+    match WhereClause with
+      | fun tups => IncludedIn _ (@?C1 tups) =>
+        let attrs1 := TermAttributes C1 in
+        k (map (fun a12 => (InclusionIndex, (fst a12, snd a12)))
+               (attrs1))
+    end.
+
+
+  Ltac matchPrefixClause WhereClause k :=
+    match WhereClause with
+      | fun tups => IsPrefix (@?C1 tups) _ =>
+        let attrs1 := TermAttributes C1 in
+        k (map (fun a12 => (FindPrefixIndex, (fst a12, snd a12)))
+               (attrs1))
+    end.
+
+  GenerateIndexesForAll ltac:(fun W k => match goal with
+                                           | _ => matchInclusionClause W k
+                                           | _ => matchPrefixClause W k end)
+                               ltac:(fun l => make simple indexes using l).
 
 (*
   make simple indexes using [[(EqualityIndex, PHONE_NUMBER); (InclusionIndex, MESSAGE)]; [(EqualityIndex, NAME); (UnIndex, NAME)]].

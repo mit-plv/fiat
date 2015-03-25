@@ -72,6 +72,11 @@ Ltac BuildIndexSearchTerm'
 Ltac BuildIndexMatcher'
      attrs heading indices k :=
   match indices with
+    | [("EqualityIndex", ?idx)] =>
+      let idx' := constr:(@Build_BoundedIndex _ attrs idx _) in
+      k (fun (st : prod _ (@Tuple heading -> bool)) tup =>
+              (@MatchIndex "EqualityIndex" heading idx' _ (fst st) tup)
+                && (snd st) tup)
     | [(?kind, ?idx)] =>
       let idx' := constr:(@Build_BoundedIndex _ attrs idx _) in
       k (@MatchIndex kind heading idx' _)
