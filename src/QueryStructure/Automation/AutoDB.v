@@ -395,7 +395,7 @@ Ltac prove_extensional_eq :=
 (* That's it for indexes! *)
 
 Record KindName
-  := { KindNameKind : Set;
+  := { KindNameKind : string;
        KindNameName : string }.
 
 (* Recurse over [fds] to find an attribute matching s *)
@@ -556,7 +556,7 @@ Ltac findGoodTerm SC F indexed_attrs k :=
               by (clear; simpl; intuition eauto); clear H;
             k ({| KindNameKind := FindPrefixIndex;
                   KindNameName := fd|}, X) (fun _ : @Tuple SC => true)
-              
+
         (* Range Search Terms *)
         | forall a, {InRange (_!?fd) ?X} + {_} =>
           let H := fresh in
@@ -2029,7 +2029,7 @@ Ltac deletion :=
          implement_EnsembleDelete_AbsR find_simple_search_term;
          simplify with monad laws;
          reflexivity) ||
-                     
+
            (try simplify with monad laws;
           simpl; commit; reflexivity))
       | cbv beta; simpl; try simplify with monad laws; cleanup_Count; finish honing ].

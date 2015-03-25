@@ -6,7 +6,7 @@ Require Import
 
 (* Instances for building indexes with make simple indexes. *)
 (* Every Kind of index is keyed on an inductive type with a single constructor*)
-Definition FindPrefixIndex : string := "findPrefixIndex".
+Definition FindPrefixIndex : string := "FindPrefixIndex".
 
 (* This is our search term type. *)
 Record FindPrefixSearchTerm
@@ -22,7 +22,7 @@ Global Instance FindPrefixIndexDenotation
        (heading : Heading)
        (index : @Attributes heading)
        (projection : @Tuple heading -> list ascii)
-: @IndexDenotation FindPrefixIndex heading index :=
+: @IndexDenotation "FindPrefixIndex" heading index :=
   {| DenoteIndex := FindPrefixSearchTerm heading; (* Pick search term type *)
      MatchIndex search_term item := (* matching function : DenoteIndex -> Tuple heading -> bool *)
        match FindPrefixIndexSearchTerm search_term with

@@ -30,13 +30,13 @@ Class IndexDenotation
   }.
 
 Open Scope string.
-Definition EqualityIndex : string := "Eq".
+Definition EqualityIndex : string := "EqualityIndex".
 
 Global Instance EqualityIndexDenotation
        (heading : Heading)
        (index : Attributes heading)
        (_ : Query_eq (Domain heading index))
-: @IndexDenotation EqualityIndex heading index :=
+: @IndexDenotation "EqualityIndex" heading index :=
   {| DenoteIndex :=
        option (Domain heading index);
      MatchIndex search_term tup :=
@@ -48,11 +48,11 @@ Global Instance EqualityIndexDenotation
        end
   |}.
 
-Definition UnIndex : string := "unIndex".
+Definition UnIndex : string := "UnIndex".
 Global Instance UnIndexDenotation
        (heading : Heading)
        (index : Attributes heading)
-: @IndexDenotation UnIndex heading index :=
+: @IndexDenotation "UnIndex" heading index :=
   {| DenoteIndex := @Tuple heading -> bool;
      MatchIndex search_term tup := search_term tup
   |}.
@@ -86,7 +86,7 @@ Ltac BuildIndexMatcher'
 
 Record KindIndex
        {heading : Heading}
-  := { KindIndexKind : Set;
+  := { KindIndexKind : string;
        KindIndexIndex : @Attributes heading }.
 
 Ltac BuildIndexes

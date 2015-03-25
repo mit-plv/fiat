@@ -67,7 +67,7 @@ Ltac TermAttributes Term :=
                 provided in QueryAttributes*)
            constr:([(Ridx, Aidx)])
       end
-    | _ => constr:(@nil (prod string string))
+    | _ => constr:(@nil (string * (string * string)))
   end.
 
 Ltac ClauseAttributes WhereClause TermAttributes kTerm k :=
@@ -81,30 +81,30 @@ Ltac ClauseAttributes WhereClause TermAttributes kTerm k :=
     | fun tups => @?C1 tups = @?C2 tups =>
       let attrs1 := TermAttributes C1 in
       let attrs2 := TermAttributes C2 in
-      k (map (fun a12 => ("Eq", (fst a12, snd a12)))
+      k (map (fun a12 => ("EqualityIndex", (fst a12, snd a12)))
              (app attrs1 attrs2))
     | _ => kTerm WhereClause k
     | _ => k (@nil (string * (string * string)))
   end.
 
-Ltac QueryAttributes ClauseAttributes QueryBody kTerm k :=
+Ltac QueryAttributes ClauseAttributes QueryBody k :=
   match QueryBody with
     | @UnConstrQuery_In _ ?qsSchema _ {|bindex := ?Ridx |} ?QueryBody' => (* Initial "Naked" Case *)
       let QueryBody'' := eval cbv beta in (fun tup : @Tuple (GetHeading qsSchema Ridx) => QueryBody' tup) in
           QueryAttributes ClauseAttributes
-                          QueryBody'' kTerm k  (* Simply recurse under binder *)
+                          QueryBody'' k  (* Simply recurse under binder *)
     | fun tups : ?A =>
         @UnConstrQuery_In _ ?qsSchema _ {| bindex := ?Ridx |}
                           (@?f tups) => (* Already Under binder *)
       let join := eval cbv beta in
       (fun joinedtups : prod A (@Tuple (GetHeading qsSchema Ridx)) =>
          f (fst joinedtups) (snd joinedtups)) in
-          QueryAttributes ClauseAttributes join kTerm k
+          QueryAttributes ClauseAttributes join k
     | fun tups => Where (@?P tups) (@?QueryBody' tups) =>
         let attrs := ClauseAttributes P in
         QueryAttributes ClauseAttributes QueryBody'
-                        kTerm ltac:(fun attrs' => k (app attrs attrs'))
-    | _ => k (@nil (prod string string))
+                        ltac:(fun attrs' => k (app attrs attrs'))
+    | _ => k (@nil (string * (string * string)))
   end.
 
 Ltac MethodAttributes meth kTerm l :=
@@ -112,24 +112,24 @@ Ltac MethodAttributes meth kTerm l :=
   [ match goal with
         |- context[For ?Q] =>
         QueryAttributes
-          ltac:(fun wc => ClauseAttributes wc TermAttributes ltac:(fun a => a))
+          ltac:(fun wc => ClauseAttributes wc TermAttributes kTerm ltac:(fun a => a))
 
                  Q ltac:(fun attrs => let attrs' := eval simpl in attrs in
                                           unify l attrs')
-      | _ => unify l (@nil (prod string string))
+      | _ => unify l (@nil (string * (string * string)))
     end; finish honing | ].
 
 Ltac MethodsAttributes' meths kTerm l :=
   match meths with
     | cons ?meth ?meths' =>
-      makeEvar (list (prod string string))
+      makeEvar (list (string * (string * string)))
                ltac:(fun l1 =>
-                       makeEvar (list (prod string string))
+                       makeEvar (list (string * (string * string)))
                                 ltac:(fun l2 =>
                                         unify l (app l1 l2);
-                                      MethodAttributes meth l1;
-                                      MethodsAttributes' meths' l2))
-    | nil => unify l (@nil (prod string string))
+                                      MethodAttributes meth kTerm l1;
+                                      MethodsAttributes' meths' kTerm l2))
+    | nil => unify l (@nil (string * (string * string)))
   end.
 
 Ltac GenerateIndexesFor meths kTerm k :=
@@ -138,7 +138,7 @@ Ltac GenerateIndexesFor meths kTerm k :=
            (@BuildADT (UnConstrQueryStructure ?qs_schema) _ _ _ _) =>
       makeEvar (list (string * (string * string)))
                ltac:(fun l =>
-                       MethodsAttributes' meths l;
+                       MethodsAttributes' meths kTerm l;
                      let l' := eval compute in
                      (GetIndexes qs_schema (CountAttributes l)) in
                          k l')
@@ -149,5 +149,5 @@ Ltac GenerateIndexesForAll kTerm k :=
       |- Sharpened
            (@BuildADT (UnConstrQueryStructure ?qs_schema) _ ?methSigs _ _) =>
       let meths := eval compute in (map methID methSigs) in
-          GenerateIndexesFor meths k
+          GenerateIndexesFor meths kTerm k
   end.

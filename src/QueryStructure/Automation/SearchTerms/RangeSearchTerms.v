@@ -5,7 +5,7 @@ Require Import
 
 (* Instances for building indexes with make simple indexes. *)
 (* Every Kind of index is keyed on an inductive type with a single constructor*)
-Definition RangeIndex : string := "rangeIndex".
+Definition RangeIndex : string := "RangeIndex".
 
 (* This is our search term type. *)
 Record RangeSearchTerm
@@ -19,7 +19,7 @@ Global Instance RangeIndexDenotation
        (heading : Heading)
        (index : @Attributes heading)
        (projection : @Tuple heading -> nat)
-: @IndexDenotation RangeIndex heading index :=
+: @IndexDenotation "RangeIndex" heading index :=
   {| DenoteIndex := RangeSearchTerm heading; (* Pick search term type *)
      MatchIndex search_term item := (* matching function : DenoteIndex -> Tuple heading -> bool *)
        match RangeIndexSearchTerm search_term with
