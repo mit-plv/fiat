@@ -32,7 +32,7 @@ Global Instance RangeIndexDenotation
        end |}.
 
 (* Extra type class magic for range indices. *)
-Hint Extern 10 (@IndexDenotation RangeIndex ?heading ?index) =>
+Hint Extern 10 (@IndexDenotation "RangeIndex" ?heading ?index) =>
 let index_domain := eval hnf in (@Domain heading index) in
 match index_domain with
   | nat =>

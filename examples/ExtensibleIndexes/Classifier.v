@@ -6,7 +6,7 @@ Require Import ADTSynthesis.QueryStructure.Automation.AutoDB
 
 Open Scope list.
 
-(* This is an internet packet classifier example. We model a packet with its ip address and 
+(* This is an internet packet classifier example. We model a packet with its ip address and
    network protocol. The ADT has one relation (table) named [Rules], which contains classification rules *)
 
 Section Packet.
@@ -26,17 +26,17 @@ Section Packet.
   Section Packet_Protocol.
     Variable (P : Type).
     Context {P_eq_dec : Query_eq P}.
-    
+
     Inductive Policy :=
     | enforce : P -> Policy
     | wildcard.
-    
+
     Definition FollowPolicy (p : Policy) (s : P) :=
       match p with
         | enforce p' => p' = s
         | wildcard => True
       end.
-    
+
     Definition FollowPolicy_dec (p: Policy) (s : P) : {FollowPolicy p s} + {~ FollowPolicy p s}.
       refine (match p with
                 | enforce p' =>
@@ -46,7 +46,7 @@ Section Packet.
                     right _
                 | wildcard => left _
               end); simpl; intuition eauto. Defined.
-    
+
     Global Instance DecideableFollowPolicy {T} (f : T -> Policy) {n}
     : DecideableEnsemble (fun tup => FollowPolicy (f tup) n) :=
       {| dec n' :=  ?[FollowPolicy_dec (f n') n] |}. intuition; find_if_inside; intuition. Defined.
@@ -136,8 +136,7 @@ Section ADT.
     unfold ClassifierSpec.
     start honing QueryStructure.
 
-    (* GenerateIndexesForAll matchInclusion ltac:(fun l => make simple indexes using l).*)
-    make simple indexes using [[("FindPrefixIndex", DESTINATION)]]. 
+    GenerateIndexesForAll matchClauseToIndex ltac:(fun l => make simple indexes using l).
 
     hone constructor "Init".
     { initializer. }
@@ -173,7 +172,7 @@ Section ADT.
   (* 124 seconds *)
   Time Defined.
 
-  Definition ClassifierImpl : SharpenedUnderDelegates ClassifierSig.  
+  Definition ClassifierImpl : SharpenedUnderDelegates ClassifierSig.
     (* 33 seconds *)
     Time let Impl := eval simpl in (projT1 ClassifierManual) in
              exact Impl.
