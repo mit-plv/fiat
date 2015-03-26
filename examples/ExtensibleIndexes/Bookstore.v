@@ -1,5 +1,6 @@
 Require Import Coq.Strings.String.
-Require Import ADTSynthesis.QueryStructure.Automation.AutoDB.
+Require Import ADTSynthesis.QueryStructure.Automation.AutoDB
+        ADTSynthesis.QueryStructure.Automation.IndexSelection.
 
 (* Our bookstore has two relations (tables):
    - The [Books] relation contains the books in the
@@ -105,16 +106,12 @@ Proof.
   (* First, we unfold various definitions and drop constraints *)
   start honing QueryStructure.
 
-  (* Then we define an index structure for each table using Bag ADTs *)
+  GenerateIndexesForAll ltac:(fun _ _ => fail) ltac:(fun l => make simple indexes using l).
 
-  make simple indexes using [[(EqualityIndex, sAUTHOR); (EqualityIndex, sISBN); (UnIndex, sISBN)]; [(EqualityIndex, sISBN); (UnIndex, sISBN) ]].
-  (* In other words, implement the Book table with a Bag ADT
-    indexed first on the author field, then the ISBN field
-    and the Orders table with a Bag ADT indexed on just the ISBN field. *)
-
-  (* Having selected a more concrete data-representation, we start
-     the actual refinement with the constructor, in a fully automated way *)
-  plan.
+  hone method "AddBook".
+  {
+    insertion a b c d e f.
+  }
 
   FullySharpenQueryStructure BookStoreSchema Index.
 

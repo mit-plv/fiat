@@ -422,7 +422,7 @@ Ltac createLastInclusionTerm f fds tail fs kind s k :=
                 ItemSearchTerm := tail |}
   end.
 
-Ltac createLastPrefinxTerm f fds tail fs kind s k :=
+Ltac createLastPrefixTerm f fds tail fs kind s k :=
   match kind with
     | "FindPrefixIndex" =>
       (findMatchingTerm
@@ -509,7 +509,7 @@ Ltac createTerm f fds tail fs EarlyIndex LastIndex k :=
    use [createTerm] to recurse over [fs]
    using the schema for [SC]
        *)
-      Ltac makeTerm fs SC fds tail EarlyIndex LastIndex k :=
+Ltac makeTerm fs SC fds tail EarlyIndex LastIndex k :=
   match eval hnf in SC with
     | Build_Heading ?f =>
       createTerm (Build_Heading f) fds tail fs EarlyIndex LastIndex k
@@ -896,7 +896,7 @@ Ltac createLastPrefixTerm_dep dom f fds tail fs kind rest s k :=
                                         FindPrefixItemSearchTerm := tail x |}))
   end.
 
-Ltac createLastRangeIndex_dep dom f fds tail fs kind rest s k :=
+Ltac createLastRangeTerm_dep dom f fds tail fs kind rest s k :=
   match kind with
     | "RangeIndex" =>
       (findMatchingTerm
@@ -2101,8 +2101,10 @@ Ltac cleanup_Count :=
                | setoid_rewrite map_length
                ].
 
-Ltac observer :=
-  implement_Query;
+Ltac observer CreateTerm EarlyIndex LastIndex
+     makeClause_dep EarlyIndex_dep LastIndex_dep :=
+  implement_Query CreateTerm EarlyIndex LastIndex
+                  makeClause_dep EarlyIndex_dep LastIndex_dep;
   simpl; simplify with monad laws;
   cbv beta; simpl; commit;
   cleanup_Count;
@@ -2115,12 +2117,14 @@ Ltac initializer :=
   try simplify with monad laws;
   finish honing.
 
-Ltac deletion ClauseMatch EarlyIndex LastIndex :=
+Ltac deletion CreateTerm EarlyIndex LastIndex
+     makeClause_dep EarlyIndex_dep LastIndex_dep :=
     try simplify with monad laws;
       etransitivity;
       [ repeat match goal with
                  | |- context[Query_For _] =>
-                   implement_Query;
+                   implement_Query CreateTerm EarlyIndex LastIndex
+                                   makeClause_dep EarlyIndex_dep LastIndex_dep;
                      eapply refine_under_bind; intros
                end;
         repeat setoid_rewrite refine_if_If at 1;
@@ -2129,10 +2133,10 @@ Ltac deletion ClauseMatch EarlyIndex LastIndex :=
         repeat eapply refine_If_Then_Else;
         try simplify with monad laws; cbv beta; simpl;
         (
-         (implement_QSDeletedTuples ltac:(find_simple_search_term ClauseMatch EarlyIndex LastIndex);
+         (implement_QSDeletedTuples ltac:(find_simple_search_term CreateTerm EarlyIndex LastIndex);
          try simplify with monad laws;
          cbv beta; simpl;
-         implement_EnsembleDelete_AbsR ltac:(find_simple_search_term ClauseMatch EarlyIndex LastIndex);
+         implement_EnsembleDelete_AbsR ltac:(find_simple_search_term CreateTerm EarlyIndex LastIndex);
          simplify with monad laws;
          reflexivity) ||
 
@@ -2140,13 +2144,15 @@ Ltac deletion ClauseMatch EarlyIndex LastIndex :=
           simpl; commit; reflexivity))
       | cbv beta; simpl; try simplify with monad laws; cleanup_Count; finish honing ].
 
-Ltac insertion :=
+Ltac insertion CreateTerm EarlyIndex LastIndex
+     makeClause_dep EarlyIndex_dep LastIndex_dep :=
       Implement_Insert_Checks;
     etransitivity;
       [ repeat match goal with
                  | |- context[Query_For _] =>
                    setoid_rewrite refineEquiv_swap_bind at 1;
-                     implement_Query;
+                     implement_Query CreateTerm EarlyIndex LastIndex
+                                     makeClause_dep EarlyIndex_dep LastIndex_dep;
                      eapply refine_under_bind; intros
                end;
         repeat setoid_rewrite refine_if_If at 1;
@@ -2183,22 +2189,37 @@ Ltac insertion :=
         end
       | cbv beta; simpl; try simplify with monad laws; cleanup_Count; finish honing ].
 
-Ltac method :=
+Ltac method CreateTerm EarlyIndex LastIndex
+     makeClause_dep EarlyIndex_dep LastIndex_dep :=
   match goal with
-    | [ |- context[EnsembleInsert _ _]] => insertion
-    | [ |- context[Query_For _]] => observer
-    | [ |- context[EnsembleDelete _ _]] => deletion
+    | [ |- context[EnsembleInsert _ _]] =>
+      insertion CreateTerm EarlyIndex LastIndex
+                makeClause_dep EarlyIndex_dep LastIndex_dep
+    | [ |- context[Query_For _]] =>
+      observer CreateTerm EarlyIndex LastIndex
+               makeClause_dep EarlyIndex_dep LastIndex_dep
+    | [ |- context[EnsembleDelete _ _]] =>
+      deletion CreateTerm EarlyIndex LastIndex
+               makeClause_dep EarlyIndex_dep LastIndex_dep
   end.
 
-Ltac honeOne :=
+Ltac honeOne CreateTerm EarlyIndex LastIndex
+     makeClause_dep EarlyIndex_dep LastIndex_dep :=
   match goal with
     | [ |- context[@Build_consDef _ (Build_consSig ?id _) _] ] =>
       hone constructor id; [ initializer | ]
     | [ |- context[@Build_methDef _ (Build_methSig ?id _ _) _] ] =>
-      hone method id; [ method | ]
+      hone method id; [ method CreateTerm EarlyIndex LastIndex
+                               makeClause_dep EarlyIndex_dep LastIndex_dep | ]
   end.
 
-Ltac plan := repeat honeOne.
+Ltac plan CreateTerm EarlyIndex LastIndex
+     makeClause_dep EarlyIndex_dep LastIndex_dep :=
+  repeat (honeOne CreateTerm EarlyIndex LastIndex
+     makeClause_dep EarlyIndex_dep LastIndex_dep).
+
+Ltac planDefault :=
+  plan default default default default default default.
 
 Global Opaque CallBagMethod.
 Global Opaque CallBagConstructor.

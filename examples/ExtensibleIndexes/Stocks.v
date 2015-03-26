@@ -92,10 +92,9 @@ Proof.
 
   start honing QueryStructure.
 
-  make simple indexes using [[(EqualityIndex, TYPE); (EqualityIndex, STOCK_CODE)];
-                             [(EqualityIndex, DATE); (EqualityIndex, STOCK_CODE)]].
+  GenerateIndexesForAll ltac:(fun _ _ => idtac) ltac:(fun l => make simple indexes using l).
 
-  plan.
+  plan _ _ _ _ _ _.
   
   finish sharpening.
 Defined.

@@ -80,11 +80,28 @@ Proof.
 
   start honing QueryStructure.
 
-  GenerateIndexesForAll ltac:(fun _ _ => idtac) ltac:(fun l => make simple indexes using l).
+  GenerateIndexesForAll ltac:(fun _ _ => fail) ltac:(fun l => make simple indexes using l).
 
-  Time plan. (* 220 seconds *)
-  idtac.
+  hone method "CountCells".
+  {
+    observer a b c d e f.
+  }
 
+  hone method "LocalMax".
+  {
+    observer a b c d e f.
+  }
+
+  hone method "AddMeasurement".
+  {
+    insertion a b c d e f.
+  }
+
+  hone method "AddCell".
+  {
+    insertion a b c d e f.
+  }
+  
   FullySharpenQueryStructure WeatherSchema Index.
 
   implement_bag_methods.
