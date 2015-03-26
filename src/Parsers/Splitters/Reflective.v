@@ -78,26 +78,26 @@ Section helpers.
           split_string_for_production_correct := split_string_for_production_correct0 |}.
 
   Context (split_valid_prod_tail : forall f x xs, split_valid_prod f (x::xs) = true -> split_valid_prod f xs = true).
-Print split_list_completeT.
+
   Lemma split_complete
         (H : split_valid = true)
-        str0 valid str pf nt
+        str0 valid (str : StringWithSplitState String split_stateT0) (pf : str ≤s str0) nt
         (H' : is_valid_nonterminal initial_nonterminals_data nt = true)
         (split_prod_each : forall it its,
                              split_valid_prod
                                (Fix1 _ ntl_wf _ split_valid_step (remove_nonterminal (Valid_nonterminals G) nt))
                                (it::its) = true
                              -> split_list_completeT
-                                  (G := G) (str0 := str0) (valid := valid) str pf
-                                  (split_string_for_production0 it its str) it its)
+                                  (G := G) (str0 := str0) (valid := valid) it its str pf
+                                  (split_string_for_production0 it its str))
   : ForallT
       (Forall_tails
          (fun prod =>
             match prod with
               | [] => True
               | it :: its =>
-                @split_list_completeT _ String G data0 str0 valid str pf
-                                      (@split_string_for_production0 it its str) it its
+                @split_list_completeT _ String G data0 str0 valid it its str pf
+                                      (@split_string_for_production0 it its str)
             end)) (Lookup G nt).
   Proof.
     pose proof H' as H''.
@@ -136,14 +136,8 @@ Print split_list_completeT.
   Lemma split_complete_simple
         (split_prod_each
          : forall nt it its str0 valid s1 s2 (pf : s1 ++ s2 ≤s str0) st,
-             MinimalParse.minimal_parse_of_item
-               String G initial_nonterminals_data
-               is_valid_nonterminal remove_nonterminal str0 valid
-               s1 it
-             -> MinimalParse.minimal_parse_of_production
-                  String G
-                  initial_nonterminals_data is_valid_nonterminal remove_nonterminal
-                  str0 valid s2 its
+             MinimalParse.minimal_parse_of_item (G := G) str0 valid s1 it
+             -> MinimalParse.minimal_parse_of_production (G := G) str0 valid s2 its
              -> is_valid_nonterminal initial_nonterminals_data nt = true
              -> split_valid_prod
                   (Fix1 _ ntl_wf _ split_valid_step (remove_nonterminal (Valid_nonterminals G) nt))
@@ -154,7 +148,7 @@ Print split_list_completeT.
                      {| string_val := s2; state_val := snd st1st2 |})
                     (split_string_for_production0 it its {| string_val := s1 ++ s2; state_val := st |}) })
         (H : split_valid = true)
-  : forall str0 valid str pf nt,
+  : forall str0 valid (str : StringWithSplitState String split_stateT0) (pf : str ≤s str0) nt,
       is_valid_nonterminal initial_nonterminals_data nt = true ->
       ForallT
         (Forall_tails
@@ -162,8 +156,8 @@ Print split_list_completeT.
               match prod with
                 | [] => True
                 | it :: its =>
-                  @split_list_completeT _ String G data0 str0 valid str pf
-                                        (@split_string_for_production0 it its str) it its
+                  @split_list_completeT _ String G data0 str0 valid it its str pf
+                                        (@split_string_for_production0 it its str)
               end)) (Lookup G nt).
   Proof.
     intros str0 valid str pf nt H0.

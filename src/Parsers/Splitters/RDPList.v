@@ -118,4 +118,8 @@ Section recursive_descent_parser_list.
   Global Instance rdp_list_data' : @parser_computational_types_dataT _ String
     := { predata := rdp_list_predata;
          split_stateT := fun _ _ _ _ => True }.
+
+  Global Instance rdp_list_rdata' : @parser_removal_dataT' rdp_list_predata
+    := { remove_nonterminal_1 := rdp_list_remove_nonterminal_1;
+         remove_nonterminal_2 := rdp_list_remove_nonterminal_2 }.
 End recursive_descent_parser_list.

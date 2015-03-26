@@ -15,37 +15,30 @@ Section recursive_descent_parser.
   Context (CharType : Type)
           (String : string_like CharType)
           (G : grammar CharType).
-  Context {premethods : parser_computational_predataT}.
+  Context {premethods : parser_computational_predataT}
+          {rdata : @parser_removal_dataT' premethods}.
   Local Instance types_methods : @parser_computational_types_dataT _ String
     := { predata := premethods;
          split_stateT str0 valid g str := unit }.
-  Context (remove_nonterminal_1
-           : forall ls ps ps',
-               is_valid_nonterminal (remove_nonterminal ls ps) ps' = true
-               -> is_valid_nonterminal ls ps' = true)
-          (remove_nonterminal_2
-           : forall ls ps ps',
-               is_valid_nonterminal (remove_nonterminal ls ps) ps' = false
-               <-> is_valid_nonterminal ls ps' = false \/ ps = ps').
   Variable orig_methods : @parser_computational_dataT' CharType String types_methods.
 
   Definition P (str0 : String) valid : String -> string -> Prop
     := fun str p =>
-         sub_names_listT is_valid_nonterminal valid initial_nonterminals_data
+         sub_nonterminals_listT valid initial_nonterminals_data
          /\ is_valid_nonterminal
               (if lt_dec (Length str) (Length str0)
                then initial_nonterminals_data
                else valid)
               p = true.
 
-  Lemma P_remove_impl {str0 valid str name name'}
-        (H0 : name <> name')
-        (H : P str0 valid str name')
-  : P str0 (remove_nonterminal valid name) str name'.
+  Lemma P_remove_impl {str0 valid str nonterminal nonterminal'}
+        (H0 : nonterminal <> nonterminal')
+        (H : P str0 valid str nonterminal')
+  : P str0 (remove_nonterminal valid nonterminal) str nonterminal'.
   Proof.
     destruct_head_hnf and.
     repeat split; try assumption.
-    { apply sub_names_listT_remove_2; assumption. }
+    { apply sub_nonterminals_listT_remove_2; assumption. }
     { destruct lt_dec; try assumption.
       match goal with
         | [ |- ?b = true ] => case_eq b; try reflexivity
@@ -65,13 +58,13 @@ Section recursive_descent_parser.
     := { p' : parse_of_item String G  s (NonTerminal _ nonterminal) & Forall_parse_of_item (P str0 valid) p' }.
 
   Definition mp_parse_item str0 valid str it
-    := minimal_parse_of_item String G initial_nonterminals_data is_valid_nonterminal remove_nonterminal str0 valid str it.
+    := minimal_parse_of_item (String := String) (G := G) str0 valid str it.
   Definition mp_parse_production str0 valid str prod
-    := minimal_parse_of_production String G initial_nonterminals_data is_valid_nonterminal remove_nonterminal str0 valid str prod.
+    := minimal_parse_of_production (String := String) (G := G) str0 valid str prod.
   Definition mp_parse str0 valid str prods
-    := minimal_parse_of String G initial_nonterminals_data is_valid_nonterminal remove_nonterminal str0 valid str prods.
+    := minimal_parse_of (String := String) (G := G) str0 valid str prods.
   Definition mp_parse_nonterminal str0 valid str nonterminal
-    := minimal_parse_of_name String G initial_nonterminals_data is_valid_nonterminal remove_nonterminal str0 valid str nonterminal.
+    := minimal_parse_of_nonterminal (String := String) (G := G) str0 valid str nonterminal.
 
   Definition split_parse_of_production {str0 valid str it its}
              (p : p_parse_production str0 valid str (it::its))
@@ -252,8 +245,8 @@ Section recursive_descent_parser.
              | [ H : _ < 0 |- _ ] => destruct (Lt.lt_n_0 _ H)
              | _ => progress destruct_head and
              | [ |- _ /\ _ ] => split
-             | [ H : sub_names_listT _ _ _ |- is_valid_nonterminal _ _ = true ]
-               => (apply H; eapply sub_names_listT_remove; eassumption)
+             | [ H : sub_nonterminals_listT _ _ |- is_valid_nonterminal _ _ = true ]
+               => (apply H; eapply sub_nonterminals_listT_remove; eassumption)
              | [ H : ~0 < ?n |- _ ]
                => (let H' := fresh in
                    destruct (zerop n) as [ | H' ]; [ clear H | destruct (H H') ])
@@ -299,14 +292,14 @@ Section recursive_descent_parser.
         exists (ParseProductionCons p' (projT1 ret')).
         refine (expand_forall_parse_of_item _ (fst H), projT2 ret').
         unfold P in *; simpl.
-        clear -e e' pf1 remove_nonterminal_1 remove_nonterminal_2.
+        clear -e e' pf1 rdata.
         abstract (intros; edestruct lt_dec; deloop_t). }
       { (** nonempty, empty *)
         left.
         exists (ParseProductionCons (projT1 ret) p'').
         refine (projT2 ret, expand_forall_parse_of_production _ _ (snd H)).
         unfold P in *; simpl.
-        clear -e e' pf0 remove_nonterminal_1 remove_nonterminal_2.
+        clear -e e' pf0 rdata.
         abstract (intros; edestruct lt_dec; deloop_t). }
       { (** nonempty, nonempty *)
         left.
@@ -314,7 +307,7 @@ Section recursive_descent_parser.
         refine (expand_forall_parse_of_item _ (fst H),
                 expand_forall_parse_of_production _ _ (snd H));
           unfold P in *; simpl;
-          clear -e e' pf remove_nonterminal_1 remove_nonterminal_2;
+          clear -e e' pf rdata;
           abstract (intros; edestruct lt_dec; deloop_t). } }
   Defined.
 
@@ -400,14 +393,14 @@ Section recursive_descent_parser.
                   (valid : nonterminals_listT).
 
           Let prefix str T := str ≤s str0
-                              -> sub_names_listT is_valid_nonterminal valid initial_nonterminals_data
+                              -> sub_nonterminals_listT valid initial_nonterminals_data
                               -> T.
 
           Let alt := False.
 
           Section T_nonterminal.
-            Context (name : string) (str : StringWithSplitState String (split_stateT str0 valid (include_nonterminal _ name))).
-            Let ret := mp_parse_nonterminal str0 valid str name.
+            Context (nonterminal : string) (str : StringWithSplitState String (split_stateT str0 valid (include_nonterminal _ nonterminal))).
+            Let ret := mp_parse_nonterminal str0 valid str nonterminal.
 
             Definition T_nonterminal_success  : Type
               := ret.
@@ -486,7 +479,7 @@ Section recursive_descent_parser.
           := { stypes := minimal_parser_dependent_types_success_data;
                ftypes' := minimal_parser_dependent_types_failure_data' }.
 
-        Hint Constructors minimal_parse_of minimal_parse_of_name minimal_parse_of_production minimal_parse_of_item unit prod unit : minimal_instance_db.
+        Hint Constructors minimal_parse_of minimal_parse_of_nonterminal minimal_parse_of_production minimal_parse_of_item unit prod unit : minimal_instance_db.
         Hint Unfold T_item_success T_item_failure T_production_success T_production_failure T_productions_success T_productions_failure T_nonterminal_success T_nonterminal_failure
              DependentlyTyped.T_item_success DependentlyTyped.T_item_failure DependentlyTyped.T_production_success DependentlyTyped.T_production_failure DependentlyTyped.T_productions_success DependentlyTyped.T_productions_failure DependentlyTyped.T_nonterminal_success DependentlyTyped.T_nonterminal_failure
              p_parse_production p_parse p_parse_item p_parse_nonterminal
@@ -545,10 +538,10 @@ Section recursive_descent_parser.
                        | specialize (H (transitivity (str_le2_append _ _ _) H'))
                        | specialize (H (transitivity split_parse_of_production_le1 H'))
                        | specialize (H (transitivity split_parse_of_production_le2 H')) ]
-            | [ H : sub_names_listT _ ?x ?y -> _ |- _ ] => specialize (H (reflexivity _))
-            | [ H : sub_names_listT _ _ _, H' : sub_names_listT _ _ _ -> _ |- _ ]
-              => specialize (fun arg => H' (sub_names_listT_remove_2 _ arg _ H))
-            | [ H : sub_names_listT _ _ _, H' : is_valid_nonterminal _ _ = true |- _ ]
+            | [ H : sub_nonterminals_listT ?x ?y -> _ |- _ ] => specialize (H (reflexivity _))
+            | [ H : sub_nonterminals_listT _ _, H' : sub_nonterminals_listT _ _ _ -> _ |- _ ]
+              => specialize (fun arg => H' (sub_nonterminals_listT_remove_2 _ arg _ H))
+            | [ H : sub_nonterminals_listT _ _, H' : is_valid_nonterminal _ _ = true |- _ ]
               => unique pose proof (H _ H')
             | [ H : context[map _ nil] |- _ ] => progress simpl in H
             | [ H : context[map _ (_::_)] |- _ ] => progress simpl in H
@@ -624,7 +617,7 @@ Please report." *)
             | [ |- False ]
               => abstract (
                      repeat t';
-                     do 2 try inversion_one_head_hnf @minimal_parse_of_name;
+                     do 2 try inversion_one_head_hnf @minimal_parse_of_nonterminal;
                      repeat t';
                      do 2 try inversion_one_head_hnf @minimal_parse_of_item;
                      repeat t';
@@ -692,7 +685,7 @@ Please report." *)
                (H : Forall_parse_of_item
                       (fun _ n => is_valid_nonterminal initial_nonterminals_data n = true)
                       p)
-    : minimal_parse_of_name String G initial_nonterminals_data is_valid_nonterminal remove_nonterminal s initial_nonterminals_data s nonterminal.
+    : minimal_parse_of_nonterminal (String := String) (G := G) s initial_nonterminals_data s nonterminal.
     Proof.
       pose proof (fun H' => @parse_nonterminal _ String G (minimal_parser_dependent_types_extra_data H_prod_split') nonterminal s (Some (existT _ p (expand_forall_parse_of_item H' H)))) as H0.
       simpl in *.

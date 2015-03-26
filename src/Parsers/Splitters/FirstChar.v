@@ -58,10 +58,10 @@ Section StringT.
              | [ |- context[SplitAt ?n (?s1 ++ ?s2)] ]
                => replace n with (Length s1) by (rewrite Singleton_Length; trivial);
                  rewrite SplitAt_concat_correct
-             | [ H : minimal_parse_of_item _ _ _ _ _ _ _ _ (Terminal _) |- _ ] => inversion H; clear H
-             | [ H : minimal_parse_of_item _ _ _ _ _ _ _ _ (NonTerminal _) |- _ ] => inversion H; clear H
-             | [ H : minimal_parse_of_production _ _ _ _ _ _ _ _ (_::_) |- _ ] => inversion H; clear H
-             | [ H : minimal_parse_of_production _ _ _ _ _ _ _ _ nil |- _ ] => inversion H; clear H
+             | [ H : minimal_parse_of_item _ _ _ (Terminal _) |- _ ] => inversion H; clear H
+             | [ H : minimal_parse_of_item _ _ _ (NonTerminal _) |- _ ] => inversion H; clear H
+             | [ H : minimal_parse_of_production _ _ _ (_::_) |- _ ] => inversion H; clear H
+             | [ H : minimal_parse_of_production _ _ _ nil |- _ ] => inversion H; clear H
              | _ => solve [ eauto ]
            end.
 
@@ -141,7 +141,7 @@ Section StringT.
 
     Lemma first_char_split_complete
           (H : first_char_valid = true)
-    : forall str0 valid str pf nt,
+    : forall str0 valid (str : StringWithSplitState String split_stateT) (pf : str ≤s str0) nt,
         is_valid_nonterminal initial_nonterminals_data nt ->
         ForallT
           (Forall_tails
@@ -149,8 +149,8 @@ Section StringT.
                 match prod with
                   | [] => True
                   | it :: its =>
-                    @split_list_completeT _ String G first_char_data str0 valid str pf
-                                          (@first_char_split it its str) it its
+                    @split_list_completeT _ String G first_char_data str0 valid it its str pf
+                                          (@first_char_split it its str)
                 end)) (Lookup G nt).
     Proof.
       apply (split_complete_simple first_char_valid_prod).
@@ -165,12 +165,11 @@ Section StringT.
     Qed.
 
     Global Instance first_char_cdata' H : @boolean_parser_completeness_dataT' _ _ G first_char_data
-      := { remove_nonterminal_1 := rdp_list_remove_nonterminal_1;
-           remove_nonterminal_2 := rdp_list_remove_nonterminal_2;
-           split_string_for_production_complete := @first_char_split_complete H }.
+      := { split_string_for_production_complete := @first_char_split_complete H }.
 
     Global Instance first_char_cdata H : @boolean_parser_correctness_dataT _ _ G
       := { data := first_char_data;
+           rdata' := rdp_list_rdata';
            cdata' := first_char_cdata' H }.
   End first_char_splitter.
 End StringT.

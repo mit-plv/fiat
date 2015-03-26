@@ -33,6 +33,16 @@ Section recursive_descent_parser.
                              -> nonterminals_listT_R (remove_nonterminal ls nonterminal) ls;
       ntl_wf : well_founded nonterminals_listT_R }.
 
+  Class parser_removal_dataT' `{predata : parser_computational_predataT} :=
+    { remove_nonterminal_1
+      : forall ls ps ps',
+          is_valid_nonterminal (remove_nonterminal ls ps) ps' = true
+          -> is_valid_nonterminal ls ps' = true;
+      remove_nonterminal_2
+      : forall ls ps ps',
+          is_valid_nonterminal (remove_nonterminal ls ps) ps' = false
+          <-> is_valid_nonterminal ls ps' = false \/ ps = ps' }.
+
   Class parser_computational_types_dataT :=
     { predata :> parser_computational_predataT;
       split_stateT : String -> nonterminals_listT -> any_grammar CharType -> String -> Type }.

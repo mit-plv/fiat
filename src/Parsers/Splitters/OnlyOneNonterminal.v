@@ -26,15 +26,45 @@ Section StringT.
 
   Let String' : Type := String.
   Let StringT := (StringWithSplitState String split_stateT).
-
+About eq_rect.
+About RightId.
   Context (empty_state : split_stateT (Empty _))
           (split_state_at : forall n s,
                               split_stateT s
-                              -> split_stateT (fst (SplitAt n s)) * split_stateT (snd (SplitAt n s))).
+                              -> split_stateT (fst (SplitAt n s)) * split_stateT (snd (SplitAt n s)))
+          (split_state_at_right_id
+           : forall s st,
+               split_state_at (Length s) (s ++ Empty _) st
+               = (eq_rect
+                    _ split_stateT
+                    (eq_rect
+                       _ split_stateT
+                       st _
+                       (RightId _ _))
+                    _
+                    (f_equal fst (eq_sym (SplitAt_concat_correct _ _ _))),
+                  eq_rect
+                    _ split_stateT
+                    empty_state _
+                    (f_equal snd (eq_sym (SplitAt_concat_correct _ _ _))))).
 
   Let SplitAtT (n : nat) (s : StringT) : StringT * StringT
     := ({| string_val := fst (SplitAt n s) ; state_val := fst (split_state_at n (state_val s)) |},
         {| string_val := snd (SplitAt n s) ; state_val := snd (split_state_at n (state_val s)) |}).
+
+  Local Ltac destruct_matched_equality e :=
+    subst;
+    let T := type of e in
+    match eval simpl in T with
+      | ?a = ?b
+        => generalize e; simpl;
+           first [ generalize dependent b; intros; progress subst
+                 | generalize dependent a; generalize dependent b; intros; progress subst
+                 | generalize b; intros; progress subst
+                 | generalize a; generalize dependent b; intros; progress subst
+                 | generalize dependent a; generalize b; intros; progress subst
+                 | generalize a; generalize b; intros; progress subst ]
+    end.
 
   Local Ltac t_equality :=
     repeat match goal with
@@ -72,6 +102,9 @@ Section StringT.
              | [ H : minimal_parse_of_item _ _ _ _ _ _ _ _ (NonTerminal _) |- _ ] => inversion H; clear H
              | [ H : minimal_parse_of_production _ _ _ _ _ _ _ _ (_::_) |- _ ] => inversion H; clear H
              | [ H : minimal_parse_of_production _ _ _ _ _ _ _ _ nil |- _ ] => inversion H; clear H
+             | _ => rewrite Singleton_Length
+             | _ => progress unfold eq_rect
+             | [ |- context[match ?e with eq_refl => _ end] ] => destruct_matched_equality e
              | _ => solve [ eauto ]
            end.
 
@@ -160,7 +193,7 @@ Section StringT.
            | (Terminal _)::p' => first_char_valid_prod first_char_valid p'
            | (NonTerminal nt)::p' => ((first_char_valid_prod first_char_valid p')
                                         && first_char_valid nt
-                                        && (has_only_terminals p' || fallback_valid_prod p'))%bool
+                                        && (has_only_terminals p' || fallback_valid_prod p))%bool
          end.
 
     Definition first_char_valid : bool
@@ -172,7 +205,7 @@ Section StringT.
           | Terminal _ => first_char_valid_prod fcv xs
           | NonTerminal nt => ((first_char_valid_prod fcv xs)
                                  && fcv nt
-                                 && (has_only_terminals xs || fallback_valid_prod xs))%bool
+                                 && (has_only_terminals xs || fallback_valid_prod (x::xs)))%bool
         end.
     Proof.
       reflexivity.
@@ -184,6 +217,22 @@ Section StringT.
     Proof.
       induction p; t_equality.
     Qed.
+
+    Lemma has_only_terminals_min_parse_length
+          {str0 valid strs its}
+          (H : has_only_terminals its = true)
+          (p : minimal_parse_of_production String G initial_nonterminal_data
+
+ has_only_terminals its = true
+  strs : String
+  X2 : minimal_parse_of_production String G (Valid_nonterminals G)
+         rdp_list_is_valid_nonterminal rdp_list_remove_nonterminal str0 valid
+         strs its
+  H8 : [[c]] ++ strs ≤s str0
+  pf : s1 ++ [[c]] ++ strs ≤s str0
+  st : split_stateT (s1 ++ [[c]] ++ strs)
+  ============================
+   SplitAtT (Length (s1 ++ [[c]] ++ strs) - S (Datatypes.length its))
 
     Context (fallback_split_ind : forall x xs, fallback_valid_prod (x::xs) -> fallback_valid_prod xs).
 
@@ -205,28 +254,77 @@ Section StringT.
       { intros ? ? ? p.
         induction p; t_equality. }
       { intros f x xs; revert x.
-        induction xs.
-        { reflexivity. }
-        { intros x H'.
-          simpl.
-          destruct a as [ | s ].
-          { apply (IHxs x).
-            simpl in *.
-            destruct x; simpl in *; trivial.
-            t_equality.
-            match goal with
-              | [ H : fallback_valid_prod (_::_) = true |- _ ]
-                => apply fallback_split_ind in H;
-                  rewrite H
-            end.
-            t_equality. }
-          { simpl in H'.
-            destruct x; simpl in *; trivial.
-            t_equality. } } }
+        induction xs; t_equality. }
       { intros.
-        exists (I, I).
-        unfold first_char_split.
-        t_equality. }
+        cut ({st1st2 : _ |
+              In
+                ({| string_val := fst (SplitAt (Length s1) (s1 ++ s2)); state_val := fst st1st2 |},
+                 {| string_val := snd (SplitAt (Length s1) (s1 ++ s2)); state_val := snd st1st2 |})
+                (first_char_split it its {| string_val := s1 ++ s2; state_val := st |})}).
+        { rewrite SplitAt_concat_correct; simpl; trivial. }
+        { exists (split_state_at (Length s1) st).
+          unfold first_char_split.
+          t_equality.
+
+          Focus 2.
+          revert st.
+
+          rewrite <- Associativity.
+          {
+unfold SplitAtT; simpl.
+unfold eq_rect.
+            match goal with
+              | [ |- context[match ?e with eq_refl => _ end] ]
+                => subst;
+                  match type of e with
+                    | ?a = ?b
+                      => generalize e;
+                        first [ generalize dependent b; generalize dependent a; intros; progress subst
+                              | generalize dependent a; generalize dependent b; intros; progress subst ]
+                  end
+            end.
+            reflexivity. }
+          { unfold eq_rect; simpl.
+            do 3 match goal with
+                   | [ |- context[match ?e with eq_refl => _ end] ]
+                     => subst;
+                       let T := type of e in
+                       match eval simpl in T with
+                         | ?a = ?b
+                           => generalize e;
+                             first [ generalize dependent b; generalize dependent a; intros; progress subst
+                                   | generalize dependent a; generalize dependent b; intros; progress subst ]
+                       end
+                   | _ => progress simpl
+                 end.
+            reflexivity. }
+          { unfold eq_rect; simpl.
+            match goal with
+                   | [ |- context[match ?e with eq_refl => _ end] ]
+                     => subst;
+                       let T := type of e in
+                       match eval simpl in T with
+                         | ?a = ?b
+                           => generalize e; simpl;
+                             first [ generalize dependent b; intros; progress subst
+                                   | generalize dependent a; generalize dependent b; intros; progress subst
+                                   | generalize b; intros; progress subst
+                                   | generalize a; generalize dependent b; intros; progress subst
+                                   | generalize dependent a; generalize b; intros; progress subst
+                                   | generalize a; generalize b; intros; progress subst ]
+                       end
+                   | _ => progress simpl
+                 end.
+            reflexivity. }
+          {
+unfold SplitAtT; simpl.
+          generalize
+                                                        e
+
+          generalize (RightId String [[ c ]]).
+          general
+
+ }
       { exact H. }
     Qed.
 

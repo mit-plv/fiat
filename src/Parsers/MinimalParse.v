@@ -1,88 +1,74 @@
 (** * Definition of minimal parse trees *)
 Require Import Coq.Strings.String Coq.Lists.List Coq.Setoids.Setoid.
 Require Import ADTSynthesis.Parsers.ContextFreeGrammar.
+Require Import ADTSynthesis.Parsers.BaseTypes.
 
 Set Implicit Arguments.
 Local Open Scope string_like_scope.
 
 Section cfg.
-  Context CharType (String : string_like CharType) (G : grammar CharType).
-  Context (names_listT : Type)
-          (initial_names_data : names_listT)
-          (is_valid_name : names_listT -> string -> bool)
-          (remove_name : names_listT -> string -> names_listT)
-          (names_listT_R : names_listT -> names_listT -> Prop)
-          (remove_name_dec : forall ls name,
-                               is_valid_name ls name = true
-                               -> names_listT_R (remove_name ls name) ls)
-          (remove_name_1
-           : forall ls ps ps',
-               is_valid_name (remove_name ls ps) ps' = true
-               -> is_valid_name ls ps' = true)
-          (remove_name_2
-           : forall ls ps ps',
-               is_valid_name (remove_name ls ps) ps' = false
-               <-> is_valid_name ls ps' = false \/ ps = ps')
-          (ntl_wf : well_founded names_listT_R).
+  Context {CharType} {String : string_like CharType} {G : grammar CharType}.
+  Context `{predata : parser_computational_predataT}
+          `{rdata' : @parser_removal_dataT' predata}.
 
-  Definition sub_names_listT (x y : names_listT) : Prop
-    := forall p, is_valid_name x p = true -> is_valid_name y p = true.
+  Definition sub_nonterminals_listT (x y : nonterminals_listT) : Prop
+    := forall p, is_valid_nonterminal x p = true -> is_valid_nonterminal y p = true.
 
-  Context (names_listT_R_respectful : forall x y,
-                                        sub_names_listT x y
+  Context (nonterminals_listT_R_respectful : forall x y,
+                                        sub_nonterminals_listT x y
                                         -> x <> y
-                                        -> names_listT_R x y).
+                                        -> nonterminals_listT_R x y).
 
-  Lemma remove_name_3
-        ls ps ps' (H : is_valid_name ls ps = false)
-  : is_valid_name (remove_name ls ps) ps' = is_valid_name ls ps'.
+  Lemma remove_nonterminal_3
+        {ls ps ps'} (H : is_valid_nonterminal ls ps = false)
+  : is_valid_nonterminal (remove_nonterminal ls ps) ps' = is_valid_nonterminal ls ps'.
   Proof.
-    case_eq (is_valid_name (remove_name ls ps) ps');
-    case_eq (is_valid_name ls ps');
+    case_eq (is_valid_nonterminal (remove_nonterminal ls ps) ps');
+    case_eq (is_valid_nonterminal ls ps');
     intros H' H'';
     try reflexivity;
     exfalso;
-    first [ apply remove_name_1 in H''
-          | apply remove_name_2 in H''; destruct H''; subst ];
+    first [ apply remove_nonterminal_1 in H''
+          | apply remove_nonterminal_2 in H''; destruct H''; subst ];
     congruence.
   Qed.
 
-  Lemma remove_name_4
-        ls ps ps' (H : is_valid_name (remove_name ls ps) ps' = true)
+  Lemma remove_nonterminal_4
+        {ls ps ps'} (H : is_valid_nonterminal (remove_nonterminal ls ps) ps' = true)
   : ps <> ps'.
   Proof.
     intro H'.
-    pose proof (proj2 (remove_name_2 ls _ _) (or_intror H')).
+    pose proof (proj2 (remove_nonterminal_2 ls _ _) (or_intror H')).
     congruence.
   Qed.
 
-  Lemma remove_name_5
-        ls ps ps' (H : ps <> ps')
-  : is_valid_name (remove_name ls ps) ps' = is_valid_name ls ps'.
+  Lemma remove_nonterminal_5
+        {ls ps ps'} (H : ps <> ps')
+  : is_valid_nonterminal (remove_nonterminal ls ps) ps' = is_valid_nonterminal ls ps'.
   Proof.
-    case_eq (is_valid_name (remove_name ls ps) ps');
-    case_eq (is_valid_name ls ps');
+    case_eq (is_valid_nonterminal (remove_nonterminal ls ps) ps');
+    case_eq (is_valid_nonterminal ls ps');
     intros H' H'';
     try reflexivity;
     exfalso;
-    first [ apply remove_name_1 in H''
-          | apply remove_name_2 in H''; destruct H''; subst ];
+    first [ apply remove_nonterminal_1 in H''
+          | apply remove_nonterminal_2 in H''; destruct H''; subst ];
     congruence.
   Qed.
 
-  Lemma remove_name_6
+  Lemma remove_nonterminal_6
         ls ps
-  : is_valid_name (remove_name ls ps) ps = false.
+  : is_valid_nonterminal (remove_nonterminal ls ps) ps = false.
   Proof.
-    apply remove_name_2; right; reflexivity.
+    apply remove_nonterminal_2; right; reflexivity.
   Qed.
 
-  (** The [names_listT] is the current list of valid names to compare
+  (** The [nonterminals_listT] is the current list of valid nonterminals to compare
       against; the extra [String] argument to some of these is the
       [String] we're using to do well-founded recursion, which the
       current [String] must be no longer than. *)
   Inductive minimal_parse_of
-  : forall (str0 : String) (valid : names_listT)
+  : forall (str0 : String) (valid : nonterminals_listT)
            (str : String),
       productions CharType -> Type :=
   | MinParseHead : forall str0 valid str pat pats,
@@ -92,7 +78,7 @@ Section cfg.
                      @minimal_parse_of str0 valid str pats
                      -> @minimal_parse_of str0 valid str (pat::pats)
   with minimal_parse_of_production
-  : forall (str0 : String) (valid : names_listT)
+  : forall (str0 : String) (valid : nonterminals_listT)
            (str : String),
       production CharType -> Type :=
   | MinParseProductionNil : forall str0 valid,
@@ -103,71 +89,71 @@ Section cfg.
                                -> @minimal_parse_of_production str0 valid strs pats
                                -> @minimal_parse_of_production str0 valid (str ++ strs) (pat::pats)
   with minimal_parse_of_item
-  : forall (str0 : String) (valid : names_listT)
+  : forall (str0 : String) (valid : nonterminals_listT)
            (str : String),
       item CharType -> Type :=
   | MinParseTerminal : forall str0 valid x,
                          @minimal_parse_of_item str0 valid [[ x ]]%string_like (Terminal x)
   | MinParseNonTerminal
-    : forall str0 valid str name,
-        @minimal_parse_of_name str0 valid str name
-        -> @minimal_parse_of_item str0 valid str (NonTerminal CharType name)
-  with minimal_parse_of_name
-  : forall (str0 : String) (valid : names_listT)
+    : forall str0 valid str nonterminal,
+        @minimal_parse_of_nonterminal str0 valid str nonterminal
+        -> @minimal_parse_of_item str0 valid str (NonTerminal CharType nonterminal)
+  with minimal_parse_of_nonterminal
+  : forall (str0 : String) (valid : nonterminals_listT)
            (str : String),
       string -> Type :=
   | MinParseNonTerminalStrLt
-    : forall str0 valid name str,
+    : forall str0 valid nonterminal str,
         Length str < Length str0
-        -> is_valid_name initial_names_data name = true
-        -> @minimal_parse_of str initial_names_data str (Lookup G name)
-        -> @minimal_parse_of_name str0 valid str name
+        -> is_valid_nonterminal initial_nonterminals_data nonterminal = true
+        -> @minimal_parse_of str initial_nonterminals_data str (Lookup G nonterminal)
+        -> @minimal_parse_of_nonterminal str0 valid str nonterminal
   | MinParseNonTerminalStrEq
-    : forall str valid name,
-        is_valid_name initial_names_data name = true
-        -> is_valid_name valid name = true
-        -> @minimal_parse_of str (remove_name valid name) str (Lookup G name)
-        -> @minimal_parse_of_name str valid str name.
+    : forall str valid nonterminal,
+        is_valid_nonterminal initial_nonterminals_data nonterminal = true
+        -> is_valid_nonterminal valid nonterminal = true
+        -> @minimal_parse_of str (remove_nonterminal valid nonterminal) str (Lookup G nonterminal)
+        -> @minimal_parse_of_nonterminal str valid str nonterminal.
 
-  Global Instance sub_names_listT_Reflexive : Reflexive sub_names_listT
+  Global Instance sub_nonterminals_listT_Reflexive : Reflexive sub_nonterminals_listT
     := fun x y f => f.
 
-  Global Instance sub_names_listT_Transitive : Transitive sub_names_listT.
+  Global Instance sub_nonterminals_listT_Transitive : Transitive sub_nonterminals_listT.
   Proof.
     lazy; auto.
   Defined.
 
-  Global Add Parametric Morphism : remove_name
-  with signature sub_names_listT ==> eq ==> sub_names_listT
-    as remove_name_mor.
+  Global Add Parametric Morphism : remove_nonterminal
+  with signature sub_nonterminals_listT ==> eq ==> sub_nonterminals_listT
+    as remove_nonterminal_mor.
   Proof.
     intros x y H z w H'.
     hnf in H.
-    pose proof (remove_name_4 H').
-    apply remove_name_1 in H'.
-    rewrite remove_name_5 by assumption.
+    pose proof (remove_nonterminal_4 H').
+    apply remove_nonterminal_1 in H'.
+    rewrite remove_nonterminal_5 by assumption.
     auto.
   Qed.
 
-  Lemma sub_names_listT_remove ls ps
-  : sub_names_listT (remove_name ls ps) ls.
+  Lemma sub_nonterminals_listT_remove ls ps
+  : sub_nonterminals_listT (remove_nonterminal ls ps) ls.
   Proof.
     intros p.
-    apply remove_name_1.
+    apply remove_nonterminal_1.
   Qed.
 
-  Lemma sub_names_listT_remove_2 ls ls' ps (H : sub_names_listT ls ls')
-  : sub_names_listT (remove_name ls ps) ls'.
+  Lemma sub_nonterminals_listT_remove_2 {ls ls' ps} (H : sub_nonterminals_listT ls ls')
+  : sub_nonterminals_listT (remove_nonterminal ls ps) ls'.
   Proof.
-    etransitivity; eauto using sub_names_listT_remove.
+    etransitivity; eauto using sub_nonterminals_listT_remove.
   Qed.
 
-  Lemma sub_names_listT_remove_3 ls ls' p
-        (H0 : is_valid_name ls p = false)
-        (H1 : sub_names_listT ls ls')
-  : sub_names_listT ls (remove_name ls' p).
+  Lemma sub_nonterminals_listT_remove_3 {ls ls' p}
+        (H0 : is_valid_nonterminal ls p = false)
+        (H1 : sub_nonterminals_listT ls ls')
+  : sub_nonterminals_listT ls (remove_nonterminal ls' p).
   Proof.
     intros p' H'.
-    rewrite remove_name_5; intuition (subst; eauto; congruence).
+    rewrite remove_nonterminal_5; intuition (subst; eauto; congruence).
   Qed.
 End cfg.

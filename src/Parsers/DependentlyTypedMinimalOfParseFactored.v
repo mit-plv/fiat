@@ -3,6 +3,7 @@ Require Import Coq.Lists.List Coq.Program.Program Coq.Program.Wf Coq.Arith.Wf_na
 Require Import ADTSynthesis.Parsers.ContextFreeGrammar ADTSynthesis.Parsers.DependentlyTyped ADTSynthesis.Parsers.MinimalParse.
 Require Import ADTSynthesis.Parsers.DependentlyTypedMinimal ADTSynthesis.Parsers.DependentlyTypedSum ADTSynthesis.Parsers.BaseTypes.
 Require Import ADTSynthesis.Parsers.WellFoundedParse ADTSynthesis.Parsers.ContextFreeGrammarProperties.
+Require Import Parsers.BooleanBaseTypes Parsers.BaseTypes.
 Require Import ADTSynthesis.Common ADTSynthesis.Common.Wf ADTSynthesis.Common.Le.
 
 Set Implicit Arguments.
@@ -20,37 +21,29 @@ Section recursive_descent_parser.
     := {| predata := predata;
           split_stateT str0 valid g str := True |}.
   Context {methods' : @parser_computational_dataT' _ String types_data}
-          {strdata : @parser_computational_strdataT _ String G {| methods' := methods' |}}.
+          {strdata : @parser_computational_strdataT _ String G {| methods' := methods' |}}
+          {rdata' : @parser_removal_dataT' predata}.
 
   Local Instance orig_methods : @parser_computational_dataT _ String
     := { methods' := methods' }.
 
-  Context (remove_nonterminal_1
-           : forall ls ps ps',
-               is_valid_nonterminal (remove_nonterminal ls ps) ps' = true
-               -> is_valid_nonterminal ls ps' = true)
-          (remove_nonterminal_2
-           : forall ls ps ps',
-               is_valid_nonterminal (remove_nonterminal ls ps) ps' = false
-               <-> is_valid_nonterminal ls ps' = false \/ ps = ps').
-
   Definition P (str0 : String) valid : String -> string -> Prop
     := fun str p =>
-         sub_names_listT is_valid_nonterminal valid initial_nonterminals_data
+         sub_nonterminals_listT valid initial_nonterminals_data
          /\ is_valid_nonterminal
               (if lt_dec (Length str) (Length str0)
                then initial_nonterminals_data
                else valid)
               p = true.
 
-  Lemma P_remove_impl {str0 valid str name name'}
-        (H0 : name <> name')
-        (H : P str0 valid str name')
-  : P str0 (remove_nonterminal valid name) str name'.
+  Lemma P_remove_impl {str0 valid str nonterminal nonterminal'}
+        (H0 : nonterminal <> nonterminal')
+        (H : P str0 valid str nonterminal')
+  : P str0 (remove_nonterminal valid nonterminal) str nonterminal'.
   Proof.
     destruct_head_hnf and.
     repeat split; try assumption.
-    { apply sub_names_listT_remove_2; assumption. }
+    { apply sub_nonterminals_listT_remove_2; assumption. }
     { destruct lt_dec; try assumption.
       match goal with
         | [ |- ?b = true ] => case_eq b; try reflexivity
@@ -224,8 +217,8 @@ Section recursive_descent_parser.
              | [ H : _ < 0 |- _ ] => destruct (Lt.lt_n_0 _ H)
              | _ => progress destruct_head and
              | [ |- _ /\ _ ] => split
-             | [ H : sub_names_listT _ _ _ |- is_valid_nonterminal _ _ = true ]
-               => (apply H; eapply sub_names_listT_remove; eassumption)
+             | [ H : sub_nonterminals_listT _ _ |- is_valid_nonterminal _ _ = true ]
+               => (apply H; eapply sub_nonterminals_listT_remove; eassumption)
              | [ H : ~0 < ?n |- _ ]
                => (let H' := fresh in
                    destruct (zerop n) as [ | H' ]; [ clear H | destruct (H H') ])
@@ -270,20 +263,20 @@ Section recursive_descent_parser.
         refine (existT _ (ParseProductionCons p' (projT1 ret'))
                        (expand_forall_parse_of_item _ (fst H), projT2 ret')).
         unfold P in *; simpl.
-        clear -e e' pf1 remove_nonterminal_1 remove_nonterminal_2.
+        clear -e e' pf1 rdata'.
         abstract (intros; edestruct lt_dec; deloop_t). }
       { (** nonempty, empty *)
         refine (existT _ (ParseProductionCons (projT1 ret) p'')
                        (projT2 ret, expand_forall_parse_of_production _ _ (snd H))).
         unfold P in *; simpl.
-        clear -e e' pf0 remove_nonterminal_1 remove_nonterminal_2.
+        clear -e e' pf0 rdata'.
         abstract (intros; edestruct lt_dec; deloop_t). }
       { (** nonempty, nonempty *)
         refine (existT _ (ParseProductionCons p' p'')
                        (expand_forall_parse_of_item _ (fst H),
                         expand_forall_parse_of_production _ _ (snd H)));
         unfold P in *; simpl;
-        clear -e e' pf remove_nonterminal_1 remove_nonterminal_2;
+        clear -e e' pf rdata';
         abstract (intros; edestruct lt_dec; deloop_t). } }
   Defined.
 
@@ -332,7 +325,7 @@ Section recursive_descent_parser.
          prelift_lookup_nonterminal_state_lt str0 valid nonterminal str pf := Some ∘ parse_of__of__parse_of_item_lt pf;
          prelift_lookup_nonterminal_state_eq str0 valid nonterminal str pf := Some ∘ parse_of__of__parse_of_item_eq pf }.
 
-  Context (split_list_complete : forall str0 valid it its str pf, @split_list_completeT _ String G _ str0 valid it its str pf (split_string_for_production str0 valid it its str)).
+  Context (split_list_complete : forall str0 valid it its str pf, @split_list_completeT _ String G types_data str0 valid it its str pf (split_string_for_production str0 valid it its str)).
 
   Local Ltac ddestruct H :=
     (* work around 4035 *) let H' := fresh in rename H into H'; dependent destruction H'.
@@ -356,7 +349,7 @@ Section recursive_descent_parser.
       | [ H : parse_of _ _ _ (_::_) |- _ ] => ddestruct H
       | [ H : parse_of _ _ _ nil |- _ ] => ddestruct H
       | [ H : appcontext[if lt_dec ?a ?b then _ else _] |- _ ] => destruct (lt_dec a b)
-      | [ H : sub_names_listT _ _ _, H' : is_valid_nonterminal _ _ = true |- _ ]
+      | [ H : sub_nonterminals_listT _ _, H' : is_valid_nonterminal _ _ = true |- _ ]
         => unique pose proof (H _ H')
     end.
 
@@ -387,7 +380,7 @@ Section recursive_descent_parser.
              (H : Forall_parse_of_item
                     (fun _ n => is_valid_nonterminal initial_nonterminals_data n = true)
                     p)
-  : minimal_parse_of_name String G initial_nonterminals_data is_valid_nonterminal remove_nonterminal s initial_nonterminals_data s nonterminal.
+  : minimal_parse_of_nonterminal (G := G) s initial_nonterminals_data s nonterminal.
   Proof.
     pose proof (fun H' => @parse_nonterminal _ String G minimal_of_parse_parser_dependent_types_extra_data' nonterminal s (Some (existT _ p (expand_forall_parse_of_item H' H)))) as H0.
     simpl in *.

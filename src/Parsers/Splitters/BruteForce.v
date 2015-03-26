@@ -107,7 +107,7 @@ Section brute_force_splitter.
   Qed.
 
   Lemma make_all_single_splits_complete
-  : forall G str0 valid str pf it its, @split_list_completeT _ string_stringlike G brute_force_data str0 valid str pf (@make_all_single_splits str) it its.
+  : forall G str0 valid it its str pf, @split_list_completeT _ string_stringlike G brute_force_data str0 valid it its str pf (@make_all_single_splits str).
   Proof.
     intros; hnf.
     intros [ [s1 s2] [ [ p1 p2 ] p3 ] ].
@@ -120,12 +120,10 @@ Section brute_force_splitter.
   Defined.
 
   Global Instance brute_force_cdata : @boolean_parser_completeness_dataT' _ _ G brute_force_data
-    := { remove_nonterminal_1 := rdp_list_remove_nonterminal_1;
-         remove_nonterminal_2 := rdp_list_remove_nonterminal_2;
-         split_string_for_production_complete str0 valid str pf it its
+    := { split_string_for_production_complete str0 valid str pf it its
          := ForallT_all (fun _ => Forall_tails_all (fun prod => _)) }.
   Proof.
     destruct prod; try solve [ constructor ].
-    apply (@make_all_single_splits_complete G str0 valid str pf).
+    apply (@make_all_single_splits_complete G str0 valid _ _ str pf).
   Defined.
 End brute_force_splitter.

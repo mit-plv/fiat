@@ -50,15 +50,16 @@ Section recursive_descent_parser.
         (it : item Ascii.ascii) (its : production Ascii.ascii)
         (str : StringWithSplitState string_stringlike (split_stateT str0 valid (it :: its : production _)))
         (pf : str ≤s str0)
-  : DependentlyTypedMinimal.split_list_completeT G valid it its str pf
-                                                 (split_string_for_production str0 valid it its str).
+  : BooleanBaseTypes.split_list_completeT (G := G) (valid := valid) it its str pf
+                                          (split_string_for_production str0 valid it its str).
   Proof.
     simpl.
     repeat intro.
     apply (@make_all_single_splits_complete
              _ G str0 valid
+             it its
              str
-             pf it its).
+             pf).
     assumption.
   Defined.
 
@@ -67,7 +68,7 @@ Section recursive_descent_parser.
     := @minimal_of_parse_parser_dependent_types_extra_data'
          _ string_stringlike G
          predata methods' strdata
-         rdp_list_remove_nonterminal_1 rdp_list_remove_nonterminal_2
+         rdp_list_rdata'
          rdp_list_complete'.
 
   Definition minimal_parse_nonterminal__of__parse
@@ -77,12 +78,11 @@ Section recursive_descent_parser.
              (H : Forall_parse_of_item
                     (fun _ n => is_valid_nonterminal initial_nonterminals_data n = true)
                     p)
-  : minimal_parse_of_name string_stringlike G initial_nonterminals_data is_valid_nonterminal remove_nonterminal s initial_nonterminals_data s nonterminal.
+  : minimal_parse_of_nonterminal (G := G) s initial_nonterminals_data s nonterminal.
   Proof.
     eapply @minimal_parse_nonterminal__of__parse'.
     exact strdata.
-    exact rdp_list_remove_nonterminal_1.
-    exact rdp_list_remove_nonterminal_2.
+    exact rdp_list_rdata'.
     exact rdp_list_complete'.
     exact H.
   Defined.

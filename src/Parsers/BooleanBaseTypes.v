@@ -30,31 +30,30 @@ Section general.
            (fun _ _ => split_string_for_production)
            (fun _ _ => split_string_for_production_correct) }.
 
-  Definition split_list_completeT `{data : boolean_parser_dataT}
+  Definition split_list_completeT `{data : @parser_computational_types_dataT _ String}
              {str0 valid}
-             (str : StringWithSplitState String split_stateT) (pf : str ≤s str0)
-             (split_list : list (StringWithSplitState String split_stateT * StringWithSplitState String split_stateT))
              (it : item CharType) (its : production CharType)
+             (str : StringWithSplitState String (@BaseTypes.split_stateT _ _ data str0 valid (it::its : production CharType)))
+             (pf : str ≤s str0)
+             (split_list : list (StringWithSplitState String (@BaseTypes.split_stateT _ _ data str0 valid it)
+                                 * StringWithSplitState String (@BaseTypes.split_stateT _ _ data str0 valid its)))
+
     := ({ s1s2 : String * String
                  & (fst s1s2 ++ snd s1s2 =s str)
-                   * (minimal_parse_of_item _ G initial_nonterminals_data is_valid_nonterminal remove_nonterminal str0 valid (fst s1s2) it)
-                   * (minimal_parse_of_production _ G initial_nonterminals_data is_valid_nonterminal remove_nonterminal str0 valid (snd s1s2) its) }%type)
-       -> ({ s1s2 : StringWithSplitState String split_stateT * StringWithSplitState String split_stateT
+                   * (minimal_parse_of_item (G := G) (predata := @BaseTypes.predata _ _ data) str0 valid (fst s1s2) it)
+                   * (minimal_parse_of_production (G := G) str0 valid (snd s1s2) its) }%type)
+       -> ({ s1s2 : _
                     & (In s1s2 split_list)
-                      * (minimal_parse_of_item _ G initial_nonterminals_data is_valid_nonterminal remove_nonterminal str0 valid (fst s1s2) it)
-                      * (minimal_parse_of_production _ G initial_nonterminals_data is_valid_nonterminal remove_nonterminal str0 valid (snd s1s2) its) }%type).
+                      * (minimal_parse_of_item (G := G) str0 valid (fst s1s2) it)
+                      * (minimal_parse_of_production (G := G) str0 valid (snd s1s2) its) }%type).
+
+  Coercion parser_computational_types_dataT__of__boolean_parser_dataT {data : boolean_parser_dataT}
+  : @parser_computational_types_dataT _ String
+    := {| BaseTypes.predata := predata ; BaseTypes.split_stateT := fun _ _ _ => split_stateT |}.
 
   Class boolean_parser_completeness_dataT' `{data : boolean_parser_dataT} :=
-    { remove_nonterminal_1
-      : forall ls ps ps',
-          is_valid_nonterminal (remove_nonterminal ls ps) ps' = true
-          -> is_valid_nonterminal ls ps' = true;
-      remove_nonterminal_2
-      : forall ls ps ps',
-          is_valid_nonterminal (remove_nonterminal ls ps) ps' = false
-          <-> is_valid_nonterminal ls ps' = false \/ ps = ps';
-      split_string_for_production_complete
-      : forall str0 valid str pf nt,
+    { split_string_for_production_complete
+      : forall str0 valid (str : StringWithSplitState String split_stateT) (pf : str ≤s str0) nt,
           is_valid_nonterminal initial_nonterminals_data nt
           -> ForallT
                (Forall_tails
@@ -62,11 +61,12 @@ Section general.
                    => match prod return Type with
                         | nil => True
                         | it::its
-                          => @split_list_completeT _ str0 valid str pf (split_string_for_production it its str) it its
+                          => @split_list_completeT data str0 valid it its str pf (split_string_for_production it its str)
                       end))
                (Lookup G nt) }.
 
   Class boolean_parser_correctness_dataT :=
     { data :> boolean_parser_dataT;
+      rdata' :> parser_removal_dataT';
       cdata' :> boolean_parser_completeness_dataT' }.
 End general.
