@@ -435,13 +435,13 @@ end.
 
 Ltac createLastRangeTerm f fds tail fs kind s k :=
   match kind with
-      | "RangeIndex" =>
-        (findMatchingTerm
-           fds kind s
-           ltac:(fun X => k {| RangeIndexSearchTerm := Some X;
-                               RangeItemSearchTerm := tail |}))
-          || k {| RangeIndexSearchTerm := None;
-                  RangeItemSearchTerm := tail |}
+    | "RangeIndex" =>
+      (findMatchingTerm
+         fds kind s
+         ltac:(fun X => k {| RangeIndexSearchTerm := Some X;
+                             RangeItemSearchTerm := tail |}))
+        || k {| RangeIndexSearchTerm := None;
+                RangeItemSearchTerm := tail |}
 end.
 
 Ltac createEarlyInclusionTerm f fds tail fs kind EarlyIndex LastIndex rest s k :=
@@ -588,7 +588,7 @@ Ltac findGoodTerm SC F indexed_attrs ClauseMatch k :=
           assert (List.In {| KindNameKind := "EqualityIndex";
                              KindNameName := fd|} indexed_attrs) as H
               by (clear; simpl; intuition eauto); clear H;
-          k ({| KindNameKind := EqualityIndex;
+          k ({| KindNameKind := "EqualityIndex";
                   KindNameName := fd|}, X) (fun _ : @Tuple SC => true)
         | forall a, {_!?fd = ?X} + {_} =>
           let H := fresh in
@@ -609,7 +609,7 @@ Ltac findGoodTerm SC F indexed_attrs ClauseMatch k :=
           assert (List.In {| KindNameKind := "EqualityIndex";
                              KindNameName := fd|} indexed_attrs) as H
               by (clear; simpl; intuition eauto); clear H;
-            k ({| KindNameKind := EqualityIndex;
+            k ({| KindNameKind := "EqualityIndex";
                   KindNameName := fd|}, X) (fun _ : @Tuple SC => true)
 
         | _ => ClauseMatch  SC F indexed_attrs f k
@@ -634,10 +634,10 @@ Ltac find_simple_search_term
                                 {| KindNameKind := KindIndexKind kidx;
                                    KindNameName := @bindex string _ (KindIndexIndex kidx) |}) indexed_attrs) in
           let SC := constr:(QSGetNRelSchemaHeading qs_schema idx) in
-          findGoodTerm SC filter_dec indexed_attrs' InclusionIndexUse
+          findGoodTerm SC filter_dec indexed_attrs' ClauseMatch
                        ltac:(fun fds tail =>
                                let tail := eval simpl in tail in
-                                   makeTerm indexed_attrs' SC fds tail createEarlyInclusionTerm createLastInclusionTerm ltac:(fun tm => try unify tm search_term;
+                                   makeTerm indexed_attrs' SC fds tail EarlyIndex LastIndex ltac:(fun tm => try unify tm search_term;
                                                                                                                               unfold ExtensionalEq, MatchIndexSearchTerm;
                                                                                                                               simpl; intro; try prove_extensional_eq
                                                                                                                              )) end.
@@ -2218,8 +2218,8 @@ Ltac plan CreateTerm EarlyIndex LastIndex
   repeat (honeOne CreateTerm EarlyIndex LastIndex
      makeClause_dep EarlyIndex_dep LastIndex_dep).
 
-Ltac planDefault :=
-  plan default default default default default default.
+(*Ltac planDefault :=
+  plan default default default default default default. *)
 
 Global Opaque CallBagMethod.
 Global Opaque CallBagConstructor.
