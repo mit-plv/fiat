@@ -1,4 +1,6 @@
 (** * Definition of the string-like type *)
+Require Import Coq.Arith.Lt Coq.Arith.Compare_dec.
+
 Set Implicit Arguments.
 Local Set Boolean Equality Schemes.
 Local Set Decidable Equality Schemes.
@@ -50,6 +52,40 @@ Definition str_le {CharType} {String : string_like CharType} (s1 s2 : String)
   := Length s1 < Length s2 \/ s1 = s2.
 Infix "≤s" := str_le (at level 70, right associativity).
 
+Definition CharAt {CharType} {String : string_like CharType}
+: forall (n : nat) (s : String), n < Length s -> CharType.
+Proof.
+  intros n s; revert s n.
+  refine (Fold _ _ _ _).
+  { intros n H; exfalso.
+    abstract (
+        rewrite Length_Empty in H;
+        eapply lt_n_0; eassumption
+      ). }
+  { intros ch s H n.
+    refine (match n with
+              | 0 => fun _ => ch
+              | S n' => fun H' => H n' _
+            end).
+    clear -H'.
+    abstract (
+        rewrite <- Length_correct, Singleton_Length in H';
+        apply lt_S_n, H'
+      ). }
+Defined.
+
+Definition CharAt_option {CharType} {String : string_like CharType} (n : nat) (s : String) : option CharType
+  := match lt_dec n (Length s) with
+       | left pf => Some (CharAt s pf)
+       | right _ => None
+     end.
+
+Definition CharAt_default {CharType} {String : string_like CharType} (n : nat) (default : CharType) (s : String)
+: CharType
+  := match CharAt_option n s with
+       | Some ch => ch
+       | None => default
+     end.
 
 Record StringWithSplitState {CharType} (String : string_like CharType) (split_stateT : String -> Type) :=
   { string_val :> String;
