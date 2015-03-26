@@ -56,13 +56,14 @@ Section helpers.
     apply split_valid_prod_ext; trivial.
   Qed.
 
+  Definition split_valid_nonterminal valid : string -> bool
+    := Fix1 _ ntl_wf _ split_valid_step valid.
+
   Definition split_valid : bool
     := fold_right
          andb
          true
-         (map
-            (Fix1 _ ntl_wf _ split_valid_step (Valid_nonterminals G))
-            (Valid_nonterminals G)).
+         (map (split_valid_nonterminal initial_nonterminals_data) initial_nonterminals_data).
 
   Context {premethods : @parser_computational_dataT' _ _ (@rdp_list_data' _ String G)}.
   Context split_stateT0 split_string_for_production0 split_string_for_production_correct0
@@ -85,7 +86,7 @@ Section helpers.
         (H' : is_valid_nonterminal initial_nonterminals_data nt = true)
         (split_prod_each : forall it its,
                              split_valid_prod
-                               (Fix1 _ ntl_wf _ split_valid_step (remove_nonterminal (Valid_nonterminals G) nt))
+                               (split_valid_nonterminal (remove_nonterminal initial_nonterminals_data nt))
                                (it::its) = true
                              -> split_list_completeT
                                   (G := G) (str0 := str0) (valid := valid) it its str pf
@@ -105,6 +106,7 @@ Section helpers.
     unfold rdp_list_is_valid_nonterminal in H''.
     edestruct in_dec as [H'''|H''']; try discriminate; [].
     apply (fun H => fold_right_andb_map_in H _ H''') in H.
+    unfold split_valid_nonterminal in H.
     simpl in H.
     rewrite Fix1_eq in H by apply split_valid_step_ext.
     unfold split_valid_step in H at 1.
@@ -140,7 +142,7 @@ Section helpers.
              -> MinimalParse.minimal_parse_of_production (G := G) str0 valid s2 its
              -> is_valid_nonterminal initial_nonterminals_data nt = true
              -> split_valid_prod
-                  (Fix1 _ ntl_wf _ split_valid_step (remove_nonterminal (Valid_nonterminals G) nt))
+                  (split_valid_nonterminal (remove_nonterminal initial_nonterminals_data nt))
                   (it::its) = true
              -> { st1st2 : _
                 | In

@@ -167,6 +167,7 @@ SRC_PARSERS_BASE_MODULES := \
 	Parsers/Splitters/BruteForce\
 	Parsers/Splitters/Reflective\
 	Parsers/Splitters/FirstChar\
+	Parsers/Splitters/OnlyOneNonterminal\
 	Parsers/DependentlyTyped\
 	Parsers/DependentlyTypedOption\
 	Parsers/DependentlyTypedSum\
