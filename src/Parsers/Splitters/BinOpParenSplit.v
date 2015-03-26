@@ -1,17 +1,17 @@
 (** * Definition of a boolean-returning CFG parser-recognizer *)
-Require Import Coq.Lists.List Coq.Strings.String.
+Require Import Coq.Lists.List Coq.Strings.String NPeano.
 Require Import Parsers.ContextFreeGrammar.
 Require Import Parsers.BaseTypes Parsers.BooleanBaseTypes.
 Require Import Parsers.Splitters.RDPList.
 Require Import Common.
-Require Import Common.List.Operations Common.List.ListFacts.
+Require Import Common.List.Operations Common.List.ListFacts Common.Equality.
 
 Require Import Coq.Init.Wf.
 Require Import Coq.Arith.Wf_nat.
 Require Import Common.Wf.
 
 Require Import Parsers.Splitters.Reflective.
-Require Import Parsers.Splitters.FirstChar.
+Require Import Parsers.Splitters.OnlyOneNonterminal.
 
 Require Import Parsers.MinimalParse.
 Require Import Parsers.ContextFreeGrammarNotations.
@@ -151,12 +151,22 @@ Section StringT.
       rewrite <- Length_correct, Singleton_Length, H; reflexivity. }
   Qed.
 
-  Let String' : Type := String.
-  Let StringT := (StringWithSplitState String (fun s => { ls : list (option nat)
-                                                        | exists hc, ls = fst (list_of_next_bin_ops_closes s hc) })).
+  Let list_option_nat_eq_dec : forall a b : list (option nat), {a = b} + {a <> b}
+    := list_eq_dec (option_dec Nat.eq_dec).
 
-  Definition StringT_of_string (s : String') : StringT
-    := {| string_val := s ; state_val := exist _ (fst (list_of_next_bin_ops_closes s (None, nil))) (ex_intro _ _ eq_refl) |}.
+  Local Notation "x =? y" := (if list_option_nat_eq_dec x y then true else false) (at level 70, right associativity).
+
+  Let split_stateT := (fun s => { ls : list (option nat)
+                                | exists hc, ls =? fst (list_of_next_bin_ops_closes s hc) }).
+  Let String' : Type := String.
+  Let StringT := (StringWithSplitState String split_stateT).
+
+  Definition StringT_of_string (s : String') : StringT.
+  Proof.
+    refine {| string_val := s ; state_val := exist _ (fst (list_of_next_bin_ops_closes s (None, nil))) (ex_intro _ (None, nil) _) |}.
+
+    SearchAbout list_eq_dec.
+
 
   Lemma drop_list_of_next_bin_ops_closes {s n hc}
   : drop n (fst (list_of_next_bin_ops_closes s hc)) =
@@ -214,7 +224,8 @@ Section StringT.
     Proof.
       destruct (state_val s) as [ table [ hc H ] ].
       exists (snd (list_of_next_bin_ops_closes (snd (SplitAt n s)) hc)); simpl.
-      abstract (subst; apply take_list_of_next_bin_ops_closes).
+      revert H; generalize (string_val s); clear s; clear.
+      abstract (intros; subst; apply take_list_of_next_bin_ops_closes).
     Defined.
 
     Definition SplitAtT_snd
@@ -224,16 +235,94 @@ Section StringT.
     Proof.
       destruct (state_val s) as [ table [ hc H ] ].
       exists hc; simpl.
-      abstract (subst; apply drop_list_of_next_bin_ops_closes).
+      revert H; generalize (string_val s); clear s; clear.
+      abstract (intros; subst; apply drop_list_of_next_bin_ops_closes).
     Defined.
 
-    Definition SplitAtT : StringT * StringT
-      := let s' := SplitAt n s in
-         ({| string_val := fst s';
-             state_val := exist _ (take n (proj1_sig (state_val s))) SplitAtT_fst |},
-          {| string_val := snd s';
-             state_val := exist _ (drop n (proj1_sig (state_val s))) SplitAtT_snd |}).
+    Definition split_state_at' : split_stateT (fst (SplitAt n s)) * split_stateT (snd (SplitAt n s))
+      := (exist _ (take n (proj1_sig (state_val s))) SplitAtT_fst,
+          exist _ (drop n (proj1_sig (state_val s))) SplitAtT_snd).
   End SplitAtT.
+
+  Definition split_state_at (n : nat) (s : String) (st : split_stateT s)
+    := split_state_at' n {| string_val := s ; state_val := st |}.
+
+  Let empty_state : split_stateT (Empty String).
+  Proof.
+    refine (exist _ nil (ex_intro _ (None, nil) _)).
+    abstract (rewrite list_of_next_bin_ops_closes_compute_empty; reflexivity).
+  Defined.
+
+  Local Ltac destruct_matched_equality e :=
+    subst;
+    let T := type of e in
+    match eval simpl in T with
+      | ?a = ?b
+        => generalize e; simpl;
+           first [ generalize dependent b; intros; progress subst
+                 | generalize dependent a; generalize dependent b; intros; progress subst
+                 | generalize b; intros; progress subst
+                 | generalize a; generalize dependent b; intros; progress subst
+                 | generalize dependent a; generalize b; intros; progress subst
+                 | generalize a; generalize b; intros; progress subst ]
+    end.
+
+  Lemma split_state_at_right_id s st
+  : @split_state_at (Length s) (s ++ Empty _) st
+    = (eq_rect
+         _ split_stateT
+         (eq_rect
+            _ split_stateT
+            st _
+            (RightId _ _))
+         _
+         (f_equal fst (eq_sym (SplitAt_concat_correct _ _ _))),
+       eq_rect
+         _ split_stateT
+         empty_state _
+         (f_equal snd (eq_sym (SplitAt_concat_correct _ _ _)))).
+  Proof.
+    unfold eq_rect.
+    unfold split_state_at, split_state_at'; simpl.
+    unfold SplitAtT_fst, SplitAtT_snd.
+
+    simpl.
+    revert st; simpl.
+    match goal with
+      | [ |- context[match ?e with eq_refl => _ end] ] => destruct_matched_equality e
+      | [ |- context[match ?e with eq_refl => _ end] ] => generalize e; simpl
+    end.
+    generalize (fst (SplitAt (Length s) (s ++ Empty String))).
+
+  Definition bin_op_split_nat
+             (it : item CharType)
+             (its : production CharType)
+             (str : StringT)
+  : list nat
+    := match CharAt_option 0 str with
+         | Some ch => match hd None (` (state_val str)) with
+                        | None => nil (** table says this isn't a valid location to split *)
+                        | Some n
+                          => [if is_open ch
+                              then (* it's an open paren; we must be being asked to split for '+';  we assume the table stores the location of the close, and split at one after it *)
+                                S n
+                              else (* it's not an open paren, so we assume the table stores the location of the next '+', and split there *)
+                                n]
+                      end
+         | None => nil
+       end.
+
+  Definition bin_op_split
+             (it : item CharType)
+             (its : production CharType)
+             (str : StringT)
+  : list (StringT * StringT)
+    := only_one_nt_split
+         empty_state split_state_at bin_op_split_nat
+         it its str.
+  Check only_one_nt_split_complete.
+
+
 
   Definition first_char_split
              (it : item CharType)
