@@ -120,3 +120,10 @@ Definition prod_dec {A B}
 Proof.
   decide equality.
 Defined.
+
+Definition option_dec {A}
+           (H : forall a b : A, {a = b} + {a <> b})
+: forall a b : option A, {a = b} + {a <> b}.
+Proof.
+  decide equality.
+Defined.
