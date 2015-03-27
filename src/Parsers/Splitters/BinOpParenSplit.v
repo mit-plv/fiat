@@ -151,22 +151,61 @@ Section StringT.
       rewrite <- Length_correct, Singleton_Length, H; reflexivity. }
   Qed.
 
-  Let list_option_nat_eq_dec : forall a b : list (option nat), {a = b} + {a <> b}
+  Let dec : forall a b : list (option nat), {a = b} + {a <> b}
     := list_eq_dec (option_dec Nat.eq_dec).
 
-  Local Notation "x =? y" := (if list_option_nat_eq_dec x y then true else false) (at level 70, right associativity).
+  Let dec_refl {x}
+  : dec x x = left match dec x x with
+                     | left pf => pf
+                     | right _ => eq_refl
+                   end.
+  Proof.
+    edestruct dec as [pf | n]; trivial.
+    destruct (n eq_refl).
+  Defined.
+
+  Local Notation "x =? y" := (is_true (if dec x y then true else false)) (at level 70, right associativity).
 
   Let split_stateT := (fun s => { ls : list (option nat)
                                 | exists hc, ls =? fst (list_of_next_bin_ops_closes s hc) }).
   Let String' : Type := String.
   Let StringT := (StringWithSplitState String split_stateT).
 
+  Definition drop_split_stateT {s} (st : split_stateT s) : { ls : list (option nat) | inhabited _ }
+    := exist
+         _
+         (proj1_sig st)
+         (match proj2_sig st return inhabited _ with
+            | ex_intro hc _ => inhabits hc
+          end).
+
+  (*Lemma split_stateT_eq {s} {st st' : split_stateT s} (H : drop_split_stateT st = drop_split_stateT st')
+  : st = st'.
+  Proof.
+    unfold drop_split_stateT in *.
+    destruct st as [ls [hc st] ], st' as [ls' [hc' st'] ]; simpl in *.
+    generalize (proj2_sig_path H).
+    generalize (proj1_sig_path H).
+    simpl in *.
+    clear H.
+    intros H H'.
+    destruct H; simpl in *.
+    f_equal.
+    unfold is_true in *.
+    match goal with
+      | [ H : ?x = true |- _ ] => generalize dependent
+    match goal with
+      | [ |- context[ex_intro ?P ?hc ?st]
+    lazymatch goal with
+      | [ H : context[if ?e then _ else _] |- _ ] => destruct e
+    end.
+    inversion H'.*)
+
   Definition StringT_of_string (s : String') : StringT.
   Proof.
     refine {| string_val := s ; state_val := exist _ (fst (list_of_next_bin_ops_closes s (None, nil))) (ex_intro _ (None, nil) _) |}.
-
-    SearchAbout list_eq_dec.
-
+    abstract (rewrite dec_refl; reflexivity).
+  Defined.
 
   Lemma drop_list_of_next_bin_ops_closes {s n hc}
   : drop n (fst (list_of_next_bin_ops_closes s hc)) =
@@ -219,24 +258,24 @@ Section StringT.
 
     Definition SplitAtT_fst
     : exists hc : option nat * list nat,
-        take n (` (state_val s)) =
+        take n (` (state_val s)) =?
         fst (list_of_next_bin_ops_closes (fst (SplitAt n s)) hc).
     Proof.
       destruct (state_val s) as [ table [ hc H ] ].
       exists (snd (list_of_next_bin_ops_closes (snd (SplitAt n s)) hc)); simpl.
-      revert H; generalize (string_val s); clear s; clear.
-      abstract (intros; subst; apply take_list_of_next_bin_ops_closes).
+      revert H; generalize (string_val s); clear s; clear -dec_refl.
+      abstract (intros; edestruct dec; subst; rewrite ?take_list_of_next_bin_ops_closes, ?dec_refl; congruence).
     Defined.
 
     Definition SplitAtT_snd
     : exists hc : option nat * list nat,
-        drop n (` (state_val s)) =
+        drop n (` (state_val s)) =?
         fst (list_of_next_bin_ops_closes (snd (SplitAt n s)) hc).
     Proof.
       destruct (state_val s) as [ table [ hc H ] ].
       exists hc; simpl.
-      revert H; generalize (string_val s); clear s; clear.
-      abstract (intros; subst; apply drop_list_of_next_bin_ops_closes).
+      revert H; generalize (string_val s); clear s; clear -dec_refl.
+      abstract (intros; edestruct dec; subst; rewrite ?drop_list_of_next_bin_ops_closes, ?dec_refl; congruence).
     Defined.
 
     Definition split_state_at' : split_stateT (fst (SplitAt n s)) * split_stateT (snd (SplitAt n s))
@@ -267,6 +306,7 @@ Section StringT.
                  | generalize a; generalize b; intros; progress subst ]
     end.
 
+
   Lemma split_state_at_right_id s st
   : @split_state_at (Length s) (s ++ Empty _) st
     = (eq_rect
@@ -282,7 +322,21 @@ Section StringT.
          empty_state _
          (f_equal snd (eq_sym (SplitAt_concat_correct _ _ _)))).
   Proof.
+    apply injective_projections; simpl.
+    { destruct st as [ls [hc st] ]; simpl.
+      unfold split_stateT; simpl.
+      rewrite !eq_rect_sig; simpl.
+      rewrite !eq_rect_ex; simpl.
+    eapply path_sig; simpl.
+
+    lazymatch goal with
+    | [ |- appcontext[@eq_rect ?A ?x (fun _ => ?P) ?u ?y ?H] ]
+      => pattern (@eq_rect A x (fun _ => P) u y H)
+    end.
+
+
     unfold eq_rect.
+
     unfold split_state_at, split_state_at'; simpl.
     unfold SplitAtT_fst, SplitAtT_snd.
 
