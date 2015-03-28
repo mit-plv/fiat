@@ -6,6 +6,8 @@ Require Export Coq.Setoids.Setoid Coq.Classes.RelationClasses
 Global Set Implicit Arguments.
 Global Generalizable All Variables.
 
+Global Coercion is_true : bool >-> Sortclass.
+
 (** Test if a tactic succeeds, but always roll-back the results *)
 Tactic Notation "test" tactic3(tac) :=
   try (first [ tac | fail 2 tac "does not succeed" ]; fail 0 tac "succeeds"; [](* test for [t] solved all goals *)).
@@ -1232,7 +1234,7 @@ Fixpoint Forall_tails_all {T} {P : list T -> Type} (p : forall t, P t) {ls}
        | x::xs => (p _, @Forall_tails_all T P p xs)
      end.
 
-Lemma substring_correct3 {s : string} m (H : length s < m)
+Lemma substring_correct3 {s : string} m (H : length s <= m)
 : substring 0 m s = s.
 Proof.
   revert m H.
@@ -1242,13 +1244,13 @@ Proof.
     { apply Lt.lt_n_0 in H.
       destruct H. }
     { rewrite IHs; trivial.
-      apply Lt.lt_S_n; trivial. } }
+      apply Le.le_S_n; trivial. } }
 Qed.
 
 Lemma substring_correct3' {s : string}
-: substring 0 (S (length s)) s = s.
+: substring 0 (length s) s = s.
 Proof.
-  apply substring_correct3, Lt.lt_n_Sn.
+  apply substring_correct3; reflexivity.
 Qed.
 
 Lemma substring_correct0 {s : string} {n}
@@ -1269,7 +1271,7 @@ Proof.
 Qed.
 
 Lemma substring_correct4 {s : string} {n m m'}
-      (H : length s < n + m) (H' : length s < n + m')
+      (H : length s <= n + m) (H' : length s <= n + m')
 : substring n m s = substring n m' s.
 Proof.
   revert n m m' H H'.
@@ -1278,8 +1280,8 @@ Proof.
   { intros; destruct m, m', n; trivial; simpl in *;
     try (apply Lt.lt_n_0 in H; destruct H);
     try (apply Lt.lt_n_0 in H'; destruct H');
-    try apply Lt.lt_S_n in H;
-    try apply Lt.lt_S_n in H';
+    try apply Le.le_S_n in H;
+    try apply Le.le_S_n in H';
     try solve [ try rewrite plus_comm in H;
                 try rewrite plus_comm in H';
                 simpl in *;
@@ -1329,13 +1331,90 @@ Proof.
   { rewrite IHs1; trivial. }
 Qed.
 
+Lemma concat_length {s1 s2 : string}
+: length (s1 ++ s2) = length s1 + length s2.
+Proof.
+  induction s1.
+  { reflexivity. }
+  { simpl.
+    rewrite IHs1; reflexivity. }
+Qed.
+
 Lemma substring_concat_length {s1 s2 : string}
-: substring (length s1) (S (length (s1 ++ s2))) (s1 ++ s2) = s2.
+: substring (length s1) (length s2) (s1 ++ s2) = s2.
 Proof.
   induction s1; simpl.
   { rewrite substring_correct3'; trivial. }
   { erewrite substring_correct4.
     { exact IHs1. }
-    { auto with arith. }
-    { auto with arith. } }
+    { rewrite concat_length; reflexivity. }
+    { rewrite concat_length; reflexivity. } }
 Qed.
+
+Lemma substring_length {s n m}
+: length (substring n m s) = (min (length s) (m + n)) - n.
+Proof.
+  revert n m; induction s; intros.
+  { destruct n, m; reflexivity. }
+  { simpl.
+    destruct n, m; simpl; trivial; rewrite IHs; simpl;
+    try omega; [].
+    rewrite (plus_comm m (S n)); simpl.
+    rewrite (plus_comm n m); simpl.
+    reflexivity. }
+Qed.
+
+Lemma substring_substring {s n m n' m'}
+: substring n m (substring n' m' s) = substring (n + n') (min m (m' - n)) s.
+Proof.
+  revert n m n' m'.
+  induction s; intros.
+  { destruct n, m, n', m'; reflexivity. }
+  { destruct n', m';
+    rewrite <- ?plus_n_O, <- ?minus_n_O, ?Min.min_0_r, ?Min.min_0_l;
+    destruct n, m;
+    trivial; simpl;
+    rewrite ?IHs, ?substring_correct0, <- ?plus_n_O, <- ?minus_n_O;
+    simpl;
+    try reflexivity.
+    rewrite (plus_comm _ (S _)); simpl.
+    rewrite (plus_comm n n').
+    reflexivity. }
+Qed.
+
+Ltac free_in x y :=
+  idtac;
+  match y with
+    | appcontext[x] => fail 1 x "appears in" y
+    | _ => idtac
+  end.
+
+Ltac setoid_subst' x :=
+  atomic x;
+  match goal with
+    | [ H : ?R x ?y |- _ ]
+      => free_in x y;
+        rewrite ?H;
+        repeat match goal with
+                 | [ H' : appcontext[x] |- _ ] => rewrite H in H'
+               end;
+        clear H;
+        clear x
+    | [ H : ?R ?y x |- _ ]
+      => free_in x y;
+        rewrite <- ?H;
+        repeat match goal with
+                 | [ H' : appcontext[x] |- _ ] => rewrite <- H in H'
+               end;
+        clear H;
+        clear x
+  end.
+
+Ltac setoid_subst_all :=
+  repeat match goal with
+           | [ H : ?R ?x ?y |- _ ] => atomic x; setoid_subst' x
+           | [ H : ?R ?x ?y |- _ ] => atomic y; setoid_subst' y
+         end.
+
+Tactic Notation "setoid_subst" ident(x) := setoid_subst' x.
+Tactic Notation "setoid_subst" := setoid_subst_all.
