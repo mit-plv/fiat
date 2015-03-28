@@ -63,4 +63,5 @@ Section ReferenceImpl.
     Proof.
     ...
     Qed. *)
-End parser.
+  End parser.
+End ReferenceImpl.
