@@ -4,7 +4,8 @@ Require Import Coq.Sorting.Mergesort Coq.Structures.Orders
         Coq.Strings.String Coq.FSets.FMapAVL
         ADTSynthesis.Common.String_as_OT
         ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureNotations
-        ADTSynthesis.QueryStructure.Implementation.Operations.
+        ADTSynthesis.QueryStructure.Implementation.Operations
+        ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.IndexSearchTerms.
 
 Module AttrCountOrder <: TotalLeBool.
   Definition t := (prod (string * (string * string)) nat).
@@ -68,7 +69,7 @@ Ltac TermAttributes Term :=
                 provided in QueryAttributes*)
            constr:([(Ridx, Aidx)])
       end
-    | _ => constr:(@nil (string * (string * string)))
+    | _ => constr:(@nil (string * string))
   end.
 
 Ltac ClauseAttributes WhereClause kTerm k :=
@@ -157,3 +158,8 @@ Ltac GenerateIndexesForAll kTerm k :=
       let meths := eval compute in (map methID methSigs) in
           GenerateIndexesFor meths kTerm k
   end.
+
+Tactic Notation "make" "indexes" "using" tactic(ClauseMatchers) :=
+  GenerateIndexesForAll
+    ClauseMatchers
+    ltac:(fun attrlist => make simple indexes using attrlist).

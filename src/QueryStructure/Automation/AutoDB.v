@@ -1,5 +1,4 @@
 Require Export Coq.Bool.Bool Coq.Strings.String Coq.Strings.Ascii.
-Open Scope string.
 Require Export ADTSynthesis.Common.DecideableEnsembles
         ADTSynthesis.Common.List.ListMorphisms
         ADTSynthesis.Common.List.ListFacts
@@ -616,9 +615,9 @@ Ltac findGoodTerm SC F indexed_attrs ClauseMatch k :=
 
       end
     | fun a => (@?f a) && (@?g a) =>
-      findGoodTerm SC f indexed_attrs
+      findGoodTerm SC f indexed_attrs ClauseMatch
                    ltac:(fun fds1 tail1 =>
-                           findGoodTerm SC g indexed_attrs
+                           findGoodTerm SC g indexed_attrs ClauseMatch
                                         ltac:(fun fds2 tail2 =>
                                                 k (fds1, fds2) (fun tup : @Tuple SC => (tail1 tup) && (tail2 tup))))
     | _ => k tt F
@@ -1896,6 +1895,17 @@ Ltac Realize_CallBagMethods :=
       intros; eapply (@realizeable_Find qs_schema BagIndexKeys r_n r_o idx' st H)
   end.
 
+  Lemma refine_merge_bind (A B C : Type) :
+    forall (a a' : Comp A) (b b' : A -> Comp B) (k : B -> Comp C),
+      refine (x <- a; b x) (x <- a'; b' x)
+      -> refine (x <- a; y <- b x; k y)
+                (x <- a'; y <- b' x; k y).
+  Proof.
+    intros.
+    rewrite <- refineEquiv_bind_bind, H, refineEquiv_bind_bind.
+    reflexivity.
+  Qed.
+
 Ltac distribute_filters_to_joins' :=
   match goal with
       |- refine
@@ -1903,72 +1913,65 @@ Ltac distribute_filters_to_joins' :=
            _ =>
       etransitivity; (* Recursively drill under the binds *)
         [ apply refine_under_bind; intros; cbv beta; simpl; distribute_filters_to_joins'
-        | cbv beta; simpl;
-          match goal with
-              |- refine (l' <- Join_Filtered_Comp_Lists _ _ _;
-                         l'' <- Join_Filtered_Comp_Lists _ _ _;
-                         _)
-                        _ =>
-
-              rewrite <- refineEquiv_bind_bind at 1;
-                etransitivity;
-                [ repeat match goal with
-                             |- refine (Bind (l' <- Join_Filtered_Comp_Lists ?l1 ?l2 ?cond1;
-                                              Join_Filtered_Comp_Lists
-                                                (filter (fun a : ilist _ (?heading1 :: ?heading2 :: ?headings) =>
-                                                           @?f a && @?g a) l') ?l2' ?cond2) _)
-                                       _ => first (* No test case for this branch *)
-                                              [ makeEvar (ilist (@Tuple) headings -> bool)
-                                                         ltac:(fun f' =>
-                                                                 find_equiv_tl heading1 headings f f';
-                                                               let Comp_l2 := fresh in
-                                                               assert
-                                                                 (forall a : ilist (@Tuple) headings,
-                                                                  exists v : list (@Tuple heading1),
-                                                                    refine (l2 a) (ret v)) as Comp_l2
-                                                                   by Realize_CallBagMethods;
-                                                               etransitivity;
-                                                               [ eapply refine_bind;
-                                                                 [ apply (@refine_Join_Join_Filtered_Comp_Lists_filter_hd_andb heading1 heading2 headings f' g l2 l2' cond1 cond2 Comp_l2 l1)
-                                                                 | intro; higher_order_reflexivity ]
-                                                               | ])
-                                              | etransitivity;
-                                                [ eapply refine_bind;
-                                                  [ apply (@refine_Join_Join_Filtered_Comp_Lists_filter_tail_andb heading1 heading2 headings f g l2 l2' cond1 cond2 l1)
-                                                  | intro; higher_order_reflexivity ]
-                                                | ]
-                                              ]
-
-                           | |- refine (Bind (l' <- Join_Filtered_Comp_Lists ?l1 ?l2 ?cond1;
-                                              Join_Filtered_Comp_Lists (a := ?heading2)
-                                                                       (@filter (ilist _ (?heading1 :: ?headings)) ?f l') ?l2' ?cond2) _)
-                                       _ =>   first
-                                                [ makeEvar (ilist (@Tuple) headings -> bool) (* No test case for this branch either *)
-                                                           ltac:(fun f' =>
-                                                                   find_equiv_tl heading1 headings f f';
-                                                                 let Comp_l2 := fresh in
-                                                                 assert
-                                                                   (forall a : ilist (@Tuple) headings,
-                                                                    exists v : list (@Tuple heading1),
-                                                                      refine (l2 a) (ret v)) as Comp_l2
-                                                                     by Realize_CallBagMethods;
-                                                                 etransitivity;
-                                                                 [ eapply refine_bind;
-                                                                   [ apply (@refine_Join_Join_Filtered_Comp_Lists_filter_hd heading1 heading2 headings f' l2 l2' cond1 cond2 Comp_l2 l1)
-                                                                   | intro; higher_order_reflexivity ]
-                                                                 | ])
-                                                | eapply refine_bind;
-                                                  [ apply (@refine_Join_Join_Filtered_Comp_Lists_filter_tail heading1 heading2 headings f l2 l2' cond1 cond2 l1)
-                                                  | intro; higher_order_reflexivity] ]
+        |   cbv beta; simpl;
+  match goal with
+      |- refine (l' <- Join_Filtered_Comp_Lists ?l1 ?l2 ?cond1;
+                 l'' <- Join_Filtered_Comp_Lists
+                     (filter ?f l') ?l2' ?cond2;
+                 @?k l' l'')
+                _  =>  eapply (refine_merge_bind (fun l' =>
+                                                    Join_Filtered_Comp_Lists
+                                                      (filter f l') l2' cond2)
+                                                 (a' := Join_Filtered_Comp_Lists _ _ _)
+                                                 (fun l' =>
+                                                    Join_Filtered_Comp_Lists
+                                                      l' l2' cond2));
+                repeat match goal with
+                           |- refine (l' <- Join_Filtered_Comp_Lists ?l1 ?l2 ?cond1;
+                                      Join_Filtered_Comp_Lists
+                                        (filter (fun a : ilist _ (?heading1 :: ?heading2 :: ?headings) =>
+                                                   @?f a && @?g a) l') ?l2' ?cond2)
+                                     _ => first (* No test case for this branch *)
+                                            [ makeEvar (ilist (@Tuple) headings -> bool)
+                                                       ltac:(fun f' =>
+                                                               find_equiv_tl heading1 headings f f';
+                                                             let Comp_l2 := fresh in
+                                                             assert
+                                                               (forall a : ilist (@Tuple) headings,
+                                                                exists v : list (@Tuple heading1),
+                                                                  refine (l2 a) (ret v)) as Comp_l2
+                                                                 by Realize_CallBagMethods;
+                                                             etransitivity;
+                                                               [ apply (@refine_Join_Join_Filtered_Comp_Lists_filter_hd_andb heading1 heading2 headings f' g l2 l2' cond1 cond2 Comp_l2 l1) | ])
+                                            | etransitivity;
+                                              [ apply (@refine_Join_Join_Filtered_Comp_Lists_filter_tail_andb heading1 heading2 headings f g l2 l2' cond1 cond2 l1)
+                                              | ]
+                                            ]
+                         | |- refine (l' <- Join_Filtered_Comp_Lists ?l1 ?l2 ?cond1;
+                                      Join_Filtered_Comp_Lists (a := ?heading2)
+                                                               (@filter (ilist _ (?heading1 :: ?headings)) ?f l') ?l2' ?cond2) _
+                           =>   first
+                                  [ makeEvar (ilist (@Tuple) headings -> bool) (* No test case for this branch either *)
+                                             ltac:(fun f' =>
+                                                     find_equiv_tl heading1 headings f f';
+                                                   let Comp_l2 := fresh in
+                                                   assert
+                                                     (forall a : ilist (@Tuple) headings,
+                                                      exists v : list (@Tuple heading1),
+                                                        refine (l2 a) (ret v)) as Comp_l2
+                                                       by Realize_CallBagMethods;
+                                                   etransitivity;
+                                                   [ apply (@refine_Join_Join_Filtered_Comp_Lists_filter_hd heading1 heading2 headings f' l2 l2' cond1 cond2 Comp_l2 l1)
+                                                   | ])
+                                  | etransitivity;
+                                    [ apply (@refine_Join_Join_Filtered_Comp_Lists_filter_tail heading1 heading2 headings f l2 l2' cond1 cond2 l1) | ] ]
                            (* If there's no filter on the first list, we're done. *)
-                           | |- refine (Bind (l' <- Join_Filtered_Comp_Lists ?l1 ?l2 ?cond1;
-                                              Join_Filtered_Comp_Lists l' ?l2' ?cond2) _)
+                           | |- refine (l' <- Join_Filtered_Comp_Lists ?l1 ?l2 ?cond1;
+                                              Join_Filtered_Comp_Lists l' ?l2' ?cond2)
                                        _ => reflexivity
+                       end
 
-
-                         end
-                | rewrite refineEquiv_bind_bind at 1; reflexivity ]
-
+            (* The bottom case where we've recursed under all the bound Joins. *)
             | |- refine (l' <- Join_Filtered_Comp_Lists _ _ _;
                          List_Query_In _ _)
                         _ =>
@@ -2009,7 +2012,7 @@ Ltac distribute_filters_to_joins' :=
                                | apply (@refine_Join_Filtered_Comp_Lists_filter_tail heading headings f ResultT resultComp l2 cond' l1) ]
 
                      end
-          end
+  end
         ]
     | |- _ => higher_order_reflexivity
 
@@ -2068,20 +2071,54 @@ Ltac implement_filters_with_find k k_dep:=
           apply refine_under_bind; intros);
   apply List_Query_In_Return.
 
+Ltac implement_In_opt' :=
+  match goal with
+    (* Implement a List_Query_In of a list [l] applied to a UnConstrQuery_In [idx]
+        by enumerating [idx] with a method call and joining the result with [l] *)
+    | [H : @DelegateToBag_AbsR ?qs_schema ?indexes ?r_o ?r_n
+       |- refine (List_Query_In ?l (fun b => UnConstrQuery_In (ResultT := ?resultT) ?r_o ?idx (@?f b) )) _ ] =>
+      etransitivity;
+        [ let H' := eval simpl in (refine_Filtered_Join_Query_In_Enumerate' H (idx := idx) f (l := l)) in
+              apply H'
+        |  apply refine_under_bind; intros; implement_In_opt' ]
+
+    (* Implement a 'naked' UnConstrQuery_In as a call to enumerate *)
+    | [H : @DelegateToBag_AbsR ?qs_schema ?indexes ?r_o ?r_n
+       |- refine (UnConstrQuery_In (ResultT := ?resultT) ?r_o ?idx ?f) _ ] =>
+      etransitivity;
+        [ let H' := eval simpl in (refine_Filtered_Query_In_Enumerate H (idx := idx) f) in
+              apply H'
+        | apply refine_under_bind; intros; implement_In_opt' ]
+
+    (* Convert all Where clauses to filters.*)
+    | [H : @DelegateToBag_AbsR ?qs_schema ?indexes ?r_o ?r_n
+       |- refine (List_Query_In ?b (fun b : ?QueryT => Where (@?P b) (@?resultComp b))) _ ] =>
+       etransitivity;
+         [ let H' := eval simpl in (@refine_List_Query_In_Where QueryT _ b P resultComp _) in
+               apply H'
+         | implement_In_opt'; implement_In_opt' ]
+
+    (* Finish if no progress can be made. This may miss some
+       filters if In and Where Clauses are mixed. *)
+    | _ =>
+      repeat rewrite <- filter_and;
+        repeat setoid_rewrite andb_true_r;
+        higher_order_reflexivity
+
+  end.
+
+Ltac implement_In_opt :=
+  etransitivity;
+  [ implement_In_opt' | ]; cbv beta; simpl.
+
 Ltac implement_Query' k k_dep:=
   Focused_refine_Query;
-  [ (* Step 1: Implement [In] by enumeration. *)
-    implement_In;
-    (* Step 2: Convert where clauses into compositions of filters. *)
-    repeat convert_Where_to_filter;
-    (* Step 3: Do some simplication.*)
-    repeat setoid_rewrite <- filter_and;
-    try setoid_rewrite andb_true_r;
-    (* Step 4: Move filters to the outermost [Join_Comp_Lists] to which *)
+  [ (* Step 1: Implement [In / Where Combinations] by enumerating and joining. *)
+    implement_In_opt;
+    (* Step 2: Move filters to the outermost [Join_Comp_Lists] to which *)
     (* they can be applied. *)
-    repeat setoid_rewrite Join_Filtered_Comp_Lists_id;
     distribute_filters_to_joins;
-    (* Step 5: Convert filter function on topmost [Join_Filtered_Comp_Lists] to an
+    (* Step 3: Convert filter function on topmost [Join_Filtered_Comp_Lists] to an
                equivalent search term matching function.  *)
     implement_filters_with_find k k_dep
   |

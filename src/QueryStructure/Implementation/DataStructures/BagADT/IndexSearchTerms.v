@@ -21,6 +21,8 @@ Require Import
 (* Implements a Search Term for heading as a list of optional key
    values given a list of attributes. *)
 
+Local Open Scope string_scope.
+
 Class IndexDenotation
       (A : string)
       (heading : Heading)
@@ -29,7 +31,6 @@ Class IndexDenotation
        MatchIndex : DenoteIndex -> @Tuple heading -> bool
   }.
 
-Open Scope string.
 Definition EqualityIndex : string := "EqualityIndex".
 
 Global Instance EqualityIndexDenotation
@@ -72,6 +73,8 @@ Ltac BuildIndexSearchTerm'
 Ltac BuildIndexMatcher'
      attrs heading indices k :=
   match indices with
+    | [] =>
+      k (fun (st : (@Tuple heading -> bool))=> st)
     | [("EqualityIndex", ?idx)] =>
       let idx' := constr:(@Build_BoundedIndex _ attrs idx _) in
       k (fun (st : prod _ (@Tuple heading -> bool)) tup =>
@@ -97,7 +100,9 @@ Record KindIndex
 Ltac BuildIndexes
      attrs heading indices k :=
   match indices with
-    | [(?kind, ?idx)] =>
+    | [] =>
+      k (@nil (@KindIndex heading))
+     | [(?kind, ?idx)] =>
       let idx' := constr:(@Build_BoundedIndex _ attrs idx _) in
       k ([@Build_KindIndex heading kind idx'])
     | (?kind, ?idx) :: ?indices' =>

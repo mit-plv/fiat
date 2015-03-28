@@ -7,7 +7,7 @@ Require Import
 
 (* Instances for building indexes with make simple indexes. *)
 (* Every Kind of index is keyed on an inductive type with a single constructor*)
-Open Scope string.
+Local Open Scope string_scope.
 Definition InclusionIndex : string := "InclusionIndex".
 
 (* This is our search term type. *)

@@ -9,7 +9,7 @@ Require Import Coq.Strings.String Coq.omega.Omega Coq.Lists.List
 
 Section BagADT.
 
-  Local Open Scope string.
+  Local Open Scope string_scope.
 
   Variable ElementType : Type.
   Variable SearchTermType : Type.

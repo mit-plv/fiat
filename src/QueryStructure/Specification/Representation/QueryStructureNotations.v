@@ -26,6 +26,6 @@ Open Scope QueryImpl.
 Open Scope QueryStructure.
 Open Scope Schema.
 Open Scope QuerySpec.
-Open Scope string.
+Open Scope string_scope.
 Open Scope Tuple.
 Open Scope comp_scope.

@@ -57,7 +57,7 @@ Definition AlbumSpec : ADT AlbumSig :=
           Where (event!EVENT_NAME = photo!EVENT_NAME)
           Where (InRange event!DATE range)
           Return photo,
-          
+
     query "PhotosByPersons" (persons : list string) : list (AlbumSchema#PHOTOS) :=
       For (photo in PHOTOS)
           Where (IncludedIn persons photo!PERSONS)
@@ -71,12 +71,7 @@ Proof.
 
   start honing QueryStructure.
 
-  GenerateIndexesForAll
-    ltac:(fun W k => match goal with
-                       | _ => matchInclusionIndex W k
-                       | _ => matchRangeIndex W k
-                     end)
-    ltac:(fun l => make simple indexes using l).
+  make indexes using (CombineUse matchInclusionIndex matchRangeIndex).
 
   plan
     ltac:(fun SC F indexed_attrs f k =>
@@ -84,16 +79,16 @@ Proof.
               | _ => InclusionIndexUse SC F indexed_attrs f k
               | _ => RangeIndexUse SC F indexed_attrs f k
             end)
-    ltac:(fun f fds tail fs kind s k =>
-            match goal with
-              | _ => createLastInclusionTerm f fds tail fs kind s k
-              | _ => createLastRangeTerm f fds tail fs kind s k
-            end)
     ltac:(fun f fds tail fs kind EarlyIndex LastIndex rest s k =>
             match goal with
               | _ => createEarlyInclusionTerm f fds tail fs kind EarlyIndex LastIndex rest s k
               | _ => createEarlyRangeTerm f fds tail fs kind EarlyIndex LastIndex rest s k
             end)
+           ltac:(fun f fds tail fs kind s k =>
+                   match goal with
+                     | _ => createLastInclusionTerm f fds tail fs kind s k
+                     | _ => createLastRangeTerm f fds tail fs kind s k
+                   end)
     ltac:(fun SC F indexed_attrs visited_attrs f T k =>
             match goal with
               | _ => InclusionIndexUse_dep SC F indexed_attrs visited_attrs f T k
@@ -123,12 +118,20 @@ Proof.
     repeat setoid_rewrite Join_Filtered_Comp_Lists_id;
     distribute_filters_to_joins.
     convert_filter_to_search_term.
-    find_equivalent_search_term ltac:(fun a b c d => pose a; pose b; pose c; pose d).
+
+
+    find_equivalent_search_term ltac:(find_simple_search_term RangeIndexUse
+createEarlyRangeTerm createLastRangeTerm).
+    cbv beta; simpl; convert_filter_search_term_to_find.
+
 
     let qs_schema := eval unfold q in q in
         let idx := eval unfold b in b in
             let filter_dec := eval unfold b0 in b0 in
-                let search_term := eval unfold b1 in b1 in 
+                let search_term := eval unfold b1 in b1 in
+                    find_simple_search_term InclusionIndexUse createEarlyInclusionTerm createLastInclusionTerm qs_schema idx filter_dec search_term.
+
+
   match type of search_term with
     | BuildIndexSearchTerm ?indexed_attrs =>
       let indexed_attrs' :=
@@ -137,13 +140,44 @@ Proof.
                                    KindNameName := @bindex string _ (KindIndexIndex kidx) |}) indexed_attrs) in
           let SC := constr:(QSGetNRelSchemaHeading qs_schema idx) in
           findGoodTerm SC filter_dec indexed_attrs' InclusionIndexUse
-                       ltac:(fun fds tail => 
+                       ltac:(fun fds tail =>
                                let tail := eval simpl in tail in
-                                   pose fds; pose tail) end.
                                    makeTerm indexed_attrs' SC fds tail createEarlyInclusionTerm createLastInclusionTerm ltac:(fun tm => try unify tm search_term;
                                                                                                                               unfold ExtensionalEq, MatchIndexSearchTerm;
                                                                                                                               simpl; intro; try prove_extensional_eq
                                                                                                                              )) end.
+
+
+                    match type of search_term with
+    | BuildIndexSearchTerm ?indexed_attrs =>
+      let indexed_attrs' :=
+          eval simpl in (map (fun kidx =>
+                                {| KindNameKind := KindIndexKind kidx;
+                                   KindNameName := @bindex string _ (KindIndexIndex kidx) |}) indexed_attrs) in
+          let SC := constr:(QSGetNRelSchemaHeading qs_schema idx) in
+          findGoodTerm SC filter_dec indexed_attrs' InclusionIndexUse
+                       ltac:(fun fds tail =>
+                               let tail := eval simpl in tail in
+                                   makeTerm indexed_attrs' SC fds tail createEarlyRangeTerm createLastRangeTerm ltac:(fun tm => pose tm; try unify tm search_term )) end.
+assert (p1 = b1).
+re
+pose tail) end.
+
+
+let search_term' := eval unfold b1, BuildIndexSearchTerm in b1 in
+    let indexed_attrs' := eval unfold l in l in
+        let SC := eval unfold h in h in
+            let fds := eval unfold p in p in
+                let tail := eval unfold b2 in b2 in
+                    makeTerm indexed_attrs' SC fds tail createEarlyRangeTerm createLastRangeTerm ltac:(fun tm => try unify tm search_term' ).
+
+                                                                                                         pose tm as tm''';                                                  try unify tm b1.
+                                                                                                                                                                                assert (tm''' = b1)
+                                                                                                      ).
+
+    reflexivity.
+    unfo b1, p2. reflexivity.
+    simpl in *.
 
     find_simple_search_term
     ltac:(fun SC F indexed_attrs f k =>
@@ -172,7 +206,7 @@ Proof.
               | _ => createLastInclusionTerm_dep dom f fds tail fs kind rest s k
               | _ => createLastRangeTerm_dep dom f fds tail fs kind rest s k
             end)).
-  
+
   FullySharpenQueryStructure AlbumSchema Index.
 
   implement_bag_methods.
