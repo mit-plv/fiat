@@ -8,7 +8,7 @@ Local Open Scope list_scope.
 Reserved Infix "~=" (at level 70).
 
 Section interface.
-  Context {CharType} {String : string_like CharType} (G : grammar CharType).
+  Context {CharType} (String : string_like CharType) (G : grammar CharType).
 
   (** A production is reachable if it is the tail of a production
       associated to a valid nonterminal. *)
