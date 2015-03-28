@@ -183,6 +183,7 @@ SRC_PARSERS_BASE_MODULES := \
 
 SRC_PARSERS_MODULES := \
 	Parsers/Specification\
+	Parsers/ParserInterface\
 	Parsers/Examples/ABStar\
 	$(SRC_PARSERS_BASE_MODULES)\
 	$(SRC_GRAMMAR_MODULES)
