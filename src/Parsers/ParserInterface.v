@@ -45,6 +45,8 @@ Section interface.
 
       split_invariant : String -> split_rep -> Prop where "s ~= st" := (split_invariant s st);
       (** invariant relating a [String] to a representation *)
+
+
       take_respectful : forall str st n,
                           str ~= st
                           -> fst (SplitAt n str) ~= split_take n st;
