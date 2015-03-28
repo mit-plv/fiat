@@ -48,12 +48,6 @@ Section ReferenceImpl.
   Section parser.
     Context (splitter : Sharpened string_spec).
 
-    Let split_stateT (s : String) : Type.
-    Proof.
-      (** FIXME: What goes here? *)
-      (* exact { r : rep of splitter | rep inv holds with s }. *)
-    Admitted.
-
     Local Obligation Tactic := admit.
 
     Program Definition adt_based_splitter : Splitter String G
