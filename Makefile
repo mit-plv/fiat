@@ -168,13 +168,6 @@ SRC_PARSERS_BASE_MODULES := \
 	Parsers/Splitters/Reflective\
 	Parsers/Splitters/FirstChar\
 	Parsers/Splitters/OnlyOneNonterminal\
-	Parsers/DependentlyTyped\
-	Parsers/DependentlyTypedOption\
-	Parsers/DependentlyTypedSum\
-	Parsers/DependentlyTypedMinimal\
-	Parsers/DependentlyTypedMinimalOfParse\
-	Parsers/DependentlyTypedMinimalOfParseFactored\
-	Parsers/DependentlyTypedMinimalOfParseFactoredFull\
 	Parsers/BooleanRecognizer\
 	Parsers/WellFoundedParse\
 	Parsers/MinimalParse\
@@ -339,9 +332,9 @@ TIMER=$(if $(TIMED), $(STDTIME), $(TIMECMD))
 
 COQDOCFLAGS=-interpolate -utf8
 
-FAST_TARGETS := clean archclean printenv clean-old package-parsing-parses
+FAST_TARGETS := clean archclean printenv clean-old
 
-.PHONY: all fiat querystructures parsers finitesets dns examples html clean pretty-timed pretty-timed-files pdf doc clean-doc cheat parsers-base package-parsing-parses
+.PHONY: all fiat querystructures parsers finitesets dns examples html clean pretty-timed pretty-timed-files pdf doc clean-doc cheat parsers-base
 
 all : fiat querystructures parsers finitesets examples
 
@@ -369,8 +362,6 @@ parsers-base : $(PREFIXED_SRC_PARSERS_BASE_VOS)
 pdf: Overview/ProjectOverview.pdf Overview/library.pdf
 
 doc: pdf html
-
--include Makefile.package-parsing-parses
 
 Overview/library.tex: all.pdf
 	cp "$<" "$@"
