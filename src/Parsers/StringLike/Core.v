@@ -1,99 +1,101 @@
 (** * Definition of the string-like type *)
-Require Import Coq.Arith.Lt Coq.Arith.Compare_dec.
+Require Import Coq.Program.Basics Coq.Setoids.Setoid Coq.Classes.Morphisms.
+Require Import Coq.Numbers.Natural.Peano.NPeano. (* Coq.Arith.Compare_dec.*)
+Require Import Coq.Arith.Lt. (* Coq.Arith.Compare_dec.*)
+
+Local Coercion is_true : bool >-> Sortclass.
 
 Set Implicit Arguments.
-Local Set Boolean Equality Schemes.
-Local Set Decidable Equality Schemes.
+Generalizable All Variables.
 
-(** Something is string-like (for a given type of characters) if it
-    has an associative concatenation operation and decidable
-    equality. *)
+Local Open Scope program_scope.
+
+(** Something is string-like if it has a type of characters, and can
+    be split. *)
 
 Reserved Notation "[ x ]".
 
-Record string_like (CharType : Type) :=
-  {
-    String :> Type;
-    Singleton : CharType -> String where "[ x ]" := (Singleton x);
-    Empty : String;
-    Concat : String -> String -> String where "x ++ y" := (Concat x y);
-    bool_eq : String -> String -> bool;
-    bool_eq_correct : forall x y : String, bool_eq x y = true <-> x = y;
-    Length : String -> nat;
-    Fold : forall (P : String -> Type) (Pnil : P Empty) (Pcons : forall x y, P y -> P (Singleton x ++ y)) (s : String),
-             P s;
-    Associativity : forall x y z, (x ++ y) ++ z = x ++ (y ++ z);
-    LeftId : forall x, Empty ++ x = x;
-    RightId : forall x, x ++ Empty = x;
-    Singleton_Length : forall x, Length (Singleton x) = 1;
-    Length_correct : forall s1 s2, Length s1 + Length s2 = Length (s1 ++ s2);
-    Length_Empty : Length Empty = 0;
-    Empty_Length : forall s1, Length s1 = 0 -> s1 = Empty;
-    Not_Singleton_Empty : forall x, Singleton x <> Empty;
-    Fold_compute_empty : forall P Pnil Pcons, Fold P Pnil Pcons Empty = Pnil;
-    Fold_compute_cons : forall P Pnil Pcons x s, Fold P Pnil Pcons (Singleton x ++ s) = Pcons x s (Fold P Pnil Pcons s);
-    SplitAt : nat -> String -> String * String;
-    SplitAt_correct : forall n s, fst (SplitAt n s) ++ snd (SplitAt n s) = s;
-    SplitAt_concat_correct : forall s1 s2, SplitAt (Length s1) (s1 ++ s2) = (s1, s2);
-    SplitAtLength_correct : forall n s, Length (fst (SplitAt n s)) = min (Length s) n
-  }.
+Module Export StringLike.
+  Class StringLike {string : Type} :=
+    {
+      Char : Type;
+      String :> _ := string;
+      is_char : String -> Char -> bool;
+      length : String -> nat;
+      take : nat -> String -> String;
+      drop : nat -> String -> String;
+      bool_eq : String -> String -> bool;
+      beq : relation String := fun x y => bool_eq x y(*;
+      rect : forall (P : String -> Type)
+                    (Pnil : forall str, length str = 0 -> P str)
+                    (Pcons : forall ch str, is_char (take 1 str) ch -> P (drop 1 str) -> P str)
+                    (str : String),
+               P str*)
+    }.
 
-Delimit Scope string_like_scope with string_like.
-Bind Scope string_like_scope with String.
-Arguments Concat {_%type_scope _} (_ _)%string_like.
-Arguments bool_eq {_%type_scope _} (_ _)%string_like.
-Arguments Length {_%type_scope _} _%string_like.
-Arguments SplitAt {_%type_scope _} _%nat_scope _%string_like.
-Notation "[[ x ]]" := (@Singleton _ _ x) : string_like_scope.
-Infix "++" := (@Concat _ _) : string_like_scope.
-Infix "=s" := (@bool_eq _ _) (at level 70, right associativity) : string_like_scope.
+  Arguments StringLike : clear implicits.
+  Bind Scope string_like_scope with String.
+  Delimit Scope string_like_scope with string_like.
+  Infix "=s" := (@beq _ _) (at level 70, no associativity) : type_scope.
+  Infix "=s" := (@bool_eq _ _) (at level 70, no associativity) : string_like_scope.
+  Notation "s ~= [ ch ]" := (is_char s ch) (at level 70, no associativity) : string_like_scope.
+  Local Open Scope string_like_scope.
+  Local Open Scope type_scope.
 
-Definition str_le {CharType} {String : string_like CharType} (s1 s2 : String)
-  := Length s1 < Length s2 \/ s1 = s2.
-Infix "≤s" := str_le (at level 70, right associativity).
+  Hint Extern 0 (@StringLike (@String ?string ?H)) => exact H : typeclass_instances.
 
-Definition CharAt {CharType} {String : string_like CharType}
-: forall (n : nat) (s : String), n < Length s -> CharType.
-Proof.
-  intros n s; revert s n.
-  refine (Fold _ _ _ _).
-  { intros n H; exfalso.
-    abstract (
-        rewrite Length_Empty in H;
-        eapply lt_n_0; eassumption
-      ). }
-  { intros ch s H n.
-    refine (match n with
-              | 0 => fun _ => ch
-              | S n' => fun H' => H n' _
-            end).
-    clear -H'.
-    abstract (
-        rewrite <- Length_correct, Singleton_Length in H';
-        apply lt_S_n, H'
-      ). }
-Defined.
+  Definition str_le `{StringLike string} (s1 s2 : String)
+    := length s1 < length s2 \/ s1 =s s2.
+  Infix "≤s" := str_le (at level 70, right associativity).
 
-Definition CharAt_option {CharType} {String : string_like CharType} (n : nat) (s : String) : option CharType
-  := match lt_dec n (Length s) with
-       | left pf => Some (CharAt s pf)
-       | right _ => None
-     end.
+  (*Definition get `{StringLike string} (n : nat) (str : String) : option Char
+    := rect
+         (fun _ => nat -> option Char)
+         (fun _ _ _ => None)
+         (fun ch _ _ get' n => match n with
+                                 | 0 => Some ch
+                                 | S n' => get' n'
+                               end)
+         str n.*)
 
-Definition CharAt_default {CharType} {String : string_like CharType} (n : nat) (default : CharType) (s : String)
-: CharType
-  := match CharAt_option n s with
-       | Some ch => ch
-       | None => default
-     end.
+  Class StringLikeProperties (String : Type) `{StringLike String} :=
+    {
+      singleton_unique : forall s ch ch', s ~= [ ch ] -> s ~= [ ch' ] -> ch = ch';
+      length_singleton : forall s ch, s ~= [ ch ] -> length s = 1;
+      bool_eq_char : forall s s' ch, s ~= [ ch ] -> s' ~= [ ch ] -> s =s s';
+      is_char_Proper :> Proper (beq ==> eq ==> eq) is_char;
+      length_Proper :> Proper (beq ==> eq) length;
+      take_Proper :> Proper (eq ==> beq ==> beq) take;
+      drop_Proper :> Proper (eq ==> beq ==> beq) drop;
+      bool_eq_Equivalence :> Equivalence beq;
+      bool_eq_empty : forall str str', length str = 0 -> length str' = 0 -> str =s str';
+      take_short_length : forall str n, n <= length str -> length (take n str) = n;
+      take_long : forall str n, length str <= n -> take n str =s str;
+      take_take : forall str n m, take n (take m str) =s take (min n m) str;
+      drop_length : forall str n, length (drop n str) = length str - n;
+      drop_0 : forall str, drop 0 str =s str;
+      drop_drop : forall str n m, drop n (drop m str) =s drop (n + m) str;
+      drop_take : forall str n m, drop n (take m str) =s take (m - n) (drop n str);
+      take_drop : forall str n m, take n (drop m str) =s drop m (take (n + m) str)(*;
+      rect_computes_nil : forall P Pnil Pcons str pf, rect P Pnil Pcons str = Pnil str pf;
+      rect_computes_cons : forall P Pnil Pcons str ch pf,
+                             rect P Pnil Pcons str = Pcons ch str pf (rect P Pnil Pcons (drop 1 str))*)
+    }.
 
-Record StringWithSplitState {CharType} (String : string_like CharType) (split_stateT : String -> Type) :=
-  { string_val :> String;
-    state_val : split_stateT string_val }.
+  Global Existing Instance Equivalence_Reflexive.
+  Global Existing Instance Equivalence_Symmetric.
+  Global Existing Instance Equivalence_Transitive.
 
-Definition lift_StringWithSplitState {CharType String A B}
-           (s0 : @StringWithSplitState CharType String A)
-           (lift : A (string_val s0) -> B (string_val s0))
-: @StringWithSplitState CharType String B
-  := {| string_val := string_val s0;
-        state_val := lift (state_val s0) |}.
+  Arguments StringLikeProperties String {_}.
+
+  Record StringWithSplitState `{StringLike string} (split_stateT : String -> Type) :=
+    { string_val :> String;
+      state_val : split_stateT string_val }.
+
+  Definition lift_StringWithSplitState `{StringLike string} {A B}
+             (s0 : StringWithSplitState A)
+             (lift : A (string_val s0) -> B (string_val s0))
+  : StringWithSplitState B
+    := {| string_val := string_val s0;
+          state_val := lift (state_val s0) |}.
+End StringLike.

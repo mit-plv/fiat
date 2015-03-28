@@ -1,17 +1,18 @@
 (** * Theorems about string-like types *)
-Require Import Coq.Setoids.Setoid.
+Require Import Coq.Setoids.Setoid Coq.Classes.Morphisms Coq.Program.Basics.
 Require Import Coq.Arith.Lt.
 Require Import Coq.Numbers.Natural.Peano.NPeano.
 Require Import Coq.omega.Omega.
 Require Import ADTSynthesis.Parsers.StringLike.Core ADTSynthesis.Common.Le ADTSynthesis.Common.UIP.
 Require Import ADTSynthesis.Common.Equality.
+Require Import ADTSynthesis.Common.
 
 Set Implicit Arguments.
 
 Section String.
-  Context {CharType} {String : string_like CharType}.
+  Context {string} `{StringLikeProperties string}.
 
-  Definition stringlike_dec (s1 s2 : String)
+  (*Definition stringlike_dec (s1 s2 : String)
   : { s1 = s2 } + { s1 <> s2 }.
   Proof.
     case_eq (bool_eq s1 s2); intro H; [ left | right ].
@@ -27,23 +28,68 @@ Section String.
   Proof.
     apply dec_eq_uip.
     apply stringlike_dec.
+  Qed.*)
+
+  Definition bool_eq_refl `{StringLikeProperties string} {x : String} : x =s x.
+  Proof.
+    reflexivity.
+  Defined.
+
+  Definition bool_eq_sym `{StringLikeProperties string} {x y : String} : ((x =s y) = (y =s x) :> bool)%string_like.
+  Proof.
+    case_eq (y =s x)%string_like; intro H';
+    [
+    | case_eq (x =s y)%string_like; intro H'' ].
+    { apply (symmetry (R := (fun x y => x =s y))) in H'; assumption. }
+    { apply (symmetry (R := (fun x y => x =s y))) in H''; hnf in H''.
+      etransitivity; [ exact (eq_sym H'') | exact H' ]. }
+    { reflexivity. }
+  Defined.
+
+  Definition bool_eq_trans `{StringLikeProperties string} {x y z : String} : (x =s y) -> (y =s z) -> (x =s z).
+  Proof.
+    apply (transitivity (R := (fun x y => x =s y))).
+  Defined.
+
+  Global Instance str_le_Proper_iff : Proper (beq ==> beq ==> iff) str_le | 1000.
+  Proof.
+    repeat match goal with
+             | _ => intro
+             | _ => split
+             | [ H : _ ≤s _ |- _ ] => destruct H
+             | _ => left; assumption
+             | _ => right; assumption
+             | _ => right; symmetry; assumption
+             | [ H : ?x =s _ |- _ ] => rewrite H in *; clear x H
+             | [ H : _ =s ?x |- _ ] => rewrite <- H in *; clear x H
+           end.
   Qed.
 
-  Global Instance str_le_refl : Reflexive (@str_le CharType String).
+  Global Instance str_le_Proper : Proper (beq ==> beq ==> impl) str_le.
+  Proof.
+    intros x y H' x' y' H'' H'''.
+    apply (@str_le_Proper_iff x y H' x' y' H''); assumption.
+  Qed.
+
+  Global Instance str_le_refl : Reflexive str_le.
   Proof.
     repeat intro; right; reflexivity.
   Qed.
 
-  Global Instance str_le_antisym : Antisymmetric _ eq (@str_le CharType String).
+  Global Instance str_le_antisym : @Antisymmetric _ beq _ str_le.
   Proof.
-    intros ? ? [H0|H0]; repeat subst; intros [H1|H1]; repeat subst; try reflexivity.
-    exfalso; eapply lt_irrefl;
-    etransitivity; eassumption.
+    intros ? ? [H'|H']; repeat subst; intros [H1|H1]; repeat subst; try reflexivity;
+    solve [ reflexivity
+          | exfalso; omega
+          | assumption
+          | symmetry; assumption ].
   Qed.
 
-  Global Instance str_le_trans : Transitive (@str_le CharType String).
+  Global Instance str_le_trans : Transitive str_le.
   Proof.
-    intros ? ? ? [H0|H0]; repeat subst; intros [H1|H1]; repeat subst;
+    intros ? ? ? [H'|H']; repeat subst; intros [H1|H1]; repeat subst;
+    try (rewrite H1 in *; clear H1);
+    try (rewrite H' in *; clear H');
     first [ reflexivity
           | left; assumption
           | left; etransitivity; eassumption ].
@@ -51,58 +97,46 @@ Section String.
 
   Local Open Scope string_like_scope.
 
-  Local Ltac str_le_append_t :=
-    repeat match goal with
-             | _ => intro
-             | _ => progress subst
-             | [ H : (_ =s _) = true |- _ ] => apply bool_eq_correct in H
-             | _ => progress rewrite ?LeftId, ?RightId
-             | _ => right; reflexivity
-             | [ H : Length _ = 0 |- _ ] => apply Empty_Length in H
-             | [ H : Length ?s <> 0 |- _ ] => destruct (Length s)
-             | [ H : ?n <> ?n |- _ ] => destruct (H eq_refl)
-             | [ |- ?x < ?x + S _ \/ _ ] => left; omega
-             | [ |- ?x < S _ + ?x \/ _ ] => left; omega
-           end.
-
-  Lemma str_le1_append (s1 s2 : String)
-  : s1 ≤s s1 ++ s2.
+  Lemma str_le_take {str n}
+  : take n str ≤s str.
   Proof.
-    hnf.
-    rewrite <- Length_correct.
-    case_eq (s2 =s (Empty _));
-      destruct (NPeano.Nat.eq_dec (Length s2) 0);
-      str_le_append_t.
+    destruct (le_gt_dec (length str) n).
+    { right; apply take_long; assumption. }
+    { left; rewrite take_short_length; omega. }
   Qed.
 
-  Lemma str_le2_append (s1 s2 : String)
-  : s2 ≤s s1 ++ s2.
+  Lemma str_le_drop {str n}
+  : drop n str ≤s str.
   Proof.
-    hnf.
-    rewrite <- Length_correct.
-    case_eq (s1 =s Empty _);
-      destruct (NPeano.Nat.eq_dec (Length s1) 0);
-      str_le_append_t.
+    destruct n.
+    { rewrite drop_0; reflexivity. }
+    { hnf; rewrite drop_length.
+      case_eq (length str); intro H'.
+      { right; apply bool_eq_empty.
+        { rewrite drop_length, H'; reflexivity. }
+        { assumption. } }
+      { intro; left; omega. } }
   Qed.
 
   Lemma length_le_trans
-        {a b c : String} (H : Length a < Length b) (H' : b ≤s c)
-  : Length a < Length c.
+        {a b c : String} (H0' : length a < length b) (H1' : b ≤s c)
+  : length a < length c.
   Proof.
-    destruct H'; subst.
+    destruct H1'; setoid_subst.
     { etransitivity; eassumption. }
     { assumption. }
   Qed.
 
   Lemma strle_to_sumbool
         (s1 s2 : String) (f : String -> nat)
-        (H : f s1 < f s2 \/ s1 = s2)
-  : {f s1 < f s2} + {s1 = s2}.
+        (H' : f s1 < f s2 \/ s1 =s s2)
+  : {f s1 < f s2} + {s1 =s s2}.
   Proof.
+    unfold beq in *.
     case_eq (s1 =s s2).
-    { intro H'; right.
-      abstract (apply bool_eq_correct in H'; exact H'). }
-    { intro H'; left.
+    { intro H''; right; reflexivity. }
+    { intro H''; left.
+          destruct H; trivial.
       abstract (
           destruct H; trivial;
           apply bool_eq_correct in H;
@@ -142,45 +176,45 @@ Section String.
   End strle_choose.
 
 
-  Lemma NonEmpty_Length
+  Lemma NonEmpty_length
         (a : String)
         (H : a <> Empty _)
-  : Length a > 0.
+  : length a > 0.
   Proof.
-    case_eq (Length a); intro H'; try omega.
-    apply Empty_Length in H'; subst.
+    case_eq (length a); intro H'; try omega.
+    apply Empty_length in H'; subst.
     destruct (H eq_refl).
   Qed.
 
   Local Ltac lt_nonempty_t :=
     repeat match goal with
              | [ H : _ ≤s _ |- _ ] => destruct H
-             | [ H : _ |- _ ] => progress rewrite ?plus_O_n, <- ?Length_correct in H
-             | _ => progress rewrite ?plus_O_n, <- ?Length_correct
+             | [ H : _ |- _ ] => progress rewrite ?plus_O_n, <- ?length_correct in H
+             | _ => progress rewrite ?plus_O_n, <- ?length_correct
              | _ => assumption
              | _ => intro
              | _ => progress subst
              | _ => omega
-             | [ H : _ <> Empty _ |- _ ] => apply NonEmpty_Length in H
+             | [ H : _ <> Empty _ |- _ ] => apply NonEmpty_length in H
            end.
 
   Lemma strle_to_lt_nonempty_r
         {a b c : String}
         (H : a <> Empty _)
         (H' : a ++ b ≤s c)
-  : Length b < Length c.
+  : length b < length c.
   Proof. lt_nonempty_t. Qed.
 
   Lemma strle_to_lt_nonempty_l
         {a b c : String}
         (H : b <> Empty _)
         (H' : a ++ b ≤s c)
-  : Length a < Length c.
+  : length a < length c.
   Proof. lt_nonempty_t. Qed.
 
   Lemma str_seq_lt_false
         {a b : String}
-        (H : Length a < Length b)
+        (H : length a < length b)
         (H' : (a =s b) = true)
   : False.
   Proof.
@@ -278,24 +312,24 @@ Section String.
   Lemma SplitAt0 (s : String) : SplitAt 0 s = (Empty _, s).
   Proof.
     rewrite <- SplitAt_concat_correct.
-    rewrite Length_Empty.
+    rewrite length_Empty.
     rewrite LeftId.
     reflexivity.
   Qed.
 
-  Lemma SplitAtPastEnd_Length_fst {n} {s : String} (H : Length s <= n) : Length (fst (SplitAt n s)) = Length s.
+  Lemma SplitAtPastEnd_length_fst {n} {s : String} (H : length s <= n) : length (fst (SplitAt n s)) = length s.
   Proof.
-    rewrite SplitAtLength_correct.
+    rewrite SplitAtlength_correct.
     auto with arith.
   Qed.
 
 
-  Lemma SplitAtPastEnd' {n} (s : String) (H : Length s <= n) : snd (SplitAt n s) = Empty _.
+  Lemma SplitAtPastEnd' {n} (s : String) (H : length s <= n) : snd (SplitAt n s) = Empty _.
   Proof.
-    apply Empty_Length.
-    pose proof (f_equal (fun l => l + Length (snd (SplitAt n s))) (SplitAtPastEnd_Length_fst H)) as H0.
+    apply Empty_length.
+    pose proof (f_equal (fun l => l + length (snd (SplitAt n s))) (SplitAtPastEnd_length_fst H)) as H0.
     simpl in *.
-    rewrite Length_correct in H0.
+    rewrite length_correct in H0.
     rewrite SplitAt_correct in H0.
     omega.
   Qed.
@@ -310,20 +344,20 @@ Section String.
     assumption.
   Qed.
 
-  Lemma SplitAtPastEnd {n} {s : String} (H : Length s <= n) : SplitAt n s = (s, Empty _).
+  Lemma SplitAtPastEnd {n} {s : String} (H : length s <= n) : SplitAt n s = (s, Empty _).
   Proof.
     apply injective_projections; simpl;
     [ apply SplitAt_gives_Empty | ];
     apply SplitAtPastEnd'; assumption.
   Qed.
 
-  Lemma SplitAtEnd {s : String} : SplitAt (Length s) s = (s, Empty _).
+  Lemma SplitAtEnd {s : String} : SplitAt (length s) s = (s, Empty _).
   Proof.
     apply SplitAtPastEnd.
     reflexivity.
   Qed.
 
-  Lemma SplitAt_min_length {n} {s : String} : SplitAt (min (Length s) n) s = SplitAt n s.
+  Lemma SplitAt_min_length {n} {s : String} : SplitAt (min (length s) n) s = SplitAt n s.
   Proof.
     apply Min.min_case_strong; intro H.
     { rewrite SplitAtEnd, (SplitAtPastEnd H); reflexivity. }
@@ -334,19 +368,19 @@ Section String.
   : SplitAt (S n) ([[ ch ]] ++ s) = ([[ ch ]] ++ fst (SplitAt n s), snd (SplitAt n s)).
   Proof.
     rewrite <- SplitAt_concat_correct.
-    rewrite <- Length_correct.
-    rewrite Singleton_Length; simpl.
-    rewrite SplitAtLength_correct.
+    rewrite <- length_correct.
+    rewrite Singleton_length; simpl.
+    rewrite SplitAtlength_correct.
     rewrite Associativity.
     rewrite SplitAt_correct.
-    replace (S (min (Length s) n)) with (min (Length ([[ ch ]] ++ s)) (S n)).
+    replace (S (min (length s) n)) with (min (length ([[ ch ]] ++ s)) (S n)).
     { rewrite SplitAt_min_length; reflexivity. }
-    { rewrite <- Length_correct, Singleton_Length; reflexivity. }
+    { rewrite <- length_correct, Singleton_length; reflexivity. }
   Qed.
 
   Lemma SplitAtEmpty {n} : SplitAt n (Empty String) = (Empty _, Empty _).
   Proof.
     rewrite SplitAtPastEnd; trivial.
-    rewrite Length_Empty; auto with arith.
+    rewrite length_Empty; auto with arith.
   Qed.
 End String.
