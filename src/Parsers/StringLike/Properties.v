@@ -6,6 +6,7 @@ Require Import Coq.omega.Omega.
 Require Import ADTSynthesis.Parsers.StringLike.Core ADTSynthesis.Common.Le ADTSynthesis.Common.UIP.
 Require Import ADTSynthesis.Common.Equality.
 Require Import ADTSynthesis.Common.
+Require Import ADTSynthesis.Common.Le.
 
 Set Implicit Arguments.
 
@@ -71,6 +72,12 @@ Section String.
     apply (@str_le_Proper_iff x y H' x' y' H''); assumption.
   Qed.
 
+  Global Instance str_le_Proper' : Proper (beq ==> beq ==> Basics.flip impl) str_le.
+  Proof.
+    intros x y H' x' y' H'' H'''.
+    apply (@str_le_Proper_iff _ _ H' _ _ H''); assumption.
+  Qed.
+
   Global Instance str_le_refl : Reflexive str_le.
   Proof.
     repeat intro; right; reflexivity.
@@ -96,6 +103,18 @@ Section String.
   Qed.
 
   Local Open Scope string_like_scope.
+
+  Global Instance str_le_length_le_Proper : Proper (str_le ==> le) length.
+  Proof.
+    intros x y [H'|H']; auto with arith.
+    rewrite H'; reflexivity.
+  Qed.
+
+  Global Instance str_le_length_le_Proper' : Proper (Basics.flip str_le ==> Basics.flip le) length.
+  Proof.
+    intros x y [H'|H']; unfold Basics.flip in *; auto with arith.
+    rewrite H'; reflexivity.
+  Qed.
 
   Lemma str_le_take {str n}
   : take n str ≤s str.

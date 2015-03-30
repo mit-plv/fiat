@@ -114,11 +114,12 @@ Section cfg.
         -> @minimal_parse_of str initial_nonterminals_data str (Lookup G nt)
         -> @minimal_parse_of_nonterminal str0 valid str nt
   | MinParseNonTerminalStrEq
-    : forall str valid nonterminal,
-        is_valid_nonterminal initial_nonterminals_data nonterminal
+    : forall str0 str valid nonterminal,
+        str =s str0
+        -> is_valid_nonterminal initial_nonterminals_data nonterminal
         -> is_valid_nonterminal valid nonterminal
-        -> @minimal_parse_of str (remove_nonterminal valid nonterminal) str (Lookup G nonterminal)
-        -> @minimal_parse_of_nonterminal str valid str nonterminal.
+        -> @minimal_parse_of str0 (remove_nonterminal valid nonterminal) str (Lookup G nonterminal)
+        -> @minimal_parse_of_nonterminal str0 valid str nonterminal.
 
   Global Instance sub_nonterminals_listT_Reflexive : Reflexive sub_nonterminals_listT
     := fun x y f => f.

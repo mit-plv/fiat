@@ -169,7 +169,9 @@ SRC_PARSERS_BASE_MODULES := \
 	Parsers/Splitters/FirstChar\
 	Parsers/Splitters/OnlyOneNonterminal\
 	Parsers/BooleanRecognizer\
+	Parsers/BooleanRecognizerTests\
 	Parsers/WellFoundedParse\
+	Parsers/WellFoundedParseProperties\
 	Parsers/MinimalParse\
 	Parsers/MinimalParseOfParse\
 	Parsers/BooleanRecognizerCorrect

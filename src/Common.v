@@ -1389,10 +1389,10 @@ Ltac free_in x y :=
     | _ => idtac
   end.
 
-Ltac setoid_subst' x :=
+Ltac setoid_subst'' R x :=
   atomic x;
   match goal with
-    | [ H : ?R x ?y |- _ ]
+    | [ H : R x ?y |- _ ]
       => free_in x y;
         rewrite ?H;
         repeat match goal with
@@ -1400,7 +1400,7 @@ Ltac setoid_subst' x :=
                end;
         clear H;
         clear x
-    | [ H : ?R ?y x |- _ ]
+    | [ H : R ?y x |- _ ]
       => free_in x y;
         rewrite <- ?H;
         repeat match goal with
@@ -1410,10 +1410,26 @@ Ltac setoid_subst' x :=
         clear x
   end.
 
+Ltac setoid_subst' x :=
+  atomic x;
+  match goal with
+    | [ H : ?R x _ |- _ ] => setoid_subst'' R x
+    | [ H : ?R _ x |- _ ] => setoid_subst'' R x
+  end.
+
+Ltac setoid_subst_rel' R :=
+  idtac;
+  match goal with
+    | [ H : R ?x _ |- _ ] => setoid_subst'' R x
+    | [ H : R _ ?x |- _ ] => setoid_subst'' R x
+  end.
+
+Ltac setoid_subst_rel R := repeat setoid_subst_rel' R.
+
 Ltac setoid_subst_all :=
   repeat match goal with
-           | [ H : ?R ?x ?y |- _ ] => atomic x; setoid_subst' x
-           | [ H : ?R ?x ?y |- _ ] => atomic y; setoid_subst' y
+           | [ H : ?R ?x ?y |- _ ] => atomic x; setoid_subst'' R x
+           | [ H : ?R ?x ?y |- _ ] => atomic y; setoid_subst'' R y
          end.
 
 Tactic Notation "setoid_subst" ident(x) := setoid_subst' x.

@@ -5,7 +5,8 @@ Require Import Coq.Program.Wf Coq.Arith.Wf_nat.
 Require Import ADTSynthesis.Parsers.ContextFreeGrammar ADTSynthesis.Parsers.ContextFreeGrammarProperties ADTSynthesis.Parsers.WellFoundedParse.
 Require Import ADTSynthesis.Parsers.BooleanBaseTypes ADTSynthesis.Parsers.BaseTypes.
 Require Export ADTSynthesis.Parsers.MinimalParse.
-Require Import ADTSynthesis.Common ADTSynthesis.Common.Wf.
+Require Export ADTSynthesis.Parsers.WellFoundedParseProperties.
+Require Import ADTSynthesis.Common ADTSynthesis.Common.Le ADTSynthesis.Common.Wf.
 
 Set Implicit Arguments.
 Local Open Scope string_like_scope.
@@ -46,15 +47,15 @@ Section cfg.
             (match p as p in (@MinimalParse.minimal_parse_of_nonterminal _ _ _ _ str0 valid str nonterminal)
                    return minimal_parse_of (match p with
                                               | MinParseNonTerminalStrLt _ _ _ _ _ _ _ => _
-                                              | MinParseNonTerminalStrEq _ _ _ _ _ _ => _
+                                              | MinParseNonTerminalStrEq _ _ _ _ _ _ _ _ => _
                                             end)
                                            (match p with
                                               | MinParseNonTerminalStrLt _ _ _ _ _ _ _ => _
-                                              | MinParseNonTerminalStrEq _ _ _ _ _ _ => _
+                                              | MinParseNonTerminalStrEq _ _ _ _ _ _ _ _ => _
                                             end)
                                            str (Lookup G nonterminal) with
                | MinParseNonTerminalStrLt str0 valid nonterminal str pf pf' p' => p'
-               | MinParseNonTerminalStrEq str valid nonterminal H H' p' => p'
+               | MinParseNonTerminalStrEq str0 str valid nonterminal pf H H' p' => p'
              end)).
 
   Definition parse_of_item__of__minimal_parse_of_item'
@@ -101,6 +102,183 @@ Section cfg.
       -> parse_of_item G str it
     := @parse_of_item__of__minimal_parse_of_item' (@parse_of__of__minimal_parse_of).
 
+  (** Re-add this so rewrite works *)
+  Global Add Parametric Morphism : remove_nonterminal
+  with signature sub_nonterminals_listT ==> eq ==> sub_nonterminals_listT
+    as remove_nonterminal_mor.
+  Proof.
+    intros; apply (@remove_nonterminal_mor); try assumption; reflexivity.
+  Qed.
+
+  Local Ltac clear_not_beq
+    := repeat match goal with
+                | [ H : ?T |- _ ]
+                  => match T with
+                       | beq _ _ => fail 1
+                       | _ < _ => fail 1
+                       | _ ≤s _ => fail 1
+                       | _ ~= [ _ ] => fail 1
+                       | StringLikeProperties _ => fail 1
+                       | _ => clear H
+                     end
+              end.
+
+  Local Ltac solve_by_subst tac :=
+    repeat subst;
+    match goal with
+      | [ |- beq _ _ ] => idtac
+      | [ |- beq _ _ \/ _ ] => idtac
+      | [ |- _ \/ beq _ _ ] => idtac
+      | [ |- _ < _ ] => idtac
+      | [ |- _ ≤s _ ] => idtac
+      | [ |- False ] => idtac
+    end;
+    clear_not_beq;
+    repeat match goal with
+             | [ H : @beq ?string ?SL _ _ |- _ ] => setoid_subst_rel (@beq string SL)
+           end;
+    solve [ assumption | reflexivity | left; reflexivity | right; reflexivity | tac ].
+
+  Section expand.
+    Definition expand_minimal_parse_of_nonterminal'
+               (expand_minimal_parse_of
+                : forall {str0 str0' valid valid' str str' prods}
+                         (Hstr0 : str0 ≤s str0')
+                         (H : sub_nonterminals_listT valid valid')
+                         (Hinit : str0 =s str0' \/ sub_nonterminals_listT valid' initial_nonterminals_data)
+                         (Hstr : str =s str')
+                         (p : minimal_parse_of (G := G) str0 valid str prods),
+                    minimal_parse_of (G := G) str0' valid' str' prods)
+               {str0 str0' valid valid' str str' nonterminal}
+               (Hstr0 : str0 ≤s str0')
+               (H : sub_nonterminals_listT valid valid')
+               (Hinit : str0 =s str0' \/ sub_nonterminals_listT valid' initial_nonterminals_data)
+               (Hstr : str =s str')
+               (p : minimal_parse_of_nonterminal (G := G) str0 valid str nonterminal)
+    : minimal_parse_of_nonterminal (G := G) str0' valid' str' nonterminal.
+    Proof.
+      destruct p;
+      first [ apply MinParseNonTerminalStrLt;
+              solve [ rewrite <- Hstr;
+                      eapply length_le_trans; eassumption
+                    | assumption
+                    | eapply expand_minimal_parse_of; [ .. | eassumption ];
+                      solve [ reflexivity
+                            | left; assumption
+                            | rewrite Hstr; reflexivity ] ]
+            | idtac ];
+      [].
+      { destruct (strle_to_sumbool _ Hstr0);
+        [ apply MinParseNonTerminalStrLt
+        | apply MinParseNonTerminalStrEq ];
+        solve [ assumption
+              | apply H; assumption
+              | solve_by_subst idtac
+              | eapply expand_minimal_parse_of; [ .. | eassumption ];
+                solve [ reflexivity
+                      | rewrite !H;
+                        eauto using sub_nonterminals_listT_remove;
+                        reflexivity
+                      | solve_by_subst idtac
+                      | destruct Hinit as [Hinit|Hinit];
+                        [ exfalso; clear_not_beq; setoid_subst_rel beq; omega
+                        | ];
+                        rewrite ?H, !Hinit;
+                        eauto using sub_nonterminals_listT_remove;
+                        reflexivity ] ]. }
+    Defined.
+
+    Definition expand_minimal_parse_of_item'
+               (expand_minimal_parse_of
+                : forall {str0 str0' valid valid' str str' prods}
+                         (Hstr0 : str0 ≤s str0')
+                         (H : sub_nonterminals_listT valid valid')
+                         (Hinit : str0 =s str0' \/ sub_nonterminals_listT valid' initial_nonterminals_data)
+                         (Hstr : str =s str')
+                         (p : minimal_parse_of (G := G) str0 valid str prods),
+                    minimal_parse_of (G := G) str0' valid' str' prods)
+               {str0 str0' valid valid' str str' it}
+               (Hstr0 : str0 ≤s str0')
+               (H : sub_nonterminals_listT valid valid')
+               (Hinit : str0 =s str0' \/ sub_nonterminals_listT valid' initial_nonterminals_data)
+               (Hstr : str =s str')
+               (p : minimal_parse_of_item (G := G) str0 valid str it)
+    : minimal_parse_of_item (G := G) str0' valid' str' it.
+    Proof.
+      destruct p.
+      { apply MinParseTerminal; setoid_subst_rel beq; trivial. }
+      { apply MinParseNonTerminal; [].
+        eapply expand_minimal_parse_of_nonterminal'; [..| eassumption ];
+        try assumption. }
+    Defined.
+
+    Fixpoint expand_minimal_parse_of
+             {str0 str0' valid valid' str str' pats}
+             (Hstr0 : str0 ≤s str0')
+             (H : sub_nonterminals_listT valid valid')
+             (Hinit : str0 =s str0' \/ sub_nonterminals_listT valid' initial_nonterminals_data)
+             (Hstr : str =s str')
+             (p : minimal_parse_of (G := G) str0 valid str pats)
+    : minimal_parse_of (G := G) str0' valid' str' pats
+      := match p in (MinimalParse.minimal_parse_of str0 valid str pats)
+               return (str0 ≤s str0'
+                       -> sub_nonterminals_listT valid valid'
+                       -> str0 =s str0' \/ sub_nonterminals_listT valid' initial_nonterminals_data
+                       -> str =s str'
+                       -> minimal_parse_of (G := G) str0' valid' str' pats)
+         with
+           | MinParseHead str0 valid str pat pats p'
+             => fun Hstr0 H Hinit Hstr => MinParseHead pats (expand_minimal_parse_of_production Hstr0 H Hinit Hstr p')
+           | MinParseTail str0 valid str pat pats p'
+             => fun Hstr0 H Hinit Hstr => MinParseTail pat (expand_minimal_parse_of Hstr0 H Hinit Hstr p')
+         end Hstr0 H Hinit Hstr
+    with expand_minimal_parse_of_production
+           {str0 str0' valid valid' str str' pat}
+           (Hstr0 : str0 ≤s str0')
+           (H : sub_nonterminals_listT valid valid')
+           (Hinit : str0 =s str0' \/ sub_nonterminals_listT valid' initial_nonterminals_data)
+           (Hstr : str =s str')
+           (p : minimal_parse_of_production (G := G) str0 valid str pat)
+         : minimal_parse_of_production (G := G) str0' valid' str' pat
+         := match p in (MinimalParse.minimal_parse_of_production str0 valid str pats)
+                  return (str0 ≤s str0'
+                          -> sub_nonterminals_listT valid valid'
+                          -> str0 =s str0' \/ sub_nonterminals_listT valid' initial_nonterminals_data
+                          -> str =s str'
+                          -> minimal_parse_of_production str0' valid' str' pats)
+            with
+              | MinParseProductionNil str0 valid str pf
+                => fun _ _ _ Hstr => MinimalParse.MinParseProductionNil _ _ str' (transitivity (symmetry ((_ : Proper (beq ==> eq) length) _ _ Hstr))  pf)
+              | MinParseProductionCons str0 valid str n pat pats pf p' p''
+                => fun Hstr0 H Hinit Hstr
+                   => MinParseProductionCons
+                        n
+                        ((_ : Proper (beq ==> beq ==> impl) str_le) _ _ Hstr _ _ (reflexivity _) (transitivity pf Hstr0))
+                        (expand_minimal_parse_of_item' (@expand_minimal_parse_of) Hstr0 H Hinit ((_ : Proper (eq ==> beq ==> beq) take) _ _ eq_refl _ _ Hstr) p')
+                        (expand_minimal_parse_of_production Hstr0 H Hinit ((_ : Proper (eq ==> beq ==> beq) drop) _ _ eq_refl _ _ Hstr) p'')
+            end Hstr0 H Hinit Hstr.
+
+    Definition expand_minimal_parse_of_nonterminal
+    : forall {str0 str0' valid valid' str str' nonterminal}
+             (Hstr0 : str0 ≤s str0')
+             (H : sub_nonterminals_listT valid valid')
+             (Hinit : str0 =s str0' \/ sub_nonterminals_listT valid' initial_nonterminals_data)
+             (Hstr : str =s str')
+             (p : minimal_parse_of_nonterminal (G := G) str0 valid str nonterminal),
+        minimal_parse_of_nonterminal (G := G) str0' valid' str' nonterminal
+      := @expand_minimal_parse_of_nonterminal' (@expand_minimal_parse_of).
+
+    Definition expand_minimal_parse_of_item
+    : forall {str0 str0' valid valid' str str' it}
+             (Hstr0 : str0 ≤s str0')
+             (H : sub_nonterminals_listT valid valid')
+             (Hinit : str0 =s str0' \/ sub_nonterminals_listT valid' initial_nonterminals_data)
+             (Hstr : str =s str')
+             (p : minimal_parse_of_item (G := G) str0 valid str it),
+        minimal_parse_of_item (G := G) str0' valid' str' it
+      := @expand_minimal_parse_of_item' (@expand_minimal_parse_of).
+  End expand.
+
   Section contract.
     Local Hint Constructors MinimalParse.minimal_parse_of_nonterminal.
 
@@ -112,7 +290,7 @@ Section cfg.
     Proof.
       destruct p.
       { constructor (assumption). }
-      { exfalso; clear -Hlt; omega. }
+      { exfalso; clear_not_beq; setoid_subst_rel beq; omega. }
     Defined.
 
     Definition contract_minimal_parse_of_item_lt
@@ -134,27 +312,17 @@ Section cfg.
     Proof.
       induction p.
       { constructor; trivial. }
-      { match goal with
-          | [ H : _ ≤s _ |- _ ] => apply strle_to_sumbool in H; destruct H
-        end.
-        { destruct n.
-          { rewrite drop_0 in IHp at 1.
-destruct n.
-
-econstructor; trivial.
+      { apply (MinParseProductionCons n); trivial;
         try first [ eapply contract_minimal_parse_of_item_lt; try eassumption
                   | eapply IHp; try eassumption
                   | assumption ];
-        clear -Hlt.
-        abstract (
-            rewrite <- Length_correct in Hlt;
-            eauto using le_S, Lt.le_lt_trans, Plus.le_plus_l, Plus.le_plus_r with nocore
-          ). }
+        clear -Hlt HSLP;
+        abstract (rewrite ?str_le_take, ?str_le_drop; assumption). }
     Defined.
 
     Definition contract_minimal_parse_of_lt
                {str0 str valid valid' pats}
-               (Hlt : Length str < Length str0)
+               (Hlt : length str < length str0)
                (p : minimal_parse_of (G := G) str0 valid str pats)
     : minimal_parse_of (G := G) str0 valid' str pats.
     Proof.
@@ -166,7 +334,7 @@ econstructor; trivial.
     Section contract_eq.
       Lemma parse_of_contract_minimal_parse_of_item_lt
             {str0 str : String} {valid valid' : nonterminals_listT}
-            {Hlt : Length str < Length str0}
+            {Hlt : length str < length str0}
             {it}
             (p : minimal_parse_of_item (G := G) str0 valid str it)
       : parse_of_item__of__minimal_parse_of_item
@@ -183,7 +351,7 @@ econstructor; trivial.
 
       Lemma parse_of_contract_minimal_parse_of_production_lt
             {str0 str : String} {valid valid' : nonterminals_listT}
-            {Hlt : Length str < Length str0}
+            {Hlt : length str < length str0}
             {pat}
             (p : minimal_parse_of_production (G := G) str0 valid str pat)
       : parse_of_production__of__minimal_parse_of_production
@@ -197,7 +365,7 @@ econstructor; trivial.
 
       Lemma parse_of_contract_minimal_parse_of_lt
             {str0 str : String} {valid valid' : nonterminals_listT}
-            {Hlt : Length str < Length str0}
+            {Hlt : length str < length str0}
             {pats}
             (p : minimal_parse_of (G := G) str0 valid str pats)
       : parse_of__of__minimal_parse_of
@@ -211,126 +379,9 @@ econstructor; trivial.
     End contract_eq.
   End contract.
 
-  (** Re-add this so rewrite works *)
-  Global Add Parametric Morphism : remove_nonterminal
-  with signature sub_nonterminals_listT ==> eq ==> sub_nonterminals_listT
-    as remove_nonterminal_mor.
-  Proof.
-    intros; apply (@remove_nonterminal_mor); try assumption; reflexivity.
-  Qed.
-
-  Definition expand_minimal_parse_of_nonterminal'
-             (expand_minimal_parse_of
-              : forall {str0 str0' valid valid' str str' prods}
-                       (Hstr0 : str0 ≤s str0')
-                       (H : sub_nonterminals_listT valid valid')
-                       (Hstr :
-                       (Hinit : sub_nonterminals_listT valid' initial_nonterminals_data \/ valid = valid')
-                       (p : minimal_parse_of (G := G) str0 valid str prods),
-                  minimal_parse_of (G := G) str0' valid' str prods)
-             {str0 str0' valid valid' str nonterminal}
-             (Hstr : str0 ≤s str0')
-             (H : sub_nonterminals_listT valid valid')
-             (Hinit : sub_nonterminals_listT valid' initial_nonterminals_data)
-             (p : minimal_parse_of_nonterminal (G := G) str0 valid str nonterminal)
-  : minimal_parse_of_nonterminal (G := G) str0' valid' str nonterminal.
-  Proof.
-    destruct p;
-    first [ apply MinParseNonTerminalStrLt;
-            solve [ eapply length_le_trans; eassumption
-                  | assumption ]
-          | idtac ]; [].
-    { destruct (strle_to_sumbool _ Hstr); subst;
-      [ apply MinParseNonTerminalStrLt
-      | apply MinParseNonTerminalStrEq ];
-      solve [ assumption
-            | apply H; assumption
-            | eapply expand_minimal_parse_of; [ .. | eassumption ];
-              solve [ reflexivity
-                    | rewrite ?H, ?Hinit;
-                      eauto using sub_nonterminals_listT_remove;
-                      reflexivity ] ]. }
-  Defined.
-
-  Definition expand_minimal_parse_of_item'
-             (expand_minimal_parse_of
-              : forall {str0 str0' valid valid' str prods}
-                       (Hstr : str0 ≤s str0')
-                       (H : sub_nonterminals_listT valid valid')
-                       (Hinit : sub_nonterminals_listT valid' initial_nonterminals_data)
-                       (p : minimal_parse_of (G := G) str0 valid str prods),
-                  minimal_parse_of (G := G) str0' valid' str prods)
-             {str0 str0' valid valid' str it}
-             (Hstr : str0 ≤s str0')
-             (H : sub_nonterminals_listT valid valid')
-             (Hinit : sub_nonterminals_listT valid' initial_nonterminals_data)
-             (p : minimal_parse_of_item (G := G) str0 valid str it)
-  : minimal_parse_of_item (G := G) str0' valid' str it.
-  Proof.
-    destruct p.
-    { apply MinParseTerminal. }
-    { apply MinParseNonTerminal; [].
-      eapply expand_minimal_parse_of_nonterminal'; [..| eassumption ];
-      try assumption. }
-  Defined.
-
-  Fixpoint expand_minimal_parse_of
-           {str0 str0' valid valid' str pats}
-           (Hstr : str0 ≤s str0')
-           (H : sub_nonterminals_listT valid valid')
-           (Hinit : sub_nonterminals_listT valid' initial_nonterminals_data)
-           (p : minimal_parse_of (G := G) str0 valid str pats)
-  : minimal_parse_of (G := G) str0' valid' str pats
-    := match p in (MinimalParse.minimal_parse_of str0 valid str pats)
-             return (str0 ≤s str0'
-                     -> sub_nonterminals_listT valid valid'
-                     -> minimal_parse_of (G := G) str0' valid' str pats)
-       with
-         | MinParseHead str0 valid str pat pats p'
-           => fun Hstr H => MinParseHead pats (expand_minimal_parse_of_production Hstr H Hinit p')
-         | MinParseTail str0 valid str pat pats p'
-           => fun Hstr H => MinParseTail pat (expand_minimal_parse_of Hstr H Hinit p')
-       end Hstr H
-  with expand_minimal_parse_of_production
-         {str0 str0' valid valid' str pat}
-         (Hstr : str0 ≤s str0')
-         (H : sub_nonterminals_listT valid valid')
-         (Hinit : sub_nonterminals_listT valid' initial_nonterminals_data)
-         (p : minimal_parse_of_production (G := G) str0 valid str pat)
-       : minimal_parse_of_production (G := G) str0' valid' str pat
-       := match p in (MinimalParse.minimal_parse_of_production str0 valid str pats)
-                return (str0 ≤s str0' -> sub_nonterminals_listT valid valid' -> minimal_parse_of_production str0' valid' str pats)
-          with
-            | MinParseProductionNil str0 valid
-              => fun _ _ => MinimalParse.MinParseProductionNil _ _
-            | MinParseProductionCons str0 valid str strs pat pats pf p' p''
-              => fun Hstr H => MinParseProductionCons
-                                 (transitivity pf Hstr)
-                                 (expand_minimal_parse_of_item' (@expand_minimal_parse_of) Hstr H Hinit p')
-                                 (expand_minimal_parse_of_production Hstr H Hinit p'')
-          end Hstr H.
-
-  Definition expand_minimal_parse_of_nonterminal
-  : forall {str0 str0' valid valid' str nonterminal}
-           (Hstr : str0 ≤s str0')
-           (H : sub_nonterminals_listT valid valid')
-           (Hinit : sub_nonterminals_listT valid' initial_nonterminals_data)
-           (p : minimal_parse_of_nonterminal (G := G) str0 valid str nonterminal),
-      minimal_parse_of_nonterminal (G := G) str0' valid' str nonterminal
-    := @expand_minimal_parse_of_nonterminal' (@expand_minimal_parse_of).
-
-  Definition expand_minimal_parse_of_item
-  : forall {str0 str0' valid valid' str it}
-           (Hstr : str0 ≤s str0')
-           (H : sub_nonterminals_listT valid valid')
-           (Hinit : sub_nonterminals_listT valid' initial_nonterminals_data)
-           (p : minimal_parse_of_item (G := G) str0 valid str it),
-      minimal_parse_of_item (G := G) str0' valid' str it
-    := @expand_minimal_parse_of_item' (@expand_minimal_parse_of).
-
   Section minimize.
-    Let P : String -> string -> Prop
-      := fun _ p => is_valid_nonterminal initial_nonterminals_data p = true.
+    Let P : String -> String.string -> Prop
+      := fun _ p => is_valid_nonterminal initial_nonterminals_data p.
 
     Let alt_option h valid str
       := { nonterminal : _ & (is_valid_nonterminal valid nonterminal = false /\ P str nonterminal)
@@ -355,10 +406,10 @@ econstructor; trivial.
     Defined.
 
     Definition expand_alt_option' {h h' str str' valid valid'}
-               (H : h <= h') (H' : sub_nonterminals_listT valid' valid) (H'' : str = str')
+               (H : h <= h') (H' : sub_nonterminals_listT valid' valid) (H'' : str =s str')
     : alt_option h valid str -> alt_option h' valid' str'.
     Proof.
-      hnf in H'; unfold alt_option.
+      hnf in H'; unfold alt_option; subst P.
       repeat match goal with
                | [ |- sigT _ -> _ ] => intros []
                | [ |- sig _ -> _ ] => intros []
@@ -366,10 +417,16 @@ econstructor; trivial.
                | [ |- and _ _ -> _ ] => intros []
                | _ => intro
                | _ => progress subst
+               | [ H : Forall_parse_of _ ?x |- _ ]
+                 => atomic x; rewrite <- (parse_of_respectful_refl (pf := reflexivity _)) in H
+               | _ => rewrite <- size_of_parse_respectful
+               | [ H : beq ?str ?str', p : parse_of ?G ?str ?n
+                   |- { p' : parse_of ?G ?str' ?n & _ } ]
+                 => exists (parse_of_respectful H p)
                | [ |- sigT _ ] => esplit
                | [ |- sig _ ] => esplit
-               | [ |- prod _ _ ] => esplit
-               | [ |- and _ _ ] => esplit
+               | [ |- prod _ _ ] => split
+               | [ |- and _ _ ] => split
                | [ H : _ = false |- _ = false ]
                  => apply Bool.not_true_iff_false in H;
                    apply Bool.not_true_iff_false;
@@ -378,11 +435,12 @@ econstructor; trivial.
                | _ => assumption
                | [ |- _ < _ ] => eapply Lt.lt_trans; eassumption
                | [ |- _ < _ ] => eapply Lt.lt_le_trans; eassumption
+               | _ => eapply expand_forall_parse_of; [ .. | eassumption ]
              end.
     Defined.
 
     Definition expand_alt_option {h h' str str' valid valid'}
-               (H : h < h') (H' : sub_nonterminals_listT valid' valid) (H'' : str = str')
+               (H : h < h') (H' : sub_nonterminals_listT valid' valid) (H'' : str =s str')
     : alt_option h valid str -> alt_option h' valid' str'.
     Proof.
       apply expand_alt_option'; try assumption.
@@ -458,9 +516,9 @@ econstructor; trivial.
         Proof.
           intros str' pf valid' pats p H_h Hinit' H_forall.
           destruct h as [|h']; [ exfalso; omega | ].
-          destruct p as [|nonterminal' str'' p'].
+          destruct p as [ ch pf0 |nonterminal' p'].
           { left.
-            eexists (MinimalParse.MinParseTerminal _ _ _);
+            eexists (MinimalParse.MinParseTerminal _ _ _ _ pf0);
               split; simpl; constructor. }
           { edestruct (fun pf => @minimal_parse_of_nonterminal__of__parse_of_nonterminal (S h') pf str _ valid' _ p') as [ [p'' H''] | p'' ];
             try solve [ repeat (apply Lt.lt_n_Sn || apply Lt.lt_S)
@@ -490,45 +548,59 @@ econstructor; trivial.
             | [ H : False |- _ ]
               => solve [ destruct H ]
             | _ => progress simpl
+            | _ => progress subst
             | _ => progress rewrite ?parse_of_contract_minimal_parse_of_item_lt, ?parse_of_contract_minimal_parse_of_production_lt, ?parse_of_contract_minimal_parse_of_lt
-            | [ |- context G[size_of_parse_production (ParseProductionCons ?a ?b)] ]
+            | [ |- context G[size_of_parse_production (ParseProductionCons ?s ?n ?a ?b)] ]
               => let G' := context G[S (size_of_parse_item a + size_of_parse_production b)] in
                  change G'
             | [ H : alt_option _ initial_nonterminals_data _ |- _ ]
               => apply not_alt_all in H
-            | [ p0 : minimal_parse_of_item _ _ ?s0 ?pat,
-                     p1 : minimal_parse_of_production _ _ ?s1 ?pats,
-                          H : ?s0 ++ ?s1 ≤s ?s'
-                |- ({ p' : minimal_parse_of_production ?s' _ (?s0 ++ ?s1) (?pat :: ?pats) & _ } + _)%type ]
-              => left; exists (MinParseProductionCons H p0 p1)
-            | [ p0 : minimal_parse_of_item ?s' _ ?s0 ?pat,
-                     p1 : minimal_parse_of_production ?s' _ ?s1 ?pats,
-                          H : ?s0 ++ ?s1 ≤s ?s',
-                              H' : Length ?s0 < Length ?s'
-                |- ({ p' : minimal_parse_of_production ?s' ?v (?s0 ++ ?s1) (?pat :: ?pats) & _ } + _)%type ]
-              => left; exists (MinParseProductionCons
-                                 H
-                                 (contract_minimal_parse_of_item_lt (valid' := v) H' p0)
-                                 p1)
-            | [ p0 : minimal_parse_of_item ?s' _ ?s0 ?pat,
-                     p1 : minimal_parse_of_production ?s' _ ?s1 ?pats,
-                          H : ?s0 ++ ?s1 ≤s ?s',
-                              H' : Length ?s1 < Length ?s'
-                |- ({ p' : minimal_parse_of_production ?s' ?v (?s0 ++ ?s1) (?pat :: ?pats) & _ } + _)%type ]
-              => left; exists (MinParseProductionCons
-                                 H
-                                 p0
-                                 (contract_minimal_parse_of_production_lt (valid' := v) H' p1))
-            | [ p0 : minimal_parse_of_item ?s' _ ?s0 ?pat,
-                     p1 : minimal_parse_of_production ?s' _ ?s1 ?pats,
-                          H : ?s0 ++ ?s1 ≤s ?s',
-                              H' : Length ?s0 < Length ?s',
-                                   H'' : Length ?s1 < Length ?s'
-                |- ({ p' : minimal_parse_of_production ?s' ?v (?s0 ++ ?s1) (?pat :: ?pats) & _ } + _)%type ]
-              => left; exists (MinParseProductionCons
-                                 H
-                                 (contract_minimal_parse_of_item_lt (valid' := v) H' p0)
-                                 (contract_minimal_parse_of_production_lt (valid' := v) H'' p1))
+            | [ p0 : minimal_parse_of_item ?s' ?v (take ?n ?s) ?pat,
+                     p1 : minimal_parse_of_production ?s' ?v (drop ?n ?s) ?pats,
+                          H : ?s ≤s ?s'
+                |- ({ p' : minimal_parse_of_production ?s' ?v ?s (?pat :: ?pats) & _ } + _)%type ]
+              => left; exists (MinParseProductionCons n H p0 p1)
+            | [ p0 : minimal_parse_of_item ?s' _ (take ?n ?s) ?pat,
+                     p1 : minimal_parse_of_production ?s' ?v (drop ?n ?s) ?pats,
+                          H : ?s ≤s ?s'
+                |- ({ p' : minimal_parse_of_production ?s' ?v ?s (?pat :: ?pats) & _ } + _)%type ]
+              => let H' := fresh in
+                 assert (H' : length (take n s) < length s')
+                   by (rewrite <- H, ?take_short_length by omega; omega);
+                   left; exists (MinParseProductionCons
+                                   n
+                                   H
+                                   (contract_minimal_parse_of_item_lt (valid' := v) H' p0)
+                                   p1)
+            | [ p0 : minimal_parse_of_item ?s' ?v (take ?n ?s) ?pat,
+                     p1 : minimal_parse_of_production ?s' _ (drop ?n ?s) ?pats,
+                          H : ?s ≤s ?s'
+                |- ({ p' : minimal_parse_of_production ?s' ?v ?s (?pat :: ?pats) & _ } + _)%type ]
+              => let H' := fresh in
+                 assert (H' : length (drop n s) < length s')
+                   by (rewrite <- H, drop_length; omega);
+                   left; exists (MinParseProductionCons
+                                   n
+                                   H
+                                   p0
+                                   (contract_minimal_parse_of_production_lt (valid' := v) H' p1))
+            | [ p0 : minimal_parse_of_item ?s' _ (take ?n ?s) ?pat,
+                     p1 : minimal_parse_of_production ?s' _ (drop ?n ?s) ?pats,
+                          H : ?s ≤s ?s',
+                              H' : ?n < length ?s,
+                                   H'' : 0 < ?n
+                |- ({ p' : minimal_parse_of_production ?s' ?v ?s (?pat :: ?pats) & _ } + _)%type ]
+              => let H0' := fresh in
+                 let H1' := fresh in
+                 assert (H1' : length (drop n s) < length s')
+                   by (rewrite <- H, drop_length; omega);
+                   assert (H0' : length (take n s) < length s')
+                   by (rewrite <- H, ?take_short_length by omega; omega);
+                   left; eexists (MinParseProductionCons
+                                    n
+                                    H
+                                    (contract_minimal_parse_of_item_lt (valid' := v) H0' p0)
+                                    (contract_minimal_parse_of_production_lt (valid' := v) H1' p1))
             | [ |- (_ * _)%type ]
               => split
             | [ H : _ <= _ |- _ <= _ ] => apply H
@@ -538,18 +610,36 @@ econstructor; trivial.
                      H1 : Forall_parse_of_production _ _
                 |- Forall_parse_of_production _ _ ]
               => exact (H0, H1)
-            | [ H : alt_option _ ?v ?x
-                |- (_ + alt_option _ ?v (?x ++ Empty _))%type ]
+            | [ H : alt_option _ ?v (drop 0 ?x)
+                |- (_ + alt_option _ ?v ?x)%type ]
               => right; eapply expand_alt_option'; [ .. | exact H ]
-            | [ H : alt_option _ ?v ?x
+            | [ H : alt_option _ ?v (drop ?n ?x), H' : length ?x <= ?n
+                |- (_ + alt_option _ ?v ?x)%type ]
+              => right; eapply expand_alt_option'; [ .. | exact H ]
+            | [ H : alt_option _ ?v (take ?n ?x), H' : length ?x = ?n
+                |- (_ + alt_option _ ?v ?x)%type ]
+              => right; eapply expand_alt_option'; [ .. | exact H ]
+            | [ H : alt_option _ ?v (take ?n ?x), H' : length ?x <= ?n
+                |- (_ + alt_option _ ?v ?x)%type ]
+              => right; eapply expand_alt_option'; [ .. | exact H ]
+            (*| [ H : alt_option _ ?v ?x
                 |- (_ + alt_option _ ?v (Empty _ ++ ?x))%type ]
-              => right; eapply expand_alt_option'; [ .. | exact H ]
-            | [ |- _ = _ ]
-              => progress rewrite ?LeftId, ?RightId
+              => right; eapply expand_alt_option'; [ .. | exact H ]*)
+            (*| [ |- _ = _ ]
+              => progress rewrite ?LeftId, ?RightId*)
+            | [ H : length ?s = 0 |- beq _ ?s ] => apply bool_eq_empty
+            | [ H : length ?s = 0 |- beq ?s _ ] => apply bool_eq_empty
+            | _ => rewrite take_short_length by assumption
+            | _ => rewrite take_long by assumption
+            | [ H : context[min _ _] |- _ ] => rewrite min_l in H by assumption
+            | [ H : context[min _ _] |- _ ] => rewrite min_r in H by assumption
+            | [ H : context[min _ _] |- _ ] => rewrite min_l in H by omega
+            | [ H : context[min _ _] |- _ ] => rewrite min_r in H by omega
+            | _ => rewrite drop_length
             | _
-              => solve [ eauto using le_S, Le.le_trans, Plus.le_plus_l, Plus.le_plus_r with nocore ]
+              => solve [ eauto using le_S, Le.le_trans, Plus.le_plus_l, Plus.le_plus_r, drop_0, take_long, NPeano.Nat.eq_le_incl, bool_eq_empty, drop_length, (fun x y => proj2 (NPeano.Nat.sub_0_le x y)) with nocore ]
           end.
-        Local Ltac min_parse_prod_pose_t' :=
+        (*Local Ltac min_parse_prod_pose_t' :=
           idtac;
           match goal with
             | [ H : ?a <> Empty _,
@@ -558,8 +648,8 @@ econstructor; trivial.
             | [ H : ?a <> Empty _,
                     H' : _ ++ ?a ≤s _ |- _ ]
               => unique pose proof (strle_to_lt_nonempty_l H H')
-          end.
-        Local Ltac min_parse_prod_pose_t := repeat min_parse_prod_pose_t'.
+          end.*)
+        (*Local Ltac min_parse_prod_pose_t := repeat min_parse_prod_pose_t'.*)
         Local Ltac min_parse_prod_t := repeat min_parse_prod_t'.
 
         (** This is the proof where we pay the proof for conceptual
@@ -595,10 +685,10 @@ econstructor; trivial.
         Proof.
           intros str' pf valid' pats p H_h Hinit' H_forall.
           destruct h as [|h']; [ exfalso; omega | ].
-          destruct p as [| str' strs' str'' pat' p0' p1' ].
+          destruct p as [ pf0' | n pat' pats' p0' p1' ].
           { clear minimal_parse_of_production__of__parse_of_production.
             left.
-            eexists (@MinimalParse.MinParseProductionNil _ _ _ _ _ _);
+            eexists (@MinimalParse.MinParseProductionNil _ _ _ _ _ _ _ pf0');
               repeat (reflexivity || esplit). }
           { specialize (fun h' pf
                         => @minimal_parse_of_nonterminal__of__parse_of_nonterminal
@@ -610,12 +700,17 @@ econstructor; trivial.
             pose proof (Lt.le_lt_trans _ _ _ (Plus.le_plus_l _ _) H_h) as H_h0.
             pose proof (Lt.le_lt_trans _ _ _ (Plus.le_plus_r _ _) H_h) as H_h1.
             clear H_h.
-            pose proof (fun valid Hinit => @minimal_parse_of_item__of__parse_of_item _ h'  minimal_parse_of_nonterminal__of__parse_of_nonterminal _ (transitivity (str_le1_append _ _) pf) valid _ p0' H_h0 Hinit (fst H_forall)) as p_it.
-            pose proof (fun valid Hinit => @minimal_parse_of_production__of__parse_of_production h' minimal_parse_of_nonterminal__of__parse_of_nonterminal _ (transitivity (str_le2_append _ _) pf) valid _ p1' H_h1 Hinit (snd H_forall)) as p_prod.
-            destruct (stringlike_dec str' (Empty _)), (stringlike_dec str'' (Empty _));
-              subst.
+            pose proof (fun valid Hinit => @minimal_parse_of_item__of__parse_of_item _ h'  minimal_parse_of_nonterminal__of__parse_of_nonterminal _ (transitivity str_le_take pf) valid _ p0' H_h0 Hinit (fst H_forall)) as p_it.
+            pose proof (fun valid Hinit => @minimal_parse_of_production__of__parse_of_production h' minimal_parse_of_nonterminal__of__parse_of_nonterminal _ (transitivity str_le_drop pf) valid _ p1' H_h1 Hinit (snd H_forall)) as p_prod.
+            destruct (le_lt_dec (length str') n) as [ Hle | Hle ], (zerop (min n (length str'))) as [Hstr' | Hstr' ].
             { (* empty, empty *)
+              rewrite Min.min_r in Hstr' by assumption.
               specialize (p_it valid' Hinit'); specialize (p_prod valid' Hinit').
+              destruct p_it as [ [ p0'' H0''] |], p_prod as [ [ p1'' H1'' ] |];
+                [ | | | ];
+                min_parse_prod_t. }
+            { (* nonempty, empty *)
+              specialize (p_it valid' Hinit'); specialize (p_prod initial_nonterminals_data (reflexivity _)).
               destruct p_it as [ [ p0'' H0''] |], p_prod as [ [ p1'' H1'' ] |];
                 [ | | | ];
                 min_parse_prod_t. }
@@ -623,22 +718,11 @@ econstructor; trivial.
               specialize (p_it initial_nonterminals_data (reflexivity _)); specialize (p_prod valid' Hinit').
               destruct p_it as [ [ p0'' H0''] |], p_prod as [ [ p1'' H1'' ] |];
                 [ | | | ];
-                min_parse_prod_t;
-                min_parse_prod_pose_t;
-                min_parse_prod_t. }
-            { (* nonempty, empty *)
-              specialize (p_it valid' Hinit'); specialize (p_prod initial_nonterminals_data (reflexivity _)).
-              destruct p_it as [ [ p0'' H0''] |], p_prod as [ [ p1'' H1'' ] |];
-                [ | | | ];
-                min_parse_prod_t;
-                min_parse_prod_pose_t;
                 min_parse_prod_t. }
             { (* nonempty, nonempty *)
               specialize (p_it initial_nonterminals_data (reflexivity _)); specialize (p_prod initial_nonterminals_data (reflexivity _)).
               destruct p_it as [ [ p0'' H0''] |], p_prod as [ [ p1'' H1'' ] |];
                 [ | | | ];
-                min_parse_prod_t;
-                min_parse_prod_pose_t;
                 min_parse_prod_t. } }
         Defined.
       End production.
@@ -657,7 +741,7 @@ econstructor; trivial.
         Proof.
           intros str' pf valid' pats p H_h Hinit' H_forall.
           destruct h as [|h']; [ exfalso; omega | ].
-          destruct p as [str' pat pats p' | str' pat pats p'].
+          destruct p as [pat pats p' | pat pats p'].
           { clear minimal_parse_of_productions__of__parse_of_productions.
             edestruct (@minimal_parse_of_production__of__parse_of_production _ h' minimal_parse_of_nonterminal__of__parse_of_nonterminal _ pf valid' _ p') as [ [p'' p''H] | [nonterminal' H'] ];
             try solve [ exact (Lt.lt_S_n _ _ H_h)
@@ -739,10 +823,9 @@ econstructor; trivial.
                       | reflexivity ]. } }
             { (** [str] didn't get smaller, so we cache the fact that we've hit this nonterminal already *)
               destruct (Sumbool.sumbool_of_bool (is_valid_nonterminal valid nonterminal)) as [ Hvalid | Hinvalid ].
-              { destruct (@minimal_parse_of_productions__of__parse_of_productions str h minimal_parse_of_nonterminal__of__parse_of_nonterminal str (reflexivity _) (remove_nonterminal valid nonterminal) (Lookup G nonterminal) p (Lt.lt_S_n _ _ pf) (transitivity (R := sub_nonterminals_listT) (@sub_nonterminals_listT_remove _ _ _ _) Hinit') (snd H_forall)) as [p'|p'].
+              { destruct (@minimal_parse_of_productions__of__parse_of_productions str0 h minimal_parse_of_nonterminal__of__parse_of_nonterminal str Hstr (remove_nonterminal valid nonterminal) (Lookup G nonterminal) p (Lt.lt_S_n _ _ pf) (transitivity (R := sub_nonterminals_listT) (@sub_nonterminals_listT_remove _ _ _ _) Hinit') (snd H_forall)) as [p'|p'].
                 { left.
-                  subst str.
-                  eexists (@MinimalParse.MinParseNonTerminalStrEq _ _ _ _ _ _ _ (fst H_forall) Hvalid (projT1 p')).
+                  exists (@MinimalParse.MinParseNonTerminalStrEq _ _ _ _ _ _ _ _ pf_eq (fst H_forall) Hvalid (projT1 p')).
                   simpl in *.
                   split;
                     [ exact (Le.le_n_S _ _ (fst (projT2 p')))

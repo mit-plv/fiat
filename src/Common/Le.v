@@ -1,6 +1,8 @@
 (** * Common facts about [≤] *)
 Require Import Coq.Arith.Le.
 Require Import Coq.omega.Omega.
+Require Import Coq.Classes.Morphisms.
+Require Import Coq.Program.Basics.
 
 Set Implicit Arguments.
 
@@ -96,3 +98,17 @@ Proof. omega. Qed.
 
 Lemma not_lt_add_l {a b} (H : ~a < b + a) : b = 0.
 Proof. omega. Qed.
+
+Global Instance le_lt_Proper : Proper (Basics.flip le ==> le ==> impl) lt.
+Proof.
+  repeat intro.
+  eapply lt_le_trans; [ | eassumption ].
+  eapply le_lt_trans; eassumption.
+Qed.
+
+Global Instance le_lt_Proper' : Proper (le ==> Basics.flip le ==> Basics.flip impl) lt.
+Proof.
+  repeat intro.
+  eapply lt_le_trans; [ | eassumption ].
+  eapply le_lt_trans; eassumption.
+Qed.
