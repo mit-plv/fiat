@@ -43,8 +43,8 @@ Definition WeatherSchema :=
 Definition WeatherSig : ADTSig :=
   ADTsignature {
       Constructor "Init"           : unit                               -> rep,
-      (* Method "AddCell"        : rep x (WeatherSchema#CELLS)        -> rep x bool,
-      Method "AddMeasurement" : rep x (WeatherSchema#MEASUREMENTS) -> rep x bool, *)
+      (* Method "AddCell"        : rep x (WeatherSchema#CELLS)        -> rep x bool, *)
+      (*Method "AddMeasurement" : rep x (WeatherSchema#MEASUREMENTS) -> rep x bool, *)
       Method "CountCells"     : rep x AreaCode                        -> rep x nat
       (* Method "LocalMax"       : rep x (AreaCode * MeasurementType)    -> rep x option Z *)
     }.
@@ -54,9 +54,9 @@ Definition WeatherSpec : ADT WeatherSig :=
     Def Constructor "Init" (_ : unit) : rep := empty,
 
     (*update "AddCell" (cell : WeatherSchema#CELLS) : bool :=
-        Insert cell into CELLS,
+        Insert cell into CELLS, *)
 
-    update "AddMeasurement" (measurement : WeatherSchema#MEASUREMENTS) : bool :=
+    (*update "AddMeasurement" (measurement : WeatherSchema#MEASUREMENTS) : bool :=
         Insert measurement into MEASUREMENTS, *)
 
     query "CountCells" (area : AreaCode) : nat :=
@@ -64,7 +64,7 @@ Definition WeatherSpec : ADT WeatherSig :=
              Where (area = cell!AREA_CODE)
              Return 1)
 
-     (*query "LocalMax" (params: AreaCode * MeasurementType) : option Z :=
+     (* query "LocalMax" (params: AreaCode * MeasurementType) : option Z :=
         MaxZ (For (cell in CELLS) (measurement in MEASUREMENTS)
               Where (cell!AREA_CODE = fst params)
               Where (measurement!MEASUREMENT_TYPE = snd params)
@@ -87,9 +87,10 @@ Proof.
   Start Profiling.
 
   start honing QueryStructure.
-
   (* Old, explicit index selection*)
   (* make simple indexes using [[AREA_CODE]; [MEASUREMENT_TYPE; CELL_ID]]. *)
+  Show Profile.
+
   make indexes using matchInclusionIndex.
 
   plan
@@ -120,13 +121,20 @@ Proof.
                                           | _ => createLastRangeTerm_dep dom f fds tail fs kind rest s k
                                         end).
   Show Profile.
-
   Time FullySharpenQueryStructure WeatherSchema Index.
-    implement_bag_methods.
-    Show Profile.
+  simplify with monad laws.
+  Show Profile.
+  implement_bag_methods.
+  Show Profile.
 Time Defined.
 Time Definition WeatherStationImpl' : SharpenedUnderDelegates WeatherSig :=
-  Eval simpl in projT1 SharpenedWeatherStation. (* 28 *)
+  Eval simpl in projT1 SharpenedWeatherStation. (* 28 --> 10 *)
+
+Print SharpenedWeatherStation.
+Print transitivity.
+Optimize Proof.
+
+Optimize Heap.
 
 
 (* Time Definition WeatherStationImpl' : SharpenedUnderDelegates WeatherSig :=

@@ -473,9 +473,10 @@ Section SharpenedBagImplementation.
       simplify with monad laws.
       refine pick val (benumerate r_n); intuition;
       simplify with monad laws; simpl.
-      refine pick val r_n; intuition;
+      refine pick val r_n.
       simplify with monad laws; simpl.
       finish honing.
+      intuition.
     }
 
     hone method sCount.
@@ -483,12 +484,13 @@ Section SharpenedBagImplementation.
       simplify with monad laws.
       refine pick val (benumerate r_n); intuition;
       simplify with monad laws; simpl.
-      refine pick val r_n; intuition;
+      refine pick val r_n.
       simplify with monad laws; simpl.
       erewrite Permutation_length
         by (rewrite bfind_correct; eauto; reflexivity).
-      rewrite bcount_correct; eauto.
+      rewrite bcount_correct by eauto.
       finish honing.
+      intuition.
     }
 
     hone method sInsert.

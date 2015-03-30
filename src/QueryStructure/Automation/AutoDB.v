@@ -1614,29 +1614,37 @@ Ltac remove_spurious_Dep_Type_BoundedIndex_nth_eq :=
       end
   end.
 
+Lemma Implement_Bound_Bag_Call' A
+: forall qs_schema Index DelegateReps DelegateImpls ValidImpls
+         r_o r_n ridx midx d (k : _ -> Comp A),
+    @Build_IndexedQueryStructure_Impl_AbsR
+      qs_schema Index DelegateReps DelegateImpls ValidImpls r_o r_n
+    ->
+    forall k',
+    (forall r_n' r_o' c,
+       (AbsR (ValidImpls ridx)) r_o' r_n'
+       -> refine (k (r_o', c)) (k' r_n' c))
+    -> refine (l <- CallBagMethod (BagIndexKeys := Index) ridx midx r_o d;
+            k l)
+              (k' (fst (CallBagImplMethod DelegateReps DelegateImpls midx r_n d)) (snd (CallBagImplMethod DelegateReps DelegateImpls midx r_n d))).
+Proof.
+  simpl; intros.
+  destruct (@refine_BagImplMethods qs_schema Index DelegateReps DelegateImpls ValidImpls r_o r_n ridx H midx d) as [r_o' [refines_r_o' AbsR_r_o']].
+  rewrite refines_r_o'; simplify with monad laws.
+  intros; simpl in *.
+  eapply H0; eauto.
+Qed.
+
 Ltac Implement_Bound_Bag_Call :=
   match goal with
     | H : @Build_IndexedQueryStructure_Impl_AbsR ?qs_schema ?Index ?DelegateReps ?DelegateImpls
                                                  ?ValidImpls ?r_o ?r_n
-      |- refine (Bind (CallBagMethod (BagIndexKeys := ?Index') ?ridx ?midx ?r_o ?d) _) _ =>
+      |- refine (Bind (CallBagMethod (BagIndexKeys := ?Index') ?ridx ?midx ?r_o ?d) ?k) _ =>
       let r_o' := fresh "r_o'" in
       let AbsR_r_o' := fresh "AbsR_r_o'" in
       let refines_r_o' := fresh "refines_r_o'" in
-      destruct (@refine_BagImplMethods qs_schema Index' DelegateReps DelegateImpls ValidImpls r_o r_n ridx H midx d) as [r_o' [refines_r_o' AbsR_r_o']];
-        simpl in refines_r_o', AbsR_r_o';
-        etransitivity;
-        [ apply refine_bind;
-          [apply refines_r_o'
-          | unfold pointwise_relation; intros; higher_order_reflexivity
-          ]
-        | etransitivity;
-          [ (* Simplify [CallBagImplMethod], get rid of the spurious cast,
-               and reduce the bound [ret] *)
-            unfold CallBagImplMethod; cbv beta; simpl;
-            remove_spurious_Dep_Type_BoundedIndex_nth_eq;
-            apply (proj1 (refineEquiv_bind_unit _ _))
-          | simpl]
-        ]; cbv beta; simpl in *
+      eapply (@Implement_Bound_Bag_Call' _ qs_schema Index DelegateReps DelegateImpls ValidImpls r_o r_n ridx midx d k H);
+        cbv beta; simpl in *; intros
   end.
 
 Ltac implement_bag_methods :=

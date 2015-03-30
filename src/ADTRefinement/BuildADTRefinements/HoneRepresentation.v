@@ -63,7 +63,7 @@ Section HoneRepresentation.
      get goals in a nicer form. *)
 
   Lemma refine_AbsMethod :
-    forall Dom Cod oldMethod nr (d : Dom) refinedMeth,
+    forall Dom Cod oldMethod nr (d : Dom) refinedMeth (H := refinedMeth),
       (forall or,
          AbsR or nr ->
          refine (or' <- oldMethod or d;
@@ -71,7 +71,7 @@ Section HoneRepresentation.
                  ret (nr', snd or'))
                 (refinedMeth nr d))
       -> refine (absMethod (Cod := Cod) AbsR oldMethod nr d)
-                (refinedMeth nr d).
+                (H nr d).
   Proof.
     unfold absMethod, refine; intros * H v ComputesTo_v; computes_to_econstructor;
     intros or AbsR_or.
@@ -103,12 +103,12 @@ Section HoneRepresentation.
      get goals in a nicer form. *)
 
   Lemma refine_AbsConstructor :
-    forall Dom oldConstructor (d : Dom) refinedConstructor,
+    forall Dom oldConstructor (d : Dom) refinedConstructor (H := refinedConstructor),
       (refine (or' <- oldConstructor d;
                { nr' | AbsR or' nr'})
                 (refinedConstructor d))
       -> refine (absConstructor AbsR oldConstructor d)
-                (refinedConstructor d).
+                (H d).
   Proof.
     unfold absConstructor, refine; intros * H v ComputesTo_v; computes_to_econstructor.
     pose proof (H v ComputesTo_v); computes_to_inv;
@@ -178,7 +178,7 @@ Tactic Notation "hone" "constructor" constr(consIdx) :=
       match goal with
         |  |- refine _ (?E ?d) => is_evar E; let H := fresh in set (H := E)
         | _ => idtac
-      end; simpl in *;
+      end;
       match goal with
         |  |- refine (absConstructor ?AbsR ?oldConstructor ?d)
                      (?H ?d) =>
@@ -225,12 +225,11 @@ Tactic Notation "hone" "method" constr(methIdx) :=
                                |}
                                _
                               ));
-    [ intros;
-      simpl in *;
+    [ intros; simpl in *;
       match goal with
         |  |- refine _ (?E ?nr ?d) => is_evar E; let H := fresh in set (H := E)
         | _ => idtac
-      end; simpl in *;
+      end;
       match goal with
         |  |- refine (@absMethod ?oldRep ?newRep ?AbsR ?Dom ?Cod ?oldMethod ?nr ?d)
                      (?H ?nr ?d) => eapply (@refine_AbsMethod oldRep newRep AbsR Dom Cod oldMethod)

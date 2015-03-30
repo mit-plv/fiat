@@ -711,7 +711,7 @@ Tactic Notation "refine" "pick" "val" open_constr(v) :=
   let T := type of v in
   rewrite refine_pick_val with
   (A := T)
-    (a := v).
+    (a := v) at 1.
 
 Tactic Notation "refine" "pick" "eq" :=
   match goal with
