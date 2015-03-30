@@ -136,47 +136,36 @@ Section String.
     case_eq (s1 =s s2).
     { intro H''; right; reflexivity. }
     { intro H''; left.
-          destruct H; trivial.
-      abstract (
-          destruct H; trivial;
-          apply bool_eq_correct in H;
-          generalize dependent (s1 =s s2)%string_like; intros; subst;
-          discriminate
-        ). }
+      destruct H' as [H' | H']; trivial.
+      hnf in *.
+      abstract congruence. }
   Defined.
 
   Section strle_choose.
-    Context
-            (s1 s2 : String) (f : String -> nat)
-            (H : f s1 < f s2 \/ s1 = s2).
+    Context (s1 s2 : String) (f : String -> nat)
+            (f_Proper : Proper (beq ==> eq) f)
+            (H0' : f s1 < f s2 \/ s1 =s s2).
 
     Definition strle_left (H' : f s1 < f s2)
-    : H = or_introl H'.
+    : H0' = or_introl H'.
     Proof.
-      destruct H as [H''|H'']; subst; [ apply f_equal | exfalso ].
+      destruct H0' as [H''|H'']; try clear H0'; [ apply f_equal | exfalso ].
       { apply le_proof_irrelevance. }
-      { eapply lt_irrefl; eassumption. }
+      { setoid_subst s1.
+        eapply lt_irrefl; eassumption. }
     Qed.
 
-    Definition strle_right (H' : s1 = s2)
-    : H = or_intror H'.
+    Definition strle_right (H' : s1 =s s2)
+    : H0' = or_intror H'.
     Proof.
-      destruct H as [H''|H'']; [ subst; exfalso | apply f_equal ].
-      { eapply lt_irrefl; eassumption. }
+      destruct H0' as [H''|H'']; try clear H0'; [ exfalso | apply f_equal ].
+      { setoid_subst s1; eapply lt_irrefl; eassumption. }
       { apply dec_eq_uip.
-        clear.
-        intro y.
-        destruct (Bool.bool_dec (bool_eq s1 y) true) as [H|H].
-        { left.
-          apply bool_eq_correct; assumption. }
-        { right; intro H'.
-          apply bool_eq_correct in H'.
-          auto. } }
+        decide equality. }
     Qed.
   End strle_choose.
 
-
-  Lemma NonEmpty_length
+  (*Lemma NonEmpty_length
         (a : String)
         (H : a <> Empty _)
   : length a > 0.
@@ -210,19 +199,19 @@ Section String.
         (H : b <> Empty _)
         (H' : a ++ b ≤s c)
   : length a < length c.
-  Proof. lt_nonempty_t. Qed.
+  Proof. lt_nonempty_t. Qed.*)
 
   Lemma str_seq_lt_false
         {a b : String}
-        (H : length a < length b)
-        (H' : (a =s b) = true)
+        (H0' : length a < length b)
+        (H' : a =s b)
   : False.
   Proof.
-    apply bool_eq_correct in H'; subst.
-    apply lt_irrefl in H; assumption.
+    rewrite H' in H0'.
+    eapply lt_irrefl; eassumption.
   Qed.
 
-  Lemma neq_some_none_state_val {P}
+  (*Lemma neq_some_none_state_val {P}
         {s1 s2 : StringWithSplitState String (fun x => option (P x))}
         (H : s1 = s2)
   : match state_val s1, state_val s2 with
@@ -307,9 +296,9 @@ Section String.
     eapply in_map_iff_injective; [ | exact H ].
     simpl; intro.
     apply lift_StringWithSplitState_pair_injective; assumption.
-  Qed.
+  Qed.*)
 
-  Lemma SplitAt0 (s : String) : SplitAt 0 s = (Empty _, s).
+  (*Lemma SplitAt0 (s : String) : SplitAt 0 s = (Empty _, s).
   Proof.
     rewrite <- SplitAt_concat_correct.
     rewrite length_Empty.
@@ -382,5 +371,5 @@ Section String.
   Proof.
     rewrite SplitAtPastEnd; trivial.
     rewrite length_Empty; auto with arith.
-  Qed.
+  Qed.*)
 End String.

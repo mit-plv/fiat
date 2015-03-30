@@ -3,16 +3,18 @@ Require Import Coq.Strings.String Coq.Lists.List Coq.Setoids.Setoid.
 Require Import ADTSynthesis.Parsers.ContextFreeGrammar.
 Require Import ADTSynthesis.Parsers.BaseTypes.
 
+Local Coercion is_true : bool >-> Sortclass.
+
 Set Implicit Arguments.
 Local Open Scope string_like_scope.
 
 Section cfg.
-  Context {CharType} {String : string_like CharType} {G : grammar CharType}.
-  Context `{predata : parser_computational_predataT}
-          `{rdata' : @parser_removal_dataT' predata}.
+  Context {string} {HSL : StringLike string} {G : grammar string}.
+  Context {predata : @parser_computational_predataT}
+          {rdata' : @parser_removal_dataT' predata}.
 
   Definition sub_nonterminals_listT (x y : nonterminals_listT) : Prop
-    := forall p, is_valid_nonterminal x p = true -> is_valid_nonterminal y p = true.
+    := forall p, is_valid_nonterminal x p -> is_valid_nonterminal y p.
 
   Context (nonterminals_listT_R_respectful : forall x y,
                                         sub_nonterminals_listT x y
@@ -34,7 +36,7 @@ Section cfg.
   Qed.
 
   Lemma remove_nonterminal_4
-        {ls ps ps'} (H : is_valid_nonterminal (remove_nonterminal ls ps) ps' = true)
+        {ls ps ps'} (H : is_valid_nonterminal (remove_nonterminal ls ps) ps')
   : ps <> ps'.
   Proof.
     intro H'.
@@ -67,10 +69,11 @@ Section cfg.
       against; the extra [String] argument to some of these is the
       [String] we're using to do well-founded recursion, which the
       current [String] must be no longer than. *)
+
   Inductive minimal_parse_of
   : forall (str0 : String) (valid : nonterminals_listT)
            (str : String),
-      productions CharType -> Type :=
+      productions string -> Type :=
   | MinParseHead : forall str0 valid str pat pats,
                      @minimal_parse_of_production str0 valid str pat
                      -> @minimal_parse_of str0 valid str (pat::pats)
@@ -80,38 +83,40 @@ Section cfg.
   with minimal_parse_of_production
   : forall (str0 : String) (valid : nonterminals_listT)
            (str : String),
-      production CharType -> Type :=
-  | MinParseProductionNil : forall str0 valid,
-                              @minimal_parse_of_production str0 valid (Empty _) nil
-  | MinParseProductionCons : forall str0 valid str strs pat pats,
-                               str ++ strs ≤s str0
-                               -> @minimal_parse_of_item str0 valid str pat
-                               -> @minimal_parse_of_production str0 valid strs pats
-                               -> @minimal_parse_of_production str0 valid (str ++ strs) (pat::pats)
+      production string -> Type :=
+  | MinParseProductionNil : forall str0 valid str,
+                              length str = 0
+                              -> @minimal_parse_of_production str0 valid str nil
+  | MinParseProductionCons : forall str0 valid str n pat pats,
+                               str ≤s str0
+                               -> @minimal_parse_of_item str0 valid (take n str) pat
+                               -> @minimal_parse_of_production str0 valid (drop n str) pats
+                               -> @minimal_parse_of_production str0 valid str (pat::pats)
   with minimal_parse_of_item
   : forall (str0 : String) (valid : nonterminals_listT)
            (str : String),
-      item CharType -> Type :=
-  | MinParseTerminal : forall str0 valid x,
-                         @minimal_parse_of_item str0 valid [[ x ]]%string_like (Terminal x)
+      item string -> Type :=
+  | MinParseTerminal : forall str0 valid str ch,
+                         str ~= [ ch ]
+                         -> @minimal_parse_of_item str0 valid str (Terminal ch)
   | MinParseNonTerminal
-    : forall str0 valid str nonterminal,
-        @minimal_parse_of_nonterminal str0 valid str nonterminal
-        -> @minimal_parse_of_item str0 valid str (NonTerminal CharType nonterminal)
+    : forall str0 valid str (nt : String.string),
+        @minimal_parse_of_nonterminal str0 valid str nt
+        -> @minimal_parse_of_item str0 valid str (NonTerminal nt)
   with minimal_parse_of_nonterminal
   : forall (str0 : String) (valid : nonterminals_listT)
            (str : String),
-      string -> Type :=
+      String.string -> Type :=
   | MinParseNonTerminalStrLt
-    : forall str0 valid nonterminal str,
-        Length str < Length str0
-        -> is_valid_nonterminal initial_nonterminals_data nonterminal = true
-        -> @minimal_parse_of str initial_nonterminals_data str (Lookup G nonterminal)
-        -> @minimal_parse_of_nonterminal str0 valid str nonterminal
+    : forall str0 valid (nt : String.string) str,
+        length str < length str0
+        -> is_valid_nonterminal initial_nonterminals_data nt
+        -> @minimal_parse_of str initial_nonterminals_data str (Lookup G nt)
+        -> @minimal_parse_of_nonterminal str0 valid str nt
   | MinParseNonTerminalStrEq
     : forall str valid nonterminal,
-        is_valid_nonterminal initial_nonterminals_data nonterminal = true
-        -> is_valid_nonterminal valid nonterminal = true
+        is_valid_nonterminal initial_nonterminals_data nonterminal
+        -> is_valid_nonterminal valid nonterminal
         -> @minimal_parse_of str (remove_nonterminal valid nonterminal) str (Lookup G nonterminal)
         -> @minimal_parse_of_nonterminal str valid str nonterminal.
 

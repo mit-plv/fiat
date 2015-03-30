@@ -1396,7 +1396,7 @@ Ltac setoid_subst' x :=
       => free_in x y;
         rewrite ?H;
         repeat match goal with
-                 | [ H' : appcontext[x] |- _ ] => rewrite H in H'
+                 | [ H' : appcontext[x] |- _ ] => not constr_eq H' H; rewrite H in H'
                end;
         clear H;
         clear x
@@ -1404,7 +1404,7 @@ Ltac setoid_subst' x :=
       => free_in x y;
         rewrite <- ?H;
         repeat match goal with
-                 | [ H' : appcontext[x] |- _ ] => rewrite <- H in H'
+                 | [ H' : appcontext[x] |- _ ] => not constr_eq H' H; rewrite <- H in H'
                end;
         clear H;
         clear x

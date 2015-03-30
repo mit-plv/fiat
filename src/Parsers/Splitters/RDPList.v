@@ -7,11 +7,11 @@ Set Implicit Arguments.
 Local Open Scope string_like_scope.
 
 Section recursive_descent_parser_list.
-  Context {CharType} {String : string_like CharType} {G : grammar CharType}.
-  Definition rdp_list_nonterminals_listT : Type := list string.
-  Definition rdp_list_is_valid_nonterminal : rdp_list_nonterminals_listT -> string -> bool
+  Context {string} {HSL : StringLike string} {HLSP : StringLikeProperties string} {G : grammar string}.
+  Definition rdp_list_nonterminals_listT : Type := list String.string.
+  Definition rdp_list_is_valid_nonterminal : rdp_list_nonterminals_listT -> String.string -> bool
     := fun ls nt => if in_dec string_dec nt ls then true else false.
-  Definition rdp_list_remove_nonterminal : rdp_list_nonterminals_listT -> string -> rdp_list_nonterminals_listT
+  Definition rdp_list_remove_nonterminal : rdp_list_nonterminals_listT -> String.string -> rdp_list_nonterminals_listT
     := fun ls nt =>
          filter (fun x => if string_dec nt x then false else true) ls.
 
@@ -114,10 +114,6 @@ Section recursive_descent_parser_list.
          nonterminals_listT_R := rdp_list_nonterminals_listT_R;
          remove_nonterminal_dec := rdp_list_remove_nonterminal_dec;
          ntl_wf := rdp_list_ntl_wf }.
-
-  Global Instance rdp_list_data' : @parser_computational_types_dataT _ String
-    := { predata := rdp_list_predata;
-         split_stateT := fun _ _ _ _ => True }.
 
   Global Instance rdp_list_rdata' : @parser_removal_dataT' rdp_list_predata
     := { remove_nonterminal_1 := rdp_list_remove_nonterminal_1;

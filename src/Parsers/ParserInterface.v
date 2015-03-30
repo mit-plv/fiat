@@ -8,11 +8,11 @@ Local Open Scope list_scope.
 Reserved Infix "~=" (at level 70).
 
 Section interface.
-  Context {CharType} (String : string_like CharType) (G : grammar CharType).
+  Context {string} `{StringLike string} (G : grammar string).
 
   (** A production is reachable if it is the tail of a production
       associated to a valid nonterminal. *)
-  Definition production_is_reachable (p : production CharType) : Prop
+  Definition production_is_reachable (p : production string) : Prop
     := exists nt prefix,
          List.In nt (Valid_nonterminals G)
          /\ List.In
@@ -22,13 +22,13 @@ Section interface.
   (** A list of splits is complete if, for every reachable production,
       it contains every index of the string that yields a parse tree
       for that production by splitting at that index. *)
-  Definition split_list_is_complete (str : String) (it : item CharType) (its : production CharType)
+  Definition split_list_is_complete (str : String) (it : item string) (its : production string)
              (splits : list nat)
   : Prop
     := forall n,
-         n <= Length str
-         -> parse_of_item String G (fst (SplitAt n str)) it
-         -> parse_of_production String G (snd (SplitAt n str)) its
+         n <= length str
+         -> parse_of_item G (take n str) it
+         -> parse_of_production G (drop n str) its
          -> production_is_reachable (it::its)
          -> List.In n splits.
 
@@ -40,7 +40,7 @@ Section interface.
       (** take the metadata associated with the first [n] characters *)
       split_drop : nat -> split_rep -> split_rep;
       (** take the metadata associated with all but the first [n] characters *)
-      splits_for : split_rep -> item CharType -> production CharType -> list nat;
+      splits_for : split_rep -> item string -> production string -> list nat;
       (** give a list of indices for splitting a given string *)
 
       split_invariant : String -> split_rep -> Prop where "s ~= st" := (split_invariant s st);

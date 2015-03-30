@@ -3,7 +3,7 @@ Require Import ADTSynthesis.Computation.Core ADTSynthesis.Parsers.ContextFreeGra
 
 Set Implicit Arguments.
 
-Definition parser_spec CharType (String : string_like CharType)
-           (G : grammar CharType)
+Definition parser_spec {string} `{StringLike string}
+           (G : grammar string)
 : String -> Comp bool
-  := fun str => { b : bool | b = true <-> inhabited (parse_of_grammar String str G) }%comp.
+  := fun str => { b : bool | b = true <-> inhabited (parse_of_grammar str G) }%comp.
