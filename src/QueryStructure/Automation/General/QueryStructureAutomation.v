@@ -26,7 +26,7 @@ Ltac start_honing_QueryStructure :=
   pose_string_ids;
   match goal with
       |- context [@BuildADT (QueryStructure ?Rep) _ _ _ _] =>
-      hone representation using (@DropQSConstraints_AbsR Rep);
+      hone representation using (@DropQSConstraints_AbsR Rep) with defaults;
         match goal with
             |- context [Build_consDef (@Build_consSig ?Id _)
                                       (@absConstructor _ _ _ _ _)] =>

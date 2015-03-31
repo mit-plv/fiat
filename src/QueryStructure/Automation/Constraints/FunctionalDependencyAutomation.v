@@ -68,7 +68,7 @@ Ltac fundepToQuery :=
     | [ |- context[Pick
                      (fun b => decides
                                  b
-                                 (forall tup', GetUnConstrRelation ?or ?Ridx _
+                                 (forall tup', GetUnConstrRelation (QSSchema := ?qs_schema) ?or ?Ridx _
                                                -> @FunctionalDependency_P ?heading ?attrlist1 ?attrlist2 ?n _))] ] =>
       let H' := fresh in
       let H'' := fresh in
@@ -85,7 +85,7 @@ Ltac fundepToQuery :=
                                       tupleAgree_computational n x attrlist2 /\
                                       ~ tupleAgree_computational n x attrlist1)) as H''
           by prove_decidability_for_functional_dependencies;
-        pose proof (@refine_functional_dependency_check_into_query _ _ n attrlist2 attrlist1 or H'' H')
+        pose proof (@refine_functional_dependency_check_into_query qs_schema Ridx n attrlist2 attrlist1 or H'' H')
           as refine_fundep; simpl in refine_fundep; setoid_rewrite refine_fundep; clear refine_fundep H'' H'
     | [ |- context[Pick
                      (fun b => decides

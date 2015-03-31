@@ -297,8 +297,6 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
       (imap cMethDef (Build_cMethDef (Rep:=rep DelegateReps))
             (cMethods DelegateReps DelegateImpls)).
 
-  Print getMethDef.
-
   Definition Notation_Friendly_FullySharpened_BuildMostlySharpenedcADT
              (RepT : Type)
              (consSigs : list consSig) (methSigs : list methSig)

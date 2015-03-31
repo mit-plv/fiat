@@ -23,6 +23,7 @@ CORE_MODULES    := \
 	Common/Ensembles/EnsembleListEquivalence \
 	Common/Ensembles/Cardinal \
 	Common/Ensembles/IndexedEnsembles \
+	Common/Ensembles/Notations \
 	Common/Ensembles/Equivalence \
 	Common/Ensembles/Morphisms \
 	Common/Ensembles/Tactics \

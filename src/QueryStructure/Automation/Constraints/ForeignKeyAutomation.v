@@ -18,8 +18,9 @@ Ltac foreignToQuery :=
   match goal with
     | [ |- context[{ b' | decides b' (ForeignKey_P ?AttrID ?AttrID' ?tupmap ?n (@GetUnConstrRelation ?qs_schema ?or ?TableID))}] ]
       =>
-      setoid_rewrite (@refine_constraint_check_into_query
+      let H' := fresh in
+      pose (@refine_constraint_check_into_query
                         qs_schema TableID
-                        (fun tup : Tuple => GetAttribute n AttrID = tupmap (GetAttribute tup AttrID')) or _);
-        simplify with monad laws; cbv beta; simpl
+                        (fun tup : Tuple => GetAttribute n AttrID = tupmap (GetAttribute tup AttrID')) or _) as H';
+        simpl in H'; setoid_rewrite H'; simplify with monad laws; cbv beta; simpl
   end.

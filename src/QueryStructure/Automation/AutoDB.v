@@ -2215,8 +2215,10 @@ Ltac insertion CreateTerm EarlyIndex LastIndex
                                                        {| elementIndex := _; indexedElement := ?tup |}
                                                        (GetUnConstrRelation ?r_o ?TableID))) r_n'}]]
             => repeat setoid_rewrite <- refineEquiv_bind_bind;
-              setoid_rewrite (@refine_BagADT_QSInsert _ _ r_o r_n H TableID tup);
-              try (simplify with monad laws; higher_order_reflexivity)
+              let H' := fresh in
+              pose proof (@refine_BagADT_QSInsert _ _ r_o r_n H TableID tup) as H';
+                simpl in H'; setoid_rewrite H';
+                try simplify with monad laws; try higher_order_reflexivity
           (* Implement the else branch *)
           | [ H : DelegateToBag_AbsR ?r_o ?r_n
               |- context[{r_n' | DelegateToBag_AbsR ?r_o r_n'}]] =>

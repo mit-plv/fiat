@@ -77,14 +77,14 @@ Tactic Notation "remove" "trivial" "insertion" "checks" :=
         H : DropQSConstraints_AbsR _ ?r_n
         |- context [(QSInsert _ ?R ?n)%QuerySpec] =>
         let H' := fresh in
-          (* If we try to eapply [QSInsertSpec_UnConstr_refine] directly
+        (* If we try to eapply [QSInsertSpec_UnConstr_refine] directly
                    after we've drilled under a bind, this tactic will fail because
                    typeclass resolution breaks down. Generalizing and applying gets
                    around this problem for reasons unknown. *)
         let H' := fresh in
-        pose proof (@QSInsertSpec_UnConstr_refine_opt
-                      _ r_n R n _ H) as H';
-          apply H'
+        pose (@QSInsertSpec_UnConstr_refine_opt  _ r_n R n _ H) as H';
+          cbv beta delta [tupleConstraints attrConstraints map app relName schemaHeading] iota in H';
+          simpl in H'; exact H'
     end
   | cbv beta; simpl tupleConstraints; simpl attrConstraints; cbv iota;
     simpl map; simpl app;
