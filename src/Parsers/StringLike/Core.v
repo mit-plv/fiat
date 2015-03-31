@@ -16,21 +16,15 @@ Local Open Scope program_scope.
 Reserved Notation "[ x ]".
 
 Module Export StringLike.
-  Class StringLike {string : Type} :=
+  Class StringLike {Char : Type} :=
     {
-      Char : Type;
-      String :> _ := string;
+      String :> Type;
       is_char : String -> Char -> bool;
       length : String -> nat;
       take : nat -> String -> String;
       drop : nat -> String -> String;
       bool_eq : String -> String -> bool;
-      beq : relation String := fun x y => bool_eq x y(*;
-      rect : forall (P : String -> Type)
-                    (Pnil : forall str, length str = 0 -> P str)
-                    (Pcons : forall ch str, is_char (take 1 str) ch -> P (drop 1 str) -> P str)
-                    (str : String),
-               P str*)
+      beq : relation String := fun x y => bool_eq x y
     }.
 
   Arguments StringLike : clear implicits.
@@ -44,21 +38,11 @@ Module Export StringLike.
 
   Hint Extern 0 (@StringLike (@String ?string ?H)) => exact H : typeclass_instances.
 
-  Definition str_le `{StringLike string} (s1 s2 : String)
+  Definition str_le `{StringLike Char} (s1 s2 : String)
     := length s1 < length s2 \/ s1 =s s2.
   Infix "≤s" := str_le (at level 70, right associativity).
 
-  (*Definition get `{StringLike string} (n : nat) (str : String) : option Char
-    := rect
-         (fun _ => nat -> option Char)
-         (fun _ _ _ => None)
-         (fun ch _ _ get' n => match n with
-                                 | 0 => Some ch
-                                 | S n' => get' n'
-                               end)
-         str n.*)
-
-  Class StringLikeProperties (String : Type) `{StringLike String} :=
+  Class StringLikeProperties (Char : Type) `{StringLike Char} :=
     {
       singleton_unique : forall s ch ch', s ~= [ ch ] -> s ~= [ ch' ] -> ch = ch';
       length_singleton : forall s ch, s ~= [ ch ] -> length s = 1;
@@ -76,26 +60,12 @@ Module Export StringLike.
       drop_0 : forall str, drop 0 str =s str;
       drop_drop : forall str n m, drop n (drop m str) =s drop (n + m) str;
       drop_take : forall str n m, drop n (take m str) =s take (m - n) (drop n str);
-      take_drop : forall str n m, take n (drop m str) =s drop m (take (n + m) str)(*;
-      rect_computes_nil : forall P Pnil Pcons str pf, rect P Pnil Pcons str = Pnil str pf;
-      rect_computes_cons : forall P Pnil Pcons str ch pf,
-                             rect P Pnil Pcons str = Pcons ch str pf (rect P Pnil Pcons (drop 1 str))*)
+      take_drop : forall str n m, take n (drop m str) =s drop m (take (n + m) str)
     }.
 
   Global Existing Instance Equivalence_Reflexive.
   Global Existing Instance Equivalence_Symmetric.
   Global Existing Instance Equivalence_Transitive.
 
-  Arguments StringLikeProperties String {_}.
-
-  Record StringWithSplitState `{StringLike string} (split_stateT : String -> Type) :=
-    { string_val :> String;
-      state_val : split_stateT string_val }.
-
-  Definition lift_StringWithSplitState `{StringLike string} {A B}
-             (s0 : StringWithSplitState A)
-             (lift : A (string_val s0) -> B (string_val s0))
-  : StringWithSplitState B
-    := {| string_val := string_val s0;
-          state_val := lift (state_val s0) |}.
+  Arguments StringLikeProperties Char {_}.
 End StringLike.

@@ -7,7 +7,7 @@ Set Implicit Arguments.
 Local Open Scope string_like_scope.
 
 Section recursive_descent_parser_list.
-  Context {string} {HSL : StringLike string} {HLSP : StringLikeProperties string} {G : grammar string}.
+  Context {Char} {HSL : StringLike Char} {HLSP : StringLikeProperties Char} {G : grammar Char}.
   Definition rdp_list_nonterminals_listT : Type := list String.string.
   Definition rdp_list_is_valid_nonterminal : rdp_list_nonterminals_listT -> String.string -> bool
     := fun ls nt => if in_dec string_dec nt ls then true else false.

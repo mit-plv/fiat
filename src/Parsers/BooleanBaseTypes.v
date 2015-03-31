@@ -7,18 +7,18 @@ Require Import ADTSynthesis.Common.
 Local Open Scope string_like_scope.
 
 Section general.
-  Context {string} {HSL : StringLike string} {G : grammar string}.
+  Context {Char} {HSL : StringLike Char} {G : grammar Char}.
 
   Class boolean_parser_dataT :=
     { predata :> parser_computational_predataT;
       split_string_for_production
-      : item string -> production string -> String -> list nat }.
+      : item Char -> production Char -> String -> list nat }.
 
   Global Coercion predata : boolean_parser_dataT >-> parser_computational_predataT.
 
   Definition split_list_completeT `{data : @parser_computational_predataT}
              {str0 valid}
-             (it : item string) (its : production string)
+             (it : item Char) (its : production Char)
              (str : String)
              (pf : str ≤s str0)
              (split_list : list nat)

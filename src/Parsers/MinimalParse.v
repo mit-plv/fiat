@@ -9,7 +9,7 @@ Set Implicit Arguments.
 Local Open Scope string_like_scope.
 
 Section cfg.
-  Context {string} {HSL : StringLike string} {G : grammar string}.
+  Context {Char} {HSL : StringLike Char} {G : grammar Char}.
   Context {predata : @parser_computational_predataT}
           {rdata' : @parser_removal_dataT' predata}.
 
@@ -73,7 +73,7 @@ Section cfg.
   Inductive minimal_parse_of
   : forall (str0 : String) (valid : nonterminals_listT)
            (str : String),
-      productions string -> Type :=
+      productions Char -> Type :=
   | MinParseHead : forall str0 valid str pat pats,
                      @minimal_parse_of_production str0 valid str pat
                      -> @minimal_parse_of str0 valid str (pat::pats)
@@ -83,7 +83,7 @@ Section cfg.
   with minimal_parse_of_production
   : forall (str0 : String) (valid : nonterminals_listT)
            (str : String),
-      production string -> Type :=
+      production Char -> Type :=
   | MinParseProductionNil : forall str0 valid str,
                               length str = 0
                               -> @minimal_parse_of_production str0 valid str nil
@@ -95,7 +95,7 @@ Section cfg.
   with minimal_parse_of_item
   : forall (str0 : String) (valid : nonterminals_listT)
            (str : String),
-      item string -> Type :=
+      item Char -> Type :=
   | MinParseTerminal : forall str0 valid str ch,
                          str ~= [ ch ]
                          -> @minimal_parse_of_item str0 valid str (Terminal ch)

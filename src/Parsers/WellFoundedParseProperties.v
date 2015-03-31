@@ -13,7 +13,7 @@ Local Notation "R ==> R'" := (@respectful_hetero _ _ _ _ R R')
 Delimit Scope dep_signature_scope with signatureD.
 
 Section rel.
-  Context {string} {HSL : StringLike string} {HSLP : StringLikeProperties string} {G : grammar string}.
+  Context {Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char} {G : grammar Char}.
 
   Fixpoint size_of_parse_respectful {str str' pats} (H : str =s str') (p : parse_of G str pats)
   : size_of_parse p = size_of_parse (parse_of_respectful H p)
@@ -38,7 +38,7 @@ Section rel.
 
   Global Instance size_of_parse_ProperD {pats}
   : Proper (beq ==> (fun str str' => (fun p p' => forall H, p = parse_of_respectful H p') ==> (fun _ _ => @eq nat)))%signatureD
-           (fun str => @size_of_parse string _ G str pats).
+           (fun str => @size_of_parse Char _ G str pats).
   Proof.
     intros ?? H p p' H'.
     rewrite (H' (symmetry H)).

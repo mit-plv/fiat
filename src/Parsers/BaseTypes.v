@@ -8,18 +8,8 @@ Local Open Scope string_like_scope.
 
 Local Coercion is_true : bool >-> Sortclass.
 
-Inductive any_grammar string `{StringLike string} :=
-| include_item (_ : item string)
-| include_production (_ : production string)
-| include_productions (_ : productions string)
-| include_nonterminal (_ : String.string).
-Global Arguments any_grammar _ {_}.
-Global Coercion include_item : item >-> any_grammar.
-Global Coercion include_production : production >-> any_grammar.
-Global Coercion include_productions : productions >-> any_grammar.
-
 Section recursive_descent_parser.
-  Context {string} {HSL : StringLike string} {G : grammar string}.
+  Context {Char} {HSL : StringLike Char} {G : grammar Char}.
 
   Class parser_computational_predataT :=
     { nonterminals_listT : Type;

@@ -9,7 +9,7 @@ Set Implicit Arguments.
 Local Open Scope list_scope.
 
 Section cfg.
-  Context {string} `{HSL : StringLike string} `{HSLP : @StringLikeProperties string HSL} (G : grammar string).
+  Context {Char} {HSL : StringLike Char} {HSLP : @StringLikeProperties Char HSL} (G : grammar Char).
 
   Definition parse_of_item_respectful'
              (parse_of_respectful : forall {str1 str2} (H : str1 =s str2) {pats} (p : parse_of G str1 pats), parse_of G str2 pats)
@@ -76,25 +76,6 @@ Section cfg.
     { constructor.
       rewrite drop_length; auto with arith. }
   Defined.
-
-  (*Definition ParseProductionApp str1 str2 p1 p2 (pop1 : parse_of_production str1 p1) (pop2 : parse_of_production str2 p2)
-  : parse_of_production (str1 ++ str2) (p1 ++ p2)%list.
-  Proof.
-    induction pop1; simpl.
-    { rewrite LeftId; assumption. }
-    { rewrite Associativity.
-      constructor; assumption. }
-  Defined.
-
-    Definition ParseApp str1 str2 p1 p2 (po1 : parse_of str1 [ p1 ]) (po2 : parse_of str2 [ p2 ])
-    : parse_of (str1 ++ str2) [ (p1 ++ p2)%list ].
-    Proof.
-      inversion_clear po1; inversion_clear po2;
-      try match goal with
-            | [ H : parse_of _ [] |- _ ] => exfalso; revert H; clear; intro H; abstract inversion H
-          end.
-      { constructor. apply ParseProductionApp; assumption. }
-    Defined.*)
 
   Section definitions.
     Context (P : String -> String.string -> Type).
@@ -191,13 +172,5 @@ Section cfg.
       := @expand_forall_parse_of_item' str str' str'' _ (@expand_forall_parse_of str str' str'' f) (f _ _ ((_ : Proper (beq ==> beq ==> impl) str_le) _ _ H _ _ (reflexivity _) (reflexivity _)) (transitivity (symmetry H) H')) it p.
 
     Global Arguments expand_forall_parse_of_item : simpl never.
-
-    (*Section specialized.
-      Context {str str' str''}
-              (f : forall str0' str1', str0' ≤s str -> str0' =s str1' -> forall n, P str0' n -> P' str1' n)
-
-             pats (H : str =s str') (H' : str =s str'') (p : parse_of G str pats)
-             {struct p}
-    : Forall_parse_of P (parse_of_respectful H p) -> Forall_parse_of P' (parse_of_respectful H' p)*)
   End expand.
 End cfg.

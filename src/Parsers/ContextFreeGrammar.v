@@ -9,7 +9,7 @@ Local Open Scope string_like_scope.
 Local Open Scope type_scope.
 
 Section cfg.
-  Context {string_like} `{HSL : StringLike string_like}.
+  Context {Char : Type}.
 
   Section definitions.
     (** An [item] is the basic building block of a context-free
@@ -26,20 +26,6 @@ Section cfg.
     Definition production := list item.
     Definition productions := list production.
 
-    (*Definition production_dec (CharType_eq_dec : forall x y : Char, {x = y} + {x <> y})
-               (x y : production) : {x = y} + {x <> y}.
-    Proof.
-      repeat (apply list_eq_dec; intros);
-      decide equality.
-      apply string_dec.
-    Defined.*)
-
-    (*Definition productions_dec (CharType_eq_dec : forall x y : CharType, {x = y} + {x <> y})
-               (x y : productions) : {x = y} + {x <> y}.
-    Proof.
-      apply list_eq_dec; intros; apply production_dec; assumption.
-    Defined.*)
-
     (** A [grammar] consists of [productions] to match a string
         against, and a function mapping names to [productions]. *)
     Record grammar :=
@@ -53,6 +39,7 @@ Section cfg.
   End definitions.
 
   Section parse.
+    Context {HSL : StringLike Char}.
     Variable G : grammar.
     (** A parse of a string into [productions] is a [production] in
         that list, together with a list of substrings which cover the
@@ -75,11 +62,11 @@ Section cfg.
                                     -> parse_of_item str (NonTerminal nt).
   End parse.
 
-  Definition parse_of_grammar (str : String) (G : grammar) :=
+  Definition parse_of_grammar {HSL : StringLike Char} (str : String) (G : grammar) :=
     parse_of G str G.
 End cfg.
 
-Arguments item _ {_}.
-Arguments production _ {_}.
-Arguments productions _ {_}.
-Arguments grammar _ {_}.
+Arguments item _ : clear implicits.
+Arguments production _ : clear implicits.
+Arguments productions _ : clear implicits.
+Arguments grammar _ : clear implicits.

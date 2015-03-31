@@ -28,7 +28,7 @@ Section on_ab_star.
   Local Notation correct_parse_T
     := ({ parse : string -> bool
                             & forall str,
-                                (parse str -> parse_of_item string_stringlike ab_star_grammar str (NonTerminal _ ab_star_grammar))
+                                (parse str -> parse_of_item Char_stringlike ab_star_grammar str (NonTerminal _ ab_star_grammar))
                                 * (forall p : parse_of string_stringlike ab_star_grammar str (Lookup ab_star_grammar ab_star_grammar),
                                      Forall_parse_of_item
                                        (fun _ nt => is_valid_nonterminal initial_nonterminals_data nt)
@@ -70,7 +70,7 @@ Section on_ab_star'.
   Local Notation correct_parse_T
     := ({ parse : string -> bool
                             & forall str,
-                                (parse str -> parse_of_item string_stringlike ab_star_grammar' str (NonTerminal _ ab_star_grammar'))
+                                (parse str -> parse_of_item Char_stringlike ab_star_grammar' str (NonTerminal _ ab_star_grammar'))
                                 * (forall p : parse_of string_stringlike ab_star_grammar' str (Lookup ab_star_grammar' ab_star_grammar'),
                                      Forall_parse_of_item
                                        (fun _ nt => is_valid_nonterminal initial_nonterminals_data nt)

@@ -11,32 +11,14 @@ Require Import ADTSynthesis.Common.Le.
 Set Implicit Arguments.
 
 Section String.
-  Context {string} `{StringLikeProperties string}.
+  Context {Char} `{StringLikeProperties Char}.
 
-  (*Definition stringlike_dec (s1 s2 : String)
-  : { s1 = s2 } + { s1 <> s2 }.
-  Proof.
-    case_eq (bool_eq s1 s2); intro H; [ left | right ].
-    { apply bool_eq_correct; exact H. }
-    { intro H'; apply bool_eq_correct in H'.
-      generalize dependent (s1 =s s2)%string_like; clear; intros.
-      abstract congruence. }
-  Defined.
-
-  Lemma stringlike_uip {s1 s2 : String}
-        (p q : s1 = s2)
-  : p = q.
-  Proof.
-    apply dec_eq_uip.
-    apply stringlike_dec.
-  Qed.*)
-
-  Definition bool_eq_refl `{StringLikeProperties string} {x : String} : x =s x.
+  Definition bool_eq_refl {x : String} : x =s x.
   Proof.
     reflexivity.
   Defined.
 
-  Definition bool_eq_sym `{StringLikeProperties string} {x y : String} : ((x =s y) = (y =s x) :> bool)%string_like.
+  Definition bool_eq_sym {x y : String} : ((x =s y) = (y =s x) :> bool)%string_like.
   Proof.
     case_eq (y =s x)%string_like; intro H';
     [
@@ -47,7 +29,7 @@ Section String.
     { reflexivity. }
   Defined.
 
-  Definition bool_eq_trans `{StringLikeProperties string} {x y z : String} : (x =s y) -> (y =s z) -> (x =s z).
+  Definition bool_eq_trans {x y z : String} : (x =s y) -> (y =s z) -> (x =s z).
   Proof.
     apply (transitivity (R := (fun x y => x =s y))).
   Defined.
@@ -184,42 +166,6 @@ Section String.
     Qed.
   End strle_choose.
 
-  (*Lemma NonEmpty_length
-        (a : String)
-        (H : a <> Empty _)
-  : length a > 0.
-  Proof.
-    case_eq (length a); intro H'; try omega.
-    apply Empty_length in H'; subst.
-    destruct (H eq_refl).
-  Qed.
-
-  Local Ltac lt_nonempty_t :=
-    repeat match goal with
-             | [ H : _ ≤s _ |- _ ] => destruct H
-             | [ H : _ |- _ ] => progress rewrite ?plus_O_n, <- ?length_correct in H
-             | _ => progress rewrite ?plus_O_n, <- ?length_correct
-             | _ => assumption
-             | _ => intro
-             | _ => progress subst
-             | _ => omega
-             | [ H : _ <> Empty _ |- _ ] => apply NonEmpty_length in H
-           end.
-
-  Lemma strle_to_lt_nonempty_r
-        {a b c : String}
-        (H : a <> Empty _)
-        (H' : a ++ b ≤s c)
-  : length b < length c.
-  Proof. lt_nonempty_t. Qed.
-
-  Lemma strle_to_lt_nonempty_l
-        {a b c : String}
-        (H : b <> Empty _)
-        (H' : a ++ b ≤s c)
-  : length a < length c.
-  Proof. lt_nonempty_t. Qed.*)
-
   Lemma str_seq_lt_false
         {a b : String}
         (H0' : length a < length b)
@@ -229,166 +175,4 @@ Section String.
     rewrite H' in H0'.
     eapply lt_irrefl; eassumption.
   Qed.
-
-  (*Lemma neq_some_none_state_val {P}
-        {s1 s2 : StringWithSplitState String (fun x => option (P x))}
-        (H : s1 = s2)
-  : match state_val s1, state_val s2 with
-      | None, Some _ => False
-      | Some _, None => False
-      | _, _ => True
-    end.
-  Proof.
-    destruct H.
-    destruct (state_val s1); exact I.
-  Qed.
-
-  Definition string_val_path {CharType String A}
-             {s0 s1 : @StringWithSplitState CharType String A}
-             (H : s0 = s1)
-  : string_val s0 = string_val s1
-    := f_equal (@string_val _ _ _) H.
-
-  Definition state_val_path {A}
-             {s0 s1 : @StringWithSplitState CharType String A}
-             (H : s0 = s1)
-  : eq_rect _ _ (state_val s0) _ (string_val_path H) = state_val s1.
-  Proof.
-    destruct H; reflexivity.
-  Defined.
-
-  (** This proof would be so much easier to read if we were using HoTT conventions, tactics, and lemmas. *)
-  Lemma lift_StringWithSplitState_injective {A B}
-        (s0 s1 : @StringWithSplitState CharType String A)
-        (lift : forall s, A s -> B s)
-        (lift_injective : forall s a1 a2, lift s a1 = lift s a2 -> a1 = a2)
-        (H : lift_StringWithSplitState s0 (lift _) = lift_StringWithSplitState s1 (lift _))
-  : s0 = s1.
-  Proof.
-    pose proof (state_val_path H) as H'.
-    generalize dependent (string_val_path H); clear H.
-    destruct s0, s1; simpl in *.
-    intro H'.
-    destruct H'; simpl.
-    intro H'.
-    apply lift_injective in H'.
-    destruct H'.
-    reflexivity.
-  Qed.
-
-  Lemma lift_StringWithSplitState_pair_injective {A A' B B'}
-        (s0 s1 : @StringWithSplitState CharType String A * @StringWithSplitState CharType String A')
-        (lift : forall s, A s -> B s)
-        (lift' : forall s, A' s -> B' s)
-        (lift_injective : forall s a1 a2, lift s a1 = lift s a2 -> a1 = a2)
-        (lift'_injective : forall s a1 a2, lift' s a1 = lift' s a2 -> a1 = a2)
-        (H : (lift_StringWithSplitState (fst s0) (lift _),
-              lift_StringWithSplitState (snd s0) (lift' _))
-             =
-             (lift_StringWithSplitState (fst s1) (lift _),
-              lift_StringWithSplitState (snd s1) (lift' _)))
-  : s0 = s1.
-  Proof.
-    pose proof (f_equal (@fst _ _) H) as H0.
-    pose proof (f_equal (@snd _ _) H) as H1.
-    clear H; simpl in *.
-    apply lift_StringWithSplitState_injective in H0; [ | assumption.. ].
-    apply lift_StringWithSplitState_injective in H1; [ | assumption.. ].
-    apply injective_projections; assumption.
-  Qed.
-
-  Lemma in_lift_pair_StringWithSplitState_iff_injective {A A' B B'}
-        {s0s1 : @StringWithSplitState CharType String A * @StringWithSplitState CharType String A'}
-        {lift : forall s, A s -> B s}
-        {lift' : forall s, A' s -> B' s}
-        {lift_injective : forall s a1 a2, lift s a1 = lift s a2 -> a1 = a2}
-        {lift'_injective : forall s a1 a2, lift' s a1 = lift' s a2 -> a1 = a2}
-        {ls : list (StringWithSplitState String A * StringWithSplitState String A')}
-        (H : List.In (lift_StringWithSplitState (fst s0s1) (lift _),
-                      lift_StringWithSplitState (snd s0s1) (lift' _))
-                     (List.map (fun s0s1 =>
-                                  (lift_StringWithSplitState (fst s0s1) (lift _),
-                                   lift_StringWithSplitState (snd s0s1) (lift' _)))
-                               ls))
-  : List.In s0s1 ls.
-  Proof.
-    eapply in_map_iff_injective; [ | exact H ].
-    simpl; intro.
-    apply lift_StringWithSplitState_pair_injective; assumption.
-  Qed.*)
-
-  (*Lemma SplitAt0 (s : String) : SplitAt 0 s = (Empty _, s).
-  Proof.
-    rewrite <- SplitAt_concat_correct.
-    rewrite length_Empty.
-    rewrite LeftId.
-    reflexivity.
-  Qed.
-
-  Lemma SplitAtPastEnd_length_fst {n} {s : String} (H : length s <= n) : length (fst (SplitAt n s)) = length s.
-  Proof.
-    rewrite SplitAtlength_correct.
-    auto with arith.
-  Qed.
-
-
-  Lemma SplitAtPastEnd' {n} (s : String) (H : length s <= n) : snd (SplitAt n s) = Empty _.
-  Proof.
-    apply Empty_length.
-    pose proof (f_equal (fun l => l + length (snd (SplitAt n s))) (SplitAtPastEnd_length_fst H)) as H0.
-    simpl in *.
-    rewrite length_correct in H0.
-    rewrite SplitAt_correct in H0.
-    omega.
-  Qed.
-
-  Lemma SplitAt_gives_Empty {n} {s : String}
-  : snd (SplitAt n s) = Empty _ -> fst (SplitAt n s) = s.
-  Proof.
-    intro H.
-    pose proof (SplitAt_correct String n s) as H'.
-    rewrite H in H'; simpl in *.
-    rewrite RightId in H'.
-    assumption.
-  Qed.
-
-  Lemma SplitAtPastEnd {n} {s : String} (H : length s <= n) : SplitAt n s = (s, Empty _).
-  Proof.
-    apply injective_projections; simpl;
-    [ apply SplitAt_gives_Empty | ];
-    apply SplitAtPastEnd'; assumption.
-  Qed.
-
-  Lemma SplitAtEnd {s : String} : SplitAt (length s) s = (s, Empty _).
-  Proof.
-    apply SplitAtPastEnd.
-    reflexivity.
-  Qed.
-
-  Lemma SplitAt_min_length {n} {s : String} : SplitAt (min (length s) n) s = SplitAt n s.
-  Proof.
-    apply Min.min_case_strong; intro H.
-    { rewrite SplitAtEnd, (SplitAtPastEnd H); reflexivity. }
-    { reflexivity. }
-  Qed.
-
-  Lemma SplitAtS {n} ch (s : String)
-  : SplitAt (S n) ([[ ch ]] ++ s) = ([[ ch ]] ++ fst (SplitAt n s), snd (SplitAt n s)).
-  Proof.
-    rewrite <- SplitAt_concat_correct.
-    rewrite <- length_correct.
-    rewrite Singleton_length; simpl.
-    rewrite SplitAtlength_correct.
-    rewrite Associativity.
-    rewrite SplitAt_correct.
-    replace (S (min (length s) n)) with (min (length ([[ ch ]] ++ s)) (S n)).
-    { rewrite SplitAt_min_length; reflexivity. }
-    { rewrite <- length_correct, Singleton_length; reflexivity. }
-  Qed.
-
-  Lemma SplitAtEmpty {n} : SplitAt n (Empty String) = (Empty _, Empty _).
-  Proof.
-    rewrite SplitAtPastEnd; trivial.
-    rewrite length_Empty; auto with arith.
-  Qed.*)
 End String.

@@ -3,7 +3,7 @@ Require Import Coq.Strings.String Coq.Lists.List Coq.Program.Program Coq.Program
 Require Import ADTSynthesis.Parsers.ContextFreeGrammar.
 
 Section rel.
-  Context {string} {HSL : StringLike string} {G : grammar string}.
+  Context {Char} {HSL : StringLike Char} {G : grammar Char}.
 
   Section size.
     Definition size_of_parse_item'

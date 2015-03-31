@@ -10,15 +10,15 @@ Set Implicit Arguments.
 Local Open Scope string_like_scope.
 
 Section recursive_descent_parser.
-  Context {string} {HSL : StringLike string} {HSLP : StringLikeProperties string} {G : grammar string}.
-  Context {data : @boolean_parser_dataT string _}.
+  Context {Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char} {G : grammar Char}.
+  Context {data : @boolean_parser_dataT Char _}.
 
   Section bool.
     Section parts.
       Definition parse_item
                  (str_matches_nonterminal : String.string -> bool)
                  (str : String)
-                 (it : item string)
+                 (it : item Char)
       : bool
         := match it with
              | Terminal ch => str ~= [ ch ]
@@ -38,7 +38,7 @@ Section recursive_descent_parser.
         Fixpoint parse_production
                  (str : String)
                  (pf : str ≤s str0)
-                 (prod : production string)
+                 (prod : production Char)
         : bool.
         Proof.
           refine
@@ -75,7 +75,7 @@ Section recursive_descent_parser.
         Definition parse_productions
                    (str : String)
                    (pf : str ≤s str0)
-                   (prods : productions string)
+                   (prods : productions Char)
         : bool
           := fold_right orb
                         false

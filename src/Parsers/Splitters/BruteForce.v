@@ -10,7 +10,7 @@ Set Implicit Arguments.
 Local Open Scope string_like_scope.
 
 Section brute_force_splitter.
-  Context {string} {HSL : StringLike string} {HSLP : StringLikeProperties string}.
+  Context {Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}.
 
   Fixpoint up_to (n : nat) : list nat :=
     match n with
@@ -32,10 +32,10 @@ Section brute_force_splitter.
   Definition make_all_single_splits (str : String) : list nat
     := (length str)::up_to (length str).
 
-  Context (G : grammar string).
+  Context (G : grammar Char).
 
-  Global Instance brute_force_data : @boolean_parser_dataT string _
-    := { predata := @rdp_list_predata _ _ G;
+  Global Instance brute_force_data : @boolean_parser_dataT Char _
+    := { predata := @rdp_list_predata _ G;
          split_string_for_production it its := make_all_single_splits }.
 
   Global Instance brute_force_cdata : @boolean_parser_completeness_dataT' _ _ G brute_force_data

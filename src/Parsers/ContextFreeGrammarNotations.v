@@ -1,8 +1,8 @@
 Require Import Coq.Strings.String Coq.Strings.Ascii Coq.Lists.List.
 Require Import ADTSynthesis.Parsers.ContextFreeGrammar.
-Require Import ADTSynthesis.Parsers.StringLike.Examples.
+Require Import ADTSynthesis.Parsers.StringLike.String.
 
-Fixpoint production_of_string (s : string) : production string
+Fixpoint production_of_string (s : string) : production Ascii.ascii
   := match s with
        | EmptyString => nil
        | String.String ch s' => (Terminal ch)::production_of_string s'
@@ -23,10 +23,10 @@ Fixpoint list_to_grammar {T} `{StringLike T} (default : productions T) (ls : lis
         Lookup := list_to_productions default ls;
         Valid_nonterminals := map fst ls |}.
 
-Definition item_ascii := item string.
+Definition item_ascii := item Ascii.ascii.
 Coercion item_of_char (ch : Ascii.ascii) : item_ascii := Terminal ch.
 Coercion item_of_string (nt : string) : item_ascii := NonTerminal nt.
-Definition item_ascii_cons : item_ascii -> production string -> production string := cons.
+Definition item_ascii_cons : item_ascii -> production Ascii.ascii -> production Ascii.ascii := cons.
 Global Arguments item_ascii_cons / .
 Global Arguments item_of_char / .
 Global Arguments item_of_string / .

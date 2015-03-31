@@ -5,9 +5,9 @@ Require Import ADTSynthesis.Parsers.ContextFreeGrammar.
 Set Implicit Arguments.
 
 Section generic.
-  Context {string} {HSL : StringLike string}.
+  Context {Char} {HSL : StringLike Char}.
 
-  Definition trivial_grammar : grammar string :=
+  Definition trivial_grammar : grammar Char :=
     {| Start_symbol := "";
        Lookup := fun _ => nil::nil;
        Valid_nonterminals := ""%string::nil |}.

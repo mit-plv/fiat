@@ -7,13 +7,13 @@ Set Implicit Arguments.
 Section ab_star.
   Local Open Scope string_scope.
 
-  Definition ab_star_grammar : grammar string :=
+  Definition ab_star_grammar : grammar Ascii.ascii :=
     {| Start_symbol := "(ab)*";
        Lookup := [[[ ("(ab)*" ::== << nil
                                      | $< "a"%char $ "b"%char $ "(ab)*" >$ >> ) ]]]%prods_assignment;
        Valid_nonterminals := ("(ab)*"::nil)%string |}.
 
-  Definition ab_star_grammar' : grammar string :=
+  Definition ab_star_grammar' : grammar Ascii.ascii :=
     {| Start_symbol := "(ab)*";
        Lookup := fun _ => nil::(Terminal "a"%char::Terminal "b"%char::NonTerminal "(ab)*"%string::nil)::nil;
        Valid_nonterminals := ("(ab)*"::nil)%string |}.

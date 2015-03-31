@@ -1,239 +1,153 @@
 (** * Definitions of some specific string-like types *)
-Require Import Coq.Strings.String.
+Require Import Coq.Strings.String Coq.Arith.Lt.
 Require Import Coq.Numbers.Natural.Peano.NPeano.
-Require Import Parsers.StringLike.Core Parsers.StringLike.Properties.
-Require Import Common Common.Equality.
+Require Import ADTSynthesis.Parsers.StringLike.Core.
+Require Import ADTSynthesis.Common ADTSynthesis.Common.Equality.
 
 Set Implicit Arguments.
-Local Open Scope bool_scope.
-
-Local Infix "<=?" := Compare_dec.le_dec : bool_scope.
-Local Infix "=?" := Nat.eq_dec (at level 70, right associativity) : bool_scope.
-Local Infix "<?" := Compare_dec.lt_dec : bool_scope.
-Local Infix ">?" := Compare_dec.gt_dec (at level 70, right associativity) : bool_scope.
-Local Infix ">=?" := Compare_dec.ge_dec (at level 70, right associativity) : bool_scope.
-
-Section indexed.
-  Context {CharType} {String0 : string_like CharType} (base : String0).
-
-  Definition is_valid_index start len : bool
-    := (start <=? len) && (len <? Length base) && ((start =? 0) || (start <? len)).
-
-  Local Notation String1
-    := ({ start_length : nat * nat
-        | if is_valid_index (fst start_length) (snd start_length) then True else False })
-         (only parsing).
-
-  Definition singleton (x : CharType) : String1.
-  Proof.
-    exists (0, 1); simpl.
-    abstract
-      (
-        case_eq ([[ x ]] =s Empty String0)%string_like; try constructor; [];
-        intro H; exfalso;
-        apply bool_eq_correct in H;
-        apply Not_Singleton_Empty in H; trivial
-      ).
-  Defined.
-
-  Global Arguments singleton / .
-
-  Definition empty : String1.
-  Proof.
-    exists (0, 0, Empty String0); simpl.
-    abstract (
-        rewrite (proj2 (bool_eq_correct String0 (Empty _) (Empty _)) eq_refl);
-        constructor
-      ).
-  Defined.
-
-  Global Arguments empty / .
-
-  Definition indexed_dec_eq' (s1 s2 : String1)
-  : {proj1_sig s1 = proj1_sig s2} + {proj1_sig s1 <> proj1_sig s2}.
-  Proof.
-    revert s1 s2.
-    repeat decide equality.
-    match goal with
-      | [ |- {?a = ?b} + {_} ]
-        => case_eq (bool_eq a b); intro H; [ left | right ]
-    end.
-    { apply bool_eq_correct; assumption. }
-    { intro H'; apply bool_eq_correct in H'.
-      pose proof (eq_trans (eq_sym H') H) as H''.
-      clear -H''.
-      abstract discriminate. }
-  Defined.
-
-  Definition indexed_dec_eq (s1 s2 : String1)
-  : {s1 = s2} + {s1 <> s2}.
-  Proof.
-    destruct (indexed_dec_eq' s1 s2) as [|n]; [ left | right ].
-    { abstract (
-          repeat match goal with
-                   | [ s : sig _ |- _ ] => destruct s
-                   | _ => progress simpl in *
-                   | _ => progress subst
-                   | _ => apply f_equal
-                   | [ H : if ?b then _ else _ |- _ ] => destruct b
-                   | [ H : True |- _ ] => destruct H
-                   | [ H : False |- _ ] => destruct H
-                   | _ => reflexivity
-                 end
-        ). }
-    { intro H.
-      apply (f_equal (@proj1_sig _ _)) in H.
-      exact (n H). }
-  Defined.
-
-  Definition reduce (s : String1) : String1.
-  Proof.
-    SearchAbout ({_ <= _} + {_}).
-    exists (0,
-            snd (fst (proj1_sig s)),
-            if Compare_dec.le_dec (Length (snd (proj1_sig s))) (fst (fst (proj1_sig s)))
-            then
-            fst (SplitAt
-                   String0 (snd (fst (proj1_sig s)))
-                   (snd (SplitAt String0 (fst (fst (proj1_sig s))) (snd (proj1_sig s)))))).
-    simpl.
-    repeat match goal with
-             | [ H : _ |- _ ] => rewrite Length_Empty in H
-             | [ H : _ |- _ ] => rewrite SplitAtLength_correct in H
-             | [ H : _ |- _ ] => rewrite Bool.andb_false_r in H
-             | [ H : _ |- _ ] => rewrite Bool.andb_true_r in H
-             | _ => progress simpl in *
-             | [ H : sig _ |- _ ] => destruct H
-             | [ H : (_ * _)%type |- _ ] => destruct H
-             | _ => progress subst
-             | [ |- True ] => exact I
-             | _ => congruence
-             | [ |- context[(?s =s Empty String0)%string_like] ]
-               => let H := fresh in
-                  case_eq ((s =s Empty String0)%string_like);
-                    intro H;
-                    [ apply bool_eq_correct, (f_equal Length) in H | ]
-             | [ |- context[Nat.eq_dec ?x ?y] ]
-               => destruct (Nat.eq_dec x y)
-             | [ H : min ?x ?y = _ |- _ ]
-               => let H' := fresh in
-                  destruct (Nat.min_dec x y) as [H'|H'];
-                    rewrite H' in H;
-                    clear H'
-             | [ H' : context[(?s =s Empty String0)%string_like] |- _ ]
-               => revert H';
-                 let H := fresh in
-                  case_eq ((s =s Empty String0)%string_like);
-                    intros H H';
-                    [ apply bool_eq_correct, (f_equal Length) in H | ]
-           end.
-    Focus 2.
-    lazymatch goal with
-             | [ H : min ?x ?y |- _ ]
-               => let H' := fresh in
-                  destruct (Nat.min_dec x y) as [H'|H'];
-                    rewrite H' in H
-end.
-    SearchAbout (min _ _ = _)%bool.
-
-  Definition indexed_stringlike
-  : string_like CharType.
-  Proof.
-    refine {| String := String1;
-              Singleton x := singleton x;
-              Empty := empty;
-              Length s := snd (fst (proj1_sig s));
-              bool_eq s1 s2 := if indexed_dec_eq s1 s2 then true else false;
-              SplitAt n s := (if Nat.eq_dec n 0
-                              then (empty, s)
-                              else if Compare_dec.le_dec (snd (fst (proj1_sig s))) n
-                                   then (s, empty)
-                                   else (exist _ (fst (fst (proj1_sig s)), n, snd (proj1_sig s)) _,
-                                         exist _ (fst (fst (proj1_sig s)) + n, snd (fst (proj1_sig s)) - n, snd (proj1_sig s)) _));
-              Concat s1 s2 := if (snd (proj1_sig s1) =s Empty _)%string_like
-                              then s2
-                              else if (snd (proj1_sig s2) =s Empty _)%string_like
-                                   then s1
-                                   else if (((snd (proj1_sig s1) =s snd (proj1_sig s2))%string_like)
-                                              && (if Nat.eq_dec (fst (fst (proj1_sig s1)) + snd (fst (proj1_sig s1))) (fst (fst (proj1_sig s2))) then true else false))%bool
-                                        then exist
-                                               _
-                                               (fst (fst (proj1_sig s1)),
-                                                snd (fst (proj1_sig s1)) + snd (fst (proj1_sig s2)),
-                                                snd (proj1_sig s1))
-                                               _
-                                        else
-                                          exist
-                                            _
-                                            (0,
-                                             snd (fst (proj1_sig s1)) + snd (fst (proj1_sig s2)),
-                                             Concat (fst (SplitAt String0 (fst (fst (proj1_sig s1)) + snd (fst (proj1_sig s1))) (snd (proj1_sig s1))))
-                                                    (snd (SplitAt String0 (fst (fst (proj1_sig s2))) (snd (proj1_sig s2)))))
-                                            _ |}.
-    { repeat match goal with
-               | _ => intro
-               | [ |- context[indexed_dec_eq ?x ?y] ] => destruct (indexed_dec_eq x y)
-               | _ => progress subst
-               | _ => split
-               | _ => discriminate
-               | _ => congruence
-             end. }
-    {
-      |}.
-
-|}.
-|}.
-            Concat := append;
-            Length := String.length;
-            bool_eq x y := if string_dec x y then true else false;
-            SplitAt n s := (substring 0 n s, substring n (S (String.length s)) s)
-         |};
-  solve [ abstract (let x := fresh "x" in
-                    let IHx := fresh "IHx" in
-                    intro x; induction x as [|? ? IHx]; try reflexivity; simpl;
-                    intros;
-                    f_equal;
-                    auto)
-        | intros; split; congruence
-        | intros; edestruct string_dec; split; congruence
-        | abstract (repeat intro; exfalso; congruence)
-        | abstract (simpl; intros; rewrite substring_concat', substring_correct3; auto with arith)
-        | abstract (
-              simpl;
-              intros n s; revert n;
-              induction s; intro n; destruct n; simpl; try reflexivity;
-              rewrite IHs; reflexivity
-            ) ].
-Defined.
-
-
 
 Local Hint Extern 0 => match goal with H : S _ = 0 |- _ => destruct (Nat.neq_succ_0 _ H) end.
 
-Definition string_stringlike : string_like Ascii.ascii.
-Proof.
-  refine {| String := string;
-            Singleton := fun x => String.String x EmptyString;
-            Empty := EmptyString;
-            Concat := append;
-            Length := String.length;
-            bool_eq x y := if string_dec x y then true else false;
-            SplitAt n s := (substring 0 n s, substring n (S (String.length s)) s)
-         |};
-  solve [ abstract (let x := fresh "x" in
-                    let IHx := fresh "IHx" in
-                    intro x; induction x as [|? ? IHx]; try reflexivity; simpl;
-                    intros;
-                    f_equal;
-                    auto)
-        | intros; split; congruence
-        | intros; edestruct string_dec; split; congruence
-        | abstract (repeat intro; exfalso; congruence)
-        | abstract (simpl; intros; rewrite substring_concat', substring_correct3; auto with arith)
-        | abstract (
-              simpl;
-              intros n s; revert n;
-              induction s; intro n; destruct n; simpl; try reflexivity;
-              rewrite IHs; reflexivity
-            ) ].
-Defined.
+Section indexed.
+  Variable base : string.
+
+  Definition index_to_string (s : nat * nat) : string
+    := substring (fst s) (snd s) base.
+
+  Definition indexed_string_stringlike : StringLike Ascii.ascii
+    := {| String := nat * nat;
+          is_char s ch := ((Nat.eq_dec (min (String.length base - fst s) (snd s)) 1) && (option_dec Ascii.ascii_dec (String.get (fst s) base) (Some ch)))%bool;
+          length s := min (String.length base - fst s) (snd s);
+          take n s := (fst s, min (snd s) n);
+          drop n s := (fst s + n, snd s - n);
+          bool_eq s1 s2 := string_dec (index_to_string s1) (index_to_string s2) |}.
+
+  Local Existing Instance indexed_string_stringlike.
+
+  Local Arguments string_dec : simpl never.
+  Local Arguments option_dec : simpl never.
+
+  Global Instance indexed_string_stringlike_properties : StringLikeProperties Ascii.ascii.
+  Proof.
+    Start Profiling.
+    Timeout 10 split;
+    repeat match goal with
+             | _ => intro
+             | [ |- _ = _ ] => reflexivity
+             | [ |- is_true true ] => reflexivity
+             | [ |- is_true false ] => exfalso
+             | [ |- true = false ] => exfalso
+             | [ |- false = true ] => exfalso
+             | [ H : is_true (_ && _) |- _ ] => apply Bool.andb_true_iff in H
+             | [ H : and _ _ |- _ ] => destruct H
+             | [ H : prod _ _ |- _ ] => destruct H
+             | _ => progress simpl in *
+             | _ => progress subst
+             | _ => progress unfold index_to_string in *
+             | [ H : context[string_dec ?x ?y] |- _ ] => destruct (string_dec x y)
+             | [ H : String.String _ _ = String.String _ _ |- _ ] => inversion H; clear H
+             | [ H : is_true false |- _ ] => exfalso; clear -H; hnf in H; discriminate
+             | _ => progress unfold beq, option_rect in *
+             | _ => rewrite string_dec_refl
+             | [ |- Equivalence _ ] => split
+             | [ H : ?x = Some _, H' : context[?x] |- _ ] => rewrite H in H'
+             | [ H : ?x = None, H' : context[?x] |- _ ] => rewrite H in H'
+             | [ H : String.length ?s = 0 |- _ ] => atomic s; destruct s
+             | [ H : context[Nat.eq_dec ?x ?y] |- _ ] => destruct (Nat.eq_dec x y)
+             | [ H : context[option_dec ?H ?x ?y] |- _ ] => destruct (option_dec H x y)
+             | [ |- context[Nat.eq_dec ?x ?y] ] => destruct (Nat.eq_dec x y)
+             | [ |- context[option_dec ?H ?x ?y] ] => destruct (option_dec H x y)
+             | [ H : ?x = ?x |- _ ] => clear H
+             | _ => exfalso; congruence
+             | _ => rewrite substring_length
+             | _ => rewrite <- plus_n_O
+             | _ => rewrite <- Minus.minus_n_O
+             | _ => rewrite Min.min_l by omega
+             | _ => rewrite Min.min_r by omega
+             | _ => rewrite substring_correct3 by assumption
+             | _ => rewrite substring_substring
+             | _ => rewrite substring_correct3'
+             | _ => rewrite substring1_get
+             | [ H : _ |- _ ] => rewrite substring1_get in H
+             | [ H : _ |- _ ] => rewrite substring_correct0 in H
+             | _ => apply substring_min; assumption
+             | _ => rewrite Nat.sub_min_distr_l
+             | _ => rewrite Nat.add_sub
+             | _ => rewrite Min.min_0_r
+             | _ => rewrite Min.min_0_l
+             | _ => rewrite <- Min.min_assoc
+             | [ H : appcontext[match ?e with None => _ | _ => _ end] |- _ ]
+               => revert H; case_eq e
+             | [ |- 0 = S _ ] => exfalso
+             | [ |- S _ = 0 ] => exfalso
+             | [ |- S _ = S _ ] => apply f_equal
+             | [ |- ?n = 0 ] => is_var n; destruct n
+             | [ |- ?n = 1 ] => is_var n; destruct n
+             | [ |- min _ ?x = 1 ] => is_var x; destruct x
+             | [ |- min _ (S ?x) = 1 ] => is_var x; destruct x
+             | [ H : min _ 0 = 1 |- _ ] => exfalso; clear -H; rewrite min_r in H by omega
+             | [ H : min _ ?x = 1 |- _ ] => is_var x; destruct x
+             | [ H : min _ (S ?x) = 1 |- _ ] => is_var x; destruct x
+             | [ H : min ?x (S (S ?y)) = 1 |- _ ]
+               => revert H; apply (Min.min_case x (S (S y)))
+             | [ H : String.length ?str - ?x = ?y' |- context[substring ?x ?y ?str] ]
+               => rewrite (@substring_correct4 str x y y') by omega
+             | [ H : String.length ?str - ?x = ?y', H' : context[substring ?x ?y ?str] |- _ ]
+               => rewrite (@substring_correct4 str x y y') in H' by omega
+             | [ |- context[min ?m (?m - ?n)] ]
+               => replace (min m (m - n)) with (m - max 0 n)
+                 by (rewrite <- Nat.sub_min_distr_l; apply f_equal2; omega)
+             | [ |- context[min (?m + ?n) ?m] ]
+               => replace (min (m + n) m) with (m + min n 0)
+                 by (rewrite <- Min.plus_min_distr_l; apply f_equal2; omega)
+             | _ => rewrite Min.min_comm; reflexivity
+             | [ |- context[string_dec ?x ?y] ] => destruct (string_dec x y)
+             | [ H : _ <> _ |- False ] => apply H; clear H
+             | _ => apply Max.max_case_strong; intro; apply substring_correct4; omega
+             | _ => congruence
+           end.
+Focus 10.
+match goal with
+  | |- context[
+pose (@substring_substring base y (n0 - y) n n0).
+.
+Show Profile.
+Focus 10.
+
+
+    match goal with
+    end.
+    2:omega.
+    2:omega.
+    match goal with
+
+end.
+    SearchAbout min.
+
+    do 4 match goal with
+             | _ => congruence
+end.
+
+Focus 2.
+
+repeat match goal with
+    end.
+    Focus 2.
+    simpl in *.
+    rewrite substring1_get in e.
+    SearchAbout option.
+
+
+
+
+    Focus 6.
+
+    SearchAbout substring_length.
+
+    Focus 2.
+
+
+    SearchAbout get substring.
+    congruence.
+    SearchAbout (_ && _)%bool true.
+  Qed.

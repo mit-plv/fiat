@@ -14,7 +14,7 @@ Local Open Scope string_like_scope.
 Local Notation "f ∘ g" := (fun x => f (g x)).
 
 Section cfg.
-  Context {string} {HSL : StringLike string} {HSLP : StringLikeProperties string} {G : grammar string}.
+  Context {Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char} {G : grammar Char}.
   Context `{predata : parser_computational_predataT}
           `{rdata' : @parser_removal_dataT' predata}.
   Context (nonterminals_listT_R_respectful : forall x y,
@@ -450,7 +450,7 @@ Section cfg.
     Section wf_parts.
       Let of_parse_item_T' h
           {str0 str : String} (pf : str ≤s str0)
-          (valid : nonterminals_listT) {it : item string}
+          (valid : nonterminals_listT) {it : item Char}
           (p : parse_of_item G str it)
         := forall (p_small : size_of_parse_item p < h),
              sub_nonterminals_listT valid initial_nonterminals_data
@@ -465,7 +465,7 @@ Section cfg.
 
       Let of_parse_production_T' h
           {str0 str : String} (pf : str ≤s str0)
-          (valid : nonterminals_listT) {pat : production string}
+          (valid : nonterminals_listT) {pat : production Char}
           (p : parse_of_production G str pat)
         := forall (p_small : size_of_parse_production p < h),
              sub_nonterminals_listT valid initial_nonterminals_data
@@ -480,7 +480,7 @@ Section cfg.
 
       Let of_parse_T' h
           {str0 str : String} (pf : str ≤s str0)
-          (valid : nonterminals_listT) {pats : productions string}
+          (valid : nonterminals_listT) {pats : productions Char}
           (p : parse_of G str pats)
         := forall (p_small : size_of_parse p < h),
              sub_nonterminals_listT valid initial_nonterminals_data

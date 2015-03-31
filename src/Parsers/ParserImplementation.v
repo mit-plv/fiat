@@ -14,48 +14,22 @@ Set Implicit Arguments.
 Local Open Scope list_scope.
 
 Section implementation.
-  Context {CharType} {String : string_like CharType} {G : grammar CharType}.
-  Context (splitter : Splitter String G).
+  Context {Char} {G : grammar Char}.
+  Context (splitter : Splitter G).
 
-  Local Notation split_stateT0
-    := (fun str : String => { st : split_rep splitter | split_invariant splitter str st })
-         (only parsing).
-
-  Definition SplitAtT (n : nat) (str : StringWithSplitState String split_stateT0)
-  : (StringWithSplitState String split_stateT0 * StringWithSplitState String split_stateT0).
-  Proof.
-    refine (let s1s2 := SplitAt n str in
-            ({| string_val := fst s1s2;
-                state_val := exist _ (split_take splitter n (proj1_sig (state_val str))) _ |},
-             {| string_val := snd s1s2;
-                state_val := exist _ (split_drop splitter n (proj1_sig (state_val str))) _ |})).
-    { apply take_respectful, proj2_sig. }
-    { apply drop_respectful, proj2_sig. }
-  Defined.
-
-  Local Instance parser_data : @boolean_parser_dataT _ String :=
+  Local Instance parser_data : @boolean_parser_dataT Char _ :=
     { predata := rdp_list_predata (G := G);
-      split_stateT := split_stateT0;
       split_string_for_production it its str
-      := List.map
-           (fun n => SplitAtT n str)
-           (splits_for splitter (proj1_sig (state_val str)) it its) }.
-  Proof.
-    simpl.
-    intros.
-    apply Forall_map; unfold compose; simpl.
-    apply List.Forall_forall; intros;
-    apply bool_eq_correct, SplitAt_correct.
-  Defined.
+      := splits_for splitter str it its }.
 
-  Local Instance parser_completeness_data : @boolean_parser_completeness_dataT' _ String G parser_data
+  Local Instance parser_completeness_data : @boolean_parser_completeness_dataT' Char _ G parser_data
     := { split_string_for_production_complete str0 valid str pf nt Hvalid := _ }.
   Proof.
     unfold is_valid_nonterminal in Hvalid; simpl in Hvalid.
     unfold rdp_list_is_valid_nonterminal in Hvalid; simpl in Hvalid.
     hnf in Hvalid.
     edestruct List.in_dec as [Hvalid' | ]; [ clear Hvalid | congruence ].
-    generalize (fun it its n pf pit pits prefix H' => @splits_for_complete _ String G splitter str (proj1_sig (state_val str)) it its (proj2_sig (state_val str)) n pf pit pits (ex_intro _ nt (ex_intro _ prefix (conj Hvalid' H')))).
+    generalize (fun it its n pf pit pits prefix H' => @splits_for_complete Char G splitter str it its n pf pit pits (ex_intro _ nt (ex_intro _ prefix (conj Hvalid' H')))).
     clear Hvalid'.
     induction (G nt) as [ | x xs IHxs ].
     { intros; constructor. }
@@ -80,39 +54,40 @@ Section implementation.
             intros; subst; eapply (H' (_::_)); try eassumption; reflexivity ].
         specialize (H' nil it its eq_refl).
         hnf.
-        intros [ [ s1 s2 ] [ [ H0 pit ] pits ] ]; simpl in * |- .
-        apply bool_eq_correct in H0.
-        exists (SplitAtT (Length s1) str).
-        destruct str as [str st]; simpl in * |- *.
-        subst str.
-        rewrite <- Length_correct in H'.
-        specialize (H' (Length s1) (Plus.le_plus_l _ _)).
-        rewrite SplitAt_concat_correct in H'; simpl in H'.
-        specialize (H' (parse_of_item__of__minimal_parse_of_item pit) (parse_of_production__of__minimal_parse_of_production pits)).
-        split; [ split | ];
-        [
-        | rewrite (SplitAt_concat_correct String s1 s2); assumption
-        | rewrite (SplitAt_concat_correct String s1 s2); assumption ].
-        let f := match goal with |- List.In _ (List.map ?f _) => constr:f end in
-        apply (List.in_map f).
-        assumption. } }
+        intros [ n [ pit pits ] ]; simpl in * |- .
+        destruct (Compare_dec.le_ge_dec n (length str)).
+        { exists n; repeat split; eauto.
+          apply H'; eauto.
+          { exact (parse_of_item__of__minimal_parse_of_item pit). }
+          { exact (parse_of_production__of__minimal_parse_of_production pits). } }
+        { exists (length str).
+          specialize (H' (length str) (reflexivity _)).
+          pose proof (fun H => expand_minimal_parse_of_item (str' := take (length str) str) (reflexivity _) (reflexivity _) (or_introl (reflexivity _)) H pit) as pit'; clear pit.
+          pose proof (fun H => expand_minimal_parse_of_production (str' := drop (length str) str) (reflexivity _) (reflexivity _) (or_introl (reflexivity _)) H pits) as pits'; clear pits.
+          refine ((fun ret => let pit'' := pit' (fst (snd ret)) in
+                              let pits'' := pits' (snd (snd ret)) in
+                              ((H' (fst (fst ret) pit'') (snd (fst ret) pits''), pit''), pits'')) _); repeat split.
+          { apply (@parse_of_item__of__minimal_parse_of_item Char splitter G _). }
+          { apply (@parse_of_production__of__minimal_parse_of_production Char splitter G _). }
+          { rewrite !take_long; (assumption || reflexivity). }
+          { apply bool_eq_empty; rewrite drop_length; omega. } } } }
   Qed.
 
   Program Definition parser : Parser splitter
-    := {| has_parse str st := parse_nonterminal (G := G) (data := parser_data) {| string_val := str ; state_val := exist _ st _ |} (Start_symbol G);
-          has_parse_sound str st Hinv Hparse := parse_nonterminal_sound G _ _ Hparse;
-          has_parse_complete str p Hp st Hinv := _ |}.
-  Next Obligation.
-  Admitted.
+    := {| has_parse str := parse_nonterminal (G := G) (data := parser_data) str (Start_symbol G);
+          has_parse_sound str Hparse := parse_nonterminal_sound G _ _ Hparse;
+          has_parse_complete str p Hp := _ |}.
   Next Obligation.
   Proof.
     dependent destruction p.
-    let st := match goal with |- parse_nonterminal {| state_val := ?st |} _ = _ => constr:st end in
-    pose proof (@parse_nonterminal_complete _ String G _ _ rdp_list_rdata' {| string_val := str ; state_val := st |} (Start_symbol G) p) as H'.
+    pose proof (@parse_nonterminal_complete Char splitter _ G _ _ rdp_list_rdata' str (Start_symbol G) p) as H'.
     apply H'.
-    eapply expand_forall_parse_of_item; [ | eassumption ]; simpl.
+    rewrite <- (parse_of_item_respectful_refl (pf := reflexivity _)).
+    rewrite <- (parse_of_item_respectful_refl (pf := reflexivity _)) in Hp.
+    eapply expand_forall_parse_of_item; [ | reflexivity.. | eassumption ].
+    simpl.
     unfold rdp_list_is_valid_nonterminal; simpl.
-    intros ? ? ? H0.
+    intros ? ? ? ? ? H0.
     edestruct List.in_dec as [ | nH ]; trivial; [].
     destruct (nH H0).
   Qed.

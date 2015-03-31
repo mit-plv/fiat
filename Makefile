@@ -160,14 +160,11 @@ SRC_PARSERS_BASE_MODULES := \
 	Parsers/StringLike\
 	Parsers/StringLike/Core\
 	Parsers/StringLike/Properties\
-	Parsers/StringLike/Examples\
+	Parsers/StringLike/String\
 	Parsers/BaseTypes\
 	Parsers/BooleanBaseTypes\
 	Parsers/Splitters/RDPList\
 	Parsers/Splitters/BruteForce\
-	Parsers/Splitters/Reflective\
-	Parsers/Splitters/FirstChar\
-	Parsers/Splitters/OnlyOneNonterminal\
 	Parsers/BooleanRecognizer\
 	Parsers/BooleanRecognizerTests\
 	Parsers/WellFoundedParse\
@@ -175,14 +172,17 @@ SRC_PARSERS_BASE_MODULES := \
 	Parsers/MinimalParse\
 	Parsers/MinimalParseOfParse\
 	Parsers/BooleanRecognizerCorrect
+#	Parsers/Splitters/Reflective\
+#	Parsers/Splitters/FirstChar\
+#	Parsers/Splitters/OnlyOneNonterminal\
 
 SRC_PARSERS_MODULES := \
 	Parsers/Specification\
 	Parsers/ParserInterface \
 	Parsers/ParserImplementation\
-	Parsers/Examples/ABStar\
 	$(SRC_PARSERS_BASE_MODULES)\
 	$(SRC_GRAMMAR_MODULES)
+#	Parsers/Examples/ABStar\
 
 #	QueryStructure/Refinements/BagADT/DelegateImplementation\
 

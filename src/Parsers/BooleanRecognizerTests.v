@@ -5,20 +5,20 @@ Require Import ADTSynthesis.Parsers.Grammars.Trivial ADTSynthesis.Parsers.Gramma
 Require Import ADTSynthesis.Parsers.Splitters.RDPList ADTSynthesis.Parsers.Splitters.BruteForce.
 Require Import ADTSynthesis.Parsers.ContextFreeGrammar.
 Require Import ADTSynthesis.Parsers.BaseTypes ADTSynthesis.Parsers.BooleanBaseTypes.
-Require Import ADTSynthesis.Parsers.StringLike.Examples.
+Require Import ADTSynthesis.Parsers.StringLike.String.
 Require Import ADTSynthesis.Parsers.BooleanRecognizer.
 
 Set Implicit Arguments.
 Local Open Scope string_like_scope.
 
 Section example_parse_string_grammar.
-  Context (G : grammar string).
+  Context (G : grammar Ascii.ascii).
 
   Definition brute_force_parse_nonterminal
-  : @String string _
+  : @String Ascii.ascii _
     -> string
     -> bool
-    := let data := @brute_force_data string _ G in parse_nonterminal (G := G).
+    := let data := @brute_force_data Ascii.ascii _ G in parse_nonterminal (G := G).
 
   Definition brute_force_parse
   : string -> bool

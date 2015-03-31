@@ -1,4 +1,5 @@
 Require Import Coq.Lists.List Coq.Strings.String.
+Require Import Coq.Numbers.Natural.Peano.NPeano.
 Require Import Coq.omega.Omega Coq.Lists.SetoidList.
 Require Export Coq.Setoids.Setoid Coq.Classes.RelationClasses
         Coq.Program.Program Coq.Classes.Morphisms.
@@ -1434,3 +1435,23 @@ Ltac setoid_subst_all :=
 
 Tactic Notation "setoid_subst" ident(x) := setoid_subst' x.
 Tactic Notation "setoid_subst" := setoid_subst_all.
+
+Lemma substring1_get {n str}
+: substring n 1 str
+  = option_rect (fun _ => String.string) (fun a => String.String a ""%string) ""%string (get n str).
+Proof.
+  revert n; induction str; intro n.
+  { destruct n; reflexivity. }
+  { destruct n; simpl.
+    { destruct str; reflexivity. }
+    { rewrite <- IHstr; reflexivity. } }
+Qed.
+
+Lemma substring_min {x x' y y' z str} (H : substring x y str = substring x' y' str)
+: substring x (min y z) str = substring x' (min y' z) str.
+Proof.
+  pose proof (fun y x => @substring_substring str 0 z x y) as H'; simpl in *.
+  setoid_rewrite Nat.sub_0_r in H'.
+  setoid_rewrite Min.min_comm in H'.
+  rewrite <- !H', H; reflexivity.
+Qed.

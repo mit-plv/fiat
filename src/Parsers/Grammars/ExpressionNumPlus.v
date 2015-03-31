@@ -8,7 +8,7 @@ Section num_plus.
   Local Open Scope string_scope.
   Local Open Scope grammar_scope.
 
-  Definition plus_expr_grammar : grammar string :=
+  Definition plus_expr_grammar : grammar Ascii.ascii :=
     [[[ ("expr" ::== << $< "number" >$
                       | $< "number" $ #"+" $ "expr" >$ >>);;
         ("digit" ::== << $< #"0" >$ | $< #"1" >$ | $< #"2" >$ | $< #"3" >$ | $< #"4" >$ | $< #"5" >$ | $< #"6" >$ | $< #"7" >$ | $< #"8" >$ | $< #"9" >$ >>);;
@@ -25,9 +25,9 @@ Section tests.
                    | [ |- parse_of_production _ ?s (Terminal _ :: _) ]
                      => apply ParseProductionCons with (n := 1)
                    | [ |- parse_of_production _ ?s (_ :: nil) ]
-                     => apply ParseProductionCons with (n := length s)
+                     => apply ParseProductionCons with (n := String.length s)
                    | [ |- parse_of_production _ ?s (_ :: Terminal _ :: nil) ]
-                     => apply ParseProductionCons with (n := length s - 1)
+                     => apply ParseProductionCons with (n := String.length s - 1)
                    | _ => apply ParseProductionCons with (n := 1); solve [ fin ]
                     end)
                  | apply ParseProductionNil
