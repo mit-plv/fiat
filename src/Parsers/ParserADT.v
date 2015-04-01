@@ -109,15 +109,11 @@ Section ReferenceImpl.
           => let G' := context G[snd (cMethods splitter_impl meth st arg)] in
              progress change G' in H
         | [ H : appcontext G[snd (cMethods splitter_impl ?meth ?st ?arg)] |- _ ]
-          => let G' := context G[snd (cMethods splitter_impl meth st arg)] in
-             change G' in H;
-               erewrite (@snd_cMethods_comp meth st arg) in H by (eassumption || reflexivity);
-               simpl @snd in H
+          => erewrite (@snd_cMethods_comp meth st arg) in H by (eassumption || reflexivity);
+            simpl @snd in H
         | [ |- appcontext G[snd (cMethods splitter_impl ?meth ?st ?arg)] ]
-          => let G' := context G[snd (cMethods splitter_impl meth st arg)] in
-             change G';
-               erewrite (@snd_cMethods_comp meth st arg) by (eassumption || reflexivity);
-               simpl @snd
+          => erewrite (@snd_cMethods_comp meth st arg) by (eassumption || reflexivity);
+            simpl @snd
       end.
     Local Ltac snd_cMethods_comp := repeat snd_cMethods_comp'.
 
@@ -166,6 +162,7 @@ Start Profiling.
                   bool_eq s1 s2 := string_dec (mto_string tt s1) (mto_string tt s2)  |};
             string_type_properties := {| singleton_unique := _ |};
             splits_for str it its := msplits (it, its) str |}.
+Show Profile.
     Local Ltac t meth :=
       eapply (meth Ascii.ascii string_stringlike string_stringlike_properties); simpl; try eassumption.
     Next Obligation. t @singleton_unique. Qed.
