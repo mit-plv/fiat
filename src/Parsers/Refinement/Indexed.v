@@ -7,6 +7,9 @@ Require Import ADTSynthesis.Parsers.ParserADTSpecification.
 Require Import ADTNotation.BuildADT ADTNotation.BuildADTSig.
 Require Import ADT.ComputationalADT.
 Require Import ADTSynthesis.Common ADTSynthesis.Common.Equality.
+Require Import ADTSynthesis.ADTRefinement.
+Require Import ADTSynthesis.Common.StringBound ADTSynthesis.Common.ilist.
+Require Import ADTRefinement.BuildADTRefinements.HoneRepresentation.
 
 Set Implicit Arguments.
 
@@ -44,6 +47,24 @@ Section IndexedImpl.
       ls <- { ls : list nat | split_list_is_complete G (substring (fst (snd s)) (snd (snd s)) (fst s)) (fst p) (snd p) ls };
       ret (s, ls)
   }.
+
+  Require Import ADTSynthesis.Common.IterateBoundedIndex.
+
+  Lemma FirstStep
+  : refineADT (string_spec G) indexed_spec.
+  Proof.
+    econstructor 1 with (AbsR := (fun r_o r_n =>
+                                    substring (fst (snd r_n)) (snd (snd r_n)) (fst r_n) = r_o));
+    eapply Iterate_Ensemble_BoundedIndex_equiv;
+    simpl; unfold Ensemble_BoundedIndex_app_comm_cons;
+    simpl; intuition; intros; try simplify with monad laws.
+  Admitted.
+
+  Lemma AllTheSteps
+  : Sharpened (string_spec G).
+    eapply SharpenStep.
+    apply FirstStep.
+
 
   (** now I want to show that indexed_spec refines string_spec *)
 
