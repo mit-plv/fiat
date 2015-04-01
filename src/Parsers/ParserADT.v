@@ -4,7 +4,8 @@ Require Import ADTNotation.BuildADT ADTNotation.BuildADTSig.
 Require Import ADT.ComputationalADT.
 Require Import ADTSynthesis.Common.List.Operations.
 Require Import ADTRefinement.GeneralRefinements.
-Require Import Parsers.ParserInterface.
+Require Import ADTSynthesis.Parsers.ParserInterface.
+Require Import ADTSynthesis.Parsers.StringLike.String.
 Require Import ADTSynthesis.ADTRefinement.Core.
 Require Import ADTSynthesis.Common.
 
@@ -76,10 +77,53 @@ Section ReferenceImpl.
     Context (splitter_impl : cADT (string_rep Ascii.ascii))
             (splitter_OK   : refineADT string_spec (LiftcADT splitter_impl)).
 
+    Lemma snd_cMethods_comp {method st arg v retv}
+          (H0 : Methods string_spec method v arg = ret retv)
+          (H1 : AbsR splitter_OK v st)
+    : snd (cMethods splitter_impl method st arg) = snd retv.
+    Proof.
+      pose proof (ADTRefinementPreservesMethods splitter_OK method _ _ arg H1 (cMethods splitter_impl method st arg) (ReturnComputes _)) as H''.
+      rewrite H0 in H''; clear H0.
+      computes_to_inv.
+      match goal with
+        | [ H : (_, _) = _ |- _ ]
+          => pose proof (f_equal (@fst _ _) H);
+            pose proof (f_equal (@snd _ _) H);
+            clear H
+      end.
+      subst.
+      destruct_head' prod.
+      simpl @fst in *.
+      simpl @snd in *.
+      subst.
+      reflexivity.
+    Qed.
+
+    Local Ltac snd_cMethods_comp' :=
+      idtac;
+      match goal with
+        | [ |- appcontext G[snd (cMethods splitter_impl ?meth ?st ?arg)] ]
+          => let G' := context G[snd (cMethods splitter_impl meth st arg)] in
+             progress change G'
+        | [ H : appcontext G[snd (cMethods splitter_impl ?meth ?st ?arg)] |- _ ]
+          => let G' := context G[snd (cMethods splitter_impl meth st arg)] in
+             progress change G' in H
+        | [ H : appcontext G[snd (cMethods splitter_impl ?meth ?st ?arg)] |- _ ]
+          => let G' := context G[snd (cMethods splitter_impl meth st arg)] in
+             change G' in H;
+               erewrite (@snd_cMethods_comp meth st arg) in H by (eassumption || reflexivity);
+               simpl @snd in H
+        | [ |- appcontext G[snd (cMethods splitter_impl ?meth ?st ?arg)] ]
+          => let G' := context G[snd (cMethods splitter_impl meth st arg)] in
+             change G';
+               erewrite (@snd_cMethods_comp meth st arg) by (eassumption || reflexivity);
+               simpl @snd
+      end.
+    Local Ltac snd_cMethods_comp := repeat snd_cMethods_comp'.
+
     Local Notation mcall0 proj s := (fun n st => (proj (cMethods splitter_impl {| StringBound.bindex := s |} st n))) (only parsing).
     Local Notation mcall1 s := (mcall0 fst s) (only parsing).
     Local Notation mcall2 s := (mcall0 snd s) (only parsing).
-
 
     Let mto_string := Eval simpl in mcall2 "to_string".
     Let mis_char := Eval simpl in mcall2 "is_char".
@@ -89,7 +133,7 @@ Section ReferenceImpl.
     Let msplits := Eval simpl in mcall2 "splits".
 
     Local Obligation Tactic :=
-      program_simpl; subst_body; simpl in *;
+      intros; destruct_head_hnf sig; destruct_head_hnf ex; subst_body; simpl in *;
       (lazymatch goal with
       | [ Ok : refineADT ?spec (LiftcADT ?impl),
                H : ?x ≃ ?str |- exists orig, orig ≃ fst (cMethods ?impl ?method ?str ?arg) ]
@@ -106,20 +150,12 @@ Section ReferenceImpl.
              )
       | _ => idtac
        end);
-      unfold beq in *; simpl in *(*;
-      repeat match goal with
-               | [ Ok : refineADT ?spec (LiftcADT ?impl),
-                        H' : ?x ≃ ?str,
-                             H : context[cMethods ?impl ?method ?str ?arg] |- _ ]
-                 => unique pose proof (ADTRefinementPreservesMethods Ok method x _ arg H' (cMethods impl method str arg) (ReturnComputes _))
-               | [ Ok : refineADT ?spec (LiftcADT ?impl),
-                        H' : ?x ≃ ?str
-                   |- context[cMethods ?impl ?method ?str ?arg] ]
-                 => unique pose proof (ADTRefinementPreservesMethods Ok method x _ arg H' (cMethods impl method str arg) (ReturnComputes _))
-             end*).
+      unfold beq in *; simpl in *;
+      snd_cMethods_comp.
+
 
     Local Arguments string_dec : simpl never.
-
+Start Profiling.
     Time Program Definition adt_based_splitter : Splitter G
       := {| string_type
             := {| String := { r : cRep splitter_impl | exists orig, AbsR splitter_OK orig r };
@@ -130,46 +166,37 @@ Section ReferenceImpl.
                   bool_eq s1 s2 := string_dec (mto_string tt s1) (mto_string tt s2)  |};
             string_type_properties := {| singleton_unique := _ |};
             splits_for str it its := msplits (it, its) str |}.
-    Local Ltac t' :=
-      idtac;
-      match goal with
-        | _ => reflexivity
-        | _ => progress unfold is_true in *
-        | _ => progress subst
-        | _ => progress simpl in *
-        | _ => progress computes_to_inv
-        | [ H : (_, _) = _ |- _ ]
-          => pose proof (f_equal (@fst _ _) H);
-            pose proof (f_equal (@snd _ _) H);
-            clear H
-        | [ H : ?x = ?x |- _ ] => clear H
-        | [ H : true = false |- _ ] => exfalso; clear -H; discriminate
-        | [ H : false = true |- _ ] => exfalso; clear -H; discriminate
-        | [ H : String.String _ _ = String.String _ _ |- _ ]
-          => inversion H; clear H
-        | [ H : ?x = true, H' : context[?x] |- _ ]
-          => rewrite H in H'
-        | [ H : ?x = String.String _ _, H' : context[?x] |- _ ]
-          => rewrite H in H'
-        | [ H : ?x = String.String _ _ |- context[?x] ]
-          => rewrite H
-        | [ H : 1 = ?x |- context[?x] ] => rewrite <- H
-        | [ H : ?x = 1 |- context[?x] ] => rewrite H
-        | [ H : 0 = ?x |- context[?x] ] => rewrite <- H
-        | [ H : ?x = 0 |- context[?x] ] => rewrite H
-        | [ H : true = ?x |- context[?x] ] => rewrite <- H
-        | [ H : ?x = true |- context[?x] ] => rewrite H
-        | [ H : false = ?x |- context[?x] ] => rewrite <- H
-        | [ H : ?x = false |- context[?x] ] => rewrite H
-        | [ H : context[string_dec ?x ?y] |- _ ]
-          => destruct (string_dec x y)
-        | _ => progress unfold beq in *
-        | [ |- context[string_dec ?x ?y] ] => destruct (string_dec x y)
-      end.
-    Local Ltac t := repeat t'.
-    Next Obligation.
+    Local Ltac t meth :=
+      eapply (meth Ascii.ascii string_stringlike string_stringlike_properties); simpl; try eassumption.
+    Next Obligation. t @singleton_unique. Qed.
+    Next Obligation. t @length_singleton. Qed.
+    Next Obligation. t @bool_eq_char.
     Proof.
+      bool_eq_char
+
+      repeat match goal with
+               | [ |- appcontext G[snd (cMethods splitter_impl ?meth ?st ?arg)] ]
+                 => let G' := context G[snd (cMethods splitter_impl meth st arg)] in
+                    progress change G'
+             end.
+      lazymatch goal with
+        | [ H : appcontext G[snd (cMethods splitter_impl ?meth ?st ?arg)] |- _ ]
+          => let G' := context G[snd (cMethods splitter_impl meth st arg)] in
+             change G' in H;
+               erewrite (@snd_cMethods_comp meth st arg) in H by (eassumption || reflexivity);
+               simpl @snd in H
+        | [ |- appcontext G[snd (cMethods splitter_impl ?meth ?st ?arg)] ]
+          => let G' := context G[snd (cMethods splitter_impl meth st arg)] in
+             change G';
+               pattern (snd (cMethods splitter_impl meth st arg))
+      end.
+               erewrite (@snd_cMethods_comp meth st arg) by (eassumption || reflexivity);
+               simpl @snd
+      end.
+      snd_cMethods_comp.
+      lazy
       unfold is_true in *.
+
       repeat match goal with
                | [ Ok : refineADT ?spec (LiftcADT ?impl),
                         H' : ?x ≃ ?str,
@@ -180,6 +207,7 @@ Section ReferenceImpl.
                    |- context[cMethods ?impl ?method ?str ?arg] ]
                  => unique pose proof (ADTRefinementPreservesMethods Ok method x _ arg H' (cMethods impl method str arg) (ReturnComputes _))
              end.
+      computes_to_inv.
       repeat match goal with
 
         | _ => reflexivity
