@@ -65,6 +65,20 @@ Section IndexedImpl.
     eapply SharpenStep.
     apply FirstStep.
 
+    (*hone representation using
+         (fun r_o r_n =>
+                    substring (fst (snd r_n)) (snd (snd r_n)) (fst r_n) = r_o).
+    hone constructor "new".
+    {
+      simplify with monad laws.
+      refine pick val (d, (0, String.length d)).
+      subst H; higher_order_reflexivity.
+      simpl.
+      finish honing. *)
+
+  Admitted.
+
+
 
   (** now I want to show that indexed_spec refines string_spec *)
 
