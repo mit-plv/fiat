@@ -1,0 +1,43 @@
+(** * Properties about Context Free Grammars *)
+Require Import ADTSynthesis.Parsers.StringLike ADTSynthesis.Parsers.ContextFreeGrammar.
+
+Local Coercion is_true : bool >-> Sortclass.
+
+Set Implicit Arguments.
+
+Section cfg.
+  Context {Char} {HSL1 HSL2 : StringLike Char}
+          (G : @grammar Char).
+  Context (R : @String _ HSL1 -> @String _ HSL2 -> Prop)
+          (is_char_respectful : forall str1 str2 ch,
+                                  R str1 str2 -> is_char str1 ch -> is_char str2 ch)
+          (is_empty_respectful : forall str1 str2,
+                                   R str1 str2 -> length str1 = 0 -> length str2 = 0)
+          (take_respectful : forall str1 str2 n,
+                               R str1 str2 -> R (take n str1) (take n str2))
+          (drop_respectful : forall str1 str2 n,
+                               R str1 str2 -> R (drop n str1) (drop n str2)).
+
+  Fixpoint transfer_parse_of {str1 str2 pats} (H : R str1 str2) (p : @parse_of Char HSL1 G str1 pats)
+  : @parse_of Char HSL2 G str2 pats
+    := match p in (parse_of _ _ pats) return parse_of _ _ pats with
+         | ParseHead _ _ p' => ParseHead _ (@transfer_parse_of_production _ _ _ H p')
+         | ParseTail _ _ p' => ParseTail _ (@transfer_parse_of _ _ _ H p')
+       end
+  with transfer_parse_of_production {str1 str2 pat} (H : R str1 str2) (p : @parse_of_production Char HSL1 G str1 pat)
+  : @parse_of_production Char HSL2 G str2 pat
+       := match p in (parse_of_production _ _ pat) return parse_of_production _ _ pat with
+            | ParseProductionNil pf => ParseProductionNil _ _ (@is_empty_respectful _ _ H pf)
+            | ParseProductionCons _ _ _ p0 p1
+              => ParseProductionCons
+                   _ _
+                   (@transfer_parse_of_item _ _ _ (@take_respectful _ _ _ H) p0)
+                   (@transfer_parse_of_production _ _ _ (@drop_respectful _ _ _ H) p1)
+          end
+  with transfer_parse_of_item {str1 str2 it} (H : R str1 str2) (p : @parse_of_item Char HSL1 G str1 it)
+  : @parse_of_item Char HSL2 G str2 it
+       := match p in (parse_of_item _ _ it) return parse_of_item _ _ it with
+            | ParseTerminal _ pf => ParseTerminal _ _ _ (@is_char_respectful _ _ _ H pf)
+            | ParseNonTerminal _ p' => ParseNonTerminal _ (@transfer_parse_of _ _ _ H p')
+          end.
+End cfg.

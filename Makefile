@@ -180,6 +180,9 @@ SRC_PARSERS_MODULES := \
 	Parsers/Specification\
 	Parsers/ParserInterface \
 	Parsers/ParserImplementation\
+	Parsers/ContextFreeGrammarTransfer\
+	Parsers/ParserFromParserADT\
+	Parsers/ParserADTSpecification\
 	$(SRC_PARSERS_BASE_MODULES)\
 	$(SRC_GRAMMAR_MODULES)
 #	Parsers/Examples/ABStar\
