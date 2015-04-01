@@ -128,8 +128,13 @@ Section ReferenceImpl.
     Let mdrop := Eval simpl in mcall1 "drop".
     Let msplits := Eval simpl in mcall2 "splits".
 
+    Local Hint Unfold mto_string mis_char mlength mtake mdrop msplits : parser_adt_subst_db.
+
     Local Obligation Tactic :=
-      intros; destruct_head_hnf sig; destruct_head_hnf ex; subst_body; simpl in *;
+      autounfold with parser_adt_subst_db in *;
+      repeat intro;
+      destruct_head_hnf sig; destruct_head_hnf ex;
+      simpl in *;
       (lazymatch goal with
       | [ Ok : refineADT ?spec (LiftcADT ?impl),
                H : ?x ≃ ?str |- exists orig, orig ≃ fst (cMethods ?impl ?method ?str ?arg) ]
@@ -164,12 +169,17 @@ Start Profiling.
             splits_for str it its := msplits (it, its) str |}.
 Show Profile.
     Local Ltac t meth :=
-      eapply (meth Ascii.ascii string_stringlike string_stringlike_properties); simpl; try eassumption.
+      let H := fresh in
+      pose proof (meth Ascii.ascii string_stringlike string_stringlike_properties) as H;
+        simpl in H; unfold beq in H; simpl in H;
+        eapply H; clear H; simpl; try eassumption.
     Next Obligation. t @singleton_unique. Qed.
     Next Obligation. t @length_singleton. Qed.
-    Next Obligation. t @bool_eq_char.
-    Proof.
-      bool_eq_char
+    Next Obligation. t @bool_eq_char. Qed.
+    Next Obligation. t @is_char_Proper. Qed.
+    Next Obligation. t @length_Proper. Qed.
+    Next Obligation. t @take_Proper. Qed.
+    Next Obligation. t @drop_Proper. Qed.
 
       repeat match goal with
                | [ |- appcontext G[snd (cMethods splitter_impl ?meth ?st ?arg)] ]
