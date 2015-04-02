@@ -189,18 +189,17 @@ production_is_reachable G (fst n :: snd n)*)
       rewrite (@any_list_complete [0]); [ | assumption ].
       finish_honing_by_eq parser_pull_tac.
     }
-
-    (* what to do here? *)
-    admit.
+    FullySharpenEachMethodWithoutDelegation.
   Defined.
 
   Definition ComputationalSplitter : { impl : cADT (string_rep Ascii.ascii) & refineADT (string_spec G) (LiftcADT impl) }.
   Proof.
     eexists (Sharpened_Implementation (projT1 FullySharpenedSplitter)
                                      (fun _ => unit)
-                                     (fun idx => _)).
+                                     (fun idx => match _ : False with end)).
     apply (projT2 FullySharpenedSplitter).
-    (* how does this goal get solved? *)
-    (* also, is it better to do it seprately each time, where we can run [simpl], or better to do it once and for all, in ParserFromParserADT.v? *)
-  Admitted.
+    intros; eapply BoundedIndex_nil; apply idx.
+    Grab Existential Variables.
+    intros; eapply BoundedIndex_nil; apply idx.
+  Defined.
 End IndexedImpl.
