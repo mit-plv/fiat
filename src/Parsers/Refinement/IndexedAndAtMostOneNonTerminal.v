@@ -104,7 +104,7 @@ Section IndexedImpl.
       ret (s, string_of_indexed s),
 
     Def Method "is_char"(s : rep, ch : Ascii.ascii) : bool  :=
-      ret (s, string_dec (string_of_indexed s) (String.String ch "") : bool),
+      ret (s, string_beq (string_of_indexed s) (String.String ch "")),
 
     Def Method "length"(s : rep, x : unit) : nat :=
       ret (s, ilength s),
