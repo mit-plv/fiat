@@ -15,7 +15,6 @@ CORE_MODULES    := \
 	Common/List/FlattenList \
 	Common/List/ListMorphisms \
 	Common/List/PermutationFacts \
-	Common/List/Prefix \
 	Common/List/Operations \
 	Common/List/UpperBound \
 	Common/LogicFacts \
