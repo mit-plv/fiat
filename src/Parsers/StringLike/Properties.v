@@ -119,6 +119,18 @@ Section String.
       { intro; left; omega. } }
   Qed.
 
+  Lemma take_length {str n}
+  : length (take n str) = min n (length str).
+  Proof.
+    destruct (le_ge_dec (length str) n).
+    { rewrite take_long by assumption.
+      rewrite Min.min_r by assumption.
+      reflexivity. }
+    { rewrite take_short_length by assumption.
+      rewrite Min.min_l by assumption.
+      reflexivity. }
+  Qed.
+
   Lemma length_le_trans
         {a b c : String} (H0' : length a < length b) (H1' : b ≤s c)
   : length a < length c.

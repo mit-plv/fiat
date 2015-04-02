@@ -1455,3 +1455,7 @@ Proof.
   setoid_rewrite Min.min_comm in H'.
   rewrite <- !H', H; reflexivity.
 Qed.
+
+Lemma sub_plus {x y z} (H0 : z <= y) (H1 : y <= x)
+: x - (y - z) = (x - y) + z.
+Proof. omega. Qed.

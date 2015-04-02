@@ -183,7 +183,7 @@ SRC_PARSERS_MODULES := \
 	Parsers/ContextFreeGrammarTransfer\
 	Parsers/ParserFromParserADT\
 	Parsers/ParserADTSpecification\
-	Parsers/Refinement/Indexed\
+	Parsers/Refinement/IndexedAndAtMostOneNonTerminal\
 	$(SRC_PARSERS_BASE_MODULES)\
 	$(SRC_GRAMMAR_MODULES)
 #	Parsers/Examples/ABStar\
