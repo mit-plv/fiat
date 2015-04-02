@@ -125,12 +125,12 @@ Section IndexedImpl.
                               then True
                               else split_list_is_complete G (string_of_indexed s) (fst p) (snd p) ls
                        end };
-      let ls := (match fst p, snd p with
-                   | _, nil
+      let ls := (match snd p, fst p with
+                   | nil, _
                      => [ilength s]
-                   | Terminal _, _::_
+                   | _::_, Terminal _
                      => [1]
-                   | NonTerminal _, _
+                   | _::_, NonTerminal _
                      => if has_only_terminals (snd p)
                         then [ilength s - List.length (snd p)]
                         else fallback_ls
