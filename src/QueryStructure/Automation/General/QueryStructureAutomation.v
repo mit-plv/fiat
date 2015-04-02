@@ -24,6 +24,7 @@ Require Import Coq.Strings.String Coq.omega.Omega Coq.Lists.List Coq.Logic.Funct
         ADTSynthesis.QueryStructure.Automation.General.DeleteAutomation.
 
 Ltac start_honing_QueryStructure :=
+  start_sharpening_ADT;
   match goal with
       |- Sharpened ?QSSpec =>
       cbv delta [QSSpec

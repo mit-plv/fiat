@@ -45,7 +45,7 @@ Section BuildADTRefinements.
     eapply ith_replace_BoundedIndex_ind; eauto.
   Qed.
 
-  Corollary refineADT_BuildADT_ReplaceConstructor_eq
+  Corollary SharpenStep_BuildADT_ReplaceConstructor_eq
             (Rep : Type)
             (consSigs : list consSig)
             (methSigs : list methSig)
@@ -53,21 +53,22 @@ Section BuildADTRefinements.
             (methDefs : ilist (@methDef Rep) methSigs)
             (idx : @BoundedString (List.map consID consSigs))
             (newDef : consDef (nth_Bounded consID consSigs idx))
+            adt''
   :
     (forall d,
        refine (consBody (ith_Bounded consID consDefs idx) d) (consBody newDef d))
-    -> refineADT
-         (BuildADT consDefs methDefs)
-         (ADTReplaceConsDef consDefs methDefs idx newDef).
+    -> FullySharpenedUnderDelegates (ADTReplaceConsDef consDefs methDefs idx newDef) adt''
+    -> FullySharpenedUnderDelegates (BuildADT consDefs methDefs) adt''.
   Proof.
-    intros; eapply refineADT_BuildADT_ReplaceConstructor with (AbsR := eq);
+    intros; eapply SharpenStep; try exact X.
+    eapply refineADT_BuildADT_ReplaceConstructor with (AbsR := eq);
     simpl; unfold refine; intros; subst; eauto.
     repeat computes_to_econstructor; try destruct v; eauto.
     repeat computes_to_econstructor; try destruct v; eauto;
     eapply H; eauto.
   Qed.
 
-  Corollary SharpenStep_BuildADT_ReplaceConstructor_eq
+  (*Corollary SharpenStep_BuildADT_ReplaceConstructor_eq
             (Rep : Type)
             (consSigs : list consSig)
             (methSigs : list methSig)
@@ -83,7 +84,7 @@ Section BuildADTRefinements.
   Proof.
     intros; eapply SharpenStep; eauto.
     apply refineADT_BuildADT_ReplaceConstructor_eq; eauto.
-  Defined.
+  Defined. *)
 
   (*
 
@@ -194,7 +195,7 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
     eapply ith_replace_BoundedIndex_ind; eauto.
   Qed.
 
-  Lemma refineADT_BuildADT_ReplaceMethod_eq
+  Lemma SharpenStep_BuildADT_ReplaceMethod_eq
         (Rep : Type)
         (consSigs : list consSig)
         (methSigs : list methSig)
@@ -202,20 +203,26 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
         (methDefs : ilist (@methDef Rep) methSigs)
         (idx : @BoundedString (List.map methID methSigs))
         (newDef : methDef (nth_Bounded _ methSigs idx))
+        adt''
   :
     (forall r_n n,
        refine (methBody (ith_Bounded methID methDefs idx) r_n n) (methBody newDef r_n n))
-    -> refineADT
+    -> FullySharpenedUnderDelegates
+      (ADTReplaceMethDef consDefs methDefs idx newDef)
+      adt''
+    -> FullySharpenedUnderDelegates
          (BuildADT consDefs methDefs)
-         (ADTReplaceMethDef consDefs methDefs idx newDef).
+         adt''.
   Proof.
-    intros; eapply refineADT_BuildADT_ReplaceMethod with (AbsR := eq);
+    intros; eapply SharpenStep.
+    eapply refineADT_BuildADT_ReplaceMethod with (AbsR := eq);
     simpl; unfold refine; intros; subst; eauto.
     repeat computes_to_econstructor; try destruct v; eauto.
     repeat computes_to_econstructor; try destruct v; try eapply H; eauto.
+    exact X.
   Qed.
 
-  Corollary SharpenStep_BuildADT_ReplaceMethod_eq
+  (*Corollary SharpenStep_BuildADT_ReplaceMethod_eq
             (Rep : Type)
             (consSigs : list consSig)
             (methSigs : list methSig)
@@ -231,7 +238,7 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
   Proof.
     intros; eapply SharpenStep; eauto.
     intros; eapply refineADT_BuildADT_ReplaceMethod_eq; eauto.
-  Defined.
+  Defined. *)
 
   Lemma refineADT_BuildADT_ReplaceMethod_sigma
         (RepT : Type)
@@ -402,7 +409,7 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
       rewrite H0; eauto. *)
   Qed.
 
-  Definition Notation_Friendly_SharpenFully'
+  (*Definition Notation_Friendly_SharpenFully'
              (RepT : Type)
              (consSigs : list consSig) (methSigs : list methSig)
              (consDefs : ilist consDef consSigs)
@@ -481,7 +488,7 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
              Sharpened_DelegateSpecs := DelegateSpecs |}
            (Notation_Friendly_FullySharpened_BuildMostlySharpenedcADT consDefs
                                                                       methDefs _ rep cConstructors cMethods DelegateSpecs cAbsR
-                                                                      cConstructorsRefinesSpec cMethodsRefinesSpec).
+                                                                      cConstructorsRefinesSpec cMethodsRefinesSpec). *)
 
   Record NamedDelegatee :=
     { delegateeName : string;
@@ -578,13 +585,13 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
                                              (methCod (nth_Bounded methID methSigs idx))
                                              (getMethDef methDefs idx)
                                              (fun r_n d => ret (ith_Bounded methID (cMethods DelegateReps DelegateImpls) idx r_n d))))
-  : (sigT (fun adt => FullySharpenedUnderDelegates (BuildADT consDefs methDefs) adt))  :=
-    existT (FullySharpenedUnderDelegates (BuildADT consDefs methDefs))
-           {|
-             Sharpened_DelegateSigs := DelegateSigs;
-             Sharpened_Implementation := Notation_Friendly_BuildMostlySharpenedcADT _ rep
-                                                                                    cConstructors cMethods;
-             Sharpened_DelegateSpecs := DelegateSpecs |}
+  : FullySharpenedUnderDelegates
+      (BuildADT consDefs methDefs)
+      {|
+        Sharpened_DelegateSigs := DelegateSigs;
+        Sharpened_Implementation := Notation_Friendly_BuildMostlySharpenedcADT _ rep
+                                                                               cConstructors cMethods;
+        Sharpened_DelegateSpecs := DelegateSpecs |} :=
            (Notation_Friendly_FullySharpened_BuildMostlySharpenedcADT consDefs
                                                                       methDefs _ rep cConstructors cMethods DelegateSpecs cAbsR
                                                                       cConstructorsRefinesSpec cMethodsRefinesSpec).
@@ -593,17 +600,38 @@ End BuildADTRefinements.
 
 Arguments Notation_Friendly_BuildMostlySharpenedcADT _ _ _ _ _ _ _ _ _ / .
 
-  Tactic Notation "extract" "implementation" "of" constr(adtImpl) "using" open_constr(delegateImpl) :=
-    let delegatees := match type of delegateImpl with
-                          ilist (fun nadt => ComputationalADT.pcADT (delegateeSig nadt) (delegateeRep nadt)) ?delegatees => delegatees
-                      end in
-    let Impl :=
-        eval simpl in
-    (Sharpened_Implementation (projT1 adtImpl)
-                              (fun idx => delegateeRep (nth_Bounded delegateeName delegatees idx))
-                              (ith_Bounded
-                                  delegateeName delegateImpl)) in
-        exact Impl.
+Definition BoundedIndex_nil_dep {A}
+           (AnyT : BoundedIndex nil -> Type)
+           (idx : BoundedIndex (A := A) nil)
+: AnyT idx.
+Proof.
+  destruct idx as [idx [n nth_n]].
+  elimtype False; eapply lt_n_0.
+  apply (lt_nth _ _ nth_n).
+Defined.
+
+Ltac extract_delegate_free_impl :=
+  cbv beta; simpl;
+    match goal with
+        |- forall idx : BoundedString,
+             refineADT
+               (ith_Bounded delegateeName
+                            (inil (fun nadt : NamedDelegatee => ADT (delegateeSig nadt))) idx)
+               (ComputationalADT.LiftcADT
+                  (existT
+                     (ComputationalADT.pcADT
+                        (delegateeSig (nth_Bounded delegateeName [] idx)))
+                     (?DelegateReps idx) (?DelegateSpecs idx))) =>
+        let H := fresh in
+        assert (DelegateReps = (fun _ : BoundedString (Bound := []) => False)) as H by reflexivity;
+          clear H;
+          try assert (DelegateSpecs = @BoundedIndex_nil_dep _ _) as H by reflexivity;
+          eapply BoundedIndex_nil_dep
+          end.
+
+
+Tactic Notation "extract" "delegate-free" "implementation" :=
+  extract_delegate_free_impl.
 
 (* A tactic for finishing a derivation. Probably needs a better name.*)
 Tactic Notation "finish" "sharpening" constr(delegatees):=

@@ -192,14 +192,18 @@ production_is_reachable G (fst n :: snd n)*)
     FullySharpenEachMethodWithoutDelegation.
   Defined.
 
+  Local Ltac extract impl
+    := exists (Sharpened_Implementation (projT1 impl)
+                                        (fun _ => unit)
+                                        (fun idx => match BoundedIndex_nil _ idx : False with end));
+         apply (projT2 impl);
+         intros;
+         match goal with
+           | [ |- context[match ?e with end] ] => destruct e
+         end.
+
   Definition ComputationalSplitter : { impl : cADT (string_rep Ascii.ascii) & refineADT (string_spec G) (LiftcADT impl) }.
   Proof.
-    eexists (Sharpened_Implementation (projT1 FullySharpenedSplitter)
-                                     (fun _ => unit)
-                                     (fun idx => match _ : False with end)).
-    apply (projT2 FullySharpenedSplitter).
-    intros; eapply BoundedIndex_nil; apply idx.
-    Grab Existential Variables.
-    intros; eapply BoundedIndex_nil; apply idx.
+    extract FullySharpenedSplitter.
   Defined.
 End IndexedImpl.

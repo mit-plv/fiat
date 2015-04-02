@@ -77,9 +77,31 @@ Definition WeatherSpec : ADT WeatherSig :=
               Return measurement!VALUE)
 }.
 
-Definition SharpenedWeatherStation :
-  Sharpened WeatherSpec.
+Lemma FullySharpened_Split
+: forall {Sig} (spec : ADT Sig)
+         (adt : Sharpened spec)
+         (DelegateReps : @BoundedString (Sharpened_DelegateIDs (projT1 adt)) -> Type)
+         (DelegateImpls :
+            forall idx,
+              ComputationalADT.pcADT (Sharpened_DelegateSigs (projT1 adt) idx) (DelegateReps idx))
+         (ValidImpls
+          : forall idx : @BoundedString (Sharpened_DelegateIDs (projT1 adt)),
+              refineADT (Sharpened_DelegateSpecs (projT1 adt) idx)
+                        (ComputationalADT.LiftcADT (existT _ _ (DelegateImpls idx)))),
+    FullySharpened spec.
 Proof.
+  intros.
+  eexists (Sharpened_Implementation (projT1 adt) DelegateReps DelegateImpls).
+  eapply (projT2 adt); eauto.
+Defined.
+
+Definition SharpenedWeatherStation :
+  FullySharpened WeatherSpec.
+Proof.
+  refine (FullySharpened_Split _ _ _ _).
+  instantiate (3 := _).
+  Grab Existential Variables.
+  eapply FullySharpened_Split.
   Start Profiling.
   simple_master_plan.
   Show Profile.

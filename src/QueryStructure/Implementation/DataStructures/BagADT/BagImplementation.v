@@ -452,10 +452,11 @@ Section SharpenedBagImplementation.
   Qed.
 
   Definition SharpenedBagImpl
-  : Sharpened (@BagSpec (@Tuple heading) SearchTermTypePlus UpdateTermTypePlus
-                        bfind_matcher bupdate_transform).
+  : FullySharpened (@BagSpec (@Tuple heading) SearchTermTypePlus UpdateTermTypePlus
+                             bfind_matcher bupdate_transform).
   Proof.
     unfold BagSpec.
+    start sharpening ADT.
 
     hone representation using
          (fun r_o r_n =>
@@ -588,10 +589,15 @@ Section SharpenedBagImplementation.
     }
 
     FullySharpenEachMethodWithoutDelegation.
+    extract delegate-free implementation.
+
   Defined.
 
-  Definition BagADTImpl : ComputationalADT.cADT (BagSig (@Tuple heading) SearchTermTypePlus UpdateTermTypePlus).
-    extract implementation of SharpenedBagImpl using (inil (fun nadt => ComputationalADT.pcADT (delegateeSig nadt) (delegateeRep nadt))).
-  Defined.
+  Definition BagADTImpl : ComputationalADT.cADT (BagSig (@Tuple heading) SearchTermTypePlus UpdateTermTypePlus) :=
+    Eval cbv beta delta [SharpenedBagImpl
+                           FullySharpened_Start
+                           SharpenedBagImplementation] in projT1 SharpenedBagImpl.
+
+  Print BagADTImpl.
 
 End SharpenedBagImplementation.

@@ -30,7 +30,7 @@ Require Import Coq.Lists.List Coq.Strings.String
    knives), so I'm carrying on the naming convention with a
    'Sharpened' notation for the dependent products. *)
 
-Notation FullySharpened spec := {adt : _ & refineADT spec (LiftcADT adt)}.
+Definition FullySharpened {Sig} spec := {adt : cADT Sig & refineADT spec (LiftcADT adt)}.
 
 Record NamedADTSig :=
   { ADTSigname : string;
@@ -68,27 +68,63 @@ Definition FullySharpenedUnderDelegates
 (* Shiny New Sharpened Definition includes proof that the
    ADT produced is sharpened modulo a set of 'Delegated ADTs'. *)
 
-Notation Sharpened spec :=
-  {adt : _ & @FullySharpenedUnderDelegates _ spec adt}.
+Notation Sharpened spec := (@FullySharpenedUnderDelegates _ spec _).
+
+Definition MostlySharpened {Sig} spec := {adt : _ & @FullySharpenedUnderDelegates Sig spec adt}.
+
+Lemma FullySharpened_Start
+: forall {Sig} (spec : ADT Sig) adt,
+    (@FullySharpenedUnderDelegates _ spec adt)
+    -> forall (DelegateReps : @BoundedString (Sharpened_DelegateIDs adt) -> Type)
+              (DelegateImpls :
+                 forall idx,
+                   ComputationalADT.pcADT (Sharpened_DelegateSigs adt idx) (DelegateReps idx))
+              (ValidImpls
+               : forall idx : @BoundedString (Sharpened_DelegateIDs adt),
+                   refineADT (Sharpened_DelegateSpecs adt idx)
+                             (ComputationalADT.LiftcADT (existT _ _ (DelegateImpls idx)))),
+         FullySharpened spec.
+Proof.
+  intros.
+  eexists (Sharpened_Implementation adt DelegateReps DelegateImpls).
+  eapply X; eauto.
+Defined.
+
+Lemma MostlySharpened_Start
+: forall {Sig} (spec : ADT Sig) adt,
+    (@FullySharpenedUnderDelegates _ spec adt)
+    -> MostlySharpened spec.
+Proof.
+  intros.
+  exists adt; eauto.
+Defined.
 
 (* The proof componentn of a single refinement step. *)
-Lemma SharpenStep_Proof Sig adt :
-  forall adt'
-         (refine_adt' : refineADT (Sig := Sig) adt adt')
-         (adt'' : Sharpened adt'),
-    FullySharpenedUnderDelegates adt (projT1 adt'').
+Definition SharpenStep Sig adt :
+  forall adt' adt''
+         (refine_adt' : refineADT (Sig := Sig) adt adt'),
+    FullySharpenedUnderDelegates adt' adt''
+    -> FullySharpenedUnderDelegates adt adt''.
 Proof.
   unfold FullySharpenedUnderDelegates in *.
   intros; eapply transitivityT.
   eassumption.
-  apply (projT2 adt'' DelegateReps DelegateImpls ValidImpls).
+  apply X; eauto.
 Qed.
 
-(* A single refinement step. *)
-Definition SharpenStep Sig adt adt'
-      (refine_adt' : refineADT (Sig := Sig) adt adt')
-      (adt'' : Sharpened adt')
-: Sharpened adt :=
+Ltac start_sharpening_ADT :=
+  match goal with
+    | |- MostlySharpened ?spec => eapply MostlySharpened_Start
+    | |- FullySharpened ?spec => eapply FullySharpened_Start
+  end.
+
+Tactic Notation "start" "sharpening" "ADT" := start_sharpening_ADT.
+
+(* A single refinement step.
+Definition SharpenStep Sig adt adt' adt''
+           (refine_adt' : refineADT (Sig := Sig) adt adt')
+           FullySharpenedUnderDelegates adt' adt''
+: FullySharpenedUnderDelegates adt' adt'' :=
   existT _ (projT1 adt'') (SharpenStep_Proof refine_adt' adt'').
 
 Lemma projT1_SharpenStep
@@ -97,7 +133,7 @@ Lemma projT1_SharpenStep
     projT1 Sharpened_adt'.
 Proof.
   reflexivity.
-Qed.
+Qed. *)
 
 (* Definition for constructing an easily extractible ADT implementation. *)
 
@@ -132,7 +168,7 @@ Definition BuildMostlySharpenedcADT
             pcMethods      := cMethods DelegateReps DelegateImpls |}.
 
 (* Proof component of the ADT is Qed-ed. *)
-Lemma FullySharpened_BuildMostlySharpenedcADT {Sig}
+Definition SharpenFully {Sig}
 : forall
     (spec : ADT Sig)
     (DelegateIDs : list string)
@@ -212,7 +248,7 @@ Proof.
     eapply (cMethodsRefinesSpec _ _ DelegateImplRefinesSpec); eauto.
 Qed.
 
-Definition SharpenFully {Sig}
+(*Definition SharpenFully {Sig}
     (spec : ADT Sig)
     (DelegateIDs : list string)
     (DelegateSigs : @BoundedString DelegateIDs -> ADTSig)
@@ -276,7 +312,7 @@ Definition SharpenFully {Sig}
     : Sharpened spec :=
   existT _ _ (FullySharpened_BuildMostlySharpenedcADT spec _ rep cConstructors
                                                       cMethods DelegateSpecs cAbsR
-                                                      cConstructorsRefinesSpec cMethodsRefinesSpec).
+                                                      cConstructorsRefinesSpec cMethodsRefinesSpec). *)
 
 (* Honing tactic for refining the observer method with the specified index.
      This version of the tactic takes the new implementation as an argument. *)
