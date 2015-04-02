@@ -116,6 +116,17 @@ Section IndexedImpl.
       ret ((fst s, (fst (snd s) + n, snd (snd s) - n)), tt),
 
     Def Method "splits"(s : rep, p : item Ascii.ascii * production Ascii.ascii) : list nat :=
+      fallback_ls <- { ls : list nat
+                     | match fst p, snd p with
+                         | _, nil
+                           => True
+                         | Terminal _, _::_
+                           => True
+                         | NonTerminal _, _
+                           => if has_only_terminals (snd p)
+                              then True
+                              else split_list_is_complete G (string_of_indexed s) (fst p) (snd p) ls
+                       end };
       ls <- (match fst p, snd p with
                | _, nil
                  => ret [ilength s]
@@ -124,7 +135,7 @@ Section IndexedImpl.
                | NonTerminal _, _
                  => if has_only_terminals (snd p)
                     then ret [ilength s - List.length (snd p)]
-                    else { ls : list nat | split_list_is_complete G (string_of_indexed s) (fst p) (snd p) ls }
+                    else ret fallback_ls
              end);
       ret (s, ls)
   }.
