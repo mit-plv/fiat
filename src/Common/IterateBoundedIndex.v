@@ -918,3 +918,4 @@ End Iterate_Dep_Type.
 (* Always expand these iterations as well. *)
 Arguments Iterate_Dep_Type_BoundedIndex_filter _ _ _ _ / .
 Arguments Iterate_Dep_Type_BoundedIndex _ _ _ / .
+Arguments Ensemble_BoundedIndex_app_comm_cons / .
