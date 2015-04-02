@@ -117,12 +117,10 @@ Section IndexedImpl.
 
     Def Method "splits"(s : rep, p : item Ascii.ascii * production Ascii.ascii) : list nat :=
       fallback_ls <- { ls : list nat
-                     | match fst p, snd p with
-                         | _, nil
+                     | match fst p with
+                         | Terminal _
                            => True
-                         | Terminal _, _::_
-                           => True
-                         | NonTerminal _, _
+                         | NonTerminal _
                            => if has_only_terminals (snd p)
                               then True
                               else split_list_is_complete G (string_of_indexed s) (fst p) (snd p) ls
