@@ -168,14 +168,25 @@ production_is_reachable G (fst n :: snd n)*)
       hone representation using repInv;
       parser_hone_cleanup.
 
+  Tactic Notation "start" "honing" "parser" "using" "indexed" "representation"
+    := eapply SharpenStep;
+      [ solve [ apply FirstStep ] | ];
+      unfold indexed_spec.
+
+
   Lemma FullySharpenedSplitter
   : Sharpened (string_spec G).
   Proof.
-    start honing parser representation using (fun r_o r_n => r_o = r_n).
+    start honing parser using indexed representation.
 
     hone method "splits".
     {
-      rewrite (@any_list_complete [1]); [ | assumption ].
+      (** Ideally, we'd like to drop the conditional, since the [else]
+          case will never happen, but that's a bit of a trickier
+          rewrite.  So instead we pick an arbitrary list to return.
+          Picking a singleton lets us pull out the list-making from
+          the [match] statements.  The value is completely arbitrary. *)
+      rewrite (@any_list_complete [0]); [ | assumption ].
       finish_honing_by_eq parser_pull_tac.
     }
 
