@@ -1,4 +1,6 @@
 Require Import Coq.Lists.List.
+Require Import Coq.Strings.String.
+Require Import ADTSynthesis.Common.
 
 Set Implicit Arguments.
 Local Close Scope nat_scope.
@@ -232,3 +234,152 @@ Definition option_dec {A}
 Proof.
   decide equality.
 Defined.
+
+Scheme Equality for bool.
+Scheme Equality for Ascii.ascii.
+Scheme Equality for string.
+Scheme Equality for list.
+Scheme Equality for option.
+
+Section beq_bl_lb.
+  Local Ltac t rew_t :=
+    let x := match goal with
+               | [ |- _ -> ?beq ?x ?y = true ] => constr:x
+               | [ |- _ -> ?x = ?y ] => constr:x
+             end in
+    let y := match goal with
+               | [ |- _ -> ?beq ?x ?y = true ] => constr:y
+               | [ |- _ -> ?x = ?y ] => constr:y
+             end in
+    revert y; induction x; intro y; destruct y;
+    simpl in *;
+    subst;
+    repeat match goal with
+             | _ => progress subst
+             | _ => congruence
+             | _ => setoid_rewrite Bool.andb_true_iff
+             | [ H : forall y, _ -> _ = true |- _ ] => setoid_rewrite <- (H _ : impl _ _)
+             | [ H : forall y, _ = true -> _ = _ |- _ ] => setoid_rewrite (H _ : impl _ _)
+             | [ H : forall x y, _ -> _ = true |- _ ] => setoid_rewrite <- (H _ _ : impl _ _)
+             | [ H : forall x y, _ = true -> _ = _ |- _ ] => setoid_rewrite (H _ _ : impl _ _)
+             | [ H : _ /\ _ |- _ ] => destruct H
+             | [ |- _ /\ _ ] => split
+             | _ => progress rew_t
+           end.
+
+  Lemma bool_bl {x y} : bool_beq x y = true -> x = y.
+  Proof. t idtac. Qed.
+  Lemma bool_lb {x y} : x = y -> bool_beq x y = true.
+  Proof. t idtac. Qed.
+  Lemma ascii_bl {x y} : ascii_beq x y = true -> x = y.
+  Proof. t ltac:(setoid_rewrite (@bool_bl _ _ : impl _ _) || intro). Qed.
+  Lemma ascii_lb {x y} : x = y -> ascii_beq x y = true.
+  Proof. t ltac:(setoid_rewrite <- (@bool_lb _ _ : impl _ _) || intro). Qed.
+  Lemma string_bl {x y} : string_beq x y = true -> x = y.
+  Proof. t ltac:(setoid_rewrite (@ascii_bl _ _ : impl _ _) || intro). Qed.
+  Lemma string_lb {x y} : x = y -> string_beq x y = true.
+  Proof. t ltac:(setoid_rewrite <- (@ascii_lb _ _ : impl _ _) || intro). Qed.
+  Lemma list_bl {A eq_A} (A_bl : forall x y : A, eq_A x y = true -> x = y) {x y}
+  : list_beq eq_A x y = true -> x = y.
+  Proof. t intro. Qed.
+  Lemma list_lb {A eq_A} (A_lb : forall x y : A, x = y -> eq_A x y = true) {x y}
+  : x = y -> list_beq eq_A x y = true.
+  Proof. t intro. Qed.
+  Lemma option_bl {A eq_A} (A_bl : forall x y : A, eq_A x y = true -> x = y) {x y}
+  : option_beq eq_A x y = true -> x = y.
+  Proof. t intro. Qed.
+  Lemma option_lb {A eq_A} (A_lb : forall x y : A, x = y -> eq_A x y = true) {x y}
+  : x = y -> option_beq eq_A x y = true.
+  Proof. t intro. Qed.
+End beq_bl_lb.
+
+Section beq_correct.
+  Local Ltac t rew_t :=
+    match goal with
+      | [ |- _ = bool_of_sumbool (?eq_dec ?x ?y) ]
+        => revert y; induction x; intro y; simpl
+    end;
+    match goal with
+      | [ |- _ = bool_of_sumbool (?eq_dec ?x ?y) ]
+        => destruct (eq_dec x y)
+    end;
+    subst; simpl in *;
+    try solve [ repeat match goal with
+                         | [ H : _ <> ?y |- _ ] => is_var y; destruct y
+                         | [ H : ?x <> ?x |- _ ] => destruct (H eq_refl)
+                         | [ H : _ |- _ ] => rewrite !H; []
+                         | _ => progress rew_t
+                         | _ => progress simpl in *
+                         | _ => split; (congruence || discriminate)
+                         | _ => progress subst
+                         | [ |- context[bool_of_sumbool ?e] ]
+                           => destruct e; simpl
+                         | [ |- true = false ] => exfalso
+                         | [ |- false = true ] => exfalso
+                         | [ H : _ <> _ |- False ] => apply H; clear H
+                         | [ |- ?x = false ] => case_eq x; intro
+                       end ].
+
+  Lemma bool_beq_correct {x y} : bool_beq x y = bool_eq_dec x y.
+  Proof. t idtac. Qed.
+  Lemma ascii_beq_correct {x y} : ascii_beq x y = ascii_eq_dec x y.
+  Proof. t ltac:(rewrite !bool_beq_correct). Qed.
+  Lemma string_beq_correct {x y} : string_beq x y = string_eq_dec x y.
+  Proof. t ltac:(rewrite !ascii_beq_correct). Qed.
+  Lemma list_beq_correct {A eq_A}
+        (A_bl : forall x y : A, eq_A x y = true -> x = y)
+        (A_lb : forall x y : A, x = y -> eq_A x y = true)
+        {x y : list A}
+  : list_beq eq_A x y = list_eq_dec eq_A A_bl A_lb x y.
+  Proof.
+    t ltac:(first [ rewrite !(A_lb _ _) by congruence
+                  | erewrite (A_bl _ _) by eassumption
+                  | rewrite Bool.andb_true_r
+                  | rewrite Bool.andb_false_r ]).
+  Qed.
+  Definition list_eq_dec' {A} (dec_eq_A : forall x y : A, {x = y} + {x <> y})
+  : forall x y : list A, {x = y} + {x <> y}.
+  Proof.
+    refine (list_eq_dec dec_eq_A _ _);
+    abstract (intros; edestruct dec_eq_A; simpl in *; subst; congruence).
+  Defined.
+  Lemma list_beq_correct' {A} {eq_A : A -> A -> bool} {dec_eq_A : forall x y : A, {x = y} + {x <> y}}
+        (eq_A_correct : forall x y, eq_A x y = dec_eq_A x y)
+        {x y : list A}
+  : list_beq eq_A x y = list_eq_dec' dec_eq_A x y.
+  Proof.
+    unfold list_eq_dec'; erewrite list_beq_correct.
+    do 2 edestruct list_eq_dec; subst; simpl; congruence.
+    Grab Existential Variables.
+    intros ??; rewrite eq_A_correct; edestruct dec_eq_A; simpl; congruence.
+    intros ??; rewrite eq_A_correct; edestruct dec_eq_A; simpl; congruence.
+  Qed.
+  Lemma option_beq_correct {A eq_A}
+        (A_bl : forall x y : A, eq_A x y = true -> x = y)
+        (A_lb : forall x y : A, x = y -> eq_A x y = true)
+        {x y : option A}
+  : option_beq eq_A x y = option_eq_dec eq_A A_bl A_lb x y.
+  Proof.
+    t ltac:(first [ rewrite !(A_lb _ _) by congruence
+                  | erewrite (A_bl _ _) by eassumption
+                  | rewrite Bool.andb_true_r
+                  | rewrite Bool.andb_false_r ]).
+  Qed.
+  Definition option_eq_dec' {A} (dec_eq_A : forall x y : A, {x = y} + {x <> y})
+  : forall x y : option A, {x = y} + {x <> y}.
+  Proof.
+    refine (option_eq_dec dec_eq_A _ _);
+    abstract (intros; edestruct dec_eq_A; simpl in *; subst; congruence).
+  Defined.
+  Lemma option_beq_correct' {A} {eq_A : A -> A -> bool} {dec_eq_A : forall x y : A, {x = y} + {x <> y}}
+        (eq_A_correct : forall x y, eq_A x y = dec_eq_A x y)
+        {x y : option A}
+  : option_beq eq_A x y = option_eq_dec' dec_eq_A x y.
+  Proof.
+    unfold option_eq_dec'; erewrite option_beq_correct.
+    do 2 edestruct option_eq_dec; subst; simpl; congruence.
+    Grab Existential Variables.
+    intros ??; rewrite eq_A_correct; edestruct dec_eq_A; simpl; congruence.
+    intros ??; rewrite eq_A_correct; edestruct dec_eq_A; simpl; congruence.
+  Qed.
+End beq_correct.

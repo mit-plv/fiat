@@ -152,6 +152,7 @@ FINITESET_MODULES := \
 
 SRC_GRAMMAR_MODULES := \
 	Parsers/ContextFreeGrammar\
+	Parsers/ContextFreeGrammarEquality\
 	Parsers/ContextFreeGrammarProperties\
 	Parsers/ContextFreeGrammarNotations\
 	Parsers/Grammars/Trivial\
