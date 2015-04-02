@@ -53,3 +53,84 @@ Ltac matchFindPrefixIndex WhereClause k :=
       k (map (fun a12 => (FindPrefixIndex, (fst a12, snd a12)))
              (attrs1))
   end.
+
+Ltac PrefixIndexUse SC F indexed_attrs f k :=
+     match type of f with
+(* FindPrefix Search Terms *)
+| forall a, {IsPrefix (_!?fd) ?X} + {_} =>
+  let H := fresh in
+  assert (List.In {| KindNameKind := "FindPrefixIndex";
+                     KindNameName := fd|} indexed_attrs) as H
+      by (clear; simpl; intuition eauto); clear H;
+  k ({| KindNameKind := "FindPrefixIndex";
+        KindNameName := fd|}, X) (fun _ : @Tuple SC => true)
+| forall a, {IsPrefix (_``?fd) ?X} + {_} =>
+  let H := fresh in
+  assert (List.In {| KindNameKind := "FindPrefixIndex";
+                     KindNameName := fd|} indexed_attrs) as H
+      by (clear; simpl; intuition eauto); clear H;
+  k ({| KindNameKind := FindPrefixIndex;
+        KindNameName := fd|}, X) (fun _ : @Tuple SC => true)
+     end.
+
+      (* FindPrefix Search Terms *)
+Ltac PrefixIndexUse_dep SC F indexed_attrs visited_attrs f T k :=
+    match type of f with
+        | forall a b, {IsPrefix (_!?fd) (@?X a)} + {_} =>
+          let H := fresh in
+          assert (List.In {| KindNameKind := "FindPrefixIndex";
+                             KindNameName := fd|} indexed_attrs) as H
+              by (clear; simpl; intuition eauto); clear H;
+          match eval simpl in
+                (in_dec string_dec fd visited_attrs) with
+            | right _ => k (fd :: visited_attrs)
+                           ({| KindNameKind := "FindPrefixIndex";
+                               KindNameName := fd |}, X)
+                           (fun (a : T) (_ : @Tuple SC) => true)
+            | left _ => k visited_attrs tt F
+          end
+        | forall a b, {IsPrefix (_``?fd) (@?X a)} + {_} =>
+          let H := fresh in
+          assert (List.In {| KindNameKind := "FindPrefixIndex";
+                             KindNameName := fd|} indexed_attrs) as H
+              by (clear; simpl; intuition eauto);
+            match eval simpl in
+                  (in_dec string_dec fd visited_attrs) with
+              | right _ => k (fd :: visited_attrs)
+                             ({| KindNameKind := "FindPrefixIndex";
+                                 KindNameName := fd |}, X)
+                             (fun (a : T) (_ : @Tuple SC) => true)
+              | left _ => k visited_attrs tt F
+            end
+end.
+
+Ltac createLastPrefixTerm f fds tail fs kind s k :=
+  match kind with
+    | "FindPrefixIndex" =>
+      (findMatchingTerm
+         fds kind s
+         ltac:(fun X => k {| FindPrefixIndexSearchTerm := Some X;
+                             FindPrefixItemSearchTerm := tail |}))
+        || k {| FindPrefixIndexSearchTerm := None;
+                FindPrefixItemSearchTerm := tail |}
+end.
+
+Ltac createLastPrefixTerm_dep dom f fds tail fs kind rest s k :=
+  match kind with
+    | "FindPrefixIndex" =>
+      (findMatchingTerm
+         fds kind s
+         ltac:(fun X => k (fun x : dom => {| FindPrefixIndexSearchTerm := Some (X x);
+                                             FindPrefixItemSearchTerm := tail x |}))
+                || k (fun x : dom => {| FindPrefixIndexSearchTerm := None;
+                                        FindPrefixItemSearchTerm := tail x |}))
+  end.
+
+Ltac createEarlyPrefixTerm f fds tail fs kind EarlyIndex LastIndex rest s k :=
+  match kind with
+    | "FindPrefixIndex" =>
+      (findMatchingTerm
+         fds kind s
+         ltac:(fun X => k (Some X, rest)))
+        || k (@None (list ascii), rest)
+  end.

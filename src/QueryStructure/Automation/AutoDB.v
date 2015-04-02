@@ -26,9 +26,11 @@ Require Export ADTSynthesis.Common.DecideableEnsembles
         ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.IndexSearchTerms
         ADTSynthesis.QueryStructure.Implementation.Operations.BagADT.Refinements
         ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.QueryStructureImplementation
-        ADTSynthesis.QueryStructure.Automation.SearchTerms.InvertedSearchTerms
+        ADTSynthesis.QueryStructure.Automation.SearchTerms.InclusionSearchTerms
         ADTSynthesis.QueryStructure.Automation.SearchTerms.FindPrefixSearchTerms
-        ADTSynthesis.QueryStructure.Automation.SearchTerms.RangeSearchTerms.
+        ADTSynthesis.QueryStructure.Automation.SearchTerms.RangeSearchTerms
+        ADTSynthesis.QueryStructure.Automation.IndexSelection
+        ADTSynthesis.QueryStructure.Automation.Common.
 
 Require Export ADTSynthesis.QueryStructure.Implementation.Operations.
 
@@ -391,84 +393,14 @@ Ltac prove_extensional_eq :=
   unfold ExtensionalEq;
   destruct_ifs; first [ solve [intuition] | solve [exfalso; intuition] | idtac ].
 
-(* That's it for indexes! *)
-
-Record KindName
-  := { KindNameKind : string;
-       KindNameName : string }.
-
-(* Recurse over [fds] to find an attribute matching s *)
-Ltac findMatchingTerm fds kind s k :=
-  match fds with
-    | ({| KindNameKind := ?IndexType;
-          KindNameName := ?fd |}, ?X) =>
-      (* Check if this field name is equal to s; process [X] with [k] if so. *)
-      let H := fresh in
-      assert (H : s = fd) by reflexivity; clear H;
-      assert (H : kind = IndexType) by reflexivity; clear H;
-      k X
-    | (?fds1, ?fds2) => findMatchingTerm fds1 kind s k || findMatchingTerm fds2 kind s k
-  end.
-
-Ltac createLastInclusionTerm f fds tail fs kind s k :=
-  match kind with
-    | "InclusionIndex" =>
-      (findMatchingTerm
-         fds kind s
-         ltac:(fun X => k {| IndexSearchTerm := X;
-                             ItemSearchTerm := tail |}))
-        || k {| IndexSearchTerm := nil;
-                ItemSearchTerm := tail |}
-  end.
-
-Ltac createLastPrefixTerm f fds tail fs kind s k :=
-  match kind with
-    | "FindPrefixIndex" =>
-      (findMatchingTerm
-         fds kind s
-         ltac:(fun X => k {| FindPrefixIndexSearchTerm := Some X;
-                             FindPrefixItemSearchTerm := tail |}))
-        || k {| FindPrefixIndexSearchTerm := None;
-                FindPrefixItemSearchTerm := tail |}
-end.
-
-Ltac createLastRangeTerm f fds tail fs kind s k :=
-  match kind with
-    | "RangeIndex" =>
-      (findMatchingTerm
-         fds kind s
-         ltac:(fun X => k {| RangeIndexSearchTerm := Some X;
-                             RangeItemSearchTerm := tail |}))
-        || k {| RangeIndexSearchTerm := None;
-                RangeItemSearchTerm := tail |}
-end.
-
-Ltac createEarlyInclusionTerm f fds tail fs kind EarlyIndex LastIndex rest s k :=
-  match kind with
-    | "InclusionIndex" =>
-      (findMatchingTerm
-         fds kind s
-         ltac:(fun X => k (X, rest)))
-        || k (@nil string, rest)
-  end.
-
-Ltac createEarlyPrefixTerm f fds tail fs kind EarlyIndex LastIndex rest s k :=
-  match kind with
-    | "FindPrefixIndex" =>
-      (findMatchingTerm
-         fds kind s
-         ltac:(fun X => k (Some X, rest)))
-        || k (@None (list ascii), rest)
-  end.
-
-Ltac createEarlyRangeTerm f fds tail fs kind EarlyIndex LastIndex rest s k :=
-  match kind with
-    | "RangeIndex" =>
-      (findMatchingTerm
-         fds kind s
-         ltac:(fun X => k (Some X, rest)))
-        || k (@None (nat * nat), rest)
-  end.
+(* Default tactics for handling *)
+Ltac matchEqIndex WhereClause k := fail.
+Ltac EqIndexUse SC F indexed_attrs f k := fail.
+Ltac createEarlyEqualityTerm f fds tail fs kind EarlyIndex LastIndex rest s k := fail.
+Ltac createLastEqualityTerm f fds tail fs kind s k := fail.
+Ltac EqIndexUse_dep SC F indexed_attrs f T k := fail.
+Ltac createEarlyEqualityTerm_dep dom f fds tail fs kind EarlyIndex LastIndex rest s k := fail.
+Ltac createLastEqualityTerm_dep dom f fds tail fs kind s k := fail.
 
 (* Recurse over the list of search term indexes [fs],
  consulting the list of attribute name and value pairs in [fds] to
@@ -480,26 +412,28 @@ Ltac createTerm f fds tail fs EarlyIndex LastIndex k :=
     | [{| KindNameKind := ?kind;
           KindNameName := ?s|} ] =>
       (* *)
-      match kind with
-        | "EqualityIndex" =>
+      let is_equality := eval compute in (string_dec kind EqualityIndex) in
+      match is_equality with
+        | left _ =>
           (findMatchingTerm
              fds kind s
              ltac:(fun X => k (Some X, tail)))
             || k (@None (Domain f {| bindex := s |} ), tail)
-        | _ => LastIndex f fds tail fs kind s k
+        | right _ => LastIndex f fds tail fs kind s k
       end
     | {| KindNameKind := ?kind;
          KindNameName := ?s|} :: ?fs' =>
       createTerm
         f fds tail fs' EarlyIndex LastIndex
         ltac:(fun rest =>
-                match kind with
-                  | "EqualityIndex" =>
+                let is_equality := eval compute in (string_dec kind EqualityIndex) in
+                match is_equality with
+                  | left _  =>
                     (findMatchingTerm
                        fds kind s
                        ltac:(fun X => k (Some X, rest)))
                       || k (@None (Domain f {| bindex := s |} ), rest)
-                  | _ => EarlyIndex f fds tail fs EarlyIndex LastIndex kind rest s k
+                  | right _ => EarlyIndex f fds tail fs EarlyIndex LastIndex kind rest s k
                 end)
   end.
 
@@ -520,96 +454,25 @@ Ltac makeTerm fs SC fds tail EarlyIndex LastIndex k :=
    a search term (a list of boolean functions over the tuples in
    [SC]). *)
 
-Ltac InclusionIndexUse SC F indexed_attrs f k :=
-     match type of f with
-       (* Inclusion Search Terms *)
-       | forall a, {IncludedIn ?X (_!?fd)} + {_} =>
-          let H := fresh in
-          assert (List.In {| KindNameKind := "InclusionIndex";
-                             KindNameName := fd|} indexed_attrs) as H
-              by (clear; simpl; intuition eauto); clear H;
-            k ({| KindNameKind := "InclusionIndex";
-                  KindNameName := fd|}, X) (fun _ : @Tuple SC => true)
-        | forall a, {IncludedIn ?X (_``?fd)} + {_} =>
-          let H := fresh in
-          assert (List.In {| KindNameKind := "InclusionIndex";
-                             KindNameName := fd|} indexed_attrs) as H
-              by (clear; simpl; intuition eauto); clear H;
-            k ({| KindNameKind := "InclusionIndex";
-                  KindNameName := fd|}, X) (fun _ : @Tuple SC => true)
-     end.
-
-Ltac PrefixIndexUse SC F indexed_attrs f k :=
-     match type of f with
-(* FindPrefix Search Terms *)
-| forall a, {IsPrefix (_!?fd) ?X} + {_} =>
-  let H := fresh in
-  assert (List.In {| KindNameKind := "FindPrefixIndex";
-                     KindNameName := fd|} indexed_attrs) as H
-      by (clear; simpl; intuition eauto); clear H;
-  k ({| KindNameKind := "FindPrefixIndex";
-        KindNameName := fd|}, X) (fun _ : @Tuple SC => true)
-| forall a, {IsPrefix (_``?fd) ?X} + {_} =>
-  let H := fresh in
-  assert (List.In {| KindNameKind := "FindPrefixIndex";
-                     KindNameName := fd|} indexed_attrs) as H
-      by (clear; simpl; intuition eauto); clear H;
-  k ({| KindNameKind := FindPrefixIndex;
-        KindNameName := fd|}, X) (fun _ : @Tuple SC => true)
-     end.
-
-Ltac RangeIndexUse SC F indexed_attrs f k :=
-match type of f with
-        (* Range Search Terms *)
-        | forall a, {InRange (_!?fd) ?X} + {_} =>
-          let H := fresh in
-          assert (List.In {| KindNameKind := "RangeIndex";
-                             KindNameName := fd|} indexed_attrs) as H
-              by (clear; simpl; intuition eauto); clear H;
-            k ({| KindNameKind := "RangeIndex";
-                  KindNameName := fd|}, X) (fun _ : @Tuple SC => true)
-        | forall a, {InRange (_!``?fd) ?X} + {_} =>
-          let H := fresh in
-          assert (List.In {| KindNameKind := "RangeIndex";
-                             KindNameName := fd|} indexed_attrs) as H
-              by (clear; simpl; intuition eauto); clear H;
-            k ({| KindNameKind := "RangeIndex";
-                  KindNameName := fd|}, X) (fun _ : @Tuple SC => true)
-end.
-
 Ltac findGoodTerm SC F indexed_attrs ClauseMatch k :=
   match F with
     | fun a => ?[@?f a] =>
       match type of f with
         (* Equality Search Terms *)
-        | forall a, {?X = _!?fd} + {_} =>
+        | forall a, {?X = GetAttribute _ ?fd} + {_} =>
           let H := fresh in
-          assert (List.In {| KindNameKind := "EqualityIndex";
-                             KindNameName := fd|} indexed_attrs) as H
-              by (clear; simpl; intuition eauto); clear H;
-          k ({| KindNameKind := "EqualityIndex";
-                  KindNameName := fd|}, X) (fun _ : @Tuple SC => true)
-        | forall a, {_!?fd = ?X} + {_} =>
+          assert (List.In {| KindNameKind := EqualityIndex;
+                             KindNameName := bindex fd|} indexed_attrs) as H
+              by (clear; subst_all; simpl; intuition eauto); clear H;
+          k ({| KindNameKind := EqualityIndex;
+                  KindNameName := bindex fd|}, X) (fun _ : @Tuple SC => true)
+        | forall a, {GetAttribute _ ?fd = ?X} + {_} =>
           let H := fresh in
-          assert (List.In {| KindNameKind := "EqualityIndex";
-                             KindNameName := fd|} indexed_attrs) as H
-              by (clear; simpl; intuition eauto); clear H;
-            k ({| KindNameKind := "EqualityIndex";
-                  KindNameName := fd|}, X) (fun _ : @Tuple SC => true)
-        | forall a, {?X = _``?fd} + {_} =>
-          let H := fresh in
-          assert (List.In {| KindNameKind := "EqualityIndex";
-                             KindNameName := fd|} indexed_attrs) as H
-              by (clear; simpl; intuition eauto); clear H;
-            k ({| KindNameKind := "EqualityIndex";
-                  KindNameName := fd|}, X) (fun _ : @Tuple SC => true)
-        | forall a, {_``?fd = ?X} + {_} =>
-          let H := fresh in
-          assert (List.In {| KindNameKind := "EqualityIndex";
-                             KindNameName := fd|} indexed_attrs) as H
-              by (clear; simpl; intuition eauto); clear H;
-            k ({| KindNameKind := "EqualityIndex";
-                  KindNameName := fd|}, X) (fun _ : @Tuple SC => true)
+          assert (List.In {| KindNameKind := EqualityIndex;
+                             KindNameName := bindex fd|} indexed_attrs) as H
+            by (clear; subst_all; simpl; intuition eauto); clear H;
+               k ({| KindNameKind := EqualityIndex;
+                  KindNameName := bindex fd|}, X) (fun _ : @Tuple SC => true)
 
         | _ => ClauseMatch  SC F indexed_attrs f k
 
@@ -647,8 +510,9 @@ Ltac implement_QSDeletedTuples find_search_term :=
         |- context[Pick (QSDeletedTuples ?r_o ?idx ?DeletedTuples)] ] =>
       let filter_dec := eval simpl in (@DecideableEnsembles.dec _ DeletedTuples _) in
           let idx_search_update_term := eval simpl in (ith_Bounded relName indices idx) in
-              let search_term_type := eval simpl in (BagSearchTermType idx_search_update_term) in
+              let search_term_type' := eval simpl in (BagSearchTermType idx_search_update_term) in
                   let search_term_matcher := eval simpl in (BagMatchSearchTerm idx_search_update_term) in
+                      let search_term_type := eval unfold search_term_type' in search_term_type' in
                       makeEvar search_term_type
                                ltac: (fun search_term =>
                                         let eqv := fresh in
@@ -656,6 +520,7 @@ Ltac implement_QSDeletedTuples find_search_term :=
                                       [ find_search_term qs_schema idx filter_dec search_term
                                       | let H' := fresh in
                                         pose (@refine_BagADT_QSDelete_fst _ _ r_o r_n H idx DeletedTuples _ search_term) as H';
+                                          fold_string_hyps_in H'; fold_heading_hyps_in H';
                                           setoid_rewrite (H' eqv); clear H' eqv])
   end.
 
@@ -668,16 +533,22 @@ Ltac implement_EnsembleDelete_AbsR find_search_term :=
                                                                      ?DeletedTuples)) r_n'}]] =>
       let filter_dec := eval simpl in (@DecideableEnsembles.dec _ DeletedTuples _) in
           let idx_search_update_term := eval simpl in (ith_Bounded relName indices idx) in
-              let search_term_type := eval simpl in (BagSearchTermType idx_search_update_term) in
+              let search_term_type' := eval simpl in (BagSearchTermType idx_search_update_term) in
                   let search_term_matcher := eval simpl in (BagMatchSearchTerm idx_search_update_term) in
+                      let search_term_type := eval unfold search_term_type' in search_term_type' in
+
                       makeEvar search_term_type
                                ltac:(fun search_term =>
                                        let eqv := fresh in
                                        assert (ExtensionalEq filter_dec (search_term_matcher search_term)) as eqv;
                                      [ find_search_term qs_schema idx filter_dec search_term
                                      | let H' := fresh in
-                                       pose (@refine_BagADT_QSDelete_snd _ _ r_o r_n H idx DeletedTuples _ search_term) as H';
-                                         setoid_rewrite (H' eqv); clear H' eqv] )
+                                       pose (@refine_BagADT_QSDelete_snd _ _ r_o r_n H idx DeletedTuples _ search_term eqv) as H';
+                                         simpl in H';
+                                         fold_string_hyps; fold_heading_hyps;
+                                         fold_string_hyps_in H'; fold_heading_hyps_in H';
+                                         setoid_rewrite H'; clear H'
+                                         ] )
   end.
 
 Ltac implement_Enumerate_filter find_search_term :=
@@ -873,50 +744,18 @@ Ltac get_ithDefault_pair f m n k :=
 
 (* Build search a search term from the list of attribute + value pairs in fs. *)
 
-Ltac createLastInclusionTerm_dep dom f fds tail fs kind rest s k :=
-  match kind with
-    | "InclusionIndex" =>
-      (findMatchingTerm
-         fds kind s
-         ltac:(fun X => k (fun x : dom => {| IndexSearchTerm := X x;
-                                             ItemSearchTerm := tail x |}))
-                || k (fun x : dom => {| IndexSearchTerm := nil;
-                                        ItemSearchTerm := tail x |}))
-  end.
-
-Ltac createLastPrefixTerm_dep dom f fds tail fs kind rest s k :=
-  match kind with
-    | "FindPrefixIndex" =>
-      (findMatchingTerm
-         fds kind s
-         ltac:(fun X => k (fun x : dom => {| FindPrefixIndexSearchTerm := Some (X x);
-                                             FindPrefixItemSearchTerm := tail x |}))
-                || k (fun x : dom => {| FindPrefixIndexSearchTerm := None;
-                                        FindPrefixItemSearchTerm := tail x |}))
-  end.
-
-Ltac createLastRangeTerm_dep dom f fds tail fs kind rest s k :=
-  match kind with
-    | "RangeIndex" =>
-      (findMatchingTerm
-         fds kind s
-         ltac:(fun X => k (fun x : dom => {| RangeIndexSearchTerm := Some (X x);
-                                             RangeItemSearchTerm := tail x |}))
-                || k (fun x : dom => {| RangeIndexSearchTerm := None;
-                                        RangeItemSearchTerm := tail x |}))
-  end.
-
 Ltac createTerm_dep dom f fds tail fs EarlyIndex LastIndex k :=
   match fs with
     | [{| KindNameKind := ?kind;
           KindNameName := ?s|} ] =>
-      match kind with
-        | "EqualityIndex" =>
+      let is_equality := eval compute in (string_dec kind EqualityIndex) in
+      match is_equality with
+        | left _ =>
           (try findMatchingTerm fds kind s
                            ltac:(fun X =>
                                    k (fun x : dom => (Some (X x), tail x))))
             || k (fun x : dom => (@None (Domain f {| bindex := s |} ), tail x))
-        | _ => LastIndex dom f fds tail fs kind tail s k
+        | right _ => LastIndex dom f fds tail fs kind tail s k
       end
     | {| KindNameKind := ?kind;
           KindNameName := ?s|} :: ?fs' =>
@@ -925,13 +764,15 @@ Ltac createTerm_dep dom f fds tail fs EarlyIndex LastIndex k :=
                      ltac:(fun rest =>
                              findMatchingTerm fds kind s
                                               ltac:(fun X =>
-                                                      match kind with
-                                                        | "EqualityIndex" =>
-                                                          k (fun x : dom => (Some (X x), rest x))
-                                                      end)
+                                                      let is_equality := eval compute in (string_dec kind EqualityIndex) in
+                                                          match is_equality with
+                                                            | left _ =>
+                                                              k (fun x : dom => (Some (X x), rest x))
+                                                          end)
                                                      ||
-                                                     match kind with
-                                                       | "EqualityIndex" =>
+                                                     let is_equality := eval compute in (string_dec kind EqualityIndex) in
+                                                     match is_equality with
+                                                       | left _ =>
                                                          k (fun x : dom => (@None (Domain f {| bindex := s |} ), rest x))
                                                      end)
   end.
@@ -949,184 +790,41 @@ Ltac makeTerm_dep dom fs SC fds tail EarlyIndex LastIndex k :=
    a search term (a list of boolean functions over the tuples in
    [SC]). *)
 
-Ltac InclusionIndexUse_dep SC F indexed_attrs visited_attrs f T k :=
-  match type of f with
-    | forall a b, {IncludedIn (@?X a) (_!?fd)} + {_} =>
-          let H := fresh in
-          assert (List.In {| KindNameKind := "InclusionIndex";
-                             KindNameName := fd|} indexed_attrs) as H
-              by (clear; simpl; intuition eauto); clear H;
-          match eval simpl in
-                (in_dec string_dec fd visited_attrs) with
-            | right _ => k (fd :: visited_attrs)
-                           ({| KindNameKind := "InclusionIndex";
-                               KindNameName := fd |}, X)
-                           (fun (a : T) (_ : @Tuple SC) => true)
-            | left _ => k visited_attrs tt F
-          end
-        | forall a b, {IncludedIn (@?X a) (_``?fd)} + {_} =>
-          let H := fresh in
-          assert (List.In {| KindNameKind := "InclusionIndex";
-                             KindNameName := fd|} indexed_attrs) as H
-              by (clear; simpl; intuition eauto);
-            match eval simpl in
-                  (in_dec string_dec fd visited_attrs) with
-              | right _ => k (fd :: visited_attrs)
-                             ({| KindNameKind := "InclusionIndex";
-                                 KindNameName := fd |}, X)
-                             (fun (a : T) (_ : @Tuple SC) => true)
-              | left _ => k visited_attrs tt F
-            end
-  end.
-
-      (* FindPrefix Search Terms *)
-Ltac PrefixIndexUse_dep SC F indexed_attrs visited_attrs f T k :=
-    match type of f with
-        | forall a b, {IsPrefix (_!?fd) (@?X a)} + {_} =>
-          let H := fresh in
-          assert (List.In {| KindNameKind := "FindPrefixIndex";
-                             KindNameName := fd|} indexed_attrs) as H
-              by (clear; simpl; intuition eauto); clear H;
-          match eval simpl in
-                (in_dec string_dec fd visited_attrs) with
-            | right _ => k (fd :: visited_attrs)
-                           ({| KindNameKind := "FindPrefixIndex";
-                               KindNameName := fd |}, X)
-                           (fun (a : T) (_ : @Tuple SC) => true)
-            | left _ => k visited_attrs tt F
-          end
-        | forall a b, {IsPrefix (_``?fd) (@?X a)} + {_} =>
-          let H := fresh in
-          assert (List.In {| KindNameKind := "FindPrefixIndex";
-                             KindNameName := fd|} indexed_attrs) as H
-              by (clear; simpl; intuition eauto);
-            match eval simpl in
-                  (in_dec string_dec fd visited_attrs) with
-              | right _ => k (fd :: visited_attrs)
-                             ({| KindNameKind := "FindPrefixIndex";
-                                 KindNameName := fd |}, X)
-                             (fun (a : T) (_ : @Tuple SC) => true)
-              | left _ => k visited_attrs tt F
-            end
-end.
-
-Ltac RangeIndexUse_dep SC F indexed_attrs visited_attrs f T k :=
-    match type of f with
-        (* Range Search Terms *)
-        | forall a b, {InRange (_!?fd) (@?X a)} + {_} =>
-          let H := fresh in
-          assert (List.In {| KindNameKind := "RangeIndex";
-                             KindNameName := fd|} indexed_attrs) as H
-              by (clear; simpl; intuition eauto); clear H;
-          match eval simpl in
-                (in_dec string_dec fd visited_attrs) with
-            | right _ => k (fd :: visited_attrs)
-                           ({| KindNameKind := "RangeIndex";
-                               KindNameName := fd |}, X)
-                           (fun (a : T) (_ : @Tuple SC) => true)
-            | left _ => k visited_attrs tt F
-          end
-        | forall a b, {InRange (_``?fd) (@?X a)} + {_} =>
-          let H := fresh in
-          assert (List.In {| KindNameKind := "RangeIndex";
-                             KindNameName := fd|} indexed_attrs) as H
-              by (clear; simpl; intuition eauto);
-            match eval simpl in
-                  (in_dec string_dec fd visited_attrs) with
-              | right _ => k (fd :: visited_attrs)
-                             ({| KindNameKind := "RangeIndex";
-                                 KindNameName := fd |}, X)
-                             (fun (a : T) (_ : @Tuple SC) => true)
-              | left _ => k visited_attrs tt F
-            end
-    end.
-
-
-      Ltac findGoodTerm_dep SC F indexed_attrs visited_attrs makeClause k :=
+Ltac findGoodTerm_dep SC F indexed_attrs visited_attrs makeClause k :=
   match F with
     | fun (a : ?T) b => ?[@?f a b] =>
       match type of f with
-        | forall a b, {@?X a = _!?fd} + {_} =>
-          let H := fresh in
-          assert (List.In {| KindNameKind := "EqualityIndex";
+        | forall a b, {@?X a = GetAttribute _ ?fd'} + {_} =>
+          let fd := eval simpl in (bindex fd') in
+              let H := fresh in
+              assert (List.In {| KindNameKind := EqualityIndex;
                              KindNameName := fd|} indexed_attrs) as H
-              by (clear; simpl; intuition eauto); clear H;
+              by (clear; subst_all; simpl; intuition eauto); clear H;
             match eval simpl in
                   (in_dec string_dec fd visited_attrs) with
               | right _ => k (fd :: visited_attrs)
-                             ({| KindNameKind := "EqualityIndex";
+                             ({| KindNameKind := EqualityIndex;
                                  KindNameName := fd|}, X)
                              (fun (a : T) (_ : @Tuple SC) => true)
               | left _ => k visited_attrs tt F
             end
-        | forall a b, {_!?fd = @?X a} + {_} =>
+        | forall a b, {GetAttribute _ ?fd' = @?X a} + {_} =>
+          let fd := eval simpl in (bindex fd') in
           let H := fresh in
-          assert (List.In {| KindNameKind := "EqualityIndex";
+          assert (List.In {| KindNameKind := EqualityIndex;
                              KindNameName := fd|} indexed_attrs) as H
-              by (clear; simpl; intuition eauto); clear H;
+              by (clear; subst_all; simpl; intuition eauto); clear H;
           match eval simpl in
                   (in_dec string_dec fd visited_attrs) with
             | right _ => k (fd :: visited_attrs)
-                           ({| KindNameKind := "EqualityIndex";
+                           ({| KindNameKind := EqualityIndex;
                                KindNameName := fd|}, X)
                            (fun (a : T) (_ : @Tuple SC) => true)
               | left _ => k visited_attrs tt F
             end
-        | forall a b, {@?X a = _``?fd} + {_} =>
-          let H := fresh in
-          assert (List.In {| KindNameKind := "EqualityIndex";
-                             KindNameName := fd|} indexed_attrs) as H
-              by (clear; simpl; intuition eauto); clear H;
-          match eval simpl in
-                  (in_dec string_dec fd visited_attrs) with
-              | right _ => k (fd :: visited_attrs)
-                             ({| KindNameKind := "EqualityIndex";
-                                 KindNameName := fd|}, X)
-                             (fun (a : T) (_ : @Tuple SC) => true)
-              | left _ => k visited_attrs tt F
-            end
-        | forall a b, {_``?fd = @?X a} + {_} =>
-          assert (List.In {| KindNameKind := "EqualityIndex";
-                             KindNameName := fd|} indexed_attrs) as H
-              by (clear; simpl; intuition eauto); clear H;
-          match eval simpl in
-                (in_dec string_dec fd visited_attrs) with
-            | right _ => k (fd :: visited_attrs)
-                           ({| KindNameKind := "EqualityIndex";
-                               KindNameName := fd|}, X)
-                           (fun (a : T) (_ : @Tuple SC) => true)
-            | left _ => k visited_attrs tt F
-          end
 
         | _ => makeClause SC F indexed_attrs visited_attrs f T k
 
-
-        | forall a b, {IncludedIn (@?X a) (_!?fd)} + {_} =>
-          let H := fresh in
-          assert (List.In {| KindNameKind := "InclusionIndex";
-                             KindNameName := fd|} indexed_attrs) as H
-              by (clear; simpl; intuition eauto); clear H;
-          match eval simpl in
-                (in_dec string_dec fd visited_attrs) with
-            | right _ => k (fd :: visited_attrs)
-                           ({| KindNameKind := "InclusionIndex";
-                               KindNameName := fd |}, X)
-                           (fun (a : T) (_ : @Tuple SC) => true)
-            | left _ => k visited_attrs tt F
-          end
-        | forall a b, {IncludedIn (@?X a) (_``?fd)} + {_} =>
-          let H := fresh in
-          assert (List.In {| KindNameKind := "InclusionIndex";
-                             KindNameName := fd|} indexed_attrs) as H
-              by (clear; simpl; intuition eauto);
-            match eval simpl in
-                  (in_dec string_dec fd visited_attrs) with
-              | right _ => k (fd :: visited_attrs)
-                             ({| KindNameKind := "InclusionIndex";
-                                 KindNameName := fd |}, X)
-                             (fun (a : T) (_ : @Tuple SC) => true)
-              | left _ => k visited_attrs tt F
-            end
       end
     | fun (a : ?T) b => (@?f a b) && (@?g a b) =>
       findGoodTerm_dep
@@ -1144,9 +842,9 @@ Definition Dep_SearchTerm_Wrapper {A} {heading}
            (search_term_dep : @Tuple heading -> A)
            (tup : @Tuple heading) : A := search_term_dep tup.
 
-      Ltac find_simple_search_term_dep
-           makeClause EarlyIndex LastIndex
-           qs_schema idx dom filter_dec search_term :=
+Ltac find_simple_search_term_dep
+     makeClause EarlyIndex LastIndex
+     qs_schema idx dom filter_dec search_term :=
   match type of search_term with
     | ?dom -> BuildIndexSearchTerm ?indexed_attrs  =>
       let indexed_attrs' :=
@@ -1207,9 +905,10 @@ Ltac find_equivalent_search_term_pair build_search_term_dep :=
                                                                    ltac:(fun id => let idx' := constr:({| bindex := id |} : BoundedIndex (map relName (qschemaSchemas qs_schema)))
                                                                                    in let idx := eval simpl in idx' in
                                                                                           let idx_search_update_term := eval simpl in (ith_Bounded relName indices idx) in
-                                                                                              let search_term_type := eval simpl in (BagSearchTermType idx_search_update_term) in
+                                                                                              let search_term_type' := eval simpl in (BagSearchTermType idx_search_update_term) in
                                                                                                   let search_term_matcher := eval simpl in (BagMatchSearchTerm idx_search_update_term) in
-                                                                                                      makeEvar (dom -> search_term_type)
+                                                                                                      let search_term_type := eval unfold search_term_type' in search_term_type' in
+                                                                                                          makeEvar (dom -> search_term_type)
                                                                                                                ltac: (fun search_term =>
                                                                                                                         let eqv := fresh in
                                                                                                                         assert (forall (a : ilist (@Tuple) (headings)) (b : @Tuple heading) ,
@@ -1244,8 +943,9 @@ Ltac find_equivalent_search_term build_search_term :=
                                                        ltac:(fun id => let idx' := constr:({| bindex := id |} : BoundedIndex (map relName (qschemaSchemas qs_schema)))
                                                                        in let idx := eval simpl in idx' in
                                                                               let idx_search_update_term := eval simpl in (ith_Bounded relName indices idx) in
-                                                                                  let search_term_type := eval simpl in (BagSearchTermType idx_search_update_term) in
+                                                                                  let search_term_type' := eval simpl in (BagSearchTermType idx_search_update_term) in
                                                                                       let search_term_matcher := eval simpl in (BagMatchSearchTerm idx_search_update_term) in
+                                                                                          let search_term_type := eval unfold search_term_type' in search_term_type' in
                                                                                           makeEvar (search_term_type)
                                                                                                    ltac: (fun search_term =>
                                                                                                             let eqv := fresh in
@@ -1636,15 +1336,18 @@ Proof.
 Qed.
 
 Ltac Implement_Bound_Bag_Call :=
-  match goal with
+    match goal with
     | H : @Build_IndexedQueryStructure_Impl_AbsR ?qs_schema ?Index ?DelegateReps ?DelegateImpls
                                                  ?ValidImpls ?r_o ?r_n
       |- refine (Bind (CallBagMethod (BagIndexKeys := ?Index') ?ridx ?midx ?r_o ?d) ?k) _ =>
       let r_o' := fresh "r_o'" in
       let AbsR_r_o' := fresh "AbsR_r_o'" in
       let refines_r_o' := fresh "refines_r_o'" in
-      eapply (@Implement_Bound_Bag_Call' _ qs_schema Index DelegateReps DelegateImpls ValidImpls r_o r_n ridx midx d k H);
-        cbv beta; simpl in *; intros
+      pose (@Implement_Bound_Bag_Call' _ qs_schema Index DelegateReps DelegateImpls ValidImpls r_o r_n ridx midx d k H) as refines_r_o';
+        simpl in refines_r_o';
+        fold_string_hyps_in refines_r_o'; fold_heading_hyps_in refines_r_o';
+        etransitivity;
+        [ eapply refines_r_o'; cbv beta; simpl in *; intros | ]
   end.
 
 Ltac implement_bag_methods :=
@@ -1779,7 +1482,8 @@ Ltac FullySharpenQueryStructure' qs_schema Index :=
          CallBagImplConstructor; simpl;
          higher_order_reflexivity
         )
-  | repeat split; intros; try exact tt
+  | repeat split; intros; try exact tt;
+    try implement_bag_methods
   ].
 
 
@@ -2001,7 +1705,7 @@ Ltac distribute_filters_to_joins' :=
                                                [apply (@refine_Join_Filtered_Comp_Lists_filter_hd_andb heading headings f' g ResultT resultComp l2 cond' Comp_l2 l1)
                                                | ])
                                | etransitivity;
-                                 [apply (@refine_Join_Filtered_Comp_Lists_filter_tail_andb heading headings f ResultT resultComp l2 ) | ] ]
+                                 [apply (@refine_Join_Filtered_Comp_Lists_filter_tail_andb heading headings f g ResultT resultComp l2 ) | ] ]
 
                        | |- refine
                               (l' <- Join_Filtered_Comp_Lists ?l1 ?l2 ?cond';
@@ -2020,6 +1724,7 @@ Ltac distribute_filters_to_joins' :=
                                | apply (@refine_Join_Filtered_Comp_Lists_filter_tail heading headings f ResultT resultComp l2 cond' l1) ]
 
                      end
+            | |- _ => higher_order_reflexivity
   end
         ]
     | |- _ => higher_order_reflexivity
@@ -2038,6 +1743,9 @@ Ltac convert_filter_search_term_to_find :=
                     ret (snd l')) ?f;
                  _) _ =>
       match f with
+        (* Resolve the unfiltered case *)
+        | fun a => true =>
+          unfold Join_Filtered_Comp_Lists at 1; setoid_rewrite filter_true
         (* Try non-dependent search term first *)
         | fun a => (?MatchIndexSearchTerm ?st (ilist_hd a)) && true =>
           let r := fresh in
@@ -2064,7 +1772,9 @@ Ltac convert_filter_search_term_to_find :=
                                          pose proof (refine_Join_Comp_Lists_To_Find_dep
                                                        H l1 idx
                                                        st_dep) as r;
-                                           simpl in r; rewrite r; clear r eqv
+                                           simpl in r;
+                                           fold_string_hyps_in r; fold_heading_hyps_in r;
+                                           rewrite r; clear r eqv
                                         ]
                                        )
           end
@@ -2076,6 +1786,7 @@ Ltac implement_filters_with_find k k_dep:=
                [first [find_equivalent_search_term k
                       | find_equivalent_search_term_pair k_dep]
                | cbv beta; simpl; convert_filter_search_term_to_find]);
+          pose_string_hyps; pose_heading_hyps;
           apply refine_under_bind; intros);
   apply List_Query_In_Return.
 
@@ -2130,7 +1841,7 @@ Ltac implement_Query' k k_dep:=
                equivalent search term matching function.  *)
     implement_filters_with_find k k_dep
   |
-  ].
+  ]; pose_string_hyps; pose_heading_hyps.
 
 Ltac implement_Query CreateTerm EarlyIndex LastIndex
      makeClause_dep EarlyIndex_dep LastIndex_dep :=
@@ -2152,7 +1863,9 @@ Ltac observer CreateTerm EarlyIndex LastIndex
                   makeClause_dep EarlyIndex_dep LastIndex_dep;
   simpl; simplify with monad laws;
   cbv beta; simpl; commit;
+  fold_string_hyps; fold_heading_hyps;
   cleanup_Count;
+  fold_string_hyps; fold_heading_hyps;
   finish honing.
 
 Ltac initializer :=
@@ -2160,6 +1873,7 @@ Ltac initializer :=
   rewrite refine_QSEmptySpec_Initialize_IndexedQueryStructure;
   cbv beta; simpl;
   try simplify with monad laws;
+  fold_string_hyps; fold_heading_hyps;
   finish honing.
 
 Ltac deletion CreateTerm EarlyIndex LastIndex
@@ -2173,8 +1887,7 @@ Ltac deletion CreateTerm EarlyIndex LastIndex
                      eapply refine_under_bind; intros
                end;
         repeat setoid_rewrite refine_if_If at 1;
-        repeat setoid_rewrite refine_If_Then_Else_Bind at 1;
-        repeat setoid_rewrite Bind_refine_If_Then_Else at 1;
+        repeat (etransitivity; [eapply refine_If_Then_Else_Bind | ]);
         repeat eapply refine_If_Then_Else;
         try simplify with monad laws; cbv beta; simpl;
         (
@@ -2189,7 +1902,7 @@ Ltac deletion CreateTerm EarlyIndex LastIndex
           simpl; commit; reflexivity))
       | cbv beta; simpl; try simplify with monad laws; cleanup_Count; finish honing ].
 
-Ltac insertion CreateTerm EarlyIndex LastIndex
+    Ltac insertion CreateTerm EarlyIndex LastIndex
      makeClause_dep EarlyIndex_dep LastIndex_dep :=
       Implement_Insert_Checks;
     etransitivity;
@@ -2217,7 +1930,9 @@ Ltac insertion CreateTerm EarlyIndex LastIndex
             => repeat setoid_rewrite <- refineEquiv_bind_bind;
               let H' := fresh in
               pose proof (@refine_BagADT_QSInsert _ _ r_o r_n H TableID tup) as H';
-                simpl in H'; setoid_rewrite H';
+                simpl in H';
+                fold_string_hyps_in H'; fold_heading_hyps_in H';
+                setoid_rewrite H';
                 try simplify with monad laws; try higher_order_reflexivity
           (* Implement the else branch *)
           | [ H : DelegateToBag_AbsR ?r_o ?r_n
@@ -2234,7 +1949,10 @@ Ltac insertion CreateTerm EarlyIndex LastIndex
                 | eassumption]
             end
         end
-      | cbv beta; simpl; try simplify with monad laws; cleanup_Count; finish honing ].
+
+      |
+      cbv beta; simpl; try simplify with monad laws; cleanup_Count; finish honing
+      ].
 
 Ltac method CreateTerm EarlyIndex LastIndex
      makeClause_dep EarlyIndex_dep LastIndex_dep :=
@@ -2262,11 +1980,43 @@ Ltac honeOne CreateTerm EarlyIndex LastIndex
 
 Ltac plan CreateTerm EarlyIndex LastIndex
      makeClause_dep EarlyIndex_dep LastIndex_dep :=
-  repeat (honeOne CreateTerm EarlyIndex LastIndex
-     makeClause_dep EarlyIndex_dep LastIndex_dep).
+  match goal with
+    | |- context[QSEmptySpec _] => initializer
+    | |- appcontext[EnsembleInsert] =>
+      insertion CreateTerm EarlyIndex LastIndex
+                makeClause_dep EarlyIndex_dep LastIndex_dep
+    | |- appcontext[EnsembleDelete] =>
+      deletion CreateTerm EarlyIndex LastIndex
+               makeClause_dep EarlyIndex_dep LastIndex_dep
+    | |- _ =>
+      observer CreateTerm EarlyIndex LastIndex
+               makeClause_dep EarlyIndex_dep LastIndex_dep
+  end.
 
-(*Ltac planDefault :=
-  plan default default default default default default. *)
+Ltac master_plan CreateTerm EarlyIndex LastIndex
+     makeClause_dep EarlyIndex_dep LastIndex_dep :=
+  (* Implement constraints as queries. *)
+  start honing QueryStructure;
+  (* Automatically select indexes + data structure. *)
+  GenerateIndexesForAll
+    matchEqIndex
+    ltac:(fun attrlist => make simple indexes using attrlist;
+          match goal with
+            | |- Sharpened _ => idtac (* Do nothing to the next Sharpened ADT goal. *)
+            | |- _ => (* Otherwise implement each method using the indexed data structure *)
+              plan CreateTerm EarlyIndex LastIndex
+                   makeClause_dep EarlyIndex_dep LastIndex_dep
+          end;
+          match goal with
+            | |- appcontext[@BuildADT (IndexedQueryStructure ?Schema ?Indexes)] =>
+              FullySharpenQueryStructure Schema Indexes
+          end
+         ).
+
+Ltac simple_master_plan :=
+  master_plan
+    EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+    EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
 
 Global Opaque CallBagMethod.
 Global Opaque CallBagConstructor.

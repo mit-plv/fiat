@@ -1,4 +1,5 @@
-Require Import ADTSynthesis.QueryStructure.Automation.AutoDB.
+Require Import ADTSynthesis.QueryStructure.Automation.IndexSelection
+        ADTSynthesis.QueryStructure.Automation.AutoDB.
 
 Definition Market := string.
 Definition StockType := nat.
@@ -83,37 +84,12 @@ Definition StocksSpec : ADT StocksSig :=
             Return (N.mul transaction!PRICE transaction!VOLUME))
 }.
 
-Definition StocksHeading := GetHeading StocksSchema STOCKS.
-Definition TransactionsHeading := GetHeading StocksSchema TRANSACTIONS.
-
-(* Using those breaks refine_foreign_key_check_into_query *)
-Definition STOCK_STOCKCODE        := StocksHeading/STOCK_CODE.
-Definition STOCK_TYPE             := StocksHeading/TYPE.
-Definition TRANSACTIONS_DATE      := TransactionsHeading/DATE.
-Definition TRANSACTIONS_STOCKCODE := TransactionsHeading/STOCK_CODE.
-
-Definition StocksStorage : @BagPlusProof (StocksSchema#STOCKS).
-  mkIndex StocksHeading [StocksHeading/TYPE; StocksHeading/STOCK_CODE].
-Defined.
-
-Definition TransactionsStorage : @BagPlusProof (StocksSchema#TRANSACTIONS).
-  mkIndex TransactionsHeading [TransactionsHeading/DATE; TransactionsHeading/STOCK_CODE].
-Defined.
-
-Definition TStocksBag := BagTypePlus StocksStorage.
-Definition TTransactionsBag := BagTypePlus TransactionsStorage.
-
-Definition Stocks_AbsR
-           (or : UnConstrQueryStructure StocksSchema)
-           (nr : (TStocksBag) * (TTransactionsBag)) : Prop :=
-  or!STOCKS ≃ fst nr /\ or!TRANSACTIONS ≃ snd nr.
-
 Definition StocksDB :
   Sharpened StocksSpec.
 Proof.
-  plan Stocks_AbsR.
-
-  Show.
-
-  finish sharpening.
-Defined.
+  Start Profiling.
+  simple_master_plan.
+  Show Profile.
+  Time Defined.
+(* <280 seconds for master_plan.
+   <235 seconds for Defined. *)

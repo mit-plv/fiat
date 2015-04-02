@@ -1,5 +1,5 @@
-Require Import Coq.Strings.String.
-Require Import AutoDB.
+Require Import ADTSynthesis.QueryStructure.Automation.IndexSelection
+        ADTSynthesis.QueryStructure.Automation.AutoDB.
 
 Definition Market := string.
 Definition StockType := nat.
@@ -88,13 +88,179 @@ Definition StocksDB :
   Sharpened StocksSpec.
 Proof.
 
-  unfold StocksSpec.
-
+  Start Profiling.
   start honing QueryStructure.
-
-  GenerateIndexesForAll ltac:(fun _ _ => idtac) ltac:(fun l => make simple indexes using l).
-
-  plan _ _ _ _ _ _.
-  
-  finish sharpening.
-Defined.
+  (* Old, explicit index selection*)
+  (* make simple indexes using [[AREA_CODE]; [MEASUREMENT_TYPE; CELL_ID]]. *)
+  Reset Profile.
+  make indexes using matchFindPrefixIndex.
+  Show Profile.
+  - initializer.
+  - insertion
+    ltac:(fun SC F indexed_attrs f k =>
+            match goal with
+              | _ => InclusionIndexUse SC F indexed_attrs f k
+              | _ => RangeIndexUse SC F indexed_attrs f k
+            end)
+           ltac:(fun f fds tail fs kind EarlyIndex LastIndex rest s k =>
+                   match goal with
+                     | _ => createEarlyInclusionTerm f fds tail fs kind EarlyIndex LastIndex rest s k
+                     | _ => createEarlyRangeTerm f fds tail fs kind EarlyIndex LastIndex rest s k
+                   end)
+                  ltac:(fun f fds tail fs kind s k =>
+                          match goal with
+                            | _ => createLastInclusionTerm f fds tail fs kind s k
+                            | _ => createLastRangeTerm f fds tail fs kind s k
+                          end)
+                         ltac:(fun SC F indexed_attrs visited_attrs f T k =>
+                                 match goal with
+                                   | _ => InclusionIndexUse_dep SC F indexed_attrs visited_attrs f T k
+                                   | _ => RangeIndexUse_dep SC F indexed_attrs visited_attrs f T k
+                                 end)
+                                randomCrab
+                                ltac:(fun dom f fds tail fs kind rest s k =>
+                                        match goal with
+                                          | _ => createLastInclusionTerm_dep dom f fds tail fs kind rest s k
+                                          | _ => createLastRangeTerm_dep dom f fds tail fs kind rest s k
+                                        end).
+  - insertion
+    ltac:(fun SC F indexed_attrs f k =>
+            match goal with
+              | _ => InclusionIndexUse SC F indexed_attrs f k
+              | _ => RangeIndexUse SC F indexed_attrs f k
+            end)
+           ltac:(fun f fds tail fs kind EarlyIndex LastIndex rest s k =>
+                   match goal with
+                     | _ => createEarlyInclusionTerm f fds tail fs kind EarlyIndex LastIndex rest s k
+                     | _ => createEarlyRangeTerm f fds tail fs kind EarlyIndex LastIndex rest s k
+                   end)
+                  ltac:(fun f fds tail fs kind s k =>
+                          match goal with
+                            | _ => createLastInclusionTerm f fds tail fs kind s k
+                            | _ => createLastRangeTerm f fds tail fs kind s k
+                          end)
+                         ltac:(fun SC F indexed_attrs visited_attrs f T k =>
+                                 match goal with
+                                   | _ => InclusionIndexUse_dep SC F indexed_attrs visited_attrs f T k
+                                   | _ => RangeIndexUse_dep SC F indexed_attrs visited_attrs f T k
+                                 end)
+                                randomCrab
+                                ltac:(fun dom f fds tail fs kind rest s k =>
+                                        match goal with
+                                          | _ => createLastInclusionTerm_dep dom f fds tail fs kind rest s k
+                                          | _ => createLastRangeTerm_dep dom f fds tail fs kind rest s k
+                                        end).
+    Reset Profile.
+  - observer
+    ltac:(fun SC F indexed_attrs f k =>
+            match goal with
+              | _ => InclusionIndexUse SC F indexed_attrs f k
+              | _ => RangeIndexUse SC F indexed_attrs f k
+            end)
+           ltac:(fun f fds tail fs kind EarlyIndex LastIndex rest s k =>
+                   match goal with
+                     | _ => createEarlyInclusionTerm f fds tail fs kind EarlyIndex LastIndex rest s k
+                     | _ => createEarlyRangeTerm f fds tail fs kind EarlyIndex LastIndex rest s k
+                   end)
+                  ltac:(fun f fds tail fs kind s k =>
+                          match goal with
+                            | _ => createLastInclusionTerm f fds tail fs kind s k
+                            | _ => createLastRangeTerm f fds tail fs kind s k
+                          end)
+                         ltac:(fun SC F indexed_attrs visited_attrs f T k =>
+                                 match goal with
+                                   | _ => InclusionIndexUse_dep SC F indexed_attrs visited_attrs f T k
+                                   | _ => RangeIndexUse_dep SC F indexed_attrs visited_attrs f T k
+                                 end)
+                                randomCrab
+                                ltac:(fun dom f fds tail fs kind rest s k =>
+                                        match goal with
+                                          | _ => createLastInclusionTerm_dep dom f fds tail fs kind rest s k
+                                          | _ => createLastRangeTerm_dep dom f fds tail fs kind rest s k
+                                        end).
+      - observer
+    ltac:(fun SC F indexed_attrs f k =>
+            match goal with
+              | _ => InclusionIndexUse SC F indexed_attrs f k
+              | _ => RangeIndexUse SC F indexed_attrs f k
+            end)
+           ltac:(fun f fds tail fs kind EarlyIndex LastIndex rest s k =>
+                   match goal with
+                     | _ => createEarlyInclusionTerm f fds tail fs kind EarlyIndex LastIndex rest s k
+                     | _ => createEarlyRangeTerm f fds tail fs kind EarlyIndex LastIndex rest s k
+                   end)
+                  ltac:(fun f fds tail fs kind s k =>
+                          match goal with
+                            | _ => createLastInclusionTerm f fds tail fs kind s k
+                            | _ => createLastRangeTerm f fds tail fs kind s k
+                          end)
+                         ltac:(fun SC F indexed_attrs visited_attrs f T k =>
+                                 match goal with
+                                   | _ => InclusionIndexUse_dep SC F indexed_attrs visited_attrs f T k
+                                   | _ => RangeIndexUse_dep SC F indexed_attrs visited_attrs f T k
+                                 end)
+                                randomCrab
+                                ltac:(fun dom f fds tail fs kind rest s k =>
+                                        match goal with
+                                          | _ => createLastInclusionTerm_dep dom f fds tail fs kind rest s k
+                                          | _ => createLastRangeTerm_dep dom f fds tail fs kind rest s k
+                                        end).
+          - observer
+    ltac:(fun SC F indexed_attrs f k =>
+            match goal with
+              | _ => InclusionIndexUse SC F indexed_attrs f k
+              | _ => RangeIndexUse SC F indexed_attrs f k
+            end)
+           ltac:(fun f fds tail fs kind EarlyIndex LastIndex rest s k =>
+                   match goal with
+                     | _ => createEarlyInclusionTerm f fds tail fs kind EarlyIndex LastIndex rest s k
+                     | _ => createEarlyRangeTerm f fds tail fs kind EarlyIndex LastIndex rest s k
+                   end)
+                  ltac:(fun f fds tail fs kind s k =>
+                          match goal with
+                            | _ => createLastInclusionTerm f fds tail fs kind s k
+                            | _ => createLastRangeTerm f fds tail fs kind s k
+                          end)
+                         ltac:(fun SC F indexed_attrs visited_attrs f T k =>
+                                 match goal with
+                                   | _ => InclusionIndexUse_dep SC F indexed_attrs visited_attrs f T k
+                                   | _ => RangeIndexUse_dep SC F indexed_attrs visited_attrs f T k
+                                 end)
+                                randomCrab
+                                ltac:(fun dom f fds tail fs kind rest s k =>
+                                        match goal with
+                                          | _ => createLastInclusionTerm_dep dom f fds tail fs kind rest s k
+                                          | _ => createLastRangeTerm_dep dom f fds tail fs kind rest s k
+                                        end).
+              - observer
+    ltac:(fun SC F indexed_attrs f k =>
+            match goal with
+              | _ => InclusionIndexUse SC F indexed_attrs f k
+              | _ => RangeIndexUse SC F indexed_attrs f k
+            end)
+           ltac:(fun f fds tail fs kind EarlyIndex LastIndex rest s k =>
+                   match goal with
+                     | _ => createEarlyInclusionTerm f fds tail fs kind EarlyIndex LastIndex rest s k
+                     | _ => createEarlyRangeTerm f fds tail fs kind EarlyIndex LastIndex rest s k
+                   end)
+                  ltac:(fun f fds tail fs kind s k =>
+                          match goal with
+                            | _ => createLastInclusionTerm f fds tail fs kind s k
+                            | _ => createLastRangeTerm f fds tail fs kind s k
+                          end)
+                         ltac:(fun SC F indexed_attrs visited_attrs f T k =>
+                                 match goal with
+                                   | _ => InclusionIndexUse_dep SC F indexed_attrs visited_attrs f T k
+                                   | _ => RangeIndexUse_dep SC F indexed_attrs visited_attrs f T k
+                                 end)
+                                randomCrab
+                                ltac:(fun dom f fds tail fs kind rest s k =>
+                                        match goal with
+                                          | _ => createLastInclusionTerm_dep dom f fds tail fs kind rest s k
+                                          | _ => createLastRangeTerm_dep dom f fds tail fs kind rest s k
+                                        end).
+                Reset Profile.
+              - FullySharpenQueryStructure StocksSchema Index;
+                implement_bag_methods.
+                Time Defined.
+(* *Only* 204 seconds for Defined! *)

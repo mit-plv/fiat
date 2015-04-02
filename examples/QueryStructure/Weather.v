@@ -1,4 +1,4 @@
-Require Import ADTSynthesis.QueryStructure.Refinements.AutoDB.
+Require Import  ADTSynthesis.QueryStructure.Automation.AutoDB.
 
 Definition VALUE := "VALUE".
 Definition MEASUREMENT_TYPE := "MEASUREMENT_TYPE".
@@ -39,31 +39,37 @@ Definition WeatherSchema :=
     enforcing [attribute CELL_ID for MEASUREMENTS references CELLS].
 (* Try with three tables (distribution of areas per state) *)
 
+Definition Init := "Init".
+Definition AddCell := "AddCell".
+Definition AddMeasurement := "AddMeasurement".
+Definition CountCells := "CountCells".
+Definition LocalMax := "LocalMax".
+
 Definition WeatherSig : ADTSig :=
   ADTsignature {
-      Constructor "Init"           : unit                               -> rep,
-      Method "AddCell"        : rep x (WeatherSchema#CELLS)        -> rep x bool,
-      Method "AddMeasurement" : rep x (WeatherSchema#MEASUREMENTS) -> rep x bool,
-      Method "CountCells"     : rep x AreaCode                        -> rep x nat,
-      Method "LocalMax"       : rep x (AreaCode * MeasurementType)    -> rep x option Z
+      Constructor Init           : unit                               -> rep,
+      Method AddCell        : rep x (WeatherSchema#CELLS)        -> rep x bool,
+      Method AddMeasurement : rep x (WeatherSchema#MEASUREMENTS) -> rep x bool,
+      Method CountCells     : rep x AreaCode                        -> rep x nat,
+      Method LocalMax       : rep x (AreaCode * MeasurementType)    -> rep x option Z
     }.
 
 Definition WeatherSpec : ADT WeatherSig :=
   QueryADTRep WeatherSchema {
-    Def Constructor "Init" (_ : unit) : rep := empty,
+    Def Constructor Init (_ : unit) : rep := empty,
 
-    update "AddCell" (cell : WeatherSchema#CELLS) : bool :=
+    update AddCell (cell : WeatherSchema#CELLS) : bool :=
         Insert cell into CELLS,
 
-    update "AddMeasurement" (measurement : WeatherSchema#MEASUREMENTS) : bool :=
+    update AddMeasurement (measurement : WeatherSchema#MEASUREMENTS) : bool :=
         Insert measurement into MEASUREMENTS,
 
-    query "CountCells" (area : AreaCode) : nat :=
+    query CountCells (area : AreaCode) : nat :=
       Count (For (cell in CELLS)
              Where (area = cell!AREA_CODE)
              Return 1),
 
-     query "LocalMax" (params: AreaCode * MeasurementType) : option Z :=
+      query LocalMax (params: AreaCode * MeasurementType) : option Z :=
         MaxZ (For (cell in CELLS) (measurement in MEASUREMENTS)
               Where (cell!AREA_CODE = fst params)
               Where (measurement!MEASUREMENT_TYPE = snd params)
@@ -71,31 +77,16 @@ Definition WeatherSpec : ADT WeatherSig :=
               Return measurement!VALUE)
 }.
 
-Definition CellHeading := GetHeading WeatherSchema CELLS.
-Definition MeasurementsHeading := GetHeading WeatherSchema MEASUREMENTS.
-
-Definition CellsStorage : @BagPlusProof (WeatherSchema#CELLS).
-  mkIndex CellHeading [ CellHeading/AREA_CODE ].
-Defined.
-
-Definition MeasurementsStorage : @BagPlusProof (WeatherSchema#MEASUREMENTS).
-  mkIndex MeasurementsHeading [ MeasurementsHeading/MEASUREMENT_TYPE; MeasurementsHeading/CELL_ID ].
-Defined.
-
-Definition TCellsBag := BagTypePlus CellsStorage.
-Definition TMeasurementsBag := BagTypePlus MeasurementsStorage.
-
-Definition Weather_AbsR
-           (or : UnConstrQueryStructure WeatherSchema)
-           (nr : TCellsBag * TMeasurementsBag) : Prop :=
-  or!CELLS ≃ fst nr /\ or!MEASUREMENTS ≃ snd nr.
-
-Definition WeatherStation :
+Definition SharpenedWeatherStation :
   Sharpened WeatherSpec.
 Proof.
-  plan Weather_AbsR.
+  Start Profiling.
+  simple_master_plan.
+  Show Profile.
+  Time Defined.
+  (* <95 seconds for master_plan.
+     <100 seconds for Defined. *)
 
-  Show.
-
-  finish sharpening.
-Defined.
+(* This still takes forever. Maybe try w/o zeta?
+Time Definition WeatherStationImpl' : SharpenedUnderDelegates WeatherSig :=
+  Eval vm_compute in projT1 SharpenedWeatherStation. *)

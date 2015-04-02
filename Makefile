@@ -124,6 +124,7 @@ QUERYSTRUCTURE_MODULES := \
 	QueryStructure/Implementation/DataStructures/BagADT/IndexSearchTerms \
 	QueryStructure/Implementation/Operations/BagADT/Refinements \
 	QueryStructure/Implementation/BagImplementation \
+	QueryStructure/Automation/Common \
 	QueryStructure/Automation/General/QueryAutomation \
 	QueryStructure/Automation/General/InsertAutomation \
 	QueryStructure/Automation/General/DeleteAutomation \
@@ -131,7 +132,7 @@ QUERYSTRUCTURE_MODULES := \
 	QueryStructure/Automation/Constraints/TrivialConstraintAutomation \
 	QueryStructure/Automation/Constraints/FunctionalDependencyAutomation \
 	QueryStructure/Automation/Constraints/ForeignKeyAutomation \
-	QueryStructure/Automation/SearchTerms/InvertedSearchTerms \
+	QueryStructure/Automation/SearchTerms/InclusionSearchTerms \
 	QueryStructure/Automation/SearchTerms/FindPrefixSearchTerms \
 	QueryStructure/Automation/SearchTerms/RangeSearchTerms \
 	QueryStructure/Automation/IndexSelection \

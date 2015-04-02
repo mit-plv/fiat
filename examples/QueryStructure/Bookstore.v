@@ -1,4 +1,5 @@
-Require Import ADTSynthesis.QueryStructure.Refinements.AutoDB.
+Require Import ADTSynthesis.QueryStructure.Automation.IndexSelection
+        ADTSynthesis.QueryStructure.Automation.AutoDB.
 
 (* Our bookstore has two relations (tables):
    - The [Books] relation contains the books in the
@@ -27,13 +28,14 @@ Definition sORDERS := "Orders".
 Definition sDATE := "Date".
 
 (* Now here's the actual schema, in the usual sense. *)
+
 Definition BookStoreSchema :=
   Query Structure Schema
     [ relation sBOOKS has
               schema <sAUTHOR :: string,
                       sTITLE :: string,
                       sISBN :: nat>
-              where attributes [sTITLE; sAUTHOR] depend on [sISBN];
+                      where attributes [sTITLE; sAUTHOR] depend on [sISBN];
       relation sORDERS has
               schema <sISBN :: nat,
                       sDATE :: nat> ]
@@ -57,12 +59,15 @@ Definition BookStoreSig : ADTSig :=
   ADTsignature {
       Constructor "Init" : unit -> rep,
       Method "PlaceOrder" : rep x Order -> rep x bool,
+      Method "DeleteOrder" : rep x nat -> rep x list Order,
       Method "AddBook" : rep x Book -> rep x bool,
+      Method "DeleteBook" : rep x nat -> rep x list Book,
       Method "GetTitles" : rep x string -> rep x list string,
       Method "NumOrders" : rep x string -> rep x nat
     }.
 
 (* Now we write what the methods should actually do. *)
+
 Definition BookStoreSpec : ADT BookStoreSig :=
   QueryADTRep BookStoreSchema {
     Def Constructor "Init" (_ : unit) : rep := empty,
@@ -70,67 +75,33 @@ Definition BookStoreSpec : ADT BookStoreSig :=
     update "PlaceOrder" ( o : Order ) : bool :=
         Insert o into sORDERS,
 
+    update "DeleteOrder" ( oid : nat ) : list Order :=
+      Delete o from sORDERS where o!sISBN = oid,
+
     update "AddBook" ( b : Book ) : bool :=
         Insert b into sBOOKS ,
+
+     update "DeleteBook" ( id : nat ) : list Book :=
+        Delete book from sBOOKS where book!sISBN = id ,
 
     query "GetTitles" ( author : string ) : list string :=
       For (b in sBOOKS)
       Where (author = b!sAUTHOR)
-      Return (b!sTITLE),
+      Return (b!sTITLE) ,
 
-     query "NumOrders" ( author : string ) : nat :=
-        Count (For (o in sORDERS) (b in sBOOKS)
-               Where (author = b!sAUTHOR)
-               Where (b!sISBN = o!sISBN)
-               Return ())
+    query "NumOrders" ( author : string ) : nat :=
+      Count (For (o in sORDERS) (b in sBOOKS)
+                 Where (author = b!sAUTHOR)
+                 Where (b!sISBN = o!sISBN)
+                 Return ())
 }.
 
-(* Aliases for internal names of the two tables *)
-Definition Books := GetRelationKey BookStoreSchema sBOOKS.
-Definition Orders := GetRelationKey BookStoreSchema sORDERS.
-
-(* Aliases for internal notions of schemas for the two tables *)
-Definition BookSchema := QSGetNRelSchemaHeading BookStoreSchema Books.
-Definition OrderSchema := QSGetNRelSchemaHeading BookStoreSchema Orders.
-
-Definition BookStorage : BagPlusProof (@Tuple BookSchema).
-  mkIndex BookSchema [ BookSchema/sAUTHOR; BookSchema/sISBN ].
-Defined.
-(* In other words, index first on the author field, then the ISBN field.
- * Works especially efficiently for accesses keyed on author. *)
-
-Definition OrderStorage : BagPlusProof (@Tuple OrderSchema).
-  mkIndex OrderSchema [ OrderSchema/sISBN ].
-Defined.
-
-(* For convenience, we define aliases for the types of the
-   index structures contained in our storage types. *)
-Definition TBookStorage := BagTypePlus BookStorage.
-Definition TOrderStorage := BagTypePlus OrderStorage.
-
-(* This abstraction relation connects:
- * 1. Abstract database from reference implementation, using sets
- * 2. Our fancy realization, using search trees (from Bags library) *)
-
-Definition BookStore_AbsR
-           (or : UnConstrQueryStructure BookStoreSchema)
-           (nr : TBookStorage * TOrderStorage) : Prop :=
-  or!sBOOKS ≃ fst nr /\ or!sORDERS ≃ snd nr.
-
-(* An efficient implementation for the bookstore example can be
-   obtained in a fully automated manner using our query planner,
-   which should take anywhere from 10 to 25 minutes to complete *)
-Definition BookStore :
+Theorem SharpenedBookStore :
   Sharpened BookStoreSpec.
 Proof.
-
-  plan BookStore_AbsR.
-
-  Show.
-
-  finish sharpening.
-Defined.
-
-(* The same implementation can of course be derived in a more manual
-way; the derivation in BookstoreSemiAutomatic.v demonstrates such an
-implementation, using varying degrees of automation for each method. *)
+  Start Profiling.
+  simple_master_plan.
+  Show Profile.
+  Time Defined.
+(* <130 seconds for master_plan.
+   <141 seconds for Defined. *)

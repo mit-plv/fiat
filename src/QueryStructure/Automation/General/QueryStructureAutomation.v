@@ -18,35 +18,49 @@ Require Import Coq.Strings.String Coq.omega.Omega Coq.Lists.List Coq.Logic.Funct
         ADTSynthesis.QueryStructure.Implementation.Operations.General.InsertRefinements
         ADTSynthesis.QueryStructure.Implementation.Operations.General.DeleteRefinements
         ADTSynthesis.QueryStructure.Implementation.Operations.General.QueryStructureRefinements
+        ADTSynthesis.QueryStructure.Automation.Common
         ADTSynthesis.QueryStructure.Automation.General.QueryAutomation
         ADTSynthesis.QueryStructure.Automation.General.InsertAutomation
         ADTSynthesis.QueryStructure.Automation.General.DeleteAutomation.
 
 Ltac start_honing_QueryStructure :=
-  pose_string_ids;
   match goal with
-      |- context [@BuildADT (QueryStructure ?Rep) _ _ _ _] =>
-      hone representation using (@DropQSConstraints_AbsR Rep) with defaults;
-        match goal with
-            |- context [Build_consDef (@Build_consSig ?Id _)
-                                      (@absConstructor _ _ _ _ _)] =>
-            hone constructor Id;
-              [ etransitivity;
-                [apply Constructor_DropQSConstraints |
-                 simplify with monad laws; finish honing]
-              | ]
-        end; pose_string_ids;
-        repeat (match goal with
-                  | |- context [Build_methDef (@Build_methSig ?Id _ _)
-                                              (absMethod _ (fun _ _ => Insert _ into _))] =>
-                    drop_constraints_from_insert Id
-                  | |- context [Build_methDef (@Build_methSig ?Id _ _)
-                                              (absMethod _ (fun _ _ => Delete _ from _ where _))] =>
-                    drop constraints from delete Id
-                  | |- context [Build_methDef (@Build_methSig ?Id _ _)
-                                              (@absMethod _ _ _ _ _ _)] =>
-                    drop constraints from query Id
-                end; pose_string_ids)
-  end.
+      |- Sharpened ?QSSpec =>
+      cbv delta [QSSpec
+                   QSGetNRelSchemaHeading GetNRelSchema
+                   GetNRelSchemaHeading Domain Specif.value
+                   IndexBound_tail IndexBound_head] beta; simpl;
+      pose_string_hyps; pose_heading_hyps;
+      eapply SharpenStep;
+      [ match goal with
+            |- context [@BuildADT (QueryStructure ?Rep) _ _ _ _] =>
+            eapply refineADT_BuildADT_Rep_refine_All with (AbsR := @DropQSConstraints_AbsR Rep);
+              [ repeat (first [eapply refine_Constructors_nil
+                              | eapply refine_Constructors_cons;
+                                [ intros;
+                                  match goal with
+                                    |  |- refine _ (?E _) => let H := fresh in set (H := E)
+                                    | _ => idtac
+                                  end;
+                                  (* Drop constraints from empty *)
+                                  try apply Constructor_DropQSConstraints
+                                | ] ])
+              | repeat (first [eapply refine_Methods_nil
+                              | eapply refine_Methods_cons;
+                                [ intros;
+                                  match goal with
+                                    |  |- refine _ (?E _ _) => let H := fresh in set (H := E)
+                                    | _ => idtac
+                                  end;
+                                  match goal with
+                                    | |- context [QSInsert _ _ _] => drop_constraints_from_insert
+                                    | |- context [QSDelete _ _ _] => drop_constraints_from_delete
+                                    | |- context [Query_For _] => drop constraints from query
+                                    | |- _ => idtac
+                                  end | ]
+                              ])]
+        end | ]
+  end;
+  pose_string_hyps; pose_heading_hyps.
 
 Tactic Notation "start" "honing" "QueryStructure" := start_honing_QueryStructure.

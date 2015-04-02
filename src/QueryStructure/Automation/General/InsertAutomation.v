@@ -13,6 +13,7 @@ Require Import Coq.Strings.String Coq.omega.Omega Coq.Lists.List
         ADTSynthesis.QueryStructure.Specification.Operations.Insert
         ADTSynthesis.QueryStructure.Implementation.Constraints.ConstraintChecksRefinements
         ADTSynthesis.QueryStructure.Implementation.Operations.General.InsertRefinements
+        ADTSynthesis.QueryStructure.Automation.Common
         ADTSynthesis.QueryStructure.Automation.Constraints.TrivialConstraintAutomation
         ADTSynthesis.QueryStructure.Automation.Constraints.FunctionalDependencyAutomation
         ADTSynthesis.QueryStructure.Automation.Constraints.ForeignKeyAutomation.
@@ -24,8 +25,8 @@ Require Import Coq.Strings.String Coq.omega.Omega Coq.Lists.List
      irrelevant constraints somehow, but for now we can use the following
      tactic to rewrite them away. *)
 
-  Ltac remove_trivial_insertion_constraints :=
-    match goal with
+Ltac remove_trivial_insertion_constraints :=
+      match goal with
         |- context[EnsembleInsert _ (GetUnConstrRelation _ _) ] =>
         match goal with
             AbsR : @DropQSConstraints_AbsR ?schm ?or ?nr
@@ -40,22 +41,27 @@ Require Import Coq.Strings.String Coq.omega.Omega Coq.Lists.List
                                           (indexedElement tup')
                                           (EnsembleInsert ?tup (GetUnConstrRelation ?r ?Ridx'))))] =>
             let neq := fresh in
-            assert (Ridx <> Ridx') by (subst_strings; discriminate);
+            assert (Ridx <> Ridx') by (subst_all; discriminate);
               let ForeignKeys_OK := fresh in
               assert (forall tup' : @IndexedTuple heading,
                         (@GetUnConstrRelation schm r Ridx) tup' ->
                         ForeignKey_P (heading := heading) (relSchema := heading') attr attr' tup_map
                                      (indexedElement tup')
                                      (GetUnConstrRelation r Ridx')) as
-                  ForeignKeys_OK by
-                    (intro tup'; rewrite <- AbsR, !GetRelDropConstraints;
-                     eapply (@crossConstr _ or Ridx Ridx' tup'); discriminate);
+                  ForeignKeys_OK
+                  by (subst_all; intro tup'; rewrite <- AbsR, !GetRelDropConstraints;
+                      match goal with
+                          |-  (GetRelation ?r ?idx) ?tup' ->
+                              ForeignKey_P _ _ _ _ (GetRelation ?r ?idx') =>
+                          apply (@crossConstr schm or idx idx' tup') end; discriminate);
                 let refine_trivial := fresh in
                 pose
                   (@InsertForeignKeysCheck schm nr Ridx Ridx' attr attr' tup_map tup
                                            ForeignKeys_OK neq) as refine_trivial;
-                  subst_strings; setoid_rewrite refine_trivial; clear refine_trivial;
-                  pose_string_ids; simplify with monad laws
+                  simpl in refine_trivial;
+                  fold_heading_hyps_in refine_trivial; fold_string_hyps_in refine_trivial;
+                  fold_heading_hyps; fold_string_hyps; setoid_rewrite refine_trivial;
+                  clear refine_trivial; simplify with monad laws
         end end.
 
 Tactic Notation "remove" "trivial" "insertion" "checks" :=
@@ -84,12 +90,12 @@ Tactic Notation "remove" "trivial" "insertion" "checks" :=
         let H' := fresh in
         pose (@QSInsertSpec_UnConstr_refine_opt  _ r_n R n _ H) as H';
           cbv beta delta [tupleConstraints attrConstraints map app relName schemaHeading] iota in H';
-          simpl in H'; exact H'
+          simpl in H'; fold_heading_hyps_in H'; fold_string_hyps_in H'; exact H'
     end
-  | cbv beta; simpl tupleConstraints; simpl attrConstraints; cbv iota;
-    simpl map; simpl app;
-    simpl relName in *; simpl schemaHeading in *;
-    pose_string_ids; simpl;
+  |  pose_string_hyps; pose_heading_hyps;
+     cbv beta iota delta [tupleConstraints attrConstraints map app
+                                          relName schemaHeading];
+      simpl;
     simplify with monad laws;
     try rewrite <- GetRelDropConstraints;
     repeat match goal with
@@ -127,17 +133,15 @@ Ltac drop_symmetric_functional_dependencies :=
   end.
 
 
-Ltac drop_constraints_from_insert methname :=
-  hone method methname;
-  [ remove trivial insertion checks;
-    (* The trivial insertion checks involve the fresh id,
+Ltac drop_constraints_from_insert :=
+  remove trivial insertion checks;
+  (* The trivial insertion checks involve the fresh id,
        so we need to drill under the binder before
        attempting to remove them. *)
-    rewrite refine_bind;
+  rewrite refine_bind;
     [ | reflexivity |
-      unfold pointwise_relation; intros; subst_strings;
+      unfold pointwise_relation; intros;
       repeat remove_trivial_insertion_constraints;
-      subst_strings;
       (* These simplify and implement nontrivial constraint checks *)
       repeat first
              [ drop_symmetric_functional_dependencies
@@ -145,10 +149,9 @@ Ltac drop_constraints_from_insert methname :=
              | foreignToQuery; try simplify with monad laws
              | setoid_rewrite refine_trivial_if_then_else; simplify with monad laws
              ];
-             higher_order_reflexivity ];
-    finish honing
-  | ].
-
+      pose_string_hyps; pose_heading_hyps;
+      higher_order_reflexivity ];
+    pose_string_hyps; pose_heading_hyps; finish honing.
 
 Tactic Notation "drop" "constraints" "from" "insert" constr(methname) :=
   drop_constraints_from_insert methname.

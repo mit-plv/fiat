@@ -37,7 +37,7 @@ Global Instance EqualityIndexDenotation
        (heading : Heading)
        (index : Attributes heading)
        (_ : Query_eq (Domain heading index))
-: @IndexDenotation "EqualityIndex" heading index :=
+: @IndexDenotation EqualityIndex heading index :=
   {| DenoteIndex :=
        option (Domain heading index);
      MatchIndex search_term tup :=
@@ -47,15 +47,6 @@ Global Instance EqualityIndexDenotation
                        else false
          | _ => true
        end
-  |}.
-
-Definition UnIndex : string := "UnIndex".
-Global Instance UnIndexDenotation
-       (heading : Heading)
-       (index : Attributes heading)
-: @IndexDenotation "UnIndex" heading index :=
-  {| DenoteIndex := @Tuple heading -> bool;
-     MatchIndex search_term tup := search_term tup
   |}.
 
 Ltac BuildIndexSearchTerm'
@@ -78,7 +69,7 @@ Ltac BuildIndexMatcher'
     | [("EqualityIndex", ?idx)] =>
       let idx' := constr:(@Build_BoundedIndex _ attrs idx _) in
       k (fun (st : prod _ (@Tuple heading -> bool)) tup =>
-              (@MatchIndex "EqualityIndex" heading idx' _ (fst st) tup)
+              (@MatchIndex EqualityIndex heading idx' _ (fst st) tup)
                 && (snd st) tup)
     | [(?kind, ?idx)] =>
       let idx' := constr:(@Build_BoundedIndex _ attrs idx _) in
@@ -205,17 +196,3 @@ Ltac makeIndex' NamedSchemas IndexKeys k :=
                                                                                                       BagApplyUpdateTerm := fun z => z |} Bs'))))
                                  end
                                  end.
-
-Tactic Notation "make" "simple" "indexes" "using" constr(attrlist) :=
-  match goal with
-    | [ |- Sharpened (@BuildADT (UnConstrQueryStructure ?sch) _ _ _ _ )] =>
-      let sch' := eval simpl in (qschemaSchemas sch) in
-          makeIndex' sch' attrlist
-                     ltac:(fun l =>
-                             let index := fresh "Index" in
-                             pose l as index;
-                           eapply SharpenStep;
-                           [eapply refineADT_BuildADT_Rep_default
-                            with (AbsR := @DelegateToBag_AbsR sch index) |
-                            compute [imap absConsDef absMethDef]; simpl ])
-  end.
