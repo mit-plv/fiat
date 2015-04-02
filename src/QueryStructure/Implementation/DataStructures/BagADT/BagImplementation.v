@@ -456,10 +456,12 @@ Section SharpenedBagImplementation.
                         bfind_matcher bupdate_transform).
   Proof.
     unfold BagSpec.
+
     hone representation using
          (fun r_o r_n =>
             r_o ≃ benumerate (Bag := BagPlus) r_n
-            /\ RepInvPlus r_n).
+            /\ RepInvPlus r_n) with defaults.
+
     hone constructor sEmpty.
     {
       simplify with monad laws.
@@ -473,9 +475,10 @@ Section SharpenedBagImplementation.
       simplify with monad laws.
       refine pick val (benumerate r_n); intuition;
       simplify with monad laws; simpl.
-      refine pick val r_n; intuition;
+      refine pick val r_n.
       simplify with monad laws; simpl.
       finish honing.
+      intuition.
     }
 
     hone method sCount.
@@ -483,12 +486,13 @@ Section SharpenedBagImplementation.
       simplify with monad laws.
       refine pick val (benumerate r_n); intuition;
       simplify with monad laws; simpl.
-      refine pick val r_n; intuition;
+      refine pick val r_n.
       simplify with monad laws; simpl.
       erewrite Permutation_length
         by (rewrite bfind_correct; eauto; reflexivity).
-      rewrite bcount_correct; eauto.
+      rewrite bcount_correct by eauto.
       finish honing.
+      intuition.
     }
 
     hone method sInsert.

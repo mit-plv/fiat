@@ -1,5 +1,4 @@
-Require Import ADTSynthesis.QueryStructure.Automation.AutoDB
-        ADTSynthesis.QueryStructure.Automation.IndexSelection.
+Require Import ADTSynthesis.QueryStructure.Automation.AutoDB.
 
 Definition VALUE := "VALUE".
 Definition MEASUREMENT_TYPE := "MEASUREMENT_TYPE".
@@ -40,31 +39,37 @@ Definition WeatherSchema :=
     enforcing [attribute CELL_ID for MEASUREMENTS references CELLS].
 (* Try with three tables (distribution of areas per state) *)
 
+Definition Init := "Init".
+Definition AddCell := "AddCell".
+Definition AddMeasurement := "AddMeasurement".
+Definition CountCells := "CountCells".
+Definition LocalMax := "LocalMax".
+
 Definition WeatherSig : ADTSig :=
   ADTsignature {
-      Constructor "Init"           : unit                               -> rep,
-      Method "AddCell"        : rep x (WeatherSchema#CELLS)        -> rep x bool,
-      Method "AddMeasurement" : rep x (WeatherSchema#MEASUREMENTS) -> rep x bool,
-      Method "CountCells"     : rep x AreaCode                        -> rep x nat,
-      Method "LocalMax"       : rep x (AreaCode * MeasurementType)    -> rep x option Z
+      Constructor Init           : unit                               -> rep,
+      Method AddCell        : rep x (WeatherSchema#CELLS)        -> rep x bool,
+      Method AddMeasurement : rep x (WeatherSchema#MEASUREMENTS) -> rep x bool,
+      Method CountCells     : rep x AreaCode                        -> rep x nat,
+      Method LocalMax       : rep x (AreaCode * MeasurementType)    -> rep x option Z
     }.
 
 Definition WeatherSpec : ADT WeatherSig :=
   QueryADTRep WeatherSchema {
-    Def Constructor "Init" (_ : unit) : rep := empty,
+    Def Constructor Init (_ : unit) : rep := empty,
 
-    update "AddCell" (cell : WeatherSchema#CELLS) : bool :=
+    update AddCell (cell : WeatherSchema#CELLS) : bool :=
         Insert cell into CELLS,
 
-    update "AddMeasurement" (measurement : WeatherSchema#MEASUREMENTS) : bool :=
+    update AddMeasurement (measurement : WeatherSchema#MEASUREMENTS) : bool :=
         Insert measurement into MEASUREMENTS,
 
-    query "CountCells" (area : AreaCode) : nat :=
+    query CountCells (area : AreaCode) : nat :=
       Count (For (cell in CELLS)
              Where (area = cell!AREA_CODE)
              Return 1),
 
-     query "LocalMax" (params: AreaCode * MeasurementType) : option Z :=
+      query LocalMax (params: AreaCode * MeasurementType) : option Z :=
         MaxZ (For (cell in CELLS) (measurement in MEASUREMENTS)
               Where (cell!AREA_CODE = fst params)
               Where (measurement!MEASUREMENT_TYPE = snd params)
@@ -75,29 +80,146 @@ Definition WeatherSpec : ADT WeatherSig :=
 Definition SharpenedWeatherStation :
   Sharpened WeatherSpec.
 Proof.
-  unfold WeatherSpec.
-
+  Start Profiling.
   start honing QueryStructure.
 
   (* Old, explicit index selection*)
   (* make simple indexes using [[AREA_CODE]; [MEASUREMENT_TYPE; CELL_ID]]. *)
 
-  (* Shiny new automatic index selection*)
-  GenerateIndexesForAll ltac:(fun l => make simple indexes using l).
+  make indexes using matchFindPrefixIndex.
+  - initializer.
+  - insertion
+    ltac:(fun SC F indexed_attrs f k =>
+            match goal with
+              | _ => InclusionIndexUse SC F indexed_attrs f k
+              | _ => RangeIndexUse SC F indexed_attrs f k
+            end)
+           ltac:(fun f fds tail fs kind EarlyIndex LastIndex rest s k =>
+                   match goal with
+                     | _ => createEarlyInclusionTerm f fds tail fs kind EarlyIndex LastIndex rest s k
+                     | _ => createEarlyRangeTerm f fds tail fs kind EarlyIndex LastIndex rest s k
+                   end)
+                  ltac:(fun f fds tail fs kind s k =>
+                          match goal with
+                            | _ => createLastInclusionTerm f fds tail fs kind s k
+                            | _ => createLastRangeTerm f fds tail fs kind s k
+                          end)
+                         ltac:(fun SC F indexed_attrs visited_attrs f T k =>
+                                 match goal with
+                                   | _ => InclusionIndexUse_dep SC F indexed_attrs visited_attrs f T k
+                                   | _ => RangeIndexUse_dep SC F indexed_attrs visited_attrs f T k
+                                 end)
+                                randomCrab
+                                ltac:(fun dom f fds tail fs kind rest s k =>
+                                        match goal with
+                                          | _ => createLastInclusionTerm_dep dom f fds tail fs kind rest s k
+                                          | _ => createLastRangeTerm_dep dom f fds tail fs kind rest s k
+                                        end).
+  - insertion
+    ltac:(fun SC F indexed_attrs f k =>
+            match goal with
+              | _ => InclusionIndexUse SC F indexed_attrs f k
+              | _ => RangeIndexUse SC F indexed_attrs f k
+            end)
+           ltac:(fun f fds tail fs kind EarlyIndex LastIndex rest s k =>
+                   match goal with
+                     | _ => createEarlyInclusionTerm f fds tail fs kind EarlyIndex LastIndex rest s k
+                     | _ => createEarlyRangeTerm f fds tail fs kind EarlyIndex LastIndex rest s k
+                   end)
+                  ltac:(fun f fds tail fs kind s k =>
+                          match goal with
+                            | _ => createLastInclusionTerm f fds tail fs kind s k
+                            | _ => createLastRangeTerm f fds tail fs kind s k
+                          end)
+                         ltac:(fun SC F indexed_attrs visited_attrs f T k =>
+                                 match goal with
+                                   | _ => InclusionIndexUse_dep SC F indexed_attrs visited_attrs f T k
+                                   | _ => RangeIndexUse_dep SC F indexed_attrs visited_attrs f T k
+                                 end)
+                                randomCrab
+                                ltac:(fun dom f fds tail fs kind rest s k =>
+                                        match goal with
+                                          | _ => createLastInclusionTerm_dep dom f fds tail fs kind rest s k
+                                          | _ => createLastRangeTerm_dep dom f fds tail fs kind rest s k
+                                        end).
+  - observer
+    ltac:(fun SC F indexed_attrs f k =>
+            match goal with
+              | _ => InclusionIndexUse SC F indexed_attrs f k
+              | _ => RangeIndexUse SC F indexed_attrs f k
+            end)
+           ltac:(fun f fds tail fs kind EarlyIndex LastIndex rest s k =>
+                   match goal with
+                     | _ => createEarlyInclusionTerm f fds tail fs kind EarlyIndex LastIndex rest s k
+                     | _ => createEarlyRangeTerm f fds tail fs kind EarlyIndex LastIndex rest s k
+                   end)
+                  ltac:(fun f fds tail fs kind s k =>
+                          match goal with
+                            | _ => createLastInclusionTerm f fds tail fs kind s k
+                            | _ => createLastRangeTerm f fds tail fs kind s k
+                          end)
+                         ltac:(fun SC F indexed_attrs visited_attrs f T k =>
+                                 match goal with
+                                   | _ => InclusionIndexUse_dep SC F indexed_attrs visited_attrs f T k
+                                   | _ => RangeIndexUse_dep SC F indexed_attrs visited_attrs f T k
+                                 end)
+                                randomCrab
+                                ltac:(fun dom f fds tail fs kind rest s k =>
+                                        match goal with
+                                          | _ => createLastInclusionTerm_dep dom f fds tail fs kind rest s k
+                                          | _ => createLastRangeTerm_dep dom f fds tail fs kind rest s k
+                                        end).
+  - observer
+    ltac:(fun SC F indexed_attrs f k =>
+            match goal with
+              | _ => InclusionIndexUse SC F indexed_attrs f k
+              | _ => RangeIndexUse SC F indexed_attrs f k
+            end)
+           ltac:(fun f fds tail fs kind EarlyIndex LastIndex rest s k =>
+                   match goal with
+                     | _ => createEarlyInclusionTerm f fds tail fs kind EarlyIndex LastIndex rest s k
+                     | _ => createEarlyRangeTerm f fds tail fs kind EarlyIndex LastIndex rest s k
+                   end)
+                  ltac:(fun f fds tail fs kind s k =>
+                          match goal with
+                            | _ => createLastInclusionTerm f fds tail fs kind s k
+                            | _ => createLastRangeTerm f fds tail fs kind s k
+                          end)
+                         ltac:(fun SC F indexed_attrs visited_attrs f T k =>
+                                 match goal with
+                                   | _ => InclusionIndexUse_dep SC F indexed_attrs visited_attrs f T k
+                                   | _ => RangeIndexUse_dep SC F indexed_attrs visited_attrs f T k
+                                 end)
+                                randomCrab
+                                ltac:(fun dom f fds tail fs kind rest s k =>
+                                        match goal with
+                                          | _ => createLastInclusionTerm_dep dom f fds tail fs kind rest s k
+                                          | _ => createLastRangeTerm_dep dom f fds tail fs kind rest s k
+                                        end).
 
-  Time plan. (* 220 seconds *)
-  idtac.
+  - FullySharpenQueryStructure WeatherSchema Index;
+    implement_bag_methods.
+    Show Profile.
+    Time Defined. (* 83 seconds for Defined. *)
 
-  FullySharpenQueryStructure WeatherSchema Index.
+(* This still takes forever. Maybe try w/o zeta?
+Time Definition WeatherStationImpl' : SharpenedUnderDelegates WeatherSig :=
+  Eval simpl in projT1 SharpenedWeatherStation. *)
 
-  implement_bag_methods.
-  implement_bag_methods.
-  implement_bag_methods.
-  implement_bag_methods.
 
-Time Defined.
 
-Definition WeatherStationImpl : SharpenedUnderDelegates WeatherSig.
-  Time let Impl := eval simpl in (projT1 SharpenedWeatherStation) in
-           exact Impl.
-Defined.
+Print SharpenedWeatherStation.
+Print transitivity.
+Optimize Proof.
+
+Optimize Heap.
+
+
+(* Time Definition WeatherStationImpl' : SharpenedUnderDelegates WeatherSig :=
+  Eval lazy zeta iota beta delta [projT1 SharpenedWeatherStation]
+  in projT1 SharpenedWeatherStation. (* 1473 *) *)
+
+
+(* Time Definition WeatherStationImpl : SharpenedUnderDelegates WeatherSig :=
+  Eval cbv zeta iota beta delta [projT1 SharpenedWeatherStation]
+  in projT1 SharpenedWeatherStation. (* 881 *)*)

@@ -18,6 +18,7 @@ Require Import Coq.Strings.String Coq.omega.Omega Coq.Lists.List Coq.Logic.Funct
         ADTSynthesis.QueryStructure.Implementation.Operations.General.QueryRefinements
         ADTSynthesis.QueryStructure.Implementation.Operations.General.MutateRefinements
         ADTSynthesis.QueryStructure.Implementation.Operations.General.DeleteRefinements
+        ADTSynthesis.QueryStructure.Automation.Common
         ADTSynthesis.Common.Ensembles.EnsembleListEquivalence.
 
 Ltac RemoveDeleteFunctionalDependencyCheck :=
@@ -33,7 +34,8 @@ Ltac RemoveDeleteFunctionalDependencyCheck :=
                                      )}] =>
         let refinePK := fresh in
         pose proof (DeletePrimaryKeysOK qs Ridx DeletedTuples attrlist1 attrlist2) as refinePK;
-          simpl in refinePK; setoid_rewrite refinePK; clear refinePK;
+          simpl in refinePK; pose_string_hyps_in refinePK; pose_heading_hyps_in refinePK;
+          setoid_rewrite refinePK; clear refinePK;
           try setoid_rewrite refineEquiv_bind_unit
     end.
 
@@ -50,7 +52,8 @@ Ltac RemoveDeleteFunctionalDependencyCheck :=
         let refineFK := fresh in
         pose proof  (@DeleteForeignKeysCheck qs_schema qs Ridx Ridx' DeletedTuples
                                              _ attr attr' tupmap) as refineFK;
-          simpl in refineFK; setoid_rewrite refineFK;
+          simpl in refineFK;  pose_string_hyps_in refineFK; pose_heading_hyps_in refineFK;
+          setoid_rewrite refineFK;
           [ clear refineFK; try simplify with monad laws
           | let tup := fresh "tup" in
             let tup' := fresh "tup'" in
@@ -87,13 +90,13 @@ Tactic Notation "remove" "trivial" "deletion" "checks" :=
         let H' := fresh "H'" in
         pose proof (@QSDeleteSpec_UnConstr_refine_opt
                       _ r_n R P r_o H) as H';
+          simpl in H'; fold_heading_hyps_in H'; fold_string_hyps_in H';
           apply H'
     end
-  | cbv beta; simpl tupleConstraints; simpl attrConstraints; cbv iota;
-    simpl map; simpl app;
-    simpl relName in *; simpl schemaHeading in *;
-    pose_string_ids; simpl;
-    simplify with monad laws;
+  | pose_string_hyps; pose_heading_hyps;
+    cbv beta iota delta [tupleConstraints attrConstraints map app
+                                          relName schemaHeading];
+    simpl; simplify with monad laws;
     repeat rewrite <- GetRelDropConstraints;
     repeat match goal with
              | H : DropQSConstraints_AbsR ?qs ?uqs |- _ =>
@@ -101,13 +104,16 @@ Tactic Notation "remove" "trivial" "deletion" "checks" :=
            end
   ].
 
-Tactic Notation "drop" "constraints" "from" "delete" constr(methname) :=
-  hone method methname;
-  [ remove trivial deletion checks;
+Ltac drop_constraints_from_delete :=
+remove trivial deletion checks;
     (* Implement constraint checks. *)
     repeat
       first [RemoveDeleteFunctionalDependencyCheck
             | ImplementDeleteForeignKeysCheck
             | setoid_rewrite refine_trivial_if_then_else; simplify with monad laws];
-    finish honing
+    pose_string_hyps; pose_heading_hyps; finish honing.
+
+Tactic Notation "drop" "constraints" "from" "delete" constr(methname) :=
+  hone method methname;
+  [ drop_constraints_from_delete
   | ].

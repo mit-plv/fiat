@@ -4,10 +4,13 @@ Require Import Coq.Sorting.Mergesort Coq.Structures.Orders
         Coq.Strings.String Coq.FSets.FMapAVL
         ADTSynthesis.Common.String_as_OT
         ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureNotations
-        ADTSynthesis.QueryStructure.Implementation.Operations.
+        ADTSynthesis.QueryStructure.Implementation.Operations
+        ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.QueryStructureImplementation
+        ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.IndexSearchTerms
+        ADTSynthesis.QueryStructure.Automation.Common.
 
 Module AttrCountOrder <: TotalLeBool.
-  Definition t := prod (prod string string) nat.
+  Definition t := (prod (string * (string * string)) nat).
 
   (* Largest element first *)
   Definition leb (x y : t) :=
@@ -15,9 +18,9 @@ Module AttrCountOrder <: TotalLeBool.
 
   Theorem leb_total : forall a1 a2 : t, leb a1 a2 = true \/ leb a2 a1 = true.
   Proof.
-    destruct a1; destruct a2; unfold leb; simpl.
-    case_eq (Compare_dec.leb n n0); intuition.
-    case_eq (Compare_dec.leb n0 n); intuition.
+    unfold t; intros; intuition; unfold leb; simpl.
+    case_eq (Compare_dec.leb b b0); intuition.
+    case_eq (Compare_dec.leb b0 b); intuition.
     apply leb_iff_conv in H; apply leb_iff_conv in H0.
     omega.
   Qed.
@@ -25,12 +28,17 @@ Module AttrCountOrder <: TotalLeBool.
 End AttrCountOrder.
 
 Module PairOfString_As_OT := (PairOrderedType String_as_OT String_as_OT).
+Module TripleOfString_As_OT := (PairOrderedType String_as_OT PairOfString_As_OT).
 
-Module RelationAttributeCounter := FMapAVL.Make PairOfString_As_OT.
+Module RelationAttributeCounter := FMapAVL.Make TripleOfString_As_OT.
 Module Import AttrCountSort := Sort AttrCountOrder.
 
+Record KindName
+  := { KindNameKind : string;
+       KindNameName : string }.
+
 Definition IncrementAttrCount
-           (idx : string * string)
+           (idx : string * (string * string))
            (cnt : RelationAttributeCounter.t nat)
 : RelationAttributeCounter.t nat :=
   match RelationAttributeCounter.find idx cnt with
@@ -38,8 +46,8 @@ Definition IncrementAttrCount
     | _ => RelationAttributeCounter.add idx 1 cnt
   end.
 
-Definition CountAttributes (l : list (string * string))
-: list (string * string * nat)  :=
+Definition CountAttributes (l : list (string * (string * string)))
+: list ((string * (string * string)) * nat)  :=
   sort (RelationAttributeCounter.elements
           (fold_right IncrementAttrCount
                       (RelationAttributeCounter.empty nat)
@@ -47,104 +55,146 @@ Definition CountAttributes (l : list (string * string))
 
 Definition GetIndexes
            (qs_schema : QueryStructureSchema)
-           (indices : list (string * string * nat))
-: list (list string) :=
+           (indices : list ((string * (string * string)) * nat))
+: list (list (string * string)) :=
   map (fun ns : NamedSchema =>
-         map (fun index => snd (fst index))
-             (filter (fun index => if (string_dec (fst (fst index)) (relName ns))
+         map (fun index => (fst (fst index), snd (snd (fst index))))
+             (filter (fun index => if (string_dec (fst (snd (fst index)))) (relName ns)
                                    then true
                                    else false)
                      indices))
       (qschemaSchemas qs_schema).
 
-Ltac QueryAttributes ClauseAttributes QueryBody k :=
-  match QueryBody with
-    | @UnConstrQuery_In _ ?qsSchema _ {|bindex := ?Ridx |} ?QueryBody' => (* Initial "Naked" Case *)
-      let QueryBody'' := eval cbv beta in (fun tup : @Tuple (GetHeading qsSchema Ridx) => QueryBody' tup) in
-          QueryAttributes ClauseAttributes
-                          QueryBody'' k  (* Simply recurse under binder *)
-    | fun tups : ?A =>
-        @UnConstrQuery_In _ ?qsSchema _ {| bindex := ?Ridx |}
-                          (@?f tups) => (* Already Under binder *)
-      let join := eval cbv beta in
-      (fun joinedtups : prod A (@Tuple (GetHeading qsSchema Ridx)) =>
-         f (fst joinedtups) (snd joinedtups)) in
-          pose "foo2"; QueryAttributes ClauseAttributes join k
-    | fun tups => Where (@?P tups) (@?QueryBody' tups) =>
-      pose P;
-        let attrs := ClauseAttributes P in
-        QueryAttributes ClauseAttributes QueryBody'
-                        ltac:(fun attrs' => k (app attrs attrs'))
-    | _ => k (@nil (prod string string))
-  end.
+  Ltac TermAttributes Term :=
+    match Term with
+      | fun tups => @GetAttribute _ (@?f tups) ?BAidx =>
+        let Aidx := eval simpl in (bindex BAidx) in
+            match type of f with
+              | _ -> @Tuple (GetHeading _ ?Ridx) =>
+                constr:([(Ridx, Aidx)])
+            end
+    end.
 
-Ltac TermAttributes Term :=
-  match Term with
-    | fun tups => @GetAttribute _ (@?f tups) {|bindex := ?Aidx |} =>
-      match type of f
-      with _ -> @Tuple (GetHeading _ ?Ridx) =>
-           (* This match works because of the explicit types
-                provided in QueryAttributes*)
-           constr:([(Ridx, Aidx)])
-      end
-    | _ => constr:(@nil (prod string string))
-  end.
-
-Ltac ClauseAttributes WhereClause TermAttributes k :=
+  Ltac ClauseAttributes WhereClause kTerm k :=
   match WhereClause with
     | fun tups => @?C1 tups /\ @?C2 tups =>
-      ClauseAttributes C1 TermAttributes
+      ClauseAttributes C1 kTerm
                        ltac:(fun attrs1 =>
-                               ClauseAttributes C2 TermAttributes
+                               ClauseAttributes C2 kTerm
                                                 ltac:(fun attrs2 =>
                                                         k (app attrs2 attrs1)))
     | fun tups => @?C1 tups = @?C2 tups =>
       let attrs1 := TermAttributes C1 in
       let attrs2 := TermAttributes C2 in
-      k (app attrs1 attrs2)
-    | _ => k (@nil (prod string string))
+      k (map (fun a12 => (EqualityIndex, (fst a12, snd a12)))
+             (app attrs1 attrs2))
+    | fun tups => @?C1 tups = _ =>
+      let attrs1 := TermAttributes C1 in
+      k (map (fun a12 => (EqualityIndex, (fst a12, snd a12)))
+             (attrs1))
+    | fun tups => _ = @?C1 tups =>
+      let attrs1 := TermAttributes C1 in
+      k (map (fun a12 => (EqualityIndex, (fst a12, snd a12)))
+             (attrs1))
+    | _ => kTerm WhereClause k
+    | _ => k (@nil (string * (string * string)))
   end.
 
-Ltac MethodAttributes meth l :=
+Ltac QueryAttributes QueryBody kTerm k :=
+  match QueryBody with
+    | @UnConstrQuery_In _ ?qsSchema _ ?Ridx ?QueryBody' => (* Initial "Naked" Case *)
+      let Ridx' := eval simpl in (bindex Ridx) in
+          let QueryBody'' := eval cbv beta in (fun tup : @Tuple (GetHeading qsSchema Ridx') => QueryBody' tup) in
+              QueryAttributes QueryBody'' kTerm k  (* Simply recurse under binder *)
+
+    | fun tups : ?A =>
+        @UnConstrQuery_In _ ?qsSchema _ ?Ridx
+                          (@?f tups) => (* Already Under binder *)
+      let Ridx' := eval simpl in (bindex Ridx) in
+      let join := eval cbv beta in
+      (fun joinedtups : prod A (@Tuple (GetHeading qsSchema Ridx')) =>
+         f (fst joinedtups) (snd joinedtups)) in
+          QueryAttributes join kTerm k
+    | fun tups => Where (@?P tups) (@?QueryBody' tups) =>
+      ClauseAttributes P kTerm
+                       ltac:(fun attrs =>
+                               QueryAttributes QueryBody' kTerm ltac:(fun attrs' => k (app attrs attrs')))
+    | _ => k (@nil (string * (string * string)))
+  end.
+
+Ltac MethodAttributes meth kTerm l :=
   hone method meth;
   [ match goal with
         |- context[For ?Q] =>
         QueryAttributes
-          ltac:(fun wc => ClauseAttributes wc TermAttributes ltac:(fun a => a))
-
-                 Q ltac:(fun attrs => let attrs' := eval simpl in attrs in
+                 Q kTerm ltac:(fun attrs => let attrs' := eval simpl in attrs in
                                           unify l attrs')
-      | _ => unify l (@nil (prod string string))
+      | _ => unify l (@nil (string * (string * string)))
     end; finish honing | ].
 
-Ltac MethodsAttributes' meths l :=
+Ltac MethodsAttributes' meths kTerm l :=
   match meths with
     | cons ?meth ?meths' =>
-      makeEvar (list (prod string string))
+      makeEvar (list (string * (string * string)))
                ltac:(fun l1 =>
-                       makeEvar (list (prod string string))
+                       makeEvar (list (string * (string * string)))
                                 ltac:(fun l2 =>
                                         unify l (app l1 l2);
-                                      MethodAttributes meth l1;
-                                      MethodsAttributes' meths' l2))
-    | nil => unify l (@nil (prod string string))
+                                      MethodAttributes meth kTerm l1;
+                                      MethodsAttributes' meths' kTerm l2))
+    | nil => unify l (@nil (string * (string * string)))
   end.
 
-Ltac GenerateIndexesFor meths k :=
+Ltac GenerateIndexesFor meths kTerm k :=
   match goal with
       |- Sharpened
            (@BuildADT (UnConstrQueryStructure ?qs_schema) _ _ _ _) =>
-      makeEvar (list (prod string string))
+      makeEvar (list (string * (string * string)))
                ltac:(fun l =>
-                       MethodsAttributes' meths l;
+                       MethodsAttributes' meths kTerm l;
                      let l' := eval compute in
                      (GetIndexes qs_schema (CountAttributes l)) in
                          k l')
   end.
 
-Ltac GenerateIndexesForAll k :=
+Ltac GenerateIndexesForAll kTerm k :=
   match goal with
       |- Sharpened
-           (@BuildADT (UnConstrQueryStructure ?qs_schema) _ ?methSigs _ _) => let meths := eval compute in (map methID methSigs) in
-                                                                                  GenerateIndexesFor meths k
+           (@BuildADT (UnConstrQueryStructure ?qs_schema) _ ?methSigs _ _) =>
+      let meths := eval compute in (map methID methSigs) in
+          GenerateIndexesFor meths kTerm k
+  end.
+
+Tactic Notation "make" "simple" "indexes" "using" constr(attrlist) :=
+  match goal with
+    | [ |- Sharpened (@BuildADT (UnConstrQueryStructure ?sch) _ _ _ _ )] =>
+      let sch' := eval simpl in (qschemaSchemas sch) in
+          makeIndex' sch' attrlist
+                     ltac:(fun l =>
+                             pose_string_hyps; pose_heading_hyps;
+                           let index := fresh "Index" in
+                           pose l as index;
+                           simpl in index;
+                           pose_string_hyps_in index; pose_heading_hyps_in index;
+                           pose_search_term_in index;
+                           pose_SearchUpdateTerms_in index;
+                           hone representation using (@DelegateToBag_AbsR sch index))
+  end.
+
+Tactic Notation "make" "indexes" "using" tactic(ClauseMatchers) :=
+  GenerateIndexesForAll
+    ClauseMatchers
+    ltac:(fun attrlist => make simple indexes using attrlist).
+
+(* Recurse over [fds] to find an attribute matching s *)
+Ltac findMatchingTerm fds kind s k :=
+  match fds with
+    | ({| KindNameKind := ?IndexType;
+          KindNameName := ?fd |}, ?X) =>
+      (* Check if this field name is equal to s; process [X] with [k] if so. *)
+      let H := fresh in
+      assert (H : s = fd) by reflexivity; clear H;
+      assert (H : kind = IndexType) by reflexivity; clear H;
+      k X
+    | (?fds1, ?fds2) => findMatchingTerm fds1 kind s k || findMatchingTerm fds2 kind s k
   end.

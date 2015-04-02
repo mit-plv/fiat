@@ -1,3 +1,4 @@
+Require Import Coq.Strings.String.
 Require Import ADTSynthesis.QueryStructure.Automation.AutoDB
         ADTSynthesis.QueryStructure.Automation.IndexSelection.
 
@@ -96,120 +97,35 @@ Definition BookStoreSpec : ADT BookStoreSig :=
                  Return ())
 }.
 
-Theorem BookStoreManual :
+Theorem SharpenedBookStore :
   Sharpened BookStoreSpec.
 Proof.
 
   unfold BookStoreSpec.
 
+  (* First, we unfold various definitions and drop constraints *)
   start honing QueryStructure.
 
-  make simple indexes using [[(EqualityIndex, sAUTHOR); (EqualityIndex, sISBN); (UnIndex, sISBN)]; [(EqualityIndex, sISBN); (UnIndex, sISBN) ]].
-  (* GenerateIndexesForAll ltac:(fun l => make simple indexes using l). *)
-
-    hone method "PlaceOrder".
-    {
-      Implement_Insert_Checks.
-
-      implement_Query.
-      simpl; simplify with monad laws.
-
-      setoid_rewrite refineEquiv_swap_bind.
-      implement_Insert_branches.
-
-      cleanup_Count.
-      finish honing.
-    }
-
-  hone constructor "Init".
-  {
-    simplify with monad laws.
-    rewrite refine_QSEmptySpec_Initialize_IndexedQueryStructure.
-    simpl.
-    finish honing.
-  }
-
-  hone method "DeleteOrder".
-  {
-    implement_QSDeletedTuples find_simple_search_term.
-    simplify with monad laws; cbv beta; simpl.
-    implement_EnsembleDelete_AbsR find_simple_search_term.
-    simplify with monad laws.
-    cleanup_Count.
-    finish honing.
-  }
+  GenerateIndexesForAll ltac:(fun _ _ => fail) ltac:(fun l => make simple indexes using l).
 
   hone method "AddBook".
   {
-    Implement_Insert_Checks.
-
-    implement_Query.
-    simpl; simplify with monad laws.
-    setoid_rewrite refineEquiv_swap_bind.
-    implement_Insert_branches.
-
-    cleanup_Count.
-    finish honing.
+    insertion a b c d e f.
   }
 
-  hone method "DeleteBook".
-  {
-    Focused_refine_Query. (* With Focused_refine_Query: 7 seconds. *)
-    { (* Step 1: Implement [In] by enumeration. *)
-      implement_In.
-      (* Step 2: Convert where clauses into compositions of filters. *)
-      repeat convert_Where_to_filter.
-      (* Step 3: Do some simplication.*)
-      repeat setoid_rewrite <- filter_and.
-      try setoid_rewrite andb_true_r.
-      (* Step 4: Move filters to the outermost [Join_Comp_Lists] to which *)
-      (* they can be applied. *)
-      repeat setoid_rewrite Join_Filtered_Comp_Lists_id.
-      distribute_filters_to_joins.
-      (* Step 5: Convert filter function on topmost [Join_Filtered_Comp_Lists] to an
-               equivalent search term matching function.  *)
-      implement_filters_with_find
-        find_simple_search_term
-        find_simple_search_term_dep.
-    }
+  FullySharpenQueryStructure BookStoreSchema Index.
 
-    simpl; simplify with monad laws.
-    implement_Delete_branches.
+  implement_bag_methods. (*  42 seconds*)
+  implement_bag_methods. (*  28 seconds *)
+  implement_bag_methods. (*  30 seconds *)
+  implement_bag_methods. (*  87 seconds *)
+  implement_bag_methods. (*   9 seconds *)
+  implement_bag_methods. (*  27 seconds *)
 
-    cleanup_Count.
-    finish honing.
-  }
-
-  hone method "NumOrders".
-  {
-    implement_Query.
-    simpl; simplify with monad laws.
-    simpl; commit.
-    repeat setoid_rewrite filter_true;
-      repeat setoid_rewrite app_nil_r;
-      repeat setoid_rewrite map_length.
-    finish honing.
-  }
-
-  hone method "GetTitles".
-    {
-      implement_Query.
-      simpl; simplify with monad laws.
-      simpl; commit.
-      repeat setoid_rewrite filter_true;
-        repeat setoid_rewrite app_nil_r;
-        repeat setoid_rewrite map_length.
-      finish honing.
-    }
-
-  FullySharpenQueryStructure BookStoreSchema Index;
-
-  implement_bag_methods.
-
-Time Defined.
+Defined.
 
 Definition BookStoreImpl : SharpenedUnderDelegates BookStoreSig.
-  Time let Impl := eval simpl in (projT1 BookStoreManual) in
+  Time let Impl := eval simpl in (projT1 SharpenedBookStore) in
            exact Impl.
 Time Defined.
 

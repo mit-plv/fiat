@@ -1,4 +1,5 @@
 (* Tactics for extracting Query Structure Implementations. *)
+Require Import Coq.Strings.String.
 Require Export
 ADTSynthesis.Common.i2list2
 ADTSynthesis.QueryStructure.Implementation.DataStructures.Bags.BagsOfTuples

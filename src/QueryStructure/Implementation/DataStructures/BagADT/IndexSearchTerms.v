@@ -1,5 +1,8 @@
 Require Import
-        Coq.Lists.List Coq.Program.Program Coq.Bool.Bool
+        Coq.Lists.List
+        Coq.Program.Program
+        Coq.Bool.Bool
+        Coq.Strings.String
         ADTSynthesis.Common.ilist
         ADTSynthesis.Common.DecideableEnsembles
         ADTSynthesis.Common.StringBound
@@ -18,15 +21,17 @@ Require Import
 (* Implements a Search Term for heading as a list of optional key
    values given a list of attributes. *)
 
+Local Open Scope string_scope.
+
 Class IndexDenotation
-      (A : Set)
+      (A : string)
       (heading : Heading)
       (index : Attributes heading)
   := { DenoteIndex : Type;
        MatchIndex : DenoteIndex -> @Tuple heading -> bool
   }.
 
-Inductive EqualityIndex : Set := equalityIndex.
+Definition EqualityIndex : string := "EqualityIndex".
 
 Global Instance EqualityIndexDenotation
        (heading : Heading)
@@ -44,15 +49,6 @@ Global Instance EqualityIndexDenotation
        end
   |}.
 
-Inductive UnIndex : Set := unIndex.
-Global Instance UnIndexDenotation
-       (heading : Heading)
-       (index : Attributes heading)
-: @IndexDenotation UnIndex heading index :=
-  {| DenoteIndex := @Tuple heading -> bool;
-     MatchIndex search_term tup := search_term tup
-  |}.
-
 Ltac BuildIndexSearchTerm'
      attrs heading indices k :=
   match indices with
@@ -68,6 +64,13 @@ Ltac BuildIndexSearchTerm'
 Ltac BuildIndexMatcher'
      attrs heading indices k :=
   match indices with
+    | [] =>
+      k (fun (st : (@Tuple heading -> bool))=> st)
+    | [("EqualityIndex", ?idx)] =>
+      let idx' := constr:(@Build_BoundedIndex _ attrs idx _) in
+      k (fun (st : prod _ (@Tuple heading -> bool)) tup =>
+              (@MatchIndex EqualityIndex heading idx' _ (fst st) tup)
+                && (snd st) tup)
     | [(?kind, ?idx)] =>
       let idx' := constr:(@Build_BoundedIndex _ attrs idx _) in
       k (@MatchIndex kind heading idx' _)
@@ -82,13 +85,15 @@ Ltac BuildIndexMatcher'
 
 Record KindIndex
        {heading : Heading}
-  := { KindIndexKind : Set;
+  := { KindIndexKind : string;
        KindIndexIndex : @Attributes heading }.
 
 Ltac BuildIndexes
      attrs heading indices k :=
   match indices with
-    | [(?kind, ?idx)] =>
+    | [] =>
+      k (@nil (@KindIndex heading))
+     | [(?kind, ?idx)] =>
       let idx' := constr:(@Build_BoundedIndex _ attrs idx _) in
       k ([@Build_KindIndex heading kind idx'])
     | (?kind, ?idx) :: ?indices' =>
@@ -191,17 +196,3 @@ Ltac makeIndex' NamedSchemas IndexKeys k :=
                                                                                                       BagApplyUpdateTerm := fun z => z |} Bs'))))
                                  end
                                  end.
-
-Tactic Notation "make" "simple" "indexes" "using" constr(attrlist) :=
-  match goal with
-    | [ |- Sharpened (@BuildADT (UnConstrQueryStructure ?sch) _ _ _ _ )] =>
-      let sch' := eval simpl in (qschemaSchemas sch) in
-          makeIndex' sch' attrlist
-                     ltac:(fun l =>
-                             let index := fresh "Index" in
-                             pose l as index;
-                           eapply SharpenStep;
-                           [eapply refineADT_BuildADT_Rep_default
-                            with (AbsR := @DelegateToBag_AbsR sch index) |
-                            compute [imap absConsDef absMethDef]; simpl ])
-  end.

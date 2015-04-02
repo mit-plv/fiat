@@ -1,5 +1,5 @@
 Require Export ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureNotations ADTSynthesis.QueryStructure.Specification.Operations.Query.
-Require Import Coq.Lists.List Coq.Arith.Compare_dec Coq.Bool.Bool Coq.Strings.String
+Require Import Coq.Lists.List Coq.Arith.Compare_dec Coq.Bool.Bool Coq.Strings.String Coq.Strings.Ascii
         ADTSynthesis.Common.BoolFacts
         ADTSynthesis.Common.List.PermutationFacts
         ADTSynthesis.Common.List.ListMorphisms
@@ -12,7 +12,8 @@ Require Import Coq.Lists.List Coq.Arith.Compare_dec Coq.Bool.Bool Coq.Strings.St
         ADTSynthesis.Common.DecideableEnsembles
         ADTSynthesis.QueryStructure.Specification.Constraints.tupleAgree
         ADTSynthesis.QueryStructure.Specification.Operations.Mutate
-        ADTSynthesis.QueryStructure.Implementation.Constraints.ConstraintChecksRefinements.
+        ADTSynthesis.QueryStructure.Implementation.Constraints.ConstraintChecksRefinements
+        ADTSynthesis.QueryStructure.Automation.Common.
 
 Ltac dec_tauto :=
     clear; intuition eauto;
@@ -30,6 +31,7 @@ Ltac prove_decidability_for_functional_dependencies :=
   try setoid_rewrite <- eq_N_dec_bool_true_iff;
   try setoid_rewrite <- eq_Z_dec_bool_true_iff;
   try setoid_rewrite <- string_dec_bool_true_iff;
+  try setoid_rewrite <- ascii_dec_bool_true_iff;
   setoid_rewrite and_True;
   repeat progress (
            try setoid_rewrite <- andb_true_iff;
@@ -67,7 +69,7 @@ Ltac fundepToQuery :=
     | [ |- context[Pick
                      (fun b => decides
                                  b
-                                 (forall tup', GetUnConstrRelation ?or ?Ridx _
+                                 (forall tup', GetUnConstrRelation (QSSchema := ?qs_schema) ?or ?Ridx _
                                                -> @FunctionalDependency_P ?heading ?attrlist1 ?attrlist2 ?n _))] ] =>
       let H' := fresh in
       let H'' := fresh in
@@ -83,9 +85,12 @@ Ltac fundepToQuery :=
         assert (DecideableEnsemble (fun x : Tuple =>
                                       tupleAgree_computational n x attrlist2 /\
                                       ~ tupleAgree_computational n x attrlist1)) as H''
-          by prove_decidability_for_functional_dependencies;
-        pose proof (@refine_functional_dependency_check_into_query _ _ n attrlist2 attrlist1 or H'' H')
-          as refine_fundep; simpl in refine_fundep; setoid_rewrite refine_fundep; clear refine_fundep H'' H'
+          by (subst_all;
+              prove_decidability_for_functional_dependencies);
+        pose proof (@refine_functional_dependency_check_into_query qs_schema Ridx n attrlist2 attrlist1 or H'' H')
+          as refine_fundep; simpl in refine_fundep;
+        fold_heading_hyps_in refine_fundep; fold_string_hyps_in refine_fundep;
+        setoid_rewrite refine_fundep; clear refine_fundep H'' H'
     | [ |- context[Pick
                      (fun b => decides
                                  b
@@ -107,4 +112,4 @@ Ltac fundepToQuery :=
                                       ~ tupleAgree_computational x n attrlist1)) as H''
           by prove_decidability_for_functional_dependencies;
         pose proof (@refine_functional_dependency_check_into_query' _ _ n attrlist2 attrlist1 or H'' H') as refine_fundep; simpl in refine_fundep; setoid_rewrite refine_fundep; clear refine_fundep H'' H'
-  end; try simplify with monad laws.
+  end; try simplify with monad laws; pose_string_hyps; pose_heading_hyps.

@@ -539,16 +539,17 @@ Section ithIndexBound.
     Program Definition ith_Bounded_ind2
             {B B' : A -> Type}
             (P : forall As, BoundedIndex (map projAC As)
-                        -> ilist B As
-                        -> forall a : A, B a -> B' a -> Prop)
+                            -> ilist B As
+                            -> ilist B' As
+                            -> forall a : A, B a -> B' a -> Prop)
   : forall (Bound : list A)
            (idx : BoundedIndex (map projAC Bound))
            (il : ilist B Bound)
            (il' : ilist B' Bound),
-      Dep_Option_elim_P2 (P Bound idx il)
+      Dep_Option_elim_P2 (P Bound idx il il')
                       (ith_error il (ibound idx))
                       (ith_error il' (ibound idx) )
-      -> P Bound idx il _ (ith_Bounded il idx) (ith_Bounded il' idx) :=
+      -> P Bound idx il il' _ (ith_Bounded il idx) (ith_Bounded il' idx) :=
     fun Bound idx il il' =>
       match (nth_error Bound (ibound idx)) as e
                  return
@@ -558,8 +559,8 @@ Section ithIndexBound.
                         d d',
                    (ith_error_eq_P Bound idx b c d)
                    -> (ith_error_eq_P Bound idx b' c d')
-                   -> Dep_Option_elim_P2 (P Bound idx il) b b' ->
-                   P _ _ _ (@nth_Bounded' _ _ _ c) d d' with
+                   -> Dep_Option_elim_P2 (P Bound idx il il') b b' ->
+                   P _ _ _ _ (@nth_Bounded' _ _ _ c) d d' with
           | Some a => _
           | None => _
            end (ith_error il (ibound idx))
@@ -656,7 +657,7 @@ Section ithIndexBound.
     destruct idx as [idx [n nth_n] ]; simpl in *; subst.
     revert Bound nth_n il;
       induction n; destruct Bound; simpl; eauto;
-    intros; icons_invert; simpl; auto.
+      intros; icons_invert; simpl; auto.
   Qed.
 
   Definition replace_BoundedIndex

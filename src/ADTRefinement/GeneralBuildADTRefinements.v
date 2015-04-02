@@ -54,16 +54,17 @@ Section BuildADTRefinements.
             (idx : @BoundedString (List.map consID consSigs))
             (newDef : consDef (nth_Bounded consID consSigs idx))
   :
-    refineConstructor eq
-                      (consBody (ith_Bounded _ consDefs idx))
-                      (consBody newDef)
+    (forall d,
+       refine (consBody (ith_Bounded consID consDefs idx) d) (consBody newDef d))
     -> refineADT
          (BuildADT consDefs methDefs)
          (ADTReplaceConsDef consDefs methDefs idx newDef).
   Proof.
-    eapply refineADT_BuildADT_ReplaceConstructor;
+    intros; eapply refineADT_BuildADT_ReplaceConstructor with (AbsR := eq);
     simpl; unfold refine; intros; subst; eauto.
     repeat computes_to_econstructor; try destruct v; eauto.
+    repeat computes_to_econstructor; try destruct v; eauto;
+    eapply H; eauto.
   Qed.
 
   Corollary SharpenStep_BuildADT_ReplaceConstructor_eq
@@ -81,11 +82,7 @@ Section BuildADTRefinements.
     -> Sharpened (BuildADT consDefs methDefs).
   Proof.
     intros; eapply SharpenStep; eauto.
-    destruct newDef; simpl.
-    intros; eapply refineADT_BuildADT_ReplaceConstructor_eq;
-    simpl; intros; subst; try reflexivity;
-    setoid_rewrite refineEquiv_pick_eq'; simplify with monad laws;
-    eauto.
+    apply refineADT_BuildADT_ReplaceConstructor_eq; eauto.
   Defined.
 
   (*
@@ -205,15 +202,17 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
         (methDefs : ilist (@methDef Rep) methSigs)
         (idx : @BoundedString (List.map methID methSigs))
         (newDef : methDef (nth_Bounded _ methSigs idx))
-  : refineMethod eq
-                 (methBody (ith_Bounded _ methDefs idx))
-                 (methBody newDef)
+  :
+    (forall r_n n,
+       refine (methBody (ith_Bounded methID methDefs idx) r_n n) (methBody newDef r_n n))
     -> refineADT
          (BuildADT consDefs methDefs)
          (ADTReplaceMethDef consDefs methDefs idx newDef).
   Proof.
-    eapply refineADT_BuildADT_ReplaceMethod;
-    reflexivity.
+    intros; eapply refineADT_BuildADT_ReplaceMethod with (AbsR := eq);
+    simpl; unfold refine; intros; subst; eauto.
+    repeat computes_to_econstructor; try destruct v; eauto.
+    repeat computes_to_econstructor; try destruct v; try eapply H; eauto.
   Qed.
 
   Corollary SharpenStep_BuildADT_ReplaceMethod_eq
@@ -231,13 +230,7 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
     -> Sharpened (BuildADT consDefs methDefs).
   Proof.
     intros; eapply SharpenStep; eauto.
-    destruct newDef; simpl.
-    intros; eapply refineADT_BuildADT_ReplaceMethod_eq;
-    simpl; intros; subst; try reflexivity;
-    setoid_rewrite H; setoid_rewrite refineEquiv_pick_eq';
-    simplify with monad laws.
-    computes_to_econstructor; eauto.
-    destruct v; simpl; econstructor.
+    intros; eapply refineADT_BuildADT_ReplaceMethod_eq; eauto.
   Defined.
 
   Lemma refineADT_BuildADT_ReplaceMethod_sigma
@@ -635,8 +628,12 @@ Tactic Notation "finish" "sharpening" constr(delegatees):=
              end ].
 
 Tactic Notation "finish" "honing" :=
-  subst_body;
-  first [higher_order_2_reflexivity | higher_order_1_reflexivity ].
+  match goal with
+    | |- ?R _ (?H _ ) =>
+      try subst H; higher_order_reflexivity
+    | |- ?R _ (?H _ _) =>
+      try subst H; higher_order_reflexivity
+  end.
 
 Ltac makeEvar T k :=
   let x := fresh in evar (x : T); let y := eval unfold x in x in clear x; k y.

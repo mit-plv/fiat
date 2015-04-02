@@ -109,6 +109,24 @@ Section BagsQueryStructureRefinements.
       rewrite app_nil_r in Comp_v''; eauto.
   Qed.
 
+  Lemma refine_Filtered_Query_In_Enumerate
+        (ResultT : Type) :
+    forall r_o (r_n : IndexedQueryStructure qs_schema BagIndexKeys),
+      DelegateToBag_AbsR r_o r_n
+      -> forall (idx : BoundedString)
+                (resultComp : Tuple -> Comp (list ResultT)),
+           refine (UnConstrQuery_In r_o idx resultComp)
+                  (l <- Join_Filtered_Comp_Lists [ inil _ ]
+                     (fun _ =>
+                        l <- CallBagMethod idx BagEnumerate r_n ();
+                      (ret (snd l)))
+                     (fun _ => true);
+                   (List_Query_In l (fun tup : ilist (@Tuple) [ _ ]=> resultComp (ilist_hd tup)))) .
+  Proof.
+    intros; rewrite refine_Query_In_Enumerate by eauto.
+    rewrite Join_Filtered_Comp_Lists_id; reflexivity.
+  Qed.
+
   Local Transparent Query_For.
 
   Lemma refine_For_Enumerate
@@ -181,6 +199,48 @@ Section BagsQueryStructureRefinements.
     intros.
     f_equiv; simpl; intro.
     eapply refine_Join_Query_In_Enumerate'; eauto.
+  Qed.
+
+  Corollary refine_Filtered_Join_Query_In_Enumerate'
+        headings
+        (ResultT : Type) :
+    forall r_o (r_n : IndexedQueryStructure qs_schema BagIndexKeys),
+      DelegateToBag_AbsR r_o r_n ->
+      forall (idx : BoundedString)
+             (resultComp : ilist (@Tuple) headings
+                           -> Tuple
+                           -> Comp (list ResultT))
+             l,
+        refine (List_Query_In l (fun tup : ilist (@Tuple) headings =>
+                                   UnConstrQuery_In r_o idx (resultComp tup)))
+               (l' <- (Join_Filtered_Comp_Lists l (fun _ => l <- (CallBagMethod idx BagEnumerate r_n ());
+                                                   ret (snd l))
+                                                (fun _ => true));
+                List_Query_In l' (fun tup_pair => (resultComp (ilist_tl tup_pair) (ilist_hd tup_pair)))).
+  Proof.
+    intros; rewrite refine_Join_Query_In_Enumerate' by eauto.
+    rewrite Join_Filtered_Comp_Lists_id; reflexivity.
+  Qed.
+
+  Corollary refine_Filtered_Join_Query_In_Enumerate
+            (ResultT : Type) :
+    forall r_o (r_n : IndexedQueryStructure qs_schema BagIndexKeys),
+      DelegateToBag_AbsR r_o r_n ->
+      forall (idx idx' : BoundedString)
+             (resultComp : Tuple -> Tuple -> Comp (list ResultT)),
+        refine (l <- CallBagMethod idx BagEnumerate r_n ();
+                List_Query_In (Build_single_Tuple_list (snd l))
+                              (fun tup =>
+                                 UnConstrQuery_In r_o idx' (resultComp (ilist_hd tup))))
+               (l <- CallBagMethod idx BagEnumerate r_n ();
+                l' <- (Join_Filtered_Comp_Lists (Build_single_Tuple_list (snd l))
+                                       (fun _ => l <- (CallBagMethod idx' BagEnumerate r_n ());
+                                        ret (snd l))
+                                       (fun _ => true));
+                List_Query_In l' (fun tup_pair => (resultComp (ilist_hd (ilist_tl tup_pair)) (ilist_hd tup_pair)))).
+  Proof.
+    intros; rewrite refine_Join_Query_In_Enumerate by eauto.
+    f_equiv; intro; rewrite Join_Filtered_Comp_Lists_id; reflexivity.
   Qed.
 
   Lemma refine_Join_Enumerate_Swap
