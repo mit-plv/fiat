@@ -46,7 +46,7 @@ Section interface.
 
   Global Existing Instance string_type.
   Global Existing Instance string_type_properties.
-Set Printing All.
+
   Record Parser (splitter : Splitter) :=
     {
       has_parse : @String Char splitter -> bool;
