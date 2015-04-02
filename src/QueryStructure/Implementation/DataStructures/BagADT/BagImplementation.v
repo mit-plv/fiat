@@ -594,10 +594,6 @@ Section SharpenedBagImplementation.
   Defined.
 
   Definition BagADTImpl : ComputationalADT.cADT (BagSig (@Tuple heading) SearchTermTypePlus UpdateTermTypePlus) :=
-    Eval cbv beta delta [SharpenedBagImpl
-                           FullySharpened_Start
-                           SharpenedBagImplementation] in projT1 SharpenedBagImpl.
-
-  Print BagADTImpl.
+    Eval simpl in projT1 SharpenedBagImpl.
 
 End SharpenedBagImplementation.

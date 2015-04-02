@@ -409,7 +409,7 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
       rewrite H0; eauto. *)
   Qed.
 
-  (*Definition Notation_Friendly_SharpenFully'
+  Definition Notation_Friendly_SharpenFully'
              (RepT : Type)
              (consSigs : list consSig) (methSigs : list methSig)
              (consDefs : ilist consDef consSigs)
@@ -479,16 +479,16 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
                                              (methCod (nth_Bounded methID methSigs idx))
                                              (getMethDef methDefs idx)
                                              (fun r_n d => ret (ith_Bounded methID (cMethods DelegateReps DelegateImpls) idx r_n d))))
-  : (sigT (fun adt => FullySharpenedUnderDelegates (BuildADT consDefs methDefs) adt))  :=
-    existT (FullySharpenedUnderDelegates (BuildADT consDefs methDefs))
-           {|
-             Sharpened_DelegateSigs := DelegateSigs;
-             Sharpened_Implementation := Notation_Friendly_BuildMostlySharpenedcADT _ rep
-                                                                                    cConstructors cMethods;
-             Sharpened_DelegateSpecs := DelegateSpecs |}
-           (Notation_Friendly_FullySharpened_BuildMostlySharpenedcADT consDefs
+  : FullySharpenedUnderDelegates
+      (BuildADT consDefs methDefs)
+      {|
+        Sharpened_DelegateSigs := DelegateSigs;
+        Sharpened_Implementation := Notation_Friendly_BuildMostlySharpenedcADT _ rep
+                                                                               cConstructors cMethods;
+        Sharpened_DelegateSpecs := DelegateSpecs |} :=
+                                 (Notation_Friendly_FullySharpened_BuildMostlySharpenedcADT consDefs
                                                                       methDefs _ rep cConstructors cMethods DelegateSpecs cAbsR
-                                                                      cConstructorsRefinesSpec cMethodsRefinesSpec). *)
+                                                                      cConstructorsRefinesSpec cMethodsRefinesSpec).
 
   Record NamedDelegatee :=
     { delegateeName : string;

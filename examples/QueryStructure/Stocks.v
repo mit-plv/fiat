@@ -85,7 +85,7 @@ Definition StocksSpec : ADT StocksSig :=
 }.
 
 Definition StocksDB :
-  Sharpened StocksSpec.
+  MostlySharpened StocksSpec.
 Proof.
   Start Profiling.
   simple_master_plan.

@@ -1993,13 +1993,14 @@ Ltac plan CreateTerm EarlyIndex LastIndex
                makeClause_dep EarlyIndex_dep LastIndex_dep
   end.
 
-Ltac master_plan CreateTerm EarlyIndex LastIndex
+Ltac master_plan matchIndex
+     CreateTerm EarlyIndex LastIndex
      makeClause_dep EarlyIndex_dep LastIndex_dep :=
   (* Implement constraints as queries. *)
   start honing QueryStructure;
   (* Automatically select indexes + data structure. *)
   GenerateIndexesForAll
-    matchEqIndex
+    matchIndex
     ltac:(fun attrlist => make simple indexes using attrlist;
           match goal with
             | |- Sharpened _ => idtac (* Do nothing to the next Sharpened ADT goal. *)
@@ -2014,7 +2015,7 @@ Ltac master_plan CreateTerm EarlyIndex LastIndex
          ).
 
 Ltac simple_master_plan :=
-  master_plan
+  master_plan matchEqIndex
     EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
     EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
 

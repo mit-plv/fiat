@@ -97,7 +97,7 @@ Definition BookStoreSpec : ADT BookStoreSig :=
 }.
 
 Theorem SharpenedBookStore :
-  Sharpened BookStoreSpec.
+  MostlySharpened BookStoreSpec.
 Proof.
   Start Profiling.
   simple_master_plan.
