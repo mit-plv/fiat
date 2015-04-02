@@ -125,16 +125,16 @@ Section IndexedImpl.
                               then True
                               else split_list_is_complete G (string_of_indexed s) (fst p) (snd p) ls
                        end };
-      ls <- (match fst p, snd p with
-               | _, nil
-                 => ret [ilength s]
-               | Terminal _, _::_
-                 => ret [1]
-               | NonTerminal _, _
-                 => if has_only_terminals (snd p)
-                    then ret [ilength s - List.length (snd p)]
-                    else ret fallback_ls
-             end);
+      let ls := (match fst p, snd p with
+                   | _, nil
+                     => [ilength s]
+                   | Terminal _, _::_
+                     => [1]
+                   | NonTerminal _, _
+                     => if has_only_terminals (snd p)
+                        then [ilength s - List.length (snd p)]
+                        else fallback_ls
+                 end) in
       ret (s, ls)
   }.
 
@@ -154,12 +154,13 @@ Section IndexedImpl.
                  | _ => progress simpl in *
                  | _ => progress computes_to_inv
                  | _ => progress subst
-                 | [ H : context[match ?x with _ => _ end] |- _ ] => is_var x; destruct x
-                                                                             | [ H : context[match ?x with _ => _ end] |- _ ] => destruct x eqn:?
-                                                                             | [ |- computes_to (Bind _ _) _ ]
-                                                                               => refine ((fun H0 H1 => BindComputes _ _ _ _ H1 H0) _ _)
-                                                                             | [ |- computes_to (Return ?x) ?y ]
-                                                                               => cut (x = y);
+                 | [ H : context[match ?x with _ => _ end] |- _ ] => (is_var x; destruct x)
+                 | [ |- context[match ?x with _ => _ end] ] => (is_var x; destruct x)
+                 | [ H : context[match ?x with _ => _ end] |- _ ] => destruct x eqn:?
+                 | [ |- computes_to (Bind _ _) _ ]
+                   => refine ((fun H0 H1 => BindComputes _ _ _ _ H1 H0) _ _)
+                 | [ |- computes_to (Return ?x) ?y ]
+                   => cut (x = y);
                  [ let H := fresh in intro H; try rewrite H; eapply ReturnComputes | ]
                  | [ |- computes_to (Pick _) _ ]
                    => eapply PickComputes
