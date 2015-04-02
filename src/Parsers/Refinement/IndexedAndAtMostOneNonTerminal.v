@@ -138,9 +138,6 @@ Section IndexedImpl.
       ret (s, ls)
   }.
 
-  (** XXX TODO: Move this to a better place *)
-  Local Arguments Ensemble_BoundedIndex_app_comm_cons / .
-
   Lemma FirstStep
   : refineADT (string_spec G) indexed_spec.
   Proof.

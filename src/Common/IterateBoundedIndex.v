@@ -26,6 +26,8 @@ Section Iterate_Ensemble.
     rewrite app_comm_cons' in P; exact P.
   Defined.
 
+  Global Arguments Ensemble_BoundedIndex_app_comm_cons / .
+
   Definition BoundedIndex_app_comm_cons {A : Set}
              (a : A)
              (As As' : list A)
