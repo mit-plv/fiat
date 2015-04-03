@@ -100,12 +100,9 @@ Theorem SharpenedBookStore :
   Sharpened BookStoreSpec.
 Proof.
 
-  Start Profiling.
   start honing QueryStructure.
 
-  Reset Profile.
   make indexes using matchFindPrefixIndex.
-  Reset Profile.
   - initializer.
   - insertion
     ltac:(fun SC F indexed_attrs f k =>

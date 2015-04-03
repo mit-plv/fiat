@@ -80,9 +80,7 @@ Definition WeatherSpec : ADT WeatherSig :=
 Definition SharpenedWeatherStation :
   Sharpened WeatherSpec.
 Proof.
-  Start Profiling.
   simple_master_plan.
-  Show Profile.
   Time Defined.
   (* <95 seconds for master_plan.
      <100 seconds for Defined. *)

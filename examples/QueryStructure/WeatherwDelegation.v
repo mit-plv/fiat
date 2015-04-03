@@ -80,7 +80,6 @@ Definition WeatherSpec : ADT WeatherSig :=
 Definition SharpenedWeatherStation :
   Sharpened WeatherSpec.
 Proof.
-  Start Profiling.
   start honing QueryStructure.
 
   (* Old, explicit index selection*)
@@ -199,7 +198,6 @@ Proof.
 
   - FullySharpenQueryStructure WeatherSchema Index;
     implement_bag_methods.
-    Show Profile.
     Time Defined. (* 83 seconds for Defined. *)
 
 (* This still takes forever. Maybe try w/o zeta?

@@ -99,9 +99,7 @@ Definition BookStoreSpec : ADT BookStoreSig :=
 Theorem SharpenedBookStore :
   Sharpened BookStoreSpec.
 Proof.
-  Start Profiling.
   simple_master_plan.
-  Show Profile.
   Time Defined.
 (* <130 seconds for master_plan.
    <141 seconds for Defined. *)

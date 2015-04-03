@@ -87,9 +87,7 @@ Definition StocksSpec : ADT StocksSig :=
 Definition StocksDB :
   Sharpened StocksSpec.
 Proof.
-  Start Profiling.
   simple_master_plan.
-  Show Profile.
   Time Defined.
 (* <280 seconds for master_plan.
    <235 seconds for Defined. *)
