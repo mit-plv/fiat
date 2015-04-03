@@ -152,6 +152,7 @@ FINITESET_MODULES := \
 
 SRC_GRAMMAR_MODULES := \
 	Parsers/ContextFreeGrammar\
+	Parsers/ContextFreeGrammarEquality\
 	Parsers/ContextFreeGrammarProperties\
 	Parsers/ContextFreeGrammarNotations\
 	Parsers/Grammars/Trivial\
@@ -188,6 +189,7 @@ SRC_PARSERS_MODULES := \
 	Parsers/ParserFromParserADT\
 	Parsers/ParserADTSpecification\
 	Parsers/Refinement/IndexedAndAtMostOneNonTerminal\
+	Parsers/Refinement/SharpenedAtMostOneNonTerminal\
 	$(SRC_PARSERS_BASE_MODULES)\
 	$(SRC_GRAMMAR_MODULES)
 #	Parsers/Examples/ABStar\

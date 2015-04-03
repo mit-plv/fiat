@@ -3,6 +3,7 @@ Require Import Coq.Strings.String.
 Require Import ADTNotation.BuildADT ADTNotation.BuildADTSig.
 Require Import ADT.ComputationalADT.
 Require Import ADTSynthesis.Parsers.ParserInterface.
+Require Import ADTSynthesis.Common.Equality.
 
 Set Implicit Arguments.
 
@@ -52,7 +53,7 @@ Section ReferenceImpl.
       ret (s, s),
 
     Def Method "is_char"(s : rep, x : Ascii.ascii) : bool  :=
-      ret (s, string_dec s (String.String x "") : bool),
+      ret (s, string_beq s (String.String x "")),
 
     Def Method "length"(s : rep, x : unit) : nat :=
       ret (s, String.length s),

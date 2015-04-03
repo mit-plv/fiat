@@ -8,7 +8,7 @@ Require Import ADTSynthesis.Parsers.ParserADTSpecification.
 Require Import ADTSynthesis.Parsers.StringLike.String.
 Require Import ADTSynthesis.Parsers.ContextFreeGrammarTransfer.
 Require Import ADTSynthesis.ADTRefinement.Core.
-Require Import ADTSynthesis.Common.
+Require Import ADTSynthesis.Common ADTSynthesis.Common.Equality.
 
 Set Implicit Arguments.
 
@@ -129,7 +129,7 @@ Section parser.
   : mto_string arg st = str
     := mcall2_eq "to_string" st arg str H.
   Definition mis_char_eq {arg st str} (H : AbsR splitter_OK str st)
-  : mis_char arg st = string_dec _ _
+  : mis_char arg st = string_beq _ _
     := mcall2_eq "is_char" st arg str H.
   Definition mlength_eq {arg st str} (H : AbsR splitter_OK str st)
   : mlength arg st = String.length str
@@ -163,16 +163,13 @@ Section parser.
 
   Local Obligation Tactic := handle_rep.
 
-  Local Arguments string_dec : simpl never.
-  Start Profiling.
-
   Local Program Instance adt_based_StringLike : StringLike Ascii.ascii
     := { String := StringT;
          take n str := mtake n str;
          drop n str := mdrop n str;
          length str := mlength tt str;
          is_char str ch := mis_char ch str;
-         bool_eq s1 s2 := string_dec (mto_string tt s1) (mto_string tt s2) }.
+         bool_eq s1 s2 := string_beq (mto_string tt s1) (mto_string tt s2) }.
 
   Local Ltac t'' H meth :=
     pose proof (meth Ascii.ascii string_stringlike string_stringlike_properties) as H;

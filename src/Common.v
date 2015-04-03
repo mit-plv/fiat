@@ -8,6 +8,7 @@ Global Set Implicit Arguments.
 Global Generalizable All Variables.
 
 Global Coercion is_true : bool >-> Sortclass.
+Coercion bool_of_sumbool {A B} (x : {A} + {B}) : bool := if x then true else false.
 
 (** Test if a tactic succeeds, but always roll-back the results *)
 Tactic Notation "test" tactic3(tac) :=
@@ -1321,8 +1322,6 @@ Lemma substring_concat' {y z} {s : string}
 Proof.
   rewrite <- substring_concat; reflexivity.
 Qed.
-
-Coercion bool_of_sumbool {A B} (x : {A} + {B}) : bool := if x then true else false.
 
 Lemma substring_concat0 {s1 s2 : string}
 : substring 0 (length s1) (s1 ++ s2) = s1.
