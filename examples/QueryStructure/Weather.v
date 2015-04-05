@@ -37,6 +37,7 @@ Definition WeatherSchema :=
                       DAY :: nat,
                       TIME :: nat> ]
     enforcing [attribute CELL_ID for MEASUREMENTS references CELLS].
+
 (* Try with three tables (distribution of areas per state) *)
 
 Definition Init := "Init".
@@ -55,7 +56,8 @@ Definition WeatherSig : ADTSig :=
     }.
 
 Definition WeatherSpec : ADT WeatherSig :=
-  QueryADTRep WeatherSchema {
+  Eval simpl in
+    QueryADTRep WeatherSchema {
     Def Constructor Init (_ : unit) : rep := empty,
 
     update AddCell (cell : WeatherSchema#CELLS) : bool :=
@@ -81,7 +83,7 @@ Definition SharpenedWeatherStation :
   MostlySharpened WeatherSpec.
 Proof.
   simple_master_plan.
-  Time Defined.
+Time Defined.
   (* <95 seconds for master_plan.
      <100 seconds for Defined.
       500 seconds after switch.

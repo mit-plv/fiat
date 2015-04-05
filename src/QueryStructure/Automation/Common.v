@@ -2,6 +2,8 @@ Require Import
         Coq.Strings.String
         ADTSynthesis.Common.StringBound
         ADTSynthesis.QueryStructure.Specification.Representation.Heading
+        ADTSynthesis.QueryStructure.Specification.Representation.Schema
+        ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureSchema
         ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.IndexSearchTerms
         ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.QueryStructureImplementation.
 
@@ -58,15 +60,33 @@ Ltac pose_string_hyps :=
 Ltac fold_heading_hyps :=
   repeat
     match goal with
-      | H' := @BuildHeading _ :  _ |- _ => progress (fold H')
+      | [H' := @BuildHeading _ :  _ |- _ ] => progress (fold H')
+      | [H' := @Build_Schema ?heading ?TupleConstr ?RelConstr |- _ ]=> progress (fold H')
+      | [H' := @Build_NamedSchema ?name ?sch |- _ ] => progress (fold H')
+      | [H' := @Build_QueryStructureSchema ?qs_schema ?CrossConstr |- _ ] => progress (fold H')
     end.
 
 Ltac fold_heading_hyps_in H :=
   repeat match goal with
-           | H' := @BuildHeading ?heading :  _ |- _ =>
-                   (match type of H with
-                      | context [@BuildHeading heading] => fold H' in H
-                    end)
+           | [H' := @BuildHeading ?heading :  _ |- _] =>
+             match type of H with
+                | context [@BuildHeading heading] => fold H' in H
+              end
+           | [H' := @Build_Schema ?heading ?TupleConstr ?RelConstr |- _ ] =>
+             match type of H with
+               | context [@Build_Schema heading TupleConstr RelConstr] =>
+                 fold H' in H
+             end
+           | [H' := @Build_NamedSchema ?name ?sch |- _ ] =>
+             match type of H with
+               | context [@Build_NamedSchema name sch] =>
+                 fold H' in H
+             end
+           | [H' := @Build_QueryStructureSchema ?qs_schema ?CrossConstr |- _ ] =>
+             match type of H with
+               | context [@Build_QueryStructureSchema ?qs_schema ?CrossConstr] =>
+                 fold H' in H
+             end
          end.
 
 Ltac pose_heading_hyps :=
@@ -75,7 +95,21 @@ Ltac pose_heading_hyps :=
            | |- context[BuildHeading ?attrlist] =>
              let heading := fresh "heading" in
              set (BuildHeading attrlist) as heading in *
+
+           | |- context [@Build_Schema ?heading ?TupleConstr ?RelConstr] =>
+             let sch := fresh "schma" in
+             set (@Build_Schema heading TupleConstr RelConstr) as sch in *
+
+           | |- context [@Build_NamedSchema ?name ?sch] =>
+             let nsch := fresh "nschma" in
+             set (@Build_NamedSchema name sch) as nsch in *
+
+           | |- context [@Build_QueryStructureSchema ?qs_schema ?CrossConstr] =>
+             let qs_sch := fresh "qs_schma" in
+             set (@Build_QueryStructureSchema qs_schema CrossConstr) as qs_schema in *
+
          end.
+
 
 Ltac subst_all :=
   repeat match goal with H : _ |- _ => subst H end.
@@ -107,6 +141,18 @@ Ltac pose_heading_hyps_in H :=
            | context[BuildHeading ?attrlist] =>
              let heading := fresh "heading" in
              set (BuildHeading attrlist) as heading in *
+
+           | context [@Build_Schema ?heading ?TupleConstr ?RelConstr] =>
+             let sch := fresh "schma" in
+             set (@Build_Schema heading TupleConstr RelConstr) as sch in *
+
+           | context [@Build_NamedSchema ?name ?sch] =>
+             let nsch := fresh "nschma" in
+             set (@Build_NamedSchema name sch) as nsch in *
+
+           | context [@Build_QueryStructureSchema ?qs_schema ?CrossConstr] =>
+             let qs_sch := fresh "qs_schma" in
+             set (@Build_QueryStructureSchema qs_schema CrossConstr) as qs_schema in *
          end).
 
 Ltac pose_search_term_in H :=
