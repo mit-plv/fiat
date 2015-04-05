@@ -80,6 +80,7 @@ Definition WeatherSpec : ADT WeatherSig :=
 Definition SharpenedWeatherStation :
   MostlySharpened WeatherSpec.
 Proof.
+<<<<<<< HEAD
   Start Profiling.
   start honing QueryStructure.
   (* Automatically select indexes + data structure. *)
@@ -97,6 +98,9 @@ Proof.
     | |- appcontext[@BuildADT (IndexedQueryStructure ?Schema ?Indexes)] =>
       FullySharpenQueryStructure Schema Indexes
   end.
+=======
+  simple_master_plan.
+>>>>>>> 762e1796caac652a406dcf935d71478d87b80fbc
   Time Defined.
   (* <95 seconds for master_plan.
      <100 seconds for Defined.

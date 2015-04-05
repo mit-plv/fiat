@@ -88,13 +88,10 @@ Definition StocksDB :
   Sharpened StocksSpec.
 Proof.
 
-  Start Profiling.
   start honing QueryStructure.
   (* Old, explicit index selection*)
   (* make simple indexes using [[AREA_CODE]; [MEASUREMENT_TYPE; CELL_ID]]. *)
-  Reset Profile.
   make indexes using matchFindPrefixIndex.
-  Show Profile.
   - initializer.
   - insertion
     ltac:(fun SC F indexed_attrs f k =>
@@ -150,7 +147,6 @@ Proof.
                                           | _ => createLastInclusionTerm_dep dom f fds tail fs kind rest s k
                                           | _ => createLastRangeTerm_dep dom f fds tail fs kind rest s k
                                         end).
-    Reset Profile.
   - observer
     ltac:(fun SC F indexed_attrs f k =>
             match goal with
@@ -259,7 +255,6 @@ Proof.
                                           | _ => createLastInclusionTerm_dep dom f fds tail fs kind rest s k
                                           | _ => createLastRangeTerm_dep dom f fds tail fs kind rest s k
                                         end).
-                Reset Profile.
               - FullySharpenQueryStructure StocksSchema Index;
                 implement_bag_methods.
                 Time Defined.

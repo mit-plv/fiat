@@ -241,18 +241,18 @@ DNS_MODULES := \
 	DnsServer/Dns
 
 EXAMPLE_MODULES := \
+	QueryStructure/Bookstore \
+	QueryStructure/Weather \
+	QueryStructure/Stocks
+#FiniteSetsADTs/FiniteSetsExamples \
+	ExtractingFiniteSetsExamples \
 	QueryStructure/BookstorewDelegation \
 	QueryStructure/WeatherwDelegation \
 	QueryStructure/StockswDelegation \
 	QueryStructure/WeatherExtraction \
 	QueryStructure/BookstoreExtraction \
-	QueryStructure/StocksExtraction
-#FiniteSetsADTs/FiniteSetsExamples \
-	ExtractingFiniteSetsExamples \
-	QueryStructure/Bookstore \
+	QueryStructure/StocksExtraction \
 	QueryStructure/BookstoreSemiAutomatic \
-	QueryStructure/Weather \
-	QueryStructure/Stocks \
 	ProcessScheduler \
 	CacheADT/KVEnsembles \
 	CacheADT/CacheSpec \
@@ -348,7 +348,7 @@ FAST_TARGETS := clean archclean printenv clean-old
 
 .PHONY: all fiat querystructures parsers finitesets dns examples html clean pretty-timed pretty-timed-files pdf doc clean-doc cheat parsers-base
 
-all : fiat querystructures parsers finitesets examples
+all : fiat querystructures parsers examples
 
 fiat : $(CORE_VOS)
 
@@ -392,7 +392,7 @@ Overview/ProjectOverview.pdf: $(shell find Overview -name "*.tex" -o -name "*.st
 
 Makefile.coq: Makefile
 	$(VECHO) "COQ_MAKEFILE > $@"
-	$(Q)"$(COQBIN)coq_makefile" $(CORE_VS) $(EXAMPLE_VS) $(QUERYSTRUCTURE_VS) $(SRC_PARSERS_VS) $(FINITESET_VS) $(COMPILER_VS) COQC = "\$$(SILENCE_COQC)\$$(TIMER) \"\$$(COQBIN)coqc\"" COQDEP = "\$$(SILENCE_COQDEP)\"\$$(COQBIN)coqdep\" -c" COQDOCFLAGS = "$(COQDOCFLAGS)" -arg -dont-load-proofs -R src ADTSynthesis -R examples ADTExamples | sed s'/^\(-include.*\)$$/ifneq ($$(filter-out $(FAST_TARGETS),$$(MAKECMDGOALS)),)~\1~else~ifeq ($$(MAKECMDGOALS),)~\1~endif~endif/g' | tr '~' '\n' | sed s'/^clean:$$/clean-old::/g' | sed s'/^Makefile: /Makefile-old: /g' > $@
+	$(Q)"$(COQBIN)coq_makefile" $(CORE_VS) $(EXAMPLE_VS) $(QUERYSTRUCTURE_VS) $(SRC_PARSERS_VS) COQC = "\$$(SILENCE_COQC)\$$(TIMER) \"\$$(COQBIN)coqc\"" COQDEP = "\$$(SILENCE_COQDEP)\"\$$(COQBIN)coqdep\" -c" COQDOCFLAGS = "$(COQDOCFLAGS)" -arg -dont-load-proofs -R src ADTSynthesis -R examples ADTExamples | sed s'/^\(-include.*\)$$/ifneq ($$(filter-out $(FAST_TARGETS),$$(MAKECMDGOALS)),)~\1~else~ifeq ($$(MAKECMDGOALS),)~\1~endif~endif/g' | tr '~' '\n' | sed s'/^clean:$$/clean-old::/g' | sed s'/^Makefile: /Makefile-old: /g' > $@
 
 -include Makefile.coq
 
