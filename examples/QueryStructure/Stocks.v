@@ -92,7 +92,7 @@ Proof.
 (* <280 seconds for master_plan.
    <235 seconds for Defined. *)
 
-Time Definition StocksDBImpl' : SharpenedUnderDelegates StocksSig :=
-  Eval cbv beta delta iota in projT1 StocksDB.
+Time Definition StocksDBImpl : SharpenedUnderDelegates StocksSig :=
+  Eval simpl in projT1 StocksDB.
 
 Print StocksDBImpl.

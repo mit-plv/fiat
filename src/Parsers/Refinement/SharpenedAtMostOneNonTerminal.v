@@ -173,10 +173,11 @@ production_is_reachable G (fst n :: snd n)*)
       [ solve [ apply FirstStep ] | ];
       unfold indexed_spec.
 
-
-  Lemma FullySharpenedSplitter
-  : Sharpened (string_spec G).
+  Lemma ComputationalSplitter
+  : FullySharpened (string_spec G).
   Proof.
+    eapply FullySharpened_Start.
+
     start honing parser using indexed representation.
 
     hone method "splits".
@@ -190,20 +191,7 @@ production_is_reachable G (fst n :: snd n)*)
       finish_honing_by_eq parser_pull_tac.
     }
     FullySharpenEachMethodWithoutDelegation.
+    extract delegate-free implementation.
   Defined.
 
-  Local Ltac extract impl
-    := exists (Sharpened_Implementation (projT1 impl)
-                                        (fun _ => unit)
-                                        (fun idx => match BoundedIndex_nil _ idx : False with end));
-         apply (projT2 impl);
-         intros;
-         match goal with
-           | [ |- context[match ?e with end] ] => destruct e
-         end.
-
-  Definition ComputationalSplitter : { impl : cADT (string_rep Ascii.ascii) & refineADT (string_spec G) (LiftcADT impl) }.
-  Proof.
-    extract FullySharpenedSplitter.
-  Defined.
 End IndexedImpl.
