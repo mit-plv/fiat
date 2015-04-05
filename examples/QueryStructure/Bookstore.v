@@ -105,3 +105,8 @@ Proof.
   Time Defined.
 (* <130 seconds for master_plan.
    <141 seconds for Defined. *)
+
+Time Definition BookstoreImpl' : SharpenedUnderDelegates BookstoreSig :=
+  Eval cbv beta delta iota in projT1 SharpenedBookStore.
+
+Print BookstoreImpl'.

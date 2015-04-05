@@ -24,14 +24,14 @@ Require Import Coq.Strings.String Coq.omega.Omega Coq.Lists.List Coq.Logic.Funct
         ADTSynthesis.QueryStructure.Automation.General.DeleteAutomation.
 
 Ltac start_honing_QueryStructure :=
-  start_sharpening_ADT;
   match goal with
-      |- Sharpened ?QSSpec =>
+      |- ?R ?QSSpec =>
       cbv delta [QSSpec
                    QSGetNRelSchemaHeading GetNRelSchema
                    GetNRelSchemaHeading Domain Specif.value
                    IndexBound_tail IndexBound_head] beta; simpl;
       pose_string_hyps; pose_heading_hyps;
+      start_sharpening_ADT;
       eapply SharpenStep;
       [ match goal with
             |- context [@BuildADT (QueryStructure ?Rep) _ _ _ _] =>

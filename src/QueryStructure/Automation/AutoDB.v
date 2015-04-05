@@ -1374,73 +1374,25 @@ etransitivity;
           end);
     higher_order_reflexivity.
 
-Ltac FullySharpenQueryStructure' qs_schema Index :=
-  let delegateSigs := constr:(Build_IndexedQueryStructure_Impl_Sigs Index) in
-  let delegateSpecs := constr:(Build_IndexedQueryStructure_Impl_Specs Index) in
-  let cRep' := constr:(Build_IndexedQueryStructure_Impl_cRep Index) in
-  let cAbsR' := constr:(@Build_IndexedQueryStructure_Impl_AbsR qs_schema Index) in
-  let DelegateIDs := constr:(map relName (qschemaSchemas qs_schema)) in
-  match goal with
-      |- Sharpened (@BuildADT ?Rep ?consSigs ?methSigs ?consDefs ?methDefs) =>
-      ilist_of_dep_evar
-        (@BoundedString DelegateIDs -> Type)
-        (fun D =>
-           forall idx,
-             ComputationalADT.pcADT (delegateSigs idx) (D idx))
-        (fun (DelegateReps : @BoundedString DelegateIDs -> Type)
-             (DelegateImpls : forall idx,
-                                ComputationalADT.pcADT (delegateSigs idx) (DelegateReps idx))
-             (Sig : methSig) => ComputationalADT.cMethodType (cRep' DelegateReps)
-                                                             (methDom Sig) (methCod Sig))
-        methSigs
-        ltac:(fun cMeths =>
-                ilist_of_dep_evar
-                  (@BoundedString DelegateIDs -> Type)
-                  (fun D =>
-                     forall idx,
-                       ComputationalADT.pcADT (delegateSigs idx) (D idx))
-                  (fun (DelegateReps : @BoundedString DelegateIDs -> Type)
-                       (DelegateImpls : forall idx,
-                                          ComputationalADT.pcADT (delegateSigs idx) (DelegateReps idx))
-                       (Sig : consSig) =>
-                     ComputationalADT.cConstructorType (cRep' DelegateReps) (consDom Sig))
-                  consSigs
-                  ltac:(fun cCons =>
-                          eapply
-                            (@Notation_Friendly_SharpenFully'
-                               _
-                               consSigs
-                               methSigs
-                               consDefs
-                               methDefs
-                               DelegateIDs
-                               delegateSigs
-                               cRep'
-                               cCons
-                               cMeths
-                               delegateSpecs
-                               cAbsR'
-                            )))
-  end; simpl; intros;
-  [repeat split; intros; try exact tt; implement_bag_constructors
-  | repeat split; intros; try exact tt; implement_bag_methods].
 
-  Ltac FullySharpenQueryStructure qs_schema Index :=
-  let delegateSigs := constr:(Build_IndexedQueryStructure_Impl_Sigs Index) in
-  let delegateSpecs := constr:(Build_IndexedQueryStructure_Impl_Specs Index) in
+Ltac FullySharpenQueryStructure qs_schema Index :=
+  let DelegateSigs := constr:(Build_IndexedQueryStructure_Impl_Sigs Index) in
+  let DelegateSpecs := constr:(Build_IndexedQueryStructure_Impl_Specs Index) in
   let cRep' := constr:(Build_IndexedQueryStructure_Impl_cRep Index) in
   let cAbsR' := constr:(@Build_IndexedQueryStructure_Impl_AbsR qs_schema Index) in
   let DelegateIDs := constr:(map relName (qschemaSchemas qs_schema)) in
+  let ValidRefinements := fresh in
+  let FullySharpenedImpl := fresh in
   match goal with
       |- Sharpened (@BuildADT ?Rep ?consSigs ?methSigs ?consDefs ?methDefs) =>
       ilist_of_dep_evar
         (@BoundedString DelegateIDs -> Type)
         (fun D =>
            forall idx,
-             ComputationalADT.pcADT (delegateSigs idx) (D idx))
+             ComputationalADT.pcADT (DelegateSigs idx) (D idx))
         (fun (DelegateReps : @BoundedString DelegateIDs -> Type)
              (DelegateImpls : forall idx,
-                                ComputationalADT.pcADT (delegateSigs idx) (DelegateReps idx))
+                                ComputationalADT.pcADT (DelegateSigs idx) (DelegateReps idx))
              (Sig : methSig) => ComputationalADT.cMethodType (cRep' DelegateReps)
                                                              (methDom Sig) (methCod Sig))
         methSigs
@@ -1449,43 +1401,94 @@ Ltac FullySharpenQueryStructure' qs_schema Index :=
                   (@BoundedString DelegateIDs -> Type)
                   (fun D =>
                      forall idx,
-                       ComputationalADT.pcADT (delegateSigs idx) (D idx))
+                       ComputationalADT.pcADT (DelegateSigs idx) (D idx))
                   (fun (DelegateReps : @BoundedString DelegateIDs -> Type)
                        (DelegateImpls : forall idx,
-                                          ComputationalADT.pcADT (delegateSigs idx) (DelegateReps idx))
+                                          ComputationalADT.pcADT (DelegateSigs idx) (DelegateReps idx))
                        (Sig : consSig) =>
                      ComputationalADT.cConstructorType (cRep' DelegateReps) (consDom Sig))
                   consSigs
                   ltac:(fun cCons =>
-                          eapply
-                            (@Notation_Friendly_SharpenFully'
+                          assert
+                            ((forall
+                                 (DelegateReps : @BoundedString DelegateIDs -> Type)
+                                 (DelegateImpls : forall idx,
+                                                    ComputationalADT.pcADT (DelegateSigs idx) (DelegateReps idx))
+                                 (ValidImpls
+                                  : forall idx : @BoundedString DelegateIDs,
+                                      refineADT (DelegateSpecs idx)
+                                                (ComputationalADT.LiftcADT (existT _ _ (DelegateImpls idx)))),
+                                 Iterate_Dep_Type_BoundedIndex
+                                   (fun idx : BoundedIndex (map consID consSigs) =>
+                                      @refineConstructor
+                                        _ (cRep' DelegateReps) (cAbsR' _ _ ValidImpls)
+                                        (consDom (nth_Bounded consID consSigs idx))
+                                        (getConsDef consDefs idx)
+                                        (fun d => ret (ith_Bounded consID (cCons DelegateReps DelegateImpls) idx d))))
+                             * (forall
+                                    (DelegateReps : @BoundedString DelegateIDs -> Type)
+                                    (DelegateImpls : forall idx,
+                                                       ComputationalADT.pcADT (DelegateSigs idx) (DelegateReps idx))
+                                    (ValidImpls
+                                     : forall idx : @BoundedString DelegateIDs,
+                                         refineADT (DelegateSpecs idx)
+                                                   (ComputationalADT.LiftcADT (existT _ _ (DelegateImpls idx)))),
+                                    Iterate_Dep_Type_BoundedIndex
+                                      (fun idx : BoundedIndex (map methID methSigs) =>
+                                         @refineMethod
+                                           _ (cRep' DelegateReps)
+                                           (cAbsR' _ _ ValidImpls)
+                                           (methDom (nth_Bounded methID methSigs idx))
+                                           (methCod (nth_Bounded methID methSigs idx))
+                                           (getMethDef methDefs idx)
+                                           (fun r_n d => ret (ith_Bounded methID (cMeths DelegateReps DelegateImpls) idx r_n d))))) as ValidRefinements;
+                        [ |
+                          pose proof (@Notation_Friendly_SharpenFully'
                                _
                                consSigs
                                methSigs
                                consDefs
                                methDefs
                                DelegateIDs
-                               delegateSigs
+                               DelegateSigs
                                cRep'
                                cCons
                                cMeths
-                               delegateSpecs
+                               DelegateSpecs
                                cAbsR'
-                            )))
-  end; simpl; intros;
-  [ repeat split; intros; try exact tt;
-    try (etransitivity;
-         [eapply (@Initialize_IndexedQueryStructureImpls_AbsR qs_schema Index)
-         | ];
-         cbv beta;
-         unfold Initialize_IndexedQueryStructureImpls',
-         CallBagImplConstructor; simpl;
-         higher_order_reflexivity
+                               (fst ValidRefinements)
+                               (snd ValidRefinements))
+                            as FullySharpenedImpl
+                          ; clear ValidRefinements ]
+
+                       ))
+  end;
+    [ simpl; intros; split;
+      [ repeat split; intros; try exact tt;
+        try (etransitivity;
+             [eapply (@Initialize_IndexedQueryStructureImpls_AbsR qs_schema Index)
+             | ];
+             cbv beta;
+             unfold Initialize_IndexedQueryStructureImpls',
+             CallBagImplConstructor; simpl;
+             higher_order_reflexivity
         )
-  | repeat split; intros; try exact tt;
-    try implement_bag_methods
-  ].
-
+      | repeat split; intros; try exact tt;
+        try implement_bag_methods
+      ] | ];
+    simpl in FullySharpenedImpl;
+  fold_string_hyps_in FullySharpenedImpl;
+  fold_heading_hyps_in FullySharpenedImpl;
+  pose_SearchUpdateTerms_in FullySharpenedImpl;
+  pose_search_term_in FullySharpenedImpl;
+  let impl := fresh "impl" in
+  match type of FullySharpenedImpl with
+      @FullySharpenedUnderDelegates _ _ ?Impl =>
+      set (impl := Impl) in *; revert FullySharpenedImpl
+  end;
+    cbv beta in *; simpl in impl;
+    zeta_expand_all impl;
+    intros; exact FullySharpenedImpl.
 
 Ltac Focused_refine_Query :=
   match goal with

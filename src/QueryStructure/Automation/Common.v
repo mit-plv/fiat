@@ -109,14 +109,14 @@ Ltac pose_heading_hyps_in H :=
              set (BuildHeading attrlist) as heading in *
          end).
 
-  Ltac pose_search_term_in H :=
-    repeat
-      (let H' := eval unfold H in H in
-           match H' with
-             | context[BuildIndexSearchTerm ?Indexes] =>
-               let search_term := fresh "SearchTerm" in
-               set (BuildIndexSearchTerm Indexes) as search_term in *
-           end).
+Ltac pose_search_term_in H :=
+  repeat
+    (let H' := eval unfold H in H in
+         match H' with
+           | context[BuildIndexSearchTerm ?Indexes] =>
+             let search_term := fresh "SearchTerm" in
+             set (BuildIndexSearchTerm Indexes) as search_term in *
+         end).
 
   Ltac pose_SearchUpdateTerms_in H :=
     repeat
@@ -131,6 +131,23 @@ Ltac pose_heading_hyps_in H :=
                                              matcher update_term applier)
                  as search_update_term in *
            end).
+
+  Ltac zeta_expand id H :=
+    revert id H;
+    match goal with
+        |- let id := ?Z in
+           let H := ?bod in
+           _ =>
+        let H' := fresh in
+        pose (let id := Z in bod) as H;
+          intros id H'; change H' with H in *;
+          clear H'; revert id
+    end.
+  Ltac zeta_expand_all impl :=
+    repeat match goal with
+               H := _ : _, impl := _ : _ |- _ =>
+                                   zeta_expand H impl
+           end.
 
 
 Ltac CombineCase1 x y :=

@@ -59,30 +59,44 @@ Definition WeatherSpec : ADT WeatherSig :=
     Def Constructor Init (_ : unit) : rep := empty,
 
     update AddCell (cell : WeatherSchema#CELLS) : bool :=
-        Insert cell into CELLS,
+      Insert cell into CELLS,
 
     update AddMeasurement (measurement : WeatherSchema#MEASUREMENTS) : bool :=
-        Insert measurement into MEASUREMENTS,
+      Insert measurement into MEASUREMENTS,
 
     query CountCells (area : AreaCode) : nat :=
       Count (For (cell in CELLS)
              Where (area = cell!AREA_CODE)
              Return 1),
 
-      query LocalMax (params: AreaCode * MeasurementType) : option Z :=
-        MaxZ (For (cell in CELLS) (measurement in MEASUREMENTS)
-              Where (cell!AREA_CODE = fst params)
-              Where (measurement!MEASUREMENT_TYPE = snd params)
-              Where (cell!CELL_ID = measurement!CELL_ID)
-              Return measurement!VALUE)
+    query LocalMax (params: AreaCode * MeasurementType) : option Z :=
+      MaxZ (For (cell in CELLS) (measurement in MEASUREMENTS)
+            Where (cell!AREA_CODE = fst params)
+            Where (measurement!MEASUREMENT_TYPE = snd params)
+            Where (cell!CELL_ID = measurement!CELL_ID)
+            Return measurement!VALUE)
 }.
 
 Definition SharpenedWeatherStation :
   MostlySharpened WeatherSpec.
 Proof.
   Start Profiling.
-  simple_master_plan.
-  Show Profile.
+  start honing QueryStructure.
+  (* Automatically select indexes + data structure. *)
+  GenerateIndexesForAll
+    matchIndex
+    ltac:(fun attrlist => make simple indexes using attrlist;
+          match goal with
+            | |- Sharpened _ => idtac (* Do nothing to the next Sharpened ADT goal. *)
+            | |- _ => (* Otherwise implement each method using the indexed data structure *)
+              plan CreateTerm EarlyIndex LastIndex
+                   makeClause_dep EarlyIndex_dep LastIndex_dep
+          end
+         ).
+  match goal with
+    | |- appcontext[@BuildADT (IndexedQueryStructure ?Schema ?Indexes)] =>
+      FullySharpenQueryStructure Schema Indexes
+  end.
   Time Defined.
   (* <95 seconds for master_plan.
      <100 seconds for Defined.
@@ -91,6 +105,8 @@ Proof.
 
 Time Definition WeatherStationImpl' : SharpenedUnderDelegates WeatherSig :=
   Eval simpl in projT1 SharpenedWeatherStation.
+
+Print WeatherStationImpl'.
 
 (* This still takes forever. Maybe try w/o zeta?
 Time Definition WeatherStationImpl' : SharpenedUnderDelegates WeatherSig :=
