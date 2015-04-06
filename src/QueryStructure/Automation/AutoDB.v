@@ -1484,11 +1484,19 @@ Ltac FullySharpenQueryStructure qs_schema Index :=
   let impl := fresh "impl" in
   match type of FullySharpenedImpl with
       @FullySharpenedUnderDelegates _ _ ?Impl =>
-      set (impl := Impl) in *; revert FullySharpenedImpl
+      set (impl := Impl) in *
   end;
     cbv beta in *; simpl in impl;
-    zeta_expand_all impl;
-    intros; exact FullySharpenedImpl.
+    let impl' :=
+        match goal with
+            |- @FullySharpenedUnderDelegates _ _ ?Impl => Impl
+        end in
+    (* Not having to worry about re-typing the body during zeta-expansion
+     yields a 30x speedup.
+     *)
+    assert (True) by
+        (clear FullySharpenedImpl; zeta_expand_all impl; unify impl impl'; econstructor);
+      exact FullySharpenedImpl.
 
 Ltac Focused_refine_Query :=
   match goal with

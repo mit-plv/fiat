@@ -93,7 +93,3 @@ Time Definition WeatherStationImpl' : SharpenedUnderDelegates WeatherSig :=
   Eval simpl in projT1 SharpenedWeatherStation.
 
 Print WeatherStationImpl'.
-
-(* This still takes forever. Maybe try w/o zeta?
-Time Definition WeatherStationImpl' : SharpenedUnderDelegates WeatherSig :=
-  Eval vm_compute in projT1 SharpenedWeatherStation. *)
