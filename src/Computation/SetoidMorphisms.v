@@ -1,3 +1,4 @@
+Require Import Coq.Lists.List.
 Require Import ADTSynthesis.Common.
 Require Import ADTSynthesis.Computation.Core.
 
@@ -33,6 +34,12 @@ Add Parametric Morphism A
     as refine_refineEquiv.
 Proof. t. Qed.
 
+Add Parametric Morphism A
+: (@refine A)
+    with signature
+    (refineEquiv --> refineEquiv --> Basics.flip impl)
+      as refine_refineEquiv'.
+Proof. t. Qed.
 
 
 Add Parametric Morphism A B
@@ -45,6 +52,21 @@ Add Parametric Morphism A B
 Proof.
   simpl; intros.
   unfold pointwise_relation, refine in *; simpl in *.
+  intros.
+  computes_to_inv.
+  computes_to_econstructor; eauto.
+Qed.
+
+Add Parametric Morphism A B
+: (@Bind A B)
+    with signature
+    (Basics.flip (@refine A))
+      ==> (pointwise_relation _ (Basics.flip (@refine B)))
+      ==> (Basics.flip (@refine B))
+      as refine_bind_flip.
+Proof.
+  simpl; intros.
+  unfold flip, pointwise_relation, refine in *; simpl in *.
   intros.
   computes_to_inv.
   computes_to_econstructor; eauto.
@@ -188,4 +210,46 @@ Instance refine_refineEquiv_subrelation A
 : subrelation (@refineEquiv A) (@refine A).
 Proof.
   intros ? ? [? ?]; assumption.
+Qed.
+
+Add Parametric Morphism A B
+: (@fold_right (Comp A) B)
+  with signature
+  (pointwise_relation _ (@refine A ==> @refine A)) ++> (@refine A) ++> eq ==> (@refine A)
+    as refine_fold_right.
+Proof.
+  intros ?? H0 x0 y0 H1 ls; intros; subst.
+  revert x0 y0 H1.
+  induction ls; simpl; trivial; [].
+  intros ?? H1.
+  unfold pointwise_relation in *.
+  apply H0, IHls; assumption.
+Qed.
+
+Add Parametric Morphism A B
+: (@fold_right (Comp A) B)
+  with signature
+  (pointwise_relation _ (@refineEquiv A ==> @refineEquiv A)) ++> (@refineEquiv A) ++> eq ==> (@refineEquiv A)
+    as refineEquiv_fold_right.
+Proof.
+  intros ?? H0 x0 y0 H1 ls; intros; subst.
+  revert x0 y0 H1.
+  induction ls; simpl; trivial; [].
+  intros ?? H1.
+  unfold pointwise_relation in *.
+  apply H0, IHls; assumption.
+Qed.
+
+Add Parametric Morphism A B
+: (@fold_right (Comp A) B)
+  with signature
+  (pointwise_relation _ (Basics.flip (@refine A) ==> Basics.flip (@refine A))) ++> (Basics.flip (@refine A)) ++> eq ==> (Basics.flip (@refine A))
+    as refine_fold_right_flip.
+Proof.
+  intros ?? H0 x0 y0 H1 ls; intros; subst.
+  revert x0 y0 H1.
+  induction ls; simpl; trivial; [].
+  intros ?? H1.
+  unfold pointwise_relation in *.
+  apply H0, IHls; assumption.
 Qed.

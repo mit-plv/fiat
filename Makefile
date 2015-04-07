@@ -20,6 +20,7 @@ CORE_MODULES    := \
 	Common/LogicFacts \
 	Common/NatFacts \
 	Common/LogicMorphisms \
+	Common/SetoidInstances \
 	Common/Ensembles \
 	Common/Ensembles/EnsembleListEquivalence \
 	Common/Ensembles/Cardinal \
