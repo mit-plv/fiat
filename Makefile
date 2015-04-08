@@ -191,7 +191,7 @@ SRC_PARSERS_MODULES := \
 	Parsers/ParserADTSpecification\
 	Parsers/Refinement/IndexedAndAtMostOneNonTerminal\
 	Parsers/Refinement/SharpenedAtMostOneNonTerminal\
-	Parsers/Refinement/IndexedAndAtMostOneNonTerminalReflective.v\
+	Parsers/Refinement/IndexedAndAtMostOneNonTerminalReflective\
 	$(SRC_PARSERS_BASE_MODULES)\
 	$(SRC_GRAMMAR_MODULES)
 #	Parsers/Examples/ABStar\
