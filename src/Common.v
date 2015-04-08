@@ -1464,3 +1464,8 @@ Lemma fold_right_and_iff {A ls}
 Proof.
   induction ls; simpl; tauto.
 Qed.
+
+Definition impl0_0 {A} : A -> A := fun x => x.
+Definition impl0_1 {A B C} : (B -> C) -> ((A -> B) -> (A -> C)). Proof. auto. Defined.
+Definition impl1_1 {A B C} : (B -> A) -> ((A -> C) -> (B -> C)). Proof. auto. Defined.
+Definition impl1_2 {A A' B C C'} : ((A -> C) -> (A' -> C')) -> ((A -> B -> C) -> (A' -> B -> C')). Proof. eauto. Defined.
