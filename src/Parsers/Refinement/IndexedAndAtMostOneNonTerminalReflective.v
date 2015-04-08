@@ -350,8 +350,6 @@ Section IndexedImpl.
              | _ => intro
              | _ => progress subst
              | [ H : false = true |- _ ] => exfalso; clear -H; discriminate
-             | [ H : context[if has_only_terminals ?ls then _ else _] |- _ ]
-               => revert H; case_eq (has_only_terminals ls)
              | [ |- context[production_beq ?d ?x ?y] ]
                => case_eq (production_beq d x y); intro
              | [ H : context[if production_beq ?d ?x ?y then _ else _] |- _ ]
@@ -405,8 +403,61 @@ Section IndexedImpl.
         { abstract fin2. }
         { abstract fin2. }
         { abstract fin2. }
-        { fin2.
+        { revert IHls; apply fold_right_and_map_impl;
+          repeat match goal with
+                   | [ |- ?x -> ?x ] => exact (fun y => y)
+                   | [ |- forall x, @?P x ]
+                     => match goal with
+                          | [ |- ?A -> ?B ] => fail 1
+                          | _ => intro
+                        end
+                   | [ |- match ?x with _ => _ end -> match ?x with _ => _ end ]
+                     => destruct x
+                   | [ |- (?x -> _) -> ?x -> _ ]
+                     => let H := fresh in
+                        let y := fresh in
+                        intros H y; specialize (H y); clear y; revert H
+                   | [ |- (_ -> ?x) -> _ -> ?x ]
+                     => let H := fresh in
+                        let y := fresh in
+                        intros H y; apply H; clear H; revert y
+                   | [ |- (_ -> ?x -> _) -> _ -> ?x -> _ ]
+                     => let H := fresh in
+                        let y := fresh in
+                        let z := fresh in
+                        intros H y z;
+                          specialize (fun y => H y z); revert H y; clear z
+                   | [ |- ?A -> ?B ]
+                     => match A with
+                          | context[if ?x then _ else _]
+                            => match B with
+                                 | context[if x then _ else _]
+                                   => fail 1
+                                 | _ => case_eq x; intro
+                               end
+                        end
+                 end.
+          lazymatch goal with
+                   | [ |- _ -> computes_to (fold_right _ _ ?ls) ?v ]
+                     => induction ls
+end.
+          try match goal with
+                   | [ |- ?A -> ?B ]
+                     => match A with
+                          | context[if ?x then _ else _]
+                            => match B with
+                                 | context[if x then _ else _]
+                                   => fail 1
+                                 | _ => case_eq x; intro
+                               end
+                        end
+end.
+          refine (fun
+          intros x y.
+fin2.
           match goal with
+             | [ H : context[if has_only_terminals ?ls then _ else _] |- _ ]
+               => revert H; case_eq (has_only_terminals ls)
           end.
           { fin2.
             match goal with
