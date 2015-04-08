@@ -1458,3 +1458,9 @@ Qed.
 Lemma sub_plus {x y z} (H0 : z <= y) (H1 : y <= x)
 : x - (y - z) = (x - y) + z.
 Proof. omega. Qed.
+
+Lemma fold_right_and_iff {A ls}
+: fold_right and A ls <-> (fold_right and True ls /\ A).
+Proof.
+  induction ls; simpl; tauto.
+Qed.
