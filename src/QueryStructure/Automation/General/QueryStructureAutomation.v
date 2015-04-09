@@ -23,6 +23,37 @@ Require Import Coq.Strings.String Coq.omega.Omega Coq.Lists.List Coq.Logic.Funct
         ADTSynthesis.QueryStructure.Automation.General.InsertAutomation
         ADTSynthesis.QueryStructure.Automation.General.DeleteAutomation.
 
+Ltac start_honing_QueryStructure' :=
+  eapply SharpenStep;
+  [ match goal with
+        |- context [@BuildADT (QueryStructure ?Rep) _ _ _ _] =>
+        eapply refineADT_BuildADT_Rep_refine_All with (AbsR := @DropQSConstraints_AbsR Rep);
+          [ repeat (first [eapply refine_Constructors_nil
+                          | eapply refine_Constructors_cons;
+                            [ intros;
+                              match goal with
+                                |  |- refine _ (?E _) => let H := fresh in set (H := E)
+                                | _ => idtac
+                              end;
+                              (* Drop constraints from empty *)
+                              try apply Constructor_DropQSConstraints
+                            | ] ])
+          | repeat (first [eapply refine_Methods_nil
+                          | eapply refine_Methods_cons;
+                            [ intros;
+                              match goal with
+                                |  |- refine _ (?E _ _) => let H := fresh in set (H := E)
+                                | _ => idtac
+                              end;
+                              match goal with
+                                | |- context [QSInsert _ _ _] => drop_constraints_from_insert
+                                | |- context [QSDelete _ _ _] => drop_constraints_from_delete
+                                | |- context [Query_For _] => drop constraints from query
+                                | |- _ => idtac
+                              end | ]
+                          ])]
+    end | ].
+
 Ltac start_honing_QueryStructure :=
   match goal with
       |- ?R ?QSSpec =>
@@ -31,37 +62,12 @@ Ltac start_honing_QueryStructure :=
                    GetNRelSchemaHeading Domain Specif.value
                    IndexBound_tail IndexBound_head] beta; simpl;
       pose_string_hyps; pose_heading_hyps;
-      start_sharpening_ADT;
-      eapply SharpenStep;
-      [ match goal with
-            |- context [@BuildADT (QueryStructure ?Rep) _ _ _ _] =>
-            eapply refineADT_BuildADT_Rep_refine_All with (AbsR := @DropQSConstraints_AbsR Rep);
-              [ repeat (first [eapply refine_Constructors_nil
-                              | eapply refine_Constructors_cons;
-                                [ intros;
-                                  match goal with
-                                    |  |- refine _ (?E _) => let H := fresh in set (H := E)
-                                    | _ => idtac
-                                  end;
-                                  (* Drop constraints from empty *)
-                                  try apply Constructor_DropQSConstraints
-                                | ] ])
-              | repeat (first [eapply refine_Methods_nil
-                              | eapply refine_Methods_cons;
-                                [ intros;
-                                  match goal with
-                                    |  |- refine _ (?E _ _) => let H := fresh in set (H := E)
-                                    | _ => idtac
-                                  end;
-                                  match goal with
-                                    | |- context [QSInsert _ _ _] => drop_constraints_from_insert
-                                    | |- context [QSDelete _ _ _] => drop_constraints_from_delete
-                                    | |- context [Query_For _] => drop constraints from query
-                                    | |- _ => idtac
-                                  end | ]
-                              ])]
-        end | ]
-  end;
-  pose_string_hyps; pose_heading_hyps.
+      match R with
+        | ?MostlySharpened =>
+          eapply MostlySharpened_Start; start_honing_QueryStructure'
+        | ?FullySharpened =>
+          eapply FullySharpened_Start; [start_honing_QueryStructure' | | ]
+      end
+  end; pose_string_hyps; pose_heading_hyps.
 
 Tactic Notation "start" "honing" "QueryStructure" := start_honing_QueryStructure.

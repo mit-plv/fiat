@@ -233,6 +233,22 @@ Section i2list.
     - pose (ilist_invert Bs) as Bs_eq; simpl in Bs_eq; subst; eauto.
   Qed.
 
+  Lemma i2list_invert' (As : list A) (Bs : ilist B As) (Cs : i2list Bs):
+    match Bs as Bs' return i2list Bs' -> Type with
+      | icons a As b Bs' =>
+        fun Cs =>
+          sigT (fun (c : C b) =>
+                  sigT (fun (Cs' : i2list Bs') =>
+                          Cs = i2cons (icons a b Bs') c Cs'))
+      | inil => fun Cs => Cs = i2nil (inil _)
+    end Cs.
+  Proof.
+    destruct Cs.
+    - destruct (ilist_invert' Bs) as [b [Bs' Bs'_eq]]; subst.
+      eexists; eauto.
+    - pose (ilist_invert' Bs) as Bs_eq; simpl in Bs_eq; subst; eauto.
+  Qed.
+
   Lemma i2th_default_In :
     forall (n : nat)
            (As : list A)

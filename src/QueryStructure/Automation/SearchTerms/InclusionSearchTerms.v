@@ -3,7 +3,8 @@ Require Import
         ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureNotations
         ADTSynthesis.QueryStructure.Specification.SearchTerms.ListInclusion
         ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.IndexSearchTerms
-        ADTSynthesis.QueryStructure.Automation.IndexSelection.
+        ADTSynthesis.QueryStructure.Automation.IndexSelection
+        ADTSynthesis.QueryStructure.Automation.Common.
 
 (* Instances for building indexes with make simple indexes. *)
 (* Every Kind of index is keyed on an inductive type with a single constructor*)
@@ -51,79 +52,78 @@ Ltac matchInclusionIndex WhereClause k :=
 Ltac InclusionIndexUse SC F indexed_attrs f k :=
      match type of f with
        (* Inclusion Search Terms *)
-       | forall a, {IncludedIn ?X (_!?fd)} + {_} =>
+       | forall a, {IncludedIn ?X (GetAttribute _ ?fd)} + {_} =>
           let H := fresh in
           assert (List.In {| KindNameKind := "InclusionIndex";
-                             KindNameName := fd|} indexed_attrs) as H
+                             KindNameName := bindex fd|} indexed_attrs) as H
               by (clear; simpl; intuition eauto); clear H;
             k ({| KindNameKind := "InclusionIndex";
-                  KindNameName := fd|}, X) (fun _ : @Tuple SC => true)
-        | forall a, {IncludedIn ?X (_``?fd)} + {_} =>
-          let H := fresh in
-          assert (List.In {| KindNameKind := "InclusionIndex";
-                             KindNameName := fd|} indexed_attrs) as H
-              by (clear; simpl; intuition eauto); clear H;
-            k ({| KindNameKind := "InclusionIndex";
-                  KindNameName := fd|}, X) (fun _ : @Tuple SC => true)
+                  KindNameName := bindex fd|}, X) (fun _ : @Tuple SC => true)
      end.
 
 Ltac InclusionIndexUse_dep SC F indexed_attrs visited_attrs f T k :=
   match type of f with
-    | forall a b, {IncludedIn (@?X a) (_!?fd)} + {_} =>
+    | forall a b, {IncludedIn (@?X a) (GetAttribute _ ?fd)} + {_} =>
           let H := fresh in
           assert (List.In {| KindNameKind := "InclusionIndex";
-                             KindNameName := fd|} indexed_attrs) as H
+                             KindNameName := bindex fd|} indexed_attrs) as H
               by (clear; simpl; intuition eauto); clear H;
           match eval simpl in
                 (in_dec string_dec fd visited_attrs) with
             | right _ => k (fd :: visited_attrs)
                            ({| KindNameKind := "InclusionIndex";
-                               KindNameName := fd |}, X)
+                               KindNameName := bindex fd |}, X)
                            (fun (a : T) (_ : @Tuple SC) => true)
             | left _ => k visited_attrs tt F
           end
-        | forall a b, {IncludedIn (@?X a) (_``?fd)} + {_} =>
-          let H := fresh in
-          assert (List.In {| KindNameKind := "InclusionIndex";
-                             KindNameName := fd|} indexed_attrs) as H
-              by (clear; simpl; intuition eauto);
-            match eval simpl in
-                  (in_dec string_dec fd visited_attrs) with
-              | right _ => k (fd :: visited_attrs)
-                             ({| KindNameKind := "InclusionIndex";
-                                 KindNameName := fd |}, X)
-                             (fun (a : T) (_ : @Tuple SC) => true)
-              | left _ => k visited_attrs tt F
-            end
   end.
 
 Ltac createLastInclusionTerm f fds tail fs kind s k :=
-  match kind with
-    | "InclusionIndex" =>
-      (findMatchingTerm
-         fds kind s
-         ltac:(fun X => k {| IndexSearchTerm := X;
-                             ItemSearchTerm := tail |}))
-        || k {| IndexSearchTerm := nil;
-                ItemSearchTerm := tail |}
-  end.
+  let is_equality := eval compute in (string_dec kind "InclusionIndex") in
+      match is_equality with
+        | left _ =>
+          (findMatchingTerm
+             fds kind s
+             ltac:(fun X => k {| IndexSearchTerm := X;
+                                 ItemSearchTerm := tail |}))
+            || k {| IndexSearchTerm := nil;
+                    ItemSearchTerm := tail |}
+      end.
 
 Ltac createLastInclusionTerm_dep dom f fds tail fs kind rest s k :=
-  match kind with
-    | "InclusionIndex" =>
-      (findMatchingTerm
-         fds kind s
-         ltac:(fun X => k (fun x : dom => {| IndexSearchTerm := X x;
-                                             ItemSearchTerm := tail x |}))
-                || k (fun x : dom => {| IndexSearchTerm := nil;
-                                        ItemSearchTerm := tail x |}))
-  end.
+  let is_equality := eval compute in (string_dec kind "InclusionIndex") in
+      match is_equality with
+        | left _ =>
+          (findMatchingTerm
+             fds kind s
+             ltac:(fun X => k (fun x : dom => {| IndexSearchTerm := X x;
+                                                 ItemSearchTerm := tail x |}))
+                    || k (fun x : dom => {| IndexSearchTerm := nil;
+                                            ItemSearchTerm := tail x |}))
+      end.
 
 Ltac createEarlyInclusionTerm f fds tail fs kind EarlyIndex LastIndex rest s k :=
-  match kind with
-    | "InclusionIndex" =>
-      (findMatchingTerm
-         fds kind s
-         ltac:(fun X => k (X, rest)))
-        || k (@nil string, rest)
-  end.
+  let is_equality := eval compute in (string_dec kind "FindPrefixIndex") in
+      match is_equality with
+        | left _ =>
+          (findMatchingTerm
+             fds kind s
+             ltac:(fun X => k (X, rest)))
+            || k (@nil string, rest)
+      end.
+
+Ltac createEarlyInclusionTerm_dep dom f fds tail fs kind EarlyIndex LastIndex rest s k :=
+  let is_equality := eval compute in (string_dec kind "FindPrefixIndex") in
+      match is_equality with
+        | left _ =>
+          (findMatchingTerm
+             fds kind s
+             ltac:(fun X => k (fun x : dom => (X x, rest x))))
+            || k (fun x : dom => (@nil string, rest x))
+      end.
+
+Ltac InclusionIndexTactics f :=
+  CombineIndexTactics
+    matchInclusionIndex
+    InclusionIndexUse createEarlyInclusionTerm createLastInclusionTerm
+    InclusionIndexUse_dep createEarlyInclusionTerm_dep createLastInclusionTerm_dep f.

@@ -192,6 +192,7 @@ production_is_reachable G (fst n :: snd n)*)
     }
     FullySharpenEachMethodWithoutDelegation.
     extract delegate-free implementation.
+    simpl; higher_order_reflexivityT.
   Defined.
 
 End IndexedImpl.

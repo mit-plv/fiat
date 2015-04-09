@@ -394,13 +394,6 @@ Ltac prove_extensional_eq :=
   destruct_ifs; first [ solve [intuition] | solve [exfalso; intuition] | idtac ].
 
 (* Default tactics for handling *)
-Ltac matchEqIndex WhereClause k := fail.
-Ltac EqIndexUse SC F indexed_attrs f k := fail.
-Ltac createEarlyEqualityTerm f fds tail fs kind EarlyIndex LastIndex rest s k := fail.
-Ltac createLastEqualityTerm f fds tail fs kind s k := fail.
-Ltac EqIndexUse_dep SC F indexed_attrs f T k := fail.
-Ltac createEarlyEqualityTerm_dep dom f fds tail fs kind EarlyIndex LastIndex rest s k := fail.
-Ltac createLastEqualityTerm_dep dom f fds tail fs kind s k := fail.
 
 (* Recurse over the list of search term indexes [fs],
  consulting the list of attribute name and value pairs in [fds] to
@@ -474,7 +467,7 @@ Ltac findGoodTerm SC F indexed_attrs ClauseMatch k :=
                k ({| KindNameKind := EqualityIndex;
                   KindNameName := bindex fd|}, X) (fun _ : @Tuple SC => true)
 
-        | _ => ClauseMatch  SC F indexed_attrs f k
+        | _ => ClauseMatch SC F indexed_attrs f k
 
       end
     | fun a => (@?f a) && (@?g a) =>
@@ -2004,7 +1997,7 @@ Ltac plan CreateTerm EarlyIndex LastIndex
                makeClause_dep EarlyIndex_dep LastIndex_dep
   end.
 
-Ltac master_plan matchIndex
+Ltac master_plan' matchIndex
      CreateTerm EarlyIndex LastIndex
      makeClause_dep EarlyIndex_dep LastIndex_dep :=
   (* Implement constraints as queries. *)
@@ -2025,10 +2018,42 @@ Ltac master_plan matchIndex
           end
          ).
 
-Ltac simple_master_plan :=
-  master_plan matchEqIndex
+Ltac partial_master_plan' matchIndex
+     CreateTerm EarlyIndex LastIndex
+     makeClause_dep EarlyIndex_dep LastIndex_dep :=
+  (* Implement constraints as queries. *)
+  start honing QueryStructure;
+  (* Automatically select indexes + data structure. *)
+  GenerateIndexesForAll
+    matchIndex
+    ltac:(fun attrlist => make simple indexes using attrlist;
+          match goal with
+            | |- Sharpened _ => idtac (* Do nothing to the next Sharpened ADT goal. *)
+            | |- _ => (* Otherwise implement each method using the indexed data structure *)
+              plan CreateTerm EarlyIndex LastIndex
+                   makeClause_dep EarlyIndex_dep LastIndex_dep
+          end
+         ).
+
+Ltac matchEqIndex WhereClause k := fail.
+Ltac EqIndexUse SC F indexed_attrs f k := fail.
+Ltac createEarlyEqualityTerm f fds tail fs kind EarlyIndex LastIndex rest s k := fail.
+Ltac createLastEqualityTerm f fds tail fs kind s k := fail.
+Ltac EqIndexUse_dep SC F indexed_attrs f T k := fail.
+Ltac createEarlyEqualityTerm_dep dom f fds tail fs kind EarlyIndex LastIndex rest s k := fail.
+Ltac createLastEqualityTerm_dep dom f fds tail fs kind s k := fail.
+
+Ltac EqIndexTactics f :=
+  CombineIndexTactics matchEqIndex
     EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
-    EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
+    EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep
+    f.
+
+Ltac master_plan IndexTactics := IndexTactics master_plan'.
+Ltac partial_master_plan IndexTactics := IndexTactics partial_master_plan'.
+
+Ltac simple_master_plan := master_plan EqIndexTactics.
+Ltac simple_partial_master_plan := partial_master_plan EqIndexTactics.
 
 Global Opaque CallBagMethod.
 Global Opaque CallBagConstructor.

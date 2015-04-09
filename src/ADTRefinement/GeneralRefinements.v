@@ -73,7 +73,8 @@ Notation Sharpened spec := (@FullySharpenedUnderDelegates _ spec _).
 Definition MostlySharpened {Sig} spec := {adt : _ & @FullySharpenedUnderDelegates Sig spec adt}.
 
 Lemma FullySharpened_Start
-: forall {Sig} (spec : ADT Sig) adt,
+: forall {Sig} (spec : ADT Sig) adt
+         (cadt : cADT Sig),
     (@FullySharpenedUnderDelegates _ spec adt)
     -> forall (DelegateReps : @BoundedString (Sharpened_DelegateIDs adt) -> Type)
               (DelegateImpls :
@@ -83,11 +84,14 @@ Lemma FullySharpened_Start
                : forall idx : @BoundedString (Sharpened_DelegateIDs adt),
                    refineADT (Sharpened_DelegateSpecs adt idx)
                              (ComputationalADT.LiftcADT (existT _ _ (DelegateImpls idx)))),
-         FullySharpened spec.
+         refineADT
+           (ComputationalADT.LiftcADT (Sharpened_Implementation adt DelegateReps DelegateImpls))
+           (ComputationalADT.LiftcADT cadt)
+         -> FullySharpened spec.
 Proof.
   intros.
-  eexists (Sharpened_Implementation adt DelegateReps DelegateImpls).
-  eapply X; eauto.
+  exists cadt.
+  abstract (eapply transitivityT; eauto).
 Defined.
 
 Lemma MostlySharpened_Start

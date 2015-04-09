@@ -84,10 +84,10 @@ Section ADT.
           ACTION :: bool> ]
         enforcing [ ].
 
-  (* probably we should use typeclasses to solve this issue *)
+  (* probably we should use typeclasses to solve this issue 
   Definition priority_lt_dec :
           forall a b : RuleRecord, sumbool (b!PRIORITY <= a!PRIORITY) (~ b!PRIORITY <= a!PRIORITY)
-    := rel_dec_comm _ (rel_dec_map _ le_dec (fun r : RuleRecord => r!PRIORITY)).
+    := rel_dec_comm _ (rel_dec_map _ le_dec (fun r : RuleRecord => r!PRIORITY)). *)
 
   Definition ClassifierSig : ADTSig :=
   ADTsignature {
@@ -97,6 +97,8 @@ Section ADT.
       Method "Classify" : rep x Packet -> rep x Response
     }.
 
+  Print upperbound.
+  
   Definition ClassifierSpec : ADT ClassifierSig :=
   QueryADTRep ClassifierSchema {
     Def Constructor "Init" (_ : unit) : rep := empty,
@@ -115,7 +117,10 @@ Section ADT.
                    FollowPolicy r!PROTOCOL (protocol p))
             Return r;
       (* try to choose one rule that has the highest priority *)
-      r <- {{ r in rs | r'!PRIORITY <= r!PRIORITY forall r' }} : RuleRecord;
+    r <- {r | forall r', r = Some r' ->
+                         List.In r' rs /\
+                         forall r'', List.In r'' rs ->
+                                    r'!PRIORITY <= r''!PRIORITY };
       (* return its accept / deny if such rule exists, otherwise uncertain *)
       Ifopt
         r as r
@@ -131,24 +136,35 @@ Section ADT.
   }.
 
   Theorem ClassifierManual :
-    Sharpened ClassifierSpec.
+    MostlySharpened ClassifierSpec.
   Proof.
-    unfold ClassifierSpec.
     start honing QueryStructure.
 
     GenerateIndexesForAll matchFindPrefixIndex ltac:(fun l => make simple indexes using l).
 
-    hone constructor "Init".
-    { initializer. }
+    - initializer.
 
-    hone method "AddRule".
-    { insertion. }
+    - insertion PrefixIndexUse createEarlyPrefixTerm createLastPrefixTerm
+                PrefixIndexUse_dep createEarlyPrefixTerm_dep createLastPrefixTerm_dep.
 
-    hone method "DeletePrefix".
-    { deletion. }
-
-    (* This method involves complex opertations, such as finding the highest priority rules.
-       Some of the deriviations need to be guided manually *)
+    - deletion PrefixIndexUse createEarlyPrefixTerm createLastPrefixTerm
+                PrefixIndexUse_dep createEarlyPrefixTerm_dep createLastPrefixTerm_dep.
+    - implement_Query PrefixIndexUse createEarlyPrefixTerm createLastPrefixTerm
+                PrefixIndexUse_dep createEarlyPrefixTerm_dep createLastPrefixTerm_dep.
+      
+      simplify with monad laws.
+      setoid_rewrite map_app; setoid_rewrite map_map; setoid_rewrite map_id;
+      setoid_rewrite app_nil_r.
+      simpl.
+      etransitivity.
+      eapply refine_under_bind; intros.
+      apply refine_bind.
+      apply (refine_pick_upperbound_ineff (fun r : RuleRecord => GetAttribute r BStringId2)
+                                         (fun r : RuleRecord => GetAttribute r BStringId2)
+                                         _ le_dec (snd a)).
+      unfold po
+      reflexivity.
+      
     hone method "Classify".
     {
       implement_Query.

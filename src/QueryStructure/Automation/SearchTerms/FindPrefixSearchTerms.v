@@ -3,6 +3,7 @@ Require Import
         ADTSynthesis.QueryStructure.Specification.SearchTerms.ListPrefix
         ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.IndexSearchTerms
         ADTSynthesis.QueryStructure.Automation.IndexSelection
+        ADTSynthesis.QueryStructure.Automation.Common
         Coq.Strings.Ascii.
 
 (* Instances for building indexes with make simple indexes. *)
@@ -50,87 +51,86 @@ Ltac matchFindPrefixIndex WhereClause k :=
   match WhereClause with
     | fun tups => IsPrefix (@?C1 tups) _ =>
       let attrs1 := TermAttributes C1 in
-      k (map (fun a12 => (FindPrefixIndex, (fst a12, snd a12)))
+      k (map (fun a12 => ("FindPrefixIndex", (fst a12, snd a12)))
              (attrs1))
   end.
 
 Ltac PrefixIndexUse SC F indexed_attrs f k :=
      match type of f with
 (* FindPrefix Search Terms *)
-| forall a, {IsPrefix (_!?fd) ?X} + {_} =>
+| forall a, {IsPrefix (GetAttribute _ ?fd) ?X} + {_} =>
   let H := fresh in
   assert (List.In {| KindNameKind := "FindPrefixIndex";
-                     KindNameName := fd|} indexed_attrs) as H
+                     KindNameName := bindex fd|} indexed_attrs) as H
       by (clear; simpl; intuition eauto); clear H;
   k ({| KindNameKind := "FindPrefixIndex";
-        KindNameName := fd|}, X) (fun _ : @Tuple SC => true)
-| forall a, {IsPrefix (_``?fd) ?X} + {_} =>
-  let H := fresh in
-  assert (List.In {| KindNameKind := "FindPrefixIndex";
-                     KindNameName := fd|} indexed_attrs) as H
-      by (clear; simpl; intuition eauto); clear H;
-  k ({| KindNameKind := FindPrefixIndex;
-        KindNameName := fd|}, X) (fun _ : @Tuple SC => true)
+        KindNameName := bindex fd|}, X) (fun _ : @Tuple SC => true)
      end.
 
       (* FindPrefix Search Terms *)
 Ltac PrefixIndexUse_dep SC F indexed_attrs visited_attrs f T k :=
     match type of f with
-        | forall a b, {IsPrefix (_!?fd) (@?X a)} + {_} =>
+        | forall a b, {IsPrefix (GetAttribute _ ?fd) (@?X a)} + {_} =>
           let H := fresh in
           assert (List.In {| KindNameKind := "FindPrefixIndex";
-                             KindNameName := fd|} indexed_attrs) as H
+                             KindNameName := bindex fd|} indexed_attrs) as H
               by (clear; simpl; intuition eauto); clear H;
           match eval simpl in
                 (in_dec string_dec fd visited_attrs) with
-            | right _ => k (fd :: visited_attrs)
+            | right _ => k (bindex fd :: visited_attrs)
                            ({| KindNameKind := "FindPrefixIndex";
-                               KindNameName := fd |}, X)
+                               KindNameName := bindex fd |}, X)
                            (fun (a : T) (_ : @Tuple SC) => true)
             | left _ => k visited_attrs tt F
           end
-        | forall a b, {IsPrefix (_``?fd) (@?X a)} + {_} =>
-          let H := fresh in
-          assert (List.In {| KindNameKind := "FindPrefixIndex";
-                             KindNameName := fd|} indexed_attrs) as H
-              by (clear; simpl; intuition eauto);
-            match eval simpl in
-                  (in_dec string_dec fd visited_attrs) with
-              | right _ => k (fd :: visited_attrs)
-                             ({| KindNameKind := "FindPrefixIndex";
-                                 KindNameName := fd |}, X)
-                             (fun (a : T) (_ : @Tuple SC) => true)
-              | left _ => k visited_attrs tt F
-            end
 end.
 
 Ltac createLastPrefixTerm f fds tail fs kind s k :=
-  match kind with
-    | "FindPrefixIndex" =>
-      (findMatchingTerm
-         fds kind s
-         ltac:(fun X => k {| FindPrefixIndexSearchTerm := Some X;
-                             FindPrefixItemSearchTerm := tail |}))
-        || k {| FindPrefixIndexSearchTerm := None;
-                FindPrefixItemSearchTerm := tail |}
-end.
+  let is_equality := eval compute in (string_dec kind "FindPrefixIndex") in
+      match is_equality with
+        | left _ =>
+          (findMatchingTerm
+             fds kind s
+             ltac:(fun X => k {| FindPrefixIndexSearchTerm := Some X;
+                                 FindPrefixItemSearchTerm := tail |}))
+            || k {| FindPrefixIndexSearchTerm := None;
+                    FindPrefixItemSearchTerm := tail |}
+      end.
 
 Ltac createLastPrefixTerm_dep dom f fds tail fs kind rest s k :=
-  match kind with
-    | "FindPrefixIndex" =>
-      (findMatchingTerm
-         fds kind s
-         ltac:(fun X => k (fun x : dom => {| FindPrefixIndexSearchTerm := Some (X x);
-                                             FindPrefixItemSearchTerm := tail x |}))
-                || k (fun x : dom => {| FindPrefixIndexSearchTerm := None;
-                                        FindPrefixItemSearchTerm := tail x |}))
-  end.
+  let is_equality := eval compute in (string_dec kind "FindPrefixIndex") in
+      match is_equality with
+        | left _ =>
+          (findMatchingTerm
+             fds kind s
+             ltac:(fun X => k (fun x : dom => {| FindPrefixIndexSearchTerm := Some (X x);
+                                                 FindPrefixItemSearchTerm := tail x |}))
+                    || k (fun x : dom => {| FindPrefixIndexSearchTerm := None;
+                                            FindPrefixItemSearchTerm := tail x |}))
+      end.
 
 Ltac createEarlyPrefixTerm f fds tail fs kind EarlyIndex LastIndex rest s k :=
-  match kind with
-    | "FindPrefixIndex" =>
-      (findMatchingTerm
-         fds kind s
-         ltac:(fun X => k (Some X, rest)))
-        || k (@None (list ascii), rest)
-  end.
+  let is_equality := eval compute in (string_dec kind "FindPrefixIndex") in
+      match is_equality with
+        | left _ =>
+          (findMatchingTerm
+             fds kind s
+             ltac:(fun X => k (Some X, rest)))
+            || k (@None (list ascii), rest)
+      end.
+
+Ltac createEarlyPrefixTerm_dep dom f fds tail fs kind EarlyIndex LastIndex rest s k :=
+  let is_equality := eval compute in (string_dec kind "FindPrefixIndex") in
+      match is_equality with
+        | left _ =>
+          (findMatchingTerm
+             fds kind s
+             ltac:(fun X => k (fun x : dom => (Some (X x), rest x))))
+            || k (fun x : dom => (@None (list ascii), rest x))
+      end.
+
+Ltac PrefixIndexTactics f :=
+  CombineIndexTactics
+    matchFindPrefixIndex
+    PrefixIndexUse createEarlyPrefixTerm createLastPrefixTerm
+    PrefixIndexUse_dep createEarlyPrefixTerm_dep createLastPrefixTerm_dep f.

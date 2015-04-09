@@ -65,24 +65,14 @@ Definition MessagesSpec : ADT MessagesSig :=
 }.
 
 Definition SharpenedMessages :
-  Sharpened MessagesSpec.
+  MostlySharpened MessagesSpec.
 Proof.
 
-  unfold MessagesSpec.
-
-  start honing QueryStructure.
-
-  GenerateIndexesForAll matchInclusionIndex ltac:(fun l => make simple indexes using l).
-
-  plan InclusionIndexUse createLastInclusionTerm createEarlyInclusionTerm
-      InclusionIndexUse_dep createLastInclusionTerm_dep createEarlyInclusionTerm_dep.
+  master_plan' matchInclusionIndex
+               InclusionIndexUse createEarlyInclusionTerm createLastInclusionTerm
+               InclusionIndexUse_dep createEarlyInclusionTerm_dep createLastInclusionTerm_dep.
 
   FullySharpenQueryStructure MessagesSchema Index.
-
-  implement_bag_methods.
-  implement_bag_methods.
-  implement_bag_methods.
-  implement_bag_methods.
 
 Time Defined.
 

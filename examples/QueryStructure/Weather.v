@@ -1,4 +1,5 @@
-Require Import  ADTSynthesis.QueryStructure.Automation.AutoDB.
+Require Import  ADTSynthesis.QueryStructure.Automation.AutoDB
+        ADTSynthesis.QueryStructure.Automation.QSImplementation.
 
 Definition VALUE := "VALUE".
 Definition MEASUREMENT_TYPE := "MEASUREMENT_TYPE".
@@ -82,14 +83,11 @@ Definition WeatherSpec : ADT WeatherSig :=
 Definition SharpenedWeatherStation :
   MostlySharpened WeatherSpec.
 Proof.
-  simple_master_plan.
-Time Defined.
-  (* <95 seconds for master_plan.
-     <100 seconds for Defined.
-      500 seconds after switch.
-   *)
+  partial_master_plan EqIndexTactics.
 
-Time Definition WeatherStationImpl' : SharpenedUnderDelegates WeatherSig :=
-  Eval simpl in projT1 SharpenedWeatherStation.
+  FullySharpenQueryStructure WeatherSchema Index.
+Time Defined.
+
+Time Definition WeatherStationImpl' : SharpenedUnderDelegates WeatherSig := projT1 SharpenedWeatherStation.
 
 Print WeatherStationImpl'.

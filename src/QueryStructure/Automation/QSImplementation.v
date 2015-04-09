@@ -131,6 +131,187 @@ Ltac BuildQSDelegateImpls QSImpl :=
                                                                      (@NestedTreeFromAttributesAsBag' _ PAttrList))) in clear H; exact p )
       end.
 
+Definition LookupQSDelegateImpls'
+             {schemas : list NamedSchema}
+             (SearchTerms : ilist (fun ns => SearchUpdateTerms (schemaHeading (relSchema ns))) schemas)
+             (DelegateImpls :
+                i2list
+                  (fun ns (SearchTerm : SearchUpdateTerms (schemaHeading (relSchema ns))) =>
+                     FullySharpened
+                       (@BagSpec (@Tuple (schemaHeading (relSchema ns)))
+                                 (BagSearchTermType SearchTerm)
+                                 (BagUpdateTermType SearchTerm)
+                                 (BagMatchSearchTerm SearchTerm)
+                                 (BagApplyUpdateTerm SearchTerm)))
+                  SearchTerms)
+  : forall (idx : @BoundedString (map relName schemas)),
+      refineADT
+        (Build_IndexedQueryStructure_Impl_Specs SearchTerms idx)
+        (ComputationalADT.LiftcADT (projT1 (i2th_Bounded relName DelegateImpls idx))).
+  Proof.
+    intro.
+    unfold Build_IndexedQueryStructure_Impl_Specs.
+    eapply (@i2th_Bounded_rect _ _ relName _ _ _ (fun schemas SearchTerms DelegateImpls idx
+                                                      a b (c c' :
+                                                             FullySharpened (BagSpec (BagMatchSearchTerm (heading := schemaHeading (relSchema a )) b)
+                                          (BagApplyUpdateTerm b)))
+                                                             =>
+                                                           refineADT
+                                                             (BagSpec (BagMatchSearchTerm (heading := schemaHeading (relSchema a )) b)
+                                          (BagApplyUpdateTerm b))
+                                 (ComputationalADT.LiftcADT
+                                    (projT1 c))) schemas idx SearchTerms DelegateImpls
+                             (i2th_Bounded relName DelegateImpls idx)).
+    unfold Dep_Option_elim2_T2; simpl.
+    destruct idx as [idx [n In_n ]]; simpl in *.
+    revert schemas SearchTerms DelegateImpls idx In_n.
+    induction n; destruct schemas; simpl; eauto.
+    - intros; destruct (ilist_invert' SearchTerms) as [b [il' SearchTerms_eq]]; subst.
+      destruct (i2list_invert' DelegateImpls) as [c [Cs' DelegateImpls_eq]]; subst.
+      exact (projT2 c).
+    - intros; destruct (ilist_invert' SearchTerms) as [b [il' SearchTerms_eq] ]; subst.
+      destruct (i2list_invert' DelegateImpls) as [c [Cs' DelegateImpls_eq]]; subst.
+      eapply (IHn schemas il' Cs' idx In_n).
+  Defined.
+
+  Ltac BuildQSIndexedBag heading AttrList k :=
+    match AttrList with
+      | ?Attr :: [ ] =>
+        let AttrKind := eval simpl in (KindIndexKind Attr) in
+            let AttrIndex := eval simpl in (KindIndexIndex Attr) in
+                let is_equality := eval compute in (string_dec AttrKind "EqualityIndex") in
+
+                    match is_equality with
+                  | left _ =>
+                    let AttrType := eval compute in (Domain heading AttrIndex) in
+                        match AttrType with
+                          | BinNums.N =>
+                            k (@NTreeBag.IndexedBagAsCorrectBag
+                                 _ _ _ _ _ _ _
+                                 (@CountingListAsCorrectBag
+                                    (@Tuple heading)
+                                    (IndexedTreeUpdateTermType heading)
+                                    (IndexedTreebupdate_transform heading))
+                                 (fun x => GetAttribute (heading := heading) x AttrIndex)
+                                 )
+                          | BinNums.Z =>
+                            k (@ZTreeBag.IndexedBagAsCorrectBag
+                                 _ _ _ _ _ _ _
+                                 (@CountingListAsCorrectBag
+                                    (@Tuple heading)
+                                    (IndexedTreeUpdateTermType heading)
+                                    (IndexedTreebupdate_transform heading))
+                                 (fun x => GetAttribute (heading := heading) x AttrIndex)
+                              )
+                          | nat =>
+                            k (@NatTreeBag.IndexedBagAsCorrectBag
+                                 _ _ _ _ _ _ _
+                                 (@CountingListAsCorrectBag
+                                    (@Tuple heading)
+                                    (IndexedTreeUpdateTermType heading)
+                                    (IndexedTreebupdate_transform heading))
+                                 (fun x => GetAttribute (heading := heading) x AttrIndex)
+                              )
+                          | string =>
+                            k (@StringTreeBag.IndexedBagAsCorrectBag
+                                 _ _ _ _ _ _ _
+                                 (@CountingListAsCorrectBag
+                                    (@Tuple heading)
+                                    (IndexedTreeUpdateTermType heading)
+                                    (IndexedTreebupdate_transform heading))
+                                 (fun x => GetAttribute (heading := heading) x AttrIndex)
+                              )
+                        end
+                    end
+      | ?Attr :: ?AttrList' =>
+        let AttrKind := eval simpl in (KindIndexKind Attr) in
+            let AttrIndex := eval simpl in (KindIndexIndex Attr) in
+                let is_equality := eval compute in (string_dec AttrKind "EqualityIndex") in
+                match is_equality with
+                  | left _ =>
+                    let AttrType := eval compute in (Domain heading AttrIndex) in
+                        match AttrType with
+                          | BinNums.N =>
+                            BuildQSIndexedBag
+                              heading
+                              AttrList'
+                              ltac:(fun subtree =>
+                                      k (@NTreeBag.IndexedBagAsCorrectBag
+                                           _ _ _ _ _ _ _ subtree
+                                           (fun x => GetAttribute (heading := heading) x AttrIndex)))
+                          | BinNums.Z =>
+                            BuildQSIndexedBag
+                              heading
+                              AttrList'
+                              (fun x => GetAttribute x AttrIndex)
+                              ltac:(fun subtree =>
+                                      k (@ZTreeBag.IndexedBagAsCorrectBag
+                                           _ _ _ _ _ _ _ subtree
+                                           (fun x => GetAttribute (heading := heading) x AttrIndex)))
+                          | nat =>
+                            BuildQSIndexedBag
+                              heading
+                              AttrList'
+                              ltac:(fun subtree =>
+                                      k (@NatTreeBag.IndexedBagAsCorrectBag
+                                           _ _ _ _ _ _ _ subtree
+                                           (fun x => GetAttribute (heading := heading) x AttrIndex)))
+                          | string =>
+                            BuildQSIndexedBag
+                              heading
+                              AttrList'
+                              ltac:(fun subtree =>
+                                      k (@StringTreeBag.IndexedBagAsCorrectBag
+                                           _ _ _ _ _ _ _ subtree
+                                           (fun x => GetAttribute (heading := heading) x AttrIndex)))
+                        end
+                end
+    end.
+
+  Lemma ValidUpdateCorrect
+  : forall (A : Prop), false = true -> A.
+    intros; discriminate.
+  Qed.
+
+  Ltac BuildQSIndexedBags SearchTerms k :=
+    match SearchTerms with
+      | @icons _ _ ?sch ?schemas'
+               {| BagSearchTermType := BuildIndexSearchTerm ?AttrList;
+                  BagMatchSearchTerm := _;
+                  BagUpdateTermType := _;
+                  BagApplyUpdateTerm := _ |}
+               ?SeachTerms'
+        =>
+        BuildQSIndexedBags
+          SeachTerms'
+          ltac:(fun Bags =>
+                     BuildQSIndexedBag (schemaHeading (relSchema sch))
+                                       AttrList
+                                       ltac:(fun Bag => k (i2cons
+
+                                                             SearchTerms
+                                                             (@SharpenedBagImpl _ _ _ _ _ _ (fun _ => false) _ Bag (fun a b => ValidUpdateCorrect _ b)) Bags)))
+      | inil _ => k (i2nil
+                       (fun ns (SearchTerm : SearchUpdateTerms (schemaHeading (relSchema ns))) =>
+                          FullySharpened
+                            (@BagSpec (@Tuple (schemaHeading (relSchema ns)))
+                                      (BagSearchTermType SearchTerm)
+                                      (BagUpdateTermType SearchTerm)
+                                      (BagMatchSearchTerm SearchTerm)
+                                      (BagApplyUpdateTerm SearchTerm)))
+                       SearchTerms)
+    end.
+
+  Ltac BuildQSIndexedBags' :=
+    match goal with
+        |- context [Build_IndexedQueryStructure_Impl_Sigs ?SearchTerms _] =>
+        BuildQSIndexedBags
+          SearchTerms
+          ltac:(fun Bags =>
+                  eapply (LookupQSDelegateImpls' Bags))
+    end.
+
 Arguments LookupQSDelegateReps _ _ _ / .
 Arguments LookupQSDelegateImpls _ _ _ _ _ / .
+Arguments LookupQSDelegateImpls' _ _ _ _ / .
 Arguments Build_IndexedQueryStructure_Impl_cRep _ _ _ / .

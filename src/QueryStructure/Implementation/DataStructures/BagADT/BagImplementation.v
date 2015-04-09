@@ -590,6 +590,7 @@ Section SharpenedBagImplementation.
 
     FullySharpenEachMethodWithoutDelegation.
     extract delegate-free implementation.
+    simpl; higher_order_reflexivityT.
 
   Defined.
 

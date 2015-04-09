@@ -71,11 +71,10 @@ Module TreeBag (Import M: WS).
 
     Definition IndexedBag_bfind_matcher
                (key_searchterm: (option TKey) * SearchTermType) (item: TItem) :=
-      let (key_option, search_term) := key_searchterm in
-      match key_option with
+      match fst key_searchterm with
         | Some k => KeyFilter k item
         | None   => true
-      end && (bfind_matcher search_term item).
+      end && (bfind_matcher (snd key_searchterm) item).
 
     Definition IndexedBag_benumerate
                (container: IndexedBag) :=
@@ -84,18 +83,15 @@ Module TreeBag (Import M: WS).
     Definition IndexedBag_bfind
                (container: IndexedBag)
                (key_searchterm: (option TKey) * SearchTermType) :=
-      match key_searchterm with
-        | (key_option, search_term) =>
-          match key_option with
+          match fst key_searchterm with
             | Some k =>
               match find k container with
-                | Some bag => bfind (Bag := TBag) bag search_term
+                | Some bag => bfind (Bag := TBag) bag (snd key_searchterm)
                 | None     => nil
               end
             | None   =>
-              flatten (List.map (fun bag : BagType => bfind bag search_term) (Values container))
-          end
-      end.
+              flatten (List.map (fun bag : BagType => bfind bag (snd key_searchterm)) (Values container))
+          end.
 
     Definition IndexedBag_binsert
                (container: IndexedBag)
@@ -108,15 +104,14 @@ Module TreeBag (Import M: WS).
     Definition IndexedBag_bcount
                (container: IndexedBag)
                (key_searchterm: (option TKey) * SearchTermType) :=
-      let (key_option, search_term) := key_searchterm in
-      match key_option with
+      match fst key_searchterm with
         | Some k =>
           match find k container with
-            | Some bag => bcount bag search_term
+            | Some bag => bcount bag (snd key_searchterm)
             | None     => 0
           end
         | None   =>
-          fold (fun _ bag acc => acc + bcount bag search_term)
+          fold (fun _ bag acc => acc + bcount bag (snd key_searchterm))
                container 0
       end.
 
@@ -124,16 +119,15 @@ Module TreeBag (Import M: WS).
                (container: IndexedBag)
                (key_searchterm: (option TKey) * SearchTermType)
     : (list TItem) * IndexedBag :=
-      let (key_option, search_term) := key_searchterm in
-      match key_option with
+      match fst (key_searchterm) with
         | Some k => match find k container with
                       | Some bag =>
-                        let (d,r) := bdelete bag search_term in
+                        let (d,r) := bdelete bag (snd key_searchterm) in
                         (d, add k r container)
                       | None => (nil, container)
                     end
         | None => fold (fun k bag (res : (list TItem) * (t BagType)) =>
-                          match bdelete bag search_term with
+                          match bdelete bag (snd key_searchterm) with
                             | (d, r) => let (d', r') := res in
                                         (d ++ d', add k r r')
                           end) (container) ([], empty BagType)
@@ -228,7 +222,8 @@ Module TreeBag (Import M: WS).
     Lemma IndexedBag_bdelete_Preserves_RepInv :
       bdelete_Preserves_RepInv IndexedBag_RepInv IndexedBag_bdelete.
     Proof.
-      unfold bdelete_Preserves_RepInv, IndexedBag_RepInv.
+      unfold bdelete_Preserves_RepInv, IndexedBag_RepInv,
+      IndexedBag_bdelete.
       intros; destruct search_term; destruct o; simpl in *;
       unfold IndexedBag_RepInv; intros.
       - case_eq (find t0 container); intros; rewrite H0 in *.
@@ -392,8 +387,7 @@ Module TreeBag (Import M: WS).
       BagCountCorrect IndexedBag_RepInv IndexedBag_bcount IndexedBag_bfind .
     Proof.
       unfold IndexedBag_RepInv, IndexedBag_bcount, IndexedBag_bfind, BagCountCorrect;
-      simpl; intros; destruct search_term as [ [ key | ] search_term ].
-
+      simpl in *; intros; destruct search_term as [ [ key | ] search_term ]; simpl in *.
       + case_eq (find key container); simpl; eauto.
         intros; rewrite <- find_mapsto_iff in *;
         rewrite bcount_correct; eauto; eapply containerCorrect; eauto.
@@ -603,7 +597,8 @@ Module TreeBag (Import M: WS).
 
       (* Key provided *)
 
-      unfold IndexedBag_benumerate, IndexedBag_bfind_matcher.
+      unfold IndexedBag_benumerate, IndexedBag_bfind,
+      IndexedBag_bfind_matcher.
       unfold IndexedBag_RepInv; intros.
 
       rewrite filter_and.
@@ -620,7 +615,8 @@ Module TreeBag (Import M: WS).
       unfold IndexedBag_RepInv; eauto.
       (* No key provided *)
 
-      simpl. unfold IndexedBag_benumerate, IndexedBag_bfind_matcher, IndexedBag_RepInv.
+      simpl. unfold IndexedBag_benumerate, IndexedBag_bfind_matcher,
+             IndexedBag_RepInv, IndexedBag_bfind.
       rewrite flatten_filter; intros.
 
       pose proof (alt_IndexedBag_RepInv _ containerCorrect) as containerCorrect'.
@@ -898,7 +894,8 @@ Module TreeBag (Import M: WS).
 
       (* Key provided *)
 
-      - unfold IndexedBag_benumerate, IndexedBag_bfind_matcher; simpl.
+      - unfold IndexedBag_benumerate, IndexedBag_bfind_matcher,
+        IndexedBag_bfind, IndexedBag_bdelete; simpl.
         case_eq (find key container); simpl; split.
         + rewrite partition_filter_neq.
           repeat rewrite <- flat_map_flatten;
@@ -986,7 +983,8 @@ Module TreeBag (Import M: WS).
             unfold not; intros H1; apply H; destruct H1;
             econstructor; constructor 2; eauto.
             intros; eapply containerCorrect'; eauto.
-      - unfold IndexedBag_benumerate, IndexedBag_bfind_matcher; simpl.
+      - unfold IndexedBag_benumerate, IndexedBag_bfind_matcher,
+        IndexedBag_bdelete; simpl.
         rewrite fold_pair; unfold Values; simpl; intuition.
         + rewrite !FMap_Insert_fold_add, elements_empty, app_nil_r by
               eauto using empty_In.

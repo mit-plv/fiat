@@ -189,8 +189,8 @@ Definition IndexedTreeUpdateTermType heading :=
 
 Definition IndexedTreebupdate_transform heading
            (upd : IndexedTreeUpdateTermType heading)
-           (tup : @Tuple heading)
-: @Tuple heading := upd tup.
+           
+: @Tuple heading -> @Tuple heading := upd.
 
 Instance NestedTreeFromAttributesAsBag'
          {heading}

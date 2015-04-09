@@ -248,3 +248,9 @@ Ltac CombineCase8 x y :=
       | _ => x a b c d e f g h
       | _ => y a b c d e f g h
     end.
+
+Ltac CombineIndexTactics
+     matchIndex IndexUse createEarlyTerm createLastTerm
+     IndexUse_dep createEarlyTerm_dep createLastTerm_dep f :=
+  f matchIndex IndexUse createEarlyTerm createLastTerm
+    IndexUse_dep createEarlyTerm_dep createLastTerm_dep.

@@ -243,6 +243,8 @@ DNS_MODULES := \
 EXAMPLE_MODULES := \
 	QueryStructure/Bookstore \
 	QueryStructure/Weather \
+	QueryStructure/Classifier \
+	QueryStructure/Messages \
 	QueryStructure/Stocks
 #FiniteSetsADTs/FiniteSetsExamples \
 	ExtractingFiniteSetsExamples \

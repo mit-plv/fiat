@@ -1025,6 +1025,59 @@ Section i2thIndexBound.
              (i2th_error' Cs' (ibound idx))
              (nth_error_map projAD (ibound idx) As (boundi idx))
              _ _ (i2th_error_eq _ _) (i2th_error_eq _ _) H.
+    
+    Definition Dep_Option_elim2_T2
+             {B : A -> Type}
+             {C C' : forall a, B a -> Type}
+             (P : forall a b, C a b -> C' a b -> Type)
+             (a_opt : option A)
+    := match a_opt return
+             forall (b : Dep_Option B a_opt),
+               Dep_Option_elim_P C (a_opt := a_opt) b
+               -> Dep_Option_elim_P C' (a_opt := a_opt) b -> Type with
+         | Some a => fun b => P a (Dep_Option_elim b)
+         | None => fun _ _ _ => True
+       end .
+
+    Program Definition i2th_Bounded_rect
+            {B : A -> Type}
+            {C C' : forall a, B a -> Type}
+            (P : forall As (Bs : ilist B As) (Cs : i2list C Bs),
+                   BoundedIndex (map projAD As)
+                   -> forall (a : A) (b : B a), C a b -> C' a b -> Type)
+    : forall (As : list A)
+           (idx : BoundedIndex (map projAD As))
+           (Bs : ilist B As)
+           (Cs : i2list C Bs)
+           (c : C' (nth_Bounded _ As idx) (ith_Bounded _ Bs idx)),
+        Dep_Option_elim2_T2 (P As Bs Cs idx)
+                          (ith_error Bs (ibound idx))
+                          (i2th_error' Cs (ibound idx))
+                          (Some_Dep_Option_elim_P Bs idx c)
+        -> P As Bs Cs idx _ (ith_Bounded _ Bs idx) (i2th_Bounded Cs idx) c
+      := fun As idx Bs Cs c H =>
+         match (nth_error As (ibound idx)) as e
+               return
+               forall (b_opt : Dep_Option B e) (c_opt : Dep_Option_elim_P C b_opt)
+                       (c'_opt : Dep_Option_elim_P C' b_opt)
+                       (e_eq : option_map projAD e = Some (bindex idx))
+                       (d : C (nth_Bounded' projAD As e e_eq)
+                              (ith_Bounded' projAD As e_eq b_opt))
+                       (d' : C' (nth_Bounded' projAD As e e_eq)
+                                (ith_Bounded' projAD As e_eq b_opt)),
+                 i2th_error_eq_P As idx b_opt c_opt e_eq d ->
+                 i2th_error_eq_P As idx b_opt c'_opt e_eq d' ->
+                 Dep_Option_elim2_T2 (P As Bs Cs idx) b_opt c_opt c'_opt ->
+                  P As Bs Cs idx (nth_Bounded' projAD _ e e_eq)
+                    (ith_Bounded' projAD _ e_eq _) d d'
+         with
+           | Some a => fun b_opt c_opt c'_opt e_eq d d' c_eq c_eq' => _
+           | None => fun b_opt c_opt c'_opt e_eq d d' => None_neq_Some _ e_eq
+         end (ith_error Bs (ibound idx))
+             (i2th_error' Cs (ibound idx))
+             (Some_Dep_Option_elim_P _ _ c)
+             (nth_error_map projAD (ibound idx) As (boundi idx))
+             _ _ (i2th_error_eq _ _) (i2th_error_eq' _ _ _) H.
 
   Variable D_eq_dec : forall d d' : D, {d = d'} + {d <> d'}.
 

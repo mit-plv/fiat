@@ -220,6 +220,15 @@ Section ilist.
     destruct il; eauto.
   Qed.
 
+    Lemma ilist_invert' (As : list A) (il : ilist As) :
+    match As as As' return ilist As' -> Type with
+      | a :: As' => fun il => sigT (fun b => sigT (fun il' => il = icons b il'))
+      | nil => fun il => il = inil
+    end il.
+  Proof.
+    destruct il; eauto.
+  Qed.
+
   (* The [ith_induction] tactic is for working with lookups of bounded indices.
      It first inducts on n, then destructs the index list [As] and eliminates
      the contradictory cases, then finally destructs any indexed list in the

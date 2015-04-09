@@ -99,7 +99,9 @@ Definition BookStoreSpec : ADT BookStoreSig :=
 Theorem SharpenedBookStore :
   MostlySharpened BookStoreSpec.
 Proof.
-  simple_master_plan.
+  partial_master_plan EqIndexTactics.
+
+  FullySharpenQueryStructure BookStoreSchema Index.
   Time Defined.
 (* <130 seconds for master_plan.
    <141 seconds for Defined. *)
