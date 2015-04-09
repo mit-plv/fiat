@@ -55,17 +55,51 @@ Proof.
   Timeout 2 change ((@StringLike.length _ (ParserInterface.string_type
                                              (SplitterFromParserADT.adt_based_splitter
                                                 ComputationalSplitter))))
-  with (fun str : { r : (String.string * (nat * nat)) | exists orig, AbsR (projT2 ComputationalSplitter) orig r }%type => ilength (` str)).
+  with (fun str : { r : (String.string * (nat * nat)) | exists orig, AbsR (projT2 ComputationalSplitter) orig r }%type => ilength (` str)) in impl.
   do_simpl_in (Valid_nonterminals ab_star_grammar) impl.
   Timeout 2 change (new_string_of_base_string ComputationalSplitter str)
+  with (str, (0, String.length str)) in impl.
+  Timeout 2 cbv beta iota zeta in impl.
+  Timeout 2 do_simpl_in (Lookup ab_star_grammar) impl.
+  Timeout 2 cbv beta iota zeta in impl.
+  let impl' := (eval cbv delta [impl] in impl) in exact impl'.
+Defined.
+
+Definition ab_star_parser : String.string -> bool
+  := Eval cbv zeta delta [ab_star_parser'] in ab_star_parser'.
+Require Import ExtrOcamlBasic.
+Require Import ExtrOcamlString.
+Require Import ExtrOcamlIntConv.
+Require Import ExtrOcamlNatInt.
+Recursive Extraction ab_star_parser.
+Proof.
+
+
+  Timeout 5 simpl in impl.
+
+
+
+  cbv beta iota zeta delta [Wf.Fix3] in impl.
+  Timeout 2 change ((@StringLike.length _ (ParserInterface.string_type
+                                             (SplitterFromParserADT.adt_based_splitter
+                                                ComputationalSplitter))))
+  with (fun str : { r : (String.string * (nat * nat)) | exists orig, AbsR (projT2 ComputationalSplitter) orig r }%type => ilength (` str)) in impl.
+  Timeout 2 change (@StringLike.length  _ (ParserInterface.string_type
+                                                (SplitterFromParserADT.adt_based_splitter
+                                                   ComputationalSplitter)))
+  with (fun str :
+  with (fun str : {r : string * (nat * nat) | hextr0} =>
+        SplitterFromParserADT.mlength ComputationalSplitter () (` str))
+  in impl"), last call failed.
+  Timeout 2 do_simpl_in (@StringLike.length _ (ParserInterface.string_type
+                                                (SplitterFromParserADT.adt_based_splitter
+                                                   ComputationalSplitter))) impl.
+
   with (exist _ (str, (0, String.length str)) (proj2_sig (new_string_of_base_string ComputationalSplitter str))) in impl.
   Arguments new_string_of_base_string / .
 
   Timeout 2 do_simpl_in (new_string_of_base_string ComputationalSplitter str) impl.
 
-  Timeout 2 do_simpl_in (@StringLike.length _ (ParserInterface.string_type
-                                                (SplitterFromParserADT.adt_based_splitter
-                                                   ComputationalSplitter))) impl.
   Timeout 2 lazy beta iota zeta delta [BaseTypes.remove_nonterminal BaseTypes.nonterminals_listT_R StringLike.String StringLike.length] in impl.
   unfold Lookup in *.
 

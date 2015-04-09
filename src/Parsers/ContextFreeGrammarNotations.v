@@ -1,6 +1,7 @@
 Require Import Coq.Strings.String Coq.Strings.Ascii Coq.Lists.List.
 Require Import ADTSynthesis.Parsers.ContextFreeGrammar.
 Require Import ADTSynthesis.Parsers.StringLike.String.
+Require Import ADTSynthesis.Common.Equality.
 
 Fixpoint production_of_string (s : string) : production Ascii.ascii
   := match s with
@@ -13,9 +14,11 @@ Coercion production_of_string : string >-> production.
 Fixpoint list_to_productions {T} (default : T) (ls : list (string * T)) : string -> T
   := match ls with
        | nil => fun _ => default
-       | (str, t)::ls' => fun s => if string_dec str s
-                                   then t
-                                   else list_to_productions default ls' s
+       | (str, t)::ls' => fun s => bool_rect
+                                     (fun _ => _)
+                                     t
+                                     (list_to_productions default ls' s)
+                                     (string_beq str s)
      end.
 
 Fixpoint list_to_grammar {T} `{StringLike T} (default : productions T) (ls : list (string * productions T)) : grammar T

@@ -1,5 +1,5 @@
 (** * Miscellaneous Well-Foundedness Facts *)
-Require Import Coq.Setoids.Setoid Coq.Program.Program Coq.Program.Wf Coq.Arith.Wf_nat.
+Require Import Coq.Setoids.Setoid Coq.Program.Program Coq.Program.Wf Coq.Arith.Wf_nat Coq.Classes.Morphisms.
 
 Set Implicit Arguments.
 
@@ -142,6 +142,26 @@ Section Fix_rect.
   Defined.
 End Fix_rect.
 
+Local Ltac Fix_Proper_t Fix_eq wf :=
+  let H := fresh "H" in
+  let a := fresh "a" in
+  unfold forall_relation, pointwise_relation, respectful;
+  intros ?? H a; repeat intro;
+  induction (wf a);
+  rewrite !Fix_eq; [ erewrite H; [ reflexivity | .. ] | .. ]; eauto; intros;
+  [ etransitivity; [ symmetry; apply H; reflexivity | apply H; eassumption ]; reflexivity
+  | etransitivity; [ apply H; eassumption | symmetry; apply H; reflexivity ]; reflexivity ].
+
+
+Global Instance Fix_Proper_eq {A R wf P}
+: Proper
+    ((forall_relation (fun a =>
+                         (forall_relation (fun a' => pointwise_relation _ eq))
+                           ==> eq))
+       ==> (forall_relation (fun a => eq)))
+    (@Fix A R wf P).
+Proof. Fix_Proper_t @Coq.Init.Wf.Fix_eq wf. Qed.
+
 (** A variant of [Fix] that has a nice [Fix_eq] for functions which
     doesn't require [functional_extensionality]. *)
 Section Fix1.
@@ -192,6 +212,15 @@ Section Fix1.
     rewrite Fix1_eq; auto.
   Defined.
 End Fix1.
+
+Global Instance Fix1_Proper_eq {A B R wf P}
+: Proper
+    ((forall_relation (fun a =>
+                         (forall_relation (fun a' => pointwise_relation _ (forall_relation (fun b => eq))))
+                           ==> (forall_relation (fun b => eq)))
+                      ==> (forall_relation (fun a => forall_relation (fun b => eq)))))
+    (@Fix1 A B R wf P).
+Proof. Fix_Proper_t @Fix1_eq wf. Qed.
 
 (** A variant of [Fix] that has a nice [Fix_eq] for functions which
     doesn't require [functional_extensionality]. *)
@@ -244,6 +273,15 @@ Section Fix2.
   Defined.
 End Fix2.
 
+Global Instance Fix2_Proper_eq {A B C R wf P}
+: Proper
+    ((forall_relation (fun a =>
+                         (forall_relation (fun a' => pointwise_relation _ (forall_relation (fun b => forall_relation (fun c => eq)))))
+                           ==> (forall_relation (fun b => forall_relation (fun c => eq))))
+                      ==> (forall_relation (fun a => forall_relation (fun b => forall_relation (fun c => eq))))))
+    (@Fix2 A B C R wf P).
+Proof. Fix_Proper_t @Fix2_eq wf. Qed.
+
 (** A variant of [Fix] that has a nice [Fix_eq] for functions which
     doesn't require [functional_extensionality]. *)
 Section Fix3.
@@ -295,6 +333,15 @@ Section Fix3.
   Defined.
 End Fix3.
 
+Global Instance Fix3_Proper_eq {A B C D R wf P}
+: Proper
+    ((forall_relation (fun a =>
+                         (forall_relation (fun a' => pointwise_relation _ (forall_relation (fun b => forall_relation (fun c => forall_relation (fun d => eq))))))
+                           ==> (forall_relation (fun b => forall_relation (fun c => forall_relation (fun d => eq))))))
+       ==> (forall_relation (fun a => forall_relation (fun b => forall_relation (fun c => forall_relation (fun d => eq))))))
+    (@Fix3 A B C D R wf P).
+Proof. Fix_Proper_t @Fix3_eq wf. Qed.
+
 Section Fix4.
   Context A (B : A -> Type) (C : forall a, B a -> Type) (D : forall a b, C a b -> Type) (E : forall a b c, D a b c -> Type)
           (R : A -> A -> Prop) (Rwf : well_founded R)
@@ -343,3 +390,12 @@ Section Fix4.
     rewrite Fix4_eq; auto.
   Defined.
 End Fix4.
+
+Global Instance Fix4_Proper_eq {A B C D E R wf P}
+: Proper
+    ((forall_relation (fun a =>
+                         (forall_relation (fun a' => pointwise_relation _ (forall_relation (fun b => forall_relation (fun c => forall_relation (fun d => forall_relation (fun e => eq)))))))
+                           ==> (forall_relation (fun b => forall_relation (fun c => forall_relation (fun d => forall_relation (fun e => eq)))))))
+       ==> (forall_relation (fun a => forall_relation (fun b => forall_relation (fun c => forall_relation (fun d => forall_relation (fun e => eq)))))))
+    (@Fix4 A B C D E R wf P).
+Proof. Fix_Proper_t @Fix4_eq wf. Qed.

@@ -2,6 +2,7 @@ CORE_MODULES    := \
 	Common \
 	Common/Equality \
 	Common/Monad \
+	Common/Match \
 	Common/ReservedNotations \
 	Common/ilist \
 	Common/i2list \

@@ -100,26 +100,30 @@ Section recursive_descent_parser.
           : bool.
           Proof.
             refine
-              (if lt_dec (length str) (length str0)
-               then (** [str] got smaller, so we reset the valid nonterminals list *)
-                 parse_productions
-                   (@parse_nonterminal
-                      (str : String, initial_nonterminals_data)
-                      (or_introl _))
-                   (or_intror (reflexivity _))
-                   (Lookup G nt)
-               else (** [str] didn't get smaller, so we cache the fact that we've hit this nonterminal already *)
-                 if Sumbool.sumbool_of_bool (is_valid_nonterminal valid nt)
-                 then (** It was valid, so we can remove it *)
-                   parse_productions
-                     (@parse_nonterminal
-                        (str0 : String, remove_nonterminal valid nt)
-                        (or_intror (conj eq_refl (remove_nonterminal_dec _ nt _))))
-                     (str := str)
-                     _
-                     (Lookup G nt)
-                 else (** oops, we already saw this nonterminal in the past.  ABORT! *)
-                   false);
+              (sumbool_rect
+                 (fun _ => bool)
+                 (fun _ => (** [str] got smaller, so we reset the valid nonterminals list *)
+                    parse_productions
+                      (@parse_nonterminal
+                         (str : String, initial_nonterminals_data)
+                         (or_introl _))
+                      (or_intror (reflexivity _))
+                      (Lookup G nt))
+                 (fun _ => (** [str] didn't get smaller, so we cache the fact that we've hit this nonterminal already *)
+                    sumbool_rect
+                      (fun _ => bool)
+                      (fun _ => (** It was valid, so we can remove it *)
+                         parse_productions
+                           (@parse_nonterminal
+                              (str0 : String, remove_nonterminal valid nt)
+                              (or_intror (conj eq_refl (remove_nonterminal_dec _ nt _))))
+                           (str := str)
+                           _
+                           (Lookup G nt))
+                      (fun _ => (** oops, we already saw this nonterminal in the past.  ABORT! *)
+                         false)
+                      (Sumbool.sumbool_of_bool (is_valid_nonterminal valid nt)))
+                 (lt_dec (length str) (length str0)));
             assumption.
           Defined.
         End step.
