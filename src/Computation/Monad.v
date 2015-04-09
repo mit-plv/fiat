@@ -64,6 +64,11 @@ Section monad_refine.
     split; intro; apply bind_bind.
   Qed.
 
+  Definition refine_bind_bind X Y Z f g x
+    := proj1 (@refineEquiv_bind_bind X Y Z f g x).
+  Definition refine_bind_bind' X Y Z f g x
+    := proj2 (@refineEquiv_bind_bind X Y Z f g x).
+
   Lemma refineEquiv_bind_unit X Y (f : X -> Comp Y) x
   : refineEquiv (Bind (Return x) f)
                 (f x).
@@ -71,12 +76,22 @@ Section monad_refine.
     split; intro; simpl; apply bind_unit.
   Qed.
 
+  Definition refine_bind_unit X Y f x
+    := proj1 (@refineEquiv_bind_unit X Y f x).
+  Definition refine_bind_unit' X Y f x
+    := proj2 (@refineEquiv_bind_unit X Y f x).
+
   Lemma refineEquiv_unit_bind X (x : Comp X)
   : refineEquiv (Bind x (@Return X))
                 x.
   Proof.
     split; intro; apply unit_bind.
   Qed.
+
+  Definition refine_unit_bind X x
+    := proj1 (@refineEquiv_unit_bind X x).
+  Definition refine_unit_bind' X x
+    := proj2 (@refineEquiv_unit_bind X x).
 End monad_refine.
 
 Create HintDb refine_monad discriminated.

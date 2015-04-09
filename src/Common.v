@@ -1605,3 +1605,30 @@ Qed.
 Lemma sub_plus {x y z} (H0 : z <= y) (H1 : y <= x)
 : x - (y - z) = (x - y) + z.
 Proof. omega. Qed.
+
+Lemma fold_right_and_iff {A ls}
+: fold_right and A ls <-> (fold_right and True ls /\ A).
+Proof.
+  induction ls; simpl; tauto.
+Qed.
+
+Definition impl0_0 {A} : A -> A := fun x => x.
+Definition impl0_1 {A B C} : (B -> C) -> ((A -> B) -> (A -> C)). Proof. auto. Defined.
+Definition impl1_1 {A B C} : (B -> A) -> ((A -> C) -> (B -> C)). Proof. auto. Defined.
+Definition impl1_2 {A A' B C C'} : ((A -> C) -> (A' -> C')) -> ((A -> B -> C) -> (A' -> B -> C')). Proof. eauto. Defined.
+
+Lemma if_aggregate {A} (b1 b2 : bool) (x y : A)
+: (if b1 then x else if b2 then x else y) = (if (b1 || b2)%bool then x else y).
+Proof.
+  destruct b1, b2; reflexivity.
+Qed.
+Lemma if_aggregate2 {A} (b1 b2 b3 : bool) (x y z : A) (H : b1 = false -> b2 = true -> b3 = true -> False)
+: (if b1 then x else if b2 then y else if b3 then x else z) = (if (b1 || b3)%bool then x else if b2 then y else z).
+Proof.
+  case_eq b1; case_eq b2; case_eq b3; try reflexivity; simpl; intros; exfalso; subst; eauto.
+Qed.
+Lemma if_aggregate3 {A} (b1 b2 b3 b4 : bool) (x y z w : A) (H : b1 = false -> (b2 || b3)%bool = true -> b4 = true -> False)
+: (if b1 then x else if b2 then y else if b3 then z else if b4 then x else w) = (if (b1 || b4)%bool then x else if b2 then y else if b3 then z else w).
+Proof.
+  case_eq b1; case_eq b2; case_eq b3; case_eq b4; try reflexivity; simpl; intros; exfalso; subst; eauto.
+Qed.

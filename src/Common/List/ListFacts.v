@@ -540,4 +540,10 @@ Section ListFacts.
     revert n ls'; induction ls; drop_take_t.
   Qed.
 
+  Lemma fold_right_and_map_impl {A} {init1 init2 : Prop} (H : init1 -> init2) (ls : list A) (f g : A -> Prop) (H' : forall x, f x -> g x)
+  : fold_right and init1 (map f ls) -> fold_right and init2 (map g ls).
+  Proof.
+    induction ls; simpl; trivial; intuition.
+  Qed.
+
 End ListFacts.

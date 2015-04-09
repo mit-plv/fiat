@@ -20,6 +20,7 @@ CORE_MODULES    := \
 	Common/LogicFacts \
 	Common/NatFacts \
 	Common/LogicMorphisms \
+	Common/SetoidInstances \
 	Common/Ensembles \
 	Common/Ensembles/EnsembleListEquivalence \
 	Common/Ensembles/Cardinal \
@@ -186,12 +187,17 @@ SRC_PARSERS_MODULES := \
 	Parsers/ParserInterface \
 	Parsers/ParserImplementation\
 	Parsers/ContextFreeGrammarTransfer\
+	Parsers/SplitterFromParserADT\
 	Parsers/ParserFromParserADT\
 	Parsers/ParserADTSpecification\
 	Parsers/Refinement/IndexedAndAtMostOneNonTerminal\
 	Parsers/Refinement/SharpenedAtMostOneNonTerminal\
+	Parsers/Refinement/IndexedAndAtMostOneNonTerminalReflective\
+	Parsers/Refinement/Tactics\
 	$(SRC_PARSERS_BASE_MODULES)\
 	$(SRC_GRAMMAR_MODULES)
+#	Parsers/Refinement/SharpenedABStar\
+#	Parsers/Refinement/SharpenedExpressionParen\
 #	Parsers/Examples/ABStar\
 
 #	QueryStructure/Refinements/BagADT/DelegateImplementation\
