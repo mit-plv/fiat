@@ -50,6 +50,13 @@ Section parser.
                                  has_parse base_parser (new_string_of_string str) = true ->
                                  parse_of_item G str (NonTerminal G).
 
+  Definition string_has_parse (str : String.string) : bool
+    := has_parse
+         base_parser
+         (exist
+            _  (new_string_of_base_string str)
+            (ex_intro _ str new_string_of_base_string_R)).
+(*
   Lemma string_parser_sound
   : soundness_type.
   Proof.
@@ -119,5 +126,5 @@ Section parser.
 
 
 
-
+*)
 End parser.
