@@ -88,6 +88,7 @@ Proof.
   FullySharpenQueryStructure WeatherSchema Index.
 Time Defined.
 
-Time Definition WeatherStationImpl' : SharpenedUnderDelegates WeatherSig := projT1 SharpenedWeatherStation.
+Time Definition WeatherStationImpl' : SharpenedUnderDelegates WeatherSig :=
+  Eval simpl in projT1 SharpenedWeatherStation.
 
 Print WeatherStationImpl'.
