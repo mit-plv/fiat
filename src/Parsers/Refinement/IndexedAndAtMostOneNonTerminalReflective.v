@@ -16,6 +16,8 @@ Require Import ADTRefinement.BuildADTRefinements.HoneRepresentation.
 Require Import ADTSynthesis.Common.IterateBoundedIndex.
 Require Import ADTSynthesis.Common.List.FlattenList.
 Require Import ADTSynthesis.Common.List.ListFacts.
+Require Import ADTSynthesis.ADTRefinement.GeneralBuildADTRefinements.
+Require Import ADTSynthesis.Computation.SetoidMorphisms.
 
 Set Implicit Arguments.
 
@@ -290,33 +292,24 @@ Section IndexedImpl.
     := (ls <- (forall_reachable_productions
                  G
                  (fun p else_case
-                  => if production_beq ascii_beq p (it::its)
-                     then (match p return Comp (list nat) with
+                  => If production_beq ascii_beq p (it::its)
+                     Then (match p return Comp (list nat) with
                              | nil => ret dummy
                              | _::nil => ret [ilength s]
                              | (Terminal _):: _ :: _ => ret [1]
                              | (NonTerminal nt):: p'
-                               => if has_only_terminals p'
-                                  then
+                               => If has_only_terminals p'
+                                  Then
                                     ret [ilength s - Datatypes.length p']
-                                  else { splits : list nat
+                                  Else { splits : list nat
                                        | forall n,
                                            n <= ilength s
                                            -> parse_of_item G (take n (string_of_indexed s)) (NonTerminal nt)
                                            -> parse_of_production G (drop n (string_of_indexed s)) p'
                                            -> List.In n splits }
                            end)
-                     else else_case)
-                 (ret (match its, it with
-                         | nil, _
-                           => [ilength s]
-                         | _::_, Terminal _
-                           => [1]
-                         | _::_, NonTerminal _
-                           => if has_only_terminals its
-                              then [ilength s - List.length its]
-                              else dummy
-                       end)));
+                     Else else_case)
+                 (ret dummy));
         ret (s, ls))%comp.
 
   Global Arguments expanded_fallback_list / .
@@ -476,7 +469,7 @@ Section IndexedImpl.
         { clear IHls; intros; abstract fin. }
         { clear IHls; intros; abstract fin. }
         { clear IHls; intros; abstract fin. }
-        { clear IHls.
+        { clear IHls; unfold If_Then_Else.
           abstract (
               repeat match goal with
                        | _ => intro
