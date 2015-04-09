@@ -52,7 +52,9 @@ Ltac extract_parser_opt :=
                 setoid_rewrite <- H; subst e;
                 reflexivity
      ]);
-    cbv beta iota zeta delta [sumbool_rect bool_rect].
+    cbv beta iota zeta delta [sumbool_rect bool_rect];
+    subst e;
+    reflexivity.
 
 Require Import Grammars.ABStar.
 
@@ -66,6 +68,7 @@ Section recursive_descent_parser.
   : { b : bool | b = parse_nonterminal (G := ab_star_grammar) str nt }.
   Proof.
     extract_parser_opt.
+  Defined.
 
 
 
