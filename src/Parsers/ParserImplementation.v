@@ -73,7 +73,7 @@ Section implementation.
           { apply bool_eq_empty; rewrite drop_length; omega. } } } }
   Qed.
 
-  Program Definition parser : Parser splitter
+  Program Definition parser : Parser G splitter
     := {| has_parse str := parse_nonterminal (G := G) (data := parser_data) str (Start_symbol G);
           has_parse_sound str Hparse := parse_nonterminal_sound G _ _ Hparse;
           has_parse_complete str p Hp := _ |}.

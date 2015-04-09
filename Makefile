@@ -187,6 +187,7 @@ SRC_PARSERS_MODULES := \
 	Parsers/ParserInterface \
 	Parsers/ParserImplementation\
 	Parsers/ContextFreeGrammarTransfer\
+	Parsers/SplitterFromParserADT\
 	Parsers/ParserFromParserADT\
 	Parsers/ParserADTSpecification\
 	Parsers/Refinement/IndexedAndAtMostOneNonTerminal\

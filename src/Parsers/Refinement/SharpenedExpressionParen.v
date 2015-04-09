@@ -14,8 +14,6 @@ Require Import ADTSynthesis.Parsers.BaseTypes.
 
 Set Implicit Arguments.
 
-Print has_only_terminals.
-
 Inductive length_result := same_length (n : nat) | different_lengths | cyclic_length | not_yet_handled_empty_rule.
 
 Fixpoint length_of_any_production' {Char} (length_of_any_nt : String.string -> length_result)

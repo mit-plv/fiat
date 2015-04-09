@@ -47,9 +47,9 @@ Section interface.
   Global Existing Instance string_type.
   Global Existing Instance string_type_properties.
 
-  Record Parser (splitter : Splitter) :=
+  Record Parser (HSL : StringLike Char) :=
     {
-      has_parse : @String Char splitter -> bool;
+      has_parse : @String Char HSL -> bool;
       (** does this string parse as the start symbol of the grammar? *)
 
       has_parse_sound : forall str,
