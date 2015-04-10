@@ -197,60 +197,55 @@ Ltac pose_search_term_in H :=
 
 
 Ltac CombineCase1 x y :=
-  fun a =>
-    match goal with
-      | _ => x a
-      | _ => y a
-    end.
+  fun a => x a y.
+
 Ltac CombineCase2 x y :=
-  fun a b =>
-    match goal with
-      | _ => x a b
-      | _ => y a b
-    end.
+  fun a b => x a b y.
+
 Ltac CombineCase3 x y :=
-  fun a b c =>
-    match goal with
-      | _ => x a b c
-      | _ => y a b c
-    end.
+  fun a b c => x a b c y.
+
 Ltac CombineCase4 x y :=
-  fun a b c d =>
-    match goal with
-      | _ => x a b c d
-      | _ => y a b c d
-    end.
+  fun a b c d => x a b c d y.
 
 Ltac CombineCase5 x y :=
-  fun a b c d e =>
-    match goal with
-      | _ => x a b c d e
-      | _ => y a b c d e
-    end.
+  fun a b c d e => x a b c d e y.
 
 Ltac CombineCase6 x y :=
-  fun a b c d e f =>
-    match goal with
-      | _ => x a b c d e f
-      | _ => y a b c d e f
-    end.
+  fun a b c d e f => x a b c d e f y.
 
 Ltac CombineCase7 x y :=
-  fun a b c d e f g =>
-    match goal with
-      | _ => x a b c d e f g
-      | _ => y a b c d e f g
-    end.
+  fun a b c d e f g => x  a b c d e f g y.
 
 Ltac CombineCase8 x y :=
-  fun a b c d e f g h =>
-    match goal with
-      | _ => x a b c d e f g h
-      | _ => y a b c d e f g h
-    end.
+  fun a b c d e f g h => x a b c d e f g h y.
 
-Ltac CombineIndexTactics
+Ltac CombineCase9 x y :=
+  fun a b c d e f g h i => x a b c d e f g h i y.
+
+Ltac CombineCase10 x y :=
+  fun a b c d e f g h i j => x a b c d e f g h i j y.
+
+Ltac CombineCase11 x y :=
+  fun a b c d e f g h i j k => x a b c d e f g h i j k y.
+
+Ltac PackageIndexTactics
      matchIndex IndexUse createEarlyTerm createLastTerm
      IndexUse_dep createEarlyTerm_dep createLastTerm_dep f :=
   f matchIndex IndexUse createEarlyTerm createLastTerm
     IndexUse_dep createEarlyTerm_dep createLastTerm_dep.
+
+Ltac CombineIndexTactics IndexPackage1 IndexPackage2 f :=
+  IndexPackage2
+    ltac:(fun matchIndex2 IndexUse2 createEarlyTerm2 createLastTerm2
+              IndexUse_dep2 createEarlyTerm_dep2 createLastTerm_dep2 =>
+            IndexPackage1
+              ltac:(fun matchIndex1 IndexUse1 createEarlyTerm1 createLastTerm1
+                        IndexUse_dep1 createEarlyTerm_dep1 createLastTerm_dep1 =>
+                      f ltac:(CombineCase2 matchIndex1 matchIndex2)
+                        ltac:(CombineCase5 IndexUse1 IndexUse2)
+                        ltac:(CombineCase10 createEarlyTerm1 createEarlyTerm2)
+                        ltac:(CombineCase7 createLastTerm1 createLastTerm2)
+                        ltac:(CombineCase7 IndexUse_dep1 IndexUse_dep2)
+                        ltac:(CombineCase11 createEarlyTerm_dep1 createEarlyTerm_dep2)
+                        ltac:(CombineCase8 createLastTerm_dep1 createLastTerm_dep2))).

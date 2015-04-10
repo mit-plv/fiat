@@ -251,6 +251,7 @@ EXAMPLE_MODULES := \
 	QueryStructure/Weather \
 	QueryStructure/Classifier \
 	QueryStructure/Messages \
+	QueryStructure/Photoalbum \
 	QueryStructure/Stocks
 #FiniteSetsADTs/FiniteSetsExamples \
 	ExtractingFiniteSetsExamples \

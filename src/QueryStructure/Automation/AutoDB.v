@@ -426,7 +426,7 @@ Ltac createTerm f fds tail fs EarlyIndex LastIndex k :=
                        fds kind s
                        ltac:(fun X => k (Some X, rest)))
                       || k (@None (Domain f {| bindex := s |} ), rest)
-                  | right _ => EarlyIndex f fds tail fs EarlyIndex LastIndex kind rest s k
+                  | right _ => EarlyIndex f fds tail fs kind EarlyIndex LastIndex rest s k
                 end)
   end.
 
@@ -492,7 +492,7 @@ Ltac find_simple_search_term
           findGoodTerm SC filter_dec indexed_attrs' ClauseMatch
                        ltac:(fun fds tail =>
                                let tail := eval simpl in tail in
-                                   makeTerm indexed_attrs' SC fds tail EarlyIndex LastIndex ltac:(fun tm => try unify tm search_term;
+                                   makeTerm indexed_attrs' SC fds tail EarlyIndex LastIndex ltac:(fun tm => unify tm search_term;
                                                                                                                               unfold ExtensionalEq, MatchIndexSearchTerm;
                                                                                                                               simpl; intro; try prove_extensional_eq
                                                                                                                              )) end.
@@ -748,7 +748,7 @@ Ltac createTerm_dep dom f fds tail fs EarlyIndex LastIndex k :=
                            ltac:(fun X =>
                                    k (fun x : dom => (Some (X x), tail x))))
             || k (fun x : dom => (@None (Domain f {| bindex := s |} ), tail x))
-        | right _ => LastIndex dom f fds tail fs kind tail s k
+        | right _ => LastIndex dom f fds tail fs kind s k
       end
     | {| KindNameKind := ?kind;
           KindNameName := ?s|} :: ?fs' =>
@@ -791,7 +791,7 @@ Ltac findGoodTerm_dep SC F indexed_attrs visited_attrs makeClause k :=
           let fd := eval simpl in (bindex fd') in
               let H := fresh in
               assert (List.In {| KindNameKind := EqualityIndex;
-                             KindNameName := fd|} indexed_attrs) as H
+                                 KindNameName := fd|} indexed_attrs) as H
               by (clear; subst_all; simpl; intuition eauto); clear H;
             match eval simpl in
                   (in_dec string_dec fd visited_attrs) with
@@ -854,7 +854,7 @@ Ltac find_simple_search_term_dep
                                                         EarlyIndex LastIndex
                                                         ltac:(fun tm => pose tm;
                                                               (* unification fails if I don't pose tm first... *)
-                                                              try unify tm search_term;
+                                                              unify tm search_term;
                                                               unfold ExtensionalEq, MatchIndexSearchTerm;
                                                               simpl; intros;
                                                               try prove_extensional_eq
@@ -2039,12 +2039,12 @@ Ltac matchEqIndex WhereClause k := fail.
 Ltac EqIndexUse SC F indexed_attrs f k := fail.
 Ltac createEarlyEqualityTerm f fds tail fs kind EarlyIndex LastIndex rest s k := fail.
 Ltac createLastEqualityTerm f fds tail fs kind s k := fail.
-Ltac EqIndexUse_dep SC F indexed_attrs f T k := fail.
+Ltac EqIndexUse_dep SC F indexed_attrs visited_attrs f T k := fail.
 Ltac createEarlyEqualityTerm_dep dom f fds tail fs kind EarlyIndex LastIndex rest s k := fail.
 Ltac createLastEqualityTerm_dep dom f fds tail fs kind s k := fail.
 
 Ltac EqIndexTactics f :=
-  CombineIndexTactics matchEqIndex
+  PackageIndexTactics matchEqIndex
     EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
     EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep
     f.
@@ -2058,3 +2058,39 @@ Ltac simple_partial_master_plan := partial_master_plan EqIndexTactics.
 Global Opaque CallBagMethod.
 Global Opaque CallBagConstructor.
 Global Opaque Initialize_IndexedQueryStructure.
+
+(* Debugging tactics *)
+
+Ltac packaged_plan IndexTactics :=
+  IndexTactics ltac:(fun _ a b c d e f => plan a b c d e f).
+
+Ltac find_simple_search_term_through_find_Good_Term
+     makeClause  qs_schema idx filter_dec search_term :=
+  match type of search_term with
+    | BuildIndexSearchTerm ?indexed_attrs =>
+      let indexed_attrs' :=
+          eval simpl in (map (fun kidx =>
+                                {| KindNameKind := KindIndexKind kidx;
+                                   KindNameName := @bindex string _ (KindIndexIndex kidx) |}) indexed_attrs) in
+          let SC := constr:(QSGetNRelSchemaHeading qs_schema idx) in
+          findGoodTerm SC filter_dec indexed_attrs' makeClause
+                       ltac:(fun fds tail =>
+                               let tail := eval simpl in tail in
+                                   pose search_term;
+                             pose fds; pose tail; pose SC; pose indexed_attrs') end.
+Ltac find_simple_search_term_dep_through_find_Good_Term
+     makeClause  qs_schema idx dom filter_dec search_term :=
+  match type of search_term with
+    | ?dom -> BuildIndexSearchTerm ?indexed_attrs  =>
+      let indexed_attrs' :=
+          eval simpl in (map (fun kidx =>
+                                {| KindNameKind := KindIndexKind kidx;
+                                   KindNameName := @bindex string _ (KindIndexIndex kidx) |}) indexed_attrs) in
+          let SC := constr:(QSGetNRelSchemaHeading qs_schema idx) in
+          let filter_dec' := eval simpl in filter_dec in
+              findGoodTerm_dep SC filter_dec' indexed_attrs' (@nil string)
+                               makeClause
+                               ltac:(fun v fds tail =>
+                                       let tail := eval simpl in tail in
+                                           pose search_term; pose dom;
+                                     pose fds; pose tail; pose SC; pose indexed_attrs') end.

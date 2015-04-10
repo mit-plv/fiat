@@ -2,7 +2,8 @@ Require Import
         ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureNotations
         ADTSynthesis.QueryStructure.Specification.SearchTerms.InRange
         ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.IndexSearchTerms
-        ADTSynthesis.QueryStructure.Automation.IndexSelection.
+        ADTSynthesis.QueryStructure.Automation.IndexSelection
+        ADTSynthesis.QueryStructure.Automation.Common.
 
 (* Instances for building indexes with make simple indexes. *)
 (* Every Kind of index is keyed on an inductive type with a single constructor*)
@@ -43,91 +44,99 @@ match index_domain with
 end
 : typeclass_instances.
 
-Ltac matchRangeIndex WhereClause k :=
+Ltac matchRangeIndex WhereClause k k_fail :=
   match WhereClause with
     | fun tups => InRange (@?C1 tups) _ =>
       let attrs1 := TermAttributes C1 in
       k (map (fun a12 => (RangeIndex, (fst a12, snd a12)))
              (attrs1))
+    | _ => k_fail WhereClause k
   end.
 
-Ltac RangeIndexUse SC F indexed_attrs f k :=
+Ltac RangeIndexUse SC F indexed_attrs f k k_fail :=
 match type of f with
         (* Range Search Terms *)
-        | forall a, {InRange (_!?fd) ?X} + {_} =>
-          let H := fresh in
-          assert (List.In {| KindNameKind := "RangeIndex";
-                             KindNameName := fd|} indexed_attrs) as H
-              by (clear; simpl; intuition eauto); clear H;
-            k ({| KindNameKind := "RangeIndex";
-                  KindNameName := fd|}, X) (fun _ : @Tuple SC => true)
-        | forall a, {InRange (_!``?fd) ?X} + {_} =>
-          let H := fresh in
-          assert (List.In {| KindNameKind := "RangeIndex";
-                             KindNameName := fd|} indexed_attrs) as H
-              by (clear; simpl; intuition eauto); clear H;
-            k ({| KindNameKind := "RangeIndex";
-                  KindNameName := fd|}, X) (fun _ : @Tuple SC => true)
+  | forall a, {InRange (GetAttribute _ ?fd') ?X} + {_} =>
+    let H := fresh in
+    let fd := eval simpl in (bindex fd') in
+    assert (List.In {| KindNameKind := "RangeIndex";
+                       KindNameName := fd|} indexed_attrs) as H
+        by (clear; simpl; intuition eauto); clear H;
+    k ({| KindNameKind := "RangeIndex";
+          KindNameName := bindex fd|}, X) (fun _ : @Tuple SC => true)
+  | _ => k_fail SC F indexed_attrs f k
 end.
 
-Ltac RangeIndexUse_dep SC F indexed_attrs visited_attrs f T k :=
+Ltac RangeIndexUse_dep SC F indexed_attrs visited_attrs f T k k_fail :=
     match type of f with
-        (* Range Search Terms *)
-        | forall a b, {InRange (_!?fd) (@?X a)} + {_} =>
-          let H := fresh in
-          assert (List.In {| KindNameKind := "RangeIndex";
-                             KindNameName := fd|} indexed_attrs) as H
-              by (clear; simpl; intuition eauto); clear H;
-          match eval simpl in
-                (in_dec string_dec fd visited_attrs) with
-            | right _ => k (fd :: visited_attrs)
-                           ({| KindNameKind := "RangeIndex";
-                               KindNameName := fd |}, X)
-                           (fun (a : T) (_ : @Tuple SC) => true)
-            | left _ => k visited_attrs tt F
-          end
-        | forall a b, {InRange (_``?fd) (@?X a)} + {_} =>
-          let H := fresh in
-          assert (List.In {| KindNameKind := "RangeIndex";
-                             KindNameName := fd|} indexed_attrs) as H
-              by (clear; simpl; intuition eauto);
-            match eval simpl in
-                  (in_dec string_dec fd visited_attrs) with
-              | right _ => k (fd :: visited_attrs)
-                             ({| KindNameKind := "RangeIndex";
-                                 KindNameName := fd |}, X)
-                             (fun (a : T) (_ : @Tuple SC) => true)
-              | left _ => k visited_attrs tt F
-            end
+      (* Range Search Terms *)
+      | forall a b, {InRange (GetAttribute _ ?fd') (@?X a)} + {_} =>
+        let H := fresh in
+        let fd := eval simpl in (bindex fd') in
+        assert (List.In {| KindNameKind := "RangeIndex";
+                           KindNameName := fd|} indexed_attrs) as H
+            by (clear; simpl; intuition eauto); clear H;
+        match eval simpl in
+              (in_dec string_dec fd visited_attrs) with
+          | right _ => k (fd :: visited_attrs)
+                         ({| KindNameKind := "RangeIndex";
+                             KindNameName := fd |}, X)
+                         (fun (a : T) (_ : @Tuple SC) => true)
+          | left _ => k visited_attrs tt F
+        end
+      | _ => k_fail SC F indexed_attrs visited_attrs f T k
     end.
 
-Ltac createLastRangeTerm f fds tail fs kind s k :=
-  match kind with
-    | "RangeIndex" =>
-      (findMatchingTerm
-         fds kind s
-         ltac:(fun X => k {| RangeIndexSearchTerm := Some X;
-                             RangeItemSearchTerm := tail |}))
-        || k {| RangeIndexSearchTerm := None;
-                RangeItemSearchTerm := tail |}
-end.
+Ltac createLastRangeTerm f fds tail fs kind s k k_fail :=
+  let is_equality := eval compute in (string_dec kind "RangeIndex") in
+      match is_equality with
+        | left _ =>
+          (findMatchingTerm
+             fds kind s
+             ltac:(fun X => k {| RangeIndexSearchTerm := Some X;
+                                 RangeItemSearchTerm := tail |}))
+            || k {| RangeIndexSearchTerm := @None (nat * nat);
+                    RangeItemSearchTerm := tail |}
+        | _ => k_fail f fds tail fs kind s k
+      end.
 
-Ltac createLastRangeTerm_dep dom f fds tail fs kind rest s k :=
-  match kind with
-    | "RangeIndex" =>
-      (findMatchingTerm
-         fds kind s
-         ltac:(fun X => k (fun x : dom => {| RangeIndexSearchTerm := Some (X x);
-                                             RangeItemSearchTerm := tail x |}))
-                || k (fun x : dom => {| RangeIndexSearchTerm := None;
-                                        RangeItemSearchTerm := tail x |}))
-  end.
+Ltac createLastRangeTerm_dep dom f fds tail fs kind s k k_fail :=
+  let is_equality := eval compute in (string_dec kind "RangeIndex") in
+      match is_equality with
+        | left _ =>
+          (findMatchingTerm
+             fds kind s
+             ltac:(fun X => k (fun x : dom => {| RangeIndexSearchTerm := Some (X x);
+                                                 RangeItemSearchTerm := tail x |}))
+                    || k (fun x : dom => {| RangeIndexSearchTerm := @None (nat * nat);
+                                            RangeItemSearchTerm := tail x |}))
+        | _ => k_fail dom f fds tail fs kind s k
+      end.
 
-Ltac createEarlyRangeTerm f fds tail fs kind EarlyIndex LastIndex rest s k :=
-  match kind with
-    | "RangeIndex" =>
-      (findMatchingTerm
-         fds kind s
-         ltac:(fun X => k (Some X, rest)))
-        || k (@None (nat * nat), rest)
-  end.
+Ltac createEarlyRangeTerm f fds tail fs kind EarlyIndex LastIndex rest s k k_fail :=
+  let is_equality := eval compute in (string_dec kind "RangeIndex") in
+      match is_equality with
+        | left _ =>
+          (findMatchingTerm
+             fds kind s
+             ltac:(fun X => k (Some X, rest)))
+            || k (@None (nat * nat), rest)
+        | _ => k_fail f fds tail fs kind EarlyIndex LastIndex rest s k
+      end.
+
+Ltac createEarlyRangeTerm_dep dom f fds tail fs kind EarlyIndex LastIndex rest s k k_fail :=
+  let is_equality := eval compute in (string_dec kind "RangeIndex") in
+      match is_equality with
+        | left _ =>
+          (findMatchingTerm
+             fds kind s
+             ltac:(fun X => k (fun x : dom => (Some (X x), rest x))))
+            || k (fun x : dom => (@None (nat * nat), rest x))
+        | _ => k_fail f fds tail fs kind EarlyIndex LastIndex rest s k
+      end.
+
+Ltac RangeIndexTactics f :=
+  PackageIndexTactics
+    matchRangeIndex
+    RangeIndexUse createEarlyRangeTerm createLastRangeTerm
+    RangeIndexUse_dep createEarlyRangeTerm_dep createLastRangeTerm_dep f.

@@ -1,7 +1,7 @@
+Require Import Coq.Strings.String.
 Require Import ADTSynthesis.QueryStructure.Automation.AutoDB
         ADTSynthesis.QueryStructure.Automation.IndexSelection
-        ADTSynthesis.QueryStructure.Specification.SearchTerms.ListInclusion
-        ADTSynthesis.QueryStructure.Specification.SearchTerms.InRange.
+        ADTSynthesis.QueryStructure.Automation.Common.
 
 Definition PHOTOS := "Photos".
 Definition EVENTS := "Events".
@@ -56,30 +56,37 @@ Definition AlbumSpec : ADT AlbumSig :=
           Where (event!EVENT_NAME = photo!EVENT_NAME)
           Where (InRange event!DATE range)
           Return photo,
-          
-    query "PhotosByPersons" (search_tags : list string) : list (AlbumSchema#PHOTOS) :=
+
+    query "PhotosByPersons" (persons : list string) : list (AlbumSchema#PHOTOS) :=
       For (photo in PHOTOS)
-          Where (IncludedIn search_tags photo!PERSONS)
+          Where (IncludedIn persons photo!PERSONS)
           Return photo
 }.
 
+  Require Import ADTSynthesis.QueryStructure.Specification.SearchTerms.ListInclusion.
+  Require Import ADTSynthesis.QueryStructure.Specification.SearchTerms.InRange.
+
+  Unset Ltac Debug.
+
+
 Definition SharpenedAlbum :
-  Sharpened AlbumSpec.
+  MostlySharpened AlbumSpec.
 Proof.
-  unfold AlbumSpec.
 
   start honing QueryStructure.
+    (* Manually select indexes + data structure. *)
+    make simple indexes using [[("EqualityIndex", EVENT_NAME); ("InclusionIndex", PERSONS)]; [("EqualityIndex", EVENT_NAME); ("RangeIndex", DATE)]].
+  - packaged_plan ltac:(CombineIndexTactics InclusionIndexTactics
+                                            ltac:(CombineIndexTactics RangeIndexTactics EqIndexTactics)).
+  - packaged_plan ltac:(CombineIndexTactics InclusionIndexTactics
+                                            ltac:(CombineIndexTactics RangeIndexTactics EqIndexTactics)).
+  - packaged_plan ltac:(CombineIndexTactics InclusionIndexTactics
+                                            ltac:(CombineIndexTactics RangeIndexTactics EqIndexTactics)).
+  - packaged_plan ltac:(CombineIndexTactics InclusionIndexTactics
+                                            ltac:(CombineIndexTactics RangeIndexTactics EqIndexTactics)).
+  - packaged_plan ltac:(CombineIndexTactics InclusionIndexTactics
+                                            ltac:(CombineIndexTactics RangeIndexTactics EqIndexTactics)).
 
-  make simple indexes using [[(EqualityIndex, EVENT_NAME); (InclusionIndex, PERSONS)]; [(RangeIndex, DATE)]].
-
-  plan.
-
-  FullySharpenQueryStructure AlbumSchema Index.
-
-  implement_bag_methods.
-  implement_bag_methods.
-  implement_bag_methods.
-  implement_bag_methods.
-  implement_bag_methods.
+  - FullySharpenQueryStructure AlbumSchema Index.
 
 Time Defined.

@@ -1,7 +1,6 @@
 Require Import Coq.Strings.String.
 Require Import ADTSynthesis.QueryStructure.Automation.AutoDB
-        ADTSynthesis.QueryStructure.Automation.IndexSelection
-        ADTSynthesis.QueryStructure.Specification.SearchTerms.ListInclusion.
+        ADTSynthesis.QueryStructure.Automation.IndexSelection.
 
 Definition MESSAGES := "Messages".
 Definition CONTACTS := "Contacts".
@@ -68,7 +67,15 @@ Definition SharpenedMessages :
   MostlySharpened MessagesSpec.
 Proof.
 
-  partial_master_plan InclusionIndexTactics.
+
+  (* With the standard indexes, 'RelevantMessages' enumerates and filters. *)
+  partial_master_plan EqIndexTactics.
+  Undo 1.
+
+  (* Using search terms for checking IncludedIn uses the more efficient BFind method. *)
+  Require Import ADTSynthesis.QueryStructure.Specification.SearchTerms.ListInclusion.
+
+  partial_master_plan ltac:(CombineIndexTactics InclusionIndexTactics EqIndexTactics).
 
   FullySharpenQueryStructure MessagesSchema Index.
 
