@@ -7,6 +7,7 @@ Require Import ADTSynthesis.Parsers.ParserADTSpecification.
 Require Import ADTSynthesis.Parsers.StringLike.Properties.
 Require Import ADTSynthesis.Parsers.StringLike.String.
 Require Import ADTSynthesis.Parsers.ContextFreeGrammarEquality.
+Require Import ADTSynthesis.Parsers.Refinement.FixedLengthLemmas.
 Require Import ADTNotation.BuildADT ADTNotation.BuildADTSig.
 Require Import ADT.ComputationalADT.
 Require Import ADTSynthesis.Common ADTSynthesis.Common.Equality.
@@ -16,6 +17,7 @@ Require Import ADTRefinement.BuildADTRefinements.HoneRepresentation.
 Require Import ADTSynthesis.Common.IterateBoundedIndex.
 Require Import ADTSynthesis.Common.List.FlattenList.
 Require Import ADTSynthesis.Common.List.ListFacts.
+Require Import ADTSynthesis.Common.NatFacts.
 Require Import ADTSynthesis.ADTRefinement.GeneralBuildADTRefinements.
 Require Import ADTSynthesis.Computation.SetoidMorphisms.
 
@@ -300,13 +302,18 @@ Section IndexedImpl.
                              | (NonTerminal nt):: p'
                                => If has_only_terminals p'
                                   Then
-                                    ret [ilength s - Datatypes.length p']
-                                  Else { splits : list nat
+                                    ret [(ilength s - Datatypes.length p')%natr]
+                                  Else
+                                  (option_rect
+                                     (fun _ => Comp (list nat))
+                                     (fun (n : nat) => ret [n])
+                                     { splits : list nat
                                        | forall n,
                                            n <= ilength s
                                            -> parse_of_item G (take n (string_of_indexed s)) (NonTerminal nt)
                                            -> parse_of_production G (drop n (string_of_indexed s)) p'
-                                           -> List.In n splits }
+                                           -> List.In n splits }%comp
+                                     (length_of_any G nt))
                            end)
                      Else else_case)
                  (ret dummy));
@@ -334,7 +341,7 @@ Section IndexedImpl.
       ret ((fst s, (fst (snd s), min (snd (snd s)) n)), tt),
 
     Def Method "drop"(s : rep, n : nat) : unit :=
-      ret ((fst s, (fst (snd s) + n, snd (snd s) - n)), tt),
+      ret ((fst s, (n + fst (snd s), (snd (snd s) - n)%natr)), tt),
 
     Def Method "splits"(s : rep, p : item Ascii.ascii * production Ascii.ascii) : list nat :=
       dummy <- { ls : list nat | True };
@@ -347,6 +354,7 @@ Section IndexedImpl.
              | _ => progress simpl in *
              | _ => progress computes_to_inv
              | _ => progress subst
+             | _ => progress rewrite ?minusr_minus in *
              | [ |- computes_to (Bind _ _) _ ]
                => refine ((fun H0 H1 => BindComputes _ _ _ _ H1 H0) _ _)
              | [ |- computes_to (Return ?x) ?y ]
@@ -469,27 +477,42 @@ Section IndexedImpl.
         { clear IHls; intros; abstract fin. }
         { clear IHls; intros; abstract fin. }
         { clear IHls; intros; abstract fin. }
-        { clear IHls; unfold If_Then_Else.
-          abstract (
-              repeat match goal with
-                       | _ => intro
-                       | [ H : context[if has_only_terminals ?e then _ else _] |- _ ]
-                         => (revert H; case_eq (has_only_terminals e))
-                       | _ => progress computes_to_inv
-                       | _ => progress subst
-                       | [ |- In _ [_] ] => left
-                       | _ => erewrite <- has_only_terminals_length by eassumption
-                       | [ H : _ |- _ ] => progress rewrite ?substring_length, ?Nat.add_sub in H
-                       | _ => progress rewrite ?substring_length, ?Nat.add_sub
-                       | [ |- context[min ?x (?y + ?z) - ?z] ]
-                         => rewrite <- (Nat.sub_min_distr_r x (y + z) z)
-                       | [ H : context[min ?x (?y + ?z) - ?z] |- _ ]
-                         => rewrite <- (Nat.sub_min_distr_r x (y + z) z) in H
-                       | [ |- context[min (?x - ?y) ?x] ] => rewrite (Min.min_l (x - y) x) by omega
-                       | [ |- context[min ?x (?x - ?y)] ] => rewrite (Min.min_r x (x - y)) by omega
-                       | _ => omega
-                       | _ => solve [ eauto ]
-                     end
-            ). } } }
+        { clear IHls; unfold If_Then_Else, option_rect.
+          repeat match goal with
+                   | [ |- context[if has_only_terminals ?e then _ else _] ]
+                     => case_eq (has_only_terminals e)
+                   | [ |- context[match ?e with None => _ | _ => _ end] ]
+                     => case_eq e
+                 end;
+            try
+              abstract (
+                repeat match goal with
+                         | _ => intro
+                         | _ => progress computes_to_inv
+                         | _ => progress subst
+                         | [ |- In _ [_] ] => left
+                         | [ H : collapse_length_result ?e = Some _ |- _ ]
+                           => (revert H; case_eq e; simpl)
+                         | [ H : Some _ = Some _ |- _ ]
+                           => (inversion H; clear H)
+                         | _ => congruence
+                         | [ H : length_of_any ?G ?nt = same_length ?n,
+                                 p : parse_of_item ?G ?str (NonTerminal ?nt) |- _ ]
+                           => (pose proof (@has_only_terminals_parse_of_item_length G n nt H str p); clear H)
+                         | _ => erewrite <- has_only_terminals_length by eassumption
+                         | [ H : _ |- _ ] => progress rewrite ?substring_length, ?Nat.add_sub, ?Nat.sub_0_r, ?Nat.add_0_r, ?minusr_minus in H
+                         | _ => progress rewrite ?substring_length, ?Nat.add_sub, ?Nat.sub_0_r, ?Nat.add_0_r, ?minusr_minus
+                         | [ H : ?y <= ?x |- context[min ?x ?y] ] => rewrite (Min.min_r x y) by assumption
+                         | [ H : ?x <= ?y |- context[min ?x ?y] ] => rewrite (Min.min_l x y) by assumption
+                         | [ |- context[min ?x (?y + ?z) - ?z] ]
+                           => rewrite <- (Nat.sub_min_distr_r x (y + z) z)
+                         | [ H : context[min ?x (?y + ?z) - ?z] |- _ ]
+                           => rewrite <- (Nat.sub_min_distr_r x (y + z) z) in H
+                         | [ |- context[min (?x - ?y) ?x] ] => rewrite (Min.min_l (x - y) x) by omega
+                         | [ |- context[min ?x (?x - ?y)] ] => rewrite (Min.min_r x (x - y)) by omega
+                         | _ => omega
+                         | _ => solve [ eauto ]
+                       end
+              ). } } }
   Qed.
 End IndexedImpl.

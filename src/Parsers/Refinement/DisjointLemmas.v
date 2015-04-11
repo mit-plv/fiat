@@ -6,40 +6,49 @@ Require Import ADTSynthesis.Parsers.ContextFreeGrammar.
 Require Import ADTSynthesis.Parsers.StringLike.String.
 Require Import Coq.Program.Equality.
 Require Import ADTSynthesis.Common.
+Require Import ADTSynthesis.Common.Equality.
 Require Import ADTSynthesis.Common.Wf.
 Require Import ADTSynthesis.Parsers.Splitters.RDPList.
 Require Import ADTSynthesis.Parsers.BaseTypes.
 
 Set Implicit Arguments.
+Require Import SharpenedExpressionParen.
+Require Import ADTSynthesis.Parsers.ParserFromParserADT.
+Require Import ADTSynthesis.Parsers.ExtrOcamlParsers.
+Import ADTSynthesis.Parsers.ExtrOcamlParsers.HideProofs.
+Recursive Extraction ab_star_parser.
+Print ab_star_parser.
+Section grammar.
+  Context {Char : Type}.
 
-Inductive length_result := same_length (n : nat) | different_lengths | cyclic_length | not_yet_handled_empty_rule.
+  Definition possible_terminals := list Char.
+  Record possible_first_terminals :=
+    { actual_possible_first_terminals :> list Char;
+      might_be_empty : bool }.
 
-Coercion collapse_length_result (l : length_result) : option nat
-  := match l with
-       | same_length n => Some n
-       | _ => None
-     end.
+  Fixpoint possible_terminals_of_production' {Char} (terminals_of_nt : String.string -> possible_terminals)
+           (its :
 
-Fixpoint length_of_any_production' {Char} (length_of_any_nt : String.string -> length_result)
-         (its : production Char) : length_result
-  := match its with
-       | nil => same_length 0
-       | (Terminal _)::xs => match length_of_any_production' length_of_any_nt xs with
-                               | same_length n => same_length (S n)
-                               | different_lengths => different_lengths
-                               | cyclic_length => cyclic_length
-                               | not_yet_handled_empty_rule => not_yet_handled_empty_rule
-                             end
-       | (NonTerminal nt)::xs => match length_of_any_nt nt, length_of_any_production' length_of_any_nt xs with
-                                   | same_length n1, same_length n2 => same_length (n1 + n2)
-                                   | cyclic_length, _ => cyclic_length
-                                   | _, cyclic_length => cyclic_length
-                                   | different_lengths, _ => different_lengths
-                                   | _, different_lengths => different_lengths
-                                   | not_yet_handled_empty_rule, _ => not_yet_handled_empty_rule
-                                   | _, not_yet_handled_empty_rule => not_yet_handled_empty_rule
-                                 end
-     end.
+  Fixpoint length_of_any_production' {Char} (length_of_any_nt : String.string -> length_result)
+           (its : production Char) : length_result
+    := match its with
+         | nil => same_length 0
+         | (Terminal _)::xs => match length_of_any_production' length_of_any_nt xs with
+                                 | same_length n => same_length (S n)
+                                 | different_lengths => different_lengths
+                                 | cyclic_length => cyclic_length
+                                 | not_yet_handled_empty_rule => not_yet_handled_empty_rule
+                               end
+         | (NonTerminal nt)::xs => match length_of_any_nt nt, length_of_any_production' length_of_any_nt xs with
+                                     | same_length n1, same_length n2 => same_length (n1 + n2)
+                                     | cyclic_length, _ => cyclic_length
+                                     | _, cyclic_length => cyclic_length
+                                     | different_lengths, _ => different_lengths
+                                     | _, different_lengths => different_lengths
+                                     | not_yet_handled_empty_rule, _ => not_yet_handled_empty_rule
+                                     | _, not_yet_handled_empty_rule => not_yet_handled_empty_rule
+                                   end
+       end.
 
 Lemma length_of_any_production'_ext {Char}
       f g
@@ -269,15 +278,4 @@ Proof.
                  => specialize (fun H' => H (proj2 length_of_any_productions'_f_same_length_fold_right H'))
                | _ => progress eauto
              end. } }
-Qed.
-
-Lemma has_only_terminals_parse_of_item_length (G : grammar Ascii.ascii) {n}
-      nt
-      (H : length_of_any G nt = same_length n)
-      str
-      (p : parse_of_item G str (NonTerminal nt))
-: String.length str = n.
-Proof.
-  dependent destruction p.
-  eapply has_only_terminals_parse_of_length; eassumption.
 Qed.

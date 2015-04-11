@@ -46,3 +46,23 @@ Section NatFacts.
     intros; destruct (eq_nat_dec _ _); [ apply beq_nat_true_iff | apply beq_nat_false_iff ]; assumption.
   Qed.
 End NatFacts.
+
+Fixpoint minusr (n m : nat) {struct m} : nat
+  := match m with
+       | 0 => n
+       | S l => minusr (pred n) l
+     end.
+
+Lemma minusr_minus n m
+: minusr n m = minus n m.
+Proof.
+  revert m; induction n; simpl;
+  induction m; simpl; auto.
+Qed.
+
+Delimit Scope natr_scope with natr.
+Infix "-" := minusr : natr_scope.
+
+Module minusr_notation.
+  Infix "-" := minusr : nat_scope.
+End minusr_notation.

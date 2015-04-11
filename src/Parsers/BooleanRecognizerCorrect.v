@@ -400,19 +400,19 @@ Section sound.
           : parse_nonterminal_step (G := G) parse_nonterminal pf nonterminal
             -> parse_of_item G str (NonTerminal nonterminal).
           Proof.
+            specialize (fun str' valid' => parse_nonterminal_sound (str', valid')).
             unfold parse_nonterminal_step.
             intro H'; constructor; revert H'.
-            edestruct lt_dec as [|n].
+            edestruct lt_dec as [|n]; simpl in *.
             { intro H'.
               apply parse_productions_sound in H'; trivial. }
-            { edestruct dec; [ | intro H''; exfalso; clear -H'';
-                                 abstract discriminate ].
-              pose proof (strle_to_sumbool _ pf) as pf'.
+            { pose proof (strle_to_sumbool _ pf) as pf'.
               destruct pf' as [pf'|]; subst.
               { destruct (n pf'). }
               { intro H'.
-                apply parse_productions_sound in H'; trivial;
-                destruct_head @StringWithSplitState; subst; trivial. } }
+                apply parse_productions_sound in H'; trivial.
+                edestruct dec; simpl in *; trivial; [].
+                hnf; simpl; intros; discriminate. } }
           Defined.
 
           Lemma parse_nonterminal_step_complete
@@ -434,8 +434,9 @@ Section sound.
           : minimal_parse_of_nonterminal (G := G) str0 valid str nonterminal
             -> parse_nonterminal_step (G := G) parse_nonterminal pf nonterminal.
           Proof.
+            specialize (fun str' valid' => parse_nonterminal_complete (str', valid')).
             unfold parse_nonterminal_step.
-            edestruct lt_dec as [|n].
+            edestruct lt_dec as [|n]; simpl in *.
             { intros H'.
               inversion H'; clear H'; subst. (* Work around Anomaly: Evar ?425 was not declared. Please report. *)
               { eapply parse_productions_complete; [ .. | eassumption ];
@@ -455,7 +456,6 @@ Section sound.
                     end. }
                   { let H' := match goal with H : minimal_parse_of _ _ _ _ |- _ => constr:H end in
                     eapply parse_productions_complete in H'; eauto.
-                    eapply (@parse_nonterminal_complete (_, _)).
                     intros; apply split_string_for_production_complete; assumption. } }
                 { intro H''; exfalso; clear -n H'' pf'.
                   abstract (
@@ -477,9 +477,9 @@ Section sound.
             = parse_nonterminal_step (G := G) parse_nonterminal2 pf nonterminal.
           Proof.
             unfold parse_nonterminal_step.
-            edestruct lt_dec.
+            edestruct lt_dec; simpl.
             { apply parse_productions_ext; auto. }
-            { edestruct dec; trivial.
+            { edestruct dec; simpl; trivial.
               apply parse_productions_ext; auto. }
           Qed.
         End step_extensional.

@@ -1,5 +1,8 @@
 Require Import Coq.Arith.Compare_dec Coq.Strings.String.
 Require Import ADTSynthesis.Common.Equality ADTSynthesis.Parsers.ParserFromParserADT ADTSynthesis.Parsers.SplitterFromParserADT ADTSynthesis.Parsers.ParserInterface.
+Require Import Coq.Arith.Wf_nat.
+Require Import ADTSynthesis.Common.Wf.
+Require Import ADTSynthesis.Common.NatFacts.
 Require Export ADTSynthesis.Parsers.Refinement.Tactics.
 Require Export ADTSynthesis.ADTNotation.BuildComputationalADT.
 Require Export Coq.Strings.Ascii.
@@ -10,6 +13,7 @@ Extract Inlined Constant Compare_dec.lt_dec => "(<)".
 Extract Inlined Constant Sumbool.sumbool_of_bool => "(fun x -> x)".
 Extract Inlined Constant Equality.ascii_beq => "(=)".
 Extract Inlined Constant ascii_eq_dec => "(=)".
+Extract Constant minusr => "fun n m -> Pervasives.max 0 (n-m)".
 
 Global Arguments string_dec : simpl never.
 Global Arguments Equality.string_beq : simpl never.
@@ -25,6 +29,8 @@ Global Arguments new_string_of_string / .
 Global Arguments ComputationalADT.cRep / .
 Global Arguments new_string_of_base_string / .
 Global Arguments ComputationalADT.cConstructors / .
+Global Arguments Wf.prod_relation / .
+Global Arguments Wf_nat.ltof / .
 
 Module HideProofs.
   Notation hex := (ex _).

@@ -40,4 +40,6 @@ Import ADTSynthesis.Parsers.ExtrOcamlParsers.HideProofs.
 Time Definition ab_star_parser (str : String.string) : bool
   := Eval simpl in has_parse (parser ComputationalSplitter) str.
 
+Print ab_star_parser.
+
 Recursive Extraction ab_star_parser.
