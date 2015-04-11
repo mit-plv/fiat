@@ -49,9 +49,8 @@ Section recursive_descent_parser.
                 beq_nat (length str) 0
               | it::its
                 => let parse_production' := fun str pf => parse_production str pf its in
-                   fold_right
+                   fold_left
                      orb
-                     false
                      (map (fun n =>
                              (parse_item
                                 (parse_nonterminal (str := take n str) _)
@@ -59,6 +58,7 @@ Section recursive_descent_parser.
                                 it)
                                && parse_production' (drop n str) _)%bool
                           (split_string_for_production it its str))
+                     false
             end;
           revert pf; clear -HSLP; intros;
           abstract (rewrite ?str_le_take, ?str_le_drop; assumption).
@@ -137,8 +137,9 @@ Section recursive_descent_parser.
               str ≤s fst p
               -> String.string
               -> bool
-            := Fix3
-                 _ _ _
+            := @Fix
+                 (String * nonterminals_listT)
+                 _
                  (well_founded_prod_relation
                     (well_founded_ltof _ length)
                     ntl_wf)
