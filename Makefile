@@ -198,6 +198,7 @@ SRC_PARSERS_MODULES := \
 	Parsers/Refinement/IndexedAndAtMostOneNonTerminal\
 	Parsers/Refinement/SharpenedAtMostOneNonTerminal\
 	Parsers/Refinement/IndexedAndAtMostOneNonTerminalReflective\
+	Parsers/Refinement/FixedLengthLemmas\
 	Parsers/Refinement/Tactics\
 	Parsers/Refinement/SharpenedABStar\
 	$(SRC_PARSERS_BASE_MODULES)\

@@ -1,12 +1,10 @@
 (** Sharpened ADT for an expression grammar with parentheses *)
 Require Import Coq.Init.Wf Coq.Arith.Wf_nat.
-Require Import Coq.Lists.List.
+Require Import Coq.Lists.List Coq.Strings.String.
 Require Import Coq.Numbers.Natural.Peano.NPeano.
-Require Import ADTSynthesis.Parsers.Refinement.Tactics.
-Require Import ADTSynthesis.Parsers.Grammars.ExpressionParen.
-Require Import ADTSynthesis.Computation.Refinements.General.
-Require Import ADTSynthesis.Parsers.StringLike.Properties.
+Require Import ADTSynthesis.Parsers.ContextFreeGrammar.
 Require Import ADTSynthesis.Parsers.StringLike.String.
+Require Import Coq.Program.Equality.
 Require Import ADTSynthesis.Common.
 Require Import ADTSynthesis.Common.Wf.
 Require Import ADTSynthesis.Parsers.Splitters.RDPList.
@@ -138,7 +136,7 @@ Lemma length_of_any_nt_step_ext {Char G}
 : @length_of_any_nt_step Char G x0 f b = length_of_any_nt_step g b.
 Proof.
   unfold length_of_any_nt_step.
-  edestruct dec; trivial.
+  edestruct Sumbool.sumbool_of_bool; trivial.
   apply length_of_any_productions'_ext; eauto.
 Qed.
 
@@ -266,71 +264,3 @@ Proof.
                | _ => progress eauto
              end. } }
 Qed.
-
-Lemma refine_nt_with_only_t (G : grammar Ascii.ascii) r_n ps nt {n'}
-      (H : length_of_any G nt = same_length n')
-: refine {splits : list nat |
-          forall n : nat,
-            n <= ilength r_n ->
-            parse_of_item
-              G
-              (take n (string_of_indexed r_n))
-              (NonTerminal nt) ->
-            parse_of_production
-              G
-              (drop n (string_of_indexed r_n))
-              ps ->
-            List.In n splits}
-         (ret [n']).
-Proof.
-  apply refine_pick_val.
-  intros n Hn pit _; left.
-  dependent destruction pit; simpl in *.
-  eapply has_only_terminals_parse_of_length in H; [ | eassumption.. ].
-  subst.
-  rewrite !substring_length, Nat.add_0_r, Nat.sub_0_r.
-  rewrite <- NPeano.Nat.sub_min_distr_r, NPeano.Nat.add_sub.
-  apply Min.min_case_strong; intros; omega.
-Qed.
-
-Section IndexedImpl.
-
-  Lemma ComputationalSplitter'
-  : FullySharpened (string_spec paren_expr_grammar).
-  Proof.
-    start honing parser using indexed representation.
-
-    hone method "splits".
-    {
-      simplify parser splitter.
-      setoid_rewrite refine_nt_with_only_t; [ | reflexivity ].
-      finish honing parser method.
-    }
-
-    FullySharpenEachMethodWithoutDelegation.
-    extract delegate-free implementation.
-    simpl; higher_order_reflexivityT.
-  Defined.
-
-  Lemma ComputationalSplitter
-  : FullySharpened (string_spec paren_expr_grammar).
-  Proof.
-    let impl := (eval simpl in (projT1 ComputationalSplitter')) in
-    refine (existT _ impl _).
-    abstract (exact (projT2 ComputationalSplitter')).
-  Defined.
-
-End IndexedImpl.
-
-Global Arguments ComputationalSplitter / .
-
-Require Import ADTSynthesis.Parsers.ParserFromParserADT.
-Require Import ADTSynthesis.Parsers.ExtrOcamlParsers.
-Import ADTSynthesis.Parsers.ExtrOcamlParsers.HideProofs.
-
-Time Definition paren_expr_parser (str : String.string) : bool
-  := Eval simpl in has_parse (parser ComputationalSplitter) str.
-
-Print paren_expr_parser.
-
-Recursive Extraction paren_expr_parser.

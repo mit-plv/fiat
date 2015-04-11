@@ -1,5 +1,8 @@
 Require Import Coq.Arith.Compare_dec Coq.Strings.String.
 Require Import ADTSynthesis.Common.Equality ADTSynthesis.Parsers.ParserFromParserADT ADTSynthesis.Parsers.SplitterFromParserADT ADTSynthesis.Parsers.ParserInterface.
+Require Export ADTSynthesis.Parsers.Refinement.Tactics.
+Require Export ADTSynthesis.ADTNotation.BuildComputationalADT.
+Require Export Coq.Strings.Ascii.
 Require Export ExtrOcamlBasic.
 Require Export ExtrOcamlNatInt.
 Require Export ExtrOcamlString.
