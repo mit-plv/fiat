@@ -600,6 +600,36 @@ Ltac higher_order_reflexivity :=
     | |- _                                =>  reflexivity
   end.
 
+Ltac pre_higher_order_reflexivity_single_evar :=
+  idtac;
+  match goal with
+    | [ |- ?L = ?R ] => has_evar R; not has_evar L; symmetry
+    | [ |- ?L = ?R ] => has_evar L; not has_evar R
+    | [ |- ?L = ?R ] => fail 1 "Goal has evars on both sides of the equality" L "=" R
+    | [ |- ?G ] => fail 1 "Goal is not an equality" G
+  end.
+
+Ltac higher_order_reflexivity_single_evar_step :=
+  idtac;
+  match goal with
+    | [ |- ?f ?x = ?R ] => is_var x; revert x
+    | [ |- ?f ?x = ?R ]
+      => not has_evar x;
+        let R' := (eval pattern x in R) in
+        change (f x = R' x)
+  end;
+  (lazymatch goal with
+  | [ |- forall x, ?f x = @?R x ]
+    => refine (fun x => f_equal (fun F => F x) (_ : f = R))
+  | [ |- ?f ?x = ?R ?x ]
+    => refine (f_equal (fun F => F x) (_ : f = R))
+   end);
+  clear.
+
+Ltac higher_order_reflexivity_single_evar :=
+  pre_higher_order_reflexivity_single_evar;
+  repeat higher_order_reflexivity_single_evar_step.
+
 Ltac higher_order_1_reflexivityT' :=
   let a := match goal with |- ?R ?a (?f ?x) => constr:(a) end in
   let f := match goal with |- ?R ?a (?f ?x) => constr:(f) end in
