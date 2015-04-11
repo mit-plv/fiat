@@ -147,6 +147,7 @@ Section sound.
                    | _ => progress simpl in *
                    | _ => progress subst
                    | _ => solve [ auto ]
+                   | [ H : appcontext[fold_left] |- _ ] => rewrite (@fold_symmetric _ _ Bool.orb_assoc Bool.orb_comm) in H
                    | [ H : is_true (fold_right orb false (map _ _)) |- _ ] => apply fold_right_orb_map_sig1 in H
                    | [ H : (_ || _)%bool = true |- _ ] => apply Bool.orb_true_elim in H
                    | [ H : (_ && _)%bool = true |- _ ] => apply Bool.andb_true_iff in H
@@ -203,6 +204,8 @@ Section sound.
                    | _ => progress subst
                    | _ => progress destruct_head @StringWithSplitState
                    | _ => solve [ auto ]
+                   | [ H : appcontext[fold_left] |- _ ] => rewrite (@fold_symmetric _ _ Bool.orb_assoc Bool.orb_comm) in H
+                   | [ |- appcontext[fold_left] ] => rewrite (@fold_symmetric _ _ Bool.orb_assoc Bool.orb_comm)
                    | [ H : is_true (fold_right orb false (map _ _)) |- _ ] => apply fold_right_orb_map_sig1 in H
                    | [ H : (_ || _)%bool = true |- _ ] => apply Bool.orb_true_elim in H
                    | [ H : (_ && _)%bool = true |- _ ] => apply Bool.andb_true_iff in H
@@ -491,7 +494,7 @@ Section sound.
           Proof.
             unfold parse_nonterminal_or_abort.
             revert str pf nonterminal.
-            let Acca := match goal with |- context[@Fix3 _ _ _ _ _ ?Rwf _ _ ?a _ _ _] => constr:(Rwf a) end in
+            let Acca := match goal with |- context[@Fix _ _ ?Rwf _ _ ?a _ _ _] => constr:(Rwf a) end in
             induction (Acca) as [? ? IHr];
               intros str pf nonterminal.
             rewrite Fix3_eq.
@@ -527,7 +530,7 @@ Section sound.
           Proof.
             unfold parse_nonterminal_or_abort.
 
-            let Acca := match goal with |- context[@Fix3 _ _ _ _ _ ?Rwf _ _ ?a] => constr:(Rwf a) end in
+            let Acca := match goal with |- context[@Fix _ _ ?Rwf _ _ ?a] => constr:(Rwf a) end in
             induction (Acca) as [x ? IHr];
               intros valid str pf nonterminal ?.
             rewrite Fix3_eq;

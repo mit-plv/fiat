@@ -1,5 +1,5 @@
 (** * Miscellaneous Well-Foundedness Facts *)
-Require Import Coq.Setoids.Setoid Coq.Program.Program Coq.Program.Wf Coq.Arith.Wf_nat Coq.Classes.Morphisms.
+Require Import Coq.Setoids.Setoid Coq.Program.Program Coq.Program.Wf Coq.Arith.Wf_nat Coq.Classes.Morphisms Coq.Init.Wf.
 
 Set Implicit Arguments.
 
@@ -162,240 +162,199 @@ Global Instance Fix_Proper_eq {A R wf P}
     (@Fix A R wf P).
 Proof. Fix_Proper_t @Coq.Init.Wf.Fix_eq wf. Qed.
 
+Local Ltac Fix_eq_t F_ext Rwf :=
+  intros;
+  unfold Fix;
+  rewrite <- Fix_F_eq;
+  apply F_ext; intros;
+  repeat match goal with
+           | [ |- appcontext[Fix_F _ _ (?f ?x)] ] => generalize (f x)
+         end;
+  clear -F_ext Rwf;
+  match goal with
+    | [ |- forall x : Acc _ ?a, _ ] => induction (Rwf a)
+  end;
+  intros; rewrite <- !Fix_F_eq;
+  apply F_ext; eauto.
+
 (** A variant of [Fix] that has a nice [Fix_eq] for functions which
     doesn't require [functional_extensionality]. *)
 Section Fix1.
   Context A (B : A -> Type)
           (R : A -> A -> Prop) (Rwf : well_founded R)
-          (P : forall a, B a -> Type)
-          (F : forall x : A, (forall y : A, R y x -> forall b, P y b) -> forall b, P x b).
+          (P : forall a, B a -> Type).
 
-  Definition Fix1 a b : @P a b
-    := @Fix { a : A & B a }
-            (fun x y => R (projT1 x) (projT1 y))
-            (well_founded_projT1_relation Rwf)
-            (fun ab => P (projT2 ab))
-            (fun x f => @F (projT1 x) (fun y r b => f (existT _ y b) r) _)
-            (existT _ a b).
+  Local Notation Fix1 := (@Fix A R Rwf (fun a : A => forall b, @P a b)).
 
-  Definition Fix1_eq
-             (F_ext : forall x (f g : forall y, R y x -> forall b, @P y b),
-                        (forall y (p : R y x) b, f y p b = g y p b)
-                        -> forall b, @F x f b = @F x g b)
-  : forall a b, @Fix1 a b = @F a (fun y (_ : R y a) b => @Fix1 y b) b.
-  Proof.
-    intros.
-    unfold Fix1; simpl.
-    match goal with
-      | [ |- @Fix ?A ?R ?Rwf ?P ?F ?x = _ ]
-        => refine (@Coq.Init.Wf.Fix_eq A R Rwf P F _ x)
-    end.
-    intros; apply F_ext; intros.
-    match goal with
-      | [ H : forall y p, ?f y p = ?g y p
-                          |- ?f ?y ?p = ?g ?y ?p ]
-        => exact (H y p)
-    end.
-  Defined.
+  Section F.
+    Context (F : forall x : A, (forall y : A, R y x -> forall b, @P y b) -> forall b, @P x b).
 
-  Definition Fix1_rect
-             (Q : forall a b, @P a b -> Type)
-             (H : forall x, (forall y, R y x -> forall b, @Q y b (@Fix1 y b))
-                            -> forall b, @Q x b (@F x (fun (y : A) (_ : R y x) => @Fix1 y) b))
-             (F_ext : forall x (f g : forall y, R y x -> forall b, @P y b),
-                        (forall y (p : R y x) b, f y p b = g y p b)
-                        -> forall b, @F x f b = @F x g b)
-             a b
-  : @Q a b (@Fix1 a b).
-  Proof.
-    induction (Rwf a).
-    rewrite Fix1_eq; auto.
-  Defined.
+    Definition Fix1_eq
+               (F_ext : forall x (f g : forall y, R y x -> forall b, @P y b),
+                          (forall y (p : R y x) b, f y p b = g y p b)
+                          -> forall b, @F x f b = @F x g b)
+    : forall a b, @Fix1 F a b = @F a (fun y (_ : R y a) b => @Fix1 F y b) b.
+    Proof. Fix_eq_t F_ext Rwf. Defined.
+
+    Definition Fix1_rect
+               (Q : forall a b, @P a b -> Type)
+               (H : forall x, (forall y, R y x -> forall b, @Q y b (@Fix1 F y b))
+                              -> forall b, @Q x b (@F x (fun (y : A) (_ : R y x) => @Fix1 F y) b))
+               (F_ext : forall x (f g : forall y, R y x -> forall b, @P y b),
+                          (forall y (p : R y x) b, f y p b = g y p b)
+                          -> forall b, @F x f b = @F x g b)
+               a b
+    : @Q a b (@Fix1 F a b).
+    Proof.
+      induction (Rwf a).
+      rewrite Fix1_eq; auto.
+    Defined.
+  End F.
+
+  Global Instance Fix1_Proper_eq
+  : Proper
+      ((forall_relation (fun a =>
+                           (forall_relation (fun a' => pointwise_relation _ (forall_relation (fun b => eq))))
+                             ==> (forall_relation (fun b => eq)))
+                        ==> (forall_relation (fun a => forall_relation (fun b => eq)))))
+      Fix1.
+  Proof. Fix_Proper_t @Fix1_eq Rwf. Qed.
 End Fix1.
 
-Global Instance Fix1_Proper_eq {A B R wf P}
-: Proper
-    ((forall_relation (fun a =>
-                         (forall_relation (fun a' => pointwise_relation _ (forall_relation (fun b => eq))))
-                           ==> (forall_relation (fun b => eq)))
-                      ==> (forall_relation (fun a => forall_relation (fun b => eq)))))
-    (@Fix1 A B R wf P).
-Proof. Fix_Proper_t @Fix1_eq wf. Qed.
+Arguments Fix1_Proper_eq {A B R Rwf P} _ _ _ _ _.
 
 (** A variant of [Fix] that has a nice [Fix_eq] for functions which
     doesn't require [functional_extensionality]. *)
 Section Fix2.
   Context A (B : A -> Type) (C : forall a, B a -> Type)
           (R : A -> A -> Prop) (Rwf : well_founded R)
-          (P : forall a b, C a b -> Type)
-          (F : forall x : A, (forall y : A, R y x -> forall b c, P y b c) -> forall b c, P x b c).
+          (P : forall a b, C a b -> Type).
 
-  Definition Fix2 a b c : @P a b c
-    := @Fix { a : A & { b : B a & C b } }
-            (fun x y => R (projT1 x) (projT1 y))
-            (well_founded_projT1_relation Rwf)
-            (fun abc => P (projT2 (projT2 abc)))
-            (fun x f => @F (projT1 x) (fun y r b c => f (existT _ y (existT _ b c)) r) _ _)
-            (existT _ a (existT _ b c)).
+  Local Notation Fix2 := (@Fix A R Rwf (fun a : A => forall b c, @P a b c)).
 
-  Definition Fix2_eq
-             (F_ext : forall x (f g : forall y, R y x -> forall b c, @P y b c),
-                        (forall y (p : R y x) b c, f y p b c = g y p b c)
-                        -> forall b c, @F x f b c = @F x g b c)
-  : forall a b c, @Fix2 a b c = @F a (fun y (_ : R y a) b c => @Fix2 y b c) b c.
-  Proof.
-    intros.
-    unfold Fix2; simpl.
-    match goal with
-      | [ |- @Fix ?A ?R ?Rwf ?P ?F ?x = _ ]
-        => refine (@Coq.Init.Wf.Fix_eq A R Rwf P F _ x)
-    end.
-    intros; apply F_ext; intros.
-    match goal with
-      | [ H : forall y p, ?f y p = ?g y p
-                          |- ?f ?y ?p = ?g ?y ?p ]
-        => exact (H y p)
-    end.
-  Defined.
+  Section F.
+    Context (F : forall x : A, (forall y : A, R y x -> forall b c, @P y b c) -> forall b c, @P x b c).
 
-  Definition Fix2_rect
-             (Q : forall a b c, @P a b c -> Type)
-             (H : forall x, (forall y, R y x -> forall b c, @Q y b c (@Fix2 y b c))
-                            -> forall b c, @Q x b c (@F x (fun (y : A) (_ : R y x) => @Fix2 y) b c))
-             (F_ext : forall x (f g : forall y, R y x -> forall b c, @P y b c),
-                        (forall y (p : R y x) b c, f y p b c = g y p b c)
-                        -> forall b c, @F x f b c = @F x g b c)
-             a b c
-  : @Q a b c (@Fix2 a b c).
-  Proof.
-    induction (Rwf a).
-    rewrite Fix2_eq; auto.
-  Defined.
+    Definition Fix2_eq
+               (F_ext : forall x (f g : forall y, R y x -> forall b c, @P y b c),
+                          (forall y (p : R y x) b c, f y p b c = g y p b c)
+                          -> forall b c, @F x f b c = @F x g b c)
+    : forall a b c, @Fix2 F a b c = @F a (fun y (_ : R y a) b c => @Fix2 F y b c) b c.
+    Proof. Fix_eq_t F_ext Rwf. Defined.
+
+    Definition Fix2_rect
+               (Q : forall a b c, @P a b c -> Type)
+               (H : forall x, (forall y, R y x -> forall b c, @Q y b c (@Fix2 F y b c))
+                              -> forall b c, @Q x b c (@F x (fun (y : A) (_ : R y x) => @Fix2 F y) b c))
+               (F_ext : forall x (f g : forall y, R y x -> forall b c, @P y b c),
+                          (forall y (p : R y x) b c, f y p b c = g y p b c)
+                          -> forall b c, @F x f b c = @F x g b c)
+               a b c
+    : @Q a b c (@Fix2 F a b c).
+    Proof.
+      induction (Rwf a).
+      rewrite Fix2_eq; auto.
+    Defined.
+  End F.
+
+  Global Instance Fix2_Proper_eq
+  : Proper
+      ((forall_relation (fun a =>
+                           (forall_relation (fun a' => pointwise_relation _ (forall_relation (fun b => forall_relation (fun c => eq)))))
+                             ==> (forall_relation (fun b => forall_relation (fun c => eq))))
+                        ==> (forall_relation (fun a => forall_relation (fun b => forall_relation (fun c => eq))))))
+      Fix2.
+  Proof. Fix_Proper_t @Fix2_eq Rwf. Qed.
 End Fix2.
 
-Global Instance Fix2_Proper_eq {A B C R wf P}
-: Proper
-    ((forall_relation (fun a =>
-                         (forall_relation (fun a' => pointwise_relation _ (forall_relation (fun b => forall_relation (fun c => eq)))))
-                           ==> (forall_relation (fun b => forall_relation (fun c => eq))))
-                      ==> (forall_relation (fun a => forall_relation (fun b => forall_relation (fun c => eq))))))
-    (@Fix2 A B C R wf P).
-Proof. Fix_Proper_t @Fix2_eq wf. Qed.
+Arguments Fix2_Proper_eq {A B C R Rwf P} _ _ _ _ _ _.
 
 (** A variant of [Fix] that has a nice [Fix_eq] for functions which
     doesn't require [functional_extensionality]. *)
 Section Fix3.
   Context A (B : A -> Type) (C : forall a, B a -> Type) (D : forall a b, C a b -> Type)
           (R : A -> A -> Prop) (Rwf : well_founded R)
-          (P : forall a b c, D a b c -> Type)
-          (F : forall x : A, (forall y : A, R y x -> forall b c d, P y b c d) -> forall b c d, P x b c d).
+          (P : forall a b c, D a b c -> Type).
 
-  Definition Fix3 a b c d : @P a b c d
-    := @Fix { a : A & { b : B a & { c : C b & D c } } }
-            (fun x y => R (projT1 x) (projT1 y))
-            (well_founded_projT1_relation Rwf)
-            (fun abcd => P (projT2 (projT2 (projT2 abcd))))
-            (fun x f => @F (projT1 x) (fun y r b c d => f (existT _ y (existT _ b (existT _ c d))) r) _ _ _)
-            (existT _ a (existT _ b (existT _ c d))).
+  Local Notation Fix3 := (@Fix A R Rwf (fun a : A => forall b c d, @P a b c d)).
 
-  Definition Fix3_eq
-             (F_ext : forall x (f g : forall y, R y x -> forall b c d, @P y b c d),
-                        (forall y (p : R y x) b c d, f y p b c d = g y p b c d)
-                        -> forall b c d, @F x f b c d = @F x g b c d)
-  : forall a b c d, @Fix3 a b c d = @F a (fun y (_ : R y a) b c d => @Fix3 y b c d) b c d.
-  Proof.
-    intros.
-    unfold Fix3; simpl.
-    match goal with
-      | [ |- @Fix ?A ?R ?Rwf ?P ?F ?x = _ ]
-        => refine (@Coq.Init.Wf.Fix_eq A R Rwf P F _ x)
-    end.
-    intros; apply F_ext; intros.
-    match goal with
-      | [ H : forall y p, ?f y p = ?g y p
-                          |- ?f ?y ?p = ?g ?y ?p ]
-        => exact (H y p)
-    end.
-  Defined.
+  Section F.
+    Context (F : forall x : A, (forall y : A, R y x -> forall b c d, @P y b c d) -> forall b c d, @P x b c d).
 
-  Definition Fix3_rect
-             (Q : forall a b c d, @P a b c d -> Type)
-             (H : forall x, (forall y, R y x -> forall b c d, @Q y b c d (@Fix3 y b c d))
-                            -> forall b c d, @Q x b c d (@F x (fun (y : A) (_ : R y x) => @Fix3 y) b c d))
-             (F_ext : forall x (f g : forall y, R y x -> forall b c d, @P y b c d),
-                        (forall y (p : R y x) b c d, f y p b c d = g y p b c d)
-                        -> forall b c d, @F x f b c d = @F x g b c d)
-             a b c d
-  : @Q a b c d (@Fix3 a b c d).
-  Proof.
-    induction (Rwf a).
-    rewrite Fix3_eq; auto.
-  Defined.
+    Definition Fix3_eq
+               (F_ext : forall x (f g : forall y, R y x -> forall b c d, @P y b c d),
+                          (forall y (p : R y x) b c d, f y p b c d = g y p b c d)
+                          -> forall b c d, @F x f b c d = @F x g b c d)
+    : forall a b c d, @Fix3 F a b c d = @F a (fun y (_ : R y a) b c d => @Fix3 F y b c d) b c d.
+    Proof. Fix_eq_t F_ext Rwf. Defined.
+
+    Definition Fix3_rect
+               (Q : forall a b c d, @P a b c d -> Type)
+               (H : forall x, (forall y, R y x -> forall b c d, @Q y b c d (@Fix3 F y b c d))
+                              -> forall b c d, @Q x b c d (@F x (fun (y : A) (_ : R y x) => @Fix3 F y) b c d))
+               (F_ext : forall x (f g : forall y, R y x -> forall b c d, @P y b c d),
+                          (forall y (p : R y x) b c d, f y p b c d = g y p b c d)
+                          -> forall b c d, @F x f b c d = @F x g b c d)
+               a b c d
+    : @Q a b c d (@Fix3 F a b c d).
+    Proof.
+      induction (Rwf a).
+      rewrite Fix3_eq; auto.
+    Defined.
+  End F.
+
+  Global Instance Fix3_Proper_eq
+  : Proper
+      ((forall_relation (fun a =>
+                           (forall_relation (fun a' => pointwise_relation _ (forall_relation (fun b => forall_relation (fun c => forall_relation (fun d => eq))))))
+                             ==> (forall_relation (fun b => forall_relation (fun c => forall_relation (fun d => eq))))))
+         ==> (forall_relation (fun a => forall_relation (fun b => forall_relation (fun c => forall_relation (fun d => eq))))))
+      Fix3.
+  Proof. Fix_Proper_t @Fix3_eq Rwf. Qed.
 End Fix3.
 
-Global Instance Fix3_Proper_eq {A B C D R wf P}
-: Proper
-    ((forall_relation (fun a =>
-                         (forall_relation (fun a' => pointwise_relation _ (forall_relation (fun b => forall_relation (fun c => forall_relation (fun d => eq))))))
-                           ==> (forall_relation (fun b => forall_relation (fun c => forall_relation (fun d => eq))))))
-       ==> (forall_relation (fun a => forall_relation (fun b => forall_relation (fun c => forall_relation (fun d => eq))))))
-    (@Fix3 A B C D R wf P).
-Proof. Fix_Proper_t @Fix3_eq wf. Qed.
+Arguments Fix3_Proper_eq {A B C D R Rwf P} _ _ _ _ _ _ _.
 
 Section Fix4.
   Context A (B : A -> Type) (C : forall a, B a -> Type) (D : forall a b, C a b -> Type) (E : forall a b c, D a b c -> Type)
           (R : A -> A -> Prop) (Rwf : well_founded R)
-          (P : forall a b c d, E a b c d -> Type)
-          (F : forall x : A, (forall y : A, R y x -> forall b c d e, P y b c d e) -> forall b c d e, P x b c d e).
+          (P : forall a b c d, E a b c d -> Type).
 
-  Definition Fix4 a b c d e : @P a b c d e
-    := @Fix { a : A & { b : B a & { c : C b & { d : D c & E d } } } }
-            (fun x y => R (projT1 x) (projT1 y))
-            (well_founded_projT1_relation Rwf)
-            (fun abcde => P (projT2 (projT2 (projT2 (projT2 abcde)))))
-            (fun x f => @F (projT1 x) (fun y r b c d e => f (existT _ y (existT _ b (existT _ c (existT _ d e)))) r) _ _ _ _)
-            (existT _ a (existT _ b (existT _ c (existT _ d e)))).
+  Local Notation Fix4 := (@Fix A R Rwf (fun a : A => forall b c d e, @P a b c d e)).
 
-  Definition Fix4_eq
-             (F_ext : forall x (f g : forall y, R y x -> forall b c d e, @P y b c d e),
-                        (forall y (p : R y x) b c d e, f y p b c d e = g y p b c d e)
-                        -> forall b c d e, @F x f b c d e = @F x g b c d e)
-  : forall a b c d e, @Fix4 a b c d e = @F a (fun y (_ : R y a) b c d e => @Fix4 y b c d e) b c d e.
-  Proof.
-    intros.
-    unfold Fix4; simpl.
-    match goal with
-      | [ |- @Fix ?A ?R ?Rwf ?P ?F ?x = _ ]
-        => refine (@Coq.Init.Wf.Fix_eq A R Rwf P F _ x)
-    end.
-    intros; apply F_ext; intros.
-    match goal with
-      | [ H : forall y p, ?f y p = ?g y p
-                          |- ?f ?y ?p = ?g ?y ?p ]
-        => exact (H y p)
-    end.
-  Defined.
+  Section F.
+    Context (F : forall x : A, (forall y : A, R y x -> forall b c d e, @P y b c d e) -> forall b c d e, @P x b c d e).
 
-  Definition Fix4_rect
-             (Q : forall a b c d e, @P a b c d e -> Type)
-             (H : forall x, (forall y, R y x -> forall b c d e, @Q y b c d e (@Fix4 y b c d e))
-                            -> forall b c d e, @Q x b c d e (@F x (fun (y : A) (_ : R y x) => @Fix4 y) b c d e))
-             (F_ext : forall x (f g : forall y, R y x -> forall b c d e, @P y b c d e),
-                        (forall y (p : R y x) b c d e, f y p b c d e = g y p b c d e)
-                        -> forall b c d e, @F x f b c d e = @F x g b c d e)
-             a b c d e
-  : @Q a b c d e (@Fix4 a b c d e).
-  Proof.
-    induction (Rwf a).
-    rewrite Fix4_eq; auto.
-  Defined.
+    Definition Fix4_eq
+               (F_ext : forall x (f g : forall y, R y x -> forall b c d e, @P y b c d e),
+                          (forall y (p : R y x) b c d e, f y p b c d e = g y p b c d e)
+                          -> forall b c d e, @F x f b c d e = @F x g b c d e)
+    : forall a b c d e, @Fix4 F a b c d e = @F a (fun y (_ : R y a) b c d e => @Fix4 F y b c d e) b c d e.
+    Proof. Fix_eq_t F_ext Rwf. Defined.
+
+    Definition Fix4_rect
+               (Q : forall a b c d e, @P a b c d e -> Type)
+               (H : forall x, (forall y, R y x -> forall b c d e, @Q y b c d e (@Fix4 F y b c d e))
+                              -> forall b c d e, @Q x b c d e (@F x (fun (y : A) (_ : R y x) => @Fix4 F y) b c d e))
+               (F_ext : forall x (f g : forall y, R y x -> forall b c d e, @P y b c d e),
+                          (forall y (p : R y x) b c d e, f y p b c d e = g y p b c d e)
+                          -> forall b c d e, @F x f b c d e = @F x g b c d e)
+               a b c d e
+    : @Q a b c d e (@Fix4 F a b c d e).
+    Proof.
+      induction (Rwf a).
+      rewrite Fix4_eq; auto.
+    Defined.
+  End F.
+
+  Global Instance Fix4_Proper_eq
+  : Proper
+      ((forall_relation (fun a =>
+                           (forall_relation (fun a' => pointwise_relation _ (forall_relation (fun b => forall_relation (fun c => forall_relation (fun d => forall_relation (fun e => eq)))))))
+                             ==> (forall_relation (fun b => forall_relation (fun c => forall_relation (fun d => forall_relation (fun e => eq)))))))
+         ==> (forall_relation (fun a => forall_relation (fun b => forall_relation (fun c => forall_relation (fun d => forall_relation (fun e => eq)))))))
+      Fix4.
+  Proof. Fix_Proper_t @Fix4_eq Rwf. Qed.
 End Fix4.
 
-Global Instance Fix4_Proper_eq {A B C D E R wf P}
-: Proper
-    ((forall_relation (fun a =>
-                         (forall_relation (fun a' => pointwise_relation _ (forall_relation (fun b => forall_relation (fun c => forall_relation (fun d => forall_relation (fun e => eq)))))))
-                           ==> (forall_relation (fun b => forall_relation (fun c => forall_relation (fun d => forall_relation (fun e => eq)))))))
-       ==> (forall_relation (fun a => forall_relation (fun b => forall_relation (fun c => forall_relation (fun d => forall_relation (fun e => eq)))))))
-    (@Fix4 A B C D E R wf P).
-Proof. Fix_Proper_t @Fix4_eq wf. Qed.
+Arguments Fix4_Proper_eq {A B C D E R Rwf P} _ _ _ _ _ _ _ _.

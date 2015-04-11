@@ -31,7 +31,7 @@ Proof.
   intro ls.
   revert str0 a b str pf; induction ls; simpl; trivial; intros.
   setoid_rewrite IHls.
-  apply f_equal.
+  f_equal.
   apply map_Proper_eq; trivial; repeat intro.
   f_equal.
   unfold parse_item.
@@ -42,8 +42,8 @@ Ltac Fix3_setoid_rewrite H :=
   etransitivity;
   [ try clear H
   | match goal with
-      | [ |- _ = @Fix3 ?A ?B ?C ?D ?R ?wf ?P ?f ?a ?b ?c ?d ]
-        => refine ((fun H => @Fix3_Proper_eq A B C D R wf P _ f H a b c d) _)
+      | [ |- _ = @Fix ?A ?R ?Rwf (fun a : ?A => forall (b :@?B a) (c : @?C a b) (d : @?D a b c), @?P a b c d) ?f ?a ?b ?c ?d ]
+        => refine ((fun H => @Fix3_Proper_eq A B C D R Rwf P _ f H a b c d) _)
     end;
     unfold forall_relation, pointwise_relation, respectful;
     let H' := fresh in
