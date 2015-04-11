@@ -8,10 +8,8 @@ Section ab_star.
   Local Open Scope string_scope.
 
   Definition ab_star_grammar : grammar Ascii.ascii :=
-    {| Start_symbol := "(ab)*";
-       Lookup := [[[ ("(ab)*" ::== << nil
-                                     | $< "a"%char $ "b"%char $ "(ab)*" >$ >> ) ]]]%prods_assignment;
-       Valid_nonterminals := ("(ab)*"::nil)%string |}.
+    [[[ ("(ab)*" ::== << nil
+                       | $< "a"%char $ "b"%char $ "(ab)*" >$ >> ) ]]]%grammar.
 
   Definition ab_star_grammar' : grammar Ascii.ascii :=
     {| Start_symbol := "(ab)*";

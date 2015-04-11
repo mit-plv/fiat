@@ -546,4 +546,20 @@ Section ListFacts.
     induction ls; simpl; trivial; intuition.
   Qed.
 
+  Lemma f_fold_right_bool_rect {A B T} (f : T -> B) init (ls : list A) a b
+  : f (fold_right (fun x acc => bool_rect (fun _ => T) (a x) acc (b x)) init ls)
+    = fold_right (fun x acc => bool_rect (fun _ => B) (f (a x)) acc (b x)) (f init) ls.
+  Proof.
+    revert init; induction ls; simpl; trivial; intros.
+    edestruct b; simpl; trivial.
+  Qed.
+
+  Lemma fold_right_fun {A B C} (f : A -> C -> (B -> C)) (init : B -> C) (x : B) (ls : list A)
+  : fold_right (fun (a : A) (b : B -> C) x => f a (b x) x) init ls x
+    = fold_right (B := A) (A := C) (fun a b => f a b x) (init x) ls.
+  Proof.
+    induction ls; simpl; trivial.
+    rewrite IHls; reflexivity.
+  Qed.
+
 End ListFacts.

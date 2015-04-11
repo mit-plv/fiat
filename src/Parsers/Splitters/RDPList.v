@@ -2,6 +2,7 @@
 Require Import Coq.Lists.List Coq.Strings.String Coq.Arith.Wf_nat.
 Require Import ADTSynthesis.Parsers.ContextFreeGrammar.
 Require Import ADTSynthesis.Parsers.BaseTypes ADTSynthesis.Parsers.BooleanBaseTypes.
+Require Import ADTSynthesis.Common.Equality.
 
 Set Implicit Arguments.
 Local Open Scope string_like_scope.
@@ -10,10 +11,10 @@ Section recursive_descent_parser_list.
   Context {Char} {HSL : StringLike Char} {HLSP : StringLikeProperties Char} {G : grammar Char}.
   Definition rdp_list_nonterminals_listT : Type := list String.string.
   Definition rdp_list_is_valid_nonterminal : rdp_list_nonterminals_listT -> String.string -> bool
-    := fun ls nt => if in_dec string_dec nt ls then true else false.
+    := fun ls nt => list_bin string_beq nt ls.
   Definition rdp_list_remove_nonterminal : rdp_list_nonterminals_listT -> String.string -> rdp_list_nonterminals_listT
     := fun ls nt =>
-         filter (fun x => if string_dec nt x then false else true) ls.
+         filter (fun x => negb (string_beq nt x)) ls.
 
   Definition rdp_list_nonterminals_listT_R : rdp_list_nonterminals_listT -> rdp_list_nonterminals_listT -> Prop
     := ltof _ (@List.length _).
@@ -30,9 +31,9 @@ Section recursive_descent_parser_list.
                                             @rdp_list_is_valid_nonterminal ls prods = true
                                             -> @rdp_list_nonterminals_listT_R (@rdp_list_remove_nonterminal ls prods) ls.
   Proof.
-    intros.
+    intros ls prods H.
     unfold rdp_list_is_valid_nonterminal, rdp_list_nonterminals_listT_R, rdp_list_remove_nonterminal, ltof in *.
-    edestruct in_dec; [ | discriminate ].
+    apply list_in_bl in H; [ | solve [ intros; apply string_bl; trivial ] ].
     match goal with
       | [ H : In ?prods ?ls |- context[filter ?f ?ls] ]
         => assert (~In prods (filter f ls))
@@ -40,7 +41,7 @@ Section recursive_descent_parser_list.
     { intro H'.
       apply filter_In in H'.
       destruct H' as [? H'].
-      edestruct string_dec; congruence. }
+      rewrite (fun x => string_lb (eq_refl x)) in *; simpl in *; congruence. }
     { match goal with
         | [ |- context[filter ?f ?ls] ] => generalize dependent f; intros
       end.
@@ -74,11 +75,14 @@ Section recursive_descent_parser_list.
     repeat match goal with
              | _ => exfalso; congruence
              | _ => reflexivity
+             | _ => assumption
              | [ |- appcontext[if ?E then _ else _] ] => destruct E
              | _ => intro
              | [ H : In _ (filter _ _) |- _ ] => apply filter_In in H
              | [ H : _ /\ _ |- _ ] => destruct H
              | [ H : ?T, H' : ~?T |- _ ] => destruct (H' H)
+             | [ H : list_bin _ _ _ = true |- _ ] => apply list_in_bl in H; [ | solve [ intros; apply string_bl; trivial ] ]
+             | [ |- list_bin _ _ _ = true ] => apply list_in_lb; [ solve [ intros; apply string_lb; trivial ] | ]
            end.
   Qed.
 
@@ -93,16 +97,28 @@ Section recursive_descent_parser_list.
              | _ => reflexivity
              | _ => progress subst
              | _ => intro
+             | [ H : @eq bool ?x ?y -> False |- _ ] => apply Bool.eq_true_not_negb in H
              | [ H : context[In _ (filter _ _)] |- _ ] => rewrite filter_In in H
              | [ H : _ /\ _ |- _ ] => destruct H
              | [ H : ?T, H' : ~?T |- _ ] => destruct (H' H)
              | [ |- true = false \/ _ ] => right
              | [ |- ?x = ?x \/ _ ] => left; reflexivity
              | [ H : ~(_ /\ ?x = ?x) |- _ ] => specialize (fun y => H (conj y eq_refl))
+             | [ H : ~(?T /\ _), H' : ?T |- _ ] => specialize (fun y => H (conj H' y))
+             | [ H : (?T /\ _) -> False, H' : ?T |- _ ] => specialize (fun y => H (conj H' y))
              | [ H : _ \/ _ |- _ ] => destruct H
              | [ |- _ <-> _ ] => split
-             | [ H : appcontext[if ?E then _ else _] |- _ ] => destruct E
-             | [ |- appcontext[if ?E then _ else _] ] => destruct E
+             | [ H : appcontext[match ?E with left _ => _ | right _ => _ end] |- _ ] => destruct E
+             | [ |- appcontext[match ?E with left _ => _ | right _ => _ end] ] => destruct E
+             | [ H : _ |- _ ] => rewrite Bool.negb_involutive in H
+             | [ H : string_beq _ _ = true |- _ ] => apply string_bl in H
+             | [ H : context[string_beq ?x ?x] |- _ ] => rewrite (string_lb (eq_refl x)) in H
+             | _ => progress simpl in *
+             | [ H : list_bin _ _ _ = true |- _ ] => apply list_in_bl in H; [ | solve [ intros; apply string_bl; trivial ] ]
+             | [ |- list_bin _ _ _ = true ] => apply list_in_lb; [ solve [ intros; apply string_lb; trivial ] | ]
+             | [ |- context[list_bin ?x ?y ?z = false] ] => case_eq (list_bin x y z)
+             | [ H : list_bin _ _ _ = false |- _ ] => apply Bool.not_true_iff_false in H
+             | [ H : list_bin _ _ _ <> true |- _ ] => specialize (fun H' => H (list_in_lb (@string_lb) H'))
            end.
   Qed.
 

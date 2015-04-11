@@ -2,6 +2,7 @@ CORE_MODULES    := \
 	Common \
 	Common/Equality \
 	Common/Monad \
+	Common/Match \
 	Common/ReservedNotations \
 	Common/ilist \
 	Common/i2list \
@@ -172,6 +173,7 @@ SRC_PARSERS_BASE_MODULES := \
 	Parsers/Splitters/RDPList\
 	Parsers/Splitters/BruteForce\
 	Parsers/BooleanRecognizer\
+	Parsers/BooleanRecognizerOptimized\
 	Parsers/BooleanRecognizerTests\
 	Parsers/WellFoundedParse\
 	Parsers/WellFoundedParseProperties\
@@ -186,7 +188,10 @@ SRC_PARSERS_MODULES := \
 	Parsers/Specification\
 	Parsers/ParserInterface \
 	Parsers/ParserImplementation\
+	Parsers/ParserImplementationOptimized\
 	Parsers/ContextFreeGrammarTransfer\
+	Parsers/ContextFreeGrammarTransferProperties\
+	Parsers/ExtrOcamlParsers\
 	Parsers/SplitterFromParserADT\
 	Parsers/ParserFromParserADT\
 	Parsers/ParserADTSpecification\
@@ -194,6 +199,7 @@ SRC_PARSERS_MODULES := \
 	Parsers/Refinement/SharpenedAtMostOneNonTerminal\
 	Parsers/Refinement/IndexedAndAtMostOneNonTerminalReflective\
 	Parsers/Refinement/Tactics\
+	Parsers/Refinement/SharpenedABStar\
 	$(SRC_PARSERS_BASE_MODULES)\
 	$(SRC_GRAMMAR_MODULES)
 #	Parsers/Refinement/SharpenedABStar\
