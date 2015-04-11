@@ -241,57 +241,30 @@ Scheme Equality for string.
 Scheme Equality for list.
 Scheme Equality for option.
 
-Section beq_bl_lb.
-  Local Ltac t rew_t :=
-    let x := match goal with
-               | [ |- _ -> ?beq ?x ?y = true ] => constr:x
-               | [ |- _ -> ?x = ?y ] => constr:x
-             end in
-    let y := match goal with
-               | [ |- _ -> ?beq ?x ?y = true ] => constr:y
-               | [ |- _ -> ?x = ?y ] => constr:y
-             end in
-    revert y; induction x; intro y; destruct y;
-    simpl in *;
-    subst;
-    repeat match goal with
-             | _ => progress subst
-             | _ => congruence
-             | _ => setoid_rewrite Bool.andb_true_iff
-             | [ H : forall y, _ -> _ = true |- _ ] => setoid_rewrite <- (H _ : impl _ _)
-             | [ H : forall y, _ = true -> _ = _ |- _ ] => setoid_rewrite (H _ : impl _ _)
-             | [ H : forall x y, _ -> _ = true |- _ ] => setoid_rewrite <- (H _ _ : impl _ _)
-             | [ H : forall x y, _ = true -> _ = _ |- _ ] => setoid_rewrite (H _ _ : impl _ _)
-             | [ H : _ /\ _ |- _ ] => destruct H
-             | [ |- _ /\ _ ] => split
-             | _ => progress rew_t
-           end.
-
-  Lemma bool_bl {x y} : bool_beq x y = true -> x = y.
-  Proof. t idtac. Qed.
-  Lemma bool_lb {x y} : x = y -> bool_beq x y = true.
-  Proof. t idtac. Qed.
-  Lemma ascii_bl {x y} : ascii_beq x y = true -> x = y.
-  Proof. t ltac:(setoid_rewrite (@bool_bl _ _ : impl _ _) || intro). Qed.
-  Lemma ascii_lb {x y} : x = y -> ascii_beq x y = true.
-  Proof. t ltac:(setoid_rewrite <- (@bool_lb _ _ : impl _ _) || intro). Qed.
-  Lemma string_bl {x y} : string_beq x y = true -> x = y.
-  Proof. t ltac:(setoid_rewrite (@ascii_bl _ _ : impl _ _) || intro). Qed.
-  Lemma string_lb {x y} : x = y -> string_beq x y = true.
-  Proof. t ltac:(setoid_rewrite <- (@ascii_lb _ _ : impl _ _) || intro). Qed.
-  Lemma list_bl {A eq_A} (A_bl : forall x y : A, eq_A x y = true -> x = y) {x y}
-  : list_beq eq_A x y = true -> x = y.
-  Proof. t intro. Qed.
-  Lemma list_lb {A eq_A} (A_lb : forall x y : A, x = y -> eq_A x y = true) {x y}
-  : x = y -> list_beq eq_A x y = true.
-  Proof. t intro. Qed.
-  Lemma option_bl {A eq_A} (A_bl : forall x y : A, eq_A x y = true -> x = y) {x y}
-  : option_beq eq_A x y = true -> x = y.
-  Proof. t intro. Qed.
-  Lemma option_lb {A eq_A} (A_lb : forall x y : A, x = y -> eq_A x y = true) {x y}
-  : x = y -> option_beq eq_A x y = true.
-  Proof. t intro. Qed.
-End beq_bl_lb.
+Lemma bool_bl {x y} : bool_beq x y = true -> x = y.
+Proof. apply internal_bool_dec_bl. Qed.
+Lemma bool_lb {x y} : x = y -> bool_beq x y = true.
+Proof. apply internal_bool_dec_lb. Qed.
+Lemma ascii_bl {x y} : ascii_beq x y = true -> x = y.
+Proof. apply internal_ascii_dec_bl. Qed.
+Lemma ascii_lb {x y} : x = y -> ascii_beq x y = true.
+Proof. apply internal_ascii_dec_lb. Qed.
+Lemma string_bl {x y} : string_beq x y = true -> x = y.
+Proof. apply internal_string_dec_bl. Qed.
+Lemma string_lb {x y} : x = y -> string_beq x y = true.
+Proof. apply internal_string_dec_lb. Qed.
+Lemma list_bl {A eq_A} (A_bl : forall x y : A, eq_A x y = true -> x = y) {x y}
+: list_beq eq_A x y = true -> x = y.
+Proof. apply internal_list_dec_bl; assumption. Qed.
+Lemma list_lb {A eq_A} (A_lb : forall x y : A, x = y -> eq_A x y = true) {x y}
+: x = y -> list_beq eq_A x y = true.
+Proof. apply internal_list_dec_lb; assumption. Qed.
+Lemma option_bl {A eq_A} (A_bl : forall x y : A, eq_A x y = true -> x = y) {x y}
+: option_beq eq_A x y = true -> x = y.
+Proof. apply internal_option_dec_bl; assumption. Qed.
+Lemma option_lb {A eq_A} (A_lb : forall x y : A, x = y -> eq_A x y = true) {x y}
+: x = y -> option_beq eq_A x y = true.
+Proof. apply internal_option_dec_lb; assumption. Qed.
 
 Section beq_correct.
   Local Ltac t rew_t :=
@@ -383,3 +356,35 @@ Section beq_correct.
     intros ??; rewrite eq_A_correct; edestruct dec_eq_A; simpl; congruence.
   Qed.
 End beq_correct.
+
+Section In.
+  Fixpoint list_bin {A} (eq_A : A -> A -> bool) (a : A) (ls : list A) : bool
+    := match ls with
+         | nil => false
+         | x::xs => orb (eq_A x a) (list_bin eq_A a xs)
+       end.
+
+  Local Ltac t :=
+    repeat match goal with
+             | _ => intro
+             | _ => progress simpl in *
+             | _ => congruence || discriminate
+             | [ H : orb _ _ = true |- _ ] => apply Bool.orb_true_iff in H
+             | [ |- orb _ _ = true ] => apply Bool.orb_true_iff
+             | [ H : ?eqA _ _ = true, H_eqA : forall x y, ?eqA _ _ = true -> _ |- _ ] => apply H_eqA in H
+             | _ => progress subst
+             | [ |- ?x = ?x \/ _ ] => left; reflexivity
+             | [ |- _ \/ _ ] => right; assumption
+             | [ H : ?A -> ?B, H' : ?A |- _ ] => specialize (H H')
+             | [ H : False |- _ ] => destruct H
+             | [ H_eqA : forall x y, x = y -> ?eqA x y = true |- context[?eqA ?x ?x] ] => rewrite (H_eqA x x eq_refl)
+             | [ H : _ \/ _ |- _ ] => destruct H
+           end.
+
+  Lemma list_in_bl {A eq_A} (A_bl : forall x y : A, eq_A x y = true -> x = y) {a ls}
+  : list_bin eq_A a ls = true -> List.In a ls.
+  Proof. induction ls; t. Qed.
+  Lemma list_in_lb {A eq_A} (A_lb : forall x y : A, x = y -> eq_A x y = true) {a ls}
+  : List.In a ls -> list_bin eq_A a ls = true.
+  Proof. induction ls; t. Qed.
+End In.

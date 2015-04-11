@@ -11,17 +11,18 @@ Fixpoint production_of_string (s : string) : production Ascii.ascii
 
 Coercion production_of_string : string >-> production.
 
-Fixpoint list_to_productions {T} (default : T) (ls : list (string * T)) : string -> T
-  := match ls with
-       | nil => fun _ => default
-       | (str, t)::ls' => fun s => bool_rect
-                                     (fun _ => _)
-                                     t
-                                     (list_to_productions default ls' s)
-                                     (string_beq str s)
-     end.
+Definition list_to_productions {T} (default : T) (ls : list (string * T)) : string -> T
+  := fold_right
+       (fun str_t else_case s
+        => bool_rect
+             (fun _ => _)
+             (snd str_t)
+             (else_case s)
+             (string_beq (fst str_t) s))
+       (fun _ => default)
+       ls.
 
-Fixpoint list_to_grammar {T} `{StringLike T} (default : productions T) (ls : list (string * productions T)) : grammar T
+Definition list_to_grammar {T} (default : productions T) (ls : list (string * productions T)) : grammar T
   := {| Start_symbol := hd ""%string (map fst ls);
         Lookup := list_to_productions default ls;
         Valid_nonterminals := map fst ls |}.

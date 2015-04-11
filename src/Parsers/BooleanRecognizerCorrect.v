@@ -158,6 +158,7 @@ Section sound.
                    | _ => progress simpl in *
                    | _ => progress subst
                    | [ H : is_true false |- _ ] => exfalso; clear -H; hnf in H; congruence
+                   | [ H : is_true (beq_nat _ _) |- _ ] => apply beq_nat_true_iff in H
                    | [ H : context[NPeano.Nat.eq_dec ?x ?y] |- _ ] => destruct (NPeano.Nat.eq_dec x y)
                    | [ H : (_ =s _) = true |- _ ] => apply bool_eq_correct in H
                    | [ H : (_ =s _) = true |- _ ]
@@ -237,6 +238,7 @@ Section sound.
                    | [ |- is_true (fold_right orb false (map _ _)) ] => apply fold_right_orb_map_sig2
                    | [ H : minimal_parse_of_item _ _ _ _ |- _ ] => inversion H; clear H; subst
                    | [ |- (_ =s _) = true ] => apply bool_eq_correct
+                   | [ |- is_true (beq_nat _ _) ] => apply beq_nat_true_iff
                  end;
           (lazymatch goal with
             | [ H : In ?n (split_string_for_production ?it ?prod ?str)

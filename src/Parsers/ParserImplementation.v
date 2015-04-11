@@ -28,9 +28,9 @@ Section implementation.
     unfold is_valid_nonterminal in Hvalid; simpl in Hvalid.
     unfold rdp_list_is_valid_nonterminal in Hvalid; simpl in Hvalid.
     hnf in Hvalid.
-    edestruct List.in_dec as [Hvalid' | ]; [ clear Hvalid | congruence ].
-    generalize (fun it its n pf pit pits prefix H' => @splits_for_complete Char G splitter str it its n pf pit pits (ex_intro _ nt (ex_intro _ prefix (conj Hvalid' H')))).
-    clear Hvalid'.
+    apply Equality.list_in_bl in Hvalid; [ | apply @Equality.string_bl ].
+    generalize (fun it its n pf pit pits prefix H' => @splits_for_complete Char G splitter str it its n pf pit pits (ex_intro _ nt (ex_intro _ prefix (conj Hvalid H')))).
+    clear Hvalid.
     induction (G nt) as [ | x xs IHxs ].
     { intros; constructor. }
     { intro H'.
@@ -88,7 +88,6 @@ Section implementation.
     simpl.
     unfold rdp_list_is_valid_nonterminal; simpl.
     intros ? ? ? ? ? H0.
-    edestruct List.in_dec as [ | nH ]; trivial; [].
-    destruct (nH H0).
+    apply Equality.list_in_lb; [ apply @Equality.string_lb | ]; assumption.
   Qed.
 End implementation.

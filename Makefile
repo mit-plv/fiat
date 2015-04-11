@@ -173,6 +173,7 @@ SRC_PARSERS_BASE_MODULES := \
 	Parsers/Splitters/RDPList\
 	Parsers/Splitters/BruteForce\
 	Parsers/BooleanRecognizer\
+	Parsers/BooleanRecognizerOptimized\
 	Parsers/BooleanRecognizerTests\
 	Parsers/WellFoundedParse\
 	Parsers/WellFoundedParseProperties\
@@ -187,7 +188,10 @@ SRC_PARSERS_MODULES := \
 	Parsers/Specification\
 	Parsers/ParserInterface \
 	Parsers/ParserImplementation\
+	Parsers/ParserImplementationOptimized\
 	Parsers/ContextFreeGrammarTransfer\
+	Parsers/ContextFreeGrammarTransferProperties\
+	Parsers/ExtrOcamlParsers\
 	Parsers/SplitterFromParserADT\
 	Parsers/ParserFromParserADT\
 	Parsers/ParserADTSpecification\

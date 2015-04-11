@@ -1,6 +1,7 @@
 (** * Definition of a boolean-returning CFG parser-recognizer *)
 Require Import Coq.Lists.List.
-Require Import Coq.Numbers.Natural.Peano.NPeano Coq.Arith.Compare_dec Coq.Arith.Wf_nat.
+Require Import Coq.Arith.EqNat.
+Require Import Coq.Arith.Compare_dec Coq.Arith.Wf_nat.
 Require Import ADTSynthesis.Parsers.ContextFreeGrammar.
 Require Import ADTSynthesis.Parsers.BaseTypes ADTSynthesis.Parsers.BooleanBaseTypes.
 Require Import ADTSynthesis.Parsers.StringLike.Properties.
@@ -45,7 +46,7 @@ Section recursive_descent_parser.
             match prod with
               | nil =>
                 (** 0-length production, only accept empty *)
-                Nat.eq_dec (length str) 0
+                beq_nat (length str) 0
               | it::its
                 => let parse_production' := fun str pf => parse_production str pf its in
                    fold_right

@@ -11,11 +11,11 @@ Require Export Coq.Program.Program.
 Require Export ADTSynthesis.ADTRefinement.BuildADTRefinements.HoneRepresentation.
 Require Export ADTSynthesis.Computation.ApplyMonad.
 Require Export ADTSynthesis.Computation.SetoidMorphisms.
+Require Export ADTSynthesis.Common.
 
 Require Import ADTSynthesis.Parsers.ContextFreeGrammarEquality.
 Require Import ADTSynthesis.Common.Equality.
 Require Import ADTSynthesis.Computation.Refinements.General.
-Require Import ADTSynthesis.Common.
 
 Notation hiddenT := (ADTSig.methodType _ _ _).
 Global Open Scope string_scope.
@@ -144,14 +144,14 @@ Ltac start_honing :=
 Tactic Notation "start" "honing" "parser" "representation" "using" open_constr(repInv)
   := (lazymatch goal with
      | [ |- FullySharpened _ ]
-       => (eapply FullySharpened_Start; [ start_honing_ri repInv | ])
+       => (eapply FullySharpened_Start; [ start_honing_ri repInv | | ])
      | _ => start_honing_ri repInv
       end).
 
 Tactic Notation "start" "honing" "parser" "using" "indexed" "representation"
   := (lazymatch goal with
      | [ |- FullySharpened _ ]
-       => (eapply FullySharpened_Start; [ start_honing | ])
+       => (eapply FullySharpened_Start; [ start_honing | | ])
      | _ => start_honing
       end).
 

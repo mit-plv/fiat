@@ -235,18 +235,18 @@ Section parser.
           p0 : parse_of_item _ _ _, p1 : parse_of_production _ _ _
           |- List.In ?n ?v ]
         => hnf in H;
-          specialize (fun H0 H1 H2 H3 H0' H1' =>
+          specialize (fun H0 H0' H1' =>
                         H n H'
                           (@transfer_parse_of_item
                              Ascii.ascii adt_based_StringLike string_stringlike G
                              (fun s1 s2 => AbsR (projT2 splitter_impl) s2 (` s1))
-                             H0 H1 H2 H3 _ _ _ H0' p0)
+                             H0 _ _ _ H0' p0)
                           (@transfer_parse_of_production
                              Ascii.ascii adt_based_StringLike string_stringlike G
                              (fun s1 s2 => AbsR (projT2 splitter_impl) s2 (` s1))
-                             H0 H1 H2 H3 _ _ _ H1' p1));
+                             H0 _ _ _ H1' p1));
           apply H; clear H p0 p1; try assumption; simpl
-    end;
+    end; [ split | | ];
     handle_rep;
     eauto with parser_adt_method_db.
     { pose proof (@mdrop_R).
