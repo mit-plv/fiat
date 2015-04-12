@@ -7,6 +7,7 @@ Require Import ADTSynthesis.Parsers.ParserADTSpecification.
 Require Import ADTSynthesis.Parsers.StringLike.Properties.
 Require Import ADTSynthesis.Parsers.StringLike.String.
 Require Import ADTSynthesis.Parsers.ContextFreeGrammarEquality.
+Require Import ADTSynthesis.Parsers.ContextFreeGrammarProperties.
 Require Import ADTSynthesis.Parsers.Refinement.FixedLengthLemmas.
 Require Import ADTNotation.BuildADT ADTNotation.BuildADTSig.
 Require Import ADT.ComputationalADT.
@@ -310,9 +311,12 @@ Section IndexedImpl.
                                      { splits : list nat
                                        | forall n,
                                            n <= ilength s
-                                           -> parse_of_item G (take n (string_of_indexed s)) (NonTerminal nt)
-                                           -> parse_of_production G (drop n (string_of_indexed s)) p'
-                                           -> List.In n splits }%comp
+                                           -> forall
+                                             (pit : parse_of_item G (take n (string_of_indexed s)) (NonTerminal nt))
+                                             (pits : parse_of_production G (drop n (string_of_indexed s)) p'),
+                                             Forall_parse_of_item (fun _ nt => List.In nt (Valid_nonterminals G)) pit
+                                             -> Forall_parse_of_production (fun _ nt => List.In nt (Valid_nonterminals G)) pits
+                                             -> List.In n splits }%comp
                                      (length_of_any G nt))
                            end)
                      Else else_case)
@@ -367,6 +371,8 @@ Section IndexedImpl.
            end;
     try solve [ rewrite substring_correct3'; reflexivity
               | repeat match goal with
+                         | [ H : appcontext[ContextFreeGrammarProperties.Forall_parse_of_production] |- _ ] => clear H
+                         | [ H : appcontext[ContextFreeGrammarProperties.Forall_parse_of_item] |- _ ] => clear H
                          | _ => intro
                          | _ => reflexivity
                          | _ => rewrite substring_substring
@@ -390,6 +396,8 @@ Section IndexedImpl.
                          | _ => apply substring_correct4; omega
                        end
               | repeat match goal with
+                         | [ H : appcontext[ContextFreeGrammarProperties.Forall_parse_of_production] |- _ ] => clear H
+                         | [ H : appcontext[ContextFreeGrammarProperties.Forall_parse_of_item] |- _ ] => clear H
                          | _ => intro
                          | _ => progress subst
                          | [ |- List.In ?x [?y] ] => left
@@ -500,14 +508,14 @@ Section IndexedImpl.
                                  p : parse_of_item ?G ?str (NonTerminal ?nt) |- _ ]
                            => (pose proof (@has_only_terminals_parse_of_item_length G n nt H str p); clear H)
                          | _ => erewrite <- has_only_terminals_length by eassumption
-                         | [ H : _ |- _ ] => progress rewrite ?substring_length, ?Nat.add_sub, ?Nat.sub_0_r, ?Nat.add_0_r, ?minusr_minus in H
                          | _ => progress rewrite ?substring_length, ?Nat.add_sub, ?Nat.sub_0_r, ?Nat.add_0_r, ?minusr_minus
+                         | [ H : _ |- _ ] => generalize dependent H; progress rewrite ?substring_length, ?Nat.add_sub, ?Nat.sub_0_r, ?Nat.add_0_r, ?minusr_minus
                          | [ H : ?y <= ?x |- context[min ?x ?y] ] => rewrite (Min.min_r x y) by assumption
                          | [ H : ?x <= ?y |- context[min ?x ?y] ] => rewrite (Min.min_l x y) by assumption
                          | [ |- context[min ?x (?y + ?z) - ?z] ]
                            => rewrite <- (Nat.sub_min_distr_r x (y + z) z)
                          | [ H : context[min ?x (?y + ?z) - ?z] |- _ ]
-                           => rewrite <- (Nat.sub_min_distr_r x (y + z) z) in H
+                           => generalize dependent H; rewrite <- (Nat.sub_min_distr_r x (y + z) z)
                          | [ |- context[min (?x - ?y) ?x] ] => rewrite (Min.min_l (x - y) x) by omega
                          | [ |- context[min ?x (?x - ?y)] ] => rewrite (Min.min_r x (x - y)) by omega
                          | _ => omega

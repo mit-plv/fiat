@@ -173,6 +173,7 @@ SRC_PARSERS_BASE_MODULES := \
 	Parsers/Splitters/RDPList\
 	Parsers/Splitters/BruteForce\
 	Parsers/BooleanRecognizer\
+	Parsers/BooleanRecognizerFull\
 	Parsers/BooleanRecognizerOptimized\
 	Parsers/BooleanRecognizerTests\
 	Parsers/WellFoundedParse\

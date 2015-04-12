@@ -214,6 +214,8 @@ Section IndexedImpl.
                              | [ H : ?x = 1, H' : context[?x] |- _ ] => rewrite H in H'
                              | [ H : ?x <= ?y |- context[?x - ?y] ] => replace (x - y) with 0 by (clear -H; omega)
                              | _ => omega
+                             | [ H : appcontext[ContextFreeGrammarProperties.Forall_parse_of_production] |- _ ] => clear H
+                             | [ H : appcontext[ContextFreeGrammarProperties.Forall_parse_of_item] |- _ ] => clear H
                            end ]
       ).
   Defined.

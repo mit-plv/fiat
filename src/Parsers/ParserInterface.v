@@ -27,10 +27,12 @@ Section interface.
   : Prop
     := forall n,
          n <= length str
-         -> parse_of_item G (take n str) it
-         -> parse_of_production G (drop n str) its
          -> production_is_reachable (it::its)
-         -> List.In n splits.
+         -> forall (pit : parse_of_item G (take n str) it)
+                   (pits : parse_of_production G (drop n str) its),
+              Forall_parse_of_item (fun _ nt => List.In nt (Valid_nonterminals G)) pit
+              -> Forall_parse_of_production (fun _ nt => List.In nt (Valid_nonterminals G)) pits
+              -> List.In n splits.
 
   Record Splitter :=
     {

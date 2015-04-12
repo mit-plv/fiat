@@ -3,173 +3,290 @@ Require Import Coq.Init.Wf Coq.Arith.Wf_nat.
 Require Import Coq.Lists.List Coq.Strings.String.
 Require Import Coq.Numbers.Natural.Peano.NPeano.
 Require Import ADTSynthesis.Parsers.ContextFreeGrammar.
-Require Import ADTSynthesis.Parsers.StringLike.String.
 Require Import Coq.Program.Equality.
 Require Import ADTSynthesis.Common.
 Require Import ADTSynthesis.Common.Equality.
 Require Import ADTSynthesis.Common.Wf.
 Require Import ADTSynthesis.Parsers.Splitters.RDPList.
 Require Import ADTSynthesis.Parsers.BaseTypes.
+Require Import ADTSynthesis.Parsers.BooleanRecognizerFull.
+Require Import ADTSynthesis.Parsers.BooleanRecognizerCorrect.
+Require Import ADTSynthesis.Common.List.Operations.
+Require Import ADTSynthesis.Parsers.StringLike.Core.
+Require Import ADTSynthesis.Parsers.StringLike.String.
+Require Import ADTSynthesis.Parsers.StringLike.Properties.
+Require Import ADTSynthesis.Parsers.MinimalParseOfParse.
 
 Set Implicit Arguments.
-Require Import SharpenedExpressionParen.
-Require Import ADTSynthesis.Parsers.ParserFromParserADT.
-Require Import ADTSynthesis.Parsers.ExtrOcamlParsers.
-Import ADTSynthesis.Parsers.ExtrOcamlParsers.HideProofs.
-Recursive Extraction ab_star_parser.
-Print ab_star_parser.
-Section grammar.
-  Context {Char : Type}.
 
+Section all_possible.
+  Context {Char : Type}.
   Definition possible_terminals := list Char.
+
+  Definition possible_terminals_of_production' (terminals_of_nt : String.string -> possible_terminals)
+             (its : production Char)
+  : possible_terminals
+    := flat_map
+         (fun it =>
+            match it with
+              | Terminal ch => [ch]
+              | NonTerminal nt => terminals_of_nt nt
+            end)
+         its.
+
+  Lemma possible_terminals_of_production'_ext
+        f g
+        (ext : forall b, f b = g b)
+        b
+  : @possible_terminals_of_production' f b = possible_terminals_of_production' g b.
+  Proof.
+    induction b as [ | x ]; try reflexivity; simpl.
+    destruct x; rewrite ?IHb, ?ext; reflexivity.
+  Qed.
+
+  Definition possible_terminals_of_productions' (possible_terminals_of_nt : String.string -> possible_terminals)
+             (prods : productions Char)
+  : possible_terminals
+    := flat_map
+         (possible_terminals_of_production' possible_terminals_of_nt)
+         prods.
+
+  Lemma possible_terminals_of_productions'_ext
+        f g
+        (ext : forall b, f b = g b)
+        b
+  : @possible_terminals_of_productions' f b = possible_terminals_of_productions' g b.
+  Proof.
+    unfold possible_terminals_of_productions'.
+    induction b as [ | x ]; try reflexivity; simpl.
+    rewrite IHb.
+    erewrite possible_terminals_of_production'_ext by eassumption.
+    reflexivity.
+  Qed.
+
+  Definition possible_terminals_of_nt_step (G : grammar Char) (predata := @rdp_list_predata _ G)
+             (valid0 : nonterminals_listT)
+             (possible_terminals_of_nt : forall valid, nonterminals_listT_R valid valid0
+                                                       -> String.string -> possible_terminals)
+             (nt : String.string)
+  : possible_terminals.
+  Proof.
+    refine (if Sumbool.sumbool_of_bool (is_valid_nonterminal valid0 nt)
+            then possible_terminals_of_productions'
+                   (@possible_terminals_of_nt (remove_nonterminal valid0 nt) (remove_nonterminal_dec _ _ _))
+                   (Lookup G nt)
+            else nil);
+    assumption.
+  Defined.
+
+  Lemma possible_terminals_of_nt_step_ext {G}
+        x0 f g
+        (ext : forall y p b, f y p b = g y p b)
+        b
+  : @possible_terminals_of_nt_step G x0 f b = possible_terminals_of_nt_step g b.
+  Proof.
+    unfold possible_terminals_of_nt_step.
+    edestruct Sumbool.sumbool_of_bool; trivial.
+    apply possible_terminals_of_productions'_ext; eauto.
+  Qed.
+
+  Definition possible_terminals_of_nt (G : grammar Char) initial : String.string -> possible_terminals
+    := let predata := @rdp_list_predata _ G in
+       @Fix _ _ ntl_wf _
+            (@possible_terminals_of_nt_step G)
+            initial.
+
+  Definition possible_terminals_of (G : grammar Char) : String.string -> possible_terminals
+    := @possible_terminals_of_nt G initial_nonterminals_data.
+
+  Definition possible_terminals_of_productions G := @possible_terminals_of_productions' (@possible_terminals_of G).
+End all_possible.
+
+Section only_first.
+  Context (G : grammar Ascii.ascii).
+
   Record possible_first_terminals :=
-    { actual_possible_first_terminals :> list Char;
+    { actual_possible_first_terminals :> list Ascii.ascii;
       might_be_empty : bool }.
 
-  Fixpoint possible_terminals_of_production' {Char} (terminals_of_nt : String.string -> possible_terminals)
-           (its :
+  Definition possible_first_terminals_of_production' (possible_first_terminals_of_nt : String.string -> possible_first_terminals)
+             (its : production Ascii.ascii)
+  : possible_first_terminals
+    := {| actual_possible_first_terminals
+          := fold_right
+               (fun it rest_terminals =>
+                  match it with
+                    | Terminal ch => [ch]
+                    | NonTerminal nt
+                      => (possible_first_terminals_of_nt nt)
+                           ++ if might_be_empty (possible_first_terminals_of_nt nt)
+                              then rest_terminals
+                              else []
+                  end)
+               nil
+               its;
+          might_be_empty
+          := brute_force_parse_production G ""%string its |}.
 
-  Fixpoint length_of_any_production' {Char} (length_of_any_nt : String.string -> length_result)
-           (its : production Char) : length_result
-    := match its with
-         | nil => same_length 0
-         | (Terminal _)::xs => match length_of_any_production' length_of_any_nt xs with
-                                 | same_length n => same_length (S n)
-                                 | different_lengths => different_lengths
-                                 | cyclic_length => cyclic_length
-                                 | not_yet_handled_empty_rule => not_yet_handled_empty_rule
-                               end
-         | (NonTerminal nt)::xs => match length_of_any_nt nt, length_of_any_production' length_of_any_nt xs with
-                                     | same_length n1, same_length n2 => same_length (n1 + n2)
-                                     | cyclic_length, _ => cyclic_length
-                                     | _, cyclic_length => cyclic_length
-                                     | different_lengths, _ => different_lengths
-                                     | _, different_lengths => different_lengths
-                                     | not_yet_handled_empty_rule, _ => not_yet_handled_empty_rule
-                                     | _, not_yet_handled_empty_rule => not_yet_handled_empty_rule
-                                   end
-       end.
+  Lemma possible_first_terminals_of_production'_ext
+        f g
+        (ext : forall b, f b = g b)
+        b
+  : @possible_first_terminals_of_production' f b = possible_first_terminals_of_production' g b.
+  Proof.
+    unfold possible_first_terminals_of_production'; f_equal.
+    induction b as [ | x ]; try reflexivity; simpl.
+    destruct x; rewrite ?IHb, ?ext; reflexivity.
+  Qed.
 
-Lemma length_of_any_production'_ext {Char}
-      f g
-      (ext : forall b, f b = g b)
-      b
-: @length_of_any_production' Char f b = length_of_any_production' g b.
+  Definition possible_first_terminals_of_productions' (possible_first_terminals_of_nt : String.string -> possible_first_terminals)
+             (prods : productions Ascii.ascii)
+  : possible_first_terminals
+    := {| actual_possible_first_terminals
+          := flat_map
+               actual_possible_first_terminals
+               (map (possible_first_terminals_of_production' possible_first_terminals_of_nt)
+                    prods);
+          might_be_empty
+          := fold_right
+               orb
+               false
+               (map
+                  might_be_empty
+                  (map
+                     (possible_first_terminals_of_production' possible_first_terminals_of_nt)
+                     prods)) |}.
+
+  Local Opaque possible_first_terminals_of_production'.
+
+  Lemma possible_first_terminals_of_productions'_ext
+        f g
+        (ext : forall b, f b = g b)
+        b
+  : @possible_first_terminals_of_productions' f b = possible_first_terminals_of_productions' g b.
+  Proof.
+    unfold possible_first_terminals_of_productions'.
+    f_equal;
+      induction b as [ | x ]; try reflexivity; simpl;
+      rewrite IHb; try reflexivity;
+      erewrite possible_first_terminals_of_production'_ext by eassumption;
+      reflexivity.
+  Qed.
+
+  Local Transparent possible_first_terminals_of_production'.
+
+  Definition possible_first_terminals_of_nt_step (predata := @rdp_list_predata _ G)
+             (valid0 : nonterminals_listT)
+             (possible_first_terminals_of_nt : forall valid, nonterminals_listT_R valid valid0
+                                                       -> String.string -> possible_first_terminals)
+             (nt : String.string)
+  : possible_first_terminals.
+  Proof.
+    refine (if Sumbool.sumbool_of_bool (is_valid_nonterminal valid0 nt)
+            then possible_first_terminals_of_productions'
+                   (@possible_first_terminals_of_nt (remove_nonterminal valid0 nt) (remove_nonterminal_dec _ _ _))
+                   (Lookup G nt)
+            else {| actual_possible_first_terminals := nil;
+                    might_be_empty
+                    := brute_force_parse_nonterminal G ""%string nt |});
+    assumption.
+  Defined.
+
+  Lemma possible_first_terminals_of_nt_step_ext
+        x0 f g
+        (ext : forall y p b, f y p b = g y p b)
+        b
+  : @possible_first_terminals_of_nt_step x0 f b = possible_first_terminals_of_nt_step g b.
+  Proof.
+    unfold possible_first_terminals_of_nt_step.
+    edestruct Sumbool.sumbool_of_bool; trivial.
+    apply possible_first_terminals_of_productions'_ext; eauto.
+  Qed.
+
+  Definition possible_first_terminals_of_nt initial : String.string -> possible_first_terminals
+    := let predata := @rdp_list_predata _ G in
+       @Fix _ _ ntl_wf _
+            (@possible_first_terminals_of_nt_step)
+            initial.
+
+  Definition possible_first_terminals_of : String.string -> possible_first_terminals
+    := @possible_first_terminals_of_nt initial_nonterminals_data.
+
+  Definition possible_first_terminals_of_productions := @possible_first_terminals_of_productions' (@possible_first_terminals_of).
+
+  Definition possible_first_terminals_of_production := @possible_first_terminals_of_production' (@possible_first_terminals_of).
+End only_first.
+
+Local Open Scope string_like_scope.
+
+Lemma terminals_disjoint_search_for_not {G : grammar Ascii.ascii} (str : @String Ascii.ascii string_stringlike)
+      {nt its}
+      (H_disjoint : disjoint ascii_beq (possible_terminals_of G nt) (possible_first_terminals_of_production G its))
+      {n}
+      (pit : parse_of_item G (StringLike.take n str) (NonTerminal nt))
+      (pits : parse_of_production G (StringLike.drop n str) its)
+: (forall n' ch, n' < n
+                        -> (take 1 (drop n' str)) ~= [ ch ]
+                        -> list_bin ascii_beq ch (possible_terminals_of G nt))
+  /\ ((length str <= n /\ might_be_empty (possible_first_terminals_of_production G its))
+      \/ (forall ch, (take 1 (drop n str)) ~= [ ch ]
+                     -> (negb (list_bin ascii_beq ch (possible_terminals_of G nt))))).
 Proof.
-  induction b as [ | x ]; try reflexivity; simpl.
-  destruct x; rewrite ?IHb, ?ext; reflexivity.
-Qed.
+  apply and_comm; split.
+  { destruct (Compare_dec.le_dec (length str) n).
+    { left; split; trivial.
+      pose proof (drop_length str n) as H.
+      rewrite (proj2 (Nat.sub_0_le (length str) n)) in H by assumption.
+      generalize dependent (drop n str); clear.
+      intros.
+      destruct s; simpl in *; try discriminate; [].
+      clear H.
+      unfold possible_first_terminals_of_production, possible_first_terminals_of_production', brute_force_parse_production; simpl.
+      intros.
+      eapply parse_production_complete.
+      pose proof (@minimal_parse_of_production__of__parse_of_production _ _ _ G (@rdp_list_predata _ G) ""%string (S (WellFoundedParse.size_of_parse_production pits))
+                 (fun _ _ => @minimal_parse_of_nonterminal__of__parse_of_nonterminal _ _ _ _ _ _ _)
+                 ""%string
+                 (@reflexivity _ _ str_le_refl _)
+                 initial_nonterminals_data
+                 _ pits
+                 (Lt.lt_n_Sn _)
+                 (reflexivity _))
+        as X; simpl in *.
+SearchAbout (?x < S ?x).
+      specialize (X (reflexivity _)).
+                 (reflexivity );
+        simpl in *.
+                                                                  (@minimal_parse_of_production__of__parse_of));
+      simpl in *.
+      SearchAbout (_ - _ = 0).
+      Check drop_length.
+      SearchAbout length drop.
 
-Definition length_of_any_productions'_f
-  := (fun x1 x2
-      => match x1, x2 with
-           | same_length n1, same_length n2 => if Nat.eq_dec n1 n2 then same_length n1 else different_lengths
-           | cyclic_length, _ => cyclic_length
-           | _, cyclic_length => cyclic_length
-           | _, different_lengths => different_lengths
-           | different_lengths, _ => different_lengths
-           | not_yet_handled_empty_rule, _ => not_yet_handled_empty_rule
-           | _, not_yet_handled_empty_rule => not_yet_handled_empty_rule
-         end).
+{ splits : list nat
+                                       | forall n,
+                                           n <= ilength s
+                                           -> parse_of_item G (take n (string_of_indexed s)) (NonTerminal nt)
+                                           -> parse_of_production G (drop n (string_of_indexed s)) p'
+                                           -> List.In n splits }%comp
+Definition possible_terminals_of_production' (terminals_of_nt : String.string -> possible_terminals)
+           (its : production Char)
+: possible_terminals
+  := flat_map
+       (fun it =>
+          match it with
+            | Terminal ch => [ch]
+            | NonTerminal nt => terminals_of_nt nt
+          end)
+       its.
 
-Arguments length_of_any_productions'_f !_ !_ / .
 
-Lemma length_of_any_productions'_f_same_length {n x1 x2}
-: length_of_any_productions'_f x1 x2 = same_length n
-  <-> (x1 = same_length n /\ x2 = same_length n).
-Proof.
-  destruct x1, x2; simpl in *;
-  repeat match goal with
-           | _ => reflexivity
-           | [ H : context[Nat.eq_dec ?x ?y] |- _ ] => destruct (Nat.eq_dec x y)
-           | [ |- context[Nat.eq_dec ?x ?y] ] => destruct (Nat.eq_dec x y)
-           | _ => progress subst
-           | [ H : same_length _ = same_length _ |- _ ] => inversion H; clear H
-           | _ => intro
-           | [ H : _ /\ _ |- _ ] => destruct H
-           | [ |- _ /\ _ ] => split
-           | [ |- _ <-> _ ] => split
-           | _ => congruence
-           | _ => tauto
-         end.
-Qed.
 
-Lemma length_of_any_productions'_f_same_length_fold_right {n x1 x2}
-: fold_right length_of_any_productions'_f x1 x2 = same_length n
-  <-> (x1 = same_length n /\ fold_right and True (map (fun k => k = same_length n) x2)).
-Proof.
-  induction x2; simpl in *; eauto; try tauto.
-  rewrite length_of_any_productions'_f_same_length.
-  rewrite IHx2.
-  tauto.
-Qed.
-
-Definition length_of_any_productions' {Char} (length_of_any_nt : String.string -> length_result)
-           (prods : productions Char)
-: length_result
-  := match prods with
-       | nil => not_yet_handled_empty_rule
-       | p::ps => fold_right
-                    length_of_any_productions'_f
-                    (length_of_any_production' length_of_any_nt p)
-                    (map (length_of_any_production' length_of_any_nt) ps)
-     end.
-
-Lemma length_of_any_productions'_ext {Char}
-      f g
-      (ext : forall b, f b = g b)
-      b
-: @length_of_any_productions' Char f b = length_of_any_productions' g b.
-Proof.
-  unfold length_of_any_productions'.
-  destruct b as [ | ? b]; trivial; [].
-  induction b; try reflexivity; simpl;
-  erewrite length_of_any_production'_ext by eassumption; trivial; [].
-  edestruct (length_of_any_production' g);
-    rewrite IHb; reflexivity.
-Qed.
-
-Definition length_of_any_nt_step {Char} (G : grammar Char) (predata := @rdp_list_predata _ G)
-           (valid0 : nonterminals_listT)
-           (length_of_any_nt : forall valid, nonterminals_listT_R valid valid0
-                                             -> String.string -> length_result)
-           (nt : String.string)
-: length_result.
-Proof.
-  refine (if Sumbool.sumbool_of_bool (is_valid_nonterminal valid0 nt)
-          then length_of_any_productions'
-                 (@length_of_any_nt (remove_nonterminal valid0 nt) (remove_nonterminal_dec _ _ _))
-                 (Lookup G nt)
-          else different_lengths);
-  assumption.
-Defined.
-
-Lemma length_of_any_nt_step_ext {Char G}
-      x0 f g
-      (ext : forall y p b, f y p b = g y p b)
-      b
-: @length_of_any_nt_step Char G x0 f b = length_of_any_nt_step g b.
-Proof.
-  unfold length_of_any_nt_step.
-  edestruct Sumbool.sumbool_of_bool; trivial.
-  apply length_of_any_productions'_ext; eauto.
-Qed.
-
-Definition length_of_any_nt {Char} (G : grammar Char) initial : String.string -> length_result
-  := let predata := @rdp_list_predata _ G in
-     @Fix _ _ ntl_wf _
-          (@length_of_any_nt_step _ G)
-          initial.
-
-Definition length_of_any {Char} (G : grammar Char) : String.string -> length_result
-  := @length_of_any_nt Char G initial_nonterminals_data.
-
-Definition length_of_any_productions {Char} G := @length_of_any_productions' Char (@length_of_any Char G).
 
 Lemma has_only_terminals_parse_of_production_length (G : grammar Ascii.ascii) {n}
       f pat
       (H_f : forall nt str n', f nt = same_length n' -> parse_of G str (Lookup G nt) -> String.length str = n')
-      (H : length_of_any_production' f pat = same_length n)
+      (H : possible_first_terminals_of_production' f pat = same_length n)
       str
       (p : parse_of_production G str pat)
 : String.length str = n.
@@ -178,7 +295,7 @@ Proof.
   { congruence. }
   { edestruct (_ : item _).
     { match goal with
-        | [ H : context[length_of_any_production' ?f ?p] |- _ ] => revert H; case_eq (length_of_any_production' f p); intros
+        | [ H : context[possible_first_terminals_of_production' ?f ?p] |- _ ] => revert H; case_eq (possible_first_terminals_of_production' f p); intros
       end;
       repeat match goal with
                | [ H : ?x = ?x |- _ ] => clear H
@@ -201,7 +318,7 @@ Proof.
         | [ H : context[f ?x] |- _ ] => revert H; case_eq (f x); intros
       end;
         match goal with
-          | [ H : context[length_of_any_production' ?f ?p] |- _ ] => revert H; case_eq (length_of_any_production' f p); intros
+          | [ H : context[possible_first_terminals_of_production' ?f ?p] |- _ ] => revert H; case_eq (possible_first_terminals_of_production' f p); intros
         end;
         repeat match goal with
                  | [ H : ?x = ?x |- _ ] => clear H
@@ -222,48 +339,48 @@ Qed.
 
 Lemma has_only_terminals_parse_of_length (G : grammar Ascii.ascii) {n}
       nt
-      (H : length_of_any G nt = same_length n)
+      (H : possible_first_terminals_of G nt = same_length n)
       str
       (p : parse_of G str (Lookup G nt))
 : String.length str = n.
 Proof.
-  unfold length_of_any, length_of_any_nt in H.
+  unfold possible_first_terminals_of, possible_first_terminals_of_nt in H.
   revert n nt H str p.
   match goal with
     | [ |- forall a b, Fix ?wf _ _ ?x _ = _ -> _ ]
       => induction (wf x)
   end.
   intros ? ?.
-  rewrite Fix1_eq by apply length_of_any_nt_step_ext.
-  unfold length_of_any_nt_step at 1; simpl.
+  rewrite Fix1_eq by apply possible_first_terminals_of_nt_step_ext.
+  unfold possible_first_terminals_of_nt_step at 1; simpl.
   edestruct dec; simpl;
   [
   | solve [ intros; discriminate ] ].
   generalize dependent (G nt).
   intros.
-  unfold length_of_any_productions' in *.
+  unfold possible_first_terminals_of_productions' in *.
   let p := match goal with H : parse_of _ _ _ |- _ => constr:H end in
   let H := fresh in
   rename p into H;
     induction H; simpl in *.
   { match goal with
-      | [ H : context[length_of_any_production' ?f ?p] |- _ ] => revert H; case_eq (length_of_any_production' f p); intros
+      | [ H : context[possible_first_terminals_of_production' ?f ?p] |- _ ] => revert H; case_eq (possible_first_terminals_of_production' f p); intros
     end;
     repeat match goal with
              | [ H' : rdp_list_is_valid_nonterminal ?x ?nt = true,
                       H : forall y, rdp_list_nonterminals_listT_R y ?x -> _ |- _ ]
                => specialize (fun nt' str0 n' H0 => H _ (@rdp_list_remove_nonterminal_dec _ nt H') n' nt' H0 str0)
-             | [ H : length_of_any_production' _ _ = same_length _ |- _ ] => eapply has_only_terminals_parse_of_production_length in H; [ | eassumption.. ]
+             | [ H : possible_first_terminals_of_production' _ _ = same_length _ |- _ ] => eapply has_only_terminals_parse_of_production_length in H; [ | eassumption.. ]
              | _ => reflexivity
              | _ => discriminate
              | _ => progress subst
-             | [ H : length_of_any_productions'_f _ _ = same_length _ |- _ ] => apply length_of_any_productions'_f_same_length in H
+             | [ H : possible_first_terminals_of_productions'_f _ _ = same_length _ |- _ ] => apply possible_first_terminals_of_productions'_f_same_length in H
              | [ H : same_length _ = same_length _ |- _ ] => inversion H; clear H
              | [ H : _ /\ _ |- _ ] => destruct H
              | [ H : _ \/ _ |- _ ] => destruct H; [ (discriminate || congruence) | ]
              | [ H : _ \/ _ |- _ ] => destruct H; [ | (discriminate || congruence) ]
              | [ H : ?x = same_length _, H' : context[?x] |- _ ] => rewrite H in H'
-             | [ H : fold_right length_of_any_productions'_f _ _ = same_length _ |- _ ] => apply length_of_any_productions'_f_same_length_fold_right in H
+             | [ H : fold_right possible_first_terminals_of_productions'_f _ _ = same_length _ |- _ ] => apply possible_first_terminals_of_productions'_f_same_length_fold_right in H
            end. }
   { edestruct (_ : productions _).
     { match goal with
@@ -271,11 +388,11 @@ Proof.
       end. }
     { repeat match goal with
                | _ => progress simpl in *
-               | [ H : length_of_any_productions'_f _ _ = same_length _ |- _ ] => apply length_of_any_productions'_f_same_length in H
+               | [ H : possible_first_terminals_of_productions'_f _ _ = same_length _ |- _ ] => apply possible_first_terminals_of_productions'_f_same_length in H
                | [ H : _ /\ _ |- _ ] => destruct H
-               | [ H : fold_right length_of_any_productions'_f _ _ = same_length _ |- _ ] => apply length_of_any_productions'_f_same_length_fold_right in H
-               | [ H : fold_right length_of_any_productions'_f _ _ = same_length _ -> _ |- _ ]
-                 => specialize (fun H' => H (proj2 length_of_any_productions'_f_same_length_fold_right H'))
+               | [ H : fold_right possible_first_terminals_of_productions'_f _ _ = same_length _ |- _ ] => apply possible_first_terminals_of_productions'_f_same_length_fold_right in H
+               | [ H : fold_right possible_first_terminals_of_productions'_f _ _ = same_length _ -> _ |- _ ]
+                 => specialize (fun H' => H (proj2 possible_first_terminals_of_productions'_f_same_length_fold_right H'))
                | _ => progress eauto
              end. } }
 Qed.

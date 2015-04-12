@@ -7,23 +7,10 @@ Require Import ADTSynthesis.Parsers.ContextFreeGrammar.
 Require Import ADTSynthesis.Parsers.BaseTypes ADTSynthesis.Parsers.BooleanBaseTypes.
 Require Import ADTSynthesis.Parsers.StringLike.String.
 Require Import ADTSynthesis.Parsers.BooleanRecognizer.
+Require Import ADTSynthesis.Parsers.BooleanRecognizerFull.
 
 Set Implicit Arguments.
 Local Open Scope string_like_scope.
-
-Section example_parse_string_grammar.
-  Context (G : grammar Ascii.ascii).
-
-  Definition brute_force_parse_nonterminal
-  : @String Ascii.ascii _
-    -> string
-    -> bool
-    := let data := @brute_force_data Ascii.ascii _ G in parse_nonterminal (G := G).
-
-  Definition brute_force_parse
-  : string -> bool
-    := fun str => brute_force_parse_nonterminal str G.
-End example_parse_string_grammar.
 
 Module example_parse_empty_grammar.
   Definition parse : string -> bool

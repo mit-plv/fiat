@@ -37,69 +37,97 @@ Section cfg.
   Definition parse_of_item_nonterminal__of__minimal_parse_of_nonterminal'
              (parse_of__of__minimal_parse_of
               : forall str0 valid str prods,
-                  minimal_parse_of (G := G) str0 valid str prods -> parse_of G str prods)
+                  minimal_parse_of (G := G) str0 valid str prods
+                  -> { p' : parse_of G str prods
+                     & Forall_parse_of (fun _ => is_valid_nonterminal initial_nonterminals_data) p' })
              {str0 valid str nonterminal} (p : minimal_parse_of_nonterminal (G := G) str0 valid str nonterminal)
-  : parse_of_item G str (NonTerminal nonterminal)
-    := ParseNonTerminal
-         nonterminal
-         (@parse_of__of__minimal_parse_of
-            _ _ _ _
-            (match p as p in (@MinimalParse.minimal_parse_of_nonterminal _ _ _ _ str0 valid str nonterminal)
-                   return minimal_parse_of (match p with
-                                              | MinParseNonTerminalStrLt _ _ _ _ _ _ _ => _
-                                              | MinParseNonTerminalStrEq _ _ _ _ _ _ _ _ => _
-                                            end)
-                                           (match p with
-                                              | MinParseNonTerminalStrLt _ _ _ _ _ _ _ => _
-                                              | MinParseNonTerminalStrEq _ _ _ _ _ _ _ _ => _
-                                            end)
-                                           str (Lookup G nonterminal) with
-               | MinParseNonTerminalStrLt str0 valid nonterminal str pf pf' p' => p'
-               | MinParseNonTerminalStrEq str0 str valid nonterminal pf H H' p' => p'
-             end)).
+  : { p' : parse_of_item G str (NonTerminal nonterminal)
+    & Forall_parse_of_item (fun _ => is_valid_nonterminal initial_nonterminals_data) p' }
+    := let p'
+           := (@parse_of__of__minimal_parse_of
+                 _ _ _ _
+                 (match p as p in (@MinimalParse.minimal_parse_of_nonterminal _ _ _ _ str0 valid str nonterminal)
+                        return minimal_parse_of (match p with
+                                                   | MinParseNonTerminalStrLt _ _ _ _ _ _ _ => _
+                                                   | MinParseNonTerminalStrEq _ _ _ _ _ _ _ _ => _
+                                                 end)
+                                                (match p with
+                                                   | MinParseNonTerminalStrLt _ _ _ _ _ _ _ => _
+                                                   | MinParseNonTerminalStrEq _ _ _ _ _ _ _ _ => _
+                                                 end)
+                                                str (Lookup G nonterminal) with
+                    | MinParseNonTerminalStrLt str0 valid nonterminal str pf pf' p' => p'
+                    | MinParseNonTerminalStrEq str0 str valid nonterminal pf H H' p' => p'
+                  end)) in
+       existT
+         _
+         (ParseNonTerminal
+            nonterminal
+            (projT1 p'))
+         (match p in (@MinimalParse.minimal_parse_of_nonterminal _ _ _ _ str0 valid str nonterminal)
+                return (is_valid_nonterminal initial_nonterminals_data nonterminal)
+          with
+            | MinParseNonTerminalStrLt _ _ _ _ _ pf _ => pf
+            | MinParseNonTerminalStrEq _ _ _ _ _ pf _ _ => pf
+          end,
+          projT2 p').
 
   Definition parse_of_item__of__minimal_parse_of_item'
              (parse_of__of__minimal_parse_of
               : forall str0 valid str prods,
-                  minimal_parse_of (G := G) str0 valid str prods -> parse_of G str prods)
+                  minimal_parse_of (G := G) str0 valid str prods
+                  -> { p' : parse_of G str prods
+                     & Forall_parse_of (fun _ => is_valid_nonterminal initial_nonterminals_data) p' })
              {str0 valid str it} (p : minimal_parse_of_item (G := G) str0 valid str it)
-  : parse_of_item G str it
-    := match p in (MinimalParse.minimal_parse_of_item str0 valid str it) return parse_of_item G str it with
+  : { p' : parse_of_item G str it
+    & Forall_parse_of_item (fun _ => is_valid_nonterminal initial_nonterminals_data) p' }
+    := match p in (MinimalParse.minimal_parse_of_item str0 valid str it)
+             return { p' : parse_of_item G str it
+                    & Forall_parse_of_item (fun _ => is_valid_nonterminal initial_nonterminals_data) p' }
+       with
          | MinParseTerminal str0 valid str ch pf
-           => ParseTerminal G str ch pf
+           => existT _ (ParseTerminal G str ch pf) tt
          | MinParseNonTerminal str0 valid _ _ p'
            => @parse_of_item_nonterminal__of__minimal_parse_of_nonterminal' (@parse_of__of__minimal_parse_of) _ _ _ _ p'
        end.
 
   Fixpoint parse_of__of__minimal_parse_of {str0 valid str pats} (p : minimal_parse_of (G := G) str0 valid str pats)
-  : parse_of G str pats
+  : { p' : parse_of G str pats
+    & Forall_parse_of (fun _ => is_valid_nonterminal initial_nonterminals_data) p' }
     := match p with
          | MinParseHead str0 valid str pat pats p'
-           => ParseHead pats (parse_of_production__of__minimal_parse_of_production p')
+           => let p'' := (parse_of_production__of__minimal_parse_of_production p') in
+              existT _ (ParseHead pats (projT1 p'')) (projT2 p'')
          | MinParseTail str0 valid str pat pats p'
-           => ParseTail pat (parse_of__of__minimal_parse_of p')
+           => let p'' := (parse_of__of__minimal_parse_of p') in
+              existT _ (ParseTail pat (projT1 p'')) (projT2 p'')
        end
   with parse_of_production__of__minimal_parse_of_production {str0 valid str pat} (p : minimal_parse_of_production (G := G) str0 valid str pat)
-       : parse_of_production G str pat
+       : { p' : parse_of_production G str pat
+         & Forall_parse_of_production (fun _ => is_valid_nonterminal initial_nonterminals_data) p' }
        := match p with
             | MinParseProductionNil str0 valid str pf
-              => ParseProductionNil _ _ pf
+              => existT _ (ParseProductionNil _ _ pf) tt
             | MinParseProductionCons str0 valid str strs pat pats pf p' p''
-              => ParseProductionCons
-                   _ _
-                   (parse_of_item__of__minimal_parse_of_item' (@parse_of__of__minimal_parse_of) p')
-                   (parse_of_production__of__minimal_parse_of_production p'')
+              => let p0 := (parse_of_item__of__minimal_parse_of_item' (@parse_of__of__minimal_parse_of) p') in
+                 let p1 := (parse_of_production__of__minimal_parse_of_production p'') in
+                 existT
+                   _
+                   (ParseProductionCons _ _ (projT1 p0) (projT1 p1))
+                   (projT2 p0, projT2 p1)
           end.
 
   Definition parse_of_item_nonterminal__of__minimal_parse_of_nonterminal
   : forall {str0 valid str nonterminal} (p : minimal_parse_of_nonterminal (G := G) str0 valid str nonterminal),
-      parse_of_item G str (NonTerminal nonterminal)
+      { p' : parse_of_item G str (NonTerminal nonterminal)
+      & Forall_parse_of_item (fun _ => is_valid_nonterminal initial_nonterminals_data) p' }
     := @parse_of_item_nonterminal__of__minimal_parse_of_nonterminal' (@parse_of__of__minimal_parse_of).
 
   Definition parse_of_item__of__minimal_parse_of_item
   : forall {str0 valid str it},
       minimal_parse_of_item (G := G) str0 valid str it
-      -> parse_of_item G str it
+      -> { p' : parse_of_item G str it
+         & Forall_parse_of_item (fun _ => is_valid_nonterminal initial_nonterminals_data) p' }
     := @parse_of_item__of__minimal_parse_of_item' (@parse_of__of__minimal_parse_of).
 
   (** Re-add this so rewrite works *)
@@ -456,8 +484,8 @@ Section cfg.
              sub_nonterminals_listT valid initial_nonterminals_data
              -> Forall_parse_of_item P p
              -> ({ p' : minimal_parse_of_item (G := G) str0 valid str it
-                        & (size_of_parse_item (parse_of_item__of__minimal_parse_of_item p') <= size_of_parse_item p)
-                          * Forall_parse_of_item P (parse_of_item__of__minimal_parse_of_item p') })%type
+                        & (size_of_parse_item (projT1 (parse_of_item__of__minimal_parse_of_item p')) <= size_of_parse_item p)
+                          * Forall_parse_of_item P (projT1 (parse_of_item__of__minimal_parse_of_item p')) })%type
                 + alt_option (size_of_parse_item p) valid str.
 
       Let of_parse_item_T str0 h
@@ -471,8 +499,8 @@ Section cfg.
              sub_nonterminals_listT valid initial_nonterminals_data
              -> Forall_parse_of_production P p
              -> ({ p' : minimal_parse_of_production (G := G) str0 valid str pat
-                        & (size_of_parse_production (parse_of_production__of__minimal_parse_of_production p') <= size_of_parse_production p)
-                          * Forall_parse_of_production P (parse_of_production__of__minimal_parse_of_production p') })%type
+                        & (size_of_parse_production (projT1 (parse_of_production__of__minimal_parse_of_production p')) <= size_of_parse_production p)
+                          * Forall_parse_of_production P (projT1 (parse_of_production__of__minimal_parse_of_production p')) })%type
                 + alt_option (size_of_parse_production p) valid str.
 
       Let of_parse_production_T str0 h
@@ -486,8 +514,8 @@ Section cfg.
              sub_nonterminals_listT valid initial_nonterminals_data
              -> Forall_parse_of P p
              -> ({ p' : minimal_parse_of (G := G) str0 valid str pats
-                        & (size_of_parse (parse_of__of__minimal_parse_of p') <= size_of_parse p)
-                          * Forall_parse_of P (parse_of__of__minimal_parse_of p') })%type
+                        & (size_of_parse (projT1 (parse_of__of__minimal_parse_of p')) <= size_of_parse p)
+                          * Forall_parse_of P (projT1 (parse_of__of__minimal_parse_of p')) })%type
                 + alt_option (size_of_parse p) valid str.
 
       Let of_parse_T str0 h
@@ -499,8 +527,8 @@ Section cfg.
            -> sub_nonterminals_listT valid initial_nonterminals_data
            -> Forall_parse_of_item P (ParseNonTerminal nonterminal p)
            -> ({ p' : minimal_parse_of_nonterminal (G := G) str0 valid str nonterminal
-                      & (size_of_parse_item (parse_of_item__of__minimal_parse_of_item (MinParseNonTerminal p')) <= size_of_parse_item (ParseNonTerminal nonterminal p))
-                        * Forall_parse_of_item P (parse_of_item__of__minimal_parse_of_item (MinParseNonTerminal p')) })%type
+                      & (size_of_parse_item (projT1 (parse_of_item__of__minimal_parse_of_item (MinParseNonTerminal p'))) <= size_of_parse_item (ParseNonTerminal nonterminal p))
+                        * Forall_parse_of_item P (projT1 (parse_of_item__of__minimal_parse_of_item (MinParseNonTerminal p'))) })%type
               + alt_option (size_of_parse_item (ParseNonTerminal nonterminal p)) valid str.
 
       Section item.
