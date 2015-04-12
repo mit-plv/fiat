@@ -138,7 +138,7 @@ Ltac start_honing_ri repInv :=
 Ltac start_honing :=
   eapply SharpenStep;
   [ solve [ apply FirstStep ] | ];
-  unfold rindexed_spec; simpl;
+  unfold rindexed_spec, rindexed_spec'; simpl;
   unfold forall_reachable_productions; simpl.
 
 Tactic Notation "start" "honing" "parser" "representation" "using" open_constr(repInv)

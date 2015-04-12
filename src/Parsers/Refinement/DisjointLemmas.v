@@ -3,12 +3,16 @@ Require Import Coq.Init.Wf Coq.Arith.Wf_nat.
 Require Import Coq.Lists.List Coq.Strings.String.
 Require Import Coq.Numbers.Natural.Peano.NPeano.
 Require Import ADTSynthesis.Parsers.ContextFreeGrammar.
+Require Import ADTSynthesis.Parsers.ContextFreeGrammarEquality.
 Require Import Coq.Program.Equality.
 Require Import ADTSynthesis.Common.
 Require Import ADTSynthesis.Common.Equality.
 Require Import ADTSynthesis.Common.Wf.
 Require Import ADTSynthesis.Parsers.Splitters.RDPList.
+Require Import ADTSynthesis.Parsers.Splitters.BruteForce.
+Require Import ADTSynthesis.Parsers.ParserInterface.
 Require Import ADTSynthesis.Parsers.BaseTypes.
+Require Import ADTSynthesis.Parsers.BooleanBaseTypes.
 Require Import ADTSynthesis.Parsers.BooleanRecognizerFull.
 Require Import ADTSynthesis.Parsers.BooleanRecognizerCorrect.
 Require Import ADTSynthesis.Common.List.Operations.
@@ -16,6 +20,7 @@ Require Import ADTSynthesis.Parsers.StringLike.Core.
 Require Import ADTSynthesis.Parsers.StringLike.String.
 Require Import ADTSynthesis.Parsers.StringLike.Properties.
 Require Import ADTSynthesis.Parsers.MinimalParseOfParse.
+Require Import ADTSynthesis.Parsers.ContextFreeGrammarProperties.
 
 Set Implicit Arguments.
 
@@ -219,12 +224,17 @@ End only_first.
 
 Local Open Scope string_like_scope.
 
+Local Arguments string_beq : simpl never.
+
 Lemma terminals_disjoint_search_for_not {G : grammar Ascii.ascii} (str : @String Ascii.ascii string_stringlike)
       {nt its}
       (H_disjoint : disjoint ascii_beq (possible_terminals_of G nt) (possible_first_terminals_of_production G its))
       {n}
       (pit : parse_of_item G (StringLike.take n str) (NonTerminal nt))
       (pits : parse_of_production G (StringLike.drop n str) its)
+      (H_reachable : production_is_reachable G (NonTerminal nt :: its))
+      (Hpit : Forall_parse_of_item (fun _ nt => List.In nt (Valid_nonterminals G)) pit)
+      (Hpits : Forall_parse_of_production (fun _ nt => List.In nt (Valid_nonterminals G)) pits)
 : (forall n' ch, n' < n
                         -> (take 1 (drop n' str)) ~= [ ch ]
                         -> list_bin ascii_beq ch (possible_terminals_of G nt))
@@ -232,27 +242,238 @@ Lemma terminals_disjoint_search_for_not {G : grammar Ascii.ascii} (str : @String
       \/ (forall ch, (take 1 (drop n str)) ~= [ ch ]
                      -> (negb (list_bin ascii_beq ch (possible_terminals_of G nt))))).
 Proof.
+  destruct H_reachable as [ nt' [ prefix [ HinV HinL ] ] ].
   apply and_comm; split.
-  { destruct (Compare_dec.le_dec (length str) n).
-    { left; split; trivial.
+  { destruct (Compare_dec.le_dec (length str) n); [ left | right ].
+    { split; trivial.
       pose proof (drop_length str n) as H.
       rewrite (proj2 (Nat.sub_0_le (length str) n)) in H by assumption.
-      generalize dependent (drop n str); clear.
+      generalize dependent (drop n str); clear -Hpit HinV HinL.
       intros.
       destruct s; simpl in *; try discriminate; [].
       clear H.
       unfold possible_first_terminals_of_production, possible_first_terminals_of_production', brute_force_parse_production; simpl.
       intros.
-      eapply parse_production_complete.
-      pose proof (@minimal_parse_of_production__of__parse_of_production _ _ _ G (@rdp_list_predata _ G) ""%string (S (WellFoundedParse.size_of_parse_production pits))
-                 (fun _ _ => @minimal_parse_of_nonterminal__of__parse_of_nonterminal _ _ _ _ _ _ _)
-                 ""%string
-                 (@reflexivity _ _ str_le_refl _)
-                 initial_nonterminals_data
-                 _ pits
-                 (Lt.lt_n_Sn _)
-                 (reflexivity _))
+      eapply parse_production_complete;
+        [ ..
+        | refine ((fun pf =>
+                     projT1 (@alt_all_elim
+                               _ _ G (@rdp_list_predata _ G) _ _ _
+                               (@minimal_parse_of_production__of__parse_of_production
+                                  _ _ _ G (@rdp_list_predata _ G) ""%string (S (WellFoundedParse.size_of_parse_production pits))
+                                  (fun _ _ => @minimal_parse_of_nonterminal__of__parse_of_nonterminal _ _ _ _ _ _ _)
+                                  ""%string
+                                  (@reflexivity _ _ str_le_refl _)
+                                  initial_nonterminals_data
+                                  _ pits
+                                  (Lt.lt_n_Sn _)
+                                  (reflexivity _)
+                                  pf))) _) ];
+        eauto.
+      { let p := match goal with p : parse_of_item _ _ _ |- _ => constr:p end in
+        let H := fresh in
+        rename p into H;
+          dependent destruction H; []; simpl in *; destruct_head prod.
+        unfold brute_force_parse_nonterminal.
+        repeat intro.
+        assert (str0 = ""%string)
+          by (destruct_head_hnf or; subst; trivial; try omega;
+              apply string_bl; assumption); subst.
+        let p := match goal with p : minimal_parse_of_nonterminal _ _ _ _ |- _ => constr:p end in
+        destruct (@parse_of_item_nonterminal__of__minimal_parse_of_nonterminal
+                    _ _ G (@rdp_list_predata _ G) _ _ _ _ p)
+          as [p' Hp'].
+        dependent destruction p'.
+        exact (@parse_nonterminal_complete
+                 _ _ _ G _ (brute_force_cdata G) rdp_list_rdata'
+                 _ _ _ Hp'). }
+      { intros.
+        refine (I : (fun _ _ _ => True) _ _ _). }
+      { intros str0 valid str1 pf.
+        eapply list_in_lb in HinV; [ | exact (@string_lb) ].
+        pose proof (@split_string_for_production_complete
+                      _ _  G _ (brute_force_cdata G)
+                      str0 valid str1 pf nt' HinV) as X.
+        induction (G nt'); simpl in *; destruct_head False; []; destruct_head prod.
+        match goal with
+          | [ H : ?a = ?b \/ ?H' |- _ ]
+            => let n := fresh in
+               destruct (@production_eq_dec' _ (@ascii_eq_dec) a b);
+              [ clear H; subst
+              | assert H' by intuition; clear H ]
+        end.
+        { match goal with
+            | [ H : Forall_tails ?f (?ls ++ ?x::?xs)
+                |- Forall_tails ?f ?xs ]
+              => clear -H;
+                revert H;
+                change (Forall_tails f (ls ++ x::xs) -> Forall_tails f xs);
+                generalize f;
+                clear;
+                intros ? H;
+                induction ls; simpl in *; intuition
+          end. }
+        { intuition. } }
+      { erewrite <- parse_of_production_respectful_refl.
+        erewrite <- parse_of_production_respectful_refl in Hpits.
+        revert Hpits.
+        apply (@expand_forall_parse_of_production
+                 _ _ _ G); simpl.
+        intros ????? H'.
+        apply list_in_lb; trivial; apply (@string_lb). } }
+    { clear -pits Hpits H_disjoint.
+      generalize dependent (drop n str).
+      generalize dependent (possible_terminals_of G nt).
+      intros terms H_disjoint str' pits Hpits ch H'.
+      simpl in *.
+      apply string_bl in H'.
+      inversion H'; subst; clear -pits H_disjoint H' Hpits.
+      apply Bool.negb_true_iff, Bool.not_true_iff_false.
+      intro H.
+      eapply list_in_bl in H; [ | exact (@ascii_bl) ].
+      eapply disjoint_bl in H_disjoint; try eassumption; try exact (@ascii_lb); [].
+      clear H_disjoint.
+      generalize dependent str'.
+      induction its; simpl.
+      { intros ? p.
+        dependent destruction p.
+        destruct str'; simpl in *; congruence. }
+      { intros str' pits Hpits H'.
+        dependent destruction pits; simpl in *.
+        edestruct (_ : item _);
+          repeat match goal with
+                   | [ H : Forall_parse_of_production ?f (ParseProductionCons _ _ ?p ?ps) |- _ ]
+                     => change (Forall_parse_of_item f p * Forall_parse_of_production f ps)%type in H
+                   | [ H : prod _ _ |- _ ] => destruct H
+                   | [ H : parse_of_item _ _ (Terminal _) |- _ ]
+                     => let H' := fresh in
+                        rename H into H';
+                          dependent destruction H'
+                   | [ H : parse_of_item _ _ (NonTerminal _) |- _ ]
+                     => let H' := fresh in
+                        rename H into H';
+                          dependent destruction H'
+                   | _ => progress simpl in *
+                   | [ H : is_true (string_beq _ _) |- _ ] => apply string_bl in H
+                   | [ |- _ \/ False ] => left
+                 end.
+        { destruct str' as [| ? str' ]; simpl in *; try congruence; [].
+          repeat match goal with
+                   | [ H : context[match ?e with _ => _ end] |- _ ] => atomic e; destruct e
+                   | _ => progress simpl in *
+                   | _ => congruence
+                   | [ H : is_true (string_beq _ _) |- _ ] => apply string_bl in H
+                 end. }
+        { apply in_or_app.
+          let n := match type of pits with parse_of_production _ (substring ?n _ _) _ => constr:n end in
+          destruct n.
+          { repeat match goal with H : _ |- _ => generalize dependent H; rewrite substring_correct0; intros end.
+            right.
+            match goal with
+              | [ |- context[might_be_empty ?e] ]
+                => destruct (might_be_empty e) eqn:?
+            end.
+            { eapply IHits; [ eassumption | ].
+              rewrite substring_correct3'; trivial. }
+            {
+              lazymatch goal with
+                | [ H : parse_of ?G ""%string (Lookup ?G ?s), H' : might_be_empty (possible_first_terminals_of ?G ?s) = false, H'' : In ?s (Valid_nonterminals ?G) |- _ ]
+                  => exfalso; clear -s H H' H''; revert s H H' H''
+              end.
+              intros s p H H'.
+              unfold possible_first_terminals_of in *.
+              unfold possible_first_terminals_of_nt in *.
+              rewrite Fix1_eq in H by apply possible_first_terminals_of_nt_step_ext.
+              simpl in *.
+              unfold possible_first_terminals_of_nt_step in *.
+              simpl in *.
+              edestruct dec;
+                [
+                | eapply list_in_lb in H'; [ | exact (@string_lb) ];
+                  unfold rdp_list_is_valid_nonterminal in *; congruence ].
+              simpl in *.
+              clear -p H.
+              induction (G s) as [ | x xs IHGs ]; simpl in *.
+              { dependent destruction p. }
+              { apply Bool.orb_false_iff in H.
+                destruct H as [H ?].
+                dependent destruction p.
+
+              Focus 2.
+
+              SearchAbout (substring 0).
+            eauto.
+
+            unfold possible_first_terminals_of at 1; simpl.
+            unfold possible_first_terminals_of_nt; simpl.
+            unfold possible_first_terminals_of_nt_step; simpl.
+            destruct (Valid_nonterminals G); simpl.
+          SearchAbout (substring _ 0).
+          { right; eauto.
+            eapply IHits.
+            eassumption.
+
+          edestruct might_be_empty.
+          {
+SearchAbout (In _ (_ ++ _)).
+          simpl in *.
+
+
+      dependent destruction pits; simpl.
+      SearchAbout true false.
+      dependent destruction
+      rewrite substring_substring in H'; simpl in H'.
+
+induction prefix; simpl in *; destruct_head prod; eauto.
+        simpl in *.
+        intros str0 valid str1 pf0.
+        specialize (pf str0 valid str1 pf0).
+        induction (Valid_nonterminals G); simpl in *.
+        { exfalso; destruct_head ex; intuition. }
+        {
+
+).
+
+
+
+
+          try eassumption; []; simpl.
+        apply and_assoc; split; [ | reflexivity ].
+        split.
+        { let p := match goal with p : minimal_parse_of_nonterminal _ _ _ _ |- _ => constr:p end in
+          destruct p; assumption. }
+        { destruct X.
+          destruct m.
+        let p :=
+
+
+        hnf; intros; simpl in *.
+                     pose proof (@parse_nonterminal_complete
+                                   _ _ _ G _ (brute_force_cdata G) rdp_list_rdata').
+        s
+ (@rdp_list_predata _ G)).
+        apply parse_nonterminal_complete; try eassumption.
+        { apply brute_force_cdata. }
+        { apply rdp_list_rdata'. }
+        { simpl.
+          split.
+          { let p := match goal with p : minimal_parse_of_nonterminal _ _ _ _ |- _ => constr:p end in
+            destruct p; assumption. }
+          {
+
+rewrite <- (parse_of_respectful_refl (pf := reflexivity _)).
+lazymatch goal with
+               | [ H : Forall_parse_of _ ?x |- _ ]
+                 => atomic x; rewrite <- (parse_of_respectful_refl (pf := reflexivity _)) in H
+            end.
+
+let p := match goal with p : minimal_parse_of_nonterminal _ _ _ _ |- _ => constr:p end in
+            destruct p; assumption. }
+ }
         as X; simpl in *.
+      pose ().
+
+
 SearchAbout (?x < S ?x).
       specialize (X (reflexivity _)).
                  (reflexivity );

@@ -97,9 +97,9 @@ Lemma forall_reachable_productions_helper {Char Char_beq}
                                   (forall_reachable_productions
                                      G
                                      (fun p0 (else_case : Comp T)
-                                      => if production_beq Char_beq p0 (x::xs)
-                                         then ct p0
-                                         else else_case)
+                                      => If production_beq Char_beq p0 (x::xs)
+                                         Then ct p0
+                                         Else else_case)
                                      (base x xs))
                                   v
                                 -> P2 x xs
@@ -287,7 +287,8 @@ Section IndexedImpl.
     (min (String.length (fst s) - fst (snd s)) (snd (snd s)))
       (only parsing).
 
-  Definition expanded_fallback_list
+  Definition expanded_fallback_list'
+             (P : String -> item Ascii.ascii -> production Ascii.ascii -> item Ascii.ascii -> production Ascii.ascii -> list nat -> Prop)
              (s : T)
              (it : item Ascii.ascii) (its : production Ascii.ascii)
              (dummy : list nat)
@@ -309,26 +310,139 @@ Section IndexedImpl.
                                      (fun _ => Comp (list nat))
                                      (fun (n : nat) => ret [n])
                                      { splits : list nat
-                                       | forall n,
-                                           n <= ilength s
-                                           -> forall
-                                             (pit : parse_of_item G (take n (string_of_indexed s)) (NonTerminal nt))
-                                             (pits : parse_of_production G (drop n (string_of_indexed s)) p'),
-                                             Forall_parse_of_item (fun _ nt => List.In nt (Valid_nonterminals G)) pit
-                                             -> Forall_parse_of_production (fun _ nt => List.In nt (Valid_nonterminals G)) pits
-                                             -> List.In n splits }%comp
+                                     | P
+                                         (string_of_indexed s)
+                                         (NonTerminal nt)
+                                         p'
+                                         it
+                                         its
+                                         splits }%comp
                                      (length_of_any G nt))
                            end)
                      Else else_case)
                  (ret dummy));
         ret (s, ls))%comp.
 
-  Global Arguments expanded_fallback_list / .
+  Global Arguments expanded_fallback_list' / .
 
+  Definition expanded_fallback_list
+    := expanded_fallback_list' (fun str it its _ _ => split_list_is_complete G str it its).
+  Definition split_list_is_complete_case
+             str it its it' its' splits
+    := forall n,
+         n <= length str
+         -> production_is_reachable G (it'::its')
+         -> forall (pit : parse_of_item G (take n str) it)
+                   (pits : parse_of_production G (drop n str) its),
+              Forall_parse_of_item (fun _ nt => List.In nt (Valid_nonterminals G)) pit
+              -> Forall_parse_of_production (fun _ nt => List.In nt (Valid_nonterminals G)) pits
+              -> List.In n splits.
+  Definition expanded_fallback_list_case
+    := expanded_fallback_list' split_list_is_complete_case.
+
+  Definition split_list_is_complete_alt
+    := (fun str it its splits
+        => forall n,
+             n <= length str
+             -> forall (pit : parse_of_item G (take n str) it)
+                       (pits : parse_of_production G (drop n str) its),
+                  Forall_parse_of_item (fun _ nt => List.In nt (Valid_nonterminals G)) pit
+                  -> Forall_parse_of_production (fun _ nt => List.In nt (Valid_nonterminals G)) pits
+                  -> List.In n splits).
+
+  Definition expanded_fallback_list_alt
+    := expanded_fallback_list' (fun str it its _ _ => split_list_is_complete_alt str it its).
+
+  Global Arguments expanded_fallback_list / .
+  Global Arguments expanded_fallback_list_alt / .
+  Global Arguments expanded_fallback_list_case / .
+
+  Lemma expanded_fallback_list'_ext'
+        (P1 P2 : String -> item Ascii.ascii -> production Ascii.ascii -> item Ascii.ascii -> production Ascii.ascii -> list nat -> Prop)
+        str it its dummy
+        (H : forall splits,
+               P2 (string_of_indexed str) it its it its splits
+               -> P1 (string_of_indexed str) it its it its splits)
+  : refine (expanded_fallback_list' P1 str it its dummy)
+           (expanded_fallback_list' P2 str it its dummy).
+  Proof.
+    simpl.
+    repeat intro; computes_to_inv; subst.
+    eapply BindComputes; [ | apply ReturnComputes ].
+    unfold forall_reachable_productions in *.
+    induction ((flatten
+                  (flatten
+                     (map (fun nt : string => map tails (G nt)) (Valid_nonterminals G)))))
+      as [ | x xs IHG ]; simpl in *; trivial; [].
+    match goal with
+      | [ |- context[production_beq ?x ?y ?z] ]
+        => destruct (production_beq x y z) eqn:Heqb
+    end;
+      simpl in *; eauto; [].
+    apply (production_bl (@ascii_bl)) in Heqb;
+      instantiate; subst; unfold option_rect, If_Then_Else in *;
+      repeat match goal with
+               | _ => assumption
+               | _ => solve [ eauto ]
+               | [ |- context[match ?e with _ => _ end] ]
+                 => atomic e; destruct e
+               | [ |- context[match ?e with _ => _ end] ]
+                 => destruct e eqn:?
+               | _ => progress simpl in *
+               | _ => progress computes_to_inv
+               | [ |- computes_to (Pick _) _ ] => apply PickComputes
+             end.
+  Qed.
+
+  Lemma expanded_fallback_list'_ext''
+        (P1 P2 : String -> item Ascii.ascii -> production Ascii.ascii -> item Ascii.ascii -> production Ascii.ascii -> list nat -> Prop)
+        str it its dummy
+        (H : forall_reachable_productions
+               G
+               (fun p H
+                => match p with
+                     | nil => True
+                     | it'::its'
+                       => forall splits,
+                            P2 (string_of_indexed str) it' its' it' its' splits
+                            -> P1 (string_of_indexed str) it' its' it' its' splits
+                   end /\ H)
+               True)
+  : refine (expanded_fallback_list' P1 str it its dummy)
+           (expanded_fallback_list' P2 str it its dummy).
+  Proof.
+    simpl.
+    repeat intro; computes_to_inv; subst.
+    eapply BindComputes; [ | apply ReturnComputes ].
+    unfold forall_reachable_productions in *.
+    induction ((flatten
+                  (flatten
+                     (map (fun nt : string => map tails (G nt)) (Valid_nonterminals G)))))
+      as [ | x xs IHG ]; simpl in *; trivial; [].
+    progress destruct_head and.
+    match goal with
+      | [ |- context[production_beq ?x ?y ?z] ]
+        => destruct (production_beq x y z) eqn:Heqb
+    end;
+      simpl in *; eauto; [].
+    apply (production_bl (@ascii_bl)) in Heqb;
+      instantiate; subst; unfold option_rect, If_Then_Else in *;
+      repeat match goal with
+               | _ => assumption
+               | _ => solve [ eauto ]
+               | [ |- context[match ?e with _ => _ end] ]
+                 => atomic e; destruct e
+               | [ |- context[match ?e with _ => _ end] ]
+                 => destruct e eqn:?
+               | _ => progress simpl in *
+               | _ => progress computes_to_inv
+               | [ |- computes_to (Pick _) _ ] => apply PickComputes
+             end.
+  Qed.
 
   (** Reference implementation of a [String] that can be split; has a [string], and a start index, and a length *)
 
-  Definition rindexed_spec : ADT (string_rep Ascii.ascii) := ADTRep T {
+  Definition rindexed_spec' P : ADT (string_rep Ascii.ascii) := ADTRep T {
     Def Constructor "new"(s : String.string) : rep :=
       ret (s, (0, String.length s)),
 
@@ -349,8 +463,11 @@ Section IndexedImpl.
 
     Def Method "splits"(s : rep, p : item Ascii.ascii * production Ascii.ascii) : list nat :=
       dummy <- { ls : list nat | True };
-      expanded_fallback_list s (fst p) (snd p) dummy
+      expanded_fallback_list' P s (fst p) (snd p) dummy
   }.
+
+  Definition rindexed_spec : ADT (string_rep Ascii.ascii)
+    := rindexed_spec' (fun str it its _ _ => split_list_is_complete G str it its).
 
   Local Ltac fin :=
     repeat match goal with
@@ -359,6 +476,7 @@ Section IndexedImpl.
              | _ => progress computes_to_inv
              | _ => progress subst
              | _ => progress rewrite ?minusr_minus in *
+             | [ H : (_, _) = (_, _) |- _ ] => inversion H; clear H
              | [ |- computes_to (Bind _ _) _ ]
                => refine ((fun H0 H1 => BindComputes _ _ _ _ H1 H0) _ _)
              | [ |- computes_to (Return ?x) ?y ]
@@ -445,9 +563,65 @@ Section IndexedImpl.
                          | _ => omega
                        end ].
 
+  Local Arguments expanded_fallback_list' : simpl never.
+  Local Opaque expanded_fallback_list'.
+
+  Lemma FirstStep_helper_1
+  : refineADT (rindexed_spec' split_list_is_complete_case) rindexed_spec.
+  Proof.
+    econstructor 1; try instantiate (1 := eq);
+    eapply Iterate_Ensemble_BoundedIndex_equiv;
+    simpl; intros; repeat split;
+    try solve [ intuition; intros; try simplify with monad laws;
+                repeat intro; computes_to_inv; subst; simpl;
+                fin ].
+    intros; subst.
+    setoid_rewrite refineEquiv_pick_eq'.
+    simplify with monad laws.
+    assert (H' : forall A B (x : A * B), (fst x, snd x) = x) by (intros; destruct x; reflexivity).
+    setoid_rewrite H'.
+    simplify with monad laws.
+    eapply refine_under_bind_helper_2; [ | reflexivity ]; instantiate; simpl.
+    intros.
+    etransitivity; [ | eassumption ]; instantiate; clear.
+    apply expanded_fallback_list'_ext'; simpl.
+    exact (fun _ x => x).
+  Qed.
+
+  Lemma FirstStep_helper_2
+  : refineADT (rindexed_spec' (fun str it its _ _ => split_list_is_complete_alt str it its))
+              (rindexed_spec' split_list_is_complete_case).
+  Proof.
+    econstructor 1; try instantiate (1 := eq);
+    eapply Iterate_Ensemble_BoundedIndex_equiv;
+    simpl; intros; repeat split;
+    try solve [ intuition; intros; try simplify with monad laws;
+                repeat intro; computes_to_inv; subst; simpl;
+                fin ].
+    intros; subst.
+    Local Opaque expanded_fallback_list'.
+    setoid_rewrite refineEquiv_pick_eq'.
+    simplify with monad laws.
+    assert (H' : forall A B (x : A * B), (fst x, snd x) = x) by (intros; destruct x; reflexivity).
+    setoid_rewrite H'.
+    simplify with monad laws.
+    eapply refine_under_bind_helper_2; [ | reflexivity ]; instantiate; simpl.
+    intros.
+    etransitivity; [ | eassumption ]; instantiate; clear.
+    apply expanded_fallback_list'_ext''.
+    rewrite <- production_is_reachable__forall_reachable_productions'.
+    unfold split_list_is_complete_case, split_list_is_complete_alt.
+    eauto.
+  Qed.
+
+  Local Transparent expanded_fallback_list'.
+
   Lemma FirstStep
   : refineADT (string_spec G) rindexed_spec.
   Proof.
+    refine (transitivityT _ _ _ _ FirstStep_helper_1).
+    refine (transitivityT _ _ _ _ FirstStep_helper_2).
+    unfold rindexed_spec', expanded_fallback_list', split_list_is_complete_alt.
     econstructor 1 with (AbsR := (fun r_o r_n =>
                                     substring (fst (snd r_n)) (snd (snd r_n)) (fst r_n) = r_o));
 
@@ -455,72 +629,72 @@ Section IndexedImpl.
         simpl; intuition; intros; try simplify with monad laws;
         repeat intro; computes_to_inv; subst; simpl;
         fin.
-    { intros.
-      match goal with
-        | [ H' : appcontext[forall_reachable_productions], H : production_is_reachable G (?x::?xs) |- _ ]
-          => move H' at top; move H at top; generalize dependent xs; intros xs H H';
-             move H' at top; move H at top; generalize dependent x; intros x H; revert x xs H
-      end.
-      refine (proj2 (@production_is_reachable__forall_reachable_productions' Ascii.ascii G _) _).
-      apply (forall_reachable_productions_helper (@ascii_bl) (@ascii_lb)).
-      unfold forall_reachable_productions.
-      lazymatch goal with
-        | [ |- context[fold_right (fun x y => @?P x /\ y) _ _] ]
-          => let H' := fresh in
-             pose proof (fold_right_map P and) as H';
-               unfold compose in H'; simpl in H';
-               rewrite <- H'; clear H'
-      end.
-      generalize (flatten
-                    (flatten
-                       (map (fun nt : string => map tails (G nt))
-                            (Valid_nonterminals G)))).
-      intro ls; induction ls; simpl; trivial; [].
-      { repeat match goal with
-                 | [ |- _ /\ _ ] => split
-                 | [ |- context[match ?e with _ => _ end] ] => atomic e; destruct e
-                 | [ |- context[production_beq _ ?x ?x] ] => rewrite (production_lb (@ascii_lb) eq_refl)
-                 | _ => solve [ trivial ]
-               end.
-        { clear IHls; intros; abstract fin. }
-        { clear IHls; intros; abstract fin. }
-        { clear IHls; intros; abstract fin. }
-        { clear IHls; unfold If_Then_Else, option_rect.
-          repeat match goal with
-                   | [ |- context[if has_only_terminals ?e then _ else _] ]
-                     => case_eq (has_only_terminals e)
-                   | [ |- context[match ?e with None => _ | _ => _ end] ]
-                     => case_eq e
-                 end;
-            try
-              abstract (
-                repeat match goal with
-                         | _ => intro
-                         | _ => progress computes_to_inv
-                         | _ => progress subst
-                         | [ |- In _ [_] ] => left
-                         | [ H : collapse_length_result ?e = Some _ |- _ ]
-                           => (revert H; case_eq e; simpl)
-                         | [ H : Some _ = Some _ |- _ ]
-                           => (inversion H; clear H)
-                         | _ => congruence
-                         | [ H : length_of_any ?G ?nt = same_length ?n,
-                                 p : parse_of_item ?G ?str (NonTerminal ?nt) |- _ ]
-                           => (pose proof (@has_only_terminals_parse_of_item_length G n nt H str p); clear H)
-                         | _ => erewrite <- has_only_terminals_length by eassumption
-                         | _ => progress rewrite ?substring_length, ?Nat.add_sub, ?Nat.sub_0_r, ?Nat.add_0_r, ?minusr_minus
-                         | [ H : _ |- _ ] => generalize dependent H; progress rewrite ?substring_length, ?Nat.add_sub, ?Nat.sub_0_r, ?Nat.add_0_r, ?minusr_minus
-                         | [ H : ?y <= ?x |- context[min ?x ?y] ] => rewrite (Min.min_r x y) by assumption
-                         | [ H : ?x <= ?y |- context[min ?x ?y] ] => rewrite (Min.min_l x y) by assumption
-                         | [ |- context[min ?x (?y + ?z) - ?z] ]
-                           => rewrite <- (Nat.sub_min_distr_r x (y + z) z)
-                         | [ H : context[min ?x (?y + ?z) - ?z] |- _ ]
-                           => generalize dependent H; rewrite <- (Nat.sub_min_distr_r x (y + z) z)
-                         | [ |- context[min (?x - ?y) ?x] ] => rewrite (Min.min_l (x - y) x) by omega
-                         | [ |- context[min ?x (?x - ?y)] ] => rewrite (Min.min_r x (x - y)) by omega
-                         | _ => omega
-                         | _ => solve [ eauto ]
-                       end
-              ). } } }
+    intros.
+    match goal with
+      | [ H' : appcontext[forall_reachable_productions], H : production_is_reachable G (?x::?xs) |- _ ]
+        => move H' at top; move H at top; generalize dependent xs; intros xs H H';
+           move H' at top; move H at top; generalize dependent x; intros x H; revert x xs H
+    end.
+    refine (proj2 (@production_is_reachable__forall_reachable_productions' Ascii.ascii G _) _).
+    apply (forall_reachable_productions_helper (@ascii_bl) (@ascii_lb)).
+    unfold forall_reachable_productions.
+    lazymatch goal with
+      | [ |- context[fold_right (fun x y => @?P x /\ y) _ _] ]
+        => let H' := fresh in
+           pose proof (fold_right_map P and) as H';
+             unfold compose in H'; simpl in H';
+             rewrite <- H'; clear H'
+    end.
+    generalize (flatten
+                  (flatten
+                     (map (fun nt : string => map tails (G nt))
+                          (Valid_nonterminals G)))).
+    intro ls; induction ls; simpl; trivial; [].
+    { repeat match goal with
+               | [ |- _ /\ _ ] => split
+               | [ |- context[match ?e with _ => _ end] ] => atomic e; destruct e
+               | [ |- context[production_beq _ ?x ?x] ] => rewrite (production_lb (@ascii_lb) eq_refl)
+               | _ => solve [ trivial ]
+             end.
+      { clear IHls; intros; abstract fin. }
+      { clear IHls; intros; abstract fin. }
+      { clear IHls; intros; abstract fin. }
+      { clear IHls; unfold If_Then_Else, option_rect.
+        repeat match goal with
+                 | [ |- context[if has_only_terminals ?e then _ else _] ]
+                   => case_eq (has_only_terminals e)
+                 | [ |- context[match ?e with None => _ | _ => _ end] ]
+                   => case_eq e
+               end;
+          try
+            abstract (
+              repeat match goal with
+                       | _ => intro
+                       | _ => progress computes_to_inv
+                       | _ => progress subst
+                       | [ |- In _ [_] ] => left
+                       | [ H : collapse_length_result ?e = Some _ |- _ ]
+                         => (revert H; case_eq e; simpl)
+                       | [ H : Some _ = Some _ |- _ ]
+                         => (inversion H; clear H)
+                       | _ => congruence
+                       | [ H : length_of_any ?G ?nt = same_length ?n,
+                               p : parse_of_item ?G ?str (NonTerminal ?nt) |- _ ]
+                         => (pose proof (@has_only_terminals_parse_of_item_length G n nt H str p); clear H)
+                       | _ => erewrite <- has_only_terminals_length by eassumption
+                       | _ => progress rewrite ?substring_length, ?Nat.add_sub, ?Nat.sub_0_r, ?Nat.add_0_r, ?minusr_minus
+                       | [ H : _ |- _ ] => generalize dependent H; progress rewrite ?substring_length, ?Nat.add_sub, ?Nat.sub_0_r, ?Nat.add_0_r, ?minusr_minus
+                                                                 | [ H : ?y <= ?x |- context[min ?x ?y] ] => rewrite (Min.min_r x y) by assumption
+                                                                 | [ H : ?x <= ?y |- context[min ?x ?y] ] => rewrite (Min.min_l x y) by assumption
+                                                                 | [ |- context[min ?x (?y + ?z) - ?z] ]
+                                                                   => rewrite <- (Nat.sub_min_distr_r x (y + z) z)
+                                                                 | [ H : context[min ?x (?y + ?z) - ?z] |- _ ]
+                                                                   => generalize dependent H; rewrite <- (Nat.sub_min_distr_r x (y + z) z)
+                                                                                            | [ |- context[min (?x - ?y) ?x] ] => rewrite (Min.min_l (x - y) x) by omega
+                                                                                            | [ |- context[min ?x (?x - ?y)] ] => rewrite (Min.min_r x (x - y)) by omega
+                                                                                            | _ => omega
+                                                                                            | _ => solve [ eauto ]
+                     end
+            ). } }
   Qed.
 End IndexedImpl.

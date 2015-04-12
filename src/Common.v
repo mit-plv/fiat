@@ -610,7 +610,7 @@ Ltac pre_higher_order_reflexivity_single_evar :=
   end.
 
 Ltac higher_order_reflexivity_single_evar_step :=
-  idtac;
+  clear;
   match goal with
     | [ |- ?f ?x = ?R ] => is_var x; revert x
     | [ |- ?f ?x = ?R ]
@@ -628,7 +628,7 @@ Ltac higher_order_reflexivity_single_evar_step :=
 
 Ltac higher_order_reflexivity_single_evar :=
   pre_higher_order_reflexivity_single_evar;
-  repeat higher_order_reflexivity_single_evar_step.
+  repeat (reflexivity || higher_order_reflexivity_single_evar_step).
 
 Ltac higher_order_1_reflexivityT' :=
   let a := match goal with |- ?R ?a (?f ?x) => constr:(a) end in
