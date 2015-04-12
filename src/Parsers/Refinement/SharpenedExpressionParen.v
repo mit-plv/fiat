@@ -47,7 +47,6 @@ Global Arguments ComputationalSplitter / .
 
 Require Import ADTSynthesis.Parsers.ParserFromParserADT.
 Require Import ADTSynthesis.Parsers.ExtrOcamlParsers.
-Import ADTSynthesis.Parsers.ExtrOcamlParsers.HideProofs.
 (*
 Ltac do_simpl_in x hyp :=
   let x' := (eval simpl in x) in
@@ -59,7 +58,10 @@ Ltac do_compute_in x hyp :=
 Definition paren_expr_parser (str : String.string) : bool.
 Proof.
   pose (has_parse (parser ComputationalSplitter) str) as impl.
-  Timeout 2 cbv beta iota zeta delta [has_parse parser ParserImplementationOptimized.parser transfer_parser prod_relation ltof list_to_productions new_string_of_string new_string_of_base_string item_ascii_cons item_ascii item_of_char item_of_string BooleanRecognizer.parse_production BooleanRecognizer.parse_item] in impl.
+  Timeout 60 cbv beta iota zeta delta [has_parse parser ParserImplementationOptimized.parser transfer_parser prod_relation ltof list_to_productions new_string_of_string new_string_of_base_string item_ascii_cons item_ascii item_of_char item_of_string BooleanRecognizer.parse_production BooleanRecognizer.parse_item ComputationalSplitter BooleanBaseTypes.split_string_for_production If_Then_Else fst snd projT1 projT2 ContextFreeGrammarEquality.production_beq Equality.list_beq ContextFreeGrammarEquality.item_beq Equality.ascii_beq StringBound.bindex StringBound.indexb ComputationalADT.cConstructors Equality.bool_beq map hd fold_left fold_right list_to_grammar Start_symbol Lookup bool_rect StringLike.String item_ascii_cons item_ascii item_of_char item_of_string new_string_of_base_string BooleanRecognizer.parse_production BooleanRecognizer.parse_item BooleanBaseTypes.split_string_for_production ParserImplementation.parser is_char StringLike.length string_stringlike BooleanRecognizerOptimized.parse_nonterminal_opt proj1_sig proj2_sig ComputationalADT.cADT string_rep ComputationalADT.LiftcADT SplitterFromParserADT.adt_based_splitter orb andb] in impl.
+
+Print CallConstructor.
+Locate "=p".
   Timeout 2 simpl is_char in impl.
   Timeout 2 simpl ((CallConstructor (projT1 ComputationalSplitter) "new")) in impl.
   Timeout 2 cbv beta iota zeta in impl.
@@ -126,6 +128,8 @@ Timeout 2 simpl @list_to_grammar in impl.
 Time Definition paren_expr_parser (str : String.string) : bool
   := Eval simpl in has_parse (parser ComputationalSplitter) str.
 
+Print paren_expr_parser.
+Import ADTSynthesis.Parsers.ExtrOcamlParsers.HideProofs.
 Print paren_expr_parser.
 
 Recursive Extraction paren_expr_parser.
