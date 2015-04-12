@@ -193,13 +193,13 @@ Section Fix1.
                (F_ext : forall x (f g : forall y, R y x -> forall b, @P y b),
                           (forall y (p : R y x) b, f y p b = g y p b)
                           -> forall b, @F x f b = @F x g b)
-    : forall a b, @Fix1 F a b = @F a (fun y (_ : R y a) b => @Fix1 F y b) b.
+    : forall a b, @Fix1 F a b = @F a (fun y (_ : R y a) => @Fix1 F y) b.
     Proof. Fix_eq_t F_ext Rwf. Defined.
 
     Definition Fix1_rect
                (Q : forall a b, @P a b -> Type)
                (H : forall x, (forall y, R y x -> forall b, @Q y b (@Fix1 F y b))
-                              -> forall b, @Q x b (@F x (fun (y : A) (_ : R y x) => @Fix1 F y) b))
+                              -> forall b, @Q x b (@F x (fun y (_ : R y x) => @Fix1 F y) b))
                (F_ext : forall x (f g : forall y, R y x -> forall b, @P y b),
                           (forall y (p : R y x) b, f y p b = g y p b)
                           -> forall b, @F x f b = @F x g b)
@@ -239,13 +239,13 @@ Section Fix2.
                (F_ext : forall x (f g : forall y, R y x -> forall b c, @P y b c),
                           (forall y (p : R y x) b c, f y p b c = g y p b c)
                           -> forall b c, @F x f b c = @F x g b c)
-    : forall a b c, @Fix2 F a b c = @F a (fun y (_ : R y a) b c => @Fix2 F y b c) b c.
+    : forall a b c, @Fix2 F a b c = @F a (fun y (_ : R y a) => @Fix2 F y) b c.
     Proof. Fix_eq_t F_ext Rwf. Defined.
 
     Definition Fix2_rect
                (Q : forall a b c, @P a b c -> Type)
                (H : forall x, (forall y, R y x -> forall b c, @Q y b c (@Fix2 F y b c))
-                              -> forall b c, @Q x b c (@F x (fun (y : A) (_ : R y x) => @Fix2 F y) b c))
+                              -> forall b c, @Q x b c (@F x (fun y (_ : R y x) => @Fix2 F y) b c))
                (F_ext : forall x (f g : forall y, R y x -> forall b c, @P y b c),
                           (forall y (p : R y x) b c, f y p b c = g y p b c)
                           -> forall b c, @F x f b c = @F x g b c)
@@ -285,13 +285,13 @@ Section Fix3.
                (F_ext : forall x (f g : forall y, R y x -> forall b c d, @P y b c d),
                           (forall y (p : R y x) b c d, f y p b c d = g y p b c d)
                           -> forall b c d, @F x f b c d = @F x g b c d)
-    : forall a b c d, @Fix3 F a b c d = @F a (fun y (_ : R y a) b c d => @Fix3 F y b c d) b c d.
+    : forall a b c d, @Fix3 F a b c d = @F a (fun y (_ : R y a) => @Fix3 F y) b c d.
     Proof. Fix_eq_t F_ext Rwf. Defined.
 
     Definition Fix3_rect
                (Q : forall a b c d, @P a b c d -> Type)
                (H : forall x, (forall y, R y x -> forall b c d, @Q y b c d (@Fix3 F y b c d))
-                              -> forall b c d, @Q x b c d (@F x (fun (y : A) (_ : R y x) => @Fix3 F y) b c d))
+                              -> forall b c d, @Q x b c d (@F x (fun y (_ : R y x) => @Fix3 F y) b c d))
                (F_ext : forall x (f g : forall y, R y x -> forall b c d, @P y b c d),
                           (forall y (p : R y x) b c d, f y p b c d = g y p b c d)
                           -> forall b c d, @F x f b c d = @F x g b c d)
@@ -329,13 +329,13 @@ Section Fix4.
                (F_ext : forall x (f g : forall y, R y x -> forall b c d e, @P y b c d e),
                           (forall y (p : R y x) b c d e, f y p b c d e = g y p b c d e)
                           -> forall b c d e, @F x f b c d e = @F x g b c d e)
-    : forall a b c d e, @Fix4 F a b c d e = @F a (fun y (_ : R y a) b c d e => @Fix4 F y b c d e) b c d e.
+    : forall a b c d e, @Fix4 F a b c d e = @F a (fun y (_ : R y a) => @Fix4 F y) b c d e.
     Proof. Fix_eq_t F_ext Rwf. Defined.
 
     Definition Fix4_rect
                (Q : forall a b c d e, @P a b c d e -> Type)
                (H : forall x, (forall y, R y x -> forall b c d e, @Q y b c d e (@Fix4 F y b c d e))
-                              -> forall b c d e, @Q x b c d e (@F x (fun (y : A) (_ : R y x) => @Fix4 F y) b c d e))
+                              -> forall b c d e, @Q x b c d e (@F x (fun y (_ : R y x) => @Fix4 F y) b c d e))
                (F_ext : forall x (f g : forall y, R y x -> forall b c d e, @P y b c d e),
                           (forall y (p : R y x) b c d e, f y p b c d e = g y p b c d e)
                           -> forall b c d e, @F x f b c d e = @F x g b c d e)
@@ -358,3 +358,47 @@ Section Fix4.
 End Fix4.
 
 Arguments Fix4_Proper_eq {A B C D E R Rwf P} _ _ _ _ _ _ _ _.
+
+Section Fix5.
+  Context A (B : A -> Type) (C : forall a, B a -> Type) (D : forall a b, C a b -> Type) (E : forall a b c, D a b c -> Type) (H : forall a b c d, E a b c d -> Type)
+          (R : A -> A -> Prop) (Rwf : well_founded R)
+          (P : forall a b c d e, H a b c d e -> Type).
+
+  Local Notation Fix5 := (@Fix A R Rwf (fun a : A => forall b c d e h, @P a b c d e h)).
+
+  Section F.
+    Context (F : forall x : A, (forall y : A, R y x -> forall b c d e h, @P y b c d e h) -> forall b c d e h, @P x b c d e h).
+
+    Definition Fix5_eq
+               (F_ext : forall x (f g : forall y, R y x -> forall b c d e h, @P y b c d e h),
+                          (forall y (p : R y x) b c d e h, f y p b c d e h = g y p b c d e h)
+                          -> forall b c d e h, @F x f b c d e h = @F x g b c d e h)
+    : forall a b c d e h, @Fix5 F a b c d e h = @F a (fun y (_ : R y a) => @Fix5 F y) b c d e h.
+    Proof. Fix_eq_t F_ext Rwf. Defined.
+
+    Definition Fix5_rect
+               (Q : forall a b c d e h, @P a b c d e h -> Type)
+               (H0 : forall x, (forall y, R y x -> forall b c d e h, @Q y b c d e h (@Fix5 F y b c d e h))
+                              -> forall b c d e h, @Q x b c d e h (@F x (fun (y : A) (_ : R y x) => @Fix5 F y) b c d e h))
+               (F_ext : forall x (f g : forall y, R y x -> forall b c d e h, @P y b c d e h),
+                          (forall y (p : R y x) b c d e h, f y p b c d e h = g y p b c d e h)
+                          -> forall b c d e h, @F x f b c d e h = @F x g b c d e h)
+               a b c d e h
+    : @Q a b c d e h (@Fix5 F a b c d e h).
+    Proof.
+      induction (Rwf a).
+      rewrite Fix5_eq; auto.
+    Defined.
+  End F.
+
+  Global Instance Fix5_Proper_eq
+  : Proper
+      ((forall_relation (fun a =>
+                           (forall_relation (fun a' => pointwise_relation _ (forall_relation (fun b => forall_relation (fun c => forall_relation (fun d => forall_relation (fun e => forall_relation (fun h => eq))))))))
+                             ==> (forall_relation (fun b => forall_relation (fun c => forall_relation (fun d => forall_relation (fun e => forall_relation (fun h => eq))))))))
+         ==> (forall_relation (fun a => forall_relation (fun b => forall_relation (fun c => forall_relation (fun d => forall_relation (fun e => forall_relation (fun h => eq))))))))
+      Fix5.
+  Proof. Fix_Proper_t @Fix5_eq Rwf. Qed.
+End Fix5.
+
+Arguments Fix5_Proper_eq {A B C D E H R Rwf P} _ _ _ _ _ _ _ _ _.
