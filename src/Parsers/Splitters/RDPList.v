@@ -1,7 +1,7 @@
 (** * Definition of the part of boolean-returning CFG parser-recognizer that instantiates things to lists *)
 Require Import Coq.Lists.List Coq.Strings.String Coq.Arith.Wf_nat.
 Require Import ADTSynthesis.Parsers.ContextFreeGrammar.
-Require Import ADTSynthesis.Parsers.BaseTypes ADTSynthesis.Parsers.BooleanBaseTypes.
+Require Import ADTSynthesis.Parsers.BaseTypes ADTSynthesis.Parsers.CorrectnessBaseTypes.
 Require Import ADTSynthesis.Common.Equality.
 
 Set Implicit Arguments.
@@ -122,16 +122,28 @@ Section recursive_descent_parser_list.
            end.
   Qed.
 
+  Lemma rdp_list_remove_nonterminal_noninc (ls : rdp_list_nonterminals_listT) (nonterminal : string)
+  : ~ rdp_list_nonterminals_listT_R ls (rdp_list_remove_nonterminal ls nonterminal).
+  Proof.
+    simpl. unfold ltof, rdp_list_remove_nonterminal; intro H.
+    cut (Datatypes.length ls < Datatypes.length ls); try omega.
+    eapply Lt.lt_le_trans; [ eassumption | ].
+    apply filter_list_dec.
+  Qed.
+
   Global Instance rdp_list_predata : parser_computational_predataT
     := { nonterminals_listT := rdp_list_nonterminals_listT;
          initial_nonterminals_data := Valid_nonterminals G;
          is_valid_nonterminal := rdp_list_is_valid_nonterminal;
          remove_nonterminal := rdp_list_remove_nonterminal;
-         nonterminals_listT_R := rdp_list_nonterminals_listT_R;
-         remove_nonterminal_dec := rdp_list_remove_nonterminal_dec;
-         ntl_wf := rdp_list_ntl_wf }.
+         nonterminals_length := @List.length _
+         (*nonterminals_listT_R := rdp_list_nonterminals_listT_R;*)
+         (*remove_nonterminal_dec := rdp_list_remove_nonterminal_dec;*)
+         (*ntl_wf := rdp_list_ntl_wf*) }.
 
   Global Instance rdp_list_rdata' : @parser_removal_dataT' rdp_list_predata
-    := { remove_nonterminal_1 := rdp_list_remove_nonterminal_1;
+    := { remove_nonterminal_dec := rdp_list_remove_nonterminal_dec;
+         remove_nonterminal_noninc := rdp_list_remove_nonterminal_noninc;
+         remove_nonterminal_1 := rdp_list_remove_nonterminal_1;
          remove_nonterminal_2 := rdp_list_remove_nonterminal_2 }.
 End recursive_descent_parser_list.
