@@ -16,11 +16,6 @@ Section cfg.
   Definition sub_nonterminals_listT (x y : nonterminals_listT) : Prop
     := forall p, is_valid_nonterminal x p -> is_valid_nonterminal y p.
 
-  Context (nonterminals_listT_R_respectful : forall x y,
-                                        sub_nonterminals_listT x y
-                                        -> x <> y
-                                        -> nonterminals_listT_R x y).
-
   Lemma remove_nonterminal_3
         {ls ps ps'} (H : is_valid_nonterminal ls ps = false)
   : is_valid_nonterminal (remove_nonterminal ls ps) ps' = is_valid_nonterminal ls ps'.
@@ -71,55 +66,55 @@ Section cfg.
       current [String] must be no longer than. *)
 
   Inductive minimal_parse_of
-  : forall (str0 : String) (valid : nonterminals_listT)
+  : forall (len0 : nat) (valid : nonterminals_listT)
            (str : String),
       productions Char -> Type :=
-  | MinParseHead : forall str0 valid str pat pats,
-                     @minimal_parse_of_production str0 valid str pat
-                     -> @minimal_parse_of str0 valid str (pat::pats)
-  | MinParseTail : forall str0 valid str pat pats,
-                     @minimal_parse_of str0 valid str pats
-                     -> @minimal_parse_of str0 valid str (pat::pats)
+  | MinParseHead : forall len0 valid str pat pats,
+                     @minimal_parse_of_production len0 valid str pat
+                     -> @minimal_parse_of len0 valid str (pat::pats)
+  | MinParseTail : forall len0 valid str pat pats,
+                     @minimal_parse_of len0 valid str pats
+                     -> @minimal_parse_of len0 valid str (pat::pats)
   with minimal_parse_of_production
-  : forall (str0 : String) (valid : nonterminals_listT)
+  : forall (len0 : nat) (valid : nonterminals_listT)
            (str : String),
       production Char -> Type :=
-  | MinParseProductionNil : forall str0 valid str,
+  | MinParseProductionNil : forall len0 valid str,
                               length str = 0
-                              -> @minimal_parse_of_production str0 valid str nil
-  | MinParseProductionCons : forall str0 valid str n pat pats,
-                               str ≤s str0
-                               -> @minimal_parse_of_item str0 valid (take n str) pat
-                               -> @minimal_parse_of_production str0 valid (drop n str) pats
-                               -> @minimal_parse_of_production str0 valid str (pat::pats)
+                              -> @minimal_parse_of_production len0 valid str nil
+  | MinParseProductionCons : forall len0 valid str n pat pats,
+                               length str <= len0
+                               -> @minimal_parse_of_item len0 valid (take n str) pat
+                               -> @minimal_parse_of_production len0 valid (drop n str) pats
+                               -> @minimal_parse_of_production len0 valid str (pat::pats)
   with minimal_parse_of_item
-  : forall (str0 : String) (valid : nonterminals_listT)
+  : forall (len0 : nat) (valid : nonterminals_listT)
            (str : String),
       item Char -> Type :=
-  | MinParseTerminal : forall str0 valid str ch,
+  | MinParseTerminal : forall len0 valid str ch,
                          str ~= [ ch ]
-                         -> @minimal_parse_of_item str0 valid str (Terminal ch)
+                         -> @minimal_parse_of_item len0 valid str (Terminal ch)
   | MinParseNonTerminal
-    : forall str0 valid str (nt : String.string),
-        @minimal_parse_of_nonterminal str0 valid str nt
-        -> @minimal_parse_of_item str0 valid str (NonTerminal nt)
+    : forall len0 valid str (nt : String.string),
+        @minimal_parse_of_nonterminal len0 valid str nt
+        -> @minimal_parse_of_item len0 valid str (NonTerminal nt)
   with minimal_parse_of_nonterminal
-  : forall (str0 : String) (valid : nonterminals_listT)
+  : forall (len0 : nat) (valid : nonterminals_listT)
            (str : String),
       String.string -> Type :=
   | MinParseNonTerminalStrLt
-    : forall str0 valid (nt : String.string) str,
-        length str < length str0
+    : forall len0 valid (nt : String.string) str,
+        length str < len0
         -> is_valid_nonterminal initial_nonterminals_data nt
-        -> @minimal_parse_of str initial_nonterminals_data str (Lookup G nt)
-        -> @minimal_parse_of_nonterminal str0 valid str nt
+        -> @minimal_parse_of (length str) initial_nonterminals_data str (Lookup G nt)
+        -> @minimal_parse_of_nonterminal len0 valid str nt
   | MinParseNonTerminalStrEq
-    : forall str0 str valid nonterminal,
-        str =s str0
+    : forall len0 str valid nonterminal,
+        length str = len0
         -> is_valid_nonterminal initial_nonterminals_data nonterminal
         -> is_valid_nonterminal valid nonterminal
-        -> @minimal_parse_of str0 (remove_nonterminal valid nonterminal) str (Lookup G nonterminal)
-        -> @minimal_parse_of_nonterminal str0 valid str nonterminal.
+        -> @minimal_parse_of len0 (remove_nonterminal valid nonterminal) str (Lookup G nonterminal)
+        -> @minimal_parse_of_nonterminal len0 valid str nonterminal.
 
   Global Instance sub_nonterminals_listT_Reflexive : Reflexive sub_nonterminals_listT
     := fun x y f => f.
@@ -161,5 +156,27 @@ Section cfg.
   Proof.
     intros p' H'.
     rewrite remove_nonterminal_5; intuition (subst; eauto; congruence).
+  Qed.
+
+  Lemma remove_nonterminal_noninc' {ls nt}
+  : nonterminals_length (remove_nonterminal ls nt) <= nonterminals_length ls.
+  Proof.
+    apply NPeano.Nat.nlt_ge.
+    apply remove_nonterminal_noninc.
+  Qed.
+
+  Lemma nonempty_nonterminals {ls nt} (H : is_valid_nonterminal ls nt)
+  : 0 < nonterminals_length ls.
+  Proof.
+    eapply Lt.le_lt_trans;
+    [ apply Le.le_0_n
+    | exact (remove_nonterminal_dec ls nt H) ].
+  Qed.
+
+  Lemma nonempty_nonterminals' {ls nt} (H : is_valid_nonterminal ls nt)
+  : negb (EqNat.beq_nat (nonterminals_length ls) 0).
+  Proof.
+    pose proof (nonempty_nonterminals H).
+    destruct (nonterminals_length ls); simpl; try reflexivity; try omega.
   Qed.
 End cfg.

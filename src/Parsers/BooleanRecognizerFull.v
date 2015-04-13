@@ -20,13 +20,13 @@ Section example_parse_string_grammar.
              (str : @String Ascii.ascii _)
   : production Ascii.ascii
     -> bool
-    := let data := @brute_force_data Ascii.ascii _ G in parse_production (fun str' _ nt => brute_force_parse_nonterminal str' nt) (reflexivity str).
+    := let data := @brute_force_data Ascii.ascii _ G in parse_production (fun str' _ _ nt => brute_force_parse_nonterminal str' nt) str (reflexivity (length str)).
 
   Definition brute_force_parse_productions
              (str : @String Ascii.ascii _)
   : productions Ascii.ascii
     -> bool
-    := let data := @brute_force_data Ascii.ascii _ G in parse_productions (fun str' _ nt => brute_force_parse_nonterminal str' nt) (reflexivity str).
+    := let data := @brute_force_data Ascii.ascii _ G in parse_productions (fun str' _ _ nt => brute_force_parse_nonterminal str' nt) str (reflexivity (length str)).
 
   Definition brute_force_parse_item
              (str : @String Ascii.ascii _)

@@ -4,7 +4,7 @@ Require Import Coq.Numbers.Natural.Peano.NPeano Coq.Arith.Compare_dec Coq.Arith.
 Require Import ADTSynthesis.Parsers.Grammars.Trivial ADTSynthesis.Parsers.Grammars.ABStar.
 Require Import ADTSynthesis.Parsers.Splitters.RDPList ADTSynthesis.Parsers.Splitters.BruteForce.
 Require Import ADTSynthesis.Parsers.ContextFreeGrammar.
-Require Import ADTSynthesis.Parsers.BaseTypes ADTSynthesis.Parsers.BooleanBaseTypes.
+Require Import ADTSynthesis.Parsers.BaseTypes ADTSynthesis.Parsers.CorrectnessBaseTypes.
 Require Import ADTSynthesis.Parsers.StringLike.String.
 Require Import ADTSynthesis.Parsers.BooleanRecognizer.
 Require Import ADTSynthesis.Parsers.BooleanRecognizerFull.

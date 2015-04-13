@@ -104,6 +104,7 @@ Section parser.
   Local Ltac snd_cMethods_comp := repeat snd_cMethods_comp'.
 
   Local Notation StringT := { r : cRep (projT1 splitter_impl) | exists orig, AbsR (projT2 splitter_impl) orig r }%type (only parsing).
+  Local Notation StringT_lite := (cRep (projT1 splitter_impl)) (only parsing).
 
   Local Notation mcall0 proj s := (fun n st => (proj (cMethods (projT1 splitter_impl) {| StringBound.bindex := s |} st n))) (only parsing).
   Local Notation mcall1 s := (mcall0 fst s) (only parsing).
@@ -162,6 +163,15 @@ Section parser.
            end.
 
   Local Obligation Tactic := handle_rep.
+
+  Local Instance adt_based_StringLike_lite : StringLike Ascii.ascii
+    := { String := StringT_lite;
+         take n str := mtake n str;
+         drop n str := mdrop n str;
+         length str := mlength tt str;
+         is_char str ch := mis_char ch str;
+         bool_eq s1 s2 := string_beq (mto_string tt s1) (mto_string tt s2) }.
+
 
   Local Program Instance adt_based_StringLike : StringLike Ascii.ascii
     := { String := StringT;

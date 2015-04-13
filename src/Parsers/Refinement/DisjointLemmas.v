@@ -12,7 +12,7 @@ Require Import ADTSynthesis.Parsers.Splitters.RDPList.
 Require Import ADTSynthesis.Parsers.Splitters.BruteForce.
 Require Import ADTSynthesis.Parsers.ParserInterface.
 Require Import ADTSynthesis.Parsers.BaseTypes.
-Require Import ADTSynthesis.Parsers.BooleanBaseTypes.
+Require Import ADTSynthesis.Parsers.CorrectnessBaseTypes.
 Require Import ADTSynthesis.Parsers.BooleanRecognizerFull.
 Require Import ADTSynthesis.Parsers.BooleanRecognizerCorrect.
 Require Import ADTSynthesis.Common.List.Operations.

@@ -9,6 +9,7 @@ Require Import ADTSynthesis.Parsers.ParserADTSpecification.
 Require Import ADTSynthesis.Parsers.ContextFreeGrammarTransfer.
 Require Import ADTSynthesis.Parsers.StringLike.Core.
 Require Import ADTSynthesis.Parsers.StringLike.String.
+Require Import ADTSynthesis.Parsers.BooleanRecognizerEquality.
 Require Import ADTSynthesis.ADTRefinement.Core.
 
 Set Implicit Arguments.
@@ -45,10 +46,28 @@ Section parser.
              str
              new_string_of_base_string_R)).
 
+  Local Instance adtProj
+  : @StringLikeProj
+      _
+      (adt_based_splitter splitter_impl)
+      (adt_based_StringLike_lite splitter_impl)
+      (ParserImplementation.parser_data (adt_based_splitter splitter_impl))
+      (fun it its str => msplits splitter_impl (it, its) str)
+    := { proj := @proj1_sig _ _ }.
+  Proof.
+    reflexivity.
+    reflexivity.
+    reflexivity.
+    reflexivity.
+    reflexivity.
+  Defined.
+
   Definition parser : Parser G string_stringlike.
   Proof.
     refine (@parser ls (adt_based_splitter splitter_impl)
-                    new_string_of_string
+                    (adt_based_StringLike_lite splitter_impl)
+                    _
+                    adtProj new_string_of_string
                     (fun rep str => AbsR (projT2 splitter_impl) str (` rep))
                     (@new_string_of_base_string_R) _ _);
     abstract (

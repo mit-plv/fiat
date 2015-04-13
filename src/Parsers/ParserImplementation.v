@@ -4,7 +4,7 @@ Require Import ADTSynthesis.Parsers.ContextFreeGrammar.
 Require Import ADTSynthesis.Parsers.ContextFreeGrammarProperties.
 Require Import ADTSynthesis.Parsers.BooleanRecognizer ADTSynthesis.Parsers.BooleanRecognizerCorrect.
 Require Import ADTSynthesis.Parsers.Splitters.RDPList.
-Require Import ADTSynthesis.Parsers.BaseTypes ADTSynthesis.Parsers.BooleanBaseTypes.
+Require Import ADTSynthesis.Parsers.BaseTypes ADTSynthesis.Parsers.CorrectnessBaseTypes.
 Require Import ADTSynthesis.Parsers.StringLike.Core.
 Require Import ADTSynthesis.Parsers.MinimalParseOfParse.
 Require Import ADTSynthesis.Common.

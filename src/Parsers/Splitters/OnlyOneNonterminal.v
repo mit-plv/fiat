@@ -1,7 +1,7 @@
 (** * Splitter for any part of any grammar with at most one nonterminal in a rule *)
 Require Import Coq.Lists.List Coq.Strings.String.
 Require Import ADTSynthesis.Parsers.ContextFreeGrammar.
-Require Import ADTSynthesis.Parsers.BaseTypes ADTSynthesis.Parsers.BooleanBaseTypes.
+Require Import ADTSynthesis.Parsers.BaseTypes ADTSynthesis.Parsers.CorrectnessBaseTypes.
 Require Import ADTSynthesis.Parsers.Splitters.RDPList.
 Require Import ADTSynthesis.Common.
 

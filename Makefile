@@ -169,11 +169,12 @@ SRC_PARSERS_BASE_MODULES := \
 	Parsers/StringLike/Properties\
 	Parsers/StringLike/String\
 	Parsers/BaseTypes\
-	Parsers/BooleanBaseTypes\
+	Parsers/CorrectnessBaseTypes\
 	Parsers/Splitters/RDPList\
 	Parsers/Splitters/BruteForce\
 	Parsers/BooleanRecognizer\
 	Parsers/BooleanRecognizerFull\
+	Parsers/BooleanRecognizerEquality\
 	Parsers/BooleanRecognizerOptimized\
 	Parsers/BooleanRecognizerTests\
 	Parsers/WellFoundedParse\
@@ -202,6 +203,7 @@ SRC_PARSERS_MODULES := \
 	Parsers/Refinement/FixedLengthLemmas\
 	Parsers/Refinement/Tactics\
 	Parsers/Refinement/SharpenedABStar\
+	Parsers/Refinement/SharpenedExpressionParen\
 	$(SRC_PARSERS_BASE_MODULES)\
 	$(SRC_GRAMMAR_MODULES)
 #	Parsers/Refinement/SharpenedABStar\

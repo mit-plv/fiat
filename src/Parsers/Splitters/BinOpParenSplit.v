@@ -1,7 +1,7 @@
 (** * Definition of a boolean-returning CFG parser-recognizer *)
 Require Import Coq.Lists.List Coq.Strings.String NPeano.
 Require Import Parsers.ContextFreeGrammar.
-Require Import Parsers.BaseTypes Parsers.BooleanBaseTypes.
+Require Import Parsers.BaseTypes Parsers.CorrectnessBaseTypes.
 Require Import Parsers.Splitters.RDPList.
 Require Import Common.
 Require Import Common.List.Operations Common.List.ListFacts Common.Equality.
