@@ -5,6 +5,7 @@ Require Import ADTSynthesis.Common.Wf.
 Require Import ADTSynthesis.Common.NatFacts.
 Require Export ADTSynthesis.Parsers.Refinement.Tactics.
 Require Export ADTSynthesis.ADTNotation.BuildComputationalADT.
+Require Export ADTSynthesis.Common.NatFacts.
 Require Export Coq.Strings.Ascii.
 Require Export ExtrOcamlBasic.
 Require Export ExtrOcamlNatInt.
