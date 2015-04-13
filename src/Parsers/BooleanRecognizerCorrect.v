@@ -409,9 +409,14 @@ Section sound.
               { destruct (n pf'). }
               { intro H'.
                 unfold is_true in *.
-                repeat first [ apply parse_productions_sound' in H'; trivial
-                             | edestruct dec; simpl in *; trivial; []
-                             | hnf; simpl; intros; discriminate ]. } }
+                repeat first [ hnf; simpl; intros; discriminate
+                             | edestruct dec; simpl in *; trivial; [];
+                               match goal with
+                                 | [ H : ?T |- _ ] => has_evar T; fail 1
+                                 | [ |- ?T ] => has_evar T; fail 1
+                                 | _ => idtac
+                               end
+                             | apply parse_productions_sound' in H'; trivial ]. } }
           Defined.
 
           Lemma parse_nonterminal_step_complete
