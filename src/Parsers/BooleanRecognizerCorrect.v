@@ -408,9 +408,10 @@ Section sound.
               destruct pf' as [pf'|]; subst.
               { destruct (n pf'). }
               { intro H'.
-                apply parse_productions_sound' in H'; trivial.
-                edestruct dec; simpl in *; trivial; [].
-                hnf; simpl; intros; discriminate. } }
+                unfold is_true in *.
+                repeat first [ apply parse_productions_sound' in H'; trivial
+                             | edestruct dec; simpl in *; trivial; []
+                             | hnf; simpl; intros; discriminate ]. } }
           Defined.
 
           Lemma parse_nonterminal_step_complete

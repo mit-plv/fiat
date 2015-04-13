@@ -101,6 +101,7 @@ Section transfer.
              | [ |- appcontext[match ?e with _ => _ end] ]
                => destruct e eqn:?
              | _ => solve [ apply parse_productions_proj; trivial ]
+             | _ => reflexivity
            end.
   Qed.
 

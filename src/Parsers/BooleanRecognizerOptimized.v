@@ -87,10 +87,10 @@ Section recursive_descent_parser.
                       end in
             transitivity R';
               [ clear H';
-                match goal with
-                  | [ |- appcontext[@parse_production ?a ?b ?c ?d ?e ?f ?g ?h] ]
-                    => set (pp := @parse_production a b c d e f g h)
-                end
+                try match goal with
+                      | [ |- appcontext[@parse_production ?a ?b ?c ?d ?e ?f ?g ?h] ]
+                        => set (pp := @parse_production a b c d e f g h)
+                    end
               | clear -H'; unfold sumbool_rect;
                 repeat match goal with
                          | _ => reflexivity
@@ -110,8 +110,10 @@ Section recursive_descent_parser.
                    => simpl_setoid_rewrite (fun init => @f_fold_right_bool_rect _ _ _ (fun k => f k x) init ls)
                  | [ |- appcontext[?f (fold_right (fun x acc => bool_rect (fun _ => _) _ acc _) _ ?ls)] ]
                    => simpl_setoid_rewrite (fun init => @f_fold_right_bool_rect _ _ _ f init ls)
+                 | [ |- appcontext[?f _ (fold_right (fun x acc => bool_rect (fun _ => _) _ acc _) _ ?ls)] ]
+                   => simpl_setoid_rewrite (fun extra_arg init => @f_fold_right_bool_rect _ _ _ (fun k => f extra_arg k) init ls)
                end;
-        subst pp; simpl;
+        try subst pp; simpl;
         subst e'; instantiate; reflexivity ];
       cbv beta iota zeta delta [bool_rect sumbool_rect];
       simpl;
