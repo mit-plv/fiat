@@ -20,19 +20,19 @@ Section example_parse_string_grammar.
              (str : @String Ascii.ascii _)
   : production Ascii.ascii
     -> bool
-    := let data := @brute_force_data Ascii.ascii _ G in parse_production (fun str' _ _ nt => brute_force_parse_nonterminal str' nt) str (reflexivity (length str)).
+    := let data := @brute_force_data Ascii.ascii _ G in parse_production (G := G) str.
 
   Definition brute_force_parse_productions
              (str : @String Ascii.ascii _)
   : productions Ascii.ascii
     -> bool
-    := let data := @brute_force_data Ascii.ascii _ G in parse_productions (fun str' _ _ nt => brute_force_parse_nonterminal str' nt) str (reflexivity (length str)).
+    := let data := @brute_force_data Ascii.ascii _ G in parse_productions (G := G) str.
 
   Definition brute_force_parse_item
              (str : @String Ascii.ascii _)
   : item Ascii.ascii
     -> bool
-    := let data := @brute_force_data Ascii.ascii _ G in parse_item (fun nt => brute_force_parse_nonterminal str nt) str.
+    := let data := @brute_force_data Ascii.ascii _ G in parse_item (G := G) str.
 
   Definition brute_force_parse
   : String.string -> bool

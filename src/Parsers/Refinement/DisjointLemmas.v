@@ -252,9 +252,12 @@ Proof.
       intros.
       destruct s; simpl in *; try discriminate; [].
       clear H.
+
       unfold possible_first_terminals_of_production, possible_first_terminals_of_production', brute_force_parse_production; simpl.
       intros.
-      eapply parse_production_complete;
+      unfold brute_force_parse_nonterminal.
+      unfold BooleanRecognizer.parse_nonterminal.
+      eapply parse_production_complete.
         [ ..
         | refine ((fun pf =>
                      projT1 (@alt_all_elim

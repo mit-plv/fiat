@@ -38,10 +38,10 @@ Section transfer.
         str_matches_nonterminal str_matches_nonterminal'
         (H : forall nt, str_matches_nonterminal nt = str_matches_nonterminal' nt)
         str it
-  : @parse_item _ HSL_lite str_matches_nonterminal (proj str) it
-    = @parse_item _ HSL_heavy str_matches_nonterminal' str it.
+  : @parse_item' _ HSL_lite str_matches_nonterminal (proj str) it
+    = @parse_item' _ HSL_heavy str_matches_nonterminal' str it.
   Proof.
-    unfold parse_item.
+    unfold parse_item'.
     destruct it.
     { apply is_char_proj. }
     { trivial. }
@@ -54,8 +54,8 @@ Section transfer.
                parse_nonterminal (proj str) len pf' nt
                = parse_nonterminal' str len pf' nt)
         str len pf prod
-  : @parse_production _ HSL_lite _ len0 parse_nonterminal (proj str) len pf prod
-    = @parse_production _ HSL_heavy _ len0 parse_nonterminal' str len pf prod.
+  : @parse_production' _ HSL_lite _ len0 parse_nonterminal (proj str) len pf prod
+    = @parse_production' _ HSL_heavy _ len0 parse_nonterminal' str len pf prod.
   Proof.
     revert len str pf; induction prod; simpl; intros.
     { rewrite length_proj; reflexivity. }
@@ -75,10 +75,10 @@ Section transfer.
                parse_nonterminal (proj str) len pf' nt
                = parse_nonterminal' str len pf' nt)
         str len pf prods
-  : @parse_productions _ HSL_lite _ len0 parse_nonterminal (proj str) len pf prods
-    = @parse_productions _ HSL_heavy _ len0 parse_nonterminal' str len pf prods.
+  : @parse_productions' _ HSL_lite _ len0 parse_nonterminal (proj str) len pf prods
+    = @parse_productions' _ HSL_heavy _ len0 parse_nonterminal' str len pf prods.
   Proof.
-    unfold parse_productions.
+    unfold parse_productions'.
     f_equal; [].
     apply map_Proper_eq; trivial; [].
     intro.
