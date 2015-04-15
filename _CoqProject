@@ -252,4 +252,3 @@ src/QueryStructure/Specification/Representation/Tuple.v
 src/QueryStructure/Specification/SearchTerms/InRange.v
 src/QueryStructure/Specification/SearchTerms/ListInclusion.v
 src/QueryStructure/Specification/SearchTerms/ListPrefix.v
-src/Examples/Ics/WaterTank.ml
