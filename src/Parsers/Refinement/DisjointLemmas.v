@@ -2,25 +2,25 @@
 Require Import Coq.Init.Wf Coq.Arith.Wf_nat.
 Require Import Coq.Lists.List Coq.Strings.String.
 Require Import Coq.Numbers.Natural.Peano.NPeano.
-Require Import ADTSynthesis.Parsers.ContextFreeGrammar.
-Require Import ADTSynthesis.Parsers.ContextFreeGrammarEquality.
+Require Import Fiat.Parsers.ContextFreeGrammar.
+Require Import Fiat.Parsers.ContextFreeGrammarEquality.
 Require Import Coq.Program.Equality.
-Require Import ADTSynthesis.Common.
-Require Import ADTSynthesis.Common.Equality.
-Require Import ADTSynthesis.Common.Wf.
-Require Import ADTSynthesis.Parsers.Splitters.RDPList.
-Require Import ADTSynthesis.Parsers.Splitters.BruteForce.
-Require Import ADTSynthesis.Parsers.ParserInterface.
-Require Import ADTSynthesis.Parsers.BaseTypes.
-Require Import ADTSynthesis.Parsers.CorrectnessBaseTypes.
-Require Import ADTSynthesis.Parsers.BooleanRecognizerFull.
-Require Import ADTSynthesis.Parsers.BooleanRecognizerCorrect.
-Require Import ADTSynthesis.Common.List.Operations.
-Require Import ADTSynthesis.Parsers.StringLike.Core.
-Require Import ADTSynthesis.Parsers.StringLike.String.
-Require Import ADTSynthesis.Parsers.StringLike.Properties.
-Require Import ADTSynthesis.Parsers.MinimalParseOfParse.
-Require Import ADTSynthesis.Parsers.ContextFreeGrammarProperties.
+Require Import Fiat.Common.
+Require Import Fiat.Common.Equality.
+Require Import Fiat.Common.Wf.
+Require Import Fiat.Parsers.Splitters.RDPList.
+Require Import Fiat.Parsers.Splitters.BruteForce.
+Require Import Fiat.Parsers.ParserInterface.
+Require Import Fiat.Parsers.BaseTypes.
+Require Import Fiat.Parsers.CorrectnessBaseTypes.
+Require Import Fiat.Parsers.BooleanRecognizerFull.
+Require Import Fiat.Parsers.BooleanRecognizerCorrect.
+Require Import Fiat.Common.List.Operations.
+Require Import Fiat.Parsers.StringLike.Core.
+Require Import Fiat.Parsers.StringLike.String.
+Require Import Fiat.Parsers.StringLike.Properties.
+Require Import Fiat.Parsers.MinimalParseOfParse.
+Require Import Fiat.Parsers.ContextFreeGrammarProperties.
 
 Set Implicit Arguments.
 

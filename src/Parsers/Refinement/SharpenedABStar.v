@@ -43,3 +43,10 @@ Time Definition ab_star_parser (str : String.string) : bool
 Print ab_star_parser.
 
 Recursive Extraction ab_star_parser.
+
+Definition test0 := ab_star_parser "".
+Definition test1 := ab_star_parser "ab".
+Definition str400 := "abababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababab".
+Definition test2 := ab_star_parser (str400 ++ str400 ++ str400 ++ str400).
+
+Recursive Extraction test0 test1 test2.
