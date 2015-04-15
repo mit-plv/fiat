@@ -107,6 +107,9 @@ Section all_possible.
   Definition possible_terminals_of_productions G := @possible_terminals_of_productions' (@possible_terminals_of G).
 End all_possible.
 
+Section all_possible_correctness.
+
+
 Section only_first.
   Context (G : grammar Ascii.ascii).
 
