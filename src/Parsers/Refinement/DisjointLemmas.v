@@ -226,6 +226,159 @@ Local Open Scope string_like_scope.
 
 Local Arguments string_beq : simpl never.
 
+Lemma might_be_empty_possible_first_terminals_of_production_from_parse {G : grammar Ascii.ascii}
+      {its}
+      (H_reachable : production_is_reachable G its)
+      (pits : parse_of_production G ""%string its)
+      (Hpits : Forall_parse_of_production (fun _ nt => List.In nt (Valid_nonterminals G)) pits)
+: might_be_empty (possible_first_terminals_of_production G its).
+Proof.
+  simpl.
+  eapply parse_production_complete.
+  { destruct H_reachable as [nt [prefix [? ?]]].
+    exists nt prefix; split; trivial; []; simpl.
+    unfold rdp_list_is_valid_nonterminal.
+    apply list_in_lb; try apply @string_lb; []; eassumption. }
+  { eapply expand_forall_parse_of_production;
+    [
+      | rewrite parse_of_production_respectful_refl; eassumption ].
+    intros; simpl in *.
+    apply list_in_lb; try apply @string_lb; []; eassumption. }
+  Grab Existential Variables.
+  reflexivity.
+  reflexivity.
+Qed.
+
+Lemma might_be_empty_possible_first_terminals_of_production_to_parse {G : grammar Ascii.ascii}
+      {its}
+      (H_reachable : production_is_reachable G its)
+      (H : might_be_empty (possible_first_terminals_of_production G its))
+: parse_of_production G ""%string its.
+Proof.
+  eapply parse_production_sound.
+  exact H.
+Defined.
+
+Lemma might_be_empty_possible_first_terminals_of_from_parse {G : grammar Ascii.ascii}
+      {nt}
+      (p : parse_of_item G ""%string (NonTerminal nt))
+      (Hpits : Forall_parse_of_item (fun _ nt => List.In nt (Valid_nonterminals G)) p)
+: might_be_empty (possible_first_terminals_of G nt).
+Proof.
+  simpl.
+  unfold possible_first_terminals_of.
+  unfold possible_first_terminals_of_nt.
+  generalize dependent nt.
+  match goal with
+    | [ |- appcontext[Fix ?wf _ _ ?a] ]
+      => let a' := fresh in
+         set (a' := a);
+           clearbody a';
+           induction (wf a'); intros
+  end.
+  rewrite Fix1_eq; [ | apply possible_first_terminals_of_nt_step_ext ]; [].
+  unfold possible_first_terminals_of_nt_step at 1; simpl.
+  dependent destruction p.
+  edestruct dec.
+  { simpl in *.
+    rewrite map_map; simpl.
+    induction (G nt);
+      dependent destruction p;
+      simpl in *.
+    { apply Bool.orb_true_iff; left.
+      eapply parse_production_complete;
+      [
+      | exact (snd Hpits) ].
+    { dependent destruction p. }
+    { de
+
+apply H0.
+  generalize (initial_nonterminals_data).
+
+  eapply parse_production_complete.
+  { destruct H_reachable as [nt [prefix [? ?]]].
+    exists nt prefix; split; trivial; []; simpl.
+    unfold rdp_list_is_valid_nonterminal.
+    apply list_in_lb; try apply @string_lb; []; eassumption. }
+  { eapply expand_forall_parse_of_production;
+    [
+      | rewrite parse_of_production_respectful_refl; eassumption ].
+    intros; simpl in *.
+    apply list_in_lb; try apply @string_lb; []; eassumption. }
+  Grab Existential Variables.
+  reflexivity.
+  reflexivity.
+Qed.
+
+Lemma might_be_empty_possible_first_terminals_of_production_to_parse {G : grammar Ascii.ascii}
+      {its}
+      (H_reachable : production_is_reachable G its)
+      (H : might_be_empty (possible_first_terminals_of_production G its))
+: parse_of_production G ""%string its.
+Proof.
+  eapply parse_production_sound.
+  exact H.
+Defined.
+
+Lemma possible_first_terminals_of_production_In {G : grammar Ascii.ascii}
+      (str : @String _ string_stringlike) {its}
+      (pits : parse_of_production G str its)
+      (Hpits : Forall_parse_of_production
+                 (fun (_ : String) (nt : string) => In nt (Valid_nonterminals G))
+                 pits)
+      (ch : Ascii.ascii)
+      (H : take 1 str ~= [ch])
+: In ch (possible_first_terminals_of_production G its).
+Proof.
+  unfold possible_first_terminals_of_production.
+  unfold possible_first_terminals_of_production'; simpl.
+  simpl in H.
+  apply string_bl in H.
+  destruct str; simpl in *; try discriminate.
+  inversion H; subst; clear H.
+  induction its; simpl; intros.
+  { dependent destruction pits. }
+  { edestruct (_ : item _); simpl in *;
+    dependent destruction pits;
+    [ clear Hpits
+    | ];
+    repeat match goal with
+             | _ => reflexivity
+             | [ p : parse_of_item _ _ (Terminal _) |- _ ]
+               => (let H := fresh in
+                   rename p into H;
+                   dependent destruction H)
+             | _ => progress simpl in *
+             | [ H : _ |- _ ] => apply string_bl in H
+             | [ H : context[match ?x with _ => _ end] |- _ ] => destruct n eqn:?
+             | _ => discriminate
+             | _ => progress subst
+             | [ H : String.String _ _ = String.String _ _ |- _ ] => inversion H; clear H
+             | [ |- _ \/ False ] => left
+           end.
+    simpl.
+
+
+    unfold possible_first_terminals_of; simpl.
+    unfold possible_first_terminals_of_nt.
+    rewrite might_be_empty_possible_first_terminals_of_production_from_parse.
+
+
+ }
+move i at bottom.
+apply string_bl in i.
+lazymatch goal with
+               | [ H : string_beq _ _ |- _ ] => apply string_bl in H
+               | [ H : @string_beq _ _ |- _ ] => idtac
+end.
+
+      simpl in *.
+      match goal with
+        | [ H :
+    destruct str; simpl in *; discriminate. }
+  {
+
+*)
 Lemma terminals_disjoint_search_for_not {G : grammar Ascii.ascii} (str : @String Ascii.ascii string_stringlike)
       {nt its}
       (H_disjoint : disjoint ascii_beq (possible_terminals_of G nt) (possible_first_terminals_of_production G its))
@@ -250,9 +403,28 @@ Proof.
       rewrite (proj2 (Nat.sub_0_le (length str) n)) in H by assumption.
       generalize dependent (drop n str); clear -Hpit HinV HinL.
       intros.
-      destruct s; simpl in *; try discriminate; [].
+      destruct s; try (simpl in *; discriminate); [].
       clear H.
-
+      eapply parse_production_complete.
+      { eexists; eexists (prefix ++ [NonTerminal _]); split; simpl.
+        { unfold rdp_list_is_valid_nonterminal.
+          apply list_in_lb; try apply @string_lb; []; eassumption. }
+        { rewrite <- app_assoc; simpl; eassumption. } }
+      { eapply expand_forall_parse_of_production;
+        [
+        | rewrite parse_of_production_respectful_refl; eassumption ].
+        intros; simpl in *.
+        apply list_in_lb; try apply @string_lb; []; eassumption. } }
+    { intros.
+      apply Bool.negb_true_iff, Bool.not_true_iff_false.
+      intro H'.
+      apply list_in_bl in H'; [ | apply (@ascii_bl) ].
+      apply (disjoint_bl (@ascii_lb) _ _ H_disjoint _ H').
+      clear -pits Hpits H.
+      unfold possible_first_terminals_of_production.
+      SearchAbout disjoint.
+      SearchAbout (_ = false) (_ <> true).
+SearchAbout Forall_parse_of_production.
       unfold possible_first_terminals_of_production, possible_first_terminals_of_production', brute_force_parse_production; simpl.
       intros.
       unfold brute_force_parse_nonterminal.
