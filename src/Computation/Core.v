@@ -1,6 +1,6 @@
 Require Import Coq.Strings.String Coq.Sets.Ensembles.
-Require Import ADTSynthesis.Common.
-Require Export ADTSynthesis.Computation.Notations.
+Require Import Fiat.Common.
+Require Export Fiat.Computation.Notations.
 
 Definition Comp := @Ensemble.
 

@@ -1,5 +1,5 @@
-Require Import ADTSynthesis.Common ADTSynthesis.Computation Coq.Sets.Ensembles.
-Require Import ADTSynthesis.ADT.ADTSig ADTSynthesis.ADT.Core ADTSynthesis.ADTRefinement.Core.
+Require Import Fiat.Common Fiat.Computation Coq.Sets.Ensembles.
+Require Import Fiat.ADT.ADTSig Fiat.ADT.Core Fiat.ADTRefinement.Core.
 
 (** Definitions for integrating [refineADT] into the setoid rewriting
     framework. *)

@@ -2,8 +2,8 @@ Require Import Computation.Core ADT ADTRefinement ADTNotation BuildADTRefinement
 Require Import Bool String String_as_OT OrderedTypeEx.
 Require Import ExtrOcamlBasic ExtrOcamlNatInt ExtrOcamlZInt ExtrOcamlString.
 
-Require Import ADTSynthesis.QueryStructure.Automation.AutoDB
-        ADTSynthesis.QueryStructure.Automation.QSImplementation
+Require Import Fiat.QueryStructure.Automation.AutoDB
+        Fiat.QueryStructure.Automation.QSImplementation
         BookstorewDelegation.
 
 Definition BookStoreDelegateReps

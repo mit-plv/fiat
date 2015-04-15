@@ -1,10 +1,10 @@
 Require Import
         Coq.Strings.String
-        ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureNotations
-        ADTSynthesis.QueryStructure.Specification.SearchTerms.ListInclusion
-        ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.IndexSearchTerms
-        ADTSynthesis.QueryStructure.Automation.IndexSelection
-        ADTSynthesis.QueryStructure.Automation.Common.
+        Fiat.QueryStructure.Specification.Representation.QueryStructureNotations
+        Fiat.QueryStructure.Specification.SearchTerms.ListInclusion
+        Fiat.QueryStructure.Implementation.DataStructures.BagADT.IndexSearchTerms
+        Fiat.QueryStructure.Automation.IndexSelection
+        Fiat.QueryStructure.Automation.Common.
 
 (* Instances for building indexes with make simple indexes. *)
 (* Every Kind of index is keyed on an inductive type with a single constructor*)

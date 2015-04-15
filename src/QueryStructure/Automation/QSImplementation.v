@@ -1,10 +1,10 @@
 (* Tactics for extracting Query Structure Implementations. *)
 Require Import Coq.Strings.String.
 Require Export
-ADTSynthesis.Common.i2list2
-ADTSynthesis.QueryStructure.Implementation.DataStructures.Bags.BagsOfTuples
-ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureNotations
-ADTSynthesis.QueryStructure.Automation.AutoDB.
+Fiat.Common.i2list2
+Fiat.QueryStructure.Implementation.DataStructures.Bags.BagsOfTuples
+Fiat.QueryStructure.Specification.Representation.QueryStructureNotations
+Fiat.QueryStructure.Automation.AutoDB.
 
 Ltac list_of_evar B As k :=
   match As with

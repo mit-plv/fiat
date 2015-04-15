@@ -1,7 +1,7 @@
 (** * Definition of Context Free Grammars *)
 Require Import Coq.Strings.String Coq.Lists.List Coq.Program.Program.
-Require Export ADTSynthesis.Parsers.StringLike.Core.
-Require Import ADTSynthesis.Common.
+Require Export Fiat.Parsers.StringLike.Core.
+Require Import Fiat.Common.
 
 Set Implicit Arguments.
 

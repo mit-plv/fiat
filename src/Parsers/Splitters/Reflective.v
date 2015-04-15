@@ -1,12 +1,12 @@
 (** * Reflective lemmas for proving a splitter complete *)
 Require Import Coq.Lists.List Coq.Strings.String.
-Require Import ADTSynthesis.Parsers.ContextFreeGrammar.
-Require Import ADTSynthesis.Parsers.BaseTypes ADTSynthesis.Parsers.CorrectnessBaseTypes.
-Require Import ADTSynthesis.Parsers.Splitters.RDPList.
+Require Import Fiat.Parsers.ContextFreeGrammar.
+Require Import Fiat.Parsers.BaseTypes Fiat.Parsers.CorrectnessBaseTypes.
+Require Import Fiat.Parsers.Splitters.RDPList.
 Require Import Coq.Init.Wf.
 Require Import Coq.Arith.Wf_nat.
-Require Import ADTSynthesis.Common.Wf.
-Require Import ADTSynthesis.Common.
+Require Import Fiat.Common.Wf.
+Require Import Fiat.Common.
 
 Set Implicit Arguments.
 

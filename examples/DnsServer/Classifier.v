@@ -1,7 +1,7 @@
-Require Import ADTSynthesis.QueryStructure.Automation.AutoDB
-        ADTSynthesis.QueryStructure.Automation.IndexSelection
-        ADTSynthesis.QueryStructure.Specification.SearchTerms.ListPrefix
-        ADTSynthesis.Common.List.UpperBound.
+Require Import Fiat.QueryStructure.Automation.AutoDB
+        Fiat.QueryStructure.Automation.IndexSelection
+        Fiat.QueryStructure.Specification.SearchTerms.ListPrefix
+        Fiat.Common.List.UpperBound.
 
 Open Scope list.
 

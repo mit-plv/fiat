@@ -1,16 +1,16 @@
 Require Export Coq.Strings.String Coq.omega.Omega Coq.Lists.List Coq.Logic.FunctionalExtensionality Coq.Sets.Ensembles
-        ADTSynthesis.Common.Ensembles.IndexedEnsembles
-        ADTSynthesis.Computation ADTSynthesis.ADT
-        ADTSynthesis.ADTRefinement ADTSynthesis.ADTNotation
-        ADTSynthesis.ADTRefinement.BuildADTRefinements
-        ADTSynthesis.QueryStructure.Specification.Representation.Notations
-        ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureSchema
-        ADTSynthesis.QueryStructure.Specification.Representation.QueryStructure
-        ADTSynthesis.QueryStructure.Specification.Operations.Query
-        ADTSynthesis.QueryStructure.Specification.Operations.Insert
-        ADTSynthesis.QueryStructure.Specification.Operations.Empty
-        ADTSynthesis.QueryStructure.Specification.Operations.Update
-        ADTSynthesis.QueryStructure.Specification.Operations.Delete.
+        Fiat.Common.Ensembles.IndexedEnsembles
+        Fiat.Computation Fiat.ADT
+        Fiat.ADTRefinement Fiat.ADTNotation
+        Fiat.ADTRefinement.BuildADTRefinements
+        Fiat.QueryStructure.Specification.Representation.Notations
+        Fiat.QueryStructure.Specification.Representation.QueryStructureSchema
+        Fiat.QueryStructure.Specification.Representation.QueryStructure
+        Fiat.QueryStructure.Specification.Operations.Query
+        Fiat.QueryStructure.Specification.Operations.Insert
+        Fiat.QueryStructure.Specification.Operations.Empty
+        Fiat.QueryStructure.Specification.Operations.Update
+        Fiat.QueryStructure.Specification.Operations.Delete.
 
 Notation "heading / attr_index" := ((fun x : Attributes heading => x)
                                        {| bindex := attr_index; indexb := _ |})

@@ -1,27 +1,27 @@
 Require Import Coq.Strings.String Coq.omega.Omega Coq.Lists.List Coq.Logic.FunctionalExtensionality Coq.Sets.Ensembles
         Coq.Sorting.Permutation
-        ADTSynthesis.Computation
-        ADTSynthesis.ADT
-        ADTSynthesis.ADTRefinement
-        ADTSynthesis.ADTNotation
-        ADTSynthesis.ADTRefinement.BuildADTRefinements
-        ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureSchema
-        ADTSynthesis.QueryStructure.Specification.Representation.QueryStructure
-        ADTSynthesis.Common.Ensembles.IndexedEnsembles
-        ADTSynthesis.QueryStructure.Specification.Operations.Query
-        ADTSynthesis.QueryStructure.Specification.Operations.Insert
-        ADTSynthesis.QueryStructure.Specification.Operations.Empty
-        ADTSynthesis.QueryStructure.Specification.Operations.Delete
-        ADTSynthesis.QueryStructure.Specification.Operations.Update
-        ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureNotations
-        ADTSynthesis.QueryStructure.Implementation.Operations.General.QueryRefinements
-        ADTSynthesis.QueryStructure.Implementation.Operations.General.InsertRefinements
-        ADTSynthesis.QueryStructure.Implementation.Operations.General.DeleteRefinements
-        ADTSynthesis.QueryStructure.Implementation.Operations.General.QueryStructureRefinements
-        ADTSynthesis.QueryStructure.Automation.Common
-        ADTSynthesis.QueryStructure.Automation.General.QueryAutomation
-        ADTSynthesis.QueryStructure.Automation.General.InsertAutomation
-        ADTSynthesis.QueryStructure.Automation.General.DeleteAutomation.
+        Fiat.Computation
+        Fiat.ADT
+        Fiat.ADTRefinement
+        Fiat.ADTNotation
+        Fiat.ADTRefinement.BuildADTRefinements
+        Fiat.QueryStructure.Specification.Representation.QueryStructureSchema
+        Fiat.QueryStructure.Specification.Representation.QueryStructure
+        Fiat.Common.Ensembles.IndexedEnsembles
+        Fiat.QueryStructure.Specification.Operations.Query
+        Fiat.QueryStructure.Specification.Operations.Insert
+        Fiat.QueryStructure.Specification.Operations.Empty
+        Fiat.QueryStructure.Specification.Operations.Delete
+        Fiat.QueryStructure.Specification.Operations.Update
+        Fiat.QueryStructure.Specification.Representation.QueryStructureNotations
+        Fiat.QueryStructure.Implementation.Operations.General.QueryRefinements
+        Fiat.QueryStructure.Implementation.Operations.General.InsertRefinements
+        Fiat.QueryStructure.Implementation.Operations.General.DeleteRefinements
+        Fiat.QueryStructure.Implementation.Operations.General.QueryStructureRefinements
+        Fiat.QueryStructure.Automation.Common
+        Fiat.QueryStructure.Automation.General.QueryAutomation
+        Fiat.QueryStructure.Automation.General.InsertAutomation
+        Fiat.QueryStructure.Automation.General.DeleteAutomation.
 
 Ltac start_honing_QueryStructure' :=
   eapply SharpenStep;

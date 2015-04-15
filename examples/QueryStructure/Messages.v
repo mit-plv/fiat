@@ -1,6 +1,6 @@
 Require Import Coq.Strings.String.
-Require Import ADTSynthesis.QueryStructure.Automation.AutoDB
-        ADTSynthesis.QueryStructure.Automation.IndexSelection.
+Require Import Fiat.QueryStructure.Automation.AutoDB
+        Fiat.QueryStructure.Automation.IndexSelection.
 
 Definition MESSAGES := "Messages".
 Definition CONTACTS := "Contacts".
@@ -73,7 +73,7 @@ Proof.
   Undo 1.
 
   (* Using search terms for checking IncludedIn uses the more efficient BFind method. *)
-  Require Import ADTSynthesis.QueryStructure.Specification.SearchTerms.ListInclusion.
+  Require Import Fiat.QueryStructure.Specification.SearchTerms.ListInclusion.
 
   partial_master_plan ltac:(CombineIndexTactics InclusionIndexTactics EqIndexTactics).
 

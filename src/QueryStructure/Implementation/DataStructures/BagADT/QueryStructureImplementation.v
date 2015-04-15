@@ -1,18 +1,18 @@
 Require Import Coq.Lists.List Coq.Program.Program
         Coq.Bool.Bool Coq.Strings.String
         Coq.Structures.OrderedTypeEx Coq.Arith.Arith
-        ADTSynthesis.Common.ilist
-        ADTSynthesis.Common.i2list
-        ADTSynthesis.Common.Ensembles.IndexedEnsembles
-        ADTSynthesis.Computation
-        ADTSynthesis.ADT
-        ADTSynthesis.ADTRefinement
-        ADTSynthesis.ADTNotation
-        ADTSynthesis.QueryStructure.Specification.Representation.Notations
-        ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureSchema
-        ADTSynthesis.QueryStructure.Specification.Representation.QueryStructure
-        ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureNotations
-        ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.BagADT.
+        Fiat.Common.ilist
+        Fiat.Common.i2list
+        Fiat.Common.Ensembles.IndexedEnsembles
+        Fiat.Computation
+        Fiat.ADT
+        Fiat.ADTRefinement
+        Fiat.ADTNotation
+        Fiat.QueryStructure.Specification.Representation.Notations
+        Fiat.QueryStructure.Specification.Representation.QueryStructureSchema
+        Fiat.QueryStructure.Specification.Representation.QueryStructure
+        Fiat.QueryStructure.Specification.Representation.QueryStructureNotations
+        Fiat.QueryStructure.Implementation.DataStructures.BagADT.BagADT.
 
 Section QueryStructureImplementation.
 

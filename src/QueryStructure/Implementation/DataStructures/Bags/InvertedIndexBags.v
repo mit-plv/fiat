@@ -1,18 +1,18 @@
-Require Export ADTSynthesis.QueryStructure.Implementation.DataStructures.Bags.BagsInterface
-        ADTSynthesis.QueryStructure.Implementation.DataStructures.Bags.BagsProperties.
+Require Export Fiat.QueryStructure.Implementation.DataStructures.Bags.BagsInterface
+        Fiat.QueryStructure.Implementation.DataStructures.Bags.BagsProperties.
 Require Import
         Coq.Arith.Peano_dec
         Coq.Structures.OrdersEx
         Coq.FSets.FMapInterface
         Coq.FSets.FMapFacts
         Coq.FSets.FMapAVL
-        ADTSynthesis.Common
-        ADTSynthesis.Common.String_as_OT
-        ADTSynthesis.Common.List.ListFacts
-        ADTSynthesis.Common.List.FlattenList
-        ADTSynthesis.Common.SetEqProperties
-        ADTSynthesis.Common.FMapExtensions
-        ADTSynthesis.Common.List.PermutationFacts.
+        Fiat.Common
+        Fiat.Common.String_as_OT
+        Fiat.Common.List.ListFacts
+        Fiat.Common.List.FlattenList
+        Fiat.Common.SetEqProperties
+        Fiat.Common.FMapExtensions
+        Fiat.Common.List.PermutationFacts.
 
 Module InvertedIndexBag (MKeys : WS) (MValues : WSfun Nat_as_OT ).
 

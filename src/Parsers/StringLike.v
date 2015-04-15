@@ -1,10 +1,10 @@
 (** * The string-like type *)
 (** ** Definitions *)
-Require ADTSynthesis.Parsers.StringLike.Core.
+Require Fiat.Parsers.StringLike.Core.
 (** ** Various string-like types *)
-Require ADTSynthesis.Parsers.StringLike.String.
+Require Fiat.Parsers.StringLike.String.
 (** ** Various theorems about string-like types *)
-Require ADTSynthesis.Parsers.StringLike.Properties.
+Require Fiat.Parsers.StringLike.Properties.
 
 Export Parsers.StringLike.Core.
 Export Parsers.StringLike.String.

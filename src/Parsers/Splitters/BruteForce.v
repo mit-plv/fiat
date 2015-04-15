@@ -1,10 +1,10 @@
 (** * Definition of a boolean-returning CFG parser-recognizer *)
 Require Import Coq.Lists.List Coq.Strings.String.
-Require Import ADTSynthesis.Parsers.ContextFreeGrammar.
-Require Import ADTSynthesis.Parsers.BaseTypes ADTSynthesis.Parsers.CorrectnessBaseTypes.
-Require Import ADTSynthesis.Parsers.Splitters.RDPList.
-Require Import ADTSynthesis.Parsers.MinimalParseOfParse.
-Require Import ADTSynthesis.Common.
+Require Import Fiat.Parsers.ContextFreeGrammar.
+Require Import Fiat.Parsers.BaseTypes Fiat.Parsers.CorrectnessBaseTypes.
+Require Import Fiat.Parsers.Splitters.RDPList.
+Require Import Fiat.Parsers.MinimalParseOfParse.
+Require Import Fiat.Common.
 
 Set Implicit Arguments.
 Local Open Scope string_like_scope.

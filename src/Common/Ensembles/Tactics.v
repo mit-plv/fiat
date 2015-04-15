@@ -1,5 +1,5 @@
 Require Import Coq.Sets.Ensembles.
-Require Import ADTSynthesis.Common.
+Require Import Fiat.Common.
 
 Create HintDb ensembles discriminated.
 

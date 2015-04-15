@@ -1,4 +1,4 @@
-Require Import ADTSynthesis.FiniteSetADTs.FiniteSetADTImplementation.
+Require Import Fiat.FiniteSetADTs.FiniteSetADTImplementation.
 Require Import ADTExamples.FiniteSetsExamples.
 
 Require Import Bedrock.Platform.Facade.DFacadeToBedrock.

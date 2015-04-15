@@ -1,21 +1,21 @@
 Require Import Coq.Strings.String Coq.omega.Omega Coq.Lists.List
         Coq.Logic.FunctionalExtensionality Coq.Sets.Ensembles
         Coq.Sorting.Permutation
-        ADTSynthesis.Computation
-        ADTSynthesis.ADT
-        ADTSynthesis.ADTRefinement
-        ADTSynthesis.ADTNotation
-        ADTSynthesis.ADTRefinement.GeneralBuildADTRefinements
-        ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureSchema
-        ADTSynthesis.QueryStructure.Specification.Operations.Query
-        ADTSynthesis.QueryStructure.Specification.Representation.QueryStructure
-        ADTSynthesis.QueryStructure.Implementation.Operations.General.QueryRefinements
-        ADTSynthesis.Common.SetEq
-        ADTSynthesis.Common.Ensembles.IndexedEnsembles
-        ADTSynthesis.Common.DecideableEnsembles
-        ADTSynthesis.Common.List.ListMorphisms
-        ADTSynthesis.Common.List.FlattenList
-        ADTSynthesis.QueryStructure.Specification.Operations.FlattenCompList.
+        Fiat.Computation
+        Fiat.ADT
+        Fiat.ADTRefinement
+        Fiat.ADTNotation
+        Fiat.ADTRefinement.GeneralBuildADTRefinements
+        Fiat.QueryStructure.Specification.Representation.QueryStructureSchema
+        Fiat.QueryStructure.Specification.Operations.Query
+        Fiat.QueryStructure.Specification.Representation.QueryStructure
+        Fiat.QueryStructure.Implementation.Operations.General.QueryRefinements
+        Fiat.Common.SetEq
+        Fiat.Common.Ensembles.IndexedEnsembles
+        Fiat.Common.DecideableEnsembles
+        Fiat.Common.List.ListMorphisms
+        Fiat.Common.List.FlattenList
+        Fiat.QueryStructure.Specification.Operations.FlattenCompList.
 
 Lemma refine_SetEq_self {A} :
   forall l : list A,
@@ -120,7 +120,7 @@ Proof.
   reflexivity.
 Qed.
 
-Require Import ADTSynthesis.Common.List.ListFacts.
+Require Import Fiat.Common.List.ListFacts.
 
 Ltac trickle_swap :=
   (* faster than just calling repeat first [ setoid_rewrite _ | setoid_rewrite _ ] *)

@@ -1,5 +1,5 @@
-Require Import ADTSynthesis.QueryStructure.Automation.AutoDB
-        ADTSynthesis.QueryStructure.Automation.QSImplementation
+Require Import Fiat.QueryStructure.Automation.AutoDB
+        Fiat.QueryStructure.Automation.QSImplementation
         WeatherwDelegation.
 
     Definition WeatherStationDelegateReps

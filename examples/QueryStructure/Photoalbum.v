@@ -1,7 +1,7 @@
 Require Import Coq.Strings.String.
-Require Import ADTSynthesis.QueryStructure.Automation.AutoDB
-        ADTSynthesis.QueryStructure.Automation.IndexSelection
-        ADTSynthesis.QueryStructure.Automation.Common.
+Require Import Fiat.QueryStructure.Automation.AutoDB
+        Fiat.QueryStructure.Automation.IndexSelection
+        Fiat.QueryStructure.Automation.Common.
 
 Definition PHOTOS := "Photos".
 Definition EVENTS := "Events".
@@ -63,8 +63,8 @@ Definition AlbumSpec : ADT AlbumSig :=
           Return photo
 }.
 
-  Require Import ADTSynthesis.QueryStructure.Specification.SearchTerms.ListInclusion.
-  Require Import ADTSynthesis.QueryStructure.Specification.SearchTerms.InRange.
+  Require Import Fiat.QueryStructure.Specification.SearchTerms.ListInclusion.
+  Require Import Fiat.QueryStructure.Specification.SearchTerms.InRange.
 
   Unset Ltac Debug.
 

@@ -1,5 +1,5 @@
 Require Export Coq.Sets.Ensembles.
-Require Import ADTSynthesis.Common.
+Require Import Fiat.Common.
 
 Set Implicit Arguments.
 

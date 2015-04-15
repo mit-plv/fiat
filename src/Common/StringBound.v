@@ -1,4 +1,4 @@
-Require Import Coq.Lists.List Coq.Strings.String Coq.Arith.Arith ADTSynthesis.Common.ilist.
+Require Import Coq.Lists.List Coq.Strings.String Coq.Arith.Arith Fiat.Common.ilist.
 
 (* Typeclasses for ensuring that a string is included
    in a list (i.e. a set of method names). This allows
@@ -767,7 +767,7 @@ End ithIndexBound.
 
 Section i2thIndexBound.
 
-  Require Import ADTSynthesis.Common.i2list.
+  Require Import Fiat.Common.i2list.
 
   (* Given a bounded index [BoundedIndex Bound], we can wrap
      various lookup functions over lists indexed over [Bound].
@@ -1124,7 +1124,7 @@ End i2thIndexBound.
 
 Section ith2IndexBound.
 
-  Require Import ADTSynthesis.Common.ilist2.
+  Require Import Fiat.Common.ilist2.
 
   (* Given a bounded index [BoundedIndex Bound], we can wrap
      various lookup functions over lists indexed over [Bound].
@@ -1534,7 +1534,7 @@ End ith2IndexBound.
 
 Section i2th2IndexBound.
 
-  Require Import ADTSynthesis.Common.i2list2.
+  Require Import Fiat.Common.i2list2.
 
   (* Given a bounded index [BoundedIndex Bound], we can wrap
      various lookup functions over lists indexed over [Bound].

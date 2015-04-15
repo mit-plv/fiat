@@ -1,1 +1,1 @@
-Require Export ADTSynthesis.ADT.ADTSig ADTSynthesis.ADT.Core.
+Require Export Fiat.ADT.ADTSig Fiat.ADT.Core.

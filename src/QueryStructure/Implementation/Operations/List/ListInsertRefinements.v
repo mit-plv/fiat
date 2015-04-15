@@ -1,20 +1,20 @@
 Require Import Coq.Strings.String Coq.omega.Omega Coq.Lists.List Coq.Logic.FunctionalExtensionality Coq.Sets.Ensembles Coq.Bool.Bool
-        ADTSynthesis.Computation
-        ADTSynthesis.ADT
-        ADTSynthesis.ADTRefinement
-        ADTSynthesis.ADTNotation
-        ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureSchema
-        ADTSynthesis.QueryStructure.Specification.Operations.Query
-        ADTSynthesis.QueryStructure.Specification.Operations.Insert
-        ADTSynthesis.QueryStructure.Specification.Representation.QueryStructure
-        ADTSynthesis.ADTRefinement.BuildADTRefinements
-        ADTSynthesis.Common.DecideableEnsembles
-        ADTSynthesis.Common.Ensembles.IndexedEnsembles
-        ADTSynthesis.Common.Ensembles.EnsembleListEquivalence
-        ADTSynthesis.QueryStructure.Implementation.Operations.General.QueryRefinements
-        ADTSynthesis.QueryStructure.Implementation.Operations.General.InsertRefinements
-        ADTSynthesis.QueryStructure.Implementation.Operations.General.QueryStructureRefinements
-        ADTSynthesis.QueryStructure.Implementation.Constraints.ConstraintChecksRefinements.
+        Fiat.Computation
+        Fiat.ADT
+        Fiat.ADTRefinement
+        Fiat.ADTNotation
+        Fiat.QueryStructure.Specification.Representation.QueryStructureSchema
+        Fiat.QueryStructure.Specification.Operations.Query
+        Fiat.QueryStructure.Specification.Operations.Insert
+        Fiat.QueryStructure.Specification.Representation.QueryStructure
+        Fiat.ADTRefinement.BuildADTRefinements
+        Fiat.Common.DecideableEnsembles
+        Fiat.Common.Ensembles.IndexedEnsembles
+        Fiat.Common.Ensembles.EnsembleListEquivalence
+        Fiat.QueryStructure.Implementation.Operations.General.QueryRefinements
+        Fiat.QueryStructure.Implementation.Operations.General.InsertRefinements
+        Fiat.QueryStructure.Implementation.Operations.General.QueryStructureRefinements
+        Fiat.QueryStructure.Implementation.Constraints.ConstraintChecksRefinements.
 
 Fixpoint Check_List_Prop {A}
          (cond : A -> bool)

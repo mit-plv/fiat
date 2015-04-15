@@ -3,10 +3,10 @@ Require Import Coq.Setoids.Setoid Coq.Classes.Morphisms Coq.Program.Basics.
 Require Import Coq.Arith.Lt.
 Require Import Coq.Numbers.Natural.Peano.NPeano.
 Require Import Coq.omega.Omega.
-Require Import ADTSynthesis.Parsers.StringLike.Core ADTSynthesis.Common.Le ADTSynthesis.Common.UIP.
-Require Import ADTSynthesis.Common.Equality.
-Require Import ADTSynthesis.Common.
-Require Import ADTSynthesis.Common.Le.
+Require Import Fiat.Parsers.StringLike.Core Fiat.Common.Le Fiat.Common.UIP.
+Require Import Fiat.Common.Equality.
+Require Import Fiat.Common.
+Require Import Fiat.Common.Le.
 
 Set Implicit Arguments.
 

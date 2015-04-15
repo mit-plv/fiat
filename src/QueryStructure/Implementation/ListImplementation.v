@@ -1,2 +1,2 @@
-Require Export ADTSynthesis.QueryStructure.Implementation.Operations.List.ListInsertRefinements
-        ADTSynthesis.QueryStructure.Implementation.Operations.List.ListQueryRefinements.
+Require Export Fiat.QueryStructure.Implementation.Operations.List.ListInsertRefinements
+        Fiat.QueryStructure.Implementation.Operations.List.ListQueryRefinements.

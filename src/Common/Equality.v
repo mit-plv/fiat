@@ -1,6 +1,6 @@
 Require Import Coq.Lists.List.
 Require Import Coq.Strings.String.
-Require Import ADTSynthesis.Common.
+Require Import Fiat.Common.
 
 Set Implicit Arguments.
 Local Close Scope nat_scope.

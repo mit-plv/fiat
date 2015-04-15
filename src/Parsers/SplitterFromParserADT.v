@@ -3,13 +3,13 @@ Require Import Coq.Strings.String.
 Require Import ADTNotation.BuildADT ADTNotation.BuildADTSig.
 Require Import ADT.ComputationalADT.
 Require Import ADTRefinement.GeneralRefinements.
-Require Import ADTSynthesis.Parsers.ParserInterface.
-Require Import ADTSynthesis.Parsers.ParserADTSpecification.
-Require Import ADTSynthesis.Parsers.StringLike.String.
-Require Import ADTSynthesis.Parsers.ContextFreeGrammarTransfer.
-Require Import ADTSynthesis.Parsers.ContextFreeGrammarTransferProperties.
-Require Import ADTSynthesis.ADTRefinement.Core.
-Require Import ADTSynthesis.Common ADTSynthesis.Common.Equality.
+Require Import Fiat.Parsers.ParserInterface.
+Require Import Fiat.Parsers.ParserADTSpecification.
+Require Import Fiat.Parsers.StringLike.String.
+Require Import Fiat.Parsers.ContextFreeGrammarTransfer.
+Require Import Fiat.Parsers.ContextFreeGrammarTransferProperties.
+Require Import Fiat.ADTRefinement.Core.
+Require Import Fiat.Common Fiat.Common.Equality.
 
 Set Implicit Arguments.
 

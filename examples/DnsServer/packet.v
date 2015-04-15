@@ -2,7 +2,7 @@ Require Import Coq.Vectors.Vector
         Coq.Strings.Ascii Coq.Bool.Bool
         Coq.Bool.Bvector Coq.Lists.List.
 
-Require Import ADTSynthesis.QueryStructure.Automation.AutoDB.
+Require Import Fiat.QueryStructure.Automation.AutoDB.
 
 Section Packet.
 

@@ -1,8 +1,8 @@
 Require Import Coq.Lists.List.
 Require Export Coq.Sets.Ensembles.
 Require Import Coq.Sorting.Permutation.
-Require Import ADTSynthesis.Common.
-Require Import ADTSynthesis.Common.List.PermutationFacts.
+Require Import Fiat.Common.
+Require Import Fiat.Common.List.PermutationFacts.
 
 Definition EnsembleListEquivalence
            {A}

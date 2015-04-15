@@ -1,4 +1,4 @@
-Require Export ADTSynthesis.Common ADTSynthesis.Computation ADTSynthesis.ADT.ADTSig ADTSynthesis.ADT.
+Require Export Fiat.Common Fiat.Computation Fiat.ADT.ADTSig Fiat.ADT.
 Require Import Coq.Sets.Ensembles.
 
 Generalizable All Variables.

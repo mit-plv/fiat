@@ -2,8 +2,8 @@ Require Import Coq.Vectors.Vector
         Coq.Strings.Ascii Coq.Bool.Bool
         Coq.Bool.Bvector Coq.Lists.List.
 
-Require Import ADTSynthesis.QueryStructure.Automation.AutoDB
-        ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.BagADT
+Require Import Fiat.QueryStructure.Automation.AutoDB
+        Fiat.QueryStructure.Implementation.DataStructures.BagADT.BagADT
         ADTExamples.DnsServer.packet.
 
 Open Scope list.
@@ -243,7 +243,7 @@ Definition DnsSearchUpdateTerm :=
      BagUpdateTermType := DNSRRecord -> DNSRRecord;
      BagApplyUpdateTerm := fun f x => f x |}.
 
-Require Import ADTSynthesis.QueryStructure.Implementation.DataStructures.Bags.ListBags.
+Require Import Fiat.QueryStructure.Implementation.DataStructures.Bags.ListBags.
 
 Definition SharpenedPrefixBagImpl :
   Sharpened (@BagSpec _
@@ -1027,7 +1027,7 @@ Time Defined.
       exact  DnsSearchUpdateTerm.
     Defined.
 
-    Require Import ADTSynthesis.QueryStructure.Automation.QSImplementation.
+    Require Import Fiat.QueryStructure.Automation.QSImplementation.
 
     Definition DnsDelegateImpls
     : i2list2 (fun ns (SearchTerm : SearchUpdateTerms (schemaHeading (relSchema ns)))

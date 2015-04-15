@@ -1,6 +1,6 @@
 Require Import Coq.Lists.List.
-Require Import ADTSynthesis.Common.
-Require Import ADTSynthesis.Computation.Core.
+Require Import Fiat.Common.
+Require Import Fiat.Computation.Core.
 
 (** General Lemmas about the parametric morphism behavior of
     [computes_to], [refine], and [refineEquiv]. *)

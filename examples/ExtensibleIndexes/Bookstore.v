@@ -1,6 +1,6 @@
 Require Import Coq.Strings.String.
-Require Import ADTSynthesis.QueryStructure.Automation.AutoDB
-        ADTSynthesis.QueryStructure.Automation.IndexSelection.
+Require Import Fiat.QueryStructure.Automation.AutoDB
+        Fiat.QueryStructure.Automation.IndexSelection.
 
 (* Our bookstore has two relations (tables):
    - The [Books] relation contains the books in the

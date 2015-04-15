@@ -1,9 +1,9 @@
 (** * Brute-force boolean recognizer *)
 Require Import Coq.Classes.RelationClasses.
-Require Import ADTSynthesis.Parsers.StringLike.String.
-Require Import ADTSynthesis.Parsers.BooleanRecognizer.
-Require Import ADTSynthesis.Parsers.ContextFreeGrammar.
-Require Import ADTSynthesis.Parsers.Splitters.RDPList ADTSynthesis.Parsers.Splitters.BruteForce.
+Require Import Fiat.Parsers.StringLike.String.
+Require Import Fiat.Parsers.BooleanRecognizer.
+Require Import Fiat.Parsers.ContextFreeGrammar.
+Require Import Fiat.Parsers.Splitters.RDPList Fiat.Parsers.Splitters.BruteForce.
 
 Set Implicit Arguments.
 

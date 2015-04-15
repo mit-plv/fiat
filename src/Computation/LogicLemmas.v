@@ -1,5 +1,5 @@
 Require Import Coq.Program.Program.
-Require Import ADTSynthesis.Common.
+Require Import Fiat.Common.
 (** * Various useful lemmas about logic *)
 
 (** We prove things here mainly for the purpose of [setoid_rewrite]ing with instances of [impl] and [iff]. *)

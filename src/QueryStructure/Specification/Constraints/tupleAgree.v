@@ -1,4 +1,4 @@
- Require Import ADTSynthesis.QueryStructure.Specification.Representation.Schema Coq.Lists.List Coq.Program.Program ADTSynthesis.QueryStructure.Specification.Representation.Heading ADTSynthesis.QueryStructure.Specification.Representation.Tuple.
+ Require Import Fiat.QueryStructure.Specification.Representation.Schema Coq.Lists.List Coq.Program.Program Fiat.QueryStructure.Specification.Representation.Heading Fiat.QueryStructure.Specification.Representation.Tuple.
 
 Lemma tupleAgree_empty :
   forall {heading} (tup1 tup2: @Tuple heading),

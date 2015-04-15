@@ -1,15 +1,15 @@
 (** * Simplified parser for (ab)* *)
 Require Import Coq.Lists.List Coq.Strings.String.
-Require Import ADTSynthesis.Parsers.ContextFreeGrammar.
-Require Import ADTSynthesis.Parsers.BaseTypes ADTSynthesis.Parsers.CorrectnessBaseTypes.
-Require Import ADTSynthesis.Parsers.Splitters.RDPList.
-Require Import ADTSynthesis.Common.
+Require Import Fiat.Parsers.ContextFreeGrammar.
+Require Import Fiat.Parsers.BaseTypes Fiat.Parsers.CorrectnessBaseTypes.
+Require Import Fiat.Parsers.Splitters.RDPList.
+Require Import Fiat.Common.
 
-Require Import ADTSynthesis.Parsers.MinimalParse.
-Require Import ADTSynthesis.Parsers.ContextFreeGrammarNotations.
-Require Import ADTSynthesis.Parsers.Grammars.ABStar.
+Require Import Fiat.Parsers.MinimalParse.
+Require Import Fiat.Parsers.ContextFreeGrammarNotations.
+Require Import Fiat.Parsers.Grammars.ABStar.
 
-Require Import ADTSynthesis.Parsers.BooleanRecognizer ADTSynthesis.Parsers.BooleanRecognizerCorrect ADTSynthesis.Parsers.Splitters.FirstChar ADTSynthesis.Parsers.ContextFreeGrammarProperties.
+Require Import Fiat.Parsers.BooleanRecognizer Fiat.Parsers.BooleanRecognizerCorrect Fiat.Parsers.Splitters.FirstChar Fiat.Parsers.ContextFreeGrammarProperties.
 
 Set Implicit Arguments.
 Local Open Scope string_scope.

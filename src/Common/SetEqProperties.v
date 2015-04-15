@@ -1,6 +1,6 @@
 Require Import Coq.Setoids.Setoid Coq.Lists.List Coq.Sorting.Permutation
-        ADTSynthesis.Common.List.FlattenList
-        ADTSynthesis.Common.SetEq.
+        Fiat.Common.List.FlattenList
+        Fiat.Common.SetEq.
 
 Definition IsSetEqSafe {A B: Type} (proc: list A -> list B) :=
   forall (seq1 seq2: list A),

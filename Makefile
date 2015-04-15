@@ -382,7 +382,7 @@ compiler : $(COMPILER_VOS)
 ics : $(ICS_VOS) examples/Ics/WaterTank.ml
 
 examples/Ics/WaterTank.ml: $(ICS_VOS) examples/Ics/WaterTankExtract.v
-	coqc -R src ADTSynthesis -R examples ADTExamples examples/Ics/WaterTankExtract >$@
+	coqc -R src Fiat -R examples ADTExamples examples/Ics/WaterTankExtract >$@
 
 dns : $(DNS_VOS)
 
@@ -411,7 +411,7 @@ Overview/ProjectOverview.pdf: $(shell find Overview -name "*.tex" -o -name "*.st
 
 Makefile.coq: Makefile
 	$(VECHO) "COQ_MAKEFILE > $@"
-	$(Q)"$(COQBIN)coq_makefile" $(CORE_VS) $(EXAMPLE_VS) $(QUERYSTRUCTURE_VS) $(SRC_PARSERS_VS) COQC = "\$$(SILENCE_COQC)\$$(TIMER) \"\$$(COQBIN)coqc\"" COQDEP = "\$$(SILENCE_COQDEP)\"\$$(COQBIN)coqdep\" -c" COQDOCFLAGS = "$(COQDOCFLAGS)" -arg -dont-load-proofs -R src ADTSynthesis -R examples ADTExamples | sed s'/^\(-include.*\)$$/ifneq ($$(filter-out $(FAST_TARGETS),$$(MAKECMDGOALS)),)~\1~else~ifeq ($$(MAKECMDGOALS),)~\1~endif~endif/g' | tr '~' '\n' | sed s'/^clean:$$/clean-old::/g' | sed s'/^Makefile: /Makefile-old: /g' > $@
+	$(Q)"$(COQBIN)coq_makefile" $(CORE_VS) $(EXAMPLE_VS) $(QUERYSTRUCTURE_VS) $(SRC_PARSERS_VS) COQC = "\$$(SILENCE_COQC)\$$(TIMER) \"\$$(COQBIN)coqc\"" COQDEP = "\$$(SILENCE_COQDEP)\"\$$(COQBIN)coqdep\" -c" COQDOCFLAGS = "$(COQDOCFLAGS)" -arg -dont-load-proofs -R src Fiat -R examples ADTExamples | sed s'/^\(-include.*\)$$/ifneq ($$(filter-out $(FAST_TARGETS),$$(MAKECMDGOALS)),)~\1~else~ifeq ($$(MAKECMDGOALS),)~\1~endif~endif/g' | tr '~' '\n' | sed s'/^clean:$$/clean-old::/g' | sed s'/^Makefile: /Makefile-old: /g' > $@
 
 -include Makefile.coq
 
@@ -445,10 +445,10 @@ clean-doc::
 	rm -f $(shell find Overview -name "*.log" -o -name "*.aux" -o -name "*.bbl" -o -name "*.blg" -o -name "*.synctex.gz" -o -name "*.out" -o -name "*.toc")
 
 examples/BookstoreExtraction.vo : examples/BookstoreExtraction.v examples/Bookstore.vo
-	coqc -R src ADTSynthesis -R examples ADTExamples examples/BookstoreExtraction.v
+	coqc -R src Fiat -R examples ADTExamples examples/BookstoreExtraction.v
 
 examples/BookstoreNaiveExtraction.vo : examples/BookstoreNaiveExtraction.v examples/BookstoreNaive.vo
-	coqc -R src ADTSynthesis -R examples ADTExamples examples/BookstoreNaiveExtraction.v
+	coqc -R src Fiat -R examples ADTExamples examples/BookstoreNaiveExtraction.v
 
 examples/bookstore.cmxa: examples/BookstoreExtraction.vo
 	cd examples && ocamlopt -w -a -o bookstore.cmxa -a bookstore.mli bookstore.ml
@@ -463,13 +463,13 @@ naiverepl: examples/repl.ml examples/bookstorenaive.cmxa
 	cd examples && ocamlopt -w -a -o repl unix.cmxa str.cmxa bookstorenaive.cmxa repl.ml
 
 examples/ExtractingFiniteSetsExamples.vo: examples/ExtractingFiniteSetsExamples.v
-	$(COQC) -I ../bedrock/platform -dont-load-proofs -R src ADTSynthesis -R examples ADTExamples \
+	$(COQC) -I ../bedrock/platform -dont-load-proofs -R src Fiat -R examples ADTExamples \
 		-R ../bedrock/src Bedrock -R ../bedrock/platform/cito Cito -R ../bedrock/platform/facade Facade \
 		examples/ExtractingFiniteSetsExamples
 
 examples/SumUnique.ml examples/SumUniqueAMD64.vo: examples/SumUniqueAMD64.v
 	cat examples/ignoreFail.ml >$@
-	$(COQC) -I ../bedrock/platform -dont-load-proofs -R src ADTSynthesis -R examples ADTExamples \
+	$(COQC) -I ../bedrock/platform -dont-load-proofs -R src Fiat -R examples ADTExamples \
 		-R ../bedrock/src Bedrock -R ../bedrock/platform/cito Cito -R ../bedrock/platform/facade Facade \
 		$< 2>/dev/null \
 		| sed '/let coq_Unnamed_thm_/,/module/{/module/!d}' \

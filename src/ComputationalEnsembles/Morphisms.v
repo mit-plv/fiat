@@ -1,7 +1,7 @@
 Require Import Coq.Sets.Ensembles.
-Require Import ADTSynthesis.Computation ADTSynthesis.Common.Ensembles
-        ADTSynthesis.ComputationalEnsembles.Core ADTSynthesis.ComputationalEnsembles.Laws.
-Require Import ADTSynthesis.Common.
+Require Import Fiat.Computation Fiat.Common.Ensembles
+        Fiat.ComputationalEnsembles.Core Fiat.ComputationalEnsembles.Laws.
+Require Import Fiat.Common.
 
 Set Implicit Arguments.
 

@@ -1,5 +1,5 @@
 Require Import ADTNotation.BuildADT ADTNotation.BuildComputationalADT ADTNotation.BuildADTSig.
-Require Import ADTRefinement.GeneralRefinements ADTSynthesis.Common.ilist.
+Require Import ADTRefinement.GeneralRefinements Fiat.Common.ilist.
 Require Import ADTRefinement.BuildADTRefinements.HoneRepresentation.
 Require Import ADT.ComputationalADT.
 Require Import Core.

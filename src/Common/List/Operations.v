@@ -1,6 +1,6 @@
 (** Useful list operations *)
 Require Import Coq.Lists.List.
-Require Import ADTSynthesis.Common.Equality.
+Require Import Fiat.Common.Equality.
 
 Set Implicit Arguments.
 

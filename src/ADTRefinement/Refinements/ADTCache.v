@@ -1,4 +1,4 @@
-Require Import ADTSynthesis.Common ADTSynthesis.Computation ADTSynthesis.ADT Coq.Sets.Ensembles ADTSynthesis.ADTRefinement ADTSynthesis.ADTRefinement.Refinements.ADTRepInv.
+Require Import Fiat.Common Fiat.Computation Fiat.ADT Coq.Sets.Ensembles Fiat.ADTRefinement Fiat.ADTRefinement.Refinements.ADTRepInv.
 
 Generalizable All Variables.
 Set Implicit Arguments.

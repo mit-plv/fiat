@@ -1,4 +1,4 @@
-Require Import ADTSynthesis.QueryStructure.Automation.AutoDB.
+Require Import Fiat.QueryStructure.Automation.AutoDB.
 
 (* Our bookstore has two relations (tables):
    - The [Books] relation contains the books in the

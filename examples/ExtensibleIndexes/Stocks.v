@@ -1,5 +1,5 @@
-Require Import ADTSynthesis.QueryStructure.Automation.IndexSelection
-        ADTSynthesis.QueryStructure.Automation.AutoDB.
+Require Import Fiat.QueryStructure.Automation.IndexSelection
+        Fiat.QueryStructure.Automation.AutoDB.
 
 Definition Market := string.
 Definition StockType := nat.

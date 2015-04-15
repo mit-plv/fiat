@@ -1,7 +1,7 @@
 Require Import Coq.Lists.List Coq.Strings.String
         Coq.Logic.FunctionalExtensionality
         Coq.Sorting.Permutation Coq.Sets.Ensembles
-        ADTSynthesis.Common.List.PermutationFacts.
+        Fiat.Common.List.PermutationFacts.
 
 Class UnConstrRelationAbsRClass {A B : Type} :=
   { UnConstrRelationAbsR : Ensemble A -> B -> Prop }.

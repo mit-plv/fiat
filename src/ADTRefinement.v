@@ -1,2 +1,2 @@
-Require Export ADTSynthesis.ADTRefinement.Core ADTSynthesis.ADTRefinement.SetoidMorphisms
-        ADTSynthesis.ADTRefinement.GeneralRefinements ADTSynthesis.ADTRefinement.Refinements.
+Require Export Fiat.ADTRefinement.Core Fiat.ADTRefinement.SetoidMorphisms
+        Fiat.ADTRefinement.GeneralRefinements Fiat.ADTRefinement.Refinements.

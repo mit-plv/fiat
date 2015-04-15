@@ -2,12 +2,12 @@ Require Import Coq.Sorting.Mergesort Coq.Structures.Orders
         Coq.Arith.Arith
         Coq.Structures.OrderedType Coq.Structures.OrderedTypeEx
         Coq.Strings.String Coq.FSets.FMapAVL
-        ADTSynthesis.Common.String_as_OT
-        ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureNotations
-        ADTSynthesis.QueryStructure.Implementation.Operations
-        ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.QueryStructureImplementation
-        ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.IndexSearchTerms
-        ADTSynthesis.QueryStructure.Automation.Common.
+        Fiat.Common.String_as_OT
+        Fiat.QueryStructure.Specification.Representation.QueryStructureNotations
+        Fiat.QueryStructure.Implementation.Operations
+        Fiat.QueryStructure.Implementation.DataStructures.BagADT.QueryStructureImplementation
+        Fiat.QueryStructure.Implementation.DataStructures.BagADT.IndexSearchTerms
+        Fiat.QueryStructure.Automation.Common.
 
 Module AttrCountOrder <: TotalLeBool.
   Definition t := (prod (string * (string * string)) nat).

@@ -1,16 +1,16 @@
 (** * Definition of a boolean-returning CFG parser-recognizer *)
 Require Import Coq.Lists.List Coq.Strings.String.
 Require Import Coq.Numbers.Natural.Peano.NPeano Coq.Arith.Compare_dec Coq.Arith.Wf_nat.
-Require Import ADTSynthesis.Parsers.ContextFreeGrammar.
-Require Import ADTSynthesis.Parsers.ContextFreeGrammarNotations.
-Require Import ADTSynthesis.Parsers.BaseTypes.
-Require Import ADTSynthesis.Parsers.StringLike.Properties.
-Require Import ADTSynthesis.Common ADTSynthesis.Common.Wf.
-Require Import ADTSynthesis.Parsers.BooleanRecognizer.
-Require Import ADTSynthesis.Common.Match.
-Require Import ADTSynthesis.Common.List.ListFacts.
-Require Import ADTSynthesis.Common.Equality.
-Require Export ADTSynthesis.Common.SetoidInstances.
+Require Import Fiat.Parsers.ContextFreeGrammar.
+Require Import Fiat.Parsers.ContextFreeGrammarNotations.
+Require Import Fiat.Parsers.BaseTypes.
+Require Import Fiat.Parsers.StringLike.Properties.
+Require Import Fiat.Common Fiat.Common.Wf.
+Require Import Fiat.Parsers.BooleanRecognizer.
+Require Import Fiat.Common.Match.
+Require Import Fiat.Common.List.ListFacts.
+Require Import Fiat.Common.Equality.
+Require Export Fiat.Common.SetoidInstances.
 
 Set Implicit Arguments.
 Local Open Scope string_like_scope.

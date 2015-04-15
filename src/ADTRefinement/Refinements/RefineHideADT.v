@@ -1,6 +1,6 @@
-Require Import ADTSynthesis.Common
-        ADTSynthesis.ADT.ADTSig ADTSynthesis.ADT.Core ADTSynthesis.ADT.ADTHide
-        ADTSynthesis.ADTRefinement.Core.
+Require Import Fiat.Common
+        Fiat.ADT.ADTSig Fiat.ADT.Core Fiat.ADT.ADTHide
+        Fiat.ADTRefinement.Core.
 
 Lemma RefineHideADT
       extSig'

@@ -1,4 +1,4 @@
-Require Import ADTSynthesis.Common Coq.Arith.Arith Coq.Bool.Bool Coq.Sets.Ensembles.
+Require Import Fiat.Common Coq.Arith.Arith Coq.Bool.Bool Coq.Sets.Ensembles.
 
 Class DecideableEnsemble {A} (P : Ensemble A) :=
   { dec : A -> bool;

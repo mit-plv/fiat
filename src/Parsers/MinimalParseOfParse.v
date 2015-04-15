@@ -2,11 +2,11 @@
 Require Import Coq.Strings.String Coq.Lists.List Coq.Program.Program Coq.Classes.RelationClasses Coq.Classes.Morphisms Coq.Setoids.Setoid Coq.Arith.Compare_dec.
 Require Import Coq.omega.Omega.
 Require Import Coq.Program.Wf Coq.Arith.Wf_nat.
-Require Import ADTSynthesis.Parsers.ContextFreeGrammar ADTSynthesis.Parsers.ContextFreeGrammarProperties ADTSynthesis.Parsers.WellFoundedParse.
-Require Import ADTSynthesis.Parsers.CorrectnessBaseTypes ADTSynthesis.Parsers.BaseTypes.
-Require Export ADTSynthesis.Parsers.MinimalParse.
-Require Export ADTSynthesis.Parsers.WellFoundedParseProperties.
-Require Import ADTSynthesis.Common ADTSynthesis.Common.Le ADTSynthesis.Common.Wf.
+Require Import Fiat.Parsers.ContextFreeGrammar Fiat.Parsers.ContextFreeGrammarProperties Fiat.Parsers.WellFoundedParse.
+Require Import Fiat.Parsers.CorrectnessBaseTypes Fiat.Parsers.BaseTypes.
+Require Export Fiat.Parsers.MinimalParse.
+Require Export Fiat.Parsers.WellFoundedParseProperties.
+Require Import Fiat.Common Fiat.Common.Le Fiat.Common.Wf.
 
 Set Implicit Arguments.
 Local Open Scope string_like_scope.

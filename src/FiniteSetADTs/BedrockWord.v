@@ -1,4 +1,4 @@
-Require Export ADTSynthesis.FiniteSetADTs.WordInterface.
+Require Export Fiat.FiniteSetADTs.WordInterface.
 Require Export Bedrock.Memory Bedrock.IL.
 
 Set Implicit Arguments.

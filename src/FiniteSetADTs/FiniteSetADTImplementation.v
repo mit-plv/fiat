@@ -1,16 +1,16 @@
 (* Definition of the finite set spec *)
-Require Export ADTSynthesis.FiniteSetADTs.FiniteSetADT.
+Require Export Fiat.FiniteSetADTs.FiniteSetADT.
 Require Import Coq.Strings.String Coq.Sets.Ensembles
   Coq.Sets.Finite_sets Coq.Lists.List
   Coq.Sorting.Permutation Coq.MSets.MSetInterface
   Coq.MSets.MSetAVL Coq.MSets.MSetList Coq.MSets.MSetRBT
-  ADTSynthesis.ADT
-  ADTSynthesis.ADT.ComputationalADT
-  ADTSynthesis.ADTRefinement.Core
-  ADTSynthesis.ADTNotation
-  ADTSynthesis.ADTRefinement.GeneralRefinements
-  ADTSynthesis.Common.IterateBoundedIndex
-  ADTSynthesis.Common.Ensembles.EnsembleListEquivalence.
+  Fiat.ADT
+  Fiat.ADT.ComputationalADT
+  Fiat.ADTRefinement.Core
+  Fiat.ADTNotation
+  Fiat.ADTRefinement.GeneralRefinements
+  Fiat.Common.IterateBoundedIndex
+  Fiat.Common.Ensembles.EnsembleListEquivalence.
 
 Set Implicit Arguments.
 

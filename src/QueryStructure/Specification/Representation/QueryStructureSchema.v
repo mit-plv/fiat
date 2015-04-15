@@ -1,12 +1,12 @@
-Require Import Coq.Lists.List Coq.Strings.String ADTSynthesis.Common Coq.Arith.Arith
+Require Import Coq.Lists.List Coq.Strings.String Fiat.Common Coq.Arith.Arith
         Coq.Logic.FunctionalExtensionality Coq.Sets.Ensembles
-        ADTSynthesis.Common.ilist ADTSynthesis.Common.StringBound Coq.Program.Program.
+        Fiat.Common.ilist Fiat.Common.StringBound Coq.Program.Program.
 Require Export
-        ADTSynthesis.QueryStructure.Specification.Representation.Notations
-        ADTSynthesis.QueryStructure.Specification.Representation.Heading
-        ADTSynthesis.QueryStructure.Specification.Representation.Tuple
-        ADTSynthesis.QueryStructure.Specification.Representation.Schema
-        ADTSynthesis.QueryStructure.Specification.Representation.Relation.
+        Fiat.QueryStructure.Specification.Representation.Notations
+        Fiat.QueryStructure.Specification.Representation.Heading
+        Fiat.QueryStructure.Specification.Representation.Tuple
+        Fiat.QueryStructure.Specification.Representation.Schema
+        Fiat.QueryStructure.Specification.Representation.Relation.
 
 (* A Query Structure schema is a set of named relation
    schemas and a set of cross-relation constraints
@@ -128,7 +128,7 @@ Notation "'Query' 'Structure' 'Schema' relList " :=
   (@Build_QueryStructureSchema relList%NamedSchema []) : QSSchema_scope.
 
 Bind Scope QSSchema_scope with QueryStructureSchema.
-Require Export ADTSynthesis.Common.DecideableEnsembles.
+Require Export Fiat.Common.DecideableEnsembles.
 
 Instance Astring_eq : Query_eq string := {| A_eq_dec := string_dec |}.
 

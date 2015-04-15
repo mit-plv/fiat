@@ -1,7 +1,7 @@
 Require Import Coq.Lists.List Coq.Strings.String Coq.Logic.FunctionalExtensionality Coq.Sets.Ensembles
-        ADTSynthesis.Common.ilist ADTSynthesis.Common.StringBound Coq.Program.Program
-        ADTSynthesis.QueryStructure.Specification.Representation.Notations
-        ADTSynthesis.QueryStructure.Specification.Representation.Heading ADTSynthesis.QueryStructure.Specification.Representation.Tuple.
+        Fiat.Common.ilist Fiat.Common.StringBound Coq.Program.Program
+        Fiat.QueryStructure.Specification.Representation.Notations
+        Fiat.QueryStructure.Specification.Representation.Heading Fiat.QueryStructure.Specification.Representation.Tuple.
 
 (* A relation schema is a heading for the tuples of the
    relation and constraints on the members

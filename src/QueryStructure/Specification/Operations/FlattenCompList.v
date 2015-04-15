@@ -1,9 +1,9 @@
 Require Import Coq.Lists.List Coq.Program.Program.
-Require Import ADTSynthesis.Common
-        ADTSynthesis.Common.List.ListFacts
-        ADTSynthesis.Common.List.ListMorphisms
-        ADTSynthesis.Common.Ensembles.IndexedEnsembles
-        ADTSynthesis.Computation.
+Require Import Fiat.Common
+        Fiat.Common.List.ListFacts
+        Fiat.Common.List.ListMorphisms
+        Fiat.Common.Ensembles.IndexedEnsembles
+        Fiat.Computation.
 
 Unset Implicit Arguments.
 

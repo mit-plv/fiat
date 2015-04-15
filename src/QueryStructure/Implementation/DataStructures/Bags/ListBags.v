@@ -1,4 +1,4 @@
-Require Export ADTSynthesis.QueryStructure.Implementation.DataStructures.Bags.BagsInterface.
+Require Export Fiat.QueryStructure.Implementation.DataStructures.Bags.BagsInterface.
 Unset Implicit Arguments.
 
 Open Scope list.

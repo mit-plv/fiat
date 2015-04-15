@@ -1,7 +1,7 @@
-Require Export ADTSynthesis.Common.Ensembles.Notations.
-Require Export ADTSynthesis.Common.Ensembles.Equivalence.
-Require Export ADTSynthesis.Common.Ensembles.Morphisms.
-Require Export ADTSynthesis.Common.Ensembles.CombinatorLaws.
-Require Export ADTSynthesis.Common.Ensembles.EnsembleListEquivalence.
-Require Export ADTSynthesis.Common.Ensembles.Cardinal.
-Require Export ADTSynthesis.Common.Ensembles.IndexedEnsembles.
+Require Export Fiat.Common.Ensembles.Notations.
+Require Export Fiat.Common.Ensembles.Equivalence.
+Require Export Fiat.Common.Ensembles.Morphisms.
+Require Export Fiat.Common.Ensembles.CombinatorLaws.
+Require Export Fiat.Common.Ensembles.EnsembleListEquivalence.
+Require Export Fiat.Common.Ensembles.Cardinal.
+Require Export Fiat.Common.Ensembles.IndexedEnsembles.

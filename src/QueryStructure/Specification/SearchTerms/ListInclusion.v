@@ -1,15 +1,15 @@
 Require Import
         Coq.Arith.Peano_dec
         Coq.Structures.OrderedTypeEx
-        ADTSynthesis.Common
-        ADTSynthesis.Common.DecideableEnsembles
-        ADTSynthesis.Common.String_as_OT
-        ADTSynthesis.Common.List.ListFacts
-        ADTSynthesis.Common.List.FlattenList
-        ADTSynthesis.Common.SetEqProperties
-        ADTSynthesis.Common.FMapExtensions
-        ADTSynthesis.Common.List.PermutationFacts
-        ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureNotations.
+        Fiat.Common
+        Fiat.Common.DecideableEnsembles
+        Fiat.Common.String_as_OT
+        Fiat.Common.List.ListFacts
+        Fiat.Common.List.FlattenList
+        Fiat.Common.SetEqProperties
+        Fiat.Common.FMapExtensions
+        Fiat.Common.List.PermutationFacts
+        Fiat.QueryStructure.Specification.Representation.QueryStructureNotations.
 
 Section IncludesClauses.
 

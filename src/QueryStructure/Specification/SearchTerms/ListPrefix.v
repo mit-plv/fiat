@@ -1,4 +1,4 @@
-Require Import ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureNotations.
+Require Import Fiat.QueryStructure.Specification.Representation.QueryStructureNotations.
 
 Open Scope list.
 

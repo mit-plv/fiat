@@ -1,13 +1,13 @@
-Require Export ADTSynthesis.QueryStructure.Implementation.DataStructures.Bags.BagsInterface
-        ADTSynthesis.QueryStructure.Implementation.DataStructures.Bags.BagsProperties.
+Require Export Fiat.QueryStructure.Implementation.DataStructures.Bags.BagsInterface
+        Fiat.QueryStructure.Implementation.DataStructures.Bags.BagsProperties.
 Require Import
         Coq.FSets.FMapInterface Coq.FSets.FMapFacts
-        ADTSynthesis.Common
-        ADTSynthesis.Common.List.ListFacts
-        ADTSynthesis.Common.List.FlattenList
-        ADTSynthesis.Common.SetEqProperties
-        ADTSynthesis.Common.FMapExtensions
-        ADTSynthesis.Common.List.PermutationFacts.
+        Fiat.Common
+        Fiat.Common.List.ListFacts
+        Fiat.Common.List.FlattenList
+        Fiat.Common.SetEqProperties
+        Fiat.Common.FMapExtensions
+        Fiat.Common.List.PermutationFacts.
 
 Unset Implicit Arguments.
 

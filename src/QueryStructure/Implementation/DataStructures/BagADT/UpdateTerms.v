@@ -1,10 +1,10 @@
 Require Import
         Coq.Lists.List Coq.Program.Program Coq.Bool.Bool
-        ADTSynthesis.Common.ilist
-        ADTSynthesis.Common.DecideableEnsembles
-        ADTSynthesis.QueryStructure.Specification.Representation.Heading
-        ADTSynthesis.QueryStructure.Specification.Representation.Tuple
-        ADTSynthesis.QueryStructure.Specification.Representation.Notations.
+        Fiat.Common.ilist
+        Fiat.Common.DecideableEnsembles
+        Fiat.QueryStructure.Specification.Representation.Heading
+        Fiat.QueryStructure.Specification.Representation.Tuple
+        Fiat.QueryStructure.Specification.Representation.Notations.
 
 (* Definitions for building BagADT update terms.*)
 

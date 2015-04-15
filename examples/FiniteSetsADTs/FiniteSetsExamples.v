@@ -1,5 +1,5 @@
 (** * Some examples about dealing with finite sets *)
-Require Import ADTSynthesis.FiniteSetADTs.
+Require Import Fiat.FiniteSetADTs.
 
 Definition countUniqueSpec (ls : list W) : Comp W
   := cardinal (elements ls).

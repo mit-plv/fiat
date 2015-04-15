@@ -2,10 +2,10 @@
 Require Import Coq.Lists.List.
 Require Import Coq.Arith.EqNat.
 Require Import Coq.Arith.Compare_dec Coq.Arith.Wf_nat.
-Require Import ADTSynthesis.Parsers.ContextFreeGrammar.
-Require Import ADTSynthesis.Parsers.BaseTypes.
-Require Import ADTSynthesis.Parsers.StringLike.Properties.
-Require Import ADTSynthesis.Common ADTSynthesis.Common.Wf.
+Require Import Fiat.Parsers.ContextFreeGrammar.
+Require Import Fiat.Parsers.BaseTypes.
+Require Import Fiat.Parsers.StringLike.Properties.
+Require Import Fiat.Common Fiat.Common.Wf.
 
 Set Implicit Arguments.
 Local Open Scope string_like_scope.

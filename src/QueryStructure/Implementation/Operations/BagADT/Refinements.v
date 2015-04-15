@@ -1,22 +1,22 @@
 Require Export Coq.Lists.List Coq.Program.Program
-        ADTSynthesis.QueryStructure.Specification.Representation.Tuple
-        ADTSynthesis.QueryStructure.Specification.Representation.Heading
-        ADTSynthesis.Common.ilist
-        ADTSynthesis.Common.i2list.
+        Fiat.QueryStructure.Specification.Representation.Tuple
+        Fiat.QueryStructure.Specification.Representation.Heading
+        Fiat.Common.ilist
+        Fiat.Common.i2list.
 Require Import Coq.Bool.Bool Coq.Strings.String
         Coq.Structures.OrderedTypeEx Coq.Arith.Arith
-        ADTSynthesis.Common.String_as_OT
-        ADTSynthesis.Common.Ensembles.IndexedEnsembles
-        ADTSynthesis.Common.DecideableEnsembles
-        ADTSynthesis.Common.List.ListFacts
-        ADTSynthesis.QueryStructure.Specification.Operations.FlattenCompList
-        ADTSynthesis.QueryStructure.Implementation.Operations.General.QueryRefinements
-        ADTSynthesis.QueryStructure.Implementation.Operations.General.EmptyRefinements
-        ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureNotations
-        ADTSynthesis.QueryStructure.Implementation.ListImplementation
-        ADTSynthesis.Common.List.PermutationFacts
-        ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.BagADT
-        ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.QueryStructureImplementation.
+        Fiat.Common.String_as_OT
+        Fiat.Common.Ensembles.IndexedEnsembles
+        Fiat.Common.DecideableEnsembles
+        Fiat.Common.List.ListFacts
+        Fiat.QueryStructure.Specification.Operations.FlattenCompList
+        Fiat.QueryStructure.Implementation.Operations.General.QueryRefinements
+        Fiat.QueryStructure.Implementation.Operations.General.EmptyRefinements
+        Fiat.QueryStructure.Specification.Representation.QueryStructureNotations
+        Fiat.QueryStructure.Implementation.ListImplementation
+        Fiat.Common.List.PermutationFacts
+        Fiat.QueryStructure.Implementation.DataStructures.BagADT.BagADT
+        Fiat.QueryStructure.Implementation.DataStructures.BagADT.QueryStructureImplementation.
 
 Section BagsQueryStructureRefinements.
 
@@ -816,7 +816,7 @@ Section BagsQueryStructureRefinements.
   Qed.
 
 
-  Require Import ADTSynthesis.QueryStructure.Implementation.Operations.General.DeleteRefinements.
+  Require Import Fiat.QueryStructure.Implementation.Operations.General.DeleteRefinements.
 
   Lemma refineEquiv_Join_Comp_Lists_Build_single_Tuple_list
   : forall (r_n : IndexedQueryStructure qs_schema BagIndexKeys) idx,

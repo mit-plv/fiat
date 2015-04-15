@@ -1,7 +1,7 @@
-Require Import Coq.Setoids.Setoid ADTSynthesis.ComputationalEnsembles.Morphisms.
-Require Import ADTSynthesis.FiatToFacade.Prog ADTSynthesis.FiatToFacade.SupersetUtilities ADTSynthesis.FiatToFacade.SupersetMorphisms.
+Require Import Coq.Setoids.Setoid Fiat.ComputationalEnsembles.Morphisms.
+Require Import Fiat.FiatToFacade.Prog Fiat.FiatToFacade.SupersetUtilities Fiat.FiatToFacade.SupersetMorphisms.
 Require Import Bedrock.Platform.Cito.StringMap.
-Require Import ADTSynthesis.Common ADTSynthesis.Computation.Core.
+Require Import Fiat.Common Fiat.Computation.Core.
 
 Add Parametric Morphism av env :
   (@Prog av env)

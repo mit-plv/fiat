@@ -1,8 +1,8 @@
 Require Import Coq.Strings.String.
-Require Import ADTSynthesis.QueryStructure.Automation.AutoDB
-        ADTSynthesis.QueryStructure.Automation.IndexSelection
-        ADTSynthesis.QueryStructure.Specification.SearchTerms.ListInclusion
-        ADTSynthesis.QueryStructure.Specification.SearchTerms.InRange.
+Require Import Fiat.QueryStructure.Automation.AutoDB
+        Fiat.QueryStructure.Automation.IndexSelection
+        Fiat.QueryStructure.Specification.SearchTerms.ListInclusion
+        Fiat.QueryStructure.Specification.SearchTerms.InRange.
 
 Definition PHOTOS := "Photos".
 Definition EVENTS := "Events".

@@ -1,4 +1,4 @@
-Require Import ADTSynthesis.Common ADTSynthesis.Computation ADTSynthesis.ADT Coq.Sets.Ensembles.
+Require Import Fiat.Common Fiat.Computation Fiat.ADT Coq.Sets.Ensembles.
 
 Generalizable All Variables.
 Set Implicit Arguments.

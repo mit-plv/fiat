@@ -1,5 +1,5 @@
 Require Export Coq.Sets.Ensembles.
-Require Export ADTSynthesis.Common.ReservedNotations.
+Require Export Fiat.Common.ReservedNotations.
 
 Delimit Scope Ensemble_scope with ensemble.
 Bind Scope Ensemble_scope with Ensemble.

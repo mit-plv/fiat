@@ -1,6 +1,6 @@
 (** Sharpened ADT for (ab)* *)
-Require Import ADTSynthesis.Parsers.Refinement.Tactics.
-Require Import ADTSynthesis.Parsers.Grammars.ABStar.
+Require Import Fiat.Parsers.Refinement.Tactics.
+Require Import Fiat.Parsers.Grammars.ABStar.
 Set Implicit Arguments.
 
 Section IndexedImpl.
@@ -33,9 +33,9 @@ End IndexedImpl.
 
 Global Arguments ComputationalSplitter / .
 
-Require Import ADTSynthesis.Parsers.ParserFromParserADT.
-Require Import ADTSynthesis.Parsers.ExtrOcamlParsers.
-Import ADTSynthesis.Parsers.ExtrOcamlParsers.HideProofs.
+Require Import Fiat.Parsers.ParserFromParserADT.
+Require Import Fiat.Parsers.ExtrOcamlParsers.
+Import Fiat.Parsers.ExtrOcamlParsers.HideProofs.
 
 Time Definition ab_star_parser (str : String.string) : bool
   := Eval simpl in has_parse (parser ComputationalSplitter) str.

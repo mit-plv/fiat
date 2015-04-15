@@ -1,6 +1,6 @@
 Require Import Coq.Lists.List Coq.Strings.String Coq.Logic.FunctionalExtensionality Coq.Sets.Ensembles
-        ADTSynthesis.Common.ilist ADTSynthesis.Common.StringBound Coq.Program.Program
-        ADTSynthesis.QueryStructure.Specification.Representation.Notations.
+        Fiat.Common.ilist Fiat.Common.StringBound Coq.Program.Program
+        Fiat.QueryStructure.Specification.Representation.Notations.
 
 (* Notations for attributes. *)
 

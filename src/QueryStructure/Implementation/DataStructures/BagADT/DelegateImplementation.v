@@ -1,9 +1,9 @@
-Require Export ADTSynthesis.QueryStructure.Implementation.DataStructures.Bags.BagsInterface ADTSynthesis.QueryStructure.Refinements.Bags.CountingListBags ADTSynthesis.QueryStructure.Refinements.Bags.TreeBags ADTSynthesis.QueryStructure.Specification.Representation.Tuple ADTSynthesis.QueryStructure.Specification.Representation.Heading Coq.Lists.List Coq.Program.Program ADTSynthesis.Common.ilist ADTSynthesis.Common.i2list.
-Require Import ADTSynthesis.Common.String_as_OT ADTSynthesis.Common.Ensembles.IndexedEnsembles ADTSynthesis.Common.DecideableEnsembles.
-Require Import Coq.Bool.Bool Coq.Strings.String Coq.Structures.OrderedTypeEx ADTSynthesis.QueryStructure.Implementation.DataStructures.Bags.BagsOfTuples.
-Require Import ADTSynthesis.QueryStructure.Implementation.Operations.General.QueryRefinements.
-Require Import ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureNotations ADTSynthesis.QueryStructure.Implementation.DataStructures.ListImplementation.
-Require Import ADTSynthesis.QueryStructure.AdditionalLemmas ADTSynthesis.Common.List.PermutationFacts ADTSynthesis.ADT.ComputationalADT Coq.Arith.Arith ADTSynthesis.QueryStructure.Refinements.BagADT.BagADT.
+Require Export Fiat.QueryStructure.Implementation.DataStructures.Bags.BagsInterface Fiat.QueryStructure.Refinements.Bags.CountingListBags Fiat.QueryStructure.Refinements.Bags.TreeBags Fiat.QueryStructure.Specification.Representation.Tuple Fiat.QueryStructure.Specification.Representation.Heading Coq.Lists.List Coq.Program.Program Fiat.Common.ilist Fiat.Common.i2list.
+Require Import Fiat.Common.String_as_OT Fiat.Common.Ensembles.IndexedEnsembles Fiat.Common.DecideableEnsembles.
+Require Import Coq.Bool.Bool Coq.Strings.String Coq.Structures.OrderedTypeEx Fiat.QueryStructure.Implementation.DataStructures.Bags.BagsOfTuples.
+Require Import Fiat.QueryStructure.Implementation.Operations.General.QueryRefinements.
+Require Import Fiat.QueryStructure.Specification.Representation.QueryStructureNotations Fiat.QueryStructure.Implementation.DataStructures.ListImplementation.
+Require Import Fiat.QueryStructure.AdditionalLemmas Fiat.Common.List.PermutationFacts Fiat.ADT.ComputationalADT Coq.Arith.Arith Fiat.QueryStructure.Refinements.BagADT.BagADT.
 
 Section FiniteMapADT.
 

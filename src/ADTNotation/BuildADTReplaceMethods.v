@@ -1,7 +1,7 @@
-Require Import ADTSynthesis.Common Coq.Lists.List Coq.Strings.String
-        ADTSynthesis.ADT.ADTSig ADTSynthesis.ADT.Core
-        ADTSynthesis.Common.StringBound ADTSynthesis.Common.ilist
-        ADTSynthesis.ADTNotation.BuildADTSig ADTSynthesis.ADTNotation.BuildADT.
+Require Import Fiat.Common Coq.Lists.List Coq.Strings.String
+        Fiat.ADT.ADTSig Fiat.ADT.Core
+        Fiat.Common.StringBound Fiat.Common.ilist
+        Fiat.ADTNotation.BuildADTSig Fiat.ADTNotation.BuildADT.
 
 (* Definitions for replacing method bodies of ADTs built
    from [BuildADT] . *)

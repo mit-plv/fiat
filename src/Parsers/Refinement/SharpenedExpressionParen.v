@@ -2,16 +2,16 @@
 Require Import Coq.Init.Wf Coq.Arith.Wf_nat.
 Require Import Coq.Lists.List.
 Require Import Coq.Numbers.Natural.Peano.NPeano.
-Require Import ADTSynthesis.Parsers.Refinement.Tactics.
-Require Import ADTSynthesis.Parsers.Grammars.ExpressionParen.
-Require Import ADTSynthesis.Computation.Refinements.General.
-Require Import ADTSynthesis.Parsers.StringLike.Properties.
-Require Import ADTSynthesis.Parsers.StringLike.String.
-Require Import ADTSynthesis.Common.
-Require Import ADTSynthesis.Common.Wf.
-Require Import ADTSynthesis.Parsers.Splitters.RDPList.
-Require Import ADTSynthesis.Parsers.BaseTypes.
-Require Import ADTSynthesis.Parsers.Refinement.FixedLengthLemmas.
+Require Import Fiat.Parsers.Refinement.Tactics.
+Require Import Fiat.Parsers.Grammars.ExpressionParen.
+Require Import Fiat.Computation.Refinements.General.
+Require Import Fiat.Parsers.StringLike.Properties.
+Require Import Fiat.Parsers.StringLike.String.
+Require Import Fiat.Common.
+Require Import Fiat.Common.Wf.
+Require Import Fiat.Parsers.Splitters.RDPList.
+Require Import Fiat.Parsers.BaseTypes.
+Require Import Fiat.Parsers.Refinement.FixedLengthLemmas.
 
 Set Implicit Arguments.
 
@@ -45,9 +45,9 @@ End IndexedImpl.
 
 Global Arguments ComputationalSplitter / .
 
-Require Import ADTSynthesis.Parsers.ParserFromParserADT.
-Require Import ADTSynthesis.Parsers.ExtrOcamlParsers.
-Import ADTSynthesis.Parsers.ExtrOcamlParsers.HideProofs.
+Require Import Fiat.Parsers.ParserFromParserADT.
+Require Import Fiat.Parsers.ExtrOcamlParsers.
+Import Fiat.Parsers.ExtrOcamlParsers.HideProofs.
 
 Time Definition paren_expr_parser (str : String.string) : bool
   := Eval simpl in has_parse (parser ComputationalSplitter) str.

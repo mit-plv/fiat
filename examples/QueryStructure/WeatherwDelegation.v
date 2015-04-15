@@ -1,4 +1,4 @@
-Require Import ADTSynthesis.QueryStructure.Automation.AutoDB.
+Require Import Fiat.QueryStructure.Automation.AutoDB.
 
 Definition VALUE := "VALUE".
 Definition MEASUREMENT_TYPE := "MEASUREMENT_TYPE".

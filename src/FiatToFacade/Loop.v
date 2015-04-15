@@ -1,8 +1,8 @@
 Require Import Bedrock.Platform.Cito.StringMap.
 Require Import Bedrock.Memory.
 Require Import Bedrock.Platform.Facade.examples.FiatADTs.
-Require Import ADTSynthesis.FiatToFacade.FacadeNotations.
-Require Import ADTSynthesis.FiatToFacade.Prog ADTSynthesis.FiatToFacade.StringMapNotations.
+Require Import Fiat.FiatToFacade.FacadeNotations.
+Require Import Fiat.FiatToFacade.Prog Fiat.FiatToFacade.StringMapNotations.
 
 Definition SCALoopBodyProgCondition
            env loop compiled_loop knowledge scas adts

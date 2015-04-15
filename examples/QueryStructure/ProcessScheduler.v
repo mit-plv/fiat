@@ -1,4 +1,4 @@
-Require Import ADTSynthesis.QueryStructure.Refinements.AutoDB.
+Require Import Fiat.QueryStructure.Refinements.AutoDB.
 
 Section ProcessSchedulerInterface.
   Definition PID := "pid".

@@ -1,4 +1,4 @@
-Require Import ADTSynthesis.Common ADTSynthesis.Computation.Core ADTSynthesis.ADT.Core Coq.Sets.Ensembles.
+Require Import Fiat.Common Fiat.Computation.Core Fiat.ADT.Core Coq.Sets.Ensembles.
 
 Section HideADT.
 

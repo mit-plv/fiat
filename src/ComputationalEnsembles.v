@@ -1,3 +1,3 @@
-Require Export ADTSynthesis.ComputationalEnsembles.Core.
-Require Export ADTSynthesis.ComputationalEnsembles.Laws.
-Require Export ADTSynthesis.ComputationalEnsembles.Morphisms.
+Require Export Fiat.ComputationalEnsembles.Core.
+Require Export Fiat.ComputationalEnsembles.Laws.
+Require Export Fiat.ComputationalEnsembles.Morphisms.

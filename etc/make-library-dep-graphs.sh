@@ -11,7 +11,7 @@ if [ "$SELF" -nt "$DIR/../Makefile.librarydepgraphs" ] || [ "$DIR"/coq-scripts/d
 then
    echo "Making makefile"
    # colors for directories come from the list at http://hackage.haskell.org/package/graphviz-2999.13.0.3/docs/Data-GraphViz-Attributes-Colors-X11.html#t:X11Color
-   bash "$DIR"/coq-scripts/depgraphs/library/make-makefile.sh "$DIR"/../Makefile.librarydepgraphs -t ADTSynthesis -R ADTSynthesis=src -R ADTExamples=examples \
+   bash "$DIR"/coq-scripts/depgraphs/library/make-makefile.sh "$DIR"/../Makefile.librarydepgraphs -t Fiat -R Fiat=src -R ADTExamples=examples \
     -c src/ADT/=SkyBlue \
     -c src/ADTNotation/=MistyRose \
     -c src/ADTRefinement/BuildADTRefinements/=Sienna1 \

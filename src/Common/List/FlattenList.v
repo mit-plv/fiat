@@ -1,4 +1,4 @@
-Require Import Coq.Lists.List Coq.Lists.SetoidList ADTSynthesis.Common.
+Require Import Coq.Lists.List Coq.Lists.SetoidList Fiat.Common.
 
 Unset Implicit Arguments.
 

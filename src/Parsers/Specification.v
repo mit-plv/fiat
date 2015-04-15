@@ -1,5 +1,5 @@
 (** * Definition of a [comp]-based specification of a CFG parser-recognizer *)
-Require Import ADTSynthesis.Computation.Core ADTSynthesis.Parsers.ContextFreeGrammar.
+Require Import Fiat.Computation.Core Fiat.Parsers.ContextFreeGrammar.
 
 Set Implicit Arguments.
 

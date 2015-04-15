@@ -1,12 +1,12 @@
 (** * The boolean recognizer can work on a projected string type *)
-Require Import ADTSynthesis.Parsers.BooleanRecognizer.
-Require Import ADTSynthesis.Parsers.BaseTypes.
-Require Import ADTSynthesis.Parsers.StringLike.Core.
-Require Import ADTSynthesis.Parsers.ContextFreeGrammarTransfer.
-Require Import ADTSynthesis.Parsers.ContextFreeGrammar.
-Require Import ADTSynthesis.Parsers.BooleanRecognizerCorrect.
-Require Import ADTSynthesis.Common.Wf.
-Require Import ADTSynthesis.Common.SetoidInstances.
+Require Import Fiat.Parsers.BooleanRecognizer.
+Require Import Fiat.Parsers.BaseTypes.
+Require Import Fiat.Parsers.StringLike.Core.
+Require Import Fiat.Parsers.ContextFreeGrammarTransfer.
+Require Import Fiat.Parsers.ContextFreeGrammar.
+Require Import Fiat.Parsers.BooleanRecognizerCorrect.
+Require Import Fiat.Common.Wf.
+Require Import Fiat.Common.SetoidInstances.
 
 Set Implicit Arguments.
 
