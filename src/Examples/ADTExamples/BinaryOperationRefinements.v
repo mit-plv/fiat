@@ -1,5 +1,5 @@
-Require Import List Omega ADTExamples.BinaryOperationSpec
-        ADTExamples.BinaryOperationImpl ADTRefinement
+Require Import List Omega Examples.BinaryOperationSpec
+        Examples.BinaryOperationImpl ADTRefinement
         ADTCache.
 
 Section BinOpRefine.

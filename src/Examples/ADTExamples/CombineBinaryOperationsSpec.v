@@ -1,5 +1,5 @@
 Require Import Common String ADT ADT.Pick ADT.Specs ADTNotation.
-Require Import ADTExamples.BinaryOperationSpec.
+Require Import Examples.BinaryOperationSpec.
 
 Section two_op_spec.
   Variable op1_spec : relation nat.

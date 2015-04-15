@@ -1,4 +1,4 @@
-Require Import ADTExamples.BinaryOperationSpec.
+Require Import Examples.BinaryOperationSpec.
 
 Section BinOpImpl.
   (* Implementation of comparisions over a collection implemented as a list. *)

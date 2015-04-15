@@ -311,20 +311,20 @@ SRC_PARSERS_BASE_VDS := $(SRC_PARSERS_BASE_MODULES:%=src/%.v.d)
 SRC_PARSERS_BASE_VOS := $(SRC_PARSERS_BASE_MODULES:%=src/%.vo)
 PREFIXED_SRC_PARSERS_BASE_VOS:= $(SRC_PARSERS_BASE_MODULES:%=src/%.vo)
 
-ICS_VS  := $(ICS_MODULES:%=examples/%.v)
-ICS_VDS := $(ICS_MODULES:%=examples/%.v.d)
-ICS_VOS := $(ICS_MODULES:%=examples/%.vo)
+ICS_VS  := $(ICS_MODULES:%=src/Examples/%.v)
+ICS_VDS := $(ICS_MODULES:%=src/Examples/%.v.d)
+ICS_VOS := $(ICS_MODULES:%=src/Examples/%.vo)
 
-DNS_VS  := $(DNS_MODULES:%=examples/%.v)
-DNS_VDS := $(DNS_MODULES:%=examples/%.v.d)
-DNS_VOS := $(DNS_MODULES:%=examples/%.vo)
+DNS_VS  := $(DNS_MODULES:%=src/Examples/%.v)
+DNS_VDS := $(DNS_MODULES:%=src/Examples/%.v.d)
+DNS_VOS := $(DNS_MODULES:%=src/Examples/%.vo)
 
 FINITESET_VS  := $(FINITESET_MODULES:%=src/%.v)
 FINITESET_VDS := $(FINITESET_MODULES:%=src/%.v.d)
 FINITESET_VOS := $(FINITESET_MODULES:%=src/%.vo)
 
-EXAMPLE_VS := $(EXAMPLE_MODULES:%=examples/%.v)
-EXAMPLE_VOS:= $(EXAMPLE_MODULES:%=examples/%.vo)
+EXAMPLE_VS := $(EXAMPLE_MODULES:%=src/Examples/%.v)
+EXAMPLE_VOS:= $(EXAMPLE_MODULES:%=src/Examples/%.vo)
 
 V = 0
 
@@ -379,10 +379,10 @@ examples : $(EXAMPLE_VOS)
 
 compiler : $(COMPILER_VOS)
 
-ics : $(ICS_VOS) examples/Ics/WaterTank.ml
+ics : $(ICS_VOS) src/Examples/Ics/WaterTank.ml
 
-examples/Ics/WaterTank.ml: $(ICS_VOS) examples/Ics/WaterTankExtract.v
-	coqc -R src Fiat -R examples ADTExamples examples/Ics/WaterTankExtract >$@
+src/Examples/Ics/WaterTank.ml: $(ICS_VOS) src/Examples/Ics/WaterTankExtract.v
+	coqc -R src Fiat -R examples ADTExamples src/Examples/Ics/WaterTankExtract >$@
 
 dns : $(DNS_VOS)
 
@@ -411,7 +411,7 @@ Overview/ProjectOverview.pdf: $(shell find Overview -name "*.tex" -o -name "*.st
 
 Makefile.coq: Makefile
 	$(VECHO) "COQ_MAKEFILE > $@"
-	$(Q)"$(COQBIN)coq_makefile" $(CORE_VS) $(EXAMPLE_VS) $(QUERYSTRUCTURE_VS) $(SRC_PARSERS_VS) COQC = "\$$(SILENCE_COQC)\$$(TIMER) \"\$$(COQBIN)coqc\"" COQDEP = "\$$(SILENCE_COQDEP)\"\$$(COQBIN)coqdep\" -c" COQDOCFLAGS = "$(COQDOCFLAGS)" -arg -dont-load-proofs -R src Fiat -R examples ADTExamples | sed s'/^\(-include.*\)$$/ifneq ($$(filter-out $(FAST_TARGETS),$$(MAKECMDGOALS)),)~\1~else~ifeq ($$(MAKECMDGOALS),)~\1~endif~endif/g' | tr '~' '\n' | sed s'/^clean:$$/clean-old::/g' | sed s'/^Makefile: /Makefile-old: /g' > $@
+	$(Q)"$(COQBIN)coq_makefile" $(CORE_VS) $(EXAMPLE_VS) $(QUERYSTRUCTURE_VS) $(SRC_PARSERS_VS) COQC = "\$$(SILENCE_COQC)\$$(TIMER) \"\$$(COQBIN)coqc\"" COQDEP = "\$$(SILENCE_COQDEP)\"\$$(COQBIN)coqdep\" -c" COQDOCFLAGS = "$(COQDOCFLAGS)" -arg -dont-load-proofs -R src Fiat | sed s'/^\(-include.*\)$$/ifneq ($$(filter-out $(FAST_TARGETS),$$(MAKECMDGOALS)),)~\1~else~ifeq ($$(MAKECMDGOALS),)~\1~endif~endif/g' | tr '~' '\n' | sed s'/^clean:$$/clean-old::/g' | sed s'/^Makefile: /Makefile-old: /g' > $@
 
 -include Makefile.coq
 
@@ -444,48 +444,48 @@ clean-doc::
 	rm -f all.pdf Overview/library.pdf Overview/ProjectOverview.pdf Overview/coqdoc.sty coqdoc.sty
 	rm -f $(shell find Overview -name "*.log" -o -name "*.aux" -o -name "*.bbl" -o -name "*.blg" -o -name "*.synctex.gz" -o -name "*.out" -o -name "*.toc")
 
-examples/BookstoreExtraction.vo : examples/BookstoreExtraction.v examples/Bookstore.vo
-	coqc -R src Fiat -R examples ADTExamples examples/BookstoreExtraction.v
+src/Examples/BookstoreExtraction.vo : src/Examples/BookstoreExtraction.v src/Examples/Bookstore.vo
+	coqc -R src Fiat src/Examples/BookstoreExtraction.v
 
-examples/BookstoreNaiveExtraction.vo : examples/BookstoreNaiveExtraction.v examples/BookstoreNaive.vo
-	coqc -R src Fiat -R examples ADTExamples examples/BookstoreNaiveExtraction.v
+src/Examples/BookstoreNaiveExtraction.vo : src/Examples/BookstoreNaiveExtraction.v src/Examples/BookstoreNaive.vo
+	coqc -R src Fiat src/Examples/BookstoreNaiveExtraction.v
 
-examples/bookstore.cmxa: examples/BookstoreExtraction.vo
+src/Examples/bookstore.cmxa: src/Examples/BookstoreExtraction.vo
 	cd examples && ocamlopt -w -a -o bookstore.cmxa -a bookstore.mli bookstore.ml
 
-examples/bookstorenaive.cmxa: examples/BookstoreNaiveExtraction.vo
+src/Examples/bookstorenaive.cmxa: src/Examples/BookstoreNaiveExtraction.vo
 	cd examples && ocamlopt -w -a -o bookstorenaive.cmxa -a bookstorenaive.mli bookstorenaive.ml
 
-repl: examples/repl.ml examples/bookstore.cmxa
+repl: src/Examples/repl.ml src/Examples/bookstore.cmxa
 	cd examples && ocamlopt -w -a -o repl unix.cmxa str.cmxa bookstore.cmxa repl.ml
 
-naiverepl: examples/repl.ml examples/bookstorenaive.cmxa
+naiverepl: src/Examples/repl.ml src/Examples/bookstorenaive.cmxa
 	cd examples && ocamlopt -w -a -o repl unix.cmxa str.cmxa bookstorenaive.cmxa repl.ml
 
-examples/ExtractingFiniteSetsExamples.vo: examples/ExtractingFiniteSetsExamples.v
-	$(COQC) -I ../bedrock/platform -dont-load-proofs -R src Fiat -R examples ADTExamples \
+src/Examples/ExtractingFiniteSetsExamples.vo: src/Examples/ExtractingFiniteSetsExamples.v
+	$(COQC) -I ../bedrock/platform -dont-load-proofs -R src Fiat \
 		-R ../bedrock/src Bedrock -R ../bedrock/platform/cito Cito -R ../bedrock/platform/facade Facade \
-		examples/ExtractingFiniteSetsExamples
+		src/Examples/ExtractingFiniteSetsExamples
 
-examples/SumUnique.ml examples/SumUniqueAMD64.vo: examples/SumUniqueAMD64.v
-	cat examples/ignoreFail.ml >$@
-	$(COQC) -I ../bedrock/platform -dont-load-proofs -R src Fiat -R examples ADTExamples \
+src/Examples/SumUnique.ml src/Examples/SumUniqueAMD64.vo: src/Examples/SumUniqueAMD64.v
+	cat src/Examples/ignoreFail.ml >$@
+	$(COQC) -I ../bedrock/platform -dont-load-proofs -R src Fiat \
 		-R ../bedrock/src Bedrock -R ../bedrock/platform/cito Cito -R ../bedrock/platform/facade Facade \
 		$< 2>/dev/null \
 		| sed '/let coq_Unnamed_thm_/,/module/{/module/!d}' \
 		| sed 's/   allWords_def/   fun _ -> []/' \
 		| sed 's/   N.to_nat$$/   fun _ -> O/' \
 		>>$@
-	cat examples/printCode.ml >>$@
+	cat src/Examples/printCode.ml >>$@
 
-examples/SumUnique.s: examples/SumUnique.ml
+src/Examples/SumUnique.s: src/Examples/SumUnique.ml
 	echo ".global bedrock_heap,export_dffun,sys_abort" >$@
 	echo >>$@
 	ocaml -w -x $< >>$@
 
-examples/SumUnique.exe: examples/SumUnique.o examples/bedrock_main.o examples/bedrock_driver.o
+src/Examples/SumUnique.exe: src/Examples/SumUnique.o src/Examples/bedrock_main.o src/Examples/bedrock_driver.o
 	cc $^ -o $@
 
 cheat:
-	cp examples/SumUnique.pregenerated.ml examples/SumUnique.ml
-	cp examples/SumUnique.pregenerated.s examples/SumUnique.s
+	cp src/Examples/SumUnique.pregenerated.ml src/Examples/SumUnique.ml
+	cp src/Examples/SumUnique.pregenerated.s src/Examples/SumUnique.s

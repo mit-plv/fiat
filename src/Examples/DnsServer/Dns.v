@@ -4,7 +4,7 @@ Require Import Coq.Vectors.Vector
 
 Require Import Fiat.QueryStructure.Automation.AutoDB
         Fiat.QueryStructure.Implementation.DataStructures.BagADT.BagADT
-        ADTExamples.DnsServer.packet.
+        Examples.DnsServer.packet.
 
 Open Scope list.
 

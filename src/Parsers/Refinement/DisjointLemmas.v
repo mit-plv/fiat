@@ -2,25 +2,25 @@
 Require Import Coq.Init.Wf Coq.Arith.Wf_nat.
 Require Import Coq.Lists.List Coq.Strings.String.
 Require Import Coq.Numbers.Natural.Peano.NPeano.
-Require Import Fiat.Parsers.ContextFreeGrammar.
-Require Import Fiat.Parsers.ContextFreeGrammarEquality.
+Require Import ADTSynthesis.Parsers.ContextFreeGrammar.
+Require Import ADTSynthesis.Parsers.ContextFreeGrammarEquality.
 Require Import Coq.Program.Equality.
-Require Import Fiat.Common.
-Require Import Fiat.Common.Equality.
-Require Import Fiat.Common.Wf.
-Require Import Fiat.Parsers.Splitters.RDPList.
-Require Import Fiat.Parsers.Splitters.BruteForce.
-Require Import Fiat.Parsers.ParserInterface.
-Require Import Fiat.Parsers.BaseTypes.
-Require Import Fiat.Parsers.CorrectnessBaseTypes.
-Require Import Fiat.Parsers.BooleanRecognizerFull.
-Require Import Fiat.Parsers.BooleanRecognizerCorrect.
-Require Import Fiat.Common.List.Operations.
-Require Import Fiat.Parsers.StringLike.Core.
-Require Import Fiat.Parsers.StringLike.String.
-Require Import Fiat.Parsers.StringLike.Properties.
-Require Import Fiat.Parsers.MinimalParseOfParse.
-Require Import Fiat.Parsers.ContextFreeGrammarProperties.
+Require Import ADTSynthesis.Common.
+Require Import ADTSynthesis.Common.Equality.
+Require Import ADTSynthesis.Common.Wf.
+Require Import ADTSynthesis.Parsers.Splitters.RDPList.
+Require Import ADTSynthesis.Parsers.Splitters.BruteForce.
+Require Import ADTSynthesis.Parsers.ParserInterface.
+Require Import ADTSynthesis.Parsers.BaseTypes.
+Require Import ADTSynthesis.Parsers.CorrectnessBaseTypes.
+Require Import ADTSynthesis.Parsers.BooleanRecognizerFull.
+Require Import ADTSynthesis.Parsers.BooleanRecognizerCorrect.
+Require Import ADTSynthesis.Common.List.Operations.
+Require Import ADTSynthesis.Parsers.StringLike.Core.
+Require Import ADTSynthesis.Parsers.StringLike.String.
+Require Import ADTSynthesis.Parsers.StringLike.Properties.
+Require Import ADTSynthesis.Parsers.MinimalParseOfParse.
+Require Import ADTSynthesis.Parsers.ContextFreeGrammarProperties.
 
 Set Implicit Arguments.
 
@@ -106,10 +106,83 @@ Section all_possible.
 
   Definition possible_terminals_of_productions G := @possible_terminals_of_productions' (@possible_terminals_of G).
 End all_possible.
-
+(*
 Section all_possible_correctness.
+  Context {Char : Type} {HSL : StringLike Char}.
+  Local Open Scope string_like_scope.
+
+  Definition forall_chars (str : String) (P : Char -> Prop)
+    := forall n ch,
+         take 1 (drop n str) ~= [ ch ]
+         -> P ch.
+
+  Definition forall_chars__char_in (str : String) (ls : list Char)
+    := forall_chars str (fun ch => List.In ch ls).
+
+  Lemma Fix_possible_terminals_of_nt_step_correct (G : grammar Char)
+        (predata := @rdp_list_predata _ G)
+        (str : String) (len0 : nat) nt
+        (valid0 : nonterminals_listT)
+        (p : minimal_parse_of_nonterminal (G := G) len0 valid0 str nt)
+  : forall_chars__char_in
+      str
+      (Fix ntl_wf (fun _ : nonterminals_listT => string -> possible_terminals)
+           (possible_terminals_of_nt_step (G:=G)) valid0 nt).
+  Proof.
+    induction (ntl_wf valid0).
+    rewrite Fix1_eq; [ | apply possible_terminals_of_nt_step_ext ]; [].
+    unfold possible_terminals_of_nt_step.
+    edestruct dec.
+    Focus 2.
+    dependent destruction p; try congruence.
+    cong
+
+    dependent destruction p.
+    generalize dependent (G nt); intros prods p.
+    Focus 2.
+    congruence.
+    hnf.
 
 
+  ============================
+   forall_chars__char_in str
+     (Fix ntl_wf (fun _ : nonterminals_listT => string -> possible_terminals)
+        (possible_terminals_of_nt_step (G:=G)) initial_nonterminals_data nt)
+
+  Lemma possible_terminals_of_correct (G : grammar Char)
+        (str : String) nt (p : parse_of_item G str (NonTerminal nt))
+  : forall_chars__char_in str (possible_terminals_of G nt).
+  Proof.
+    unfold possible_terminals_of, possible_terminals_of_nt.
+    match goal with
+      | [ |- appcontext[Fix ?wf _ _ ?a] ]
+        => generalize a;
+          let H := fresh in
+          intro H;
+            induction (wf H)
+    end.
+    rewrite Fix1_eq
+
+
+list_bin ascii_beq ch (possible_terminals_of G nt)
+
+  Definition possible_terminals_of (G : grammar Char) : String.string -> possible_terminals
+    := @possible_terminals_of_nt G initial_nonterminals_data.
+
+
+
+  Definition possible_terminals_of_production' (terminals_of_nt : String.string -> possible_terminals)
+             (its : production Char)
+  : possible_terminals
+    := flat_map
+         (fun it =>
+            match it with
+              | Terminal ch => [ch]
+              | NonTerminal nt => terminals_of_nt nt
+            end)
+         its.
+
+*)
 Section only_first.
   Context (G : grammar Ascii.ascii).
 
@@ -225,42 +298,42 @@ Section only_first.
   Definition possible_first_terminals_of_production := @possible_first_terminals_of_production' (@possible_first_terminals_of).
 End only_first.
 
-Local Open Scope string_like_scope.
+Section only_first_correctness.
+  Local Open Scope string_like_scope.
 
-Local Arguments string_beq : simpl never.
-
-Lemma might_be_empty_possible_first_terminals_of_production_from_parse {G : grammar Ascii.ascii}
-      {its}
-      (H_reachable : production_is_reachable G its)
-      (pits : parse_of_production G ""%string its)
-      (Hpits : Forall_parse_of_production (fun _ nt => List.In nt (Valid_nonterminals G)) pits)
-: might_be_empty (possible_first_terminals_of_production G its).
-Proof.
-  simpl.
-  eapply parse_production_complete.
-  { destruct H_reachable as [nt [prefix [? ?]]].
-    exists nt prefix; split; trivial; []; simpl.
-    unfold rdp_list_is_valid_nonterminal.
-    apply list_in_lb; try apply @string_lb; []; eassumption. }
-  { eapply expand_forall_parse_of_production;
-    [
+  Lemma might_be_empty_possible_first_terminals_of_production_from_parse {G : grammar Ascii.ascii}
+        {its}
+        (predata := @rdp_list_predata _ G)
+        (H_reachable : production_is_reachable G its)
+        (pits : parse_of_production G ""%string its)
+        (Hpits : Forall_parse_of_production (fun _ nt => is_valid_nonterminal initial_nonterminals_data nt) pits)
+  : might_be_empty (possible_first_terminals_of_production G its).
+  Proof.
+    simpl.
+    eapply parse_production_complete.
+    { destruct H_reachable as [nt [prefix [? ?]]].
+      exists nt prefix; split; trivial; []; simpl.
+      unfold rdp_list_is_valid_nonterminal.
+      apply list_in_lb; try apply @string_lb; []; eassumption. }
+    { eapply expand_forall_parse_of_production;
+      [
       | rewrite parse_of_production_respectful_refl; eassumption ].
-    intros; simpl in *.
-    apply list_in_lb; try apply @string_lb; []; eassumption. }
-  Grab Existential Variables.
-  reflexivity.
-  reflexivity.
-Qed.
+      intros; simpl in *.
+      apply list_in_lb; try apply @string_lb; []; eassumption. }
+    Grab Existential Variables.
+    reflexivity.
+    reflexivity.
+  Qed.
 
-Lemma might_be_empty_possible_first_terminals_of_production_to_parse {G : grammar Ascii.ascii}
-      {its}
-      (H_reachable : production_is_reachable G its)
-      (H : might_be_empty (possible_first_terminals_of_production G its))
-: parse_of_production G ""%string its.
-Proof.
-  eapply parse_production_sound.
-  exact H.
-Defined.
+  Lemma might_be_empty_possible_first_terminals_of_production_to_parse {G : grammar Ascii.ascii}
+        {its}
+        (H_reachable : production_is_reachable G its)
+        (H : might_be_empty (possible_first_terminals_of_production G its))
+  : parse_of_production G ""%string its.
+  Proof.
+    eapply parse_production_sound.
+    exact H.
+  Defined.
 
 Lemma might_be_empty_possible_first_terminals_of_from_parse {G : grammar Ascii.ascii}
       {nt}
@@ -382,6 +455,85 @@ end.
   {
 
 *)
+
+
+  Definition forall_chars (str : String) (P : Char -> Prop)
+    := forall n ch,
+         take 1 (drop n str) ~= [ ch ]
+         -> P ch.
+
+  Definition forall_chars__char_in (str : String) (ls : list Char)
+    := forall_chars str (fun ch => List.In ch ls).
+
+  Lemma Fix_possible_terminals_of_nt_step_correct (G : grammar Char)
+        (predata := @rdp_list_predata _ G)
+        (str : String) (len0 : nat) nt
+        (valid0 : nonterminals_listT)
+        (p : minimal_parse_of_nonterminal (G := G) len0 valid0 str nt)
+  : forall_chars__char_in
+      str
+      (Fix ntl_wf (fun _ : nonterminals_listT => string -> possible_terminals)
+           (possible_terminals_of_nt_step (G:=G)) valid0 nt).
+  Proof.
+    induction (ntl_wf valid0).
+    rewrite Fix1_eq; [ | apply possible_terminals_of_nt_step_ext ]; [].
+    unfold possible_terminals_of_nt_step.
+    edestruct dec.
+    Focus 2.
+    dependent destruction p; try congruence.
+    cong
+
+    dependent destruction p.
+    generalize dependent (G nt); intros prods p.
+    Focus 2.
+    congruence.
+    hnf.
+
+
+  ============================
+   forall_chars__char_in str
+     (Fix ntl_wf (fun _ : nonterminals_listT => string -> possible_terminals)
+        (possible_terminals_of_nt_step (G:=G)) initial_nonterminals_data nt)
+
+  Lemma possible_terminals_of_correct (G : grammar Char)
+        (str : String) nt (p : parse_of_item G str (NonTerminal nt))
+  : forall_chars__char_in str (possible_terminals_of G nt).
+  Proof.
+    unfold possible_terminals_of, possible_terminals_of_nt.
+    match goal with
+      | [ |- appcontext[Fix ?wf _ _ ?a] ]
+        => generalize a;
+          let H := fresh in
+          intro H;
+            induction (wf H)
+    end.
+    rewrite Fix1_eq
+
+
+list_bin ascii_beq ch (possible_terminals_of G nt)
+
+  Definition possible_terminals_of (G : grammar Char) : String.string -> possible_terminals
+    := @possible_terminals_of_nt G initial_nonterminals_data.
+
+
+
+  Definition possible_terminals_of_production' (terminals_of_nt : String.string -> possible_terminals)
+             (its : production Char)
+  : possible_terminals
+    := flat_map
+         (fun it =>
+            match it with
+              | Terminal ch => [ch]
+              | NonTerminal nt => terminals_of_nt nt
+            end)
+         its.
+
+
+
+Local Open Scope string_like_scope.
+
+Local Arguments string_beq : simpl never.
+
 Lemma terminals_disjoint_search_for_not {G : grammar Ascii.ascii} (str : @String Ascii.ascii string_stringlike)
       {nt its}
       (H_disjoint : disjoint ascii_beq (possible_terminals_of G nt) (possible_first_terminals_of_production G its))

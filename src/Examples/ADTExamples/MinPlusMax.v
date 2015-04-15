@@ -1,6 +1,6 @@
 Require Import Common String ADT ADT.Specs ADTNotation.
 Require Import ADTRefinement ADTCache ADTRepInv ADT.Pick ADT.ADTHide ADTRefinement.Refinements.DelegateMethods.
-Require Import ADTExamples.BinaryOperationSpec ADTExamples.CombineBinaryOperationsSpec
+Require Import Examples.BinaryOperationSpec Examples.CombineBinaryOperationsSpec
         ADTRefinement.BuildADTRefinements.HoneRepresentation ADTRefinement.GeneralBuildADTRefinements
         ADTRefinement.BuildADTSetoidMorphisms.
 Require Import LogicLemmas Coq.Classes.Morphisms_Prop.
