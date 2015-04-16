@@ -194,6 +194,12 @@ Section parser.
   Local Program Instance adt_based_StringLikeProperties : @StringLikeProperties _ adt_based_StringLike
     := { bool_eq_Equivalence := {| Equivalence_Reflexive := _ |} }.
   Next Obligation. t @singleton_unique. Qed.
+  Next Obligation.
+  Proof.
+    let H := fresh in
+    t'' H (@singleton_exists);
+      edestruct H; try (eexists; erewrite mis_char_eq); intuition eauto.
+  Qed.
   Next Obligation. t @length_singleton. Qed.
   Next Obligation. t @bool_eq_char. Qed.
   Next Obligation. t @is_char_Proper. Qed.

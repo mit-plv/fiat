@@ -187,4 +187,13 @@ Section String.
     rewrite H' in H0'.
     eapply lt_irrefl; eassumption.
   Qed.
+
+  Lemma singleton_exists_unique : forall s, length s = 1 -> exists !ch, s ~= [ ch ].
+  Proof.
+    intros s H'.
+    destruct (singleton_exists s H') as [ch H''].
+    exists ch.
+    split; [ apply H'' | ].
+    intro; apply singleton_unique; assumption.
+  Qed.
 End String.

@@ -62,5 +62,8 @@ Proof.
            | [ |- context[string_eq_dec ?x ?y] ] => destruct (string_eq_dec x y)
            | [ H : _ <> _ |- False ] => apply H; clear H
            | _ => apply Max.max_case_strong; intro; apply substring_correct4; omega
+           | [ H : String.length ?s = 1 |- _ ] => is_var s; destruct s
+           | [ H : S (String.length ?s) = 1 |- _ ] => is_var s; destruct s
+           | _ => eexists; rewrite (ascii_lb eq_refl); reflexivity
          end.
 Qed.

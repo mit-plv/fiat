@@ -45,6 +45,7 @@ Module Export StringLike.
   Class StringLikeProperties (Char : Type) `{StringLike Char} :=
     {
       singleton_unique : forall s ch ch', s ~= [ ch ] -> s ~= [ ch' ] -> ch = ch';
+      singleton_exists : forall s, length s = 1 -> exists ch, s ~= [ ch ];
       length_singleton : forall s ch, s ~= [ ch ] -> length s = 1;
       bool_eq_char : forall s s' ch, s ~= [ ch ] -> s' ~= [ ch ] -> s =s s';
       is_char_Proper :> Proper (beq ==> eq ==> eq) is_char;
