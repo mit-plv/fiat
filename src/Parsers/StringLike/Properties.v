@@ -196,4 +196,12 @@ Section String.
     split; [ apply H'' | ].
     intro; apply singleton_unique; assumption.
   Qed.
+
+  Lemma singleton_take {str ch} (H' : str ~= [ ch ]) n
+  : take (S n) str =s str.
+  Proof.
+    eapply bool_eq_char; try eassumption.
+    rewrite take_long; try assumption.
+    apply length_singleton in H'; omega.
+  Qed.
 End String.

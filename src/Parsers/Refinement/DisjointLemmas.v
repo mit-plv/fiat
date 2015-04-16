@@ -154,34 +154,139 @@ Section all_possible_correctness.
     simpl in H'; omega.
   Qed.
 
-  Lemma forall_chars_false (str : String) P
-  : forall_chars str P.
-length str = 0 ->
+
+  Lemma singleton_take {str ch} (H' : str ~= [ ch ]) n
+  : take (S n) str =s str.
   Proof.
-    intros H n ch H'.
-    apply length_singleton in H'.
-    rewrite take_length, drop_length, H in H'.
-    simpl in H'; omega.
+    eapply bool_eq_char; try eassumption.
+    rewrite take_long; try assumption.
+    apply length_singleton in H'; omega.
   Qed.
 
+  Lemma forall_chars_take (str : String) P
+  : forall_chars str P <-> (forall n, forall_chars (take (S n) str) P).
+  Proof.
+    unfold forall_chars.
+    split.
+    { intros H n n' ch H'.
+      rewrite drop_take in H'.
+      rewrite take_take in H'.
+      destruct (S n - n'); simpl in H'; eauto; [].
+      apply length_singleton in H'.
+      rewrite take_length in H'; simpl in *; omega. }
+    { intros H n ch H'.
+      specialize (H (length str) n ch).
+      apply H.
+      erewrite (take_long str (_ : _ <= S (length str)) ); assumption.
+      Grab Existential Variables.
+      omega. }
+  Qed.
+
+  Lemma forall_chars_drop (str : String) P
+  : forall_chars str P <-> (forall n, forall_chars (drop n str) P).
+  Proof.
+    unfold forall_chars.
+    split.
+    { intros H n n' ch H'.
+      rewrite drop_drop in H'.
+      destruct (n + n'); simpl in H'; eauto. }
+    { intros H n ch H'.
+      specialize (H n 0 ch).
+      apply H; rewrite drop_0; assumption. }
+  Qed.
+
+  Lemma forall_chars_singleton (str : String) P ch
+  : str ~= [ ch ] -> (P ch <-> forall_chars str P).
+  Proof.
+    intro H.
+    pose proof (length_singleton _ _ H).
+    unfold forall_chars.
+    split; intro H'; repeat intro.
+    { match goal with
+        | [ n : nat |- _ ] => destruct n; [ | exfalso ]
+      end;
+      repeat match goal with
+               | _ => intro
+               | _ => omega
+               | [ H : _ |- _ ] => rewrite drop_0 in H
+               | [ H : _, H' : _ |- _ ] => rewrite (singleton_take H') in H
+               | [ H : _ |- False ] => apply length_singleton in H
+               | [ H : _ |- _ ] => rewrite take_length in H
+               | [ H : _ |- _ ] => rewrite drop_length in H
+               | [ H : ?x = 1, H' : context[?x] |- _ ] => rewrite H in H'
+               | _ => erewrite singleton_unique; eassumption
+               | [ H : appcontext[min] |- _ ] => revert H; apply Min.min_case_strong
+             end. }
+    { match goal with
+        | [ H : _ |- _ ] => apply (H 0)
+      end.
+      rewrite drop_0.
+      rewrite take_long; trivial; omega. }
+  Qed.
+
+  Lemma forall_chars_False (str : String) P
+  : (forall ch, ~P ch) -> forall_chars str P -> length str = 0.
+  Proof.
+    intros H' H.
+    case_eq (length str); trivial.
+    specialize (H (length str - 1)).
+    pose proof (singleton_exists (drop (length str - 1) str)) as H''.
+    rewrite drop_length in H''.
+    intros n H'''.
+    rewrite H''' in *.
+    rewrite sub_plus in H'' by omega.
+    rewrite Minus.minus_diag in *.
+    specialize (H'' eq_refl).
+    destruct H'' as [ch H''].
+    exfalso; eapply H', H.
+    rewrite take_long; try eassumption.
+    apply length_singleton in H''; omega.
+  Qed.
+
+  Global Opaque forall_chars.
 
   Definition forall_chars__char_in (str : String) (ls : list Char)
     := forall_chars str (fun ch => List.In ch ls).
+
+  Global Instance forall_chars__char_in__Proper
+  : Proper (beq ==> eq ==> impl) forall_chars__char_in.
+  Proof.
+    unfold pointwise_relation, respectful, forall_chars__char_in, impl.
+    repeat intro; subst.
+    match goal with
+      | [ H : _ |- _ ] => rewrite <- H; assumption
+    end.
+  Qed.
+
+  Global Instance forall_chars__char_in__Proper_iff
+  : Proper (beq ==> eq ==> iff) forall_chars__char_in.
+  Proof.
+    unfold pointwise_relation, respectful, forall_chars__char_in, impl.
+    repeat intro; subst.
+    match goal with
+      | [ H : _ |- _ ] => rewrite <- H; reflexivity
+    end.
+  Qed.
 
   Lemma forall_chars__char_in__app_or_iff (str : String) (ls1 ls2 : list Char)
   : forall_chars__char_in str (ls1 ++ ls2)
     <-> (forall_chars str (fun ch => List.In ch ls1 \/ List.In ch ls2)).
   Proof.
-    unfold forall_chars__char_in, forall_chars; split; repeat intro.
-    { apply in_app_or; eauto. }
-    { apply in_or_app; eauto. }
+    unfold forall_chars__char_in; split; repeat intro.
+    { eapply forall_chars_Proper; [ .. | eassumption ]; [ reflexivity | ].
+      intro; hnf.
+      apply in_app_or. }
+    { eapply forall_chars_Proper; [ .. | eassumption ]; [ reflexivity | ].
+      intro; hnf.
+      apply in_or_app. }
   Qed.
 
   Lemma forall_chars__char_in__or_app (str : String) (ls1 ls2 : list Char)
   : forall_chars__char_in str ls1 \/ forall_chars__char_in str ls2 -> forall_chars__char_in str (ls1 ++ ls2).
   Proof.
-    intros [?|?];
-    unfold forall_chars__char_in, forall_chars; repeat intro;
+    unfold forall_chars__char_in.
+    intros [?|?]; repeat intro;
+    (eapply forall_chars_Proper; [ .. | eassumption ]; [ reflexivity | ]; intros ??);
     apply in_or_app; eauto.
   Qed.
 
@@ -189,12 +294,19 @@ length str = 0 ->
   : forall_chars__char_in str nil <-> length str = 0.
   Proof.
     unfold forall_chars__char_in.
-    split
-    { intro H
-    intro n.
+    split.
+    { eapply forall_chars_False; simpl; eauto. }
+    { apply forall_chars_nil. }
+  Qed.
 
-  Local Opaque forall_chars__char_in.
+  Lemma forall_chars__char_in_singleton_str (str : String) ls ch (H : str ~= [ ch ])
+  : forall_chars__char_in str ls <-> List.In ch ls.
+  Proof.
+    unfold forall_chars__char_in.
+    rewrite <- forall_chars_singleton; try eassumption; reflexivity.
+  Qed.
 
+  Global Opaque forall_chars__char_in.
 
   Local Ltac dependent_destruction_head h :=
     idtac;
@@ -219,21 +331,20 @@ length str = 0 ->
     unfold possible_terminals_of_production'.
     generalize dependent str; induction pat as [ | x xs IHxs ]; intros.
     { dependent destruction p; simpl in *.
-      repeat intro; simpl.
-      repeat match goal with
-               | [ H : _ |- _ ] => apply length_singleton in H
-               | [ H : _ |- _ ] => rewrite take_length in H
-               | [ H : _ |- _ ] => rewrite drop_length in H
-               | [ H : ?x = 0, H' : context[?x] |- _ ] => rewrite H in H'
-               | _ => progress simpl in *
-               | _ => omega
-             end. }
+      apply forall_chars__char_in_nil; assumption. }
     { dependent destruction p; simpl in *.
       apply forall_chars__char_in__or_app.
       destruct (Compare_dec.lt_dec (length str) n); [ left | right ].
       { dependent_destruction_head (@minimal_parse_of_item).
-        { eapply singleton_unique; try eassumption.
-          match goal with
+        { repeat match goal with
+                   | [ H : _ |- _ ] => rewrite take_long in H by omega
+                 end.
+          erewrite forall_chars__char_in_singleton_str; intuition. }
+                   | [ H : is_true (?str ~= [ _ ]) |- forall_chars__char_in ?str _ ]
+                     => rewrite (forall_chars__char_in_singleton_str H)
+          ma
+          let H := match goal with H : ?str ~=
+match goal with
             | [ H : is_true (?str ~= [ _ ]) |- is_true (?str ~= [ _ ]) ] => apply length_singleton in H
           end.
           repeat match goal with
