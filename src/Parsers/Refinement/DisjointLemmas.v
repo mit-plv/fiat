@@ -154,45 +154,41 @@ Section all_possible_correctness.
     simpl in H'; omega.
   Qed.
 
-
-  Lemma singleton_take {str ch} (H' : str ~= [ ch ]) n
-  : take (S n) str =s str.
+  Lemma helper
+        (P : nat -> nat -> Type)
+        n
+        (H0 : forall n0, P (min 1 (n - n0)) n0)
+        (H1 : forall n0, P 1 (n0 + n))
+        {n0}
+  : P 1 n0.
   Proof.
-    eapply bool_eq_char; try eassumption.
-    rewrite take_long; try assumption.
-    apply length_singleton in H'; omega.
-  Qed.
+    destruct (Compare_dec.le_dec n n0) as [H'|H'].
+    { specialize (H1 (n0 - n)).
+      rewrite Nat.sub_add in H1 by assumption; assumption. }
+    { apply Compare_dec.not_le in H'.
+      specialize (H0 n0).
+      destruct (n - n0) as [|[|]] eqn:?; simpl in *; trivial; omega. }
+  Defined.
 
-  Lemma forall_chars_take (str : String) P
-  : forall_chars str P <-> (forall n, forall_chars (take (S n) str) P).
+  Lemma forall_chars__split (str : String) P n
+  : forall_chars str P
+    <-> (forall_chars (take n str) P /\ forall_chars (drop n str) P).
   Proof.
-    unfold forall_chars.
-    split.
-    { intros H n n' ch H'.
-      rewrite drop_take in H'.
-      rewrite take_take in H'.
-      destruct (S n - n'); simpl in H'; eauto; [].
-      apply length_singleton in H'.
-      rewrite take_length in H'; simpl in *; omega. }
-    { intros H n ch H'.
-      specialize (H (length str) n ch).
-      apply H.
-      erewrite (take_long str (_ : _ <= S (length str)) ); assumption.
-      Grab Existential Variables.
-      omega. }
-  Qed.
-
-  Lemma forall_chars_drop (str : String) P
-  : forall_chars str P <-> (forall n, forall_chars (drop n str) P).
-  Proof.
-    unfold forall_chars.
-    split.
-    { intros H n n' ch H'.
-      rewrite drop_drop in H'.
-      destruct (n + n'); simpl in H'; eauto. }
-    { intros H n ch H'.
-      specialize (H n 0 ch).
-      apply H; rewrite drop_0; assumption. }
+    unfold forall_chars; repeat (split || intro);
+    repeat match goal with
+                         | [ H : _ |- _ ] => setoid_rewrite drop_length in H
+                         | [ H : _ |- _ ] => setoid_rewrite take_length in H
+                         | [ H : _ |- _ ] => setoid_rewrite drop_take in H
+                         | [ H : _ |- _ ] => setoid_rewrite take_take in H
+                         | [ H : _ |- _ ] => setoid_rewrite drop_drop in H
+                         | _ => progress destruct_head and
+                         | [ H : context[min 1 ?x] |- _ ] => destruct x eqn:?; simpl in H
+                         | [ H : is_true (take 0 _ ~= [ _ ]) |- _ ] => exfalso; apply length_singleton in H
+                         | _ => omega
+                         | _ => progress simpl in *; omega
+                         | _ => solve [ eauto ]
+                         | _ => solve [ eapply (@helper (fun a b => take a (drop b str) ~= [ ch ] -> P ch)); eauto ]
+                       end.
   Qed.
 
   Lemma forall_chars_singleton (str : String) P ch
@@ -245,6 +241,40 @@ Section all_possible_correctness.
 
   Global Opaque forall_chars.
 
+  Lemma forall_chars__split_forall (str : String) P
+  : forall_chars str P
+    <-> (forall n, forall_chars (take n str) P /\ forall_chars (drop n str) P).
+  Proof.
+    split.
+    { intros H n.
+      rewrite <- forall_chars__split; assumption. }
+    { intro H.
+      specialize (H 0).
+      rewrite forall_chars__split; eassumption. }
+  Qed.
+
+  Lemma forall_chars_take (str : String) P
+  : forall_chars str P <-> (forall n, forall_chars (take (S n) str) P).
+  Proof.
+    split.
+    { intros H n.
+      rewrite forall_chars__split in H; destruct H; eassumption. }
+    { intro H.
+      specialize (H (length str)).
+      rewrite take_long in H by omega; assumption. }
+  Qed.
+
+  Lemma forall_chars_drop (str : String) P
+  : forall_chars str P <-> (forall n, forall_chars (drop n str) P).
+  Proof.
+    split.
+    { intros H n.
+      rewrite forall_chars__split in H; destruct H; eassumption. }
+    { intro H.
+      specialize (H 0).
+      rewrite drop_0 in H; assumption. }
+  Qed.
+
   Definition forall_chars__char_in (str : String) (ls : list Char)
     := forall_chars str (fun ch => List.In ch ls).
 
@@ -266,6 +296,13 @@ Section all_possible_correctness.
     match goal with
       | [ H : _ |- _ ] => rewrite <- H; reflexivity
     end.
+  Qed.
+
+  Lemma forall_chars__char_in__split n (str : String) ls
+  : forall_chars__char_in str ls
+    <-> (forall_chars__char_in (take n str) ls /\ forall_chars__char_in (drop n str) ls).
+  Proof.
+    unfold forall_chars__char_in; apply forall_chars__split.
   Qed.
 
   Lemma forall_chars__char_in__app_or_iff (str : String) (ls1 ls2 : list Char)
@@ -333,43 +370,32 @@ Section all_possible_correctness.
     { dependent destruction p; simpl in *.
       apply forall_chars__char_in_nil; assumption. }
     { dependent destruction p; simpl in *.
-      apply forall_chars__char_in__or_app.
-      destruct (Compare_dec.lt_dec (length str) n); [ left | right ].
-      { dependent_destruction_head (@minimal_parse_of_item).
+      destruct (Compare_dec.lt_dec (length str) n).
+      { apply forall_chars__char_in__or_app; left.
+        dependent_destruction_head (@minimal_parse_of_item).
         { repeat match goal with
                    | [ H : _ |- _ ] => rewrite take_long in H by omega
                  end.
           erewrite forall_chars__char_in_singleton_str; intuition. }
-                   | [ H : is_true (?str ~= [ _ ]) |- forall_chars__char_in ?str _ ]
-                     => rewrite (forall_chars__char_in_singleton_str H)
-          ma
-          let H := match goal with H : ?str ~=
-match goal with
-            | [ H : is_true (?str ~= [ _ ]) |- is_true (?str ~= [ _ ]) ] => apply length_singleton in H
-          end.
-          repeat match goal with
-                   | _ => intro
-                   | _ => progress subst
-                   | _ => assumption
-                   | [ H : _ |- _ ] => rewrite take_length in H
-                   | [ H : _ |- _ ] => rewrite drop_length in H
-                   | [ H : _ |- _ ] => rewrite drop_0 in H
-                   | _ => rewrite take_long by omega
-                   | _ => omega
-                   | [ H : min _ _ = 1 |- _ ] => revert H; apply Min.min_case_strong
-                   | [ H : _ < 1 |- _ ] => apply Nat.lt_1_r in H
-                   | [ H : context[drop ?x _] |- _ ] => is_var x; destruct x
-                   | [ H : _ |- _ ] => rewrite take_long in H by omega
-                   | [ H : context[drop (S _) ?str], H' : length ?str = 1 |- _ ] => apply length_singleton in H
-                 end. }
-        { eapply IH; [ | eassumption ].
+        { apply IH.
           refine (@expand_minimal_parse_of_nonterminal
                     _ _ _ G _
                     _ _ _ _ _ _ _ _ _ _ _ _ _);
             [ .. | eassumption ];
             try reflexivity; try (left; reflexivity); [].
           rewrite take_long by omega; reflexivity. } }
-      { unfold forall_chars__char_in, forall_chars in *.
+      { dependent_destruction_head (@minimal_parse_of_item).
+        { apply (forall_chars__char_in__split n); split;
+          apply forall_chars__char_in__or_app; [ left | right ].
+          { eapply forall_chars__char_in_singleton_str; try eassumption; left; reflexivity. }
+          { apply IHxs.
+            refine (@expand_minimal_parse_of_production
+                      _ _ _ G _
+                      _ _ _ _ _ _ _ _ _ _ _ _ _);
+              [ .. | eassumption ];
+              try reflexivity.
+
+
 
           pose (@minimal_parse_of_nonterminal__of__parse_of_nonterminal); simpl in *.
           apply (@
