@@ -452,59 +452,22 @@ Section all_possible_correctness.
     specialize (IH nt0 str0).
     specialize (IH p0).
     apply IH.
-
-(*      dependent destruction p; try (destruct_head or; subst; omega).
-      Focus 2.
-    Focus 2.
-
-    cong
-
-    dependent destruction p.
-    generalize dependent (G nt); intros prods p.
-    Focus 2.
-    congruence.
-    hnf.
-
-
-  ============================
-   forall_chars__char_in str
-     (Fix ntl_wf (fun _ : nonterminals_listT => string -> possible_terminals)
-        (possible_terminals_of_nt_step (G:=G)) initial_nonterminals_data nt)
+    admit.
+    admit.
+  Qed.
 
   Lemma possible_terminals_of_correct (G : grammar Char)
-        (str : String) nt (p : parse_of_item G str (NonTerminal nt))
+        (predata := @rdp_list_predata _ G)
+        (str : String) nt
+        (p : parse_of_item G str (NonTerminal nt))
+        (Hp : Forall_parse_of_item (fun _ nt' => is_valid_nonterminal initial_nonterminals_data nt') p)
   : forall_chars__char_in str (possible_terminals_of G nt).
   Proof.
     unfold possible_terminals_of, possible_terminals_of_nt.
-    match goal with
-      | [ |- appcontext[Fix ?wf _ _ ?a] ]
-        => generalize a;
-          let H := fresh in
-          intro H;
-            induction (wf H)
-    end.
-    rewrite Fix1_eq
+    eapply Fix_possible_terminals_of_nt_step_correct; eassumption.
+  Qed.
+End all_possible_correctness.
 
-
-list_bin ascii_beq ch (possible_terminals_of G nt)
-
-  Definition possible_terminals_of (G : grammar Char) : String.string -> possible_terminals
-    := @possible_terminals_of_nt G initial_nonterminals_data.
-
-
-
-  Definition possible_terminals_of_production' (terminals_of_nt : String.string -> possible_terminals)
-             (its : production Char)
-  : possible_terminals
-    := flat_map
-         (fun it =>
-            match it with
-              | Terminal ch => [ch]
-              | NonTerminal nt => terminals_of_nt nt
-            end)
-         its.
-
-*)
 Section only_first.
   Context (G : grammar Ascii.ascii).
 
