@@ -43,6 +43,20 @@ Section ilist.
       | inil => tt
     end.
 
+  (* Appending ilists *)
+
+    Fixpoint ilist_app (As : list A)
+    : forall (As' : list A),  ilist As -> ilist As' -> ilist (As ++ As') :=
+      match As return
+            forall (As' : list A),
+              ilist As -> ilist As' -> ilist (As ++ As') with
+        | nil =>
+          fun As' il il' => il'
+        | a :: As'' =>
+          fun As' il il' =>
+            icons (ilist_hd il) (ilist_app (ilist_tl il) il')
+      end.
+
   (* Membership in an indexed list. *)
 
   Inductive ilist_In {a : A} (b : B a)
