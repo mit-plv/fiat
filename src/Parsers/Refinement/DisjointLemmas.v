@@ -357,12 +357,12 @@ Section all_possible_correctness.
 
   Lemma possible_terminals_of_production'_correct (G : grammar Char)
         (predata := @rdp_list_predata _ G)
-        (str : String) pat ptont
+        (str : String) len0 (Hlen0 : length str <= len0) pat ptont
         (valid0 : nonterminals_listT)
-        (IH : forall nt (str : String),
-                minimal_parse_of_nonterminal (G := G) (length str) valid0 str nt
+        (IH : forall nt (str : String) len0 (Hlen0 : length str <= len0),
+                minimal_parse_of_nonterminal (G := G) len0 valid0 str nt
                 -> forall_chars__char_in str (ptont nt))
-        (p : minimal_parse_of_production (G := G) (length str) valid0 str pat)
+        (p : minimal_parse_of_production (G := G) len0 valid0 str pat)
   : forall_chars__char_in str (possible_terminals_of_production' ptont pat).
   Proof.
     unfold possible_terminals_of_production'.
@@ -377,66 +377,39 @@ Section all_possible_correctness.
                    | [ H : _ |- _ ] => rewrite take_long in H by omega
                  end.
           erewrite forall_chars__char_in_singleton_str; intuition. }
-        { apply IH.
-          refine (@expand_minimal_parse_of_nonterminal
+        { eapply IH;
+          [
+          | refine (@expand_minimal_parse_of_nonterminal
+                      _ _ _ G _
+                      _ _ _ _ _ _ _ _ _ _ _ _ _);
+            [ .. | eassumption ];
+            try reflexivity; try (left; reflexivity); [] ];
+          [ assumption | ].
+          rewrite take_long by omega; reflexivity. } }
+      { apply (forall_chars__char_in__split n); split;
+        apply forall_chars__char_in__or_app; [ left | right ].
+        { dependent_destruction_head (@minimal_parse_of_item).
+          { eapply forall_chars__char_in_singleton_str; try eassumption; left; reflexivity. }
+          { eapply IH; [ | eassumption ].
+            rewrite take_length; apply Min.min_case_strong; omega. } }
+        { apply IHxs;
+          [ rewrite drop_length; omega | ].
+          refine (@expand_minimal_parse_of_production
                     _ _ _ G _
                     _ _ _ _ _ _ _ _ _ _ _ _ _);
             [ .. | eassumption ];
-            try reflexivity; try (left; reflexivity); [].
-          rewrite take_long by omega; reflexivity. } }
-      { dependent_destruction_head (@minimal_parse_of_item).
-        { apply (forall_chars__char_in__split n); split;
-          apply forall_chars__char_in__or_app; [ left | right ].
-          { eapply forall_chars__char_in_singleton_str; try eassumption; left; reflexivity. }
-          { apply IHxs.
-            refine (@expand_minimal_parse_of_production
-                      _ _ _ G _
-                      _ _ _ _ _ _ _ _ _ _ _ _ _);
-              [ .. | eassumption ];
-              try reflexivity.
-
-
-
-          pose (@minimal_parse_of_nonterminal__of__parse_of_nonterminal); simpl in *.
-          apply (@
-          let p := match goal with
-          pose (@parse_of_item_nonterminal__of__minimal_parse_of_nonterminal).
-
-          erewrite <- take_long.
-
-          match goal with
-            | [ H : is_true (?str ~= [ _ ]) |- _ ] => apply length_singleton in H
-          end.
-          .
-          SearchAbout take.
-SearchAbout (drop 0).
-SearchAbout (_ < 1).
-          match goal with
-          end.
-∀ (A : Type) (x : A) (P : forall y : A, x = y → Type),
-  P x eq_refl
-  → ∀ (y : A) (e : x = y),
-      P x e
-
-
-      apply
-      SearchAbout length.
-      simpl.
-
- }
-    { simpl; apply forall_chars__char_in__or_app.
-      dependent destruction p; [ left | right; eauto ]; [].
-
+            (reflexivity || (left; reflexivity)). } } }
+  Qed.
 
 
   Lemma possible_terminals_of_productions'_correct (G : grammar Char)
         (predata := @rdp_list_predata _ G)
-        (str : String) pats ptont
+        (str : String) len0 (Hlen0 : length str <= len0) pats ptont
         (valid0 : nonterminals_listT)
-        (IH : forall nt (str : String),
-                minimal_parse_of_nonterminal (G := G) (length str) valid0 str nt
+        (IH : forall nt (str : String) len0 (Hlen0 : length str <= len0),
+                minimal_parse_of_nonterminal (G := G) len0 valid0 str nt
                 -> forall_chars__char_in str (ptont nt))
-        (p : minimal_parse_of (G := G) (length str) valid0 str pats)
+        (p : minimal_parse_of (G := G) len0 valid0 str pats)
   : forall_chars__char_in str (possible_terminals_of_productions' ptont pats).
   Proof.
     unfold possible_terminals_of_productions'.
@@ -444,35 +417,32 @@ SearchAbout (_ < 1).
     { dependent destruction p. }
     { simpl; apply forall_chars__char_in__or_app.
       dependent destruction p; [ left | right; eauto ]; [].
-
-Focus 2.
-
-
-
-
-
-
-simpl.
-      apply forall_chars__char_in__app_or_iff.
-
+      eapply possible_terminals_of_production'_correct; eauto. }
+  Qed.
 
   Lemma Fix_possible_terminals_of_nt_step_correct (G : grammar Char)
         (predata := @rdp_list_predata _ G)
-        (str : String) nt
+        (str : String) len0 (Hlen0 : length str <= len0) nt
         (valid0 : nonterminals_listT)
-        (p : minimal_parse_of_nonterminal (G := G) (length str) valid0 str nt)
+        (Hinit : length str = len0 \/ valid0 = initial_nonterminals_data)
+        (p : minimal_parse_of_nonterminal (G := G) len0 valid0 str nt)
   : forall_chars__char_in
       str
       (Fix ntl_wf (fun _ : nonterminals_listT => string -> possible_terminals)
            (possible_terminals_of_nt_step (G:=G)) valid0 nt).
   Proof.
-    generalize dependent str; induction (ntl_wf valid0) as [ ? ? IH ]; intros.
+    generalize dependent str; generalize dependent len0;
+    induction (ntl_wf valid0) as [ ? ? IH ]; intros.
     rewrite Fix1_eq; [ | apply possible_terminals_of_nt_step_ext ]; [].
     unfold possible_terminals_of_nt_step at 1; cbv beta zeta.
-    edestruct dec; [ | dependent destruction p; simpl in *; (omega || congruence) ].
-    let H := match goal with H : is_valid_nonterminal ?x ?nt = true |- _ => constr:H end in
-    specialize (IH _ (remove_nonterminal_dec _ _ H)).
-    dependent destruction p; try omega; [].
+    edestruct dec; [ | dependent destruction p; simpl in *; destruct_head or; subst; (omega || congruence) ].
+    { let H := match goal with H : is_valid_nonterminal ?x ?nt = true |- _ => constr:H end in
+      specialize (IH _ (remove_nonterminal_dec _ _ H)).
+      dependent destruction p;
+      (eapply possible_terminals_of_productions'_correct; [ .. | eassumption ]; eauto).
+
+      dependent destruction p; try (destruct_head or; subst; omega).
+      Focus 2.
     Focus 2.
 
     cong
