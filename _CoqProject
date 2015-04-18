@@ -101,6 +101,8 @@ src/Examples/QueryStructure/Photoalbum.v
 src/Examples/QueryStructure/Stocks.v
 src/Examples/QueryStructure/Weather.v
 src/Examples/Smtp/Smtp.v
+src/Fiat4Monitors/TurretMonitor.v
+src/Fiat4Monitors/TurretMonitorSpec.v
 src/FiatToFacade/BedrockUtilities.v
 src/FiatToFacade/Compiler.v
 src/FiatToFacade/FacadeNotations.v
