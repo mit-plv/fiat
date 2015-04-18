@@ -159,6 +159,7 @@ src/Parsers/ContextFreeGrammarTransfer.v
 src/Parsers/ContextFreeGrammarTransferProperties.v
 src/Parsers/CorrectnessBaseTypes.v
 src/Parsers/ExtrOcamlParsers.v
+src/Parsers/FoldGrammar.v
 src/Parsers/MinimalParse.v
 src/Parsers/MinimalParseOfParse.v
 src/Parsers/ParserADTSpecification.v
