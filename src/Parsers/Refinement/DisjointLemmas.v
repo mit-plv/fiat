@@ -30,7 +30,7 @@ Section general_fold.
 
   Class fold_grammar_data :=
     { on_terminal : Char -> T;
-      on_redundant_terminal : T;
+      on_redundant_nonterminal : T;
       on_nil_production : T;
       combine_production : T -> T -> T;
       on_nil_productions : T;
@@ -87,7 +87,7 @@ Section general_fold.
             then fold_productions'
                    (@fold_nt (remove_nonterminal valid0 nt) (remove_nonterminal_dec _ _ _))
                    (Lookup G nt)
-            else on_redundant_terminal);
+            else on_redundant_nonterminal);
     assumption.
   Defined.
 
@@ -127,18 +127,50 @@ Section fold_correctness.
     { Pnt : @nonterminals_listT (@rdp_list_predata _ G) -> String.string -> T -> Type;
       Ppat : @nonterminals_listT (@rdp_list_predata _ G) -> production Char -> T -> Type;
       Ppats : @nonterminals_listT (@rdp_list_predata _ G) -> productions Char -> T -> Type;
+      Pnt_lift : forall valid0 nt value,
+                   is_valid_nonterminal valid0 nt
+                   -> Ppats (remove_nonterminal valid0 nt) (G nt) value
+                   -> Pnt valid0 nt value;
+      Pnt_redundant : forall valid0 nt,
+                        is_valid_nonterminal valid0 nt = false
+                        -> Pnt valid0 nt on_redundant_nonterminal;
+      Ppat_nil : forall valid0, Ppat valid0 [] on_nil_production;
+      Ppat_cons_nt : forall valid0 nt xs p ps,
+                       Pnt valid0 nt p
+                       -> Ppat valid0 xs ps
+                       -> Ppat valid0
+                               (NonTerminal nt::xs)
+                               (combine_production p ps);
+      Ppat_cons_t : forall valid0 ch xs ps,
+                      Ppat valid0 xs ps
+                      -> Ppat valid0
+                              (Terminal ch::xs)
+                              (combine_production (on_terminal ch) ps);
       Ppats_nil : forall valid0, Ppats valid0 [] on_nil_productions;
       Ppats_cons : forall valid0 x xs p ps,
                      Ppat valid0 x p
                      -> Ppats valid0 xs ps
                      -> Ppats valid0 (x::xs) (combine_productions p ps) }.
-  Context {FGCD : fold_grammar_correctness_data}(* (G : grammar Char)*).
+  Context {FGCD : fold_grammar_correctness_data}.
 
-  Lemma fold_productions'_correct
-        (*(predata := @rdp_list_predata _ G)*)
+  Lemma fold_production'_correct
         valid0
         f
-        (tmp_helper_fold_production' : forall x, Ppat valid0 x (fold_production' f x))
+        (IHf : forall nt, Pnt valid0 nt (f nt))
+        pat
+  : Ppat valid0 pat (fold_production' f pat).
+  Proof.
+    unfold fold_production'.
+    induction pat; simpl.
+    { apply Ppat_nil. }
+    { edestruct (_ : item _).
+      { apply Ppat_cons_t; trivial. }
+      { apply Ppat_cons_nt; trivial. } }
+  Qed.
+
+  Lemma fold_productions'_correct
+        valid0
+        f
         (IHf : forall nt, Pnt valid0 nt (f nt))
         pats
   : Ppats valid0 pats (fold_productions' f pats).
@@ -147,8 +179,30 @@ Section fold_correctness.
     induction pats as [ | x xs IHxs ]; intros.
     { simpl; apply Ppats_nil. }
     { simpl; apply Ppats_cons.
-      { apply tmp_helper_fold_production'. }
+      { apply fold_production'_correct; trivial. }
       { apply IHxs. } }
+  Qed.
+
+  Lemma Fix_fold_nt_step_correct
+        (valid0 : nonterminals_listT)
+  : forall nt,
+      Pnt valid0 nt (Fix ntl_wf _ (fold_nt_step (G:=G)) valid0 nt).
+  Proof.
+    induction (ntl_wf valid0) as [ ? ? IH ]; intros.
+    rewrite Fix1_eq; [ | solve [ apply fold_nt_step_ext ] ].
+    unfold fold_nt_step at 1; cbv beta zeta.
+    edestruct dec; [ | apply Pnt_redundant; assumption ].
+    let H := match goal with H : is_valid_nonterminal ?x ?nt = true |- _ => constr:H end in
+    specialize (IH _ (remove_nonterminal_dec _ _ H)).
+    apply Pnt_lift, fold_productions'_correct; eauto.
+  Qed.
+
+  Lemma fold_nt_correct
+        nt
+  : Pnt initial_nonterminals_data nt (fold_nt G nt).
+  Proof.
+    unfold fold_nt, fold_nt'.
+    apply Fix_fold_nt_step_correct.
   Qed.
 End fold_correctness.
 
@@ -158,7 +212,7 @@ Section all_possible.
 
   Local Instance all_possible_fold_data : fold_grammar_data Char possible_terminals
     := { on_terminal ch := [ch];
-         on_redundant_terminal := nil;
+         on_redundant_nonterminal := nil;
          on_nil_production := nil;
          combine_production := @app _;
          on_nil_productions := nil;
@@ -179,7 +233,7 @@ Section only_first.
 
   Local Instance only_first_fold_data : fold_grammar_data Ascii.ascii possible_first_terminals
     := { on_terminal ch := {| actual_possible_first_terminals := [ch] ; might_be_empty := false |};
-         on_redundant_terminal := {| actual_possible_first_terminals := nil ; might_be_empty := false |};
+         on_redundant_nonterminal := {| actual_possible_first_terminals := nil ; might_be_empty := false |};
          on_nil_production := {| actual_possible_first_terminals := nil ; might_be_empty := true |};
          on_nil_productions := {| actual_possible_first_terminals := nil ; might_be_empty := false |};
          combine_production first_of_first first_of_rest
@@ -235,8 +289,52 @@ Section all_possible_correctness.
               Forall_parse_of (fun _ nt' => is_valid_nonterminal valid0 nt') p
               -> forall_chars__char_in str ls }.
   Proof.
+    { simpl; intros valid0 nt value Hvalid Hnt str p Hp.
+      dependent destruction p.
+      simpl in Hp.
+      destruct Hp as [Hp0 Hp1].
+      specialize (Hnt _ p).
+      apply Hnt.
+      clear -Hp0 Hp1.
+      admit. }
     { abstract (
-          (intros ?? p ?);
+          simpl; (intros ???? p H);
+          dependent destruction p;
+          simpl in H; destruct H; congruence
+        ). }
+    { abstract (
+          simpl; (intros ?? p H);
+          apply forall_chars__char_in_nil;
+          dependent destruction p; trivial
+        ). }
+    { simpl combine_production.
+      intros valid0 nt xs ls1 ls2 Hit Hits str p Hp.
+      dependent destruction p.
+      match type of Hp with
+        | context[ParseProductionCons _ _ ?p ?p1]
+          => change (Forall_parse_of_item (fun _ nt' => is_valid_nonterminal valid0 nt') p
+                     * Forall_parse_of_production (fun _ nt' => is_valid_nonterminal valid0 nt') p1)%type in Hp
+      end.
+      simpl in Hp; destruct Hp as [Hp0 Hp1].
+      apply (forall_chars__char_in__split n); split;
+      apply forall_chars__char_in__or_app; [ left | right ]; eauto. }
+    { simpl combine_production; simpl on_terminal; cbv beta.
+      intros valid0 nt xs ls Hits str p Hp.
+      dependent destruction p.
+      match type of Hp with
+        | context[ParseProductionCons _ _ ?p ?p1]
+          => change (Forall_parse_of_item (fun _ nt' => is_valid_nonterminal valid0 nt') p
+                     * Forall_parse_of_production (fun _ nt' => is_valid_nonterminal valid0 nt') p1)%type in Hp
+      end.
+      simpl in Hp.
+      destruct Hp as [Hp0 Hp1].
+      apply (forall_chars__char_in__split n); split;
+      apply forall_chars__char_in__or_app; [ left | right ]; eauto; [].
+      dependent_destruction_head (@parse_of_item).
+      erewrite forall_chars__char_in_singleton_str by eassumption.
+      left; reflexivity. }
+    { abstract (
+          simpl; (intros ?? p);
           dependent destruction p
         ). }
     { abstract (
