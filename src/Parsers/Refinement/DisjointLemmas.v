@@ -120,25 +120,28 @@ Global Arguments fold_grammar_data : clear implicits.
 
 Section fold_correctness.
   Context {Char : Type} {T : Type}.
-  Context {FGD : fold_grammar_data Char T}.
+  Context {FGD : fold_grammar_data Char T}
+          (G : grammar Char).
+
   Class fold_grammar_correctness_data :=
-    { Pnt : String.string -> T -> Type;
-      Ppat : production Char -> T -> Type;
-      Ppats : productions Char -> T -> Type;
-      Ppats_nil : Ppats [] on_nil_productions;
-      Ppats_cons : forall x xs p ps,
-                     Ppat x p
-                     -> Ppats xs ps
-                     -> Ppats (x::xs) (combine_productions p ps) }.
+    { Pnt : @nonterminals_listT (@rdp_list_predata _ G) -> String.string -> T -> Type;
+      Ppat : @nonterminals_listT (@rdp_list_predata _ G) -> production Char -> T -> Type;
+      Ppats : @nonterminals_listT (@rdp_list_predata _ G) -> productions Char -> T -> Type;
+      Ppats_nil : forall valid0, Ppats valid0 [] on_nil_productions;
+      Ppats_cons : forall valid0 x xs p ps,
+                     Ppat valid0 x p
+                     -> Ppats valid0 xs ps
+                     -> Ppats valid0 (x::xs) (combine_productions p ps) }.
   Context {FGCD : fold_grammar_correctness_data}(* (G : grammar Char)*).
 
   Lemma fold_productions'_correct
         (*(predata := @rdp_list_predata _ G)*)
+        valid0
         f
-        (tmp_helper_fold_production' : forall x, Ppat x (fold_production' f x))
-        (IHf : forall nt, Pnt nt (f nt))
+        (tmp_helper_fold_production' : forall x, Ppat valid0 x (fold_production' f x))
+        (IHf : forall nt, Pnt valid0 nt (f nt))
         pats
-  : Ppats pats (fold_productions' f pats).
+  : Ppats valid0 pats (fold_productions' f pats).
   Proof.
     unfold fold_productions'.
     induction pats as [ | x xs IHxs ]; intros.
@@ -206,6 +209,8 @@ Section all_possible_correctness.
   Context {Char : Type} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}.
   Local Open Scope string_like_scope.
 
+  Local Existing Instance all_possible_fold_data.
+
   Local Ltac dependent_destruction_head h :=
     idtac;
     match goal with
@@ -216,19 +221,40 @@ Section all_possible_correctness.
                                dependent destruction H'
     end.
 
+  Local Instance all_possible_cdata : @fold_grammar_correctness_data Char _ all_possible_fold_data G
+    := { Pnt valid0 nt ls
+         := forall (str : String) (p : parse_of_item G str (NonTerminal nt)),
+              Forall_parse_of_item (fun _ nt' => is_valid_nonterminal valid0 nt') p
+              -> forall_chars__char_in str ls;
+         Ppat valid0 pat ls
+         := forall (str : String) (p : parse_of_production G str pat),
+              Forall_parse_of_production (fun _ nt' => is_valid_nonterminal valid0 nt') p
+              -> forall_chars__char_in str ls;
+         Ppats valid0 pats ls
+         := forall (str : String) (p : parse_of G str pats),
+              Forall_parse_of (fun _ nt' => is_valid_nonterminal valid0 nt') p
+              -> forall_chars__char_in str ls }.
+  Proof.
+    { abstract (
+          (intros ?? p ?);
+          dependent destruction p
+        ). }
+    { abstract (
+          simpl; intros ????? IH1 IH2 ? p H';
+          apply forall_chars__char_in__or_app;
+          dependent destruction p; [ left | right ]; eauto
+        ). }
+  Defined.
+
   Lemma possible_terminals_of_production'_correct (G : grammar Char)
         (predata := @rdp_list_predata _ G)
-        (str : String) pat ptont
+        pat ptont
         (valid0 : nonterminals_listT)
-        (IH : forall nt (str : String) (p : parse_of_item G str (NonTerminal nt)),
-                Forall_parse_of_item (fun _ nt' => is_valid_nonterminal valid0 nt') p
-                -> forall_chars__char_in str (ptont nt))
-        (p : parse_of_production G str pat)
-        (Hp : Forall_parse_of_production (fun _ nt' => is_valid_nonterminal valid0 nt') p)
-  : forall_chars__char_in str (possible_terminals_of_production' ptont pat).
+        (IH : forall nt, Pnt valid0 nt (ptont nt))
+  : Ppat valid0 pat (fold_production' ptont pat).
   Proof.
-    unfold possible_terminals_of_production'.
-    generalize dependent str; induction pat as [ | x xs IHxs ]; intros.
+    unfold fold_production'; simpl in *.
+    induction pat as [ | x xs IHxs ]; intros str p Hp.
     { dependent destruction p; simpl in *.
       apply forall_chars__char_in_nil; assumption. }
     { dependent destruction p; simpl in *.
@@ -263,21 +289,13 @@ Section all_possible_correctness.
 
   Lemma possible_terminals_of_productions'_correct (G : grammar Char)
         (predata := @rdp_list_predata _ G)
-        (str : String) pats ptont
+        pats ptont
         (valid0 : nonterminals_listT)
-        (IH : forall nt (str : String) (p : parse_of_item G str (NonTerminal nt)),
-                Forall_parse_of_item (fun _ nt' => is_valid_nonterminal valid0 nt') p
-                -> forall_chars__char_in str (ptont nt))
-        (p : parse_of G str pats)
-        (Hp : Forall_parse_of (fun _ nt' => is_valid_nonterminal valid0 nt') p)
-  : forall_chars__char_in str (possible_terminals_of_productions' ptont pats).
+        (IH : forall nt, Pnt valid0 nt (ptont nt))
+  : Ppats valid0 pats (fold_productions' ptont pats).
   Proof.
-    unfold possible_terminals_of_productions'.
-    generalize dependent str; induction pats as [ | x xs IHxs ]; intros.
-    { dependent destruction p. }
-    { simpl; apply forall_chars__char_in__or_app.
-      dependent destruction p; [ left | right; eauto ]; [].
-      eapply possible_terminals_of_production'_correct; eauto. }
+    apply fold_productions'_correct; trivial; [].
+    intro; apply possible_terminals_of_production'_correct; assumption.
   Qed.
 
   Lemma Fix_possible_terminals_of_nt_step_correct (G : grammar Char)
