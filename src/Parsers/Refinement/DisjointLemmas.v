@@ -24,88 +24,182 @@ Require Import Fiat.Parsers.ContextFreeGrammarProperties.
 
 Set Implicit Arguments.
 
-Section all_possible.
-  Context {Char : Type}.
-  Definition possible_terminals := list Char.
+Section general_fold.
+  Context {Char : Type} {T : Type}.
 
-  Definition possible_terminals_of_production' (terminals_of_nt : String.string -> possible_terminals)
+  Class fold_grammar_data :=
+    { on_terminal : Char -> T;
+      on_redundant_terminal : T;
+      on_nil_production : T;
+      combine_production : T -> T -> T;
+      on_nil_productions : T;
+      combine_productions : T -> T -> T }.
+  Context `{fold_grammar_data} (G : grammar Char).
+
+  Definition fold_production' (fold_nt : String.string -> T)
              (its : production Char)
-  : possible_terminals
-    := flat_map
-         (fun it =>
-            match it with
-              | Terminal ch => [ch]
-              | NonTerminal nt => terminals_of_nt nt
-            end)
-         its.
+    := fold_right
+         combine_production
+         on_nil_production
+         (map
+            (fun it =>
+               match it with
+                 | Terminal ch => on_terminal ch
+                 | NonTerminal nt => fold_nt nt
+               end)
+            its).
 
-  Lemma possible_terminals_of_production'_ext
-        f g
-        (ext : forall b, f b = g b)
-        b
-  : @possible_terminals_of_production' f b = possible_terminals_of_production' g b.
+  Lemma fold_production'_ext {f g} (ext : forall b, f b = g b) b
+  : fold_production' f b = fold_production' g b.
   Proof.
+    unfold fold_production'.
     induction b as [ | x ]; try reflexivity; simpl.
     destruct x; rewrite ?IHb, ?ext; reflexivity.
   Qed.
 
-  Definition possible_terminals_of_productions' (possible_terminals_of_nt : String.string -> possible_terminals)
-             (prods : productions Char)
-  : possible_terminals
-    := flat_map
-         (possible_terminals_of_production' possible_terminals_of_nt)
-         prods.
+  Definition fold_productions' (fold_nt : String.string -> T)
+             (its : productions Char)
+    := fold_right
+         combine_productions
+         on_nil_productions
+         (map
+            (fold_production' fold_nt)
+            its).
 
-  Lemma possible_terminals_of_productions'_ext
-        f g
-        (ext : forall b, f b = g b)
-        b
-  : @possible_terminals_of_productions' f b = possible_terminals_of_productions' g b.
+  Lemma fold_productions'_ext {f g} (ext : forall b, f b = g b) b
+  : fold_productions' f b = fold_productions' g b.
   Proof.
-    unfold possible_terminals_of_productions'.
+    unfold fold_productions'.
     induction b as [ | x ]; try reflexivity; simpl.
-    rewrite IHb.
-    erewrite possible_terminals_of_production'_ext by eassumption.
-    reflexivity.
+    rewrite IHb, (fold_production'_ext ext); reflexivity.
   Qed.
 
-  Definition possible_terminals_of_nt_step (G : grammar Char) (predata := @rdp_list_predata _ G)
+  Definition fold_nt_step
+             (predata := @rdp_list_predata _ G)
              (valid0 : nonterminals_listT)
-             (possible_terminals_of_nt : forall valid, nonterminals_listT_R valid valid0
-                                                       -> String.string -> possible_terminals)
+             (fold_nt : forall valid, nonterminals_listT_R valid valid0
+                                      -> String.string -> T)
              (nt : String.string)
-  : possible_terminals.
+  : T.
   Proof.
     refine (if Sumbool.sumbool_of_bool (is_valid_nonterminal valid0 nt)
-            then possible_terminals_of_productions'
-                   (@possible_terminals_of_nt (remove_nonterminal valid0 nt) (remove_nonterminal_dec _ _ _))
+            then fold_productions'
+                   (@fold_nt (remove_nonterminal valid0 nt) (remove_nonterminal_dec _ _ _))
                    (Lookup G nt)
-            else nil);
+            else on_redundant_terminal);
     assumption.
   Defined.
 
-  Lemma possible_terminals_of_nt_step_ext {G}
-        x0 f g
+  Lemma fold_nt_step_ext
+        {x0 f g}
         (ext : forall y p b, f y p b = g y p b)
         b
-  : @possible_terminals_of_nt_step G x0 f b = possible_terminals_of_nt_step g b.
+  : @fold_nt_step x0 f b = fold_nt_step g b.
   Proof.
-    unfold possible_terminals_of_nt_step.
+    unfold fold_nt_step.
     edestruct Sumbool.sumbool_of_bool; trivial.
-    apply possible_terminals_of_productions'_ext; eauto.
+    apply fold_productions'_ext; eauto.
   Qed.
 
-  Definition possible_terminals_of_nt (G : grammar Char) initial : String.string -> possible_terminals
+  Definition fold_nt' initial : String.string -> T
     := let predata := @rdp_list_predata _ G in
        @Fix _ _ ntl_wf _
-            (@possible_terminals_of_nt_step G)
+            (@fold_nt_step)
             initial.
 
-  Definition possible_terminals_of (G : grammar Char) : String.string -> possible_terminals
-    := @possible_terminals_of_nt G initial_nonterminals_data.
+  Definition fold_nt : String.string -> T
+    := @fold_nt' initial_nonterminals_data.
 
-  Definition possible_terminals_of_productions G := @possible_terminals_of_productions' (@possible_terminals_of G).
+  Definition fold_production := @fold_production' (@fold_nt).
+
+  Definition fold_productions := @fold_productions' (@fold_nt).
+End general_fold.
+
+Global Arguments fold_grammar_data : clear implicits.
+
+Section fold_correctness.
+  Context {Char : Type} {T : Type}.
+  Context {FGD : fold_grammar_data Char T}.
+  Class fold_grammar_correctness_data :=
+    { Pnt : String.string -> T -> Type;
+      Ppat : production Char -> T -> Type;
+      Ppats : productions Char -> T -> Type;
+      Ppats_nil : Ppats [] on_nil_productions;
+      Ppats_cons : forall x xs p ps,
+                     Ppat x p
+                     -> Ppats xs ps
+                     -> Ppats (x::xs) (combine_productions p ps) }.
+  Context {FGCD : fold_grammar_correctness_data}(* (G : grammar Char)*).
+
+  Lemma fold_productions'_correct
+        (*(predata := @rdp_list_predata _ G)*)
+        f
+        (tmp_helper_fold_production' : forall x, Ppat x (fold_production' f x))
+        (IHf : forall nt, Pnt nt (f nt))
+        pats
+  : Ppats pats (fold_productions' f pats).
+  Proof.
+    unfold fold_productions'.
+    induction pats as [ | x xs IHxs ]; intros.
+    { simpl; apply Ppats_nil. }
+    { simpl; apply Ppats_cons.
+      { apply tmp_helper_fold_production'. }
+      { apply IHxs. } }
+  Qed.
+End fold_correctness.
+
+Section all_possible.
+  Context {Char : Type}.
+  Definition possible_terminals := list Char.
+
+  Local Instance all_possible_fold_data : fold_grammar_data Char possible_terminals
+    := { on_terminal ch := [ch];
+         on_redundant_terminal := nil;
+         on_nil_production := nil;
+         combine_production := @app _;
+         on_nil_productions := nil;
+         combine_productions := @app _ }.
+
+  Definition possible_terminals_of : grammar Char -> String.string -> possible_terminals
+    := fold_nt.
+  Definition possible_terminals_of_productions : grammar Char -> productions Char -> possible_terminals
+    := fold_productions.
+  Definition possible_terminals_of_production : grammar Char -> production Char -> possible_terminals
+    := fold_production.
 End all_possible.
+
+Section only_first.
+  Record possible_first_terminals :=
+    { actual_possible_first_terminals :> list Ascii.ascii;
+      might_be_empty : bool }.
+
+  Local Instance only_first_fold_data : fold_grammar_data Ascii.ascii possible_first_terminals
+    := { on_terminal ch := {| actual_possible_first_terminals := [ch] ; might_be_empty := false |};
+         on_redundant_terminal := {| actual_possible_first_terminals := nil ; might_be_empty := false |};
+         on_nil_production := {| actual_possible_first_terminals := nil ; might_be_empty := true |};
+         on_nil_productions := {| actual_possible_first_terminals := nil ; might_be_empty := false |};
+         combine_production first_of_first first_of_rest
+         := {| actual_possible_first_terminals
+               := (actual_possible_first_terminals first_of_first)
+                    ++ (if might_be_empty first_of_first
+                        then actual_possible_first_terminals first_of_rest
+                        else []);
+               might_be_empty
+               := (might_be_empty first_of_first && might_be_empty first_of_rest)%bool |};
+         combine_productions first_of_first first_of_rest
+         := {| actual_possible_first_terminals
+               := (actual_possible_first_terminals first_of_first)
+                    ++ (actual_possible_first_terminals first_of_rest);
+               might_be_empty
+               := (might_be_empty first_of_first || might_be_empty first_of_rest)%bool |} }.
+
+  Definition possible_first_terminals_of : grammar Ascii.ascii -> String.string -> possible_first_terminals
+    := fold_nt.
+  Definition possible_first_terminals_of_productions : grammar Ascii.ascii -> productions Ascii.ascii -> possible_first_terminals
+    := fold_productions.
+  Definition possible_first_terminals_of_production : grammar Ascii.ascii -> production Ascii.ascii -> possible_first_terminals
+    := fold_production.
+End only_first.
 
 Section all_possible_correctness.
   Context {Char : Type} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}.
@@ -467,121 +561,6 @@ Section all_possible_correctness.
     eapply Fix_possible_terminals_of_nt_step_correct; eassumption.
   Qed.
 End all_possible_correctness.
-
-Section only_first.
-  Context (G : grammar Ascii.ascii).
-
-  Record possible_first_terminals :=
-    { actual_possible_first_terminals :> list Ascii.ascii;
-      might_be_empty : bool }.
-
-  Definition possible_first_terminals_of_production' (possible_first_terminals_of_nt : String.string -> possible_first_terminals)
-             (its : production Ascii.ascii)
-  : possible_first_terminals
-    := {| actual_possible_first_terminals
-          := fold_right
-               (fun it rest_terminals =>
-                  match it with
-                    | Terminal ch => [ch]
-                    | NonTerminal nt
-                      => (possible_first_terminals_of_nt nt)
-                           ++ if might_be_empty (possible_first_terminals_of_nt nt)
-                              then rest_terminals
-                              else []
-                  end)
-               nil
-               its;
-          might_be_empty
-          := brute_force_parse_production G ""%string its |}.
-
-  Lemma possible_first_terminals_of_production'_ext
-        f g
-        (ext : forall b, f b = g b)
-        b
-  : @possible_first_terminals_of_production' f b = possible_first_terminals_of_production' g b.
-  Proof.
-    unfold possible_first_terminals_of_production'; f_equal.
-    induction b as [ | x ]; try reflexivity; simpl.
-    destruct x; rewrite ?IHb, ?ext; reflexivity.
-  Qed.
-
-  Definition possible_first_terminals_of_productions' (possible_first_terminals_of_nt : String.string -> possible_first_terminals)
-             (prods : productions Ascii.ascii)
-  : possible_first_terminals
-    := {| actual_possible_first_terminals
-          := flat_map
-               actual_possible_first_terminals
-               (map (possible_first_terminals_of_production' possible_first_terminals_of_nt)
-                    prods);
-          might_be_empty
-          := fold_right
-               orb
-               false
-               (map
-                  might_be_empty
-                  (map
-                     (possible_first_terminals_of_production' possible_first_terminals_of_nt)
-                     prods)) |}.
-
-  Local Opaque possible_first_terminals_of_production'.
-
-  Lemma possible_first_terminals_of_productions'_ext
-        f g
-        (ext : forall b, f b = g b)
-        b
-  : @possible_first_terminals_of_productions' f b = possible_first_terminals_of_productions' g b.
-  Proof.
-    unfold possible_first_terminals_of_productions'.
-    f_equal;
-      induction b as [ | x ]; try reflexivity; simpl;
-      rewrite IHb; try reflexivity;
-      erewrite possible_first_terminals_of_production'_ext by eassumption;
-      reflexivity.
-  Qed.
-
-  Local Transparent possible_first_terminals_of_production'.
-
-  Definition possible_first_terminals_of_nt_step (predata := @rdp_list_predata _ G)
-             (valid0 : nonterminals_listT)
-             (possible_first_terminals_of_nt : forall valid, nonterminals_listT_R valid valid0
-                                                       -> String.string -> possible_first_terminals)
-             (nt : String.string)
-  : possible_first_terminals.
-  Proof.
-    refine (if Sumbool.sumbool_of_bool (is_valid_nonterminal valid0 nt)
-            then possible_first_terminals_of_productions'
-                   (@possible_first_terminals_of_nt (remove_nonterminal valid0 nt) (remove_nonterminal_dec _ _ _))
-                   (Lookup G nt)
-            else {| actual_possible_first_terminals := nil;
-                    might_be_empty
-                    := brute_force_parse_nonterminal G ""%string nt |});
-    assumption.
-  Defined.
-
-  Lemma possible_first_terminals_of_nt_step_ext
-        x0 f g
-        (ext : forall y p b, f y p b = g y p b)
-        b
-  : @possible_first_terminals_of_nt_step x0 f b = possible_first_terminals_of_nt_step g b.
-  Proof.
-    unfold possible_first_terminals_of_nt_step.
-    edestruct Sumbool.sumbool_of_bool; trivial.
-    apply possible_first_terminals_of_productions'_ext; eauto.
-  Qed.
-
-  Definition possible_first_terminals_of_nt initial : String.string -> possible_first_terminals
-    := let predata := @rdp_list_predata _ G in
-       @Fix _ _ ntl_wf _
-            (@possible_first_terminals_of_nt_step)
-            initial.
-
-  Definition possible_first_terminals_of : String.string -> possible_first_terminals
-    := @possible_first_terminals_of_nt initial_nonterminals_data.
-
-  Definition possible_first_terminals_of_productions := @possible_first_terminals_of_productions' (@possible_first_terminals_of).
-
-  Definition possible_first_terminals_of_production := @possible_first_terminals_of_production' (@possible_first_terminals_of).
-End only_first.
 
 Section only_first_correctness.
   Local Open Scope string_like_scope.
