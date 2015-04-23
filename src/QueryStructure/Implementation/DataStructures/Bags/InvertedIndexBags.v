@@ -44,7 +44,7 @@ Module InvertedIndexBag (MKeys : WS) (MValues : WSfun Nat_as_OT ).
 
     Definition InvertedIndex_bfind_matcher
                (st : SearchTerm) (item: TItem) :=
-      if IndexSearchTerm_included_dec st (projection item)  then
+      if IncludedIn_dec st (projection item)  then
         ItemSearchTermMatcher st item
         else false.
 
