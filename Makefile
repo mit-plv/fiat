@@ -38,7 +38,7 @@ not-containing = $(foreach v,$2,$(if $(findstring $1,$v),,$v))
 
 .PHONY: fiat fiat-core querystructures parsers examples \
 	install install-fiat install-fiat-core install-querystructures install-parsers install-finitesets install-dns install-compiler install-ics install-fiat4monitors install-examples \
-	pdf doc clean-doc \
+	doc clean-doc \
 	clean update-_CoqProject FORCE
 
 FAST_TARGETS := clean clean-doc archclean printenv clean-old update-_CoqProject Makefile.coq
@@ -124,7 +124,7 @@ install-querystructures: T = $(QUERYSTRUCTURES_VO)
 install-parsers: T = $(PARSERS_VO)
 install-examples: T = $(EXAMPLES_VO)
 
-install-fiat install-fiat-core install-querystructures install-parsers install-examples:
+install-fiat install-fiat-core install-querystructures install-parsers:
 	$(VECHO) "MAKE -f Makefile.coq INSTALL"
 	$(Q)$(MAKE) -f Makefile.coq VFILES="$(addsuffix .v,$(basename $(call vo_closure,$(filter %.vo,$(T)))))" install
 
@@ -140,21 +140,4 @@ $(filter-out $(VOFILES),$(call vo_closure,$(VOFILES))): FORCE
 	@ echo
 	@ false
 
-pdf: Overview/ProjectOverview.pdf Overview/library.pdf
-
-doc: pdf html
-
-Overview/library.tex: all.pdf
-	cp "$<" "$@"
-
-Overview/coqdoc.sty: all.pdf
-	cp coqdoc.sty "$@"
-
-Overview/library.pdf: Overview/library.tex Overview/coqdoc.sty
-	cd Overview; pdflatex library.tex
-
-Overview/ProjectOverview.pdf: $(shell find Overview -name "*.tex" -o -name "*.sty" -o -name "*.cls" -o -name "*.bib") Overview/library.pdf
-	cd Overview; pdflatex -interaction=batchmode -synctex=1 ProjectOverview.tex || true
-	cd Overview; bibtex ProjectOverview
-	cd Overview; pdflatex -interaction=batchmode -synctex=1 ProjectOverview.tex || true
-	cd Overview; pdflatex -synctex=1 ProjectOverview.tex
+doc:  html
