@@ -1,16 +1,16 @@
 (** Reference implementation of a splitter and parser based on that splitter *)
 Require Import Coq.Strings.String.
-Require Import ADTSynthesis.Parsers.SplitterFromParserADT.
-Require Import ADTSynthesis.Parsers.ContextFreeGrammarNotations.
-Require Export ADTSynthesis.Parsers.ParserImplementationOptimized.
-Require Import ADTSynthesis.ADT.ComputationalADT.
-Require Import ADTSynthesis.ADTRefinement.GeneralRefinements.
-Require Import ADTSynthesis.Parsers.ParserADTSpecification.
-Require Import ADTSynthesis.Parsers.ContextFreeGrammarTransfer.
-Require Import ADTSynthesis.Parsers.StringLike.Core.
-Require Import ADTSynthesis.Parsers.StringLike.String.
-Require Import ADTSynthesis.Parsers.BooleanRecognizerEquality.
-Require Import ADTSynthesis.ADTRefinement.Core.
+Require Import Fiat.Parsers.SplitterFromParserADT.
+Require Import Fiat.Parsers.ContextFreeGrammarNotations.
+Require Export Fiat.Parsers.ParserImplementationOptimized.
+Require Import Fiat.ADT.ComputationalADT.
+Require Import Fiat.ADTRefinement.GeneralRefinements.
+Require Import Fiat.Parsers.ParserADTSpecification.
+Require Import Fiat.Parsers.ContextFreeGrammarTransfer.
+Require Import Fiat.Parsers.StringLike.Core.
+Require Import Fiat.Parsers.StringLike.String.
+Require Import Fiat.Parsers.BooleanRecognizerEquality.
+Require Import Fiat.ADTRefinement.Core.
 
 Set Implicit Arguments.
 

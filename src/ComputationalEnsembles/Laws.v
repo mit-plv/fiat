@@ -1,6 +1,6 @@
 Require Import Coq.Classes.Morphisms Coq.Lists.List.
-Require Import ADTSynthesis.ComputationalEnsembles.Core ADTSynthesis.Computation.
-Require Import ADTSynthesis.Common.Ensembles.Tactics ADTSynthesis.Common.Ensembles.
+Require Import Fiat.ComputationalEnsembles.Core Fiat.Computation.
+Require Import Fiat.Common.Ensembles.Tactics Fiat.Common.Ensembles.
 
 Set Implicit Arguments.
 

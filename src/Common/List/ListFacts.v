@@ -1,5 +1,5 @@
 Require Import Coq.Lists.List Coq.Lists.SetoidList Coq.Bool.Bool
-        ADTSynthesis.Common ADTSynthesis.Common.List.Operations.
+        Fiat.Common Fiat.Common.List.Operations.
 
 Unset Implicit Arguments.
 

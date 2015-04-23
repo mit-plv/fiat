@@ -1,8 +1,8 @@
 (** * Miscellaneous definitions about ensembles *)
 Require Import Coq.Lists.List.
 Require Export Coq.Sets.Ensembles.
-Require Import ADTSynthesis.Common ADTSynthesis.Common.List.PermutationFacts
-        ADTSynthesis.Common.Ensembles.EnsembleListEquivalence.
+Require Import Fiat.Common Fiat.Common.List.PermutationFacts
+        Fiat.Common.Ensembles.EnsembleListEquivalence.
 (** Coq's [cardinal] is stupid, and not total.  For example, it
     requires [Extensionality_Ensembles] to prove [cardinal _ (fun _ =>
     False) 0].  So we define a better one. *)

@@ -1,5 +1,5 @@
-Require Import ADTSynthesis.FiatToFacade.Utilities ADTSynthesis.FiatToFacade.BedrockUtilities ADTSynthesis.FiatToFacade.StringMapUtilities.
-Require Import ADTSynthesis.FiatToFacade.FacadeNotations ADTSynthesis.FiatToFacade.StringMapNotations.
+Require Import Fiat.FiatToFacade.Utilities Fiat.FiatToFacade.BedrockUtilities Fiat.FiatToFacade.StringMapUtilities.
+Require Import Fiat.FiatToFacade.FacadeNotations Fiat.FiatToFacade.StringMapNotations.
 Require Import Bedrock.Bedrock Bedrock.Platform.Facade.DFacade Bedrock.Platform.Facade.examples.FiatADTs Bedrock.Platform.Cito.StringMap.
 Require Import Bedrock.Platform.Cito.SyntaxExpr.
 Require Import Coq.Lists.List Coq.Program.Program.

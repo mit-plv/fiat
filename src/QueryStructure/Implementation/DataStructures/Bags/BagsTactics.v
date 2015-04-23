@@ -1,11 +1,11 @@
 Require Import Coq.Strings.String Coq.Arith.Arith
-        ADTSynthesis.QueryStructure.Implementation.DataStructures.Bags.BagsInterface
-        ADTSynthesis.Common.Ensembles.IndexedEnsembles
-        ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureNotations
-        ADTSynthesis.QueryStructure.Implementation.ListImplementation
-        ADTSynthesis.QueryStructure.Implementation.DataStructures.Bags.BagsOfTuples
-        ADTSynthesis.QueryStructure.Implementation.Operations.General.EmptyRefinements
-        ADTSynthesis.Common.List.ListFacts.
+        Fiat.QueryStructure.Implementation.DataStructures.Bags.BagsInterface
+        Fiat.Common.Ensembles.IndexedEnsembles
+        Fiat.QueryStructure.Specification.Representation.QueryStructureNotations
+        Fiat.QueryStructure.Implementation.ListImplementation
+        Fiat.QueryStructure.Implementation.DataStructures.Bags.BagsOfTuples
+        Fiat.QueryStructure.Implementation.Operations.General.EmptyRefinements
+        Fiat.Common.List.ListFacts.
 
 Ltac is_sumbool expr :=
   match type of expr with

@@ -1,15 +1,15 @@
 Require Import Coq.Strings.String Coq.omega.Omega Coq.Lists.List
         Coq.Logic.FunctionalExtensionality Coq.Sets.Ensembles
-        ADTSynthesis.Computation ADTSynthesis.ADT
-        ADTSynthesis.Common.Ensembles.EnsembleListEquivalence
-        ADTSynthesis.ADTRefinement
-        ADTSynthesis.ADTNotation
-        ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureSchema
-        ADTSynthesis.ADTRefinement.BuildADTRefinements
-        ADTSynthesis.QueryStructure.Specification.Operations.Empty
-        ADTSynthesis.QueryStructure.Specification.Representation.QueryStructure
-        ADTSynthesis.Common.SetEq
-        ADTSynthesis.Common.Ensembles.IndexedEnsembles.
+        Fiat.Computation Fiat.ADT
+        Fiat.Common.Ensembles.EnsembleListEquivalence
+        Fiat.ADTRefinement
+        Fiat.ADTNotation
+        Fiat.QueryStructure.Specification.Representation.QueryStructureSchema
+        Fiat.ADTRefinement.BuildADTRefinements
+        Fiat.QueryStructure.Specification.Operations.Empty
+        Fiat.QueryStructure.Specification.Representation.QueryStructure
+        Fiat.Common.SetEq
+        Fiat.Common.Ensembles.IndexedEnsembles.
 
 Lemma EnsembleIndexedListEquivalence_lift_property {heading} {P: @Tuple heading -> Prop} :
   forall (sequence: list (@Tuple heading)) (ensemble: @IndexedTuple heading -> Prop),

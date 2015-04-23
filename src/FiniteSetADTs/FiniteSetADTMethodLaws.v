@@ -4,15 +4,15 @@ Require Import Coq.Strings.String
   Coq.Sets.Finite_sets
   Coq.Lists.List
   Coq.Sorting.Permutation
-  ADTSynthesis.ADT
-  ADTSynthesis.ADT.ComputationalADT
-  ADTSynthesis.ADTRefinement.Core
-  ADTSynthesis.ADTNotation
-  ADTSynthesis.ADTRefinement.GeneralRefinements
-  ADTSynthesis.Common.Ensembles
-  ADTSynthesis.FiniteSetADTs.FiniteSetADT
-  ADTSynthesis.Common.Ensembles.Notations
-  ADTSynthesis.Common.Ensembles.Equivalence.
+  Fiat.ADT
+  Fiat.ADT.ComputationalADT
+  Fiat.ADTRefinement.Core
+  Fiat.ADTNotation
+  Fiat.ADTRefinement.GeneralRefinements
+  Fiat.Common.Ensembles
+  Fiat.FiniteSetADTs.FiniteSetADT
+  Fiat.Common.Ensembles.Notations
+  Fiat.Common.Ensembles.Equivalence.
 
 Set Implicit Arguments.
 

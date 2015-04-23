@@ -6,18 +6,18 @@ Require Import Coq.Strings.String
    Coq.Lists.List
    Coq.Sorting.Permutation
    Coq.Classes.RelationPairs
-   ADTSynthesis.ADT
-   ADTSynthesis.ADT.ComputationalADT
-   ADTSynthesis.ADTRefinement.Core
-   ADTSynthesis.ADTNotation
-   ADTSynthesis.ADTRefinement.GeneralRefinements
-   ADTSynthesis.Computation
-   ADTSynthesis.Common
-   ADTSynthesis.Common.Ensembles
-   ADTSynthesis.Common.Ensembles.Tactics
-   ADTSynthesis.ComputationalEnsembles
-   ADTSynthesis.FiniteSetADTs.FiniteSetADTMethodLaws.
-Require Export ADTSynthesis.FiniteSetADTs.FiniteSetADT.
+   Fiat.ADT
+   Fiat.ADT.ComputationalADT
+   Fiat.ADTRefinement.Core
+   Fiat.ADTNotation
+   Fiat.ADTRefinement.GeneralRefinements
+   Fiat.Computation
+   Fiat.Common
+   Fiat.Common.Ensembles
+   Fiat.Common.Ensembles.Tactics
+   Fiat.ComputationalEnsembles
+   Fiat.FiniteSetADTs.FiniteSetADTMethodLaws.
+Require Export Fiat.FiniteSetADTs.FiniteSetADT.
 
 (** TODO: Move this elsewhere *)
 Notation FullySharpenedComputation spec

@@ -1,12 +1,12 @@
-Require Import Coq.Lists.List ADTSynthesis.Common
-        ADTSynthesis.ADT.ADTSig ADTSynthesis.ADT.Core
-        ADTSynthesis.ADTNotation.BuildADTSig ADTSynthesis.ADTNotation.BuildADT
-        ADTSynthesis.Common.ilist ADTSynthesis.Common.StringBound
-        ADTSynthesis.ADTRefinement.Core ADTSynthesis.ADTRefinement.SetoidMorphisms
-        ADTSynthesis.ADTRefinement.GeneralRefinements
-        ADTSynthesis.ADTRefinement.Refinements.HoneRepresentation
-        ADTSynthesis.ADTRefinement.BuildADTSetoidMorphisms
-        ADTSynthesis.ADTRefinement.Refinements.SimplifyRep.
+Require Import Coq.Lists.List Fiat.Common
+        Fiat.ADT.ADTSig Fiat.ADT.Core
+        Fiat.ADTNotation.BuildADTSig Fiat.ADTNotation.BuildADT
+        Fiat.Common.ilist Fiat.Common.StringBound
+        Fiat.ADTRefinement.Core Fiat.ADTRefinement.SetoidMorphisms
+        Fiat.ADTRefinement.GeneralRefinements
+        Fiat.ADTRefinement.Refinements.HoneRepresentation
+        Fiat.ADTRefinement.BuildADTSetoidMorphisms
+        Fiat.ADTRefinement.Refinements.SimplifyRep.
 
 Section SimplifyRep.
 

@@ -1,4 +1,4 @@
-Require Export ADTSynthesis.FiniteSetADTs.WordInterface.
+Require Export Fiat.FiniteSetADTs.WordInterface.
 
 Set Implicit Arguments.
 

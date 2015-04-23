@@ -1,41 +1,41 @@
 Require Export Coq.Bool.Bool Coq.Strings.String Coq.Strings.Ascii.
-Require Export ADTSynthesis.Common.DecideableEnsembles
-        ADTSynthesis.Common.List.ListMorphisms
-        ADTSynthesis.Common.List.ListFacts
-        ADTSynthesis.Common.BoolFacts
-        ADTSynthesis.Common.LogicFacts
-        ADTSynthesis.Common.List.FlattenList
-        ADTSynthesis.Common.Ensembles.IndexedEnsembles
-        ADTSynthesis.Common.IterateBoundedIndex
-        ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureNotations
-        ADTSynthesis.QueryStructure.Specification.SearchTerms.ListInclusion
-        ADTSynthesis.QueryStructure.Specification.SearchTerms.ListPrefix
-        ADTSynthesis.QueryStructure.Specification.SearchTerms.InRange
-        ADTSynthesis.QueryStructure.Implementation.Constraints.ConstraintChecksRefinements
-        ADTSynthesis.QueryStructure.Automation.General.QueryAutomation
-        ADTSynthesis.QueryStructure.Automation.General.InsertAutomation
-        ADTSynthesis.QueryStructure.Automation.General.DeleteAutomation
-        ADTSynthesis.QueryStructure.Automation.General.QueryStructureAutomation
-        ADTSynthesis.QueryStructure.Automation.Constraints.TrivialConstraintAutomation
-        ADTSynthesis.QueryStructure.Automation.Constraints.FunctionalDependencyAutomation
-        ADTSynthesis.QueryStructure.Automation.Constraints.ForeignKeyAutomation
-        ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.BagADT
-        ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.BagImplementation
-        ADTSynthesis.QueryStructure.Implementation.ListImplementation
-        ADTSynthesis.QueryStructure.Specification.Constraints.tupleAgree
-        ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.IndexSearchTerms
-        ADTSynthesis.QueryStructure.Implementation.Operations.BagADT.Refinements
-        ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.QueryStructureImplementation
-        ADTSynthesis.QueryStructure.Automation.SearchTerms.InclusionSearchTerms
-        ADTSynthesis.QueryStructure.Automation.SearchTerms.FindPrefixSearchTerms
-        ADTSynthesis.QueryStructure.Automation.SearchTerms.RangeSearchTerms
-        ADTSynthesis.QueryStructure.Automation.IndexSelection
-        ADTSynthesis.QueryStructure.Automation.Common.
+Require Export Fiat.Common.DecideableEnsembles
+        Fiat.Common.List.ListMorphisms
+        Fiat.Common.List.ListFacts
+        Fiat.Common.BoolFacts
+        Fiat.Common.LogicFacts
+        Fiat.Common.List.FlattenList
+        Fiat.Common.Ensembles.IndexedEnsembles
+        Fiat.Common.IterateBoundedIndex
+        Fiat.QueryStructure.Specification.Representation.QueryStructureNotations
+        Fiat.QueryStructure.Specification.SearchTerms.ListInclusion
+        Fiat.QueryStructure.Specification.SearchTerms.ListPrefix
+        Fiat.QueryStructure.Specification.SearchTerms.InRange
+        Fiat.QueryStructure.Implementation.Constraints.ConstraintChecksRefinements
+        Fiat.QueryStructure.Automation.General.QueryAutomation
+        Fiat.QueryStructure.Automation.General.InsertAutomation
+        Fiat.QueryStructure.Automation.General.DeleteAutomation
+        Fiat.QueryStructure.Automation.General.QueryStructureAutomation
+        Fiat.QueryStructure.Automation.Constraints.TrivialConstraintAutomation
+        Fiat.QueryStructure.Automation.Constraints.FunctionalDependencyAutomation
+        Fiat.QueryStructure.Automation.Constraints.ForeignKeyAutomation
+        Fiat.QueryStructure.Implementation.DataStructures.BagADT.BagADT
+        Fiat.QueryStructure.Implementation.DataStructures.BagADT.BagImplementation
+        Fiat.QueryStructure.Implementation.ListImplementation
+        Fiat.QueryStructure.Specification.Constraints.tupleAgree
+        Fiat.QueryStructure.Implementation.DataStructures.BagADT.IndexSearchTerms
+        Fiat.QueryStructure.Implementation.Operations.BagADT.Refinements
+        Fiat.QueryStructure.Implementation.DataStructures.BagADT.QueryStructureImplementation
+        Fiat.QueryStructure.Automation.SearchTerms.InclusionSearchTerms
+        Fiat.QueryStructure.Automation.SearchTerms.FindPrefixSearchTerms
+        Fiat.QueryStructure.Automation.SearchTerms.RangeSearchTerms
+        Fiat.QueryStructure.Automation.IndexSelection
+        Fiat.QueryStructure.Automation.Common.
 
-Require Export ADTSynthesis.QueryStructure.Implementation.Operations.
+Require Export Fiat.QueryStructure.Implementation.Operations.
 
-Require Import ADTSynthesis.ADTNotation.BuildComputationalADT.
-Require Import ADTSynthesis.ADT.ComputationalADT.
+Require Import Fiat.ADTNotation.BuildComputationalADT.
+Require Import Fiat.ADT.ComputationalADT.
 Require Import Coq.Logic.Eqdep_dec.
 
 Ltac prove_decidability_for_functional_dependencies :=

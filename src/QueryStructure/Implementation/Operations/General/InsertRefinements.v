@@ -1,17 +1,17 @@
 Require Import Coq.Strings.String Coq.omega.Omega Coq.Lists.List
         Coq.Logic.FunctionalExtensionality Coq.Sets.Ensembles
-        ADTSynthesis.Computation
-        ADTSynthesis.ADT
-        ADTSynthesis.ADTRefinement
-        ADTSynthesis.ADTNotation
-        ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureSchema
-        ADTSynthesis.ADTRefinement.BuildADTRefinements
-        ADTSynthesis.QueryStructure.Specification.Representation.QueryStructure
-        ADTSynthesis.Common.Ensembles.IndexedEnsembles
-        ADTSynthesis.Common.IterateBoundedIndex
-        ADTSynthesis.QueryStructure.Specification.Operations.Query
-        ADTSynthesis.QueryStructure.Specification.Operations.Insert
-        ADTSynthesis.QueryStructure.Implementation.Constraints.ConstraintChecksRefinements.
+        Fiat.Computation
+        Fiat.ADT
+        Fiat.ADTRefinement
+        Fiat.ADTNotation
+        Fiat.QueryStructure.Specification.Representation.QueryStructureSchema
+        Fiat.ADTRefinement.BuildADTRefinements
+        Fiat.QueryStructure.Specification.Representation.QueryStructure
+        Fiat.Common.Ensembles.IndexedEnsembles
+        Fiat.Common.IterateBoundedIndex
+        Fiat.QueryStructure.Specification.Operations.Query
+        Fiat.QueryStructure.Specification.Operations.Insert
+        Fiat.QueryStructure.Implementation.Constraints.ConstraintChecksRefinements.
 
 (* Facts about implements insert operations. *)
 

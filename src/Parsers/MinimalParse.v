@@ -1,7 +1,7 @@
 (** * Definition of minimal parse trees *)
 Require Import Coq.Strings.String Coq.Lists.List Coq.Setoids.Setoid.
-Require Import ADTSynthesis.Parsers.ContextFreeGrammar.
-Require Import ADTSynthesis.Parsers.BaseTypes.
+Require Import Fiat.Parsers.ContextFreeGrammar.
+Require Import Fiat.Parsers.BaseTypes.
 
 Local Coercion is_true : bool >-> Sortclass.
 

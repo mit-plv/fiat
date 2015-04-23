@@ -1,9 +1,9 @@
 (** * Properties about well-founded relation on [parse_of] *)
 Require Import Coq.Strings.String Coq.Lists.List Coq.Program.Program Coq.Program.Wf Coq.Arith.Wf_nat Coq.Relations.Relation_Definitions.
 Require Import Coq.Classes.Morphisms.
-Require Import ADTSynthesis.Parsers.ContextFreeGrammar.
-Require Import ADTSynthesis.Parsers.ContextFreeGrammarProperties.
-Require Import ADTSynthesis.Parsers.WellFoundedParse.
+Require Import Fiat.Parsers.ContextFreeGrammar.
+Require Import Fiat.Parsers.ContextFreeGrammarProperties.
+Require Import Fiat.Parsers.WellFoundedParse.
 
 Set Implicit Arguments.
 

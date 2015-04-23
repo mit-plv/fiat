@@ -1,7 +1,7 @@
 Require Import Coq.Arith.Arith
-        ADTSynthesis.QueryStructure.Implementation.DataStructures.Bags.BagsInterface
-        ADTSynthesis.Common.List.ListFacts
-        ADTSynthesis.Common.List.ListMorphisms.
+        Fiat.QueryStructure.Implementation.DataStructures.Bags.BagsInterface
+        Fiat.Common.List.ListFacts
+        Fiat.Common.List.ListMorphisms.
 
 Section BagsProperties.
 

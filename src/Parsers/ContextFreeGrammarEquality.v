@@ -1,7 +1,7 @@
 (** * Decidable/boolean equality for context free grammars *)
 Require Import Coq.Strings.String Coq.Setoids.Setoid.
-Require Import ADTSynthesis.Parsers.ContextFreeGrammar.
-Require Import ADTSynthesis.Common ADTSynthesis.Common.Equality.
+Require Import Fiat.Parsers.ContextFreeGrammar.
+Require Import Fiat.Common Fiat.Common.Equality.
 
 Set Implicit Arguments.
 

@@ -1,9 +1,9 @@
 Require Import Coq.Lists.List Coq.Strings.String Coq.Sets.Ensembles Coq.Arith.Arith
-        ADTSynthesis.Computation.Core
-        ADTSynthesis.ADT.ADTSig ADTSynthesis.ADT.Core
-        ADTSynthesis.Common.ilist ADTSynthesis.Common.StringBound
-        ADTSynthesis.ADTNotation.BuildADT ADTSynthesis.ADTNotation.BuildADTSig
-        ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureSchema  ADTSynthesis.QueryStructure.Specification.Representation.QueryStructure.
+        Fiat.Computation.Core
+        Fiat.ADT.ADTSig Fiat.ADT.Core
+        Fiat.Common.ilist Fiat.Common.StringBound
+        Fiat.ADTNotation.BuildADT Fiat.ADTNotation.BuildADTSig
+        Fiat.QueryStructure.Specification.Representation.QueryStructureSchema  Fiat.QueryStructure.Specification.Representation.QueryStructure.
 
 Local Obligation Tactic := intuition.
 

@@ -1,5 +1,5 @@
-Require Export Coq.Sorting.Permutation ADTSynthesis.Common.
-Require Import Coq.Lists.List ADTSynthesis.Common.List.ListFacts.
+Require Export Coq.Sorting.Permutation Fiat.Common.
+Require Import Coq.Lists.List Fiat.Common.List.ListFacts.
 
 Unset Implicit Arguments.
 

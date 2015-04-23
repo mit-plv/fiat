@@ -1,12 +1,12 @@
-Require Import ADTSynthesis.FiatToFacade.SupersetUtilities.
-Require Import ADTSynthesis.FiatToFacade.StringMapNotations.
-Require Import ADTSynthesis.FiatToFacade.StringMapUtilities.
-Require Import ADTSynthesis.FiatToFacade.Superset.
-Require Import ADTSynthesis.FiatToFacade.FacadeNotations.
-Require Import ADTSynthesis.FiatToFacade.FacadeUtilities.
-Require Import ADTSynthesis.FiatToFacade.Prog.
+Require Import Fiat.FiatToFacade.SupersetUtilities.
+Require Import Fiat.FiatToFacade.StringMapNotations.
+Require Import Fiat.FiatToFacade.StringMapUtilities.
+Require Import Fiat.FiatToFacade.Superset.
+Require Import Fiat.FiatToFacade.FacadeNotations.
+Require Import Fiat.FiatToFacade.FacadeUtilities.
+Require Import Fiat.FiatToFacade.Prog.
 Require Import Bedrock.Platform.Facade.DFacade Bedrock.Platform.Cito.SyntaxExpr Bedrock.Platform.Cito.StringMap Bedrock.Platform.Cito.GLabelMap.
-Require Import ADTSynthesis.ADT.Core.
+Require Import Fiat.ADT.Core.
 
 Ltac safe_seq :=
   constructor;

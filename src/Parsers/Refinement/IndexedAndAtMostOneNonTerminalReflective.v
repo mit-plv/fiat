@@ -1,26 +1,26 @@
 (** First step of a splitter refinement; indexed representation, and handle all rules with at most one nonterminal; leave a reflective goal *)
 Require Import Coq.Strings.String Coq.Arith.Lt Coq.Lists.List.
 Require Import Coq.Numbers.Natural.Peano.NPeano.
-Require Import ADTSynthesis.Parsers.StringLike.Core.
-Require Import ADTSynthesis.Parsers.ParserInterface.
-Require Import ADTSynthesis.Parsers.ParserADTSpecification.
-Require Import ADTSynthesis.Parsers.StringLike.Properties.
-Require Import ADTSynthesis.Parsers.StringLike.String.
-Require Import ADTSynthesis.Parsers.ContextFreeGrammarEquality.
-Require Import ADTSynthesis.Parsers.ContextFreeGrammarProperties.
-Require Import ADTSynthesis.Parsers.Refinement.FixedLengthLemmas.
+Require Import Fiat.Parsers.StringLike.Core.
+Require Import Fiat.Parsers.ParserInterface.
+Require Import Fiat.Parsers.ParserADTSpecification.
+Require Import Fiat.Parsers.StringLike.Properties.
+Require Import Fiat.Parsers.StringLike.String.
+Require Import Fiat.Parsers.ContextFreeGrammarEquality.
+Require Import Fiat.Parsers.ContextFreeGrammarProperties.
+Require Import Fiat.Parsers.Refinement.FixedLengthLemmas.
 Require Import ADTNotation.BuildADT ADTNotation.BuildADTSig.
 Require Import ADT.ComputationalADT.
-Require Import ADTSynthesis.Common ADTSynthesis.Common.Equality.
-Require Import ADTSynthesis.ADTRefinement.
-Require Import ADTSynthesis.Common.StringBound ADTSynthesis.Common.ilist.
+Require Import Fiat.Common Fiat.Common.Equality.
+Require Import Fiat.ADTRefinement.
+Require Import Fiat.Common.StringBound Fiat.Common.ilist.
 Require Import ADTRefinement.BuildADTRefinements.HoneRepresentation.
-Require Import ADTSynthesis.Common.IterateBoundedIndex.
-Require Import ADTSynthesis.Common.List.FlattenList.
-Require Import ADTSynthesis.Common.List.ListFacts.
-Require Import ADTSynthesis.Common.NatFacts.
-Require Import ADTSynthesis.ADTRefinement.GeneralBuildADTRefinements.
-Require Import ADTSynthesis.Computation.SetoidMorphisms.
+Require Import Fiat.Common.IterateBoundedIndex.
+Require Import Fiat.Common.List.FlattenList.
+Require Import Fiat.Common.List.ListFacts.
+Require Import Fiat.Common.NatFacts.
+Require Import Fiat.ADTRefinement.GeneralBuildADTRefinements.
+Require Import Fiat.Computation.SetoidMorphisms.
 
 Set Implicit Arguments.
 

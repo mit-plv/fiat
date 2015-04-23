@@ -3,18 +3,18 @@ Require Import
         Coq.Program.Program
         Coq.Bool.Bool
         Coq.Strings.String
-        ADTSynthesis.Common.ilist
-        ADTSynthesis.Common.DecideableEnsembles
-        ADTSynthesis.Common.StringBound
-        ADTSynthesis.ADTNotation
-        ADTSynthesis.ADTRefinement
-        ADTSynthesis.QueryStructure.Specification.Representation.Notations
-        ADTSynthesis.QueryStructure.Specification.Representation.Heading
-        ADTSynthesis.QueryStructure.Specification.Representation.Tuple
-        ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureSchema
-        ADTSynthesis.QueryStructure.Specification.Representation.QueryStructure
-        ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.QueryStructureImplementation
-        ADTSynthesis.ADTRefinement.BuildADTRefinements.HoneRepresentation.
+        Fiat.Common.ilist
+        Fiat.Common.DecideableEnsembles
+        Fiat.Common.StringBound
+        Fiat.ADTNotation
+        Fiat.ADTRefinement
+        Fiat.QueryStructure.Specification.Representation.Notations
+        Fiat.QueryStructure.Specification.Representation.Heading
+        Fiat.QueryStructure.Specification.Representation.Tuple
+        Fiat.QueryStructure.Specification.Representation.QueryStructureSchema
+        Fiat.QueryStructure.Specification.Representation.QueryStructure
+        Fiat.QueryStructure.Implementation.DataStructures.BagADT.QueryStructureImplementation
+        Fiat.ADTRefinement.BuildADTRefinements.HoneRepresentation.
 (* Definitions for building BagADT search terms using decideable equalities
    over named attributes.*)
 

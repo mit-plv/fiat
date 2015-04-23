@@ -1,6 +1,6 @@
 Require Import Coq.Strings.String Coq.Sets.Ensembles.
-Require Import ADTSynthesis.Common.
-Require Import ADTSynthesis.Computation.Core.
+Require Import Fiat.Common.
+Require Import Fiat.Computation.Core.
 
 (** [Comp] obeys the monad laws, using [computes_to] as the
     notion of equivalence. .*)

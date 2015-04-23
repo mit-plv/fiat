@@ -1,3 +1,3 @@
-Require Export ADTSynthesis.QueryStructure.Implementation.Operations.General.InsertRefinements ADTSynthesis.QueryStructure.Implementation.Operations.General.QueryRefinements
-        ADTSynthesis.QueryStructure.Implementation.Operations.General.QueryStructureRefinements ADTSynthesis.QueryStructure.Implementation.Constraints.ConstraintChecksRefinements
-        ADTSynthesis.QueryStructure.Implementation.Constraints.ConstraintChecksUnfoldings ADTSynthesis.QueryStructure.Implementation.Operations.General.DeleteRefinements.
+Require Export Fiat.QueryStructure.Implementation.Operations.General.InsertRefinements Fiat.QueryStructure.Implementation.Operations.General.QueryRefinements
+        Fiat.QueryStructure.Implementation.Operations.General.QueryStructureRefinements Fiat.QueryStructure.Implementation.Constraints.ConstraintChecksRefinements
+        Fiat.QueryStructure.Implementation.Constraints.ConstraintChecksUnfoldings Fiat.QueryStructure.Implementation.Operations.General.DeleteRefinements.

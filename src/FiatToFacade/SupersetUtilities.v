@@ -1,7 +1,7 @@
 Require Import Coq.Program.Program.
 Require Import Bedrock.Platform.Cito.StringMap.
-Require Import ADTSynthesis.FiatToFacade.Utilities ADTSynthesis.FiatToFacade.Superset ADTSynthesis.FiatToFacade.SupersetMorphisms
-               ADTSynthesis.FiatToFacade.StringMapNotations ADTSynthesis.FiatToFacade.StringMapUtilities.
+Require Import Fiat.FiatToFacade.Utilities Fiat.FiatToFacade.Superset Fiat.FiatToFacade.SupersetMorphisms
+               Fiat.FiatToFacade.StringMapNotations Fiat.FiatToFacade.StringMapUtilities.
 Require Import Bedrock.Platform.Facade.DFacade.
 
 Unset Implicit Arguments.

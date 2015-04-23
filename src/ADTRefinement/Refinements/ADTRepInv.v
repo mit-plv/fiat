@@ -1,7 +1,7 @@
-Require Import ADTSynthesis.Common ADTSynthesis.Computation Coq.Sets.Ensembles
-        ADTSynthesis.ADT.ADTSig ADTSynthesis.ADT.Core
-        ADTSynthesis.ADTRefinement.Core ADTSynthesis.ADTRefinement.SetoidMorphisms
-        ADTSynthesis.ADTRefinement.GeneralRefinements.
+Require Import Fiat.Common Fiat.Computation Coq.Sets.Ensembles
+        Fiat.ADT.ADTSig Fiat.ADT.Core
+        Fiat.ADTRefinement.Core Fiat.ADTRefinement.SetoidMorphisms
+        Fiat.ADTRefinement.GeneralRefinements.
 
 Generalizable All Variables.
 Set Implicit Arguments.

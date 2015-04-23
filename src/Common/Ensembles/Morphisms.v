@@ -1,10 +1,10 @@
 Require Export Coq.Sets.Ensembles.
-Require Import ADTSynthesis.Common.Ensembles.Equivalence.
-Require Import ADTSynthesis.Common.Ensembles.Tactics.
+Require Import Fiat.Common.Ensembles.Equivalence.
+Require Import Fiat.Common.Ensembles.Tactics.
 Require Import Coq.Classes.RelationClasses.
 
 Set Implicit Arguments.
-Require Import ADTSynthesis.Common.
+Require Import Fiat.Common.
 
 Global Add Parametric Relation {T} : _ (@Same_set T)
     reflexivity proved by reflexivity

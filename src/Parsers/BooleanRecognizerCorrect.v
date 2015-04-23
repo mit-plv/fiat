@@ -1,13 +1,13 @@
 (** * Definition of a boolean-returning CFG parser-recognizer *)
 Require Import Coq.Lists.List Coq.Program.Program Coq.Program.Wf Coq.Arith.Wf_nat Coq.Arith.Compare_dec Coq.Classes.RelationClasses Coq.Strings.String.
 Require Import Coq.omega.Omega.
-Require Import ADTSynthesis.Parsers.ContextFreeGrammar ADTSynthesis.Parsers.BooleanRecognizer ADTSynthesis.Parsers.MinimalParse.
-Require Import ADTSynthesis.Parsers.BaseTypes ADTSynthesis.Parsers.CorrectnessBaseTypes.
-Require Import ADTSynthesis.Parsers.Splitters.RDPList ADTSynthesis.Parsers.Splitters.BruteForce.
-Require Import ADTSynthesis.Parsers.MinimalParseOfParse.
-Require Import ADTSynthesis.Parsers.ContextFreeGrammarProperties ADTSynthesis.Parsers.WellFoundedParse.
-Require Import ADTSynthesis.Common ADTSynthesis.Common.Wf.
-Require Import ADTSynthesis.Parsers.ParserInterface.
+Require Import Fiat.Parsers.ContextFreeGrammar Fiat.Parsers.BooleanRecognizer Fiat.Parsers.MinimalParse.
+Require Import Fiat.Parsers.BaseTypes Fiat.Parsers.CorrectnessBaseTypes.
+Require Import Fiat.Parsers.Splitters.RDPList Fiat.Parsers.Splitters.BruteForce.
+Require Import Fiat.Parsers.MinimalParseOfParse.
+Require Import Fiat.Parsers.ContextFreeGrammarProperties Fiat.Parsers.WellFoundedParse.
+Require Import Fiat.Common Fiat.Common.Wf.
+Require Import Fiat.Parsers.ParserInterface.
 Require Import Coq.Logic.Eqdep_dec.
 
 Local Hint Extern 0 =>
@@ -47,9 +47,9 @@ Section sound.
         Lemma parse_item_sound'
               (str_matches_nonterminal_sound : str_matches_nonterminal_soundT)
               (it : item Char)
-        : parse_item str_matches_nonterminal str it -> parse_of_item G str it.
+        : parse_item' str_matches_nonterminal str it -> parse_of_item G str it.
         Proof.
-          unfold parse_item, str_matches_nonterminal_soundT in *.
+          unfold parse_item', str_matches_nonterminal_soundT in *.
           repeat match goal with
                    | _ => intro
                    | [ H : context[match ?E with _ => _ end] |- _ ] => atomic E; destruct E
@@ -70,9 +70,9 @@ Section sound.
                          minimal_parse_of_nonterminal (G := G) len0 valid str nonterminal
                          -> Pv len0 valid nonterminal)
         : minimal_parse_of_item (G := G) len0 valid str it
-          -> parse_item str_matches_nonterminal str it.
+          -> parse_item' str_matches_nonterminal str it.
         Proof.
-          unfold parse_item, str_matches_nonterminal_completeT in *.
+          unfold parse_item', str_matches_nonterminal_completeT in *.
           repeat
             repeat
             match goal with
@@ -103,10 +103,10 @@ Section sound.
               (str_matches_nonterminal1 str_matches_nonterminal2 : String.string -> bool)
               (it : item Char)
               (ext : forall x, str_matches_nonterminal1 x = str_matches_nonterminal2 x)
-        : parse_item str_matches_nonterminal1 str it
-          = parse_item str_matches_nonterminal2 str it.
+        : parse_item' str_matches_nonterminal1 str it
+          = parse_item' str_matches_nonterminal2 str it.
         Proof.
-          unfold parse_item.
+          unfold parse_item'.
           destruct it; auto;
           match goal with
             | [ |- context[match ?E with _ => _ end] ] => destruct E
@@ -137,7 +137,7 @@ Section sound.
                  (str : String) (len : nat) (Hlen : length str = len)
                  (pf : len <= len0)
                  (prod : production Char)
-        : parse_production parse_nonterminal str pf prod
+        : parse_production' parse_nonterminal str pf prod
           -> parse_of_production G str prod.
         Proof.
           revert str len Hlen pf; induction prod;
@@ -193,7 +193,7 @@ Section sound.
                         end)
                      prod)
         : minimal_parse_of_production (G := G) len0 valid str prod
-          -> parse_production parse_nonterminal str pf prod.
+          -> parse_production' parse_nonterminal str pf prod.
         Proof.
           revert valid str len Hlen Hinit pf; induction prod;
           [
@@ -272,8 +272,8 @@ Section sound.
               (ext : forall str' len' pf' nonterminal',
                        parse_nonterminal1 str' len' pf' nonterminal'
                        = parse_nonterminal2 str' len' pf' nonterminal')
-        : parse_production parse_nonterminal1 str pf prod
-          = parse_production parse_nonterminal2 str pf prod.
+        : parse_production' parse_nonterminal1 str pf prod
+          = parse_production' parse_nonterminal2 str pf prod.
         Proof.
           revert str len pf.
           induction prod as [|? ? IHprod]; simpl; intros; try reflexivity; [].
@@ -308,7 +308,7 @@ Section sound.
                    | [ H : parse_of _ _ _ (_::_) |- _ ] => inversion H; clear H; subst
                    | [ H : minimal_parse_of _ _ _ nil |- _ ] => solve [ inversion H ]
                    | [ H : minimal_parse_of _ _ _ (_::_) |- _ ] => inversion H; clear H; subst
-                   | [ H : parse_production _ _ _ _ = true |- _ ] => apply parse_production_sound' in H; try eassumption; []
+                   | [ H : parse_production' _ _ _ _ = true |- _ ] => apply parse_production_sound' in H; try eassumption; []
                    | _ => left; eapply parse_production_complete'; (eassumption || reflexivity)
                    | _ => solve [ eauto ]
                  end.
@@ -318,13 +318,13 @@ Section sound.
                  (str : String) (len : nat) (Hlen : length str = len)
                  (pf : len <= len0)
                  (prods : productions Char)
-        : parse_productions parse_nonterminal str pf prods
+        : parse_productions' parse_nonterminal str pf prods
           -> parse_of G str prods.
         Proof.
           revert str len Hlen pf; induction prods; simpl.
-          { unfold parse_productions; simpl; intros ???? H; exfalso; clear -H.
+          { unfold parse_productions'; simpl; intros ???? H; exfalso; clear -H.
             abstract discriminate. }
-          { unfold parse_productions in *; simpl in *.
+          { unfold parse_productions' in *; simpl in *.
             parse_productions_t. }
         Defined.
 
@@ -347,15 +347,15 @@ Section sound.
                            end))
                      prods)
         : minimal_parse_of (G := G) len0 valid str prods
-          -> parse_productions parse_nonterminal str pf prods.
+          -> parse_productions' parse_nonterminal str pf prods.
         Proof.
           revert str len Hlen pf; induction prods; simpl.
-          { unfold parse_productions; simpl; intros ???? H; exfalso; clear -H.
+          { unfold parse_productions'; simpl; intros ???? H; exfalso; clear -H.
             abstract inversion H. }
           { specialize (IHprods (fun len0 valid str pf => snd (split_string_for_production_complete' len0 valid str pf))).
             pose proof (fun len0 valid str pf => fst (split_string_for_production_complete' len0 valid str pf)) as split_string_for_production_complete''.
             clear split_string_for_production_complete'.
-            unfold parse_productions in *; simpl in *.
+            unfold parse_productions' in *; simpl in *.
             parse_productions_t. }
         Defined.
       End productions.
@@ -371,12 +371,12 @@ Section sound.
               (ext : forall str' len' pf' nonterminal',
                        parse_nonterminal1 str' len' pf' nonterminal'
                        = parse_nonterminal2 str' len' pf' nonterminal')
-        : parse_productions parse_nonterminal1 str pf prods
-          = parse_productions parse_nonterminal2 str pf prods.
+        : parse_productions' parse_nonterminal1 str pf prods
+          = parse_productions' parse_nonterminal2 str pf prods.
         Proof.
           revert str len pf.
           induction prods as [|? ? IHprod]; simpl; intros; try reflexivity; [].
-          unfold parse_productions; simpl.
+          unfold parse_productions'; simpl.
           apply f_equal2; [ apply parse_production_ext | apply IHprod ].
           intros; apply ext.
         Qed.
@@ -702,7 +702,7 @@ Section convenience.
 
   Definition parse_item_sound
              (str : String) (it : item Char)
-  : parse_item (parse_nonterminal (G := G) str) str it
+  : parse_item (G := G) str it
     -> parse_of_item G str it.
   Proof.
     apply parse_item_sound'.
@@ -716,7 +716,7 @@ Section convenience.
   : Forall_parse_of_item
       (fun _ nt => is_valid_nonterminal initial_nonterminals_data nt)
       p
-    -> parse_item (parse_nonterminal (G := G) str) str it.
+    -> parse_item (G := G) str it.
   Proof.
     intro H.
     eapply (@parse_item_complete'
@@ -755,8 +755,8 @@ Section convenience.
   Qed.
 
   Definition parse_production_sound
-             (str : String) (len : nat) (Hlen : length str = len) (pf : len <= length str) (pat : production Char)
-  : parse_production (parse_nonterminal_or_abort (G := G) (length str, nonterminals_length initial_nonterminals_data) initial_nonterminals_data) str pf pat
+             (str : String) (pat : production Char)
+  : parse_production (G := G) str pat
     -> parse_of_production G str pat.
   Proof.
     apply parse_production_sound'; trivial.
@@ -783,22 +783,21 @@ Section convenience.
   Qed.
 
   Definition parse_production_complete
-             (str : String) (len : nat) (Hlen : length str = len) (pf : len <= length str) (pat : production Char)
+             (str : String) (pat : production Char)
              (H_reachable
               : exists (nt : string) (prefix : list (item Char)),
                   is_valid_nonterminal initial_nonterminals_data nt /\ In (prefix ++ pat) (G nt))
              (p : parse_of_production G str pat)
-             (parse_nt := parse_nonterminal_or_abort (G := G) (length str, nonterminals_length initial_nonterminals_data) initial_nonterminals_data)
   : Forall_parse_of_production
       (fun _ nt => is_valid_nonterminal initial_nonterminals_data nt)
       p
-    -> parse_production parse_nt str pf pat.
+    -> parse_production (G := G) str pat.
   Proof.
     destruct H_reachable as [nt [prefix [Hnt H_reachable]]].
     revert H_reachable; refine (In_InT _); intro H_reachable.
     intro H.
     eapply (@parse_production_complete'
-              _ _ _ G _ (length str) parse_nt
+              _ _ _ G _ (length str) _
               initial_nonterminals_data); trivial;
     [
     |
@@ -810,8 +809,7 @@ Section convenience.
                      (fun h' _ => @minimal_parse_of_nonterminal__of__parse_of_nonterminal _ _ _ G _ _ h')
                      str (reflexivity _) initial_nonterminals_data _ p (lt_n_Sn _)
                      (reflexivity _) H))) ].
-    { subst parse_nt.
-      exact (@parse_nonterminal_or_abort_complete
+    { exact (@parse_nonterminal_or_abort_complete
                _ _ _ G _ _ _
                (length str, nonterminals_length initial_nonterminals_data)
                initial_nonterminals_data). }
@@ -836,8 +834,8 @@ Section convenience.
   Qed.
 
   Definition parse_productions_sound
-             (str : String) (len : nat) (Hlen : length str = len) (pf : len <= length str) (pats : productions Char)
-  : parse_productions (parse_nonterminal_or_abort (G := G) (length str, nonterminals_length initial_nonterminals_data) initial_nonterminals_data) str pf pats
+             (str : String) (pats : productions Char)
+  : parse_productions (G := G) str pats
     -> parse_of G str pats.
   Proof.
     apply parse_productions_sound'; trivial.
@@ -846,21 +844,20 @@ Section convenience.
   Defined.
 
   Definition parse_productions_complete
-             (str : String) (len : nat) (Hlen : length str = len) (pf : len <= length str) (pats : productions Char)
+             (str : String) (pats : productions Char)
              (H_reachable
               : exists (nt : string) (prefix : productions Char),
                   is_valid_nonterminal initial_nonterminals_data nt /\ prefix ++ pats = G nt)
              (p : parse_of G str pats)
-             (parse_nt := parse_nonterminal_or_abort (G := G) (length str, nonterminals_length initial_nonterminals_data) initial_nonterminals_data)
   : Forall_parse_of
       (fun _ nt => is_valid_nonterminal initial_nonterminals_data nt)
       p
-    -> parse_productions parse_nt str pf pats.
+    -> parse_productions (G := G) str pats.
   Proof.
     destruct H_reachable as [nt [prefix [Hnt H_reachable]]].
     intro H.
     eapply (@parse_productions_complete'
-              _ _ _ G _ (length str) parse_nt
+              _ _ _ G _ (length str) _
               initial_nonterminals_data); trivial;
     [
     |
@@ -872,8 +869,7 @@ Section convenience.
                      (fun h' _ => @minimal_parse_of_nonterminal__of__parse_of_nonterminal _ _ _ G _ _ h')
                      str (reflexivity _) initial_nonterminals_data _ p (lt_n_Sn _)
                      (reflexivity _) H))) ].
-    { subst parse_nt.
-      exact (@parse_nonterminal_or_abort_complete
+    { exact (@parse_nonterminal_or_abort_complete
                _ _ _ G _ _ _
                (length str, nonterminals_length initial_nonterminals_data)
                initial_nonterminals_data). }

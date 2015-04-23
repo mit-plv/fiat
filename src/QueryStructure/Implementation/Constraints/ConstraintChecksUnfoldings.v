@@ -1,10 +1,10 @@
 Require Import Coq.Lists.List Coq.Strings.String Coq.Sets.Ensembles Coq.Arith.Arith
-        ADTSynthesis.Common.ilist ADTSynthesis.Common.StringBound
-        ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureSchema
-        ADTSynthesis.QueryStructure.Specification.Representation.QueryStructure
-        ADTSynthesis.QueryStructure.Implementation.Constraints.ConstraintChecksRefinements
-        ADTSynthesis.Common.IterateBoundedIndex
-        ADTSynthesis.Common.DecideableEnsembles.
+        Fiat.Common.ilist Fiat.Common.StringBound
+        Fiat.QueryStructure.Specification.Representation.QueryStructureSchema
+        Fiat.QueryStructure.Specification.Representation.QueryStructure
+        Fiat.QueryStructure.Implementation.Constraints.ConstraintChecksRefinements
+        Fiat.Common.IterateBoundedIndex
+        Fiat.Common.DecideableEnsembles.
 
 (* We put all these simplification hints into a distinct file
    so we're not unfolding things all willy-nilly. *)

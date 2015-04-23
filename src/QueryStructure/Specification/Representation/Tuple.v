@@ -1,6 +1,6 @@
 Require Import Coq.Lists.List Coq.Strings.String Coq.Logic.FunctionalExtensionality Coq.Sets.Ensembles
-        ADTSynthesis.Common.ilist ADTSynthesis.Common.StringBound Coq.Program.Program ADTSynthesis.QueryStructure.Specification.Representation.Heading
-        ADTSynthesis.Common.Ensembles.IndexedEnsembles ADTSynthesis.QueryStructure.Specification.Representation.Notations.
+        Fiat.Common.ilist Fiat.Common.StringBound Coq.Program.Program Fiat.QueryStructure.Specification.Representation.Heading
+        Fiat.Common.Ensembles.IndexedEnsembles Fiat.QueryStructure.Specification.Representation.Notations.
 
 (* A tuple is a heterogeneous list indexed by a heading. *)
 Definition Tuple {heading : Heading} :=

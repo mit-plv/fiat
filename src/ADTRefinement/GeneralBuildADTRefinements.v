@@ -1,15 +1,15 @@
 Require Import Coq.Lists.List Coq.Arith.Arith
-        ADTSynthesis.Common ADTSynthesis.Computation ADTSynthesis.ADT.ADTSig ADTSynthesis.ADT.Core
-        ADTSynthesis.ADT.ComputationalADT
-        ADTSynthesis.Common.StringBound
-        ADTSynthesis.Common.ilist
-        ADTSynthesis.Common.i2list
-        ADTSynthesis.Common.IterateBoundedIndex
-        ADTSynthesis.ADTNotation.BuildADTSig ADTSynthesis.ADTNotation.BuildADT
-        ADTSynthesis.ADTNotation.BuildComputationalADT
-        ADTSynthesis.ADTNotation.BuildADTReplaceMethods
-        ADTSynthesis.ADTRefinement.Core ADTSynthesis.ADTRefinement.GeneralRefinements
-        ADTSynthesis.ADTRefinement.SetoidMorphisms ADTSynthesis.ADTRefinement.BuildADTSetoidMorphisms.
+        Fiat.Common Fiat.Computation Fiat.ADT.ADTSig Fiat.ADT.Core
+        Fiat.ADT.ComputationalADT
+        Fiat.Common.StringBound
+        Fiat.Common.ilist
+        Fiat.Common.i2list
+        Fiat.Common.IterateBoundedIndex
+        Fiat.ADTNotation.BuildADTSig Fiat.ADTNotation.BuildADT
+        Fiat.ADTNotation.BuildComputationalADT
+        Fiat.ADTNotation.BuildADTReplaceMethods
+        Fiat.ADTRefinement.Core Fiat.ADTRefinement.GeneralRefinements
+        Fiat.ADTRefinement.SetoidMorphisms Fiat.ADTRefinement.BuildADTSetoidMorphisms.
 
 (* Notation-friendly versions of the honing tactics in GeneralRefinements. *)
 

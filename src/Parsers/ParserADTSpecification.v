@@ -2,8 +2,8 @@
 Require Import Coq.Strings.String.
 Require Import ADTNotation.BuildADT ADTNotation.BuildADTSig.
 Require Import ADT.ComputationalADT.
-Require Import ADTSynthesis.Parsers.ParserInterface.
-Require Import ADTSynthesis.Common.Equality.
+Require Import Fiat.Parsers.ParserInterface.
+Require Import Fiat.Common.Equality.
 
 Set Implicit Arguments.
 

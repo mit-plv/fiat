@@ -1,7 +1,7 @@
 Require Import Coq.Strings.String Coq.Strings.Ascii Coq.Lists.List.
-Require Import ADTSynthesis.Parsers.ContextFreeGrammar.
-Require Import ADTSynthesis.Parsers.StringLike.String.
-Require Import ADTSynthesis.Common.Equality.
+Require Import Fiat.Parsers.ContextFreeGrammar.
+Require Import Fiat.Parsers.StringLike.String.
+Require Import Fiat.Common.Equality.
 
 Fixpoint production_of_string (s : string) : production Ascii.ascii
   := match s with

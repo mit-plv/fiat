@@ -1,16 +1,16 @@
-Require Import Coq.Lists.List ADTSynthesis.Common
-        ADTSynthesis.Common.ilist
-        ADTSynthesis.Common.StringBound
-        ADTSynthesis.Common.IterateBoundedIndex
-        ADTSynthesis.ADT.ADTSig
-        ADTSynthesis.ADT.Core
-        ADTSynthesis.ADTNotation.BuildADTSig
-        ADTSynthesis.ADTNotation.BuildADT
-        ADTSynthesis.ADTRefinement.Core ADTSynthesis.ADTRefinement.SetoidMorphisms
-        ADTSynthesis.ADTRefinement.GeneralRefinements
-        ADTSynthesis.ADTRefinement.GeneralBuildADTRefinements
-        ADTSynthesis.ADTRefinement.Refinements.HoneRepresentation
-        ADTSynthesis.ADTRefinement.BuildADTSetoidMorphisms.
+Require Import Coq.Lists.List Fiat.Common
+        Fiat.Common.ilist
+        Fiat.Common.StringBound
+        Fiat.Common.IterateBoundedIndex
+        Fiat.ADT.ADTSig
+        Fiat.ADT.Core
+        Fiat.ADTNotation.BuildADTSig
+        Fiat.ADTNotation.BuildADT
+        Fiat.ADTRefinement.Core Fiat.ADTRefinement.SetoidMorphisms
+        Fiat.ADTRefinement.GeneralRefinements
+        Fiat.ADTRefinement.GeneralBuildADTRefinements
+        Fiat.ADTRefinement.Refinements.HoneRepresentation
+        Fiat.ADTRefinement.BuildADTSetoidMorphisms.
 
 (* A generic refinement and honing tactic for switching the
     representation of an ADT built from [BuildADT]. *)

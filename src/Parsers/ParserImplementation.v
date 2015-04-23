@@ -1,14 +1,14 @@
 (** * Implementation of simply-typed interface of the parser *)
-Require Export ADTSynthesis.Parsers.ParserInterface.
-Require Import ADTSynthesis.Parsers.ContextFreeGrammar.
-Require Import ADTSynthesis.Parsers.ContextFreeGrammarProperties.
-Require Import ADTSynthesis.Parsers.BooleanRecognizer ADTSynthesis.Parsers.BooleanRecognizerCorrect.
-Require Import ADTSynthesis.Parsers.Splitters.RDPList.
-Require Import ADTSynthesis.Parsers.BaseTypes ADTSynthesis.Parsers.CorrectnessBaseTypes.
-Require Import ADTSynthesis.Parsers.StringLike.Core.
-Require Import ADTSynthesis.Parsers.MinimalParseOfParse.
-Require Import ADTSynthesis.Common.
-Require Import ADTSynthesis.Common.Equality.
+Require Export Fiat.Parsers.ParserInterface.
+Require Import Fiat.Parsers.ContextFreeGrammar.
+Require Import Fiat.Parsers.ContextFreeGrammarProperties.
+Require Import Fiat.Parsers.BooleanRecognizer Fiat.Parsers.BooleanRecognizerCorrect.
+Require Import Fiat.Parsers.Splitters.RDPList.
+Require Import Fiat.Parsers.BaseTypes Fiat.Parsers.CorrectnessBaseTypes.
+Require Import Fiat.Parsers.StringLike.Core.
+Require Import Fiat.Parsers.MinimalParseOfParse.
+Require Import Fiat.Common.
+Require Import Fiat.Common.Equality.
 
 Set Implicit Arguments.
 
@@ -83,8 +83,8 @@ Section implementation.
             apply list_in_bl in H0; [ | apply @string_bl ]; assumption. } }
         { exists (length str).
           specialize (H' (length str) (reflexivity _)).
-          pose proof (fun H => expand_minimal_parse_of_item (str' := take (length str) str) (reflexivity _) (reflexivity _) (or_introl (reflexivity _)) H pit) as pit'; clear pit.
-          pose proof (fun H => expand_minimal_parse_of_production (str' := drop (length str) str) (reflexivity _) (reflexivity _) (or_introl (reflexivity _)) H pits) as pits'; clear pits.
+          pose proof (fun H => expand_minimal_parse_of_item (str' := take (length str) str) (or_introl (reflexivity _)) (reflexivity _) (or_introl (reflexivity _)) H pit) as pit'; clear pit.
+          pose proof (fun H => expand_minimal_parse_of_production (str' := drop (length str) str) (or_introl (reflexivity _)) (reflexivity _) (or_introl (reflexivity _)) H pits) as pits'; clear pits.
           refine ((fun ret => let pit'' := pit' (fst (snd ret)) in
                               let pits'' := pits' (snd (snd ret)) in
                               ((H' (projT1 (fst (fst ret) pit'')) (projT1 (snd (fst ret) pits'')) (projT2 (fst (fst ret) pit'')) (projT2 (snd (fst ret) pits'')), pit''), pits'')) _); repeat split.

@@ -1,6 +1,6 @@
-Require Import ADTSynthesis.Common
-        ADTSynthesis.ADTNotation.BuildADT ADTSynthesis.ADTRefinement.Core
-        ADTSynthesis.ADTRefinement.SetoidMorphisms.
+Require Import Fiat.Common
+        Fiat.ADTNotation.BuildADT Fiat.ADTRefinement.Core
+        Fiat.ADTRefinement.SetoidMorphisms.
 
 (* A notation-friendly version of the setoid morphisms
    infrastructure for ADT refinement. *)

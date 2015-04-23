@@ -1,13 +1,13 @@
 Require Import Coq.Strings.String
         Coq.Sets.Ensembles
         Coq.Bool.Bool.
-Require Import ADTSynthesis.Common
-        ADTSynthesis.Common.BoolFacts
-        ADTSynthesis.Common.LogicFacts
-        ADTSynthesis.Computation.Core
-        ADTSynthesis.Computation.Monad
-        ADTSynthesis.Computation.SetoidMorphisms
-        ADTSynthesis.Computation.Refinements.Tactics.
+Require Import Fiat.Common
+        Fiat.Common.BoolFacts
+        Fiat.Common.LogicFacts
+        Fiat.Computation.Core
+        Fiat.Computation.Monad
+        Fiat.Computation.SetoidMorphisms
+        Fiat.Computation.Refinements.Tactics.
 
 (** General Lemmas about the behavior of [computes_to], [refine], and
     [refineEquiv]. *)
@@ -607,7 +607,7 @@ Section general_refine_lemmas.
     intros; subst; reflexivity.
   Qed.
 
-  Require Import ADTSynthesis.Computation.Refinements.Tactics.
+  Require Import Fiat.Computation.Refinements.Tactics.
 
   Lemma refine_snd :
     forall {A B: Type} (P: B -> Prop),

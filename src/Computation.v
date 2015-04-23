@@ -1,7 +1,7 @@
-Require Export ADTSynthesis.Computation.Core.
-Require Export ADTSynthesis.Computation.Monad.
-Require Export ADTSynthesis.Computation.SetoidMorphisms.
-Require Export ADTSynthesis.Computation.ApplyMonad.
-Require Export ADTSynthesis.Computation.Refinements.General.
+Require Export Fiat.Computation.Core.
+Require Export Fiat.Computation.Monad.
+Require Export Fiat.Computation.SetoidMorphisms.
+Require Export Fiat.Computation.ApplyMonad.
+Require Export Fiat.Computation.Refinements.General.
 
 Open Scope comp.

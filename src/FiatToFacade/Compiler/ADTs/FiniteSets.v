@@ -8,8 +8,8 @@ Require Import Ensembles.
 
 Require Import ADT.
 Require Import ADTRefinement.
-Require Import ADTSynthesis.ADTNotation.
-Require Import ADTSynthesis.FiniteSetADTs.FiniteSetADT.
+Require Import Fiat.ADTNotation.
+Require Import Fiat.FiniteSetADTs.FiniteSetADT.
 
 Open Scope string_scope.
 

@@ -1,11 +1,11 @@
 Require Import Coq.Strings.String Coq.omega.Omega Coq.Lists.List
         Coq.Logic.FunctionalExtensionality Coq.Sets.Ensembles
-        ADTSynthesis.Common.Ensembles.IndexedEnsembles
-        ADTSynthesis.Computation
-        ADTSynthesis.ADT
-        ADTSynthesis.ADTRefinement
-        ADTSynthesis.ADTNotation
-        ADTSynthesis.ADTRefinement.BuildADTRefinements.
+        Fiat.Common.Ensembles.IndexedEnsembles
+        Fiat.Computation
+        Fiat.ADT
+        Fiat.ADTRefinement
+        Fiat.ADTNotation
+        Fiat.ADTRefinement.BuildADTRefinements.
 
 Section BagADT.
 

@@ -1,4 +1,4 @@
-Require Import ADTSynthesis.Common.ilist ADTSynthesis.Common.StringBound ADTSynthesis.ADT.ADTSig.
+Require Import Fiat.Common.ilist Fiat.Common.StringBound Fiat.ADT.ADTSig.
 Require Import Coq.Lists.List Coq.Strings.String.
 
 (* Notation for ADT Signatures. *)

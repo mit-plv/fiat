@@ -1,8 +1,8 @@
 (** * Definition of the part of boolean-returning CFG parser-recognizer that instantiates things to lists *)
 Require Import Coq.Lists.List Coq.Strings.String Coq.Arith.Wf_nat.
-Require Import ADTSynthesis.Parsers.ContextFreeGrammar.
-Require Import ADTSynthesis.Parsers.BaseTypes ADTSynthesis.Parsers.CorrectnessBaseTypes.
-Require Import ADTSynthesis.Common.Equality.
+Require Import Fiat.Parsers.ContextFreeGrammar.
+Require Import Fiat.Parsers.BaseTypes Fiat.Parsers.CorrectnessBaseTypes.
+Require Import Fiat.Common.Equality.
 
 Set Implicit Arguments.
 Local Open Scope string_like_scope.

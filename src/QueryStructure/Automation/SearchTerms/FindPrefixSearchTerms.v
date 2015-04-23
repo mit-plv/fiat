@@ -1,9 +1,9 @@
 Require Import
-        ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureNotations
-        ADTSynthesis.QueryStructure.Specification.SearchTerms.ListPrefix
-        ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.IndexSearchTerms
-        ADTSynthesis.QueryStructure.Automation.IndexSelection
-        ADTSynthesis.QueryStructure.Automation.Common
+        Fiat.QueryStructure.Specification.Representation.QueryStructureNotations
+        Fiat.QueryStructure.Specification.SearchTerms.ListPrefix
+        Fiat.QueryStructure.Implementation.DataStructures.BagADT.IndexSearchTerms
+        Fiat.QueryStructure.Automation.IndexSelection
+        Fiat.QueryStructure.Automation.Common
         Coq.Strings.Ascii.
 
 (* Instances for building indexes with make simple indexes. *)

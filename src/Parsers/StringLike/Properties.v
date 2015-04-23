@@ -3,10 +3,10 @@ Require Import Coq.Setoids.Setoid Coq.Classes.Morphisms Coq.Program.Basics.
 Require Import Coq.Arith.Lt.
 Require Import Coq.Numbers.Natural.Peano.NPeano.
 Require Import Coq.omega.Omega.
-Require Import ADTSynthesis.Parsers.StringLike.Core ADTSynthesis.Common.Le ADTSynthesis.Common.UIP.
-Require Import ADTSynthesis.Common.Equality.
-Require Import ADTSynthesis.Common.
-Require Import ADTSynthesis.Common.Le.
+Require Import Fiat.Parsers.StringLike.Core Fiat.Common.Le Fiat.Common.UIP.
+Require Import Fiat.Common.Equality.
+Require Import Fiat.Common.
+Require Import Fiat.Common.Le.
 
 Set Implicit Arguments.
 
@@ -186,5 +186,22 @@ Section String.
   Proof.
     rewrite H' in H0'.
     eapply lt_irrefl; eassumption.
+  Qed.
+
+  Lemma singleton_exists_unique : forall s, length s = 1 -> exists !ch, s ~= [ ch ].
+  Proof.
+    intros s H'.
+    destruct (singleton_exists s H') as [ch H''].
+    exists ch.
+    split; [ apply H'' | ].
+    intro; apply singleton_unique; assumption.
+  Qed.
+
+  Lemma singleton_take {str ch} (H' : str ~= [ ch ]) n
+  : take (S n) str =s str.
+  Proof.
+    eapply bool_eq_char; try eassumption.
+    rewrite take_long; try assumption.
+    apply length_singleton in H'; omega.
   Qed.
 End String.

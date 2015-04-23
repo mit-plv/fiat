@@ -1,8 +1,8 @@
-Require Export ADTSynthesis.QueryStructure.Implementation.DataStructures.Bags.BagsInterface.
+Require Export Fiat.QueryStructure.Implementation.DataStructures.Bags.BagsInterface.
 Unset Implicit Arguments.
 
 Require Import Coq.Arith.Arith
-        ADTSynthesis.Common.List.ListFacts.
+        Fiat.Common.List.ListFacts.
 
 Open Scope list.
 

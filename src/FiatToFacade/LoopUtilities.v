@@ -1,5 +1,5 @@
-Require Import ADTSynthesis.Computation ADTSynthesis.Common.
-Require Import ADTSynthesis.FiatToFacade.Loop ADTSynthesis.FiatToFacade.FacadeNotations.
+Require Import Fiat.Computation Fiat.Common.
+Require Import Fiat.FiatToFacade.Loop Fiat.FiatToFacade.FacadeNotations.
 
 Lemma pull_forall :
   forall {A B C D} (f: D -> A -> B -> C -> Prop) b,

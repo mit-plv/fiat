@@ -1,4 +1,4 @@
-Require Import ADTSynthesis.FiatToFacade.Superset.
+Require Import Fiat.FiatToFacade.Superset.
 Require Import Bedrock.Platform.Facade.Facade Bedrock.Platform.Facade.DFacade.
 Require Import Coq.Classes.Morphisms Coq.Setoids.Setoid.
 Require Import Bedrock.Platform.Cito.StringMap.

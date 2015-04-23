@@ -1,6 +1,6 @@
 (** * Simply-typed interface of the parser *)
-Require Export ADTSynthesis.Parsers.ContextFreeGrammar.
-Require Import ADTSynthesis.Parsers.ContextFreeGrammarProperties.
+Require Export Fiat.Parsers.ContextFreeGrammar.
+Require Import Fiat.Parsers.ContextFreeGrammarProperties.
 
 Set Implicit Arguments.
 

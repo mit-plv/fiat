@@ -1,22 +1,22 @@
 Require Import Coq.Strings.String Coq.omega.Omega Coq.Lists.List
         Coq.Logic.FunctionalExtensionality Coq.Sets.Ensembles
-        ADTSynthesis.Computation
-        ADTSynthesis.ADT
-        ADTSynthesis.ADTRefinement
-        ADTSynthesis.ADTNotation
-        ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureSchema
-        ADTSynthesis.ADTRefinement.BuildADTRefinements
-        ADTSynthesis.QueryStructure.Specification.Representation.QueryStructure
-        ADTSynthesis.Common.Ensembles.IndexedEnsembles
-        ADTSynthesis.Common.IterateBoundedIndex
-        ADTSynthesis.QueryStructure.Specification.Operations.Query
-        ADTSynthesis.QueryStructure.Specification.Operations.Insert
-        ADTSynthesis.QueryStructure.Implementation.Constraints.ConstraintChecksRefinements
-        ADTSynthesis.QueryStructure.Implementation.Operations.General.InsertRefinements
-        ADTSynthesis.QueryStructure.Automation.Common
-        ADTSynthesis.QueryStructure.Automation.Constraints.TrivialConstraintAutomation
-        ADTSynthesis.QueryStructure.Automation.Constraints.FunctionalDependencyAutomation
-        ADTSynthesis.QueryStructure.Automation.Constraints.ForeignKeyAutomation.
+        Fiat.Computation
+        Fiat.ADT
+        Fiat.ADTRefinement
+        Fiat.ADTNotation
+        Fiat.QueryStructure.Specification.Representation.QueryStructureSchema
+        Fiat.ADTRefinement.BuildADTRefinements
+        Fiat.QueryStructure.Specification.Representation.QueryStructure
+        Fiat.Common.Ensembles.IndexedEnsembles
+        Fiat.Common.IterateBoundedIndex
+        Fiat.QueryStructure.Specification.Operations.Query
+        Fiat.QueryStructure.Specification.Operations.Insert
+        Fiat.QueryStructure.Implementation.Constraints.ConstraintChecksRefinements
+        Fiat.QueryStructure.Implementation.Operations.General.InsertRefinements
+        Fiat.QueryStructure.Automation.Common
+        Fiat.QueryStructure.Automation.Constraints.TrivialConstraintAutomation
+        Fiat.QueryStructure.Automation.Constraints.FunctionalDependencyAutomation
+        Fiat.QueryStructure.Automation.Constraints.ForeignKeyAutomation.
 
 (* When we insert a tuple into a relation which has another relation has
      a foreign key into, we need to show that we haven't messed up any

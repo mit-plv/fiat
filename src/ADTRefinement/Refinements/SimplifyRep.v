@@ -1,6 +1,6 @@
-Require Import ADTSynthesis.Common ADTSynthesis.Computation
-        ADTSynthesis.ADT.ADTSig ADTSynthesis.ADT.Core
-        ADTSynthesis.ADTRefinement.Core ADTSynthesis.ADTRefinement.SetoidMorphisms.
+Require Import Fiat.Common Fiat.Computation
+        Fiat.ADT.ADTSig Fiat.ADT.Core
+        Fiat.ADTRefinement.Core Fiat.ADTRefinement.SetoidMorphisms.
 
 Section SimplifyRep.
 

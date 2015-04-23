@@ -1,27 +1,27 @@
-Require Export ADTSynthesis.QueryStructure.Implementation.DataStructures.Bags.BagsInterface
-        ADTSynthesis.QueryStructure.Implementation.DataStructures.Bags.CountingListBags
-        ADTSynthesis.QueryStructure.Implementation.DataStructures.Bags.TreeBags
-        ADTSynthesis.QueryStructure.Specification.Representation.Tuple
-        ADTSynthesis.QueryStructure.Specification.Representation.Heading
+Require Export Fiat.QueryStructure.Implementation.DataStructures.Bags.BagsInterface
+        Fiat.QueryStructure.Implementation.DataStructures.Bags.CountingListBags
+        Fiat.QueryStructure.Implementation.DataStructures.Bags.TreeBags
+        Fiat.QueryStructure.Specification.Representation.Tuple
+        Fiat.QueryStructure.Specification.Representation.Heading
         Coq.Lists.List Coq.Program.Program
-        ADTSynthesis.Common.ilist.
+        Fiat.Common.ilist.
 Require Import Coq.Bool.Bool Coq.Strings.String
         Coq.Structures.OrderedTypeEx Coq.NArith.BinNat
         Coq.ZArith.ZArith_dec Coq.Arith.Arith
         Coq.FSets.FMapAVL
-        ADTSynthesis.Common.Ensembles.EnsembleListEquivalence
-        ADTSynthesis.Common.String_as_OT
-        ADTSynthesis.Common.List.ListFacts
-        ADTSynthesis.Common.Ensembles.IndexedEnsembles
-        ADTSynthesis.Common.DecideableEnsembles
-        ADTSynthesis.QueryStructure.Implementation.Operations.General.QueryRefinements
-        ADTSynthesis.QueryStructure.Implementation.Operations.General.EmptyRefinements
-        ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureNotations
-        ADTSynthesis.Common.List.PermutationFacts
-        ADTSynthesis.Common.List.ListMorphisms
-        ADTSynthesis.QueryStructure.Specification.Operations.Delete
-        ADTSynthesis.QueryStructure.Implementation.Operations.General.DeleteRefinements
-        ADTSynthesis.QueryStructure.Implementation.Operations.List.ListQueryRefinements.
+        Fiat.Common.Ensembles.EnsembleListEquivalence
+        Fiat.Common.String_as_OT
+        Fiat.Common.List.ListFacts
+        Fiat.Common.Ensembles.IndexedEnsembles
+        Fiat.Common.DecideableEnsembles
+        Fiat.QueryStructure.Implementation.Operations.General.QueryRefinements
+        Fiat.QueryStructure.Implementation.Operations.General.EmptyRefinements
+        Fiat.QueryStructure.Specification.Representation.QueryStructureNotations
+        Fiat.Common.List.PermutationFacts
+        Fiat.Common.List.ListMorphisms
+        Fiat.QueryStructure.Specification.Operations.Delete
+        Fiat.QueryStructure.Implementation.Operations.General.DeleteRefinements
+        Fiat.QueryStructure.Implementation.Operations.List.ListQueryRefinements.
 
 Unset Implicit Arguments.
 

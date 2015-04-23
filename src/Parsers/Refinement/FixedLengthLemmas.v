@@ -2,13 +2,13 @@
 Require Import Coq.Init.Wf Coq.Arith.Wf_nat.
 Require Import Coq.Lists.List Coq.Strings.String.
 Require Import Coq.Numbers.Natural.Peano.NPeano.
-Require Import ADTSynthesis.Parsers.ContextFreeGrammar.
-Require Import ADTSynthesis.Parsers.StringLike.String.
+Require Import Fiat.Parsers.ContextFreeGrammar.
+Require Import Fiat.Parsers.StringLike.String.
 Require Import Coq.Program.Equality.
-Require Import ADTSynthesis.Common.
-Require Import ADTSynthesis.Common.Wf.
-Require Import ADTSynthesis.Parsers.Splitters.RDPList.
-Require Import ADTSynthesis.Parsers.BaseTypes.
+Require Import Fiat.Common.
+Require Import Fiat.Common.Wf.
+Require Import Fiat.Parsers.Splitters.RDPList.
+Require Import Fiat.Parsers.BaseTypes.
 
 Set Implicit Arguments.
 

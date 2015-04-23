@@ -2,10 +2,10 @@
 Require Import Coq.Lists.List.
 Require Import Coq.Arith.EqNat.
 Require Import Coq.Arith.Compare_dec Coq.Arith.Wf_nat.
-Require Import ADTSynthesis.Parsers.ContextFreeGrammar.
-Require Import ADTSynthesis.Parsers.BaseTypes.
-Require Import ADTSynthesis.Parsers.StringLike.Properties.
-Require Import ADTSynthesis.Common ADTSynthesis.Common.Wf.
+Require Import Fiat.Parsers.ContextFreeGrammar.
+Require Import Fiat.Parsers.BaseTypes.
+Require Import Fiat.Parsers.StringLike.Properties.
+Require Import Fiat.Common Fiat.Common.Wf.
 
 Set Implicit Arguments.
 Local Open Scope string_like_scope.
@@ -16,7 +16,7 @@ Section recursive_descent_parser.
 
   Section bool.
     Section parts.
-      Definition parse_item
+      Definition parse_item'
                  (str_matches_nonterminal : String.string -> bool)
                  (str : String)
                  (it : item Char)
@@ -36,7 +36,7 @@ Section recursive_descent_parser.
 
         (** To match a [production], we must match all of its items.
             But we may do so on any particular split. *)
-        Fixpoint parse_production
+        Fixpoint parse_production'
                  (str : String)
                  (len : nat)
                  (pf : len <= len0)
@@ -49,11 +49,11 @@ Section recursive_descent_parser.
                 (** 0-length production, only accept empty *)
                 beq_nat (length str) 0
               | it::its
-                => let parse_production' := fun str len pf => parse_production str len pf its in
+                => let parse_production' := fun str len pf => parse_production' str len pf its in
                    fold_left
                      orb
                      (map (fun n =>
-                             (parse_item
+                             (parse_item'
                                 (parse_nonterminal (take n str) (len := min n len) _)
                                 (take n str)
                                 it)
@@ -75,7 +75,7 @@ Section recursive_descent_parser.
                      String.string -> bool).
 
         (** To parse as a given list of [production]s, we must parse as one of the [production]s. *)
-        Definition parse_productions
+        Definition parse_productions'
                    (str : String)
                    (len : nat)
                    (pf : len <= len0)
@@ -83,7 +83,7 @@ Section recursive_descent_parser.
         : bool
           := fold_right orb
                         false
-                        (map (parse_production parse_nonterminal str pf)
+                        (map (parse_production' parse_nonterminal str pf)
                              prods).
       End productions.
 
@@ -107,7 +107,7 @@ Section recursive_descent_parser.
           : bool.
           Proof.
             refine
-              (parse_productions
+              (parse_productions'
                  (sumbool_rect
                     (fun b => forall (str' : String) (len' : nat), len' <= (if b then len else len0) -> String.string -> bool)
                     (fun _ => (** [str] got smaller, so we reset the valid nonterminals list *)
@@ -174,6 +174,24 @@ Section recursive_descent_parser.
                  (le_n _) nt.
         End wf.
       End nonterminals.
+
+      Definition parse_item
+                 (str : String)
+                 (it : item Char)
+      : bool
+        := parse_item' (parse_nonterminal str) str it.
+
+      Definition parse_production
+                 (str : String)
+                 (pat : production Char)
+      : bool
+        := parse_production' (parse_nonterminal_or_abort (length str, nonterminals_length initial_nonterminals_data) initial_nonterminals_data) str (reflexivity _) pat.
+
+      Definition parse_productions
+                 (str : String)
+                 (pats : productions Char)
+      : bool
+        := parse_productions' (parse_nonterminal_or_abort (length str, nonterminals_length initial_nonterminals_data) initial_nonterminals_data) str (reflexivity _) pats.
     End parts.
   End bool.
 End recursive_descent_parser.

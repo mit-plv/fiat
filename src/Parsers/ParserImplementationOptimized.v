@@ -1,13 +1,13 @@
 (** * Implementation of simply-typed interface of the parser *)
-Require Export ADTSynthesis.Parsers.ParserInterface.
-Require Import ADTSynthesis.Parsers.BaseTypes ADTSynthesis.Parsers.CorrectnessBaseTypes.
-Require Import ADTSynthesis.Parsers.BooleanRecognizerOptimized.
-Require Import ADTSynthesis.Parsers.BooleanRecognizerEquality.
-Require Import ADTSynthesis.Parsers.ParserImplementation.
-Require Import ADTSynthesis.Parsers.ContextFreeGrammarNotations.
-Require Import ADTSynthesis.Parsers.ContextFreeGrammarTransfer.
-Require Import ADTSynthesis.Parsers.ContextFreeGrammarTransferProperties.
-Require Import ADTSynthesis.Parsers.StringLike.String.
+Require Export Fiat.Parsers.ParserInterface.
+Require Import Fiat.Parsers.BaseTypes Fiat.Parsers.CorrectnessBaseTypes.
+Require Import Fiat.Parsers.BooleanRecognizerOptimized.
+Require Import Fiat.Parsers.BooleanRecognizerEquality.
+Require Import Fiat.Parsers.ParserImplementation.
+Require Import Fiat.Parsers.ContextFreeGrammarNotations.
+Require Import Fiat.Parsers.ContextFreeGrammarTransfer.
+Require Import Fiat.Parsers.ContextFreeGrammarTransferProperties.
+Require Import Fiat.Parsers.StringLike.String.
 
 Set Implicit Arguments.
 

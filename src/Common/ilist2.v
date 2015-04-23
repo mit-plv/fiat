@@ -2,8 +2,8 @@ Generalizable All Variables.
 Set Implicit Arguments.
 
 Require Import Coq.Lists.List Coq.Strings.String Coq.Arith.Arith.
-Require Import ADTSynthesis.Common.ilist.
-Require Import ADTSynthesis.Common.
+Require Import Fiat.Common.ilist.
+Require Import Fiat.Common.
 
 Section ilist2.
 

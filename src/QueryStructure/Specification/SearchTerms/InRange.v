@@ -1,5 +1,5 @@
 Require Import Coq.Arith.Compare_dec Omega
-        ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureNotations.
+        Fiat.QueryStructure.Specification.Representation.QueryStructureNotations.
 
 Section RangeClause.  
   Definition InRange (n : nat) (range : nat * nat) :=

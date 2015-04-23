@@ -1,17 +1,17 @@
-Require Export ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureNotations ADTSynthesis.QueryStructure.Specification.Operations.Query.
+Require Export Fiat.QueryStructure.Specification.Representation.QueryStructureNotations Fiat.QueryStructure.Specification.Operations.Query.
 Require Import Coq.Lists.List Coq.Arith.Compare_dec Coq.Bool.Bool Coq.Strings.String
-        ADTSynthesis.Common.BoolFacts
-        ADTSynthesis.Common.List.PermutationFacts
-        ADTSynthesis.Common.List.ListMorphisms
-        ADTSynthesis.QueryStructure.Specification.Operations.FlattenCompList
-        ADTSynthesis.Common.Ensembles.EnsembleListEquivalence
-        ADTSynthesis.QueryStructure.Implementation.Operations.General.QueryRefinements
-        ADTSynthesis.Common.IterateBoundedIndex
-        ADTSynthesis.Common.List.ListFacts
-        ADTSynthesis.Common.LogicFacts
-        ADTSynthesis.Common.DecideableEnsembles
-        ADTSynthesis.QueryStructure.Specification.Constraints.tupleAgree
-        ADTSynthesis.QueryStructure.Specification.Operations.Mutate.
+        Fiat.Common.BoolFacts
+        Fiat.Common.List.PermutationFacts
+        Fiat.Common.List.ListMorphisms
+        Fiat.QueryStructure.Specification.Operations.FlattenCompList
+        Fiat.Common.Ensembles.EnsembleListEquivalence
+        Fiat.QueryStructure.Implementation.Operations.General.QueryRefinements
+        Fiat.Common.IterateBoundedIndex
+        Fiat.Common.List.ListFacts
+        Fiat.Common.LogicFacts
+        Fiat.Common.DecideableEnsembles
+        Fiat.QueryStructure.Specification.Constraints.tupleAgree
+        Fiat.QueryStructure.Specification.Operations.Mutate.
 
 Unset Implicit Arguments.
 

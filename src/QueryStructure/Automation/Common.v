@@ -1,11 +1,11 @@
 Require Import
         Coq.Strings.String
-        ADTSynthesis.Common.StringBound
-        ADTSynthesis.QueryStructure.Specification.Representation.Heading
-        ADTSynthesis.QueryStructure.Specification.Representation.Schema
-        ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureSchema
-        ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.IndexSearchTerms
-        ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.QueryStructureImplementation.
+        Fiat.Common.StringBound
+        Fiat.QueryStructure.Specification.Representation.Heading
+        Fiat.QueryStructure.Specification.Representation.Schema
+        Fiat.QueryStructure.Specification.Representation.QueryStructureSchema
+        Fiat.QueryStructure.Implementation.DataStructures.BagADT.IndexSearchTerms
+        Fiat.QueryStructure.Implementation.DataStructures.BagADT.QueryStructureImplementation.
 
 Ltac fold_string_hyps :=
   repeat

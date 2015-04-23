@@ -1,7 +1,7 @@
-Require Import ADTSynthesis.Common.Ensembles.Notations.
-Require Import ADTSynthesis.Common.Ensembles.Tactics.
-Require Import ADTSynthesis.Common.Ensembles.Morphisms.
-Require Import ADTSynthesis.Common.
+Require Import Fiat.Common.Ensembles.Notations.
+Require Import Fiat.Common.Ensembles.Tactics.
+Require Import Fiat.Common.Ensembles.Morphisms.
+Require Import Fiat.Common.
 
 Local Open Scope Ensemble_scope.
 

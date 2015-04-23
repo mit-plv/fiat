@@ -1,7 +1,7 @@
-Require Import ADTSynthesis.Common ADTSynthesis.Computation Coq.Sets.Ensembles Coq.Lists.List Coq.Strings.String
-        ADTSynthesis.ADT.ADTSig ADTSynthesis.ADT.Core ADTSynthesis.ADT.ComputationalADT
-        ADTSynthesis.Common.StringBound ADTSynthesis.Common.ilist
-        ADTSynthesis.ADTNotation.BuildADTSig ADTSynthesis.ADTNotation.BuildADT.
+Require Import Fiat.Common Fiat.Computation Coq.Sets.Ensembles Coq.Lists.List Coq.Strings.String
+        Fiat.ADT.ADTSig Fiat.ADT.Core Fiat.ADT.ComputationalADT
+        Fiat.Common.StringBound Fiat.Common.ilist
+        Fiat.ADTNotation.BuildADTSig Fiat.ADTNotation.BuildADT.
 
 (* Notations for ADTs. *)
 

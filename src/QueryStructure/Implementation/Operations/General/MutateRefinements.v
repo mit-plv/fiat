@@ -1,21 +1,21 @@
 Require Import Coq.Strings.String Coq.omega.Omega Coq.Lists.List Coq.Logic.FunctionalExtensionality Coq.Sets.Ensembles
-        ADTSynthesis.Common.List.ListFacts
-        ADTSynthesis.Computation
-        ADTSynthesis.ADT
-        ADTSynthesis.ADTRefinement ADTSynthesis.ADTNotation
-        ADTSynthesis.QueryStructure.Specification.Representation.Schema
-        ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureSchema
-        ADTSynthesis.ADTRefinement.BuildADTRefinements
-        ADTSynthesis.QueryStructure.Specification.Representation.QueryStructure
-        ADTSynthesis.Common.Ensembles.IndexedEnsembles
-        ADTSynthesis.QueryStructure.Specification.Operations.Query
-        ADTSynthesis.QueryStructure.Specification.Operations.Mutate
-        ADTSynthesis.QueryStructure.Implementation.Constraints.ConstraintChecksRefinements
-        ADTSynthesis.Common.IterateBoundedIndex
-        ADTSynthesis.Common.DecideableEnsembles
-        ADTSynthesis.Common.List.PermutationFacts
-        ADTSynthesis.QueryStructure.Implementation.Operations.General.QueryRefinements
-        ADTSynthesis.Common.Ensembles.EnsembleListEquivalence.
+        Fiat.Common.List.ListFacts
+        Fiat.Computation
+        Fiat.ADT
+        Fiat.ADTRefinement Fiat.ADTNotation
+        Fiat.QueryStructure.Specification.Representation.Schema
+        Fiat.QueryStructure.Specification.Representation.QueryStructureSchema
+        Fiat.ADTRefinement.BuildADTRefinements
+        Fiat.QueryStructure.Specification.Representation.QueryStructure
+        Fiat.Common.Ensembles.IndexedEnsembles
+        Fiat.QueryStructure.Specification.Operations.Query
+        Fiat.QueryStructure.Specification.Operations.Mutate
+        Fiat.QueryStructure.Implementation.Constraints.ConstraintChecksRefinements
+        Fiat.Common.IterateBoundedIndex
+        Fiat.Common.DecideableEnsembles
+        Fiat.Common.List.PermutationFacts
+        Fiat.QueryStructure.Implementation.Operations.General.QueryRefinements
+        Fiat.Common.Ensembles.EnsembleListEquivalence.
 
 (* Facts about implements delete operations. *)
 

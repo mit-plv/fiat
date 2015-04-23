@@ -1,8 +1,8 @@
 (** * Definitions of some specific string-like types *)
 Require Import Coq.Strings.String.
 Require Import Coq.Numbers.Natural.Peano.NPeano.
-Require Import ADTSynthesis.Parsers.StringLike.Core.
-Require Import ADTSynthesis.Common ADTSynthesis.Common.Equality.
+Require Import Fiat.Parsers.StringLike.Core.
+Require Import Fiat.Common Fiat.Common.Equality.
 
 Set Implicit Arguments.
 
@@ -62,5 +62,8 @@ Proof.
            | [ |- context[string_eq_dec ?x ?y] ] => destruct (string_eq_dec x y)
            | [ H : _ <> _ |- False ] => apply H; clear H
            | _ => apply Max.max_case_strong; intro; apply substring_correct4; omega
+           | [ H : String.length ?s = 1 |- _ ] => is_var s; destruct s
+           | [ H : S (String.length ?s) = 1 |- _ ] => is_var s; destruct s
+           | _ => eexists; rewrite (ascii_lb eq_refl); reflexivity
          end.
 Qed.

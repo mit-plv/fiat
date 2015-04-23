@@ -1,4 +1,4 @@
-Require Export ADTSynthesis.Common ADTSynthesis.Computation.
+Require Export Fiat.Common Fiat.Computation.
 
 (** Type of a constructor. *)
 Definition constructorType (rep dom : Type)

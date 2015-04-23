@@ -1,22 +1,22 @@
 Require Export
         Coq.Lists.List Coq.Program.Program
-        ADTSynthesis.QueryStructure.Implementation.DataStructures.Bags.BagsInterface
-        ADTSynthesis.QueryStructure.Implementation.DataStructures.Bags.CountingListBags
-        ADTSynthesis.QueryStructure.Implementation.DataStructures.Bags.TreeBags
-        ADTSynthesis.QueryStructure.Specification.Representation.Tuple
-        ADTSynthesis.QueryStructure.Specification.Representation.Heading
-        ADTSynthesis.Common.ilist.
+        Fiat.QueryStructure.Implementation.DataStructures.Bags.BagsInterface
+        Fiat.QueryStructure.Implementation.DataStructures.Bags.CountingListBags
+        Fiat.QueryStructure.Implementation.DataStructures.Bags.TreeBags
+        Fiat.QueryStructure.Specification.Representation.Tuple
+        Fiat.QueryStructure.Specification.Representation.Heading
+        Fiat.Common.ilist.
 Require Import Coq.Bool.Bool Coq.Strings.String
         Coq.Arith.Arith Coq.Structures.OrderedTypeEx
-        ADTSynthesis.Common.String_as_OT
-        ADTSynthesis.Common.i2list
-        ADTSynthesis.Common.Ensembles.IndexedEnsembles
-        ADTSynthesis.Common.DecideableEnsembles
-        ADTSynthesis.QueryStructure.Implementation.DataStructures.Bags.BagsOfTuples
-        ADTSynthesis.QueryStructure.Implementation.Operations.General.QueryRefinements
-        ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureNotations
-        ADTSynthesis.Common.List.PermutationFacts
-        ADTSynthesis.QueryStructure.Implementation.DataStructures.BagADT.BagADT.
+        Fiat.Common.String_as_OT
+        Fiat.Common.i2list
+        Fiat.Common.Ensembles.IndexedEnsembles
+        Fiat.Common.DecideableEnsembles
+        Fiat.QueryStructure.Implementation.DataStructures.Bags.BagsOfTuples
+        Fiat.QueryStructure.Implementation.Operations.General.QueryRefinements
+        Fiat.QueryStructure.Specification.Representation.QueryStructureNotations
+        Fiat.Common.List.PermutationFacts
+        Fiat.QueryStructure.Implementation.DataStructures.BagADT.BagADT.
 
 Section SharpenedBagImplementation.
 
@@ -116,7 +116,7 @@ Section SharpenedBagImplementation.
     - exists bnd; unfold UnConstrFreshIdx in *; intros; apply fresh_bnd;
     destruct H; eauto.
     - pose proof (bdelete_correct nr search_term H0); intuition.
-      Require Import ADTSynthesis.Common.List.ListFacts.
+      Require Import Fiat.Common.List.ListFacts.
       rewrite partition_filter_neq in H1; symmetry in H1.
       destruct (permutation_filter _ _ _ H1) as [l [l_eq Perm_l]].
       symmetry in Perm_l.
@@ -219,7 +219,7 @@ Section SharpenedBagImplementation.
     - pose proof (bupdate_correct nr search_term update_term H0 H1).
       rewrite partition_filter_neq in H2; rewrite partition_filter_eq in H2.
       unfold UnIndexedEnsembleListEquivalence in *.
-      Require Import ADTSynthesis.Common.Ensembles.EnsembleListEquivalence.
+      Require Import Fiat.Common.Ensembles.EnsembleListEquivalence.
       unfold EnsembleListEquivalence in *.
       rewrite <- eqv_or in H2.
       repeat rewrite filter_map in H2.

@@ -1,12 +1,12 @@
 Require Import Coq.Lists.List Coq.Strings.String Coq.Logic.FunctionalExtensionality Coq.Sets.Ensembles Coq.Arith.Arith
-        ADTSynthesis.Computation.Core
-        ADTSynthesis.ADT.ADTSig ADTSynthesis.ADT.Core
-        ADTSynthesis.Common.ilist ADTSynthesis.Common.StringBound
-        ADTSynthesis.ADTNotation.BuildADT ADTSynthesis.ADTNotation.BuildADTSig
-        ADTSynthesis.Common.Ensembles.IndexedEnsembles
-        ADTSynthesis.QueryStructure.Specification.Representation.Notations ADTSynthesis.QueryStructure.Specification.Representation.Heading
-        ADTSynthesis.QueryStructure.Specification.Representation.Tuple ADTSynthesis.QueryStructure.Specification.Representation.Schema ADTSynthesis.QueryStructure.Specification.Representation.Relation
-        ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureSchema.
+        Fiat.Computation.Core
+        Fiat.ADT.ADTSig Fiat.ADT.Core
+        Fiat.Common.ilist Fiat.Common.StringBound
+        Fiat.ADTNotation.BuildADT Fiat.ADTNotation.BuildADTSig
+        Fiat.Common.Ensembles.IndexedEnsembles
+        Fiat.QueryStructure.Specification.Representation.Notations Fiat.QueryStructure.Specification.Representation.Heading
+        Fiat.QueryStructure.Specification.Representation.Tuple Fiat.QueryStructure.Specification.Representation.Schema Fiat.QueryStructure.Specification.Representation.Relation
+        Fiat.QueryStructure.Specification.Representation.QueryStructureSchema.
 
 Section BuildQueryStructureConstraints.
   (* Query Structures maintain a set of constraints that enforce

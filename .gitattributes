@@ -3,8 +3,8 @@
 /Overview export-ignore
 /paper export-ignore
 /etc export-ignore
-/examples/ADTExamples export-ignore
-/examples/ProcessScheduler-outdated/ export-ignore
+/src/Examples/ADTExamples export-ignore
+/src/Examples/ProcessScheduler-outdated/ export-ignore
 
 .gitattributes export-ignore
 .gitignore export-ignore
@@ -15,16 +15,16 @@ todos.sh export-ignore
 tarball.sh export-ignore
 TODO export-ignore
 
-examples/plot.py export-ignore
+/src/Examples/plot.py export-ignore
 
-examples/Trivial.v export-ignore
-examples/TrivialCache2.v export-ignore
-examples/TrivialADTCache.v export-ignore
-examples/CacheADT.v export-ignore
-examples/ADTExamples.v export-ignore
-examples/ComputationExamples.v export-ignore
+/src/Examples/Trivial.v export-ignore
+/src/Examples/TrivialCache2.v export-ignore
+/src/Examples/TrivialADTCache.v export-ignore
+/src/Examples/CacheADT.v export-ignore
+/src/Examples/Examples.v export-ignore
+/src/Examples/ComputationExamples.v export-ignore
 
-examples/BookstoreMinimal.v export-ignore
-examples/BookstoreLists.v export-ignore
-examples/BookstoreNaive.v export-ignore
-examples/BookstoreNaiveExtraction.v export-ignore
+/src/Examples/BookstoreMinimal.v export-ignore
+/src/Examples/BookstoreLists.v export-ignore
+/src/Examples/BookstoreNaive.v export-ignore
+/src/Examples/BookstoreNaiveExtraction.v export-ignore

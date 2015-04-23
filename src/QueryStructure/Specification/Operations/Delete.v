@@ -1,10 +1,10 @@
 Require Import Coq.Lists.List Coq.Strings.String Coq.Sets.Ensembles Coq.Arith.Arith
-        ADTSynthesis.Computation.Core
-        ADTSynthesis.ADT.ADTSig ADTSynthesis.ADT.Core
-        ADTSynthesis.Common.ilist ADTSynthesis.Common.StringBound ADTSynthesis.Common.Ensembles.IndexedEnsembles
-        ADTSynthesis.ADTNotation.BuildADT ADTSynthesis.ADTNotation.BuildADTSig
-        ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureSchema ADTSynthesis.QueryStructure.Specification.Representation.QueryStructure
-        ADTSynthesis.QueryStructure.Specification.Operations.Mutate.
+        Fiat.Computation.Core
+        Fiat.ADT.ADTSig Fiat.ADT.Core
+        Fiat.Common.ilist Fiat.Common.StringBound Fiat.Common.Ensembles.IndexedEnsembles
+        Fiat.ADTNotation.BuildADT Fiat.ADTNotation.BuildADTSig
+        Fiat.QueryStructure.Specification.Representation.QueryStructureSchema Fiat.QueryStructure.Specification.Representation.QueryStructure
+        Fiat.QueryStructure.Specification.Operations.Mutate.
 (* We augment [QSDeleteSpec] so that delete also returns a list of the
    deleted Tuples. *)
 Definition QSDelete (qs : QueryStructureHint) Ridx

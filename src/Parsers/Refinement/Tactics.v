@@ -1,21 +1,21 @@
-Require Export ADTSynthesis.Parsers.Refinement.IndexedAndAtMostOneNonTerminalReflective.
-Require Export ADTSynthesis.Parsers.ParserADTSpecification.
-Require Export ADTSynthesis.ADTRefinement.
-Require Export ADTSynthesis.ADTNotation.BuildADT.
-Require Export ADTSynthesis.Parsers.ContextFreeGrammar.
-Require Export ADTSynthesis.Parsers.ContextFreeGrammarNotations.
+Require Export Fiat.Parsers.Refinement.IndexedAndAtMostOneNonTerminalReflective.
+Require Export Fiat.Parsers.ParserADTSpecification.
+Require Export Fiat.ADTRefinement.
+Require Export Fiat.ADTNotation.BuildADT.
+Require Export Fiat.Parsers.ContextFreeGrammar.
+Require Export Fiat.Parsers.ContextFreeGrammarNotations.
 Require Export Coq.Strings.String.
-Require Export ADTSynthesis.ADTRefinement.GeneralBuildADTRefinements.
-Require Export ADTSynthesis.Computation.Core.
+Require Export Fiat.ADTRefinement.GeneralBuildADTRefinements.
+Require Export Fiat.Computation.Core.
 Require Export Coq.Program.Program.
-Require Export ADTSynthesis.ADTRefinement.BuildADTRefinements.HoneRepresentation.
-Require Export ADTSynthesis.Computation.ApplyMonad.
-Require Export ADTSynthesis.Computation.SetoidMorphisms.
-Require Export ADTSynthesis.Common.
+Require Export Fiat.ADTRefinement.BuildADTRefinements.HoneRepresentation.
+Require Export Fiat.Computation.ApplyMonad.
+Require Export Fiat.Computation.SetoidMorphisms.
+Require Export Fiat.Common.
 
-Require Import ADTSynthesis.Parsers.ContextFreeGrammarEquality.
-Require Import ADTSynthesis.Common.Equality.
-Require Import ADTSynthesis.Computation.Refinements.General.
+Require Import Fiat.Parsers.ContextFreeGrammarEquality.
+Require Import Fiat.Common.Equality.
+Require Import Fiat.Computation.Refinements.General.
 
 Notation hiddenT := (ADTSig.methodType _ _ _).
 Global Open Scope string_scope.

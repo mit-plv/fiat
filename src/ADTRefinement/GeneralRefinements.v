@@ -1,11 +1,11 @@
 Require Import Coq.Lists.List Coq.Strings.String
-        ADTSynthesis.Common
-        ADTSynthesis.Common.ilist
-        ADTSynthesis.Common.i2list
-        ADTSynthesis.Common.StringBound
-        ADTSynthesis.ADT.Core ADTSynthesis.ADT.ComputationalADT
-        ADTSynthesis.ADTRefinement.Core
-        ADTSynthesis.ADTRefinement.SetoidMorphisms.
+        Fiat.Common
+        Fiat.Common.ilist
+        Fiat.Common.i2list
+        Fiat.Common.StringBound
+        Fiat.ADT.Core Fiat.ADT.ComputationalADT
+        Fiat.ADTRefinement.Core
+        Fiat.ADTRefinement.SetoidMorphisms.
 
 (* To derive an ADT interactively from a specification [spec], we can
    build a dependent product [ {adt : _ & refineADT spec adt} ]. The

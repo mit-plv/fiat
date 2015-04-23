@@ -1,32 +1,33 @@
 (** * Definition of a boolean-returning CFG parser-recognizer *)
 Require Import Coq.Lists.List Coq.Strings.String.
 Require Import Coq.Numbers.Natural.Peano.NPeano Coq.Arith.Compare_dec Coq.Arith.Wf_nat.
-Require Import ADTSynthesis.Parsers.ContextFreeGrammar.
-Require Import ADTSynthesis.Parsers.ContextFreeGrammarNotations.
-Require Import ADTSynthesis.Parsers.BaseTypes.
-Require Import ADTSynthesis.Parsers.StringLike.Properties.
-Require Import ADTSynthesis.Common ADTSynthesis.Common.Wf.
-Require Import ADTSynthesis.Parsers.BooleanRecognizer.
-Require Import ADTSynthesis.Common.Match.
-Require Import ADTSynthesis.Common.List.ListFacts.
-Require Import ADTSynthesis.Common.Equality.
-Require Export ADTSynthesis.Common.SetoidInstances.
+Require Import Fiat.Parsers.ContextFreeGrammar.
+Require Import Fiat.Parsers.ContextFreeGrammarNotations.
+Require Import Fiat.Parsers.BaseTypes.
+Require Import Fiat.Parsers.StringLike.Properties.
+Require Import Fiat.Common Fiat.Common.Wf.
+Require Import Fiat.Parsers.BooleanRecognizer.
+Require Import Fiat.Common.Match.
+Require Import Fiat.Common.List.ListFacts.
+Require Import Fiat.Common.Equality.
+Require Export Fiat.Common.SetoidInstances.
 
 Set Implicit Arguments.
 Local Open Scope string_like_scope.
 
 Global Arguments string_dec : simpl never.
 Global Arguments string_beq : simpl never.
-Global Arguments parse_production _ _ _ _ _ _ _ _ !_.
+Global Arguments parse_production' _ _ _ _ _ _ _ _ !_.
+Global Arguments parse_production _ _ _ _ _ !_.
 
-Lemma parse_production_respectful {Char HSL predata A B C}
+Lemma parse_production'_respectful {Char HSL predata A B C}
       {f g : forall (a : _ * A) (b : B a) (c : C a b) (str : @String Char HSL) (len : nat), len <= (fst a) -> String.string -> bool}
       (H : forall a b c d e h i, f a b c d e h i = g a b c d e h i)
       str0 a b c str len pf
 : pointwise_relation
     _ eq
-    (@parse_production Char HSL predata str0 (f (str0, a) b c) str len pf)
-    (@parse_production Char HSL predata str0 (g (str0, a) b c) str len pf).
+    (@parse_production' Char HSL predata str0 (f (str0, a) b c) str len pf)
+    (@parse_production' Char HSL predata str0 (g (str0, a) b c) str len pf).
 Proof.
   intro ls.
   revert str0 a b c str len pf; induction ls; simpl; trivial; intros.
@@ -34,7 +35,7 @@ Proof.
   f_equal.
   apply map_Proper_eq; trivial; repeat intro.
   f_equal.
-  unfold parse_item.
+  unfold parse_item'.
   destruct a; trivial.
 Qed.
 
@@ -58,7 +59,7 @@ Section recursive_descent_parser.
     let G := match goal with |- context[_ = parse_nonterminal (G := ?G) _ _] => constr:G end in
     let G' := head G in
     try unfold G'.
-    cbv beta iota zeta delta [parse_nonterminal parse_nonterminal_or_abort parse_nonterminal_step parse_productions parse_item Lookup list_to_grammar list_to_productions].
+    cbv beta iota zeta delta [parse_nonterminal parse_nonterminal_or_abort parse_nonterminal_step parse_productions parse_productions' parse_production parse_item parse_item' Lookup list_to_grammar list_to_productions].
     simpl.
     eexists.
     let L := match goal with |- ?L = _ => constr:L end in
@@ -87,17 +88,19 @@ Section recursive_descent_parser.
                       end in
             transitivity R';
               [ clear H';
+                unfold parse_production;
                 try match goal with
-                      | [ |- appcontext[@parse_production ?a ?b ?c ?d ?e ?f ?g ?h] ]
-                        => set (pp := @parse_production a b c d e f g h)
+                      | [ |- appcontext[@parse_production' ?a ?b ?c ?d ?e ?f ?g ?h] ]
+                        => set (pp := @parse_production' a b c d e f g h)
                     end
               | clear -H'; unfold sumbool_rect;
+                unfold parse_production;
                 repeat match goal with
                          | _ => reflexivity
                          | [ |- appcontext[match ?e with left _ => _ | right _ => _ end] ]
                            => destruct e
                        end;
-                setoid_rewrite (parse_production_respectful H');
+                setoid_rewrite (parse_production'_respectful H');
                 reflexivity ] ];
       [
       | repeat match goal with

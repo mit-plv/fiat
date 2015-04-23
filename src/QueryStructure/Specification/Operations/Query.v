@@ -1,13 +1,13 @@
 Require Import Coq.Lists.List Coq.Strings.String Coq.Sets.Ensembles Coq.Sorting.Permutation
-        ADTSynthesis.Computation.Core
-        ADTSynthesis.ADT.ADTSig ADTSynthesis.ADT.Core
-        ADTSynthesis.Common.Ensembles.IndexedEnsembles
-        ADTSynthesis.Common.StringBound
-        ADTSynthesis.ADTNotation.BuildADT
-        ADTSynthesis.ADTNotation.BuildADTSig
-        ADTSynthesis.QueryStructure.Specification.Representation.QueryStructureSchema
-        ADTSynthesis.QueryStructure.Specification.Representation.QueryStructure
-        ADTSynthesis.QueryStructure.Specification.Operations.FlattenCompList.
+        Fiat.Computation.Core
+        Fiat.ADT.ADTSig Fiat.ADT.Core
+        Fiat.Common.Ensembles.IndexedEnsembles
+        Fiat.Common.StringBound
+        Fiat.ADTNotation.BuildADT
+        Fiat.ADTNotation.BuildADTSig
+        Fiat.QueryStructure.Specification.Representation.QueryStructureSchema
+        Fiat.QueryStructure.Specification.Representation.QueryStructure
+        Fiat.QueryStructure.Specification.Operations.FlattenCompList.
 
 (* Notations and definitions for queries.
    The basic idea is to represent queries as ensembles of lists of returned values.

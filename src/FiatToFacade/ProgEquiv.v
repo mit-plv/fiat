@@ -1,4 +1,4 @@
-Require Import ADTSynthesis.FiatToFacade.Prog ADTSynthesis.FiatToFacade.Utilities.
+Require Import Fiat.FiatToFacade.Prog Fiat.FiatToFacade.Utilities.
 Require Import Bedrock.Platform.Facade.DFacade.
 
 Definition ProgEquiv {av} p1 p2 :=
@@ -54,7 +54,7 @@ Proof.
   unfold ProgEquiv; intros * prog_equiv ** ; apply prog_equiv; assumption.
 Qed.
 
-Require Import ADTSynthesis.Common.
+Require Import Fiat.Common.
 
 Add Parametric Morphism {av} :
   (Seq)

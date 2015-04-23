@@ -1,7 +1,7 @@
 Require Import Coq.Lists.List Coq.Sets.Ensembles.
-Require Import ADTSynthesis.Computation.Core ADTSynthesis.Computation.Notations
-        ADTSynthesis.Common.Ensembles.EnsembleListEquivalence
-        ADTSynthesis.Common.Ensembles.Cardinal.
+Require Import Fiat.Computation.Core Fiat.Computation.Notations
+        Fiat.Common.Ensembles.EnsembleListEquivalence
+        Fiat.Common.Ensembles.Cardinal.
 
 Set Implicit Arguments.
 

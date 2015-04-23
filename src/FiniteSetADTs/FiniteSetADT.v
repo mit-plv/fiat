@@ -1,10 +1,10 @@
 (* Definition of the finite set spec *)
 Require Import Coq.Sets.Ensembles
-    ADTSynthesis.ADT.Core
-    ADTSynthesis.Common.Ensembles
-    ADTSynthesis.ADT.ComputationalADT
-    ADTSynthesis.ADTNotation.
-Require Export ADTSynthesis.FiniteSetADTs.BedrockWord.
+    Fiat.ADT.Core
+    Fiat.Common.Ensembles
+    Fiat.ADT.ComputationalADT
+    Fiat.ADTNotation.
+Require Export Fiat.FiniteSetADTs.BedrockWord.
 
 Set Implicit Arguments.
 
