@@ -18,9 +18,11 @@ Require Import Fiat.Parsers.BooleanRecognizerCorrect.
 Require Import Fiat.Common.List.Operations.
 Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.StringLike.String.
+Require Import Fiat.Parsers.StringLike.ForallChars.
 Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Parsers.MinimalParseOfParse.
 Require Import Fiat.Parsers.ContextFreeGrammarProperties.
+Require Import Fiat.Parsers.FoldGrammar.
 
 Set Implicit Arguments.
 
@@ -28,285 +30,60 @@ Section all_possible.
   Context {Char : Type}.
   Definition possible_terminals := list Char.
 
-  Definition possible_terminals_of_production' (terminals_of_nt : String.string -> possible_terminals)
-             (its : production Char)
-  : possible_terminals
-    := flat_map
-         (fun it =>
-            match it with
-              | Terminal ch => [ch]
-              | NonTerminal nt => terminals_of_nt nt
-            end)
-         its.
+  Local Instance all_possible_fold_data : fold_grammar_data Char possible_terminals
+    := { on_terminal ch := [ch];
+         on_redundant_nonterminal := nil;
+         on_nil_production := nil;
+         combine_production := @app _;
+         on_nil_productions := nil;
+         combine_productions := @app _ }.
 
-  Lemma possible_terminals_of_production'_ext
-        f g
-        (ext : forall b, f b = g b)
-        b
-  : @possible_terminals_of_production' f b = possible_terminals_of_production' g b.
-  Proof.
-    induction b as [ | x ]; try reflexivity; simpl.
-    destruct x; rewrite ?IHb, ?ext; reflexivity.
-  Qed.
-
-  Definition possible_terminals_of_productions' (possible_terminals_of_nt : String.string -> possible_terminals)
-             (prods : productions Char)
-  : possible_terminals
-    := flat_map
-         (possible_terminals_of_production' possible_terminals_of_nt)
-         prods.
-
-  Lemma possible_terminals_of_productions'_ext
-        f g
-        (ext : forall b, f b = g b)
-        b
-  : @possible_terminals_of_productions' f b = possible_terminals_of_productions' g b.
-  Proof.
-    unfold possible_terminals_of_productions'.
-    induction b as [ | x ]; try reflexivity; simpl.
-    rewrite IHb.
-    erewrite possible_terminals_of_production'_ext by eassumption.
-    reflexivity.
-  Qed.
-
-  Definition possible_terminals_of_nt_step (G : grammar Char) (predata := @rdp_list_predata _ G)
-             (valid0 : nonterminals_listT)
-             (possible_terminals_of_nt : forall valid, nonterminals_listT_R valid valid0
-                                                       -> String.string -> possible_terminals)
-             (nt : String.string)
-  : possible_terminals.
-  Proof.
-    refine (if Sumbool.sumbool_of_bool (is_valid_nonterminal valid0 nt)
-            then possible_terminals_of_productions'
-                   (@possible_terminals_of_nt (remove_nonterminal valid0 nt) (remove_nonterminal_dec _ _ _))
-                   (Lookup G nt)
-            else nil);
-    assumption.
-  Defined.
-
-  Lemma possible_terminals_of_nt_step_ext {G}
-        x0 f g
-        (ext : forall y p b, f y p b = g y p b)
-        b
-  : @possible_terminals_of_nt_step G x0 f b = possible_terminals_of_nt_step g b.
-  Proof.
-    unfold possible_terminals_of_nt_step.
-    edestruct Sumbool.sumbool_of_bool; trivial.
-    apply possible_terminals_of_productions'_ext; eauto.
-  Qed.
-
-  Definition possible_terminals_of_nt (G : grammar Char) initial : String.string -> possible_terminals
-    := let predata := @rdp_list_predata _ G in
-       @Fix _ _ ntl_wf _
-            (@possible_terminals_of_nt_step G)
-            initial.
-
-  Definition possible_terminals_of (G : grammar Char) : String.string -> possible_terminals
-    := @possible_terminals_of_nt G initial_nonterminals_data.
-
-  Definition possible_terminals_of_productions G := @possible_terminals_of_productions' (@possible_terminals_of G).
+  Definition possible_terminals_of : grammar Char -> String.string -> possible_terminals
+    := fold_nt.
+  Definition possible_terminals_of_productions : grammar Char -> productions Char -> possible_terminals
+    := fold_productions.
+  Definition possible_terminals_of_production : grammar Char -> production Char -> possible_terminals
+    := fold_production.
 End all_possible.
+
+Section only_first.
+  Record possible_first_terminals :=
+    { actual_possible_first_terminals :> list Ascii.ascii;
+      might_be_empty : bool }.
+
+  Local Instance only_first_fold_data : fold_grammar_data Ascii.ascii possible_first_terminals
+    := { on_terminal ch := {| actual_possible_first_terminals := [ch] ; might_be_empty := false |};
+         on_redundant_nonterminal := {| actual_possible_first_terminals := nil ; might_be_empty := false |};
+         on_nil_production := {| actual_possible_first_terminals := nil ; might_be_empty := true |};
+         on_nil_productions := {| actual_possible_first_terminals := nil ; might_be_empty := false |};
+         combine_production first_of_first first_of_rest
+         := {| actual_possible_first_terminals
+               := (actual_possible_first_terminals first_of_first)
+                    ++ (if might_be_empty first_of_first
+                        then actual_possible_first_terminals first_of_rest
+                        else []);
+               might_be_empty
+               := (might_be_empty first_of_first && might_be_empty first_of_rest)%bool |};
+         combine_productions first_of_first first_of_rest
+         := {| actual_possible_first_terminals
+               := (actual_possible_first_terminals first_of_first)
+                    ++ (actual_possible_first_terminals first_of_rest);
+               might_be_empty
+               := (might_be_empty first_of_first || might_be_empty first_of_rest)%bool |} }.
+
+  Definition possible_first_terminals_of : grammar Ascii.ascii -> String.string -> possible_first_terminals
+    := fold_nt.
+  Definition possible_first_terminals_of_productions : grammar Ascii.ascii -> productions Ascii.ascii -> possible_first_terminals
+    := fold_productions.
+  Definition possible_first_terminals_of_production : grammar Ascii.ascii -> production Ascii.ascii -> possible_first_terminals
+    := fold_production.
+End only_first.
 
 Section all_possible_correctness.
   Context {Char : Type} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}.
   Local Open Scope string_like_scope.
 
-  Definition forall_chars (str : String) (P : Char -> Prop)
-    := forall n ch,
-         take 1 (drop n str) ~= [ ch ]
-         -> P ch.
-
-  Global Instance forall_chars_Proper
-  : Proper (beq ==> pointwise_relation _ impl ==> impl) forall_chars.
-  Proof.
-    unfold pointwise_relation, respectful, forall_chars, impl.
-    intros ?? H' ?? H'' H''' ?? H.
-    rewrite <- H' in H.
-    eauto using is_char_Proper.
-  Qed.
-
-  Global Instance forall_chars_Proper_flip
-  : Proper (beq ==> pointwise_relation _ (flip impl) ==> flip impl) forall_chars.
-  Proof.
-    unfold pointwise_relation, respectful, forall_chars, flip, impl.
-    intros ?? H' ?? H'' H''' ?? H.
-    rewrite H' in H.
-    eauto using is_char_Proper.
-  Qed.
-
-  Global Instance forall_chars_Proper_iff
-  : Proper (beq ==> pointwise_relation _ iff ==> iff) forall_chars.
-  Proof.
-    unfold pointwise_relation, respectful.
-    repeat intro; split;
-    apply forall_chars_Proper; try assumption; repeat intro;
-    match goal with
-      | [ H : _ |- _ ] => apply H; assumption
-    end.
-  Qed.
-
-  Lemma forall_chars_nil (str : String) P
-  : length str = 0 -> forall_chars str P.
-  Proof.
-    intros H n ch H'.
-    apply length_singleton in H'.
-    rewrite take_length, drop_length, H in H'.
-    simpl in H'; omega.
-  Qed.
-
-
-  Lemma singleton_take {str ch} (H' : str ~= [ ch ]) n
-  : take (S n) str =s str.
-  Proof.
-    eapply bool_eq_char; try eassumption.
-    rewrite take_long; try assumption.
-    apply length_singleton in H'; omega.
-  Qed.
-
-  Lemma forall_chars_take (str : String) P
-  : forall_chars str P <-> (forall n, forall_chars (take (S n) str) P).
-  Proof.
-    unfold forall_chars.
-    split.
-    { intros H n n' ch H'.
-      rewrite drop_take in H'.
-      rewrite take_take in H'.
-      destruct (S n - n'); simpl in H'; eauto; [].
-      apply length_singleton in H'.
-      rewrite take_length in H'; simpl in *; omega. }
-    { intros H n ch H'.
-      specialize (H (length str) n ch).
-      apply H.
-      erewrite (take_long str (_ : _ <= S (length str)) ); assumption.
-      Grab Existential Variables.
-      omega. }
-  Qed.
-
-  Lemma forall_chars_drop (str : String) P
-  : forall_chars str P <-> (forall n, forall_chars (drop n str) P).
-  Proof.
-    unfold forall_chars.
-    split.
-    { intros H n n' ch H'.
-      rewrite drop_drop in H'.
-      destruct (n + n'); simpl in H'; eauto. }
-    { intros H n ch H'.
-      specialize (H n 0 ch).
-      apply H; rewrite drop_0; assumption. }
-  Qed.
-
-  Lemma forall_chars_singleton (str : String) P ch
-  : str ~= [ ch ] -> (P ch <-> forall_chars str P).
-  Proof.
-    intro H.
-    pose proof (length_singleton _ _ H).
-    unfold forall_chars.
-    split; intro H'; repeat intro.
-    { match goal with
-        | [ n : nat |- _ ] => destruct n; [ | exfalso ]
-      end;
-      repeat match goal with
-               | _ => intro
-               | _ => omega
-               | [ H : _ |- _ ] => rewrite drop_0 in H
-               | [ H : _, H' : _ |- _ ] => rewrite (singleton_take H') in H
-               | [ H : _ |- False ] => apply length_singleton in H
-               | [ H : _ |- _ ] => rewrite take_length in H
-               | [ H : _ |- _ ] => rewrite drop_length in H
-               | [ H : ?x = 1, H' : context[?x] |- _ ] => rewrite H in H'
-               | _ => erewrite singleton_unique; eassumption
-               | [ H : appcontext[min] |- _ ] => revert H; apply Min.min_case_strong
-             end. }
-    { match goal with
-        | [ H : _ |- _ ] => apply (H 0)
-      end.
-      rewrite drop_0.
-      rewrite take_long; trivial; omega. }
-  Qed.
-
-  Lemma forall_chars_False (str : String) P
-  : (forall ch, ~P ch) -> forall_chars str P -> length str = 0.
-  Proof.
-    intros H' H.
-    case_eq (length str); trivial.
-    specialize (H (length str - 1)).
-    pose proof (singleton_exists (drop (length str - 1) str)) as H''.
-    rewrite drop_length in H''.
-    intros n H'''.
-    rewrite H''' in *.
-    rewrite sub_plus in H'' by omega.
-    rewrite Minus.minus_diag in *.
-    specialize (H'' eq_refl).
-    destruct H'' as [ch H''].
-    exfalso; eapply H', H.
-    rewrite take_long; try eassumption.
-    apply length_singleton in H''; omega.
-  Qed.
-
-  Global Opaque forall_chars.
-
-  Definition forall_chars__char_in (str : String) (ls : list Char)
-    := forall_chars str (fun ch => List.In ch ls).
-
-  Global Instance forall_chars__char_in__Proper
-  : Proper (beq ==> eq ==> impl) forall_chars__char_in.
-  Proof.
-    unfold pointwise_relation, respectful, forall_chars__char_in, impl.
-    repeat intro; subst.
-    match goal with
-      | [ H : _ |- _ ] => rewrite <- H; assumption
-    end.
-  Qed.
-
-  Global Instance forall_chars__char_in__Proper_iff
-  : Proper (beq ==> eq ==> iff) forall_chars__char_in.
-  Proof.
-    unfold pointwise_relation, respectful, forall_chars__char_in, impl.
-    repeat intro; subst.
-    match goal with
-      | [ H : _ |- _ ] => rewrite <- H; reflexivity
-    end.
-  Qed.
-
-  Lemma forall_chars__char_in__app_or_iff (str : String) (ls1 ls2 : list Char)
-  : forall_chars__char_in str (ls1 ++ ls2)
-    <-> (forall_chars str (fun ch => List.In ch ls1 \/ List.In ch ls2)).
-  Proof.
-    unfold forall_chars__char_in; split; repeat intro.
-    { eapply forall_chars_Proper; [ .. | eassumption ]; [ reflexivity | ].
-      intro; hnf.
-      apply in_app_or. }
-    { eapply forall_chars_Proper; [ .. | eassumption ]; [ reflexivity | ].
-      intro; hnf.
-      apply in_or_app. }
-  Qed.
-
-  Lemma forall_chars__char_in__or_app (str : String) (ls1 ls2 : list Char)
-  : forall_chars__char_in str ls1 \/ forall_chars__char_in str ls2 -> forall_chars__char_in str (ls1 ++ ls2).
-  Proof.
-    unfold forall_chars__char_in.
-    intros [?|?]; repeat intro;
-    (eapply forall_chars_Proper; [ .. | eassumption ]; [ reflexivity | ]; intros ??);
-    apply in_or_app; eauto.
-  Qed.
-
-  Lemma forall_chars__char_in_nil (str : String)
-  : forall_chars__char_in str nil <-> length str = 0.
-  Proof.
-    unfold forall_chars__char_in.
-    split.
-    { eapply forall_chars_False; simpl; eauto. }
-    { apply forall_chars_nil. }
-  Qed.
-
-  Lemma forall_chars__char_in_singleton_str (str : String) ls ch (H : str ~= [ ch ])
-  : forall_chars__char_in str ls <-> List.In ch ls.
-  Proof.
-    unfold forall_chars__char_in.
-    rewrite <- forall_chars_singleton; try eassumption; reflexivity.
-  Qed.
-
-  Global Opaque forall_chars__char_in.
+  Local Existing Instance all_possible_fold_data.
 
   Local Ltac dependent_destruction_head h :=
     idtac;
@@ -318,299 +95,168 @@ Section all_possible_correctness.
                                dependent destruction H'
     end.
 
+  Local Instance all_possible_cdata : @fold_grammar_correctness_data Char _ all_possible_fold_data G
+    := { Pnt valid0 nt ls
+         := forall (str : String) (p : parse_of_item G str (NonTerminal nt)),
+              Forall_parse_of_item (fun _ nt' => is_valid_nonterminal valid0 nt') p
+              -> forall_chars__char_in str ls;
+         Ppat valid0 pat ls
+         := forall (str : String) (p : parse_of_production G str pat),
+              Forall_parse_of_production (fun _ nt' => is_valid_nonterminal valid0 nt') p
+              -> forall_chars__char_in str ls;
+         Ppats valid0 pats ls
+         := forall (str : String) (p : parse_of G str pats),
+              Forall_parse_of (fun _ nt' => is_valid_nonterminal valid0 nt') p
+              -> forall_chars__char_in str ls }.
+  Proof.
+    { simpl; intros valid0 nt value Hvalid Hnt str p Hp.
+      dependent destruction p.
+      simpl in Hp.
+      destruct Hp as [Hp0 Hp1].
+      specialize (Hnt _ p).
+      apply Hnt.
+      clear -Hp0 Hp1.
+      admit. }
+    { abstract (
+          simpl; (intros ???? p H);
+          dependent destruction p;
+          simpl in H; destruct H; congruence
+        ). }
+    { abstract (
+          simpl; (intros ?? p H);
+          apply forall_chars__char_in_nil;
+          dependent destruction p; trivial
+        ). }
+    { simpl combine_production.
+      intros valid0 nt xs ls1 ls2 Hit Hits str p Hp.
+      dependent destruction p.
+      match type of Hp with
+        | context[ParseProductionCons _ _ ?p ?p1]
+          => change (Forall_parse_of_item (fun _ nt' => is_valid_nonterminal valid0 nt') p
+                     * Forall_parse_of_production (fun _ nt' => is_valid_nonterminal valid0 nt') p1)%type in Hp
+      end.
+      simpl in Hp; destruct Hp as [Hp0 Hp1].
+      apply (forall_chars__char_in__split n); split;
+      apply forall_chars__char_in__or_app; [ left | right ]; eauto. }
+    { simpl combine_production; simpl on_terminal; cbv beta.
+      intros valid0 nt xs ls Hits str p Hp.
+      dependent destruction p.
+      match type of Hp with
+        | context[ParseProductionCons _ _ ?p ?p1]
+          => change (Forall_parse_of_item (fun _ nt' => is_valid_nonterminal valid0 nt') p
+                     * Forall_parse_of_production (fun _ nt' => is_valid_nonterminal valid0 nt') p1)%type in Hp
+      end.
+      simpl in Hp.
+      destruct Hp as [Hp0 Hp1].
+      apply (forall_chars__char_in__split n); split;
+      apply forall_chars__char_in__or_app; [ left | right ]; eauto; [].
+      dependent_destruction_head (@parse_of_item).
+      erewrite forall_chars__char_in_singleton_str by eassumption.
+      left; reflexivity. }
+    { abstract (
+          simpl; (intros ?? p);
+          dependent destruction p
+        ). }
+    { abstract (
+          simpl; intros ????? IH1 IH2 ? p H';
+          apply forall_chars__char_in__or_app;
+          dependent destruction p; [ left | right ]; eauto
+        ). }
+  Defined.
+
   Lemma possible_terminals_of_production'_correct (G : grammar Char)
         (predata := @rdp_list_predata _ G)
-        (str : String) pat ptont
+        pat ptont
         (valid0 : nonterminals_listT)
-        (IH : forall nt (str : String),
-                minimal_parse_of_nonterminal (G := G) (length str) valid0 str nt
-                -> forall_chars__char_in str (ptont nt))
-        (p : minimal_parse_of_production (G := G) (length str) valid0 str pat)
-  : forall_chars__char_in str (possible_terminals_of_production' ptont pat).
+        (IH : forall nt, Pnt valid0 nt (ptont nt))
+  : Ppat valid0 pat (fold_production' ptont pat).
   Proof.
-    unfold possible_terminals_of_production'.
-    generalize dependent str; induction pat as [ | x xs IHxs ]; intros.
+    unfold fold_production'; simpl in *.
+    induction pat as [ | x xs IHxs ]; intros str p Hp.
     { dependent destruction p; simpl in *.
       apply forall_chars__char_in_nil; assumption. }
     { dependent destruction p; simpl in *.
-      apply forall_chars__char_in__or_app.
-      destruct (Compare_dec.lt_dec (length str) n); [ left | right ].
-      { dependent_destruction_head (@minimal_parse_of_item).
-        { repeat match goal with
+      match type of Hp with
+        | context[ParseProductionCons _ _ ?p ?p1]
+          => change (Forall_parse_of_item (fun _ nt' => is_valid_nonterminal valid0 nt') p
+                     * Forall_parse_of_production (fun _ nt' => is_valid_nonterminal valid0 nt') p1)%type in Hp
+      end.
+      simpl in Hp.
+      destruct (Compare_dec.lt_dec (length str) n).
+      { apply forall_chars__char_in__or_app; left.
+        dependent_destruction_head (@parse_of_item).
+        { clear Hp.
+          repeat match goal with
                    | [ H : _ |- _ ] => rewrite take_long in H by omega
                  end.
           erewrite forall_chars__char_in_singleton_str; intuition. }
-                   | [ H : is_true (?str ~= [ _ ]) |- forall_chars__char_in ?str _ ]
-                     => rewrite (forall_chars__char_in_singleton_str H)
-          ma
-          let H := match goal with H : ?str ~=
-match goal with
-            | [ H : is_true (?str ~= [ _ ]) |- is_true (?str ~= [ _ ]) ] => apply length_singleton in H
-          end.
-          repeat match goal with
-                   | _ => intro
-                   | _ => progress subst
-                   | _ => assumption
-                   | [ H : _ |- _ ] => rewrite take_length in H
-                   | [ H : _ |- _ ] => rewrite drop_length in H
-                   | [ H : _ |- _ ] => rewrite drop_0 in H
-                   | _ => rewrite take_long by omega
-                   | _ => omega
-                   | [ H : min _ _ = 1 |- _ ] => revert H; apply Min.min_case_strong
-                   | [ H : _ < 1 |- _ ] => apply Nat.lt_1_r in H
-                   | [ H : context[drop ?x _] |- _ ] => is_var x; destruct x
-                   | [ H : _ |- _ ] => rewrite take_long in H by omega
-                   | [ H : context[drop (S _) ?str], H' : length ?str = 1 |- _ ] => apply length_singleton in H
-                 end. }
-        { eapply IH; [ | eassumption ].
-          refine (@expand_minimal_parse_of_nonterminal
-                    _ _ _ G _
-                    _ _ _ _ _ _ _ _ _ _ _ _ _);
-            [ .. | eassumption ];
-            try reflexivity; try (left; reflexivity); [].
-          rewrite take_long by omega; reflexivity. } }
-      { unfold forall_chars__char_in, forall_chars in *.
-
-          pose (@minimal_parse_of_nonterminal__of__parse_of_nonterminal); simpl in *.
-          apply (@
-          let p := match goal with
-          pose (@parse_of_item_nonterminal__of__minimal_parse_of_nonterminal).
-
-          erewrite <- take_long.
-
-          match goal with
-            | [ H : is_true (?str ~= [ _ ]) |- _ ] => apply length_singleton in H
-          end.
-          .
-          SearchAbout take.
-SearchAbout (drop 0).
-SearchAbout (_ < 1).
-          match goal with
-          end.
-∀ (A : Type) (x : A) (P : forall y : A, x = y → Type),
-  P x eq_refl
-  → ∀ (y : A) (e : x = y),
-      P x e
-
-
-      apply
-      SearchAbout length.
-      simpl.
-
- }
-    { simpl; apply forall_chars__char_in__or_app.
-      dependent destruction p; [ left | right; eauto ]; [].
-
-
+        { apply (forall_chars__char_in__split n); split.
+          { eapply IH.
+            exact (fst Hp). }
+          { apply forall_chars__char_in_empty.
+            rewrite drop_length; omega. } } }
+      { apply (forall_chars__char_in__split n); split;
+        apply forall_chars__char_in__or_app; [ left | right ].
+        { dependent_destruction_head (@parse_of_item).
+          { eapply forall_chars__char_in_singleton_str; try eassumption; left; reflexivity. }
+          { eapply IH.
+            exact (fst Hp). } }
+        { eapply IHxs.
+          exact (snd Hp). } } }
+  Qed.
 
   Lemma possible_terminals_of_productions'_correct (G : grammar Char)
         (predata := @rdp_list_predata _ G)
-        (str : String) pats ptont
+        pats ptont
         (valid0 : nonterminals_listT)
-        (IH : forall nt (str : String),
-                minimal_parse_of_nonterminal (G := G) (length str) valid0 str nt
-                -> forall_chars__char_in str (ptont nt))
-        (p : minimal_parse_of (G := G) (length str) valid0 str pats)
-  : forall_chars__char_in str (possible_terminals_of_productions' ptont pats).
+        (IH : forall nt, Pnt valid0 nt (ptont nt))
+  : Ppats valid0 pats (fold_productions' ptont pats).
   Proof.
-    unfold possible_terminals_of_productions'.
-    generalize dependent str; induction pats as [ | x xs IHxs ]; intros.
-    { dependent destruction p. }
-    { simpl; apply forall_chars__char_in__or_app.
-      dependent destruction p; [ left | right; eauto ]; [].
-
-Focus 2.
-
-
-
-
-
-
-simpl.
-      apply forall_chars__char_in__app_or_iff.
-
+    apply fold_productions'_correct; trivial; [].
+    intro; apply possible_terminals_of_production'_correct; assumption.
+  Qed.
 
   Lemma Fix_possible_terminals_of_nt_step_correct (G : grammar Char)
         (predata := @rdp_list_predata _ G)
         (str : String) nt
         (valid0 : nonterminals_listT)
-        (p : minimal_parse_of_nonterminal (G := G) (length str) valid0 str nt)
+        (p : parse_of_item G str (NonTerminal nt))
+        (Hp : Forall_parse_of_item (fun _ nt' => is_valid_nonterminal valid0 nt') p)
   : forall_chars__char_in
       str
       (Fix ntl_wf (fun _ : nonterminals_listT => string -> possible_terminals)
            (possible_terminals_of_nt_step (G:=G)) valid0 nt).
   Proof.
-    generalize dependent str; induction (ntl_wf valid0) as [ ? ? IH ]; intros.
+    generalize dependent str; generalize dependent nt.
+    induction (ntl_wf valid0) as [ ? ? IH ]; intros.
     rewrite Fix1_eq; [ | apply possible_terminals_of_nt_step_ext ]; [].
     unfold possible_terminals_of_nt_step at 1; cbv beta zeta.
-    edestruct dec; [ | dependent destruction p; simpl in *; (omega || congruence) ].
+    dependent destruction p; destruct Hp as [Hpi Hpp]; [].
+    edestruct dec; [ | simpl in *; congruence ].
     let H := match goal with H : is_valid_nonterminal ?x ?nt = true |- _ => constr:H end in
     specialize (IH _ (remove_nonterminal_dec _ _ H)).
-    dependent destruction p; try omega; [].
-    Focus 2.
-
-    cong
-
-    dependent destruction p.
-    generalize dependent (G nt); intros prods p.
-    Focus 2.
-    congruence.
-    hnf.
-
-
-  ============================
-   forall_chars__char_in str
-     (Fix ntl_wf (fun _ : nonterminals_listT => string -> possible_terminals)
-        (possible_terminals_of_nt_step (G:=G)) initial_nonterminals_data nt)
+    generalize dependent (G nt); intros ? p.
+    destruct p;
+      (eapply possible_terminals_of_productions'_correct).
+    intros.
+    specialize (IH nt0 str0).
+    specialize (IH p0).
+    apply IH.
+    admit.
+    admit.
+  Qed.
 
   Lemma possible_terminals_of_correct (G : grammar Char)
-        (str : String) nt (p : parse_of_item G str (NonTerminal nt))
+        (predata := @rdp_list_predata _ G)
+        (str : String) nt
+        (p : parse_of_item G str (NonTerminal nt))
+        (Hp : Forall_parse_of_item (fun _ nt' => is_valid_nonterminal initial_nonterminals_data nt') p)
   : forall_chars__char_in str (possible_terminals_of G nt).
   Proof.
     unfold possible_terminals_of, possible_terminals_of_nt.
-    match goal with
-      | [ |- appcontext[Fix ?wf _ _ ?a] ]
-        => generalize a;
-          let H := fresh in
-          intro H;
-            induction (wf H)
-    end.
-    rewrite Fix1_eq
-
-
-list_bin ascii_beq ch (possible_terminals_of G nt)
-
-  Definition possible_terminals_of (G : grammar Char) : String.string -> possible_terminals
-    := @possible_terminals_of_nt G initial_nonterminals_data.
-
-
-
-  Definition possible_terminals_of_production' (terminals_of_nt : String.string -> possible_terminals)
-             (its : production Char)
-  : possible_terminals
-    := flat_map
-         (fun it =>
-            match it with
-              | Terminal ch => [ch]
-              | NonTerminal nt => terminals_of_nt nt
-            end)
-         its.
-
-*)
-Section only_first.
-  Context (G : grammar Ascii.ascii).
-
-  Record possible_first_terminals :=
-    { actual_possible_first_terminals :> list Ascii.ascii;
-      might_be_empty : bool }.
-
-  Definition possible_first_terminals_of_production' (possible_first_terminals_of_nt : String.string -> possible_first_terminals)
-             (its : production Ascii.ascii)
-  : possible_first_terminals
-    := {| actual_possible_first_terminals
-          := fold_right
-               (fun it rest_terminals =>
-                  match it with
-                    | Terminal ch => [ch]
-                    | NonTerminal nt
-                      => (possible_first_terminals_of_nt nt)
-                           ++ if might_be_empty (possible_first_terminals_of_nt nt)
-                              then rest_terminals
-                              else []
-                  end)
-               nil
-               its;
-          might_be_empty
-          := brute_force_parse_production G ""%string its |}.
-
-  Lemma possible_first_terminals_of_production'_ext
-        f g
-        (ext : forall b, f b = g b)
-        b
-  : @possible_first_terminals_of_production' f b = possible_first_terminals_of_production' g b.
-  Proof.
-    unfold possible_first_terminals_of_production'; f_equal.
-    induction b as [ | x ]; try reflexivity; simpl.
-    destruct x; rewrite ?IHb, ?ext; reflexivity.
+    eapply Fix_possible_terminals_of_nt_step_correct; eassumption.
   Qed.
-
-  Definition possible_first_terminals_of_productions' (possible_first_terminals_of_nt : String.string -> possible_first_terminals)
-             (prods : productions Ascii.ascii)
-  : possible_first_terminals
-    := {| actual_possible_first_terminals
-          := flat_map
-               actual_possible_first_terminals
-               (map (possible_first_terminals_of_production' possible_first_terminals_of_nt)
-                    prods);
-          might_be_empty
-          := fold_right
-               orb
-               false
-               (map
-                  might_be_empty
-                  (map
-                     (possible_first_terminals_of_production' possible_first_terminals_of_nt)
-                     prods)) |}.
-
-  Local Opaque possible_first_terminals_of_production'.
-
-  Lemma possible_first_terminals_of_productions'_ext
-        f g
-        (ext : forall b, f b = g b)
-        b
-  : @possible_first_terminals_of_productions' f b = possible_first_terminals_of_productions' g b.
-  Proof.
-    unfold possible_first_terminals_of_productions'.
-    f_equal;
-      induction b as [ | x ]; try reflexivity; simpl;
-      rewrite IHb; try reflexivity;
-      erewrite possible_first_terminals_of_production'_ext by eassumption;
-      reflexivity.
-  Qed.
-
-  Local Transparent possible_first_terminals_of_production'.
-
-  Definition possible_first_terminals_of_nt_step (predata := @rdp_list_predata _ G)
-             (valid0 : nonterminals_listT)
-             (possible_first_terminals_of_nt : forall valid, nonterminals_listT_R valid valid0
-                                                       -> String.string -> possible_first_terminals)
-             (nt : String.string)
-  : possible_first_terminals.
-  Proof.
-    refine (if Sumbool.sumbool_of_bool (is_valid_nonterminal valid0 nt)
-            then possible_first_terminals_of_productions'
-                   (@possible_first_terminals_of_nt (remove_nonterminal valid0 nt) (remove_nonterminal_dec _ _ _))
-                   (Lookup G nt)
-            else {| actual_possible_first_terminals := nil;
-                    might_be_empty
-                    := brute_force_parse_nonterminal G ""%string nt |});
-    assumption.
-  Defined.
-
-  Lemma possible_first_terminals_of_nt_step_ext
-        x0 f g
-        (ext : forall y p b, f y p b = g y p b)
-        b
-  : @possible_first_terminals_of_nt_step x0 f b = possible_first_terminals_of_nt_step g b.
-  Proof.
-    unfold possible_first_terminals_of_nt_step.
-    edestruct Sumbool.sumbool_of_bool; trivial.
-    apply possible_first_terminals_of_productions'_ext; eauto.
-  Qed.
-
-  Definition possible_first_terminals_of_nt initial : String.string -> possible_first_terminals
-    := let predata := @rdp_list_predata _ G in
-       @Fix _ _ ntl_wf _
-            (@possible_first_terminals_of_nt_step)
-            initial.
-
-  Definition possible_first_terminals_of : String.string -> possible_first_terminals
-    := @possible_first_terminals_of_nt initial_nonterminals_data.
-
-  Definition possible_first_terminals_of_productions := @possible_first_terminals_of_productions' (@possible_first_terminals_of).
-
-  Definition possible_first_terminals_of_production := @possible_first_terminals_of_production' (@possible_first_terminals_of).
-End only_first.
+End all_possible_correctness.
 
 Section only_first_correctness.
   Local Open Scope string_like_scope.

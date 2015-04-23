@@ -101,6 +101,8 @@ src/Examples/QueryStructure/Photoalbum.v
 src/Examples/QueryStructure/Stocks.v
 src/Examples/QueryStructure/Weather.v
 src/Examples/Smtp/Smtp.v
+src/Fiat4Monitors/TurretMonitor.v
+src/Fiat4Monitors/TurretMonitorSpec.v
 src/FiatToFacade/BedrockUtilities.v
 src/FiatToFacade/Compiler.v
 src/FiatToFacade/FacadeNotations.v
@@ -157,6 +159,7 @@ src/Parsers/ContextFreeGrammarTransfer.v
 src/Parsers/ContextFreeGrammarTransferProperties.v
 src/Parsers/CorrectnessBaseTypes.v
 src/Parsers/ExtrOcamlParsers.v
+src/Parsers/FoldGrammar.v
 src/Parsers/MinimalParse.v
 src/Parsers/MinimalParseOfParse.v
 src/Parsers/ParserADTSpecification.v
@@ -186,6 +189,7 @@ src/Parsers/Refinement/Tactics.v
 src/Parsers/Splitters/BruteForce.v
 src/Parsers/Splitters/RDPList.v
 src/Parsers/StringLike/Core.v
+src/Parsers/StringLike/ForallChars.v
 src/Parsers/StringLike/Properties.v
 src/Parsers/StringLike/String.v
 src/QueryStructure/Automation/AutoDB.v

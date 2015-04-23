@@ -83,8 +83,8 @@ Section implementation.
             apply list_in_bl in H0; [ | apply @string_bl ]; assumption. } }
         { exists (length str).
           specialize (H' (length str) (reflexivity _)).
-          pose proof (fun H => expand_minimal_parse_of_item (str' := take (length str) str) (reflexivity _) (reflexivity _) (or_introl (reflexivity _)) H pit) as pit'; clear pit.
-          pose proof (fun H => expand_minimal_parse_of_production (str' := drop (length str) str) (reflexivity _) (reflexivity _) (or_introl (reflexivity _)) H pits) as pits'; clear pits.
+          pose proof (fun H => expand_minimal_parse_of_item (str' := take (length str) str) (or_introl (reflexivity _)) (reflexivity _) (or_introl (reflexivity _)) H pit) as pit'; clear pit.
+          pose proof (fun H => expand_minimal_parse_of_production (str' := drop (length str) str) (or_introl (reflexivity _)) (reflexivity _) (or_introl (reflexivity _)) H pits) as pits'; clear pits.
           refine ((fun ret => let pit'' := pit' (fst (snd ret)) in
                               let pits'' := pits' (snd (snd ret)) in
                               ((H' (projT1 (fst (fst ret) pit'')) (projT1 (snd (fst ret) pits'')) (projT2 (fst (fst ret) pit'')) (projT2 (snd (fst ret) pits'')), pit''), pits'')) _); repeat split.
