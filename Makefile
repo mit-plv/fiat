@@ -36,7 +36,7 @@ TIMER=$(if $(TIMED), $(STDTIME), $(TIMECMD))
 containing = $(foreach v,$2,$(if $(findstring $1,$v),$v))
 not-containing = $(foreach v,$2,$(if $(findstring $1,$v),,$v))
 
-.PHONY: fiat fiat-core querystructures parsers finitesets dns compiler facade-test ics fiat4monitors examples \
+.PHONY: fiat fiat-core querystructures parsers examples \
 	install install-fiat install-fiat-core install-querystructures install-parsers install-finitesets install-dns install-compiler install-ics install-fiat4monitors install-examples \
 	pdf doc clean-doc \
 	clean update-_CoqProject FORCE
@@ -100,16 +100,7 @@ PARSERS_UNMADE_VO := \
 	src/Parsers/Refinement/SharpenedExpressionPlus.vo \
 	src/Parsers/Refinement/DisjointLemmas.vo
 
-EXAMPLES_UNMADE_VO := \
-	src/Examples/Smtp/Smtp.vo \
-	src/Examples/CacheADT/TrivialADTCache.vo \
-	src/Examples/CacheADT/LRUCache.vo \
-	src/Examples/CacheADT/KVEnsembles.vo \
-	src/Examples/CacheADT/FMapCacheImplementation.vo \
-	src/Examples/CacheADT/CacheSpec.vo \
-	src/Examples/CacheADT/CacheSig.vo \
-	src/Examples/CacheADT/CacheRefinements.vo \
-	src/Examples/CacheADT/CacheADT.vo
+EXAMPLES_UNMADE_VO :=
 
 WATER_TANK_EXTRACT_VO := src/Examples/Ics/WaterTankExtract.vo
 WATER_TANK_EXTRACT_ML := src/Examples/Ics/WaterTank.ml
@@ -117,13 +108,7 @@ WATER_TANK_EXTRACT_ML := src/Examples/Ics/WaterTank.ml
 FIAT_CORE_VO := $(filter-out src/Fiat4Monitors/% src/QueryStructure/% src/Parsers/% src/FiniteSetADTs/% src/FiatToFacade/% src/Examples/% src/FiniteSetADTs.vo,$(filter src/%.vo,$(VOFILES)))
 QUERYSTRUCTURES_VO := $(filter src/QueryStructure/%.vo,$(filter-out $(QUERYSTRUCTURES_UNMADE_VO),$(VOFILES)))
 PARSERS_VO := $(filter-out $(PARSERS_UNMADE_VO),$(filter src/Parsers/%.vo,$(VOFILES)))
-FINITESET_VO := $(filter src/FiniteSetADTs.vo src/FiniteSetADTs/%.vo,$(VOFILES))
-DNS_VO := $(filter src/Examples/DnsServer/%.vo,$(VOFILES))
-COMPILER_VO := $(filter src/FiatToFacade/%.vo,$(VOFILES))
-FACADE_TEST_VO := src/Examples/FacadeTest.vo
-ICS_VO := $(filter-out $(WATER_TANK_EXTRACT_VO),$(filter src/Examples/Ics/%.vo,$(VOFILES)))
-FIAT4MONITORS_VO := $(filter src/Fiat4Monitors/%.vo,$(VOFILES))
-EXAMPLES_VO := $(filter-out src/Examples/Ics/WaterTankExtract.vo $(ICS_VO) $(DNS_VO) $(FACADE_TEST_VO) $(EXAMPLES_UNMADE_VO),$(filter src/Examples/%.vo,$(VOFILES)))
+EXAMPLES_VO := $(filter-out $(EXAMPLES_UNMADE_VO),$(filter src/Examples/%.vo,$(VOFILES)))
 
 FIAT_VO := $(FIAT_CORE_VO) $(QUERYSTRUCTURES_VO) $(PARSERS_VO)
 
@@ -131,26 +116,15 @@ fiat: $(FIAT_VO)
 fiat-core: $(FIAT_CORE_VO)
 querystructures: $(QUERYSTRUCTURES_VO)
 parsers: $(PARSERS_VO)
-finitesets: $(FINITESETS_VO)
-dns: $(DNS_VO)
-compiler: $(COMPILER_VO)
-facade-test: $(FACADE_TEST_VO)
-ics: $(ICS_VO)
-fiat4monitors: $(FIAT4MONITORS_VO)
 examples: $(EXAMPLES_VO)
 
 install-fiat: T = $(FIAT_VO)
 install-fiat-core: T = $(FIAT_CORE_VO)
 install-querystructures: T = $(QUERYSTRUCTURES_VO)
 install-parsers: T = $(PARSERS_VO)
-install-finitesets: T = $(FINITESETS_VO)
-install-dns: T = $(DNS_VO)
-install-compiler: T = $(COMPILER_VO)
-install-ics: T = $(ICS_VO)
-install-fiat4monitors: T = $(FIAT4MONITORS_VO)
 install-examples: T = $(EXAMPLES_VO)
 
-install-fiat install-fiat-core install-querystructures install-parsers install-finitesets install-dns install-compiler install-fiat4monitors install-examples:
+install-fiat install-fiat-core install-querystructures install-parsers install-examples:
 	$(VECHO) "MAKE -f Makefile.coq INSTALL"
 	$(Q)$(MAKE) -f Makefile.coq VFILES="$(addsuffix .v,$(basename $(call vo_closure,$(filter %.vo,$(T)))))" install
 
@@ -165,11 +139,6 @@ $(filter-out $(VOFILES),$(call vo_closure,$(VOFILES))): FORCE
 	@ echo 'error: Please run `make update-_CoqProject`.'
 	@ echo
 	@ false
-
-
-$(WATER_TANK_EXTRACT_ML): $(filter-out $(WATER_TANK_EXTRACT_VO),$(call vo_closure,$(WATER_TANK_EXTRACT_VO))) $(WATER_TANK_EXTRACT_VO:%.vo=%.v)
-	$(VECHO) "COQC $(WATER_TANK_EXTRACT_VO:%.vo=%.v) > $@"
-	$(COQC) $(COQDEBUG) $(COQFLAGS) $(WATER_TANK_EXTRACT_VO:%.vo=%.v) > $@
 
 pdf: Overview/ProjectOverview.pdf Overview/library.pdf
 
