@@ -1275,7 +1275,7 @@ Ltac implement_Insert_branches :=
     | (* Refine the else branch *)
     repeat match goal with
              | [ H : DelegateToBag_AbsR ?r_o ?r_n
-                 |- context[{idx | UnConstrFreshIdx (GetUnConstrRelation ?r_o ?TableID) idx};;
+                 |- context[{idx | UnConstrFreshIdx (GetUnConstrRelation ?r_o ?TableID) idx} >>
                                                                                             {r_n' | DelegateToBag_AbsR ?r_o r_n'}]]
                => let H' := fresh in
                   pose proof H as H';
