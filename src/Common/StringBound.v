@@ -1025,7 +1025,7 @@ Section i2thIndexBound.
              (i2th_error' Cs' (ibound idx))
              (nth_error_map projAD (ibound idx) As (boundi idx))
              _ _ (i2th_error_eq _ _) (i2th_error_eq _ _) H.
-    
+
     Definition Dep_Option_elim2_T2
              {B : A -> Type}
              {C C' : forall a, B a -> Type}

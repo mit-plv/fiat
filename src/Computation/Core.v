@@ -30,9 +30,9 @@ Notation "x >>= y" := (Bind x%comp y%comp) : comp_scope.
 Notation "x <- y ; z" := (Bind y%comp (fun x => z%comp))
                            (at level 81, right associativity,
                             format "'[v' x  <-  y ; '/' z ']'") : comp_scope.
-Notation "x ;; z" := (Bind x%comp (fun _ => z%comp))
+Notation "x >> z" := (Bind x%comp (fun _ => z%comp))
                        (at level 81, right associativity,
-                        format "'[v' x ;; '/' z ']'") : comp_scope.
+                        format "'[v' x >> '/' z ']'") : comp_scope.
 Notation "{ x  |  P }" := (@Pick _ (fun x => P)) : comp_scope.
 Notation "{ x : A  |  P }" := (@Pick A%type (fun x => P)) : comp_scope.
 

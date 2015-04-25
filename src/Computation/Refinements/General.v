@@ -524,7 +524,7 @@ Section general_refine_lemmas.
   Lemma refine_skip {A B C} (c : Comp A) (f : A -> Comp B) (dummy : A -> Comp C)
   : refine (Bind c f)
            (a <- c;
-            dummy a;;
+            dummy a>>
                   f a).
   Proof.
     repeat first [ intro
@@ -536,7 +536,7 @@ Section general_refine_lemmas.
 
   Lemma refine_skip2 {A B} (a : Comp A) (dummy : Comp B)
   : refine a
-           (dummy;;
+           (dummy>>
                  a).
   Proof.
     repeat first [ intro
