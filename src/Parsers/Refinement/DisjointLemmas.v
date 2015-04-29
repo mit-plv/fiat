@@ -118,7 +118,39 @@ Section reachable.
                                                -> min_reachable_from_productions (remove_nonterminal valid nt) (Lookup G nt)
                                                -> min_reachable_from_item valid (NonTerminal nt).
 
+  Lemma min_reachable_from_productions
+ : productions Char -> Prop :=
+  | ReachableHead : forall pat pats, reachable_from_production pat
+                                     -> reachable_from_productions (pat::pats)
+  | ReachableTail : forall pat pats, reachable_from_productions pats
+                                     -> reachable_from_productions (pat::pats)
+  with reachable_from_production : production Char -> Type :=
+  | ReachableProductionHead : forall it its, reachable_from_item it
+                                             -> reachable_from_production (it::its)
+  | ReachableProductionTail : forall it its, reachable_from_production its
+                                             -> reachable_from_production (it::its)
+  with reachable_from_item : item Char -> Prop :=
+  | ReachableTerminal : reachable_from_item (Terminal ch)
+  | ReachableNonTerminal : forall nt, is_valid_nonterminal initial_nonterminals_data nt
+                                      -> reachable_from_productions (Lookup G nt)
+                                      -> reachable_from_item (NonTerminal nt).
 
+  (** Relation defining if a character is reachable *)
+  Inductive min_reachable_from_productions : nonterminals_listT -> productions Char -> Prop :=
+  | MinReachableHead : forall valid pat pats, min_reachable_from_production valid pat
+                                              -> min_reachable_from_productions valid (pat::pats)
+  | MinReachableTail : forall valid pat pats, min_reachable_from_productions valid pats
+                                              -> min_reachable_from_productions valid (pat::pats)
+  with min_reachable_from_production : nonterminals_listT -> production Char -> Type :=
+  | MinReachableProductionHead : forall valid it its, min_reachable_from_item valid it
+                                                      -> min_reachable_from_production valid (it::its)
+  | MinReachableProductionTail : forall valid it its, min_reachable_from_production valid its
+                                                      -> min_reachable_from_production valid (it::its)
+  with min_reachable_from_item : nonterminals_listT -> item Char -> Prop :=
+  | MinReachableTerminal : forall valid, min_reachable_from_item valid (Terminal ch)
+  | MinReachableNonTerminal : forall valid nt, is_valid_nonterminal valid nt
+                                               -> min_reachable_from_productions (remove_nonterminal valid nt) (Lookup G nt)
+                                               -> min_reachable_from_item valid (NonTerminal nt).
 
 End reachable.
 Section all_possible_correctness.

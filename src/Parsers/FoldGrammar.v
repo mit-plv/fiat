@@ -108,10 +108,12 @@ Section fold_correctness.
   Context {FGD : fold_grammar_data Char T}
           (G : grammar Char).
 
-  Class fold_grammar_correctness_data :=
+  Class fold_grammar_correctness_computational_data :=
     { Pnt : @nonterminals_listT (@rdp_list_predata _ G) -> String.string -> T -> Type;
       Ppat : @nonterminals_listT (@rdp_list_predata _ G) -> production Char -> T -> Type;
-      Ppats : @nonterminals_listT (@rdp_list_predata _ G) -> productions Char -> T -> Type;
+      Ppats : @nonterminals_listT (@rdp_list_predata _ G) -> productions Char -> T -> Type }.
+  Class fold_grammar_correctness_data :=
+    { fgccd :> fold_grammar_correctness_computational_data;
       Pnt_lift : forall valid0 nt value,
                    is_valid_nonterminal valid0 nt
                    -> Ppats (remove_nonterminal valid0 nt) (G nt) value

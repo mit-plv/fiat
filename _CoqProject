@@ -180,6 +180,7 @@ src/Parsers/Grammars/ExpressionNumPlus.v
 src/Parsers/Grammars/ExpressionNumPlusParen.v
 src/Parsers/Grammars/ExpressionParen.v
 src/Parsers/Grammars/Trivial.v
+src/Parsers/Reachable/AllReachable.v
 src/Parsers/Refinement/DisjointLemmas.v
 src/Parsers/Refinement/FixedLengthLemmas.v
 src/Parsers/Refinement/IndexedAndAtMostOneNonTerminal.v
