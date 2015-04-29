@@ -148,6 +148,7 @@ src/FiniteSetADTs/FiniteSetRefinement.v
 src/FiniteSetADTs/NatWord.v
 src/FiniteSetADTs/WordInterface.v
 src/Parsers/BaseTypes.v
+src/Parsers/BaseTypesLemmas.v
 src/Parsers/BooleanRecognizer.v
 src/Parsers/BooleanRecognizerCorrect.v
 src/Parsers/BooleanRecognizerEquality.v
@@ -180,7 +181,10 @@ src/Parsers/Grammars/ExpressionNumPlus.v
 src/Parsers/Grammars/ExpressionNumPlusParen.v
 src/Parsers/Grammars/ExpressionParen.v
 src/Parsers/Grammars/Trivial.v
+src/Parsers/Reachable/AllMinimalReachable.v
+src/Parsers/Reachable/AllMinimalReachableOfReachable.v
 src/Parsers/Reachable/AllReachable.v
+src/Parsers/Reachable/AllReachableWellFounded.v
 src/Parsers/Refinement/DisjointLemmas.v
 src/Parsers/Refinement/FixedLengthLemmas.v
 src/Parsers/Refinement/IndexedAndAtMostOneNonTerminal.v

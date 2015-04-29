@@ -37,6 +37,9 @@ Section recursive_descent_parser.
           is_valid_nonterminal (remove_nonterminal ls ps) ps' = false
           <-> is_valid_nonterminal ls ps' = false \/ ps = ps' }.
 
+  Definition sub_nonterminals_listT `{parser_computational_predataT} (x y : nonterminals_listT) : Prop
+    := forall p, is_valid_nonterminal x p -> is_valid_nonterminal y p.
+
   Class boolean_parser_dataT :=
     { predata :> parser_computational_predataT;
       split_string_for_production

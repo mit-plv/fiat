@@ -3,6 +3,7 @@ Require Import Coq.Lists.List Coq.Program.Program Coq.Program.Wf Coq.Arith.Wf_na
 Require Import Coq.omega.Omega.
 Require Import Fiat.Parsers.ContextFreeGrammar Fiat.Parsers.BooleanRecognizer Fiat.Parsers.MinimalParse.
 Require Import Fiat.Parsers.BaseTypes Fiat.Parsers.CorrectnessBaseTypes.
+Require Import Fiat.Parsers.BaseTypesLemmas.
 Require Import Fiat.Parsers.Splitters.RDPList Fiat.Parsers.Splitters.BruteForce.
 Require Import Fiat.Parsers.MinimalParseOfParse.
 Require Import Fiat.Parsers.ContextFreeGrammarProperties Fiat.Parsers.WellFoundedParse.
@@ -572,13 +573,14 @@ Section sound.
             end.
             destruct_head_hnf and.
             intro; eapply parse_nonterminal_step_complete with (Pv := Pv); subst Pv;
-            [ match goal with
-                | [ |- forall k, _ -> is_true (negb (beq_nat ?x 0)) ]
-                  => destruct x; simpl; unfold is_true; trivial; [];
-                     let H := fresh in
-                     intros ? H;
-                       pose proof (nonempty_nonterminals H); omega
-              end
+            [ let x := match goal with
+                         | [ |- forall k, _ -> is_true (negb (beq_nat ?x 0)) ]
+                             => constr:x
+                       end in
+              destruct x; simpl; unfold is_true; trivial; [];
+              let H := fresh in
+              intros ? H;
+                pose proof (nonempty_nonterminals H); omega
             | exact IHr
             | .. ];
             instantiate;
