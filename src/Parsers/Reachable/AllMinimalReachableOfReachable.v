@@ -190,63 +190,48 @@ Section cfg.
       Let of_item_T h
         := forall valid it p, @of_item_T' h valid it p.
 
-      Let of_parse_production_T' h
+      Let of_production_T' h
           (valid : nonterminals_listT) {pat : production Char}
-          (p : reachable_from_production G str pat)
-        := forall (p_small : size_of_parse_production p < h),
-             sub_nonterminals_listT valid initial_nonterminals_data
-             -> Forall_reachable_from_production P p
-             -> ({ p' : minimal_reachable_from_production (G := G) len0 valid pat
-                        & (size_of_parse_production (projT1 (reachable_from_production__of__minimal_reachable_from_production p')) <= size_of_parse_production p)
-                          * Forall_reachable_from_production P (projT1 (reachable_from_production__of__minimal_reachable_from_production p')) })%type
-                + alt_option (size_of_parse_production p) valid.
+          (p : reachable_from_production G ch pat)
+        := forall (p_small : size_of_reachable_from_production p < h)
+                  (pf : sub_nonterminals_listT valid initial_nonterminals_data),
+             ({ p' : minimal_reachable_from_production (G := G) ch valid pat
+                     & (size_of_reachable_from_production (reachable_from_production__of__minimal_reachable_from_production pf p') <= size_of_reachable_from_production p) })%type
+                + alt_option (size_of_reachable_from_production p) valid.
 
-      Let of_parse_production_T len0 h
-        := forall str pf valid pat p, @of_parse_production_T' h len0 str pf valid pat p.
+      Let of_production_T h
+        := forall valid pat p, @of_production_T' h valid pat p.
 
-      Let of_parse_T' h
-          {len0} {str : String} (pf : length str <= len0)
+      Let of_productions_T' h
           (valid : nonterminals_listT) {pats : productions Char}
-          (p : parse_of G str pats)
-        := forall (p_small : size_of_parse p < h),
-             sub_nonterminals_listT valid initial_nonterminals_data
-             -> Forall_parse_of P p
-             -> ({ p' : minimal_parse_of (G := G) len0 valid pats
-                        & (size_of_parse (projT1 (parse_of__of__minimal_parse_of p')) <= size_of_parse p)
-                          * Forall_parse_of P (projT1 (parse_of__of__minimal_parse_of p')) })%type
-                + alt_option (size_of_parse p) valid.
+          (p : reachable_from_productions G ch pats)
+        := forall (p_small : size_of_reachable_from_productions p < h)
+                  (pf : sub_nonterminals_listT valid initial_nonterminals_data),
+             ({ p' : minimal_reachable_from_productions (G := G) ch valid pats
+                     & (size_of_reachable_from_productions (reachable_from_productions__of__minimal_reachable_from_productions pf p') <= size_of_reachable_from_productions p) })%type
+             + alt_option (size_of_reachable_from_productions p) valid.
 
-      Let of_parse_T len0 h
-        := forall str pf valid pats p, @of_parse_T' h len0 str pf valid pats p.
-
-      Let of_parse_nonterminal_T {len0 str valid nonterminal} (p : parse_of G str (Lookup G nonterminal)) h
-        := size_of_reachable_from_item (ParseNonTerminal nonterminal p) < h
-           -> length str <= len0
-           -> sub_nonterminals_listT valid initial_nonterminals_data
-           -> Forall_reachable_from_item P (ParseNonTerminal nonterminal p)
-           -> ({ p' : minimal_parse_of_nonterminal (G := G) len0 valid nonterminal
-                      & (size_of_reachable_from_item (projT1 (reachable_from_item__of__minimal_reachable_from_item (MinParseNonTerminal p'))) <= size_of_reachable_from_item (ParseNonTerminal nonterminal p))
-                        * Forall_reachable_from_item P (projT1 (reachable_from_item__of__minimal_reachable_from_item (MinParseNonTerminal p'))) })%type
-              + alt_option (size_of_reachable_from_item (ParseNonTerminal nonterminal p)) valid.
+      Let of_productions_T h
+        := forall valid pats p, @of_productions_T' h valid pats p.
 
       Section item.
-        Context {len0 : nat} {str : String} {valid : nonterminals_listT}.
+        Context {valid : nonterminals_listT}.
 
         Definition minimal_reachable_from_item__of__reachable_from_item
                    h
-                   (minimal_parse_of_nonterminal__of__parse_of_nonterminal
-                    : forall h' (pf : h' < S (S h)) {len0 str valid nonterminal}
-                             (p : parse_of G str (Lookup G nonterminal)),
-                        @of_parse_nonterminal_T len0 str valid nonterminal p h')
-        : of_item_T len0 h.
+                   (minimal_reachable_from_productions__of__reachable_from_productions
+                    : forall h' (pf : h' < S (S h)) {valid nonterminal}
+                             (p : reachable_from_productions G ch (Lookup G nonterminal)),
+                        @of_productions_T' h' valid (Lookup G nonterminal) p)
+        : of_item_T h.
         Proof.
-          intros str' pf valid' pats p H_h Hinit' H_forall.
+          intros valid' pats p H_h Hinit'.
           destruct h as [|h']; [ exfalso; omega | ].
-          destruct p as [ ch pf0 |nonterminal' p'].
+          destruct p as [ |nonterminal' p'].
           { left.
             eexists (MinimalParse.MinParseTerminal _ _ _ _ pf0);
               split; simpl; constructor. }
-          { edestruct (fun pf => @minimal_parse_of_nonterminal__of__parse_of_nonterminal (S h') pf len0 _ valid' _ p') as [ [p'' H''] | p'' ];
+          { edestruct (fun pf => @minimal_reachable_from_productions__of__reachable_from_productions (S h') pf len0 _ valid' _ p') as [ [p'' H''] | p'' ];
             try solve [ repeat (apply Lt.lt_n_Sn || apply Lt.lt_S)
                       | exact Hinit'
                       | exact H_h
@@ -275,9 +260,9 @@ Section cfg.
               => solve [ destruct H ]
             | _ => progress simpl
             | _ => progress subst
-            | _ => progress rewrite ?parse_of_contract_minimal_reachable_from_item_lt, ?parse_of_contract_minimal_reachable_from_production_lt, ?parse_of_contract_minimal_parse_of_lt
-            | [ |- context G[size_of_parse_production (ParseProductionCons ?s ?n ?a ?b)] ]
-              => let G' := context G[S (size_of_reachable_from_item a + size_of_parse_production b)] in
+            | _ => progress rewrite ?reachable_from_productions_contract_minimal_reachable_from_item_lt, ?reachable_from_productions_contract_minimal_reachable_from_production_lt, ?reachable_from_productions_contract_minimal_reachable_from_productions_lt
+            | [ |- context G[size_of_reachable_from_production (ParseProductionCons ?s ?n ?a ?b)] ]
+              => let G' := context G[S (size_of_reachable_from_item a + size_of_reachable_from_production b)] in
                  change G'
             | [ H : alt_option _ initial_nonterminals_data _ |- _ ]
               => apply not_alt_all in H
@@ -405,12 +390,12 @@ Section cfg.
 
         Fixpoint minimal_reachable_from_production__of__reachable_from_production
                  h
-                 (minimal_parse_of_nonterminal__of__parse_of_nonterminal
+                 (minimal_reachable_from_productions__of__reachable_from_productions
                   : forall h' (pf : h' < S (S h)) {len0 str valid nonterminal}
-                           (p : parse_of G str (Lookup G nonterminal)),
-                      @of_parse_nonterminal_T len0 str valid nonterminal p h')
+                           (p : reachable_from_productions G str (Lookup G nonterminal)),
+                      @of_productions_T valid (Lookup G nonterminal) p h')
                  {struct h}
-        : of_parse_production_T len0 h.
+        : of_production_T len0 h.
         Proof.
           intros str' pf valid' pats p H_h Hinit' H_forall.
           destruct h as [|h']; [ exfalso; omega | ].
@@ -420,10 +405,10 @@ Section cfg.
             eexists (@MinimalParse.MinParseProductionNil _ _ _ _ _ _ _ pf0');
               repeat (reflexivity || esplit). }
           { specialize (fun h' pf
-                        => @minimal_parse_of_nonterminal__of__parse_of_nonterminal
+                        => @minimal_reachable_from_productions__of__reachable_from_productions
                              h' (transitivity pf (Lt.lt_n_Sn _))).
             change (S ((size_of_reachable_from_item p0')
-                       + (size_of_parse_production p1'))
+                       + (size_of_reachable_from_production p1'))
                     < S h') in H_h.
             apply Lt.lt_S_n in H_h.
             pose proof (Lt.le_lt_trans _ _ _ (Plus.le_plus_l _ _) H_h) as H_h0.
@@ -433,8 +418,8 @@ Section cfg.
               by (rewrite take_length; apply Min.min_case_strong; omega).
             assert (pf1' : length (drop n str') <= length str')
               by (rewrite drop_length; omega).
-            pose proof (fun valid Hinit => @minimal_reachable_from_item__of__reachable_from_item _ h'  minimal_parse_of_nonterminal__of__parse_of_nonterminal _ (transitivity pf0' pf) valid _ p0' H_h0 Hinit (fst H_forall)) as p_it.
-            pose proof (fun valid Hinit => @minimal_reachable_from_production__of__reachable_from_production h' minimal_parse_of_nonterminal__of__parse_of_nonterminal _ (transitivity pf1' pf) valid _ p1' H_h1 Hinit (snd H_forall)) as p_prod.
+            pose proof (fun valid Hinit => @minimal_reachable_from_item__of__reachable_from_item _ h'  minimal_reachable_from_productions__of__reachable_from_productions _ (transitivity pf0' pf) valid _ p0' H_h0 Hinit (fst H_forall)) as p_it.
+            pose proof (fun valid Hinit => @minimal_reachable_from_production__of__reachable_from_production h' minimal_reachable_from_productions__of__reachable_from_productions _ (transitivity pf1' pf) valid _ p1' H_h1 Hinit (snd H_forall)) as p_prod.
             clear pf0' pf1'.
             destruct (le_lt_dec (length str') n) as [ Hle | Hle ], (zerop (min n (length str'))) as [Hstr' | Hstr' ].
             { (* empty, empty *)
@@ -466,18 +451,18 @@ Section cfg.
 
         Fixpoint minimal_reachable_from_productions__of__reachable_from_productions
                  h
-                 (minimal_parse_of_nonterminal__of__parse_of_nonterminal
+                 (minimal_reachable_from_productions__of__reachable_from_productions
                   : forall h' (pf : h' < S h) {len0 str valid nonterminal}
-                           (p : parse_of G str (Lookup G nonterminal)),
-                      @of_parse_nonterminal_T len0 str valid nonterminal p h')
+                           (p : reachable_from_productions G str (Lookup G nonterminal)),
+                      @of_productions_T valid (Lookup G nonterminal) p h')
                  {struct h}
-        : of_parse_T len0 h.
+        : of_productions_T len0 h.
         Proof.
           intros str' pf valid' pats p H_h Hinit' H_forall.
           destruct h as [|h']; [ exfalso; omega | ].
           destruct p as [pat pats p' | pat pats p'].
           { clear minimal_reachable_from_productions__of__reachable_from_productions.
-            edestruct (@minimal_reachable_from_production__of__reachable_from_production _ h' minimal_parse_of_nonterminal__of__parse_of_nonterminal _ pf valid' _ p') as [ [p'' p''H] | [nonterminal' H'] ];
+            edestruct (@minimal_reachable_from_production__of__reachable_from_production _ h' minimal_reachable_from_productions__of__reachable_from_productions _ pf valid' _ p') as [ [p'' p''H] | [nonterminal' H'] ];
             try solve [ exact (Lt.lt_S_n _ _ H_h)
                       | exact H_forall
                       | exact Hinit' ];
@@ -498,9 +483,9 @@ Section cfg.
                 try solve [ exact (snd (projT2 (snd H')))
                           | exact (Lt.lt_S _ _ (fst (projT2 (snd H')))) ]. } }
           { specialize (fun h' pf
-                        => @minimal_parse_of_nonterminal__of__parse_of_nonterminal
+                        => @minimal_reachable_from_productions__of__reachable_from_productions
                              h' (transitivity pf (Lt.lt_n_Sn _))).
-            edestruct (minimal_reachable_from_productions__of__reachable_from_productions h'  minimal_parse_of_nonterminal__of__parse_of_nonterminal _ pf valid' _ p') as [ [p'' p''H] | [nonterminal' H'] ];
+            edestruct (minimal_reachable_from_productions__of__reachable_from_productions h'  minimal_reachable_from_productions__of__reachable_from_productions _ pf valid' _ p') as [ [p'' p''H] | [nonterminal' H'] ];
             try solve [ exact (Lt.lt_S_n _ _ H_h)
                       | exact Hinit'
                       | exact H_forall ];
@@ -525,15 +510,15 @@ Section cfg.
 
       Section nonterminal.
         Section step.
-          Definition minimal_parse_of_nonterminal__of__parse_of_nonterminal_step
+          Definition minimal_reachable_from_productions__of__reachable_from_productions_step
                      h
-                     (minimal_parse_of_nonterminal__of__parse_of_nonterminal
+                     (minimal_reachable_from_productions__of__reachable_from_productions
                       : forall h' (pf : h' < h) {len0 str valid nonterminal}
-                               (p : parse_of G str (Lookup G nonterminal)),
-                          @of_parse_nonterminal_T len0 str valid nonterminal p h')
+                               (p : reachable_from_productions G str (Lookup G nonterminal)),
+                          @of_productions_T valid (Lookup G nonterminal) p h')
                      {len0 str valid nonterminal}
-                     (p : parse_of G str (Lookup G nonterminal))
-          : @of_parse_nonterminal_T len0 str valid nonterminal p h.
+                     (p : reachable_from_productions G str (Lookup G nonterminal))
+          : @of_productions_T valid (Lookup G nonterminal) p h.
           Proof.
             destruct h as [|h]; [ clear; repeat intro; exfalso; omega | ].
             intros pf Hstr Hinit' H_forall.
@@ -541,7 +526,7 @@ Section cfg.
 
             destruct (le_lt_eq_dec _ _ H) as [pf_lt|pf_eq].
             { (** [str] got smaller, so we reset the valid nonterminals list *)
-              destruct (@minimal_reachable_from_productions__of__reachable_from_productions (length str) h minimal_parse_of_nonterminal__of__parse_of_nonterminal str (reflexivity _) initial_nonterminals_data (Lookup G nonterminal) p (Lt.lt_S_n _ _ pf) (reflexivity _) (snd H_forall)) as [p'|p'].
+              destruct (@minimal_reachable_from_productions__of__reachable_from_productions (length str) h minimal_reachable_from_productions__of__reachable_from_productions str (reflexivity _) initial_nonterminals_data (Lookup G nonterminal) p (Lt.lt_S_n _ _ pf) (reflexivity _) (snd H_forall)) as [p'|p'].
               { left.
                 exists (MinParseNonTerminalStrLt valid _ pf_lt (fst H_forall) (projT1 p'));
                   simpl.
@@ -558,7 +543,7 @@ Section cfg.
                       | reflexivity ]. } }
             { (** [str] didn't get smaller, so we cache the fact that we've hit this nonterminal already *)
               destruct (Sumbool.sumbool_of_bool (is_valid_nonterminal valid nonterminal)) as [ Hvalid | Hinvalid ].
-              { destruct (@minimal_reachable_from_productions__of__reachable_from_productions len0 h minimal_parse_of_nonterminal__of__parse_of_nonterminal str Hstr (remove_nonterminal valid nonterminal) (Lookup G nonterminal) p (Lt.lt_S_n _ _ pf) (transitivity (R := sub_nonterminals_listT) (@sub_nonterminals_listT_remove _ _ _ _) Hinit') (snd H_forall)) as [p'|p'].
+              { destruct (@minimal_reachable_from_productions__of__reachable_from_productions len0 h minimal_reachable_from_productions__of__reachable_from_productions str Hstr (remove_nonterminal valid nonterminal) (Lookup G nonterminal) p (Lt.lt_S_n _ _ pf) (transitivity (R := sub_nonterminals_listT) (@sub_nonterminals_listT_remove _ _ _ _) Hinit') (snd H_forall)) as [p'|p'].
                 { left.
                   exists (@MinimalParse.MinParseNonTerminalStrEq _ _ _ _ _ _ _ _ pf_eq (fst H_forall) Hvalid (projT1 p')).
                   simpl in *.
@@ -570,7 +555,7 @@ Section cfg.
                 { destruct p' as [nonterminal' p'].
                   destruct (string_dec nonterminal nonterminal') as [|n].
                   { subst nonterminal; simpl in *.
-                    edestruct (@minimal_parse_of_nonterminal__of__parse_of_nonterminal (S (size_of_parse p)) pf len0 _ valid nonterminal' (projT1 (snd p'))) as [p''|p''];
+                    edestruct (@minimal_reachable_from_productions__of__reachable_from_productions (S (size_of_reachable_from_productions p)) pf len0 _ valid nonterminal' (projT1 (snd p'))) as [p''|p''];
                     try solve [ apply Lt.lt_n_S, (fst (projT2 (snd p')))
                               | subst; reflexivity
                               | assumption
@@ -617,17 +602,17 @@ Section cfg.
         End step.
 
         Section wf.
-          Definition minimal_parse_of_nonterminal__of__parse_of_nonterminal
+          Definition minimal_reachable_from_productions__of__reachable_from_productions
           : forall h
                    {len0 str valid nonterminal}
-                   (p : parse_of G str (Lookup G nonterminal)),
-              @of_parse_nonterminal_T len0 str valid nonterminal p h
+                   (p : reachable_from_productions G str (Lookup G nonterminal)),
+              @of_productions_T valid (Lookup G nonterminal) p h
             := @Fix
                  _ lt lt_wf
                  (fun h => forall {len0 str valid nonterminal}
-                                  (p : parse_of G str (Lookup G nonterminal)),
-                             @of_parse_nonterminal_T len0 str valid nonterminal p h)
-                 (@minimal_parse_of_nonterminal__of__parse_of_nonterminal_step).
+                                  (p : reachable_from_productions G str (Lookup G nonterminal)),
+                             @of_productions_T valid (Lookup G nonterminal) p h)
+                 (@minimal_reachable_from_productions__of__reachable_from_productions_step).
         End wf.
       End nonterminal.
     End wf_parts.
