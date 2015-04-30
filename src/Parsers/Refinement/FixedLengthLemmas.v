@@ -1,6 +1,7 @@
 (** Sharpened ADT for an expression grammar with parentheses *)
 Require Import Coq.Init.Wf Coq.Arith.Wf_nat.
 Require Import Coq.Lists.List Coq.Strings.String.
+Require Import Coq.omega.Omega.
 Require Import Coq.Numbers.Natural.Peano.NPeano.
 Require Import Fiat.Parsers.ContextFreeGrammar.
 Require Import Fiat.Parsers.StringLike.String.

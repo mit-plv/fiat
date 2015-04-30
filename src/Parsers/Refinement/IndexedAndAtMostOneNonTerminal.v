@@ -1,5 +1,6 @@
 (** First step of a splitter refinement; indexed representation, and handle all rules with at most one nonterminal *)
 Require Import Coq.Strings.String Coq.Arith.Lt.
+Require Import Coq.omega.Omega.
 Require Import Coq.Numbers.Natural.Peano.NPeano.
 Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.ParserInterface.
