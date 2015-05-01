@@ -8,14 +8,6 @@ Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.BaseTypesLemmas.
 Require Import Fiat.Parsers.Reachable.AllReachableWellFounded.
 Require Import Fiat.Common.
-(*Require Import Coq.Strings.String Coq.Lists.List Coq.Program.Program Coq.Classes.RelationClasses Coq.Classes.Morphisms Coq.Setoids.Setoid Coq.Arith.Compare_dec.
-Require Import Coq.omega.Omega.
-Require Import Coq.Program.Wf Coq.Arith.Wf_nat.
-Require Import Fiat.Parsers.ContextFreeGrammar Fiat.Parsers.ContextFreeGrammarProperties Fiat.Parsers.WellFoundedParse.
-Require Import Fiat.Parsers.CorrectnessBaseTypes Fiat.Parsers.BaseTypes.
-Require Export Fiat.Parsers.MinimalParse.
-Require Export Fiat.Parsers.WellFoundedParseProperties.
-Require Import Fiat.Common Fiat.Common.Le Fiat.Common.Wf.*)
 
 Set Implicit Arguments.
 Local Open Scope string_like_scope.
@@ -214,407 +206,137 @@ Section cfg.
       Let of_productions_T h
         := forall valid pats p, @of_productions_T' h valid pats p.
 
-      Section item.
-        Context {valid : nonterminals_listT}.
-
-        Definition minimal_reachable_from_item__of__reachable_from_item
-                   h
-                   (minimal_reachable_from_productions__of__reachable_from_productions
-                    : forall h' (pf : h' < S (S h)) {valid nonterminal}
-                             (p : reachable_from_productions G ch (Lookup G nonterminal)),
-                        @of_productions_T' h' valid (Lookup G nonterminal) p)
-        : of_item_T h.
+      Section production.
+        Fixpoint minimal_reachable_from_production__of__reachable_from_production'
+                 h
+                 (minimal_reachable_from_item__of__reachable_from_item
+                  : forall h' (pf : h' <= h), @of_item_T h')
+                 {struct h}
+        : of_production_T h.
         Proof.
           intros valid' pats p H_h Hinit'.
           destruct h as [|h']; [ exfalso; omega | ].
-          destruct p as [ |nonterminal' p'].
-          { left.
-            eexists (MinimalParse.MinParseTerminal _ _ _ _ pf0);
-              split; simpl; constructor. }
-          { edestruct (fun pf => @minimal_reachable_from_productions__of__reachable_from_productions (S h') pf len0 _ valid' _ p') as [ [p'' H''] | p'' ];
-            try solve [ repeat (apply Lt.lt_n_Sn || apply Lt.lt_S)
-                      | exact Hinit'
-                      | exact H_h
-                      | exact H_forall
-                      | exact pf ];
-            [|];
-            [ left | right ].
-            { exists (MinParseNonTerminal p'').
+          specialize (minimal_reachable_from_production__of__reachable_from_production' h' (fun h'' pf => minimal_reachable_from_item__of__reachable_from_item _ (le_S _ _ pf))).
+          specialize (minimal_reachable_from_item__of__reachable_from_item h' (Le.le_n_Sn _)).
+          destruct p as [ ? ? p' | ? ? p' ].
+          { destruct (fun k => minimal_reachable_from_item__of__reachable_from_item valid' _ p' k Hinit')
+              as [ [p'' H''] | p'' ];
+            [ solve [ auto with arith ]
+            | left | right ].
+            { eexists (MinReachableProductionHead _ p'').
               simpl in *.
-              exact H''. }
-            { exact p''. } }
-        Defined.
-      End item.
-
-      Section production.
-        Context {len0 : nat} {str : String} {valid : nonterminals_listT}.
-
-        Local Ltac min_parse_prod_t' :=
-          idtac;
-          match goal with
-            | _ => assumption
-            | [ |- ?R ?x ?x ]
-              => reflexivity
-            | _ => progress destruct_head prod
-            | [ H : False |- _ ]
-              => solve [ destruct H ]
-            | _ => progress simpl
-            | _ => progress subst
-            | _ => progress rewrite ?reachable_from_productions_contract_minimal_reachable_from_item_lt, ?reachable_from_productions_contract_minimal_reachable_from_production_lt, ?reachable_from_productions_contract_minimal_reachable_from_productions_lt
-            | [ |- context G[size_of_reachable_from_production (ParseProductionCons ?s ?n ?a ?b)] ]
-              => let G' := context G[S (size_of_reachable_from_item a + size_of_reachable_from_production b)] in
-                 change G'
-            | [ H : alt_option _ initial_nonterminals_data _ |- _ ]
-              => apply not_alt_all in H
-            | [ p0 : minimal_reachable_from_item ?ns' ?v (take ?n ?s) ?pat,
-                     p1 : minimal_reachable_from_production ?ns' ?v (drop ?n ?s) ?pats,
-                          H : length ?s <= ?ns'
-                |- ({ p' : minimal_reachable_from_production ?ns' ?v ?s (?pat :: ?pats) & _ } + _)%type ]
-              => left; exists (MinParseProductionCons _ n H p0 p1)
-            | [ p0 : minimal_reachable_from_item ?ns' _ (take ?n ?s) ?pat,
-                     p1 : minimal_reachable_from_production ?ns' ?v (drop ?n ?s) ?pats,
-                          H : length ?s <= ?ns'
-                |- ({ p' : minimal_reachable_from_production ?ns' ?v ?s (?pat :: ?pats) & _ } + _)%type ]
-              => let H' := fresh in
-                 assert (H' : length (take n s) < ns')
-                   by (rewrite <- H, ?take_short_length by omega; omega);
-                   left; exists (MinParseProductionCons
-                                   _
-                                   n
-                                   H
-                                   (contract_minimal_reachable_from_item_lt (valid' := v) H' p0)
-                                   p1)
-            | [ p0 : minimal_reachable_from_item ?ns' ?v (take ?n ?s) ?pat,
-                     p1 : minimal_reachable_from_production ?ns' _ (drop ?n ?s) ?pats,
-                          H : length ?s <= ?ns'
-                |- ({ p' : minimal_reachable_from_production ?ns' ?v ?s (?pat :: ?pats) & _ } + _)%type ]
-              => let H' := fresh in
-                 assert (H' : length (drop n s) < ns')
-                   by (rewrite <- H, drop_length; omega);
-                   left; exists (MinParseProductionCons
-                                   _
-                                   n
-                                   H
-                                   p0
-                                   (contract_minimal_reachable_from_production_lt (valid' := v) H' p1))
-            | [ p0 : minimal_reachable_from_item ?ns' _ (take ?n ?s) ?pat,
-                     p1 : minimal_reachable_from_production ?ns' _ (drop ?n ?s) ?pats,
-                          H : length ?s <= ?ns',
-                              H' : ?n < length ?s,
-                                   H'' : 0 < ?n
-                |- ({ p' : minimal_reachable_from_production ?ns' ?v ?s (?pat :: ?pats) & _ } + _)%type ]
-              => let H0' := fresh in
-                 let H1' := fresh in
-                 assert (H1' : length (drop n s) < ns')
-                   by (rewrite <- H, drop_length; omega);
-                   assert (H0' : length (take n s) < ns')
-                   by (rewrite <- H, ?take_short_length by omega; omega);
-                   left; eexists (MinParseProductionCons
-                                    _
-                                    n
-                                    H
-                                    (contract_minimal_reachable_from_item_lt (valid' := v) H0' p0)
-                                    (contract_minimal_reachable_from_production_lt (valid' := v) H1' p1))
-            | [ |- (_ * _)%type ]
-              => split
-            | [ H : _ <= _ |- _ <= _ ] => apply H
-            | _ => apply Le.le_n_S
-            | _ => apply Plus.plus_le_compat
-            | [ H0 : Forall_reachable_from_item _ _,
-                     H1 : Forall_reachable_from_production _ _
-                |- Forall_reachable_from_production _ _ ]
-              => exact (H0, H1)
-            | [ H : alt_option _ ?v (drop 0 ?x)
-                |- (_ + alt_option _ ?v ?x)%type ]
-              => right; eapply expand_alt_option'; [ .. | exact H ]
-            | [ H : alt_option _ ?v (drop ?n ?x), H' : length ?x <= ?n
-                |- (_ + alt_option _ ?v ?x)%type ]
-              => right; eapply expand_alt_option'; [ .. | exact H ]
-            | [ H : alt_option _ ?v (take ?n ?x), H' : length ?x = ?n
-                |- (_ + alt_option _ ?v ?x)%type ]
-              => right; eapply expand_alt_option'; [ .. | exact H ]
-            | [ H : alt_option _ ?v (take ?n ?x), H' : length ?x <= ?n
-                |- (_ + alt_option _ ?v ?x)%type ]
-              => right; eapply expand_alt_option'; [ .. | exact H ]
-            (*| [ H : alt_option _ ?v ?x
-                |- (_ + alt_option _ ?v (Empty _ ++ ?x))%type ]
-              => right; eapply expand_alt_option'; [ .. | exact H ]*)
-            (*| [ |- _ = _ ]
-              => progress rewrite ?LeftId, ?RightId*)
-            | [ H : length ?s = 0 |- beq _ ?s ] => apply bool_eq_empty
-            | [ H : length ?s = 0 |- beq ?s _ ] => apply bool_eq_empty
-            | _ => rewrite take_short_length by assumption
-            | _ => rewrite take_long by assumption
-            | [ H : context[min _ _] |- _ ] => rewrite min_l in H by assumption
-            | [ H : context[min _ _] |- _ ] => rewrite min_r in H by assumption
-            | [ H : context[min _ _] |- _ ] => rewrite min_l in H by omega
-            | [ H : context[min _ _] |- _ ] => rewrite min_r in H by omega
-            | _ => rewrite drop_length
-            | _
-              => solve [ eauto using le_S, Le.le_trans, Plus.le_plus_l, Plus.le_plus_r, drop_0, take_long, NPeano.Nat.eq_le_incl, bool_eq_empty, drop_length, (fun x y => proj2 (NPeano.Nat.sub_0_le x y)) with nocore ]
-          end.
-        (*Local Ltac min_parse_prod_pose_t' :=
-          idtac;
-          match goal with
-            | [ H : ?a <> Empty _,
-                    H' : ?a ++ _ ≤s _ |- _ ]
-              => unique pose proof (strle_to_lt_nonempty_r H H')
-            | [ H : ?a <> Empty _,
-                    H' : _ ++ ?a ≤s _ |- _ ]
-              => unique pose proof (strle_to_lt_nonempty_l H H')
-          end.*)
-        (*Local Ltac min_parse_prod_pose_t := repeat min_parse_prod_pose_t'.*)
-        Local Ltac min_parse_prod_t := repeat min_parse_prod_t'.
-
-        (** This is the proof where we pay the proof for conceptual
-            mismatch.  We are, conceptually, simultaneously
-            "minimizing parse trees" and "producing parse traces".  It
-            is marginally nicer(!!) to contain the ugliness in this
-            single proof, rather than have it infect everything.  So
-            we must conceptually minimize the passed parse tree while
-            in fact building a trace of the parse algorithm.  To do
-            this, in the cons case, we need to figure out how we're
-            decreasing.  According with conceptual minimization, when
-            we have parsed [s0 ++ s1] as a cons of [p0] and [p1],
-            having a smaller parse tree for, say [s0], with any other
-            pattern, does us no good, unless [s1] is empty (and [s0 =
-            s0 ++ s1]), when we can simply pass that smaller parse up
-            the function call tree.  So we must eliminate the
-            "alternate" option, by expanding the valid list to the
-            initial data.  Luckily(?!), in the case where [s1] is
-            non-empty, [s0] is strictly smaller than [s0 ++ s1], and
-            thus we can rebuild the minimal parse tree to contract it.
-            This, finally, allows us to either build a minimal parse
-            tree for the thing we are asked about (or to contract the
-            "alternate option" parse tree, passing it back up?). *)
-
-        Fixpoint minimal_reachable_from_production__of__reachable_from_production
-                 h
-                 (minimal_reachable_from_productions__of__reachable_from_productions
-                  : forall h' (pf : h' < S (S h)) {len0 str valid nonterminal}
-                           (p : reachable_from_productions G str (Lookup G nonterminal)),
-                      @of_productions_T valid (Lookup G nonterminal) p h')
-                 {struct h}
-        : of_production_T len0 h.
-        Proof.
-          intros str' pf valid' pats p H_h Hinit' H_forall.
-          destruct h as [|h']; [ exfalso; omega | ].
-          destruct p as [ pf0' | n pat' pats' p0' p1' ].
-          { clear minimal_reachable_from_production__of__reachable_from_production.
-            left.
-            eexists (@MinimalParse.MinParseProductionNil _ _ _ _ _ _ _ pf0');
-              repeat (reflexivity || esplit). }
-          { specialize (fun h' pf
-                        => @minimal_reachable_from_productions__of__reachable_from_productions
-                             h' (transitivity pf (Lt.lt_n_Sn _))).
-            change (S ((size_of_reachable_from_item p0')
-                       + (size_of_reachable_from_production p1'))
-                    < S h') in H_h.
-            apply Lt.lt_S_n in H_h.
-            pose proof (Lt.le_lt_trans _ _ _ (Plus.le_plus_l _ _) H_h) as H_h0.
-            pose proof (Lt.le_lt_trans _ _ _ (Plus.le_plus_r _ _) H_h) as H_h1.
-            clear H_h.
-            assert (pf0' : length (take n str') <= length str')
-              by (rewrite take_length; apply Min.min_case_strong; omega).
-            assert (pf1' : length (drop n str') <= length str')
-              by (rewrite drop_length; omega).
-            pose proof (fun valid Hinit => @minimal_reachable_from_item__of__reachable_from_item _ h'  minimal_reachable_from_productions__of__reachable_from_productions _ (transitivity pf0' pf) valid _ p0' H_h0 Hinit (fst H_forall)) as p_it.
-            pose proof (fun valid Hinit => @minimal_reachable_from_production__of__reachable_from_production h' minimal_reachable_from_productions__of__reachable_from_productions _ (transitivity pf1' pf) valid _ p1' H_h1 Hinit (snd H_forall)) as p_prod.
-            clear pf0' pf1'.
-            destruct (le_lt_dec (length str') n) as [ Hle | Hle ], (zerop (min n (length str'))) as [Hstr' | Hstr' ].
-            { (* empty, empty *)
-              rewrite Min.min_r in Hstr' by assumption.
-              specialize (p_it valid' Hinit'); specialize (p_prod valid' Hinit').
-              destruct p_it as [ [ p0'' H0''] |], p_prod as [ [ p1'' H1'' ] |];
-                [ | | | ];
-                min_parse_prod_t. }
-            { (* nonempty, empty *)
-              specialize (p_it valid' Hinit'); specialize (p_prod initial_nonterminals_data (reflexivity _)).
-              destruct p_it as [ [ p0'' H0''] |], p_prod as [ [ p1'' H1'' ] |];
-                [ | | | ];
-                min_parse_prod_t. }
-            { (* empty, nonempty *)
-              specialize (p_it initial_nonterminals_data (reflexivity _)); specialize (p_prod valid' Hinit').
-              destruct p_it as [ [ p0'' H0''] |], p_prod as [ [ p1'' H1'' ] |];
-                [ | | | ];
-                min_parse_prod_t. }
-            { (* nonempty, nonempty *)
-              specialize (p_it initial_nonterminals_data (reflexivity _)); specialize (p_prod initial_nonterminals_data (reflexivity _)).
-              destruct p_it as [ [ p0'' H0''] |], p_prod as [ [ p1'' H1'' ] |];
-                [ | | | ];
-                min_parse_prod_t. } }
+              apply Le.le_n_S; exact H''. }
+            { eapply expand_alt_option; [ .. | eassumption ];
+              try solve [ apply Lt.lt_n_Sn
+                        | reflexivity ]. } }
+          { destruct (minimal_reachable_from_production__of__reachable_from_production' valid' _ p' (Lt.lt_S_n _ _ H_h) Hinit')
+              as [ [p'' H''] | p'' ];
+            [ left | right ].
+            { eexists (MinReachableProductionTail _ p'').
+              simpl in *.
+              apply Le.le_n_S; exact H''. }
+            { eapply expand_alt_option; [ .. | eassumption ];
+              try solve [ apply Lt.lt_n_Sn
+                        | reflexivity ]. } }
         Defined.
       End production.
 
       Section productions.
-        Context {len0 : nat} {str : String} {valid : nonterminals_listT}.
-
-        Fixpoint minimal_reachable_from_productions__of__reachable_from_productions
+        Fixpoint minimal_reachable_from_productions__of__reachable_from_productions'
                  h
-                 (minimal_reachable_from_productions__of__reachable_from_productions
-                  : forall h' (pf : h' < S h) {len0 str valid nonterminal}
-                           (p : reachable_from_productions G str (Lookup G nonterminal)),
-                      @of_productions_T valid (Lookup G nonterminal) p h')
+                 (minimal_reachable_from_item__of__reachable_from_item
+                  : forall h' (pf : h' <= h), @of_item_T h')
                  {struct h}
-        : of_productions_T len0 h.
+        : of_productions_T h.
         Proof.
-          intros str' pf valid' pats p H_h Hinit' H_forall.
+          intros valid' pats p H_h Hinit'.
           destruct h as [|h']; [ exfalso; omega | ].
-          destruct p as [pat pats p' | pat pats p'].
-          { clear minimal_reachable_from_productions__of__reachable_from_productions.
-            edestruct (@minimal_reachable_from_production__of__reachable_from_production _ h' minimal_reachable_from_productions__of__reachable_from_productions _ pf valid' _ p') as [ [p'' p''H] | [nonterminal' H'] ];
-            try solve [ exact (Lt.lt_S_n _ _ H_h)
-                      | exact H_forall
-                      | exact Hinit' ];
-            [|].
-            { left.
-              exists (MinParseHead pats p'').
-              simpl.
-              split;
-                solve [ exact (Le.le_n_S _ _ (fst p''H))
-                      | exact (snd p''H) ]. }
-            { right.
-              exists nonterminal'.
-              split;
-                try solve [ exact (fst H') ];
-                [].
-              exists (projT1 (snd H'));
-                split;
-                try solve [ exact (snd (projT2 (snd H')))
-                          | exact (Lt.lt_S _ _ (fst (projT2 (snd H')))) ]. } }
-          { specialize (fun h' pf
-                        => @minimal_reachable_from_productions__of__reachable_from_productions
-                             h' (transitivity pf (Lt.lt_n_Sn _))).
-            edestruct (minimal_reachable_from_productions__of__reachable_from_productions h'  minimal_reachable_from_productions__of__reachable_from_productions _ pf valid' _ p') as [ [p'' p''H] | [nonterminal' H'] ];
-            try solve [ exact (Lt.lt_S_n _ _ H_h)
-                      | exact Hinit'
-                      | exact H_forall ];
-            [|].
-            { left.
-              exists (MinParseTail pat p'').
-              simpl.
-              split;
-                solve [ exact (Le.le_n_S _ _ (fst p''H))
-                      | exact (snd p''H) ]. }
-            { right.
-              exists nonterminal'.
-              split;
-                try solve [ exact (fst H') ];
-                [].
-              exists (projT1 (snd H'));
-                split;
-                try solve [ exact (snd (projT2 (snd H')))
-                          | exact (Lt.lt_S _ _ (fst (projT2 (snd H')))) ]. } }
+          specialize (minimal_reachable_from_productions__of__reachable_from_productions' h' (fun h'' pf => minimal_reachable_from_item__of__reachable_from_item _ (le_S _ _ pf))).
+          pose proof (minimal_reachable_from_production__of__reachable_from_production' (fun h'' pf => minimal_reachable_from_item__of__reachable_from_item _ (le_S _ _ pf))) as minimal_reachable_from_production__of__reachable_from_production''.
+          specialize (minimal_reachable_from_item__of__reachable_from_item h' (Le.le_n_Sn _)).
+          destruct p as [ ? ? p' | ? ? p' ].
+          { destruct (fun k => minimal_reachable_from_production__of__reachable_from_production'' valid' _ p' k Hinit')
+              as [ [p'' H''] | p'' ];
+            [ solve [ auto with arith ]
+            | left | right ].
+            { eexists (MinReachableHead _ p'').
+              simpl in *.
+              apply Le.le_n_S; exact H''. }
+            { eapply expand_alt_option; [ .. | eassumption ];
+              try solve [ apply Lt.lt_n_Sn
+                        | reflexivity ]. } }
+          { destruct (minimal_reachable_from_productions__of__reachable_from_productions' valid' _ p' (Lt.lt_S_n _ _ H_h) Hinit')
+              as [ [p'' H''] | p'' ];
+            [ left | right ].
+            { eexists (MinReachableTail _ p'').
+              simpl in *.
+              apply Le.le_n_S; exact H''. }
+            { eapply expand_alt_option; [ .. | eassumption ];
+              try solve [ apply Lt.lt_n_Sn
+                        | reflexivity ]. } }
         Defined.
       End productions.
 
-      Section nonterminal.
-        Section step.
-          Definition minimal_reachable_from_productions__of__reachable_from_productions_step
-                     h
-                     (minimal_reachable_from_productions__of__reachable_from_productions
-                      : forall h' (pf : h' < h) {len0 str valid nonterminal}
-                               (p : reachable_from_productions G str (Lookup G nonterminal)),
-                          @of_productions_T valid (Lookup G nonterminal) p h')
-                     {len0 str valid nonterminal}
-                     (p : reachable_from_productions G str (Lookup G nonterminal))
-          : @of_productions_T valid (Lookup G nonterminal) p h.
-          Proof.
-            destruct h as [|h]; [ clear; repeat intro; exfalso; omega | ].
-            intros pf Hstr Hinit' H_forall.
-            let H := match goal with H : length str <= len0 |- _ => constr:H end in
-
-            destruct (le_lt_eq_dec _ _ H) as [pf_lt|pf_eq].
-            { (** [str] got smaller, so we reset the valid nonterminals list *)
-              destruct (@minimal_reachable_from_productions__of__reachable_from_productions (length str) h minimal_reachable_from_productions__of__reachable_from_productions str (reflexivity _) initial_nonterminals_data (Lookup G nonterminal) p (Lt.lt_S_n _ _ pf) (reflexivity _) (snd H_forall)) as [p'|p'].
-              { left.
-                exists (MinParseNonTerminalStrLt valid _ pf_lt (fst H_forall) (projT1 p'));
-                  simpl.
+      Section item.
+        Definition minimal_reachable_from_item__of__reachable_from_item_step
+                   h
+                   (minimal_reachable_from_item__of__reachable_from_item
+                    : forall h' (pf : h' < h), @of_item_T h')
+        : of_item_T h.
+        Proof.
+          intros valid' pats p H_h Hinit'.
+          destruct h as [|h']; [ exfalso; omega | ].
+          destruct p as [ |nonterminal' H' p'].
+          { left.
+            eexists (MinReachableTerminal _ _); simpl; constructor. }
+          { case_eq (is_valid_nonterminal valid' nonterminal'); intro H'''.
+            { edestruct (fun k => @minimal_reachable_from_productions__of__reachable_from_productions' _ (fun h'' pf => minimal_reachable_from_item__of__reachable_from_item _ (Le.le_n_S _ _ pf)) (remove_nonterminal valid' nonterminal') _ p' k)
+              as [ [ p'' H'' ] | [ nt'' H'' ] ];
+            [ solve [ auto with arith ]
+            | left | ].
+            { eexists (MinReachableNonTerminal _ _ H''' p'').
+              apply Le.le_n_S; eassumption. }
+            { destruct (string_dec nonterminal' nt''); subst.
+              { destruct H'' as [ H'' [ p'' H'''' ] ].
                 simpl in *.
-                split;
-                  [ exact (Le.le_n_S _ _ (fst (projT2 p')))
-                  | split;
-                    [ exact (fst H_forall)
-                    | exact (snd (projT2 p')) ] ]. }
-              { simpl.
-                right; eapply expand_alt_option; [..| exact p' ];
-                solve [ apply Lt.lt_n_Sn
-                      | assumption
-                      | reflexivity ]. } }
-            { (** [str] didn't get smaller, so we cache the fact that we've hit this nonterminal already *)
-              destruct (Sumbool.sumbool_of_bool (is_valid_nonterminal valid nonterminal)) as [ Hvalid | Hinvalid ].
-              { destruct (@minimal_reachable_from_productions__of__reachable_from_productions len0 h minimal_reachable_from_productions__of__reachable_from_productions str Hstr (remove_nonterminal valid nonterminal) (Lookup G nonterminal) p (Lt.lt_S_n _ _ pf) (transitivity (R := sub_nonterminals_listT) (@sub_nonterminals_listT_remove _ _ _ _) Hinit') (snd H_forall)) as [p'|p'].
-                { left.
-                  exists (@MinimalParse.MinParseNonTerminalStrEq _ _ _ _ _ _ _ _ pf_eq (fst H_forall) Hvalid (projT1 p')).
-                  simpl in *.
-                  split;
-                    [ exact (Le.le_n_S _ _ (fst (projT2 p')))
-                    | split;
-                      [ exact (fst H_forall)
-                      | exact (snd (projT2 p')) ] ]. }
-                { destruct p' as [nonterminal' p'].
-                  destruct (string_dec nonterminal nonterminal') as [|n].
-                  { subst nonterminal; simpl in *.
-                    edestruct (@minimal_reachable_from_productions__of__reachable_from_productions (S (size_of_reachable_from_productions p)) pf len0 _ valid nonterminal' (projT1 (snd p'))) as [p''|p''];
-                    try solve [ apply Lt.lt_n_S, (fst (projT2 (snd p')))
-                              | subst; reflexivity
-                              | assumption
-                              | split; [ exact (proj2 (fst p'))
-                                       | exact (snd (projT2 (snd p'))) ] ];
-                    [|].
-                    { left.
-                      exists (projT1 p'').
-                      split.
-                      { etransitivity;
-                        [ exact (fst (projT2 p''))
-                        | exact (Lt.lt_le_weak _ _ (Lt.lt_n_S _ _ (fst (projT2 (snd p'))))) ]. }
-                      { exact (snd (projT2 p'')). } }
-                    { right.
-                      exists (projT1 p'').
-                      split;
-                        [ exact (fst (projT2 p''))
-                        | ].
-                      exists (projT1 (snd (projT2 p''))).
-                      split;
-                        [ etransitivity;
-                          [ exact (fst (projT2 (snd (projT2 p''))))
-                          | exact (Lt.lt_n_S _ _ (fst (projT2 (snd p')))) ]
-                        | exact (snd (projT2 (snd (projT2 p'')))) ]. } }
-                  { right.
-                    exists nonterminal'.
-                    destruct p' as [p'H p'p].
-                    split.
-                    { rewrite remove_nonterminal_5 in p'H by assumption.
-                      exact p'H. }
-                    { exists (projT1 p'p).
-                      split; [ exact (Lt.lt_S _ _ (fst (projT2 p'p)))
-                             | exact (snd (projT2 p'p)) ]. } } } }
-              { (** oops, we already saw this nonterminal in the past.  ABORT! *)
-                right.
-                exists nonterminal.
-                destruct H_forall.
-                split; [ split; assumption
-                       | ].
-                exists p.
-                split; solve [ assumption
-                             | apply Lt.lt_n_Sn ]. } }
-          Defined.
-        End step.
+                destruct (fun k => minimal_reachable_from_item__of__reachable_from_item _ (@reflexivity _ le _ _) valid' _ (ReachableNonTerminal _ H' p'') k Hinit')
+                  as [ [ p''' H0' ] | p''' ];
+                  [ solve [ eauto with arith ]
+                  | left | right ].
+                { exists p'''; eauto with arith. }
+                { eapply expand_alt_option; [ .. | eassumption ];
+                  eauto with arith;
+                  reflexivity. } }
+              { right.
+                exists nt''.
+                destruct_head prod; destruct_head and; repeat split; trivial.
+                { erewrite <- remove_nonterminal_5 by eassumption; assumption. }
+                { destruct_head sigT.
+                  eexists.
+                  apply Lt.lt_S; eassumption. } } } }
+            { right.
+              exists nonterminal'; repeat split; trivial; [].
+              exists p'.
+              auto with arith. } }
+        Defined.
 
-        Section wf.
-          Definition minimal_reachable_from_productions__of__reachable_from_productions
-          : forall h
-                   {len0 str valid nonterminal}
-                   (p : reachable_from_productions G str (Lookup G nonterminal)),
-              @of_productions_T valid (Lookup G nonterminal) p h
-            := @Fix
-                 _ lt lt_wf
-                 (fun h => forall {len0 str valid nonterminal}
-                                  (p : reachable_from_productions G str (Lookup G nonterminal)),
-                             @of_productions_T valid (Lookup G nonterminal) p h)
-                 (@minimal_reachable_from_productions__of__reachable_from_productions_step).
-        End wf.
-      End nonterminal.
+        Definition minimal_reachable_from_item__of__reachable_from_item
+        : forall h, of_item_T h.
+        Proof.
+          apply (Fix Wf_nat.lt_wf).
+          exact minimal_reachable_from_item__of__reachable_from_item_step.
+        Defined.
+      End item.
+
+      Definition minimal_reachable_from_production__of__reachable_from_production
+                 h
+      : of_production_T h
+        := @minimal_reachable_from_production__of__reachable_from_production' h (fun _ _ => @minimal_reachable_from_item__of__reachable_from_item _).
+
+      Definition minimal_reachable_from_productions__of__reachable_from_productions
+                 h
+      : of_productions_T h
+        := @minimal_reachable_from_productions__of__reachable_from_productions' h (fun _ _ => @minimal_reachable_from_item__of__reachable_from_item _).
     End wf_parts.
   End minimize.
 End cfg.
