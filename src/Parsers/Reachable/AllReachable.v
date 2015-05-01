@@ -12,7 +12,7 @@ Local Open Scope type_scope.
 Section cfg.
   Context {Char} {HSL : StringLike Char} {predata : parser_computational_predataT} (G : grammar Char).
 
-  Context (ch : Char).
+  Context (ch : Char) (valid : nonterminals_listT).
 
   (** Relation defining if a character is reachable *)
   Inductive reachable_from_productions : productions Char -> Type :=
@@ -27,7 +27,7 @@ Section cfg.
                                              -> reachable_from_production (it::its)
   with reachable_from_item : item Char -> Type :=
   | ReachableTerminal : reachable_from_item (Terminal ch)
-  | ReachableNonTerminal : forall nt, is_valid_nonterminal initial_nonterminals_data nt
+  | ReachableNonTerminal : forall nt, is_valid_nonterminal valid nt
                                       -> reachable_from_productions (Lookup G nt)
                                       -> reachable_from_item (NonTerminal nt).
 End cfg.

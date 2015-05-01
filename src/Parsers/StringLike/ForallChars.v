@@ -179,6 +179,22 @@ Section forall_chars.
   Definition forall_chars__char_in (str : String) (ls : list Char)
     := forall_chars str (fun ch => List.In ch ls).
 
+  Definition forall_chars__impl__forall_chars__char_in {str ls} {P : _ -> Prop}
+             (H : forall ch, P ch -> List.In ch ls)
+  : impl (forall_chars str P) (forall_chars__char_in str ls).
+  Proof.
+    unfold forall_chars__char_in.
+    apply forall_chars_Proper; trivial; reflexivity.
+  Qed.
+
+  Definition forall_chars__char_in__impl__forall_chars {str ls} {P : _ -> Prop}
+             (H : forall ch, List.In ch ls -> P ch)
+  : impl (forall_chars__char_in str ls) (forall_chars str P).
+  Proof.
+    unfold forall_chars__char_in.
+    apply forall_chars_Proper; trivial; reflexivity.
+  Qed.
+
   Global Instance forall_chars__char_in__Proper
   : Proper (beq ==> eq ==> impl) forall_chars__char_in.
   Proof.

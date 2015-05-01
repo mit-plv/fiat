@@ -98,8 +98,7 @@ QUERYSTRUCTURES_UNMADE_VO := \
 
 PARSERS_UNMADE_VO := \
 	src/Parsers/Refinement/SharpenedExpressionPlus.vo \
-	src/Parsers/Refinement/DisjointLemmas.vo \
-	src/Parsers/Reachable/AllMinimalReachableOfReachable.vo
+	src/Parsers/Refinement/DisjointLemmas.vo
 
 EXAMPLES_UNMADE_VO := \
 	src/Examples/Smtp/Smtp.vo \

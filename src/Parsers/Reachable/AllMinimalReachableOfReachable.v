@@ -18,16 +18,16 @@ Section cfg.
           {rdata' : @parser_removal_dataT' predata}.
 
   Definition reachable_from_item__of__minimal_reachable_from_item'
-             {ch}
+             {ch valid0}
              (reachable_from_productions__of__minimal_reachable_from_productions
               : forall valid prods,
-                  sub_nonterminals_listT valid initial_nonterminals_data
+                  sub_nonterminals_listT valid valid0
                   -> minimal_reachable_from_productions (G := G) ch valid prods
-                  -> reachable_from_productions G ch prods)
+                  -> reachable_from_productions G ch valid0 prods)
              valid it
-             (Hsub : sub_nonterminals_listT valid initial_nonterminals_data)
+             (Hsub : sub_nonterminals_listT valid valid0)
              (H : minimal_reachable_from_item (G := G) ch valid it)
-  : reachable_from_item G ch it.
+  : reachable_from_item G ch valid0 it.
   Proof.
     destruct H; [ left | right ].
     { clear reachable_from_productions__of__minimal_reachable_from_productions; eauto. }
@@ -37,25 +37,25 @@ Section cfg.
   Defined.
 
   Fixpoint reachable_from_productions__of__minimal_reachable_from_productions
-             {ch}
+             {ch valid0}
              valid pats
-             (Hsub : sub_nonterminals_listT valid initial_nonterminals_data)
+             (Hsub : sub_nonterminals_listT valid valid0)
              (H : minimal_reachable_from_productions (G := G) ch valid pats)
-  : reachable_from_productions G ch pats
+  : reachable_from_productions G ch valid0 pats
   with reachable_from_production__of__minimal_reachable_from_production
-             {ch}
+             {ch valid0}
              valid pat
-             (Hsub : sub_nonterminals_listT valid initial_nonterminals_data)
+             (Hsub : sub_nonterminals_listT valid valid0)
              (H : minimal_reachable_from_production (G := G) ch valid pat)
-  : reachable_from_production G ch pat.
+  : reachable_from_production G ch valid0 pat.
   Proof.
     { destruct H; [ left | right ]; eauto. }
     { destruct H; [ left | right ]; eauto using reachable_from_item__of__minimal_reachable_from_item'. }
   Defined.
 
   Definition reachable_from_item__of__minimal_reachable_from_item
-             {ch}
-    := @reachable_from_item__of__minimal_reachable_from_item' ch reachable_from_productions__of__minimal_reachable_from_productions.
+             {ch valid0}
+    := @reachable_from_item__of__minimal_reachable_from_item' ch valid0 reachable_from_productions__of__minimal_reachable_from_productions.
 
   Section expand.
     Definition expand_minimal_reachable_from_item'
@@ -99,27 +99,27 @@ Section cfg.
       := @expand_minimal_reachable_from_item' ch expand_minimal_reachable_from_productions.
   End expand.
 
-  (*Global Instance minimal_reachable_from_item_Proper {ch}
+  (*Global Instance minimal_reachable_from_item_Proper {ch valid0}
   : Proper (sub_nonterminals_listT ==> eq ==> impl) (minimal_reachable_from_item (G := G) ch).
   Proof. repeat intro; subst; eapply expand_minimal_reachable_from_item; eauto. Qed.
 
-  Global Instance minimal_reachable_from_production_Proper {ch}
+  Global Instance minimal_reachable_from_production_Proper {ch valid0}
   : Proper (sub_nonterminals_listT ==> eq ==> impl) (minimal_reachable_from_production (G := G) ch).
   Proof. repeat intro; subst; eapply expand_minimal_reachable_from_production; eauto. Qed.
 
-  Global Instance minimal_reachable_from_productions_Proper {ch}
+  Global Instance minimal_reachable_from_productions_Proper {ch valid0}
   : Proper (sub_nonterminals_listT ==> eq ==> impl) (minimal_reachable_from_productions (G := G) ch).
   Proof. repeat intro; subst; eapply expand_minimal_reachable_from_productions; eauto. Qed.*)
 
   Section minimize.
-    Context {ch : Char}.
+    Context {ch : Char} {valid0 : nonterminals_listT}.
 
     Let alt_option h valid
-      := { nt : _ & (is_valid_nonterminal valid nt = false /\ is_valid_nonterminal initial_nonterminals_data nt)
-                    * { p : reachable_from_productions G ch (Lookup G nt)
+      := { nt : _ & (is_valid_nonterminal valid nt = false /\ is_valid_nonterminal valid0 nt)
+                    * { p : reachable_from_productions G ch valid0 (Lookup G nt)
                             & (size_of_reachable_from_productions p < h) } }%type.
 
-    Lemma not_alt_all {h} (ps : alt_option h initial_nonterminals_data)
+    Lemma not_alt_all {h} (ps : alt_option h valid0)
     : False.
     Proof.
       destruct ps as [ ? [ H' _ ] ].
@@ -127,7 +127,7 @@ Section cfg.
       congruence.
     Qed.
 
-    Definition alt_all_elim {h T} (ps : T + alt_option h initial_nonterminals_data)
+    Definition alt_all_elim {h T} (ps : T + alt_option h valid0)
     : T.
     Proof.
       destruct ps as [|ps]; [ assumption | exfalso ].
@@ -172,9 +172,9 @@ Section cfg.
     Section wf_parts.
       Let of_item_T' h
           (valid : nonterminals_listT) {it : item Char}
-          (p : reachable_from_item G ch it)
+          (p : reachable_from_item G ch valid0 it)
         := forall (p_small : size_of_reachable_from_item p < h)
-                  (pf : sub_nonterminals_listT valid initial_nonterminals_data),
+                  (pf : sub_nonterminals_listT valid valid0),
              ({ p' : minimal_reachable_from_item (G := G) ch valid it
                      & (size_of_reachable_from_item (reachable_from_item__of__minimal_reachable_from_item pf p')) <= size_of_reachable_from_item p })%type
              + alt_option (size_of_reachable_from_item p) valid.
@@ -184,9 +184,9 @@ Section cfg.
 
       Let of_production_T' h
           (valid : nonterminals_listT) {pat : production Char}
-          (p : reachable_from_production G ch pat)
+          (p : reachable_from_production G ch valid0 pat)
         := forall (p_small : size_of_reachable_from_production p < h)
-                  (pf : sub_nonterminals_listT valid initial_nonterminals_data),
+                  (pf : sub_nonterminals_listT valid valid0),
              ({ p' : minimal_reachable_from_production (G := G) ch valid pat
                      & (size_of_reachable_from_production (reachable_from_production__of__minimal_reachable_from_production pf p') <= size_of_reachable_from_production p) })%type
                 + alt_option (size_of_reachable_from_production p) valid.
@@ -196,9 +196,9 @@ Section cfg.
 
       Let of_productions_T' h
           (valid : nonterminals_listT) {pats : productions Char}
-          (p : reachable_from_productions G ch pats)
+          (p : reachable_from_productions G ch valid0 pats)
         := forall (p_small : size_of_reachable_from_productions p < h)
-                  (pf : sub_nonterminals_listT valid initial_nonterminals_data),
+                  (pf : sub_nonterminals_listT valid valid0),
              ({ p' : minimal_reachable_from_productions (G := G) ch valid pats
                      & (size_of_reachable_from_productions (reachable_from_productions__of__minimal_reachable_from_productions pf p') <= size_of_reachable_from_productions p) })%type
              + alt_option (size_of_reachable_from_productions p) valid.
@@ -320,7 +320,7 @@ Section cfg.
               auto with arith. } }
         Defined.
 
-        Definition minimal_reachable_from_item__of__reachable_from_item
+        Definition minimal_reachable_from_item__of__reachable_from_item''
         : forall h, of_item_T h.
         Proof.
           apply (Fix Wf_nat.lt_wf).
@@ -328,15 +328,79 @@ Section cfg.
         Defined.
       End item.
 
-      Definition minimal_reachable_from_production__of__reachable_from_production
+      Definition minimal_reachable_from_production__of__reachable_from_production''
                  h
       : of_production_T h
-        := @minimal_reachable_from_production__of__reachable_from_production' h (fun _ _ => @minimal_reachable_from_item__of__reachable_from_item _).
+        := @minimal_reachable_from_production__of__reachable_from_production' h (fun _ _ => @minimal_reachable_from_item__of__reachable_from_item'' _).
 
-      Definition minimal_reachable_from_productions__of__reachable_from_productions
+      Definition minimal_reachable_from_productions__of__reachable_from_productions''
                  h
       : of_productions_T h
-        := @minimal_reachable_from_productions__of__reachable_from_productions' h (fun _ _ => @minimal_reachable_from_item__of__reachable_from_item _).
+        := @minimal_reachable_from_productions__of__reachable_from_productions' h (fun _ _ => @minimal_reachable_from_item__of__reachable_from_item'' _).
+
+        Definition minimal_reachable_from_item__of__reachable_from_item
+                   {it : item Char}
+                   (p : reachable_from_item G ch valid0 it)
+        : minimal_reachable_from_item (G := G) ch valid0 it.
+        Proof.
+          pose proof (@minimal_reachable_from_item__of__reachable_from_item'' _ valid0 _ p (@reflexivity _ le _ _) (reflexivity _)) as X.
+          apply alt_all_elim in X.
+          exact (projT1 X).
+        Defined.
+
+        Definition minimal_reachable_from_production__of__reachable_from_production
+                   {pat : production Char}
+                   (p : reachable_from_production G ch valid0 pat)
+        : minimal_reachable_from_production (G := G) ch valid0 pat.
+        Proof.
+          pose proof (@minimal_reachable_from_production__of__reachable_from_production'' _ valid0 _ p (@reflexivity _ le _ _) (reflexivity _)) as X.
+          apply alt_all_elim in X.
+          exact (projT1 X).
+        Defined.
+
+        Definition minimal_reachable_from_productions__of__reachable_from_productions
+                   {pats : productions Char}
+                   (p : reachable_from_productions G ch valid0 pats)
+        : minimal_reachable_from_productions (G := G) ch valid0 pats.
+        Proof.
+          pose proof (@minimal_reachable_from_productions__of__reachable_from_productions'' _ valid0 _ p (@reflexivity _ le _ _) (reflexivity _)) as X.
+          apply alt_all_elim in X.
+          exact (projT1 X).
+        Defined.
+
+
+        Definition minimal_reachable_from_item__iff__reachable_from_item
+                   {it : item Char}
+        : inhabited (reachable_from_item G ch valid0 it)
+          <-> inhabited (minimal_reachable_from_item (G := G) ch valid0 it).
+        Proof.
+          split; intros [H]; constructor;
+          [ apply minimal_reachable_from_item__of__reachable_from_item
+          | eapply reachable_from_item__of__minimal_reachable_from_item ];
+          try (eassumption || reflexivity).
+        Qed.
+
+        Definition minimal_reachable_from_production__iff__reachable_from_production
+                   {it : production Char}
+        : inhabited (reachable_from_production G ch valid0 it)
+          <-> inhabited (minimal_reachable_from_production (G := G) ch valid0 it).
+        Proof.
+          split; intros [H]; constructor;
+          [ apply minimal_reachable_from_production__of__reachable_from_production
+          | eapply reachable_from_production__of__minimal_reachable_from_production ];
+          try (eassumption || reflexivity).
+        Qed.
+
+        Definition minimal_reachable_from_productions__iff__reachable_from_productions
+                   {it : productions Char}
+        : inhabited (reachable_from_productions G ch valid0 it)
+          <-> inhabited (minimal_reachable_from_productions (G := G) ch valid0 it).
+        Proof.
+          split; intros [H]; constructor;
+          [ apply minimal_reachable_from_productions__of__reachable_from_productions
+          | eapply reachable_from_productions__of__minimal_reachable_from_productions ];
+          try (eassumption || reflexivity).
+        Qed.
     End wf_parts.
   End minimize.
 End cfg.

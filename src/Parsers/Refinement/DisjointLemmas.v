@@ -23,6 +23,9 @@ Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Parsers.MinimalParseOfParse.
 Require Import Fiat.Parsers.ContextFreeGrammarProperties.
 Require Import Fiat.Parsers.FoldGrammar.
+Require Import Fiat.Parsers.Reachable.AllMinimalReachable.
+Require Import Fiat.Parsers.Reachable.AllMinimalReachableOfReachable.
+Require Import Fiat.Parsers.Reachable.AllReachableParse.
 
 Set Implicit Arguments.
 
@@ -79,80 +82,6 @@ Section only_first.
     := fold_production.
 End only_first.
 
-Section reachable.
-  Context {Char} {HSL : StringLike Char} {predata : parser_computational_predataT} (G : grammar Char).
-
-  Context (ch : Char).
-
-  (** Relation defining if a character is reachable *)
-  Inductive reachable_from_productions : productions Char -> Prop :=
-  | ReachableHead : forall pat pats, reachable_from_production pat
-                                     -> reachable_from_productions (pat::pats)
-  | ReachableTail : forall pat pats, reachable_from_productions pats
-                                     -> reachable_from_productions (pat::pats)
-  with reachable_from_production : production Char -> Type :=
-  | ReachableProductionHead : forall it its, reachable_from_item it
-                                             -> reachable_from_production (it::its)
-  | ReachableProductionTail : forall it its, reachable_from_production its
-                                             -> reachable_from_production (it::its)
-  with reachable_from_item : item Char -> Prop :=
-  | ReachableTerminal : reachable_from_item (Terminal ch)
-  | ReachableNonTerminal : forall nt, is_valid_nonterminal initial_nonterminals_data nt
-                                      -> reachable_from_productions (Lookup G nt)
-                                      -> reachable_from_item (NonTerminal nt).
-
-  (** Relation defining if a character is reachable *)
-  Inductive min_reachable_from_productions : nonterminals_listT -> productions Char -> Prop :=
-  | MinReachableHead : forall valid pat pats, min_reachable_from_production valid pat
-                                              -> min_reachable_from_productions valid (pat::pats)
-  | MinReachableTail : forall valid pat pats, min_reachable_from_productions valid pats
-                                              -> min_reachable_from_productions valid (pat::pats)
-  with min_reachable_from_production : nonterminals_listT -> production Char -> Type :=
-  | MinReachableProductionHead : forall valid it its, min_reachable_from_item valid it
-                                                      -> min_reachable_from_production valid (it::its)
-  | MinReachableProductionTail : forall valid it its, min_reachable_from_production valid its
-                                                      -> min_reachable_from_production valid (it::its)
-  with min_reachable_from_item : nonterminals_listT -> item Char -> Prop :=
-  | MinReachableTerminal : forall valid, min_reachable_from_item valid (Terminal ch)
-  | MinReachableNonTerminal : forall valid nt, is_valid_nonterminal valid nt
-                                               -> min_reachable_from_productions (remove_nonterminal valid nt) (Lookup G nt)
-                                               -> min_reachable_from_item valid (NonTerminal nt).
-
-  Lemma min_reachable_from_productions
- : productions Char -> Prop :=
-  | ReachableHead : forall pat pats, reachable_from_production pat
-                                     -> reachable_from_productions (pat::pats)
-  | ReachableTail : forall pat pats, reachable_from_productions pats
-                                     -> reachable_from_productions (pat::pats)
-  with reachable_from_production : production Char -> Type :=
-  | ReachableProductionHead : forall it its, reachable_from_item it
-                                             -> reachable_from_production (it::its)
-  | ReachableProductionTail : forall it its, reachable_from_production its
-                                             -> reachable_from_production (it::its)
-  with reachable_from_item : item Char -> Prop :=
-  | ReachableTerminal : reachable_from_item (Terminal ch)
-  | ReachableNonTerminal : forall nt, is_valid_nonterminal initial_nonterminals_data nt
-                                      -> reachable_from_productions (Lookup G nt)
-                                      -> reachable_from_item (NonTerminal nt).
-
-  (** Relation defining if a character is reachable *)
-  Inductive min_reachable_from_productions : nonterminals_listT -> productions Char -> Prop :=
-  | MinReachableHead : forall valid pat pats, min_reachable_from_production valid pat
-                                              -> min_reachable_from_productions valid (pat::pats)
-  | MinReachableTail : forall valid pat pats, min_reachable_from_productions valid pats
-                                              -> min_reachable_from_productions valid (pat::pats)
-  with min_reachable_from_production : nonterminals_listT -> production Char -> Type :=
-  | MinReachableProductionHead : forall valid it its, min_reachable_from_item valid it
-                                                      -> min_reachable_from_production valid (it::its)
-  | MinReachableProductionTail : forall valid it its, min_reachable_from_production valid its
-                                                      -> min_reachable_from_production valid (it::its)
-  with min_reachable_from_item : nonterminals_listT -> item Char -> Prop :=
-  | MinReachableTerminal : forall valid, min_reachable_from_item valid (Terminal ch)
-  | MinReachableNonTerminal : forall valid nt, is_valid_nonterminal valid nt
-                                               -> min_reachable_from_productions (remove_nonterminal valid nt) (Lookup G nt)
-                                               -> min_reachable_from_item valid (NonTerminal nt).
-
-End reachable.
 Section all_possible_correctness.
   Context {Char : Type} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}.
   Local Open Scope string_like_scope.
@@ -169,156 +98,62 @@ Section all_possible_correctness.
                                dependent destruction H'
     end.
 
-  Local Instance all_possible_cdata : @fold_grammar_correctness_data Char _ all_possible_fold_data G
+  Local Ltac ddestruction H
+    := let p := fresh in rename H into p; dependent destruction p.
+
+  Local Ltac t' :=
+    idtac;
+    match goal with
+      | _ => rewrite in_app_iff
+      | _ => progress simpl in *
+      | _ => intro
+      | _ => progress destruct_head inhabited
+      | _ => progress destruct_head iff
+      | _ => progress subst
+      | _ => reflexivity
+      | _ => congruence
+      | _ => tauto
+      | [ ch : Char, H : forall ch : Char, _ |- _ ] => specialize (H ch)
+      | [ H : ?A, H' : ?A -> ?B |- _ ] => specialize (H' H)
+      | _ => progress destruct_head or
+      | [ |- _ <-> _ ] => split
+      | [ |- inhabited _ ] => constructor
+      | _ => assumption
+      | _ => left; assumption
+      | _ => right; assumption
+      | [ H : ?A -> ?B |- ?B ] => apply H; clear H
+      | [ H : minimal_reachable_from_item _ _ (NonTerminal _) |- _ ] => ddestruction H
+      | [ H : minimal_reachable_from_item _ _ (Terminal _) |- _ ] => ddestruction H
+      | [ H : minimal_reachable_from_production _ _ nil |- _ ] => ddestruction H
+      | [ H : minimal_reachable_from_production _ _ (_::_) |- _ ] => ddestruction H
+      | [ H : minimal_reachable_from_productions _ _ nil |- _ ] => ddestruction H
+      | [ H : minimal_reachable_from_productions _ _ (_::_) |- _ ] => ddestruction H
+    end.
+
+  Local Ltac t := repeat first [ t' | left; solve [ t ] | right; solve [ t ] ].
+
+  Local Instance all_possible_ccdata : @fold_grammar_correctness_computational_data Char _ G
     := { Pnt valid0 nt ls
-         := forall (str : String) (p : parse_of_item G str (NonTerminal nt)),
-              Forall_parse_of_item (fun _ nt' => is_valid_nonterminal valid0 nt') p
-              -> forall_chars__char_in str ls;
+         := forall ch : Char, List.In ch ls <-> inhabited (minimal_reachable_from_item (G := G) ch valid0 (NonTerminal nt));
          Ppat valid0 pat ls
-         := forall (str : String) (p : parse_of_production G str pat),
-              Forall_parse_of_production (fun _ nt' => is_valid_nonterminal valid0 nt') p
-              -> forall_chars__char_in str ls;
+         := forall ch : Char, List.In ch ls <-> inhabited (minimal_reachable_from_production (G := G) ch valid0 pat);
          Ppats valid0 pats ls
-         := forall (str : String) (p : parse_of G str pats),
-              Forall_parse_of (fun _ nt' => is_valid_nonterminal valid0 nt') p
-              -> forall_chars__char_in str ls }.
+         := forall ch : Char, List.In ch ls <-> inhabited (minimal_reachable_from_productions (G := G) ch valid0 pats) }.
+
+  Local Arguments is_valid_nonterminal : simpl never.
+  Local Arguments remove_nonterminal : simpl never.
+
+  Local Instance all_possible_cdata : @fold_grammar_correctness_data Char _ all_possible_fold_data G
+    := { fgccd := all_possible_ccdata }.
   Proof.
-    { simpl; intros valid0 nt value Hvalid Hnt str p Hp.
-      dependent destruction p.
-      simpl in Hp.
-      destruct Hp as [Hp0 Hp1].
-      specialize (Hnt _ p).
-      apply Hnt.
-      clear -Hp0 Hp1.
-      admit. }
-    { abstract (
-          simpl; (intros ???? p H);
-          dependent destruction p;
-          simpl in H; destruct H; congruence
-        ). }
-    { abstract (
-          simpl; (intros ?? p H);
-          apply forall_chars__char_in_nil;
-          dependent destruction p; trivial
-        ). }
-    { simpl combine_production.
-      intros valid0 nt xs ls1 ls2 Hit Hits str p Hp.
-      dependent destruction p.
-      match type of Hp with
-        | context[ParseProductionCons _ _ ?p ?p1]
-          => change (Forall_parse_of_item (fun _ nt' => is_valid_nonterminal valid0 nt') p
-                     * Forall_parse_of_production (fun _ nt' => is_valid_nonterminal valid0 nt') p1)%type in Hp
-      end.
-      simpl in Hp; destruct Hp as [Hp0 Hp1].
-      apply (forall_chars__char_in__split n); split;
-      apply forall_chars__char_in__or_app; [ left | right ]; eauto. }
-    { simpl combine_production; simpl on_terminal; cbv beta.
-      intros valid0 nt xs ls Hits str p Hp.
-      dependent destruction p.
-      match type of Hp with
-        | context[ParseProductionCons _ _ ?p ?p1]
-          => change (Forall_parse_of_item (fun _ nt' => is_valid_nonterminal valid0 nt') p
-                     * Forall_parse_of_production (fun _ nt' => is_valid_nonterminal valid0 nt') p1)%type in Hp
-      end.
-      simpl in Hp.
-      destruct Hp as [Hp0 Hp1].
-      apply (forall_chars__char_in__split n); split;
-      apply forall_chars__char_in__or_app; [ left | right ]; eauto; [].
-      dependent_destruction_head (@parse_of_item).
-      erewrite forall_chars__char_in_singleton_str by eassumption.
-      left; reflexivity. }
-    { abstract (
-          simpl; (intros ?? p);
-          dependent destruction p
-        ). }
-    { abstract (
-          simpl; intros ????? IH1 IH2 ? p H';
-          apply forall_chars__char_in__or_app;
-          dependent destruction p; [ left | right ]; eauto
-        ). }
+    { abstract t. }
+    { abstract t. }
+    { abstract t. }
+    { abstract t. }
+    { abstract t. }
+    { abstract t. }
+    { abstract t. }
   Defined.
-
-  Lemma possible_terminals_of_production'_correct (G : grammar Char)
-        (predata := @rdp_list_predata _ G)
-        pat ptont
-        (valid0 : nonterminals_listT)
-        (IH : forall nt, Pnt valid0 nt (ptont nt))
-  : Ppat valid0 pat (fold_production' ptont pat).
-  Proof.
-    unfold fold_production'; simpl in *.
-    induction pat as [ | x xs IHxs ]; intros str p Hp.
-    { dependent destruction p; simpl in *.
-      apply forall_chars__char_in_nil; assumption. }
-    { dependent destruction p; simpl in *.
-      match type of Hp with
-        | context[ParseProductionCons _ _ ?p ?p1]
-          => change (Forall_parse_of_item (fun _ nt' => is_valid_nonterminal valid0 nt') p
-                     * Forall_parse_of_production (fun _ nt' => is_valid_nonterminal valid0 nt') p1)%type in Hp
-      end.
-      simpl in Hp.
-      destruct (Compare_dec.lt_dec (length str) n).
-      { apply forall_chars__char_in__or_app; left.
-        dependent_destruction_head (@parse_of_item).
-        { clear Hp.
-          repeat match goal with
-                   | [ H : _ |- _ ] => rewrite take_long in H by omega
-                 end.
-          erewrite forall_chars__char_in_singleton_str; intuition. }
-        { apply (forall_chars__char_in__split n); split.
-          { eapply IH.
-            exact (fst Hp). }
-          { apply forall_chars__char_in_empty.
-            rewrite drop_length; omega. } } }
-      { apply (forall_chars__char_in__split n); split;
-        apply forall_chars__char_in__or_app; [ left | right ].
-        { dependent_destruction_head (@parse_of_item).
-          { eapply forall_chars__char_in_singleton_str; try eassumption; left; reflexivity. }
-          { eapply IH.
-            exact (fst Hp). } }
-        { eapply IHxs.
-          exact (snd Hp). } } }
-  Qed.
-
-  Lemma possible_terminals_of_productions'_correct (G : grammar Char)
-        (predata := @rdp_list_predata _ G)
-        pats ptont
-        (valid0 : nonterminals_listT)
-        (IH : forall nt, Pnt valid0 nt (ptont nt))
-  : Ppats valid0 pats (fold_productions' ptont pats).
-  Proof.
-    apply fold_productions'_correct; trivial; [].
-    intro; apply possible_terminals_of_production'_correct; assumption.
-  Qed.
-
-  Lemma Fix_possible_terminals_of_nt_step_correct (G : grammar Char)
-        (predata := @rdp_list_predata _ G)
-        (str : String) nt
-        (valid0 : nonterminals_listT)
-        (p : parse_of_item G str (NonTerminal nt))
-        (Hp : Forall_parse_of_item (fun _ nt' => is_valid_nonterminal valid0 nt') p)
-  : forall_chars__char_in
-      str
-      (Fix ntl_wf (fun _ : nonterminals_listT => string -> possible_terminals)
-           (possible_terminals_of_nt_step (G:=G)) valid0 nt).
-  Proof.
-    generalize dependent str; generalize dependent nt.
-    induction (ntl_wf valid0) as [ ? ? IH ]; intros.
-    rewrite Fix1_eq; [ | apply possible_terminals_of_nt_step_ext ]; [].
-    unfold possible_terminals_of_nt_step at 1; cbv beta zeta.
-    dependent destruction p; destruct Hp as [Hpi Hpp]; [].
-    edestruct dec; [ | simpl in *; congruence ].
-    let H := match goal with H : is_valid_nonterminal ?x ?nt = true |- _ => constr:H end in
-    specialize (IH _ (remove_nonterminal_dec _ _ H)).
-    generalize dependent (G nt); intros ? p.
-    destruct p;
-      (eapply possible_terminals_of_productions'_correct).
-    intros.
-    specialize (IH nt0 str0).
-    specialize (IH p0).
-    apply IH.
-    admit.
-    admit.
-  Qed.
 
   Lemma possible_terminals_of_correct (G : grammar Char)
         (predata := @rdp_list_predata _ G)
@@ -327,8 +162,12 @@ Section all_possible_correctness.
         (Hp : Forall_parse_of_item (fun _ nt' => is_valid_nonterminal initial_nonterminals_data nt') p)
   : forall_chars__char_in str (possible_terminals_of G nt).
   Proof.
-    unfold possible_terminals_of, possible_terminals_of_nt.
-    eapply Fix_possible_terminals_of_nt_step_correct; eassumption.
+    unfold possible_terminals_of.
+    generalize (forall_chars_reachable_from_parse_of_item _ Hp).
+    setoid_rewrite minimal_reachable_from_item__iff__reachable_from_item.
+    apply forall_chars__impl__forall_chars__char_in.
+    intro ch.
+    apply (fold_nt_correct (G := G) nt ch).
   Qed.
 End all_possible_correctness.
 

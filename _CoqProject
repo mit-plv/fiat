@@ -184,6 +184,7 @@ src/Parsers/Grammars/Trivial.v
 src/Parsers/Reachable/AllMinimalReachable.v
 src/Parsers/Reachable/AllMinimalReachableOfReachable.v
 src/Parsers/Reachable/AllReachable.v
+src/Parsers/Reachable/AllReachableParse.v
 src/Parsers/Reachable/AllReachableWellFounded.v
 src/Parsers/Refinement/DisjointLemmas.v
 src/Parsers/Refinement/FixedLengthLemmas.v
