@@ -15,7 +15,7 @@ Section general_fold.
 
   Class fold_grammar_data :=
     { on_terminal : Char -> T;
-      on_redundant_nonterminal : T;
+      on_redundant_nonterminal : String.string -> T;
       on_nil_production : T;
       combine_production : T -> T -> T;
       on_nil_productions : T;
@@ -72,7 +72,7 @@ Section general_fold.
             then fold_productions'
                    (@fold_nt (remove_nonterminal valid0 nt) (remove_nonterminal_dec _ _ _))
                    (Lookup G nt)
-            else on_redundant_nonterminal);
+            else on_redundant_nonterminal nt);
     assumption.
   Defined.
 
@@ -120,7 +120,7 @@ Section fold_correctness.
                    -> Pnt valid0 nt value;
       Pnt_redundant : forall valid0 nt,
                         is_valid_nonterminal valid0 nt = false
-                        -> Pnt valid0 nt on_redundant_nonterminal;
+                        -> Pnt valid0 nt (on_redundant_nonterminal nt);
       Ppat_nil : forall valid0, Ppat valid0 nil on_nil_production;
       Ppat_cons_nt : forall valid0 nt xs p ps,
                        Pnt valid0 nt p

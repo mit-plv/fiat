@@ -35,7 +35,7 @@ Section all_possible.
 
   Local Instance all_possible_fold_data : fold_grammar_data Char possible_terminals
     := { on_terminal ch := [ch];
-         on_redundant_nonterminal := nil;
+         on_redundant_nonterminal nt := nil;
          on_nil_production := nil;
          combine_production := @app _;
          on_nil_productions := nil;
@@ -50,13 +50,15 @@ Section all_possible.
 End all_possible.
 
 Section only_first.
+  Context (G : grammar Ascii.ascii).
+
   Record possible_first_terminals :=
     { actual_possible_first_terminals :> list Ascii.ascii;
       might_be_empty : bool }.
 
   Local Instance only_first_fold_data : fold_grammar_data Ascii.ascii possible_first_terminals
     := { on_terminal ch := {| actual_possible_first_terminals := [ch] ; might_be_empty := false |};
-         on_redundant_nonterminal := {| actual_possible_first_terminals := nil ; might_be_empty := false |};
+         on_redundant_nonterminal nt := {| actual_possible_first_terminals := nil ; might_be_empty := brute_force_parse_nonterminal G ""%string nt |};
          on_nil_production := {| actual_possible_first_terminals := nil ; might_be_empty := true |};
          on_nil_productions := {| actual_possible_first_terminals := nil ; might_be_empty := false |};
          combine_production first_of_first first_of_rest
@@ -74,12 +76,12 @@ Section only_first.
                might_be_empty
                := (might_be_empty first_of_first || might_be_empty first_of_rest)%bool |} }.
 
-  Definition possible_first_terminals_of : grammar Ascii.ascii -> String.string -> possible_first_terminals
-    := fold_nt.
-  Definition possible_first_terminals_of_productions : grammar Ascii.ascii -> productions Ascii.ascii -> possible_first_terminals
-    := fold_productions.
-  Definition possible_first_terminals_of_production : grammar Ascii.ascii -> production Ascii.ascii -> possible_first_terminals
-    := fold_production.
+  Definition possible_first_terminals_of : String.string -> possible_first_terminals
+    := fold_nt G.
+  Definition possible_first_terminals_of_productions : productions Ascii.ascii -> possible_first_terminals
+    := fold_productions G.
+  Definition possible_first_terminals_of_production : production Ascii.ascii -> possible_first_terminals
+    := fold_production G.
 End only_first.
 
 Section all_possible_correctness.

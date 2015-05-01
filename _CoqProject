@@ -191,6 +191,11 @@ src/Parsers/Reachable/MaybeEmpty/Minimal.v
 src/Parsers/Reachable/MaybeEmpty/MinimalOfCore.v
 src/Parsers/Reachable/MaybeEmpty/OfParse.v
 src/Parsers/Reachable/MaybeEmpty/WellFounded.v
+src/Parsers/Reachable/OnlyFirst/MinimalReachable.v
+src/Parsers/Reachable/OnlyFirst/MinimalReachableOfReachable.v
+src/Parsers/Reachable/OnlyFirst/Reachable.v
+src/Parsers/Reachable/OnlyFirst/ReachableParse.v
+src/Parsers/Reachable/OnlyFirst/ReachableWellFounded.v
 src/Parsers/Refinement/DisjointLemmas.v
 src/Parsers/Refinement/FixedLengthLemmas.v
 src/Parsers/Refinement/IndexedAndAtMostOneNonTerminal.v
@@ -203,6 +208,7 @@ src/Parsers/Refinement/Tactics.v
 src/Parsers/Splitters/BruteForce.v
 src/Parsers/Splitters/RDPList.v
 src/Parsers/StringLike/Core.v
+src/Parsers/StringLike/FirstChar.v
 src/Parsers/StringLike/ForallChars.v
 src/Parsers/StringLike/Properties.v
 src/Parsers/StringLike/String.v
