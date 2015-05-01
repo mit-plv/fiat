@@ -22,7 +22,7 @@ Section cfg.
                                       -> maybe_empty_productions (pat::pats)
   with maybe_empty_production : production Char -> Type :=
   | MaybeEmptyProductionNil : maybe_empty_production nil
-  | MaybeEmptyProductionTail : forall it its, maybe_empty_item it
+  | MaybeEmptyProductionCons : forall it its, maybe_empty_item it
                                               -> maybe_empty_production its
                                               -> maybe_empty_production (it::its)
   with maybe_empty_item : item Char -> Type :=

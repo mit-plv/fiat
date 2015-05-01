@@ -9,26 +9,26 @@ Section rel.
   Section size.
     Context {ch : Char} {valid : nonterminals_listT}.
     Definition size_of_maybe_empty_item'
-               (size_of_maybe_empty_productions : forall {pats}, maybe_empty_productions G ch valid pats -> nat)
-               {it} (p : maybe_empty_item G ch valid it) : nat
+               (size_of_maybe_empty_productions : forall {pats}, maybe_empty_productions G valid pats -> nat)
+               {it} (p : maybe_empty_item G valid it) : nat
       := match p with
-           | MaybeEmptyTerminal => 0
            | MaybeEmptyNonTerminal _ _ p' => S (size_of_maybe_empty_productions p')
          end.
 
-    Fixpoint size_of_maybe_empty_productions {pats} (p : maybe_empty_productions G ch valid pats) : nat
+
+    Fixpoint size_of_maybe_empty_productions {pats} (p : maybe_empty_productions G valid pats) : nat
       := match p with
            | MaybeEmptyHead _ _ p' => S (size_of_maybe_empty_production p')
            | MaybeEmptyTail _ _ p' => S (size_of_maybe_empty_productions p')
          end
-    with size_of_maybe_empty_production {pat} (p : maybe_empty_production G ch valid pat) : nat
+    with size_of_maybe_empty_production {pat} (p : maybe_empty_production G valid pat) : nat
          := match p with
-              | MaybeEmptyProductionHead _ _ p' => S (size_of_maybe_empty_item' (@size_of_maybe_empty_productions) p')
-              | MaybeEmptyProductionTail _ _ p' => S (size_of_maybe_empty_production p')
+              | MaybeEmptyProductionNil => 0
+              | MaybeEmptyProductionCons _ _ p0 p1 => S (size_of_maybe_empty_item' (@size_of_maybe_empty_productions) p0 + size_of_maybe_empty_production p1)
             end.
 
     Definition size_of_maybe_empty_item
-               {it} (p : maybe_empty_item G ch valid it) : nat
+               {it} (p : maybe_empty_item G valid it) : nat
       := @size_of_maybe_empty_item' (@size_of_maybe_empty_productions) it p.
   End size.
 End rel.

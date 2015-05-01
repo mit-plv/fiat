@@ -16,18 +16,17 @@ Section cfg.
 
   Inductive minimal_maybe_empty_productions : nonterminals_listT -> productions Char -> Type :=
   | MinMaybeEmptyHead : forall valid pat pats, minimal_maybe_empty_production valid pat
-                                              -> minimal_maybe_empty_productions valid (pat::pats)
+                                               -> minimal_maybe_empty_productions valid (pat::pats)
   | MinMaybeEmptyTail : forall valid pat pats, minimal_maybe_empty_productions valid pats
-                                              -> minimal_maybe_empty_productions valid (pat::pats)
+                                               -> minimal_maybe_empty_productions valid (pat::pats)
   with minimal_maybe_empty_production : nonterminals_listT -> production Char -> Type :=
-  | MinMaybeEmptyProductionHead : forall valid it its, minimal_maybe_empty_item valid it
-                                                      -> minimal_maybe_empty_production valid (it::its)
-  | MinMaybeEmptyProductionTail : forall valid it its, minimal_maybe_empty_production valid its
-                                                      -> minimal_maybe_empty_production valid (it::its)
+  | MinMaybeEmptyProductionNil : forall valid, minimal_maybe_empty_production valid nil
+  | MinMaybeEmptyProductionCons : forall valid it its, minimal_maybe_empty_item valid it
+                                                       -> minimal_maybe_empty_production valid its
+                                                       -> minimal_maybe_empty_production valid (it::its)
   with minimal_maybe_empty_item : nonterminals_listT -> item Char -> Type :=
-  | MinMaybeEmptyTerminal : forall valid, minimal_maybe_empty_item valid (Terminal ch)
   | MinMaybeEmptyNonTerminal : forall valid nt, is_valid_nonterminal valid nt
-                                               -> minimal_maybe_empty_productions (remove_nonterminal valid nt) (Lookup G nt)
-                                               -> minimal_maybe_empty_item valid (NonTerminal nt).
+                                                -> minimal_maybe_empty_productions (remove_nonterminal valid nt) (Lookup G nt)
+                                                -> minimal_maybe_empty_item valid (NonTerminal nt).
 
 End cfg.

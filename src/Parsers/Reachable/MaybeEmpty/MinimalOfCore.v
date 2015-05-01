@@ -18,18 +18,18 @@ Section cfg.
           {rdata' : @parser_removal_dataT' predata}.
 
   Definition maybe_empty_item__of__minimal_maybe_empty_item'
-             {ch valid0}
+             {valid0}
              (maybe_empty_productions__of__minimal_maybe_empty_productions
               : forall valid prods,
                   sub_nonterminals_listT valid valid0
-                  -> minimal_maybe_empty_productions (G := G) ch valid prods
-                  -> maybe_empty_productions G ch valid0 prods)
+                  -> minimal_maybe_empty_productions (G := G) valid prods
+                  -> maybe_empty_productions G valid0 prods)
              valid it
              (Hsub : sub_nonterminals_listT valid valid0)
-             (H : minimal_maybe_empty_item (G := G) ch valid it)
-  : maybe_empty_item G ch valid0 it.
+             (H : minimal_maybe_empty_item (G := G) valid it)
+  : maybe_empty_item G valid0 it.
   Proof.
-    destruct H; [ left | right ].
+    destruct H; constructor.
     { clear maybe_empty_productions__of__minimal_maybe_empty_productions; eauto. }
     { eapply maybe_empty_productions__of__minimal_maybe_empty_productions; [ | eassumption ].
       clear -Hsub rdata'.
@@ -37,40 +37,39 @@ Section cfg.
   Defined.
 
   Fixpoint maybe_empty_productions__of__minimal_maybe_empty_productions
-             {ch valid0}
+             {valid0}
              valid pats
              (Hsub : sub_nonterminals_listT valid valid0)
-             (H : minimal_maybe_empty_productions (G := G) ch valid pats)
-  : maybe_empty_productions G ch valid0 pats
+             (H : minimal_maybe_empty_productions (G := G) valid pats)
+  : maybe_empty_productions G valid0 pats
   with maybe_empty_production__of__minimal_maybe_empty_production
-             {ch valid0}
+             {valid0}
              valid pat
              (Hsub : sub_nonterminals_listT valid valid0)
-             (H : minimal_maybe_empty_production (G := G) ch valid pat)
-  : maybe_empty_production G ch valid0 pat.
+             (H : minimal_maybe_empty_production (G := G) valid pat)
+  : maybe_empty_production G valid0 pat.
   Proof.
     { destruct H; [ left | right ]; eauto. }
     { destruct H; [ left | right ]; eauto using maybe_empty_item__of__minimal_maybe_empty_item'. }
   Defined.
 
   Definition maybe_empty_item__of__minimal_maybe_empty_item
-             {ch valid0}
-    := @maybe_empty_item__of__minimal_maybe_empty_item' ch valid0 maybe_empty_productions__of__minimal_maybe_empty_productions.
+             {valid0}
+    := @maybe_empty_item__of__minimal_maybe_empty_item' valid0 maybe_empty_productions__of__minimal_maybe_empty_productions.
 
   Section expand.
     Definition expand_minimal_maybe_empty_item'
-               {ch}
                (expand_minimal_maybe_empty_productions
                 : forall valid valid' prods,
                     sub_nonterminals_listT valid valid'
-                    -> minimal_maybe_empty_productions (G := G) ch valid prods
-                    -> minimal_maybe_empty_productions (G := G) ch valid' prods)
+                    -> minimal_maybe_empty_productions (G := G) valid prods
+                    -> minimal_maybe_empty_productions (G := G) valid' prods)
                valid valid' it
                (Hsub : sub_nonterminals_listT valid valid')
-               (H : minimal_maybe_empty_item (G := G) ch valid it)
-    : minimal_maybe_empty_item (G := G) ch valid' it.
+               (H : minimal_maybe_empty_item (G := G) valid it)
+    : minimal_maybe_empty_item (G := G) valid' it.
     Proof.
-      destruct H; [ left | right ].
+      destruct H; constructor.
       { clear expand_minimal_maybe_empty_productions; eauto. }
       { eapply expand_minimal_maybe_empty_productions; [ | eassumption ].
         clear -Hsub rdata'.
@@ -78,45 +77,42 @@ Section cfg.
     Defined.
 
     Fixpoint expand_minimal_maybe_empty_productions
-             {ch}
              valid valid' pats
              (Hsub : sub_nonterminals_listT valid valid')
-             (H : minimal_maybe_empty_productions (G := G) ch valid pats)
-    : minimal_maybe_empty_productions (G := G) ch valid' pats
+             (H : minimal_maybe_empty_productions (G := G) valid pats)
+    : minimal_maybe_empty_productions (G := G) valid' pats
     with expand_minimal_maybe_empty_production
-           {ch}
            valid valid' pat
            (Hsub : sub_nonterminals_listT valid valid')
-           (H : minimal_maybe_empty_production (G := G) ch valid pat)
-         : minimal_maybe_empty_production (G := G) ch valid' pat.
+           (H : minimal_maybe_empty_production (G := G) valid pat)
+         : minimal_maybe_empty_production (G := G) valid' pat.
     Proof.
       { destruct H; [ left | right ]; eauto. }
       { destruct H; [ left | right ]; eauto using expand_minimal_maybe_empty_item'. }
     Defined.
 
     Definition expand_minimal_maybe_empty_item
-               {ch}
-      := @expand_minimal_maybe_empty_item' ch expand_minimal_maybe_empty_productions.
+      := @expand_minimal_maybe_empty_item' expand_minimal_maybe_empty_productions.
   End expand.
 
-  (*Global Instance minimal_maybe_empty_item_Proper {ch valid0}
+  (*Global Instance minimal_maybe_empty_item_Proper {valid0}
   : Proper (sub_nonterminals_listT ==> eq ==> impl) (minimal_maybe_empty_item (G := G) ch).
   Proof. repeat intro; subst; eapply expand_minimal_maybe_empty_item; eauto. Qed.
 
-  Global Instance minimal_maybe_empty_production_Proper {ch valid0}
+  Global Instance minimal_maybe_empty_production_Proper {valid0}
   : Proper (sub_nonterminals_listT ==> eq ==> impl) (minimal_maybe_empty_production (G := G) ch).
   Proof. repeat intro; subst; eapply expand_minimal_maybe_empty_production; eauto. Qed.
 
-  Global Instance minimal_maybe_empty_productions_Proper {ch valid0}
+  Global Instance minimal_maybe_empty_productions_Proper {valid0}
   : Proper (sub_nonterminals_listT ==> eq ==> impl) (minimal_maybe_empty_productions (G := G) ch).
   Proof. repeat intro; subst; eapply expand_minimal_maybe_empty_productions; eauto. Qed.*)
 
   Section minimize.
-    Context {ch : Char} {valid0 : nonterminals_listT}.
+    Context {valid0 : nonterminals_listT}.
 
     Let alt_option h valid
       := { nt : _ & (is_valid_nonterminal valid nt = false /\ is_valid_nonterminal valid0 nt)
-                    * { p : maybe_empty_productions G ch valid0 (Lookup G nt)
+                    * { p : maybe_empty_productions G valid0 (Lookup G nt)
                             & (size_of_maybe_empty_productions p < h) } }%type.
 
     Lemma not_alt_all {h} (ps : alt_option h valid0)
@@ -172,10 +168,10 @@ Section cfg.
     Section wf_parts.
       Let of_item_T' h
           (valid : nonterminals_listT) {it : item Char}
-          (p : maybe_empty_item G ch valid0 it)
+          (p : maybe_empty_item G valid0 it)
         := forall (p_small : size_of_maybe_empty_item p < h)
                   (pf : sub_nonterminals_listT valid valid0),
-             ({ p' : minimal_maybe_empty_item (G := G) ch valid it
+             ({ p' : minimal_maybe_empty_item (G := G) valid it
                      & (size_of_maybe_empty_item (maybe_empty_item__of__minimal_maybe_empty_item pf p')) <= size_of_maybe_empty_item p })%type
              + alt_option (size_of_maybe_empty_item p) valid.
 
@@ -184,10 +180,10 @@ Section cfg.
 
       Let of_production_T' h
           (valid : nonterminals_listT) {pat : production Char}
-          (p : maybe_empty_production G ch valid0 pat)
+          (p : maybe_empty_production G valid0 pat)
         := forall (p_small : size_of_maybe_empty_production p < h)
                   (pf : sub_nonterminals_listT valid valid0),
-             ({ p' : minimal_maybe_empty_production (G := G) ch valid pat
+             ({ p' : minimal_maybe_empty_production (G := G) valid pat
                      & (size_of_maybe_empty_production (maybe_empty_production__of__minimal_maybe_empty_production pf p') <= size_of_maybe_empty_production p) })%type
                 + alt_option (size_of_maybe_empty_production p) valid.
 
@@ -196,10 +192,10 @@ Section cfg.
 
       Let of_productions_T' h
           (valid : nonterminals_listT) {pats : productions Char}
-          (p : maybe_empty_productions G ch valid0 pats)
+          (p : maybe_empty_productions G valid0 pats)
         := forall (p_small : size_of_maybe_empty_productions p < h)
                   (pf : sub_nonterminals_listT valid valid0),
-             ({ p' : minimal_maybe_empty_productions (G := G) ch valid pats
+             ({ p' : minimal_maybe_empty_productions (G := G) valid pats
                      & (size_of_maybe_empty_productions (maybe_empty_productions__of__minimal_maybe_empty_productions pf p') <= size_of_maybe_empty_productions p) })%type
              + alt_option (size_of_maybe_empty_productions p) valid.
 
@@ -207,6 +203,18 @@ Section cfg.
         := forall valid pats p, @of_productions_T' h valid pats p.
 
       Section production.
+        Lemma lt_helper_1 {x y z} (H : S (x + y) < S z) : x < z.
+        Proof. omega. Qed.
+
+        Lemma lt_helper_2 {x y z} (H : S (x + y) < S z) : y < z.
+        Proof. omega. Qed.
+
+        Lemma lt_helper_1' {x y} : x < S (x + y).
+        Proof. omega. Qed.
+
+        Lemma lt_helper_2' {x y} : y < S (x + y).
+        Proof. omega. Qed.
+
         Fixpoint minimal_maybe_empty_production__of__maybe_empty_production'
                  h
                  (minimal_maybe_empty_item__of__maybe_empty_item
@@ -218,25 +226,30 @@ Section cfg.
           destruct h as [|h']; [ exfalso; omega | ].
           specialize (minimal_maybe_empty_production__of__maybe_empty_production' h' (fun h'' pf => minimal_maybe_empty_item__of__maybe_empty_item _ (le_S _ _ pf))).
           specialize (minimal_maybe_empty_item__of__maybe_empty_item h' (Le.le_n_Sn _)).
-          destruct p as [ ? ? p' | ? ? p' ].
-          { destruct (fun k => minimal_maybe_empty_item__of__maybe_empty_item valid' _ p' k Hinit')
-              as [ [p'' H''] | p'' ];
-            [ solve [ auto with arith ]
-            | left | right ].
-            { eexists (MinMaybeEmptyProductionHead _ p'').
+          destruct p as [ | ?? p0' p1' ].
+          { left; eexists (MinMaybeEmptyProductionNil _); simpl; reflexivity. }
+          { assert (size_of_maybe_empty_item p0' < h') by exact (lt_helper_1 H_h).
+            assert (size_of_maybe_empty_production p1' < h') by exact (lt_helper_2 H_h).
+            destruct (fun k => minimal_maybe_empty_item__of__maybe_empty_item valid' _ p0' k Hinit')
+              as [ [p0'' H0''] | p0'' ];
+              [ assumption
+              | destruct (fun k => minimal_maybe_empty_production__of__maybe_empty_production' valid' _ p1' k Hinit')
+                as [ [p1'' H1''] | p1'' ];
+                [ assumption
+                | left | right ]
+              | right ].
+            { eexists (MinMaybeEmptyProductionCons p0'' p1'').
               simpl in *.
-              apply Le.le_n_S; exact H''. }
+              apply Le.le_n_S, Plus.plus_le_compat; assumption. }
             { eapply expand_alt_option; [ .. | eassumption ];
               try solve [ apply Lt.lt_n_Sn
-                        | reflexivity ]. } }
-          { destruct (minimal_maybe_empty_production__of__maybe_empty_production' valid' _ p' (Lt.lt_S_n _ _ H_h) Hinit')
-              as [ [p'' H''] | p'' ];
-            [ left | right ].
-            { eexists (MinMaybeEmptyProductionTail _ p'').
-              simpl in *.
-              apply Le.le_n_S; exact H''. }
+                        | apply lt_helper_1'
+                        | apply lt_helper_2'
+                        | reflexivity ]. }
             { eapply expand_alt_option; [ .. | eassumption ];
               try solve [ apply Lt.lt_n_Sn
+                        | apply lt_helper_1'
+                        | apply lt_helper_2'
                         | reflexivity ]. } }
         Defined.
       End production.
@@ -286,9 +299,7 @@ Section cfg.
         Proof.
           intros valid' pats p H_h Hinit'.
           destruct h as [|h']; [ exfalso; omega | ].
-          destruct p as [ |nonterminal' H' p'].
-          { left.
-            eexists (MinMaybeEmptyTerminal _ _); simpl; constructor. }
+          destruct p as [nonterminal' H' p'].
           { case_eq (is_valid_nonterminal valid' nonterminal'); intro H'''.
             { edestruct (fun k => @minimal_maybe_empty_productions__of__maybe_empty_productions' _ (fun h'' pf => minimal_maybe_empty_item__of__maybe_empty_item _ (Le.le_n_S _ _ pf)) (remove_nonterminal valid' nonterminal') _ p' k)
               as [ [ p'' H'' ] | [ nt'' H'' ] ];
@@ -340,8 +351,8 @@ Section cfg.
 
         Definition minimal_maybe_empty_item__of__maybe_empty_item
                    {it : item Char}
-                   (p : maybe_empty_item G ch valid0 it)
-        : minimal_maybe_empty_item (G := G) ch valid0 it.
+                   (p : maybe_empty_item G valid0 it)
+        : minimal_maybe_empty_item (G := G) valid0 it.
         Proof.
           pose proof (@minimal_maybe_empty_item__of__maybe_empty_item'' _ valid0 _ p (@reflexivity _ le _ _) (reflexivity _)) as X.
           apply alt_all_elim in X.
@@ -350,8 +361,8 @@ Section cfg.
 
         Definition minimal_maybe_empty_production__of__maybe_empty_production
                    {pat : production Char}
-                   (p : maybe_empty_production G ch valid0 pat)
-        : minimal_maybe_empty_production (G := G) ch valid0 pat.
+                   (p : maybe_empty_production G valid0 pat)
+        : minimal_maybe_empty_production (G := G) valid0 pat.
         Proof.
           pose proof (@minimal_maybe_empty_production__of__maybe_empty_production'' _ valid0 _ p (@reflexivity _ le _ _) (reflexivity _)) as X.
           apply alt_all_elim in X.
@@ -360,8 +371,8 @@ Section cfg.
 
         Definition minimal_maybe_empty_productions__of__maybe_empty_productions
                    {pats : productions Char}
-                   (p : maybe_empty_productions G ch valid0 pats)
-        : minimal_maybe_empty_productions (G := G) ch valid0 pats.
+                   (p : maybe_empty_productions G valid0 pats)
+        : minimal_maybe_empty_productions (G := G) valid0 pats.
         Proof.
           pose proof (@minimal_maybe_empty_productions__of__maybe_empty_productions'' _ valid0 _ p (@reflexivity _ le _ _) (reflexivity _)) as X.
           apply alt_all_elim in X.
@@ -371,8 +382,8 @@ Section cfg.
 
         Definition minimal_maybe_empty_item__iff__maybe_empty_item
                    {it : item Char}
-        : inhabited (maybe_empty_item G ch valid0 it)
-          <-> inhabited (minimal_maybe_empty_item (G := G) ch valid0 it).
+        : inhabited (maybe_empty_item G valid0 it)
+          <-> inhabited (minimal_maybe_empty_item (G := G) valid0 it).
         Proof.
           split; intros [H]; constructor;
           [ apply minimal_maybe_empty_item__of__maybe_empty_item
@@ -382,8 +393,8 @@ Section cfg.
 
         Definition minimal_maybe_empty_production__iff__maybe_empty_production
                    {it : production Char}
-        : inhabited (maybe_empty_production G ch valid0 it)
-          <-> inhabited (minimal_maybe_empty_production (G := G) ch valid0 it).
+        : inhabited (maybe_empty_production G valid0 it)
+          <-> inhabited (minimal_maybe_empty_production (G := G) valid0 it).
         Proof.
           split; intros [H]; constructor;
           [ apply minimal_maybe_empty_production__of__maybe_empty_production
@@ -393,8 +404,8 @@ Section cfg.
 
         Definition minimal_maybe_empty_productions__iff__maybe_empty_productions
                    {it : productions Char}
-        : inhabited (maybe_empty_productions G ch valid0 it)
-          <-> inhabited (minimal_maybe_empty_productions (G := G) ch valid0 it).
+        : inhabited (maybe_empty_productions G valid0 it)
+          <-> inhabited (minimal_maybe_empty_productions (G := G) valid0 it).
         Proof.
           split; intros [H]; constructor;
           [ apply minimal_maybe_empty_productions__of__maybe_empty_productions

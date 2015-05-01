@@ -19,92 +19,85 @@ Section cfg.
   Context {predata : parser_computational_predataT}
           {rdata' : @parser_removal_dataT' predata}.
 
-  Definition forall_chars_maybe_empty_parse_of_item'
-             (forall_chars_maybe_empty_parse_of_productions
+  Definition parse_empty_maybe_empty_parse_of_item'
+             (parse_empty_maybe_empty_parse_of_productions
               : forall valid0 pats
-                       (str : String) (p : parse_of G str pats)
+                       (str : String) (Hlen : length str = 0) (p : parse_of G str pats)
                        (Hforall : Forall_parse_of (fun _ nt' => is_valid_nonterminal valid0 nt') p),
-                  forall_chars str (fun ch => inhabited (maybe_empty_productions G ch valid0 pats)))
+                  maybe_empty_productions G valid0 pats)
              {valid0 it}
-             (str : String) (p : parse_of_item G str it)
+             (str : String) (Hlen : length str = 0) (p : parse_of_item G str it)
              (Hforall : Forall_parse_of_item (fun _ nt' => is_valid_nonterminal valid0 nt') p)
-  : forall_chars str (fun ch => inhabited (maybe_empty_item G ch valid0 it)).
+  : maybe_empty_item G valid0 it.
   Proof.
     destruct p as [ | nt p ].
-    { rewrite <- forall_chars_singleton by eassumption.
-      repeat constructor. }
-    { specialize (forall_chars_maybe_empty_parse_of_productions valid0 (G nt) str p (snd Hforall)).
-      revert forall_chars_maybe_empty_parse_of_productions.
-      apply forall_chars_Proper; [ reflexivity | intros ? [H'] ].
-      constructor.
+    { exfalso.
+      erewrite length_singleton in Hlen by eassumption; omega. }
+    { specialize (parse_empty_maybe_empty_parse_of_productions valid0 (G nt) str Hlen p (snd Hforall)).
       constructor; simpl in *; [ exact (fst Hforall) | assumption ]. }
   Defined.
 
-  Fixpoint forall_chars_maybe_empty_parse_of_productions
+  Fixpoint parse_empty_maybe_empty_parse_of_productions
              {valid0 pats}
-             (str : String) (p : parse_of G str pats)
+             (str : String) (Hlen : length str = 0) (p : parse_of G str pats)
              (Hforall : Forall_parse_of (fun _ nt' => is_valid_nonterminal valid0 nt') p)
              {struct p}
-  : forall_chars str (fun ch => inhabited (maybe_empty_productions G ch valid0 pats))
-  with forall_chars_maybe_empty_parse_of_production
+  : maybe_empty_productions G valid0 pats
+  with parse_empty_maybe_empty_parse_of_production
          {valid0 pat}
-         (str : String) (p : parse_of_production G str pat)
+         (str : String) (Hlen : length str = 0) (p : parse_of_production G str pat)
          (Hforall : Forall_parse_of_production (fun _ nt' => is_valid_nonterminal valid0 nt') p)
          {struct p}
-       : forall_chars str (fun ch => inhabited (maybe_empty_production G ch valid0 pat)).
+       : maybe_empty_production G valid0 pat.
   Proof.
     { destruct p as [ ?? p | ?? p ]; simpl in *.
-      { generalize (forall_chars_maybe_empty_parse_of_production valid0 _ _ p Hforall).
-        apply forall_chars_Proper; [ reflexivity | intros ? [H']; constructor ].
+      { pose proof (parse_empty_maybe_empty_parse_of_production valid0 _ _ Hlen p Hforall).
         left; assumption. }
-      { generalize (forall_chars_maybe_empty_parse_of_productions valid0 _ _ p Hforall).
-        apply forall_chars_Proper; [ reflexivity | intros ? [H']; constructor ].
+      { pose proof (parse_empty_maybe_empty_parse_of_productions valid0 _ _ Hlen p Hforall).
         right; assumption. } }
     { destruct p as [ | ?? p ]; simpl in *.
-      { apply forall_chars_nil; assumption. }
-      { rewrite forall_chars__split; split.
-        { generalize (@forall_chars_maybe_empty_parse_of_item' forall_chars_maybe_empty_parse_of_productions valid0 _ _ _ (fst Hforall)).
-          apply forall_chars_Proper; [ reflexivity | intros ? [H']; constructor ].
-          left; assumption. }
-        { generalize (@forall_chars_maybe_empty_parse_of_production valid0 _ _ _ (snd Hforall)).
-          apply forall_chars_Proper; [ reflexivity | intros ? [H']; constructor ].
-          right; assumption. } } }
+      { constructor. }
+      { constructor.
+        { apply (fun k => @parse_empty_maybe_empty_parse_of_item' parse_empty_maybe_empty_parse_of_productions valid0 _ _ k _ (fst Hforall)).
+          rewrite take_length, Hlen, Min.min_0_r; reflexivity. }
+        { apply (fun k => @parse_empty_maybe_empty_parse_of_production valid0 _ _ k _ (snd Hforall)).
+          rewrite drop_length, Hlen; reflexivity. } } }
   Defined.
 
-  Definition forall_chars_maybe_empty_parse_of_item
+  Definition parse_empty_maybe_empty_parse_of_item
              {valid0 it}
-             (str : String) (p : parse_of_item G str it)
+             (str : String) (Hlen : length str = 0) (p : parse_of_item G str it)
              (Hforall : Forall_parse_of_item (fun _ nt' => is_valid_nonterminal valid0 nt') p)
-  : forall_chars str (fun ch => inhabited (maybe_empty_item G ch valid0 it))
-    := @forall_chars_maybe_empty_parse_of_item' (@forall_chars_maybe_empty_parse_of_productions) valid0 it str p Hforall.
+  : maybe_empty_item G valid0 it
+    := @parse_empty_maybe_empty_parse_of_item' (@parse_empty_maybe_empty_parse_of_productions) valid0 it str Hlen p Hforall.
 
-  Definition forall_chars_minimal_maybe_empty_parse_of_item
+  Definition parse_empty_minimal_maybe_empty_parse_of_item
              {valid0 it}
-             (str : String) (p : parse_of_item G str it)
+             (str : String) (Hlen : length str = 0) (p : parse_of_item G str it)
              (Hforall : Forall_parse_of_item (fun _ nt' => is_valid_nonterminal valid0 nt') p)
-  : forall_chars str (fun ch => inhabited (minimal_maybe_empty_item (G := G) ch valid0 it)).
+  : minimal_maybe_empty_item (G := G) valid0 it.
   Proof.
-    setoid_rewrite <- minimal_maybe_empty_item__iff__maybe_empty_item.
-    eapply forall_chars_maybe_empty_parse_of_item; eassumption.
+    eapply minimal_maybe_empty_item__of__maybe_empty_item.
+    eapply parse_empty_maybe_empty_parse_of_item; eassumption.
   Qed.
 
-  Definition forall_chars_minimal_maybe_empty_parse_of_production
+  Definition parse_empty_minimal_maybe_empty_parse_of_production
              {valid0 pat}
-             (str : String) (p : parse_of_production G str pat)
+             (str : String) (Hlen : length str = 0) (p : parse_of_production G str pat)
              (Hforall : Forall_parse_of_production (fun _ nt' => is_valid_nonterminal valid0 nt') p)
-  : forall_chars str (fun ch => inhabited (minimal_maybe_empty_production (G := G) ch valid0 pat)).
+  : minimal_maybe_empty_production (G := G) valid0 pat.
   Proof.
-    setoid_rewrite <- minimal_maybe_empty_production__iff__maybe_empty_production.
-    eapply forall_chars_maybe_empty_parse_of_production; eassumption.
+    eapply minimal_maybe_empty_production__of__maybe_empty_production.
+    eapply parse_empty_maybe_empty_parse_of_production; eassumption.
   Qed.
 
-  Definition forall_chars_minimal_maybe_empty_parse_of_productions
+  Definition parse_empty_minimal_maybe_empty_parse_of_productions
              {valid0 pats}
-             (str : String) (p : parse_of G str pats)
+             (str : String) (Hlen : length str = 0) (p : parse_of G str pats)
              (Hforall : Forall_parse_of (fun _ nt' => is_valid_nonterminal valid0 nt') p)
-  : forall_chars str (fun ch => inhabited (minimal_maybe_empty_productions (G := G) ch valid0 pats)).
+  : minimal_maybe_empty_productions (G := G) valid0 pats.
   Proof.
-    setoid_rewrite <- minimal_maybe_empty_productions__iff__maybe_empty_productions.
-    eapply forall_chars_maybe_empty_parse_of_productions; eassumption.
+    eapply minimal_maybe_empty_productions__of__maybe_empty_productions.
+    eapply parse_empty_maybe_empty_parse_of_productions; eassumption.
   Qed.
 End cfg.
