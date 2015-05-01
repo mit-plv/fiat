@@ -181,11 +181,11 @@ src/Parsers/Grammars/ExpressionNumPlus.v
 src/Parsers/Grammars/ExpressionNumPlusParen.v
 src/Parsers/Grammars/ExpressionParen.v
 src/Parsers/Grammars/Trivial.v
-src/Parsers/Reachable/AllMinimalReachable.v
-src/Parsers/Reachable/AllMinimalReachableOfReachable.v
-src/Parsers/Reachable/AllReachable.v
-src/Parsers/Reachable/AllReachableParse.v
-src/Parsers/Reachable/AllReachableWellFounded.v
+src/Parsers/Reachable/All/MinimalReachable.v
+src/Parsers/Reachable/All/MinimalReachableOfReachable.v
+src/Parsers/Reachable/All/Reachable.v
+src/Parsers/Reachable/All/ReachableParse.v
+src/Parsers/Reachable/All/ReachableWellFounded.v
 src/Parsers/Refinement/DisjointLemmas.v
 src/Parsers/Refinement/FixedLengthLemmas.v
 src/Parsers/Refinement/IndexedAndAtMostOneNonTerminal.v

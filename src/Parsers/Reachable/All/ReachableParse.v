@@ -4,12 +4,12 @@ Require Import Coq.Strings.String Coq.Lists.List Coq.Setoids.Setoid Coq.Classes.
 Require Import Fiat.Parsers.ContextFreeGrammar.
 Require Import Fiat.Parsers.ContextFreeGrammarProperties.
 Require Import Fiat.Parsers.StringLike.ForallChars.
-Require Import Fiat.Parsers.Reachable.AllReachable.
-Require Import Fiat.Parsers.Reachable.AllMinimalReachable.
+Require Import Fiat.Parsers.Reachable.All.Reachable.
+Require Import Fiat.Parsers.Reachable.All.MinimalReachable.
 Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.BaseTypesLemmas.
-Require Import Fiat.Parsers.Reachable.AllReachable.
-Require Import Fiat.Parsers.Reachable.AllMinimalReachableOfReachable.
+Require Import Fiat.Parsers.Reachable.All.Reachable.
+Require Import Fiat.Parsers.Reachable.All.MinimalReachableOfReachable.
 Require Import Fiat.Common.
 
 Set Implicit Arguments.

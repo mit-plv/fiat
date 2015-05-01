@@ -23,9 +23,9 @@ Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Parsers.MinimalParseOfParse.
 Require Import Fiat.Parsers.ContextFreeGrammarProperties.
 Require Import Fiat.Parsers.FoldGrammar.
-Require Import Fiat.Parsers.Reachable.AllMinimalReachable.
-Require Import Fiat.Parsers.Reachable.AllMinimalReachableOfReachable.
-Require Import Fiat.Parsers.Reachable.AllReachableParse.
+Require Import Fiat.Parsers.Reachable.All.MinimalReachable.
+Require Import Fiat.Parsers.Reachable.All.MinimalReachableOfReachable.
+Require Import Fiat.Parsers.Reachable.All.ReachableParse.
 
 Set Implicit Arguments.
 
