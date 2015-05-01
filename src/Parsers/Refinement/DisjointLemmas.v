@@ -23,9 +23,16 @@ Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Parsers.MinimalParseOfParse.
 Require Import Fiat.Parsers.ContextFreeGrammarProperties.
 Require Import Fiat.Parsers.FoldGrammar.
-Require Import Fiat.Parsers.Reachable.All.MinimalReachable.
-Require Import Fiat.Parsers.Reachable.All.MinimalReachableOfReachable.
-Require Import Fiat.Parsers.Reachable.All.ReachableParse.
+Require Import Fiat.Parsers.BaseTypesLemmas.
+Require Fiat.Parsers.Reachable.All.MinimalReachable.
+Require Fiat.Parsers.Reachable.All.MinimalReachableOfReachable.
+Require Fiat.Parsers.Reachable.All.ReachableParse.
+Require Fiat.Parsers.Reachable.OnlyFirst.MinimalReachable.
+Require Fiat.Parsers.Reachable.OnlyFirst.MinimalReachableOfReachable.
+Require Fiat.Parsers.Reachable.OnlyFirst.ReachableParse.
+Require Fiat.Parsers.Reachable.MaybeEmpty.Core.
+Require Fiat.Parsers.Reachable.MaybeEmpty.MinimalOfCore.
+Require Fiat.Parsers.Reachable.MaybeEmpty.OfParse.
 
 Set Implicit Arguments.
 
@@ -124,23 +131,23 @@ Section all_possible_correctness.
       | _ => left; assumption
       | _ => right; assumption
       | [ H : ?A -> ?B |- ?B ] => apply H; clear H
-      | [ H : minimal_reachable_from_item _ _ (NonTerminal _) |- _ ] => ddestruction H
-      | [ H : minimal_reachable_from_item _ _ (Terminal _) |- _ ] => ddestruction H
-      | [ H : minimal_reachable_from_production _ _ nil |- _ ] => ddestruction H
-      | [ H : minimal_reachable_from_production _ _ (_::_) |- _ ] => ddestruction H
-      | [ H : minimal_reachable_from_productions _ _ nil |- _ ] => ddestruction H
-      | [ H : minimal_reachable_from_productions _ _ (_::_) |- _ ] => ddestruction H
+      | [ H : All.MinimalReachable.minimal_reachable_from_item _ _ (NonTerminal _) |- _ ] => ddestruction H
+      | [ H : All.MinimalReachable.minimal_reachable_from_item _ _ (Terminal _) |- _ ] => ddestruction H
+      | [ H : All.MinimalReachable.minimal_reachable_from_production _ _ nil |- _ ] => ddestruction H
+      | [ H : All.MinimalReachable.minimal_reachable_from_production _ _ (_::_) |- _ ] => ddestruction H
+      | [ H : All.MinimalReachable.minimal_reachable_from_productions _ _ nil |- _ ] => ddestruction H
+      | [ H : All.MinimalReachable.minimal_reachable_from_productions _ _ (_::_) |- _ ] => ddestruction H
     end.
 
   Local Ltac t := repeat first [ t' | left; solve [ t ] | right; solve [ t ] ].
 
   Local Instance all_possible_ccdata : @fold_grammar_correctness_computational_data Char _ G
     := { Pnt valid0 nt ls
-         := forall ch : Char, List.In ch ls <-> inhabited (minimal_reachable_from_item (G := G) ch valid0 (NonTerminal nt));
+         := forall ch : Char, List.In ch ls <-> inhabited (All.MinimalReachable.minimal_reachable_from_item (G := G) ch valid0 (NonTerminal nt));
          Ppat valid0 pat ls
-         := forall ch : Char, List.In ch ls <-> inhabited (minimal_reachable_from_production (G := G) ch valid0 pat);
+         := forall ch : Char, List.In ch ls <-> inhabited (All.MinimalReachable.minimal_reachable_from_production (G := G) ch valid0 pat);
          Ppats valid0 pats ls
-         := forall ch : Char, List.In ch ls <-> inhabited (minimal_reachable_from_productions (G := G) ch valid0 pats) }.
+         := forall ch : Char, List.In ch ls <-> inhabited (All.MinimalReachable.minimal_reachable_from_productions (G := G) ch valid0 pats) }.
 
   Local Arguments is_valid_nonterminal : simpl never.
   Local Arguments remove_nonterminal : simpl never.
@@ -165,8 +172,8 @@ Section all_possible_correctness.
   : forall_chars__char_in str (possible_terminals_of G nt).
   Proof.
     unfold possible_terminals_of.
-    generalize (forall_chars_reachable_from_parse_of_item _ Hp).
-    setoid_rewrite minimal_reachable_from_item__iff__reachable_from_item.
+    generalize (All.ReachableParse.forall_chars_reachable_from_parse_of_item _ Hp).
+    setoid_rewrite All.MinimalReachableOfReachable.minimal_reachable_from_item__iff__reachable_from_item.
     apply forall_chars__impl__forall_chars__char_in.
     intro ch.
     apply (fold_nt_correct (G := G) nt ch).
@@ -175,6 +182,120 @@ End all_possible_correctness.
 
 Section only_first_correctness.
   Local Open Scope string_like_scope.
+
+  Local Existing Instance only_first_fold_data.
+
+  Local Ltac dependent_destruction_head h :=
+    idtac;
+    match goal with
+      | [ H : ?T |- _ ] => let x := head T in
+                           constr_eq h x;
+                             let H' := fresh in
+                             rename H into H';
+                               dependent destruction H'
+    end.
+
+  Local Ltac ddestruction H
+    := let p := fresh in rename H into p; dependent destruction p.
+
+  Local Ltac t' :=
+    idtac;
+    match goal with
+      | _ => rewrite in_app_iff
+      | _ => progress simpl in *
+      | _ => intro
+      | _ => progress destruct_head inhabited
+      | _ => progress destruct_head iff
+      | _ => progress destruct_head and
+      | _ => progress subst
+      | _ => reflexivity
+      | _ => congruence
+      | _ => tauto
+      | [ ch : Ascii.ascii, H : forall ch : Ascii.ascii, _ |- _ ] => specialize (H ch)
+      | [ H : ?A, H' : ?A -> ?B |- _ ] => specialize (H' H)
+      | [ H : _, H' : ?A -> ?B |- _ ] => specialize (H' (sub_nonterminals_listT_remove_2 H))
+      | [ H : is_true (is_valid_nonterminal ?v ?nt), H' : sub_nonterminals_listT ?v _ |- _ ]
+        => unique pose proof (H' _ H)
+      | _ => progress destruct_head or
+      | [ |- _ <-> _ ] => split
+      | [ |- _ /\ _ ] => split
+      | [ |- inhabited _ ] => constructor
+      | _ => assumption
+      | _ => left; assumption
+      | _ => right; assumption
+      | _ => constructor; assumption
+      | _ => solve [ constructor ]
+      | [ H : ?A -> ?B |- ?B ] => apply H; clear H
+      | [ H : OnlyFirst.MinimalReachable.minimal_reachable_from_item _ _ _ (NonTerminal _) |- _ ] => ddestruction H
+      | [ H : OnlyFirst.MinimalReachable.minimal_reachable_from_item _ _ _ (Terminal _) |- _ ] => ddestruction H
+      | [ H : OnlyFirst.MinimalReachable.minimal_reachable_from_production _ _ _ nil |- _ ] => ddestruction H
+      | [ H : OnlyFirst.MinimalReachable.minimal_reachable_from_production _ _ _ (_::_) |- _ ] => ddestruction H
+      | [ H : OnlyFirst.MinimalReachable.minimal_reachable_from_productions _ _ _ nil |- _ ] => ddestruction H
+      | [ H : OnlyFirst.MinimalReachable.minimal_reachable_from_productions _ _ _ (_::_) |- _ ] => ddestruction H
+      | [ H : MaybeEmpty.Core.maybe_empty_item _ _ (NonTerminal _) |- _ ] => ddestruction H
+      | [ H : MaybeEmpty.Core.maybe_empty_item _ _ (Terminal _) |- _ ] => ddestruction H
+      | [ H : MaybeEmpty.Core.maybe_empty_production _ _ nil |- _ ] => ddestruction H
+      | [ H : MaybeEmpty.Core.maybe_empty_production _ _ (_::_) |- _ ] => ddestruction H
+      | [ H : MaybeEmpty.Core.maybe_empty_productions _ _ nil |- _ ] => ddestruction H
+      | [ H : MaybeEmpty.Core.maybe_empty_productions _ _ (_::_) |- _ ] => ddestruction H
+    end.
+
+  Local Ltac t := repeat first [ t' | left; solve [ t ] | right; solve [ t ] ].
+
+  Local Instance only_first_ccdata (G : grammar Ascii.ascii)
+        (predata := @rdp_list_predata _ G)
+  : @fold_grammar_correctness_computational_data Ascii.ascii possible_first_terminals G
+    := { Pnt valid0 nt pft
+         := forall ch : Ascii.ascii,
+              sub_nonterminals_listT valid0 initial_nonterminals_data
+              -> (List.In ch pft <-> inhabited (OnlyFirst.MinimalReachable.minimal_reachable_from_item (G := G) initial_nonterminals_data ch valid0 (NonTerminal nt)))
+                 /\ (might_be_empty pft <-> inhabited (MaybeEmpty.Core.maybe_empty_item G initial_nonterminals_data (NonTerminal nt)));
+         Ppat valid0 pat pft
+         := forall ch : Ascii.ascii,
+              sub_nonterminals_listT valid0 initial_nonterminals_data
+              -> (List.In ch pft <-> inhabited (OnlyFirst.MinimalReachable.minimal_reachable_from_production (G := G) initial_nonterminals_data ch valid0 pat))
+                 /\ (might_be_empty pft <-> inhabited (MaybeEmpty.Core.maybe_empty_production G initial_nonterminals_data pat));
+         Ppats valid0 pats pft
+         := forall ch : Ascii.ascii,
+              sub_nonterminals_listT valid0 initial_nonterminals_data
+              -> (List.In ch pft <-> inhabited (OnlyFirst.MinimalReachable.minimal_reachable_from_productions (G := G) initial_nonterminals_data ch valid0 pats))
+                 /\ (might_be_empty pft <-> inhabited (MaybeEmpty.Core.maybe_empty_productions G initial_nonterminals_data pats)) }.
+
+  Local Arguments is_valid_nonterminal : simpl never.
+  Local Arguments remove_nonterminal : simpl never.
+  Local Arguments initial_nonterminals_data : simpl never.
+
+  Local Instance only_first_cdata : @fold_grammar_correctness_data Ascii.ascii possible_first_terminals (only_first_fold_data G) G
+    := { fgccd := @only_first_ccdata G }.
+  Proof.
+    { abstract t. }
+    { t.
+
+ }
+    { abstract t. }
+    { admit; abstract t. }
+    { admit; abstract t. }
+    { abstract t. }
+    { admit; abstract t. }
+  Defined.
+
+  Lemma possible_terminals_of_correct (G : grammar Ascii.ascii)
+        (predata := @rdp_list_predata _ G)
+        (str : String) nt
+        (p : parse_of_item G str (NonTerminal nt))
+        (Hp : Forall_parse_of_item (fun _ nt' => is_valid_nonterminal initial_nonterminals_data nt') p)
+  : forall_chars__char_in str (possible_terminals_of G nt).
+  Proof.
+    unfold possible_terminals_of.
+    generalize (OnlyFirst.ReachableParse.forall_chars_reachable_from_parse_of_item _ Hp).
+    setoid_rewrite OnlyFirst.MinimalReachableOfReachable.minimal_reachable_from_item__iff__reachable_from_item.
+    apply forall_chars__impl__forall_chars__char_in.
+    intro ch.
+    apply (fold_nt_correct (G := G) nt ch).
+  Qed.
+
+
+
 
   Lemma production_is_reachable_iff {Char} {G : grammar Char} {its}
         (predata := @rdp_list_predata _ G)
