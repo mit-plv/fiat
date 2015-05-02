@@ -225,7 +225,10 @@ Section only_first_correctness.
       | _ => right; assumption
       | _ => constructor; assumption
       | _ => solve [ constructor ]
+      | _ => progress unfold brute_force_parse_nonterminal in *
       | [ H : ?A -> ?B |- ?B ] => apply H; clear H
+      | [ H : is_true (BooleanRecognizer.parse_nonterminal _ _) |- _ ]
+        => apply parse_nonterminal_sound in H
       | [ H : OnlyFirst.MinimalReachable.minimal_reachable_from_item _ _ _ (NonTerminal _) |- _ ] => ddestruction H
       | [ H : OnlyFirst.MinimalReachable.minimal_reachable_from_item _ _ _ (Terminal _) |- _ ] => ddestruction H
       | [ H : OnlyFirst.MinimalReachable.minimal_reachable_from_production _ _ _ nil |- _ ] => ddestruction H
@@ -270,6 +273,12 @@ Section only_first_correctness.
   Proof.
     { abstract t. }
     { t.
+
+      eapply MaybeEmpty.OfParse.parse_empty_maybe_empty_parse_of_item.
+
+      match goal with
+      end.
+
 
  }
     { abstract t. }
