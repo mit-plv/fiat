@@ -19,6 +19,7 @@ Require Import Fiat.Common.List.Operations.
 Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.StringLike.String.
 Require Import Fiat.Parsers.StringLike.ForallChars.
+Require Import Fiat.Parsers.StringLike.FirstChar.
 Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Parsers.MinimalParseOfParse.
 Require Import Fiat.Parsers.ContextFreeGrammarProperties.
@@ -49,11 +50,11 @@ Section all_possible.
          combine_productions := @app _ }.
 
   Definition possible_terminals_of : grammar Char -> String.string -> possible_terminals
-    := fold_nt.
+    := @fold_nt _ _ all_possible_fold_data.
   Definition possible_terminals_of_productions : grammar Char -> productions Char -> possible_terminals
-    := fold_productions.
+    := @fold_productions _ _ all_possible_fold_data.
   Definition possible_terminals_of_production : grammar Char -> production Char -> possible_terminals
-    := fold_production.
+    := @fold_production _ _ all_possible_fold_data.
 End all_possible.
 
 Section only_first.
@@ -84,11 +85,11 @@ Section only_first.
                := (might_be_empty first_of_first || might_be_empty first_of_rest)%bool |} }.
 
   Definition possible_first_terminals_of : String.string -> possible_first_terminals
-    := fold_nt G.
+    := @fold_nt _ _ only_first_fold_data G.
   Definition possible_first_terminals_of_productions : productions Ascii.ascii -> possible_first_terminals
-    := fold_productions G.
+    := @fold_productions _ _ only_first_fold_data G.
   Definition possible_first_terminals_of_production : production Ascii.ascii -> possible_first_terminals
-    := fold_production G.
+    := @fold_production _ _ only_first_fold_data G.
 End only_first.
 
 Section all_possible_correctness.
@@ -181,6 +182,7 @@ Section all_possible_correctness.
 End all_possible_correctness.
 
 Section only_first_correctness.
+  Context (G : grammar Ascii.ascii).
   Local Open Scope string_like_scope.
 
   Local Existing Instance only_first_fold_data.
@@ -203,6 +205,7 @@ Section only_first_correctness.
     match goal with
       | _ => rewrite in_app_iff
       | _ => progress simpl in *
+      | [ H : context[?b = true] |- _ ] => change (b = true) with (is_true b) in H
       | _ => intro
       | _ => progress destruct_head inhabited
       | _ => progress destruct_head iff
@@ -211,27 +214,35 @@ Section only_first_correctness.
       | _ => reflexivity
       | _ => congruence
       | _ => tauto
-      | [ ch : Ascii.ascii, H : forall ch : Ascii.ascii, _ |- _ ] => specialize (H ch)
-      | [ H : ?A, H' : ?A -> ?B |- _ ] => specialize (H' H)
-      | [ H : _, H' : ?A -> ?B |- _ ] => specialize (H' (sub_nonterminals_listT_remove_2 H))
-      | [ H : is_true (is_valid_nonterminal ?v ?nt), H' : sub_nonterminals_listT ?v _ |- _ ]
-        => unique pose proof (H' _ H)
-      | _ => progress destruct_head or
-      | [ |- _ <-> _ ] => split
-      | [ |- _ /\ _ ] => split
       | _ => assumption
       | _ => left; assumption
       | _ => right; assumption
       | _ => constructor; assumption
       | _ => solve [ constructor ]
       | _ => progress unfold brute_force_parse_nonterminal in *
+      | [ ch : Ascii.ascii, H : forall ch : Ascii.ascii, _ |- _ ] => specialize (H ch)
+      | [ H : ?A, H' : ?A -> ?B |- _ ] => specialize (H' H)
+      | [ H : _, H' : ?A -> ?B |- _ ] => specialize (H' (sub_nonterminals_listT_remove_2 H))
+      | [ H : is_true (is_valid_nonterminal ?v ?nt), H' : sub_nonterminals_listT ?v _ |- _ ]
+        => unique pose proof (H' _ H)
+      | [ H : is_valid_nonterminal ?v ?nt = true, H' : sub_nonterminals_listT ?v _ |- _ ]
+        => unique pose proof (H' _ H)
+      | [ H : is_true (andb _ _) |- _ ] => apply Bool.andb_true_iff in H
+      | [ |- is_true (andb _ _) ] => apply Bool.andb_true_iff
+      | [ H : is_true (orb _ _) |- _ ] => apply Bool.orb_true_iff in H
+      | [ |- is_true (orb _ _) ] => apply Bool.orb_true_iff
+      | _ => progress destruct_head or
+      | [ |- _ <-> _ ] => split
+      | [ |- _ /\ _ ] => split
       | [ H : appcontext[if ?e then _ else _] |- _ ] => revert H; case_eq e
+      | [ H : inhabited ?A -> ?B |- _ ] => specialize (fun a => H (inhabits a))
       | [ |- inhabited _ ] => constructor
       | [ |- appcontext[if ?e then _ else _] ] => case_eq e
       | [ |- _ \/ False ] => left
       | [ H : is_true (BooleanRecognizer.parse_nonterminal _ _) |- _ ]
         => apply parse_nonterminal_sound in H
       | [ H : ?A -> ?B |- ?B ] => apply H; clear H
+      (*| [ |- OnlyFirst.MinimalReachable.minimal_reachable_from_item _ _ _ (NonTerminal _) ] => constructor*)
       | [ H : OnlyFirst.MinimalReachable.minimal_reachable_from_item _ _ _ (NonTerminal _) |- _ ] => ddestruction H
       | [ H : OnlyFirst.MinimalReachable.minimal_reachable_from_item _ _ _ (Terminal _) |- _ ] => ddestruction H
       | [ H : OnlyFirst.MinimalReachable.minimal_reachable_from_production _ _ _ nil |- _ ] => ddestruction H
@@ -247,11 +258,18 @@ Section only_first_correctness.
       | _ => right; eauto;
              apply MaybeEmpty.MinimalOfCore.minimal_maybe_empty_item__of__maybe_empty_item;
              constructor; assumption
+      | [ H : MaybeEmpty.Minimal.minimal_maybe_empty_item _ _ |- _ ] => eapply MaybeEmpty.MinimalOfCore.maybe_empty_item__of__minimal_maybe_empty_item in H; [ | reflexivity ]
+      | [ H : MaybeEmpty.Minimal.minimal_maybe_empty_production _ _ |- _ ] => eapply MaybeEmpty.MinimalOfCore.maybe_empty_production__of__minimal_maybe_empty_production in H; [ | reflexivity ]
+      | [ H : MaybeEmpty.Minimal.minimal_maybe_empty_productions _ _ |- _ ] => eapply MaybeEmpty.MinimalOfCore.maybe_empty_productions__of__minimal_maybe_empty_productions in H; [ | reflexivity ]
+      | [ m : MaybeEmpty.Core.maybe_empty_productions _ _ _ |- _ ]
+        => eapply MaybeEmpty.OfParse.parse_empty_from_maybe_empty_parse_of_productions with (str := ""%string) in m; [ | reflexivity.. ];
+           eapply parse_nonterminal_complete; [ eassumption.. | ];
+           split; [ eassumption | exact (projT2 m) ]
     end.
 
   Local Ltac t := repeat first [ t' | left; solve [ t ] | right; solve [ t ] ].
 
-  Local Instance only_first_ccdata (G : grammar Ascii.ascii)
+  Local Instance only_first_ccdata
         (predata := @rdp_list_predata _ G)
   : @fold_grammar_correctness_computational_data Ascii.ascii possible_first_terminals G
     := { Pnt valid0 nt pft
@@ -274,55 +292,37 @@ Section only_first_correctness.
   Local Arguments remove_nonterminal : simpl never.
   Local Arguments initial_nonterminals_data : simpl never.
 
-  Local Instance only_first_cdata : @fold_grammar_correctness_data Ascii.ascii possible_first_terminals (only_first_fold_data G) G
-    := { fgccd := @only_first_ccdata G }.
+  Local Instance only_first_cdata
+        (rdata := rdp_list_rdata' (G := G))
+        (cdata := brute_force_cdata G)
+  : @fold_grammar_correctness_data Ascii.ascii possible_first_terminals (only_first_fold_data G) G
+    := { fgccd := only_first_ccdata }.
   Proof.
     { abstract t. }
     { t.
-      admit.
       admit. }
     { abstract t. }
-    { t.
-
-      constructor; eauto.
-      { .
-
- }
-      Focus 2.
-      eapply MaybeEmpty.OfParse.parse_empty_maybe_empty_parse_of_item.
-      match goal with
-        | [ H : MaybeEmpty.Core.maybe_empty
-
-      eapply MaybeEmpty.OfParse.parse_empty_maybe_empty_parse_of_item.
-
-      match goal with
-      end.
-
-
- }
     { abstract t. }
-    { admit; abstract t. }
-    { admit; abstract t. }
     { abstract t. }
-    { admit; abstract t. }
+    { abstract t. }
+    { abstract t. }
   Defined.
 
-  Lemma possible_terminals_of_correct (G : grammar Ascii.ascii)
+  Lemma possible_first_terminals_of_production_correct
         (predata := @rdp_list_predata _ G)
-        (str : String) nt
-        (p : parse_of_item G str (NonTerminal nt))
-        (Hp : Forall_parse_of_item (fun _ nt' => is_valid_nonterminal initial_nonterminals_data nt') p)
-  : forall_chars__char_in str (possible_terminals_of G nt).
+        (str : String) pat
+        (p : parse_of_production G str pat)
+        (Hp : Forall_parse_of_production (fun _ nt' => is_valid_nonterminal initial_nonterminals_data nt') p)
+  : first_char_in str (possible_first_terminals_of_production G pat).
   Proof.
-    unfold possible_terminals_of.
-    generalize (OnlyFirst.ReachableParse.forall_chars_reachable_from_parse_of_item _ Hp).
-    setoid_rewrite OnlyFirst.MinimalReachableOfReachable.minimal_reachable_from_item__iff__reachable_from_item.
-    apply forall_chars__impl__forall_chars__char_in.
+    unfold possible_terminals_of_production.
+    generalize (OnlyFirst.ReachableParse.for_first_char_reachable_from_parse_of_production _ Hp).
+    setoid_rewrite OnlyFirst.MinimalReachableOfReachable.minimal_reachable_from_production__iff__reachable_from_production.
+    apply for_first_char__impl__first_char_in.
     intro ch.
-    apply (fold_nt_correct (G := G) nt ch).
+    apply (fold_production_correct (FGCD := only_first_cdata) pat); reflexivity.
   Qed.
-
-
+End only_first_correctness.
 
 
   Lemma production_is_reachable_iff {Char} {G : grammar Char} {its}

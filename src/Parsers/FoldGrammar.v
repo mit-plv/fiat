@@ -191,4 +191,20 @@ Section fold_correctness.
     unfold fold_nt, fold_nt'.
     apply Fix_fold_nt_step_correct.
   Qed.
+
+  Lemma fold_production_correct
+        pat
+  : Ppat initial_nonterminals_data pat (fold_production G pat).
+  Proof.
+    unfold fold_production.
+    apply fold_production'_correct, fold_nt_correct.
+  Qed.
+
+  Lemma fold_productions_correct
+        pats
+  : Ppats initial_nonterminals_data pats (fold_productions G pats).
+  Proof.
+    unfold fold_productions.
+    apply fold_productions'_correct, fold_nt_correct.
+  Qed.
 End fold_correctness.
