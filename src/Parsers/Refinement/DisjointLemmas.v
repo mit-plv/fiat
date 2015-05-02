@@ -219,16 +219,19 @@ Section only_first_correctness.
       | _ => progress destruct_head or
       | [ |- _ <-> _ ] => split
       | [ |- _ /\ _ ] => split
-      | [ |- inhabited _ ] => constructor
       | _ => assumption
       | _ => left; assumption
       | _ => right; assumption
       | _ => constructor; assumption
       | _ => solve [ constructor ]
       | _ => progress unfold brute_force_parse_nonterminal in *
-      | [ H : ?A -> ?B |- ?B ] => apply H; clear H
+      | [ H : appcontext[if ?e then _ else _] |- _ ] => revert H; case_eq e
+      | [ |- inhabited _ ] => constructor
+      | [ |- appcontext[if ?e then _ else _] ] => case_eq e
+      | [ |- _ \/ False ] => left
       | [ H : is_true (BooleanRecognizer.parse_nonterminal _ _) |- _ ]
         => apply parse_nonterminal_sound in H
+      | [ H : ?A -> ?B |- ?B ] => apply H; clear H
       | [ H : OnlyFirst.MinimalReachable.minimal_reachable_from_item _ _ _ (NonTerminal _) |- _ ] => ddestruction H
       | [ H : OnlyFirst.MinimalReachable.minimal_reachable_from_item _ _ _ (Terminal _) |- _ ] => ddestruction H
       | [ H : OnlyFirst.MinimalReachable.minimal_reachable_from_production _ _ _ nil |- _ ] => ddestruction H
@@ -241,6 +244,9 @@ Section only_first_correctness.
       | [ H : MaybeEmpty.Core.maybe_empty_production _ _ (_::_) |- _ ] => ddestruction H
       | [ H : MaybeEmpty.Core.maybe_empty_productions _ _ nil |- _ ] => ddestruction H
       | [ H : MaybeEmpty.Core.maybe_empty_productions _ _ (_::_) |- _ ] => ddestruction H
+      | _ => right; eauto;
+             apply MaybeEmpty.MinimalOfCore.minimal_maybe_empty_item__of__maybe_empty_item;
+             constructor; assumption
     end.
 
   Local Ltac t := repeat first [ t' | left; solve [ t ] | right; solve [ t ] ].
@@ -273,6 +279,19 @@ Section only_first_correctness.
   Proof.
     { abstract t. }
     { t.
+      admit.
+      admit. }
+    { abstract t. }
+    { t.
+
+      constructor; eauto.
+      { .
+
+ }
+      Focus 2.
+      eapply MaybeEmpty.OfParse.parse_empty_maybe_empty_parse_of_item.
+      match goal with
+        | [ H : MaybeEmpty.Core.maybe_empty
 
       eapply MaybeEmpty.OfParse.parse_empty_maybe_empty_parse_of_item.
 
