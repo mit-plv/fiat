@@ -247,7 +247,10 @@ Proof.
                => specialize (fun nt' str0 n' H0 => H _ (@rdp_list_remove_nonterminal_dec _ nt H') n' nt' H0 str0)
              | [ H' : rdp_list_is_valid_nonterminal ?x ?nt = true,
                       H : forall y, nonterminals_listT_R y ?x -> _ |- _ ]
-               => specialize (fun nt' str0 n' H0 => H _ (@rdp_list_remove_nonterminal_dec _ nt H') n' nt' H0 str0)
+               => specialize (H _ (@rdp_list_remove_nonterminal_dec _ nt H'));
+                 let H'' := fresh in
+                 rename H into H'';
+                   specialize (fun nt' str0 n' H0 => H'' n' nt' H0 str0)
              | [ H : length_of_any_production' _ _ = same_length _ |- _ ] => eapply has_only_terminals_parse_of_production_length in H; [ | eassumption.. ]
              | _ => reflexivity
              | _ => discriminate
