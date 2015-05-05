@@ -171,7 +171,7 @@ Section forall_chars.
   Proof.
     split.
     { intros H n.
-      rewrite forall_chars__split in H; destruct H; eassumption. }
+      revert H; rewrite forall_chars__split; intro H; destruct H; eassumption. }
     { intro H.
       specialize (H (length str)).
       rewrite take_long in H by omega; assumption. }
@@ -182,7 +182,7 @@ Section forall_chars.
   Proof.
     split.
     { intros H n.
-      rewrite forall_chars__split in H; destruct H; eassumption. }
+      revert H; rewrite forall_chars__split; intro H; destruct H; eassumption. }
     { intro H.
       specialize (H 0).
       rewrite drop_0 in H; assumption. }
