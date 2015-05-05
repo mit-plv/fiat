@@ -121,6 +121,18 @@ Section forall_chars.
       rewrite take_long; trivial; omega. }
   Qed.
 
+  Lemma forall_chars_singleton_length (str : String) P (H : length str = 1)
+  : forall_chars str P <-> (forall ch, str ~= [ ch ] -> P ch).
+  Proof.
+    split.
+    { intro H''.
+      intros ch' H'''.
+      apply (forall_chars_singleton _ _ _ H'''); assumption. }
+    { destruct (singleton_exists _ H) as [ch H'].
+      intro H''.
+      apply (forall_chars_singleton _ P ch H'); eauto. }
+  Qed.
+
   Lemma forall_chars_False (str : String) P
   : (forall ch, ~P ch) -> forall_chars str P -> length str = 0.
   Proof.

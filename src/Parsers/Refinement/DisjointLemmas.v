@@ -344,7 +344,138 @@ Local Open Scope string_like_scope.
 
 Local Arguments string_beq : simpl never.
 
-Lemma terminals_disjoint_search_for_not {G : grammar Ascii.ascii} (str : @String Ascii.ascii string_stringlike)
+Definition is_first_char_such_that {Char} {HSL : StringLike Char}
+           (might_be_empty : Prop)
+           (str : @String Char HSL)
+           (n : nat)
+           P
+  := forall_chars (take n str) (fun ch => ~P ch)
+     /\ ((for_first_char (drop n str) P /\ n < length str)
+         \/ (might_be_empty /\ length str <= n)).
+
+Lemma is_first_char_such_that_drop {Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}
+      (might_be_empty : Prop)
+      (str : @String Char HSL)
+      (n : nat)
+      P
+: is_first_char_such_that might_be_empty str (S n) P
+  <-> (is_first_char_such_that might_be_empty (drop 1 str) n P /\ for_first_char str (fun ch => ~P ch)).
+Proof.
+  generalize dependent str; induction n; intros.
+  { unfold is_first_char_such_that.
+    repeat match goal with
+             | _ => assumption
+             | _ => intro
+             | [ H : and _ _ |- _ ] => destruct H
+             | [ H : ?A -> ?B, H' : ?A |- _ ] => specialize (H H')
+             | [ H : _ |- _ ] => rewrite drop_0 in H
+             | [ H : _ |- _ ] => apply forall_chars__impl__for_first_char in H
+             | [ H : for_first_char (take (S _) _) _ |- _ ] => apply for_first_char__take in H
+             | [ H : for_first_char ?str ?P, H' : for_first_char ?str ?P' |- _ ]
+               => destruct (fun H0 => for_first_char_combine (T := False) H0 H H'); [ tauto | clear H H' | tauto ]
+             | [ H : ?x = 0 |- context[?x] ] => rewrite H
+             | _ => rewrite take_length
+             | _ => rewrite drop_length
+             | _ => rewrite drop_drop
+             | _ => apply forall_chars_nil; [ (rewrite ?take_length, ?drop_length; reflexivity).. ]
+             | _ => omega
+             | _ => progress destruct_head and
+             | _ => progress destruct_head or
+             | [ |- _ /\ _ ] => split
+             | [ |- _ <-> _ ] => split
+             | _ => left; repeat split; trivial; omega
+             | _ => right; repeat split; trivial; omega
+             | _ => apply for_first_char__for_first_char__iff_short;
+                   [ rewrite take_length; destruct (length str); simpl in *; omega
+                   | apply -> (for_first_char__take 0); assumption ]
+           end. }
+  { unfold is_first_char_such_that in *.
+    rewrite (forall_chars__split _ _ 1); rewrite !drop_drop, !drop_take, !take_take; simpl.
+    repeat match goal with
+             | _ => assumption
+             | _ => intro
+             | [ H : and _ _ |- _ ] => destruct H
+             | [ H : ?A -> ?B, H' : ?A |- _ ] => specialize (H H')
+             | [ H : _ |- _ ] => rewrite drop_0 in H
+             | [ H : _ |- _ ] => apply forall_chars__impl__for_first_char in H
+             | [ H : for_first_char (take (S _) _) _ |- _ ] => apply for_first_char__take in H
+             | [ H : for_first_char ?str ?P, H' : for_first_char ?str ?P' |- _ ]
+               => destruct (fun H0 => for_first_char_combine (T := False) H0 H H'); [ tauto | clear H H' | tauto ]
+             | [ H : ?x = 0 |- context[?x] ] => rewrite H
+             | _ => rewrite take_length
+             | _ => rewrite drop_length
+             | _ => rewrite drop_drop
+             | _ => apply forall_chars_nil; [ (rewrite ?take_length, ?drop_length; reflexivity).. ]
+             | _ => omega
+             | _ => progress destruct_head and
+             | _ => progress destruct_head or
+             | [ |- _ /\ _ ] => split
+             | [ |- _ <-> _ ] => split
+             | _ => left; repeat split; trivial; omega
+             | _ => right; repeat split; trivial; omega
+             | _ => apply for_first_char__for_first_char__iff_short;
+                   [ rewrite take_length; destruct (length str); simpl in *; omega
+                   | apply -> (for_first_char__take 0); assumption ]
+           end.
+    { apply IHn.
+     ].
+
+    apply for_first_
+
+Lemma is_first_char_such_that_eq_nat_iff {Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}
+      (might_be_empty : Prop)
+      (str : @String Char HSL)
+      (n n' : nat)
+      P
+      (H0 : is_first_char_such_that might_be_empty str n P)
+      (H1 : is_first_char_such_that might_be_empty str n' P)
+: n = n' \/ (n >= length str /\ n' >= length str /\ might_be_empty).
+Proof.
+  generalize dependent n'; generalize dependent str; induction n; intros.
+  { destruct n'; intros.
+    { left; reflexivity. }
+    { right.
+      unfold is_first_char_such_that in *.
+      repeat match goal with
+               | _ => assumption
+               | [ H : and _ _ |- _ ] => destruct H
+               | [ H : ?A -> ?B, H' : ?A |- _ ] => specialize (H H')
+               | [ H : _ |- _ ] => rewrite drop_0 in H
+               | [ H : _ |- _ ] => apply forall_chars__impl__for_first_char in H
+               | [ H : for_first_char (take (S _) _) _ |- _ ] => apply for_first_char__take in H
+               | [ H : for_first_char ?str ?P, H' : for_first_char ?str ?P' |- _ ]
+                 => destruct (fun H0 => for_first_char_combine (T := False) H0 H H'); [ tauto | clear H H' | tauto ]
+               | [ H : ?x = 0 |- context[?x] ] => rewrite H
+               | _ => omega
+               | _ => progress destruct_head and
+               | _ => progress destruct_head or
+               | [ |- _ /\ _ ] => split
+             end. } }
+  { destruct n'.
+    { right.
+      case_eq (length str).
+      {
+generalize dependent str.
+      ; destruct_head and; try solve [ repeat split; eauto; omega ].
+Focus 2.
+lazymatch goal with
+end.
+tauto.
+
+Lemma forall_chars__to__for_first_char str
+
+      rewrite drop_0 in .
+
+      destruct_head and.
+      rewrite drop_0 in *.
+      rewrite !drop_drop in IHn'; simpl in *.
+      rewrite !take_drop in IHn'; simpl in *.
+      rewrite !drop_length in IHn'; simpl in *.
+      destruct_head or; repeat split; try omega; eauto.
+      Focus 3.
+  destruct H0 as [H0' [H0''|[H0'' H0''']]], H1 as [H1' [H1''|[H1'' H1''']]].
+
+Lemma terminals_disjoint_search_for_not' {G : grammar Ascii.ascii} (str : @String Ascii.ascii string_stringlike)
       {nt its}
       (H_disjoint : disjoint ascii_beq (possible_terminals_of G nt) (possible_first_terminals_of_production G its))
       {n}
@@ -405,7 +536,35 @@ Proof.
     reflexivity. }
 Qed.
 
-Lemma terminals_disjoint_search_for {G : grammar Ascii.ascii} (str : @String Ascii.ascii string_stringlike)
+Lemma terminals_disjoint_search_for_not {G : grammar Ascii.ascii} (str : @String Ascii.ascii string_stringlike)
+      {nt its}
+      (H_disjoint : disjoint ascii_beq (possible_terminals_of G nt) (possible_first_terminals_of_production G its))
+      {n}
+      (pit : parse_of_item G (StringLike.take n str) (NonTerminal nt))
+      (pits : parse_of_production G (StringLike.drop n str) its)
+      (H_reachable : production_is_reachable G (NonTerminal nt :: its))
+      (Hpit : Forall_parse_of_item (fun _ nt => List.In nt (Valid_nonterminals G)) pit)
+      (Hpits : Forall_parse_of_production (fun _ nt => List.In nt (Valid_nonterminals G)) pits)
+: is_first_char_such_that
+    (might_be_empty (possible_first_terminals_of_production G its))
+    str
+    n
+    (fun ch => negb (list_bin ascii_beq ch (possible_terminals_of G nt))).
+Proof.
+  unfold is_first_char_such_that.
+  pose proof (terminals_disjoint_search_for_not' _ H_disjoint _ _ H_reachable Hpit Hpits) as H.
+  split;
+    [ destruct H as [H0 H1]
+    | destruct H as [H0 [[H1 H2] | H1]]; solve [ left; eauto | right; eauto ] ].
+  revert H0.
+  apply forall_chars__char_in__impl__forall_chars.
+  intros ch H' H''.
+  apply Bool.negb_true_iff, Bool.not_true_iff_false in H''.
+  apply H''.
+  apply list_in_lb; [ apply (@ascii_lb) | ]; assumption.
+Qed.
+
+Lemma terminals_disjoint_search_for' {G : grammar Ascii.ascii} (str : @String Ascii.ascii string_stringlike)
       {nt its}
       (H_disjoint : disjoint ascii_beq (possible_terminals_of G nt) (possible_first_terminals_of_production G its))
       {n}
@@ -466,4 +625,36 @@ Proof.
   reflexivity.
   reflexivity.
   reflexivity.
+Qed.
+
+Lemma terminals_disjoint_search_for {G : grammar Ascii.ascii} (str : @String Ascii.ascii string_stringlike)
+      {nt its}
+      (H_disjoint : disjoint ascii_beq (possible_terminals_of G nt) (possible_first_terminals_of_production G its))
+      {n}
+      (pit : parse_of_item G (StringLike.take n str) (NonTerminal nt))
+      (pits : parse_of_production G (StringLike.drop n str) its)
+      (H_reachable : production_is_reachable G (NonTerminal nt :: its))
+      (Hpit : Forall_parse_of_item (fun _ nt => List.In nt (Valid_nonterminals G)) pit)
+      (Hpits : Forall_parse_of_production (fun _ nt => List.In nt (Valid_nonterminals G)) pits)
+: is_first_char_such_that
+    (might_be_empty (possible_first_terminals_of_production G its))
+    str
+    n
+    (fun ch => list_bin ascii_beq ch (possible_first_terminals_of_production G its)).
+Proof.
+  unfold is_first_char_such_that.
+  pose proof (terminals_disjoint_search_for' _ H_disjoint _ _ H_reachable Hpit Hpits) as H.
+  split;
+    [ destruct H as [H0 H1]
+    | destruct H as [H0 [[H1 H2] | H1]]; [ right | left ]; eauto ].
+  { revert H0.
+    apply forall_chars_Proper; [ reflexivity | ].
+    intros ch H' H''.
+    apply Bool.negb_true_iff, Bool.not_true_iff_false in H'.
+    apply H'.
+    assumption. }
+  { revert H1.
+    apply first_char_in__impl__for_first_char.
+    intros ch H'.
+    apply list_in_lb; [ apply (@ascii_lb) | ]; assumption. }
 Qed.

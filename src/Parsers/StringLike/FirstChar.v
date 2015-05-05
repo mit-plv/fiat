@@ -4,6 +4,7 @@ Require Import Coq.omega.Omega.
 Require Import Coq.Numbers.Natural.Peano.NPeano.
 Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.StringLike.Properties.
+Require Import Fiat.Parsers.StringLike.ForallChars.
 Require Import Fiat.Common.
 
 Set Implicit Arguments.
@@ -117,6 +118,20 @@ Section for_first_char.
       rewrite take_long; trivial; omega. }
   Qed.
 
+  Lemma for_first_char_singleton_length (str : String) P (H : length str = 1)
+  : for_first_char str P <-> (forall ch, str ~= [ ch ] -> P ch).
+  Proof.
+    split.
+    { intro H''.
+      intros ch' H'''.
+      apply (for_first_char_singleton _ _ _ H'''); assumption. }
+    { destruct (singleton_exists _ H) as [ch H'].
+      intro H''.
+      apply (for_first_char_singleton _ P ch H'); eauto. }
+  Qed.
+
+  Global Opaque for_first_char.
+
   Lemma for_first_char_False (str : String) P
   : (forall ch, ~P ch) -> for_first_char str P -> length str = 0.
   Proof.
@@ -128,10 +143,32 @@ Section for_first_char.
     rewrite H''' in *.
     specialize (H'' eq_refl).
     destruct H'' as [ch H''].
-    exfalso; eapply H', H; eassumption.
+    apply (for_first_char__take 0) in H.
+    apply (for_first_char_singleton _ _ _ H'') in H.
+    specialize (H' ch).
+    exfalso; eauto.
   Qed.
 
-  Global Opaque for_first_char.
+  Lemma for_first_char_combine (str : String) (P P' : Char -> Prop) (T : Prop) (H : forall ch, P ch -> P' ch -> T)
+        (H0 : for_first_char str P)
+        (H1 : for_first_char str P')
+  : length str = 0 \/ T.
+  Proof.
+    case_eq (length str).
+    { left; reflexivity. }
+    { intros n H'; right.
+      pose proof (singleton_exists (take 1 str)) as H''.
+      rewrite take_length, H' in H''.
+      specialize (H'' eq_refl).
+      destruct H'' as [ch H''].
+      specialize (H ch).
+      apply (for_first_char__take 0) in H0.
+      apply (for_first_char__take 0) in H1.
+      apply (for_first_char_singleton _ _ _ H'') in H0.
+      apply (for_first_char_singleton _ _ _ H'') in H1.
+      eauto. }
+  Qed.
+
 
   Definition first_char_in (str : String) (ls : list Char)
     := for_first_char str (fun ch => List.In ch ls).
@@ -233,4 +270,34 @@ Section for_first_char.
   Qed.
 
   Global Opaque first_char_in.
+
+  Lemma forall_chars__impl__for_first_char (str : String) P (H : forall_chars str P)
+  : for_first_char str P.
+  Proof.
+    case_eq (length str).
+    { apply for_first_char_nil. }
+    { intros n H'.
+      eapply forall_chars_take in H.
+      apply (for_first_char__take 0).
+      apply for_first_char_singleton_length.
+      { rewrite take_length, H'; reflexivity. }
+      { apply forall_chars_singleton_length.
+        { rewrite take_length, H'; reflexivity. }
+        { eassumption. } } }
+  Qed.
+
+  Lemma for_first_char__for_first_char__iff_short (str : String) P (H : length str <= 1)
+  : forall_chars str P <-> for_first_char str P.
+  Proof.
+    case_eq (length str).
+    { intro H'.
+      split; intro.
+      { apply for_first_char_nil; assumption. }
+      { apply forall_chars_nil; assumption. } }
+    { intros [|] H'; [ | exfalso; omega ].
+      rewrite forall_chars_singleton_length by assumption.
+      rewrite for_first_char_singleton_length by assumption.
+      reflexivity. }
+  Qed.
+
 End for_first_char.
