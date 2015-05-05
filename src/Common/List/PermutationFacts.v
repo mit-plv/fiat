@@ -126,9 +126,12 @@ Lemma permutation_map_base :
 Proof.
   induction shuffled; simpl; intros.
 
-  apply Permutation_nil in H; subst.
-  apply map_eq_nil in H0; subst.
-  exists (@nil B); simpl; intuition.
+  { repeat match goal with
+             | [ H : _ |- _ ] => apply Permutation_nil in H
+             | _ => progress subst
+             | [ H : _ |- _ ] => apply map_eq_nil in H
+           end.
+    exists (@nil B); simpl; intuition. }
 
   symmetry in H.
   pose proof (permutation_cons_in H) as in_l1.
