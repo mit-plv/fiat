@@ -156,7 +156,7 @@ Section parser.
   Hint Resolve @mtake_R @mdrop_R : parser_adt_method_db.
 
   Local Ltac handle_rep :=
-    repeat intro;
+    repeat intro; simpl;
     repeat match goal with
              | [ st : { r : cRep (projT1 splitter_impl) | exists orig, AbsR (projT2 splitter_impl) orig r }%type |- exists orig, AbsR (projT2 splitter_impl) orig (fst (cMethods ?impl ?method _ ?arg)) ]
                => refine (@fst_cMethods_ex method arg st)
