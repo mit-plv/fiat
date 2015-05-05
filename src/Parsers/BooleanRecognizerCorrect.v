@@ -148,7 +148,7 @@ Section sound.
                    | _ => progress simpl in *
                    | _ => progress subst
                    | _ => solve [ auto ]
-                   | [ H : appcontext[fold_left] |- _ ] => rewrite (@fold_symmetric _ _ Bool.orb_assoc Bool.orb_comm) in H
+                   | [ H : appcontext[fold_left] |- _ ] => erewrite fold_symmetric in H by first [ apply Bool.orb_assoc | apply Bool.orb_comm ]
                    | [ H : is_true (fold_right orb false (map _ _)) |- _ ] => apply fold_right_orb_map_sig1 in H
                    | [ H : (_ || _)%bool = true |- _ ] => apply Bool.orb_true_elim in H
                    | [ H : (_ && _)%bool = true |- _ ] => apply Bool.andb_true_iff in H
@@ -205,8 +205,8 @@ Section sound.
                    | _ => progress simpl in *
                    | _ => progress subst
                    | _ => solve [ auto ]
-                   | [ H : appcontext[fold_left] |- _ ] => rewrite (@fold_symmetric _ _ Bool.orb_assoc Bool.orb_comm) in H
-                   | [ |- appcontext[fold_left] ] => rewrite (@fold_symmetric _ _ Bool.orb_assoc Bool.orb_comm)
+                   | [ H : appcontext[fold_left] |- _ ] => erewrite fold_symmetric in H by first [ apply Bool.orb_assoc | apply Bool.orb_comm ]
+                   | [ |- appcontext[fold_left] ] => erewrite fold_symmetric by first [ apply Bool.orb_assoc | apply Bool.orb_comm ]
                    | [ H : is_true (fold_right orb false (map _ _)) |- _ ] => apply fold_right_orb_map_sig1 in H
                    | [ H : (_ || _)%bool = true |- _ ] => apply Bool.orb_true_elim in H
                    | [ H : (_ && _)%bool = true |- _ ] => apply Bool.andb_true_iff in H
