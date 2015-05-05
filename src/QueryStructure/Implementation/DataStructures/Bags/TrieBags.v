@@ -1392,11 +1392,11 @@ Module TrieBag (X:OrderedType).
       eexists (k ++ k'); rewrite <- H0, <- H, <- app_assoc; reflexivity.
     Qed.
 
-    Add Parametric Relation
+    (*Add Parametric Relation
     : (list _) (Prefix)
         reflexivity proved by reflexivity
         transitivity proved by transitivity
-          as refine_rel.
+          as refine_rel.*)
 
     Lemma Prefix_app :
       forall l l',
