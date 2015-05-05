@@ -175,7 +175,7 @@ and gives you the computational hypothesis for the second *)
     split; intros v Comp_v; computes_to_inv;
     intuition; destruct_ex;
     computes_to_econstructor; eauto;
-    intuition; destruct_ex; intuition; subst;
+    intuition; destruct_ex; intuition; try subst;
     computes_to_econstructor; eauto.
   Qed.
 
@@ -190,7 +190,7 @@ and gives you the computational hypothesis for the second *)
     split; intros v Comp_v; computes_to_inv;
     intuition; destruct_ex;
     computes_to_econstructor; eauto;
-    intuition; destruct_ex; intuition; subst;
+    intuition; destruct_ex; intuition; try subst;
     computes_to_econstructor; eauto.
   Qed.
 

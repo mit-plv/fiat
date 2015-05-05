@@ -53,7 +53,7 @@ Section SimplifyRep.
     econstructor 1 with
     (AbsR := AbsR); simpl; eauto.
     - unfold simplifyConstructor, refine; intros;
-      computes_to_inv; repeat computes_to_econstructor; subst; eauto.
+      computes_to_inv; repeat computes_to_econstructor; try subst; eauto.
     - unfold simplifyMethod; intros.
       eapply H0; eauto.
   Qed.

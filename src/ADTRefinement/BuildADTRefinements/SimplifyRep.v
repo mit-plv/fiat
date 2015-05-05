@@ -60,7 +60,7 @@ Section SimplifyRep.
     - rewrite <- ith_Bounded_imap.
       unfold simplifyConstrDef, simplifyConstructor; simpl.
       intros v Comp_v; computes_to_inv;
-      repeat computes_to_econstructor; subst; eauto.
+      repeat computes_to_econstructor; try subst; eauto.
     - rewrite <- ith_Bounded_imap.
       rewrite H0; eauto; reflexivity.
   Qed. *)
