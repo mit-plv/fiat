@@ -270,24 +270,24 @@ Section parser.
           p1H : ContextFreeGrammarProperties.Forall_parse_of_production _ _
           |- List.In ?n ?v ]
         => hnf in H;
-          specialize (fun H0 H0' H1' =>
+          specialize (fun H0'' H0' H1' =>
                         H n H' H''
                           (@transfer_parse_of_item
                              Ascii.ascii adt_based_StringLike string_stringlike G
                              (fun s1 s2 => AbsR (projT2 splitter_impl) s2 (` s1))
-                             H0 _ _ _ H0' p0)
+                             H0'' _ _ _ H0' p0)
                           (@transfer_parse_of_production
                              Ascii.ascii adt_based_StringLike string_stringlike G
                              (fun s1 s2 => AbsR (projT2 splitter_impl) s2 (` s1))
-                             H0 _ _ _ H1' p1)
+                             H0'' _ _ _ H1' p1)
                           (@transfer_forall_parse_of_item
                              Ascii.ascii adt_based_StringLike string_stringlike G
                              (fun s1 s2 => AbsR (projT2 splitter_impl) s2 (` s1))
-                             H0 _ _ _ _ H0' p0 p0H)
+                             H0'' _ _ _ _ H0' p0 p0H)
                           (@transfer_forall_parse_of_production
                              Ascii.ascii adt_based_StringLike string_stringlike G
                              (fun s1 s2 => AbsR (projT2 splitter_impl) s2 (` s1))
-                             H0 _ _ _ _ H1' p1 p1H));
+                             H0'' _ _ _ _ H1' p1 p1H));
           apply H; clear H p0H p1H p0 p1; try assumption; simpl
     end; [ split | | ];
     handle_rep;
