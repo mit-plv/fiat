@@ -23,6 +23,7 @@ Module Export StringLike.
       length : String -> nat;
       take : nat -> String -> String;
       drop : nat -> String -> String;
+      get : nat -> String -> option Char;
       bool_eq : String -> String -> bool;
       beq : relation String := fun x y => bool_eq x y
     }.
@@ -46,6 +47,8 @@ Module Export StringLike.
     {
       singleton_unique : forall s ch ch', s ~= [ ch ] -> s ~= [ ch' ] -> ch = ch';
       singleton_exists : forall s, length s = 1 -> exists ch, s ~= [ ch ];
+      get_0 : forall s ch, take 1 s ~= [ ch ] <-> get 0 s = Some ch;
+      get_S : forall n s, get (S n) s = get n (drop 1 s);
       length_singleton : forall s ch, s ~= [ ch ] -> length s = 1;
       bool_eq_char : forall s s' ch, s ~= [ ch ] -> s' ~= [ ch ] -> s =s s';
       is_char_Proper :> Proper (beq ==> eq ==> eq) is_char;

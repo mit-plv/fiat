@@ -6,6 +6,7 @@ Require Import Fiat.Common.NatFacts.
 Require Export Fiat.Parsers.Refinement.Tactics.
 Require Export Fiat.ADTNotation.BuildComputationalADT.
 Require Export Fiat.Common.NatFacts.
+Require Export Fiat.Parsers.StringLike.FirstCharSuchThat.
 Require Export Coq.Strings.Ascii.
 Require Export ExtrOcamlBasic.
 Require Export ExtrOcamlNatInt.
@@ -32,6 +33,8 @@ Global Arguments new_string_of_base_string / .
 Global Arguments ComputationalADT.cConstructors / .
 Global Arguments Wf.prod_relation / .
 Global Arguments Wf_nat.ltof / .
+Global Arguments find_first_char_such_that / .
+Global Arguments find_first_char_such_that' / .
 
 Module HideProofs.
   Notation hex := (ex _).

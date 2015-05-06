@@ -15,9 +15,8 @@ Global Instance string_stringlike : StringLike Ascii.ascii
        length := String.length;
        take n s := substring 0 n s;
        drop n s := substring n (String.length s) s;
+       get := String.get;
        bool_eq := string_beq }.
-
-Local Arguments string_dec : simpl never.
 
 Global Instance string_stringlike_properties : StringLikeProperties Ascii.ascii.
 Proof.
@@ -46,10 +45,12 @@ Proof.
            | _ => rewrite substring_correct3 by assumption
            | _ => rewrite substring_substring
            | _ => rewrite substring_correct3'
+           | _ => rewrite substring_correct0
            | _ => rewrite Nat.sub_min_distr_l
            | _ => rewrite Nat.add_sub
            | _ => rewrite Min.min_0_r
            | _ => rewrite Min.min_0_l
+           | _ => rewrite Nat.add_1_r
            | _ => rewrite <- Min.min_assoc
            | _ => progress rewrite ?string_beq_correct, ?ascii_beq_correct
            | [ H : _ |- _ ] => progress rewrite ?string_beq_correct, ?ascii_beq_correct in H
@@ -66,5 +67,14 @@ Proof.
            | [ H : String.length ?s = 1 |- _ ] => is_var s; destruct s
            | [ H : S (String.length ?s) = 1 |- _ ] => is_var s; destruct s
            | _ => eexists; rewrite (ascii_lb eq_refl); reflexivity
+           | [ |- _ <-> _ ] => split
+           | [ H : String.get 0 ?s = _ |- _ ] => is_var s; destruct s
+           | [ |- String.get 0 ?s = _ ] => is_var s; destruct s
+           | [ H : Some _ = Some _ |- _ ] => inversion H; clear H
+           | [ |- context[String.get ?p (substring _ ?m _)] ]
+             => destruct (Compare_dec.lt_dec p m);
+               [ rewrite substring_correct1 by omega
+               | rewrite substring_correct2 by omega ]
+           | _ => rewrite <- substring_correct3'; apply substring_correct2; omega
          end.
 Qed.

@@ -361,7 +361,7 @@ Section In.
   Fixpoint list_bin {A} (eq_A : A -> A -> bool) (a : A) (ls : list A) : bool
     := match ls with
          | nil => false
-         | x::xs => orb (eq_A x a) (list_bin eq_A a xs)
+         | x::xs => orb (list_bin eq_A a xs) (eq_A x a)
        end.
 
   Local Ltac t :=
@@ -374,7 +374,9 @@ Section In.
              | [ H : ?eqA _ _ = true, H_eqA : forall x y, ?eqA _ _ = true -> _ |- _ ] => apply H_eqA in H
              | _ => progress subst
              | [ |- ?x = ?x \/ _ ] => left; reflexivity
+             | [ |- _ \/ ?x = ?x ] => right; reflexivity
              | [ |- _ \/ _ ] => right; assumption
+             | [ |- _ \/ _ ] => left; assumption
              | [ H : ?A -> ?B, H' : ?A |- _ ] => specialize (H H')
              | [ H : False |- _ ] => destruct H
              | [ H_eqA : forall x y, x = y -> ?eqA x y = true |- context[?eqA ?x ?x] ] => rewrite (H_eqA x x eq_refl)

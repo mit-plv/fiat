@@ -210,6 +210,7 @@ src/Parsers/Splitters/BruteForce.v
 src/Parsers/Splitters/RDPList.v
 src/Parsers/StringLike/Core.v
 src/Parsers/StringLike/FirstChar.v
+src/Parsers/StringLike/FirstCharSuchThat.v
 src/Parsers/StringLike/ForallChars.v
 src/Parsers/StringLike/Properties.v
 src/Parsers/StringLike/String.v
@@ -267,6 +268,7 @@ src/QueryStructure/Specification/Operations/Mutate.v
 src/QueryStructure/Specification/Operations/Query.v
 src/QueryStructure/Specification/Operations/Update.v
 src/QueryStructure/Specification/Representation/Heading.v
+src/QueryStructure/Specification/Representation/Heading2.v
 src/QueryStructure/Specification/Representation/Notations.v
 src/QueryStructure/Specification/Representation/QueryStructure.v
 src/QueryStructure/Specification/Representation/QueryStructureNotations.v
@@ -274,6 +276,9 @@ src/QueryStructure/Specification/Representation/QueryStructureSchema.v
 src/QueryStructure/Specification/Representation/Relation.v
 src/QueryStructure/Specification/Representation/Schema.v
 src/QueryStructure/Specification/Representation/Tuple.v
+src/QueryStructure/Specification/Representation/Tuple2.v
+src/QueryStructure/Specification/Representation/TupleADT.v
+src/QueryStructure/Specification/Representation/TupleADT2.v
 src/QueryStructure/Specification/SearchTerms/InRange.v
 src/QueryStructure/Specification/SearchTerms/ListInclusion.v
 src/QueryStructure/Specification/SearchTerms/ListPrefix.v

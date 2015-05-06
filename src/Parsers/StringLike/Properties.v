@@ -204,4 +204,85 @@ Section String.
     rewrite take_long; try assumption.
     apply length_singleton in H'; omega.
   Qed.
+
+  Lemma drop_empty {str n} (H' : length str = 0) : drop n str =s str.
+  Proof.
+    apply bool_eq_empty; rewrite ?drop_length, ?take_length; omega.
+  Qed.
+
+  Lemma take_empty {str n} (H' : length str = 0) : take n str =s str.
+  Proof.
+    apply bool_eq_empty; rewrite ?drop_length, ?take_length; trivial.
+    apply Min.min_case_strong; omega.
+  Qed.
+
+  Definition get_first_char_nonempty' str (H' : length str <> 0) : Char.
+  Proof.
+    refine (match get 0 str as ch return get 0 str = ch -> Char with
+              | Some ch => fun _ => ch
+              | None => fun H'' => match _ : False with end
+            end eq_refl).
+    abstract (
+        pose proof (singleton_exists (take 1 str)) as H''';
+        rewrite take_length in H'''; destruct (length str); try omega;
+        specialize (H''' eq_refl);
+        destruct H''' as [ch H'''];
+        apply get_0 in H'''; congruence
+      ).
+  Defined.
+
+  Definition get_first_char_nonempty str n (H' : length str = S n) : Char.
+  Proof.
+    apply (get_first_char_nonempty' str);
+    generalize dependent (length str); clear; intros; abstract omega.
+  Defined.
+
+  Lemma no_first_char_empty str (H' : get 0 str = None) : length str = 0.
+  Proof.
+    case_eq (length (take 1 str)); rewrite take_length.
+    { destruct (length str); simpl; intros; omega. }
+    { intros ? H''.
+      pose proof (singleton_exists (take 1 str)) as H'''.
+      rewrite take_length in H'''.
+      destruct (length str); try omega; simpl in *.
+      specialize (H''' eq_refl).
+      destruct H''' as [ch H'''].
+      apply get_0 in H'''.
+      congruence. }
+  Qed.
+
+  Global Instance get_Proper {n}
+  : Proper (beq ==> eq) (get n).
+  Proof.
+    induction n.
+    { intros x y H'.
+      case_eq (get 0 x).
+      { intros ch H''.
+        apply get_0 in H''.
+        rewrite H' in H''.
+        rewrite (proj1 (get_0 _ _) H'').
+        reflexivity. }
+      { intros H'''.
+        case_eq (get 0 y).
+        { intros ch' H''.
+          apply get_0 in H''.
+          rewrite <- H' in H''.
+          rewrite (proj1 (get_0 _ _) H'') in H'''.
+          congruence. }
+        { reflexivity. } } }
+    { intros x y H'.
+      rewrite !get_S.
+      apply IHn.
+      rewrite H'; reflexivity. }
+  Qed.
+
+  Lemma get_drop {n str} : get n str = get 0 (drop n str).
+  Proof.
+    revert str; induction n; intros.
+    { rewrite drop_0; reflexivity. }
+    { rewrite !get_S, IHn.
+      rewrite drop_drop.
+      repeat (f_equal; []).
+      omega. }
+  Qed.
 End String.

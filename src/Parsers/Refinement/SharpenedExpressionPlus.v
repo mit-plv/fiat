@@ -12,6 +12,8 @@ Require Import Fiat.Common.Wf.
 Require Import Fiat.Parsers.Splitters.RDPList.
 Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.Refinement.FixedLengthLemmas.
+Require Import Fiat.Parsers.Refinement.DisjointRules.
+Require Import Fiat.Parsers.ExtrOcamlParsers. (* for simpl rules for [find_first_char_such_that] *)
 
 Set Implicit Arguments.
 
@@ -25,9 +27,8 @@ Section IndexedImpl.
     hone method "splits".
     {
       simplify parser splitter.
-      Require Import ParserInterface.
-      unfold split_list_is_complete.
-      Import ContextFreeGrammarProperties.
+      setoid_rewrite refine_disjoint_search_for; [ | reflexivity ].
+      simpl.
       finish honing parser method.
     }
 
@@ -37,7 +38,7 @@ Section IndexedImpl.
   Defined.
 
   Lemma ComputationalSplitter
-  : FullySharpened (string_spec paren_expr_grammar).
+  : FullySharpened (string_spec plus_expr_grammar).
   Proof.
     let impl := (eval simpl in (projT1 ComputationalSplitter')) in
     refine (existT _ impl _).

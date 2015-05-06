@@ -97,9 +97,7 @@ QUERYSTRUCTURES_UNMADE_VO := \
 	src/QueryStructure/Implementation/DataStructures/Bags/InvertedIndexBags.vo
 
 PARSERS_UNMADE_VO := \
-	src/Parsers/Refinement/SharpenedExpressionPlus.vo \
-	src/Parsers/Refinement/DisjointLemmas.vo \
-	src/Parsers/Refinement/DisjointRules.vo
+	src/Parsers/Refinement/SharpenedExpressionPlus.vo
 
 EXAMPLES_UNMADE_VO := \
 	src/Examples/Smtp/Smtp.vo \

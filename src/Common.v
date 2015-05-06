@@ -1572,16 +1572,20 @@ Ltac setoid_subst'' R x :=
     | [ H : R x ?y |- _ ]
       => free_in x y;
         rewrite ?H;
+        repeat setoid_rewrite H;
         repeat match goal with
                  | [ H' : appcontext[x] |- _ ] => not constr_eq H' H; rewrite H in H'
+                 | [ H' : appcontext[x] |- _ ] => not constr_eq H' H; setoid_rewrite H in H'
                end;
         clear H;
         clear x
     | [ H : R ?y x |- _ ]
       => free_in x y;
         rewrite <- ?H;
+        repeat setoid_rewrite <- H;
         repeat match goal with
                  | [ H' : appcontext[x] |- _ ] => not constr_eq H' H; rewrite <- H in H'
+                 | [ H' : appcontext[x] |- _ ] => not constr_eq H' H; setoid_rewrite <- H in H'
                end;
         clear H;
         clear x

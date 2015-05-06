@@ -28,6 +28,9 @@ Section ReferenceImpl.
         Method "is_char" : rep x Char -> rep x bool,
         (* Return [true] if this string represents a singleton character equal to the given one; otherwise return [false]. *)
 
+        Method "get" : rep x nat -> rep x option Char,
+        (* Returns [Some ch] if the [n]th character of this string is some [ch], and returns [None] otherwise. *)
+
         Method "length" : rep x unit -> rep x nat,
         (** Return the length of this string. *)
 
@@ -54,6 +57,9 @@ Section ReferenceImpl.
 
     Def Method "is_char"(s : rep, x : Ascii.ascii) : bool  :=
       ret (s, string_beq s (String.String x "")),
+
+    Def Method "get"(s : rep, n : nat) : option Ascii.ascii  :=
+      ret (s, get n s),
 
     Def Method "length"(s : rep, x : unit) : nat :=
       ret (s, String.length s),

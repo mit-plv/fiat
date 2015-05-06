@@ -71,6 +71,7 @@ Proof.
       rewrite !Bool.negb_orb.
       rewrite !Bool.andb_assoc.
       repeat (f_equal; []).
+      rewrite !(Bool.andb_comm _ (negb (eq_A _ _))).
       rewrite <- !Bool.andb_assoc.
       repeat (f_equal; []).
       apply Bool.andb_comm. } }

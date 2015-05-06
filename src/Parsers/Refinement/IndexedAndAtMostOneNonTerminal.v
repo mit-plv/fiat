@@ -85,6 +85,9 @@ Section IndexedImpl.
   Local Notation ilength s :=
     (min (String.length (fst s) - fst (snd s)) (snd (snd s)))
       (only parsing).
+  Local Notation iget n s :=
+    (get n (string_of_indexed s))
+      (only parsing).
 
   (** Reference implementation of a [String] that can be split; has a [string], and a start index, and a length *)
   (** TODO: should we replace
@@ -106,6 +109,9 @@ Section IndexedImpl.
 
     Def Method "is_char"(s : rep, ch : Ascii.ascii) : bool  :=
       ret (s, string_beq (string_of_indexed s) (String.String ch "")),
+
+    Def Method "get"(s : rep, n : nat) : option Ascii.ascii  :=
+      ret (s, iget n s),
 
     Def Method "length"(s : rep, x : unit) : nat :=
       ret (s, ilength s),
