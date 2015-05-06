@@ -96,8 +96,7 @@ vo_closure = $(if $1,$(call vo_closure,$(sort $(filter-out $1 $2,$(call read_dep
 QUERYSTRUCTURES_UNMADE_VO := \
 	src/QueryStructure/Implementation/DataStructures/Bags/InvertedIndexBags.vo
 
-PARSERS_UNMADE_VO := \
-	src/Parsers/Refinement/SharpenedExpressionPlus.vo
+PARSERS_UNMADE_VO :=
 
 EXAMPLES_UNMADE_VO := \
 	src/Examples/Smtp/Smtp.vo \

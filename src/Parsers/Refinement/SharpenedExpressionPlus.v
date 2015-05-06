@@ -18,7 +18,7 @@ Require Import Fiat.Parsers.ExtrOcamlParsers. (* for simpl rules for [find_first
 Set Implicit Arguments.
 
 Section IndexedImpl.
-
+Typeclasses Opaque If_Then_Else.
   Lemma ComputationalSplitter'
   : FullySharpened (string_spec plus_expr_grammar).
   Proof.
