@@ -11,6 +11,7 @@ Require Import Fiat.Common.Equality.
 Require Import Fiat.Common.List.Operations.
 Require Import Fiat.Parsers.Splitters.RDPList.
 Require Import Fiat.Parsers.BaseTypes.
+Require Import Fiat.Parsers.ContextFreeGrammarValidReflective.
 Require Import Fiat.Parsers.Refinement.DisjointLemmas.
 Require Import Fiat.Parsers.ParserInterface.
 Require Import Fiat.Parsers.StringLike.Core.
@@ -24,7 +25,9 @@ Definition search_for_condition (G : grammar Ascii.ascii) str its (n : nat)
        n
        (fun ch => list_bin ascii_beq ch (possible_first_terminals_of_production G its)).
 
-Lemma refine_disjoint_search_for' {G : grammar Ascii.ascii} {str nt its}
+Lemma refine_disjoint_search_for' {G : grammar Ascii.ascii}
+      (Hvalid : grammar_rvalid G)
+      {str nt its}
       (H_disjoint : disjoint ascii_beq
                              (possible_terminals_of G nt)
                              (possible_first_terminals_of_production G its))
@@ -44,7 +47,7 @@ Proof.
   apply PickComputes.
   intros n ? H_reachable pit pits Hpit Hpits.
   left.
-  pose proof (terminals_disjoint_search_for _ H_disjoint _ _ H_reachable Hpit Hpits) as H'.
+  pose proof (terminals_disjoint_search_for Hvalid _ H_disjoint _ _ H_reachable Hpit Hpits) as H'.
   specialize (H1 (ex_intro _ n H')).
   pose proof (is_first_char_such_that_eq_nat_iff H1 H') as H''.
   destruct_head or; destruct_head and; subst; omega.
@@ -57,7 +60,9 @@ Definition search_for_not_condition (G : grammar Ascii.ascii) str nt its n
        n
        (fun ch => negb (list_bin ascii_beq ch (possible_terminals_of G nt))).
 
-Lemma refine_disjoint_search_for_not' {G : grammar Ascii.ascii} {str nt its}
+Lemma refine_disjoint_search_for_not' {G : grammar Ascii.ascii}
+      (Hvalid : grammar_rvalid G)
+      {str nt its}
       (H_disjoint : disjoint ascii_beq
                              (possible_terminals_of G nt)
                              (possible_first_terminals_of_production G its))
@@ -77,7 +82,7 @@ Proof.
   apply PickComputes.
   intros n ? H_reachable pit pits Hpit Hpits.
   left.
-  pose proof (terminals_disjoint_search_for_not _ H_disjoint _ _ H_reachable Hpit Hpits) as H'.
+  pose proof (terminals_disjoint_search_for_not Hvalid _ H_disjoint _ _ H_reachable Hpit Hpits) as H'.
   specialize (H1 (ex_intro _ n H')).
   pose proof (is_first_char_such_that_eq_nat_iff H1 H') as H''.
   destruct_head or; destruct_head and; subst; omega.
@@ -176,6 +181,7 @@ Proof.
 Qed.
 
 Lemma refine_disjoint_search_for {G : grammar Ascii.ascii} {str nt its}
+      (Hvalid : grammar_rvalid G)
       (H_disjoint : disjoint ascii_beq
                              (possible_terminals_of G nt)
                              (possible_first_terminals_of_production G its))
@@ -192,6 +198,7 @@ Proof.
 Qed.
 
 Lemma refine_disjoint_search_for_not {G : grammar Ascii.ascii} {str nt its}
+      (Hvalid : grammar_rvalid G)
       (H_disjoint : disjoint ascii_beq
                              (possible_terminals_of G nt)
                              (possible_first_terminals_of_production G its))

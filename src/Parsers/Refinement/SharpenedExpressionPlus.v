@@ -27,7 +27,7 @@ Typeclasses Opaque If_Then_Else.
     hone method "splits".
     {
       simplify parser splitter.
-      setoid_rewrite refine_disjoint_search_for; [ | reflexivity ].
+      setoid_rewrite refine_disjoint_search_for; [ | reflexivity.. ].
       simpl.
       finish honing parser method.
     }

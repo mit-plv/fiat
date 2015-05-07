@@ -161,6 +161,9 @@ src/Parsers/ContextFreeGrammarNotations.v
 src/Parsers/ContextFreeGrammarProperties.v
 src/Parsers/ContextFreeGrammarTransfer.v
 src/Parsers/ContextFreeGrammarTransferProperties.v
+src/Parsers/ContextFreeGrammarValid.v
+src/Parsers/ContextFreeGrammarValidProperties.v
+src/Parsers/ContextFreeGrammarValidReflective.v
 src/Parsers/CorrectnessBaseTypes.v
 src/Parsers/ExtrOcamlParsers.v
 src/Parsers/FoldGrammar.v

@@ -9,6 +9,7 @@ Require Import Fiat.Parsers.MinimalParseOfParse.
 Require Import Fiat.Parsers.ContextFreeGrammarProperties Fiat.Parsers.WellFoundedParse.
 Require Import Fiat.Common Fiat.Common.Wf.
 Require Import Fiat.Parsers.ParserInterface.
+Require Import Fiat.Parsers.ContextFreeGrammarValid Fiat.Parsers.ContextFreeGrammarValidProperties.
 Require Import Coq.Logic.Eqdep_dec.
 
 Local Hint Extern 0 =>
@@ -890,3 +891,103 @@ Section convenience.
       intros [_ ?]; auto. }
   Qed.
 End convenience.
+
+Section convenience_valid.
+  Context {Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char} {G : grammar Char}.
+  Context {data : @boolean_parser_dataT Char _}
+          {cdata : @boolean_parser_completeness_dataT' Char _ G data}
+          {rdata : @parser_removal_dataT' predata}
+          (Hvalid : grammar_valid G).
+
+  Lemma parse_nonterminal_completev
+        (str : String)
+        (nonterminal : String.string)
+        (Hnt : is_valid_nonterminal initial_nonterminals_data nonterminal)
+        (p : parse_of G str (Lookup G nonterminal))
+  : parse_nonterminal (G := G) str nonterminal = true.
+  Proof.
+    apply (parse_nonterminal_complete (p := p)); try assumption.
+    apply Forall_parse_of_item_valid; assumption.
+  Qed.
+
+  Definition parse_item_completev
+             (str : String) (it : item Char)
+             (Hit : item_valid it)
+             (p : parse_of_item G str it)
+  : parse_item (G := G) str it.
+  Proof.
+    apply (parse_item_complete p); try assumption.
+    apply Forall_parse_of_item_valid; try assumption.
+  Qed.
+
+  Definition parse_production_completev
+             (str : String) (pat : production Char)
+             (H_reachable
+              : exists (nt : string) (prefix : list (item Char)),
+                  is_valid_nonterminal initial_nonterminals_data nt /\ In (prefix ++ pat) (G nt))
+             (p : parse_of_production G str pat)
+  : parse_production (G := G) str pat.
+  Proof.
+    eapply (parse_production_complete H_reachable p).
+    apply Forall_parse_of_production_valid; try assumption.
+    destruct H_reachable as [nt [prefix [Hnt H_reachable]]].
+    specialize (Hvalid nt Hnt).
+    clear -Hvalid H_reachable.
+    unfold productions_valid in *.
+    generalize dependent (G nt).
+    clear.
+    intros p Hvalid H_reachable.
+    induction p.
+    { destruct H_reachable. }
+    { set (ap := a :: p) in *.
+      assert (ap = a :: p) by reflexivity.
+      change p with (tl ap) in IHp.
+      clearbody ap.
+      revert Hvalid H_reachable H IHp.
+      intro Hvalid.
+      case Hvalid; clear Hvalid.
+      { intros; congruence. }
+      { intros ?? H_valid0 H_valid1 H_reachable H' IHp.
+        inversion H'; subst; clear H'.
+        simpl in *.
+        destruct_head or; subst; eauto.
+        clear -H_valid0.
+        induction prefix.
+        { simpl in *; trivial. }
+        { simpl in *.
+          apply IHprefix; clear IHprefix.
+          generalize dependent (prefix ++ pat); clear prefix pat; intro p.
+          unfold production_valid.
+          intro H'.
+          set (ap := a :: p) in *.
+          change p with (tl ap).
+          destruct H'; simpl.
+          { constructor. }
+          { trivial. } } } }
+  Qed.
+
+  Definition parse_productions_completev
+             (str : String) (pats : productions Char)
+             (H_reachable
+              : exists (nt : string) (prefix : productions Char),
+                  is_valid_nonterminal initial_nonterminals_data nt /\ prefix ++ pats = G nt)
+             (p : parse_of G str pats)
+  : parse_productions (G := G) str pats.
+  Proof.
+    eapply (parse_productions_complete H_reachable p).
+    apply Forall_parse_of_valid; try assumption.
+    destruct H_reachable as [nt [prefix [Hnt H_reachable]]].
+    specialize (Hvalid nt Hnt).
+    clear -Hvalid H_reachable.
+    unfold productions_valid in *.
+    generalize dependent (G nt); clear; intros; subst.
+    induction prefix; simpl in *; trivial.
+    apply IHprefix; clear IHprefix.
+    generalize dependent (prefix ++ pats); clear.
+    intros ls H.
+    change ls with (tl (a::ls)).
+    generalize dependent (a::ls); clear.
+    intros ls H.
+    destruct H; simpl; eauto.
+  Qed.
+End convenience_valid.
