@@ -240,3 +240,5 @@ Proof.
   unfold pointwise_relation in *.
   apply H0, IHls; assumption.
 Qed.
+
+Typeclasses Opaque If_Then_Else.

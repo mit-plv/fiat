@@ -286,6 +286,9 @@ Section IndexedImpl.
   Local Notation ilength s :=
     (min (String.length (fst s) - fst (snd s)) (snd (snd s)))
       (only parsing).
+  Local Notation iget n s :=
+    (get n (string_of_indexed s))
+      (only parsing).
 
   Definition expanded_fallback_list'
              (P : String -> item Ascii.ascii -> production Ascii.ascii -> item Ascii.ascii -> production Ascii.ascii -> list nat -> Prop)
@@ -451,6 +454,9 @@ Section IndexedImpl.
 
     Def Method "is_char"(s : rep, ch : Ascii.ascii) : bool  :=
       ret (s, string_beq (string_of_indexed s) (String.String ch "")),
+
+    Def Method "get"(s : rep, n : nat) : option Ascii.ascii  :=
+      ret (s, iget n s),
 
     Def Method "length"(s : rep, x : unit) : nat :=
       ret (s, ilength s),

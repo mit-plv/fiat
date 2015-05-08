@@ -20,11 +20,15 @@ Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.StringLike.String.
 Require Import Fiat.Parsers.StringLike.ForallChars.
 Require Import Fiat.Parsers.StringLike.FirstChar.
+Require Import Fiat.Parsers.StringLike.FirstCharSuchThat.
 Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Parsers.MinimalParseOfParse.
 Require Import Fiat.Parsers.ContextFreeGrammarProperties.
 Require Import Fiat.Parsers.FoldGrammar.
 Require Import Fiat.Parsers.BaseTypesLemmas.
+Require Import Fiat.Parsers.ContextFreeGrammarValid.
+Require Import Fiat.Parsers.ContextFreeGrammarValidProperties.
+Require Import Fiat.Parsers.ContextFreeGrammarValidReflective.
 Require Fiat.Parsers.Reachable.All.MinimalReachable.
 Require Fiat.Parsers.Reachable.All.MinimalReachableOfReachable.
 Require Fiat.Parsers.Reachable.All.ReachableParse.
@@ -64,9 +68,9 @@ Section only_first.
     { actual_possible_first_terminals :> list Ascii.ascii;
       might_be_empty : bool }.
 
-  Local Instance only_first_fold_data : fold_grammar_data Ascii.ascii possible_first_terminals
+  Local Instance only_first_fold_data (predata := @rdp_list_predata _ G) : fold_grammar_data Ascii.ascii possible_first_terminals
     := { on_terminal ch := {| actual_possible_first_terminals := [ch] ; might_be_empty := false |};
-         on_redundant_nonterminal nt := {| actual_possible_first_terminals := nil ; might_be_empty := brute_force_parse_nonterminal G ""%string nt |};
+         on_redundant_nonterminal nt := {| actual_possible_first_terminals := nil ; might_be_empty := is_valid_nonterminal initial_nonterminals_data nt && brute_force_parse_nonterminal G ""%string nt |};
          on_nil_production := {| actual_possible_first_terminals := nil ; might_be_empty := true |};
          on_nil_productions := {| actual_possible_first_terminals := nil ; might_be_empty := false |};
          combine_production first_of_first first_of_rest
@@ -182,7 +186,8 @@ Section all_possible_correctness.
 End all_possible_correctness.
 
 Section only_first_correctness.
-  Context (G : grammar Ascii.ascii).
+  Context (G : grammar Ascii.ascii)
+          (Hvalid : grammar_rvalid G).
   Local Open Scope string_like_scope.
 
   Local Existing Instance only_first_fold_data.
@@ -265,6 +270,15 @@ Section only_first_correctness.
         => eapply MaybeEmpty.OfParse.parse_empty_from_maybe_empty_parse_of_productions with (str := ""%string) in m; [ | reflexivity.. ];
            eapply parse_nonterminal_complete; [ eassumption.. | ];
            split; [ eassumption | exact (projT2 m) ]
+      | [ Hvalid : is_true (grammar_rvalid G) |- _ ] => apply grammar_rvalid_correct in Hvalid
+      | [ Hvalid : grammar_valid G, Hnt : is_true (is_valid_nonterminal _ _), p : parse_of_item _ _ _ |- _ ]
+        => idtac;
+          let pf := constr:(fun k => Forall_parse_of_item_valid Hvalid k p) in
+          let pf' := constr:(pf Hnt) in
+          let T := (type of pf') in
+          let T' := (eval simpl in T) in
+          unique pose proof (pf' : T')
+      | _ => eapply MaybeEmpty.OfParse.parse_empty_maybe_empty_parse_of_item; try eassumption; reflexivity
     end.
 
   Local Ltac t := repeat first [ t' | left; solve [ t ] | right; solve [ t ] ].
@@ -299,8 +313,7 @@ Section only_first_correctness.
     := { fgccd := only_first_ccdata }.
   Proof.
     { abstract t. }
-    { t.
-      admit. }
+    { abstract t. }
     { abstract t. }
     { abstract t. }
     { abstract t. }
@@ -344,7 +357,9 @@ Local Open Scope string_like_scope.
 
 Local Arguments string_beq : simpl never.
 
-Lemma terminals_disjoint_search_for_not {G : grammar Ascii.ascii} (str : @String Ascii.ascii string_stringlike)
+Lemma terminals_disjoint_search_for_not' {G : grammar Ascii.ascii}
+      (Hvalid : grammar_rvalid G)
+      (str : @String Ascii.ascii string_stringlike)
       {nt its}
       (H_disjoint : disjoint ascii_beq (possible_terminals_of G nt) (possible_first_terminals_of_production G its))
       {n}
@@ -357,7 +372,8 @@ Lemma terminals_disjoint_search_for_not {G : grammar Ascii.ascii} (str : @String
   /\ ((length str <= n /\ might_be_empty (possible_first_terminals_of_production G its))
       \/ (for_first_char
             (drop n str)
-            (fun ch => negb (list_bin ascii_beq ch (possible_terminals_of G nt))))).
+            (fun ch => negb (list_bin ascii_beq ch (possible_terminals_of G nt)))
+          /\ n < length str)).
 Proof.
   destruct H_reachable as [ nt' [ prefix [ HinV HinL ] ] ].
   apply and_comm; split.
@@ -365,7 +381,7 @@ Proof.
     { split; trivial.
       pose proof (drop_length str n) as H.
       rewrite (proj2 (Nat.sub_0_le (length str) n)) in H by assumption.
-      generalize dependent (drop n str); clear -Hpit HinV HinL.
+      generalize dependent (drop n str); clear -Hpit HinV HinL Hvalid.
       intros.
       destruct s; try (simpl in *; discriminate); [].
       eapply possible_first_terminals_of_production_empty_correct; try eassumption.
@@ -377,8 +393,9 @@ Proof.
     { erewrite <- parse_of_production_respectful_refl in Hpits.
       eapply expand_forall_parse_of_production in Hpits;
         [ rewrite parse_of_production_respectful_refl in Hpits;
-          apply possible_first_terminals_of_production_correct in Hpits
-        | intros ?????; apply list_in_lb; apply @string_lb ].
+          apply possible_first_terminals_of_production_correct in Hpits; try assumption
+        | intros ?????; apply list_in_lb; apply @string_lb ]; [].
+      split; try omega; [].
       revert Hpits.
       apply first_char_in__impl__for_first_char.
       intros ch H'.
@@ -405,7 +422,38 @@ Proof.
     reflexivity. }
 Qed.
 
-Lemma terminals_disjoint_search_for {G : grammar Ascii.ascii} (str : @String Ascii.ascii string_stringlike)
+Lemma terminals_disjoint_search_for_not {G : grammar Ascii.ascii}
+      (Hvalid : grammar_rvalid G)
+      (str : @String Ascii.ascii string_stringlike)
+      {nt its}
+      (H_disjoint : disjoint ascii_beq (possible_terminals_of G nt) (possible_first_terminals_of_production G its))
+      {n}
+      (pit : parse_of_item G (StringLike.take n str) (NonTerminal nt))
+      (pits : parse_of_production G (StringLike.drop n str) its)
+      (H_reachable : production_is_reachable G (NonTerminal nt :: its))
+      (Hpit : Forall_parse_of_item (fun _ nt => List.In nt (Valid_nonterminals G)) pit)
+      (Hpits : Forall_parse_of_production (fun _ nt => List.In nt (Valid_nonterminals G)) pits)
+: is_first_char_such_that
+    (might_be_empty (possible_first_terminals_of_production G its))
+    str
+    n
+    (fun ch => negb (list_bin ascii_beq ch (possible_terminals_of G nt))).
+Proof.
+  pose proof (terminals_disjoint_search_for_not' Hvalid _ H_disjoint _ _ H_reachable Hpit Hpits) as H.
+  split;
+    [ destruct H as [H0 H1]
+    | destruct H as [H0 [[H1 H2] | H1]]; solve [ left; eauto | right; eauto ] ].
+  revert H0.
+  apply forall_chars__char_in__impl__forall_chars.
+  intros ch H' H''.
+  apply Bool.negb_true_iff, Bool.not_true_iff_false in H''.
+  apply H''.
+  apply list_in_lb; [ apply (@ascii_lb) | ]; assumption.
+Qed.
+
+Lemma terminals_disjoint_search_for' {G : grammar Ascii.ascii}
+      (Hvalid : grammar_rvalid G)
+      (str : @String Ascii.ascii string_stringlike)
       {nt its}
       (H_disjoint : disjoint ascii_beq (possible_terminals_of G nt) (possible_first_terminals_of_production G its))
       {n}
@@ -419,7 +467,8 @@ Lemma terminals_disjoint_search_for {G : grammar Ascii.ascii} (str : @String Asc
   /\ ((length str <= n /\ might_be_empty (possible_first_terminals_of_production G its))
       \/ (first_char_in
             (drop n str)
-            (possible_first_terminals_of_production G its))).
+            (possible_first_terminals_of_production G its)
+          /\ n < length str)).
 Proof.
   destruct H_reachable as [ nt' [ prefix [ HinV HinL ] ] ].
   apply and_comm; split.
@@ -427,7 +476,7 @@ Proof.
     { split; trivial.
       pose proof (drop_length str n) as H.
       rewrite (proj2 (Nat.sub_0_le (length str) n)) in H by assumption.
-      generalize dependent (drop n str); clear -Hpit HinV HinL.
+      generalize dependent (drop n str); clear -Hpit HinV HinL Hvalid.
       intros.
       destruct s; try (simpl in *; discriminate); [].
       eapply possible_first_terminals_of_production_empty_correct; try eassumption.
@@ -440,8 +489,8 @@ Proof.
       eapply expand_forall_parse_of_production in Hpits;
         [ rewrite parse_of_production_respectful_refl in Hpits;
           apply possible_first_terminals_of_production_correct in Hpits
-        | intros ?????; apply list_in_lb; apply @string_lb ].
-      assumption. } }
+        | intros ?????; apply list_in_lb; apply @string_lb ]; try assumption; [].
+      split; try omega; assumption. } }
   { erewrite <- parse_of_item_respectful_refl in Hpit.
     eapply expand_forall_parse_of_item in Hpit;
       [ rewrite parse_of_item_respectful_refl in Hpit;
@@ -466,4 +515,37 @@ Proof.
   reflexivity.
   reflexivity.
   reflexivity.
+Qed.
+
+Lemma terminals_disjoint_search_for {G : grammar Ascii.ascii}
+      (Hvalid : grammar_rvalid G)
+      (str : @String Ascii.ascii string_stringlike)
+      {nt its}
+      (H_disjoint : disjoint ascii_beq (possible_terminals_of G nt) (possible_first_terminals_of_production G its))
+      {n}
+      (pit : parse_of_item G (StringLike.take n str) (NonTerminal nt))
+      (pits : parse_of_production G (StringLike.drop n str) its)
+      (H_reachable : production_is_reachable G (NonTerminal nt :: its))
+      (Hpit : Forall_parse_of_item (fun _ nt => List.In nt (Valid_nonterminals G)) pit)
+      (Hpits : Forall_parse_of_production (fun _ nt => List.In nt (Valid_nonterminals G)) pits)
+: is_first_char_such_that
+    (might_be_empty (possible_first_terminals_of_production G its))
+    str
+    n
+    (fun ch => list_bin ascii_beq ch (possible_first_terminals_of_production G its)).
+Proof.
+  pose proof (terminals_disjoint_search_for' Hvalid _ H_disjoint _ _ H_reachable Hpit Hpits) as H.
+  split;
+    [ destruct H as [H0 H1]
+    | destruct H as [H0 [[H1 H2] | [H1 ?]]]; [ right | left; split ]; eauto ].
+  { revert H0.
+    apply forall_chars_Proper; [ reflexivity | ].
+    intros ch H' H''.
+    apply Bool.negb_true_iff, Bool.not_true_iff_false in H'.
+    apply H'.
+    assumption. }
+  { revert H1.
+    apply first_char_in__impl__for_first_char.
+    intros ch H'.
+    apply list_in_lb; [ apply (@ascii_lb) | ]; assumption. }
 Qed.

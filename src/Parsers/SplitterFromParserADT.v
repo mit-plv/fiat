@@ -112,6 +112,7 @@ Section parser.
 
   Definition mto_string := Eval simpl in mcall2 "to_string".
   Definition mis_char := Eval simpl in mcall2 "is_char".
+  Definition mget := Eval simpl in mcall2 "get".
   Definition mlength := Eval simpl in mcall2 "length".
   Definition mtake := Eval simpl in mcall1 "take".
   Definition mdrop := Eval simpl in mcall1 "drop".
@@ -132,6 +133,9 @@ Section parser.
   Definition mis_char_eq {arg st str} (H : AbsR (projT2 splitter_impl) str st)
   : mis_char arg st = string_beq _ _
     := mcall2_eq "is_char" st arg str H.
+  Definition mget_eq {arg st str} (H : AbsR (projT2 splitter_impl) str st)
+  : mget arg st = get _ _
+    := mcall2_eq "get" st arg str H.
   Definition mlength_eq {arg st str} (H : AbsR (projT2 splitter_impl) str st)
   : mlength arg st = String.length str
     := mcall2_eq "length" st arg str H.
@@ -158,8 +162,8 @@ Section parser.
     unfold beq in *;
     simpl in *;
     repeat match goal with
-             | _ => progress erewrite ?@mto_string_eq, ?@mis_char_eq, ?@mlength_eq by eauto with parser_adt_method_db
-             | [ H : _ |- _ ] => progress erewrite ?@mto_string_eq, ?@mis_char_eq, ?@mlength_eq in H by eauto with parser_adt_method_db
+             | _ => progress erewrite ?@mto_string_eq, ?@mis_char_eq, ?@mget_eq, ?@mlength_eq by eauto with parser_adt_method_db
+             | [ H : _ |- _ ] => progress erewrite ?@mto_string_eq, ?@mis_char_eq, ?@mget_eq, ?@mlength_eq in H by eauto with parser_adt_method_db
            end.
 
   Local Obligation Tactic := handle_rep.
@@ -170,6 +174,7 @@ Section parser.
          drop n str := mdrop n str;
          length str := mlength tt str;
          is_char str ch := mis_char ch str;
+         get n str := mget n str;
          bool_eq s1 s2 := string_beq (mto_string tt s1) (mto_string tt s2) }.
 
 
@@ -179,6 +184,7 @@ Section parser.
          drop n str := mdrop n str;
          length str := mlength tt str;
          is_char str ch := mis_char ch str;
+         get n str := mget n str;
          bool_eq s1 s2 := string_beq (mto_string tt s1) (mto_string tt s2) }.
 
   Local Ltac t'' H meth :=
@@ -200,6 +206,8 @@ Section parser.
     t'' H (@singleton_exists);
       edestruct H; try (eexists; erewrite mis_char_eq); intuition eauto.
   Qed.
+  Next Obligation. t @get_0. Qed.
+  Next Obligation. t @get_S. Qed.
   Next Obligation. t @length_singleton. Qed.
   Next Obligation. t @bool_eq_char. Qed.
   Next Obligation. t @is_char_Proper. Qed.

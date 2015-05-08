@@ -175,6 +175,9 @@ src/Parsers/ContextFreeGrammarNotations.v
 src/Parsers/ContextFreeGrammarProperties.v
 src/Parsers/ContextFreeGrammarTransfer.v
 src/Parsers/ContextFreeGrammarTransferProperties.v
+src/Parsers/ContextFreeGrammarValid.v
+src/Parsers/ContextFreeGrammarValidProperties.v
+src/Parsers/ContextFreeGrammarValidReflective.v
 src/Parsers/CorrectnessBaseTypes.v
 src/Parsers/ExtrOcamlParsers.v
 src/Parsers/FoldGrammar.v
@@ -211,6 +214,7 @@ src/Parsers/Reachable/OnlyFirst/Reachable.v
 src/Parsers/Reachable/OnlyFirst/ReachableParse.v
 src/Parsers/Reachable/OnlyFirst/ReachableWellFounded.v
 src/Parsers/Refinement/DisjointLemmas.v
+src/Parsers/Refinement/DisjointRules.v
 src/Parsers/Refinement/FixedLengthLemmas.v
 src/Parsers/Refinement/IndexedAndAtMostOneNonTerminal.v
 src/Parsers/Refinement/IndexedAndAtMostOneNonTerminalReflective.v
@@ -223,6 +227,7 @@ src/Parsers/Splitters/BruteForce.v
 src/Parsers/Splitters/RDPList.v
 src/Parsers/StringLike/Core.v
 src/Parsers/StringLike/FirstChar.v
+src/Parsers/StringLike/FirstCharSuchThat.v
 src/Parsers/StringLike/ForallChars.v
 src/Parsers/StringLike/Properties.v
 src/Parsers/StringLike/String.v
