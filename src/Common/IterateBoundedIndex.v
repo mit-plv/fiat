@@ -447,12 +447,15 @@ Section Iterate_Ensemble.
   Qed.
 
   Definition Iterate_Ensemble_BoundedIndex
-             (Bound : list string)
+             {A : Set}
+             (Bound : list A)
              (P : Ensemble (BoundedIndex Bound)) : Prop :=
     Iterate_Ensemble_BoundedIndex' nil Bound P.
 
   Corollary Iterate_Ensemble_BoundedIndex_equiv
-  : forall (Bound : list string)
+            {A : Set}
+            (A_eq_dec : forall a a' : A, {a = a'} + {a <> a'})
+  : forall (Bound : list A)
            (P : Ensemble (BoundedIndex Bound)),
       Iterate_Ensemble_BoundedIndex P <->
       forall idx, P idx.
@@ -465,13 +468,56 @@ Section Iterate_Ensemble.
   Qed.
 
   Definition Iterate_Ensemble_BoundedIndex_filter
-             (Bound : list string)
+             {A : Set}
+             (Bound : list A)
              (filter : nat -> bool)
              (P : Ensemble (BoundedIndex Bound))
   : Prop :=
     Iterate_Ensemble_BoundedIndex_filter' nil Bound filter P.
 
   Corollary Iterate_Ensemble_BoundedIndex_filter_equiv
+            {A : Set}
+            (A_eq_dec : forall a a' : A, {a = a'} + {a <> a'})
+  : forall (Bound : list A)
+           (P : Ensemble (BoundedIndex Bound))
+           (filter : Ensemble nat)
+           (filter_dec : DecideableEnsemble filter),
+      Iterate_Ensemble_BoundedIndex_filter dec P <->
+      forall idx : BoundedIndex Bound, filter (ibound idx) -> P idx.
+  Proof.
+    split; intros.
+    - eapply Iterate_Ensemble_equiv_filter' with (Visited := nil);
+      eauto using string_dec; destruct n; simpl; discriminate.
+    - eapply Iterate_Ensemble_equiv_filter'' with (Visited := nil);
+      eauto using string_dec.
+  Qed.
+
+  Definition Iterate_Ensemble_BoundedString
+             (Bound : list string)
+             (P : Ensemble (BoundedIndex Bound)) : Prop :=
+    Iterate_Ensemble_BoundedIndex' nil Bound P.
+
+  Corollary Iterate_Ensemble_BoundedString_equiv
+    : forall (Bound : list string)
+           (P : Ensemble (BoundedIndex Bound)),
+      Iterate_Ensemble_BoundedIndex P <->
+      forall idx, P idx.
+  Proof.
+    split; intros.
+    eapply Iterate_Ensemble_equiv' with (Visited := nil);
+      eauto using string_dec; destruct n; simpl; discriminate.
+    eapply Iterate_Ensemble_equiv'' with (Visited := nil);
+      eauto using string_dec.
+  Qed.
+
+  Definition Iterate_Ensemble_BoundedString_filter
+             (Bound : list string)
+             (filter : nat -> bool)
+             (P : Ensemble (BoundedIndex Bound))
+  : Prop :=
+    Iterate_Ensemble_BoundedIndex_filter' nil Bound filter P.
+
+  Corollary Iterate_Ensemble_BoundedString_filter_equiv
   : forall (Bound : list string)
            (P : Ensemble (BoundedIndex Bound))
            (filter : Ensemble nat)
@@ -489,8 +535,10 @@ Section Iterate_Ensemble.
 End Iterate_Ensemble.
 
 (* Always expand these iterations. *)
-Arguments Iterate_Ensemble_BoundedIndex_filter _ _ _ / .
-Arguments Iterate_Ensemble_BoundedIndex _ _ / .
+Arguments Iterate_Ensemble_BoundedIndex_filter _ _ _ _ / .
+Arguments Iterate_Ensemble_BoundedString_filter _ _ _ / .
+Arguments Iterate_Ensemble_BoundedIndex _ _ _ / .
+Arguments Iterate_Ensemble_BoundedString _ _ / .
 
 Section Iterate_Dep_Type.
 
@@ -523,7 +571,10 @@ Section Iterate_Dep_Type.
                                                boundi := @eq_refl _ (nth_error (a :: Remaining') 0) |} |})
                             (Iterate_Dep_Type_BoundedIndex
                                (fun H => P {|bindex := bindex H;
-                                             indexb := @IndexBound_tail _ _ _ _ (indexb H) |}))
+                                             indexb :=
+                                               Build_IndexBound (a :: Remaining')
+                                                                (S (ibound (indexb H)))
+                                                                (boundi (indexb H)) |}))
     end.
 
 Definition Dep_Type_BoundedIndex_nth_eq {A : Set}
@@ -573,6 +624,19 @@ Definition Dep_Type_BoundedIndex_nth_eq {A : Set}
   Defined.
 
   Corollary Iterate_Dep_Type_BoundedIndex_equiv_1
+            {A : Set}
+            (A_eq_dec : forall a a' : A, {a = a'} + {a <> a'})
+  : forall (Bound : list A)
+           (P : Dep_Type (BoundedIndex Bound)),
+      Iterate_Dep_Type_BoundedIndex P ->
+      forall idx, P idx.
+  Proof.
+    destruct idx as [idx [n nth_n]].
+    eapply (Iterate_Dep_Type_equiv A_eq_dec P); eauto;
+    destruct n0; simpl; discriminate.
+  Defined.
+
+  Corollary Iterate_Dep_Type_BoundedString_equiv_1
   : forall (Bound : list string)
            (P : Dep_Type (BoundedIndex Bound)),
       Iterate_Dep_Type_BoundedIndex P ->
@@ -597,10 +661,26 @@ Definition Dep_Type_BoundedIndex_nth_eq {A : Set}
       | nil => fun P p => tt
       | b :: Bound' => fun P p => (p _, Iterate_Dep_Type_equiv' A_eq_dec _
                                                                 (fun idx => p {|bindex := bindex idx;
-                                                                                indexb := @IndexBound_tail _ _ _ _ (indexb idx) |}))
+                                                                                indexb :=
+                                               Build_IndexBound (b :: Bound')
+                                                                (S (ibound (indexb _)))
+                                                                (boundi (indexb _)) |}))
     end.
 
   Corollary Iterate_Dep_Type_BoundedIndex_equiv_2
+            {A : Set}
+            (A_eq_dec : forall a a' : A, {a = a'} + {a <> a'})
+  : forall (Bound : list A)
+           (P : Dep_Type (BoundedIndex Bound)),
+      (forall idx, P idx)
+      -> Iterate_Dep_Type_BoundedIndex P.
+  Proof.
+    intros.
+    eapply Iterate_Dep_Type_equiv';
+      eauto using string_dec.
+  Qed.
+
+  Corollary Iterate_Dep_Type_BoundedString_equiv_2
   : forall (Bound : list string)
            (P : Dep_Type (BoundedIndex Bound)),
       (forall idx, P idx)
@@ -811,11 +891,16 @@ Definition Dep_Type_BoundedIndex_nth_eq {A : Set}
                                boundi := @eq_refl _ (nth_error (a :: Bound') 0) |} |})
             (Iterate_Dep_Type_BoundedIndex_filter (fun n => filter (S n))
                                                   (fun H => P {|bindex := bindex H;
-                                                                indexb := @IndexBound_tail _ _ _ _ (indexb H) |}))
+                                                                indexb :=                                                Build_IndexBound (a :: Bound')
+                                                                                                                                          (S (ibound (indexb H)))
+                                                                                                                                          (boundi (indexb H))
+ |}))
         else
           Iterate_Dep_Type_BoundedIndex_filter (fun n => filter (S n))
                                                (fun H => P {|bindex := bindex H;
-                                                             indexb := @IndexBound_tail _ _ _ _ (indexb H) |})
+                                                             indexb :=                                                Build_IndexBound (a :: Bound')
+                                                                                                                                       (S (ibound (indexb H)))
+                                                                                                                                       (boundi (indexb H)) |})
     end.
 
   Fixpoint Iterate_Dep_Type_filter_equiv {A : Set}
@@ -853,15 +938,20 @@ Definition Dep_Type_BoundedIndex_nth_eq {A : Set}
     + case_eq (dec 0); intros; rewrite H0 in X.
       * apply (fun A' => Iterate_Dep_Type_filter_equiv A A_eq_dec Bound'
                                                        (fun H => P {|bindex := bindex H;
-                                                                     indexb := @IndexBound_tail _ _ _ _ (indexb H) |})
+                                                                     indexb :=                                               Build_IndexBound (a :: Bound')
+                                                                                                                                              (S (ibound (indexb H)))
+                                                                                                                                              (boundi (indexb H))  |})
                                                        (fun n => filter (S n))
                                                        {| dec := _;
                                                           dec_decides_P := A' |} (snd X) idx n nth_n).
         intros; apply dec_decides_P.
         apply dec_decides_P; eauto.
       * apply (fun A' => Iterate_Dep_Type_filter_equiv A A_eq_dec Bound'
-                                          (fun H => P {|bindex := bindex H;
-                                                        indexb := @IndexBound_tail _ _ _ _ (indexb H) |})
+                                                       (fun H => P {|bindex := bindex H;
+                                                                     indexb :=                                               Build_IndexBound (a :: Bound')
+                                                                                                                                              (S (ibound (indexb H)))
+                                                                                                                                              (boundi (indexb H))
+                                                                   |})
                                           (fun n => filter (S n))
                                           {| dec := _;
                                              dec_decides_P := A' |} X idx n nth_n).
@@ -870,6 +960,20 @@ Definition Dep_Type_BoundedIndex_nth_eq {A : Set}
   Defined.
 
   Corollary Iterate_Dep_Type_BoundedIndex_filter_equiv_1
+            {A : Set}
+            (A_eq_dec : forall a a' : A, {a = a'} + {a <> a'})  
+    : forall (Bound : list A)
+           (P : Dep_Type (BoundedIndex Bound))
+           (filter : Ensemble nat)
+           (filter_dec : DecideableEnsemble filter),
+      Iterate_Dep_Type_BoundedIndex_filter dec P ->
+      forall idx : BoundedIndex Bound, filter (ibound idx) -> P idx.
+  Proof.
+    intros; destruct idx as [idx [n nth_n] ]; simpl in *.
+    eapply Iterate_Dep_Type_filter_equiv; eauto using string_dec.
+  Qed.
+  
+  Corollary Iterate_Dep_Type_BoundedString_filter_equiv_1
   : forall (Bound : list string)
            (P : Dep_Type (BoundedIndex Bound))
            (filter : Ensemble nat)
@@ -881,7 +985,8 @@ Definition Dep_Type_BoundedIndex_nth_eq {A : Set}
     eapply Iterate_Dep_Type_filter_equiv; eauto using string_dec.
   Qed.
 
-  Lemma Iterate_Dep_Type_filter_equiv' {A : Set}
+  Lemma Iterate_Dep_Type_filter_equiv'
+        {A : Set}
         (A_eq_dec : forall a a' : A, {a = a'} + {a <> a'})
   : forall (Bound : list A)
            (P : Dep_Type (BoundedIndex Bound))
@@ -902,6 +1007,20 @@ Definition Dep_Type_BoundedIndex_nth_eq {A : Set}
   Qed.
 
   Corollary Iterate_Dep_Type_BoundedIndex_filter_equiv_2
+            {A : Set}
+            (A_eq_dec : forall a a' : A, {a = a'} + {a <> a'})
+  : forall (Bound : list A)
+           (P : Dep_Type (BoundedIndex Bound))
+           (filter : Ensemble nat)
+           (filter_dec : DecideableEnsemble filter),
+      (forall idx : BoundedIndex Bound, filter (ibound idx) -> P idx)
+      -> Iterate_Dep_Type_BoundedIndex_filter dec P.
+  Proof.
+    intros; eapply Iterate_Dep_Type_filter_equiv';
+    eauto using string_dec.
+  Qed.
+
+  Corollary Iterate_Dep_Type_BoundedString_filter_equiv_2
   : forall (Bound : list string)
            (P : Dep_Type (BoundedIndex Bound))
            (filter : Ensemble nat)

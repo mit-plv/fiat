@@ -3,12 +3,26 @@ Require Import
         Coq.Bool.Bool
         Coq.Lists.List
         Coq.Program.Program
+        Coq.Arith.Arith.
+Require Import
         Fiat.ADT
         Fiat.ADT.ComputationalADT
         Fiat.ADTNotation
         Fiat.ADTRefinement
         Fiat.ADTRefinement.BuildADTRefinements
-        Fiat.Fiat4Monitors.RADL_Definitions.
+        Fiat.Fiat4Monitors.RADL_Topics
+        Fiat.Fiat4Monitors.RADL_Messages
+        Fiat.Fiat4Monitors.RADL_Flags
+        Fiat.Fiat4Monitors.RADL_Nodes
+        Fiat.Fiat4Monitors.RADLNodeADTs
+        Fiat.Fiat4Monitors.LandsharkTopics
+        Fiat.Fiat4Monitors.LandsharkNodes.
+
+Require Import Bedrock.Platform.Facade.DFacade
+        Bedrock.Platform.Facade.Notations
+        Bedrock.Platform.Cito.ADT
+        Bedrock.Platform.Cito.RepInv
+        Bedrock.Platform.AutoSep.
 
 Section Example.
 
@@ -31,10 +45,10 @@ Section Example.
        RADL_Publications  := [ ``"Fired"] |}.
   Definition TurretNode : RADL_Node PaintballTopics :=
     {| RADL_Subscriptions := [ ];
-       RADL_Publications  := [``"TiltX"; ``"TiltY"] |}.
+       RADL_Publications  := ["TiltX"; "TiltY"] |}.
   Definition JoystickNode : RADL_Node PaintballTopics :=
     {| RADL_Subscriptions := [ ];
-       RADL_Publications  := [ ``"Trigger"] |}.
+       RADL_Publications  := [ "Trigger"] |}.
 
   (* Each RADL Node has a default implementation that nondeterministically
      selects a publication value (since the underlying RADL Nodes are

@@ -1,20 +1,22 @@
-Set Implicit Arguments.
-
-Require Import Coq.Lists.List Coq.Program.Program Coq.Arith.Arith.
-Require Import Fiat.Fiat4Monitors.RADL_Definitions
-        Fiat.Fiat4Monitors.TurretMonitorSpec
-        Fiat.Fiat4Monitors.MonitorADTs
+Require Import Coq.Lists.List
+        Coq.Program.Program
+        Coq.Arith.Arith.
+Require Import
         Fiat.ADT
         Fiat.ADT.ComputationalADT
         Fiat.ADTNotation
         Fiat.ADTRefinement
-        Fiat.ADTRefinement.BuildADTRefinements.
-Require Import Bedrock.Platform.Facade.DFacade.
-Require Import Bedrock.Platform.Facade.Notations.
-Require Import Bedrock.Platform.Cito.ADT.
-Require Import Bedrock.Platform.Cito.RepInv.
-Require Import Bedrock.Platform.AutoSep.
-Set Implicit Arguments.
+        Fiat.ADTRefinement.BuildADTRefinements
+        Fiat.Fiat4Monitors.RADL_Topics
+        Fiat.Fiat4Monitors.RADL_Messages
+        Fiat.Fiat4Monitors.RADL_Flags
+        Fiat.Fiat4Monitors.RADL_Nodes
+        Fiat.Fiat4Monitors.MonitorADTs.
+
+Require Import Bedrock.Platform.Facade.DFacade
+        Bedrock.Platform.Facade.Notations
+        Bedrock.Platform.Cito.ADT
+        Bedrock.Platform.Cito.RepInv.
 
 Import Adt.
 

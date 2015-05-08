@@ -473,6 +473,51 @@ Section general_refine_lemmas.
     intros; destruct i; simpl; reflexivity.
   Qed.
 
+  Lemma refine_trivial_if_then_else :
+    forall x,
+      refine
+        (If_Then_Else x (ret true) (ret false))
+        (ret x).
+  Proof.
+    destruct x; reflexivity.
+  Qed.
+
+  Lemma decides_True :
+    refine {b | decides b True}%comp
+           (ret true).
+  Proof.
+    computes_to_econstructor;  computes_to_inv; subst; simpl; auto.
+  Qed.
+
+  Lemma decides_True_Pre (Q : Prop) :
+    refine {b | Q -> decides b True}%comp
+           (ret true).
+  Proof.
+    computes_to_econstructor;  computes_to_inv; subst; simpl; auto.
+  Qed.
+
+  Lemma decides_2_True (A : Type) (B : A -> Type) :
+    refine {b' | decides b' (forall a : A, B a -> True)}%comp
+           (ret true).
+  Proof.
+    computes_to_econstructor;  computes_to_inv; subst; simpl; auto.
+  Qed.
+
+  Lemma decides_3_True (A B : Type) (C : B -> Type) :
+    refine {b' | decides b' (A -> forall b : B, C b -> True)}%comp
+           (ret true).
+  Proof.
+    computes_to_econstructor;  computes_to_inv; subst; simpl; auto.
+  Qed.
+
+  Lemma decides_neq (A : Type) (B : Prop) (a : A) :
+    refine {b' | decides b' (a <> a -> B)}%comp
+           (ret true).
+  Proof.
+    computes_to_econstructor;  computes_to_inv; subst; simpl; auto.
+    congruence.
+  Qed.
+
   Lemma Bind_refine_If_Then_Else {A B}
   : forall i (t e : A -> Comp B) (ca : Comp A),
       refine (a <- ca;

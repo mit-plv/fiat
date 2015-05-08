@@ -1,17 +1,23 @@
 Set Implicit Arguments.
 
-Require Import Coq.Lists.List Coq.Program.Program Coq.Arith.Arith.
-Require Import Fiat.Fiat4Monitors.RADL_Definitions
-        Fiat.Fiat4Monitors.TurretMonitorSpec
+Require Import Coq.Lists.List
+        Coq.Program.Program
+        Coq.Arith.Arith.
+Require Import
         Fiat.ADT
         Fiat.ADT.ComputationalADT
         Fiat.ADTNotation
         Fiat.ADTRefinement
-        Fiat.ADTRefinement.BuildADTRefinements.
-Require Import Bedrock.Platform.Facade.DFacade.
-Require Import Bedrock.Platform.Facade.Notations.
-Require Import Bedrock.Platform.Cito.ADT.
-Require Import Bedrock.Platform.Cito.RepInv.
+        Fiat.ADTRefinement.BuildADTRefinements
+        Fiat.Fiat4Monitors.RADL_Topics
+        Fiat.Fiat4Monitors.RADL_Messages
+        Fiat.Fiat4Monitors.RADL_Flags
+        Fiat.Fiat4Monitors.RADL_Nodes.
+
+Require Import Bedrock.Platform.Facade.DFacade
+        Bedrock.Platform.Facade.Notations
+        Bedrock.Platform.Cito.ADT
+        Bedrock.Platform.Cito.RepInv.
 
 Ltac crush_types :=
   unfold type_conforming, same_types, same_type; intros;
@@ -45,9 +51,9 @@ Section MonitorADTs.
                      (map (fun id : BoundedIndex topics => bindex id)
                           (LiftTopics (Topics := Topics) topics)).
     Variable Get_In_DomMap
-    : unit -> fst (MethodDomCod (MessageADTSig topics) (BuildGetMethodID topics idx)) .
+    : unit -> fst (MethodDomCod (MessageADTSig topics) (BuildGetMessageMethodID topics idx)) .
     Variable Get_In_CodMap
-    : snd (MethodDomCod (MessageADTSig topics) (BuildGetMethodID topics idx))
+    : snd (MethodDomCod (MessageADTSig topics) (BuildGetMessageMethodID topics idx))
       -> Memory.W.
     Definition Message_In_GetSpec
     : AxiomaticSpec MonitorADTValues.
@@ -66,7 +72,7 @@ Section MonitorADTs.
     : Memory.W -> fst
                     (MethodDomCod
                        (MessageADTSig topics)
-                       (BuildSetMethodID topics idx)).
+                       (BuildSetMessageMethodID topics idx)).
 
     Definition Message_In_SetSpec
     : AxiomaticSpec MonitorADTValues.
@@ -88,9 +94,9 @@ Section MonitorADTs.
                       (map (fun id : BoundedIndex topics => bindex id)
                            (LiftTopics (Topics := Topics) topics)).
     Variable Get_Out_DomMap
-    : unit -> fst (MethodDomCod (MessageADTSig topics) (BuildGetMethodID topics idx)) .
+    : unit -> fst (MethodDomCod (MessageADTSig topics) (BuildGetMessageMethodID topics idx)) .
     Variable Get_Out_CodMap
-    : snd (MethodDomCod (MessageADTSig topics) (BuildGetMethodID topics idx))
+    : snd (MethodDomCod (MessageADTSig topics) (BuildGetMessageMethodID topics idx))
       -> Memory.W.
 
     Definition Message_Out_GetSpec
@@ -111,7 +117,7 @@ Section MonitorADTs.
     : Memory.W -> fst
                       (MethodDomCod
                          (MessageADTSig topics)
-                         (BuildSetMethodID topics idx)).
+                         (BuildSetMessageMethodID topics idx)).
 
     Definition Message_Out_SetSpec
     : AxiomaticSpec MonitorADTValues.
@@ -133,9 +139,9 @@ Section MonitorADTs.
                       (map (fun id : BoundedIndex topics => bindex id)
                            (LiftTopics (Topics := Topics) topics)).
     Variable Get_Monitor_In_DomMap
-    : unit -> fst (MethodDomCod (MessageADTSig topics) (BuildGetMethodID topics idx)) .
+    : unit -> fst (MethodDomCod (MessageADTSig topics) (BuildGetMessageMethodID topics idx)) .
     Variable Get_Monitor_In_CodMap
-    : snd (MethodDomCod (MessageADTSig topics) (BuildGetMethodID topics idx))
+    : snd (MethodDomCod (MessageADTSig topics) (BuildGetMessageMethodID topics idx))
       -> Memory.W.
     Definition Message_Monitor_In_GetSpec
     : AxiomaticSpec MonitorADTValues.
@@ -155,7 +161,7 @@ Section MonitorADTs.
     : Memory.W -> fst
                       (MethodDomCod
                          (MessageADTSig topics)
-                         (BuildSetMethodID topics idx)).
+                         (BuildSetMessageMethodID topics idx)).
 
     Definition Message_Monitor_In_SetSpec
     : AxiomaticSpec MonitorADTValues.
@@ -177,9 +183,9 @@ Section MonitorADTs.
                       (map (fun id : BoundedIndex topics => bindex id)
                            (LiftTopics (Topics := Topics) topics)).
     Variable Get_Monitor_Out_DomMap
-    : unit -> fst (MethodDomCod (MessageADTSig topics) (BuildGetMethodID topics idx)) .
+    : unit -> fst (MethodDomCod (MessageADTSig topics) (BuildGetMessageMethodID topics idx)) .
     Variable Get_Monitor_Out_CodMap
-    : snd (MethodDomCod (MessageADTSig topics) (BuildGetMethodID topics idx))
+    : snd (MethodDomCod (MessageADTSig topics) (BuildGetMessageMethodID topics idx))
       -> Memory.W.
     Definition Message_Monitor_Out_GetSpec
     : AxiomaticSpec MonitorADTValues.
@@ -199,7 +205,7 @@ Section MonitorADTs.
     : Memory.W -> fst
                       (MethodDomCod
                          (MessageADTSig topics)
-                         (BuildSetMethodID topics idx)).
+                         (BuildSetMessageMethodID topics idx)).
 
     Definition Message_Monitor_Out_SetSpec
     : AxiomaticSpec MonitorADTValues.
@@ -233,7 +239,7 @@ Section MonitorADTs.
       |}; crush_types.
   Defined.
 
-  (* The Monitor Node's constructor and step method 
+  (* The Monitor Node's constructor and step method
      both satisfy the Fiat specifications. *)
   Definition MonitorNode_InitSpec :
     AxiomaticSpec MonitorADTValues.
@@ -285,7 +291,3 @@ Section MonitorADTs.
   Defined.
 
 End MonitorADTs.
-
-Module Adt <: ADT.
-  Definition ADTValue := MonitorADTValues (PaintballMonitorSpec (fun _ => true) (fun _ => true)).
-End Adt.

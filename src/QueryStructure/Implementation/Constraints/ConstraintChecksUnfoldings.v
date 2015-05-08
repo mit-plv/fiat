@@ -1,5 +1,6 @@
 Require Import Coq.Lists.List Coq.Strings.String Coq.Sets.Ensembles Coq.Arith.Arith
         Fiat.Common.ilist Fiat.Common.StringBound
+        Fiat.Computation.Refinements.Iterate_Decide_Comp
         Fiat.QueryStructure.Specification.Representation.QueryStructureSchema
         Fiat.QueryStructure.Specification.Representation.QueryStructure
         Fiat.QueryStructure.Implementation.Constraints.ConstraintChecksRefinements

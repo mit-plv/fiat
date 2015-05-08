@@ -13,12 +13,12 @@ Section IndexBound.
     { ibound :> nat;
       boundi : nth_error Bound ibound = Some a}.
 
-  Global Instance IndexBound_head (a : A) (Bound : list A)
+  Instance IndexBound_head (a : A) (Bound : list A)
   : IndexBound a (a :: Bound) :=
     { ibound := 0;
       boundi := eq_refl}.
 
-  Global Instance IndexBound_tail
+  Instance IndexBound_tail
            (a a' : A) (Bound : list A)
            {sB' : IndexBound a Bound}
   : IndexBound a (a' :: Bound) :=
@@ -144,6 +144,38 @@ Section IndexBound.
     End Bounded_Index_Dec_Eq.
 
 End IndexBound.
+
+Ltac Build_nth_IndexBound A a As As' m :=
+  match As' with
+  | ?a' :: ?As'' =>
+    (let check := constr:(eq_refl : a = a') in (* Check if the terms match *)
+     exact (let a' := a in @Build_IndexBound A a' As m (@eq_refl (option A) (Some a'))))
+      || Build_nth_IndexBound A a As As'' (S m)
+  end.
+
+Hint Extern 0 (@IndexBound ?A ?a ?As) =>
+let As' :=
+    (match goal with
+     | _ => eval unfold As in As
+     | _ => As
+     end) in
+let As' := eval simpl in As' in
+    Build_nth_IndexBound A a As As' 0 : typeclass_instances.
+
+(* Fixpoint foo (n : nat) : list nat :=
+  match n with
+  | 0 => cons 0 nil
+  | S n' => (S n') * (S n') * (S n') :: (foo n')
+  end.
+
+Definition foo100 := Eval simpl in foo 20.
+
+Definition baz := Eval simpl in 20 * 20 * 20.
+
+Definition bar : IndexBound 3375 foo100.
+Proof.
+  Time eauto with typeclass_instances.
+Defined. *)
 
 Definition BoundedString := @BoundedIndex string.
 Definition BoundedString_eq_dec
@@ -737,7 +769,8 @@ Section ithIndexBound.
     induction Bound; intros.
     - rewrite (ilist_invert il), (ilist_invert il'); reflexivity.
     - icons_invert; f_equal.
-      generalize (H {| bindex := projAC a |}).
+      generalize (H {| bindex := projAC a;
+                       indexb := IndexBound_head _ _ |}).
       unfold ith_Bounded; simpl; auto.
       apply IHBound; intros.
       generalize (H  {| bindex := bindex idx;
@@ -1504,7 +1537,8 @@ Section ith2IndexBound.
     induction Bound; intros.
     - rewrite (ilist2_invert il), (ilist2_invert il'); reflexivity.
     - icons2_invert; f_equal.
-      generalize (H {| bindex := projAC a |}).
+      generalize (H {| bindex := projAC a;
+                       indexb := IndexBound_head _ _  |}).
       unfold ith2_Bounded; simpl; auto.
       apply IHBound; intros.
       generalize (H  {| bindex := bindex idx;

@@ -100,6 +100,12 @@ PARSERS_UNMADE_VO := \
 	src/Parsers/Refinement/SharpenedExpressionPlus.vo \
 	src/Parsers/Refinement/DisjointLemmas.vo
 
+FIAT4MONITORS_UNMADE_VO := \
+	src/Fiat4Monitors/HelloWorld/%.vo \
+	src/Fiat4Monitors/HealthMonitor/%.vo \
+	src/Fiat4Monitors/TurretMonitorSpec.vo \
+	src/Fiat4Monitors/MonitorRepInv.vo
+
 EXAMPLES_UNMADE_VO := \
 	src/Examples/Smtp/Smtp.vo \
 	src/Examples/CacheADT/TrivialADTCache.vo \
@@ -122,7 +128,7 @@ DNS_VO := $(filter src/Examples/DnsServer/%.vo,$(VOFILES))
 COMPILER_VO := $(filter src/FiatToFacade/%.vo,$(VOFILES))
 FACADE_TEST_VO := src/Examples/FacadeTest.vo
 ICS_VO := $(filter-out $(WATER_TANK_EXTRACT_VO),$(filter src/Examples/Ics/%.vo,$(VOFILES)))
-FIAT4MONITORS_VO := $(filter src/Fiat4Monitors/%.vo,$(VOFILES))
+FIAT4MONITORS_VO := $(filter src/Fiat4Monitors/%.vo,$(filter-out $(FIAT4MONITORS_UNMADE_VO), $(VOFILES)))
 EXAMPLES_VO := $(filter-out src/Examples/Ics/WaterTankExtract.vo $(ICS_VO) $(DNS_VO) $(FACADE_TEST_VO) $(EXAMPLES_UNMADE_VO),$(filter src/Examples/%.vo,$(VOFILES)))
 
 FIAT_VO := $(FIAT_CORE_VO) $(QUERYSTRUCTURES_VO) $(PARSERS_VO)

@@ -322,6 +322,17 @@ Section ilist_map.
 
 End ilist_map.
 
+Program Fixpoint ilist_map {A C : Type} {B : C -> Type}
+        (As : list A)
+        (f : A -> C)
+        (il : ilist B (map f As))
+  : ilist (fun a => B (f a)) As :=
+  match As as As' return ilist B (map f As') -> ilist (fun a => B (f a)) As' with
+  | nil => fun _ => inil _
+  | a :: As' => fun il => icons _ (ilist_hd il)
+                                (ilist_map As' f (ilist_tl il))
+  end il.
+
 Section of_list.
   Context {T : Type}.
 

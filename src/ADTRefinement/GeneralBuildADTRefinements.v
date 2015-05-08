@@ -389,7 +389,7 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
                         (cAbsR DelegateReps DelegateImpls DelegateImplRefinesSpec)).
     - simpl; unfold ComputationalADT.cConstructors; simpl; intros.
       rewrite <- ith_Bounded_imap; eauto.
-      rewrite (Iterate_Dep_Type_BoundedIndex_equiv_1
+      rewrite (Iterate_Dep_Type_BoundedString_equiv_1
                  _ (cConstructorsRefinesSpec DelegateReps DelegateImpls DelegateImplRefinesSpec) idx d);
         reflexivity.
         (*as [c [AbsR_c computes_c]].
@@ -397,7 +397,7 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
       econstructor; eauto. *)
     - simpl; unfold ComputationalADT.cMethods; simpl; intros.
       rewrite <- ith_Bounded_imap.
-      rewrite (Iterate_Dep_Type_BoundedIndex_equiv_1
+      rewrite (Iterate_Dep_Type_BoundedString_equiv_1
                   _ (cMethodsRefinesSpec DelegateReps DelegateImpls DelegateImplRefinesSpec)
                   idx r_o r_n d H); reflexivity.
         (* as [r_o' [AbsR_r_o' computes_r_o']].
