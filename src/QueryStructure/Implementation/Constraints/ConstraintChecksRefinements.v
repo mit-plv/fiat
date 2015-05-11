@@ -11,6 +11,7 @@ Require Import Coq.Lists.List Coq.Arith.Compare_dec Coq.Bool.Bool Coq.Strings.St
         Fiat.Common.LogicFacts
         Fiat.Common.DecideableEnsembles
         Fiat.Computation.Refinements.Iterate_Decide_Comp
+        Fiat.Computation.Refinements.General
         Fiat.QueryStructure.Specification.Constraints.tupleAgree
         Fiat.QueryStructure.Specification.Operations.Mutate.
 

@@ -30,7 +30,7 @@ Section Iterate_Decide_Comp.
     : forall (As : list A)
              (P : Ensemble (BoundedIndex As)),
       refine {b | decides b (forall idx : BoundedIndex As, P idx)}
-             {b | decides b (@Iterate_Ensemble_BoundedIndex As P)}.
+             {b | decides b (@Iterate_Ensemble_BoundedIndex A As P)}.
   Proof.
     intros; eapply refine_pick_pick.
     intros; destruct x; simpl in *.
@@ -44,14 +44,14 @@ Section Iterate_Decide_Comp.
 
   Lemma refine_Iterate_Ensemble_filter {A : Set}
         (A_eq_dec : forall a a' : A, {a = a'} + {a <> a'})
-    : forall (As : list string)
+    : forall (As : list A)
              (P : Ensemble (BoundedIndex As))
              (filter : Ensemble nat)
              (filter_dec : DecideableEnsemble filter),
       refine {b | decides b (forall idx : BoundedIndex As,
                                 filter (ibound idx) -> P idx)}
              {b | decides b (@Iterate_Ensemble_BoundedIndex_filter
-                               As (@dec _ _ filter_dec) P )}.
+                               A As (@dec _ _ filter_dec) P )}.
   Proof.
     intros; eapply refine_pick_pick.
     intros; destruct x; simpl in *.
@@ -78,12 +78,12 @@ Section Iterate_Decide_Comp.
 
   Corollary Iterate_Ensemble_filter_neq {A : Set}
             (A_eq_dec : forall a a' : A, {a = a'} + {a <> a'})
-    : forall (As : list string)
+    : forall (As : list A)
              (P : Ensemble (BoundedIndex As))
              (Ridx : BoundedIndex As),
       (forall idx : BoundedIndex As, idx <> Ridx -> P idx)
       <-> (@Iterate_Ensemble_BoundedIndex_filter
-             As (fun idx =>
+             A As (fun idx =>
                    if (eq_nat_dec (ibound Ridx) idx)
                    then false else true) P ).
   Proof.
@@ -108,14 +108,13 @@ Section Iterate_Decide_Comp.
           (rewrite nth_n' in nth_n; congruence).
       revert nth_n' nth_n; rewrite H0.
       intros; repeat f_equal.
-      apply (eq_proofs_unicity_Opt_A string_dec).
+      apply (eq_proofs_unicity_Opt_A A_eq_dec).
     }
     rewrite H.
     split; intros.
     - eapply Iterate_Ensemble_equiv_filter'' with
       (filter := fun idx => idx <> ibound Ridx)
         (filter_dec := {|dec_decides_P := filter_dec' |}); eauto.
-      apply string_dec.
     - eapply Iterate_Ensemble_equiv_filter'  with
       (Visited := [])
         (filter := fun idx => idx <> ibound Ridx)
@@ -126,12 +125,12 @@ Section Iterate_Decide_Comp.
 
   Lemma refine_Iterate_Equiv_Ensemble {A : Set}
         (A_eq_dec : forall a a' : A, {a = a'} + {a <> a'})
-    : forall (As As' : list string)
+    : forall (As As' : list A)
              (P : Ensemble (BoundedIndex As))
              (P' : Ensemble (BoundedIndex As'))
              (equiv_P'_P : (forall idx, P idx) <-> (forall idx', P' idx')),
       refine {b | decides b (forall idx : BoundedIndex As, P idx)}
-             {b | decides b (@Iterate_Ensemble_BoundedIndex As' P')}.
+             {b | decides b (@Iterate_Ensemble_BoundedIndex A As' P')}.
   Proof.
     intros; setoid_rewrite refine_Iterate_Ensemble; try eassumption.
     intros v Comp_v.
@@ -218,11 +217,11 @@ Section Iterate_Decide_Comp.
    decision procedure. *)
   Program Lemma refine_Iterate_Ensemble_Pre {A : Set}
           (A_eq_dec : forall a a' : A, {a = a'} + {a <> a'})
-    : forall (As : list string)
+    : forall (As : list A)
              (P : Ensemble (BoundedIndex As))
              (Q : Prop),
       refine {b | Q -> decides b (forall idx : BoundedIndex As, P idx)}
-             {b | Q -> decides b (@Iterate_Ensemble_BoundedIndex As P)}.
+             {b | Q -> decides b (@Iterate_Ensemble_BoundedIndex A As P)}.
   Proof.
     intros; eapply refine_pick_pick.
     intros; destruct x; simpl in *; apply H in H0.

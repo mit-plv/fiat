@@ -143,7 +143,7 @@ Section DeleteRefinements.
                                                  CrossConstr))
                                           | None => None
                                         end)
-                                  (@Iterate_Ensemble_BoundedIndex_filter
+                                  (@Iterate_Ensemble_BoundedString_filter
                                      _ (fun idx =>
                                           if (eq_nat_dec (ibound Ridx) idx)
                                           then false else true)
@@ -181,7 +181,7 @@ Section DeleteRefinements.
                                                  CrossConstr))
                                           | None => None
                                         end)
-                                  (@Iterate_Ensemble_BoundedIndex_filter
+                                  (@Iterate_Ensemble_BoundedString_filter
                                      _ (fun idx =>
                                           if (eq_nat_dec (ibound Ridx) idx)
                                           then false else true)

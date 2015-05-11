@@ -53,7 +53,7 @@ Section MutateRefinements.
        MutationPreservesTupleConstraints MutatedTuples (SatisfiesTupleConstraints Ridx))
     (* And is compatible with the cross-schema constraints. *)
     (CrossConstr :
-       (@Iterate_Ensemble_BoundedIndex_filter
+       (@Iterate_Ensemble_BoundedString_filter
           (map relName (qschemaSchemas qsSchema))
           (fun idx : nat => if eq_nat_dec (ibound Ridx) idx then false else true)
           (fun Ridx' : BoundedIndex (map relName (qschemaSchemas qsSchema)) =>
@@ -65,7 +65,7 @@ Section MutateRefinements.
           MutationPreservesCrossConstraints MutatedTuples (GetRelation qs Ridx')
                                             (SatisfiesCrossRelationConstraints Ridx Ridx')))
     (CrossConstr' :
-       (@Iterate_Ensemble_BoundedIndex_filter
+       (@Iterate_Ensemble_BoundedString_filter
           (map relName (qschemaSchemas qsSchema))
           (fun idx : nat => if eq_nat_dec (ibound Ridx) idx then false else true)
           (fun Ridx' : BoundedIndex (map relName (qschemaSchemas qsSchema)) =>
@@ -110,7 +110,7 @@ Section MutateRefinements.
       eapply (Iterate_Ensemble_filter_neq
                 string_dec
                 _
-                (fun Ridx' : BoundedIndex (map relName (qschemaSchemas qsSchema)) =>
+                (fun Ridx' : @BoundedString (map relName (qschemaSchemas qsSchema)) =>
                    forall tup' : IndexedTuple,
                      GetUnConstrRelation (DropQSConstraints qs) Ridx' tup' ->
                      match BuildQueryStructureConstraints qsSchema Ridx' idx' with
@@ -129,7 +129,7 @@ Section MutateRefinements.
       eapply (Iterate_Ensemble_filter_neq
                 string_dec
                 _
-                (fun Ridx' : BoundedIndex (map relName (qschemaSchemas qsSchema)) =>
+                (fun Ridx' : @BoundedString (map relName (qschemaSchemas qsSchema)) =>
                    forall tup' : IndexedTuple,
                      GetUnConstrRelation (DropQSConstraints qs) idx tup' ->
                      match BuildQueryStructureConstraints qsSchema idx Ridx' with
@@ -426,14 +426,14 @@ Section MutateRefinements.
     MutationPreservesCrossConstraints MutatedTuples
       (GetUnConstrRelation (DropQSConstraints or) Ridx')
       (SatisfiesCrossRelationConstraints Ridx Ridx')) ->
-   Iterate_Ensemble_BoundedIndex_filter
+   Iterate_Ensemble_BoundedString_filter
      (fun idx : nat => if eq_nat_dec (ibound Ridx) idx then false else true)
-     (fun Ridx' : BoundedIndex (map relName (qschemaSchemas qsSchema)) =>
+     (fun Ridx' : @BoundedString (map relName (qschemaSchemas qsSchema)) =>
       forall tup' : IndexedTuple,
       GetUnConstrRelation (DropQSConstraints or) Ridx tup' ->
       SatisfiesCrossRelationConstraints Ridx Ridx'
         (indexedElement tup') (GetRelation or Ridx')) ->
-   forall Ridx' : BoundedIndex (map relName (qschemaSchemas qsSchema)),
+   forall Ridx' : @BoundedString (map relName (qschemaSchemas qsSchema)),
    Ridx' <> Ridx ->
    MutationPreservesCrossConstraints
      MutatedTuples (GetRelation or Ridx')
@@ -441,7 +441,7 @@ Section MutateRefinements.
   Proof.
     intros; rewrite <- GetRelDropConstraints in *; eapply H0; eauto.
     intros; rewrite GetRelDropConstraints in *.
-    intros; eapply (proj1 (Iterate_Ensemble_BoundedIndex_filter_equiv
+    intros; eapply (proj1 (Iterate_Ensemble_BoundedString_filter_equiv
                              _
                              (Build_DecideableEnsemble _ _ (ibound_check_dec _) )) H1); eauto.
     unfold not; intros; eapply H3;
@@ -467,19 +467,19 @@ Section MutateRefinements.
       (GetUnConstrRelation (DropQSConstraints or) Ridx')
       MutatedTuples
       (SatisfiesCrossRelationConstraints Ridx' Ridx)) ->
-      Iterate_Ensemble_BoundedIndex_filter
+      Iterate_Ensemble_BoundedString_filter
     (fun idx : nat => if eq_nat_dec (ibound Ridx) idx then false else true)
-    (fun Ridx' : BoundedIndex (map relName (qschemaSchemas qsSchema)) =>
+    (fun Ridx' : @BoundedString (map relName (qschemaSchemas qsSchema)) =>
      forall tup' : IndexedTuple,
      GetUnConstrRelation (DropQSConstraints or) Ridx' tup' ->
      SatisfiesCrossRelationConstraints Ridx' Ridx (indexedElement tup')
        (GetRelation or Ridx)) ->
-  forall Ridx' : BoundedIndex (map relName (qschemaSchemas qsSchema)),
+  forall Ridx' : @BoundedString (map relName (qschemaSchemas qsSchema)),
   Ridx' <> Ridx ->
   MutationPreservesCrossConstraints (GetRelation or Ridx') MutatedTuples
                                     (SatisfiesCrossRelationConstraints Ridx' Ridx).
     intros; rewrite <- GetRelDropConstraints in *; eapply H0; eauto.
-    intros; eapply (proj1 (Iterate_Ensemble_BoundedIndex_filter_equiv
+    intros; eapply (proj1 (Iterate_Ensemble_BoundedString_filter_equiv
                              _
                              (Build_DecideableEnsemble _ _ (ibound_check_dec _) )) H1); eauto.
     unfold not; intros; eapply H3;
@@ -534,7 +534,7 @@ Section MutateRefinements.
                                     (GetUnConstrRelation qs Ridx')
                                     MutatedTuples
                                     (SatisfiesCrossRelationConstraints Ridx' Ridx)))
-                           (@Iterate_Ensemble_BoundedIndex_filter
+                           (@Iterate_Ensemble_BoundedString_filter
                               _ (fun idx =>
                                    if (eq_nat_dec (ibound Ridx) idx)
                                    then false else true)
@@ -569,7 +569,7 @@ Section MutateRefinements.
                                     MutatedTuples
                                     (GetUnConstrRelation qs Ridx')
                                     (SatisfiesCrossRelationConstraints Ridx Ridx')))
-                           (@Iterate_Ensemble_BoundedIndex_filter
+                           (@Iterate_Ensemble_BoundedString_filter
                               _ (fun idx =>
                                    if (eq_nat_dec (ibound Ridx) idx)
                                    then false else true)
@@ -624,7 +624,7 @@ Section MutateRefinements.
       | unfold Mutate_Valid, DropQSConstraints,
         UpdateRelation, UpdateUnConstrRelation; simpl;
         repeat rewrite imap_replace_BoundedIndex by eauto using string_dec;
-        simpl; reflexivity].
+        simpl; try reflexivity].
 
     f_equiv.
     - unfold GetRelation, GetUnConstrRelation, Mutate_Valid,
@@ -636,6 +636,7 @@ Section MutateRefinements.
         | unfold GetRelation, GetUnConstrRelation, Mutate_Valid,
           UpdateRelation, DropQSConstraints, UpdateUnConstrRelation; simpl;
           rewrite imap_replace_BoundedIndex by eauto using string_dec; try reflexivity ].
+
   Qed.
 
   Local Transparent QSMutate.
@@ -727,7 +728,7 @@ Section MutateRefinements.
                                   (map relName (qschemaSchemas qsSchema))
                                   []
                                   (fun
-                                      Ridx' : BoundedIndex
+                                      Ridx' : @BoundedString
                                                 ([] ++
                                                     map relName (qschemaSchemas qsSchema)) =>
                                       if BoundedString_eq_dec Ridx Ridx'
@@ -746,7 +747,7 @@ Section MutateRefinements.
                                                    CrossConstr))
                                           | None => None
                                         end)
-                                  (@Iterate_Ensemble_BoundedIndex_filter
+                                  (@Iterate_Ensemble_BoundedString_filter
                                      _ (fun idx =>
                                           if (eq_nat_dec (ibound Ridx) idx)
                                           then false else true)
@@ -797,7 +798,7 @@ Section MutateRefinements.
                                   (map relName (qschemaSchemas qsSchema))
                                   []
                                   (fun
-                                      Ridx' : BoundedIndex
+                                      Ridx' : @BoundedString
                                                 ([] ++
                                                     map relName (qschemaSchemas qsSchema)) =>
                                       if BoundedString_eq_dec Ridx Ridx'
@@ -816,7 +817,7 @@ Section MutateRefinements.
                                                    CrossConstr))
                                           | None => None
                                         end)
-                                  (@Iterate_Ensemble_BoundedIndex_filter
+                                  (@Iterate_Ensemble_BoundedString_filter
                                      _ (fun idx =>
                                           if (eq_nat_dec (ibound Ridx) idx)
                                           then false else true)
@@ -874,7 +875,7 @@ Section MutateRefinements.
                                                        (map relName (qschemaSchemas qsSchema))
                                   []
                                   (fun
-                                      Ridx' : BoundedIndex
+                                      Ridx' : @BoundedString
                                                 ([] ++
                                                     map relName (qschemaSchemas qsSchema)) =>
                                       if BoundedString_eq_dec Ridx Ridx'
@@ -892,7 +893,7 @@ Section MutateRefinements.
                                                  CrossConstr))
                                           | None => None
                                         end)
-                                  (@Iterate_Ensemble_BoundedIndex_filter
+                                  (@Iterate_Ensemble_BoundedString_filter
                                      _ (fun idx =>
                                           if (eq_nat_dec (ibound Ridx) idx)
                                           then false else true)
@@ -905,7 +906,7 @@ Section MutateRefinements.
                                   (map relName (qschemaSchemas qsSchema))
                                   []
                                   (fun
-                                      Ridx' : BoundedIndex
+                                      Ridx' : @BoundedString
                                                 ([] ++
                                                     map relName (qschemaSchemas qsSchema)) =>
                                       if BoundedString_eq_dec Ridx Ridx'
@@ -923,7 +924,7 @@ Section MutateRefinements.
                                                   CrossConstr))
                                           | None => None
                                         end)
-                                  (@Iterate_Ensemble_BoundedIndex_filter
+                                  (@Iterate_Ensemble_BoundedString_filter
                                      _ (fun idx =>
                                           if (eq_nat_dec (ibound Ridx) idx)
                                           then false else true)
@@ -952,7 +953,7 @@ Section MutateRefinements.
                                                        (map relName (qschemaSchemas qsSchema))
                                   []
                                   (fun
-                                      Ridx' : BoundedIndex
+                                      Ridx' : @BoundedString
                                                 ([] ++
                                                     map relName (qschemaSchemas qsSchema)) =>
                                       if BoundedString_eq_dec Ridx Ridx'
@@ -970,7 +971,7 @@ Section MutateRefinements.
                                                  CrossConstr))
                                           | None => None
                                         end)
-                                  (@Iterate_Ensemble_BoundedIndex_filter
+                                  (@Iterate_Ensemble_BoundedString_filter
                                      _ (fun idx =>
                                           if (eq_nat_dec (ibound Ridx) idx)
                                           then false else true)
@@ -983,7 +984,7 @@ Section MutateRefinements.
                                   (map relName (qschemaSchemas qsSchema))
                                   []
                                   (fun
-                                      Ridx' : BoundedIndex
+                                      Ridx' : @BoundedString
                                                 ([] ++
                                                     map relName (qschemaSchemas qsSchema)) =>
                                       if BoundedString_eq_dec Ridx Ridx'
@@ -1001,7 +1002,7 @@ Section MutateRefinements.
                                                   CrossConstr))
                                           | None => None
                                         end)
-                                  (@Iterate_Ensemble_BoundedIndex_filter
+                                  (@Iterate_Ensemble_BoundedString_filter
                                      _ (fun idx =>
                                           if (eq_nat_dec (ibound Ridx) idx)
                                           then false else true)
@@ -1032,7 +1033,7 @@ Section MutateRefinements.
                                                        (map relName (qschemaSchemas qsSchema))
                                   []
                                   (fun
-                                      Ridx' : BoundedIndex
+                                      Ridx' : @BoundedString
                                                 ([] ++
                                                     map relName (qschemaSchemas qsSchema)) =>
                                       if BoundedString_eq_dec Ridx Ridx'
@@ -1050,7 +1051,7 @@ Section MutateRefinements.
                                                  CrossConstr))
                                           | None => None
                                         end)
-                                  (@Iterate_Ensemble_BoundedIndex_filter
+                                  (@Iterate_Ensemble_BoundedString_filter
                                      _ (fun idx =>
                                           if (eq_nat_dec (ibound Ridx) idx)
                                           then false else true)
@@ -1063,7 +1064,7 @@ Section MutateRefinements.
                                   (map relName (qschemaSchemas qsSchema))
                                   []
                                   (fun
-                                      Ridx' : BoundedIndex
+                                      Ridx' : @BoundedString
                                                 ([] ++
                                                     map relName (qschemaSchemas qsSchema)) =>
                                       if BoundedString_eq_dec Ridx Ridx'
@@ -1081,7 +1082,7 @@ Section MutateRefinements.
                                                   CrossConstr))
                                           | None => None
                                         end)
-                                  (@Iterate_Ensemble_BoundedIndex_filter
+                                  (@Iterate_Ensemble_BoundedString_filter
                                      _ (fun idx =>
                                           if (eq_nat_dec (ibound Ridx) idx)
                                           then false else true)
@@ -1104,7 +1105,7 @@ Section MutateRefinements.
                                                        (map relName (qschemaSchemas qsSchema))
                                   []
                                   (fun
-                                      Ridx' : BoundedIndex
+                                      Ridx' : @BoundedString
                                                 ([] ++
                                                     map relName (qschemaSchemas qsSchema)) =>
                                       if BoundedString_eq_dec Ridx Ridx'
@@ -1122,7 +1123,7 @@ Section MutateRefinements.
                                                  CrossConstr))
                                           | None => None
                                         end)
-                                  (@Iterate_Ensemble_BoundedIndex_filter
+                                  (@Iterate_Ensemble_BoundedString_filter
                                      _ (fun idx =>
                                           if (eq_nat_dec (ibound Ridx) idx)
                                           then false else true)
@@ -1135,7 +1136,7 @@ Section MutateRefinements.
                                   (map relName (qschemaSchemas qsSchema))
                                   []
                                   (fun
-                                      Ridx' : BoundedIndex
+                                      Ridx' : @BoundedString
                                                 ([] ++
                                                     map relName (qschemaSchemas qsSchema)) =>
                                       if BoundedString_eq_dec Ridx Ridx'
@@ -1153,7 +1154,7 @@ Section MutateRefinements.
                                                   CrossConstr))
                                           | None => None
                                         end)
-                                  (@Iterate_Ensemble_BoundedIndex_filter
+                                  (@Iterate_Ensemble_BoundedString_filter
                                      _ (fun idx =>
                                           if (eq_nat_dec (ibound Ridx) idx)
                                           then false else true)

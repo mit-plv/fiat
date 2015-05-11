@@ -201,7 +201,7 @@ Proof.
   split; simpl.
   - intros v' Comp_v;  computes_to_inv; subst.
     generalize d v' H; clear.
-    eapply (fun P H => Iterate_Dep_Type_BoundedIndex_equiv_1 P H cidx).
+    eapply (fun P H => Iterate_Dep_Type_BoundedString_equiv_1 P H cidx).
     simpl; intuition.
   - eapply H'.
 Qed.
@@ -245,7 +245,7 @@ Proof.
     intros v' Comp_v; simpl in *;  computes_to_inv; subst.
     destruct v; simpl @fst in *; simpl @snd in *.
     generalize d i m H H0; clear.
-    eapply (fun P H => Iterate_Dep_Type_BoundedIndex_equiv_1 P H midx).
+    eapply (fun P H => Iterate_Dep_Type_BoundedString_equiv_1 P H midx).
     simpl; intuition.
     eassumption.
   - unfold ComputationalADT.cMethods in *; simpl in *; rewrite <- H0''; eapply H0'.
@@ -286,7 +286,7 @@ Proof.
   pose proof (ilist_invert Index) as H'; simpl in H'; subst.
   - simpl; simplify with monad laws.
     computes_to_econstructor;  computes_to_inv; subst.
-    eapply (fun P H => Iterate_Dep_Type_BoundedIndex_equiv_1 P H); simpl.
+    eapply (fun P H => Iterate_Dep_Type_BoundedString_equiv_1 P H); simpl.
     econstructor.
   - destruct H' as [idx' [Index' Index_eq]]; subst.
     simpl; simplify with monad laws.
