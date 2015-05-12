@@ -577,6 +577,7 @@ Section IndexedImpl.
   Proof.
     econstructor 1; try instantiate (1 := eq);
     eapply Iterate_Ensemble_BoundedIndex_equiv;
+    try apply string_dec;
     simpl; intros; repeat split;
     try solve [ intuition; intros; try simplify with monad laws;
                 repeat intro; computes_to_inv; subst; simpl;
@@ -600,6 +601,7 @@ Section IndexedImpl.
   Proof.
     econstructor 1; try instantiate (1 := eq);
     eapply Iterate_Ensemble_BoundedIndex_equiv;
+    try apply string_dec;
     simpl; intros; repeat split;
     try solve [ intuition; intros; try simplify with monad laws;
                 repeat intro; computes_to_inv; subst; simpl;
@@ -632,6 +634,7 @@ Section IndexedImpl.
                                     substring (fst (snd r_n)) (snd (snd r_n)) (fst r_n) = r_o));
 
         eapply Iterate_Ensemble_BoundedIndex_equiv;
+        try apply string_dec;
         simpl; intuition; intros; try simplify with monad laws;
         repeat intro; computes_to_inv; subst; simpl;
         fin.

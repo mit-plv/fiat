@@ -152,6 +152,7 @@ Section IndexedImpl.
                                     substring (fst (snd r_n)) (snd (snd r_n)) (fst r_n) = r_o));
     abstract (
         eapply Iterate_Ensemble_BoundedIndex_equiv;
+        try apply string_dec;
         simpl; intuition; intros; try simplify with monad laws;
         repeat intro; computes_to_inv; subst; simpl;
         repeat match goal with
