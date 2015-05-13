@@ -251,6 +251,16 @@ Section String.
       congruence. }
   Qed.
 
+  Lemma has_first_char_nonempty str (H' : length str = 0) : get 0 str = None.
+  Proof.
+    case_eq (get 0 str); try reflexivity.
+    intros ch H''.
+    exfalso.
+    apply get_0, length_singleton in H''.
+    rewrite take_length, H' in H''.
+    simpl in *; omega.
+  Qed.
+
   Global Instance get_Proper {n}
   : Proper (beq ==> eq) (get n).
   Proof.
@@ -284,5 +294,109 @@ Section String.
       rewrite drop_drop.
       repeat (f_equal; []).
       omega. }
+  Qed.
+
+  Lemma get_drop' {n m str} : get m (drop n str) = get (m + n) str.
+  Proof.
+    revert str n; induction m; intros.
+    { rewrite <- get_drop; reflexivity. }
+    { rewrite !get_S, !drop_drop, IHm.
+      repeat (f_equal; []).
+      omega. }
+  Qed.
+
+  Lemma fold'_nil
+        {A} (f : Char -> A -> A) (init : A) (str : String)
+  : fold' f init str 0 = init.
+  Proof.
+    reflexivity.
+  Qed.
+
+  Lemma fold'_cons
+        {A} (f : Char -> A -> A) (init : A) (str : String) len
+  : fold' f init str (S len)
+    = match get (length str - S len) str with
+        | Some ch => f ch (fold' f init str len)
+        | None => init
+      end.
+  Proof.
+    reflexivity.
+  Qed.
+
+  Global Instance fold'_Proper
+         {A} (f : Char -> A -> A) (init : A)
+  : Proper (beq ==> eq ==> eq) (fold' f init).
+  Proof.
+    intros ?? H' ? x ?; subst.
+    induction x.
+    { rewrite !fold'_nil; reflexivity. }
+    { rewrite !fold'_cons.
+      repeat match goal with
+               | _ => reflexivity
+               | _ => rewrite IHx
+               | _ => rewrite H' at 1
+               | [ |- context[match ?e with _ => _ end] ] => destruct e eqn:?
+             end. }
+  Qed.
+
+  Lemma fold'_drop
+        {A} (f : Char -> A -> A) (init : A) (str : String) len m
+        (H' : m + len <= length str)
+  : fold' f init str len = fold' f init (drop m str) len.
+  Proof.
+    revert str m H'.
+    induction len; simpl.
+    { intros; reflexivity. }
+    { intros.
+      rewrite !(@get_drop (length _ - _)).
+      rewrite drop_length, drop_drop.
+      rewrite <- Nat.sub_add_distr, (plus_comm m), Nat.sub_add_distr, Nat.sub_add by omega.
+      match goal with
+        | [ |- context[match ?e with _ => _ end] ] => destruct e eqn:?
+      end.
+      { rewrite <- IHlen by omega; reflexivity. }
+      { reflexivity. } }
+  Qed.
+
+  Definition fold_nil
+             {A} (f : Char -> A -> A) (init : A) (str : String)
+             (H' : length str = 0)
+  : fold f init str = init.
+  Proof.
+    unfold fold; rewrite H'; apply fold'_nil.
+  Qed.
+
+  Lemma fold_recr
+        {A} (f : Char -> A -> A) (init : A) (str : String)
+  : fold f init str
+    = match get 0 str with
+        | Some ch => f ch (fold f init (drop 1 str))
+        | None => init
+      end.
+  Proof.
+    case_eq (get 0 str).
+    { intros ch H'.
+      unfold fold.
+      case_eq (length str).
+      { intro H''.
+        apply has_first_char_nonempty in H''.
+        congruence. }
+      { intros ? H''.
+        rewrite fold'_cons.
+        rewrite !H'', minus_diag, H'.
+        rewrite drop_length, H''; simpl.
+        rewrite <- minus_n_O.
+        apply f_equal.
+        rewrite <- fold'_drop by omega; reflexivity. } }
+    { intro H'.
+      apply fold_nil, no_first_char_empty; assumption. }
+  Qed.
+
+  Global Instance fold_Proper
+         {A} (f : Char -> A -> A) (init : A)
+  : Proper (beq ==> eq) (fold f init).
+  Proof.
+    repeat intro; apply fold'_Proper; trivial.
+    setoid_subst_rel beq; reflexivity.
   Qed.
 End String.

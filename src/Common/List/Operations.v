@@ -18,6 +18,12 @@ Fixpoint take {A} (n : nat) (ls : list A) : list A
        | S n', x::xs => x::take n' xs
      end.
 
+Fixpoint enumerate {A} (ls : list A) (start : nat) : list (nat * A)
+  := match ls with
+       | nil => nil
+       | x::xs => (start, x)::enumerate xs (S start)
+     end.
+
 Definition disjoint {A} (eq_A : A -> A -> bool) (ls1 ls2 : list A) : bool
   := fold_right
        andb

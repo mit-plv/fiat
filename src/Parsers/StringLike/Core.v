@@ -39,6 +39,28 @@ Module Export StringLike.
 
   Hint Extern 0 (@StringLike (@String ?string ?H)) => exact H : typeclass_instances.
 
+  Definition fold' {Char} {HSL : StringLike Char} {A}
+             (f : Char -> A -> A)
+             (init : A)
+             (str : String) (len : nat)
+  : A
+    := nat_rect
+         (fun _ => A)
+         init
+         (fun len' acc
+          => match get (length str - S len') str with
+               | Some ch => f ch acc
+               | None => init
+             end)
+         len.
+
+  Definition fold {Char} {HSL : StringLike Char} {A}
+             (f : Char -> A -> A)
+             (init : A)
+             (str : String)
+  : A
+    := fold' f init str (length str).
+
   Definition str_le `{StringLike Char} (s1 s2 : String)
     := length s1 < length s2 \/ s1 =s s2.
   Infix "≤s" := str_le (at level 70, right associativity).

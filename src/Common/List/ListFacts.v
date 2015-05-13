@@ -563,4 +563,19 @@ Section ListFacts.
     rewrite IHls; reflexivity.
   Qed.
 
+  Lemma nth_tl {A} n (ls : list A) a
+  : nth n (tl ls) a = nth (S n) ls a.
+  Proof.
+    destruct ls, n; simpl; reflexivity.
+  Qed.
+
+  Lemma nth_drop {A} x y (ls : list A) a
+  : nth x (drop y ls) a = nth (x + y) ls a.
+  Proof.
+    revert x y; induction ls; simpl; intros.
+    { destruct x, y; reflexivity. }
+    { destruct y; simpl.
+      { destruct x; simpl; repeat (f_equal; []); try reflexivity; omega. }
+      { rewrite IHls; destruct x; simpl; repeat (f_equal; []); try reflexivity; omega. } }
+  Qed.
 End ListFacts.

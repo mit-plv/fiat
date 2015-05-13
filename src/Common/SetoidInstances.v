@@ -60,3 +60,12 @@ Global Instance bool_rect_Proper {P} {R1}
 Proof.
   intros ?????? [|]; simpl in *; eauto.
 Qed.
+
+Global Instance fst_eq_Proper {A B} : Proper (eq ==> eq) (@fst A B).
+Proof.
+  repeat intro; subst; reflexivity.
+Qed.
+Global Instance snd_eq_Proper {A B} : Proper (eq ==> eq) (@snd A B).
+Proof.
+  repeat intro; subst; reflexivity.
+Qed.
