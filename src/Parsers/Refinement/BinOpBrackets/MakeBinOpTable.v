@@ -161,9 +161,7 @@ Section make_table.
   Qed.
 
 
-  (** TODO FIXME: It needs to be okay to point past the end of the string.
-
-TODO FIXME: How do I say "first _at this level of parenthetization_?" *)
+  (** TODO FIXME: How do I say "first _at this level of parenthetization_?" *)
   Definition list_of_next_bin_ops'_spec (str : String) (tbl : list (option nat))
     := forall n idx,
          nth n tbl None = Some idx
@@ -171,9 +169,9 @@ TODO FIXME: How do I say "first _at this level of parenthetization_?" *)
                idx' < idx
                -> get (n + idx') str = Some ch'
                -> ~is_true (is_bin_op ch'))
-            /\ exists ch,
-                 is_true (is_bin_op ch)
-                 /\ get (n + idx) str = Some ch.
+            /\ (forall ch,
+                  get (n + idx) str = Some ch
+                  -> is_true (is_bin_op ch)).
 
   Lemma list_of_next_bin_ops'_snd_is_bin_op {HSLP : StringLikeProperties Char} str
   : forall n idx,
@@ -289,11 +287,15 @@ TODO FIXME: How do I say "first _at this level of parenthetization_?" *)
                    | [ IHlen : forall n, ?len = ?len -> _, H : _ |- _ ] => specialize (IHlen _ eq_refl _ H)
                    | [ H : context[get ?x _] |- _ ] => not constr_eq x 0; rewrite (@get_drop _ _ _ x) in H
                    | [ H : _ |- _ ] => progress rewrite ?drop_drop, ?NPeano.Nat.add_1_r, ?drop_0 in H
+                   | [ H : _ |- _ ] => setoid_rewrite drop_drop in H
                    | [ |- context[get ?x _] ] => not constr_eq x 0; rewrite (@get_drop _ _ _ x)
                    | _ => progress rewrite ?drop_drop, ?NPeano.Nat.add_1_r
                    | [ H : forall idx' ch', idx' < _ -> _ -> ~ is_true (is_bin_op _) |- ~ is_true (is_bin_op _) ]
                      => eapply H; try eassumption; []
                    | [ H : ?idx < S _ |- _ ] => is_var idx; destruct idx
+                   | [ H : nth ?n (map ?f ?ls) ?d = _ |- _ ] => revert H; simpl rewrite (map_nth f ls d n)
+                   | [ H : forall ch, is_true (?x ~= [ ch ])%string_like -> _, H' : is_true (?x ~= [ _ ])%string_like |- _ ]
+                     => specialize (H _ H')
                  end ].
 
         destruct n; simpl in *;
@@ -319,15 +321,20 @@ TODO FIXME: How do I say "first _at this level of parenthetization_?" *)
                    | [ IHlen : forall n, ?len = ?len -> _, H : _ |- _ ] => specialize (IHlen _ eq_refl _ H)
                    | [ H : context[get ?x _] |- _ ] => not constr_eq x 0; rewrite (@get_drop _ _ _ x) in H
                    | [ H : _ |- _ ] => progress rewrite ?drop_drop, ?NPeano.Nat.add_1_r, ?drop_0 in H
+                   | [ H : _ |- _ ] => setoid_rewrite drop_drop in H
                    | [ |- context[get ?x _] ] => not constr_eq x 0; rewrite (@get_drop _ _ _ x)
                    | _ => progress rewrite ?drop_drop, ?NPeano.Nat.add_1_r
                    | [ H : forall idx' ch', idx' < _ -> _ -> ~ is_true (is_bin_op _) |- ~ is_true (is_bin_op _) ]
                      => eapply H; try eassumption; []
                    | [ H : ?idx < S _ |- _ ] => is_var idx; destruct idx
                    | [ H : nth ?n (map ?f ?ls) ?d = _ |- _ ] => revert H; simpl rewrite (map_nth f ls d n)
-                   | [ H : nth _ (snd (fold list_of_next_bin_ops'_step _ _)) _ = _ |- exists ch, _ ]
+                   | [ H : forall ch, is_true (?x ~= [ ch ])%string_like -> _, H' : is_true (?x ~= [ _ ])%string_like |- _ ]
+                     => specialize (H _ H')
+                   | [ H : nth _ (snd (fold list_of_next_bin_ops'_step _ _)) _ = _ |- _ ]
                      => apply list_of_next_bin_ops'_snd_is_bin_op in H
                  end.
+setoid_rewrite drop_drop in H4.
+rewrite (@get_drop _ _ _ (n + )
 
         rewrite fold_recr in Heqo.
         Focus 2.
