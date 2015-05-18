@@ -145,6 +145,57 @@ Section IndexBound.
 
 End IndexBound.
 
+Scheme le_ind' := Induction for le Sort Prop.
+
+Theorem K_nat 
+  : forall (x:nat) (P:x = x -> Prop), P (refl_equal x) -> forall p:x = x, P p.
+Proof.
+  intros; apply K_dec_set with (p := p); auto using eq_nat_dec.
+Qed.
+
+Theorem eq_rect_eq_nat :
+  forall (p:nat) (Q:nat->Type) (x:Q p) (h:p=p), x = eq_rect p Q x p h.
+Proof.
+  intros; apply K_nat with (p := h); reflexivity.
+Qed. 
+
+Theorem le_uniqueness_proof : forall (n m : nat) (p q : n <= m), p = q.
+ Proof.
+ induction p using le_ind'; intro q.
+ - replace (le_n n) with (eq_rect _ (fun n0 => n <= n0) (le_n n) _ (refl_equal n))
+     by reflexivity.
+   generalize (refl_equal n).
+   pattern n at 2 4 6 10, q; case q; [intro | intros m l e].  
+   rewrite <- eq_rect_eq_nat; trivial.
+   contradiction (le_Sn_n m); rewrite <- e; assumption.
+ - replace (le_S n m p) with (eq_rect _ (fun n0 => n <= n0) (le_S n m p) _ (refl_equal (S m)))
+     by reflexivity. 
+   generalize (refl_equal (S m)).
+   pattern (S m) at 1 3 4 6, q; case q; [intro Heq | intros m0 l HeqS].
+   contradiction (le_Sn_n m); rewrite Heq; assumption.
+   injection HeqS; intro Heq; generalize l HeqS.
+   rewrite <- Heq; intros; rewrite <- eq_rect_eq_nat.
+   rewrite (IHp l0); reflexivity.
+ Qed.
+
+
+Lemma eq_proofs_le
+  : forall (a a' : nat) (p1 p2 : a <= a'), p1 = p2.
+Proof.
+  Set Printing All.
+  destruct p1.
+  intro.
+  Check (fun (a0 : nat) (p2 : le a0 a0) => @eq (le a0 a0) (le_n a0) p2).
+  destruct p2.
+  induction a.
+  inversion p1; subst.
+  inversion p2; subst.
+
+  Print le.
+  apply eq_proofs_unicity; intros.
+                                                 destruct (Opt_A_eq_dec x y); auto.
+Defined.
+
 Ltac Build_nth_IndexBound A a As As' m :=
   match As' with
   | ?a' :: ?As'' =>

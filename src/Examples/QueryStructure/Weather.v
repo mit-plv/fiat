@@ -83,6 +83,12 @@ Definition WeatherSpec : ADT WeatherSig :=
 Definition SharpenedWeatherStation :
   MostlySharpened WeatherSpec.
 Proof.
+
+  start honing QueryStructure.
+  Set Printing All.
+  idtac.
+
+
   partial_master_plan EqIndexTactics.
 
   FullySharpenQueryStructure WeatherSchema Index.
