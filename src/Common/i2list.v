@@ -681,4 +681,4 @@ Section i2list_replace.
     destruct new_c; eauto.
   Qed. *)
 
-End i2list_replace.
+End i2list.

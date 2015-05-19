@@ -1,8 +1,8 @@
-Require Import Coq.Lists.List Coq.Strings.String
+Require Import Coq.Lists.List
+        Coq.Strings.String
         Fiat.Common
         Fiat.Common.ilist
-        Fiat.Common.i2list
-        Fiat.Common.StringBound
+        Fiat.Common.BoundedLookup
         Fiat.ADT.Core Fiat.ADT.ComputationalADT
         Fiat.ADTRefinement.Core
         Fiat.ADTRefinement.SetoidMorphisms.
@@ -39,10 +39,10 @@ Record NamedADTSig :=
 Record SharpenedUnderDelegates (Sig : ADTSig)
   : Type
   := Build_SharpenedUnderDelegates
-       { Sharpened_DelegateIDs : list string;
-         Sharpened_DelegateSigs : @BoundedString Sharpened_DelegateIDs -> ADTSig;
+       { Sharpened_DelegateIDs : nat;
+         Sharpened_DelegateSigs : Fin.t Sharpened_DelegateIDs -> ADTSig;
          Sharpened_Implementation :
-           forall (DelegateReps : @BoundedString Sharpened_DelegateIDs -> Type)
+           forall (DelegateReps : Fin.t Sharpened_DelegateIDs -> Type)
                   (DelegateImpls : forall idx,
                                       pcADT (Sharpened_DelegateSigs idx) (DelegateReps idx)),
              cADT Sig;
@@ -52,11 +52,11 @@ Definition FullySharpenedUnderDelegates
            (Sig : ADTSig)
            (spec : ADT Sig)
            (adt : SharpenedUnderDelegates Sig)
-  := forall (DelegateReps : @BoundedString (Sharpened_DelegateIDs adt) -> Type)
+  := forall (DelegateReps : Fin.t (Sharpened_DelegateIDs adt) -> Type)
             (DelegateImpls : forall idx,
                                pcADT (Sharpened_DelegateSigs adt idx) (DelegateReps idx))
             (ValidImpls
-             : forall idx : @BoundedString (Sharpened_DelegateIDs adt),
+             : forall idx : Fin.t (Sharpened_DelegateIDs adt),
                  refineADT (Sharpened_DelegateSpecs adt idx)
                            (LiftcADT (existT _ _ (DelegateImpls idx)))),
        refineADT spec
@@ -76,12 +76,12 @@ Lemma FullySharpened_Start
 : forall {Sig} (spec : ADT Sig) adt
          (cadt : cADT Sig),
     (@FullySharpenedUnderDelegates _ spec adt)
-    -> forall (DelegateReps : @BoundedString (Sharpened_DelegateIDs adt) -> Type)
+    -> forall (DelegateReps : Fin.t (Sharpened_DelegateIDs adt) -> Type)
               (DelegateImpls :
                  forall idx,
                    ComputationalADT.pcADT (Sharpened_DelegateSigs adt idx) (DelegateReps idx))
               (ValidImpls
-               : forall idx : @BoundedString (Sharpened_DelegateIDs adt),
+               : forall idx : Fin.t (Sharpened_DelegateIDs adt),
                    refineADT (Sharpened_DelegateSpecs adt idx)
                              (ComputationalADT.LiftcADT (existT _ _ (DelegateImpls idx)))),
          refineADT
@@ -143,12 +143,12 @@ Qed. *)
 
 Definition BuildMostlySharpenedcADT
            Sig
-           (DelegateIDs : list string)
-           (DelegateSigs : @BoundedString DelegateIDs -> ADTSig)
-           (rep : (@BoundedString DelegateIDs -> Type) -> Type)
+           (DelegateIDs : nat)
+           (DelegateSigs : Fin.t DelegateIDs -> ADTSig)
+           (rep : (Fin.t DelegateIDs -> Type) -> Type)
            (cConstructors :
               forall
-                (DelegateReps : @BoundedString DelegateIDs -> Type)
+                (DelegateReps : Fin.t DelegateIDs -> Type)
                 (DelegateImpls : forall idx,
                                    pcADT (DelegateSigs idx) (DelegateReps idx)) idx,
                 cConstructorType
@@ -156,14 +156,14 @@ Definition BuildMostlySharpenedcADT
                   (ConstructorDom Sig idx))
            (cMethods :
               forall
-                (DelegateReps : @BoundedString DelegateIDs -> Type)
+                (DelegateReps : Fin.t DelegateIDs -> Type)
                 (DelegateImpls : forall idx,
                                    pcADT (DelegateSigs idx) (DelegateReps idx)) idx,
                 cMethodType
                   (rep DelegateReps)
                   (fst (MethodDomCod Sig idx))
                   (snd (MethodDomCod Sig idx)))
-           (DelegateReps : @BoundedString DelegateIDs -> Type)
+           (DelegateReps : Fin.t DelegateIDs -> Type)
            (DelegateImpls : forall idx,
                               pcADT (DelegateSigs idx) (DelegateReps idx))
 : cADT Sig :=
@@ -175,12 +175,12 @@ Definition BuildMostlySharpenedcADT
 Definition SharpenFully {Sig}
 : forall
     (spec : ADT Sig)
-    (DelegateIDs : list string)
-    (DelegateSigs : @BoundedString DelegateIDs -> ADTSig)
-    (rep : (@BoundedString DelegateIDs -> Type) -> Type)
+    (DelegateIDs : nat)
+    (DelegateSigs : Fin.t DelegateIDs -> ADTSig)
+    (rep : (Fin.t DelegateIDs -> Type) -> Type)
     (cConstructors :
        forall
-         (DelegateReps : @BoundedString DelegateIDs -> Type)
+         (DelegateReps : Fin.t DelegateIDs -> Type)
          (DelegateImpls : forall idx,
                             pcADT (DelegateSigs idx) (DelegateReps idx)) idx,
          cConstructorType
@@ -188,7 +188,7 @@ Definition SharpenFully {Sig}
            (ConstructorDom Sig idx))
     (cMethods :
        forall
-         (DelegateReps : @BoundedString DelegateIDs -> Type)
+         (DelegateReps : Fin.t DelegateIDs -> Type)
          (DelegateImpls : forall idx,
                             pcADT (DelegateSigs idx) (DelegateReps idx)) idx,
          cMethodType
@@ -198,20 +198,20 @@ Definition SharpenFully {Sig}
     (DelegateSpecs : forall idx, ADT (DelegateSigs idx))
     (cAbsR :
        forall
-         (DelegateReps : @BoundedString DelegateIDs -> Type)
+         (DelegateReps : Fin.t DelegateIDs -> Type)
          (DelegateImpls : forall idx,
                             pcADT (DelegateSigs idx) (DelegateReps idx))
          (ValidImpls
-          : forall idx : @BoundedString DelegateIDs,
+          : forall idx : Fin.t DelegateIDs,
               refineADT (DelegateSpecs idx)
                         (LiftcADT (existT _ _ (DelegateImpls idx)))),
          Rep spec -> rep DelegateReps -> Prop),
     (forall
-        (DelegateReps : @BoundedString DelegateIDs -> Type)
+        (DelegateReps : Fin.t DelegateIDs -> Type)
         (DelegateImpls : forall idx,
                            pcADT (DelegateSigs idx) (DelegateReps idx))
         (ValidImpls
-         : forall idx : @BoundedString DelegateIDs,
+         : forall idx : Fin.t DelegateIDs,
              refineADT (DelegateSpecs idx)
                        (LiftcADT (existT _ _ (DelegateImpls idx)))),
       forall idx : ConstructorIndex Sig,
@@ -221,11 +221,11 @@ Definition SharpenFully {Sig}
           (Constructors spec idx)
          (fun d => ret (cConstructors DelegateReps DelegateImpls idx d)))
     -> (forall
-           (DelegateReps : @BoundedString DelegateIDs -> Type)
+           (DelegateReps : Fin.t DelegateIDs -> Type)
            (DelegateImpls : forall idx,
                               pcADT (DelegateSigs idx) (DelegateReps idx))
            (ValidImpls
-            : forall idx : @BoundedString DelegateIDs,
+            : forall idx : Fin.t DelegateIDs,
                 refineADT (DelegateSpecs idx)
                           (LiftcADT (existT _ _ (DelegateImpls idx)))),
         forall idx,
@@ -255,11 +255,11 @@ Qed.
 (*Definition SharpenFully {Sig}
     (spec : ADT Sig)
     (DelegateIDs : list string)
-    (DelegateSigs : @BoundedString DelegateIDs -> ADTSig)
-    (rep : (@BoundedString DelegateIDs -> Type) -> Type)
+    (DelegateSigs : Fin.t DelegateIDs -> ADTSig)
+    (rep : (Fin.t DelegateIDs -> Type) -> Type)
     (cConstructors :
        forall
-         (DelegateReps : @BoundedString DelegateIDs -> Type)
+         (DelegateReps : Fin.t DelegateIDs -> Type)
          (DelegateImpls : forall idx,
                             pcADT (DelegateSigs idx) (DelegateReps idx)) idx,
          cConstructorType
@@ -267,7 +267,7 @@ Qed.
            (ConstructorDom Sig idx))
     (cMethods :
        forall
-         (DelegateReps : @BoundedString DelegateIDs -> Type)
+         (DelegateReps : Fin.t DelegateIDs -> Type)
          (DelegateImpls : forall idx,
                             pcADT (DelegateSigs idx) (DelegateReps idx)) idx,
          cMethodType
@@ -277,20 +277,20 @@ Qed.
     (DelegateSpecs : forall idx, ADT (DelegateSigs idx))
     (cAbsR :
        forall
-         (DelegateReps : @BoundedString DelegateIDs -> Type)
+         (DelegateReps : Fin.t DelegateIDs -> Type)
          (DelegateImpls : forall idx,
                             pcADT (DelegateSigs idx) (DelegateReps idx))
          (ValidImpls
-          : forall idx : @BoundedString DelegateIDs,
+          : forall idx : Fin.t DelegateIDs,
               refineADT (DelegateSpecs idx)
                         (LiftcADT (existT _ _ (DelegateImpls idx)))),
          Rep spec -> rep DelegateReps -> Prop)
     (cConstructorsRefinesSpec : forall
-        (DelegateReps : @BoundedString DelegateIDs -> Type)
+        (DelegateReps : Fin.t DelegateIDs -> Type)
         (DelegateImpls : forall idx,
                            pcADT (DelegateSigs idx) (DelegateReps idx))
         (ValidImpls
-         : forall idx : @BoundedString DelegateIDs,
+         : forall idx : Fin.t DelegateIDs,
              refineADT (DelegateSpecs idx)
                        (LiftcADT (existT _ _ (DelegateImpls idx)))),
       forall idx : ConstructorIndex Sig,
@@ -300,11 +300,11 @@ Qed.
           (Constructors spec idx)
          (fun d => ret (cConstructors DelegateReps DelegateImpls idx d)))
     (cMethodsRefinesSpec : forall
-           (DelegateReps : @BoundedString DelegateIDs -> Type)
+           (DelegateReps : Fin.t DelegateIDs -> Type)
            (DelegateImpls : forall idx,
                               pcADT (DelegateSigs idx) (DelegateReps idx))
            (ValidImpls
-            : forall idx : @BoundedString DelegateIDs,
+            : forall idx : Fin.t DelegateIDs,
                 refineADT (DelegateSpecs idx)
                           (LiftcADT (existT _ _ (DelegateImpls idx)))),
         forall idx,

@@ -8,7 +8,7 @@ Section i2list2.
   (* Lists of elements whose types depend on a pairs of indexing set
      (CPDT's hlists). *)
 
-  Variable A : Type. (* The indexing type. *)
+(*  Variable A : Type. (* The indexing type. *)
   Variable B B' : A -> Type. (* The type of indexed elements. *)
   Variable C : forall a, B a -> B' a -> Type. (* The type of doubly-indexed elements. *)
 
@@ -175,7 +175,7 @@ Section i2list2.
   Proof.
     ith_induction n As; simpl; eauto with arith.
   Qed. *)
-
+ *)
 End i2list2.
 (*
 Section i2list2_replace.

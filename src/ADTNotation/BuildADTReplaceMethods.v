@@ -30,7 +30,7 @@ Section ReplaceMethods.
              (idx : Fin.t n)
              (newDef : consDef (Vector.nth consSigs idx))
   : ADT (BuildADTSig consSigs methSigs)
-    := BuildADT _ _ _ (replaceConsDef idx newDef) methDefs.
+    := BuildADT (replaceConsDef idx newDef) methDefs.
 
   Definition replaceMethDef
              (idx : Fin.t n')
@@ -42,7 +42,7 @@ Section ReplaceMethods.
              (idx : Fin.t n')
              (newDef : methDef (Vector.nth methSigs idx))
   : ADT (BuildADTSig consSigs methSigs)
-    := BuildADT _ _ _ consDefs (replaceMethDef idx newDef).
+    := BuildADT consDefs (replaceMethDef idx newDef).
 
 End ReplaceMethods.
 

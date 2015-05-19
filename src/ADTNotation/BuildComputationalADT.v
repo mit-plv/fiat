@@ -87,10 +87,10 @@ Arguments getcMethDef [_] {n} [_] _ idx%string / _ _ .
    both indexed by their signatures. *)
 
 Program Definition BuildcADT
-        (Rep : Type)
+        {Rep : Type}
         {n n'}
-        (consSigs : Vector.t consSig n)
-        (methSigs : Vector.t methSig n')
+        {consSigs : Vector.t consSig n}
+        {methSigs : Vector.t methSig n'}
         (consDefs : ilist (B := @cConsDef Rep) consSigs)
         (methDefs : ilist (B:= @cMethDef Rep) methSigs)
 : cADT (BuildADTSig consSigs methSigs)

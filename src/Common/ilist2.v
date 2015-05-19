@@ -13,6 +13,7 @@ Section ilist2.
      by our ADT notations uses these to implement notation-friendly
      method lookups.  *)
 
+  (*
   Variable A : Type. (* The indexing type. *)
   Variable B : A -> Type. (* The type of indexed elements. *)
 
@@ -578,6 +579,6 @@ Section findIndex.
     - caseEq (AC_eq a0 c'); rewrite H in H1; eauto.
       congruence.
     - caseEq (AC_eq a c'); rewrite H2 in H1; eauto.
-  Qed.
+  Qed. *)
 
-End findIndex.
+End ilist2.

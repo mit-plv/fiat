@@ -12,7 +12,7 @@ Require Import
         Fiat.Common.List.ListFacts
         Fiat.Common.LogicFacts
         Fiat.Common.DecideableEnsembles
-        Fiat.Common.StringBound
+        Fiat.Common.BoundedLookup
         Fiat.Common.IterateBoundedIndex
         Fiat.Computation.Core
         Fiat.Computation.Monad
@@ -23,7 +23,7 @@ Require Import
 
 Section Iterate_Decide_Comp.
 
-  Local Unset Implicit Arguments.
+  (*Local Unset Implicit Arguments.
 
   Lemma refine_Iterate_Ensemble {A : Set}
         (A_eq_dec : forall a a' : A, {a = a'} + {a <> a'})
@@ -497,6 +497,6 @@ Section Iterate_Decide_Comp.
         unfold Ensemble_BoundedIndex_app_comm_cons; simpl;
         destruct (app_comm_cons' a Visited Remaining); simpl; eauto.
         reflexivity.
-  Qed.
+  Qed. *)
 
 End Iterate_Decide_Comp.

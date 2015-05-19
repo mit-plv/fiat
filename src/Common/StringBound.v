@@ -1,11 +1,11 @@
 Require Import Coq.Lists.List Coq.Strings.String Coq.Arith.Arith Fiat.Common.ilist.
-
+Require Export Fiat.Common.BoundedLookup.
 (* Typeclasses for ensuring that a string is included
    in a list (i.e. a set of method names). This allows
    us to omit a default case (method not found) for method
    lookups. *)
 
-Section IndexBound.
+(*Section IndexBound.
 
   Context {A : Set}.
 
@@ -147,7 +147,7 @@ End IndexBound.
 
 Scheme le_ind' := Induction for le Sort Prop.
 
-Theorem K_nat 
+Theorem K_nat
   : forall (x:nat) (P:x = x -> Prop), P (refl_equal x) -> forall p:x = x, P p.
 Proof.
   intros; apply K_dec_set with (p := p); auto using eq_nat_dec.
@@ -157,7 +157,7 @@ Theorem eq_rect_eq_nat :
   forall (p:nat) (Q:nat->Type) (x:Q p) (h:p=p), x = eq_rect p Q x p h.
 Proof.
   intros; apply K_nat with (p := h); reflexivity.
-Qed. 
+Qed.
 
 Theorem le_uniqueness_proof : forall (n m : nat) (p q : n <= m), p = q.
  Proof.
@@ -165,11 +165,11 @@ Theorem le_uniqueness_proof : forall (n m : nat) (p q : n <= m), p = q.
  - replace (le_n n) with (eq_rect _ (fun n0 => n <= n0) (le_n n) _ (refl_equal n))
      by reflexivity.
    generalize (refl_equal n).
-   pattern n at 2 4 6 10, q; case q; [intro | intros m l e].  
+   pattern n at 2 4 6 10, q; case q; [intro | intros m l e].
    rewrite <- eq_rect_eq_nat; trivial.
    contradiction (le_Sn_n m); rewrite <- e; assumption.
  - replace (le_S n m p) with (eq_rect _ (fun n0 => n <= n0) (le_S n m p) _ (refl_equal (S m)))
-     by reflexivity. 
+     by reflexivity.
    generalize (refl_equal (S m)).
    pattern (S m) at 1 3 4 6, q; case q; [intro Heq | intros m0 l HeqS].
    contradiction (le_Sn_n m); rewrite Heq; assumption.
@@ -1915,3 +1915,4 @@ Ltac pose_string_ids :=
              set ``(R) as fresh in * *)
          end.
 Arguments BoundedString [_].
+ *)

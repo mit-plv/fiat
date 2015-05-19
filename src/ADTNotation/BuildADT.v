@@ -2,7 +2,7 @@ Require Import Coq.Sets.Ensembles
         Coq.Lists.List
         Coq.Strings.String
         Fiat.Common
-        Fiat.Computation 
+        Fiat.Computation
         Fiat.ADT.ADTSig
         Fiat.ADT.Core
         Fiat.ADT.ComputationalADT
@@ -97,10 +97,10 @@ Arguments getMethDef [_] {n} [_] _ idx%string / _ _ _ .
    This definition is formated nicely using notations. *)
 
 Program Definition BuildADT
-        (Rep : Type)
+        {Rep : Type}
         {n n'}
-        (consSigs : Vector.t consSig n)
-        (methSigs : Vector.t methSig n')
+        {consSigs : Vector.t consSig n}
+        {methSigs : Vector.t methSig n'}
         (consDefs : ilist (B := @consDef Rep) consSigs)
         (methDefs : ilist (B := @methDef Rep) methSigs)
 : ADT (BuildADTSig consSigs methSigs)

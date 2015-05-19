@@ -1,6 +1,6 @@
 Require Import Coq.Lists.List Fiat.Common
         Fiat.Common.ilist
-        Fiat.Common.StringBound
+        Fiat.Common.BoundedLookup
         Fiat.Common.IterateBoundedIndex
         Fiat.ADT.ADTSig
         Fiat.ADT.Core
@@ -40,22 +40,23 @@ Section HoneRepresentation.
     {| methBody := absMethod AbsR (methBody oldCons) |}.
 
   Lemma refineADT_BuildADT_Rep_default
-            (consSigs : list consSig)
-            (methSigs : list methSig)
-            (consDefs : ilist (@consDef oldRep) consSigs)
-            (methDefs : ilist (@methDef oldRep) methSigs) :
+        {n n'}
+        {consSigs : Vector.t consSig n}
+        {methSigs : Vector.t methSig n'}
+        (consDefs : ilist (B := @consDef oldRep) consSigs)
+        (methDefs : ilist (B := @methDef oldRep) methSigs) :
     refineADT
       (BuildADT consDefs methDefs)
-      (BuildADT (imap _ absConsDef consDefs)
-                (imap _ absMethDef methDefs)).
+      (BuildADT (imap absConsDef consDefs)
+                (imap absMethDef methDefs)).
   Proof.
     eapply refineADT_Build_ADT_Rep with (AbsR := AbsR); eauto; intros.
     - unfold getConsDef.
-      rewrite <- ith_Bounded_imap.
+      rewrite <- ith_imap.
       unfold absConsDef, absConstructor, refineConstructor, refine; simpl; intros.
       computes_to_inv; eauto.
     - unfold getMethDef.
-      rewrite <- ith_Bounded_imap.
+      rewrite <- ith_imap.
       unfold absMethDef, absMethod, refineMethod, refine; simpl; intros.
       computes_to_inv; eauto.
       destruct (H0 _ H) as [or' [Comp_or [AbsR_or'' or''_eq] ] ];
@@ -133,34 +134,38 @@ Section HoneRepresentation.
     destruct_ex; intuition; subst.
   Qed.
 
-  Inductive refine_Constructors :
-    forall (consSigs : list consSig),
-      ilist (@consDef oldRep) consSigs
-      -> ilist (@consDef newRep) consSigs ->
+  Inductive refine_Constructors  :
+    forall {n} {consSigs : Vector.t consSig n},
+      ilist (B := @consDef oldRep) consSigs
+      -> ilist (B := @consDef newRep) consSigs ->
            Prop :=
-  | refine_Constructors_nil : refine_Constructors (inil _) (inil _)
+  | refine_Constructors_nil : @refine_Constructors _ (Vector.nil _) inil inil
   | refine_Constructors_cons :
-      forall consSig consSigs
+      forall n consSig consSigs
              (constr_body : @constructorType oldRep (consDom consSig))
              (refined_constr_body : @constructorType newRep (consDom consSig))
-             (consDefs : ilist (@consDef oldRep) consSigs)
-             (refined_consDefs : ilist (@consDef newRep) consSigs),
+             (consDefs : ilist (B := @consDef oldRep) consSigs)
+             (refined_consDefs : ilist (B := @consDef newRep) consSigs),
         (forall d, refine (r_o' <- constr_body d;
                            {r_n | AbsR r_o' r_n}) (refined_constr_body d))
         -> refine_Constructors consDefs refined_consDefs
-        -> refine_Constructors (icons _ {|consBody := constr_body |} consDefs)
-                               (icons _ {|consBody := refined_constr_body |} refined_consDefs).
+        -> @refine_Constructors
+             _
+             (Vector.cons _ consSig n consSigs)
+             (icons {|consBody := constr_body |} consDefs)
+             (icons {|consBody := refined_constr_body |} refined_consDefs).
 
   Definition refine_Constructors_invert
+             {n}
              consSigs consDefs refined_consDefs
-             (refine_cons : @refine_Constructors consSigs consDefs refined_consDefs)
-  : match consSigs return
+             (refine_cons : @refine_Constructors n consSigs consDefs refined_consDefs)
+  : match consSigs in Vector.t _ n return
           forall consDefs refined_consDefs
-                 (refine_cons : @refine_Constructors consSigs consDefs refined_consDefs),
+                 (refine_cons : @refine_Constructors n consSigs consDefs refined_consDefs),
             Prop
     with
-      | [] => fun _ _ _ => True
-      | consig :: consigs' =>
+      | Vector.nil => fun _ _ _ => True
+      | Vector.cons consig _ consigs' =>
         fun consDefs refined_consDefs refine_cons =>
           refineConstructor AbsR (ilist_hd consDefs) (ilist_hd refined_consDefs) /\
           refine_Constructors (ilist_tl consDefs) (ilist_tl refined_consDefs)
@@ -170,17 +175,17 @@ Section HoneRepresentation.
   Defined.
 
   Inductive refine_Methods :
-    forall (methSigs : list methSig),
-      ilist (@methDef oldRep) methSigs
-      -> ilist (@methDef newRep) methSigs ->
+    forall {n'} {methSigs : Vector.t methSig n'},
+      ilist (B := @methDef oldRep) methSigs
+      -> ilist (B := @methDef newRep) methSigs ->
            Prop :=
-  | refine_Methods_nil : refine_Methods (inil _) (inil _)
+  | refine_Methods_nil : @refine_Methods _ (Vector.nil _) inil inil
   | refine_Methods_cons :
-      forall methSig methSigs
+      forall n' methSig methSigs
              (meth_body : @methodType oldRep (methDom methSig) (methCod methSig))
              (refined_meth_body : @methodType newRep (methDom methSig) (methCod methSig))
-             (methDefs : ilist (@methDef oldRep) methSigs)
-             (refined_methDefs : ilist (@methDef newRep) methSigs),
+             (methDefs : ilist (B := @methDef oldRep) methSigs)
+             (refined_methDefs : ilist (B := @methDef newRep) methSigs),
         (forall r_o r_n d,
            AbsR r_o r_n ->
            refine
@@ -188,19 +193,22 @@ Section HoneRepresentation.
               r_n' <- {r_n0 | AbsR (fst r_o') r_n0};
               ret (r_n', snd r_o')) (refined_meth_body r_n d))
         -> refine_Methods methDefs refined_methDefs
-        -> refine_Methods (icons _ {| methBody := meth_body |} methDefs)
-                          (icons _ {| methBody := refined_meth_body |} refined_methDefs).
+        -> @refine_Methods
+             _
+             (Vector.cons _ methSig n' methSigs)
+             (icons {| methBody := meth_body |} methDefs)
+                          (icons {| methBody := refined_meth_body |} refined_methDefs).
 
   Definition refine_Methods_invert
-             methSigs methDefs refined_methDefs
-             (refine_meths : @refine_Methods methSigs methDefs refined_methDefs)
-  : match methSigs return
+             {n'} methSigs methDefs refined_methDefs
+             (refine_meths : @refine_Methods n' methSigs methDefs refined_methDefs)
+  : match methSigs in Vector.t _ n' return
           forall methDefs refined_methDefs
-                 (refine_meths : @refine_Methods methSigs methDefs refined_methDefs),
+                 (refine_meths : @refine_Methods n' methSigs methDefs refined_methDefs),
             Prop
     with
-      | [] => fun _ _ _ => True
-      | methSig :: methSigs' =>
+      | Vector.nil => fun _ _ _ => True
+      | Vector.cons methSig _ methSigs' =>
         fun methDefs refined_methDefs refine_meths =>
           refineMethod AbsR (ilist_hd methDefs) (ilist_hd refined_methDefs) /\
           refine_Methods (ilist_tl methDefs) (ilist_tl refined_methDefs)
@@ -212,12 +220,13 @@ Section HoneRepresentation.
   (* This method is used to hone an ADT's representation and
      spawn off subgoals for each operation in one fell-swoop. *)
   Lemma refineADT_BuildADT_Rep_refine_All
-            (consSigs : list consSig)
-            (methSigs : list methSig)
-            (consDefs : ilist (@consDef oldRep) consSigs)
-            (methDefs : ilist (@methDef oldRep) methSigs)
-            (refined_consDefs : ilist (@consDef newRep) consSigs)
-            (refined_methDefs : ilist (@methDef newRep) methSigs)
+        {n n'}
+        (consSigs : Vector.t consSig n)
+        (methSigs : Vector.t methSig n')
+        (consDefs : ilist (B := @consDef oldRep) consSigs)
+        (methDefs : ilist (B := @methDef oldRep) methSigs)
+        (refined_consDefs : ilist (B := @consDef newRep) consSigs)
+        (refined_methDefs : ilist (B := @methDef newRep) methSigs)
   :
     refine_Constructors consDefs refined_consDefs
     -> refine_Methods methDefs refined_methDefs
@@ -226,37 +235,22 @@ Section HoneRepresentation.
       (BuildADT refined_consDefs refined_methDefs).
   Proof.
     intros; eapply refineADT_Build_ADT_Rep with (AbsR := AbsR).
-    - intro consIdx; unfold getConsDef.
-      eapply (ith_Bounded_ind2 consID
-              ((fun consSigs consIdx consDefs refined_consDefs
-                    consSig
-                    (consDef' : @consDef oldRep consSig)
-                    (refined_consDef : @consDef newRep consSig) =>
-                  refineConstructor
-                    (Dom := consDom consSig)
-                    AbsR consDef' refined_consDef))
-              consIdx consDefs refined_consDefs); eauto.
-      destruct consIdx as [idx [n nth_n] ]; simpl in *; subst.
-      revert consSigs consDefs refined_consDefs H idx nth_n;
-        induction n; destruct consSigs; simpl; intros; eauto;
-        destruct (refine_Constructors_invert H).
-      + intros; icons_invert; simpl; auto.
-      + intros; icons_invert; simpl in *; eauto.
-    - intro methIdx; unfold getMethDef.
-      eapply (ith_Bounded_ind2 methID
-              ((fun methSigs methIdx methDefs refined_methDefs
-                    methSig
-                    (methDef' : @methDef oldRep methSig)
-                    (refined_methDef : @methDef newRep methSig) =>
-                  refineMethod
-                    AbsR methDef' refined_methDef))
-              methIdx methDefs refined_methDefs); eauto.
-      destruct methIdx as [idx [n nth_n] ]; simpl in *; subst.
-      revert methSigs methDefs refined_methDefs H0 idx nth_n;
-        induction n; destruct methSigs; simpl; intros; eauto;
-        destruct (refine_Methods_invert H0).
-      + intros; icons_invert; simpl; auto.
-      + intros; icons_invert; simpl in *; eauto.
+    - induction H; simpl.
+      + intro; inversion mutIdx.
+      + intro; revert IHrefine_Constructors H; clear.
+        revert consSig constr_body refined_constr_body
+               consSigs consDefs refined_consDefs; pattern n, mutIdx.
+        match goal with
+          |- ?P n mutIdx => simpl; apply (Fin.caseS P); simpl; intros; eauto
+        end.
+    - induction H0; simpl.
+      + intro; inversion obsIdx.
+      + intro; revert IHrefine_Methods H0; clear.
+        revert methSig meth_body refined_meth_body
+               methSigs methDefs refined_methDefs consSigs; pattern n', obsIdx.
+        match goal with
+          |- ?P n' obsIdx => simpl; apply (Fin.caseS P); simpl; intros; eauto
+        end.
   Qed.
 
 End HoneRepresentation.
