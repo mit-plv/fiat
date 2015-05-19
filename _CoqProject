@@ -32,6 +32,7 @@ src/ADTRefinement/Refinements/HoneRepresentation.v
 src/ADTRefinement/Refinements/RefineHideADT.v
 src/ADTRefinement/Refinements/SimplifyRep.v
 src/Common/BoolFacts.v
+src/Common/BoundedLookup.v
 src/Common/Coq__8_4__8_5__Compat.v
 src/Common/DecideableEnsembles.v
 src/Common/Ensembles.v
@@ -223,6 +224,7 @@ src/Parsers/Refinement/SharpenedAtMostOneNonTerminal.v
 src/Parsers/Refinement/SharpenedExpressionParen.v
 src/Parsers/Refinement/SharpenedExpressionPlus.v
 src/Parsers/Refinement/Tactics.v
+src/Parsers/Refinement/BinOpBrackets/MakeBinOpTable.v
 src/Parsers/Splitters/BruteForce.v
 src/Parsers/Splitters/RDPList.v
 src/Parsers/StringLike/Core.v
