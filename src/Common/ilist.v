@@ -17,8 +17,8 @@ Section ilist.
 
   Import Coq.Vectors.VectorDef.VectorNotations.
 
-  Variable A : Type. (* The indexing type. *)
-  Variable B : A -> Type. (* The type of indexed elements. *)
+  Context {A : Type}. (* The indexing type. *)
+  Context {B : A -> Type}. (* The type of indexed elements. *)
 
   Record prim_prod A B : Type :=
     { prim_fst : A;
@@ -115,8 +115,8 @@ Section ilist.
   Fixpoint ith
            {m : nat}
            {As : Vector.t A m}
-           (n : Fin.t m)
            (il : ilist As)
+           (n : Fin.t m)
            {struct n}
     : B (Vector.nth As n) :=
     match n in Fin.t m return
@@ -133,7 +133,7 @@ Section ilist.
         Vector.caseS (fun n As => forall n',
                           ilist As
                           -> B (Vector.nth As (@Fin.FS n n')))
-                     (fun h n t m il => ith m (ilist_tl il))
+                     (fun h n t m il => ith (ilist_tl il) m)
                      As n'
     end As il.
 
@@ -168,9 +168,9 @@ Section ilist_map.
 
   Import Coq.Vectors.VectorDef.VectorNotations.
 
-  Fixpoint imap_list (f : forall a : A, B a) {n} (As : Vector.t A n) : ilist B As
+  Fixpoint imap_list (f : forall a : A, B a) {n} (As : Vector.t A n) : ilist As
     := match As with
-         | [] => inil _
+         | [] => inil
          | x :: xs => @icons _ B x _ _ (f x) (imap_list f xs)
        end.
 
@@ -191,33 +191,33 @@ Section ilist_imap.
   (* Mapping a function over an indexed Vector.t. *)
 
   Import Coq.Vectors.VectorDef.VectorNotations.
-  
+
   Variable A : Type. (* The indexing type. *)
   Variable B B' : A -> Type. (* The two types of indexed elements. *)
   Variable f : forall a, B a -> B' a. (* The function to map over the Vector.t. *)
 
-  Fixpoint imap {n} (As : Vector.t A n)           
-    : ilist B As -> ilist B' As :=
-    match As return ilist B As -> ilist B' As with
-    | [] => fun il => inil _
-    | a :: As' => fun il => icons B' (f (ilist_hd _ il)) (imap As' (ilist_tl _ il))
+  Fixpoint imap {n} (As : Vector.t A n)
+    : ilist As -> ilist As :=
+    match As return ilist As -> ilist As with
+    | [] => fun il => inil
+    | a :: As' => fun il => icons (f (ilist_hd il)) (imap As' (ilist_tl il))
     end.
-        
+
   (* [imap] behaves as expected with the [ith_default] lookup
      function. *)
   Lemma ith_imap :
     forall {n}
            (m : Fin.t n)
            (As : Vector.t A n)
-           (il : ilist _ As),
-      f (ith B m il) = ith B' m (imap As il).
+           (il : ilist As),
+      f (ith il m) = ith (imap As il) m.
   Proof.
     induction m; intro.
     - eapply Vector.caseS with (v := As); intros; simpl in *; destruct il; reflexivity.
     - revert m IHm.
       pattern n, As.
       match goal with
-        |- ?P n As => 
+        |- ?P n As =>
         simpl; eapply (@Vector.rectS _ P); intros
       end.
       inversion m.
@@ -229,38 +229,38 @@ End ilist_imap.
 Section ilist_replace.
 
   Import Coq.Vectors.VectorDef.VectorNotations.
-  
+
   (* Replacing an element of an indexed Vector.t. *)
-  Variable A : Type. (* The indexing type. *)
-  Variable B : A -> Type. (* The two types of indexed elements. *)
-  
+  Context {A : Type}. (* The indexing type. *)
+  Context {B : A -> Type}. (* The two types of indexed elements. *)
+
   Fixpoint replace_Index
              {m}
-             (n : Fin.t m)
              (As : Vector.t A m)
-             (il : ilist B As)
+             (il : ilist As)
+             (n : Fin.t m)
              (new_b : B (Vector.nth As n))
              {struct n}
-    : ilist B As := 
+    : ilist As :=
     match n in Fin.t m return
           forall (As : Vector.t A m),
-            ilist B As
+            ilist As
             -> B (Vector.nth As n)
-            -> ilist B As with
+            -> ilist As with
     | Fin.F1 k =>
       fun As =>
-        Vector.caseS (fun n As => ilist B As
+        Vector.caseS (fun n As => ilist As
                                   -> B (Vector.nth As (@Fin.F1 n))
-                                  -> ilist B As)
-                     (fun h n t il new_b => icons B new_b (ilist_tl B il) ) As
+                                  -> ilist As)
+                     (fun h n t il new_b => icons new_b (ilist_tl il) ) As
     | Fin.FS k n' =>
       fun As =>
         Vector.caseS (fun n As => forall n',
-                          ilist B As
+                          ilist As
                           -> B (Vector.nth As (@Fin.FS n n'))
-                          -> ilist B As)
-                     (fun h n t m il new_b => icons B (ilist_hd B il)
-                                                    (@replace_Index _ m _ (ilist_tl B il) new_b))
+                          -> ilist As)
+                     (fun h n t m il new_b => icons (ilist_hd il)
+                                                    (@replace_Index _ _ (ilist_tl il) _ new_b))
                      As n'
     end As il new_b.
 
@@ -268,10 +268,10 @@ Section ilist_replace.
     : forall
       (n n' : Fin.t m)
       (As : Vector.t A m)
-      (il : ilist B As)
+      (il : ilist As)
       (new_b : B (Vector.nth As n')),
       n <> n'
-      -> ith B n (replace_Index n' As il new_b) = ith B n il.
+      -> ith (replace_Index As il n' new_b) n = ith il n.
   Proof.
     intros n n'; pattern m, n, n'.
     match goal with
@@ -281,20 +281,20 @@ Section ilist_replace.
     - generalize il f new_b; clear f new_b il H.
       pattern n0, As.
       match goal with
-        |- ?P n0 As => 
+        |- ?P n0 As =>
         simpl; apply (@Vector.rectS _ P); intros; reflexivity
       end.
     - generalize il f new_b; clear f new_b il H.
       pattern n0, As.
       match goal with
-        |- ?P n0 As => 
+        |- ?P n0 As =>
         simpl; apply (@Vector.rectS _ P); intros; reflexivity
       end.
     - assert (f <> g) by congruence.
       generalize il f g new_b H H1; clear f g new_b il H H1 H0.
       pattern n0, As.
       match goal with
-        |- ?P n0 As => 
+        |- ?P n0 As =>
         simpl; apply (@Vector.caseS _ P); intros;
         eapply (H _ (prim_snd il) new_b); eauto
       end.
@@ -304,14 +304,14 @@ Section ilist_replace.
     : forall
       (n : Fin.t m)
       (As : Vector.t A m)
-      (il : ilist _ As)
+      (il : ilist As)
       (new_b : B (Vector.nth As n)),
-      ith B n (replace_Index n As il new_b) = new_b.
+      ith (replace_Index As il n new_b) n = new_b.
   Proof.
     induction n; simpl.
     - intro As; pattern n, As.
       match goal with
-        |- ?P n As => 
+        |- ?P n As =>
         simpl; apply (@Vector.caseS _ P); intros; reflexivity
       end.
     - intro As; revert n0 IHn; pattern n, As.
@@ -322,4 +322,3 @@ Section ilist_replace.
   Qed.
 
 End ilist_replace.
-

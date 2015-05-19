@@ -11,7 +11,7 @@ Section i2list.
      by our ADT notations uses these to implement notation-friendly
      method lookups.  *)
 
-  Variable A : Type. (* The indexing type. *)
+(*  Variable A : Type. (* The indexing type. *)
   Variable B : A -> Type. (* The type of indexed elements. *)
   Variable C : forall a, B a ->  Type. (* The type of doubly-indexed elements. *)
 
@@ -679,6 +679,6 @@ Section i2list_replace.
   Proof.
     induction n; destruct Cs; simpl; auto; intros;
     destruct new_c; eauto.
-  Qed.
+  Qed. *)
 
 End i2list_replace.

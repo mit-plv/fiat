@@ -1,7 +1,16 @@
-Require Import Fiat.Common Fiat.Computation Coq.Sets.Ensembles Coq.Lists.List Coq.Strings.String
-        Fiat.ADT.ADTSig Fiat.ADT.Core Fiat.ADT.ComputationalADT
-        Fiat.Common.StringBound Fiat.Common.ilist
-        Fiat.ADTNotation.BuildADTSig Fiat.ADTNotation.BuildADT.
+Require Import
+        Coq.Sets.Ensembles
+        Coq.Lists.List
+        Coq.Strings.String
+        Fiat.Common
+        Fiat.Computation
+        Fiat.ADT.ADTSig
+        Fiat.ADT.Core
+        Fiat.ADT.ComputationalADT
+        Fiat.Common.BoundedLookup
+        Fiat.Common.ilist
+        Fiat.ADTNotation.BuildADTSig
+        Fiat.ADTNotation.BuildADT.
 
 (* Notations for ADTs. *)
 
@@ -49,27 +58,29 @@ Delimit Scope cConsDef_scope with cConsDef.
    parameterized on a list of those signatures. *)
 
 Definition getcConsDef
-        (Rep : Type)
-        (consSigs : list consSig)
-        (consDefs : ilist (@cConsDef Rep) consSigs)
-        (idx : @BoundedString (map consID consSigs))
-: cConstructorType Rep (consDom (nth_Bounded _ consSigs idx)) :=
-  cConsBody (@ith_Bounded _ _ _ (@cConsDef Rep) consSigs consDefs idx).
+           (Rep : Type)
+           {n}
+        (consSigs : Vector.t consSig n)
+        (consDefs : ilist (B := @cConsDef Rep) consSigs)
+        (idx : Fin.t n)
+: cConstructorType Rep (consDom (Vector.nth consSigs idx)) :=
+  cConsBody (ith consDefs idx).
 
 Definition getcMethDef
-         (Rep : Type)
-         (methSigs : list methSig)
-         (methDefs : ilist (@cMethDef Rep) methSigs)
-         (idx : @BoundedString (map methID methSigs))
-: cMethodType
-    Rep
-    (methDom (nth_Bounded _ methSigs idx))
-    (methCod (nth_Bounded _ methSigs idx)) :=
-  cMethBody (@ith_Bounded _ _ _ (@cMethDef Rep) methSigs methDefs idx).
+           (Rep : Type)
+           {n}
+           (methSigs : Vector.t methSig n)
+           (methDefs : ilist methSigs)
+           (idx : Fin.t n)
+  : cMethodType
+      Rep
+      (methDom (Vector.nth methSigs idx))
+      (methCod (Vector.nth methSigs idx)) :=
+  cMethBody (ith methDefs idx).
 
 (* Always simplify method lookup when the index is specified. *)
-Arguments getcConsDef [_] [_] _ idx%string / _ .
-Arguments getcMethDef [_] [_] _ idx%string / _ _ .
+Arguments getcConsDef [_] {n} [_] _ idx%string / _ .
+Arguments getcMethDef [_] {n} [_] _ idx%string / _ _ .
 
 (* [BuildcADT] constructs an computational ADT from a single constructor
    definition and a list of method signatures,
@@ -77,10 +88,11 @@ Arguments getcMethDef [_] [_] _ idx%string / _ _ .
 
 Program Definition BuildcADT
         (Rep : Type)
-        (consSigs : list consSig)
-        (methSigs : list methSig)
-        (consDefs : ilist (@cConsDef Rep) consSigs)
-        (methDefs : ilist (@cMethDef Rep) methSigs)
+        {n n'}
+        (consSigs : Vector.t consSig n)
+        (methSigs : Vector.t methSig n')
+        (consDefs : ilist (B := @cConsDef Rep) consSigs)
+        (methDefs : ilist (B:= @cMethDef Rep) methSigs)
 : cADT (BuildADTSig consSigs methSigs)
       := existT _ Rep {|
                   pcConstructors idx := getcConsDef consDefs idx;
@@ -92,23 +104,23 @@ Program Definition BuildcADT
 Notation "'cADTRep' r { cons1 , meth1 , .. , methn } " :=
   (let _ := {| repHint := r |} in
     @BuildcADT r
-             _
-             _
-             (icons _ cons1%cConsDef (inil (@cConsDef r)))
-             (icons _ meth1%cMethDefParsing .. (icons _ methn%cMethDefParsing (inil (@cMethDef r))) ..))
+             _ _
+             _ _
+             (icons cons1%cConsDef (inil (@cConsDef r)))
+             (icons meth1%cMethDefParsing .. (icons methn%cMethDefParsing (inil (@cMethDef r))) ..))
     (no associativity, at level 96, r at level 0,
      format "'cADTRep'  r  '/' '[hv  ' {  cons1 ,  '//' meth1 , '//' .. , '//' methn  ']' }") :
     ADTParsing_scope.
 
 Notation "'cADTRep' r { cons1 , meth1 , .. , methn } " :=
   (@BuildcADT r
-             _
-             _
-             (icons _ cons1%cConsDef (inil (@cConsDef r)))
-             (icons _ meth1%cMethDef .. (icons _ methn%cMethDef (inil (@cMethDef r))) ..))
+             _ _
+             _ _
+             (icons cons1%cConsDef (inil (@cConsDef r)))
+             (icons meth1%cMethDef .. (icons methn%cMethDef (inil (@cMethDef r))) ..))
     (no associativity, at level 96, r at level 0,
      format "'cADTRep'  r  '/' '[hv  ' {  cons1 , '//' meth1 , '//' .. , '//' methn  ']' }") : ADT_scope.
 
 (* Notations for method calls. *)
-Notation CallMethod CompADT idx := (cMethods CompADT {| bindex := idx |}).
-Notation CallConstructor CompADT idx := (cConstructors CompADT {| bindex := idx |}).
+Notation CallMethod CompADT idx := (cMethods CompADT (ibound (indexb {| bindex := idx |}))).
+Notation CallConstructor CompADT idx := (cConstructors CompADT (ibound (indexb {| bindex := idx |}))).

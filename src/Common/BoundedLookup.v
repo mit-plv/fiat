@@ -215,10 +215,10 @@ Section ithIndexBound.
              {m}
              {B : A -> Type}
              {Bound : Vector.t A m}
-             (il : ilist B Bound)
+             (il : ilist Bound)
              (idx : BoundedIndex Bound)
     : B (Vector.nth Bound (ibound (indexb idx))) :=
-    ith B (ibound (indexb idx)) il.
+    ith il (ibound (indexb idx)) .
 
   Lemma ith_Bounded_imap
         {m}
@@ -226,7 +226,7 @@ Section ithIndexBound.
   : forall (f : forall idx, B idx -> B' idx)
            (Bound : Vector.t A m)
            (idx : BoundedIndex Bound)
-           (il : ilist B Bound),
+           (il : ilist Bound),
       f _ (ith_Bounded il idx) =
       ith_Bounded (imap _ _ f Bound il) idx.
   Proof.
@@ -237,18 +237,18 @@ Section ithIndexBound.
              {m}
            {B : A -> Type}
            (Bound : Vector.t A m)
-           (il : ilist B Bound)
+           (il : ilist Bound)
            (idx : BoundedIndex Bound)
            (new_b : B (nth_Bounded idx))
-  : ilist B Bound :=
-    replace_Index B (ibound (indexb idx)) Bound il new_b.
+  : ilist Bound :=
+    replace_Index Bound il (ibound (indexb idx)) new_b.
 
   Lemma ith_replace_BoundIndex_neq
         {m}
         {B : A -> Type}
   : forall
       (Bound : Vector.t A m)
-      (il : ilist _ Bound)
+      (il : ilist Bound)
       (idx idx' : BoundedIndex Bound)
       (new_b : B (nth_Bounded idx')),
       idx <> idx'
@@ -264,7 +264,7 @@ Section ithIndexBound.
         {B : A -> Type}
   : forall
       (Bound : Vector.t A m)
-      (il : ilist _ Bound)
+      (il : ilist Bound)
       (idx : BoundedIndex Bound)
       (new_b : B (nth_Bounded idx)),
       ith_Bounded (replace_BoundedIndex il idx new_b) idx = new_b.
@@ -274,11 +274,11 @@ Section ithIndexBound.
 
   Lemma ilist_eq {m} {B : A -> Type}
   : forall (Bound : Vector.t A m)
-           (il il' : ilist B Bound),
+           (il il' : ilist (B := B) Bound),
       (forall idx, ith_Bounded il idx = ith_Bounded il' idx) -> il = il'.
   Proof.
     induction Bound; intros.
-    - rewrite (ilist_invert _ _ il), (ilist_invert _ _ il'); reflexivity.
+    - rewrite (ilist_invert _ il), (ilist_invert _ il'); reflexivity.
     - destruct il; destruct il'; simpl in *.
       f_equal.
       + generalize (H {| bindex := h |});
@@ -304,7 +304,7 @@ Section ithIndexBound.
   : forall (f : forall idx'', B idx'' -> B' idx'')
            (Bound : Vector.t A m)
            (idx : BoundedIndex Bound)
-           (il : ilist B Bound)
+           (il : ilist Bound)
            b,
       imap f (replace_BoundedIndex il idx b) =
       replace_BoundedIndex (imap f il) idx (f _ b).
@@ -319,7 +319,7 @@ Section ithIndexBound.
 
 End ithIndexBound.
 
-Section i2thIndexBound.
+(*Section i2thIndexBound.
 
   Require Import Fiat.Common.i2list.
 
@@ -1366,7 +1366,7 @@ Section i2th2IndexBound.
     rewrite i2th_replace_2Index2'_eq; eauto using idx_ibound_eq, Dep_Option_elim2_P2_refl.
   Qed. *)
 
-End i2th2IndexBound.
+End i2th2IndexBound. *)
 
 Ltac subst_strings :=
   repeat match goal with
@@ -1384,4 +1384,5 @@ Ltac pose_string_ids :=
              let idx := fresh in
              set ``(R) as fresh in * *)
          end.
-Arguments BoundedString [_].
+
+Arguments BoundedString [_] _.
