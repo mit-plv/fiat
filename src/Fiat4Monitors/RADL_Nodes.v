@@ -1,0 +1,93 @@
+Require Import
+        Coq.Strings.String
+        Coq.Bool.Bool
+        Coq.Lists.List
+        Coq.Arith.Arith
+        Coq.Program.Program
+        Fiat.ADT
+        Fiat.ADT.ComputationalADT
+        Fiat.ADTNotation
+        Fiat.ADTRefinement
+        Fiat.ADTRefinement.BuildADTRefinements
+        Fiat.Fiat4Monitors.RADL_Topics
+        Fiat.Fiat4Monitors.RADL_Messages
+        Fiat.Fiat4Monitors.RADL_Flags.
+
+Section RADL_ADT.
+
+  Open Scope ADT_scope.
+  Open Scope string_scope.
+  Open Scope list_scope.
+  Open Scope ADTSig_scope.
+
+  Definition RADL_Init := "Init".
+  Definition RADL_Step := "Step".
+
+  Variable Topics : list RADL_Topic. (* List of Topics in the Network. *)
+
+  Record RADL_Node :=
+    { (* Subscription + Publication info for this node *)
+      RADL_Subscriptions : list (TopicID Topics);
+      RADL_Publications : list (TopicID Topics);
+      RADL_Defs : list string;
+      RADL_Period : string;
+      RADL_Path : string;
+      RADL_CXX : list string
+    }.
+
+  Definition radl_in_t (Node : RADL_Node) := MessageADT (RADL_Subscriptions Node).
+  Definition radl_in_flags_t (Node : RADL_Node) := FlagADT (RADL_Subscriptions Node).
+  Definition radl_out_t (Node : RADL_Node) := MessageADT (RADL_Publications Node).
+  Definition radl_out_flags_t (Node : RADL_Node) := FlagADT (RADL_Publications Node).
+
+  Definition RADL_ADTSig  (Node : RADL_Node)
+  : ADTSig :=                         (* A RADL Node is modeled as an ADT with a  *)
+    ADTsignature {                    (* single constructor and a step function. *)
+        Constructor RADL_Init      : unit -> rep,
+        Method      RADL_Step      : rep x (prod (cRep (radl_in_t Node)) (cRep (radl_in_flags_t Node)))
+                                     -> rep x (prod (cRep (radl_out_t Node)) (cRep (radl_out_flags_t Node)))
+      }.
+
+    Definition RADL_ADTSpec (Node : RADL_Node)
+  : ADT (RADL_ADTSig Node) :=
+    ADTRep unit (* Since RADL Nodes are untrusted, we'll treat their state as completely unknown *)
+           { Def Constructor RADL_Init (_ : unit) : rep := ret tt,
+             Def Method RADL_Step (r : rep, in_t : _) : _ :=
+               (* Again, since the RADL Node is untrusted code, we'll assume that it can publish
+                  whatever the heck it wants. *)
+               results <- {out_t : cRep (radl_out_t Node) | True };
+               result_flags <- {out_t : cRep (radl_out_flags_t Node) | True };
+             ret (tt, (results, result_flags)) }.
+
+  Record RADLM_Node :=
+    { (* The model of the monitor's internal state *)
+      RADLM_Rep : Type;
+      (* The monitored node*)
+      RADLM_MonitoredNode : RADL_Node;
+      (* Additional Subscription + Publication info *)
+      RADLM_Subscriptions : list (TopicID Topics);
+      RADLM_Publications : list (TopicID Topics)
+    }.
+
+  Definition radlm_in_t (Node : RADLM_Node) :=
+    MessageADT (RADL_Subscriptions (RADLM_MonitoredNode Node)).
+  Definition radlm_out_t (Node : RADLM_Node) :=
+    MessageADT (RADL_Publications (RADLM_MonitoredNode Node)).
+  Definition radlm_monitor_in_t (Node : RADLM_Node) :=
+    MessageADT (RADLM_Subscriptions Node).
+  Definition radlm_monitor_out_t (Node : RADLM_Node) :=
+    MessageADT (RADLM_Publications Node).
+
+  Definition RADLM_ADTSig
+             (MonitorNode : RADLM_Node)
+             (InitDom : Type)
+  : ADTSig :=
+    ADTsignature {
+        Constructor RADL_Init      : InitDom -> rep,
+        Method      RADL_Step      : rep x unit * cRep (radlm_in_t MonitorNode) * cRep (radlm_monitor_in_t MonitorNode)
+                                     -> rep x unit
+                                        * cRep (radlm_out_t MonitorNode)
+                                        * cRep (radlm_monitor_out_t MonitorNode)
+      }.
+
+End RADL_ADT.
