@@ -23,22 +23,30 @@ Section RADL_ADT.
   Definition RADL_Init := "Init".
   Definition RADL_Step := "Step".
 
-  Variable Topics : list RADL_Topic. (* List of Topics in the Network. *)
+  Context {n : nat}.
+  Variable TopicTypes : Vector.t Type n. (* List of Topics in the Network. *)
+  Variable TopicNames : Vector.t string n. (* List of Topics IDs in the Network. *)
 
   Record RADL_Node :=
     { (* Subscription + Publication info for this node *)
-      RADL_Subscriptions : list (TopicID Topics);
-      RADL_Publications : list (TopicID Topics);
+      RADL_NumSubscriptions : nat;
+      RADL_Subscriptions : Vector.t (Fin.t n) RADL_NumSubscriptions;
+      RADL_NumPublications : nat;
+      RADL_Publications : Vector.t (Fin.t n) RADL_NumPublications;
       RADL_Defs : list string;
       RADL_Period : string;
       RADL_Path : string;
       RADL_CXX : list string
     }.
-
-  Definition radl_in_t (Node : RADL_Node) := MessageADT (RADL_Subscriptions Node).
-  Definition radl_in_flags_t (Node : RADL_Node) := FlagADT (RADL_Subscriptions Node).
-  Definition radl_out_t (Node : RADL_Node) := MessageADT (RADL_Publications Node).
-  Definition radl_out_flags_t (Node : RADL_Node) := FlagADT (RADL_Publications Node).
+  
+  Definition radl_in_t (Node : RADL_Node) :=
+    MessageADT TopicTypes TopicNames (RADL_Subscriptions Node).
+  Definition radl_in_flags_t (Node : RADL_Node) :=
+    FlagsADT TopicNames (RADL_Subscriptions Node).
+  Definition radl_out_t (Node : RADL_Node) :=
+    MessageADT TopicTypes TopicNames (RADL_Publications Node).
+  Definition radl_out_flags_t (Node : RADL_Node) :=
+    FlagsADT TopicNames (RADL_Publications Node).
 
   Definition RADL_ADTSig  (Node : RADL_Node)
   : ADTSig :=                         (* A RADL Node is modeled as an ADT with a  *)
@@ -48,7 +56,7 @@ Section RADL_ADT.
                                      -> rep x (prod (cRep (radl_out_t Node)) (cRep (radl_out_flags_t Node)))
       }.
 
-    Definition RADL_ADTSpec (Node : RADL_Node)
+  (*Definition RADL_ADTSpec (Node : RADL_Node)
   : ADT (RADL_ADTSig Node) :=
     ADTRep unit (* Since RADL Nodes are untrusted, we'll treat their state as completely unknown *)
            { Def Constructor RADL_Init (_ : unit) : rep := ret tt,
@@ -57,7 +65,7 @@ Section RADL_ADT.
                   whatever the heck it wants. *)
                results <- {out_t : cRep (radl_out_t Node) | True };
                result_flags <- {out_t : cRep (radl_out_flags_t Node) | True };
-             ret (tt, (results, result_flags)) }.
+             ret (tt, (results, result_flags)) }. *)
 
   Record RADLM_Node :=
     { (* The model of the monitor's internal state *)
@@ -65,29 +73,57 @@ Section RADL_ADT.
       (* The monitored node*)
       RADLM_MonitoredNode : RADL_Node;
       (* Additional Subscription + Publication info *)
-      RADLM_Subscriptions : list (TopicID Topics);
-      RADLM_Publications : list (TopicID Topics)
+      RADLM_NumSubscriptions : nat;
+      RADLM_Subscriptions : Vector.t (Fin.t n) RADLM_NumSubscriptions;
+      RADLM_NumPublications : nat;
+      RADLM_Publications : Vector.t (Fin.t n) RADLM_NumPublications
     }.
 
   Definition radlm_in_t (Node : RADLM_Node) :=
-    MessageADT (RADL_Subscriptions (RADLM_MonitoredNode Node)).
-  Definition radlm_out_t (Node : RADLM_Node) :=
-    MessageADT (RADL_Publications (RADLM_MonitoredNode Node)).
-  Definition radlm_monitor_in_t (Node : RADLM_Node) :=
-    MessageADT (RADLM_Subscriptions Node).
-  Definition radlm_monitor_out_t (Node : RADLM_Node) :=
-    MessageADT (RADLM_Publications Node).
+    MessageADT TopicTypes TopicNames (RADL_Subscriptions (RADLM_MonitoredNode Node)).
+  Definition radlm_in_flags_t (Node : RADLM_Node) :=
+    FlagsADT TopicNames (RADLM_Subscriptions Node).
 
+  Definition radlm_out_t (Node : RADLM_Node) :=
+    MessageADT TopicTypes TopicNames (RADL_Publications (RADLM_MonitoredNode Node)).
+  Definition radlm_out_flags_t (Node : RADLM_Node) :=
+    FlagsADT TopicNames (RADL_Publications (RADLM_MonitoredNode Node)).
+
+  Definition radlm_monitor_in_t (Node : RADLM_Node) :=
+    MessageADT TopicTypes TopicNames (RADLM_Subscriptions Node).
+  Definition radlm_monitor_out_t (Node : RADLM_Node) :=
+    MessageADT TopicTypes TopicNames (RADLM_Publications Node).
+
+  Definition RADL_Start_Step := "Start_Step".
+  Definition RADL_Finish_Step := "Finish_Step".
+  
   Definition RADLM_ADTSig
              (MonitorNode : RADLM_Node)
              (InitDom : Type)
   : ADTSig :=
     ADTsignature {
-        Constructor RADL_Init      : InitDom -> rep,
-        Method      RADL_Step      : rep x unit * cRep (radlm_in_t MonitorNode) * cRep (radlm_monitor_in_t MonitorNode)
-                                     -> rep x unit
-                                        * cRep (radlm_out_t MonitorNode)
-                                        * cRep (radlm_monitor_out_t MonitorNode)
+        Constructor RADL_Init       : InitDom -> rep,
+        (* Monitor Nodes have two methods which are used to guard the node's step function:
+           1) an initial step function that examines the subscriptions and decides whether
+           to pass them on (potentially modifying them) or to publish on its own. *)
+        Method      RADL_Start_Step : rep x cRep (radlm_in_t MonitorNode)
+                                      * cRep (radlm_in_flags_t MonitorNode)
+                                      * cRep (radlm_monitor_in_t MonitorNode)
+                                      -> rep x
+                                             (cRep (radlm_in_t MonitorNode)
+                                              * cRep (radlm_in_flags_t MonitorNode))
+                                         + (cRep (radlm_out_t MonitorNode)
+                                            * cRep (radlm_out_flags_t MonitorNode)
+                                            * cRep (radlm_monitor_out_t MonitorNode)),
+        (* 2) A finish step function that examines the publications after a node's
+         step function has been called, potentially modifying the publications and publishing 
+         its own topics. *)                                      
+        Method      RADL_Finish_Step : rep x cRep (radlm_out_t MonitorNode)
+                                       * cRep (radlm_out_flags_t MonitorNode)
+                                      -> rep x
+                                             (cRep (radlm_out_t MonitorNode)
+                                              * cRep (radlm_out_flags_t MonitorNode)
+                                              * cRep (radlm_monitor_out_t MonitorNode))
       }.
-
+  
 End RADL_ADT.
