@@ -17,22 +17,29 @@ Definition attrName_eq (cs : Attribute) (idx : string) :=
 
 (* A heading describes a tuple as a set of Attributes
    and types. *)
-Record Heading :=
-  { AttrList : list Attribute }.
+Record RawHeading :=
+  { NumAttr : nat;
+    AttrList : Vector.t Type NumAttr }.
 
-Definition Attributes (heading : Heading) : Set :=
-  @BoundedString (map attrName (AttrList heading)).
+Definition Attributes (heading : RawHeading) : Set := Fin.t (NumAttr heading).
 
-Definition Domain (heading : Heading) (idx : Attributes heading) : Type :=
-  attrType (nth_Bounded _ (AttrList heading) idx).
+Definition Domain (heading : RawHeading) (idx : Attributes heading) : Type :=
+  Vector.nth (AttrList heading) idx.
 Arguments Domain : clear implicits.
 
 (* Notations for schemas. *)
 
+Record Heading :=
+  { HeadingRaw :> RawHeading;
+    HeadingNames : Vector.t string (NumAttr HeadingRaw) }.
+
 Definition BuildHeading
-           (attrs : list Attribute)
-: Heading :=
-  {| AttrList := attrs |}.
+           {n}
+           (attrs : Vector.t Attribute n)
+  : Heading :=
+  {| HeadingRaw := {| NumAttr := n;
+                      AttrList := Vector.map attrType attrs |};
+     HeadingNames := Vector.map attrName attrs |}.
 
 (* Notation for schemas built from [BuildHeading]. *)
 
