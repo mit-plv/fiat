@@ -4,6 +4,7 @@ Require Import
         Coq.Lists.List
         Coq.Arith.Arith
         Coq.Program.Program
+        Fiat.Common.ilist2
         Fiat.ADT
         Fiat.ADT.ComputationalADT
         Fiat.ADTNotation
@@ -24,87 +25,103 @@ Section Messages.
   Let TopicID := @TopicID n.
 
   Context {n' : nat}.
-  Variable SubTopicNames : Vector.t (Fin.t n) n'.
+  Variable subtopics : Vector.t (Fin.t n) n'.
 
-  Fixpoint SubTopicTypes {n''} (SubTopicNames' : Vector.t (Fin.t n) n'')
-    : Vector.t Type n'' := 
-    match SubTopicNames' in Vector.t _ n''
+  Fixpoint SubTopicTypes {n''} (subtopics' : Vector.t (Fin.t n) n'')
+    : Vector.t Type n'' :=
+    match subtopics' in Vector.t _ n''
           return Vector.t Type n'' with
     | Vector.nil => Vector.nil _
-    | Vector.cons k n'' SubTopicNames' =>
-      Vector.cons _ (Vector.nth TopicTypes k) n'' (SubTopicTypes SubTopicNames')
+    | Vector.cons k n'' subtopics' =>
+      Vector.cons _ (Vector.nth TopicTypes k) n'' (SubTopicTypes subtopics')
     end.
 
-  Definition Message := ilist (B := id) (SubTopicTypes SubTopicNames).
+  Definition Message' {n''} (subtopics' : Vector.t (Fin.t n) n'') :=
+    ilist2 (B := id) (SubTopicTypes subtopics').
+  Definition Message := Message' subtopics.
 
-  Fixpoint GetTopic'
+  Fixpoint CastTopic_1'
              {n''}
-             (SubTopicNames' : Vector.t (Fin.t n) n'')
+             (subtopics' : Vector.t (Fin.t n) n'')
              (n''' : Fin.t n'')
              {struct n'''}
-    : Vector.nth (SubTopicTypes SubTopicNames') n''' ->
-      Vector.nth TopicTypes (Vector.nth SubTopicNames' n''').
-        refine (match SubTopicNames' in Vector.t _ n'' return
+    : Vector.nth (SubTopicTypes subtopics') n''' ->
+      Vector.nth TopicTypes (Vector.nth subtopics' n''').
+        refine (match subtopics' in Vector.t _ n'' return
                       forall (n''' : Fin.t n''),
-                       Vector.nth (SubTopicTypes SubTopicNames') n''' ->
-                       Vector.nth TopicTypes (Vector.nth SubTopicNames' n''')
+                       Vector.nth (SubTopicTypes subtopics') n''' ->
+                       Vector.nth TopicTypes (Vector.nth subtopics' n''')
                with
                | Vector.nil => fun n''' il => _
                | Vector.cons SubTopic k subTopicNames' => _
                end n'''); simpl in *.
         - inversion n'''0.
-        - intro; revert SubTopicNames' subTopicNames'.
+        - intro; revert subtopics' subTopicNames'.
           pattern k, n'''0.
           match goal with
             |- ?P k n'''0 => simpl; apply (Fin.rectS P); simpl; intros;
                               eauto
           end.
   Defined.
-           
+
+  Definition GetTopic'
+             {n''}
+             (subtopics' : Vector.t (Fin.t n) n'')
+             (msg : Message' subtopics')
+             (subtopic : Fin.t n'')
+    : Vector.nth TopicTypes (Vector.nth subtopics' subtopic).
+  Proof.
+    generalize (ith2 msg subtopic); apply CastTopic_1'.
+  Defined.
+
   Definition GetTopic
              (msg : Message)
              (subtopic : Fin.t n')
-    : Vector.nth TopicTypes (Vector.nth SubTopicNames subtopic).
-  Proof.
-    generalize (ith msg subtopic); unfold id.
-    apply GetTopic'.
-  Defined.
+    : Vector.nth TopicTypes (Vector.nth subtopics subtopic) :=
+    GetTopic' _  msg subtopic.
 
-  Fixpoint SetTopic'
+  Fixpoint CastTopic_2'
            {n''}
-           (SubTopicNames' : Vector.t (Fin.t n) n'')
+           (subtopics' : Vector.t (Fin.t n) n'')
            (n''' : Fin.t n'')
            {struct n'''}
-    : Vector.nth TopicTypes (Vector.nth SubTopicNames' n''') ->
-      Vector.nth (SubTopicTypes SubTopicNames') n'''.
+    : Vector.nth TopicTypes (Vector.nth subtopics' n''') ->
+      Vector.nth (SubTopicTypes subtopics') n'''.
   Proof.
-    refine (match SubTopicNames' in Vector.t _ n'' return
+    refine (match subtopics' in Vector.t _ n'' return
                   forall (n''' : Fin.t n''),
-                    Vector.nth TopicTypes (Vector.nth SubTopicNames' n''') ->
-                    Vector.nth (SubTopicTypes SubTopicNames') n'''
+                    Vector.nth TopicTypes (Vector.nth subtopics' n''') ->
+                    Vector.nth (SubTopicTypes subtopics') n'''
             with
             | Vector.nil => fun n''' il => _
             | Vector.cons SubTopic k subTopicNames' => _
             end n'''); simpl in *.
     - inversion n'''0.
-    - intro; revert SubTopicNames' subTopicNames'.
+    - intro; revert subtopics' subTopicNames'.
       pattern k, n'''0.
       match goal with
         |- ?P k n'''0 => simpl; apply (Fin.rectS P); simpl; intros;
                          eauto
       end.
   Defined.
-  
+
+  Definition SetTopic'
+             {n''}
+             (subtopics' : Vector.t (Fin.t n) n'')
+             (msg : Message' subtopics')
+             (subtopic : Fin.t n'')
+             (new_topic : Vector.nth TopicTypes (Vector.nth subtopics' subtopic))
+    : Message' subtopics'.
+  Proof.
+    apply (replace_Index2 _ msg subtopic); revert new_topic; apply CastTopic_2'.
+  Defined.
+
   Definition SetTopic
              (msg : Message)
              (subtopic : Fin.t n')
-             (new_topic : Vector.nth TopicTypes (Vector.nth SubTopicNames subtopic))
-    : Message.
-  Proof.
-    apply (replace_Index _ msg subtopic); unfold id.
-    revert new_topic.
-    apply SetTopic'.
-  Defined.
+             (new_topic : Vector.nth TopicTypes (Vector.nth subtopics subtopic))
+    : Message :=
+    SetTopic' _ msg subtopic new_topic.
 
   Section RADL_MessageADT.
 
@@ -139,9 +156,9 @@ Section Messages.
 
     Fixpoint MessageSigs'
              {n''}
-             (subtopics : Vector.t (Fin.t n) n'')
+             (subtopics' : Vector.t (Fin.t n) n'')
       : Vector.t methSig (n'' * 2) :=
-      match subtopics in Vector.t _ n''
+      match subtopics' in Vector.t _ n''
             return Vector.t methSig (n'' * 2) with
         | Vector.nil => Vector.nil _
         | Vector.cons topic _ topics' =>
@@ -149,53 +166,85 @@ Section Messages.
                       (Vector.cons _ (SetMessageSig topic) _ (MessageSigs' topics'))
       end.
 
-    Definition MessageSigs := MessageSigs' SubTopicNames.
-    
-    Definition GetMessageDef (topic : Fin.t n') :
-      cMethDef (Rep := Message) (GetMessageSig (Vector.nth SubTopicNames topic)) :=
-      Def Method _ (msg : rep, _ : _) : (Vector.nth TopicTypes (Vector.nth SubTopicNames topic)) :=
-      (msg, GetTopic msg topic).
+    Definition MessageSigs := MessageSigs' subtopics.
 
-    Definition SetMessageDef (topic : Fin.t n') :
-      cMethDef (Rep := Message) (SetMessageSig (Vector.nth SubTopicNames topic)) :=
-      Def Method _ (msg : rep, val : Vector.nth TopicTypes (Vector.nth SubTopicNames topic)) : unit :=
-      (SetTopic msg _ val, tt).
+    Definition GetMessageDef
+               {n''}
+               (subtopics' : Vector.t (Fin.t n) n'')
+               (topic : Fin.t n'') :
+      cMethDef (Rep := Message' subtopics') (GetMessageSig (Vector.nth subtopics' topic)) :=
+      Def Method _ (msg : rep, g : unit)
+      : (Vector.nth TopicTypes (Vector.nth subtopics' topic)) :=
+        (msg, GetTopic' _ msg topic).
+
+    Definition SetMessageDef
+               {n''}
+               (subtopics' : Vector.t (Fin.t n) n'')
+               (topic : Fin.t n'') :
+      cMethDef (Rep := Message' subtopics') (SetMessageSig (Vector.nth subtopics' topic)) :=
+      Def Method _ (msg : rep, val : Vector.nth TopicTypes (Vector.nth subtopics' topic)) : unit :=
+      (SetTopic' _ msg topic val, tt).
 
     Fixpoint MessageDefs'
+             {m}
+             (subtopics'' : Vector.t (Fin.t n) m)
              {n''}
-             (subtopics : Vector.t (Fin.t n) n'')
-      : ilist (B := cMethDef (Rep := ilist (B := id) (SubTopicTypes subtopics)))
-              (MessageSigs' subtopics) :=
-      match subtopics return
-            ilist (B := cMethDef (Rep := _)) (MessageSigs' subtopics) with
-        | Vector.nil => inil
-        | Vector.cons topic _ subtopics' =>
-          icons (GetMessageDef topic) (icons _ (SetMessageDef topic) (MessageDefs' subtopics'))
-      end.
+             (subtopics' : Vector.t (Fin.t n) n'')
+      : (forall (topic : Fin.t n''),
+            cMethDef (Rep := Message' subtopics'')
+                     (GetMessageSig (Vector.nth subtopics' topic)))
+        -> (forall (topic : Fin.t n''),
+               cMethDef
+                 (Rep := Message' subtopics'')
+                 (SetMessageSig (Vector.nth subtopics' topic)))
+        -> ilist (B := cMethDef (Rep := Message' subtopics''))
+              (MessageSigs' subtopics')
+        :=
+          match subtopics' in Vector.t _ n'' return
+                (forall (topic : Fin.t n''),
+                    cMethDef (Rep := Message' subtopics'')
+                             (GetMessageSig (Vector.nth subtopics' topic)))
+                -> (forall (topic : Fin.t n''),
+                       cMethDef
+                     (Rep := Message' subtopics'')
+                     (SetMessageSig (Vector.nth subtopics' topic)))
+                -> ilist (B := cMethDef (Rep := Message' subtopics''))
+                         (MessageSigs' subtopics') with
+          | Vector.nil => fun _ _ => tt
+          | Vector.cons _ n0 subtopics' =>
+            fun GetMessageDef SetMessageDef =>
+              Build_prim_prod (GetMessageDef Fin.F1)
+                              (Build_prim_prod (SetMessageDef Fin.F1)
+                                               (@MessageDefs' _ subtopics'' _ subtopics'
+                                                              (fun t => GetMessageDef (Fin.FS t))
+                                                              (fun t => SetMessageDef (Fin.FS t))))
+          end.
 
-    Definition LiftTopics : list (BoundedIndex topics) :=
-      (fix LiftTopics (topics : list TopicID) : list (BoundedIndex topics) :=
-         match topics with
-           | [ ] => [ ]
-           | topic :: topics' =>
-             {| bindex := _; indexb := IndexBound_head _ _ |}
-               :: (map (fun idx : BoundedIndex topics' =>
-                          {| bindex := bindex idx;
-                             indexb := @IndexBound_tail _ _ topic _ (indexb idx) |})
-                       (LiftTopics topics'))
-         end) topics.
-
-    Definition MessageDefs := MessageDefs' LiftTopics.
+    Definition MessageDefs
+               {n''}
+               (subtopics' : Vector.t (Fin.t n) n'') :=
+      MessageDefs' subtopics'
+                   _ 
+                   (GetMessageDef subtopics')
+                   (SetMessageDef subtopics').
 
     (* Message ADT Definitions *)
     Definition MessageADTSig : ADTSig :=
-      BuildADTSig [InitMessageSig topics] (MessageSigs LiftTopics).
-
+      BuildADTSig (Vector.cons _ InitMessageSig _ (Vector.nil _))
+                  MessageSigs.
+    
     Definition MessageADT : cADT MessageADTSig :=
-      BuildcADT (icons _ (InitMessageDef topics) (inil _)) MessageDefs.
+      BuildcADT (icons InitMessageDef inil)
+                (MessageDefs subtopics).
 
+    (* TODO: Everything from here down. *)
     (* Support for building messages. *)
+    
+    Notation CallConstructor CompADT idx :=
+      (cConstructors CompADT (ibound (indexb (Build_BoundedIndex (Bound := {| bindex := idx; indexb := _ |})))
+    Print cConstructors.
 
+    
     Definition ConstructMessage (msg : cADT (MessageADTSig)) subtopics :=
       CallConstructor msg Message_Init subtopics.
 

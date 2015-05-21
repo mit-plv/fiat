@@ -319,6 +319,124 @@ Section ithIndexBound.
 
 End ithIndexBound.
 
+Section ithIndexBound2.
+
+  Require Import Fiat.Common.ilist2.
+  Import Coq.Vectors.VectorDef.VectorNotations.
+
+  (* Given a bounded index [BoundedIndex Bound], we can wrap
+     various lookup functions over lists indexed over [Bound].
+   *)
+
+  Context {A : Type}.
+
+  Definition ith_Bounded2
+             {m}
+             {B : A -> Type}
+             {Bound : Vector.t A m}
+             (il : ilist2 Bound)
+             (idx : BoundedIndex Bound)
+    : B (Vector.nth Bound (ibound (indexb idx))) :=
+    ith2 il (ibound (indexb idx)) .
+
+  Lemma ith_Bounded_imap2
+        {m}
+        {B B' : A -> Type}
+  : forall (f : forall idx, B idx -> B' idx)
+           (Bound : Vector.t A m)
+           (idx : BoundedIndex Bound)
+           (il : ilist2 Bound),
+      f _ (ith_Bounded2 il idx) =
+      ith_Bounded2 (imap2 _ _ f Bound il) idx.
+  Proof.
+    unfold ith_Bounded2; simpl; intros; eapply ith_imap2.
+  Qed.
+
+  Definition replace_BoundedIndex2
+             {m}
+           {B : A -> Type}
+           (Bound : Vector.t A m)
+           (il : ilist2 Bound)
+           (idx : BoundedIndex Bound)
+           (new_b : B (nth_Bounded idx))
+  : ilist2 Bound :=
+    replace_Index2 Bound il (ibound (indexb idx)) new_b.
+
+  Lemma ith_replace_BoundIndex2_neq
+        {m}
+        {B : A -> Type}
+  : forall
+      (Bound : Vector.t A m)
+      (il : ilist2 Bound)
+      (idx idx' : BoundedIndex Bound)
+      (new_b : B (nth_Bounded idx')),
+      idx <> idx'
+      -> ith_Bounded2 (replace_BoundedIndex2 il idx' new_b) idx =
+         ith_Bounded2 il idx.
+  Proof.
+    unfold ith_Bounded2; simpl; intros; eapply ith_replace2_Index_neq.
+    eauto using idx_ibound_eq.
+  Qed.
+
+  Lemma ith_replace_BoundIndex2_eq
+        {m}
+        {B : A -> Type}
+  : forall
+      (Bound : Vector.t A m)
+      (il : ilist2 Bound)
+      (idx : BoundedIndex Bound)
+      (new_b : B (nth_Bounded idx)),
+      ith_Bounded2 (replace_BoundedIndex2 il idx new_b) idx = new_b.
+  Proof.
+    unfold ith_Bounded2; simpl; intros; eapply ith_replace2_Index_eq.
+  Qed.
+
+  Lemma ilist2_eq {m} {B : A -> Type}
+  : forall (Bound : Vector.t A m)
+           (il il' : ilist2 (B := B) Bound),
+      (forall idx, ith_Bounded2 il idx = ith_Bounded2 il' idx) -> il = il'.
+  Proof.
+    induction Bound; intros.
+    - rewrite (ilist2_invert _ il), (ilist2_invert _ il'); reflexivity.
+    - destruct il; destruct il'; simpl in *.
+      f_equal.
+      + generalize (H {| bindex := h |});
+        unfold ith_Bounded2; simpl; auto.
+      + apply IHBound; intros.
+        exact (H {| bindex := bindex idx;
+                   indexb := @Build_IndexBound
+                               _
+                               (S n)
+                               (bindex idx)
+                               (h :: Bound)
+                               (Fin.FS (ibound (indexb idx)))
+                               (@boundi _ _ _ _ (indexb idx))
+                |}).
+  Qed.
+
+  Global Arguments imap2 {A B B'} f {n} {As} il.
+
+  Lemma imap_replace2_BoundedIndex
+        {m}
+        {B B' : A -> Type}
+  : forall (f : forall idx'', B idx'' -> B' idx'')
+           (Bound : Vector.t A m)
+           (idx : BoundedIndex Bound)
+           (il : ilist2 Bound)
+           b,
+      imap2 f (replace_BoundedIndex2 il idx b) =
+      replace_BoundedIndex2 (imap2 f il) idx (f _ b).
+  Proof.
+    intros; apply ilist2_eq; intros.
+    destruct (BoundedIndex_eq_dec idx idx0); subst;
+    rewrite <- ith_Bounded_imap2.
+    - repeat rewrite ith_replace_BoundIndex2_eq; reflexivity.
+    - repeat rewrite ith_replace_BoundIndex2_neq; auto.
+      rewrite <- ith_Bounded_imap2; auto.
+  Qed.
+
+End ithIndexBound2.
+
 (*Section i2thIndexBound.
 
   Require Import Fiat.Common.i2list.

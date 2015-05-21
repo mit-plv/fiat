@@ -70,7 +70,7 @@ Section BuildADTRefinements.
     repeat computes_to_econstructor; try destruct v; eauto;
     eapply H; eauto.
   Qed.
-
+  
   (*Corollary SharpenStep_BuildADT_ReplaceConstructor_eq
             (Rep : Type)
             (consSigs : list consSig)
@@ -314,7 +314,7 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
             (cConstructors DelegateReps DelegateImpls))
       (imap (Build_cMethDef (Rep:=rep DelegateReps))
             (cMethods DelegateReps DelegateImpls)).
-
+  
   Definition Notation_Friendly_FullySharpened_BuildMostlySharpenedcADT
              (RepT : Type)
              {n n'}
@@ -509,7 +509,7 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
     { delegateeSig : ADTSig;
       delegateeRep : Type }.
 
-  Fixpoint Build_NamedDelegatees
+  Definition Build_NamedDelegatees
            {n}
            (DelegateSigs : Vector.t ADTSig n)
            (DelegateReps : Vector.t Type n)
@@ -528,7 +528,7 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
                          DelegateReps DelegateSigs)
       end.
   Defined.
-
+  
   Definition Notation_Friendly_SharpenFully
              (RepT : Type)
              {m n n'}
@@ -614,11 +614,12 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
         Sharpened_DelegateSigs := DelegateSigs;
         Sharpened_Implementation := Notation_Friendly_BuildMostlySharpenedcADT _ rep
                                                                                cConstructors cMethods;
-        Sharpened_DelegateSpecs := DelegateSpecs |} :=
-           (Notation_Friendly_FullySharpened_BuildMostlySharpenedcADT consDefs
+        Sharpened_DelegateSpecs := DelegateSpecs |}.
+      refine (Notation_Friendly_FullySharpened_BuildMostlySharpenedcADT consDefs
                                                                       methDefs _ rep cConstructors cMethods DelegateSpecs cAbsR
                                                                       cConstructorsRefinesSpec cMethodsRefinesSpec).
-
+  Defined.
+      
 End BuildADTRefinements.
 
 Arguments Notation_Friendly_BuildMostlySharpenedcADT _ _ _ _ _ _ _ _ _ _ _  / .
@@ -876,6 +877,12 @@ Ltac FullySharpenEachMethodWithoutDelegation :=
          | Implement_If_Then_Else
          | Implement_If_Opt_Then_Else ].
 *)
+
+
+
+
+
+
 Lemma refineIfret {A} :
   forall (cond : bool) (a a' : A),
     refine (if cond then ret a else ret a')
