@@ -9,8 +9,9 @@ Require Import
         Fiat.ADTNotation
         Fiat.ADTRefinement
         Fiat.ADTRefinement.BuildADTRefinements
-        Fiat.Fiat4Monitors.RADL_Topics.
-Require Import Bedrock.Memory.
+        Fiat.Fiat4Monitors.RADL_Topics
+        Fiat.Fiat4Monitors.RADL_Flag
+        Bedrock.Memory.
 
 Section Flags.
 
@@ -19,59 +20,32 @@ Section Flags.
   Open Scope list_scope.
   Open Scope ADTSig_scope.
 
-  Variable Topics : list RADL_Topic. (* List of Topics in the Network. *)
-  Let TopicID  := TopicID Topics.
+  Context {n : nat}.
+  Variable TopicTypes : Vector.t Type n. (* List of Topics in the Network. *)
+  Variable TopicNames : Vector.t string n. (* List of Topics IDs in the Network. *)
+  Let TopicID := @TopicID n.
 
-  Definition Flag (topics : list TopicID)
-    := ilist (fun _ => Memory.W) topics.
+  Definition RADL_Flag := cRep RADL_FlagADT.
 
-  Fixpoint GetFlag
-           (topics : list TopicID)
-           {struct topics}
-  : Flag topics ->
-    forall (subtopic : BoundedIndex topics),
-      Memory.W.
-  Proof.
-    refine (match topics return
-                  Flag topics ->
-                  forall (subtopic : BoundedIndex topics), Memory.W  with
-              | [ ] => fun msg subtopic => BoundedIndex_nil _ subtopic
-              | topic :: topics' =>  fun msg subtopic => _
-            end).
-    destruct subtopic as [idx [[ | n] nth_n]].
-    simpl in *; injection nth_n; intros; subst.
-    exact (ith_Bounded id msg {| bindex := _;
-                                indexb := Build_IndexBound (idx :: (map id topics')) 0 nth_n|}).
-    exact (GetFlag topics' (ilist_tl msg) {| bindex := idx;
-                                             indexb := {| ibound := n;
-                                                          boundi := nth_n |} |} ).
-  Defined.
+  Definition Flags {n'} (subtopics : Vector.t (Fin.t n) n') :=
+    Vector.t RADL_Flag n'.
 
-  Fixpoint SetFlag
-           (topics : list TopicID)
-           {struct topics}
-  : Flag topics ->
-    forall (subtopic : BoundedIndex topics),
-      Memory.W -> Flag topics.
-  Proof.
-    refine (match topics return
-                  Flag topics ->
-                  forall (subtopic : BoundedIndex topics),
-                    Memory.W -> Flag topics with
-              | [ ] => fun msg subtopic val => inil _
-              | topic :: topics' =>  fun msg subtopic val => _
-            end).
-    destruct subtopic as [idx [[ | n] nth_n]].
-    - simpl in *; injection nth_n; intros; subst;
-      exact (icons _ val (ilist_tl msg)).
-    - exact (icons _ (ilist_hd msg) (SetFlag topics' (ilist_tl msg)
-                                              {| bindex := idx;
-                                                 indexb := {| ibound := n;
-                                                              boundi := nth_n |} |}
-                                              val)).
-  Defined.
+  Definition GetFlag
+             {n'}
+             {subtopics : Vector.t (Fin.t n) n'}
+             (flags : Flags subtopics)
+             (topic : Fin.t n')
+    : RADL_Flag := Vector.nth flags topic.
 
-  Section RADL_FlagADT.
+  Definition SetFlag
+             {n'}
+             {subtopics : Vector.t (Fin.t n) n'}
+             (flags : Flags subtopics)
+             (topic : Fin.t n')
+             (val : RADL_Flag)
+    : Flags subtopics := Vector.replace flags topic val.
+
+  Section RADL_FlagsADT.
 
     Open Scope methSig.
     Open Scope consSig.
@@ -79,235 +53,204 @@ Section Flags.
     Open Scope cConsDef.
 
     (* Message Initialization *)
-    Definition Flag_Init := "Init".
+    Definition Flags_Init := "Init".
 
-    Fixpoint InitFlagDom (topics : list TopicID) :=
-      match topics return Type with
-        | [ ] => unit
-        | topic :: topics' => prod Memory.W (InitFlagDom topics')
-      end.
+    Definition InitFlagsDom {n'} (subtopics : Vector.t (Fin.t n) n') :=
+      Vector.t RADL_Flag n'.
 
-    Definition InitFlagSig (topics : list TopicID) : consSig :=
-      Constructor Flag_Init : InitFlagDom topics -> rep.
+    Definition InitFlagsSig {n'} (subtopics : Vector.t (Fin.t n) n') : consSig :=
+      Constructor Flags_Init : InitFlagsDom subtopics -> rep.
 
-    Fixpoint InitFlag (topics : list TopicID)
-    : InitFlagDom topics -> Flag topics :=
-      match topics return
-            InitFlagDom topics -> Flag topics with
-        | [ ] =>
-          fun inits => inil _
-        | topic :: topics' =>
-          fun inits => icons _ (fst inits) (InitFlag topics' (snd inits))
-      end.
+    Definition InitFlags {n'}
+             (subtopics : Vector.t (Fin.t n) n')
+             (flags : InitFlagsDom subtopics)
+      : Flags subtopics := flags.
 
-    Definition InitFlagDef (topics : list TopicID) :=
-      Def Constructor Flag_Init (inits : InitFlagDom topics) : rep :=
-      InitFlag topics inits.
+    Definition InitFlagsDef
+               {n'}
+               (subtopics : Vector.t (Fin.t n) n') :=
+      Def Constructor Flags_Init (flags : InitFlagsDom subtopics) : rep :=
+      @InitFlags _ subtopics flags.
 
     (* Getters and Setters for Flags *)
-    Variable topics : list TopicID.
 
-    Definition GetFlagSig (topic : BoundedIndex topics) :=
-      Method ("Get" ++ TopicNames (bindex topic)) : rep x unit -> rep x Memory.W.
+    Definition GetFlagSig (topic : Fin.t n) :=
+      Method ("Get" ++ (Vector.nth TopicNames topic))
+      : rep x unit -> rep x RADL_Flag.
 
-    Definition SetFlagSig (topic : BoundedIndex topics) :=
-      Method ("Set" ++ TopicNames (bindex topic)) : rep x Memory.W -> rep x unit.
+    Definition SetFlagSig (topic : Fin.t n) :=
+      Method ("Set" ++ (Vector.nth TopicNames topic)) : rep x RADL_Flag -> rep x unit.
 
-    Fixpoint FlagSigs (subtopics : list (BoundedIndex topics)) : list methSig :=
-      match subtopics with
-        | [ ] => [ ]
-        | topic :: topics' =>
-          GetFlagSig topic :: SetFlagSig topic :: FlagSigs topics'
+    Fixpoint FlagsSigs
+             {n'}
+             (subtopics : Vector.t (Fin.t n) n')
+      : Vector.t methSig (n' * 2) :=
+      match subtopics in Vector.t _ n'
+            return Vector.t methSig (n' * 2) with
+        | Vector.nil => Vector.nil _
+        | Vector.cons topic _ topics' =>
+          Vector.cons _ (GetFlagSig topic) _
+                      (Vector.cons _ (SetFlagSig topic) _ (FlagsSigs topics'))
       end.
 
-    Definition GetFlagDef (topic : BoundedIndex topics) :
-      cMethDef (Rep := Flag topics) (GetFlagSig topic) :=
-      Def Method _ (msg : rep, _ : _) : Memory.W :=
-      (msg, GetFlag msg topic).
+    Definition GetFlagDef
+               {n'}
+               (subtopics : Vector.t (Fin.t n) n')
+               (topic : Fin.t n') :
+      cMethDef (Rep := Flags subtopics) (GetFlagSig (Vector.nth subtopics topic)) :=
+      Def Method _ (msg : rep, g : unit) : RADL_Flag :=
+        (msg, GetFlag msg topic).
 
-    Definition SetFlagDef (topic : BoundedIndex topics) :
-      cMethDef (Rep := Flag topics) (SetFlagSig topic) :=
-      Def Method _ (msg : rep, val : Memory.W) : unit :=
+    Definition SetFlagDef
+               {n'}
+               (subtopics : Vector.t (Fin.t n) n')
+               (topic : Fin.t n') :
+      cMethDef (Rep := Flags subtopics) (SetFlagSig (Vector.nth subtopics topic)) :=
+      Def Method _ (msg : rep, val : RADL_Flag) : unit :=
       (SetFlag msg topic val, tt).
 
-    Fixpoint FlagDefs'
-             (subtopics : list (BoundedIndex topics))
-    : ilist (cMethDef (Rep := Flag topics)) (FlagSigs subtopics) :=
-      match subtopics return
-            ilist (cMethDef (Rep := Flag topics)) (FlagSigs subtopics) with
-        | [ ] => inil _
-        | topic :: subtopics' =>
-          icons _ (GetFlagDef topic) (icons _ (SetFlagDef topic) (FlagDefs' subtopics'))
-      end.
+    Fixpoint FlagsDefs'
+             {m}
+             (subtopics'' : Vector.t (Fin.t n) m)
+             {n''}
+             (subtopics' : Vector.t (Fin.t n) n'')
+      : (forall (topic : Fin.t n''),
+            cMethDef (Rep := Flags subtopics'')
+                     (GetFlagSig (Vector.nth subtopics' topic)))
+        -> (forall (topic : Fin.t n''),
+               cMethDef
+                 (Rep := Flags subtopics'')
+                 (SetFlagSig (Vector.nth subtopics' topic)))
+        -> ilist (B := cMethDef (Rep := Flags subtopics''))
+              (FlagsSigs subtopics')
+        :=
+          match subtopics' in Vector.t _ n'' return
+                (forall (topic : Fin.t n''),
+                    cMethDef (Rep := Flags subtopics'')
+                             (GetFlagSig (Vector.nth subtopics' topic)))
+                -> (forall (topic : Fin.t n''),
+                       cMethDef
+                     (Rep := Flags subtopics'')
+                     (SetFlagSig (Vector.nth subtopics' topic)))
+                -> ilist (B := cMethDef (Rep := Flags subtopics''))
+                         (FlagsSigs subtopics') with
+          | Vector.nil => fun _ _ => tt
+          | Vector.cons _ n0 subtopics' =>
+            fun GetFlagDef SetFlagDef =>
+              Build_prim_prod (GetFlagDef Fin.F1)
+                              (Build_prim_prod (SetFlagDef Fin.F1)
+                                               (@FlagsDefs' _ subtopics'' _ subtopics'
+                                                              (fun t => GetFlagDef (Fin.FS t))
+                                                              (fun t => SetFlagDef (Fin.FS t))))
+          end.
 
-    Definition LiftTopics : list (BoundedIndex topics) :=
-      (fix LiftTopics (topics : list TopicID) : list (BoundedIndex topics) :=
-         match topics with
-           | [ ] => [ ]
-           | topic :: topics' =>
-             {| bindex := _; indexb := IndexBound_head _ _ |}
-               :: (map (fun idx : BoundedIndex topics' =>
-                          {| bindex := bindex idx;
-                             indexb := @IndexBound_tail _ _ topic _ (indexb idx) |})
-                       (LiftTopics topics'))
-         end) topics.
-
-    Definition FlagDefs := FlagDefs' LiftTopics.
+    Definition FlagsDefs
+               {n''}
+               (subtopics' : Vector.t (Fin.t n) n'') :=
+      FlagsDefs' subtopics' (GetFlagDef subtopics') (SetFlagDef subtopics').
 
     (* Flag ADT Definitions *)
-    Definition FlagADTSig : ADTSig :=
-      BuildADTSig [InitFlagSig topics] (FlagSigs LiftTopics).
 
-    Definition FlagADT : cADT FlagADTSig :=
-      BuildcADT (icons _ (InitFlagDef topics) (inil _)) FlagDefs.
+    Definition FlagsADTSig
+               {n'}
+               (subtopics : Vector.t (Fin.t n) n') 
+      : ADTSig :=
+      BuildADTSig (Vector.cons _ (InitFlagsSig subtopics) _ (Vector.nil _))
+                  (FlagsSigs subtopics).
+
+    Definition FlagsADT
+               {n'}
+               (subtopics : Vector.t (Fin.t n) n') 
+      : cADT (FlagsADTSig subtopics) :=
+      BuildcADT (icons (InitFlagsDef subtopics) inil)
+                (FlagsDefs subtopics).
 
     (* Support for building messages. *)
 
-    Definition ConstructFlag (msg : cADT (FlagADTSig)) subtopics :=
-      CallConstructor msg Flag_Init subtopics.
+    Definition ConstructFlags
+               {n'}
+               (subtopics : Vector.t (Fin.t n) n')
+               flags :=
+      CallConstructor (FlagsADT subtopics) Flags_Init flags.
 
     (* Support for calling message getters. *)
-    Definition BuildGetFlagMethodID'
-               (subtopics : list (BoundedIndex topics))
-               (idx : BoundedIndex (map (fun id => bindex id) subtopics))
-    : @BoundedString (map methID (FlagSigs subtopics)).
-      refine {| bindex := ("Get" ++ (bindex (bindex idx)))%string;
-                indexb := {| ibound := ibound idx * 2;
-                             boundi := _ |}
-             |}.
-      destruct idx as [idx [n nth_n]].
-      revert idx n nth_n; induction subtopics; intros.
-      destruct n; simpl in *; discriminate.
-      destruct n; simpl in *.
-      - unfold value; repeat f_equal.
-        destruct a as [b [m nth_m]]; simpl in *; subst.
-        unfold TopicNames; injections.
-        destruct idx as [topic [p nth_p]]; simpl in *.
-        pose proof (nth_error_map _ _ _ nth_p).
-        cut (exists topic'', nth_error Topics p = Some topic'' /\ Topic_Name topic'' = topic ).
-        intros.
-        eapply nth_Bounded_ind; intros.
-        subst filtered_var program_branch_0 program_branch_1; simpl.
-        destruct_ex; intuition.
-        rewrite H1; eauto.
-        revert H; clear.
-        destruct (nth_error Topics p); intros;
-        first [discriminate | injections; eauto].
-      - eauto.
-    Defined.
-
-    Definition BuildGetFlagMethodID
-               (idx : BoundedIndex (map (fun id => bindex id) LiftTopics))
-    : @BoundedString (map methID (FlagSigs LiftTopics))
-      := BuildGetFlagMethodID' _ idx.
-
-    Definition CallFlagGetMethod
-               (r : Flag topics)
-               idx
-      := cMethods FlagADT (BuildGetFlagMethodID idx) r.
-
-    Lemma CallFlagMethodType :
-      forall idx,
-        snd (MethodDomCod FlagADTSig (BuildGetFlagMethodID idx)) = Memory.W.
+        Lemma BuildGetFlagsMethodID_ibound
+              {n'}
+              (subtopics : Vector.t (Fin.t n) n')
+          : forall (idx : Fin.t n'),
+        Vector.nth (Vector.map methID (FlagsSigs subtopics))
+                   (Fin.depair idx Fin.F1) =
+        ("Get" ++ Vector.nth TopicNames (Vector.nth subtopics idx))%string.
     Proof.
-      unfold FlagADTSig, BuildGetFlagMethodID, BuildGetFlagMethodID'; simpl.
-      unfold FlagSigs.
-      intro. eapply nth_Bounded_ind; simpl.
-      refine (match idx with
-                {| bindex := idx;
-                   indexb := {| ibound := n;
-                                boundi := nth_n |} |} => _
-              end); simpl.
-      revert indexb n nth_n.
-      induction LiftTopics; intros; destruct n; simpl; eauto.
-      eapply IHl; eauto.
-      repeat econstructor; simpl in *; eauto.
-      repeat econstructor; simpl in *; eauto.
-    Defined.
+      induction subtopics.
+      - intro; inversion idx.
+      - intro; revert subtopics IHsubtopics; pattern n0, idx.
+        eapply Fin.rectS; simpl; intros; eauto.
+    Qed.
 
-    Definition CallFlagGetMethodAsWord
-               (r : Flag topics)
+    Definition BuildGetFlagsMethodID'
+               {n'}
+               (subtopics : Vector.t (Fin.t n) n')
+               (idx : Fin.t n')
+    : BoundedString (Vector.map methID (FlagsSigs subtopics)) :=
+      {| bindex := ("Get" ++ (Vector.nth TopicNames (Vector.nth subtopics idx)))%string;
+         indexb := {| ibound := Fin.depair idx (@Fin.F1 1);
+                      boundi := BuildGetFlagsMethodID_ibound subtopics idx |}
+      |}.
+
+    Definition BuildGetFlagsMethodID
+               {n'}
+               (subtopics : Vector.t (Fin.t n) n')
+               (idx : Fin.t n')
+      : BoundedString (Vector.map methID (FlagsSigs subtopics))
+      := BuildGetFlagsMethodID' _ idx.
+
+    Definition CallFlagsGetMethod
+               {n'}
+               (subtopics : Vector.t (Fin.t n) n')
+               (r : Flags subtopics)
                idx
-               (t : fst (MethodDomCod FlagADTSig (BuildGetFlagMethodID idx)))
-      : cRep FlagADT * Memory.W.
-      rewrite <- (CallFlagMethodType idx).
-      apply (cMethods FlagADT (BuildGetFlagMethodID idx) r t).
-    Defined.
+      := cMethods (FlagsADT subtopics) (ibound (indexb (BuildGetFlagsMethodID subtopics idx))) r.
 
     (* Support for calling message setters. *)
-    Definition BuildSetFlagMethodID'
-             (subtopics : list (BoundedIndex topics))
-             (idx : BoundedIndex (map (fun id => bindex id) subtopics))
-  : @BoundedString (map methID (FlagSigs subtopics)).
+    Lemma BuildSetFlagsMethodID_ibound
+          {n'}
+          (subtopics : Vector.t (Fin.t n) n')
+      : forall (idx : Fin.t n'),
+        Vector.nth (Vector.map methID (FlagsSigs subtopics))
+                   (Fin.depair idx (Fin.FS Fin.F1)) =
+        ("Set" ++ Vector.nth TopicNames (Vector.nth subtopics idx))%string.
     Proof.
-      refine {| bindex := ("Set" ++ (bindex (bindex idx)))%string;
-                indexb := {| ibound := (ibound idx * 2) + 1;
-                             boundi := _ |}
-             |}.
-      destruct idx as [idx [n nth_n]].
-      revert idx n nth_n; induction subtopics; intros.
-      destruct n; simpl in *; discriminate.
-      destruct n; simpl in *.
-      - unfold value; repeat f_equal.
-        destruct a as [b [m nth_m]]; simpl in *; subst.
-        unfold TopicNames; injections.
-        destruct idx as [topic [p nth_p]]; simpl in *.
-        pose proof (nth_error_map _ _ _ nth_p).
-        cut (exists topic'', nth_error Topics p = Some topic'' /\ Topic_Name topic'' = topic ).
-        intros.
-        eapply nth_Bounded_ind; intros.
-        subst filtered_var program_branch_0 program_branch_1; simpl.
-        destruct_ex; intuition.
-        rewrite H1; eauto.
-        revert H; clear.
-        destruct (nth_error Topics p); intros;
-        first [discriminate | injections; eauto].
-      - eauto.
-    Defined.
+      induction subtopics.
+      - intro; inversion idx.
+      - intro; revert subtopics IHsubtopics; pattern n0, idx.
+        eapply Fin.rectS; simpl; intros; eauto.
+    Qed.
 
-    Definition BuildSetFlagMethodID
-               (idx : BoundedIndex (map (fun id => bindex id) LiftTopics))
-    : @BoundedString (map methID (FlagSigs LiftTopics))
-      := BuildSetFlagMethodID' _ idx.
+    Definition BuildSetFlagsMethodID'
+               {n'}
+               (subtopics : Vector.t (Fin.t n) n')
+               (idx : Fin.t n')
+    : BoundedString (Vector.map methID (FlagsSigs subtopics)) :=
+      {| bindex := ("Set" ++ (Vector.nth TopicNames (Vector.nth subtopics idx)))%string;
+         indexb := {| ibound := Fin.depair idx (Fin.FS Fin.F1);
+                      boundi := BuildSetFlagsMethodID_ibound subtopics idx |}
+      |}.
 
-    Definition CallFlagSetMethod (r : Flag topics) idx :=
-      cMethods FlagADT (BuildSetFlagMethodID idx) r.
+    Definition BuildSetFlagsMethodID
+               {n'}
+               (subtopics : Vector.t (Fin.t n) n')
+               (idx : Fin.t n')
+      : BoundedString (Vector.map methID (FlagsSigs subtopics))
+      := BuildSetFlagsMethodID' _ idx.
 
-  End RADL_FlagADT.
+    Definition CallFlagsSetMethod
+               {n'}
+               {subtopics : Vector.t (Fin.t n) n'}
+               (r : Flags subtopics)
+               idx
+      := cMethods (FlagsADT subtopics) (ibound (indexb (BuildSetFlagsMethodID subtopics idx))) r.
 
-  Definition radl_i2f := Word.natToWord 32.
+  End RADL_FlagsADT.
 
-  Definition radl_OPERATIONAL_FLAGS := Eval simpl in radl_i2f 15.
-  Definition radl_STALE_VALUE := Eval simpl in radl_i2f 1.
-  Definition radl_STALE_MBOX :=    Eval simpl in radl_i2f 2.
-  Definition radl_STALE := Eval simpl in radl_i2f 3.
-  Definition radl_OPERATIONAL_1 := Eval simpl in radl_i2f 4.
-  Definition radl_OPERATIONAL_2 := Eval simpl in radl_i2f 8.
-
-  Definition radl_FAILURE_FLAGS := Eval simpl in Word.wneg radl_OPERATIONAL_FLAGS.
-
-  Definition radl_TIMEOUT_VALUE := Eval simpl in radl_i2f 16.
-  Definition radl_TIMEOUT_MBOX := Eval simpl in radl_i2f 32.
-  Definition radl_TIMEOUT := Eval simpl in radl_i2f 48.
-  
-  Definition radl_FAILURE_1 := Eval simpl in radl_i2f 64.
-  Definition radl_FAILURE_2 := Eval simpl in radl_i2f 128.
-
-  Definition radl_is_stale (f : Memory.W) :=
-    Word.weqb (Word.wand f radl_STALE) radl_STALE.
-
-  Definition radl_is_value_stale (f : Memory.W) :=
-    Word.weqb (Word.wand f radl_STALE_VALUE) radl_STALE_VALUE.
-  Definition radl_is_mbox_stale (f : Memory.W) :=
-    Word.weqb (Word.wand f radl_STALE_MBOX) radl_STALE_MBOX.
-  Definition radl_is_failing (f : Memory.W) :=
-    Word.weqb (Word.wand f radl_FAILURE_FLAGS) radl_FAILURE_FLAGS.         
-  Definition radl_is_timeout (f : Memory.W) :=
-    Word.weqb (Word.wand f radl_TIMEOUT) radl_TIMEOUT.
-          
-  Definition radl_is_value_timeout (f : Memory.W) :=
-    Word.weqb (Word.wand f radl_TIMEOUT_VALUE) radl_TIMEOUT_VALUE.
-  Definition radl_is_mbox_timeout (f : Memory.W) :=
-    Word.weqb (Word.wand f radl_TIMEOUT_MBOX) radl_TIMEOUT_MBOX.
-  
 End Flags.

@@ -224,7 +224,7 @@ Section Messages.
                {n''}
                (subtopics' : Vector.t (Fin.t n) n'') :=
       MessageDefs' subtopics'
-                   _ 
+                   _
                    (GetMessageDef subtopics')
                    (SetMessageDef subtopics').
 
@@ -232,16 +232,15 @@ Section Messages.
     Definition MessageADTSig : ADTSig :=
       BuildADTSig (Vector.cons _ InitMessageSig _ (Vector.nil _))
                   MessageSigs.
-    
+
     Definition MessageADT : cADT MessageADTSig :=
       BuildcADT (icons InitMessageDef inil)
                 (MessageDefs subtopics).
 
-    (* TODO: Everything from here down. *)
     (* Support for building messages. *)
-    
-    Definition ConstructMessage (msg : cADT (MessageADTSig)) subtopics :=
-      CallConstructor msg Message_Init subtopics.
+
+    Definition ConstructMessage subtopics :=
+      CallConstructor MessageADT Message_Init subtopics.
 
     (* Support for calling message getters. *)
         Lemma BuildGetMessageMethodID_ibound
@@ -262,7 +261,7 @@ Section Messages.
                {n''}
                (subtopics' : Vector.t (Fin.t n) n'')
                (idx : Fin.t n'')
-    : BoundedString (Vector.map methID (MessageSigs' subtopics')) := 
+    : BoundedString (Vector.map methID (MessageSigs' subtopics')) :=
       {| bindex := ("Get" ++ (Vector.nth TopicNames (Vector.nth subtopics' idx)))%string;
          indexb := {| ibound := Fin.depair idx (@Fin.F1 1);
                       boundi := BuildGetMessageMethodID_ibound subtopics' idx |}
@@ -297,7 +296,7 @@ Section Messages.
                {n''}
                (subtopics' : Vector.t (Fin.t n) n'')
                (idx : Fin.t n'')
-    : BoundedString (Vector.map methID (MessageSigs' subtopics')) := 
+    : BoundedString (Vector.map methID (MessageSigs' subtopics')) :=
       {| bindex := ("Set" ++ (Vector.nth TopicNames (Vector.nth subtopics' idx)))%string;
          indexb := {| ibound := Fin.depair idx (Fin.FS Fin.F1);
                       boundi := BuildSetMessageMethodID_ibound subtopics' idx |}

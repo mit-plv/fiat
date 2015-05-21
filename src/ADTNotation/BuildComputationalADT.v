@@ -122,8 +122,8 @@ Notation "'cADTRep' r { cons1 , meth1 , .. , methn } " :=
     @BuildcADT r
              _ _
              _ _
-             (icons cons1%cConsDef (inil (@cConsDef r)))
-             (icons meth1%cMethDefParsing .. (icons methn%cMethDefParsing (inil (@cMethDef r))) ..))
+             (icons cons1%cConsDef (@inil _ (@cConsDef r)))
+             (icons meth1%cMethDefParsing .. (icons methn%cMethDefParsing (@inil _ (@cMethDef r))) ..))
     (no associativity, at level 96, r at level 0,
      format "'cADTRep'  r  '/' '[hv  ' {  cons1 ,  '//' meth1 , '//' .. , '//' methn  ']' }") :
     ADTParsing_scope.
@@ -132,8 +132,8 @@ Notation "'cADTRep' r { cons1 , meth1 , .. , methn } " :=
   (@BuildcADT r
              _ _
              _ _
-             (icons cons1%cConsDef (inil (@cConsDef r)))
-             (icons meth1%cMethDef .. (icons methn%cMethDef (inil (@cMethDef r))) ..))
+             (icons cons1%cConsDef (@inil _ (@cConsDef r)))
+             (icons meth1%cMethDef .. (icons methn%cMethDef (@inil _  (@cMethDef r))) ..))
     (no associativity, at level 96, r at level 0,
      format "'cADTRep'  r  '/' '[hv  ' {  cons1 , '//' meth1 , '//' .. , '//' methn  ']' }") : ADT_scope.
 

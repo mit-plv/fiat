@@ -132,8 +132,8 @@ Notation "'ADTRep' r { cons1 , meth1 , .. , methn } " :=
     @BuildADT r
              _ _
              _ _
-             (icons cons1%consDef (inil (@consDef r)))
-             (icons meth1%methDefParsing .. (icons methn%methDefParsing (inil (@methDef r))) ..))
+             (icons cons1%consDef (@inil _ (@consDef r)))
+             (icons meth1%methDefParsing .. (icons methn%methDefParsing (@inil _ (@methDef r))) ..))
     (no associativity, at level 96, r at level 0,
      format "'ADTRep'  r  '/' '[hv  ' {  cons1 ,  '//' meth1 , '//' .. , '//' methn  ']' }") : ADTParsing_scope.
 
@@ -141,8 +141,8 @@ Notation "'ADTRep' r { cons1 , meth1 , .. , methn } " :=
   (@BuildADT r
              _ _
              _ _
-             (icons cons1%consDef (inil (@consDef r)))
-             (icons meth1%methDef .. (icons methn%methDef (inil (@methDef r))) ..))
+             (icons cons1%consDef (@inil _ (@consDef r)))
+             (icons meth1%methDef .. (icons methn%methDef (@inil _ (@methDef r))) ..))
     (no associativity, at level 96, r at level 0,
      format "'ADTRep'  r  '/' '[hv  ' {  cons1 , '//' meth1 , '//' .. , '//' methn  ']' }") : ADT_scope.
 

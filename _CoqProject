@@ -110,6 +110,7 @@ src/Fiat4Monitors/LandsharkTopics.v
 src/Fiat4Monitors/MonitorADTs.v
 src/Fiat4Monitors/MonitorRepInv.v
 src/Fiat4Monitors/RADLNodeADTs.v
+src/Fiat4Monitors/RADL_Flag.v
 src/Fiat4Monitors/RADL_Flags.v
 src/Fiat4Monitors/RADL_Messages.v
 src/Fiat4Monitors/RADL_Nodes.v
