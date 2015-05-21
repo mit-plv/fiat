@@ -49,20 +49,18 @@ Reserved Notation "name '`:' type '`:=' init"
        arguments at next level).
 
 Notation "name '`:' type '`:=' init" :=
-  (existT attrType {| attrName := name;
-                      attrType := type%Tuple2 |}
+  (existT attrType2 {| attrName2 := name;
+                       attrType2 := type%Tuple2 |}
           init): Field_scope.
 
 Notation "'topic' '{' 'FIELDS' topic1 ; .. ; topicn '}' " :=
-  (@Tuple (Build_Heading (map (@projT1 _ _) (cons topic1%Field .. (cons topicn%Field nil) ..)))) (at level 70, arguments at level 60) : Topic_scope.
+  (@DecTuple2 _ (Vector.map (@projT1 _ _) (Vector.cons _ topic1%Field _ .. (Vector.cons _ topicn%Field _ (Vector.nil _)) ..))) (at level 70, arguments at level 60) : Topic_scope.
 
 (* Notation to automatically inject subtopics into TopicIDs in SubMessage*)
 Delimit Scope SubMessage_scope with SubMessage.
 
 Notation "[ msg1 ; .. ; msgn ]" :=
   (cons (``(``(msg1%string))) .. (cons (``(``(msgn%string))) nil) ..) : SubMessage_scope.
-
-Global Arguments SubMessage {Topics topics} subtopics%SubMessage msg.
 
 Hint Extern 0 (IndexBound _ (map _ _)) =>
 progress simpl; eauto with typeclass_instances : typeclass_instances.
@@ -78,24 +76,25 @@ Notation "name '`:' type '`:=' init" :=
                        attrType2 := type |} init)
   : Struct_scope.
 
-Fixpoint BuildStruct (attrs : list (sigT (fun attr => attrType2 attr)))
-: InitTupleDom2 (map (@projT1 _  _) attrs) :=
+Fixpoint BuildStruct
+         {n}
+         (attrs : Vector.t (sigT (fun attr => attrType2 attr)) n)
+: InitTuple2Dom (BuildHeading2 (Vector.map (@projT1 _  _) attrs)) :=
   match attrs return
-        InitTupleDom2 (map (@projT1 _ _) attrs) with
-    | [ ] => ()
-    | attr :: attrs' =>
-      (projT2 attr, BuildStruct attrs')
+        InitTuple2Dom (BuildHeading2 (Vector.map (@projT1 _  _) attrs)) with
+  | Vector.nil => ()
+  | Vector.cons attr _ attrs' =>
+    icons2 (B := id) (projT2 attr) (BuildStruct attrs')
   end.
 
 Notation "'struct' '{' 'FIELDS' topic1 ; .. ; topicn '}' " :=
-  (existT InitTupleDom2 _ (BuildStruct (cons topic1%Struct .. (cons topicn%Struct nil) ..))) (at level 70, arguments at level 60) : Struct_scope.
+  (existT InitTuple2Dom _ (BuildStruct (Vector.cons _ topic1%Struct _ .. (Vector.cons _ topicn%Struct _ (Vector.nil _)) ..))) (at level 70, arguments at level 60) : Struct_scope.
 
 Notation "name '=' struc" :=
-  (existT attrType
-          {| attrName := name;
-             attrType := @Tuple2 (Build_Heading2 (projT1 struc)) |}
-          (ConstructTuple2 (Build_Heading2 (projT1 struc)) (projT2 struc))
-  )
+  (existT attrType2
+          {| attrName2 := name;
+             attrType2 := @DecTuple2 _ _ |}
+          (ConstructTuple2 (projT1 struc) (projT2 struc)))
   : Field_scope.
 
   Notation "name '{' 'TOPIC' type '}'" :=
