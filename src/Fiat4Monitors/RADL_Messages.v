@@ -240,99 +240,82 @@ Section Messages.
     (* TODO: Everything from here down. *)
     (* Support for building messages. *)
     
-    Notation CallConstructor CompADT idx :=
-      (cConstructors CompADT (ibound (indexb (Build_BoundedIndex (Bound := {| bindex := idx; indexb := _ |})))
-    Print cConstructors.
-
-    
     Definition ConstructMessage (msg : cADT (MessageADTSig)) subtopics :=
       CallConstructor msg Message_Init subtopics.
 
     (* Support for calling message getters. *)
+        Lemma BuildGetMessageMethodID_ibound
+      {n''}
+      (subtopics' : Vector.t (Fin.t n) n'')
+      : forall (idx : Fin.t n''),
+        Vector.nth (Vector.map methID (MessageSigs' subtopics'))
+                   (Fin.depair idx Fin.F1) =
+        ("Get" ++ Vector.nth TopicNames (Vector.nth subtopics' idx))%string.
+    Proof.
+      induction subtopics'.
+      - intro; inversion idx.
+      - intro; revert subtopics' IHsubtopics'; pattern n0, idx.
+        eapply Fin.rectS; simpl; intros; eauto.
+    Qed.
+
     Definition BuildGetMessageMethodID'
-               (subtopics : list (BoundedIndex topics))
-               (idx : BoundedIndex (map (fun id => bindex id) subtopics))
-    : @BoundedString (map methID (MessageSigs subtopics)).
-      refine {| bindex := ("Get" ++ (bindex (bindex idx)))%string;
-                indexb := {| ibound := 2 * ibound idx;
-                             boundi := _ |}
-             |}.
-      destruct idx as [idx [n nth_n]].
-      revert idx n nth_n; induction subtopics; intros.
-      destruct n; simpl in *; discriminate.
-      destruct n; simpl in *.
-      - unfold value; repeat f_equal.
-        destruct a as [b [m nth_m]]; simpl in *; subst.
-        unfold TopicNames; injections.
-        destruct idx as [topic [p nth_p]]; simpl in *.
-        pose proof (nth_error_map _ _ _ nth_p).
-        cut (exists topic'', nth_error Topics p = Some topic'' /\ Topic_Name topic'' = topic ).
-        intros.
-        eapply nth_Bounded_ind; intros.
-        subst filtered_var program_branch_0 program_branch_1; simpl.
-        destruct_ex; intuition.
-        rewrite H1; eauto.
-        revert H; clear.
-        destruct (nth_error Topics p); intros;
-        first [discriminate | injections; eauto].
-      - rewrite plus_comm; simpl; rewrite plus_comm.
-        eauto.
-    Defined.
+               {n''}
+               (subtopics' : Vector.t (Fin.t n) n'')
+               (idx : Fin.t n'')
+    : BoundedString (Vector.map methID (MessageSigs' subtopics')) := 
+      {| bindex := ("Get" ++ (Vector.nth TopicNames (Vector.nth subtopics' idx)))%string;
+         indexb := {| ibound := Fin.depair idx (@Fin.F1 1);
+                      boundi := BuildGetMessageMethodID_ibound subtopics' idx |}
+      |}.
 
     Definition BuildGetMessageMethodID
-               (idx : BoundedIndex (map (fun id => bindex id) LiftTopics))
-    : @BoundedString (map methID (MessageSigs LiftTopics))
+               (idx : Fin.t n')
+      : BoundedString (Vector.map methID MessageSigs)
       := BuildGetMessageMethodID' _ idx.
 
     Definition CallMessageGetMethod
-               (r : Message topics)
+               (r : Message)
                idx
-      := cMethods MessageADT (BuildGetMessageMethodID idx) r.
+      := cMethods MessageADT (ibound (indexb (BuildGetMessageMethodID idx))) r.
 
     (* Support for calling message setters. *)
-    Definition BuildSetMessageMethodID'
-             (subtopics : list (BoundedIndex topics))
-             (idx : BoundedIndex (map (fun id => bindex id) subtopics))
-  : @BoundedString (map methID (MessageSigs subtopics)).
+    Lemma BuildSetMessageMethodID_ibound
+      {n''}
+      (subtopics' : Vector.t (Fin.t n) n'')
+      : forall (idx : Fin.t n''),
+        Vector.nth (Vector.map methID (MessageSigs' subtopics'))
+                   (Fin.depair idx (Fin.FS Fin.F1)) =
+        ("Set" ++ Vector.nth TopicNames (Vector.nth subtopics' idx))%string.
     Proof.
-      refine {| bindex := ("Set" ++ (bindex (bindex idx)))%string;
-                indexb := {| ibound := 2 * ibound idx + 1;
-                             boundi := _ |}
-             |}.
-      destruct idx as [idx [n nth_n]].
-      revert idx n nth_n; induction subtopics; intros.
-      destruct n; simpl in *; discriminate.
-      destruct n; simpl in *.
-      - unfold value; repeat f_equal.
-        destruct a as [b [m nth_m]]; simpl in *; subst.
-        unfold TopicNames; injections.
-        destruct idx as [topic [p nth_p]]; simpl in *.
-        pose proof (nth_error_map _ _ _ nth_p).
-        cut (exists topic'', nth_error Topics p = Some topic'' /\ Topic_Name topic'' = topic ).
-        intros.
-        eapply nth_Bounded_ind; intros.
-        subst filtered_var program_branch_0 program_branch_1; simpl.
-        destruct_ex; intuition.
-        rewrite H1; eauto.
-        revert H; clear.
-        destruct (nth_error Topics p); intros;
-        first [discriminate | injections; eauto].
-      - rewrite plus_comm; simpl.
-        rewrite <- (IHsubtopics idx n nth_n); f_equal.
-        omega.
-    Defined.
+      induction subtopics'.
+      - intro; inversion idx.
+      - intro; revert subtopics' IHsubtopics'; pattern n0, idx.
+        eapply Fin.rectS; simpl; intros; eauto.
+    Qed.
+
+    Definition BuildSetMessageMethodID'
+               {n''}
+               (subtopics' : Vector.t (Fin.t n) n'')
+               (idx : Fin.t n'')
+    : BoundedString (Vector.map methID (MessageSigs' subtopics')) := 
+      {| bindex := ("Set" ++ (Vector.nth TopicNames (Vector.nth subtopics' idx)))%string;
+         indexb := {| ibound := Fin.depair idx (Fin.FS Fin.F1);
+                      boundi := BuildSetMessageMethodID_ibound subtopics' idx |}
+      |}.
 
     Definition BuildSetMessageMethodID
-               (idx : BoundedIndex (map (fun id => bindex id) LiftTopics))
-    : @BoundedString (map methID (MessageSigs LiftTopics))
+               (idx : Fin.t n')
+      : BoundedString (Vector.map methID MessageSigs)
       := BuildSetMessageMethodID' _ idx.
 
-    Definition CallMessageSetMethod (r : Message topics) idx :=
-      cMethods MessageADT (BuildSetMessageMethodID idx) r.
+    Definition CallMessageSetMethod
+               (r : Message)
+               idx
+      := cMethods MessageADT (ibound (indexb (BuildSetMessageMethodID idx))) r.
 
   End RADL_MessageADT.
 
-  (* Support for calling message constructors. *)
+  (* Support for calling message constructors.
 
   Fixpoint SubMessageDom
            (topics : list TopicID)
@@ -352,10 +335,10 @@ Section Messages.
   : cRep (MessageADT (map (bindex (Bound := topics)) subtopics)) :=
     cConstructors (MessageADT (map (bindex (Bound := topics)) subtopics))
                   ``Message_Init
-                  (SubMessageDom subtopics msg).
+                  (SubMessageDom subtopics msg). *)
 End Messages.
 
-Notation "r '~~>' idx " := (CallMessageGetMethod r {|bindex := ``idx; indexb := _ |} tt)
+Notation "r '~~>' idx " := (CallMessageGetMethod r {|bindex := idx |} tt)
                               (idx at level 0, at level 70).
 
 (* Notation to automatically inject subtopics into TopicIDs in SubMessage*)
@@ -364,7 +347,7 @@ Delimit Scope SubMessage_scope with SubMessage.
 Notation "[ msg1 ; .. ; msgn ]" :=
   (cons (``(``(msg1%string))) .. (cons (``(``(msgn%string))) nil) ..) : SubMessage_scope.
 
-Global Arguments SubMessage {Topics topics} subtopics%SubMessage msg.
+(*Global Arguments SubMessage {Topics topics} subtopics%SubMessage msg.*)
 
-Hint Extern 0 (IndexBound _ (map _ _)) =>
-progress simpl; eauto with typeclass_instances : typeclass_instances.
+(*Hint Extern 0 (IndexBound _ (map _ _)) =>
+progress simpl; eauto with typeclass_instances : typeclass_instances. *)

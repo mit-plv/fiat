@@ -12,7 +12,7 @@ Require Import
         Fiat.ADTNotation.BuildADTSig
         Fiat.ADTNotation.BuildADT.
 
-(* Notations for ADTs. *)
+(* Notations for Computational ADTs. *)
 
 Bind Scope cADT_Scope with cADT.
 Delimit Scope cADT_scope with cADT.
@@ -86,6 +86,8 @@ Arguments getcMethDef [_] {n} [_] _ idx%string / _ _ .
    definition and a list of method signatures,
    both indexed by their signatures. *)
 
+Definition DecoratedcADT (dSig : DecoratedADTSig) := cADT dSig.
+
 Program Definition BuildcADT
         {Rep : Type}
         {n n'}
@@ -93,11 +95,25 @@ Program Definition BuildcADT
         {methSigs : Vector.t methSig n'}
         (consDefs : ilist (B := @cConsDef Rep) consSigs)
         (methDefs : ilist (B:= @cMethDef Rep) methSigs)
-: cADT (BuildADTSig consSigs methSigs)
+: DecoratedcADT (BuildADTSig consSigs methSigs)
       := existT _ Rep {|
                   pcConstructors idx := getcConsDef consDefs idx;
                   pcMethods idx := getcMethDef methDefs idx
                 |}.
+
+Definition callcADTConstructor
+           {dSig : DecoratedADTSig}
+           (adt : DecoratedcADT dSig)
+           (idxMap : BoundedIndex (ConstructorNames dSig) -> ConstructorIndex dSig)
+           (idx : BoundedIndex (ConstructorNames dSig))
+  := cConstructors adt (idxMap idx).
+
+Definition callcADTMethod
+           {dSig : DecoratedADTSig}
+           (adt : DecoratedcADT dSig)
+           (idxMap : BoundedIndex (MethodNames dSig) -> MethodIndex dSig)
+           (idx : BoundedIndex (MethodNames dSig))
+  := cMethods adt (idxMap idx).
 
 (* Notation for ADTs built from [BuildADT]. *)
 
@@ -122,5 +138,7 @@ Notation "'cADTRep' r { cons1 , meth1 , .. , methn } " :=
      format "'cADTRep'  r  '/' '[hv  ' {  cons1 , '//' meth1 , '//' .. , '//' methn  ']' }") : ADT_scope.
 
 (* Notations for method calls. *)
-Notation CallMethod CompADT idx := (cMethods CompADT (ibound (indexb {| bindex := idx |}))).
-Notation CallConstructor CompADT idx := (cConstructors CompADT (ibound (indexb {| bindex := idx |}))).
+Notation CallMethod CompADT idx := (callcADTMethod CompADT (fun idx => ibound (indexb idx))
+                                                  {| bindex := idx |}).
+Notation CallConstructor CompADT idx := (callcADTConstructor CompADT (fun idx => ibound (indexb idx))
+                                                  {| bindex := idx |}).

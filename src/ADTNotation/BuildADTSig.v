@@ -40,21 +40,33 @@ Notation "'Constructor' id ':' dom '->' 'rep'" :=
    constructor signatures and a list of method signatures.
    This definition can be formated nicely using notations. *)
 
-Print IndexBound.
+Print ADTSig.
+
+Record DecoratedADTSig :=
+  { DecADTSig :> ADTSig;
+    NumConstructors : nat;
+    NumMethods : nat;
+    ConstructorNames : Vector.t string NumConstructors;
+    MethodNames : Vector.t string NumMethods }.
 
 Definition BuildADTSig
            {n n'}
            (consSigs : Vector.t consSig n)
            (methSigs : Vector.t methSig n')
-: ADTSig :=
-  {| ConstructorIndex := Fin.t n;
-     MethodIndex := Fin.t n';
-     ConstructorDom idx :=
-       consDom (Vector.nth consSigs idx) ;
-    MethodDomCod idx :=
-      let domcod := (Vector.nth methSigs idx)
-      in (methDom domcod, methCod domcod)
-  |}.
+: DecoratedADTSig :=
+  {| DecADTSig :=
+       {| ConstructorIndex := Fin.t n;
+          MethodIndex := Fin.t n';
+          ConstructorDom idx :=
+            consDom (Vector.nth consSigs idx);
+          MethodDomCod idx :=
+            let domcod := (Vector.nth methSigs idx)
+            in (methDom domcod, methCod domcod)
+       |};
+     NumConstructors := n;
+     NumMethods := n';
+     ConstructorNames := Vector.map consID consSigs;
+     MethodNames := Vector.map methID methSigs |}.
 
 Bind Scope ADTSig_scope with ADTSig.
 Delimit Scope ADTSig_scope with ADTSig.

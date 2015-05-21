@@ -96,21 +96,36 @@ Arguments getMethDef [_] {n} [_] _ idx%string / _ _ _ .
    to construct the signature of the ADT from these signatures.
    This definition is formated nicely using notations. *)
 
-Program Definition BuildADT
+Definition DecoratedADT (dSig : DecoratedADTSig) := ADT dSig.
+
+Definition BuildADT
         {Rep : Type}
         {n n'}
         {consSigs : Vector.t consSig n}
         {methSigs : Vector.t methSig n'}
         (consDefs : ilist (B := @consDef Rep) consSigs)
         (methDefs : ilist (B := @methDef Rep) methSigs)
-: ADT (BuildADTSig consSigs methSigs)
-      := {|
-          Rep := Rep;
-          Constructors idx := getConsDef consDefs idx;
-          Methods idx := getMethDef methDefs idx
-          |}.
+  : DecoratedADT (BuildADTSig consSigs methSigs)
+  := @Build_ADT (BuildADTSig consSigs methSigs)
+               Rep
+               (getConsDef consDefs)
+               (getMethDef methDefs).
 
 (* Notation for ADTs built from [BuildADT]. *)
+
+Definition callADTConstructor
+           {dSig : DecoratedADTSig}
+           (adt : DecoratedADT dSig)
+           (idxMap : BoundedIndex (ConstructorNames dSig) -> ConstructorIndex dSig)
+           (idx : BoundedIndex (ConstructorNames dSig))
+  := Constructors adt (idxMap idx).
+
+Definition callADTMethod
+           {dSig : DecoratedADTSig}
+           (adt : DecoratedADT dSig)
+           (idxMap : BoundedIndex (MethodNames dSig) -> MethodIndex dSig)
+           (idx : BoundedIndex (MethodNames dSig))
+  := Methods adt (idxMap idx).
 
 Notation "'ADTRep' r { cons1 , meth1 , .. , methn } " :=
   (let _ := {| repHint := r |} in
@@ -132,5 +147,7 @@ Notation "'ADTRep' r { cons1 , meth1 , .. , methn } " :=
      format "'ADTRep'  r  '/' '[hv  ' {  cons1 , '//' meth1 , '//' .. , '//' methn  ']' }") : ADT_scope.
 
 (* Notations for method calls. *)
-Notation callMeth adt idx := (Methods adt (ibound (indexb {| bindex := idx |}))).
-Notation callCons adt idx := (Constructors adt (ibound (indexb {| bindex := idx |}))).
+Notation callMeth adt idx := (callADTMethod adt (fun idx => ibound (indexb idx))
+                                             {| bindex := idx |}).
+Notation callCons adt idx := (callADTConstructor adt (fun idx => ibound (indexb idx))
+                                                  {| bindex := idx |}).
