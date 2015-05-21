@@ -141,7 +141,8 @@ pbh = pbh' '+' 0
   Definition paren_balanced_hiding'_step (ch : Char) (pbh_rest : nat -> bool) (start_level : nat)
   : bool
     := if is_bin_op ch
-       then (Compare_dec.gt_dec start_level 0 : bool)
+       then ((Compare_dec.gt_dec start_level 0)
+               && pbh_rest start_level)%bool
        else if is_open ch
             then pbh_rest (S start_level)
             else if is_close ch
@@ -158,7 +159,7 @@ pbh = pbh' '+' 0
          start_level.
 
   Lemma paren_balanced_hiding'_nil (str : String) (H : length str = 0)
-  : paren_balanced_hiding' str = fun _ => true
+  : paren_balanced_hiding' str = fun _ => true.
   Proof.
     apply fold_nil; assumption.
   Qed.
