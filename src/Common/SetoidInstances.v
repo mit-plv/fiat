@@ -69,3 +69,7 @@ Global Instance snd_eq_Proper {A B} : Proper (eq ==> eq) (@snd A B).
 Proof.
   repeat intro; subst; reflexivity.
 Qed.
+
+Global Instance: Proper (eq ==> Basics.flip Basics.impl) is_true | 1 := _.
+Global Instance: Proper (eq ==> Basics.impl) is_true | 1 := _.
+Global Instance: Proper (eq ==> iff) is_true | 0 := _.
