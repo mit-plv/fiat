@@ -1001,20 +1001,20 @@ Module RangeTreeBag (X : OrderedType).
         unfold eq_key_elt, Raw.Proofs.PX.eqke in *; intuition.
     Qed.
 
-    Lemma RangeTreeBag_BagDeleteCorrect' :
-      forall (container : RangeTreeBag) keys searchterm,
+    Lemma RangeTreeBag_BagDeleteUpdateCorrect' :
+      forall (container : RangeTreeBag) keys f,
         Permutation
           (List.map snd
                     (Raw.elements
                        (fold_right
                           (fun (y : TKey * BagType) (x : RangeTreeBag) =>
-                             add (fst y) (snd (bdelete (snd y) searchterm)) x) container
+                             add (fst y) (f (snd y)) x) container
                           (RangeTreeBag_btraverse container keys))))
           (List.map snd
                     (List.map
                        (fun (key_bag : TKey * BagType) =>
                           if Range_InRange keys (fst key_bag) then
-                            (fst key_bag, snd (bdelete (snd key_bag) searchterm))
+                            (fst key_bag, f (snd key_bag))
                           else
                             key_bag)
                     (RangeTreeBag_bcollect container))).
@@ -1055,7 +1055,7 @@ Module RangeTreeBag (X : OrderedType).
                       (Raw.elements
                          (fold_right
                             (fun (y : TKey * BagType) (x : RangeTreeBag) =>
-                               add (fst y) (snd (bdelete (snd y) searchterm)) x) RangeTreeBag_bempty
+                               add (fst y) (f (snd y)) x) RangeTreeBag_bempty
                             (RangeTreeBag_btraverse container keys)))).
           {
             pose proof (fun k b => RangeTreeBag_btraverse_correct container keys k b) as Htraverse.
@@ -1063,7 +1063,8 @@ Module RangeTreeBag (X : OrderedType).
             remember (RangeTreeBag_btraverse container keys) as ls. clear Heqls.
             generalize dependent container.
             induction ls; intros.
-            - simpl in *. admit.
+            - simpl in *. rewrite Raw.Proofs.elements_mapsto in H.
+              specialize (proj2 (Htraverse k v) (conj H eq)). inversion 1.
             - destruct a. inversion Htraverse_nodup; subst.
               specialize (IHls H3 (remove t0 container)); clear H3.
               simpl in H. rewrite Raw.Proofs.elements_mapsto in *.
@@ -1120,7 +1121,7 @@ Module RangeTreeBag (X : OrderedType).
             (eqA := eq_key_elt (elt:=BagType))
             (ls' := (List.filter (fun x : TKey * BagType => Range_InRange keys (fst x)) (RangeTreeBag_btraverse container keys))) in H.
           pose proof (filter_map (fun x => Range_InRange keys (fst x))
-                                 (fun x => (fst x, snd (bdelete (snd x) searchterm))) (RangeTreeBag_btraverse container keys));
+                                 (fun x => (fst x, f (snd x))) (RangeTreeBag_btraverse container keys));
             simpl in H0; fold TKey in *; rewrite <- H0 in H; clear H0.
           rewrite filter_InA in H.
           - destruct H as [H_in H_range].
@@ -1156,7 +1157,7 @@ Module RangeTreeBag (X : OrderedType).
           - apply eqke_equiv.
           - unfold Proper, respectful; intros.
             unfold eq_key_elt, Raw.Proofs.PX.eqke in *; intuition; simpl.
-            f_equiv; f_equiv; assumption.
+            f_equiv. assumption.
           - intro. replace a with ((fst a, snd a)). apply InA_ct.
             destruct a; auto.
         }
@@ -1205,7 +1206,7 @@ Module RangeTreeBag (X : OrderedType).
                          add (fst y) (snd (bdelete (snd y) searchterm)) x)
                       [] container ls) as snd_foldr.
         fold RangeTreeBag in *; rewrite snd_foldr; clear snd_foldr; subst.
-        rewrite RangeTreeBag_BagDeleteCorrect'.
+        rewrite RangeTreeBag_BagDeleteUpdateCorrect' with (f := fun x => snd (bdelete x searchterm)).
 
         pose proof (fun k b => proj1 (RangeTreeBag_bcollect_correct container k b)) as bcol_correct.
         remember (RangeTreeBag_bcollect container) as ls; clear Heqls.
@@ -1297,7 +1298,124 @@ Module RangeTreeBag (X : OrderedType).
       BagUpdateCorrect RangeTreeBag_RepInv RangeTreeBag_ValidUpdate RangeTreeBag_bfind
                        RangeTreeBag_bfind_matcher RangeTreeBag_benumerate bupdate_transform RangeTreeBag_bupdate.
     Proof.
-    Admitted.
+            hnf; intros.
+      unfold RangeTreeBag_bupdate, RangeTreeBag_benumerate, RangeTreeBag_bfind_matcher.
+      unfold Values, elements. change (Raw.elements container) with (RangeTreeBag_bcollect container.(this)).
+      unfold RangeTreeBag_RepInv in containerCorrect.
+      destruct search_term as [ keys searchterm ].
+      simpl. split.
+      {
+        rewrite partition_filter_neq. rewrite partition_filter_eq.
+        rewrite !flatten_filter.
+
+        remember (RangeTreeBag_btraverse container keys) as ls.
+        pose proof (snd_fold_right
+                      (fun (y : TKey * BagType) (x : list TItem * RangeTreeBag) =>
+                         (fst x) ++ (fst (bupdate (snd y) searchterm update_term)))
+                      (fun (y : TKey * BagType) (x : RangeTreeBag) =>
+                         add (fst y) (snd (bupdate (snd y) searchterm update_term)) x)
+                      [] container ls) as snd_foldr.
+        fold RangeTreeBag in *; rewrite snd_foldr; clear snd_foldr; subst.
+        rewrite RangeTreeBag_BagDeleteUpdateCorrect' with (f := fun x => snd (bupdate x searchterm update_term)).
+
+        pose proof (fun k b => proj1 (RangeTreeBag_bcollect_correct container k b)) as bcol_correct.
+        remember (RangeTreeBag_bcollect container) as ls; clear Heqls.
+
+        induction ls as [ | [ key bag ] ls' ]. reflexivity.
+        apply InA_ind_helper in bcol_correct; destruct bcol_correct as [ bcol_hd bcol_tl ].
+        simpl; rewrite (IHls' bcol_tl); clear bcol_tl IHls'.
+        destruct (containerCorrect key bag bcol_hd) as [ cc_rep cc_eq ]; clear bcol_hd containerCorrect.
+        rewrite app_assoc. rewrite map_app. rewrite app_assoc. f_equiv.
+        assert (forall X (a b c : list X), Permutation ((a ++ b) ++ c) ((a ++ c) ++ b)) as E.
+        {
+          intros. induction a. simpl. apply Permutation_app_comm.
+          simpl. constructor. auto.
+        }
+        rewrite E; clear E; f_equiv.
+        destruct valid_update as [ valid_update1 valid_update2 ].
+
+        pose proof (bupdate_correct bag searchterm update_term cc_rep valid_update1) as [ bupd_c _ ].
+        remember (benumerate bag) as xs.
+        destruct (Range_InRange keys key) eqn: eqk; simpl.
+        {
+          rewrite bupd_c, partition_filter_neq, partition_filter_eq; clear bupd_c.
+          clear Heqxs.
+          induction xs. reflexivity. simpl.
+          apply InList_ind_helper in cc_eq; destruct cc_eq as [ cc_eq_hd cc_eq_tl ].
+          specialize (IHxs cc_eq_tl); clear cc_eq_tl.
+          erewrite InRange_Proper; eauto; clear cc_eq_hd.
+          rewrite eqk; simpl.
+          destruct (bfind_matcher searchterm a) eqn: eqb; simpl.
+          assert (forall X x (a b : list X), Permutation (a ++ x :: b) (x :: a ++ b)) as E.
+          {
+            intros. induction a0. auto.
+            simpl. rewrite perm_swap. auto.
+          }
+          rewrite !E. auto. auto.
+        }
+        {
+          rewrite <- Heqxs; clear Heqxs. clear bupd_c.
+          induction xs. reflexivity. simpl.
+          apply InList_ind_helper in cc_eq; destruct cc_eq as [ cc_eq_hd cc_eq_tl ].
+          specialize (IHxs cc_eq_tl); clear cc_eq_tl.
+          erewrite InRange_Proper; eauto; clear cc_eq_hd.
+          rewrite eqk; simpl. eauto.
+        }
+      }
+      {
+        rewrite partition_filter_eq.
+        rewrite filter_and.
+        rewrite !flatten_filter.
+
+        remember (RangeTreeBag_btraverse container keys) as ls.
+        pose proof (fst_fold_right
+                      (fun (y : TKey * BagType) (x : list TItem) =>
+                         x ++ (fst (bupdate (snd y) searchterm update_term)))
+                      (fun (y : TKey * BagType) (x : list TItem * RangeTreeBag) =>
+                         add (fst y) (snd (bupdate (snd y) searchterm update_term)) (snd x))
+                      [] container ls) as fst_foldr.
+        fold RangeTreeBag in *. rewrite fst_foldr. clear fst_foldr.
+
+        pose proof (Common.fold_right_map
+                      snd
+                      (fun (y : BagType) (x : list TItem) => x ++ fst (bupdate y searchterm update_term))
+                      [] ls) as map_foldr; unfold compose in map_foldr.
+        rewrite <- map_foldr; clear map_foldr.
+        subst.
+        rewrite RangeTreeBag_btraverse_bcollect.
+
+        pose proof bupdate_correct as bupd_correct; unfold BagUpdateCorrect in bupd_correct.
+        pose proof (fun key bag => proj1 (RangeTreeBag_bcollect_correct container key bag)) as bcol_correct.
+        remember (RangeTreeBag_bcollect container) as ls; clear Heqls.
+
+        induction ls as [ | [ key bag ] ls' ].
+        constructor.
+        apply InA_ind_helper in bcol_correct; destruct bcol_correct as [ bcol_hd bcol_tl ].
+        specialize (IHls' bcol_tl); clear bcol_tl.
+        specialize (containerCorrect _ _ bcol_hd); destruct containerCorrect as [ rep xeq ]; clear bcol_hd.
+        simpl. rewrite <- IHls'. clear IHls'.
+        destruct valid_update as [ valid_update_1 valid_update_2 ].
+        specialize (bupd_correct bag searchterm update_term rep valid_update_1); destruct bupd_correct as [ _ bdel_correct ].
+        remember (benumerate bag) as xs. clear Heqxs.
+
+        destruct (Range_InRange keys key) eqn: eqk; simpl.
+        - rewrite Permutation_app_comm. f_equiv.
+          rewrite bdel_correct. clear bdel_correct.
+          rewrite partition_filter_eq.
+          induction xs. reflexivity. simpl.
+          pose proof (InList_ind_helper _ xeq) as [ xeq_h xeq_t ]; clear xeq.
+          specialize (IHxs xeq_t); clear xeq_t.
+          erewrite InRange_Proper; eauto.
+          rewrite eqk. simpl. destruct (bfind_matcher searchterm a).
+          constructor. assumption. assumption.
+        - assert (List.filter (bfind_matcher searchterm) (List.filter (fun a : TItem => Range_InRange keys (projection a)) xs) = []).
+          rewrite filter_commute.
+          apply filter_all_false; intros.
+          rewrite InRange_Proper with (v' := key); auto.
+          apply xeq. rewrite filter_In in H. tauto.
+          rewrite H. reflexivity.
+      }
+    Qed.
   End RangeTreeDefinition.
 
   Global Instance RangeTreeBagAsBag
