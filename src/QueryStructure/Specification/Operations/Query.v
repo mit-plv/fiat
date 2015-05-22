@@ -67,6 +67,10 @@ Definition Query_Where
 Notation "'Where' p bod" :=
   (Query_Where p%Tuple bod) : QuerySpec_scope.
 
+Notation "x <= y " :=
+  (InRange x (None, Some y)) : QuerySpec_scope.
+
+
 (* The spec for a count of the number of tuples in a relation. *)
 Definition Count {A} (rows : Comp (list A)) : Comp nat :=
   l <- rows;

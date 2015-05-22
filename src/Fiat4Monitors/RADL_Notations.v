@@ -45,8 +45,8 @@ Definition false := IL.natToWord' 8 0.
 Definition true := IL.natToWord' 8 1.
 
 Reserved Notation "name '`:' type '`:=' init"
-      (at level 60,
-       arguments at next level).
+         (at level 60,
+          arguments at next level).
 
 Notation "name '`:' type '`:=' init" :=
   (existT attrType2 {| attrName2 := name;
@@ -79,7 +79,7 @@ Notation "name '`:' type '`:=' init" :=
 Fixpoint BuildStruct
          {n}
          (attrs : Vector.t (sigT (fun attr => attrType2 attr)) n)
-: InitTuple2Dom (BuildHeading2 (Vector.map (@projT1 _  _) attrs)) :=
+  : InitTuple2Dom (BuildHeading2 (Vector.map (@projT1 _  _) attrs)) :=
   match attrs return
         InitTuple2Dom (BuildHeading2 (Vector.map (@projT1 _  _) attrs)) with
   | Vector.nil => ()
@@ -97,24 +97,44 @@ Notation "name '=' struc" :=
           (ConstructTuple2 (projT1 struc) (projT2 struc)))
   : Field_scope.
 
-  Notation "name '{' 'TOPIC' type '}'" :=
-    (Build_RADL_Topic name type) (at level 0, type at level 0)
-    : Topic_scope.
+Notation "name '{' 'TOPIC' type '}'" :=
+  (Build_RADL_Topic name type) (at level 0, type at level 0)
+  : Topic_scope.
 
-  Class NetworkTopicsHint {NumNetworkTopics} :=
-    { NetworkTopics : Vector.t string NumNetworkTopics }.
+Class NetworkTopicNamesHint {NumNetworkTopics} :=
+  { NetworkTopicNames : Vector.t string NumNetworkTopics }.
 
-  Notation "[ msg1 ; .. ; msgn ]" :=
-    (Vector.cons _ (ibound (indexb (Build_BoundedIndex _ NetworkTopics msg1%string _))) _ .. (Vector.cons _ (ibound (indexb (Build_BoundedIndex _ NetworkTopics msgn%string _))) _ (Vector.nil _)) ..) : Node_scope.
+Class NetworkTopicTypesHint {NumNetworkTopics} :=
+  { NetworkTopicTypes : Vector.t Type NumNetworkTopics }.
 
-  Notation "[]" := (Vector.nil _ ) : Node_scope.
+Notation "[ msg1 ; .. ; msgn ]" :=
+  (Vector.cons _ (ibound (indexb (Build_BoundedIndex _ NetworkTopicNames msg1%string _))) _ .. (Vector.cons _ (ibound (indexb (Build_BoundedIndex _ NetworkTopicNames msgn%string _))) _ (Vector.nil _)) ..) : Node_scope.
 
-  Notation "'node' 'using' Topics '{' 'DEFS' definitions 'PUBLISHES' publications 'SUBSCRIBES' subscriptions 'PERIOD' period 'PATH' path 'CXX' '{' cstuff '}' '}'" :=
-    (let _ : NetworkTopicsHint := {| NetworkTopics := Vector.map Topic_Name Topics |} in
-     ({| RADL_Publications := publications%Topic%vector;
-         RADL_Subscriptions := subscriptions%Topic%vector;
-         RADL_Defs := definitions%list;
-         RADL_Period := period;
-         RADL_Path := path;
-         RADL_CXX := cstuff |}))
-      (Topics at level 0, at level 0) : Node_scope.
+Notation "[]" := (Vector.nil _ ) : Node_scope.
+
+Notation "'node' 'using' Topics '{' 'DEFS' definitions 'PUBLISHES' publications 'SUBSCRIBES' subscriptions 'PERIOD' period 'PATH' path 'CXX' '{' cstuff '}' '}'" :=
+  (let _ : NetworkTopicNamesHint := {| NetworkTopicNames := Vector.map Topic_Name Topics |} in
+   ({| RADL_Publications := publications%Topic%vector;
+       RADL_Subscriptions := subscriptions%Topic%vector;
+       RADL_Defs := definitions%list;
+       RADL_Period := period;
+       RADL_Path := path;
+       RADL_CXX := cstuff |}))
+    (Topics at level 0, at level 0) : Node_scope.
+
+Notation "'monitor' 'node' 'for' Node 'using' Topics '{' 'MODELED' rep 'PUBLISHES' publications 'SUBSCRIBES' subscriptions '}'" :=
+  (let _ : NetworkTopicNamesHint := {| NetworkTopicNames := Vector.map Topic_Name Topics |} in
+   ({| RADLM_Rep := rep;
+       RADLM_MonitoredNode := Node;
+       RADLM_Publications := publications%Topic%vector;
+       RADLM_Subscriptions := subscriptions%Topic%vector |}))
+    (Topics at level 0, at level 0) : Node_scope.
+
+Notation "r '~~>' idx " := (
+                            let m := _ : Vector.t (Fin.t _) _ in
+                            CallMessageGetMethod NetworkTopicTypes
+                                                 NetworkTopicNames
+                                                 m r
+                                                 (ibound (indexb ((@Build_BoundedIndex (Fin.t _) _ m (ibound (indexb ((@Build_BoundedIndex string _ NetworkTopicNames idx%string _)))) (_ : IndexBound _ m)))))
+                                                                                      tt)
+                             (idx at level 0, at level 70) : Node_scope.

@@ -337,9 +337,6 @@ Section Messages.
                   (SubMessageDom subtopics msg). *)
 End Messages.
 
-Notation "r '~~>' idx " := (CallMessageGetMethod r {|bindex := idx |} tt)
-                              (idx at level 0, at level 70).
-
 (* Notation to automatically inject subtopics into TopicIDs in SubMessage*)
 Delimit Scope SubMessage_scope with SubMessage.
 

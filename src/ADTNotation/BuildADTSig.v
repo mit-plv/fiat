@@ -40,8 +40,6 @@ Notation "'Constructor' id ':' dom '->' 'rep'" :=
    constructor signatures and a list of method signatures.
    This definition can be formated nicely using notations. *)
 
-Print ADTSig.
-
 Record DecoratedADTSig :=
   { DecADTSig :> ADTSig;
     NumConstructors : nat;

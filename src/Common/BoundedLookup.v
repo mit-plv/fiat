@@ -143,8 +143,8 @@ Ltac Build_nth_IndexBound A a As As' m :=
   match As' with
   | @Vector.cons _ ?a' ?len ?As'' =>
     (let check := constr:(eq_refl : a = a') in (* Check if the terms match *)
-     exact (let a' := a in @Build_IndexBound A _ a' As (Fin.R m (@Fin.F1 len))
-                                            (@eq_refl A a')))
+     exact (@Build_IndexBound A _ a As (Fin.R m (@Fin.F1 len))
+                              (@eq_refl A a)))
       || Build_nth_IndexBound A a As As'' (S m)
   end.
 Unset Ltac Debug.

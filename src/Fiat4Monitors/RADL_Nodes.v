@@ -38,7 +38,7 @@ Section RADL_ADT.
       RADL_Path : string;
       RADL_CXX : list string
     }.
-  
+
   Definition radl_in_t (Node : RADL_Node) :=
     MessageADT TopicTypes TopicNames (RADL_Subscriptions Node).
   Definition radl_in_flags_t (Node : RADL_Node) :=
@@ -96,7 +96,7 @@ Section RADL_ADT.
 
   Definition RADL_Start_Step := "Start_Step".
   Definition RADL_Finish_Step := "Finish_Step".
-  
+
   Definition RADLM_ADTSig
              (MonitorNode : RADLM_Node)
              (InitDom : Type)
@@ -116,8 +116,8 @@ Section RADL_ADT.
                                             * cRep (radlm_out_flags_t MonitorNode)
                                             * cRep (radlm_monitor_out_t MonitorNode)),
         (* 2) A finish step function that examines the publications after a node's
-         step function has been called, potentially modifying the publications and publishing 
-         its own topics. *)                                      
+         step function has been called, potentially modifying the publications and publishing
+         its own topics. *)
         Method      RADL_Finish_Step : rep x cRep (radlm_out_t MonitorNode)
                                        * cRep (radlm_out_flags_t MonitorNode)
                                       -> rep x
@@ -125,5 +125,15 @@ Section RADL_ADT.
                                               * cRep (radlm_out_flags_t MonitorNode)
                                               * cRep (radlm_monitor_out_t MonitorNode))
       }.
-  
+
 End RADL_ADT.
+
+Definition RADL_ADT {n} Topics Node :=
+  ADT (@RADL_ADTSig n (Vector.map Topic_Type Topics)
+                    (Vector.map Topic_Name Topics)
+                    Node).
+
+Definition RADLM_ADT {n} Topics MonitorNode InitDom :=
+  ADT (@RADLM_ADTSig n (Vector.map Topic_Type Topics)
+                     (Vector.map Topic_Name Topics)
+                     MonitorNode InitDom).
