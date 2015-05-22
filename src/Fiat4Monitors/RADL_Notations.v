@@ -101,14 +101,20 @@ Notation "name '=' struc" :=
     (Build_RADL_Topic name type) (at level 0, type at level 0)
     : Topic_scope.
 
-  Notation "[ msg1 ; .. ; msgn ]" :=
-  (cons (``(msg1%string)) .. (cons ``(msgn%string) nil) ..) : Node_scope.
+  Class NetworkTopicsHint {NumNetworkTopics} :=
+    { NetworkTopics : Vector.t string NumNetworkTopics }.
 
-  Notation "'node' '{' 'DEFS' definitions 'PUBLISHES' publications 'SUBSCRIBES' subscriptions 'PERIOD' period 'PATH' path 'CXX' '{' cstuff '}' '}'" :=
-    {| RADL_Publications := publications%Topic;
-       RADL_Subscriptions := subscriptions%Topic;
-       RADL_Defs := definitions;
-       RADL_Period := period;
-       RADL_Path := path;
-       RADL_CXX := cstuff |}
-      (at level 0) : Node_scope.
+  Notation "[ msg1 ; .. ; msgn ]" :=
+    (Vector.cons _ (ibound (indexb (Build_BoundedIndex _ NetworkTopics msg1%string _))) _ .. (Vector.cons _ (ibound (indexb (Build_BoundedIndex _ NetworkTopics msgn%string _))) _ (Vector.nil _)) ..) : Node_scope.
+
+  Notation "[]" := (Vector.nil _ ) : Node_scope.
+
+  Notation "'node' 'using' Topics '{' 'DEFS' definitions 'PUBLISHES' publications 'SUBSCRIBES' subscriptions 'PERIOD' period 'PATH' path 'CXX' '{' cstuff '}' '}'" :=
+    (let _ : NetworkTopicsHint := {| NetworkTopics := Vector.map Topic_Name Topics |} in
+     ({| RADL_Publications := publications%Topic%vector;
+         RADL_Subscriptions := subscriptions%Topic%vector;
+         RADL_Defs := definitions%list;
+         RADL_Period := period;
+         RADL_Path := path;
+         RADL_CXX := cstuff |}))
+      (Topics at level 0, at level 0) : Node_scope.

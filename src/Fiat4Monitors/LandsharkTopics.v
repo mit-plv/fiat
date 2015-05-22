@@ -260,6 +260,8 @@ t__goal : topic { FIELDS
   Definition pan := "pan".
   Definition tilt := "tilt".
 
+  Import Coq.Vectors.VectorDef.VectorNotations.
+
   Definition Landshark_Topics :=
     [ (* base topics *)
       battery { TOPIC t__base_battery_status };
@@ -291,6 +293,6 @@ t__goal : topic { FIELDS
       (* two moog topics to which paintball subscribes *)
       pan { TOPIC t__teleop_moog_pan (*MAXLATENCY 10msec*)};
       tilt { TOPIC t__teleop_moog_tilt (*MAXLATENCY 10msec*)}
-    ].
+    ]%vector.
 
 End Topics.

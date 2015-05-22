@@ -17,19 +17,19 @@ Require Import
 Section Nodes.
 
   (* Five example node definitions. *)
-  Require Import Fiat.Fiat4Monitors.RADL_Notations.
+  Import Fiat.Fiat4Monitors.RADL_Notations.
   Open Scope Node_scope.
 
-  Definition landshark_base : RADL_Node Landshark_Topics :=
-    node { DEFS ["serial_number: uint64 64976"]
+  Definition landshark_base : RADL_Node :=
+    node using Landshark_Topics { DEFS ["serial_number: uint64 64976"]
            PUBLISHES [battery; encoder; actuator; status; landshark_base_report]
            SUBSCRIBES [base; estop]
            PERIOD "global.joystick_base"
            PATH "src/landshark_base"
            CXX { ["LIB"; "usb4_lib"; "PATH"; "src"; "HEADER"; "LandsharkBase.h"; "CLASS"; "LandsharkBase"; "FILENAME"; "LandsharkBase.cpp"; "usdigital.c"; "LIB"; "boostlib"] } }.
 
-  Definition landshark_ocu : RADL_Node Landshark_Topics :=
-    node { DEFS ["XBOX_WIRED: uint8 1";
+  Definition landshark_ocu : RADL_Node :=
+    node using Landshark_Topics { DEFS ["XBOX_WIRED: uint8 1";
                   "XBOX_WIRELESS: uint8 2";
                   "device: string '/dev/xbox_wired/js0'";
                   "jstype = XBOX_WIRED";
@@ -43,8 +43,8 @@ Section Nodes.
            PATH "src/debug/landshark_teleop_step"
            CXX { ["LIB"; "boostlib"; "PATH"; "src"; "HEADER"; "LandsharkJoystick.h"; "CLASS"; "LandsharkJoystick"; "FILENAME"; "LandsharkJoystick.cpp"] } }.
 
-  Definition landshark_paintball : RADL_Node Landshark_Topics :=
-    node {
+  Definition landshark_paintball : RADL_Node :=
+    node using Landshark_Topics {
         DEFS ["ip_address: string '192.168.15.78'";
                "ip_port: uint16 23"]
         PUBLISHES [landshark_paintball_report]
@@ -53,8 +53,8 @@ Section Nodes.
         PATH "src/landshark_paintball"
         CXX { ["PATH"; "src"; "HEADER"; "LandsharkPaintball.h"; "CLASS"; "LandsharkPaintball"; "FILENAME"; "LandsharkPaintball.cpp"; "LIB"; "boostlib"] } }.
 
-  Definition landshark_turret : RADL_Node Landshark_Topics :=
-    node {
+  Definition landshark_turret : RADL_Node :=
+    node using Landshark_Topics {
         DEFS ["ip_address: string '192.168.15.77'"]
         PUBLISHES [status_pan; status_tilt;
                    landshark_turret_report]
@@ -65,9 +65,9 @@ Section Nodes.
               "LandsharkTurret"; "FILENAME"; "LandsharkTurret.cpp";
               "LIB"; "dmclnxlib"; "boostlib"]} }.
 
-  Definition health_monitor : RADL_Node Landshark_Topics :=
-    node {
-        DEFS []
+  Definition health_monitor : RADL_Node :=
+    node using Landshark_Topics {
+        DEFS [ ]
         PUBLISHES []
         SUBSCRIBES [landshark_base_report; landshark_paintball_report;
                     landshark_turret_report; ocu_teleop_report]
