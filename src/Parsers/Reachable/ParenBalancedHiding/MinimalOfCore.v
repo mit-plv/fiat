@@ -32,7 +32,7 @@ Section cfg.
              {valid0 n0}
              {valid n pats}
              (Hsub : sub_nonterminals_listT valid valid0)
-             (Hle : n <= n0)
+             (Hle : implb n n0)
              (H : generic_pbh'_productions G transform1 valid n pats)
     : generic_pbh'_productions G transform2 valid0 n0 pats
     with expand_generic_pbh'_production
@@ -43,19 +43,23 @@ Section cfg.
            (H : generic_pbh'_production G transform1 valid n pat)
          : generic_pbh'_production G transform2 valid0 n0 pat.
     Proof.
-      { simpl in *; destruct H; [ left | right ]; eauto. }
+      { simpl in *; destruct H; [ left | right ]; eauto; [].
+        destruct_head bool; unfold is_true in *; try congruence;
+        eauto. }
       { simpl in *; destruct H; [ constructor 1 | constructor 2 | constructor 3 ]; eauto.
-        { eapply expand_generic_pbh'_productions; [ .. | eassumption ]; try apply transform12; trivial. }
+        { eapply expand_generic_pbh'_productions; [ .. | eassumption ]; try apply transform12; trivial.
+          destruct start_level, n0; try reflexivity.
+          omega. }
         { eapply pbh_check_level_le; eassumption. }
-        { eapply expand_generic_pbh'_production; [ .. | eassumption ]; trivial.
-          { rewrite <- Hle; reflexivity. } } }
+        { eapply expand_generic_pbh'_production; [ .. | eassumption ]; trivial; [].
+          rewrite <- Hle; reflexivity. } }
     Defined.
 
     Fixpoint expand_size_of_pbh'_productions
              {valid0 n0}
              {valid n pats}
              (Hsub : sub_nonterminals_listT valid valid0)
-             (Hle : n <= n0)
+             (Hle : implb n n0)
              (H : generic_pbh'_productions G transform1 valid n pats)
     : size_of_pbh'_productions (expand_generic_pbh'_productions Hsub Hle H) = size_of_pbh'_productions H
     with expand_size_of_pbh'_production
@@ -66,8 +70,9 @@ Section cfg.
            (H : generic_pbh'_production G transform1 valid n pat)
     : size_of_pbh'_production (expand_generic_pbh'_production Hsub Hle H) = size_of_pbh'_production H.
     Proof.
-      { simpl in *; destruct H; simpl_size_of;
-        apply f_equal; eauto. }
+      { simpl in *; destruct H; simpl_size_of; trivial; eauto;
+        apply f_equal; eauto.
+        destruct_head bool; unfold is_true in *; congruence. }
       { simpl in *; destruct H; simpl_size_of; eauto using f_equal, f_equal2, eq_refl with nocore. }
     Defined.
   End expand.
@@ -78,7 +83,8 @@ Section cfg.
                  | reflexivity
                  | progress setoid_subst_rel sub_nonterminals_listT
                  | apply sub_nonterminals_listT_remove_2
-                 | intro ].
+                 | intro
+                 | progress destruct_head bool ].
 
   Definition pbh'_productions__of__minimal_pbh'_productions
              {valid0}
@@ -97,12 +103,12 @@ Section cfg.
   Section minimize.
     Context {valid0 : nonterminals_listT}.
 
-    Let alt_option start_level h valid
+    Let alt_option guarded h valid
       := { nt : _ & (is_valid_nonterminal valid nt = false /\ is_valid_nonterminal valid0 nt)
-                    * { p : pbh'_productions G valid0 start_level (Lookup G nt)
+                    * { p : pbh'_productions G valid0 guarded (Lookup G nt)
                             & (size_of_pbh'_productions p < h) } }%type.
 
-    Lemma not_alt_all {start_level h} (ps : alt_option h start_level valid0)
+    Lemma not_alt_all {guarded h} (ps : alt_option guarded h valid0)
     : False.
     Proof.
       destruct ps as [ ? [ H' _ ] ].
@@ -110,16 +116,16 @@ Section cfg.
       congruence.
     Qed.
 
-    Definition alt_all_elim {start_level h T} (ps : T + alt_option h start_level valid0)
+    Definition alt_all_elim {guarded h T} (ps : T + alt_option guarded h valid0)
     : T.
     Proof.
       destruct ps as [|ps]; [ assumption | exfalso ].
       eapply not_alt_all; eassumption.
     Defined.
 
-    Definition expand_alt_option' {start_level start_level' h h' valid valid'}
-               (Hs : start_level <= start_level') (H : h <= h') (H' : sub_nonterminals_listT valid' valid)
-    : alt_option start_level h valid -> alt_option start_level' h' valid'.
+    Definition expand_alt_option' {guarded guarded' h h' valid valid'}
+               (Hs : implb guarded guarded') (H : h <= h') (H' : sub_nonterminals_listT valid' valid)
+    : alt_option guarded h valid -> alt_option guarded' h' valid'.
     Proof.
       hnf in H'; unfold alt_option.
       repeat match goal with
@@ -150,9 +156,9 @@ Section cfg.
       intros ??????; subst; assumption.
     Defined.
 
-    Definition expand_alt_option {start_level start_level' h h' valid valid'}
-               (Hs : start_level <= start_level') (H : h < h') (H' : sub_nonterminals_listT valid' valid)
-    : alt_option start_level h valid -> alt_option start_level' h' valid'.
+    Definition expand_alt_option {guarded guarded' h h' valid valid'}
+               (Hs : implb guarded guarded') (H : h < h') (H' : sub_nonterminals_listT valid' valid)
+    : alt_option guarded h valid -> alt_option guarded' h' valid'.
     Proof.
       apply expand_alt_option'; try assumption.
       apply Lt.lt_le_weak; assumption.
@@ -160,13 +166,13 @@ Section cfg.
 
     Section wf_parts.
       Let of_item_T' h
-          (valid : nonterminals_listT) (n : nat) {nt : string}
-          (p : pbh'_productions G valid0 n (Lookup G nt))
+          (valid : nonterminals_listT) (guarded : bool) {nt : string}
+          (p : pbh'_productions G valid0 guarded (Lookup G nt))
         := forall (p_small : size_of_pbh'_productions p < h)
                   (pf : sub_nonterminals_listT (remove_nonterminal valid nt) valid0),
-             ({ p' : minimal_pbh'_productions G (remove_nonterminal valid nt) n (Lookup G nt)
+             ({ p' : minimal_pbh'_productions G (remove_nonterminal valid nt) guarded (Lookup G nt)
                      & (size_of_pbh'_productions (pbh'_productions__of__minimal_pbh'_productions pf p')) <= size_of_pbh'_productions p })%type
-             + alt_option (size_of_pbh'_productions p) n valid.
+             + alt_option guarded (size_of_pbh'_productions p) valid.
 
       Let of_item_T h
         := forall valid n it p, @of_item_T' h valid n it p.
@@ -178,19 +184,19 @@ Section cfg.
                   (pf : sub_nonterminals_listT valid valid0),
              ({ p' : minimal_pbh'_production G valid n pat
                      & (size_of_pbh'_production (pbh'_production__of__minimal_pbh'_production pf p') <= size_of_pbh'_production p) })%type
-                + alt_option (size_of_pbh'_production p) n valid.
+                + alt_option (match n with 0 => false | _ => true end) (size_of_pbh'_production p) valid.
 
       Let of_production_T h
         := forall valid n pat p, @of_production_T' h valid n pat p.
 
       Let of_productions_T' h
-          (valid : nonterminals_listT) (n : nat) {pats : productions Char}
-          (p : pbh'_productions G valid0 n pats)
+          (valid : nonterminals_listT) (guarded : bool) {pats : productions Char}
+          (p : pbh'_productions G valid0 guarded pats)
         := forall (p_small : size_of_pbh'_productions p < h)
                   (pf : sub_nonterminals_listT valid valid0),
-             ({ p' : minimal_pbh'_productions G valid n pats
+             ({ p' : minimal_pbh'_productions G valid guarded pats
                      & (size_of_pbh'_productions (pbh'_productions__of__minimal_pbh'_productions pf p') <= size_of_pbh'_productions p) })%type
-             + alt_option (size_of_pbh'_productions p) n valid.
+             + alt_option guarded (size_of_pbh'_productions p) valid.
 
       Let of_productions_T h
         := forall valid n pats p, @of_productions_T' h valid n pats p.
@@ -244,12 +250,14 @@ Section cfg.
                         | apply lt_helper_1'
                         | apply lt_helper_2'
                         | reflexivity
+                        | destruct start_level; reflexivity
                         | omega ]. }
             { eapply expand_alt_option'; [ .. | eassumption ];
               try solve [ apply Lt.lt_n_Sn
                         | apply lt_helper_1'
                         | apply lt_helper_2'
                         | reflexivity
+                        | destruct start_level; reflexivity
                         | omega ]. } }
           { assert (size_of_pbh'_production p' < h') by omega.
             destruct (fun k => minimal_pbh'_production__of__pbh'_production' _ _ _ p' k Hinit')
@@ -263,12 +271,28 @@ Section cfg.
               rewrite ?expand_size_of_pbh'_production, ?expand_size_of_pbh'_productions in *.
               simpl_size_of.
               apply Le.le_n_S; assumption. }
-            { eapply expand_alt_option'; [ .. | eassumption ];
-              try solve [ apply Lt.lt_n_Sn
-                        | apply lt_helper_1'
-                        | apply lt_helper_2'
-                        | reflexivity
-                        | omega ]. }
+            { unfold pbh_new_level in *.
+              Local Ltac t1 start_level :=
+                eapply expand_alt_option'; [ .. | eassumption ];
+                try solve [ apply Lt.lt_n_Sn
+                          | apply lt_helper_1'
+                          | apply lt_helper_2'
+                          | reflexivity
+                          | destruct start_level as [|[|]]; reflexivity
+                          | omega ].
+              destruct (is_bin_op ch) eqn:?; try solve [ t1 start_level ];
+                destruct (is_open ch) eqn:?; try solve [ t1 start_level ];
+                [
+                | destruct (is_close ch) eqn:?; solve [ t1 start_level ] ].
+              t1 start_level.
+t1.
+ (destruct start_level as [|[|]]; );
+                destruct (is_open ch) eqn:?; try (destruct start_level as [|[|]]; reflexivity);
+                [
+                | destruct (is_close ch) eqn:?; (destruct start_level as [|[|]]; reflexivity) ].
+              Focus 2.
+              { destruct start_level as [|[|]]; simpl; try reflexivity.
+ }
               {
 e
 `

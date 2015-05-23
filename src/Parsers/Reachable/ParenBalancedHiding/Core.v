@@ -53,20 +53,19 @@ pbh = pbh' '+' 0
   Section generic.
     Context (transform_valid : nonterminals_listT -> string -> nonterminals_listT).
 
-    (** Relation defining if a productions is maybe empty *)
-    Inductive generic_pbh'_productions : nonterminals_listT -> nat -> productions Char -> Type :=
-    | PBHHead : forall valid start_level pat pats,
-                  generic_pbh'_production valid start_level pat
-                  -> generic_pbh'_productions valid start_level (pat::pats)
-    | PBHTail : forall valid start_level pat pats,
-                  generic_pbh'_productions valid start_level pats
-                  -> generic_pbh'_productions valid start_level (pat::pats)
+    Inductive generic_pbh'_productions : nonterminals_listT -> bool -> productions Char -> Type :=
+    | PBHNil : forall valid guarded,
+                 generic_pbh'_productions valid guarded nil
+    | PBHCons : forall valid (guarded : bool) pat pats,
+                  generic_pbh'_production valid (if guarded then 1 else 0) pat
+                  -> generic_pbh'_productions valid guarded pats
+                  -> generic_pbh'_productions valid guarded (pat::pats)
     with generic_pbh'_production : nonterminals_listT -> nat -> production Char -> Type :=
     | PBHProductionNil : forall valid start_level,
                            generic_pbh'_production valid start_level nil
     | PBHProductionConsNonTerminal : forall valid start_level nt its,
                                        is_valid_nonterminal valid nt
-                                       -> generic_pbh'_productions (transform_valid valid nt) start_level (Lookup G nt)
+                                       -> generic_pbh'_productions (transform_valid valid nt) (match start_level with 0 => false | _ => true end) (Lookup G nt)
                                        -> generic_pbh'_production valid start_level its
                                        -> generic_pbh'_production valid start_level (NonTerminal nt :: its)
     | PBHProductionConsTerminal : forall valid start_level ch its,

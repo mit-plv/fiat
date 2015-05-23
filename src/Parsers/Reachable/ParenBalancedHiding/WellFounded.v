@@ -14,8 +14,8 @@ Section rel.
     Fixpoint size_of_pbh'_productions {valid n pats} (p : generic_pbh'_productions G transform_valid valid n pats)
     : nat
       := match p with
-           | PBHHead _ _ _ _ p' => S (size_of_pbh'_production p')
-           | PBHTail _ _ _ _ p' => S (size_of_pbh'_productions p')
+           | PBHNil _ _ => 0
+           | PBHCons _ _ _ _ p0 p1 => S (size_of_pbh'_production p0 + size_of_pbh'_productions p1)
          end
     with size_of_pbh'_production {valid n pat} (p : generic_pbh'_production G transform_valid valid n pat) : nat
          := match p with
@@ -28,14 +28,14 @@ End rel.
 
 Ltac simpl_size_of :=
   repeat match goal with
-           | [ |- context G[size_of_pbh'_productions (PBHHead _ ?g)] ]
-             => let G' := context G[S (size_of_pbh'_production g)] in change G'
-           | [ H : context G[size_of_pbh'_productions (PBHHead _ ?g)] |- _ ]
-             => let G' := context G[S (size_of_pbh'_production g)] in change G' in H
-           | [ |- context G[size_of_pbh'_productions (PBHTail _ ?g)] ]
-             => let G' := context G[S (size_of_pbh'_productions g)] in change G'
-           | [ H : context G[size_of_pbh'_productions (PBHTail _ ?g)] |- _ ]
-             => let G' := context G[S (size_of_pbh'_productions g)] in change G' in H
+           | [ |- context G[size_of_pbh'_productions (PBHNil _ _ _ _)] ]
+             => let G' := context G[0] in change G'
+           | [ H : context G[size_of_pbh'_productions (PBHNil _ _ _ _)] |- _ ]
+             => let G' := context G[0] in change G' in H
+           | [ |- context G[size_of_pbh'_productions (PBHCons ?g0 ?g1)] ]
+             => let G' := context G[S (size_of_pbh'_production g0 + size_of_pbh'_productions g1)] in change G'
+           | [ H : context G[size_of_pbh'_productions (PBHCons ?g0 ?g1)] |- _ ]
+             => let G' := context G[S (size_of_pbh'_production g0 + size_of_pbh'_productions g1)] in change G' in H
            | [ |- context G[size_of_pbh'_production (PBHProductionNil _ _ _ _)] ]
              => let G' := context G[0] in change G'
            | [ H : context G[size_of_pbh'_production (PBHProductionNil _ _ _ _)] |- _ ]
