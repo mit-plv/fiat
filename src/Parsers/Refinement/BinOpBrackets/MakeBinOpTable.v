@@ -128,7 +128,7 @@ Section make_table.
 
   (**
 <<
-pbh' ch n "" = (n == 0)
+pbh' ch n "" = true
 pbh' ch n (ch :: s) = n > 0 && pbh' ch n s
 pbh' ch n ('(' :: s) = pbh' ch (n + 1) s
 pbh' ch n (')' :: s) = n > 0 && pbh' ch (n - 1) s
@@ -273,8 +273,7 @@ pbh = pbh' '+' 0
     := forall offset idx,
          nth offset table None = Some idx
          -> index_points_to_binop offset idx str
-            /\ (idx = 0
-                \/ paren_balanced_hiding' (take (pred idx) (drop offset str)) level).
+            /\ paren_balanced_hiding' (take (pred idx) (drop offset str)) level.
 
   Definition list_of_next_bin_ops_spec
     := list_of_next_bin_ops_spec' 0.
@@ -308,11 +307,13 @@ pbh = pbh' '+' 0
           intros n idx H'; split;
           [ revert n idx H'
           | destruct idx as [|[|idx]];
-            [ left; reflexivity
-            | right; simpl;
+            [ simpl;
               rewrite paren_balanced_hiding'_nil by (rewrite ?take_length, ?drop_length; reflexivity);
               reflexivity
-            | right; simpl;
+            | simpl;
+              rewrite paren_balanced_hiding'_nil by (rewrite ?take_length, ?drop_length; reflexivity);
+              reflexivity
+            | simpl;
               rewrite paren_balanced_hiding'_recr; unfold paren_balanced_hiding'_step;
               erewrite (proj1 (get_0 _ _)); [ | rewrite take_take; simpl; eassumption ];
               revert n idx H' ] ];
@@ -370,7 +371,6 @@ pbh = pbh' '+' 0
           specialize (IHlen n offset idx H').
           destruct IHlen as [IHlen0 IHlen1].
           split; [ exact IHlen0 | ].
-          destruct IHlen1 as [IHlen1|IHlen1]; [ left; assumption | right ].
           rewrite drop_drop, NPeano.Nat.add_1_r in IHlen1.
           exact IHlen1. } } }
   Qed.
