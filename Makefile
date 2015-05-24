@@ -96,7 +96,8 @@ vo_closure = $(if $1,$(call vo_closure,$(sort $(filter-out $1 $2,$(call read_dep
 QUERYSTRUCTURES_UNMADE_VO := \
 	src/QueryStructure/Implementation/DataStructures/Bags/InvertedIndexBags.vo
 
-PARSERS_UNMADE_VO :=
+PARSERS_UNMADE_VO := \
+	src/Parsers/Reachable/ParenBalancedHiding/MinimalOfCore.vo
 
 FIAT4MONITORS_UNMADE_VO := \
 	src/Fiat4Monitors/HelloWorld/%.vo \
