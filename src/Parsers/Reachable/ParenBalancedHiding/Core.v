@@ -1,7 +1,9 @@
 Require Import Coq.Strings.String Coq.Lists.List Coq.Program.Program.
+Require Export Coq.Classes.RelationPairs.
 Require Import Fiat.Parsers.ContextFreeGrammar.
 Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Common.
+Require Import Fiat.Common.SetoidInstances.
 
 Set Implicit Arguments.
 
@@ -22,7 +24,7 @@ Section cfg.
 
   (**
 <<
-pbh' ch n "" = (n == 0)
+pbh' ch n "" = true
 pbh' ch n (ch :: s) = n > 0 && pbh' ch n s
 pbh' ch n ('(' :: s) = pbh' ch (n + 1) s
 pbh' ch n (')' :: s) = n > 0 && pbh' ch (n - 1) s
@@ -32,40 +34,46 @@ pbh = pbh' '+' 0
 >>
 *)
 
-  Definition pbh_check_level (ch : Char) (start_level : nat) : bool
-    := if is_bin_op ch
-       then (Compare_dec.gt_dec start_level 0 : bool)
+  Definition pbh_check_level (ch : Char) (guarded_above_start_level : bool * nat) : bool
+    := let '(guarded_above, start_level) := (fst guarded_above_start_level, snd guarded_above_start_level) in
+       if is_bin_op ch
+       then (guarded_above || (Compare_dec.gt_dec start_level 0 : bool))%bool
        else if is_open ch
             then true
             else if is_close ch
                  then (Compare_dec.gt_dec start_level 0 : bool)
                  else true.
 
-  Definition pbh_new_level (ch : Char) (start_level : nat) : nat
-    := if is_bin_op ch
-       then start_level
+  Definition pbh_new_level (ch : Char) (guarded_above_start_level : bool * nat) : bool * nat
+    := let '(guarded_above, start_level) := (fst guarded_above_start_level, snd guarded_above_start_level) in
+       if is_bin_op ch
+       then (guarded_above, start_level)
        else if is_open ch
-            then (S start_level)
+            then (guarded_above, S start_level)
             else if is_close ch
-                 then (pred start_level)
-                 else start_level.
+                 then (guarded_above, pred start_level)
+                 else (guarded_above, start_level).
+
+  Definition pbh_lookup_level (guarded_above_start_level : bool * nat) : bool * nat
+    := let '(guarded_above, start_level) := (fst guarded_above_start_level, snd guarded_above_start_level) in
+       (guarded_above || Compare_dec.gt_dec start_level 0, 0)%bool.
 
   Section generic.
     Context (transform_valid : nonterminals_listT -> string -> nonterminals_listT).
 
-    Inductive generic_pbh'_productions : nonterminals_listT -> bool -> productions Char -> Type :=
+    Inductive generic_pbh'_productions : nonterminals_listT -> bool * nat -> productions Char -> Type :=
     | PBHNil : forall valid guarded,
                  generic_pbh'_productions valid guarded nil
-    | PBHCons : forall valid (guarded : bool) pat pats,
-                  generic_pbh'_production valid (if guarded then 1 else 0) pat
+    | PBHCons : forall valid guarded pat pats,
+                  generic_pbh'_production valid guarded pat
                   -> generic_pbh'_productions valid guarded pats
                   -> generic_pbh'_productions valid guarded (pat::pats)
-    with generic_pbh'_production : nonterminals_listT -> nat -> production Char -> Type :=
+    with generic_pbh'_production : nonterminals_listT -> bool * nat -> production Char -> Type :=
     | PBHProductionNil : forall valid start_level,
                            generic_pbh'_production valid start_level nil
     | PBHProductionConsNonTerminal : forall valid start_level nt its,
                                        is_valid_nonterminal valid nt
-                                       -> generic_pbh'_productions (transform_valid valid nt) (match start_level with 0 => false | _ => true end) (Lookup G nt)
+                                       -> generic_pbh'_productions (transform_valid valid nt) (pbh_lookup_level start_level) (Lookup G nt)
                                        -> generic_pbh'_production valid start_level its
                                        -> generic_pbh'_production valid start_level (NonTerminal nt :: its)
     | PBHProductionConsTerminal : forall valid start_level ch its,
@@ -79,44 +87,6 @@ pbh = pbh' '+' 0
 
   Definition pbh'_productions := generic_pbh'_productions (fun valid _ => valid).
   Definition pbh'_production := generic_pbh'_production (fun valid _ => valid).
-
-  Lemma pbh_check_level_le {ch} {n n'} (Hle : n <= n')
-  : pbh_check_level ch n -> pbh_check_level ch n'.
-  Proof.
-    unfold pbh_check_level.
-    do 2 edestruct Compare_dec.gt_dec; trivial; try omega; simpl.
-    edestruct is_bin_op;
-      edestruct is_close;
-      edestruct is_open;
-      unfold is_true;
-      trivial.
-  Qed.
-
-  Global Instance pbh_new_level_Proper {ch}
-  : Proper (le ==> le) (pbh_new_level ch).
-  Proof.
-    intros ???.
-    unfold pbh_new_level.
-    edestruct is_bin_op;
-      edestruct is_close;
-      edestruct is_open;
-      unfold is_true;
-      trivial;
-      omega.
-  Qed.
-
-  Global Instance pbh_new_level_flip_Proper {ch}
-  : Proper (Basics.flip le ==> Basics.flip le) (pbh_new_level ch).
-  Proof.
-    unfold Basics.flip, pbh_new_level.
-    intros ???.
-    edestruct is_bin_op;
-      edestruct is_close;
-      edestruct is_open;
-      unfold is_true;
-      trivial;
-      omega.
-  Qed.
 End cfg.
 
 Global Arguments paren_balanced_hiding_dataT : clear implicits.

@@ -4,6 +4,7 @@ Require Import Coq.Strings.String Coq.Lists.List Coq.Setoids.Setoid Coq.Classes.
 Require Import Fiat.Parsers.ContextFreeGrammar.
 Require Import Fiat.Parsers.Reachable.ParenBalancedHiding.Core.
 Require Import Fiat.Parsers.Reachable.ParenBalancedHiding.WellFounded.
+Require Import Fiat.Parsers.Reachable.ParenBalancedHiding.SetoidInstances.
 Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.BaseTypesLemmas.
 Require Import Fiat.Common.
@@ -32,47 +33,43 @@ Section cfg.
              {valid0 n0}
              {valid n pats}
              (Hsub : sub_nonterminals_listT valid valid0)
-             (Hle : implb n n0)
+             (Hle : (implb * le)%signature n n0)
              (H : generic_pbh'_productions G transform1 valid n pats)
     : generic_pbh'_productions G transform2 valid0 n0 pats
     with expand_generic_pbh'_production
            {valid0 n0}
            {valid n pat}
            (Hsub : sub_nonterminals_listT valid valid0)
-           (Hle : n <= n0)
+           (Hle : (implb * le)%signature n n0)
            (H : generic_pbh'_production G transform1 valid n pat)
          : generic_pbh'_production G transform2 valid0 n0 pat.
     Proof.
-      { simpl in *; destruct H; [ left | right ]; eauto; [].
-        destruct_head bool; unfold is_true in *; try congruence;
-        eauto. }
+      { simpl in *; destruct H; [ left | right ]; eauto. }
       { simpl in *; destruct H; [ constructor 1 | constructor 2 | constructor 3 ]; eauto.
         { eapply expand_generic_pbh'_productions; [ .. | eassumption ]; try apply transform12; trivial.
-          destruct start_level, n0; try reflexivity.
-          omega. }
-        { eapply pbh_check_level_le; eassumption. }
+          apply pbh_lookup_level_Proper_le; assumption. }
+        { eapply pbh_check_level_Proper; eassumption. }
         { eapply expand_generic_pbh'_production; [ .. | eassumption ]; trivial; [].
-          rewrite <- Hle; reflexivity. } }
+          apply pbh_new_level_Proper; assumption. } }
     Defined.
 
     Fixpoint expand_size_of_pbh'_productions
              {valid0 n0}
              {valid n pats}
              (Hsub : sub_nonterminals_listT valid valid0)
-             (Hle : implb n n0)
+             (Hle : (implb * le)%signature n n0)
              (H : generic_pbh'_productions G transform1 valid n pats)
     : size_of_pbh'_productions (expand_generic_pbh'_productions Hsub Hle H) = size_of_pbh'_productions H
     with expand_size_of_pbh'_production
            {valid0 n0}
            {valid n pat}
            (Hsub : sub_nonterminals_listT valid valid0)
-           (Hle : n <= n0)
+           (Hle : (implb * le)%signature n n0)
            (H : generic_pbh'_production G transform1 valid n pat)
     : size_of_pbh'_production (expand_generic_pbh'_production Hsub Hle H) = size_of_pbh'_production H.
     Proof.
       { simpl in *; destruct H; simpl_size_of; trivial; eauto;
-        apply f_equal; eauto.
-        destruct_head bool; unfold is_true in *; congruence. }
+        apply f_equal; eauto. }
       { simpl in *; destruct H; simpl_size_of; eauto using f_equal, f_equal2, eq_refl with nocore. }
     Defined.
   End expand.
@@ -124,7 +121,7 @@ Section cfg.
     Defined.
 
     Definition expand_alt_option' {guarded guarded' h h' valid valid'}
-               (Hs : implb guarded guarded') (H : h <= h') (H' : sub_nonterminals_listT valid' valid)
+               (Hs : (implb * le)%signature guarded guarded') (H : h <= h') (H' : sub_nonterminals_listT valid' valid)
     : alt_option guarded h valid -> alt_option guarded' h' valid'.
     Proof.
       hnf in H'; unfold alt_option.
@@ -157,7 +154,7 @@ Section cfg.
     Defined.
 
     Definition expand_alt_option {guarded guarded' h h' valid valid'}
-               (Hs : implb guarded guarded') (H : h < h') (H' : sub_nonterminals_listT valid' valid)
+               (Hs : (implb * le)%signature guarded guarded') (H : h < h') (H' : sub_nonterminals_listT valid' valid)
     : alt_option guarded h valid -> alt_option guarded' h' valid'.
     Proof.
       apply expand_alt_option'; try assumption.
@@ -166,7 +163,7 @@ Section cfg.
 
     Section wf_parts.
       Let of_item_T' h
-          (valid : nonterminals_listT) (guarded : bool) {nt : string}
+          (valid : nonterminals_listT) (guarded : bool * nat) {nt : string}
           (p : pbh'_productions G valid0 guarded (Lookup G nt))
         := forall (p_small : size_of_pbh'_productions p < h)
                   (pf : sub_nonterminals_listT (remove_nonterminal valid nt) valid0),
@@ -178,19 +175,19 @@ Section cfg.
         := forall valid n it p, @of_item_T' h valid n it p.
 
       Let of_production_T' h
-          (valid : nonterminals_listT) (n : nat) {pat : production Char}
+          (valid : nonterminals_listT) (n : bool * nat) {pat : production Char}
           (p : pbh'_production G valid0 n pat)
         := forall (p_small : size_of_pbh'_production p < h)
                   (pf : sub_nonterminals_listT valid valid0),
              ({ p' : minimal_pbh'_production G valid n pat
                      & (size_of_pbh'_production (pbh'_production__of__minimal_pbh'_production pf p') <= size_of_pbh'_production p) })%type
-                + alt_option (match n with 0 => false | _ => true end) (size_of_pbh'_production p) valid.
+                + alt_option n (size_of_pbh'_production p) valid.
 
       Let of_production_T h
         := forall valid n pat p, @of_production_T' h valid n pat p.
 
       Let of_productions_T' h
-          (valid : nonterminals_listT) (guarded : bool) {pats : productions Char}
+          (valid : nonterminals_listT) (guarded : bool * nat) {pats : productions Char}
           (p : pbh'_productions G valid0 guarded pats)
         := forall (p_small : size_of_pbh'_productions p < h)
                   (pf : sub_nonterminals_listT valid valid0),
@@ -252,13 +249,24 @@ Section cfg.
                         | reflexivity
                         | destruct start_level; reflexivity
                         | omega ]. }
-            { eapply expand_alt_option'; [ .. | eassumption ];
+            { destruct start_level as [[] []];
+              try solve [
+              (eapply expand_alt_option'; [ .. | eassumption ]);
               try solve [ apply Lt.lt_n_Sn
                         | apply lt_helper_1'
                         | apply lt_helper_2'
                         | reflexivity
                         | destruct start_level; reflexivity
-                        | omega ]. } }
+                        | split; compute; (reflexivity || omega)
+                        | omega ] ].
+              simpl in *.
+              unfold pbh_lookup_level in *.
+              simpl in *.
+              .
+
+              destruct start_level as [[] []]. compute. split; compute; try reflexivity; try omega.
+              unfold pbh_lookup_level; split; hnf; simpl.
+ } }
           { assert (size_of_pbh'_production p' < h') by omega.
             destruct (fun k => minimal_pbh'_production__of__pbh'_production' _ _ _ p' k Hinit')
               as [ [p0'' H0''] | p0'' ];

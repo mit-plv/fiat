@@ -2,6 +2,8 @@ Require Import Coq.Lists.List Coq.Setoids.Setoid Coq.Classes.RelationClasses Coq
 
 Set Implicit Arguments.
 
+Local Coercion is_true : bool >-> Sortclass.
+
 Instance proper_if {A B R}
          {test : bool} {then_case else_case}
          `{Proper (A -> B) R then_case, Proper (A -> B) R else_case}
@@ -73,3 +75,47 @@ Qed.
 Global Instance: Proper (eq ==> Basics.flip Basics.impl) is_true | 1 := _.
 Global Instance: Proper (eq ==> Basics.impl) is_true | 1 := _.
 Global Instance: Proper (eq ==> iff) is_true | 0 := _.
+
+Global Instance istrue_impl_Proper
+: Proper (implb ==> Basics.impl) is_true.
+Proof.
+  intros [] []; compute; trivial.
+Qed.
+
+Global Instance istrue_flip_impl_Proper
+: Proper (Basics.flip implb ==> Basics.flip Basics.impl) is_true.
+Proof.
+  intros [] []; compute; trivial.
+Qed.
+
+Global Instance implb_Reflexive : Reflexive implb.
+Proof. intros []; reflexivity. Qed.
+Global Instance implb_Transitive : Transitive implb.
+Proof. intros [] [] []; simpl; trivial. Qed.
+Global Instance implb_Antisymmetric : @Antisymmetric _ eq _ implb.
+Proof. intros [] [] []; simpl; trivial. Qed.
+
+Global Instance flip_implb_Reflexive : Reflexive (Basics.flip implb).
+Proof. intros []; reflexivity. Qed.
+Global Instance flip_implb_Transitive : Transitive (Basics.flip implb).
+Proof. intros [] [] []; simpl; trivial. Qed.
+Global Instance flip_implb_Antisymmetric : @Antisymmetric _ eq _ (Basics.flip implb).
+Proof. intros [] []; compute; intros [] []; trivial. Qed.
+
+
+
+Global Instance implb_implb_Proper0
+: Proper (implb ==> Basics.flip implb ==> Basics.flip implb) implb.
+Proof. intros [] [] ? [] []; compute; trivial. Qed.
+
+Global Instance implb_implb_Proper1
+: Proper (Basics.flip implb ==> implb ==> implb) implb.
+Proof. intros [] [] ? [] []; compute; trivial. Qed.
+
+Global Instance implb_flip_implb_Proper0
+: Proper (Basics.flip implb ==> implb ==> Basics.flip implb) (Basics.flip implb).
+Proof. intros [] [] ? [] []; compute; trivial. Qed.
+
+Global Instance implb_flip_implb_Proper1
+: Proper (implb ==> Basics.flip implb ==> implb) (Basics.flip implb).
+Proof. intros [] [] ? [] []; compute; trivial. Qed.
