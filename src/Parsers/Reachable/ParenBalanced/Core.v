@@ -85,10 +85,11 @@ pb = pb' '+' 0
   Proof.
     unfold pb_check_level.
     do 2 edestruct Compare_dec.gt_dec; trivial; try omega; simpl.
+    edestruct is_bin_op; trivial;
     edestruct is_close;
-      edestruct is_open;
-      unfold is_true;
-      trivial.
+    edestruct is_open;
+    unfold is_true;
+    trivial.
   Qed.
 
   Global Instance pb_new_level_Proper {ch}
@@ -96,11 +97,12 @@ pb = pb' '+' 0
   Proof.
     intros ???.
     unfold pb_new_level.
+    edestruct is_bin_op; trivial;
     edestruct is_close;
-      edestruct is_open;
-      unfold is_true;
-      trivial;
-      omega.
+    edestruct is_open;
+    unfold is_true;
+    trivial;
+    omega.
   Qed.
 
   Global Instance pb_new_level_flip_Proper {ch}
@@ -108,12 +110,13 @@ pb = pb' '+' 0
   Proof.
     unfold Basics.flip, pb_new_level.
     intros ???.
+    edestruct is_bin_op; trivial;
     edestruct is_close;
-      edestruct is_open;
-      unfold is_true;
-      trivial;
-      omega.
+    edestruct is_open;
+    unfold is_true;
+    trivial;
+    omega.
   Qed.
 End cfg.
 
-Global Arguments paren_balanced_dataT : clear implicits.
+Global Arguments paren_balanced_hiding_dataT : clear implicits.

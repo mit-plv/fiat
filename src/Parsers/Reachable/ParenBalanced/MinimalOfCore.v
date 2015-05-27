@@ -15,7 +15,7 @@ Section cfg.
   Context {Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char} {G : grammar Char}.
   Context {predata : parser_computational_predataT}
           {rdata' : @parser_removal_dataT' predata}
-          {pdata : paren_balanced_dataT Char}.
+          {pdata : paren_balanced_hiding_dataT Char}.
 
   Local Arguments pb'_production / .
   Local Arguments minimal_pb'_production / .
@@ -94,67 +94,71 @@ Section cfg.
   Proof. apply expand_generic_pb'_production; t0. Defined.
 
   Section minimize.
+    Section alt_option.
+      Context (valid0 : nonterminals_listT).
+
+      Definition alt_option h valid
+        := { nt : _ & (is_valid_nonterminal valid nt = false /\ is_valid_nonterminal valid0 nt)
+                      * { p : pb'_productions G valid0 (Lookup G nt)
+                              & (size_of_pb'_productions p < h) } }%type.
+
+      Lemma not_alt_all {h} (ps : alt_option h valid0)
+      : False.
+      Proof.
+        destruct ps as [ ? [ H' _ ] ].
+        revert H'; clear; intros [? ?].
+        congruence.
+      Qed.
+
+      Definition alt_all_elim {h T} (ps : T + alt_option h valid0)
+      : T.
+      Proof.
+        destruct ps as [|ps]; [ assumption | exfalso ].
+        eapply not_alt_all; eassumption.
+      Defined.
+
+      Definition expand_alt_option' {h h' valid valid'}
+                 (H : h <= h') (H' : sub_nonterminals_listT valid' valid)
+      : alt_option h valid -> alt_option h' valid'.
+      Proof.
+        hnf in H'; unfold alt_option.
+        repeat match goal with
+                 | [ |- sigT _ -> _ ] => intros []
+                 | [ |- sig _ -> _ ] => intros []
+                 | [ |- prod _ _ -> _ ] => intros []
+                 | [ |- and _ _ -> _ ] => intros []
+                 | _ => intro
+                 | _ => progress subst
+                 | [ H : size_of_pb'_productions ?x < _ |- _ ] => is_var x; erewrite <- expand_size_of_pb'_productions in H
+                 | [ |- prod _ _ ] => split
+                 | [ |- and _ _ ] => split
+                 | [ |- sigT _ ] => esplit
+                 | [ |- sig _ ] => esplit
+                 | [ H : _ = false |- _ = false ]
+                   => apply Bool.not_true_iff_false in H;
+                     apply Bool.not_true_iff_false;
+                     intro; apply H
+                 | _ => eapply H'; eassumption
+                 | _ => assumption
+                 | _ => eassumption
+                 | [ |- _ < _ ] => eapply Lt.lt_trans; eassumption
+                 | [ |- _ < _ ] => eapply Lt.lt_le_trans; eassumption
+               end.
+        Grab Existential Variables.
+        reflexivity.
+        intros ??????; subst; assumption.
+      Defined.
+
+      Definition expand_alt_option {h h' valid valid'}
+                 (H : h < h') (H' : sub_nonterminals_listT valid' valid)
+      : alt_option h valid -> alt_option h' valid'.
+      Proof.
+        apply expand_alt_option'; try assumption.
+        apply Lt.lt_le_weak; assumption.
+      Defined.
+    End alt_option.
+
     Context {valid0 : nonterminals_listT}.
-
-    Let alt_option h valid
-      := { nt : _ & (is_valid_nonterminal valid nt = false /\ is_valid_nonterminal valid0 nt)
-                    * { p : pb'_productions G valid0 (Lookup G nt)
-                            & (size_of_pb'_productions p < h) } }%type.
-
-    Lemma not_alt_all {h} (ps : alt_option h valid0)
-    : False.
-    Proof.
-      destruct ps as [ ? [ H' _ ] ].
-      revert H'; clear; intros [? ?].
-      congruence.
-    Qed.
-
-    Definition alt_all_elim {h T} (ps : T + alt_option h valid0)
-    : T.
-    Proof.
-      destruct ps as [|ps]; [ assumption | exfalso ].
-      eapply not_alt_all; eassumption.
-    Defined.
-
-    Definition expand_alt_option' {h h' valid valid'}
-               (H : h <= h') (H' : sub_nonterminals_listT valid' valid)
-    : alt_option h valid -> alt_option h' valid'.
-    Proof.
-      hnf in H'; unfold alt_option.
-      repeat match goal with
-               | [ |- sigT _ -> _ ] => intros []
-               | [ |- sig _ -> _ ] => intros []
-               | [ |- prod _ _ -> _ ] => intros []
-               | [ |- and _ _ -> _ ] => intros []
-               | _ => intro
-               | _ => progress subst
-               | [ H : size_of_pb'_productions ?x < _ |- _ ] => is_var x; erewrite <- expand_size_of_pb'_productions in H
-               | [ |- prod _ _ ] => split
-               | [ |- and _ _ ] => split
-               | [ |- sigT _ ] => esplit
-               | [ |- sig _ ] => esplit
-               | [ H : _ = false |- _ = false ]
-                 => apply Bool.not_true_iff_false in H;
-                   apply Bool.not_true_iff_false;
-                   intro; apply H
-               | _ => eapply H'; eassumption
-               | _ => assumption
-               | _ => eassumption
-               | [ |- _ < _ ] => eapply Lt.lt_trans; eassumption
-               | [ |- _ < _ ] => eapply Lt.lt_le_trans; eassumption
-             end.
-      Grab Existential Variables.
-      reflexivity.
-      intros ??????; subst; assumption.
-    Defined.
-
-    Definition expand_alt_option {h h' valid valid'}
-               (H : h < h') (H' : sub_nonterminals_listT valid' valid)
-    : alt_option h valid -> alt_option h' valid'.
-    Proof.
-      apply expand_alt_option'; try assumption.
-      apply Lt.lt_le_weak; assumption.
-    Defined.
 
     Section wf_parts.
       Let of_item_T' h
@@ -164,7 +168,7 @@ Section cfg.
                   (pf : sub_nonterminals_listT (remove_nonterminal valid nt) valid0),
              ({ p' : minimal_pb'_productions G (remove_nonterminal valid nt) (Lookup G nt)
                      & (size_of_pb'_productions (pb'_productions__of__minimal_pb'_productions pf p')) <= size_of_pb'_productions p })%type
-             + alt_option (size_of_pb'_productions p) valid.
+             + alt_option valid0 (size_of_pb'_productions p) valid.
 
       Let of_item_T h
         := forall valid it p, @of_item_T' h valid it p.
@@ -176,22 +180,22 @@ Section cfg.
                   (pf : sub_nonterminals_listT valid valid0),
              ({ p' : minimal_pb'_production G valid n pat
                      & (size_of_pb'_production (pb'_production__of__minimal_pb'_production pf p') <= size_of_pb'_production p) })%type
-                + alt_option (size_of_pb'_production p) valid.
+                + alt_option valid0 (size_of_pb'_production p) valid.
 
       Let of_production_T h
         := forall valid n pat p, @of_production_T' h valid n pat p.
 
       Let of_productions_T' h
-          (valid : nonterminals_listT) (guarded : bool) {pats : productions Char}
+          (valid : nonterminals_listT) {pats : productions Char}
           (p : pb'_productions G valid0 pats)
         := forall (p_small : size_of_pb'_productions p < h)
                   (pf : sub_nonterminals_listT valid valid0),
              ({ p' : minimal_pb'_productions G valid pats
                      & (size_of_pb'_productions (pb'_productions__of__minimal_pb'_productions pf p') <= size_of_pb'_productions p) })%type
-             + alt_option (size_of_pb'_productions p) valid.
+             + alt_option valid0 (size_of_pb'_productions p) valid.
 
       Let of_productions_T h
-        := forall valid n pats p, @of_productions_T' h valid n pats p.
+        := forall valid pats p, @of_productions_T' h valid pats p.
 
       Section production.
         Lemma lt_helper_1 {x y z} (H : S (x + y) < S z) : x < z.
@@ -209,48 +213,54 @@ Section cfg.
         Fixpoint minimal_pb'_production__of__pb'_production'
                  h
                  (minimal_pb'_item__of__pb'_item'
-                  : forall h' (pf : h' <= h), @of_item_T h')
+                  : forall h' (pf : h' < h), @of_item_T h')
                  {struct h}
         : of_production_T h.
         Proof.
           intros valid' n pat p H_h Hinit'.
           destruct h as [|h']; [ exfalso; omega | ].
           specialize (minimal_pb'_production__of__pb'_production' h' (fun h'' pf => minimal_pb'_item__of__pb'_item' _ (le_S _ _ pf))).
-          specialize (minimal_pb'_item__of__pb'_item' h' (Le.le_n_Sn _)).
-          destruct p as [ | ?? nt' ?? p0' p1' | ????? p' ]; simpl_size_of.
+          specialize (minimal_pb'_item__of__pb'_item' h' (Lt.lt_n_Sn _)).
+          subst_body.
+          destruct p as [ | ?? nt' ?? p0' p1' | valid ???? p' ]; simpl_size_of.
           { left; eexists (PBProductionNil _ _ _ _); reflexivity. }
           { assert (size_of_pb'_productions p0' < h') by exact (lt_helper_1 H_h).
             assert (size_of_pb'_production p1' < h') by exact (lt_helper_2 H_h).
-            assert (pf : sub_nonterminals_listT (remove_nonterminal valid' nt') valid)
-              by (rewrite Hinit'; apply sub_nonterminals_listT_remove_2; reflexivity).
-            destruct (fun k => minimal_pb'_item__of__pb'_item' _ _ p0' k pf)
-              as [ [p0'' H0''] | p0'' ];
-              [ assumption
-              | destruct (fun k => minimal_pb'_production__of__pb'_production' valid' _ _ p1' k Hinit')
-                as [ [p1'' H1''] | p1'' ];
+            destruct (is_valid_nonterminal valid' nt') eqn:Hnt'.
+            { assert (pf : sub_nonterminals_listT (remove_nonterminal valid' nt') valid)
+                by (rewrite Hinit'; apply sub_nonterminals_listT_remove_2; reflexivity).
+              destruct (fun k => minimal_pb'_item__of__pb'_item' _ _ p0' k pf)
+                as [ [p0'' H0''] | p0'' ];
                 [ assumption
-                | left | right ]
-              | right ];
-              unfold pb'_production__of__minimal_pb'_production, pb'_productions__of__minimal_pb'_productions in *; simpl;
-              rewrite ?expand_size_of_pb'_production, ?expand_size_of_pb'_productions in *.
-            { eexists (PBProductionConsNonTerminal _ _ p0'' p1'').
-              rewrite ?expand_size_of_pb'_production, ?expand_size_of_pb'_productions in *.
-              simpl_size_of.
-              apply Le.le_n_S, Plus.plus_le_compat; assumption. }
-            { eapply expand_alt_option'; [ .. | eassumption ];
-              try solve [ apply Lt.lt_n_Sn
-                        | apply lt_helper_1'
-                        | apply lt_helper_2'
-                        | reflexivity
-                        | destruct start_level; reflexivity
-                        | omega ]. }
-            { eapply expand_alt_option'; [ .. | eassumption ];
-              try solve [ apply Lt.lt_n_Sn
-                        | apply lt_helper_1'
-                        | apply lt_helper_2'
-                        | reflexivity
-                        | destruct start_level; reflexivity
-                        | omega ]. } }
+                | destruct (fun k => minimal_pb'_production__of__pb'_production' valid' _ _ p1' k Hinit')
+                  as [ [p1'' H1''] | p1'' ];
+                  [ assumption
+                  | left | right ]
+                | right ];
+                unfold pb'_production__of__minimal_pb'_production, pb'_productions__of__minimal_pb'_productions in *; simpl;
+                rewrite ?expand_size_of_pb'_production, ?expand_size_of_pb'_productions in *.
+              { eexists (PBProductionConsNonTerminal _ Hnt' p0'' p1'').
+                rewrite ?expand_size_of_pb'_production, ?expand_size_of_pb'_productions in *.
+                simpl_size_of.
+                apply Le.le_n_S, Plus.plus_le_compat; assumption. }
+              { eapply expand_alt_option'; [ .. | eassumption ];
+                try solve [ apply Lt.lt_n_Sn
+                          | apply lt_helper_1'
+                          | apply lt_helper_2'
+                          | reflexivity
+                          | omega ]. }
+              { eapply expand_alt_option'; [ .. | eassumption ];
+                try solve [ apply Lt.lt_n_Sn
+                          | apply lt_helper_1'
+                          | apply lt_helper_2'
+                          | reflexivity
+                          | destruct start_level; reflexivity
+                          | abstract omega ]. } }
+            { right.
+              exists nt'.
+              split; [ split; assumption | ].
+              exists p0'.
+              abstract omega. } }
           { assert (size_of_pb'_production p' < h') by omega.
             destruct (fun k => minimal_pb'_production__of__pb'_production' _ _ _ p' k Hinit')
               as [ [p0'' H0''] | p0'' ];
@@ -264,42 +274,14 @@ Section cfg.
               simpl_size_of.
               apply Le.le_n_S; assumption. }
             { unfold pb_new_level in *.
-              Local Ltac t1 start_level :=
-                eapply expand_alt_option'; [ .. | eassumption ];
-                try solve [ apply Lt.lt_n_Sn
-                          | apply lt_helper_1'
-                          | apply lt_helper_2'
-                          | reflexivity
-                          | destruct start_level as [|[|]]; reflexivity
-                          | omega ].
-              destruct (is_open ch) eqn:?; try solve [ t1 start_level ];
-                [
-                | destruct (is_close ch) eqn:?; solve [ t1 start_level ] ].
-              t1 start_level.
-t1.
- (destruct start_level as [|[|]]; );
-                destruct (is_open ch) eqn:?; try (destruct start_level as [|[|]]; reflexivity);
-                [
-                | destruct (is_close ch) eqn:?; (destruct start_level as [|[|]]; reflexivity) ].
-              Focus 2.
-              { destruct start_level as [|[|]]; simpl; try reflexivity.
- }
-              {
-e
-`
-
-        with minimal_pb'_productions__of__pb'_productions'
-               h
-               (minimal_pb'_item__of__pb'_item
-                : forall h' (pf : h' <= h), @of_item_T h')
-               {struct h}
-             : of_productions_T h.
-
-            specialize (fun pf => minimal_pb'_production__of__pb'_production' _ _ _ p pf Hinit'). (le_S _ _ pf)).
-            SearchAbout (S ?x <= S ?y -> S ?x <= ?y).
-            unfold of_production_T' in *.
- _ (le_S _ _ pf)).
-            specialize (minimal_pb'_item__of__pb'_item h' (Le.le_n_Sn _)).
+              eapply expand_alt_option'; [ .. | eassumption ];
+              try solve [ apply Lt.lt_n_Sn
+                        | apply lt_helper_1'
+                        | apply lt_helper_2'
+                        | reflexivity
+                        | omega ]. } }
+          Grab Existential Variables.
+          assumption.
         Defined.
       End production.
 
@@ -307,7 +289,7 @@ e
         Fixpoint minimal_pb'_productions__of__pb'_productions'
                  h
                  (minimal_pb'_item__of__pb'_item
-                  : forall h' (pf : h' <= h), @of_item_T h')
+                  : forall h' (pf : h' < h), @of_item_T h')
                  {struct h}
         : of_productions_T h.
         Proof.
@@ -315,26 +297,39 @@ e
           destruct h as [|h']; [ exfalso; omega | ].
           specialize (minimal_pb'_productions__of__pb'_productions' h' (fun h'' pf => minimal_pb'_item__of__pb'_item _ (le_S _ _ pf))).
           pose proof (minimal_pb'_production__of__pb'_production' (fun h'' pf => minimal_pb'_item__of__pb'_item _ (le_S _ _ pf))) as minimal_pb'_production__of__pb'_production''.
-          specialize (minimal_pb'_item__of__pb'_item h' (Le.le_n_Sn _)).
-          destruct p as [ ? ? p' | ? ? p' ].
-          { destruct (fun k => minimal_pb'_production__of__pb'_production'' valid' _ p' k Hinit')
-              as [ [p'' H''] | p'' ];
-            [ solve [ auto with arith ]
-            | left | right ].
-            { eexists (MinPBHead _ p'').
+          specialize (minimal_pb'_item__of__pb'_item h' (Lt.lt_n_Sn _)).
+          destruct p as [ | ??? p0' p1' ].
+          { left.
+            eexists (PBNil _ _ _).
+            unfold pb'_productions__of__minimal_pb'_productions; simpl.
+            rewrite expand_size_of_pb'_productions.
+            simpl_size_of.
+            omega. }
+          { assert (size_of_pb'_production p0' < h') by exact (lt_helper_1 H_h).
+            assert (size_of_pb'_productions p1' < h') by exact (lt_helper_2 H_h).
+            destruct (fun k => minimal_pb'_production__of__pb'_production'' valid' _ _ p0' k Hinit')
+              as [ [p0'' H0''] | p0'' ];
+              [ solve [ auto with arith ]
+              | destruct (fun k => minimal_pb'_productions__of__pb'_productions' valid' _ p1' k Hinit')
+                as [ [p1'' H1''] | p1'' ]; try assumption;
+                [ left
+                | right ]
+              | right ].
+            { exists (PBCons p0'' p1'').
               simpl in *.
-              apply Le.le_n_S; exact H''. }
-            { eapply expand_alt_option; [ .. | eassumption ];
+              unfold pb'_productions__of__minimal_pb'_productions in *.
+              unfold pb'_production__of__minimal_pb'_production in *.
+              rewrite expand_size_of_pb'_productions in *.
+              rewrite expand_size_of_pb'_production in *.
+              simpl_size_of.
+              omega. }
+            { eapply expand_alt_option'; [ .. | eassumption ];
               try solve [ apply Lt.lt_n_Sn
-                        | reflexivity ]. } }
-          { destruct (minimal_pb'_productions__of__pb'_productions' valid' _ p' (Lt.lt_S_n _ _ H_h) Hinit')
-              as [ [p'' H''] | p'' ];
-            [ left | right ].
-            { eexists (MinPBTail _ p'').
-              simpl in *.
-              apply Le.le_n_S; exact H''. }
-            { eapply expand_alt_option; [ .. | eassumption ];
+                        | simpl_size_of; omega
+                        | reflexivity ]. }
+            { eapply expand_alt_option'; [ .. | eassumption ];
               try solve [ apply Lt.lt_n_Sn
+                        | simpl_size_of; omega
                         | reflexivity ]. } }
         Defined.
       End productions.
@@ -346,38 +341,32 @@ e
                     : forall h' (pf : h' < h), @of_item_T h')
         : of_item_T h.
         Proof.
-          intros valid' pats p H_h Hinit'.
-          destruct h as [|h']; [ exfalso; omega | ].
-          destruct p as [nonterminal' H' p'].
-          { case_eq (is_valid_nonterminal valid' nonterminal'); intro H'''.
-            { edestruct (fun k => @minimal_pb'_productions__of__pb'_productions' _ (fun h'' pf => minimal_pb'_item__of__pb'_item _ (Le.le_n_S _ _ pf)) (remove_nonterminal valid' nonterminal') _ p' k)
-              as [ [ p'' H'' ] | [ nt'' H'' ] ];
-            [ solve [ auto with arith ]
-            | left | ].
-            { eexists (MinPBNonTerminal _ _ H''' p'').
-              apply Le.le_n_S; eassumption. }
-            { destruct (string_dec nonterminal' nt''); subst.
-              { destruct H'' as [ H'' [ p'' H'''' ] ].
-                simpl in *.
-                destruct (fun k => minimal_pb'_item__of__pb'_item _ (@reflexivity _ le _ _) valid' _ (PBNonTerminal _ H' p'') k Hinit')
-                  as [ [ p''' H0' ] | p''' ];
-                  [ solve [ eauto with arith ]
-                  | left | right ].
-                { exists p'''; eauto with arith. }
-                { eapply expand_alt_option; [ .. | eassumption ];
-                  eauto with arith;
-                  reflexivity. } }
+          intros valid' nt p H_h Hinit'.
+          pose proof (minimal_pb'_productions__of__pb'_productions' minimal_pb'_item__of__pb'_item) as X.
+          specialize (X (remove_nonterminal valid' nt) (Lookup G nt) p H_h Hinit').
+          destruct X as [p' | [nt' [[H0' H1'] [p' H']]] ];
+            [ left
+            | ].
+          { exact p'. }
+          { destruct (is_valid_nonterminal valid' nt') eqn:Hvalid.
+            { assert (nt = nt').
+              { apply remove_nonterminal_2 in H0'.
+                destruct H0' as [ H0' | ]; [ | subst; reflexivity ].
+                clear -H0' Hvalid; congruence. }
+              subst.
+              destruct (minimal_pb'_item__of__pb'_item _ H_h valid' _ p' H' Hinit')
+                as [ [p'' H''] | p''].
+              { left; exists p''.
+                omega. }
               { right.
-                exists nt''.
-                destruct_head prod; destruct_head and; repeat split; trivial.
-                { erewrite <- remove_nonterminal_5 by eassumption; assumption. }
-                { destruct_head sigT.
-                  eexists.
-                  apply Lt.lt_S; eassumption. } } } }
+                eapply expand_alt_option'; [ .. | eassumption ];
+                try solve [ reflexivity
+                          | omega ]. } }
             { right.
-              exists nonterminal'; repeat split; trivial; [].
+              exists nt'.
+              split; [ split; assumption | ].
               exists p'.
-              auto with arith. } }
+              omega. } }
         Defined.
 
         Definition minimal_pb'_item__of__pb'_item''
@@ -398,69 +387,48 @@ e
       : of_productions_T h
         := @minimal_pb'_productions__of__pb'_productions' h (fun _ _ => @minimal_pb'_item__of__pb'_item'' _).
 
-        Definition minimal_pb'_item__of__pb'_item
-                   {it : item Char}
-                   (p : pb'_item G valid0 it)
-        : minimal_pb'_item G valid0 it.
-        Proof.
-          pose proof (@minimal_pb'_item__of__pb'_item'' _ valid0 _ p (@reflexivity _ le _ _) (reflexivity _)) as X.
-          apply alt_all_elim in X.
-          exact (projT1 X).
-        Defined.
+      Definition minimal_pb'_production__of__pb'_production
+                 {n} {pat : production Char}
+                 (p : pb'_production G valid0 n pat)
+      : minimal_pb'_production G valid0 n pat.
+      Proof.
+        pose proof (@minimal_pb'_production__of__pb'_production'' _ valid0 _ _ p (@reflexivity _ le _ _) (reflexivity _)) as X.
+        apply alt_all_elim in X.
+        exact (projT1 X).
+      Defined.
 
-        Definition minimal_pb'_production__of__pb'_production
-                   {pat : production Char}
-                   (p : pb'_production G valid0 pat)
-        : minimal_pb'_production G valid0 pat.
-        Proof.
-          pose proof (@minimal_pb'_production__of__pb'_production'' _ valid0 _ p (@reflexivity _ le _ _) (reflexivity _)) as X.
-          apply alt_all_elim in X.
-          exact (projT1 X).
-        Defined.
-
-        Definition minimal_pb'_productions__of__pb'_productions
-                   {pats : productions Char}
-                   (p : pb'_productions G valid0 pats)
-        : minimal_pb'_productions G valid0 pats.
-        Proof.
-          pose proof (@minimal_pb'_productions__of__pb'_productions'' _ valid0 _ p (@reflexivity _ le _ _) (reflexivity _)) as X.
-          apply alt_all_elim in X.
-          exact (projT1 X).
-        Defined.
+      Definition minimal_pb'_productions__of__pb'_productions
+                 {pats : productions Char}
+                 (p : pb'_productions G valid0 pats)
+      : minimal_pb'_productions G valid0 pats.
+      Proof.
+        pose proof (@minimal_pb'_productions__of__pb'_productions'' _ valid0 _ p (@reflexivity _ le _ _) (reflexivity _)) as X.
+        apply alt_all_elim in X.
+        exact (projT1 X).
+      Defined.
 
 
-        Definition minimal_pb'_item__iff__pb'_item
-                   {it : item Char}
-        : inhabited (pb'_item G valid0 it)
-          <-> inhabited (minimal_pb'_item G valid0 it).
-        Proof.
-          split; intros [H]; constructor;
-          [ apply minimal_pb'_item__of__pb'_item
-          | eapply pb'_item__of__minimal_pb'_item ];
-          try (eassumption || reflexivity).
-        Qed.
+      Definition minimal_pb'_production__iff__pb'_production
+                 {n} {it : production Char}
+      : inhabited (pb'_production G valid0 n it)
+        <-> inhabited (minimal_pb'_production G valid0 n it).
+      Proof.
+        split; intros [H]; constructor;
+        [ apply minimal_pb'_production__of__pb'_production
+        | eapply pb'_production__of__minimal_pb'_production ];
+        try (eassumption || reflexivity).
+      Qed.
 
-        Definition minimal_pb'_production__iff__pb'_production
-                   {it : production Char}
-        : inhabited (pb'_production G valid0 it)
-          <-> inhabited (minimal_pb'_production G valid0 it).
-        Proof.
-          split; intros [H]; constructor;
-          [ apply minimal_pb'_production__of__pb'_production
-          | eapply pb'_production__of__minimal_pb'_production ];
-          try (eassumption || reflexivity).
-        Qed.
-
-        Definition minimal_pb'_productions__iff__pb'_productions
-                   {it : productions Char}
-        : inhabited (pb'_productions G valid0 it)
-          <-> inhabited (minimal_pb'_productions G valid0 it).
-        Proof.
-          split; intros [H]; constructor;
-          [ apply minimal_pb'_productions__of__pb'_productions
-          | eapply pb'_productions__of__minimal_pb'_productions ];
-          try (eassumption || reflexivity).
-        Qed.
+      Definition minimal_pb'_productions__iff__pb'_productions
+                 {it : productions Char}
+      : inhabited (pb'_productions G valid0 it)
+        <-> inhabited (minimal_pb'_productions G valid0 it).
+      Proof.
+        split; intros [H]; constructor;
+        [ apply minimal_pb'_productions__of__pb'_productions
+        | eapply pb'_productions__of__minimal_pb'_productions ];
+        try (eassumption || reflexivity).
+      Qed.
     End wf_parts.
   End minimize.
 End cfg.
