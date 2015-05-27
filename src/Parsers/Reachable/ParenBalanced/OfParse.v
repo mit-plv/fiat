@@ -18,6 +18,35 @@ Section cfg.
   Context {predata : parser_computational_predataT}
           {rdata' : @parser_removal_dataT' predata}.
 
+  Fixpoint parse_empty_pb_parse_of_productions
+             {valid0 pats}
+             (str : String) (Hlen : length str = 0) (p : parse_of G str pats)
+             (Hforall : Forall_parse_of (fun _ nt' => is_valid_nonterminal valid0 nt') p)
+             {struct p}
+  : pb_productions G valid0 pats
+  with parse_empty_pb_parse_of_production
+         {valid0 pat}
+         (str : String) (Hlen : length str = 0) (p : parse_of_production G str pat)
+         (Hforall : Forall_parse_of_production (fun _ nt' => is_valid_nonterminal valid0 nt') p)
+         {struct p}
+       : pb_production G valid0 pat.
+  Proof.
+    { destruct p as [ ?? p | ?? p ]; simpl in *.
+      { pose proof (parse_empty_pb_parse_of_production valid0 _ _ Hlen p Hforall).
+        left; assumption. }
+      { pose proof (parse_empty_pb_parse_of_productions valid0 _ _ Hlen p Hforall).
+        right; assumption. } }
+    { destruct p as [ | ?? p ]; simpl in *.
+      { constructor. }
+      { constructor.
+        { apply (fun k => @parse_empty_pb_parse_of_item' parse_empty_pb_parse_of_productions valid0 _ _ k _ (fst Hforall)).
+          rewrite take_length, Hlen, Min.min_0_r; reflexivity. }
+        { apply (fun k => @parse_empty_pb_parse_of_production valid0 _ _ k _ (snd Hforall)).
+          rewrite drop_length, Hlen; reflexivity. } } }
+  Defined.
+
+
+
   Definition parse_empty_pb_parse_of_item'
              (parse_empty_pb_parse_of_productions
               : forall valid0 pats
