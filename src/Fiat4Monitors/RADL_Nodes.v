@@ -97,6 +97,15 @@ Section RADL_ADT.
   Definition RADL_Start_Step := "Start_Step".
   Definition RADL_Finish_Step := "Finish_Step".
 
+  Record RADLM_start_msg_t (MonitorNode : RADLM_Node) :=
+    { radlm_in : cRep (radlm_in_t MonitorNode);
+      radlm_in_flags : cRep (radlm_in_flags_t MonitorNode);
+      radlm_monitor_in : cRep (radlm_monitor_in_t MonitorNode) }.
+
+  Record RADLM_finish_msg_t (MonitorNode : RADLM_Node) :=
+    { radlm_out : cRep (radlm_out_t MonitorNode);
+      radlm_out_flags : cRep (radlm_out_flags_t MonitorNode) }.
+
   Definition RADLM_ADTSig
              (MonitorNode : RADLM_Node)
              (InitDom : Type)
@@ -106,24 +115,16 @@ Section RADL_ADT.
         (* Monitor Nodes have two methods which are used to guard the node's step function:
            1) an initial step function that examines the subscriptions and decides whether
            to pass them on (potentially modifying them) or to publish on its own. *)
-        Method      RADL_Start_Step : rep x cRep (radlm_in_t MonitorNode)
-                                      * cRep (radlm_in_flags_t MonitorNode)
-                                      * cRep (radlm_monitor_in_t MonitorNode)
-                                      -> rep x
-                                             (cRep (radlm_in_t MonitorNode)
-                                              * cRep (radlm_in_flags_t MonitorNode))
-                                         + (cRep (radlm_out_t MonitorNode)
-                                            * cRep (radlm_out_flags_t MonitorNode)
-                                            * cRep (radlm_monitor_out_t MonitorNode)),
+        Method      RADL_Start_Step : rep x RADLM_start_msg_t MonitorNode
+                                      -> rep x (cRep (radlm_in_t MonitorNode)
+                                                * cRep (radlm_in_flags_t MonitorNode)),
         (* 2) A finish step function that examines the publications after a node's
          step function has been called, potentially modifying the publications and publishing
          its own topics. *)
-        Method      RADL_Finish_Step : rep x cRep (radlm_out_t MonitorNode)
-                                       * cRep (radlm_out_flags_t MonitorNode)
-                                      -> rep x
-                                             (cRep (radlm_out_t MonitorNode)
-                                              * cRep (radlm_out_flags_t MonitorNode)
-                                              * cRep (radlm_monitor_out_t MonitorNode))
+        Method      RADL_Finish_Step : rep x RADLM_finish_msg_t MonitorNode
+                                       -> rep x (cRep (radlm_out_t MonitorNode)
+                                                 * cRep (radlm_out_flags_t MonitorNode)
+                                                 * cRep (radlm_monitor_out_t MonitorNode))
       }.
 
 End RADL_ADT.

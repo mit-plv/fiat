@@ -50,6 +50,14 @@ Definition SetAttribute2 {heading}
     Domain2 heading attr -> @Tuple2 heading :=
   fun tup attr dom => replace_Index2 _ tup attr dom.
 
+Definition SetAttribute2' {n} {attrs}
+  : @DecTuple2 n attrs ->
+    forall attr : @BoundedString _ (Vector.map attrName2 attrs),
+      Domain2 (HeadingRaw2 (BuildHeading2 attrs)) (ibound (indexb attr))
+      -> @DecTuple2 n attrs :=
+  fun tup attr dom => SetAttribute2 tup (ibound (indexb attr)) dom.
+
+
 Notation "id :: value" :=
   (Build_Component2 {| attrName2 := id;
                        attrType2 := _ |}
@@ -59,7 +67,3 @@ Bind Scope Component2_scope with Component2.
 Delimit Scope Component2_scope with Component2.
 Delimit Scope Tuple2_scope with Tuple2.
 (* Notation for tuples built from [BuildTuple2]. *)
-
-Notation "t ! R" :=
-  (GetAttribute2 t%Tuple2 (@Build_BoundedIndex _ _ R%string _))
-  : Tuple2_scope.

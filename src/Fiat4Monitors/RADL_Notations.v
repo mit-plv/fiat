@@ -130,11 +130,28 @@ Notation "'monitor' 'node' 'for' Node 'using' Topics '{' 'MODELED' rep 'PUBLISHE
        RADLM_Subscriptions := subscriptions%Topic%vector |}))
     (Topics at level 0, at level 0) : Node_scope.
 
-Notation "r '~~>' idx " := (
+Notation GetMessageTopic r idx := (
                             let m := _ : Vector.t (Fin.t _) _ in
                             CallMessageGetMethod NetworkTopicTypes
                                                  NetworkTopicNames
                                                  m r
                                                  (ibound (indexb ((@Build_BoundedIndex (Fin.t _) _ m (ibound (indexb ((@Build_BoundedIndex string _ NetworkTopicNames idx%string _)))) (_ : IndexBound _ m)))))
-                                                                                      tt)
-                             (idx at level 0, at level 70) : Node_scope.
+                                                                                      tt).
+Notation "r '~~>' idx" := (GetMessageTopic r idx)
+                            (idx at level 0, at level 70) : Node_scope.
+
+Notation GetMessageTopicS r idx R :=
+  (let b := _ in
+   let attrs := Vector.map (projT1 (P:=Heading2.attrType2)) b in
+   let b' := Vector.map (fun attr' => Heading2.attrName2 (@projT1 _ _ attr')) b in
+   snd (@CallDecTuple2GetMethod _ attrs (snd (GetMessageTopic r idx))
+                                (ibound (indexb ((@Build_BoundedIndex _ _ b' R%string _)))) ())).
+
+Notation UpdateMessageTopicS r idx idx' d :=
+  (let m := _ : Vector.t (Fin.t _) _ in
+   fst (CallMessageSetMethod NetworkTopicTypes
+                             NetworkTopicNames
+                             m r
+                             (ibound (indexb ((@Build_BoundedIndex (Fin.t _) _ m (ibound (indexb ((@Build_BoundedIndex string _ NetworkTopicNames idx%string _)))) (_ : IndexBound _ m)))))
+                             (Tuple2.SetAttribute2' (snd (GetMessageTopic r idx))
+                                                    (@Build_BoundedIndex string _ _ idx' _) d))).

@@ -9,6 +9,7 @@ Require Import Coq.Lists.List
         Fiat.ADTNotation
         Fiat.ADTRefinement
         Fiat.ADTRefinement.BuildADTRefinements
+        Fiat.QueryStructure.Specification.Representation.Notations
         Fiat.QueryStructure.Specification.Representation.Heading2
         Fiat.QueryStructure.Specification.Representation.Tuple2.
 
@@ -190,3 +191,13 @@ Section TupleADT2.
       := cMethods Tuple2ADT (ibound (indexb (BuildSetTuple2MethodID idx))) r.
 
 End TupleADT2.
+
+Definition CallDecTuple2GetMethod
+           {n attrs}
+           (r : @DecTuple2 n attrs)
+           idx
+  := cMethods (Tuple2ADT _) (ibound (indexb (BuildGetTuple2MethodID _ idx))) r.
+
+Notation "t ! R" :=
+  (@CallDecTuple2GetMethod _ _ t%Tuple2 (ibound (indexb ((@Build_BoundedIndex _ _ _ R%string _)))) ())
+  : Tuple2_scope.

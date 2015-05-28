@@ -70,7 +70,7 @@ Section BuildADTRefinements.
     repeat computes_to_econstructor; try destruct v; eauto;
     eapply H; eauto.
   Qed.
-  
+
   (*Corollary SharpenStep_BuildADT_ReplaceConstructor_eq
             (Rep : Type)
             (consSigs : list consSig)
@@ -314,7 +314,7 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
             (cConstructors DelegateReps DelegateImpls))
       (imap (Build_cMethDef (Rep:=rep DelegateReps))
             (cMethods DelegateReps DelegateImpls)).
-  
+
   Definition Notation_Friendly_FullySharpened_BuildMostlySharpenedcADT
              (RepT : Type)
              {n n'}
@@ -528,7 +528,7 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
                          DelegateReps DelegateSigs)
       end.
   Defined.
-  
+
   Definition Notation_Friendly_SharpenFully
              (RepT : Type)
              {m n n'}
@@ -619,7 +619,7 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
                                                                       methDefs _ rep cConstructors cMethods DelegateSpecs cAbsR
                                                                       cConstructorsRefinesSpec cMethodsRefinesSpec).
   Defined.
-      
+
 End BuildADTRefinements.
 
 Arguments Notation_Friendly_BuildMostlySharpenedcADT _ _ _ _ _ _ _ _ _ _ _  / .
@@ -764,69 +764,60 @@ Proof.
   rewrite <- H0''; eauto.
 Qed.
 
-    Ltac ilist_of_evar_dep C D B As k :=
-      match As with
-        | nil => k (fun (c : C) (d : D c) => inil B)
-        | cons ?a ?As' =>
-          makeEvar (forall (c : C) (d : D c), B a)
-                   ltac:(fun b =>
-                           ilist_of_evar_dep
-                             C D B As'
-                             ltac:(fun Bs' => k (fun (c : C) (d : D c) => icons a (b c d) (Bs' c d))))
-      end.
+Ltac ilist_of_evar_dep n C D B As k :=
+  match n with
+  | 0 => k (fun (c : C) (d : D c) => @inil _ B)
+  | S ?n' =>
+    makeEvar (forall (c : C) (d : D c), B (Vector.hd As))
+             ltac:(fun b =>
+                           ilist_of_evar_dep n'
+                                             C D B (Vector.tl As)
+                                             ltac:(fun Bs' => k (fun (c : C) (d : D c) => icons (a := Vector.hd As) (b c d) (Bs' c d))))
+  end.
 
-    (*Ltac FullySharpenEachMethod DelegateIDs' DelegateSigs' DelegateReps' delegateSpecs :=
-      let Delegatees := constr:(Build_NamedDelegatees DelegateIDs' DelegateSigs' DelegateReps') in
-      let DelegateIDs := constr:(map delegateeName Delegatees) in
-      let DelegateSigs := constr:(fun idx =>
-                                    delegateeSig (nth_Bounded delegateeName Delegatees idx)) in
-      let DelegateReps := constr:(fun idx =>
-                                    delegateeRep (nth_Bounded delegateeName Delegatees idx)) in
-      let DelegateSpecs := constr:(ith_Bounded delegateeName delegateSpecs) in
-      match goal with
-          |- Sharpened (@BuildADT ?Rep ?consSigs ?methSigs ?consDefs ?methDefs) =>
-          ilist_of_evar_dep
-            (Fin.t DelegateIDs -> Type)
-            (fun D =>
-               forall idx,
-                 ComputationalADT.pcADT (DelegateSigs idx) (D idx))
-            (fun Sig => ComputationalADT.cMethodType Rep (methDom Sig) (methCod Sig))
-            methSigs
-            ltac:(fun cMeths =>
-                    ilist_of_evar_dep
-                      (Fin.t DelegateIDs -> Type)
-                      (fun D =>
-                         forall idx,
-                           ComputationalADT.pcADT (DelegateSigs idx) (D idx))
-                      (fun Sig => ComputationalADT.cConstructorType Rep (consDom Sig))
-                      consSigs
-                      ltac:(fun cCons =>
-                              try eapply
-                                (@Notation_Friendly_SharpenFully
-                                   Rep
-                                   consSigs
-                                   methSigs
-                                   consDefs
-                                   methDefs
-                                   DelegateIDs'
-                                   DelegateSigs'
-                                   DelegateReps'
-                                   (fun _ => Rep)
-                                   cCons
-                                   cMeths
-                                   delegateSpecs
-                                   (fun
-                                       (DelegateReps : Fin.t DelegateIDs -> Type)
-                                       (DelegateImpls : forall idx,
-                                                          ComputationalADT.pcADT (DelegateSigs idx) (DelegateReps idx))
-                                       (ValidImpls
-                                        : forall idx : Fin.t DelegateIDs,
-                                            refineADT (DelegateSpecs idx)
-                                                      (ComputationalADT.LiftcADT (existT _ _ (DelegateImpls idx))))
-                                     => @eq _))));
-            try (simpl; repeat split; intros; subst)
-  end. *)
-
+Ltac FullySharpenEachMethod DelegateSigs DelegateReps delegateSpecs :=
+    let Delegatees := constr:(Build_NamedDelegatees DelegateSigs DelegateReps) in
+    let DelegateSpecs := constr:(ith delegateSpecs) in
+    let NumDelegates := match type of DelegateSigs with
+                        | Vector.t _ ?n => n
+                        end in
+    match goal with
+      |- Sharpened (@BuildADT ?Rep ?n ?n' ?consSigs ?methSigs ?consDefs ?methDefs) =>
+      ilist_of_evar_dep n
+        (Fin.t NumDelegates -> Type)
+        (fun D =>
+           forall idx,
+             ComputationalADT.pcADT (delegateeSig (Vector.nth Delegatees idx)) (D idx))
+        (fun Sig => ComputationalADT.cConstructorType Rep (consDom Sig))
+        consSigs
+        ltac:(fun cCons =>
+                ilist_of_evar_dep n'
+                                  (Fin.t NumDelegates -> Type)
+                                  (fun D =>
+                                     forall idx,
+             ComputationalADT.pcADT (delegateeSig (Vector.nth Delegatees idx)) (D idx))
+        (fun Sig => ComputationalADT.cMethodType Rep (methDom Sig) (methCod Sig))
+        methSigs
+        ltac:(fun cMeths =>
+                eapply (@Notation_Friendly_SharpenFully
+                          Rep NumDelegates n n'
+                          consSigs methSigs
+                          consDefs methDefs
+                          DelegateSigs DelegateReps
+                          (fun _ => Rep)
+                          cCons cMeths
+                          delegateSpecs
+                          (fun
+                         (DelegateReps : Fin.t NumDelegates -> Type)
+                         (DelegateImpls : forall idx,
+                             ComputationalADT.pcADT (delegateeSig (Vector.nth Delegatees idx)) (DelegateReps idx))
+                         (ValidImpls
+                          : forall idx : Fin.t NumDelegates,
+                             refineADT (DelegateSpecs idx)
+                                       (ComputationalADT.LiftcADT (existT _ _ (DelegateImpls idx))))
+                            => @eq unit)
+             )))
+    end; try (simpl; repeat split; intros; subst).
 
 Ltac Implement_If_Then_Else :=
   match goal with
@@ -861,27 +852,20 @@ Ltac Implement_If_Opt_Then_Else :=
           ]
         ]
   end.
-(*
+
 Ltac FullySharpenEachMethodWithoutDelegation :=
   FullySharpenEachMethod
-    (@nil string)
-    (@nil ADTSig)
-    (@nil Type)
-    (inil (fun nadt => ADT (delegateeSig nadt)));
+    (@Vector.nil ADTSig)
+    (@Vector.nil Type)
+    (ilist.inil (B := fun nadt => ADT (delegateeSig nadt)));
   try simplify with monad laws; simpl; try refine pick eq; try simplify with monad laws;
-  try first [ unfold ith_Bounded, ith_Bounded'; simpl];
+  try first [ simpl];
   repeat setoid_rewrite refine_if_If at 1;
   repeat first [
            higher_order_reflexivity
          | simplify with monad laws
          | Implement_If_Then_Else
          | Implement_If_Opt_Then_Else ].
-*)
-
-
-
-
-
 
 Lemma refineIfret {A} :
   forall (cond : bool) (a a' : A),

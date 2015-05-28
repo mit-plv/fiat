@@ -303,6 +303,21 @@ Section general_refine_lemmas.
     try destruct v0; simpl in *; eauto; computes_to_inv; intuition.
   Qed.
 
+  Definition decides (b : bool) (P : Prop)
+    := If b Then P Else ~ P.
+
+  Lemma refine_iff_P A :
+    forall (Pc : Prop) (Pt Pa : Ensemble A),
+      refine { a | (Pc -> Pt a) /\ Pa a}
+             (b <- {b | decides b Pc};
+              If b Then { a | Pt a /\ Pa a}
+              Else { a | Pa a}).
+  Proof.
+    intros * v Comp_v; computes_to_inv.
+    computes_to_econstructor; intuition; subst;
+    try destruct v0; simpl in *; eauto; computes_to_inv; intuition.
+  Qed.
+
   Lemma refine_if A :
     forall (c : Comp A) (b : bool) ta ea,
       (b = true -> refine c ta)
@@ -393,9 +408,6 @@ Section general_refine_lemmas.
     eapply H0; eauto; intros; eapply H1; eauto.
   Qed.
 
-  Definition decides (b : bool) (P : Prop)
-    := If b Then P Else ~ P.
-
   Add Morphism
       (decides)
       with signature (eq ==> iff ==> iff)
@@ -418,6 +430,24 @@ Section general_refine_lemmas.
     destruct v0; simpl in *; eauto.
   Qed.
 
+  Lemma refine_pick_decides_branches {A}
+        (P : Prop)
+        (Q Q' : Ensemble A)
+        (q q' : Comp A) 
+    : (P -> refine {a | Q a} q)
+      -> (~ P -> refine {a | Q' a} q')
+      -> refine {a | (P -> Q a) /\
+                     (~ P -> Q' a)}
+                (b <- {b | decides b P};
+                 If b Then q Else q').
+  Proof.
+    intros; eapply refine_pick_decides.
+    - unfold refine; intros; computes_to_inv;
+      econstructor; intuition; eapply H4; eauto.
+    - unfold refine; intros; computes_to_inv;
+      econstructor; intuition; eapply H4; eauto.
+  Qed.
+  
   Lemma refine_pick_decides' {A}
         (P : Prop)
         (Q Q' : Ensemble A)
@@ -429,9 +459,7 @@ Section general_refine_lemmas.
             Else
               {a | Q' a}).
   Proof.
-    eapply refine_pick_decides;
-    unfold refine; intros; computes_to_inv;
-    econstructor; intuition.
+    eapply refine_pick_decides_branches; reflexivity.
   Qed.
 
   Global Add Parametric Morphism : decides

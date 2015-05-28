@@ -318,9 +318,9 @@ Tactic Notation "hone" "constructor" constr(consIdx) :=
 Tactic Notation "hone" "method" constr(methIdx) :=
   let A :=
       match goal with
-          |- Sharpened ?A => constr:(A) end in
+        |- Sharpened ?A => constr:(A) end in
   let ASig := match type of A with
-                  ADT ?Sig => Sig
+                DecoratedADT ?Sig => Sig
               end in
   let consSigs :=
       match ASig with
@@ -336,14 +336,14 @@ Tactic Notation "hone" "method" constr(methIdx) :=
           BuildADT _ ?methDefs  => constr:(methDefs) end in
   let Rep' :=
       match A with
-          @BuildADT ?Rep _ _ _ _ => constr:(Rep) end in
+          @BuildADT ?Rep _ _ _ _ _ _ => constr:(Rep) end in
   let ConstructorIndex' := eval simpl in (ConstructorIndex ASig) in
   let MethodIndex' := eval simpl in (MethodIndex ASig) in
   let MethodDomCod' := eval simpl in (MethodDomCod ASig) in
   let methIdxB := eval simpl in
-  (@Build_BoundedIndex _ (List.map methID methSigs) methIdx _) in
+  (ibound (indexb (@Build_BoundedIndex _ _ (Vector.map methID methSigs) methIdx _))) in
       eapply (@SharpenStep_BuildADT_ReplaceMethod_eq
-                Rep'  _ _ consDefs methDefs methIdxB
+                Rep' _ _ _ _ consDefs methDefs methIdxB
                 (@Build_methDef Rep'
                                {| methID := methIdx;
                                   methDom := fst (MethodDomCod' methIdxB);
