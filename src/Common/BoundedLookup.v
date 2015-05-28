@@ -139,24 +139,21 @@ Section BoundedIndex.
 
 End BoundedIndex.
 
-Ltac Build_nth_IndexBound A a As As' m :=
-  match As' with
-  | @Vector.cons _ ?a' ?len ?As'' =>
-    (let check := constr:(eq_refl : a = a') in (* Check if the terms match *)
-     exact (@Build_IndexBound A _ a As (Fin.R m (@Fin.F1 len))
+Ltac Build_nth_IndexBound n A a As As' m :=
+  match n with
+  | S ?n' =>
+    (let check := constr:(eq_refl : a = Vector.hd As') in (* Check if the terms match *)
+     exact (@Build_IndexBound A _ a As (Fin.R m (@Fin.F1 n'))
                               (@eq_refl A a)))
-      || Build_nth_IndexBound A a As As'' (S m)
+      ||
+      let As'' := eval simpl in (Vector.tl As') in
+          Build_nth_IndexBound n' A a As As'' (S m)
   end.
-Unset Ltac Debug.
 
 Hint Extern 0 (@IndexBound ?A ?n ?a ?As) =>
-let As' :=
-    (match goal with
-     | _ => eval unfold As in As
-     | _ => As
-     end) in
-let As' := eval simpl in As' in
-    Build_nth_IndexBound A a As As' 0 : typeclass_instances.
+let n' := eval compute in n in
+    Build_nth_IndexBound n' A a As As 0 : typeclass_instances.
+
 (*
 Import Coq.Vectors.VectorDef.VectorNotations.
 

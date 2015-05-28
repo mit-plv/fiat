@@ -82,7 +82,7 @@ Section RADL_ADT.
   Definition radlm_in_t (Node : RADLM_Node) :=
     MessageADT TopicTypes TopicNames (RADL_Subscriptions (RADLM_MonitoredNode Node)).
   Definition radlm_in_flags_t (Node : RADLM_Node) :=
-    FlagsADT TopicNames (RADLM_Subscriptions Node).
+    FlagsADT TopicNames (RADL_Subscriptions (RADLM_MonitoredNode Node)).
 
   Definition radlm_out_t (Node : RADLM_Node) :=
     MessageADT TopicTypes TopicNames (RADL_Publications (RADLM_MonitoredNode Node)).

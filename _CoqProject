@@ -107,8 +107,8 @@ src/Examples/QueryStructure/WeatherMemoized.v
 src/Examples/Smtp/Smtp.v
 src/Fiat4Monitors/LandsharkNodes.v
 src/Fiat4Monitors/LandsharkTopics.v
-src/Fiat4Monitors/MonitorADTs.v
 src/Fiat4Monitors/MonitorRepInv.v
+src/Fiat4Monitors/RADLMNodeADTs.v
 src/Fiat4Monitors/RADLNodeADTs.v
 src/Fiat4Monitors/RADL_Flag.v
 src/Fiat4Monitors/RADL_Flags.v
@@ -122,6 +122,8 @@ src/Fiat4Monitors/HealthMonitor/HealthMonitorSpec.v
 src/Fiat4Monitors/HealthMonitor/HealthMonitors.v
 src/Fiat4Monitors/HelloWorld/HelloWorld.v
 src/Fiat4Monitors/HelloWorld/HelloWorldI386.v
+src/Fiat4Monitors/TurretMonitor/FacadeImpl.v
+src/Fiat4Monitors/TurretMonitor/FiatSpec.v
 src/FiatToFacade/BedrockUtilities.v
 src/FiatToFacade/Compiler.v
 src/FiatToFacade/FacadeNotations.v

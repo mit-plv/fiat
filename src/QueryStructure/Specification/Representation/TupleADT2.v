@@ -125,6 +125,7 @@ Section TupleADT2.
 
     (* Support for building messages. *)
 
+
     Definition ConstructTuple2 subtopics :=
       CallConstructor Tuple2ADT Tuple2_Init subtopics.
 
@@ -198,6 +199,6 @@ Definition CallDecTuple2GetMethod
            idx
   := cMethods (Tuple2ADT _) (ibound (indexb (BuildGetTuple2MethodID _ idx))) r.
 
-Notation "t ! R" :=
+(* Notation "t ! R" :=
   (@CallDecTuple2GetMethod _ _ t%Tuple2 (ibound (indexb ((@Build_BoundedIndex _ _ _ R%string _)))) ())
-  : Tuple2_scope.
+  : Tuple2_scope. *)
