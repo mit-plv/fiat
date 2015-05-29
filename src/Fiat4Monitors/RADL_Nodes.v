@@ -49,7 +49,7 @@ Section RADL_ADT.
     FlagsADT TopicNames (RADL_Publications Node).
 
   Definition RADL_ADTSig  (Node : RADL_Node)
-  : ADTSig :=                         (* A RADL Node is modeled as an ADT with a  *)
+  : DecoratedADTSig :=                         (* A RADL Node is modeled as an ADT with a  *)
     ADTsignature {                    (* single constructor and a step function. *)
         Constructor RADL_Init      : unit -> rep,
         Method      RADL_Step      : rep x (prod (cRep (radl_in_t Node)) (cRep (radl_in_flags_t Node)))
@@ -68,9 +68,7 @@ Section RADL_ADT.
              ret (tt, (results, result_flags)) }. *)
 
   Record RADLM_Node :=
-    { (* The model of the monitor's internal state *)
-      RADLM_Rep : Type;
-      (* The monitored node*)
+    { (* The monitored node*)
       RADLM_MonitoredNode : RADL_Node;
       (* Additional Subscription + Publication info *)
       RADLM_NumSubscriptions : nat;
@@ -109,7 +107,7 @@ Section RADL_ADT.
   Definition RADLM_ADTSig
              (MonitorNode : RADLM_Node)
              (InitDom : Type)
-  : ADTSig :=
+  : DecoratedADTSig :=
     ADTsignature {
         Constructor RADL_Init       : InitDom -> rep,
         (* Monitor Nodes have two methods which are used to guard the node's step function:
@@ -130,11 +128,11 @@ Section RADL_ADT.
 End RADL_ADT.
 
 Definition RADL_ADT {n} Topics Node :=
-  ADT (@RADL_ADTSig n (Vector.map Topic_Type Topics)
+  DecoratedADT (@RADL_ADTSig n (Vector.map Topic_Type Topics)
                     (Vector.map Topic_Name Topics)
                     Node).
 
 Definition RADLM_ADT {n} Topics MonitorNode InitDom :=
-  ADT (@RADLM_ADTSig n (Vector.map Topic_Type Topics)
+  DecoratedADT (@RADLM_ADTSig n (Vector.map Topic_Type Topics)
                      (Vector.map Topic_Name Topics)
                      MonitorNode InitDom).

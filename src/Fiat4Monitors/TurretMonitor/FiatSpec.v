@@ -21,7 +21,6 @@ Require Import
 
 Definition PaintballMonitorNode :=
   monitor node for landshark_paintball using Landshark_Topics {
-      MODELED unit
       PUBLISHES []
       SUBSCRIBES [turret_pan; turret_tilt] }%Node.
 
@@ -60,7 +59,7 @@ Proof.
       refine pick val
              (if (Word.wlt_dec
                             (prim_fst
-                               (GetTopic' V _ (radlm_monitor_in n)
+                               (GetTopic' _ _ (radlm_monitor_in n)
                                           (Fin.FS Fin.F1))) (Word.natToWord _ 45)) then Datatypes.true else Datatypes.false).
       simplify with monad laws.
       rewrite refine_If_Then_Else_Bind.

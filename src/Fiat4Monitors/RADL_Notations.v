@@ -122,10 +122,9 @@ Notation "'node' 'using' Topics '{' 'DEFS' definitions 'PUBLISHES' publications 
        RADL_CXX := cstuff |}))
     (Topics at level 0, at level 0) : Node_scope.
 
-Notation "'monitor' 'node' 'for' Node 'using' Topics '{' 'MODELED' rep 'PUBLISHES' publications 'SUBSCRIBES' subscriptions '}'" :=
+Notation "'monitor' 'node' 'for' Node 'using' Topics '{' 'PUBLISHES' publications 'SUBSCRIBES' subscriptions '}'" :=
   (let _ : NetworkTopicNamesHint := {| NetworkTopicNames := Vector.map Topic_Name Topics |} in
-   ({| RADLM_Rep := rep;
-       RADLM_MonitoredNode := Node;
+   ({| RADLM_MonitoredNode := Node;
        RADLM_Publications := publications%Topic%vector;
        RADLM_Subscriptions := subscriptions%Topic%vector |}))
     (Topics at level 0, at level 0) : Node_scope.
