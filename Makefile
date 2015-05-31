@@ -36,7 +36,7 @@ TIMER=$(if $(TIMED), $(STDTIME), $(TIMECMD))
 containing = $(foreach v,$2,$(if $(findstring $1,$v),$v))
 not-containing = $(foreach v,$2,$(if $(findstring $1,$v),,$v))
 
-.PHONY: fiat fiat-core querystructures parsers finitesets dns compiler facade-test ics fiat4monitors examples \
+.PHONY: fiat fiat-core querystructures parsers parsers-all finitesets dns compiler facade-test ics fiat4monitors examples \
 	install install-fiat install-fiat-core install-querystructures install-parsers install-finitesets install-dns install-compiler install-ics install-fiat4monitors install-examples \
 	pdf doc clean-doc \
 	clean update-_CoqProject FORCE
@@ -97,7 +97,11 @@ QUERYSTRUCTURES_UNMADE_VO := \
 	src/QueryStructure/Implementation/DataStructures/Bags/InvertedIndexBags.vo
 
 PARSERS_UNMADE_VO := \
-	src/Parsers/Reachable/ParenBalancedHiding/MinimalOfCore.vo
+	src/Parsers/Reachable/ParenBalancedHiding/MinimalOfCore.vo \
+	src/Parsers/Refinement/BinOpBrackets/MakeBinOpTable.vo \
+	src/Parsers/Reachable/ParenBalanced/OfParse.vo \
+	src/Parsers/Refinement/BinOpBrackets/BinOpRules.vo \
+	src/Parsers/Refinement/BinOpBrackets/BinOpLemmas.vo
 
 FIAT4MONITORS_UNMADE_VO := \
 	src/Fiat4Monitors/HelloWorld/%.vo \
@@ -122,6 +126,7 @@ WATER_TANK_EXTRACT_ML := src/Examples/Ics/WaterTank.ml
 FIAT_CORE_VO := $(filter-out src/Fiat4Monitors/% src/QueryStructure/% src/Parsers/% src/FiniteSetADTs/% src/FiatToFacade/% src/Examples/% src/FiniteSetADTs.vo,$(filter src/%.vo,$(VOFILES)))
 QUERYSTRUCTURES_VO := $(filter src/QueryStructure/%.vo,$(filter-out $(QUERYSTRUCTURES_UNMADE_VO),$(VOFILES)))
 PARSERS_VO := $(filter-out $(PARSERS_UNMADE_VO),$(filter src/Parsers/%.vo,$(VOFILES)))
+PARSERS_ALL_VO := $(filter src/Parsers/%.vo,$(VOFILES))
 FINITESET_VO := $(filter src/FiniteSetADTs.vo src/FiniteSetADTs/%.vo,$(VOFILES))
 DNS_VO := $(filter src/Examples/DnsServer/%.vo,$(VOFILES))
 COMPILER_VO := $(filter src/FiatToFacade/%.vo,$(VOFILES))
@@ -136,6 +141,7 @@ fiat: $(FIAT_VO)
 fiat-core: $(FIAT_CORE_VO)
 querystructures: $(QUERYSTRUCTURES_VO)
 parsers: $(PARSERS_VO)
+parsers-all: $(PARSERS_ALL_VO)
 finitesets: $(FINITESETS_VO)
 dns: $(DNS_VO)
 compiler: $(COMPILER_VO)

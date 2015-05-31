@@ -201,6 +201,7 @@ src/Parsers/Reachable/OnlyFirst/ReachableParse.v
 src/Parsers/Reachable/OnlyFirst/ReachableWellFounded.v
 src/Parsers/Reachable/ParenBalanced/Core.v
 src/Parsers/Reachable/ParenBalanced/MinimalOfCore.v
+src/Parsers/Reachable/ParenBalanced/OfParse.v
 src/Parsers/Reachable/ParenBalanced/WellFounded.v
 src/Parsers/Reachable/ParenBalancedHiding/Core.v
 src/Parsers/Reachable/ParenBalancedHiding/MinimalOfCore.v
@@ -216,6 +217,8 @@ src/Parsers/Refinement/SharpenedAtMostOneNonTerminal.v
 src/Parsers/Refinement/SharpenedExpressionParen.v
 src/Parsers/Refinement/SharpenedExpressionPlus.v
 src/Parsers/Refinement/Tactics.v
+src/Parsers/Refinement/BinOpBrackets/BinOpLemmas.v
+src/Parsers/Refinement/BinOpBrackets/BinOpRules.v
 src/Parsers/Refinement/BinOpBrackets/MakeBinOpTable.v
 src/Parsers/Splitters/BruteForce.v
 src/Parsers/Splitters/RDPList.v

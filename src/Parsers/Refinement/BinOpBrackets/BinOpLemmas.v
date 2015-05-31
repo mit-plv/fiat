@@ -59,6 +59,39 @@ Require Fiat.Parsers.Reachable.MaybeEmpty.OfParse.
 *)
 Set Implicit Arguments.
 
+Section helpers.
+  Context {Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}.
+
+  Lemma paren_balanced_hiding'_prefix
+  (str : String)
+  Lemma
+  t
+  Htable0 : index_points_to_binop is_bin_op n idx str
+  Htable1 : paren_balanced_hiding' is_bin_op is_open is_close
+              (StringLike.take (pred idx) (StringLike.drop n str)) 0
+  Hch : is_bin_op ch
+  idx' : nat
+  Hsmall : idx' <= StringLike.length (substring n m str)
+  Hreachable : production_is_reachable G
+                 (NonTerminal nt :: Terminal ch :: its)
+  pit : parse_of_item G (StringLike.take idx' (substring n m str))
+          (NonTerminal nt)
+  pits : parse_of_production G (StringLike.drop idx' (substring n m str))
+           (Terminal ch :: its)
+  Hpit : ContextFreeGrammarProperties.Forall_parse_of_item
+           (fun (_ : StringLike.String) (nt0 : string) =>
+            List.In nt0 (Valid_nonterminals G)) pit
+  Hpits : ContextFreeGrammarProperties.Forall_parse_of_production
+            (fun (_ : StringLike.String) (nt0 : string) =>
+             List.In nt0 (Valid_nonterminals G)) pits
+  n0 : nat
+  H2 : parse_of_production G
+         (StringLike.drop n0 (StringLike.drop idx' (substring n m str))) its
+  H0 : (StringLike.take n0 (StringLike.drop idx' (substring n m str)) ~= [ch])%string_like
+  l : idx' < idx
+  ============================
+   False
+
 (**
 <<
 pbh' ch n "" = true
