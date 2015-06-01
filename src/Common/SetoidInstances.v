@@ -119,3 +119,8 @@ Proof. intros [] [] ? [] []; compute; trivial. Qed.
 Global Instance implb_flip_implb_Proper1
 : Proper (implb ==> Basics.flip implb ==> implb) (Basics.flip implb).
 Proof. intros [] [] ? [] []; compute; trivial. Qed.
+
+Global Instance subrelation_eq_pointwise {A B} : subrelation (@eq (A -> B)) (pointwise_relation A eq).
+Proof.
+  compute; intros; subst; reflexivity.
+Qed.

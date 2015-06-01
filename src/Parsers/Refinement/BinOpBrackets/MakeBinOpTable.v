@@ -127,7 +127,7 @@ Section make_table.
 
   (**
 <<
-pbh' ch n "" = true
+pbh' ch n "" = n == 0
 pbh' ch n (ch :: s) = n > 0 && pbh' ch n s
 pbh' ch n ('(' :: s) = pbh' ch (n + 1) s
 pbh' ch n (')' :: s) = n > 0 && pbh' ch (n - 1) s
@@ -220,7 +220,8 @@ pbh = pbh' '+' 0
                    | _ => setoid_rewrite Bool.andb_true_iff
                    | _ => intro
                    | [ H : and _ _ |- _ ] => destruct H
-                   | [ H : bool_of_sumbool (Compare_dec.gt_dec ?a ?b) = true |- _ ] => destruct (Compare_dec.gt_dec a b)
+                   | [ H : bool_of_sumbool ?x = true |- _ ] => destruct x
+                   | _ => progress subst
                    | _ => congruence
                    | [ H : ?n > 0 |- _ ] => is_var n; destruct n
                  end. } }
@@ -469,7 +470,7 @@ pbh = pbh' '+' 0
     := forall offset idx,
          (nth offset table None = Some idx
           -> index_points_to_binop offset idx str
-             /\ paren_balanced_hiding' (take (pred idx) (drop offset str)) level)
+             /\ paren_balanced_hiding' (take idx (drop offset str)) level)
         (* /\ (nth offset table None = None
              -> paren_balanced' (take (pred idx) (drop offset str)) level
              -> index_not_points_to_binop offset idx str) *).
@@ -514,9 +515,9 @@ pbh = pbh' '+' 0
                 [ simpl;
                   rewrite paren_balanced_hiding'_nil by (rewrite ?take_length, ?drop_length; reflexivity);
                   reflexivity
-                | simpl;
-                  rewrite paren_balanced_hiding'_nil by (rewrite ?take_length, ?drop_length; reflexivity);
-                  reflexivity
+                | simpl
+                  (*rewrite paren_balanced_hiding'_nil by (rewrite ?take_length, ?drop_length; reflexivity);
+                  reflexivity*)
                 | simpl;
                   rewrite paren_balanced_hiding'_recr; unfold paren_balanced_hiding'_step, paren_balanced'_step;
                   erewrite (proj1 (get_0 _ _)); [ | rewrite take_take; simpl; eassumption ];
@@ -524,52 +525,74 @@ pbh = pbh' '+' 0
               repeat match goal with
                        | [ |- context[if ?f ch then _ else _] ] => destruct (f ch) eqn:?
                      end;
-              intros [|n];
-              repeat match goal with
-                       | _ => intro
-                       | _ => progress subst
-                       | _ => progress simpl in *
-                       | _ => assumption
-                       | _ => reflexivity
-                       | _ => congruence
-                       | [ H : None = Some _ |- _ ] => solve [ inversion H ]
-                       | [ H : Some _ = Some _ |- _ ] => inversion H; clear H
-                       | [ H : get 0 _ = Some _ |- _ ] => apply get_0 in H
-                       | [ |- get 0 _ = Some _ ] => apply get_0
-                       | [ H : is_true (?str ~= [ ?ch ])%string_like, H' : is_true (?str ~= [ ?ch' ])%string_like |- _ ]
-                         => assert (ch = ch') by (eapply singleton_unique; eassumption);
-                           clear H'
-                       | [ H : nth _ (tl _) _ = _ |- _ ] => rewrite nth_tl in H
-                       | [ H : nth ?n (map ?f ?ls) _ = _ |- _ ] => revert H; simpl rewrite (map_nth f ls None n)
-                       | [ H : option_map _ ?x = Some _ |- _ ] => destruct x eqn:?; simpl in H
-                       | [ |- get ?n _ = _ ] => not constr_eq n 0; rewrite (get_drop (n := n))
-                       | [ H : get ?n _ = _ |- _ ] => not constr_eq n 0; rewrite (get_drop (n := n)) in H
-                       | _ => progress rewrite ?drop_drop, ?NPeano.Nat.add_1_r, ?drop_take, ?NPeano.Nat.sub_0_r
-                       | [ |- _ /\ _ ] => split
-                       | [ |- _ \/ _ ] => left; reflexivity
-                       | [ |- S _ = 0 \/ _ ] => right
-                       | [ H : forall a b c, _ /\ _ |- _ ]
-                         => pose proof (fun a b c => proj1 (H a b c));
-                           pose proof (fun a b c => proj2 (H a b c));
-                           clear H
-                       | [ H : context[nth ?n (map (fun ls' => nth _ ls' None) ?ls) _] |- _ ]
-                         => let H' := fresh in
-                            pose proof (fun a => map_nth (fun ls' => nth a ls' None) ls nil n) as H';
-                              simpl in H';
-                              match goal with
-                                | [ H'' : _ |- _ ] => rewrite <- H' in H''
-                              end;
-                              clear H'
-                       | [ IHlen : _ |- _ ] => eapply IHlen; [ eassumption | ]
-                       | [ H : _ \/ _ |- _ ] => destruct H
-                       | [ |- is_true (paren_balanced_hiding' _ _) ] => rewrite paren_balanced_hiding'_nil by (rewrite ?take_length, ?drop_length; reflexivity)
-                       | [ H : context[match ?n with 0 => None | S _ => @None ?A end] |- _ ]
-                         => replace (match n with 0 => None | S _ => @None A end) with (@None A) in H by (destruct n; reflexivity)
-                       | [ IHlen : forall a b, nth _ (map _ (list_of_next_bin_ops' _)) None = Some _ -> _,
-                             H : nth _ (map _ (list_of_next_bin_ops' _)) None = Some _ |- _ ]
-                         => specialize (IHlen _ _ H)
-                       | _ => solve [ eauto using paren_balanced_hiding'_S with nocore ]
-                     end. }
+              try
+                solve [
+                  intros [|n];
+                  repeat
+                    match goal with
+                      | _ => intro
+                      | _ => progress subst
+                      | _ => progress simpl in *
+                      | _ => assumption
+                      | _ => reflexivity
+                      | _ => congruence
+                      | [ H : None = Some _ |- _ ] => solve [ inversion H ]
+                      | [ H : Some _ = Some _ |- _ ] => inversion H; clear H
+                      | [ H : get 0 _ = Some _ |- _ ] => apply get_0 in H
+                      | [ |- get 0 _ = Some _ ] => apply get_0
+                      | [ H : is_true (?str ~= [ ?ch ])%string_like, H' : is_true (?str ~= [ ?ch' ])%string_like |- _ ]
+                        => assert (ch = ch') by (eapply singleton_unique; eassumption);
+                          clear H'
+                      | [ H : nth _ (tl _) _ = _ |- _ ] => rewrite nth_tl in H
+                      | [ H : nth ?n (map ?f ?ls) _ = _ |- _ ] => revert H; simpl rewrite (map_nth f ls None n)
+                      | [ H : option_map _ ?x = Some _ |- _ ] => destruct x eqn:?; simpl in H
+                      | [ |- get ?n _ = _ ] => not constr_eq n 0; rewrite (get_drop (n := n))
+                      | [ H : get ?n _ = _ |- _ ] => not constr_eq n 0; rewrite (get_drop (n := n)) in H
+                      | _ => progress rewrite ?drop_drop, ?NPeano.Nat.add_1_r, ?drop_take, ?NPeano.Nat.sub_0_r
+                      | [ |- _ /\ _ ] => split
+                      | [ |- _ \/ _ ] => left; reflexivity
+                      | [ |- S _ = 0 \/ _ ] => right
+                      | [ H : forall a b c, _ /\ _ |- _ ]
+                        => pose proof (fun a b c => proj1 (H a b c));
+                          pose proof (fun a b c => proj2 (H a b c));
+                          clear H
+                      | [ H : context[nth ?n (map (fun ls' => nth _ ls' None) ?ls) _] |- _ ]
+                        => let H' := fresh in
+                           pose proof (fun a => map_nth (fun ls' => nth a ls' None) ls nil n) as H';
+                             simpl in H';
+                             match goal with
+                               | [ H'' : _ |- _ ] => rewrite <- H' in H''
+                             end;
+                             clear H'
+                      | [ IHlen : _ |- _ ] => eapply IHlen; [ eassumption | ]
+                      | [ H : _ \/ _ |- _ ] => destruct H
+                      | [ |- is_true (paren_balanced_hiding' _ _) ] => rewrite paren_balanced_hiding'_nil by (rewrite ?take_length, ?drop_length; reflexivity)
+                      | [ H : context[match ?n with 0 => None | S _ => @None ?A end] |- _ ]
+                        => replace (match n with 0 => None | S _ => @None A end) with (@None A) in H by (destruct n; reflexivity)
+                      | [ IHlen : forall a b, nth _ (map _ (list_of_next_bin_ops' _)) None = Some _ -> _,
+                            H : nth _ (map _ (list_of_next_bin_ops' _)) None = Some _ |- _ ]
+                        => specialize (IHlen _ _ H)
+                      | _ => solve [ eauto using paren_balanced_hiding'_S with nocore ]
+                    end
+                | repeat
+                    match goal with
+                      | [ H : context[if ?e then _ else _] |- _ ] => destruct e eqn:?
+                      | [ |- context[if ?e then _ else _] ] => destruct e eqn:?
+                      | [ H : context[nth ?n (_ :: _) _] |- _ ] => is_var n; destruct n
+                      | _ => progress simpl in *
+                      | [ H : Some _ = Some _ |- _ ] => inversion H; clear H
+                      | _ => congruence
+                      | [ |- is_true (paren_balanced_hiding' (take 1 _) _) ]
+                        => rewrite paren_balanced_hiding'_recr
+                      | _ => rewrite get_take_lt by omega
+                      | _ => erewrite (proj1 (get_0 _ _)) by eassumption
+                      | _ => progress unfold paren_balanced_hiding'_step
+                      | _ => progress unfold paren_balanced'_step
+                      | [ H : ?x = true |- context[?x] ] => rewrite H
+                      | [ H : ?x = false |- context[?x] ] => rewrite H
+                      | _ => rewrite !drop_take, !paren_balanced_hiding'_nil
+                            by (rewrite take_length; reflexivity)
+                    end ]. }
             (*{ revert n.
               intros [|n];
                 repeat match goal with

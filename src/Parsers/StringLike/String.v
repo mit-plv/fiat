@@ -78,3 +78,13 @@ Proof.
            | _ => rewrite <- substring_correct3'; apply substring_correct2; omega
          end.
 Qed.
+
+Lemma substring_take_drop (str : String) n m
+: substring n m str = take m (drop n str).
+Proof.
+  simpl.
+  rewrite substring_substring; simpl.
+  apply Min.min_case_strong; simpl; trivial; [].
+  intro H.
+  apply substring_correct4; omega.
+Qed.

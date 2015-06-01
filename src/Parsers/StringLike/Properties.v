@@ -11,7 +11,7 @@ Require Import Fiat.Common.Le.
 Set Implicit Arguments.
 
 Section String.
-  Context {Char} `{StringLikeProperties Char}.
+  Context {Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}.
 
   Definition bool_eq_refl {x : String} : x =s x.
   Proof.
@@ -398,5 +398,41 @@ Section String.
   Proof.
     repeat intro; apply fold'_Proper; trivial.
     setoid_subst_rel beq; reflexivity.
+  Qed.
+
+  Lemma take_n_1_singleton (str : String) n ch (H : take n str ~= [ ch ])
+  : take 1 str ~= [ ch ].
+  Proof.
+    assert (H' : take 1 (take n str) ~= [ ch ])
+      by (rewrite take_long; [ assumption | ];
+          apply length_singleton in H; rewrite H; reflexivity).
+    rewrite (take_take str 1 n) in H'.
+    destruct n; simpl min in H'.
+    { apply length_singleton in H'; rewrite take_length in H'.
+      simpl in H'; congruence. }
+    { exact H'. }
+  Qed.
+
+  Lemma get_take_lt (str : String) n m (Hle : n < m)
+  : get n (take m str) = get n str.
+  Proof.
+    repeat match goal with
+             | _ => progress simpl in *
+             | _ => congruence
+             | _ => omega
+             | _ => progress rewrite ?drop_take
+             | [ |- context[get ?n _] ] => not constr_eq n 0; rewrite !(get_drop (n := n))
+             | [ |- context[get 0 ?str] ] => destruct (get 0 str) eqn:?
+             | [ H : get 0 _ = Some _ |- _ ] => apply get_0 in H
+             | [ H : get 0 _ = None |- _ ] => apply no_first_char_empty in H
+             | [ H : _ |- _ ] => progress rewrite ?take_take, ?take_length in H
+             | [ H : is_true (take ?n _ ~= [ _ ]) |- _ ] => progress apply take_n_1_singleton in H
+             | [ |- Some _ = Some _ ] => apply f_equal
+             | _ => eapply singleton_unique; eassumption
+             | [ H : length ?str = 0, H' : is_true (take _ ?str ~= [ _ ]) |- _ ]
+               => apply length_singleton in H'
+             | [ H : ?x = 0, H' : context[?x] |- _ ] => rewrite H in H'
+             | [ H : context[min _ _] |- _ ] => revert H; apply Min.min_case_strong; intros
+           end.
   Qed.
 End String.
