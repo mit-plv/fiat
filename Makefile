@@ -98,10 +98,10 @@ QUERYSTRUCTURES_UNMADE_VO := \
 
 PARSERS_UNMADE_VO := \
 	src/Parsers/Reachable/ParenBalancedHiding/MinimalOfCore.vo \
-	src/Parsers/Refinement/BinOpBrackets/MakeBinOpTable.vo \
 	src/Parsers/Reachable/ParenBalanced/OfParse.vo \
 	src/Parsers/Refinement/BinOpBrackets/BinOpRules.vo \
-	src/Parsers/Refinement/BinOpBrackets/BinOpLemmas.vo
+	src/Parsers/Refinement/BinOpBrackets/BinOpLemmas.vo \
+	src/Parsers/Refinement/BinOpBrackets/ParenBalanced.vo
 
 FIAT4MONITORS_UNMADE_VO := \
 	src/Fiat4Monitors/HelloWorld/%.vo \

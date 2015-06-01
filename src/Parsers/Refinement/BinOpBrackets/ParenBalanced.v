@@ -10,7 +10,7 @@ Require Import Fiat.Common.SetoidInstances.
 
 Set Implicit Arguments.
 
-Section cfg.
+Section general.
   Context {Char} {HSL : StringLike Char}
           {pdata : paren_balanced_hiding_dataT Char}.
 
@@ -21,18 +21,16 @@ Section cfg.
       clearbody len; revert str;
       induction len; intros str ?.
 
+  Lemma pb_check_level_S {ch n} : pb_check_level ch n -> pb_check_level ch (S n).
+  Proof.
+    apply pb_check_level_le; omega.
+  Qed.
 
+  Global Opaque pb_check_level pb_new_level.
 
   Definition paren_balanced'_step (ch : Char) (pbh_rest : nat -> bool) (start_level : nat)
     : bool
-      := if is_bin_op ch
-         then pbh_rest start_level
-         else if is_open ch
-              then pbh_rest (S start_level)
-              else if is_close ch
-                   then ((Compare_dec.gt_dec start_level 0)
-                           && pbh_rest (pred start_level))%bool
-                   else pbh_rest start_level.
+      := (pb_check_level ch start_level && pbh_rest (pb_new_level ch start_level))%bool.
 
     Definition paren_balanced' (str : String) (start_level : nat)
     : bool
@@ -91,17 +89,20 @@ Section cfg.
         { rewrite (proj1 (get_0 _ _) H'').
           unfold paren_balanced'_step.
           repeat match goal with
-                   | [ |- context[if ?f ch then _ else _] ] => destruct (f ch) eqn:?
                    | _ => reflexivity
                    | _ => solve [ eauto with nocore ]
                    | _ => progress simpl in *
                    | _ => setoid_rewrite Bool.andb_true_iff
-                   | _ => intro
+                   | _ => progress intro
                    | [ H : and _ _ |- _ ] => destruct H
                    | [ H : bool_of_sumbool (Compare_dec.gt_dec ?a ?b) = true |- _ ] => destruct (Compare_dec.gt_dec a b)
                    | _ => congruence
                    | [ H : ?n > 0 |- _ ] => is_var n; destruct n
-                 end. } }
+                   | [ |- _ /\ _ ] => split
+                   | _ => apply pb_check_level_S; assumption
+                 end.
+          eauto using .
+ } }
     Qed.
 
     Lemma paren_balanced'_le {HSLP : StringLikeProperties Char} (str : String) n1 n2 (H : n1 <= n2)

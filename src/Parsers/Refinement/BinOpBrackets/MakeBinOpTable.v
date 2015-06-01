@@ -470,9 +470,9 @@ pbh = pbh' '+' 0
          (nth offset table None = Some idx
           -> index_points_to_binop offset idx str
              /\ paren_balanced_hiding' (take (pred idx) (drop offset str)) level)
-         /\ (nth offset table None = None
+        (* /\ (nth offset table None = None
              -> paren_balanced' (take (pred idx) (drop offset str)) level
-             -> index_not_points_to_binop offset idx str).
+             -> index_not_points_to_binop offset idx str) *).
 
   Definition list_of_next_bin_ops_spec
     := list_of_next_bin_ops_spec' 0.
@@ -504,10 +504,10 @@ pbh = pbh' '+' 0
           { specialize (fun n => IHlen n 0).
             setoid_rewrite drop_0.
             setoid_rewrite drop_0 in IHlen.
-            pose proof (fun n idx => proj1 (IHlen n idx)) as IHlen0.
+            (*pose proof (fun n idx => proj1 (IHlen n idx)) as IHlen0.
             pose proof (fun n idx => proj2 (IHlen n idx)) as IHlen1.
-            clear IHlen.
-            intros n idx; split.
+            clear IHlen.*)
+            intros n idx(*; split.*).
             { intro H'; split;
               [ revert n idx H'
               | destruct idx as [|[|idx]];
@@ -570,7 +570,7 @@ pbh = pbh' '+' 0
                          => specialize (IHlen _ _ H)
                        | _ => solve [ eauto using paren_balanced_hiding'_S with nocore ]
                      end. }
-            { revert n.
+            (*{ revert n.
               intros [|n];
                 repeat match goal with
                          | _ => intro
@@ -617,16 +617,14 @@ pbh = pbh' '+' 0
                            => specialize (IHlen _ _ H)
                          | _ => solve [ eauto using paren_balanced_hiding'_S with nocore ]
                        end.
-intros H' Hbal.
-
+intros H' Hbal. *) }
             { intros n idx H'.
               rewrite index_points_to_binop_S1.
               specialize (IHlen n offset idx H').
               destruct IHlen as [IHlen0 IHlen1].
               split; [ exact IHlen0 | ].
               rewrite drop_drop, NPeano.Nat.add_1_r in IHlen1.
-              exact IHlen1. } } } }
-      { SearchAbout nth.
+              exact IHlen1. } } }
   Qed.
 
   Lemma list_of_next_bin_ops_satisfies_spec {HSLP : StringLikeProperties Char} (str : String)
