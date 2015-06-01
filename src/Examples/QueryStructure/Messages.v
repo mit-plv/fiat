@@ -67,8 +67,8 @@ Definition SharpenedMessages :
   MostlySharpened MessagesSpec.
 Proof.
 
-
   (* With the standard indexes, 'RelevantMessages' enumerates and filters. *)
+  Unset Ltac Debug.
   partial_master_plan EqIndexTactics.
   Undo 1.
 
@@ -79,9 +79,11 @@ Proof.
 
   FullySharpenQueryStructure MessagesSchema Index.
 
-Time Defined.
+Time Defined. (* 100s *)
 
 Definition MessagesImpl : SharpenedUnderDelegates MessagesSig.
   Time let Impl := eval simpl in (projT1 SharpenedMessages) in
            exact Impl.
-Defined.
+Defined. (* 14s *)
+
+Print MessagesImpl.

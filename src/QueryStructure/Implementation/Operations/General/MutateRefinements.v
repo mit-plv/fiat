@@ -343,12 +343,12 @@ Section MutateRefinements.
     unfold DropQSConstraints_AbsR; intros; subst.
     setoid_rewrite QSMutateSpec_refine.
     repeat setoid_rewrite refineEquiv_bind_bind.
-    repeat rewrite GetRelDropConstraints.
+    rewrite !GetRelDropConstraints.
     f_equiv; unfold pointwise_relation; intros.
     f_equiv; unfold pointwise_relation; intros.
     f_equiv; unfold pointwise_relation; intros.
     { intros v Comp_v; subst; computes_to_inv;
-      unfold decides in *; find_if_inside; intros; computes_to_econstructor; intros.
+      unfold decides, If_Then_Else in *; find_if_inside; intros; computes_to_econstructor; intros.
       - rewrite <- GetRelDropConstraints in *; eapply Comp_v; intros; eauto;
         eapply H; eauto; rewrite <- GetRelDropConstraints; eauto.
       - unfold not; intros; eapply Comp_v; intros; rewrite <- GetRelDropConstraints in *.
@@ -357,7 +357,7 @@ Section MutateRefinements.
     }
     f_equiv; unfold pointwise_relation; intros.
     { intros v Comp_v; subst; computes_to_inv;
-      unfold decides in *; find_if_inside; intros; computes_to_econstructor; intros.
+      unfold decides, If_Then_Else in *; find_if_inside; intros; computes_to_econstructor; intros.
       - rewrite <- GetRelDropConstraints in *; eapply Comp_v; intros; eauto.
         rewrite GetRelDropConstraints; eapply H; eauto.
       - unfold not; intros; eapply Comp_v; intros; rewrite <- GetRelDropConstraints in *.

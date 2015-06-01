@@ -178,8 +178,6 @@ Qed.
 (* Typeclass + notations for declaring abstraction relation for
    QueryStructure Implementations. *)
 
-Definition decides (b : bool) (P : Prop) := if b then P else ~ P.
-
 Definition SatisfiesAttributeConstraints
            {qsSchema} Ridx tup :=
   match (attrConstraints (QSGetNRelSchema qsSchema Ridx)) with
