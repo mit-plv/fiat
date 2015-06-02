@@ -43,6 +43,7 @@ src/Common/LogicMorphisms.v
 src/Common/Match.v
 src/Common/Monad.v
 src/Common/NatFacts.v
+src/Common/OptionFacts.v
 src/Common/ReservedNotations.v
 src/Common/SetEq.v
 src/Common/SetEqProperties.v
