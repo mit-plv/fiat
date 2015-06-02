@@ -132,6 +132,26 @@ Section for_first_char.
 
   Global Opaque for_first_char.
 
+  Lemma for_first_char_exists (str : String) P (H : length str >= 1)
+  : for_first_char str P <-> (exists ch, take 1 str ~= [ ch ] /\ P ch).
+  Proof.
+    rewrite (for_first_char__take 0).
+    assert (H' : length (take 1 str) = 1)
+      by (rewrite take_length; apply Min.min_case_strong; omega).
+    destruct (singleton_exists _ H') as [ch H''].
+    rewrite for_first_char_singleton_length by exact H'.
+    split; intros.
+    { exists ch; split; eauto. }
+    { destruct_head ex.
+      destruct_head and.
+      repeat match goal with
+               | [ H : is_true (?str ~= [ ?ch ])%string_like, H' : is_true (?str ~= [ ?ch' ])%string_like |- _ ]
+                 => assert (ch = ch') by (eapply singleton_unique; eassumption);
+                   clear H'
+             end.
+      subst; assumption. }
+  Qed.
+
   Lemma for_first_char_False (str : String) P
   : (forall ch, ~P ch) -> for_first_char str P -> length str = 0.
   Proof.

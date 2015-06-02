@@ -1,7 +1,7 @@
 Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.StringLike.Properties.
-Require Import Fiat.Parsers.Reachable.ParenBalancedHiding.Core.
-Require Import Fiat.Parsers.Refinement.BinOpBrackets.MakeBinOpTable.
+Require Import Fiat.Parsers.Reachable.ParenBalanced.Core.
+Require Import Fiat.Parsers.Refinement.BinOpBrackets.ParenBalanced.
 Require Import Fiat.Common.
 
 (*
@@ -61,12 +61,11 @@ Set Implicit Arguments.
 
 Section helpers.
   Context {Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}.
-  Context (is_bin_op : Char -> bool)
-          (is_open : Char -> bool) (is_close : Char -> bool).
+  Context {pdata : paren_balanced_hiding_dataT Char}.
 
   Lemma paren_balanced_hiding'_prefix (str : String) (n n' level : nat)
-        (H_hiding : paren_balanced_hiding' is_bin_op is_open is_close (take n str) level)
-        (H_hiding_prefix : paren_balanced' is_bin_op is_open is_close (take n' str) level)
+        (H_hiding : paren_balanced_hiding' (take n str) level)
+        (H_hiding_prefix : paren_balanced' (take n' str) level)
         {ch}
         (Hlt : n' < n)
         (H_ch : (take 1 (drop n' str) ~= [ ch ])%string_like)
