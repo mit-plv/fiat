@@ -12,9 +12,10 @@ Require Import
         Fiat.Common.List.FlattenList
         Fiat.Common.SetEqProperties
         Fiat.Common.FMapExtensions
-        Fiat.Common.List.PermutationFacts.
+        Fiat.Common.List.PermutationFacts
+        Fiat.QueryStructure.Specification.SearchTerms.ListInclusion.
 
-Module InvertedIndexBag (MKeys : WS) (MValues : WSfun Nat_as_OT ).
+Module InvertedIndexBag (MKeys : WS) (MValues : WSfun Nat_as_OT).
 
   Module Import MKeysFacts := WFacts_fun MKeys.E MKeys.
   Module Import MKeysProperties := WProperties_fun MKeys.E MKeys.
@@ -24,14 +25,17 @@ Module InvertedIndexBag (MKeys : WS) (MValues : WSfun Nat_as_OT ).
   Module Import MValuesProperties := WProperties_fun Nat_as_OT MValues.
   Module Import MoreMValuesFacts := FMapExtensions_fun Nat_as_OT MValues.
   Module E := MKeys.E.
+  Module Import EInclusion := IncludesClauses E.
 
   Section InvertedIndexBagDefinitions.
 
+    Definition IndexSearchTermT := list E.t.
+
     Context {TItem : Type}
             {UpdateTermType : Type}
+            {Dec : DecideableEnsembles.Query_eq E.t}
             (bupdate_transform : UpdateTermType -> TItem -> TItem).
 
-    Definition IndexSearchTermT := list E.t.
     Definition ItemSearchTermT := TItem -> bool.
     Definition ItemSearchTermMatcher : ItemSearchTermT -> TItem -> bool := id.
     Record SearchTerm :=
@@ -44,7 +48,7 @@ Module InvertedIndexBag (MKeys : WS) (MValues : WSfun Nat_as_OT ).
 
     Definition InvertedIndex_bfind_matcher
                (st : SearchTerm) (item: TItem) :=
-      if IncludedIn_dec st (projection item)  then
+      if IncludedIn_dec (IndexSearchTerm st) (projection item)  then
         ItemSearchTermMatcher st item
         else false.
 
@@ -112,26 +116,18 @@ Module InvertedIndexBag (MKeys : WS) (MValues : WSfun Nat_as_OT ).
            | _ => MKeys.add key [index] Mkey
          end.
 
+    Check fold_left.
+
     Definition InvertedIndex_binsert
              (it : InvertedIndexMap)
              (item : TItem) : InvertedIndexMap :=
       {| KeyMap :=
-           let (includedKeys, notIncludedKeys) :=
-               MKeysProperties.partition
-                 (fun key _ =>
-                    if (InA_dec E.eq_dec key (projection item))
-                    then true
-                    else false)
-                 (KeyMap it) in
-           let oldKeys := map fst (MKeys.elements includedKeys) in
-           let newKeys := List.filter (fun key : E.t =>
-                                         if InA_dec E.eq_dec key oldKeys then
-                                           false else true) (projection item) in
-           MKeysProperties.update
-             (fold_left (fun m k => MKeys.add k [NumValues it] m) newKeys (MKeys.empty _))
-             (MKeysProperties.update
-                (MKeys.map (cons (NumValues it)) includedKeys)
-                notIncludedKeys);
+           fold_right
+             (fun term container'  =>
+                match MKeys.find term container' with
+                | Some ns => MKeys.add term (NumValues it :: ns) container'
+                | None => MKeys.add term [NumValues it] container'
+                end) (KeyMap it) (projection item);
          ValuesMap := MValues.add (NumValues it) item (ValuesMap it);
          NumValues :=  S (NumValues it) |}.
 
@@ -156,7 +152,7 @@ Module InvertedIndexBag (MKeys : WS) (MValues : WSfun Nat_as_OT ).
       let (matchedItems, unmatchedItems) :=
           MValuesProperties.partition (fun _ => InvertedIndex_bfind_matcher st) (ValuesMap it) in
       (map snd (MValues.elements matchedItems),
-       {| KeyMap := (KeyMap it);
+       {| KeyMap := KeyMap it;
           ValuesMap := MValuesProperties.update
                          (MValues.map (bupdate_transform updateTerm) matchedItems)
                          unmatchedItems;
@@ -177,7 +173,7 @@ Module InvertedIndexBag (MKeys : WS) (MValues : WSfun Nat_as_OT ).
                     -> exists indexes,
                          MKeys.MapsTo key indexes (KeyMap it)
                          /\ List.In idx indexes)
-              /\ ~ MValues.In (NumValues it) (ValuesMap it).
+         /\ forall n, NumValues it <= n -> ~ MValues.In n (ValuesMap it).
 
     Definition InvertedIndex_ValidUpdate (update_term : UpdateTermType) :=
       forall item,
@@ -189,7 +185,7 @@ Module InvertedIndexBag (MKeys : WS) (MValues : WSfun Nat_as_OT ).
       unfold InvertedIndex_RepInv; intros; repeat split; simpl; intros.
       - elimtype False; eapply MKeys.empty_1; eauto.
       - elimtype False; eapply MValues.empty_1; eauto.
-      - intro; destruct H; eapply MValues.empty_1; eauto.
+      - intro; destruct H0; eapply MValues.empty_1; eauto.
     Qed.
 
     Lemma InvertedIndex_binsert_Preserves_RepInv :
@@ -197,7 +193,173 @@ Module InvertedIndexBag (MKeys : WS) (MValues : WSfun Nat_as_OT ).
     Proof.
       unfold binsert_Preserves_RepInv, InvertedIndex_binsert, UpdateKeyMap;
       intros; repeat split; intros; simpl in *.
-    Admitted.
+      - generalize dependent indexes; revert idx key container containerCorrect.
+         remember (projection item).
+         assert (forall term, InA E.eq term i -> InA E.eq term (projection item)) by (subst; eauto); clear Heqi.
+         induction i; simpl in *; intros.
+         + destruct containerCorrect.
+           eapply (H2 key indexes) in H1; eauto.
+           destruct H1 as [item0 [MapsToIdx InAKey]]; eexists; split; eauto.
+           eapply MValues.add_2; eauto.
+           intro; eapply H3; subst; eauto using MapsTo_In.
+         + revert H0;
+           case_eq (MKeys.find a
+            (fold_right
+               (fun (term : MKeys.key) (container' : MKeys.t (list nat)) =>
+                match MKeys.find term container' with
+                | Some ns =>
+                    MKeys.add term (NumValues container :: ns) container'
+                | None => MKeys.add term [NumValues container] container'
+                end) (KeyMap container) i)); intros;
+           eapply MoreMKeysFacts.BasicFacts.add_mapsto_iff in H2;
+           intuition subst; simpl in *; intuition subst.
+         * eexists; intuition.
+         * eapply MoreMKeysFacts.BasicFacts.find_mapsto_iff in H0.
+           setoid_rewrite <- H2; eauto.
+         * eauto using MoreMKeysFacts.BasicFacts.find_mapsto_iff.
+         * eexists; intuition.
+         * eauto using MoreMKeysFacts.BasicFacts.not_find_mapsto_iff.
+      - eapply MoreMValuesFacts.BasicFacts.add_mapsto_iff in H;
+           intuition subst; simpl in *; eauto.
+        + revert key container containerCorrect H0.
+          remember (projection item0).
+          assert (forall term, InA E.eq term i -> InA E.eq term (projection item0)) by (subst; eauto); clear Heqi.
+          induction i; simpl in *; intros; inversion H0; subst; clear H0;
+          eauto;
+          case_eq (MKeys.find a
+                              (fold_right
+               (fun (term : MKeys.key) (container' : MKeys.t (list nat)) =>
+                match MKeys.find term container' with
+                | Some ns =>
+                    MKeys.add term (NumValues container :: ns) container'
+                | None => MKeys.add term [NumValues container] container'
+                end) (KeyMap container) i)); intros.
+          *  eapply MoreMKeysFacts.BasicFacts.find_mapsto_iff in H0.
+             setoid_rewrite H2; eexists; split; simpl; eauto using MKeys.add_1;
+             simpl; eauto.
+          *  setoid_rewrite H2; eexists; split; simpl; eauto using MKeys.add_1;
+         simpl; eauto.
+          *  eapply IHi in H2; eauto.
+             destruct_ex; intuition.
+             destruct (E.eq_dec key a); eexists; try (solve [intuition]).
+             split.
+             eapply MoreMKeysFacts.BasicFacts.add_mapsto_iff; eauto.
+             eauto.
+          *  eapply IHi in H2; eauto.
+             destruct_ex; intuition.
+             destruct (E.eq_dec key a); eexists; try (solve [intuition]).
+             split.
+             eapply MoreMKeysFacts.BasicFacts.add_mapsto_iff; eauto.
+             eauto.
+        + revert key container containerCorrect H0 H H2.
+          remember (projection item0).
+          assert (forall term, InA E.eq term i -> InA E.eq term (projection item0)) by (subst; eauto); clear Heqi.
+          induction i; simpl in *; intros; inversion H0; subst; clear H0;
+          eauto.
+          eapply containerCorrect in H2; eauto; destruct_ex; intuition.
+          assert (InA E.eq key (projection item0)) by
+              (eapply H; econstructor; eauto).
+          revert H1 H2 H3; clear; induction (projection item); simpl; eauto.
+          intros.
+          case_eq (MKeys.find a
+           (fold_right
+              (fun (term : MKeys.key) (container' : MKeys.t (list nat)) =>
+               match MKeys.find term container' with
+               | Some ns =>
+                   MKeys.add term (NumValues container :: ns) container'
+               | None => MKeys.add term [NumValues container] container'
+               end) (KeyMap container) i)); intros.
+          * destruct (E.eq_dec key a).
+            { setoid_rewrite e.
+              eexists; split.
+              - eapply MoreMKeysFacts.BasicFacts.add_mapsto_iff; eauto.
+              - right; rewrite e in *; generalize a container l H H3 H2; clear;
+                induction i; simpl; intros.
+                + eapply MoreMKeysFacts.BasicFacts.find_mapsto_iff in H2.
+                  rewrite H in H2; injections; eauto.
+                + eapply MoreMKeysFacts.BasicFacts.find_mapsto_iff in H.
+                  revert H.
+                  case_eq (MKeys.find a
+            (fold_right
+               (fun (term : MKeys.key) (container' : MKeys.t (list nat)) =>
+                match MKeys.find term container' with
+                | Some ns =>
+                    MKeys.add term (NumValues container :: ns) container'
+                | None => MKeys.add term [NumValues container] container'
+                end) (KeyMap container) i)); intros.
+                  eapply MoreMKeysFacts.BasicFacts.add_mapsto_iff in H0; intuition.
+                  * subst; right; eapply IHi; rewrite <- H0 in H2; eauto.
+                  * eapply IHi; eauto; eapply MoreMKeysFacts.BasicFacts.find_mapsto_iff; eauto.
+                  * eapply MoreMKeysFacts.BasicFacts.add_mapsto_iff in H0; intuition.
+                    eapply MoreMKeysFacts.BasicFacts.not_find_mapsto_iff in H.
+                    elimtype False; apply H.
+                    unfold MKeys.In; setoid_rewrite H0; revert H2; clear; induction i; simpl; eauto.
+                    destruct (MKeys.find a
+           (fold_right
+              (fun (term : MKeys.key) (container' : MKeys.t (list nat)) =>
+               match MKeys.find term container' with
+               | Some ns =>
+                   MKeys.add term (NumValues container :: ns) container'
+               | None => MKeys.add term [NumValues container] container'
+               end) (KeyMap container) i)); intros.
+                    { destruct (E.eq_dec a0 a).
+                      setoid_rewrite e.
+                      eexists; eapply MoreMKeysFacts.BasicFacts.add_mapsto_iff; eauto.
+                      destruct (IHi H2).
+                      eexists; eapply MoreMKeysFacts.BasicFacts.add_mapsto_iff; eauto.
+                    }
+                    { destruct (E.eq_dec a0 a).
+                      setoid_rewrite e.
+                      eexists; eapply MoreMKeysFacts.BasicFacts.add_mapsto_iff; eauto.
+                      destruct (IHi H2).
+                      eexists; eapply MoreMKeysFacts.BasicFacts.add_mapsto_iff; eauto.
+                    }
+                    eapply MoreMKeysFacts.BasicFacts.find_mapsto_iff in H4.
+                    eapply IHi; eauto.
+            }
+            eapply IHi in H3; eauto.
+            destruct_ex; eexists; split.
+            eapply MoreMKeysFacts.BasicFacts.add_mapsto_iff; intuition eauto.
+            eapply H0.
+          * destruct (E.eq_dec key a).
+            { setoid_rewrite e.
+              eexists; split.
+              - eapply MoreMKeysFacts.BasicFacts.add_mapsto_iff; eauto.
+              - eapply MoreMKeysFacts.BasicFacts.not_find_mapsto_iff in H.
+                elimtype False; apply H.
+                unfold MKeys.In; setoid_rewrite <- e; revert H2; clear; induction i; simpl; eauto.
+                    destruct (MKeys.find a
+           (fold_right
+              (fun (term : MKeys.key) (container' : MKeys.t (list nat)) =>
+               match MKeys.find term container' with
+               | Some ns =>
+                   MKeys.add term (NumValues container :: ns) container'
+               | None => MKeys.add term [NumValues container] container'
+               end) (KeyMap container) i)); intros.
+                    { destruct (E.eq_dec key a).
+                      setoid_rewrite e.
+                      eexists; eapply MoreMKeysFacts.BasicFacts.add_mapsto_iff; eauto.
+                      destruct (IHi H2).
+                      eexists; eapply MoreMKeysFacts.BasicFacts.add_mapsto_iff; eauto.
+                    }
+                    { destruct (E.eq_dec key a).
+                      setoid_rewrite e.
+                      eexists; eapply MoreMKeysFacts.BasicFacts.add_mapsto_iff; eauto.
+                      destruct (IHi H2).
+                      eexists; eapply MoreMKeysFacts.BasicFacts.add_mapsto_iff; eauto.
+                    }
+            }
+            eapply IHi in H3; eauto.
+            destruct_ex; eexists; split.
+            eapply MoreMKeysFacts.BasicFacts.add_mapsto_iff; intuition eauto.
+            eapply H0.
+      - unfold not; intros; destruct H0.
+        eapply MoreMValuesFacts.BasicFacts.add_mapsto_iff in H0; intuition eauto; subst.
+        + omega.
+        + eapply containerCorrect; unfold MValues.In;
+          [ | eexists _ ; eassumption ].
+          omega.
+    Qed.
 
     Lemma InvertedIndex_bdelete_Preserves_RepInv :
       bdelete_Preserves_RepInv InvertedIndex_RepInv InvertedIndex_bdelete.
@@ -274,7 +436,7 @@ Module InvertedIndexBag (MKeys : WS) (MValues : WSfun Nat_as_OT ).
           (search_term : SearchTerm)
     : Proper (eq ==> eq ==> eq)
              (fun (_ : MValues.key) (item : TItem) =>
-                if IndexSearchTerm_included_dec search_term  (projection item)
+                if IncludedIn_dec (IndexSearchTerm search_term)  (projection item)
                 then ItemSearchTermMatcher search_term item
                 else false).
     Proof.
@@ -335,7 +497,7 @@ Module InvertedIndexBag (MKeys : WS) (MValues : WSfun Nat_as_OT ).
       rewrite !filter_map.
       rewrite <- Permutation_filter_elements
       with (f := fun (k : MValues.key) (item : TItem) =>
-                   if IndexSearchTerm_included_dec search_term  (projection item)
+                   if IncludedIn_dec (IndexSearchTerm search_term) (projection item)
                    then ItemSearchTermMatcher search_term item
                    else false);
         eauto using Proper_bfind_matcher.
@@ -350,8 +512,8 @@ Module InvertedIndexBag (MKeys : WS) (MValues : WSfun Nat_as_OT ).
         by (eauto using Proper_bfind_matcher,
             Proper_ItemSearchTermMatcher).
       intuition.
-      - try find_if_inside; eauto.
-        eapply Find_MatchingIndexesOK_Suset; eauto.
+      - try find_if_inside; intuition eauto.
+        unfold IncludedIn in *; eapply Find_MatchingIndexesOK_Subset; intuition eauto.
         discriminate.
       - find_if_inside; eauto; discriminate.
       - eapply Find_MatchingIndexesOK_Subset; eauto.
@@ -372,7 +534,7 @@ Module InvertedIndexBag (MKeys : WS) (MValues : WSfun Nat_as_OT ).
       - econstructor; simpl; eauto using MValues.elements_3w.
         intuition.
         pose proof (@MValues.elements_2 _ (ValuesMap container) (NumValues container)) .
-        apply H3; revert H H1; clear; induction (MValues.elements (ValuesMap container)); simpl; intros; inversion H; subst; eauto.
+        eapply H3; revert H H1; clear; induction (MValues.elements (ValuesMap container)); simpl; intros; inversion H; subst; eauto.
         destruct a as [k v]; eexists v; eapply H1; econstructor; simpl.
         econstructor; simpl; eauto.
       - eauto using MValues.elements_3w.
@@ -384,8 +546,10 @@ Module InvertedIndexBag (MKeys : WS) (MValues : WSfun Nat_as_OT ).
           destruct H4; simpl in *; subst; eauto.
           destruct H4; simpl in *; subst; eauto.
           rewrite <- elements_mapsto_iff in H4; subst.
-          apply H2; eexists; eauto.
-          rewrite <- elements_mapsto_iff in H4; eauto.
+          eapply H2.
+          * eauto.
+          * eexists; eauto.
+          * rewrite <- elements_mapsto_iff in H4; eauto.
     Qed.
 
     Lemma InvertedIndex_BagDeleteCorrect :

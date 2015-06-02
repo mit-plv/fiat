@@ -1,6 +1,7 @@
 Require Import
         Coq.Arith.Peano_dec
         Coq.Structures.OrderedTypeEx
+        Coq.Lists.SetoidList
         Fiat.Common
         Fiat.Common.DecideableEnsembles
         Fiat.Common.String_as_OT
@@ -11,26 +12,29 @@ Require Import
         Fiat.Common.List.PermutationFacts
         Fiat.QueryStructure.Specification.Representation.QueryStructureNotations.
 
-Section IncludesClauses.
+Module IncludesClauses (X : DecidableType).
 
-  Context {X : Type}
-          {X_eq_dec : Query_eq X}.
+  Definition IncludedIn := inclA X.eq.
 
-  Definition IncludedIn := inclA (@eq X).
-
-  Fixpoint IncludedIn_dec (l l' : list X)
+  Fixpoint IncludedIn_dec (l l' : list X.t)
   : {IncludedIn l l'} + {~ IncludedIn l l'}.
   refine (match l with
             | nil => left _
             | e :: l =>
-              if InA_dec A_eq_dec e l' then
+              if InA_dec X.eq_dec e l' then
                 if IncludedIn_dec l l' then
                   left _
                 else right _
               else right _
           end); unfold IncludedIn, inclA in *; intros.
   - inversion H.
-  - inversion H; subst; eauto; rewrite H1; eauto.
+  - inversion H; subst; eauto.
+    eapply InA_compat; eauto.
+    econstructor.
+    + intros x'; eapply X.eq_refl.
+    + intros x' x''; eapply X.eq_sym.
+    + intros x' x'' x'''; eapply X.eq_trans.
+    + unfold equivlistA; intros; intuition.
   - unfold not; intros; apply _H0; intros.
     eapply H; econstructor 2; eauto.
   - unfold not; intros; eapply _H.
@@ -47,7 +51,7 @@ Section IncludesClauses.
 
   Global Instance DecideableEnsemble_IncludedIn_f
          (A : Type)
-         (f : A -> list X)
+         (f : A -> list X.t)
          b :
     DecideableEnsemble (fun a => IncludedIn b (f a) ) :=
     {| dec a := ?[IncludedIn_dec b (f a)]|}.

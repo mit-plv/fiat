@@ -1,5 +1,6 @@
 Require Import
         Coq.Strings.String
+        Fiat.Common.String_as_OT
         Fiat.QueryStructure.Specification.Representation.QueryStructureNotations
         Fiat.QueryStructure.Specification.SearchTerms.ListInclusion
         Fiat.QueryStructure.Implementation.DataStructures.BagADT.IndexSearchTerms
@@ -10,6 +11,8 @@ Require Import
 (* Every Kind of index is keyed on an inductive type with a single constructor*)
 Local Open Scope string_scope.
 Definition InclusionIndex : string := "InclusionIndex".
+
+Module Import StringInclusion := IncludesClauses String_as_OT.
 
 (* This is our search term type. *)
 Record InvertedSearchTerm
