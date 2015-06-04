@@ -19,7 +19,7 @@ Section rel.
          end
     with size_of_pb'_production {valid n pat} (p : generic_pb'_production G transform_valid valid n pat) : nat
          := match p with
-              | PBProductionNil _ _ => 0
+              | PBProductionNil _ => 0
               | PBProductionConsNonTerminal _ _ _ _ _ p0 p1 => S (size_of_pb'_productions p0 + size_of_pb'_production p1)
               | PBProductionConsTerminal _ _ _ _ _ p' => S (size_of_pb'_production p')
             end.
@@ -36,9 +36,9 @@ Ltac simpl_size_of :=
              => let G' := context G[S (size_of_pb'_production g0 + size_of_pb'_productions g1)] in change G'
            | [ H : context G[size_of_pb'_productions (PBCons ?g0 ?g1)] |- _ ]
              => let G' := context G[S (size_of_pb'_production g0 + size_of_pb'_productions g1)] in change G' in H
-           | [ |- context G[size_of_pb'_production (PBProductionNil _ _ _ _)] ]
+           | [ |- context G[size_of_pb'_production (PBProductionNil _ _ _)] ]
              => let G' := context G[0] in change G'
-           | [ H : context G[size_of_pb'_production (PBProductionNil _ _ _ _)] |- _ ]
+           | [ H : context G[size_of_pb'_production (PBProductionNil _ _ _)] |- _ ]
              => let G' := context G[0] in change G' in H
            | [ |- context G[size_of_pb'_production (PBProductionConsNonTerminal _ _ ?g1 ?g2)] ]
              => let G' := context G[S (size_of_pb'_productions g1 + size_of_pb'_production g2)] in change G'

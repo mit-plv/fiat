@@ -61,8 +61,8 @@ pb = pb' '+' 0
                   -> generic_pb'_productions valid pats
                   -> generic_pb'_productions valid (pat::pats)
     with generic_pb'_production : nonterminals_listT -> nat -> production Char -> Type :=
-    | PBProductionNil : forall valid start_level,
-                           generic_pb'_production valid start_level nil
+    | PBProductionNil : forall valid,
+                           generic_pb'_production valid 0 nil
     | PBProductionConsNonTerminal : forall valid start_level nt its,
                                        is_valid_nonterminal valid nt
                                        -> generic_pb'_productions (transform_valid valid nt) (Lookup G nt)
