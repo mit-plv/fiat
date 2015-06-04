@@ -72,9 +72,10 @@ Proof.
   repeat intro; subst; reflexivity.
 Qed.
 
-Global Instance: Proper (eq ==> Basics.flip Basics.impl) is_true | 1 := _.
-Global Instance: Proper (eq ==> Basics.impl) is_true | 1 := _.
-Global Instance: Proper (eq ==> iff) is_true | 0 := _.
+Global Instance: Proper (eq ==> Basics.flip Basics.impl) is_true | 10 := _.
+Global Instance: Proper (eq ==> Basics.impl) is_true | 10 := _.
+Global Instance: Proper (eq ==> iff) is_true | 5 := _.
+Global Instance: Proper (eq ==> eq) is_true | 0 := _.
 
 Global Instance istrue_impl_Proper
 : Proper (implb ==> Basics.impl) is_true.

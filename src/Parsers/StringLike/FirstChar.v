@@ -5,6 +5,7 @@ Require Import Coq.Numbers.Natural.Peano.NPeano.
 Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Parsers.StringLike.ForallChars.
+Require Import Fiat.Common.SetoidInstances.
 Require Import Fiat.Common.
 
 Set Implicit Arguments.

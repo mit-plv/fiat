@@ -36,7 +36,7 @@ Local Opaque string_stringlike.
 Lemma refine_binop_table {G : grammar Ascii.ascii}
       {pdata : paren_balanced_hiding_dataT Ascii.ascii}
       (table : list (option nat))
-      (Hvalid : grammar_rvalid G)
+      (*Hvalid : grammar_rvalid G)*)
       {str n m nt ch its}
       (** this is a placeholder *)
       (H_nt_hiding
@@ -74,7 +74,7 @@ Proof.
            | [ H : _ <= StringLike.length _ |- _ ] => rewrite take_length in H
            | [ H : context[min ?x ?y], H' : ?x <= min ?y _ |- _ ]
              => replace (min x y) with x in H
-                                         by (revert H'; repeat apply Min.min_case_strong; intros; omega)
+                                         by (revert H'; clear; abstract (repeat apply Min.min_case_strong; intros; omega))
            | [ H : parse_of_item _ _ (Terminal _) |- _ ] => inversion H; clear H
            | _ => progress subst
          end.
