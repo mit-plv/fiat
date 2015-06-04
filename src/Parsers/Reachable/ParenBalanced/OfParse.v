@@ -20,33 +20,125 @@ Section cfg.
           {predata : parser_computational_predataT}
           {rdata' : @parser_removal_dataT' predata}.
 
+  Fixpoint paren_balanced_pb_parse_of_production_empty
+           {valid0 pat level}
+           (str : String) (Hlen : length str = 0) (p : parse_of_production G str pat)
+           (Hforall : Forall_parse_of_production (fun _ nt' => is_valid_nonterminal valid0 nt') p)
+           (Hp : pb'_production G valid0 level pat)
+           {struct p}
+  : level = 0 /\ paren_balanced' str level = true.
+  Proof.
+    destruct p as [ | ??? p0 p1 ]; simpl in *.
+    { rewrite paren_balanced'_nil by assumption.
+      inversion Hp; subst; simpl.
+      repeat constructor. }
+    { specialize (fun Hlen level => paren_balanced_pb_parse_of_production_empty valid0 _ level _ Hlen p1 (snd Hforall)).
+      specialize_by ltac:(rewrite drop_length; omega).
+      dependent destruction p0;
+        inversion Hp; subst; clear Hp.
+      { exfalso.
+        match goal with
+          | [ H : is_true (take _ _ ~= [ _ ]) |- _ ]
+            => generalize (length_singleton _ _ H)
+        end.
+        rewrite take_length, Hlen.
+        apply Min.min_case_strong; intros; omega. }
+      { assert (H' : drop n str =s str) by (apply drop_empty; assumption).
+        rewrite <- H'.
+        apply paren_balanced_pb_parse_of_production_empty; assumption. } }
+  Qed.
+
   Fixpoint paren_balanced_pb_parse_of_productions
              {valid0 pats}
              (str : String) (p : parse_of G str pats)
              (Hforall : Forall_parse_of (fun _ nt' => is_valid_nonterminal valid0 nt') p)
              (Hp : pb'_productions G valid0 pats)
-             {struct p}
+             {struct Hp}
   : paren_balanced' str 0 = true
   with paren_balanced_pb_parse_of_production
          {valid0 pat level}
          (str : String) (p : parse_of_production G str pat)
          (Hforall : Forall_parse_of_production (fun _ nt' => is_valid_nonterminal valid0 nt') p)
          (Hp : pb'_production G valid0 level pat)
-         {struct p}
+         {struct Hp}
        : paren_balanced' str level = true.
   Proof.
-    { destruct p as [ ?? p | ?? p ]; simpl in *.
-      { pose proof (fun x => paren_balanced_pb_parse_of_production valid0 _ x str p Hforall) as H'.
-        inversion Hp; subst; clear Hp.
-        apply H'; assumption. }
-      { pose proof (paren_balanced_pb_parse_of_productions valid0 _ str p Hforall) as H'.
-        inversion Hp; subst; clear Hp.
-        apply H'; assumption. } }
-    { destruct p as [ | ?? p ]; simpl in *.
-      { rewrite paren_balanced'_nil by assumption.
-        inversion Hp; subst; simpl.
+    { destruct Hp as [|??? Hp0 Hp1].
+      { inversion p. }
+      { specialize (fun str p H => paren_balanced_pb_parse_of_production _ _ _ str p H Hp0).
+        specialize (fun str p H => paren_balanced_pb_parse_of_productions _ _ str p H Hp1).
+        dependent destruction p; eauto with nocore. } }
+    { destruct Hp as [|???? Hp0 Hp1|Hp].
+      { inversion p.
+        rewrite paren_balanced'_nil by assumption.
         reflexivity. }
-      { inversion Hp; subst; clear Hp.
+      { dependent destruction p.
+        let p1 := match goal with p1 : parse_of_production _ _ _ |- _ => constr:p1 end in
+        specialize (fun level => paren_balanced_pb_parse_of_production _ _ level _ p1 (snd Hforall)).
+        let p0 := match goal with p0 : parse_of_item _ _ _ |- _ => constr:p0 end in
+        let p := fresh in
+        rename p0 into p;
+          dependent destruction p.
+        let p0 := match goal with p0 : parse_of _ _ _ |- _ => constr:p0 end in
+        specialize (paren_balanced_pb_parse_of_productions _ _ _ p0 (snd (fst Hforall))).
+        evar (lv : nat).
+        specialize (paren_balanced_pb_parse_of_production lv); subst lv.
+        specialize_by eassumption.
+        admit. }
+      {
+clear paren_balanced_pb_parse_of_productions.
+        dependent destruction p.
+
+        match goal with
+          | [ H : is_true (take _ _ ~= [ _ ]) |- _ ]
+            => generalize (length_singleton _ _ H);
+              pose proof (take_n_1_singleton _ _ _ H)
+        end.
+          rewrite paren_balanced'_recr.
+          erewrite (proj1 (get_0 _ _)) by eassumption.
+          rewrite take_length.
+          unfold paren_balanced'_step, pb_check_level, pb_new_level in *.
+          apply Min.min_case_strong;
+            repeat match goal with
+                     | _ => progress subst
+                     | _ => progress intros
+                     | [ |- context[if ?e then _ else _] ] => destruct e eqn:?
+                     | [ H : is_true ?x |- context[?x] ] => rewrite H
+                     | _ => progress simpl in *
+                     | _ => solve [ eauto with nocore ]
+                     | [ n : nat, str : _ |- _ ]
+                       => let H' := fresh in
+                          assert (H' : drop 1 str =s drop n str)
+                            by (apply bool_eq_empty; rewrite drop_length; omega);
+                            rewrite H';
+                            solve [ eauto with nocore ]
+                   end. }
+        {
+
+          replace (drop 1 str) with (drop n str).
+          Focus 2.
+          rewrite <- (drop_empty (str := drop 1 str) (n := n)).
+
+
+                     | _ => rewrite paren_balanced'_nil by (rewrite drop_length; omega)
+                   end.
+
+            .
+              erewrite paren_balanced_pb_parse_of_production by assumption;
+              rewrite ?Bool.andb_true_r;
+              trivial. }
+          { rewriteg
+            reflexivity.
+            reflexivity.
+            SearchAbout (_ && true)%bool.
+
+              3:assumption.
+              2:exact (snd Hforall).
+            Focus 3.
+            3:assumption.
+
+          end.
+
         { admit; apply (fun k => @paren_balanced_pb_parse_of_item' paren_balanced_pb_parse_of_productions valid0 _ _ k _ (fst Hforall));
           rewrite take_length, Hlen, Min.min_0_r; reflexivity. }
         { pose proof (@paren_balanced_pb_parse_of_production valid0).
