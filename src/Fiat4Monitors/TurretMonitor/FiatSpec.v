@@ -34,9 +34,9 @@ Definition PaintballMonitorSpec : RADLM_ADT Landshark_Topics PaintballMonitorNod
     { Def Constructor RADL_Init (_ : unit) : rep := ret tt,
       Def Method RADL_Start_Step (r : rep, msg : RADLM_start_msg_t NetworkTopicTypes NetworkTopicNames PaintballMonitorNode) : _ :=
         msg' <- { msg' |
-                  (Word.wlt (GetMessageTopicS (radlm_monitor_in msg) turret_tilt "data") (Word.natToWord _ 45)
-                   -> msg' = (UpdateMessageTopicS (radlm_in msg) trigger "data" O_8, radlm_in_flags msg))
-                  /\ (~ Word.wlt (GetMessageTopicS (radlm_monitor_in msg) turret_tilt "data") (Word.natToWord _ 45) -> msg' = (radlm_in msg, radlm_in_flags msg)) };
+                  IF Word.wlt (GetMessageTopicS (radlm_monitor_in msg) turret_tilt "data") (Word.natToWord _ 45)
+                   then msg' = (UpdateMessageTopicS (radlm_in msg) trigger "data" O_8, radlm_in_flags msg)
+                   else msg' = (radlm_in msg, radlm_in_flags msg) };
       ret (r, msg'),
       Def Method RADL_Finish_Step (r : rep, msg : RADLM_finish_msg_t NetworkTopicTypes NetworkTopicNames PaintballMonitorNode) : _ := ret (r, (radlm_out msg, radlm_out_flags msg, ConstructMessage NetworkTopicTypes NetworkTopicNames (Vector.nil _) (ilist2.inil2)))}.
 

@@ -1,14 +1,21 @@
-Require Import Coq.Lists.List Coq.Strings.String Coq.Sets.Ensembles Coq.Arith.Arith
+Require Import Coq.Lists.List
+        Coq.Strings.String
+        Coq.Sets.Ensembles
+        Coq.Arith.Arith
+        Fiat.Common.StringBound
         Fiat.Computation.Core
-        Fiat.ADT.ADTSig Fiat.ADT.Core
-        Fiat.Common.ilist Fiat.Common.StringBound
-        Fiat.ADTNotation.BuildADT Fiat.ADTNotation.BuildADTSig
-        Fiat.QueryStructure.Specification.Representation.QueryStructureSchema  Fiat.QueryStructure.Specification.Representation.QueryStructure.
+        Fiat.Common.ilist2
+        Fiat.ADT.ADTSig
+        Fiat.ADT.Core
+        Fiat.ADTNotation.BuildADT
+        Fiat.ADTNotation.BuildADTSig
+        Fiat.QueryStructure.Specification.Representation.QueryStructureSchema
+        Fiat.QueryStructure.Specification.Representation.QueryStructure.
 
 Local Obligation Tactic := intuition.
 
-Program Definition EmptyRelation (sch : Schema) : Relation sch :=
-  Build_Relation sch (fun T : @IndexedTuple (schemaHeading sch) => False) _ _.
+Program Definition EmptyRelation (sch : RawSchema) : RawRelation sch :=
+  Build_RawRelation sch (fun T : @IndexedRawTuple (rawSchemaHeading sch) => False) _ _.
 Next Obligation.
   destruct (attrConstraints sch); intuition.
 Qed.
@@ -16,41 +23,36 @@ Next Obligation.
   destruct (tupleConstraints sch); intuition.
 Qed.
 
-Fixpoint Build_EmptyRelations (schemas : list NamedSchema) :
-  ilist (fun ns : NamedSchema => Relation (relSchema ns))
-        schemas :=
+Fixpoint Build_EmptyRelations {n} (schemas : Vector.t RawSchema n) :
+  ilist2 (B := RawRelation) schemas :=
   match schemas with
-    | [] => inil _
-    | sch :: schemas' =>
-      icons _ (EmptyRelation (relSchema sch)) (Build_EmptyRelations schemas')
+    | Vector.nil => inil2
+    | Vector.cons sch _ schemas' =>
+      icons2 (EmptyRelation sch) (Build_EmptyRelations schemas')
   end.
 
-Lemma Build_EmptyRelation_IsEmpty qsSchema :
-  forall idx,
-    ith_Bounded relName (Build_EmptyRelations qsSchema) idx
+Lemma Build_EmptyRelation_IsEmpty (qsSchema : QueryStructureSchema)
+  : forall idx,
+    ith2 (Build_EmptyRelations (qschemaSchemas qsSchema)) idx
     = EmptyRelation _.
 Proof.
   intro.
-  eapply (ith_Bounded_ind (B' := fun _ => unit)
-            _
-            (fun As idx il a b b' => b = EmptyRelation (relSchema a))
-         idx (Build_EmptyRelations qsSchema) tt).
-  destruct idx as [idx [n nth_n] ]; simpl in *; subst.
-  revert qsSchema nth_n;
-    induction n; destruct qsSchema; simpl; eauto;
-    intros; icons_invert; simpl; auto.
-  unfold Some_Dep_Option; simpl; eapply IHn.
+  destruct qsSchema; simpl in *.
+  clear QSschemaConstraints QSschemaNames.
+  induction QSschemaSchemas.
+  inversion idx.
+  generalize dependent QSschemaSchemas.
+  pattern n, idx; apply Fin.rectS; simpl; intros; eauto.
 Qed.
 
 Program Definition QSEmptySpec (qsSchema : QueryStructureSchema) :
   QueryStructure qsSchema :=
-  {| rels := Build_EmptyRelations (qschemaSchemas qsSchema) |}.
+  {| rawRels := Build_EmptyRelations (qschemaSchemas qsSchema) |}.
 Next Obligation.
   rewrite Build_EmptyRelation_IsEmpty in *; simpl in *;
   destruct (BuildQueryStructureConstraints qsSchema idx idx');
   intuition.
 Qed.
-
 
 Notation "'empty'" :=
   (ret (QSEmptySpec qsSchemaHint))

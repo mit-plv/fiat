@@ -1,5 +1,10 @@
-Require Import Coq.Lists.List Coq.Strings.String Coq.Logic.FunctionalExtensionality Coq.Sets.Ensembles
-        Fiat.Common.ilist Fiat.Common.StringBound Coq.Program.Program
+Require Import Coq.Lists.List
+        Coq.Strings.String
+        Coq.Logic.FunctionalExtensionality
+        Coq.Sets.Ensembles
+        Fiat.Common.ilist
+        Fiat.Common.StringBound
+        Coq.Program.Program
         Fiat.QueryStructure.Specification.Representation.Notations.
 
 (* Notations for attributes. *)
@@ -44,5 +49,5 @@ Definition BuildHeading
 (* Notation for schemas built from [BuildHeading]. *)
 
 Notation "< col1 , .. , coln >" :=
-  (BuildHeading ( col1%Attribute :: .. (coln%Attribute :: []) ..))
+  (BuildHeading (@Vector.cons _ col1%Attribute _ .. (Vector.cons _ coln%Attribute _ (Vector.nil _)) ..))
   : Heading_scope.

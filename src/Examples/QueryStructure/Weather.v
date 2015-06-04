@@ -19,7 +19,7 @@ Definition PRESSURE := 3.
 Definition MEASUREMENTS := "MEASUREMENTS".
 Definition CELLS := "CELLS".
 
-Definition MeasurementType := nat.
+Definition MeasurementType := nat.xf
 Definition AreaCode        := nat.
 Definition State           := string.
 
@@ -83,11 +83,6 @@ Definition WeatherSpec : ADT WeatherSig :=
 Definition SharpenedWeatherStation :
   MostlySharpened WeatherSpec.
 Proof.
-
-  start honing QueryStructure.
-  Set Printing All.
-  idtac.
-
 
   partial_master_plan EqIndexTactics.
 

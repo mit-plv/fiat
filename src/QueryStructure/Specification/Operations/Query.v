@@ -32,8 +32,8 @@ Notation "'For' bod" := (Query_For bod) : QuerySpec_scope.
 
 Definition QueryResultComp
            {heading ResultT}
-           (queriedEnsemble : Ensemble (@IndexedTuple heading))
-           (resultEnsemble : (@Tuple heading) -> Comp (list ResultT))
+           (queriedEnsemble : Ensemble (@IndexedRawTuple heading))
+           (resultEnsemble : (@RawTuple heading) -> Comp (list ResultT))
   :=
     (* First construct a list that contains each element in the query list
        (expressed as an ensemble) paired with its result list.
@@ -44,11 +44,10 @@ Definition QueryResultComp
 
 Definition Query_In {ResultT}
            (qs : QueryStructureHint)
-           (R : _)
-           (bod : @Tuple (schemaHeading
-                            (QSGetNRelSchema qsSchemaHint' R))
-                  -> Comp (list ResultT))
-  := QueryResultComp (GetUnConstrRelation (DropQSConstraints qsHint) R) bod.
+           (R : @BoundedString _ (QSschemaNames qsSchemaHint'))
+           (bod : @RawTuple (GetNRelSchemaHeading (qschemaSchemas qsSchemaHint') (ibound (indexb R)))
+                             -> Comp (list ResultT))
+  := QueryResultComp (GetUnConstrRelation _ (DropQSConstraints qsHint) (ibound (indexb R))) bod.
 
 Notation "( x 'in' R ) bod" :=
   (Query_In _ {| bindex := R%string |}
@@ -67,8 +66,8 @@ Definition Query_Where
 Notation "'Where' p bod" :=
   (Query_Where p%Tuple bod) : QuerySpec_scope.
 
-Notation "x <= y " :=
-  (InRange x (None, Some y)) : QuerySpec_scope.
+(*Notation "x <= y " :=
+  (InRange x (None, Some y)) : QuerySpec_scope. *)
 
 
 (* The spec for a count of the number of tuples in a relation. *)

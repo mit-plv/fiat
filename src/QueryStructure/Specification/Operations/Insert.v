@@ -1,7 +1,11 @@
-Require Import Coq.Lists.List Coq.Strings.String Coq.Sets.Ensembles Coq.Arith.Arith
+Require Import Coq.Lists.List
+        Coq.Strings.String
+        Coq.Sets.Ensembles
+        Coq.Arith.Arith
         Fiat.Computation.Core
-        Fiat.ADT.ADTSig Fiat.ADT.Core
-        Fiat.Common.ilist Fiat.Common.StringBound
+        Fiat.ADT.ADTSig
+        Fiat.ADT.Core
+        Fiat.Common.StringBound
         Fiat.Common.Ensembles.IndexedEnsembles
         Fiat.ADTNotation.BuildADT
         Fiat.ADTNotation.BuildADTSig
@@ -30,7 +34,7 @@ Qed.
 Definition QSInsertSpec
            (qs : QueryStructureHint)
            (Ridx : _)
-           (tup : @IndexedTuple (schemaHeading (QSGetNRelSchema _ Ridx)))
+           (tup : @IndexedRawTuple (GetNRelSchemaHeading (qschemaSchemas qsSchemaHint') (ibound (indexb Ridx))))
            (qs' : QueryStructure qsSchemaHint')
 : Prop :=
   (* All of the relations with a different index are untouched
@@ -67,13 +71,13 @@ Definition QSInsertSpec
 Definition freshIdx (qs : QueryStructureHint) Ridx (n : nat) :=
   forall tup,
     GetRelation qsHint Ridx tup ->
-    tupleIndex tup <> n.
+    RawTupleIndex tup <> n.
 
 Definition SuccessfulInsertSpec
            (qs : QueryStructureHint)
            (Ridx : _)
            (qs' : QueryStructure qsSchemaHint')
-           (tup : @IndexedTuple (schemaHeading (QSGetNRelSchema _ Ridx)))
+           (tup : @IndexedRawTuple (GetNRelSchemaHeading (qschemaSchemas qsSchemaHint') (ibound (indexb Ridx))))
            (result : bool) : Prop :=
   decides result (forall t,
                GetRelation qs' Ridx t <->
