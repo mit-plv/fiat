@@ -142,6 +142,75 @@ Section specific.
       setoid_subst_rel beq.
       reflexivity.
     Qed.
+
+    Lemma paren_balanced'_split {HSLP : StringLikeProperties Char}
+          (str : String) (n : nat) (level1 level2 : nat)
+          (H1 : paren_balanced' (take n str) level1)
+          (H2 : paren_balanced' (drop n str) level2)
+    : paren_balanced' str (level1 + level2).
+    Proof.
+      revert n level1 level2 H1 H2.
+      set (len := length str).
+      generalize (eq_refl : length str = len).
+      clearbody len.
+      revert str.
+      induction len as [|len IHlen].
+      { intros str Hlen ???.
+        rewrite !paren_balanced'_nil
+          by (rewrite ?drop_length, ?take_length, Hlen; destruct n; reflexivity).
+        destruct level1, level2; simpl; intros; congruence. }
+      { intros str Hlen ???.
+        specialize (IHlen (drop 1 str)).
+        specialize_by ltac:(rewrite drop_length; omega).
+        specialize (IHlen (pred n)).
+        destruct n as [|n].
+        { clear IHlen.
+          rewrite drop_0.
+          rewrite !paren_balanced'_nil
+            by (rewrite ?drop_length, ?take_length, Hlen; reflexivity).
+          destruct level1; simpl; intros; [ assumption | congruence ]. }
+        { simpl in *.
+          setoid_rewrite drop_drop in IHlen.
+          setoid_rewrite take_drop in IHlen.
+          rewrite !NPeano.Nat.add_1_r in IHlen.
+          specialize (fun H' level1 H => IHlen level1 level2 H H').
+          intros H1 H2.
+          specialize_by assumption.
+          rewrite paren_balanced'_recr in H1 |- *.
+          rewrite get_take_lt in H1 by omega.
+          destruct (get 0 str) eqn:H'.
+          { unfold paren_balanced'_step in *.
+            repeat match goal with
+                     | _ => progress simpl in *
+                     | [ |- appcontext[if ?e then _ else _] ] => destruct e eqn:?
+                     | [ IHlen : forall level : nat, _ -> _, H : is_true (paren_balanced' _ _) |- _ ]
+                       => specialize (IHlen _ H)
+                     | [ IHlen : forall level : nat, _ -> _, H : paren_balanced' _ _ = true |- _ ]
+                       => specialize (IHlen _ H)
+                     | _ => solve [ eauto with nocore ]
+                     | [ H : is_true (andb _ _) |- _ ] => apply Bool.andb_true_iff in H
+                     | _ => progress split_and
+                     | [ |- is_true (andb _ _) ] => apply Bool.andb_true_iff
+                     | _ => congruence
+                     | _ => omega
+                     | [ H : context[bool_of_sumbool ?e] |- _ ] => destruct e; simpl in H
+                     | [ |- context[bool_of_sumbool ?e] ] => destruct e; simpl
+                     | [ |- _ /\ _ ] => split
+                     | [ H : context[pred ?x] |- _ ] => is_var x; destruct x
+                   end. }
+          { apply no_first_char_empty in H'.
+            omega. } } }
+    Qed.
+
+    Lemma paren_balanced'_split_0 {HSLP : StringLikeProperties Char}
+          (str : String) (n : nat) (level : nat)
+          (H1 : paren_balanced' (take n str) 0)
+          (H2 : paren_balanced' (drop n str) level)
+    : paren_balanced' str level.
+    Proof.
+      change level with (0 + level).
+      eapply paren_balanced'_split; eassumption.
+    Qed.
   End paren_balanced_def.
 
   Section paren_balanced_hiding_def.
@@ -260,6 +329,82 @@ Section specific.
       unfold paren_balanced_hiding.
       setoid_subst_rel beq.
       reflexivity.
+    Qed.
+
+    Lemma paren_balanced_hiding'_split {HSLP : StringLikeProperties Char}
+          (str : String) (n : nat) (level1 level2 : nat)
+          (H1 : if Compare_dec.gt_dec level2 0
+                then paren_balanced' (take n str) level1
+                else paren_balanced_hiding' (take n str) level1)
+          (H2 : paren_balanced_hiding' (drop n str) level2)
+    : paren_balanced_hiding' str (level1 + level2).
+    Proof.
+      revert n level1 level2 H1 H2.
+      set (len := length str).
+      generalize (eq_refl : length str = len).
+      clearbody len.
+      revert str.
+      induction len as [|len IHlen].
+      { intros str Hlen ???.
+        rewrite !paren_balanced_hiding'_nil
+          by (rewrite ?drop_length, ?take_length, Hlen; destruct n; reflexivity).
+        destruct level1, level2; simpl; intros; congruence. }
+      { intros str Hlen ???.
+        specialize (IHlen (drop 1 str)).
+        specialize_by ltac:(rewrite drop_length; omega).
+        specialize (IHlen (pred n)).
+        destruct n as [|n].
+        { clear IHlen.
+          rewrite drop_0.
+          rewrite ?paren_balanced_hiding'_nil, ?paren_balanced'_nil
+            by (rewrite ?drop_length, ?take_length, Hlen; reflexivity).
+          destruct level1, level2; simpl; intros; first [ assumption | congruence ]. }
+        { simpl in *.
+          setoid_rewrite drop_drop in IHlen.
+          rewrite !NPeano.Nat.add_1_r in IHlen.
+          specialize (fun H' level1 H => IHlen level1 level2 H H').
+          intros H1 H2.
+          specialize_by assumption.
+          rewrite paren_balanced_hiding'_recr in H1 |- *.
+          rewrite paren_balanced'_recr in H1.
+          rewrite !get_take_lt in H1 by omega.
+          destruct (get 0 str) eqn:H'.
+          { unfold paren_balanced_hiding'_step, paren_balanced'_step in *.
+            repeat match goal with
+                     | _ => progress simpl in *
+                     | [ |- appcontext[if ?e then _ else _] ] => destruct e eqn:?
+                     | [ IHlen : forall level : nat, is_true (?f _ _) -> _, H : is_true (?f _ _) |- _ ]
+                       => specialize (IHlen _ H)
+                     | [ IHlen : forall level : nat, is_true (?f _ _) -> _, H : ?f _ _ = true |- _ ]
+                       => specialize (IHlen _ H)
+                     | _ => solve [ eauto with nocore ]
+                     | [ H : is_true (andb _ _) |- _ ] => apply Bool.andb_true_iff in H
+                     | _ => progress split_and
+                     | [ |- is_true (andb _ _) ] => apply Bool.andb_true_iff
+                     | _ => congruence
+                     | _ => omega
+                     | [ H : context[take _ (drop _ _)] |- _ ] => setoid_rewrite take_drop in H
+                     | [ H : context[_ + 1] |- _ ] => rewrite !NPeano.Nat.add_1_r in H
+                     | [ H : context[bool_of_sumbool ?e] |- _ ] => destruct e; simpl in H
+                     | [ H : context[match ?e with left _ => _ | right _ => _ end] |- _ ] => destruct e; simpl in H
+                     | [ |- context[bool_of_sumbool ?e] ] => destruct e; simpl
+                     | [ |- _ /\ _ ] => split
+                     | [ H : context[pred ?x] |- _ ] => is_var x; destruct x
+                   end. }
+          { apply no_first_char_empty in H'.
+            omega. } } }
+    Qed.
+
+    Lemma paren_balanced_hiding'_split_0 {HSLP : StringLikeProperties Char}
+          (str : String) (n : nat) (level : nat)
+          (H1 : if Compare_dec.gt_dec level 0
+                then paren_balanced' (take n str) 0
+                else paren_balanced_hiding' (take n str) 0)
+          (H2 : paren_balanced_hiding' (drop n str) level)
+    : paren_balanced_hiding' str level.
+    Proof.
+      change level with (0 + level).
+      eapply paren_balanced_hiding'_split; eassumption.
     Qed.
   End paren_balanced_hiding_def.
 

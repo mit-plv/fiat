@@ -32,7 +32,6 @@ src/ADTRefinement/Refinements/HoneRepresentation.v
 src/ADTRefinement/Refinements/RefineHideADT.v
 src/ADTRefinement/Refinements/SimplifyRep.v
 src/Common/BoolFacts.v
-src/Common/Coq__8_4__8_5__Compat.v
 src/Common/DecideableEnsembles.v
 src/Common/Ensembles.v
 src/Common/Equality.v
@@ -103,14 +102,11 @@ src/Examples/QueryStructure/Messages.v
 src/Examples/QueryStructure/Photoalbum.v
 src/Examples/QueryStructure/Stocks.v
 src/Examples/QueryStructure/Weather.v
-src/Examples/QueryStructure/WeatherMemoized.v
 src/Examples/Smtp/Smtp.v
 src/Fiat4Monitors/MonitorADTs.v
 src/Fiat4Monitors/MonitorRepInv.v
 src/Fiat4Monitors/TurretMonitor.v
 src/Fiat4Monitors/TurretMonitorSpec.v
-src/Fiat4Monitors/HelloWorld/HelloWorld.v
-src/Fiat4Monitors/HelloWorld/HelloWorldI386.v
 src/FiatToFacade/BedrockUtilities.v
 src/FiatToFacade/Compiler.v
 src/FiatToFacade/FacadeNotations.v
@@ -210,7 +206,7 @@ src/Parsers/Reachable/ParenBalanced/OfParse.v
 src/Parsers/Reachable/ParenBalanced/WellFounded.v
 src/Parsers/Reachable/ParenBalancedHiding/Core.v
 src/Parsers/Reachable/ParenBalancedHiding/MinimalOfCore.v
-src/Parsers/Reachable/ParenBalancedHiding/SetoidInstances.v
+src/Parsers/Reachable/ParenBalancedHiding/OfParse.v
 src/Parsers/Reachable/ParenBalancedHiding/WellFounded.v
 src/Parsers/Refinement/DisjointLemmas.v
 src/Parsers/Refinement/DisjointRules.v
