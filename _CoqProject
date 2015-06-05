@@ -222,6 +222,7 @@ src/Parsers/Refinement/BinOpBrackets/BinOpLemmas.v
 src/Parsers/Refinement/BinOpBrackets/BinOpRules.v
 src/Parsers/Refinement/BinOpBrackets/MakeBinOpTable.v
 src/Parsers/Refinement/BinOpBrackets/ParenBalanced.v
+src/Parsers/Refinement/BinOpBrackets/ParenBalancedLemmas.v
 src/Parsers/Splitters/BruteForce.v
 src/Parsers/Splitters/RDPList.v
 src/Parsers/StringLike/Core.v
