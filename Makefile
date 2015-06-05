@@ -97,8 +97,7 @@ QUERYSTRUCTURES_UNMADE_VO := \
 	src/QueryStructure/Implementation/DataStructures/Bags/InvertedIndexBags.vo
 
 PARSERS_UNMADE_VO := \
-	src/Parsers/Reachable/ParenBalancedHiding/MinimalOfCore.vo \
-	src/Parsers/Reachable/ParenBalanced/OfParse.vo
+	src/Parsers/Refinement/BinOpBrackets/BinOpRules.vo
 
 FIAT4MONITORS_UNMADE_VO := \
 	src/Fiat4Monitors/HelloWorld/%.vo \

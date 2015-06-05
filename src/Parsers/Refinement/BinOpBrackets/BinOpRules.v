@@ -13,7 +13,7 @@ Require Import Fiat.Parsers.Reachable.ParenBalancedHiding.OfParse.
 Require Import Fiat.Parsers.Refinement.BinOpBrackets.ParenBalanced.
 Require Import Fiat.Parsers.Refinement.BinOpBrackets.MakeBinOpTable.
 Require Import Fiat.Parsers.Refinement.BinOpBrackets.ParenBalancedLemmas.
-Require Import Fiat.Parsers.Refinement.BinOpBrackets.BinOpLemmas.
+(*Require Import Fiat.Parsers.Refinement.BinOpBrackets.BinOpLemmas.*)
 Require Import Fiat.Parsers.ParserInterface.
 Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.ContextFreeGrammarValid.
