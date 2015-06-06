@@ -1,10 +1,12 @@
 Require Export Coq.Lists.List Coq.Program.Program
         Fiat.QueryStructure.Specification.Representation.Tuple
         Fiat.QueryStructure.Specification.Representation.Heading
-        Fiat.Common.ilist
+        Fiat.Common.ilist2
         Fiat.Common.i2list.
-Require Import Coq.Bool.Bool Coq.Strings.String
-        Coq.Structures.OrderedTypeEx Coq.Arith.Arith
+Require Import Coq.Bool.Bool
+        Coq.Strings.String
+        Coq.Structures.OrderedTypeEx
+        Coq.Arith.Arith
         Fiat.Common.String_as_OT
         Fiat.Common.Ensembles.IndexedEnsembles
         Fiat.Common.DecideableEnsembles

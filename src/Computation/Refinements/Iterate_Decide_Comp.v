@@ -23,52 +23,58 @@ Require Import
 
 Section Iterate_Decide_Comp.
 
-  (*Local Unset Implicit Arguments.
+  Local Unset Implicit Arguments.
 
-  Lemma refine_Iterate_Ensemble {A : Set}
-        (A_eq_dec : forall a a' : A, {a = a'} + {a <> a'})
-    : forall (As : list A)
-             (P : Ensemble (BoundedIndex As)),
-      refine {b | decides b (forall idx : BoundedIndex As, P idx)}
-             {b | decides b (@Iterate_Ensemble_BoundedIndex A As P)}.
+  Lemma refine_Iterate_Ensemble {n}
+    : forall (P : Ensemble (Fin.t n)),
+      refine {b | decides b (forall idx : Fin.t n, P idx)}
+             {b | decides b (@Iterate_Ensemble_BoundedIndex n P)}.
   Proof.
     intros; eapply refine_pick_pick.
     intros; destruct x; simpl in *.
-    intros; eapply Iterate_Ensemble_equiv' with (Visited := []);
+    intros; eapply Iterate_Ensemble_equiv';
     eauto using string_dec.
-    destruct n; simpl; intros; discriminate.
-    unfold not; intros; apply H.
+    destruct n; simpl in *; intros; intuition.
+    apply H1; eauto.
     apply Iterate_Ensemble_equiv'';
       auto using string_dec.
   Qed.
 
-  Lemma refine_Iterate_Ensemble_filter {A : Set}
-        (A_eq_dec : forall a a' : A, {a = a'} + {a <> a'})
-    : forall (As : list A)
-             (P : Ensemble (BoundedIndex As))
-             (filter : Ensemble nat)
+  Lemma refine_Iterate_Ensemble_filter
+        {n}
+    : forall (P : Ensemble (Fin.t n))
+             (filter : Ensemble (Fin.t n))
              (filter_dec : DecideableEnsemble filter),
-      refine {b | decides b (forall idx : BoundedIndex As,
-                                filter (ibound idx) -> P idx)}
+      refine {b | decides b (forall idx : _, filter idx -> P idx)}
              {b | decides b (@Iterate_Ensemble_BoundedIndex_filter
-                               A As (@dec _ _ filter_dec) P )}.
+                               n P (@dec _ _ filter_dec) )}.
   Proof.
     intros; eapply refine_pick_pick.
     intros; destruct x; simpl in *.
-    intros; eapply Iterate_Ensemble_equiv_filter' with (Visited := []);
+    intros; eapply Iterate_Ensemble_equiv_filter';
     eauto using string_dec.
-    destruct n; simpl; intros; discriminate.
+    destruct n; simpl in *; intros; intuition.
     unfold not; intros; apply H.
-    apply Iterate_Ensemble_equiv_filter''; auto using string_dec.
+    case_eq (dec Fin.F1); try econstructor.
+    eapply H0; eapply dec_decides_P; eauto.
+    eapply (@Iterate_Ensemble_equiv_filter''
+              _  (fun n' : Fin.t n => P (Fin.FS n'))
+              (fun n' : Fin.t n => filter (Fin.FS n'))
+              ({| dec := (fun n' : Fin.t n => dec (Fin.FS n'));
+                  dec_decides_P := (fun a => dec_decides_P (Fin.FS a))|})); eauto.
+    intros; eapply (@Iterate_Ensemble_equiv_filter''
+              _
+              (fun n' : Fin.t n => P (Fin.FS n'))
+              (fun n' : Fin.t n => filter (Fin.FS n'))
+              ({| dec := (fun n' : Fin.t n => dec (Fin.FS n'));
+                  dec_decides_P := (fun a => dec_decides_P (Fin.FS a))|})); eauto.
   Qed.
 
-  Lemma refine_decides_Equiv_Ensemble {A : Set}
-        (A_eq_dec : forall a a' : A, {a = a'} + {a <> a'})
-    : forall (As : list string)
-             (P P' : Ensemble (BoundedIndex As))
+  Lemma refine_decides_Equiv_Ensemble {n}
+    : forall (P P' : Ensemble (Fin.t n))
              (equiv_P'_P : (forall idx, P idx) <-> (forall idx', P' idx')),
-      refine {b | decides b (forall idx : BoundedIndex As, P idx)}
-             {b | decides b (forall idx : BoundedIndex As, P' idx)}.
+      refine {b | decides b (forall idx, P idx)}
+             {b | decides b (forall idx, P' idx)}.
   Proof.
     intros * equiv_P'_P v Comp_v.
     computes_to_inv; computes_to_constructor; destruct v; simpl in *.
@@ -76,110 +82,74 @@ Section Iterate_Decide_Comp.
     unfold not; intros; eapply Comp_v; eapply equiv_P'_P; eauto.
   Qed.
 
-  Corollary Iterate_Ensemble_filter_neq {A : Set}
-            (A_eq_dec : forall a a' : A, {a = a'} + {a <> a'})
-    : forall (As : list A)
-             (P : Ensemble (BoundedIndex As))
-             (Ridx : BoundedIndex As),
-      (forall idx : BoundedIndex As, idx <> Ridx -> P idx)
+  Corollary Iterate_Ensemble_filter_neq
+            {n}
+    : forall (P : Ensemble (Fin.t n))
+             (Ridx : Fin.t n),
+      (forall idx, idx <> Ridx -> P idx)
       <-> (@Iterate_Ensemble_BoundedIndex_filter
-             A As (fun idx =>
-                   if (eq_nat_dec (ibound Ridx) idx)
-                   then false else true) P ).
+             n P (fun idx =>
+                    if (fin_eq_dec Ridx idx)
+                    then false else true)).
   Proof.
     intros.
-    assert (forall a : nat,
-               (if eq_nat_dec (ibound Ridx) a then false else true) = true
-               <-> a <> ibound Ridx)
+    assert (forall a : Fin.t n,
+               (if fin_eq_dec Ridx a then false else true) = true
+               <-> a <> Ridx)
       as filter_dec'
         by (intros; find_if_inside; try rewrite e; intuition).
-    assert ((forall idx : BoundedIndex As, idx <> Ridx -> P idx)
-            <-> (forall idx  : BoundedIndex As,
-                    ibound idx <> ibound Ridx -> P idx)).
-    { split; intros; eauto.
-      apply H; destruct idx as [idx [n nth_n] ];
-      destruct Ridx as [Ridx [n' nth_n'] ]; simpl in *.
-      unfold not; intros; apply H0; injection H1; auto.
-      apply H; unfold not; intros; apply H0.
-      destruct idx as [idx [n nth_n] ];
-        destruct Ridx as [Ridx [n' nth_n'] ]; simpl in *.
-      clear H0; revert nth_n; rewrite H1; intros.
-      assert (Ridx = idx) by
-          (rewrite nth_n' in nth_n; congruence).
-      revert nth_n' nth_n; rewrite H0.
-      intros; repeat f_equal.
-      apply (eq_proofs_unicity_Opt_A A_eq_dec).
-    }
-    rewrite H.
     split; intros.
     - eapply Iterate_Ensemble_equiv_filter'' with
-      (filter := fun idx => idx <> ibound Ridx)
+      (filter := fun idx => idx <> Ridx)
         (filter_dec := {|dec_decides_P := filter_dec' |}); eauto.
-    - eapply Iterate_Ensemble_equiv_filter'  with
-      (Visited := [])
-        (filter := fun idx => idx <> ibound Ridx)
+    - eapply Iterate_Ensemble_equiv_filter' with
+        (filter := fun idx => idx <> Ridx)
         (filter_dec := {|dec_decides_P := filter_dec' |});
       unfold dec; eauto using string_dec.
-      intros; destruct n; simpl in *; discriminate.
   Qed.
 
-  Lemma refine_Iterate_Equiv_Ensemble {A : Set}
-        (A_eq_dec : forall a a' : A, {a = a'} + {a <> a'})
-    : forall (As As' : list A)
-             (P : Ensemble (BoundedIndex As))
-             (P' : Ensemble (BoundedIndex As'))
+  Lemma refine_Iterate_Equiv_Ensemble {n n'}
+    : forall (P : Ensemble (Fin.t n))
+             (P' : Ensemble (Fin.t n'))
              (equiv_P'_P : (forall idx, P idx) <-> (forall idx', P' idx')),
-      refine {b | decides b (forall idx : BoundedIndex As, P idx)}
-             {b | decides b (@Iterate_Ensemble_BoundedIndex A As' P')}.
+      refine {b | decides b (forall idx, P idx)}
+             {b | decides b (@Iterate_Ensemble_BoundedIndex _ P')}.
   Proof.
     intros; setoid_rewrite refine_Iterate_Ensemble; try eassumption.
     intros v Comp_v.
     computes_to_inv; computes_to_constructor; destruct v; simpl in *.
-    apply Iterate_Ensemble_equiv'' with (Visited := []);
+    apply Iterate_Ensemble_equiv'';
       eauto using string_dec; simpl.
     apply equiv_P'_P; intros;
-    apply Iterate_Ensemble_equiv' with (Visited := []);
+    apply Iterate_Ensemble_equiv';
     eauto using string_dec; simpl.
-    destruct n; simpl; intros; discriminate.
-    unfold not; intros; apply Comp_v.
+    unfold not; intros; eapply Comp_v.
     apply Iterate_Ensemble_equiv'';
       auto using string_dec.
-    apply equiv_P'_P;
-      apply Iterate_Ensemble_equiv' with (Visited := []);
-      eauto using string_dec; simpl.
-    destruct n; simpl; intros; discriminate.
+    intros; eapply equiv_P'_P.
+    apply Iterate_Ensemble_equiv'; eauto.
   Qed.
 
-  Program Fixpoint Iterate_Decide_Comp' (A : Set)
-          (Remaining Visited : list A)
-          (P : Ensemble (BoundedIndex (Visited ++ Remaining)))
+  Fixpoint Iterate_Decide_Comp
+          (Remaining : nat)
+          (P : Ensemble (Fin.t Remaining))
           {struct Remaining }
     : Comp bool :=
-    match Remaining with
-    | nil => ret true
-    | cons a Remaining' =>
-      Bind {b' |
-            decides b' (P {| bindex := a;
-                             indexb := {| ibound := List.length Visited;
-                                          boundi := _ |} |})}%comp
+    match Remaining return Ensemble (Fin.t (Remaining)) -> Comp bool with
+    | 0 => fun P => ret true
+    | S Remaining' => fun P =>
+      Bind {b' | decides b' (P (@Fin.F1 (Remaining')))}%comp
            (fun b' =>
               If_Then_Else b'
-                           (Iterate_Decide_Comp' _ Remaining' (Visited ++ [a]) _)
+                           (Iterate_Decide_Comp Remaining' (fun n => P (Fin.FS n)))
                            (ret false))
-    end.
-  Next Obligation.
-    clear P; induction Visited; simpl; auto.
-  Defined.
-  Next Obligation.
-    exact (Ensemble_BoundedIndex_app_comm_cons _ _ _ P).
-  Defined.
+    end P.
 
-  Lemma refine_Iterate_Decided_Ensemble' {A : Set}
-        (A_eq_dec : forall a a' : A, {a = a'} + {a <> a'})
-    : forall (Remaining Visited : list A)
-             (P : Ensemble (BoundedIndex (Visited ++ Remaining))),
-      refine {b | decides b (Iterate_Ensemble_BoundedIndex' Visited Remaining P)}
-             (Iterate_Decide_Comp' _ Remaining Visited P).
+  Lemma refine_Iterate_Decided_Ensemble'
+    : forall (Remaining : nat)
+             (P : Ensemble (Fin.t Remaining)),
+      refine {b | decides b (Iterate_Ensemble_BoundedIndex' P)}
+             (Iterate_Decide_Comp Remaining P).
   Proof.
     induction Remaining; simpl; intros.
     - computes_to_econstructor;  computes_to_inv; subst; simpl; auto.
@@ -187,23 +157,17 @@ Section Iterate_Decide_Comp.
       split_and;  computes_to_inv; subst.
       destruct v0; simpl in *.
       { destruct v; simpl in *; intuition; intros; eauto.
-        - generalize (IHRemaining (Visited ++ [a]) _ _ H').
+        - generalize (IHRemaining (fun n => P (Fin.FS n)) _ H').
           intros;  computes_to_inv; simpl in *; eauto.
-        - generalize (IHRemaining (Visited ++ [a]) _ _ H').
+        - generalize (IHRemaining (fun n => P (Fin.FS n)) _ H').
           intros;  computes_to_inv; simpl in *; eauto.
       }
       {  computes_to_inv; subst; simpl; intuition. }
   Qed.
 
-  Definition Iterate_Decide_Comp
-             (Bound : list string)
-             (P : Ensemble (BoundedIndex Bound))
-    : Comp bool :=
-    Iterate_Decide_Comp' _ Bound [] P.
-
-  Definition Iterate_Decide_Comp_BoundedIndex
-    : forall (Bound : list string)
-             (P : Ensemble (BoundedIndex Bound)),
+  Definition Iterate_Decide_Comp_BoundedIndex {n}
+    : forall (Bound : Fin.t n )
+             (P : Ensemble (Fin.t n)),
       refine {b | decides b (forall Ridx', P Ridx')}
              (Iterate_Decide_Comp _ P).
   Proof.
@@ -215,56 +179,44 @@ Section Iterate_Decide_Comp.
 
   (* Variants for inserting additional assumptions into the
    decision procedure. *)
-  Program Lemma refine_Iterate_Ensemble_Pre {A : Set}
-          (A_eq_dec : forall a a' : A, {a = a'} + {a <> a'})
-    : forall (As : list A)
-             (P : Ensemble (BoundedIndex As))
+  Program Lemma refine_Iterate_Ensemble_Pre {n}
+    : forall (P : Ensemble (Fin.t n))
              (Q : Prop),
-      refine {b | Q -> decides b (forall idx : BoundedIndex As, P idx)}
-             {b | Q -> decides b (@Iterate_Ensemble_BoundedIndex A As P)}.
+      refine {b | Q -> decides b (forall idx, P idx)}
+             {b | Q -> decides b (Iterate_Ensemble_BoundedIndex P)}.
   Proof.
     intros; eapply refine_pick_pick.
     intros; destruct x; simpl in *; apply H in H0.
-    intros; eapply Iterate_Ensemble_equiv' with (Visited := []);
+    intros; eapply Iterate_Ensemble_equiv';
     eauto using string_dec.
-    destruct n; simpl; intros; discriminate.
-    unfold not; intros; apply H0.
+    destruct n; simpl in *; intros; intuition.
+    unfold not; intros; apply H2; eauto.
     apply Iterate_Ensemble_equiv'';
       auto using string_dec.
   Qed.
 
-  Program Fixpoint Iterate_Decide_Comp'_Pre (A : Set)
-          (Remaining Visited : list A)
-          (P : Ensemble (BoundedIndex (Visited ++ Remaining)))
+  Fixpoint Iterate_Decide_Comp_Pre
+          (Remaining : nat)
+          (P : Ensemble (Fin.t Remaining))
           (Q : Prop)
           {struct Remaining }
     : Comp bool :=
-    match Remaining with
-    | nil => ret true
-    | cons a Remaining' =>
-      Bind {b' | Q ->
-                 decides b' (P {| bindex := a;
-                                  indexb := {| ibound := List.length Visited;
-                                               boundi := _ |} |})}%comp
+    match Remaining return Ensemble (Fin.t Remaining) -> Comp bool with
+    | 0 => fun P => ret true
+    | S Remaining' => fun P =>
+      Bind {b' | Q -> decides b' (P Fin.F1)}%comp
            (fun b' =>
               If_Then_Else b'
-                           (Iterate_Decide_Comp'_Pre _ Remaining' (Visited ++ [a]) _ Q)
+                           (Iterate_Decide_Comp_Pre Remaining' (fun n => P (Fin.FS n)) Q)
                            (ret false))
-    end.
-  Next Obligation.
-    clear P; induction Visited; simpl; auto.
-  Defined.
-  Next Obligation.
-    exact (Ensemble_BoundedIndex_app_comm_cons _ _ _ P).
-  Defined.
+    end P.
 
-  Lemma refine_Iterate_Decided_Ensemble'_Pre {A : Set}
-        (A_eq_dec : forall a a' : A, {a = a'} + {a <> a'})
-    : forall (Remaining Visited : list A)
-             (P : Ensemble (BoundedIndex (Visited ++ Remaining)))
+  Lemma refine_Iterate_Decided_Ensemble_Pre
+    : forall (Remaining : nat)
+             (P : Ensemble (Fin.t Remaining))
              (Q : Prop),
-      refine {b | Q -> decides b (Iterate_Ensemble_BoundedIndex' Visited Remaining P)}
-             (Iterate_Decide_Comp'_Pre _ Remaining Visited P Q).
+      refine {b | Q -> decides b (Iterate_Ensemble_BoundedIndex' P)}
+             (Iterate_Decide_Comp_Pre Remaining P Q).
   Proof.
     induction Remaining; simpl; intros.
     - computes_to_econstructor;  computes_to_inv; subst; simpl; auto.
@@ -272,194 +224,116 @@ Section Iterate_Decide_Comp.
       split_and;  computes_to_inv; subst.
       destruct v0; simpl in *.
       {  destruct v; simpl in *; intuition; intros; eauto.
-         - generalize (IHRemaining (Visited ++ [a]) _ _ _ H').
+         - generalize (IHRemaining _ _ _ H').
            intros;  computes_to_inv; simpl in *; eauto.
-         - generalize (IHRemaining (Visited ++ [a]) _ _ _ H').
+         - generalize (IHRemaining _ _ _ H').
            intros;  computes_to_inv; simpl in *; eauto.
            eapply H; eauto.
       }
       {  computes_to_inv; subst; simpl; intuition. }
   Qed.
 
-  Definition Iterate_Decide_Comp_Pre
-             (Bound : list string)
-             (P : Ensemble (BoundedIndex Bound))
-             (Q : Prop)
-    : Comp bool :=
-    Iterate_Decide_Comp'_Pre _ Bound [] P Q.
-
   Definition Iterate_Decide_Comp_BoundedIndex_Pre
-    : forall (Bound : list string)
-             (P : Ensemble (BoundedIndex Bound))
+    : forall (Bound : nat)
+             (P : Ensemble (Fin.t Bound))
              (Q : Prop),
       refine {b | Q -> decides b (forall Ridx', P Ridx')}
              (Iterate_Decide_Comp_Pre _ P Q).
   Proof.
     intros.
     setoid_rewrite refine_Iterate_Ensemble_Pre; auto using string_dec.
-    setoid_rewrite refine_Iterate_Decided_Ensemble'_Pre; auto using string_dec.
+    setoid_rewrite refine_Iterate_Decided_Ensemble_Pre; auto using string_dec.
     reflexivity.
   Qed.
 
-  Definition Ensemble_opt_BoundedIndex_app_comm_cons {A : Set}
-             (a : A)
-             (As As' : list A)
-             (P : BoundedIndex (As ++ a :: As') -> option Prop)
-    : BoundedIndex ((As ++ [a]) ++ As') -> option Prop.
-        rewrite app_comm_cons' in P; exact P.
-  Defined.
-
-  Program Fixpoint Iterate_Decide_Comp_opt' (A : Set)
-          (Remaining Visited : list A)
-          (P : BoundedIndex (Visited ++ Remaining) -> option Prop )
+  Fixpoint Iterate_Decide_Comp_opt
+          (Remaining : nat)
+          (P : Fin.t Remaining -> option Prop )
           {struct Remaining }
     : Comp bool :=
-    match Remaining with
-    | nil => ret true
-    | cons a Remaining' =>
-      match (P {| bindex := a;
-                  indexb := {| ibound := List.length Visited;
-                               boundi := _ |} |}) with
-      | Some P' => b' <- {b' | decides b' P'};
-          If_Then_Else b'
-                       (Iterate_Decide_Comp_opt' _ Remaining' (Visited ++ [a])
-                                                 (Ensemble_opt_BoundedIndex_app_comm_cons _ _ _ P))
-                       (ret false)
-      | None => (Iterate_Decide_Comp_opt' _ Remaining' (Visited ++ [a])
-                                          (Ensemble_opt_BoundedIndex_app_comm_cons _ _ _ P))
+    match Remaining return (Fin.t Remaining -> option Prop) -> Comp bool with
+    | 0 => fun P => ret true
+    | S Remaining' =>
+      fun P =>
+        match P Fin.F1 with
+        | Some P' => b' <- {b' | decides b' P'};
+            If_Then_Else b'
+                         (Iterate_Decide_Comp_opt Remaining' (fun n => P (Fin.FS n)))
+                         (ret false)
+        | None => Iterate_Decide_Comp_opt Remaining' (fun n => P (Fin.FS n))
       end
-    end%comp.
-  Next Obligation.
-    clear P; induction Visited; simpl; auto.
-  Defined.
-
-  Lemma refine_Iterate_Decide_Comp'
-        {A : Set}
-        (A_eq_dec : forall a a' : A, {a = a'} + {a <> a'})
-    : forall (Remaining Visited : list A)
-             (P : BoundedIndex (Visited ++ Remaining)
-                  -> option Prop),
-      refine (@Iterate_Decide_Comp' _ Remaining Visited (fun idx => match P idx with
-                                                                    | Some P' => P'
-                                                                    | None => True
-                                                                    end))
-             (@Iterate_Decide_Comp_opt' _ Remaining Visited P).
-        induction Remaining; simpl; intros.
-        - reflexivity.
-        - destruct (P ``(a)).
-          + f_equiv; unfold pointwise_relation; intros.
-            destruct a0; simpl; try reflexivity.
-            setoid_rewrite <- IHRemaining; f_equiv.
-            unfold Ensemble_BoundedIndex_app_comm_cons,
-            Ensemble_opt_BoundedIndex_app_comm_cons; simpl.
-            destruct (app_comm_cons' a Visited Remaining); simpl.
-            reflexivity.
-          + rewrite decides_True; simplify with monad laws; simpl.
-            setoid_rewrite <- IHRemaining; f_equiv.
-            unfold Ensemble_BoundedIndex_app_comm_cons,
-            Ensemble_opt_BoundedIndex_app_comm_cons; simpl.
-            destruct (app_comm_cons' a Visited Remaining); simpl.
-            reflexivity.
-  Qed.
+    end%comp P .
 
   Lemma refine_Iterate_Decide_Comp
-    : forall (Bound : list string)
-             (P : BoundedIndex Bound -> option Prop),
-      refine (@Iterate_Decide_Comp _ (fun idx => match P idx with
-                                                 | Some P' => P'
-                                                 | None => True
-                                                 end))
-             (@Iterate_Decide_Comp_opt' _ Bound [] P).
-  Proof.
-    intros; unfold Iterate_Decide_Comp;
-    rewrite refine_Iterate_Decide_Comp'.
-    reflexivity.
-    apply string_dec.
+    : forall (Remaining : nat)
+             (P : Fin.t Remaining -> option Prop),
+      refine (@Iterate_Decide_Comp Remaining (fun idx => match P idx with
+                                                         | Some P' => P'
+                                                         | None => True
+                                                         end))
+             (@Iterate_Decide_Comp_opt Remaining P).
+        induction Remaining; simpl; intros.
+        - reflexivity.
+        - destruct (P Fin.F1).
+          + f_equiv; unfold pointwise_relation; intros.
+            destruct a; simpl; try reflexivity.
+            setoid_rewrite <- IHRemaining; f_equiv.
+          + rewrite decides_True; simplify with monad laws; simpl.
+            setoid_rewrite <- IHRemaining; f_equiv.
   Qed.
 
-  Program Fixpoint Iterate_Decide_Comp_opt'_Pre (A : Set)
-          (Remaining Visited : list A)
-          (P : BoundedIndex (Visited ++ Remaining) -> option Prop)
+  Fixpoint Iterate_Decide_Comp_opt_Pre
+          (Remaining : nat)
+          (P : Fin.t Remaining -> option Prop)
           (Q : Prop)
           {struct Remaining }
     : Comp bool :=
-    match Remaining with
-    | nil => ret true
-    | cons a Remaining' =>
-      match (P {| bindex := a;
-                  indexb := {| ibound := List.length Visited;
-                               boundi := _ |} |}) with
+    match Remaining return (Fin.t Remaining -> option Prop) -> Comp bool with
+    | 0 => fun P => ret true
+    | S Remaining' =>
+      fun P =>
+      match P Fin.F1 with
       | Some P' => b' <- {b' | Q -> decides b' P'};
           If_Then_Else b'
-                       (Iterate_Decide_Comp_opt'_Pre _ Remaining' (Visited ++ [a])
-                                                     (Ensemble_opt_BoundedIndex_app_comm_cons _ _ _ P) Q)
+                       (Iterate_Decide_Comp_opt_Pre Remaining'
+                                                    (fun n => P (Fin.FS n)) Q)
                        (ret false)
-      | None => (Iterate_Decide_Comp_opt'_Pre _ Remaining' (Visited ++ [a])
-                                              (Ensemble_opt_BoundedIndex_app_comm_cons _ _ _ P) Q)
+      | None =>
+        (Iterate_Decide_Comp_opt_Pre Remaining'
+                                     (fun n => P (Fin.FS n)) Q)
       end
-    end%comp.
-  Next Obligation.
-    clear P; induction Visited; simpl; auto.
-  Defined.
+    end%comp P.
 
-  Lemma refine_Iterate_Decide_Comp'_Pre
-        {A : Set}
-        (A_eq_dec : forall a a' : A, {a = a'} + {a <> a'})
-    : forall (Remaining Visited : list A)
-             (P : BoundedIndex (Visited ++ Remaining) -> option Prop)
+  Lemma refine_Iterate_Decide_Comp_Pre
+    : forall (Remaining : nat)
+             (P : Fin.t Remaining -> option Prop)
              (Q : Prop),
-      refine (@Iterate_Decide_Comp'_Pre _ Remaining Visited
+      refine (@Iterate_Decide_Comp_Pre Remaining
                                         (fun idx => match P idx with
                                                     | Some P' => P'
                                                     | None => True
                                                     end) Q)
-             (@Iterate_Decide_Comp_opt'_Pre _ Remaining Visited P Q).
+             (@Iterate_Decide_Comp_opt_Pre Remaining P Q).
   Proof.
     induction Remaining; simpl; intros.
     - reflexivity.
-    - destruct (P ``(a)).
+    - destruct (P Fin.F1).
       + f_equiv; unfold pointwise_relation; intros.
-        destruct a0; simpl; try reflexivity.
+        destruct a; simpl; try reflexivity.
         setoid_rewrite <- IHRemaining; f_equiv.
-        unfold Ensemble_BoundedIndex_app_comm_cons,
-        Ensemble_opt_BoundedIndex_app_comm_cons; simpl.
-        destruct (app_comm_cons' a Visited Remaining); simpl.
-        reflexivity.
       + rewrite decides_True_Pre; simplify with monad laws; simpl.
         setoid_rewrite <- IHRemaining; f_equiv.
-        unfold Ensemble_BoundedIndex_app_comm_cons,
-        Ensemble_opt_BoundedIndex_app_comm_cons; simpl.
-        destruct (app_comm_cons' a Visited Remaining); simpl.
-        reflexivity.
-  Qed.
-
-  Lemma refine_Iterate_Decide_Comp_Pre
-    : forall (Bound : list string)
-             (P : BoundedIndex Bound -> option Prop)
-             (Q : Prop),
-      refine (@Iterate_Decide_Comp_Pre _ (fun idx => match P idx with
-                                                     | Some P' => P'
-                                                     | None => True
-                                                     end) Q)
-             (@Iterate_Decide_Comp_opt'_Pre _ Bound [] P Q).
-  Proof.
-    intros; unfold Iterate_Decide_Comp_Pre;
-    rewrite refine_Iterate_Decide_Comp'_Pre.
-    reflexivity.
-    apply string_dec.
   Qed.
 
   Lemma refine_Iterate_Decide_Comp_equiv_Pre
         (Q Q' : Prop)
-        {A : Set}
-        (A_eq_dec : forall a a' : A, {a = a'} + {a <> a'})
-    : forall (Remaining Visited : list A)
-             (P P' : Ensemble (BoundedIndex (Visited ++ Remaining))),
+    : forall (Remaining : nat)
+             (P P' : Ensemble (Fin.t Remaining)),
       (forall idx, P idx -> P' idx)
       -> (forall idx, ~ P idx -> ~ P' idx)
       -> (Q -> Q')
-      -> refine (@Iterate_Decide_Comp'_Pre _ Remaining Visited P' Q)
-                (@Iterate_Decide_Comp'_Pre _ Remaining Visited P Q').
+      -> refine (@Iterate_Decide_Comp_Pre Remaining P' Q)
+                (@Iterate_Decide_Comp_Pre Remaining P Q').
   Proof.
     induction Remaining; simpl; intros.
     - reflexivity.
@@ -468,35 +342,24 @@ Section Iterate_Decide_Comp.
         computes_to_econstructor; destruct v; simpl in *; eauto.
       + unfold pointwise_relation; intros b; destruct b; simpl.
         apply IHRemaining; eauto.
-        unfold Ensemble_BoundedIndex_app_comm_cons; simpl;
-        destruct (app_comm_cons' a Visited Remaining); simpl; eauto.
-        unfold Ensemble_BoundedIndex_app_comm_cons; simpl;
-        destruct (app_comm_cons' a Visited Remaining); simpl; eauto.
         reflexivity.
   Qed.
 
   Lemma refine_Iterate_Decide_Comp_equiv
-        {A : Set}
-        (A_eq_dec : forall a a' : A, {a = a'} + {a <> a'})
-    : forall (Remaining Visited : list A)
-             (P P' : Ensemble (BoundedIndex (Visited ++ Remaining))),
+    : forall (Remaining : nat)
+             (P P' : Ensemble (Fin.t Remaining)),
       (forall idx, P idx -> P' idx) ->
       (forall idx, ~ P idx -> ~ P' idx) ->
-      refine (@Iterate_Decide_Comp' _ Remaining Visited P')
-             (@Iterate_Decide_Comp' _ Remaining Visited P).
+      refine (@Iterate_Decide_Comp Remaining P')
+             (@Iterate_Decide_Comp Remaining P).
   Proof.
     induction Remaining; simpl; intros.
     - reflexivity.
     - f_equiv.
       + unfold refine; intros;  computes_to_inv; subst;
         computes_to_econstructor; destruct v; simpl in *; eauto.
-      + unfold pointwise_relation; intros b; destruct b; simpl.
-        apply IHRemaining.
-        unfold Ensemble_BoundedIndex_app_comm_cons; simpl;
-        destruct (app_comm_cons' a Visited Remaining); simpl; eauto.
-        unfold Ensemble_BoundedIndex_app_comm_cons; simpl;
-        destruct (app_comm_cons' a Visited Remaining); simpl; eauto.
+      + unfold pointwise_relation; intros b; destruct b; simpl; eauto.
         reflexivity.
-  Qed. *)
+  Qed.
 
 End Iterate_Decide_Comp.

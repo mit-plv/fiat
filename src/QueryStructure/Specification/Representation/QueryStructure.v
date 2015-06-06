@@ -144,8 +144,8 @@ Notation "'QueryADTRep' r { cons1 , meth1 , .. , methn } " :=
 Definition GetRelation
            (QSSchema : QueryStructureSchema)
            (qs : QueryStructure QSSchema)
-           (idx : @BoundedString _ (QSschemaNames QSSchema))
-  : @IndexedEnsemble (@RawTuple (GetNRelSchemaHeading (qschemaSchemas QSSchema) (ibound (indexb idx)))) := rawRel (ith2 (rawRels qs) (ibound (indexb idx))).
+           (idx : Fin.t _)
+  : @IndexedEnsemble (@RawTuple (GetNRelSchemaHeading (qschemaSchemas QSSchema) idx)) := rawRel (ith2 (rawRels qs) idx).
 
 (* This lets us drop the constraints from the reference implementation
    for easier refinements. *)
@@ -155,14 +155,14 @@ Definition UnConstrQueryStructure (qsSchema : RawQueryStructureSchema) :=
         (qschemaSchemas qsSchema).
 
 Definition GetUnConstrRelation
-           (QSSchema : RawQueryStructureSchema)
+           {QSSchema : RawQueryStructureSchema}
            (qs : UnConstrQueryStructure QSSchema)
            (idx : _)
   : @IndexedEnsemble (@RawTuple (GetNRelSchemaHeading (qschemaSchemas QSSchema) idx)) :=
       ith2 qs idx.
 
 Definition DropQSConstraints
-           (qsSchema : QueryStructureSchema)
+           {qsSchema : QueryStructureSchema}
            (qs : QueryStructure qsSchema)
   : UnConstrQueryStructure qsSchema :=
   @imap2 _
@@ -177,10 +177,10 @@ Definition DropQSConstraints_AbsR (qsSchema : QueryStructureSchema)
   DropQSConstraints qs = qs'.
 
 Lemma GetRelDropConstraints
-      (qsSchema : QueryStructureSchema)
+      {qsSchema : QueryStructureSchema}
       (qs : QueryStructure qsSchema)
-      (Ridx : @BoundedString _ (QSschemaNames qsSchema))
-  : GetUnConstrRelation _ (DropQSConstraints qs) (ibound (indexb Ridx)) = GetRelation qs Ridx.
+      (Ridx : _)
+  : GetUnConstrRelation (DropQSConstraints qs) Ridx = GetRelation qs Ridx.
 Proof.
   unfold GetUnConstrRelation, DropQSConstraints, GetRelation.
   rewrite <- ith_imap2; reflexivity.
@@ -191,34 +191,34 @@ Qed.
 
 Definition SatisfiesAttributeConstraints
            {qsSchema}
-           (Ridx : @BoundedString _ (QSschemaNames qsSchema))
-           (tup : @RawTuple (GetNRelSchemaHeading (qschemaSchemas qsSchema) (ibound (indexb Ridx))))
+           (Ridx : Fin.t _)
+           (tup : @RawTuple (GetNRelSchemaHeading (qschemaSchemas qsSchema) Ridx))
   :=
-    match (attrConstraints (GetNRelSchema (qschemaSchemas qsSchema) (ibound (indexb Ridx)))) with
+    match (attrConstraints (GetNRelSchema (qschemaSchemas qsSchema) Ridx)) with
       Some Constr => Constr tup
     | None => True
     end.
 
 Definition SatisfiesTupleConstraints
            {qsSchema}
-           (Ridx : @BoundedString _ (QSschemaNames qsSchema))
-           (tup tup' : @RawTuple (GetNRelSchemaHeading (qschemaSchemas qsSchema) (ibound (indexb Ridx)))) :=
-  match (tupleConstraints (GetNRelSchema (qschemaSchemas qsSchema) (ibound (indexb Ridx)))) with
+           (Ridx : Fin.t _)
+           (tup tup' : @RawTuple (GetNRelSchemaHeading (qschemaSchemas qsSchema) Ridx)) :=
+  match (tupleConstraints (GetNRelSchema (qschemaSchemas qsSchema) Ridx)) with
     Some Constr => Constr tup tup'
   | None => True
   end.
 
 Definition SatisfiesCrossRelationConstraints
            {qsSchema}
-           (Ridx Ridx' : @BoundedString _ (QSschemaNames qsSchema))
-           (tup : @RawTuple (GetNRelSchemaHeading (qschemaSchemas qsSchema) (ibound (indexb Ridx)))) R :=
-  match (BuildQueryStructureConstraints qsSchema (ibound (indexb Ridx)) (ibound (indexb Ridx'))) with
+           (Ridx Ridx' : Fin.t _)
+           (tup : @RawTuple (GetNRelSchemaHeading (qschemaSchemas qsSchema) Ridx)) R :=
+  match (BuildQueryStructureConstraints qsSchema Ridx Ridx') with
   | Some CrossConstr => CrossConstr tup R
   | None => True
   end.
 
 Definition UpdateUnConstrRelation
-           (qsSchema : RawQueryStructureSchema)
+           {qsSchema : RawQueryStructureSchema}
            (rels : UnConstrQueryStructure qsSchema)
            (Ridx : _)
            newRel :
@@ -226,7 +226,7 @@ Definition UpdateUnConstrRelation
   replace_Index2 _ rels Ridx newRel.
 
 Definition UpdateRelation
-           (qsSchema : QueryStructureSchema)
+           {qsSchema : QueryStructureSchema}
            (rels : ilist2 (B := RawRelation) (qschemaSchemas qsSchema))
            (Ridx : _)
            newRel :
@@ -238,7 +238,7 @@ Definition UpdateRelation
 Lemma get_update_unconstr_eq :
   forall (db_schema : RawQueryStructureSchema) (qs : UnConstrQueryStructure db_schema)
          (index : _) ens,
-    GetUnConstrRelation _ (UpdateUnConstrRelation _ qs index ens) index = ens.
+    GetUnConstrRelation (UpdateUnConstrRelation qs index ens) index = ens.
 Proof.
   unfold UpdateUnConstrRelation, GetUnConstrRelation.
   intros; rewrite ith_replace2_Index_eq; reflexivity.
@@ -248,9 +248,9 @@ Lemma get_update_unconstr_neq :
   forall (db_schema : QueryStructureSchema) (qs : UnConstrQueryStructure db_schema)
          (index1 index2 : _) ens,
     index1 <> index2 ->
-    GetUnConstrRelation _
-      (UpdateUnConstrRelation _ qs index1 ens) index2 =
-    GetUnConstrRelation _ qs index2.
+    GetUnConstrRelation
+      (UpdateUnConstrRelation qs index1 ens) index2 =
+    GetUnConstrRelation qs index2.
 Proof.
   unfold UpdateUnConstrRelation, GetUnConstrRelation;
   intros; simpl; rewrite ith_replace2_Index_neq; eauto using string_dec.

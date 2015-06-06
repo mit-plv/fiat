@@ -1,7 +1,7 @@
 Require Import Coq.Lists.List Coq.Program.Program
         Coq.Bool.Bool Coq.Strings.String
         Coq.Structures.OrderedTypeEx Coq.Arith.Arith
-        Fiat.Common.ilist
+        Fiat.Common.ilist2
         Fiat.Common.i2list
         Fiat.Common.Ensembles.IndexedEnsembles
         Fiat.Computation
@@ -16,72 +16,76 @@ Require Import Coq.Lists.List Coq.Program.Program
 
 Section QueryStructureImplementation.
 
-  Variable qs_schema : QueryStructureSchema.
+  Variable qs_schema : RawQueryStructureSchema.
 
   (* Build an index requires search terms and matchers for each schema,
      and update terms and updaters for each schema. *)
 
-  Record SearchUpdateTerms (heading : Heading) :=
+  Record SearchUpdateTerms (heading : RawHeading) :=
     {  BagSearchTermType : Type;
-       BagMatchSearchTerm : BagSearchTermType -> @Tuple heading -> bool;
+       BagMatchSearchTerm : BagSearchTermType -> @RawTuple heading -> bool;
        BagUpdateTermType : Type;
-       BagApplyUpdateTerm : BagUpdateTermType -> @Tuple heading -> @Tuple heading }.
+       BagApplyUpdateTerm : BagUpdateTermType -> @RawTuple heading -> @RawTuple heading }.
 
   Variable BagIndexKeys :
-    ilist (fun ns => SearchUpdateTerms (schemaHeading (relSchema ns)))
+    ilist2 (B := fun ns => SearchUpdateTerms (rawSchemaHeading ns))
       (qschemaSchemas qs_schema).
 
   Definition IndexedQueryStructure
-    := i2list (A := NamedSchema)
-              (fun ns index => Rep (BagSpec (BagMatchSearchTerm index)
-                                            (BagApplyUpdateTerm index)))
+    := i2list  (fun ns index => Rep (BagSpec (BagMatchSearchTerm index)
+                                             (BagApplyUpdateTerm index)))
               BagIndexKeys.
 
   Definition GetIndexedRelation (r_n : IndexedQueryStructure) idx
-    := i2th_Bounded relName r_n idx.
+    := i2th r_n idx.
 
   Definition BagEmpty
-             {heading : Heading} {index : SearchUpdateTerms heading}
-  : (ConstructorIndex (BagSig (@Tuple heading) (BagSearchTermType index) (BagUpdateTermType index)))
-    := {| bindex := "Empty" |}.
+             {heading : RawHeading} {index : SearchUpdateTerms heading}
+  : (ConstructorIndex (BagSig (@RawTuple heading) (BagSearchTermType index) (BagUpdateTermType index)))
+    := ibound (indexb (Bound := ConstructorNames (BagSig (@RawTuple heading) (BagSearchTermType index) (BagUpdateTermType index))) {| bindex := "Empty" |}).
 
   Definition BagEnumerate
-             {heading : Heading} {index : SearchUpdateTerms heading}
-  : (MethodIndex (BagSig (@Tuple heading) (BagSearchTermType index) (BagUpdateTermType index)))
-    := {| bindex := "Enumerate" |}.
+             {heading : RawHeading} {index : SearchUpdateTerms heading}
+  : (MethodIndex (BagSig (@RawTuple heading) (BagSearchTermType index) (BagUpdateTermType index)))
+    := ibound (indexb (Bound := MethodNames (BagSig (@RawTuple heading) (BagSearchTermType index) (BagUpdateTermType index)))
+      {| bindex := "Enumerate" |}).
 
   Definition BagFind
-             {heading : Heading} {index : SearchUpdateTerms heading}
-  : (MethodIndex (BagSig (@Tuple heading) (BagSearchTermType index) (BagUpdateTermType index)))
-    := {| bindex := "Find" |}.
+             {heading : RawHeading} {index : SearchUpdateTerms heading}
+  : (MethodIndex (BagSig (@RawTuple heading) (BagSearchTermType index) (BagUpdateTermType index)))
+    := ibound (indexb (Bound := MethodNames (BagSig (@RawTuple heading) (BagSearchTermType index) (BagUpdateTermType index)))
+      {| bindex := "Find" |}).
 
   Definition BagCount
-             {heading : Heading} {index : SearchUpdateTerms heading}
-  : (MethodIndex (BagSig (@Tuple heading) (BagSearchTermType index) (BagUpdateTermType index)))
-    := {| bindex := "Count" |}.
+             {heading : RawHeading} {index : SearchUpdateTerms heading}
+  : (MethodIndex (BagSig (@RawTuple heading) (BagSearchTermType index) (BagUpdateTermType index)))
+    := ibound (indexb (Bound := MethodNames (BagSig (@RawTuple heading) (BagSearchTermType index) (BagUpdateTermType index))) {| bindex := "Count" |}).
 
   Definition BagInsert
-             {heading : Heading} {index : SearchUpdateTerms heading}
-  : (MethodIndex (BagSig (@Tuple heading) (BagSearchTermType index) (BagUpdateTermType index)))
-    := {| bindex := "Insert" |}.
+             {heading : RawHeading} {index : SearchUpdateTerms heading}
+  : (MethodIndex (BagSig (@RawTuple heading) (BagSearchTermType index) (BagUpdateTermType index)))
+    := ibound (indexb (Bound := MethodNames (BagSig (@RawTuple heading) (BagSearchTermType index) (BagUpdateTermType index)))
+                      {| bindex := "Insert" |}).
 
   Definition BagUpdate
-             {heading : Heading} {index : SearchUpdateTerms heading}
-  : (MethodIndex (BagSig (@Tuple heading) (BagSearchTermType index) (BagUpdateTermType index)))
-    := {| bindex := "Update" |}.
+             {heading : RawHeading} {index : SearchUpdateTerms heading}
+  : (MethodIndex (BagSig (@RawTuple heading) (BagSearchTermType index) (BagUpdateTermType index)))
+    := ibound (indexb (Bound := MethodNames (BagSig (@RawTuple heading) (BagSearchTermType index) (BagUpdateTermType index)))
+                      {| bindex := "Update" |}).
 
   Definition BagDelete
-             {heading : Heading} {index : SearchUpdateTerms heading}
-  : (MethodIndex (BagSig (@Tuple heading) (BagSearchTermType index) (BagUpdateTermType index)))
-    := {| bindex := "Delete" |}.
+             {heading : RawHeading} {index : SearchUpdateTerms heading}
+  : (MethodIndex (BagSig (@RawTuple heading) (BagSearchTermType index) (BagUpdateTermType index)))
+    := ibound (indexb (Bound := MethodNames (BagSig (@RawTuple heading) (BagSearchTermType index) (BagUpdateTermType index)))
+                      {| bindex := "Delete" |}).
 
   Definition CallBagMethod idx midx r_n :=
-    Methods (BagSpec (BagMatchSearchTerm (ith_Bounded relName BagIndexKeys idx))
-                     (BagApplyUpdateTerm (ith_Bounded relName BagIndexKeys idx)))
+    Methods (BagSpec (BagMatchSearchTerm (ith2 BagIndexKeys idx))
+                     (BagApplyUpdateTerm (ith2 BagIndexKeys idx)))
             midx
             (GetIndexedRelation r_n idx).
 
-  Definition CallBagConstructor {heading} (name : string) index cidx :=
+  Definition CallBagConstructor {heading} index cidx :=
     Constructors (BagSpec (BagMatchSearchTerm (heading := heading) index)
                           (BagApplyUpdateTerm index))
             cidx.
@@ -96,20 +100,32 @@ Section QueryStructureImplementation.
         exists l, EnsembleIndexedListEquivalence (GetUnConstrRelation r_o idx) l).
 
   Fixpoint Initialize_IndexedQueryStructure
-          (ns : list NamedSchema)
-          (indices' : ilist (fun ns => SearchUpdateTerms (schemaHeading (relSchema ns))) ns)
-          {struct indices'}
+           {n}
+          (ns : Vector.t RawSchema n)
+          (indices' : ilist2 (B := fun ns => SearchUpdateTerms (rawSchemaHeading ns)) ns)
+          {struct ns}
   : Comp (i2list (fun ns index =>
                     Rep (BagSpec (BagMatchSearchTerm index)
-                                  (BagApplyUpdateTerm index))) indices')
-    := match indices' return Comp (i2list _ indices') with
-      | inil => ret (i2nil _ _)
-      | icons ns ns' index' indices'' =>
-        c <- (CallBagConstructor (relName ns) index' BagEmpty tt);
-          cs <- (@Initialize_IndexedQueryStructure ns' indices'');
-          ret (i2cons (icons ns index' indices'') c cs)
-    end.
-
+                                  (BagApplyUpdateTerm index))) indices').
+      refine (match ns in (Vector.t _ n) return
+             forall indices' : ilist2 (B := fun ns => SearchUpdateTerms (rawSchemaHeading ns)) ns,
+             Comp (i2list (fun ns index =>
+                    Rep (BagSpec (BagMatchSearchTerm index)
+                                  (BagApplyUpdateTerm index))) indices') with
+      | Vector.nil => fun il => ret i2nil
+      | Vector.cons sch _ ns' =>
+        fun il =>
+          c <- _;
+          cs <- (@Initialize_IndexedQueryStructure _ ns' (ilist2_tl il) );
+          ret (i2cons c cs)
+    end indices').
+      exact (CallBagConstructor (ilist2_hd il) BagEmpty tt).
+      Grab Existential Variables.
+      exact (fun ns index =>
+               Rep (BagSpec (BagMatchSearchTerm (heading := ns) index)
+                            (BagApplyUpdateTerm index))).
+  Defined.
+  
 End QueryStructureImplementation.
 
 Opaque CallBagMethod.

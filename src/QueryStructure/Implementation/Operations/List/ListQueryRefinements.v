@@ -253,7 +253,7 @@ Proof.
   rewrite map_map.
   repeat rewrite fold_right_app.
   simpl.
-  assert (resultComp a = fun x : Tuple => resultComp a x) as eta by
+  assert (resultComp a = fun x : RawTuple => resultComp a x) as eta by
                                                               (apply functional_extensionality; auto); rewrite <- eta.
   induction (map (resultComp a) l); simpl;
   simplify with monad laws.

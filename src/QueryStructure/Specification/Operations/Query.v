@@ -47,7 +47,7 @@ Definition Query_In {ResultT}
            (R : @BoundedString _ (QSschemaNames qsSchemaHint'))
            (bod : @RawTuple (GetNRelSchemaHeading (qschemaSchemas qsSchemaHint') (ibound (indexb R)))
                              -> Comp (list ResultT))
-  := QueryResultComp (GetUnConstrRelation _ (DropQSConstraints qsHint) (ibound (indexb R))) bod.
+  := QueryResultComp (GetUnConstrRelation (DropQSConstraints qsHint) (ibound (indexb R))) bod.
 
 Notation "( x 'in' R ) bod" :=
   (Query_In _ {| bindex := R%string |}

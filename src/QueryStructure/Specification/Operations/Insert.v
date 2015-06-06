@@ -31,10 +31,12 @@ Proof.
   firstorder.
 Qed.
 
+Locate GetRelation.
+
 Definition QSInsertSpec
            (qs : QueryStructureHint)
-           (Ridx : _)
-           (tup : @IndexedRawTuple (GetNRelSchemaHeading (qschemaSchemas qsSchemaHint') (ibound (indexb Ridx))))
+           (Ridx : Fin.t _)
+           (tup : @IndexedRawTuple (GetNRelSchemaHeading (qschemaSchemas qsSchemaHint') Ridx))
            (qs' : QueryStructure qsSchemaHint')
 : Prop :=
   (* All of the relations with a different index are untouched
@@ -77,7 +79,7 @@ Definition SuccessfulInsertSpec
            (qs : QueryStructureHint)
            (Ridx : _)
            (qs' : QueryStructure qsSchemaHint')
-           (tup : @IndexedRawTuple (GetNRelSchemaHeading (qschemaSchemas qsSchemaHint') (ibound (indexb Ridx))))
+           (tup : @IndexedRawTuple (GetNRelSchemaHeading (qschemaSchemas qsSchemaHint') Ridx))
            (result : bool) : Prop :=
   decides result (forall t,
                GetRelation qs' Ridx t <->
@@ -96,5 +98,6 @@ Definition QSInsert (qs : QueryStructureHint) Ridx tup :=
 Opaque QSInsert.
 
 Notation "'Insert' b 'into' Ridx " :=
-  (QSInsert _ {|bindex := Ridx%comp |} b)
+  (QSInsert _
+            (ibound (indexb (@Build_BoundedIndex _ _ (QSschemaNames qsSchemaHint) Ridx%string _))) b)
     (at level 80) : QuerySpec_scope.

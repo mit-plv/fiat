@@ -1,5 +1,25 @@
-Require Import  Fiat.QueryStructure.Automation.AutoDB
-        Fiat.QueryStructure.Automation.QSImplementation.
+Require Import Coq.Bool.Bool Coq.Strings.String Coq.Strings.Ascii.
+Require Import Fiat.Common.DecideableEnsembles
+        Fiat.Common.List.ListMorphisms
+        Fiat.Common.List.ListFacts
+        Fiat.Common.BoolFacts
+        Fiat.Common.LogicFacts
+        Fiat.Common.List.FlattenList
+        Fiat.Common.Ensembles.IndexedEnsembles
+        Fiat.Common.IterateBoundedIndex
+        Fiat.QueryStructure.Specification.Representation.QueryStructureNotations
+        Fiat.QueryStructure.Specification.SearchTerms.ListInclusion
+        Fiat.QueryStructure.Specification.SearchTerms.ListPrefix
+        Fiat.QueryStructure.Specification.SearchTerms.InRange
+        Fiat.QueryStructure.Implementation.Constraints.ConstraintChecksRefinements
+        Fiat.QueryStructure.Implementation.DataStructures.BagADT.BagADT
+        Fiat.QueryStructure.Implementation.ListImplementation
+        Fiat.QueryStructure.Specification.Constraints.tupleAgree
+        Fiat.QueryStructure.Implementation.Operations.General.QueryStructureRefinements
+        Fiat.QueryStructure.Implementation.DataStructures.BagADT.QueryStructureImplementation.
+
+(*Require Import  Fiat.QueryStructure.Automation.AutoDB
+        Fiat.QueryStructure.Automation.QSImplementation. *)
 
 Definition VALUE := "VALUE".
 Definition MEASUREMENT_TYPE := "MEASUREMENT_TYPE".
@@ -19,7 +39,7 @@ Definition PRESSURE := 3.
 Definition MEASUREMENTS := "MEASUREMENTS".
 Definition CELLS := "CELLS".
 
-Definition MeasurementType := nat.xf
+Definition MeasurementType := nat.
 Definition AreaCode        := nat.
 Definition State           := string.
 
@@ -83,6 +103,57 @@ Definition WeatherSpec : ADT WeatherSig :=
 Definition SharpenedWeatherStation :
   MostlySharpened WeatherSpec.
 Proof.
+
+  Ltac start_honing_QueryStructure' :=
+  eapply SharpenStep;
+  [ match goal with
+        |- context [@BuildADT (QueryStructure ?Rep) _ _ _ _ _ _] =>
+        eapply refineADT_BuildADT_Rep_refine_All with (AbsR := @DropQSConstraints_AbsR Rep);
+          [ repeat (first [eapply refine_Constructors_nil
+                          | eapply refine_Constructors_cons;
+                            [ intros;
+                              match goal with
+                                |  |- refine _ (?E _) => let H := fresh in set (H := E)
+                                | _ => idtac
+                              end;
+                              (* Drop constraints from empty *)
+                              try apply Constructor_DropQSConstraints
+                            | ] ])
+          | repeat (first [eapply refine_Methods_nil
+                          | eapply refine_Methods_cons;
+                            [ intros;
+                              match goal with
+                                |  |- refine _ (?E _ _) => let H := fresh in set (H := E)
+                                | _ => idtac
+                              end(*;
+                              match goal with
+                                | |- context [QSInsert _ _ _] => drop_constraints_from_insert
+                                | |- context [QSDelete _ _ _] => drop_constraints_from_delete
+                                | |- context [Query_For _] => drop constraints from query
+                                | |- _ => idtac
+                              end *) | ]
+                          ])]
+    end | ].
+
+Ltac start_honing_QueryStructure :=
+  match goal with
+      |- ?R ?QSSpec =>
+      cbv delta [QSSpec
+                   QSGetNRelSchemaHeading GetNRelSchema
+                   GetNRelSchemaHeading Domain Specif.value
+                   ] beta; simpl;
+      match R with
+        | ?MostlySharpened =>
+          eapply MostlySharpened_Start; start_honing_QueryStructure'
+        | ?FullySharpened =>
+          eapply FullySharpened_Start; [start_honing_QueryStructure' | | ]
+      end
+  end.
+
+start_honing_QueryStructure.
+
+
+  start honing QueryStructure;
 
   partial_master_plan EqIndexTactics.
 

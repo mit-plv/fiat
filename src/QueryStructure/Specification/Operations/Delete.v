@@ -18,13 +18,13 @@ Require Import Coq.Lists.List
 
 Definition QSDelete {qs_schema}
            (qs : QueryStructure qs_schema)
-           (Ridx : @BoundedString _ (QSschemaNames qs_schema))
-           (DeletedTuples : @Ensemble (@RawTuple (GetNRelSchemaHeading _ (ibound (indexb Ridx))))) :=
+           (Ridx : Fin.t _)
+           (DeletedTuples : @Ensemble (@RawTuple (GetNRelSchemaHeading _ Ridx))) :=
   QSMutate qs Ridx (EnsembleDelete (GetRelation qs Ridx) DeletedTuples).
 
 Opaque QSDelete.
 
 Notation "'Delete' b 'from' Ridx 'where' Ens" :=
   (let hint : QueryStructureHint := _ in
-  QSDelete (@qsHint hint) (@Build_BoundedIndex _ _ (QSschemaNames qsSchemaHint) Ridx%string _) (fun b => Ens))
+  QSDelete (@qsHint hint) (ibound (indexb (@Build_BoundedIndex _ _ (QSschemaNames qsSchemaHint) Ridx%string _))) (fun b => Ens))
     (at level 80) : QuerySpec_scope.

@@ -62,7 +62,7 @@ Definition QSMutateSpec
            (qs_schema : QueryStructureSchema)
            (qs : QueryStructure qs_schema)
            (Ridx : _)
-           (MutatedTuples : @IndexedEnsemble (@RawTuple (GetNRelSchemaHeading _ (ibound (indexb Ridx)))))
+           (MutatedTuples : @IndexedEnsemble (@RawTuple (GetNRelSchemaHeading _ Ridx)))
            (qs' : QueryStructure qs_schema)
 : Prop :=
   (* Either we get a database with an updated ensemble whose

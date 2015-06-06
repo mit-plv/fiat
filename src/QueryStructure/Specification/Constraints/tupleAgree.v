@@ -5,7 +5,7 @@ Require Import  Coq.Lists.List
         Fiat.QueryStructure.Specification.Representation.Schema.
 
 Lemma tupleAgree_empty :
-  forall {heading} (tup1 tup2: @Tuple heading),
+  forall {heading} (tup1 tup2: @RawTuple heading),
     tupleAgree tup1 tup2 [] <-> True.
 Proof.
   unfold tupleAgree; intuition.
@@ -20,8 +20,8 @@ Proof.
 Qed.
 
 Fixpoint tupleAgree_computational
-         {h : Heading}
-         (tup1 tup2 : @Tuple h)
+         {h}
+         (tup1 tup2 : @RawTuple h)
          (attrlist : list (Attributes h)) :=
   match attrlist with
     | [] => True
@@ -29,7 +29,7 @@ Fixpoint tupleAgree_computational
   end.
 
 Lemma tupleAgree_equivalence :
-  forall {h: Heading} tup1 tup2 attrlist,
+  forall {h} tup1 tup2 attrlist,
     @tupleAgree h tup1 tup2 attrlist <->
     @tupleAgree_computational h tup1 tup2 attrlist.
 Proof.

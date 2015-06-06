@@ -1,4 +1,10 @@
-Require Import Coq.Strings.String Coq.omega.Omega Coq.Lists.List Coq.Logic.FunctionalExtensionality Coq.Sets.Ensembles Coq.Bool.Bool
+Require Import Coq.Strings.String
+        Coq.omega.Omega
+        Coq.Lists.List
+        Coq.Logic.FunctionalExtensionality
+        Coq.Sets.Ensembles
+        Coq.Bool.Bool
+        Fiat.Common.ilist2
         Fiat.Computation
         Fiat.ADT
         Fiat.ADTRefinement
@@ -60,30 +66,30 @@ Proof.
 Qed.
 
 Definition Check_Attr_Depend
-           (h : Heading)
+           {h}
            (attrlist attrlist' : list (Attributes h))
            (attr_eq_dec : List_Query_eq (map (Domain h) attrlist))
            (attr_eq_dec' : List_Query_eq (map (Domain h) attrlist'))
-           (tup : Tuple)
-           (l : list Tuple) :=
+           (tup : RawTuple)
+           (l : list RawTuple) :=
   Check_List_Prop (fun tup' => orb (negb (Tuple_Agree_eq _ attr_eq_dec' tup tup'))
                                    (Tuple_Agree_eq _ attr_eq_dec tup tup')) l.
 
 Lemma Check_Attr_Depend_dec
-: forall (h : Heading)
+: forall (h : RawHeading)
          (attrlist attrlist' : list (Attributes h))
          (attr_eq_dec : List_Query_eq (map (Domain h) attrlist))
          (attr_eq_dec' : List_Query_eq (map (Domain h) attrlist'))
-         (tup : Tuple)
-         (l : list Tuple),
+         (tup : RawTuple)
+         (l : list RawTuple),
     Check_Attr_Depend _ _ attr_eq_dec attr_eq_dec' tup l = true ->
-    (forall tup' : Tuple, List.In tup' l
+    (forall tup', List.In tup' l
                           -> tupleAgree tup tup' attrlist'
                           -> tupleAgree tup tup' attrlist).
 Proof.
   unfold Check_Attr_Depend; intros.
   eapply Check_List_Prop_dec  with
-  (P := fun tup' : Tuple => tupleAgree tup tup' attrlist'
+  (P := fun tup' => tupleAgree tup tup' attrlist'
                             -> tupleAgree tup tup' attrlist) in H; eauto.
   intuition.
   let H := match goal with H : tupleAgree _ _ _ |- _ => constr:H end in
@@ -103,20 +109,20 @@ Proof.
 Qed.
 
 Lemma Check_Attr_Depend_dec'
-: forall (h : Heading)
+: forall (h : RawHeading)
          (attrlist attrlist' : list (Attributes h))
          (attr_eq_dec : List_Query_eq (map (Domain h) attrlist))
          (attr_eq_dec' : List_Query_eq (map (Domain h) attrlist'))
-         (tup : Tuple)
-         (l : list Tuple),
+         (tup : RawTuple)
+         (l : list RawTuple),
     Check_Attr_Depend _ _ attr_eq_dec attr_eq_dec' tup l = false ->
-    ~ (forall tup' : Tuple, List.In tup' l
+    ~ (forall tup' : RawTuple, List.In tup' l
                             -> tupleAgree tup tup' attrlist'
                             -> tupleAgree tup tup' attrlist).
 Proof.
   unfold Check_Attr_Depend; intros.
   eapply Check_List_Prop_dec' with
-  (P := fun tup' : Tuple =>
+  (P := fun tup' : RawTuple =>
           ~ tupleAgree tup tup' attrlist' \/
           tupleAgree tup tup' attrlist) in H; eauto.
   destruct_ex; intuition; eauto.
@@ -134,16 +140,16 @@ Proof.
 Qed.
 
 Lemma refine_unused_key_check
-: forall (h : Heading)
+: forall (h : RawHeading)
          (attrlist attrlist' : list (Attributes h))
          (attr_eq_dec : List_Query_eq (map (Domain h) attrlist))
          (attr_eq_dec' : List_Query_eq (map (Domain h) attrlist'))
-         (tup : Tuple)
-         (rel : Ensemble IndexedTuple)
-         (l : list Tuple),
+         (tup : RawTuple)
+         (rel : Ensemble IndexedRawTuple)
+         (l : list RawTuple),
     EnsembleIndexedListEquivalence  rel l
     -> refine {b | decides b
-                           (forall tup' : IndexedTuple,
+                           (forall tup' : IndexedRawTuple,
                               rel tup' ->
                               tupleAgree tup (indexedElement tup') attrlist' ->
                               tupleAgree tup (indexedElement tup') attrlist)}
@@ -160,23 +166,23 @@ Proof.
   eapply (Check_Attr_Depend_dec' attr_eq_dec attr_eq_dec'); eauto.
   destruct H as [l' [fresh_l' [l'_eq [equiv_l_l' _]]]]; subst.
   intros.
-  apply (in_map_iff indexedTuple) in H; destruct_ex;
+  apply (in_map_iff indexedRawTuple) in H; destruct_ex;
   intuition; subst.
   intros; eapply H1; eauto.
   eapply equiv_l_l'; eauto.
 Qed.
 
 Lemma refine_unused_key_check'
-: forall (h : Heading)
+: forall (h : RawHeading)
          (attrlist attrlist' : list (Attributes h))
          (attr_eq_dec : List_Query_eq (map (Domain h) attrlist))
          (attr_eq_dec' : List_Query_eq (map (Domain h) attrlist'))
-         (tup : Tuple)
-         (rel : Ensemble IndexedTuple)
-         (l : list Tuple),
+         (tup : RawTuple)
+         (rel : Ensemble IndexedRawTuple)
+         (l : list RawTuple),
     EnsembleIndexedListEquivalence  rel l
     -> refine {b | decides b
-                           (forall tup' : IndexedTuple,
+                           (forall tup' : IndexedRawTuple,
                               rel tup' ->
                               tupleAgree (indexedElement tup') tup attrlist' ->
                               tupleAgree (indexedElement tup') tup attrlist)}
@@ -195,7 +201,7 @@ Proof.
   eapply (Check_Attr_Depend_dec' attr_eq_dec attr_eq_dec'); eauto.
   unfold tupleAgree in *; intros.
   destruct H as [l' [fresh_l' [l'_eq [equiv_l_l' _]]]]; subst.
-  apply (in_map_iff indexedTuple) in H2; destruct_ex; intuition;
+  apply (in_map_iff indexedRawTuple) in H2; destruct_ex; intuition;
   subst.
   apply sym_eq; apply H1; try eapply H; eauto.
   eapply equiv_l_l'; eauto.
@@ -241,15 +247,15 @@ Proof.
 Qed.
 
 Lemma refine_foreign_key_check
-      (h : Heading)
-      (rel : Ensemble IndexedTuple)
-      (l : list Tuple)
-      (P : Ensemble Tuple)
+      (h : RawHeading)
+      (rel : Ensemble IndexedRawTuple)
+      (l : list RawTuple)
+      (P : Ensemble RawTuple)
       (P_dec : DecideableEnsemble P)
 : EnsembleIndexedListEquivalence rel l
     -> refine {b  |
                decides b
-                       (exists tup' : @IndexedTuple h,
+                       (exists tup' : @IndexedRawTuple h,
                           rel tup' /\
                           P (indexedElement tup'))}
               (ret (Check_List_Ex_Prop (DecideableEnsembles.dec) l)).
@@ -282,10 +288,10 @@ Qed.
 
 Lemma refine_list_insert_in_other_table :
   forall (db_schema : QueryStructureSchema) (qs : UnConstrQueryStructure db_schema)
-         (index1 index2 : BoundedString) (store : list Tuple),
+         index1 index2 (store : list RawTuple),
     EnsembleIndexedListEquivalence (GetUnConstrRelation qs index2) store ->
     index1 <> index2 ->
-    forall inserted : @IndexedTuple _,
+    forall inserted : @IndexedRawTuple _,
       EnsembleIndexedListEquivalence
         (GetUnConstrRelation
            (UpdateUnConstrRelation qs index1
@@ -308,9 +314,9 @@ Ltac refine_list_insert_in_other_table :=
   end.
 
 Lemma ImplementListInsert_eq qsSchema Ridx
-      (tup : Tuple)
+      (tup : RawTuple)
       (or : UnConstrQueryStructure qsSchema)
-      (nr : list (Tuple))
+      (nr : list (RawTuple))
       (bound : nat)
 :
   EnsembleIndexedListEquivalence (GetUnConstrRelation or Ridx) nr
@@ -327,7 +333,7 @@ Lemma ImplementListInsert_eq qsSchema Ridx
 Proof.
   unfold refine; intros;  computes_to_inv; subst; computes_to_constructor.
   unfold GetUnConstrRelation, UpdateUnConstrRelation in *.
-  rewrite ith_replace_BoundIndex_eq.
+  rewrite ith_replace2_Index_eq.
   unfold EnsembleInsert, In, EnsembleIndexedListEquivalence, UnConstrFreshIdx in *;
     intuition.
   exists (S bound); unfold In in *; destruct_ex; subst; simpl.
@@ -346,13 +352,14 @@ Proof.
   simpl; econstructor; eauto.
   unfold not; intros.
   rewrite in_map_iff in H; destruct_ex; intuition.
-  apply equiv_l' in H3; apply H0 in H3; omega.
+  apply equiv_l' in H3; apply H0 in H3.
+  simpl in *; omega.
 Qed.
 
 Lemma ImplementListInsert_neq qsSchema Ridx Ridx'
-      (tup : Tuple)
+      (tup : RawTuple)
       (or : UnConstrQueryStructure qsSchema)
-      (nr : list (Tuple))
+      (nr : list (RawTuple))
       m
 :
   Ridx <> Ridx'
@@ -369,7 +376,7 @@ Lemma ImplementListInsert_neq qsSchema Ridx Ridx'
 Proof.
   unfold refine; intros;  computes_to_inv; subst; computes_to_constructor.
   unfold GetUnConstrRelation, UpdateUnConstrRelation in *.
-  rewrite ith_replace_BoundIndex_neq; eauto using string_dec.
+  rewrite ith_replace2_Index_neq; eauto using string_dec.
 Qed.
 
 Tactic Notation "implement" "insert" "for" "lists" :=
@@ -395,7 +402,7 @@ Tactic Notation "implement" "insert" "for" "lists" :=
 Ltac implement_foreign_key_check_w_lists H :=
   repeat (match goal with
               |- context [
-                     forall tup' : @Tuple ?h,
+                     forall tup' : @RawTuple ?h,
                        (?qs ! ?R )%QueryImpl tup' ->
                        tupleAgree ?n tup' ?attrlist2%SchemaConstraints ->
                        tupleAgree ?n tup' ?attrlist1%SchemaConstraints ]
@@ -404,7 +411,7 @@ Ltac implement_foreign_key_check_w_lists H :=
               [ simplify with monad laws |
                 unfold H in *; split_and; eauto ]
               | |- context [
-                       forall tup' : @Tuple ?h,
+                       forall tup' : @RawTuple ?h,
                          (?qs ! ?R )%QueryImpl tup' ->
                          tupleAgree tup' ?n ?attrlist2%SchemaConstraints ->
                          tupleAgree tup' ?n  ?attrlist1%SchemaConstraints]

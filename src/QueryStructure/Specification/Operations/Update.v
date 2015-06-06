@@ -22,9 +22,9 @@ Definition QSUpdate
            qs_schema
            (qs : QueryStructure qs_schema)
            (Ridx : _)
-           (UpdatedTuples : @Ensemble (@RawTuple (GetNRelSchemaHeading _ (ibound (indexb Ridx)))))
-           (UpdateFunction : @RawTuple (GetNRelSchemaHeading _ (ibound (indexb Ridx))) ->
-                             @RawTuple (GetNRelSchemaHeading _ (ibound (indexb Ridx))))
+           (UpdatedTuples : @Ensemble (@RawTuple (GetNRelSchemaHeading _ Ridx)))
+           (UpdateFunction : @RawTuple (GetNRelSchemaHeading _ Ridx) ->
+                             @RawTuple (GetNRelSchemaHeading _ Ridx))
 : Comp (QueryStructure qs_schema * list RawTuple) :=
   QSMutate qs Ridx (IndexedEnsembleUpdate (GetRelation qs Ridx) UpdatedTuples UpdateFunction).
 
@@ -45,5 +45,5 @@ Notation "[ a ; .. ; c ]" := (compose a .. (compose c id) ..) : Update_scope.
 Delimit Scope Update_scope with Update. *)
 Notation "'Update' b 'from' Ridx 'making' Trans 'where' Ens" :=
   (let hint : QueryStructureHint := _ in
-   QSUpdate (@qsHint hint) {|bindex := Ridx%comp |} (fun b => Ens) Trans)
+   QSUpdate (@qsHint hint) (ibound (indexb (@Build_BoundedIndex _ _ (QSschemaNames qsSchemaHint) Ridx%string _))) (fun b => Ens) Trans)
     (at level 80) : QuerySpec_scope.

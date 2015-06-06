@@ -310,4 +310,30 @@ Section ilist2_replace.
       end.
   Qed.
 
+  
 End ilist2_replace.
+
+Lemma imap_replace2_Index
+      {A}
+      {m}
+      {B B' : A -> Type}
+  : forall (f : forall idx'', B idx'' -> B' idx'')
+           (idx : Fin.t m )
+           (Bound : Vector.t A m)
+           (il : ilist2 Bound)
+           b,
+    imap2 B B' f Bound (replace_Index2 Bound il idx b) =
+    replace_Index2 Bound (imap2 B B' f Bound il) idx (f _ b).
+Proof.
+  induction idx.
+  - intro Bound; pattern n, Bound.
+    match goal with
+      |- ?P n Bound =>
+      simpl; apply (@Vector.caseS _ P); intros; reflexivity
+    end.
+  - intro Bound; revert idx IHidx; pattern n, Bound.
+    match goal with
+      |- ?P n Bound =>
+      simpl; apply (@Vector.caseS _ P); intros; simpl; f_equal; eauto
+    end.
+Qed.

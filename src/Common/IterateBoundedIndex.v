@@ -31,41 +31,39 @@ Section Iterate_Ensemble.
   Local Notation "A '/\' B" := (prim_and A B).
 
   Fixpoint Iterate_Ensemble_BoundedIndex'
-           (Visited Remaining : nat)
+           (Remaining : nat)
            (P : Ensemble (Fin.t Remaining))
            {struct Remaining}
     : Prop :=
     match Remaining return
-          forall Visited, Ensemble (Fin.t Remaining)
+          Ensemble (Fin.t Remaining)
                           -> Prop with
-    | 0 => fun Visited P => True
+    | 0 => fun  P => True
     | S Remaining' =>
-      fun Visited P =>
+      fun P =>
         P (@Fin.F1 Remaining')
-        /\ @Iterate_Ensemble_BoundedIndex'
-             (S Visited) Remaining'
-             (fun n' => P (@Fin.FS _ n'))
-    end Visited P.
+        /\ @Iterate_Ensemble_BoundedIndex' Remaining' (fun n' => P (@Fin.FS _ n'))
+    end  P.
 
   Lemma Iterate_Ensemble_equiv'
-    : forall (Remaining Visited : nat)
+    : forall (Remaining  : nat)
              (P : Ensemble (Fin.t Remaining)),
-      (@Iterate_Ensemble_BoundedIndex' Visited Remaining P ->
+      (@Iterate_Ensemble_BoundedIndex'  Remaining P ->
        forall idx, P idx).
   Proof.
     induction Remaining; simpl; intros.
     - inversion idx.
-    - revert IHRemaining Visited P H.
+    - revert IHRemaining  P H.
       pattern Remaining, idx; apply Fin.caseS; intros.
       + intuition.
-      + intuition; eapply (IHRemaining _ _ prim_snd0).
+      + intuition; eapply (IHRemaining _ prim_snd0).
   Qed.
 
   Lemma Iterate_Ensemble_equiv''
-    : forall (Remaining Visited : nat)
+    : forall (Remaining  : nat)
              (P : Ensemble (Fin.t Remaining)),
       (forall idx, P idx)
-      -> @Iterate_Ensemble_BoundedIndex' Visited Remaining P.
+      -> @Iterate_Ensemble_BoundedIndex'  Remaining P.
   Proof.
     induction Remaining; simpl; intros; intuition.
   Qed.
@@ -73,7 +71,7 @@ Section Iterate_Ensemble.
   Definition Iterate_Ensemble_BoundedIndex
              (m : nat)
              (P : Ensemble (Fin.t m)) : Prop :=
-    @Iterate_Ensemble_BoundedIndex' 0 m P.
+    @Iterate_Ensemble_BoundedIndex' m P.
 
   Corollary Iterate_Ensemble_BoundedIndex_equiv
   : forall m
@@ -82,70 +80,63 @@ Section Iterate_Ensemble.
       forall idx, P idx.
   Proof.
     split; intros.
-    eapply Iterate_Ensemble_equiv' with (Visited := 0);
+    eapply Iterate_Ensemble_equiv';
       eauto using string_dec; destruct n; simpl; discriminate.
-    eapply Iterate_Ensemble_equiv'' with (Visited := 0);
+    eapply Iterate_Ensemble_equiv'';
       eauto using string_dec.
   Qed.
 
   (* Iterating with a filter *)
   Fixpoint Iterate_Ensemble_BoundedIndex_filter'
-           (Visited Remaining : nat)
+           ( Remaining : nat)
            (filter : Fin.t Remaining -> bool)
            (P : Ensemble (Fin.t Remaining))
            {struct Remaining}
     : Prop :=
     match Remaining return
-          forall Visited,
             (@Fin.t Remaining -> bool)
             -> Ensemble (Fin.t Remaining)
                           -> Prop with
-    | 0 => fun Visited filter P => True
+    | 0 => fun  filter P => True
     | S Remaining' =>
-      fun Visited filter P =>
+      fun  filter P =>
         if filter (@Fin.F1 Remaining') then
           P (@Fin.F1 Remaining')
-          /\ @Iterate_Ensemble_BoundedIndex_filter'
-               (S Visited) Remaining'
+          /\ @Iterate_Ensemble_BoundedIndex_filter' Remaining'
                (fun n' => filter (@Fin.FS _ n'))
                (fun n' => P (@Fin.FS _ n'))
         else
-          @Iterate_Ensemble_BoundedIndex_filter'
-            (S Visited) Remaining'
+          @Iterate_Ensemble_BoundedIndex_filter' Remaining'
             (fun n' => filter (@Fin.FS _ n'))
             (fun n' => P (@Fin.FS _ n'))
-    end Visited filter P.
+    end  filter P.
 
   Lemma Iterate_Ensemble_equiv_filter'
-    : forall (Remaining Visited : nat)
+    : forall (Remaining  : nat)
              (P : Ensemble (Fin.t Remaining))
              (filter : Ensemble (Fin.t Remaining))
              (filter_dec : DecideableEnsemble filter),
-      (@Iterate_Ensemble_BoundedIndex_filter' Visited Remaining
+      (@Iterate_Ensemble_BoundedIndex_filter'  Remaining
                                               (@dec _ _ filter_dec)
                                               P ->
        forall idx, filter idx -> P idx).
   Proof.
     induction Remaining; simpl; intros.
     - inversion idx.
-    - revert IHRemaining Visited filter filter_dec P H H0.
+    - revert IHRemaining  filter filter_dec P H H0.
       pattern Remaining, idx; apply Fin.caseS; intros.
       + apply dec_decides_P in H0; rewrite H0 in H.
         intuition.
       + assert (forall a : Fin.t n, dec (Fin.FS a) = true <-> dec (Fin.FS a)) as decOK by intuition.
         case_eq (dec Fin.F1); intros; rewrite H1 in H; intuition;
         eapply dec_decides_P in H0.
-        eapply (IHRemaining
-                 (S Visited)
-                 (fun n' : Fin.t n => P (Fin.FS n'))
+        eapply (IHRemaining (fun n' : Fin.t n => P (Fin.FS n'))
                  (fun n' : Fin.t n => dec (Fin.FS n'))
                  {| dec n' :=  dec (Fin.FS n');
                     dec_decides_P := decOK
                  |}
                  prim_snd0); eauto.
-        eapply (IHRemaining
-                  (S Visited)
-                  (fun n' : Fin.t n => P (Fin.FS n'))
+        eapply (IHRemaining (fun n' : Fin.t n => P (Fin.FS n'))
                   (fun n' : Fin.t n => dec (Fin.FS n'))
                   {| dec n' :=  dec (Fin.FS n');
                      dec_decides_P := decOK
@@ -154,12 +145,12 @@ Section Iterate_Ensemble.
   Qed.
 
     Lemma Iterate_Ensemble_equiv_filter''
-    : forall (Remaining Visited : nat)
+    : forall (Remaining  : nat)
              (P : Ensemble (Fin.t Remaining))
              (filter : Ensemble (Fin.t Remaining))
              (filter_dec : DecideableEnsemble filter),
       (forall idx, filter idx -> P idx)
-      -> @Iterate_Ensemble_BoundedIndex_filter' Visited Remaining
+      -> @Iterate_Ensemble_BoundedIndex_filter'  Remaining
                                                 (@dec _ _ filter_dec)
                                                 P.
   Proof.
@@ -168,18 +159,14 @@ Section Iterate_Ensemble.
     - case_eq (dec Fin.F1); intros.
       + apply dec_decides_P in H0; intuition.
         assert (forall a : Fin.t Remaining, dec (Fin.FS a) = true <-> dec (Fin.FS a)) as decOK by intuition.
-        eapply (IHRemaining
-                 (S Visited)
-                 (fun n' : Fin.t _ => P (Fin.FS n'))
+        eapply (IHRemaining (fun n' : Fin.t _ => P (Fin.FS n'))
                  (fun n' : Fin.t _ => dec (Fin.FS n'))
                  {| dec n' :=  dec (Fin.FS n');
                     dec_decides_P := decOK
                  |}); eauto.
         intros; eapply H; apply dec_decides_P; eauto.
       + assert (forall a : Fin.t Remaining, dec (Fin.FS a) = true <-> dec (Fin.FS a)) as decOK by intuition.
-        eapply (IHRemaining
-                 (S Visited)
-                 (fun n' : Fin.t _ => P (Fin.FS n'))
+        eapply (IHRemaining (fun n' : Fin.t _ => P (Fin.FS n'))
                  (fun n' : Fin.t _ => dec (Fin.FS n'))
                  {| dec n' :=  dec (Fin.FS n');
                     dec_decides_P := decOK
@@ -192,7 +179,7 @@ Section Iterate_Ensemble.
              (P : Ensemble (Fin.t Remaining))
              (filter : Fin.t Remaining -> bool)
     : Prop :=
-    @Iterate_Ensemble_BoundedIndex_filter' 0 Remaining filter P.
+    @Iterate_Ensemble_BoundedIndex_filter' Remaining filter P.
 
   Corollary Iterate_Ensemble_BoundedIndex_filter_equiv
   : forall (Bound : nat)
@@ -203,9 +190,9 @@ Section Iterate_Ensemble.
       forall idx : Fin.t Bound, filter idx -> P idx.
   Proof.
     split; intros.
-    - eapply Iterate_Ensemble_equiv_filter' with (Visited := 0);
+    - eapply Iterate_Ensemble_equiv_filter';
       eauto using string_dec; destruct n; simpl; discriminate.
-    - eapply Iterate_Ensemble_equiv_filter'' with (Visited := 0);
+    - eapply Iterate_Ensemble_equiv_filter'' ;
       eauto using string_dec.
   Qed.
 
@@ -220,41 +207,41 @@ Section Iterate_Dep_Type.
   Local Notation Dep_Type A := (A -> Type).
 
   Fixpoint Iterate_Dep_Type_BoundedIndex'
-           (Visited Remaining : nat)
+           ( Remaining : nat)
            (P : Dep_Type (Fin.t Remaining))
            {struct Remaining}
     : Type :=
     match Remaining return
-          forall Visited, Dep_Type (Fin.t Remaining)
+           Dep_Type (Fin.t Remaining)
                           -> Type with
-    | 0 => fun Visited P => unit
+    | 0 => fun  P => unit
     | S Remaining' =>
-      fun Visited P =>
+      fun  P =>
         prim_prod (P (@Fin.F1 Remaining'))
                   (@Iterate_Dep_Type_BoundedIndex'
-                     (S Visited) Remaining'
+                      Remaining'
                      (fun n' => P (@Fin.FS _ n')))
-    end Visited P.
+    end  P.
 
   Lemma Iterate_Dep_Type_equiv'
-    : forall (Remaining Visited : nat)
+    : forall (Remaining  : nat)
              (P : Dep_Type (Fin.t Remaining)),
-      (@Iterate_Dep_Type_BoundedIndex' Visited Remaining P ->
+      (@Iterate_Dep_Type_BoundedIndex'  Remaining P ->
        forall idx, P idx).
   Proof.
     induction Remaining; simpl; intros.
     - inversion idx.
-    - revert IHRemaining Visited P X.
+    - revert IHRemaining  P X.
       pattern Remaining, idx; apply Fin.caseS; intros.
       + intuition.
-      + intuition; eapply (IHRemaining _ _ prim_snd0).
+      + intuition; eapply (IHRemaining _ prim_snd0).
   Qed.
 
   Lemma Iterate_Dep_Type_equiv''
-    : forall (Remaining Visited : nat)
+    : forall (Remaining  : nat)
              (P : Dep_Type (Fin.t Remaining)),
       (forall idx, P idx)
-      -> @Iterate_Dep_Type_BoundedIndex' Visited Remaining P.
+      -> @Iterate_Dep_Type_BoundedIndex'  Remaining P.
   Proof.
     induction Remaining; simpl; intros; intuition.
   Qed.
@@ -262,7 +249,7 @@ Section Iterate_Dep_Type.
   Definition Iterate_Dep_Type_BoundedIndex
              (m : nat)
              (P : Dep_Type (Fin.t m)) : Type :=
-    @Iterate_Dep_Type_BoundedIndex' 0 m P.
+    @Iterate_Dep_Type_BoundedIndex' m P.
 
   Corollary Lookup_Iterate_Dep_Type
   : forall m
@@ -270,7 +257,7 @@ Section Iterate_Dep_Type.
       Iterate_Dep_Type_BoundedIndex P ->
       forall idx, P idx.
   Proof.
-    intros; eapply Iterate_Dep_Type_equiv' with (Visited := 0); eassumption.
+    intros; eapply Iterate_Dep_Type_equiv' ; eassumption.
   Defined.
 
   Corollary Iterate_Dep_Type_BoundedIndex_equiv2
@@ -280,58 +267,58 @@ Section Iterate_Dep_Type.
       -> Iterate_Dep_Type_BoundedIndex P.
   Proof.
     intros.
-    eapply Iterate_Dep_Type_equiv'' with (Visited := 0);
+    eapply Iterate_Dep_Type_equiv'' ;
       eauto using string_dec.
   Qed.
 
   (* Iterating with a filter *)
   Fixpoint Iterate_Dep_Type_BoundedIndex_filter'
-           (Visited Remaining : nat)
+           ( Remaining : nat)
            (filter : Fin.t Remaining -> bool)
            (P : Dep_Type (Fin.t Remaining))
            {struct Remaining}
     : Type :=
     match Remaining return
-          forall Visited,
+          
             (@Fin.t Remaining -> bool)
             -> Dep_Type (Fin.t Remaining)
                           -> Type with
-    | 0 => fun Visited filter P => True
+    | 0 => fun  filter P => True
     | S Remaining' =>
-      fun Visited filter P =>
+      fun  filter P =>
         if filter (@Fin.F1 Remaining') then
           prim_prod (P (@Fin.F1 Remaining'))
           (@Iterate_Dep_Type_BoundedIndex_filter'
-               (S Visited) Remaining'
+                Remaining'
                (fun n' => filter (@Fin.FS _ n'))
                (fun n' => P (@Fin.FS _ n')))
         else
           @Iterate_Dep_Type_BoundedIndex_filter'
-            (S Visited) Remaining'
+             Remaining'
             (fun n' => filter (@Fin.FS _ n'))
             (fun n' => P (@Fin.FS _ n'))
-    end Visited filter P.
+    end  filter P.
 
   Lemma Iterate_Dep_Type_equiv_filter'
-    : forall (Remaining Visited : nat)
+    : forall (Remaining  : nat)
              (P : Dep_Type (Fin.t Remaining))
              (filter : Ensemble (Fin.t Remaining))
              (filter_dec : DecideableEnsemble filter),
-      (@Iterate_Dep_Type_BoundedIndex_filter' Visited Remaining
+      (@Iterate_Dep_Type_BoundedIndex_filter'  Remaining
                                               (@dec _ _ filter_dec)
                                               P ->
        forall idx, filter idx -> P idx).
   Proof.
     induction Remaining; simpl; intros.
     - inversion idx.
-    - revert IHRemaining Visited filter filter_dec P X H.
+    - revert IHRemaining  filter filter_dec P X H.
       pattern Remaining, idx; apply Fin.caseS; intros.
       + apply dec_decides_P in H; rewrite H in X.
         intuition.
       + assert (forall a : Fin.t n, dec (Fin.FS a) = true <-> dec (Fin.FS a)) as decOK by intuition.
         case_eq (dec Fin.F1); intros; rewrite H0 in X; intuition.
         * eapply (IHRemaining
-                    (S Visited)
+                    
                     (fun n' : Fin.t n => P (Fin.FS n'))
                     (fun n' : Fin.t n => dec (Fin.FS n'))
                     {| dec n' :=  dec (Fin.FS n');
@@ -340,7 +327,7 @@ Section Iterate_Dep_Type.
                     prim_snd0); eauto using dec_decides_P.
           eapply dec_decides_P; eauto.
         * eapply (IHRemaining
-                  (S Visited)
+                  
                   (fun n' : Fin.t n => P (Fin.FS n'))
                   (fun n' : Fin.t n => dec (Fin.FS n'))
                   {| dec n' :=  dec (Fin.FS n');
@@ -351,12 +338,12 @@ Section Iterate_Dep_Type.
   Qed.
 
     Lemma Iterate_Dep_Type_equiv_filter''
-    : forall (Remaining Visited : nat)
+    : forall (Remaining  : nat)
              (P : Dep_Type (Fin.t Remaining))
              (filter : Ensemble (Fin.t Remaining))
              (filter_dec : DecideableEnsemble filter),
       (forall idx, filter idx -> P idx)
-      -> @Iterate_Dep_Type_BoundedIndex_filter' Visited Remaining
+      -> @Iterate_Dep_Type_BoundedIndex_filter'  Remaining
                                                 (@dec _ _ filter_dec)
                                                 P.
   Proof.
@@ -366,7 +353,7 @@ Section Iterate_Dep_Type.
       + apply dec_decides_P in H; intuition.
         assert (forall a : Fin.t Remaining, dec (Fin.FS a) = true <-> dec (Fin.FS a)) as decOK by intuition.
         eapply (IHRemaining
-                 (S Visited)
+                 
                  (fun n' : Fin.t _ => P (Fin.FS n'))
                  (fun n' : Fin.t _ => dec (Fin.FS n'))
                  {| dec n' :=  dec (Fin.FS n');
@@ -375,7 +362,7 @@ Section Iterate_Dep_Type.
         intros; eapply X; apply dec_decides_P; eauto.
       + assert (forall a : Fin.t Remaining, dec (Fin.FS a) = true <-> dec (Fin.FS a)) as decOK by intuition.
         eapply (IHRemaining
-                 (S Visited)
+                 
                  (fun n' : Fin.t _ => P (Fin.FS n'))
                  (fun n' : Fin.t _ => dec (Fin.FS n'))
                  {| dec n' :=  dec (Fin.FS n');
@@ -389,7 +376,7 @@ Section Iterate_Dep_Type.
              (P : Dep_Type (Fin.t Remaining))
              (filter : Fin.t Remaining -> bool)
     : Type :=
-    @Iterate_Dep_Type_BoundedIndex_filter' 0 Remaining filter P.
+    @Iterate_Dep_Type_BoundedIndex_filter' Remaining filter P.
 
   Corollary Lookup_Iterate_Dep_Type_filter
   : forall (Bound : nat)
@@ -400,7 +387,7 @@ Section Iterate_Dep_Type.
       forall idx : Fin.t Bound, filter idx -> P idx.
   Proof.
     intros.
-    eapply Iterate_Dep_Type_equiv_filter' with (Visited := 0); eassumption.
+    eapply Iterate_Dep_Type_equiv_filter' ; eassumption.
   Defined.
 
     Corollary Iterate_Dep_Type_BoundedIndex_filter_equiv2
@@ -411,7 +398,7 @@ Section Iterate_Dep_Type.
       (forall idx : Fin.t Bound, filter idx -> P idx)
       -> Iterate_Dep_Type_BoundedIndex_filter P dec.
   Proof.
-    intros; eapply Iterate_Dep_Type_equiv_filter'' with (Visited := 0);
+    intros; eapply Iterate_Dep_Type_equiv_filter'' ;
       eauto using string_dec.
   Defined.
 

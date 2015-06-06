@@ -26,7 +26,7 @@ Require Import Coq.Strings.String Coq.omega.Omega Coq.Lists.List Coq.Logic.Funct
 Ltac start_honing_QueryStructure' :=
   eapply SharpenStep;
   [ match goal with
-        |- context [@BuildADT (QueryStructure ?Rep) _ _ _ _] =>
+        |- context [@BuildADT (QueryStructure ?Rep) _ _ _ _ _ _] =>
         eapply refineADT_BuildADT_Rep_refine_All with (AbsR := @DropQSConstraints_AbsR Rep);
           [ repeat (first [eapply refine_Constructors_nil
                           | eapply refine_Constructors_cons;
@@ -60,7 +60,7 @@ Ltac start_honing_QueryStructure :=
       cbv delta [QSSpec
                    QSGetNRelSchemaHeading GetNRelSchema
                    GetNRelSchemaHeading Domain Specif.value
-                   IndexBound_tail IndexBound_head] beta; simpl;
+                   ] beta; simpl;
       pose_string_hyps; pose_heading_hyps;
       match R with
         | ?MostlySharpened =>
