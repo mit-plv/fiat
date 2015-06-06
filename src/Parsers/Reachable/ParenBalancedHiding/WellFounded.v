@@ -46,9 +46,9 @@ Ltac simpl_size_of :=
              => let G' := context G[S (size_of_pbh'_productions g1 + size_of_pbh'_production g2)] in change G'
            | [ H : context G[size_of_pbh'_production (PBHProductionConsNonTerminal0 _ _ ?g1 ?g2)] |- _ ]
              => let G' := context G[S (size_of_pbh'_productions g1 + size_of_pbh'_production g2)] in change G' in H
-           | [ |- context G[size_of_pbh'_production (PBHProductionConsNonTerminalS _ _ ?g)] ]
+           | [ |- context G[size_of_pbh'_production (PBHProductionConsNonTerminalS _ ?g)] ]
              => let G' := context G[S (size_of_pbh'_production g)] in change G'
-           | [ H : context G[size_of_pbh'_production (PBHProductionConsNonTerminalS _ _ ?g)] |- _ ]
+           | [ H : context G[size_of_pbh'_production (PBHProductionConsNonTerminalS _ ?g)] |- _ ]
              => let G' := context G[S (size_of_pbh'_production g)] in change G' in H
            | [ |- context G[size_of_pbh'_production (PBHProductionConsTerminal _ _ _ ?g)] ]
              => let G' := context G[S (size_of_pbh'_production g)] in change G'

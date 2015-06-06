@@ -58,7 +58,7 @@ pbh = pbh' '+' 0
                                         -> generic_pbh'_production valid 0 its
                                         -> generic_pbh'_production valid 0 (NonTerminal nt :: its)
     | PBHProductionConsNonTerminalS : forall valid start_level nt its,
-                                        pb'_productions G valid0 (Lookup G nt)
+                                        pb'_production G valid0 0 (NonTerminal nt :: nil)
                                         -> generic_pbh'_production valid (S start_level) its
                                         -> generic_pbh'_production valid (S start_level) (NonTerminal nt :: its)
     | PBHProductionConsTerminal : forall valid start_level ch its,

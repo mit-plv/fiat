@@ -53,7 +53,7 @@ Section cfg.
       { simpl in *; destruct H; [ left | right ]; eauto. }
       { simpl in *; subst; destruct H; [ constructor 1 | constructor 2 | constructor 3 | constructor 4 ]; eauto.
         { eapply expand_generic_pbh'_productions; [ .. | eassumption ]; try apply transform12; trivial. }
-        { eapply expand_generic_pb'_productions; [ | eassumption | eassumption ].
+        { eapply expand_generic_pb'_production; [ | eassumption | reflexivity | eassumption ].
           unfold respectful; trivial. } }
     Defined.
 
@@ -288,7 +288,7 @@ Section cfg.
               | left | right ];
               unfold pbh'_production__of__minimal_pbh'_production, pbh'_productions__of__minimal_pbh'_productions in *; simpl;
               rewrite ?expand_size_of_pbh'_production, ?expand_size_of_pbh'_productions in *.
-            { eexists (PBHProductionConsNonTerminalS _ p0' p1'').
+            { eexists (PBHProductionConsNonTerminalS p0' p1'').
               rewrite ?expand_size_of_pbh'_production, ?expand_size_of_pbh'_productions in *.
               simpl_size_of.
               apply Le.le_n_S; assumption. }

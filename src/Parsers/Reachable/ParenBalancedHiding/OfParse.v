@@ -62,7 +62,7 @@ Section cfg.
         eapply paren_balanced_hiding'_split_0; simpl; eassumption. }
       { specialize (fun str p H0 H => paren_balanced_hiding_pbh_parse_of_production _ _ _ _ str p H0 H Hp1).
         clear paren_balanced_hiding_pbh_parse_of_productions.
-        pose proof (fun str p H => paren_balanced_pb_parse_of_productions (str := str) p H Hp0) as paren_balanced_hiding_pbh_parse_of_productions.
+        pose proof (fun str p H => paren_balanced_pb_parse_of_production (str := str) p H Hp0) as paren_balanced_hiding_pbh_parse_of_productions.
         dependent destruction p.
         let p1 := match goal with p1 : parse_of_production _ _ _ |- _ => constr:p1 end in
         specialize (paren_balanced_hiding_pbh_parse_of_production _ p1 (snd Hforall0) (snd Hforall)).
@@ -70,8 +70,28 @@ Section cfg.
         let p := fresh in
         rename p0 into p;
           dependent destruction p.
+        specialize (fun str p H (H' : is_valid_nonterminal _ _ * Forall_parse_of _ (parse_of_respectful (symmetry (take_take str n n)) p) * unit)
+                    => paren_balanced_hiding_pbh_parse_of_productions
+                         (take n str)
+                         (ParseProductionCons
+                            _ n
+                            (ParseNonTerminal
+                               _
+                               (parse_of_respectful (symmetry (take_take str n n)) p))
+                            (ParseProductionNil _ _ H))
+                         H').
+        specialize (fun x H p H1 H0
+                    => paren_balanced_hiding_pbh_parse_of_productions
+                         str p H (H0, expand_forall_parse_of (str' := take (min n n) str) (P := fun _ nt => is_valid_nonterminal valid00 nt) x (reflexivity _) _ _ H1, tt)).
+        simpl in *.
+        specialize_by trivial.
+        specialize_by ltac:(rewrite drop_length, take_length; apply Min.min_case_strong; omega).
+        rewrite Min.min_idempotent in paren_balanced_hiding_pbh_parse_of_productions.
         let p0 := match goal with p0 : parse_of _ _ _ |- _ => constr:p0 end in
-        specialize (paren_balanced_hiding_pbh_parse_of_productions _ p0 (snd (fst Hforall0))).
+        specialize (paren_balanced_hiding_pbh_parse_of_productions p0).
+        rewrite parse_of_respectful_refl in paren_balanced_hiding_pbh_parse_of_productions.
+        specialize (paren_balanced_hiding_pbh_parse_of_productions (snd (fst (Hforall0)))).
+        specialize (paren_balanced_hiding_pbh_parse_of_productions (fst (fst (Hforall0)))).
         eapply paren_balanced_hiding'_split_0; simpl; eassumption. }
       { specialize (fun str p H0 H => paren_balanced_hiding_pbh_parse_of_production _ _ _ _ str p H0 H Hp).
         clear paren_balanced_hiding_pbh_parse_of_productions.

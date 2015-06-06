@@ -177,9 +177,10 @@ Section refine_rules.
 
   Lemma refine_binop_table''
         (predata := rdp_list_predata (G := G))
-        (H_nt_hiding : pbh'_productions G initial_nonterminals_data initial_nonterminals_data (Lookup G nt))
+        (H_nt_hiding : inhabited (pbh'_production G initial_nonterminals_data initial_nonterminals_data 0 (NonTerminal nt :: nil)))
   : retT.
   Proof.
+    destruct H_nt_hiding as [H_nt_hiding].
     apply refine_binop_table'.
     intros str' p.
     apply grammar_rvalid_correct in Hvalid.
@@ -194,7 +195,8 @@ Section refine_rules.
           unique pose proof (pf' : T')
     end.
     dependent destruction p.
-    eapply (paren_balanced_hiding_pbh_parse_of_productions p); [ .. | eassumption ];
-    refine (snd _); eassumption.
+    eapply (paren_balanced_hiding_pbh_parse_of_productions p); [ refine (snd _); eassumption.. | ].
+    inversion H_nt_hiding; clear H_nt_hiding; subst.
+    assumption.
   Qed.
 End refine_rules.

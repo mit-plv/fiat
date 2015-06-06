@@ -2,6 +2,7 @@
 Require Import Coq.Lists.List.
 Require Import Fiat.Parsers.ContextFreeGrammar.
 Require Import Fiat.Parsers.BaseTypes.
+Require Import Fiat.Parsers.BaseTypesLemmas.
 Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Parsers.Splitters.RDPList.
@@ -116,27 +117,32 @@ Section fold_correctness.
   Class fold_grammar_correctness_data :=
     { fgccd :> fold_grammar_correctness_computational_data;
       Pnt_lift : forall valid0 nt value,
-                   is_valid_nonterminal valid0 nt
+                   sub_nonterminals_listT valid0 initial_nonterminals_data
+                   -> is_valid_nonterminal valid0 nt
                    -> Ppats (remove_nonterminal valid0 nt) (G nt) value
                    -> Pnt valid0 nt value;
       Pnt_redundant : forall valid0 nt,
-                        is_valid_nonterminal valid0 nt = false
+                        sub_nonterminals_listT valid0 initial_nonterminals_data
+                        -> is_valid_nonterminal valid0 nt = false
                         -> Pnt valid0 nt (on_redundant_nonterminal nt);
       Ppat_nil : forall valid0, Ppat valid0 nil on_nil_production;
       Ppat_cons_nt : forall valid0 nt xs p ps,
-                       Pnt valid0 nt p
+                       sub_nonterminals_listT valid0 initial_nonterminals_data
+                       -> Pnt valid0 nt p
                        -> Ppat valid0 xs ps
                        -> Ppat valid0
                                (NonTerminal nt::xs)
                                (combine_production (on_nonterminal nt p) ps);
       Ppat_cons_t : forall valid0 ch xs ps,
-                      Ppat valid0 xs ps
+                      sub_nonterminals_listT valid0 initial_nonterminals_data
+                      -> Ppat valid0 xs ps
                       -> Ppat valid0
                               (Terminal ch::xs)
                               (combine_production (on_terminal ch) ps);
       Ppats_nil : forall valid0, Ppats valid0 nil on_nil_productions;
       Ppats_cons : forall valid0 x xs p ps,
-                     Ppat valid0 x p
+                     sub_nonterminals_listT valid0 initial_nonterminals_data
+                     -> Ppat valid0 x p
                      -> Ppats valid0 xs ps
                      -> Ppats valid0 (x::xs) (combine_productions p ps) }.
   Context {FGCD : fold_grammar_correctness_data}.
@@ -144,6 +150,7 @@ Section fold_correctness.
   Lemma fold_production'_correct
         valid0
         f
+        (Hsub : sub_nonterminals_listT valid0 initial_nonterminals_data)
         (IHf : forall nt, Pnt valid0 nt (f nt))
         pat
   : Ppat valid0 pat (fold_production' f pat).
@@ -159,6 +166,7 @@ Section fold_correctness.
   Lemma fold_productions'_correct
         valid0
         f
+        (Hsub : sub_nonterminals_listT valid0 initial_nonterminals_data)
         (IHf : forall nt, Pnt valid0 nt (f nt))
         pats
   : Ppats valid0 pats (fold_productions' f pats).
@@ -166,13 +174,13 @@ Section fold_correctness.
     unfold fold_productions'.
     induction pats as [ | x xs IHxs ]; intros.
     { simpl; apply Ppats_nil. }
-    { simpl; apply Ppats_cons.
-      { apply fold_production'_correct; trivial. }
-      { apply IHxs. } }
+    { simpl; apply Ppats_cons; trivial; [].
+      { apply fold_production'_correct; trivial. } }
   Qed.
 
   Lemma Fix_fold_nt_step_correct
         (valid0 : nonterminals_listT)
+        (Hsub : sub_nonterminals_listT valid0 initial_nonterminals_data)
   : forall nt,
       Pnt valid0 nt (Fix ntl_wf _ (fold_nt_step (G:=G)) valid0 nt).
   Proof.
@@ -187,7 +195,9 @@ Section fold_correctness.
     let H := match goal with H : is_valid_nonterminal ?x ?nt = true |- _ => constr:H end in
     specialize (IH _ (remove_nonterminal_dec _ _ H)).
     apply Pnt_lift; trivial.
+    specialize_by ltac:(rewrite sub_nonterminals_listT_remove; assumption).
     apply fold_productions'_correct; eauto.
+    rewrite sub_nonterminals_listT_remove; assumption.
   Qed.
 
   Lemma fold_nt_correct
@@ -196,6 +206,7 @@ Section fold_correctness.
   Proof.
     unfold fold_nt, fold_nt'.
     apply Fix_fold_nt_step_correct.
+    reflexivity.
   Qed.
 
   Lemma fold_production_correct
@@ -204,6 +215,7 @@ Section fold_correctness.
   Proof.
     unfold fold_production.
     apply fold_production'_correct, fold_nt_correct.
+    reflexivity.
   Qed.
 
   Lemma fold_productions_correct
@@ -212,5 +224,6 @@ Section fold_correctness.
   Proof.
     unfold fold_productions.
     apply fold_productions'_correct, fold_nt_correct.
+    reflexivity.
   Qed.
 End fold_correctness.
