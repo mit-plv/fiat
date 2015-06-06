@@ -16,6 +16,7 @@ Section general_fold.
   Class fold_grammar_data :=
     { on_terminal : Char -> T;
       on_redundant_nonterminal : String.string -> T;
+      on_nonterminal : String.string -> T -> T;
       on_nil_production : T;
       combine_production : T -> T -> T;
       on_nil_productions : T;
@@ -31,7 +32,7 @@ Section general_fold.
             (fun it =>
                match it with
                  | Terminal ch => on_terminal ch
-                 | NonTerminal nt => fold_nt nt
+                 | NonTerminal nt => on_nonterminal nt (fold_nt nt)
                end)
             its).
 
@@ -127,7 +128,7 @@ Section fold_correctness.
                        -> Ppat valid0 xs ps
                        -> Ppat valid0
                                (NonTerminal nt::xs)
-                               (combine_production p ps);
+                               (combine_production (on_nonterminal nt p) ps);
       Ppat_cons_t : forall valid0 ch xs ps,
                       Ppat valid0 xs ps
                       -> Ppat valid0
@@ -178,10 +179,15 @@ Section fold_correctness.
     induction (ntl_wf valid0) as [ ? ? IH ]; intros.
     rewrite Fix1_eq; [ | solve [ apply fold_nt_step_ext ] ].
     unfold fold_nt_step at 1; cbv beta zeta.
-    edestruct dec; [ | apply Pnt_redundant; assumption ].
+    match goal with
+      | [ |- context[dec ?x] ] => destruct x eqn:?
+    end;
+      simpl;
+      [ | apply Pnt_redundant; assumption ].
     let H := match goal with H : is_valid_nonterminal ?x ?nt = true |- _ => constr:H end in
     specialize (IH _ (remove_nonterminal_dec _ _ H)).
-    apply Pnt_lift, fold_productions'_correct; eauto.
+    apply Pnt_lift; trivial.
+    apply fold_productions'_correct; eauto.
   Qed.
 
   Lemma fold_nt_correct

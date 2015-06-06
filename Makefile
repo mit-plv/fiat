@@ -97,7 +97,7 @@ QUERYSTRUCTURES_UNMADE_VO := \
 	src/QueryStructure/Implementation/DataStructures/Bags/InvertedIndexBags.vo
 
 PARSERS_UNMADE_VO := \
-	src/Parsers/Refinement/BinOpBrackets/BinOpRules.vo
+	src/Parsers/Refinement/BinOpBrackets/BinOpLemmas.vo
 
 FIAT4MONITORS_UNMADE_VO := \
 	src/Fiat4Monitors/HelloWorld/%.vo \
