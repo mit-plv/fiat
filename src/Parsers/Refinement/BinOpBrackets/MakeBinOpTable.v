@@ -6,6 +6,7 @@ Require Import Fiat.Common.List.Operations.
 Require Import Fiat.Common.List.ListFacts.
 Require Import Fiat.Common.SetoidInstances.
 Require Import Fiat.Parsers.Reachable.ParenBalanced.Core.
+Require Fiat.Parsers.StringLike.String.
 Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Parsers.StringLike.FirstChar.
@@ -581,3 +582,118 @@ pb = pb' '+' 0
     apply list_of_next_bin_ops'_satisfies_spec.
   Qed.
 End make_table.
+
+Import Fiat.Parsers.StringLike.String.
+
+Section for_string.
+  Context {pdata : paren_balanced_hiding_dataT Ascii.ascii}.
+
+  Definition list_of_next_bin_ops'_step'_opt
+    := (fun ch (table_higher_ops : option (list (option nat)) * list (option nat)) =>
+          let next_ops := map (option_map S) (match fst table_higher_ops with
+                                                | None => nil
+                                                | Some ls => ls
+                                              end) in
+          let '(cur_mark, new_higher_ops) := (nth 0 next_ops None, tl next_ops) in
+          (Some (if is_bin_op ch
+                 then Some 0 :: new_higher_ops
+                 else if is_open ch
+                      then new_higher_ops
+                      else if is_close ch
+                           then None :: next_ops
+                           else next_ops))).
+
+  Definition list_of_next_bin_ops'_step_opt
+    := (fun ch table_higher_ops =>
+          (list_of_next_bin_ops'_step'_opt ch table_higher_ops,
+           (match fst table_higher_ops with
+              | Some ls => nth 0 ls None :: snd table_higher_ops
+              | None => snd table_higher_ops
+            end))).
+
+  Definition list_of_next_bin_ops'_opt0 (str : String.string)
+  : option (list (option nat)) * list (option nat)
+    := fold
+         list_of_next_bin_ops'_step_opt
+         (None, nil)
+         str.
+
+  Section no_fold.
+    Local Arguments fold / .
+    Local Arguments fold' / .
+    Local Arguments list_of_next_bin_ops'_opt0 / .
+    Definition list_of_next_bin_ops'_opt (str : String.string)
+    : option (list (option nat)) * list (option nat)
+      := Eval simpl in list_of_next_bin_ops'_opt0 str.
+  End no_fold.
+
+  Definition list_of_next_bin_ops_opt (str : String.string)
+    := let ls' := list_of_next_bin_ops'_opt str in
+       match fst ls' with
+         | Some ls'' => nth 0 ls'' None :: snd ls'
+         | None => snd ls'
+       end.
+
+  Lemma list_of_next_bin_ops'_opt_correct (str : String)
+  : list_of_next_bin_ops'_opt str
+    = (nth 0 (map Some (list_of_next_bin_ops' str)) None,
+       tl (map (fun ls => nth 0 ls None) (list_of_next_bin_ops' str))).
+  Proof.
+    change list_of_next_bin_ops'_opt with list_of_next_bin_ops'_opt0.
+    unfold list_of_next_bin_ops', list_of_next_bin_ops'_opt0.
+    set (len := length str).
+    generalize (eq_refl : length str = len).
+    clearbody len.
+    revert str.
+    induction len; intros str H'.
+    { rewrite !fold_nil by assumption; reflexivity. }
+    { specialize (IHlen (drop 1 str)).
+      specialize_by ltac:(rewrite drop_length; omega).
+      rewrite !(fold_recr _ _ str).
+      destruct (get 0 str) eqn:H''.
+      { unfold list_of_next_bin_ops'_step_opt at 1.
+        rewrite !IHlen; clear IHlen.
+        unfold list_of_next_bin_ops'_step'_opt.
+        generalize (fold list_of_next_bin_ops'_step [] (drop 1 str)).
+        intros ls'.
+        unfold list_of_next_bin_ops'_step.
+        unfold list_of_next_bin_ops'_step'.
+        repeat match goal with
+                 | [ |- appcontext[if ?e then _ else _] ] => destruct e eqn:?
+                 | _ => progress cbv beta
+                 | [ |- appcontext[fst (?x, ?y)] ] =>
+                   change (fst (x, y)) with x
+                 | [ |- appcontext[snd (?x, ?y)] ] =>
+                   change (snd (x, y)) with y
+                 | [ |- appcontext[nth 0 (?x::?xs) ?v] ]
+                   => change (nth 0 (x::xs) v) with x
+                 | [ |- (_, _) = (_, _) ] => apply f_equal2
+                 | [ |- context[map ?f (?x::?xs)] ]
+                   => change (map f (x::xs)) with (f x :: map f xs)
+                 | [ |- Some _ = Some _ ] => apply f_equal
+                 | [ |- _::_ = _::_ ] => apply f_equal2
+                 | _ => reflexivity
+                 | [ |- context[nth 0 (map Some ?ls) None] ]
+                   => is_var ls; destruct ls
+               end. }
+      { reflexivity. } }
+  Qed.
+
+  Lemma list_of_next_bin_ops_opt_correct (str : String)
+  : list_of_next_bin_ops_opt str = list_of_next_bin_ops str.
+  Proof.
+    unfold list_of_next_bin_ops_opt, list_of_next_bin_ops.
+    rewrite !list_of_next_bin_ops'_opt_correct.
+    simpl.
+    generalize (list_of_next_bin_ops' str).
+    intro ls'.
+    destruct ls'; simpl; reflexivity.
+  Qed.
+
+  Lemma list_of_next_bin_ops_opt_satisfies_spec (str : String)
+  : list_of_next_bin_ops_spec (list_of_next_bin_ops_opt str) str.
+  Proof.
+    rewrite list_of_next_bin_ops_opt_correct.
+    apply list_of_next_bin_ops_satisfies_spec.
+  Qed.
+End for_string.

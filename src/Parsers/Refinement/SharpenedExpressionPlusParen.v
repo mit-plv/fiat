@@ -34,10 +34,11 @@ Section IndexedImpl.
   Proof.
     start honing parser using indexed representation.
 
+
     hone method "splits".
     {
       simplify parser splitter.
-      setoid_rewrite refine_binop_table''; [ | apply list_of_next_bin_ops_satisfies_spec | reflexivity.. ].
+      setoid_rewrite refine_binop_table; [ | reflexivity.. ].
       simpl.
       finish honing parser method.
     }
