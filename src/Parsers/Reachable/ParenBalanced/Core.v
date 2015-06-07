@@ -32,9 +32,11 @@ pb = pb' '+' 0
 >>
 *)
 
-  Definition pb_check_level (ch : Char) (start_level : nat) : bool
+  Definition pb_check_level (hiding : bool) (ch : Char) (start_level : nat) : bool
     := if is_bin_op ch
-       then true
+       then if hiding
+            then Compare_dec.gt_dec start_level 0 : bool
+            else true
        else if is_open ch
             then true
             else if is_close ch
@@ -69,7 +71,7 @@ pb = pb' '+' 0
                                        -> generic_pb'_production valid start_level its
                                        -> generic_pb'_production valid start_level (NonTerminal nt :: its)
     | PBProductionConsTerminal : forall valid start_level ch its,
-                                    pb_check_level ch start_level
+                                    pb_check_level false ch start_level
                                     -> generic_pb'_production valid (pb_new_level ch start_level) its
                                     -> generic_pb'_production valid start_level (Terminal ch :: its).
   End generic.
@@ -80,11 +82,12 @@ pb = pb' '+' 0
   Definition pb'_productions := generic_pb'_productions (fun valid _ => valid).
   Definition pb'_production := generic_pb'_production (fun valid _ => valid).
 
-  Lemma pb_check_level_le {ch} {n n'} (Hle : n <= n')
-  : pb_check_level ch n -> pb_check_level ch n'.
+  Lemma pb_check_level_le {ch b} {n n'} (Hle : n <= n')
+  : pb_check_level b ch n -> pb_check_level b ch n'.
   Proof.
     unfold pb_check_level.
     do 2 edestruct Compare_dec.gt_dec; trivial; try omega; simpl.
+    destruct b;
     edestruct is_bin_op; trivial;
     edestruct is_close;
     edestruct is_open;

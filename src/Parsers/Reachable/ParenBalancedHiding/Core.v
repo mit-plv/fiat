@@ -30,10 +30,7 @@ pbh = pbh' '+' 0
 *)
 
   Definition pbh_check_level (ch : Char) (start_level : nat) : bool
-    := ((if is_bin_op ch
-         then Compare_dec.gt_dec start_level 0 : bool
-         else true)
-          && pb_check_level ch start_level)%bool.
+    := pb_check_level true ch start_level.
 
   Definition pbh_new_level (ch : Char) (start_level : nat) : nat
     := pb_new_level ch start_level.

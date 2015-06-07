@@ -217,11 +217,12 @@ src/Parsers/Refinement/SharpenedABStar.v
 src/Parsers/Refinement/SharpenedAtMostOneNonTerminal.v
 src/Parsers/Refinement/SharpenedExpressionParen.v
 src/Parsers/Refinement/SharpenedExpressionPlus.v
+src/Parsers/Refinement/SharpenedExpressionPlusParen.v
 src/Parsers/Refinement/Tactics.v
-src/Parsers/Refinement/BinOpBrackets/BinOpLemmas.v
 src/Parsers/Refinement/BinOpBrackets/BinOpRules.v
 src/Parsers/Refinement/BinOpBrackets/MakeBinOpTable.v
 src/Parsers/Refinement/BinOpBrackets/ParenBalanced.v
+src/Parsers/Refinement/BinOpBrackets/ParenBalancedGrammar.v
 src/Parsers/Refinement/BinOpBrackets/ParenBalancedLemmas.v
 src/Parsers/Splitters/BruteForce.v
 src/Parsers/Splitters/RDPList.v

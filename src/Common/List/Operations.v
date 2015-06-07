@@ -82,3 +82,35 @@ Proof.
       repeat (f_equal; []).
       apply Bool.andb_comm. } }
 Qed.
+
+Definition included {A} (eq_A : A -> A -> bool) (ls1 ls2 : list A) : bool
+  := fold_right
+       andb
+       true
+       (map
+          (fun x => list_bin eq_A x ls2)
+          ls1).
+
+Lemma included_bl {A eq_A} (bl : forall x y : A, eq_A x y = true -> x = y) ls1 ls2
+      (H : included eq_A ls1 ls2 = true)
+: incl ls1 ls2.
+Proof.
+  unfold included, incl in *.
+  induction ls1; simpl in *; trivial; try tauto.
+  apply Bool.andb_true_iff in H.
+  destruct H as [H0 H1].
+  specialize (IHls1 H1).
+  intros x [H'|H']; eauto; subst.
+  eapply list_in_bl; eassumption.
+Defined.
+
+Lemma included_lb {A eq_A} (lb : forall x y : A, x = y -> eq_A x y = true) ls1 ls2
+      (H : incl ls1 ls2)
+: included eq_A ls1 ls2 = true.
+Proof.
+  unfold included, incl in *.
+  induction ls1; simpl in *; trivial.
+  (rewrite IHls1 by intuition eauto); clear IHls1.
+  rewrite Bool.andb_comm; simpl.
+  eapply list_in_lb; eauto.
+Defined.

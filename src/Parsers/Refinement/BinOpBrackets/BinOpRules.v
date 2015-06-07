@@ -13,6 +13,7 @@ Require Import Fiat.Parsers.Reachable.ParenBalancedHiding.OfParse.
 Require Import Fiat.Parsers.Refinement.BinOpBrackets.ParenBalanced.
 Require Import Fiat.Parsers.Refinement.BinOpBrackets.MakeBinOpTable.
 Require Import Fiat.Parsers.Refinement.BinOpBrackets.ParenBalancedLemmas.
+Require Import Fiat.Parsers.Refinement.BinOpBrackets.ParenBalancedGrammar.
 (*Require Import Fiat.Parsers.Refinement.BinOpBrackets.BinOpLemmas.*)
 Require Import Fiat.Parsers.ParserInterface.
 Require Import Fiat.Parsers.BaseTypes.
@@ -48,6 +49,8 @@ Section refine_rules.
           (Hch : is_bin_op ch).
   Context (Hnt_valid : let predata := rdp_list_predata (G := G) in is_valid_nonterminal initial_nonterminals_data nt).
 
+  Definition dummy_value := 0.
+
   Local Opaque rdp_list_predata.
 
   Let retT := (refine {splits : list nat
@@ -55,10 +58,10 @@ Section refine_rules.
                           G (substring n m str)
                           (NonTerminal nt)
                           (Terminal ch :: its) splits}
-                      (ret match List.nth n table None with
-                             | Some idx => [idx]
-                             | None => nil
-                           end)).
+                      (ret [match List.nth n table None with
+                              | Some idx => idx
+                              | None => dummy_value
+                            end])).
 
   Lemma refine_binop_table'
         (H_nt_hiding
@@ -177,26 +180,11 @@ Section refine_rules.
 
   Lemma refine_binop_table''
         (predata := rdp_list_predata (G := G))
-        (H_nt_hiding : inhabited (pbh'_production G initial_nonterminals_data initial_nonterminals_data 0 (NonTerminal nt :: nil)))
+        (H_nt_hiding : paren_balanced_hiding_correctness_type G nt)
   : retT.
   Proof.
-    destruct H_nt_hiding as [H_nt_hiding].
     apply refine_binop_table'.
-    intros str' p.
-    apply grammar_rvalid_correct in Hvalid.
-    simpl in *.
-    match goal with
-      | [ Hvalid : ContextFreeGrammarValid.grammar_valid G, Hnt : is_true (is_valid_nonterminal _ _), p : parse_of_item _ _ _ |- _ ]
-        => idtac;
-          let pf := constr:(fun k => Forall_parse_of_item_valid Hvalid k p) in
-          let pf' := constr:(pf Hnt) in
-          let T := (type of pf') in
-          let T' := (eval simpl in T) in
-          unique pose proof (pf' : T')
-    end.
-    dependent destruction p.
-    eapply (paren_balanced_hiding_pbh_parse_of_productions p); [ refine (snd _); eassumption.. | ].
-    inversion H_nt_hiding; clear H_nt_hiding; subst.
+    apply paren_balanced_hiding_nt_correct.
     assumption.
   Qed.
 End refine_rules.
