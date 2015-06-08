@@ -29,6 +29,10 @@ Global Instance RangeIndexDenotation
        else
          false |}.
 
+Instance InRangeBothDec {A} {f : A -> nat} (min max : nat) :
+  DecideableEnsemble (fun a => min <= f a <= max) :=
+  DecideableEnsemble_InRange_f f (Some min, Some max).
+
 (* TODO: All tactics below this need to be updated to the new definition on RangeSearchTerm *)
 
 (* Extra type class magic for range indices. *)
@@ -93,7 +97,7 @@ Ltac createLastRangeTerm f fds tail fs kind s k k_fail :=
              fds kind s
              ltac:(fun X => k {| RangeIndexSearchTerm := Some X;
                                  RangeItemSearchTerm := tail |}))
-            || k {| RangeIndexSearchTerm := @None (nat * nat);
+            || k {| RangeIndexSearchTerm := (@None nat, @None nat);
                     RangeItemSearchTerm := tail |}
         | _ => k_fail f fds tail fs kind s k
       end.
@@ -106,7 +110,7 @@ Ltac createLastRangeTerm_dep dom f fds tail fs kind s k k_fail :=
              fds kind s
              ltac:(fun X => k (fun x : dom => {| RangeIndexSearchTerm := Some (X x);
                                                  RangeItemSearchTerm := tail x |}))
-                    || k (fun x : dom => {| RangeIndexSearchTerm := @None (nat * nat);
+                    || k (fun x : dom => {| RangeIndexSearchTerm := (@None nat, @None nat);
                                             RangeItemSearchTerm := tail x |}))
         | _ => k_fail dom f fds tail fs kind s k
       end.
@@ -118,7 +122,7 @@ Ltac createEarlyRangeTerm f fds tail fs kind EarlyIndex LastIndex rest s k k_fai
           (findMatchingTerm
              fds kind s
              ltac:(fun X => k (Some X, rest)))
-            || k (@None (nat * nat), rest)
+            || k ((@None nat, @None nat), rest)
         | _ => k_fail f fds tail fs kind EarlyIndex LastIndex rest s k
       end.
 
@@ -129,7 +133,7 @@ Ltac createEarlyRangeTerm_dep dom f fds tail fs kind EarlyIndex LastIndex rest s
           (findMatchingTerm
              fds kind s
              ltac:(fun X => k (fun x : dom => (Some (X x), rest x))))
-            || k (fun x : dom => (@None (nat * nat), rest x))
+            || k (fun x : dom => ((@None nat, @None nat), rest x))
         | _ => k_fail f fds tail fs kind EarlyIndex LastIndex rest s k
       end.
 

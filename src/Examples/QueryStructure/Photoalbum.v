@@ -40,6 +40,12 @@ Definition AlbumSig : ADTSig :=
            : rep x list string                -> rep x list (AlbumSchema#PHOTOS)
     }.
 
+Locate InRange.
+
+Require Import Fiat.QueryStructure.Specification.SearchTerms.ListInclusion.
+Require Import Fiat.QueryStructure.Specification.SearchTerms.InRange.
+
+
 Definition AlbumSpec : ADT AlbumSig :=
   QueryADTRep AlbumSchema {
     Def Constructor "Init" (_ : unit) : rep := empty,
@@ -54,20 +60,14 @@ Definition AlbumSpec : ADT AlbumSig :=
       For (photo in PHOTOS)
           (event in EVENTS)
           Where (event!EVENT_NAME = photo!EVENT_NAME)
-          Where (InRange event!DATE range)
+          Where (fst range <= event!DATE <= snd range)
           Return photo,
 
     query "PhotosByPersons" (persons : list string) : list (AlbumSchema#PHOTOS) :=
       For (photo in PHOTOS)
-          Where (IncludedIn persons photo!PERSONS)
+          Where (StringInclusion.IncludedIn persons photo!PERSONS)
           Return photo
 }.
-
-  Require Import Fiat.QueryStructure.Specification.SearchTerms.ListInclusion.
-  Require Import Fiat.QueryStructure.Specification.SearchTerms.InRange.
-
-  Unset Ltac Debug.
-
 
 Definition SharpenedAlbum :
   MostlySharpened AlbumSpec.
