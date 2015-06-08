@@ -38,16 +38,16 @@ Section cfg.
            {valid0 n0}
            {valid n pat}
            (Hsub : sub_nonterminals_listT valid valid0)
-           (Hle : n <= n0)
+           (Hle : n = n0)
            (H : generic_pb'_production G transform1 valid n pat)
          : generic_pb'_production G transform2 valid0 n0 pat.
     Proof.
       { simpl in *; destruct H; [ left | right ]; eauto. }
-      { simpl in *; destruct H; [ constructor 1 | constructor 2 | constructor 3 ]; eauto.
+      { simpl in *; subst; destruct H; [ constructor 1 | constructor 2 | constructor 3 ]; eauto.
         { eapply expand_generic_pb'_productions; [ .. | eassumption ]; try apply transform12; trivial. }
-        { eapply pb_check_level_le; eassumption. }
-        { eapply expand_generic_pb'_production; [ .. | eassumption ]; trivial; [].
-          rewrite <- Hle; reflexivity. } }
+        (*{ eapply pb_check_level_le; eassumption. }*)
+        (*{ eapply expand_generic_pb'_production; [ .. | eassumption ]; trivial; [].
+          rewrite <- Hle; reflexivity. }*) }
     Defined.
 
     Fixpoint expand_size_of_pb'_productions
@@ -60,13 +60,13 @@ Section cfg.
            {valid0 n0}
            {valid n pat}
            (Hsub : sub_nonterminals_listT valid valid0)
-           (Hle : n <= n0)
+           (Hle : n = n0)
            (H : generic_pb'_production G transform1 valid n pat)
     : size_of_pb'_production (expand_generic_pb'_production Hsub Hle H) = size_of_pb'_production H.
     Proof.
       { simpl in *; destruct H; simpl_size_of; trivial; eauto;
         apply f_equal; eauto. }
-      { simpl in *; destruct H; simpl_size_of; eauto using f_equal, f_equal2, eq_refl with nocore. }
+      { subst; simpl in *; destruct H; simpl_size_of; unfold eq_rect_r, eq_rect; simpl; simpl_size_of; eauto using f_equal, f_equal2, eq_refl with nocore. }
     Defined.
   End expand.
 
@@ -223,7 +223,7 @@ Section cfg.
           specialize (minimal_pb'_item__of__pb'_item' h' (Lt.lt_n_Sn _)).
           subst_body.
           destruct p as [ | ?? nt' ?? p0' p1' | valid ???? p' ]; simpl_size_of.
-          { left; eexists (PBProductionNil _ _ _ _); reflexivity. }
+          { left; eexists (PBProductionNil _ _ _); reflexivity. }
           { assert (size_of_pb'_productions p0' < h') by exact (lt_helper_1 H_h).
             assert (size_of_pb'_production p1' < h') by exact (lt_helper_2 H_h).
             destruct (is_valid_nonterminal valid' nt') eqn:Hnt'.

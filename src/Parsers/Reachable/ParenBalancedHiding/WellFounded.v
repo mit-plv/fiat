@@ -1,6 +1,7 @@
 (** * Well-founded relation on [reachable] *)
 Require Import Coq.Strings.String Coq.Lists.List Coq.Program.Program Coq.Program.Wf Coq.Arith.Wf_nat Coq.Relations.Relation_Definitions.
-Require Import Fiat.Parsers.ContextFreeGrammar Fiat.Parsers.Reachable.ParenBalancedHiding.Core.
+Require Import Fiat.Parsers.ContextFreeGrammar Fiat.Parsers.Reachable.ParenBalanced.Core.
+Require Import Fiat.Parsers.Reachable.ParenBalancedHiding.Core.
 Require Import Fiat.Parsers.BaseTypes.
 
 Section rel.
@@ -14,13 +15,14 @@ Section rel.
     Fixpoint size_of_pbh'_productions {valid n pats} (p : generic_pbh'_productions G transform_valid valid n pats)
     : nat
       := match p with
-           | PBHNil _ _ => 0
-           | PBHCons _ _ _ _ p0 p1 => S (size_of_pbh'_production p0 + size_of_pbh'_productions p1)
+           | PBHNil _ => 0
+           | PBHCons _ _ _ p0 p1 => S (size_of_pbh'_production p0 + size_of_pbh'_productions p1)
          end
-    with size_of_pbh'_production {valid n pat} (p : generic_pbh'_production G transform_valid valid n pat) : nat
+    with size_of_pbh'_production {valid0 valid n pat} (p : generic_pbh'_production G transform_valid valid0 valid n pat) : nat
          := match p with
-              | PBHProductionNil _ _ => 0
-              | PBHProductionConsNonTerminal _ _ _ _ _ p0 p1 => S (size_of_pbh'_productions p0 + size_of_pbh'_production p1)
+              | PBHProductionNil _ => 0
+              | PBHProductionConsNonTerminal0 _ _ _ _ p0 p1 => S (size_of_pbh'_productions p0 + size_of_pbh'_production p1)
+              | PBHProductionConsNonTerminalS _ _ _ _ _ p1 => S (size_of_pbh'_production p1)
               | PBHProductionConsTerminal _ _ _ _ _ p' => S (size_of_pbh'_production p')
             end.
   End size.
@@ -40,10 +42,14 @@ Ltac simpl_size_of :=
              => let G' := context G[0] in change G'
            | [ H : context G[size_of_pbh'_production (PBHProductionNil _ _ _ _)] |- _ ]
              => let G' := context G[0] in change G' in H
-           | [ |- context G[size_of_pbh'_production (PBHProductionConsNonTerminal _ _ ?g1 ?g2)] ]
+           | [ |- context G[size_of_pbh'_production (PBHProductionConsNonTerminal0 _ _ ?g1 ?g2)] ]
              => let G' := context G[S (size_of_pbh'_productions g1 + size_of_pbh'_production g2)] in change G'
-           | [ H : context G[size_of_pbh'_production (PBHProductionConsNonTerminal _ _ ?g1 ?g2)] |- _ ]
+           | [ H : context G[size_of_pbh'_production (PBHProductionConsNonTerminal0 _ _ ?g1 ?g2)] |- _ ]
              => let G' := context G[S (size_of_pbh'_productions g1 + size_of_pbh'_production g2)] in change G' in H
+           | [ |- context G[size_of_pbh'_production (PBHProductionConsNonTerminalS _ ?g)] ]
+             => let G' := context G[S (size_of_pbh'_production g)] in change G'
+           | [ H : context G[size_of_pbh'_production (PBHProductionConsNonTerminalS _ ?g)] |- _ ]
+             => let G' := context G[S (size_of_pbh'_production g)] in change G' in H
            | [ |- context G[size_of_pbh'_production (PBHProductionConsTerminal _ _ _ ?g)] ]
              => let G' := context G[S (size_of_pbh'_production g)] in change G'
            | [ H : context G[size_of_pbh'_production (PBHProductionConsTerminal _ _ _ ?g)] |- _ ]

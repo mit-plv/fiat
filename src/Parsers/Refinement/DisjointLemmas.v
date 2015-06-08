@@ -51,7 +51,8 @@ Section all_possible.
          on_nil_production := nil;
          combine_production := @app _;
          on_nil_productions := nil;
-         combine_productions := @app _ }.
+         combine_productions := @app _;
+         on_nonterminal nt v := v }.
 
   Definition possible_terminals_of : grammar Char -> String.string -> possible_terminals
     := @fold_nt _ _ all_possible_fold_data.
@@ -86,7 +87,8 @@ Section only_first.
                := (actual_possible_first_terminals first_of_first)
                     ++ (actual_possible_first_terminals first_of_rest);
                might_be_empty
-               := (might_be_empty first_of_first || might_be_empty first_of_rest)%bool |} }.
+               := (might_be_empty first_of_first || might_be_empty first_of_rest)%bool |};
+         on_nonterminal nt v := v }.
 
   Definition possible_first_terminals_of : String.string -> possible_first_terminals
     := @fold_nt _ _ only_first_fold_data G.
