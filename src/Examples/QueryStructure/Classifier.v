@@ -71,23 +71,18 @@ Section ADT.
 
   Definition RuleRecord :=
     @Tuple <PRIORITY :: nat,
-    DESTINATION :: Ip,
-    PROTOCOL :: Policy Protocol,
-    ACTION :: bool>%Heading.
+            DESTINATION :: Ip,
+            PROTOCOL :: Policy Protocol,
+            ACTION :: bool>%Heading.
 
   Definition ClassifierSchema :=
   Query Structure Schema
         [ relation RULES has
                    schema <PRIORITY :: nat,
-          DESTINATION :: Ip,
-          PROTOCOL :: Policy Protocol,
-          ACTION :: bool> ]
+                           DESTINATION :: Ip,
+                           PROTOCOL :: Policy Protocol,
+                           ACTION :: bool> ]
         enforcing [ ].
-
-  (* probably we should use typeclasses to solve this issue
-  Definition priority_lt_dec :
-          forall a b : RuleRecord, sumbool (b!PRIORITY <= a!PRIORITY) (~ b!PRIORITY <= a!PRIORITY)
-    := rel_dec_comm _ (rel_dec_map _ le_dec (fun r : RuleRecord => r!PRIORITY)). *)
 
   Definition ClassifierSig : ADTSig :=
   ADTsignature {
