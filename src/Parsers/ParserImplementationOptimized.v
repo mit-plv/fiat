@@ -71,6 +71,7 @@ Section implementation.
           (R_make : forall str, R (make_string str) str)
           (R_respectful : transfer_respectful R)
           (R_flip_respectful : transfer_respectful (Basics.flip R)).
+  Context constT varT {strC : str_carrier constT varT}.
 
   Local Instance pdata : @boolean_parser_dataT Ascii.ascii string_like_lite
     := @data' _ splitter string_like_lite (parser_data splitter) split_string_for_production_lite.

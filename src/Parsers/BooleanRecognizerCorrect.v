@@ -264,6 +264,29 @@ Section sound.
       End production.
 
       Section production_ext.
+
+        Lemma parse_production_drop_ext
+              len0
+              (parse_nonterminal1 parse_nonterminal2 : forall (str : String) (len : nat),
+                                           len <= len0
+                                           -> String.string
+                                           -> bool)
+              (str : String) (len : nat) (pf : len <= len0) (prod : production Char)
+              ms
+              (ext : forall n ms len' pf' nonterminal',
+                       parse_nonterminal1 (take n (fold_right drop str ms)) len' pf' nonterminal'
+                       = parse_nonterminal2 (take n (fold_right drop str ms)) len' pf' nonterminal')
+        : parse_production' parse_nonterminal1 (fold_right drop str ms) pf prod
+          = parse_production' parse_nonterminal2 (fold_right drop str ms) pf prod.
+        Proof.
+          revert ms len pf.
+          induction prod as [|? ? IHprod]; simpl; intros; try reflexivity; [].
+          f_equal.
+          apply map_ext; intros.
+          apply f_equal2; [ apply parse_item_ext | apply (IHprod (_::_)) ].
+          intros; apply ext.
+        Qed.
+
         Lemma parse_production_ext
               len0
               (parse_nonterminal1 parse_nonterminal2 : forall (str : String) (len : nat),
@@ -277,11 +300,8 @@ Section sound.
         : parse_production' parse_nonterminal1 str pf prod
           = parse_production' parse_nonterminal2 str pf prod.
         Proof.
-          revert str len pf.
-          induction prod as [|? ? IHprod]; simpl; intros; try reflexivity; [].
-          f_equal.
-          apply map_ext; intros.
-          apply f_equal2; [ apply parse_item_ext | apply IHprod ].
+          change str with (fold_right drop str nil).
+          apply parse_production_drop_ext.
           intros; apply ext.
         Qed.
       End production_ext.

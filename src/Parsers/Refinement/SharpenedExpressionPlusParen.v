@@ -21,7 +21,6 @@ Require Import Fiat.Parsers.ExtrOcamlParsers. (* for simpl rules for [find_first
 Set Implicit Arguments.
 
 Section IndexedImpl.
-  Typeclasses Opaque If_Then_Else.
 
   (** TODO: generate this automatically? *)
   Local Instance pbh_plus : paren_balanced_hiding_dataT Ascii.ascii
@@ -34,11 +33,10 @@ Section IndexedImpl.
   Proof.
     start honing parser using indexed representation.
 
-
     hone method "splits".
     {
       simplify parser splitter.
-      setoid_rewrite refine_binop_table; [ | reflexivity.. ].
+      setoid_rewrite refine_binop_table; [ presimpl_after_refine_binop_table | reflexivity.. ].
       simpl.
       finish honing parser method.
     }
