@@ -25,16 +25,16 @@ Local Open Scope string_scope.
 
 Class IndexDenotation
       (A : string)
-      (heading : Heading)
+      (heading : RawHeading)
       (index : Attributes heading)
   := { DenoteIndex : Type;
-       MatchIndex : DenoteIndex -> @Tuple heading -> bool
+       MatchIndex : DenoteIndex -> @RawTuple heading -> bool
   }.
 
 Definition EqualityIndex : string := "EqualityIndex".
 
 Global Instance EqualityIndexDenotation
-       (heading : Heading)
+       (heading : RawHeading)
        (index : Attributes heading)
        (_ : Query_eq (Domain heading index))
 : @IndexDenotation EqualityIndex heading index :=
@@ -42,7 +42,7 @@ Global Instance EqualityIndexDenotation
        option (Domain heading index);
      MatchIndex search_term tup :=
        match search_term with
-         | Some val => if A_eq_dec (GetAttribute tup index) val then
+         | Some val => if A_eq_dec (GetAttributeRaw tup index) val then
                          true
                        else false
          | _ => true
@@ -84,7 +84,7 @@ Ltac BuildIndexMatcher'
   end.
 
 Record KindIndex
-       {heading : Heading}
+       {heading : RawHeading}
   := { KindIndexKind : string;
        KindIndexIndex : @Attributes heading }.
 
@@ -106,20 +106,20 @@ Ltac BuildIndexes
 
 (* Aliases to make existing automation happy. *)
 Definition BuildIndexSearchTerm
-           {heading : Heading}
+           {heading : RawHeading}
            (indices : list (@KindIndex heading))
            {BuildIndexSearchTermT : Type}
 : Type := BuildIndexSearchTermT.
 
 Definition MatchIndexSearchTerm
-           {heading : Heading}
+           {heading : RawHeading}
            {indices : list (@KindIndex heading)}
            {IndexSearchTermT : Type}
-           {matcher : IndexSearchTermT -> @Tuple heading -> bool} :
+           {matcher : IndexSearchTermT -> @RawTuple heading -> bool} :
   @BuildIndexSearchTerm heading indices IndexSearchTermT
-  -> @Tuple heading -> bool := matcher.
+  -> @RawTuple heading -> bool := matcher.
 
-(*Fixpoint BuildIndexSearchTerm {heading : Heading}
+(*Fixpoint BuildIndexSearchTerm {heading : RawHeading}
          (indices : list (@Attributes heading))
 : Type :=
   match indices with
@@ -155,11 +155,11 @@ Fixpoint MatchIndexSearchTerm {heading}
 
 Tactic Notation "build" "single" "index":=
 repeat match goal with
-         | [ |- ilist (fun ns => SearchUpdateTerms (schemaHeading (relSchema ns))) []] =>
+         | [ |- ilist (fun ns => SearchUpdateTerms (rawSchemaHeading (relSchema ns))) []] =>
            econstructor 2
-         | [ |- ilist (fun ns => SearchUpdateTerms (schemaHeading (relSchema ns)))
+         | [ |- ilist (fun ns => SearchUpdateTerms (rawSchemaHeading (relSchema ns)))
                       (?sch :: ?sch') ]=> econstructor 1; [ econstructor | ]
-         | [ |- ilist (fun ns => SearchUpdateTerms (schemaHeading (relSchema ns))) ?sch] =>
+         | [ |- ilist (fun ns => SearchUpdateTerms (rawSchemaHeading (relSchema ns))) ?sch] =>
            simpl sch
        end.
 
@@ -179,19 +179,19 @@ repeat match goal with
 
 Ltac makeIndex' NamedSchemas IndexKeys k :=
   match NamedSchemas  with
-    | nil => k (inil (fun ns : NamedSchema => SearchUpdateTerms (schemaHeading (relSchema ns))))
+    | nil => k (inil (fun ns : NamedSchema => SearchUpdateTerms (rawSchemaHeading (relSchema ns))))
     | cons ?ns ?NamedSchemas' =>
       match IndexKeys with
         | cons ?ik ?IndexKeys' =>
-          let attrs := eval simpl in (map attrName (AttrList (schemaHeading (relSchema ns)))) in
-              BuildIndexes attrs (schemaHeading (relSchema ns)) ik
+          let attrs := eval simpl in (map attrName (AttrList (rawSchemaHeading (relSchema ns)))) in
+              BuildIndexes attrs (rawSchemaHeading (relSchema ns)) ik
                            ltac:(fun attrs' =>
-                                   BuildIndexMatcher' attrs (schemaHeading (relSchema ns)) ik
+                                   BuildIndexMatcher' attrs (rawSchemaHeading (relSchema ns)) ik
                                                       ltac:(fun matcher' =>
                                                               makeIndex' NamedSchemas' IndexKeys'
                                                                          ltac:(fun Bs' => k (icons ns
                                                                                                    {| BagMatchSearchTerm := @MatchIndexSearchTerm
-                                                                                                                              (schemaHeading (relSchema ns)) attrs' _
+                                                                                                                              (rawSchemaHeading (relSchema ns)) attrs' _
                                                                                                                               matcher';
                                                                                                       BagApplyUpdateTerm := fun z => z |} Bs'))))
                                  end
