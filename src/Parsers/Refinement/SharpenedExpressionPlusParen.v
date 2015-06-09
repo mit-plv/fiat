@@ -22,12 +22,6 @@ Set Implicit Arguments.
 
 Section IndexedImpl.
 
-  (** TODO: generate this automatically? *)
-  Local Instance pbh_plus : paren_balanced_hiding_dataT Ascii.ascii
-    := { is_bin_op := ascii_beq "+"%char;
-         is_open := ascii_beq "("%char;
-         is_close := ascii_beq ")"%char }.
-
   Lemma ComputationalSplitter'
   : FullySharpened (string_spec plus_expr_grammar).
   Proof.
