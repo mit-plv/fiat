@@ -8,8 +8,9 @@ Require Import Fiat.QueryStructure.Automation.AutoDB
         Fiat.QueryStructure.Implementation.DataStructures.BagADT.BagADT
         Fiat.Examples.DnsServer.packet
         Fiat.QueryStructure.Automation.IndexSelection
-        Fiat.QueryStructure.Specification.SearchTerms.ListPrefix.
-
+        Fiat.QueryStructure.Specification.SearchTerms.ListPrefix
+        Fiat.QueryStructure.Automation.SearchTerms.FindSuffixSearchTerms
+        Fiat.QueryStructure.Automation.QSImplementation.
 Open Scope list.
 
 Definition upperbound {A} (f : A -> nat) (rs : list A) (r : A) :=
@@ -190,7 +191,6 @@ Definition DnsSpec : ADT DnsSig :=
                 ret (List.fold_left addns bfrs' (buildempty p))
             Else ret (buildempty p) (* No matching records! *)
           }}}.
-
 (* Parade of admitted refinement lemmas. Should go in a DNS Refinements file. *)
 
 Lemma foo1 :
@@ -517,7 +517,7 @@ Ltac PrefixSearchTermFinder :=
           | |- forall a, @?f a = PrefixSearchTermMatcher ?st a =>
             instantiate (1 := {| pst_name := nil; pst_filter := f |}); reflexivity
         end
-  end. *)
+  end.
 
 Lemma foo10
 : forall (n : DNSRRecord) (b c d e : bool), exists st, forall (a : DNSRRecord * nat),
@@ -527,7 +527,7 @@ Proof.
   eexists.
   PrefixSearchTermFinder.
 Qed.
-
+Print foo10.
 Lemma foo10' : forall n : DNSRRecord, forall b c d, exists st, forall (a : DNSRRecord * nat),
     b && ( c && d ) && (?[list_eq_dec string_dec (fst a)!sNAME n!sNAME]) && (?[RRecordType_dec (fst a)!sTYPE CNAME]) =
     PrefixSearchTermMatcher st (fst a).
@@ -546,11 +546,11 @@ Print foo13.
 
 Lemma foo12 :
   forall l l' : name,
-    prefixBool l l' = false ->
+    ?[IsPrefix_dec l l'] = false ->
     ?[list_eq_dec string_dec l l'] = false.
 Proof.
-  intros; find_if_inside; subst;
-  [ rewrite <- prefixBool_reflexive in H | ]; auto.
+  intros; find_if_inside; subst.
+  [ rewrite <- prefix_reflexive in H | ]; auto.
 Qed.
 
 Lemma foo11 {heading}
@@ -559,7 +559,7 @@ Lemma foo11 {heading}
         (Build_single_Tuple_list l) = l.
 Proof.
   induction l; simpl; congruence.
-Qed.
+Qed. *)
 
     Lemma refine_filtered_list {A}
     : forall (xs : list A)
@@ -649,7 +649,7 @@ Qed.
 
     Lemma foo16 :
       forall ns s,
-        (forall n', List.In n' ns -> prefixProp (get_name n') s)
+        (forall n', List.In n' ns -> IsPrefix (get_name n') s)
         -> forall n n', List.In n (find_upperbound name_length ns)
                         -> List.In n' (find_upperbound name_length ns)
                         -> get_name n = get_name n'.
@@ -663,7 +663,7 @@ Qed.
       unfold name_length in *.
       apply (le_antisym _ _ H2') in H2; apply (le_antisym _ _ H3') in H3.
       rewrite <- H2 in H3.
-      unfold prefixProp in *; destruct H4; destruct H5; rewrite <- H5 in H4.
+      unfold IsPrefix in *; destruct H4; destruct H5; rewrite <- H5 in H4.
       clear H2' H3' H H2 H0 H1 H5 s ns.
       remember (get_name n); remember (get_name n'); clear Heql Heql0.
       revert x0 l l0 H4 H3.
@@ -688,7 +688,7 @@ Qed.
     (* Implement the check for an exact match *)
     Lemma foo19
     : forall ns s,
-        (forall n', List.In n' ns -> prefixProp (get_name n') s) ->
+        (forall n', List.In n' ns -> IsPrefix (get_name n') s) ->
         refine {b : bool |
                 decides b
                         (~
@@ -702,6 +702,7 @@ Qed.
       computes_to_econstructor; simpl in H; intros; computes_to_inv.
       subst; unfold decides; pose proof (foo16 ns H); clear H.
       remember (find_upperbound name_length ns) as l.
+      unfold If_Then_Else.
       find_if_inside_eqn.
       - unfold not; intros; repeat destruct H; apply H1; clear H1; destruct l;
         [ inversion H | subst; apply H0 with (n := d) in H ];
@@ -732,7 +733,7 @@ Qed.
                                      -> nth_error ns n' = Some t'
                                      -> get_name t = get_name t'
                                      -> t!sTYPE <> CNAME),
-        (forall n', List.In n' ns -> prefixProp (get_name n') s) ->
+        (forall n', List.In n' ns -> IsPrefix (get_name n') s) ->
         refine {b' |
                 forall b : Tuple,
                   b' = Some b <->
@@ -794,8 +795,6 @@ Qed.
 Transparent FueledFix.
 Opaque Query_For.
 
-Require Import
-
 Theorem DnsManual :
   MostlySharpened DnsSpec.
 Proof.
@@ -829,117 +828,132 @@ Proof.
     - finish honing.
   }
 
-  hone representation using (@DelegateToBag_AbsR DnsSchema (icons DnsSearchUpdateTerm (inil _))).
-  (* TODO: We should define a 'make simple indexes' tactic notation variant for
-     lists of SearchUpdateTerms. *)
+  GenerateIndexesForAll
+  ltac:(CombineCase2 matchFindSuffixIndex matchEqIndex)
+         ltac:(fun attrlist => make simple indexes using attrlist).
 
-  (* hone constructor "Init".
-  { *)
+  (* hone constructor "Init". *)
+  { 
     simplify with monad laws.
     rewrite refine_QSEmptySpec_Initialize_IndexedQueryStructure.
     finish honing.
-  (* } *)
+   }
 
-    (* hone method "AddData". { *)
+    (* hone method "AddData". *) {
     etransitivity.
     setoid_rewrite refine_If_Then_Else_Bind.
     etransitivity.
     - apply refine_If_Then_Else.
       + simplify with monad laws.
-        Locate Ltac PrefixIndexTactics.
-        implement_Query'
-          ltac:(find_simple_search_term PrefixIndexUse createEarlyPrefixTerm createLastPrefixTerm)
-                 ltac:(PrefixIndexUse_dep createEarlyPrefixTerm_dep createLastPrefixTerm_dep).
-
-        implement_Query' ltac:(fun _ _ _ _ => PrefixSearchTermFinder) ltac:(fun _ _ _ _ _ => idtac).
+        implement_Query
+          ltac:(CombineCase5 SuffixIndexUse EqIndexUse)
+                 ltac:(CombineCase10 createEarlySuffixTerm createEarlyEqualityTerm)
+                        ltac:(CombineCase7 createLastSuffixTerm createLastEqualityTerm)
+                               ltac:(CombineCase7 SuffixIndexUse_dep EqIndexUse_dep)
+                        ltac:(CombineCase11 createEarlySuffixTerm_dep createEarlyEqualityTerm_dep)
+                        ltac:(CombineCase8 createLastSuffixTerm_dep createLastEqualityTerm_dep).
         simplify with monad laws.
-        setoid_rewrite refineEquiv_swap_bind.
+        rewrite (@refineEquiv_swap_bind nat).
         setoid_rewrite refine_if_If.
         implement_Insert_branches.
         reflexivity.
       + simplify with monad laws.
-        implement_Query' ltac:(fun _ _ _ _ => PrefixSearchTermFinder) ltac:(fun _ _ _ _ _ => idtac).
+        implement_Query
+          ltac:(CombineCase5 SuffixIndexUse EqIndexUse)
+                 ltac:(CombineCase10 createEarlySuffixTerm createEarlyEqualityTerm)
+                        ltac:(CombineCase7 createLastSuffixTerm createLastEqualityTerm)
+                               ltac:(CombineCase7 SuffixIndexUse_dep EqIndexUse_dep)
+                                      ltac:(CombineCase11 createEarlySuffixTerm_dep createEarlyEqualityTerm_dep)
+                                             ltac:(CombineCase8 createLastSuffixTerm_dep createLastEqualityTerm_dep).
         simplify with monad laws.
-        setoid_rewrite refineEquiv_swap_bind.
+        rewrite (@refineEquiv_swap_bind nat).
         setoid_rewrite refine_if_If.
         implement_Insert_branches.
         reflexivity.
     - reflexivity.
     - finish honing.
-  }
+    }
 
-
-    (* hone method "Process". { *)
+    (* hone method "Process". *) {
     simplify with monad laws.
-    implement_Query' ltac:(fun _ _ _ _ => PrefixSearchTermFinder) ltac:(fun _ _ _ _ _ => idtac).
+    implement_Query
+      ltac:(CombineCase5 SuffixIndexUse EqIndexUse)
+             ltac:(CombineCase10 createEarlySuffixTerm createEarlyEqualityTerm)
+                    ltac:(CombineCase7 createLastSuffixTerm createLastEqualityTerm)
+                           ltac:(CombineCase7 SuffixIndexUse_dep EqIndexUse_dep)
+                                  ltac:(CombineCase11 createEarlySuffixTerm_dep createEarlyEqualityTerm_dep)
+                                         ltac:(CombineCase8 createLastSuffixTerm_dep createLastEqualityTerm_dep).
+    simplify with monad laws.
     (* Find the upperbound of the results. *)
-    setoid_rewrite refine_find_upperbound.
-    simplify with monad laws.
     etransitivity.
-    (* Should Conditional honing under bind should be it's own tactic? *)
     apply refine_under_bind; intros.
+    rewrite map_app, map_map, app_nil_r, map_id; simpl.
+    match goal with
+      |- refine _ (?H _) => let id := fresh in set (id := H) in *
+    end.
+    setoid_rewrite refine_If_Then_Else_Bind.
     (* Should honing if branches also be their own tactic? *)
     etransitivity.
-    setoid_rewrite refine_If_Then_Else_Bind.
     apply refine_If_Then_Else.
-    - simplify with monad laws.
+    simplify with monad laws.
+    match goal with
+      |- context [ [[r in ?A | upperbound ?f ?l r]] ] =>
+      pose (@refine_find_upperbound _ f A)
+    end.
+    etransitivity.
+    { apply refine_bind; eauto.
+      intro; higher_order_reflexivity. }
 
-      rewrite (@refine_decides_forall_In' _ _ _ _).
-
-      setoid_rewrite foo19.
-      simplify with monad laws.
-      setoid_rewrite refine_if_If.
-      setoid_rewrite refine_If_Then_Else_Bind.
-      etransitivity.
-      apply refine_If_Then_Else.
-      simplify with monad laws.
-
-      setoid_rewrite foo20.
-      simplify with monad laws.
-      setoid_rewrite refine_If_Opt_Then_Else_Bind.
-      apply refine_If_Opt_Then_Else.
-      unfold pointwise_relation; intros.
-      simplify with monad laws.
-      refine pick val _; eauto.
-      simplify with monad laws.
-      higher_order_1_reflexivity.
-      simplify with monad laws.
-      simpl.
-      refine pick val _; eauto.
-      simplify with monad laws.
-      reflexivity.
-      idtac.
-      clear H.
-      admit.
-      simpl.
-      intros.
-      instantiate (1 := qname (questions n)).
-      clear H.
-      admit.
-      simplify with monad laws.
-      setoid_rewrite (@refine_filtered_list _ _ _ _).
-      simplify with monad laws.
-      refine pick val _; eauto.
-      simplify with monad laws.
-      reflexivity.
-      reflexivity.
-      intro.
-      rewrite map_app, map_map; simpl.
-      clear H.
-      admit.
-    - simplify with monad laws.
-      refine pick val _; eauto.
-      simplify with monad laws.
-      simpl; reflexivity.
-    - finish honing.
-    - simpl. finish honing.
+    setoid_rewrite (@refine_decides_forall_In' _ _ _ _).
+    simplify with monad laws.
+    etransitivity.
+    { apply refine_bind;
+      [ apply foo19; clear H2 H0;  admit | intro; higher_order_reflexivity ].
+    }
+    simplify with monad laws.
+    setoid_rewrite refine_if_If.
+    setoid_rewrite refine_If_Then_Else_Bind.
+    etransitivity.
+    apply refine_If_Then_Else.
+    simplify with monad laws.
+    etransitivity.
+    { apply refine_bind;
+      [ eapply foo20; clear H2 H0 | intro; higher_order_reflexivity ].
+      intros; admit.
+      instantiate (1 := qname (questions d)); admit.
+    }
+    simplify with monad laws.
+    apply refine_If_Opt_Then_Else_Bind.
+    setoid_rewrite (@refine_filtered_list _ _ _ _).
+    simplify with monad laws.
+    refine pick val _; eauto.
+    simplify with monad laws.
+    reflexivity.
+    simpl.
+    apply refine_If_Then_Else.
+    eapply refine_If_Opt_Then_Else.
+    intro; simplify with monad laws.
+    refine pick val _; eauto.
+    simplify with monad laws.
+    higher_order_reflexivity.
+    simplify with monad laws.
+    refine pick val _; eauto.
+    simplify with monad laws.
+    higher_order_reflexivity.
+    higher_order_reflexivity.
+    simplify with monad laws.
+    refine pick val _; eauto.
+    simplify with monad laws.
+    higher_order_reflexivity.
+    unfold H2.
+    higher_order_reflexivity.
+    simpl.
+    finish honing.
   }
+  
+  FullySharpenQueryStructure' DnsSchema Index.
+  (* implement_bag_methods needs to be patched for this goal. *)
 
-  FullySharpenQueryStructure DnsSchema
-  (icons DnsSearchUpdateTerm
-       (inil
-          (fun ns : NamedSchema =>
-             SearchUpdateTerms (schemaHeading (relSchema ns))))).
   - implement_bag_methods.
   - implement_bag_methods.
 Time Defined.
@@ -959,7 +973,7 @@ Time Defined.
       exact  DnsSearchUpdateTerm.
     Defined.
 
-    Require Import Fiat.QueryStructure.Automation.QSImplementation.
+
 
     Definition DnsDelegateImpls
     : i2list2 (fun ns (SearchTerm : SearchUpdateTerms (schemaHeading (relSchema ns)))

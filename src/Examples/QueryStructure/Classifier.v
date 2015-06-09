@@ -116,6 +116,10 @@ Section ADT.
   Proof.
 
     partial_master_plan ltac:(CombineIndexTactics PrefixIndexTactics EqIndexTactics).
+    Set Printing All.
+    idtac.
+    Print SearchUpdateTerm.
+
 
     FullySharpenQueryStructure ClassifierSchema Index.
 

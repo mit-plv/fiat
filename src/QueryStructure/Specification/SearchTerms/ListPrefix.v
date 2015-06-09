@@ -52,3 +52,37 @@ Section PrefixClauses.
     DecideableEnsemble (fun a => IsPrefix (f a) b) :=
     {| dec a := ?[IsPrefix_dec (f a) b] |}. prefix_crush. Defined.
 End PrefixClauses.
+
+Section SuffixClauses.
+  Context {X : Type}
+          {X_eq_dec : Query_eq X}.
+
+  Definition IsSuffix (p s : list X) : Prop := IsPrefix s p.
+
+  Definition IsSuffix_dec (p s : list X) : {IsSuffix p s} + {~ IsSuffix p s} := IsPrefix_dec s p.
+
+  Ltac suffix_crush := intros; find_if_inside; intuition eauto;
+                       unfold IsSuffix in *; discriminate.
+
+  Instance DecideableEnsemble_HasSuffix st :
+    DecideableEnsemble (IsSuffix st) :=
+    {| dec a := ?[IsSuffix_dec st a] |}. suffix_crush. Defined.
+  
+  Global Instance DecideableEnsemble_HasSuffix_f
+         (A : Type)
+         (f : A -> list X)
+         b 
+    : DecideableEnsemble (fun a => IsSuffix b (f a)) :=
+    {| dec a := ?[IsSuffix_dec b (f a)] |}. suffix_crush. Defined.
+
+  Instance DecideableEnsemble_FindSuffix st :
+    DecideableEnsemble (fun a => IsSuffix a st) :=
+    {| dec a := ?[IsSuffix_dec a st] |}. suffix_crush. Defined.
+
+  Global Instance DecideableEnsemble_FindSuffix_f
+         (A : Type)
+         (f : A -> list X)
+         b :
+    DecideableEnsemble (fun a => IsSuffix (f a) b) :=
+    {| dec a := ?[IsSuffix_dec (f a) b] |}. suffix_crush. Defined.
+End SuffixClauses.

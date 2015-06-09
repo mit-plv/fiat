@@ -40,7 +40,7 @@ Global Instance FindPrefixIndexDenotation
 Hint Extern 10 (@IndexDenotation "FindPrefixIndex" ?heading ?index) =>
 let index_domain := eval hnf in (@Domain heading index) in
 match index_domain with
-  | list ascii =>
+  | list _ =>
     apply (@FindPrefixIndexDenotation
              heading index
              (fun tup => GetAttribute tup index ))
@@ -50,6 +50,10 @@ end
 Ltac matchFindPrefixIndex WhereClause k k_fail :=
   match WhereClause with
     | fun tups => IsPrefix (@?C1 tups) _ =>
+      let attrs1 := TermAttributes C1 in
+      k (map (fun a12 => ("FindPrefixIndex", (fst a12, snd a12)))
+             (attrs1))
+    | fun tups => IsSuffix _ (@?C1 tups) =>
       let attrs1 := TermAttributes C1 in
       k (map (fun a12 => ("FindPrefixIndex", (fst a12, snd a12)))
              (attrs1))

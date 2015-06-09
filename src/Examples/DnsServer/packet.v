@@ -115,10 +115,10 @@ Section Packet.
   (* DNS Resource Records. *)
   Definition DNSRRecord :=
     @Tuple <sNAME :: name,
-    sTYPE :: RRecordType,
-    sCLASS :: RRecordClass,
-    sTTL :: nat,
-    sDATA :: string>%Heading.
+            sTYPE :: RRecordType,
+            sCLASS :: RRecordClass,
+            sTTL :: nat,
+            sDATA :: string>%Heading.
 
   Definition toAnswer (t: DNSRRecord) :=
     {| aname := t!sNAME;
