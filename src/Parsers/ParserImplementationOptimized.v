@@ -71,6 +71,7 @@ Section implementation.
           (R_make : forall str, R (make_string str) str)
           (R_respectful : transfer_respectful R)
           (R_flip_respectful : transfer_respectful (Basics.flip R)).
+  Context constT varT {strC : str_carrier constT varT}.
 
   Local Instance pdata : @boolean_parser_dataT Ascii.ascii string_like_lite
     := @data' _ splitter string_like_lite (parser_data splitter) split_string_for_production_lite.
@@ -79,7 +80,7 @@ Section implementation.
 
   Definition parser : Parser G string_stringlike.
   Proof.
-    let impl0 := constr:(fun str => (parse_nonterminal_opt (ls := ls) (data := pdata) (proj (make_string str)) (Start_symbol G))) in
+    let impl0 := constr:(fun str => (parse_nonterminal_opt'' (ls := ls) (data := pdata) (proj (make_string str)) (Start_symbol G))) in
     let impl := (eval simpl in (fun str => proj1_sig (impl0 str))) in
     let implH := constr:(fun str => proj2_sig (impl0 str)) in
     let impl' := (eval cbv beta iota zeta delta [RDPList.rdp_list_remove_nonterminal RDPList.rdp_list_nonterminals_listT RDPList.rdp_list_is_valid_nonterminal RDPList.rdp_list_ntl_wf RDPList.rdp_list_nonterminals_listT_R] in impl) in

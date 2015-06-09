@@ -1,4 +1,5 @@
 (** Refinement rules for binary operations *)
+Require Import Coq.Lists.List.
 Require Import Fiat.Computation.Refinements.General.
 Require Import Fiat.Common.
 Require Import Fiat.Common.Equality.
@@ -41,11 +42,9 @@ Local Opaque string_stringlike.
 
 Section refine_rules.
   Context {G : grammar Ascii.ascii}
-          {pdata : paren_balanced_hiding_dataT Ascii.ascii}
           (Hvalid : grammar_rvalid G)
           {str : StringLike.String} {n m : nat} {nt : string} {ch : Ascii.ascii} {its : production Ascii.ascii}
-          (Hch : is_bin_op ch).
-  Context (Hnt_valid : let predata := rdp_list_predata (G := G) in is_valid_nonterminal initial_nonterminals_data nt).
+          (Hnt_valid : let predata := rdp_list_predata (G := G) in is_valid_nonterminal initial_nonterminals_data nt).
 
   Definition dummy_value := 0.
 
@@ -63,6 +62,8 @@ Section refine_rules.
                      end])).
 
   Section general_table.
+    Context {pdata : paren_balanced_hiding_dataT Ascii.ascii}
+            (Hch : is_bin_op ch).
     Context (table : list (option nat)).
     Context (Htable : list_of_next_bin_ops_spec table str).
 
@@ -192,12 +193,117 @@ Section refine_rules.
     Qed.
   End general_table.
 
-  Lemma refine_binop_table
-        (predata := rdp_list_predata (G := G))
-        (H_nt_hiding : paren_balanced_hiding_correctness_type G nt)
-  : retT (list_of_next_bin_ops_opt str).
-  Proof.
-    apply refine_binop_table''; try assumption.
-    apply list_of_next_bin_ops_opt_satisfies_spec.
-  Qed.
+  Section derive_table.
+    Context {pdata : paren_balanced_hiding_dataT Ascii.ascii}
+            (Hch : is_bin_op ch).
+
+    Lemma refine_binop_table'''
+          (predata := rdp_list_predata (G := G))
+          (H_nt_hiding : paren_balanced_hiding_correctness_type G nt)
+    : retT (list_of_next_bin_ops_opt str).
+    Proof.
+      apply refine_binop_table''; try assumption.
+      apply list_of_next_bin_ops_opt_satisfies_spec.
+    Qed.
+  End derive_table.
+
+  Section derive_pbhd.
+    Definition bin_op_data_of (open close : Ascii.ascii)
+    : paren_balanced_hiding_dataT Ascii.ascii
+      := {| is_bin_op := ascii_beq ch;
+            is_open := ascii_beq open;
+            is_close := ascii_beq close |}.
+
+    Definition maybe_open_closes {Char} (p : production Char)
+    : list (Char * Char)
+      := match hd None (map Some p), hd None (map Some (rev p)) with
+           | Some (Terminal open), Some (Terminal close)
+             => [(open, close)]
+           | _, _ => nil
+         end.
+
+    Definition possible_open_closes
+    : list (Ascii.ascii * Ascii.ascii)
+      := fold_right
+           (@app _)
+           nil
+           (map maybe_open_closes (Lookup G nt)).
+
+    Definition possible_valid_open_closes
+    : list (Ascii.ascii * Ascii.ascii)
+      := fold_right
+           (@app _)
+           nil
+           (map
+              (fun oc
+               => if paren_balanced_hiding_correctness_type (pdata := bin_op_data_of (fst oc) (snd oc)) G nt
+                  then [oc]
+                  else nil)
+              possible_open_closes).
+
+    Definition bin_op_data_of_maybe (oc : option (Ascii.ascii * Ascii.ascii))
+    : paren_balanced_hiding_dataT Ascii.ascii
+      := {| is_bin_op := ascii_beq ch;
+            is_open ch' := match oc with
+                             | Some oc' => ascii_beq (fst oc') ch'
+                             | None => false
+                           end;
+            is_close ch' := match oc with
+                              | Some oc' => ascii_beq (snd oc') ch'
+                              | None => false
+                            end |}.
+
+    Definition correct_open_close
+    : paren_balanced_hiding_dataT Ascii.ascii
+      := bin_op_data_of_maybe
+           (hd None (map Some possible_valid_open_closes)).
+
+    Lemma refine_binop_table
+          (predata := rdp_list_predata (G := G))
+          (pdata := correct_open_close)
+          (H_nt_hiding
+           : match possible_valid_open_closes with
+               | nil => false
+               | _ => true
+             end)
+    : retT (list_of_next_bin_ops_opt str).
+    Proof.
+      unfold correct_open_close, possible_valid_open_closes in *.
+      subst pdata.
+      revert H_nt_hiding.
+      generalize possible_open_closes.
+      intro ls.
+      induction ls; simpl.
+      { intro; congruence. }
+      { match goal with
+          | [ |- context[if ?e then _ else nil] ] => destruct e eqn:?
+        end.
+        { simpl; intro.
+          apply refine_binop_table'''; try assumption.
+          apply ascii_lb; reflexivity. }
+        { simpl; assumption. } }
+    Qed.
+  End derive_pbhd.
 End refine_rules.
+
+Global Arguments bin_op_data_of / .
+Global Arguments possible_open_closes / .
+Global Arguments maybe_open_closes / .
+Global Arguments correct_open_close / .
+Global Arguments possible_open_closes / .
+Global Arguments possible_valid_open_closes / .
+Global Arguments bin_op_data_of_maybe / .
+
+(** [simpl] is very slow at simplifying [correct_open_close], so we
+    help it along.  If the machinery of [Defined] changes, we may have
+    to use [replace] rather than [change], and [vm_compute], or
+    something. *)
+
+Ltac presimpl_after_refine_binop_table :=
+  unfold correct_open_close;
+  match goal with
+    | [ |- appcontext[@possible_valid_open_closes ?G ?nt ?ch] ]
+      => let c := constr:(@possible_valid_open_closes G nt ch) in
+         let c' := (eval lazy in c) in
+         change c with c'
+  end.

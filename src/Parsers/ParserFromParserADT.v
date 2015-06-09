@@ -62,6 +62,12 @@ Section parser.
     reflexivity.
   Defined.
 
+  Context {constT varT}
+          {strC : @BooleanRecognizerOptimized.str_carrier
+                    Ascii.ascii
+                    (adt_based_StringLike_lite splitter_impl)
+                    constT varT}.
+
   Definition parser : Parser G string_stringlike.
   Proof.
     refine (@parser ls (adt_based_splitter splitter_impl)
@@ -69,7 +75,8 @@ Section parser.
                     _
                     adtProj new_string_of_string
                     (fun rep str => AbsR (projT2 splitter_impl) str (` rep))
-                    (@new_string_of_base_string_R) _ _);
+                    (@new_string_of_base_string_R) _ _
+                    _ _ strC);
     abstract (
         split;
         first [ (intros ????);
@@ -83,3 +90,5 @@ Section parser.
       ).
   Defined.
 End parser.
+
+Global Arguments parser {ls} splitter_impl {constT varT strC}.
