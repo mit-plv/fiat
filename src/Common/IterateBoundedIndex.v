@@ -557,9 +557,12 @@ Section Iterate_Dep_Type.
       | _ :: Visited' => nth_error_length Visited' a Remaining
     end.
 
-  Fixpoint Iterate_Dep_Type_BoundedIndex
-           {A : Set}
-           (Bound : list A)
+  Definition Iterate_Dep_Type_BoundedIndex_step
+             {A : Set}
+             (Iterate_Dep_Type_BoundedIndex
+              : forall Bound : list A,
+                  Dep_Type (BoundedIndex Bound) -> Type)
+             (Bound : list A)
   : Dep_Type (BoundedIndex Bound) -> Type :=
     match Bound return
                 Dep_Type (BoundedIndex Bound) -> Type
@@ -570,12 +573,28 @@ Section Iterate_Dep_Type.
                                   indexb := {| ibound := 0;
                                                boundi := @eq_refl _ (nth_error (a :: Remaining') 0) |} |})
                             (Iterate_Dep_Type_BoundedIndex
+                               _
                                (fun H => P {|bindex := bindex H;
                                              indexb :=
                                                Build_IndexBound (a :: Remaining')
                                                                 (S (ibound (indexb H)))
                                                                 (boundi (indexb H)) |}))
     end.
+
+  Fixpoint Iterate_Dep_Type_BoundedIndex
+           {A : Set}
+           (Bound : list A)
+  : Dep_Type (BoundedIndex Bound) -> Type :=
+    @Iterate_Dep_Type_BoundedIndex_step A (@Iterate_Dep_Type_BoundedIndex A) Bound.
+
+  Lemma Iterate_Dep_Type_BoundedIndex_unfold_1
+        {A : Set}
+        (Bound : list A)
+  : @Iterate_Dep_Type_BoundedIndex A Bound
+    = @Iterate_Dep_Type_BoundedIndex_step A (@Iterate_Dep_Type_BoundedIndex A) Bound.
+  Proof.
+    destruct Bound; reflexivity.
+  Qed.
 
 Definition Dep_Type_BoundedIndex_nth_eq {A : Set}
         (A_eq_dec : forall a a' : A, {a = a'} + {a <> a'})
@@ -961,7 +980,7 @@ Definition Dep_Type_BoundedIndex_nth_eq {A : Set}
 
   Corollary Iterate_Dep_Type_BoundedIndex_filter_equiv_1
             {A : Set}
-            (A_eq_dec : forall a a' : A, {a = a'} + {a <> a'})  
+            (A_eq_dec : forall a a' : A, {a = a'} + {a <> a'})
     : forall (Bound : list A)
            (P : Dep_Type (BoundedIndex Bound))
            (filter : Ensemble nat)
@@ -972,7 +991,7 @@ Definition Dep_Type_BoundedIndex_nth_eq {A : Set}
     intros; destruct idx as [idx [n nth_n] ]; simpl in *.
     eapply Iterate_Dep_Type_filter_equiv; eauto using string_dec.
   Qed.
-  
+
   Corollary Iterate_Dep_Type_BoundedString_filter_equiv_1
   : forall (Bound : list string)
            (P : Dep_Type (BoundedIndex Bound))
@@ -1037,4 +1056,5 @@ End Iterate_Dep_Type.
 (* Always expand these iterations as well. *)
 Arguments Iterate_Dep_Type_BoundedIndex_filter _ _ _ _ / .
 Arguments Iterate_Dep_Type_BoundedIndex _ _ _ / .
+Arguments Iterate_Dep_Type_BoundedIndex_step _ _ _ _ / .
 Arguments Ensemble_BoundedIndex_app_comm_cons / .
