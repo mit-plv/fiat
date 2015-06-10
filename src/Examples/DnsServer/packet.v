@@ -21,6 +21,8 @@ Section Packet.
     Query_eq name := {| A_eq_dec := list_eq_dec string_dec |}.
 
   Inductive RRecordType := A | CNAME | NS | MX.
+  (* MX = message exchange (hostname must map directly to an A/address record and not point to any CNAME records)
+     NS = name server *)
 
   Definition beq_RRecordType (a b : RRecordType) :=
     match a, b with
@@ -57,6 +59,7 @@ Section Packet.
     Query_eq RRecordType := {| A_eq_dec := RRecordType_dec |}.
 
   Inductive RRecordClass := IN | CH | HS.
+  (* internet / other two protocols *)
 
   Definition beq_RRecordClass (a b : RRecordClass) :=
     match a, b with
@@ -127,6 +130,7 @@ Section Packet.
        ttl := t!sTTL;
        rdata := t!sDATA |}.
 
+  (* add a record to a packet's list of answers *)
   Definition addan (p : packet) (t : DNSRRecord) :=
     {| id := id p;
        flags := flags p;

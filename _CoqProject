@@ -32,7 +32,6 @@ src/ADTRefinement/Refinements/HoneRepresentation.v
 src/ADTRefinement/Refinements/RefineHideADT.v
 src/ADTRefinement/Refinements/SimplifyRep.v
 src/Common/BoolFacts.v
-src/Common/Coq__8_4__8_5__Compat.v
 src/Common/DecideableEnsembles.v
 src/Common/Ensembles.v
 src/Common/Equality.v
@@ -93,6 +92,8 @@ src/Examples/CacheADT/KVEnsembles.v
 src/Examples/CacheADT/LRUCache.v
 src/Examples/CacheADT/TrivialADTCache.v
 src/Examples/DnsServer/Dns.v
+src/Examples/DnsServer/DnsLemmas.v
+src/Examples/DnsServer/DnsSchema.v
 src/Examples/DnsServer/packet.v
 src/Examples/Ics/Ics.v
 src/Examples/Ics/WaterTank.v
@@ -103,14 +104,11 @@ src/Examples/QueryStructure/Messages.v
 src/Examples/QueryStructure/Photoalbum.v
 src/Examples/QueryStructure/Stocks.v
 src/Examples/QueryStructure/Weather.v
-src/Examples/QueryStructure/WeatherMemoized.v
 src/Examples/Smtp/Smtp.v
 src/Fiat4Monitors/MonitorADTs.v
 src/Fiat4Monitors/MonitorRepInv.v
 src/Fiat4Monitors/TurretMonitor.v
 src/Fiat4Monitors/TurretMonitorSpec.v
-src/Fiat4Monitors/HelloWorld/HelloWorld.v
-src/Fiat4Monitors/HelloWorld/HelloWorldI386.v
 src/FiatToFacade/BedrockUtilities.v
 src/FiatToFacade/Compiler.v
 src/FiatToFacade/FacadeNotations.v
