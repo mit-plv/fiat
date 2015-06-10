@@ -105,7 +105,7 @@ Section ConstraintCheckRefinements.
   (* Consequences of ith_replace_BoundIndex_neq and ith_replace_BoundIndex_eq on updates *)
 
   Lemma refine_SatisfiesAttributeConstraints_self
-    : forall qsSchema
+    : forall (qsSchema : RawQueryStructureSchema)
              (Ridx : Fin.t _)
              (tup : @RawTuple (rawSchemaHeading (GetNRelSchema (qschemaSchemas qsSchema) Ridx))),
       refine {b | decides b (SatisfiesAttributeConstraints Ridx tup )}
@@ -123,7 +123,7 @@ Section ConstraintCheckRefinements.
   Qed.
 
   Lemma refine_SatisfiesTupleConstraints_self
-    : forall qsSchema
+    : forall (qsSchema : RawQueryStructureSchema)
              (Ridx : Fin.t _)
              (tup tup' : @RawTuple (rawSchemaHeading (GetNRelSchema (qschemaSchemas qsSchema) Ridx))),
       refine {b | decides b (SatisfiesTupleConstraints Ridx tup tup')}
@@ -141,7 +141,8 @@ Section ConstraintCheckRefinements.
   Qed.
 
   Lemma refine_SatisfiesTupleConstraints
-    : forall qsSchema (qs : UnConstrQueryStructure (QueryStructureSchemaRaw qsSchema))
+    : forall (qsSchema : RawQueryStructureSchema)
+             (qs : UnConstrQueryStructure qsSchema)
              (Ridx : Fin.t _)
              (tup : @RawTuple (rawSchemaHeading (GetNRelSchema (qschemaSchemas qsSchema) Ridx))),
       refine {b | decides
@@ -170,7 +171,8 @@ Section ConstraintCheckRefinements.
   Qed.
 
   Lemma refine_SatisfiesTupleConstraints'
-    : forall qsSchema (qs : UnConstrQueryStructure (QueryStructureSchemaRaw qsSchema))
+    : forall (qsSchema : RawQueryStructureSchema)
+             (qs : UnConstrQueryStructure qsSchema)
              (Ridx : Fin.t _)
              (tup : @RawTuple (rawSchemaHeading (GetNRelSchema (qschemaSchemas qsSchema) Ridx))),
       refine {b | decides b
@@ -195,7 +197,8 @@ Section ConstraintCheckRefinements.
   Qed.
 
   Lemma refine_SatisfiesCrossConstraints
-    : forall qsSchema (qs : UnConstrQueryStructure (QueryStructureSchemaRaw qsSchema))
+    : forall (qsSchema : RawQueryStructureSchema)
+             (qs : UnConstrQueryStructure qsSchema)
              (Ridx : Fin.t _)
              (tup : @RawTuple (rawSchemaHeading (GetNRelSchema (qschemaSchemas qsSchema) Ridx))),
       refine
@@ -219,8 +222,8 @@ Section ConstraintCheckRefinements.
   Qed.
 
   Lemma tupleAgree_refl :
-    forall (h : Heading)
-           (tup : @Tuple h)
+    forall (h : RawHeading)
+           (tup : @RawTuple h)
            (attrlist : list (Attributes h)),
       tupleAgree tup tup attrlist.
   Proof.
@@ -228,8 +231,8 @@ Section ConstraintCheckRefinements.
   Qed.
 
   Lemma refine_tupleAgree_refl_True :
-    forall (h : Heading)
-           (tup : @Tuple h)
+    forall (h : RawHeading)
+           (tup : @RawTuple h)
            (attrlist attrlist' : list (Attributes h)),
       refine {b |
               decides b (tupleAgree tup tup attrlist'
@@ -241,7 +244,7 @@ Section ConstraintCheckRefinements.
   Qed.
 
   Lemma refine_SatisfiesCrossConstraints_Pre (Q : Prop)
-    : forall qsSchema qs
+    : forall (qsSchema : RawQueryStructureSchema) qs
              (Ridx :Fin.t _)
              (tup : @RawTuple _),
       refine
@@ -705,11 +708,9 @@ Definition refine_foreign_key_check_into_query {schm tbl} :=
   @refine_constraint_check_into_query schm tbl.
 
 Lemma refine_functional_dependency_check_into_query :
-  forall {schm : QueryStructureSchema}
+  forall {schm : RawQueryStructureSchema}
          {tbl}
-         (ref : @RawTuple (@GetNRelSchemaHeading
-                          (numRawQSschemaSchemas (QueryStructureSchemaRaw schm))
-                          (qschemaSchemas (QueryStructureSchemaRaw schm)) tbl))
+         (ref : @RawTuple (@GetNRelSchemaHeading _ (qschemaSchemas schm) tbl))
          args1
          args2
          (c : UnConstrQueryStructure schm),
@@ -759,7 +760,7 @@ Proof.
 Qed.
 
 Lemma refine_functional_dependency_check_into_query' :
-  forall {schm : QueryStructureSchema}
+  forall {schm : RawQueryStructureSchema}
          {tbl}
          ref
          args1

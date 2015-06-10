@@ -167,7 +167,7 @@ Ltac GenerateIndexesForAll kTerm k :=
 
 Tactic Notation "make" "simple" "indexes" "using" constr(attrlist) :=
   match goal with
-    | [ |- Sharpened (@BuildADT (UnConstrQueryStructure ?sch) _ _ _ _ )] =>
+    | [ |- Sharpened (@BuildADT (UnConstrQueryStructure ?sch) _ _ _ _ _ _ )] =>
       let sch' := eval simpl in (qschemaSchemas sch) in
           makeIndex' sch' attrlist
                      ltac:(fun l =>

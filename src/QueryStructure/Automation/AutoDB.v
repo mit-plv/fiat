@@ -645,7 +645,7 @@ Ltac convert_filter_to_search_term :=
                            let eqv := fresh in
                            assert (ExtensionalEq f g) as eqv;
                          [ try apply ExtensionalEq_andb_true
-                         | rewrite (@Join_Filtered_Comp_Lists_ExtensionalEq_filters _ _ _ _ l1 l2 f g eqv); clear eqv ])
+                         | rewrite (@Join_Filtered_Comp_Lists_ExtensionalEq_filters _ _ _ _ _ l1 l2 f g eqv); clear eqv ])
   end.
 
 Ltac convert_Where_to_filter :=
@@ -666,13 +666,13 @@ Definition unit_Tuple : @RawTuple unit_Heading := inil2.
 
 Ltac get_ithDefault f n k :=
   match type of f with
-    | ilist (@Tuple) ?A -> ?C =>
+    | ilist2 (@RawTuple) ?A -> ?C =>
       let G := fresh "G" in
       let p := fresh "p" in
       let H := fresh "H" in
       let proj := fresh "proj" in
       let proj := eval simpl in
-      (fun b : ilist2 (@RawTuple) A => ith2 unit_Tuple b n) in
+      (fun b : ilist2 (B := @RawTuple) A => ith2 unit_Tuple b n) in
           evar (G : @RawTuple (nth_default unit_Heading A n) -> C);
         assert (H : forall p,
                       f p = G (proj p)) by
@@ -687,7 +687,7 @@ Ltac get_ithDefault f n k :=
 
 Ltac get_ithDefault_pair f m n k :=
   match type of f with
-    | ilist (@RawTuple) ?A -> ?C =>
+    | ilist2 (B := @RawTuple) ?A -> ?C =>
       let G := fresh "G" in
       let p := fresh "p" in
       let H := fresh "H" in
@@ -856,12 +856,12 @@ Ltac find_equivalent_search_term_pair build_search_term_dep :=
       [ H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
         |- ExtensionalEq ?f _ ] =>
       match type of f with
-        | ilist (@RawTuple) (?heading :: ?headings) -> bool =>
-          makeEvar (ilist (@RawTuple) headings -> @RawTuple heading -> bool)
+        | ilist2 (B := @RawTuple) (Vector.cons _ ?heading _ ?headings) -> bool =>
+          makeEvar (ilist2 (B := @RawTuple) headings -> @RawTuple heading -> bool)
                    ltac:(fun filter_dec =>
                            let eqv_f_dec := fresh in
-                           assert (forall a : ilist (@RawTuple) (heading :: headings),
-                                     f a = filter_dec (ilist_tl a) (ilist_hd a));
+                           assert (forall a : ilist2 (@RawTuple) (Vector.cons _ heading _ headings),
+                                     f a = filter_dec (ilist2_tl a) (ilist2_hd a));
                          [let a := fresh in
                           intro a; let f' := match goal with |- ?f = _ => f end in
                                    let f'' :=
@@ -1596,7 +1596,7 @@ Ltac Realize_CallBagMethods :=
     reflexivity.
   Qed.
 
-Ltac distribute_filters_to_joins' :=
+  Ltac distribute_filters_to_joins' :=
   match goal with
       |- refine
            (l <- Join_Filtered_Comp_Lists ?l1 ?l2 ?cond; _)
@@ -1619,15 +1619,15 @@ Ltac distribute_filters_to_joins' :=
                 repeat match goal with
                            |- refine (l' <- Join_Filtered_Comp_Lists ?l1 ?l2 ?cond1;
                                       Join_Filtered_Comp_Lists
-                                        (filter (fun a : ilist _ (?heading1 :: ?heading2 :: ?headings) =>
+                                        (filter (fun a : ilist2 (Vector.cons _ ?heading1 _ (Vector.cons _ ?heading2 _ ?headings)) =>
                                                    @?f a && @?g a) l') ?l2' ?cond2)
                                      _ => first (* No test case for this branch *)
-                                            [ makeEvar (ilist (@RawTuple) headings -> bool)
+                                            [ makeEvar (ilist2 (B := @RawTuple) headings -> bool)
                                                        ltac:(fun f' =>
                                                                find_equiv_tl heading1 headings f f';
                                                              let Comp_l2 := fresh in
                                                              assert
-                                                               (forall a : ilist (@RawTuple) headings,
+                                                               (forall a : ilist2 (B := @RawTuple) headings,
                                                                 exists v : list (@RawTuple heading1),
                                                                   refine (l2 a) (ret v)) as Comp_l2
                                                                  by Realize_CallBagMethods;
@@ -1639,14 +1639,14 @@ Ltac distribute_filters_to_joins' :=
                                             ]
                          | |- refine (l' <- Join_Filtered_Comp_Lists ?l1 ?l2 ?cond1;
                                       Join_Filtered_Comp_Lists (a := ?heading2)
-                                                               (@filter (ilist _ (?heading1 :: ?headings)) ?f l') ?l2' ?cond2) _
+                                                               (@filter (ilist2 (Vector.cons _ ?heading1 _ ?headings)) ?f l') ?l2' ?cond2) _
                            =>   first
-                                  [ makeEvar (ilist (@RawTuple) headings -> bool) (* No test case for this branch either *)
+                                  [ makeEvar (ilist2 (B := @RawTuple) headings -> bool) (* No test case for this branch either *)
                                              ltac:(fun f' =>
                                                      find_equiv_tl heading1 headings f f';
                                                    let Comp_l2 := fresh in
                                                    assert
-                                                     (forall a : ilist (@RawTuple) headings,
+                                                     (forall a : ilist2 (B := @RawTuple) headings,
                                                       exists v : list (@RawTuple heading1),
                                                         refine (l2 a) (ret v)) as Comp_l2
                                                        by Realize_CallBagMethods;
@@ -1661,45 +1661,45 @@ Ltac distribute_filters_to_joins' :=
                                        _ => reflexivity
                        end
 
-            (* The bottom case where we've recursed under all the bound Joins. *)
+  (* The bottom case where we've recursed under all the bound Joins. *)
             | |- refine (l' <- Join_Filtered_Comp_Lists _ _ _;
                          List_Query_In _ _)
                         _ =>
-              repeat match goal with
+               match goal with
                          |- refine (l' <- Join_Filtered_Comp_Lists ?l1 ?l2 ?cond';
                                     List_Query_In (ResultT := ?ResultT)
-                                                  (filter (fun a : ilist _ (?heading :: ?headings) =>
+                                                  (filter (fun a : ilist2 (Vector.cons _ ?heading _ ?headings) =>
                                                              @?f a && @?g a) l') ?resultComp)
                                    _ =>
-                         first [makeEvar (ilist (@RawTuple) headings -> bool)
+                         first [makeEvar (ilist2 (B := @RawTuple) headings -> bool)
                                          ltac:(fun f' => find_equiv_tl heading headings f f';
                                                let Comp_l2 := fresh in
                                                assert
-                                                 (forall a : ilist (@RawTuple) headings,
+                                                 (forall a : ilist2 (B := @RawTuple) headings,
                                                   exists v : list (@RawTuple heading),
                                                     refine (l2 a) (ret v)) as Comp_l2
                                                    by Realize_CallBagMethods;
                                                etransitivity;
-                                               [apply (@refine_Join_Filtered_Comp_Lists_filter_hd_andb heading headings f' g ResultT resultComp l2 cond' Comp_l2 l1)
+                                               [apply (@refine_Join_Filtered_Comp_Lists_filter_hd_andb _ heading headings f' g ResultT resultComp l2 cond' Comp_l2 l1)
                                                | ])
                                | etransitivity;
-                                 [apply (@refine_Join_Filtered_Comp_Lists_filter_tail_andb heading headings f g ResultT resultComp l2 ) | ] ]
+                                 [apply (@refine_Join_Filtered_Comp_Lists_filter_tail_andb _ heading headings f g ResultT resultComp l2 ) | ] ]
 
                        | |- refine
                               (l' <- Join_Filtered_Comp_Lists ?l1 ?l2 ?cond';
                                List_Query_In (ResultT := ?ResultT)
-                                             (@filter (ilist _ (?heading :: ?headings)) ?f l') ?resultComp)
+                                             (@filter (ilist2 (Vector.cons _ ?heading _ ?headings)) ?f l') ?resultComp)
                               _ =>
-                         first [ makeEvar (ilist (@RawTuple) headings -> bool)
+                         first [ makeEvar (ilist2 (B := @RawTuple) headings -> bool)
                                           ltac:(fun f' => find_equiv_tl heading headings f f';
                                                 let Comp_l2 := fresh in
                                                 assert
-                                                  (forall a : ilist (@RawTuple) headings,
+                                                  (forall a : ilist2 (B := @RawTuple) headings,
                                                    exists v : list (@RawTuple heading),
                                                      refine (l2 a) (ret v)) as Comp_l2 by
                                                       Realize_CallBagMethods;
-                                                apply (@refine_Join_Filtered_Comp_Lists_filter_hd heading headings f' ResultT resultComp l2 Comp_l2 l1))
-                               | apply (@refine_Join_Filtered_Comp_Lists_filter_tail heading headings f ResultT resultComp l2 cond' l1) ]
+                                                apply (@refine_Join_Filtered_Comp_Lists_filter_hd _ heading headings f' ResultT resultComp l2 Comp_l2 l1))
+                               | apply (@refine_Join_Filtered_Comp_Lists_filter_tail _ heading headings f ResultT resultComp l2 cond' l1) ]
 
                      end
             | |- _ => higher_order_reflexivity
@@ -1709,7 +1709,7 @@ Ltac distribute_filters_to_joins' :=
 
   end.
 
-Ltac distribute_filters_to_joins :=
+  Ltac distribute_filters_to_joins :=
   etransitivity;
   [ distribute_filters_to_joins' | cbv beta; simpl ].
 

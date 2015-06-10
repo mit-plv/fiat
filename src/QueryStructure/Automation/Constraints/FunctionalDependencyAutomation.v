@@ -79,23 +79,23 @@ Ltac fundepToQuery :=
       let H' := fresh in
       let H'' := fresh in
       let refine_fundep := fresh in
-      assert ((forall tup' : IndexedTuple,
+      assert ((forall tup' : IndexedRawTuple,
                  GetUnConstrRelation or Ridx tup'
                  -> @FunctionalDependency_P heading attrlist1 attrlist2 n (indexedElement tup'))
-              <-> (forall tup' : IndexedTuple,
+              <-> (forall tup' : IndexedRawTuple,
                      ~ (GetUnConstrRelation or Ridx tup'
                         /\ tupleAgree n (indexedElement tup') attrlist2
                         /\ ~ tupleAgree n (indexedElement tup') attrlist1))) as H'
           by (unfold FunctionalDependency_P; dec_tauto);
-        assert (DecideableEnsemble (fun x : Tuple =>
+        assert (DecideableEnsemble (fun x : RawTuple =>
                                       tupleAgree_computational n x attrlist2 /\
                                       ~ tupleAgree_computational n x attrlist1)) as H''
           by (subst_all;
               prove_decidability_for_functional_dependencies);
-        pose proof (@refine_functional_dependency_check_into_query qs_schema Ridx n attrlist2 attrlist1 or H'' H')
-          as refine_fundep; simpl in refine_fundep;
-        fold_heading_hyps_in refine_fundep; fold_string_hyps_in refine_fundep;
-        setoid_rewrite refine_fundep; clear refine_fundep H'' H'
+        let refine_fundep := eval simpl in (@refine_functional_dependency_check_into_query qs_schema Ridx n attrlist2 attrlist1 or H'' H') in
+          (* as refine_fundep; simpl in refine_fundep;
+        fold_heading_hyps_in refine_fundep; fold_string_hyps_in refine_fundep; *)
+        setoid_rewrite refine_fundep; clear H'' H'
     | [ |- context[Pick
                      (fun b => decides
                                  b
@@ -116,5 +116,7 @@ Ltac fundepToQuery :=
                                       tupleAgree_computational x n attrlist2 /\
                                       ~ tupleAgree_computational x n attrlist1)) as H''
           by prove_decidability_for_functional_dependencies;
-        pose proof (@refine_functional_dependency_check_into_query' _ _ n attrlist2 attrlist1 or H'' H') as refine_fundep; simpl in refine_fundep; setoid_rewrite refine_fundep; clear refine_fundep H'' H'
+        let refine_fundep := eval simpl in
+        (@refine_functional_dependency_check_into_query' _ _ n attrlist2 attrlist1 or H'' H') in
+            (*simpl in refine_fundep; setoid_rewrite refine_fundep; *) clear H'' H'
   end; try simplify with monad laws; pose_string_hyps; pose_heading_hyps.

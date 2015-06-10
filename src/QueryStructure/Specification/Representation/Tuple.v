@@ -55,7 +55,7 @@ Definition GetAttribute {heading}
   : @Tuple heading ->
     forall attr : @BoundedString _ (HeadingNames heading),
       Domain heading (ibound (indexb attr)) :=
-  fun t idx => ith2 t (ibound (indexb idx)).
+  fun t idx => GetAttributeRaw t (ibound (indexb idx)).
 
 Notation "t ! R" :=
   (GetAttribute t%Tuple (@Build_BoundedIndex _ _ _ R%string _))

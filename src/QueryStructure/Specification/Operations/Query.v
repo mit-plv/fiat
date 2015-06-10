@@ -48,17 +48,17 @@ Definition QueryResultComp
 Definition Query_In {ResultT}
            {qs_schema}
            (qs : QueryStructure qs_schema)
-           (R : @BoundedString _ (QSschemaNames qs_schema))
-           (bod : @RawTuple (GetNRelSchemaHeading (qschemaSchemas qs_schema) (ibound (indexb R)))
+           (R : Fin.t _)
+           (bod : @RawTuple (GetNRelSchemaHeading (qschemaSchemas qs_schema) R)
                              -> Comp (list ResultT))
-  := QueryResultComp (GetRelation qs (ibound (indexb R))) bod.
+  := QueryResultComp (GetRelation qs R) bod.
 
 Notation "( x 'in' r '!' Ridx ) bod" :=
   (let qs_schema := _ in
    let r' : QueryStructure qs_schema := r in
-   let Ridx' := @Build_BoundedIndex _ _ (QSschemaNames qs_schema) Ridx%string _ in
+   let Ridx' := ibound (indexb (@Build_BoundedIndex _ _ (QSschemaNames qs_schema) Ridx%string _)) in
    @Query_In _ qs_schema r' Ridx'
-            (fun x : @RawTuple (GetNRelSchemaHeading (qschemaSchemas qs_schema) (ibound (indexb Ridx'))) => bod)) : QuerySpec_scope.
+            (fun x : @RawTuple (GetNRelSchemaHeading (qschemaSchemas qs_schema) Ridx') => bod)) : QuerySpec_scope.
 
 (* [Query_Return] returns the singleton list. *)
 Definition Query_Return {ResultT : Type} (a : ResultT) := ret [a].

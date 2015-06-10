@@ -36,7 +36,8 @@ Ltac start_honing_QueryStructure' :=
                                 | _ => idtac
                               end;
                               (* Drop constraints from empty *)
-                              try apply Constructor_DropQSConstraints
+                              try apply Constructor_DropQSConstraints;
+                              cbv delta [GetAttribute] beta; simpl
                             | ] ])
           | repeat (first [eapply refine_Methods_nil
                           | eapply refine_Methods_cons;
@@ -45,6 +46,7 @@ Ltac start_honing_QueryStructure' :=
                                 |  |- refine _ (?E _ _) => let H := fresh in set (H := E)
                                 | _ => idtac
                               end;
+                              cbv delta [GetAttribute] beta; simpl;
                               match goal with
                                 | |- context [QSInsert _ _ _] => drop_constraints_from_insert
                                 | |- context [QSDelete _ _ _] => drop_constraints_from_delete
@@ -61,7 +63,7 @@ Ltac start_honing_QueryStructure :=
                    QSGetNRelSchemaHeading GetNRelSchema
                    GetNRelSchemaHeading Domain Specif.value
                    ] beta; simpl;
-      pose_string_hyps; pose_heading_hyps;
+      (*pose_string_hyps; pose_heading_hyps;*)
       match R with
         | ?MostlySharpened =>
           eapply MostlySharpened_Start; start_honing_QueryStructure'

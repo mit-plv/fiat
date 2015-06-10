@@ -23,7 +23,7 @@ Require Import Coq.Bool.Bool
 Section BagsQueryStructureRefinements.
 
   Import Coq.Vectors.VectorDef.VectorNotations.
-  
+
   Variable qs_schema : RawQueryStructureSchema.
   Variable BagIndexKeys :
     ilist2 (B := fun ns => SearchUpdateTerms (rawSchemaHeading ns))
@@ -132,7 +132,7 @@ Section BagsQueryStructureRefinements.
                         l <- CallBagMethod idx BagEnumerate r_n ();
                       (ret (snd l)))
                      (fun _ => true);
-                   (List_Query_In l (fun tup : ilist (B := @RawTuple) [ _ ]=> resultComp (ilist_hd tup)))) .
+                   (List_Query_In l (fun tup : ilist2 (B := @RawTuple) [ _ ]=> resultComp (ilist2_hd tup)))) .
   Proof.
     intros; rewrite refine_Query_In_Enumerate by eauto.
     rewrite Join_Filtered_Comp_Lists_id; reflexivity.
@@ -562,7 +562,7 @@ Section BagsQueryStructureRefinements.
   Qed.
 
   Add Parametric Morphism
-      (n : nat) 
+      (n : nat)
       (A : Type)
       (f : A -> Type)
       (As : Vector.t A n)

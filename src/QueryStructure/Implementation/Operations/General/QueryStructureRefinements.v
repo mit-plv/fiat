@@ -37,6 +37,13 @@ Proof.
   repeat computes_to_econstructor; eauto.
 Qed.
 
+Lemma DropGetAttribute {sch}
+  : forall (tup : @Tuple sch) idx,
+    GetAttribute tup idx = GetAttributeRaw tup (ibound (indexb idx)).
+Proof.
+  destruct idx; reflexivity.
+Qed.
+
 (* Queries over an empty relation return empty lists. *)
 Lemma refine_For_In_Empty  :
   forall ResultT MySchema R bod,

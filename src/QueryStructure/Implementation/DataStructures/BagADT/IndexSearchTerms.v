@@ -4,6 +4,7 @@ Require Import
         Coq.Bool.Bool
         Coq.Strings.String
         Fiat.Common.ilist
+        Fiat.Common.ilist2
         Fiat.Common.DecideableEnsembles
         Fiat.Common.StringBound
         Fiat.ADTNotation
@@ -62,24 +63,21 @@ Ltac BuildIndexSearchTerm'
   end.
 
 Ltac BuildIndexMatcher'
-     attrs heading indices k :=
+     heading indices k :=
   match indices with
     | [] =>
-      k (fun (st : (@Tuple heading -> bool))=> st)
+      k (fun (st : (@RawTuple heading -> bool))=> st)
     | [("EqualityIndex", ?idx)] =>
-      let idx' := constr:(@Build_BoundedIndex _ attrs idx _) in
-      k (fun (st : prod _ (@Tuple heading -> bool)) tup =>
-              (@MatchIndex EqualityIndex heading idx' _ (fst st) tup)
+      k (fun (st : prod _ (@RawTuple heading -> bool)) tup =>
+              (@MatchIndex EqualityIndex heading idx _ (fst st) tup)
                 && (snd st) tup)
     | [(?kind, ?idx)] =>
-      let idx' := constr:(@Build_BoundedIndex _ attrs idx _) in
-      k (@MatchIndex kind heading idx' _)
+      k (@MatchIndex kind heading idx _)
     | (?kind, ?idx) :: ?indices' =>
-      let idx' := constr:(@Build_BoundedIndex _ attrs idx _) in
-      BuildIndexMatcher' attrs
+      BuildIndexMatcher'
         heading indices'
         ltac:(fun matcher' =>
-                k (fun st tup => (@MatchIndex kind heading idx' _ (fst st) tup)
+                k (fun st tup => (@MatchIndex kind heading idx _ (fst st) tup)
                                && matcher' (snd st) tup))
   end.
 
@@ -88,20 +86,17 @@ Record KindIndex
   := { KindIndexKind : string;
        KindIndexIndex : @Attributes heading }.
 
-Ltac BuildIndexes
-     attrs heading indices k :=
-  match indices with
+  Ltac BuildIndexes
+       heading indices k :=
+    match indices with
     | [] =>
       k (@nil (@KindIndex heading))
-     | [(?kind, ?idx)] =>
-      let idx' := constr:(@Build_BoundedIndex _ attrs idx _) in
-      k ([@Build_KindIndex heading kind idx'])
+    | [(?kind, ?idx)] =>
+      k ([@Build_KindIndex heading kind idx])
     | (?kind, ?idx) :: ?indices' =>
-      let idx' := constr:(@Build_BoundedIndex _ attrs idx _) in
-      BuildIndexes attrs
-                   heading indices'
+      BuildIndexes heading indices'
                    ltac:(fun indices'' =>
-                           k ((@Build_KindIndex heading kind idx') :: indices''))
+                           k ((@Build_KindIndex heading kind idx) :: indices''))
   end.
 
 (* Aliases to make existing automation happy. *)
@@ -177,22 +172,19 @@ repeat match goal with
                                     Bs'))
   end. *)
 
-Ltac makeIndex' NamedSchemas IndexKeys k :=
-  match NamedSchemas  with
-    | nil => k (inil (fun ns : NamedSchema => SearchUpdateTerms (rawSchemaHeading (relSchema ns))))
-    | cons ?ns ?NamedSchemas' =>
-      match IndexKeys with
-        | cons ?ik ?IndexKeys' =>
-          let attrs := eval simpl in (map attrName (AttrList (rawSchemaHeading (relSchema ns)))) in
-              BuildIndexes attrs (rawSchemaHeading (relSchema ns)) ik
-                           ltac:(fun attrs' =>
-                                   BuildIndexMatcher' attrs (rawSchemaHeading (relSchema ns)) ik
-                                                      ltac:(fun matcher' =>
-                                                              makeIndex' NamedSchemas' IndexKeys'
-                                                                         ltac:(fun Bs' => k (icons ns
-                                                                                                   {| BagMatchSearchTerm := @MatchIndexSearchTerm
-                                                                                                                              (rawSchemaHeading (relSchema ns)) attrs' _
-                                                                                                                              matcher';
-                                                                                                      BagApplyUpdateTerm := fun z => z |} Bs'))))
-                                 end
-                                 end.
+Ltac makeIndex' schemas IndexKeys k :=
+  match schemas  with
+    | Vector.nil _ => k (inil2 (B := fun sch : RawHeading => SearchUpdateTerms sch))
+    | Vector.cons _ ?sch _ ?schemas' =>
+      let ik := eval simpl in (prim_fst IndexKeys) in
+      let IndexKeys' := eval simpl in (prim_snd IndexKeys) in
+      let heading' := eval simpl in (rawSchemaHeading sch) in
+          BuildIndexes heading' ik
+                       ltac:(fun attrs' =>
+                               BuildIndexMatcher' heading' ik
+                                                  ltac:(fun matcher' =>
+                                                          makeIndex' schemas' IndexKeys'
+                                                                     ltac:(fun Bs' => k (icons2 (a := heading')
+                                                                                                {| BagMatchSearchTerm := @MatchIndexSearchTerm heading' attrs' _ matcher';
+                                                                                                   BagApplyUpdateTerm := fun z => z |} Bs'))))
+  end.
