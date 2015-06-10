@@ -49,27 +49,30 @@ Qed.
 Lemma EnsembleListEquivalence_Empty :
   forall qsSchema Ridx,
     EnsembleListEquivalence
-      (GetUnConstrRelation (DropQSConstraints (QSEmptySpec qsSchema))
+      (GetUnConstrRelation (imap2 rawRel (Build_EmptyRelations (qschemaSchemas qsSchema)))
                            Ridx) [].
 Proof.
-  intros; rewrite GetRelDropConstraints; simpl; split; simpl; intros;
+  intros; simpl; split; simpl; intros;
   unfold GetRelation, In in *.
   + econstructor.
-  + rewrite Build_EmptyRelation_IsEmpty in *; simpl in *; intuition.
+  + unfold GetUnConstrRelation; rewrite <- ith_imap2;
+    rewrite Build_EmptyRelation_IsEmpty; simpl in *; intuition.
 Qed.
 
 Lemma EnsembleIndexedListEquivalence_Empty :
   forall qsSchema Ridx,
     EnsembleIndexedListEquivalence
-      (GetUnConstrRelation (DropQSConstraints (QSEmptySpec qsSchema))
+      (GetUnConstrRelation (imap2 rawRel (Build_EmptyRelations (qschemaSchemas qsSchema)))
                            Ridx) [].
 Proof.
-  intros; rewrite GetRelDropConstraints; simpl; split; simpl; intros;
+  intros; simpl; split; simpl; intros;
   unfold GetRelation, In in *.
-  + rewrite Build_EmptyRelation_IsEmpty in *; simpl in *; intuition.
+  + unfold GetUnConstrRelation; rewrite <- ith_imap2;
+    rewrite Build_EmptyRelation_IsEmpty in *; simpl in *; intuition.
     exists 0; unfold UnConstrFreshIdx; intros; intuition.
   + eexists []; intuition.
   - unfold In in *; intuition.
+    unfold GetUnConstrRelation in *; rewrite <- ith_imap2 in *;
     rewrite Build_EmptyRelation_IsEmpty in *; simpl in *; intuition.
   - econstructor.
 Qed.

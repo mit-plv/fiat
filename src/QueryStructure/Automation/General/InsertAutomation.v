@@ -88,7 +88,7 @@ Tactic Notation "remove" "trivial" "insertion" "checks" :=
                    typeclass resolution breaks down. Generalizing and applying gets
                    around this problem for reasons unknown. *)
         let H' := fresh in
-        pose (@QSInsertSpec_UnConstr_refine_opt  _ r_n R n _ H) as H';
+        pose (@QSInsertSpec_UnConstr_refine_opt _ r_n _ R n H) as H';
           cbv beta delta [tupleConstraints attrConstraints map app relName schemaHeading] iota in H';
           simpl in H'; fold_heading_hyps_in H'; fold_string_hyps_in H'; exact H'
     end

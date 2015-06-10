@@ -624,28 +624,27 @@ End BuildADTRefinements.
 
 Arguments Notation_Friendly_BuildMostlySharpenedcADT _ _ _ _ _ _ _ _ _ _ _  / .
 
-(*Ltac extract_delegate_free_impl :=
+Ltac extract_delegate_free_impl :=
   cbv beta; simpl;
     match goal with
-        |- forall idx : BoundedString,
+        |- forall idx : Fin.t 0,
              refineADT
-               (ith_Bounded delegateeName
-                            (inil (fun nadt : NamedDelegatee => ADT (delegateeSig nadt))) idx)
+               (ith inil idx)
                (ComputationalADT.LiftcADT
                   (existT
                      (ComputationalADT.pcADT
-                        (delegateeSig (nth_Bounded delegateeName [] idx)))
+                        (delegateeSig _))
                      (?DelegateReps idx) (?DelegateSpecs idx))) =>
-        let H := fresh in
-        assert (DelegateReps = (fun _ : BoundedString (Bound := []) => False)) as H by reflexivity;
-          clear H;
-          try assert (DelegateSpecs = @BoundedIndex_nil_dep _ _) as H by reflexivity;
-          eapply BoundedIndex_nil_dep
+        unify DelegateReps (fun idx : Fin.t 0 => False);
+          let P' := match type of DelegateSpecs with
+                    | forall idx, @?P' idx => P'
+                    end in
+          unify DelegateSpecs (fun idx : Fin.t 0 => Fin.case0 P' idx);
+            apply Fin.case0
           end.
 
-
 Tactic Notation "extract" "delegate-free" "implementation" :=
-  extract_delegate_free_impl. *)
+  extract_delegate_free_impl.
 
 (* A tactic for finishing a derivation. Probably needs a better name.*)
 Tactic Notation "finish" "sharpening" constr(delegatees):=
@@ -815,7 +814,7 @@ Ltac FullySharpenEachMethod DelegateSigs DelegateReps delegateSpecs :=
                           : forall idx : Fin.t NumDelegates,
                              refineADT (DelegateSpecs idx)
                                        (ComputationalADT.LiftcADT (existT _ _ (DelegateImpls idx))))
-                            => @eq unit)
+                            => @eq _)
              )))
     end; try (simpl; repeat split; intros; subst).
 

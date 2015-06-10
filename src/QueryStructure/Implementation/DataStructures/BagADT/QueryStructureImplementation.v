@@ -125,10 +125,13 @@ Section QueryStructureImplementation.
                Rep (BagSpec (BagMatchSearchTerm (heading := ns) index)
                             (BagApplyUpdateTerm index))).
   Defined.
-  
+
 End QueryStructureImplementation.
 
 Opaque CallBagMethod.
 Arguments CallBagMethod : simpl never.
+Arguments CallBagMethod [_ _] _ _ _ _ _.
 Opaque CallBagConstructor.
 Arguments CallBagConstructor : simpl never.
+Arguments GetIndexedRelation [_ _ ] _ _ _.
+Arguments DelegateToBag_AbsR [_ _] _ _.

@@ -15,7 +15,7 @@ Require Import Coq.Lists.List
 Local Obligation Tactic := intuition.
 
 Program Definition EmptyRelation (sch : RawSchema) : RawRelation sch :=
-  Build_RawRelation sch (fun T : @IndexedRawTuple (rawSchemaHeading sch) => False) _ _.
+  Build_RawRelation sch (Empty_set _) _ _.
 Next Obligation.
   destruct (attrConstraints sch); intuition.
 Qed.
@@ -31,17 +31,17 @@ Fixpoint Build_EmptyRelations {n} (schemas : Vector.t RawSchema n) :
       icons2 (EmptyRelation sch) (Build_EmptyRelations schemas')
   end.
 
-Lemma Build_EmptyRelation_IsEmpty (qsSchema : QueryStructureSchema)
+Lemma Build_EmptyRelation_IsEmpty (qsSchema : RawQueryStructureSchema)
   : forall idx,
     ith2 (Build_EmptyRelations (qschemaSchemas qsSchema)) idx
     = EmptyRelation _.
 Proof.
   intro.
   destruct qsSchema; simpl in *.
-  clear QSschemaConstraints QSschemaNames.
-  induction QSschemaSchemas.
+  clear qschemaConstraints.
+  induction qschemaSchemas.
   inversion idx.
-  generalize dependent QSschemaSchemas.
+  generalize dependent qschemaSchemas.
   pattern n, idx; apply Fin.rectS; simpl; intros; eauto.
 Qed.
 

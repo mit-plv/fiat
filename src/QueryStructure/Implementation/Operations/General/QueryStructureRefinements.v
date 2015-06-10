@@ -56,7 +56,7 @@ Proof.
   - simplify with monad laws.
     rewrite refine_pick_val with
     (A := list ResultT) (a := []); reflexivity.
-  - eexists []; simpl; intuition econstructor.
+  - eexists []; simpl; unfold In; intuition econstructor.
 Qed.
 
 Lemma Ensemble_List_Equivalence_Insert {A}

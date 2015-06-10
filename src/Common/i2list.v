@@ -116,7 +116,6 @@ Arguments i2cons [_ _ _ _ _ _ _ _] _ _.
 Arguments i2nil [_ _ _].
 Arguments i2th [_ _ _ _ _ _] _ _.
 
-(*
 Section i2list_replace.
 
   (* Replacing an element of an indexed list. *)
@@ -124,72 +123,88 @@ Section i2list_replace.
   Variable B : A -> Type. (* The two types of indexed elements. *)
   Variable C : forall a, B a -> Type. (* The type of doubly-indexed elements. *)
 
- Program Fixpoint replace_Index2
-           (n : nat)
-           (As : list A)
-           (Bs : ilist B As)
-           (Cs : i2list C Bs)
-           (new_c : Dep_Option_elim_P C (ith_error Bs n))
-           {struct Bs} : i2list C Bs :=
-    match n return
+  Import Coq.Vectors.VectorDef.VectorNotations.
+
+  Fixpoint replace2_Index2
+          {m : nat}
+          {As : Vector.t A m}
+          {Bs : ilist2 As}
+          (i2l : i2list C Bs)
+          (n : Fin.t m)
+          (new_c : C (ith2 Bs n))
+    : i2list C Bs :=
+        match n in Fin.t m return
+          forall (As : Vector.t A m)
+                 (Bs : ilist2 As),
             i2list C Bs
-            -> Dep_Option_elim_P C (ith_error Bs n)
+            -> C (ith2 Bs n)
             -> i2list C Bs with
-      | 0 => match Bs return
-                     i2list C Bs
-                     -> Dep_Option_elim_P C (ith_error Bs 0)
-                     -> i2list C Bs with
-                 | inil =>
-                   fun il _ => i2nil _ _
-                 | icons a b As' Bs' =>
-                   fun Cs' new_c =>
-                     i2cons _ new_c (i2list_tl Cs')
-               end
-      | S n => match Bs return
-                     i2list C Bs
-                     -> Dep_Option_elim_P C (ith_error Bs (S n))
-                     -> i2list C Bs with
-                 | inil => fun il _ => i2nil _ _
-                 | icons a As' b Bs' =>
-                   fun Cs' new_c =>
-                     i2cons _ (i2list_hd Cs')
-                            (@replace_Index2 n As' Bs'
-                                             (i2list_tl Cs') new_c)
-               end
-    end Cs new_c.
+        | Fin.F1 k =>
+          fun As Bs i2l new_c =>
+            Vector.caseS (fun n As =>
+                            forall (Bs : ilist2 As), i2list C Bs
+                                                     -> C (ith2 Bs (@Fin.F1 n))
+                                                     -> i2list C Bs)
+                         (fun a' n' As' (Bs' : ilist2 (a' :: As')) i2l' new_c => i2cons new_c (prim_snd i2l') ) As Bs i2l new_c
+    | Fin.FS k n'' =>
+      fun As Bs i2l new_c =>
+        Vector.caseS (fun n' As =>
+                        forall (i : Fin.t n') (Bs'' : ilist2 As),
+                          i2list C Bs''
+                          -> C (ith2 Bs'' (@Fin.FS n' i))
+                          -> i2list C Bs'')
+                     (fun a' n' As' n'' (Bs' : ilist2 (a' :: As')) i2l' new_c => i2cons (prim_fst i2l') (replace2_Index2 (prim_snd i2l') n'' new_c))
+                     As n'' Bs i2l new_c
+        end As Bs i2l new_c.
 
   Lemma i2th_replace_Index_neq
-  : forall
-      (n : nat)
-      (As : list A)
-      (Bs : ilist _ As)
-      (Cs : i2list C Bs)
-      (n' : nat)
-      (new_c : Dep_Option_elim_P C (ith_error Bs n')),
+    : forall {m : nat}
+             {As : Vector.t A m}
+             {Bs : ilist2 As}
+             (i2l : i2list C Bs)
+             (n n' : Fin.t m)
+             (new_c : C (ith2 Bs n)),
       n <> n'
-      -> i2th_error (replace_Index2 n' Cs new_c) n =
-         i2th_error Cs n.
+      -> i2th (replace2_Index2 i2l n new_c) n' =
+         i2th i2l n'.
   Proof.
-    induction n; simpl; destruct Bs; intros; icons_invert;
-    simpl in *; auto;
-    destruct n'; simpl; try congruence.
-    eapply IHn; congruence.
+    induction As.
+    - intros; inversion n.
+    - intros; revert n' As Bs i2l new_c H IHAs; pattern n, n0.
+      match goal with
+        |- ?P n n0 => simpl; apply (@Fin.caseS P); clear n n0; simpl in *
+      end.
+      + intros n n'; pattern n, n';
+        match goal with
+          |- ?P n n' => simpl; apply (@Fin.caseS P); clear n n'; intros; simpl in *;
+                        eauto; congruence
+        end.
+      + intros n p n'; revert p; pattern n, n';
+        match goal with
+          |- ?P n n' => simpl; apply (@Fin.caseS P); clear n n'; intros; simpl in *;
+                        eauto
+        end.
+        eapply IHAs; congruence.
   Qed.
 
   Lemma i2th_replace_Index_eq
-  : forall
-      (n : nat)
-      (As : list A)
-      (Bs : ilist _ As)
-      (Cs : i2list C Bs)
-      (new_c : Dep_Option_elim_P C (ith_error Bs n)),
-      i2th_error (replace_Index2 n Cs new_c) n = new_c.
+    : forall {m : nat}
+             {As : Vector.t A m}
+             {Bs : ilist2 As}
+             (i2l : i2list C Bs)
+             (n : Fin.t m)
+             (new_c : C (ith2 Bs n)),
+      i2th (replace2_Index2 i2l n new_c) n = new_c.
   Proof.
-    induction n; destruct Bs; simpl; auto; intros;
-    destruct new_c; eauto.
+    induction As.
+    - intros; inversion n.
+    - intros; revert As Bs i2l new_c IHAs; pattern n, n0.
+      match goal with
+        |- ?P n n0 => simpl; apply (@Fin.caseS P); clear n n0; simpl in *; eauto
+      end.
   Qed.
 
-  Program Fixpoint replace_Index2'
+  (*Program Fixpoint replace_Index2'
            (n : nat)
            (As : list A)
            (Bs : ilist B As)
@@ -249,3 +264,5 @@ Section i2list_replace.
     induction n; destruct Cs; simpl; auto; intros;
     destruct new_c; eauto.
   Qed. *)
+
+End i2list_replace.

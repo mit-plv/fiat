@@ -69,6 +69,7 @@ Definition BookStoreSig : ADTSig :=
 (* Now we write what the methods should actually do. *)
 
 Definition BookStoreSpec : ADT BookStoreSig :=
+  Eval simpl in 
   QueryADTRep BookStoreSchema {
     Def Constructor "Init" (_ : unit) : rep := empty,
 
@@ -99,6 +100,8 @@ Definition BookStoreSpec : ADT BookStoreSig :=
 Theorem SharpenedBookStore :
   MostlySharpened BookStoreSpec.
 Proof.
+  Time start honing QueryStructure.
+  (* 552 MB. *)
   partial_master_plan EqIndexTactics.
 
   FullySharpenQueryStructure BookStoreSchema Index.

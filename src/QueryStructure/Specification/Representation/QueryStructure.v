@@ -245,7 +245,7 @@ Proof.
 Qed.
 
 Lemma get_update_unconstr_neq :
-  forall (db_schema : QueryStructureSchema) (qs : UnConstrQueryStructure db_schema)
+  forall (db_schema : RawQueryStructureSchema) (qs : UnConstrQueryStructure db_schema)
          (index1 index2 : _) ens,
     index1 <> index2 ->
     GetUnConstrRelation

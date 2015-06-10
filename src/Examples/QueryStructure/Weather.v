@@ -16,6 +16,7 @@ Require Import Fiat.Common.DecideableEnsembles
         Fiat.QueryStructure.Implementation.ListImplementation
         Fiat.QueryStructure.Specification.Constraints.tupleAgree
         Fiat.QueryStructure.Implementation.Operations.General.QueryStructureRefinements
+        Fiat.QueryStructure.Implementation.Operations.General.QueryRefinements
         Fiat.QueryStructure.Implementation.DataStructures.BagADT.QueryStructureImplementation.
 
 (*Require Import  Fiat.QueryStructure.Automation.AutoDB
@@ -104,53 +105,14 @@ Definition SharpenedWeatherStation :
   MostlySharpened WeatherSpec.
 Proof.
 
-  Ltac start_honing_QueryStructure' :=
-  eapply SharpenStep;
-  [ match goal with
-        |- context [@BuildADT (QueryStructure ?Rep) _ _ _ _ _ _] =>
-        eapply refineADT_BuildADT_Rep_refine_All with (AbsR := @DropQSConstraints_AbsR Rep);
-          [ repeat (first [eapply refine_Constructors_nil
-                          | eapply refine_Constructors_cons;
-                            [ intros;
-                              match goal with
-                                |  |- refine _ (?E _) => let H := fresh in set (H := E)
-                                | _ => idtac
-                              end;
-                              (* Drop constraints from empty *)
-                              try apply Constructor_DropQSConstraints
-                            | ] ])
-          | repeat (first [eapply refine_Methods_nil
-                          | eapply refine_Methods_cons;
-                            [ intros;
-                              match goal with
-                                |  |- refine _ (?E _ _) => let H := fresh in set (H := E)
-                                | _ => idtac
-                              end(*;
-                              match goal with
-                                | |- context [QSInsert _ _ _] => drop_constraints_from_insert
-                                | |- context [QSDelete _ _ _] => drop_constraints_from_delete
-                                | |- context [Query_For _] => drop constraints from query
-                                | |- _ => idtac
-                              end *) | ]
-                          ])]
-    end | ].
+  Require Import Fiat.QueryStructure.Automation.General.InsertAutomation.
+  Require Import Fiat.QueryStructure.Automation.General.QueryAutomation.
 
-Ltac start_honing_QueryStructure :=
-  match goal with
-      |- ?R ?QSSpec =>
-      cbv delta [QSSpec
-                   QSGetNRelSchemaHeading GetNRelSchema
-                   GetNRelSchemaHeading Domain Specif.value
-                   ] beta; simpl;
-      match R with
-        | ?MostlySharpened =>
-          eapply MostlySharpened_Start; start_honing_QueryStructure'
-        | ?FullySharpened =>
-          eapply FullySharpened_Start; [start_honing_QueryStructure' | | ]
-      end
-  end.
-
+Require Import Fiat.QueryStructure.Automation.Common.
+Require Import Fiat.QueryStructure.Automation.General.QueryStructureAutomation.
 start_honing_QueryStructure.
+
+
 
 
   start honing QueryStructure;

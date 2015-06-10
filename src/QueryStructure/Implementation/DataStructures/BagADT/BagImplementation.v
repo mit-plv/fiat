@@ -461,9 +461,9 @@ Section SharpenedBagImplementation.
     hone representation using
          (fun r_o r_n =>
             r_o ≃ benumerate (Bag := BagPlus) r_n
-            /\ RepInvPlus r_n) with defaults.
+            /\ RepInvPlus r_n).
 
-    hone constructor sEmpty.
+    (* sEmpty *)
     {
       simplify with monad laws.
       refine pick val bempty.
@@ -471,7 +471,22 @@ Section SharpenedBagImplementation.
       intuition eauto using bempty_RepInv; eapply refine_Empty_set_bempty.
     }
 
-    hone method sEnumerate.
+    (* sFind *)
+    {
+      simplify with monad laws.
+      intuition.
+      pose proof (bfind_correct r_n d H2).
+      destruct (permutation_filter _ _ _ (bfind_correct r_n d H2)) as [l [l_eq Perm_l]].
+      refine pick val l.
+      simplify with monad laws; simpl.
+      refine pick val r_n; eauto.
+      simplify with monad laws; simpl.
+      simpl in *; rewrite l_eq.
+      finish honing.
+      eapply Permutation_EnsembleIndexedListEquivalence; simpl in *; eauto.
+    }
+
+    (* sEnumerate. *)
     {
       simplify with monad laws.
       refine pick val (benumerate r_n); intuition;
@@ -482,7 +497,19 @@ Section SharpenedBagImplementation.
       intuition.
     }
 
-    hone method sCount.
+    (* sInsert *)
+    {
+      simplify with monad laws; intuition.
+      simpl in *; destruct_EnsembleIndexedListEquivalence.
+      refine pick val bnd; eauto; simplify with monad laws.
+      simpl; refine pick val (binsert r_n d).
+      simplify with monad laws.
+      finish honing.
+      split; eauto using binsert_RepInv.
+      eapply refine_Add_binsert; simpl; eauto.
+    }
+
+    (* sCount. *)
     {
       simplify with monad laws.
       refine pick val (benumerate r_n); intuition;
@@ -496,45 +523,19 @@ Section SharpenedBagImplementation.
       intuition.
     }
 
-    hone method sInsert.
+    (* sDelete *)
     {
       simplify with monad laws; intuition.
-      destruct_EnsembleIndexedListEquivalence.
-      refine pick val bnd; eauto; simplify with monad laws.
-      simpl; refine pick val (binsert r_n n).
-      simplify with monad laws.
-      finish honing.
-      split; eauto using binsert_RepInv.
-      eapply refine_Add_binsert; simpl; eauto.
-    }
-
-    hone method sFind.
-    {
-      simplify with monad laws.
-      intuition.
-      pose proof (bfind_correct r_n n H2).
-      destruct (permutation_filter _ _ _ (bfind_correct r_n n H2)) as [l [l_eq Perm_l]].
-      refine pick val l.
-      simplify with monad laws; simpl.
-      refine pick val r_n; eauto.
-      simplify with monad laws; simpl.
-      rewrite l_eq.
-      finish honing.
-      eapply Permutation_EnsembleIndexedListEquivalence; simpl; eauto.
-    }
-
-    hone method sDelete.
-    {
-      simplify with monad laws; intuition.
-      destruct (bdelete_correct r_n n H2).
+      simpl in *.
+      destruct (bdelete_correct r_n d H2).
       rewrite partition_filter_eq in H3.
-      rewrite partition_filter_neq in H0.
-      symmetry in H0; symmetry in H3.
-      destruct (permutation_filter _ _ _ H0) as [l [l_eq Perm_l]].
+      rewrite partition_filter_neq in H.
+      symmetry in H; symmetry in H3.
+      destruct (permutation_filter _ _ _ H) as [l [l_eq Perm_l]].
       destruct (permutation_filter _ _ _ H3) as [l' [l'_eq Perm_l']].
       refine pick val l'.
       simplify with monad laws; simpl.
-      refine pick val (snd (bdelete r_n n)).
+      refine pick val (snd (bdelete r_n d)).
       simplify with monad laws; simpl.
       rewrite l'_eq.
       finish honing.
@@ -543,14 +544,14 @@ Section SharpenedBagImplementation.
       eapply Permutation_EnsembleIndexedListEquivalence; simpl; eauto.
     }
 
-    hone method sUpdate.
+    (* sUpdate *)
     {
-      simplify with monad laws; intuition.
+      simplify with monad laws; simpl in *; intuition.
       pose proof (bupdate_correct (CorrectBag:=CorrectBagPlus) r_n a b H2).
       etransitivity.
       apply refine_if with (b:=CheckUpdatePlus b).
       intros; apply CheckUpdatePlusValid in H3; simpl.
-      pose proof (H0 H3); destruct H4.
+      pose proof (H H3); destruct H4.
       rewrite partition_filter_eq in H5; symmetry in H5.
       destruct (permutation_filter _ _ _ H5) as [l [l_eq Perm_l]].
       refine pick val l.
@@ -576,7 +577,7 @@ Section SharpenedBagImplementation.
       apply RepInv_fold.
       apply binsert_RepInv. apply bdelete_RepInv; assumption.
       eapply Permutation_EnsembleIndexedListEquivalence; eauto.
-      unfold H.
+      unfold H0.
       instantiate (1 := fun r_n ab =>
                           if CheckUpdatePlus (snd ab)
                           then ret (snd (bupdate r_n (fst ab) (snd ab)), fst (bupdate r_n (fst ab) (snd ab)))
@@ -589,12 +590,14 @@ Section SharpenedBagImplementation.
     }
 
     FullySharpenEachMethodWithoutDelegation.
+
     extract delegate-free implementation.
+
     simpl; higher_order_reflexivityT.
 
   Defined.
 
-  Definition BagADTImpl : ComputationalADT.cADT (BagSig (@Tuple heading) SearchTermTypePlus UpdateTermTypePlus) :=
+  Time Definition BagADTImpl : ComputationalADT.cADT (BagSig (@Tuple heading) SearchTermTypePlus UpdateTermTypePlus) :=
     Eval simpl in projT1 SharpenedBagImpl.
 
 End SharpenedBagImplementation.

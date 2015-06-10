@@ -53,17 +53,17 @@ Definition CountAttributes (l : list (string * (string * string)))
                       (RelationAttributeCounter.empty nat)
                       l)).
 
-Definition GetIndexes
-           (qs_schema : QueryStructureSchema)
+(*Definition GetIndexes
+           (qs_schema : RawQueryStructureSchema)
            (indices : list ((string * (string * string)) * nat))
 : list (list (string * string)) :=
   map (fun ns : NamedSchema =>
          map (fun index => (fst (fst index), snd (snd (fst index))))
-             (filter (fun index => if (string_dec (fst (snd (fst index)))) (relName ns)
+             (filter (fun index => if (fin_eq_dec (fst (snd (fst index)))) (relName ns)
                                    then true
                                    else false)
                      indices))
-      (qschemaSchemas qs_schema).
+      (qschemaSchemas qs_schema). *)
 
   Ltac TermAttributes Term :=
     match Term with
@@ -145,7 +145,7 @@ Ltac MethodsAttributes' meths kTerm l :=
     | nil => unify l (@nil (string * (string * string)))
   end.
 
-Ltac GenerateIndexesFor meths kTerm k :=
+(*Ltac GenerateIndexesFor meths kTerm k :=
   match goal with
       |- Sharpened
            (@BuildADT (UnConstrQueryStructure ?qs_schema) _ _ _ _) =>
@@ -163,7 +163,7 @@ Ltac GenerateIndexesForAll kTerm k :=
            (@BuildADT (UnConstrQueryStructure ?qs_schema) _ ?methSigs _ _) =>
       let meths := eval compute in (map methID methSigs) in
           GenerateIndexesFor meths kTerm k
-  end.
+  end. *)
 
 Tactic Notation "make" "simple" "indexes" "using" constr(attrlist) :=
   match goal with
@@ -181,10 +181,10 @@ Tactic Notation "make" "simple" "indexes" "using" constr(attrlist) :=
                            hone representation using (@DelegateToBag_AbsR sch index))
   end.
 
-Tactic Notation "make" "indexes" "using" tactic(ClauseMatchers) :=
+(*Tactic Notation "make" "indexes" "using" tactic(ClauseMatchers) :=
   GenerateIndexesForAll
     ClauseMatchers
-    ltac:(fun attrlist => make simple indexes using attrlist).
+    ltac:(fun attrlist => make simple indexes using attrlist). *)
 
 (* Recurse over [fds] to find an attribute matching s *)
 Ltac findMatchingTerm fds kind s k :=

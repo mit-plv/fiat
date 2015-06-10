@@ -235,7 +235,7 @@ Section Iterate_Dep_Type.
       pattern Remaining, idx; apply Fin.caseS; intros.
       + intuition.
       + intuition; eapply (IHRemaining _ prim_snd0).
-  Qed.
+  Defined.
 
   Lemma Iterate_Dep_Type_equiv''
     : forall (Remaining  : nat)
@@ -244,7 +244,7 @@ Section Iterate_Dep_Type.
       -> @Iterate_Dep_Type_BoundedIndex'  Remaining P.
   Proof.
     induction Remaining; simpl; intros; intuition.
-  Qed.
+  Defined.
 
   Definition Iterate_Dep_Type_BoundedIndex
              (m : nat)
@@ -267,9 +267,9 @@ Section Iterate_Dep_Type.
       -> Iterate_Dep_Type_BoundedIndex P.
   Proof.
     intros.
-    eapply Iterate_Dep_Type_equiv'' ;
+    eapply Iterate_Dep_Type_equiv'';
       eauto using string_dec.
-  Qed.
+  Defined.
 
   (* Iterating with a filter *)
   Fixpoint Iterate_Dep_Type_BoundedIndex_filter'
@@ -279,7 +279,7 @@ Section Iterate_Dep_Type.
            {struct Remaining}
     : Type :=
     match Remaining return
-          
+
             (@Fin.t Remaining -> bool)
             -> Dep_Type (Fin.t Remaining)
                           -> Type with
@@ -318,7 +318,7 @@ Section Iterate_Dep_Type.
       + assert (forall a : Fin.t n, dec (Fin.FS a) = true <-> dec (Fin.FS a)) as decOK by intuition.
         case_eq (dec Fin.F1); intros; rewrite H0 in X; intuition.
         * eapply (IHRemaining
-                    
+
                     (fun n' : Fin.t n => P (Fin.FS n'))
                     (fun n' : Fin.t n => dec (Fin.FS n'))
                     {| dec n' :=  dec (Fin.FS n');
@@ -327,7 +327,7 @@ Section Iterate_Dep_Type.
                     prim_snd0); eauto using dec_decides_P.
           eapply dec_decides_P; eauto.
         * eapply (IHRemaining
-                  
+
                   (fun n' : Fin.t n => P (Fin.FS n'))
                   (fun n' : Fin.t n => dec (Fin.FS n'))
                   {| dec n' :=  dec (Fin.FS n');
@@ -335,7 +335,7 @@ Section Iterate_Dep_Type.
                   |}
                   X); eauto.
           eapply dec_decides_P; eauto.
-  Qed.
+  Defined.
 
     Lemma Iterate_Dep_Type_equiv_filter''
     : forall (Remaining  : nat)
@@ -353,7 +353,7 @@ Section Iterate_Dep_Type.
       + apply dec_decides_P in H; intuition.
         assert (forall a : Fin.t Remaining, dec (Fin.FS a) = true <-> dec (Fin.FS a)) as decOK by intuition.
         eapply (IHRemaining
-                 
+
                  (fun n' : Fin.t _ => P (Fin.FS n'))
                  (fun n' : Fin.t _ => dec (Fin.FS n'))
                  {| dec n' :=  dec (Fin.FS n');
@@ -362,14 +362,14 @@ Section Iterate_Dep_Type.
         intros; eapply X; apply dec_decides_P; eauto.
       + assert (forall a : Fin.t Remaining, dec (Fin.FS a) = true <-> dec (Fin.FS a)) as decOK by intuition.
         eapply (IHRemaining
-                 
+
                  (fun n' : Fin.t _ => P (Fin.FS n'))
                  (fun n' : Fin.t _ => dec (Fin.FS n'))
                  {| dec n' :=  dec (Fin.FS n');
                     dec_decides_P := decOK
                  |}); eauto.
         intros; eapply X; apply dec_decides_P; eauto.
-  Qed.
+  Defined.
 
   Definition Iterate_Dep_Type_BoundedIndex_filter
              (Remaining : nat)
