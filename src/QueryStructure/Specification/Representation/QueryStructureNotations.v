@@ -39,6 +39,7 @@ Open Scope QuerySpec.
 Open Scope string_scope.
 Open Scope Tuple.
 Open Scope comp_scope.
+
 (* Notation Test. *)
 (* Let's define some synonyms for strings we'll need,
  * to save on type-checking time.
@@ -88,45 +89,36 @@ Definition BookStoreSig : ADTSig :=
       Method "NumOrders" : rep x string -> rep x nat
     }.
 
-Print QSDelete.
-Print QSInsert.
 (* Now we write what the methods should actually do. *)
 
 Definition BookStoreSpec : ADT BookStoreSig.
+
   refine ( QueryADTRep BookStoreSchema {
     Def Constructor "Init" (_ : unit) : rep := empty,
 
-    update "PlaceOrder" ( o : Order ) : bool :=
-        Insert o into sORDERS,
+    update "PlaceOrder" ( r : rep , o : Order ) : bool :=
+        Insert o into r!sORDERS,
 
-    update "DeleteOrder" ( oid : nat ) : list Order := _,
-      (* Delete o from sORDERS where True, *)
+    update "DeleteOrder" (r : rep, oid : nat ) : list Order :=
+       Delete o from r!sORDERS where True,
 
-    update "AddBook" ( b : Book ) : bool :=
-        Insert b into sBOOKS ,
+    update "AddBook" (r : rep, b : Book ) : bool :=
+        Insert b into r!sBOOKS ,
 
-     update "DeleteBook" ( id : nat ) : list Book := _,
-        (*Delete book from sBOOKS where book!sISBN = id, *)
+     update "DeleteBook" ( r : rep, id : nat ) : list Book :=
+        Delete book from r!sBOOKS where book!sISBN = id,
 
-    query "GetTitles" ( author : string ) : list string :=
-      For (b in sBOOKS)
+    query "GetTitles" (r : rep, author : string ) : list string :=
+      For (b in r ! sBOOKS)
       Where (author = b!sAUTHOR)
       Return (b!sTITLE),
 
-    query "NumOrders" ( author : string ) : nat :=
-      Count (For (o in sORDERS) (b in sBOOKS)
+    query "NumOrders" (r : rep, author : string ) : nat :=
+      Count (For (o in r!sORDERS) (b in r!sBOOKS)
                  Where (author = b!sAUTHOR)
-                 Where (b!sISBN = o!sISBN)
+                 Where (o!sISBN = b!sISBN)
                  Return ())
 } ).
-
-  pose (Delete o from sORDERS where True).
-  Set Printing All.
-  idtac.
-  simpl in c.
-  apply c.
-  let b := constr:(@qsSchemaHint' _H0 : QueryStructureSchema) in
-  unify (b) (BookStoreSchema).
   (* match goal with
     |- ?A =>
     match type of (Delete o from sORDERS where True : A) with

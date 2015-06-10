@@ -810,18 +810,22 @@ Proof.
 Qed. *)
 
 Lemma DropQSConstraintsQuery_In {A} :
-  forall qs R bod,
-    @Query_In A qs R bod =
-    UnConstrQuery_In (DropQSConstraints qsHint) (ibound (indexb R)) bod.
+  forall qs_schema qs R bod,
+    @Query_In A qs_schema qs R bod =
+    UnConstrQuery_In (DropQSConstraints qs) (ibound (indexb R)) bod.
 Proof.
+  intros; unfold Query_In, UnConstrQuery_In, GetRelation, GetUnConstrRelation,
+          DropQSConstraints; rewrite <- ith_imap2.
   reflexivity.
 Qed.
 
 Lemma DropQSConstraintsQuery_In_UnderBinder {A B} :
-  forall qs R bod,
-    (fun b : B => @Query_In A qs R (bod b)) =
-    (fun b : B => UnConstrQuery_In (DropQSConstraints qsHint) (ibound (indexb R)) (bod b)).
+  forall qs_schema qs R bod,
+    (fun b : B => @Query_In A qs_schema qs R (bod b)) =
+    (fun b : B => UnConstrQuery_In (DropQSConstraints qs) (ibound (indexb R)) (bod b)).
 Proof.
+    intros; unfold Query_In, UnConstrQuery_In, GetRelation, GetUnConstrRelation,
+          DropQSConstraints; rewrite <- ith_imap2.
   reflexivity.
 Qed.
 

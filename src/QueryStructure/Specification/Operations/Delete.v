@@ -24,7 +24,6 @@ Definition QSDelete {qs_schema}
 
 Opaque QSDelete.
 
-Notation "'Delete' b 'from' Ridx 'where' Ens" :=
-  (let hint : QueryStructureHint := _ in
-  QSDelete (@qsHint hint) (ibound (indexb (@Build_BoundedIndex _ _ (QSschemaNames qsSchemaHint) Ridx%string _))) (fun b => Ens))
-    (at level 80) : QuerySpec_scope.
+Notation "'Delete' b 'from' r '!' Ridx 'where' Ens" :=
+  (QSDelete r (ibound (indexb (@Build_BoundedIndex _ _ (QSschemaNames _) Ridx%string _))) (fun b => Ens))
+    (r at level 0, at level 80) : QuerySpec_scope.

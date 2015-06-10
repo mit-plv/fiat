@@ -55,5 +55,5 @@ Next Obligation.
 Qed.
 
 Notation "'empty'" :=
-  (ret (QSEmptySpec qsSchemaHint))
+  (ret (QSEmptySpec _))
     (at level 80) : QuerySpec_scope.

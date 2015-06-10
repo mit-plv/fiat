@@ -17,16 +17,16 @@ Require Import Coq.Strings.String Coq.Lists.List Coq.Sorting.Permutation
 Tactic Notation "drop" "constraints" "from" "query" :=
   simplify with monad laws;
   repeat match goal with
-             |- appcontext[@Query_In ?ResultT ?qs ?R] =>
+             |- appcontext[@Query_In ?ResultT ?qs_schema ?qs ?R] =>
              let H' := fresh in
-             pose (@DropQSConstraintsQuery_In ResultT qs R) as H';
+             pose (@DropQSConstraintsQuery_In ResultT qs_schema qs R) as H';
                simpl in H'; fold_string_hyps_in H'; fold_heading_hyps_in H';
                setoid_rewrite H'; clear H'
          end;
   repeat match goal with
-             |- context[fun b :?B => @Query_In ?ResultT ?qs ?R (@?bod b)] =>
+             |- context[fun b :?B => @Query_In ?ResultT ?qs_schema ?qs ?R (@?bod b)] =>
              let H' := fresh in
-             pose (@DropQSConstraintsQuery_In_UnderBinder ResultT B qs R bod) as H';
+             pose (@DropQSConstraintsQuery_In_UnderBinder ResultT B qs_schema qs R bod) as H';
                simpl in H'; fold_string_hyps_in H'; fold_heading_hyps_in H';
                setoid_rewrite H'; clear H'
          end;

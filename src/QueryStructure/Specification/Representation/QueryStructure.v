@@ -100,44 +100,42 @@ Definition QueryStructure (QSSchema : QueryStructureSchema) := RawQueryStructure
 (* This typeclass allows our method definitions to infer the
    the QueryStructure [r] they are called with. *)
 
-Class QueryStructureSchemaHint :=
+(* Class QueryStructureSchemaHint :=
   { qsSchemaHint : QueryStructureSchema
   }.
 
 Class QueryStructureHint :=
   { qsSchemaHint' : QueryStructureSchema;
     qsHint :> @QueryStructure qsSchemaHint'
-  }.
+  }. *)
 
-Notation "'query' id ( x : dom ) : cod := bod" :=
+Notation "'query' id ( r : 'rep' , x : dom ) : cod := bod" :=
   (Build_methDef {| methID := id; methDom := dom; methCod := cod |}
-                 (fun (r : QueryStructure qsSchemaHint) x =>
-                    let _ := {| qsHint := r |} in
+                 (fun (r : repHint) x =>
                     let _ := {| codHint := cod |} in
                     queryRes <- bod%QuerySpec;
                   ret (r, queryRes)))%comp
                                      (no associativity, id at level 0, x at level 0, dom at level 0,
-                                      cod at level 0, only parsing,
-                                      at level 94, format "'query'  id  ( x  :  dom )  :  cod  :=  '[  '   bod ']' " ) :
+                                      r at level 0, cod at level 0, only parsing,
+                                      at level 94, format "'query'  id  (  r  : 'rep'  ,  x  :  dom )  :  cod  :=  '[  '   bod ']' " ) :
     queryDef_scope.
 
-Notation "'update' id ( x : dom ) : cod := bod" :=
+Notation "'update' id ( r : 'rep' , x : dom ) : cod := bod" :=
   (Build_methDef {| methID := id; methDom := dom; methCod := cod |}
-                 (fun (r : QueryStructure qsSchemaHint) x =>
-                    let _ := {| qsHint := r |} in
+                 (fun (r : repHint) x =>
                     bod%QuerySpec))
     (no associativity, id at level 0, x at level 0, dom at level 0,
-     cod at level 0, only parsing,
-     at level 94, format "'update'  id  ( x  :  dom )  :  cod  :=  '[  '   bod ']' " ) :
+     r at level 0, cod at level 0, only parsing,
+     at level 94, format "'update'  id  (  r  :  'rep'  ,  x  :  dom )  :  cod  :=  '[  '   bod ']' " ) :
     queryDef_scope.
 
 (* Notation for ADTs built from [BuildADT]. *)
 
 Notation "'QueryADTRep' r { cons1 , meth1 , .. , methn } " :=
-  (let _ := {| qsSchemaHint := r |} in
-   @BuildADT (QueryStructure r) _ _ _ _
+  (let _ := {| repHint := (QueryStructure r) |}
+   in @BuildADT (QueryStructure r) _ _ _ _
              (icons cons1%consDef (inil (B := @consDef (QueryStructure r))))
-             (icons meth1%queryDef .. (icons methn%queryDef (inil (B := @methDef (QueryStructure r)))) ..))
+             (icons (B := @methDef (QueryStructure r)) (meth1%queryDef ) .. (icons (B := @methDef (QueryStructure r)) methn%queryDef (inil (B := @methDef (QueryStructure r)))) ..))
     (no associativity, at level 96, r at level 0, only parsing,
      format "'QueryADTRep'  r  '/' '[hv  ' {  cons1 , '//' '//' meth1 , '//' .. , '//' methn  ']' }") : QueryStructure_scope.
 
@@ -188,6 +186,8 @@ Qed.
 
 (* Typeclass + notations for declaring abstraction relation for
    QueryStructure Implementations. *)
+
+
 
 Definition SatisfiesAttributeConstraints
            {qsSchema}

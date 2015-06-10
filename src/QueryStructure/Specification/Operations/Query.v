@@ -1,4 +1,7 @@
-Require Import Coq.Lists.List Coq.Strings.String Coq.Sets.Ensembles Coq.Sorting.Permutation
+Require Import Coq.Lists.List
+        Coq.Strings.String
+        Coq.Sets.Ensembles
+        Coq.Sorting.Permutation
         Fiat.Computation.Core
         Fiat.ADT.ADTSig Fiat.ADT.Core
         Fiat.Common.Ensembles.IndexedEnsembles
@@ -33,7 +36,7 @@ Notation "'For' bod" := (Query_For bod) : QuerySpec_scope.
 Definition QueryResultComp
            {heading ResultT}
            (queriedEnsemble : Ensemble (@IndexedRawTuple heading))
-           (resultEnsemble : (@RawTuple heading) -> Comp (list ResultT))
+           (resultEnsemble : @RawTuple heading -> Comp (list ResultT))
   :=
     (* First construct a list that contains each element in the query list
        (expressed as an ensemble) paired with its result list.
@@ -43,15 +46,19 @@ Definition QueryResultComp
     flatten_CompList (map resultEnsemble queriedList).
 
 Definition Query_In {ResultT}
-           (qs : QueryStructureHint)
-           (R : @BoundedString _ (QSschemaNames qsSchemaHint'))
-           (bod : @RawTuple (GetNRelSchemaHeading (qschemaSchemas qsSchemaHint') (ibound (indexb R)))
+           {qs_schema}
+           (qs : QueryStructure qs_schema)
+           (R : @BoundedString _ (QSschemaNames qs_schema))
+           (bod : @RawTuple (GetNRelSchemaHeading (qschemaSchemas qs_schema) (ibound (indexb R)))
                              -> Comp (list ResultT))
-  := QueryResultComp (GetUnConstrRelation (DropQSConstraints qsHint) (ibound (indexb R))) bod.
+  := QueryResultComp (GetRelation qs (ibound (indexb R))) bod.
 
-Notation "( x 'in' R ) bod" :=
-  (Query_In _ {| bindex := R%string |}
-            (fun x => bod)) : QuerySpec_scope.
+Notation "( x 'in' r '!' Ridx ) bod" :=
+  (let qs_schema := _ in
+   let r' : QueryStructure qs_schema := r in
+   let Ridx' := @Build_BoundedIndex _ _ (QSschemaNames qs_schema) Ridx%string _ in
+   @Query_In _ qs_schema r' Ridx'
+            (fun x : @RawTuple (GetNRelSchemaHeading (qschemaSchemas qs_schema) (ibound (indexb Ridx'))) => bod)) : QuerySpec_scope.
 
 (* [Query_Return] returns the singleton list. *)
 Definition Query_Return {ResultT : Type} (a : ResultT) := ret [a].

@@ -98,7 +98,7 @@ Section InsertRefinements.
   Lemma QSInsertSpec_refine' :
     forall qsSchema (qs : QueryStructure qsSchema) Ridx tup default,
       refine
-           (Pick (QSInsertSpec {| qsHint := qs |} Ridx tup))
+           (Pick (QSInsertSpec qs Ridx tup))
            (schConstr_self <-
                            {b |
                             decides b
@@ -133,11 +133,11 @@ Section InsertRefinements.
                 {qs' |
                  (forall Ridx',
                     Ridx <> Ridx' ->
-                    GetRelation qsHint Ridx' =
+                    GetRelation qs Ridx' =
                     GetRelation qs' Ridx')
                  /\ forall t,
                       GetRelation qs' Ridx t <->
-                      (EnsembleInsert tup (GetRelation qsHint Ridx) t)
+                      (EnsembleInsert tup (GetRelation qs Ridx) t)
              }
 
               | _, _ , _, _, _ => default
@@ -166,7 +166,7 @@ Section InsertRefinements.
   Lemma QSInsertSpec_refine :
     forall qsSchema (qs : QueryStructure qsSchema) Ridx tup default,
       refine
-           (Pick (QSInsertSpec {| qsHint := qs |} Ridx tup))
+           (Pick (QSInsertSpec qs Ridx tup))
            (schConstr_self <- {b | decides b
                                            (SatisfiesAttributeConstraints Ridx (indexedElement tup))};
              schConstr <-
@@ -187,12 +187,12 @@ Section InsertRefinements.
                                 (fun Ridx' =>
                                    SatisfiesCrossRelationConstraints
                                      Ridx Ridx' (indexedElement tup)
-                                     (GetRelation qsHint Ridx')));
+                                     (GetRelation qs Ridx')));
             qsConstr' <- (@Iterate_Decide_Comp _
                                 (fun Ridx' =>
                                    Ridx' <> Ridx
                                    -> forall tup',
-                                        (GetRelation qsHint Ridx') tup'
+                                        (GetRelation qs Ridx') tup'
                                         -> SatisfiesCrossRelationConstraints
                                        Ridx' Ridx (indexedElement tup')
                                        (EnsembleInsert tup (GetRelation qs Ridx))));
@@ -201,11 +201,11 @@ Section InsertRefinements.
                 {qs' |
                  (forall Ridx',
                     Ridx <> Ridx' ->
-                    GetRelation qsHint Ridx' =
+                    GetRelation qs Ridx' =
                     GetRelation qs' Ridx')
                  /\ forall t,
                       GetRelation qs' Ridx t <->
-                      (EnsembleInsert tup (GetRelation qsHint Ridx) t)
+                      (EnsembleInsert tup (GetRelation qs Ridx) t)
              }
 
               | _, _, _, _, _ => default
@@ -228,8 +228,8 @@ Section InsertRefinements.
            (NIntup : ~ GetUnConstrRelation qs Ridx tup),
       @DropQSConstraints_AbsR qsSchema or qs ->
       refine
-        (or' <- (qs' <- Pick (QSInsertSpec {| qsHint := or |} Ridx tup);
-                 b <- Pick (SuccessfulInsertSpec {| qsHint := or |} Ridx qs' tup);
+        (or' <- (qs' <- Pick (QSInsertSpec or Ridx tup);
+                 b <- Pick (SuccessfulInsertSpec or Ridx qs' tup);
                  ret (qs', b));
          nr' <- {nr' | DropQSConstraints_AbsR (fst or') nr'};
          ret (nr', snd or'))
@@ -444,11 +444,11 @@ Section InsertRefinements.
               (refined_qsConstr' idx))
       -> @DropQSConstraints_AbsR qsSchema or qs ->
       refine
-        (or' <- (idx <- Pick (freshIdx {| qsHint := or |} Ridx);
-                 qs' <- Pick (QSInsertSpec {| qsHint := or |} Ridx
+        (or' <- (idx <- Pick (freshIdx or Ridx);
+                 qs' <- Pick (QSInsertSpec or Ridx
                                           {| elementIndex := idx;
                                              indexedElement := tup |});
-                 b <- Pick (SuccessfulInsertSpec {| qsHint := or |} Ridx qs'
+                 b <- Pick (SuccessfulInsertSpec or Ridx qs'
                                                  {| elementIndex := idx;
                                                     indexedElement := tup |});
                  ret (qs', b));
@@ -543,11 +543,11 @@ Section InsertRefinements.
            (Ridx : Fin.t _) tup,
       @DropQSConstraints_AbsR qsSchema or qs ->
       refine
-        (or' <- (idx <- Pick (freshIdx {| qsHint := or |} Ridx);
-                 qs' <- Pick (QSInsertSpec {| qsHint := or |} Ridx
+        (or' <- (idx <- Pick (freshIdx or Ridx);
+                 qs' <- Pick (QSInsertSpec or Ridx
                                           {| elementIndex := idx;
                                              indexedElement := tup |});
-                 b <- Pick (SuccessfulInsertSpec {| qsHint := or |} Ridx qs'
+                 b <- Pick (SuccessfulInsertSpec or Ridx qs'
                                                  {| elementIndex := idx;
                                                     indexedElement := tup |});
                  ret (qs', b));

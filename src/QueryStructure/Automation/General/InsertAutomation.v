@@ -73,7 +73,7 @@ Tactic Notation "remove" "trivial" "insertion" "checks" :=
   [ repeat (apply refine_bind;
             [reflexivity
             | match goal with
-                | |- context [Bind (Insert _ into _)%QuerySpec _] =>
+                | |- context [Bind (Insert _ into _ ! _)%QuerySpec _] =>
                   unfold pointwise_relation; intros
                     end
                  ] );

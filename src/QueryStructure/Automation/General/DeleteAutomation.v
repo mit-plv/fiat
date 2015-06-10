@@ -74,7 +74,7 @@ Tactic Notation "remove" "trivial" "deletion" "checks" :=
   [ repeat (apply refine_bind;
             [reflexivity
             | match goal with
-                | |- context [Bind (Delete _ from _ where _)%QuerySpec _] =>
+                | |- context [Bind (Delete _ from _ ! _ where _)%QuerySpec _] =>
                   unfold pointwise_relation; intros
               end
            ] );

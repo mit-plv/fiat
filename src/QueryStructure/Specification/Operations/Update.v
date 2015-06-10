@@ -43,7 +43,6 @@ Notation "a :+= b" := (@UpdateTuple _ {|attrName := a; attrType := list _|}
 Notation "[ a ; .. ; c ]" := (compose a .. (compose c id) ..) : Update_scope.
 
 Delimit Scope Update_scope with Update. *)
-Notation "'Update' b 'from' Ridx 'making' Trans 'where' Ens" :=
-  (let hint : QueryStructureHint := _ in
-   QSUpdate (@qsHint hint) (ibound (indexb (@Build_BoundedIndex _ _ (QSschemaNames qsSchemaHint) Ridx%string _))) (fun b => Ens) Trans)
-    (at level 80) : QuerySpec_scope.
+Notation "'Update' b 'from' r '!' Ridx 'making' Trans 'where' Ens" :=
+  (QSUpdate r (ibound (indexb (@Build_BoundedIndex _ _ (QSschemaNames _) Ridx%string _))) (fun b => Ens) Trans)
+    (r at level 0, at level 80) : QuerySpec_scope.

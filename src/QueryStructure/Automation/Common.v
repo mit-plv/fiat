@@ -7,17 +7,17 @@ Require Import
         Fiat.QueryStructure.Implementation.DataStructures.BagADT.IndexSearchTerms
         Fiat.QueryStructure.Implementation.DataStructures.BagADT.QueryStructureImplementation.
 
-Ltac fold_string_hyps :=
-  repeat
+Ltac fold_string_hyps := idtac.
+  (*repeat
     match goal with
       | H' := String ?R ?R' : _ |- _ => progress (fold H')
       | H' := @BoundedIndex ?A ?Bound : _ |- _ => progress (fold H')
       | H' := @Build_BoundedIndex ?A ?Bound ?idx ?bnd : _ |- _ => progress (fold H')
       | H' := ``(?R) : _ |- _ => progress(fold H')
-    end.
+    end. *)
 
-Ltac fold_string_hyps_in H :=
-  repeat
+Ltac fold_string_hyps_in H := idtac.
+  (*repeat
     match goal with
       | H' := String ?R ?R' : _ |- _ =>
               match type of H with
@@ -37,10 +37,10 @@ Ltac fold_string_hyps_in H :=
               match type of H with
                 | context [``(R)] => fold H' in H
               end
-    end.
+    end. *)
 
-Ltac pose_string_hyps :=
-  fold_string_hyps;
+Ltac pose_string_hyps := idtac.
+  (*fold_string_hyps;
   repeat
     match goal with
       | |- context [String ?R ?R'] =>
@@ -55,19 +55,19 @@ Ltac pose_string_hyps :=
       | |- context [@Build_BoundedIndex ?A ?Bound ?idx ?bnd] =>
         let idx := fresh "BStringId" in
         set (@Build_BoundedIndex A Bound idx bnd) as idx in *
-    end.
+    end. *)
 
-Ltac fold_heading_hyps :=
-  repeat
+Ltac fold_heading_hyps := idtac.
+  (*repeat
     match goal with
       | [H' := @BuildHeading _ :  _ |- _ ] => progress (fold H')
       | [H' := @Build_Schema ?heading ?TupleConstr ?RelConstr |- _ ]=> progress (fold H')
       | [H' := @Build_NamedSchema ?name ?sch |- _ ] => progress (fold H')
       | [H' := @Build_QueryStructureSchema ?qs_schema ?CrossConstr |- _ ] => progress (fold H')
-    end.
+    end. *)
 
-Ltac fold_heading_hyps_in H :=
-  repeat match goal with
+Ltac fold_heading_hyps_in H := idtac.
+  (* repeat match goal with
            | [H' := @BuildHeading ?heading :  _ |- _] =>
              match type of H with
                 | context [@BuildHeading heading] => fold H' in H
@@ -87,10 +87,10 @@ Ltac fold_heading_hyps_in H :=
                | context [@Build_QueryStructureSchema ?qs_schema ?CrossConstr] =>
                  fold H' in H
              end
-         end.
+         end. *)
 
-Ltac pose_heading_hyps :=
-  fold_heading_hyps;
+Ltac pose_heading_hyps := idtac.
+  (* fold_heading_hyps;
   repeat match goal with
            | |- context[BuildHeading ?attrlist] =>
              let heading := fresh "heading" in
@@ -108,14 +108,14 @@ Ltac pose_heading_hyps :=
              let qs_sch := fresh "qs_schma" in
              set (@Build_QueryStructureSchema qs_schema CrossConstr) as qs_schema in *
 
-         end.
+         end. *)
 
 
 Ltac subst_all :=
   repeat match goal with H : _ |- _ => subst H end.
 
-Ltac pose_string_hyps_in H :=
-  fold_string_hyps_in H;
+Ltac pose_string_hyps_in H := idtac.
+  (* fold_string_hyps_in H;
   repeat
     (let H' := eval unfold H in H in
          match H' with
@@ -131,10 +131,10 @@ Ltac pose_string_hyps_in H :=
            | context [@Build_BoundedIndex ?A ?Bound ?idx ?bnd] =>
              let idx := fresh "BStringId" in
              set (@Build_BoundedIndex A Bound idx bnd) as idx in *
-         end).
+         end). *)
 
-Ltac pose_heading_hyps_in H :=
-  fold_heading_hyps_in H;
+Ltac pose_heading_hyps_in H := idtac.
+  (*fold_heading_hyps_in H;
   repeat
     (let H' := eval unfold H in H in
          match H' with
@@ -153,7 +153,7 @@ Ltac pose_heading_hyps_in H :=
            | context [@Build_QueryStructureSchema ?qs_schema ?CrossConstr] =>
              let qs_sch := fresh "qs_schma" in
              set (@Build_QueryStructureSchema qs_schema CrossConstr) as qs_schema in *
-         end).
+         end). *)
 
 Ltac pose_search_term_in H :=
   repeat
