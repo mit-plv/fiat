@@ -24,7 +24,7 @@ Ltac fold_string_hyps_in H :=
                 | context [String R R'] => fold H' in H
               end
 
-      | H' := @BoundedIndex ?A ?Bound : _ |- _ =>
+      (*| H' := @BoundedIndex ?A ?Bound : _ |- _ =>
               match type of H with
                 | context [@BoundedIndex A Bound ] => fold H' in H
               end
@@ -36,7 +36,7 @@ Ltac fold_string_hyps_in H :=
       | H' := ``(?R) : _ |- _ =>
               match type of H with
                 | context [``(R)] => fold H' in H
-              end
+              end *)
     end.
 
 Ltac pose_string_hyps :=
@@ -46,7 +46,7 @@ Ltac pose_string_hyps :=
       | |- context [String ?R ?R'] =>
         let str := fresh "StringId" in
         set (String R R') as str in *
-      | |- context [@BoundedIndex ?A ?Bound] =>
+      (*| |- context [@BoundedIndex ?A ?Bound] =>
         let idx := fresh "BStringId" in
         set (@BoundedIndex A Bound) as idx in *
       | |- context [ ``(?R) ] =>
@@ -54,61 +54,51 @@ Ltac pose_string_hyps :=
         set ``(R) as idx in *
       | |- context [@Build_BoundedIndex ?A ?Bound ?idx ?bnd] =>
         let idx := fresh "BStringId" in
-        set (@Build_BoundedIndex A Bound idx bnd) as idx in *
+        set (@Build_BoundedIndex A Bound idx bnd) as idx in *  *)
     end.
 
 Ltac fold_heading_hyps :=
   repeat
     match goal with
-    | [H' := @BuildHeading _ :  _ |- _ ] => progress (fold H')
-    | [H' := @Build_Schema ?heading ?TupleConstr ?RelConstr |- _ ]=> progress (fold H')
-    | [H' := @Build_NamedSchema ?name ?sch |- _ ] => progress (fold H')
-    | [H' := @Build_QueryStructureSchema ?qs_schema ?CrossConstr |- _ ] => progress (fold H')
+    | [H' := @Build_RawHeading _ _ :  _ |- _ ] => progress (fold H')
+    | [H' := @Build_RawSchema ?heading ?TupleConstr ?RelConstr |- _ ]=> progress (fold H')
+    | [H' := @Build_RawQueryStructureSchema _ ?qs_schema ?CrossConstr |- _ ] => progress (fold H')
     end.
 
 Ltac fold_heading_hyps_in H :=
 repeat match goal with
-       | [H' := @BuildHeading ?heading :  _ |- _] =>
+       | [H' := @Build_RawHeading ?n ?heading :  _ |- _] =>
          match type of H with
-         | context [@BuildHeading heading] => fold H' in H
+         | context [@Build_RawHeading n heading] => fold H' in H
          end
-       | [H' := @Build_Schema ?heading ?TupleConstr ?RelConstr |- _ ] =>
+       | [H' := @Build_RawSchema ?heading ?TupleConstr ?RelConstr |- _ ] =>
          match type of H with
-         | context [@Build_Schema heading TupleConstr RelConstr] =>
+         | context [@Build_RawSchema heading TupleConstr RelConstr] =>
            fold H' in H
          end
-       | [H' := @Build_NamedSchema ?name ?sch |- _ ] =>
+       | [H' := @Build_RawQueryStructureSchema ?n ?qs_schema ?CrossConstr |- _ ] =>
          match type of H with
-         | context [@Build_NamedSchema name sch] =>
-           fold H' in H
-         end
-       | [H' := @Build_QueryStructureSchema ?qs_schema ?CrossConstr |- _ ] =>
-         match type of H with
-         | context [@Build_QueryStructureSchema ?qs_schema ?CrossConstr] =>
+         | context [@Build_QueryStructureSchema ?n ?qs_schema ?CrossConstr] =>
            fold H' in H
          end
        end.
 
-Ltac pose_heading_hyps :=
-  fold_heading_hyps;
+Ltac pose_heading_hyps := idtac.
+(*  fold_heading_hyps;
   repeat match goal with
-           | |- context[BuildHeading ?attrlist] =>
+           | |- context[@Build_RawHeading ?n ?attrlist] =>
              let heading := fresh "heading" in
-             set (BuildHeading attrlist) as heading in *
+             set (@BuildHeading n attrlist) as heading in *
 
-           | |- context [@Build_Schema ?heading ?TupleConstr ?RelConstr] =>
+           | |- context [@Build_RawSchema ?heading ?TupleConstr ?RelConstr] =>
              let sch := fresh "schma" in
-             set (@Build_Schema heading TupleConstr RelConstr) as sch in *
+             set (@Build_RawSchema heading TupleConstr RelConstr) as sch in *
 
-           | |- context [@Build_NamedSchema ?name ?sch] =>
-             let nsch := fresh "nschma" in
-             set (@Build_NamedSchema name sch) as nsch in *
-
-           | |- context [@Build_QueryStructureSchema ?qs_schema ?CrossConstr] =>
+           | |- context [@Build_RawQueryStructureSchema ?n ?qs_schema ?CrossConstr] =>
              let qs_sch := fresh "qs_schma" in
-             set (@Build_QueryStructureSchema qs_schema CrossConstr) as qs_schema in *
+             set (@Build_RawQueryStructureSchema n qs_schema CrossConstr) as qs_schema in *
 
-         end.
+         end. *)
 
 
 Ltac subst_all :=
@@ -122,7 +112,7 @@ Ltac pose_string_hyps_in H :=
            | context [String ?R ?R'] =>
              let str := fresh "StringId" in
              set (String R R') as str in *
-           | context [@BoundedIndex ?A ?Bound] =>
+           (*| context [@BoundedIndex ?A ?Bound] =>
              let idx := fresh "BStringId" in
              set (@BoundedIndex A Bound) as idx in *
            | context [ ``(?R) ] =>
@@ -130,30 +120,26 @@ Ltac pose_string_hyps_in H :=
              set ``(R) as idx in *
            | context [@Build_BoundedIndex ?A ?Bound ?idx ?bnd] =>
              let idx := fresh "BStringId" in
-             set (@Build_BoundedIndex A Bound idx bnd) as idx in *
+             set (@Build_BoundedIndex A Bound idx bnd) as idx in * *)
          end).
 
-Ltac pose_heading_hyps_in H :=
-fold_heading_hyps_in H;
+Ltac pose_heading_hyps_in H := idtac.
+(*fold_heading_hyps_in H;
   repeat
     (let H' := eval unfold H in H in
          match H' with
-           | context[BuildHeading ?attrlist] =>
+           | context[Build_RawHeading ?n ?attrlist] =>
              let heading := fresh "heading" in
-             set (BuildHeading attrlist) as heading in *
+             set (@BuildHeading n attrlist) as heading in *
 
-           | context [@Build_Schema ?heading ?TupleConstr ?RelConstr] =>
+           | context [@Build_RawSchema ?heading ?TupleConstr ?RelConstr] =>
              let sch := fresh "schma" in
-             set (@Build_Schema heading TupleConstr RelConstr) as sch in *
+             set (@Build_RawSchema heading TupleConstr RelConstr) as sch in *
 
-           | context [@Build_NamedSchema ?name ?sch] =>
-             let nsch := fresh "nschma" in
-             set (@Build_NamedSchema name sch) as nsch in *
-
-           | context [@Build_QueryStructureSchema ?qs_schema ?CrossConstr] =>
+           | context [@Build_RawQueryStructureSchema ?n ?qs_schema ?CrossConstr] =>
              let qs_sch := fresh "qs_schma" in
-             set (@Build_QueryStructureSchema qs_schema CrossConstr) as qs_schema in *
-         end).
+             set (@Build_QueryStructureSchema n qs_schema CrossConstr) as qs_schema in *
+         end). *)
 
 Ltac pose_search_term_in H :=
   repeat

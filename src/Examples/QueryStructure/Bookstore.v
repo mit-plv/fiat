@@ -123,18 +123,31 @@ Proof.
   insertion EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
             EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
   deletion EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
-           EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
-  
+           EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.  
   observer EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
            EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
   observer EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
            EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
+  fold_heading_hyps;
+    repeat match goal with
+           | |- context[@Build_RawHeading ?n ?attrlist] =>
+             let heading := fresh "heading" in
+             set (@Build_RawHeading n attrlist) as heading in *
+                                                          
+           | |- context [@Build_RawSchema ?heading ?TupleConstr ?RelConstr] =>
+             let sch := fresh "schma" in
+             set (@Build_RawSchema heading TupleConstr RelConstr) as sch in *
 
+           | |- context [@Build_RawQueryStructureSchema ?n ?qs_schema ?CrossConstr] =>
+             let qs_sch := fresh "qs_schma" in
+             set (@Build_RawQueryStructureSchema n qs_schema CrossConstr) as qs_schema in *
+         end.
+  
   match goal with
   | |- appcontext[@BuildADT (IndexedQueryStructure ?Schema ?Indexes)] =>
     FullySharpenQueryStructure Schema Indexes
   end.
-
+  
 Time Defined.
 
 Time Definition BookstoreImpl' : SharpenedUnderDelegates BookStoreSig :=
