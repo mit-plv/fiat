@@ -58,12 +58,12 @@ Definition Order := TupleDef BookStoreSchema sORDERS.
 Definition BookStoreSig : ADTSig :=
   ADTsignature {
       Constructor "Init" : unit -> rep,
-      Method "PlaceOrder" : rep x Order -> rep x bool,
+      Method "PlaceOrder" : rep x Order -> rep x bool ,
       Method "DeleteOrder" : rep x nat -> rep x list Order,
       Method "AddBook" : rep x Book -> rep x bool,
-      (*Method "DeleteBook" : rep x nat -> rep x list Book, *)
-      Method "GetTitles" : rep x string -> rep x list string
-      (*Method "NumOrders" : rep x string -> rep x nat *)
+      Method "DeleteBook" : rep x nat -> rep x list Book, 
+      Method "GetTitles" : rep x string -> rep x list string, 
+      Method "NumOrders" : rep x string -> rep x nat
     }.
 
 (* Now we write what the methods should actually do. *)
@@ -82,66 +82,65 @@ Definition BookStoreSpec : ADT BookStoreSig :=
     update "AddBook" (r : rep, b : Book ) : bool :=
         Insert b into r!sBOOKS ,
 
-    (*update "DeleteBook" ( r : rep, id : nat ) : list Book :=
-        Delete book from r!sBOOKS where book!sISBN = id, *)
+    update "DeleteBook" ( r : rep, id : nat ) : list Book :=
+        Delete book from r!sBOOKS where book!sISBN = id, 
 
     query "GetTitles" (r : rep, author : string ) : list string :=
       For (b in r ! sBOOKS)
       Where (author = b!sAUTHOR)
-      Return (b!sTITLE)
+      Return (b!sTITLE),
 
-    (*query "NumOrders" (r : rep, author : string ) : nat :=
+    query "NumOrders" (r : rep, author : string ) : nat :=
       Count (For (o in r!sORDERS) (b in r!sBOOKS)
                  Where (author = b!sAUTHOR)
                  Where (o!sISBN = b!sISBN)
-                 Return ()) *)
+                 Return ())
 }.
 
 Arguments ilist2 : simpl never.
 Arguments ilist2_tl : simpl never.
 Arguments ilist2_hd : simpl never.
 
+Arguments ilist3 : simpl never.
+Arguments ilist3_tl : simpl never.
+Arguments ilist3_hd : simpl never.
+
+Unset Ltac Debug.
+Require Import Fiat.Common.ilist3.
+
 Theorem SharpenedBookStore :
   MostlySharpened BookStoreSpec.
 Proof.
 
   Time start_honing_QueryStructure.
-  let attrlist := constr:(icons2 (a := Vector.hd (qschemaSchemas BookStoreSchema)) [("EqualityIndex", @Fin.F1 2); ("EqualityIndex", Fin.FS (Fin.FS (@Fin.F1 0)))] (icons2 [("EqualityIndex", @Fin.F1 1 )] inil2) : ilist2 (B := fun sch => list (prod string (Attributes (rawSchemaHeading sch)))) (qschemaSchemas BookStoreSchema) ) in
+  let attrlist := constr:(icons3 (a := Vector.hd (qschemaSchemas BookStoreSchema)) [("EqualityIndex", @Fin.F1 2); ("EqualityIndex", Fin.FS (Fin.FS (@Fin.F1 0)))] (icons3 [("EqualityIndex", @Fin.F1 1 )] inil3) : ilist3 (B := fun sch => list (prod string (Attributes (rawSchemaHeading sch)))) (qschemaSchemas BookStoreSchema) ) in
   make simple indexes using attrlist.
-
   initializer.
   insertion EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
-                       EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
-
+           EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
   deletion EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
-                       EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
-
+           EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
   insertion EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
-                       EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
-
+            EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
+  deletion EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+           EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
+  
   observer EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
-                       EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
+           EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
+  observer EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+           EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
 
   match goal with
   | |- appcontext[@BuildADT (IndexedQueryStructure ?Schema ?Indexes)] =>
     FullySharpenQueryStructure Schema Indexes
   end.
 
-Set Printing Universes.
-Print Universes.
-Defined.
-
-  Check UnConstrQueryStructure.
-  Check BookStoreSchema.
-  (* 552 MB vs 624MB. *)
-  partial_master_plan EqIndexTactics.
-
-  FullySharpenQueryStructure BookStoreSchema Index.
-  Time Defined.
-(* <130 seconds for master_plan.
-   <141 seconds for Defined. *)
+Time Defined.
 
 Time Definition BookstoreImpl' : SharpenedUnderDelegates BookStoreSig :=
   Eval simpl in projT1 SharpenedBookStore.
+
+(* <130 seconds for master_plan.
+   <141 seconds for Defined. *)
 
 Print BookstoreImpl'.
