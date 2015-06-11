@@ -98,29 +98,29 @@ Ltac FullySharpenEachMethod delegateSigs delegateSpecs cRep' cAbsR' :=
 Definition Build_IndexedQueryStructure_Impl_Sigs
            {n}
            {indices : Vector.t RawSchema n}
-           (Index : ilist2 (B := fun sch => SearchUpdateTerms (rawSchemaHeading sch)) indices)
+           (Index : ilist3 (B := fun sch => SearchUpdateTerms (rawSchemaHeading sch)) indices)
            (idx : Fin.t _)
 : ADTSig :=
   BagSig (@RawTuple (rawSchemaHeading (Vector.nth indices idx)))
-         (BagSearchTermType (ith2 Index idx))
-         (BagUpdateTermType (ith2 Index idx)).
+         (BagSearchTermType (ith3 Index idx))
+         (BagUpdateTermType (ith3 Index idx)).
 
 Definition Build_IndexedQueryStructure_Impl_Specs
            {n}
            {indices : Vector.t RawSchema n}
-           (Index : ilist2 (B := fun sch => SearchUpdateTerms (rawSchemaHeading sch)) indices)
+           (Index : ilist3 (B := fun sch => SearchUpdateTerms (rawSchemaHeading sch)) indices)
            (idx : Fin.t _)
 : ADT (@Build_IndexedQueryStructure_Impl_Sigs n indices Index idx) :=
   @BagSpec (@RawTuple (rawSchemaHeading (Vector.nth indices idx)))
-           (BagSearchTermType (ith2 Index idx))
-           (BagUpdateTermType (ith2 Index idx))
-           (BagMatchSearchTerm (ith2 Index idx))
-           (BagApplyUpdateTerm (ith2 Index idx)).
+           (BagSearchTermType (ith3 Index idx))
+           (BagUpdateTermType (ith3 Index idx))
+           (BagMatchSearchTerm (ith3 Index idx))
+           (BagApplyUpdateTerm (ith3 Index idx)).
 Definition
   Build_IndexedQueryStructure_Impl_cRep
   {n}
   {indices : Vector.t RawSchema n}
-  (Index : ilist2 (B := fun sch => SearchUpdateTerms (rawSchemaHeading sch)) indices)
+  (Index : ilist3 (B := fun sch => SearchUpdateTerms (rawSchemaHeading sch)) indices)
   (DelegateReps : Fin.t n -> Type)
 : Type :=
   Iterate_Dep_Type_BoundedIndex DelegateReps.
@@ -129,7 +129,7 @@ Definition
   GetIndexedQueryStructureRelation
   {n}
   {indices : Vector.t RawSchema n}
-  {Index : ilist2 (B := fun sch => SearchUpdateTerms (rawSchemaHeading sch)) indices}
+  {Index : ilist3 (B := fun sch => SearchUpdateTerms (rawSchemaHeading sch)) indices}
   {DelegateReps : Fin.t n -> Type}
   (r_n : Build_IndexedQueryStructure_Impl_cRep Index DelegateReps)
   idx
@@ -138,7 +138,7 @@ Definition
 
 Definition Build_IndexedQueryStructure_Impl_AbsR
            {qs_schema : RawQueryStructureSchema}
-           (Index : ilist2 (B := fun sch => SearchUpdateTerms (rawSchemaHeading sch))
+           (Index : ilist3 (B := fun sch => SearchUpdateTerms (rawSchemaHeading sch))
                            (qschemaSchemas qs_schema))
            (DelegateReps : Fin.t _ -> Type)
            (DelegateImpls : forall idx,
@@ -157,7 +157,7 @@ Definition Build_IndexedQueryStructure_Impl_AbsR
 Definition CallBagImplMethod
            {n}
            {schemas : Vector.t RawSchema n}
-           (Index : ilist2 (B := fun sch => SearchUpdateTerms (rawSchemaHeading sch)) schemas)
+           (Index : ilist3 (B := fun sch => SearchUpdateTerms (rawSchemaHeading sch)) schemas)
            (DelegateReps : Fin.t _ -> Type)
            (DelegateImpls : forall idx,
                               ComputationalADT.pcADT (Build_IndexedQueryStructure_Impl_Sigs Index idx) (DelegateReps idx))
@@ -168,7 +168,7 @@ Definition CallBagImplMethod
 Definition CallBagImplConstructor
            {n}
            {schemas : Vector.t RawSchema n}
-           (Index : ilist2 (B := fun sch => SearchUpdateTerms (rawSchemaHeading sch)) schemas)
+           (Index : ilist3 (B := fun sch => SearchUpdateTerms (rawSchemaHeading sch)) schemas)
            (DelegateReps : Fin.t _ -> Type)
            (DelegateImpls : forall idx,
                               ComputationalADT.pcADT (Build_IndexedQueryStructure_Impl_Sigs Index idx) (DelegateReps idx))
@@ -178,7 +178,7 @@ Definition CallBagImplConstructor
 Lemma refine_BagImplConstructor
       {n}
            {schemas : Vector.t RawSchema n}
-           (Index : ilist2 (B := fun sch => SearchUpdateTerms (rawSchemaHeading sch)) schemas)
+           (Index : ilist3 (B := fun sch => SearchUpdateTerms (rawSchemaHeading sch)) schemas)
            (DelegateReps : Fin.t _ -> Type)
            (DelegateImpls : forall idx,
                ComputationalADT.pcADT (Build_IndexedQueryStructure_Impl_Sigs Index idx) (DelegateReps idx))
@@ -188,7 +188,7 @@ Lemma refine_BagImplConstructor
                           (ComputationalADT.LiftcADT (existT _ _ (DelegateImpls idx))))
 :  forall (ridx : Fin.t _) cidx d,
    exists r_o' ,
-     refine (@CallBagConstructor _ (ith2 Index ridx) cidx d)
+     refine (@CallBagConstructor _ (ith3 Index ridx) cidx d)
             (ret r_o') /\
      AbsR (ValidImpls ridx) r_o' (CallBagImplConstructor DelegateReps DelegateImpls cidx d).
 Proof.
@@ -208,7 +208,7 @@ Qed.
 Lemma refine_BagImplMethods
       {qs_schema : RawQueryStructureSchema}
       (schemas := qschemaSchemas qs_schema)
-      (Index : ilist2 (B := fun sch => SearchUpdateTerms (rawSchemaHeading sch)) schemas)
+      (Index : ilist3 (B := fun sch => SearchUpdateTerms (rawSchemaHeading sch)) schemas)
       (DelegateReps : Fin.t _ -> Type)
       (DelegateImpls : forall idx,
           ComputationalADT.pcADT (Build_IndexedQueryStructure_Impl_Sigs Index idx) (DelegateReps idx))
@@ -253,7 +253,7 @@ Qed.
 Definition Initialize_IndexedQueryStructureImpls'
            {n}
            {schemas}
-           (Index : ilist2 (n := n) (B := fun sch => SearchUpdateTerms (rawSchemaHeading sch)) schemas)
+           (Index : ilist3 (n := n) (B := fun sch => SearchUpdateTerms (rawSchemaHeading sch)) schemas)
            (DelegateReps : Fin.t _ -> Type)
            (DelegateImpls : forall idx,
                               ComputationalADT.pcADT (Build_IndexedQueryStructure_Impl_Sigs Index idx) (DelegateReps idx))
@@ -266,7 +266,7 @@ Definition Initialize_IndexedQueryStructureImpls'
 Lemma Initialize_IndexedQueryStructureImpls_AbsR
       {qs_schema : RawQueryStructureSchema}
   : forall
-    (Index : ilist2 (B := fun sch => SearchUpdateTerms (rawSchemaHeading sch))
+    (Index : ilist3 (B := fun sch => SearchUpdateTerms (rawSchemaHeading sch))
                     (qschemaSchemas qs_schema))
     (DelegateReps : Fin.t _ -> Type)
     (DelegateImpls : forall idx,
@@ -283,7 +283,7 @@ Proof.
   unfold Build_IndexedQueryStructure_Impl_AbsR, GetIndexedRelation.
   simpl; clear qschemaConstraints.
   induction qschemaSchemas; intros;
-  pose proof (ilist2_invert _ Index) as H'; simpl in H'; subst.
+  pose proof (ilist3_invert _ Index) as H'; simpl in H'; subst.
   - simpl; simplify with monad laws.
     computes_to_econstructor;  computes_to_inv; subst.
     eapply (Lookup_Iterate_Dep_Type); simpl.
@@ -470,7 +470,7 @@ Ltac find_simple_search_term
       [ H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
         |- context[Pick (QSDeletedTuples ?r_o ?idx ?DeletedTuples)] ] =>
       let filter_dec := eval simpl in (@DecideableEnsembles.dec _ DeletedTuples _) in
-          let idx_search_update_term := eval simpl in (ith2 indices idx) in
+          let idx_search_update_term := eval simpl in (ith3 indices idx) in
               let search_term_type' := eval simpl in (BagSearchTermType idx_search_update_term) in
                   let search_term_matcher := eval simpl in (BagMatchSearchTerm idx_search_update_term) in
                       let search_term_type := eval unfold search_term_type' in search_term_type' in
@@ -493,7 +493,7 @@ Ltac find_simple_search_term
                                                      (EnsembleDelete (GetUnConstrRelation ?r_o ?idx)
                                                                      ?DeletedTuples)) r_n'}]] =>
       let filter_dec := eval simpl in (@DecideableEnsembles.dec _ DeletedTuples _) in
-          let idx_search_update_term := eval simpl in (ith2 indices idx) in
+          let idx_search_update_term := eval simpl in (ith3 indices idx) in
               let search_term_type' := eval simpl in (BagSearchTermType idx_search_update_term) in
                   let search_term_matcher := eval simpl in (BagMatchSearchTerm idx_search_update_term) in
                       let search_term_type := eval unfold search_term_type' in search_term_type' in
@@ -909,7 +909,7 @@ Ltac find_equivalent_search_term build_search_term :=
                   find_equivalent_tuple schemas heading
                       ltac:(fun idx' =>
                               let idx := eval simpl in idx' in
-                              let idx_search_update_term := eval simpl in (ith2 indices idx) in
+                              let idx_search_update_term := eval simpl in (ith3 indices idx) in
                               let search_term_type' := eval simpl in (BagSearchTermType idx_search_update_term) in
                               let search_term_matcher := eval simpl in (BagMatchSearchTerm idx_search_update_term) in
                               let search_term_type := eval unfold search_term_type' in search_term_type' in

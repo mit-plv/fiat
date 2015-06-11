@@ -1,8 +1,8 @@
 Require Import Coq.Lists.List Coq.Program.Program
         Coq.Bool.Bool Coq.Strings.String
         Coq.Structures.OrderedTypeEx Coq.Arith.Arith
-        Fiat.Common.ilist2
-        Fiat.Common.i2list
+        Fiat.Common.ilist3
+        Fiat.Common.i3list
         Fiat.Common.Ensembles.IndexedEnsembles
         Fiat.Computation
         Fiat.ADT
@@ -28,16 +28,16 @@ Section QueryStructureImplementation.
        BagApplyUpdateTerm : BagUpdateTermType -> @RawTuple heading -> @RawTuple heading }.
 
   Variable BagIndexKeys :
-    ilist2 (B := fun ns => SearchUpdateTerms (rawSchemaHeading ns))
+    ilist3 (B := fun ns => SearchUpdateTerms (rawSchemaHeading ns))
       (qschemaSchemas qs_schema).
 
   Definition IndexedQueryStructure
-    := i2list  (fun ns index => Rep (BagSpec (BagMatchSearchTerm index)
+    := i3list  (fun ns index => Rep (BagSpec (BagMatchSearchTerm index)
                                              (BagApplyUpdateTerm index)))
-              BagIndexKeys.
+               BagIndexKeys.
 
   Definition GetIndexedRelation (r_n : IndexedQueryStructure) idx
-    := i2th r_n idx.
+    := i3th r_n idx.
 
   Definition BagEmpty
              {heading : RawHeading} {index : SearchUpdateTerms heading}
@@ -80,8 +80,8 @@ Section QueryStructureImplementation.
                       {| bindex := "Delete" |}).
 
   Definition CallBagMethod idx midx r_n :=
-    Methods (BagSpec (BagMatchSearchTerm (ith2 BagIndexKeys idx))
-                     (BagApplyUpdateTerm (ith2 BagIndexKeys idx)))
+    Methods (BagSpec (BagMatchSearchTerm (ith3 BagIndexKeys idx))
+                     (BagApplyUpdateTerm (ith3 BagIndexKeys idx)))
             midx
             (GetIndexedRelation r_n idx).
 
@@ -102,24 +102,24 @@ Section QueryStructureImplementation.
   Fixpoint Initialize_IndexedQueryStructure
            {n}
           (ns : Vector.t RawSchema n)
-          (indices' : ilist2 (B := fun ns => SearchUpdateTerms (rawSchemaHeading ns)) ns)
+          (indices' : ilist3 (B := fun ns => SearchUpdateTerms (rawSchemaHeading ns)) ns)
           {struct ns}
-  : Comp (i2list (fun ns index =>
+  : Comp (i3list (fun ns index =>
                     Rep (BagSpec (BagMatchSearchTerm index)
                                   (BagApplyUpdateTerm index))) indices').
       refine (match ns in (Vector.t _ n) return
-             forall indices' : ilist2 (B := fun ns => SearchUpdateTerms (rawSchemaHeading ns)) ns,
-             Comp (i2list (fun ns index =>
+             forall indices' : ilist3 (B := fun ns => SearchUpdateTerms (rawSchemaHeading ns)) ns,
+             Comp (i3list (fun ns index =>
                     Rep (BagSpec (BagMatchSearchTerm index)
                                   (BagApplyUpdateTerm index))) indices') with
-      | Vector.nil => fun il => ret i2nil
+      | Vector.nil => fun il => ret i3nil
       | Vector.cons sch _ ns' =>
         fun il =>
           c <- _;
-          cs <- (@Initialize_IndexedQueryStructure _ ns' (ilist2_tl il) );
-          ret (i2cons c cs)
+          cs <- (@Initialize_IndexedQueryStructure _ ns' (ilist3_tl il) );
+          ret (i3cons c cs)
     end indices').
-      exact (CallBagConstructor (ilist2_hd il) BagEmpty tt).
+      exact (CallBagConstructor (ilist3_hd il) BagEmpty tt).
       Grab Existential Variables.
       exact (fun ns index =>
                Rep (BagSpec (BagMatchSearchTerm (heading := ns) index)

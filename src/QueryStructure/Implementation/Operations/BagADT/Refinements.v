@@ -2,7 +2,10 @@ Require Export Coq.Lists.List Coq.Program.Program
         Fiat.QueryStructure.Specification.Representation.Tuple
         Fiat.QueryStructure.Specification.Representation.Heading
         Fiat.Common.ilist2
-        Fiat.Common.i2list.
+        Fiat.Common.i2list
+        Fiat.Common.ilist3
+        Fiat.Common.i3list.
+
 Require Import Coq.Bool.Bool
         Coq.Strings.String
         Coq.Structures.OrderedTypeEx
@@ -22,17 +25,83 @@ Require Import Coq.Bool.Bool
 
 Section BagsQueryStructureRefinements.
 
+  Require Import         Fiat.QueryStructure.Implementation.DataStructures.BagADT.IndexSearchTerms.
+  Definition fooT :=
+    forall
+      (sBOOKS := "Books")
+      (sAUTHOR := "Authors")
+      (sTITLE := "Title")
+      (sISBN := "ISBN")
+      (sORDERS := "Orders")
+      (sDATE := "Date")
+    (BookStoreSchema :=
+  Query Structure Schema
+    [ relation sBOOKS has
+              schema <sAUTHOR :: string,
+                      sTITLE :: string,
+                      sISBN :: nat>
+                      where attributes [sTITLE; sAUTHOR] depend on [sISBN];
+      relation sORDERS has
+              schema <sISBN :: nat,
+                      sDATE :: nat> ]
+    enforcing [attribute sISBN for sORDERS references sBOOKS])
+  (StringId := "Init" : string)
+    (StringId0 := "PlaceOrder" : string)
+    (StringId1 := "EqualityIndex" : string)
+    m n o mt mt'
+    (SearchTerm := BuildIndexSearchTerm (BuildIndexSearchTermT := unit)
+                  [{| KindIndexKind := StringId1; KindIndexIndex := m |};
+                  {|
+                  KindIndexKind := StringId1;
+                  KindIndexIndex := n |}] :
+            Type)
+    (SearchTerm0 := BuildIndexSearchTerm (BuildIndexSearchTermT := unit)
+                   [{|
+                    KindIndexKind := StringId1;
+                    KindIndexIndex := o |}] :
+             Type)
+    (SearchUpdateTerm := {|
+                      BagSearchTermType := SearchTerm;
+                      BagMatchSearchTerm := MatchIndexSearchTerm (matcher := mt);
+                      BagUpdateTermType := RawTuple -> RawTuple;
+                      BagApplyUpdateTerm := fun z : RawTuple -> RawTuple => z |}
+                   : SearchUpdateTerms
+                       {|
+                       NumAttr := 3;
+                       AttrList := Vector.cons Type string _ (Vector.cons Type string _ (Vector.cons Type nat _ (Vector.nil _)))|})
+    (SearchUpdateTerm0 := {|
+                       BagSearchTermType := SearchTerm0;
+                       BagMatchSearchTerm := MatchIndexSearchTerm (matcher := mt');
+                       BagUpdateTermType := RawTuple -> RawTuple;
+                       BagApplyUpdateTerm := fun z : RawTuple -> RawTuple =>
+                                             z |}
+                    : SearchUpdateTerms
+                        {|
+                        NumAttr := 2;
+                        AttrList := Vector.cons Type nat _ (Vector.cons Type nat _ (Vector.nil _)) |})
+    (Index := icons3 SearchUpdateTerm (icons3 SearchUpdateTerm0 inil3)
+        : ilist3 (qschemaSchemas BookStoreSchema))
+    (foo1 : constructorType (IndexedQueryStructure BookStoreSchema Index)
+                            (consDom (Constructor "Init" : () ->rep)%consSig))
+    (d : consDom (Constructor StringId : () ->rep)%consSig),
+   refine
+     (r_o' <- or' <- empty;
+              ret (DropQSConstraints or');
+      {r_n : IndexedQueryStructure BookStoreSchema Index |
+      DelegateToBag_AbsR r_o' r_n}) (foo1 d).
+
+
   Import Coq.Vectors.VectorDef.VectorNotations.
 
   Variable qs_schema : RawQueryStructureSchema.
   Variable BagIndexKeys :
-    ilist2 (B := fun ns => SearchUpdateTerms (rawSchemaHeading ns))
+    ilist3 (B := fun ns => SearchUpdateTerms (rawSchemaHeading ns))
           (qschemaSchemas qs_schema).
 
   Lemma i2th_Bounded_Initialize_IndexedQueryStructure {n}
   : forall ns indices v idx,
       computes_to (@Initialize_IndexedQueryStructure n ns indices) v
-      -> i2th v idx = Empty_set _.
+      -> i3th v idx = Empty_set _.
   Proof.
     induction ns.
     - intros; inversion idx.
@@ -70,14 +139,14 @@ Section BagsQueryStructureRefinements.
   Definition UpdateIndexedRelation
              (r_n : IndexedQueryStructure qs_schema BagIndexKeys) idx newRel
   : IndexedQueryStructure qs_schema BagIndexKeys  :=
-    replace2_Index2 _ _ r_n idx newRel.
+    replace3_Index3 _ _ r_n idx newRel.
 
   Lemma get_update_indexed_eq :
     forall (r_n : IndexedQueryStructure qs_schema BagIndexKeys) idx newRel,
       GetIndexedRelation (UpdateIndexedRelation r_n idx newRel) idx = newRel.
   Proof.
     unfold UpdateIndexedRelation, GetIndexedRelation;
-    intros; simpl; rewrite i2th_replace_Index_eq; eauto using string_dec.
+    intros; simpl; rewrite i3th_replace_Index_eq; eauto using string_dec.
   Qed.
 
   Lemma get_update_indexed_neq :
@@ -87,7 +156,7 @@ Section BagsQueryStructureRefinements.
          GetIndexedRelation r_n idx'.
   Proof.
     unfold UpdateIndexedRelation, GetIndexedRelation;
-    intros; simpl; rewrite i2th_replace_Index_neq; eauto using string_dec.
+    intros; simpl; rewrite i3th_replace_Index_neq; eauto using string_dec.
   Qed.
 
   Lemma refine_Query_In_Enumerate
@@ -119,6 +188,8 @@ Section BagsQueryStructureRefinements.
       repeat setoid_rewrite map_map in Comp_v''; simpl in *;
       rewrite app_nil_r in Comp_v''; eauto.
   Qed.
+
+  Local Opaque IndexedQueryStructure.
 
   Lemma refine_Filtered_Query_In_Enumerate
         (ResultT : Type) :
@@ -302,7 +373,7 @@ Section BagsQueryStructureRefinements.
              search_pattern
              (resultComp : RawTuple -> Comp (list ResultT)),
         ExtensionalEq filter_dec
-                      (BagMatchSearchTerm (ith2 BagIndexKeys idx) search_pattern)
+                      (BagMatchSearchTerm (ith3 BagIndexKeys idx) search_pattern)
         -> refine (l <- CallBagMethod idx BagEnumerate r_n ();
                    List_Query_In (filter filter_dec (snd l)) resultComp)
                   (l <- CallBagMethod idx BagFind r_n search_pattern;
@@ -329,7 +400,7 @@ Section BagsQueryStructureRefinements.
                                             (fun _ =>
                                                l <- CallBagMethod idx BagEnumerate r_n ();
                                              ret (snd l))
-                                            (fun a => BagMatchSearchTerm (ith2  BagIndexKeys idx) search_pattern (ilist2_hd a) && true))
+                                            (fun a => BagMatchSearchTerm (ith3  BagIndexKeys idx) search_pattern (ilist2_hd a) && true))
                   (Join_Comp_Lists l1
                                    (fun _ =>
                                       l <- CallBagMethod idx BagFind r_n search_pattern;
@@ -370,7 +441,7 @@ Section BagsQueryStructureRefinements.
                                             (fun _ =>
                                                l <- CallBagMethod idx BagEnumerate r_n ();
                                              ret (snd l))
-                                            (fun a => BagMatchSearchTerm (ith2  BagIndexKeys idx)
+                                            (fun a => BagMatchSearchTerm (ith3  BagIndexKeys idx)
                                                                          (search_pattern (ilist2_tl a)) (ilist2_hd a) && true))
                   (Join_Comp_Lists l1
                                    (fun a =>
@@ -519,7 +590,7 @@ Section BagsQueryStructureRefinements.
              search_pattern
              (resultComp : _ -> Comp (list ResultT)),
         ExtensionalEq filter_dec
-                      (BagMatchSearchTerm (ith2  BagIndexKeys idx) search_pattern)
+                      (BagMatchSearchTerm (ith3  BagIndexKeys idx) search_pattern)
         -> refine (l <- CallBagMethod idx BagEnumerate r_n ();
                    List_Query_In (filter (fun tup : ilist2 (B:= @RawTuple) [_] => filter_dec (ilist2_hd tup)) (Build_single_Tuple_list (snd l)))
                                  resultComp)
@@ -738,7 +809,7 @@ Section BagsQueryStructureRefinements.
     end.
     setoid_rewrite refineEquiv_unit_bind.
     rewrite filter_and_join_ilist2_hd_dep with
-    (f := fun tup =>  (BagMatchSearchTerm (ith2 BagIndexKeys idx')
+    (f := fun tup =>  (BagMatchSearchTerm (ith3 BagIndexKeys idx')
                                           (search_pattern tup))).
     simplify with monad laws; f_equiv.
   Qed.
@@ -865,7 +936,7 @@ Section BagsQueryStructureRefinements.
                 (DT_Dec : DecideableEnsemble DT)
                 search_pattern,
            ExtensionalEq (@dec _ _ DT_Dec)
-                         (BagMatchSearchTerm (ith2  BagIndexKeys idx) search_pattern)
+                         (BagMatchSearchTerm (ith3 BagIndexKeys idx) search_pattern)
            -> refine {x : list RawTuple |
                       QSDeletedTuples r_o idx DT x}
                      (l <- (CallBagMethod idx BagDelete r_n search_pattern);
@@ -934,7 +1005,7 @@ Section BagsQueryStructureRefinements.
                 (DT_Dec : DecideableEnsemble DT)
                 search_pattern,
            ExtensionalEq (@dec _ _ DT_Dec)
-                         (BagMatchSearchTerm (ith2  BagIndexKeys idx) search_pattern)
+                         (BagMatchSearchTerm (ith3 BagIndexKeys idx) search_pattern)
            -> refine
                 {r_n' |
                  DelegateToBag_AbsR
@@ -953,7 +1024,7 @@ Section BagsQueryStructureRefinements.
       + unfold GetUnConstrRelation, UpdateUnConstrRelation;
         rewrite ith_replace2_Index_eq.
         unfold GetIndexedRelation, UpdateIndexedRelation;
-          rewrite i2th_replace_Index_eq.
+          rewrite i3th_replace_Index_eq.
         f_equal; eauto.
         * eapply H.
         * apply Extensionality_Ensembles. unfold Same_set, Included, In;
@@ -962,7 +1033,7 @@ Section BagsQueryStructureRefinements.
       + unfold GetUnConstrRelation, UpdateUnConstrRelation;
         rewrite ith_replace2_Index_neq by eauto using string_dec.
         unfold GetIndexedRelation, UpdateIndexedRelation;
-          rewrite i2th_replace_Index_neq by eauto using string_dec.
+          rewrite i3th_replace_Index_neq by eauto using string_dec.
         apply H.
     - destruct H.
       destruct (fin_eq_dec idx idx0); subst.
@@ -1012,7 +1083,7 @@ Section BagsQueryStructureRefinements.
       unfold GetIndexedRelation, UpdateIndexedRelation in *;
       refine pick val _; try reflexivity; try split;
       intros; destruct (fin_eq_dec idx idx0); subst.
-    - rewrite ith_replace2_Index_eq; rewrite i2th_replace_Index_eq.
+    - rewrite ith_replace2_Index_eq; rewrite i3th_replace_Index_eq.
       unfold Add, EnsembleInsert; apply Extensionality_Ensembles; split;
       unfold Included; intros; unfold In in *; destruct H1.
       + rewrite H1; apply Union_intror; intuition.
@@ -1020,7 +1091,7 @@ Section BagsQueryStructureRefinements.
       + right; unfold In in H1; exact H1.
       + left; unfold In in H1; eapply Singleton_ind; eauto; symmetry; exact H1.
     - rewrite ith_replace2_Index_neq by eauto using string_dec;
-      rewrite i2th_replace_Index_neq by eauto using string_dec; apply H.
+      rewrite i3th_replace_Index_neq by eauto using string_dec; apply H.
     - rewrite ith_replace2_Index_eq.
       destruct (H' idx0) as [l [[bnd fresh_bnd] [l' [l'_eq [l_eqv NoDup_l']]]]].
       exists (List.cons t l); split.

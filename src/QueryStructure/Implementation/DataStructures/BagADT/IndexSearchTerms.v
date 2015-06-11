@@ -5,6 +5,7 @@ Require Import
         Coq.Strings.String
         Fiat.Common.ilist
         Fiat.Common.ilist2
+        Fiat.Common.ilist3
         Fiat.Common.DecideableEnsembles
         Fiat.Common.StringBound
         Fiat.ADTNotation
@@ -174,7 +175,7 @@ repeat match goal with
 
 Ltac makeIndex' schemas IndexKeys k :=
   match schemas  with
-    | Vector.nil _ => k (inil2 (B := fun sch : RawHeading => SearchUpdateTerms sch))
+    | Vector.nil _ => k (inil3 (B := fun sch : RawHeading => SearchUpdateTerms sch))
     | Vector.cons _ ?sch _ ?schemas' =>
       let ik := eval simpl in (prim_fst IndexKeys) in
       let IndexKeys' := eval simpl in (prim_snd IndexKeys) in
@@ -184,7 +185,7 @@ Ltac makeIndex' schemas IndexKeys k :=
                                BuildIndexMatcher' heading' ik
                                                   ltac:(fun matcher' =>
                                                           makeIndex' schemas' IndexKeys'
-                                                                     ltac:(fun Bs' => k (icons2 (a := heading')
+                                                                     ltac:(fun Bs' => k (icons3 (a := heading')
                                                                                                 {| BagMatchSearchTerm := @MatchIndexSearchTerm heading' attrs' _ matcher';
                                                                                                    BagApplyUpdateTerm := fun z => z |} Bs'))))
   end.
