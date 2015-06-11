@@ -189,12 +189,12 @@ Tactic Notation "make" "simple" "indexes" "using" constr(attrlist) :=
 (* Recurse over [fds] to find an attribute matching s *)
 Ltac findMatchingTerm fds kind s k :=
   match fds with
-    | ({| KindNameKind := ?IndexType;
-          KindNameName := ?fd |}, ?X) =>
+    | ({| KindIndexKind := ?IndexType;
+          KindIndexIndex := ?fd |}, ?X) =>
       (* Check if this field name is equal to s; process [X] with [k] if so. *)
-      let H := fresh in
-      assert (H : s = fd) by reflexivity; clear H;
-      assert (H : kind = IndexType) by reflexivity; clear H;
+      pose fds;
+      unify s fd;
+      unify kind IndexType;
       k X
     | (?fds1, ?fds2) => findMatchingTerm fds1 kind s k || findMatchingTerm fds2 kind s k
   end.
