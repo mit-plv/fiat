@@ -104,8 +104,10 @@ Theorem SharpenedBookStore :
   FullySharpened BookStoreSpec.
 Proof.
 
-  Time start_honing_QueryStructure.
-  {  let attrlist := constr:(icons3 (a := Vector.hd (qschemaSchemas BookStoreSchema)) [("EqualityIndex", @Fin.F1 2); ("EqualityIndex", Fin.FS (Fin.FS (@Fin.F1 0)))] (icons3 [("EqualityIndex", @Fin.F1 1 )] inil3) : ilist3 (B := fun sch => list (prod string (Attributes (rawSchemaHeading sch)))) (qschemaSchemas BookStoreSchema) ) in
+  start_honing_QueryStructure.
+  { GenerateIndexesForAll ltac:(fun _ _ => fail) ltac:(fun attr => pose attr).
+
+    let attrlist := constr:(icons3 (a := Vector.hd (qschemaSchemas BookStoreSchema)) [("EqualityIndex", @Fin.F1 2); ("EqualityIndex", Fin.FS (Fin.FS (@Fin.F1 0)))] (icons3 [("EqualityIndex", @Fin.F1 1 )] inil3) : ilist3 (B := fun sch => list (prod string (Attributes (rawSchemaHeading sch)))) (qschemaSchemas BookStoreSchema) ) in
      make simple indexes using attrlist.
      initializer.
      insertion EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
