@@ -223,28 +223,41 @@ Section Iterate_Dep_Type.
                      (fun n' => P (@Fin.FS _ n')))
     end  P.
 
-  Lemma Iterate_Dep_Type_equiv'
-    : forall (Remaining  : nat)
-             (P : Dep_Type (Fin.t Remaining)),
-      (@Iterate_Dep_Type_BoundedIndex'  Remaining P ->
-       forall idx, P idx).
-  Proof.
-    induction Remaining; simpl; intros.
-    - inversion idx.
-    - revert IHRemaining  P X.
-      pattern Remaining, idx; apply Fin.caseS; intros.
-      + intuition.
-      + intuition; eapply (IHRemaining _ prim_snd0).
-  Defined.
+  Fixpoint Iterate_Dep_Type_equiv'
+           (Remaining : nat)
+           (P : Dep_Type (Fin.t Remaining))
+           (H : @Iterate_Dep_Type_BoundedIndex' Remaining P)
+           idx
+           {struct idx}
+    : P idx :=
+    match idx in Fin.t n return
+          forall (P : Dep_Type (Fin.t n)),
+            @Iterate_Dep_Type_BoundedIndex' n P
+            -> P idx with
+    | Fin.F1 i => fun P H => ilist.prim_fst H
+    | Fin.FS i n' =>
+      fun P H =>
+        Iterate_Dep_Type_equiv' (fun i => P (Fin.FS i))
+                                (ilist.prim_snd H) n'
+    end P H.
 
-  Lemma Iterate_Dep_Type_equiv''
-    : forall (Remaining  : nat)
-             (P : Dep_Type (Fin.t Remaining)),
+  Fixpoint Iterate_Dep_Type_equiv''
+           (Remaining  : nat)
+    : forall (P : Dep_Type (Fin.t Remaining)),
       (forall idx, P idx)
-      -> @Iterate_Dep_Type_BoundedIndex'  Remaining P.
-  Proof.
-    induction Remaining; simpl; intros; intuition.
-  Defined.
+      -> @Iterate_Dep_Type_BoundedIndex' Remaining P :=
+    match Remaining return
+          forall (P : Dep_Type (Fin.t Remaining)),
+            (forall idx, P idx)
+            -> @Iterate_Dep_Type_BoundedIndex' Remaining P with
+    | 0 => fun P H => tt
+    | S n' =>
+      fun P H =>
+        Build_prim_prod (H Fin.F1)
+                        (Iterate_Dep_Type_equiv'' (fun i => P (Fin.FS i))
+                                                  (fun i => H (Fin.FS i)))
+
+    end.
 
   Definition Iterate_Dep_Type_BoundedIndex
              (m : nat)
@@ -402,6 +415,57 @@ Section Iterate_Dep_Type.
       eauto using string_dec.
   Defined.
 
+  Fixpoint Update_Iterate_Dep_Type
+           (n : nat)
+           (k : Fin.t n)
+           (P : Dep_Type (Fin.t n))
+           (X0 : Iterate_Dep_Type_BoundedIndex P)
+           (a' : P k )
+           {struct k}
+  : Iterate_Dep_Type_BoundedIndex P :=
+    match k in Fin.t n return
+          forall (P : Fin.t n -> Type),
+            Iterate_Dep_Type_BoundedIndex P
+            -> P k -> Iterate_Dep_Type_BoundedIndex P with
+    | Fin.F1 _ => fun P X0 a' => Build_prim_prod a' (ilist.prim_snd X0)
+    | Fin.FS i k' => fun P X0 a' => Build_prim_prod (ilist.prim_fst X0)
+                                                    (Update_Iterate_Dep_Type k'
+                                                                             (fun i => P (Fin.FS i)) (ilist.prim_snd X0) a')
+    end P X0 a'.
+
+  Definition Lookup_Update_Iterate_Dep_Type_eq {n}
+    : forall (k : Fin.t n)
+             (P : Fin.t n -> Type)
+             (X0 : Iterate_Dep_Type_BoundedIndex P)
+             (a' : P k ),
+      Lookup_Iterate_Dep_Type P (Update_Iterate_Dep_Type k P X0 a') k = a'.
+  Proof.
+    induction k; simpl; intros.
+    - eauto.
+    - rewrite IHk; eauto.
+  Qed.
+
+  Definition Lookup_Update_Iterate_Dep_Type_neq {n}
+    : forall (k k': Fin.t n)
+             (P : Fin.t n -> Type)
+             (X0 : Iterate_Dep_Type_BoundedIndex P)
+             (a' : P k),
+      k' <> k
+      -> Lookup_Iterate_Dep_Type P (Update_Iterate_Dep_Type k P X0 a') k' =
+         Lookup_Iterate_Dep_Type P X0 k'.
+  Proof.
+    induction k; simpl.
+    - intro k'; pattern n, k'.
+      match goal with
+        |- ?P n k' => simpl; eapply (Fin.caseS P); simpl
+      end; congruence.
+    - intro k'; revert k IHk; pattern n, k'.
+      match goal with
+        |- ?P n k' => simpl; eapply (Fin.caseS P); simpl
+      end; try congruence.
+      intros.
+      rewrite IHk; congruence.
+  Qed.
 
 End Iterate_Dep_Type.
 

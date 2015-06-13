@@ -1,5 +1,6 @@
 Require Import Fiat.QueryStructure.Automation.IndexSelection
-        Fiat.QueryStructure.Automation.AutoDB.
+        Fiat.QueryStructure.Automation.AutoDB
+        Fiat.QueryStructure.Automation.QSImplementation.
 
 Definition Market := string.
 Definition StockType := nat.
@@ -52,32 +53,32 @@ Definition StocksSpec : ADT StocksSig :=
   QueryADTRep StocksSchema {
     Def Constructor "Init" (_: unit) : rep := empty,
 
-    update "AddStock" (stock: StocksSchema#STOCKS) : bool :=
-        Insert stock into STOCKS,
+    update "AddStock" (r : rep, stock: StocksSchema#STOCKS) : bool :=
+        Insert stock into r!STOCKS,
 
-    update "AddTransaction" (transaction : StocksSchema#TRANSACTIONS) : bool :=
-        Insert transaction into TRANSACTIONS,
+    update "AddTransaction" (r : rep, transaction : StocksSchema#TRANSACTIONS) : bool :=
+        Insert transaction into r!TRANSACTIONS,
 
-    query "TotalVolume" (params: StockCode * Date) : N :=
-      SumN (For (transaction in TRANSACTIONS)
+    query "TotalVolume" (r : rep, params: StockCode * Date) : N :=
+      SumN (For (transaction in r!TRANSACTIONS)
             Where (transaction!STOCK_CODE = fst params)
             Where (transaction!DATE = snd params)
             Return transaction!VOLUME),
 
-    query "MaxPrice" (params: StockCode * Date) : option N :=
-      MaxN (For (transaction in TRANSACTIONS)
+    query "MaxPrice" (r : rep, params: StockCode * Date) : option N :=
+      MaxN (For (transaction in r!TRANSACTIONS)
             Where (transaction!STOCK_CODE = fst params)
             Where (transaction!DATE = snd params)
             Return transaction!PRICE),
 
-    query "TotalActivity" (params: StockCode * Date) : nat :=
-      Count (For (transaction in TRANSACTIONS)
+    query "TotalActivity" (r : rep, params: StockCode * Date) : nat :=
+      Count (For (transaction in r!TRANSACTIONS)
             Where (transaction!STOCK_CODE = fst params)
             Where (transaction!DATE = snd params)
             Return ()),
 
-    query "LargestTransaction" (params: StockType * Date) : option N :=
-      MaxN (For (stock in STOCKS) (transaction in TRANSACTIONS)
+    query "LargestTransaction" (r : rep, params: StockType * Date) : option N :=
+      MaxN (For (stock in r!STOCKS) (transaction in r!TRANSACTIONS)
             Where (stock!TYPE = fst params)
             Where (transaction!DATE = snd params)
             Where (stock!STOCK_CODE = transaction!STOCK_CODE)
@@ -85,14 +86,44 @@ Definition StocksSpec : ADT StocksSig :=
 }.
 
 Definition StocksDB :
-  MostlySharpened StocksSpec.
+  FullySharpened StocksSpec.
 Proof.
-  simple_master_plan.
-  Time Defined.
+  start_honing_QueryStructure.
+
+  {  let attrlist := constr:(icons3 (a := Vector.hd (qschemaSchemas StocksSchema)) [("EqualityIndex", @Fin.F1 3); ("EqualityIndex", Fin.FS (Fin.FS (@Fin.F1 1)))] (icons3 [("EqualityIndex", Fin.FS (Fin.FS (@Fin.F1 2)))] inil3) : ilist3 (B := fun sch => list (prod string (Attributes (rawSchemaHeading sch)))) (qschemaSchemas StocksSchema) ) in
+     make simple indexes using attrlist.
+     initializer.
+     insertion EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+               EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
+     insertion EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+               EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
+     observer EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+               EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
+     observer EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+              EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
+     observer EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+              EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
+     observer EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+              EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
+     pose_headings_all.
+
+     match goal with
+     | |- appcontext[@BuildADT (IndexedQueryStructure ?Schema ?Indexes)] =>
+       FullySharpenQueryStructure Schema Indexes
+     end.
+  }
+
+  { simpl; pose_string_ids; pose_headings_all;
+    pose_search_term;  pose_SearchUpdateTerms.
+    BuildQSIndexedBags'. }
+  higher_order_reflexivityT.
+
+Time Defined.
+
 (* <280 seconds for master_plan.
    <235 seconds for Defined. *)
 
-Time Definition StocksDBImpl : SharpenedUnderDelegates StocksSig :=
+Time Definition StocksDBImpl : ComputationalADT.cADT StocksSig :=
   Eval simpl in projT1 StocksDB.
 
 Print StocksDBImpl.

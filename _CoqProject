@@ -56,9 +56,12 @@ src/Common/Wf.v
 src/Common/i2list.v
 src/Common/i2list2.v
 src/Common/i3list.v
+src/Common/i3list2.v
 src/Common/ilist.v
 src/Common/ilist2.v
+src/Common/ilist2_pair.v
 src/Common/ilist3.v
+src/Common/ilist3_pair.v
 src/Common/Ensembles/Cardinal.v
 src/Common/Ensembles/CombinatorLaws.v
 src/Common/Ensembles/EnsembleListEquivalence.v

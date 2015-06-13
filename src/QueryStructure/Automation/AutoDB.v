@@ -30,13 +30,12 @@ Require Export Fiat.Common.DecideableEnsembles
         Fiat.QueryStructure.Automation.SearchTerms.FindPrefixSearchTerms
         Fiat.QueryStructure.Automation.SearchTerms.RangeSearchTerms
         Fiat.QueryStructure.Automation.IndexSelection
-        Fiat.QueryStructure.Automation.Common.
+        Fiat.QueryStructure.Automation.Common
+        Fiat.QueryStructure.Implementation.Operations.
 
-Require Export Fiat.QueryStructure.Implementation.Operations.
-
-Require Import Fiat.ADTNotation.BuildComputationalADT.
-Require Import Fiat.ADT.ComputationalADT.
 Require Import Coq.Logic.Eqdep_dec
+        Fiat.ADT.ComputationalADT
+        Fiat.ADTNotation.BuildComputationalADT
         Fiat.ADTRefinement.GeneralBuildADTRefinements.
 
 Ltac prove_decidability_for_functional_dependencies :=
@@ -316,15 +315,8 @@ Definition Update_Build_IndexedQueryStructure_Impl_cRep
            qs_schema Index DelegateReps
            (r_n : Build_IndexedQueryStructure_Impl_cRep (indices := qschemaSchemas qs_schema) Index DelegateReps)
            TableID (r_n' : DelegateReps TableID)
-: Build_IndexedQueryStructure_Impl_cRep Index DelegateReps.
-Admitted.
-(*  :=
-  match TableID return DelegateReps TableID -> _ with
-      {|bindex := idx;
-        indexb := {| ibound := n;
-                     boundi := nth_n |} |} =>
-      Update_Iterate_Dep_Type string_dec DelegateReps r_n n nth_n
-  end r_n'. *)
+: Build_IndexedQueryStructure_Impl_cRep Index DelegateReps :=
+  Update_Iterate_Dep_Type TableID _ r_n r_n'.
 
 Lemma Update_Build_IndexedQueryStructure_Impl_AbsR
 : forall qs_schema Index DelegateReps DelegateImpls
@@ -337,25 +329,19 @@ Lemma Update_Build_IndexedQueryStructure_Impl_AbsR
          ValidImpls (UpdateIndexedRelation _ _ r_o TableID r_o')
          (Update_Build_IndexedQueryStructure_Impl_cRep _ _ _ r_n TableID r_n').
 Proof.
-Admitted.
-(*  unfold Build_IndexedQueryStructure_Impl_AbsR,
-  Update_Build_IndexedQueryStructure_Impl_cRep; intros.
-  destruct (BoundedString_eq_dec TableID idx); subst.
-  - destruct idx as [idx [n nth_n]]; simpl.
+  unfold Build_IndexedQueryStructure_Impl_AbsR,
+  Update_Build_IndexedQueryStructure_Impl_cRep,
+  UpdateIndexedRelation; intros.
+  destruct (fin_eq_dec idx TableID); subst; simpl.
+  - unfold GetIndexedQueryStructureRelation,
+    GetIndexedRelation.
     erewrite Lookup_Update_Iterate_Dep_Type_eq.
-    unfold UpdateIndexedRelation, GetIndexedRelation;
-      rewrite i2th_replace_BoundIndex_eq; eassumption.
-  - destruct TableID as [TableID' [t' nth_t']]; simpl.
-    unfold UpdateIndexedRelation, GetIndexedRelation;
-      rewrite i2th_replace_BoundIndex_neq; eauto using string_dec.
-    destruct idx as [idx [n' nth_n']]; simpl.
-    erewrite Lookup_Update_Iterate_Dep_Type_neq.
-    apply H.
-    clear r_o' r_n' H0.
-    unfold not; intros; subst; eapply n.
-    apply idx_ibound_eq; simpl; eauto using string_dec.
-Qed. *)
-
+    rewrite i3th_replace_Index_eq; eassumption.
+  - unfold GetIndexedQueryStructureRelation,
+    GetIndexedRelation.
+    rewrite i3th_replace_Index_neq, 
+    Lookup_Update_Iterate_Dep_Type_neq; eauto.
+Qed.
 
 Arguments BuildIndexSearchTerm : simpl never.
 Arguments MatchIndexSearchTerm : simpl never.
@@ -2053,3 +2039,10 @@ Ltac find_simple_search_term_dep_through_find_Good_Term
                                        let tail := eval simpl in tail in
                                            pose search_term; pose dom;
                                      pose fds; pose tail; pose SC; pose indexed_attrs') end.
+Arguments ilist2 : simpl never.
+Arguments ilist2_tl : simpl never.
+Arguments ilist2_hd : simpl never.
+
+Arguments ilist3 : simpl never.
+Arguments ilist3_tl : simpl never.
+Arguments ilist3_hd : simpl never.

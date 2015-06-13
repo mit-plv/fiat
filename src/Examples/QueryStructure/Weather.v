@@ -1,26 +1,6 @@
-Require Import Coq.Bool.Bool Coq.Strings.String Coq.Strings.Ascii.
-Require Import Fiat.Common.DecideableEnsembles
-        Fiat.Common.List.ListMorphisms
-        Fiat.Common.List.ListFacts
-        Fiat.Common.BoolFacts
-        Fiat.Common.LogicFacts
-        Fiat.Common.List.FlattenList
-        Fiat.Common.Ensembles.IndexedEnsembles
-        Fiat.Common.IterateBoundedIndex
-        Fiat.QueryStructure.Specification.Representation.QueryStructureNotations
-        Fiat.QueryStructure.Specification.SearchTerms.ListInclusion
-        Fiat.QueryStructure.Specification.SearchTerms.ListPrefix
-        Fiat.QueryStructure.Specification.SearchTerms.InRange
-        Fiat.QueryStructure.Implementation.Constraints.ConstraintChecksRefinements
-        Fiat.QueryStructure.Implementation.DataStructures.BagADT.BagADT
-        Fiat.QueryStructure.Implementation.ListImplementation
-        Fiat.QueryStructure.Specification.Constraints.tupleAgree
-        Fiat.QueryStructure.Implementation.Operations.General.QueryStructureRefinements
-        Fiat.QueryStructure.Implementation.Operations.General.QueryRefinements
-        Fiat.QueryStructure.Implementation.DataStructures.BagADT.QueryStructureImplementation.
-
-(*Require Import  Fiat.QueryStructure.Automation.AutoDB
-        Fiat.QueryStructure.Automation.QSImplementation. *)
+Require Import Fiat.QueryStructure.Automation.IndexSelection
+        Fiat.QueryStructure.Automation.AutoDB
+        Fiat.QueryStructure.Automation.QSImplementation.
 
 Definition VALUE := "VALUE".
 Definition MEASUREMENT_TYPE := "MEASUREMENT_TYPE".
@@ -82,19 +62,19 @@ Definition WeatherSpec : ADT WeatherSig :=
     QueryADTRep WeatherSchema {
     Def Constructor Init (_ : unit) : rep := empty,
 
-    update AddCell (cell : WeatherSchema#CELLS) : bool :=
-      Insert cell into CELLS,
+    update AddCell (r : rep, cell : WeatherSchema#CELLS) : bool :=
+      Insert cell into r!CELLS,
 
-    update AddMeasurement (measurement : WeatherSchema#MEASUREMENTS) : bool :=
-      Insert measurement into MEASUREMENTS,
+    update AddMeasurement (r : rep, measurement : WeatherSchema#MEASUREMENTS) : bool :=
+      Insert measurement into r!MEASUREMENTS,
 
-    query CountCells (area : AreaCode) : nat :=
-      Count (For (cell in CELLS)
+    query CountCells (r : rep, area : AreaCode) : nat :=
+      Count (For (cell in r!CELLS)
              Where (area = cell!AREA_CODE)
              Return 1),
 
-    query LocalMax (params: AreaCode * MeasurementType) : option Z :=
-      MaxZ (For (cell in CELLS) (measurement in MEASUREMENTS)
+    query LocalMax (r : rep, params: AreaCode * MeasurementType) : option Z :=
+      MaxZ (For (cell in r!CELLS) (measurement in r!MEASUREMENTS)
             Where (cell!AREA_CODE = fst params)
             Where (measurement!MEASUREMENT_TYPE = snd params)
             Where (cell!CELL_ID = measurement!CELL_ID)
@@ -102,203 +82,37 @@ Definition WeatherSpec : ADT WeatherSig :=
 }.
 
 Definition SharpenedWeatherStation :
-  MostlySharpened WeatherSpec.
-Proof.
-
-  Require Import Fiat.QueryStructure.Automation.General.InsertAutomation.
-  Require Import Fiat.QueryStructure.Automation.General.QueryAutomation.
-
-Require Import Fiat.QueryStructure.Automation.Common.
-Require Import Fiat.QueryStructure.Automation.General.QueryStructureAutomation.
-start_honing_QueryStructure.
-
-
-
-
-  start honing QueryStructure;
-
-  partial_master_plan EqIndexTactics.
-
-  FullySharpenQueryStructure WeatherSchema Index.
-Time Defined.
-
-Time Definition WeatherStationImpl' : SharpenedUnderDelegates WeatherSig :=
-  Eval simpl in projT1 SharpenedWeatherStation.
-
-Print WeatherStationImpl'.
-
-(*  partial_master_plan
-
-Definition SharpenedWeatherStation :
   FullySharpened WeatherSpec.
 Proof.
 
-  start honing QueryStructure.
-  GenerateIndexesForAll
-    matchIndex
-    ltac:(fun attrlist => make simple indexes using attrlist;
-          match goal with
-            | |- Sharpened _ => idtac (* Do nothing to the next Sharpened ADT goal. *)
-            | |- _ => (* Otherwise implement each method using the indexed data structure *)
-              plan CreateTerm EarlyIndex LastIndex
-                   makeClause_dep EarlyIndex_dep LastIndex_dep
-          end;
-          match goal with
-            | |- appcontext[@BuildADT (IndexedQueryStructure ?Schema ?Indexes)] =>
-              FullySharpenQueryStructure Schema Indexes
-          end).
-  intros; simpl.
-  match goal with
-      |- context [Build_IndexedQueryStructure_Impl_Sigs ?SearchTerms _] =>
-      BuildQSIndexedBags
-        SearchTerms
-        ltac:(fun Bags => eapply (LookupQSDelegateImpls' Bags))
-  end.
-  Start Profiling.
-  repeat match goal with
-             |- refineADT (ComputationalADT.LiftcADT
-                             (Sharpened_Implementation
-                                (let id' := ?B in ?bod)
-                                ?C ?D))
-                          ?bod' =>
-             change (let id' := B in
-                     refineADT (ComputationalADT.LiftcADT
-                                  (Sharpened_Implementation
-                                     bod
-                                     C D))
-                               bod'); intros end.
-  Show Profile.
-  simpl.
+  start_honing_QueryStructure.
+  {  let attrlist := constr:(icons3 (a := Vector.hd (qschemaSchemas WeatherSchema)) [("EqualityIndex", @Fin.F1 3); ("EqualityIndex", Fin.FS (Fin.FS (@Fin.F1 1)))] (icons3 [("EqualityIndex", Fin.FS (Fin.FS (@Fin.F1 2)))] inil3) : ilist3 (B := fun sch => list (prod string (Attributes (rawSchemaHeading sch)))) (qschemaSchemas WeatherSchema) ) in
+     make simple indexes using attrlist.
+     initializer.
+     insertion EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+               EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
+     insertion EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+               EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
+     observer EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+               EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
+     observer EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+              EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
+     pose_headings_all.
 
-  (Sharpened_Implementation
-                           (let id := ?B in ?bod)))
-                     ?bod'=> idtac end.
-        change
-          (let id := B in
-           refineADT (ComputationalADT.LiftcADT
-                        (Sharpened_Implementation
-                           (let id := B in bod)))
-                     bod'); intros
-    end.
+     match goal with
+     | |- appcontext[@BuildADT (IndexedQueryStructure ?Schema ?Indexes)] =>
+       FullySharpenQueryStructure Schema Indexes
+     end.
+  }
+  
+  { simpl; pose_string_ids; pose_headings_all;
+    pose_search_term;  pose_SearchUpdateTerms.
+    BuildQSIndexedBags'. }
+  higher_order_reflexivityT.
 
-             (Sharpened_DelegateSpecs bod idx)
-                     (ComputationalADT.LiftcADT
-                        (existT (ComputationalADT.pcADT
-                                   (Sharpened_DelegateSigs
-                                      bod' idx))
-                                (bod2 idx) (bod3 idx)))); intros
-    end.
+Time Defined. 
 
-  simpl.
-
-  simpl in X.
-      eapply X.
-    let impl' :=
-        match goal with
-            |- @FullySharpenedUnderDelegates _ _ ?Impl => Impl
-        end in
-    (* Not having to worry about re-typing the body during zeta-expansion
-     yields a 30x speedup.
-     *)
-    assert (True) by
-        (clear FullySharpenedImpl; zeta_expand_all impl; unify impl impl'; econstructor);
-      exact FullySharpenedImpl.
-
-
-
-  Set Printing All.
-  idtac.
-  Unset Printing All.
-  idtac.
-  intros.
-  Ltac foo idx :=
-    match goal with
-        |- refineADT (Sharpened_DelegateSpecs (let id := ?B in ?bod) idx)
-                     (ComputationalADT.LiftcADT
-                        (existT (ComputationalADT.pcADT
-                                   (Sharpened_DelegateSigs
-                                      (let id := ?B in ?bod') idx))
-                                (?bod2 idx) (?bod3 idx))) =>
-        change
-          (let id := B in
-           refineADT (Sharpened_DelegateSpecs bod idx)
-                     (ComputationalADT.LiftcADT
-                        (existT (ComputationalADT.pcADT
-                                   (Sharpened_DelegateSigs
-                                      bod' idx))
-                                (bod2 idx) (bod3 idx)))); intros
-    end.
-  foo idx.
-  foo idx.
-  foo idx.
-  foo idx.
-  foo idx.
-  foo idx.
-  foo idx.
-  foo idx.
-  foo idx.
-  foo idx.
-  foo idx.
-  foo idx.
-  foo idx.
-  foo idx.
-  foo idx.
-  foo idx.
-  foo idx.
-  foo idx.
-  foo idx.
-  foo idx.
-  foo idx.
-  foo idx.
-  foo idx.
-  foo idx.
-  foo idx.
-  foo idx.
-  foo idx.
-  foo idx.
-  foo idx.
-  foo idx.
-  foo idx.
-  foo idx.
-  foo idx.
-  foo idx.
-  foo idx.
-  simpl.
-  subst id33.
-  subst id32; subst id31.
-  subst id29; subst id30.
-  match goal with
-      |- context [Build_IndexedQueryStructure_Impl_Sigs ?SearchTerms _] =>
-      BuildQSIndexedBags
-        SearchTerms
-        ltac:(fun Bags => eapply proof (LookupQSDelegateImpls' Bags))
-  end.
-      simpl in X.
-      eapply X.
-    let impl' :=
-        match goal with
-            |- @FullySharpenedUnderDelegates _ _ ?Impl => Impl
-        end in
-    (* Not having to worry about re-typing the body during zeta-expansion
-     yields a 30x speedup.
-     *)
-    assert (True) by
-        (clear FullySharpenedImpl; zeta_expand_all impl; unify impl impl'; econstructor);
-      exact FullySharpenedImpl.
-
-Time Defined.
-  (* <95 seconds for master_plan.
-     <100 seconds for Defined.
-      500 seconds after switch.
-   *)
-
-Print SharpenedWeatherStation.
-Set Printing All.
-Print FullySharpened_Start.
-
-Extraction "examples/Weather.ml" init_bookstore add_book place_order get_titles num_orders.
-
-Time Definition WeatherStationImpl' : ComputationalADT.cADT WeatherSig := projT1 SharpenedWeatherStation.
+Time Definition WeatherStationImpl' : ComputationalADT.cADT WeatherSig := 
   Eval simpl in projT1 SharpenedWeatherStation.
 
-Print WeatherStationImpl'. *)
+Print WeatherStationImpl'.

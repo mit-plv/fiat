@@ -313,7 +313,7 @@ Section ilist3_replace.
 
 End ilist3_replace.
 
-Lemma imap_replace3_Index
+(*Lemma imap_replace3_Index
       {A}
       {m}
       {B B' : A -> Type}
@@ -336,4 +336,4 @@ Proof.
       |- ?P n Bound =>
       simpl; apply (@Vector.caseS _ P); intros; simpl; f_equal; eauto
     end.
-Qed.
+Qed. *)

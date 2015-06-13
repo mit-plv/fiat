@@ -14,6 +14,65 @@ Require Import Coq.Lists.List Coq.Program.Program
         Fiat.QueryStructure.Specification.Representation.QueryStructureNotations
         Fiat.QueryStructure.Implementation.DataStructures.BagADT.BagADT.
 
+Require Export Fiat.Common.ilist3_pair
+        Fiat.Common.ilist3
+        Fiat.Common.i3list2
+        Fiat.QueryStructure.Implementation.DataStructures.Bags.BagsOfTuples
+        Fiat.QueryStructure.Implementation.DataStructures.BagADT.BagImplementation.
+
+Ltac list_of_evar B As k :=
+  match As with
+    | nil => k (@nil B)
+    | cons ?a ?As' =>
+      makeEvar B ltac:(fun b =>
+                         list_of_evar
+                           B As' ltac:(fun Bs => k (cons b Bs)))
+  end.
+
+Lemma ValidUpdateCorrect
+  : forall (A : Prop), false = true -> A.
+Proof.
+  intros; discriminate.
+Qed.
+
+
+  Definition foo := (SharpenedBagImpl
+                             (fun
+                                _ : IndexedTreeUpdateTermType
+                                      {|
+                                      NumAttr := 2;
+                                      AttrList := [nat : Type; nat : Type]%NamedSchema |} =>
+                              false)
+                             (NatTreeBag.IndexedBagAsCorrectBag
+                                (CountingListAsBag
+                                   (IndexedTreebupdate_transform
+                                      {|
+                                      NumAttr := 2;
+                                      AttrList := [nat : Type; nat : Type]%NamedSchema |}))
+                                CountingList_RepInv CountingList_ValidUpdate
+                                (CountingListAsCorrectBag
+                                   (IndexedTreebupdate_transform
+                                      {|
+                                      NumAttr := 2;
+                                      AttrList := [nat : Type; nat : Type]%NamedSchema |}))
+                                (fun x : RawTuple => GetAttributeRaw x Fin.F1))
+                             (fun
+                                (a : IndexedTreeUpdateTermType
+                                       {|
+                                       NumAttr := 2;
+                                       AttrList := [nat : Type; nat : Type]%NamedSchema |})
+                                (b : false = true) =>
+                              ValidUpdateCorrect
+                                (NatTreeBag.IndexedBag_ValidUpdate
+                                   (CountingListAsBag
+                                      (IndexedTreebupdate_transform
+                                         {|
+                                         NumAttr := 2;
+                                         AttrList := [nat : Type; nat : Type]%NamedSchema |}))
+                                   CountingList_ValidUpdate
+                                   (fun x : RawTuple =>
+                                    GetAttributeRaw x Fin.F1) a) b)).
+
 Section QueryStructureImplementation.
 
   Variable qs_schema : RawQueryStructureSchema.
@@ -104,9 +163,9 @@ Section QueryStructureImplementation.
           (ns : Vector.t RawSchema n)
           (indices' : ilist3 (B := fun ns => SearchUpdateTerms (rawSchemaHeading ns)) ns)
           {struct ns}
-  : Comp (i3list (fun ns index =>
-                    Rep (BagSpec (BagMatchSearchTerm index)
-                                  (BagApplyUpdateTerm index))) indices').
+    : Comp (i3list (fun ns index => Rep (BagSpec (BagMatchSearchTerm index)
+                                                 (BagApplyUpdateTerm index))) indices').
+  Proof.
       refine (match ns in (Vector.t _ n) return
              forall indices' : ilist3 (B := fun ns => SearchUpdateTerms (rawSchemaHeading ns)) ns,
              Comp (i3list (fun ns index =>

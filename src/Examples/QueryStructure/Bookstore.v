@@ -1,5 +1,6 @@
 Require Import Fiat.QueryStructure.Automation.IndexSelection
-        Fiat.QueryStructure.Automation.AutoDB.
+        Fiat.QueryStructure.Automation.AutoDB
+        Fiat.QueryStructure.Automation.QSImplementation.
 
 (* Our bookstore has two relations (tables):
    - The [Books] relation contains the books in the
@@ -28,6 +29,7 @@ Definition sORDERS := "Orders".
 Definition sDATE := "Date".
 
 (* Now here's the actual schema, in the usual sense. *)
+Unset Ltac Debug.
 
 Definition BookStoreSchema :=
   Query Structure Schema
@@ -58,11 +60,11 @@ Definition Order := TupleDef BookStoreSchema sORDERS.
 Definition BookStoreSig : ADTSig :=
   ADTsignature {
       Constructor "Init" : unit -> rep,
-      Method "PlaceOrder" : rep x Order -> rep x bool ,
+      Method "PlaceOrder" : rep x Order -> rep x bool,
       Method "DeleteOrder" : rep x nat -> rep x list Order,
       Method "AddBook" : rep x Book -> rep x bool,
-      Method "DeleteBook" : rep x nat -> rep x list Book, 
-      Method "GetTitles" : rep x string -> rep x list string, 
+      Method "DeleteBook" : rep x nat -> rep x list Book,
+      Method "GetTitles" : rep x string -> rep x list string,
       Method "NumOrders" : rep x string -> rep x nat
     }.
 
@@ -83,7 +85,7 @@ Definition BookStoreSpec : ADT BookStoreSig :=
         Insert b into r!sBOOKS ,
 
     update "DeleteBook" ( r : rep, id : nat ) : list Book :=
-        Delete book from r!sBOOKS where book!sISBN = id, 
+        Delete book from r!sBOOKS where book!sISBN = id,
 
     query "GetTitles" (r : rep, author : string ) : list string :=
       For (b in r ! sBOOKS)
@@ -97,63 +99,48 @@ Definition BookStoreSpec : ADT BookStoreSig :=
                  Return ())
 }.
 
-Arguments ilist2 : simpl never.
-Arguments ilist2_tl : simpl never.
-Arguments ilist2_hd : simpl never.
-
-Arguments ilist3 : simpl never.
-Arguments ilist3_tl : simpl never.
-Arguments ilist3_hd : simpl never.
-
-Unset Ltac Debug.
-Require Import Fiat.Common.ilist3.
 
 Theorem SharpenedBookStore :
-  MostlySharpened BookStoreSpec.
+  FullySharpened BookStoreSpec.
 Proof.
 
   Time start_honing_QueryStructure.
-  let attrlist := constr:(icons3 (a := Vector.hd (qschemaSchemas BookStoreSchema)) [("EqualityIndex", @Fin.F1 2); ("EqualityIndex", Fin.FS (Fin.FS (@Fin.F1 0)))] (icons3 [("EqualityIndex", @Fin.F1 1 )] inil3) : ilist3 (B := fun sch => list (prod string (Attributes (rawSchemaHeading sch)))) (qschemaSchemas BookStoreSchema) ) in
-  make simple indexes using attrlist.
-  initializer.
-  insertion EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
-           EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
-  deletion EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
-           EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
-  insertion EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
-            EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
-  deletion EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
-           EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.  
-  observer EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
-           EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
-  observer EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
-           EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
-  fold_heading_hyps;
-    repeat match goal with
-           | |- context[@Build_RawHeading ?n ?attrlist] =>
-             let heading := fresh "heading" in
-             set (@Build_RawHeading n attrlist) as heading in *
-                                                          
-           | |- context [@Build_RawSchema ?heading ?TupleConstr ?RelConstr] =>
-             let sch := fresh "schma" in
-             set (@Build_RawSchema heading TupleConstr RelConstr) as sch in *
+  {  let attrlist := constr:(icons3 (a := Vector.hd (qschemaSchemas BookStoreSchema)) [("EqualityIndex", @Fin.F1 2); ("EqualityIndex", Fin.FS (Fin.FS (@Fin.F1 0)))] (icons3 [("EqualityIndex", @Fin.F1 1 )] inil3) : ilist3 (B := fun sch => list (prod string (Attributes (rawSchemaHeading sch)))) (qschemaSchemas BookStoreSchema) ) in
+     make simple indexes using attrlist.
+     initializer.
+     insertion EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+               EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
+     deletion EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+              EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
+     insertion EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+               EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
+     deletion EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+              EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
+     observer EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+              EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
+     observer EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+              EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
 
-           | |- context [@Build_RawQueryStructureSchema ?n ?qs_schema ?CrossConstr] =>
-             let qs_sch := fresh "qs_schma" in
-             set (@Build_RawQueryStructureSchema n qs_schema CrossConstr) as qs_schema in *
-         end.
-  
-  match goal with
-  | |- appcontext[@BuildADT (IndexedQueryStructure ?Schema ?Indexes)] =>
-    FullySharpenQueryStructure Schema Indexes
-  end.
-  
-Time Defined.
+     pose_headings_all.
 
-Time Definition BookstoreImpl' : SharpenedUnderDelegates BookStoreSig :=
+     Time match goal with
+          | |- appcontext[@BuildADT (IndexedQueryStructure ?Schema ?Indexes)] =>
+            FullySharpenQueryStructure Schema Indexes
+          end. (* 949MB w ; 1211MB w/o *)
+  }
+
+  { simpl; pose_string_ids; pose_headings_all;
+    pose_search_term;  pose_SearchUpdateTerms.
+
+    BuildQSIndexedBags'. }
+  higher_order_reflexivityT.
+
+Time Defined. (* 1249MB, 65s ; 1810MB, 108s *)
+
+Time Definition BookstoreImpl' : ComputationalADT.cADT BookStoreSig :=
   Eval simpl in projT1 SharpenedBookStore.
 
 (* <130 seconds for master_plan.
    <141 seconds for Defined. *)
-
+Set Printing All.
 Print BookstoreImpl'.
