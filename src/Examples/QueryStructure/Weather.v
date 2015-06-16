@@ -86,8 +86,9 @@ Definition SharpenedWeatherStation :
 Proof.
 
   start_honing_QueryStructure.
-  {  let attrlist := constr:(icons3 (a := Vector.hd (qschemaSchemas WeatherSchema)) [("EqualityIndex", @Fin.F1 3); ("EqualityIndex", Fin.FS (Fin.FS (@Fin.F1 1)))] (icons3 [("EqualityIndex", Fin.FS (Fin.FS (@Fin.F1 2)))] inil3) : ilist3 (B := fun sch => list (prod string (Attributes (rawSchemaHeading sch)))) (qschemaSchemas WeatherSchema) ) in
-     make simple indexes using attrlist.
+  { GenerateIndexesForAll ltac:(fun _ _ => fail)
+                                 ltac:(fun attrList =>
+                                         make simple indexes using attrList).
      initializer.
      insertion EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
                EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
@@ -104,15 +105,15 @@ Proof.
        FullySharpenQueryStructure Schema Indexes
      end.
   }
-  
+
   { simpl; pose_string_ids; pose_headings_all;
     pose_search_term;  pose_SearchUpdateTerms.
     BuildQSIndexedBags'. }
   higher_order_reflexivityT.
 
-Time Defined. 
+Time Defined.
 
-Time Definition WeatherStationImpl' : ComputationalADT.cADT WeatherSig := 
+Time Definition WeatherStationImpl' : ComputationalADT.cADT WeatherSig :=
   Eval simpl in projT1 SharpenedWeatherStation.
 
 Print WeatherStationImpl'.

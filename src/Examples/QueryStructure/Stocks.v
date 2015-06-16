@@ -90,8 +90,9 @@ Definition StocksDB :
 Proof.
   start_honing_QueryStructure.
 
-  {  let attrlist := constr:(icons3 (a := Vector.hd (qschemaSchemas StocksSchema)) [("EqualityIndex", @Fin.F1 3); ("EqualityIndex", Fin.FS (Fin.FS (@Fin.F1 1)))] (icons3 [("EqualityIndex", Fin.FS (Fin.FS (@Fin.F1 2)))] inil3) : ilist3 (B := fun sch => list (prod string (Attributes (rawSchemaHeading sch)))) (qschemaSchemas StocksSchema) ) in
-     make simple indexes using attrlist.
+  { GenerateIndexesForAll ltac:(fun _ _ => fail)
+                                 ltac:(fun attrList =>
+                                         make simple indexes using attrList).
      initializer.
      insertion EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
                EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
@@ -106,6 +107,7 @@ Proof.
      observer EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
               EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
      pose_headings_all.
+     idtac.
 
      match goal with
      | |- appcontext[@BuildADT (IndexedQueryStructure ?Schema ?Indexes)] =>

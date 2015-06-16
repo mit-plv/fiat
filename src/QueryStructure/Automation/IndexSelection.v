@@ -9,29 +9,46 @@ Require Import Coq.Sorting.Mergesort Coq.Structures.Orders
         Fiat.QueryStructure.Implementation.DataStructures.BagADT.IndexSearchTerms
         Fiat.QueryStructure.Automation.Common.
 
+Module OccCountOrder <: TotalLeBool.
+   Definition t := (prod string nat).
+
+   (* Largest element first *)
+   Definition leb (x y : t) :=
+     leb (snd y) (snd x).
+
+   Theorem leb_total : forall a1 a2 : t, leb a1 a2 = true \/ leb a2 a1 = true.
+   Proof.
+     unfold t; intros; intuition; unfold leb; simpl.
+     case_eq (Compare_dec.leb b b0); intuition.
+     case_eq (Compare_dec.leb b0 b); intuition.
+     apply leb_iff_conv in H; apply leb_iff_conv in H0.
+     omega.
+   Qed.
+
+End OccCountOrder.
+
 Module AttrCountOrder <: TotalLeBool.
-                          Definition t := (prod (string * (string * string)) nat).
+   Variable n : nat.
+   Definition t := (prod (prod string (Fin.t n))  nat).
 
-                          (* Largest element first *)
-                          Definition leb (x y : t) :=
-                            leb (snd y) (snd x).
+   (* Largest element first *)
+   Definition leb (x y : t) :=
+     leb (snd y) (snd x).
 
-                          Theorem leb_total : forall a1 a2 : t, leb a1 a2 = true \/ leb a2 a1 = true.
-                          Proof.
-                            unfold t; intros; intuition; unfold leb; simpl.
-                            case_eq (Compare_dec.leb b b0); intuition.
-                            case_eq (Compare_dec.leb b0 b); intuition.
-                            apply leb_iff_conv in H; apply leb_iff_conv in H0.
-                            omega.
-                          Qed.
+   Theorem leb_total : forall a1 a2 : t, leb a1 a2 = true \/ leb a2 a1 = true.
+   Proof.
+     unfold t; intros; intuition; unfold leb; simpl.
+     case_eq (Compare_dec.leb b b0); intuition.
+     case_eq (Compare_dec.leb b0 b); intuition.
+     apply leb_iff_conv in H; apply leb_iff_conv in H0.
+     omega.
+   Qed.
 
 End AttrCountOrder.
 
-Module PairOfString_As_OT := (PairOrderedType String_as_OT String_as_OT).
-Module TripleOfString_As_OT := (PairOrderedType String_as_OT PairOfString_As_OT).
-
-Module RelationAttributeCounter := FMapAVL.Make TripleOfString_As_OT.
-Module Import AttrCountSort := Sort AttrCountOrder.
+Module RelationAttributeCounter := FMapAVL.Make String_as_OT.
+Module OccCountSort := Sort OccCountOrder.
+Module AttrCountSort := Sort AttrCountOrder.
 
 Record KindName
   := { KindNameKind : string;
@@ -39,23 +56,86 @@ Record KindName
 
 Definition OccurenceCountT {n}
            (qsSchema : Vector.t RawHeading n) :=
-  ilist (B := fun heading => list (prod string (Attributes heading))) qsSchema.
+  ilist3 (B := fun heading => list (prod string (Attributes heading))) qsSchema.
+Definition OccurenceRankT {n}
+           (qsSchema : Vector.t RawHeading n) :=
+  ilist3 (B := fun heading => Vector.t (RelationAttributeCounter.t nat) (NumAttr heading)) qsSchema.
 
-Definition IncrementAttrCount
-           (idx : string * (string * string))
-           (cnt : RelationAttributeCounter.t nat)
-  : RelationAttributeCounter.t nat :=
-  match RelationAttributeCounter.find idx cnt with
-  | Some n => RelationAttributeCounter.add idx (S n) cnt
-  | _ => RelationAttributeCounter.add idx 1 cnt
+Fixpoint InitAttrCount n
+  : Vector.t (RelationAttributeCounter.t nat) n :=
+  match n return Vector.t (RelationAttributeCounter.t nat) n with
+  | 0 => Vector.nil _
+  | S n' => Vector.cons _ (RelationAttributeCounter.empty nat) _ (InitAttrCount n')
   end.
 
-Definition CountAttributes (l : list (string * (string * string)))
-  : list ((string * (string * string)) * nat)  :=
-  sort (RelationAttributeCounter.elements
-          (fold_right IncrementAttrCount
-                      (RelationAttributeCounter.empty nat)
-                      l)).
+Fixpoint IncrementAttrCount {n}
+           (AttrRank : Vector.t (RelationAttributeCounter.t nat) n)
+           (idx : Fin.t n)
+           (NewOccurence : string)
+           {struct idx}
+  : Vector.t (RelationAttributeCounter.t nat) n.
+Proof.
+  refine (match idx in (Fin.t m') return
+                Vector.t (RelationAttributeCounter.t nat) m'
+                -> string
+                -> Vector.t (RelationAttributeCounter.t nat) m' with
+          | Fin.F1 q =>
+            fun v new => _
+          | Fin.FS q p' =>
+            fun v new => _
+          end AttrRank NewOccurence).
+  - revert new; pattern q, v; apply Vector.caseS; intros.
+    refine (match RelationAttributeCounter.find new h with
+            | Some cnt => (Vector.cons _ (RelationAttributeCounter.add new (S cnt) h) _ t)
+            | None => (Vector.cons _ (RelationAttributeCounter.add new 1 h) _ t)
+            end).
+  - revert p' new; pattern q, v; apply Vector.caseS; intros.
+    exact (Vector.cons _ h _ (IncrementAttrCount _ t p' new)).
+Defined.
+
+Fixpoint InitOccRank {n}
+         (qsSchema : Vector.t RawHeading n)
+         {struct qsSchema}
+  : OccurenceRankT qsSchema :=
+  match qsSchema return OccurenceRankT qsSchema with
+  | Vector.nil => inil3
+  | Vector.cons sch _ qsSchema' =>
+    icons3 (InitAttrCount _) (InitOccRank qsSchema')
+  end.
+
+Definition CountAttributes {n}
+           (qsSchema : Vector.t RawHeading n)
+           (OccCount : OccurenceCountT qsSchema)
+  : OccurenceRankT qsSchema :=
+  imap3 _ _ (fun heading (OccCount : list (string * (Attributes heading))) =>
+               fold_right (fun attrC AttrRank => IncrementAttrCount AttrRank (snd attrC) (fst attrC)) (InitAttrCount _) OccCount) _ OccCount.
+
+Fixpoint PickIndex {n}
+           (AttrRank : Vector.t (RelationAttributeCounter.t nat) n)
+  : list ((string * Fin.t n) * nat) :=
+  match AttrRank in Vector.t _ n return
+                list ((string * Fin.t n) * nat) with
+          | Vector.cons attr _ AttrRank' =>
+            match OccCountSort.sort (RelationAttributeCounter.elements attr) with
+            | nil => (map (fun a => (fst (fst a), Fin.FS (snd (fst a)), (snd a))) (PickIndex AttrRank'))
+            | a :: a' => cons (fst a, Fin.F1, snd a) (map (fun a => (fst (fst a), Fin.FS (snd (fst a)), (snd a))) (PickIndex AttrRank'))
+            end
+          | Vector.nil => nil
+          end.
+
+Fixpoint PickIndexes {n}
+           (qsSchema : Vector.t RawHeading n)
+           (OccRank : OccurenceRankT qsSchema)
+           {struct qsSchema}
+  : ilist3 (B := fun heading => list (prod string (Attributes heading))) qsSchema :=
+  match qsSchema return
+        OccurenceRankT qsSchema
+        -> ilist3 (B := fun heading => list (prod string (Attributes heading))) qsSchema with
+  | Vector.cons heading _ qsSchema' =>
+    fun OccRank =>
+      icons3 (map (@fst _ _) (PickIndex ((ilist3_hd OccRank)) )) (PickIndexes qsSchema' (ilist3_tl OccRank))
+  | Vector.nil => fun OccRank => inil3
+  end OccRank.
 
 (*Definition GetIndexes
            (qsSchema : RawQueryStructureSchema)
@@ -89,9 +169,9 @@ Proof.
             fun v il new => _
           end qsSchema AttrCount NewOccurence).
   - revert il new; pattern q, v; apply Vector.caseS; intros.
-    exact (icons (new :: ilist_hd il) (ilist_tl il)).
+    exact (icons3 (new :: ilist3_hd il) (ilist3_tl il)).
   - revert p' il new; pattern q, v; apply Vector.caseS; intros.
-    exact (icons (ilist_hd il) (InsertOccurence _ _ p' new (ilist_tl il))).
+    exact (icons3 (ilist3_hd il) (InsertOccurence _ _ p' new (ilist3_tl il))).
 Defined.
 
 Arguments InsertOccurence [_ _ _] _ _.
@@ -103,11 +183,11 @@ Fixpoint MergeOccurence {n}
   match qsSchema return
         forall (AttrCount1 AttrCount2 : OccurenceCountT qsSchema),
           OccurenceCountT qsSchema with
-  | Vector.nil => fun AttrCount1 AttrCount2 => inil
+  | Vector.nil => fun AttrCount1 AttrCount2 => inil3
   | Vector.cons _ _ qsSchema' =>
     fun AttrCount1 AttrCount2 =>
-      icons (ilist_hd AttrCount1 ++ ilist_hd AttrCount2)
-            (MergeOccurence qsSchema' (ilist_tl AttrCount1) (ilist_tl AttrCount2))
+      icons3 (ilist3_hd AttrCount1 ++ ilist3_hd AttrCount2)
+            (MergeOccurence qsSchema' (ilist3_tl AttrCount1) (ilist3_tl AttrCount2))
   end AttrCount1 AttrCount2.
 
 Arguments MergeOccurence [_ _] _ _.
@@ -117,9 +197,9 @@ Fixpoint InitOccurence {n}
          {struct qsSchema}
   : OccurenceCountT qsSchema :=
   match qsSchema return OccurenceCountT qsSchema with
-  | Vector.nil => inil
+  | Vector.nil => inil3
   | Vector.cons _ _ qsSchema' =>
-    icons nil (InitOccurence qsSchema')
+    icons3 nil (InitOccurence qsSchema')
   end.
 
 Definition GetOccurence {n}
@@ -127,7 +207,7 @@ Definition GetOccurence {n}
            (AttrCount : OccurenceCountT qsSchema)
            (idx : Fin.t n)
   : list (prod string (Attributes (Vector.nth qsSchema idx))) :=
-  ith AttrCount idx.
+  ith3 AttrCount idx.
 
 Ltac TermAttributes Term k :=
   match Term with
@@ -213,7 +293,8 @@ Ltac GenerateIndexesFor meths OtherClauses k :=
          (@BuildADT (UnConstrQueryStructure ?qsSchema) _ _ _ _ _ _) =>
     let rels := eval simpl in (Vector.map rawSchemaHeading (qschemaSchemas qsSchema)) in
         makeEvar (OccurenceCountT rels)
-                 ltac:(fun l => MethodsAttributes' meths rels OtherClauses l; let l' := eval simpl in l in k l')
+                 ltac:(fun l => MethodsAttributes' meths rels OtherClauses l;
+                       let l' := eval compute in (PickIndexes _ (CountAttributes _ l)) in k l')
   end.
 
 Ltac GenerateIndexesForAll OtherClauses k :=

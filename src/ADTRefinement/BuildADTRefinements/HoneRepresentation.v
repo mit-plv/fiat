@@ -314,15 +314,20 @@ Tactic Notation "hone" "constructor" constr(consIdx) :=
        cbv beta delta [replace_BoundedIndex replace_Index] in *;
        simpl in *].
 
-(* Honing Tactics for working on a single constructor at a time*)
-Tactic Notation "hone" "method" constr(methIdx) :=
-  let A :=
-      match goal with
-        |- Sharpened ?A => constr:(A) end in
-  let ASig := match type of A with
-                DecoratedADT ?Sig => Sig
-              end in
-  let consSigs :=
+(* Honing Tactics for working on a single method at a time*)
+Arguments DecADTSig : simpl never.
+ Tactic Notation "hone" "method" constr(methIdx) :=
+   let A :=
+       match goal with
+         |- Sharpened ?A => constr:(A) end in
+   let DSig :=
+       match goal with
+         |- @FullySharpenedUnderDelegates ?DSig _ _ => constr:(DSig)
+       end in
+   let ASig := match type of A with
+                 DecoratedADT ?Sig => Sig
+               end in
+   let consSigs :=
       match ASig with
           BuildADTSig ?consSigs _ => constr:(consSigs) end in
   let methSigs :=
@@ -362,9 +367,10 @@ Tactic Notation "hone" "method" constr(methIdx) :=
         | _ => cbv [absMethod]
       end; intros
     |
-    cbv beta in *; simpl in *;
-    cbv beta delta [replace_BoundedIndex replace_Index] in *;
-    simpl in *].
+    cbv beta in *|-;
+    cbv delta [replace_BoundedIndex replace_Index] in *;
+    simpl in *
+    ].
 
 (* Honing tactic for refining the representation type and spawning new subgoals for
  each of the operations. *)

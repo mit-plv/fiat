@@ -339,7 +339,7 @@ Proof.
     rewrite i3th_replace_Index_eq; eassumption.
   - unfold GetIndexedQueryStructureRelation,
     GetIndexedRelation.
-    rewrite i3th_replace_Index_neq, 
+    rewrite i3th_replace_Index_neq,
     Lookup_Update_Iterate_Dep_Type_neq; eauto.
 Qed.
 
