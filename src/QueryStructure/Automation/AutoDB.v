@@ -1979,7 +1979,7 @@ Ltac partial_master_plan' matchIndex
           end
          ). *)
 
-Ltac matchEqIndex WhereClause k := fail.
+Ltac matchEqIndex qsSchema WhereClause k := fail.
 Ltac EqIndexUse SC F indexed_attrs f k := fail.
 Ltac createEarlyEqualityTerm f fds tail fs kind EarlyIndex LastIndex rest s k := fail.
 Ltac createLastEqualityTerm f fds tail fs kind s k := fail.

@@ -109,6 +109,7 @@ Proof.
   { simpl; pose_string_ids; pose_headings_all;
     pose_search_term;  pose_SearchUpdateTerms.
     BuildQSIndexedBags'. }
+  Print Implicit Update_Build_IndexedQueryStructure_Impl_cRep.
   higher_order_reflexivityT.
 
 Time Defined.

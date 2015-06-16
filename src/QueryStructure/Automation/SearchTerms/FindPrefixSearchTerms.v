@@ -12,18 +12,18 @@ Definition FindPrefixIndex : string := "FindPrefixIndex".
 
 (* This is our search term type. *)
 Record FindPrefixSearchTerm
-       (heading : Heading)
+       (heading : RawHeading)
   :=
     { FindPrefixIndexSearchTerm : option (list ascii);
-      FindPrefixItemSearchTerm : @Tuple heading -> bool }.
+      FindPrefixItemSearchTerm : @RawTuple heading -> bool }.
 
 Global Instance Aascii_eq : Query_eq ascii := {| A_eq_dec := ascii_dec |}.
 
 (* This builds the type of searchterms and the matching function on them *)
 Global Instance FindPrefixIndexDenotation
-       (heading : Heading)
+       (heading : RawHeading)
        (index : @Attributes heading)
-       (projection : @Tuple heading -> list ascii)
+       (projection : @RawTuple heading -> list ascii)
 : @IndexDenotation "FindPrefixIndex" heading index :=
   {| DenoteIndex := FindPrefixSearchTerm heading; (* Pick search term type *)
      MatchIndex search_term item := (* matching function : DenoteIndex -> Tuple heading -> bool *)
@@ -43,37 +43,36 @@ match index_domain with
   | list ascii =>
     apply (@FindPrefixIndexDenotation
              heading index
-             (fun tup => GetAttribute tup index ))
+             (fun tup => GetAttributeRaw tup index ))
 end
 : typeclass_instances.
 
-Ltac matchFindPrefixIndex WhereClause k k_fail :=
+Ltac matchFindPrefixIndex qsSchema WhereClause k k_fail :=
   match WhereClause with
-    | fun tups => IsPrefix (@?C1 tups) _ =>
-      let attrs1 := TermAttributes C1 in
-      k (map (fun a12 => ("FindPrefixIndex", (fst a12, snd a12)))
-             (attrs1))
-    | _ => k_fail WhereClause k
+  | fun tups => IsPrefix (@?C1 tups) _ =>
+    TermAttributes C1 ltac:(fun Ridx attr =>
+                              k (@InsertOccurence _ qsSchema Ridx ("FindPrefixIndex", attr) (InitOccurence _)))
+    | _ => k_fail qsSchema WhereClause k
   end.
 
 Ltac PrefixIndexUse SC F indexed_attrs f k k_fail :=
      match type of f with
 (* FindPrefix Search Terms *)
-       | forall a, {IsPrefix (GetAttribute _ ?fd') ?X} + {_} =>
+       | forall a, {IsPrefix (GetAttributeRaw _ ?fd') ?X} + {_} =>
          let fd := eval simpl in (bindex fd') in
              let H := fresh in
              assert (List.In {| KindNameKind := "FindPrefixIndex";
                                 KindNameName := fd|} indexed_attrs) as H
                  by (clear; simpl; intuition eauto); clear H;
              k ({| KindNameKind := "FindPrefixIndex";
-                   KindNameName := fd|}, X) (fun _ : @Tuple SC => true)
+                   KindNameName := fd|}, X) (fun _ : @RawTuple SC => true)
        | _ => k_fail SC F indexed_attrs f k
      end.
 
       (* FindPrefix Search Terms *)
 Ltac PrefixIndexUse_dep SC F indexed_attrs visited_attrs f T k k_fail :=
     match type of f with
-      | forall a b, {IsPrefix (GetAttribute _ ?fd') (@?X a)} + {_} =>
+      | forall a b, {IsPrefix (GetAttributeRaw _ ?fd') (@?X a)} + {_} =>
         let fd := eval simpl in (bindex fd') in
             let H := fresh in
             assert (List.In {| KindNameKind := "FindPrefixIndex";
@@ -84,7 +83,7 @@ Ltac PrefixIndexUse_dep SC F indexed_attrs visited_attrs f T k k_fail :=
             | right _ => k (fd :: visited_attrs)
                            ({| KindNameKind := "FindPrefixIndex";
                                KindNameName := fd |}, X)
-                           (fun (a : T) (_ : @Tuple SC) => true)
+                           (fun (a : T) (_ : @RawTuple SC) => true)
             | left _ => k visited_attrs tt F
           end
       | _ => k_fail SC F indexed_attrs visited_attrs f T k

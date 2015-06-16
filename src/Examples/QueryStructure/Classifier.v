@@ -1,8 +1,7 @@
 Require Import Coq.Strings.String.
 Require Import Fiat.QueryStructure.Automation.AutoDB
         Fiat.QueryStructure.Automation.IndexSelection
-        Fiat.QueryStructure.Specification.SearchTerms.ListPrefix
-        Fiat.Common.List.UpperBound.
+        Fiat.QueryStructure.Specification.SearchTerms.ListPrefix.
 
 Open Scope list.
 
@@ -101,26 +100,47 @@ Section ADT.
   QueryADTRep ClassifierSchema {
     Def Constructor "Init" (_ : unit) : rep := empty,
 
-    update "AddRule" (r : RuleRecord) : bool :=
-      Insert r into RULES,
+    update "AddRule" (r : rep, rule : RuleRecord) : bool :=
+      Insert rule into r!RULES,
 
-    update "DeletePrefix" (ip : Ip) : list RuleRecord :=
-      Delete r from RULES where IsPrefix r!DESTINATION ip,
+    update "DeletePrefix" (r : rep, ip : Ip) : list RuleRecord :=
+      Delete rule from r!RULES where IsPrefix rule!DESTINATION ip,
 
-    query "Classify" (p : Packet) : list RuleRecord :=
-      For (r in RULES)
+    query "Classify" (r : rep, p : Packet) : list RuleRecord :=
+      For (rule in r!RULES)
             (* the rule's ip must be a prefix of the packet's ip *)
-            Where (IsPrefix r!DESTINATION (destination p) /\
+            Where (IsPrefix rule!DESTINATION (destination p) /\
             (* the rule's protocol must match the packet's protocol *)
-                   FollowPolicy r!PROTOCOL (protocol p))
-            Return r
+                   FollowPolicy rule!PROTOCOL (protocol p))
+            Return rule
   }.
 
   Theorem ClassifierManual :
     MostlySharpened ClassifierSpec.
   Proof.
 
-    partial_master_plan ltac:(CombineIndexTactics PrefixIndexTactics EqIndexTactics).
+    start_honing_QueryStructure.
+    {
+
+      GenerateIndexesForAll ltac:(CombineCase3 matchFindPrefixIndex matchEqIndex)
+                                    ltac:(fun attrList =>
+                                         make simple indexes using attrList).
+
+      initializer.
+      insertion ltac:(CombineCase5 InclusionIndexUse EqIndexUse)
+             ltac:(CombineCase10 createEarlyEqualityTerm)
+                    ltac:(CombineCase7 createLastEqualityTerm)
+                           ltac:(CombineCase7 EqIndexUse_dep)
+                                  ltac:(CombineCase11 createEarlyEqualityTerm_dep)
+                                         ltac:(CombineCase8 createLastEqualityTerm_dep).
+      deletion ltac:(CombineCase5 InclusionIndexUse EqIndexUse)
+                      ltac:(CombineCase10 createEarlyEqualityTerm)
+                             ltac:(CombineCase7 createLastEqualityTerm)
+                                    ltac:(CombineCase7 EqIndexUse_dep)
+                                           ltac:(CombineCase11 createEarlyEqualityTerm_dep)
+                                                  ltac:(CombineCase8 createLastEqualityTerm_dep).
+
+      partial_master_plan ltac:(CombineIndexTactics PrefixIndexTactics EqIndexTactics).
 
     FullySharpenQueryStructure ClassifierSchema Index.
 

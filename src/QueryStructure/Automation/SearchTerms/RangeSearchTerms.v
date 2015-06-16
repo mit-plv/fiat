@@ -11,19 +11,19 @@ Definition RangeIndex : string := "RangeIndex".
 
 (* This is our search term type. *)
 Record RangeSearchTerm
-       (heading : Heading)
+       (heading : RawHeading)
   :=
     { RangeIndexSearchTerm : option (nat * nat);
-      RangeItemSearchTerm : @Tuple heading -> bool }.
+      RangeItemSearchTerm : @RawTuple heading -> bool }.
 
 (* This builds the type of searchterms and the matching function on them *)
 Global Instance RangeIndexDenotation
-       (heading : Heading)
+       (heading : RawHeading)
        (index : @Attributes heading)
-       (projection : @Tuple heading -> nat)
+       (projection : @RawTuple heading -> nat)
 : @IndexDenotation "RangeIndex" heading index :=
   {| DenoteIndex := RangeSearchTerm heading; (* Pick search term type *)
-     MatchIndex search_term item := (* matching function : DenoteIndex -> Tuple heading -> bool *)
+     MatchIndex search_term item := (* matching function : DenoteIndex -> RawTuple heading -> bool *)
        match RangeIndexSearchTerm search_term with
          | Some indexSearchTerm =>
            if InRange_dec (projection item) indexSearchTerm then
@@ -40,37 +40,36 @@ match index_domain with
   | nat =>
     apply (@RangeIndexDenotation
              heading index
-             (fun tup => GetAttribute tup index ))
+             (fun tup => GetAttributeRaw tup index ))
 end
 : typeclass_instances.
 
-Ltac matchRangeIndex WhereClause k k_fail :=
+Ltac matchRangeIndex qsSchema WhereClause k k_fail :=
   match WhereClause with
-    | fun tups => InRange (@?C1 tups) _ =>
-      let attrs1 := TermAttributes C1 in
-      k (map (fun a12 => (RangeIndex, (fst a12, snd a12)))
-             (attrs1))
-    | _ => k_fail WhereClause k
+  | fun tups => InRange (@?C1 tups) _ =>
+    TermAttributes C1 ltac:(fun Ridx attr =>
+                              k (@InsertOccurence _ qsSchema Ridx (RangeIndex, attr) (InitOccurence _)))
+  | _ => k_fail qsSchema WhereClause k
   end.
 
 Ltac RangeIndexUse SC F indexed_attrs f k k_fail :=
 match type of f with
         (* Range Search Terms *)
-  | forall a, {InRange (GetAttribute _ ?fd') ?X} + {_} =>
+  | forall a, {InRange (GetAttributeRaw _ ?fd') ?X} + {_} =>
     let H := fresh in
     let fd := eval simpl in (bindex fd') in
     assert (List.In {| KindNameKind := "RangeIndex";
                        KindNameName := fd|} indexed_attrs) as H
         by (clear; simpl; intuition eauto); clear H;
     k ({| KindNameKind := "RangeIndex";
-          KindNameName := bindex fd|}, X) (fun _ : @Tuple SC => true)
+          KindNameName := bindex fd|}, X) (fun _ : @RawTuple SC => true)
   | _ => k_fail SC F indexed_attrs f k
 end.
 
 Ltac RangeIndexUse_dep SC F indexed_attrs visited_attrs f T k k_fail :=
     match type of f with
       (* Range Search Terms *)
-      | forall a b, {InRange (GetAttribute _ ?fd') (@?X a)} + {_} =>
+      | forall a b, {InRange (GetAttributeRaw _ ?fd') (@?X a)} + {_} =>
         let H := fresh in
         let fd := eval simpl in (bindex fd') in
         assert (List.In {| KindNameKind := "RangeIndex";
@@ -81,7 +80,7 @@ Ltac RangeIndexUse_dep SC F indexed_attrs visited_attrs f T k k_fail :=
           | right _ => k (fd :: visited_attrs)
                          ({| KindNameKind := "RangeIndex";
                              KindNameName := fd |}, X)
-                         (fun (a : T) (_ : @Tuple SC) => true)
+                         (fun (a : T) (_ : @RawTuple SC) => true)
           | left _ => k visited_attrs tt F
         end
       | _ => k_fail SC F indexed_attrs visited_attrs f T k

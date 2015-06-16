@@ -13,16 +13,16 @@ Definition InclusionIndex : string := "InclusionIndex".
 
 (* This is our search term type. *)
 Record InvertedSearchTerm
-       (heading : Heading)
+       (heading : RawHeading)
   :=
     { IndexSearchTerm : list string;
-      ItemSearchTerm : @Tuple heading -> bool }.
+      ItemSearchTerm : @RawTuple heading -> bool }.
 
 (* This builds the type of searchterms and the matching function on them *)
 Global Instance InvertedIndexDenotation
-       (heading : Heading)
+       (heading : RawHeading)
        (index : @Attributes heading)
-       (projection : @Tuple heading -> list string)
+       (projection : @RawTuple heading -> list string)
 : @IndexDenotation "InclusionIndex" heading index :=
   {| DenoteIndex := InvertedSearchTerm heading; (* Pick search term type *)
      MatchIndex search_term item := (* matching function : DenoteIndex -> Tuple heading -> bool *)
@@ -37,47 +37,40 @@ match index_domain with
   | list string =>
     apply (@InvertedIndexDenotation
              heading index
-             (fun tup => GetAttribute tup index ))
+             (fun tup => GetAttributeRaw tup index ))
 end
 : typeclass_instances.
 
-Ltac matchInclusionIndex WhereClause k k_fail :=
+Ltac matchInclusionIndex qsSchema WhereClause k k_fail :=
   match WhereClause with
-    | fun tups => IncludedIn _ (@?C1 tups) =>
-      let attrs1 := TermAttributes C1 in
-      k (map (fun a12 => (InclusionIndex, (fst a12, snd a12)))
-             (attrs1))
-    | _ => k_fail WhereClause k
+  | fun tups => IncludedIn _ (@?C1 tups) =>
+    TermAttributes C1 ltac:(fun Ridx attr =>
+                              k (@InsertOccurence _ qsSchema Ridx (InclusionIndex, attr) (InitOccurence _)))
+  | _ => k_fail qsSchema WhereClause k
   end.
 
 Ltac InclusionIndexUse SC F indexed_attrs f k k_fail :=
      match type of f with
        (* Inclusion Search Terms *)
-       | forall a, {IncludedIn ?X (GetAttribute _ ?fd')} + {_} =>
-         let fd := eval simpl in (bindex fd') in
+       | forall a, {IncludedIn ?X (GetAttributeRaw _ ?fd)} + {_} =>
           let H := fresh in
-          assert (List.In {| KindNameKind := "InclusionIndex";
-                             KindNameName := fd|} indexed_attrs) as H
-              by (clear; simpl; intuition eauto); clear H;
-            k ({| KindNameKind := "InclusionIndex";
-                  KindNameName := fd|}, X) (fun _ : @Tuple SC => true)
+          assert (List.In (@Build_KindIndex SC "InclusionIndex" fd) indexed_attrs) as H
+              by (clear; subst_all; simpl; intuition eauto); clear H;
+            k (@Build_KindIndex SC "InclusionIndex" fd, X) (fun _ : @RawTuple SC => true)
        | _ => k_fail SC F indexed_attrs f k
      end.
 
 Ltac InclusionIndexUse_dep SC F indexed_attrs visited_attrs f T k k_fail :=
   match type of f with
-    | forall a b, {IncludedIn (@?X a) (GetAttribute _ ?fd')} + {_} =>
-      let fd := eval simpl in (bindex fd') in
-          let H := fresh in
-          assert (List.In {| KindNameKind := "InclusionIndex";
-                             KindNameName := fd|} indexed_attrs) as H
-              by (clear; simpl; intuition eauto); clear H;
-          match eval simpl in
-                (in_dec string_dec fd visited_attrs) with
+  | forall a b, {IncludedIn (@?X a) (GetAttributeRaw _ ?fd)} + {_} =>
+    let H := fresh in
+    assert (List.In (@Build_KindIndex SC "InclusionIndex" fd) indexed_attrs) as H
+        by (clear; subst_all; simpl; intuition eauto); clear H;
+    match eval simpl in
+          (in_dec fin_eq_dec fd visited_attrs) with
             | right _ => k (fd :: visited_attrs)
-                           ({| KindNameKind := "InclusionIndex";
-                               KindNameName := fd |}, X)
-                           (fun (a : T) (_ : @Tuple SC) => true)
+                           (@Build_KindIndex SC "InclusionIndex" fd, X)
+                           (fun (a : T) (_ : @RawTuple SC) => true)
             | left _ => k visited_attrs tt F
           end
     | _ => k_fail SC F indexed_attrs visited_attrs f T k

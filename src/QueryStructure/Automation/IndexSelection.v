@@ -237,7 +237,7 @@ Ltac ClauseAttributes qsSchema WhereClause OtherClauses k :=
   | fun tups => _ = @?C1 tups =>
     TermAttributes C1 ltac:(fun Ridx attr =>
                               k (@InsertOccurence _ qsSchema Ridx (EqualityIndex, attr) (InitOccurence _)))
-  | _ => OtherClauses WhereClause k
+  | _ => OtherClauses qsSchema WhereClause k
   | _ => k (InitOccurence qsSchema)
   end.
 
@@ -332,9 +332,9 @@ Ltac findMatchingTerm fds kind s k :=
   | ({| KindIndexKind := ?IndexType;
         KindIndexIndex := ?fd |}, ?X) =>
     (* Check if this field name is equal to s; process [X] with [k] if so. *)
-    pose fds;
-      unify s fd;
-      unify kind IndexType;
-      k X
+    let H := fresh in
+    assert (H : s = fd) by reflexivity; clear H;
+    assert (H : kind = IndexType) by reflexivity; clear H;
+    k X
   | (?fds1, ?fds2) => findMatchingTerm fds1 kind s k || findMatchingTerm fds2 kind s k
   end.

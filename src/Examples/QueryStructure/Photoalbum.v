@@ -44,21 +44,21 @@ Definition AlbumSpec : ADT AlbumSig :=
   QueryADTRep AlbumSchema {
     Def Constructor "Init" (_ : unit) : rep := empty,
 
-    update "AddPhoto" (photo : AlbumSchema#PHOTOS) : bool :=
-      Insert photo into PHOTOS,
+    update "AddPhoto" (r : rep, photo : AlbumSchema#PHOTOS) : bool :=
+      Insert photo into r!PHOTOS,
 
-    update "AddEvent" (event : AlbumSchema#EVENTS) : bool :=
-      Insert event into EVENTS,
+    update "AddEvent" (r : rep, event : AlbumSchema#EVENTS) : bool :=
+      Insert event into r!EVENTS,
 
-    query "PhotosByDateRange" (range : nat * nat) : list (AlbumSchema#PHOTOS) :=
-      For (photo in PHOTOS)
-          (event in EVENTS)
+    query "PhotosByDateRange" (r : rep, range : nat * nat) : list (AlbumSchema#PHOTOS) :=
+      For (photo in r!PHOTOS)
+          (event in r!EVENTS)
           Where (event!EVENT_NAME = photo!EVENT_NAME)
           Where (InRange event!DATE range)
           Return photo,
 
-    query "PhotosByPersons" (persons : list string) : list (AlbumSchema#PHOTOS) :=
-      For (photo in PHOTOS)
+    query "PhotosByPersons" (r : rep, persons : list string) : list (AlbumSchema#PHOTOS) :=
+      For (photo in r!PHOTOS)
           Where (IncludedIn persons photo!PERSONS)
           Return photo
 }.
@@ -66,16 +66,15 @@ Definition AlbumSpec : ADT AlbumSig :=
   Require Import Fiat.QueryStructure.Specification.SearchTerms.ListInclusion.
   Require Import Fiat.QueryStructure.Specification.SearchTerms.InRange.
 
-  Unset Ltac Debug.
-
-
 Definition SharpenedAlbum :
   MostlySharpened AlbumSpec.
 Proof.
 
   start honing QueryStructure.
-    (* Manually select indexes + data structure. *)
-    make simple indexes using [[("EqualityIndex", EVENT_NAME); ("InclusionIndex", PERSONS)]; [("EqualityIndex", EVENT_NAME); ("RangeIndex", DATE)]].
+
+
+  (* Manually select indexes + data structure. *)
+    make simple indexes using [[("EqualityIndex", Fin.FS (Fin.FS Fin.F1)); ("InclusionIndex", Fin.FS Fin.F1)]; [("EqualityIndex", Fin.F1); ("RangeIndex", Fin.FS Fin.F1)]].
   - packaged_plan ltac:(CombineIndexTactics InclusionIndexTactics
                                             ltac:(CombineIndexTactics RangeIndexTactics EqIndexTactics)).
   - packaged_plan ltac:(CombineIndexTactics InclusionIndexTactics
