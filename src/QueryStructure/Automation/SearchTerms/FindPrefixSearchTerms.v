@@ -58,31 +58,25 @@ Ltac matchFindPrefixIndex qsSchema WhereClause k k_fail :=
 Ltac PrefixIndexUse SC F indexed_attrs f k k_fail :=
      match type of f with
 (* FindPrefix Search Terms *)
-       | forall a, {IsPrefix (GetAttributeRaw _ ?fd') ?X} + {_} =>
-         let fd := eval simpl in (bindex fd') in
+       | forall a, {IsPrefix (GetAttributeRaw _ ?fd) ?X} + {_} =>
              let H := fresh in
-             assert (List.In {| KindNameKind := "FindPrefixIndex";
-                                KindNameName := fd|} indexed_attrs) as H
+             assert (List.In (@Build_KindIndex SC FindPrefixIndex fd) indexed_attrs) as H
                  by (clear; simpl; intuition eauto); clear H;
-             k ({| KindNameKind := "FindPrefixIndex";
-                   KindNameName := fd|}, X) (fun _ : @RawTuple SC => true)
+             k ((@Build_KindIndex SC FindPrefixIndex fd), X) (fun _ : @RawTuple SC => true)
        | _ => k_fail SC F indexed_attrs f k
      end.
 
       (* FindPrefix Search Terms *)
 Ltac PrefixIndexUse_dep SC F indexed_attrs visited_attrs f T k k_fail :=
     match type of f with
-      | forall a b, {IsPrefix (GetAttributeRaw _ ?fd') (@?X a)} + {_} =>
-        let fd := eval simpl in (bindex fd') in
+      | forall a b, {IsPrefix (GetAttributeRaw _ ?fd) (@?X a)} + {_} =>
             let H := fresh in
-            assert (List.In {| KindNameKind := "FindPrefixIndex";
-                               KindNameName := fd|} indexed_attrs) as H
+            assert (List.In (@Build_KindIndex SC FindPrefixIndex fd) indexed_attrs) as H
               by (clear; simpl; intuition eauto); clear H;
           match eval simpl in
-                (in_dec string_dec fd visited_attrs) with
+                (in_dec fin_eq_dec fd visited_attrs) with
             | right _ => k (fd :: visited_attrs)
-                           ({| KindNameKind := "FindPrefixIndex";
-                               KindNameName := fd |}, X)
+                           ((@Build_KindIndex SC FindPrefixIndex fd), X)
                            (fun (a : T) (_ : @RawTuple SC) => true)
             | left _ => k visited_attrs tt F
           end
@@ -134,7 +128,7 @@ Ltac createEarlyPrefixTerm_dep dom f fds tail fs kind EarlyIndex LastIndex rest 
              fds kind s
              ltac:(fun X => k (fun x : dom => (Some (X x), rest x))))
             || k (fun x : dom => (@None (list ascii), rest x))
-        | _ => k_fail f fds tail fs kind EarlyIndex LastIndex rest s k
+        | _ => k_fail dom f fds tail fs kind EarlyIndex LastIndex rest s k
       end.
 
 Ltac PrefixIndexTactics f :=

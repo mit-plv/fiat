@@ -127,23 +127,32 @@ Section ADT.
                                          make simple indexes using attrList).
 
       initializer.
-      insertion ltac:(CombineCase5 InclusionIndexUse EqIndexUse)
-             ltac:(CombineCase10 createEarlyEqualityTerm)
-                    ltac:(CombineCase7 createLastEqualityTerm)
-                           ltac:(CombineCase7 EqIndexUse_dep)
-                                  ltac:(CombineCase11 createEarlyEqualityTerm_dep)
-                                         ltac:(CombineCase8 createLastEqualityTerm_dep).
-      deletion ltac:(CombineCase5 InclusionIndexUse EqIndexUse)
-                      ltac:(CombineCase10 createEarlyEqualityTerm)
-                             ltac:(CombineCase7 createLastEqualityTerm)
-                                    ltac:(CombineCase7 EqIndexUse_dep)
-                                           ltac:(CombineCase11 createEarlyEqualityTerm_dep)
-                                                  ltac:(CombineCase8 createLastEqualityTerm_dep).
+      insertion ltac:(CombineCase5 PrefixIndexUse EqIndexUse)
+             ltac:(CombineCase10 createEarlycreateEarlyEqualityTerm)
+             ltac:(CombineCase7 createLastPrefixTerm createLastEqualityTerm)
+             ltac:(CombineCase7 PrefixIndexUse_dep EqIndexUse_dep)
+             ltac:(CombineCase11 createEarlyPrefixTerm_dep createEarlyEqualityTerm_dep)
+             ltac:(CombineCase8 createLastPrefixTerm_dep createLastEqualityTerm_dep).
+      deletion ltac:(CombineCase5 PrefixIndexUse EqIndexUse)
+             ltac:(CombineCase10 createEarlycreateEarlyEqualityTerm)
+             ltac:(CombineCase7 createLastPrefixTerm createLastEqualityTerm)
+             ltac:(CombineCase7 PrefixIndexUse_dep EqIndexUse_dep)
+             ltac:(CombineCase11 createEarlyPrefixTerm_dep createEarlyEqualityTerm_dep)
+             ltac:(CombineCase8 createLastPrefixTerm_dep createLastEqualityTerm_dep).
+      observer ltac:(CombineCase5 PrefixIndexUse EqIndexUse)
+             ltac:(CombineCase10 createEarlycreateEarlyEqualityTerm)
+             ltac:(CombineCase7 createLastPrefixTerm createLastEqualityTerm)
+             ltac:(CombineCase7 PrefixIndexUse_dep EqIndexUse_dep)
+             ltac:(CombineCase11 createEarlyPrefixTerm_dep createEarlyEqualityTerm_dep)
+             ltac:(CombineCase8 createLastPrefixTerm_dep createLastEqualityTerm_dep).
 
-      partial_master_plan ltac:(CombineIndexTactics PrefixIndexTactics EqIndexTactics).
+      pose_headings_all.
 
-    FullySharpenQueryStructure ClassifierSchema Index.
-
+      match goal with
+      | |- appcontext[@BuildADT (IndexedQueryStructure ?Schema ?Indexes)] =>
+        FullySharpenQueryStructure Schema Indexes
+      end.
+    }
   (* 124 seconds *)
   Time Defined.
 
@@ -152,5 +161,6 @@ Section ADT.
     Time let Impl := eval simpl in (projT1 ClassifierManual) in
              exact Impl.
   Defined.
+  Print ClassifierImpl.
 
 End ADT.

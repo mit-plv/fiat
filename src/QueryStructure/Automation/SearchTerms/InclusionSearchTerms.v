@@ -121,7 +121,7 @@ Ltac createEarlyInclusionTerm_dep dom f fds tail fs kind EarlyIndex LastIndex re
              fds kind s
              ltac:(fun X => k (fun x : dom => (X x, rest x))))
             || k (fun x : dom => (@nil string, rest x))
-        | _ => k_fail f fds tail fs kind EarlyIndex LastIndex rest s k
+        | _ => k_fail dom f fds tail fs kind EarlyIndex LastIndex rest s k
       end.
 
 Ltac InclusionIndexTactics f :=

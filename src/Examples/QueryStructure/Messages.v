@@ -74,7 +74,7 @@ Proof.
                                  ltac:(fun attrList =>
                                          make simple indexes using attrList).
      initializer.
-      insertion ltac:(CombineCase5 InclusionIndexUse EqIndexUse)
+     insertion ltac:(CombineCase5 InclusionIndexUse EqIndexUse)
              ltac:(CombineCase10 createEarlyInclusionTerm createEarlyEqualityTerm)
                     ltac:(CombineCase7 createLastInclusionTerm createLastEqualityTerm)
                            ltac:(CombineCase7 InclusionIndexUse_dep EqIndexUse_dep)
