@@ -622,6 +622,17 @@ Qed. *)
       apply IHxs in H0; destruct_ex; exists (1 + x0); auto.
     Qed.
 
+    Lemma exists_in_list {A}
+    : forall (xs : list A) x, (exists n, nth_error xs n = Some x) -> List.In x xs.
+    Proof.
+      intros. revert x H.
+      induction xs; intros.
+      - destruct H. destruct x0; inversion H.
+      - simpl in *. destruct H. destruct x0.
+        * left. inversion H. auto.
+        * right. apply IHxs. eexists. apply H.
+    Qed.
+
     Lemma in_list_preserve_filter {A}
     : forall (f : A -> bool) xs x, List.In x (filter f xs) -> List.In x xs.
     Proof.
