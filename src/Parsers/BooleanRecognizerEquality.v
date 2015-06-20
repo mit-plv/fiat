@@ -15,6 +15,8 @@ Section transfer.
   Context {data : @boolean_parser_dataT Char HSL_heavy}.
   Context (split_string_for_production_lite
            : item Char -> production Char -> @String Char HSL_lite -> list nat).
+  Context (select_production_rules_lite
+           : productions Char -> @String Char HSL_lite -> list nat).
 
   Class StringLikeProj :=
     { proj : @String Char HSL_heavy -> @String Char HSL_lite;
@@ -25,26 +27,32 @@ Section transfer.
       split_string_for_production_proj
       : forall it its str,
           split_string_for_production_lite it its (proj str)
-          = split_string_for_production it its str }.
+          = split_string_for_production it its str;
+      select_production_rules_proj
+      : forall prods str,
+          select_production_rules_lite prods (proj str)
+          = select_production_rules prods str }.
 
   Context {HSLPr : StringLikeProj}.
 
   Local Instance data' : @boolean_parser_dataT Char HSL_lite
     := { predata := predata;
          split_string_for_production it its str
-         := split_string_for_production_lite it its str }.
+         := split_string_for_production_lite it its str;
+         select_production_rules prods str
+         := select_production_rules_lite prods str }.
 
   Lemma parse_item_proj
         str_matches_nonterminal str_matches_nonterminal'
         (H : forall nt, str_matches_nonterminal nt = str_matches_nonterminal' nt)
         str it
-  : @parse_item' _ HSL_lite str_matches_nonterminal (proj str) it
-    = @parse_item' _ HSL_heavy str_matches_nonterminal' str it.
+  : @parse_item' _ HSL_lite data' str_matches_nonterminal (proj str) it
+    = @parse_item' _ HSL_heavy _ str_matches_nonterminal' str it.
   Proof.
     unfold parse_item'.
     destruct it.
     { apply is_char_proj. }
-    { trivial. }
+    { rewrite H; reflexivity. }
   Qed.
 
   Lemma parse_production_proj
@@ -80,8 +88,11 @@ Section transfer.
   Proof.
     unfold parse_productions'.
     f_equal; [].
-    apply map_Proper_eq; trivial; [].
+    rewrite !List.map_map.
+    apply map_Proper_eq; [ | apply select_production_rules_proj ].
     intro.
+    apply option_rect_Proper; [ reflexivity | reflexivity | ].
+    apply option_map_Proper; [ intro | reflexivity ].
     apply parse_production_proj; trivial.
   Qed.
 
@@ -100,6 +111,7 @@ Section transfer.
     repeat match goal with
              | [ |- appcontext[match ?e with _ => _ end] ]
                => destruct e eqn:?
+             | [ |- andb ?x _ = andb ?x _ ] => apply f_equal
              | _ => solve [ apply parse_productions_proj; trivial ]
              | _ => reflexivity
            end.

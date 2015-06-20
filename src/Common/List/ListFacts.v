@@ -1,6 +1,6 @@
 Require Import Coq.omega.Omega.
 Require Import Coq.Lists.List Coq.Lists.SetoidList Coq.Bool.Bool
-        Fiat.Common Fiat.Common.List.Operations.
+        Fiat.Common Fiat.Common.List.Operations Fiat.Common.Equality.
 
 Unset Implicit Arguments.
 
@@ -577,5 +577,204 @@ Section ListFacts.
     { destruct y; simpl.
       { destruct x; simpl; repeat (f_equal; []); try reflexivity; omega. }
       { rewrite IHls; destruct x; simpl; repeat (f_equal; []); try reflexivity; omega. } }
+  Qed.
+
+  Local Notation iffT A B := ((A -> B) * (B -> A))%type.
+
+  Lemma Exists_exists_dec {A} Q (ls : list A) (dec : forall y, In y ls -> {Q y} + {~Q y})
+  : iffT (Exists Q ls) { x : A & In x ls /\ Q x }.
+  Proof.
+    induction ls;
+    repeat match goal with
+             | [ |- (_ * _)%type ] => split
+             | _ => progress simpl in *
+             | _ => intro
+             | _ => congruence
+             | _ => discriminate
+             | _ => tauto
+             | _ => progress specialize_by assumption
+             | [ H : Exists _ nil |- _ ] => exfalso; solve [ inversion H ]
+             | _ => progress destruct_head sigT
+             | _ => progress destruct_head prod
+             | _ => progress destruct_head and
+             | [ H : forall x, _ \/ _ -> _ |- _ ]
+               => pose proof (fun x k => H x (or_introl k));
+                 pose proof (fun x k => H x (or_intror k));
+                 clear H
+             | [ H : forall x, x = _ -> _ |- _ ] => specialize (H _ eq_refl)
+             | [ H : forall x, _ = x -> _ |- _ ] => specialize (H _ eq_refl)
+             | [ H : Exists ?Q (?x :: ?xs), H' : ~?Q ?x |- _ ]
+               => assert (Exists Q xs) by (inversion_clear H; trivial; exfalso; auto);
+                 clear H
+             | _ => progress destruct_head sumbool
+             | _ => progress destruct_head or
+             | _ => solve [ eauto ]
+           end.
+  Qed.
+
+  Lemma fold_right_fun_bool_rect {A B C} (f : A -> (B -> C)) (g : A -> bool) (init : B -> C) (x : B) (ls : list A)
+  : fold_right (fun (a : A) (b : B -> C) => bool_rect (fun _ => B -> C) (f a) b (g a)) init ls x
+    = fold_right (B := A) (A := C) (fun a b => bool_rect (fun _ => C) (f a x) b (g a)) (init x) ls.
+  Proof.
+    induction ls; simpl; trivial.
+    edestruct g; simpl; trivial.
+  Qed.
+
+  Lemma nth_error_length_plus_app n {T} (ls1 ls2 : list T)
+  : List.nth_error (ls1 ++ ls2) (n + Datatypes.length ls1) = List.nth_error ls2 n.
+  Proof.
+    rewrite Plus.plus_comm.
+    induction ls1; trivial.
+  Qed.
+
+  Lemma nth_error_length_app {T} (ls1 ls2 : list T)
+  : List.nth_error (ls1 ++ ls2) (Datatypes.length ls1) = List.nth_error ls2 0.
+  Proof.
+    exact (nth_error_length_plus_app 0 _ _).
+  Qed.
+
+  Lemma lt_nth_iff :
+    forall A n As,
+      (exists a : A, nth_error As n = Some a)
+      <-> n < List.length As.
+  Proof.
+    induction n; destruct As; simpl; intros;
+    try auto with arith; split; intro; destruct_head ex; try (discriminate || omega);
+    try (eexists; reflexivity);
+    split_iff.
+    { apply lt_n_S; eauto. }
+    { eauto with arith. }
+  Qed.
+
+  Lemma lt_nth_T :
+    forall A n As (a : A),
+      nth_error As n = Some a
+      -> n < List.length As.
+  Proof.
+    intros;
+    apply lt_nth_iff.
+    eexists; eassumption.
+  Qed.
+
+  Lemma in_prefix_app {T} {xs y ys ys'} (H : (xs ++ (y::ys) = ys')%list)
+  : @List.In T y ys'.
+  Proof.
+    subst.
+    induction xs; simpl; auto.
+  Qed.
+
+  Lemma nth_error_enumerate {T} {ls : list T} {k n}
+  : nth_error (enumerate ls k) n = option_map (fun v => (k + n, v)) (nth_error ls n).
+  Proof.
+    revert k n; induction ls; intros k n; simpl.
+    { destruct n; simpl; reflexivity. }
+    { destruct n; simpl.
+      { rewrite Plus.plus_0_r; reflexivity. }
+      { rewrite IHls, <- plus_n_Sm; simpl.
+        reflexivity. } }
+  Qed.
+
+  Lemma not_in_S_enumerate {T} {ls : list T} {k k' v} (H : k < k')
+  : ~In (k, v) (enumerate ls k').
+  Proof.
+    revert k k' H; induction ls; simpl; intuition;
+    repeat match goal with
+             | [ H : (_, _) = (_, _) |- _ ] => inversion H; clear H
+             | _ => progress subst
+             | _ => congruence
+             | _ => discriminate
+             | _ => omega
+             | [ H : S ?k = ?k |- _ ] => apply NPeano.Nat.neq_succ_diag_l in H
+           end.
+    eapply IHls; [ .. | eassumption ]; omega.
+  Qed.
+
+  Lemma nth_error_in_enumerate {T} {ls : list T} {k n v}
+  : In (k + n, v) (enumerate ls k) <-> nth_error ls n = Some v.
+  Proof.
+    revert k n; induction ls; simpl.
+    { intros; destruct n; split; intros; simpl in *; intuition discriminate. }
+    { intros k [|n]; simpl.
+      { rewrite Plus.plus_0_r.
+        split.
+        { intros [H|H]; [ | apply not_in_S_enumerate in H; [ | omega ] ].
+          { inversion H; subst; reflexivity. }
+          { destruct H. } }
+        { intro H; inversion H; subst; left; reflexivity. } }
+      { specialize (IHls (S k) n).
+        rewrite NPeano.Nat.add_succ_r; simpl in *.
+        rewrite IHls.
+        split.
+        { intros [H|H]; [ | assumption ].
+          inversion H; omega. }
+        { intro; right; assumption. } } }
+  Qed.
+
+  Lemma some_disjoint {T} {ls : list (list T)} {a a0 n its}
+        (beq : T -> T -> bool)
+        (lb : forall x y, x = y -> beq x y) (bl : forall x y, beq x y -> x = y)
+        (Hdisjoint : fold_right andb true (map (disjoint beq a0) ls))
+        (Hin : list_bin beq a a0)
+        (Hindex : nth_error ls n = Some its)
+        (Hin' : list_bin beq a its)
+  : False.
+  Proof.
+    generalize dependent ls.
+    induction n; simpl; intros.
+    { destruct ls; simpl in *; try discriminate.
+      inversion Hindex; clear Hindex; subst.
+      apply Bool.andb_true_iff in Hdisjoint.
+      destruct Hdisjoint as [H0 H1].
+      apply (list_in_bl bl) in Hin.
+      apply (list_in_bl bl) in Hin'.
+      eapply (disjoint_bl lb) in H0; eassumption. }
+    { destruct ls as [|? ls]; try discriminate.
+      simpl in *.
+      apply Bool.andb_true_iff in Hdisjoint.
+      destruct Hdisjoint as [H0 H1].
+      specialize (IHn ls).
+      auto. }
+  Qed.
+
+  Lemma fold_right_orb_false_map_false {T f} {ls : list T}
+  : fold_right orb false (map f ls) = false <-> Forall (fun k => negb (f k)) ls.
+  Proof.
+    induction ls; simpl; split; try setoid_rewrite Bool.orb_false_iff; intuition.
+    { econstructor; try apply Bool.negb_true_iff; intuition. }
+    { inversion_one_head @Forall.
+      apply Bool.negb_true_iff; assumption. }
+    { inversion_one_head @Forall.
+      auto. }
+  Qed.
+
+  Lemma nth_error_in {T} {ls : list T} {n v}
+  : nth_error ls n = Some v -> List.In v ls.
+  Proof.
+    revert n; induction ls; intro n; destruct n; simpl; intros H; try discriminate;
+    inversion H; subst; eauto.
+  Qed.
+
+  Lemma all_disjoint_eq_in {T} (beq : T -> T -> bool)
+        (bl : forall x y, beq x y = true -> x = y)
+        (lb : forall x y, x = y -> beq x y = true)
+        {x x' xs a n}
+        (Hdisjoint : fold_right andb true (map (disjoint beq x) xs))
+        (Hin1 : list_bin beq a x)
+        (Hin2 : list_bin beq a x')
+        (Hnth : nth_error (x::xs) n = Some x')
+  : n = 0.
+  Proof.
+    destruct n; simpl in *; trivial; [].
+    exfalso.
+    generalize dependent n.
+    induction xs; simpl in *; [ destruct n; simpl; intros; discriminate | ].
+    apply Bool.andb_true_iff in Hdisjoint.
+    destruct Hdisjoint as [H0 H1].
+    specialize_by assumption.
+    intros [|n] H; simpl in *; [ inversion H; subst | ].
+    { apply (list_in_bl bl) in Hin1.
+      apply (list_in_bl bl) in Hin2.
+      eapply disjoint_bl; try eassumption. }
+    { eauto. }
   Qed.
 End ListFacts.

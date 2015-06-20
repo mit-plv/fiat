@@ -43,7 +43,9 @@ Section recursive_descent_parser.
   Class boolean_parser_dataT :=
     { predata :> parser_computational_predataT;
       split_string_for_production
-      : item Char -> production Char -> String -> list nat }.
+      : item Char -> production Char -> String -> list nat;
+      select_production_rules
+      : productions Char -> String -> list nat }.
 
   Global Coercion predata : boolean_parser_dataT >-> parser_computational_predataT.
 End recursive_descent_parser.

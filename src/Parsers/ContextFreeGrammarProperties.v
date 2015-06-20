@@ -1,6 +1,6 @@
 (** * Properties about Context Free Grammars *)
 Require Import Coq.Numbers.Natural.Peano.NPeano.
-Require Import Fiat.Parsers.StringLike Fiat.Parsers.ContextFreeGrammar.
+Require Import Fiat.Parsers.StringLike.Core Fiat.Parsers.StringLike.Properties Fiat.Parsers.ContextFreeGrammar.
 Require Import Coq.Classes.RelationClasses.
 Require Import Fiat.Common Fiat.Common.UIP.
 
@@ -169,7 +169,8 @@ Section cfg.
     Global Arguments expand_forall_parse_of_production : simpl never.
 
     Definition expand_forall_parse_of_item {str str' str''} f {it} {p : parse_of_item G str it} (H : str =s str') (H' : str =s str'')
-      := @expand_forall_parse_of_item' str str' str'' _ (@expand_forall_parse_of str str' str'' f) (f _ _ ((_ : Proper (beq ==> beq ==> impl) str_le) _ _ H _ _ (reflexivity _) (reflexivity _)) (transitivity (symmetry H) H')) it p.
+    : Forall_parse_of_item P (parse_of_item_respectful H p) -> Forall_parse_of_item P' (parse_of_item_respectful H' p)
+      := @expand_forall_parse_of_item' str str' str'' _ (@expand_forall_parse_of str str' str'' f) (f _ _ ((_ : Proper (beq ==> beq ==> impl) str_le) _ _ H _ _ (reflexivity _) (reflexivity _)) (transitivity (symmetry H) H')) it p H H'.
 
     Global Arguments expand_forall_parse_of_item : simpl never.
   End expand.

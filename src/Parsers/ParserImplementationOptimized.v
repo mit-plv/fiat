@@ -45,8 +45,9 @@ Proof.
   { abstract (
         intros str H';
         rewrite H in H';
-        refine (@transfer_parse_of_item Char _ _ G R R_respectful (make_string str) str (NonTerminal G) (R_make str) _);
-        apply (has_parse_sound old); assumption
+        eexists (@transfer_parse_of_item Char _ _ G R R_respectful (make_string str) str (NonTerminal G) (R_make str) _);
+        apply transfer_forall_parse_of_item;
+        apply (projT2 (has_parse_sound old _ H'))
       ). }
   { abstract (
         intros str p H';
@@ -65,20 +66,21 @@ Section implementation.
   Context (splitter : Splitter G).
   Context {string_like_lite : StringLike Ascii.ascii}
           split_string_for_production_lite
-          (HSLPr : @StringLikeProj Ascii.ascii splitter string_like_lite (parser_data splitter) split_string_for_production_lite).
+          select_production_rules_lite
+          (HSLPr : @StringLikeProj Ascii.ascii splitter string_like_lite (parser_data splitter) split_string_for_production_lite select_production_rules_lite).
   Context (make_string : String.string -> @String _ splitter)
           (R : @String _ splitter -> @String _ string_stringlike -> Prop)
           (R_make : forall str, R (make_string str) str)
           (R_respectful : transfer_respectful R)
           (R_flip_respectful : transfer_respectful (Basics.flip R)).
-  Context constT varT {strC : str_carrier constT varT}.
+  Context constT varT {strC : str_carrier_data constT varT} {strCH : str_carrier_ok}.
 
   Local Instance pdata : @boolean_parser_dataT Ascii.ascii string_like_lite
-    := @data' _ splitter string_like_lite (parser_data splitter) split_string_for_production_lite.
+    := @data' _ splitter string_like_lite (parser_data splitter) split_string_for_production_lite select_production_rules_lite.
   Local Instance pdata' : @boolean_parser_dataT Ascii.ascii splitter
     := parser_data splitter.
 
-  Definition parser : Parser G string_stringlike.
+  Definition parser' : Parser G string_stringlike.
   Proof.
     let impl0 := constr:(fun str => (parse_nonterminal_opt (ls := ls) (data := pdata) (proj (make_string str)) (Start_symbol G))) in
     let impl := (eval simpl in (fun str => proj1_sig (impl0 str))) in
@@ -87,11 +89,18 @@ Section implementation.
     let impl := (eval simpl in impl') in
     refine (transfer_parser
               (HSL1 := splitter) (HSL2 := string_stringlike)
-              (parser splitter) make_string
+              (parser' splitter) make_string
               impl
               (fun str => eq_trans
                             (implH str)
-                            (@parse_nonterminal_proj _ splitter string_like_lite G pdata' _ HSLPr _ _))
+                            (@parse_nonterminal_proj _ splitter string_like_lite G pdata' _ _ HSLPr _ _))
               R R_make _ _).
   Defined.
+
+(*  Definition parser : Parser G string_stringlike.
+  Proof.
+    let impl0 := constr:(has_parse parser') in
+    let impl1 := (eval cbv beta iota zeta delta [has_parse parser' transfer_parser Wf.prod_relation BooleanRecognizer.parse_production' proj StringLike.length to_string of_string] in impl0) in
+    pose impl1.
+  *)
 End implementation.

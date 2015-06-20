@@ -3,6 +3,7 @@ Require Import Coq.Program.Basics.
 Require Import Coq.Strings.String Coq.Lists.List Coq.Setoids.Setoid Coq.Classes.RelationClasses Coq.Classes.Morphisms.
 Require Import Fiat.Parsers.ContextFreeGrammar.
 Require Import Fiat.Parsers.ContextFreeGrammarProperties.
+Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Parsers.StringLike.ForallChars.
 Require Import Fiat.Parsers.Reachable.ParenBalanced.Core.
 Require Import Fiat.Parsers.Reachable.ParenBalanced.OfParse.

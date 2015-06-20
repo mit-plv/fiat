@@ -1,19 +1,27 @@
 (** Sharpened ADT for grammars with at most one nonterminal *)
 Require Import Coq.Strings.String Coq.Arith.Lt.
 Require Import Coq.Numbers.Natural.Peano.NPeano.
+Require Import Fiat.Parsers.Splitters.RDPList.
+Require Import Fiat.Parsers.Splitters.BruteForce.
+Require Import Fiat.Parsers.BaseTypes.
+Require Import Fiat.Parsers.CorrectnessBaseTypes.
 Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.ParserInterface.
 Require Import Fiat.Parsers.ParserADTSpecification.
 Require Import Fiat.Parsers.StringLike.Properties.
+Require Import Fiat.Parsers.ContextFreeGrammarPropertiesRDPList.
 Require Import Fiat.Parsers.StringLike.String.
+Require Import Fiat.Parsers.MinimalParseOfParse.
 Require Import ADTNotation.BuildADT ADTNotation.BuildADTSig.
 Require Import ADT.ComputationalADT.
 Require Import Fiat.Common Fiat.Common.Equality.
 Require Import Fiat.ADTRefinement.
+Require Import Fiat.Common.List.ListFacts.
 Require Import Fiat.Common.StringBound Fiat.Common.ilist.
 Require Import ADTRefinement.BuildADTRefinements.HoneRepresentation.
 Require Import Fiat.Common.IterateBoundedIndex.
 Require Import Fiat.Parsers.Refinement.IndexedAndAtMostOneNonTerminal.
+Require Import Fiat.Parsers.BaseTypesLemmas.
 Require Import Fiat.ADTRefinement.GeneralBuildADTRefinements.
 
 Set Implicit Arguments.
@@ -88,6 +96,22 @@ Section IndexedImpl.
       eassumption.
     Qed.
   End reachable.
+
+  Section rules.
+    Lemma full_rules_list_refine (str : String) prods
+    : refine { ls : list nat |
+               forall nt : string,
+                 G nt = prods ->
+                 rules_list_is_complete G str nt ls }
+             (ret (make_all_production_rules prods)).
+    Proof.
+      apply refine_pick_val.
+      repeat intro.
+      unfold make_all_production_rules.
+      apply in_up_to_rev.
+      eapply lt_nth_T; subst; eassumption.
+    Qed.
+  End rules.
 
   (** TODO: reflective version *)
   (*Section reachable_reflective.
@@ -190,9 +214,16 @@ production_is_reachable G (fst n :: snd n)*)
       rewrite (@any_list_complete [0]); [ | assumption ].
       finish_honing_by_eq parser_pull_tac.
     }
-    FullySharpenEachMethodWithoutDelegation.
-    extract delegate-free implementation.
-    simpl; higher_order_reflexivityT.
+
+    hone method "rules".
+    {
+      setoid_rewrite full_rules_list_refine.
+      finish_honing_by_eq parser_pull_tac.
+    }
+
+    Time FullySharpenEachMethodWithoutDelegation.
+    Time extract delegate-free implementation.
+    Time simpl; higher_order_reflexivityT.
   Defined.
 
 End IndexedImpl.

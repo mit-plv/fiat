@@ -118,6 +118,8 @@ Section parser.
   Definition mdrop := Eval simpl in mcall1 "drop".
   Definition premsplits := Eval simpl in cMethods (projT1 splitter_impl) {| StringBound.bindex := "splits" |}.
   Definition msplits := Eval simpl in mcall2 "splits".
+  Definition premrules := Eval simpl in cMethods (projT1 splitter_impl) {| StringBound.bindex := "rules" |}.
+  Definition mrules := Eval simpl in mcall2 "rules".
 
   Local Notation mcall1_R meth st arg str H :=
     (@fst_cMethods_comp {| StringBound.bindex := meth |} st arg str _ eq_refl H)
@@ -291,9 +293,77 @@ Section parser.
       simpl in *; eauto. }
   Qed.
 
-  Definition adt_based_splitter : Splitter G
+  Lemma adt_based_splitter_rules_for_complete
+  : forall (str : String) (nt : String.string),
+      rules_list_is_complete G str nt (mrules (Lookup G nt) (` str)).
+  Proof.
+    intros str nt.
+    destruct_head_hnf sig.
+    destruct_head ex.
+    lazymatch goal with
+      | [ H : AbsR ?Ok ?str ?st
+          |- appcontext[mrules ?arg ?st] ]
+        => idtac;
+          let T := type of Ok in
+           let impl := (match eval cbv beta in T with refineADT _ (LiftcADT ?impl) => constr:impl end) in
+           let H' := fresh in
+           pose proof (ADTRefinementPreservesMethods Ok {| StringBound.bindex := "rules" |}  _ _ arg H ((cMethods impl {| StringBound.bindex := "rules" |} st arg)) (ReturnComputes _)) as H';
+             change (mrules arg st) with (snd (premrules st arg));
+             (lazymatch type of H' with
+             | appcontext G[cMethods _ {| StringBound.bindex := "rules" |} ?st ?arg]
+               => idtac;
+              let G' := context G[premrules st arg] in
+              change G' in H'
+              end)
+    end.
+    simpl in *.
+    computes_to_inv; subst; simpl in *.
+    match goal with
+      | [ H : ?x = premrules _ _ |- _ ] => rewrite <- H; clear H; simpl
+    end.
+    let H := match goal with H : forall x, ?f x = ?f _ -> _ |- _ => constr:H end in
+    specialize (H _ eq_refl);
+      repeat (let x := fresh in intro x; specialize (H x)).
+    intros.
+    lazymatch goal with
+      | [ H : forall p : parse_of_production _ _ _, _,
+            p : parse_of_production _ _ _,
+            pH : ContextFreeGrammarProperties.Forall_parse_of_production _ _
+            |- List.In ?n ?v ]
+        => hnf in H;
+          specialize (fun H0 H1' =>
+                        H
+                          (@transfer_parse_of_production
+                             Ascii.ascii adt_based_StringLike string_stringlike G
+                             (fun s1 s2 => AbsR (projT2 splitter_impl) s2 (` s1))
+                             H0 _ _ _ H1' p)
+                          (@transfer_forall_parse_of_production
+                             Ascii.ascii adt_based_StringLike string_stringlike G
+                             (fun s1 s2 => AbsR (projT2 splitter_impl) s2 (` s1))
+                             H0 _ _ _ _ H1' p pH));
+          apply H; clear H pH p; try assumption; simpl
+    end; [ split ].
+    { handle_rep;
+      eauto with parser_adt_method_db. }
+    { handle_rep;
+      eauto with parser_adt_method_db. }
+    { pose proof (@mtake_R).
+      simpl in *; eauto. }
+    { pose proof (@mdrop_R).
+      simpl in *; eauto. }
+  Qed.
+
+  Definition adt_based_splitter' : Splitter G
     := {| string_type := adt_based_StringLike;
           string_type_properties := adt_based_StringLikeProperties;
           splits_for str it its := msplits (it, its) (` str);
-          splits_for_complete := adt_based_splitter_splits_for_complete |}.
+          splits_for_complete := adt_based_splitter_splits_for_complete;
+          rules_for str prods := mrules prods (` str);
+          rules_for_complete := adt_based_splitter_rules_for_complete |}.
+
+  Definition adt_based_splitter : Splitter G.
+  Proof.
+    let impl0 := (eval cbv beta iota zeta delta [string_type adt_based_splitter' msplits mrules cMethods pcMethods projT2 projT1 snd] in adt_based_splitter') in
+    exact impl0.
+  Defined.
 End parser.

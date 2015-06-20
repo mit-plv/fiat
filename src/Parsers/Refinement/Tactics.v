@@ -71,6 +71,13 @@ Section tac_helpers.
   Proof.
     destruct b; reflexivity.
   Qed.
+
+  Lemma pull_option_rect_If {T A B} (f : A -> B) b x y z w
+  : option_rect (fun _ : option T => B) (fun k => If b k Then f x Else f y) (f z) w
+    = f (option_rect (fun _ => A) (fun k => If b k Then x Else y) z w).
+  Proof.
+    destruct w; simpl; trivial; edestruct b; reflexivity.
+  Qed.
 End tac_helpers.
 
 Lemma unguard {T} (x : T)
@@ -119,6 +126,10 @@ Ltac parser_pull_tac :=
              => rewrite (@pull_If_bool _ _ x y b (fun k => [k]))
            | [ |- context G[If ?b Then ret ?x Else ret ?y] ]
              => rewrite (@pull_If_bool _ _ x y b (fun k => ret k))
+           | [ |- appcontext G[If _ Then ?f ?x Else ?f ?y] ]
+             => rewrite (@pull_option_rect_If _ _ _ f _ x y)
+           | [ |- appcontext G[If _ Then ?x::?xs Else ?y::?xs] ]
+             => rewrite (@pull_option_rect_If _ _ _ (fun k => k::xs) _ x y)
          end.
 
 Ltac parser_hone_cleanup :=
@@ -200,3 +211,6 @@ Tactic Notation "simplify" "parser" "splitter" :=
                | rewrite !if_aggregate3 by solve_prod_beq
                | progress parser_pull_tac
                | progress (simpl @fst; simpl @snd) ].
+
+Tactic Notation "simplify" "parser" "rules" :=
+  simplify parser splitter.

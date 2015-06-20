@@ -125,3 +125,33 @@ Global Instance subrelation_eq_pointwise {A B} : subrelation (@eq (A -> B)) (poi
 Proof.
   compute; intros; subst; reflexivity.
 Qed.
+
+Global Instance option_rect_Proper T P
+: Proper (pointwise_relation T eq ==> eq ==> eq ==> eq) (@option_rect T (fun _ => P)).
+Proof.
+  intros ?????? [?|?]; intros; subst; simpl; trivial.
+Qed.
+
+Global Instance option_map_Proper A B
+: Proper (pointwise_relation A eq ==> eq ==> eq) (@option_map A B).
+Proof.
+  intros ??? [?|?]; intros; subst; simpl; trivial; apply f_equal; trivial.
+Qed.
+
+Global Instance fold_right_f_eq_mor_Proper {A B}
+: Proper (pointwise_relation _ (pointwise_relation _ eq) ==> eq ==> eq ==> eq) (@List.fold_right A B).
+Proof.
+  unfold pointwise_relation.
+  intros ?? H ? init' ? ? ls' ?; subst.
+  revert init'; induction ls'; simpl; trivial.
+  intros; rewrite IHls', H; reflexivity.
+Qed.
+
+Global Instance fold_left_f_eq_mor_Proper {A B}
+: Proper (pointwise_relation _ (pointwise_relation _ eq) ==> eq ==> eq ==> eq) (@List.fold_left A B).
+Proof.
+  unfold pointwise_relation.
+  intros ?? H ? ls' ? ? init' ?; subst.
+  revert init'; induction ls'; simpl; trivial.
+  intros; rewrite H, IHls'; reflexivity.
+Qed.

@@ -2,7 +2,7 @@
 Require Import Coq.Lists.List Coq.Strings.String Coq.Arith.Wf_nat.
 Require Import Coq.omega.Omega.
 Require Import Fiat.Parsers.ContextFreeGrammar.
-Require Import Fiat.Parsers.BaseTypes Fiat.Parsers.CorrectnessBaseTypes.
+Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Common.Equality.
 
 Set Implicit Arguments.

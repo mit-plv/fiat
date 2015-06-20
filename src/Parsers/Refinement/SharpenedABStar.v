@@ -16,6 +16,12 @@ Section IndexedImpl.
       finish honing parser method.
     }
 
+    hone method "rules".
+    {
+      simplify parser splitter.
+      finish honing parser method.
+    }
+
     FullySharpenEachMethodWithoutDelegation.
     extract delegate-free implementation.
     simpl; higher_order_reflexivityT.
