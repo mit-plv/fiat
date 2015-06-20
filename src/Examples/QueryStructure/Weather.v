@@ -86,16 +86,22 @@ Definition SharpenedWeatherStation :
 Proof.
 
   start_honing_QueryStructure.
-  { GenerateIndexesForAll ltac:(fun _ _ => fail)
-                                 ltac:(fun attrList =>
-                                         make simple indexes using attrList).
+  { GenerateIndexesForAll
+      ltac:(fun _ _ => fail)
+             ltac:(fun attrList =>
+                     make_simple_indexes
+                       attrList
+                       ltac:(CombineCase6 BuildEarlyEqualityIndex
+                                          ltac:(fun _ _ _ _ _ _ => fail))
+                              ltac:(CombineCase5 BuildLastEqualityIndex
+                                                 ltac:(fun _ _ _ _ _ => fail))).
      initializer.
      insertion EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
                EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
      insertion EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
                EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
      observer EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
-               EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
+              EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
      observer EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
               EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
      pose_headings_all.
@@ -108,8 +114,7 @@ Proof.
 
   { simpl; pose_string_ids; pose_headings_all;
     pose_search_term;  pose_SearchUpdateTerms.
-    BuildQSIndexedBags'. }
-  Print Implicit Update_Build_IndexedQueryStructure_Impl_cRep.
+    BuildQSIndexedBags' BuildEarlyEqualityBag BuildLastEqualityBag. }
   higher_order_reflexivityT.
 
 Time Defined.

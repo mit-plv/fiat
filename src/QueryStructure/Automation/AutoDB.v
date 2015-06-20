@@ -375,7 +375,7 @@ Ltac createTerm f fds tail fs EarlyIndex LastIndex k :=
           (findMatchingTerm
              fds kind s
              ltac:(fun X => k (Some X, tail)))
-            || k (@None (Domain f s ), tail)
+            || k (@None (Domain f s), tail)
         | right _ => LastIndex f fds tail fs kind s k
       end
     | {| KindIndexKind := ?kind;
@@ -389,7 +389,7 @@ Ltac createTerm f fds tail fs EarlyIndex LastIndex k :=
                     (findMatchingTerm
                        fds kind s
                        ltac:(fun X => k (Some X, rest)))
-                      || k (@None (Domain f s ), rest)
+                      || k (@None (Domain f s), rest)
                   | right _ => EarlyIndex f fds tail fs kind EarlyIndex LastIndex rest s k
                 end)
   end.
@@ -703,7 +703,7 @@ Ltac createTerm_dep dom f fds tail fs EarlyIndex LastIndex k :=
           (try findMatchingTerm fds kind s
                ltac:(fun X =>
                        k (fun x : dom => (Some (X x), tail x))))
-            || k (fun x : dom => (@None (Domain f s ), tail x))
+            || k (fun x : dom => (@None (Domain f s), tail x))
         | right _ => LastIndex dom f fds tail fs kind s k
         end
   | {| KindIndexKind := ?kind;
@@ -722,7 +722,7 @@ Ltac createTerm_dep dom f fds tail fs EarlyIndex LastIndex k :=
                                                    let is_equality := eval compute in (string_dec kind EqualityIndex) in
                                                        match is_equality with
                                                        | left _ =>
-                                                         k (fun x : dom => (@None (Domain f s ), rest x))
+                                                         k (fun x : dom => (@None (Domain f s), rest x))
                                                        end)
   end.
 
@@ -1530,7 +1530,7 @@ Ltac find_equiv_tl a As f g :=
   (* Find an equivalent function on just the tail of an ilist*)
   let a := fresh in
   let H := fresh in
-  assert (forall a : ilist _ (a :: As), f a = g (ilist2_tl a)) as H;
+  assert (forall a : ilist2 (Vector.cons _ a _ As), f a = g (ilist2_tl a)) as H;
     [let a := fresh in
      intro a;
        match goal with
@@ -1601,9 +1601,9 @@ Ltac Realize_CallBagMethods :=
                                                                   refine (l2 a) (ret v)) as Comp_l2
                                                                  by Realize_CallBagMethods;
                                                              etransitivity;
-                                                               [ apply (@refine_Join_Join_Filtered_Comp_Lists_filter_hd_andb heading1 heading2 headings f' g l2 l2' cond1 cond2 Comp_l2 l1) | ])
+                                                               [ apply (@refine_Join_Join_Filtered_Comp_Lists_filter_hd_andb _ heading1 heading2 headings f' g l2 l2' cond1 cond2 Comp_l2 l1) | ])
                                             | etransitivity;
-                                              [ apply (@refine_Join_Join_Filtered_Comp_Lists_filter_tail_andb heading1 heading2 headings f g l2 l2' cond1 cond2 l1)
+                                              [ apply (@refine_Join_Join_Filtered_Comp_Lists_filter_tail_andb _ heading1 heading2 headings f g l2 l2' cond1 cond2 l1)
                                               | ]
                                             ]
                          | |- refine (l' <- Join_Filtered_Comp_Lists ?l1 ?l2 ?cond1;
@@ -1620,10 +1620,10 @@ Ltac Realize_CallBagMethods :=
                                                         refine (l2 a) (ret v)) as Comp_l2
                                                        by Realize_CallBagMethods;
                                                    etransitivity;
-                                                   [ apply (@refine_Join_Join_Filtered_Comp_Lists_filter_hd heading1 heading2 headings f' l2 l2' cond1 cond2 Comp_l2 l1)
+                                                   [ apply (@refine_Join_Join_Filtered_Comp_Lists_filter_hd _ heading1 heading2 headings f' l2 l2' cond1 cond2 Comp_l2 l1)
                                                    | ])
                                   | etransitivity;
-                                    [ apply (@refine_Join_Join_Filtered_Comp_Lists_filter_tail heading1 heading2 headings f l2 l2' cond1 cond2 l1) | ] ]
+                                    [ apply (@refine_Join_Join_Filtered_Comp_Lists_filter_tail _ heading1 heading2 headings f l2 l2' cond1 cond2 l1) | ] ]
                            (* If there's no filter on the first list, we're done. *)
                            | |- refine (l' <- Join_Filtered_Comp_Lists ?l1 ?l2 ?cond1;
                                               Join_Filtered_Comp_Lists l' ?l2' ?cond2)
@@ -1782,7 +1782,7 @@ Ltac implement_Query' k k_dep:=
     implement_In_opt;
     (* Step 2: Move filters to the outermost [Join_Comp_Lists] to which *)
     (* they can be applied. *)
-    distribute_filters_to_joins;
+    repeat progress distribute_filters_to_joins;
     (* Step 3: Convert filter function on topmost [Join_Filtered_Comp_Lists] to an
                equivalent search term matching function.  *)
     implement_filters_with_find k k_dep
@@ -1810,7 +1810,7 @@ Ltac observer CreateTerm EarlyIndex LastIndex
   simpl; simplify with monad laws;
   cbv beta; simpl; commit;
   fold_string_hyps; fold_heading_hyps;
-  cleanup_Count;
+  (*cleanup_Count; *) (* This is taking waaaaay too much time. *)
   fold_string_hyps; fold_heading_hyps;
   finish honing.
 

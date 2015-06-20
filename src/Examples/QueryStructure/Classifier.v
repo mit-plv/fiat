@@ -1,7 +1,7 @@
 Require Import Coq.Strings.String.
 Require Import Fiat.QueryStructure.Automation.AutoDB
         Fiat.QueryStructure.Automation.IndexSelection
-        Fiat.QueryStructure.Specification.SearchTerms.ListPrefix.
+        Fiat.QueryStructure.Automation.QSImplementation.
 
 Open Scope list.
 
@@ -10,7 +10,7 @@ Open Scope list.
 
 Section Packet.
   (* an Ip address is a list of ascii each of which represents a group *)
-  Definition Ip := list ascii.
+  Definition Ip := list nat.
 
   (* a Protocol can be either tcp or udp *)
   Inductive Protocol := tcp | udp.
@@ -116,31 +116,38 @@ Section ADT.
   }.
 
   Theorem ClassifierManual :
-    MostlySharpened ClassifierSpec.
+    FullySharpened ClassifierSpec.
   Proof.
 
     start_honing_QueryStructure.
-    {
-
-      GenerateIndexesForAll ltac:(CombineCase3 matchFindPrefixIndex matchEqIndex)
-                                    ltac:(fun attrList =>
-                                         make simple indexes using attrList).
+    { GenerateIndexesForAll
+        ltac:(CombineCase3 matchFindPrefixIndex matchEqIndex)
+               ltac:(fun attrList =>
+                       make_simple_indexes
+                         attrList
+                         ltac:(CombineCase6 BuildEarlyEqualityIndex
+                                            ltac:(CombineCase6 BuildEarlyFindPrefixIndex
+                                                               ltac:(fun _ _ _ _ _ _ => fail)))
+                                ltac:(CombineCase5 BuildLastEqualityIndex
+                                                   ltac:(CombineCase5
+                                                           BuildLastFindPrefixIndex
+                                                           ltac:(fun _ _ _ _ _ => fail)))).
 
       initializer.
       insertion ltac:(CombineCase5 PrefixIndexUse EqIndexUse)
-             ltac:(CombineCase10 createEarlycreateEarlyEqualityTerm)
+             ltac:(CombineCase10 createEarlyPrefixTerm createEarlyEqualityTerm)
              ltac:(CombineCase7 createLastPrefixTerm createLastEqualityTerm)
              ltac:(CombineCase7 PrefixIndexUse_dep EqIndexUse_dep)
              ltac:(CombineCase11 createEarlyPrefixTerm_dep createEarlyEqualityTerm_dep)
              ltac:(CombineCase8 createLastPrefixTerm_dep createLastEqualityTerm_dep).
       deletion ltac:(CombineCase5 PrefixIndexUse EqIndexUse)
-             ltac:(CombineCase10 createEarlycreateEarlyEqualityTerm)
+             ltac:(CombineCase10 createEarlyPrefixTerm createEarlyEqualityTerm)
              ltac:(CombineCase7 createLastPrefixTerm createLastEqualityTerm)
              ltac:(CombineCase7 PrefixIndexUse_dep EqIndexUse_dep)
              ltac:(CombineCase11 createEarlyPrefixTerm_dep createEarlyEqualityTerm_dep)
              ltac:(CombineCase8 createLastPrefixTerm_dep createLastEqualityTerm_dep).
       observer ltac:(CombineCase5 PrefixIndexUse EqIndexUse)
-             ltac:(CombineCase10 createEarlycreateEarlyEqualityTerm)
+             ltac:(CombineCase10 createEarlyPrefixTerm createEarlyEqualityTerm)
              ltac:(CombineCase7 createLastPrefixTerm createLastEqualityTerm)
              ltac:(CombineCase7 PrefixIndexUse_dep EqIndexUse_dep)
              ltac:(CombineCase11 createEarlyPrefixTerm_dep createEarlyEqualityTerm_dep)
@@ -153,14 +160,21 @@ Section ADT.
         FullySharpenQueryStructure Schema Indexes
       end.
     }
-  (* 124 seconds *)
+
+    { simpl; pose_string_ids; pose_headings_all;
+      pose_search_term;  pose_SearchUpdateTerms.
+
+      BuildQSIndexedBags' ltac:(CombineCase6 BuildEarlyTrieBag BuildEarlyEqualityBag)
+                                 ltac:(CombineCase5 BuildLastTrieBag BuildLastEqualityBag).
+    }
+
+    higher_order_reflexivityT.
+    (* 124 seconds *)
   Time Defined.
 
-  Definition ClassifierImpl : SharpenedUnderDelegates ClassifierSig.
-    (* 33 seconds *)
-    Time let Impl := eval simpl in (projT1 ClassifierManual) in
-             exact Impl.
-  Defined.
+  Time Definition ClassifierImpl : ComputationalADT.cADT ClassifierSig :=
+    Eval simpl in (projT1 ClassifierManual).
+
   Print ClassifierImpl.
 
 End ADT.

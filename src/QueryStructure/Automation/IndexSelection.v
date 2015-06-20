@@ -305,11 +305,29 @@ Ltac GenerateIndexesForAll OtherClauses k :=
         GenerateIndexesFor meths OtherClauses k
   end.
 
-Tactic Notation "make" "simple" "indexes" "using" constr(attrlist) :=
+Tactic Notation "make" "simple" "indexes" "using" constr(attrlist) tactic(BuildEarlyIndex) tactic(BuildLastIndex):=
   match goal with
   | [ |- Sharpened (@BuildADT (UnConstrQueryStructure ?sch) _ _ _ _ _ _ )] =>
     let sch' := eval simpl in (qschemaSchemas sch) in
         makeIndex' sch' attrlist
+                   BuildEarlyIndex BuildLastIndex
+                   ltac:(fun l =>
+                           pose_string_hyps; pose_heading_hyps;
+                         let index := fresh "Index" in
+                         pose l as index;
+                         simpl in index;
+                         pose_string_hyps_in index; pose_heading_hyps_in index;
+                         pose_search_term_in index;
+                         pose_SearchUpdateTerms_in index;
+                         hone representation using (@DelegateToBag_AbsR sch index))
+  end.
+
+Ltac make_simple_indexes attrlist BuildEarlyIndex BuildLastIndex:=
+  match goal with
+  | [ |- Sharpened (@BuildADT (UnConstrQueryStructure ?sch) _ _ _ _ _ _ )] =>
+    let sch' := eval simpl in (qschemaSchemas sch) in
+        makeIndex' sch' attrlist
+                   BuildEarlyIndex BuildLastIndex
                    ltac:(fun l =>
                            pose_string_hyps; pose_heading_hyps;
                          let index := fresh "Index" in

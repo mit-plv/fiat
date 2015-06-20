@@ -1,7 +1,7 @@
 Require Import Coq.Strings.String.
 Require Import Fiat.QueryStructure.Automation.AutoDB
         Fiat.QueryStructure.Automation.IndexSelection
-        Fiat.QueryStructure.Automation.Common.
+        Fiat.QueryStructure.Automation.QSImplementation.
 
 Definition PHOTOS := "Photos".
 Definition EVENTS := "Events".
@@ -63,17 +63,25 @@ Definition AlbumSpec : ADT AlbumSig :=
           Return photo
 }.
 
-  Require Import Fiat.QueryStructure.Specification.SearchTerms.ListInclusion.
-  Require Import Fiat.QueryStructure.Specification.SearchTerms.InRange.
-
 Definition SharpenedAlbum :
-  MostlySharpened AlbumSpec.
+  FullySharpened AlbumSpec.
 Proof.
 
   start honing QueryStructure.
 
+  {
   (* Manually select indexes + data structure. *)
-    make simple indexes using (icons3 (B := fun heading => list (prod string (Attributes (rawSchemaHeading heading)))) (a := Vector.hd (qschemaSchemas AlbumSchema)) [("EqualityIndex", Fin.FS (Fin.FS (@Fin.F1 0))); ("InclusionIndex", Fin.FS (@Fin.F1 1))] (icons3 (a := Vector.hd (Vector.tl (qschemaSchemas AlbumSchema))) [("EqualityIndex", @Fin.F1 1); ("RangeIndex", Fin.FS (@Fin.F1 0))] inil3)).
+let attrList := constr:(icons3 (B := fun heading => list (prod string (Attributes (rawSchemaHeading heading)))) (a := Vector.hd (qschemaSchemas AlbumSchema)) [("EqualityIndex", Fin.FS (Fin.FS (@Fin.F1 0))); ("InclusionIndex", Fin.FS (@Fin.F1 1))] (icons3 (a := Vector.hd (Vector.tl (qschemaSchemas AlbumSchema))) [("EqualityIndex", @Fin.F1 1); ("RangeIndex", Fin.FS (@Fin.F1 0))] inil3)) in
+make_simple_indexes attrList
+  ltac:(CombineCase6 BuildEarlyEqualityIndex
+                     ltac:(CombineCase6 BuildEarlyRangeIndex
+                                        ltac:(fun _ _ _ _ _ _ => fail)))
+         ltac:(CombineCase5 BuildLastEqualityIndex
+                            ltac:(CombineCase5
+
+                                    BuildLastInclusionIndex ltac:(CombineCase5 BuildLastRangeIndex
+                                                                               ltac:(fun _ _ _ _ _ => fail)))).
+
     - initializer.
     - insertion ltac:(CombineCase5 InclusionIndexUse ltac:(CombineCase5 RangeIndexUse EqIndexUse))
              ltac:(CombineCase10 createEarlyInclusionTerm ltac:(CombineCase10 createEarlyRangeTerm createEarlyEqualityTerm))
@@ -105,5 +113,15 @@ Proof.
      | |- appcontext[@BuildADT (IndexedQueryStructure ?Schema ?Indexes)] =>
        FullySharpenQueryStructure Schema Indexes
      end.
+     }
+
+  { simpl; pose_string_ids; pose_headings_all;
+    pose_search_term; pose_SearchUpdateTerms.
+
+BuildQSIndexedBags' ltac:(CombineCase6 BuildEarlyRangeTreeBag BuildEarlyEqualityBag)
+                        ltac:(CombineCase5 BuildLastInclusionIndexBag
+                                           ltac:(CombineCase5 BuildLastRangeTreeBag BuildLastEqualityBag)).
+  }
+  higher_order_reflexivityT.
 
 Time Defined.

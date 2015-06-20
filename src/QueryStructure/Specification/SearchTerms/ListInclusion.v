@@ -11,33 +11,69 @@ Require Import
         Fiat.Common.List.PermutationFacts
         Fiat.QueryStructure.Specification.Representation.QueryStructureNotations.
 
-Section IncludesClauses.
+Section IncludedInAClauses.
 
   Context {X : Type}
-          {X_eq_dec : Query_eq X}.
+          (X_eq : X -> X -> Prop)
+          {X_eq_dec : forall x x', {X_eq x x'} + {~ X_eq x x'}}
+          {X_equiv : Equivalence X_eq}.
 
-  Definition IncludedIn := inclA (@eq X).
+  Definition IncludedInA := inclA X_eq.
 
-  Fixpoint IncludedIn_dec (l l' : list X)
-  : {IncludedIn l l'} + {~ IncludedIn l l'}.
+  Fixpoint IncludedInA_dec (l l' : list X)
+  : {IncludedInA l l'} + {~ IncludedInA l l'}.
   refine (match l with
             | nil => left _
             | e :: l =>
-              if InA_dec A_eq_dec e l' then
-                if IncludedIn_dec l l' then
+              if InA_dec X_eq_dec e l' then
+                if IncludedInA_dec l l' then
                   left _
                 else right _
               else right _
-          end); unfold IncludedIn, inclA in *; intros.
+          end); unfold IncludedInA, inclA in *; intros.
   - inversion H.
-  - inversion H; subst; eauto; rewrite H1; eauto.
+  - inversion H; subst; eauto.
+    rewrite H1; eauto.
   - unfold not; intros; apply _H0; intros.
     eapply H; econstructor 2; eauto.
   - unfold not; intros; eapply _H.
     apply H; econstructor; eauto.
+    reflexivity.
   Defined.
 
-  Instance DecideableEnsemble_IncludedIn st :
+  Global Instance DecideableEnsemble_IncludedInA st :
+    DecideableEnsemble (IncludedInA st) :=
+    {| dec a := ?[IncludedInA_dec st a] |}.
+  Proof.
+    intros; destruct (IncludedInA_dec st a); intuition eauto.
+    discriminate.
+  Defined.
+
+  Global Instance DecideableEnsemble_IncludedInA_f
+         (A : Type)
+         (f : A -> list X)
+         b :
+    DecideableEnsemble (fun a => IncludedInA b (f a) ) :=
+    {| dec a := ?[IncludedInA_dec b (f a)]|}.
+  Proof.
+    intros; destruct (IncludedInA_dec b (f a)); intuition eauto.
+    discriminate.
+  Defined.
+
+End IncludedInAClauses.
+
+Section IncludedInClauses.
+  
+  Context {X : Type}
+          {X_eq : Query_eq X}.
+  
+  Definition IncludedIn := IncludedInA (@eq X).
+
+  Definition IncludedIn_dec (l l' : list X)
+    : {IncludedIn l l'} + {~ IncludedIn l l'} :=
+    IncludedInA_dec (X_eq_dec := A_eq_dec) l l'.
+
+  Global Instance DecideableEnsemble_IncludedIn st :
     DecideableEnsemble (IncludedIn st) :=
     {| dec a := ?[IncludedIn_dec st a] |}.
   Proof.
@@ -56,4 +92,7 @@ Section IncludesClauses.
     discriminate.
   Defined.
 
-End IncludesClauses.
+End IncludedInClauses.
+  
+  
+  

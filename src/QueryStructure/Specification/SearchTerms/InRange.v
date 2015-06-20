@@ -1,4 +1,5 @@
-Require Import Coq.Arith.Compare_dec Omega
+Require Import Coq.Arith.Compare_dec
+        Coq.omega.Omega
         Fiat.QueryStructure.Specification.Representation.QueryStructureNotations.
 
 Section RangeClause.
@@ -8,7 +9,8 @@ Section RangeClause.
 
   Global Instance DecideableEnsemble_InRange_le range :
     DecideableEnsemble (fun a => a <= range) :=
-    {| dec a := ?[le_dec a range] |}.
+    {| dec a :=
+         ?[le_dec a range] |}.
   Proof.
     intros; destruct (le_dec a range); intuition eauto; discriminate.
   Defined.

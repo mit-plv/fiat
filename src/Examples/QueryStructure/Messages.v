@@ -1,6 +1,7 @@
 Require Import Coq.Strings.String.
 Require Import Fiat.QueryStructure.Automation.AutoDB
-        Fiat.QueryStructure.Automation.IndexSelection.
+        Fiat.QueryStructure.Automation.IndexSelection
+        Fiat.QueryStructure.Automation.QSImplementation.
 
 Definition MESSAGES := "Messages".
 Definition CONTACTS := "Contacts".
@@ -62,7 +63,6 @@ Definition MessagesSpec : ADT MessagesSig :=
            Return message!MESSAGE
 
 }.
-Require Import Fiat.QueryStructure.Specification.SearchTerms.ListInclusion.
 
 Definition SharpenedMessages :
   FullySharpened MessagesSpec.
@@ -70,63 +70,59 @@ Proof.
 
   start_honing_QueryStructure.
 
-  { GenerateIndexesForAll ltac:(CombineCase3 matchInclusionIndex matchEqIndex)
-                                 ltac:(fun attrList =>
-                                         make simple indexes using attrList).
-     initializer.
-     insertion ltac:(CombineCase5 InclusionIndexUse EqIndexUse)
-             ltac:(CombineCase10 createEarlyInclusionTerm createEarlyEqualityTerm)
-                    ltac:(CombineCase7 createLastInclusionTerm createLastEqualityTerm)
-                           ltac:(CombineCase7 InclusionIndexUse_dep EqIndexUse_dep)
-                                  ltac:(CombineCase11 createEarlyInclusionTerm_dep createEarlyEqualityTerm_dep)
-                                         ltac:(CombineCase8 createLastInclusionTerm_dep createLastEqualityTerm_dep).
-      insertion ltac:(CombineCase5 InclusionIndexUse EqIndexUse)
-             ltac:(CombineCase10 createEarlyInclusionTerm createEarlyEqualityTerm)
-                    ltac:(CombineCase7 createLastInclusionTerm createLastEqualityTerm)
-                           ltac:(CombineCase7 InclusionIndexUse_dep EqIndexUse_dep)
-                                  ltac:(CombineCase11 createEarlyInclusionTerm_dep createEarlyEqualityTerm_dep)
-                                         ltac:(CombineCase8 createLastInclusionTerm_dep createLastEqualityTerm_dep).
-      observer ltac:(CombineCase5 InclusionIndexUse EqIndexUse)
-             ltac:(CombineCase10 createEarlyInclusionTerm createEarlyEqualityTerm)
-                    ltac:(CombineCase7 createLastInclusionTerm createLastEqualityTerm)
-                           ltac:(CombineCase7 InclusionIndexUse_dep EqIndexUse_dep)
-                                  ltac:(CombineCase11 createEarlyInclusionTerm_dep createEarlyEqualityTerm_dep)
-                                         ltac:(CombineCase8 createLastInclusionTerm_dep createLastEqualityTerm_dep).
-      observer ltac:(CombineCase5 InclusionIndexUse EqIndexUse)
-             ltac:(CombineCase10 createEarlyInclusionTerm createEarlyEqualityTerm)
-                    ltac:(CombineCase7 createLastInclusionTerm createLastEqualityTerm)
-                           ltac:(CombineCase7 InclusionIndexUse_dep EqIndexUse_dep)
-                                  ltac:(CombineCase11 createEarlyInclusionTerm_dep createEarlyEqualityTerm_dep)
-                                         ltac:(CombineCase8 createLastInclusionTerm_dep createLastEqualityTerm_dep).
-      pose_headings_all.
+  {
 
-     match goal with
-     | |- appcontext[@BuildADT (IndexedQueryStructure ?Schema ?Indexes)] =>
-       FullySharpenQueryStructure Schema Indexes
-     end.
+    GenerateIndexesForAll
+      ltac:(CombineCase3 matchInclusionIndex matchEqIndex)
+             ltac:(fun attrList =>
+                     make_simple_indexes
+                       attrList
+                       ltac:(CombineCase6 BuildEarlyEqualityIndex
+                                          ltac:(fun _ _ _ _ _ _ => fail))
+                              ltac:(CombineCase5 BuildLastEqualityIndex
+                                                 ltac:(CombineCase5
+                                                         BuildLastInclusionIndex
+                                                         ltac:(fun _ _ _ _ _ => fail)))).
+    - initializer.
+    - insertion ltac:(CombineCase5 InclusionIndexUse EqIndexUse)
+             ltac:(CombineCase10 createEarlyInclusionTerm createEarlyEqualityTerm)
+                    ltac:(CombineCase7 createLastInclusionTerm createLastEqualityTerm)
+                           ltac:(CombineCase7 InclusionIndexUse_dep EqIndexUse_dep)
+                                  ltac:(CombineCase11 createEarlyInclusionTerm_dep createEarlyEqualityTerm_dep)
+                                         ltac:(CombineCase8 createLastInclusionTerm_dep createLastEqualityTerm_dep).
+    - insertion ltac:(CombineCase5 InclusionIndexUse EqIndexUse)
+             ltac:(CombineCase10 createEarlyInclusionTerm createEarlyEqualityTerm)
+                    ltac:(CombineCase7 createLastInclusionTerm createLastEqualityTerm)
+                           ltac:(CombineCase7 InclusionIndexUse_dep EqIndexUse_dep)
+                                  ltac:(CombineCase11 createEarlyInclusionTerm_dep createEarlyEqualityTerm_dep)
+                                         ltac:(CombineCase8 createLastInclusionTerm_dep createLastEqualityTerm_dep).
+    - observer ltac:(CombineCase5 InclusionIndexUse EqIndexUse)
+             ltac:(CombineCase10 createEarlyInclusionTerm createEarlyEqualityTerm)
+                    ltac:(CombineCase7 createLastInclusionTerm createLastEqualityTerm)
+                           ltac:(CombineCase7 InclusionIndexUse_dep EqIndexUse_dep)
+                                  ltac:(CombineCase11 createEarlyInclusionTerm_dep createEarlyEqualityTerm_dep)
+                                         ltac:(CombineCase8 createLastInclusionTerm_dep createLastEqualityTerm_dep).
+    - observer ltac:(CombineCase5 InclusionIndexUse EqIndexUse)
+             ltac:(CombineCase10 createEarlyInclusionTerm createEarlyEqualityTerm)
+                    ltac:(CombineCase7 createLastInclusionTerm createLastEqualityTerm)
+                           ltac:(CombineCase7 InclusionIndexUse_dep EqIndexUse_dep)
+                                  ltac:(CombineCase11 createEarlyInclusionTerm_dep createEarlyEqualityTerm_dep)
+                                         ltac:(CombineCase8 createLastInclusionTerm_dep createLastEqualityTerm_dep).
+    - pose_headings_all.
+      match goal with
+      | |- appcontext[@BuildADT (IndexedQueryStructure ?Schema ?Indexes)] =>
+        FullySharpenQueryStructure Schema Indexes
+      end.
   }
 
   { simpl; pose_string_ids; pose_headings_all;
-    pose_search_term;  pose_SearchUpdateTerms.
-    BuildQSIndexedBags'. }
+    pose_search_term; pose_SearchUpdateTerms.
+    BuildQSIndexedBags' BuildEarlyEqualityBag
+                        ltac:(CombineCase5 BuildLastInclusionIndexBag BuildLastEqualityBag).
+  }
   higher_order_reflexivityT.
 
 Time Defined.
 
-  (* With the standard indexes, 'RelevantMessages' enumerates and filters. *)
-  partial_master_plan EqIndexTactics.
-  Undo 1.
-
-  (* Using search terms for checking IncludedIn uses the more efficient BFind method. *)
-
-
-  partial_master_plan ltac:(CombineIndexTactics InclusionIndexTactics EqIndexTactics).
-
-  FullySharpenQueryStructure MessagesSchema Index.
-
-Time Defined.
-
-Definition MessagesImpl : SharpenedUnderDelegates MessagesSig.
-  Time let Impl := eval simpl in (projT1 SharpenedMessages) in
-           exact Impl.
-Defined.
+Time Definition MessagesImpl : ComputationalADT.cADT MessagesSig :=
+  Eval simpl in (projT1 SharpenedMessages).

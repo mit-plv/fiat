@@ -599,5 +599,25 @@ Section SharpenedBagImplementation.
 
   Time Definition BagADTImpl : ComputationalADT.cADT (BagSig (@RawTuple heading) SearchTermTypePlus UpdateTermTypePlus) :=
     Eval simpl in projT1 SharpenedBagImpl.
-
+  
 End SharpenedBagImplementation.
+
+Lemma FullySharpenedBagsEquivMatchers
+  : forall (ElementType SearchTermType UpdateTermType : Type)
+           (MatchSearchTerm MatchSearchTerm' : SearchTermType -> ElementType -> bool)
+           (ApplyUpdateTerm ApplyUpdateTerm' : UpdateTermType -> ElementType -> ElementType),
+    (forall st item, MatchSearchTerm st item = MatchSearchTerm' st item)
+    -> (forall ut item, ApplyUpdateTerm ut item = ApplyUpdateTerm' ut item)
+    -> FullySharpened (BagSpec MatchSearchTerm ApplyUpdateTerm)
+    -> FullySharpened (BagSpec MatchSearchTerm' ApplyUpdateTerm').
+Proof.
+  intros; exists (projT1 X).
+  pose (projT2 X); simpl in *.
+  assert (MatchSearchTerm = MatchSearchTerm') as M_eq by
+        (apply functional_extensionality; intros; apply functional_extensionality;
+         eauto); destruct M_eq.
+  assert (ApplyUpdateTerm = ApplyUpdateTerm') as A_eq by
+        (apply functional_extensionality; intros; apply functional_extensionality;
+         eauto); destruct A_eq.
+  exact r.
+Defined.

@@ -105,8 +105,17 @@ Theorem SharpenedBookStore :
 Proof.
 
   start_honing_QueryStructure.
-  { GenerateIndexesForAll ltac:(fun _ _ => fail)
-                                 ltac:(fun attrList => make simple indexes using attrList).
+  {
+    Unset Ltac Debug.
+    GenerateIndexesForAll
+      ltac:(fun _ _ => fail)
+             ltac:(fun attrList =>
+                     make_simple_indexes
+                       attrList
+                       ltac:(CombineCase6 BuildEarlyEqualityIndex
+                                          ltac:(fun _ _ _ _ _ _ => fail))
+                              ltac:(CombineCase5 BuildLastEqualityIndex
+                                                 ltac:(fun _ _ _ _ _ => fail))).
 
      initializer.
      insertion EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
@@ -133,7 +142,7 @@ Proof.
   { simpl; pose_string_ids; pose_headings_all;
     pose_search_term;  pose_SearchUpdateTerms.
 
-    BuildQSIndexedBags'. }
+    BuildQSIndexedBags' BuildEarlyEqualityBag BuildLastEqualityBag. }
   higher_order_reflexivityT.
 
 Time Defined. (* 1249MB, 65s ; 1810MB, 108s *)
@@ -143,5 +152,4 @@ Time Definition BookstoreImpl' : ComputationalADT.cADT BookStoreSig :=
 
 (* <130 seconds for master_plan.
    <141 seconds for Defined. *)
-Set Printing All.
 Print BookstoreImpl'.

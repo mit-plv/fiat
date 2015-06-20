@@ -245,6 +245,7 @@ src/QueryStructure/Automation/AutoDB.v
 src/QueryStructure/Automation/Common.v
 src/QueryStructure/Automation/IndexSelection.v
 src/QueryStructure/Automation/QSImplementation.v
+src/QueryStructure/Automation/RangeTreeBags.v
 src/QueryStructure/Automation/Constraints/ForeignKeyAutomation.v
 src/QueryStructure/Automation/Constraints/FunctionalDependencyAutomation.v
 src/QueryStructure/Automation/Constraints/TrivialConstraintAutomation.v
@@ -275,6 +276,7 @@ src/QueryStructure/Implementation/DataStructures/Bags/CountingListBags.v
 src/QueryStructure/Implementation/DataStructures/Bags/InvertedIndexBags.v
 src/QueryStructure/Implementation/DataStructures/Bags/ListBags.v
 src/QueryStructure/Implementation/DataStructures/Bags/NatCompare_Facts.v
+src/QueryStructure/Implementation/DataStructures/Bags/RangeTreeBags.v
 src/QueryStructure/Implementation/DataStructures/Bags/TreeBags.v
 src/QueryStructure/Implementation/DataStructures/Bags/TrieBags.v
 src/QueryStructure/Implementation/Operations/BagADT/Refinements.v
