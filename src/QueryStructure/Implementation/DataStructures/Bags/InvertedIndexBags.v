@@ -25,7 +25,6 @@ Module InvertedIndexBag (MKeys : WS) (MValues : WSfun Nat_as_OT).
   Module Import MValuesProperties := WProperties_fun Nat_as_OT MValues.
   Module Import MoreMValuesFacts := FMapExtensions_fun Nat_as_OT MValues.
   Module E := MKeys.E.
-  Module Import EInclusion := IncludesClauses E.
 
   Section InvertedIndexBagDefinitions.
 
@@ -38,19 +37,15 @@ Module InvertedIndexBag (MKeys : WS) (MValues : WSfun Nat_as_OT).
 
     Definition ItemSearchTermT := TItem -> bool.
     Definition ItemSearchTermMatcher : ItemSearchTermT -> TItem -> bool := id.
-    Record SearchTerm :=
-      { IndexSearchTerm : IndexSearchTermT;
-         ItemSearchTerm : ItemSearchTermT }.
+
+    Definition SearchTerm := prod IndexSearchTermT ItemSearchTermT.
 
     Context (projection: TItem -> IndexSearchTermT).
-    Coercion IndexSearchTerm : SearchTerm >-> IndexSearchTermT.
-    Coercion ItemSearchTerm : SearchTerm >-> ItemSearchTermT.
 
     Definition InvertedIndex_bfind_matcher
                (st : SearchTerm) (item: TItem) :=
-      if IncludedIn_dec (IndexSearchTerm st) (projection item)  then
-        ItemSearchTermMatcher st item
-        else false.
+      andb (if IncludedInA_dec (X_eq_dec := E.eq_dec) (fst st) (projection item) then true else false)
+           (snd st item).
 
     Definition KeyMapT := MKeys.t (list nat).
     Definition ValuesMapT := MValues.t TItem.
@@ -93,18 +88,18 @@ Module InvertedIndexBag (MKeys : WS) (MValues : WSfun Nat_as_OT).
              (it : InvertedIndexMap)
              (st : SearchTerm)
     : list TItem :=
-      let matched_items := Find_MatchingIndexes it it st in
-      List.filter (ItemSearchTermMatcher st)
+      let matched_items := Find_MatchingIndexes it it (fst st) in
+      List.filter (ItemSearchTermMatcher (snd st))
                (List.map snd (MValues.elements matched_items)).
 
     Definition InvertedIndex_bcount
                (it : InvertedIndexMap)
                (st : SearchTerm)
     : nat :=
-      let matched_items := Find_MatchingIndexes it it st in
+      let matched_items := Find_MatchingIndexes it it (fst st) in
       fold_right (fun _ n => 1 + n)
                  0
-                (List.filter (fun item => ItemSearchTermMatcher st (snd item))
+                (List.filter (fun item => ItemSearchTermMatcher (snd st) (snd item))
                              (MValues.elements matched_items)).
 
     Definition UpdateKeyMap
@@ -115,8 +110,6 @@ Module InvertedIndexBag (MKeys : WS) (MValues : WSfun Nat_as_OT).
            | Some l => MKeys.add key (index :: l) Mkey
            | _ => MKeys.add key [index] Mkey
          end.
-
-    Check fold_left.
 
     Definition InvertedIndex_binsert
              (it : InvertedIndexMap)
@@ -399,7 +392,7 @@ Module InvertedIndexBag (MKeys : WS) (MValues : WSfun Nat_as_OT).
       unfold BagCountCorrect, InvertedIndex_bcount, InvertedIndex_bfind;
       intros.
       induction (MValues.elements
-                   (Find_MatchingIndexes container container search_term));
+                   (Find_MatchingIndexes container container (fst search_term)));
         simpl; eauto.
       find_if_inside; simpl; eauto.
     Qed.
@@ -436,9 +429,11 @@ Module InvertedIndexBag (MKeys : WS) (MValues : WSfun Nat_as_OT).
           (search_term : SearchTerm)
     : Proper (eq ==> eq ==> eq)
              (fun (_ : MValues.key) (item : TItem) =>
-                if IncludedIn_dec (IndexSearchTerm search_term)  (projection item)
-                then ItemSearchTermMatcher search_term item
-                else false).
+                andb
+                  (if IncludedInA_dec (X_eq_dec := E.eq_dec) (fst search_term) (projection item)
+                   then true
+                   else false)
+                  (ItemSearchTermMatcher (snd search_term) item)) .
     Proof.
       unfold Proper, respectful, ItemSearchTermMatcher; intros; subst;
       reflexivity.
@@ -497,13 +492,14 @@ Module InvertedIndexBag (MKeys : WS) (MValues : WSfun Nat_as_OT).
       rewrite !filter_map.
       rewrite <- Permutation_filter_elements
       with (f := fun (k : MValues.key) (item : TItem) =>
-                   if IncludedIn_dec (IndexSearchTerm search_term) (projection item)
-                   then ItemSearchTermMatcher search_term item
-                   else false);
+                   andb (if IncludedInA_dec (X_eq_dec := E.eq_dec) (fst search_term) (projection item)
+                         then true
+                         else false)
+                        (ItemSearchTermMatcher (snd search_term) item));
         eauto using Proper_bfind_matcher.
       rewrite <- Permutation_filter_elements
       with (f := fun (k : MValues.key) (item : TItem) =>
-                   ItemSearchTermMatcher search_term item);
+                   ItemSearchTermMatcher (snd search_term) item);
         eauto using Proper_ItemSearchTermMatcher.
       eapply MoreMValuesFacts.Permutation_InA_cons;
       eauto using NoDupA_filter, MValues.elements_3w.
@@ -512,8 +508,8 @@ Module InvertedIndexBag (MKeys : WS) (MValues : WSfun Nat_as_OT).
         by (eauto using Proper_bfind_matcher,
             Proper_ItemSearchTermMatcher).
       intuition.
-      - try find_if_inside; intuition eauto.
-        unfold IncludedIn in *; eapply Find_MatchingIndexesOK_Subset; intuition eauto.
+      - try find_if_inside; eauto.
+        eapply Find_MatchingIndexesOK_Subset; eauto.
         discriminate.
       - find_if_inside; eauto; discriminate.
       - eapply Find_MatchingIndexesOK_Subset; eauto.

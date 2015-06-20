@@ -1,33 +1,48 @@
-Require Import Fiat.QueryStructure.Specification.Representation.QueryStructureNotations.
+Require Import
+        Coq.Lists.SetoidList
+        Fiat.QueryStructure.Specification.Representation.QueryStructureNotations.
 
 Open Scope list.
 
 Section PrefixClauses.
   Context {X : Type}
-          {X_eq_dec : Query_eq X}.
+          {X_Qeq : Query_eq X}.
 
-  Definition IsPrefix (p s : list X) : Prop := exists e, p ++ e = s.
+  Definition Prefix (X_eq : X -> X -> Prop)
+             (s s' : list X) :=
+    exists s'', eqlistA X_eq (s ++ s'') s'.
 
-  Fixpoint IsPrefix_dec (p s : list X) : {IsPrefix p s} + {~ IsPrefix p s}.
+  Definition IsPrefix (x st : list X) : Prop := @Prefix eq x st.
+
+  Fixpoint Prefix_dec
+           {X_eq : X -> X -> Prop}
+           (X_eq_dec : forall x x', {X_eq x x'} + {~ X_eq x x'})
+           {X_refl : Reflexive X_eq}
+           (p s : list X) : {Prefix X_eq p s} + {~ Prefix X_eq p s}.
   refine (match p, s with
             | nil, _ => left _
             | p' :: ps, s' :: ss =>
-              if A_eq_dec p' s' then
-                if IsPrefix_dec ps ss then
+              if X_eq_dec p' s' then
+                if Prefix_dec X_eq X_eq_dec _ ps ss then
                   left _
                 else
                   right _
               else
                 right _
             | _, _ => right _
-          end); intuition; [
+          end);  intuition; [
     eexists; intuition |
-    inject H; apply app_eq_nil in H0; destruct H0; inversion H |
+    inject H |
     destruct _H0; eexists; simpl; subst |
     apply _H0; inject H; inversion H0; eexists |
     inject H; simpl in H0; inversion H0 ]; eauto.
+  instantiate (1 := s); simpl; induction s; constructor; eauto.
+  inversion H0.
   Defined.
 
+  Definition IsPrefix_dec
+    : forall (p s : list X), {IsPrefix p s} + {~ IsPrefix p s}
+  := @Prefix_dec _ A_eq_dec (fun a => eq_refl a).
   Ltac prefix_crush := intros; find_if_inside; intuition eauto; discriminate.
 
   Instance DecideableEnsemble_HasPrefix st :
@@ -52,37 +67,3 @@ Section PrefixClauses.
     DecideableEnsemble (fun a => IsPrefix (f a) b) :=
     {| dec a := ?[IsPrefix_dec (f a) b] |}. prefix_crush. Defined.
 End PrefixClauses.
-
-Section SuffixClauses.
-  Context {X : Type}
-          {X_eq_dec : Query_eq X}.
-
-  Definition IsSuffix (p s : list X) : Prop := IsPrefix s p.
-
-  Definition IsSuffix_dec (p s : list X) : {IsSuffix p s} + {~ IsSuffix p s} := IsPrefix_dec s p.
-
-  Ltac suffix_crush := intros; find_if_inside; intuition eauto;
-                       unfold IsSuffix in *; discriminate.
-
-  Instance DecideableEnsemble_HasSuffix st :
-    DecideableEnsemble (IsSuffix st) :=
-    {| dec a := ?[IsSuffix_dec st a] |}. suffix_crush. Defined.
-  
-  Global Instance DecideableEnsemble_HasSuffix_f
-         (A : Type)
-         (f : A -> list X)
-         b 
-    : DecideableEnsemble (fun a => IsSuffix b (f a)) :=
-    {| dec a := ?[IsSuffix_dec b (f a)] |}. suffix_crush. Defined.
-
-  Instance DecideableEnsemble_FindSuffix st :
-    DecideableEnsemble (fun a => IsSuffix a st) :=
-    {| dec a := ?[IsSuffix_dec a st] |}. suffix_crush. Defined.
-
-  Global Instance DecideableEnsemble_FindSuffix_f
-         (A : Type)
-         (f : A -> list X)
-         b :
-    DecideableEnsemble (fun a => IsSuffix (f a) b) :=
-    {| dec a := ?[IsSuffix_dec (f a) b] |}. suffix_crush. Defined.
-End SuffixClauses.

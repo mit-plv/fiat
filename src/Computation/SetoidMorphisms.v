@@ -104,13 +104,6 @@ Proof.
   computes_to_econstructor; eauto.
 Qed.
 
-(* We have to define a wrapper for if then else in
- order for it to play nicely with setoid_rewriting. *)
-Definition If_Then_Else {A}
-           (c : bool)
-           (t e : A) :=
-  if c then t else e.
-
 Add Parametric Morphism A (c : bool)
 : (If_Then_Else c)
     with signature

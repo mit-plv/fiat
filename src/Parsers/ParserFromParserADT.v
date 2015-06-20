@@ -11,6 +11,8 @@ Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.StringLike.String.
 Require Import Fiat.Parsers.BooleanRecognizerEquality.
 Require Import Fiat.ADTRefinement.Core.
+Require Import Fiat.Common.BoundedLookup.
+Require Import  Fiat.ADTNotation.BuildADTSig.
 
 Set Implicit Arguments.
 
@@ -24,14 +26,16 @@ Section parser.
   Local Notation G := (list_to_grammar (nil::nil) ls) (only parsing).
   Context (splitter_impl : FullySharpened (string_spec G)).
 
+  Definition newS := ibound (indexb (@Build_BoundedIndex _ _ (ConstructorNames (string_rep Ascii.ascii)) "new" _ )).
+
   Definition new_string_of_base_string (str : String.string)
-    := (cConstructors (projT1 splitter_impl) {| StringBound.bindex := "new" |} (str : String.string)).
+    := (cConstructors (projT1 splitter_impl) newS (str : String.string)).
 
   Lemma new_string_of_base_string_R {str}
   : AbsR (projT2 splitter_impl) str (new_string_of_base_string str).
   Proof.
     unfold new_string_of_base_string.
-    pose proof (ADTRefinementPreservesConstructors (projT2 splitter_impl) {| StringBound.bindex := "new" |} str (cConstructors (projT1 splitter_impl) {| StringBound.bindex := "new" |} str) (ReturnComputes _)) as H'';
+    pose proof (ADTRefinementPreservesConstructors (projT2 splitter_impl) newS str (cConstructors (projT1 splitter_impl) newS str) (ReturnComputes _)) as H'';
       computes_to_inv;
       simpl in H'';
       computes_to_inv; subst; assumption.

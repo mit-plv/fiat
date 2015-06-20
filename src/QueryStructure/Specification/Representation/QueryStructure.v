@@ -1,11 +1,22 @@
-Require Import Coq.Lists.List Coq.Strings.String Coq.Logic.FunctionalExtensionality Coq.Sets.Ensembles Coq.Arith.Arith
+Require Import Coq.Lists.List
+        Coq.Strings.String
+        Coq.Logic.FunctionalExtensionality
+        Coq.Sets.Ensembles
+        Coq.Arith.Arith
         Fiat.Computation.Core
-        Fiat.ADT.ADTSig Fiat.ADT.Core
-        Fiat.Common.ilist Fiat.Common.StringBound
-        Fiat.ADTNotation.BuildADT Fiat.ADTNotation.BuildADTSig
+        Fiat.ADT.ADTSig
+        Fiat.ADT.Core
+        Fiat.Common.StringBound
+        Fiat.Common.ilist2
+        Fiat.Common.ilist
+        Fiat.ADTNotation.BuildADT
+        Fiat.ADTNotation.BuildADTSig
         Fiat.Common.Ensembles.IndexedEnsembles
-        Fiat.QueryStructure.Specification.Representation.Notations Fiat.QueryStructure.Specification.Representation.Heading
-        Fiat.QueryStructure.Specification.Representation.Tuple Fiat.QueryStructure.Specification.Representation.Schema Fiat.QueryStructure.Specification.Representation.Relation
+        Fiat.QueryStructure.Specification.Representation.Notations
+        Fiat.QueryStructure.Specification.Representation.Heading
+        Fiat.QueryStructure.Specification.Representation.Tuple
+        Fiat.QueryStructure.Specification.Representation.Schema
+        Fiat.QueryStructure.Specification.Representation.Relation
         Fiat.QueryStructure.Specification.Representation.QueryStructureSchema.
 
 Section BuildQueryStructureConstraints.
@@ -18,17 +29,19 @@ Section BuildQueryStructureConstraints.
   Local Obligation Tactic := intros.
 
   (* [BuildQueryStructureConstraints_cons] searches the *)
+
   Program Definition BuildQueryStructureConstraints_cons
-          (namedSchemas : list NamedSchema)
+          {n}
+          (namedSchemas : Vector.t RawSchema n)
           (constr : sigT (crossRelationProdR namedSchemas))
           (constraints :
              list (sigT (crossRelationProdR namedSchemas)))
           (idx idx' : _)
           (HInd : option (crossRelationR namedSchemas idx idx'))
-  : option (crossRelationR namedSchemas idx idx')
+    : option (crossRelationR namedSchemas idx idx')
     :=
-      if (eq_nat_dec (ibound idx) (ibound (indexb (fst (projT1 constr))))) then
-        if (eq_nat_dec (ibound idx') (ibound (indexb (snd (projT1 constr))))) then
+      if (fin_eq_dec idx (fst (projT1 constr))) then
+        if (fin_eq_dec idx' (snd (projT1 constr))) then
           _
         else HInd
       else HInd.
@@ -37,23 +50,22 @@ Section BuildQueryStructureConstraints.
     (* No need to check if the indices are in the list of Relations, because
      they are Bounded Strings. *)
     unfold crossRelationR, GetNRelSchemaHeading, GetNRelSchema; simpl.
-    erewrite nth_Bounded_eq by (exact H).
-    erewrite nth_Bounded_eq with (idx0 := idx') by (exact H0).
-    exact (Some c).
+    rewrite H, H0;  exact (Some c).
   Defined.
 
   Fixpoint BuildQueryStructureConstraints'
-           (namedSchemas : list NamedSchema)
+           {n}
+           (namedSchemas : Vector.t RawSchema n)
            (constraints :
-            list (sigT (crossRelationProdR namedSchemas)))
+              list (sigT (crossRelationProdR namedSchemas)))
            {struct constraints}
-  : forall (idx idx' : _), option (crossRelationR namedSchemas idx idx') :=
+    : forall (idx idx' : _), option (crossRelationR namedSchemas idx idx') :=
     match constraints with
-      | idx'' :: constraints' =>
-        fun idx idx' => @BuildQueryStructureConstraints_cons
-                          namedSchemas idx'' constraints' idx idx'
-                          (BuildQueryStructureConstraints' constraints' idx idx')
-      | nil => fun _ _ => None
+    | idx'' :: constraints' =>
+      fun idx idx' => @BuildQueryStructureConstraints_cons _
+                                                           namedSchemas idx'' constraints' idx idx'
+                                                           (BuildQueryStructureConstraints' constraints' idx idx')
+    | nil => fun _ _ => None
     end.
 
   Definition BuildQueryStructureConstraints qsSchema :=
@@ -65,181 +77,184 @@ End BuildQueryStructureConstraints.
    (described by a proposition) which satisfy the
    schema and the cross-relation constraints. *)
 
-Record QueryStructure (QSSchema : QueryStructureSchema) :=
-  { rels : ilist (fun ns => Relation (relSchema ns))
-             (qschemaSchemas QSSchema);
+Record RawQueryStructure (QSSchema : RawQueryStructureSchema) :=
+  { rawRels : ilist2 (B := RawRelation) (qschemaSchemas QSSchema);
     crossConstr :
-      forall (idx idx' : @BoundedString (map relName (qschemaSchemas QSSchema))),
-      match (BuildQueryStructureConstraints QSSchema idx idx') with
+      forall (idx idx' : _),
+        match (BuildQueryStructureConstraints QSSchema idx idx') with
         | Some CrossConstr =>
-          forall (tup :
-                    @IndexedTuple (QSGetNRelSchemaHeading QSSchema idx)),
+          forall (tup : @IndexedRawTuple (GetNRelSchemaHeading (qschemaSchemas QSSchema) idx)),
             idx <> idx' ->
             (* These are cross-relation constraints which only need to be
            enforced on distinct relations. *)
-            (rel (ith_Bounded _ rels idx )) tup ->
-            CrossConstr (indexedElement tup) (rel (ith_Bounded _ rels idx'))
+            (rawRel (ith2 rawRels idx )) tup ->
+            CrossConstr (indexedElement tup) (rawRel (ith2 rawRels idx'))
         | None => True
-      end
+        end
   }.
 
-Notation "t ! R" := (rels t R%string): QueryStructure_scope.
+Definition QueryStructure (QSSchema : QueryStructureSchema) := RawQueryStructure QSSchema.
+
+(* Notation "t ! R" := (rels t R%string): QueryStructure_scope. *)
 
 (* This typeclass allows our method definitions to infer the
    the QueryStructure [r] they are called with. *)
 
-Class QueryStructureSchemaHint :=
+(* Class QueryStructureSchemaHint :=
   { qsSchemaHint : QueryStructureSchema
   }.
 
 Class QueryStructureHint :=
   { qsSchemaHint' : QueryStructureSchema;
     qsHint :> @QueryStructure qsSchemaHint'
-  }.
+  }. *)
 
-Notation "'query' id ( x : dom ) : cod := bod" :=
+Notation "'query' id ( r : 'rep' , x : dom ) : cod := bod" :=
   (Build_methDef {| methID := id; methDom := dom; methCod := cod |}
-                (fun (r : QueryStructure qsSchemaHint) x =>
-                   let _ := {| qsHint := r |} in
-                   let _ := {| codHint := cod |} in
-                   queryRes <- bod%QuerySpec;
-                    ret (r, queryRes)))%comp
-    (no associativity, id at level 0, x at level 0, dom at level 0,
-     cod at level 0, only parsing,
-     at level 94, format "'query'  id  ( x  :  dom )  :  cod  :=  '[  '   bod ']' " ) :
-queryDef_scope.
+                 (fun (r : repHint) x =>
+                    let _ := {| codHint := cod |} in
+                    queryRes <- bod%QuerySpec;
+                  ret (r, queryRes)))%comp
+                                     (no associativity, id at level 0, x at level 0, dom at level 0,
+                                      r at level 0, cod at level 0, only parsing,
+                                      at level 94, format "'query'  id  (  r  : 'rep'  ,  x  :  dom )  :  cod  :=  '[  '   bod ']' " ) :
+    queryDef_scope.
 
-Notation "'update' id ( x : dom ) : cod := bod" :=
+Notation "'update' id ( r : 'rep' , x : dom ) : cod := bod" :=
   (Build_methDef {| methID := id; methDom := dom; methCod := cod |}
-                (fun (r : QueryStructure qsSchemaHint) x =>
-                   let _ := {| qsHint := r |} in
-                   bod%QuerySpec))
+                 (fun (r : repHint) x =>
+                    bod%QuerySpec))
     (no associativity, id at level 0, x at level 0, dom at level 0,
-     cod at level 0, only parsing,
-     at level 94, format "'update'  id  ( x  :  dom )  :  cod  :=  '[  '   bod ']' " ) :
-queryDef_scope.
+     r at level 0, cod at level 0, only parsing,
+     at level 94, format "'update'  id  (  r  :  'rep'  ,  x  :  dom )  :  cod  :=  '[  '   bod ']' " ) :
+    queryDef_scope.
 
 (* Notation for ADTs built from [BuildADT]. *)
 
 Notation "'QueryADTRep' r { cons1 , meth1 , .. , methn } " :=
-  (let _ := {| qsSchemaHint := r |} in
-    @BuildADT (QueryStructure r)
-             _
-             _
-             (icons _ cons1%consDef (inil (@consDef (QueryStructure r))))
-             (icons _ meth1%queryDef .. (icons _ methn%queryDef (inil (@methDef (QueryStructure r)))) ..))
+  (let _ := {| repHint := (QueryStructure r) |}
+   in @BuildADT (QueryStructure r) _ _ _ _
+             (icons cons1%consDef (inil (B := @consDef (QueryStructure r))))
+             (icons (B := @methDef (QueryStructure r)) (meth1%queryDef ) .. (icons (B := @methDef (QueryStructure r)) methn%queryDef (inil (B := @methDef (QueryStructure r)))) ..))
     (no associativity, at level 96, r at level 0, only parsing,
      format "'QueryADTRep'  r  '/' '[hv  ' {  cons1 , '//' '//' meth1 , '//' .. , '//' methn  ']' }") : QueryStructure_scope.
 
 Definition GetRelation
            (QSSchema : QueryStructureSchema)
            (qs : QueryStructure QSSchema)
-           (idx : @BoundedString (map relName (qschemaSchemas QSSchema)))
-  := rel (ith_Bounded _ (rels qs) idx).
+           (idx : Fin.t _)
+  : @IndexedEnsemble (@RawTuple (GetNRelSchemaHeading (qschemaSchemas QSSchema) idx)) := rawRel (ith2 (rawRels qs) idx).
 
 (* This lets us drop the constraints from the reference implementation
    for easier refinements. *)
 
-Definition UnConstrQueryStructure (qsSchema : QueryStructureSchema) :=
-  ilist (fun ns => UnConstrRelation (schemaHeading (relSchema ns )))
+Definition UnConstrQueryStructure (qsSchema : RawQueryStructureSchema) :=
+  ilist2 (B := fun ns => RawUnConstrRelation (rawSchemaHeading ns))
         (qschemaSchemas qsSchema).
 
 Definition GetUnConstrRelation
-           (QSSchema : QueryStructureSchema)
+           {QSSchema : RawQueryStructureSchema}
            (qs : UnConstrQueryStructure QSSchema)
-           (idx : @BoundedString (map relName (qschemaSchemas QSSchema)))
-  := ith_Bounded _ qs idx.
+           (idx : _)
+  : @IndexedEnsemble (@RawTuple (GetNRelSchemaHeading (qschemaSchemas QSSchema) idx)) :=
+      ith2 qs idx.
 
 Definition DropQSConstraints
-           (qsSchema : QueryStructureSchema)
+           {qsSchema : QueryStructureSchema}
            (qs : QueryStructure qsSchema)
-: UnConstrQueryStructure qsSchema :=
-    @imap NamedSchema
-        (fun ns => Relation (relSchema ns))
-        (fun ns => UnConstrRelation (schemaHeading (relSchema ns)))
-        (fun ns => @rel (relSchema ns)) _ (rels qs).
+  : UnConstrQueryStructure qsSchema :=
+  @imap2 _
+        (fun ns => RawRelation ns)
+        (fun ns => RawUnConstrRelation (rawSchemaHeading ns))
+        (fun ns => @rawRel ns) _ (qschemaSchemas qsSchema) (rawRels qs).
 
 Definition DropQSConstraints_AbsR (qsSchema : QueryStructureSchema)
            (qs : QueryStructure qsSchema)
            (qs' : UnConstrQueryStructure qsSchema)
-           : Prop :=
+  : Prop :=
   DropQSConstraints qs = qs'.
 
 Lemma GetRelDropConstraints
-      (qsSchema : QueryStructureSchema)
+      {qsSchema : QueryStructureSchema}
       (qs : QueryStructure qsSchema)
       (Ridx : _)
-: GetUnConstrRelation (DropQSConstraints qs) Ridx = GetRelation qs Ridx.
+  : GetUnConstrRelation (DropQSConstraints qs) Ridx = GetRelation qs Ridx.
 Proof.
   unfold GetUnConstrRelation, DropQSConstraints, GetRelation.
-  rewrite <- ith_Bounded_imap; reflexivity.
+  rewrite <- ith_imap2; reflexivity.
 Qed.
 
 (* Typeclass + notations for declaring abstraction relation for
    QueryStructure Implementations. *)
 
+
+
 Definition SatisfiesAttributeConstraints
-           {qsSchema} Ridx tup :=
-  match (attrConstraints (QSGetNRelSchema qsSchema Ridx)) with
+           {qsSchema}
+           (Ridx : Fin.t _)
+           (tup : @RawTuple (GetNRelSchemaHeading (qschemaSchemas qsSchema) Ridx))
+  :=
+    match (attrConstraints (GetNRelSchema (qschemaSchemas qsSchema) Ridx)) with
       Some Constr => Constr tup
     | None => True
-  end.
+    end.
 
 Definition SatisfiesTupleConstraints
-           {qsSchema} Ridx tup tup' :=
-  match (tupleConstraints (QSGetNRelSchema qsSchema Ridx)) with
-      Some Constr => Constr tup tup'
-    | None => True
+           {qsSchema}
+           (Ridx : Fin.t _)
+           (tup tup' : @RawTuple (GetNRelSchemaHeading (qschemaSchemas qsSchema) Ridx)) :=
+  match (tupleConstraints (GetNRelSchema (qschemaSchemas qsSchema) Ridx)) with
+    Some Constr => Constr tup tup'
+  | None => True
   end.
 
 Definition SatisfiesCrossRelationConstraints
-           {qsSchema} Ridx Ridx' tup R :=
+           {qsSchema}
+           (Ridx Ridx' : Fin.t _)
+           (tup : @RawTuple (GetNRelSchemaHeading (qschemaSchemas qsSchema) Ridx)) R :=
   match (BuildQueryStructureConstraints qsSchema Ridx Ridx') with
-      | Some CrossConstr => CrossConstr tup R
-      | None => True
+  | Some CrossConstr => CrossConstr tup R
+  | None => True
   end.
 
 Definition UpdateUnConstrRelation
-           (qsSchema : QueryStructureSchema)
+           {qsSchema : RawQueryStructureSchema}
            (rels : UnConstrQueryStructure qsSchema)
            (Ridx : _)
            newRel :
   UnConstrQueryStructure qsSchema :=
-  replace_BoundedIndex relName rels Ridx newRel.
+  replace_Index2 _ rels Ridx newRel.
 
 Definition UpdateRelation
-           (qsSchema : QueryStructureSchema)
-           (rels : ilist (fun ns => Relation (relSchema ns))
-                         (qschemaSchemas qsSchema))
+           {qsSchema : QueryStructureSchema}
+           (rels : ilist2 (B := RawRelation) (qschemaSchemas qsSchema))
            (Ridx : _)
            newRel :
-  ilist (fun ns => Relation (relSchema ns))
-        (qschemaSchemas qsSchema) :=
-  replace_BoundedIndex relName rels Ridx newRel.
+  ilist2 (qschemaSchemas qsSchema) :=
+  replace_Index2 _ rels Ridx newRel.
 
-  (* Consequences of ith_replace_BoundIndex_neq and ith_replace_BoundIndex_eq on updates *)
+(* Consequences of ith_replace_BoundIndex_neq and ith_replace_BoundIndex_eq on updates *)
 
-  Lemma get_update_unconstr_eq :
-    forall (db_schema : QueryStructureSchema) (qs : UnConstrQueryStructure db_schema)
-           (index : BoundedString) ens,
-      GetUnConstrRelation
-        (UpdateUnConstrRelation qs index ens) index = ens.
-  Proof.
-    unfold UpdateUnConstrRelation, GetUnConstrRelation;
-    intros; simpl; rewrite ith_replace_BoundIndex_eq; eauto using string_dec.
-  Qed.
+Lemma get_update_unconstr_eq :
+  forall (db_schema : RawQueryStructureSchema) (qs : UnConstrQueryStructure db_schema)
+         (index : _) ens,
+    GetUnConstrRelation (UpdateUnConstrRelation qs index ens) index = ens.
+Proof.
+  unfold UpdateUnConstrRelation, GetUnConstrRelation.
+  intros; rewrite ith_replace2_Index_eq; reflexivity.
+Qed.
 
-  Lemma get_update_unconstr_neq :
-    forall (db_schema : QueryStructureSchema) (qs : UnConstrQueryStructure db_schema)
-           (index1 index2 : BoundedString) ens,
-      index1 <> index2 ->
-      GetUnConstrRelation
-        (UpdateUnConstrRelation qs index1 ens) index2 =
-      GetUnConstrRelation qs index2.
-  Proof.
-    unfold UpdateUnConstrRelation, GetUnConstrRelation;
-    intros; simpl; rewrite ith_replace_BoundIndex_neq; eauto using string_dec.
-  Qed.
+Lemma get_update_unconstr_neq :
+  forall (db_schema : RawQueryStructureSchema) (qs : UnConstrQueryStructure db_schema)
+         (index1 index2 : _) ens,
+    index1 <> index2 ->
+    GetUnConstrRelation
+      (UpdateUnConstrRelation qs index1 ens) index2 =
+    GetUnConstrRelation qs index2.
+Proof.
+  unfold UpdateUnConstrRelation, GetUnConstrRelation;
+  intros; simpl; rewrite ith_replace2_Index_neq; eauto using string_dec.
+Qed.
 
 Notation "ro ≃ rn" := (@UnConstrRelationAbsR _ _ _ ro%QueryImpl rn) : QueryImpl_scope.
 
@@ -247,5 +262,5 @@ Notation "qs ! R" :=
   (GetUnConstrRelation qs {|bindex := R%string |}): QueryImpl_scope.
 
 Arguments BuildQueryStructureConstraints _ _ _.
-Arguments BuildQueryStructureConstraints_cons [_] _ _ _ _ (*/*) _ .
-Arguments BuildQueryStructureConstraints_cons_obligation_1 [_] _ (*/*) _ _ _ _ _ _ .
+Arguments BuildQueryStructureConstraints_cons [_ _] _ _ _ _ (*/*) _ .
+Arguments BuildQueryStructureConstraints_cons_obligation_1 [_ _] _ (*/*) _ _ _ _ _ _ .

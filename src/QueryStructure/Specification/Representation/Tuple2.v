@@ -1,15 +1,62 @@
-Require Import Coq.Lists.List Coq.Strings.String Coq.Logic.FunctionalExtensionality Coq.Sets.Ensembles
-        Fiat.Common.ilist Fiat.Common.StringBound Coq.Program.Program Fiat.QueryStructure.Specification.Representation.Heading2
-        Fiat.Common.Ensembles.IndexedEnsembles Fiat.QueryStructure.Specification.Representation.Notations.
+Require Import Coq.Lists.List
+        Coq.Strings.String
+        Coq.Logic.FunctionalExtensionality
+        Coq.Sets.Ensembles
+        Fiat.Common.ilist2
+        Fiat.Common.StringBound
+        Coq.Program.Program
+        Fiat.QueryStructure.Specification.Representation.Heading2
+        Fiat.Common.Ensembles.IndexedEnsembles
+        Fiat.QueryStructure.Specification.Representation.Notations.
 
 (* A tuple is a heterogeneous list indexed by a heading. *)
-Definition Tuple2 {heading : Heading2} :=
-  ilist attrType2 (AttrList2 heading).
+Definition Tuple2 {heading : RawHeading2} :=
+  ilist2 (B := id) (AttrList2 heading).
+
+Definition DecTuple2 {n} attrs
+  := @Tuple2 (BuildHeading2 (n := n) attrs).
 
 (* Notations for tuple field. *)
 
 Record Component2 (Heading : Attribute2) :=
-  { value : attrType2 Heading }.
+  { value2 : attrType2 Heading }.
+
+(* Notation-friendly tuple definition. *)
+
+Fixpoint BuildTuple2
+         {n}
+         (attrs : Vector.t Attribute2 n)
+  : ilist2 (B := Component2) attrs -> DecTuple2 attrs :=
+  match attrs return ilist2 (B := Component2) attrs -> DecTuple2 attrs with
+  | Vector.nil => fun components => inil2
+  | Vector.cons attr n' attrs' =>
+    fun components =>
+      icons2 (B := id) (value2 (ilist2_hd components))
+            (BuildTuple2 attrs' (ilist2_tl components))
+  end.
+
+Definition GetAttribute2 {heading}
+: @Tuple2 heading -> forall attr : Attributes2 heading, Domain2 heading attr := ith2.
+
+Definition GetAttribute2' {n} {attrs}
+  : @DecTuple2 n attrs ->
+    forall attr : @BoundedString _ (Vector.map attrName2 attrs),
+      Domain2 (BuildHeading2 attrs) (ibound (indexb attr)) :=
+  fun t idx => ith2 t (ibound (indexb idx)).
+
+Definition SetAttribute2 {heading}
+: @Tuple2 heading ->
+  forall attr : Attributes2 heading,
+    Domain2 heading attr -> @Tuple2 heading :=
+  fun tup attr dom => replace_Index2 _ tup attr dom.
+
+Definition SetAttribute2' {n} {attrs}
+  : @DecTuple2 n attrs ->
+    forall attr : @BoundedString _ (Vector.map attrName2 attrs),
+      Domain2 (HeadingRaw2 (BuildHeading2 attrs)) (ibound (indexb attr))
+      -> @DecTuple2 n attrs :=
+  fun tup attr dom => SetAttribute2 tup (ibound (indexb attr)) dom.
+
 
 Notation "id :: value" :=
   (Build_Component2 {| attrName2 := id;
@@ -19,42 +66,4 @@ Notation "id :: value" :=
 Bind Scope Component2_scope with Component2.
 Delimit Scope Component2_scope with Component2.
 Delimit Scope Tuple2_scope with Tuple2.
-(* Notation-friendly tuple definition. *)
-
-Fixpoint BuildTuple2
-         (attrs : list Attribute2)
-         (components : ilist Component2 attrs)
-: @Tuple2 (BuildHeading2 attrs) :=
-  match components with
-    | icons _ _ x xs => icons _ (value x) (BuildTuple2 xs)
-    | inil => inil _
-  end.
-
-(* Notation for tuples built from [BuildTuple]. *)
-
-Notation "< col1 , .. , coln >" :=
-  (@BuildTuple2 _ (icons _ col1%Component2 .. (icons _ coln%Component2 (inil _)) ..))
-  : Tuple2_scope.
-
-Definition GetAttribute2 {heading}
-: @Tuple2 heading -> forall attr : Attributes2 heading, Domain2 heading attr :=
-  ith_Bounded attrName2.
-
-Definition getHeading2 {Bound} (tup : @Tuple2 (BuildHeading2 Bound))
-: list string := map attrName2 Bound.
-
-Definition GetAttribute2' {heading}
-: @Tuple2 (BuildHeading2 heading) ->
-  forall attr : @BoundedString (map attrName2 heading),
-    Domain2 (BuildHeading2 heading) attr :=
-  ith_Bounded attrName2.
-
-Notation "t ! R" :=
-  (GetAttribute2 t%Tuple2 (@Build_BoundedIndex _ _ R%string _))
-  : Tuple2_scope.
-
-Definition SetAttribute2 {heading}
-: @Tuple2 heading ->
-  forall attr : Attributes2 heading,
-    Domain2 heading attr -> @Tuple2 heading :=
-  replace_BoundedIndex attrName2 (Bound:=AttrList2 heading).
+(* Notation for tuples built from [BuildTuple2]. *)

@@ -12,6 +12,7 @@ Require Import Coq.Bool.Bool Coq.Strings.String
         Fiat.Common.Ensembles.EnsembleListEquivalence
         Fiat.Common.String_as_OT
         Fiat.Common.List.ListFacts
+        Fiat.Common.ilist2
         Fiat.Common.Ensembles.IndexedEnsembles
         Fiat.Common.DecideableEnsembles
         Fiat.QueryStructure.Implementation.Operations.General.QueryRefinements
@@ -25,17 +26,17 @@ Require Import Coq.Bool.Bool Coq.Strings.String
 
 Unset Implicit Arguments.
 
-Definition TSearchTermMatcher (heading: Heading) := (@Tuple heading -> bool).
+Definition TSearchTermMatcher (heading: RawHeading) := (@RawTuple heading -> bool).
 
-Definition TupleEqualityMatcher
-           {heading: Heading}
+Definition RawTupleEqualityMatcher
+           {heading: RawHeading}
            (attr: Attributes heading)
            (value: Domain heading attr)
            {ens_dec: DecideableEnsemble (fun x : Domain heading attr => value = x)} :=
   fun tuple => dec (tuple attr).
 
-Definition TupleDisequalityMatcher
-           {heading: Heading}
+Definition RawTupleDisequalityMatcher
+           {heading: RawHeading}
            (attr: Attributes heading)
            (value: Domain heading attr)
            {ens_dec: DecideableEnsemble (fun x : Domain heading attr => value = x)} :=
@@ -80,7 +81,7 @@ Fixpoint NestedTreeFromAttributes
          (indices : list (@ProperAttribute heading))
 : Type :=
   match indices with
-    | [] => @CountingList (@Tuple heading)
+    | [] => @CountingList (@RawTuple heading)
     | idx :: indices' =>
       ProperAttributeToFMap idx (NestedTreeFromAttributes indices')
   end.
@@ -101,7 +102,7 @@ Fixpoint BuildSearchTermFromAttributes {heading}
          (indices : list (@ProperAttribute heading))
 : Type :=
   match indices with
-    | [] => (@Tuple heading -> bool)
+    | [] => (@RawTuple heading -> bool)
     | idx :: indices' => prod (option (ProperAttributeToFMapKey idx)) (BuildSearchTermFromAttributes indices')
   end.
 
@@ -122,18 +123,18 @@ Defined.
 
 Fixpoint SearchTermFromAttributesMatcher {heading}
          (indices : list (@ProperAttribute heading))
-: BuildSearchTermFromAttributes indices -> @Tuple heading -> bool :=
+: BuildSearchTermFromAttributes indices -> @RawTuple heading -> bool :=
   match indices return
-        BuildSearchTermFromAttributes indices -> @Tuple heading -> bool
+        BuildSearchTermFromAttributes indices -> @RawTuple heading -> bool
   with
     | nil => fun f tup => f tup
     | index :: indices' =>
-      (fun (H : BuildSearchTermFromAttributes indices' -> @Tuple heading -> bool)
+      (fun (H : BuildSearchTermFromAttributes indices' -> @RawTuple heading -> bool)
            (f : prod (option (ProperAttributeToFMapKey index))
                      (BuildSearchTermFromAttributes indices'))
-           (tup : @Tuple heading) =>
+           (tup : @RawTuple heading) =>
          match f with
-           | (Some k, index') => (ProperAttribute_eq index k (GetAttribute tup (Attribute index))) && (H index' tup)
+           | (Some k, index') => (ProperAttribute_eq index k (GetAttributeRaw tup (Attribute index))) && (H index' tup)
            | (None, index') => H index' tup
          end) (SearchTermFromAttributesMatcher indices')
   end.
@@ -147,35 +148,35 @@ Defined.
 Definition ProperAttributeToBag
            {heading}
            TBag TSearchTerm TUpdateTerm
-           (TBagAsBag : Bag TBag (@Tuple heading) TSearchTerm TUpdateTerm)
+           (TBagAsBag : Bag TBag (@RawTuple heading) TSearchTerm TUpdateTerm)
            (pattr : @ProperAttribute heading)
-: Bag (ProperAttributeToFMap pattr TBag) (@Tuple heading)
+: Bag (ProperAttributeToFMap pattr TBag) (@RawTuple heading)
       (prod (option (ProperAttributeToFMapKey pattr)) TSearchTerm) TUpdateTerm :=
   match pattr as pattr' return
-        Bag (ProperAttributeToFMap pattr' TBag) (@Tuple heading)
+        Bag (ProperAttributeToFMap pattr' TBag) (@RawTuple heading)
             (prod (option (ProperAttributeToFMapKey pattr')) TSearchTerm) TUpdateTerm with
     | {| Attribute := attr; ProperlyTyped := inleft (inleft (left cast')) |}
-      => NTreeBag.IndexedBagAsBag TBagAsBag (fun x => cast cast' (GetAttribute x attr))
+      => NTreeBag.IndexedBagAsBag TBagAsBag (fun x => cast cast' (GetAttributeRaw x attr))
     | {| Attribute := attr; ProperlyTyped := inleft (inleft (right cast')) |}
-      => ZTreeBag.IndexedBagAsBag TBagAsBag (fun x => cast cast' (GetAttribute x attr))
+      => ZTreeBag.IndexedBagAsBag TBagAsBag (fun x => cast cast' (GetAttributeRaw x attr))
     | {| Attribute := attr; ProperlyTyped := inleft (inright cast') |}
-      => NatTreeBag.IndexedBagAsBag TBagAsBag (fun x => cast cast' (GetAttribute x attr))
+      => NatTreeBag.IndexedBagAsBag TBagAsBag (fun x => cast cast' (GetAttributeRaw x attr))
     | {| Attribute := attr; ProperlyTyped := inright cast' |}
-      => StringTreeBag.IndexedBagAsBag TBagAsBag (fun x => cast cast' (GetAttribute x attr))
+      => StringTreeBag.IndexedBagAsBag TBagAsBag (fun x => cast cast' (GetAttributeRaw x attr))
   end.
 
 Fixpoint NestedTreeFromAttributesAsBag
          heading
          TUpdateTerm
-         (bupdate_transform : TUpdateTerm -> @Tuple heading -> @Tuple heading)
+         (bupdate_transform : TUpdateTerm -> @RawTuple heading -> @RawTuple heading)
          (indices : list (@ProperAttribute heading))
 : Bag (NestedTreeFromAttributes indices)
-      (@Tuple heading)
+      (@RawTuple heading)
       (BuildSearchTermFromAttributes indices)
       TUpdateTerm :=
   match indices return
         Bag (NestedTreeFromAttributes indices)
-            (@Tuple heading)
+            (@RawTuple heading)
             (BuildSearchTermFromAttributes indices)
             TUpdateTerm with
     | [] => CountingListAsBag bupdate_transform
@@ -185,18 +186,18 @@ Fixpoint NestedTreeFromAttributesAsBag
   end.
 
 Definition IndexedTreeUpdateTermType heading :=
-  @Tuple heading -> @Tuple heading.
+  @RawTuple heading -> @RawTuple heading.
 
 Definition IndexedTreebupdate_transform heading
            (upd : IndexedTreeUpdateTermType heading)
-           
-: @Tuple heading -> @Tuple heading := upd.
+
+: @RawTuple heading -> @RawTuple heading := upd.
 
 Instance NestedTreeFromAttributesAsBag'
          {heading}
          (indices : list (@ProperAttribute heading))
 : Bag (NestedTreeFromAttributes indices)
-      (@Tuple heading)
+      (@RawTuple heading)
       (BuildSearchTermFromAttributes indices)
       (IndexedTreeUpdateTermType heading) :=
   NestedTreeFromAttributesAsBag
@@ -208,12 +209,12 @@ Definition ProperAttributeToRepInv
            {heading}
            TBag TSearchTerm TUpdateTerm
            (RepInv : TBag -> Prop)
-           (TBagAsBag : Bag TBag (@Tuple heading) TSearchTerm TUpdateTerm)
+           (TBagAsBag : Bag TBag (@RawTuple heading) TSearchTerm TUpdateTerm)
            (pattr : @ProperAttribute heading)
-: (@Tuple heading -> ProperAttributeToFMapKey pattr)
+: (@RawTuple heading -> ProperAttributeToFMapKey pattr)
   -> ProperAttributeToFMap pattr TBag -> Prop  :=
   match pattr as pattr' return
-        (@Tuple heading -> ProperAttributeToFMapKey pattr')
+        (@RawTuple heading -> ProperAttributeToFMapKey pattr')
         -> ProperAttributeToFMap pattr' TBag -> Prop with
     | {| Attribute := attr; ProperlyTyped := inleft (inleft (left cast')) |}
       => NTreeBag.IndexedBag_RepInv TBagAsBag RepInv
@@ -228,29 +229,29 @@ Definition ProperAttributeToRepInv
 Definition ProperAttributeToProjection
            {heading}
            (pattr : @ProperAttribute heading)
-: @Tuple heading -> ProperAttributeToFMapKey pattr :=
+: @RawTuple heading -> ProperAttributeToFMapKey pattr :=
   match pattr as pattr' return
-        @Tuple heading -> ProperAttributeToFMapKey pattr' with
+        @RawTuple heading -> ProperAttributeToFMapKey pattr' with
     | {| Attribute := attr; ProperlyTyped := inleft (inleft (left cast')) |}
-      => fun x => cast cast' (GetAttribute x attr)
+      => fun x => cast cast' (GetAttributeRaw x attr)
     | {| Attribute := attr; ProperlyTyped := inleft (inleft (right cast')) |}
-      => fun x => cast cast' (GetAttribute x attr)
+      => fun x => cast cast' (GetAttributeRaw x attr)
     | {| Attribute := attr; ProperlyTyped := inleft (inright cast') |}
-      => fun x => cast cast' (GetAttribute x attr)
+      => fun x => cast cast' (GetAttributeRaw x attr)
     | {| Attribute := attr; ProperlyTyped := inright cast' |}
-      => fun x => cast cast' (GetAttribute x attr)
+      => fun x => cast cast' (GetAttributeRaw x attr)
   end.
 
 Definition ProperAttributeToValidUpdate
            {heading}
            TBag TSearchTerm TUpdateTerm
            (ValidUpdate : TUpdateTerm -> Prop)
-           (TBagAsBag : Bag TBag (@Tuple heading) TSearchTerm TUpdateTerm)
+           (TBagAsBag : Bag TBag (@RawTuple heading) TSearchTerm TUpdateTerm)
            (pattr : @ProperAttribute heading)
-: (@Tuple heading -> ProperAttributeToFMapKey pattr)
+: (@RawTuple heading -> ProperAttributeToFMapKey pattr)
   -> TUpdateTerm -> Prop  :=
   match pattr as pattr' return
-        (@Tuple heading -> ProperAttributeToFMapKey pattr')
+        (@RawTuple heading -> ProperAttributeToFMapKey pattr')
         -> TUpdateTerm -> Prop with
     | {| Attribute := attr; ProperlyTyped := inleft (inleft (left cast')) |}
       => NTreeBag.IndexedBag_ValidUpdate TBagAsBag ValidUpdate
@@ -265,7 +266,7 @@ Definition ProperAttributeToValidUpdate
 Definition ProperAttributeToCorrectBag
            {heading}
            TBag TSearchTerm TUpdateTerm
-           (TBagAsBag : Bag TBag (@Tuple heading) TSearchTerm TUpdateTerm)
+           (TBagAsBag : Bag TBag (@RawTuple heading) TSearchTerm TUpdateTerm)
            (RepInv : TBag -> Prop)
            (ValidUpdate : TUpdateTerm -> Prop)
            (TBagAsCorrectBag : CorrectBag RepInv ValidUpdate TBagAsBag)
@@ -283,22 +284,22 @@ Definition ProperAttributeToCorrectBag
                    (ProperAttributeToBag TBag TSearchTerm TUpdateTerm TBagAsBag pattr') with
     | {| Attribute := attr; ProperlyTyped := inleft (inleft (left cast')) |}
       => NTreeBag.IndexedBagAsCorrectBag TBagAsBag RepInv ValidUpdate TBagAsCorrectBag
-                                         (fun x => cast cast' (GetAttribute x attr))
+                                         (fun x => cast cast' (GetAttributeRaw x attr))
     | {| Attribute := attr; ProperlyTyped := inleft (inleft (right cast')) |}
       => ZTreeBag.IndexedBagAsCorrectBag TBagAsBag RepInv ValidUpdate TBagAsCorrectBag
-                                         (fun x => cast cast' (GetAttribute x attr))
+                                         (fun x => cast cast' (GetAttributeRaw x attr))
     | {| Attribute := attr; ProperlyTyped := inleft (inright cast') |}
       => NatTreeBag.IndexedBagAsCorrectBag TBagAsBag RepInv ValidUpdate TBagAsCorrectBag
-                                           (fun x => cast cast' (GetAttribute x attr))
+                                           (fun x => cast cast' (GetAttributeRaw x attr))
     | {| Attribute := attr; ProperlyTyped := inright cast' |}
       => StringTreeBag.IndexedBagAsCorrectBag TBagAsBag RepInv ValidUpdate TBagAsCorrectBag
-                                              (fun x => cast cast' (GetAttribute x attr))
+                                              (fun x => cast cast' (GetAttributeRaw x attr))
   end.
 
 Fixpoint ProperAttributesToRepInv
          {heading}
          TUpdateTerm
-         (bupdate_transform : TUpdateTerm -> @Tuple heading -> @Tuple heading)
+         (bupdate_transform : TUpdateTerm -> @RawTuple heading -> @RawTuple heading)
          (indices : list (@ProperAttribute heading))
 : NestedTreeFromAttributes indices -> Prop :=
   match indices return NestedTreeFromAttributes indices -> Prop with
@@ -313,7 +314,7 @@ Fixpoint ProperAttributesToRepInv
 Fixpoint ProperAttributesToValidUpdate
          {heading}
          TUpdateTerm
-         (bupdate_transform : TUpdateTerm -> @Tuple heading -> @Tuple heading)
+         (bupdate_transform : TUpdateTerm -> @RawTuple heading -> @RawTuple heading)
          (indices : list (@ProperAttribute heading))
 : TUpdateTerm -> Prop :=
   match indices return TUpdateTerm -> Prop with
@@ -328,7 +329,7 @@ Fixpoint ProperAttributesToValidUpdate
 Program Fixpoint NestedTreeFromAttributesAsCorrectBag
         heading
         TUpdateTerm
-        (bupdate_transform : TUpdateTerm -> @Tuple heading -> @Tuple heading)
+        (bupdate_transform : TUpdateTerm -> @RawTuple heading -> @RawTuple heading)
         (indices : list (@ProperAttribute heading))
 : CorrectBag (ProperAttributesToRepInv TUpdateTerm bupdate_transform indices)
              (ProperAttributesToValidUpdate TUpdateTerm bupdate_transform indices)
@@ -354,7 +355,7 @@ Program Fixpoint NestedTreeFromAttributesAsCorrectBag
 Lemma bupdate_transform_NestedTree :
   forall heading
          TUpdateTerm
-         (bupdate_transform' : TUpdateTerm -> @Tuple heading -> @Tuple heading)
+         (bupdate_transform' : TUpdateTerm -> @RawTuple heading -> @RawTuple heading)
          (indices : list (@ProperAttribute heading)),
     bupdate_transform
       (Bag := NestedTreeFromAttributesAsBag _ _ bupdate_transform' indices) =
@@ -366,12 +367,12 @@ Qed.
 
 Lemma KeyPreservingUpdateFAsUpdateTermOK {heading}
 : forall (indices indices' : list (@ProperAttribute heading))
-         (f : @Tuple heading -> @Tuple heading),
+         (f : @RawTuple heading -> @RawTuple heading),
     (forall a, List.In a indices -> List.In a indices')
     -> (forall K tup,
           List.In K indices'
-          -> GetAttribute (f tup) (@Attribute _ K) = GetAttribute tup (@Attribute _ K))
-    -> ProperAttributesToValidUpdate (@Tuple heading -> @Tuple heading)
+          -> GetAttributeRaw (f tup) (@Attribute _ K) = GetAttributeRaw tup (@Attribute _ K))
+    -> ProperAttributesToValidUpdate (@RawTuple heading -> @RawTuple heading)
                                      (fun upd tup => upd tup)
                                      indices f.
 Proof.
@@ -406,7 +407,7 @@ Instance NestedTreeFromAttributesAsCorrectBag_UpdateF
 : CorrectBag (ProperAttributesToRepInv _ _ indices)
              (ProperAttributesToValidUpdate _ _ indices)
              (NestedTreeFromAttributesAsBag heading
-                                            (@Tuple heading -> @Tuple heading)
+                                            (@RawTuple heading -> @RawTuple heading)
                                             (fun upd tup => upd tup)
                                             indices)
   := NestedTreeFromAttributesAsCorrectBag heading _ _ _ .
@@ -414,29 +415,29 @@ Instance NestedTreeFromAttributesAsCorrectBag_UpdateF
 Definition NestedTreeFromAttributesAsCorrectBagPlusProof
            {heading}
            (indices : list (@ProperAttribute heading))
-: BagPlusProof (@Tuple heading) :=
+: BagPlusProof (@RawTuple heading) :=
   {| CorrectBagPlus := (NestedTreeFromAttributesAsCorrectBag_UpdateF indices) |}.
 
 Definition CheckType {heading} (attr: Attributes heading) (rightT: _) :=
   {| Attribute := attr; ProperlyTyped := rightT |}.
 
 
-(* An equivalence relation between Ensembles of Tuples and Bags
+(* An equivalence relation between Ensembles of RawTuples and Bags
    which incorporates the bag's representation invariant. *)
 
 Definition EnsembleBagEquivalence
-           {heading : Heading}
-           (bagplus : BagPlusProof (@Tuple heading))
-           (ens : Ensemble (@IndexedTuple heading))
+           {heading : RawHeading}
+           (bagplus : BagPlusProof (@RawTuple heading))
+           (ens : Ensemble (@IndexedRawTuple heading))
            (store : BagTypePlus bagplus)
 : Prop :=
   ens ≃ benumerate (Bag := BagPlus bagplus) store /\
   RepInvPlus bagplus store.
 
 Instance EnsembleIndexedTreeEquivalence_AbsR
-         {heading : Heading}
-         {bagplus : BagPlusProof (@Tuple heading)}
-: @UnConstrRelationAbsRClass (@IndexedTuple heading) (BagTypePlus bagplus) :=
+         {heading : RawHeading}
+         {bagplus : BagPlusProof (@RawTuple heading)}
+: @UnConstrRelationAbsRClass (@IndexedRawTuple heading) (BagTypePlus bagplus) :=
   {| UnConstrRelationAbsR := EnsembleBagEquivalence bagplus |}.
 
 (* We now prove that [empty] is a valid abstraction of the
@@ -444,27 +445,26 @@ Instance EnsembleIndexedTreeEquivalence_AbsR
 
 Lemma bempty_correct_DB :
   forall {TContainer TSearchTerm TUpdateTerm : Type}
-         {db_schema : QueryStructureSchema}
-         {index : BoundedString}
-         {store_is_bag : Bag TContainer Tuple TSearchTerm TUpdateTerm}
+         {db_schema : RawQueryStructureSchema}
+         {index : Fin.t _}
+         {store_is_bag : Bag TContainer RawTuple TSearchTerm TUpdateTerm}
          (RepInv : TContainer -> Prop)
          (ValidUpdate : TUpdateTerm -> Prop),
     CorrectBag RepInv ValidUpdate store_is_bag
     -> EnsembleIndexedListEquivalence
-         (GetUnConstrRelation (DropQSConstraints (QSEmptySpec db_schema)) index)
+         (GetUnConstrRelation (imap2 rawRel (Build_EmptyRelations (qschemaSchemas db_schema))) index)
          (benumerate bempty).
 Proof.
   intros.
   erewrite benumerate_empty_eq_nil by eauto.
-
   apply EnsembleIndexedListEquivalence_Empty.
 Qed.
 
 Corollary bemptyPlus_correct_DB :
-  forall {db_schema : QueryStructureSchema}
-         {index : BoundedString}
-         {bag_plus : BagPlusProof (@Tuple (@QSGetNRelSchemaHeading db_schema index))},
-    GetUnConstrRelation (DropQSConstraints (QSEmptySpec db_schema)) index ≃
+  forall {db_schema : RawQueryStructureSchema}
+         {index : Fin.t _}
+         {bag_plus : BagPlusProof (@RawTuple _)},
+    GetUnConstrRelation (imap2 rawRel (Build_EmptyRelations (qschemaSchemas db_schema))) index ≃
                         bempty (Bag := BagPlus bag_plus).
 Proof.
   destruct bag_plus; intros; simpl; constructor.
@@ -478,7 +478,7 @@ Qed.
 
 Lemma binsert_correct_DB
       db_schema qs index
-      (bag_plus : BagPlusProof (@Tuple (@QSGetNRelSchemaHeading db_schema index)))
+      (bag_plus : BagPlusProof (@RawTuple _))
 :  forall (store: BagTypePlus bag_plus),
      GetUnConstrRelation qs index ≃ store
      -> forall tuple bound
@@ -533,10 +533,10 @@ Proof.
 Qed.
 
 Corollary binsertPlus_correct_DB :
-  forall {db_schema : QueryStructureSchema}
+  forall {db_schema : RawQueryStructureSchema}
          qs
-         (index : BoundedString)
-         (bag_plus : BagPlusProof (@Tuple (@QSGetNRelSchemaHeading db_schema index)))
+         (index : Fin.t _)
+         (bag_plus : BagPlusProof RawTuple)
          store,
     GetUnConstrRelation qs index ≃ store
     -> forall
@@ -557,11 +557,11 @@ Qed.
 
 Lemma bdelete_correct_DB_fst {qsSchema}
 : forall (qs : UnConstrQueryStructure qsSchema)
-         (Ridx : @BoundedString (map relName (qschemaSchemas qsSchema)))
+         (Ridx : Fin.t _)
          bag_plus
          bag
          (equiv_bag : EnsembleBagEquivalence bag_plus (GetUnConstrRelation qs Ridx) bag)
-         (DT : Ensemble Tuple)
+         (DT : Ensemble RawTuple)
          (DT_Dec : DecideableEnsemble DT)
          search_term,
     ExtensionalEq (@dec _ _ DT_Dec)
@@ -590,16 +590,16 @@ Qed.
 
 Lemma bdelete_correct_DB_snd
       db_schema qs index
-      (bag_plus : BagPlusProof (@Tuple (@QSGetNRelSchemaHeading db_schema index)))
+      (bag_plus : BagPlusProof RawTuple)
 :  forall (store: BagTypePlus bag_plus),
      GetUnConstrRelation qs index ≃ store
-     -> forall (DeletedTuples : Ensemble (@Tuple (@QSGetNRelSchemaHeading db_schema index)))
-               (DT_Dec : DecideableEnsemble DeletedTuples),
+     -> forall (DeletedRawTuples : Ensemble RawTuple)
+               (DT_Dec : DecideableEnsemble DeletedRawTuples),
           EnsembleIndexedListEquivalence
             (GetUnConstrRelation
                (@UpdateUnConstrRelation db_schema qs index
                                         (EnsembleDelete (GetUnConstrRelation qs index)
-                                                        DeletedTuples)) index)
+                                                        DeletedRawTuples)) index)
             (snd (List.partition (@dec _ _ DT_Dec)
                                  (benumerate store))).
 Proof.
@@ -609,11 +609,11 @@ Proof.
   repeat setoid_rewrite get_update_unconstr_eq; simpl; intros.
   exists x0.
   unfold UnConstrFreshIdx in *; intros; apply H; destruct H3; eauto.
-  exists (snd (partition (@dec IndexedTuple (fun t => DeletedTuples (indexedElement t)) _ ) x)); intuition.
+  exists (snd (partition (@dec IndexedRawTuple (fun t => DeletedRawTuples (indexedElement t)) _ ) x)); intuition.
   - unfold BagPlusProofAsBag; rewrite <- H2.
     repeat rewrite partition_filter_neq.
     clear; induction x; simpl; eauto.
-    unfold indexedTuple in *;
+    unfold indexedRawTuple in *;
       find_if_inside; simpl; eauto; rewrite <- IHx; reflexivity.
   - rewrite get_update_unconstr_eq in H3.
     destruct H3; unfold In in *.
@@ -624,19 +624,19 @@ Proof.
     unfold In; intros.
     apply In_partition_unmatched in H3.
     simpl in *; apply dec_decides_P in H5.
-    unfold indexedTuple, QSGetNRelSchemaHeading, GetNRelSchemaHeading, GetNRelSchema in *;
+    unfold indexedRawTuple, GetNRelSchema in *;
       rewrite H3 in H5; congruence.
   - revert H4; clear; induction x; simpl; eauto.
     intros; inversion H4; subst.
-    case_eq (partition (fun x0 => @dec IndexedTuple (fun t => DeletedTuples (indexedElement t)) _ x0) x); intros; simpl in *; rewrite H.
+    case_eq (partition (fun x0 => @dec IndexedRawTuple (fun t => DeletedRawTuples (indexedElement t)) _ x0) x); intros; simpl in *; rewrite H.
     rewrite H in IHx; apply IHx in H2;
-    case_eq (@dec IndexedTuple (fun t => DeletedTuples (indexedElement t)) _ a);
+    case_eq (@dec IndexedRawTuple (fun t => DeletedRawTuples (indexedElement t)) _ a);
     intros; simpl in *; rewrite H0; simpl; eauto.
     constructor; eauto.
     unfold not; intros; apply H1.
     generalize l l0 H H3; clear; induction x; simpl; intros.
     + injections; simpl in *; eauto.
-    + case_eq (partition (fun x0 : IndexedTuple => dec (indexedTuple x0)) x).
+    + case_eq (partition (fun x0 : IndexedRawTuple => dec (indexedRawTuple x0)) x).
       intros; rewrite H0 in H; find_if_inside; injections.
       eauto.
       simpl in H3; intuition.
@@ -648,8 +648,8 @@ Lemma bdeletePlus_correct_DB_snd
       bag_plus
 :  forall (store: BagTypePlus bag_plus),
      EnsembleBagEquivalence bag_plus (GetUnConstrRelation qs index) store
-     -> forall (DeletedTuples : Ensemble (@Tuple (@QSGetNRelSchemaHeading db_schema index)))
-               (DT_Dec : DecideableEnsemble DeletedTuples)
+     -> forall (DeletedRawTuples : Ensemble RawTuple)
+               (DT_Dec : DecideableEnsemble DeletedRawTuples)
                search_term,
           ExtensionalEq (@dec _ _ DT_Dec)
                         (bfind_matcher (Bag := BagPlus bag_plus) search_term)
@@ -658,7 +658,7 @@ Lemma bdeletePlus_correct_DB_snd
                (GetUnConstrRelation
                   (@UpdateUnConstrRelation db_schema qs index
                                            (EnsembleDelete (GetUnConstrRelation qs index)
-                                                           DeletedTuples)) index)
+                                                           DeletedRawTuples)) index)
                (snd (bdelete store search_term)).
 Proof.
   intros; unfold ExtensionalEq, EnsembleBagEquivalence in *.
@@ -677,8 +677,8 @@ Proof.
   rewrite partition_filter_neq in H1.
   unfold BagPlusProofAsBag in *; simpl in *; rewrite <- H4 in H1.
   clear H6 H H2 H4.
-  remember (GetUnConstrRelation qs index).
-  generalize DeletedTuples DT_Dec x0 u H1 H0 H3 H7; clear.
+  remember (GetUnConstrRelation qs index) as u.
+  generalize DeletedRawTuples DT_Dec x0 u H1 H0 H3 H7; clear.
   induction (benumerate (snd (bdelete store search_term))); intros.
   - eexists []; simpl; intuition.
     + destruct H; destruct H2; unfold In in *.
@@ -721,7 +721,7 @@ Proof.
     destruct_ex; intuition; subst.
     rewrite filter_map in H1; rewrite H in H1; simpl in *.
     rewrite H8 in *; simpl in *.
-    destruct (IHl DeletedTuples DT_Dec x1
+    destruct (IHl DeletedRawTuples DT_Dec x1
                   (fun tup => Ensembles.In _ u tup /\ tup <> x)); eauto;
     clear IHl.
     + rewrite filter_map; eapply Permutation_cons_inv; eauto.

@@ -34,13 +34,15 @@ Reserved Notation "'Query' 'Structure' 'Schema' relList "
 Reserved Notation "'Query' 'Structure' 'Schema' relList 'enforcing' constraints"
          (at level 0, constraints at level 50).
 
-Reserved Notation "( x 'in' r ) bod"
-         (right associativity, at level 0,
-          format "( x  'in'  r ) '//' bod ").
+Reserved Notation "( x 'in' r '!' Ridx ) bod"
+         (right associativity, at level 0, r at level 0,
+          format "( x  'in'  r '!' Ridx ) '//' bod ").
 
 Reserved Notation "'Return' t"
          (right associativity, at level 3,
           format "'Return'  t" ).
+
+
 
 Reserved Notation "'Where' p bod"
          (right associativity, at level 3, p at level 3,

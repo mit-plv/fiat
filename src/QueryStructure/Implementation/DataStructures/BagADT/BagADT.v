@@ -1,5 +1,8 @@
-Require Import Coq.Strings.String Coq.omega.Omega Coq.Lists.List
-        Coq.Logic.FunctionalExtensionality Coq.Sets.Ensembles
+Require Import Coq.Strings.String
+        Coq.omega.Omega
+        Coq.Lists.List
+        Coq.Logic.FunctionalExtensionality
+        Coq.Sets.Ensembles
         Fiat.Common.Ensembles.IndexedEnsembles
         Fiat.Computation
         Fiat.ADT
@@ -26,7 +29,7 @@ Section BagADT.
   Definition sUpdate := "Update".
 
   (* Get rid of Bag. *)
-  Definition BagSig : ADTSig :=
+  Definition BagSig :=
     ADTsignature {
         Constructor sEmpty : unit             -> rep,
         Method sFind      : rep x SearchTermType -> rep x list ElementType,

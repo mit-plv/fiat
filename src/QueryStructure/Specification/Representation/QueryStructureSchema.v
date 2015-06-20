@@ -1,6 +1,10 @@
-Require Import Coq.Lists.List Coq.Strings.String Fiat.Common Coq.Arith.Arith
-        Coq.Logic.FunctionalExtensionality Coq.Sets.Ensembles
-        Fiat.Common.ilist Fiat.Common.StringBound Coq.Program.Program.
+Require Import Coq.Lists.List
+        Coq.Strings.String
+        Fiat.Common
+        Coq.Arith.Arith
+        Coq.Logic.FunctionalExtensionality
+        Coq.Sets.Ensembles
+        Fiat.Common.StringBound.
 Require Export
         Fiat.QueryStructure.Specification.Representation.Notations
         Fiat.QueryStructure.Specification.Representation.Heading
@@ -17,50 +21,66 @@ Record NamedSchema  :=
     relSchema : Schema
   }.
 
-Definition NamedSchema_eq (rn : NamedSchema) (idx : string) :=
-  if (string_dec (relName rn) idx) then true else false.
-
 Definition GetNRelSchema
-           (namedSchemas : list NamedSchema)
-           (idx : @BoundedString (map relName namedSchemas)) :=
-  relSchema (nth_Bounded _ namedSchemas idx).
+           {n}
+           (namedSchemas : Vector.t RawSchema n)
+           (idx : Fin.t n) :=
+  Vector.nth namedSchemas idx.
 
 Definition GetNRelSchemaHeading
-           (namedSchemas :  list NamedSchema)
-           (idx : @BoundedString (map relName namedSchemas))
-:= schemaHeading (GetNRelSchema namedSchemas idx).
+           {n}
+           (namedSchemas : Vector.t RawSchema n)
+           (idx : Fin.t n)
+  := rawSchemaHeading (GetNRelSchema namedSchemas idx).
 
 Definition crossRelationR
-           (namedSchemas : list NamedSchema)
-           (idx idx' : _)
-  := @Tuple (GetNRelSchemaHeading namedSchemas idx)
-     -> Ensemble (@IndexedTuple (GetNRelSchemaHeading namedSchemas idx'))
+           {n}
+           (namedSchemas : Vector.t RawSchema n)
+           (idx idx' : Fin.t n)
+  := @RawTuple (GetNRelSchemaHeading namedSchemas idx)
+     -> Ensemble (@IndexedRawTuple (GetNRelSchemaHeading namedSchemas idx'))
      -> Prop.
 
 Definition crossRelationProdR
-           (namedSchemas : list NamedSchema)
+           {n}
+           (namedSchemas : Vector.t RawSchema n)
            (idxs : _ * _)
   := crossRelationR namedSchemas (fst idxs) (snd idxs).
 
-Record QueryStructureSchema :=
-  { qschemaSchemas : list NamedSchema;
+Record RawQueryStructureSchema :=
+  { numRawQSschemaSchemas : nat;
+    qschemaSchemas : Vector.t RawSchema numRawQSschemaSchemas;
     qschemaConstraints:
       list (sigT (crossRelationProdR qschemaSchemas))
   }.
 
+Record QueryStructureSchema :=
+  { numQSschemaSchemas : nat;
+    QSschemaSchemas : Vector.t Schema numQSschemaSchemas;
+    QSschemaConstraints:
+      list (sigT (crossRelationProdR (Vector.map schemaRaw QSschemaSchemas)));
+    QSschemaNames : Vector.t string numQSschemaSchemas  }.
+
+Definition QueryStructureSchemaRaw
+           (QSSchema : QueryStructureSchema)
+  : RawQueryStructureSchema :=
+  {| numRawQSschemaSchemas := numQSschemaSchemas QSSchema;
+     qschemaConstraints := QSschemaConstraints QSSchema |}.
+
+Coercion QueryStructureSchemaRaw : QueryStructureSchema >-> RawQueryStructureSchema.
+
 Definition QSGetNRelSchema
            (QSSchema : QueryStructureSchema)
-           (idx : _) :=
-  GetNRelSchema (qschemaSchemas QSSchema) idx.
+           (idx : BoundedString (QSschemaNames QSSchema)) :=
+  Vector.nth (QSschemaSchemas QSSchema) (ibound (indexb idx)).
 
 Definition QSGetNRelSchemaHeading
            (QSSchema : QueryStructureSchema)
-           (idx : _) :=
-  GetNRelSchemaHeading (qschemaSchemas QSSchema) idx.
+           (idx : BoundedString (QSschemaNames QSSchema)) :=
+  schemaHeading (QSGetNRelSchema QSSchema idx).
 
 Notation GetHeading QSSchema index :=
-  (@QSGetNRelSchemaHeading QSSchema (@Build_BoundedIndex _ _ index _)).
-
+  (@QSGetNRelSchemaHeading QSSchema (@Build_BoundedIndex _ _ _ index _)).
 
 (* Notations for Query Structures. *)
 
@@ -69,17 +89,11 @@ Notation "'relation' name 'has' sch " :=
      relSchema := sch%Schema
   |} : NamedSchema_scope.
 
-Bind Scope NamedSchema_scope with NamedSchema.
+Notation "[ rel1 ; .. ; reln ]" :=
+  (@Vector.cons _ rel1 _ (.. (@Vector.cons _ reln _ (Vector.nil _)) .. )) : NamedSchema_scope.
 
-Lemma BuildQSSchema_idx_eq
-      (namedSchemas : list NamedSchema)
-: forall idx idx' : _,
-    idx = idx'
-    -> GetNRelSchema namedSchemas idx =
-       GetNRelSchema namedSchemas idx'.
-Proof.
-  intros; rewrite H; auto.
-Defined.
+
+Bind Scope NamedSchema_scope with NamedSchema.
 
 (* A notation for foreign key constraints. This gives us
   a pair of relation schema names and a predicate on
@@ -87,15 +101,16 @@ Defined.
   typeclass to get the typechecking to work. *)
 
 Definition ForeignKey_P heading relSchema attr1 attr2 tupmap
-           (tup : @Tuple heading)
-           (R : Ensemble (@IndexedTuple relSchema)) :=
+           (tup : @RawTuple heading)
+           (R : Ensemble (@IndexedRawTuple relSchema)) :=
   exists tup2,
     R tup2 /\
-    GetAttribute tup attr1 =
-    tupmap (GetAttribute (indexedTuple tup2) attr2).
+    GetAttributeRaw tup attr1 =
+    tupmap (GetAttributeRaw (indexedRawTuple tup2) attr2).
 
 Definition BuildForeignKeyConstraints
-           (namedSchemas :  list NamedSchema)
+           {n}
+           (namedSchemas : Vector.t RawSchema n)
            (rel1 rel2 : _)
            attr1
            attr2
@@ -105,27 +120,39 @@ Definition BuildForeignKeyConstraints
           (ForeignKey_P attr1 attr2 tupmap)).
 
 Class namedSchemaHint :=
-  { nSchemaHint :> list NamedSchema }.
+  { numnSchemaHint : nat;
+    nSchemaHint :> Vector.t Schema numnSchemaHint;
+    nSchemaNamesHint :> Vector.t string numnSchemaHint}.
 
 Notation "'attribute' attr 'for' rel1 'references' rel2 " :=
-  (
-      @BuildForeignKeyConstraints
-        (@nSchemaHint _) {| bindex := rel1%string |} {| bindex := rel2%string |}
-        {| bindex := attr%string |}
-        {| bindex := attr%string |} id) : QSSchemaConstraints_scope.
+  (let hint : namedSchemaHint := _ in
+   let rel1' := ibound (indexb (@Build_BoundedIndex _ _ (@nSchemaNamesHint hint) rel1%string _)) in
+   let rel2' := ibound (indexb (@Build_BoundedIndex _ _ (@nSchemaNamesHint hint) rel2%string _)) in
+   @BuildForeignKeyConstraints
+     _ (Vector.map schemaRaw (@nSchemaHint hint)) rel1' rel2'
+     (ibound (indexb (@Build_BoundedIndex _ _ (schemaHeadingNames (Vector.nth (@nSchemaHint hint) rel1')) attr%string _)))
+     (ibound (indexb (@Build_BoundedIndex _ _ (schemaHeadingNames (Vector.nth (@nSchemaHint hint) rel2')) attr%string _)))
+     id) : QSSchemaConstraints_scope.
 
 Notation "'Query' 'Structure' 'Schema' relList 'enforcing' constraints" :=
-  (@Build_QueryStructureSchema relList%NamedSchema
-                       (let relListHint := Build_namedSchemaHint relList%NamedSchema in
-                        constraints%QSSchemaConstraints)) : QSSchema_scope.
+  (let relNames := Vector.map relName relList%NamedSchema in
+   let relSchemas := Vector.map relSchema relList%NamedSchema in
+   @Build_QueryStructureSchema
+     _ relSchemas
+     (let relListHint := Build_namedSchemaHint relSchemas relNames in
+          constraints%QSSchemaConstraints)
+     relNames) : QSSchema_scope.
 
-Arguments BuildForeignKeyConstraints _ _ [_ _] _ _ (*/*) .
+Arguments BuildForeignKeyConstraints _ _ [_ _] _ _ _ (*/*) .
 
 Arguments eq_rect_r _ _ _ _ _ _ / .
 (*Arguments ForeignKey_P _ _ _ _ _ / _ _ . *)
 
+
 Notation "'Query' 'Structure' 'Schema' relList " :=
-  (@Build_QueryStructureSchema relList%NamedSchema []) : QSSchema_scope.
+    (let relNames := Vector.map relName relList%NamedSchema in
+   let relSchemas := Vector.map relSchema relList%NamedSchema in
+   @Build_QueryStructureSchema _ relSchemas nil relNames) : QSSchema_scope.
 
 Bind Scope QSSchema_scope with QueryStructureSchema.
 Require Export Fiat.Common.DecideableEnsembles.
@@ -143,12 +170,12 @@ Require Import Coq.NArith.NArith Coq.ZArith.ZArith.
 Instance AN_eq : Query_eq N := {| A_eq_dec := N.eq_dec |}.
 Instance AZ_eq : Query_eq Z := {| A_eq_dec := Z.eq_dec |}.
 
-Notation GetAttributeKey Rel index :=
+(*Notation GetAttributeKey Rel index :=
   ((fun x : Attributes (GetNRelSchemaHeading (qschemaSchemas _) Rel) => x)  {| bindex := index |}).
 
 Notation GetRelationKey QSSchema index :=
   (@Build_BoundedIndex _ (map relName (qschemaSchemas QSSchema))
                       index _).
 
-Notation TupleDef QSSchema index :=
-  (@Tuple (QSGetNRelSchemaHeading QSSchema {| bindex := index%string |})).
+Notation RawTupleDef QSSchema index :=
+  (@RawTuple (QSGetNRelSchemaHeading QSSchema {| bindex := index%string |})). *)

@@ -1,5 +1,4 @@
-Require Import Fiat.QueryStructure.Automation.IndexSelection
-        Fiat.QueryStructure.Automation.AutoDB.
+Require Import Fiat.QueryStructure.Automation.MasterPlan.
 
 Definition Market := string.
 Definition StockType := nat.
@@ -52,47 +51,79 @@ Definition StocksSpec : ADT StocksSig :=
   QueryADTRep StocksSchema {
     Def Constructor "Init" (_: unit) : rep := empty,
 
-    update "AddStock" (stock: StocksSchema#STOCKS) : bool :=
-        Insert stock into STOCKS,
+    update "AddStock" (r : rep, stock: StocksSchema#STOCKS) : bool :=
+        Insert stock into r!STOCKS,
 
-    update "AddTransaction" (transaction : StocksSchema#TRANSACTIONS) : bool :=
-        Insert transaction into TRANSACTIONS,
+    update "AddTransaction" (r : rep, transaction : StocksSchema#TRANSACTIONS) : bool :=
+        Insert transaction into r!TRANSACTIONS,
 
-    query "TotalVolume" (params: StockCode * Date) : N :=
-      SumN (For (transaction in TRANSACTIONS)
+    query "TotalVolume" (r : rep, params: StockCode * Date) : N :=
+      SumN (For (transaction in r!TRANSACTIONS)
             Where (transaction!STOCK_CODE = fst params)
             Where (transaction!DATE = snd params)
             Return transaction!VOLUME),
 
-    query "MaxPrice" (params: StockCode * Date) : option N :=
-      MaxN (For (transaction in TRANSACTIONS)
+    query "MaxPrice" (r : rep, params: StockCode * Date) : option N :=
+      MaxN (For (transaction in r!TRANSACTIONS)
             Where (transaction!STOCK_CODE = fst params)
             Where (transaction!DATE = snd params)
             Return transaction!PRICE),
 
-    query "TotalActivity" (params: StockCode * Date) : nat :=
-      Count (For (transaction in TRANSACTIONS)
+    query "TotalActivity" (r : rep, params: StockCode * Date) : nat :=
+      Count (For (transaction in r!TRANSACTIONS)
             Where (transaction!STOCK_CODE = fst params)
             Where (transaction!DATE = snd params)
             Return ()),
 
-    query "LargestTransaction" (params: StockType * Date) : option N :=
-      MaxN (For (stock in STOCKS) (transaction in TRANSACTIONS)
+    query "LargestTransaction" (r : rep, params: StockType * Date) : option N :=
+      MaxN (For (stock in r!STOCKS) (transaction in r!TRANSACTIONS)
             Where (stock!TYPE = fst params)
             Where (transaction!DATE = snd params)
             Where (stock!STOCK_CODE = transaction!STOCK_CODE)
             Return (N.mul transaction!PRICE transaction!VOLUME))
 }.
 
-Definition StocksDB :
-  MostlySharpened StocksSpec.
+Definition SharpenedStocks :
+  FullySharpened StocksSpec.
 Proof.
-  simple_master_plan.
-  Time Defined.
-(* <280 seconds for master_plan.
-   <235 seconds for Defined. *)
 
-Time Definition StocksDBImpl : SharpenedUnderDelegates StocksSig :=
-  Eval simpl in projT1 StocksDB.
+  start honing QueryStructure.
+  (* Automatically select indexes + data structure. *)
+  {GenerateIndexesForAll
+     matchEqIndex
+     ltac:(fun attrlist => make_simple_indexes attrlist
+                                               ltac:(LastCombineCase6 BuildEarlyEqualityIndex)
+                                                      ltac:(LastCombineCase5 BuildLastEqualityIndex));
+   match goal with
+           | |- Sharpened _ => idtac (* Do nothing to the next Sharpened ADT goal. *)
+           | |- _ => (* Otherwise implement each method using the indexed data structure *)
+             plan
+               EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+               EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep
+   end.
+   pose_headings_all.
+     match goal with
+     | |- appcontext[@BuildADT (IndexedQueryStructure ?Schema ?Indexes)] =>
+       FullySharpenQueryStructure Schema Indexes
+     end.
+  (* 1231 Before. *)
+     (* 1600 After.*)
+  } 
+  simpl; pose_string_ids; pose_headings_all;
+  pose_search_term;  pose_SearchUpdateTerms.
 
-Print StocksDBImpl.
+  BuildQSIndexedBags' BuildEarlyEqualityBag BuildLastEqualityBag.
+  (* 1700MB *)
+  higher_order_reflexivityT.
+
+  (* Uncomment this to see the mostly sharpened implementation *)
+  (* partial_master_plan EqIndexTactics. *)
+  (*master_plan EqIndexTactics. *)
+
+Time Defined.
+(* 2590MB  *)
+
+Time Definition StocksImpl : ComputationalADT.cADT StocksSig :=
+  Eval simpl in projT1 SharpenedStocks.
+(* 3728MB *)
+Print StocksImpl.

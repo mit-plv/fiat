@@ -15,6 +15,8 @@ Require Import ADTRefinement.BuildADTRefinements.HoneRepresentation.
 Require Import Fiat.Common.IterateBoundedIndex.
 Require Import Fiat.Parsers.Refinement.IndexedAndAtMostOneNonTerminal.
 Require Import Fiat.ADTRefinement.GeneralBuildADTRefinements.
+Require Import Fiat.ADTRefinement.BuildADTRefinements.HoneRepresentation.
+Require Import Fiat.ADTNotation.BuildADTSig.
 
 Set Implicit Arguments.
 

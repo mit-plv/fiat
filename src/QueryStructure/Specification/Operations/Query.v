@@ -1,4 +1,7 @@
-Require Import Coq.Lists.List Coq.Strings.String Coq.Sets.Ensembles Coq.Sorting.Permutation
+Require Import Coq.Lists.List
+        Coq.Strings.String
+        Coq.Sets.Ensembles
+        Coq.Sorting.Permutation
         Fiat.Computation.Core
         Fiat.ADT.ADTSig Fiat.ADT.Core
         Fiat.Common.Ensembles.IndexedEnsembles
@@ -32,8 +35,8 @@ Notation "'For' bod" := (Query_For bod) : QuerySpec_scope.
 
 Definition QueryResultComp
            {heading ResultT}
-           (queriedEnsemble : Ensemble (@IndexedTuple heading))
-           (resultEnsemble : (@Tuple heading) -> Comp (list ResultT))
+           (queriedEnsemble : Ensemble (@IndexedRawTuple heading))
+           (resultEnsemble : @RawTuple heading -> Comp (list ResultT))
   :=
     (* First construct a list that contains each element in the query list
        (expressed as an ensemble) paired with its result list.
@@ -43,16 +46,19 @@ Definition QueryResultComp
     flatten_CompList (map resultEnsemble queriedList).
 
 Definition Query_In {ResultT}
-           (qs : QueryStructureHint)
-           (R : _)
-           (bod : @Tuple (schemaHeading
-                            (QSGetNRelSchema qsSchemaHint' R))
-                  -> Comp (list ResultT))
-  := QueryResultComp (GetUnConstrRelation (DropQSConstraints qsHint) R) bod.
+           {qs_schema}
+           (qs : QueryStructure qs_schema)
+           (R : Fin.t _)
+           (bod : @RawTuple (GetNRelSchemaHeading (qschemaSchemas qs_schema) R)
+                             -> Comp (list ResultT))
+  := QueryResultComp (GetRelation qs R) bod.
 
-Notation "( x 'in' R ) bod" :=
-  (Query_In _ {| bindex := R%string |}
-            (fun x => bod)) : QuerySpec_scope.
+Notation "( x 'in' r '!' Ridx ) bod" :=
+  (let qs_schema := _ in
+   let r' : QueryStructure qs_schema := r in
+   let Ridx' := ibound (indexb (@Build_BoundedIndex _ _ (QSschemaNames qs_schema) Ridx%string _)) in
+   @Query_In _ qs_schema r' Ridx'
+            (fun x : @RawTuple (GetNRelSchemaHeading (qschemaSchemas qs_schema) Ridx') => bod)) : QuerySpec_scope.
 
 (* [Query_Return] returns the singleton list. *)
 Definition Query_Return {ResultT : Type} (a : ResultT) := ret [a].
@@ -66,6 +72,10 @@ Definition Query_Where
 
 Notation "'Where' p bod" :=
   (Query_Where p%Tuple bod) : QuerySpec_scope.
+
+(*Notation "x <= y " :=
+  (InRange x (None, Some y)) : QuerySpec_scope. *)
+
 
 (* The spec for a count of the number of tuples in a relation. *)
 Definition Count {A} (rows : Comp (list A)) : Comp nat :=

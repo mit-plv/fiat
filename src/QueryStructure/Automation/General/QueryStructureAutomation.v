@@ -26,7 +26,7 @@ Require Import Coq.Strings.String Coq.omega.Omega Coq.Lists.List Coq.Logic.Funct
 Ltac start_honing_QueryStructure' :=
   eapply SharpenStep;
   [ match goal with
-        |- context [@BuildADT (QueryStructure ?Rep) _ _ _ _] =>
+        |- context [@BuildADT (QueryStructure ?Rep) _ _ _ _ _ _] =>
         eapply refineADT_BuildADT_Rep_refine_All with (AbsR := @DropQSConstraints_AbsR Rep);
           [ repeat (first [eapply refine_Constructors_nil
                           | eapply refine_Constructors_cons;
@@ -36,7 +36,8 @@ Ltac start_honing_QueryStructure' :=
                                 | _ => idtac
                               end;
                               (* Drop constraints from empty *)
-                              try apply Constructor_DropQSConstraints
+                              try apply Constructor_DropQSConstraints;
+                              cbv delta [GetAttribute] beta; simpl
                             | ] ])
           | repeat (first [eapply refine_Methods_nil
                           | eapply refine_Methods_cons;
@@ -45,6 +46,7 @@ Ltac start_honing_QueryStructure' :=
                                 |  |- refine _ (?E _ _) => let H := fresh in set (H := E)
                                 | _ => idtac
                               end;
+                              cbv delta [GetAttribute] beta; simpl;
                               match goal with
                                 | |- context [QSInsert _ _ _] => drop_constraints_from_insert
                                 | |- context [QSDelete _ _ _] => drop_constraints_from_delete
@@ -60,8 +62,8 @@ Ltac start_honing_QueryStructure :=
       cbv delta [QSSpec
                    QSGetNRelSchemaHeading GetNRelSchema
                    GetNRelSchemaHeading Domain Specif.value
-                   IndexBound_tail IndexBound_head] beta; simpl;
-      pose_string_hyps; pose_heading_hyps;
+                   ] beta; simpl;
+      (*pose_string_hyps; pose_heading_hyps;*)
       match R with
         | ?MostlySharpened =>
           eapply MostlySharpened_Start; start_honing_QueryStructure'
