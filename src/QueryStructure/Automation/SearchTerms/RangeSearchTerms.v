@@ -74,26 +74,26 @@ Ltac matchRangeIndex qsSchema WhereClause k k_fail :=
     TermAttributes C1 ltac:(fun Ridx1 attr1 =>
                               TermAttributes C2
                                              ltac:(fun Ridx2 attr2 =>
-                                                     k (@InsertOccurence _ qsSchema Ridx1 (RangeIndex, attr1) (@InsertOccurence _ qsSchema Ridx2 (RangeIndex, attr2) (InitOccurence _)))))
+                                                     k (@InsertOccurenceOfAny _ qsSchema Ridx1 (RangeIndex, attr1) (@InsertOccurenceOfAny _ qsSchema Ridx2 (RangeIndex, attr2) (InitOccurences _)))))
 
   | fun tups => _ <= (@?C1 tups) <= (@?C2 tups) =>
     TermAttributes C1 ltac:(fun Ridx1 attr1 =>
                               TermAttributes C2
                                              ltac:(fun Ridx2 attr2 =>
-                                                     k (@InsertOccurence _ qsSchema Ridx1 (RangeIndex, attr1) (@InsertOccurence _ qsSchema Ridx2 (RangeIndex, attr2) (InitOccurence _)))))
+                                                     k (@InsertOccurenceOfAny _ qsSchema Ridx1 (RangeIndex, attr1) (@InsertOccurenceOfAny _ qsSchema Ridx2 (RangeIndex, attr2) (InitOccurences _)))))
 
   | fun tups => (@?C1 tups) <= (@?C2 tups) =>
     TermAttributes C1 ltac:(fun Ridx1 attr1 =>
                               TermAttributes C2
                                              ltac:(fun Ridx2 attr2 =>
-                                                     k (@InsertOccurence _ qsSchema Ridx1 (RangeIndex, attr1) (@InsertOccurence _ qsSchema Ridx2 (RangeIndex, attr2) (InitOccurence _)))))
+                                                     k (@InsertOccurenceOfAny _ qsSchema Ridx1 (RangeIndex, attr1) (@InsertOccurenceOfAny _ qsSchema Ridx2 (RangeIndex, attr2) (InitOccurences _)))))
 
   | fun tups => _ <= (@?C1 tups) =>
     TermAttributes C1 ltac:(fun Ridx attr =>
-                              k (@InsertOccurence _ qsSchema Ridx (RangeIndex, attr) (InitOccurence _)))
+                              k (@InsertOccurenceOfAny _ qsSchema Ridx (RangeIndex, attr) (InitOccurences _)))
   | fun tups => (@?C1 tups) <= _ =>
     TermAttributes C1 ltac:(fun Ridx attr =>
-                              k (@InsertOccurence _ qsSchema Ridx (RangeIndex, attr) (InitOccurence _)))
+                              k (@InsertOccurenceOfAny _ qsSchema Ridx (RangeIndex, attr) (InitOccurences _)))
   | _ => k_fail qsSchema WhereClause k
   end.
 
@@ -204,12 +204,6 @@ Ltac createEarlyRangeTerm_dep dom f fds tail fs kind EarlyIndex LastIndex rest s
           || k (fun x : dom => ((@None nat, @None nat), rest x))
       | _ => k_fail dom f fds tail fs kind EarlyIndex LastIndex rest s k
       end.
-
-Ltac RangeIndexTactics f :=
-  PackageIndexTactics
-    matchRangeIndex
-    RangeIndexUse createEarlyRangeTerm createLastRangeTerm
-    RangeIndexUse_dep createEarlyRangeTerm_dep createLastRangeTerm_dep f.
 
 Module StringRangeTreeBag := RangeTreeBag String_as_OT.
 Module NatRangeTreeBag := RangeTreeBag Nat_as_OT.
@@ -343,3 +337,10 @@ Ltac BuildEarlyRangeTreeBag heading AttrList AttrKind AttrIndex subtree k k_fail
             end
       | right _ => k_fail heading AttrList AttrKind AttrIndex subtree k
       end.
+
+Ltac RangeIndexTactics f :=
+  PackageIndexTactics
+    matchRangeIndex BuildEarlyRangeIndex BuildLastRangeIndex
+    RangeIndexUse createEarlyRangeTerm createLastRangeTerm
+    RangeIndexUse_dep createEarlyRangeTerm_dep createLastRangeTerm_dep
+    BuildEarlyRangeTreeBag BuildLastRangeTreeBag f.

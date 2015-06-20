@@ -244,6 +244,7 @@ src/Parsers/StringLike/String.v
 src/QueryStructure/Automation/AutoDB.v
 src/QueryStructure/Automation/Common.v
 src/QueryStructure/Automation/IndexSelection.v
+src/QueryStructure/Automation/MasterPlan.v
 src/QueryStructure/Automation/QSImplementation.v
 src/QueryStructure/Automation/RangeTreeBags.v
 src/QueryStructure/Automation/Constraints/ForeignKeyAutomation.v

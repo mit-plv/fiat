@@ -1941,26 +1941,34 @@ Ltac plan CreateTerm EarlyIndex LastIndex
                makeClause_dep EarlyIndex_dep LastIndex_dep
   end.
 
-(*Ltac master_plan' matchIndex
-     CreateTerm EarlyIndex LastIndex
-     makeClause_dep EarlyIndex_dep LastIndex_dep :=
+  (*Ltac master_plan' matchIndex
+       BuildEarlyIndex BuildLastIndex
+       CreateTerm EarlyIndex LastIndex
+       CreateTerm_dep EarlyIndex_dep LastIndex_dep
+       BuildEarlyBag BuildLastBag :=
   (* Implement constraints as queries. *)
   start honing QueryStructure;
   (* Automatically select indexes + data structure. *)
-  GenerateIndexesForAll
+  [GenerateIndexesForAll
     matchIndex
-    ltac:(fun attrlist => make simple indexes using attrlist;
+    ltac:(fun attrlist => make_simple_indexes attrlist BuildEarlyIndex BuildLastIndex;
           match goal with
             | |- Sharpened _ => idtac (* Do nothing to the next Sharpened ADT goal. *)
             | |- _ => (* Otherwise implement each method using the indexed data structure *)
               plan CreateTerm EarlyIndex LastIndex
-                   makeClause_dep EarlyIndex_dep LastIndex_dep
+                   CreateTerm_dep EarlyIndex_dep LastIndex_dep
           end;
+          pose_headings_all;
           match goal with
             | |- appcontext[@BuildADT (IndexedQueryStructure ?Schema ?Indexes)] =>
               FullySharpenQueryStructure Schema Indexes
           end
-         ).
+         )
+  | simpl; pose_string_ids; pose_headings_all;
+    pose_search_term;  pose_SearchUpdateTerms;
+
+    BuildQSIndexedBags' BuildEarlyBag BuildLastBag
+  | higher_order_reflexivityT ].
 
 Ltac partial_master_plan' matchIndex
      CreateTerm EarlyIndex LastIndex
@@ -1978,26 +1986,6 @@ Ltac partial_master_plan' matchIndex
                    makeClause_dep EarlyIndex_dep LastIndex_dep
           end
          ). *)
-
-Ltac matchEqIndex qsSchema WhereClause k := fail.
-Ltac EqIndexUse SC F indexed_attrs f k := fail.
-Ltac createEarlyEqualityTerm f fds tail fs kind EarlyIndex LastIndex rest s k := fail.
-Ltac createLastEqualityTerm f fds tail fs kind s k := fail.
-Ltac EqIndexUse_dep SC F indexed_attrs visited_attrs f T k := fail.
-Ltac createEarlyEqualityTerm_dep dom f fds tail fs kind EarlyIndex LastIndex rest s k := fail.
-Ltac createLastEqualityTerm_dep dom f fds tail fs kind s k := fail.
-
-Ltac EqIndexTactics f :=
-  PackageIndexTactics matchEqIndex
-    EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
-    EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep
-    f.
-
-(* Ltac master_plan IndexTactics := IndexTactics master_plan'.
-Ltac partial_master_plan IndexTactics := IndexTactics partial_master_plan'.
-
-Ltac simple_master_plan := master_plan EqIndexTactics.
-Ltac simple_partial_master_plan := partial_master_plan EqIndexTactics. *)
 
 Global Opaque CallBagMethod.
 Global Opaque CallBagConstructor.

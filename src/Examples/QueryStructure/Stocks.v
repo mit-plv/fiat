@@ -1,6 +1,4 @@
-Require Import Fiat.QueryStructure.Automation.IndexSelection
-        Fiat.QueryStructure.Automation.AutoDB
-        Fiat.QueryStructure.Automation.QSImplementation.
+Require Import Fiat.QueryStructure.Automation.MasterPlan.
 
 Definition Market := string.
 Definition StockType := nat.
@@ -85,54 +83,16 @@ Definition StocksSpec : ADT StocksSig :=
             Return (N.mul transaction!PRICE transaction!VOLUME))
 }.
 
-Definition StocksDB :
+Definition SharpenedStocks :
   FullySharpened StocksSpec.
 Proof.
-  start_honing_QueryStructure.
 
-  { GenerateIndexesForAll
-      ltac:(fun _ _ => fail)
-             ltac:(fun attrList =>
-                     make_simple_indexes
-                       attrList
-                       ltac:(CombineCase6 BuildEarlyEqualityIndex
-                                          ltac:(fun _ _ _ _ _ _ => fail))
-                              ltac:(CombineCase5 BuildLastEqualityIndex
-                                                 ltac:(fun _ _ _ _ _ => fail))).
-     initializer.
-     insertion EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
-               EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
-     insertion EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
-               EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
-     observer EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
-               EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
-     observer EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
-              EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
-     observer EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
-              EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
-     observer EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
-              EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
-     pose_headings_all.
-     idtac.
-
-     match goal with
-     | |- appcontext[@BuildADT (IndexedQueryStructure ?Schema ?Indexes)] =>
-       FullySharpenQueryStructure Schema Indexes
-     end.
-  }
-
-  { simpl; pose_string_ids; pose_headings_all;
-    pose_search_term;  pose_SearchUpdateTerms.
-    BuildQSIndexedBags' BuildEarlyEqualityBag BuildLastEqualityBag.
-  }
-  higher_order_reflexivityT.
+  (* Uncomment this to see the mostly sharpened implementation *)
+  (* partial_master_plan EqIndexTactics. *)
+  master_plan EqIndexTactics.
 
 Time Defined.
 
-(* <280 seconds for master_plan.
-   <235 seconds for Defined. *)
-
-Time Definition StocksDBImpl : ComputationalADT.cADT StocksSig :=
-  Eval simpl in projT1 StocksDB.
-
-Print StocksDBImpl.
+Time Definition StocksImpl : ComputationalADT.cADT StocksSig :=
+  Eval simpl in projT1 SharpenedStocks.
+Print StocksImpl.

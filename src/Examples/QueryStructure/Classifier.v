@@ -1,7 +1,4 @@
-Require Import Coq.Strings.String.
-Require Import Fiat.QueryStructure.Automation.AutoDB
-        Fiat.QueryStructure.Automation.IndexSelection
-        Fiat.QueryStructure.Automation.QSImplementation.
+Require Import Fiat.QueryStructure.Automation.MasterPlan.
 
 Open Scope list.
 
@@ -115,66 +112,21 @@ Section ADT.
             Return rule
   }.
 
-  Theorem ClassifierManual :
+  Theorem SharpenedClassifier :
     FullySharpened ClassifierSpec.
   Proof.
 
-    start_honing_QueryStructure.
-    { GenerateIndexesForAll
-        ltac:(CombineCase3 matchFindPrefixIndex matchEqIndex)
-               ltac:(fun attrList =>
-                       make_simple_indexes
-                         attrList
-                         ltac:(CombineCase6 BuildEarlyEqualityIndex
-                                            ltac:(CombineCase6 BuildEarlyFindPrefixIndex
-                                                               ltac:(fun _ _ _ _ _ _ => fail)))
-                                ltac:(CombineCase5 BuildLastEqualityIndex
-                                                   ltac:(CombineCase5
-                                                           BuildLastFindPrefixIndex
-                                                           ltac:(fun _ _ _ _ _ => fail)))).
+    (* Uncomment this to see the mostly sharpened implementation *)
+    (* partial_master_plan ltac:(CombineIndexTactics PrefixIndexTactics EqIndexTactics).*)
 
-      initializer.
-      insertion ltac:(CombineCase5 PrefixIndexUse EqIndexUse)
-             ltac:(CombineCase10 createEarlyPrefixTerm createEarlyEqualityTerm)
-             ltac:(CombineCase7 createLastPrefixTerm createLastEqualityTerm)
-             ltac:(CombineCase7 PrefixIndexUse_dep EqIndexUse_dep)
-             ltac:(CombineCase11 createEarlyPrefixTerm_dep createEarlyEqualityTerm_dep)
-             ltac:(CombineCase8 createLastPrefixTerm_dep createLastEqualityTerm_dep).
-      deletion ltac:(CombineCase5 PrefixIndexUse EqIndexUse)
-             ltac:(CombineCase10 createEarlyPrefixTerm createEarlyEqualityTerm)
-             ltac:(CombineCase7 createLastPrefixTerm createLastEqualityTerm)
-             ltac:(CombineCase7 PrefixIndexUse_dep EqIndexUse_dep)
-             ltac:(CombineCase11 createEarlyPrefixTerm_dep createEarlyEqualityTerm_dep)
-             ltac:(CombineCase8 createLastPrefixTerm_dep createLastEqualityTerm_dep).
-      observer ltac:(CombineCase5 PrefixIndexUse EqIndexUse)
-             ltac:(CombineCase10 createEarlyPrefixTerm createEarlyEqualityTerm)
-             ltac:(CombineCase7 createLastPrefixTerm createLastEqualityTerm)
-             ltac:(CombineCase7 PrefixIndexUse_dep EqIndexUse_dep)
-             ltac:(CombineCase11 createEarlyPrefixTerm_dep createEarlyEqualityTerm_dep)
-             ltac:(CombineCase8 createLastPrefixTerm_dep createLastEqualityTerm_dep).
+    master_plan ltac:(CombineIndexTactics PrefixIndexTactics EqIndexTactics).
 
-      pose_headings_all.
-
-      match goal with
-      | |- appcontext[@BuildADT (IndexedQueryStructure ?Schema ?Indexes)] =>
-        FullySharpenQueryStructure Schema Indexes
-      end.
-    }
-
-    { simpl; pose_string_ids; pose_headings_all;
-      pose_search_term;  pose_SearchUpdateTerms.
-
-      BuildQSIndexedBags' ltac:(CombineCase6 BuildEarlyTrieBag BuildEarlyEqualityBag)
-                                 ltac:(CombineCase5 BuildLastTrieBag BuildLastEqualityBag).
-    }
-
-    higher_order_reflexivityT.
-    (* 124 seconds *)
   Time Defined.
+  (* Mem: 902MB *)
 
   Time Definition ClassifierImpl : ComputationalADT.cADT ClassifierSig :=
-    Eval simpl in (projT1 ClassifierManual).
-
+    Eval simpl in (projT1 SharpenedClassifier).
+  (* Mem: 1028MB *)
   Print ClassifierImpl.
 
 End ADT.

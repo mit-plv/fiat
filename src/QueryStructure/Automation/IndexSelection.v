@@ -61,6 +61,13 @@ Definition OccurenceRankT {n}
            (qsSchema : Vector.t RawHeading n) :=
   ilist3 (B := fun heading => Vector.t (RelationAttributeCounter.t nat) (NumAttr heading)) qsSchema.
 
+Definition OccurencesCountT {n}
+           (qsSchema : Vector.t RawHeading n) :=
+  prod (OccurenceCountT qsSchema) (OccurenceCountT qsSchema).
+Definition OccurencesRankT {n}
+           (qsSchema : Vector.t RawHeading n) :=
+  prod (OccurenceRankT qsSchema) (OccurenceRankT qsSchema).
+
 Fixpoint InitAttrCount n
   : Vector.t (RelationAttributeCounter.t nat) n :=
   match n return Vector.t (RelationAttributeCounter.t nat) n with
@@ -103,12 +110,24 @@ Fixpoint InitOccRank {n}
     icons3 (InitAttrCount _) (InitOccRank qsSchema')
   end.
 
+Definition InitOccsRank {n}
+           (qsSchema : Vector.t RawHeading n)
+  : OccurencesRankT qsSchema :=
+  (InitOccRank qsSchema, InitOccRank qsSchema).
+
 Definition CountAttributes {n}
            (qsSchema : Vector.t RawHeading n)
            (OccCount : OccurenceCountT qsSchema)
   : OccurenceRankT qsSchema :=
   imap3 _ _ (fun heading (OccCount : list (string * (Attributes heading))) =>
                fold_right (fun attrC AttrRank => IncrementAttrCount AttrRank (snd attrC) (fst attrC)) (InitAttrCount _) OccCount) _ OccCount.
+
+Definition CountAttributes' {n}
+           (qsSchema : Vector.t RawHeading n)
+           (OccCounts : OccurencesCountT qsSchema)
+  : OccurencesRankT qsSchema :=
+  (CountAttributes qsSchema (fst OccCounts),
+   CountAttributes qsSchema (snd OccCounts)).
 
 Fixpoint PickIndex {n}
            (AttrRank : Vector.t (RelationAttributeCounter.t nat) n)
@@ -125,29 +144,22 @@ Fixpoint PickIndex {n}
 
 Fixpoint PickIndexes {n}
            (qsSchema : Vector.t RawHeading n)
-           (OccRank : OccurenceRankT qsSchema)
+           (OccRank : OccurencesRankT qsSchema)
            {struct qsSchema}
   : ilist3 (B := fun heading => list (prod string (Attributes heading))) qsSchema :=
   match qsSchema return
-        OccurenceRankT qsSchema
+        OccurencesRankT qsSchema
         -> ilist3 (B := fun heading => list (prod string (Attributes heading))) qsSchema with
   | Vector.cons heading _ qsSchema' =>
     fun OccRank =>
-      icons3 (map (@fst _ _) (PickIndex ((ilist3_hd OccRank)) )) (PickIndexes qsSchema' (ilist3_tl OccRank))
+      let bestLastIndex :=
+          match (PickIndex ((ilist3_hd (snd OccRank)))) with
+          | idx :: _ => [fst idx]
+          | _ => [ ]
+          end in
+      icons3 (map (@fst _ _) (PickIndex ((ilist3_hd (fst OccRank))) ) ++ bestLastIndex) (PickIndexes (ilist3_tl (fst OccRank), ilist3_tl (snd OccRank)))
   | Vector.nil => fun OccRank => inil3
   end OccRank.
-
-(*Definition GetIndexes
-           (qsSchema : RawQueryStructureSchema)
-           (indices : list ((string * (string * string)) * nat))
-: list (list (string * string)) :=
-  map (fun ns : NamedSchema =>
-         map (fun index => (fst (fst index), snd (snd (fst index))))
-             (filter (fun index => if (fin_eq_dec (fst (snd (fst index)))) (relName ns)
-                                   then true
-                                   else false)
-                     indices))
-      (qschemaSchemas qsSchema). *)
 
 (* Add a new occurence to AttrCount *)
 Fixpoint InsertOccurence {n}
@@ -174,6 +186,22 @@ Proof.
     exact (icons3 (ilist3_hd il) (InsertOccurence _ _ p' new (ilist3_tl il))).
 Defined.
 
+Definition InsertOccurenceOfAny {n}
+         {qsSchema : Vector.t RawHeading n}
+         (idx : Fin.t n)
+         (NewOccurence : prod string (Attributes (Vector.nth qsSchema idx)))
+         (AttrCount : OccurencesCountT qsSchema)
+  : OccurencesCountT qsSchema :=
+  (InsertOccurence idx NewOccurence (fst AttrCount), snd AttrCount).
+
+Definition InsertOccurenceOfLast {n}
+         {qsSchema : Vector.t RawHeading n}
+         (idx : Fin.t n)
+         (NewOccurence : prod string (Attributes (Vector.nth qsSchema idx)))
+         (AttrCount : OccurencesCountT qsSchema)
+  : OccurencesCountT qsSchema :=
+  (fst AttrCount, InsertOccurence idx NewOccurence (snd AttrCount)).
+
 Arguments InsertOccurence [_ _ _] _ _.
 Fixpoint MergeOccurence {n}
          (qsSchema : Vector.t RawHeading n)
@@ -190,6 +218,13 @@ Fixpoint MergeOccurence {n}
             (MergeOccurence qsSchema' (ilist3_tl AttrCount1) (ilist3_tl AttrCount2))
   end AttrCount1 AttrCount2.
 
+Definition MergeOccurences {n}
+         (qsSchema : Vector.t RawHeading n)
+         (AttrCount1 AttrCount2 : OccurencesCountT qsSchema)
+  : OccurencesCountT qsSchema :=
+  (MergeOccurence qsSchema (fst AttrCount1) (fst AttrCount2),
+   MergeOccurence qsSchema (snd AttrCount1) (snd AttrCount2)).
+
 Arguments MergeOccurence [_ _] _ _.
 
 Fixpoint InitOccurence {n}
@@ -201,6 +236,11 @@ Fixpoint InitOccurence {n}
   | Vector.cons _ _ qsSchema' =>
     icons3 nil (InitOccurence qsSchema')
   end.
+
+Definition InitOccurences {n}
+         (qsSchema : Vector.t RawHeading n)
+  : OccurencesCountT qsSchema :=
+  (InitOccurence qsSchema, InitOccurence qsSchema).
 
 Definition GetOccurence {n}
            {qsSchema : Vector.t RawHeading n}
@@ -226,19 +266,19 @@ Ltac ClauseAttributes qsSchema WhereClause OtherClauses k :=
                      ltac:(fun attrs1 =>
                              ClauseAttributes qsSchema C2 OtherClauses
                                               ltac:(fun attrs2 =>
-                                                      k (MergeOccurence attrs2 attrs1)))
+                                                      k (MergeOccurences attrs2 attrs1)))
   | fun tups => @?C1 tups = @?C2 tups =>
     TermAttributes C1 ltac:(fun Ridx1 attr1 =>
                               TermAttributes C2 ltac:(fun Ridx2 attr2 =>
-                                                        k (@InsertOccurence _ qsSchema Ridx1 (EqualityIndex, attr1) (@InsertOccurence _ qsSchema Ridx2 (EqualityIndex, attr2) (InitOccurence qsSchema)))))
+                                                        k (@InsertOccurenceOfAny _ qsSchema Ridx1 (EqualityIndex, attr1) (@InsertOccurenceOfAny _ qsSchema Ridx2 (EqualityIndex, attr2) (InitOccurences qsSchema)))))
   | fun tups => @?C1 tups = _ =>
     TermAttributes C1 ltac:(fun Ridx attr =>
-                              k (@InsertOccurence _ qsSchema Ridx (EqualityIndex, attr) (InitOccurence _)))
+                              k (@InsertOccurenceOfAny _ qsSchema Ridx (EqualityIndex, attr) (InitOccurences _)))
   | fun tups => _ = @?C1 tups =>
     TermAttributes C1 ltac:(fun Ridx attr =>
-                              k (@InsertOccurence _ qsSchema Ridx (EqualityIndex, attr) (InitOccurence _)))
+                              k (@InsertOccurenceOfAny _ qsSchema Ridx (EqualityIndex, attr) (InitOccurences _)))
   | _ => OtherClauses qsSchema WhereClause k
-  | _ => k (InitOccurence qsSchema)
+  | _ => k (InitOccurences qsSchema)
   end.
 
 Ltac QueryAttributes qsSchema QueryBody OtherClauses k :=
@@ -259,8 +299,8 @@ Ltac QueryAttributes qsSchema QueryBody OtherClauses k :=
   | fun tups => Where (@?P tups) (@?QueryBody' tups) =>
     ClauseAttributes qsSchema P OtherClauses
                      ltac:(fun attrs =>
-                             QueryAttributes qsSchema QueryBody' OtherClauses ltac:(fun attrs' => k (MergeOccurence attrs attrs')))
-  | _ => k (InitOccurence qsSchema)
+                             QueryAttributes qsSchema QueryBody' OtherClauses ltac:(fun attrs' => k (MergeOccurences attrs attrs')))
+  | _ => k (InitOccurences qsSchema)
   end.
 
 Ltac MethodAttributes meth qsSchema OtherClauses l :=
@@ -271,20 +311,20 @@ Ltac MethodAttributes meth qsSchema OtherClauses l :=
                       ltac:(fun attrs =>
                               let l' := eval simpl in attrs in
                                   unify l l')
-    | _ => unify l (InitOccurence qsSchema )
+    | _ => unify l (InitOccurences qsSchema )
     end; finish honing | ].
 
 Ltac MethodsAttributes' meths qsSchema OtherClauses l :=
   match meths with
   | Vector.cons _ ?meth _ ?meths' =>
-    makeEvar (OccurenceCountT qsSchema)
+    makeEvar (OccurencesCountT qsSchema)
              ltac:(fun l1 =>
-                     makeEvar (OccurenceCountT qsSchema)
+                     makeEvar (OccurencesCountT qsSchema)
                               ltac:(fun l2 =>
-                                      unify l (MergeOccurence l1 l2);
+                                      unify l (MergeOccurences l1 l2);
                                     MethodAttributes meth qsSchema  OtherClauses l1;
                                     MethodsAttributes' meths' qsSchema  OtherClauses l2))
-  | Vector.nil _ => unify l (InitOccurence qsSchema)
+  | Vector.nil _ => unify l (InitOccurences qsSchema)
   end.
 
 Ltac GenerateIndexesFor meths OtherClauses k :=
@@ -292,9 +332,9 @@ Ltac GenerateIndexesFor meths OtherClauses k :=
     |- Sharpened
          (@BuildADT (UnConstrQueryStructure ?qsSchema) _ _ _ _ _ _) =>
     let rels := eval simpl in (Vector.map rawSchemaHeading (qschemaSchemas qsSchema)) in
-        makeEvar (OccurenceCountT rels)
+        makeEvar (OccurencesCountT rels)
                  ltac:(fun l => MethodsAttributes' meths rels OtherClauses l;
-                       let l' := eval compute in (PickIndexes _ (CountAttributes _ l)) in k l')
+                       let l' := eval compute in (PickIndexes (CountAttributes' l)) in k l')
   end.
 
 Ltac GenerateIndexesForAll OtherClauses k :=

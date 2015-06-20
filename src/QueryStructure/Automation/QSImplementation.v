@@ -1,11 +1,10 @@
 (* Tactics for extracting Query Structure Implementations. *)
-Require Import Coq.Strings.String.
+Require Import Coq.Strings.String
+Fiat.QueryStructure.Implementation.DataStructures.Bags.BagsOfTuples
+Fiat.QueryStructure.Specification.Representation.QueryStructureNotations   Fiat.QueryStructure.Automation.AutoDB.
 Require Export Fiat.Common.ilist3_pair
         Fiat.Common.ilist3
-        Fiat.Common.i3list2
-        Fiat.QueryStructure.Implementation.DataStructures.Bags.BagsOfTuples
-        Fiat.QueryStructure.Specification.Representation.QueryStructureNotations
-        Fiat.QueryStructure.Automation.AutoDB.
+        Fiat.Common.i3list2.
 
 Ltac list_of_evar B As k :=
   match As with
@@ -21,44 +20,6 @@ Lemma ValidUpdateCorrect
 Proof.
   intros; discriminate.
 Qed.
-
-(*Definition foo := (SharpenedBagImpl
-                             (fun
-                                _ : IndexedTreeUpdateTermType
-                                      {|
-                                      NumAttr := 2;
-                                      AttrList := [nat : Type; nat : Type]%NamedSchema |} =>
-                              false)
-                             (NatTreeBag.IndexedBagAsCorrectBag
-                                (CountingListAsBag
-                                   (IndexedTreebupdate_transform
-                                      {|
-                                      NumAttr := 2;
-                                      AttrList := [nat : Type; nat : Type]%NamedSchema |}))
-                                CountingList_RepInv CountingList_ValidUpdate
-                                (CountingListAsCorrectBag
-                                   (IndexedTreebupdate_transform
-                                      {|
-                                      NumAttr := 2;
-                                      AttrList := [nat : Type; nat : Type]%NamedSchema |}))
-                                (fun x : RawTuple => GetAttributeRaw x Fin.F1))
-                             (fun
-                                (a : IndexedTreeUpdateTermType
-                                       {|
-                                       NumAttr := 2;
-                                       AttrList := [nat : Type; nat : Type]%NamedSchema |})
-                                (b : false = true) =>
-                              ValidUpdateCorrect
-                                (NatTreeBag.IndexedBag_ValidUpdate
-                                   (CountingListAsBag
-                                      (IndexedTreebupdate_transform
-                                         {|
-                                         NumAttr := 2;
-                                         AttrList := [nat : Type; nat : Type]%NamedSchema |}))
-                                   CountingList_ValidUpdate
-                                   (fun x : RawTuple =>
-                                    GetAttributeRaw x Fin.F1) a) b)). *)
-
 
 Definition LookupQSDelegateReps {n}
            (Reps : Vector.t Type n)

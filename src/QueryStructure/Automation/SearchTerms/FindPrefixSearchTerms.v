@@ -49,7 +49,7 @@ Ltac matchFindPrefixIndex qsSchema WhereClause k k_fail :=
   match WhereClause with
   | fun tups => IsPrefix (@?C1 tups) _ =>
     TermAttributes C1 ltac:(fun Ridx attr =>
-                              k (@InsertOccurence _ qsSchema Ridx ("FindPrefixIndex", attr) (InitOccurence _)))
+                              k (@InsertOccurenceOfAny _ qsSchema Ridx ("FindPrefixIndex", attr) (InitOccurences _)))
   | _ => k_fail qsSchema WhereClause k
   end.
 
@@ -125,12 +125,6 @@ Ltac createEarlyPrefixTerm_dep dom f fds tail fs kind EarlyIndex LastIndex rest 
       | _ => k_fail dom f fds tail fs kind EarlyIndex LastIndex rest s k
       end.
 
-Ltac PrefixIndexTactics f :=
-  PackageIndexTactics
-    matchFindPrefixIndex
-    PrefixIndexUse createEarlyPrefixTerm createLastPrefixTerm
-    PrefixIndexUse_dep createEarlyPrefixTerm_dep createLastPrefixTerm_dep f.
-
 Require Import
         Coq.FSets.FMapInterface
         Coq.FSets.FMapFacts
@@ -198,12 +192,12 @@ Ltac BuildEarlyTrieBag heading AttrList AttrKind AttrIndex subtree k k_fail :=
               k (@NTrieBag.TrieBagAsCorrectBag _ _ _ _ _ _ _
                                                  subtree
                                                  (fun x => GetAttributeRaw (heading := heading) x AttrIndex))
-                
+
             | list Z =>
               k (@ZTrieBag.TrieBagAsCorrectBag _ _ _ _ _ _ _
                                                  subtree
                                                  (fun x => GetAttributeRaw (heading := heading) x AttrIndex))
-                
+
             | list string =>
               k (@StringTrieBag.TrieBagAsCorrectBag _ _ _ _ _ _ _
                                                  subtree
@@ -211,3 +205,10 @@ Ltac BuildEarlyTrieBag heading AttrList AttrKind AttrIndex subtree k k_fail :=
             end
       | right _ => k_fail heading AttrList AttrKind AttrIndex subtree k
       end.
+
+Ltac PrefixIndexTactics f :=
+  PackageIndexTactics
+    matchFindPrefixIndex BuildEarlyFindPrefixIndex BuildLastFindPrefixIndex
+    PrefixIndexUse createEarlyPrefixTerm createLastPrefixTerm
+    PrefixIndexUse_dep createEarlyPrefixTerm_dep createLastPrefixTerm_dep
+    BuildEarlyTrieBag BuildLastTrieBag f.

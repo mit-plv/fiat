@@ -1,6 +1,4 @@
-Require Import Fiat.QueryStructure.Automation.IndexSelection
-        Fiat.QueryStructure.Automation.AutoDB
-        Fiat.QueryStructure.Automation.QSImplementation.
+Require Import Fiat.QueryStructure.Automation.MasterPlan.
 
 (* Our bookstore has two relations (tables):
    - The [Books] relation contains the books in the
@@ -29,8 +27,6 @@ Definition sORDERS := "Orders".
 Definition sDATE := "Date".
 
 (* Now here's the actual schema, in the usual sense. *)
-Unset Ltac Debug.
-
 Definition BookStoreSchema :=
   Query Structure Schema
     [ relation sBOOKS has
@@ -104,52 +100,13 @@ Theorem SharpenedBookStore :
   FullySharpened BookStoreSpec.
 Proof.
 
-  start_honing_QueryStructure.
-  {
-    Unset Ltac Debug.
-    GenerateIndexesForAll
-      ltac:(fun _ _ => fail)
-             ltac:(fun attrList =>
-                     make_simple_indexes
-                       attrList
-                       ltac:(CombineCase6 BuildEarlyEqualityIndex
-                                          ltac:(fun _ _ _ _ _ _ => fail))
-                              ltac:(CombineCase5 BuildLastEqualityIndex
-                                                 ltac:(fun _ _ _ _ _ => fail))).
+  (* Uncomment this to see the mostly sharpened implementation *)
+  (* partial_master_plan EqIndexTactics. *)
+  master_plan EqIndexTactics.
 
-     initializer.
-     insertion EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
-               EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
-     deletion EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
-              EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
-     insertion EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
-               EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
-     deletion EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
-              EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
-     observer EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
-              EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
-     observer EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
-              EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
+Time Defined.
 
-     pose_headings_all.
-
-     Time match goal with
-          | |- appcontext[@BuildADT (IndexedQueryStructure ?Schema ?Indexes)] =>
-            FullySharpenQueryStructure Schema Indexes
-          end. (* 949MB w ; 1211MB w/o *)
-  }
-
-  { simpl; pose_string_ids; pose_headings_all;
-    pose_search_term;  pose_SearchUpdateTerms.
-
-    BuildQSIndexedBags' BuildEarlyEqualityBag BuildLastEqualityBag. }
-  higher_order_reflexivityT.
-
-Time Defined. (* 1249MB, 65s ; 1810MB, 108s *)
-
-Time Definition BookstoreImpl' : ComputationalADT.cADT BookStoreSig :=
+Time Definition BookstoreImpl : ComputationalADT.cADT BookStoreSig :=
   Eval simpl in projT1 SharpenedBookStore.
 
-(* <130 seconds for master_plan.
-   <141 seconds for Defined. *)
-Print BookstoreImpl'.
+Print BookstoreImpl.

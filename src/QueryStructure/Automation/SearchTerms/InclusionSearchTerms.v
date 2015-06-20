@@ -29,11 +29,15 @@ Ltac BuildLastInclusionIndex
           | right _ => k_fail heading indices kind index k
           end.
 
+Ltac BuildEarlyInclusionIndex
+     heading indices kind index matcher k k_fail :=
+  k_fail heading indices kind index matcher k.
+
 Ltac matchInclusionIndex qsSchema WhereClause k k_fail :=
   match WhereClause with
   | fun tups => IncludedIn _ (@?C1 tups) =>
     TermAttributes C1 ltac:(fun Ridx attr =>
-                              k (@InsertOccurence _ qsSchema Ridx (InclusionIndex, attr) (InitOccurence _)))
+                              k (@InsertOccurenceOfLast _ qsSchema Ridx (InclusionIndex, attr) (InitOccurences _)))
   | _ => k_fail qsSchema WhereClause k
   end.
 
@@ -108,12 +112,6 @@ Ltac createEarlyInclusionTerm_dep dom f fds tail fs kind EarlyIndex LastIndex re
       | _ => k_fail dom f fds tail fs kind EarlyIndex LastIndex rest s k
       end.
 
-Ltac InclusionIndexTactics f :=
-  PackageIndexTactics
-    matchInclusionIndex
-    InclusionIndexUse createEarlyInclusionTerm createLastInclusionTerm
-    InclusionIndexUse_dep createEarlyInclusionTerm_dep createLastInclusionTerm_dep f.
-
 Require Import
         Coq.FSets.FMapInterface
         Coq.FSets.FMapFacts
@@ -156,3 +154,14 @@ Module ZInvertedIndexBag := InvertedIndexBag ZIndexedMap NatIndexedMap.
                 end
           | right _ => k_fail heading AttrList AttrKind AttrIndex k
           end.
+
+
+    Ltac BuildEarlyInclusionIndexBag heading AttrList AttrKind AttrIndex subtree k k_fail :=
+      k_fail heading AttrList AttrKind AttrIndex subtree k.
+
+Ltac InclusionIndexTactics f :=
+  PackageIndexTactics
+    matchInclusionIndex BuildEarlyInclusionIndex BuildLastInclusionIndex
+    InclusionIndexUse createEarlyInclusionTerm createLastInclusionTerm
+    InclusionIndexUse_dep createEarlyInclusionTerm_dep createLastInclusionTerm_dep
+    BuildEarlyInclusionIndexBag BuildLastInclusionIndexBag f.

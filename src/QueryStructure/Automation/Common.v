@@ -254,23 +254,69 @@ Ltac CombineCase10 x y :=
 Ltac CombineCase11 x y :=
   fun a b c d e f g h i j k => x a b c d e f g h i j k y.
 
+Ltac LastCombineCase1 x :=
+  fun a => x a ltac:(fun _ => fail).
+
+Ltac LastCombineCase2 x :=
+  fun a b => x a b ltac:(fun _ _ => fail).
+
+Ltac LastCombineCase3 x :=
+  fun a b c => x a b ltac:(fun _ _ _ => fail).
+
+Ltac LastCombineCase4 x :=
+  fun a b c d => x a b c d ltac:(fun _ _ _ _ => fail).
+
+Ltac LastCombineCase5 x :=
+  fun a b c d e => x a b c d e ltac:(fun _ _ _ _ _ => fail).
+
+Ltac LastCombineCase6 x :=
+  fun a b c d e f => x a b c d e f ltac:(fun _ _ _ _ _ _ => fail).
+
+Ltac LastCombineCase7 x :=
+  fun a b c d e f g => x  a b c d e f g ltac:(fun _ _ _ _ _ _ _ => fail).
+
+Ltac LastCombineCase8 x :=
+  fun a b c d e f g h => x a b c d e f g h ltac:(fun _ _ _ _ _ _ _ _ => fail).
+
+Ltac LastCombineCase9 x :=
+  fun a b c d e f g h i => x a b c d e f g h i ltac:(fun _ _ _ _ _ _ _ _ _ => fail).
+
+Ltac LastCombineCase10 x :=
+  fun a b c d e f g h i j => x a b c d e f g h i j ltac:(fun _ _ _ _ _ _ _ _ _ _ => fail).
+
+Ltac LastCombineCase11 x :=
+  fun a b c d e f g h i j k => x a b c d e f g h i j k ltac:(fun _ _ _ _ _ _ _ _ _ _ _ => fail).
+
 Ltac PackageIndexTactics
-     matchIndex IndexUse createEarlyTerm createLastTerm
-     IndexUse_dep createEarlyTerm_dep createLastTerm_dep f :=
-  f matchIndex IndexUse createEarlyTerm createLastTerm
-    IndexUse_dep createEarlyTerm_dep createLastTerm_dep.
+     matchIndex BuildEarlyIndex BuildLastIndex
+     IndexUse createEarlyTerm createLastTerm
+     IndexUse_dep createEarlyTerm_dep createLastTerm_dep
+     BuildEarlyBag BuildLastBag
+     f :=
+  f matchIndex BuildEarlyIndex BuildLastIndex
+    IndexUse createEarlyTerm createLastTerm
+    IndexUse_dep createEarlyTerm_dep createLastTerm_dep
+    BuildEarlyBag BuildLastBag.
 
 Ltac CombineIndexTactics IndexPackage1 IndexPackage2 f :=
   IndexPackage2
-    ltac:(fun matchIndex2 IndexUse2 createEarlyTerm2 createLastTerm2
-              IndexUse_dep2 createEarlyTerm_dep2 createLastTerm_dep2 =>
+    ltac:(fun matchIndex2 BuildEarlyIndex2 BuildLastIndex2
+              IndexUse2 createEarlyTerm2 createLastTerm2
+              IndexUse_dep2 createEarlyTerm_dep2 createLastTerm_dep2
+              BuildEarlyBag2 BuildLastBag2 =>
             IndexPackage1
-              ltac:(fun matchIndex1 IndexUse1 createEarlyTerm1 createLastTerm1
-                        IndexUse_dep1 createEarlyTerm_dep1 createLastTerm_dep1 =>
-                      f ltac:(CombineCase2 matchIndex1 matchIndex2)
-                               ltac:(CombineCase5 IndexUse1 IndexUse2)
-                                      ltac:(CombineCase10 createEarlyTerm1 createEarlyTerm2)
-                                             ltac:(CombineCase7 createLastTerm1 createLastTerm2)
-                                                    ltac:(CombineCase7 IndexUse_dep1 IndexUse_dep2)
-                                                           ltac:(CombineCase11 createEarlyTerm_dep1 createEarlyTerm_dep2)
-                                                                  ltac:(CombineCase8 createLastTerm_dep1 createLastTerm_dep2))).
+              ltac:(fun matchIndex1 BuildEarlyIndex1 BuildLastIndex1
+                        IndexUse1 createEarlyTerm1 createLastTerm1
+                        IndexUse_dep1 createEarlyTerm_dep1 createLastTerm_dep1
+                    BuildEarlyBag1 BuildLastBag1 =>
+                      f ltac:(CombineCase3 matchIndex1 matchIndex2)
+                        ltac:(CombineCase6 BuildEarlyIndex1 BuildEarlyIndex2)
+                        ltac:(CombineCase5 BuildLastIndex1 BuildLastIndex2)
+                        ltac:(CombineCase5 IndexUse1 IndexUse2)
+                        ltac:(CombineCase10 createEarlyTerm1 createEarlyTerm2)
+                        ltac:(CombineCase7 createLastTerm1 createLastTerm2)
+                        ltac:(CombineCase7 IndexUse_dep1 IndexUse_dep2)
+                        ltac:(CombineCase11 createEarlyTerm_dep1 createEarlyTerm_dep2)
+                        ltac:(CombineCase8 createLastTerm_dep1 createLastTerm_dep2)
+                         ltac:(CombineCase6 BuildEarlyBag1 BuildEarlyBag2)
+                         ltac:(CombineCase5 BuildLastBag1 BuildLastBag2))).
