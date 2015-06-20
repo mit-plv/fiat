@@ -3,7 +3,6 @@ Require Import Coq.Strings.String.
 Require Import ADTNotation.BuildADT ADTNotation.BuildADTSig.
 Require Import ADT.ComputationalADT.
 Require Import Fiat.Parsers.ParserInterface.
-Require Import Fiat.Parsers.StringLike.String.
 Require Import Fiat.Common.Equality.
 
 Set Implicit Arguments.
@@ -41,11 +40,8 @@ Section ReferenceImpl.
         Method "drop" : rep x nat -> rep x unit,
         (** Return everything but the first [n] characters, for the given [n : nat]. *)
 
-        Method "splits" : rep x item Char * production Char -> rep x list nat,
+        Method "splits" : rep x item Char * production Char -> rep x list nat
         (** Return a list of locations to split this string at for this production rule. *)
-
-        Method "rules" : rep x productions Char -> rep x list nat
-        (** Return a list of indices to check of rules for a given string and nonterminal. *)
       }.
   End GenericSig.
 
@@ -76,10 +72,6 @@ Section ReferenceImpl.
 
     Def Method "splits"(s : rep, p : item Ascii.ascii * production Ascii.ascii) : list nat :=
       ls <- { ls : list nat | split_list_is_complete G s (fst p) (snd p) ls };
-      ret (s, ls),
-
-    Def Method "rules"(s : rep, p : productions Ascii.ascii) : list nat :=
-      ls <- { ls : list nat | forall nt, Lookup G nt = p -> rules_list_is_complete G s nt ls };
       ret (s, ls)
   }.
 End ReferenceImpl.

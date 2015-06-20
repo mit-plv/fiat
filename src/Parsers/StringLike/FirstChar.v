@@ -321,12 +321,4 @@ Section for_first_char.
       reflexivity. }
   Qed.
 
-  Lemma first_char_in_get_str (str : String) ls ch (H : get 0 str = Some ch)
-  : first_char_in str ls <-> List.In ch ls.
-  Proof.
-    rewrite (first_char_in__take 0).
-    apply get_0 in H.
-    apply first_char_in_singleton_str; assumption.
-  Qed.
-
 End for_first_char.

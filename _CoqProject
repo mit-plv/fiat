@@ -162,7 +162,6 @@ src/Parsers/ContextFreeGrammar.v
 src/Parsers/ContextFreeGrammarEquality.v
 src/Parsers/ContextFreeGrammarNotations.v
 src/Parsers/ContextFreeGrammarProperties.v
-src/Parsers/ContextFreeGrammarPropertiesRDPList.v
 src/Parsers/ContextFreeGrammarTransfer.v
 src/Parsers/ContextFreeGrammarTransferProperties.v
 src/Parsers/ContextFreeGrammarValid.v

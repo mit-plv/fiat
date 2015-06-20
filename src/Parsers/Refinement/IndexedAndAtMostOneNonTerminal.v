@@ -142,10 +142,6 @@ Section IndexedImpl.
                         then [ilength s - List.length (snd p)]
                         else fallback_ls
                  end) in
-      ret (s, ls),
-
-    Def Method "rules"(s : rep, p : productions Ascii.ascii) : list nat :=
-      ls <- { ls : list nat | forall nt, Lookup G nt = p -> rules_list_is_complete G (string_of_indexed s) nt ls };
       ret (s, ls)
   }.
 

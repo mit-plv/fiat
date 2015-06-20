@@ -188,7 +188,8 @@ Section all_possible_correctness.
 End all_possible_correctness.
 
 Section only_first_correctness.
-  Context (G : grammar Ascii.ascii).
+  Context (G : grammar Ascii.ascii)
+          (Hvalid : grammar_rvalid G).
   Local Open Scope string_like_scope.
 
   Local Existing Instance only_first_fold_data.
@@ -216,7 +217,6 @@ Section only_first_correctness.
       | _ => progress destruct_head inhabited
       | _ => progress destruct_head iff
       | _ => progress destruct_head and
-      | _ => progress destruct_head sigT
       | _ => progress subst
       | _ => reflexivity
       | _ => congruence
@@ -360,6 +360,7 @@ Local Open Scope string_like_scope.
 Local Arguments string_beq : simpl never.
 
 Lemma terminals_disjoint_search_for_not' {G : grammar Ascii.ascii}
+      (Hvalid : grammar_rvalid G)
       (str : @String Ascii.ascii string_stringlike)
       {nt its}
       (H_disjoint : disjoint ascii_beq (possible_terminals_of G nt) (possible_first_terminals_of_production G its))
@@ -382,7 +383,7 @@ Proof.
     { split; trivial.
       pose proof (drop_length str n) as H.
       rewrite (proj2 (Nat.sub_0_le (length str) n)) in H by assumption.
-      generalize dependent (drop n str); clear -Hpit HinV HinL.
+      generalize dependent (drop n str); clear -Hpit HinV HinL Hvalid.
       intros.
       destruct s; try (simpl in *; discriminate); [].
       eapply possible_first_terminals_of_production_empty_correct; try eassumption.
@@ -410,6 +411,8 @@ Proof.
   { eapply possible_terminals_of_correct.
     eapply expand_forall_parse_of_item;
       [
+      | reflexivity
+      | reflexivity
       | rewrite parse_of_item_respectful_refl; eassumption ].
     intros ?????; apply list_in_lb; apply @string_lb.
     Grab Existential Variables.
@@ -422,6 +425,7 @@ Proof.
 Qed.
 
 Lemma terminals_disjoint_search_for_not {G : grammar Ascii.ascii}
+      (Hvalid : grammar_rvalid G)
       (str : @String Ascii.ascii string_stringlike)
       {nt its}
       (H_disjoint : disjoint ascii_beq (possible_terminals_of G nt) (possible_first_terminals_of_production G its))
@@ -437,7 +441,7 @@ Lemma terminals_disjoint_search_for_not {G : grammar Ascii.ascii}
     n
     (fun ch => negb (list_bin ascii_beq ch (possible_terminals_of G nt))).
 Proof.
-  pose proof (terminals_disjoint_search_for_not' _ H_disjoint _ _ H_reachable Hpit Hpits) as H.
+  pose proof (terminals_disjoint_search_for_not' Hvalid _ H_disjoint _ _ H_reachable Hpit Hpits) as H.
   split;
     [ destruct H as [H0 H1]
     | destruct H as [H0 [[H1 H2] | H1]]; solve [ left; eauto | right; eauto ] ].
@@ -450,6 +454,7 @@ Proof.
 Qed.
 
 Lemma terminals_disjoint_search_for' {G : grammar Ascii.ascii}
+      (Hvalid : grammar_rvalid G)
       (str : @String Ascii.ascii string_stringlike)
       {nt its}
       (H_disjoint : disjoint ascii_beq (possible_terminals_of G nt) (possible_first_terminals_of_production G its))
@@ -473,7 +478,7 @@ Proof.
     { split; trivial.
       pose proof (drop_length str n) as H.
       rewrite (proj2 (Nat.sub_0_le (length str) n)) in H by assumption.
-      generalize dependent (drop n str); clear -Hpit HinV HinL.
+      generalize dependent (drop n str); clear -Hpit HinV HinL Hvalid.
       intros.
       destruct s; try (simpl in *; discriminate); [].
       eapply possible_first_terminals_of_production_empty_correct; try eassumption.
@@ -492,7 +497,9 @@ Proof.
     eapply expand_forall_parse_of_item in Hpit;
       [ rewrite parse_of_item_respectful_refl in Hpit;
         apply possible_terminals_of_correct in Hpit
-      | intros ?????; apply list_in_lb; apply @string_lb ].
+      | intros ?????; apply list_in_lb; apply @string_lb
+      | reflexivity
+      | reflexivity ].
       revert Hpit.
       apply forall_chars__char_in__impl__forall_chars.
       intros ch H'.
@@ -513,6 +520,7 @@ Proof.
 Qed.
 
 Lemma terminals_disjoint_search_for {G : grammar Ascii.ascii}
+      (Hvalid : grammar_rvalid G)
       (str : @String Ascii.ascii string_stringlike)
       {nt its}
       (H_disjoint : disjoint ascii_beq (possible_terminals_of G nt) (possible_first_terminals_of_production G its))
@@ -528,7 +536,7 @@ Lemma terminals_disjoint_search_for {G : grammar Ascii.ascii}
     n
     (fun ch => list_bin ascii_beq ch (possible_first_terminals_of_production G its)).
 Proof.
-  pose proof (terminals_disjoint_search_for' _ H_disjoint _ _ H_reachable Hpit Hpits) as H.
+  pose proof (terminals_disjoint_search_for' Hvalid _ H_disjoint _ _ H_reachable Hpit Hpits) as H.
   split;
     [ destruct H as [H0 H1]
     | destruct H as [H0 [[H1 H2] | [H1 ?]]]; [ right | left; split ]; eauto ].
