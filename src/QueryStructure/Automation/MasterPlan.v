@@ -29,7 +29,15 @@ Ltac master_plan' matchIndex
     pose_search_term;  pose_SearchUpdateTerms;
 
     BuildQSIndexedBags' BuildEarlyBag BuildLastBag
-  | higher_order_reflexivityT ].
+  | cbv zeta; pose_string_ids; pose_headings_all;
+    pose_search_term;  pose_SearchUpdateTerms;
+    simpl Sharpened_Implementation;
+    unfold
+      Update_Build_IndexedQueryStructure_Impl_cRep,
+    Join_Comp_Lists',
+    GetIndexedQueryStructureRelation,
+    GetAttributeRaw; simpl;
+    higher_order_reflexivityT ].
 
 (* This planner variant stops after planning queries for Bags, in
    case we want to inspect the results. *)
