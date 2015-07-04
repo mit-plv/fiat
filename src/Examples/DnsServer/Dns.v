@@ -430,16 +430,89 @@ Definition UnIndexedEnsembleListExists
       (forall x : IndexedElement, In IndexedElement ensemble x <-> List.In x lIndexed) /\
       NoDup (map elementIndex lIndexed).
 
-Lemma unindexed_OK_exists_index heading :
+Lemma nth_error_map' {A B}
+  : forall (f : A -> B) l m b,
+    nth_error (map f l) m = Some b -> 
+    exists a, nth_error l m = Some a /\ f a = b.
+Proof.
+  induction l; destruct m; simpl; intros; try discriminate;
+  injections; eauto.
+Qed.
+
+Lemma unindexed_OK_exists_index' heading :
+  forall x lIndexed (t t' : @Tuple heading) n n',
+      n <> n'
+      -> nth_error x n = Some t
+      -> nth_error x n' = Some t'
+      -> Permutation x (map indexedElement lIndexed)
+      -> exists m m' idx idx',
+          m <> m'
+          /\ nth_error lIndexed m = Some {| elementIndex := idx; indexedElement := t |}
+          /\ nth_error lIndexed m' = Some {| elementIndex := idx'; indexedElement := t' |}.
+Proof.
+  intros.
+  eapply PermutationFacts.permutation_map_base in H2; intuition eauto.
+  destruct_ex; intuition; subst.
+  revert t t' n n' H H0 H1; induction H4; intros.
+  - destruct n; simpl in *; discriminate.
+  - destruct n; destruct n'; simpl in *.
+    + intuition.
+    + assert (exists m', nth_error (map indexedElement l') m' = Some t') by
+          (eapply in_list_exists; rewrite <- H4; eapply exists_in_list; eauto).
+      destruct H2.
+      eapply nth_error_map' in H2; destruct_ex; intuition.
+      injections.
+      eexists 0, (S x0), (elementIndex x), (elementIndex x1); intuition; simpl; eauto.
+      destruct x; eauto.
+      rewrite H3; destruct x1; eauto.
+    + assert (exists m, nth_error (map indexedElement l') m = Some t) by
+          (eapply in_list_exists; rewrite <- H4; eapply exists_in_list; eauto).
+      destruct H2.
+      eapply nth_error_map' in H2; destruct_ex; intuition.
+      injections.
+      eexists (S x0), 0, (elementIndex x1), (elementIndex x); intuition; simpl; eauto.
+      rewrite H3; destruct x1; eauto.
+      destruct x; eauto.
+    + destruct (IHPermutation t t' n n') as [m [m' [idx [idx' ?] ] ] ]; eauto.
+      eexists (S m), (S m'), idx, idx'; simpl; intuition eauto.
+  - eapply nth_error_map' in H0; destruct_ex; intuition.
+    eapply nth_error_map' in H1; destruct_ex; intuition.
+    rewrite <- H3, <- H4; destruct x0; destruct x1; simpl in *.
+    destruct n as [ | [ | n ] ];  destruct n' as [ | [ | n' ] ];
+    injections; simpl in *.
+    + intuition.
+    + eexists 1, 0, _, _; simpl; eauto.
+    + eexists 1, (S (S n')), _, _; simpl; repeat split; try eassumption; omega.
+    + eexists 0, 1, _, _; simpl; eauto.
+    + intuition.
+    + eexists 0, (S (S n')), _, _; simpl; repeat split; try eassumption; omega.
+    + eexists (S (S n)), 1, _, _; simpl; repeat split; try eassumption; omega.
+    + eexists (S (S n)), 0, _, _; simpl; repeat split; try eassumption; omega.
+    + eexists (S (S n)), (S (S n')), _, _; simpl; repeat split; try eassumption; omega.
+  -  destruct (IHPermutation1 _ _ _ _ H H0 H1) as [m [m' [idx [idx' ?] ] ] ];
+    intuition.
+     clear H.
+     eapply IHPermutation2; eauto.
+     eapply map_nth_error with (f := indexedElement) in H2; simpl in *; eauto.
+     eapply map_nth_error with (f := indexedElement) in H5; simpl in *; eauto.
+Qed.
+  
+(*Lemma unindexed_OK_exists_index heading :
   forall S x,
     UnIndexedEnsembleListExists S ->
     (forall (l : list Tuple), (In _ (QueryResultComp (heading := heading) S (fun r => Return r)) l ->
       incl x l))
     ->
-    forall t, List.In t x -> exists n, In _ S {| indexedElement := t; 
-                                                elementIndex := n |}.
+    forall t t' n n',
+      n <> n'
+      -> nth_error x n = Some t
+      -> nth_error x n' = Some t'
+      -> exists idx idx',
+          idx <> idx'
+          /\ In _ S {| indexedElement := t; elementIndex := idx |}
+          /\ In _ S {| indexedElement := t';  elementIndex := idx' |}.
 Proof.
-  intros S x ListSetExists H t H0.
+  intros S x ListSetExists H t t' n n' neq_n_n' H0 H0'.
   intros.
   unfold QueryResultComp in *.
 
@@ -463,49 +536,114 @@ Proof.
          FlattenCompList.flatten_CompList
            (map (fun r : Tuple => Return r) queriedList)) lElems) as lElemsEquiv.
   {
-    clear H.
-    Transparent Bind. unfold Bind.
-    unfold In.
-    exists lElems.
-    split.
-    - Transparent Pick. unfold Pick.
-      exists lIndexed. auto.
+    econstructor; split.
+    - econstructor; eauto.
     - apply flatmap_permutation'.
   }
 
   specialize (H lElemsEquiv).
-  pose proof H as x_incl_lElems. clear H.
-  clear lElemsEquiv.
-(* SearchAbout nth_error. *)
-  (* in the context, we have
-nth n x = Some t
-nth n' x = Some t'
+  rewrite <- H1 in H.
+  admit.
+  (* pose (unindexed_OK_exists_index' _ _ neq_n_n' H0 H0' H); *)
+  (*   repeat destruct_ex; intuition. *)
+  (* clear neq_n_n'; repeat eexists; intuition eauto; *)
+  (* eapply H2; eauto using exists_in_list.  *)
+Qed. *)
 
-theorem about nth/map
-
-List.In t x
-
-
- *)
-
-  specialize (x_incl_lElems t H0). clear H0.
-
-  pose proof in_map_iff as in_map_iff.
-  subst.
-  specialize (in_map_iff (@IndexedElement (@Tuple heading)) (@Tuple heading)
-                         indexedElement lIndexed t).
-  inversion in_map_iff as [in_exists exists_in].
-  clear in_map_iff exists_in.
-  specialize (in_exists x_incl_lElems).
-  destruct in_exists. 
-  inv H. 
-  destruct x0 as [index elem].
-  simpl in *.
-  exists index.
-  apply H2.
-  auto.
+Lemma In_Where_Intersection heading
+  : forall R P (P_dec : DecideableEnsemble P) x,
+    computes_to 
+      (QueryResultComp R (fun r => Where (P r)
+                                         Return r)) x ->
+    computes_to
+      (QueryResultComp (Intersection (@IndexedTuple heading) R
+                                      (fun r => (P (indexedElement r)))) (fun r => Return r)) x.
+Proof.
+  unfold In, QueryResultComp; intros.
+  repeat computes_to_inv.
+  revert R x H H'.
+  induction v; simpl in *; intros; computes_to_inv; subst.
+  - repeat computes_to_econstructor.
+    instantiate (1 := @nil Tuple); simpl.
+    inversion H; intuition; subst.
+    econstructor; split; eauto.
+    repeat split; intros; eauto.
+    eapply H0; inversion H2; subst; eauto.
+    eapply H0; eauto.
+    eapply in_map with (f := indexedElement) in H2; rewrite H1 in H2; destruct H2.
+    computes_to_econstructor.
+  - inversion H; destruct x; simpl in *; intuition;
+    try discriminate; injections.
+    assert (UnIndexedEnsembleListEquivalence
+              (fun t : IndexedTuple => elementIndex t <> elementIndex i
+                                       /\ R t) (map indexedElement x)).
+    { econstructor; intuition eauto.
+      inversion H1; subst.
+      apply H0 in H4; intuition.
+      subst; intuition eauto.
+      econstructor; intros; subst.
+      inversion H3; subst.
+      apply H6; eapply in_map_iff.
+      eexists; split; eauto.
+      eapply H0; eauto.
+      inversion H3; subst; eauto.
+    }
+    pose proof (IHv _ _ H1 H''); clear IHv; computes_to_inv.
+    inversion H'; subst.
+    refine pick val (v0 ++ v).
+    econstructor; intuition; eauto.
+    rewrite map_app; eapply FlattenCompList.flatten_CompList_app; eauto.
+    case_eq (dec (indexedElement i)); intros.
+    apply dec_decides_P in H6; apply H4 in H6; inversion H6; subst.
+    repeat computes_to_econstructor.
+    eapply Decides_false in H6; apply H5 in H6; subst; simpl;
+    computes_to_econstructor.
+    inversion H2; subst; intuition.
+    case_eq (dec (indexedElement i)); intros.
+    + apply dec_decides_P in H8; pose proof (H4 H8) as H'''; inversion H'''; subst.
+      econstructor 1.
+      instantiate (1 := [i] ++ x0); simpl; intuition eauto.
+      inversion H4; subst; apply H0 in H10; intuition.
+      right; eapply H6; econstructor; unfold In; eauto.
+      split; eauto; intros; subst.
+      inversion H3; subst; intuition eauto.
+      apply H15; eapply in_map_iff.
+      eexists; eauto.
+      eapply H0; eauto.
+      subst.
+      econstructor.
+      eapply H0; eauto.
+      unfold In; eauto.
+      econstructor; unfold In in *; eauto.
+      eapply H0; eauto.
+      rewrite <- H6 in H10; inversion H10; subst; unfold In in *; intuition.
+      eapply H0 in H13; eauto.
+      rewrite <- H6 in H10; inversion H10; subst; unfold In in *; intuition.
+      inversion H3; subst; econstructor; eauto.
+      intro; rewrite in_map_iff in H4; destruct_ex; intuition eauto.
+      apply H11; rewrite in_map_iff; destruct_ex; intuition eauto.
+      eexists; intuition eauto.
+      eapply H6 in H13; inversion H13; subst.
+      unfold In in H13.
+      inversion H13; subst.
+      inversion H15; subst; intuition.
+    + eapply Decides_false in H8; pose proof (H5 H8); subst; simpl.
+      inversion H2; subst; intuition.
+      econstructor 1.
+      instantiate (1 := x1); intuition eauto.
+      eapply H7.
+      repeat econstructor; eauto.
+      destruct H5; subst.
+      apply H0 in H5; intuition.
+      subst; intuition.
+      inversion H3; subst.
+      apply H17; apply in_map_iff; eexists; eauto.
+      destruct H5; eauto.
+      destruct H5; eauto.
+      eapply H7 in H5; destruct H5; destruct H5.
+      econstructor; eauto.
 Qed.
-
+  
 Theorem IsSuffix_string_dec : 
   forall l1 l2 : list string, IsSuffix l1 l2 \/ ~ IsSuffix l1 l2.
 Proof.
@@ -553,7 +691,7 @@ Proof.
       apply H1.
 Qed.
  
-Lemma nth_error_subset_same : forall {A : Type} (a : list A) (l : list A) t1 t2 n1 n2,
+(*Lemma nth_error_subset_same : forall {A : Type} (a : list A) (l : list A) t1 t2 n1 n2,
     nth_error a n1 = Some t1 ->
     nth_error a n2 = Some t2 ->
     n1 <> n2 ->
@@ -618,7 +756,7 @@ if one is the first and the other one is elsewhere... induction? *)
         admit.                  (* cleared *)
         admit. apply H. 
         
-Admitted.        
+Admitted.        *)
 
   (*     +  *)
 
@@ -1325,450 +1463,42 @@ In
   { eapply Permutation_in. apply H7. auto. }
 
   clear BStringId0.
-  pose proof unindexed_OK_exists_index as existsIndex.
-  specialize (existsIndex (BuildHeading
-                          (@Datatypes.cons Attribute
-                             (Build_Attribute sNAME name)
-                             (@Datatypes.cons Attribute
-                                (Build_Attribute sTYPE RRecordType)
-                                (@Datatypes.cons Attribute
-                                   (Build_Attribute sCLASS RRecordClass)
-                                   (@Datatypes.cons Attribute
-                                      (Build_Attribute sTTL nat)
-                                      (@Datatypes.cons Attribute
-                                         (Build_Attribute sDATA string)
-                                         (@Datatypes.nil Attribute)))))))).
-
+  apply In_Where_Intersection in H5; eauto with typeclass_instances.
+  unfold QueryResultComp in H5; computes_to_inv.
+  destruct H5 as [x' [Equiv [Equiv' Equiv''] ] ].
+  rewrite <- Equiv in *.
+  eapply flatmap_permutation in H5'; rewrite H5' in H7.
+  destruct (unindexed_OK_exists_index' _ H0 H1 H2 H7) as [m [m' [idx [idx' ?] ] ] ];
+    intuition.
   
   (* difference between r_n and sCOLLECTIONS?? *)
   pose ((DropQSConstraints r_n)!sCOLLECTIONS)%QueryImpl as relationSet. simpl in relationSet.
   unfold UnConstrRelation in *.
-  specialize (existsIndex relationSet x). (* or a *)
-
-  assert (UnIndexedEnsembleListExists relationSet) as relationSetListExists.
-  {
-    unfold UnIndexedEnsembleListExists.
-    inversion H5. inv H13. inv H14. inv H13. inv H16. 
-    simpl in *. pose proof H13 as iff. clear H13. (* TODO factor out *)
-    exists x1 (map indexedElement x1). auto.
-  }
-
-  assert ((forall l : list Tuple,
-                 In (list Tuple)
-                   (QueryResultComp relationSet (fun r : Tuple => Return r))
-                   l -> incl x l)) as list_subset.
-  { apply H4. }                 (* :o *)
-  pose proof (existsIndex relationSetListExists list_subset t) as tIndexed.
-  pose proof (existsIndex relationSetListExists list_subset t') as t'Indexed.
-  Check existsIndex.            (* not powerful enough? *)
-  (* TODO: make existsIndex more powerful, use nth_error
-
-   *)
-  Print UnIndexedEnsembleListExists.
-  specialize (tIndexed H11). specialize (t'Indexed H12).
-  destruct tIndexed as [tIndex tIn].
-  destruct t'Indexed as [t'Index t'In].
-  clear existsIndex list_subset relationSetListExists.
-  unfold DNSRRecord in *.
-  remember {| elementIndex := tIndex; indexedElement := t |} as tIndexed.
-  remember  {| elementIndex := t'Index; indexedElement := t' |} as t'Indexed.
-
-  SearchAbout Relation. (* rel tup : tuple is in the relation -> pairwise constr. apply *)
-  (* SearchAbout RelationSchema. *)
-  (* QueryStructure DnsSchema vs. QueryStrucureSchema vs. Schema? *)
-  (* QueryStructure is a data type -- multiple tables
-
-relation is a table with tuples that obey
-
-QSS is a type of the set of tables, or the DB type
-
-name age (name + age) <-- schema
-t    10   t10     <-- data = relation
- *)
-  Print DnsSchema.
-  Locate Schema.
-  (* SearchAbout QueryStructureSchema. *)
-  Check QSGetNRelSchema.
-  Print BoundedString.
-  Print BoundedIndex.
-
-  (*   BStringId := ``(sCOLLECTIONS) : BoundedIndex [sCOLLECTIONS]
-  BStringId0 := ``(sNAME) : BoundedIndex [sNAME; sTYPE; sCLASS; sTTL; sDATA]
-  BStringId1 := ``(sTYPE) : BoundedIndex [sNAME; sTYPE; sCLASS; sTTL; sDATA]
-  heading := <sNAME :: name, sTYPE :: RRecordType, 
-                sCLASS :: RRecordClass, sTTL :: nat, 
-                sDATA :: string>%Heading : Heading
-  StringId2 := "EqualityIndex" : string
-  StringId3 := "Name" : string
-  BStringId2 := ``(StringId3)
-             : BoundedIndex [sNAME; sTYPE; sCLASS; sTTL; sDATA] *)
-  
-  Print QueryStructure.        (*  rels pulls out the list of tables. *)
-  Locate "_ ! _".
-Print GetRelation.
-(* but a relation isn't a set *)
-(* TODO review these poses *)
-pose proof (ith_Bounded relName (rels r_n) {| bindex := sCOLLECTIONS |}) as relationthing. simpl in *.
-Check ({| bindex := sCOLLECTIONS |}).
-Print relName.
-Check (ith_Bounded relName).
-Check rels.
-Check (rels r_n).
-
+  pose proof (ith_Bounded relName (rels r_n) {| bindex := sCOLLECTIONS |}) as relationthing. simpl in *.
 pose proof (tupleconstr (ith_Bounded relName (rels r_n) {| bindex := sCOLLECTIONS |})) as 
-  constraint_in_relation_OK.
-unfold indexedTuple in *. 
-simpl in *.
+  constraint_in_relation_OK; simpl in *.
+eapply (constraint_in_relation_OK {| elementIndex := idx; indexedElement := t |}
+                                  {| elementIndex := idx'; indexedElement := t' |});
+  simpl; eauto.
+eapply map_nth_error with (f := elementIndex) in H5.
+eapply map_nth_error with (f := elementIndex) in H16.
+{ revert m m' H5 H16 H14 Equiv''; clear; simpl; induction (map elementIndex x').
+  - destruct m; destruct m'; simpl; intros; try discriminate.
+  - destruct m; destruct m'; simpl; intros; try discriminate.
+    + intuition.
+    + inversion Equiv''; subst.
+      intro; subst; apply H1; injections; apply exists_in_list; eauto.
+    + inversion Equiv''; subst.
+      intro; subst; apply H1; injections; apply exists_in_list; eauto.
+    + inversion Equiv''; eauto.
+}
 
-(* TODO: missing condition that tIndexed is in the relation; that's the more general lemma *)
-specialize (constraint_in_relation_OK tIndexed t'Indexed).
-unfold indexedElement in *. rewrite Heqt'Indexed in *. rewrite HeqtIndexed in *. simpl in *.
-apply constraint_in_relation_OK. clear constraint_in_relation_OK.
-
--
-  unfold relationSet in tIn, t'In.
-  unfold get_name in *. Print DNSRRecord. Print nth_error.
-
-  Print UnIndexedEnsembleListEquivalence.
-
-  (* this part of the proof is duplicated; TODO split it out *)
-  inversion H5. inv H13. inv H14. inv H13. inv H16. 
-  simpl in *. pose proof H13 as iff. clear H13.
-  (* x1 appears here *)
-  Print NoDup.
-  unfold DNSRRecord in *.
-  remember {| elementIndex := tIndex; indexedElement := t |} as tIndexed.
-  remember  {| elementIndex := t'Index; indexedElement := t' |} as t'Indexed.
-  pose proof (iff tIndexed) as iff_indexed.
-  inversion iff_indexed as [iff_indexed1 iff_indexed2]. clear iff_indexed.
-
-  pose proof (iff t'Indexed) as iff_indexed'.
-  inversion iff_indexed' as [iff_indexed1' iff_indexed2']. clear iff_indexed'.
-
-  (* which direction should I use? *)
-  specialize (iff_indexed1 tIn).
-  specialize (iff_indexed1' t'In).
-  clear iff_indexed2 iff_indexed2' relationthing.
-
-pose proof H8 as a_incl_relation. clear H8.
-specialize (a_incl_relation (map indexedElement x1)).
-(* assert (In (list Tuple) (r in sCOLLECTIONS) (Return r)  (map indexedElement x1)). *)
-assert (In
-                      (list
-                         (@Tuple
-                            (BuildHeading
-                               (@Datatypes.cons Attribute
-                                  (Build_Attribute sNAME name)
-                                  (@Datatypes.cons Attribute
-                                     (Build_Attribute sTYPE RRecordType)
-                                     (@Datatypes.cons Attribute
-                                        (Build_Attribute sCLASS RRecordClass)
-                                        (@Datatypes.cons Attribute
-                                           (Build_Attribute sTTL nat)
-                                           (@Datatypes.cons Attribute
-                                              (Build_Attribute sDATA string)
-                                              (@Datatypes.nil Attribute)))))))))
-                      (@Query_In
-                         (@Tuple
-                            (BuildHeading
-                               (@Datatypes.cons Attribute
-                                  (Build_Attribute sNAME name)
-                                  (@Datatypes.cons Attribute
-                                     (Build_Attribute sTYPE RRecordType)
-                                     (@Datatypes.cons Attribute
-                                        (Build_Attribute sCLASS RRecordClass)
-                                        (@Datatypes.cons Attribute
-                                           (Build_Attribute sTTL nat)
-                                           (@Datatypes.cons Attribute
-                                              (Build_Attribute sDATA string)
-                                              (@Datatypes.nil Attribute))))))))
-                         (@Build_QueryStructureHint DnsSchema r_n)
-                         (@Build_BoundedIndex string
-                            (@Datatypes.cons string sCOLLECTIONS
-                               (@Datatypes.nil string)) sCOLLECTIONS
-                            (@Build_IndexBound string sCOLLECTIONS
-                               (@Datatypes.cons string sCOLLECTIONS
-                                  (@Datatypes.nil string)) O
-                               (@eq_refl (option string)
-                                  (@Some string sCOLLECTIONS))))
-                         (fun
-                            r : @Tuple
-                                  (BuildHeading
-                                     (@Datatypes.cons Attribute
-                                        (Build_Attribute sNAME name)
-                                        (@Datatypes.cons Attribute
-                                           (Build_Attribute sTYPE RRecordType)
-                                           (@Datatypes.cons Attribute
-                                              (Build_Attribute sCLASS
-                                                 RRecordClass)
-                                              (@Datatypes.cons Attribute
-                                                 (Build_Attribute sTTL nat)
-                                                 (@Datatypes.cons Attribute
-                                                  (Build_Attribute sDATA
-                                                  string)
-                                                  (@Datatypes.nil Attribute))))))) =>
-                          @Query_Return
-                            (@Tuple
-                               (BuildHeading
-                                  (@Datatypes.cons Attribute
-                                     (Build_Attribute sNAME name)
-                                     (@Datatypes.cons Attribute
-                                        (Build_Attribute sTYPE RRecordType)
-                                        (@Datatypes.cons Attribute
-                                           (Build_Attribute sCLASS
-                                              RRecordClass)
-                                           (@Datatypes.cons Attribute
-                                              (Build_Attribute sTTL nat)
-                                              (@Datatypes.cons Attribute
-                                                 (Build_Attribute sDATA
-                                                  string)
-                                                 (@Datatypes.nil Attribute))))))))
-                            r))
-                      (@map
-                         (@IndexedElement
-                            (@Tuple
-                               (BuildHeading
-                                  (@Datatypes.cons Attribute
-                                     (Build_Attribute sNAME name)
-                                     (@Datatypes.cons Attribute
-                                        (Build_Attribute sTYPE RRecordType)
-                                        (@Datatypes.cons Attribute
-                                           (Build_Attribute sCLASS
-                                              RRecordClass)
-                                           (@Datatypes.cons Attribute
-                                              (Build_Attribute sTTL nat)
-                                              (@Datatypes.cons Attribute
-                                                 (Build_Attribute sDATA
-                                                  string)
-                                                 (@Datatypes.nil Attribute)))))))))
-                         (@Tuple
-                            (BuildHeading
-                               (@Datatypes.cons Attribute
-                                  (Build_Attribute sNAME name)
-                                  (@Datatypes.cons Attribute
-                                     (Build_Attribute sTYPE RRecordType)
-                                     (@Datatypes.cons Attribute
-                                        (Build_Attribute sCLASS RRecordClass)
-                                        (@Datatypes.cons Attribute
-                                           (Build_Attribute sTTL nat)
-                                           (@Datatypes.cons Attribute
-                                              (Build_Attribute sDATA string)
-                                              (@Datatypes.nil Attribute))))))))
-                         (@indexedElement
-                            (@Tuple
-                               (BuildHeading
-                                  (@Datatypes.cons Attribute
-                                     (Build_Attribute sNAME name)
-                                     (@Datatypes.cons Attribute
-                                        (Build_Attribute sTYPE RRecordType)
-                                        (@Datatypes.cons Attribute
-                                           (Build_Attribute sCLASS
-                                              RRecordClass)
-                                           (@Datatypes.cons Attribute
-                                              (Build_Attribute sTTL nat)
-                                              (@Datatypes.cons Attribute
-                                                 (Build_Attribute sDATA
-                                                  string)
-                                                 (@Datatypes.nil Attribute)))))))))
-                         x1)) as a_incl_relation'.
-{ admit. }
-
-specialize (a_incl_relation a_incl_relation').
-
-  (* to satisfy constraint_in_relation OK:
-
-Given:
-
-indices  i   j  k  l  m...
-elements ti tj tk tl tm...
-
-NoDup (map elementIndex x1)
-List.In tIndex (map elementIndex x1)
- List.In t'Index (map elementIndex x1)
-
-  /\
-List.In tIndexed x1
-List.In t'Indexed x1 (x1 ~ relation's list)
-
-  /\ (it would help if we had tIndexed <> t'Indexed or t <> t'?)
-(nth_error a n0 = Some t
-nth_error a n' = Some t'
-n0 <> n'
-[a] \subset (map indexedElement x1)) --> would like to use to prove that
-  (problem: map elementIndex vs indexedElement)
-  exists m' m0,
-  nth_error x1 m0 = Some tIndexed
-  nth_error x1 m' = Some t'Indexed 
-  m0 <> m' -->
-  nth_error (map elementIndex x1) m0 = Some tIndex
-  nth_error (map elementIndex x1) m' = Some t'Index
-  m0 <> m' -->
-  + NoDup map (elementIndex x1) -->
-  tIndex <> t'Index
-
-not sure if strong enough; still possible that
-tIndexed = t'Indexed, even with the [a] hypothesis
-maybe I cleared a hypothesis that I shouldn't have?
-
----
-
-pick two elements of x1
-(if they're not the same element, indices are different)
-
-say worst case they are the same element:
-(i, ti) and (i, ti)
-
-can that be possible?
-a could contain two instances of ti and ti
-so... yes?
-
------
-
-
-
------
-
-
-Want to prove: tIndex <> t'Index 
-
-Proof:
-
-(It's not sufficient to have 
-List.In tIndex x1indices
-List.In t'Index x1indices
-because they might be at the same position.)
-(Should I backtrack? maybe I can prove that their indices aren't equal in the earlier proof?) *)
-
-(* no duplicates in x1 *)
-
-(* TODO: clean this up so I don't do it twice *)
-  pose proof (in_map_iff  (@elementIndex
-                (@Tuple
-                   (BuildHeading
-                      (@Datatypes.cons Attribute (Build_Attribute sNAME name)
-                         (@Datatypes.cons Attribute
-                            (Build_Attribute sTYPE RRecordType)
-                            (@Datatypes.cons Attribute
-                               (Build_Attribute sCLASS RRecordClass)
-                               (@Datatypes.cons Attribute
-                                  (Build_Attribute sTTL nat)
-                                  (@Datatypes.cons Attribute
-                                     (Build_Attribute sDATA string)
-                                     (@Datatypes.nil Attribute)))))))))) x1 as in_map_iff.
-
-  pose proof (in_map_iff tIndex) as in_map_tIndex.
-  pose proof (in_map_iff t'Index) as in_map_t'Index.
-  clear in_map_iff.
-  inversion in_map_tIndex as [in_t1 in_t2]. inversion in_map_t'Index as [in_t'1 in_t'2].
-  clear in_t1 in_t'1 in_map_tIndex in_map_t'Index.
-  
-  assert (exists x0 : IndexedElement,
-             elementIndex x0 = tIndex /\ List.In x0 x1) as prem1.
-  { exists tIndexed. rewrite HeqtIndexed at 1. simpl. auto. }
-
-  assert (exists x0 : IndexedElement,
-             elementIndex x0 = t'Index /\ List.In x0 x1) as prem2.
-  { exists t'Indexed. rewrite Heqt'Indexed at 1. simpl. auto. }
-  
-  specialize (in_t2 prem1). specialize (in_t'2 prem2). clear prem1 prem2.
-
-  Check nth_error_subset_same.
-  
-  clear H H5 H6 H4 iff_indexed1 iff_indexed1' a_incl_relation a_incl_relation'.
-
-  remember (map elementIndex x1) as x1indices. 
-  induction H14.                (* NoDup -- TODO should I revert? *)
-  * inversion in_t2.
-  *
-    Print NoDup.
-    simpl in *.
-    destruct in_t2; destruct in_t'2.
-    + admit.                    (* indices are same element (head) *)
-    +                           (* ind hyp not right *)
-      admit.
-    +
-      admit.
-    +
-      admit.
-      
-
-
-(* this is really one big admit *)
-  (* admit. *)
-
--
-  (* I also cleared the results of the inversions... getting them back here *)
-  clear relationthing constraint_in_relation_OK.
-  inversion H5. inv H13. inv H14. inv H13. inv H16. 
-  simpl in *.
-
-  pose proof H13 as iff. clear H13.
-  (* unfold DropQSConstraints in *. *)
-  (* show that t is in the relation *)
-SearchAbout rel.
-Check GetRelDropConstraints.
-  pose proof GetRelDropConstraints as getRelDrop.
-  Print BoundedString.
-  Print BoundedIndex.
-  specialize (getRelDrop DnsSchema r_n {| bindex := sCOLLECTIONS |}).
-  simpl in *.
-  
-  unfold DNSRRecord in *.
-  remember {| elementIndex := tIndex; indexedElement := t |} as tIndexed.
-  remember  {| elementIndex := t'Index; indexedElement := t' |} as t'Indexed.
-
-  Check (rel (ilist_hd (rels r_n)) tIndexed). (* Prop *)
-  Check (GetRelation r_n ``(sCOLLECTIONS)).   (* IndexedEnsemble *)
-  Check rel.
-  Check (rel (ilist_hd (rels r_n))). (* IndexedEnsemble*)
-  Check (rel (ilist_hd (rels r_n)) tIndexed).
-
-  unfold GetRelation in *.
-  simpl in *.
-  rewrite <- getRelDrop. 
-  pose proof (iff tIndexed) as iff_indexed.
-  inversion iff_indexed as [iff_indexed1 iff_indexed2]. clear iff_indexed.
-  unfold In in iff_indexed2.
-  (* apply iff_indexed2. *)
-  (* Thus, since t is in a, then it is in x, so it's in x1, so there's an index such that tIndexed in x2. *)
-  (* TODO clear some stuff, also I may have inverted the wrong one? *)
-
-  clear iff_indexed1 iff_indexed2. 
-
-  (* now, show that t is (in?) x1 *)
-  (* how to use H4 + H17? *)
-  remember (map indexedElement x1) as x1elems.
-  unfold relationSet in *.
-  unfold In in tIn.
-  auto.
-
-  (* t'Index can be any index, so I don't think this is true. unless I use the indexed lemma again? doesn't it give me this in the form of tIn, t'In? *)
-
-  (* pose proof (H4 x1elems). *)
-
-  (* unfold incl in *. *)
-  (* should i be using inrel_listin? did I just use that? *)
-  (* rewrite Heqx1elems in H15. *)
-  
-  (* is the premise of H15 even true? might need to un-specialize inrel_listin and listin_inrel *)
-  (* how do i prove that x1 is a permutation of scollections. should be able to use that <->, but it applies to indiv elements *)
-  (* extend H15: -> exists index, List.in tIndexed x1 *)
-  (* apply in_map_iff in H15. *)
-   
-  
-  (* note that r := ilist_hd (rels r_n) : Relation {| schemaHeading... constraints... |} *)
-  (* how is that done? with the fact thtat nth_error a n0 = Some t, and a <-> x \subset sCOLLECTIONS?
-   sounds convoluted *)
-
--
-  (* same as above -- split above thing into lemma and use it *)
-  
-  admit.
-
--
-  unfold get_name in H3.
-  unfold DNSRRecord in *.
-  auto.
+assert (List.In {| elementIndex := idx; indexedElement := t |} x').
+  { eapply exists_in_list; eauto. }  
+  apply Equiv' in H15; destruct H15; rewrite GetRelDropConstraints in H15; apply H15.
+  assert (List.In {| elementIndex := idx'; indexedElement := t' |} x').
+  { eapply exists_in_list; eauto. }  
+  apply Equiv' in H15; destruct H15; rewrite GetRelDropConstraints in H15; apply H15.
 Qed.
 
 (* -------------------------------------------------------------------------------------- *)
