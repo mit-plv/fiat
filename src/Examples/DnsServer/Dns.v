@@ -1894,6 +1894,10 @@ start sharpening ADT. {
 
   hone method "AddData".
   {
+    (* whatever data-integrity constraints there are on the relation, they get automatically added as checks/decision procedures on this (the mutator)  *)
+    simpl in *.
+    (* what is H? I guess an unimplemented something of the right type (or whose type is of the right type)? *)
+
     (* AddData has been expanded in method StringId0 *)
     (* refine (AddData body) (H r_n n) <-- what is that? *)
     (* H := existential variable of the correct (?) type,
@@ -1902,11 +1906,16 @@ start sharpening ADT. {
     (* x2 = check constraint between every other tuple and n (the record) *)
     (* doesn't know that the constraint is symmetric? *)
 
-    (* one-liner with rewrites? *)
-    subst_all.
-    match goal with
-      |- refine _ (?H _ _) => let id := fresh in set (id := H) in *
-    end.                        (* replace ex var with name H again *)
+    (* redundant *)
+    (* subst_all. *)
+    (* match goal with *)
+    (*   |- refine _ (?H _ _) => let id := fresh in set (id := H) in * *)
+    (* end.                        (* replace ex var with name H again *) *)
+    (* simpl in *. *)
+    Check refine_count_constraint_broken.
+    (* lemmas like this -- they should be manually factored out and proved, right? *)
+    (* how automated is the proof of this lemma? will automation just produce a lot of individual subgoals for each nontrivial decision procedure / chunk of code? *)
+    Print refine.
     setoid_rewrite refine_count_constraint_broken.        (* refine x1 *)
     setoid_rewrite refine_count_constraint_broken'.        (* refine x2 *)
     Check refine_If_Then_Else_Bind.
