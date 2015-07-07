@@ -1,3 +1,5 @@
+Require HintDbTactics.          (* plugin to pass a hint db to a tactic *)
+
 Require Import Coq.Vectors.Vector
         Coq.Strings.Ascii
         Coq.Bool.Bool
@@ -41,7 +43,7 @@ Definition DnsSpec : ADT DnsSig :=
                   (* prefix: "com.google" is a prefix of "com.google.scholar" *)
                   Return r;
             If (negb (is_empty rs))        (* Are there any matching records? *)
-            Then
+            Then                    (* TODO: reverse these if/then cases *)
               bfrs <- [[r in rs | upperbound name_length rs r]]; (* Find the best match (largest prefix) in [rs] *)
               b <- { b | decides b (forall r, List.In r bfrs -> n = r!sNAME) };
               if b                (* If the record's QNAME is an exact match  *)
@@ -118,6 +120,8 @@ Proof.
   setoid_rewrite negb_involutive.
   reflexivity.
 Qed.
+
+Hint Resolve refine_count_constraint_broken.
 
 (* -------------------------------------------------------------------------------------- *)
 
@@ -209,60 +213,123 @@ start sharpening ADT. {
 
   hone method "AddData".
   {
-    (* whatever data-integrity constraints there are on the relation, they get automatically added as checks/decision procedures on this (the mutator)  *)
-    simpl in *.
-    (* what is H? I guess an unimplemented something of the right type (or whose type is of the right type)? *)
+(*     (* | [ |- context[(@Pick nat) ?X] ] => *) *)
 
-    (* refine (AddData body) (H r_n n) <-- what is that? *)
-    (* H := existential variable of the correct (?) type,
-       r_n : UnConstrQueryStructure DnsSchema, n : DNSRRecord*)
-    (* x1 = check constraint between n (the record) and every other tuple  *)
-    (* x2 = check constraint between every other tuple and n (the record) *)
-    (* differs in the final step ((_)!sTYPE <> CNAME) *)
-    
-    (* redundant *)
-    (* subst_all. *)
-    (* match goal with *)
-    (*   |- refine _ (?H _ _) => let id := fresh in set (id := H) in * *)
-    (* end.                        (* replace ex var with name H again *) *)
-    (* simpl in *. *)
-    Check refine_count_constraint_broken.
-    setoid_rewrite refine_count_constraint_broken.        (* refine x1 *)
-    setoid_rewrite refine_count_constraint_broken'.        (* refine x2 *)
-    setoid_rewrite refine_If_Then_Else_Bind. simpl in *.
-    (* body after x1 gets pasted inside again *)
+Create HintDb refines.
+Hint Rewrite refine_count_constraint_broken : refines.
+Hint Rewrite refine_count_constraint_broken' : refines.
 
-    Check Bind_refine_If_Then_Else. (* x2 replaced with a *)
-    setoid_rewrite Bind_refine_If_Then_Else.
-    (* this was done an extra time *)
-    (* etransitivity. *)
-    apply refine_If_Then_Else.
-    -
-      (* simplify with monad laws. *)
-      Check refine_under_bind.
-      apply refine_under_bind; intros.
-      (* apply refine_under_bind; intros. *) 
-      Check refine_Count.
-      setoid_rewrite refine_Count. simplify with monad laws.
-      apply refine_under_bind.  Check refine_under_bind. intros.
-      setoid_rewrite refine_subcheck_to_filter; eauto.
-      Check refine_subcheck_to_filter.
-      (* Set Printing All. auto. *)
-      simplify with monad laws.
-      Check clear_nested_if.
-      rewrite clear_nested_if by apply filter_nil_is_nil.
-      higher_order_1_reflexivity.
-      (* clears goal, but H1 is still in the context, and it still has the 
-         For/Where/Return ~> _ unimplemented *)
-      eauto with typeclass_instances.
-    - simplify with monad laws.
-      (* setoid_rewrite refine_subcheck_to_filter; eauto. *)
-      (* did something break? nondeterministic ^ TODO *)
-      (* why is this OK? it didn't get rid of x0 nondeterminism *)
-      reflexivity.
-    (* - finish honing. *)
+Create HintDb refines'.
+Hint Resolve refine_count_constraint_broken : refines'.
+Hint Resolve refine_count_constraint_broken' : refines'.
+
+Lemma hi : True. Admitted.
+Lemma bye : True. Admitted.
+Create HintDb test.
+Hint Resolve hi : test.
+Hint Resolve bye : test.
+
+Ltac the_tactic :=
+  let k lem := idtac lem ; fail in
+  foreach [ refines ] run k.
+
+(* this doesn't work well with the [ || ] notation *)
+(* why does it need to end with fail? *)
+Ltac srewrite :=
+  let k lem := setoid_rewrite lem ; fail in
+  foreach [ refines ] run k.
+
+(* autorewrite with refines. *)
+(* auto with refines'. *)
+(* rewrite_strat topdown (hints refines). *)
+
+(* order of this is hard *)
+(* Ltac refine_bind := *)
+(*   repeat match goal with *)
+(*          | [ |- context[(@Bind _) ?X ?F] ] => apply refine_under_bind; intros *)
+(*          end. *)
+
+(* don't rewrite inner If/Then/Else expressions *)
+  Ltac rewrite_if_head :=
+    match goal with
+    | [ |- context[ (refine (Bind _ (fun n => If_Then_Else _ _ _ )) _) ] ] =>
+      setoid_rewrite Bind_refine_If_Then_Else
+    end. 
+
+Ltac srewrite_manual :=
+  repeat first [
+           setoid_rewrite refine_count_constraint_broken
+                          || setoid_rewrite refine_count_constraint_broken'
+                          || setoid_rewrite refine_If_Then_Else_Bind
+                          || rewrite_if_head
+                          || setoid_rewrite refine_Count
+                          || setoid_rewrite (@refine_subcheck_to_filter _ _ _ _ _ _)
+         ].
+
+srewrite_manual.
+(* TODO: problem: this takes 30 seconds *)
+
+ (* setoid_rewrite (@refine_subcheck_to_filter _ _ _ _ _ _). *)
+
+(* or do progress/first [||]? *)
+Ltac finishHone a0 H :=
+  repeat (simpl in *;
+          try simplify with monad laws;
+          try (apply refine_If_Then_Else);
+          try simplify with monad laws;
+          (* try (apply refine_under_bind; intros); *)
+          (* guess we don't need this? *)
+          (* try simplify with monad laws; *)
+          try (rewrite (clear_nested_if (beq_nat (Datatypes.length a0) 0)) by apply filter_nil_is_nil);
+          try simplify with monad laws;
+         try eauto;
+         try eauto with typeclass_instances;
+         try (clear H; reflexivity); (* TODO why clear *)
+         try setoid_rewrite (@refine_subcheck_to_filter _ _ _ _ _ _)
+         ).
+
+finishHone x1 H.
+(* quite close to DNS version *)
+
+
+(* TODO loop for rewriting under binders using refine_bind *)
+
+(* apply refine_If_Then_Else.  *)
+(* simplify with monad laws. *)
+(* Check refine_subcheck_to_filter. *)
+(* apply refine_under_bind; intros. *)
+(* apply refine_under_bind; intros. *)
+(* simpl in *. *)
+(* setoid_rewrite refine_subcheck_to_filter. *)
+(* instantiate (2 := a0). *)
+(* simplify with monad laws. *)
+(* Check clear_nested_if. *)
+(* rewrite clear_nested_if by apply filter_nil_is_nil. *)
+(* clear H. *)
+(* reflexivity. *)
+
+(* TODO 3 problems with clear_nested_if:
+- how to get clear_nested_if to unify/instantiate with a0?
+- how to get setoid_rewrite refine_subcheck_to_filter to instantiate with a0,
+  without using refine_under_bind?
+- when I do it manually, why won't it unify?
+(- will the rest of AddData check?)
+ *)
+
+Ltac automateAddData H := srewrite_manual; finishHone H.
+
+automateAddData H.
+
+(* TODO compare to version in DNS *)
+(* TODO see if this goes through *)
+  (* TODO I removed etransitivity/finish honing here; is that okay? *)
+
+  (* TODO why need to clear H? *)
+(* apply refine_If_Then_Else; simplify with monad laws; simpl in *. *)
+(* (* Error: Impossible to unify "?24239" with "?20175". *) *)
+(* (* former existential is not in Show Existentials; implicit? *) *)
+(* reflexivity. *)
   }
-  (* higher level of reasoning *)
 
   GenerateIndexesForAll         (* ? in IndexSelection, see GenerateIndexesFor *)
   (* specifies that you want to use the suffix index structure TODO *)
@@ -299,9 +366,10 @@ start sharpening ADT. {
         simplify with monad laws.
         rewrite (@refineEquiv_swap_bind nat).
         setoid_rewrite refine_if_If.
+        (* TODO: did an extra rewrite above; is this ok? *)
         implement_Insert_branches. (* this removes the nat choosing, so I guess the nondeterminism is okay if it involves indexed. the matching involves some of UnConstrFreshIdx *)
         (* ok, i guess getting a fresh ID for the index depends on the index specifics *)
-        reflexivity.
+        reflexivity.            (* broken *)
       + simplify with monad laws.
         implement_Query
           ltac:(CombineCase5 SuffixIndexUse EqIndexUse)
