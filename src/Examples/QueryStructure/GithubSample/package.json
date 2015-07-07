@@ -1,0 +1,7 @@
+{
+  "name": "fiat-github",
+  "main": "main.js",
+  "dependencies": {
+    "octonode": "^0.7.1"
+  }
+}
