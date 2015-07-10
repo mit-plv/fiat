@@ -115,7 +115,7 @@ Section ADT.
     (* Uncomment this to see the mostly sharpened implementation *)
     (* partial_master_plan ltac:(CombineIndexTactics PrefixIndexTactics EqIndexTactics).*)
 
-    master_plan ltac:(CombineIndexTactics PrefixIndexTactics EqIndexTactics).
+    master_plan ltac:(EqIndexTactics).
 
   Time Defined.
   (* Mem: 902MB *)
