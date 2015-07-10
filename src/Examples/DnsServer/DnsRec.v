@@ -70,7 +70,44 @@ see (1) below, is that right? i guess we can do multiple "hops", e.g. we are the
 
 ---
 
+state: 
+- Cache of (DNSRRecord, time) 
+- current requests (each with a name, time, and ID) and their stages (currently on prefix #...)
+
+- Constructor
+- AddData (to cache) : DNSRRecord -> time -> bool
+
+state is implicit and not being passed around
+- GetDNSRRecord : packet -> packet (encodes failure)
+  (needs to know stage of current request)
+- GetRequest : (name, time, ID) -> (Stage# | Fail)
+
+- Process : packet -> (Question server packet | Answer packet)
+  given concurrency we might want to look in the cache before and after each sub-request
+  (no concurrency = can split method into one that looks in cache and one that just queries)
+
+wrapper:
+client calls Process with name "scholar.google.com"
+Process looks in cache and says "ok, I know .com, can you ask .com at IP1 for scholar.google.com" 
+    (Question server packet)
+wrapper takes that and sends the .com server the packet, it returns a new packet:
+    "I know google.com's IP, so I'm redirecting you there" (packets also encode failure)
+wrapper takes that packet and gives it to Process
+   Process adds that to the cache
+   Process looks in cache and sees that it still doesn't know *the more specific IPs* (than google.com)
+   (it knows google.com and .com, but shouldn't go back and ask for .com -- loop)
+   Process returns [Question (google.com's IP) (scholar.google.com packet)]
+wrapper takes that Question packet and sends it to the DNS server for google.com
+   it returns a new packet: yes, I know scholar.google.com
+wrapper takes that packet and gives it to Process
+   Process adds that to the cache
+   Process checks that it is an IP for scholar.google.com and returns Answer of that packet
+wrapper should return that packet to the client and terminate
+
+TODO: need a new schema?
  *)
+
+
 
 Definition DnsSpec_Recursive : ADT DnsSig :=
   QueryADTRep DnsSchema {
@@ -81,50 +118,6 @@ Definition DnsSpec_Recursive : ADT DnsSig :=
 
     query "Process" (p : packet) : packet :=
       let t := qtype (questions p) in
-(* say a question's name n looks like
-n4.n3.n2.n1.
-
-recursive server algorithm: 
-
-check cache/relation to see if we know n4.n3.n2.n1. 
-  if yes, return it.
-  if stored as impossible, return it. 
-if not:
-   then n3.n2.n1. ... each suffix from most specific to least specific
-   start with the first suffix whose IP address s we know. 
-   we MUST know the IP address of the root server, at least.
-
-(do >= 1 iterative query:)
-
-ask(s, n):
-ask s DNS server for the IP address of the authoritative servers for n (the whole string) **
-(given a server name and IP address, how do we simulate asking it about things? store 
-a list of them in a relation and look it up?)
-  - if IP address, great, add to cache and return that
-  - if referral to server s' authoritative for domain n_i (could be n4, n2, n3, n1), 
-    (here the current server will look in relation for the longest prefix and return corresponding nameservers. how to choose which one? recursively check all of them?)
-    add referral to cache
-    recursive call ask(s', n)
-  - if s says unknown, add to cache and return failure
-
-(invariant: none of the stuff added to the cache should already be in the cache, guaranteed by the first check) (not true)
-
-**concurrency: two requests at the same time 
-  invariants related to concurrency
-**cache poisoning, other security stuff
-* table of pending requests?
-
----------------
-
-have Process return Question or Answer type to hand off to wrapper
-wrapper then calls ProcessAnswer to handle the recursive calls (in the method)
-
-
-fueledfix: RFC CNAME loop once for CNAME
-
-recursive server: possible loop? 
-cache poisoning -- specify in terms of functional correctness
-*)
       Repeat 1 initializing n with qname (questions p)
                defaulting rec with (ret (buildempty p))
          {{ rs <- For (r in sCOLLECTIONS)      (* Bind a list of all the DNS entries *)

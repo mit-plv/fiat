@@ -123,6 +123,139 @@ Qed.
 
 Hint Resolve refine_count_constraint_broken.
 
+Lemma computes_to_in_specific : forall a n r_n,
+ @computes_to
+         (list
+            (@Tuple
+               (BuildHeading
+                  (@Datatypes.cons Attribute (Build_Attribute sNAME name)
+                     (@Datatypes.cons Attribute
+                        (Build_Attribute sTYPE RRecordType)
+                        (@Datatypes.cons Attribute
+                           (Build_Attribute sCLASS RRecordClass)
+                           (@Datatypes.cons Attribute
+                              (Build_Attribute sTTL nat)
+                              (@Datatypes.cons Attribute
+                                 (Build_Attribute sDATA string)
+                                 (@Datatypes.nil Attribute)))))))))
+         (@Query_For
+            (@Tuple
+               (BuildHeading
+                  (@Datatypes.cons Attribute (Build_Attribute sNAME name)
+                     (@Datatypes.cons Attribute
+                        (Build_Attribute sTYPE RRecordType)
+                        (@Datatypes.cons Attribute
+                           (Build_Attribute sCLASS RRecordClass)
+                           (@Datatypes.cons Attribute
+                              (Build_Attribute sTTL nat)
+                              (@Datatypes.cons Attribute
+                                 (Build_Attribute sDATA string)
+                                 (@Datatypes.nil Attribute))))))))
+            (@Query_In
+               (@Tuple
+                  (BuildHeading
+                     (@Datatypes.cons Attribute (Build_Attribute sNAME name)
+                        (@Datatypes.cons Attribute
+                           (Build_Attribute sTYPE RRecordType)
+                           (@Datatypes.cons Attribute
+                              (Build_Attribute sCLASS RRecordClass)
+                              (@Datatypes.cons Attribute
+                                 (Build_Attribute sTTL nat)
+                                 (@Datatypes.cons Attribute
+                                    (Build_Attribute sDATA string)
+                                    (@Datatypes.nil Attribute))))))))
+               (@Build_QueryStructureHint DnsSchema r_n)
+               (@Build_BoundedIndex string
+                  (@Datatypes.cons string sCOLLECTIONS
+                     (@Datatypes.nil string)) sCOLLECTIONS
+                  (@Build_IndexBound string sCOLLECTIONS
+                     (@Datatypes.cons string sCOLLECTIONS
+                        (@Datatypes.nil string)) O
+                     (@eq_refl (option string) (@Some string sCOLLECTIONS))))
+               (fun
+                  r : @Tuple
+                        (BuildHeading
+                           (@Datatypes.cons Attribute
+                              (Build_Attribute sNAME name)
+                              (@Datatypes.cons Attribute
+                                 (Build_Attribute sTYPE RRecordType)
+                                 (@Datatypes.cons Attribute
+                                    (Build_Attribute sCLASS RRecordClass)
+                                    (@Datatypes.cons Attribute
+                                       (Build_Attribute sTTL nat)
+                                       (@Datatypes.cons Attribute
+                                          (Build_Attribute sDATA string)
+                                          (@Datatypes.nil Attribute))))))) =>
+                @Query_Where
+                  (@Tuple
+                     (BuildHeading
+                        (@Datatypes.cons Attribute
+                           (Build_Attribute sNAME name)
+                           (@Datatypes.cons Attribute
+                              (Build_Attribute sTYPE RRecordType)
+                              (@Datatypes.cons Attribute
+                                 (Build_Attribute sCLASS RRecordClass)
+                                 (@Datatypes.cons Attribute
+                                    (Build_Attribute sTTL nat)
+                                    (@Datatypes.cons Attribute
+                                       (Build_Attribute sDATA string)
+                                       (@Datatypes.nil Attribute))))))))
+                  (@IsSuffix string (qname (questions n))
+                     (@GetAttribute
+                        (BuildHeading
+                           (@Datatypes.cons Attribute
+                              (Build_Attribute sNAME name)
+                              (@Datatypes.cons Attribute
+                                 (Build_Attribute sTYPE RRecordType)
+                                 (@Datatypes.cons Attribute
+                                    (Build_Attribute sCLASS RRecordClass)
+                                    (@Datatypes.cons Attribute
+                                       (Build_Attribute sTTL nat)
+                                       (@Datatypes.cons Attribute
+                                          (Build_Attribute sDATA string)
+                                          (@Datatypes.nil Attribute))))))) r
+                        (@Build_BoundedIndex string
+                           (@Datatypes.cons string sNAME
+                              (@Datatypes.cons string sTYPE
+                                 (@Datatypes.cons string sCLASS
+                                    (@Datatypes.cons string sTTL
+                                       (@Datatypes.cons string sDATA
+                                          (@Datatypes.nil string)))))) sNAME
+                           (@Build_IndexBound string sNAME
+                              (@Datatypes.cons string sNAME
+                                 (@Datatypes.cons string sTYPE
+                                    (@Datatypes.cons string sCLASS
+                                       (@Datatypes.cons string sTTL
+                                          (@Datatypes.cons string sDATA
+                                             (@Datatypes.nil string)))))) O
+                              (@eq_refl (option string) (@Some string sNAME))))))
+                  (@Query_Return
+                     (@Tuple
+                        (BuildHeading
+                           (@Datatypes.cons Attribute
+                              (Build_Attribute sNAME name)
+                              (@Datatypes.cons Attribute
+                                 (Build_Attribute sTYPE RRecordType)
+                                 (@Datatypes.cons Attribute
+                                    (Build_Attribute sCLASS RRecordClass)
+                                    (@Datatypes.cons Attribute
+                                       (Build_Attribute sTTL nat)
+                                       (@Datatypes.cons Attribute
+                                          (Build_Attribute sDATA string)
+                                          (@Datatypes.nil Attribute)))))))) r))))
+         a
+ ->
+   forall n' : DNSRRecord, 
+   @List.In DNSRRecord n' a -> @IsPrefix string (get_name n') (qname (questions n)).
+Proof.
+  intros. 
+  eapply For_computes_to_In in H; try eauto.
+  inv H.
+  + eauto. 
+  + pose proof IsSuffix_string_dec. intros. auto.
+Qed.
+
+
 (* -------------------------------------------------------------------------------------- *)
 
 Theorem DnsManual :
@@ -136,78 +269,51 @@ Proof.
 
 start sharpening ADT. {
   hone method "Process". {
+    simpl in *.
     simplify with monad laws.
-    (* Find the upperbound of the results. *)
-    etransitivity.
-    apply refine_under_bind; intros. (* rewrite? *)
-    (* rewrite map_app, map_map, app_nil_r, map_id; simpl. *)
-    etransitivity.
-    apply refine_bind.
-    match goal with
-      |- refine _ (?H) => let id := fresh in set (id := H) in *
-    end. (* rename ?whatever to H(number) *)
-    (* Should honing if branches also be their own tactic? *)
-    etransitivity.
+
+    Ltac refine_under_bind' :=
+      setoid_rewrite refine_under_bind; [ higher_order_reflexivity | intros ].
+
+    (* TODO can we remove these and just setoid rewrite? or does setoid rewrite need the vars? *)
+    (* TODO can we remove If/Then/Else too? *)
+    refine_under_bind'.         (* this is where the for/where hyp comes from *)
+    Check refine_bind.
+    apply refine_bind.          (* refine the If/Then/Else part only *)
     apply refine_If_Then_Else.
+
+    (* pose (@refine_find_upperbound _ _ _). *)
     match goal with
       |- context [ [[r in ?A | upperbound ?f ?l r]] ] =>
-      pose (@refine_find_upperbound _ f A)
+      pose proof (@refine_find_upperbound _ f A) as H_upperbound
     end.
-    etransitivity.
-    { apply refine_bind; eauto.
-      intro; higher_order_reflexivity. }
+    setoid_rewrite H_upperbound.
 
     setoid_rewrite (@refine_decides_forall_In' _ _ _ _).
     simplify with monad laws.
-    etransitivity.
-    Check refine_bind.
-    (* implement decision procedure *)
-    { 
-      apply refine_bind;
-      [ apply refine_check_one_longest_prefix_s
-      | intro; higher_order_reflexivity ].
-      intros. clear H. clear H1. unfold get_name. 
-      eapply For_computes_to_In in H0.
-      inv H0.
-      - apply H.
-      - pose proof IsSuffix_string_dec. intros. auto.
-      - auto.
-    }
-    simplify with monad laws.
-    setoid_rewrite refine_if_If.
-    apply refine_If_Then_Else.
-    etransitivity.
-    { (* Locate "unique". *)
-      
-      (* setoid_rewrite refine_check_one_longest_prefix_CNAME. *)
-      (* simplify with monad laws. *)
-      (* reflexivity. *)
-      
-      apply refine_bind;        (* rewrite instead of apply *)
-      [ eapply refine_check_one_longest_prefix_CNAME | intro; higher_order_reflexivity ].
+    (* need both bind and if_then_else for simplify to work *)
+    (* we need a stronger [simplify with monad laws] (inside bind)! i don't think we should need refine_bind and refine_if_then_else for most things *)
+    setoid_rewrite refine_check_one_longest_prefix_s.
 
-      inversion H0.
-      inversion H2. clear H2.
-      - eapply tuples_in_relation_satisfy_constraint_specific.
-        Check refine_check_one_longest_prefix_CNAME. apply H0.
-      (* exciting! *)
-      -                        
-        clear H.
-        intros.
-        instantiate (1 := (qname (questions n))). 
-        eapply For_computes_to_In in H0.
-        inv H0. unfold IsSuffix in *. unfold get_name.
-      + apply H2.
-      + pose proof IsSuffix_string_dec. intros. auto.
-      + auto.
-    }
     simplify with monad laws.
-    reflexivity. reflexivity.
-    
-    reflexivity. subst H1; reflexivity.
-    unfold pointwise_relation; intros; higher_order_reflexivity.
-    finish honing. finish honing.
+    Check refine_if_If.         (* doesn't refine with bind/ifthenelse/simplify gone *)
+    setoid_rewrite refine_if_If.
+    {
+      setoid_rewrite refine_check_one_longest_prefix_CNAME.
+      reflexivity.
+
+      (* TODO factor out as lemma with H0 as assumption -- it's the same goal as below! *)
+      inversion H0. inversion H1. clear H1.
+      - eapply (tuples_in_relation_satisfy_constraint_specific n). eauto.
+        (* exciting! *)
+      - eapply computes_to_in_specific; eauto.
+    }
+    - eapply computes_to_in_specific; eauto.
+    - reflexivity.
+    - unfold pointwise_relation; intros; higher_order_reflexivity. 
 }
+  (* bfrs' is still not deterministic? it's also not right; should be "choose one of" *)
+  (* commented out if/then/else that did that *)
 
   start_honing_QueryStructure'.
 
