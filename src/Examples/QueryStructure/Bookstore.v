@@ -68,6 +68,7 @@ Definition BookStoreSig : ADTSig :=
 
 (* Now we write what the methods should actually do. *)
 
+Set Printing All. 
 Definition BookStoreSpec : ADT BookStoreSig :=
   QueryADTRep BookStoreSchema {
     Def Constructor "Init" (_ : unit) : rep := empty,
@@ -95,6 +96,8 @@ Definition BookStoreSpec : ADT BookStoreSig :=
                  Where (b!sISBN = o!sISBN)
                  Return ())
 }.
+
+Print BookStoreSpec.
 
 Theorem SharpenedBookStore :
   MostlySharpened BookStoreSpec.

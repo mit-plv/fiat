@@ -79,6 +79,7 @@ Section Packet.
   Global Instance Query_eq_RRecordClass :
     Query_eq RRecordClass := {| A_eq_dec := RRecordClass_dec |}.
 
+  (* do we currently use recordtype and recordclass? *)
   Record question :=
     { qname : name;
       qtype : RRecordType;

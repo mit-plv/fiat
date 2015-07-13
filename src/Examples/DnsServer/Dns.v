@@ -26,9 +26,6 @@ Definition DnsSpec : ADT DnsSig :=
   QueryADTRep DnsSchema {
     Def Constructor "Init" (_ : unit) : rep := empty,
 
-                                               (* in start honing querystructure, it inserts constraints before every insert / decision procedure *)
-                                               (* n<- count (For (r in _) where (r = tup) return True); if n > 0 then.. *)
-                                               (* For refines decision procedure *)
     update "AddData" (t : DNSRRecord) : bool :=
       Insert t into sCOLLECTIONS,
 
@@ -41,6 +38,7 @@ Definition DnsSpec : ADT DnsSig :=
                   (* prefix: "com.google" is a prefix of "com.google.scholar" *)
                   Return r;
             If (negb (is_empty rs))        (* Are there any matching records? *)
+               (* TODO: this does not filter by matching QTYPE *)
             Then
               bfrs <- [[r in rs | upperbound name_length rs r]]; (* Find the best match (largest prefix) in [rs] *)
               b <- { b | decides b (forall r, List.In r bfrs -> n = r!sNAME) };
@@ -59,7 +57,7 @@ Definition DnsSpec : ADT DnsSig :=
                   ret (List.fold_left addan bfrs (buildempty p))
               else              (* prefix but record's QNAME not an exact match *)
                 (* return all the prefix records that are nameserver records -- 
-                 ask the authoritative servers *)
+                 ask the authoritative servers *) (* TODO does this return one, or return all? *)
                 bfrs' <- [[x in bfrs | x!sTYPE = NS]];
                 ret (List.fold_left addns bfrs' (buildempty p))
             Else ret (buildempty p) (* No matching records! *)

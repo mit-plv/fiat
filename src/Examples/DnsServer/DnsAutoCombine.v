@@ -258,18 +258,6 @@ Qed.
 
 (* -------------------------------------------------------------------------------------- *)
 
-Theorem DnsManual :
-  MostlySharpened DnsSpec.
-Proof.
-
-  (* the two components here (start honing + GenerateIndexesForAll) are manual versions of
-     partial_master_plan' in AutoDB *)
-
-  unfold DnsSpec.
-
-  (* | [ |- context[(@Pick nat) ?X] ] => *)
-start sharpening ADT. {
-  hone method "Process". {
     Ltac invert_For_once :=
       match goal with
       | [ H : computes_to (Query_For _) _ |- _ ] =>
@@ -321,7 +309,76 @@ start sharpening ADT. {
     Ltac automateProcess :=
       drill; srewrite_manual'.
 
-    automateProcess.
+    (* --------- *)
+
+Ltac srewrite :=
+  let k lem := setoid_rewrite lem ; fail in
+  foreach [ refines ] run k.
+
+(* autorewrite with refines. *)
+(* auto with refines'. *)
+(* rewrite_strat topdown (hints refines). *)
+
+(* don't rewrite inner If/Then/Else expressions *)
+  Ltac rewrite_if_head :=
+    match goal with
+    | [ |- context[ (refine (Bind _ (fun n => If_Then_Else _ _ _ )) _) ] ] =>
+      setoid_rewrite Bind_refine_If_Then_Else
+    end. 
+
+Ltac srewrite_manual :=
+  repeat first [
+           setoid_rewrite refine_count_constraint_broken
+                          || setoid_rewrite refine_count_constraint_broken'
+                          || setoid_rewrite refine_If_Then_Else_Bind
+                          || rewrite_if_head
+                          || setoid_rewrite refine_Count
+                          || setoid_rewrite (@refine_subcheck_to_filter _ _ _ _ _ _)
+         ].
+
+(* srewrite_manual. *)
+(* TODO: problem: this takes 30 seconds *)
+
+(* or do progress/first [||]? *)
+Ltac finishHone a0 H :=
+  repeat (simpl in *;
+          try simplify with monad laws;
+          try (apply refine_If_Then_Else);
+          try simplify with monad laws;
+          (* try (apply refine_under_bind; intros); *)
+          (* guess we don't need this? *)
+          (* try simplify with monad laws; *)
+          try (rewrite (clear_nested_if (beq_nat (Datatypes.length a0) 0)) by apply filter_nil_is_nil);
+          try simplify with monad laws;
+         try eauto;
+         try eauto with typeclass_instances;
+         try (clear H; reflexivity); (* TODO why clear *)
+         try setoid_rewrite (@refine_subcheck_to_filter _ _ _ _ _ _)
+         ).
+
+Ltac automateAddData H := srewrite_manual; finishHone H.
+
+    (* --------- *)
+
+Theorem DnsManual :
+  MostlySharpened DnsSpec.
+Proof.
+
+  (* the two components here (start honing + GenerateIndexesForAll) are manual versions of
+     partial_master_plan' in AutoDB *)
+
+  unfold DnsSpec.
+
+  (* | [ |- context[(@Pick nat) ?X] ] => *)
+start sharpening ADT. {
+  hone method "Process". {
+    simpl in *.
+    apply refine_bind.
+    reflexivity.
+    unfold pointwise_relation. intros. higher_order_reflexivity.
+    
+  (* did this do anything? *)
+
   (* TODO compare to original *)
   (* TODO should I try to generalize the ltac to deal wih BOTH methods now? *)
   (* TODO make it more general than that, or just write the recursive one and see what it needs? *)
@@ -356,91 +413,37 @@ start sharpening ADT. {
   hone method "AddData".
   {
 (*     (* | [ |- context[(@Pick nat) ?X] ] => *) *)
-
-Create HintDb refines.
-Hint Rewrite refine_count_constraint_broken : refines.
-Hint Rewrite refine_count_constraint_broken' : refines.
-
-Create HintDb refines'.
-Hint Resolve refine_count_constraint_broken : refines'.
-Hint Resolve refine_count_constraint_broken' : refines'.
-
-Lemma hi : True. Admitted.
-Lemma bye : True. Admitted.
-Create HintDb test.
-Hint Resolve hi : test.
-Hint Resolve bye : test.
-
-Ltac the_tactic :=
-  let k lem := idtac lem ; fail in
-  foreach [ refines ] run k.
+    simpl in *.
+    
 
 (* this doesn't work well with the [ || ] notation *)
 (* why does it need to end with fail? *)
-Ltac srewrite :=
-  let k lem := setoid_rewrite lem ; fail in
-  foreach [ refines ] run k.
 
-(* autorewrite with refines. *)
-(* auto with refines'. *)
-(* rewrite_strat topdown (hints refines). *)
+(* quite close to DNS version *)
 
-(* don't rewrite inner If/Then/Else expressions *)
-  Ltac rewrite_if_head :=
-    match goal with
-    | [ |- context[ (refine (Bind _ (fun n => If_Then_Else _ _ _ )) _) ] ] =>
-      setoid_rewrite Bind_refine_If_Then_Else
-    end. 
+(* TODO loop for rewriting under binders using refine_bind *)
 
-(* rewrite under bind the first time you can, then stop. otherwise fail *)
-Ltac tac_under_bind tac :=
-  first [ tac |
-              (apply refine_under_bind; intros); tac_under_bind tac ].
+(* apply refine_If_Then_Else.  *)
+(* simplify with monad laws. *)
+(* Check refine_subcheck_to_filter. *)
+(* apply refine_under_bind; intros. *)
+(* apply refine_under_bind; intros. *)
+(* simpl in *. *)
+(* setoid_rewrite refine_subcheck_to_filter. *)
+(* instantiate (2 := a0). *)
+(* simplify with monad laws. *)
+(* Check clear_nested_if. *)
+(* rewrite clear_nested_if by apply filter_nil_is_nil. *)
+(* clear H. *)
+(* reflexivity. *)
 
-Ltac srewrite_manual :=
-  repeat first [
-           setoid_rewrite refine_count_constraint_broken
-                          || setoid_rewrite refine_count_constraint_broken'
-                          || setoid_rewrite refine_If_Then_Else_Bind
-                          || rewrite_if_head
-                          || setoid_rewrite refine_Count
-         ]. 
-
-srewrite_manual.
-(* TODO: problem: this takes 30 seconds *)
-
-(* or do progress/first [||]? *)
-Ltac finishHone H :=
-  repeat (simpl in *;
-          try simplify with monad laws;
-          try (apply refine_If_Then_Else);
-          try simplify with monad laws;
-          try tac_under_bind ltac:(setoid_rewrite refine_subcheck_to_filter; eauto;
-                               try (simplify with monad laws);
-                               try (rewrite clear_nested_if by apply filter_nil_is_nil));
-          try simplify with monad laws;
-         try eauto;
-         try eauto with typeclass_instances;
-         try (clear H; reflexivity) (* TODO why clear *)
-         ).
-
-(* finishHone H. *)
-(* TODO: ??? where is this new unsolvable goal from (adding tac_under_bind) :( *)
-
-simpl in *.
-apply refine_If_Then_Else; simplify with monad laws.
-(* try w/ semicolon here: only do tac_under_bind on first goal? *)
-tac_under_bind ltac:(setoid_rewrite refine_subcheck_to_filter; eauto;
-                     try (simplify with monad laws);
-                     try (rewrite clear_nested_if by apply filter_nil_is_nil)).
-(* TODO: uh, how do i finish this goal *)
-reflexivity.
-
-
-(* TODO: try to simplify the argument to tac_under_bind 
-integrate it with automateAddData? *)
-
-Ltac automateAddData H := srewrite_manual; finishHone H.
+(* TODO 3 problems with clear_nested_if:
+- how to get clear_nested_if to unify/instantiate with a0?
+- how to get setoid_rewrite refine_subcheck_to_filter to instantiate with a0,
+  without using refine_under_bind?
+- when I do it manually, why won't it unify?
+(- will the rest of AddData check?)
+ *)
 
 (* automateAddData H. *)
 
