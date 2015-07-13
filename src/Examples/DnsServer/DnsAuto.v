@@ -267,53 +267,88 @@ Proof.
 
   unfold DnsSpec.
 
+  (* | [ |- context[(@Pick nat) ?X] ] => *)
 start sharpening ADT. {
   hone method "Process". {
-    simpl in *.
-    simplify with monad laws.
+    Ltac invert_For_once :=
+      match goal with
+      | [ H : computes_to (Query_For _) _ |- _ ] =>
+        let H1 := fresh in
+        let H2 := fresh in
+        inversion H; inversion H1; clear H1
+      end.
 
     Ltac refine_under_bind' :=
-      setoid_rewrite refine_under_bind; [ higher_order_reflexivity | intros ].
+      setoid_rewrite refine_under_bind; [ higher_order_reflexivity |
+                                            let H := fresh in
+                                            intros a H; try invert_For_once ].
+
+    Ltac refine_bind' :=
+      apply refine_bind; [ idtac | unfold pointwise_relation; intros; higher_order_reflexivity ].
+
+    Ltac srewrite_each :=
+      first
+             [
+               setoid_rewrite (@refine_find_upperbound DNSRRecord _ _) |
+                              setoid_rewrite (@refine_decides_forall_In' _ _ _ _) |
+                              setoid_rewrite refine_check_one_longest_prefix_s |
+                              setoid_rewrite refine_if_If |
+                              setoid_rewrite refine_check_one_longest_prefix_CNAME
+             ].
+
+    Ltac srewrite_manual' :=
+      repeat (
+          try srewrite_each;
+          try simplify with monad laws
+        );
+      repeat (
+          try (eapply tuples_in_relation_satisfy_constraint_specific; eauto);
+          try (eapply computes_to_in_specific; eauto);
+          try reflexivity
+        ).
+
+    (* not very automated -- TODO try to get rid of these / use setoid_rewrite *)
+    Ltac drill :=
+      simpl in *;
+      try simplify with monad laws;
+      try refine_under_bind';
+      try refine_bind';
+      try apply refine_If_Then_Else.
+
+    (* drill. srewrite_manual'. reflexivity. (* nothing applies to this last goal *) *)
+
+    Ltac automateProcess :=
+      drill; srewrite_manual'.
+
+    automateProcess.
+  (* TODO compare to original *)
+  (* TODO should I try to generalize the ltac to deal wih BOTH methods now? *)
+  (* TODO make it more general than that, or just write the recursive one and see what it needs? *)
+  (* TODO try to make drill more general? *)
+}    
 
     (* TODO can we remove these and just setoid rewrite? or does setoid rewrite need the vars? *)
     (* TODO can we remove If/Then/Else too? *)
-    refine_under_bind'.         (* this is where the for/where hyp comes from *)
-    Check refine_bind.
-    apply refine_bind.          (* refine the If/Then/Else part only *)
-    apply refine_If_Then_Else.
+    (* refine_under_bind'.  *)
+    (* Check refine_under_bind.    (* bring an entire line (up to ;) into context *) *)
+    (* Check refine_bind.          (* refine X in r <- X; r' *) *)
+    (* refine_bind'.          (* refine the If/Then/Else part only *) *)
+    (* Check refine_If_Then_Else. *)
+    (* apply refine_If_Then_Else. *)
+    
+    (* setoid_rewrite (@refine_find_upperbound DNSRRecord _ _). *)
+    (* setoid_rewrite (@refine_decides_forall_In' _ _ _ _). *)
+    (* simplify with monad laws. *)
 
-    (* pose (@refine_find_upperbound _ _ _). *)
-    match goal with
-      |- context [ [[r in ?A | upperbound ?f ?l r]] ] =>
-      pose proof (@refine_find_upperbound _ f A) as H_upperbound
-    end.
-    setoid_rewrite H_upperbound.
-
-    setoid_rewrite (@refine_decides_forall_In' _ _ _ _).
-    simplify with monad laws.
     (* need both bind and if_then_else for simplify to work *)
     (* we need a stronger [simplify with monad laws] (inside bind)! i don't think we should need refine_bind and refine_if_then_else for most things *)
-    setoid_rewrite refine_check_one_longest_prefix_s.
+    (* setoid_rewrite refine_check_one_longest_prefix_s. *)
+    (* simplify with monad laws. *)
 
-    simplify with monad laws.
-    Check refine_if_If.         (* doesn't refine with bind/ifthenelse/simplify gone *)
-    setoid_rewrite refine_if_If.
-    {
-      setoid_rewrite refine_check_one_longest_prefix_CNAME.
-      reflexivity.
-
-      (* TODO factor out as lemma with H0 as assumption -- it's the same goal as below! *)
-      inversion H0. inversion H1. clear H1.
-      - eapply (tuples_in_relation_satisfy_constraint_specific n). eauto.
-        (* exciting! *)
-      - eapply computes_to_in_specific; eauto.
-    }
-    - eapply computes_to_in_specific; eauto.
-    - reflexivity.
-    - unfold pointwise_relation; intros; higher_order_reflexivity. 
-}
+    (* setoid_rewrite refine_if_If. *)
+    (* setoid_rewrite refine_check_one_longest_prefix_CNAME. (* no morphism for normal if/then *) *)
   (* bfrs' is still not deterministic? it's also not right; should be "choose one of" *)
-  (* commented out if/then/else that did that *)
+  (* commented out if/then/else that refined tha *)
 
   start_honing_QueryStructure'.
 
@@ -349,12 +384,6 @@ Ltac srewrite :=
 (* auto with refines'. *)
 (* rewrite_strat topdown (hints refines). *)
 
-(* order of this is hard *)
-(* Ltac refine_bind := *)
-(*   repeat match goal with *)
-(*          | [ |- context[(@Bind _) ?X ?F] ] => apply refine_under_bind; intros *)
-(*          end. *)
-
 (* don't rewrite inner If/Then/Else expressions *)
   Ltac rewrite_if_head :=
     match goal with
@@ -375,8 +404,6 @@ Ltac srewrite_manual :=
 srewrite_manual.
 (* TODO: problem: this takes 30 seconds *)
 
- (* setoid_rewrite (@refine_subcheck_to_filter _ _ _ _ _ _). *)
-
 (* or do progress/first [||]? *)
 Ltac finishHone a0 H :=
   repeat (simpl in *;
@@ -396,7 +423,6 @@ Ltac finishHone a0 H :=
 
 finishHone x1 H.
 (* quite close to DNS version *)
-
 
 (* TODO loop for rewriting under binders using refine_bind *)
 
