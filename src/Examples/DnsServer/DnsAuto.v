@@ -351,6 +351,7 @@ start sharpening ADT. {
   (* bfrs' is still not deterministic? it's also not right; should be "choose one of" *)
   (* commented out if/then/else that refined tha *)
 
+
   start_honing_QueryStructure'.
 
   hone method "AddData".
@@ -384,6 +385,7 @@ Ltac srewrite :=
 (* autorewrite with refines. *)
 (* auto with refines'. *)
 (* rewrite_strat topdown (hints refines). *)
+(* ---------------------------- TODO: use the database plugin above *)
 
 (* don't rewrite inner If/Then/Else expressions *)
   Ltac rewrite_if_head :=
@@ -391,11 +393,6 @@ Ltac srewrite :=
     | [ |- context[ (refine (Bind _ (fun n => If_Then_Else _ _ _ )) _) ] ] =>
       setoid_rewrite Bind_refine_If_Then_Else
     end. 
-
-(* rewrite under bind the first time you can, then stop. otherwise fail *)
-Ltac tac_under_bind tac :=
-  first [ tac |
-              (apply refine_under_bind; intros); tac_under_bind tac ].
 
 Ltac srewrite_manual :=
   repeat first [
@@ -407,52 +404,46 @@ Ltac srewrite_manual :=
          ]. 
 
 srewrite_manual.
-(* TODO: problem: this takes 30 seconds *)
 
-(* or do progress/first [||]? *)
+(* rewrite under bind the first time you can, then stop. otherwise fail *)
+Ltac tac_under_bind tac :=
+  first [ tac |
+              (apply refine_under_bind; intros); tac_under_bind tac ].
+
+(* only succeed if all subgoals can be solved with tac. 
+intended for use as setoid_rewrite_by *)
+Ltac do_by tic tac :=
+  tic; [ | solve [tac] | .. | solve [tac] ].
+
 Ltac finishHone H :=
   repeat (simpl in *;
           try simplify with monad laws;
           try (apply refine_If_Then_Else);
           try simplify with monad laws;
-          try tac_under_bind ltac:(setoid_rewrite refine_subcheck_to_filter; eauto;
-                               try (simplify with monad laws);
-                               try (rewrite clear_nested_if by apply filter_nil_is_nil));
+          try tac_under_bind ltac:(
+ do_by ltac:(setoid_rewrite refine_subcheck_to_filter) ltac:(eauto with typeclass_instances);
+ try (simplify with monad laws);
+ try (rewrite clear_nested_if by apply filter_nil_is_nil));
           try simplify with monad laws;
-         try eauto;
-         try eauto with typeclass_instances;
-         try (clear H; reflexivity) (* TODO why clear *)
+          try eauto;
+          try (clear H; reflexivity) (* TODO why clear *)
          ).
 
 (* finishHone H. *)
-(* TODO: ??? where is this new unsolvable goal from (adding tac_under_bind) :( *)
+(* only difference is the Count vs beq_nat *)
 
-simpl in *.
-apply refine_If_Then_Else; simplify with monad laws.
-(* try w/ semicolon here: only do tac_under_bind on first goal? *)
-tac_under_bind ltac:(setoid_rewrite refine_subcheck_to_filter; eauto;
-                     try (simplify with monad laws);
-                     try (rewrite clear_nested_if by apply filter_nil_is_nil)).
-(* TODO: uh, how do i finish this goal *)
-reflexivity.
+Ltac setoid_rewrite_by lem tac :=
+  (* setoid_rewrite refine_subcheck_to_filter; *)
+  setoid_rewrite lem;
+  [ | solve [tac] | .. | solve [tac] ].
 
-
-(* TODO: try to simplify the argument to tac_under_bind 
-integrate it with automateAddData? *)
+(* setoid_rewrite_by refine_subcheck_to_filter ltac:(eauto with typeclass_instances). *)
+(* doesn't work; can't infer heading *)
 
 Ltac automateAddData H := srewrite_manual; finishHone H.
 
-(* automateAddData H. *)
-
-(* TODO compare to version in DNS *)
-(* TODO see if this goes through *)
-  (* TODO I removed etransitivity/finish honing here; is that okay? *)
-
+automateAddData H.              (* 13 seconds *)
   (* TODO why need to clear H? *)
-(* apply refine_If_Then_Else; simplify with monad laws; simpl in *. *)
-(* (* Error: Impossible to unify "?24239" with "?20175". *) *)
-(* (* former existential is not in Show Existentials; implicit? *) *)
-(* reflexivity. *)
   }
 
   GenerateIndexesForAll         (* ? in IndexSelection, see GenerateIndexesFor *)
@@ -489,8 +480,6 @@ Ltac automateAddData H := srewrite_manual; finishHone H.
                         ltac:(CombineCase8 createLastSuffixTerm_dep createLastEqualityTerm_dep).
         simplify with monad laws.
         rewrite (@refineEquiv_swap_bind nat).
-        setoid_rewrite refine_if_If.
-        (* TODO: did an extra rewrite above; is this ok? *)
         implement_Insert_branches. (* this removes the nat choosing, so I guess the nondeterminism is okay if it involves indexed. the matching involves some of UnConstrFreshIdx *)
         (* ok, i guess getting a fresh ID for the index depends on the index specifics *)
         reflexivity.            (* broken *)
@@ -512,8 +501,7 @@ Ltac automateAddData H := srewrite_manual; finishHone H.
     } 
 
   (* hone method "Process". *) {
-    (* simplify with monad laws. *)
-    (* fails -- why? *)
+    simplify with monad laws.
     implement_Query             (* in AutoDB, implement_Query' has steps *)
       ltac:(CombineCase5 SuffixIndexUse EqIndexUse)
              ltac:(CombineCase10 createEarlySuffixTerm createEarlyEqualityTerm)
