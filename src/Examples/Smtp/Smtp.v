@@ -107,7 +107,8 @@ Definition SmtpSpec : ADT SmtpSig :=
 
     update "Rcpt" (arg: UUID * string) : Reply :=
       let (id, rcptto) := arg in
-      q <- Update c from sCONNECTIONS
+      q <-
+Update c from sCONNECTIONS
         making sRCPTTO :+= rcptto
         where (c!sID = id /\ c!sSTATE = S_Rcpt);
       let (updated, affected) := q in

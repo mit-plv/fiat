@@ -66,6 +66,7 @@ Definition BookStoreSig : ADTSig :=
 
 (* Now we write what the methods should actually do. *)
 
+Set Printing All.
 Definition BookStoreSpec : ADT BookStoreSig :=
   Eval simpl in
     QueryADTRep BookStoreSchema {
