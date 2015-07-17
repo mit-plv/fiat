@@ -110,8 +110,15 @@ src/Examples/Ics/WaterTank.v
 src/Examples/Ics/WaterTankExtract.v
 src/Examples/QueryStructure/Bookstore.v
 src/Examples/QueryStructure/Classifier.v
+src/Examples/QueryStructure/ClassifierUnOpt.v
+src/Examples/QueryStructure/CodeLookup.v
+src/Examples/QueryStructure/FriendFinder.v
+src/Examples/QueryStructure/Github.v
 src/Examples/QueryStructure/Messages.v
+src/Examples/QueryStructure/MessagesExtraction.v
+src/Examples/QueryStructure/MessagesUnOptimized.v
 src/Examples/QueryStructure/Photoalbum.v
+src/Examples/QueryStructure/PhotoalbumUnOpt.v
 src/Examples/QueryStructure/Stocks.v
 src/Examples/QueryStructure/Weather.v
 src/Examples/Smtp/Smtp.v

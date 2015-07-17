@@ -266,6 +266,11 @@ Ltac BuildQSIndexedBag heading AttrList BuildEarlyBag BuildLastBag k :=
                             k (BuildEarlyBag
                                  heading AttrList AttrKind AttrIndex subtree k))
                 end
+  | [ ] =>
+    k (@CountingListAsCorrectBag
+         (@RawTuple heading)
+         (IndexedTreeUpdateTermType heading)
+         (IndexedTreebupdate_transform heading))
   end.
 
 Ltac BuildQSIndexedBags SearchTerms BuildEarlyBags BuildLastBags k :=

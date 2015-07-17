@@ -202,12 +202,12 @@ Module TrieBag (X:OrderedType).
         let (deletedItems, bag') :=
             bdelete (TrieNode trie) search_term in
         let tries' :=
-            XMapfold (fun k tries deleted =>
-                        let deleted' := Trie_delete' tries search_term in
-                        ((fst deleted') ++ (fst deleted),
-                         add k (snd deleted') (snd deleted)))
-                     tries ([ ], empty _) in
-        (deletedItems ++ fst tries', Node bag' (snd tries'))
+            XMapfold (fun k tries (deleted : (list TItem) * _)  =>
+                        let (deletedItems', bag') := Trie_delete' tries search_term in
+                        let (deletedItems'', bags') := deleted in
+                        (deletedItems' ++ deletedItems'', XMap.add k bag' bags'))
+                     tries ([ ], XMap.empty _) in
+        (deletedItems ++ fst tries', Node bag' (XMap.this (snd tries')))
       end.
 
     Definition TrieBag_bdelete
@@ -255,12 +255,12 @@ Module TrieBag (X:OrderedType).
         let (updatedItems, bag') :=
             bupdate (TrieNode trie) search_term updateTerm in
         let tries' :=
-            XMapfold (fun k tries updated =>
-                        let updated' := Trie_update' tries search_term updateTerm in
-                        ((fst updated') ++ (fst updated),
-                         add k (snd updated') (snd updated)))
-                     tries ([ ], empty _) in
-        (updatedItems ++ fst tries', Node bag' (snd tries'))
+            XMapfold (fun k tries (updated : (list TItem) * _)  =>
+                        let (updatedItems', bag') := Trie_update' tries search_term updateTerm in
+                        let (updatedItems'', bags') := updated in
+                        (updatedItems' ++ updatedItems'', XMap.add k bag' bags'))
+                     tries ([ ], XMap.empty _) in
+        (updatedItems ++ fst tries', Node bag' (XMap.this (snd tries')))
       end.
 
     Definition TrieBag_bupdate
@@ -455,6 +455,59 @@ Module TrieBag (X:OrderedType).
       apply containerCorrect.
     Qed.
 
+    Lemma Trie_ind'
+          (P : Trie -> list key -> Prop)
+          (IH : forall (b : BagType) (m : Map Trie) l,
+              (forall k trie l, MapsTo k trie m -> P trie (l ++ [k]))
+              -> P (Node b m) l)
+          (trie : Trie)
+      : forall l, P trie l.
+          refine ((fix Trie_ind trie :=
+                    match trie return forall l, P trie l with
+                    | Node b tries => fun l => IH _ _ _ ((fun f0 =>
+                                                fix F (t : t Trie) : (forall k trie l, MapsTo k trie t -> P trie (l ++ [k])) :=
+                                                match t as t0 return ((forall k trie l, MapsTo k trie t0 -> P trie (l ++ [k]))) with
+                                                | Leaf =>  _
+                                                | XMap.Raw.Node t0 k e t1 t2 => f0 t0 (F t0) k e t1 (F t1) t2
+                                                end) _ tries)
+                    end) trie).
+          - intros; inversion H.
+          - intros; inversion H; subst.
+            + apply Trie_ind0.
+            + eapply x0; eauto.
+            + eapply x4; eauto.
+    Qed.
+
+    Definition XMapfold_ind
+               (P : Trie -> list BagType -> list X.t-> Prop)
+               (f : forall trie st, P trie (Trie_enumerate trie) st)
+               (m : tree Trie) (is_bst : bst m) :
+      forall k trie st , MapsTo k trie m ->
+                         P trie (Trie_enumerate trie) (st ++ [k]).
+    Proof.
+      refine ((fix XMapfold (m : tree Trie) {struct m} :
+                 bst m ->
+                 forall k trie st, MapsTo k trie m ->
+                                   P trie (Trie_enumerate trie) (st ++ [k]) :=
+                 match m with
+                   | XMap.Raw.Leaf => _
+                   | XMap.Raw.Node l x d r _ => _
+                 end) m is_bst).
+      - intros; apply find_1 in H0; simpl in H0;
+        [ discriminate | eauto ].
+      - intros; apply find_1 in H0; simpl in H0;
+        [ destruct (X.compare k x)
+        | eassumption ].
+        + apply find_2 in H0.
+          eapply (XMapfold0 l); eauto.
+          inversion H; subst; eauto.
+        + pose proof (f d (st ++ [k])).
+          injections; eassumption.
+        + apply find_2 in H0.
+          eapply (XMapfold0 r); eauto.
+          inversion H; subst; eauto.
+    Defined.
+
     Lemma TrieBag_bdelete_Preserves_RepInv :
       bdelete_Preserves_RepInv TrieBagRepInv TrieBag_bdelete.
     Proof.
@@ -502,7 +555,30 @@ Module TrieBag (X:OrderedType).
             rewrite H4 in H3.
             rewrite In_partition; eauto.
       }
-      admit.
+      { intro; pattern trie, l; apply Trie_ind'; simpl; intros.
+        intros; inversion containerCorrect; subst.
+        case_eq (bdelete b s); simpl; intros.
+        econstructor.
+        + pose proof (bdelete_RepInv b s) as e'; simpl in *.
+          rewrite H0 in e'; eapply e'; eauto.
+        + apply XMap.is_bst.
+        + intros; eapply H4.
+          destruct (bdelete_correct b s); eauto.
+          simpl in *; rewrite H0 in *; simpl in *.
+          rewrite H5 in H1.
+          rewrite In_partition; eauto.
+        + intros; rewrite XMapfold_eq in H1.
+          setoid_rewrite (fold_pair (XMap.Bst H3)) in H1; simpl in H1.
+          assert (XMap.MapsTo k subtrie
+                              (XMap.fold
+                                 (fun (k0 : XMap.key) (m0 : Trie) (b' : XMap.t Trie) =>
+                                    XMap.add k0 (snd (Trie_delete' m0 s)) b')
+                                 {| XMap.this := m; XMap.is_bst := H3 |}
+                                 (XMap.empty Trie))) by apply H1; clear H1.
+          setoid_rewrite FMap_Insert_fold_add_map_eq in H5.
+          rewrite map_mapsto_iff in H5; destruct_ex; intuition; subst.
+          eapply H; eauto.
+      }
     Qed.
 
     Lemma ValidUpdate_TrieBag_ValidUpdate :
@@ -574,7 +650,37 @@ Module TrieBag (X:OrderedType).
             inversion valid_update; subst.
             apply H8; apply H1; rewrite In_partition; eauto.
       }
-      admit.
+      { intro; pattern trie, l; apply Trie_ind'; simpl; intros.
+        intros; inversion containerCorrect; subst.
+        case_eq (bupdate b s update_term); simpl; intros.
+        econstructor.
+        + pose proof (bupdate_RepInv b s update_term) as e'; simpl in *.
+          rewrite H0 in e'; eapply e'; eauto.
+        + apply XMap.is_bst.
+        + intros; destruct (bupdate_correct b s update_term); eauto.
+          simpl in *; rewrite H0 in *; simpl in *.
+          intros; rewrite H5 in H1.
+          apply in_app_or in H1; destruct H1.
+          * intros; eapply H4.
+            rewrite In_partition; eauto.
+          * rewrite in_map_iff in H1; destruct H1 as [item' [item'_eq In_item']].
+            rewrite <- item'_eq in *.
+            destruct valid_update as [valid_update valid_update'].
+            eapply valid_update'.
+            eapply H4.
+            rewrite In_partition; eauto.
+        + intros; rewrite XMapfold_eq in H1.
+          setoid_rewrite (fold_pair (XMap.Bst H3)) in H1; simpl in H1.
+          assert (XMap.MapsTo k subtrie
+                              (XMap.fold
+                                 (fun (k0 : XMap.key) (m0 : Trie) (b' : XMap.t Trie) =>
+                                    XMap.add k0 (snd (Trie_update' m0 s update_term)) b')
+                                 {| XMap.this := m; XMap.is_bst := H3 |}
+                                 (XMap.empty Trie))) by apply H1; clear H1.
+          setoid_rewrite FMap_Insert_fold_add_map_eq in H5.
+          rewrite map_mapsto_iff in H5; destruct_ex; intuition; subst.
+          eapply H; eauto.
+      }
     Qed.
 
     Lemma Permutation_app_fold_left
@@ -693,35 +799,6 @@ Module TrieBag (X:OrderedType).
       - simpl in H0; intuition; subst; eauto.
     Qed.
 
-    Definition XMapfold_ind
-               (P : Trie -> list BagType -> list X.t-> Prop)
-               (f : forall trie st, P trie (Trie_enumerate trie) st)
-               (m : tree Trie) (is_bst : bst m) :
-      forall k trie st , MapsTo k trie m ->
-                         P trie (Trie_enumerate trie) (st ++ [k]).
-      refine ((fix XMapfold (m : tree Trie) {struct m} :
-                 bst m ->
-                 forall k trie st, MapsTo k trie m ->
-                                   P trie (Trie_enumerate trie) (st ++ [k]) :=
-                 match m with
-                   | XMap.Raw.Leaf => _
-                   | XMap.Raw.Node l x d r _ => _
-                 end) m is_bst).
-      - intros; apply find_1 in H0; simpl in H0;
-        [ discriminate | eauto ].
-      - intros; apply find_1 in H0; simpl in H0;
-        [ destruct (X.compare k x)
-        | eassumption ].
-        + apply find_2 in H0.
-          eapply (XMapfold0 l); eauto.
-          inversion H; subst; eauto.
-        + pose proof (f d (st ++ [k])).
-          injections; eassumption.
-        + apply find_2 in H0.
-          eapply (XMapfold0 r); eauto.
-          inversion H; subst; eauto.
-    Defined.
-
     Fixpoint Trie_enumerate_ind
              (P : Trie -> list BagType -> list X.t -> Prop)
              (H : forall trie st,
@@ -739,6 +816,66 @@ Module TrieBag (X:OrderedType).
       pose proof (@XMapfold_ind P (Trie_enumerate_ind P H) tries).
       clear Trie_enumerate_ind.
       eauto.
+    Qed.
+
+    Lemma Permute_XMapfold_cons
+      : forall m l,
+        XMapfold
+          (fun (_ : X.t) (tries : Trie) (bags : list BagType) =>
+             Trie_enumerate tries ++ bags) m l =
+        (XMapfold (fun (_ : X.t) (tries : Trie) (bags : list BagType) =>
+                     Trie_enumerate tries ++ bags) m []) ++ l.
+    Proof.
+      induction m; simpl; eauto.
+      intros.
+      rewrite IHm2; symmetry; rewrite IHm2.
+      rewrite <- !app_assoc; f_equiv; f_equiv.
+      symmetry; eauto.
+    Qed.
+    
+    Lemma Trie_enumerate_RepInv
+      : forall trie l,
+        TrieOK trie l
+        -> forall item,
+          List.In item (Trie_enumerate trie)
+          -> RepInv item.
+    Proof.
+      intros trie l; pattern trie, l; eapply Trie_ind'; simpl; intros.
+      inversion H0; subst; clear H0.
+      rewrite Permute_XMapfold_cons in H1; apply List.in_app_or in H1; intuition.
+      - rewrite XMapfold_eq in H0.
+        pose fold_spec_right as e; unfold XMap.fold in e; rewrite (e _ (XMap.Bst H5)) in H0;
+        clear e.
+        assert (exists k trie, List.In (k, trie)
+                                       (XMap.elements (elt := Trie)
+                                       {| XMap.this := m;
+                                          XMap.is_bst := H5 |})
+                               /\ List.In item (Trie_enumerate trie)).
+        { revert H0; clear.
+          induction
+            (XMap.elements (elt := Trie)
+                           {| XMap.this := m;
+                              XMap.is_bst := H5 |}); simpl; intros; intuition.          
+          rewrite fold_right_app in H0; simpl in H0.
+          rewrite fold_left_rev_right in H0; simpl in H0.
+          unfold uncurry in *.
+          rewrite Permutation_app_fold_left in H0; apply in_app_or in H0; intuition.
+          apply in_app_or in H; intuition.
+          destruct a; eauto.
+          destruct IHl as [k [trie' [In_k In_trie]]].
+          rewrite fold_left_rev_right; eauto.
+          eexists; eauto.
+          }
+        destruct H1 as [k [trie' [In_k In_trie']]].
+        eapply (H k trie' l0); eauto.
+        eapply elements_mapsto_iff with (m := XMap.Bst H5).
+        eapply InA_In; eauto.
+        econstructor; reflexivity.
+        apply H8.
+        eapply elements_mapsto_iff with (m := XMap.Bst H5).
+        eapply InA_In; eauto.
+        econstructor; reflexivity.
+      - simpl in H0; intuition; subst; eauto.
     Qed.
 
     Lemma TrieBag_BagCountCorrect :
@@ -760,7 +897,18 @@ Module TrieBag (X:OrderedType).
         rewrite !fold_left_rev_right; simpl.
         clear; revert n; induction l; simpl; eauto with arith.
         intros; rewrite IHl; f_equal; omega.
-      - admit.
+      - rewrite length_flatten.
+        remember [] as l; replace 0 with (length l) by (subst; eauto).
+        clear Heql; generalize (Trie_enumerate_RepInv containerCorrect).
+        induction (Trie_enumerate container); simpl; eauto.
+        rewrite !foldright_compose, <- !fold_left_rev_right, map_map.
+        intros; unfold compose in *; rewrite bcount_correct by eauto.
+        rewrite !fold_left_rev_right.
+        rewrite <- map_map, <- foldright_compose.
+        unfold compose; rewrite IHl0 by eauto.
+        remember (length l) as n; clear Heqn; generalize n.
+        clear; induction l0; simpl; eauto with arith; intros.
+        rewrite IHl0; f_equal; omega.
     Qed.
 
     Lemma Permutation_KeyBasedPartition
@@ -801,7 +949,7 @@ Module TrieBag (X:OrderedType).
         (eauto using part, Permutation_Equivalence, Tries_enumerate_app_Proper, Tries_enumerate_app_transpose_neqkey).
     Qed.
 
-    Lemma In_fold_left_split' :
+      Lemma In_fold_left_split' :
       forall bag l acc,
         List.In bag
                 (acc ++ fold_left
@@ -1833,7 +1981,15 @@ Module TrieBag (X:OrderedType).
               by (eauto using Permutation_Equivalence, Tries_enumerate_app_Proper, Tries_enumerate_app_transpose_neqkey).
             eapply filter_remove_key; eauto.
       }
-      { admit. }
+      { simpl; unfold TrieBag_bfind_matcher; simpl.
+        intros.
+        generalize (Trie_enumerate_RepInv containerCorrect).
+        unfold TrieBag_benumerate.
+        induction (Trie_enumerate container); simpl.
+        - eauto.
+        - intros; rewrite <- bfind_correct by eauto.
+          rewrite !filter_app; f_equiv; eauto.
+      }
     Qed.
 
     Corollary TrieBag_enumerateOK''
@@ -1931,6 +2087,27 @@ Module TrieBag (X:OrderedType).
       unfold Proper, respectful, KeyBasedPartitioningFunction; intros.
       repeat find_if_inside; subst; simpl; eauto.
       rewrite H in n; intuition.
+    Qed.
+
+    Instance Proper_Trie_enumerate_app
+      : Proper
+          (X.eq ==> eq ==> Permutation (A:=BagType) ==> Permutation (A:=BagType))
+          (fun (_ : X.t) (tries : Trie) (bags : list BagType) =>
+             Trie_enumerate tries ++ bags).
+    Proof.
+      unfold Proper, respectful, KeyBasedPartitioningFunction; intros.
+      subst; rewrite H1.
+      reflexivity.
+    Qed.
+
+    Lemma transpose_neqkey_Trie_enumerate_app
+      : transpose_neqkey (Permutation (A:=BagType))
+                         (fun (_ : X.t) (tries : Trie) (bags : list BagType) =>
+                            Trie_enumerate tries ++ bags).
+    Proof.
+      unfold transpose_neqkey; intros.
+      rewrite !app_assoc; f_equiv.
+      apply Permutation_app_swap.
     Qed.
 
     Lemma TrieBag_BagDeleteCorrect :
@@ -2158,7 +2335,119 @@ Module TrieBag (X:OrderedType).
               rewrite <- filter_remove_key, flatten_filter, map_map; eauto.
         }
       }
-      { admit. }
+      { unfold TrieBag_bfind_matcher; simpl.
+        unfold TrieBagRepInv.
+        pattern container, (@nil X.t) ; apply Trie_ind'; simpl; intros.
+        unfold TrieBag_benumerate; simpl.
+        intros; inversion containerCorrect; subst.
+        case_eq (bdelete b search_term); simpl; intros.
+        destruct (bdelete_correct b search_term); eauto.
+        rewrite H0 in H1, H5; simpl in H1, H5.
+        rewrite (Permute_XMapfold_cons m [b]), Permute_XMapfold_cons with (l := [b0]).
+        rewrite !map_app, !flatten_app, !partition_app; simpl.
+        rewrite !app_nil_r.
+        split.
+        - rewrite H1; f_equiv.
+          rewrite !XMapfold_eq.
+          setoid_rewrite (fold_pair (XMap.Bst H3)); simpl.
+          rewrite fold_spec_right.
+          pose fold_spec_right as e; unfold XMap.fold in e; rewrite (e _ (XMap.Bst H3));
+          clear e.
+          assert (forall k trie,
+                     InA (@XMap.eq_key_elt _)
+                         (k, trie)
+                         (rev
+                            (XMap.elements (elt:=Trie)
+                                           {| XMap.this := m; XMap.is_bst := H3 |}))
+                     -> Permutation (TrieBag_benumerate (snd (Trie_delete' trie search_term)))
+                                    (snd
+                                       (List.partition
+                                          (fun item : TItem => bfind_matcher search_term item)
+                                          (TrieBag_benumerate trie)))).
+          { intros; eapply H; eauto using elements_mapsto_iff.
+            pose elements_mapsto_iff as e; unfold XMap.MapsTo in e; rewrite (e _ (XMap.Bst H3));
+            clear e.
+            rewrite <- InA_rev; eauto with typeclass_instances.
+            eapply H6.
+            eapply (@elements_mapsto_iff _ (XMap.Bst H3)).
+            eapply InA_rev; eauto with typeclass_instances.
+          }
+          generalize H7; clear.
+          assert (NoDupA (@XMap.eq_key _)
+                         (rev
+                            (XMap.elements (elt:=Trie) {| XMap.this := m; XMap.is_bst := H3 |})))
+          by (apply NoDupA_rev; eauto with typeclass_instances;
+              eapply XMap.elements_3w).
+          revert H.
+          induction (rev
+                       (XMap.elements (elt:=Trie) {| XMap.this := m; XMap.is_bst := H3 |}));
+            simpl; intros; eauto.
+          unfold uncurry.
+          pose fold_add as e; unfold XMap.fold, XMap.add in e; simpl in e.
+          rewrite e; clear e.
+          rewrite !map_app, !flatten_app, !partition_app; simpl.
+          unfold TrieBag_benumerate in H7.
+          rewrite H7 with (k := fst a); f_equiv; eauto.
+          rewrite <- IHl; eauto.
+          inversion H; eauto.
+          intros; eapply H7; simpl; econstructor 2; eauto.
+          econstructor; destruct a; simpl; reflexivity.
+          eauto with typeclass_instances.
+          eauto with typeclass_instances.
+          eauto using transpose_neqkey_Trie_enumerate_app.
+          inversion H; subst; intro; apply H2.
+          unfold XMap.In, In0 in H0.
+          revert H0; clear; induction l; simpl.
+          + intros; destruct H0; inversion H.
+          + intros; destruct H0.
+            pose add_mapsto_iff as e; unfold XMap.add, XMap.MapsTo in e; simpl in e;
+            rewrite e in H; clear e.
+            intuition.
+            * econstructor 1; symmetry; apply H.
+            * eauto.
+        - rewrite H5, Permutation_app_swap; f_equiv.
+          rewrite !XMapfold_eq.
+          setoid_rewrite (fold_pair (XMap.Bst H3)); simpl.
+          rewrite fold_spec_right.
+          pose fold_spec_right as e; unfold XMap.fold in e; rewrite (e _ (XMap.Bst H3));
+          clear e.
+          assert (forall k trie,
+                     InA (@XMap.eq_key_elt _)
+                         (k, trie)
+                         (rev
+                            (XMap.elements (elt:=Trie)
+                                           {| XMap.this := m; XMap.is_bst := H3 |}))
+                     -> Permutation ((fst (Trie_delete' trie search_term)))
+                                    (fst
+                                       (List.partition
+                                          (fun item : TItem => bfind_matcher search_term item)
+                                          (TrieBag_benumerate trie)))).
+          { intros; eapply H; eauto using elements_mapsto_iff.
+            pose elements_mapsto_iff as e; unfold XMap.MapsTo in e; rewrite (e _ (XMap.Bst H3));
+            clear e.
+            rewrite <- InA_rev; eauto with typeclass_instances.
+            eapply H6.
+            eapply (@elements_mapsto_iff _ (XMap.Bst H3)).
+            eapply InA_rev; eauto with typeclass_instances.
+          }
+          generalize H7; clear.
+          assert (NoDupA (@XMap.eq_key _)
+                         (rev
+                            (XMap.elements (elt:=Trie) {| XMap.this := m; XMap.is_bst := H3 |})))
+          by (apply NoDupA_rev; eauto with typeclass_instances;
+              eapply XMap.elements_3w).
+          revert H.
+          induction (rev
+                       (XMap.elements (elt:=Trie) {| XMap.this := m; XMap.is_bst := H3 |}));
+            simpl; intros; eauto.
+          unfold uncurry.
+          rewrite !map_app, !flatten_app, !partition_app; simpl.
+          unfold TrieBag_benumerate in H7.
+          rewrite H7 with (k := fst a); f_equiv; eauto.
+          rewrite <- IHl; eauto.
+          inversion H; eauto.
+          econstructor; destruct a; simpl; reflexivity.
+      }
     Qed.
 
     Lemma TrieBag_BagUpdateCorrect :
@@ -2409,7 +2698,140 @@ Module TrieBag (X:OrderedType).
               eauto.
         }
       }
-      { admit. }
+      { unfold TrieBag_bfind_matcher; simpl.
+        unfold TrieBagRepInv.
+        pattern container, (@nil X.t) ; apply Trie_ind'; simpl; intros.
+        unfold TrieBag_benumerate; simpl.
+        intros; inversion containerCorrect; subst.
+        case_eq (bupdate b search_term update_term); simpl; intros.
+        destruct (bupdate_correct b search_term update_term); eauto.
+        rewrite H0 in H1, H5; simpl in H1, H5.
+        rewrite (Permute_XMapfold_cons m [b]), Permute_XMapfold_cons with (l := [b0]).
+        rewrite !map_app, !flatten_app, !partition_app; simpl.
+        rewrite !app_nil_r.
+        split.
+        - rewrite H1.
+          rewrite app_assoc.
+          symmetry.
+          rewrite (Permutation_app_swap).
+          symmetry.
+          rewrite <- !app_assoc.
+          rewrite (Permutation_app_swap (snd _)).
+          rewrite !app_assoc, map_app.
+          f_equiv.
+          symmetry; rewrite Permutation_app_swap, app_assoc.
+          f_equiv.
+          rewrite !XMapfold_eq.
+          symmetry.
+          setoid_rewrite (fold_pair (XMap.Bst H3)); simpl.
+          rewrite fold_spec_right.
+          pose fold_spec_right as e; unfold XMap.fold in e; rewrite (e _ (XMap.Bst H3));
+          clear e.
+          assert (forall k trie,
+                     InA (@XMap.eq_key_elt _)
+                         (k, trie)
+                         (rev
+                            (XMap.elements (elt:=Trie)
+                                           {| XMap.this := m; XMap.is_bst := H3 |}))
+                     -> Permutation (TrieBag_benumerate (snd (Trie_update' trie search_term update_term)))
+                                    (snd
+                                       (List.partition
+                                          (fun item : TItem => bfind_matcher search_term item)
+                                          (TrieBag_benumerate trie))
+                                          ++ List.map (bupdate_transform update_term)
+                                          (fst
+                                             (List.partition
+                                                (fun item : TItem => bfind_matcher search_term item)
+                                                (TrieBag_benumerate trie)))
+                 )).
+          { intros; eapply H; eauto using elements_mapsto_iff.
+            pose elements_mapsto_iff as e; unfold XMap.MapsTo in e; rewrite (e _ (XMap.Bst H3));
+            clear e.
+            rewrite <- InA_rev; eauto with typeclass_instances.
+            eapply H6.
+            eapply (@elements_mapsto_iff _ (XMap.Bst H3)).
+            eapply InA_rev; eauto with typeclass_instances.
+          }
+          generalize H7; clear.
+          assert (NoDupA (@XMap.eq_key _)
+                         (rev
+                            (XMap.elements (elt:=Trie) {| XMap.this := m; XMap.is_bst := H3 |})))
+          by (apply NoDupA_rev; eauto with typeclass_instances;
+              eapply XMap.elements_3w).
+          revert H.
+          induction (rev
+                       (XMap.elements (elt:=Trie) {| XMap.this := m; XMap.is_bst := H3 |}));
+            simpl; intros; eauto.
+          unfold uncurry.
+          pose fold_add as e; unfold XMap.fold, XMap.add in e; simpl in e.
+          rewrite e; clear e.
+          rewrite !map_app, !flatten_app, !partition_app; simpl.
+          unfold TrieBag_benumerate in H7.
+          rewrite H7 with (k := fst a); eauto with typeclass_instances.
+          rewrite <- !app_assoc; f_equiv; eauto.
+          rewrite IHl.
+          rewrite Permutation_app_swap, <- app_assoc, map_app.
+          f_equiv. 
+          rewrite Permutation_app_swap; f_equiv.
+          inversion H; eauto.
+          intros; eapply H7; econstructor 2; eauto.
+          destruct a; econstructor 1; reflexivity.
+          eauto with typeclass_instances.
+          eauto with typeclass_instances.
+          eauto using transpose_neqkey_Trie_enumerate_app.
+          inversion H; subst; intro; apply H2.
+          unfold XMap.In, In0 in H0.
+          revert H0; clear; induction l; simpl.
+          + intros; destruct H0; inversion H.
+          + intros; destruct H0.
+            pose add_mapsto_iff as e; unfold XMap.add, XMap.MapsTo in e; simpl in e;
+            rewrite e in H; clear e.
+            intuition.
+            * econstructor 1; symmetry; apply H.
+            * eauto.
+        - rewrite H5, Permutation_app_swap; f_equiv.
+          rewrite !XMapfold_eq.
+          setoid_rewrite (fold_pair (XMap.Bst H3)); simpl.
+          rewrite fold_spec_right.
+          pose fold_spec_right as e; unfold XMap.fold in e; rewrite (e _ (XMap.Bst H3));
+          clear e.
+          assert (forall k trie,
+                     InA (@XMap.eq_key_elt _)
+                         (k, trie)
+                         (rev
+                            (XMap.elements (elt:=Trie)
+                                           {| XMap.this := m; XMap.is_bst := H3 |}))
+                     -> Permutation ((fst (Trie_update' trie search_term update_term)))
+                                    (fst
+                                       (List.partition
+                                          (fun item : TItem => bfind_matcher search_term item)
+                                          (TrieBag_benumerate trie)))).
+          { intros; eapply H; eauto using elements_mapsto_iff.
+            pose elements_mapsto_iff as e; unfold XMap.MapsTo in e; rewrite (e _ (XMap.Bst H3));
+            clear e.
+            rewrite <- InA_rev; eauto with typeclass_instances.
+            eapply H6.
+            eapply (@elements_mapsto_iff _ (XMap.Bst H3)).
+            eapply InA_rev; eauto with typeclass_instances.
+          }
+          generalize H7; clear.
+          assert (NoDupA (@XMap.eq_key _)
+                         (rev
+                            (XMap.elements (elt:=Trie) {| XMap.this := m; XMap.is_bst := H3 |})))
+          by (apply NoDupA_rev; eauto with typeclass_instances;
+              eapply XMap.elements_3w).
+          revert H.
+          induction (rev
+                       (XMap.elements (elt:=Trie) {| XMap.this := m; XMap.is_bst := H3 |}));
+            simpl; intros; eauto.
+          unfold uncurry.
+          rewrite !map_app, !flatten_app, !partition_app; simpl.
+          unfold TrieBag_benumerate in H7.
+          rewrite H7 with (k := fst a); f_equiv; eauto.
+          rewrite <- IHl; eauto.
+          inversion H; eauto.
+          econstructor; destruct a; simpl; reflexivity.
+      }
       Grab Existential Variables.
       eauto.
     Qed.
