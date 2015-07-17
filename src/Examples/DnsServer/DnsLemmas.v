@@ -166,7 +166,7 @@ Proof.
   intros; refine pick val true; [ reflexivity | simpl; intros; assumption ].
 Qed.
 
-(* if the record's type *is* CNAME, then refine the forall check against other records into 
+(* if the record's type *is* CNAME, then refine the forall check against other records into
 an existential (exists a record with the same name), and return the opposite *)
 Lemma refine_is_CNAME__forall_to_exists :
   forall (n : DNSRRecord) (R : @IndexedEnsemble DNSRRecord),
@@ -191,7 +191,7 @@ Proof.
           end.
 Qed.
 
-(* very similar to refine_is_CNAME__forall_to_exists; 
+(* very similar to refine_is_CNAME__forall_to_exists;
 they start with the same set, but refine_forall_to_exists refines it with an extra end condition. changes the (forall x, ~P x) check into (exists x, P x) and returns !x, adding the condition in the forall *)
 Lemma refine_forall_to_exists :
   forall (n : DNSRRecord) (R : @IndexedEnsemble DNSRRecord),
@@ -219,7 +219,7 @@ Qed.
 
 (* in AddData, simplifies x1 from large For/Where/Return expression to [ret (filter dec a0)] *)
 
-(* refine a check into a filter, given the results of a sub-check 
+(* refine a check into a filter, given the results of a sub-check
 uses P' decision procedure invisibly in DecideableEnsembles.dec by the magic of typeclasses
 (try Set Printing Implicit) *)
 Lemma refine_subcheck_to_filter {heading}
@@ -323,8 +323,10 @@ Proof.
 Qed.
 *)
 
-(* uses refine_forall_to_exists; refines x2 in AddData 
+(* uses refine_forall_to_exists; refines x2 in AddData
 very similar to refine_count_constraint_broken; comments below are relative to refine_count_constraint_broken *)
+Locate "_ ! _".
+
 Lemma refine_count_constraint_broken' :
   forall (n : DNSRRecord) (r : UnConstrQueryStructure DnsSchema),
     refine {b |
@@ -838,11 +840,11 @@ Lemma flatmap_permutation : forall heading l1 (l2 : list (@Tuple heading)),
     -> Permutation l1 l2.
 Proof.
   intros. revert l1 H.
-  induction l2; intros; destruct l1; intros; simpl in *; 
+  induction l2; intros; destruct l1; intros; simpl in *;
   try reflexivity; inv H; (inv H0; inv H1; inv H0; inv H2; inv H).
   - inv H3.
-  - rewrite app_singleton. auto. 
-Qed.   
+  - rewrite app_singleton. auto.
+Qed.
 
 Lemma flatmap_permutation' : forall heading (l : list (@Tuple heading)),
     In (list Tuple) (@FlattenCompList.flatten_CompList (@Tuple heading)
@@ -880,7 +882,7 @@ Definition UnIndexedEnsembleListExists
 
 Lemma nth_error_map' {A B}
   : forall (f : A -> B) l m b,
-    nth_error (map f l) m = Some b -> 
+    nth_error (map f l) m = Some b ->
     exists a, nth_error l m = Some a /\ f a = b.
 Proof.
   induction l; destruct m; simpl; intros; try discriminate;
@@ -944,10 +946,10 @@ Proof.
      eapply map_nth_error with (f := indexedElement) in H2; simpl in *; eauto.
      eapply map_nth_error with (f := indexedElement) in H5; simpl in *; eauto.
 Qed.
-  
+
 Lemma In_Where_Intersection heading
   : forall R P (P_dec : DecideableEnsemble P) x,
-    computes_to 
+    computes_to
       (QueryResultComp R (fun r => Where (P r)
                                          Return r)) x ->
     computes_to
@@ -1038,8 +1040,8 @@ Proof.
       eapply H7 in H5; destruct H5; destruct H5.
       econstructor; eauto.
 Qed.
-  
-Theorem IsSuffix_string_dec : 
+
+Theorem IsSuffix_string_dec :
   forall l1 l2 : list string, IsSuffix l1 l2 \/ ~ IsSuffix l1 l2.
 Proof.
   intros.
@@ -1074,7 +1076,7 @@ Proof.
         apply H.
         exists x.
         auto.
-    + 
+    +
       unfold not in n.
       right.
       intros not.
@@ -1217,7 +1219,7 @@ Lemma tuples_in_relation_satisfy_constraint_specific :
          a
 
 ->
-  
+
   forall (t t' : DNSRRecord) (n0 n' : nat),
     n0 <> n' ->
     nth_error a n0 = Some t ->
@@ -1296,7 +1298,7 @@ In
          l
 -> List.incl x l
 ). {
-  (* need to use the main H5 too, with the filter 
+  (* need to use the main H5 too, with the filter
 this is because x is a list of tuples that all came from r *)
   clear BStringId0 t t' n0 H0 H1 H2 H3 H n'.
   remember H5 as inFilter. clear HeqinFilter H5.
@@ -1309,10 +1311,10 @@ this is because x is a list of tuples that all came from r *)
   (* H : x0 (new) is x1 without indices, and all indices in x1 are unique, and
      forall x2 (new) : indexedelement, it's in sCOLLECTIONS if and only if it's in x1, the list of indexed elements  *)
 
-  inv H. 
+  inv H.
   inv H2.
   remember (map elementIndex x1) as x0.
-  
+
   inversion inRelation.
   inversion H2. clear H2. inversion H3. clear H3.
   inversion H2. clear H2. inversion H5. clear H5.
@@ -1326,7 +1328,7 @@ this is because x is a list of tuples that all came from r *)
 
   assert (exists feIndex,
      List.In {| elementIndex := feIndex; indexedElement := filterElem |} x1).
-  { 
+  {
   remember (map indexedElement x1) as x1elems.
 
   (* this is the real nub of the proof *)
@@ -1367,7 +1369,7 @@ this is because x is a list of tuples that all came from r *)
                               (@eq_refl (option string) (@Some string sNAME)))))
 
 ) ) as in_flatten.
-    
+
     assert (forall a0 : Tuple,
                 (fun r : Tuple => IsSuffix (qname (questions n))
  (@GetAttribute
@@ -1463,7 +1465,7 @@ this is because x is a list of tuples that all came from r *)
 
   (* alternate version *)
   assert (List.In filterElem x1elems ->
-          exists index, List.In {| elementIndex := index; indexedElement := filterElem |} x1). 
+          exists index, List.In {| elementIndex := index; indexedElement := filterElem |} x1).
   {
   intros.
   rewrite Heqx1elems in H5.
@@ -1483,7 +1485,7 @@ this is because x is a list of tuples that all came from r *)
   exists index.
   apply H5.
   }
-    
+
   (* ------------------------ *)
 
   destruct H3 as [feIndex].                  (* new *)
@@ -1507,7 +1509,7 @@ this is because x is a list of tuples that all came from r *)
 
   (* there's probably something I can do with indices to remove this step *)
   assert (List.In indexedFilterElem x3 -> List.In filterElem (map indexedElement x3)) as H5.
-  { intros. 
+  { intros.
     apply in_map_iff.
     exists indexedFilterElem.
     split.
@@ -1596,8 +1598,8 @@ In
                                     (@Datatypes.cons Attribute
                                        (Build_Attribute sDATA string)
                                        (@Datatypes.nil Attribute)))))))) r)))
-         l 
--> List.incl a l). 
+         l
+-> List.incl a l).
   {
     (* x \subset sCOLLECTIONS, and Permutation a x *)
     intros allTuplesInRelation inRelation.
@@ -1612,7 +1614,7 @@ In
     apply H4.
     eapply Permutation_in.
     apply H7. auto.
-  } 
+  }
 
 (* use the proof that the constraints hold on everything in sC, therefore on a *)
 (* t and t' are in a, therefore the constraint must hold on them *)
@@ -1636,11 +1638,11 @@ In
   eapply flatmap_permutation in H5'; rewrite H5' in H7.
   destruct (unindexed_OK_exists_index' _ H0 H1 H2 H7) as [m [m' [idx [idx' ?] ] ] ];
     intuition.
-  
+
   pose ((DropQSConstraints r_n)!sCOLLECTIONS)%QueryImpl as relationSet. simpl in relationSet.
   unfold UnConstrRelation in *.
   pose proof (ith_Bounded relName (rels r_n) {| bindex := sCOLLECTIONS |}) as relationthing. simpl in *.
-pose proof (tupleconstr (ith_Bounded relName (rels r_n) {| bindex := sCOLLECTIONS |})) as 
+pose proof (tupleconstr (ith_Bounded relName (rels r_n) {| bindex := sCOLLECTIONS |})) as
   constraint_in_relation_OK; simpl in *.
 eapply (constraint_in_relation_OK {| elementIndex := idx; indexedElement := t |}
                                   {| elementIndex := idx'; indexedElement := t' |});
@@ -1659,10 +1661,10 @@ eapply map_nth_error with (f := elementIndex) in H16.
 }
 
 assert (List.In {| elementIndex := idx; indexedElement := t |} x').
-  { eapply exists_in_list; eauto. }  
+  { eapply exists_in_list; eauto. }
   apply Equiv' in H15; destruct H15; rewrite GetRelDropConstraints in H15; apply H15.
   assert (List.In {| elementIndex := idx'; indexedElement := t' |} x').
-  { eapply exists_in_list; eauto. }  
+  { eapply exists_in_list; eauto. }
   apply Equiv' in H15; destruct H15; rewrite GetRelDropConstraints in H15; apply H15.
 Qed.
 
@@ -1694,4 +1696,3 @@ Lemma tuples_in_relation_filtered_satisfy_constraint :
 Proof.
 
 Admitted.
-
