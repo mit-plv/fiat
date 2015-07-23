@@ -151,6 +151,10 @@ Notation "[[ x 'in' xs | P ]]" := (filtered_list xs (fun x => P)) (at level 70) 
 
 (* if the record's type isn't CNAME, there's no need to check against the other records;
 it's independent of the other records *)
+
+
+
+(*
 Lemma refine_not_CNAME__independent :
   forall (n : DNSRRecord) (R : @IndexedEnsemble DNSRRecord),
     n!sTYPE <> CNAME
@@ -325,6 +329,7 @@ Qed.
 
 (* uses refine_forall_to_exists; refines x2 in AddData 
 very similar to refine_count_constraint_broken; comments below are relative to refine_count_constraint_broken *)
+(*
 Lemma refine_count_constraint_broken' :
   forall (n : DNSRRecord) (r : UnConstrQueryStructure DnsSchema),
     refine {b |
@@ -370,6 +375,7 @@ Proof.
   simplify with monad laws.
   setoid_rewrite negb_involutive; f_equiv.
 Qed.
+*)
 
 (* clear_nested_if, using filter_nil_is_nil, clear the nested if/then in honing AddData *)
 Lemma clear_nested_if {A}
@@ -1088,6 +1094,9 @@ Qed.
 
 (* Main lemma -- TODO generalize *)
 
+(* but Exc = option? broke because I changed the type of sDATA in DNSRRecord? *)
+(* Set Printing All. *)
+(*
 Lemma tuples_in_relation_satisfy_constraint_specific :
   forall (a : list Tuple) (n : packet) (r_n : QueryStructure DnsSchema),
 (* TODO *)
@@ -1220,7 +1229,7 @@ Lemma tuples_in_relation_satisfy_constraint_specific :
   
   forall (t t' : DNSRRecord) (n0 n' : nat),
     n0 <> n' ->
-    nth_error a n0 = Some t ->
+    nth_error a n0 = Some t -> (* this isn't right? *)
     nth_error a n' = Some t' ->
     get_name t = get_name t' ->
     t!sTYPE <> CNAME.
@@ -1665,7 +1674,7 @@ assert (List.In {| elementIndex := idx; indexedElement := t |} x').
   { eapply exists_in_list; eauto. }  
   apply Equiv' in H15; destruct H15; rewrite GetRelDropConstraints in H15; apply H15.
 Qed.
-
+*)
 (* -------------------------------------------------------------------------------------- *)
 
 (* TODO: more general lemmas (hard to state w/ implicits; do later) *)
@@ -1695,3 +1704,4 @@ Proof.
 
 Admitted.
 
+*)

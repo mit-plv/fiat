@@ -93,7 +93,26 @@ Section Packet.
       atype : RRecordType;
       aclass : RRecordClass;
       ttl : nat;
-      rdata : string }.
+      rdata : name }.           (* stores a hostname or an IP *)
+  (* technically this should contain SOA info as well, but I made SOA a separate type *)
+
+Definition default_refresh_time := 3600. (* seconds *)
+Definition default_retry_time := 600.
+Definition default_expire_time := 86400. 
+(* may cause stack overflow / segfault; use hours instead? *)
+Definition default_minimum_TTL := 3600.
+
+  (* TODO: authoritative DNS server does not yet store or return this SOA *)
+  (* https://support.microsoft.com/en-us/kb/163971 *)
+  Record SOA :=                 (* Start of Authority *)
+    { sourcehost : name;
+      contact_email : name;
+      serial : nat;             (* revision # of zone file; needs to be updates *)
+      refresh : nat;
+      retry : nat;              (* failed zone transfer *)
+      expire : nat;             (* complete a zone transfer *)
+      minTTL : nat }.           (* for negative queries *)
+  (* should this be a tuple or a record? *)
 
   Record packet :=
     { id : Bvector 16;
@@ -103,10 +122,46 @@ Section Packet.
       authority : list answer;
       additional : list answer }.
 
+Definition test_vec := Bvect_true 16.
+Definition test_question :=
+  {| qname := nil;
+     qtype := A;
+     qclass := CH |}.
+Definition test_packet :=
+  {| id := test_vec;
+     flags := test_vec;
+     questions := test_question;
+     answers := nil;
+     authority := nil;
+     additional := nil |}.
+
+Definition id' p := id p.       (* to get around shadowing *)
+
+      (* is question the same as domain? no, sometimes we want to throw out the QUESTION and replace it with the DOMAIN
+e.g. our question could be "scholar.google.com" but our domain could be "google.com" (prefix)
+so 
+- should we cache "google.com" under "scholar.google.com"? yes, as a question
+- should we cache "scholar.google.com" under "google.com"? no
+should packets be generated anew??
+
+for a wrapperresponse:
+Question means that domain should be a strict prefix of name? what about server?
+   for the [full question scholar.google.com] we know the server [192.168.1.1] for prefix [google.com] instead
+   but should this redirect should work for ANY string for which google.com is a strict prefix?
+   yes. so, in conclusion, when we get the result from the cache, we need to replace the question with the real question e.g. images.google.com; we'll already have that other packet info
+Answer means that domain == name *)
+
+Print replace_order.
+Locate replace_order.
+
   Lemma zero_lt_sixteen : lt 0 16. omega. Qed.
   Definition buildempty (p : packet) :=
     {| id := id p;
-       flags := replace_order (flags p) zero_lt_sixteen true; (* set QR bit *)
+       (* for a particular request, all related packets should have the same id *)
+       flags := replace_order (flags p) zero_lt_sixteen true; 
+       (* 0 = query (changed by client); 1 = response (changed by server) *)
+       (* set QR bit to true, meaning this is a response *)
+       (* do we want an AA (authoritative answer) flag? *)
        questions := questions p;
        answers := [ ];
        authority := [ ];
@@ -125,7 +180,7 @@ Section Packet.
             sTYPE :: RRecordType,
             sCLASS :: RRecordClass,
             sTTL :: nat,
-            sDATA :: string>%Heading.
+            sDATA :: name>%Heading.
 
   Definition toAnswer (t: DNSRRecord) :=
     {| aname := t!sNAME;
@@ -150,5 +205,22 @@ Section Packet.
        answers := answers p;
        authority := (toAnswer t) :: (authority p);
        additional := additional p |}.
+
+  (* combine with above? *)
+  Definition addAdditional (p : packet) (t : DNSRRecord) :=
+    {| id := id p;
+       flags := flags p;
+       questions := questions p;
+       answers := answers p;
+       authority := authority p;
+       additional := (toAnswer t) :: additional p |}.
+
+  Definition updateRecords (p : packet) answers' authority' additional' :=
+    {| id := id p;
+       flags := flags p;
+       questions := questions p;
+       answers := answers';
+       authority := authority';
+       additional := additional' |}.
 
 End Packet.
