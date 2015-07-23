@@ -11,11 +11,12 @@ Require Import Fiat.QueryStructure.Automation.AutoDB
         Fiat.QueryStructure.Automation.IndexSelection
         Fiat.QueryStructure.Specification.SearchTerms.ListPrefix
         Fiat.QueryStructure.Automation.SearchTerms.FindSuffixSearchTerms
-        Fiat.QueryStructure.Automation.QSImplementation
-        Fiat.Examples.DnsServer.packet
-        Fiat.Examples.DnsServer.DnsSchema
-        Fiat.Examples.DnsServer.DnsLemmas.
+        Fiat.QueryStructure.Automation.QSImplementation.
 
+Require Import Fiat.Examples.DnsServer.packet
+        Fiat.Examples.DnsServer.DnsSchema
+        Fiat.Examples.DnsServer.DnsLemmas
+        Fiat.Examples.DnsServer.DnsAutomation.
 
 Definition DnsSig : ADTSig :=
   ADTsignature {
@@ -69,195 +70,6 @@ Definition DnsSpec : ADT DnsSig :=
 
 (* -------------------------------------------------------------------------------------- *)
 
-(* TODO [autorewrite with monad laws] breaks when this is moved into DnsLemmas *)
-
-(* implement the DNS record constraint check as code that counts the number of occurrences of
-the constraint being broken (refines the boolean x1 in AddData) *)
-Lemma refine_count_constraint_broken :
-  forall (n : DNSRRecord) (r : UnConstrQueryStructure DnsSchema),
-    refine {b |
-            decides b
-                    (forall tup' : @IndexedTuple (GetHeading DnsSchema sCOLLECTIONS),
-                       (r!sCOLLECTIONS)%QueryImpl tup' ->
-                       n!sNAME = (indexedElement tup')!sNAME -> n!sTYPE <> CNAME)}
-           (If (beq_RRecordType n!sTYPE CNAME)
-               Then count <- Count
-               For (UnConstrQuery_In r ``(sCOLLECTIONS)
-                                     (fun tup : Tuple =>
-                                        Where (n!sNAME = tup!sNAME)
-                                              Return tup ));
-            ret (beq_nat count 0) Else ret true).
-Proof.
-  intros; setoid_rewrite refine_pick_decides at 1;
-  [ | apply refine_is_CNAME__forall_to_exists | apply refine_not_CNAME__independent ].
-  (* refine existence check into query. *)
-  match goal with
-      |- context[{b | decides b
-                              (exists tup : @IndexedTuple ?heading,
-                                 (@GetUnConstrRelation ?qs_schema ?qs ?tbl tup /\ @?P tup))}]
-      =>
-      let H1 := fresh in
-      let H2 := fresh in
-      makeEvar (Ensemble (@Tuple heading))
-               ltac:(fun P' => assert (Same_set (@IndexedTuple heading) (fun t => P' (indexedElement t)) P) as H1;
-                     [unfold Same_set, Included, Ensembles.In;
-                       split; [intros x H; pattern (indexedElement x);
-                               match goal with
-                                   |- ?P'' (indexedElement x) => unify P' P'';
-                                     simpl; eauto
-                               end
-                              | eauto]
-                     |
-                     assert (DecideableEnsemble P') as H2;
-                       [ simpl; eauto with typeclass_instances (* Discharge DecideableEnsemble w/ intances. *)
-                       | setoid_rewrite (@refine_constraint_check_into_query' qs_schema tbl qs P P' H2 H1); clear H1 H2 ] ]) end.
-  remember n!sTYPE; refine pick val (beq_RRecordType d CNAME); subst;
-  [ | case_eq (beq_RRecordType n!sTYPE CNAME); intros;
-      rewrite <- beq_RRecordType_dec in H; find_if_inside;
-      unfold not; simpl in *; try congruence ].
-  simplify with monad laws.
-  autorewrite with monad laws.
-  setoid_rewrite negb_involutive.
-  reflexivity.
-Qed.
-
-Hint Resolve refine_count_constraint_broken.
-
-Lemma computes_to_in_specific : forall a n r_n,
- @computes_to
-         (list
-            (@Tuple
-               (BuildHeading
-                  (@Datatypes.cons Attribute (Build_Attribute sNAME name)
-                     (@Datatypes.cons Attribute
-                        (Build_Attribute sTYPE RRecordType)
-                        (@Datatypes.cons Attribute
-                           (Build_Attribute sCLASS RRecordClass)
-                           (@Datatypes.cons Attribute
-                              (Build_Attribute sTTL nat)
-                              (@Datatypes.cons Attribute
-                                 (Build_Attribute sDATA string)
-                                 (@Datatypes.nil Attribute)))))))))
-         (@Query_For
-            (@Tuple
-               (BuildHeading
-                  (@Datatypes.cons Attribute (Build_Attribute sNAME name)
-                     (@Datatypes.cons Attribute
-                        (Build_Attribute sTYPE RRecordType)
-                        (@Datatypes.cons Attribute
-                           (Build_Attribute sCLASS RRecordClass)
-                           (@Datatypes.cons Attribute
-                              (Build_Attribute sTTL nat)
-                              (@Datatypes.cons Attribute
-                                 (Build_Attribute sDATA string)
-                                 (@Datatypes.nil Attribute))))))))
-            (@Query_In
-               (@Tuple
-                  (BuildHeading
-                     (@Datatypes.cons Attribute (Build_Attribute sNAME name)
-                        (@Datatypes.cons Attribute
-                           (Build_Attribute sTYPE RRecordType)
-                           (@Datatypes.cons Attribute
-                              (Build_Attribute sCLASS RRecordClass)
-                              (@Datatypes.cons Attribute
-                                 (Build_Attribute sTTL nat)
-                                 (@Datatypes.cons Attribute
-                                    (Build_Attribute sDATA string)
-                                    (@Datatypes.nil Attribute))))))))
-               (@Build_QueryStructureHint DnsSchema r_n)
-               (@Build_BoundedIndex string
-                  (@Datatypes.cons string sCOLLECTIONS
-                     (@Datatypes.nil string)) sCOLLECTIONS
-                  (@Build_IndexBound string sCOLLECTIONS
-                     (@Datatypes.cons string sCOLLECTIONS
-                        (@Datatypes.nil string)) O
-                     (@eq_refl (option string) (@Some string sCOLLECTIONS))))
-               (fun
-                  r : @Tuple
-                        (BuildHeading
-                           (@Datatypes.cons Attribute
-                              (Build_Attribute sNAME name)
-                              (@Datatypes.cons Attribute
-                                 (Build_Attribute sTYPE RRecordType)
-                                 (@Datatypes.cons Attribute
-                                    (Build_Attribute sCLASS RRecordClass)
-                                    (@Datatypes.cons Attribute
-                                       (Build_Attribute sTTL nat)
-                                       (@Datatypes.cons Attribute
-                                          (Build_Attribute sDATA string)
-                                          (@Datatypes.nil Attribute))))))) =>
-                @Query_Where
-                  (@Tuple
-                     (BuildHeading
-                        (@Datatypes.cons Attribute
-                           (Build_Attribute sNAME name)
-                           (@Datatypes.cons Attribute
-                              (Build_Attribute sTYPE RRecordType)
-                              (@Datatypes.cons Attribute
-                                 (Build_Attribute sCLASS RRecordClass)
-                                 (@Datatypes.cons Attribute
-                                    (Build_Attribute sTTL nat)
-                                    (@Datatypes.cons Attribute
-                                       (Build_Attribute sDATA string)
-                                       (@Datatypes.nil Attribute))))))))
-                  (@IsSuffix string (qname (questions n))
-                     (@GetAttribute
-                        (BuildHeading
-                           (@Datatypes.cons Attribute
-                              (Build_Attribute sNAME name)
-                              (@Datatypes.cons Attribute
-                                 (Build_Attribute sTYPE RRecordType)
-                                 (@Datatypes.cons Attribute
-                                    (Build_Attribute sCLASS RRecordClass)
-                                    (@Datatypes.cons Attribute
-                                       (Build_Attribute sTTL nat)
-                                       (@Datatypes.cons Attribute
-                                          (Build_Attribute sDATA string)
-                                          (@Datatypes.nil Attribute))))))) r
-                        (@Build_BoundedIndex string
-                           (@Datatypes.cons string sNAME
-                              (@Datatypes.cons string sTYPE
-                                 (@Datatypes.cons string sCLASS
-                                    (@Datatypes.cons string sTTL
-                                       (@Datatypes.cons string sDATA
-                                          (@Datatypes.nil string)))))) sNAME
-                           (@Build_IndexBound string sNAME
-                              (@Datatypes.cons string sNAME
-                                 (@Datatypes.cons string sTYPE
-                                    (@Datatypes.cons string sCLASS
-                                       (@Datatypes.cons string sTTL
-                                          (@Datatypes.cons string sDATA
-                                             (@Datatypes.nil string)))))) O
-                              (@eq_refl (option string) (@Some string sNAME))))))
-                  (@Query_Return
-                     (@Tuple
-                        (BuildHeading
-                           (@Datatypes.cons Attribute
-                              (Build_Attribute sNAME name)
-                              (@Datatypes.cons Attribute
-                                 (Build_Attribute sTYPE RRecordType)
-                                 (@Datatypes.cons Attribute
-                                    (Build_Attribute sCLASS RRecordClass)
-                                    (@Datatypes.cons Attribute
-                                       (Build_Attribute sTTL nat)
-                                       (@Datatypes.cons Attribute
-                                          (Build_Attribute sDATA string)
-                                          (@Datatypes.nil Attribute)))))))) r))))
-         a
- ->
-   forall n' : DNSRRecord, 
-   @List.In DNSRRecord n' a -> @IsPrefix string (get_name n') (qname (questions n)).
-Proof.
-  intros. 
-  eapply For_computes_to_In in H; try eauto.
-  inv H.
-  + eauto. 
-  + pose proof IsSuffix_string_dec. intros. auto.
-Qed.
-
-
-(* -------------------------------------------------------------------------------------- *)
-
 Theorem DnsManual :
   MostlySharpened DnsSpec.
 Proof.
@@ -267,66 +79,10 @@ Proof.
 
   unfold DnsSpec.
 
-  (* | [ |- context[(@Pick nat) ?X] ] => *)
 start sharpening ADT. {
   hone method "Process". {
-    Ltac invert_For_once :=
-      match goal with
-      | [ H : computes_to (Query_For _) _ |- _ ] =>
-        let H1 := fresh in
-        let H2 := fresh in
-        inversion H as [H1 H2]; inversion H2; clear H2
-      end.
-
-    Ltac refine_under_bind' :=
-      setoid_rewrite refine_under_bind; [ higher_order_reflexivity |
-                                            let H := fresh in
-                                            intros a H; try invert_For_once ].
-
-    Ltac refine_bind' :=
-      apply refine_bind; [ idtac | unfold pointwise_relation; intros; higher_order_reflexivity ].
-
-    Ltac srewrite_each :=
-      first
-             [
-               setoid_rewrite (@refine_find_upperbound DNSRRecord _ _) |
-                              setoid_rewrite (@refine_decides_forall_In' _ _ _ _) |
-                              setoid_rewrite refine_check_one_longest_prefix_s |
-                              setoid_rewrite refine_if_If |
-                              setoid_rewrite refine_check_one_longest_prefix_CNAME
-             ].
-
-    Ltac srewrite_manual' :=
-      repeat (
-          try srewrite_each;
-          try simplify with monad laws
-        );
-      repeat (
-          try (eapply tuples_in_relation_satisfy_constraint_specific; eauto);
-          try (eapply computes_to_in_specific; eauto);
-          try reflexivity
-        );
-    try simplify with monad laws.
-
-    (* not very automated -- TODO try to get rid of these / use setoid_rewrite *)
-    Ltac drill :=
-      simpl in *;
-      try simplify with monad laws;
-      try refine_under_bind';
-      try refine_bind';
-      try apply refine_If_Then_Else.
-
-    (* drill. srewrite_manual'. reflexivity. (* nothing applies to this last goal *) *)
-
-    Ltac automateProcess :=
-      drill; srewrite_manual'.
-
     automateProcess.
-  (* TODO compare to original *)
-  (* TODO should I try to generalize the ltac to deal wih BOTH methods now? *)
-  (* TODO make it more general than that, or just write the recursive one and see what it needs? *)
-  (* TODO try to make drill more general? *)
-}    
+  }
 
     (* TODO can we remove these and just setoid rewrite? or does setoid rewrite need the vars? *)
     (* TODO can we remove If/Then/Else too? *)
@@ -356,94 +112,7 @@ start sharpening ADT. {
 
   hone method "AddData".
   {
-(*     (* | [ |- context[(@Pick nat) ?X] ] => *) *)
-
-Create HintDb refines.
-Hint Rewrite refine_count_constraint_broken : refines.
-Hint Rewrite refine_count_constraint_broken' : refines.
-
-Create HintDb refines'.
-Hint Resolve refine_count_constraint_broken : refines'.
-Hint Resolve refine_count_constraint_broken' : refines'.
-
-Lemma hi : True. Admitted.
-Lemma bye : True. Admitted.
-Create HintDb test.
-Hint Resolve hi : test.
-Hint Resolve bye : test.
-
-Ltac the_tactic :=
-  let k lem := idtac lem ; fail in
-  foreach [ refines ] run k.
-
-(* this doesn't work well with the [ || ] notation *)
-(* why does it need to end with fail? *)
-Ltac srewrite :=
-  let k lem := setoid_rewrite lem ; fail in
-  foreach [ refines ] run k.
-
-(* autorewrite with refines. *)
-(* auto with refines'. *)
-(* rewrite_strat topdown (hints refines). *)
-(* ---------------------------- TODO: use the database plugin above *)
-
-(* don't rewrite inner If/Then/Else expressions *)
-  Ltac rewrite_if_head :=
-    match goal with
-    | [ |- context[ (refine (Bind _ (fun n => If_Then_Else _ _ _ )) _) ] ] =>
-      setoid_rewrite Bind_refine_If_Then_Else
-    end. 
-
-Ltac srewrite_manual :=
-  repeat first [
-           setoid_rewrite refine_count_constraint_broken
-                          || setoid_rewrite refine_count_constraint_broken'
-                          || setoid_rewrite refine_If_Then_Else_Bind
-                          || rewrite_if_head
-                          || setoid_rewrite refine_Count
-         ]. 
-
-srewrite_manual.
-
-(* rewrite under bind the first time you can, then stop. otherwise fail *)
-Ltac tac_under_bind tac :=
-  first [ tac |
-              (apply refine_under_bind; intros); tac_under_bind tac ].
-
-(* only succeed if all subgoals can be solved with tac. 
-intended for use as setoid_rewrite_by *)
-Ltac do_by tic tac :=
-  tic; [ | solve [tac] | .. | solve [tac] ].
-
-Ltac finishHone H :=
-  repeat (simpl in *;
-          try simplify with monad laws;
-          try (apply refine_If_Then_Else);
-          try simplify with monad laws;
-          try tac_under_bind ltac:(
- do_by ltac:(setoid_rewrite refine_subcheck_to_filter) ltac:(eauto with typeclass_instances);
- try (simplify with monad laws);
- try (rewrite clear_nested_if by apply filter_nil_is_nil));
-          try simplify with monad laws;
-          try eauto;
-          try (clear H; reflexivity) (* TODO why clear *)
-         ).
-
-(* finishHone H. *)
-(* only difference is the Count vs beq_nat *)
-
-Ltac setoid_rewrite_by lem tac :=
-  (* setoid_rewrite refine_subcheck_to_filter; *)
-  setoid_rewrite lem;
-  [ | solve [tac] | .. | solve [tac] ].
-
-(* setoid_rewrite_by refine_subcheck_to_filter ltac:(eauto with typeclass_instances). *)
-(* doesn't work; can't infer heading *)
-
-Ltac automateAddData H := srewrite_manual; finishHone H.
-
-automateAddData H.              (* 13 seconds *)
-  (* TODO why need to clear H? *)
+    automateAddData H.
   }
 
   GenerateIndexesForAll         (* ? in IndexSelection, see GenerateIndexesFor *)

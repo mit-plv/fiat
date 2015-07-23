@@ -15,32 +15,34 @@ Require Import
         Fiat.Examples.DnsServer.packet
         Fiat.Examples.DnsServer.DnsSchema
         Fiat.Examples.DnsServer.DnsLemmas.
-
-
-Definition server := name.      (* both IP and server name *)
-
-Inductive WrapperResponse : Type :=
-| Question : server -> packet -> WrapperResponse
-| Answer : packet -> WrapperResponse
-| Failure : packet -> WrapperResponse.
+(* TODO: unique, fueledfix are here but for some reason setoid rewrite is failing *)
 
 Definition DnsRecSig : ADTSig :=
   ADTsignature {
       Constructor "Init" : unit -> rep,
+
+      (* request state methods *)
       Method "MakeId" : rep x name -> rep x id,
       Method "AddRequest" : rep x (id * name) -> rep x bool,
       Method "GetRequestStage" : rep x id -> rep x option Stage,
       Method "UpdateRequestStage" : rep x (id * Stage) -> rep x bool,
-      Method "GetServerForLongestSuffix" : rep x name -> rep x option (IP * id),
-      Method "InsertServerForName" : rep x (name * IP * id) -> rep x bool,
-      Method "EvictOldest" : rep x id -> rep x bool,
-      Method "Process" : rep x (id * packet) -> rep x WrapperResponse
+
+      (* cache methods *)
+      Method "InsertResultForDomain" : rep x (name * WrapperResponse) -> rep x bool
+                                       (* + delete, update (= delete+insert), and checkinvariant *)
+      (* Method "GetServerForLongestSuffix" : rep x name -> rep x option WrapperResponse, *)
+      (* Method "EvictOldest" : rep x id -> rep x bool, *)
+
+      (* main method *)
+      (* Method "Process" : rep x (id * packet) -> rep x WrapperResponse *)
     }.
 
 Print ADTSig.
 Print ADT.                      (* TODO how does this dep. type work? *)
 Variable s : list nat.
-Check [[x in s | True]].
+Check [[x in s | True]].        (* Comp (list nat) -- multiple choice *)
+Check { x : nat | True }.   (* Comp nat -- single choice *)
+Check { b : bool | decides b True }. (* Comp bool -- check *)
 
 Definition upperbound' := upperbound (fun x => x).
 
@@ -49,13 +51,60 @@ Definition Build_RequestState id reqName stage :=
   Build_Component (Build_Attribute sNAME name) reqName,
   Build_Component (Build_Attribute sSTAGE Stage) stage >.
 
-Definition Build_CacheRow reqName reqIP reqId :=
-  < Build_Component (Build_Attribute sNAME name) reqName,
-  Build_Component (Build_Attribute sIP IP) reqIP,
-  Build_Component (Build_Attribute sID id) reqId >.
+Definition Build_CacheQuestionsRow tup :=
+  let '(rDomain, rSection, rServer, rPid, rFlags, rName, rType, rClass, rTTL, rRdata) := tup in
+  < Build_Component (Build_Attribute sDOMAIN name) rDomain,
+  Build_Component (Build_Attribute sPACKET_SECTION PacketSection) rSection,
+  Build_Component (Build_Attribute sSERVER name) rServer,
+  Build_Component (Build_Attribute sPID (Bvector 16)) rPid,
+  Build_Component (Build_Attribute sFLAGS (Bvector 16)) rFlags,
+  Build_Component (Build_Attribute sNAME name) rName,
+  Build_Component (Build_Attribute sTYPE RRecordType) rType,
+  Build_Component (Build_Attribute sCLASS RRecordClass) rClass,
+  Build_Component (Build_Attribute sTTL nat) rTTL,
+  Build_Component (Build_Attribute sRDATA string) rRdata >.
+
+Definition Build_CacheAnswersRow tup :=
+  let '(rDomain, rSection, rPid, rFlags, rName, rType, rClass, rTTL, rRdata) := tup in
+  < Build_Component (Build_Attribute sDOMAIN name) rDomain,
+  Build_Component (Build_Attribute sPACKET_SECTION PacketSection) rSection,
+  Build_Component (Build_Attribute sPID (Bvector 16)) rPid,
+  Build_Component (Build_Attribute sFLAGS (Bvector 16)) rFlags,
+  Build_Component (Build_Attribute sNAME name) rName,
+  Build_Component (Build_Attribute sTYPE RRecordType) rType,
+  Build_Component (Build_Attribute sCLASS RRecordClass) rClass,
+  Build_Component (Build_Attribute sTTL nat) rTTL,
+  Build_Component (Build_Attribute sRDATA string) rRdata >.
+
+Definition Build_CacheFailuresRow tup :=
+  let '(rDomain, rSection, rPid, rFlags, rHost, rEmail, rSerial, rRefresh, rRetry, rExpire, rTTL) := tup in
+  < Build_Component (Build_Attribute sDOMAIN name) rDomain,
+  Build_Component (Build_Attribute sPACKET_SECTION PacketSection) rSection,
+  Build_Component (Build_Attribute sPID (Bvector 16)) rPid,
+  Build_Component (Build_Attribute sFLAGS (Bvector 16)) rFlags,
+  Build_Component (Build_Attribute sHOST name) rHost,
+  Build_Component (Build_Attribute sEMAIL name) rEmail,
+  Build_Component (Build_Attribute sSERIAL nat) rSerial,
+  Build_Component (Build_Attribute sREFRESH nat) rRefresh,
+  Build_Component (Build_Attribute sRETRY nat) rRetry,
+  Build_Component (Build_Attribute sEXPIRE nat) rExpire,    
+  Build_Component (Build_Attribute sTTL nat) rTTL >.
 
 Definition nonEmpty {A : Type} (l : list A) := negb (beq_nat (List.length l) 0).
 (* from Smtp.v *)
+
+Variable nms : list name.
+Variable nm : name.
+Check (List.length nm).
+Check upperbound.
+Print upperbound.
+Check (upperbound (@List.length string) nms nm).
+
+Definition listToOption {A : Type} (l : list A) : option A :=
+  match l with
+  | nil => None
+  | x :: _ => Some x
+  end.
 
 Definition DnsSpec_Recursive : ADT DnsRecSig :=
   (* TODO move to definitions *)
@@ -65,7 +114,7 @@ Definition DnsSpec_Recursive : ADT DnsRecSig :=
   let GetRequestStage := "GetRequestStage" in
   let UpdateRequestStage := "UpdateRequestStage" in
   let GetServerForLongestSuffix := "GetServerForLongestSuffix" in
-  let InsertServerForName := "InsertServerForName" in
+  let InsertResultForDomain := "InsertResultForDomain" in
   let EvictOldest := "EvictOldest" in
   let Process := "Process" in
 
@@ -80,7 +129,7 @@ and associate it with the packet (solve the latter by letting it generate the id
       query MakeId (n : name) : id :=
         ids <- For (req in sREQUESTS)
             Return (req!sID);
-        freshAscendingId <- {idx : nat | upperbound' ids idx };        
+        freshAscendingId <- {idx : nat | upperbound' ids idx };
         ret freshAscendingId,
       
         (* just change the type to query? *)
@@ -112,115 +161,167 @@ and associate it with the packet (solve the latter by letting it generate the id
         (* given a full name ["scholar", "google", "com"], return option IP 
            for the longest suffix of the URL, if an IP exists, return that. 
            otherwise return none *)
-        query GetServerForLongestSuffix (reqName : name) : option (IP * id) :=
-          ret None,
-(* need to use FueledFix here?
+          (* Other server uses suffix, so we will use suffix too *)
+        (* query GetServerForLongestSuffix (reqName : name) : option WrapperResponse := *)
+        (*   results <- For (req in sCACHE_QUESTIONS) *)
+        (*           Where (reqName = req!sDOMAIN) *)
+        (*           Return (req); *)
+        (*   ret (listToOption results), (* TODO fix *) *)
+        
+        (*   suffixes <- For (req in sCACHE) *)
+        (*              Where (IsSuffix reqName req!sNAME) *)
+        (*              Return (req!sNAME, req!sIP, req!sID); *)
+        (* let tupLength t := let '(x, y, z) := t in (@List.length string) x in *)
+        (* longestSuffixes <- [[suffix in suffixes | upperbound tupLength suffixes suffix]]; *)
+        (* (* similar refinement lemma about just checking one of them *) *)
+        (* (* TODO: some construct for "if non-empty, pick one and do X, otherwise do Y"? *) *)
+        (* match longestSuffixes with *)
+        (* | nil => ret None *)
+        (* | (_, reqIP, reqID) :: _ => ret (Some (reqIP, reqID)) *)
+        (* end, *)
 
-(let starting index = 0
-let fuel = length name)
-
-name |> all prefixes of name from longest to shortest (or just all prefixes,
-   with prefix as name -> prop, if you want to be declarative)
-[[s, g, c], [g, c], [c], []] <-- empty?
--- IsPrefix predicate
-
-vv can do a map if you don't care about the order / terminating early
-
-too computational?
-
-match prefixes with
-| nil => ret None
-| prefix :: prefixes' =>
-   b <- For (n in sCACHE)
-    where (prefix = n!sSNAME)
-    Return (n!IP * n!ID);
-   match b with
-   | nil => rec prefixes'
-   | tup :: tups => ret tup (* there should only be one *) *)
-
-        (* given a full name ["scholar", "google", "com"], an IP, and an ID:
-           if name is new, insert (name, ip, id) into cache 
-           if name exists, update time (id) and ip for it
-           (not checking if id/ip are different) *)
           (* TODO inline in let-def in process *)
-          update InsertServerForName (tup : name * IP * id) : bool :=
-          let '(reqName, reqIP, reqId) := tup in
-          (* TODO: use the newly-discovered Count construct *)
-          b <- For (n in sCACHE)
-            Where (reqName = n!sNAME)
-            Return ();
-          match b with
-          | nil => Insert (Build_CacheRow reqName reqIP reqId) into sCACHE
-          | _ => (* TODO there should only be one entry for a name; enforce that? *)
-            q <- Update n from sCACHE
-              making [ sIP |= reqIP; sID |= reqId]
-              where (reqName = n!sNAME);
-          let (updated, affected) := q in
-          ret (updated, nonEmpty affected)
-          end,
+          (* assumes that someone has already checked that the domain is not in any of the caches *)
+          update InsertResultForDomain (tup : name * WrapperResponse) : bool :=
+          let '(reqName, reqResult) := tup in
+          (* TODO do this for every record. this picks one? what if there are no records?
+           how to manually return failure? wait, Answers MUST have answers but questions might not need to have an answer or any other field??? so should it be an option type for questions? *)
+          let records p := answers p ++ authority p ++ additional p in
+          let flattenPacket p := (reqName, Answer,   in
+            match reqResult with
+            | Answer p =>
+              (*                   < sDOMAIN :: name,
+                    sPACKET_SECTION :: PacketSection,
+                    sPID :: Bvector 16,
+                    sFLAGS :: Bvector 16,
+                    sNAME :: name,
+                    sTYPE :: RRecordType,
+                    sCLASS :: RRecordClass,
+                    sTTL :: nat,
+                    sRDATA :: string *)
+              Insert (Build_CacheQuestionsRow (flattenPacket p)) into sCACHE_QUESTIONS
+            | Failure s p =>
+              q <- Update n from sCACHE_FAILURES
+                making [ sTTL |= 99 ]
+              where (reqName = n!sDOMAIN);
+              let (updated, affected) := q in
+            ret (updated, nonEmpty affected)
+            | Question s p =>
+              q <- Update n from sCACHE_QUESTIONS
+                making [ sTTL |= 99 ]
+              where (reqName = n!sDOMAIN);
+            (* | nil => Insert (Build_CacheRow reqName reqResult) into sCACHE *)
+              let (updated, affected) := q in
+              ret (updated, nonEmpty affected)
 
+            end
+              
+            (* TODO: use the newly-discovered Count construct *)
+            (* b <- For (n in sCACHE) *)
+            (*   Where (reqName = n!sDOMAIN) *)
+            (*   Return (); *)
+            (* match b with *)
+            (* | nil => Insert (Build_CacheRow reqName reqResult) into sCACHE *)
+            (* | _ => (* TODO there should only be one entry for a name; enforce that? *) *)
+            (*   (* this makes sure that we update instead of inserting another entry for a name *) *)
+            (*   (* nested hierarchies = either nest a relation or flatten the hierarchy into one relation. which to do? *) *)
+            (*   q <- Update n from sCACHE *)
+            (*        making [ sRESULT |= reqResult ] *)
+            (*        where (reqName = n!sDOMAIN); *)
+            (*   let (updated, affected) := q in *)
+            (*   ret (updated, nonEmpty affected) *)
+            (* end, *)
+
+          (* TODO use  *)
         (* after a certain time, evict oldest names from cache,
            using either "oldest n names" or "all names with ips before threshold t" (here the latter). smaller ids are older, bigger ips are newer. including threshold *)
-          update EvictOldest (oldThreshold : id) : bool :=
-            b <- Delete c from sCACHE where (le c!sID oldThreshold);
-          let (updated, deleted) := b in
-          ret (updated, nonEmpty deleted),
+          (* update EvictOldest (threshold : nat) : bool := *)
+          (*     (* also have an "update all s" *) *)
+          (*     (* TODO failure s? *) *)
+          (*     (* let increment (time : nat) (req : WrapperResponse) := req in *) *)
+          (*     let removeOlder (threshold : nat) (records : list answer) := *)
+          (*         [[ rec in records | ttl rec > threshold ]] in *)
+          (*     let removeOldRecords (threshold : nat) (req : WrapperResponse) : Comp packet := *)
+          (*         match req with *)
+          (*         | Question _ p *)
+          (*         | Answer p *)
+          (*         | Failure p =>  *)
+          (*           answers' <- removeOlder threshold (answers p); *)
+          (*         authority' <- removeOlder threshold (authority p); *)
+          (*         additional' <- removeOlder threshold (additional p); *)
+          (*           ret (updateRecords p answers' authority' additional') *)
+          (*         end in *)
+          (*     (* this isn't right, what i want to do is REMOVE stuff from ans/au/add that are past the threshold, put that back in the packet, and UPDATE the request with that *) *)
+          (*     (* layers: WrapperRequest Packet(Field) List Answer --> TTL *) *)
+          (*     reqs <- For (req in sCACHE) *)
+          (*          Return (req!sDOMAIN, req!sRESULT); *)
+          (*   results <- flat_map  *)
+          (*           (fun r => Build_CacheRow (fst r) (removeOldRecords threshold (snd r))) reqs; *)
+          (*   (* older <- [[ req in reqs | TTLpast oldThreshold req!sRESULT ]]; *) *)
+          (*   b <- Delete req from sCACHE where (List.In req reqs); *)
+          (*   let (updated, deleted) := b in *)
+          (*   ret (updated, nonEmpty deleted), *)
 
         (* ----- MAIN METHOD *)
         (* wrapper's responsibility to call addrequest first *)
         (* TODO ignoring sTYPE and sCLASS for now *)
-    query Process (tup : id * packet) : WrapperResponse :=
-            (* TODO query = pure fn? change to update / use explicit rep *)
-          let (reqId, p) := tup in
-          let reqName := qname (questions p) in
-          (* Figure out if it's a new request or a response by looking for its stage. *)
-          reqStage <- For (req in sREQUESTS)
-            Where (reqId = req!sID)
-            Return req!sSTAGE;
-        (* should be using `unique` here, TODO *)
-        match hd_error reqStage with
-        | None => ret (Failure p)
-        | Some reqStage => 
-          (match reqStage with
-          | None => 
-            (* A new request. Send a Question with the root server name and the unchanged packet *)
-            (* TODO look in cache. needs to look for each prefix. check if cache says answer/ref/fail *)
-            let rootName := ["."] in
-            ret (Question rootName p)
-          | Some stageNum => 
-            (* A response to an existing request. Figure out if it's an answer, a referral, 
-               or a failure. TODO split out this part; reused with cache stuff *)
-            (* If a packet with answers has referrals, they are ignored *)
-            (match answers p with
-            | pAnswer :: answers' => 
-              (* Done! Forward on the packet *)
-              (* TODO look in cache and update cache; check if cache says answer/ref/fail *)
-              b <- Delete req from sREQUESTS where req!sID = reqId;
-              ret (Answer p) 
-            | nil =>
-              (* Figure out if it's a referral or a failure *)
-              (match authority p with
-               | nil => 
-                 (* Failure. TODO look in cache and update cache *)
-                 b <- Delete req from sREQUESTS where req!sID = reqId;
-                 ret (Failure p)
-               | pAuthority :: authorities => 
-                 (* Referral. *)
-                 (* TODO authority should be the name, additional should be the real IP *)
-                 (* TODO multiple authorities should be impossible; pick the first; could search all*)
-                 (* TODO look in cache and update cache; check if cache says answer/ref/fail *)
-                 (* TODO can't call this function so I'm inlining it *)
-                 (* b <- UpdateRequestStage (reqId, reqStage + 1); *)
-                 b <- Update req from sREQUESTS
-                   making sSTAGE |= (Some (stageNum + 1))
-                 where (req!sID = reqId);
-                 (* TODO: discards the rest of the info in answer record; use? or have root info too *)
-                 ret (Question (aname pAuthority) p)
-               end)
-            end)
-          end)
-        end
+    (* query Process (tup : id * packet) : WrapperResponse := *)
+    (*         (* TODO query = pure fn? change to update / use explicit rep *) *)
+    (*       let (reqId, p) := tup in *)
+    (*       let reqName := qname (questions p) in *)
+    (*       (* Figure out if it's a new request or a response by looking for its stage. *) *)
+    (*       reqStage <- For (req in sREQUESTS) *)
+    (*         Where (reqId = req!sID) *)
+    (*         Return req!sSTAGE; *)
+    (*     (* should be using `unique` here, TODO *) *)
+    (*     match hd_error reqStage with *)
+    (*     | None => ret (Failure p) *)
+    (*     | Some reqStage =>  *)
+    (*       (match reqStage with *)
+    (*       | None =>  *)
+    (*         (* A new request. Send a Question with the root server name and the unchanged packet *) *)
+    (*         (* the question in the packet should never change *) *)
+    (*         (* TODO look in cache. needs to look for each prefix. check if cache says answer/ref/fail *) *)
+    (*         let rootName := ["."] in *)
+    (*         ret (Question rootName p) *)
+    (*       | Some stageNum =>  *)
+    (*         (* A response to an existing request. Figure out if it's an answer, a referral,  *)
+    (*            or a failure. TODO split out this part; reused with cache stuff *) *)
+    (*         (* If a packet with answers has referrals, they are ignored *) *)
+    (*         (match answers p with *)
+    (*         | pAnswer :: answers' =>  *)
+    (*           (* Done! Forward on the packet *) *)
+    (*           (* TODO look in cache and update cache; check if cache says answer/ref/fail *) *)
+    (*           b <- Delete req from sREQUESTS where req!sID = reqId; *)
+    (*           ret (Answer p)  *)
+    (*         | nil => *)
+    (*           (* Figure out if it's a referral or a failure *) *)
+    (*           (match authority p with *)
+    (*            | nil =>  *)
+    (*              (* Failure. TODO look in cache and update cache *) *)
+    (*              b <- Delete req from sREQUESTS where req!sID = reqId; *)
+    (*              ret (Failure p) *)
+    (*            | pAuthority :: authorities =>  *)
+    (*              (* Referral. *) *)
+    (*              (* TODO authority should be the name, additional should be the real IP *) *)
+    (*              (* TODO multiple authorities should be impossible; pick the first; could search all*) *)
+    (*              (* TODO look in cache and update cache; check if cache says answer/ref/fail *) *)
+    (*              (* TODO can't call this function so I'm inlining it *) *)
+    (*              (* b <- UpdateRequestStage (reqId, reqStage + 1); *) *)
+    (*              b <- Update req from sREQUESTS *)
+    (*                making sSTAGE |= (Some (stageNum + 1)) *)
+    (*              where (req!sID = reqId); *)
+    (*              (* TODO: discards the rest of the info in answer record; use? or have root info too *) *)
+    (*              ret (Question (aname pAuthority) p) *)
+    (*            end) *)
+    (*         end) *)
+    (*       end) *)
+    (*     end *)
               }.
+
+
+(* Set Printing All. *)
+Print DnsSpec_Recursive.
 
 (* wrapper: makes id
 adds the request with name and id; we indicate its stage is None, so it hasn't started yet
@@ -260,8 +361,6 @@ is it old or new? (is the stage None or some number?)
       update cache TODO
  *)
 
-(* Set Printing All. *)
-Print DnsSpec_Recursive.
 (* TODO: implement it! *)
 
 (* ------------------------------- *)
