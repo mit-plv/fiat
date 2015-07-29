@@ -254,12 +254,14 @@ start sharpening ADT. {
          For/Where/Return ~> _ unimplemented *)
       eauto with typeclass_instances.
     - simplify with monad laws.
+      setoid_rewrite refine_Count. simplify with monad laws.
+      (* ^ added by automation, thanks! *)
       (* setoid_rewrite refine_subcheck_to_filter; eauto. *)
       (* did something break? nondeterministic ^ TODO *)
       (* why is this OK? it didn't get rid of x0 nondeterminism *)
       reflexivity.
     (* - finish honing. *)
-  }
+  } 
   (* higher level of reasoning *)
 
   GenerateIndexesForAll         (* ? in IndexSelection, see GenerateIndexesFor *)

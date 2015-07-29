@@ -84,7 +84,10 @@ Section Packet.
     { qname : name;
       qtype : RRecordType;
       qclass : RRecordClass }.
+  (* ["google", "com"] *)
 
+  (* ["192", "0", "0", "1"] *)
+  (* TODO ip vs name? *)
   Record answer :=
     { aname : name;
       atype : RRecordType;
