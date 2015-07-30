@@ -377,4 +377,3 @@ start sharpening ADT. {
 Time Defined.
 
 Time Definition DNSImpl := Eval simpl in (projT1 DnsManual).
-Print DNSImpl.
