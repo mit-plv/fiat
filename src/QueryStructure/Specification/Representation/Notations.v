@@ -42,8 +42,6 @@ Reserved Notation "'Return' t"
          (right associativity, at level 3,
           format "'Return'  t" ).
 
-
-
 Reserved Notation "'Where' p bod"
          (right associativity, at level 3, p at level 3,
           format "'Where'  p '//' bod " ).

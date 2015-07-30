@@ -1257,20 +1257,19 @@ this is because x is a list of tuples that all came from r *)
   destruct H5 as [x' [Equiv [Equiv' Equiv''] ] ].
   rewrite <- Equiv in *.
   eapply flatmap_permutation in H5'; rewrite H5' in H7.
-  destruct (unindexed_OK_exists_index' _ H0 H1 H2 H7) as [m [m' [idx [idx' ?] ] ] ];
+  destruct (unindexed_OK_exists_index' _ _ H0 H1 H2 H7) as [m [m' [idx [idx' ?] ] ] ];
     intuition.
 
-  pose ((DropQSConstraints r_n)!sCOLLECTIONS)%QueryImpl as relationSet. simpl in relationSet.
-  unfold UnConstrRelation in *.
-  pose proof (ith_Bounded relName (rels r_n) {| bindex := sCOLLECTIONS |}) as relationthing. simpl in *.
-pose proof (tupleconstr (ith_Bounded relName (rels r_n) {| bindex := sCOLLECTIONS |})) as
-  constraint_in_relation_OK; simpl in *.
-eapply (constraint_in_relation_OK {| elementIndex := idx; indexedElement := t |}
-                                  {| elementIndex := idx'; indexedElement := t' |});
-  simpl; eauto.
-eapply map_nth_error with (f := elementIndex) in H5.
-eapply map_nth_error with (f := elementIndex) in H16.
-{ revert m m' H5 H16 H14 Equiv''; clear; simpl; induction (map elementIndex x').
+  pose proof (rawTupleconstr (ith2 (rawRels r_n) (Fin.F1 ))) as
+      constraint_in_relation_OK; simpl in *.
+  apply (constraint_in_relation_OK {| elementIndex := idx; indexedElement := t |}
+                                   {| elementIndex := idx'; indexedElement := t' |});
+    simpl; try eassumption.
+
+  eapply map_nth_error with (f := elementIndex) in H5.
+  eapply map_nth_error with (f := elementIndex) in H16.
+  {
+    revert m m' H5 H16 H14 Equiv''; clear; unfold Tuple; simpl; induction (map elementIndex x').
   - destruct m; destruct m'; simpl; intros; try discriminate.
   - destruct m; destruct m'; simpl; intros; try discriminate.
     + intuition.
@@ -1283,10 +1282,10 @@ eapply map_nth_error with (f := elementIndex) in H16.
 
 assert (List.In {| elementIndex := idx; indexedElement := t |} x').
   { eapply exists_in_list; eauto. }
-  apply Equiv' in H15; destruct H15; rewrite GetRelDropConstraints in H15; apply H15.
+  apply Equiv' in H15; destruct H15; apply H15.
   assert (List.In {| elementIndex := idx'; indexedElement := t' |} x').
   { eapply exists_in_list; eauto. }
-  apply Equiv' in H15; destruct H15; rewrite GetRelDropConstraints in H15; apply H15.
+  apply Equiv' in H15; destruct H15;  apply H15.
 Qed.
 
 (* -------------------------------------------------------------------------------------- *)

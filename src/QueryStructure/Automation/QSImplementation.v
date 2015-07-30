@@ -263,8 +263,8 @@ Ltac BuildQSIndexedBag heading AttrList BuildEarlyBag BuildLastBag k :=
                     heading AttrList'
                     BuildEarlyBag BuildLastBag
                     ltac:(fun subtree =>
-                            k (BuildEarlyBag
-                                 heading AttrList AttrKind AttrIndex subtree k))
+                            BuildEarlyBag
+                                 heading AttrList AttrKind AttrIndex subtree k)
                 end
   | [ ] =>
     k (@CountingListAsCorrectBag

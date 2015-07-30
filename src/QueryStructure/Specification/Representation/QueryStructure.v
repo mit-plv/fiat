@@ -145,6 +145,12 @@ Definition GetRelation
            (idx : Fin.t _)
   : @IndexedEnsemble (@RawTuple (GetNRelSchemaHeading (qschemaSchemas QSSchema) idx)) := rawRel (ith2 (rawRels qs) idx).
 
+Definition GetRelationBnd
+           (QSSchema : QueryStructureSchema)
+           (qs : QueryStructure QSSchema)
+           (idx : BoundedIndex (QSschemaNames QSSchema))
+  : @IndexedEnsemble (@RawTuple (GetNRelSchemaHeading (qschemaSchemas QSSchema) (ibound (indexb idx)))) := rawRel (ith2 (rawRels qs) (ibound (indexb idx))).
+
 (* This lets us drop the constraints from the reference implementation
    for easier refinements. *)
 
@@ -158,6 +164,13 @@ Definition GetUnConstrRelation
            (idx : _)
   : @IndexedEnsemble (@RawTuple (GetNRelSchemaHeading (qschemaSchemas QSSchema) idx)) :=
       ith2 qs idx.
+
+Definition GetUnConstrRelationBnd
+           {QSSchema : QueryStructureSchema}
+           (qs : UnConstrQueryStructure QSSchema)
+           (idx : BoundedIndex (QSschemaNames QSSchema))
+  : @IndexedEnsemble (@RawTuple (GetNRelSchemaHeading (qschemaSchemas QSSchema) (ibound (indexb idx)))) :=
+      ith2 qs (ibound (indexb idx)).
 
 Definition DropQSConstraints
            {qsSchema : QueryStructureSchema}
@@ -259,7 +272,7 @@ Qed.
 Notation "ro ≃ rn" := (@UnConstrRelationAbsR _ _ _ ro%QueryImpl rn) : QueryImpl_scope.
 
 Notation "qs ! R" :=
-  (GetUnConstrRelation qs {|bindex := R%string |}): QueryImpl_scope.
+  (GetUnConstrRelationBnd qs {|bindex := R%string |}): QueryImpl_scope.
 
 Arguments BuildQueryStructureConstraints _ _ _.
 Arguments BuildQueryStructureConstraints_cons [_ _] _ _ _ _ (*/*) _ .
