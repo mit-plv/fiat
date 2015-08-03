@@ -131,7 +131,65 @@ Proof.
 
 start sharpening ADT. {
   hone method "Process". {
+    simpl in *.
     simplify with monad laws.
+
+    Ltac invert_For_once :=
+      match goal with
+      | [ H : computes_to (Query_For _) _ |- _ ] =>
+        let H1 := fresh in
+        let H2 := fresh in
+        inversion H as [H1 H2]; inversion H2; clear H2
+      end.
+
+    Ltac refine_under_bind' :=
+      setoid_rewrite refine_under_bind; [ higher_order_reflexivity |
+                                          let H := fresh in
+                                          intros a H; try invert_For_once ].
+
+Ltac refine_bind' :=
+  apply refine_bind; [ idtac | unfold pointwise_relation; intros; higher_order_reflexivity ].
+
+    Check refine_under_bind.
+    refine_under_bind'.         (* this is where the for/where hyp comes from *)
+    (* (* if you get rid of this, then refine_bind does weird stuff *) *)
+    (* Check refine_bind. *)
+    (* setoid_rewrite refine_bind. *)
+    apply refine_bind.          (* refine the If/Then/Else part only *)
+    (* (* refine_bind'. *) *)
+    apply refine_If_Then_Else.
+
+    (* need both bind and if_then_else for simplify to work *)
+    (* we need a stronger [simplify with monad laws] (inside bind)! i don't think we should need refine_bind and refine_if_then_else for most things *)
+    (* if i redid refine_check_one_longest_prefix_s with a different form, maybe we wouldn't need the refine_bind and I/T/E *)
+    (* ----- *)
+
+    setoid_rewrite (@refine_find_upperbound DNSRRecord _ _).
+    setoid_rewrite (@refine_decides_forall_In' _ _ _ _).
+    (* autorewrite with monad laws. *) (* doesn't terminate *)
+    simplify with monad laws. 
+    (* <-- needs to simplify inside <- and if/then/else *)
+
+    Check refine_check_one_longest_prefix_s.
+    setoid_rewrite refine_check_one_longest_prefix_s.
+    simplify with monad laws.
+    setoid_rewrite refine_if_If. (* doesn't rewrite inside <- and if/then/else *)
+    {
+      Check refine_check_one_longest_prefix_CNAME.
+      setoid_rewrite refine_check_one_longest_prefix_CNAME.
+      reflexivity.
+
+      (* H0 is the hypothesis from refine_under_bind? *)
+      inversion H0. inversion H2. clear H2.
+      - eapply (tuples_in_relation_satisfy_constraint_specific n). eauto.
+      - eapply computes_to_in_specific; eauto.
+    }
+    Check computes_to_in_specific.
+    - eapply computes_to_in_specific; eauto.
+    - reflexivity.
+    - unfold pointwise_relation; intros; higher_order_reflexivity. 
+
+(*    simplify with monad laws.
     (* Find the upperbound of the results. *)
     etransitivity.
     apply refine_under_bind; intros. (* rewrite? *)
@@ -201,7 +259,7 @@ start sharpening ADT. {
     
     reflexivity. subst H1; reflexivity.
     unfold pointwise_relation; intros; higher_order_reflexivity.
-    finish honing. finish honing.
+    finish honing. finish honing. *)
 }
 
   start_honing_QueryStructure'.
@@ -228,25 +286,24 @@ start sharpening ADT. {
     Check refine_count_constraint_broken.
     setoid_rewrite refine_count_constraint_broken.        (* refine x1 *)
     setoid_rewrite refine_count_constraint_broken'.        (* refine x2 *)
+    Check refine_If_Then_Else_Bind.
     setoid_rewrite refine_If_Then_Else_Bind. simpl in *.
+    (* can this be removed?? *)
     (* body after x1 gets pasted inside again *)
 
     Check Bind_refine_If_Then_Else. (* x2 replaced with a *)
+    (* turns the entire thing into if/then/else toplevel *)
     setoid_rewrite Bind_refine_If_Then_Else.
-    (* this was done an extra time *)
-    (* etransitivity. *)
     apply refine_If_Then_Else.
     -
       (* simplify with monad laws. *)
       Check refine_under_bind.
-      apply refine_under_bind; intros.
-      (* apply refine_under_bind; intros. *) 
+      (* apply refine_under_bind; intros. *)
       Check refine_Count.
       setoid_rewrite refine_Count. simplify with monad laws.
-      apply refine_under_bind.  Check refine_under_bind. intros.
+      apply refine_under_bind; intros.
+      apply refine_under_bind; intros.
       setoid_rewrite refine_subcheck_to_filter; eauto.
-      Check refine_subcheck_to_filter.
-      (* Set Printing All. auto. *)
       simplify with monad laws.
       Check clear_nested_if.
       rewrite clear_nested_if by apply filter_nil_is_nil.
@@ -256,12 +313,7 @@ start sharpening ADT. {
       eauto with typeclass_instances.
     - simplify with monad laws.
       setoid_rewrite refine_Count. simplify with monad laws.
-      (* ^ added by automation, thanks! *)
-      (* setoid_rewrite refine_subcheck_to_filter; eauto. *)
-      (* did something break? nondeterministic ^ TODO *)
-      (* why is this OK? it didn't get rid of x0 nondeterminism *)
       reflexivity.
-    (* - finish honing. *)
   } 
   (* higher level of reasoning *)
 
