@@ -8,7 +8,7 @@ Require Import Fiat.QueryStructure.Automation.AutoDB
         Fiat.QueryStructure.Implementation.DataStructures.BagADT.BagADT
         Fiat.QueryStructure.Automation.IndexSelection
         Fiat.QueryStructure.Specification.SearchTerms.ListPrefix
-        Fiat.QueryStructure.Automation.SearchTerms.FindSuffixSearchTerms
+        Fiat.QueryStructure.Automation.SearchTerms.FindPrefixSearchTerms
         Fiat.QueryStructure.Automation.QSImplementation.
 
 Require Import Fiat.Examples.DnsServer.DnsSchema
@@ -142,6 +142,26 @@ Definition get_name (r : DNSRRecord) : list string := r!sNAME.
 Definition name_length (r : DNSRRecord) := List.length (get_name r).
 
 Notation "[[ x 'in' xs | P ]]" := (filtered_list xs (fun x => P)) (at level 70) : comp_scope.
+
+(* ----------------- *)
+(* Raw tuple field accessor notations *)
+
+Notation "( x 'in' r '!' Ridx ) bod" :=
+  (let qs_schema : QueryStructureSchema := _ in
+   let r' : UnConstrQueryStructure qs_schema := r in
+   let Ridx' := ibound (indexb (@Build_BoundedIndex _ _ (QSschemaNames qs_schema) Ridx%string _)) in
+   @UnConstrQuery_In _ qs_schema r' Ridx'
+            (fun x : @RawTuple (GetNRelSchemaHeading (qschemaSchemas qs_schema) Ridx') => bod)) : QueryImpl_scope.
+
+Definition GetAttributeRawBnd {heading : Heading}
+           (tup : @RawTuple heading)
+           (idx : (BoundedIndex (HeadingNames heading)))
+  : Domain heading (ibound (indexb idx)) :=
+  GetAttributeRaw tup (ibound (indexb idx)).
+
+Notation "tup '!' idx" := (GetAttributeRaw tup ``idx) : TupleImpl_scope.
+
+
 (* -------------------------------------------------------------------------------------- *)
 
 (* Refinement lemmas *)
@@ -220,28 +240,29 @@ Qed.
 
 (* implement the DNS record constraint check as code that counts the number of occurrences of
 the constraint being broken (refines the boolean x1 in AddData) *)
+
 Lemma refine_count_constraint_broken :
   forall (n : DNSRRecord) (r : UnConstrQueryStructure DnsSchema),
     refine {b |
             decides b
-                    (forall tup' : @IndexedTuple (GetHeading DnsSchema sCOLLECTIONS),
+                    (forall tup' : @IndexedRawTuple (GetHeading DnsSchema sCOLLECTIONS),
                        (r!sCOLLECTIONS)%QueryImpl tup' ->
                        n!sNAME = (indexedElement tup')!sNAME -> n!sTYPE <> CNAME)}
            (If (beq_RRecordType n!sTYPE CNAME)
                Then count <- Count
-               For (UnConstrQuery_In r ``(sCOLLECTIONS)
-                                     (fun tup : Tuple =>
-                                        Where (n!sNAME = tup!sNAME)
-                                              Return tup ));
-            ret (beq_nat count 0) Else ret true).
+               For (tup in r!sCOLLECTIONS)
+               (Where (n!sNAME = GetAttributeRawBnd tup ``sNAME)
+                      Return tup )%QueryImpl;
+    ret (beq_nat count 0) Else ret true).
 Proof.
   intros; setoid_rewrite refine_pick_decides at 1;
   [ | apply refine_is_CNAME__forall_to_exists | apply refine_not_CNAME__independent ].
   (* refine existence check into query. *)
+
   match goal with
       |- context[{b | decides b
                               (exists tup : @IndexedTuple ?heading,
-                                 (@GetUnConstrRelation ?qs_schema ?qs ?tbl tup /\ @?P tup))}]
+                                 (@GetUnConstrRelationBnd ?qs_schema ?qs ?tbl tup /\ @?P tup))}]
       =>
       let H1 := fresh in
       let H2 := fresh in
@@ -257,12 +278,12 @@ Proof.
                      |
                      assert (DecideableEnsemble P') as H2;
                        [ simpl; eauto with typeclass_instances (* Discharge DecideableEnsemble w/ intances. *)
-                       | setoid_rewrite (@refine_constraint_check_into_query' qs_schema tbl qs P P' H2 H1); clear H1 H2 ] ]) end.
+                       | setoid_rewrite (@refine_constraint_check_into_query' qs_schema (ibound (indexb tbl)) qs P P' H2 H1); clear H2 H1 ] ]) end.
   remember n!sTYPE; refine pick val (beq_RRecordType d CNAME); subst;
   [ | case_eq (beq_RRecordType n!sTYPE CNAME); intros;
       rewrite <- beq_RRecordType_dec in H; find_if_inside;
       unfold not; simpl in *; try congruence ].
-  simplify with monad laws.
+  intros; simplify with monad laws; simpl.
   autorewrite with monad laws.
   setoid_rewrite negb_involutive.
   reflexivity.
@@ -1109,7 +1130,7 @@ Proof.
       econstructor; eauto.
 Qed.
 
-Theorem IsSuffix_string_dec :
+Theorem IsPrefix_string_dec :
   forall l1 l2 : list string, IsPrefix l1 l2 \/ ~ IsPrefix l1 l2.
 Proof.
   intros.
@@ -1204,7 +1225,7 @@ this is because x is a list of tuples that all came from r *)
 
     apply H5. clear H5.
 
-    eapply in_flatten; eauto using IsSuffix_string_dec.
+    eapply in_flatten; eauto using IsPrefix_string_dec.
 
     rewrite Heqx1elems in H1.
     rewrite List.map_map in H1.
@@ -1374,137 +1395,3 @@ Lemma tuples_in_relation_filtered_satisfy_constraint :
 Proof.
 
 Admitted.
-
-
-Lemma computes_to_in_specific : forall a n r_n,
- @computes_to
-         (list
-            (@Tuple
-               (BuildHeading
-                  (@Datatypes.cons Attribute (Build_Attribute sNAME name)
-                     (@Datatypes.cons Attribute
-                        (Build_Attribute sTYPE RRecordType)
-                        (@Datatypes.cons Attribute
-                           (Build_Attribute sCLASS RRecordClass)
-                           (@Datatypes.cons Attribute
-                              (Build_Attribute sTTL nat)
-                              (@Datatypes.cons Attribute
-                                 (Build_Attribute sDATA string)
-                                 (@Datatypes.nil Attribute)))))))))
-         (@Query_For
-            (@Tuple
-               (BuildHeading
-                  (@Datatypes.cons Attribute (Build_Attribute sNAME name)
-                     (@Datatypes.cons Attribute
-                        (Build_Attribute sTYPE RRecordType)
-                        (@Datatypes.cons Attribute
-                           (Build_Attribute sCLASS RRecordClass)
-                           (@Datatypes.cons Attribute
-                              (Build_Attribute sTTL nat)
-                              (@Datatypes.cons Attribute
-                                 (Build_Attribute sDATA string)
-                                 (@Datatypes.nil Attribute))))))))
-            (@Query_In
-               (@Tuple
-                  (BuildHeading
-                     (@Datatypes.cons Attribute (Build_Attribute sNAME name)
-                        (@Datatypes.cons Attribute
-                           (Build_Attribute sTYPE RRecordType)
-                           (@Datatypes.cons Attribute
-                              (Build_Attribute sCLASS RRecordClass)
-                              (@Datatypes.cons Attribute
-                                 (Build_Attribute sTTL nat)
-                                 (@Datatypes.cons Attribute
-                                    (Build_Attribute sDATA string)
-                                    (@Datatypes.nil Attribute))))))))
-               (@Build_QueryStructureHint DnsSchema r_n)
-               (@Build_BoundedIndex string
-                  (@Datatypes.cons string sCOLLECTIONS
-                     (@Datatypes.nil string)) sCOLLECTIONS
-                  (@Build_IndexBound string sCOLLECTIONS
-                     (@Datatypes.cons string sCOLLECTIONS
-                        (@Datatypes.nil string)) O
-                     (@eq_refl (option string) (@Some string sCOLLECTIONS))))
-               (fun
-                  r : @Tuple
-                        (BuildHeading
-                           (@Datatypes.cons Attribute
-                              (Build_Attribute sNAME name)
-                              (@Datatypes.cons Attribute
-                                 (Build_Attribute sTYPE RRecordType)
-                                 (@Datatypes.cons Attribute
-                                    (Build_Attribute sCLASS RRecordClass)
-                                    (@Datatypes.cons Attribute
-                                       (Build_Attribute sTTL nat)
-                                       (@Datatypes.cons Attribute
-                                          (Build_Attribute sDATA string)
-                                          (@Datatypes.nil Attribute))))))) =>
-                @Query_Where
-                  (@Tuple
-                     (BuildHeading
-                        (@Datatypes.cons Attribute
-                           (Build_Attribute sNAME name)
-                           (@Datatypes.cons Attribute
-                              (Build_Attribute sTYPE RRecordType)
-                              (@Datatypes.cons Attribute
-                                 (Build_Attribute sCLASS RRecordClass)
-                                 (@Datatypes.cons Attribute
-                                    (Build_Attribute sTTL nat)
-                                    (@Datatypes.cons Attribute
-                                       (Build_Attribute sDATA string)
-                                       (@Datatypes.nil Attribute))))))))
-                  (@IsSuffix string (qname (questions n))
-                     (@GetAttribute
-                        (BuildHeading
-                           (@Datatypes.cons Attribute
-                              (Build_Attribute sNAME name)
-                              (@Datatypes.cons Attribute
-                                 (Build_Attribute sTYPE RRecordType)
-                                 (@Datatypes.cons Attribute
-                                    (Build_Attribute sCLASS RRecordClass)
-                                    (@Datatypes.cons Attribute
-                                       (Build_Attribute sTTL nat)
-                                       (@Datatypes.cons Attribute
-                                          (Build_Attribute sDATA string)
-                                          (@Datatypes.nil Attribute))))))) r
-                        (@Build_BoundedIndex string
-                           (@Datatypes.cons string sNAME
-                              (@Datatypes.cons string sTYPE
-                                 (@Datatypes.cons string sCLASS
-                                    (@Datatypes.cons string sTTL
-                                       (@Datatypes.cons string sDATA
-                                          (@Datatypes.nil string)))))) sNAME
-                           (@Build_IndexBound string sNAME
-                              (@Datatypes.cons string sNAME
-                                 (@Datatypes.cons string sTYPE
-                                    (@Datatypes.cons string sCLASS
-                                       (@Datatypes.cons string sTTL
-                                          (@Datatypes.cons string sDATA
-                                             (@Datatypes.nil string)))))) O
-                              (@eq_refl (option string) (@Some string sNAME))))))
-                  (@Query_Return
-                     (@Tuple
-                        (BuildHeading
-                           (@Datatypes.cons Attribute
-                              (Build_Attribute sNAME name)
-                              (@Datatypes.cons Attribute
-                                 (Build_Attribute sTYPE RRecordType)
-                                 (@Datatypes.cons Attribute
-                                    (Build_Attribute sCLASS RRecordClass)
-                                    (@Datatypes.cons Attribute
-                                       (Build_Attribute sTTL nat)
-                                       (@Datatypes.cons Attribute
-                                          (Build_Attribute sDATA string)
-                                          (@Datatypes.nil Attribute)))))))) r))))
-         a
- ->
-   forall n' : DNSRRecord, 
-   @List.In DNSRRecord n' a -> @IsPrefix string (get_name n') (qname (questions n)).
-Proof.
-  intros. 
-  eapply For_computes_to_In in H; try eauto.
-  inv H.
-  + eauto. 
-  + pose proof IsSuffix_string_dec. intros. auto.
-Qed.
-

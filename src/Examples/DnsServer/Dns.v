@@ -70,68 +70,7 @@ Definition DnsSpec : ADT DnsSig :=
 (* implement the DNS record constraint check as code that counts the number of occurrences of
 the constraint being broken (refines the boolean x1 in AddData) *)
 
-Notation "( x 'in' r '!' Ridx ) bod" :=
-  (let qs_schema : QueryStructureSchema := _ in
-   let r' : UnConstrQueryStructure qs_schema := r in
-   let Ridx' := ibound (indexb (@Build_BoundedIndex _ _ (QSschemaNames qs_schema) Ridx%string _)) in
-   @UnConstrQuery_In _ qs_schema r' Ridx'
-            (fun x : @RawTuple (GetNRelSchemaHeading (qschemaSchemas qs_schema) Ridx') => bod)) : QueryImpl_scope.
 
-Definition GetAttributeRawBnd {heading : Heading}
-           (tup : @RawTuple heading)
-           (idx : (BoundedIndex (HeadingNames heading)))
-  : Domain heading (ibound (indexb idx)) :=
-  GetAttributeRaw tup (ibound (indexb idx)).
-
-Notation "tup '!' idx" := (GetAttributeRaw tup ``idx) : TupleImpl_scope.
-
-Lemma refine_count_constraint_broken :
-  forall (n : DNSRRecord) (r : UnConstrQueryStructure DnsSchema),
-    refine {b |
-            decides b
-                    (forall tup' : @IndexedRawTuple (GetHeading DnsSchema sCOLLECTIONS),
-                       (r!sCOLLECTIONS)%QueryImpl tup' ->
-                       n!sNAME = (indexedElement tup')!sNAME -> n!sTYPE <> CNAME)}
-           (If (beq_RRecordType n!sTYPE CNAME)
-               Then count <- Count
-               For (tup in r!sCOLLECTIONS)
-               (Where (n!sNAME = GetAttributeRawBnd tup ``sNAME)
-                      Return tup )%QueryImpl;
-    ret (beq_nat count 0) Else ret true).
-Proof.
-  intros; setoid_rewrite refine_pick_decides at 1;
-  [ | apply refine_is_CNAME__forall_to_exists | apply refine_not_CNAME__independent ].
-  (* refine existence check into query. *)
-
-  match goal with
-      |- context[{b | decides b
-                              (exists tup : @IndexedTuple ?heading,
-                                 (@GetUnConstrRelationBnd ?qs_schema ?qs ?tbl tup /\ @?P tup))}]
-      =>
-      let H1 := fresh in
-      let H2 := fresh in
-      makeEvar (Ensemble (@Tuple heading))
-               ltac:(fun P' => assert (Same_set (@IndexedTuple heading) (fun t => P' (indexedElement t)) P) as H1;
-                     [unfold Same_set, Included, Ensembles.In;
-                       split; [intros x H; pattern (indexedElement x);
-                               match goal with
-                                   |- ?P'' (indexedElement x) => unify P' P'';
-                                     simpl; eauto
-                               end
-                              | eauto]
-                     |
-                     assert (DecideableEnsemble P') as H2;
-                       [ simpl; eauto with typeclass_instances (* Discharge DecideableEnsemble w/ intances. *)
-                       | setoid_rewrite (@refine_constraint_check_into_query' qs_schema (ibound (indexb tbl)) qs P P' H2 H1); clear H2 H1 ] ]) end.
-  remember n!sTYPE; refine pick val (beq_RRecordType d CNAME); subst;
-  [ | case_eq (beq_RRecordType n!sTYPE CNAME); intros;
-      rewrite <- beq_RRecordType_dec in H; find_if_inside;
-      unfold not; simpl in *; try congruence ].
-  intros; simplify with monad laws; simpl.
-  autorewrite with monad laws.
-  setoid_rewrite negb_involutive.
-  reflexivity.
-Qed.
 
 (* -------------------------------------------------------------------------------------- *)
 
@@ -197,10 +136,9 @@ Ltac refine_bind' :=
       (* H0 is the hypothesis from refine_under_bind? *)
       inversion H0. inversion H2. clear H2.
       - eapply (tuples_in_relation_satisfy_constraint_specific n). eauto.
-      - eapply computes_to_in_specific; eauto.
+      - eapply For_computes_to_In; eauto using IsPrefix_string_dec.
     }
-    Check computes_to_in_specific.
-    - eapply computes_to_in_specific; eauto.
+    - eapply For_computes_to_In; eauto using IsPrefix_string_dec.
     - reflexivity.
     - unfold pointwise_relation; intros; higher_order_reflexivity. 
 
@@ -316,7 +254,7 @@ Ltac refine_bind' :=
       (* apply refine_under_bind; intros. *)
       setoid_rewrite refine_Count. simplify with monad laws.
       apply refine_under_bind; intros.
-      apply refine_under_bind; intros.
+      Check refine_subcheck_to_filter.
       setoid_rewrite refine_subcheck_to_filter; eauto.
       simplify with monad laws.
       Check clear_nested_if.
@@ -431,3 +369,7 @@ Ltac refine_bind' :=
 Time Defined.
 
 Time Definition DNSImpl := Eval simpl in (projT1 DnsManual).
+
+Print DNSImpl.
+
+(* TODO extraction, examples/messagesextraction.v *)
