@@ -173,6 +173,15 @@ $(filter-out $(VOFILES),$(call vo_closure,$(VOFILES))): FORCE
 	@ echo
 	@ false
 
+ifneq ($(filter-out $(wildcard $(VFILES)),$(VFILES)),)
+$(VOFILES): FORCE
+	@ echo
+	@ echo 'error: $(filter-out $(wildcard $(VFILES)),$(VFILES)) is in _CoqProject but does not exist.'
+	@ echo 'error: Please run `make update-_CoqProject`.'
+	@ echo
+	@ false
+endif
+
 
 $(WATER_TANK_EXTRACT_ML): $(filter-out $(WATER_TANK_EXTRACT_VO),$(call vo_closure,$(WATER_TANK_EXTRACT_VO))) $(WATER_TANK_EXTRACT_VO:%.vo=%.v)
 	$(VECHO) "COQC $(WATER_TANK_EXTRACT_VO:%.vo=%.v) > $@"
