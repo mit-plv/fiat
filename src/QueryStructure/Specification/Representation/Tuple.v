@@ -69,9 +69,43 @@ Definition SetAttributeRaw {heading}
 
 Definition SetAttribute {heading}
 : @Tuple heading ->
-  forall attr : Attributes heading,
-    Domain heading attr -> @Tuple heading :=
-  fun tup attr dom => replace_Index2 _ tup attr dom.
+  forall attr : @BoundedString _ (HeadingNames heading),
+    Domain heading (ibound (indexb attr)) -> @Tuple heading :=
+  fun tup attr dom => replace_Index2 _ tup (ibound (indexb attr)) dom.
+
+Notation "tup '!!' attr '<-' v " := (SetAttribute tup (@Build_BoundedIndex _ _ _ attr%string _) v) : Tuple_scope.
+
+Definition AppendTupleRaw
+           {heading1 heading2}
+           (tup1 : @RawTuple heading1)
+           (tup2 : @RawTuple heading2)
+  : @RawTuple {| AttrList := (Vector.append (AttrList heading1) (AttrList heading2)) |} :=
+  ilist2_app tup1 tup2.
+
+Notation "tup1 ++ tup2" := (AppendTupleRaw tup1 tup2) : Tuple_scope.
+
+Section TupleNotationExamples.
+  Local Open Scope Tuple.
+
+  Definition MovieHeading : Heading := <"title" :: string, "year" :: nat>%Heading.
+  Definition GwW : Tuple := <"title" :: "Gone With the Wind"%string, "year" :: 1938>.
+  Definition GwW' := Eval simpl in GwW !! "title" <- "Gone With the Wind Part 2"%string.
+  Definition DupleMovie : RawTuple := GwW ++ GwW'.
+
+End TupleNotationExamples.
+
+(*Variable UpdateTuple : forall (attrs: list Attribute) (attr: Attribute),
+                         (Component attr -> Component attr) ->
+                         @RawTuple (BuildHeading attrs) -> @Tuple (BuildHeading attrs).
+
+Notation "a ++= b" := (@UpdateTuple _ {|attrName := a; attrType := string|}
+                             (fun o => Build_Component (_::_) (append (value o) b))) (at level 80).
+Notation "a :+= b" := (@UpdateTuple _ {|attrName := a; attrType := list _|}
+                             (fun o => Build_Component (_::_) (cons b (value o)))) (at level 80).
+Notation "[ a ; .. ; c ]" := (compose a .. (compose c id) ..) : Update_scope.
+
+Delimit Scope Update_scope with Update. *)
+
 
 Definition IndexedRawTuple {heading} := @IndexedElement (@RawTuple heading).
 Definition RawTupleIndex {heading} (I : @IndexedRawTuple heading) : nat :=

@@ -6,6 +6,9 @@ Reserved Notation "< col1 , .. , coln >"
          (at level 0, col1, coln at level 60,
           format "< '[v  ' col1 ,  .. ,  coln ']' >").
 
+Reserved Notation "tup '!!' attr '<-' v " (no associativity, at level 2,
+                                          format "tup '!!' attr  '<-'  v").
+
 Reserved Notation "ro ≃ rn"  (at level 70).
 
 Reserved Notation "'attributes' attrlist1 'depend' 'on' attrlist2 "

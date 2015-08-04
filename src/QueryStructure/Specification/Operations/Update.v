@@ -30,19 +30,7 @@ Definition QSUpdate
 
 Opaque QSUpdate.
 
-(*Variable UpdateTuple : forall (attrs: list Attribute) (attr: Attribute),
-                         (Component attr -> Component attr) ->
-                         @RawTuple (BuildHeading attrs) -> @Tuple (BuildHeading attrs).
 
-Notation "a |= b" := (@UpdateTuple _ {|attrName := a; attrType := _|}
-                             (fun _ => Build_Component (_::_) b%list)) (at level 80).
-Notation "a ++= b" := (@UpdateTuple _ {|attrName := a; attrType := string|}
-                             (fun o => Build_Component (_::_) (append (value o) b))) (at level 80).
-Notation "a :+= b" := (@UpdateTuple _ {|attrName := a; attrType := list _|}
-                             (fun o => Build_Component (_::_) (cons b (value o)))) (at level 80).
-Notation "[ a ; .. ; c ]" := (compose a .. (compose c id) ..) : Update_scope.
-
-Delimit Scope Update_scope with Update. *)
 Notation "'Update' b 'from' r '!' Ridx 'making' Trans 'where' Ens" :=
   (QSUpdate r (ibound (indexb (@Build_BoundedIndex _ _ (QSschemaNames _) Ridx%string _))) (fun b => Ens) Trans)
     (r at level 0, at level 80) : QuerySpec_scope.
