@@ -1,4 +1,5 @@
-Require Export Fiat.QueryStructure.Specification.Representation.QueryStructureNotations Fiat.QueryStructure.Specification.Operations.Query.
+Require Export Fiat.QueryStructure.Specification.Representation.QueryStructureNotations
+        Fiat.QueryStructure.Specification.Operations.Query.
 Require Import Coq.Lists.List Coq.Arith.Compare_dec Coq.Bool.Bool Coq.Strings.String
         Fiat.Common.BoolFacts
         Fiat.Common.List.PermutationFacts
@@ -20,33 +21,44 @@ Unset Implicit Arguments.
 Local Transparent Count Query_For.
 
 Section ConstraintCheckRefinements.
-  Hint Resolve AC_eq_nth_In AC_eq_nth_NIn crossConstr.
+  Hint Resolve crossConstr.
   Hint Unfold SatisfiesCrossRelationConstraints
        SatisfiesAttributeConstraints
        SatisfiesTupleConstraints.
 
+  Fixpoint List_Query_eqT
+           (attrlist : list Type)
+    : Type
+    := match attrlist with
+       | [ ] => unit
+       | attr :: attrlist' =>
+         prod (Query_eq attr) (List_Query_eqT attrlist')
+       end.
+
   Fixpoint Tuple_Agree_eq'
-           {h : Heading}
+           {h : RawHeading}
            {attrlist : list (Attributes h)}
-           (attr_eq_dec : ilist (fun attr => Query_eq (Domain h attr)) attrlist)
-           (tup tup' : @Tuple h)
+           (attr_eq_dec : List_Query_eqT (map (Domain h) attrlist))
+           (tup tup' : @RawTuple h)
     : bool :=
-    match attr_eq_dec with
-    | inil => true
-    | icons a attrlist' a_eq_dec attr_eq_dec' =>
-      if @A_eq_dec _ a_eq_dec (GetAttribute tup a) (GetAttribute tup' a)
-      then Tuple_Agree_eq' attr_eq_dec' tup tup'
-      else false
-    end.
+    match attrlist return List_Query_eqT (map (Domain h) attrlist) ->
+                          bool with
+    | [ ] => fun _ => true
+    |  attr :: attrlist' =>
+       fun attr_eq_dec' =>
+         if @A_eq_dec _ (fst attr_eq_dec') (GetAttributeRaw tup attr) (GetAttributeRaw tup' attr)
+         then Tuple_Agree_eq' (snd attr_eq_dec') tup tup'
+         else false
+    end attr_eq_dec.
 
   Class List_Query_eq (As : list Type) :=
-    { As_Query_eq : ilist Query_eq As}.
+    { As_Query_eq : List_Query_eqT As}.
 
-  Program Definition Tuple_Agree_eq {h} (attrlist : list (Attributes h))
+  Definition Tuple_Agree_eq {h} (attrlist : list (Attributes h))
           (attr_eq_dec : List_Query_eq (map (Domain h) attrlist)) tup tup' :=
-    Tuple_Agree_eq' (ilist_map _ _ (@As_Query_eq _ attr_eq_dec)) tup tup'.
+    @Tuple_Agree_eq' h attrlist (@As_Query_eq _ attr_eq_dec) tup tup'.
 
-  Lemma Tuple_Agree_eq_dec h attrlist attr_eq_dec (tup tup' : @Tuple h) :
+  Lemma Tuple_Agree_eq_dec h attrlist attr_eq_dec (tup tup' : @RawTuple h) :
     tupleAgree tup tup' attrlist <->
     Tuple_Agree_eq attrlist attr_eq_dec tup tup' = true.
   Proof.
@@ -58,7 +70,7 @@ Section ConstraintCheckRefinements.
     discriminate.
   Qed.
 
-  Lemma Tuple_Agree_eq_dec' h attrlist attr_eq_dec (tup tup' : @Tuple h) :
+  Lemma Tuple_Agree_eq_dec' h attrlist attr_eq_dec (tup tup' : @RawTuple h) :
     ~ tupleAgree tup tup' attrlist <->
     Tuple_Agree_eq attrlist attr_eq_dec tup tup' = false.
   Proof.
@@ -73,7 +85,7 @@ Section ConstraintCheckRefinements.
   Qed.
 
   Definition Tuple_Agree_dec h attrlist
-             (attr_eq_dec : List_Query_eq (map (Domain h) attrlist)) (tup tup' : @Tuple h)
+             (attr_eq_dec : List_Query_eq (map (Domain h) attrlist)) (tup tup' : @RawTuple h)
     : {tupleAgree tup tup' attrlist} + {~ tupleAgree tup tup' attrlist}.
   Proof.
     case_eq (Tuple_Agree_eq attrlist attr_eq_dec tup tup').
@@ -93,41 +105,46 @@ Section ConstraintCheckRefinements.
   (* Consequences of ith_replace_BoundIndex_neq and ith_replace_BoundIndex_eq on updates *)
 
   Lemma refine_SatisfiesAttributeConstraints_self
-    : forall qsSchema
-             (Ridx : @BoundedString (map relName (qschemaSchemas qsSchema)))
-             (tup : @Tuple (schemaHeading (QSGetNRelSchema qsSchema Ridx))),
+    : forall (qsSchema : RawQueryStructureSchema)
+             (Ridx : Fin.t _)
+             (tup : @RawTuple (rawSchemaHeading (GetNRelSchema (qschemaSchemas qsSchema) Ridx))),
       refine {b | decides b (SatisfiesAttributeConstraints Ridx tup )}
-             match (attrConstraints (QSGetNRelSchema qsSchema Ridx)) with
+             match (attrConstraints (GetNRelSchema (qschemaSchemas qsSchema) _)) with
                Some Constr => {b | decides b (Constr tup) }
              | None => ret true
              end.
   Proof.
     unfold SatisfiesAttributeConstraints.
-    intros; destruct (attrConstraints (QSGetNRelSchema qsSchema Ridx));
+    intros; match goal with
+              |- context [attrConstraints ?A] => destruct (attrConstraints A)
+            end;
     eauto using decides_True.
     reflexivity.
   Qed.
 
   Lemma refine_SatisfiesTupleConstraints_self
-    : forall qsSchema
-             (Ridx : @BoundedString (map relName (qschemaSchemas qsSchema)))
-             (tup tup' : @Tuple (schemaHeading (QSGetNRelSchema qsSchema Ridx))),
+    : forall (qsSchema : RawQueryStructureSchema)
+             (Ridx : Fin.t _)
+             (tup tup' : @RawTuple (rawSchemaHeading (GetNRelSchema (qschemaSchemas qsSchema) Ridx))),
       refine {b | decides b (SatisfiesTupleConstraints Ridx tup tup')}
-             match (tupleConstraints (QSGetNRelSchema qsSchema Ridx)) with
+             match (tupleConstraints (GetNRelSchema (qschemaSchemas qsSchema) _)) with
                Some Constr => {b | decides b (Constr tup tup') }
              | None => ret true
              end.
   Proof.
     unfold SatisfiesTupleConstraints.
-    intros; destruct (tupleConstraints (QSGetNRelSchema qsSchema Ridx));
+    intros; match goal with
+              |- context [tupleConstraints ?A] => destruct (tupleConstraints A)
+            end;
     eauto using decides_True.
     reflexivity.
   Qed.
 
   Lemma refine_SatisfiesTupleConstraints
-    : forall qsSchema qs
-             (Ridx : @BoundedString (map relName (qschemaSchemas qsSchema)))
-             (tup : @Tuple (schemaHeading (QSGetNRelSchema qsSchema Ridx))),
+    : forall (qsSchema : RawQueryStructureSchema)
+             (qs : UnConstrQueryStructure qsSchema)
+             (Ridx : Fin.t _)
+             (tup : @RawTuple (rawSchemaHeading (GetNRelSchema (qschemaSchemas qsSchema) Ridx))),
       refine {b | decides
                     b
                     (forall tup',
@@ -136,7 +153,7 @@ Section ConstraintCheckRefinements.
                              Ridx
                              tup
                              (indexedElement tup'))}
-             match (tupleConstraints (QSGetNRelSchema qsSchema Ridx)) with
+             match (tupleConstraints (GetNRelSchema (qschemaSchemas qsSchema) _)) with
                Some Constr =>
                {b | decides b (forall tup',
                                   GetUnConstrRelation qs Ridx tup'
@@ -145,21 +162,24 @@ Section ConstraintCheckRefinements.
              end.
   Proof.
     unfold SatisfiesTupleConstraints.
-    intros; destruct (tupleConstraints (QSGetNRelSchema qsSchema Ridx));
+    intros; match goal with
+              |- context [tupleConstraints ?A] => destruct (tupleConstraints A)
+            end;
     eauto using decides_True.
     reflexivity.
     apply decides_2_True.
   Qed.
 
   Lemma refine_SatisfiesTupleConstraints'
-    : forall qsSchema qs
-             (Ridx : @BoundedString (map relName (qschemaSchemas qsSchema)))
-             (tup : @Tuple (schemaHeading (QSGetNRelSchema qsSchema Ridx))),
+    : forall (qsSchema : RawQueryStructureSchema)
+             (qs : UnConstrQueryStructure qsSchema)
+             (Ridx : Fin.t _)
+             (tup : @RawTuple (rawSchemaHeading (GetNRelSchema (qschemaSchemas qsSchema) Ridx))),
       refine {b | decides b
                           (forall tup',
                               GetUnConstrRelation qs Ridx tup'
                               -> SatisfiesTupleConstraints Ridx (indexedElement tup') tup)}
-             match (tupleConstraints (QSGetNRelSchema qsSchema Ridx)) with
+             match tupleConstraints (GetNRelSchema (qschemaSchemas qsSchema) _) with
                Some Constr =>
                {b | decides b (forall tup',
                                   GetUnConstrRelation qs Ridx tup'
@@ -168,24 +188,26 @@ Section ConstraintCheckRefinements.
              end.
   Proof.
     unfold SatisfiesTupleConstraints.
-    intros; destruct (tupleConstraints (QSGetNRelSchema qsSchema Ridx));
+    intros; match goal with
+              |- context [tupleConstraints ?A] => destruct (tupleConstraints A)
+            end;
     eauto using decides_True.
     reflexivity.
     apply decides_2_True.
   Qed.
 
   Lemma refine_SatisfiesCrossConstraints
-    : forall qsSchema qs
-             (Ridx : @BoundedString (map relName (qschemaSchemas qsSchema)))
-             (tup : @Tuple (schemaHeading (QSGetNRelSchema qsSchema Ridx))),
+    : forall (qsSchema : RawQueryStructureSchema)
+             (qs : UnConstrQueryStructure qsSchema)
+             (Ridx : Fin.t _)
+             (tup : @RawTuple (rawSchemaHeading (GetNRelSchema (qschemaSchemas qsSchema) Ridx))),
       refine
         (@Iterate_Decide_Comp _
                               (fun Ridx' =>
                                  SatisfiesCrossRelationConstraints
                                    Ridx Ridx' tup
                                    (GetUnConstrRelation qs Ridx')))
-        (@Iterate_Decide_Comp_opt' _ _ []
-                                   (fun Ridx' =>
+        (@Iterate_Decide_Comp_opt _ (fun Ridx' =>
                                       match (BuildQueryStructureConstraints qsSchema Ridx Ridx') with
                                       | Some CrossConstr =>
                                         Some (CrossConstr tup (GetUnConstrRelation qs Ridx'))
@@ -200,8 +222,8 @@ Section ConstraintCheckRefinements.
   Qed.
 
   Lemma tupleAgree_refl :
-    forall (h : Heading)
-           (tup : @Tuple h)
+    forall (h : RawHeading)
+           (tup : @RawTuple h)
            (attrlist : list (Attributes h)),
       tupleAgree tup tup attrlist.
   Proof.
@@ -209,8 +231,8 @@ Section ConstraintCheckRefinements.
   Qed.
 
   Lemma refine_tupleAgree_refl_True :
-    forall (h : Heading)
-           (tup : @Tuple h)
+    forall (h : RawHeading)
+           (tup : @RawTuple h)
            (attrlist attrlist' : list (Attributes h)),
       refine {b |
               decides b (tupleAgree tup tup attrlist'
@@ -222,16 +244,16 @@ Section ConstraintCheckRefinements.
   Qed.
 
   Lemma refine_SatisfiesCrossConstraints_Pre (Q : Prop)
-    : forall qsSchema qs
-             (Ridx : @BoundedString (map relName (qschemaSchemas qsSchema)))
-             (tup : @Tuple (schemaHeading (QSGetNRelSchema qsSchema Ridx))),
+    : forall (qsSchema : RawQueryStructureSchema) qs
+             (Ridx :Fin.t _)
+             (tup : @RawTuple _),
       refine
         (@Iterate_Decide_Comp_Pre _
                                   (fun Ridx' =>
                                      SatisfiesCrossRelationConstraints
                                        Ridx Ridx' tup
                                        (GetUnConstrRelation qs Ridx')) Q)
-        (@Iterate_Decide_Comp_opt'_Pre _ _ []
+        (@Iterate_Decide_Comp_opt_Pre _
                                        (fun Ridx' =>
                                           match (BuildQueryStructureConstraints qsSchema Ridx Ridx') with
                                           | Some CrossConstr =>
@@ -248,7 +270,7 @@ Section ConstraintCheckRefinements.
 
   Lemma DeletePrimaryKeysOK {qsSchema}
     : forall (qs : UnConstrQueryStructure qsSchema)
-             (Ridx : @BoundedString (map relName (qschemaSchemas qsSchema)))
+             (Ridx :Fin.t _)
              DeletedTuples
              attrlist1 attrlist2,
       refine {b | (forall tup tup',
@@ -295,7 +317,7 @@ Section ConstraintCheckRefinements.
     : forall (qs : UnConstrQueryStructure qsSchema) Ridx bod results,
       UnConstrQuery_In qs Ridx bod ↝ results
       -> forall (a : A), List.In a results ->
-                         exists (tup' : IndexedTuple) results',
+                         exists (tup' : IndexedRawTuple) results',
                            Ensembles.In _ (GetUnConstrRelation qs Ridx) tup'
                            /\ bod (indexedElement tup') ↝ results'
                            /\ List.In a results'.
@@ -304,15 +326,15 @@ Section ConstraintCheckRefinements.
     computes_to_inv.
     unfold UnIndexedEnsembleListEquivalence in *; destruct_ex; intuition; subst.
     rewrite map_map in H'.
-    remember (GetUnConstrRelation qs Ridx); clear Hequ;
-    revert u a results H0 H' H H3;
+    remember (GetUnConstrRelation qs Ridx); clear Heqi;
+    revert i a results H0 H' H H3;
     induction x; simpl in *; intros;
     computes_to_inv; subst.
     - simpl in H0; intuition.
     - apply in_app_or in H0; intuition.
       exists a v; intuition; try eapply H; eauto.
       inversion H3; subst.
-      destruct (IHx (fun tup => tup <> a /\ u tup) _ _ H1 H''); eauto.
+      destruct (IHx (fun tup => tup <> a /\ i tup) _ _ H1 H''); eauto.
       unfold Ensembles.In; intros; intuition; subst; eauto.
       eapply H in H6; intuition.
       apply H4; apply in_map; auto.
@@ -324,9 +346,9 @@ Section ConstraintCheckRefinements.
 
   Lemma In_UnConstrQuery_In' {qsSchema} {A}
     : forall (qs : UnConstrQueryStructure qsSchema) Ridx
-             (bod : Tuple -> Comp (list A))
+             (bod : RawTuple -> Comp (list A))
              results
-             (a : A) (tup' : IndexedTuple),
+             (a : A) (tup' : IndexedRawTuple),
       Ensembles.In _ (GetUnConstrRelation qs Ridx) tup'
       -> (forall results', bod (indexedElement tup') ↝ results'
                            -> List.In a results')
@@ -337,14 +359,14 @@ Section ConstraintCheckRefinements.
     computes_to_inv.
     unfold UnIndexedEnsembleListEquivalence in *; destruct_ex; intuition; subst.
     rewrite map_map in H1'.
-    remember (GetUnConstrRelation qs Ridx); clear Hequ;
-    revert u a results H H0 H1 H1' H4;
+    remember (GetUnConstrRelation qs Ridx); clear Heqi;
+    revert i a results H H0 H1 H1' H4;
     induction x; simpl in *; intros;
     computes_to_inv; subst.
     - simpl in *; intuition; eapply H1; eauto.
     - apply H1 in H; intuition; subst; apply in_or_app; eauto.
       right; inversion H4; subst.
-      eapply (IHx (fun tup => tup <> a /\ u tup)); eauto.
+      eapply (IHx (fun tup => tup <> a /\ i tup)); eauto.
       intuition; subst; eauto.
       apply H5; eauto using in_map.
       apply H1; eauto.
@@ -356,21 +378,21 @@ Section ConstraintCheckRefinements.
 
   Lemma DeleteForeignKeysCheck {qsSchema}
     : forall (qs : UnConstrQueryStructure qsSchema)
-             (Ridx Ridx' : @BoundedString (map relName (qschemaSchemas qsSchema)))
-             (DeletedTuples : Ensemble (@Tuple (schemaHeading (QSGetNRelSchema _ Ridx))))
+             (Ridx Ridx' :Fin.t _)
+             (DeletedTuples : Ensemble (RawTuple ))
              (Delete_dec : DecideableEnsemble DeletedTuples)
-             (attr : Attributes (schemaHeading (QSGetNRelSchema _ Ridx)))
-             (attr' : Attributes (schemaHeading (QSGetNRelSchema _ Ridx')))
-             (tupmap : Domain (schemaHeading (QSGetNRelSchema _ Ridx)) attr
-                       -> Domain (schemaHeading (QSGetNRelSchema _ Ridx')) attr')
+             (attr : Attributes _)
+             (attr' : Attributes _)
+             (tupmap : Domain _ attr
+                       -> Domain _ attr')
              (AgreeDelete : forall tup tup',
                  tupleAgree tup tup' [attr] ->
                  DeletedTuples tup ->
                  DeletedTuples tup')
-             (attr_eq_dec : Query_eq (Domain (schemaHeading (QSGetNRelSchema _ Ridx)) attr))
+             (attr_eq_dec : Query_eq (Domain _ attr))
              (P : Prop)
              (ForeignKey_P_P :
-                P -> (forall tup' : IndexedTuple,
+                P -> (forall tup' : IndexedRawTuple,
                          GetUnConstrRelation qs Ridx' tup' ->
                          ForeignKey_P attr' attr tupmap (indexedElement tup')
                                       (GetUnConstrRelation qs Ridx)))
@@ -389,7 +411,7 @@ Section ConstraintCheckRefinements.
                                       qs Ridx
                                       (fun tup =>
                                          Where (DeletedTuples tup)
-                                               Where (tupmap (GetAttribute tup attr) = GetAttribute tup' attr')
+                                               Where (tupmap (GetAttributeRaw tup attr) = GetAttributeRaw tup' attr')
                                                Return ()))));
               ret (match x with
                      0  => true
@@ -436,9 +458,9 @@ Section ConstraintCheckRefinements.
       + apply Delete_dec in H1; pose proof (H13 H1) as H'.
         computes_to_inv; split_and.
         unfold indexedTuple in *.
-        destruct (A_eq_dec (GetAttribute (indexedElement x3) attr)
-                           (GetAttribute (indexedElement x1) attr)).
-        * rewrite e, <- H9 in *; subst;
+        destruct (A_eq_dec (GetAttributeRaw (indexedElement x3) attr)
+                           (GetAttributeRaw (indexedElement x1) attr)).
+        * rewrite e in *; setoid_rewrite <- H9 in H15; subst;
           pose proof (H15 (refl_equal _)) as e'; computes_to_inv; simpl in *; subst.
           apply H12; eapply AgreeDelete; eauto.
           unfold tupleAgree; simpl; intros attr'' In_attr''; destruct In_attr'';
@@ -446,7 +468,7 @@ Section ConstraintCheckRefinements.
         * rewrite H16 in H11; simpl in *; eauto.
           intros;
             unfold QSGetNRelSchema, GetNRelSchema in *; simpl in *;
-            rewrite <- H17 in H9; eauto.
+            setoid_rewrite <- H17 in H9; eauto.
       + rewrite H14 in H11; simpl in *; eauto.
         intros H'; apply dec_decides_P in H'; congruence.
       + eapply Permutation_in; symmetry in Comp_v'; simpl; eauto.
@@ -457,14 +479,13 @@ Section ConstraintCheckRefinements.
   Lemma InsertForeignKeysCheck {qsSchema}
     : forall
       (qs : UnConstrQueryStructure qsSchema)
-      (Ridx Ridx' : @BoundedString (map relName (qschemaSchemas qsSchema)))
-      (attr : Attributes (schemaHeading (QSGetNRelSchema _ Ridx)))
-      (attr' : Attributes (schemaHeading (QSGetNRelSchema _ Ridx')))
-      (tupmap : Domain (schemaHeading (QSGetNRelSchema _ Ridx')) attr'
-                -> Domain (schemaHeading (QSGetNRelSchema _ Ridx)) attr)
+      (Ridx Ridx' :Fin.t _)
+      (attr : Attributes _)
+      (attr' : Attributes _)
+      (tupmap : Domain _ attr' -> Domain _ attr)
       tup
       (ForeignKey_P_P :
-         (forall tup' : IndexedTuple,
+         (forall tup' : IndexedRawTuple,
              GetUnConstrRelation qs Ridx tup' ->
              ForeignKey_P attr attr' tupmap (indexedElement tup')
                           (GetUnConstrRelation qs Ridx'))),
@@ -517,7 +538,7 @@ Lemma For_computes_to_In :
       computes_to (For (QueryResultComp (heading := heading) ens
                                         (fun tup => Where (P tup) Return tup))) seq ->
       forall x,
-        List.In x seq -> (P x /\ (exists x0, ens x0 /\ indexedTuple x0 = x)).
+        List.In x seq -> (P x /\ (exists x0, ens x0 /\ indexedRawTuple x0 = x)).
 Proof.
   unfold refine, decides;
   unfold Query_For, QueryResultComp; intros * excl;
@@ -551,7 +572,7 @@ Proof.
 
 
   rewrite singleton_neq_nil in spec2.
-  destruct (excl (indexedTuple head')) as [ H'' | H'' ]; try solve [exfalso; intuition].
+  destruct (excl (indexedRawTuple head')) as [ H'' | H'' ]; try solve [exfalso; intuition].
   specialize (spec1 H'').
 
   apply Return_inv in spec1.
@@ -565,7 +586,7 @@ Proof.
     computes_to_econstructor; [ | computes_to_constructor; symmetry; eassumption ].
     computes_to_econstructor.
     pose proof (EnsembleListEquivalence_slice x1_before x1_middle x1_after).
-    instantiate (2 := (fun x0 : IndexedTuple => ens x0 /\ ~ In x0 x1_middle)).
+    instantiate (2 := (fun x0 : IndexedRawTuple => ens x0 /\ ~ In x0 x1_middle)).
     eapply PickComputes with (a := map indexedElement (x1_before ++ x1_after)).
     econstructor; split; eauto; intuition.
     destruct (H1 ens).
@@ -606,7 +627,7 @@ Lemma For_computes_to_nil :
     computes_to (For (QueryResultComp (heading := heading) ens
                                       (fun tup => Where (P tup) Return tup))) [] ->
     forall x,
-      ens x -> ~ (P (indexedTuple x)).
+      ens x -> ~ (P (indexedRawTuple x)).
 Proof.
   unfold refine, decides, Count, Query_For, QueryResultComp; intros **.
   computes_to_inv.
@@ -637,7 +658,7 @@ Lemma refine_constraint_check_into_query' :
     -> refine
          (Pick (fun (b : bool) =>
                   decides b
-                          (exists tup2: @IndexedTuple _,
+                          (exists tup2: @IndexedRawTuple _,
                               (GetUnConstrRelation c tbl tup2 /\ P' tup2))))
          (Bind
             (Count (For (UnConstrQuery_In c tbl (fun tup => Where (P tup) Return tup))))
@@ -670,8 +691,8 @@ Corollary refine_constraint_check_into_query :
     refine
       (Pick (fun (b : bool) =>
                decides b
-                       (exists tup2: @IndexedTuple _,
-                           (GetUnConstrRelation c tbl tup2 /\ P (indexedTuple tup2)))))
+                       (exists tup2: @IndexedRawTuple _,
+                           (GetUnConstrRelation c tbl tup2 /\ P (indexedRawTuple tup2)))))
       (Bind
          (Count (For (UnConstrQuery_In c tbl (fun tup => Where (P tup) Return tup))))
          (fun count => ret (negb (beq_nat count 0)))).
@@ -687,25 +708,30 @@ Definition refine_foreign_key_check_into_query {schm tbl} :=
   @refine_constraint_check_into_query schm tbl.
 
 Lemma refine_functional_dependency_check_into_query :
-  forall {schm : QueryStructureSchema} {tbl} ref args1 args2 (c : UnConstrQueryStructure schm),
-    DecideableEnsemble (fun x : Tuple => tupleAgree_computational ref x args1 /\
-                                         ~ tupleAgree_computational ref x args2) ->
-    ((forall tup' : IndexedTuple,
+  forall {schm : RawQueryStructureSchema}
+         {tbl}
+         (ref : @RawTuple (@GetNRelSchemaHeading _ (qschemaSchemas schm) tbl))
+         args1
+         args2
+         (c : UnConstrQueryStructure schm),
+    DecideableEnsemble (fun x : RawTuple => tupleAgree_computational ref x args1 /\
+                                            ~ tupleAgree_computational ref x args2) ->
+    ((forall tup' : IndexedRawTuple,
          GetUnConstrRelation c tbl tup'
          -> FunctionalDependency_P args2 args1 ref (indexedElement tup'))
-     <-> (forall tup' : IndexedTuple,
+     <-> (forall tup',
              ~ (GetUnConstrRelation c tbl tup'
                 /\ tupleAgree ref (indexedElement tup') args1
                 /\ ~ tupleAgree ref (indexedElement tup') args2))) ->
     refine
       (Pick (fun (b : bool) =>
                decides b
-                       (forall tup' : IndexedTuple,
+                       (forall tup',
                            GetUnConstrRelation c tbl tup' ->
                            FunctionalDependency_P args2 args1 ref (indexedElement tup'))))
       (Bind (Count
                For (UnConstrQuery_In c tbl
-                                     (fun tup : Tuple =>
+                                     (fun tup =>
                                         Where (tupleAgree_computational ref tup args1 /\
                                                ~ tupleAgree_computational ref tup args2)
                                               Return tup)))
@@ -721,9 +747,10 @@ Proof.
                                   ~ tupleAgree ref (indexedElement tup') args2)); eauto.
 
   setoid_rewrite refine_decide_negation.
-  setoid_rewrite tupleAgree_equivalence.
+  setoid_rewrite (tupleAgree_equivalence ref).
+
   setoid_rewrite (@refine_constraint_check_into_query _ _
-                                                      (fun (x: Tuple ) => tupleAgree_computational ref x args1 /\
+                                                      (fun x => tupleAgree_computational ref x args1 /\
                                                                           ~ tupleAgree_computational ref x args2)); try assumption.
 
   Opaque Query_For Count.
@@ -733,25 +760,30 @@ Proof.
 Qed.
 
 Lemma refine_functional_dependency_check_into_query' :
-  forall {schm : QueryStructureSchema} {tbl} ref args1 args2 (c : UnConstrQueryStructure schm),
-    DecideableEnsemble (fun x : Tuple => tupleAgree_computational x ref args1 /\
+  forall {schm : RawQueryStructureSchema}
+         {tbl}
+         ref
+         args1
+         args2
+         (c : UnConstrQueryStructure schm),
+    DecideableEnsemble (fun x => tupleAgree_computational x ref args1 /\
                                          ~ tupleAgree_computational x ref args2) ->
-    ((forall tup' : IndexedTuple,
+    ((forall tup' ,
          GetUnConstrRelation c tbl tup'
          -> FunctionalDependency_P args2 args1 (indexedElement tup') ref)
-     <-> (forall tup' : IndexedTuple,
+     <-> (forall tup',
              ~ (GetUnConstrRelation c tbl tup'
                 /\ tupleAgree (indexedElement tup') ref args1
                 /\ ~ tupleAgree (indexedElement tup') ref args2))) ->
     refine
       (Pick (fun (b : bool) =>
                decides b
-                       (forall tup' : IndexedTuple,
+                       (forall tup',
                            GetUnConstrRelation c tbl tup' ->
                            FunctionalDependency_P args2 args1 (indexedElement tup') ref)))
       (Bind (Count
                For (UnConstrQuery_In c tbl
-                                     (fun tup : Tuple =>
+                                     (fun tup =>
                                         Where (tupleAgree_computational tup ref args1 /\
                                                ~ tupleAgree_computational tup ref args2)
                                               Return tup)))
@@ -769,7 +801,7 @@ Proof.
   setoid_rewrite refine_decide_negation.
   setoid_rewrite tupleAgree_equivalence.
   setoid_rewrite (@refine_constraint_check_into_query _ _
-                                                      (fun (x: Tuple ) => tupleAgree_computational x ref args1 /\
+                                                      (fun x => tupleAgree_computational x ref args1 /\
                                                                           ~ tupleAgree_computational x ref args2)); try assumption.
 
   Opaque Query_For Count.
@@ -778,18 +810,17 @@ Proof.
   reflexivity.
 Qed.
 
-
 Theorem FunctionalDependency_symmetry
   : forall A H (f : _ -> _ -> Comp A) (P : _ -> Prop) attrlist1 attrlist2 n,
     refine (x1 <- {b | decides b
-                               (forall tup' : @IndexedTuple H,
+                               (forall tup' : @IndexedRawTuple H,
                                    P tup'
                                    -> FunctionalDependency_P attrlist1 attrlist2 n (indexedElement tup'))};
-            x2 <- {b | decides b (forall tup' : @IndexedTuple H,
+            x2 <- {b | decides b (forall tup' : @IndexedRawTuple H,
                                      P tup'
                                      -> FunctionalDependency_P attrlist1 attrlist2 (indexedElement tup') n)};
             f x1 x2)
-           (x1 <- {b | decides b (forall tup' : @IndexedTuple H,
+           (x1 <- {b | decides b (forall tup' : @IndexedRawTuple H,
                                      P tup'
                                      -> FunctionalDependency_P attrlist1 attrlist2 n (indexedElement tup'))};
             f x1 x1).
@@ -813,7 +844,7 @@ Qed.
 
 Global Instance nil_List_Query_eq :
   List_Query_eq [] :=
-  {| As_Query_eq := inil _ |}.
+  {| As_Query_eq := tt  |}.
 
 Global Instance cons_List_Query_eq
        {A : Type}
@@ -822,4 +853,4 @@ Global Instance cons_List_Query_eq
        {As_Query_eq' : List_Query_eq As}
   :
     List_Query_eq (A :: As) :=
-  {| As_Query_eq := icons _ A_Query_eq As_Query_eq |}.
+  {| As_Query_eq := (A_Query_eq, As_Query_eq) |}.

@@ -1,7 +1,17 @@
-Require Import Coq.Strings.String Coq.Lists.List Coq.Sorting.Permutation
-        Coq.Bool.Bool Coq.Sets.Ensembles
+Require Import
+        Coq.Arith.Arith
+        Coq.omega.Omega
+        Coq.NArith.NArith
+        Coq.ZArith.ZArith
+        Coq.Strings.String
+        Coq.Lists.List
+        Coq.Sorting.Permutation
+        Coq.Bool.Bool
+        Coq.Sets.Ensembles
         Coq.Logic.FunctionalExtensionality
-        Fiat.ADTNotation Fiat.Common
+        Fiat.ADTNotation
+        Fiat.Common
+        Fiat.Common.ilist2
         Fiat.Common.List.ListFacts
         Fiat.Common.Ensembles.IndexedEnsembles
         Fiat.Common.DecideableEnsembles
@@ -12,10 +22,10 @@ Require Import Coq.Strings.String Coq.Lists.List Coq.Sorting.Permutation
         Fiat.QueryStructure.Specification.Operations.Query
         Fiat.QueryStructure.Specification.Representation.QueryStructure.
 
+Import Coq.Vectors.VectorDef.VectorNotations.
 (* [Query_For] and all aggregates are opaque, so we need to make them
    transparent in order to reason about them. *)
 Local Transparent Query_For Count Max MaxN MaxZ Sum SumN SumZ.
-Require Import Coq.NArith.NArith Coq.ZArith.ZArith.
 
 Lemma refine_Count {A} rows
 : refine (@Count A rows)
@@ -171,11 +181,10 @@ Proof.
 Qed.
 
 Definition UnConstrQuery_In {ResultT}
-           qsSchema (qs : UnConstrQueryStructure qsSchema)
-           (R : @StringBound.BoundedString
-                  (map relName (qschemaSchemas qsSchema)))
-           (bod : @Tuple (schemaHeading (relSchema
-                                           (StringBound.nth_Bounded relName (qschemaSchemas qsSchema) R))) -> Comp (list ResultT))
+           {qsSchema}
+           (qs : UnConstrQueryStructure qsSchema)
+           (R : Fin.t _)
+           (bod : RawTuple -> Comp (list ResultT))
   :=
     QueryResultComp (GetUnConstrRelation qs R) bod.
 
@@ -214,34 +223,36 @@ Qed.
 
 (* Cross product of lists using heterogenous lists. *)
 Definition Join_Comp_Lists
+           {n}
            {A : Type}
            {f : A -> Type}
-           {As : list A}
+           {As : Vector.t A n}
            {a : A}
-           (l' : list (ilist f As))
-           (c : ilist f As -> Comp (list (f a)))
-: Comp (list (ilist f (a :: As))) :=
-  flatten_CompList (map (fun l' => l <- c l'; ret (map (fun fa => icons _ fa l') l)) l').
+           (l' : list (ilist2 (B := f) As))
+           (c : ilist2 (B := f) As -> Comp (list (f a)))
+: Comp (list (ilist2 (B := f) (Vector.cons _ a _ As))) :=
+  flatten_CompList (map (fun l' => l <- c l'; ret (map (fun fa => icons2 fa l') l)) l').
 
 Definition Build_single_Tuple_list
            {heading}
-           (l : list (@Tuple heading))
-: list (ilist (@Tuple) [heading])
-  := map (fun a => icons _ a (inil _)) l.
+           (l : list (@RawTuple heading))
+: list (ilist2 (B := @RawTuple) (Vector.cons _ heading _ (Vector.nil _)))
+  := map (fun a => icons2 a (inil2)) l.
 
 Lemma filter_and_join_ilist_tail
+      {n}
       {A}
       {a}
-      {As}
+      {As : Vector.t A n}
       (f' : A -> Type)
 : forall
-    (f : (ilist f' As) -> bool)
-    (s1 : list (ilist f' As))
-    (s2 : ilist f' As -> Comp (list (f' a)))
+    (f : (ilist2 (B := f') As) -> bool)
+    (s1 : list (ilist2 (B := f') As))
+    (s2 : ilist2 (B := f') As -> Comp (list (f' a)))
     filter_rest,
     (forall a, List.In a s1 -> exists v, computes_to (s2 a) v)
     -> refineEquiv (l <- (Join_Comp_Lists s1 s2);
-                    ret (filter (fun x : ilist f' (a :: As) => f (ilist_tl x) && filter_rest x) l))
+                    ret (filter (fun x : ilist2 (B := f') (Vector.cons _ a _ As) => f (ilist2_tl x) && filter_rest x) l))
                    (l <- Join_Comp_Lists (filter f s1) s2;
                     ret (filter filter_rest l)).
 Proof.
@@ -281,18 +292,19 @@ Definition List_Query_In
   :=
     flatten_CompList (map resultComp queriedList).
 
-Corollary filter_join_ilist_tail
+Corollary filter_join_ilist2_tail
+          {n}
           {A}
           {a}
-          {As}
+          {As : Vector.t A n}
           (f' : A -> Type)
 : forall
-    (f : (ilist f' As) -> bool)
-    (s1 : list (ilist f' As))
-    (s2 : ilist f' As -> Comp (list (f' a))),
+    (f : (ilist2 (B := f') As) -> bool)
+    (s1 : list (ilist2 (B := f') As))
+    (s2 : ilist2 (B := f') As -> Comp (list (f' a))),
     (forall a, List.In a s1 -> exists v, computes_to (s2 a) v)
     -> refineEquiv (l <- (Join_Comp_Lists s1 s2);
-                    ret (filter (fun x : ilist f' (a :: As) => f (ilist_tl x)) l))
+                    ret (filter (fun x : ilist2 (B := f') (a :: As) => f (ilist2_tl x)) l))
                    (Join_Comp_Lists (filter f s1) s2).
 Proof.
   intros; pose proof (filter_and_join_ilist_tail f s1 s2 (fun _ => true)).
@@ -302,24 +314,23 @@ Qed.
 
 
 Lemma refine_Join_Comp_Lists_filter_tail
-: forall (heading : Heading)
-         (headings : list Heading)
-         (f : ilist (@Tuple) (headings) -> bool)
-         (filter_rest : ilist (@Tuple) (heading :: headings) -> bool)
+: forall {n} heading headings
+         (f : ilist2 (n := n) (B := @RawTuple) headings -> bool)
+         (filter_rest : ilist2 (B := @RawTuple) (heading :: headings) -> bool)
          (ResultT : Type)
          (resultComp : _ -> Comp (list ResultT))
-         (l2 : ilist (@Tuple) headings
-               -> Comp (list (@Tuple heading))),
-    (forall a : ilist (@Tuple) headings,
-     exists v : list (@Tuple heading),
+         (l2 : ilist2 (B:= @RawTuple) headings
+               -> Comp (list (@RawTuple heading))),
+    (forall a : ilist2 (B := @RawTuple) headings,
+     exists v : list (@RawTuple heading),
        refine (l2 a) (ret v))
     ->
     forall l1,
       refine
         (l' <- Join_Comp_Lists l1 l2;
          List_Query_In
-           (filter (fun (a : ilist (@Tuple) (heading :: headings))
-                    => f (ilist_tl a) && (filter_rest a)) l')
+           (filter (fun (a : ilist2 (B := @RawTuple) (heading :: headings))
+                    => f (ilist2_tl a) && (filter_rest a)) l')
            resultComp)
         (l' <- Join_Comp_Lists (filter f l1) l2;
          List_Query_In (filter filter_rest l') resultComp).
@@ -355,23 +366,22 @@ Qed.
 (* A version of [refine_Join_Comp_Lists_filter_tail] for the case that
       the realizeablity of [l2] depends on the elements of [l1]*)
 Lemma refine_Join_Comp_Lists_filter_tail_cond
-: forall (heading : Heading)
-         (headings : list Heading)
-         (f : ilist (@Tuple) (headings) -> bool)
-         (filter_rest : ilist (@Tuple) (heading :: headings) -> bool)
+: forall n heading headings
+         (f : ilist2 (n := n) (B := @RawTuple) (headings) -> bool)
+         (filter_rest : ilist2 (B := @RawTuple) (heading :: headings) -> bool)
          (ResultT : Type)
          (resultComp : _ -> Comp (list ResultT))
-         (l1 : list (ilist (@Tuple) headings))
-         (l2 : ilist (@Tuple) headings
-               -> Comp (list (@Tuple heading))),
-    (forall a : ilist (@Tuple) headings,
-       List.In a l1 -> exists v : list (@Tuple heading),
+         (l1 : list (ilist2 (B := @RawTuple) headings))
+         (l2 : ilist2 (B := @RawTuple) headings
+               -> Comp (list (@RawTuple heading))),
+    (forall a : ilist2 (B := @RawTuple) headings,
+       List.In a l1 -> exists v : list (@RawTuple heading),
                          refine (l2 a) (ret v))
     -> refine
          (l' <- Join_Comp_Lists l1 l2;
           List_Query_In
-            (filter (fun (a : ilist (@Tuple) (heading :: headings))
-                     => f (ilist_tl a) && (filter_rest a)) l')
+            (filter (fun (a : ilist2 (B := @RawTuple) (heading :: headings))
+                     => f (ilist2_tl a) && (filter_rest a)) l')
             resultComp)
          (l' <- Join_Comp_Lists (filter f l1) l2;
           List_Query_In (filter filter_rest l') resultComp).
@@ -404,24 +414,26 @@ Proof.
 Qed.
 
 Definition Join_Filtered_Comp_Lists
+           {n}
            {A : Type}
            {f : A -> Type}
-           {As : list A}
+           {As : Vector.t A n}
            {a : A}
-           (l' : list (ilist f As))
-           (c : ilist f As -> Comp (list (f a)))
-           (cond : ilist f (a :: As) -> bool)
-: Comp (list (ilist f (a :: As))) :=
+           (l' : list (ilist2 (B := f) As))
+           (c : ilist2 (B := f) As -> Comp (list (f a)))
+           (cond : ilist2 (B := f) (a :: As) -> bool)
+: Comp (list (ilist2 (B := f) (a :: As))) :=
   l <- Join_Comp_Lists l' c;
   ret (filter cond l).
 
 Lemma Join_Filtered_Comp_Lists_id
+      {n}
       {A : Type}
       {f : A -> Type}
-      {As : list A}
+      {As : Vector.t A n}
       {a : A}
-: forall (l' : list (ilist f As))
-         (c : ilist f As -> Comp (list (f a))),
+: forall (l' : list (ilist2 (B := f) As))
+         (c : ilist2 (B := f) As -> Comp (list (f a))),
     refine (Join_Comp_Lists l' c)
            (Join_Filtered_Comp_Lists l' c (fun _ => true)).
   unfold Join_Filtered_Comp_Lists; setoid_rewrite filter_true.
@@ -429,14 +441,14 @@ Lemma Join_Filtered_Comp_Lists_id
 Qed.
 
 Lemma refine_Join_Filtered_Comp_Lists_filter_tail_andb
-: forall (heading : Heading) (headings : list Heading)
-         (f g : ilist (@Tuple) (heading :: headings) -> bool)
+: forall n heading headings
+         (f g : ilist2 (n := S n) (B := @RawTuple) (heading :: headings) -> bool)
          (ResultT : Type)
-         (resultComp : ilist (@Tuple) (heading :: headings) ->
+         (resultComp : ilist2 (B := @RawTuple) (heading :: headings) ->
                        Comp (list ResultT))
-         (l2 : ilist (@Tuple) headings -> Comp (list Tuple))
-         (cond : ilist (@Tuple) (heading :: headings) -> bool),
-  forall l1 : list (ilist (@Tuple) headings),
+         (l2 : ilist2 (B := @RawTuple) headings -> Comp (list RawTuple))
+         (cond : ilist2 (B := @RawTuple) (heading :: headings) -> bool),
+  forall l1 : list (ilist2 (B := @RawTuple) headings),
     refine
       (l' <- Join_Filtered_Comp_Lists l1 l2 cond;
        List_Query_In (filter (fun a => f a && g a) l') resultComp)
@@ -454,14 +466,14 @@ Proof.
 Qed.
 
 Corollary refine_Join_Filtered_Comp_Lists_filter_tail
-: forall (heading : Heading) (headings : list Heading)
-         (f : ilist (@Tuple) (heading :: headings) -> bool)
+: forall n heading headings
+         (f : ilist2 (n := S n) (B := @RawTuple) (heading :: headings) -> bool)
          (ResultT : Type)
-         (resultComp : ilist (@Tuple) (heading :: headings) ->
+         (resultComp : ilist2 (B := @RawTuple) (heading :: headings) ->
                        Comp (list ResultT))
-         (l2 : ilist (@Tuple) headings -> Comp (list Tuple))
-         (cond : ilist (@Tuple) (heading :: headings) -> bool),
-  forall l1 : list (ilist (@Tuple) headings),
+         (l2 : ilist2 (B := @RawTuple) headings -> Comp (list RawTuple))
+         (cond : ilist2 (B := @RawTuple) (heading :: headings) -> bool),
+  forall l1 : list (ilist2 (B := @RawTuple) headings),
     refine
       (l' <- Join_Filtered_Comp_Lists l1 l2 cond;
        List_Query_In (filter f l') resultComp)
@@ -470,7 +482,7 @@ Corollary refine_Join_Filtered_Comp_Lists_filter_tail
 Proof.
   intros;
   pose proof (@refine_Join_Filtered_Comp_Lists_filter_tail_andb
-                _ _ f (fun _ => true) _ resultComp l2 cond l1) as r.
+                _ _ _ f (fun _ => true) _ resultComp l2 cond l1) as r.
   setoid_rewrite filter_true in r.
   intros v Comp_v.
   apply r in Comp_v.
@@ -480,23 +492,23 @@ Proof.
 Qed.
 
 Lemma refine_Join_Filtered_Comp_Lists_filter_hd_andb
-: forall (heading : Heading) (headings : list Heading)
-         (f : ilist (@Tuple) headings -> bool)
-         (g : ilist (@Tuple) (heading :: headings) -> bool)
+: forall n heading headings
+         (f : ilist2 (n := n) (B := @RawTuple) headings -> bool)
+         (g : ilist2 (B := @RawTuple) (heading :: headings) -> bool)
          (ResultT : Type)
-         (resultComp : ilist (@Tuple) (heading :: headings) ->
+         (resultComp : ilist2 (B := @RawTuple) (heading :: headings) ->
                        Comp (list ResultT))
-         (l2 : ilist (@Tuple) headings -> Comp (list Tuple))
-         (cond : ilist (@Tuple) (heading :: headings) -> bool),
-    (forall a : ilist (@Tuple) headings,
-     exists v : list Tuple, refine (l2 a) (ret v)) ->
-    forall l1 : list (ilist (@Tuple) headings),
+         (l2 : ilist2 (B := @RawTuple) headings -> Comp (list RawTuple))
+         (cond : ilist2 (B := @RawTuple) (heading :: headings) -> bool),
+    (forall a : ilist2 (B := @RawTuple) headings,
+     exists v : list RawTuple, refine (l2 a) (ret v)) ->
+    forall l1 : list (ilist2 (B := @RawTuple) headings),
       refine
         (l' <- Join_Filtered_Comp_Lists l1 l2 cond;
          List_Query_In
            (filter
-              (fun a : ilist (@Tuple) (heading :: headings) =>
-                 (f (ilist_tl a) && g a)) l') resultComp)
+              (fun a : ilist2 (B := @RawTuple) (heading :: headings) =>
+                 (f (ilist2_tl a) && g a)) l') resultComp)
         (l' <- Join_Filtered_Comp_Lists (filter f l1) l2 cond;
          List_Query_In (filter g l') resultComp).
 Proof.
@@ -512,9 +524,9 @@ Proof.
       destruct_ex; split_and.
       assert (computes_to (l' <- l <- FlattenCompList.flatten_CompList
                               (map
-                                 (fun l' : ilist (@Tuple) headings =>
+                                 (fun l' : ilist2 (B := @RawTuple) headings =>
                                     l <- l2 l';
-                                  ret (map (fun fa : Tuple => icons _ fa l') l))
+                                  ret (map (fun fa : RawTuple => icons2 fa l') l))
                                  (filter f l1));
                            ret (filter cond l);
                            List_Query_In (filter g l') resultComp) x0)
@@ -533,9 +545,9 @@ Proof.
        computes_to_inv; subst; computes_to_econstructor; eauto.
       assert (computes_to (l' <- l <- FlattenCompList.flatten_CompList
                               (map
-                                 (fun l' : ilist (@Tuple) headings =>
+                                 (fun l' : ilist2 (B := @RawTuple) headings =>
                                     l <- l2 l';
-                                  ret (map (fun fa : Tuple => icons _ fa l') l))
+                                  ret (map (fun fa : RawTuple => icons2 fa l') l))
                                  (filter f l1));
                            ret (filter cond l);
                            List_Query_In (filter g l') resultComp) v)
@@ -549,27 +561,27 @@ Proof.
 Qed.
 
 Lemma refine_Join_Filtered_Comp_Lists_filter_hd
-: forall (heading : Heading) (headings : list Heading)
-         (f : ilist (@Tuple) headings -> bool)
+: forall n heading headings
+         (f : ilist2 (n := n) (B := @RawTuple) headings -> bool)
          (ResultT : Type)
-         (resultComp : ilist (@Tuple) (heading :: headings) ->
+         (resultComp : ilist2 (B := @RawTuple) (heading :: headings) ->
                        Comp (list ResultT))
-         (l2 : ilist (@Tuple) headings -> Comp (list Tuple))
-         (cond : ilist (@Tuple) (heading :: headings) -> bool),
-    (forall a : ilist (@Tuple) headings,
-     exists v : list Tuple, refine (l2 a) (ret v)) ->
-    forall l1 : list (ilist (@Tuple) headings),
+         (l2 : ilist2 (B := @RawTuple) headings -> Comp (list RawTuple))
+         (cond : ilist2 (B := @RawTuple) (heading :: headings) -> bool),
+    (forall a : ilist2 (B := @RawTuple) headings,
+     exists v : list RawTuple, refine (l2 a) (ret v)) ->
+    forall l1 : list (ilist2 (B := @RawTuple) headings),
       refine
         (l' <- Join_Filtered_Comp_Lists l1 l2 cond;
          List_Query_In
            (filter
-              (fun a : ilist (@Tuple) (heading :: headings) =>
-                 f (ilist_tl a)) l') resultComp)
+              (fun a : ilist2 (B := @RawTuple) (heading :: headings) =>
+                 f (ilist2_tl a)) l') resultComp)
         (l' <- Join_Filtered_Comp_Lists (filter f l1) l2 cond;
          List_Query_In l' resultComp).
 Proof.
   intros; pose proof (@refine_Join_Filtered_Comp_Lists_filter_hd_andb
-                        _ _ f (fun _ => true) _ resultComp l2 cond H l1) as r.
+                        _ _ _ f (fun _ => true) _ resultComp l2 cond H l1) as r.
   setoid_rewrite filter_true in r.
   intros v Comp_v.
   apply r in Comp_v.
@@ -579,13 +591,14 @@ Proof.
 Qed.
 
 Lemma Join_Filtered_Comp_Lists_ExtensionalEq_filters
+      {n}
       {A : Type}
       {f : A -> Type}
-      {As : list A}
+      {As : Vector.t A n}
       {a : A}
-: forall (l' : list (ilist f As))
-         (c : ilist f As -> Comp (list (f a)))
-         (g g' : ilist f (a :: As) -> bool),
+: forall (l' : list (ilist2 (B := f) As))
+         (c : ilist2 (B := f) As -> Comp (list (f a)))
+         (g g' : ilist2 (B := f) (a :: As) -> bool),
     ExtensionalEq g g'
     -> refine (Join_Filtered_Comp_Lists l' c g)
               (Join_Filtered_Comp_Lists l' c g').
@@ -597,13 +610,13 @@ Qed.
 
 
 Lemma refine_Join_Join_Filtered_Comp_Lists_filter_tail_andb
-: forall (heading1 heading2 : Heading) (headings : list Heading)
-         (f g : ilist (@Tuple) (heading1 :: headings) -> bool)
-         (l2 : ilist (@Tuple) headings -> Comp (list Tuple))
-         (l2' : ilist (@Tuple) (heading1 :: headings) -> Comp (list Tuple))
-         (cond1 : ilist (@Tuple) (heading1 :: headings) -> bool)
-         (cond2 : ilist (@Tuple) (heading2 :: heading1 :: headings) -> bool),
-  forall l1 : list (ilist (@Tuple) headings),
+: forall n heading1 heading2 headings
+         (f g : ilist2 (n := S n) (B := @RawTuple) (heading1 :: headings) -> bool)
+         (l2 : ilist2 (B := @RawTuple) headings -> Comp (list RawTuple))
+         (l2' : ilist2 (B := @RawTuple) (heading1 :: headings) -> Comp (list RawTuple))
+         (cond1 : ilist2 (B := @RawTuple) (heading1 :: headings) -> bool)
+         (cond2 : ilist2 (B := @RawTuple) (heading2 :: heading1 :: headings) -> bool),
+  forall l1 : list (ilist2 (B := @RawTuple) headings),
     refine
       (l <- Join_Filtered_Comp_Lists l1 l2 cond1;
        Join_Filtered_Comp_Lists (filter (fun a => f a && g a) l) l2' cond2)
@@ -623,13 +636,13 @@ Proof.
 Qed.
 
 Corollary refine_Join_Join_Filtered_Comp_Lists_filter_tail
-: forall (heading1 heading2 : Heading) (headings : list Heading)
-         (f : ilist (@Tuple) (heading1 :: headings) -> bool)
-         (l2 : ilist (@Tuple) headings -> Comp (list Tuple))
-         (l2' : ilist (@Tuple) (heading1 :: headings) -> Comp (list Tuple))
-         (cond1 : ilist (@Tuple) (heading1 :: headings) -> bool)
-         (cond2 : ilist (@Tuple) (heading2 :: heading1 :: headings) -> bool),
-  forall l1 : list (ilist (@Tuple) headings),
+: forall n heading1 heading2 headings
+         (f : ilist2 (n := S n) (B := @RawTuple) (heading1 :: headings) -> bool)
+         (l2 : ilist2 (B := @RawTuple) headings -> Comp (list RawTuple))
+         (l2' : ilist2 (B := @RawTuple) (heading1 :: headings) -> Comp (list RawTuple))
+         (cond1 : ilist2 (B := @RawTuple) (heading1 :: headings) -> bool)
+         (cond2 : ilist2 (B := @RawTuple) (heading2 :: heading1 :: headings) -> bool),
+  forall l1 : list (ilist2 (B := @RawTuple) headings),
     refine
       (l <- Join_Filtered_Comp_Lists l1 l2 cond1;
        Join_Filtered_Comp_Lists (filter f l) l2' cond2)
@@ -638,7 +651,7 @@ Corollary refine_Join_Join_Filtered_Comp_Lists_filter_tail
 Proof.
   intros;
   pose proof (@refine_Join_Join_Filtered_Comp_Lists_filter_tail_andb
-                _ _ _ f (fun _ => true) l2 l2' cond1 cond2 l1) as r.
+                _ _ _ _ f (fun _ => true) l2 l2' cond1 cond2 l1) as r.
   setoid_rewrite filter_true in r.
   intros v Comp_v.
   apply r in Comp_v.
@@ -648,19 +661,19 @@ Proof.
 Qed.
 
 Lemma refine_Join_Join_Filtered_Comp_Lists_filter_hd_andb
-: forall (heading1 heading2 : Heading) (headings : list Heading)
-         (f : ilist (@Tuple) headings -> bool)
-         (g : ilist (@Tuple) (heading1 :: headings) -> bool)
-         (l2 : ilist (@Tuple) headings -> Comp (list Tuple))
-         (l2' : ilist (@Tuple) (heading1 :: headings) -> Comp (list Tuple))
-         (cond1 : ilist (@Tuple) (heading1 :: headings) -> bool)
-         (cond2 : ilist (@Tuple) (heading2 :: heading1 :: headings) -> bool),
-    (forall a : ilist (@Tuple) headings,
-     exists v : list Tuple, refine (l2 a) (ret v)) ->
-    forall l1 : list (ilist (@Tuple) headings),
+: forall n heading1 heading2 headings
+         (f : ilist2 (n := n) (B := @RawTuple) headings -> bool)
+         (g : ilist2 (B := @RawTuple) (heading1 :: headings) -> bool)
+         (l2 : ilist2 (B := @RawTuple) headings -> Comp (list RawTuple))
+         (l2' : ilist2 (B := @RawTuple) (heading1 :: headings) -> Comp (list RawTuple))
+         (cond1 : ilist2 (B := @RawTuple) (heading1 :: headings) -> bool)
+         (cond2 : ilist2 (B := @RawTuple) (heading2 :: heading1 :: headings) -> bool),
+    (forall a : ilist2 (B := @RawTuple) headings,
+     exists v : list RawTuple, refine (l2 a) (ret v)) ->
+    forall l1 : list (ilist2 (B := @RawTuple) headings),
       refine
         (l <- Join_Filtered_Comp_Lists l1 l2 cond1;
-         Join_Filtered_Comp_Lists  (filter (fun a : ilist (@Tuple) (_ :: _) => f (ilist_tl a) && g a) l) l2' cond2)
+         Join_Filtered_Comp_Lists  (filter (fun a : ilist2 (B := @RawTuple) (_ :: _) => f (ilist2_tl a) && g a) l) l2' cond2)
         (l <- Join_Filtered_Comp_Lists (filter f l1) l2 cond1;
          Join_Filtered_Comp_Lists (filter g l) l2' cond2).
 Proof.
@@ -675,16 +688,16 @@ Proof.
       destruct_ex; split_and; subst.
       assert (computes_to (l <- l <- FlattenCompList.flatten_CompList
                              (map
-                                (fun l' : ilist (@Tuple) headings =>
+                                (fun l' : ilist2 (B := @RawTuple) headings =>
                                    l <- l2 l';
-                                 ret (map (fun fa : Tuple => icons _ fa l') l))
+                                 ret (map (fun fa : RawTuple => icons2 fa l') l))
                                 (filter f l1));
                            ret (filter cond1 l);
                            l0 <- FlattenCompList.flatten_CompList
                               (map
-                                 (fun l' : ilist (@Tuple) (heading1 :: headings) =>
+                                 (fun l' : ilist2 (B := @RawTuple) (heading1 :: headings) =>
                                     l0 <- l2' l';
-                                  ret (map (fun fa : Tuple => icons _ fa l') l0))
+                                  ret (map (fun fa : RawTuple => icons2 fa l') l0))
                                  (filter g l));
                            ret (filter cond2 l0)) (filter cond2 x0)) as H'
           by (repeat computes_to_econstructor; eauto).
@@ -695,21 +708,21 @@ Proof.
       repeat rewrite map_app, map_map; simpl.
       rewrite filter_and, a_eq, filter_true.
       eapply FlattenCompList.flatten_CompList_app; eauto.
-      rewrite !filter_app, c''; eauto.
+      rewrite !filter_app, <- c''; eauto.
     + destruct (H a); eauto.
        computes_to_inv; subst; computes_to_econstructor; eauto.
       assert (computes_to (l <- l <- FlattenCompList.flatten_CompList
                              (map
-                                (fun l' : ilist (@Tuple) headings =>
+                                (fun l' : ilist2 (B := @RawTuple) headings =>
                                    l <- l2 l';
-                                 ret (map (fun fa : Tuple => icons _ fa l') l))
+                                 ret (map (fun fa : RawTuple => icons2 fa l') l))
                                 (filter f l1));
                            ret (filter cond1 l);
                            l0 <- FlattenCompList.flatten_CompList
                               (map
-                                 (fun l' : ilist (@Tuple) (heading1 :: headings) =>
+                                 (fun l' : ilist2 (B := @RawTuple) (heading1 :: headings) =>
                                     l0 <- l2' l';
-                                  ret (map (fun fa : Tuple => icons _ fa l') l0))
+                                  ret (map (fun fa : RawTuple => icons2 fa l') l0))
                                  (filter g l));
                            ret (filter cond2 l0)) (filter cond2 v1)) as H'
           by (repeat econstructor; eauto).
@@ -719,28 +732,28 @@ Proof.
       repeat rewrite filter_app, filter_map.
       repeat rewrite map_app, map_map; simpl.
       rewrite a_eq, filter_false; simpl; eauto.
-      rewrite c''; eauto.
+      rewrite <- c''; eauto.
 Qed.
 
 
 Lemma refine_Join_Join_Filtered_Comp_Lists_filter_hd
-: forall (heading1 heading2 : Heading) (headings : list Heading)
-         (f : ilist (@Tuple) headings -> bool)
-         (l2 : ilist (@Tuple) headings -> Comp (list Tuple))
-         (l2' : ilist (@Tuple) (heading1 :: headings) -> Comp (list Tuple))
-         (cond1 : ilist (@Tuple) (heading1 :: headings) -> bool)
-         (cond2 : ilist (@Tuple) (heading2 :: heading1 :: headings) -> bool),
-    (forall a : ilist (@Tuple) headings,
-     exists v : list Tuple, refine (l2 a) (ret v)) ->
-    forall l1 : list (ilist (@Tuple) headings),
+: forall n heading1 heading2 headings
+         (f : ilist2 (n := n) (B := @RawTuple) headings -> bool)
+         (l2 : ilist2 (B := @RawTuple) headings -> Comp (list RawTuple))
+         (l2' : ilist2 (B := @RawTuple) (heading1 :: headings) -> Comp (list RawTuple))
+         (cond1 : ilist2 (B := @RawTuple) (heading1 :: headings) -> bool)
+         (cond2 : ilist2 (B := @RawTuple) (heading2 :: heading1 :: headings) -> bool),
+    (forall a : ilist2 (B := @RawTuple) headings,
+     exists v : list RawTuple, refine (l2 a) (ret v)) ->
+    forall l1 : list (ilist2 (B := @RawTuple) headings),
       refine
         (l <- Join_Filtered_Comp_Lists l1 l2 cond1;
-         Join_Filtered_Comp_Lists  (filter (fun a : ilist (@Tuple) (_ :: _) => f (ilist_tl a)) l) l2' cond2)
+         Join_Filtered_Comp_Lists  (filter (fun a : ilist2 (B := @RawTuple) (_ :: _) => f (ilist2_tl a)) l) l2' cond2)
         (l <- Join_Filtered_Comp_Lists (filter f l1) l2 cond1;
          Join_Filtered_Comp_Lists l l2' cond2).
 Proof.
   intros; pose proof (@refine_Join_Join_Filtered_Comp_Lists_filter_hd_andb
-                        _ _ _ f (fun _ => true) l2 l2' cond1 cond2 H l1) as r.
+                        _ _ _ _ f (fun _ => true) l2 l2' cond1 cond2 H l1) as r.
   setoid_rewrite filter_true in r.
   intros v Comp_v.
   apply r in Comp_v.
@@ -751,10 +764,11 @@ Qed.
 
 
 Lemma List_Query_In_Return
+      {n}
       {ResultT}
       headings
-      (l : list (ilist (@Tuple) headings))
-      (r : ilist (@Tuple) headings -> ResultT)
+      (l : list (ilist2 (n := n) (B := @RawTuple) headings))
+      (r : ilist2 (B := @RawTuple) headings -> ResultT)
 : refine (List_Query_In l (fun tup => (Return (r tup))%QuerySpec))
          (ret (map r l)).
 Proof.
@@ -783,7 +797,7 @@ Add Parametric Morphism {A: Type}
     qsSchema qs R
 :
   (fun bod => Query_For (@UnConstrQuery_In qsSchema qs _ R bod))
-    with signature ((pointwise_relation Tuple (@Equivalent_Ensembles A) ==> refine ))
+    with signature ((pointwise_relation RawTuple (@Equivalent_Ensembles A) ==> refine ))
       as refine_Query_For_In_Equivalent.
 Proof.
   unfold impl, Query_For, pointwise_relation, UnConstrQuery_In, In, refine.
@@ -796,23 +810,27 @@ Proof.
 Qed. *)
 
 Lemma DropQSConstraintsQuery_In {A} :
-  forall qs R bod,
-    @Query_In A qs R bod =
-    UnConstrQuery_In (DropQSConstraints qsHint) R bod.
+  forall qs_schema qs R bod,
+    @Query_In A qs_schema qs R bod =
+    UnConstrQuery_In (DropQSConstraints qs) R bod.
 Proof.
+  intros; unfold Query_In, UnConstrQuery_In, GetRelation, GetUnConstrRelation,
+          DropQSConstraints; rewrite <- ith_imap2.
   reflexivity.
 Qed.
 
 Lemma DropQSConstraintsQuery_In_UnderBinder {A B} :
-  forall qs R bod,
-    (fun b : B => @Query_In A qs R (bod b)) =
-    (fun b : B => UnConstrQuery_In (DropQSConstraints qsHint) R (bod b)).
+  forall qs_schema qs R bod,
+    (fun b : B => @Query_In A qs_schema qs R (bod b)) =
+    (fun b : B => UnConstrQuery_In (DropQSConstraints qs) R (bod b)).
 Proof.
+    intros; unfold Query_In, UnConstrQuery_In, GetRelation, GetUnConstrRelation,
+          DropQSConstraints; rewrite <- ith_imap2.
   reflexivity.
 Qed.
 
 (*Lemma Equivalent_Swap_In {ResultT}
-      qsSchema qs R (bod : Tuple -> Comp (list ResultT))
+      qsSchema qs R (bod : RawTuple -> Comp (list ResultT))
       enumR
       (enumerableR : EnsembleListEquivalence (GetUnConstrRelation qs R) enumR)
 :
@@ -821,7 +839,7 @@ Qed.
 
 
 Lemma Equivalent_Swap_In {ResultT}
-      qsSchema qs R R' (bod : Tuple -> Tuple -> Comp (list ResultT))
+      qsSchema qs R R' (bod : RawTuple -> RawTuple -> Comp (list ResultT))
       enumR enumR'
       (enumerableR : EnsembleListEquivalence (GetUnConstrRelation qs R) enumR)
       (enumerableR' : EnsembleListEquivalence (GetUnConstrRelation qs R') enumR')
@@ -836,9 +854,9 @@ Proof.
   econstructor.
   econstructor; eauto.
   econstructor 2 with (comp_a_value := x0).
-  assert (forall a : Tuple,
-            (queryBod <- {queryBod : Tuple -> list ResultT |
-                    forall a0 : Tuple, bod a0 a ↝ queryBod a0};
+  assert (forall a : RawTuple,
+            (queryBod <- {queryBod : RawTuple -> list ResultT |
+                    forall a0 : RawTuple, bod a0 a ↝ queryBod a0};
              {resultList : list ResultT |
               Permutation.Permutation resultList
                                       (flatten (map queryBod enumR))}) ↝ x0 a).
@@ -882,7 +900,7 @@ Proof.
 
   repeat (progress (destruct_ex; intuition)).
   induction x; simpl in *; subst.
-  exists (@nil (@Tuple (schemaHeading
+  exists (@nil (@RawTuple (schemaHeading
                            (relSchema
                               (@StringBound.nth_Bounded NamedSchema string
                                  relName (qschemaSchemas qsSchema) R'))) * list ResultT)).
@@ -899,15 +917,15 @@ Qed.
 
 Lemma Equivalent_Swap_In_Where {A}
       qsSchema qs R {heading}
-      (bod : @Tuple heading -> Tuple -> Ensemble A)
-      (P : @Tuple heading -> Prop)
+      (bod : @RawTuple heading -> RawTuple -> Ensemble A)
+      (P : @RawTuple heading -> Prop)
 :
   pointwise_relation
-    Tuple Equivalent_Ensembles
-    (fun tup' : Tuple =>
+    RawTuple Equivalent_Ensembles
+    (fun tup' : RawTuple =>
        (@UnConstrQuery_In qsSchema qs _ R
                   (fun tup => Query_Where (P tup') (bod tup' tup))))
-    (fun tup' : Tuple =>
+    (fun tup' : RawTuple =>
        Query_Where (P tup') (@UnConstrQuery_In qsSchema qs _ R (bod tup'))).
 Proof.
   unfold Equivalent_Ensembles, UnConstrQuery_In, Query_Where; split; intros;
@@ -931,7 +949,7 @@ Add Parametric Morphism {A: Type}
     qsSchema qs R
 :
   (fun bod => Query_For (@UnConstrQuery_In qsSchema qs _ R bod))
-    with signature ((pointwise_relation Tuple (@Equivalent_Ensembles A) ==> refine ))
+    with signature ((pointwise_relation RawTuple (@Equivalent_Ensembles A) ==> refine ))
       as refine_Query_For_In_Equivalent.
 Proof.
   unfold impl, Query_For, pointwise_relation, UnConstrQuery_In, In, refine.
@@ -945,7 +963,7 @@ Qed. *)
 
 Lemma refine_Count_if {A} :
   forall (b : bool) (t : A),
-    refine (Count (if b then (Return t)%QuerySpec else ret []))
+    refine (Count (if b then (Return t)%QuerySpec else ret nil))
            (ret (if b then 1 else 0)).
 Proof.
   intros; rewrite refine_Count.
@@ -953,12 +971,13 @@ Proof.
 Qed.
 
 Add Parametric Morphism
+    (n : nat)
     (A : Type)
     (f : A -> Type)
-    (As : list A)
+    (As : Vector.t A n)
     (a : A)
-    (l' : list (ilist f As))
-: (@Join_Comp_Lists A f As a l')
+    (l' : list (ilist2 (B := f) As))
+: (@Join_Comp_Lists _ A f As a l')
     with signature
     (pointwise_relation _ refine) ==> refine
       as refine_Join_Comp_Lists.
@@ -978,7 +997,7 @@ Lemma refine_Where {A B} :
            (if (dec a) then
               bod
             else
-              (ret [])).
+              (ret nil)).
 Proof.
   unfold refine, Query_Where; intros.
   caseEq (dec a); rewrite H0 in H; computes_to_econstructor;
@@ -987,9 +1006,6 @@ Proof.
   apply Decides_false in H0; intuition.
    computes_to_inv; eauto.
 Qed.
-
-
-Require Import Coq.Arith.Arith Coq.omega.Omega.
 
 Lemma refineEquiv_For_DropQSConstraints A qsSchema qs :
   forall bod,
@@ -1014,10 +1030,10 @@ Qed.
 
 Global Instance IndexedDecideableEnsemble
        {heading}
-       {P : Ensemble (@Tuple heading)}
+       {P : Ensemble (@RawTuple heading)}
        {P_dec : DecideableEnsemble P}
-: DecideableEnsemble (fun x : IndexedTuple => P (indexedTuple x)) :=
-  {| dec itup := @dec _ _ P_dec (indexedTuple itup)|}.
+: DecideableEnsemble (fun x : IndexedRawTuple => P (indexedRawTuple x)) :=
+  {| dec itup := @dec _ _ P_dec (indexedRawTuple itup)|}.
 Proof.
   intuition; eapply dec_decides_P; simpl in *; eauto.
 Defined.

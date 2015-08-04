@@ -17,7 +17,7 @@ Section ReferenceImpl.
     Context (Char : Type).
 
     (** Representation of a [String] that can be split *)
-    Definition string_rep : ADTSig :=
+    Definition string_rep :=
       ADTsignature {
         Constructor "new" : String.string -> rep,
         (** Initialize, with a given [string] to be parsed or split. *)

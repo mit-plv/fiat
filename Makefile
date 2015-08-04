@@ -30,7 +30,7 @@ VECHO = $(VECHO_$(V))
 
 TIMED=
 TIMECMD=
-STDTIME?=/usr/bin/time -f "$* (real: %e, user: %U, sys: %S, mem: %M ko)"
+STDTIME?=time -f "$* (real: %e, user: %U, sys: %S, mem: %M ko)"
 TIMER=$(if $(TIMED), $(STDTIME), $(TIMECMD))
 
 containing = $(foreach v,$2,$(if $(findstring $1,$v),$v))
@@ -119,7 +119,7 @@ EXAMPLES_UNMADE_VO := \
 WATER_TANK_EXTRACT_VO := src/Examples/Ics/WaterTankExtract.vo
 WATER_TANK_EXTRACT_ML := src/Examples/Ics/WaterTank.ml
 
-FIAT_CORE_VO := $(filter-out src/Fiat4Monitors/% src/QueryStructure/% src/Parsers/% src/FiniteSetADTs/% src/FiatToFacade/% src/Examples/% src/FiniteSetADTs.vo,$(filter src/%.vo,$(VOFILES)))
+FIAT_CORE_VO := $(filter-out src/Common/ilist2.vo src/Common/i2list.vo src/Fiat4Monitors/% src/QueryStructure/% src/Parsers/% src/FiniteSetADTs/% src/FiatToFacade/% src/Examples/% src/FiniteSetADTs.vo,$(filter src/%.vo,$(VOFILES)))
 QUERYSTRUCTURES_VO := $(filter src/QueryStructure/%.vo,$(filter-out $(QUERYSTRUCTURES_UNMADE_VO),$(VOFILES)))
 PARSERS_VO := $(filter-out $(PARSERS_UNMADE_VO),$(filter src/Parsers/%.vo,$(VOFILES)))
 PARSERS_ALL_VO := $(filter src/Parsers/%.vo,$(VOFILES))
@@ -173,6 +173,15 @@ $(filter-out $(VOFILES),$(call vo_closure,$(VOFILES))): FORCE
 	@ echo
 	@ false
 
+ifneq ($(filter-out $(wildcard $(VFILES)),$(VFILES)),)
+$(VOFILES): FORCE
+	@ echo
+	@ echo 'error: $(filter-out $(wildcard $(VFILES)),$(VFILES)) is in _CoqProject but does not exist.'
+	@ echo 'error: Please run `make update-_CoqProject`.'
+	@ echo
+	@ false
+endif
+
 
 $(WATER_TANK_EXTRACT_ML): $(filter-out $(WATER_TANK_EXTRACT_VO),$(call vo_closure,$(WATER_TANK_EXTRACT_VO))) $(WATER_TANK_EXTRACT_VO:%.vo=%.v)
 	$(VECHO) "COQC $(WATER_TANK_EXTRACT_VO:%.vo=%.v) > $@"
@@ -196,3 +205,16 @@ Overview/ProjectOverview.pdf: $(shell find Overview -name "*.tex" -o -name "*.st
 	cd Overview; bibtex ProjectOverview
 	cd Overview; pdflatex -interaction=batchmode -synctex=1 ProjectOverview.tex || true
 	cd Overview; pdflatex -synctex=1 ProjectOverview.tex
+
+
+src/Examples/QueryStructure/classifier.cmxa: src/Examples/QueryStructure/ClassifierExtraction.vo
+	cd src/Examples/QueryStructure && ocamlopt -w -a -o classifier.cmxa -a classifier.mli classifier.ml
+
+classifier_repl: src/Examples/QueryStructure/classifier_repl.ml src/Examples/QueryStructure/classifier.cmxa
+	cd src/Examples/QueryStructure && ocamlopt -w -a -o classifier_repl unix.cmxa str.cmxa classifier.cmxa classifier_repl.ml
+
+src/Examples/QueryStructure/classifier_unopt.cmxa: src/Examples/QueryStructure/ClassifierUnOptExtraction.vo
+	cd src/Examples/QueryStructure && ocamlopt -w -a -o classifier_unopt.cmxa -a classifier_unopt.mli classifier_unopt.ml
+
+classifierUnOpt_repl: src/Examples/QueryStructure/classifierUnOpt_repl.ml src/Examples/QueryStructure/classifier_unopt.cmxa
+	cd src/Examples/QueryStructure && ocamlopt -w -a -o classifierUnOpt_repl unix.cmxa str.cmxa classifier_unopt.cmxa classifierUnOpt_repl.ml

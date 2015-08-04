@@ -181,21 +181,8 @@ Module String_as_OT <: OrderedType.
       trivial.
   Defined.
 
-  Definition eq_dec : forall (x y: string), { x = y } + { x <> y }.
-  Proof.
-    intros;
-    destruct (string_compare x y) eqn:eq0;
-      first [
-          left;
-          apply Eq_eq;
-          solve [trivial]
-        | right;
-          unfold not;
-          rewrite Eq_eq_iff;
-          intros;
-          exfalso_from_equalities
-        ].
-  Qed.
+  Definition eq_dec : forall (x y: string), { x = y } + { x <> y } := string_dec.
+
 End String_as_OT.
 
 (* Usage example:

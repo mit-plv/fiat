@@ -1,14 +1,20 @@
-Require Import Coq.Strings.String Coq.omega.Omega Coq.Lists.List Coq.Logic.FunctionalExtensionality Coq.Sets.Ensembles
+Require Import Coq.Strings.String
+        Coq.omega.Omega
+        Coq.Lists.List
+        Coq.Logic.FunctionalExtensionality
+        Coq.Sets.Ensembles
         Fiat.Common.List.ListFacts
+        Fiat.Common.Ensembles.IndexedEnsembles
+        Fiat.Common.ilist2
         Fiat.Computation
         Fiat.Computation.Refinements.Iterate_Decide_Comp
         Fiat.ADT
-        Fiat.ADTRefinement Fiat.ADTNotation
+        Fiat.ADTRefinement
+        Fiat.ADTNotation
         Fiat.QueryStructure.Specification.Representation.Schema
         Fiat.QueryStructure.Specification.Representation.QueryStructureSchema
         Fiat.ADTRefinement.BuildADTRefinements
         Fiat.QueryStructure.Specification.Representation.QueryStructure
-        Fiat.Common.Ensembles.IndexedEnsembles
         Fiat.QueryStructure.Specification.Operations.Query
         Fiat.QueryStructure.Specification.Operations.Mutate
         Fiat.QueryStructure.Implementation.Constraints.ConstraintChecksRefinements
@@ -22,7 +28,7 @@ Require Import Coq.Strings.String Coq.omega.Omega Coq.Lists.List Coq.Logic.Funct
 
 Section MutateRefinements.
 
-  Hint Resolve AC_eq_nth_In AC_eq_nth_NIn crossConstr.
+  Hint Resolve crossConstr.
   Hint Unfold SatisfiesCrossRelationConstraints
        SatisfiesAttributeConstraints
        SatisfiesTupleConstraints.
@@ -38,14 +44,14 @@ Section MutateRefinements.
     (qsSchema : QueryStructureSchema)
     (qs : QueryStructure qsSchema)
     (Ridx : _)
-    (MutatedTuples : @IndexedEnsemble (@Tuple (schemaHeading (QSGetNRelSchema _ Ridx))))
+    (MutatedTuples : @IndexedEnsemble RawTuple)
     (attrConstr :
-       (forall tup : IndexedTuple,
+       (forall tup : IndexedRawTuple,
          GetRelation qs Ridx tup
          -> SatisfiesAttributeConstraints Ridx (indexedElement tup))
        -> MutationPreservesAttributeConstraints MutatedTuples (SatisfiesAttributeConstraints Ridx))
     (tupConstr :
-       (forall tup tup' : IndexedTuple,
+       (forall tup tup' : IndexedRawTuple,
           elementIndex tup <> elementIndex tup'
           -> GetRelation qs Ridx tup
           -> GetRelation qs Ridx tup'
@@ -53,65 +59,64 @@ Section MutateRefinements.
        MutationPreservesTupleConstraints MutatedTuples (SatisfiesTupleConstraints Ridx))
     (* And is compatible with the cross-schema constraints. *)
     (CrossConstr :
-       (@Iterate_Ensemble_BoundedString_filter
-          (map relName (qschemaSchemas qsSchema))
-          (fun idx : nat => if eq_nat_dec (ibound Ridx) idx then false else true)
-          (fun Ridx' : BoundedIndex (map relName (qschemaSchemas qsSchema)) =>
-             forall tup' : IndexedTuple,
+       (@Iterate_Ensemble_BoundedIndex_filter
+          _ (fun Ridx' =>
+             forall tup' : IndexedRawTuple,
                GetUnConstrRelation (DropQSConstraints qs) Ridx tup' ->
-               SatisfiesCrossRelationConstraints Ridx Ridx' (indexedElement tup') (GetRelation qs Ridx'))) ->
-       (forall Ridx' : BoundedIndex (map relName (qschemaSchemas qsSchema)),
+               SatisfiesCrossRelationConstraints Ridx Ridx' (indexedElement tup') (GetRelation qs Ridx'))
+          (fun idx => if fin_eq_dec Ridx idx then false else true)
+       ) ->
+       (forall Ridx',
           (Ridx' <> Ridx) ->
           MutationPreservesCrossConstraints MutatedTuples (GetRelation qs Ridx')
                                             (SatisfiesCrossRelationConstraints Ridx Ridx')))
     (CrossConstr' :
-       (@Iterate_Ensemble_BoundedString_filter
-          (map relName (qschemaSchemas qsSchema))
-          (fun idx : nat => if eq_nat_dec (ibound Ridx) idx then false else true)
-          (fun Ridx' : BoundedIndex (map relName (qschemaSchemas qsSchema)) =>
-             forall tup' : IndexedTuple,
+       (@Iterate_Ensemble_BoundedIndex_filter
+          _
+          (fun Ridx' =>
+             forall tup' : IndexedRawTuple,
                GetUnConstrRelation (DropQSConstraints qs) Ridx' tup' ->
-               SatisfiesCrossRelationConstraints Ridx' Ridx (indexedElement tup') (GetRelation qs Ridx))) ->
-       (forall Ridx' : BoundedIndex (map relName (qschemaSchemas qsSchema)),
+               SatisfiesCrossRelationConstraints Ridx' Ridx (indexedElement tup') (GetRelation qs Ridx))
+          (fun idx => if fin_eq_dec Ridx idx then false else true)) ->
+       (forall Ridx',
           (Ridx' <> Ridx) ->
           MutationPreservesCrossConstraints (GetRelation qs Ridx')
                                             MutatedTuples
                                             (SatisfiesCrossRelationConstraints Ridx' Ridx)))
   : QueryStructure qsSchema :=
-    {| rels :=
-         UpdateRelation _ (rels qs) Ridx {| rel := MutatedTuples|}
+    {| rawRels :=
+         UpdateRelation (rawRels qs) Ridx {| rawRel := MutatedTuples|}
     |}.
   Next Obligation.
     unfold MutationPreservesAttributeConstraints,
     SatisfiesAttributeConstraints, QSGetNRelSchema, GetNRelSchema,
     GetRelation in *.
-    set ((ith_Bounded _ (rels qs) Ridx )) as X in *; destruct X; simpl in *.
-    destruct (attrConstraints
-            (relSchema (nth_Bounded relName (qschemaSchemas qsSchema) Ridx))); eauto.
+    set ((ith2 (rawRels qs) Ridx )) as X in *; destruct X; simpl in *.
+    destruct (attrConstraints  (Vector.nth
+                         (Vector.map schemaRaw (QSschemaSchemas qsSchema))
+                         Ridx)); eauto.
   Qed.
-    Next Obligation.
+  Next Obligation.
     unfold MutationPreservesTupleConstraints,
     SatisfiesTupleConstraints, QSGetNRelSchema, GetNRelSchema,
     GetRelation in *.
-    set ((ith_Bounded _ (rels qs) Ridx )) as X in *; destruct X; simpl in *.
+    set ((ith2 (rawRels qs) Ridx )) as X in *; destruct X; simpl in *.
     destruct (tupleConstraints
-            (relSchema (nth_Bounded relName (qschemaSchemas qsSchema) Ridx))); eauto.
+       (Vector.nth (Vector.map schemaRaw (QSschemaSchemas qsSchema)) Ridx)); eauto.
   Qed.
   Next Obligation.
     unfold MutationPreservesCrossConstraints,
     SatisfiesCrossRelationConstraints, QSGetNRelSchema, GetNRelSchema,
     GetRelation, UpdateRelation in *.
     case_eq (BuildQueryStructureConstraints qsSchema idx idx'); eauto.
-    destruct (BoundedString_eq_dec Ridx idx'); subst; intros.
-    - rewrite ith_replace_BoundIndex_eq; simpl.
-      rewrite ith_replace_BoundIndex_neq in H1; eauto using string_dec.
+    destruct (fin_eq_dec Ridx idx'); subst; intros.
+    - rewrite ith_replace2_Index_eq; simpl.
+      rewrite ith_replace2_Index_neq in H1; eauto.
       generalize (fun c => CrossConstr' c idx H0).
       rewrite H; intros H'; eapply H'; eauto.
       eapply (Iterate_Ensemble_filter_neq
-                string_dec
-                _
-                (fun Ridx' : @BoundedString (map relName (qschemaSchemas qsSchema)) =>
-                   forall tup' : IndexedTuple,
+                (fun Ridx' =>
+                   forall tup' : IndexedRawTuple,
                      GetUnConstrRelation (DropQSConstraints qs) Ridx' tup' ->
                      match BuildQueryStructureConstraints qsSchema Ridx' idx' with
                        | Some CrossConstr => CrossConstr (indexedElement tup') (GetRelation qs idx')
@@ -121,37 +126,36 @@ Section MutateRefinements.
       rewrite GetRelDropConstraints in H3.
       destruct (BuildQueryStructureConstraints qsSchema idx0 idx');
         eauto.
-    - rewrite ith_replace_BoundIndex_neq in *; eauto using string_dec.
-      destruct (BoundedString_eq_dec Ridx idx); subst.
-      + rewrite ith_replace_BoundIndex_eq in H1; simpl in *; eauto.
+    - rewrite ith_replace2_Index_neq in *; eauto using string_dec.
+      destruct (fin_eq_dec Ridx idx); subst.
+      + rewrite ith_replace2_Index_eq in H1; simpl in *; eauto.
       generalize (fun c => CrossConstr c idx' (not_eq_sym n) _ H1).
       rewrite H; intros H'; eapply H'; eauto.
       eapply (Iterate_Ensemble_filter_neq
-                string_dec
-                _
-                (fun Ridx' : @BoundedString (map relName (qschemaSchemas qsSchema)) =>
-                   forall tup' : IndexedTuple,
+                (fun Ridx' =>
+                   forall tup' : IndexedRawTuple,
                      GetUnConstrRelation (DropQSConstraints qs) idx tup' ->
                      match BuildQueryStructureConstraints qsSchema idx Ridx' with
                        | Some CrossConstr => CrossConstr (indexedElement tup') (GetRelation qs Ridx')
                        | None => True
                      end)); intros.
-      destruct (BoundedString_eq_dec idx0 idx); subst; try congruence.
+      destruct (fin_eq_dec idx0 idx); subst; try congruence.
       case_eq (BuildQueryStructureConstraints qsSchema idx idx0); intros; eauto.
       pose (crossConstr qs idx idx0) as crossConstr'; rewrite H4 in crossConstr'.
       eapply crossConstr'; eauto.
       unfold GetUnConstrRelation, DropQSConstraints in H3.
-      rewrite <- ith_Bounded_imap in H3; eauto.
-      + rewrite ith_replace_BoundIndex_neq in H1; eauto using string_dec.
+      rewrite <- ith_imap2 in H3; eauto.
+      + rewrite ith_replace2_Index_neq in H1; eauto using string_dec.
         pose (crossConstr qs idx idx') as crossConstr'; rewrite H in crossConstr';
         eapply crossConstr'; eauto.
   Qed.
 
   Lemma QSMutateSpec_refine :
-    forall qsSchema (qs : QueryStructure qsSchema) Ridx
-           (MutatedTuples : @IndexedEnsemble (@Tuple (schemaHeading (QSGetNRelSchema _ Ridx)))),
+    forall (qsSchema : QueryStructureSchema)
+           (qs : QueryStructure qsSchema)
+           Ridx (MutatedTuples : IndexedEnsemble ),
       refine
-        (Pick (QSMutateSpec {| qsHint := qs |} Ridx MutatedTuples))
+        (Pick (QSMutateSpec qs Ridx MutatedTuples))
         (attributeConstr <- {b |
                        (forall tup,
                           GetRelation qs Ridx tup
@@ -205,13 +209,13 @@ Section MutateRefinements.
              {qs' |
               (forall Ridx',
                  Ridx <> Ridx' ->
-                 GetRelation qsHint Ridx' =
+                 GetRelation qs Ridx' =
                  GetRelation qs' Ridx')
               /\ forall t,
                    GetRelation qs' Ridx t <-> MutatedTuples t
              }
 
-           | _, _, _, _ => ret qsHint
+           | _, _, _, _ => ret qs
          end).
   Proof.
     intros qsSchema qs Ridx MutatedTuples v Comp_v.
@@ -221,13 +225,11 @@ Section MutateRefinements.
                          MutatedTuples
                        (SatisfiesAttributeConstraints Ridx)))
       as H0' by
-          (apply Comp_v;
+          (apply Comp_v; intros;
            unfold SatisfiesAttributeConstraints, QSGetNRelSchema, GetNRelSchema;
-           pose proof (attrconstr ((ith_Bounded relName (rels qs) Ridx))) as H'; simpl;
-           destruct (attrConstraints
-                       (relSchema (nth_Bounded relName (qschemaSchemas qsSchema) Ridx)));
+           pose proof (rawAttrconstr ((ith2 (rawRels qs) Ridx))) as H';
+           destruct (attrConstraints (Vector.nth (qschemaSchemas qsSchema) Ridx));
            [apply H' | ]; eauto); clear Comp_v.
-
     assert (decides v1
                     (MutationPreservesTupleConstraints
                        MutatedTuples
@@ -236,13 +238,11 @@ Section MutateRefinements.
         by
           (apply Comp_v';
            unfold SatisfiesTupleConstraints, QSGetNRelSchema, GetNRelSchema;
-           pose proof (tupleconstr ((ith_Bounded relName (rels qs) Ridx))) as H'; simpl;
-           destruct (tupleConstraints
-                       (relSchema (nth_Bounded relName (qschemaSchemas qsSchema) Ridx)));
+           pose proof (rawTupleconstr ((ith2 (rawRels qs) Ridx))) as H';
+           destruct (tupleConstraints (Vector.nth (qschemaSchemas qsSchema) Ridx));
            [apply H' | ]; eauto); clear Comp_v'.
-
     assert (decides v2
-                    (forall Ridx' : BoundedString,
+                    (forall Ridx',
                        Ridx' <> Ridx ->
                        MutationPreservesCrossConstraints
                          (GetRelation qs Ridx')
@@ -255,7 +255,7 @@ Section MutateRefinements.
            destruct (BuildQueryStructureConstraints qsSchema Ridx' Ridx); eauto); clear Comp_v''.
 
     assert (decides v3
-                    (forall Ridx' : BoundedString,
+                    (forall Ridx',
                        Ridx' <> Ridx ->
                        MutationPreservesCrossConstraints
                          MutatedTuples
@@ -279,13 +279,10 @@ Section MutateRefinements.
   Qed.
 
   Lemma QSMutateSpec_UnConstr_refine' :
-    forall qsSchema (qs : UnConstrQueryStructure qsSchema)
-           (Ridx : @BoundedString (map relName (qschemaSchemas qsSchema)))
-           (or : QueryStructure qsSchema)
-           MutatedTuples,
-      DropQSConstraints_AbsR or qs ->
+    forall qsSchema qs Ridx or MutatedTuples,
+      @DropQSConstraints_AbsR qsSchema or qs ->
       refine
-        {or' | QSMutateSpec {|qsHint := or |} Ridx MutatedTuples or'}
+        {or' | QSMutateSpec or Ridx MutatedTuples or'}
         (attributeConstr <- {b |
                              (forall tup,
                                 GetUnConstrRelation qs Ridx tup
@@ -351,7 +348,7 @@ Section MutateRefinements.
       unfold decides, If_Then_Else in *; find_if_inside; intros; computes_to_econstructor; intros.
       - rewrite <- GetRelDropConstraints in *; eapply Comp_v; intros; eauto;
         eapply H; eauto; rewrite <- GetRelDropConstraints; eauto.
-      - unfold not; intros; eapply Comp_v; intros; rewrite <- GetRelDropConstraints in *.
+      - unfold not; intros; eapply Comp_v; intros.
         + eapply H; eauto; rewrite <- GetRelDropConstraints; eauto.
         + rewrite GetRelDropConstraints; eauto.
     }
@@ -360,7 +357,7 @@ Section MutateRefinements.
       unfold decides, If_Then_Else in *; find_if_inside; intros; computes_to_econstructor; intros.
       - rewrite <- GetRelDropConstraints in *; eapply Comp_v; intros; eauto.
         rewrite GetRelDropConstraints; eapply H; eauto.
-      - unfold not; intros; eapply Comp_v; intros; rewrite <- GetRelDropConstraints in *.
+      - unfold not; intros; eapply Comp_v; intros.
         + rewrite GetRelDropConstraints; eauto.
         + rewrite GetRelDropConstraints; eauto.
     }
@@ -371,9 +368,9 @@ Section MutateRefinements.
       setoid_rewrite <- GetRelDropConstraints; subst; rewrite Comp_v;
       split; intros;
       unfold GetUnConstrRelation, DropQSConstraints, UpdateUnConstrRelation.
-    rewrite ith_replace_BoundIndex_neq; repeat rewrite <- ith_Bounded_imap;
+    rewrite ith_replace2_Index_neq;
     eauto using string_dec.
-    rewrite ith_replace_BoundIndex_eq; repeat rewrite <- ith_Bounded_imap;
+    rewrite ith_replace2_Index_eq;
     intuition.
   Qed.
 
@@ -386,54 +383,51 @@ Section MutateRefinements.
   Qed.
 
   Corollary ComplementIntersectionIndexedList {heading}
-  : forall (ens : Ensemble (@IndexedTuple heading)),
+  : forall (ens : Ensemble (@IndexedRawTuple heading)),
       UnIndexedEnsembleListEquivalence
-        (Intersection IndexedTuple ens
-                      (Complement IndexedTuple ens))
+        (Intersection IndexedRawTuple ens
+                      (Complement IndexedRawTuple ens))
         [].
 
   Proof.
     unfold UnIndexedEnsembleListEquivalence.
-    exists (@nil (@IndexedTuple heading)); simpl; intuition.
+    exists (@nil (@IndexedRawTuple heading)); simpl; intuition.
     - exfalso; eapply ComplementIntersection; eauto.
     - constructor.
   Qed.
 
-  Lemma ibound_check_dec :
-    forall b a : nat,
-            (fun idx : nat =>
-             if eq_nat_dec b idx then false else true) a = true <->
-            (fun idx : nat => b <> idx) a.
+    Lemma ibound_check_dec {n} :
+    forall b a,
+            (fun idx =>
+             if fin_eq_dec (m := n) b idx then false else true) a = true <->
+            (fun idx => b <> idx) a.
   Proof.
     intros; simpl; find_if_inside; intuition.
   Qed.
 
   Lemma refine_Iterate_MutationPreservesCrossConstraints
-  : forall qsSchema (qs : UnConstrQueryStructure qsSchema )
-           (Ridx : @BoundedString (map relName (qschemaSchemas qsSchema)))
-           MutatedTuples
-           (or : QueryStructure qsSchema),
-      DropQSConstraints_AbsR or qs
+  : forall qsSchema qs Ridx MutatedTuples or,
+      @DropQSConstraints_AbsR qsSchema or qs
       ->
-    ((forall Ridx' : BoundedString,
+    ((forall Ridx',
      Ridx' <> Ridx ->
-     forall tup' : IndexedTuple,
+     forall tup' : IndexedRawTuple,
      GetRelation or Ridx tup' ->
      SatisfiesCrossRelationConstraints Ridx Ridx' (indexedElement tup')
        (GetUnConstrRelation (DropQSConstraints or) Ridx')) ->
-    forall Ridx' : BoundedString,
+    forall Ridx',
     Ridx' <> Ridx ->
     MutationPreservesCrossConstraints MutatedTuples
       (GetUnConstrRelation (DropQSConstraints or) Ridx')
       (SatisfiesCrossRelationConstraints Ridx Ridx')) ->
-   Iterate_Ensemble_BoundedString_filter
-     (fun idx : nat => if eq_nat_dec (ibound Ridx) idx then false else true)
-     (fun Ridx' : @BoundedString (map relName (qschemaSchemas qsSchema)) =>
-      forall tup' : IndexedTuple,
+   Iterate_Ensemble_BoundedIndex_filter
+     (fun Ridx' =>
+      forall tup' : IndexedRawTuple,
       GetUnConstrRelation (DropQSConstraints or) Ridx tup' ->
       SatisfiesCrossRelationConstraints Ridx Ridx'
-        (indexedElement tup') (GetRelation or Ridx')) ->
-   forall Ridx' : @BoundedString (map relName (qschemaSchemas qsSchema)),
+                                        (indexedElement tup') (GetRelation or Ridx'))
+     (fun idx => if fin_eq_dec Ridx idx then false else true) ->
+   forall Ridx',
    Ridx' <> Ridx ->
    MutationPreservesCrossConstraints
      MutatedTuples (GetRelation or Ridx')
@@ -441,59 +435,50 @@ Section MutateRefinements.
   Proof.
     intros; rewrite <- GetRelDropConstraints in *; eapply H0; eauto.
     intros; rewrite GetRelDropConstraints in *.
-    intros; eapply (proj1 (Iterate_Ensemble_BoundedString_filter_equiv
-                             _
-                             (Build_DecideableEnsemble _ _ (ibound_check_dec _) )) H1); eauto.
-    unfold not; intros; eapply H3;
-    eapply idx_ibound_eq; eauto using string_dec.
+    intros; eapply (proj1 (Iterate_Ensemble_BoundedIndex_filter_equiv
+                          _
+                          (Build_DecideableEnsemble _ _ (ibound_check_dec _) )) H1); eauto.
+    rewrite GetRelDropConstraints; eauto.
   Qed.
 
   Lemma refine_Iterate_MutationPreservesCrossConstraints'
-  : forall qsSchema (qs : UnConstrQueryStructure qsSchema )
-           (Ridx : @BoundedString (map relName (qschemaSchemas qsSchema)))
-           MutatedTuples
-           (or : QueryStructure qsSchema),
-      DropQSConstraints_AbsR or qs
+  : forall qsSchema qs Ridx MutatedTuples or,
+      @DropQSConstraints_AbsR qsSchema or qs
       ->
-    ((forall Ridx' : BoundedString,
+    ((forall Ridx' ,
      Ridx' <> Ridx ->
-     forall tup' : IndexedTuple,
+     forall tup' : IndexedRawTuple,
        GetUnConstrRelation (DropQSConstraints or) Ridx' tup' ->
      SatisfiesCrossRelationConstraints Ridx' Ridx (indexedElement tup')
        (GetRelation or Ridx)) ->
-    forall Ridx' : BoundedString,
+    forall Ridx' ,
     Ridx' <> Ridx ->
     MutationPreservesCrossConstraints
       (GetUnConstrRelation (DropQSConstraints or) Ridx')
       MutatedTuples
       (SatisfiesCrossRelationConstraints Ridx' Ridx)) ->
-      Iterate_Ensemble_BoundedString_filter
-    (fun idx : nat => if eq_nat_dec (ibound Ridx) idx then false else true)
-    (fun Ridx' : @BoundedString (map relName (qschemaSchemas qsSchema)) =>
-     forall tup' : IndexedTuple,
-     GetUnConstrRelation (DropQSConstraints or) Ridx' tup' ->
-     SatisfiesCrossRelationConstraints Ridx' Ridx (indexedElement tup')
-       (GetRelation or Ridx)) ->
-  forall Ridx' : @BoundedString (map relName (qschemaSchemas qsSchema)),
+      Iterate_Ensemble_BoundedIndex_filter
+        (fun Ridx' =>
+           forall tup' : IndexedRawTuple,
+             GetUnConstrRelation (DropQSConstraints or) Ridx' tup' ->
+             SatisfiesCrossRelationConstraints Ridx' Ridx (indexedElement tup')
+                                               (GetRelation or Ridx))
+        (fun idx => if fin_eq_dec Ridx idx then false else true) ->
+  forall Ridx',
   Ridx' <> Ridx ->
   MutationPreservesCrossConstraints (GetRelation or Ridx') MutatedTuples
                                     (SatisfiesCrossRelationConstraints Ridx' Ridx).
     intros; rewrite <- GetRelDropConstraints in *; eapply H0; eauto.
-    intros; eapply (proj1 (Iterate_Ensemble_BoundedString_filter_equiv
+    intros; eapply (proj1 (Iterate_Ensemble_BoundedIndex_filter_equiv
                              _
                              (Build_DecideableEnsemble _ _ (ibound_check_dec _) )) H1); eauto.
-    unfold not; intros; eapply H3;
-    eapply idx_ibound_eq; eauto using string_dec.
   Qed.
 
   Lemma QSMutateSpec_UnConstr_refine :
-    forall qsSchema (qs : UnConstrQueryStructure qsSchema )
-           (Ridx : @BoundedString (map relName (qschemaSchemas qsSchema)))
-           MutatedTuples
-           (or : QueryStructure qsSchema)
+    forall qsSchema qs Ridx MutatedTuples or
            refined_attrConstr refined_tupleConstr
            refined_crossConstr refined_crossConstr',
-      DropQSConstraints_AbsR or qs
+      @DropQSConstraints_AbsR qsSchema or qs
       -> refine {b | (forall tup,
                         GetUnConstrRelation qs Ridx tup
                         -> SatisfiesAttributeConstraints Ridx (indexedElement tup))
@@ -534,9 +519,9 @@ Section MutateRefinements.
                                     (GetUnConstrRelation qs Ridx')
                                     MutatedTuples
                                     (SatisfiesCrossRelationConstraints Ridx' Ridx)))
-                           (@Iterate_Ensemble_BoundedString_filter
+                           (@Iterate_Ensemble_BoundedIndex_filter
                               _ (fun idx =>
-                                   if (eq_nat_dec (ibound Ridx) idx)
+                                   if (fin_eq_dec (ibound Ridx) idx)
                                    then false else true)
                               (fun Ridx' =>
                                  forall tup',
@@ -569,9 +554,9 @@ Section MutateRefinements.
                                     MutatedTuples
                                     (GetUnConstrRelation qs Ridx')
                                     (SatisfiesCrossRelationConstraints Ridx Ridx')))
-                           (@Iterate_Ensemble_BoundedString_filter
+                           (@Iterate_Ensemble_BoundedIndex_filter
                               _ (fun idx =>
-                                   if (eq_nat_dec (ibound Ridx) idx)
+                                   if (fin_eq_dec (ibound Ridx) idx)
                                    then false else true)
                               (fun Ridx' =>
                                  forall tup',
@@ -582,7 +567,7 @@ Section MutateRefinements.
                 refined_crossConstr'
       ->
       refine
-        (or' <- QSMutate {|qsHint := or |} Ridx MutatedTuples;
+        (or' <- QSMutate or Ridx MutatedTuples;
          nr' <- {nr' | DropQSConstraints_AbsR (fst or') nr'};
          ret (nr', snd or'))
         (attrConstr <- refined_attrConstr;
@@ -623,28 +608,24 @@ Section MutateRefinements.
       [ simplify with monad laws
       | unfold Mutate_Valid, DropQSConstraints,
         UpdateRelation, UpdateUnConstrRelation; simpl;
-        repeat rewrite imap_replace_BoundedIndex by eauto using string_dec;
+        repeat rewrite imap_replace2_Index by eauto using string_dec;
         simpl; try reflexivity].
-
     f_equiv.
     - unfold GetRelation, GetUnConstrRelation, Mutate_Valid,
       UpdateRelation, DropQSConstraints, UpdateUnConstrRelation; simpl;
-      repeat rewrite ith_replace_BoundIndex_eq; reflexivity.
+      repeat rewrite ith_replace2_Index_eq; reflexivity.
     - unfold pointwise_relation; intros.
       refine pick val _;
         [ simplify with monad laws; reflexivity
         | unfold GetRelation, GetUnConstrRelation, Mutate_Valid,
           UpdateRelation, DropQSConstraints, UpdateUnConstrRelation; simpl;
-          rewrite imap_replace_BoundedIndex by eauto using string_dec; try reflexivity ].
-
+          rewrite imap_replace2_Index by eauto using string_dec; try reflexivity ].
   Qed.
 
   Local Transparent QSMutate.
 
   Lemma refine_SatisfiesAttributeConstraintsMutate
-  : forall (qsSchema : QueryStructureSchema)
-           (qs : UnConstrQueryStructure qsSchema) (Ridx : BoundedString)
-           MutatedTuples,
+  : forall qsSchema qs Ridx MutatedTuples,
       refine
         {b | (forall tup,
                 GetUnConstrRelation qs Ridx tup
@@ -652,7 +633,7 @@ Section MutateRefinements.
                      -> decides b (MutationPreservesAttributeConstraints
                                      MutatedTuples
                                      (SatisfiesAttributeConstraints Ridx))}
-        match attrConstraints (QSGetNRelSchema qsSchema Ridx) with
+        match attrConstraints (GetNRelSchema (qschemaSchemas qsSchema) Ridx) with
           | Some Constr =>
             {b | (forall tup,
                           GetUnConstrRelation qs Ridx tup
@@ -663,16 +644,14 @@ Section MutateRefinements.
           | None => ret true
         end.
   Proof.
-    intros; unfold MutationPreservesAttributeConstraints, SatisfiesAttributeConstraints;
-    destruct (attrConstraints (QSGetNRelSchema qsSchema Ridx)); try reflexivity.
-    intros v Comp_v; computes_to_econstructor; computes_to_inv; subst;
+    intros; unfold MutationPreservesAttributeConstraints, SatisfiesAttributeConstraints.
+    destruct (attrConstraints (GetNRelSchema (qschemaSchemas qsSchema) Ridx)); try reflexivity.
+    intros v Comp_v; computes_to_econstructor; computes_to_inv; subst.
     simpl; tauto.
   Qed.
 
   Lemma refine_SatisfiesTupleConstraintsMutate
-  : forall (qsSchema : QueryStructureSchema)
-           (qs : UnConstrQueryStructure qsSchema) (Ridx : BoundedString)
-           MutatedTuples,
+  : forall qsSchema qs Ridx MutatedTuples,
       refine
         {b | (forall tup tup',
                 elementIndex tup <> elementIndex tup'
@@ -683,7 +662,7 @@ Section MutateRefinements.
                      -> decides b (MutationPreservesTupleConstraints
                                      MutatedTuples
                                      (SatisfiesTupleConstraints Ridx))}
-        match tupleConstraints (QSGetNRelSchema qsSchema Ridx) with
+        match tupleConstraints (GetNRelSchema (qschemaSchemas qsSchema) Ridx) with
           | Some Constr =>
             {b | (forall tup tup',
                     elementIndex tup <> elementIndex tup'
@@ -699,15 +678,13 @@ Section MutateRefinements.
         end.
   Proof.
     intros; unfold MutationPreservesTupleConstraints, SatisfiesTupleConstraints;
-    destruct (tupleConstraints (QSGetNRelSchema qsSchema Ridx)); try reflexivity.
+    destruct (tupleConstraints (GetNRelSchema (qschemaSchemas qsSchema) Ridx)); try reflexivity.
     intros v Comp_v; computes_to_econstructor;  computes_to_inv; subst;
     econstructor;  computes_to_inv; subst; simpl; tauto.
   Qed.
 
   Lemma refine_SatisfiesCrossConstraintsMutate
-  : forall (qsSchema : QueryStructureSchema)
-           (qs : UnConstrQueryStructure qsSchema) (Ridx : BoundedString)
-           MutatedTuples,
+  : forall  qsSchema qs Ridx MutatedTuples,
       refine
         {b |
                          (forall Ridx',
@@ -724,14 +701,9 @@ Section MutateRefinements.
                                       (GetUnConstrRelation qs Ridx')
                                       MutatedTuples
                                       (SatisfiesCrossRelationConstraints Ridx' Ridx))}
-        (Iterate_Decide_Comp_opt'_Pre string
-                                  (map relName (qschemaSchemas qsSchema))
-                                  []
-                                  (fun
-                                      Ridx' : @BoundedString
-                                                ([] ++
-                                                    map relName (qschemaSchemas qsSchema)) =>
-                                      if BoundedString_eq_dec Ridx Ridx'
+        (Iterate_Decide_Comp_opt_Pre _
+                                  (fun Ridx' =>
+                                      if fin_eq_dec Ridx Ridx'
                                       then None
                                       else
                                         match
@@ -747,15 +719,17 @@ Section MutateRefinements.
                                                    CrossConstr))
                                           | None => None
                                         end)
-                                  (@Iterate_Ensemble_BoundedString_filter
-                                     _ (fun idx =>
-                                          if (eq_nat_dec (ibound Ridx) idx)
-                                          then false else true)
+                                  (@Iterate_Ensemble_BoundedIndex_filter
+                                     _
                                      (fun Ridx' =>
                                         forall tup',
                                           (GetUnConstrRelation qs Ridx') tup'
                                           -> SatisfiesCrossRelationConstraints
-                                               Ridx' Ridx (indexedElement tup') (GetUnConstrRelation qs Ridx)))).
+                                               Ridx' Ridx (indexedElement tup') (GetUnConstrRelation qs Ridx))
+                                     (fun idx =>
+                                        if (fin_eq_dec Ridx idx)
+                                        then false else true)
+        )).
   Proof.
     intros; simpl.
     unfold MutationPreservesCrossConstraints.
@@ -763,21 +737,19 @@ Section MutateRefinements.
     setoid_rewrite Iterate_Decide_Comp_BoundedIndex_Pre.
     eapply refine_Iterate_Decide_Comp_equiv_Pre; eauto using string_dec.
     - unfold SatisfiesCrossRelationConstraints; intros.
-      destruct (BoundedString_eq_dec Ridx idx);
+      destruct (fin_eq_dec Ridx idx);
         [congruence
         | destruct (BuildQueryStructureConstraints qsSchema idx Ridx); eauto].
     - unfold not; intros; eapply H.
       unfold SatisfiesCrossRelationConstraints in *.
-      destruct (BoundedString_eq_dec Ridx idx);
+      destruct (fin_eq_dec Ridx idx);
       [ eauto
       | destruct (BuildQueryStructureConstraints qsSchema idx Ridx); eauto].
     - setoid_rewrite <- Iterate_Ensemble_filter_neq; eauto using string_dec.
   Qed.
 
   Lemma refine_SatisfiesCrossConstraintsMutate'
-  : forall (qsSchema : QueryStructureSchema)
-           (qs : UnConstrQueryStructure qsSchema) (Ridx : BoundedString)
-           MutatedTuples,
+  : forall   qsSchema qs Ridx MutatedTuples,
       refine
         {b |
                          (forall Ridx',
@@ -794,14 +766,9 @@ Section MutateRefinements.
                                       MutatedTuples
                                       (GetUnConstrRelation qs Ridx')
                                       (SatisfiesCrossRelationConstraints Ridx Ridx'))}
-        (Iterate_Decide_Comp_opt'_Pre string
-                                  (map relName (qschemaSchemas qsSchema))
-                                  []
-                                  (fun
-                                      Ridx' : @BoundedString
-                                                ([] ++
-                                                    map relName (qschemaSchemas qsSchema)) =>
-                                      if BoundedString_eq_dec Ridx Ridx'
+        (Iterate_Decide_Comp_opt_Pre _
+                                  (fun Ridx' =>
+                                      if fin_eq_dec Ridx Ridx'
                                       then None
                                       else
                                         match
@@ -817,15 +784,17 @@ Section MutateRefinements.
                                                    CrossConstr))
                                           | None => None
                                         end)
-                                  (@Iterate_Ensemble_BoundedString_filter
-                                     _ (fun idx =>
-                                          if (eq_nat_dec (ibound Ridx) idx)
-                                          then false else true)
+                                  (@Iterate_Ensemble_BoundedIndex_filter
+                                     _
                                      (fun Ridx' =>
                                         forall tup',
                                           (GetUnConstrRelation qs Ridx) tup'
                                           -> SatisfiesCrossRelationConstraints
-                                               Ridx Ridx' (indexedElement tup') (GetUnConstrRelation qs Ridx')))).
+                                               Ridx Ridx' (indexedElement tup') (GetUnConstrRelation qs Ridx'))
+                                     (fun idx =>
+                                        if (fin_eq_dec Ridx idx)
+                                        then false else true)
+        )).
   Proof.
     intros; simpl.
     unfold MutationPreservesCrossConstraints.
@@ -833,29 +802,26 @@ Section MutateRefinements.
     setoid_rewrite Iterate_Decide_Comp_BoundedIndex_Pre.
     eapply refine_Iterate_Decide_Comp_equiv_Pre; eauto using string_dec.
     - unfold SatisfiesCrossRelationConstraints; intros.
-      destruct (BoundedString_eq_dec Ridx idx);
+      destruct (fin_eq_dec Ridx idx);
         [congruence
         | destruct (BuildQueryStructureConstraints qsSchema Ridx idx); eauto].
     - unfold not; intros; eapply H.
       unfold SatisfiesCrossRelationConstraints in *.
-      destruct (BoundedString_eq_dec Ridx idx);
+      destruct (fin_eq_dec Ridx idx);
       [ eauto
       | destruct (BuildQueryStructureConstraints qsSchema Ridx idx); eauto].
     - setoid_rewrite <- Iterate_Ensemble_filter_neq; eauto using string_dec.
   Qed.
 
   Lemma QSMutateSpec_UnConstr_refine_opt :
-    forall qsSchema (qs : UnConstrQueryStructure qsSchema )
-           (Ridx : @BoundedString (map relName (qschemaSchemas qsSchema)))
-           (MutatedTuples : @IndexedEnsemble (@Tuple (schemaHeading (QSGetNRelSchema _ Ridx))))
-           (or : QueryStructure qsSchema),
-      DropQSConstraints_AbsR or qs ->
+    forall qsSchema qs Ridx MutatedTuples or,
+      @DropQSConstraints_AbsR qsSchema or qs ->
       refine
-        (or' <- QSMutate {|qsHint := or |} Ridx MutatedTuples;
+        (or' <- QSMutate or Ridx MutatedTuples;
          nr' <- {nr' | DropQSConstraints_AbsR (fst or') nr'};
          ret (nr', snd or'))
-        match (attrConstraints (QSGetNRelSchema qsSchema Ridx)),
-              (tupleConstraints (QSGetNRelSchema qsSchema Ridx)) with
+        match (attrConstraints (GetNRelSchema (qschemaSchemas qsSchema) Ridx)),
+              (tupleConstraints (GetNRelSchema (qschemaSchemas qsSchema) Ridx)) with
           | Some aConstr, Some tConstr =>
             attrConstr <- {b | (forall tup,
                                   GetUnConstrRelation qs Ridx tup
@@ -871,14 +837,8 @@ Section MutateRefinements.
                                   -> decides b (MutationPreservesTupleConstraints
                                                   MutatedTuples
                                                   tConstr) };
-              crossConstr <- (Iterate_Decide_Comp_opt'_Pre string
-                                                       (map relName (qschemaSchemas qsSchema))
-                                  []
-                                  (fun
-                                      Ridx' : @BoundedString
-                                                ([] ++
-                                                    map relName (qschemaSchemas qsSchema)) =>
-                                      if BoundedString_eq_dec Ridx Ridx'
+              crossConstr <- (Iterate_Decide_Comp_opt_Pre _
+                                  (fun Ridx' => if fin_eq_dec Ridx Ridx'
                                       then None
                                       else
                                         match
@@ -893,23 +853,19 @@ Section MutateRefinements.
                                                  CrossConstr))
                                           | None => None
                                         end)
-                                  (@Iterate_Ensemble_BoundedString_filter
-                                     _ (fun idx =>
-                                          if (eq_nat_dec (ibound Ridx) idx)
-                                          then false else true)
+                                  (@Iterate_Ensemble_BoundedIndex_filter
+                                     _
                                      (fun Ridx' =>
                                         forall tup',
                                           (GetUnConstrRelation qs Ridx') tup'
                                           -> SatisfiesCrossRelationConstraints
-                                               Ridx' Ridx (indexedElement tup') (GetUnConstrRelation qs Ridx))));
-              crossConstr' <- (Iterate_Decide_Comp_opt'_Pre string
-                                  (map relName (qschemaSchemas qsSchema))
-                                  []
-                                  (fun
-                                      Ridx' : @BoundedString
-                                                ([] ++
-                                                    map relName (qschemaSchemas qsSchema)) =>
-                                      if BoundedString_eq_dec Ridx Ridx'
+                                               Ridx' Ridx (indexedElement tup') (GetUnConstrRelation qs Ridx))
+                                     (fun idx =>
+                                          if (fin_eq_dec Ridx idx)
+                                          then false else true)));
+              crossConstr' <- (Iterate_Decide_Comp_opt_Pre _
+                                  (fun Ridx' =>
+                                      if fin_eq_dec Ridx Ridx'
                                       then None
                                       else
                                         match
@@ -924,15 +880,16 @@ Section MutateRefinements.
                                                   CrossConstr))
                                           | None => None
                                         end)
-                                  (@Iterate_Ensemble_BoundedString_filter
-                                     _ (fun idx =>
-                                          if (eq_nat_dec (ibound Ridx) idx)
-                                          then false else true)
+                                  (@Iterate_Ensemble_BoundedIndex_filter
+                                     _
                                      (fun Ridx' =>
                                         forall tup',
                                           (GetUnConstrRelation qs Ridx) tup'
                                           -> SatisfiesCrossRelationConstraints
-                                               Ridx Ridx' (indexedElement tup') (GetUnConstrRelation qs Ridx'))));
+                                               Ridx Ridx' (indexedElement tup') (GetUnConstrRelation qs Ridx'))
+                                     (fun idx =>
+                                          if (fin_eq_dec Ridx idx)
+                                          then false else true)));
               match attrConstr, tupleConstr, crossConstr, crossConstr' with
                 | true, true, true, true =>
                   mutated   <- Pick (UnIndexedEnsembleListEquivalence
@@ -949,14 +906,9 @@ Section MutateRefinements.
                                -> decides b (MutationPreservesAttributeConstraints
                                                MutatedTuples
                                                aConstr) };
-              crossConstr <- (Iterate_Decide_Comp_opt'_Pre string
-                                                       (map relName (qschemaSchemas qsSchema))
-                                  []
-                                  (fun
-                                      Ridx' : @BoundedString
-                                                ([] ++
-                                                    map relName (qschemaSchemas qsSchema)) =>
-                                      if BoundedString_eq_dec Ridx Ridx'
+              crossConstr <- (Iterate_Decide_Comp_opt_Pre _
+                                  (fun Ridx' =>
+                                      if fin_eq_dec Ridx Ridx'
                                       then None
                                       else
                                         match
@@ -971,23 +923,19 @@ Section MutateRefinements.
                                                  CrossConstr))
                                           | None => None
                                         end)
-                                  (@Iterate_Ensemble_BoundedString_filter
-                                     _ (fun idx =>
-                                          if (eq_nat_dec (ibound Ridx) idx)
-                                          then false else true)
+                                  (@Iterate_Ensemble_BoundedIndex_filter
+                                     _
                                      (fun Ridx' =>
                                         forall tup',
                                           (GetUnConstrRelation qs Ridx') tup'
                                           -> SatisfiesCrossRelationConstraints
-                                               Ridx' Ridx (indexedElement tup') (GetUnConstrRelation qs Ridx))));
-              crossConstr' <- (Iterate_Decide_Comp_opt'_Pre string
-                                  (map relName (qschemaSchemas qsSchema))
-                                  []
-                                  (fun
-                                      Ridx' : @BoundedString
-                                                ([] ++
-                                                    map relName (qschemaSchemas qsSchema)) =>
-                                      if BoundedString_eq_dec Ridx Ridx'
+                                               Ridx' Ridx (indexedElement tup') (GetUnConstrRelation qs Ridx))
+                                  (fun idx =>
+                                          if (fin_eq_dec Ridx idx)
+                                          then false else true)));
+              crossConstr' <- (Iterate_Decide_Comp_opt_Pre _
+                                  (fun Ridx' =>
+                                      if fin_eq_dec Ridx Ridx'
                                       then None
                                       else
                                         match
@@ -1002,15 +950,16 @@ Section MutateRefinements.
                                                   CrossConstr))
                                           | None => None
                                         end)
-                                  (@Iterate_Ensemble_BoundedString_filter
-                                     _ (fun idx =>
-                                          if (eq_nat_dec (ibound Ridx) idx)
-                                          then false else true)
+                                  (@Iterate_Ensemble_BoundedIndex_filter
+                                     _
                                      (fun Ridx' =>
                                         forall tup',
                                           (GetUnConstrRelation qs Ridx) tup'
                                           -> SatisfiesCrossRelationConstraints
-                                               Ridx Ridx' (indexedElement tup') (GetUnConstrRelation qs Ridx'))));
+                                               Ridx Ridx' (indexedElement tup') (GetUnConstrRelation qs Ridx'))
+                                     (fun idx =>
+                                          if (fin_eq_dec Ridx idx)
+                                          then false else true)));
               match attrConstr, crossConstr, crossConstr' with
                 | true, true, true =>
                   mutated   <- Pick (UnIndexedEnsembleListEquivalence
@@ -1029,14 +978,9 @@ Section MutateRefinements.
                                   -> decides b (MutationPreservesTupleConstraints
                                                   MutatedTuples
                                                   tConstr) };
-              crossConstr <- (Iterate_Decide_Comp_opt'_Pre string
-                                                       (map relName (qschemaSchemas qsSchema))
-                                  []
-                                  (fun
-                                      Ridx' : @BoundedString
-                                                ([] ++
-                                                    map relName (qschemaSchemas qsSchema)) =>
-                                      if BoundedString_eq_dec Ridx Ridx'
+              crossConstr <- (Iterate_Decide_Comp_opt_Pre _
+                                  (fun Ridx'  =>
+                                      if fin_eq_dec Ridx Ridx'
                                       then None
                                       else
                                         match
@@ -1051,23 +995,19 @@ Section MutateRefinements.
                                                  CrossConstr))
                                           | None => None
                                         end)
-                                  (@Iterate_Ensemble_BoundedString_filter
-                                     _ (fun idx =>
-                                          if (eq_nat_dec (ibound Ridx) idx)
-                                          then false else true)
+                                  (@Iterate_Ensemble_BoundedIndex_filter
+                                     _
                                      (fun Ridx' =>
                                         forall tup',
                                           (GetUnConstrRelation qs Ridx') tup'
                                           -> SatisfiesCrossRelationConstraints
-                                               Ridx' Ridx (indexedElement tup') (GetUnConstrRelation qs Ridx))));
-              crossConstr' <- (Iterate_Decide_Comp_opt'_Pre string
-                                  (map relName (qschemaSchemas qsSchema))
-                                  []
-                                  (fun
-                                      Ridx' : @BoundedString
-                                                ([] ++
-                                                    map relName (qschemaSchemas qsSchema)) =>
-                                      if BoundedString_eq_dec Ridx Ridx'
+                                               Ridx' Ridx (indexedElement tup') (GetUnConstrRelation qs Ridx))
+                             (fun idx =>
+                                          if (fin_eq_dec Ridx idx)
+                                          then false else true)));
+              crossConstr' <- (Iterate_Decide_Comp_opt_Pre _
+                                 (fun Ridx' =>
+                                      if fin_eq_dec Ridx Ridx'
                                       then None
                                       else
                                         match
@@ -1082,15 +1022,16 @@ Section MutateRefinements.
                                                   CrossConstr))
                                           | None => None
                                         end)
-                                  (@Iterate_Ensemble_BoundedString_filter
-                                     _ (fun idx =>
-                                          if (eq_nat_dec (ibound Ridx) idx)
-                                          then false else true)
+                                  (@Iterate_Ensemble_BoundedIndex_filter
+                                     _
                                      (fun Ridx' =>
                                         forall tup',
                                           (GetUnConstrRelation qs Ridx) tup'
                                           -> SatisfiesCrossRelationConstraints
-                                               Ridx Ridx' (indexedElement tup') (GetUnConstrRelation qs Ridx'))));
+                                               Ridx Ridx' (indexedElement tup') (GetUnConstrRelation qs Ridx'))
+                              (fun idx =>
+                                          if (fin_eq_dec Ridx idx)
+                                          then false else true)));
               match tupleConstr, crossConstr, crossConstr' with
                 | true, true, true =>
                   mutated   <- Pick (UnIndexedEnsembleListEquivalence
@@ -1101,14 +1042,9 @@ Section MutateRefinements.
                 | _, _, _ => ret (DropQSConstraints or, [])
               end
           | None, None =>
-                          crossConstr <- (Iterate_Decide_Comp_opt'_Pre string
-                                                       (map relName (qschemaSchemas qsSchema))
-                                  []
-                                  (fun
-                                      Ridx' : @BoundedString
-                                                ([] ++
-                                                    map relName (qschemaSchemas qsSchema)) =>
-                                      if BoundedString_eq_dec Ridx Ridx'
+                          crossConstr <- (Iterate_Decide_Comp_opt_Pre _
+                                  (fun Ridx' =>
+                                      if fin_eq_dec Ridx Ridx'
                                       then None
                                       else
                                         match
@@ -1123,23 +1059,19 @@ Section MutateRefinements.
                                                  CrossConstr))
                                           | None => None
                                         end)
-                                  (@Iterate_Ensemble_BoundedString_filter
-                                     _ (fun idx =>
-                                          if (eq_nat_dec (ibound Ridx) idx)
-                                          then false else true)
+                                  (@Iterate_Ensemble_BoundedIndex_filter
+                                     _
                                      (fun Ridx' =>
                                         forall tup',
                                           (GetUnConstrRelation qs Ridx') tup'
                                           -> SatisfiesCrossRelationConstraints
-                                               Ridx' Ridx (indexedElement tup') (GetUnConstrRelation qs Ridx))));
-              crossConstr' <- (Iterate_Decide_Comp_opt'_Pre string
-                                  (map relName (qschemaSchemas qsSchema))
-                                  []
-                                  (fun
-                                      Ridx' : @BoundedString
-                                                ([] ++
-                                                    map relName (qschemaSchemas qsSchema)) =>
-                                      if BoundedString_eq_dec Ridx Ridx'
+                                               Ridx' Ridx (indexedElement tup') (GetUnConstrRelation qs Ridx))
+                                         (fun idx =>
+                                          if (fin_eq_dec Ridx idx)
+                                          then false else true)));
+              crossConstr' <- (Iterate_Decide_Comp_opt_Pre _
+                                 (fun Ridx' =>
+                                      if fin_eq_dec Ridx Ridx'
                                       then None
                                       else
                                         match
@@ -1154,15 +1086,16 @@ Section MutateRefinements.
                                                   CrossConstr))
                                           | None => None
                                         end)
-                                  (@Iterate_Ensemble_BoundedString_filter
-                                     _ (fun idx =>
-                                          if (eq_nat_dec (ibound Ridx) idx)
-                                          then false else true)
+                                  (@Iterate_Ensemble_BoundedIndex_filter
+                                     _
                                      (fun Ridx' =>
                                         forall tup',
                                           (GetUnConstrRelation qs Ridx) tup'
                                           -> SatisfiesCrossRelationConstraints
-                                               Ridx Ridx' (indexedElement tup') (GetUnConstrRelation qs Ridx'))));
+                                               Ridx Ridx' (indexedElement tup') (GetUnConstrRelation qs Ridx'))
+                              (fun idx =>
+                                          if (fin_eq_dec Ridx idx)
+                                          then false else true)));
               match crossConstr, crossConstr' with
                 | true, true =>
                   mutated   <- Pick (UnIndexedEnsembleListEquivalence
@@ -1181,12 +1114,12 @@ Section MutateRefinements.
     refine_SatisfiesCrossConstraintsMutate,
     refine_SatisfiesCrossConstraintsMutate'.
     - unfold SatisfiesTupleConstraints, SatisfiesAttributeConstraints.
-      destruct (attrConstraints (QSGetNRelSchema qsSchema Ridx)).
-      + destruct (tupleConstraints (QSGetNRelSchema qsSchema Ridx)).
+      destruct (attrConstraints (GetNRelSchema (qschemaSchemas qsSchema) Ridx)).
+      + destruct (tupleConstraints (GetNRelSchema (qschemaSchemas qsSchema) Ridx)).
         reflexivity.
         simplify with monad laws; f_equiv.
       + simplify with monad laws; f_equiv.
-        destruct (tupleConstraints (QSGetNRelSchema qsSchema Ridx)).
+        destruct (tupleConstraints (GetNRelSchema (qschemaSchemas qsSchema) Ridx)).
         reflexivity.
         simplify with monad laws; f_equiv.
   Qed.

@@ -1,7 +1,4 @@
-Require Import Coq.Strings.String.
-Require Import Fiat.QueryStructure.Automation.AutoDB
-        Fiat.QueryStructure.Automation.IndexSelection
-        Fiat.QueryStructure.Automation.Common.
+Require Import Fiat.QueryStructure.Automation.MasterPlan.
 
 Definition PHOTOS := "Photos".
 Definition EVENTS := "Events".
@@ -50,43 +47,39 @@ Definition AlbumSpec : ADT AlbumSig :=
   QueryADTRep AlbumSchema {
     Def Constructor "Init" (_ : unit) : rep := empty,
 
-    update "AddPhoto" (photo : AlbumSchema#PHOTOS) : bool :=
-      Insert photo into PHOTOS,
+    update "AddPhoto" (r : rep, photo : AlbumSchema#PHOTOS) : bool :=
+      Insert photo into r!PHOTOS,
 
-    update "AddEvent" (event : AlbumSchema#EVENTS) : bool :=
-      Insert event into EVENTS,
+    update "AddEvent" (r : rep, event : AlbumSchema#EVENTS) : bool :=
+      Insert event into r!EVENTS,
 
-    query "PhotosByDateRange" (range : nat * nat) : list (AlbumSchema#PHOTOS) :=
-      For (photo in PHOTOS)
-          (event in EVENTS)
+    query "PhotosByDateRange" (r : rep, range : nat * nat) : list (AlbumSchema#PHOTOS) :=
+      For (photo in r!PHOTOS)
+          (event in r!EVENTS)
           Where (event!EVENT_NAME = photo!EVENT_NAME)
           Where (fst range <= event!DATE <= snd range)
           Return photo,
 
-    query "PhotosByPersons" (persons : list string) : list (AlbumSchema#PHOTOS) :=
-      For (photo in PHOTOS)
-          Where (StringInclusion.IncludedIn persons photo!PERSONS)
+    query "PhotosByPersons" (r : rep, persons : list string) : list (AlbumSchema#PHOTOS) :=
+      For (photo in r!PHOTOS)
+          Where (IncludedIn persons photo!PERSONS)
           Return photo
 }.
 
 Definition SharpenedAlbum :
-  MostlySharpened AlbumSpec.
+  FullySharpened AlbumSpec.
 Proof.
 
-  start honing QueryStructure.
-    (* Manually select indexes + data structure. *)
-    make simple indexes using [[("EqualityIndex", EVENT_NAME); ("InclusionIndex", PERSONS)]; [("EqualityIndex", EVENT_NAME); ("RangeIndex", DATE)]].
-  - packaged_plan ltac:(CombineIndexTactics InclusionIndexTactics
-                                            ltac:(CombineIndexTactics RangeIndexTactics EqIndexTactics)).
-  - packaged_plan ltac:(CombineIndexTactics InclusionIndexTactics
-                                            ltac:(CombineIndexTactics RangeIndexTactics EqIndexTactics)).
-  - packaged_plan ltac:(CombineIndexTactics InclusionIndexTactics
-                                            ltac:(CombineIndexTactics RangeIndexTactics EqIndexTactics)).
-  - packaged_plan ltac:(CombineIndexTactics InclusionIndexTactics
-                                            ltac:(CombineIndexTactics RangeIndexTactics EqIndexTactics)).
-  - packaged_plan ltac:(CombineIndexTactics InclusionIndexTactics
-                                            ltac:(CombineIndexTactics RangeIndexTactics EqIndexTactics)).
-
-  - FullySharpenQueryStructure AlbumSchema Index.
-
+  (* Uncomment this to see the mostly sharpened implementation *)
+  (* partial_master_plan ltac:(CombineIndexTactics InclusionIndexTactics
+          ltac:(CombineIndexTactics RangeIndexTactics EqIndexTactics)).*)
+  master_plan
+    ltac:(CombineIndexTactics InclusionIndexTactics
+          ltac:(CombineIndexTactics RangeIndexTactics EqIndexTactics)).
 Time Defined.
+(*Mem: 1380MB *)
+
+Time Definition AlbumImpl : ComputationalADT.cADT AlbumSig :=
+  Eval simpl in (projT1 SharpenedAlbum).
+(* Mem: 1028MB *)
+Print AlbumImpl.

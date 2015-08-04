@@ -1,7 +1,7 @@
 Require Import Coq.Lists.List Fiat.Common
         Fiat.ADT.ADTSig Fiat.ADT.Core
         Fiat.ADTNotation.BuildADTSig Fiat.ADTNotation.BuildADT
-        Fiat.Common.ilist Fiat.Common.StringBound
+        Fiat.Common.ilist Fiat.Common.BoundedLookup
         Fiat.ADTRefinement.Core Fiat.ADTRefinement.SetoidMorphisms
         Fiat.ADTRefinement.GeneralRefinements
         Fiat.ADTRefinement.Refinements.HoneRepresentation
@@ -36,11 +36,12 @@ Section SimplifyRep.
   : @consDef newRep Sig :=
     {| consBody := simplifyConstructor simplifyf (consBody oldConstr) |}.
 
-  Lemma refineADT_BuildADT_Simplify
-            (constrSigs : list consSig)
-            (methSigs : list methSig)
-            (constrDefs : ilist (@consDef oldRep) constrSigs)
-            (methDefs : ilist (@methDef oldRep) methSigs) :
+  (*Lemma refineADT_BuildADT_Simplify
+        {n n'}
+        (constrSigs : list consSig)
+        (methSigs : list methSig)
+        (constrDefs : ilist (@consDef oldRep) constrSigs)
+        (methDefs : ilist (@methDef oldRep) methSigs) :
     (forall r_o, r_o ≃ simplifyf r_o) ->
     (forall r_n r_o,
        (r_o ≃ r_n) ->
@@ -62,6 +63,6 @@ Section SimplifyRep.
       repeat computes_to_econstructor; subst; eauto.
     - rewrite <- ith_Bounded_imap.
       rewrite H0; eauto; reflexivity.
-  Qed.
+  Qed. *)
 
 End SimplifyRep.

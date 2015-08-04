@@ -351,10 +351,19 @@ Proof.
   congruence.
 Qed.
 
+(* We define a wrapper for [if then else] in order for it to play
+   nicely with setoid_rewriting. *)
+Definition If_Then_Else {A}
+           (c : bool)
+           (t e : A) :=
+  if c then t else e.
+
 Ltac find_if_inside :=
   match goal with
-    | [ |- context[if ?X then _ else _] ] => destruct X
-    | [ H : context[if ?X then _ else _] |- _ ]=> destruct X
+  | [ |- context[if ?X then _ else _] ] => destruct X
+  | [ |- context[If_Then_Else ?X _ _] ] => destruct X
+  | [ H : context[if ?X then _ else _] |- _ ]=> destruct X
+  | [ H : context[If_Then_Else ?X _ _] |- _ ]=> destruct X
   end.
 
 Ltac substs :=

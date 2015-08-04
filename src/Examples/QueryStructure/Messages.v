@@ -1,6 +1,4 @@
-Require Import Coq.Strings.String.
-Require Import Fiat.QueryStructure.Automation.AutoDB
-        Fiat.QueryStructure.Automation.IndexSelection.
+Require Import Fiat.QueryStructure.Automation.MasterPlan.
 
 Definition MESSAGES := "Messages".
 Definition CONTACTS := "Contacts".
@@ -43,47 +41,36 @@ Definition MessagesSpec : ADT MessagesSig :=
   QueryADTRep MessagesSchema {
     Def Constructor "Init" (_ : unit) : rep := empty,
 
-    update "AddMessage" (message : MessagesSchema#MESSAGES) : bool :=
-      Insert message into MESSAGES,
+    update "AddMessage" (r : rep, message : MessagesSchema#MESSAGES) : bool :=
+      Insert message into r ! MESSAGES,
 
-    update "AddContact" (contact : MessagesSchema#CONTACTS) : bool :=
-      Insert contact into CONTACTS,
+    update "AddContact" (r : rep, contact : MessagesSchema#CONTACTS) : bool :=
+      Insert contact into r ! CONTACTS,
 
-    query "ContactMessages" (name : string) : list MessageT :=
-      For (contact in CONTACTS)
-          (messages in MESSAGES)
+    query "ContactMessages" (r : rep, name : string) : list MessageT :=
+      For (contact in r ! CONTACTS)
+          (messages in r ! MESSAGES)
           Where (contact!NAME = name)
           Where (messages!PHONE_NUMBER = contact!PHONE_NUMBER)
           Return messages!MESSAGE,
 
-     query "RelevantMessages" (search_terms : list string) : list MessageT :=
-       For (message in MESSAGES)
+     query "RelevantMessages" (r : rep, search_terms : list string) : list MessageT :=
+       For (message in r ! MESSAGES)
            Where (IncludedIn search_terms message!MESSAGE)
            Return message!MESSAGE
 
 }.
 
 Definition SharpenedMessages :
-  MostlySharpened MessagesSpec.
+  FullySharpened MessagesSpec.
 Proof.
 
-  (* With the standard indexes, 'RelevantMessages' enumerates and filters. *)
-  Unset Ltac Debug.
-  partial_master_plan EqIndexTactics.
-  Undo 1.
+  (* Uncomment this to see the mostly sharpened implementation *)
+  (* partial_master_plan ltac:(CombineIndexTactics InclusionIndexTactics EqIndexTactics). *)
+  master_plan ltac:(CombineIndexTactics InclusionIndexTactics EqIndexTactics).
 
-  (* Using search terms for checking IncludedIn uses the more efficient BFind method. *)
-  Require Import Fiat.QueryStructure.Specification.SearchTerms.ListInclusion.
-
-  partial_master_plan ltac:(CombineIndexTactics InclusionIndexTactics EqIndexTactics).
-
-  FullySharpenQueryStructure MessagesSchema Index.
-
-Time Defined. (* 100s *)
-
-Definition MessagesImpl : SharpenedUnderDelegates MessagesSig.
-  Time let Impl := eval simpl in (projT1 SharpenedMessages) in
-           exact Impl.
-Defined. (* 14s *)
-
+Time Defined.
+(* 1336MB *)
+Time Definition MessagesImpl : ComputationalADT.cADT MessagesSig :=
+  Eval simpl in (projT1 SharpenedMessages).
 Print MessagesImpl.

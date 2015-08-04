@@ -24,7 +24,7 @@ Require Import Coq.Strings.String Coq.omega.Omega Coq.Lists.List Coq.Logic.Funct
 
 Section DeleteRefinements.
 
-  Hint Resolve AC_eq_nth_In AC_eq_nth_NIn crossConstr.
+  Hint Resolve crossConstr.
   Hint Unfold SatisfiesCrossRelationConstraints
        SatisfiesAttributeConstraints
        SatisfiesTupleConstraints.
@@ -38,25 +38,22 @@ Section DeleteRefinements.
   Local Transparent QSDelete.
 
   Definition QSDeletedTuples
-             qsSchema (qs : UnConstrQueryStructure qsSchema )
-             (Ridx : @BoundedString (map relName (qschemaSchemas qsSchema)))
-             (DeletedTuples :
-                Ensemble (@Tuple (schemaHeading (QSGetNRelSchema _ Ridx)))) :=
+             {qsSchema}
+             (qs : UnConstrQueryStructure qsSchema) Ridx
+             (DeletedTuples : Ensemble RawTuple) :=
     (UnIndexedEnsembleListEquivalence
        (Intersection _
                      (GetUnConstrRelation qs Ridx)
                      (Complement _ (EnsembleDelete (GetUnConstrRelation qs Ridx) DeletedTuples)))).
 
   Lemma QSDeleteSpec_UnConstr_refine_AttributeConstraints :
-    forall qsSchema (qs : UnConstrQueryStructure qsSchema )
-           (Ridx : @BoundedString (map relName (qschemaSchemas qsSchema)))
-           (DeletedTuples :
-              Ensemble (@Tuple (schemaHeading (QSGetNRelSchema _ Ridx))))
-           (or : QueryStructure qsSchema),
-      DropQSConstraints_AbsR or qs ->
+    forall qsSchema qs  Ridx
+           (DeletedTuples : Ensemble RawTuple)
+           or,
+      @DropQSConstraints_AbsR qsSchema or qs ->
       refine
         {b : bool |
-         (forall tup : IndexedTuple,
+         (forall tup,
             GetUnConstrRelation qs Ridx tup ->
             SatisfiesAttributeConstraints Ridx (indexedElement tup)) ->
          decides b
@@ -72,22 +69,20 @@ Section DeleteRefinements.
   Qed.
 
   Lemma QSDeleteSpec_UnConstr_refine_CrossConstraints' :
-    forall qsSchema (qs : UnConstrQueryStructure qsSchema )
-           (Ridx : @BoundedString (map relName (qschemaSchemas qsSchema)))
-           (DeletedTuples :
-              Ensemble (@Tuple (schemaHeading (QSGetNRelSchema _ Ridx))))
-           (or : QueryStructure qsSchema),
-      DropQSConstraints_AbsR or qs ->
+    forall qsSchema qs  Ridx
+           (DeletedTuples : Ensemble RawTuple)
+           or,
+      @DropQSConstraints_AbsR qsSchema or qs ->
   refine
    {b : bool |
-   (forall Ridx' : BoundedString,
+   (forall Ridx',
     Ridx' <> Ridx ->
-    forall tup' : IndexedTuple,
+    forall tup',
     GetUnConstrRelation qs Ridx tup' ->
     SatisfiesCrossRelationConstraints Ridx Ridx' (indexedElement tup')
       (GetUnConstrRelation qs Ridx')) ->
    decides b
-     (forall Ridx' : BoundedString,
+     (forall Ridx',
       Ridx' <> Ridx ->
       MutationPreservesCrossConstraints
         (EnsembleDelete (GetRelation or Ridx) DeletedTuples)
@@ -100,19 +95,16 @@ Section DeleteRefinements.
     unfold DropQSConstraints_AbsR in *; eapply H; inversion H1; subst; eauto.
     rewrite GetRelDropConstraints; eauto.
   Qed.
+  Set Printing Implicit.
 
   Lemma QSDeleteSpec_UnConstr_refine_opt :
-    forall qsSchema (qs : UnConstrQueryStructure qsSchema )
-           (Ridx : @BoundedString (map relName (qschemaSchemas qsSchema)))
-           (DeletedTuples :
-              Ensemble (@Tuple (schemaHeading (QSGetNRelSchema _ Ridx))))
-           (or : QueryStructure qsSchema),
-      DropQSConstraints_AbsR or qs ->
+    forall qsSchema qs Ridx DeletedTuples or,
+      @DropQSConstraints_AbsR qsSchema or qs ->
       refine
-        (or' <- (QSDelete {|qsHint := or |} Ridx DeletedTuples);
+        (or' <- (QSDelete or Ridx DeletedTuples);
          nr' <- {nr' | DropQSConstraints_AbsR (fst or') nr'};
          ret (nr', snd or'))
-        match (tupleConstraints (QSGetNRelSchema qsSchema Ridx)) with
+        match (tupleConstraints (GetNRelSchema (qschemaSchemas qsSchema) Ridx)) with
           | Some tConstr =>
             tupleConstr <- {b | (forall tup tup',
                                    elementIndex tup <> elementIndex tup'
@@ -120,15 +112,11 @@ Section DeleteRefinements.
                                      -> GetUnConstrRelation qs Ridx tup'
                                      -> tConstr (indexedElement tup) (indexedElement tup'))
                                   -> decides b (MutationPreservesTupleConstraints
-                                                  (EnsembleDelete (GetRelation or Ridx) DeletedTuples)                                               tConstr) };
-              crossConstr <- (Iterate_Decide_Comp_opt'_Pre string
-                                                       (map relName (qschemaSchemas qsSchema))
-                                  []
-                                  (fun
-                                      Ridx' : BoundedIndex
-                                                ([] ++
-                                                    map relName (qschemaSchemas qsSchema)) =>
-                                      if BoundedString_eq_dec Ridx Ridx'
+                                                  (EnsembleDelete (GetRelation or Ridx) DeletedTuples)
+                                                  tConstr) };
+              crossConstr <- (Iterate_Decide_Comp_opt_Pre _
+                                  (fun Ridx' =>
+                                      if fin_eq_dec Ridx Ridx'
                                       then None
                                       else
                                         match
@@ -143,30 +131,27 @@ Section DeleteRefinements.
                                                  CrossConstr))
                                           | None => None
                                         end)
-                                  (@Iterate_Ensemble_BoundedString_filter
-                                     _ (fun idx =>
-                                          if (eq_nat_dec (ibound Ridx) idx)
-                                          then false else true)
+                                  (@Iterate_Ensemble_BoundedIndex_filter
+                                     _
                                      (fun Ridx' =>
                                         forall tup',
                                           (GetUnConstrRelation qs Ridx') tup'
                                           -> SatisfiesCrossRelationConstraints
-                                               Ridx' Ridx (indexedElement tup') (GetUnConstrRelation qs Ridx))));
+                                               Ridx' Ridx (indexedElement tup') (GetUnConstrRelation qs Ridx))
+                                     (fun idx =>
+                                        if (fin_eq_dec Ridx idx)
+                                          then false else true)
+                             ));
               match tupleConstr, crossConstr with
                 | true, true =>
-                  deleted   <- Pick (QSDeletedTuples qs Ridx DeletedTuples);
+                  deleted  <- Pick (QSDeletedTuples qs Ridx DeletedTuples);
                     ret (UpdateUnConstrRelation qs Ridx (EnsembleDelete (GetUnConstrRelation qs Ridx) DeletedTuples), deleted)
                 | _, _  => ret (qs, [])
               end
           | None =>
-              crossConstr <- (Iterate_Decide_Comp_opt'_Pre string
-                                                       (map relName (qschemaSchemas qsSchema))
-                                  []
-                                  (fun
-                                      Ridx' : BoundedIndex
-                                                ([] ++
-                                                    map relName (qschemaSchemas qsSchema)) =>
-                                      if BoundedString_eq_dec Ridx Ridx'
+              crossConstr <- (Iterate_Decide_Comp_opt_Pre _
+                                  (fun Ridx'  =>
+                                      if fin_eq_dec Ridx Ridx'
                                       then None
                                       else
                                         match
@@ -181,15 +166,16 @@ Section DeleteRefinements.
                                                  CrossConstr))
                                           | None => None
                                         end)
-                                  (@Iterate_Ensemble_BoundedString_filter
-                                     _ (fun idx =>
-                                          if (eq_nat_dec (ibound Ridx) idx)
-                                          then false else true)
+                                  (@Iterate_Ensemble_BoundedIndex_filter
+                                     _
                                      (fun Ridx' =>
                                         forall tup',
                                           (GetUnConstrRelation qs Ridx') tup'
                                           -> SatisfiesCrossRelationConstraints
-                                               Ridx' Ridx (indexedElement tup') (GetUnConstrRelation qs Ridx))));
+                                               Ridx' Ridx (indexedElement tup') (GetUnConstrRelation qs Ridx))
+                                     (fun idx =>
+                                        if (fin_eq_dec Ridx idx)
+                                        then false else true)));
               match crossConstr with
                 | true  =>
                   deleted   <- Pick (QSDeletedTuples qs Ridx DeletedTuples);
@@ -207,7 +193,7 @@ Section DeleteRefinements.
     QSDeleteSpec_UnConstr_refine_CrossConstraints'.
     simplify with monad laws.
     unfold SatisfiesTupleConstraints.
-    case_eq (tupleConstraints (QSGetNRelSchema qsSchema Ridx)); intros;
+    case_eq (tupleConstraints (GetNRelSchema (qschemaSchemas qsSchema) Ridx)); intros;
     [eapply refine_under_bind; intros
     | simplify with monad laws].
     simpl; unfold DropQSConstraints_AbsR, QSDeletedTuples in *; subst.
@@ -239,11 +225,9 @@ Section DeleteRefinements.
   Qed.
 
   Lemma DeletedTuplesIntersection {qsSchema}
-  : forall (qs : UnConstrQueryStructure qsSchema)
-           (Ridx : @BoundedString (map relName (qschemaSchemas qsSchema)))
-           (P : Ensemble Tuple),
+  : forall qs Ridx (P : Ensemble RawTuple),
       DecideableEnsemble P
-      -> refine {x | QSDeletedTuples qs Ridx P x}
+      -> refine {x | @QSDeletedTuples qsSchema qs Ridx P x}
                 {x | UnIndexedEnsembleListEquivalence
                        (Intersection _ (GetUnConstrRelation qs Ridx)
                                      (fun itup => P (indexedElement itup))) x}.
@@ -262,11 +246,9 @@ Section DeleteRefinements.
   Local Transparent Query_For.
 
   Lemma DeletedTuplesFor {qsSchema}
-  : forall (qs : UnConstrQueryStructure qsSchema)
-           (Ridx : @BoundedString (map relName (qschemaSchemas qsSchema)))
-           (P : Ensemble Tuple),
+  : forall qs Ridx P,
       DecideableEnsemble P
-      -> refine {x | QSDeletedTuples qs Ridx P x}
+      -> refine {x | @QSDeletedTuples qsSchema qs Ridx P x}
                 (For (UnConstrQuery_In qs Ridx
                                        (fun tup => Where (P tup) Return tup))).
   Proof.
@@ -277,15 +259,10 @@ Section DeleteRefinements.
     computes_to_inv.
     destruct Comp_v as [l [Perm_l_v Comp_v]].
     unfold UnConstrQuery_In, QueryResultComp in *;  computes_to_inv.
-    remember (GetUnConstrRelation qs Ridx); clear Hequ.
-    revert P_dec u v v0 Perm_l_v Comp_v Comp_v'; clear; induction l; simpl; intros.
+    remember (GetUnConstrRelation qs Ridx); clear Heqi.
+    revert P_dec i v v0 Perm_l_v Comp_v Comp_v'; clear; induction l; simpl; intros.
     - apply Return_inv in Comp_v; subst.
-      exists (@nil (@IndexedTuple
-                      (schemaHeading
-                         (relSchema
-                            (@nth_Bounded NamedSchema string relName
-                                          (qschemaSchemas qsSchema) Ridx)))));
-        simpl; split; eauto.
+      eexists nil; simpl; split; eauto.
       rewrite Permutation_nil by eauto; reflexivity.
       + unfold EnsembleListEquivalence in *; intuition.
         * destruct H; intuition.
@@ -296,7 +273,7 @@ Section DeleteRefinements.
           destruct x0; simpl in *; try discriminate; computes_to_econstructor.
         * constructor.
     - apply Pick_inv in Perm_l_v.
-       unfold UnConstrRelation in u.
+       unfold UnConstrRelation in i.
        destruct Perm_l_v as [[ | [a' x']] [x_eq [equiv_u_x' NoDup_x']]].
        destruct l; simpl in *; try discriminate.
        unfold In in Comp_v; pose (Bind_inv Comp_v); destruct_ex; intuition; subst; computes_to_inv; subst.
@@ -307,7 +284,7 @@ Section DeleteRefinements.
         apply Return_inv in H2; simpl in *; subst; simpl in *.
         pose proof (PermutationConsSplit _ _ _ Comp_v'); destruct_ex; subst.
         unfold UnIndexedEnsembleListEquivalence in *.
-        destruct (H (fun x => u x /\ x <> {|indexedElement := a; elementIndex := a' |}) (app x x0) v1); intuition eauto.
+        destruct (H (fun x => i x /\ x <> {|indexedElement := a; elementIndex := a' |}) (app x x0) v1); intuition eauto.
         apply PickComputes.
         computes_to_inv; injections.
         eexists _; intuition eauto.
@@ -326,7 +303,7 @@ Section DeleteRefinements.
           { simpl; intuition; computes_to_inv; injections.
             - destruct H5; unfold In in *; apply equiv_u_x' in H5; simpl in *; intuition.
               apply in_or_app; simpl; eauto.
-              assert (u x) as u_x by (apply equiv_u_x'; eauto).
+              assert (i x) as u_x by (apply equiv_u_x'; eauto).
               assert (List.In x (x2 ++ x3)) as In_x by
                     (apply H0; constructor; unfold In; intuition; subst;
                 inversion NoDup_x'; subst; eapply H10; apply in_map_iff; eexists;
@@ -363,7 +340,7 @@ Section DeleteRefinements.
             by (unfold not; intros H'; apply dec_decides_P in H'; congruence
         ).
         apply H4 in H''; subst; simpl in *; subst.
-        destruct (H (fun x => u x /\ x <> {|indexedElement := a; elementIndex := a' |}) v v1); intuition eauto.
+        destruct (H (fun x => i x /\ x <> {|indexedElement := a; elementIndex := a' |}) v v1); intuition eauto.
         * computes_to_econstructor.
           eexists; intuition; eauto.
           unfold In in *; intuition.
