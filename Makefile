@@ -30,7 +30,7 @@ VECHO = $(VECHO_$(V))
 
 TIMED=
 TIMECMD=
-STDTIME?=gtime -f "$* (real: %e, user: %U, sys: %S, mem: %M ko)"
+STDTIME?=time -f "$* (real: %e, user: %U, sys: %S, mem: %M ko)"
 TIMER=$(if $(TIMED), $(STDTIME), $(TIMECMD))
 
 containing = $(foreach v,$2,$(if $(findstring $1,$v),$v))
