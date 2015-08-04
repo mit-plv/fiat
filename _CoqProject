@@ -33,7 +33,6 @@ src/ADTRefinement/Refinements/RefineHideADT.v
 src/ADTRefinement/Refinements/SimplifyRep.v
 src/Common/BoolFacts.v
 src/Common/BoundedLookup.v
-src/Common/Coq__8_4__8_5__Compat.v
 src/Common/DecideableEnsembles.v
 src/Common/Ensembles.v
 src/Common/Equality.v
