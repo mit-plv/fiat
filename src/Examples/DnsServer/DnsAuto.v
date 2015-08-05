@@ -10,12 +10,13 @@ Require Import Fiat.QueryStructure.Automation.AutoDB
         Fiat.QueryStructure.Implementation.DataStructures.BagADT.BagADT
         Fiat.QueryStructure.Automation.IndexSelection
         Fiat.QueryStructure.Specification.SearchTerms.ListPrefix
-        Fiat.QueryStructure.Automation.SearchTerms.FindSuffixSearchTerms
-        Fiat.QueryStructure.Automation.QSImplementation
-        Fiat.Examples.DnsServer.packet
+        Fiat.QueryStructure.Automation.SearchTerms.FindPrefixSearchTerms
+        Fiat.QueryStructure.Automation.QSImplementation.
+
+Require Import Fiat.Examples.DnsServer.packet
         Fiat.Examples.DnsServer.DnsSchema
         Fiat.Examples.DnsServer.DnsLemmas.
-
+        (* Fiat.Examples.DnsServer.DnsAutomation. *) (* TODO put back in *)
 
 Definition DnsSig : ADTSig :=
   ADTsignature {
@@ -31,19 +32,20 @@ Definition DnsSpec : ADT DnsSig :=
                                                (* in start honing querystructure, it inserts constraints before every insert / decision procedure *)
                                                (* n<- count (For (r in _) where (r = tup) return True); if n > 0 then.. *)
                                                (* For refines decision procedure *)
-    update "AddData" (t : DNSRRecord) : bool :=
-      Insert t into sCOLLECTIONS,
+    update "AddData" (this : rep, t : DNSRRecord) : bool :=
+      Insert t into this!sCOLLECTIONS,
 
-    query "Process" (p : packet) : packet :=
+    query "Process" (this : rep, p : packet) : packet :=
       let t := qtype (questions p) in
       Repeat 1 initializing n with qname (questions p)
                defaulting rec with (ret (buildempty p))
-         {{ rs <- For (r in sCOLLECTIONS)      (* Bind a list of all the DNS entries *)
-                  Where (IsSuffix n r!sNAME) (* prefixed with [n] to [rs] *)
+         {{ rs <- For (r in this!sCOLLECTIONS)      (* Bind a list of all the DNS entries *)
+                  Where (IsPrefix r!sNAME n) (* prefixed with [n] to [rs] *)
                   (* prefix: "com.google" is a prefix of "com.google.scholar" *)
                   Return r;
             If (negb (is_empty rs))        (* Are there any matching records? *)
-            Then                    (* TODO: reverse these if/then cases *)
+               (* TODO: this does not filter by matching QTYPE *)
+            Then
               bfrs <- [[r in rs | upperbound name_length rs r]]; (* Find the best match (largest prefix) in [rs] *)
               b <- { b | decides b (forall r, List.In r bfrs -> n = r!sNAME) };
               if b                (* If the record's QNAME is an exact match  *)
@@ -60,8 +62,8 @@ Definition DnsSpec : ADT DnsSig :=
                 (* multiple matches -- add them all as answers in the packet *)
                   ret (List.fold_left addan bfrs (buildempty p))
               else              (* prefix but record's QNAME not an exact match *)
-                (* return all the prefix records that are nameserver records -- 
-                 ask the authoritative servers *)
+                (* return all the prefix records that are nameserver records --
+                 ask the authoritative servers *) (* TODO does this return one, or return all? *)
                 bfrs' <- [[x in bfrs | x!sTYPE = NS]];
                 ret (List.fold_left addns bfrs' (buildempty p))
             Else ret (buildempty p) (* No matching records! *)
@@ -69,346 +71,85 @@ Definition DnsSpec : ADT DnsSig :=
 
 (* -------------------------------------------------------------------------------------- *)
 
-(* TODO [autorewrite with monad laws] breaks when this is moved into DnsLemmas *)
+(* For Process (here temporarily; move back to DnsAutomation) *)
 
-(* implement the DNS record constraint check as code that counts the number of occurrences of
-the constraint being broken (refines the boolean x1 in AddData) *)
-Lemma refine_count_constraint_broken :
-  forall (n : DNSRRecord) (r : UnConstrQueryStructure DnsSchema),
-    refine {b |
-            decides b
-                    (forall tup' : @IndexedTuple (GetHeading DnsSchema sCOLLECTIONS),
-                       (r!sCOLLECTIONS)%QueryImpl tup' ->
-                       n!sNAME = (indexedElement tup')!sNAME -> n!sTYPE <> CNAME)}
-           (If (beq_RRecordType n!sTYPE CNAME)
-               Then count <- Count
-               For (UnConstrQuery_In r ``(sCOLLECTIONS)
-                                     (fun tup : Tuple =>
-                                        Where (n!sNAME = tup!sNAME)
-                                              Return tup ));
-            ret (beq_nat count 0) Else ret true).
-Proof.
-  intros; setoid_rewrite refine_pick_decides at 1;
-  [ | apply refine_is_CNAME__forall_to_exists | apply refine_not_CNAME__independent ].
-  (* refine existence check into query. *)
+Ltac invert_For_once :=
   match goal with
-      |- context[{b | decides b
-                              (exists tup : @IndexedTuple ?heading,
-                                 (@GetUnConstrRelation ?qs_schema ?qs ?tbl tup /\ @?P tup))}]
-      =>
-      let H1 := fresh in
-      let H2 := fresh in
-      makeEvar (Ensemble (@Tuple heading))
-               ltac:(fun P' => assert (Same_set (@IndexedTuple heading) (fun t => P' (indexedElement t)) P) as H1;
-                     [unfold Same_set, Included, Ensembles.In;
-                       split; [intros x H; pattern (indexedElement x);
-                               match goal with
-                                   |- ?P'' (indexedElement x) => unify P' P'';
-                                     simpl; eauto
-                               end
-                              | eauto]
-                     |
-                     assert (DecideableEnsemble P') as H2;
-                       [ simpl; eauto with typeclass_instances (* Discharge DecideableEnsemble w/ intances. *)
-                       | setoid_rewrite (@refine_constraint_check_into_query' qs_schema tbl qs P P' H2 H1); clear H1 H2 ] ]) end.
-  remember n!sTYPE; refine pick val (beq_RRecordType d CNAME); subst;
-  [ | case_eq (beq_RRecordType n!sTYPE CNAME); intros;
-      rewrite <- beq_RRecordType_dec in H; find_if_inside;
-      unfold not; simpl in *; try congruence ].
-  simplify with monad laws.
-  autorewrite with monad laws.
-  setoid_rewrite negb_involutive.
-  reflexivity.
-Qed.
+  | [ H : computes_to (Query_For _) _ |- _ ] =>
+    let H1 := fresh in
+    let H2 := fresh in
+    inversion H as [H1 H2]; inversion H2; clear H2
+  end.
 
-Hint Resolve refine_count_constraint_broken.
+Ltac refine_under_bind' :=
+  setoid_rewrite refine_under_bind; [ higher_order_reflexivity |
+                                      let H := fresh in
+                                      intros a H; try invert_For_once ].
 
-Lemma computes_to_in_specific : forall a n r_n,
- @computes_to
-         (list
-            (@Tuple
-               (BuildHeading
-                  (@Datatypes.cons Attribute (Build_Attribute sNAME name)
-                     (@Datatypes.cons Attribute
-                        (Build_Attribute sTYPE RRecordType)
-                        (@Datatypes.cons Attribute
-                           (Build_Attribute sCLASS RRecordClass)
-                           (@Datatypes.cons Attribute
-                              (Build_Attribute sTTL nat)
-                              (@Datatypes.cons Attribute
-                                 (Build_Attribute sDATA string)
-                                 (@Datatypes.nil Attribute)))))))))
-         (@Query_For
-            (@Tuple
-               (BuildHeading
-                  (@Datatypes.cons Attribute (Build_Attribute sNAME name)
-                     (@Datatypes.cons Attribute
-                        (Build_Attribute sTYPE RRecordType)
-                        (@Datatypes.cons Attribute
-                           (Build_Attribute sCLASS RRecordClass)
-                           (@Datatypes.cons Attribute
-                              (Build_Attribute sTTL nat)
-                              (@Datatypes.cons Attribute
-                                 (Build_Attribute sDATA string)
-                                 (@Datatypes.nil Attribute))))))))
-            (@Query_In
-               (@Tuple
-                  (BuildHeading
-                     (@Datatypes.cons Attribute (Build_Attribute sNAME name)
-                        (@Datatypes.cons Attribute
-                           (Build_Attribute sTYPE RRecordType)
-                           (@Datatypes.cons Attribute
-                              (Build_Attribute sCLASS RRecordClass)
-                              (@Datatypes.cons Attribute
-                                 (Build_Attribute sTTL nat)
-                                 (@Datatypes.cons Attribute
-                                    (Build_Attribute sDATA string)
-                                    (@Datatypes.nil Attribute))))))))
-               (@Build_QueryStructureHint DnsSchema r_n)
-               (@Build_BoundedIndex string
-                  (@Datatypes.cons string sCOLLECTIONS
-                     (@Datatypes.nil string)) sCOLLECTIONS
-                  (@Build_IndexBound string sCOLLECTIONS
-                     (@Datatypes.cons string sCOLLECTIONS
-                        (@Datatypes.nil string)) O
-                     (@eq_refl (option string) (@Some string sCOLLECTIONS))))
-               (fun
-                  r : @Tuple
-                        (BuildHeading
-                           (@Datatypes.cons Attribute
-                              (Build_Attribute sNAME name)
-                              (@Datatypes.cons Attribute
-                                 (Build_Attribute sTYPE RRecordType)
-                                 (@Datatypes.cons Attribute
-                                    (Build_Attribute sCLASS RRecordClass)
-                                    (@Datatypes.cons Attribute
-                                       (Build_Attribute sTTL nat)
-                                       (@Datatypes.cons Attribute
-                                          (Build_Attribute sDATA string)
-                                          (@Datatypes.nil Attribute))))))) =>
-                @Query_Where
-                  (@Tuple
-                     (BuildHeading
-                        (@Datatypes.cons Attribute
-                           (Build_Attribute sNAME name)
-                           (@Datatypes.cons Attribute
-                              (Build_Attribute sTYPE RRecordType)
-                              (@Datatypes.cons Attribute
-                                 (Build_Attribute sCLASS RRecordClass)
-                                 (@Datatypes.cons Attribute
-                                    (Build_Attribute sTTL nat)
-                                    (@Datatypes.cons Attribute
-                                       (Build_Attribute sDATA string)
-                                       (@Datatypes.nil Attribute))))))))
-                  (@IsSuffix string (qname (questions n))
-                     (@GetAttribute
-                        (BuildHeading
-                           (@Datatypes.cons Attribute
-                              (Build_Attribute sNAME name)
-                              (@Datatypes.cons Attribute
-                                 (Build_Attribute sTYPE RRecordType)
-                                 (@Datatypes.cons Attribute
-                                    (Build_Attribute sCLASS RRecordClass)
-                                    (@Datatypes.cons Attribute
-                                       (Build_Attribute sTTL nat)
-                                       (@Datatypes.cons Attribute
-                                          (Build_Attribute sDATA string)
-                                          (@Datatypes.nil Attribute))))))) r
-                        (@Build_BoundedIndex string
-                           (@Datatypes.cons string sNAME
-                              (@Datatypes.cons string sTYPE
-                                 (@Datatypes.cons string sCLASS
-                                    (@Datatypes.cons string sTTL
-                                       (@Datatypes.cons string sDATA
-                                          (@Datatypes.nil string)))))) sNAME
-                           (@Build_IndexBound string sNAME
-                              (@Datatypes.cons string sNAME
-                                 (@Datatypes.cons string sTYPE
-                                    (@Datatypes.cons string sCLASS
-                                       (@Datatypes.cons string sTTL
-                                          (@Datatypes.cons string sDATA
-                                             (@Datatypes.nil string)))))) O
-                              (@eq_refl (option string) (@Some string sNAME))))))
-                  (@Query_Return
-                     (@Tuple
-                        (BuildHeading
-                           (@Datatypes.cons Attribute
-                              (Build_Attribute sNAME name)
-                              (@Datatypes.cons Attribute
-                                 (Build_Attribute sTYPE RRecordType)
-                                 (@Datatypes.cons Attribute
-                                    (Build_Attribute sCLASS RRecordClass)
-                                    (@Datatypes.cons Attribute
-                                       (Build_Attribute sTTL nat)
-                                       (@Datatypes.cons Attribute
-                                          (Build_Attribute sDATA string)
-                                          (@Datatypes.nil Attribute)))))))) r))))
-         a
- ->
-   forall n' : DNSRRecord, 
-   @List.In DNSRRecord n' a -> @IsPrefix string (get_name n') (qname (questions n)).
-Proof.
-  intros. 
-  eapply For_computes_to_In in H; try eauto.
-  inv H.
-  + eauto. 
-  + pose proof IsSuffix_string_dec. intros. auto.
-Qed.
+Ltac refine_bind' :=
+  apply refine_bind; [ idtac | unfold pointwise_relation; intros; higher_order_reflexivity ].
 
+Ltac srewrite_each :=
+  first
+    [
+      setoid_rewrite (@refine_find_upperbound DNSRRecord _ _) |
+      setoid_rewrite (@refine_decides_forall_In' _ _ _ _) |
+      setoid_rewrite refine_check_one_longest_prefix_s |
+      setoid_rewrite refine_if_If |
+      setoid_rewrite refine_check_one_longest_prefix_CNAME
+    ].
 
-(* -------------------------------------------------------------------------------------- *)
+Ltac srewrite_manual' :=
+  repeat (
+      try srewrite_each;
+      try simplify with monad laws
+    );
+  repeat (
+      try (eapply tuples_in_relation_satisfy_constraint_specific; eauto);
+      try solve [eapply For_computes_to_In; eauto using IsPrefix_string_dec];
+      (* otherwise loops forever *)
+      try reflexivity
+    );
+  try simplify with monad laws.
 
-Theorem DnsManual :
-  MostlySharpened DnsSpec.
-Proof.
+(* not very automated -- TODO try to get rid of these / use setoid_rewrite
+can i get rid of refine_under_bind/refine_bind'/refine_If_Then_Else? *)
+Ltac drill :=
+  simpl in *;
+  try simplify with monad laws;
+  try refine_under_bind';
+  try refine_bind';
+  try apply refine_If_Then_Else.
 
-  (* the two components here (start honing + GenerateIndexesForAll) are manual versions of
-     partial_master_plan' in AutoDB *)
+(* drill. srewrite_manual'. reflexivity. (* nothing applies to this last goal *) *)
 
-  unfold DnsSpec.
+Ltac automateProcess :=
+  drill; srewrite_manual'.
 
-  (* | [ |- context[(@Pick nat) ?X] ] => *)
-start sharpening ADT. {
-  hone method "Process". {
-    Ltac invert_For_once :=
-      match goal with
-      | [ H : computes_to (Query_For _) _ |- _ ] =>
-        let H1 := fresh in
-        let H2 := fresh in
-        inversion H as [H1 H2]; inversion H2; clear H2
-      end.
-
-    Ltac refine_under_bind' :=
-      setoid_rewrite refine_under_bind; [ higher_order_reflexivity |
-                                            let H := fresh in
-                                            intros a H; try invert_For_once ].
-
-    Ltac refine_bind' :=
-      apply refine_bind; [ idtac | unfold pointwise_relation; intros; higher_order_reflexivity ].
-
-    Ltac srewrite_each :=
-      first
-             [
-               setoid_rewrite (@refine_find_upperbound DNSRRecord _ _) |
-                              setoid_rewrite (@refine_decides_forall_In' _ _ _ _) |
-                              setoid_rewrite refine_check_one_longest_prefix_s |
-                              setoid_rewrite refine_if_If |
-                              setoid_rewrite refine_check_one_longest_prefix_CNAME
-             ].
-
-    Ltac srewrite_manual' :=
-      repeat (
-          try srewrite_each;
-          try simplify with monad laws
-        );
-      repeat (
-          try (eapply tuples_in_relation_satisfy_constraint_specific; eauto);
-          try (eapply computes_to_in_specific; eauto);
-          try reflexivity
-        );
-    try simplify with monad laws.
-
-    (* not very automated -- TODO try to get rid of these / use setoid_rewrite *)
-    Ltac drill :=
-      simpl in *;
-      try simplify with monad laws;
-      try refine_under_bind';
-      try refine_bind';
-      try apply refine_If_Then_Else.
-
-    (* drill. srewrite_manual'. reflexivity. (* nothing applies to this last goal *) *)
-
-    Ltac automateProcess :=
-      drill; srewrite_manual'.
-
-    automateProcess.
-  (* TODO compare to original *)
-  (* TODO should I try to generalize the ltac to deal wih BOTH methods now? *)
-  (* TODO make it more general than that, or just write the recursive one and see what it needs? *)
-  (* TODO try to make drill more general? *)
-}    
-
-    (* TODO can we remove these and just setoid rewrite? or does setoid rewrite need the vars? *)
-    (* TODO can we remove If/Then/Else too? *)
-    (* refine_under_bind'.  *)
-    (* Check refine_under_bind.    (* bring an entire line (up to ;) into context *) *)
-    (* Check refine_bind.          (* refine X in r <- X; r' *) *)
-    (* refine_bind'.          (* refine the If/Then/Else part only *) *)
-    (* Check refine_If_Then_Else. *)
-    (* apply refine_If_Then_Else. *)
-    
-    (* setoid_rewrite (@refine_find_upperbound DNSRRecord _ _). *)
-    (* setoid_rewrite (@refine_decides_forall_In' _ _ _ _). *)
-    (* simplify with monad laws. *)
-
-    (* need both bind and if_then_else for simplify to work *)
-    (* we need a stronger [simplify with monad laws] (inside bind)! i don't think we should need refine_bind and refine_if_then_else for most things *)
-    (* setoid_rewrite refine_check_one_longest_prefix_s. *)
-    (* simplify with monad laws. *)
-
-    (* setoid_rewrite refine_if_If. *)
-    (* setoid_rewrite refine_check_one_longest_prefix_CNAME. (* no morphism for normal if/then *) *)
-  (* bfrs' is still not deterministic? it's also not right; should be "choose one of" *)
-  (* commented out if/then/else that refined tha *)
-
-
-  start_honing_QueryStructure'.
-
-  hone method "AddData".
-  {
-(*     (* | [ |- context[(@Pick nat) ?X] ] => *) *)
-
-Create HintDb refines.
-Hint Rewrite refine_count_constraint_broken : refines.
-Hint Rewrite refine_count_constraint_broken' : refines.
-
-Create HintDb refines'.
-Hint Resolve refine_count_constraint_broken : refines'.
-Hint Resolve refine_count_constraint_broken' : refines'.
-
-Lemma hi : True. Admitted.
-Lemma bye : True. Admitted.
-Create HintDb test.
-Hint Resolve hi : test.
-Hint Resolve bye : test.
-
-Ltac the_tactic :=
-  let k lem := idtac lem ; fail in
-  foreach [ refines ] run k.
-
-(* this doesn't work well with the [ || ] notation *)
-(* why does it need to end with fail? *)
-Ltac srewrite :=
-  let k lem := setoid_rewrite lem ; fail in
-  foreach [ refines ] run k.
-
-(* autorewrite with refines. *)
-(* auto with refines'. *)
-(* rewrite_strat topdown (hints refines). *)
-(* ---------------------------- TODO: use the database plugin above *)
+(* --------------- *)
+(* For AddData *)
 
 (* don't rewrite inner If/Then/Else expressions *)
-  Ltac rewrite_if_head :=
-    match goal with
-    | [ |- context[ (refine (Bind _ (fun n => If_Then_Else _ _ _ )) _) ] ] =>
-      setoid_rewrite Bind_refine_If_Then_Else
-    end. 
+(* this can be made simpler by removing context[] to only do head matches *)
+Ltac rewrite_if_head :=
+  match goal with
+  | [ |- context[ (refine (Bind _ (fun n => If_Then_Else _ _ _ )) _) ] ] =>
+    setoid_rewrite Bind_refine_If_Then_Else
+  end. 
 
 Ltac srewrite_manual :=
   repeat first [
-           setoid_rewrite refine_count_constraint_broken
+           setoid_rewrite refine_count_constraint_broken 
                           || setoid_rewrite refine_count_constraint_broken'
                           || setoid_rewrite refine_If_Then_Else_Bind
                           || rewrite_if_head
                           || setoid_rewrite refine_Count
          ]. 
 
-srewrite_manual.
-
 (* rewrite under bind the first time you can, then stop. otherwise fail *)
 Ltac tac_under_bind tac :=
   first [ tac |
-              (apply refine_under_bind; intros); tac_under_bind tac ].
+          (apply refine_under_bind; intros); tac_under_bind tac ].
 
 (* only succeed if all subgoals can be solved with tac. 
 intended for use as setoid_rewrite_by *)
@@ -417,47 +158,90 @@ Ltac do_by tic tac :=
 
 Ltac finishHone H :=
   repeat (simpl in *;
-          try simplify with monad laws;
+           try simplify with monad laws;
           try (apply refine_If_Then_Else);
           try simplify with monad laws;
           try tac_under_bind ltac:(
- do_by ltac:(setoid_rewrite refine_subcheck_to_filter) ltac:(eauto with typeclass_instances);
- try (simplify with monad laws);
- try (rewrite clear_nested_if by apply filter_nil_is_nil));
+            do_by ltac:(setoid_rewrite refine_subcheck_to_filter) ltac:(eauto with typeclass_instances);
+            try (simplify with monad laws);
+            try (rewrite clear_nested_if by apply filter_nil_is_nil));
           try simplify with monad laws;
           try eauto;
-          try (clear H; reflexivity) (* TODO why clear *)
+          try (clear H; reflexivity) (* TODO why clear. does h_o_r work here? *)
          ).
 
-(* finishHone H. *)
-(* only difference is the Count vs beq_nat *)
-
-Ltac setoid_rewrite_by lem tac :=
-  (* setoid_rewrite refine_subcheck_to_filter; *)
-  setoid_rewrite lem;
-  [ | solve [tac] | .. | solve [tac] ].
-
-(* setoid_rewrite_by refine_subcheck_to_filter ltac:(eauto with typeclass_instances). *)
-(* doesn't work; can't infer heading *)
-
 Ltac automateAddData H := srewrite_manual; finishHone H.
+(* TODO why need to clear H? *)
+(* ---------------------- *)
 
-automateAddData H.              (* 13 seconds *)
-  (* TODO why need to clear H? *)
+Theorem DnsManual :
+  FullySharpened DnsSpec.
+Proof. unfold DnsSpec.
+
+start sharpening ADT. {
+  hone method "Process". {
+    automateProcess.
   }
+
+    (* Check refine_under_bind.    (* bring an entire line (up to ;) into context *) *)
+    (* Check refine_bind.          (* refine X in r <- X; r' *) *)
+    (* refine_bind'.          (* refine the If/Then/Else part only *) *)
+    (* Check refine_If_Then_Else. *)
+    
+    (* need both bind and if_then_else for simplify to work *)
+    (* we need a stronger [simplify with monad laws] (inside bind)! i don't think we should need refine_bind and refine_if_then_else for most things *)
+    (* setoid_rewrite refine_check_one_longest_prefix_s. *)
+    (* simplify with monad laws. *)
+  (* bfrs' is still not deterministic? it's also not right; should be "choose one of" *)
+
+  start_honing_QueryStructure'.
+
+  hone method "AddData".
+  {
+    (* automateProcess. *)
+    (* simpl in *. *)
+    (* try refine_under_bind'. *)
+    (* try refine_bind'. *)
+    (* eauto. *)
+
+    (* this doesn't change the code, but completes subproof *)
+    (* drill. *)
+    (* this is going to do the same thing: refine just the inner statement in the second line *)
+    (* need a more general notion of breaking it into each line as a subgoal, with the assumptions from refine_bind? no, but what about simplify with monad laws (may combine multiple lines)? *)
+    (* it would also be nice to setoid_rewrite EVERYTHING without the need for drilling into binds *)
+    (* we also need a better [simplify with monad laws] (under bind) *)
+    (* maybe need a high-level/metatactic to deal with binds and combining results? think about what each line of tactics is doing to the whole function *)
+    (* TODO: talk to ben about this *)
+
+    automateAddData H.
+  }
+
+  (* should I expand one ltac to include the other? should i test each ltac on the other problem?
+compare to dns? write one big one to encompass both? what's a nice incremental way to do/test it? 
+write one that covers both head parts, then both setoid rewrites, then both conclusions/eautos?
+*)
+  (* match goal with...?  *)
+  (* do any of the setoid rewrites interact problematically with the goals of the other? *)
+
+  (* the two components here (start honing + GenerateIndexesForAll) are manual versions of
+     partial_master_plan' in AutoDB *)
 
   GenerateIndexesForAll         (* ? in IndexSelection, see GenerateIndexesFor *)
   (* specifies that you want to use the suffix index structure TODO *)
-  ltac:(CombineCase2 matchFindSuffixIndex matchEqIndex)
-         ltac:(fun attrlist => make simple indexes using attrlist).
+  ltac:(CombineCase3 matchFindPrefixIndex matchEqIndex)
+         ltac:(fun attrlist =>
+  make_simple_indexes
+    attrlist
+    ltac:(CombineCase6 BuildEarlyFindPrefixIndex ltac:(LastCombineCase6 BuildEarlyEqualityIndex))
+           ltac:(CombineCase5 BuildLastFindSuffixIndex ltac:(LastCombineCase5 BuildLastEqualityIndex))).
   (* SearchTerm and SearchUpdateTerm: efficiently do quality test on the name columns *)
-  (* it figures out what data structure to use *)
+  (* it figures out what datac structure to use *)
   (* BagMatchSearchTerm *)
   (* implement query as calls to abstract bag find function *)
   (* then plug in data structures that impl bag find (chooses b/t them?) *)
 
   (* hone constructor "Init". *)
-  { 
+  {
     simplify with monad laws.
     rewrite refine_QSEmptySpec_Initialize_IndexedQueryStructure.
     finish honing.
@@ -472,43 +256,43 @@ automateAddData H.              (* 13 seconds *)
     - apply refine_If_Then_Else.
       + simplify with monad laws.
         implement_Query
-          ltac:(CombineCase5 SuffixIndexUse EqIndexUse)
-                 ltac:(CombineCase10 createEarlySuffixTerm createEarlyEqualityTerm)
-                        ltac:(CombineCase7 createLastSuffixTerm createLastEqualityTerm)
-                               ltac:(CombineCase7 SuffixIndexUse_dep EqIndexUse_dep)
-                        ltac:(CombineCase11 createEarlySuffixTerm_dep createEarlyEqualityTerm_dep)
-                        ltac:(CombineCase8 createLastSuffixTerm_dep createLastEqualityTerm_dep).
+          ltac:(CombineCase5 PrefixIndexUse EqIndexUse)
+                 ltac:(CombineCase10 createEarlyPrefixTerm createEarlyEqualityTerm)
+                        ltac:(CombineCase7 createLastPrefixTerm createLastEqualityTerm)
+                               ltac:(CombineCase7 PrefixIndexUse_dep EqIndexUse_dep)
+                        ltac:(CombineCase11 createEarlyPrefixTerm_dep createEarlyEqualityTerm_dep)
+                        ltac:(CombineCase8 createLastPrefixTerm_dep createLastEqualityTerm_dep).
         simplify with monad laws.
         rewrite (@refineEquiv_swap_bind nat).
+        (* setoid_rewrite refine_if_If. *)
         implement_Insert_branches. (* this removes the nat choosing, so I guess the nondeterminism is okay if it involves indexed. the matching involves some of UnConstrFreshIdx *)
         (* ok, i guess getting a fresh ID for the index depends on the index specifics *)
-        reflexivity.            (* broken *)
+        reflexivity.
       + simplify with monad laws.
         implement_Query
-          ltac:(CombineCase5 SuffixIndexUse EqIndexUse)
-                 ltac:(CombineCase10 createEarlySuffixTerm createEarlyEqualityTerm)
-                        ltac:(CombineCase7 createLastSuffixTerm createLastEqualityTerm)
-                               ltac:(CombineCase7 SuffixIndexUse_dep EqIndexUse_dep)
-                                      ltac:(CombineCase11 createEarlySuffixTerm_dep createEarlyEqualityTerm_dep)
-                                             ltac:(CombineCase8 createLastSuffixTerm_dep createLastEqualityTerm_dep).
-        simplify with monad laws. 
+          ltac:(CombineCase5 PrefixIndexUse EqIndexUse)
+                 ltac:(CombineCase10 createEarlyPrefixTerm createEarlyEqualityTerm)
+                        ltac:(CombineCase7 createLastPrefixTerm createLastEqualityTerm)
+                               ltac:(CombineCase7 PrefixIndexUse_dep EqIndexUse_dep)
+                                      ltac:(CombineCase11 createEarlyPrefixTerm_dep createEarlyEqualityTerm_dep)
+                                             ltac:(CombineCase8 createLastPrefixTerm_dep createLastEqualityTerm_dep).
+        simplify with monad laws.
         rewrite (@refineEquiv_swap_bind nat).
         setoid_rewrite refine_if_If.
         implement_Insert_branches.
         reflexivity.
     - reflexivity.              (* seems fully deterministic here *)
     - finish honing.
-    } 
-
+  }
   (* hone method "Process". *) {
     simplify with monad laws.
     implement_Query             (* in AutoDB, implement_Query' has steps *)
-      ltac:(CombineCase5 SuffixIndexUse EqIndexUse)
-             ltac:(CombineCase10 createEarlySuffixTerm createEarlyEqualityTerm)
-                    ltac:(CombineCase7 createLastSuffixTerm createLastEqualityTerm)
-                           ltac:(CombineCase7 SuffixIndexUse_dep EqIndexUse_dep)
-                                  ltac:(CombineCase11 createEarlySuffixTerm_dep createEarlyEqualityTerm_dep)
-                                         ltac:(CombineCase8 createLastSuffixTerm_dep createLastEqualityTerm_dep).
+      ltac:(CombineCase5 PrefixIndexUse EqIndexUse)
+             ltac:(CombineCase10 createEarlyPrefixTerm createEarlyEqualityTerm)
+                    ltac:(CombineCase7 createLastPrefixTerm createLastEqualityTerm)
+                           ltac:(CombineCase7 PrefixIndexUse_dep EqIndexUse_dep)
+                                  ltac:(CombineCase11 createEarlyPrefixTerm_dep createEarlyEqualityTerm_dep)
+                                         ltac:(CombineCase8 createLastPrefixTerm_dep createLastEqualityTerm_dep).
     simplify with monad laws.
     simpl.
     setoid_rewrite (refine_pick_val _ H).
@@ -516,68 +300,31 @@ automateAddData H.              (* 13 seconds *)
     setoid_rewrite (@refine_filtered_list _ _ _ _).
     finish honing.
   }
-  
-  FullySharpenQueryStructure' DnsSchema Index.
-  (* implement_bag_methods needs to be patched for this goal. *)
+  pose_headings_all.
+  FullySharpenQueryStructure DnsSchema Index.
+}                               (* ending "start sharpening ADT" *)
 
-  - implement_bag_methods.
-  - implement_bag_methods.
+{ simpl; pose_string_ids; pose_headings_all;
+  pose_search_term;  pose_SearchUpdateTerms.
+  unfold name in *.
+  BuildQSIndexedBags'
+  ltac:(CombineCase6 BuildEarlyTrieBag BuildEarlyEqualityBag)
+         ltac:(CombineCase5 BuildLastTrieBag BuildLastEqualityBag). }
+
+{ cbv zeta; pose_string_ids; pose_headings_all;
+    pose_search_term;  pose_SearchUpdateTerms;
+    simpl Sharpened_Implementation;
+    unfold
+      Update_Build_IndexedQueryStructure_Impl_cRep,
+    Join_Comp_Lists',
+    GetIndexedQueryStructureRelation,
+    GetAttributeRaw; simpl;
+    higher_order_reflexivityT. }
+
 Time Defined.
 
-    Definition DnsDelegateReps
-    : ilist (fun ns => Type) (qschemaSchemas DnsSchema).
-      simpl; econstructor; [ | econstructor ].
-      exact (list (@Tuple
-           <sNAME :: name, sTYPE :: RRecordType, sCLASS :: RRecordClass,
-              sTTL :: nat, sDATA :: string>%Heading)).
-    Defined.
+Time Definition DNSImpl := Eval simpl in (projT1 DnsManual).
 
-    Definition DnsDelegateSearchUpdateTerms
-    : ilist (fun ns => SearchUpdateTerms (schemaHeading (relSchema ns)))
-             (qschemaSchemas DnsSchema).
-      simpl; econstructor; [ | econstructor ].
-      exact  DnsSearchUpdateTerm.
-    Defined.
+Print DNSImpl.
 
-
-
-    Definition DnsDelegateImpls
-    : i2list2 (fun ns (SearchTerm : SearchUpdateTerms (schemaHeading (relSchema ns)))
-                   (Rep : Type) =>
-                 ComputationalADT.pcADT
-                   (BagSig (@Tuple (schemaHeading (relSchema ns)))
-                           (BagSearchTermType SearchTerm)
-                           (BagUpdateTermType SearchTerm))
-                   Rep)
-              DnsDelegateSearchUpdateTerms
-              DnsDelegateReps.
-      simpl; econstructor; [ | econstructor ].
-      let p := eval simpl in (projT2 (BagADTImpl (fun _ => true)
-                         (@ListAsBag
-                            _
-                            (BagSearchTermType DnsSearchUpdateTerm)
-                            (BagUpdateTermType DnsSearchUpdateTerm)
-                            {| pst_name := nil;
-                               pst_filter := fun _ => true |}
-                            (BagMatchSearchTerm DnsSearchUpdateTerm)
-                            (BagApplyUpdateTerm DnsSearchUpdateTerm) ))) in
-          exact p.
-    Defined.
-
-    Definition DnsImpl : SharpenedUnderDelegates DnsSig.
-      Time let
-          Impl := eval simpl in (projT1 DnsManual) in exact Impl.
-    Defined.
-
-    Print DnsImpl.
-    Definition ExtractWorthyDNSImpl : ComputationalADT.cADT DnsSig.
-      let s := eval unfold DnsImpl in DnsImpl in
-          let Impl := eval simpl in
-          (Sharpened_Implementation s
-                                    (LookupQSDelegateReps DnsDelegateReps)
-                                    (LookupQSDelegateImpls DnsDelegateImpls)) in exact Impl.
-    Defined.
-
-    Print ExtractWorthyDNSImpl.
-
-    Extraction "bar.ml" ExtractWorthyDNSImpl.
+(* TODO extraction, examples/messagesextraction.v *)

@@ -36,6 +36,7 @@ Arguments callcADTMethod / .
 Arguments ComputationalADT.cMethods / .
 Arguments ComputationalADT.pcMethods / .
 Definition InitMessages : ComputationalADT.cRep MessagesImpl := Eval simpl in (CallConstructor MessagesImpl InitS tt).
+(* currying functions (other fns take tuples) *)
 Definition AddMessage (num : nat) (time : nat) (msg : list string)
            (r : ComputationalADT.cRep MessagesImpl)
   : ComputationalADT.cRep MessagesImpl * bool :=

@@ -28,6 +28,7 @@ Definition DnsSpec : ADT DnsSig :=
     update "AddData" (this : rep, t : DNSRRecord) : bool :=
       Insert t into this!sCOLLECTIONS,
 
+      (* this server changes packet in the way that buildempty does *)
     query "Process" (this : rep, p : packet) : packet :=
       let t := qtype (questions p) in
       Repeat 1 initializing n with qname (questions p)
@@ -69,68 +70,7 @@ Definition DnsSpec : ADT DnsSig :=
 (* implement the DNS record constraint check as code that counts the number of occurrences of
 the constraint being broken (refines the boolean x1 in AddData) *)
 
-Notation "( x 'in' r '!' Ridx ) bod" :=
-  (let qs_schema : QueryStructureSchema := _ in
-   let r' : UnConstrQueryStructure qs_schema := r in
-   let Ridx' := ibound (indexb (@Build_BoundedIndex _ _ (QSschemaNames qs_schema) Ridx%string _)) in
-   @UnConstrQuery_In _ qs_schema r' Ridx'
-            (fun x : @RawTuple (GetNRelSchemaHeading (qschemaSchemas qs_schema) Ridx') => bod)) : QueryImpl_scope.
 
-Definition GetAttributeRawBnd {heading : Heading}
-           (tup : @RawTuple heading)
-           (idx : (BoundedIndex (HeadingNames heading)))
-  : Domain heading (ibound (indexb idx)) :=
-  GetAttributeRaw tup (ibound (indexb idx)).
-
-Notation "tup '!' idx" := (GetAttributeRaw tup ``idx) : TupleImpl_scope.
-
-Lemma refine_count_constraint_broken :
-  forall (n : DNSRRecord) (r : UnConstrQueryStructure DnsSchema),
-    refine {b |
-            decides b
-                    (forall tup' : @IndexedRawTuple (GetHeading DnsSchema sCOLLECTIONS),
-                       (r!sCOLLECTIONS)%QueryImpl tup' ->
-                       n!sNAME = (indexedElement tup')!sNAME -> n!sTYPE <> CNAME)}
-           (If (beq_RRecordType n!sTYPE CNAME)
-               Then count <- Count
-               For (tup in r!sCOLLECTIONS)
-               (Where (n!sNAME = GetAttributeRawBnd tup ``sNAME)
-                      Return tup )%QueryImpl;
-    ret (beq_nat count 0) Else ret true).
-Proof.
-  intros; setoid_rewrite refine_pick_decides at 1;
-  [ | apply refine_is_CNAME__forall_to_exists | apply refine_not_CNAME__independent ].
-  (* refine existence check into query. *)
-
-  match goal with
-      |- context[{b | decides b
-                              (exists tup : @IndexedTuple ?heading,
-                                 (@GetUnConstrRelationBnd ?qs_schema ?qs ?tbl tup /\ @?P tup))}]
-      =>
-      let H1 := fresh in
-      let H2 := fresh in
-      makeEvar (Ensemble (@Tuple heading))
-               ltac:(fun P' => assert (Same_set (@IndexedTuple heading) (fun t => P' (indexedElement t)) P) as H1;
-                     [unfold Same_set, Included, Ensembles.In;
-                       split; [intros x H; pattern (indexedElement x);
-                               match goal with
-                                   |- ?P'' (indexedElement x) => unify P' P'';
-                                     simpl; eauto
-                               end
-                              | eauto]
-                     |
-                     assert (DecideableEnsemble P') as H2;
-                       [ simpl; eauto with typeclass_instances (* Discharge DecideableEnsemble w/ intances. *)
-                       | setoid_rewrite (@refine_constraint_check_into_query' qs_schema (ibound (indexb tbl)) qs P P' H2 H1); clear H2 H1 ] ]) end.
-  remember n!sTYPE; refine pick val (beq_RRecordType d CNAME); subst;
-  [ | case_eq (beq_RRecordType n!sTYPE CNAME); intros;
-      rewrite <- beq_RRecordType_dec in H; find_if_inside;
-      unfold not; simpl in *; try congruence ].
-  intros; simplify with monad laws; simpl.
-  autorewrite with monad laws.
-  setoid_rewrite negb_involutive.
-  reflexivity.
-Qed.
 
 (* -------------------------------------------------------------------------------------- *)
 
@@ -145,7 +85,64 @@ Proof.
 
 start sharpening ADT. {
   hone method "Process". {
+    simpl in *.
     simplify with monad laws.
+
+    Ltac invert_For_once :=
+      match goal with
+      | [ H : computes_to (Query_For _) _ |- _ ] =>
+        let H1 := fresh in
+        let H2 := fresh in
+        inversion H as [H1 H2]; inversion H2; clear H2
+      end.
+
+    Ltac refine_under_bind' :=
+      setoid_rewrite refine_under_bind; [ higher_order_reflexivity |
+                                          let H := fresh in
+                                          intros a H; try invert_For_once ].
+
+Ltac refine_bind' :=
+  apply refine_bind; [ idtac | unfold pointwise_relation; intros; higher_order_reflexivity ].
+
+    Check refine_under_bind.
+    refine_under_bind'.         (* this is where the for/where hyp comes from *)
+    (* (* if you get rid of this, then refine_bind does weird stuff *) *)
+    (* Check refine_bind. *)
+    (* setoid_rewrite refine_bind. *)
+    apply refine_bind.          (* refine the If/Then/Else part only *)
+    (* (* refine_bind'. *) *)
+    apply refine_If_Then_Else.
+
+    (* need both bind and if_then_else for simplify to work *)
+    (* we need a stronger [simplify with monad laws] (inside bind)! i don't think we should need refine_bind and refine_if_then_else for most things *)
+    (* if i redid refine_check_one_longest_prefix_s with a different form, maybe we wouldn't need the refine_bind and I/T/E *)
+    (* ----- *)
+
+    setoid_rewrite (@refine_find_upperbound DNSRRecord _ _).
+    setoid_rewrite (@refine_decides_forall_In' _ _ _ _).
+    (* autorewrite with monad laws. *) (* doesn't terminate *)
+    simplify with monad laws. 
+    (* <-- needs to simplify inside <- and if/then/else *)
+
+    Check refine_check_one_longest_prefix_s.
+    setoid_rewrite refine_check_one_longest_prefix_s.
+    simplify with monad laws.
+    setoid_rewrite refine_if_If. (* doesn't rewrite inside <- and if/then/else *)
+    {
+      Check refine_check_one_longest_prefix_CNAME.
+      setoid_rewrite refine_check_one_longest_prefix_CNAME.
+      reflexivity.
+
+      (* H0 is the hypothesis from refine_under_bind? *)
+      inversion H0. inversion H2. clear H2.
+      - eapply (tuples_in_relation_satisfy_constraint_specific n). eauto.
+      - eapply For_computes_to_In; eauto using IsPrefix_string_dec.
+    }
+    - eapply For_computes_to_In; eauto using IsPrefix_string_dec.
+    - reflexivity.
+    - unfold pointwise_relation; intros; higher_order_reflexivity. 
+}
+(*    simplify with monad laws.
     (* Find the upperbound of the results. *)
     etransitivity.
     apply refine_under_bind; intros. (* rewrite? *)
@@ -215,8 +212,7 @@ start sharpening ADT. {
 
     reflexivity. subst H1; reflexivity.
     unfold pointwise_relation; intros; higher_order_reflexivity.
-    finish honing. finish honing.
-}
+    finish honing. finish honing. *)
 
   start_honing_QueryStructure'.
 
@@ -242,23 +238,23 @@ start sharpening ADT. {
     Check refine_count_constraint_broken.
     setoid_rewrite refine_count_constraint_broken.        (* refine x1 *)
     setoid_rewrite refine_count_constraint_broken'.        (* refine x2 *)
+    Check refine_If_Then_Else_Bind.
     setoid_rewrite refine_If_Then_Else_Bind. simpl in *.
+    (* can this be removed?? *)
     (* body after x1 gets pasted inside again *)
 
     Check Bind_refine_If_Then_Else. (* x2 replaced with a *)
+    (* turns the entire thing into if/then/else toplevel *)
     setoid_rewrite Bind_refine_If_Then_Else.
-    (* this was done an extra time *)
-    (* etransitivity. *)
     apply refine_If_Then_Else.
     -
       (* simplify with monad laws. *)
       apply refine_under_bind; intros.
       (* apply refine_under_bind; intros. *)
       setoid_rewrite refine_Count. simplify with monad laws.
-      apply refine_under_bind.  Check refine_under_bind. intros.
-      setoid_rewrite refine_subcheck_to_filter; eauto.
+      apply refine_under_bind; intros.
       Check refine_subcheck_to_filter.
-      (* Set Printing All. auto. *)
+      setoid_rewrite refine_subcheck_to_filter; eauto.
       simplify with monad laws.
       Check clear_nested_if.
       rewrite clear_nested_if by apply filter_nil_is_nil.
@@ -270,14 +266,8 @@ start sharpening ADT. {
       eauto with typeclass_instances.
     - simplify with monad laws.
       setoid_rewrite refine_Count. simplify with monad laws.
-      (* ^ added by automation, thanks! *)
-      (* setoid_rewrite refine_subcheck_to_filter; eauto. *)
-      (* did something break? nondeterministic ^ TODO *)
-      (* why is this OK? it didn't get rid of x0 nondeterminism *)
       reflexivity.
-    (* - finish honing. *)
-  }
-  (* higher level of reasoning *)
+  } 
 
   GenerateIndexesForAll         (* ? in IndexSelection, see GenerateIndexesFor *)
   (* specifies that you want to use the suffix index structure TODO *)
@@ -377,3 +367,7 @@ start sharpening ADT. {
 Time Defined.
 
 Time Definition DNSImpl := Eval simpl in (projT1 DnsManual).
+
+Print DNSImpl.
+
+(* TODO extraction, examples/messagesextraction.v *)

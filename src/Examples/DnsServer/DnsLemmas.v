@@ -6,15 +6,16 @@ Require Import Coq.Vectors.Vector
 
 Require Import Fiat.QueryStructure.Automation.AutoDB
         Fiat.QueryStructure.Implementation.DataStructures.BagADT.BagADT
-        Fiat.Examples.DnsServer.DnsSchema
-        Fiat.Examples.DnsServer.packet
         Fiat.QueryStructure.Automation.IndexSelection
         Fiat.QueryStructure.Specification.SearchTerms.ListPrefix
-        Fiat.QueryStructure.Automation.SearchTerms.FindSuffixSearchTerms
+        Fiat.QueryStructure.Automation.SearchTerms.FindPrefixSearchTerms
         Fiat.QueryStructure.Automation.QSImplementation.
 
+Require Import Fiat.Examples.DnsServer.DnsSchema
+        Fiat.Examples.DnsServer.packet.
 
 Open Scope list.
+
 
 Definition upperbound {A} (f : A -> nat) (rs : list A) (r : A) :=
   forall r', List.In r' rs -> f r >= f r'.
@@ -39,7 +40,7 @@ as the condition on the body is not a proper relation. :p *)
 (* TODO: figure out a definition for pointwise_refine that is a
    proper (i.e. reflexive and transitive) relation.
  *)
-(*
+
 Print respectful.
 
 Definition pointwise_refine {A R}
@@ -81,7 +82,7 @@ Proof.
     intros.
     generalize (IHi _ _ H _ _ H0 a); eauto.
 Qed.
-*)
+
 
 (* TODO: Agree on a notation for our fueled fix function. *)
 Notation "'Repeat' fuel 'initializing' a 'with' arg 'defaulting' rec 'with' base {{ bod }} " :=
@@ -141,6 +142,25 @@ Definition get_name (r : DNSRRecord) : list string := r!sNAME.
 Definition name_length (r : DNSRRecord) := List.length (get_name r).
 
 Notation "[[ x 'in' xs | P ]]" := (filtered_list xs (fun x => P)) (at level 70) : comp_scope.
+
+(* ----------------- *)
+(* Raw tuple field accessor notations *)
+
+Notation "( x 'in' r '!' Ridx ) bod" :=
+  (let qs_schema : QueryStructureSchema := _ in
+   let r' : UnConstrQueryStructure qs_schema := r in
+   let Ridx' := ibound (indexb (@Build_BoundedIndex _ _ (QSschemaNames qs_schema) Ridx%string _)) in
+   @UnConstrQuery_In _ qs_schema r' Ridx'
+            (fun x : @RawTuple (GetNRelSchemaHeading (qschemaSchemas qs_schema) Ridx') => bod)) : QueryImpl_scope.
+
+Definition GetAttributeRawBnd {heading : Heading}
+           (tup : @RawTuple heading)
+           (idx : (BoundedIndex (HeadingNames heading)))
+  : Domain heading (ibound (indexb idx)) :=
+  GetAttributeRaw tup (ibound (indexb idx)).
+
+Notation "tup '!' idx" := (GetAttributeRaw tup ``idx) : TupleImpl_scope.
+
 
 (* -------------------------------------------------------------------------------------- *)
 
@@ -217,6 +237,60 @@ Proof.                          (* same proof as refine_is_CNAME__forall_to_exis
          end.
 Qed.
 
+
+(* implement the DNS record constraint check as code that counts the number of occurrences of
+the constraint being broken (refines the boolean x1 in AddData) *)
+
+Lemma refine_count_constraint_broken :
+  forall (n : DNSRRecord) (r : UnConstrQueryStructure DnsSchema),
+    refine {b |
+            decides b
+                    (forall tup' : @IndexedRawTuple (GetHeading DnsSchema sCOLLECTIONS),
+                       (r!sCOLLECTIONS)%QueryImpl tup' ->
+                       n!sNAME = (indexedElement tup')!sNAME -> n!sTYPE <> CNAME)}
+           (If (beq_RRecordType n!sTYPE CNAME)
+               Then count <- Count
+               For (tup in r!sCOLLECTIONS)
+               (Where (n!sNAME = GetAttributeRawBnd tup ``sNAME)
+                      Return tup )%QueryImpl;
+    ret (beq_nat count 0) Else ret true).
+Proof.
+  intros; setoid_rewrite refine_pick_decides at 1;
+  [ | apply refine_is_CNAME__forall_to_exists | apply refine_not_CNAME__independent ].
+  (* refine existence check into query. *)
+
+  match goal with
+      |- context[{b | decides b
+                              (exists tup : @IndexedTuple ?heading,
+                                 (@GetUnConstrRelationBnd ?qs_schema ?qs ?tbl tup /\ @?P tup))}]
+      =>
+      let H1 := fresh in
+      let H2 := fresh in
+      makeEvar (Ensemble (@Tuple heading))
+               ltac:(fun P' => assert (Same_set (@IndexedTuple heading) (fun t => P' (indexedElement t)) P) as H1;
+                     [unfold Same_set, Included, Ensembles.In;
+                       split; [intros x H; pattern (indexedElement x);
+                               match goal with
+                                   |- ?P'' (indexedElement x) => unify P' P'';
+                                     simpl; eauto
+                               end
+                              | eauto]
+                     |
+                     assert (DecideableEnsemble P') as H2;
+                       [ simpl; eauto with typeclass_instances (* Discharge DecideableEnsemble w/ intances. *)
+                       | setoid_rewrite (@refine_constraint_check_into_query' qs_schema (ibound (indexb tbl)) qs P P' H2 H1); clear H2 H1 ] ]) end.
+  remember n!sTYPE; refine pick val (beq_RRecordType d CNAME); subst;
+  [ | case_eq (beq_RRecordType n!sTYPE CNAME); intros;
+      rewrite <- beq_RRecordType_dec in H; find_if_inside;
+      unfold not; simpl in *; try congruence ].
+  intros; simplify with monad laws; simpl.
+  autorewrite with monad laws.
+  setoid_rewrite negb_involutive.
+  reflexivity.
+Qed.
+
+Hint Resolve refine_count_constraint_broken.
+
 (* in AddData, simplifies x1 from large For/Where/Return expression to [ret (filter dec a0)] *)
 
 (* refine a check into a filter, given the results of a sub-check
@@ -268,6 +342,9 @@ Proof.
   - refine pick val _; auto; subst.
     apply filter_permutation_morphism; [ reflexivity | assumption ].
 Qed.
+
+(* uses refine_forall_to_exists; refines x2 in AddData 
+very similar to refine_count_constraint_broken; comments below are relative to refine_count_constraint_broken *)
 
 (* implement the DNS record constraint check as code that counts the number of occurrences of
 the constraint being broken (refines the boolean x1 in AddData) *)
@@ -1053,7 +1130,7 @@ Proof.
       econstructor; eauto.
 Qed.
 
-Theorem IsSuffix_string_dec :
+Theorem IsPrefix_string_dec :
   forall l1 l2 : list string, IsPrefix l1 l2 \/ ~ IsPrefix l1 l2.
 Proof.
   intros.
@@ -1061,6 +1138,9 @@ Proof.
 Qed.
 
 (* Main lemma -- TODO generalize *)
+
+(* but Exc = option? broke because I changed the type of sDATA in DNSRRecord? *)
+(* Set Printing All. *)
 
 Lemma tuples_in_relation_satisfy_constraint_specific :
   forall (a : list RawTuple) (n : packet) (r_n : QueryStructure DnsSchema),
@@ -1070,7 +1150,7 @@ Lemma tuples_in_relation_satisfy_constraint_specific :
                Return r ) ↝ a ->
   forall (t t' : DNSRRecord) (n0 n' : nat),
     n0 <> n' ->
-    nth_error a n0 = Some t ->
+    nth_error a n0 = Some t -> (* this isn't right? *)
     nth_error a n' = Some t' ->
     get_name t = get_name t' ->
     t!sTYPE <> CNAME.
@@ -1145,7 +1225,7 @@ this is because x is a list of tuples that all came from r *)
 
     apply H5. clear H5.
 
-    eapply in_flatten; eauto using IsSuffix_string_dec.
+    eapply in_flatten; eauto using IsPrefix_string_dec.
 
     rewrite Heqx1elems in H1.
     rewrite List.map_map in H1.
@@ -1287,7 +1367,6 @@ assert (List.In {| elementIndex := idx; indexedElement := t |} x').
   { eapply exists_in_list; eauto. }
   apply Equiv' in H15; destruct H15;  apply H15.
 Qed.
-
 (* -------------------------------------------------------------------------------------- *)
 
 (* TODO: more general lemmas (hard to state w/ implicits; do later) *)
@@ -1300,7 +1379,7 @@ Qed.
     True.
 Proof.
 
-Admitted.
+Admitted. *)
 
 (* general lemma to prove, #2: deal with [where]
   (since [where] is just filtering/taking a subset, it should
@@ -1315,4 +1394,4 @@ Lemma tuples_in_relation_filtered_satisfy_constraint :
   True.
 Proof.
 
-Admitted. *)
+Admitted.
