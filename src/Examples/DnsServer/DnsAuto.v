@@ -10,7 +10,7 @@ Require Import Fiat.QueryStructure.Automation.AutoDB
         Fiat.QueryStructure.Implementation.DataStructures.BagADT.BagADT
         Fiat.QueryStructure.Automation.IndexSelection
         Fiat.QueryStructure.Specification.SearchTerms.ListPrefix
-        Fiat.QueryStructure.Automation.SearchTerms.FindSuffixSearchTerms
+        Fiat.QueryStructure.Automation.SearchTerms.FindPrefixSearchTerms
         Fiat.QueryStructure.Automation.QSImplementation.
 
 Require Import Fiat.Examples.DnsServer.packet
@@ -32,19 +32,20 @@ Definition DnsSpec : ADT DnsSig :=
                                                (* in start honing querystructure, it inserts constraints before every insert / decision procedure *)
                                                (* n<- count (For (r in _) where (r = tup) return True); if n > 0 then.. *)
                                                (* For refines decision procedure *)
-    update "AddData" (t : DNSRRecord) : bool :=
-      Insert t into sCOLLECTIONS,
+    update "AddData" (this : rep, t : DNSRRecord) : bool :=
+      Insert t into this!sCOLLECTIONS,
 
-    query "Process" (p : packet) : packet :=
+    query "Process" (this : rep, p : packet) : packet :=
       let t := qtype (questions p) in
       Repeat 1 initializing n with qname (questions p)
                defaulting rec with (ret (buildempty p))
-         {{ rs <- For (r in sCOLLECTIONS)      (* Bind a list of all the DNS entries *)
-                  Where (IsSuffix n r!sNAME) (* prefixed with [n] to [rs] *)
+         {{ rs <- For (r in this!sCOLLECTIONS)      (* Bind a list of all the DNS entries *)
+                  Where (IsPrefix r!sNAME n) (* prefixed with [n] to [rs] *)
                   (* prefix: "com.google" is a prefix of "com.google.scholar" *)
                   Return r;
             If (negb (is_empty rs))        (* Are there any matching records? *)
-            Then                    (* TODO: reverse these if/then cases *)
+               (* TODO: this does not filter by matching QTYPE *)
+            Then
               bfrs <- [[r in rs | upperbound name_length rs r]]; (* Find the best match (largest prefix) in [rs] *)
               b <- { b | decides b (forall r, List.In r bfrs -> n = r!sNAME) };
               if b                (* If the record's QNAME is an exact match  *)
@@ -61,8 +62,8 @@ Definition DnsSpec : ADT DnsSig :=
                 (* multiple matches -- add them all as answers in the packet *)
                   ret (List.fold_left addan bfrs (buildempty p))
               else              (* prefix but record's QNAME not an exact match *)
-                (* return all the prefix records that are nameserver records -- 
-                 ask the authoritative servers *)
+                (* return all the prefix records that are nameserver records --
+                 ask the authoritative servers *) (* TODO does this return one, or return all? *)
                 bfrs' <- [[x in bfrs | x!sTYPE = NS]];
                 ret (List.fold_left addns bfrs' (buildempty p))
             Else ret (buildempty p) (* No matching records! *)
@@ -105,7 +106,8 @@ Ltac srewrite_manual' :=
     );
   repeat (
       try (eapply tuples_in_relation_satisfy_constraint_specific; eauto);
-      try (eapply computes_to_in_specific; eauto);
+      try solve [eapply For_computes_to_In; eauto using IsPrefix_string_dec];
+      (* otherwise loops forever *)
       try reflexivity
     );
   try simplify with monad laws.
@@ -165,7 +167,7 @@ Ltac finishHone H :=
             try (rewrite clear_nested_if by apply filter_nil_is_nil));
           try simplify with monad laws;
           try eauto;
-          try (clear H; reflexivity) (* TODO why clear *)
+          try (clear H; reflexivity) (* TODO why clear. does h_o_r work here? *)
          ).
 
 Ltac automateAddData H := srewrite_manual; finishHone H.
@@ -173,13 +175,11 @@ Ltac automateAddData H := srewrite_manual; finishHone H.
 (* ---------------------- *)
 
 Theorem DnsManual :
-  MostlySharpened DnsSpec.
+  FullySharpened DnsSpec.
 Proof. unfold DnsSpec.
 
 start sharpening ADT. {
   hone method "Process". {
-    (* automateAddData H. *)
-    (* did this work? *)
     automateProcess.
   }
 
@@ -199,10 +199,11 @@ start sharpening ADT. {
   hone method "AddData".
   {
     (* automateProcess. *)
-    simpl in *.
-    try refine_under_bind'.
-    try refine_bind'.
+    (* simpl in *. *)
+    (* try refine_under_bind'. *)
+    (* try refine_bind'. *)
     (* eauto. *)
+
     (* this doesn't change the code, but completes subproof *)
     (* drill. *)
     (* this is going to do the same thing: refine just the inner statement in the second line *)
@@ -227,16 +228,20 @@ write one that covers both head parts, then both setoid rewrites, then both conc
 
   GenerateIndexesForAll         (* ? in IndexSelection, see GenerateIndexesFor *)
   (* specifies that you want to use the suffix index structure TODO *)
-  ltac:(CombineCase2 matchFindSuffixIndex matchEqIndex)
-         ltac:(fun attrlist => make simple indexes using attrlist).
+  ltac:(CombineCase3 matchFindPrefixIndex matchEqIndex)
+         ltac:(fun attrlist =>
+  make_simple_indexes
+    attrlist
+    ltac:(CombineCase6 BuildEarlyFindPrefixIndex ltac:(LastCombineCase6 BuildEarlyEqualityIndex))
+           ltac:(CombineCase5 BuildLastFindSuffixIndex ltac:(LastCombineCase5 BuildLastEqualityIndex))).
   (* SearchTerm and SearchUpdateTerm: efficiently do quality test on the name columns *)
-  (* it figures out what data structure to use *)
+  (* it figures out what datac structure to use *)
   (* BagMatchSearchTerm *)
   (* implement query as calls to abstract bag find function *)
   (* then plug in data structures that impl bag find (chooses b/t them?) *)
 
   (* hone constructor "Init". *)
-  { 
+  {
     simplify with monad laws.
     rewrite refine_QSEmptySpec_Initialize_IndexedQueryStructure.
     finish honing.
@@ -251,43 +256,43 @@ write one that covers both head parts, then both setoid rewrites, then both conc
     - apply refine_If_Then_Else.
       + simplify with monad laws.
         implement_Query
-          ltac:(CombineCase5 SuffixIndexUse EqIndexUse)
-                 ltac:(CombineCase10 createEarlySuffixTerm createEarlyEqualityTerm)
-                        ltac:(CombineCase7 createLastSuffixTerm createLastEqualityTerm)
-                               ltac:(CombineCase7 SuffixIndexUse_dep EqIndexUse_dep)
-                        ltac:(CombineCase11 createEarlySuffixTerm_dep createEarlyEqualityTerm_dep)
-                        ltac:(CombineCase8 createLastSuffixTerm_dep createLastEqualityTerm_dep).
+          ltac:(CombineCase5 PrefixIndexUse EqIndexUse)
+                 ltac:(CombineCase10 createEarlyPrefixTerm createEarlyEqualityTerm)
+                        ltac:(CombineCase7 createLastPrefixTerm createLastEqualityTerm)
+                               ltac:(CombineCase7 PrefixIndexUse_dep EqIndexUse_dep)
+                        ltac:(CombineCase11 createEarlyPrefixTerm_dep createEarlyEqualityTerm_dep)
+                        ltac:(CombineCase8 createLastPrefixTerm_dep createLastEqualityTerm_dep).
         simplify with monad laws.
         rewrite (@refineEquiv_swap_bind nat).
+        (* setoid_rewrite refine_if_If. *)
         implement_Insert_branches. (* this removes the nat choosing, so I guess the nondeterminism is okay if it involves indexed. the matching involves some of UnConstrFreshIdx *)
         (* ok, i guess getting a fresh ID for the index depends on the index specifics *)
-        reflexivity.            (* broken *)
+        reflexivity.
       + simplify with monad laws.
         implement_Query
-          ltac:(CombineCase5 SuffixIndexUse EqIndexUse)
-                 ltac:(CombineCase10 createEarlySuffixTerm createEarlyEqualityTerm)
-                        ltac:(CombineCase7 createLastSuffixTerm createLastEqualityTerm)
-                               ltac:(CombineCase7 SuffixIndexUse_dep EqIndexUse_dep)
-                                      ltac:(CombineCase11 createEarlySuffixTerm_dep createEarlyEqualityTerm_dep)
-                                             ltac:(CombineCase8 createLastSuffixTerm_dep createLastEqualityTerm_dep).
-        simplify with monad laws. 
+          ltac:(CombineCase5 PrefixIndexUse EqIndexUse)
+                 ltac:(CombineCase10 createEarlyPrefixTerm createEarlyEqualityTerm)
+                        ltac:(CombineCase7 createLastPrefixTerm createLastEqualityTerm)
+                               ltac:(CombineCase7 PrefixIndexUse_dep EqIndexUse_dep)
+                                      ltac:(CombineCase11 createEarlyPrefixTerm_dep createEarlyEqualityTerm_dep)
+                                             ltac:(CombineCase8 createLastPrefixTerm_dep createLastEqualityTerm_dep).
+        simplify with monad laws.
         rewrite (@refineEquiv_swap_bind nat).
         setoid_rewrite refine_if_If.
         implement_Insert_branches.
         reflexivity.
     - reflexivity.              (* seems fully deterministic here *)
     - finish honing.
-    } 
-
+  }
   (* hone method "Process". *) {
     simplify with monad laws.
     implement_Query             (* in AutoDB, implement_Query' has steps *)
-      ltac:(CombineCase5 SuffixIndexUse EqIndexUse)
-             ltac:(CombineCase10 createEarlySuffixTerm createEarlyEqualityTerm)
-                    ltac:(CombineCase7 createLastSuffixTerm createLastEqualityTerm)
-                           ltac:(CombineCase7 SuffixIndexUse_dep EqIndexUse_dep)
-                                  ltac:(CombineCase11 createEarlySuffixTerm_dep createEarlyEqualityTerm_dep)
-                                         ltac:(CombineCase8 createLastSuffixTerm_dep createLastEqualityTerm_dep).
+      ltac:(CombineCase5 PrefixIndexUse EqIndexUse)
+             ltac:(CombineCase10 createEarlyPrefixTerm createEarlyEqualityTerm)
+                    ltac:(CombineCase7 createLastPrefixTerm createLastEqualityTerm)
+                           ltac:(CombineCase7 PrefixIndexUse_dep EqIndexUse_dep)
+                                  ltac:(CombineCase11 createEarlyPrefixTerm_dep createEarlyEqualityTerm_dep)
+                                         ltac:(CombineCase8 createLastPrefixTerm_dep createLastEqualityTerm_dep).
     simplify with monad laws.
     simpl.
     setoid_rewrite (refine_pick_val _ H).
@@ -295,68 +300,31 @@ write one that covers both head parts, then both setoid rewrites, then both conc
     setoid_rewrite (@refine_filtered_list _ _ _ _).
     finish honing.
   }
-  
-  FullySharpenQueryStructure' DnsSchema Index.
-  (* implement_bag_methods needs to be patched for this goal. *)
+  pose_headings_all.
+  FullySharpenQueryStructure DnsSchema Index.
+}                               (* ending "start sharpening ADT" *)
 
-  - implement_bag_methods.
-  - implement_bag_methods.
+{ simpl; pose_string_ids; pose_headings_all;
+  pose_search_term;  pose_SearchUpdateTerms.
+  unfold name in *.
+  BuildQSIndexedBags'
+  ltac:(CombineCase6 BuildEarlyTrieBag BuildEarlyEqualityBag)
+         ltac:(CombineCase5 BuildLastTrieBag BuildLastEqualityBag). }
+
+{ cbv zeta; pose_string_ids; pose_headings_all;
+    pose_search_term;  pose_SearchUpdateTerms;
+    simpl Sharpened_Implementation;
+    unfold
+      Update_Build_IndexedQueryStructure_Impl_cRep,
+    Join_Comp_Lists',
+    GetIndexedQueryStructureRelation,
+    GetAttributeRaw; simpl;
+    higher_order_reflexivityT. }
+
 Time Defined.
 
-    Definition DnsDelegateReps
-    : ilist (fun ns => Type) (qschemaSchemas DnsSchema).
-      simpl; econstructor; [ | econstructor ].
-      exact (list (@Tuple
-           <sNAME :: name, sTYPE :: RRecordType, sCLASS :: RRecordClass,
-              sTTL :: nat, sDATA :: string>%Heading)).
-    Defined.
+Time Definition DNSImpl := Eval simpl in (projT1 DnsManual).
 
-    Definition DnsDelegateSearchUpdateTerms
-    : ilist (fun ns => SearchUpdateTerms (schemaHeading (relSchema ns)))
-             (qschemaSchemas DnsSchema).
-      simpl; econstructor; [ | econstructor ].
-      exact  DnsSearchUpdateTerm.
-    Defined.
+Print DNSImpl.
 
-
-
-    Definition DnsDelegateImpls
-    : i2list2 (fun ns (SearchTerm : SearchUpdateTerms (schemaHeading (relSchema ns)))
-                   (Rep : Type) =>
-                 ComputationalADT.pcADT
-                   (BagSig (@Tuple (schemaHeading (relSchema ns)))
-                           (BagSearchTermType SearchTerm)
-                           (BagUpdateTermType SearchTerm))
-                   Rep)
-              DnsDelegateSearchUpdateTerms
-              DnsDelegateReps.
-      simpl; econstructor; [ | econstructor ].
-      let p := eval simpl in (projT2 (BagADTImpl (fun _ => true)
-                         (@ListAsBag
-                            _
-                            (BagSearchTermType DnsSearchUpdateTerm)
-                            (BagUpdateTermType DnsSearchUpdateTerm)
-                            {| pst_name := nil;
-                               pst_filter := fun _ => true |}
-                            (BagMatchSearchTerm DnsSearchUpdateTerm)
-                            (BagApplyUpdateTerm DnsSearchUpdateTerm) ))) in
-          exact p.
-    Defined.
-
-    Definition DnsImpl : SharpenedUnderDelegates DnsSig.
-      Time let
-          Impl := eval simpl in (projT1 DnsManual) in exact Impl.
-    Defined.
-
-    Print DnsImpl.
-    Definition ExtractWorthyDNSImpl : ComputationalADT.cADT DnsSig.
-      let s := eval unfold DnsImpl in DnsImpl in
-          let Impl := eval simpl in
-          (Sharpened_Implementation s
-                                    (LookupQSDelegateReps DnsDelegateReps)
-                                    (LookupQSDelegateImpls DnsDelegateImpls)) in exact Impl.
-    Defined.
-
-    Print ExtractWorthyDNSImpl.
-
-    Extraction "bar.ml" ExtractWorthyDNSImpl.
+(* TODO extraction, examples/messagesextraction.v *)

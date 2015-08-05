@@ -8,7 +8,7 @@ Require Import Fiat.QueryStructure.Automation.AutoDB
         Fiat.QueryStructure.Implementation.DataStructures.BagADT.BagADT
         Fiat.QueryStructure.Automation.IndexSelection
         Fiat.QueryStructure.Specification.SearchTerms.ListPrefix
-        Fiat.QueryStructure.Automation.SearchTerms.FindSuffixSearchTerms
+        Fiat.QueryStructure.Automation.SearchTerms.FindPrefixSearchTerms
         Fiat.QueryStructure.Automation.QSImplementation.
 
 Require Import
@@ -16,6 +16,8 @@ Require Import
         Fiat.Examples.DnsServer.DnsSchema
         Fiat.Examples.DnsServer.DnsLemmas.
 (* TODO: unique, fueledfix are here but for some reason setoid rewrite is failing *)
+
+(* NOTE: this file is deprecated, since I made breaking changes in Packet.v and DnsSchema.v. Look in the dns-recursive branch for the newest version *)
 
 Definition DnsRecSig : ADTSig :=
   ADTsignature {
@@ -30,7 +32,7 @@ Definition DnsRecSig : ADTSig :=
       (* cache methods *)
       Method "InsertResultForDomain" : rep x (name * WrapperResponse) -> rep x bool
                                        (* + delete, update (= delete+insert), and checkinvariant *)
-      (* Method "GetServerForLongestSuffix" : rep x name -> rep x option WrapperResponse, *)
+      (* Method "GetServerForLongestPrefix" : rep x name -> rep x option WrapperResponse, *)
       (* Method "EvictOldest" : rep x id -> rep x bool, *)
 
       (* main method *)
@@ -113,7 +115,7 @@ Definition DnsSpec_Recursive : ADT DnsRecSig :=
   let AddRequest := "AddRequest" in
   let GetRequestStage := "GetRequestStage" in
   let UpdateRequestStage := "UpdateRequestStage" in
-  let GetServerForLongestSuffix := "GetServerForLongestSuffix" in
+  let GetServerForLongestPrefix := "GetServerForLongestPrefix" in
   let InsertResultForDomain := "InsertResultForDomain" in
   let EvictOldest := "EvictOldest" in
   let Process := "Process" in
@@ -162,20 +164,20 @@ and associate it with the packet (solve the latter by letting it generate the id
            for the longest suffix of the URL, if an IP exists, return that. 
            otherwise return none *)
           (* Other server uses suffix, so we will use suffix too *)
-        (* query GetServerForLongestSuffix (reqName : name) : option WrapperResponse := *)
+        (* query GetServerForLongestPrefix (reqName : name) : option WrapperResponse := *)
         (*   results <- For (req in sCACHE_QUESTIONS) *)
         (*           Where (reqName = req!sDOMAIN) *)
         (*           Return (req); *)
         (*   ret (listToOption results), (* TODO fix *) *)
         
         (*   suffixes <- For (req in sCACHE) *)
-        (*              Where (IsSuffix reqName req!sNAME) *)
+        (*              Where (IsPrefix reqName req!sNAME) *)
         (*              Return (req!sNAME, req!sIP, req!sID); *)
         (* let tupLength t := let '(x, y, z) := t in (@List.length string) x in *)
-        (* longestSuffixes <- [[suffix in suffixes | upperbound tupLength suffixes suffix]]; *)
+        (* longestPrefixes <- [[suffix in suffixes | upperbound tupLength suffixes suffix]]; *)
         (* (* similar refinement lemma about just checking one of them *) *)
         (* (* TODO: some construct for "if non-empty, pick one and do X, otherwise do Y"? *) *)
-        (* match longestSuffixes with *)
+        (* match longestPrefixes with *)
         (* | nil => ret None *)
         (* | (_, reqIP, reqID) :: _ => ret (Some (reqIP, reqID)) *)
         (* end, *)
@@ -385,7 +387,7 @@ Definition DnsSpec : ADT DnsSig :=
       Repeat 1 initializing n with qname (questions p)
                defaulting rec with (ret (buildempty p))
          {{ rs <- For (r in sCOLLECTIONS)      (* Bind a list of all the DNS entries *)
-                  Where (IsSuffix n r!sNAME) (* prefixed with [n] to [rs] *)
+                  Where (IsPrefix n r!sNAME) (* prefixed with [n] to [rs] *)
                   (* prefix: "com.google" is a prefix of "com.google.scholar" / suffix the other way *)
                   Return r;
             If (negb (is_empty rs))        (* Are there any matching records? *)
@@ -533,7 +535,7 @@ Check
       eapply For_computes_to_In in H0.
       inv H0.
       - apply H.
-      - pose proof IsSuffix_string_dec. intros. auto.
+      - pose proof IsPrefix_string_dec. intros. auto.
       - auto.
     }
     simplify with monad laws.
@@ -559,9 +561,9 @@ Check
         intros.
         instantiate (1 := (qname (questions n))). 
         eapply For_computes_to_In in H0.
-        inv H0. unfold IsSuffix in *. unfold get_name.
+        inv H0. unfold IsPrefix in *. unfold get_name.
       + apply H2.
-      + pose proof IsSuffix_string_dec. intros. auto.
+      + pose proof IsPrefix_string_dec. intros. auto.
       + auto.
     }
     simplify with monad laws.
@@ -629,7 +631,7 @@ Check
 
   GenerateIndexesForAll         (* ? in IndexSelection, see GenerateIndexesFor *)
   (* specifies that you want to use the suffix index structure TODO *)
-  ltac:(CombineCase2 matchFindSuffixIndex matchEqIndex)
+  ltac:(CombineCase2 matchFindPrefixIndex matchEqIndex)
          ltac:(fun attrlist => make simple indexes using attrlist).
   (* SearchTerm and SearchUpdateTerm: efficiently do quality test on the name columns *)
   (* it figures out what data structure to use *)
@@ -651,12 +653,12 @@ Check
     - apply refine_If_Then_Else.
       + simplify with monad laws.
         implement_Query
-          ltac:(CombineCase5 SuffixIndexUse EqIndexUse)
-                 ltac:(CombineCase10 createEarlySuffixTerm createEarlyEqualityTerm)
-                        ltac:(CombineCase7 createLastSuffixTerm createLastEqualityTerm)
-                               ltac:(CombineCase7 SuffixIndexUse_dep EqIndexUse_dep)
-                        ltac:(CombineCase11 createEarlySuffixTerm_dep createEarlyEqualityTerm_dep)
-                        ltac:(CombineCase8 createLastSuffixTerm_dep createLastEqualityTerm_dep).
+          ltac:(CombineCase5 PrefixIndexUse EqIndexUse)
+                 ltac:(CombineCase10 createEarlyPrefixTerm createEarlyEqualityTerm)
+                        ltac:(CombineCase7 createLastPrefixTerm createLastEqualityTerm)
+                               ltac:(CombineCase7 PrefixIndexUse_dep EqIndexUse_dep)
+                        ltac:(CombineCase11 createEarlyPrefixTerm_dep createEarlyEqualityTerm_dep)
+                        ltac:(CombineCase8 createLastPrefixTerm_dep createLastEqualityTerm_dep).
         simplify with monad laws.
         rewrite (@refineEquiv_swap_bind nat).
         setoid_rewrite refine_if_If.
@@ -664,12 +666,12 @@ Check
         reflexivity.
       + simplify with monad laws.
         implement_Query
-          ltac:(CombineCase5 SuffixIndexUse EqIndexUse)
-                 ltac:(CombineCase10 createEarlySuffixTerm createEarlyEqualityTerm)
-                        ltac:(CombineCase7 createLastSuffixTerm createLastEqualityTerm)
-                               ltac:(CombineCase7 SuffixIndexUse_dep EqIndexUse_dep)
-                                      ltac:(CombineCase11 createEarlySuffixTerm_dep createEarlyEqualityTerm_dep)
-                                             ltac:(CombineCase8 createLastSuffixTerm_dep createLastEqualityTerm_dep).
+          ltac:(CombineCase5 PrefixIndexUse EqIndexUse)
+                 ltac:(CombineCase10 createEarlyPrefixTerm createEarlyEqualityTerm)
+                        ltac:(CombineCase7 createLastPrefixTerm createLastEqualityTerm)
+                               ltac:(CombineCase7 PrefixIndexUse_dep EqIndexUse_dep)
+                                      ltac:(CombineCase11 createEarlyPrefixTerm_dep createEarlyEqualityTerm_dep)
+                                             ltac:(CombineCase8 createLastPrefixTerm_dep createLastEqualityTerm_dep).
         simplify with monad laws.
         rewrite (@refineEquiv_swap_bind nat).
         setoid_rewrite refine_if_If.
@@ -682,12 +684,12 @@ Check
   (* hone method "Process". *) {
     simplify with monad laws.
     implement_Query             (* in AutoDB, implement_Query' has steps *)
-      ltac:(CombineCase5 SuffixIndexUse EqIndexUse)
-             ltac:(CombineCase10 createEarlySuffixTerm createEarlyEqualityTerm)
-                    ltac:(CombineCase7 createLastSuffixTerm createLastEqualityTerm)
-                           ltac:(CombineCase7 SuffixIndexUse_dep EqIndexUse_dep)
-                                  ltac:(CombineCase11 createEarlySuffixTerm_dep createEarlyEqualityTerm_dep)
-                                         ltac:(CombineCase8 createLastSuffixTerm_dep createLastEqualityTerm_dep).
+      ltac:(CombineCase5 PrefixIndexUse EqIndexUse)
+             ltac:(CombineCase10 createEarlyPrefixTerm createEarlyEqualityTerm)
+                    ltac:(CombineCase7 createLastPrefixTerm createLastEqualityTerm)
+                           ltac:(CombineCase7 PrefixIndexUse_dep EqIndexUse_dep)
+                                  ltac:(CombineCase11 createEarlyPrefixTerm_dep createEarlyEqualityTerm_dep)
+                                         ltac:(CombineCase8 createLastPrefixTerm_dep createLastEqualityTerm_dep).
     simplify with monad laws.
     simpl.
     setoid_rewrite (refine_pick_val _ H).

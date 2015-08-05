@@ -10,7 +10,7 @@ Require Import Fiat.QueryStructure.Automation.AutoDB
         Fiat.QueryStructure.Implementation.DataStructures.BagADT.BagADT
         Fiat.QueryStructure.Automation.IndexSelection
         Fiat.QueryStructure.Specification.SearchTerms.ListPrefix
-        Fiat.QueryStructure.Automation.SearchTerms.FindSuffixSearchTerms
+        Fiat.QueryStructure.Automation.SearchTerms.FindPrefixSearchTerms
         Fiat.QueryStructure.Automation.QSImplementation.
 
 Require Import Fiat.Examples.DnsServer.packet
@@ -53,7 +53,7 @@ Ltac srewrite_manual' :=
     );
   repeat (
       try (eapply tuples_in_relation_satisfy_constraint_specific; eauto);
-      try (eapply computes_to_in_specific; eauto);
+      try solve [eapply For_computes_to_In; eauto using IsPrefix_string_dec];
       try reflexivity
     );
   try simplify with monad laws.

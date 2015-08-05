@@ -141,7 +141,7 @@ Ltac refine_bind' :=
     - eapply For_computes_to_In; eauto using IsPrefix_string_dec.
     - reflexivity.
     - unfold pointwise_relation; intros; higher_order_reflexivity. 
-
+}
 (*    simplify with monad laws.
     (* Find the upperbound of the results. *)
     etransitivity.
@@ -213,7 +213,6 @@ Ltac refine_bind' :=
     reflexivity. subst H1; reflexivity.
     unfold pointwise_relation; intros; higher_order_reflexivity.
     finish honing. finish honing. *)
-}
 
   start_honing_QueryStructure'.
 
@@ -269,7 +268,6 @@ Ltac refine_bind' :=
       setoid_rewrite refine_Count. simplify with monad laws.
       reflexivity.
   } 
-  (* higher level of reasoning *)
 
   GenerateIndexesForAll         (* ? in IndexSelection, see GenerateIndexesFor *)
   (* specifies that you want to use the suffix index structure TODO *)
