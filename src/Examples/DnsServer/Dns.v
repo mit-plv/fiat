@@ -120,14 +120,16 @@ Ltac refine_bind' :=
 
     setoid_rewrite (@refine_find_upperbound DNSRRecord _ _).
     setoid_rewrite (@refine_decides_forall_In' _ _ _ _).
-    (* autorewrite with monad laws. *) (* doesn't terminate *)
-    simplify with monad laws. 
+    simplify with monad laws.
     (* <-- needs to simplify inside <- and if/then/else *)
 
     Check refine_check_one_longest_prefix_s.
     setoid_rewrite refine_check_one_longest_prefix_s.
     simplify with monad laws.
     setoid_rewrite refine_if_If. (* doesn't rewrite inside <- and if/then/else *)
+    apply refine_If_Then_Else.
+    (* this might (erroneously?) apply here. it's usually harmless right? *)
+
     {
       Check refine_check_one_longest_prefix_CNAME.
       setoid_rewrite refine_check_one_longest_prefix_CNAME.
@@ -138,6 +140,7 @@ Ltac refine_bind' :=
       - eapply (tuples_in_relation_satisfy_constraint_specific n). eauto.
       - eapply For_computes_to_In; eauto using IsPrefix_string_dec.
     }
+    { reflexivity. } (* extra case for refine_If_Then_Else *)
     - eapply For_computes_to_In; eauto using IsPrefix_string_dec.
     - reflexivity.
     - unfold pointwise_relation; intros; higher_order_reflexivity. 

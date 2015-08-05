@@ -30,7 +30,7 @@ Definition DnsSpec : ADT DnsSig :=
     Def Constructor "Init" (_ : unit) : rep := empty,
 
                                                (* in start honing querystructure, it inserts constraints before every insert / decision procedure *)
-                                               (* n<- count (For (r in _) where (r = tup) return True); if n > 0 then.. *)
+                                               (* n<- count (For (r in _) where (r = tup) return True); if n > () then.. *)
                                                (* For refines decision procedure *)
     update "AddData" (this : rep, t : DNSRRecord) : bool :=
       Insert t into this!sCOLLECTIONS,
@@ -73,58 +73,6 @@ Definition DnsSpec : ADT DnsSig :=
 
 (* For Process (here temporarily; move back to DnsAutomation) *)
 
-Ltac invert_For_once :=
-  match goal with
-  | [ H : computes_to (Query_For _) _ |- _ ] =>
-    let H1 := fresh in
-    let H2 := fresh in
-    inversion H as [H1 H2]; inversion H2; clear H2
-  end.
-
-Ltac refine_under_bind' :=
-  setoid_rewrite refine_under_bind; [ higher_order_reflexivity |
-                                      let H := fresh in
-                                      intros a H; try invert_For_once ].
-
-Ltac refine_bind' :=
-  apply refine_bind; [ idtac | unfold pointwise_relation; intros; higher_order_reflexivity ].
-
-Ltac srewrite_each :=
-  first
-    [
-      setoid_rewrite (@refine_find_upperbound DNSRRecord _ _) |
-      setoid_rewrite (@refine_decides_forall_In' _ _ _ _) |
-      setoid_rewrite refine_check_one_longest_prefix_s |
-      setoid_rewrite refine_if_If |
-      setoid_rewrite refine_check_one_longest_prefix_CNAME
-    ].
-
-Ltac srewrite_manual' :=
-  repeat (
-      try srewrite_each;
-      try simplify with monad laws
-    );
-  repeat (
-      try (eapply tuples_in_relation_satisfy_constraint_specific; eauto);
-      try solve [eapply For_computes_to_In; eauto using IsPrefix_string_dec];
-      (* otherwise loops forever *)
-      try reflexivity
-    );
-  try simplify with monad laws.
-
-(* not very automated -- TODO try to get rid of these / use setoid_rewrite
-can i get rid of refine_under_bind/refine_bind'/refine_If_Then_Else? *)
-Ltac drill :=
-  simpl in *;
-  try simplify with monad laws;
-  try refine_under_bind';
-  try refine_bind';
-  try apply refine_If_Then_Else.
-
-(* drill. srewrite_manual'. reflexivity. (* nothing applies to this last goal *) *)
-
-Ltac automateProcess :=
-  drill; srewrite_manual'.
 
 (* --------------- *)
 (* For AddData *)
@@ -156,7 +104,7 @@ intended for use as setoid_rewrite_by *)
 Ltac do_by tic tac :=
   tic; [ | solve [tac] | .. | solve [tac] ].
 
-Ltac finishHone H :=
+Ltac finishHone :=
   repeat (simpl in *;
            try simplify with monad laws;
           try (apply refine_If_Then_Else);
@@ -167,11 +115,10 @@ Ltac finishHone H :=
             try (rewrite clear_nested_if by apply filter_nil_is_nil));
           try simplify with monad laws;
           try eauto;
-          try (clear H; reflexivity) (* TODO why clear. does h_o_r work here? *)
+          try reflexivity
          ).
 
-Ltac automateAddData H := srewrite_manual; finishHone H.
-(* TODO why need to clear H? *)
+Ltac automateAddData := srewrite_manual; finishHone.
 (* ---------------------- *)
 
 Theorem DnsManual :
@@ -180,7 +127,183 @@ Proof. unfold DnsSpec.
 
 start sharpening ADT. {
   hone method "Process". {
-    automateProcess.
+    Ltac invert_For_once :=
+      match goal with
+      | [ H : computes_to (Query_For _) _ |- _ ] =>
+        let H1 := fresh in
+        let H2 := fresh in
+        inversion H as [H1 H2]; inversion H2; clear H2
+      end.
+
+      Ltac refine_under_bind' :=
+        setoid_rewrite refine_under_bind; [ higher_order_reflexivity |
+                                            let H := fresh in
+                                            intros a H; try invert_For_once ].
+
+      Ltac refine_bind' :=
+        apply refine_bind; [ idtac | unfold pointwise_relation; intros; higher_order_reflexivity ].
+
+      Ltac srewrite_each :=
+        first
+          [
+            setoid_rewrite (@refine_find_upperbound DNSRRecord _ _) |
+            setoid_rewrite (@refine_decides_forall_In' _ _ _ _) |
+            setoid_rewrite refine_check_one_longest_prefix_s |
+            setoid_rewrite refine_if_If |
+            setoid_rewrite refine_check_one_longest_prefix_CNAME
+          ].
+
+      Ltac srewrite_manual' :=
+        repeat (
+            try srewrite_each;
+            try simplify with monad laws
+          );
+        repeat (
+            try (eapply tuples_in_relation_satisfy_constraint_specific; eauto);
+            try solve [eapply For_computes_to_In; eauto using IsPrefix_string_dec];
+            (* otherwise loops forever *)
+            try reflexivity
+          );
+        try simplify with monad laws.
+
+      (* not very automated -- TODO try to get rid of these / use setoid_rewrite
+can i get rid of refine_under_bind/refine_bind'/refine_If_Then_Else? *)
+      Ltac drill :=
+        simpl in *;
+        try simplify with monad laws;
+        try refine_under_bind';
+        try refine_bind';
+        try apply refine_If_Then_Else.
+
+      (* drill. srewrite_manual'. reflexivity. (* nothing applies to this last goal *) *)
+
+      Ltac automateProcess :=
+        drill; srewrite_manual'.
+
+      (* -------------- New ltac *)
+
+      (* Loop: Rewrite until failure, then try refine_under_bind || refine_bind || refine_If_Then_Else, rewrite until failure.... not sure about the order here! also need a hint db *)
+
+      Ltac repeat_srewrite :=
+        simpl in *;
+        try simplify with monad laws;
+        repeat (
+            try srewrite_each;
+            try simpl in *;
+            try simplify with monad laws
+          ).
+
+      Ltac finishProcess :=
+        simpl in *;
+        try simplify with monad laws;
+        repeat (
+            try (eapply tuples_in_relation_satisfy_constraint_specific; eauto);
+            try solve [eapply For_computes_to_In; eauto using IsPrefix_string_dec];
+            try reflexivity
+          );
+        simpl in *;
+        try simplify with monad laws.
+
+      (* For a tactic [top] that generates 1-3 subgoals, succeed only if tac (applied to each subgoal) makes progress on at least one of them. Then try cont again, keeping additional drilling/applying tac if it continues to make progress, until either tac fails everywhere or top fails.
+
+In the other subgoals, try doing top again, then tac, then cont. Keep progress made in any of the subgoals (i.e. don't fail the whole thing because a sub-subgoal failed, even though progress was made in a subgoal). 
+
+fails when top fails -- if top can loop forever, then this will loop forever *)
+      (* TODO factor out (try cont ()) *)
+      Ltac progress_subgoal top tac cont :=
+        first [
+          (* progresses on all subgoals no matter the number *)
+            top; progress tac; try (cont ())
+          (* progresses on 1 of 2 *)
+          | top; [progress tac; try (cont ()) | try (cont ())]
+          | top; [try (cont ()) | progress tac; try (cont ())]
+
+          (* progresses on 2 of 3 *)
+          (* | top; [progress tac; try (cont ()) | progress tac; try (cont ()) | try (cont ())] *)
+          (* | top; [progress tac; try (cont ()) | try (cont ()) | progress tac; try (cont ())] *)
+          (* | top; [try (cont ()) | progress tac; try (cont ()) | progress tac; try (cont ())] *)
+          (* progresses on 1 of 3 *)
+          (* | top; [progress tac; try (cont ()) | try (cont ()) | try (cont ())] *)
+          (* | top; [try (cont ()) | progress tac; try (cont ()) | try (cont ())] *)
+          (* | top; [try (cont ()) | try (cont ()) | progress tac; try (cont ())] *)
+          ].
+
+      (* ltac is call-by-value, so wrap the cont in a function *)
+      Ltac cont_fn top tac'' x :=
+        apply_under_subgoal top tac'' with
+
+      (* mutually recursive with progress_subgoal *)
+      (* calls top on each subgoal generated, which may generate more subgoals *)
+      (* fails when top fails in progress_subgoals *)
+      apply_under_subgoal top tac'' :=
+        progress_subgoal top tac'' ltac:(cont_fn top tac'').
+
+      Theorem testthm : forall n, n = n + 0 + 0 + 0 + 0 + 0 + 0 + 0 + 0.
+      Proof.
+        intros.
+        assert (forall y, y + 0 = y) as tm. intros. omega.
+        specialize (tm n).
+        apply_under_subgoal ltac:(rewrite tm) ltac:(rewrite tm; try reflexivity).
+      Qed.
+
+      (* Simplify. Try all the rewrites until none work.
+         If a rewrite works under a top, drill under the top and try all the rewrites until none work.
+           (Do NOT drill down if no rewrite works. so: Try a drill, if failure for all rewrites, then backtrack, try a different trill. Difficult: there are multiple tops. )
+         Keep doing this until none of the rewrites work at any layer of tops.
+         Then, do the finishing tactics (eauto, reflexivity, various small lemmas). 
+         (These should all be done on all subgoals, keeping all progress made on each one.) *)
+
+      Ltac anyDrill :=
+        first [refine_under_bind' | refine_bind' | apply refine_If_Then_Else];
+        (* TODO what happens if I change the order? *)
+        (* refine_under_bind' || refine_bind' || apply refine_If_Then_Else; *)
+        (* ?? TODO *)
+        simpl in *;
+        try simplify with monad laws.
+
+      Ltac doProcess_withLoop :=
+        (* repeat_srewrite; *)
+        (* this works but i should try to figure out why (repeat_srewrite; try anyDrill) works *)
+        (* there should be a more concise way to alternate drilling and rewriting TODO *)
+        (* i don't think this does proof search with all the drills correctly since i use [first]. it doesn't backtrack, does it? drill w/ 1 could lead to a dead end? *)
+        (* putting [try anyDrill] in the second tac isn't quite right because then it won't deal with case generation correctly? what about the rewriting too? is it okay to do [try cont ()] on all the cases? actually that might be okay *)
+        apply_under_subgoal ltac:(try repeat_srewrite; anyDrill) ltac:(repeat_srewrite; try anyDrill); finishProcess;
+        finishProcess.
+
+        doProcess_withLoop.     (* one-liner *)
+
+  (* -------------- *)
+
+      (* anyDrill. *)
+      (* anyDrill. *)
+      (* anyDrill. *)
+      (* anyDrill. (* possible to go too far! *) *)
+(* refine_under_bind'. refine_bind'. apply refine_If_Then_Else. refine_bind'. *)
+
+  (* -------------- *)
+
+      (* "unit test" *)
+
+      (* simpl in *. *)
+      (* simplify with monad laws. *)
+      (* refine_under_bind'. *)
+      (* refine_bind'. *)
+      (* (* apply refine_If_Then_Else. *) *)
+      (* setoid_rewrite (@refine_find_upperbound DNSRRecord _ _). *)
+      (* setoid_rewrite (@refine_decides_forall_In' _ _ _ _). *)
+      (* (* simplify with monad laws. *) *)
+      (* (* setoid_rewrite refine_check_one_longest_prefix_s. *) *)
+
+      (* (* apply_under_subgoals *) *)
+      (* (*   ltac:(refine_under_bind') *) *)
+      (* (*          ltac:(refine_bind'). *) *)
+      (* apply_under_subgoal *)
+      (*   ltac:(apply refine_If_Then_Else; try simplify with monad laws) *)
+      (*          ltac:(setoid_rewrite refine_check_one_longest_prefix_s). *)
+
+  (* -------------- *)  
+
+      (* automateProcess. *)
   }
 
     (* Check refine_under_bind.    (* bring an entire line (up to ;) into context *) *)
@@ -213,7 +336,7 @@ start sharpening ADT. {
     (* maybe need a high-level/metatactic to deal with binds and combining results? think about what each line of tactics is doing to the whole function *)
     (* TODO: talk to ben about this *)
 
-    automateAddData H.
+    automateAddData.
   }
 
   (* should I expand one ltac to include the other? should i test each ltac on the other problem?
