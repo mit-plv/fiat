@@ -14,8 +14,6 @@ Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.Refinement.FixedLengthLemmas.
 Require Import Fiat.Parsers.Refinement.DisjointRules.
 Require Import Fiat.Parsers.ExtrOcamlParsers. (* for simpl rules for [find_first_char_such_that] *)
-Require Import Fiat.ADTRefinement.BuildADTRefinements.HoneRepresentation.
-Require Import Fiat.ADTNotation.BuildADTSig.
 
 Set Implicit Arguments.
 
@@ -33,7 +31,7 @@ Typeclasses Opaque If_Then_Else.
       simpl.
       finish honing parser method.
     }
-    
+
     Time FullySharpenEachMethodWithoutDelegation.
     extract delegate-free implementation.
     simpl; higher_order_reflexivityT.
