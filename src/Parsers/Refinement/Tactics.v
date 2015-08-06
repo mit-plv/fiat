@@ -13,6 +13,7 @@ Require Export Fiat.ADTRefinement.BuildADTRefinements.HoneRepresentation.
 Require Export Fiat.Computation.ApplyMonad.
 Require Export Fiat.Computation.SetoidMorphisms.
 Require Export Fiat.Common.
+Require Export Fiat.ADTNotation.BuildADTSig.
 
 Require Import Fiat.Parsers.ContextFreeGrammarEquality.
 Require Import Fiat.Common.Equality.
