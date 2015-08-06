@@ -251,13 +251,21 @@ Ltac refine_bind' :=
     setoid_rewrite Bind_refine_If_Then_Else.
     apply refine_If_Then_Else.
     -
-      (* simplify with monad laws. *)
+      simplify with monad laws.
       apply refine_under_bind; intros.
       (* apply refine_under_bind; intros. *)
       setoid_rewrite refine_Count. simplify with monad laws.
       apply refine_under_bind; intros.
+      (* may loop forever *)
+      (* ?8535 matches any rewrite rule *)
+      set_evars.
+      simpl in *.
+      progress (rewrite clear_nested_if by apply filter_nil_is_nil).
+      progress (rewrite clear_nested_if by apply filter_nil_is_nil).
+      progress (rewrite clear_nested_if by apply filter_nil_is_nil).
       Check refine_subcheck_to_filter.
       setoid_rewrite refine_subcheck_to_filter; eauto.
+      Check clear_nested_if.
       simplify with monad laws.
       Check clear_nested_if.
       rewrite clear_nested_if by apply filter_nil_is_nil.

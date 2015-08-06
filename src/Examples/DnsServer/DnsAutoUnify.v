@@ -71,12 +71,6 @@ Definition DnsSpec : ADT DnsSig :=
 
 (* -------------------------------------------------------------------------------------- *)
 
-Theorem DnsManual :
-  FullySharpened DnsSpec.
-Proof. unfold DnsSpec.
-
-start sharpening ADT. {
-  hone method "Process". {
     Ltac invert_For_once :=
       match goal with
       | [ H : computes_to (Query_For _) _ |- _ ] =>
@@ -199,41 +193,8 @@ fails when top fails -- if top can loop forever, then this will loop forever *)
         apply_under_subgoal ltac:(try repeat_srewrite; anyDrill) ltac:(repeat_srewrite; try anyDrill);
         finishProcess.
 
-        doProcess_withLoop.     (* one-liner *)
-}
-  (* -------------- *)
-
-      (* anyDrill. *)
-      (* anyDrill. *)
-      (* anyDrill. *)
-      (* anyDrill. (* possible to go too far! *) *)
-(* refine_under_bind'. refine_bind'. apply refine_If_Then_Else. refine_bind'. *)
-
-  (* -------------- *)
-
-      (* "unit test" *)
-
-      (* simpl in *. *)
-      (* simplify with monad laws. *)
-      (* refine_under_bind'. *)
-      (* refine_bind'. *)
-      (* (* apply refine_If_Then_Else. *) *)
-      (* setoid_rewrite (@refine_find_upperbound DNSRRecord _ _). *)
-      (* setoid_rewrite (@refine_decides_forall_In' _ _ _ _). *)
-      (* (* simplify with monad laws. *) *)
-      (* (* setoid_rewrite refine_check_one_longest_prefix_s. *) *)
-
-      (* (* apply_under_subgoals *) *)
-      (* (*   ltac:(refine_under_bind') *) *)
-      (* (*          ltac:(refine_bind'). *) *)
-      (* apply_under_subgoal *)
-      (*   ltac:(apply refine_If_Then_Else; try simplify with monad laws) *)
-      (*          ltac:(setoid_rewrite refine_check_one_longest_prefix_s). *)
-
-  start_honing_QueryStructure'.
-
-  hone method "AddData".
-  {
+(* -------------------- *)
+      
     (* don't rewrite inner If/Then/Else expressions *)
     (* this can be made simpler by removing context[] to only do head matches *)
     Ltac rewrite_if_head :=
@@ -260,24 +221,6 @@ fails when top fails -- if top can loop forever, then this will loop forever *)
 intended for use as setoid_rewrite_by *)
       Ltac do_by tic tac :=
         tic; [ | solve [tac] | .. | solve [tac] ].
-
-      Ltac finishHone :=
-        repeat (simpl in *;
-                 try simplify with monad laws;
-                try (apply refine_If_Then_Else);
-                try simplify with monad laws;
-                try tac_under_bind ltac:(
-                  do_by ltac:(setoid_rewrite refine_subcheck_to_filter) ltac:(eauto with typeclass_instances);
-                  try (simplify with monad laws);
-                  try (rewrite clear_nested_if by apply filter_nil_is_nil));
-                try simplify with monad laws;
-                try eauto;
-                try reflexivity
-               ).
-
-      Ltac automateAddData := srewrite_manual; finishHone.
-
-      (* ------------- *)
 
       Ltac srewrite_each_ad :=
         first [
@@ -314,14 +257,7 @@ intended for use as setoid_rewrite_by *)
           ltac:(try repeat_srewrite_ad; anyDrill_ad) ltac:(repeat_srewrite_ad; try anyDrill_ad);
         finishAddData.
 
-      (* repeat_srewrite_ad. (* 30-50 seconds *)  *)
-      (* auto. *)
-      (* apply_under_subgoal *)
-          (* ltac:(try repeat_srewrite_ad; anyDrill_ad) ltac:(repeat_srewrite_ad; try anyDrill_ad). *)
-      (* 2 min *)
-
-      doAddData_withLoop.
-  }
+(* -------------------- *)
 
 
 Ltac srewrite_each_all :=
@@ -367,17 +303,63 @@ Ltac doAny srewrite_fn drills_fn finish_fn :=
         apply_under_subgoal
           ltac:(try repeat_srewrite_fn; anyDrill_fn) ltac:(repeat_srewrite_fn; try anyDrill_fn);
         repeat_finish_fn.
-  
 
-  (* should I expand one ltac to include the other? should i test each ltac on the other problem?
-compare to dns? write one big one to encompass both? what's a nice incremental way to do/test it? 
-write one that covers both head parts, then both setoid rewrites, then both conclusions/eautos?
-*)
-  (* match goal with...?  *)
-  (* do any of the setoid rewrites interact problematically with the goals of the other? *)
+Ltac doAnyAll := doAny srewrite_each_all drills_each_all finish_each_all.
 
-  (* the two components here (start honing + GenerateIndexesForAll) are manual versions of
-     partial_master_plan' in AutoDB *)
+(* -------------------- *)
+
+Theorem DnsManual :
+  FullySharpened DnsSpec.
+Proof. unfold DnsSpec.
+
+start sharpening ADT. {
+  hone method "Process". {
+    doAnyAll.
+        (* doProcess_withLoop.     (* one-liner *) *)
+}
+  (* -------------- *)
+
+      (* anyDrill. *)
+      (* anyDrill. *)
+      (* anyDrill. *)
+      (* anyDrill. (* possible to go too far! *) *)
+(* refine_under_bind'. refine_bind'. apply refine_If_Then_Else. refine_bind'. *)
+
+  (* -------------- *)
+
+      (* "unit test" *)
+
+      (* simpl in *. *)
+      (* simplify with monad laws. *)
+      (* refine_under_bind'. *)
+      (* refine_bind'. *)
+      (* (* apply refine_If_Then_Else. *) *)
+      (* setoid_rewrite (@refine_find_upperbound DNSRRecord _ _). *)
+      (* setoid_rewrite (@refine_decides_forall_In' _ _ _ _). *)
+      (* (* simplify with monad laws. *) *)
+      (* (* setoid_rewrite refine_check_one_longest_prefix_s. *) *)
+
+      (* (* apply_under_subgoals *) *)
+      (* (*   ltac:(refine_under_bind') *) *)
+      (* (*          ltac:(refine_bind'). *) *)
+      (* apply_under_subgoal *)
+      (*   ltac:(apply refine_If_Then_Else; try simplify with monad laws) *)
+      (*          ltac:(setoid_rewrite refine_check_one_longest_prefix_s). *)
+
+  start_honing_QueryStructure'.
+
+  hone method "AddData".
+  {
+
+      (* repeat_srewrite_ad. (* 30-50 seconds *)  *)
+      (* auto. *)
+      (* apply_under_subgoal *)
+          (* ltac:(try repeat_srewrite_ad; anyDrill_ad) ltac:(repeat_srewrite_ad; try anyDrill_ad). *)
+      (* 2 min *)
+
+      (* doAddData_withLoop. *)
+    doAnyAll.
+  }
 
   GenerateIndexesForAll         (* ? in IndexSelection, see GenerateIndexesFor *)
   (* specifies that you want to use the suffix index structure TODO *)
