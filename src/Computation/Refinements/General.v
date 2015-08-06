@@ -22,6 +22,17 @@ Section general_refine_lemmas.
       -> refine (a <- c; x a) (a <- c; y a).
   Proof. t_refine.  Qed.
 
+  (* Combines refine_under_bind and refine_bind:
+generates another subgoal for the first expression,
+and gives you the computational hypothesis for the second *)
+  Lemma refine_under_bind_both {A B}
+  : forall c c' (x y : A -> Comp B),
+      refine c c' ->
+      (forall a, c ↝ a -> refine (x a) (y a))
+      ->
+      refine (a <- c; x a) (a <- c'; y a).
+  Proof. t_refine. Qed.
+
   Lemma refine_pick A (P : A -> Prop) c (H : forall x, c ↝ x -> P x)
   : @refine A ({x : A | P x })%comp
             c.

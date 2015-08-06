@@ -65,15 +65,6 @@ Definition DnsSpec : ADT DnsSig :=
 
 (* -------------------------------------------------------------------------------------- *)
 
-(* TODO [autorewrite with monad laws] breaks when this is moved into DnsLemmas *)
-
-(* implement the DNS record constraint check as code that counts the number of occurrences of
-the constraint being broken (refines the boolean x1 in AddData) *)
-
-
-
-(* -------------------------------------------------------------------------------------- *)
-
 Theorem DnsManual :
   FullySharpened DnsSpec.
 Proof.
@@ -85,9 +76,6 @@ Proof.
 
 start sharpening ADT. {
   hone method "Process". {
-    simpl in *.
-    simplify with monad laws.
-
     Ltac invert_For_once :=
       match goal with
       | [ H : computes_to (Query_For _) _ |- _ ] =>
@@ -96,55 +84,85 @@ start sharpening ADT. {
         inversion H as [H1 H2]; inversion H2; clear H2
       end.
 
-    Ltac refine_under_bind' :=
-      setoid_rewrite refine_under_bind; [ higher_order_reflexivity |
-                                          let H := fresh in
-                                          intros a H; try invert_For_once ].
+    (* Ltac refine_under_bind' := *)
+    (*   setoid_rewrite refine_under_bind; [ higher_order_reflexivity | *)
+    (*                                       let H := fresh in *)
+    (*                                       intros a H; try invert_For_once ]. *)
 
 Ltac refine_bind' :=
   apply refine_bind; [ idtac | unfold pointwise_relation; intros; higher_order_reflexivity ].
+  Locate refine_bind.
 
-    Check refine_under_bind.
-    refine_under_bind'.         (* this is where the for/where hyp comes from *)
-    (* (* if you get rid of this, then refine_bind does weird stuff *) *)
-    (* Check refine_bind. *)
-    (* setoid_rewrite refine_bind. *)
-    apply refine_bind.          (* refine the If/Then/Else part only *)
-    (* (* refine_bind'. *) *)
-    apply refine_If_Then_Else.
+    (* setoid_rewrite refine_If_Then_Else_Bind. *)
+    (* used in AddData; causes this one to fail due to rets *)
+  Check refine_under_bind_both.
 
-    (* need both bind and if_then_else for simplify to work *)
-    (* we need a stronger [simplify with monad laws] (inside bind)! i don't think we should need refine_bind and refine_if_then_else for most things *)
-    (* if i redid refine_check_one_longest_prefix_s with a different form, maybe we wouldn't need the refine_bind and I/T/E *)
-    (* ----- *)
+    simpl in *. simplify with monad laws.
 
     setoid_rewrite (@refine_find_upperbound DNSRRecord _ _).
     setoid_rewrite (@refine_decides_forall_In' _ _ _ _).
-    simplify with monad laws.
-    (* <-- needs to simplify inside <- and if/then/else *)
 
-    Check refine_check_one_longest_prefix_s.
-    setoid_rewrite refine_check_one_longest_prefix_s.
-    simplify with monad laws.
-    setoid_rewrite refine_if_If. (* doesn't rewrite inside <- and if/then/else *)
+    Print Ltac subst_all.
+    (* subst_all; apply refine_under_bind_both. higher_order_reflexivity. intros.  *)
+    (* not clear which case we should be working on, and if we use two different tactics, it's the same as having them split before... *)
+    (* i guess it's okay to try refinements on both cases! *)
+    (* subst_all; apply refine_under_bind_both. intros. *)
+    subst_all; apply refine_under_bind_both; [ higher_order_reflexivity | intros ]. 
+    (* if you don't want to work on the first case *)
+     (* setoid_rewrite refine_if_If. *)
+    (* does this terminate? takes 2 min and fails; might be causing the long runtimes *)
+    (* subst_all; *) apply refine_under_bind_both; [ idtac | intros; higher_order_reflexivity ].
+
     apply refine_If_Then_Else.
-    (* this might (erroneously?) apply here. it's usually harmless right? *)
-
     {
+      simplify with monad laws.
+      setoid_rewrite refine_check_one_longest_prefix_s.
+      simplify with monad laws.
+      setoid_rewrite refine_if_If.
       Check refine_check_one_longest_prefix_CNAME.
       setoid_rewrite refine_check_one_longest_prefix_CNAME.
       reflexivity.
 
-      (* H0 is the hypothesis from refine_under_bind? *)
-      inversion H0. inversion H2. clear H2.
+      (* TODO: bake in inversion in the finish tactic *)
+      inversion H. inversion H0. clear H0.
       - eapply (tuples_in_relation_satisfy_constraint_specific n). eauto.
       - eapply For_computes_to_In; eauto using IsPrefix_string_dec.
+      - eapply For_computes_to_In; eauto using IsPrefix_string_dec.
     }
-    { reflexivity. } (* extra case for refine_If_Then_Else *)
-    - eapply For_computes_to_In; eauto using IsPrefix_string_dec.
-    - reflexivity.
-    - unfold pointwise_relation; intros; higher_order_reflexivity. 
+   { reflexivity. }
 }
+(*
+    simpl in *. simplify with monad laws.
+
+    setoid_rewrite (@refine_find_upperbound DNSRRecord _ _).
+    setoid_rewrite (@refine_decides_forall_In' _ _ _ _).
+
+    Print Ltac subst_all.
+    subst_all; apply refine_under_bind; intros. (* skips to the end *)
+    (* setoid_rewrite refine_if_If. *)
+    (* does this terminate? takes 2 min and fails; might be causing the long runtimes *)
+    refine_bind'.
+
+    apply refine_If_Then_Else.
+    {
+      simplify with monad laws.
+      setoid_rewrite refine_check_one_longest_prefix_s.
+      simplify with monad laws.
+      setoid_rewrite refine_if_If.
+      Check refine_check_one_longest_prefix_CNAME.
+      setoid_rewrite refine_check_one_longest_prefix_CNAME.
+      reflexivity.
+
+      (* TODO: bake in inversion in the finish tactic *)
+      inversion H. inversion H0. clear H0.
+      - eapply (tuples_in_relation_satisfy_constraint_specific n). eauto.
+      - eapply For_computes_to_In; eauto using IsPrefix_string_dec.
+      - eapply For_computes_to_In; eauto using IsPrefix_string_dec.
+    }
+   { reflexivity. }
+*)
+
+
 (*    simplify with monad laws.
     (* Find the upperbound of the results. *)
     etransitivity.
@@ -217,10 +235,11 @@ Ltac refine_bind' :=
     unfold pointwise_relation; intros; higher_order_reflexivity.
     finish honing. finish honing. *)
 
+(* Print Ltac *)
   start_honing_QueryStructure'.
 
   hone method "AddData".
-  {
+  { 
     (* whatever data-integrity constraints there are on the relation, they get automatically added as checks/decision procedures on this (the mutator)  *)
     simpl in *.
     (* what is H? I guess an unimplemented something of the right type (or whose type is of the right type)? *)
@@ -239,6 +258,7 @@ Ltac refine_bind' :=
     (* end.                        (* replace ex var with name H again *) *)
     (* simpl in *. *)
     Check refine_count_constraint_broken.
+    (* refine_under_bind'. *)
     setoid_rewrite refine_count_constraint_broken.        (* refine x1 *)
     setoid_rewrite refine_count_constraint_broken'.        (* refine x2 *)
     Check refine_If_Then_Else_Bind.
@@ -252,23 +272,22 @@ Ltac refine_bind' :=
     apply refine_If_Then_Else.
     -
       simplify with monad laws.
-      apply refine_under_bind; intros.
-      (* apply refine_under_bind; intros. *)
+
+      subst_all; apply refine_under_bind_both; [reflexivity | intros].
+      simpl in *.
       setoid_rewrite refine_Count. simplify with monad laws.
-      apply refine_under_bind; intros.
+      (* subst H1. (* need a particular name *) *)
+      subst_all; apply refine_under_bind_both; [reflexivity | intros].
+      simpl in *.
       (* may loop forever *)
       (* ?8535 matches any rewrite rule *)
-      set_evars.
-      simpl in *.
-      progress (rewrite clear_nested_if by apply filter_nil_is_nil).
-      progress (rewrite clear_nested_if by apply filter_nil_is_nil).
-      progress (rewrite clear_nested_if by apply filter_nil_is_nil).
+      (* progress (rewrite clear_nested_if by apply filter_nil_is_nil). *)
+      (* progress (rewrite clear_nested_if by apply filter_nil_is_nil). *)
       Check refine_subcheck_to_filter.
       setoid_rewrite refine_subcheck_to_filter; eauto.
-      Check clear_nested_if.
       simplify with monad laws.
       Check clear_nested_if.
-      rewrite clear_nested_if by apply filter_nil_is_nil.
+      rewrite clear_nested_if by apply filter_nil_is_nil. (* rewrites in right place *)
       (* Need to replace if with If for implement_bag_methods to work. *)
       set_evars; setoid_rewrite refine_if_If.
       higher_order_1_reflexivity.

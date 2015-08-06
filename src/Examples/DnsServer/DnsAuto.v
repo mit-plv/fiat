@@ -166,7 +166,7 @@ fails when top fails -- if top can loop forever, then this will loop forever *)
         intros.
         assert (forall y, y + 0 = y) as tm. intros. omega.
         specialize (tm n).
-        apply_under_subgoal ltac:(rewrite tm) ltac:(rewrite tm; try reflexivity).
+        apply_under_subgoal ltac:(rewrite tm; try reflexivity) ltac:(try rewrite tm; try reflexivity).
       Qed.
 
       (* Simplify. Try all the rewrites until none work.
@@ -286,7 +286,7 @@ intended for use as setoid_rewrite_by *)
             setoid_rewrite refine_If_Then_Else_Bind |
             rewrite_if_head |
             setoid_rewrite refine_Count |
-            (* TODO: always makes progress *)
+            (* TODO: always makes progress; set_evars breaks future rewrites *)
             (* rewrite clear_nested_if by apply filter_nil_is_nil | *)
             do_by ltac:(setoid_rewrite refine_subcheck_to_filter) ltac:(eauto with typeclass_instances)
           ].
@@ -297,7 +297,7 @@ intended for use as setoid_rewrite_by *)
       Ltac drills_ad :=
         first [
             apply refine_If_Then_Else |
-            apply refine_under_bind; intros
+            apply refine_under_bind; intros (*; set_evars (* TODO for refine_under_bind'? *) *)
           ].
 
       Ltac anyDrill_ad :=
@@ -369,15 +369,6 @@ Ltac doAny srewrite_fn drills_fn finish_fn :=
         repeat_finish_fn.
   
 
-  (* should I expand one ltac to include the other? should i test each ltac on the other problem?
-compare to dns? write one big one to encompass both? what's a nice incremental way to do/test it? 
-write one that covers both head parts, then both setoid rewrites, then both conclusions/eautos?
-*)
-  (* match goal with...?  *)
-  (* do any of the setoid rewrites interact problematically with the goals of the other? *)
-
-  (* the two components here (start honing + GenerateIndexesForAll) are manual versions of
-     partial_master_plan' in AutoDB *)
 
   GenerateIndexesForAll         (* ? in IndexSelection, see GenerateIndexesFor *)
   (* specifies that you want to use the suffix index structure TODO *)
