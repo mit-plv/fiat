@@ -20,6 +20,7 @@ Section IndexedImpl.
   Lemma ComputationalSplitter'
   : FullySharpened (string_spec paren_expr_grammar).
   Proof.
+
     start honing parser using indexed representation.
 
     hone method "splits".
