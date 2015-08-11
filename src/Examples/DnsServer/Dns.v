@@ -75,23 +75,9 @@ Proof.
   unfold DnsSpec.
 
 start sharpening ADT. {
-  hone method "Process". {
-    Ltac invert_For_once :=
-      match goal with
-      | [ H : computes_to (Query_For _) _ |- _ ] =>
-        let H1 := fresh in
-        let H2 := fresh in
-        inversion H as [H1 H2]; inversion H2; clear H2
-      end.
-
-    (* Ltac refine_under_bind' := *)
-    (*   setoid_rewrite refine_under_bind; [ higher_order_reflexivity | *)
-    (*                                       let H := fresh in *)
-    (*                                       intros a H; try invert_For_once ]. *)
-
-Ltac refine_bind' :=
-  apply refine_bind; [ idtac | unfold pointwise_relation; intros; higher_order_reflexivity ].
-  Locate refine_bind.
+  hone method "Process". 
+(*
+{
     simpl in *. simplify with monad laws.
     
     setoid_rewrite (@refine_find_upperbound DNSRRecord _ _).
@@ -103,19 +89,15 @@ Ltac refine_bind' :=
     Check refine_under_bind_both.
 
     Print Ltac subst_all.
-    (* subst_all; apply refine_under_bind_both. higher_order_reflexivity. intros.  *)
-    (* not clear which case we should be working on, and if we use two different tactics, it's the same as having them split before... *)
-    (* i guess it's okay to try refinements on both cases! *)
     (* subst_all; apply refine_under_bind_both. intros. *)
     subst_all; apply refine_under_bind_both; [ higher_order_reflexivity | intros ]. 
-    (* if you don't want to work on the first case *)
      (* setoid_rewrite refine_if_If. *)
     (* does this terminate? takes 2 min and fails; might be causing the long runtimes *)
-    (* subst_all; *) apply refine_under_bind_both; [ idtac | intros; higher_order_reflexivity ].
+    (* subst_all; *)
+    (* apply refine_under_bind_both; [ idtac | intros; higher_order_reflexivity ]. *)
 
-    apply refine_If_Then_Else.
+    apply refine_If_Then_Else; simplify with monad laws. 
     {
-      simplify with monad laws.
       setoid_rewrite refine_check_one_longest_prefix_s.
       simplify with monad laws.
       setoid_rewrite refine_if_If;
@@ -129,8 +111,14 @@ Ltac refine_bind' :=
       - eapply For_computes_to_In; eauto using IsPrefix_string_dec.
     }
    { reflexivity. }
-}
-(*
+} *)
+
+(* hone method "Process". { *)
+(*     simpl in *. *)
+    
+(*   } *)
+
+{
     simpl in *. simplify with monad laws.
 
     setoid_rewrite (@refine_find_upperbound DNSRRecord _ _).
@@ -140,6 +128,18 @@ Ltac refine_bind' :=
     subst_all; apply refine_under_bind; intros. (* skips to the end *)
     (* setoid_rewrite refine_if_If. *)
     (* does this terminate? takes 2 min and fails; might be causing the long runtimes *)
+
+    Ltac invert_For_once :=
+      match goal with
+      | [ H : computes_to (Query_For _) _ |- _ ] =>
+        let H1 := fresh in
+        let H2 := fresh in
+        inversion H as [H1 H2]; inversion H2; clear H2
+      end.
+
+Ltac refine_bind' :=
+  apply refine_bind; [ idtac | unfold pointwise_relation; intros; higher_order_reflexivity ].
+
     refine_bind'.
 
     apply refine_If_Then_Else.
@@ -150,18 +150,27 @@ Ltac refine_bind' :=
       setoid_rewrite refine_if_If.
       Check refine_check_one_longest_prefix_CNAME.
       setoid_rewrite refine_check_one_longest_prefix_CNAME.
+      setoid_rewrite (@refine_filtered_list _ _ _ _).
+      setoid_rewrite refine_bind_unit.
+      setoid_rewrite refine_bind_unit.
       reflexivity.
 
-      (* TODO: bake in inversion in the finish tactic *)
       inversion H. inversion H0. clear H0.
       - eapply (tuples_in_relation_satisfy_constraint_specific n). eauto.
       - eapply For_computes_to_In; eauto using IsPrefix_string_dec.
       - eapply For_computes_to_In; eauto using IsPrefix_string_dec.
     }
    { reflexivity. }
+}
+(*
+hone method "Process". {
+  simpl in *.
+  subst_all.
+  apply refine_under_bind_both; [reflexivity | intros].  
+
+Time auto. (* Cxb + finished transaction *)
+}
 *)
-
-
 (*    simplify with monad laws.
     (* Find the upperbound of the results. *)
     etransitivity.
@@ -260,25 +269,10 @@ Ltac refine_bind' :=
       setoid_rewrite refine_subcheck_to_filter; eauto.
       simplify with monad laws.
       Check clear_nested_if.
-      unfold dec in *. simpl in *.
+      (* unfold dec in *. simpl in *. *)
       (* Set Printing All. auto. *)
       Check clear_nested_if.
 
-  Lemma eq_If_if {A}
-  : forall (c : bool) (t e : Comp A),
-      If c Then t Else e = if c then t else e.
-  Proof.
-    intros.
-    reflexivity.
-  Qed.
-
-Lemma clear_nested_If :
-  forall {A : Type} (c c' : bool) (t e e' : A),
-    (c = true -> c' = true) ->
-    (If c Then If c' Then t Else e Else e') = (If c Then t Else e').
-Proof.
-  intros. apply clear_nested_if. auto.
-Qed. 
       set_evars; rewrite clear_nested_if by apply filter_nil_is_nil. (* rewrites in right place *)
       (* Need to replace if with If for implement_bag_methods to work. *)
       set_evars; setoid_rewrite refine_if_If.
@@ -325,8 +319,8 @@ Qed.
       eauto with typeclass_instances.
     } 
     { reflexivity. } 
-} *)
-
+}
+*)
   (*     (* whatever data-integrity constraints there are on the relation, they get automatically added as checks/decision procedures on this (the mutator)  *)
     simpl in *.
     setoid_rewrite refine_count_constraint_broken.        (* refine x1 *)
@@ -385,7 +379,7 @@ Qed.
   (* how much of this can be factored out into the other hone? *)
   (* TODO: there seems to be refinement mixed with index choosing. need a clean separation *)
     (* hone method "AddData". *) {
-    etransitivity.
+    setoid_rewrite Bind_refine_If_Then_Else.
     setoid_rewrite refine_If_Then_Else_Bind.
     etransitivity.
     - apply refine_If_Then_Else.
@@ -416,8 +410,7 @@ Qed.
         setoid_rewrite refine_if_If.
         implement_Insert_branches.
         reflexivity.
-    - reflexivity.              (* seems fully deterministic here *)
-    - finish honing.
+    - higher_order_reflexivity.              (* seems fully deterministic here *)
   }
   (* hone method "Process". *) {
     simplify with monad laws.
@@ -432,10 +425,10 @@ Qed.
     simpl.
     setoid_rewrite (refine_pick_val _ H).
     simplify with monad laws.
-    setoid_rewrite (@refine_filtered_list _ _ _ _).
     finish honing.
   }
   pose_headings_all.
+  (* TODO: rewrite with unit in automation, and move the filter rewrite *)
   FullySharpenQueryStructure DnsSchema Index.
 }
 

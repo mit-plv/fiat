@@ -103,24 +103,66 @@ Definition DnsSpec : ADT DnsSig :=
 In the other subgoals, try doing top again, then tac, then cont. Keep progress made in any of the subgoals (i.e. don't fail the whole thing because a sub-subgoal failed, even though progress was made in a subgoal). 
 
 fails when top fails -- if top can loop forever, then this will loop forever *)
-      (* TODO factor out (try cont ()) *)
       Ltac progress_subgoal top tac cont :=
-        first [
-          (* progresses on all subgoals no matter the number *)
-            top; progress tac; try (cont ()) |
-          (* progresses on 1 of 2 *)
-            top; [progress tac; try (cont ()) | try (cont ())] |
-            top; [try (cont ()) | progress tac; try (cont ())]
+        (* progresses on all subgoals no matter the number *)
+        (* subgoals: even if everything fails in the other subgoal, the tactic will succeed if progress is made in the first subgoal, because the failure will be wrapped in a [try] *)
+        top; (tac; try (cont ()) || (try (cont ()))).
 
-          (* progresses on 2 of 3 *)
-          (* top; [progress tac; try (cont ()) | progress tac; try (cont ()) | try (cont ())] | *)
-          (* top; [progress tac; try (cont ()) | try (cont ()) | progress tac; try (cont ())] | *)
-          (* top; [try (cont ()) | progress tac; try (cont ()) | progress tac; try (cont ())] | *)
-          (* progresses on 1 of 3 *)
-          (* top; [progress tac; try (cont ()) | try (cont ()) | try (cont ())] | *)
-          (* top; [try (cont ()) | progress tac; try (cont ()) | try (cont ())] | *)
-          (* top; [try (cont ()) | try (cont ()) | progress tac; try (cont ())] | *)
-          ].
+        (* first [ *)
+        (*   (* progresses on all subgoals no matter the number *) *)
+        (*     top; (tac; try (cont ()) || (try (cont ()))) | *)
+
+        (*   (* progresses on 1 of 2 *) *)
+        (*     top; [(tac; try (cont ()) || (try (cont ()))) *)
+        (*          | try (cont ())] | *)
+
+        (*     top; [try (cont ()) | *)
+        (*           (tac; try (cont ()) || (try (cont ())))] *)
+
+        (*   (* progresses on 2 of 3 *) (* removed *) *)
+        (*   (* progresses on 1 of 3 *) (* removed *) *)
+        (*   ]. *)
+
+      (* 
+Succeeds: 
+tac
+top tac
+top top tac
+top* tac
+tac top* tac
+
+???:
+tac top? should keep progress up to tac
+
+top tac (top fails): OK
+
+tac top (top fails): keep progress up to tac
+tac top (tac fails): keep progress up to tac, should try top; tac
+top tac top (top fails): keep progress up to tac
+top tac top (tac fails): keep progress up to tac, try top again
+
+also, multiple subgoals
+
+Fails:
+top (top fail)
+top top (top fail)
+top top top (top fail)
+top*
+
+what about:
+top top tac top top tac?
+
+all chains must end with tac, not top (cause then there'd be no progress made under it)
+
+- drills iff there exists progress to be made under some number of drills
+- fails iff tac never works on any subgoal
+- if tac ever progresses on >= 1 subgoal, success
+- fails when top fails
+- keeps progress made on any subgoal (i.e. success)
+
+TODO: think about the structure of the tactics i'm passing it
+
+ *)
 
       (* ltac is call-by-value, so wrap the cont in a function *)
       Ltac cont_fn top tac'' x :=
@@ -270,6 +312,8 @@ Ltac srewrite_each_all :=
             setoid_rewrite refine_check_one_longest_prefix_s |
             setoid_rewrite refine_if_If |
             setoid_rewrite refine_check_one_longest_prefix_CNAME |
+            setoid_rewrite (@refine_filtered_list _ _ _ _) |
+            setoid_rewrite refine_bind_unit |
             (* AddData *)
             (* Why does adding these rewrites prevent other rewrites? *)
             (* Should these be drills? *)
@@ -307,8 +351,11 @@ Ltac doAny srewrite_fn drills_fn finish_fn :=
   let repeat_srewrite_fn := repeat_and_simplify srewrite_fn in
   let anyDrill_fn := do_and_simplify drills_fn in
   let repeat_finish_fn := repeat_and_simplify finish_fn in
+  try repeat_srewrite_fn; 
         apply_under_subgoal
-          ltac:(try repeat_srewrite_fn; anyDrill_fn) ltac:(repeat_srewrite_fn; try anyDrill_fn);
+          (* ltac:(try repeat_srewrite_fn; anyDrill_fn) ltac:(repeat_srewrite_fn; try anyDrill_fn); *)
+          (* ltac:(try repeat_srewrite_fn; anyDrill_fn) ltac:(repeat_srewrite_fn); *)
+          ltac:(anyDrill_fn) ltac:(repeat_srewrite_fn);
         repeat_finish_fn.
 
 Ltac doAnyAll := doAny srewrite_each_all drills_each_all finish_each_all.
@@ -327,25 +374,69 @@ Proof. unfold DnsSpec.
 start sharpening ADT. {
   hone method "Process". {
     (* doProcess_withLoop. *)
-    doAnyAll.
-  (* TODO: test doAnyAll here after making the AddData changes *)
-    (* is it failing because of the two drills in a row? *)
-    simpl in *.
-    simplify with monad laws.
-    rep_rewrite.
-    do_drill.
-    - rep_finish.
-    - (* progress rep_rewrite. *)
-      do_drill.
-      progress rep_rewrite.
-      rep_finish.
-      rep_finish.
-      rep_finish.
-      rep_finish.
-      rep_finish.
+    Time doAnyAll. (* 1:20 minutes *)
+  (* 241 seconds = 4 minutes *)
 
-    (* doAnyAll. *)
+    (* is it failing because of the two drills in a row? *)
+    (* simpl in *. *)
+    (* simplify with monad laws. *)
+    (* rep_rewrite. *)
+    (* do_drill. *)
+    (* - rep_finish. *)
+    (* - (* progress rep_rewrite. *) *)
+    (*   do_drill. *)
+    (*   progress rep_rewrite; rep_finish. *)
 }
+
+  (* hack to fix Process's ret statement for now *)
+  (* need to pull out the three [ret (r_n, a)] into p <- ret a; ret (r_n, p) *)
+  hone method "Process". {
+    simpl in *.
+    subst_all.
+    apply refine_under_bind_both; [reflexivity | intros].
+
+    (* works with an extra bind *)
+    Lemma refine_If_Then_Else_same
+      : forall (A B C : Type) i (t : Comp A) (e : Comp C) (b : A -> A) (c : C -> A) (r_n : B),
+        refine
+          (If i Then (a <- t;
+                      ret (r_n, b a))
+              Else (a' <- e;
+                    ret (r_n, c a'))) 
+          (res <- If i Then (a <- t;
+                             ret (b a))
+               Else (a' <- e;
+                     ret (c a'));
+           ret (r_n, res))
+    .
+    Proof.
+      intros; destruct i; simpl;
+      autosetoid_rewrite with refine_monad; reflexivity.
+    Qed.
+
+    Lemma refine_If_Then_Else_same'
+      : forall (A B : Type) i (t : Comp A) (b : A -> A) (c : A) (r_n : B),
+        refine
+          (If i Then (a <- t;
+                      ret (r_n, b a))
+              Else (
+                ret (r_n, c))) 
+          (res <- If i Then (a <- t;
+                             ret (b a))
+               Else (
+                 ret (c));
+           ret (r_n, res))
+    .
+    Proof.
+      intros; destruct i; simpl; 
+      autosetoid_rewrite with refine_monad; reflexivity.
+    Qed.
+
+    set_evars. simpl in *. 
+    rewrite refine_If_Then_Else_same'.
+    rewrite refine_If_Then_Else_same'.
+    finish honing.
+  }
 
   start_honing_QueryStructure'.
 
@@ -368,7 +459,8 @@ start sharpening ADT. {
     
     (* may have to drill *multiple times* to make progress, not fail after one failed drill. does it do that? *)
     
-    doAnyAll. (* 5:20 min *)
+    Time doAnyAll.
+  (* 202 seconds = 3.5 minutes *)
 }
 
   GenerateIndexesForAll         (* ? in IndexSelection, see GenerateIndexesFor *)
@@ -395,10 +487,13 @@ start sharpening ADT. {
   (* how much of this can be factored out into the other hone? *)
   (* TODO: there seems to be refinement mixed with index choosing. need a clean separation *)
     (* hone method "AddData". *) {
-    etransitivity.
+
+    (* etransitivity. *)
+    setoid_rewrite Bind_refine_If_Then_Else.
     setoid_rewrite refine_If_Then_Else_Bind.
     etransitivity.
-    - apply refine_If_Then_Else.
+    -
+      apply refine_If_Then_Else.
       + simplify with monad laws.
         implement_Query
           ltac:(CombineCase5 PrefixIndexUse EqIndexUse)
@@ -407,7 +502,8 @@ start sharpening ADT. {
                                ltac:(CombineCase7 PrefixIndexUse_dep EqIndexUse_dep)
                         ltac:(CombineCase11 createEarlyPrefixTerm_dep createEarlyEqualityTerm_dep)
                         ltac:(CombineCase8 createLastPrefixTerm_dep createLastEqualityTerm_dep).
-        simplify with monad laws.
+        (* simplify with monad laws. *)
+        idtac.
         rewrite (@refineEquiv_swap_bind nat).
         (* setoid_rewrite refine_if_If. *)
         implement_Insert_branches. (* this removes the nat choosing, so I guess the nondeterminism is okay if it involves indexed. the matching involves some of UnConstrFreshIdx *)
@@ -423,11 +519,11 @@ start sharpening ADT. {
                                              ltac:(CombineCase8 createLastPrefixTerm_dep createLastEqualityTerm_dep).
         simplify with monad laws.
         rewrite (@refineEquiv_swap_bind nat).
-        setoid_rewrite refine_if_If.
+        (* setoid_rewrite refine_if_If. *)
         implement_Insert_branches.
         reflexivity.
-    - reflexivity.              (* seems fully deterministic here *)
-    - finish honing.
+    - higher_order_reflexivity.              (* seems fully deterministic here *)
+    (* - finish honing. *)
   }
   (* hone method "Process". *) {
     simplify with monad laws.
@@ -445,7 +541,7 @@ start sharpening ADT. {
     setoid_rewrite (@refine_filtered_list _ _ _ _).
     finish honing.
   }
-  pose_headings_all.
+  pose_headings_all. 
   FullySharpenQueryStructure DnsSchema Index.
 }                               (* ending "start sharpening ADT" *)
 
