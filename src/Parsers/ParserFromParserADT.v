@@ -12,7 +12,7 @@ Require Import Fiat.Parsers.StringLike.String.
 Require Import Fiat.Parsers.BooleanRecognizerEquality.
 Require Import Fiat.ADTRefinement.Core.
 Require Import Fiat.Common.BoundedLookup.
-Require Import  Fiat.ADTNotation.BuildADTSig.
+Require Import Fiat.ADTNotation.BuildADTSig.
 
 Set Implicit Arguments.
 
