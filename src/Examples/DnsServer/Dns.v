@@ -92,15 +92,15 @@ start sharpening ADT. {
 Ltac refine_bind' :=
   apply refine_bind; [ idtac | unfold pointwise_relation; intros; higher_order_reflexivity ].
   Locate refine_bind.
-
-    (* setoid_rewrite refine_If_Then_Else_Bind. *)
-    (* used in AddData; causes this one to fail due to rets *)
-  Check refine_under_bind_both.
-
     simpl in *. simplify with monad laws.
-
+    
     setoid_rewrite (@refine_find_upperbound DNSRRecord _ _).
     setoid_rewrite (@refine_decides_forall_In' _ _ _ _).
+
+    (* TODO *)
+    setoid_rewrite refine_If_Then_Else_Bind.
+    (* used in AddData; causes this one to fail due to rets *)
+    Check refine_under_bind_both.
 
     Print Ltac subst_all.
     (* subst_all; apply refine_under_bind_both. higher_order_reflexivity. intros.  *)
@@ -118,8 +118,7 @@ Ltac refine_bind' :=
       simplify with monad laws.
       setoid_rewrite refine_check_one_longest_prefix_s.
       simplify with monad laws.
-      setoid_rewrite refine_if_If.
-      Check refine_check_one_longest_prefix_CNAME.
+      setoid_rewrite refine_if_If;
       setoid_rewrite refine_check_one_longest_prefix_CNAME.
       reflexivity.
 
@@ -242,62 +241,125 @@ Ltac refine_bind' :=
   { 
     (* whatever data-integrity constraints there are on the relation, they get automatically added as checks/decision procedures on this (the mutator)  *)
     simpl in *.
-    (* what is H? I guess an unimplemented something of the right type (or whose type is of the right type)? *)
-
-    (* refine (AddData body) (H r_n n) <-- what is that? *)
-    (* H := existential variable of the correct (?) type,
-       r_n : UnConstrQueryStructure DnsSchema, n : DNSRRecord*)
-    (* x1 = check constraint between n (the record) and every other tuple  *)
-    (* x2 = check constraint between every other tuple and n (the record) *)
-    (* differs in the final step ((_)!sTYPE <> CNAME) *)
-
-    (* redundant *)
-    (* subst_all. *)
-    (* match goal with *)
-    (*   |- refine _ (?H _ _) => let id := fresh in set (id := H) in * *)
-    (* end.                        (* replace ex var with name H again *) *)
-    (* simpl in *. *)
-    Check refine_count_constraint_broken.
-    (* refine_under_bind'. *)
     setoid_rewrite refine_count_constraint_broken.        (* refine x1 *)
     setoid_rewrite refine_count_constraint_broken'.        (* refine x2 *)
+    setoid_rewrite refine_Count.
+   
     Check refine_If_Then_Else_Bind.
     setoid_rewrite refine_If_Then_Else_Bind. simpl in *.
-    (* can this be removed?? *)
-    (* body after x1 gets pasted inside again *)
+    (* need to do this so we can use refine_subcheck_to_filter on BOTH the [For]s (so they're sequential) *)
 
-    Check Bind_refine_If_Then_Else. (* x2 replaced with a *)
-    (* turns the entire thing into if/then/else toplevel *)
-    setoid_rewrite Bind_refine_If_Then_Else.
-    apply refine_If_Then_Else.
-    -
-      simplify with monad laws.
-
+    subst_all; apply refine_under_bind_both; [reflexivity | intros].
+    apply refine_If_Then_Else; simplify with monad laws.
+    {      
+      (* subst_all; apply refine_under_bind_both; [idtac | intros]. *)
       subst_all; apply refine_under_bind_both; [reflexivity | intros].
-      simpl in *.
-      setoid_rewrite refine_Count. simplify with monad laws.
-      (* subst H1. (* need a particular name *) *)
-      subst_all; apply refine_under_bind_both; [reflexivity | intros].
-      simpl in *.
-      (* may loop forever *)
       (* ?8535 matches any rewrite rule *)
       (* progress (rewrite clear_nested_if by apply filter_nil_is_nil). *)
       (* progress (rewrite clear_nested_if by apply filter_nil_is_nil). *)
-      Check refine_subcheck_to_filter.
+      setoid_rewrite refine_subcheck_to_filter; eauto.
+      simplify with monad laws.
+      Check clear_nested_if.
+      unfold dec in *. simpl in *.
+      (* Set Printing All. auto. *)
+      Check clear_nested_if.
+
+  Lemma eq_If_if {A}
+  : forall (c : bool) (t e : Comp A),
+      If c Then t Else e = if c then t else e.
+  Proof.
+    intros.
+    reflexivity.
+  Qed.
+
+Lemma clear_nested_If :
+  forall {A : Type} (c c' : bool) (t e e' : A),
+    (c = true -> c' = true) ->
+    (If c Then If c' Then t Else e Else e') = (If c Then t Else e').
+Proof.
+  intros. apply clear_nested_if. auto.
+Qed. 
+      set_evars; rewrite clear_nested_if by apply filter_nil_is_nil. (* rewrites in right place *)
+      (* Need to replace if with If for implement_bag_methods to work. *)
+      set_evars; setoid_rewrite refine_if_If.
+      simpl in *.
+      higher_order_1_reflexivity.
+      (* clears goal, but H1 is still in the context, and it still has the
+         For/Where/Return ~> _ unimplemented *)
+      eauto with typeclass_instances.
+    } 
+    { reflexivity. }
+  } 
+
+(*
+{
+      simpl in *.
+    setoid_rewrite refine_count_constraint_broken.        (* refine x1 *)
+    setoid_rewrite refine_count_constraint_broken'.        (* refine x2 *)
+    setoid_rewrite refine_Count.
+
+    Check refine_If_Then_Else_Bind.
+    setoid_rewrite refine_If_Then_Else_Bind. simpl in *.
+
+    Check Bind_refine_If_Then_Else.
+    (* turns the entire thing into if/then/else toplevel *)
+    subst_all; apply refine_under_bind_both; [reflexivity | intros].
+    (* simplify with monad laws. *)
+    apply refine_If_Then_Else; simplify with monad laws.
+    {
+      subst_all; apply refine_under_bind_both; [reflexivity | intros].
+      (* ?8535 matches any rewrite rule *)
+      subst_all.
+      (* progress (rewrite clear_nested_if by apply filter_nil_is_nil). *)
+      (* progress (rewrite clear_nested_if by apply filter_nil_is_nil). *)
       setoid_rewrite refine_subcheck_to_filter; eauto.
       simplify with monad laws.
       Check clear_nested_if.
       rewrite clear_nested_if by apply filter_nil_is_nil. (* rewrites in right place *)
       (* Need to replace if with If for implement_bag_methods to work. *)
       set_evars; setoid_rewrite refine_if_If.
+      simpl in *.
       higher_order_1_reflexivity.
       (* clears goal, but H1 is still in the context, and it still has the
          For/Where/Return ~> _ unimplemented *)
       eauto with typeclass_instances.
-    - simplify with monad laws.
-      setoid_rewrite refine_Count. simplify with monad laws.
-      reflexivity.
-  } 
+    } 
+    { reflexivity. } 
+} *)
+
+  (*     (* whatever data-integrity constraints there are on the relation, they get automatically added as checks/decision procedures on this (the mutator)  *)
+    simpl in *.
+    setoid_rewrite refine_count_constraint_broken.        (* refine x1 *)
+    setoid_rewrite refine_count_constraint_broken'.        (* refine x2 *)
+    setoid_rewrite refine_Count.
+
+    Check refine_If_Then_Else_Bind.
+    setoid_rewrite refine_If_Then_Else_Bind. simpl in *.
+
+    Check Bind_refine_If_Then_Else.
+    (* turns the entire thing into if/then/else toplevel *)
+    setoid_rewrite Bind_refine_If_Then_Else.
+    apply refine_If_Then_Else; simplify with monad laws.
+    -
+      subst_all; apply refine_under_bind_both; [reflexivity | intros].
+      subst_all; apply refine_under_bind_both; [reflexivity | intros].
+      (* ?8535 matches any rewrite rule *)
+      (* progress (rewrite clear_nested_if by apply filter_nil_is_nil). *)
+      (* progress (rewrite clear_nested_if by apply filter_nil_is_nil). *)
+      setoid_rewrite refine_subcheck_to_filter; eauto.
+      simplify with monad laws.
+      Check clear_nested_if.
+      rewrite clear_nested_if by apply filter_nil_is_nil. (* rewrites in right place *)
+      (* Need to replace if with If for implement_bag_methods to work. *)
+      set_evars; setoid_rewrite refine_if_If.
+      simpl in *.
+      higher_order_1_reflexivity.
+      (* clears goal, but H1 is still in the context, and it still has the
+         For/Where/Return ~> _ unimplemented *)
+      eauto with typeclass_instances.
+
+    - reflexivity. *)
+
 
   GenerateIndexesForAll         (* ? in IndexSelection, see GenerateIndexesFor *)
   (* specifies that you want to use the suffix index structure TODO *)

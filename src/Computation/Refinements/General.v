@@ -284,6 +284,17 @@ and gives you the computational hypothesis for the second *)
     reflexivity.
   Qed.
 
+(* Nontermination with above lemma? *)
+(*
+  Lemma refine_If_if {A}
+  : forall (c : bool) (t e : Comp A),
+      refine (If c Then t Else e)
+             (if c then t else e).
+  Proof.
+    reflexivity.
+  Qed.
+*)
+
   Lemma refine_if_andb {A}
   : forall (i i' : bool)
            (t e : A),
