@@ -114,7 +114,9 @@ EXAMPLES_UNMADE_VO := \
 	src/Examples/CacheADT/CacheSpec.vo \
 	src/Examples/CacheADT/CacheSig.vo \
 	src/Examples/CacheADT/CacheRefinements.vo \
-	src/Examples/CacheADT/CacheADT.vo
+	src/Examples/CacheADT/CacheADT.vo \
+	src/Examples/QueryStructure/FriendFinder.vo \
+	src/Examples/QueryStructure/CodeLookup.vo
 
 WATER_TANK_EXTRACT_VO := src/Examples/Ics/WaterTankExtract.vo
 WATER_TANK_EXTRACT_ML := src/Examples/Ics/WaterTank.ml
