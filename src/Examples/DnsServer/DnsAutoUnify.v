@@ -15,8 +15,8 @@ Require Import Fiat.QueryStructure.Automation.AutoDB
 
 Require Import Fiat.Examples.DnsServer.packet
         Fiat.Examples.DnsServer.DnsSchema
-        Fiat.Examples.DnsServer.DnsLemmas.
-        (* Fiat.Examples.DnsServer.DnsAutomation. *) (* TODO put back in *)
+        Fiat.Examples.DnsServer.DnsLemmas
+        Fiat.Examples.DnsServer.DnsAutomation.
 
 Definition DnsSig : ADTSig :=
   ADTsignature {
@@ -70,302 +70,6 @@ Definition DnsSpec : ADT DnsSig :=
           }}}.
 
 (* -------------------------------------------------------------------------------------- *)
-(* Process automation moved down *)
-
-    Ltac invert_For_once :=
-      match goal with
-      | [ H : computes_to (Query_For _) _ |- _ ] =>
-        let H1 := fresh in
-        let H2 := fresh in
-        inversion H as [H1 H2]; inversion H2; clear H2
-      end.
-
-      Ltac refine_under_bind' :=
-        setoid_rewrite refine_under_bind; [ higher_order_reflexivity |
-                                            let H := fresh in
-                                            intros a H; try invert_For_once ].
-
-      Ltac refine_bind' :=
-        apply refine_bind; [ idtac | unfold pointwise_relation; intros; higher_order_reflexivity ].
-
-      (* tac is of form [first [ x1 | ... | xn]] *)
-      Ltac repeat_and_simplify tac :=
-        simpl in *;
-        try simplify with monad laws;
-        repeat (
-            try tac;
-            try simpl in *;
-            try simplify with monad laws
-          ).
-
-      (* For a tactic [top] that generates 1-3 subgoals, succeed only if tac (applied to each subgoal) EVENTUALLY makes progress [i.e. might need to drill twice in a row, the tac will work] on at least one of them. Then try cont again, keeping additional drilling/applying tac if it continues to make progress, until either tac fails everywhere or top fails.
-
-In the other subgoals, try doing top again, then tac, then cont. Keep progress made in any of the subgoals (i.e. don't fail the whole thing because a sub-subgoal failed, even though progress was made in a subgoal). 
-
-fails when top fails -- if top can loop forever, then this will loop forever *)
-      Ltac progress_subgoal top tac cont :=
-        (* progresses on all subgoals no matter the number *)
-        (* subgoals: even if everything fails in the other subgoal, the tactic will succeed if progress is made in the first subgoal, because the failure will be wrapped in a [try] *)
-        top; (tac; try (cont ()) || (try (cont ()))).
-
-        (* first [ *)
-        (*   (* progresses on all subgoals no matter the number *) *)
-        (*     top; (tac; try (cont ()) || (try (cont ()))) | *)
-
-        (*   (* progresses on 1 of 2 *) *)
-        (*     top; [(tac; try (cont ()) || (try (cont ()))) *)
-        (*          | try (cont ())] | *)
-
-        (*     top; [try (cont ()) | *)
-        (*           (tac; try (cont ()) || (try (cont ())))] *)
-
-        (*   (* progresses on 2 of 3 *) (* removed *) *)
-        (*   (* progresses on 1 of 3 *) (* removed *) *)
-        (*   ]. *)
-
-      (* 
-Succeeds: 
-tac
-top tac
-top top tac
-top* tac
-tac top* tac
-
-???:
-tac top? should keep progress up to tac
-
-top tac (top fails): OK
-
-tac top (top fails): keep progress up to tac
-tac top (tac fails): keep progress up to tac, should try top; tac
-top tac top (top fails): keep progress up to tac
-top tac top (tac fails): keep progress up to tac, try top again
-
-also, multiple subgoals
-
-Fails:
-top (top fail)
-top top (top fail)
-top top top (top fail)
-top*
-
-what about:
-top top tac top top tac?
-
-all chains must end with tac, not top (cause then there'd be no progress made under it)
-
-- drills iff there exists progress to be made under some number of drills
-- fails iff tac never works on any subgoal
-- if tac ever progresses on >= 1 subgoal, success
-- fails when top fails
-- keeps progress made on any subgoal (i.e. success)
-
-TODO: think about the structure of the tactics i'm passing it
-
- *)
-
-      (* ltac is call-by-value, so wrap the cont in a function *)
-      Ltac cont_fn top tac'' x :=
-        apply_under_subgoal top tac'' with
-
-      (* mutually recursive with progress_subgoal *)
-      (* calls top on each subgoal generated, which may generate more subgoals *)
-      (* fails when top fails in progress_subgoals *)
-      apply_under_subgoal top tac'' :=
-        progress_subgoal top tac'' ltac:(cont_fn top tac'').
-
-      Theorem testthm : forall n, n = n + 0 + 0 + 0 + 0 + 0 + 0 + 0 + 0.
-      Proof.
-        intros.
-        assert (forall y, y + 0 = y) as tm. intros. omega.
-        specialize (tm n).
-        apply_under_subgoal ltac:(rewrite tm) ltac:(rewrite tm; try reflexivity).
-      Qed.
-
-      (* Simplify. Try all the rewrites until none work.
-         If a rewrite works under a top, drill under the top and try all the rewrites until none work.
-           (Do NOT drill down if no rewrite works. so: Try a drill, if failure for all rewrites, then backtrack, try a different trill. Difficult: there are multiple tops. )
-         Keep doing this until none of the rewrites work at any layer of tops.
-         Then, do the finishing tactics (eauto, reflexivity, various small lemmas). 
-         (These should all be done on all subgoals, keeping all progress made on each one.) *)
-
-      Ltac srewrite_each :=
-        first
-          [
-            setoid_rewrite (@refine_find_upperbound DNSRRecord _ _) |
-            setoid_rewrite (@refine_decides_forall_In' _ _ _ _) |
-            setoid_rewrite refine_check_one_longest_prefix_s |
-            setoid_rewrite refine_if_If |
-            setoid_rewrite refine_check_one_longest_prefix_CNAME
-          ].
-
-      Ltac finish_each :=
-        first
-          [
-            (eapply tuples_in_relation_satisfy_constraint_specific; eauto) |
-            solve [eapply For_computes_to_In; eauto using IsPrefix_string_dec] |
-            reflexivity |
-            higher_order_reflexivity |
-            invert_For_once (* should this be outside the [first]? *)
-          ].
-
-      Ltac repeat_srewrite :=
-        repeat_and_simplify srewrite_each.
-
-      Ltac finishProcess :=
-        repeat_and_simplify finish_each.
-      (* --- *)
-
-      Ltac drills :=
-        first [
-            subst_all; apply refine_under_bind_both; try intros | (* generates 2 cases to refine *)
-            apply refine_If_Then_Else
-          ].
-
-      Ltac do_and_simplify tac :=
-        tac; (* no repeat *)
-        simpl in *;
-        try simplify with monad laws.
-
-      Ltac anyDrill :=
-        do_and_simplify drills.
-
-      Ltac doProcess_withLoop :=
-        apply_under_subgoal ltac:(try repeat_srewrite; anyDrill) ltac:(repeat_srewrite; try anyDrill);
-        finishProcess.
-
-(* -------------------- *)
-
-(* AddData automation *)
-
-  Lemma eq_If_if {A}
-  : forall (c : bool) (t e : Comp A),
-      If c Then t Else e = if c then t else e.
-  Proof. intros. reflexivity. Qed.
-
-    (* don't rewrite inner If/Then/Else expressions *)
-    (* this can be made simpler by removing context[] to only do head matches *)
-    Ltac rewrite_if_head :=
-      match goal with
-      | [ |- context[ (refine (Bind _ (fun n => If_Then_Else _ _ _ )) _) ] ] =>
-        setoid_rewrite Bind_refine_If_Then_Else
-      end. 
-
-      (* rewrite under bind the first time you can, then stop. otherwise fail *)
-      Ltac tac_under_bind tac :=
-        first [ tac |
-                (apply refine_under_bind; intros); tac_under_bind tac ].
-
-      (* only succeed if all subgoals can be solved with tac. 
-intended for use as setoid_rewrite_by *)
-      Ltac do_by tic tac :=
-        tic; [ | solve [tac] | .. | solve [tac] ].
-
-      Ltac srewrite_each_ad :=
-        first [
-            setoid_rewrite refine_count_constraint_broken |
-            setoid_rewrite refine_count_constraint_broken' |
-            setoid_rewrite refine_If_Then_Else_Bind |
-            setoid_rewrite refine_Count |
-            do_by
-              ltac:(setoid_rewrite refine_subcheck_to_filter) ltac:(eauto with typeclass_instances) |
-            try (set_evars; rewrite eq_If_if);
-              set_evars; rewrite clear_nested_if by apply filter_nil_is_nil
-          ].
-
-      Ltac repeat_srewrite_ad :=
-        repeat_and_simplify srewrite_each_ad.
-
-      Ltac drills_ad :=
-        first [
-            subst_all; apply refine_under_bind_both; try intros |
-            apply refine_If_Then_Else
-          ].
-
-      Ltac anyDrill_ad :=
-        do_and_simplify drills_ad.
-
-      Ltac finish_each_ad :=
-        first [
-            reflexivity |
-            higher_order_reflexivity |
-            eauto
-          ].
-
-      Ltac finishAddData :=
-        repeat_and_simplify finish_each_ad.
-
-      Ltac doAddData_withLoop :=
-        apply_under_subgoal
-          ltac:(try repeat_srewrite_ad; anyDrill_ad) ltac:(repeat_srewrite_ad; try anyDrill_ad);
-        finishAddData.
-
-(* -------------------- *)
-(* Unified automation *)
-      (* TODO: changes automatically when the other two change *)
-
-Ltac srewrite_each_all :=
-    first [
-           (* Process *)
-            setoid_rewrite (@refine_find_upperbound DNSRRecord _ _) |
-            setoid_rewrite (@refine_decides_forall_In' _ _ _ _) |
-            setoid_rewrite refine_check_one_longest_prefix_s |
-            setoid_rewrite refine_if_If |
-            setoid_rewrite refine_check_one_longest_prefix_CNAME |
-            setoid_rewrite (@refine_filtered_list _ _ _ _) |
-            setoid_rewrite refine_bind_unit |
-            (* AddData *)
-            (* Why does adding these rewrites prevent other rewrites? *)
-            (* Should these be drills? *)
-            (* TODO messes up Process (only this one) *)
-            setoid_rewrite refine_If_Then_Else_Bind |
-            setoid_rewrite refine_count_constraint_broken |
-            setoid_rewrite refine_count_constraint_broken' |
-            setoid_rewrite refine_Count |
-            do_by
-              ltac:(setoid_rewrite refine_subcheck_to_filter) ltac:(eauto with typeclass_instances) | 
-            (* set_evars needed because otherwise it rewrites forever in an evar *)
-            (* hacky way to revert outer If to if *)
-            try (set_evars; rewrite eq_If_if);
-              set_evars; rewrite clear_nested_if by apply filter_nil_is_nil
-           (* set_evars; setoid_rewrite refine_if_If *) (* can be done later *)
-          ].
-
-Ltac drills_each_all :=
-  first [
-      subst_all; apply refine_under_bind_both; try intros |
-      apply refine_If_Then_Else 
-    ].
-
-Ltac finish_each_all :=
-  first [
-      (eapply tuples_in_relation_satisfy_constraint_specific; eauto) |
-      solve [eapply For_computes_to_In; eauto using IsPrefix_string_dec] |
-      reflexivity |
-      higher_order_reflexivity |
-      eauto |
-      invert_For_once
-    ].
-
-Ltac doAny srewrite_fn drills_fn finish_fn :=
-  let repeat_srewrite_fn := repeat_and_simplify srewrite_fn in
-  let anyDrill_fn := do_and_simplify drills_fn in
-  let repeat_finish_fn := repeat_and_simplify finish_fn in
-  try repeat_srewrite_fn; 
-        apply_under_subgoal
-          (* ltac:(try repeat_srewrite_fn; anyDrill_fn) ltac:(repeat_srewrite_fn; try anyDrill_fn); *)
-          (* ltac:(try repeat_srewrite_fn; anyDrill_fn) ltac:(repeat_srewrite_fn); *)
-          ltac:(anyDrill_fn) ltac:(repeat_srewrite_fn);
-        repeat_finish_fn.
-
-Ltac doAnyAll := doAny srewrite_each_all drills_each_all finish_each_all.
-
-(* For debugging *)
-Ltac rep_rewrite := repeat_and_simplify srewrite_each_all.
-Ltac do_drill := do_and_simplify drills_each_all.
-Ltac rep_finish := repeat_and_simplify finish_each_all.
-
-(* -------------------- *)
 
 Theorem DnsManual :
   FullySharpened DnsSpec.
@@ -373,68 +77,33 @@ Proof. unfold DnsSpec.
 
 start sharpening ADT. {
   hone method "Process". {
-    (* doProcess_withLoop. *)
-    Time doAnyAll. (* 1:20 minutes *)
+    Time doAnyAll. 
   (* 241 seconds = 4 minutes *)
-
-    (* is it failing because of the two drills in a row? *)
-    (* simpl in *. *)
-    (* simplify with monad laws. *)
-    (* rep_rewrite. *)
-    (* do_drill. *)
-    (* - rep_finish. *)
-    (* - (* progress rep_rewrite. *) *)
-    (*   do_drill. *)
-    (*   progress rep_rewrite; rep_finish. *)
 }
 
   (* hack to fix Process's ret statement for now *)
   (* need to pull out the three [ret (r_n, a)] into p <- ret a; ret (r_n, p) *)
   hone method "Process". {
-    simpl in *.
-    subst_all.
+    simpl in *. subst_all.
     apply refine_under_bind_both; [reflexivity | intros].
-
-    (* works with an extra bind *)
-    Lemma refine_If_Then_Else_same
-      : forall (A B C : Type) i (t : Comp A) (e : Comp C) (b : A -> A) (c : C -> A) (r_n : B),
-        refine
-          (If i Then (a <- t;
-                      ret (r_n, b a))
-              Else (a' <- e;
-                    ret (r_n, c a'))) 
-          (res <- If i Then (a <- t;
-                             ret (b a))
-               Else (a' <- e;
-                     ret (c a'));
-           ret (r_n, res))
-    .
-    Proof.
-      intros; destruct i; simpl;
-      autosetoid_rewrite with refine_monad; reflexivity.
-    Qed.
 
     Lemma refine_If_Then_Else_same'
       : forall (A B : Type) i (t : Comp A) (b : A -> A) (c : A) (r_n : B),
         refine
           (If i Then (a <- t;
                       ret (r_n, b a))
-              Else (
-                ret (r_n, c))) 
+                Else (ret (r_n, c))) 
           (res <- If i Then (a <- t;
                              ret (b a))
-               Else (
-                 ret (c));
-           ret (r_n, res))
-    .
+                       Else (ret c);
+           ret (r_n, res)).
     Proof.
       intros; destruct i; simpl; 
       autosetoid_rewrite with refine_monad; reflexivity.
     Qed.
 
     set_evars. simpl in *. 
-    rewrite refine_If_Then_Else_same'.
-    rewrite refine_If_Then_Else_same'.
+    repeat rewrite refine_If_Then_Else_same'.
     finish honing.
   }
 
@@ -442,26 +111,9 @@ start sharpening ADT. {
 
   hone method "AddData".
   {
-    (* doAddData_withLoop. *)
-    (* simpl in *. *)
-    (* rep_rewrite. *)
-    (* do_drill. *)
-    (* rep_finish. *)
-    (* do_drill. *)
-    (* rep_rewrite. (* simpl in * made progress *) *)
-    (* do_drill. *)
-    (* rep_finish. *)
-    (* progress rep_rewrite. simpl in *. *)
-    (* (* what about clear_nested_it? *) *)
-    (* rep_finish. *)
-    (* progress rep_rewrite. *)
-    (* rep_finish. *)
-    
-    (* may have to drill *multiple times* to make progress, not fail after one failed drill. does it do that? *)
-    
     Time doAnyAll.
   (* 202 seconds = 3.5 minutes *)
-}
+  }
 
   GenerateIndexesForAll         (* ? in IndexSelection, see GenerateIndexesFor *)
   (* specifies that you want to use the suffix index structure TODO *)
