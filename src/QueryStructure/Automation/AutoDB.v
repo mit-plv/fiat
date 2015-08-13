@@ -983,9 +983,9 @@ Ltac commit :=
     | [H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
        |- context[{r_n' : IndexedQueryStructure ?qs_schema ?indices | DelegateToBag_AbsR ?r_o r_n'}] ]
       => setoid_rewrite (refine_pick_val (@DelegateToBag_AbsR qs_schema indices r_o) H);
-        simplify with monad laws
+        try simplify with monad laws;
+        repeat setoid_rewrite refine_bind_unit
   end.
-
 
 Ltac ilist_of_dep_evar n C D B As k :=
   match n with
@@ -1921,14 +1921,18 @@ Ltac cleanup_Count :=
 
 Ltac observer CreateTerm EarlyIndex LastIndex
      makeClause_dep EarlyIndex_dep LastIndex_dep :=
-  implement_Query CreateTerm EarlyIndex LastIndex
-                  makeClause_dep EarlyIndex_dep LastIndex_dep;
-  simpl; simplify with monad laws;
-  cbv beta; simpl; commit;
-  fold_string_hyps; fold_heading_hyps;
-  (*cleanup_Count; *) (* This is taking waaaaay too much time. *)
-  fold_string_hyps; fold_heading_hyps;
-  finish honing.
+    try simplify with monad laws;
+    repeat setoid_rewrite refine_If_Then_Else_Bind at 1;
+    repeat setoid_rewrite Bind_refine_If_Then_Else;
+    repeat eapply refine_If_Then_Else;
+    implement_Query CreateTerm EarlyIndex LastIndex
+                    makeClause_dep EarlyIndex_dep LastIndex_dep;
+    simpl; repeat first [setoid_rewrite refine_bind_unit
+                        | setoid_rewrite refine_bind_bind ];
+    cbv beta; simpl; commit;
+    (*cleanup_Count; *) (* This is taking waaaaay too much time. *)
+    fold_string_hyps; fold_heading_hyps;
+    finish honing.
 
 Ltac initializer :=
   try simplify with monad laws;
@@ -1968,14 +1972,19 @@ Ltac deletion CreateTerm EarlyIndex LastIndex
 
 Ltac insertion CreateTerm EarlyIndex LastIndex
      makeClause_dep EarlyIndex_dep LastIndex_dep :=
-      Implement_Insert_Checks;
-    etransitivity;
+  Implement_Insert_Checks;
+  try simplify with monad laws;
+  repeat setoid_rewrite refine_If_Then_Else_Bind at 1;
+  repeat setoid_rewrite Bind_refine_If_Then_Else;
+  repeat eapply refine_If_Then_Else;
+  try simplify with monad laws;
+    ( etransitivity;
       [ repeat match goal with
-                 | |- context[Query_For _] =>
-                   setoid_rewrite refineEquiv_swap_bind at 1;
-                     implement_Query CreateTerm EarlyIndex LastIndex
-                                     makeClause_dep EarlyIndex_dep LastIndex_dep;
-                     eapply refine_under_bind; intros
+               | |- context[Query_For _] =>
+                 setoid_rewrite refineEquiv_swap_bind at 1;
+                   implement_Query CreateTerm EarlyIndex LastIndex
+                                   makeClause_dep EarlyIndex_dep LastIndex_dep;
+                   eapply refine_under_bind; intros
                end;
         repeat setoid_rewrite refine_if_If at 1;
         repeat setoid_rewrite refine_If_Then_Else_Bind at 1;
@@ -1990,7 +1999,7 @@ Ltac insertion CreateTerm EarlyIndex LastIndex
                             (UpdateUnConstrRelation ?r_o ?TableID
                                                     (EnsembleInsert
                                                        {| elementIndex := _; indexedElement := ?tup |}
-                                                       (GetUnConstrRelation ?r_o ?TableID))) r_n'}]]
+                                                       (GetUnConstrRelation ?r_o ?TableID))) r_n'}] ]
             => repeat setoid_rewrite <- refineEquiv_bind_bind;
               let H' := fresh in
               pose proof (@refine_BagADT_QSInsert _ _ r_o r_n H TableID tup) as H';
@@ -2000,10 +2009,10 @@ Ltac insertion CreateTerm EarlyIndex LastIndex
                 try simplify with monad laws; try higher_order_reflexivity
           (* Implement the else branch *)
           | [ H : DelegateToBag_AbsR ?r_o ?r_n
-              |- context[{r_n' | DelegateToBag_AbsR ?r_o r_n'}]] =>
+              |- context[{r_n' | DelegateToBag_AbsR ?r_o r_n'}] ] =>
             match goal with
             | |- context[{idx | UnConstrFreshIdx (GetUnConstrRelation r_o ?TableID) idx}] =>
-              destruct ((proj2 H) TableID) as [l [[bnd fresh_bnd] _]];
+              destruct ((proj2 H) TableID) as [l [ [bnd fresh_bnd] _] ];
                 refine pick val bnd;
                 [ simplify with monad laws;
                   refine pick val r_n;
@@ -2012,11 +2021,10 @@ Ltac insertion CreateTerm EarlyIndex LastIndex
                   | eassumption ]
                 | eassumption]
             end
-        end
-
-      |
-      cbv beta; simpl; try simplify with monad laws; cleanup_Count; finish honing
-      ].
+        end |
+        cbv beta; simpl; try simplify with monad laws; cleanup_Count;
+        first [higher_order_reflexivity | finish honing]
+      ] ).
 
 Ltac method CreateTerm EarlyIndex LastIndex
      makeClause_dep EarlyIndex_dep LastIndex_dep :=

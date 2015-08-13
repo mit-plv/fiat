@@ -129,7 +129,7 @@ start sharpening ADT. {
 
       (* For a tactic [top] that generates 1-3 subgoals, succeed only if tac (applied to each subgoal) makes progress on at least one of them. Then try cont again, keeping additional drilling/applying tac if it continues to make progress, until either tac fails everywhere or top fails.
 
-In the other subgoals, try doing top again, then tac, then cont. Keep progress made in any of the subgoals (i.e. don't fail the whole thing because a sub-subgoal failed, even though progress was made in a subgoal). 
+In the other subgoals, try doing top again, then tac, then cont. Keep progress made in any of the subgoals (i.e. don't fail the whole thing because a sub-subgoal failed, even though progress was made in a subgoal).
 
 fails when top fails -- if top can loop forever, then this will loop forever *)
       (* TODO factor out (try cont ()) *)
@@ -173,7 +173,7 @@ fails when top fails -- if top can loop forever, then this will loop forever *)
          If a rewrite works under a top, drill under the top and try all the rewrites until none work.
            (Do NOT drill down if no rewrite works. so: Try a drill, if failure for all rewrites, then backtrack, try a different trill. Difficult: there are multiple tops. )
          Keep doing this until none of the rewrites work at any layer of tops.
-         Then, do the finishing tactics (eauto, reflexivity, various small lemmas). 
+         Then, do the finishing tactics (eauto, reflexivity, various small lemmas).
          (These should all be done on all subgoals, keeping all progress made on each one.) *)
 
       (* TODO what happens if I change the order? *)
@@ -240,23 +240,23 @@ fails when top fails -- if top can loop forever, then this will loop forever *)
       match goal with
       | [ |- context[ (refine (Bind _ (fun n => If_Then_Else _ _ _ )) _) ] ] =>
         setoid_rewrite Bind_refine_If_Then_Else
-      end. 
+      end.
 
       Ltac srewrite_manual :=
         repeat first [
-                 setoid_rewrite refine_count_constraint_broken 
+                 setoid_rewrite refine_count_constraint_broken
                                 || setoid_rewrite refine_count_constraint_broken'
                                 || setoid_rewrite refine_If_Then_Else_Bind
                                 || rewrite_if_head
                                 || setoid_rewrite refine_Count
-               ]. 
+               ].
 
       (* rewrite under bind the first time you can, then stop. otherwise fail *)
       Ltac tac_under_bind tac :=
         first [ tac |
                 (apply refine_under_bind; intros); tac_under_bind tac ].
 
-      (* only succeed if all subgoals can be solved with tac. 
+      (* only succeed if all subgoals can be solved with tac.
 intended for use as setoid_rewrite_by *)
       Ltac do_by tic tac :=
         tic; [ | solve [tac] | .. | solve [tac] ].
@@ -367,7 +367,7 @@ Ltac doAny srewrite_fn drills_fn finish_fn :=
         apply_under_subgoal
           ltac:(try repeat_srewrite_fn; anyDrill_fn) ltac:(repeat_srewrite_fn; try anyDrill_fn);
         repeat_finish_fn.
-  
+
 
 
   GenerateIndexesForAll         (* ? in IndexSelection, see GenerateIndexesFor *)

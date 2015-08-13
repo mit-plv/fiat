@@ -811,8 +811,8 @@ Qed. *)
 
 Lemma DropQSConstraintsQuery_In {A} :
   forall qs_schema qs R bod,
-    @Query_In A qs_schema qs R bod =
-    UnConstrQuery_In (DropQSConstraints qs) R bod.
+    refine (@Query_In A qs_schema qs R bod)
+           (UnConstrQuery_In (DropQSConstraints qs) R bod).
 Proof.
   intros; unfold Query_In, UnConstrQuery_In, GetRelation, GetUnConstrRelation,
           DropQSConstraints; rewrite <- ith_imap2.

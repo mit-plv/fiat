@@ -1,5 +1,4 @@
-Require HintDbTactics.          (* plugin to pass a hint db to a tactic *)
-
+(*Require HintDbTactics.*)          (* plugin to pass a hint db to a tactic *)
 Require Import Coq.Vectors.Vector
         Coq.Strings.Ascii
         Coq.Bool.Bool
@@ -49,14 +48,14 @@ Require Import Fiat.Examples.DnsServer.packet
       match goal with
       | [ |- context[ (refine (Bind _ (fun n => If_Then_Else _ _ _ )) _) ] ] =>
         setoid_rewrite Bind_refine_If_Then_Else
-      end. 
+      end.
 
       (* rewrite under bind the first time you can, then stop. otherwise fail *)
       Ltac tac_under_bind tac :=
         first [ tac |
                 (apply refine_under_bind; intros); tac_under_bind tac ].
 
-      (* only succeed if all subgoals can be solved with tac. 
+      (* only succeed if all subgoals can be solved with tac.
 intended for use as setoid_rewrite_by *)
       Ltac do_by tic tac :=
         tic; [ | solve [tac] | .. | solve [tac] ].
@@ -76,16 +75,16 @@ intended for use as setoid_rewrite_by *)
 
       (* For a tactic [top] that generates any number of subgoals, succeed only if tac (applied to each subgoal) EVENTUALLY makes progress on at least one of them [i.e. might need to drill twice in a row, the tac will work]. Then try cont again, keeping additional drilling/applying tac if it continues to make progress, until either tac fails everywhere or top fails.
 
-Keep progress made in any of the subgoals (i.e. don't fail the whole thing because a sub-subgoal failed, even though progress was made in a subgoal). 
+Keep progress made in any of the subgoals (i.e. don't fail the whole thing because a sub-subgoal failed, even though progress was made in a subgoal).
 
-Fails when top fails (fails iff tac never works on any subgoal) -- if top can loop forever, then this will loop forever 
+Fails when top fails (fails iff tac never works on any subgoal) -- if top can loop forever, then this will loop forever
 
 Subgoals: even if everything fails in the other subgoal, the tactic will succeed if progress is made in the first subgoal, because the failure will be wrapped in a [try] *)
 
       Ltac progress_subgoal top tac cont :=
          top; (tac; try (cont ()) || (try (cont ()))).
 
-(* Succeeds: 
+(* Succeeds:
 tac
 top tac
 top* tac
@@ -127,7 +126,7 @@ All chains must end with tac, not top (because then there'd be no progress made 
          If a rewrite works under a top, drill under the top and try all the rewrites until none work.
            (Do NOT drill down if no rewrite works. so: Try a drill, if failure for all rewrites, then backtrack, try a different trill. Difficult: there are multiple tops. )
          Keep doing this until none of the rewrites work at any layer of tops.
-         Then, do the finishing tactics (eauto, reflexivity, various small lemmas). 
+         Then, do the finishing tactics (eauto, reflexivity, various small lemmas).
          (These should all be done on all subgoals, keeping all progress made on each one.) *)
 
       Ltac do_and_simplify tac :=
@@ -154,7 +153,7 @@ Ltac srewrite_each_all :=
             setoid_rewrite refine_count_constraint_broken' |
             setoid_rewrite refine_Count |
             do_by
-              ltac:(setoid_rewrite refine_subcheck_to_filter) ltac:(eauto with typeclass_instances) | 
+              ltac:(setoid_rewrite refine_subcheck_to_filter) ltac:(eauto with typeclass_instances) |
             (* set_evars needed because otherwise it rewrites forever in an evar *)
             (* hacky way to revert outer If to if *)
             try (set_evars; rewrite eq_If_if);
@@ -165,7 +164,7 @@ Ltac srewrite_each_all :=
 Ltac drills_each_all :=
   first [
       subst_all; apply refine_under_bind_both; try intros |
-      apply refine_If_Then_Else 
+      apply refine_If_Then_Else
     ].
 
 Ltac finish_each_all :=
@@ -182,7 +181,7 @@ Ltac doAny srewrite_fn drills_fn finish_fn :=
   let repeat_srewrite_fn := repeat_and_simplify srewrite_fn in
   let anyDrill_fn := do_and_simplify drills_fn in
   let repeat_finish_fn := repeat_and_simplify finish_fn in
-        try repeat_srewrite_fn; 
+        try repeat_srewrite_fn;
         apply_under_subgoal ltac:(anyDrill_fn) ltac:(repeat_srewrite_fn);
         repeat_finish_fn.
 
@@ -209,7 +208,7 @@ Create HintDb test.
 Hint Resolve hi : test.
 Hint Resolve bye : test.
 
-Ltac the_tactic :=
+(*Ltac the_tactic :=
   let k lem := idtac lem ; fail in
   foreach [ refines ] run k.
 
@@ -217,7 +216,7 @@ Ltac the_tactic :=
 (* why does it need to end with fail? *)
 Ltac srewrite :=
   let k lem := setoid_rewrite lem ; fail in
-  foreach [ refines ] run k.
+  foreach [ refines ] run k. *)
 
 (* autorewrite with refines. *)
 (* auto with refines'. *)

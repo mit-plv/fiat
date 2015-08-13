@@ -50,7 +50,7 @@ Ltac start_honing_QueryStructure' :=
                               match goal with
                                 | |- context [QSInsert _ _ _] => drop_constraints_from_insert
                                 | |- context [QSDelete _ _ _] => drop_constraints_from_delete
-                                | |- context [Query_For _] => drop constraints from query
+                                | |- context [Query_For _] => drop_constraints_from_query
                                 | |- _ => idtac
                               end | ]
                           ])]

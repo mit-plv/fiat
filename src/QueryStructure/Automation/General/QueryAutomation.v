@@ -39,27 +39,16 @@ Tactic Notation "drop" "constraints" "from" "query" :=
     end; pose_string_hyps; pose_heading_hyps;
     finish honing.
 
-  Ltac drop_constraints_from_query :=
-  simplify with monad laws;
-  repeat match goal with
-             |- appcontext[@Query_In ?ResultT ?qs ?R] =>
-             let H' := fresh in
-             pose (@DropQSConstraintsQuery_In ResultT qs R) as H';
-               simpl in H'; (* fold_string_hyps_in H'; fold_heading_hyps_in H'; *)
-               setoid_rewrite H'; clear H'
-         end;
-  repeat match goal with
-             |- context[fun b :?B => @Query_In ?ResultT ?qs ?R (@?bod b)] =>
-             let H' := fresh in
-             pose (@DropQSConstraintsQuery_In_UnderBinder ResultT B qs R bod) as H';
-               simpl in H'; (* fold_string_hyps_in H'; fold_heading_hyps_in H'; *)
-               setoid_rewrite H'; clear H'
-         end;
-    simpl;
+Ltac drop_constraints_from_query :=
+    simplify with monad laws;
+    repeat first [setoid_rewrite refine_bind_unit
+                 | setoid_rewrite refine_bind_bind
+                 | setoid_rewrite refine_If_Then_Else_Bind];
+    repeat setoid_rewrite DropQSConstraintsQuery_In; simpl;
     setoid_rewrite refineEquiv_pick_eq';
-    simplify with monad laws; cbv beta; simpl;
+    try simplify with monad laws; cbv beta; simpl;
     match goal with
-        H : DropQSConstraints_AbsR _ _ |- _ =>
-        unfold DropQSConstraints_AbsR in H; rewrite H
+      H : DropQSConstraints_AbsR _ _ |- _ =>
+      unfold DropQSConstraints_AbsR in H; rewrite H
     end; (*pose_string_hyps; pose_heading_hyps; *)
     finish honing.

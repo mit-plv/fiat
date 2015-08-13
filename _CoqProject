@@ -59,6 +59,7 @@ src/Common/i3list.v
 src/Common/i3list2.v
 src/Common/ilist.v
 src/Common/ilist2.v
+src/Common/ilist2_pair.v
 src/Common/ilist3.v
 src/Common/ilist3_pair.v
 src/Common/Ensembles/Cardinal.v
@@ -99,8 +100,11 @@ src/Examples/CacheADT/TrivialADTCache.v
 src/Examples/DnsServer/Dns.v
 src/Examples/DnsServer/DnsAuto.v
 src/Examples/DnsServer/DnsAutoCombine.v
+src/Examples/DnsServer/DnsAutoUnify.v
+src/Examples/DnsServer/DnsAutomation.v
 src/Examples/DnsServer/DnsLemmas.v
 src/Examples/DnsServer/DnsRec.v
+src/Examples/DnsServer/DnsRecCache.v
 src/Examples/DnsServer/DnsSchema.v
 src/Examples/DnsServer/RewriteTest.v
 src/Examples/DnsServer/packet.v
@@ -109,7 +113,9 @@ src/Examples/Ics/WaterTank.v
 src/Examples/Ics/WaterTankExtract.v
 src/Examples/QueryStructure/Bookstore.v
 src/Examples/QueryStructure/Classifier.v
+src/Examples/QueryStructure/ClassifierExtraction.v
 src/Examples/QueryStructure/ClassifierUnOpt.v
+src/Examples/QueryStructure/ClassifierUnOptExtraction.v
 src/Examples/QueryStructure/CodeLookup.v
 src/Examples/QueryStructure/FriendFinder.v
 src/Examples/QueryStructure/Github.v
@@ -117,7 +123,9 @@ src/Examples/QueryStructure/Messages.v
 src/Examples/QueryStructure/MessagesExtraction.v
 src/Examples/QueryStructure/MessagesUnOptimized.v
 src/Examples/QueryStructure/Photoalbum.v
+src/Examples/QueryStructure/PhotoalbumExtraction.v
 src/Examples/QueryStructure/PhotoalbumUnOpt.v
+src/Examples/QueryStructure/PhotoalbumUnOptimizedExtraction.v
 src/Examples/QueryStructure/Stocks.v
 src/Examples/QueryStructure/Weather.v
 src/Examples/Smtp/Smtp.v

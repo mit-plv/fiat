@@ -1,4 +1,4 @@
-Require HintDbTactics.          (* plugin to pass a hint db to a tactic *)
+(*Require HintDbTactics.*)          (* plugin to pass a hint db to a tactic *)
 
 Require Import Coq.Vectors.Vector
         Coq.Strings.Ascii
@@ -71,40 +71,31 @@ Definition DnsSpec : ADT DnsSig :=
 
 (* -------------------------------------------------------------------------------------- *)
 
+    Lemma refine_If_Then_Else_same'
+      : forall (A B : Type) i (t : Comp A) (b : A -> A) (c : A) (r_n : B),
+        refine
+          (If i Then (a <- t;
+                      ret (r_n, b a))
+                Else (ret (r_n, c)))
+          (res <- If i Then (a <- t;
+                             ret (b a))
+                       Else (ret c);
+           ret (r_n, res)).
+    Proof.
+      intros; destruct i; simpl;
+      autosetoid_rewrite with refine_monad; reflexivity.
+    Qed.
+
+
+
 Theorem DnsManual :
   FullySharpened DnsSpec.
 Proof. unfold DnsSpec.
 
 start sharpening ADT. {
   hone method "Process". {
-    Time doAnyAll. 
+    Time doAnyAll.
   (* 241 seconds = 4 minutes *)
-}
-
-  (* hack to fix Process's ret statement for now *)
-  (* need to pull out the three [ret (r_n, a)] into p <- ret a; ret (r_n, p) *)
-  hone method "Process". {
-    simpl in *. subst_all.
-    apply refine_under_bind_both; [reflexivity | intros].
-
-    Lemma refine_If_Then_Else_same'
-      : forall (A B : Type) i (t : Comp A) (b : A -> A) (c : A) (r_n : B),
-        refine
-          (If i Then (a <- t;
-                      ret (r_n, b a))
-                Else (ret (r_n, c))) 
-          (res <- If i Then (a <- t;
-                             ret (b a))
-                       Else (ret c);
-           ret (r_n, res)).
-    Proof.
-      intros; destruct i; simpl; 
-      autosetoid_rewrite with refine_monad; reflexivity.
-    Qed.
-
-    set_evars. simpl in *. 
-    repeat rewrite refine_If_Then_Else_same'.
-    finish honing.
   }
 
   start_honing_QueryStructure'.
@@ -122,78 +113,19 @@ start sharpening ADT. {
   make_simple_indexes
     attrlist
     ltac:(CombineCase6 BuildEarlyFindPrefixIndex ltac:(LastCombineCase6 BuildEarlyEqualityIndex))
-           ltac:(CombineCase5 BuildLastFindSuffixIndex ltac:(LastCombineCase5 BuildLastEqualityIndex))).
-  (* SearchTerm and SearchUpdateTerm: efficiently do quality test on the name columns *)
-  (* it figures out what datac structure to use *)
-  (* BagMatchSearchTerm *)
-  (* implement query as calls to abstract bag find function *)
-  (* then plug in data structures that impl bag find (chooses b/t them?) *)
+           ltac:(CombineCase5 BuildLastFindSuffixIndex ltac:(LastCombineCase5 BuildLastEqualityIndex));
+               match goal with
+               | |- Sharpened _ => idtac (* Do nothing to the next Sharpened ADT goal. *)
+               | |- _ => (* Otherwise implement each method using the indexed data structure *)
+                 try plan ltac:(CombineCase5 PrefixIndexUse EqIndexUse)
+                                 ltac:(CombineCase10 createEarlyPrefixTerm createEarlyEqualityTerm)
+                                        ltac:(CombineCase7 createLastPrefixTerm createLastEqualityTerm)
+                                               ltac:(CombineCase7 PrefixIndexUse_dep EqIndexUse_dep)
+                                                      ltac:(CombineCase11 createEarlyPrefixTerm_dep createEarlyEqualityTerm_dep)
+                                                             ltac:(CombineCase8 createLastPrefixTerm_dep createLastEqualityTerm_dep)
+               end).
 
-  (* hone constructor "Init". *)
-  {
-    simplify with monad laws.
-    rewrite refine_QSEmptySpec_Initialize_IndexedQueryStructure.
-    finish honing.
-   }
-
-  (* how much of this can be factored out into the other hone? *)
-  (* TODO: there seems to be refinement mixed with index choosing. need a clean separation *)
-    (* hone method "AddData". *) {
-
-    (* etransitivity. *)
-    setoid_rewrite Bind_refine_If_Then_Else.
-    setoid_rewrite refine_If_Then_Else_Bind.
-    etransitivity.
-    -
-      apply refine_If_Then_Else.
-      + simplify with monad laws.
-        implement_Query
-          ltac:(CombineCase5 PrefixIndexUse EqIndexUse)
-                 ltac:(CombineCase10 createEarlyPrefixTerm createEarlyEqualityTerm)
-                        ltac:(CombineCase7 createLastPrefixTerm createLastEqualityTerm)
-                               ltac:(CombineCase7 PrefixIndexUse_dep EqIndexUse_dep)
-                        ltac:(CombineCase11 createEarlyPrefixTerm_dep createEarlyEqualityTerm_dep)
-                        ltac:(CombineCase8 createLastPrefixTerm_dep createLastEqualityTerm_dep).
-        (* simplify with monad laws. *)
-        idtac.
-        rewrite (@refineEquiv_swap_bind nat).
-        (* setoid_rewrite refine_if_If. *)
-        implement_Insert_branches. (* this removes the nat choosing, so I guess the nondeterminism is okay if it involves indexed. the matching involves some of UnConstrFreshIdx *)
-        (* ok, i guess getting a fresh ID for the index depends on the index specifics *)
-        reflexivity.
-      + simplify with monad laws.
-        implement_Query
-          ltac:(CombineCase5 PrefixIndexUse EqIndexUse)
-                 ltac:(CombineCase10 createEarlyPrefixTerm createEarlyEqualityTerm)
-                        ltac:(CombineCase7 createLastPrefixTerm createLastEqualityTerm)
-                               ltac:(CombineCase7 PrefixIndexUse_dep EqIndexUse_dep)
-                                      ltac:(CombineCase11 createEarlyPrefixTerm_dep createEarlyEqualityTerm_dep)
-                                             ltac:(CombineCase8 createLastPrefixTerm_dep createLastEqualityTerm_dep).
-        simplify with monad laws.
-        rewrite (@refineEquiv_swap_bind nat).
-        (* setoid_rewrite refine_if_If. *)
-        implement_Insert_branches.
-        reflexivity.
-    - higher_order_reflexivity.              (* seems fully deterministic here *)
-    (* - finish honing. *)
-  }
-  (* hone method "Process". *) {
-    simplify with monad laws.
-    implement_Query             (* in AutoDB, implement_Query' has steps *)
-      ltac:(CombineCase5 PrefixIndexUse EqIndexUse)
-             ltac:(CombineCase10 createEarlyPrefixTerm createEarlyEqualityTerm)
-                    ltac:(CombineCase7 createLastPrefixTerm createLastEqualityTerm)
-                           ltac:(CombineCase7 PrefixIndexUse_dep EqIndexUse_dep)
-                                  ltac:(CombineCase11 createEarlyPrefixTerm_dep createEarlyEqualityTerm_dep)
-                                         ltac:(CombineCase8 createLastPrefixTerm_dep createLastEqualityTerm_dep).
-    simplify with monad laws.
-    simpl.
-    setoid_rewrite (refine_pick_val _ H).
-    simplify with monad laws.
-    setoid_rewrite (@refine_filtered_list _ _ _ _).
-    finish honing.
-  }
-  pose_headings_all. 
+  pose_headings_all;
   FullySharpenQueryStructure DnsSchema Index.
 }                               (* ending "start sharpening ADT" *)
 
