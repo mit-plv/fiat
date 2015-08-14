@@ -449,7 +449,9 @@ Module InvertedIndexBag (MKeys : WS) (MValues : WSfun Nat_as_OT).
           case_InA; eauto.
           unfold Proper, respectful; intros.
           repeat case_InA; subst; eauto.
+          let H := match goal with H : E.eq _ _ |- _ => constr:H end in
           rewrite H in i0; intuition.
+          let H := match goal with H : E.eq _ _ |- _ => constr:H end in
           rewrite <- H in i0; intuition.
         + assert (MKeys.In key (KeyMap container)).
           induction (projection item0); simpl in *.
