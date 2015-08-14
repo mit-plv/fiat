@@ -1,4 +1,5 @@
 (** * Miscellaneous Well-Foundedness Facts *)
+Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 Require Import Coq.Setoids.Setoid Coq.Program.Program Coq.Program.Wf Coq.Arith.Wf_nat Coq.Classes.Morphisms Coq.Init.Wf.
 
 Set Implicit Arguments.

@@ -1,3 +1,4 @@
+Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 (** Before we integrated bedrock, we used a dummy implementation of
     this module using [nat]; see NatWord.v. *)
 Require Import Coq.Classes.Morphisms.
