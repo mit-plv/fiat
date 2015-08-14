@@ -15,6 +15,7 @@
 *~
 .#*
 .DS_Store
+/_CoqProject
 /ADT-Synthesis-Submitted.tiff
 /all.pdf
 /classifier.ml

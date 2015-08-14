@@ -1,23 +1,24 @@
+COMPATIBILITY_FILE=src/Common/Coq__8_4__8_5__Compat.v
 STDTIME?=time -f "$* (real: %e, user: %U, sys: %S, mem: %M ko)"
 
 ifneq (,$(wildcard .git)) # if we're in a git repo
-etc/coq-scripts: .gitmodules
+etc/coq-scripts/Makefile.coq.common etc/coq-scripts/compatibility/Makefile.coq.compat_84_85 etc/coq-scripts/compatibility/Makefile.coq.compat_84_85-early: .gitmodules
 	git submodule update --init
 endif
 
-etc/coq-scripts/Makefile.coq.common: etc/coq-scripts
-	@ true
+Makefile.coq: etc/coq-scripts/Makefile.coq.common etc/coq-scripts/compatibility/Makefile.coq.compat_84_85 etc/coq-scripts/compatibility/Makefile.coq.compat_84_85-early
 
-Makefile.coq: etc/coq-scripts/Makefile.coq.common
+-include etc/coq-scripts/compatibility/Makefile.coq.compat_84_85-early
 
 -include etc/coq-scripts/Makefile.coq.common
 
+-include etc/coq-scripts/compatibility/Makefile.coq.compat_84_85
+
 .PHONY: fiat fiat-core querystructures parsers parsers-all finitesets dns compiler facade-test ics fiat4monitors examples \
 	install install-fiat install-fiat-core install-querystructures install-parsers install-finitesets install-dns install-compiler install-ics install-fiat4monitors install-examples \
-	pdf doc clean-doc \
-	update-_CoqProject
+	pdf doc clean-doc
 
-FAST_TARGETS += clean-doc update-_CoqProject etc/coq-scripts etc/coq-scripts/Makefile.coq.common
+FAST_TARGETS += clean-doc etc/coq-scripts etc/coq-scripts/Makefile.coq.common etc/coq-scripts/compatibility/Makefile.coq.compat_84_85 etc/coq-scripts/compatibility/Makefile.coq.compat_84_85-early
 
 .DEFAULT_GOAL := fiat
 
@@ -101,8 +102,8 @@ install-fiat install-fiat-core install-querystructures install-parsers install-f
 	$(VECHO) "MAKE -f Makefile.coq INSTALL"
 	$(Q)$(MAKE) -f Makefile.coq VFILES="$(call vo_to_installv,$(T))" install
 
-update-_CoqProject:
-	(echo '-R src Fiat'; echo '-arg -dont-load-proofs'; find src -name "*.v" | $(SORT_COQPROJECT)) > _CoqProject
+$(UPDATE_COQPROJECT_TARGET):
+	(echo '-R src Fiat'; echo '-arg -dont-load-proofs'; find src -name "*.v" -a ! -wholename '$(COMPATIBILITY_FILE)' | $(SORT_COQPROJECT); echo '$(COMPATIBILITY_FILE)') > _CoqProject.in
 
 $(WATER_TANK_EXTRACT_ML): $(filter-out $(WATER_TANK_EXTRACT_VO),$(call vo_closure,$(WATER_TANK_EXTRACT_VO))) $(WATER_TANK_EXTRACT_VO:%.vo=%.v)
 	$(VECHO) "COQC $(WATER_TANK_EXTRACT_VO:%.vo=%.v) > $@"
