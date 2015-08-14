@@ -83,7 +83,7 @@ Section is_first_char_such_that.
              | [ H : _ |- _ ] => apply forall_chars__impl__for_first_char, for_first_char__take in H; assumption
              | [ H : for_first_char (take (S _) _) _ |- _ ] => apply for_first_char__take in H
              | [ H : for_first_char ?str ?P, H' : for_first_char ?str ?P' |- _ ]
-               => destruct (fun H0 => for_first_char_combine (T := False) H0 H H'); [ tauto | clear H H' | tauto ]
+               => destruct (fun H0 => for_first_char_combine (T := False) H0 H H'); cbv beta; [ tauto | clear H H' | tauto ]
              | [ H : ?x = 0 |- context[?x] ] => rewrite H
              | _ => apply forall_chars_nil; [ (rewrite ?take_length, ?drop_length; reflexivity).. ]
              | _ => omega
@@ -146,7 +146,7 @@ Section is_first_char_such_that.
                  | [ H : _ |- _ ] => apply forall_chars__impl__for_first_char in H
                  | [ H : for_first_char (take (S _) _) _ |- _ ] => apply for_first_char__take in H
                  | [ H : for_first_char ?str ?P, H' : for_first_char ?str ?P' |- _ ]
-                   => destruct (fun H0 => for_first_char_combine (T := False) H0 H H'); [ tauto | clear H H' | tauto ]
+                   => destruct (fun H0 => for_first_char_combine (T := False) H0 H H'); cbv beta; [ tauto | clear H H' | tauto ]
                  | [ H : ?x = 0 |- context[?x] ] => rewrite H
                  | _ => omega
                  | _ => progress destruct_head and
@@ -167,7 +167,7 @@ Section is_first_char_such_that.
                | _ => eapply first_char_such_that_past_end; [ | eassumption ]; omega
                | [ H : _ |- _ ] => unique pose proof (proj1 (proj1 first_char_such_that_0 H))
                | [ H : for_first_char ?str ?P, H' : for_first_char ?str ?P' |- _ ]
-                 => destruct (fun H_new => for_first_char_combine (T := False) H_new H H'); [ tauto | clear H H' | tauto ]
+                 => destruct (fun H_new => for_first_char_combine (T := False) H_new H H'); cbv beta; [ tauto | clear H H' | tauto ]
                | _ => omega
                | _ => progress unfold ge in *
                | [ H : forall n', is_first_char_such_that ?P ?str n' ?P' -> _, H' : is_first_char_such_that ?P ?str _ ?P' |- _ ]
