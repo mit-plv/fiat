@@ -33,9 +33,9 @@ Section PrefixClauses.
           end);  intuition; [
     eexists; intuition |
     inject H |
-    let _H0 := match goal with H : IsPrefix _ _ |- _ => constr:H end in
+    let _H0 := match goal with H : ?R _ _ |- _ => constr:H end in
     destruct _H0; eexists; simpl; subst |
-    let _H0 := match goal with H : IsPrefix _ _ -> False |- _ => constr:H end in
+    let _H0 := match goal with H : ?R _ _ -> False |- _ => constr:H end in
     apply _H0; inject H; inversion H0; eexists |
     inject H; simpl in H0; inversion H0 ]; eauto.
   instantiate (1 := s); simpl; induction s; constructor; eauto.
