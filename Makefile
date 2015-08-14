@@ -1,9 +1,13 @@
 COMPATIBILITY_FILE=src/Common/Coq__8_4__8_5__Compat.v
 STDTIME?=time -f "$* (real: %e, user: %U, sys: %S, mem: %M ko)"
 
-ifneq (,$(wildcard .git)) # if we're in a git repo
-etc/coq-scripts/Makefile.coq.common etc/coq-scripts/compatibility/Makefile.coq.compat_84_85 etc/coq-scripts/compatibility/Makefile.coq.compat_84_85-early: .gitmodules
+submodule-update: .gitmodules
 	git submodule update --init
+	@ touch "$@"
+
+ifneq (,$(wildcard .git)) # if we're in a git repo
+etc/coq-scripts/Makefile.coq.common etc/coq-scripts/compatibility/Makefile.coq.compat_84_85 etc/coq-scripts/compatibility/Makefile.coq.compat_84_85-early: submodule-update
+	@ touch "$@"
 endif
 
 Makefile.coq: etc/coq-scripts/Makefile.coq.common etc/coq-scripts/compatibility/Makefile.coq.compat_84_85 etc/coq-scripts/compatibility/Makefile.coq.compat_84_85-early
@@ -18,7 +22,8 @@ Makefile.coq: etc/coq-scripts/Makefile.coq.common etc/coq-scripts/compatibility/
 	install install-fiat install-fiat-core install-querystructures install-parsers install-finitesets install-dns install-compiler install-ics install-fiat4monitors install-examples \
 	pdf doc clean-doc
 
-FAST_TARGETS += clean-doc etc/coq-scripts etc/coq-scripts/Makefile.coq.common etc/coq-scripts/compatibility/Makefile.coq.compat_84_85 etc/coq-scripts/compatibility/Makefile.coq.compat_84_85-early
+FAST_TARGETS += clean-doc etc/coq-scripts etc/coq-scripts/Makefile.coq.common etc/coq-scripts/compatibility/Makefile.coq.compat_84_85 etc/coq-scripts/compatibility/Makefile.coq.compat_84_85-early submodule-update
+SUPER_FAST_TARGETS += submodule-update
 
 .DEFAULT_GOAL := fiat
 

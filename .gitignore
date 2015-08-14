@@ -67,6 +67,7 @@
 /src/QueryStructure/QuerySpecs/ConstraintCheckUnfoldings.v
 /src/QueryStructure/QuerySpecs/InsertQSRefinements.v
 /src/QueryStructure/Refinements/AdditionalListLemmas.v
+/submodule-update
 /time-worked
 ADT-Synthesis-Submitted.tiff
 artifact
