@@ -473,7 +473,8 @@ Module TrieBag (X:OrderedType).
                     end) trie).
           - intros; inversion H.
           - intros; inversion H; subst.
-            + apply Trie_ind0.
+            + let Trie_ind0 := match goal with Trie_ind0 : forall (trie : Trie) (l : list key), ?P trie l |- _ => constr:Trie_ind0 end in
+              apply Trie_ind0.
             + eapply x0; eauto.
             + eapply x4; eauto.
     Qed.
@@ -499,11 +500,13 @@ Module TrieBag (X:OrderedType).
         [ destruct (X.compare k x)
         | eassumption ].
         + apply find_2 in H0.
+          let XMapfold0 := match goal with XMapfold0 : forall m : XMap.Raw.t Trie, _ -> forall (k : key) (trie : Trie) (st : list key), _ -> _ |- _ => constr:XMapfold0 end in
           eapply (XMapfold0 l); eauto.
           inversion H; subst; eauto.
         + pose proof (f d (st ++ [k])).
           injections; eassumption.
         + apply find_2 in H0.
+          let XMapfold0 := match goal with XMapfold0 : forall m : XMap.Raw.t Trie, _ -> forall (k : key) (trie : Trie) (st : list key), _ -> _ |- _ => constr:XMapfold0 end in
           eapply (XMapfold0 r); eauto.
           inversion H; subst; eauto.
     Defined.
