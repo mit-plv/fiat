@@ -223,9 +223,9 @@ Section recursive_descent_parser.
                                    v1 v2 str v4 v5 v6) in
              refine (_ : GT); change GT;
              let H := fresh in
-             assert (H : forall a b vstr' d e f0,
-                           Fix wf (fun (a : T0) => T1 -> varT -> T2) (f'h (fst (of_string str))) a b vstr' d e f0
-                           = Fix wf (fun (a : T0) => T1 -> String -> T2) fh a b (to_string (fst (of_string str), vstr')) d e f0);
+             assert (H : forall a b vstr'' d e' f0',
+                           Fix wf (fun (a : T0) => T1 -> varT -> T2) (f'h (fst (of_string str))) a b vstr'' d e' f0'
+                           = Fix wf (fun (a : T0) => T1 -> String -> T2) fh a b (to_string (fst (of_string str), vstr'')) d e' f0');
                [ let a := fresh in intro a; induction (wf a) as [?? IH]
                | specialize (fun a b => H a b (snd (of_string str)));
                  rewrite <- surjective_pairing in H;
