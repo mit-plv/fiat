@@ -272,17 +272,23 @@ Module InvertedIndexBag (MKeys : WS) (MValues : WSfun Nat_as_OT).
         + eauto.
         + eapply IHl in H0; intuition.
           * apply H.
+            let H1 := match goal with H1 : InA _ _ _ |- _ => constr:H1 end in
             apply inA_map' with (eqA := @MKeys.eq_key_elt _) in H1;
               eauto with typeclass_instances.
             destruct_ex; intuition.
+            let H3 := match goal with H3 : E.eq _ _ |- _ => constr:H3 end in
             rewrite H3.
             destruct x.
+            let H2 := match goal with H2 : InA _ _ _ |- _ => constr:H2 end in
             rewrite <- MoreMKeysFacts.BasicFacts.elements_mapsto_iff in H2.
             eapply inA_map with (eqA := @MKeys.eq_key_elt _);
               eauto with typeclass_instances.
+            let H2 := match goal with H2 : InA _ _ _ |- _ => constr:H2 end in
             rewrite <- MoreMKeysFacts.BasicFacts.elements_mapsto_iff.
+            let H2 := match goal with H2 : MKeys.MapsTo _ _ _ |- _ => constr:H2 end in
             rewrite MoreMKeysFacts.BasicFacts.add_mapsto_iff in H2;
               intuition; subst.
+            let H2 := match goal with H2 : MKeys.E.eq _ _ |- _ => constr:H2 end in
             simpl in H3; rewrite H2 in n; intuition.
       - destruct (E.eq_dec k a).
         rewrite <- MoreMKeysFacts.BasicFacts.elements_mapsto_iff in H0.
