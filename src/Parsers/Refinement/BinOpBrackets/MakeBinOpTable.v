@@ -388,7 +388,7 @@ pb = pb' '+' 0
              | [ H : _ = _ -> ?T |- _ ] => specialize (H eq_refl)
              | [ H : context[_ - 0] |- _ ] => rewrite NPeano.Nat.sub_0_r in H
              | [ |- context[_ - 0] ] => rewrite NPeano.Nat.sub_0_r
-             | [ H : context[_ + 1] |- _ ] => rewrite NPeano.Nat.add_1_r in H || setoid_rewrite NPeano.Nat.add_1_r in H
+             | [ H : context[(_ + 1)%nat] |- _ ] => rewrite NPeano.Nat.add_1_r in H || setoid_rewrite NPeano.Nat.add_1_r in H
              | [ H : ?x > 0 |- _ ] => is_var x; destruct x; [ exfalso; clear -H; omega | clear dependent H ]
              | [ H : ~ ?x > 0 |- _ ] => is_var x; destruct x; [ clear dependent H | exfalso; clear -H; omega ]
              | [ H : 0 > 0 |- _ ] => exfalso; clear -H; omega

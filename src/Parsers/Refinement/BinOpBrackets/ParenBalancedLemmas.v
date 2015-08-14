@@ -40,7 +40,7 @@ Section helpers.
              | _ => solve [ eauto with nocore ]
              | [ H : context[drop _ (drop _ _)] |- _ ] => setoid_rewrite drop_drop in H
              | [ |- appcontext[match get 0 (take _ _) with _ => _ end] ] => rewrite !get_take_lt by omega
-             | [ H : context[_ + 1] |- _ ] => setoid_rewrite NPeano.Nat.add_1_r in H
+             | [ H : context[(_ + 1)%nat] |- _ ] => setoid_rewrite NPeano.Nat.add_1_r in H
              | [ |- context[get 0 ?str] ] => erewrite (proj1 (get_0 str _)) by eassumption
              | [ |- context[get 0 (take 0 ?str)] ] => rewrite (has_first_char_nonempty (take 0 str))
                                                      by (rewrite take_length; reflexivity)

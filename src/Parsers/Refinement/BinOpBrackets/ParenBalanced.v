@@ -384,7 +384,7 @@ Section specific.
                      | _ => congruence
                      | _ => omega
                      | [ H : context[take _ (drop _ _)] |- _ ] => setoid_rewrite take_drop in H
-                     | [ H : context[_ + 1] |- _ ] => rewrite !NPeano.Nat.add_1_r in H
+                     | [ H : context[(_ + 1)%nat] |- _ ] => rewrite !NPeano.Nat.add_1_r in H
                      | [ H : context[bool_of_sumbool ?e] |- _ ] => destruct e; simpl in H
                      | [ H : context[match ?e with left _ => _ | right _ => _ end] |- _ ] => destruct e; simpl in H
                      | [ |- context[bool_of_sumbool ?e] ] => destruct e; simpl
