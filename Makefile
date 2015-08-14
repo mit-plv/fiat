@@ -41,13 +41,13 @@ not-containing = $(foreach v,$2,$(if $(findstring $1,$v),,$v))
 	pdf doc clean-doc \
 	clean update-_CoqProject FORCE
 
-FAST_TARGETS := clean clean-doc archclean printenv clean-old update-_CoqProject Makefile.coq
+FAST_TARGETS := clean clean-doc archclean printenv clean-old update-_CoqProject Makefile.coq etc/coq-scripts
 
 # pipe the output of coq_makefile through sed so that we don't have to run coqdep just to clean
 # use tr to handle the fact that BSD sed doesn't substitute \n
 Makefile.coq: Makefile _CoqProject
 	$(VECHO) "COQ_MAKEFILE -f _CoqProject > $@"
-	$(Q)$(COQBIN)coq_makefile COQC = "\$$(SILENCE_COQC)\$$(TIMER) \"\$$(COQBIN)coqc\"" COQDEP = "\$$(SILENCE_COQDEP)\"\$$(COQBIN)coqdep\" -c" -f _CoqProject | sed s'/^\(-include.*\)$$/ifneq ($$(filter-out $(FAST_TARGETS),$$(MAKECMDGOALS)),)~\1~else~ifeq ($$(MAKECMDGOALS),)~\1~endif~endif/g' | tr '~' '\n' | sed s'/^clean:$$/clean-old::/g' | sed s'/^clean::$$/clean-old::/g' | sed s'/^Makefile: /Makefile-old: /g' > $@
+	$(Q)$(COQBIN)coq_makefile COQC = "\$$(SILENCE_COQC)\$$(TIMER) \"\$$(COQBIN)coqc\"" COQDEP = "\$$(SILENCE_COQDEP)\"\$$(COQBIN)coqdep\" -c" -f _CoqProject | sed s'|^\(-include.*\)$$|ifneq ($$(filter-out $(FAST_TARGETS),$$(MAKECMDGOALS)),)~\1~else~ifeq ($$(MAKECMDGOALS),)~\1~endif~endif|g' | tr '~' '\n' | sed s'/^clean:$$/clean-old::/g' | sed s'/^clean::$$/clean-old::/g' | sed s'/^Makefile: /Makefile-old: /g' > $@
 
 -include Makefile.coq
 
@@ -62,6 +62,11 @@ OCAMLDEP = $(SILENCE_OCAMLDEP)$(OCAMLDEP_OLD)
 
 OCAMLOPT_OLD := $(OCAMLOPT)
 OCAMLOPT = $(SILENCE_OCAMLOPT)$(OCAMLOPT_OLD)
+
+ifneq (,$(wildcard .git)) # if we're in a git repo
+etc/coq-scripts: .gitmodules
+	git submodule update --init
+endif
 
 clean::
 	$(VECHO) "RM *.CMO *.CMI *.CMA"
