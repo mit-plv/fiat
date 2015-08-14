@@ -173,8 +173,6 @@ Notation "tup '!' idx" := (GetAttributeRaw tup ``idx) : TupleImpl_scope.
 it's independent of the other records *)
 
 
-
-(*
 Lemma refine_not_CNAME__independent :
   forall (n : DNSRRecord) (R : @IndexedEnsemble DNSRRecord),
     n!sTYPE <> CNAME
@@ -456,7 +454,6 @@ Proof.
   simplify with monad laws.
   setoid_rewrite negb_involutive; f_equiv.
 Qed.
-*)
 
 (* clear_nested_if, using filter_nil_is_nil, clear the nested if/then in honing AddData *)
 Lemma clear_nested_if {A}
@@ -1401,3 +1398,21 @@ Lemma tuples_in_relation_filtered_satisfy_constraint :
 Proof.
 
 Admitted.
+
+(* -------------- *)
+(* Unused for now *)
+
+Lemma refine_If_Then_Else_same'
+  : forall (A B : Type) i (t : Comp A) (b : A -> A) (c : A) (r_n : B),
+    refine
+      (If i Then (a <- t;
+                  ret (r_n, b a))
+          Else (ret (r_n, c)))
+      (res <- If i Then (a <- t;
+                         ret (b a))
+           Else (ret c);
+       ret (r_n, res)).
+Proof.
+  intros; destruct i; simpl;
+  autosetoid_rewrite with refine_monad; reflexivity.
+Qed.

@@ -198,7 +198,7 @@ Locate replace_order.
             sTYPE :: RRecordType,
             sCLASS :: RRecordClass,
             sTTL :: nat,
-            sDATA :: name>%Heading.
+            sDATA :: string>%Heading.
 
   Definition toAnswer (t: DNSRRecord) :=
     {| aname := t!sNAME;

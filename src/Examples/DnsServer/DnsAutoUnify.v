@@ -71,23 +71,6 @@ Definition DnsSpec : ADT DnsSig :=
 
 (* -------------------------------------------------------------------------------------- *)
 
-    Lemma refine_If_Then_Else_same'
-      : forall (A B : Type) i (t : Comp A) (b : A -> A) (c : A) (r_n : B),
-        refine
-          (If i Then (a <- t;
-                      ret (r_n, b a))
-                Else (ret (r_n, c)))
-          (res <- If i Then (a <- t;
-                             ret (b a))
-                       Else (ret c);
-           ret (r_n, res)).
-    Proof.
-      intros; destruct i; simpl;
-      autosetoid_rewrite with refine_monad; reflexivity.
-    Qed.
-
-
-
 Theorem DnsManual :
   FullySharpened DnsSpec.
 Proof. unfold DnsSpec.
@@ -105,6 +88,7 @@ start sharpening ADT. {
     Time doAnyAll.
   (* 202 seconds = 3.5 minutes *)
   }
+  (* rename tactic; time the separate ones *)
 
   GenerateIndexesForAll         (* ? in IndexSelection, see GenerateIndexesFor *)
   (* specifies that you want to use the suffix index structure TODO *)

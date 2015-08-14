@@ -94,17 +94,19 @@ Section TupleNotationExamples.
 
 End TupleNotationExamples.
 
-(*Variable UpdateTuple : forall (attrs: list Attribute) (attr: Attribute),
+Variable UpdateTuple : forall (n : nat) (attrs: Vector.t Attribute n) (attr: Attribute),
                          (Component attr -> Component attr) ->
                          @RawTuple (BuildHeading attrs) -> @Tuple (BuildHeading attrs).
 
+Notation "a |= b" := (@UpdateTuple _ {|attrName := a; attrType := _|}
+                             (fun _ => Build_Component (_::_) b%list)) (at level 80).
 Notation "a ++= b" := (@UpdateTuple _ {|attrName := a; attrType := string|}
                              (fun o => Build_Component (_::_) (append (value o) b))) (at level 80).
 Notation "a :+= b" := (@UpdateTuple _ {|attrName := a; attrType := list _|}
                              (fun o => Build_Component (_::_) (cons b (value o)))) (at level 80).
 Notation "[ a ; .. ; c ]" := (compose a .. (compose c id) ..) : Update_scope.
 
-Delimit Scope Update_scope with Update. *)
+Delimit Scope Update_scope with Update.
 
 
 Definition IndexedRawTuple {heading} := @IndexedElement (@RawTuple heading).

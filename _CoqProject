@@ -106,8 +106,10 @@ src/Examples/DnsServer/DnsLemmas.v
 src/Examples/DnsServer/DnsRec.v
 src/Examples/DnsServer/DnsRecCache.v
 src/Examples/DnsServer/DnsSchema.v
+src/Examples/DnsServer/DnsSchema_new.v
 src/Examples/DnsServer/RewriteTest.v
 src/Examples/DnsServer/packet.v
+src/Examples/DnsServer/packet_new.v
 src/Examples/Ics/Ics.v
 src/Examples/Ics/WaterTank.v
 src/Examples/Ics/WaterTankExtract.v
