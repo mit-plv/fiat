@@ -10,6 +10,9 @@ etc/coq-scripts/Makefile.coq.common etc/coq-scripts/compatibility/Makefile.coq.c
 	@ touch "$@"
 endif
 
+FAST_TARGETS += clean-doc etc/coq-scripts etc/coq-scripts/Makefile.coq.common etc/coq-scripts/compatibility/Makefile.coq.compat_84_85 etc/coq-scripts/compatibility/Makefile.coq.compat_84_85-early submodule-update
+SUPER_FAST_TARGETS += submodule-update
+
 Makefile.coq: etc/coq-scripts/Makefile.coq.common etc/coq-scripts/compatibility/Makefile.coq.compat_84_85 etc/coq-scripts/compatibility/Makefile.coq.compat_84_85-early
 
 -include etc/coq-scripts/compatibility/Makefile.coq.compat_84_85-early
@@ -21,9 +24,6 @@ Makefile.coq: etc/coq-scripts/Makefile.coq.common etc/coq-scripts/compatibility/
 .PHONY: fiat fiat-core querystructures parsers parsers-all finitesets dns compiler facade-test ics fiat4monitors examples \
 	install install-fiat install-fiat-core install-querystructures install-parsers install-finitesets install-dns install-compiler install-ics install-fiat4monitors install-examples \
 	pdf doc clean-doc
-
-FAST_TARGETS += clean-doc etc/coq-scripts etc/coq-scripts/Makefile.coq.common etc/coq-scripts/compatibility/Makefile.coq.compat_84_85 etc/coq-scripts/compatibility/Makefile.coq.compat_84_85-early submodule-update
-SUPER_FAST_TARGETS += submodule-update
 
 .DEFAULT_GOAL := fiat
 
