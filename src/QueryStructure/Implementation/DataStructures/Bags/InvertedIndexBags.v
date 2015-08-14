@@ -1011,7 +1011,7 @@ Module InvertedIndexBag (MKeys : WS) (MValues : WSfun Nat_as_OT).
             generalize H0.
             remember (fun (k : MValues.key) (_ : TItem) => bool_of_sumbool (in_dec eq_nat_dec k l)) as f.
             unfold not in f; setoid_rewrite <- Heqf.
-            generalize MValues f; clear; induction st; simpl; intros; eauto.
+            generalize MValues f; clear -projection; induction st; simpl; intros; eauto.
             rewrite MValuesProperties.filter_iff in H; intuition.
             destruct (MKeys.find a MKey); simpl in *.
             setoid_rewrite Equal_filter_filter in H.
