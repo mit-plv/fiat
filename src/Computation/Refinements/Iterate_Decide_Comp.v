@@ -57,17 +57,20 @@ Section Iterate_Decide_Comp.
     unfold not; intros; apply H.
     case_eq (dec Fin.F1); try econstructor.
     eapply H0; eapply dec_decides_P; eauto.
-    eapply (@Iterate_Ensemble_equiv_filter''
+    let f := constr:(@Iterate_Ensemble_equiv_filter''
               _  (fun n' : Fin.t n => P (Fin.FS n'))
               (fun n' : Fin.t n => filter (Fin.FS n'))
               ({| dec := (fun n' : Fin.t n => dec (Fin.FS n'));
-                  dec_decides_P := (fun a => dec_decides_P (Fin.FS a))|})); eauto.
-    intros; eapply (@Iterate_Ensemble_equiv_filter''
+                  dec_decides_P := (fun a => dec_decides_P (Fin.FS a))|})) in
+    eapply f; eauto.
+    intros;
+      let f := constr:(@Iterate_Ensemble_equiv_filter''
               _
               (fun n' : Fin.t n => P (Fin.FS n'))
               (fun n' : Fin.t n => filter (Fin.FS n'))
               ({| dec := (fun n' : Fin.t n => dec (Fin.FS n'));
-                  dec_decides_P := (fun a => dec_decides_P (Fin.FS a))|})); eauto.
+                  dec_decides_P := (fun a => dec_decides_P (Fin.FS a))|})) in
+      eapply f; eauto.
   Qed.
 
   Lemma refine_decides_Equiv_Ensemble {n}
