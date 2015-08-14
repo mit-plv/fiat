@@ -175,7 +175,7 @@ pb = pb' '+' 0
       rewrite list_of_next_bin_ops'_recr.
       destruct (singleton_exists (take 1 str)) as [ch H''].
       { rewrite take_length, H'; reflexivity. }
-      { erewrite (fun H => proj1 (get_0 _ H)) by eassumption.
+      { erewrite (fun s H => proj1 (get_0 s H)) by eassumption.
         unfold list_of_next_bin_ops'_step.
         repeat match goal with
                  | _ => reflexivity
