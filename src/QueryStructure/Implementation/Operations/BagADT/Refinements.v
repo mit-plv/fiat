@@ -943,10 +943,11 @@ Section BagsQueryStructureRefinements.
     repeat setoid_rewrite (refineEquiv_bind_bind);
       repeat setoid_rewrite refineEquiv_bind_unit; simpl.
     f_equiv; unfold pointwise_relation; intros.
-    match goal with
-      |- refine (l' <- Join_Comp_Lists ?l ?c; (@?f l')) _ =>
-      setoid_rewrite (Join_Comp_Lists_apply_f l c) with (c' := fun l => List_Query_In l _)
-    end.
+    let H := match goal with
+                 |- refine (l' <- Join_Comp_Lists ?l ?c; (@?f l')) _ =>
+                 constr:(fun B C => Join_Comp_Lists_apply_f (B := B) (C := C) l c)
+             end in
+    setoid_rewrite H with (c' := fun l => List_Query_In l _).
     setoid_rewrite <- refineEquiv_unit_bind.
     setoid_rewrite (filter_and_join_ilist_tail
                (fun a0 : ilist2 (B:= @RawTuple) [_] =>_ (ilist2_hd a0))
