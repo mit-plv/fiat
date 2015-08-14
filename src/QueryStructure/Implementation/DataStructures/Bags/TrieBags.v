@@ -1918,7 +1918,7 @@ Module TrieBag (X:OrderedType).
     Lemma TrieBag_BagFindCorrect :
       BagFindCorrect TrieBagRepInv TrieBag_bfind TrieBag_bfind_matcher TrieBag_benumerate.
     Proof.
-      intros.
+      intros container search_term.
       destruct search_term as [[st |] search_term].
       { unfold TrieBag_bfind.
         rewrite <- (app_nil_l st) at 1.
@@ -2117,6 +2117,7 @@ Module TrieBag (X:OrderedType).
       BagDeleteCorrect TrieBagRepInv TrieBag_bfind TrieBag_bfind_matcher
                        TrieBag_benumerate TrieBag_bdelete.
     Proof.
+      intros container search_term.
       destruct search_term as [[st | ] search_term].
       { unfold TrieBag_bdelete.
         split.
@@ -2458,6 +2459,7 @@ Module TrieBag (X:OrderedType).
                        TrieBag_bfind TrieBag_bfind_matcher
                        TrieBag_benumerate bupdate_transform TrieBag_bupdate.
     Proof.
+      intros container search_term.
       destruct search_term as [[st | ] search_term].
       {
         unfold TrieBag_bupdate.
