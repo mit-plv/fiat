@@ -844,7 +844,7 @@ Qed.
 
 Global Instance nil_List_Query_eq :
   List_Query_eq [] :=
-  {| As_Query_eq := tt  |}.
+  { As_Query_eq := tt  }.
 
 Global Instance cons_List_Query_eq
        {A : Type}
@@ -853,4 +853,4 @@ Global Instance cons_List_Query_eq
        {As_Query_eq' : List_Query_eq As}
   :
     List_Query_eq (A :: As) :=
-  {| As_Query_eq := (A_Query_eq, As_Query_eq) |}.
+  { As_Query_eq := (A_Query_eq, As_Query_eq) }.
