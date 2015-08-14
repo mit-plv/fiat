@@ -841,7 +841,7 @@ Module RangeTreeBag (X : OrderedType).
           specialize (IHxs' cc_eq_t); clear cc_eq_t.
           erewrite InRange_Proper; eauto. rewrite eqk.
           simpl. destruct (bfind_matcher searchterm item).
-          apply Permutation_cons. apply IHxs'.  apply IHxs'.
+          apply Permutation_cons; try reflexivity. apply IHxs'.  apply IHxs'.
       - assert (List.filter (bfind_matcher searchterm) (List.filter (fun a : TItem => Range_InRange keys (projection a)) xs) = nil).
         rewrite filter_commute.
         apply filter_all_false; intros.
