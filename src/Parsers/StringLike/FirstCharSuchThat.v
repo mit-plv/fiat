@@ -167,7 +167,7 @@ Section is_first_char_such_that.
                | _ => eapply first_char_such_that_past_end; [ | eassumption ]; omega
                | [ H : _ |- _ ] => unique pose proof (proj1 (proj1 first_char_such_that_0 H))
                | [ H : for_first_char ?str ?P, H' : for_first_char ?str ?P' |- _ ]
-                 => destruct (fun H0 => for_first_char_combine (T := False) H0 H H'); [ tauto | clear H H' | tauto ]
+                 => destruct (fun H_new => for_first_char_combine (T := False) H_new H H'); [ tauto | clear H H' | tauto ]
                | _ => omega
                | _ => progress unfold ge in *
                | [ H : forall n', is_first_char_such_that ?P ?str n' ?P' -> _, H' : is_first_char_such_that ?P ?str _ ?P' |- _ ]
