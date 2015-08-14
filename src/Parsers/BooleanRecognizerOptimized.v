@@ -200,11 +200,11 @@ Section recursive_descent_parser.
                     ?v1 ?v2 ?str ?v4 ?v5 ?v6 ]
         => let f' := constr:(fun const_str
                                  (a' : T0)
-                                 (x : forall a'' : T0, R a'' a' -> T1 -> varT -> T2' a'')
+                                 (x_new : forall a'' : T0, R a'' a' -> T1 -> varT -> T2' a'')
                                  (y : T1)
                                  (z : varT)
                              => f a' (fun a'' rwf t1 str'
-                                      => x a'' rwf t1 (snd (of_string str')))
+                                      => x_new a'' rwf t1 (snd (of_string str')))
                                   y (to_string (const_str, z))) in
            let vstr' := constr:(snd (of_string str)) in
            let f'h := fresh "f0" in
