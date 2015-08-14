@@ -23,8 +23,8 @@ Notation "heading / attr_index" := ((fun x : Attributes heading => x)
                                       (at level 40, left associativity) : QueryStructure_scope.
 
 Notation TupleDef sch Ridx :=
-  (@RawTuple (GetNRelSchemaHeading (qschemaSchemas sch)
-                                  (ibound (indexb (@Build_BoundedIndex _ _ (QSschemaNames sch) Ridx _))))).
+  (@RawTuple (GetNRelSchemaHeading (qschemaSchemas sch%QSSchema)
+                                  (ibound (indexb (@Build_BoundedIndex _ _ (QSschemaNames sch%QSSchema) Ridx _))))).
 
 Notation "QSSchema # rel_key" := (TupleDef QSSchema rel_key) (at level 100, no associativity) : QueryStructure_scope.
 
