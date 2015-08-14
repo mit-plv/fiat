@@ -1,16 +1,37 @@
 Generalizable All Variables.
 Set Implicit Arguments.
 
-Require Import Coq.Lists.List Coq.Strings.String Coq.Arith.Arith Fiat.Common.ilist Fiat.Common.ilist2.
+Require Import
+        Coq.Lists.List
+        Coq.Strings.String
+        Coq.Arith.Arith
+        Fiat.Common.ilist
+        Fiat.Common.ilist2.
 
 Section i2list2.
-
-  (* Lists of elements whose types depend on a pairs of indexing set
+(*
+(* Lists of elements whose types depend on a pairs of indexing set
      (CPDT's hlists). *)
 
   Variable A : Type. (* The indexing type. *)
   Variable B B' : A -> Type. (* The type of indexed elements. *)
   Variable C : forall a, B a -> B' a -> Type. (* The type of doubly-indexed elements. *)
+
+  Record prim_prod_3 A B C :=
+    { prim_3_fst : A;
+      prim_3_snd : B;
+      prim_3_thd : C }.
+
+  Import Coq.Vectors.VectorDef.VectorNotations.
+
+  Fixpoint i2list2 {n}
+           (l : Vector.t A n)
+           (il : ilist (B := B) l) : Type :=
+    match l return ilist (B := B) l -> Type with
+    | Vector.nil => unit
+    | Vector.cons a :: l => @prim_prod (B a) (ilist2 l)
+    end.
+
 
   Inductive i2list2 : forall (As : list A),
                         ilist B As -> ilist B' As -> Type :=
@@ -175,7 +196,7 @@ Section i2list2.
   Proof.
     ith_induction n As; simpl; eauto with arith.
   Qed. *)
-
+ *)
 End i2list2.
 (*
 Section i2list2_replace.

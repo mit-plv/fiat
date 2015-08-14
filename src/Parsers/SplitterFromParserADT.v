@@ -10,6 +10,8 @@ Require Import Fiat.Parsers.ContextFreeGrammarTransfer.
 Require Import Fiat.Parsers.ContextFreeGrammarTransferProperties.
 Require Import Fiat.ADTRefinement.Core.
 Require Import Fiat.Common Fiat.Common.Equality.
+Require Import Fiat.Common.BoundedLookup.
+Require Import Fiat.ADTNotation.BuildComputationalADT.
 
 Set Implicit Arguments.
 
@@ -106,7 +108,9 @@ Section parser.
   Local Notation StringT := { r : cRep (projT1 splitter_impl) | exists orig, AbsR (projT2 splitter_impl) orig r }%type (only parsing).
   Local Notation StringT_lite := (cRep (projT1 splitter_impl)) (only parsing).
 
-  Local Notation mcall0 proj s := (fun n st => (proj (cMethods (projT1 splitter_impl) {| StringBound.bindex := s |} st n))) (only parsing).
+  Local Notation mcall0 proj s := (fun n st => proj (callcADTMethod (projT1 splitter_impl) (fun idx => ibound (indexb idx))
+                                                  (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii)) s _ ) st n)) (only parsing).
+
   Local Notation mcall1 s := (mcall0 fst s) (only parsing).
   Local Notation mcall2 s := (mcall0 snd s) (only parsing).
 
@@ -116,15 +120,17 @@ Section parser.
   Definition mlength := Eval simpl in mcall2 "length".
   Definition mtake := Eval simpl in mcall1 "take".
   Definition mdrop := Eval simpl in mcall1 "drop".
-  Definition premsplits := Eval simpl in cMethods (projT1 splitter_impl) {| StringBound.bindex := "splits" |}.
+  
+  Definition premsplits := Eval simpl in (callcADTMethod (projT1 splitter_impl) (fun idx => ibound (indexb idx))
+                                                  (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii)) "splits" _ )).
   Definition msplits := Eval simpl in mcall2 "splits".
 
   Local Notation mcall1_R meth st arg str H :=
-    (@fst_cMethods_comp {| StringBound.bindex := meth |} st arg str _ eq_refl H)
+    (@fst_cMethods_comp (ibound (indexb (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii)) meth _ ))) st arg str _ eq_refl H)
       (only parsing).
 
   Local Notation mcall2_eq meth st arg str H :=
-    (@snd_cMethods_comp {| StringBound.bindex := meth |} st arg str _ eq_refl H)
+    (@snd_cMethods_comp (ibound (indexb (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii)) meth _ ))) st arg str _ eq_refl H)
       (only parsing).
 
   Definition mto_string_eq {arg st str} (H : AbsR (projT2 splitter_impl) str st)
@@ -186,6 +192,12 @@ Section parser.
          is_char str ch := mis_char ch str;
          get n str := mget n str;
          bool_eq s1 s2 := string_beq (mto_string tt s1) (mto_string tt s2) }.
+  Next Obligation.
+    admit.
+  Qed.
+  Next Obligation.
+    admit.
+  Qed.
 
   Local Ltac t'' H meth :=
     pose proof (meth Ascii.ascii string_stringlike string_stringlike_properties) as H;
@@ -236,16 +248,17 @@ Section parser.
     destruct_head_hnf sig.
     destruct_head ex.
     erewrite @mlength_eq in * by eassumption.
+    Definition splits := ibound (indexb (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii)) "splits" _ )).
     lazymatch goal with
       | [ H : AbsR ?Ok ?str ?st
           |- appcontext[msplits ?arg ?st] ]
         => let T := type of Ok in
            let impl := (match eval cbv beta in T with refineADT _ (LiftcADT ?impl) => constr:impl end) in
            let H' := fresh in
-           pose proof (ADTRefinementPreservesMethods Ok {| StringBound.bindex := "splits" |}  _ _ arg H ((cMethods impl {| StringBound.bindex := "splits" |} st arg)) (ReturnComputes _)) as H';
+           pose proof (ADTRefinementPreservesMethods Ok splits _ _ arg H ((cMethods impl splits st arg)) (ReturnComputes _)) as H';
              change (msplits arg st) with (snd (premsplits st arg));
              match type of H' with
-               | appcontext G[cMethods _ {| StringBound.bindex := "splits" |} ?st ?arg]
+               | appcontext G[cMethods _ splits ?st ?arg]
                  => let G' := context G[premsplits st arg] in
                     change G' in H'
              end

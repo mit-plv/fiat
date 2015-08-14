@@ -149,7 +149,7 @@ Qed.
 
 Lemma refine_bag_update_other_table :
   forall (db_schema : QueryStructureSchema) (qs : UnConstrQueryStructure db_schema)
-         (index1 index2 : BoundedString) bag_store store Rel,
+         (index1 index2 : Fin.t _) bag_store store Rel,
     EnsembleBagEquivalence bag_store (GetUnConstrRelation qs index2) store ->
     index1 <> index2 ->
       EnsembleBagEquivalence bag_store
@@ -199,7 +199,7 @@ Ltac binsert_correct_DB :=
       solve [ simpl; apply (binsertPlus_correct_DB qs index bag_plus store H _ bound H0) ]
   end.
 
-Lemma refine_Perm_map
+(*Lemma refine_Perm_map
       {TItem A}
       {BagPl : BagPlusProof TItem}
 :
@@ -218,4 +218,4 @@ Tactic Notation "replace" "filter" "enumerate" constr(storage) :=
         |- context[map ?f (filter (bfind_matcher ?search_term)
                                   (benumerate ?bag))] =>
         rewrite (@refine_Perm_map _ _ storage search_term bag f)
-    end.
+    end. *)

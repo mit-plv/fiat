@@ -32,7 +32,7 @@ Typeclasses Opaque If_Then_Else.
       finish honing parser method.
     }
 
-    FullySharpenEachMethodWithoutDelegation.
+    Time FullySharpenEachMethodWithoutDelegation.
     extract delegate-free implementation.
     simpl; higher_order_reflexivityT.
   Defined.

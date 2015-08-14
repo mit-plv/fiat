@@ -6,15 +6,16 @@ Require Import Coq.Vectors.Vector
 
 Require Import Fiat.QueryStructure.Automation.AutoDB
         Fiat.QueryStructure.Implementation.DataStructures.BagADT.BagADT
-        Fiat.Examples.DnsServer.DnsSchema
-        Fiat.Examples.DnsServer.packet
         Fiat.QueryStructure.Automation.IndexSelection
         Fiat.QueryStructure.Specification.SearchTerms.ListPrefix
-        Fiat.QueryStructure.Automation.SearchTerms.FindSuffixSearchTerms
+        Fiat.QueryStructure.Automation.SearchTerms.FindPrefixSearchTerms
         Fiat.QueryStructure.Automation.QSImplementation.
 
+Require Import Fiat.Examples.DnsServer.DnsSchema
+        Fiat.Examples.DnsServer.packet.
 
 Open Scope list.
+
 
 Definition upperbound {A} (f : A -> nat) (rs : list A) (r : A) :=
   forall r', List.In r' rs -> f r >= f r'.
@@ -39,7 +40,7 @@ as the condition on the body is not a proper relation. :p *)
 (* TODO: figure out a definition for pointwise_refine that is a
    proper (i.e. reflexive and transitive) relation.
  *)
-(*
+
 Print respectful.
 
 Definition pointwise_refine {A R}
@@ -81,7 +82,7 @@ Proof.
     intros.
     generalize (IHi _ _ H _ _ H0 a); eauto.
 Qed.
-*)
+
 
 (* TODO: Agree on a notation for our fueled fix function. *)
 Notation "'Repeat' fuel 'initializing' a 'with' arg 'defaulting' rec 'with' base {{ bod }} " :=
@@ -142,6 +143,25 @@ Definition name_length (r : DNSRRecord) := List.length (get_name r).
 
 Notation "[[ x 'in' xs | P ]]" := (filtered_list xs (fun x => P)) (at level 70) : comp_scope.
 
+(* ----------------- *)
+(* Raw tuple field accessor notations *)
+
+Notation "( x 'in' r '!' Ridx ) bod" :=
+  (let qs_schema : QueryStructureSchema := _ in
+   let r' : UnConstrQueryStructure qs_schema := r in
+   let Ridx' := ibound (indexb (@Build_BoundedIndex _ _ (QSschemaNames qs_schema) Ridx%string _)) in
+   @UnConstrQuery_In _ qs_schema r' Ridx'
+            (fun x : @RawTuple (GetNRelSchemaHeading (qschemaSchemas qs_schema) Ridx') => bod)) : QueryImpl_scope.
+
+Definition GetAttributeRawBnd {heading : Heading}
+           (tup : @RawTuple heading)
+           (idx : (BoundedIndex (HeadingNames heading)))
+  : Domain heading (ibound (indexb idx)) :=
+  GetAttributeRaw tup (ibound (indexb idx)).
+
+Notation "tup '!' idx" := (GetAttributeRaw tup ``idx) : TupleImpl_scope.
+
+
 (* -------------------------------------------------------------------------------------- *)
 
 (* Refinement lemmas *)
@@ -170,7 +190,7 @@ Proof.
   intros; refine pick val true; [ reflexivity | simpl; intros; assumption ].
 Qed.
 
-(* if the record's type *is* CNAME, then refine the forall check against other records into 
+(* if the record's type *is* CNAME, then refine the forall check against other records into
 an existential (exists a record with the same name), and return the opposite *)
 Lemma refine_is_CNAME__forall_to_exists :
   forall (n : DNSRRecord) (R : @IndexedEnsemble DNSRRecord),
@@ -195,7 +215,7 @@ Proof.
           end.
 Qed.
 
-(* very similar to refine_is_CNAME__forall_to_exists; 
+(* very similar to refine_is_CNAME__forall_to_exists;
 they start with the same set, but refine_forall_to_exists refines it with an extra end condition. changes the (forall x, ~P x) check into (exists x, P x) and returns !x, adding the condition in the forall *)
 Lemma refine_forall_to_exists :
   forall (n : DNSRRecord) (R : @IndexedEnsemble DNSRRecord),
@@ -221,9 +241,63 @@ Proof.                          (* same proof as refine_is_CNAME__forall_to_exis
          end.
 Qed.
 
+
+(* implement the DNS record constraint check as code that counts the number of occurrences of
+the constraint being broken (refines the boolean x1 in AddData) *)
+
+Lemma refine_count_constraint_broken :
+  forall (n : DNSRRecord) (r : UnConstrQueryStructure DnsSchema),
+    refine {b |
+            decides b
+                    (forall tup' : @IndexedRawTuple (GetHeading DnsSchema sCOLLECTIONS),
+                       (r!sCOLLECTIONS)%QueryImpl tup' ->
+                       n!sNAME = (indexedElement tup')!sNAME -> n!sTYPE <> CNAME)}
+           (If (beq_RRecordType n!sTYPE CNAME)
+               Then count <- Count
+               For (tup in r!sCOLLECTIONS)
+               (Where (n!sNAME = GetAttributeRawBnd tup ``sNAME)
+                      Return tup )%QueryImpl;
+    ret (beq_nat count 0) Else ret true).
+Proof.
+  intros; setoid_rewrite refine_pick_decides at 1;
+  [ | apply refine_is_CNAME__forall_to_exists | apply refine_not_CNAME__independent ].
+  (* refine existence check into query. *)
+
+  match goal with
+      |- context[{b | decides b
+                              (exists tup : @IndexedTuple ?heading,
+                                 (@GetUnConstrRelationBnd ?qs_schema ?qs ?tbl tup /\ @?P tup))}]
+      =>
+      let H1 := fresh in
+      let H2 := fresh in
+      makeEvar (Ensemble (@Tuple heading))
+               ltac:(fun P' => assert (Same_set (@IndexedTuple heading) (fun t => P' (indexedElement t)) P) as H1;
+                     [unfold Same_set, Included, Ensembles.In;
+                       split; [intros x H; pattern (indexedElement x);
+                               match goal with
+                                   |- ?P'' (indexedElement x) => unify P' P'';
+                                     simpl; eauto
+                               end
+                              | eauto]
+                     |
+                     assert (DecideableEnsemble P') as H2;
+                       [ simpl; eauto with typeclass_instances (* Discharge DecideableEnsemble w/ intances. *)
+                       | setoid_rewrite (@refine_constraint_check_into_query' qs_schema (ibound (indexb tbl)) qs P P' H2 H1); clear H2 H1 ] ]) end.
+  remember n!sTYPE; refine pick val (beq_RRecordType d CNAME); subst;
+  [ | case_eq (beq_RRecordType n!sTYPE CNAME); intros;
+      rewrite <- beq_RRecordType_dec in H; find_if_inside;
+      unfold not; simpl in *; try congruence ].
+  intros; simplify with monad laws; simpl.
+  autorewrite with monad laws.
+  setoid_rewrite negb_involutive.
+  reflexivity.
+Qed.
+
+Hint Resolve refine_count_constraint_broken.
+
 (* in AddData, simplifies x1 from large For/Where/Return expression to [ret (filter dec a0)] *)
 
-(* refine a check into a filter, given the results of a sub-check 
+(* refine a check into a filter, given the results of a sub-check
 uses P' decision procedure invisibly in DecideableEnsembles.dec by the magic of typeclasses
 (try Set Printing Implicit) *)
 Lemma refine_subcheck_to_filter {heading}
@@ -272,6 +346,9 @@ Proof.
   - refine pick val _; auto; subst.
     apply filter_permutation_morphism; [ reflexivity | assumption ].
 Qed.
+
+(* uses refine_forall_to_exists; refines x2 in AddData 
+very similar to refine_count_constraint_broken; comments below are relative to refine_count_constraint_broken *)
 
 (* implement the DNS record constraint check as code that counts the number of occurrences of
 the constraint being broken (refines the boolean x1 in AddData) *)
@@ -327,20 +404,24 @@ Proof.
 Qed.
 *)
 
-(* uses refine_forall_to_exists; refines x2 in AddData 
+(* uses refine_forall_to_exists; refines x2 in AddData
 very similar to refine_count_constraint_broken; comments below are relative to refine_count_constraint_broken *)
-(*
+
+Definition bCOLLECTIONS : Fin.t _ :=
+  ibound (indexb (@Build_BoundedIndex string (numQSschemaSchemas DnsSchema)
+                                      (QSschemaNames DnsSchema) sCOLLECTIONS _)).
+
 Lemma refine_count_constraint_broken' :
   forall (n : DNSRRecord) (r : UnConstrQueryStructure DnsSchema),
     refine {b |
             decides b
                     (forall tup' : @IndexedTuple (GetHeading DnsSchema sCOLLECTIONS),
-                       (r!sCOLLECTIONS)%QueryImpl tup' ->
+                       (GetUnConstrRelation r bCOLLECTIONS) tup' ->
                        (indexedElement tup')!sNAME = n!sNAME (* switched *)
                        -> (indexedElement tup')!sTYPE <> CNAME)} (* indexedElement tup', not n *)
            (* missing the If/Then statement *)
            (count <- Count
-                  For (UnConstrQuery_In r ``(sCOLLECTIONS)
+                  For (UnConstrQuery_In r bCOLLECTIONS
                                         (fun tup : Tuple =>
                                            Where (n!sNAME = tup!sNAME
                                                   /\ tup!sTYPE = CNAME ) (* extra /\ condition *)
@@ -635,7 +716,14 @@ Qed. *)
       reflexivity.
     Qed.
 
-
+    Lemma eqListA_eq {A}:
+      forall l l0 : list A,
+        SetoidList.eqlistA eq l l0 <-> l = l0.
+    Proof.
+      induction l; split; intros; inversion H; subst; eauto.
+      - f_equal; eapply IHl; eauto.
+      - f_equiv.
+    Qed.
 
     (* used in refine_check_one_longest_prefix_s and refine_check_one_longest_prefix_CNAME *)
     Lemma all_longest_prefixes_same :
@@ -665,6 +753,7 @@ Qed. *)
       clear H2' H3' H H2 H0 H1 H5 s ns.
       remember (get_name n); remember (get_name n'); clear Heql Heql0.
       (* if 2 lists have the same length and are both prefixes of some list, they are the same list *)
+      apply eqListA_eq in H4.
       revert x0 l l0 H4 H3.
       induction x; destruct x0; intros.
       - repeat rewrite app_nil_r in H4; assumption.
@@ -837,23 +926,22 @@ Ltac inv H := inversion H; clear H; try subst.
 
 (* Helper lemmas for tuples_in_relation_satisfy_constraint_specific *)
 
-Lemma flatmap_permutation : forall heading l1 (l2 : list (@Tuple heading)),
-    In (list Tuple)
-       (FlattenCompList.flatten_CompList
-          (map (fun r : @Tuple heading => Return r) l2)) l1
+Lemma flatmap_permutation : forall heading l1 (l2 : list (@RawTuple heading)),
+    In _ (FlattenCompList.flatten_CompList
+            (map (fun r : @RawTuple heading => Return r) l2)) l1
     -> Permutation l1 l2.
 Proof.
   intros. revert l1 H.
-  induction l2; intros; destruct l1; intros; simpl in *; 
+  induction l2; intros; destruct l1; intros; simpl in *;
   try reflexivity; inv H; (inv H0; inv H1; inv H0; inv H2; inv H).
   - inv H3.
-  - rewrite app_singleton. auto. 
-Qed.   
+  - rewrite app_singleton. auto.
+Qed.
 
-Lemma flatmap_permutation' : forall heading (l : list (@Tuple heading)),
-    In (list Tuple) (@FlattenCompList.flatten_CompList (@Tuple heading)
-     (@map (@Tuple heading) (Comp (list (@Tuple heading)))
-        (fun r : @Tuple heading => @Query_Return (@Tuple heading) r) l))
+Lemma flatmap_permutation' : forall heading (l : list (@RawTuple heading)),
+    In _ (@FlattenCompList.flatten_CompList (@RawTuple heading)
+     (@map (@RawTuple heading) (Comp (list (@RawTuple heading)))
+        (fun r : @RawTuple heading => @Query_Return (@RawTuple heading) r) l))
      l.
 Proof.
   intros.
@@ -886,7 +974,7 @@ Definition UnIndexedEnsembleListExists
 
 Lemma nth_error_map' {A B}
   : forall (f : A -> B) l m b,
-    nth_error (map f l) m = Some b -> 
+    nth_error (map f l) m = Some b ->
     exists a, nth_error l m = Some a /\ f a = b.
 Proof.
   induction l; destruct m; simpl; intros; try discriminate;
@@ -950,14 +1038,16 @@ Proof.
      eapply map_nth_error with (f := indexedElement) in H2; simpl in *; eauto.
      eapply map_nth_error with (f := indexedElement) in H5; simpl in *; eauto.
 Qed.
-  
+
+Check QueryResultComp.
+
 Lemma In_Where_Intersection heading
   : forall R P (P_dec : DecideableEnsemble P) x,
-    computes_to 
+    computes_to
       (QueryResultComp R (fun r => Where (P r)
                                          Return r)) x ->
     computes_to
-      (QueryResultComp (Intersection (@IndexedTuple heading) R
+      (QueryResultComp (Intersection (@IndexedRawTuple heading) R
                                       (fun r => (P (indexedElement r)))) (fun r => Return r)) x.
 Proof.
   unfold In, QueryResultComp; intros.
@@ -965,7 +1055,7 @@ Proof.
   revert R x H H'.
   induction v; simpl in *; intros; computes_to_inv; subst.
   - repeat computes_to_econstructor.
-    instantiate (1 := @nil Tuple); simpl.
+    instantiate (1 := @nil RawTuple); simpl.
     inversion H; intuition; subst.
     econstructor; split; eauto.
     repeat split; intros; eauto.
@@ -976,7 +1066,7 @@ Proof.
   - inversion H; destruct x; simpl in *; intuition;
     try discriminate; injections.
     assert (UnIndexedEnsembleListEquivalence
-              (fun t : IndexedTuple => elementIndex t <> elementIndex i
+              (fun t : IndexedRawTuple => elementIndex t <> elementIndex i
                                        /\ R t) (map indexedElement x)).
     { econstructor; intuition eauto.
       inversion H1; subst.
@@ -1044,189 +1134,25 @@ Proof.
       eapply H7 in H5; destruct H5; destruct H5.
       econstructor; eauto.
 Qed.
-  
-Theorem IsSuffix_string_dec : 
-  forall l1 l2 : list string, IsSuffix l1 l2 \/ ~ IsSuffix l1 l2.
+
+Theorem IsPrefix_string_dec :
+  forall l1 l2 : list string, IsPrefix l1 l2 \/ ~ IsPrefix l1 l2.
 Proof.
   intros.
-  revert l2; induction l1; intros; destruct l2.
-
-  - left. unfold IsPrefix. exists (@nil string). reflexivity.
-  - right.
-    intros not.
-    inversion not.
-    inversion H.
-  - left. unfold IsPrefix. exists (a :: l1). rewrite app_nil_l. reflexivity.
-  - (* could be either *)
-    (* prefix iff a0 = a and l2 is a prefix of l1 (induction hyp) *)
-    pose proof (string_dec a s) as string_dec.
-    (* it's a LIST OF STRINGS, not a list of characters *)
-    specialize (IHl1 l2).
-    destruct string_dec.
-    + rewrite e.
-      destruct IHl1.
-      left.
-      unfold IsPrefix in *.
-      destruct H.
-      * exists x.
-        rewrite <- app_comm_cons.
-        rewrite H. reflexivity.
-      * unfold IsPrefix in *.
-        unfold not in H.
-        right.
-        intros not.
-        destruct not.
-        inversion H0.
-        apply H.
-        exists x.
-        auto.
-    + 
-      unfold not in n.
-      right.
-      intros not.
-      unfold IsPrefix in *.
-      destruct not.
-      inversion H.
-      apply n.
-      symmetry.
-      apply H1.
+  destruct (IsPrefix_dec l1 l2); eauto.
 Qed.
 
 (* Main lemma -- TODO generalize *)
 
 (* but Exc = option? broke because I changed the type of sDATA in DNSRRecord? *)
 (* Set Printing All. *)
-(*
-Lemma tuples_in_relation_satisfy_constraint_specific :
-  forall (a : list Tuple) (n : packet) (r_n : QueryStructure DnsSchema),
-(* TODO *)
-    (* For (r in sCOLLECTIONS) *)
-    (*        (Where (IsSuffix (qname (questions n)) r!sNAME) *)
-    (*         Return r )  ↝ a -> *)
-    let   BStringId0 := ``(sNAME) : BoundedIndex [sNAME; sTYPE; sCLASS; sTTL; sDATA] in
-@computes_to
-         (list
-            (@Tuple             (* heading1 *)
-               (BuildHeading
-                  (@Datatypes.cons Attribute (Build_Attribute sNAME name)
-                     (@Datatypes.cons Attribute
-                        (Build_Attribute sTYPE RRecordType)
-                        (@Datatypes.cons Attribute
-                           (Build_Attribute sCLASS RRecordClass)
-                           (@Datatypes.cons Attribute
-                              (Build_Attribute sTTL nat)
-                              (@Datatypes.cons Attribute
-                                 (Build_Attribute sDATA string)
-                                 (@Datatypes.nil Attribute)))))))))
-         (@Query_For
-            (@Tuple
-               (BuildHeading
-                  (@Datatypes.cons Attribute (Build_Attribute sNAME name)
-                     (@Datatypes.cons Attribute
-                        (Build_Attribute sTYPE RRecordType)
-                        (@Datatypes.cons Attribute
-                           (Build_Attribute sCLASS RRecordClass)
-                           (@Datatypes.cons Attribute
-                              (Build_Attribute sTTL nat)
-                              (@Datatypes.cons Attribute
-                                 (Build_Attribute sDATA string)
-                                 (@Datatypes.nil Attribute))))))))
-            (@Query_In
-               (@Tuple
-                  (BuildHeading
-                     (@Datatypes.cons Attribute (Build_Attribute sNAME name)
-                        (@Datatypes.cons Attribute
-                           (Build_Attribute sTYPE RRecordType)
-                           (@Datatypes.cons Attribute
-                              (Build_Attribute sCLASS RRecordClass)
-                              (@Datatypes.cons Attribute
-                                 (Build_Attribute sTTL nat)
-                                 (@Datatypes.cons Attribute
-                                    (Build_Attribute sDATA string)
-                                    (@Datatypes.nil Attribute))))))))
-               (@Build_QueryStructureHint DnsSchema r_n)
-               (@Build_BoundedIndex string
-                  (@Datatypes.cons string sCOLLECTIONS
-                     (@Datatypes.nil string)) sCOLLECTIONS
-                  (@Build_IndexBound string sCOLLECTIONS
-                     (@Datatypes.cons string sCOLLECTIONS
-                        (@Datatypes.nil string)) O
-                     (@eq_refl (option string) (@Some string sCOLLECTIONS))))
-               (fun
-                  r : @Tuple
-                        (BuildHeading
-                           (@Datatypes.cons Attribute
-                              (Build_Attribute sNAME name)
-                              (@Datatypes.cons Attribute
-                                 (Build_Attribute sTYPE RRecordType)
-                                 (@Datatypes.cons Attribute
-                                    (Build_Attribute sCLASS RRecordClass)
-                                    (@Datatypes.cons Attribute
-                                       (Build_Attribute sTTL nat)
-                                       (@Datatypes.cons Attribute
-                                          (Build_Attribute sDATA string)
-                                          (@Datatypes.nil Attribute))))))) =>
-                @Query_Where
-                  (@Tuple
-                     (BuildHeading
-                        (@Datatypes.cons Attribute
-                           (Build_Attribute sNAME name)
-                           (@Datatypes.cons Attribute
-                              (Build_Attribute sTYPE RRecordType)
-                              (@Datatypes.cons Attribute
-                                 (Build_Attribute sCLASS RRecordClass)
-                                 (@Datatypes.cons Attribute
-                                    (Build_Attribute sTTL nat)
-                                    (@Datatypes.cons Attribute
-                                       (Build_Attribute sDATA string)
-                                       (@Datatypes.nil Attribute))))))))
-                  (@IsSuffix string (qname (questions n))
-                     (@GetAttribute
-                        (BuildHeading
-                           (@Datatypes.cons Attribute
-                              (Build_Attribute sNAME name)
-                              (@Datatypes.cons Attribute
-                                 (Build_Attribute sTYPE RRecordType)
-                                 (@Datatypes.cons Attribute
-                                    (Build_Attribute sCLASS RRecordClass)
-                                    (@Datatypes.cons Attribute
-                                       (Build_Attribute sTTL nat)
-                                       (@Datatypes.cons Attribute
-                                          (Build_Attribute sDATA string)
-                                          (@Datatypes.nil Attribute))))))) r
-                        (@Build_BoundedIndex string
-                           (@Datatypes.cons string sNAME
-                              (@Datatypes.cons string sTYPE
-                                 (@Datatypes.cons string sCLASS
-                                    (@Datatypes.cons string sTTL
-                                       (@Datatypes.cons string sDATA
-                                          (@Datatypes.nil string)))))) sNAME
-                           (@Build_IndexBound string sNAME
-                              (@Datatypes.cons string sNAME
-                                 (@Datatypes.cons string sTYPE
-                                    (@Datatypes.cons string sCLASS
-                                       (@Datatypes.cons string sTTL
-                                          (@Datatypes.cons string sDATA
-                                             (@Datatypes.nil string)))))) O
-                              (@eq_refl (option string) (@Some string sNAME))))))
-                  (@Query_Return
-                     (@Tuple
-                        (BuildHeading
-                           (@Datatypes.cons Attribute
-                              (Build_Attribute sNAME name)
-                              (@Datatypes.cons Attribute
-                                 (Build_Attribute sTYPE RRecordType)
-                                 (@Datatypes.cons Attribute
-                                    (Build_Attribute sCLASS RRecordClass)
-                                    (@Datatypes.cons Attribute
-                                       (Build_Attribute sTTL nat)
-                                       (@Datatypes.cons Attribute
-                                          (Build_Attribute sDATA string)
-                                          (@Datatypes.nil Attribute)))))))) r))))
-         a
 
-->
-  
+Lemma tuples_in_relation_satisfy_constraint_specific :
+  forall (a : list RawTuple) (n : packet) (r_n : QueryStructure DnsSchema),
+(* TODO *)
+    For (r in r_n!sCOLLECTIONS)
+        (Where (IsPrefix r!sNAME (qname (questions n)))
+               Return r ) ↝ a ->
   forall (t t' : DNSRRecord) (n0 n' : nat),
     n0 <> n' ->
     nth_error a n0 = Some t -> (* this isn't right? *)
@@ -1236,78 +1162,18 @@ Lemma tuples_in_relation_satisfy_constraint_specific :
 Proof.
   intros. inversion H. inv H4.
 
-assert (forall l,
-In
-         (list
-            (@Tuple
-               (BuildHeading
-                  (@Datatypes.cons Attribute (Build_Attribute sNAME name)
-                     (@Datatypes.cons Attribute
-                        (Build_Attribute sTYPE RRecordType)
-                        (@Datatypes.cons Attribute
-                           (Build_Attribute sCLASS RRecordClass)
-                           (@Datatypes.cons Attribute
-                              (Build_Attribute sTTL nat)
-                              (@Datatypes.cons Attribute
-                                 (Build_Attribute sDATA string)
-                                 (@Datatypes.nil Attribute)))))))))
-         (* --- *)
-         (@Query_In
-            (@Tuple
-               (BuildHeading
-                  (@Datatypes.cons Attribute (Build_Attribute sNAME name)
-                     (@Datatypes.cons Attribute
-                        (Build_Attribute sTYPE RRecordType)
-                        (@Datatypes.cons Attribute
-                           (Build_Attribute sCLASS RRecordClass)
-                           (@Datatypes.cons Attribute
-                              (Build_Attribute sTTL nat)
-                              (@Datatypes.cons Attribute
-                                 (Build_Attribute sDATA string)
-                                 (@Datatypes.nil Attribute))))))))
-            (@Build_QueryStructureHint DnsSchema r_n)
-            (@Build_BoundedIndex string
-               (@Datatypes.cons string sCOLLECTIONS (@Datatypes.nil string))
-               sCOLLECTIONS
-               (@Build_IndexBound string sCOLLECTIONS
-                  (@Datatypes.cons string sCOLLECTIONS
-                     (@Datatypes.nil string)) O
-                  (@eq_refl (option string) (@Some string sCOLLECTIONS))))
-
-            (fun
-               r : @Tuple
-                     (* [ *) (BuildHeading
-                        (@Datatypes.cons Attribute
-                           (Build_Attribute sNAME name)
-                           (@Datatypes.cons Attribute
-                              (Build_Attribute sTYPE RRecordType)
-                              (@Datatypes.cons Attribute
-                                 (Build_Attribute sCLASS RRecordClass)
-                                 (@Datatypes.cons Attribute
-                                    (Build_Attribute sTTL nat)
-                                    (@Datatypes.cons Attribute
-                                       (Build_Attribute sDATA string)
-                                       (@Datatypes.nil Attribute))))))) (* ] *) =>
-               (@Query_Return
-                  (@Tuple
-                     (BuildHeading
-                        (@Datatypes.cons Attribute
-                           (Build_Attribute sNAME name)
-                           (@Datatypes.cons Attribute
-                              (Build_Attribute sTYPE RRecordType)
-                              (@Datatypes.cons Attribute
-                                 (Build_Attribute sCLASS RRecordClass)
-                                 (@Datatypes.cons Attribute
-                                    (Build_Attribute sTTL nat)
-                                    (@Datatypes.cons Attribute
-                                       (Build_Attribute sDATA string)
-                                       (@Datatypes.nil Attribute)))))))) r)))
-         l
--> List.incl x l
-). {
-  (* need to use the main H5 too, with the filter 
+  assert (forall l,
+             In (list RawTuple)
+                (let qs_schema := DnsSchema in
+                 let r' := r_n in
+                 Query_In r' bCOLLECTIONS
+                          (fun r : RawTuple =>
+                             Return r )) l
+             ->  List.incl x l).
+  {
+  (* need to use the main H5 too, with the filter
 this is because x is a list of tuples that all came from r *)
-  clear BStringId0 t t' n0 H0 H1 H2 H3 H n'.
+  clear t t' n0 H0 H1 H2 H3 H n'.
   remember H5 as inFilter. clear HeqinFilter H5.
   intros l inRelation.
   inversion inFilter.
@@ -1318,10 +1184,10 @@ this is because x is a list of tuples that all came from r *)
   (* H : x0 (new) is x1 without indices, and all indices in x1 are unique, and
      forall x2 (new) : indexedelement, it's in sCOLLECTIONS if and only if it's in x1, the list of indexed elements  *)
 
-  inv H. 
+  inv H.
   inv H2.
   remember (map elementIndex x1) as x0.
-  
+
   inversion inRelation.
   inversion H2. clear H2. inversion H3. clear H3.
   inversion H2. clear H2. inversion H5. clear H5.
@@ -1335,7 +1201,7 @@ this is because x is a list of tuples that all came from r *)
 
   assert (exists feIndex,
      List.In {| elementIndex := feIndex; indexedElement := filterElem |} x1).
-  { 
+  {
   remember (map indexedElement x1) as x1elems.
 
   (* this is the real nub of the proof *)
@@ -1343,105 +1209,10 @@ this is because x is a list of tuples that all came from r *)
   {
     unfold incl.
     intros xElem. intro.
-
-    pose proof (In_flatten_CompList (fun r => IsSuffix (qname (questions n))
-
- (@GetAttribute
-                        (BuildHeading
-                           (@Datatypes.cons Attribute
-                              (Build_Attribute sNAME name)
-                              (@Datatypes.cons Attribute
-                                 (Build_Attribute sTYPE RRecordType)
-                                 (@Datatypes.cons Attribute
-                                    (Build_Attribute sCLASS RRecordClass)
-                                    (@Datatypes.cons Attribute
-                                       (Build_Attribute sTTL nat)
-                                       (@Datatypes.cons Attribute
-                                          (Build_Attribute sDATA string)
-                                          (@Datatypes.nil Attribute))))))) r
-                        (@Build_BoundedIndex string
-                           (@Datatypes.cons string sNAME
-                              (@Datatypes.cons string sTYPE
-                                 (@Datatypes.cons string sCLASS
-                                    (@Datatypes.cons string sTTL
-                                       (@Datatypes.cons string sDATA
-                                          (@Datatypes.nil string)))))) sNAME
-                           (@Build_IndexBound string sNAME
-                              (@Datatypes.cons string sNAME
-                                 (@Datatypes.cons string sTYPE
-                                    (@Datatypes.cons string sCLASS
-                                       (@Datatypes.cons string sTTL
-                                          (@Datatypes.cons string sDATA
-                                             (@Datatypes.nil string)))))) O
-                              (@eq_refl (option string) (@Some string sNAME)))))
-
-) ) as in_flatten.
-    
-    assert (forall a0 : Tuple,
-                (fun r : Tuple => IsSuffix (qname (questions n))
- (@GetAttribute
-                        (BuildHeading
-                           (@Datatypes.cons Attribute
-                              (Build_Attribute sNAME name)
-                              (@Datatypes.cons Attribute
-                                 (Build_Attribute sTYPE RRecordType)
-                                 (@Datatypes.cons Attribute
-                                    (Build_Attribute sCLASS RRecordClass)
-                                    (@Datatypes.cons Attribute
-                                       (Build_Attribute sTTL nat)
-                                       (@Datatypes.cons Attribute
-                                          (Build_Attribute sDATA string)
-                                          (@Datatypes.nil Attribute))))))) r
-                        (@Build_BoundedIndex string
-                           (@Datatypes.cons string sNAME
-                              (@Datatypes.cons string sTYPE
-                                 (@Datatypes.cons string sCLASS
-                                    (@Datatypes.cons string sTTL
-                                       (@Datatypes.cons string sDATA
-                                          (@Datatypes.nil string)))))) sNAME
-                           (@Build_IndexBound string sNAME
-                              (@Datatypes.cons string sNAME
-                                 (@Datatypes.cons string sTYPE
-                                    (@Datatypes.cons string sCLASS
-                                       (@Datatypes.cons string sTTL
-                                          (@Datatypes.cons string sDATA
-                                             (@Datatypes.nil string)))))) O
-                              (@eq_refl (option string) (@Some string sNAME)))))) a0 \/
-                ~
-                (fun r : Tuple => IsSuffix (qname (questions n))  (@GetAttribute
-                        (BuildHeading
-                           (@Datatypes.cons Attribute
-                              (Build_Attribute sNAME name)
-                              (@Datatypes.cons Attribute
-                                 (Build_Attribute sTYPE RRecordType)
-                                 (@Datatypes.cons Attribute
-                                    (Build_Attribute sCLASS RRecordClass)
-                                    (@Datatypes.cons Attribute
-                                       (Build_Attribute sTTL nat)
-                                       (@Datatypes.cons Attribute
-                                          (Build_Attribute sDATA string)
-                                          (@Datatypes.nil Attribute))))))) r
-                        (@Build_BoundedIndex string
-                           (@Datatypes.cons string sNAME
-                              (@Datatypes.cons string sTYPE
-                                 (@Datatypes.cons string sCLASS
-                                    (@Datatypes.cons string sTTL
-                                       (@Datatypes.cons string sDATA
-                                          (@Datatypes.nil string)))))) sNAME
-                           (@Build_IndexBound string sNAME
-                              (@Datatypes.cons string sNAME
-                                 (@Datatypes.cons string sTYPE
-                                    (@Datatypes.cons string sCLASS
-                                       (@Datatypes.cons string sTTL
-                                          (@Datatypes.cons string sDATA
-                                             (@Datatypes.nil string)))))) O
-                            (@eq_refl (option string) (@Some string sNAME)))))) a0) as dec.
-    { intros. apply IsSuffix_string_dec. }
-
-    specialize (in_flatten dec). clear dec.
-    specialize (in_flatten x1 x xElem H3).
-    Transparent computes_to.
-    unfold computes_to in *.
+    match type of H1 with
+    | appcontext[map (fun r : @RawTuple ?H => (Where (@?H1 r) _))] =>
+      pose proof (In_flatten_CompList H1) as in_flatten
+    end.
 
     assert ((exists a' : IndexedElement,
                  List.In a' x1 /\ indexedElement a' = xElem) -> List.In xElem x1elems).
@@ -1459,7 +1230,7 @@ this is because x is a list of tuples that all came from r *)
 
     apply H5. clear H5.
 
-    apply in_flatten.
+    eapply in_flatten; eauto using IsPrefix_string_dec.
 
     rewrite Heqx1elems in H1.
     rewrite List.map_map in H1.
@@ -1472,7 +1243,7 @@ this is because x is a list of tuples that all came from r *)
 
   (* alternate version *)
   assert (List.In filterElem x1elems ->
-          exists index, List.In {| elementIndex := index; indexedElement := filterElem |} x1). 
+          exists index, List.In {| elementIndex := index; indexedElement := filterElem |} x1).
   {
   intros.
   rewrite Heqx1elems in H5.
@@ -1492,7 +1263,7 @@ this is because x is a list of tuples that all came from r *)
   exists index.
   apply H5.
   }
-    
+
   (* ------------------------ *)
 
   destruct H3 as [feIndex].                  (* new *)
@@ -1511,102 +1282,31 @@ this is because x is a list of tuples that all came from r *)
 
   eapply Permutation_in.
   apply Permutation_sym.
-  apply flatmap_permutation.
-  apply H4.
+  apply flatmap_permutation; eauto.
 
   (* there's probably something I can do with indices to remove this step *)
   assert (List.In indexedFilterElem x3 -> List.In filterElem (map indexedElement x3)) as H5.
-  { intros. 
+  { intros.
     apply in_map_iff.
     exists indexedFilterElem.
     split.
     - rewrite HeqindexedFilterElem. reflexivity.
     - auto. }
 
-  rewrite Heqx3elems.
+  rewrite <- Heqx3elems in *.
   apply H5. apply H.
  }                              (* ends List.incl x l *)
 (* ------------------------------------------------------------------------------------ *)
 
-  assert (Permutation a x).
-  {
-    unfold In in H6.
-    Transparent Pick.
-    unfold Pick in *.
-    Opaque Pick.
-    apply Permutation_sym in H6.
-    auto.
-  }
+  assert (Permutation a x) by (symmetry; apply H6).
 
 (* prove that everything in a is in sCOLLECTIONS *)
-assert (forall l,
-In
-         (list
-            (@Tuple
-               (BuildHeading
-                  (@Datatypes.cons Attribute (Build_Attribute sNAME name)
-                     (@Datatypes.cons Attribute
-                        (Build_Attribute sTYPE RRecordType)
-                        (@Datatypes.cons Attribute
-                           (Build_Attribute sCLASS RRecordClass)
-                           (@Datatypes.cons Attribute
-                              (Build_Attribute sTTL nat)
-                              (@Datatypes.cons Attribute
-                                 (Build_Attribute sDATA string)
-                                 (@Datatypes.nil Attribute)))))))))
-         (* --- *)
-         (@Query_In
-            (@Tuple
-               (BuildHeading
-                  (@Datatypes.cons Attribute (Build_Attribute sNAME name)
-                     (@Datatypes.cons Attribute
-                        (Build_Attribute sTYPE RRecordType)
-                        (@Datatypes.cons Attribute
-                           (Build_Attribute sCLASS RRecordClass)
-                           (@Datatypes.cons Attribute
-                              (Build_Attribute sTTL nat)
-                              (@Datatypes.cons Attribute
-                                 (Build_Attribute sDATA string)
-                                 (@Datatypes.nil Attribute))))))))
-            (@Build_QueryStructureHint DnsSchema r_n)
-            (@Build_BoundedIndex string
-               (@Datatypes.cons string sCOLLECTIONS (@Datatypes.nil string))
-               sCOLLECTIONS
-               (@Build_IndexBound string sCOLLECTIONS
-                  (@Datatypes.cons string sCOLLECTIONS
-                     (@Datatypes.nil string)) O
-                  (@eq_refl (option string) (@Some string sCOLLECTIONS))))
-
-            (fun
-               r : @Tuple
-                     (* [ *) (BuildHeading
-                        (@Datatypes.cons Attribute
-                           (Build_Attribute sNAME name)
-                           (@Datatypes.cons Attribute
-                              (Build_Attribute sTYPE RRecordType)
-                              (@Datatypes.cons Attribute
-                                 (Build_Attribute sCLASS RRecordClass)
-                                 (@Datatypes.cons Attribute
-                                    (Build_Attribute sTTL nat)
-                                    (@Datatypes.cons Attribute
-                                       (Build_Attribute sDATA string)
-                                       (@Datatypes.nil Attribute))))))) (* ] *) =>
-               (@Query_Return
-                  (@Tuple
-                     (BuildHeading
-                        (@Datatypes.cons Attribute
-                           (Build_Attribute sNAME name)
-                           (@Datatypes.cons Attribute
-                              (Build_Attribute sTYPE RRecordType)
-                              (@Datatypes.cons Attribute
-                                 (Build_Attribute sCLASS RRecordClass)
-                                 (@Datatypes.cons Attribute
-                                    (Build_Attribute sTTL nat)
-                                    (@Datatypes.cons Attribute
-                                       (Build_Attribute sDATA string)
-                                       (@Datatypes.nil Attribute)))))))) r)))
-         l 
--> List.incl a l). 
+  assert (forall l,
+             In (list RawTuple)
+                (let qs_schema := DnsSchema in
+                 let r' := r_n in
+                 Query_In r' bCOLLECTIONS (fun r : RawTuple => Return r)) l ->
+             incl a l).
   {
     (* x \subset sCOLLECTIONS, and Permutation a x *)
     intros allTuplesInRelation inRelation.
@@ -1615,13 +1315,13 @@ In
     intros aTuple inA.
     unfold incl in H4.
 
-    clear BStringId0 H H5. clear t t' n0 n' H0 H1 H2 H3.
+    clear H H5. clear t t' n0 n' H0 H1 H2 H3.
 
     specialize (H4 allTuplesInRelation inRelation aTuple).
     apply H4.
     eapply Permutation_in.
     apply H7. auto.
-  } 
+  }
 
 (* use the proof that the constraints hold on everything in sC, therefore on a *)
 (* t and t' are in a, therefore the constraint must hold on them *)
@@ -1637,26 +1337,24 @@ In
   assert (List.In t' x).
   { eapply Permutation_in. apply H7. auto. }
 
-  clear BStringId0.
-  apply In_Where_Intersection in H5; eauto with typeclass_instances.
+  eapply In_Where_Intersection in H5; eauto with typeclass_instances.
   unfold QueryResultComp in H5; computes_to_inv.
   destruct H5 as [x' [Equiv [Equiv' Equiv''] ] ].
   rewrite <- Equiv in *.
   eapply flatmap_permutation in H5'; rewrite H5' in H7.
-  destruct (unindexed_OK_exists_index' _ H0 H1 H2 H7) as [m [m' [idx [idx' ?] ] ] ];
+  destruct (unindexed_OK_exists_index' _ _ H0 H1 H2 H7) as [m [m' [idx [idx' ?] ] ] ];
     intuition.
-  
-  pose ((DropQSConstraints r_n)!sCOLLECTIONS)%QueryImpl as relationSet. simpl in relationSet.
-  unfold UnConstrRelation in *.
-  pose proof (ith_Bounded relName (rels r_n) {| bindex := sCOLLECTIONS |}) as relationthing. simpl in *.
-pose proof (tupleconstr (ith_Bounded relName (rels r_n) {| bindex := sCOLLECTIONS |})) as 
-  constraint_in_relation_OK; simpl in *.
-eapply (constraint_in_relation_OK {| elementIndex := idx; indexedElement := t |}
-                                  {| elementIndex := idx'; indexedElement := t' |});
-  simpl; eauto.
-eapply map_nth_error with (f := elementIndex) in H5.
-eapply map_nth_error with (f := elementIndex) in H16.
-{ revert m m' H5 H16 H14 Equiv''; clear; simpl; induction (map elementIndex x').
+
+  pose proof (rawTupleconstr (ith2 (rawRels r_n) (Fin.F1 ))) as
+      constraint_in_relation_OK; simpl in *.
+  apply (constraint_in_relation_OK {| elementIndex := idx; indexedElement := t |}
+                                   {| elementIndex := idx'; indexedElement := t' |});
+    simpl; try eassumption.
+
+  eapply map_nth_error with (f := elementIndex) in H5.
+  eapply map_nth_error with (f := elementIndex) in H16.
+  {
+    revert m m' H5 H16 H14 Equiv''; clear; unfold Tuple; simpl; induction (map elementIndex x').
   - destruct m; destruct m'; simpl; intros; try discriminate.
   - destruct m; destruct m'; simpl; intros; try discriminate.
     + intuition.
@@ -1668,13 +1366,13 @@ eapply map_nth_error with (f := elementIndex) in H16.
 }
 
 assert (List.In {| elementIndex := idx; indexedElement := t |} x').
-  { eapply exists_in_list; eauto. }  
-  apply Equiv' in H15; destruct H15; rewrite GetRelDropConstraints in H15; apply H15.
+  { eapply exists_in_list; eauto. }
+  apply Equiv' in H15; destruct H15; apply H15.
   assert (List.In {| elementIndex := idx'; indexedElement := t' |} x').
-  { eapply exists_in_list; eauto. }  
-  apply Equiv' in H15; destruct H15; rewrite GetRelDropConstraints in H15; apply H15.
+  { eapply exists_in_list; eauto. }
+  apply Equiv' in H15; destruct H15;  apply H15.
 Qed.
-*)
+
 (* -------------------------------------------------------------------------------------- *)
 
 (* TODO: more general lemmas (hard to state w/ implicits; do later) *)
@@ -1683,11 +1381,11 @@ Qed.
   forall n0 n1, nth n0 l = tup0 -> nth n0 l = tup1 ->
   tuple_constr tup0 tup1 *)
 
-Lemma tuples_in_relation_satisfy_constraint :
+(*Lemma tuples_in_relation_satisfy_constraint :
     True.
 Proof.
 
-Admitted.
+Admitted. *)
 
 (* general lemma to prove, #2: deal with [where]
   (since [where] is just filtering/taking a subset, it should
@@ -1703,5 +1401,3 @@ Lemma tuples_in_relation_filtered_satisfy_constraint :
 Proof.
 
 Admitted.
-
-*)

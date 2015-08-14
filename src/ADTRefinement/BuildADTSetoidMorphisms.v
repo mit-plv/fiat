@@ -5,7 +5,7 @@ Require Import Fiat.Common
 (* A notation-friendly version of the setoid morphisms
    infrastructure for ADT refinement. *)
 
-Theorem refineADT_BuildADT_Rep consSigs methSigs oldRep newRep
+Theorem refineADT_BuildADT_Rep n n' consSigs methSigs oldRep newRep
       (AbsR : oldRep -> newRep -> Prop)
 : @respectful_heteroT _ _ _ _
       (fun oldCons newCons =>
@@ -21,8 +21,8 @@ Theorem refineADT_BuildADT_Rep consSigs methSigs oldRep newRep
                                          (getMethDef oldMeth methIdx)
                                          (getMethDef newMeth methIdx))
                     (fun m m' => refineADT))
-     (@BuildADT oldRep consSigs methSigs)
-     (@BuildADT newRep consSigs methSigs).
+     (@BuildADT oldRep n n' consSigs methSigs)
+     (@BuildADT newRep n n' consSigs methSigs).
  Proof.
    unfold Proper, respectful_heteroT; intros.
    let A := match goal with |- refineADT ?A ?B => constr:(A) end in
@@ -32,7 +32,7 @@ Theorem refineADT_BuildADT_Rep consSigs methSigs oldRep newRep
  Qed.
 
 Lemma refineADT_BuildADT_Both
-      rep consigs methSigs
+      rep n n' consigs methSigs
 : forall oldCons newCons,
     (forall consIdx, @refineConstructor _ _ eq _
                                    (getConsDef oldCons consIdx)
@@ -41,8 +41,9 @@ Lemma refineADT_BuildADT_Both
          (forall methIdx, @refineMethod _ _ eq _ _
                                          (getMethDef oldMeth methIdx)
                                          (getMethDef newMeth methIdx))
-         -> refineADT (@BuildADT rep consigs methSigs oldCons oldMeth)
-                      (@BuildADT rep consigs methSigs newCons newMeth).
+         -> refineADT (@BuildADT n n' rep consigs methSigs oldCons oldMeth)
+                      (@BuildADT n n' rep consigs methSigs newCons newMeth).
+Proof.
   intros; eapply refineADT_BuildADT_Rep; eauto; reflexivity.
 Qed.
 

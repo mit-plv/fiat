@@ -20,7 +20,7 @@ Require Import Coq.Bool.Bool Coq.Strings.String
 
 Section SharpenedBagImplementation.
 
-  Context {heading : Heading}.
+  Context {heading : RawHeading}.
   Variable SearchTermTypePlus : Type.
   Variable UpdateTermTypePlus : Type.
   Variable BagTypePlus : Type.
@@ -28,7 +28,7 @@ Section SharpenedBagImplementation.
   Variable ValidUpdatePlus : UpdateTermTypePlus -> Prop.
   Variable CheckUpdatePlus : UpdateTermTypePlus -> bool.
 
-  Variable BagPlus : Bag BagTypePlus (@Tuple heading) SearchTermTypePlus UpdateTermTypePlus.
+  Variable BagPlus : Bag BagTypePlus (@RawTuple heading) SearchTermTypePlus UpdateTermTypePlus.
   Variable CorrectBagPlus : CorrectBag RepInvPlus ValidUpdatePlus BagPlus.
 
   Variable CheckUpdatePlusValid : forall u: UpdateTermTypePlus,
@@ -148,7 +148,7 @@ Section SharpenedBagImplementation.
   Qed.
 
   Lemma map_then_map
-  : forall {heading} (m: @Tuple heading -> @Tuple heading) (x: list IndexedElement),
+  : forall {heading} (m: @RawTuple heading -> @RawTuple heading) (x: list IndexedElement),
       map m (map indexedElement x) = map indexedElement (map (fun t =>
          {| indexedElement := m (indexedElement t); elementIndex := elementIndex t|}) x).
   Proof.
@@ -158,7 +158,7 @@ Section SharpenedBagImplementation.
   Qed.
 
   Lemma permu_exists
-  : forall {heading} br (x: list (@IndexedElement (@Tuple heading))),
+  : forall {heading} br (x: list (@IndexedElement (@RawTuple heading))),
     Permutation br (map indexedElement x) -> exists x', map indexedElement x' = br
       /\ Permutation x' x.
   Proof.
@@ -334,7 +334,7 @@ Section SharpenedBagImplementation.
   Lemma benumerate_fold_left
   : forall l b, RepInvPlus b ->
                 Permutation (benumerate
-                               (fold_left (fun (b0 : BagTypePlus) (i : Tuple) => binsert b0 i) l b))
+                               (fold_left (fun (b0 : BagTypePlus) (i : RawTuple) => binsert b0 i) l b))
                             (l ++ (benumerate b)).
   Proof.
     intros; induction l; simpl in *.
@@ -351,7 +351,7 @@ Section SharpenedBagImplementation.
       -> RepInvPlus nr
       -> IndexedEnsembleUpdate or (fun tup => bfind_matcher search_term tup = true)
              (bupdate_transform update_term)
-             ≃ benumerate (fold_left (fun (b0 : BagTypePlus) (i : Tuple) => binsert b0 i)
+             ≃ benumerate (fold_left (fun (b0 : BagTypePlus) (i : RawTuple) => binsert b0 i)
                                      (map (bupdate_transform update_term) (fst (bdelete nr search_term)))
                                      (snd (bdelete nr search_term))).
   Proof.
@@ -372,14 +372,14 @@ Section SharpenedBagImplementation.
                   map (fun t => {|indexedElement := (bupdate_transform update_term) (indexedElement t);
                     elementIndex := elementIndex t|}) (filter (fun t => bfind_matcher search_term (indexedElement t)) x0))
                                   (benumerate
-                                     (fold_left (fun (b0 : BagTypePlus) (i : Tuple) => binsert b0 i)
+                                     (fold_left (fun (b0 : BagTypePlus) (i : RawTuple) => binsert b0 i)
                                                 (map (bupdate_transform update_term)
                                                      (fst (bdelete nr search_term)))
                                                 (snd (bdelete nr search_term))))).
       assert (
           Permutation
             (benumerate
-               (fold_left (fun (b0 : BagTypePlus) (i : Tuple) => binsert b0 i)
+               (fold_left (fun (b0 : BagTypePlus) (i : RawTuple) => binsert b0 i)
                           (map (bupdate_transform update_term)
                   (fst (bdelete nr search_term)))
                           (snd (bdelete nr search_term))))
@@ -442,7 +442,7 @@ Section SharpenedBagImplementation.
   Qed.
 
   Lemma RepInv_fold
-  : forall (f: BagTypePlus -> (@Tuple heading) -> BagTypePlus) (l: list (@Tuple heading)) (r: BagTypePlus),
+  : forall (f: BagTypePlus -> (@RawTuple heading) -> BagTypePlus) (l: list (@RawTuple heading)) (r: BagTypePlus),
       (forall x y, RepInvPlus x -> RepInvPlus (f x y)) -> RepInvPlus r -> RepInvPlus (fold_left f l r).
   Proof.
     induction l.
@@ -452,7 +452,7 @@ Section SharpenedBagImplementation.
   Qed.
 
   Definition SharpenedBagImpl
-  : FullySharpened (@BagSpec (@Tuple heading) SearchTermTypePlus UpdateTermTypePlus
+  : FullySharpened (@BagSpec (@RawTuple heading) SearchTermTypePlus UpdateTermTypePlus
                              bfind_matcher bupdate_transform).
   Proof.
     unfold BagSpec.
@@ -461,9 +461,9 @@ Section SharpenedBagImplementation.
     hone representation using
          (fun r_o r_n =>
             r_o ≃ benumerate (Bag := BagPlus) r_n
-            /\ RepInvPlus r_n) with defaults.
+            /\ RepInvPlus r_n).
 
-    hone constructor sEmpty.
+    (* sEmpty *)
     {
       simplify with monad laws.
       refine pick val bempty.
@@ -471,7 +471,22 @@ Section SharpenedBagImplementation.
       intuition eauto using bempty_RepInv; eapply refine_Empty_set_bempty.
     }
 
-    hone method sEnumerate.
+    (* sFind *)
+    {
+      simplify with monad laws.
+      intuition.
+      pose proof (bfind_correct r_n d H2).
+      destruct (permutation_filter _ _ _ (bfind_correct r_n d H2)) as [l [l_eq Perm_l]].
+      refine pick val l.
+      simplify with monad laws; simpl.
+      refine pick val r_n; eauto.
+      simplify with monad laws; simpl.
+      simpl in *; rewrite l_eq.
+      finish honing.
+      eapply Permutation_EnsembleIndexedListEquivalence; simpl in *; eauto.
+    }
+
+    (* sEnumerate. *)
     {
       simplify with monad laws.
       refine pick val (benumerate r_n); intuition;
@@ -482,7 +497,19 @@ Section SharpenedBagImplementation.
       intuition.
     }
 
-    hone method sCount.
+    (* sInsert *)
+    {
+      simplify with monad laws; intuition.
+      simpl in *; destruct_EnsembleIndexedListEquivalence.
+      refine pick val bnd; eauto; simplify with monad laws.
+      simpl; refine pick val (binsert r_n d).
+      simplify with monad laws.
+      finish honing.
+      split; eauto using binsert_RepInv.
+      eapply refine_Add_binsert; simpl; eauto.
+    }
+
+    (* sCount. *)
     {
       simplify with monad laws.
       refine pick val (benumerate r_n); intuition;
@@ -496,45 +523,19 @@ Section SharpenedBagImplementation.
       intuition.
     }
 
-    hone method sInsert.
+    (* sDelete *)
     {
       simplify with monad laws; intuition.
-      destruct_EnsembleIndexedListEquivalence.
-      refine pick val bnd; eauto; simplify with monad laws.
-      simpl; refine pick val (binsert r_n n).
-      simplify with monad laws.
-      finish honing.
-      split; eauto using binsert_RepInv.
-      eapply refine_Add_binsert; simpl; eauto.
-    }
-
-    hone method sFind.
-    {
-      simplify with monad laws.
-      intuition.
-      pose proof (bfind_correct r_n n H2).
-      destruct (permutation_filter _ _ _ (bfind_correct r_n n H2)) as [l [l_eq Perm_l]].
-      refine pick val l.
-      simplify with monad laws; simpl.
-      refine pick val r_n; eauto.
-      simplify with monad laws; simpl.
-      rewrite l_eq.
-      finish honing.
-      eapply Permutation_EnsembleIndexedListEquivalence; simpl; eauto.
-    }
-
-    hone method sDelete.
-    {
-      simplify with monad laws; intuition.
-      destruct (bdelete_correct r_n n H2).
+      simpl in *.
+      destruct (bdelete_correct r_n d H2).
       rewrite partition_filter_eq in H3.
-      rewrite partition_filter_neq in H0.
-      symmetry in H0; symmetry in H3.
-      destruct (permutation_filter _ _ _ H0) as [l [l_eq Perm_l]].
+      rewrite partition_filter_neq in H.
+      symmetry in H; symmetry in H3.
+      destruct (permutation_filter _ _ _ H) as [l [l_eq Perm_l]].
       destruct (permutation_filter _ _ _ H3) as [l' [l'_eq Perm_l']].
       refine pick val l'.
       simplify with monad laws; simpl.
-      refine pick val (snd (bdelete r_n n)).
+      refine pick val (snd (bdelete r_n d)).
       simplify with monad laws; simpl.
       rewrite l'_eq.
       finish honing.
@@ -543,14 +544,14 @@ Section SharpenedBagImplementation.
       eapply Permutation_EnsembleIndexedListEquivalence; simpl; eauto.
     }
 
-    hone method sUpdate.
+    (* sUpdate *)
     {
-      simplify with monad laws; intuition.
+      simplify with monad laws; simpl in *; intuition.
       pose proof (bupdate_correct (CorrectBag:=CorrectBagPlus) r_n a b H2).
       etransitivity.
       apply refine_if with (b:=CheckUpdatePlus b).
       intros; apply CheckUpdatePlusValid in H3; simpl.
-      pose proof (H0 H3); destruct H4.
+      pose proof (H H3); destruct H4.
       rewrite partition_filter_eq in H5; symmetry in H5.
       destruct (permutation_filter _ _ _ H5) as [l [l_eq Perm_l]].
       refine pick val l.
@@ -576,25 +577,47 @@ Section SharpenedBagImplementation.
       apply RepInv_fold.
       apply binsert_RepInv. apply bdelete_RepInv; assumption.
       eapply Permutation_EnsembleIndexedListEquivalence; eauto.
-      unfold H.
+      unfold H0.
       instantiate (1 := fun r_n ab =>
                           if CheckUpdatePlus (snd ab)
                           then ret (snd (bupdate r_n (fst ab) (snd ab)), fst (bupdate r_n (fst ab) (snd ab)))
                                    else
                                      ret
-                                       (fold_left (fun (b0 : BagTypePlus) (i : Tuple) => binsert b0 i)
+                                       (fold_left (fun (b0 : BagTypePlus) (i : RawTuple) => binsert b0 i)
                                                   (map (bupdate_transform (snd ab)) (fst (bdelete r_n (fst ab))))
                                                   (snd (bdelete r_n (fst ab))), fst (bdelete r_n (fst ab)))).
       reflexivity.
     }
 
     FullySharpenEachMethodWithoutDelegation.
+
     extract delegate-free implementation.
+
     simpl; higher_order_reflexivityT.
 
   Defined.
 
-  Definition BagADTImpl : ComputationalADT.cADT (BagSig (@Tuple heading) SearchTermTypePlus UpdateTermTypePlus) :=
+  Time Definition BagADTImpl : ComputationalADT.cADT (BagSig (@RawTuple heading) SearchTermTypePlus UpdateTermTypePlus) :=
     Eval simpl in projT1 SharpenedBagImpl.
-
+  
 End SharpenedBagImplementation.
+
+Lemma FullySharpenedBagsEquivMatchers
+  : forall (ElementType SearchTermType UpdateTermType : Type)
+           (MatchSearchTerm MatchSearchTerm' : SearchTermType -> ElementType -> bool)
+           (ApplyUpdateTerm ApplyUpdateTerm' : UpdateTermType -> ElementType -> ElementType),
+    (forall st item, MatchSearchTerm st item = MatchSearchTerm' st item)
+    -> (forall ut item, ApplyUpdateTerm ut item = ApplyUpdateTerm' ut item)
+    -> FullySharpened (BagSpec MatchSearchTerm ApplyUpdateTerm)
+    -> FullySharpened (BagSpec MatchSearchTerm' ApplyUpdateTerm').
+Proof.
+  intros; exists (projT1 X).
+  pose (projT2 X); simpl in *.
+  assert (MatchSearchTerm = MatchSearchTerm') as M_eq by
+        (apply functional_extensionality; intros; apply functional_extensionality;
+         eauto); destruct M_eq.
+  assert (ApplyUpdateTerm = ApplyUpdateTerm') as A_eq by
+        (apply functional_extensionality; intros; apply functional_extensionality;
+         eauto); destruct A_eq.
+  exact r.
+Defined.

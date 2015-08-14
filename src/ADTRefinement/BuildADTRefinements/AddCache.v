@@ -1,7 +1,7 @@
 Require Import Coq.Lists.List Fiat.Common
         Fiat.ADT.ADTSig Fiat.ADT.Core
         Fiat.ADTNotation.BuildADTSig Fiat.ADTNotation.BuildADT
-        Fiat.Common.ilist Fiat.Common.StringBound
+        Fiat.Common.ilist Fiat.Common.BoundedLookup
         Fiat.ADTRefinement.Core Fiat.ADTRefinement.SetoidMorphisms
         Fiat.ADTRefinement.GeneralRefinements
         Fiat.ADTRefinement.Refinements.HoneRepresentation
@@ -34,7 +34,7 @@ Section addCache.
   : @methDef (@cachedRep rep cacheType) Sig :=
     {| methBody := addCacheToMethod cacheSpec (methBody oldCons) |}.
 
-  Lemma refine_addCacheTo_BuildADT
+  (*Lemma refine_addCacheTo_BuildADT
             (consSigs : list consSig)
             (methSigs : list methSig)
             (consDefs : ilist (@consDef rep) consSigs)
@@ -54,15 +54,15 @@ Section addCache.
       apply refine_addCacheToConstructor.
     - simpl Methods; rewrite <- ith_Bounded_imap.
       apply refine_addCacheToMethod.
-  Qed.
+  Qed. *)
 
 End addCache.
 
 (* Honing tactic for refining the ADT representation which provides
    default method and constructor implementations. *)
 
-Tactic Notation "add" "cache" "with" "spec" constr(cacheSpec') :=
+(*Tactic Notation "add" "cache" "with" "spec" constr(cacheSpec') :=
   eapply SharpenStep;
   [eapply refine_addCacheTo_BuildADT with (cacheSpec := cacheSpec') |
    compute [imap addCacheToConsDef addCacheToConstructor
-                 addCacheToMethDef addCacheToMethod]; simpl ].
+                 addCacheToMethDef addCacheToMethod]; simpl ]. *)

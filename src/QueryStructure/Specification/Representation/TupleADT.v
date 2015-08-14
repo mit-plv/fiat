@@ -2,7 +2,7 @@ Require Import Coq.Lists.List
         Coq.Strings.String
         Coq.Arith.Arith
         Coq.omega.Omega
-        Fiat.Common.ilist
+        Fiat.Common.ilist2
         Fiat.Common.StringBound
         Fiat.ADT
         Fiat.ADT.ComputationalADT
@@ -26,157 +26,167 @@ Section TupleADT.
   (* Tuple Initialization *)
   Definition Tuple_Init := "Init".
 
-  Fixpoint InitTupleDom (topics : list Attribute) :=
-    match topics return Type with
-      | [ ] => unit
-      | topic :: topics' => prod (attrType topic) (InitTupleDom topics')
-    end.
+  Definition InitTupleDom := @Tuple heading.
 
-  Definition InitTupleSig (topics : list Attribute) : consSig :=
-    Constructor Tuple_Init : InitTupleDom topics -> rep.
+  Definition InitTupleSig : consSig :=
+      Constructor Tuple_Init : InitTupleDom -> rep.
 
-  Fixpoint InitTuple (topics : list Attribute)
-  : InitTupleDom topics -> ilist attrType topics :=
-    match topics return
-          InitTupleDom topics -> ilist attrType topics with
-      | [ ] =>
-        fun inits => inil _
-      | topic :: topics' =>
-        fun inits => icons _ (fst inits) (InitTuple topics' (snd inits))
-    end.
+  Definition InitTuple : InitTupleDom -> Tuple := id.
 
-    Definition InitTupleDef' (topics : list Attribute) :=
-      Def Constructor Tuple_Init (inits : InitTupleDom topics) : rep :=
-      InitTuple topics inits.
+  Definition InitTupleDef :=
+    Def Constructor Tuple_Init (inits : InitTupleDom) : rep :=
+      InitTuple inits.
 
-    Definition InitTupleDef := InitTupleDef' (AttrList heading).
+  (* Getters and Setters for Tuples *)
 
-    (* Getters and Setters for Tuples *)
+  Definition GetTupleSig id aType :=
+    Method ("Get" ++ id) : rep x unit -> rep x aType.
 
-    Definition attrID := Attributes heading.
-    Definition attrType' (attr : attrID) := attrType (nth_Bounded _ (AttrList heading) attr).
+  Definition SetTupleSig id aType :=
+    Method ("Set" ++ id) : rep x aType -> rep x unit.
 
-    Definition GetTupleSig (attr : attrID) :=
-      Method ("Get" ++ bindex attr) : rep x unit -> rep x attrType' attr.
+  Definition TupleSigs'
+             {n'}
+             (HeadingTypes : Vector.t Type n')
+             (HeadingNames : Vector.t string n')
+    : Vector.t methSig (n' * 2) :=
+    Vector.rect2
+      (fun (n : nat) (_ : Vector.t Type n) (_ : Vector.t string n) =>
+         Vector.t methSig (n * 2)) (Vector.nil methSig)
+      (fun (n : nat) (_ : Vector.t Type n) (_ : Vector.t string n)
+           (TupleSigs' : Vector.t methSig (n * 2)) (aType : Type)
+           (id : string) =>
+         Vector.cons methSig (GetTupleSig id aType) (S (n * 2))
+                     (Vector.cons methSig (SetTupleSig id aType) (n * 2) TupleSigs'))
+      HeadingTypes HeadingNames.
 
-    Definition SetTupleSig (attr : attrID) :=
-      Method ("Set" ++ bindex attr) : rep x attrType' attr -> rep x unit.
+  Definition TupleSigs :=
+    TupleSigs' (AttrList heading)
+               (HeadingNames heading).
 
-    Fixpoint TupleMethSigs' (attrs : list attrID) : list methSig :=
-      match attrs with
-        | [ ] => [ ]
-        | topic :: topics' =>
-          GetTupleSig topic :: SetTupleSig topic :: TupleMethSigs' topics'
-      end.
+  Definition GetTupleDef
+             (attr : Fin.t (NumAttr heading)) :
+    cMethDef (Rep := @Tuple heading) (GetTupleSig (Vector.nth (HeadingNames heading) attr)
+                                                  (Vector.nth (AttrList heading) attr)) :=
+    Def Method _ (msg : rep, g : unit)
+    : Vector.nth (AttrList heading) attr :=
+      (msg, ith2 msg attr).
 
-    Definition GetTupleDef (attr : attrID) :
-      cMethDef (Rep := @Tuple heading) (GetTupleSig attr) :=
-      Def Method _ (msg : rep, _ : _) : attrType' attr :=
-      (msg, GetAttribute msg attr).
+  Definition SetTupleDef
+             (attr : Fin.t (NumAttr heading)) :
+    cMethDef (Rep := @Tuple heading) (SetTupleSig (Vector.nth (HeadingNames heading) attr)
+                                                  (Vector.nth (AttrList heading) attr)) :=
+    Def Method _ (msg : rep, val : Vector.nth (AttrList heading) attr) : unit :=
+      (replace_Index2 _ msg attr val, tt).
 
-    Definition SetTupleDef (attr : attrID) :
-      cMethDef (Rep := @Tuple heading) (SetTupleSig attr) :=
-      Def Method _ (msg : rep, val : attrType' attr) : unit :=
-      (SetAttribute msg _ val, tt).
+  Definition TupleDefs'
+           {n'}
+           (HeadingTypes : Vector.t Type n')
+           (HeadingNames : Vector.t string n')
+    : (forall (attr : Fin.t n'),
+          cMethDef (Rep := @Tuple heading) (GetTupleSig (Vector.nth HeadingNames attr)
+                                                        (Vector.nth HeadingTypes attr)))
+      -> (forall (attr : Fin.t n'),
+             cMethDef (Rep := @Tuple heading) (SetTupleSig (Vector.nth HeadingNames attr)
+                                                           (Vector.nth HeadingTypes attr)))
+      -> ilist (B := cMethDef (Rep := @Tuple heading))
+            (TupleSigs' HeadingTypes HeadingNames) :=
+    Vector.rect2
+      (fun n HeadingTypes HeadingNames =>
+         (forall (attr : Fin.t n),
+             cMethDef (Rep := @Tuple heading) (GetTupleSig (Vector.nth HeadingNames attr)
+                                                           (Vector.nth HeadingTypes attr)))
+         -> (forall (attr : Fin.t n),
+                cMethDef (Rep := @Tuple heading) (SetTupleSig (Vector.nth HeadingNames attr)
+                                                              (Vector.nth HeadingTypes attr)))
+         -> ilist (n := n * 2) (B := cMethDef (Rep := @Tuple heading))
+                  (TupleSigs' HeadingTypes HeadingNames)) (fun _ _ => ())
+      (fun n HeadingTypes HeadingNames
+           TupleDefs' aType id
+           GetTupleDef' SetTupleDef' =>
+         icons (GetTupleDef' Fin.F1)
+               (icons (SetTupleDef' Fin.F1)
+                      (TupleDefs' (fun n => GetTupleDef' (Fin.FS n))
+                                  (fun n => SetTupleDef' (Fin.FS n)))))
+      HeadingTypes HeadingNames.
 
-    Fixpoint TupleMeths'
-             (attrs : list attrID)
-    : ilist (cMethDef (Rep := @Tuple heading )) (TupleMethSigs' attrs) :=
-      match attrs return
-            ilist (cMethDef (Rep := @Tuple heading)) (TupleMethSigs' attrs) with
-        | [ ] => inil _
-        | attr :: attrs' =>
-          icons _ (GetTupleDef attr) (icons _ (SetTupleDef attr) (TupleMeths' attrs'))
-      end.
-
-    Definition LiftAttributes : list attrID :=
-      (fix LiftAttributes (attributes : list Attribute)
-       : list (@BoundedString (map attrName attributes)) :=
-         match attributes return list (@BoundedString (map attrName attributes)) with
-           | [ ] => [ ]
-           | attribute :: attributes' =>
-             {| bindex := _; indexb := IndexBound_head _ _ |}
-               :: (map (fun idx : BoundedString =>
-                          {| bindex := bindex idx;
-                             indexb := @IndexBound_tail _ _ (attrName attribute) _ (indexb idx) |})
-                       (LiftAttributes attributes'))
-         end) (AttrList heading).
-
-    Definition TupleMethSigs := TupleMethSigs' LiftAttributes.
-
-    Definition TupleMeths
-    : ilist (cMethDef (Rep := @Tuple heading )) TupleMethSigs
-      := TupleMeths' LiftAttributes.
+    Definition TupleDefs :=
+      TupleDefs' (AttrList heading) (HeadingNames heading)
+                 GetTupleDef SetTupleDef.
 
     (* Tuple ADT Definitions *)
     Definition TupleADTSig : ADTSig :=
-      BuildADTSig [InitTupleSig (AttrList heading)] TupleMethSigs.
+      BuildADTSig (Vector.cons _ InitTupleSig _ (Vector.nil _))
+                  TupleSigs.
 
     Definition TupleADT : cADT TupleADTSig :=
-      BuildcADT (icons _ InitTupleDef (inil _)) TupleMeths.
+      BuildcADT (icons InitTupleDef inil) TupleDefs.
 
     (* Support for building messages. *)
 
-    Definition ConstructTuple attr_list :=
-      CallConstructor TupleADT Tuple_Init attr_list.
+    Definition ConstructTuple subtopics :=
+      CallConstructor TupleADT Tuple_Init subtopics.
 
     (* Support for calling message getters. *)
-
-    Lemma BuildGetMethodID'
-    : forall (attrs : list attrID)
-             (idx : BoundedIndex (map (fun id => bindex id) attrs)),
-        nth_error (map methID (TupleMethSigs' attrs)) (2 * ibound idx) =
-        Some ("Get" ++ bindex idx).
+    Lemma BuildGetTupleMethodID_ibound'
+          {n'}
+          (HeadingTypes : Vector.t Type n')
+          (HeadingNames : Vector.t string n')
+      : forall (idx : Fin.t n'),
+        Vector.nth (Vector.map methID (TupleSigs' HeadingTypes HeadingNames))
+                   (Fin.depair idx Fin.F1) =
+        ("Get" ++ Vector.nth HeadingNames idx)%string.
     Proof.
-      destruct idx as [idx [n nth_n]].
-      revert idx n nth_n; induction attrs; intros.
-      destruct n; simpl in *; discriminate.
-      destruct n; simpl in *.
-      - unfold Specif.value in *; repeat f_equal.
-        destruct a as [b [m nth_m]]; simpl in *; subst.
-        injections; eauto.
-      - rewrite plus_comm; simpl; rewrite plus_comm.
-        eauto.
+      pattern n', HeadingTypes, HeadingNames.
+      eapply Vector.rect2.
+      - intro; inversion idx.
+      - intros; generalize dependent idx; intro; revert v1 v2 H.
+        pattern n, idx.
+        eapply Fin.rectS; simpl; intros; eauto.
     Qed.
 
-    Definition BuildGetMethodID
-               (idx : BoundedIndex (map (fun id => bindex id) LiftAttributes))
-    : @BoundedString (map methID TupleMethSigs) :=
-      {| bindex := ("Get" ++ (bindex idx))%string;
-         indexb := {| ibound := 2 * ibound idx;
-                      boundi := BuildGetMethodID' LiftAttributes idx |}
+    Definition BuildGetTupleMethodID
+               (idx : Fin.t (NumAttr heading))
+    : BoundedString (Vector.map methID TupleSigs) :=
+      {| bindex := ("Get" ++ (Vector.nth (HeadingNames heading) idx))%string;
+         indexb := {| ibound := Fin.depair idx (@Fin.F1 1);
+                      boundi := BuildGetTupleMethodID_ibound' _ _ idx |}
       |}.
 
-    Definition CallTupleGetMethod (r : Tuple) idx
-      := cMethods TupleADT (BuildGetMethodID idx) r.
+    Definition CallTupleGetMethod
+               (r : Tuple)
+               idx
+      := cMethods TupleADT (ibound (indexb (BuildGetTupleMethodID idx))) r.
 
     (* Support for calling message setters. *)
-    Definition BuildSetMethodID'
-    : forall (attrs : list attrID)
-             (idx : BoundedIndex (map (fun id => bindex id) attrs)),
-        nth_error (map methID (TupleMethSigs' attrs)) (2 * ibound idx + 1) =
-        Some ("Set" ++ bindex idx).
+    Lemma BuildSetTupleMethodID_ibound
+          {n'}
+          (HeadingTypes : Vector.t Type n')
+          (HeadingNames : Vector.t string n')
+      : forall (idx : Fin.t n'),
+        Vector.nth (Vector.map methID (TupleSigs' HeadingTypes HeadingNames))
+                   (Fin.depair idx (Fin.FS Fin.F1)) =
+        ("Set" ++ Vector.nth HeadingNames idx)%string.
     Proof.
-      destruct idx as [idx [n nth_n]].
-      revert idx n nth_n; induction attrs; intros.
-      destruct n; simpl in *; discriminate.
-      destruct n; simpl in *.
-      - unfold Specif.value; repeat f_equal.
-        destruct a as [b [m nth_m]]; simpl in *; subst.
-        injections; eauto.
-      - rewrite plus_comm; simpl.
-        rewrite <- (IHattrs idx n nth_n); f_equal.
-        omega.
+      pattern n', HeadingTypes, HeadingNames.
+      eapply Vector.rect2.
+      - intro; inversion idx.
+      - intros; generalize dependent idx; intro; revert v1 v2 H.
+        pattern n, idx.
+        eapply Fin.rectS; simpl; intros; eauto.
     Qed.
 
-    Definition BuildSetMethodID
-               (idx : BoundedIndex (map (fun id => bindex id) LiftAttributes))
-    : @BoundedString (map methID (TupleMethSigs ))
-      :=  {| bindex := ("Set" ++ (bindex idx))%string;
-             indexb := {| ibound := 2 * ibound idx + 1;
-                          boundi := BuildSetMethodID' LiftAttributes idx |} |}.
+    Definition BuildSetTupleMethodID
+               (idx : Fin.t (NumAttr heading))
+    : BoundedString (Vector.map methID TupleSigs) :=
+      {| bindex := ("Set" ++ (Vector.nth (HeadingNames heading) idx))%string;
+         indexb := {| ibound := Fin.depair idx (Fin.FS Fin.F1);
+                      boundi := BuildSetTupleMethodID_ibound _ _ idx |}
+      |}.
 
-    Definition CallTupleSetMethod (r : Tuple) idx :=
-      cMethods TupleADT (BuildSetMethodID idx) r.
+    Definition CallTupleSetMethod
+               (r : Tuple)
+               idx
+      := cMethods TupleADT (ibound (indexb (BuildSetTupleMethodID idx))) r.
 
 End TupleADT.

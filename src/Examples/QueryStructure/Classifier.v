@@ -1,8 +1,4 @@
-Require Import Coq.Strings.String.
-Require Import Fiat.QueryStructure.Automation.AutoDB
-        Fiat.QueryStructure.Automation.IndexSelection
-        Fiat.QueryStructure.Specification.SearchTerms.ListPrefix
-        Fiat.Common.List.UpperBound.
+Require Import Fiat.QueryStructure.Automation.MasterPlan.
 
 Open Scope list.
 
@@ -11,7 +7,7 @@ Open Scope list.
 
 Section Packet.
   (* an Ip address is a list of ascii each of which represents a group *)
-  Definition Ip := list ascii.
+  Definition Ip := list nat.
 
   (* a Protocol can be either tcp or udp *)
   Inductive Protocol := tcp | udp.
@@ -88,7 +84,6 @@ Section ADT.
   ADTsignature {
       Constructor "Init" : unit -> rep,
       Method "AddRule" : rep x RuleRecord -> rep x bool,
-      Method "DeletePrefix" : rep x Ip -> rep x list RuleRecord,
       Method "Classify" : rep x Packet -> rep x list RuleRecord
     }.
 
@@ -96,40 +91,33 @@ Section ADT.
   QueryADTRep ClassifierSchema {
     Def Constructor "Init" (_ : unit) : rep := empty,
 
-    update "AddRule" (r : RuleRecord) : bool :=
-      Insert r into RULES,
+    update "AddRule" (r : rep, rule : RuleRecord) : bool :=
+      Insert rule into r!RULES,
 
-    update "DeletePrefix" (ip : Ip) : list RuleRecord :=
-      Delete r from RULES where IsPrefix r!DESTINATION ip,
-
-    query "Classify" (p : Packet) : list RuleRecord :=
-      For (r in RULES)
+    query "Classify" (r : rep, p : Packet) : list RuleRecord :=
+      For (rule in r!RULES)
             (* the rule's ip must be a prefix of the packet's ip *)
-            Where (IsPrefix r!DESTINATION (destination p) /\
+            Where (IsPrefix rule!DESTINATION (destination p) /\
             (* the rule's protocol must match the packet's protocol *)
-                   FollowPolicy r!PROTOCOL (protocol p))
-            Return r
+                   FollowPolicy rule!PROTOCOL (protocol p))
+            Return rule
   }.
 
-  Theorem ClassifierManual :
-    MostlySharpened ClassifierSpec.
+  Theorem SharpenedClassifier :
+    FullySharpened ClassifierSpec.
   Proof.
 
-    partial_master_plan ltac:(CombineIndexTactics PrefixIndexTactics EqIndexTactics).
-    Set Printing All.
-    idtac.
-    Print SearchUpdateTerm.
+    (* Uncomment this to see the mostly sharpened implementation *)
+    (* partial_master_plan ltac:(CombineIndexTactics PrefixIndexTactics EqIndexTactics).*)
 
+    master_plan ltac:(CombineIndexTactics PrefixIndexTactics EqIndexTactics).
 
-    FullySharpenQueryStructure ClassifierSchema Index.
-
-  (* 124 seconds *)
   Time Defined.
+  (* Mem: 902MB *)
 
-  Definition ClassifierImpl : SharpenedUnderDelegates ClassifierSig.
-    (* 33 seconds *)
-    Time let Impl := eval simpl in (projT1 ClassifierManual) in
-             exact Impl.
-  Defined.
+  Time Definition ClassifierImpl : ComputationalADT.cADT ClassifierSig :=
+    Eval simpl in (projT1 SharpenedClassifier).
+  (* Mem: 1028MB *)
+  Print ClassifierImpl.
 
 End ADT.

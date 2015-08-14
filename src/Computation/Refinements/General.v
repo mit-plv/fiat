@@ -22,6 +22,17 @@ Section general_refine_lemmas.
       -> refine (a <- c; x a) (a <- c; y a).
   Proof. t_refine.  Qed.
 
+  (* Combines refine_under_bind and refine_bind:
+generates another subgoal for the first expression,
+and gives you the computational hypothesis for the second *)
+  Lemma refine_under_bind_both {A B}
+  : forall c c' (x y : A -> Comp B),
+      refine c c' ->
+      (forall a, c ↝ a -> refine (x a) (y a))
+      ->
+      refine (a <- c; x a) (a <- c'; y a).
+  Proof. t_refine. Qed.
+
   Lemma refine_pick A (P : A -> Prop) c (H : forall x, c ↝ x -> P x)
   : @refine A ({x : A | P x })%comp
             c.
@@ -273,6 +284,17 @@ Section general_refine_lemmas.
     reflexivity.
   Qed.
 
+(* Nontermination with above lemma? *)
+(*
+  Lemma refine_If_if {A}
+  : forall (c : bool) (t e : Comp A),
+      refine (If c Then t Else e)
+             (if c then t else e).
+  Proof.
+    reflexivity.
+  Qed.
+*)
+
   Lemma refine_if_andb {A}
   : forall (i i' : bool)
            (t e : A),
@@ -295,6 +317,21 @@ Section general_refine_lemmas.
     forall Pc (Pt Pa : Ensemble A),
       refine { a | (Pc -> Pt a) /\ Pa a}
              (b <- {b | Pc -> b = true};
+              If b Then { a | Pt a /\ Pa a}
+              Else { a | Pa a}).
+  Proof.
+    intros * v Comp_v; computes_to_inv.
+    computes_to_econstructor; intuition; subst;
+    try destruct v0; simpl in *; eauto; computes_to_inv; intuition.
+  Qed.
+
+  Definition decides (b : bool) (P : Prop)
+    := If b Then P Else ~ P.
+
+  Lemma refine_iff_P A :
+    forall (Pc : Prop) (Pt Pa : Ensemble A),
+      refine { a | (Pc -> Pt a) /\ Pa a}
+             (b <- {b | decides b Pc};
               If b Then { a | Pt a /\ Pa a}
               Else { a | Pa a}).
   Proof.
@@ -393,9 +430,6 @@ Section general_refine_lemmas.
     eapply H0; eauto; intros; eapply H1; eauto.
   Qed.
 
-  Definition decides (b : bool) (P : Prop)
-    := If b Then P Else ~ P.
-
   Add Morphism
       (decides)
       with signature (eq ==> iff ==> iff)
@@ -418,6 +452,24 @@ Section general_refine_lemmas.
     destruct v0; simpl in *; eauto.
   Qed.
 
+  Lemma refine_pick_decides_branches {A}
+        (P : Prop)
+        (Q Q' : Ensemble A)
+        (q q' : Comp A) 
+    : (P -> refine {a | Q a} q)
+      -> (~ P -> refine {a | Q' a} q')
+      -> refine {a | (P -> Q a) /\
+                     (~ P -> Q' a)}
+                (b <- {b | decides b P};
+                 If b Then q Else q').
+  Proof.
+    intros; eapply refine_pick_decides.
+    - unfold refine; intros; computes_to_inv;
+      econstructor; intuition; eapply H4; eauto.
+    - unfold refine; intros; computes_to_inv;
+      econstructor; intuition; eapply H4; eauto.
+  Qed.
+  
   Lemma refine_pick_decides' {A}
         (P : Prop)
         (Q Q' : Ensemble A)
@@ -429,9 +481,7 @@ Section general_refine_lemmas.
             Else
               {a | Q' a}).
   Proof.
-    eapply refine_pick_decides;
-    unfold refine; intros; computes_to_inv;
-    econstructor; intuition.
+    eapply refine_pick_decides_branches; reflexivity.
   Qed.
 
   Global Add Parametric Morphism : decides

@@ -19,29 +19,18 @@ Require Import Coq.Lists.List Coq.Strings.String Coq.Sets.Ensembles Coq.Arith.Ar
    OTHERWISE
    No tables are changed. *)
 Definition QSUpdate
-           (qs : QueryStructureHint)
+           qs_schema
+           (qs : QueryStructure qs_schema)
            (Ridx : _)
-           (UpdatedTuples : @Ensemble (@Tuple (schemaHeading (QSGetNRelSchema _ Ridx))))
-           (UpdateFunction :  (@Tuple (schemaHeading (QSGetNRelSchema _ Ridx))) ->
-                              (@Tuple (schemaHeading (QSGetNRelSchema _ Ridx))))
-: Comp (QueryStructure qsSchemaHint' * list Tuple) :=
-  QSMutate qs Ridx (IndexedEnsembleUpdate (GetRelation qsHint Ridx) UpdatedTuples UpdateFunction).
+           (UpdatedTuples : @Ensemble (@RawTuple (GetNRelSchemaHeading _ Ridx)))
+           (UpdateFunction : @RawTuple (GetNRelSchemaHeading _ Ridx) ->
+                             @RawTuple (GetNRelSchemaHeading _ Ridx))
+: Comp (QueryStructure qs_schema * list RawTuple) :=
+  QSMutate qs Ridx (IndexedEnsembleUpdate (GetRelation qs Ridx) UpdatedTuples UpdateFunction).
 
 Opaque QSUpdate.
 
-Variable UpdateTuple : forall (attrs: list Attribute) (attr: Attribute),
-                         (Component attr -> Component attr) ->
-                         @Tuple (BuildHeading attrs) -> @Tuple (BuildHeading attrs).
 
-Notation "a |= b" := (@UpdateTuple _ {|attrName := a; attrType := _|}
-                             (fun _ => Build_Component (_::_) b%list)) (at level 80).
-Notation "a ++= b" := (@UpdateTuple _ {|attrName := a; attrType := string|}
-                             (fun o => Build_Component (_::_) (append (value o) b))) (at level 80).
-Notation "a :+= b" := (@UpdateTuple _ {|attrName := a; attrType := list _|}
-                             (fun o => Build_Component (_::_) (cons b (value o)))) (at level 80).
-Notation "[ a ; .. ; c ]" := (compose a .. (compose c id) ..) : Update_scope.
-
-Delimit Scope Update_scope with Update.
-Notation "'Update' b 'from' Ridx 'making' Trans 'where' Ens" :=
-  (QSUpdate _ {|bindex := Ridx%comp |} (fun b => Ens) Trans%Update)
-    (at level 80) : QuerySpec_scope.
+Notation "'Update' b 'from' r '!' Ridx 'making' Trans 'where' Ens" :=
+  (QSUpdate r (ibound (indexb (@Build_BoundedIndex _ _ (QSschemaNames _) Ridx%string _))) (fun b => Ens) Trans)
+    (r at level 0, at level 80) : QuerySpec_scope.

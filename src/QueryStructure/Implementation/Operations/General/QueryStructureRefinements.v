@@ -1,11 +1,28 @@
-Require Import Coq.Strings.String Coq.omega.Omega Coq.Lists.List Coq.Logic.FunctionalExtensionality Coq.Sets.Ensembles
+Require Import Coq.Strings.String
+        Coq.omega.Omega
+        Coq.Lists.List
+        Coq.Logic.FunctionalExtensionality
+        Coq.Sets.Ensembles
         Coq.Sorting.Permutation
-        Fiat.Computation Fiat.ADT Fiat.ADTRefinement Fiat.ADTNotation Fiat.ADTRefinement.BuildADTRefinements
-        Fiat.QueryStructure.Specification.Representation.QueryStructureSchema Fiat.QueryStructure.Specification.Representation.QueryStructure
+        Fiat.Common.ilist2
+        Fiat.Computation
+        Fiat.ADT
+        Fiat.ADTRefinement
+        Fiat.ADTNotation
+        Fiat.ADTRefinement.BuildADTRefinements
+        Fiat.QueryStructure.Specification.Representation.QueryStructureSchema
+        Fiat.QueryStructure.Specification.Representation.QueryStructure
         Fiat.Common.Ensembles.IndexedEnsembles
-        Fiat.QueryStructure.Specification.Operations.Query Fiat.QueryStructure.Specification.Operations.Insert Fiat.QueryStructure.Specification.Operations.Empty Fiat.QueryStructure.Specification.Operations.Delete Fiat.QueryStructure.Specification.Operations.Update
+        Fiat.QueryStructure.Specification.Operations.Query
+        Fiat.QueryStructure.Specification.Operations.Insert
+        Fiat.QueryStructure.Specification.Operations.Empty
+        Fiat.QueryStructure.Specification.Operations.Delete
+        Fiat.QueryStructure.Specification.Operations.Update
         Fiat.QueryStructure.Specification.Representation.QueryStructureNotations
-        Fiat.QueryStructure.Implementation.Operations.General.QueryRefinements Fiat.QueryStructure.Implementation.Operations.General.InsertRefinements Fiat.QueryStructure.Implementation.Operations.General.DeleteRefinements. (* Add Update *)
+        Fiat.QueryStructure.Implementation.Operations.General.QueryRefinements
+        Fiat.QueryStructure.Implementation.Operations.General.InsertRefinements
+        Fiat.QueryStructure.Implementation.Operations.General.DeleteRefinements.
+ (* Add Update *)
 
 Lemma Constructor_DropQSConstraints {MySchema} {Dom}
 : forall oldConstructor (d : Dom),
@@ -20,10 +37,17 @@ Proof.
   repeat computes_to_econstructor; eauto.
 Qed.
 
+Lemma DropGetAttribute {sch}
+  : forall (tup : @Tuple sch) idx,
+    GetAttribute tup idx = GetAttributeRaw tup (ibound (indexb idx)).
+Proof.
+  destruct idx; reflexivity.
+Qed.
+
 (* Queries over an empty relation return empty lists. *)
 Lemma refine_For_In_Empty  :
   forall ResultT MySchema R bod,
-    refine (Query_For (@UnConstrQuery_In ResultT MySchema
+    refine (Query_For (@UnConstrQuery_In ResultT _
                                    (DropQSConstraints (QSEmptySpec MySchema))
                                    R bod))
            (ret []).
@@ -31,15 +55,15 @@ Proof.
   intros; rewrite refine_For.
   simplify with monad laws.
   unfold In, DropQSConstraints, GetUnConstrRelation in *.
-  rewrite <- ith_Bounded_imap.
-  unfold QSEmptySpec; simpl rels.
+  rewrite <- ith_imap2.
+  unfold QSEmptySpec; simpl rawRels.
   rewrite Build_EmptyRelation_IsEmpty; simpl.
   rewrite refine_pick_val with
-  (A := list Tuple) (a := []).
+  (A := list RawTuple) (a := []).
   - simplify with monad laws.
     rewrite refine_pick_val with
     (A := list ResultT) (a := []); reflexivity.
-  - eexists []; simpl; intuition econstructor.
+  - eexists []; simpl; unfold In; intuition econstructor.
 Qed.
 
 Lemma Ensemble_List_Equivalence_Insert {A}
@@ -69,7 +93,7 @@ Qed.
 
 Lemma refine_For_In_Insert
 : forall ResultT MySchema R or a tup bod,
-    (forall tup, GetUnConstrRelation or R tup -> tupleIndex tup <> a)
+    (forall tup, GetUnConstrRelation or R tup -> RawTupleIndex tup <> a)
     -> refine (Query_For
                  (@UnConstrQuery_In
                     ResultT MySchema
@@ -88,7 +112,7 @@ Proof.
   intros; rewrite refine_For.
   unfold UnConstrQuery_In,
   GetUnConstrRelation at 1, UpdateUnConstrRelation.
-  rewrite ith_replace_BoundIndex_eq.
+  rewrite ith_replace2_Index_eq.
   unfold QueryResultComp; simplify with monad laws.
   rewrite Ensemble_List_Equivalence_Insert.
   - setoid_rewrite refineEquiv_bind_bind.
@@ -110,6 +134,6 @@ Qed.
       Ensembles.In _ new_contents x.
   Proof.
     unfold GetUnConstrRelation, UpdateUnConstrRelation, EnsembleInsert.
-    intros. rewrite ith_replace_BoundIndex_eq;
+    intros. rewrite ith_replace2_Index_eq;
             reflexivity.
   Qed.

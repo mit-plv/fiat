@@ -287,7 +287,7 @@ Module TreeBag (Import M: WS).
         rewrite map_mapsto_iff in H;
         destruct H as [bag' [bag'_eq MapsTo_key0]]; subst.
         assert (RepInv bag') as WF_bag' by (eapply containerCorrect; eauto).
-          destruct valid_update as [valid_update valid_update'].
+        destruct valid_update as [valid_update valid_update'].
         pose proof (bupdate_correct bag' s update_term WF_bag' valid_update); intuition.
         apply bupdate_RepInv; eauto.
         pose proof (Permutation_in _ H0 H) as H4;

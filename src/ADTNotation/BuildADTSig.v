@@ -1,4 +1,4 @@
-Require Import Fiat.Common.ilist Fiat.Common.StringBound Fiat.ADT.ADTSig.
+Require Import Fiat.Common.ilist Fiat.Common.BoundedLookup Fiat.ADT.ADTSig.
 Require Import Coq.Lists.List Coq.Strings.String.
 
 (* Notation for ADT Signatures. *)
@@ -40,27 +40,45 @@ Notation "'Constructor' id ':' dom '->' 'rep'" :=
    constructor signatures and a list of method signatures.
    This definition can be formated nicely using notations. *)
 
+Record DecoratedADTSig :=
+  { DecADTSig :> ADTSig;
+    NumConstructors : nat;
+    NumMethods : nat;
+    ConstructorNames : Vector.t string NumConstructors;
+    MethodNames : Vector.t string NumMethods }.
+
 Definition BuildADTSig
-           (consSigs : list consSig)
-           (methSigs : list methSig)
-: ADTSig :=
-  {| ConstructorIndex := @BoundedString (map consID consSigs);
-     MethodIndex := @BoundedString (map methID methSigs);
-     ConstructorDom idx :=
-       consDom (nth_Bounded consID consSigs idx) ;
-    MethodDomCod idx :=
-      let domcod := (nth_Bounded methID methSigs idx)
-      in (methDom domcod, methCod domcod)
-  |}.
+           {n n'}
+           (consSigs : Vector.t consSig n)
+           (methSigs : Vector.t methSig n')
+: DecoratedADTSig :=
+  {| DecADTSig :=
+       {| ConstructorIndex := Fin.t n;
+          MethodIndex := Fin.t n';
+          ConstructorDom idx :=
+            consDom (Vector.nth consSigs idx);
+          MethodDomCod idx :=
+            let domcod := (Vector.nth methSigs idx)
+            in (methDom domcod, methCod domcod)
+       |};
+     NumConstructors := n;
+     NumMethods := n';
+     ConstructorNames := Vector.map consID consSigs;
+     MethodNames := Vector.map methID methSigs |}.
 
 Bind Scope ADTSig_scope with ADTSig.
 Delimit Scope ADTSig_scope with ADTSig.
 
 (* Notation for ADT signatures utilizing [BuildADTSig]. *)
 
+Require Import Coq.Vectors.VectorDef.
+Import Coq.Vectors.VectorDef.VectorNotations.
+
+Delimit Scope vector_scope with vector.
+
 Notation "'ADTsignature' { cons1 , meth1 , .. , methn }" :=
-  (BuildADTSig (cons1%consSig :: [])
-              (meth1%methSig :: .. (methn%methSig :: []) ..))
+  (BuildADTSig (cons1%consSig :: [])%vector
+              (meth1%methSig :: .. (methn%methSig :: []) ..))%vector
     (at level 0,
      cons1 at level 93,
      meth1 at level 93, methn at level 93,

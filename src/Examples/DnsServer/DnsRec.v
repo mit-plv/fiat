@@ -12,9 +12,9 @@ Require Import Fiat.QueryStructure.Automation.AutoDB
         (* Fiat.QueryStructure.Automation.QSImplementation. *)
 
 Require Import
-        Fiat.Examples.DnsServer.packet
-        Fiat.Examples.DnsServer.DnsSchema
-        Fiat.Examples.DnsServer.DnsLemmas.
+        Fiat.Examples.DnsServer.packet_new
+        Fiat.Examples.DnsServer.DnsSchema_new
+        Fiat.Examples.DnsServer.DnsLemmas. (* might need _new *)
 (* TODO: unique, fueledfix are here but for some reason setoid rewrite is failing *)
 
 Definition DnsRecSig : ADTSig :=
