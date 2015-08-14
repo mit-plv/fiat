@@ -35,9 +35,13 @@ Section IncludedInAClauses.
   - inversion H.
   - inversion H; subst; eauto.
     rewrite H1; eauto.
-  - unfold not; intros; apply _H0; intros.
+  - unfold not; intros.
+    let _H0 := match goal with _H0 : ~ _ |- _ => constr:_H0 end in
+    apply _H0; intros.
     eapply H; econstructor 2; eauto.
-  - unfold not; intros; eapply _H.
+  - unfold not; intros.
+    let _H := match goal with _H0 : ~ _ |- _ => constr:_H0 end in
+    eapply _H.
     apply H; econstructor; eauto.
     reflexivity.
   Defined.
