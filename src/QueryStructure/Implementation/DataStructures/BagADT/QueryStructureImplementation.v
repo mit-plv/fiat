@@ -178,8 +178,10 @@ Section QueryStructureImplementation.
           c <- _;
           cs <- (@Initialize_IndexedQueryStructure _ ns' (ilist3_tl il) );
           ret (i3cons c cs)
-    end indices').
-      exact (CallBagConstructor (ilist3_hd il) BagEmpty tt).
+    end indices');
+    [ ..
+    | exact (CallBagConstructor (ilist3_hd il) BagEmpty tt) ];
+    shelve.
       Grab Existential Variables.
       exact (fun ns index =>
                Rep (BagSpec (BagMatchSearchTerm (heading := ns) index)
