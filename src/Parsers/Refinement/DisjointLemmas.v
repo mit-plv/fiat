@@ -183,7 +183,8 @@ Section all_possible_correctness.
     setoid_rewrite All.MinimalReachableOfReachable.minimal_reachable_from_item__iff__reachable_from_item.
     apply forall_chars__impl__forall_chars__char_in.
     intro ch.
-    apply (fold_nt_correct (G := G) nt ch).
+    let f := constr:(fold_nt_correct (G := G) nt) in
+    apply (f ch).
   Qed.
 End all_possible_correctness.
 
@@ -269,7 +270,8 @@ Section only_first_correctness.
       | [ H : MaybeEmpty.Minimal.minimal_maybe_empty_production _ _ |- _ ] => eapply MaybeEmpty.MinimalOfCore.maybe_empty_production__of__minimal_maybe_empty_production in H; [ | reflexivity ]
       | [ H : MaybeEmpty.Minimal.minimal_maybe_empty_productions _ _ |- _ ] => eapply MaybeEmpty.MinimalOfCore.maybe_empty_productions__of__minimal_maybe_empty_productions in H; [ | reflexivity ]
       | [ m : MaybeEmpty.Core.maybe_empty_productions _ _ _ |- _ ]
-        => eapply MaybeEmpty.OfParse.parse_empty_from_maybe_empty_parse_of_productions with (str := ""%string) in m; [ | reflexivity.. ];
+        => let f := constr:(@MaybeEmpty.OfParse.parse_empty_from_maybe_empty_parse_of_productions _ _ _) in
+           eapply f with (str := ""%string) in m; [ | reflexivity.. ];
            eapply parse_nonterminal_complete; [ eassumption.. | ];
            split; [ eassumption | exact (projT2 m) ]
       | [ Hvalid : is_true (grammar_rvalid G) |- _ ] => apply grammar_rvalid_correct in Hvalid
