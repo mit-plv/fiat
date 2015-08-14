@@ -863,13 +863,13 @@ Ltac FullySharpenEachMethod DelegateSigs DelegateReps delegateSpecs :=
                           cCons cMeths
                           delegateSpecs
                           (fun
-                         (DelegateReps : Fin.t NumDelegates -> Type)
-                         (DelegateImpls : forall idx,
-                             ComputationalADT.pcADT (delegateeSig (Vector.nth Delegatees idx)) (DelegateReps idx))
-                         (ValidImpls
+                         (DelegateReps'' : Fin.t NumDelegates -> Type)
+                         (DelegateImpls'' : forall idx,
+                             ComputationalADT.pcADT (delegateeSig (Vector.nth Delegatees idx)) (DelegateReps'' idx))
+                         (ValidImpls''
                           : forall idx : Fin.t NumDelegates,
                              refineADT (DelegateSpecs idx)
-                                       (ComputationalADT.LiftcADT (existT _ _ (DelegateImpls idx))))
+                                       (ComputationalADT.LiftcADT (existT _ _ (DelegateImpls'' idx))))
                             => @eq _)
              )))
     end; try (simpl; repeat split; intros; subst).
