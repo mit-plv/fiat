@@ -1386,7 +1386,7 @@ Module InvertedIndexBag (MKeys : WS) (MValues : WSfun Nat_as_OT).
   : CorrectBag (InvertedIndex_RepInv projection)
                (InvertedIndex_ValidUpdate _ projection)
                (InvertedIndexAsBag projection (UpdateTermType := UpdateTermType) bupdate_transform ) :=
-    {|
+    {
       bempty_RepInv     := InvertedIndex_Empty_RepInv projection;
       binsert_RepInv    := @InvertedIndex_binsert_Preserves_RepInv _ projection;
       bdelete_RepInv    := @InvertedIndex_bdelete_Preserves_RepInv _ projection;
@@ -1398,6 +1398,6 @@ Module InvertedIndexBag (MKeys : WS) (MValues : WSfun Nat_as_OT).
       bcount_correct    := @InvertedIndex_BagCountCorrect _ projection;
       bdelete_correct   := @InvertedIndex_BagDeleteCorrect _ projection ;
       bupdate_correct   := @InvertedIndex_BagUpdateCorrect _ _ bupdate_transform projection
-    |}.
+    }.
 
 End InvertedIndexBag.
