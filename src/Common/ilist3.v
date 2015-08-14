@@ -124,7 +124,8 @@ Section ilist3.
                      (fun h n t => ilist3_hd) As
     | Fin.FS k n' =>
       fun As =>
-        Vector.caseS (fun n As => forall n',
+        Vector_caseS' Fin.t
+                      (fun n As n' =>
                           ilist3 As
                           -> B (Vector.nth As (@Fin.FS n n')))
                      (fun h n t m il => ith3 (ilist3_tl il) m)
@@ -244,7 +245,8 @@ Section ilist3_replace.
                      (fun h n t il new_b => icons3 new_b (ilist3_tl il) ) As
     | Fin.FS k n' =>
       fun As =>
-        Vector.caseS (fun n As => forall n',
+        Vector_caseS' Fin.t
+                      (fun n As n' =>
                           ilist3 As
                           -> B (Vector.nth As (@Fin.FS n n'))
                           -> ilist3 As)

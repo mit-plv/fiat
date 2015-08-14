@@ -4,6 +4,7 @@ Set Implicit Arguments.
 Require Import Coq.Lists.List Coq.Strings.String Coq.Arith.Arith.
 Require Import Fiat.Common.ilist.
 Require Import Fiat.Common.
+Require Export Fiat.Common.VectorFacts.
 
 Section ilist2.
 
@@ -124,8 +125,9 @@ Section ilist2.
                      (fun h n t => ilist2_hd) As
     | Fin.FS k n' =>
       fun As =>
-        Vector.caseS (fun n As => forall n',
-                          ilist2 As
+        Vector_caseS' Fin.t
+                      (fun n As n' =>
+                         ilist2 As
                           -> B (Vector.nth As (@Fin.FS n n')))
                      (fun h n t m il => ith2 (ilist2_tl il) m)
                      As n'
@@ -244,7 +246,8 @@ Section ilist2_replace.
                      (fun h n t il new_b => icons2 new_b (ilist2_tl il) ) As
     | Fin.FS k n' =>
       fun As =>
-        Vector.caseS (fun n As => forall n',
+        Vector_caseS' Fin.t
+                      (fun n As n' =>
                           ilist2 As
                           -> B (Vector.nth As (@Fin.FS n n'))
                           -> ilist2 As)
@@ -310,7 +313,7 @@ Section ilist2_replace.
       end.
   Qed.
 
-  
+
 End ilist2_replace.
 
 Lemma imap_replace2_Index
@@ -367,13 +370,14 @@ Section ilist2_update.
                      (fun h n t il update_b => icons2 (update_b (ilist2_hd il)) (ilist2_tl il) ) As
     | Fin.FS k n' =>
       fun As =>
-        Vector.caseS (fun n As => forall n',
+        Vector_caseS' Fin.t
+                      (fun n As n' =>
                           ilist2 As
                           -> (B (Vector.nth As (@Fin.FS n n')) -> B (Vector.nth As (@Fin.FS n n')))
                           -> ilist2 As)
-                     (fun h n t m il update_b => icons2 (ilist2_hd il)
+                      (fun h n t m il update_b => icons2 (ilist2_hd il)
                                                     (@update_Index2 _ _ (ilist2_tl il) _ update_b))
-                     As n'
+                      As n'
     end As il update_b.
 
   Lemma ith_update_Index2_neq {m}
@@ -433,5 +437,5 @@ Section ilist2_update.
         simpl; apply (@Vector.caseS _ P); simpl; eauto
       end.
   Qed.
-  
+
 End ilist2_update.

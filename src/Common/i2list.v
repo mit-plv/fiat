@@ -102,8 +102,9 @@ Section i2list.
                      (fun a' n' As' (Bs' : ilist2 (a' :: As')) i2l' => prim_fst i2l' ) As Bs i2l
     | Fin.FS k n'' =>
       fun As Bs i2l =>
-        Vector.caseS (fun n' As =>
-                        forall (i : Fin.t n') (Bs'' : ilist2 As),
+        Vector_caseS' Fin.t
+                      (fun n' As i =>
+                        forall (Bs'' : ilist2 As),
                           i2list Bs''
                           -> C (ith2 Bs'' (@Fin.FS n' i)))
                      (fun a' n' As' n'' (Bs' : ilist2 (a' :: As')) i2l' => i2th (prim_snd i2l') n'')

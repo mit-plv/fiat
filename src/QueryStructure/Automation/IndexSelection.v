@@ -96,8 +96,8 @@ Proof.
             | Some cnt => (Vector.cons _ (RelationAttributeCounter.add new (S cnt) h) _ t)
             | None => (Vector.cons _ (RelationAttributeCounter.add new 1 h) _ t)
             end).
-  - revert p' new; pattern q, v; apply Vector.caseS; intros.
-    exact (Vector.cons _ h _ (IncrementAttrCount _ t p' new)).
+  - revert new. pattern q, v, p'. apply Vector_caseS'; intros.
+    refine (Vector.cons _ h _ (IncrementAttrCount _ t _ new)); assumption.
 Defined.
 
 Fixpoint InitOccRank {n}
@@ -182,8 +182,8 @@ Proof.
           end qsSchema AttrCount NewOccurence).
   - revert il new; pattern q, v; apply Vector.caseS; intros.
     exact (icons3 (new :: ilist3_hd il) (ilist3_tl il)).
-  - revert p' il new; pattern q, v; apply Vector.caseS; intros.
-    exact (icons3 (ilist3_hd il) (InsertOccurence _ _ p' new (ilist3_tl il))).
+  - revert il new; pattern q, v, p'; apply Vector_caseS'; intros ??? q0 ??.
+    exact (icons3 (ilist3_hd il) (InsertOccurence _ _ q0 new (ilist3_tl il))).
 Defined.
 
 Definition InsertOccurenceOfAny {n}

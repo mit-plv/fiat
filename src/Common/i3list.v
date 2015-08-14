@@ -102,8 +102,9 @@ Section i3list.
                      (fun a' n' As' (Bs' : ilist3 (a' :: As')) i3l' => prim_fst i3l' ) As Bs i3l
     | Fin.FS k n'' =>
       fun As Bs i3l =>
-        Vector.caseS (fun n' As =>
-                        forall (i : Fin.t n') (Bs'' : ilist3 As),
+        Vector_caseS' Fin.t
+                      (fun n' As i =>
+                        forall (Bs'' : ilist3 As),
                           i3list Bs''
                           -> C (ith3 Bs'' (@Fin.FS n' i)))
                      (fun a' n' As' n'' (Bs' : ilist3 (a' :: As')) i3l' => i3th (prim_snd i3l') n'')

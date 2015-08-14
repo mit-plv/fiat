@@ -5,6 +5,7 @@ Require Import Coq.Lists.List
         Coq.Strings.String
         Coq.Arith.Arith
         Fiat.Common.
+Require Export Fiat.Common.VectorFacts.
 Require Coq.Vectors.Vector.
 
 Section ilist.
@@ -112,6 +113,38 @@ Section ilist.
 
   (* Looking up the ith value, returning None for indices not in the Vector.t *)
 
+  Definition ith_body
+             (ith : forall
+                      {m : nat}
+                      {As : Vector.t A m}
+                      (il : ilist As)
+                      (n : Fin.t m),
+                      B (Vector.nth As n))
+             {m : nat}
+             {As : Vector.t A m}
+             (il : ilist As)
+             (n : Fin.t m)
+  : B (Vector.nth As n) :=
+    match n in Fin.t m return
+          forall (As : Vector.t A m),
+            ilist As
+            -> B (Vector.nth As n) with
+      | Fin.F1 k =>
+        fun As =>
+          Vector.caseS (fun n As => ilist As
+                                    -> B (Vector.nth As (@Fin.F1 n)))
+                       (fun h n t => ilist_hd) As
+      | Fin.FS k n' =>
+        fun As =>
+          Vector_caseS' Fin.t
+                        (fun n As n' => ilist As
+                                        -> B (Vector.nth As (@Fin.FS n n')))
+                        (fun h n t m il => ith (ilist_tl il) m)
+                        As n'
+    end As il.
+
+
+
   Fixpoint ith
            {m : nat}
            {As : Vector.t A m}
@@ -119,23 +152,7 @@ Section ilist.
            (n : Fin.t m)
            {struct n}
     : B (Vector.nth As n) :=
-    match n in Fin.t m return
-          forall (As : Vector.t A m),
-            ilist As
-            -> B (Vector.nth As n) with
-    | Fin.F1 k =>
-      fun As =>
-        Vector.caseS (fun n As => ilist As
-                                  -> B (Vector.nth As (@Fin.F1 n)))
-                     (fun h n t => ilist_hd) As
-    | Fin.FS k n' =>
-      fun As =>
-        Vector.caseS (fun n As => forall n',
-                          ilist As
-                          -> B (Vector.nth As (@Fin.FS n n')))
-                     (fun h n t m il => ith (ilist_tl il) m)
-                     As n'
-    end As il.
+  @ith_body (@ith) m As il n.
 
   Lemma ilist_invert {n} (As : Vector.t A n) (il : ilist As) :
     match As as As' return ilist As' -> Prop with
@@ -255,7 +272,8 @@ Section ilist_replace.
                      (fun h n t il new_b => icons new_b (ilist_tl il) ) As
     | Fin.FS k n' =>
       fun As =>
-        Vector.caseS (fun n As => forall n',
+        Vector_caseS' Fin.t
+                     (fun n As n' =>
                           ilist As
                           -> B (Vector.nth As (@Fin.FS n n'))
                           -> ilist As)

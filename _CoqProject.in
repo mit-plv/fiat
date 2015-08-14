@@ -1,5 +1,4 @@
 -R src Fiat
--arg -dont-load-proofs
 src/ADT.v
 src/ADTNotation.v
 src/ADTRefinement.v
@@ -52,6 +51,7 @@ src/Common/SetoidInstances.v
 src/Common/StringBound.v
 src/Common/String_as_OT.v
 src/Common/UIP.v
+src/Common/VectorFacts.v
 src/Common/Wf.v
 src/Common/i2list.v
 src/Common/i2list2.v
