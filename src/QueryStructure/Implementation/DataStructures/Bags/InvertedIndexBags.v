@@ -1057,12 +1057,12 @@ Module InvertedIndexBag (MKeys : WS) (MValues : WSfun Nat_as_OT).
         destruct (H0 _ _ H1 _ H4); intuition.
         rewrite <- (MoreMKeysFacts.BasicFacts.MapsTo_fun H6 H3); eauto.
         eapply IHst in H1; eauto.
-        revert H7 H1; clear;
+        revert H7 H1; clear -projection;
         remember (fun (k : MValues.key) (_ : TItem) => bool_of_sumbool (in_dec eq_nat_dec k x)) as f; unfold not in Heqf; rewrite <- Heqf.
         intro.
         assert (forall v, f idx v = true) by
             (rewrite Heqf; destruct (in_dec eq_nat_dec idx x); simpl; eauto).
-        generalize MValues f H; clear.
+        generalize MValues f H; clear -projection.
         induction st.
         + simpl; intros.
           rewrite MValuesProperties.filter_iff; intuition.
