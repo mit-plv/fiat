@@ -27,6 +27,9 @@ Makefile.coq: etc/coq-scripts/Makefile.coq.common etc/coq-scripts/compatibility/
 
 .DEFAULT_GOAL := fiat
 
+clean::
+	rm -f src/Examples/Ics/WaterTank.ml
+
 clean-doc::
 	rm -rf html
 	rm -f all.pdf Overview/library.pdf Overview/ProjectOverview.pdf Overview/coqdoc.sty coqdoc.sty
