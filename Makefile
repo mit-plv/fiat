@@ -29,6 +29,7 @@ Makefile.coq: etc/coq-scripts/Makefile.coq.common etc/coq-scripts/compatibility/
 
 clean::
 	rm -f src/Examples/Ics/WaterTank.ml
+	rm -f submodule-update
 
 clean-doc::
 	rm -rf html
