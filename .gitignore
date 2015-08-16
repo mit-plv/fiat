@@ -8,6 +8,7 @@
 *.log
 *.o
 *.out
+*.swp
 *.synctex.gz
 *.toc
 *.v.d
