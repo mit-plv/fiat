@@ -2,8 +2,8 @@ COMPATIBILITY_FILE=src/Common/Coq__8_4__8_5__Compat.v
 STDTIME?=time -f "$* (real: %e, user: %U, sys: %S, mem: %M ko)"
 
 submodule-update: .gitmodules
-	git submodule update --init
-	@ touch "$@"
+	git submodule update --init && \
+	touch "$@"
 
 ifneq (,$(wildcard .git)) # if we're in a git repo
 etc/coq-scripts/Makefile.coq.common etc/coq-scripts/compatibility/Makefile.coq.compat_84_85 etc/coq-scripts/compatibility/Makefile.coq.compat_84_85-early: submodule-update
