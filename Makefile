@@ -6,6 +6,7 @@ STDTIME?=time -f "$* (real: %e, user: %U, sys: %S, mem: %M ko)"
 	pdf doc clean-doc
 
 submodule-update: .gitmodules
+	git submodule sync && \
 	git submodule update --init && \
 	touch "$@"
 
