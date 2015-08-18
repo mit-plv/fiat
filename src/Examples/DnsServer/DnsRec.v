@@ -129,7 +129,11 @@ Definition list_join {A B : Type} f (l1 : list A) (l2 : list B)
   : list (A * B) := 
 filter f (list_prod l1 l2).
 
-Set Printing All.
+(* Set Printing All. *)
+
+Check test_packet.
+Locate test_packet.
+(* it's still using packet, not packet_new TODO *)
 
 Definition DnsSpec_Recursive : ADT DnsRecSig :=
   (* TODO move to definitions *)
@@ -175,10 +179,10 @@ and associate it with the packet (solve the latter by letting it generate the id
 
         update UpdateRequestStage (this : rep, tup : id * Stage) : bool :=
           let (reqId, reqStage) := tup in
-          q <- Update c from this!sREQUESTS
-            making sSTAGE |= reqStage
-            (* where (c!sID = reqId); *)
-            where False;
+          q <- Update c from this!sREQUESTS as c'
+            making c'!sSTAGE = reqStage
+            where (c!sID = reqId);
+            (* where False; *)
         let (updated, affected) := q in
         ret (updated, nonEmpty affected),
 
@@ -252,8 +256,8 @@ and associate it with the packet (solve the latter by letting it generate the id
 
               (* doNothing will eventually be replaced by [ret false] *)
               let doNothing :=
-                  (q <- Update n from this!sCACHE_ANSWERS
-                     making [ sTTL |= 0 ]
+                  (q <- Update n from this!sCACHE_ANSWERS as n'
+                     making [ n'!sTTL |= 0 ]
                    where False;
                    let (updated, affected) := q in
                    ret (updated, nonEmpty affected)) in
@@ -296,9 +300,9 @@ and associate it with the packet (solve the latter by letting it generate the id
             | Question serv pac =>
               
               let doNothing' :=
-              (q <- Update n from this!sCACHE_REFERRALS
-                  making [ sTTL |= 0 ]
-                  where False;
+              (q <- Update n from this!sCACHE_REFERRALS as n'
+                  making (n'!sSTTL = 0)
+                  where (False);
               let (updated, affected) := q in
               ret (updated, nonEmpty affected)) in
 
@@ -329,7 +333,7 @@ and associate it with the packet (solve the latter by letting it generate the id
                   map pairToPacketTup auth_addl_join in
               
               _ <- Insert (Build_CachePointer reqName CReferrals) into this!sCACHE_POINTERS;              
-              InsertAll' Build_CacheReferralsRow (tupsJoin pac)
+              InsertAll' (Build_CacheReferralsRow (tupsJoin pac))
             end,
 
             
@@ -381,10 +385,8 @@ and associate it with the packet (solve the latter by letting it generate the id
 For Answers: ? 
 For Failures: ?
 
-If nothing: return Nope 
- *)
-          
-                      (* suffixes <- For (req in this!sCACHE_ANSWERS) *)
+If nothing: return Nope  *)
+          (* suffixes <- For (req in this!sCACHE_ANSWERS) *)
             (*          Where (IsPrefix reqName req!sDOMAIN) *)
             (*          Return req; *)
             (* let domainLength (tup : AnswerRow) := List.length tup!sDOMAIN in *)
@@ -406,10 +408,20 @@ If nothing: return Nope
           match table with
           | CFailures => 
             (* There should be only one row in Failures, containing the SOA record *)
+            (* This domain [s.g.com] failed. If we have any result for the longest prefix, return it.
+                Otherwise, return failure. TODO *)
             nameRes <- For (f in this!sCACHE_FAILURES)
                     Where (f!sDOMAIN = reqName)
                     Return f;
           ret (Fail (listToOption nameRes))
+            
+          | CReferrals =>
+            (* Still need suffix search here? We know there's no Answer or Failure for the name... *)
+            (* Process figures out which referral to use *)
+            nameRes <- For (f in this!sCACHE_REFERRALS)
+                    Where (f!sREFERRALDOMAIN = reqName)
+                    Return f;            
+            ret (Ref nameRes)   
 
           | CAnswers => 
             (* There may be multiple rows in Answers, containing various answer/authority/addl *)
@@ -418,15 +430,6 @@ If nothing: return Nope
                     Where (f!sDOMAIN = reqName)
                     Return f;            
             ret (Ans nameRes)
-            
-          | CReferrals =>
-            (* Still need suffix search here? We know there's no Answer or Failure for the name... *)
-            (* Who figures out which referral to use? Maybe this shouldn't be a WrapperResponse? list? *)
-            nameRes <- For (f in this!sCACHE_REFERRALS)
-                    Where (f!sREFERRALDOMAIN = reqName)
-                    Return f;            
-            ret (Ref nameRes)   
-
           end
         end
           
