@@ -64,100 +64,88 @@ Definition standardReply (success: bool) : Reply :=
 Definition nonEmpty {A: Type} (l: list A) := negb (beq_nat (length l) 0).
 Definition standardReplyExists {A: Type} (l: list A) := standardReply (nonEmpty l).
 
-(* Attempt to debug here without recompiling all of Fiat -- 
-added another underscore for the vector length*)
-(* Variable UpdateTuple : forall (n : nat) (attrs: Vector.t Attribute n) (attr: Attribute), *)
-(*                          (Component attr -> Component attr) -> *)
-(*                          @RawTuple (BuildHeading attrs) -> @Tuple (BuildHeading attrs). *)
-
-(* Notation "a |= b" := (@UpdateTuple _ _ {|attrName := a; attrType := _|} *)
-(*                              (fun _ => Build_Component (_::_) b%list)) (at level 80). *)
-(* Notation "a ++= b" := (@UpdateTuple _ _ {|attrName := a; attrType := string|} *)
-(*                              (fun o => Build_Component (_::_) (append (value o) b))) (at level 80). *)
-(* Notation "a :+= b" := (@UpdateTuple _ _ {|attrName := a; attrType := list _|} *)
-(*                              (fun o => Build_Component (_::_) (cons b (value o)))) (at level 80). *)
-(* Notation "[ a ; .. ; c ]" := (compose a .. (compose c id) ..) : Update_scope. *)
-
-(* Delimit Scope Update_scope with Update. *)
-
-(* Set Printing All. *)
+Locate "_ ++ _".
 
 Definition SmtpSpec : ADT SmtpSig :=
   QueryADTRep ConnectionSchema {
     Def Constructor "Init" (_: unit) : rep := empty,
 
-    query "GetState" (this : rep, id : UUID) : option State :=
-      q <- (For (c in this!sCONNECTIONS)
+    query "GetState" (r : rep, id: UUID) : option State :=
+      q <- (For (c in r!sCONNECTIONS)
                 Where (id = c!sID)
                 Return (c!sSTATE));
       ret (hd_error q),
 
-    query "GetConnection" (this : rep, id : UUID) : option Connection :=
-      q <- (For (c in this!sCONNECTIONS)
-                For (c in this!sCONNECTIONS)
+    query "GetConnection" (r : rep, id: UUID) : option Connection :=
+      q <- (For (c in r! sCONNECTIONS)
+                For (c in r! sCONNECTIONS)
                 Where (id = c!sID)
                 Return (c));
       ret (hd_error q),
 
-    update "AddConnection" (this : rep, conn : Connection) : bool :=
-      Insert conn into this!sCONNECTIONS,
+    update "AddConnection" (r : rep, conn: Connection) : bool :=
+      Insert conn into r!sCONNECTIONS,
 
-    update "KillConnection" (this : rep, id : UUID) : bool :=
-      q <- Delete c from this!sCONNECTIONS where c!sID = id;
+    update "KillConnection" (r : rep, id: UUID) : bool :=
+      q <- Delete c from r!sCONNECTIONS where c!sID = id;
       let (updated, deleted) := q in
       ret (updated, nonEmpty deleted),
 
-    update "Helo" (this : rep, arg : UUID * string) : Reply :=
+    update "Helo" (r : rep, arg: UUID * string) : Reply :=
       let (id, domain) := arg in
-      q <- Update c from this!sCONNECTIONS
-        making [ sSTATE |= S_Mail; sDOMAIN |= domain ]
+      q <- Update c from r!sCONNECTIONS as d
+        making (d!sSTATE = S_Mail /\ d!sDOMAIN = domain)
         where (c!sID = id /\ c!sSTATE = S_Helo);
       let (updated, affected) := q in
       ret (updated, standardReplyExists(affected)),
 
-    update "Mail" (this : rep, arg : UUID * string) : Reply :=
+    update "Mail" (r : rep, arg: UUID * string) : Reply :=
       let (id, mailfrom) := arg in
-      q <- Update c from this!sCONNECTIONS
-        making [ sSTATE |= S_Rcpt; sMAILFROM |= mailfrom ]
+      q <- Update c from r!sCONNECTIONS as c'
+        making c!sSTATE = S_Rcpt /\ c!sMAILFROM = mailfrom
         where (c!sID = id /\ c!sSTATE = S_Mail);
       let (updated, affected) := q in
       ret (updated, standardReplyExists(affected)),
 
-    update "Rcpt" (this : rep, arg : UUID * string) : Reply :=
+    update "Rcpt" (r : rep, arg: UUID * string) : Reply :=
       let (id, rcptto) := arg in
-      q <-
-Update c from this!sCONNECTIONS
-        making sRCPTTO :+= rcptto
-        where (c!sID = id /\ c!sSTATE = S_Rcpt);
+      q <- Update c from r!sCONNECTIONS as c'
+        making c'!sRCPTTO = rcptto :: c!sRCPTTO
+      where (c!sID = id /\ c!sSTATE = S_Rcpt);
       let (updated, affected) := q in
       ret (updated, standardReplyExists(affected)),
 
-    update "Data" (this : rep, id : UUID) : Reply :=
-      q <- Update c from this!sCONNECTIONS
-        making sSTATE |= S_Data
-        where (c!sID = id /\ c!sSTATE = S_Rcpt /\ nonEmpty(c!sRCPTTO) = true);
+    update "Data" (r : rep, id: UUID) : Reply :=
+      q <- Update c from r!sCONNECTIONS as c'
+        making c'!sSTATE = S_Data
+      where (c!sID = id
+             /\ c!sSTATE = S_Rcpt
+             /\ nonEmpty(c!sRCPTTO) = true);
       let (updated, affected) := q in
       ret (updated, standardReplyExists(affected)),
 
-    update "MoreData" (this : rep, arg : UUID * string) : Reply :=
+    update "MoreData" (r : rep, arg: UUID * string) : Reply :=
       let (id, data) := arg in
-      q <- Update c from this!sCONNECTIONS
-        making sBODY ++= data
+      q <- Update c from r!sCONNECTIONS as c'
+        making c'!sBODY = append data c!sBODY
         where (c!sID = id /\ c!sSTATE = S_Data);
       let (updated, affected) := q in
       ret (updated, standardReplyExists(affected)),
 
-    update "Rset" (this : rep, id : UUID) : bool :=
-      q <- Update c from this!sCONNECTIONS
-        making [ sSTATE |= S_Mail; sMAILFROM |= ""; sRCPTTO |= @nil string; sBODY |= "" ]
+    update "Rset" (r : rep, id: UUID) : bool :=
+      q <- Update c from r!sCONNECTIONS as c'
+             making c'!sSTATE = S_Mail
+             /\ c'!sMAILFROM = ""
+             /\ c'!sRCPTTO = @nil string
+             /\ c'!sBODY = ""
         where (c!sID = id /\ c!sSTATE <> S_Helo /\ c!sSTATE <> S_Inactive);
       let (updated, affected) := q in
       ret (updated, nonEmpty(affected)),
 
-    update "Quit" (this : rep, id : UUID) : bool :=
-      q <- Update c from this!sCONNECTIONS
-        making [ sSTATE |= S_Inactive; sMAILFROM |= ""; sRCPTTO |= @nil string; sBODY |= "" ]
-        where c!sID = id;
+    update "Quit" (r : rep, id: UUID) : bool :=
+      q <- Update c from r!sCONNECTIONS as c'
+        making (c'!sSTATE = S_Inactive /\ c'!sMAILFROM = "" /\ c'!sRCPTTO = @nil string /\ c'!sBODY = "")
+        where (c!sID = id);
       let (updated, affected) := q in
       ret (updated, nonEmpty(affected))
 }.

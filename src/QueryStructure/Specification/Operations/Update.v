@@ -1,4 +1,7 @@
-Require Import Coq.Lists.List Coq.Strings.String Coq.Sets.Ensembles Coq.Arith.Arith
+Require Import Coq.Lists.List
+        Coq.Strings.String
+        Coq.Sets.Ensembles
+        Coq.Arith.Arith
         Fiat.Computation.Core
         Fiat.ADT.ADTSig
         Fiat.ADT.Core
@@ -23,14 +26,14 @@ Definition QSUpdate
            (qs : QueryStructure qs_schema)
            (Ridx : _)
            (UpdatedTuples : @Ensemble (@RawTuple (GetNRelSchemaHeading _ Ridx)))
-           (UpdateFunction : @RawTuple (GetNRelSchemaHeading _ Ridx) ->
-                             @RawTuple (GetNRelSchemaHeading _ Ridx))
+           (UpdateFunction : Relation_Definitions.relation (@RawTuple (GetNRelSchemaHeading _ Ridx)))
 : Comp (QueryStructure qs_schema * list RawTuple) :=
   QSMutate qs Ridx (IndexedEnsembleUpdate (GetRelation qs Ridx) UpdatedTuples UpdateFunction).
 
-Opaque QSUpdate.
-
-
-Notation "'Update' b 'from' r '!' Ridx 'making' Trans 'where' Ens" :=
-  (QSUpdate r (ibound (indexb (@Build_BoundedIndex _ _ (QSschemaNames _) Ridx%string _))) (fun b => Ens) Trans)
-    (r at level 0, at level 80) : QuerySpec_scope.
+Notation "'Update' b 'from' r '!' Ridx 'as' c 'making' Trans 'where' Ens" :=
+  (let qs_schema := _ in
+   let r' : QueryStructure qs_schema := r in
+   let Ridx' := ibound (indexb (@Build_BoundedIndex _ _ (QSschemaNames qs_schema) Ridx%string _)) in
+   (QSUpdate r' Ridx'
+            (fun b => Ens) (fun b c => Trans)))
+    (r at level 0, Ridx at level 0, Ens at level 0, Trans at level 0, at level 80).

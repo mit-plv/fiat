@@ -68,14 +68,26 @@ Definition FullySharpenedUnderDelegates
 (* Shiny New Sharpened Definition includes proof that the
    ADT produced is sharpened modulo a set of 'Delegated ADTs'. *)
 
-Notation Sharpened spec := (@FullySharpenedUnderDelegates _ spec _).
+Notation Sharpened spec := (@refineADT _ spec _).
 
 Definition MostlySharpened {Sig} spec := {adt : _ & @FullySharpenedUnderDelegates Sig spec adt}.
 
 Lemma FullySharpened_Start
-: forall {Sig} (spec : ADT Sig) adt
+: forall {Sig} (spec : ADT Sig) adt,
+    refineADT spec adt
+    -> FullySharpened adt
+    -> FullySharpened spec.
+Proof.
+  intros.
+  exists (projT1 X0).
+  abstract (eapply transitivityT; [eauto | apply (projT2 X0)]).
+Defined.
+
+Lemma FullySharpened_Finish
+: forall {Sig} (spec : ADT Sig) adt adt'
          (cadt : cADT Sig),
-    (@FullySharpenedUnderDelegates _ spec adt)
+    refineADT spec adt'
+    -> (@FullySharpenedUnderDelegates _ adt' adt)
     -> forall (DelegateReps : Fin.t (Sharpened_DelegateIDs adt) -> Type)
               (DelegateImpls :
                  forall idx,
@@ -91,20 +103,38 @@ Lemma FullySharpened_Start
 Proof.
   intros.
   exists cadt.
-  abstract (eapply transitivityT; eauto).
+  abstract (eapply transitivityT;
+            [apply X | eapply transitivityT; eauto ]).
 Defined.
 
 Lemma MostlySharpened_Start
-: forall {Sig} (spec : ADT Sig) adt,
-    (@FullySharpenedUnderDelegates _ spec adt)
+  : forall {Sig} (spec : ADT Sig) adt adt',
+    refineADT spec adt'
+    -> (@FullySharpenedUnderDelegates _ adt' adt)
     -> MostlySharpened spec.
 Proof.
   intros.
-  exists adt; eauto.
+  exists adt.
+  econstructor;
+    [intro; eapply refineConstructor_trans;
+     [ eapply X | eapply (X0 _ DelegateImpls ValidImpls) ]
+    | intros; eapply refineMethod_trans;
+      [eapply X | eapply X0] ].
 Defined.
 
 (* The proof componentn of a single refinement step. *)
 Definition SharpenStep Sig adt :
+  forall adt' adt''
+         (refine_adt' : refineADT (Sig := Sig) adt adt'),
+    refineADT adt' adt''
+    -> refineADT adt adt''.
+Proof.
+  intros; eapply transitivityT.
+  eassumption.
+  apply X; eauto.
+Qed.
+
+Definition FullySharpenStep Sig adt :
   forall adt' adt''
          (refine_adt' : refineADT (Sig := Sig) adt adt'),
     FullySharpenedUnderDelegates adt' adt''

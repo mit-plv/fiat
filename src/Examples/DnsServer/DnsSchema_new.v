@@ -4,7 +4,7 @@ Require Import Coq.Vectors.Vector
 
 Require Import
         Fiat.QueryStructure.Automation.AutoDB
-        Fiat.Examples.DnsServer.packet.
+        Fiat.Examples.DnsServer.packet_new.
 
 Definition sREQUESTS := "Requests".
 Definition sSTAGE := "Stage".
@@ -123,9 +123,9 @@ Definition AnswerHeading :=
           sTTL :: nat,
           sRDATA :: name
          >%Heading.
+
           (* stores an SOA record according to RFC 2308 *)
           (* the SOA is technically supposed to go in the Authority section but the packet type doesn't include it *)
-
 Definition FailureHeading :=
           <sDOMAIN :: name,
            sPID :: Bvector 16,
@@ -141,14 +141,12 @@ Definition FailureHeading :=
 
 Definition ReferralRow := @Tuple ReferralHeading.
 Definition AnswerRow := @Tuple AnswerHeading.
-Definition FailureRow :=
-  @Tuple FailureHeading.
+Definition FailureRow := @Tuple FailureHeading.
 
 (* TODO: remove extraneous packet fields
 when we query here, we want a result type
 that later gets combined with the actual packet in Process
-Process gets ALL the rows from one table (or none)
- *)
+Process gets ALL the rows from one table (or none) *)
 
 (* so we can return a list of rows from any table *)
 Inductive CacheResult :=

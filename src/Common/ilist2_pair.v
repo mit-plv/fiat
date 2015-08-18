@@ -5,7 +5,7 @@ Require Import Coq.Lists.List
         Coq.Strings.String
         Coq.Arith.Arith
         Fiat.Common.ilist
-        Fiat.Common.ilist3.
+        Fiat.Common.ilist2.
 
 Section ilist2_pair.
 
@@ -111,7 +111,3 @@ Section ilist2_pair.
           + intros; exact (X _ (prim_snd ilp) _).
   Defined.
 End ilist2_pair.
-
-Arguments icons2_pair [_ _ _ _ _ _ _ _] _ _.
-Arguments inil2_pair [_ _ _].
-Arguments ith2_pair [_ _ _ _ _ _] _ _.

@@ -329,8 +329,8 @@ Ltac MethodsAttributes' meths qsSchema OtherClauses l :=
 
 Ltac GenerateIndexesFor meths OtherClauses k :=
   match goal with
-    |- Sharpened
-         (@BuildADT (UnConstrQueryStructure ?qsSchema) _ _ _ _ _ _) =>
+    |- FullySharpenedUnderDelegates
+         (@BuildADT (UnConstrQueryStructure ?qsSchema) _ _ _ _ _ _) _ =>
     let rels := eval simpl in (Vector.map rawSchemaHeading (qschemaSchemas qsSchema)) in
         makeEvar (OccurencesCountT rels)
                  ltac:(fun l => MethodsAttributes' meths rels OtherClauses l;
@@ -339,15 +339,15 @@ Ltac GenerateIndexesFor meths OtherClauses k :=
 
 Ltac GenerateIndexesForAll OtherClauses k :=
   match goal with
-    |- Sharpened
-         (@BuildADT (UnConstrQueryStructure ?qsSchema) _ _ _ ?methSigs _ _) =>
+    |- FullySharpenedUnderDelegates
+         (@BuildADT (UnConstrQueryStructure ?qsSchema) _ _ _ ?methSigs _ _) _ =>
     let meths := eval compute in (Vector.map methID methSigs) in
         GenerateIndexesFor meths OtherClauses k
   end.
 
 Tactic Notation "make" "simple" "indexes" "using" constr(attrlist) tactic(BuildEarlyIndex) tactic(BuildLastIndex):=
   match goal with
-  | [ |- Sharpened (@BuildADT (UnConstrQueryStructure ?sch) _ _ _ _ _ _ )] =>
+  | [ |- FullySharpenedUnderDelegates (@BuildADT (UnConstrQueryStructure ?sch) _ _ _ _ _ _ ) _ ] =>
     let sch' := eval simpl in (qschemaSchemas sch) in
         makeIndex' sch' attrlist
                    BuildEarlyIndex BuildLastIndex
@@ -364,7 +364,7 @@ Tactic Notation "make" "simple" "indexes" "using" constr(attrlist) tactic(BuildE
 
 Ltac make_simple_indexes attrlist BuildEarlyIndex BuildLastIndex:=
   match goal with
-  | [ |- Sharpened (@BuildADT (UnConstrQueryStructure ?sch) _ _ _ _ _ _ )] =>
+  | [ |- FullySharpenedUnderDelegates (@BuildADT (UnConstrQueryStructure ?sch) _ _ _ _ _ _ ) _ ] =>
     let sch' := eval simpl in (qschemaSchemas sch) in
         makeIndex' sch' attrlist
                    BuildEarlyIndex BuildLastIndex
