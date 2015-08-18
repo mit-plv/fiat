@@ -6,6 +6,29 @@ Require Import
         Fiat.QueryStructure.Automation.AutoDB
         Fiat.Examples.DnsServer.packet_new.
 
+(* adding SLIST to schema
+the referral cache table should now be the slist table
+filter by id associated with request
+should it be ordered?
+
+a b c
+b c a
+
+SLIST 
+each referral needs an id (e.g. x1, x2, x3...) (primary key)
+
+bound amount of work
+
+col - # times each referral has been queried
+too many times = delete the row
+
+SLIST needs to be cleared after a request is done
+TTL
+another table that stores ordering information
+
+id [SLIST order]
+5  [x2, x1, x3,...] *)
+
 Definition sREQUESTS := "Requests".
 Definition sSTAGE := "Stage".
 Definition sID := "ID".
@@ -139,9 +162,23 @@ Definition FailureHeading :=
            sMinTTL :: nat
           >%Heading.
 
+(* q*, pid, and flags are packet info *)
+Definition RequestHeading :=
+         <sID :: id,  (* unique, ascending *)
+          sQNAME :: name,
+          (* the # domains matched of the name -- left to right or right to left? *)
+          sSTAGE :: Stage,      
+          sQTYPE :: RRecordType,
+          sQCLASS :: RRecordClass,
+          sPID :: Bvector 16,
+          sFLAGS :: Bvector 16
+          (* not storing authority or additional -- needed? *)
+         >%Heading.
+
 Definition ReferralRow := @Tuple ReferralHeading.
 Definition AnswerRow := @Tuple AnswerHeading.
 Definition FailureRow := @Tuple FailureHeading.
+Definition RequestRow := @Tuple RequestHeading.
 
 (* TODO: remove extraneous packet fields
 when we query here, we want a result type
@@ -179,15 +216,10 @@ Definition DnsRecSchema :=
                    FailureHeading;
           relation sREQUESTS has
                    schema
-                  < sID :: id,  (* unique, ascending *)
-          (* TODO add the other fields *)
-                    sNAME :: name,
-                    sSTAGE :: Stage
-                  > ]
+                   RequestHeading
+        ]
           (* where (fun t t' => True) ] *)
         (* can i have an invariant that just works on one tuple?
          i want to encode that Stage <= length name *)
         (* use an attribute constraint TODO *)
         enforcing [ ]. 
-
-Check DnsRecSchema.
