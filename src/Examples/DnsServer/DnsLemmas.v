@@ -171,6 +171,8 @@ Notation "tup '!' idx" := (GetAttributeRaw tup ``idx) : TupleImpl_scope.
 
 (* if the record's type isn't CNAME, there's no need to check against the other records;
 it's independent of the other records *)
+
+
 Lemma refine_not_CNAME__independent :
   forall (n : DNSRRecord) (R : @IndexedEnsemble DNSRRecord),
     n!sTYPE <> CNAME
@@ -251,7 +253,7 @@ Lemma refine_count_constraint_broken :
            (If (beq_RRecordType n!sTYPE CNAME)
                Then count <- Count
                For (tup in r!sCOLLECTIONS)
-               (Where (n!sNAME = GetAttributeRawBnd tup ``sNAME)
+               (Where (n!sNAME = tup!sNAME)
                       Return tup )%QueryImpl;
     ret (beq_nat count 0) Else ret true).
 Proof.
@@ -343,7 +345,7 @@ Proof.
     apply filter_permutation_morphism; [ reflexivity | assumption ].
 Qed.
 
-(* uses refine_forall_to_exists; refines x2 in AddData 
+(* uses refine_forall_to_exists; refines x2 in AddData
 very similar to refine_count_constraint_broken; comments below are relative to refine_count_constraint_broken *)
 
 (* implement the DNS record constraint check as code that counts the number of occurrences of
@@ -1367,6 +1369,7 @@ assert (List.In {| elementIndex := idx; indexedElement := t |} x').
   { eapply exists_in_list; eauto. }
   apply Equiv' in H15; destruct H15;  apply H15.
 Qed.
+
 (* -------------------------------------------------------------------------------------- *)
 
 (* TODO: more general lemmas (hard to state w/ implicits; do later) *)
@@ -1395,3 +1398,24 @@ Lemma tuples_in_relation_filtered_satisfy_constraint :
 Proof.
 
 Admitted.
+<<<<<<< HEAD
+
+(* -------------- *)
+(* Unused for now *)
+
+Lemma refine_If_Then_Else_same'
+  : forall (A B : Type) i (t : Comp A) (b : A -> A) (c : A) (r_n : B),
+    refine
+      (If i Then (a <- t;
+                  ret (r_n, b a))
+          Else (ret (r_n, c)))
+      (res <- If i Then (a <- t;
+                         ret (b a))
+           Else (ret c);
+       ret (r_n, res)).
+Proof.
+  intros; destruct i; simpl;
+  autosetoid_rewrite with refine_monad; reflexivity.
+Qed.
+=======
+>>>>>>> NewUpdateNotation

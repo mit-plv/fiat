@@ -1322,7 +1322,6 @@ etransitivity;
           end);
     higher_order_reflexivity.
 
-
 Ltac FullySharpenQueryStructure qs_schema Index :=
   let DelegateSigs := constr:(@Build_IndexedQueryStructure_Impl_Sigs _ (qschemaSchemas qs_schema) Index) in
   let DelegateSpecs := constr:(@Build_IndexedQueryStructure_Impl_Specs _ (qschemaSchemas qs_schema) Index) in
@@ -1331,7 +1330,7 @@ Ltac FullySharpenQueryStructure qs_schema Index :=
   let ValidRefinements := fresh in
   let FullySharpenedImpl := fresh in
   match goal with
-      |- Sharpened (@BuildADT ?Rep ?n ?n' ?consSigs ?methSigs ?consDefs ?methDefs) =>
+      |- @FullySharpenedUnderDelegates _ (@BuildADT ?Rep ?n ?n' ?consSigs ?methSigs ?consDefs ?methDefs) _ =>
       ilist_of_dep_evar n
                         (Fin.t (numRawQSschemaSchemas qs_schema) -> Type)
         (fun D =>

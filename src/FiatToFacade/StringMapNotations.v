@@ -1,3 +1,4 @@
+Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 Require Export Bedrock.Platform.Facade.Facade.
 Require Import Bedrock.Platform.Cito.StringMap.
 

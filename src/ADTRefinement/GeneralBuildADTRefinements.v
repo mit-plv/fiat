@@ -60,10 +60,34 @@ Section BuildADTRefinements.
   :
     (forall d,
        refine (consBody (ith consDefs idx) d) (consBody newDef d))
+    -> refineADT (ADTReplaceConsDef consDefs methDefs idx newDef) adt''
+    -> refineADT (BuildADT consDefs methDefs) adt''.
+  Proof.
+    intros; eapply SharpenStep; try exact X.
+    eapply refineADT_BuildADT_ReplaceConstructor with (AbsR := eq);
+    simpl; unfold refine; intros; subst; eauto.
+    repeat computes_to_econstructor; try destruct v; eauto.
+    repeat computes_to_econstructor; try destruct v; eauto;
+    eapply H; eauto.
+  Qed.
+
+  Corollary FullySharpenStep_BuildADT_ReplaceConstructor_eq
+            (Rep : Type)
+            {n n'}
+            (consSigs : Vector.t consSig n)
+            (methSigs : Vector.t methSig n')
+            (consDefs : ilist (B := @consDef Rep) consSigs)
+            (methDefs : ilist (B := @methDef Rep) methSigs)
+            (idx : @Fin.t n)
+            (newDef : consDef (Vector.nth consSigs idx))
+            adt''
+  :
+    (forall d,
+       refine (consBody (ith consDefs idx) d) (consBody newDef d))
     -> FullySharpenedUnderDelegates (ADTReplaceConsDef consDefs methDefs idx newDef) adt''
     -> FullySharpenedUnderDelegates (BuildADT consDefs methDefs) adt''.
   Proof.
-    intros; eapply SharpenStep; try exact X.
+    intros; eapply FullySharpenStep; try exact X.
     eapply refineADT_BuildADT_ReplaceConstructor with (AbsR := eq);
     simpl; unfold refine; intros; subst; eauto.
     repeat computes_to_econstructor; try destruct v; eauto.
@@ -214,6 +238,30 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
   :
     (forall r_n n,
        refine (methBody (ith methDefs idx) r_n n) (methBody newDef r_n n))
+    -> refineADT (ADTReplaceMethDef consDefs methDefs idx newDef) adt''
+    -> refineADT (BuildADT consDefs methDefs) adt''.
+  Proof.
+    intros; eapply SharpenStep.
+    eapply refineADT_BuildADT_ReplaceMethod with (AbsR := eq);
+    simpl; unfold refine; intros; subst; eauto.
+    repeat computes_to_econstructor; try destruct v; eauto.
+    repeat computes_to_econstructor; try destruct v; try eapply H; eauto.
+    exact X.
+  Qed.
+
+    Lemma FullySharpenStep_BuildADT_ReplaceMethod_eq
+        (Rep : Type)
+        {n n'}
+        (consSigs : Vector.t consSig n)
+        (methSigs : Vector.t methSig n')
+        (consDefs : ilist (B := @consDef Rep) consSigs)
+        (methDefs : ilist (B := @methDef Rep) methSigs)
+        (idx : @Fin.t n')
+        (newDef : methDef (Vector.nth methSigs idx))
+        adt''
+  :
+    (forall r_n n,
+       refine (methBody (ith methDefs idx) r_n n) (methBody newDef r_n n))
     -> FullySharpenedUnderDelegates
       (ADTReplaceMethDef consDefs methDefs idx newDef)
       adt''
@@ -221,7 +269,7 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
          (BuildADT consDefs methDefs)
          adt''.
   Proof.
-    intros; eapply SharpenStep.
+    intros; eapply FullySharpenStep.
     eapply refineADT_BuildADT_ReplaceMethod with (AbsR := eq);
     simpl; unfold refine; intros; subst; eauto.
     repeat computes_to_econstructor; try destruct v; eauto.
@@ -781,7 +829,7 @@ Ltac FullySharpenEachMethod DelegateSigs DelegateReps delegateSpecs :=
                         | Vector.t _ ?n => n
                         end in
     match goal with
-      |- Sharpened (@BuildADT ?Rep ?n ?n' ?consSigs ?methSigs ?consDefs ?methDefs) =>
+      |- FullySharpenedUnderDelegates (@BuildADT ?Rep ?n ?n' ?consSigs ?methSigs ?consDefs ?methDefs) _ =>
       ilist_of_evar_dep n
         (Fin.t NumDelegates -> Type)
         (fun D =>
@@ -852,19 +900,22 @@ Ltac Implement_If_Opt_Then_Else :=
         ]
   end.
 
-Ltac FullySharpenEachMethodWithoutDelegation :=
-  FullySharpenEachMethod
-    (@Vector.nil ADTSig)
-    (@Vector.nil Type)
-    (ilist.inil (B := fun nadt => ADT (delegateeSig nadt)));
-  try simplify with monad laws; simpl; try refine pick eq; try simplify with monad laws;
-  try first [ simpl];
-  repeat setoid_rewrite refine_if_If at 1;
-  repeat first [
-           higher_order_reflexivity
-         | simplify with monad laws
-         | Implement_If_Then_Else
-         | Implement_If_Opt_Then_Else ].
+Ltac finish_SharpeningADT_WithoutDelegation :=
+  eapply FullySharpened_Finish;
+  [ FullySharpenEachMethod
+      (@Vector.nil ADTSig)
+      (@Vector.nil Type)
+      (ilist.inil (B := fun nadt => ADT (delegateeSig nadt)));
+    try simplify with monad laws; simpl; try refine pick eq; try simplify with monad laws;
+    try first [ simpl];
+    repeat setoid_rewrite refine_if_If at 1;
+    repeat first [
+             higher_order_reflexivity
+           | simplify with monad laws
+           | Implement_If_Then_Else
+           | Implement_If_Opt_Then_Else ]
+  | extract_delegate_free_impl
+  | simpl; higher_order_reflexivityT ].
 
 Lemma refineIfret {A} :
   forall (cond : bool) (a a' : A),

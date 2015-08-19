@@ -10,8 +10,9 @@ Require Import Coq.Bool.Bool Coq.Strings.String
         Coq.Arith.Arith Coq.Structures.OrderedTypeEx
         Fiat.Common.String_as_OT
         Fiat.Common.i2list
-        Fiat.Common.Ensembles.IndexedEnsembles
         Fiat.Common.DecideableEnsembles
+        Fiat.Common.Ensembles.IndexedEnsembles
+        Fiat.Common.Ensembles.EnsembleListEquivalence
         Fiat.QueryStructure.Implementation.DataStructures.Bags.BagsOfTuples
         Fiat.QueryStructure.Implementation.Operations.General.QueryRefinements
         Fiat.QueryStructure.Specification.Representation.QueryStructureNotations
@@ -208,7 +209,7 @@ Section SharpenedBagImplementation.
       -> RepInvPlus nr
       -> ValidUpdatePlus update_term
       -> IndexedEnsembleUpdate or (fun tup => bfind_matcher search_term tup = true)
-             (bupdate_transform update_term)
+                               (fun old new => new = (bupdate_transform update_term old))
              ≃ benumerate (snd (bupdate nr search_term update_term)).
   Proof.
     simpl; intros; destruct_EnsembleIndexedListEquivalence;
@@ -219,7 +220,6 @@ Section SharpenedBagImplementation.
     - pose proof (bupdate_correct nr search_term update_term H0 H1).
       rewrite partition_filter_neq in H2; rewrite partition_filter_eq in H2.
       unfold UnIndexedEnsembleListEquivalence in *.
-      Require Import Fiat.Common.Ensembles.EnsembleListEquivalence.
       unfold EnsembleListEquivalence in *.
       rewrite <- eqv_or in H2.
       repeat rewrite filter_map in H2.
@@ -236,7 +236,7 @@ Section SharpenedBagImplementation.
         * destruct H6. destruct H6 as [[? [? ?]] ?].
           apply in_app_iff; right; apply in_map_iff.
           exists x1; intuition.
-          rewrite <- H9; rewrite <- H8; destruct x0; intuition.
+          rewrite <- H9. rewrite <- H8; destruct x0; intuition.
           apply filter_In; intuition.
           apply eqv_nr; apply H6.
           rewrite <- H9; rewrite <- H8; destruct x0; intuition.
@@ -350,7 +350,7 @@ Section SharpenedBagImplementation.
       or ≃ benumerate nr
       -> RepInvPlus nr
       -> IndexedEnsembleUpdate or (fun tup => bfind_matcher search_term tup = true)
-             (bupdate_transform update_term)
+             (fun old new => new = (bupdate_transform update_term old))
              ≃ benumerate (fold_left (fun (b0 : BagTypePlus) (i : RawTuple) => binsert b0 i)
                                      (map (bupdate_transform update_term) (fst (bdelete nr search_term)))
                                      (snd (bdelete nr search_term))).
@@ -588,18 +588,15 @@ Section SharpenedBagImplementation.
                                                   (snd (bdelete r_n (fst ab))), fst (bdelete r_n (fst ab)))).
       reflexivity.
     }
+    eapply reflexivityT.
 
-    FullySharpenEachMethodWithoutDelegation.
-
-    extract delegate-free implementation.
-
-    simpl; higher_order_reflexivityT.
+    finish_SharpeningADT_WithoutDelegation.
 
   Defined.
 
   Time Definition BagADTImpl : ComputationalADT.cADT (BagSig (@RawTuple heading) SearchTermTypePlus UpdateTermTypePlus) :=
     Eval simpl in projT1 SharpenedBagImpl.
-  
+
 End SharpenedBagImplementation.
 
 Lemma FullySharpenedBagsEquivMatchers

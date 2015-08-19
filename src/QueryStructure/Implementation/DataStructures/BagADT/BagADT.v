@@ -74,7 +74,8 @@ Section BagADT.
 
         Def Method sUpdate (r : rep, f : SearchTermType * UpdateTermType) : list ElementType :=
             updated <- {l | EnsembleIndexedListEquivalence r l};
-            ret (IndexedEnsembleUpdate r (fun tup => MatchSearchTerm (fst f) tup = true) (ApplyUpdateTerm (snd f)),
+          ret (IndexedEnsembleUpdate r (fun tup => MatchSearchTerm (fst f) tup = true)
+                                     (fun old new => new = (ApplyUpdateTerm (snd f) old)),
                  filter (MatchSearchTerm (fst f)) updated)
         }.
 

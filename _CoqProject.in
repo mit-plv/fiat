@@ -106,8 +106,10 @@ src/Examples/DnsServer/DnsLemmas.v
 src/Examples/DnsServer/DnsRec.v
 src/Examples/DnsServer/DnsRecCache.v
 src/Examples/DnsServer/DnsSchema.v
+src/Examples/DnsServer/DnsSchema_new.v
 src/Examples/DnsServer/RewriteTest.v
 src/Examples/DnsServer/packet.v
+src/Examples/DnsServer/packet_new.v
 src/Examples/Ics/Ics.v
 src/Examples/Ics/WaterTank.v
 src/Examples/Ics/WaterTankExtract.v
@@ -341,3 +343,4 @@ src/QueryStructure/Specification/Representation/TupleADT2.v
 src/QueryStructure/Specification/SearchTerms/InRange.v
 src/QueryStructure/Specification/SearchTerms/ListInclusion.v
 src/QueryStructure/Specification/SearchTerms/ListPrefix.v
+src/Common/Coq__8_4__8_5__Compat.v

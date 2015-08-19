@@ -105,6 +105,7 @@ top tac top (tac fails): keep progress up to tac, try cont
 All chains must end with tac, not top (because then there'd be no progress made under it) *)
 
       (* ltac is call-by-value, so wrap the cont in a function *)
+      (* local definition in a_u_s *)
       Ltac cont_fn top tac'' x :=
         apply_under_subgoal top tac'' with
 
@@ -119,7 +120,7 @@ All chains must end with tac, not top (because then there'd be no progress made 
         intros.
         assert (forall y, y + 0 = y) as tm. intros. omega.
         specialize (tm n).
-        apply_under_subgoal ltac:(rewrite tm) ltac:(rewrite tm; try reflexivity).
+        apply_under_subgoal ltac:(rewrite tm) ltac:(try reflexivity).
       Qed.
 
       (* Simplify. Try all the rewrites until none work.
@@ -186,6 +187,8 @@ Ltac doAny srewrite_fn drills_fn finish_fn :=
         repeat_finish_fn.
 
 Ltac doAnyAll := doAny srewrite_each_all drills_each_all finish_each_all.
+(* combinator libraries similar to (a, b, c) (d, e, f) ~> (a || d, b || e, c || f)
+compose libraries together *)
 
 (* For debugging *)
 Ltac rep_rewrite := repeat_and_simplify srewrite_each_all.

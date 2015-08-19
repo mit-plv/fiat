@@ -45,13 +45,15 @@ Ltac BuildEarlyFindPrefixIndex
       | right _ => k_fail heading indices kind index k
       end.
 
-Ltac matchFindPrefixIndex qsSchema WhereClause k k_fail :=
-  match WhereClause with
-  | fun tups => IsPrefix (@?C1 tups) _ =>
-    TermAttributes C1 ltac:(fun Ridx attr =>
-                              k (@InsertOccurenceOfAny _ qsSchema Ridx ("FindPrefixIndex", attr) (InitOccurences _)))
-  | _ => k_fail qsSchema WhereClause k
-  end.
+Instance ExpressionAttributeCounterIsPrefixL {A }
+         {qsSchema : RawQueryStructureSchema}
+         {a a' : list A}
+         (RidxL : Fin.t _)
+         (BAidxL : @Attributes (Vector.nth _ RidxL))
+         (ExpCountL : @TermAttributeCounter _ qsSchema a RidxL BAidxL)
+  : @ExpressionAttributeCounter _ qsSchema (IsPrefix a a')
+                                (@InsertOccurenceOfAny _ _ RidxL ("FindPrefixIndex", BAidxL)
+                                                       (InitOccurences _)) | 0 := { }.
 
 Ltac PrefixIndexUse SC F indexed_attrs f k k_fail :=
   match type of f with
@@ -208,7 +210,7 @@ Ltac BuildEarlyTrieBag heading AttrList AttrKind AttrIndex subtree k k_fail :=
 
 Ltac PrefixIndexTactics f :=
   PackageIndexTactics
-    matchFindPrefixIndex BuildEarlyFindPrefixIndex BuildLastFindPrefixIndex
+    BuildEarlyFindPrefixIndex BuildLastFindPrefixIndex
     PrefixIndexUse createEarlyPrefixTerm createLastPrefixTerm
     PrefixIndexUse_dep createEarlyPrefixTerm_dep createLastPrefixTerm_dep
     BuildEarlyTrieBag BuildLastTrieBag f.

@@ -17,6 +17,54 @@ Proof.
   repeat computes_to_econstructor; try destruct v; eauto.
 Qed.
 
+Lemma refineConstructor_trans rep rep' rep'' Dom
+      AbsR AbsR'
+  : forall c c' c'',
+    @refineConstructor rep rep' AbsR Dom c c'
+    -> @refineConstructor rep' rep'' AbsR' Dom c' c''
+    -> refineConstructor (fun r_o r_n => exists r_o', AbsR r_o r_o' /\ AbsR' r_o' r_n)
+                         c c''.
+Proof.
+  intro; simpl; intros; subst; intros v Comp_v.
+  apply H0 in Comp_v; computes_to_inv; subst.
+  apply H in Comp_v; computes_to_inv; subst; eauto.
+Qed.
+
+Instance refineConstructor_trans' rep Dom 
+: Transitive (@refineConstructor rep rep eq Dom).
+Proof.
+  intro; intros.
+  pose proof (refineConstructor_trans  H H0);
+    unfold refineConstructor, refine; intros.
+  eapply H1 in H2; computes_to_inv; subst.
+  destruct_ex; intuition; subst; eauto.
+Qed.
+
+Lemma refineMethod_trans rep rep' rep'' Dom Cod
+      AbsR AbsR'
+  : forall m m' m'',
+    @refineMethod rep rep' AbsR Dom Cod m m'
+    -> @refineMethod rep' rep'' AbsR' Dom Cod m' m''
+    -> refineMethod (fun r_o r_n => exists r_o', AbsR r_o r_o' /\ AbsR' r_o' r_n)
+                         m m''.
+Proof.
+  intro; simpl; intros; subst; intros v Comp_v.
+  destruct_ex; intuition.
+  eapply H0 in Comp_v; eauto; computes_to_inv; subst.
+  eapply H in Comp_v; eauto; computes_to_inv; subst; eauto.
+  repeat computes_to_econstructor; eauto.
+Qed.
+
+Instance refineMethod_trans' rep Dom Cod
+: Transitive (@refineMethod rep rep eq Dom Cod).
+Proof.
+  intro; intros.
+  pose proof (refineMethod_trans H H0);
+  unfold refineMethod, refine; intros; subst.
+  eapply H1 in H3; eauto; computes_to_inv; subst.
+  destruct_ex; intuition; subst; eauto.
+Qed.
+
 Global Instance refineADT_PreOrder Sig : PreOrderT (refineADT (Sig := Sig)).
 Proof.
   split; compute in *.

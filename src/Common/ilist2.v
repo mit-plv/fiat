@@ -337,3 +337,101 @@ Proof.
       simpl; apply (@Vector.caseS _ P); intros; simpl; f_equal; eauto
     end.
 Qed.
+
+Section ilist2_update.
+
+  Import Coq.Vectors.VectorDef.VectorNotations.
+
+  (* Replacing an element of an indexed Vector.t. *)
+  Context {A : Type}. (* The indexing type. *)
+  Context {B : A -> Type}. (* The two types of indexed elements. *)
+
+  Fixpoint update_Index2
+             {m}
+             (As : Vector.t A m)
+             (il : ilist2 As)
+             (n : Fin.t m)
+             (update_b : B (Vector.nth As n) -> B (Vector.nth As n))
+             {struct n}
+    : ilist2 As :=
+    match n in Fin.t m return
+          forall (As : Vector.t A m),
+            ilist2 As
+            -> (B (Vector.nth As n) -> B (Vector.nth As n))
+            -> ilist2 As with
+    | Fin.F1 k =>
+      fun As =>
+        Vector.caseS (fun n As => ilist2 As
+                                  -> (B (Vector.nth As (@Fin.F1 n)) -> B (Vector.nth As (@Fin.F1 n)))
+                                  -> ilist2 As)
+                     (fun h n t il update_b => icons2 (update_b (ilist2_hd il)) (ilist2_tl il) ) As
+    | Fin.FS k n' =>
+      fun As =>
+        Vector.caseS (fun n As => forall n',
+                          ilist2 As
+                          -> (B (Vector.nth As (@Fin.FS n n')) -> B (Vector.nth As (@Fin.FS n n')))
+                          -> ilist2 As)
+                     (fun h n t m il update_b => icons2 (ilist2_hd il)
+                                                    (@update_Index2 _ _ (ilist2_tl il) _ update_b))
+                     As n'
+    end As il update_b.
+
+  Lemma ith_update_Index2_neq {m}
+    : forall
+      (n n' : Fin.t m)
+      (As : Vector.t A m)
+      (il : ilist2 As)
+      (update_b : B (Vector.nth As n') -> B (Vector.nth As n')),
+      n <> n'
+      -> ith2 (update_Index2 As il n' update_b) n = ith2 il n.
+  Proof.
+    intros n n'; pattern m, n, n'.
+    match goal with
+      |- ?P m n n' => simpl; eapply (Fin.rect2 P); intros
+    end.
+    - congruence.
+    - generalize il f update_b; clear f update_b il H.
+      pattern n0, As.
+      match goal with
+        |- ?P n0 As =>
+        simpl; apply (@Vector.rectS _ P); intros; reflexivity
+      end.
+    - generalize il f update_b; clear f update_b il H.
+      pattern n0, As.
+      match goal with
+        |- ?P n0 As =>
+        simpl; apply (@Vector.rectS _ P); intros; reflexivity
+      end.
+    - assert (f <> g) by congruence.
+      generalize il f g update_b H H1; clear f g update_b il H H1 H0.
+      pattern n0, As.
+      match goal with
+        |- ?P n0 As =>
+        simpl; apply (@Vector.caseS _ P); intros;
+        eapply (H _ (prim_snd il) update_b); eauto
+      end.
+  Qed.
+  Set Printing All.
+
+  Lemma ith_update_Index2_eq {m}
+    : forall
+      (n : Fin.t m)
+      (As : Vector.t A m)
+      (il : ilist2 As)
+      (update_b : B (Vector.nth As n) -> B (Vector.nth As n)),
+      ith2 (update_Index2 As il n update_b) n = update_b (ith2 il n).
+  Proof.
+    induction n; simpl.
+    - intro As; pattern n, As.
+      match goal with
+        |- ?P n As =>
+        simpl; apply (@Vector.caseS _ P); intros; reflexivity
+      end.
+    - intro As; revert n0 IHn; pattern n, As.
+      match goal with
+        |- ?P n As =>
+        simpl; apply (@Vector.caseS _ P); simpl; eauto
+      end.
+  Qed.
+  
+End ilist2_update.

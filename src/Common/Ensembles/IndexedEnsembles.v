@@ -1,4 +1,5 @@
-Require Import Coq.Lists.List Coq.Strings.String
+Require Import Coq.Lists.List
+        Coq.Strings.String
         Coq.Logic.FunctionalExtensionality
         Coq.Sorting.Permutation Coq.Sets.Ensembles
         Fiat.Common.List.PermutationFacts.
@@ -32,9 +33,10 @@ Section IndexedEnsembles.
   Definition IndexedEnsembleUpdate
              (ens : IndexedEnsemble)
              (cond : Ensemble ElementType)
-             (update : ElementType -> ElementType)
+             (updateR : relation ElementType)
   : IndexedEnsemble
-    := fun e => (exists f: IndexedElement, ((ens f) /\ cond (indexedElement f) /\ (indexedElement e) = (update (indexedElement f))) /\ elementIndex e = elementIndex f) \/
+    := fun e => (exists f: IndexedElement, ((ens f) /\ cond (indexedElement f) /\ updateR (indexedElement f) (indexedElement e))
+                                           /\ elementIndex e = elementIndex f) \/
                 ((ens e) /\ Complement _ (fun f => cond (indexedElement f)) e).
 
   Definition UnIndexedEnsembleListEquivalence

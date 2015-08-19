@@ -249,7 +249,20 @@ Definition GetOccurence {n}
   : list (prod string (Attributes (Vector.nth qsSchema idx))) :=
   ith3 AttrCount idx.
 
-Ltac TermAttributes Term k :=
+Class TermAttributeCounter {A : Type}
+      (qsSchema : RawQueryStructureSchema)
+      (a : A)
+      (Ridx : Fin.t _)
+      (BAidx : @Attributes (Vector.nth (Vector.map rawSchemaHeading (qschemaSchemas qsSchema)) Ridx))
+  := { }.
+
+Global Instance GetAttributeRawTermCounter {qsSchema}
+         {Ridx : Fin.t _}
+         {tup : @RawTuple (Vector.nth _ Ridx)}
+         {BAidx : _ }
+  : (TermAttributeCounter qsSchema (@GetAttributeRaw _ tup BAidx) Ridx BAidx) | 0 := {| |}.
+
+(*Ltac TermAttributes Term k :=
   match Term with
   | fun tups => @GetAttributeRaw _ (@?f tups) ?BAidx =>
     let Aidx := eval simpl in BAidx in
@@ -257,6 +270,7 @@ Ltac TermAttributes Term k :=
         | _ -> @RawTuple (Vector.nth _ ?Ridx) =>
           k Ridx Aidx
         end
+<<<<<<< HEAD
   end.
 
 Ltac ClauseAttributes qsSchema WhereClause OtherClauses k :=
@@ -329,8 +343,8 @@ Ltac MethodsAttributes' meths qsSchema OtherClauses l :=
 
 Ltac GenerateIndexesFor meths OtherClauses k :=
   match goal with
-    |- Sharpened
-         (@BuildADT (UnConstrQueryStructure ?qsSchema) _ _ _ _ _ _) =>
+    |- FullySharpenedUnderDelegates
+         (@BuildADT (UnConstrQueryStructure ?qsSchema) _ _ _ _ _ _) _ =>
     let rels := eval simpl in (Vector.map rawSchemaHeading (qschemaSchemas qsSchema)) in
         makeEvar (OccurencesCountT rels)
                  ltac:(fun l => MethodsAttributes' meths rels OtherClauses l;
@@ -339,15 +353,15 @@ Ltac GenerateIndexesFor meths OtherClauses k :=
 
 Ltac GenerateIndexesForAll OtherClauses k :=
   match goal with
-    |- Sharpened
-         (@BuildADT (UnConstrQueryStructure ?qsSchema) _ _ _ ?methSigs _ _) =>
+    |- FullySharpenedUnderDelegates
+         (@BuildADT (UnConstrQueryStructure ?qsSchema) _ _ _ ?methSigs _ _) _ =>
     let meths := eval compute in (Vector.map methID methSigs) in
         GenerateIndexesFor meths OtherClauses k
   end.
 
 Tactic Notation "make" "simple" "indexes" "using" constr(attrlist) tactic(BuildEarlyIndex) tactic(BuildLastIndex):=
   match goal with
-  | [ |- Sharpened (@BuildADT (UnConstrQueryStructure ?sch) _ _ _ _ _ _ )] =>
+  | [ |- FullySharpenedUnderDelegates (@BuildADT (UnConstrQueryStructure ?sch) _ _ _ _ _ _ ) _ ] =>
     let sch' := eval simpl in (qschemaSchemas sch) in
         makeIndex' sch' attrlist
                    BuildEarlyIndex BuildLastIndex
@@ -364,7 +378,289 @@ Tactic Notation "make" "simple" "indexes" "using" constr(attrlist) tactic(BuildE
 
 Ltac make_simple_indexes attrlist BuildEarlyIndex BuildLastIndex:=
   match goal with
-  | [ |- Sharpened (@BuildADT (UnConstrQueryStructure ?sch) _ _ _ _ _ _ )] =>
+  | [ |- FullySharpenedUnderDelegates (@BuildADT (UnConstrQueryStructure ?sch) _ _ _ _ _ _ ) _ ] =>
+=======
+  end. *)
+
+Class ExpressionAttributeCounter
+      {A : Type}
+      (qsSchema : RawQueryStructureSchema)
+      (a : A)
+      (occCount : OccurencesCountT (Vector.map rawSchemaHeading (qschemaSchemas qsSchema))) := { }.
+
+(*Instance ExpressionAttributeCounterAnyT {A}
+         {qsSchema}
+         {a : A}
+  : @ExpressionAttributeCounter _ qsSchema a
+                                (InitOccurences _) | 100 :=
+  @Build_ExpressionAttributeCounter A qsSchema a (InitOccurences _). *)
+
+Global Instance ExpressionAttributeCounter_And
+         {qsSchema : RawQueryStructureSchema}
+         {A B}
+         {OccCountL OccCountR}
+         (ExpCountL : @ExpressionAttributeCounter _ qsSchema A OccCountR)
+         (ExpCountR : @ExpressionAttributeCounter _ qsSchema B OccCountL)
+  : @ExpressionAttributeCounter _ qsSchema (A /\ B) (MergeOccurences OccCountL OccCountR) := { }.
+
+Instance ExpressionAttributeCounterEqLR {A }
+         {qsSchema : RawQueryStructureSchema}
+         {a a' : A}
+         (RidxL RidxR : Fin.t _)
+         (BAidxL : @Attributes (Vector.nth _ RidxL))
+         (BAidxR : @Attributes (Vector.nth _ RidxR))
+         (ExpCountL : @TermAttributeCounter _ qsSchema a RidxL BAidxL)
+         (ExpCountR : @TermAttributeCounter _ qsSchema a' RidxR BAidxR)
+  : @ExpressionAttributeCounter _ qsSchema (a = a')
+                                (@InsertOccurenceOfAny _ _ RidxL (EqualityIndex, BAidxL) (@InsertOccurenceOfAny _ _ RidxR (EqualityIndex, BAidxR) (InitOccurences _))) | 0 := { }.
+
+Instance ExpressionAttributeCounterEqL {A }
+         {qsSchema}
+         {a a' : A}
+         (RidxL : Fin.t _)
+         (BAidxL : @Attributes (Vector.nth _ RidxL))
+         (ExpCountL : @TermAttributeCounter _ qsSchema a RidxL BAidxL)
+  : @ExpressionAttributeCounter _ qsSchema (a = a')
+                                (@InsertOccurenceOfAny _ _ RidxL (EqualityIndex, BAidxL) (InitOccurences _)) | 10 := { }.
+
+Instance ExpressionAttributeCounterEqR {A }
+         {qsSchema}
+         {a a' : A}
+         (RidxR : Fin.t _)
+         (BAidxR : @Attributes (Vector.nth _ RidxR))
+         (ExpCountL : @TermAttributeCounter _ qsSchema a' RidxR BAidxR)
+  : @ExpressionAttributeCounter _ qsSchema (a = a')
+                                (@InsertOccurenceOfAny _ _ RidxR (EqualityIndex, BAidxR) (InitOccurences _)) | 10 := { }.
+
+Instance ExpressionAttributeCounterWhere {ResultT}
+         {qsSchema : RawQueryStructureSchema}
+         {qs : UnConstrQueryStructure qsSchema}
+         (P : Prop)
+         (WhereBody : Comp (list ResultT))
+         OccCountCond
+         OccCountBody
+         (ExpCountCond : @ExpressionAttributeCounter _ qsSchema P OccCountCond)
+         (ExpCountBody : @ExpressionAttributeCounter _ qsSchema WhereBody OccCountBody)
+  : @ExpressionAttributeCounter _ qsSchema
+                                (Query_Where P WhereBody) (MergeOccurences OccCountCond OccCountBody) | 0 := { }.
+
+Definition ExpressionAttributeCounterPick {A}
+         {qsSchema : QueryStructureSchema}
+         (P : Ensemble A)
+  : ExpressionAttributeCounter qsSchema (Pick P)
+                                (InitOccurences _) :=
+  Build_ExpressionAttributeCounter qsSchema (Pick P) (InitOccurences _).
+
+Hint Extern 10 (ExpressionAttributeCounter ?qsSchema (Pick ?P) _) =>
+apply ExpressionAttributeCounterPick.
+
+Hint Extern 0 (@TermAttributeCounter _ ?qsSchema (@GetAttributeRaw _ ?tup ?BAidx) ?Ridx' ?BAidx') =>
+  match type of tup with
+  | @RawTuple (@GetNRelSchemaHeading _ _ ?Ridx) =>
+    unify Ridx Ridx'; unify BAidx BAidx'; (* have to unify these evars for the lemma to apply*)
+    eapply (@GetAttributeRawTermCounter qsSchema Ridx tup BAidx)
+  end : typeclass_instances.
+
+Hint Extern 0 (@TermAttributeCounter
+                 _ ?qsSchema
+                 (GetAttribute ?tup {| bindex := _;
+                                       indexb := {| ibound := ?BAidx;
+                                                    boundi := _ |} |} ) ?Ridx' ?BAidx') =>
+      match type of tup with
+      | @RawTuple (@GetNRelSchemaHeading _ _ ?Ridx) =>
+        unify Ridx Ridx'; unify BAidx BAidx'; (* have to unify these evars for the lemma to apply*)
+        eapply (@GetAttributeRawTermCounter qsSchema Ridx tup BAidx)
+      end : typeclass_instances.
+
+
+Instance ExpressionAttributeCounterQueryIn {ResultT}
+         {qsSchema : RawQueryStructureSchema}
+         {qs : UnConstrQueryStructure qsSchema}
+         (Ridx : Fin.t _)
+         (QueryBody : RawTuple -> Comp (list ResultT))
+         OccCount
+         (ExpCountBod : forall tup,
+             @ExpressionAttributeCounter _ qsSchema (QueryBody tup) OccCount)
+  : @ExpressionAttributeCounter _ qsSchema
+                                (@UnConstrQuery_In ResultT qsSchema qs Ridx QueryBody) OccCount | 0 := { }.
+
+Instance ExpressionAttributeCounterBind {A B}
+         {qsSchema : RawQueryStructureSchema}
+         (ca : Comp A)
+         (cb : A -> Comp B)
+         OccCountA OccCountB
+         (ExpCountA : @ExpressionAttributeCounter _ qsSchema ca OccCountA)
+         (ExpCountB : forall a, @ExpressionAttributeCounter _ qsSchema (cb a) OccCountB)
+  : @ExpressionAttributeCounter _ qsSchema
+                                (Bind ca cb)
+                                (MergeOccurences OccCountA OccCountB) | 0 := { }.
+
+Instance ExpressionAttributeCounterFor {A}
+         {qsSchema : RawQueryStructureSchema}
+         (c : Comp (list A))
+         OccCountA
+         (ExpCountA : @ExpressionAttributeCounter _ qsSchema c OccCountA)
+  : @ExpressionAttributeCounter _ qsSchema
+                                (For c)
+                                OccCountA | 0 := { }.
+
+Instance ExpressionAttributeCounterCount {A}
+         {qsSchema : RawQueryStructureSchema}
+         (c : Comp (list A))
+         OccCountA
+         (ExpCountA : @ExpressionAttributeCounter _ qsSchema c OccCountA)
+  : @ExpressionAttributeCounter _ qsSchema
+                                (Count c)
+                                OccCountA | 0 := { }.
+
+Instance ExpressionAttributeCounterMaxN
+         {qsSchema : RawQueryStructureSchema}
+         (c : Comp (list N))
+         OccCountA
+         (ExpCountA : @ExpressionAttributeCounter _ qsSchema c OccCountA)
+  : @ExpressionAttributeCounter _ qsSchema
+                                (MaxN c)
+                                OccCountA | 0 := { }.
+
+Instance ExpressionAttributeCounterMaxZ
+         {qsSchema : RawQueryStructureSchema}
+         (c : Comp (list Z))
+         OccCountA
+         (ExpCountA : @ExpressionAttributeCounter _ qsSchema c OccCountA)
+  : @ExpressionAttributeCounter _ qsSchema
+                                (MaxZ c)
+                                OccCountA | 0 := { }.
+
+Instance ExpressionAttributeCounterSumN
+         {qsSchema : RawQueryStructureSchema}
+         (c : Comp (list N))
+         OccCountA
+         (ExpCountA : @ExpressionAttributeCounter _ qsSchema c OccCountA)
+  : @ExpressionAttributeCounter _ qsSchema
+                                (SumN c)
+                                OccCountA | 0 := { }.
+
+Instance ExpressionAttributeCounterSumZ
+         {qsSchema : RawQueryStructureSchema}
+         (c : Comp (list Z))
+         OccCountA
+         (ExpCountA : @ExpressionAttributeCounter _ qsSchema c OccCountA)
+  : @ExpressionAttributeCounter _ qsSchema
+                                (SumZ c)
+                                OccCountA | 0 := { }.
+
+Instance ExpressionAttributeCounterIfThenElse {A}
+         {qsSchema : RawQueryStructureSchema}
+         (ci : bool)
+         (ct ce : Comp A)
+         OccCountT (*OccCountE *)
+         (ExpCountT : @ExpressionAttributeCounter _ qsSchema ct OccCountT)
+         (*ExpCountE : @ExpressionAttributeCounter _ qsSchema ce OccCountE*)
+  : @ExpressionAttributeCounter _ qsSchema
+                                (If_Then_Else ci ct ce)
+                                (MergeOccurences OccCountT OccCountE) | 0 := { }.
+
+Instance ExpressionAttributeCounterifthenelse {A}
+         {qsSchema : RawQueryStructureSchema}
+         (ci : bool)
+         (ct ce : Comp A)
+         OccCountT OccCountE
+         (ExpCountT : @ExpressionAttributeCounter _ qsSchema ct OccCountT)
+         (ExpCountE : @ExpressionAttributeCounter _ qsSchema ce OccCountE)
+  : @ExpressionAttributeCounter _ qsSchema
+                                (if ci then ct else ce)
+                                (MergeOccurences OccCountT OccCountE) | 0 := { }.
+
+Instance ExpressionAttributeCounterIfOptThenElse {A B}
+         {qsSchema : RawQueryStructureSchema}
+         (ci : option A)
+         (ct : A -> Comp B)
+         (ce : Comp B)
+         OccCountT OccCountE
+         (ExpCountT : forall a,
+             @ExpressionAttributeCounter _ qsSchema (ct a) OccCountT)
+         (ExpCountE : @ExpressionAttributeCounter _ qsSchema ce OccCountE)
+  : @ExpressionAttributeCounter _ qsSchema
+                                (If_Opt_Then_Else ci ct ce)
+                                (MergeOccurences OccCountT OccCountE) | 0 := { }.
+
+Instance ExpressionAttributeCounterReturn {A}
+         {qsSchema}
+         {a : A}
+  : ExpressionAttributeCounter qsSchema (Return a)
+                                (InitOccurences _) | 0 :=
+  Build_ExpressionAttributeCounter qsSchema (Return a) (InitOccurences _).
+
+Instance ExpressionAttributeCounterRet {A}
+         {qsSchema}
+         {a : A}
+  : ExpressionAttributeCounter qsSchema (ret a)
+                                (InitOccurences _) | 0 :=
+  Build_ExpressionAttributeCounter qsSchema (ret a) (InitOccurences _).
+
+Instance ExpressionAttributeCounterEmpty
+         {qsSchema : QueryStructureSchema}
+  : ExpressionAttributeCounter qsSchema (QSEmptySpec qsSchema)
+                                (InitOccurences _) | 0 :=
+  Build_ExpressionAttributeCounter qsSchema (QSEmptySpec qsSchema) (InitOccurences _).
+
+
+Instance ExpressionAttributeCounterConstructorsCons
+         {qsSchema : RawQueryStructureSchema}
+         {Dom}
+         {n n'}
+         (consSigs : Vector.t consSig n)
+         (methSigs : Vector.t methSig n')
+         (consDefs : @ilist consSig (@consDef (UnConstrQueryStructure qsSchema)) n consSigs)
+         (methDefs : @ilist methSig (@methDef (UnConstrQueryStructure qsSchema)) n' methSigs)
+         (con : @consDef _ Dom)
+         OccCountC OccCountRest
+         (ExpCountC : forall d,
+             @ExpressionAttributeCounter _ qsSchema (consBody con d) OccCountC)
+         (ExpCountRest : @ExpressionAttributeCounter _ qsSchema
+                                (BuildADT (Rep := UnConstrQueryStructure qsSchema) consDefs methDefs)
+                                OccCountRest)
+  : @ExpressionAttributeCounter _ qsSchema
+                                (BuildADT (Rep := UnConstrQueryStructure qsSchema) (icons con consDefs) methDefs)
+                                (MergeOccurences OccCountC OccCountRest) | 0 := { }.
+
+Instance ExpressionAttributeCounterMethodsCons
+         {qsSchema : RawQueryStructureSchema}
+         {mSig}
+         {n'}
+         (methSigs : Vector.t methSig n')
+         (methDefs : @ilist methSig (@methDef (UnConstrQueryStructure qsSchema)) n' methSigs)
+         (meth : @methDef (UnConstrQueryStructure qsSchema) mSig)
+         OccCountM OccCountRest
+         (ExpCountM : forall r d,
+             @ExpressionAttributeCounter _ qsSchema (methBody meth r d) OccCountM)
+         (ExpCountRest : @ExpressionAttributeCounter _ qsSchema
+                                (BuildADT (Rep := UnConstrQueryStructure qsSchema) inil methDefs)
+                                OccCountRest)
+  : @ExpressionAttributeCounter _ qsSchema
+                                (BuildADT (Rep := UnConstrQueryStructure qsSchema) inil (icons meth methDefs))
+                                (MergeOccurences OccCountM OccCountRest) | 0 := { }.
+
+Instance ExpressionAttributeCounterMethodsNil
+         {qsSchema : RawQueryStructureSchema}
+  : @ExpressionAttributeCounter _ qsSchema
+                                (BuildADT (Rep := UnConstrQueryStructure qsSchema) inil inil)
+                                (InitOccurences _) | 0 := { }.
+
+
+Instance ExpressionAttributeCounter_True
+         {qsSchema : RawQueryStructureSchema}
+  : @ExpressionAttributeCounter _ qsSchema True (InitOccurences _) := { }.
+
+Instance ExpressionAttributeCounter_Not
+         {qsSchema : RawQueryStructureSchema}
+         (P : Prop)
+  : @ExpressionAttributeCounter _ qsSchema (~ P) (InitOccurences _) := { }.
+
+Ltac make_simple_indexes attrlist BuildEarlyIndex BuildLastIndex:=
+  match goal with
+  | [ |- Sharpened (@BuildADT (UnConstrQueryStructure ?sch) _ _ _ _ _ _ ) ] =>
+>>>>>>> NewUpdateNotation
     let sch' := eval simpl in (qschemaSchemas sch) in
         makeIndex' sch' attrlist
                    BuildEarlyIndex BuildLastIndex
@@ -379,10 +675,17 @@ Ltac make_simple_indexes attrlist BuildEarlyIndex BuildLastIndex:=
                          hone representation using (@DelegateToBag_AbsR sch index))
   end.
 
-(*Tactic Notation "make" "indexes" "using" tactic(ClauseMatchers) :=
-  GenerateIndexesForAll
-    ClauseMatchers
-    ltac:(fun attrlist => make simple indexes using attrlist). *)
+  Ltac GenerateIndexesForAll k :=
+    match goal with
+      |- context [@BuildADT (UnConstrQueryStructure ?qsSchema) _ _ ?consSigs ?methSigs ?consDefs ?methDefs ] =>
+      makeEvar (OccurencesCountT
+                  (Vector.map rawSchemaHeading (qschemaSchemas qsSchema)))
+               ltac:(fun e => let H := fresh in
+                              assert (@ExpressionAttributeCounter _ qsSchema (@BuildADT _ _ _ consSigs methSigs consDefs methDefs) e) as H by eauto 200 with typeclass_instances;
+                     clear H;
+                     k e
+                  )
+  end.
 
 (* Recurse over [fds] to find an attribute matching s *)
 Ltac findMatchingTerm fds kind s k :=

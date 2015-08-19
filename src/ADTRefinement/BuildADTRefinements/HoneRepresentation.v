@@ -322,7 +322,7 @@ Arguments DecADTSig : simpl never.
          |- Sharpened ?A => constr:(A) end in
    let DSig :=
        match goal with
-         |- @FullySharpenedUnderDelegates ?DSig _ _ => constr:(DSig)
+         |- @refineADT ?DSig _ _ => constr:(DSig)
        end in
    let ASig := match type of A with
                  DecoratedADT ?Sig => Sig

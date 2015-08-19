@@ -65,8 +65,10 @@ Definition BookStoreSig : ADTSig :=
     }.
 
 (* Now we write what the methods should actually do. *)
+<<<<<<< HEAD
+=======
 
-Set Printing All.
+>>>>>>> NewUpdateNotation
 Definition BookStoreSpec : ADT BookStoreSig :=
   Eval simpl in
     QueryADTRep BookStoreSchema {
@@ -100,7 +102,16 @@ Definition BookStoreSpec : ADT BookStoreSig :=
 Theorem SharpenedBookStore :
   FullySharpened BookStoreSpec.
 Proof.
+  
+  start_honing_QueryStructure.
 
+<<<<<<< HEAD
+=======
+  GenerateIndexesForAll
+    ltac:(fun attrlist => make_simple_indexes attrlist ltac:(LastCombineCase6 BuildEarlyEqualityIndex)
+                                                         ltac:(LastCombineCase5 BuildLastEqualityIndex)).
+
+    
 Ltac master_plan' matchIndex
      BuildEarlyIndex BuildLastIndex
      IndexUse createEarlyTerm createLastTerm
@@ -140,11 +151,9 @@ Ltac master_plan' matchIndex
 
 Ltac master_plan IndexTactics := IndexTactics master_plan'.
 
+>>>>>>> NewUpdateNotation
   (* Uncomment this to see the mostly sharpened implementation *)
   (* partial_master_plan EqIndexTactics. *)
-  master_plan EqIndexTactics.
-  idtac.
-  apply reflexivityT.
 
 Time Defined.
 
