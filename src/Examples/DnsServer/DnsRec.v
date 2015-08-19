@@ -50,6 +50,7 @@ Check { b : bool | decides b True }. (* Comp bool -- check *)
 
 Definition upperbound' := upperbound (fun x => x).
 
+(* Boilerplate *)
 Definition Build_RequestState pac id stage :=
   let q := questions pac in
   < Build_Component (Build_Attribute sID nat) id,
@@ -66,15 +67,8 @@ Definition Build_CachePointer reqName table :=
     Build_Component (Build_Attribute sCACHETABLE CacheTable) table >.
 
 Definition Build_CacheReferralsRow tup :=
-  let '(rPid, rFlags, qName, qType, qClass, referralDomain, rType, rClass, rTTL, 
-        serverDomain, sType, sClass, sTTL, sIP) := tup in
- <  Build_Component (Build_Attribute sPID (Bvector 16)) rPid,
-  Build_Component (Build_Attribute sFLAGS (Bvector 16)) rFlags,
-  Build_Component (Build_Attribute sQNAME name) qName,
-  Build_Component (Build_Attribute sQTYPE RRecordType) qType,
-  Build_Component (Build_Attribute sQCLASS RRecordClass) qClass,
-  
-  Build_Component (Build_Attribute sREFERRALDOMAIN name) referralDomain,
+  let '(referralDomain, rType, rClass, rTTL, serverDomain, sType, sClass, sTTL, sIP) := tup in
+  < Build_Component (Build_Attribute sREFERRALDOMAIN name) referralDomain,
   Build_Component (Build_Attribute sRTYPE RRecordType) rType,
   Build_Component (Build_Attribute sRCLASS RRecordClass) rClass,
   Build_Component (Build_Attribute sRTTL nat) rTTL,
@@ -86,27 +80,18 @@ Definition Build_CacheReferralsRow tup :=
   Build_Component (Build_Attribute sSIP name) sIP >.
 
 Definition Build_CacheAnswersRow tup :=
-  let '(rDomain, rSection, rPid, rFlags, qName, qType, qClass, rName, rType, rClass, rTTL, rRdata) := tup in
+  let '(rDomain, rSection, rName, rType, rClass, rTTL, rRdata) := tup in
   < Build_Component (Build_Attribute sDOMAIN name) rDomain,
   Build_Component (Build_Attribute sPACKET_SECTION PacketSection) rSection,
-  Build_Component (Build_Attribute sPID (Bvector 16)) rPid,
-  Build_Component (Build_Attribute sFLAGS (Bvector 16)) rFlags,
-  Build_Component (Build_Attribute sQNAME name) qName,
-  Build_Component (Build_Attribute sQTYPE RRecordType) qType,
-  Build_Component (Build_Attribute sQCLASS RRecordClass) qClass,
   Build_Component (Build_Attribute sNAME name) rName,
   Build_Component (Build_Attribute sTYPE RRecordType) rType,
   Build_Component (Build_Attribute sCLASS RRecordClass) rClass,
   Build_Component (Build_Attribute sTTL nat) rTTL,
   Build_Component (Build_Attribute sRDATA name) rRdata >.
 
-Eval compute in Build_CacheAnswersRow (nil, PAnswer, test_vec, test_vec, nil, A, CH, nil, A, CH, 0, nil).
-
 Definition Build_CacheFailuresRow tup :=
-  let '(rDomain, rPid, rFlags, rHost, rEmail, rSerial, rRefresh, rRetry, rExpire, rMinTTL) := tup in
+  let '(rDomain, rHost, rEmail, rSerial, rRefresh, rRetry, rExpire, rMinTTL) := tup in
   < Build_Component (Build_Attribute sDOMAIN name) rDomain,
-  Build_Component (Build_Attribute sPID (Bvector 16)) rPid,
-  Build_Component (Build_Attribute sFLAGS (Bvector 16)) rFlags,
   Build_Component (Build_Attribute sHOST name) rHost,
   Build_Component (Build_Attribute sEMAIL name) rEmail,
   Build_Component (Build_Attribute sSERIAL nat) rSerial,
@@ -284,8 +269,7 @@ and associate it with the packet (solve the latter by letting it generate the id
 
               let flattenWithRec p type rec :=
                   let q := questions p in
-                  (reqName, type, id' p, flags p, qname q, qtype q, qclass q,
-                   aname rec, atype rec, aclass rec, ttl rec, rdata rec) in
+                  (reqName, type, aname rec, atype rec, aclass rec, ttl rec, rdata rec) in
               let flattenPacket (p : packet_new.packet) type recs := List.map (fun rec => flattenWithRec p type rec) recs in
               let tups p := flattenPacket p PAnswer (answers p)
                                           ++ flattenPacket p PAuthority (authority p)
@@ -299,7 +283,7 @@ and associate it with the packet (solve the latter by letting it generate the id
             | Failure pac soa =>
               (* ignoring authority/answer/additional fields; using only the one SOA *)
               let mkFailTup p soa := 
-                  (reqName, id' p, flags p, sourcehost soa, contact_email soa, 
+                  (reqName, sourcehost soa, contact_email soa, 
                    serial soa, refresh soa, retry soa, expire soa, minTTL soa) in
               _ <- Insert (Build_CachePointer reqName CFailures) into r!sCACHE_POINTERS;
               Insert (Build_CacheFailuresRow (mkFailTup pac soa)) into r!sCACHE_FAILURES
@@ -334,8 +318,8 @@ and associate it with the packet (solve the latter by letting it generate the id
                   let pairToPacketTup (tup2 : answer * answer) :=
                       let q := questions pac in
                       let (auth, addl) := tup2 in
-                      (id' pac, flags pac, 
-                       qname q, qtype q, qclass q,
+                      (
+                       (* id' pac, flags pac, qname q, qtype q, qclass q, *)
                        aname auth, atype auth, aclass auth, ttl auth,
                        aname addl, atype addl, aclass addl, ttl addl,
                        rdata addl)

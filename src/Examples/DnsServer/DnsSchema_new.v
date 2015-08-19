@@ -111,14 +111,12 @@ Invariants: (TODO)
 - All rows for each domain should appear in exactly 1 of the cache relations (question, answer, or failure). We do not store multiple possibilities.
 - All rows for each domain should have the same packet info. *)
 
+(* for domain "brl.mil", referral to suffix "mil": 
+go to server "a.isi.edu" with IP 1.0.0.1 (and ask it the same question) -- RFC 1034 6.2.6
+we discard the original question "brl.mil" *)
 Definition ReferralHeading :=
   (* R- = referral domain's, S- = server domain's *)
-         <sPID :: Bvector 16,
-          sFLAGS :: Bvector 16,
-          sQNAME :: name,
-          sQTYPE :: RRecordType,
-          sQCLASS :: RRecordClass,
-          sREFERRALDOMAIN :: name,
+         <sREFERRALDOMAIN :: name,
           sRTYPE :: RRecordType,
           sRCLASS :: RRecordClass,
           sRTTL :: nat,
@@ -135,11 +133,6 @@ Definition ReferralHeading :=
 Definition AnswerHeading :=
          <sDOMAIN :: name,
           sPACKET_SECTION :: PacketSection,
-          sPID :: Bvector 16,
-          sFLAGS :: Bvector 16,
-          sQNAME :: name,
-          sQTYPE :: RRecordType,
-          sQCLASS :: RRecordClass,
           sNAME :: name,
           sTYPE :: RRecordType,
           sCLASS :: RRecordClass,
@@ -151,8 +144,6 @@ Definition AnswerHeading :=
           (* the SOA is technically supposed to go in the Authority section but the packet type doesn't include it *)
 Definition FailureHeading :=
           <sDOMAIN :: name,
-           sPID :: Bvector 16,
-           sFLAGS :: Bvector 16,
            sHOST :: name,
            sEMAIL :: name,
            sSERIAL :: nat,
