@@ -37,9 +37,30 @@ Definition server := name.      (* both IP and server name *)
 (* need this because there's no way to encode failure (no questions) in a packet *)
 (* TODO this type might need to change *)
 Inductive WrapperResponse : Type :=
-(* | Question : server -> packet -> WrapperResponse *)
+| Invalid : WrapperResponse
+| Question : id -> packet -> WrapperResponse (* id for a specific pending request *)
 | Answer : packet -> WrapperResponse
 | Failure : packet -> SOA -> WrapperResponse.
+
+(* from outside to server:
+| from client: question (no id? or have client generate id using method?)
+| from server: id * packet (referral via fields) 
+| from server: id * packet (answer via fields)
+| from server: id * packet (tagged failure) * SOA
+
+from server to outside:
+| to server or client?: id * invalid
+| to server: id * packet (question)
+| to client: id * packet (answer)
+| to client: id * packet (tagged failure) * SOA
+
+for server to cache:
+| id * packet (referral) <-- not really cached but put in SLIST for a pending request
+| id * packet (answer)
+| id * packet (tagged failure) * SOA
+^ or maybe just the rows?
+
+will the server ever return a referral? no *)
 
 (* Which section of a packet a certain answer (DNSRRecord) is in. *)
 Inductive PacketSection : Type :=
@@ -124,7 +145,7 @@ Invariants: (TODO)
 (* for domain "brl.mil", referral to suffix "mil": 
 go to server "a.isi.edu" with IP 1.0.0.1 (and ask it the same question) -- RFC 1034 6.2.6
 we discard the original question "brl.mil" *)
-
+(* 6.3.1 *)
 Definition ReferralHeading :=
   (* R- = referral domain's, S- = server domain's *)
          <sREQID :: nat,
@@ -147,10 +168,12 @@ Definition ReferralHeading :=
          >%Heading.
 
 (* stores an answer (DNSRRecord) *)
+(* sDOMAIN and sNAME may differ in the case of CNAME, where 
+sDOMAIN is an alias for sNAME. see RFC 1034, 6.2.7 *)
 Definition AnswerHeading :=
          <sDOMAIN :: name,
           sPACKET_SECTION :: PacketSection,
-          sNAME :: name,
+          sNAME :: name, 
           sTYPE :: RRecordType,
           sCLASS :: RRecordClass,
           sTTL :: nat,
@@ -197,7 +220,7 @@ Inductive CacheResult :=
 (* TODO: hack to make DeleteResultForDomain check *)
 | Nope : CacheResult
 (* Nonempty lists *)
-(* | Ref : list ReferralRow -> CacheResult *)
+| Ref : list AnswerRow -> CacheResult
 | Ans : list AnswerRow -> CacheResult
 | Fail : option FailureRow -> CacheResult.
 
