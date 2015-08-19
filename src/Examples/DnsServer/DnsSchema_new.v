@@ -29,6 +29,24 @@ another table that stores ordering information
 id [SLIST order]
 5  [x2, x1, x3,...] *)
 
+Definition Stage := option nat.
+Definition id : Type := nat.
+Definition position := nat.
+Definition server := name.      (* both IP and server name *)
+
+(* need this because there's no way to encode failure (no questions) in a packet *)
+(* TODO this type might need to change *)
+Inductive WrapperResponse : Type :=
+(* | Question : server -> packet -> WrapperResponse *)
+| Answer : packet -> WrapperResponse
+| Failure : packet -> SOA -> WrapperResponse.
+
+(* Which section of a packet a certain answer (DNSRRecord) is in. *)
+Inductive PacketSection : Type :=
+| PAnswer : PacketSection
+| PAuthority : PacketSection
+| PAdditional : PacketSection.
+
 Definition sREQUESTS := "Requests".
 Definition sSTAGE := "Stage".
 Definition sID := "ID".
@@ -39,23 +57,6 @@ Definition sDOMAIN := "Domain".
 (* the # prefix it's on, from front? or back? *)
 (* Definition sTIME := "Time". *)
 (* everything added gets an unique ID already *)
-
-Definition Stage := option nat.
-Definition id : Type := nat.
-Definition server := name.      (* both IP and server name *)
-
-(* need this because there's no way to encode failure (no questions) in a packet *)
-Inductive WrapperResponse : Type :=
-(* TODO add SOL fields *)
-| Question : server -> packet -> WrapperResponse
-| Answer : packet -> WrapperResponse
-| Failure : packet -> SOA -> WrapperResponse.
-
-(* Which section of a packet a certain answer (DNSRRecord) is in. *)
-Inductive PacketSection : Type :=
-| PAnswer : PacketSection
-| PAuthority : PacketSection
-| PAdditional : PacketSection.
 
 Definition sCACHE_POINTERS := "Cache pointers to tables".
 Definition sCACHE_REFERRALS := "Cached referrals".
@@ -97,6 +98,15 @@ Definition sQTYPE := "Question type".
 Definition sQCLASS := "Question class".
 Definition sCACHETABLE := "Cache table".
 
+Definition sREQID := "Request ID".
+Definition sREFERRALID := "Referral ID".
+Definition sMATCHCOUNT := "# labels matched". 
+Definition sQUERYCOUNT := "# times queried".
+
+Definition sORDER := "SLIST order". (* using referral IDs *)
+Definition sSLIST := "SLIST".
+Definition sSLIST_ORDERS := "SLIST orders".
+
 (* The ideal schema would be domain and WrapperResponse, with some way to query the types nested in WrapperResponse. Flattening it here has the same effect. 
 
 One (Domain => WrapperResponse) mapping is flattened into several rows that all have the same packet information, but store one answer (DNSRRecord) each. 
@@ -114,9 +124,13 @@ Invariants: (TODO)
 (* for domain "brl.mil", referral to suffix "mil": 
 go to server "a.isi.edu" with IP 1.0.0.1 (and ask it the same question) -- RFC 1034 6.2.6
 we discard the original question "brl.mil" *)
+
 Definition ReferralHeading :=
   (* R- = referral domain's, S- = server domain's *)
-         <sREFERRALDOMAIN :: name,
+         <sREQID :: nat,
+          sREFERRALID :: nat,
+
+          sREFERRALDOMAIN :: name,
           sRTYPE :: RRecordType,
           sRCLASS :: RRecordClass,
           sRTTL :: nat,
@@ -125,8 +139,11 @@ Definition ReferralHeading :=
           sSTYPE :: RRecordType,
           sSCLASS :: RRecordClass,
           sSTTL :: nat,
-          sSIP :: name
+          sSIP :: name,
           (* IP in RDATA of additional record *)
+
+          sMATCHCOUNT :: nat, (* needed? *)
+          sQUERYCOUNT :: nat
          >%Heading.
 
 (* stores an answer (DNSRRecord) *)
@@ -171,22 +188,21 @@ Definition AnswerRow := @Tuple AnswerHeading.
 Definition FailureRow := @Tuple FailureHeading.
 Definition RequestRow := @Tuple RequestHeading.
 
-(* TODO: remove extraneous packet fields
-when we query here, we want a result type
+(* when we query here, we want a result type
 that later gets combined with the actual packet in Process
 Process gets ALL the rows from one table (or none) *)
 
 (* so we can return a list of rows from any table *)
 Inductive CacheResult :=
 (* TODO: hack to make DeleteResultForDomain check *)
-| Nope : list ReferralRow -> CacheResult
+| Nope : CacheResult
 (* Nonempty lists *)
-| Ref : list ReferralRow -> CacheResult
+(* | Ref : list ReferralRow -> CacheResult *)
 | Ans : list AnswerRow -> CacheResult
 | Fail : option FailureRow -> CacheResult.
 
 Inductive CacheTable :=
-| CReferrals
+(* | CReferrals *)
 | CAnswers
 | CFailures.
 
@@ -196,7 +212,11 @@ Definition DnsRecSchema :=
                    < sDOMAIN :: name,
                      sCACHETABLE :: CacheTable
                    > ;
-          relation sCACHE_REFERRALS has
+          relation sSLIST_ORDERS has schema
+                   < sREQID :: id,
+                     sORDER :: list (id * position) (* is a list of (id, pos) OK? *)
+                   >;
+          relation sSLIST has
                    schema
                    ReferralHeading;
           relation sCACHE_ANSWERS has

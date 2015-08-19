@@ -9,13 +9,11 @@ Require Import Fiat.QueryStructure.Automation.AutoDB
         Fiat.QueryStructure.Automation.IndexSelection
         Fiat.QueryStructure.Specification.SearchTerms.ListPrefix
         Fiat.QueryStructure.Automation.SearchTerms.FindPrefixSearchTerms.
-        (* Fiat.QueryStructure.Automation.QSImplementation. *)
 
 Require Import
         Fiat.Examples.DnsServer.packet_new
         Fiat.Examples.DnsServer.DnsSchema_new
         Fiat.Examples.DnsServer.DnsLemmas. (* might need _new *)
-(* TODO: unique, fueledfix are here but for some reason setoid rewrite is failing *)
 
 Definition DnsRecSig : ADTSig :=
   ADTsignature {
@@ -122,14 +120,6 @@ filter f (list_prod l1 l2).
 
 (* Set Printing All. *)
 
-Check test_packet.
-Locate test_packet.
-(* it's still using packet, not packet_new TODO *)
-(* The term "pac" has type "packet.packet" while it is expected to have type *)
- (* "packet". *)
-Locate packet.
-Locate packet.packet.
-
 Definition DnsSpec_Recursive : ADT DnsRecSig :=
   (* TODO move to definitions *)
   let Init := "Init" in
@@ -157,12 +147,9 @@ and associate it with the packet (solve the latter by letting it generate the id
         freshAscendingId <- {idx : nat | upperbound' ids idx };
         ret freshAscendingId,
       
-        (* just change the type to query? *)
       update AddRequest (r : rep, tup : packet * id) : bool := 
         let (pac, freshAscendingId) := tup in (* TODO inline makeid here *)
         Insert (Build_RequestState pac freshAscendingId None) into r!sREQUESTS,
-        (* ret (r, true), *)
-        (* want to access r/rep so i can also return something besides a bool? *)
 
         (* boolean for wrapper *)
       query GetRequestStage (r : rep, reqId : id) : option Stage :=
@@ -184,63 +171,6 @@ and associate it with the packet (solve the latter by letting it generate the id
         (* TODO "delete request" method  *)
 
         (* ----- CACHE *)
-         (* let doNothing qsSchemaHint qsHint tbl := *)
-         (*      let _ := {| qsSchemaHint' := qsSchemaHint; qsHint := qsHint |} in *)
-         (*      (* let H0 := {| qsSchemaHint' := qsSchemaHint; qsHint := r |} in *) *)
-         (*      (q <- Update n from tbl *)
-         (*          making [ sTTL |= 0 ] *)
-         (*          where False; *)
-         (*      let (updated, affected) := q in *)
-         (*      ret (updated, nonEmpty affected)) in *)
-
-         (*  let fix InsertAll qsSchemaHint qsHint rowFunc tups := *)
-         (*      (* let H0 := {| qsSchemaHint' := qsSchemaHint; qsHint := r |} in *) *)
-         (*      let _ := {| qsSchemaHint' := qsSchemaHint ; qsHint := qsHint |} in *)
-         (*      match tups with *)
-         (*      | nil => doNothing qsSchemaHint qsHint r!sCACHE_ANSWERS *)
-         (*        (* this shouldn't happen since an answer must have at >= 1 answer record *) *)
-         (*      | ptup :: ptups => *)
-         (*        b <- Insert (rowFunc ptup) into r!sCACHE_ANSWERS; *)
-         (*        InsertAll qsSchemaHint qsHint rowFunc ptups  *)
-         (*      end in *)
-
-(*
-        update InsertResultForDomain (tup : name * WrapperResponse) : bool :=
-          let '(reqName, reqResult) := tup in
-          
-            match reqResult return (Comp (QueryStructure qsSchemaHint' * bool)) with
-
-            | Failure pac soa =>
-
-              let doNothing :=
-              (q <- Update n from r!sCACHE_FAILURES
-                  making [ sTTL |= 0 ]
-                  where False;
-              let (updated, affected) := q in
-              ret (updated, nonEmpty affected)) in          
-              
-              q <- Update n from r!sCACHE_FAILURES
-                making [ sTTL |= 0 ]
-              where False;
-              let (updated, affected) := q in
-              ret (updated, nonEmpty affected)
-                  
-            | Answer pac =>
-              q <- Update n from r!sCACHE_REFERRALS
-              making [ sTTL |= 0 ]
-              where False;
-              let (updated, affected) := q in
-              ret (updated, nonEmpty affected)
-
-            | Question _ _ =>
-              q <- Update n from r!sCACHE_REFERRALS
-                making [ sTTL |= 0 ]
-              where False;
-              let (updated, affected) := q in
-              ret (updated, nonEmpty affected)
-                                      
-            end 
-*)        
           (* TODO inline in let-def in process *)
         (* TODO update cache pointer table *)
         (* assumes that someone has already checked that the domain is not in any of the caches *)
@@ -249,18 +179,10 @@ and associate it with the packet (solve the latter by letting it generate the id
             match reqResult with
             | Answer pac => 
 
-              (* doNothing will eventually be replaced by [ret false] *)
-              let doNothing :=
-                  (q <- Update n from r!sCACHE_ANSWERS as n'
-                     making n'!sTTL = 0 
-                   where False;
-                   let (updated, affected) := q in
-                   ret (updated, nonEmpty affected)) in
-
               (* monad iteration instead *)
               let fix InsertAll rowFunc tups :=
                   match tups with
-                  | nil => doNothing
+                  | nil => ret (r, false)
                   (* this shouldn't happen since an answer must have at >= 1 answer record *)
                   | ptup :: ptups =>
                     b <- Insert (rowFunc ptup) into r!sCACHE_ANSWERS;
@@ -286,50 +208,47 @@ and associate it with the packet (solve the latter by letting it generate the id
                   (reqName, sourcehost soa, contact_email soa, 
                    serial soa, refresh soa, retry soa, expire soa, minTTL soa) in
               _ <- Insert (Build_CachePointer reqName CFailures) into r!sCACHE_POINTERS;
-              Insert (Build_CacheFailuresRow (mkFailTup pac soa)) into r!sCACHE_FAILURES
+            Insert (Build_CacheFailuresRow (mkFailTup pac soa)) into r!sCACHE_FAILURES
+            end,
 
             (* need to do special stuff for linking authority and additional fields *)
             (* for each auth in authority, for each addl in additional,
              if auth's rdata = addl's name, flatten the whole thing into a row and add it *)
-            | Question serv pac =>
-              
-              let doNothing' :=
-              (q <- Update n from r!sCACHE_REFERRALS as n'
-                  making (n'!sSTTL = 0)
-                  where (False);
-              let (updated, affected) := q in
-              ret (updated, nonEmpty affected)) in
+            (* | Question serv pac => *)
 
-              let fix InsertAll' rowFunc tups :=
-              match tups with
-              | nil => doNothing'
-              | ptup :: ptups =>
-                b <- Insert (rowFunc ptup) into r!sCACHE_REFERRALS;
-                InsertAll' rowFunc ptups
-              end in 
+            (*   let fix InsertAll' rowFunc tups := *)
+            (*   match tups with *)
+            (*   | nil => ret (r, false) *)
+            (*   | ptup :: ptups => *)
+            (*     b <- Insert (rowFunc ptup) into r!sCACHE_REFERRALS; *)
+            (*     InsertAll' rowFunc ptups *)
+            (*   end in  *)
               
-              let tupsJoin pac :=
-                  let authRdataMatchesAddlName (tup2 : answer * answer) :=
-                      let (auth, addl) := tup2 in
-                      beq_name (rdata auth) (aname addl) in
-                  let auth_addl_join := list_join authRdataMatchesAddlName 
-                                                  (authority pac) (additional pac) in
+            (*   let tupsJoin pac := *)
+            (*       let authRdataMatchesAddlName (tup2 : answer * answer) := *)
+            (*           let (auth, addl) := tup2 in *)
+            (*           beq_name (rdata auth) (aname addl) in *)
+            (*       let auth_addl_join := list_join authRdataMatchesAddlName  *)
+            (*                                       (authority pac) (additional pac) in *)
                   
-                  let pairToPacketTup (tup2 : answer * answer) :=
-                      let q := questions pac in
-                      let (auth, addl) := tup2 in
-                      (
-                       (* id' pac, flags pac, qname q, qtype q, qclass q, *)
-                       aname auth, atype auth, aclass auth, ttl auth,
-                       aname addl, atype addl, aclass addl, ttl addl,
-                       rdata addl)
-                  in
-                  map pairToPacketTup auth_addl_join in
+            (*       let pairToPacketTup (tup2 : answer * answer) := *)
+            (*           let q := questions pac in *)
+            (*           let (auth, addl) := tup2 in *)
+            (*           ( *)
+            (*            (* id' pac, flags pac, qname q, qtype q, qclass q, *) *)
+            (*            aname auth, atype auth, aclass auth, ttl auth, *)
+            (*            aname addl, atype addl, aclass addl, ttl addl, *)
+            (*            rdata addl) *)
+            (*       in *)
+            (*       map pairToPacketTup auth_addl_join in *)
               
-              _ <- Insert (Build_CachePointer reqName CReferrals) into r!sCACHE_POINTERS;              
-              InsertAll' Build_CacheReferralsRow (tupsJoin pac)
-            end,
+            (*   _ <- Insert (Build_CachePointer reqName CReferrals) into r!sCACHE_POINTERS;               *)
+            (*   InsertAll' Build_CacheReferralsRow (tupsJoin pac) *)
 
+            (* | CReferrals => *)
+          (*   referral_res <- Delete row from r!sCACHE_REFERRALS where row!sREFERRALDOMAIN = domain; *)
+          (*   let (r, ref_deleted) := referral_res in *)
+          (*   ret (r, Ref ref_deleted) *)
             
             (* TODO: look in cache pointer table and delete that pointer afterward *)
             update DeleteResultForDomain (r : rep, domain : name) : CacheResult :=
@@ -337,18 +256,10 @@ and associate it with the packet (solve the latter by letting it generate the id
                    Where (pointer!sDOMAIN = domain)
                    Return (pointer!sCACHETABLE);
         match results with
-        | nil =>
-          (* ret nil *) (* TODO: hack to get the rep *)
-          doNothing <- Delete row from r!sCACHE_REFERRALS where False;
-          let (r, rows) := doNothing in
-          ret (r, Nope rows)    (* Nope rows = hack to make the function check *)
+        | nil => ret (r, Nope)
               
         | tbl :: _ =>
           match tbl with
-          | CReferrals =>
-            referral_res <- Delete row from r!sCACHE_REFERRALS where row!sREFERRALDOMAIN = domain;
-            let (r, ref_deleted) := referral_res in
-            ret (r, Ref ref_deleted)
           | CAnswers =>
             answer_res <- Delete row from r!sCACHE_ANSWERS where row!sDOMAIN = domain;
             let (r, ans_deleted) := answer_res in
@@ -360,7 +271,7 @@ and associate it with the packet (solve the latter by letting it generate the id
           end
         end,
 
-              (* the real update function = delete everything for the name, then insert the result *)
+        (* the real update function = delete everything for the name, then insert the result *)
 
         (* given a full name ["scholar", "google", "com"], return option IP 
            for the longest suffix of the URL, if an IP exists, return that. 
@@ -375,8 +286,7 @@ and associate it with the packet (solve the latter by letting it generate the id
         match results with
         | nil =>
           (* Need to do the suffix thing here *)
-(* For Referrals: ?
-For Answers: ? 
+(* For Answers: ? 
 For Failures: ?
 
 If nothing: return Nope  *)
@@ -397,7 +307,7 @@ If nothing: return Nope  *)
             (*   (* TODO: arbitrarily pick the first of the longest suffixes *) *)
             (*   (* pick ONE of the longest suffixes [same?] then look in the pointer table for which table it's in then then get all of the rows for that suffix  and make it into a packet/wrapperresponse *) *)
           (*   ret None *)
-          ret (Nope nil)
+          ret Nope
         | table :: _ => 
           match table with
           | CFailures => 
@@ -408,14 +318,6 @@ If nothing: return Nope  *)
                     Where (f!sDOMAIN = reqName)
                     Return f;
           ret (Fail (listToOption nameRes))
-            
-          | CReferrals =>
-            (* Still need suffix search here? We know there's no Answer or Failure for the name... *)
-            (* Process figures out which referral to use *)
-            nameRes <- For (f in r!sCACHE_REFERRALS)
-                    Where (f!sREFERRALDOMAIN = reqName)
-                    Return f;            
-            ret (Ref nameRes)   
 
           | CAnswers => 
             (* There may be multiple rows in Answers, containing various answer/authority/addl *)
@@ -527,7 +429,6 @@ scholar.google.com =>
     (*     end *)
               }.
 
-
 (* Set Printing All. *)
 Print DnsSpec_Recursive.
 
@@ -568,5 +469,3 @@ is it old or new? (is the stage None or some number?)
       remove request
       update cache TODO
  *)
-
-(* TODO: implement it! *)
