@@ -36,31 +36,29 @@ Definition server := name.      (* both IP and server name *)
 
 (* need this because there's no way to encode failure (no questions) in a packet *)
 (* TODO this type might need to change *)
+(*
 Inductive WrapperResponse : Type :=
 | Invalid : WrapperResponse
 | Question : id -> packet -> WrapperResponse (* id for a specific pending request *)
 | Answer : packet -> WrapperResponse
 | Failure : packet -> SOA -> WrapperResponse.
+*)
 
-(* from outside to server:
-| from client: question (no id? or have client generate id using method?)
-| from server: id * packet (referral via fields) 
-| from server: id * packet (answer via fields)
-| from server: id * packet (tagged failure) * SOA
+Definition FromOutside : Type := (id * packet * option SOA)%type.
+(* need this because packet is missing RCODE field that encodes success/kinds of failure *)
 
-from server to outside:
-| to server or client?: id * invalid
-| to server: id * packet (question)
-| to client: id * packet (answer)
-| to client: id * packet (tagged failure) * SOA
+Inductive ToOutside : Type :=
+| InvalidQuestion : id -> ToOutside
+| InvalidResponse : id -> ToOutside
+| InvalidPacket : id -> packet -> ToOutside
+| ServerQuestion : id -> packet -> ToOutside
+| ClientAnswer : id -> packet -> ToOutside
+| ClientFailure : id -> packet -> SOA -> ToOutside.
 
-for server to cache:
-| id * packet (referral) <-- not really cached but put in SLIST for a pending request
-| id * packet (answer)
-| id * packet (tagged failure) * SOA
-^ or maybe just the rows?
-
-will the server ever return a referral? no *)
+Inductive ToStore : Type := (* this type might be redundant *)
+| Referral : id -> packet -> ToStore (* only stored for a particular pending request *)
+| Answer : name -> packet -> ToStore
+| Failure : name -> packet -> SOA -> ToStore.
 
 (* Which section of a packet a certain answer (DNSRRecord) is in. *)
 Inductive PacketSection : Type :=
@@ -146,7 +144,7 @@ Invariants: (TODO)
 go to server "a.isi.edu" with IP 1.0.0.1 (and ask it the same question) -- RFC 1034 6.2.6
 we discard the original question "brl.mil" *)
 (* 6.3.1 *)
-Definition ReferralHeading :=
+Definition SLIST_ReferralHeading :=
   (* R- = referral domain's, S- = server domain's *)
          <sREQID :: nat,
           sREFERRALID :: nat,
@@ -165,6 +163,21 @@ Definition ReferralHeading :=
 
           sMATCHCOUNT :: nat, (* needed? *)
           sQUERYCOUNT :: nat
+         >%Heading.
+
+Definition ReferralHeading :=
+  (* R- = referral domain's, S- = server domain's *)
+         <sREFERRALDOMAIN :: name,
+          sRTYPE :: RRecordType,
+          sRCLASS :: RRecordClass,
+          sRTTL :: nat,
+          (* inline RDATA and additional record *)
+          sSERVERDOMAIN :: name,
+          sSTYPE :: RRecordType,
+          sSCLASS :: RRecordClass,
+          sSTTL :: nat,
+          sSIP :: name
+          (* IP in RDATA of additional record *)
          >%Heading.
 
 (* stores an answer (DNSRRecord) *)
@@ -207,6 +220,7 @@ Definition RequestHeading :=
          >%Heading.
 
 Definition ReferralRow := @Tuple ReferralHeading.
+Definition SLIST_ReferralRow := @Tuple SLIST_ReferralHeading.
 Definition AnswerRow := @Tuple AnswerHeading.
 Definition FailureRow := @Tuple FailureHeading.
 Definition RequestRow := @Tuple RequestHeading.
@@ -220,37 +234,45 @@ Inductive CacheResult :=
 (* TODO: hack to make DeleteResultForDomain check *)
 | Nope : CacheResult
 (* Nonempty lists *)
-| Ref : list AnswerRow -> CacheResult
+| Ref : list ReferralRow -> CacheResult
 | Ans : list AnswerRow -> CacheResult
 | Fail : option FailureRow -> CacheResult.
 
 Inductive CacheTable :=
+(* we need to cache referrals, but never in relation to a specific name 
+(for that request, it will always end in Answer or Failure) *)
 (* | CReferrals *)
 | CAnswers
 | CFailures.
 
 Definition DnsRecSchema :=
   Query Structure Schema
-        [ relation sCACHE_POINTERS has schema
-                   < sDOMAIN :: name,
-                     sCACHETABLE :: CacheTable
-                   > ;
+        [ relation sREQUESTS has
+                   schema
+                   RequestHeading
+
           relation sSLIST_ORDERS has schema
                    < sREQID :: id,
                      sORDER :: list (id * position) (* is a list of (id, pos) OK? *)
                    >;
           relation sSLIST has
                    schema
-                   ReferralHeading;
+                   SLIST_ReferralHeading;
+
+          relation sCACHE_POINTERS has schema
+                   < sDOMAIN :: name,
+                     sCACHETABLE :: CacheTable (* would like to have a variant type in the schema *)
+                   > ;
           relation sCACHE_ANSWERS has
                    schema
                    AnswerHeading;
+          relation sCACHE_REFERRALS has
+                   schema
+                   ReferralHeading;
           relation sCACHE_FAILURES has
                    schema
                    FailureHeading;
-          relation sREQUESTS has
-                   schema
-                   RequestHeading
+
         ]
           (* where (fun t t' => True) ] *)
         (* can i have an invariant that just works on one tuple?

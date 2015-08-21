@@ -27,7 +27,7 @@ Definition DnsRecSig : ADTSig :=
       Method "UpdateRequestStage" : rep x (id * Stage) -> rep x bool,
 
       (* cache methods *)
-      Method "InsertResultForDomain" : rep x (name * WrapperResponse) -> rep x bool,
+      Method "InsertResultForDomain" : rep x ToStore -> rep x bool,
       Method "DeleteResultForDomain" : rep x name -> rep x CacheResult,
                                        (* + update (= delete+insert), checkinvariant,
                                           and packaging a set of rows into a WrapperResponse7 *)
@@ -37,7 +37,8 @@ Definition DnsRecSig : ADTSig :=
       (* or, given the current time, decrement TTL? *)
 
       (* main method *)
-      Method "Process" : rep x (id * packet) -> rep x WrapperResponse
+      Method "Process" : rep x FromOutside -> rep x ToOutside
+                                                  (* needs to add/update requests, not the client *)
     }.
 
 Print ADTSig.
@@ -120,7 +121,7 @@ Definition list_join {A B : Type} f (l1 : list A) (l2 : list B)
 filter f (list_prod l1 l2).
 
 (* Set Printing All. *)
-
+Print FromOutside.
 Definition DnsSpec_Recursive : ADT DnsRecSig :=
   (* TODO move to definitions *)
   let Init := "Init" in
@@ -165,7 +166,6 @@ and associate it with the packet (solve the latter by letting it generate the id
           q <- Update c from r!sREQUESTS as c'
             making c'!sSTAGE = reqStage
             where (c!sID = reqId);
-            (* where False; *)
         let (updated, affected) := q in
         ret (updated, nonEmpty affected),
 
@@ -173,46 +173,44 @@ and associate it with the packet (solve the latter by letting it generate the id
 
         (* ----- CACHE *)
         (* assumes that someone has already checked that the domain is not in any of the caches *)
-       update InsertResultForDomain (r : rep, tup : name * WrapperResponse) : bool :=
-          let '(reqName, reqResult) := tup in
-            match reqResult with
-            | Answer pac => 
+       update InsertResultForDomain (r : rep, tup : ToStore) : bool :=
+          match tup with
+          | Answer reqName pac => 
 
-              (* monad iteration instead. TODO param over table *)
-              let fix InsertAll rowFunc tups :=
-                  match tups with
-                  (* this shouldn't happen since an answer must have at >= 1 answer record *)
-                  | nil => ret (r, false)
-                  | ptup :: ptups =>
-                    b <- Insert (rowFunc ptup) into r!sCACHE_ANSWERS;
-                  InsertAll rowFunc ptups
-                  end in 
+            (* monad iteration instead. TODO param over table *)
+            let fix InsertAll rowFunc tups :=
+                match tups with
+                (* this shouldn't happen since an answer must have at >= 1 answer record *)
+                | nil => ret (r, false)
+                | ptup :: ptups =>
+                  b <- Insert (rowFunc ptup) into r!sCACHE_ANSWERS;
+                InsertAll rowFunc ptups
+                end in 
 
-              let flattenWithRec p type rec :=
-                  let q := questions p in
-                  (reqName, type, aname rec, atype rec, aclass rec, ttl rec, rdata rec) in
-              let flattenPacket p type recs := List.map (fun rec => flattenWithRec p type rec) recs in
-              let tups p := flattenPacket p PAnswer (answers p)
-                                          ++ flattenPacket p PAuthority (authority p)
-                                          ++ flattenPacket p PAdditional (additional p) in
-              (* packet -> tuple with heading? tuple surgery notation -- write down example *)
-              (* do a pick TODO ^ v*)
-              (* all tuples such that (p fields ... answers fields...); insert tuples *)
-              _ <- Insert (Build_CachePointer reqName CAnswers) into r!sCACHE_POINTERS;
-            InsertAll Build_CacheAnswersRow (tups pac)
+            let flattenWithRec p type rec :=
+                let q := questions p in
+                (reqName, type, aname rec, atype rec, aclass rec, ttl rec, rdata rec) in
+            let flattenPacket p type recs := List.map (fun rec => flattenWithRec p type rec) recs in
+            let tups p := flattenPacket p PAnswer (answers p)
+                                        ++ flattenPacket p PAuthority (authority p)
+                                        ++ flattenPacket p PAdditional (additional p) in
+            (* packet -> tuple with heading? tuple surgery notation -- write down example *)
+            (* do a pick TODO ^ v*)
+            (* all tuples such that (p fields ... answers fields...); insert tuples *)
+            _ <- Insert (Build_CachePointer reqName CAnswers) into r!sCACHE_POINTERS;
+          InsertAll Build_CacheAnswersRow (tups pac)
 
-            | Failure pac soa =>
-              (* ignoring authority/answer/additional fields; using only the one SOA *)
-              let mkFailTup p soa := 
-                  (reqName, sourcehost soa, contact_email soa, 
-                   serial soa, refresh soa, retry soa, expire soa, minTTL soa) in
-              _ <- Insert (Build_CachePointer reqName CFailures) into r!sCACHE_POINTERS;
-            Insert (Build_CacheFailuresRow (mkFailTup pac soa)) into r!sCACHE_FAILURES
+          | Failure reqName pac soa =>
+            (* ignoring authority/answer/additional fields; using only the one SOA *)
+            let mkFailTup p soa := 
+                (reqName, sourcehost soa, contact_email soa, 
+                 serial soa, refresh soa, retry soa, expire soa, minTTL soa) in
+            _ <- Insert (Build_CachePointer reqName CFailures) into r!sCACHE_POINTERS;
+          Insert (Build_CacheFailuresRow (mkFailTup pac soa)) into r!sCACHE_FAILURES
 
-            (* TODO maybe shouldn't be part of the WrapperResponse type / should be in sep fn *)
-            | Invalid => ret (r, false)
-            | Question reqId pac => ret (r, false)
-            end,
+          (* TODO maybe shouldn't be part of the WrapperResponse type / should be in sep fn *)
+          | Referral reqId pac => ret (r, false)
+          end,
 
             (* for the pending request reqId, append all referral rows to SLIST *)
             (* need to generate ids, update order, check match count, TTL, etc *)
@@ -274,24 +272,17 @@ and associate it with the packet (solve the latter by letting it generate the id
           | CFailures =>
               failure_res <- Delete row from r!sCACHE_FAILURES where row!sDOMAIN = domain;
             let (r, fail_deleted) := failure_res in
-            ret (r, Fail (listToOption fail_deleted))
+            ret (r, Fail (listToOption fail_deleted))                
           end
         end,
 
-        (* the real update function = delete everything for the name, then insert the result *)
-
-        (* given a full name ["scholar", "google", "com"], return option IP 
-           for the longest suffix of the URL, if an IP exists, return that. 
-           otherwise return none *)
         query GetServerForLongestSuffix (r : rep, reqName : name) : CacheResult :=
           let getLongestSuffixes name :=
               (* TODO: filter by packetsection = answer? are authority and additional useful? *)
-            suffixes <- For (ans in r!sCACHE_ANSWERS)
-                Where (IsPrefix ans!sDOMAIN name) 
-                (* TODO: use sNAME instead? was IsSuffix removed? *)
-                (* \/ IsPrefix a!sNAME reqName *)
+            suffixes <- For (ans in r!sCACHE_REFERRALS)
+                Where (IsPrefix ans!sREFERRALDOMAIN name) 
                 Return ans;
-            let domainLength (tup : AnswerRow) := List.length tup!sDOMAIN in (* sNAME? *)
+            let domainLength (tup : ReferralRow) := List.length tup!sREFERRALDOMAIN in
             [[suffix in suffixes | upperbound domainLength suffixes suffix]] in
 
           (* Check if we have cached results for reqName *)
@@ -300,7 +291,7 @@ and associate it with the packet (solve the latter by letting it generate the id
                    Return (pointer!sCACHETABLE);
         match results with
         | nil =>
-          (* name has nothing cached for it, but we might have results for subdomain *)
+          (* name has nothing cached for it, but we might have referrals for subdomains *)
           longestSuffixes <- getLongestSuffixes reqName;
           match longestSuffixes with
           | _ :: _ => ret (Ref longestSuffixes)
@@ -311,12 +302,14 @@ and associate it with the packet (solve the latter by letting it generate the id
           
         | table :: _ => 
           match table with
+                              
           | CFailures => 
             (* This domain [s.g.com] failed. If we have any results for the longest prefix, return them
                and label them as referrals.
                (e.g. an answer for [g.com]) Otherwise, return failure. *)
             longestSuffixes <- getLongestSuffixes reqName;
             match longestSuffixes with
+            | _ :: _ => ret (Ref longestSuffixes)
             | nil =>
               (* There should be only one row in Failures, containing the SOA record *)
               nameRes <- For (f in r!sCACHE_FAILURES)
@@ -327,7 +320,6 @@ and associate it with the packet (solve the latter by letting it generate the id
             (* There may be multiple rows in Answers, containing various answer/authority/addl *)
             (* This returns all of them and leaves it to Process to hierarchize/query them *)
             (* (they should all be for the same domain though; the longest suffix is unique *)
-            | _ :: _ => ret (Ref longestSuffixes)
             end
 
           | CAnswers => 
@@ -373,128 +365,92 @@ and associate it with the packet (solve the latter by letting it generate the id
           (* ----- MAIN METHOD *)
 
           (* TODO need to inline other functions; stubs for now *)
-          update Process (r : rep, tup : id * packet) : WrapperResponse :=
-          let (reqId, pac) := tup in
-          let reqName := qname (questions pac) in
+        update Process (r : rep, tup : FromOutside) : ToOutside :=
+          let SBELT := @nil ReferralRow in (* TODO, add root *)
+          (* TODO inline; this is a stub *)
+          let GetServerForLongestSuffix (reqName : name) : Comp CacheResult := ret Nope in
           let isQuestion p := 
               match answers p, authority p, additional p with
-              | nil, nil, nil => true (* is this right? *)
+              | nil, nil, nil => true
               | _, _, _ => false
               end in
-          let SBELT := @nil ReferralRow in (* TODO, add root *)
+          let isAnswer p := 
+              match answers p with
+              | nil => false
+              | _ :: _ => true
+              end in
+          let isReferral p :=
+              match answers p, authority p, additional p with
+              | nil, _ :: _, _ :: _ => true
+              | _, _, _ => false
+              end
+          in
+
+          let '(reqId, pac, failure) := tup in
+          let reqName := qname (questions pac) in
           
-          reqCache <- For (req in r!sREQUESTS)
+          (* Is the request pending? (Are we currently working on it?) *)
+          pendingReq <- For (req in r!sREQUESTS)
                    Where (reqId = req!sID)
                    Return req;
-          (* there should be exactly one *)
-          match hd_error reqCache with
+          (* There should be either one or none *)
+          match hd_error pendingReq with
           | None => 
-            (* Not in cache *)
+            (* Not pending *)
             if negb (isQuestion pac) then (* is a referral, answer, or failure *)
-              ret (r, Invalid)
+              ret (r, InvalidResponse reqId)
             else
-              ret (r, Answer pac)
-          | Some cachedReq => 
-            (* In cache *)
+              (* But have we seen it before? *)
+              suffixResults <- GetServerForLongestSuffix reqName;
+              match suffixResults with
+                (* Yes we have seen it *)
+                (* TODO: these are unfinished *)
+                | Fail failure =>
+                  (* Put the failure in a packet and SOA, and return it *)
+                  ret (r, ClientAnswer reqId pac)
+                | Ans answers => 
+                  (* Choose any (?) answer, put it in a packet, and return it *)
+                  ret (r, ClientAnswer reqId pac)
+                | Ref referrals =>
+                  (* Initialize the SLIST with best referrals, then send a question w/ the first *)
+                  ret (r, ServerQuestion reqId pac)
+                (* No we haven't seen it *)
+                | Nope => 
+                  (* Add request to pending *)
+                  (* Initialize the SLIST with SBELT, pick one and send a question w/ the first *)
+                  ret (r, ServerQuestion reqId pac)  
+              end                
+          | Some pendingReq' => 
+            (* Pending *)
             if isQuestion pac then
-              ret (r, Invalid)
+              ret (r, InvalidQuestion reqId)
             else
-              ret (r, Answer pac)
+              (* Figure out if the packet is an answer, failure, or referral *)
+              (* doesn't thoroughly check for malformed packets, e.g. contains answer and failure *)
+              (* TODO: cache these results (need to get the name first) *)
+              (* TODO: deleteresult should handle both of these (given a name) *)
+              (* remove request from pending *)
+              (* clear the request's SLIST rows and order *)
+              if isAnswer pac then
+                (* Done, forward it on *)
+                ret (r, ClientAnswer reqId pac)
+              else match failure with
+                   (* Failure. Done, forward it on *)
+                   | Some SOA_Record => ret (r, ClientFailure reqId pac SOA_Record)
+                   | None => ret (r, InvalidPacket reqId pac)
+                   end
+              else if isReferral pac then
+                (* TODO: unfinished *)
+                (* For each valid referral, pre-pend it to the SLIST, then send question w/ the first *)
+                (* Update request's pending status *)
+                ret (r, ServerQuestion reqId pac)
+                     
           end
           
         (* wrapper's responsibility to call addrequest first *)
         (* TODO ignoring sTYPE and sCLASS for now *)
-    (* query Process (tup : id * packet) : WrapperResponse := *)
-    (*         (* TODO query = pure fn? change to update / use explicit rep *) *)
-    (*       let (reqId, p) := tup in *)
-    (*       let reqName := qname (questions p) in *)
-    (*       (* Figure out if it's a new request or a response by looking for its stage. *) *)
-    (*       reqStage <- For (req in r!sREQUESTS) *)
-    (*         Where (reqId = req!sID) *)
-    (*         Return req!sSTAGE; *)
-    (*     (* should be using `unique` here, TODO *) *)
-    (*     match hd_error reqStage with *)
-    (*     | None => ret (Failure p) *)
-    (*     | Some reqStage =>  *)
-    (*       (match reqStage with *)
-    (*       | None =>  *)
-    (*         (* A new request. Send a Question with the root server name and the unchanged packet *) *)
-    (*         (* the question in the packet should never change *) *)
-    (*         (* TODO look in cache. needs to look for each prefix. check if cache says answer/ref/fail *) *)
-    (*         let rootName := ["."] in *)
-    (*         ret (Question rootName p) *)
-    (*       | Some stageNum =>  *)
-    (*         (* A response to an existing request. Figure out if it's an answer, a referral,  *)
-    (*            or a failure. TODO split out this part; reused with cache stuff *) *)
-    (*         (* If a packet with answers has referrals, they are ignored *) *)
-    (*         (match answers p with *)
-    (*         | pAnswer :: answers' =>  *)
-    (*           (* Done! Forward on the packet *) *)
-    (*           (* TODO look in cache and update cache; check if cache says answer/ref/fail *) *)
-    (*           b <- Delete req from r!sREQUESTS where req!sID = reqId; *)
-    (*           ret (Answer p)  *)
-    (*         | nil => *)
-    (*           (* Figure out if it's a referral or a failure *) *)
-    (*           (match authority p with *)
-    (*            | nil =>  *)
-    (*              (* Failure. TODO look in cache and update cache *) *)
-    (*              b <- Delete req from r!sREQUESTS where req!sID = reqId; *)
-    (*              ret (Failure p) *)
-    (*            | pAuthority :: authorities =>  *)
-    (*              (* Referral. *) *)
-    (*              (* TODO authority should be the name, additional should be the real IP *) *)
-    (*              (* TODO multiple authorities should be impossible; pick the first; could search all*) *)
-    (*              (* TODO look in cache and update cache; check if cache says answer/ref/fail *) *)
-    (*              (* TODO can't call this function so I'm inlining it *) *)
-    (*              (* b <- UpdateRequestStage (reqId, reqStage + 1); *) *)
-    (*              b <- Update req from r!sREQUESTS *)
-    (*                making sSTAGE |= (Some (stageNum + 1)) *)
-    (*              where (req!sID = reqId); *)
-    (*              (* TODO: discards the rest of the info in answer record; use? or have root info too *) *)
-    (*              ret (Question (aname pAuthority) p) *)
-    (*            end) *)
-    (*         end) *)
-    (*       end) *)
-    (*     end *)
-              }.
+        (* TODO update stage? *)
+   }.
 
 (* Set Printing All. *)
 Print DnsSpec_Recursive.
-
-(* wrapper: makes id
-adds the request with name and id; we indicate its stage is None, so it hasn't started yet
-
-once we have the id and packet, we check:
-
-is it old or new? (is the stage None or some number?)
-  (the question in the packet should match the name corresponding to the IP)
-(pretending we have no cache for now)
-
-- a new request: 
-  send a Question with the root server name and the packet (unchanged?)
-  update stage to 0 (stage 2 = we have just sent a question about "google" in scholar.google.com. 0 corresponds to the root server)
-  (TODO: since we have no IPs for now, just use the name ".")
-
-- an old request: 
-  it might be an answer, or it might be a referral
-  if the answers section contains answers, just return all of them (i.e. forward the packet on)
-    remove request (success)
-    update cache with answers TODO
-
-  if the answer section is empty:
-    // TODO // : should fix other server to use authority AND additional
-
-    if the authority section contains >1 authority:
-      TODO: pick any one authority, do the case below. this might be impossible though according to RFC
-      (or it could search all of them)
-
-    if the authority section contains 1 authority: 
-      send Question with the name of that server and the unchanged packet
-      update request stage to stage + 1
-      update cache TODO
-       
-    if the authority section contains 0 authorities:
-      it's not an answer, so this failed. forward packet on (as failure)
-      remove request
-      update cache TODO
- *)

@@ -121,6 +121,7 @@ Definition default_minimum_TTL := 3600.
       answers : list answer;
       authority : list answer;
       additional : list answer }.
+  (* add SOA TODO *)
 
 Definition test_vec := Bvect_true 16.
 Definition test_question :=
@@ -134,6 +135,13 @@ Definition test_packet :=
      answers := nil;
      authority := nil;
      additional := nil |}.
+(* Definition test_SOA := *)
+(*   {| id := ; *)
+(*      flags := test_vec; *)
+(*      questions := test_question; *)
+(*      answers := nil; *)
+(*      authority := nil; *)
+(*      additional := nil |}. *)
 
 Definition id' p := id p.       (* to get around shadowing *)
 
