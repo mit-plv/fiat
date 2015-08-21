@@ -1953,51 +1953,24 @@ Ltac rewrite_drill :=
 
 Ltac implement_delete CreateTerm EarlyIndex LastIndex
      makeClause_dep EarlyIndex_dep LastIndex_dep :=
-  repeat first
-         [simplify with monad laws; simpl
-         | setoid_rewrite refine_If_Then_Else_Bind
-         | implement_Query CreateTerm EarlyIndex LastIndex
-                           makeClause_dep EarlyIndex_dep LastIndex_dep
-         | implement_QSDeletedTuples ltac:(find_simple_search_term
-                                             CreateTerm EarlyIndex LastIndex)
-         | implement_EnsembleDelete_AbsR ltac:(find_simple_search_term
-                                                 CreateTerm EarlyIndex LastIndex)
-         |  setoid_rewrite refine_Pick_DelegateToBag_AbsR; [ | solve [ eauto ] .. ] ].
+  repeat (cbv beta; simpl;
+          first
+            [simplify with monad laws; simpl
+            | setoid_rewrite refine_If_Then_Else_Bind
+            | implement_Query CreateTerm EarlyIndex LastIndex
+                              makeClause_dep EarlyIndex_dep LastIndex_dep
+            | implement_QSDeletedTuples ltac:(find_simple_search_term
+                                                CreateTerm EarlyIndex LastIndex)
+            | implement_EnsembleDelete_AbsR ltac:(find_simple_search_term
+                                                    CreateTerm EarlyIndex LastIndex)
+            |  setoid_rewrite refine_Pick_DelegateToBag_AbsR; [ | solve [ eauto ] .. ] ]).
 
-(*Ltac deletion CreateTerm EarlyIndex LastIndex
+Ltac deletion CreateTerm EarlyIndex LastIndex
      makeClause_dep EarlyIndex_dep LastIndex_dep :=
   doAny ltac:(implement_delete
                 CreateTerm EarlyIndex LastIndex
                 makeClause_dep EarlyIndex_dep LastIndex_dep)
-               rewrite_drill ltac:(finish honing). *)
-
-Ltac deletion CreateTerm EarlyIndex LastIndex
-     makeClause_dep EarlyIndex_dep LastIndex_dep :=
-  try simplify with monad laws;
-  etransitivity;
-  [ repeat match goal with
-           | |- context[Query_For _] =>
-             implement_Query CreateTerm EarlyIndex LastIndex
-                             makeClause_dep EarlyIndex_dep LastIndex_dep;
-               eapply refine_under_bind; intros
-           end;
-    repeat setoid_rewrite refine_if_If at 1;
-    repeat (etransitivity; [eapply refine_If_Then_Else_Bind | ]);
-    repeat eapply refine_If_Then_Else;
-    try simplify with monad laws; cbv beta; simpl;
-    (
-      (implement_QSDeletedTuples ltac:(find_simple_search_term
-                                         CreateTerm EarlyIndex LastIndex);
-       try simplify with monad laws;
-       cbv beta; simpl;
-       implement_EnsembleDelete_AbsR ltac:(find_simple_search_term
-                                             CreateTerm EarlyIndex LastIndex);
-       simplify with monad laws;
-       reflexivity) ||
-
-                    (try simplify with monad laws;
-                     simpl; commit; reflexivity))
-  | cbv beta; simpl; try simplify with monad laws; cleanup_Count; finish honing ].
+               rewrite_drill ltac:(finish honing).
 
 Ltac implement_insert CreateTerm EarlyIndex LastIndex
      makeClause_dep EarlyIndex_dep LastIndex_dep :=

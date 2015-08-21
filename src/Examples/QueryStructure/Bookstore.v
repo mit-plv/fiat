@@ -98,37 +98,8 @@ Definition BookStoreSpec : ADT BookStoreSig :=
 Theorem SharpenedBookStore :
   FullySharpened BookStoreSpec.
 Proof.
-  
-  start sharpening ADT.
-  start_honing_QueryStructure'.
 
-  (*GenerateIndexesForAll ltac:(fun attrlist =>
-                                let attrlist' := eval compute in (PickIndexes (CountAttributes' attrlist)) in make_simple_indexes attrlist'
-                          ltac:(LastCombineCase6 BuildEarlyEqualityIndex)
-                                 ltac:(LastCombineCase5 BuildLastEqualityIndex)
-                             ).
-  Focus 3.  
-  implement_delete
-    EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
-    EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
-  rewrite_drill.
-  implement_delete
-    EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
-    EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
-  finish honing.
-  implement_delete
-    EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
-    EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep. *)
- 
-  finish_planning' ltac:(fun makeIndex =>
-                           GenerateIndexesForAll ltac:(fun attrlist =>
-                                                         let attrlist' := eval compute in (PickIndexes (CountAttributes' attrlist)) in makeIndex attrlist'))
-                          ltac:(LastCombineCase6 BuildEarlyEqualityIndex)
-                                 ltac:(LastCombineCase5 BuildLastEqualityIndex)
-                                        EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
-                                        EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep
-                                        BuildEarlyEqualityBag BuildLastEqualityBag.
-  
+  master_plan EqIndexTactics.
 
   (* Uncomment this to see the mostly sharpened implementation *)
   (* partial_master_plan EqIndexTactics. *)
