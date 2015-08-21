@@ -443,9 +443,9 @@ Instance ExpressionAttributeCounterIfThenElse {A}
          {qsSchema : RawQueryStructureSchema}
          (ci : bool)
          (ct ce : Comp A)
-         OccCountT (*OccCountE *)
+         OccCountT OccCountE
          (ExpCountT : @ExpressionAttributeCounter _ qsSchema ct OccCountT)
-         (*ExpCountE : @ExpressionAttributeCounter _ qsSchema ce OccCountE*)
+         (ExpCountE : @ExpressionAttributeCounter _ qsSchema ce OccCountE)
   : @ExpressionAttributeCounter _ qsSchema
                                 (If_Then_Else ci ct ce)
                                 (MergeOccurences OccCountT OccCountE) | 0 := { }.
@@ -571,6 +571,19 @@ Ltac make_simple_indexes attrlist BuildEarlyIndex BuildLastIndex:=
                   (Vector.map rawSchemaHeading (qschemaSchemas qsSchema)))
                ltac:(fun e => let H := fresh in
                               assert (@ExpressionAttributeCounter _ qsSchema (@BuildADT _ _ _ consSigs methSigs consDefs methDefs) e) as H by eauto 200 with typeclass_instances;
+                     clear H;
+                     k e
+                  )
+  end.
+
+  Ltac GenerateIndexesForOne idx k :=
+    match goal with
+      |- context [ @BuildADT (UnConstrQueryStructure ?qsSchema) _ _ ?consSigs ?methSigs ?consDefs ?methDefs ] =>
+      let meth := eval simpl in
+      (callMeth (@BuildADT (UnConstrQueryStructure qsSchema) _ _ consSigs methSigs consDefs methDefs) idx) in  makeEvar (OccurencesCountT
+                  (Vector.map rawSchemaHeading (qschemaSchemas qsSchema)))
+               ltac:(fun e => let H := fresh in
+                              assert (forall r d, @ExpressionAttributeCounter _ qsSchema (meth r d) e) as H by eauto 200 with typeclass_instances;
                      clear H;
                      k e
                   )
