@@ -69,9 +69,16 @@ EXAMPLES_UNMADE_VO := \
 	src/Examples/QueryStructure/PhotoalbumUnOpt.vo \
 	src/Examples/QueryStructure/Github.vo \
 	src/Examples/QueryStructure/Messages.vo \
-	src/Examples/QueryStructure/ClassifierUnOpt.vo \
 	src/Examples/QueryStructure/MessagesUnOptimized.vo \
-	src/Examples/QueryStructure/CodeLookup.vo
+	src/Examples/QueryStructure/Classifier.vo \
+	src/Examples/QueryStructure/ClassifierUnOpt.vo \
+	src/Examples/QueryStructure/CodeLookup.vo \
+	src/Examples/QueryStructure/PhotoalbumUnOptimizedExtraction.vo \
+	src/Examples/QueryStructure/PhotoalbumExtraction.vo \
+	src/Examples/QueryStructure/MessagesExtraction.vo \
+	src/Examples/QueryStructure/ClassifierUnOptExtraction.vo \
+	src/Examples/QueryStructure/ClassifierExtraction.vo
+
 
 WATER_TANK_EXTRACT_VO := src/Examples/Ics/WaterTankExtract.vo
 WATER_TANK_EXTRACT_ML := src/Examples/Ics/WaterTank.ml
@@ -101,7 +108,7 @@ compiler: $(COMPILER_VO)
 facade-test: $(FACADE_TEST_VO)
 ics: $(ICS_VO)
 fiat4monitors: $(FIAT4MONITORS_VO)
-examples: $(EXAMPLES_VO)
+examples:  $(EXAMPLES_VO)
 
 install-fiat: T = $(FIAT_VO)
 install-fiat-core: T = $(FIAT_CORE_VO)
