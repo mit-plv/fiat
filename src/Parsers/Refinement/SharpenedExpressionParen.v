@@ -21,6 +21,7 @@ Section IndexedImpl.
   : FullySharpened (string_spec paren_expr_grammar).
   Proof.
 
+    start sharpening ADT.
     start honing parser using indexed representation.
 
     hone method "splits".
@@ -29,9 +30,7 @@ Section IndexedImpl.
       finish honing parser method.
     }
 
-    FullySharpenEachMethodWithoutDelegation.
-    extract delegate-free implementation.
-    simpl; higher_order_reflexivityT.
+    Time finish_SharpeningADT_WithoutDelegation.
   Defined.
 
   Lemma ComputationalSplitter
@@ -50,9 +49,10 @@ Require Import Fiat.Parsers.ParserFromParserADT.
 Require Import Fiat.Parsers.ExtrOcamlParsers.
 Import Fiat.Parsers.ExtrOcamlParsers.HideProofs.
 
+(* Ben : Taking too long to run; commenting so I can debug build.
 Time Definition paren_expr_parser (str : String.string) : bool
   := Eval simpl in has_parse (parser ComputationalSplitter) str.
 
 Print paren_expr_parser.
 
-Recursive Extraction paren_expr_parser.
+Recursive Extraction paren_expr_parser. *)

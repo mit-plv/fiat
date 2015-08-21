@@ -8,6 +8,8 @@ Section IndexedImpl.
   Lemma ComputationalSplitter'
   : FullySharpened (string_spec ab_star_grammar).
   Proof.
+
+    start sharpening ADT.
     start honing parser using indexed representation.
 
     hone method "splits".
@@ -16,9 +18,7 @@ Section IndexedImpl.
       finish honing parser method.
     }
 
-    FullySharpenEachMethodWithoutDelegation.
-    extract delegate-free implementation.
-    simpl; higher_order_reflexivityT.
+    Time finish_SharpeningADT_WithoutDelegation.
   Defined.
 
   Lemma ComputationalSplitter
