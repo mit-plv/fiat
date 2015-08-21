@@ -270,116 +270,6 @@ Global Instance GetAttributeRawTermCounter {qsSchema}
         | _ -> @RawTuple (Vector.nth _ ?Ridx) =>
           k Ridx Aidx
         end
-<<<<<<< HEAD
-  end.
-
-Ltac ClauseAttributes qsSchema WhereClause OtherClauses k :=
-  match WhereClause with
-  | fun tups => @?C1 tups /\ @?C2 tups =>
-    ClauseAttributes qsSchema C1 OtherClauses
-                     ltac:(fun attrs1 =>
-                             ClauseAttributes qsSchema C2 OtherClauses
-                                              ltac:(fun attrs2 =>
-                                                      k (MergeOccurences attrs2 attrs1)))
-  | fun tups => @?C1 tups = @?C2 tups =>
-    TermAttributes C1 ltac:(fun Ridx1 attr1 =>
-                              TermAttributes C2 ltac:(fun Ridx2 attr2 =>
-                                                        k (@InsertOccurenceOfAny _ qsSchema Ridx1 (EqualityIndex, attr1) (@InsertOccurenceOfAny _ qsSchema Ridx2 (EqualityIndex, attr2) (InitOccurences qsSchema)))))
-  | fun tups => @?C1 tups = _ =>
-    TermAttributes C1 ltac:(fun Ridx attr =>
-                              k (@InsertOccurenceOfAny _ qsSchema Ridx (EqualityIndex, attr) (InitOccurences _)))
-  | fun tups => _ = @?C1 tups =>
-    TermAttributes C1 ltac:(fun Ridx attr =>
-                              k (@InsertOccurenceOfAny _ qsSchema Ridx (EqualityIndex, attr) (InitOccurences _)))
-  | _ => OtherClauses qsSchema WhereClause k
-  | _ => k (InitOccurences qsSchema)
-  end.
-
-Ltac QueryAttributes qsSchema QueryBody OtherClauses k :=
-  match QueryBody with
-  | @UnConstrQuery_In _ _ _ ?Ridx ?QueryBody' => (* Initial "Naked" Case *)
-    let Ridx' := eval compute in Ridx in
-        let QueryBody'' := eval cbv beta in (fun tup : @RawTuple (Vector.nth qsSchema Ridx') => QueryBody' tup) in
-            QueryAttributes qsSchema QueryBody'' OtherClauses k  (* Simply recurse under binder *)
-
-  | fun tups : ?A =>
-      @UnConstrQuery_In _ _ _ ?Ridx
-                        (@?f tups) => (* Already Under binder *)
-    let Ridx' := eval compute in Ridx in
-        let join := eval cbv beta in
-        (fun joinedtups : prod A (@RawTuple (Vector.nth qsSchema Ridx')) =>
-           f (fst joinedtups) (snd joinedtups)) in
-            QueryAttributes qsSchema join OtherClauses k
-  | fun tups => Where (@?P tups) (@?QueryBody' tups) =>
-    ClauseAttributes qsSchema P OtherClauses
-                     ltac:(fun attrs =>
-                             QueryAttributes qsSchema QueryBody' OtherClauses ltac:(fun attrs' => k (MergeOccurences attrs attrs')))
-  | _ => k (InitOccurences qsSchema)
-  end.
-
-Ltac MethodAttributes meth qsSchema OtherClauses l :=
-  hone method meth;
-  [ match goal with
-      |- context[For ?Q] =>
-      QueryAttributes qsSchema Q OtherClauses
-                      ltac:(fun attrs =>
-                              let l' := eval simpl in attrs in
-                                  unify l l')
-    | _ => unify l (InitOccurences qsSchema )
-    end; finish honing | ].
-
-Ltac MethodsAttributes' meths qsSchema OtherClauses l :=
-  match meths with
-  | Vector.cons _ ?meth _ ?meths' =>
-    makeEvar (OccurencesCountT qsSchema)
-             ltac:(fun l1 =>
-                     makeEvar (OccurencesCountT qsSchema)
-                              ltac:(fun l2 =>
-                                      unify l (MergeOccurences l1 l2);
-                                    MethodAttributes meth qsSchema  OtherClauses l1;
-                                    MethodsAttributes' meths' qsSchema  OtherClauses l2))
-  | Vector.nil _ => unify l (InitOccurences qsSchema)
-  end.
-
-Ltac GenerateIndexesFor meths OtherClauses k :=
-  match goal with
-    |- FullySharpenedUnderDelegates
-         (@BuildADT (UnConstrQueryStructure ?qsSchema) _ _ _ _ _ _) _ =>
-    let rels := eval simpl in (Vector.map rawSchemaHeading (qschemaSchemas qsSchema)) in
-        makeEvar (OccurencesCountT rels)
-                 ltac:(fun l => MethodsAttributes' meths rels OtherClauses l;
-                       let l' := eval compute in (PickIndexes (CountAttributes' l)) in k l')
-  end.
-
-Ltac GenerateIndexesForAll OtherClauses k :=
-  match goal with
-    |- FullySharpenedUnderDelegates
-         (@BuildADT (UnConstrQueryStructure ?qsSchema) _ _ _ ?methSigs _ _) _ =>
-    let meths := eval compute in (Vector.map methID methSigs) in
-        GenerateIndexesFor meths OtherClauses k
-  end.
-
-Tactic Notation "make" "simple" "indexes" "using" constr(attrlist) tactic(BuildEarlyIndex) tactic(BuildLastIndex):=
-  match goal with
-  | [ |- FullySharpenedUnderDelegates (@BuildADT (UnConstrQueryStructure ?sch) _ _ _ _ _ _ ) _ ] =>
-    let sch' := eval simpl in (qschemaSchemas sch) in
-        makeIndex' sch' attrlist
-                   BuildEarlyIndex BuildLastIndex
-                   ltac:(fun l =>
-                           pose_string_hyps; pose_heading_hyps;
-                         let index := fresh "Index" in
-                         pose l as index;
-                         simpl in index;
-                         pose_string_hyps_in index; pose_heading_hyps_in index;
-                         pose_search_term_in index;
-                         pose_SearchUpdateTerms_in index;
-                         hone representation using (@DelegateToBag_AbsR sch index))
-  end.
-
-Ltac make_simple_indexes attrlist BuildEarlyIndex BuildLastIndex:=
-  match goal with
-  | [ |- FullySharpenedUnderDelegates (@BuildADT (UnConstrQueryStructure ?sch) _ _ _ _ _ _ ) _ ] =>
-=======
   end. *)
 
 Class ExpressionAttributeCounter
@@ -660,7 +550,6 @@ Instance ExpressionAttributeCounter_Not
 Ltac make_simple_indexes attrlist BuildEarlyIndex BuildLastIndex:=
   match goal with
   | [ |- Sharpened (@BuildADT (UnConstrQueryStructure ?sch) _ _ _ _ _ _ ) ] =>
->>>>>>> NewUpdateNotation
     let sch' := eval simpl in (qschemaSchemas sch) in
         makeIndex' sch' attrlist
                    BuildEarlyIndex BuildLastIndex

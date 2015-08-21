@@ -65,10 +65,7 @@ Definition BookStoreSig : ADTSig :=
     }.
 
 (* Now we write what the methods should actually do. *)
-<<<<<<< HEAD
-=======
 
->>>>>>> NewUpdateNotation
 Definition BookStoreSpec : ADT BookStoreSig :=
   Eval simpl in
     QueryADTRep BookStoreSchema {
@@ -98,60 +95,41 @@ Definition BookStoreSpec : ADT BookStoreSig :=
                  Return ())
 }.
 
-
 Theorem SharpenedBookStore :
   FullySharpened BookStoreSpec.
 Proof.
   
-  start_honing_QueryStructure.
+  start sharpening ADT.
+  start_honing_QueryStructure'.
 
-<<<<<<< HEAD
-=======
-  GenerateIndexesForAll
-    ltac:(fun attrlist => make_simple_indexes attrlist ltac:(LastCombineCase6 BuildEarlyEqualityIndex)
-                                                         ltac:(LastCombineCase5 BuildLastEqualityIndex)).
+  (*GenerateIndexesForAll ltac:(fun attrlist =>
+                                let attrlist' := eval compute in (PickIndexes (CountAttributes' attrlist)) in make_simple_indexes attrlist'
+                          ltac:(LastCombineCase6 BuildEarlyEqualityIndex)
+                                 ltac:(LastCombineCase5 BuildLastEqualityIndex)
+                             ).
+  Focus 3.  
+  implement_delete
+    EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+    EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
+  rewrite_drill.
+  implement_delete
+    EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+    EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
+  finish honing.
+  implement_delete
+    EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+    EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep. *)
+ 
+  finish_planning' ltac:(fun makeIndex =>
+                           GenerateIndexesForAll ltac:(fun attrlist =>
+                                                         let attrlist' := eval compute in (PickIndexes (CountAttributes' attrlist)) in makeIndex attrlist'))
+                          ltac:(LastCombineCase6 BuildEarlyEqualityIndex)
+                                 ltac:(LastCombineCase5 BuildLastEqualityIndex)
+                                        EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+                                        EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep
+                                        BuildEarlyEqualityBag BuildLastEqualityBag.
+  
 
-    
-Ltac master_plan' matchIndex
-     BuildEarlyIndex BuildLastIndex
-     IndexUse createEarlyTerm createLastTerm
-     IndexUse_dep createEarlyTerm_dep createLastTerm_dep
-     BuildEarlyBag BuildLastBag :=
-  (* Implement constraints as queries. *)
-  start honing QueryStructure;
-  (* Automatically select indexes + data structure. *)
-  [GenerateIndexesForAll
-     matchIndex
-     ltac:(fun attrlist => make_simple_indexes attrlist BuildEarlyIndex BuildLastIndex;
-           match goal with
-           | |- Sharpened _ => idtac (* Do nothing to the next Sharpened ADT goal. *)
-           | |- _ => (* Otherwise implement each method using the indexed data structure *)
-             plan IndexUse createEarlyTerm createLastTerm
-                  IndexUse_dep createEarlyTerm_dep createLastTerm_dep
-           end;
-           pose_headings_all;
-           match goal with
-           | |- appcontext[@BuildADT (IndexedQueryStructure ?Schema ?Indexes)] =>
-             FullySharpenQueryStructure Schema Indexes
-           end
-          )
-  | simpl; pose_string_ids; pose_headings_all;
-    pose_search_term;  pose_SearchUpdateTerms;
-
-    BuildQSIndexedBags' BuildEarlyBag BuildLastBag
-  | cbv zeta; pose_string_ids; pose_headings_all;
-    pose_search_term;  pose_SearchUpdateTerms;
-    simpl Sharpened_Implementation;
-    unfold
-      Update_Build_IndexedQueryStructure_Impl_cRep,
-    Join_Comp_Lists',
-    GetIndexedQueryStructureRelation,
-    GetAttributeRaw; simpl
-  ].
-
-Ltac master_plan IndexTactics := IndexTactics master_plan'.
-
->>>>>>> NewUpdateNotation
   (* Uncomment this to see the mostly sharpened implementation *)
   (* partial_master_plan EqIndexTactics. *)
 

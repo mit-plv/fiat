@@ -74,23 +74,6 @@ Definition MostlySharpened {Sig} spec :=
   {adt : _ & @FullySharpenedUnderDelegates Sig spec adt}.
 
 Lemma FullySharpened_Start
-<<<<<<< HEAD
-: forall {Sig} (spec : ADT Sig) adt,
-    refineADT spec adt
-    -> FullySharpened adt
-    -> FullySharpened spec.
-Proof.
-  intros.
-  exists (projT1 X0).
-  abstract (eapply transitivityT; [eauto | apply (projT2 X0)]).
-Defined.
-
-Lemma FullySharpened_Finish
-: forall {Sig} (spec : ADT Sig) adt adt'
-         (cadt : cADT Sig),
-    refineADT spec adt'
-    -> (@FullySharpenedUnderDelegates _ adt' adt)
-=======
 : forall {Sig} (spec : ADT Sig) cadt,
     refineADT spec (LiftcADT cadt)
     -> FullySharpened spec.
@@ -102,8 +85,7 @@ Lemma FullySharpened_Finish
 : forall {Sig} (spec : ADT Sig) adt
          (cadt : ComputationalADT.cADT Sig),
         @FullySharpenedUnderDelegates _ spec adt
->>>>>>> NewUpdateNotation
-    -> forall (DelegateReps : Fin.t (Sharpened_DelegateIDs adt) -> Type)
+        -> forall (DelegateReps : Fin.t (Sharpened_DelegateIDs adt) -> Type)
               (DelegateImpls :
                  forall idx,
                    ComputationalADT.pcADT (Sharpened_DelegateSigs adt idx) (DelegateReps idx))
@@ -117,26 +99,6 @@ Lemma FullySharpened_Finish
          -> refineADT spec (ComputationalADT.LiftcADT cadt).
 Proof.
   intros.
-<<<<<<< HEAD
-  exists cadt.
-  abstract (eapply transitivityT;
-            [apply X | eapply transitivityT; eauto ]).
-Defined.
-
-Lemma MostlySharpened_Start
-  : forall {Sig} (spec : ADT Sig) adt adt',
-    refineADT spec adt'
-    -> (@FullySharpenedUnderDelegates _ adt' adt)
-    -> MostlySharpened spec.
-Proof.
-  intros.
-  exists adt.
-  econstructor;
-    [intro; eapply refineConstructor_trans;
-     [ eapply X | eapply (X0 _ DelegateImpls ValidImpls) ]
-    | intros; eapply refineMethod_trans;
-      [eapply X | eapply X0] ].
-=======
   eapply transitivityT; eauto.
 Qed.
 
@@ -146,7 +108,6 @@ Lemma MostlySharpened_Start
     -> MostlySharpened spec.
 Proof.
   intros; exists adt; eassumption.
->>>>>>> NewUpdateNotation
 Defined.
 
 (* The proof componentn of a single refinement step. *)

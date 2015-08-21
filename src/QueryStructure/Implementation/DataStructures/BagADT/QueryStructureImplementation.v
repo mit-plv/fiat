@@ -152,11 +152,12 @@ Section QueryStructureImplementation.
   Definition DelegateToBag_AbsR
              (r_o : UnConstrQueryStructure qs_schema)
              (r_n : IndexedQueryStructure) :=
-    (forall idx, GetUnConstrRelation r_o idx = GetIndexedRelation r_n idx)
+    (*forall idx, GetUnConstrRelation r_o idx = GetIndexedRelation r_n idx*)
     (* This invariant allows us to justify refinements which drop
        unused method calls by showing that they are implementable. *)
-    /\ (forall idx,
-        exists l, EnsembleIndexedListEquivalence (GetUnConstrRelation r_o idx) l).
+    (forall idx,
+        exists l, EnsembleIndexedListEquivalence (GetUnConstrRelation r_o idx) l /\
+                  EnsembleIndexedListEquivalence (GetIndexedRelation r_n idx) l).
 
   Fixpoint Initialize_IndexedQueryStructure
            {n}

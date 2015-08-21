@@ -18,15 +18,15 @@ Section general_refine_lemmas.
 
   Lemma refine_under_bind {A B}
   : forall c (x y : A -> Comp B),
-      (forall a, c ↝ a -> refine (x a) (y a))
-      -> refine (a <- c; x a) (a <- c; y a).
+    (forall a, c ↝ a -> refine (x a) (y a))
+    -> refine (a <- c; x a) (a <- c; y a).
   Proof. t_refine.  Qed.
 
   (* Combines refine_under_bind and refine_bind:
 generates another subgoal for the first expression,
 and gives you the computational hypothesis for the second *)
   Lemma refine_under_bind_both {A B}
-  : forall c c' (x y : A -> Comp B),
+    : forall c c' (x y : A -> Comp B),
       refine c c' ->
       (forall a, c ↝ a -> refine (x a) (y a))
       ->
@@ -34,13 +34,13 @@ and gives you the computational hypothesis for the second *)
   Proof. t_refine. Qed.
 
   Lemma refine_pick A (P : A -> Prop) c (H : forall x, c ↝ x -> P x)
-  : @refine A ({x : A | P x })%comp
-            c.
+    : @refine A ({x : A | P x })%comp
+              c.
   Proof. t_refine. Qed.
 
   Lemma refine_pick_val A a (P : A -> Prop)
-  : P a -> @refine A ({x | P x })%comp
-                   (ret a).
+    : P a -> @refine A ({x | P x })%comp
+                     (ret a).
   Proof.
     t_refine.
   Qed.
@@ -57,62 +57,62 @@ and gives you the computational hypothesis for the second *)
 
   Lemma refine_pick_pick A (P1 P2 : A -> Prop)
         (H : forall x, P2 x -> P1 x)
-  : @refine _
-            { x : A | P1 x }%comp
-            { x : A | P2 x }%comp.
+    : @refine _
+              { x : A | P1 x }%comp
+              { x : A | P2 x }%comp.
   Proof. t_refine. Qed.
 
   Lemma refineEquiv_pick_pick A (P1 P2 : A -> Prop)
         (H : forall x, P1 x <-> P2 x)
-  : @refineEquiv _
-                 { x : A | P1 x }%comp
-                 { x : A | P2 x }%comp.
+    : @refineEquiv _
+                   { x : A | P1 x }%comp
+                   { x : A | P2 x }%comp.
   Proof. t_refine. Qed.
 
   Lemma refineEquiv_pick_pair A B (PA : A -> Prop) (PB : B -> Prop)
-  : @refineEquiv _
-                 { x : A * B | PA (fst x) /\ PB (snd x) }%comp
-                 (a <- { a : A | PA a };
-                  b <- { b : B | PB b };
-                  ret (a, b))%comp.
+    : @refineEquiv _
+                   { x : A * B | PA (fst x) /\ PB (snd x) }%comp
+                   (a <- { a : A | PA a };
+                    b <- { b : B | PB b };
+                    ret (a, b))%comp.
   Proof. t_refine. Qed.
 
   Lemma refineEquiv_pick_pair_fst_dep A B (PA : A * B -> Prop) (PB : B -> Prop)
-  : @refineEquiv _
-                 {x | PA x /\ PB (snd x)}%comp
-                 (b <- { b | PB b };
-                  a <- { a | PA (a, b) };
-                  ret (a, b))%comp.
+    : @refineEquiv _
+                   {x | PA x /\ PB (snd x)}%comp
+                   (b <- { b | PB b };
+                    a <- { a | PA (a, b) };
+                    ret (a, b))%comp.
   Proof.
     t_refine.
   Qed.
 
   Lemma refineEquiv_pick_pair_snd_dep A B (PA : A -> Prop) (PB : A * B -> Prop)
-  : @refineEquiv _
-                 { x | PA (fst x) /\ PB x }%comp
-                 (a <- { a | PA a };
-                  b <- { b | PB (a, b) };
-                  ret (a, b))%comp.
+    : @refineEquiv _
+                   { x | PA (fst x) /\ PB x }%comp
+                   (a <- { a | PA a };
+                    b <- { b | PB (a, b) };
+                    ret (a, b))%comp.
   Proof. t_refine. Qed.
 
   Lemma refineEquiv_pick_pair_pair A B C
         (PA : A -> Prop) (PB : B -> Prop) (PC : C -> Prop)
-  : @refineEquiv _
-                 { x | (PA (fst (fst x))
-                        /\ PB (snd (fst x)))
-                       /\ PC (snd x)}%comp
-                 (a <- { a | PA a };
-                  b <- { b | PB b };
-                  c <- { c | PC c };
-                  ret (a, b, c))%comp.
+    : @refineEquiv _
+                   { x | (PA (fst (fst x))
+                          /\ PB (snd (fst x)))
+                         /\ PC (snd x)}%comp
+                   (a <- { a | PA a };
+                    b <- { b | PB b };
+                    c <- { c | PC c };
+                    ret (a, b, c))%comp.
   Proof. t_refine. Qed.
 
   Definition refineEquiv_split_ex A B
              (P : A -> Prop) (P' : A -> B -> Prop)
-  : @refineEquiv _
-                 { b | exists a, P a /\ P' a b }%comp
-                 (a <- { a | P a /\ exists b, P' a b };
-                  { b | P' a b })%comp.
+    : @refineEquiv _
+                   { b | exists a, P a /\ P' a b }%comp
+                   (a <- { a | P a /\ exists b, P' a b };
+                    { b | P' a b })%comp.
   Proof.
     split; intros v Comp_v; computes_to_inv;
     intuition; destruct_ex;
@@ -122,25 +122,25 @@ and gives you the computational hypothesis for the second *)
 
   Definition refineEquiv_pick_contr_ret A (P : A -> Prop)
              (x : A) (H : unique P x)
-  : @refineEquiv _
-                 { y | P y }
-                 (ret x).
+    : @refineEquiv _
+                   { y | P y }
+                   (ret x).
   Proof. t_refine. Qed.
 
   Definition refineEquiv_pick_eq
              A (x : A)
-  : @refineEquiv _
-                 { y | y = x }%comp
-                 (ret x).
+    : @refineEquiv _
+                   { y | y = x }%comp
+                   (ret x).
   Proof. t_refine. Qed.
 
   Definition refineEquiv_pick_eq' A (x : A)
-  : @refineEquiv _ { y | x = y }%comp
-                 (ret x).
+    : @refineEquiv _ { y | x = y }%comp
+                   (ret x).
   Proof. t_refine. Qed.
 
   Definition refineEquiv_split_func_ex
-  : forall A B (P : A -> Prop) (f : A -> B),
+    : forall A B (P : A -> Prop) (f : A -> B),
       @refineEquiv _ { b | exists a, P a /\ b = f a}%comp
                    (a <- { a | P a};
                     ret (f a))%comp.
@@ -155,10 +155,10 @@ and gives you the computational hypothesis for the second *)
   Definition refineEquiv_split_func_ex2
              A A' B (P : A -> Prop) (P' : A' -> Prop)
              (f : A -> A' -> B)
-  : refineEquiv { b | exists a, P a /\ exists a', P' a' /\ b = f a a'}
-                (a <- { a | P a};
-                 a' <- { a' | P' a'};
-                 ret (f a a')).
+    : refineEquiv { b | exists a, P a /\ exists a', P' a' /\ b = f a a'}
+                  (a <- { a | P a};
+                   a' <- { a' | P' a'};
+                   ret (f a a')).
   Proof.
     split; intros v Comp_v; computes_to_inv;
     intuition; destruct_ex;
@@ -170,10 +170,10 @@ and gives you the computational hypothesis for the second *)
   Definition refineEquiv_split_func_ex2'
              A A' B (P : A -> Prop) (P' : A' -> Prop)
              (f : A -> A' -> B)
-  : refineEquiv { b | exists a, P a /\ exists a', P' a' /\ f a a' = b}
-                (a <- { a | P a};
-                 a' <- { a' | P' a'};
-                 ret (f a a')).
+    : refineEquiv { b | exists a, P a /\ exists a', P' a' /\ f a a' = b}
+                  (a <- { a | P a};
+                   a' <- { a' | P' a'};
+                   ret (f a a')).
   Proof.
     split; intros v Comp_v; computes_to_inv;
     intuition; destruct_ex;
@@ -183,54 +183,54 @@ and gives you the computational hypothesis for the second *)
   Qed.
 
   Definition refineEquiv_pick_computes_to A (c : Comp A)
-  : refineEquiv { v | c ↝ v } c.
+    : refineEquiv { v | c ↝ v } c.
   Proof. t_refine. Qed.
 
   Definition refine_pick_computes_to A (c : Comp A)
-  : refine { v | c ↝ v } c.
+    : refine { v | c ↝ v } c.
   Proof. t_refine. Qed.
 
   Lemma split_refineEquiv_fst_proj1_sig A B P Q
-  : refineEquiv { x : { x : A * B | P x } | Q (fst (proj1_sig x)) }
-                (x <- { x : A | Q x };
-                 y <- { y : B | P (x, y) };
-                 pf <- { pf : P (x, y) | True };
-                 ret (exist P _ pf)).
+    : refineEquiv { x : { x : A * B | P x } | Q (fst (proj1_sig x)) }
+                  (x <- { x : A | Q x };
+                   y <- { y : B | P (x, y) };
+                   pf <- { pf : P (x, y) | True };
+                   ret (exist P _ pf)).
   Proof. t_refine. Qed.
 
   Definition split_refine_fst_proj1_sig A B P Q
     := proj1 (@split_refineEquiv_fst_proj1_sig A B P Q).
 
   Lemma split_refineEquiv_snd_proj1_sig A B P Q
-  : refineEquiv { x : { x : A * B | P x } | Q (snd (proj1_sig x)) }
-                (x <- { x : B | Q x };
-                 y <- { y : A | P (y, x) };
-                 pf <- { pf : P (y, x) | True };
-                 ret (exist P _ pf)).
+    : refineEquiv { x : { x : A * B | P x } | Q (snd (proj1_sig x)) }
+                  (x <- { x : B | Q x };
+                   y <- { y : A | P (y, x) };
+                   pf <- { pf : P (y, x) | True };
+                   ret (exist P _ pf)).
   Proof. t_refine. Qed.
 
   Definition refineEquiv_pick_computes_to_and A (c : Comp A)
              (P : Ensemble A)
-  : refineEquiv { v | c ↝ v /\ P v}
-                (v <- c;
-                 { a | a = v /\ P a}).
+    : refineEquiv { v | c ↝ v /\ P v}
+                  (v <- c;
+                   { a | a = v /\ P a}).
   Proof. t_refine. Qed.
 
   Definition split_refine_snd_proj1_sig A B P Q
     := proj1 (@split_refineEquiv_snd_proj1_sig A B P Q).
 
   Lemma split_refineEquiv_proj1_sig A P Q
-  : refineEquiv { x : { x : A | P x } | Q (proj1_sig x) }
-                (x <- { x | P x /\ Q x };
-                 p <- { _ : P x | True };
-                 ret (exist P x p)).
+    : refineEquiv { x : { x : A | P x } | Q (proj1_sig x) }
+                  (x <- { x | P x /\ Q x };
+                   p <- { _ : P x | True };
+                   ret (exist P x p)).
   Proof. t_refine. Qed.
 
   Lemma refineEquiv_pick_forall_eq
         A B (a : A) (P : A -> B -> Prop)
-  : @refineEquiv _
-                 (Pick (fun b => forall a', a = a' -> P a' b))
-                 (Pick (P a)).
+    : @refineEquiv _
+                   (Pick (fun b => forall a', a = a' -> P a' b))
+                   (Pick (P a)).
   Proof. t_refine. Qed.
 
   Lemma refine_if_bool_eta :
@@ -255,9 +255,9 @@ and gives you the computational hypothesis for the second *)
   Lemma refine_pick_forall_Prop
         A B C (a : A) (Q : C -> A -> Prop) (P : A -> C -> B -> Prop)
         b
-  :
-    (forall c : C, Q c a -> refine {x : B | P a c x} b) ->
-    refine {b' : B | forall c : C, Q c a -> P a c b'} b.
+    :
+      (forall c : C, Q c a -> refine {x : B | P a c x} b) ->
+      refine {b' : B | forall c : C, Q c a -> P a c b'} b.
   Proof.
     unfold refine; intros; computes_to_econstructor; intros.
     generalize (H _ H1 _ H0); intros.
@@ -267,9 +267,9 @@ and gives you the computational hypothesis for the second *)
   Lemma refine_pick_eq_ex_bind {A B : Type}
         (P : A -> B -> Prop)
         (a : A)
-  : refine (a' <- {a' | a' = a /\ exists b, P a' b};
-            {b | P a' b})
-           {b | P a b}.
+    : refine (a' <- {a' | a' = a /\ exists b, P a' b};
+              {b | P a' b})
+             {b | P a b}.
   Proof.
     t_refine.
   Qed.
@@ -277,15 +277,15 @@ and gives you the computational hypothesis for the second *)
   (* This helper lemma makes terms more ameneable to
      setoid_rewriting. *)
   Lemma refine_if_If {A}
-  : forall (c : bool) (t e : Comp A),
+    : forall (c : bool) (t e : Comp A),
       refine (if c then t else e)
              (If c Then t Else e).
   Proof.
     reflexivity.
   Qed.
 
-(* Nontermination with above lemma? *)
-(*
+  (* Nontermination with above lemma? *)
+  (*
   Lemma refine_If_if {A}
   : forall (c : bool) (t e : Comp A),
       refine (If c Then t Else e)
@@ -293,11 +293,11 @@ and gives you the computational hypothesis for the second *)
   Proof.
     reflexivity.
   Qed.
-*)
+   *)
 
   Lemma refine_if_andb {A}
-  : forall (i i' : bool)
-           (t e : A),
+    : forall (i i' : bool)
+             (t e : A),
       (if i then (if i' then t else e) else e) =
       if i && i' then t else e.
   Proof.
@@ -318,7 +318,7 @@ and gives you the computational hypothesis for the second *)
       refine { a | (Pc -> Pt a) /\ Pa a}
              (b <- {b | Pc -> b = true};
               If b Then { a | Pt a /\ Pa a}
-              Else { a | Pa a}).
+                 Else { a | Pa a}).
   Proof.
     intros * v Comp_v; computes_to_inv.
     computes_to_econstructor; intuition; subst;
@@ -333,7 +333,7 @@ and gives you the computational hypothesis for the second *)
       refine { a | (Pc -> Pt a) /\ Pa a}
              (b <- {b | decides b Pc};
               If b Then { a | Pt a /\ Pa a}
-              Else { a | Pa a}).
+                 Else { a | Pa a}).
   Proof.
     intros * v Comp_v; computes_to_inv.
     computes_to_econstructor; intuition; subst;
@@ -363,7 +363,7 @@ and gives you the computational hypothesis for the second *)
   Qed.
 
   Lemma refineEquiv_if_ret {A}
-  : forall (cond : bool) (ta ea : A),
+    : forall (cond : bool) (ta ea : A),
       refineEquiv (ret (If cond Then ta Else ea))
                   (If cond Then ret ta Else ret ea).
   Proof.
@@ -372,10 +372,10 @@ and gives you the computational hypothesis for the second *)
 
   Definition refine_split_ex A B
              (P : A -> Prop) (P' : A -> B -> Prop)
-  : @refine _
-            { b | exists a, P a /\ P' a b }%comp
-            (a <- { a | P a};
-             { b | P' a b })%comp.
+    : @refine _
+              { b | exists a, P a /\ P' a b }%comp
+              (a <- { a | P a};
+               { b | P' a b })%comp.
   Proof.
     t_refine.
   Qed.
@@ -383,29 +383,29 @@ and gives you the computational hypothesis for the second *)
   Definition refineEquiv_pick_ex_computes_to_and A B
              (c : Comp A)
              (P : A -> B -> Prop)
-  : refineEquiv { b | exists a, c ↝ a /\ P a b}
-                (a <- c;
-                 { b | P a b}).
+    : refineEquiv { b | exists a, c ↝ a /\ P a b}
+                  (a <- c;
+                   { b | P a b}).
   Proof. t_refine. Qed.
 
   Definition refineEquiv_pick_ex_computes_to_bind_and A B D
              (c : B -> Comp A)
              (cB : Comp B)
              (P : A -> D -> Prop)
-  : refineEquiv { d | exists a, (b <- cB; c b) ↝ a /\ P a d}
-                (b <- cB;
-                 { d | exists a, c b ↝ a /\ P a d}).
+    : refineEquiv { d | exists a, (b <- cB; c b) ↝ a /\ P a d}
+                  (b <- cB;
+                   { d | exists a, c b ↝ a /\ P a d}).
   Proof.
     split; intros * v Comp_v; computes_to_inv; destruct_ex; intuition;
     t_refine. Qed.
 
   Lemma refine_Pick_If_Then_Opt {A B}
-  : forall (P : Ensemble B) (c e : Comp A) (t : B -> Comp A),
+    : forall (P : Ensemble B) (c e : Comp A) (t : B -> Comp A),
       (forall b, P b -> refine c (t b))
       -> (refine c e)
       -> refine c
                 (b <- {b | forall b',
-                             (b = Some b' -> P b')};
+                          (b = Some b' -> P b')};
                  Ifopt b as b' Then t b' Else e).
   Proof.
     t_refine.
@@ -414,13 +414,13 @@ and gives you the computational hypothesis for the second *)
   Qed.
 
   Lemma refine_Pick_Some_dec {A B}
-  : forall (P : Ensemble B) (c e : Comp A) (t : B -> Comp A),
+    : forall (P : Ensemble B) (c e : Comp A) (t : B -> Comp A),
       (forall b, P b -> refine c (t b))
       -> ((forall b, ~ P b) -> refine c e)
       -> refine c
                 (b <- {b | forall b',
-                             (b = Some b' -> P b')
-                             /\ (b = None -> forall b', ~ P b')};
+                          (b = Some b' -> P b')
+                          /\ (b = None -> forall b', ~ P b')};
                  Ifopt b as b' Then t b' Else e) .
   Proof.
     unfold refine; intros; computes_to_inv;
@@ -440,7 +440,7 @@ and gives you the computational hypothesis for the second *)
   Qed.
 
   Lemma refine_pick_decides {A}
-  : forall (P : Prop) (c e : Comp A) (t : Comp A),
+    : forall (P : Prop) (c e : Comp A) (t : Comp A),
       (P -> refine c t)
       -> (~ P -> refine c e)
       -> refine c
@@ -455,7 +455,7 @@ and gives you the computational hypothesis for the second *)
   Lemma refine_pick_decides_branches {A}
         (P : Prop)
         (Q Q' : Ensemble A)
-        (q q' : Comp A) 
+        (q q' : Comp A)
     : (P -> refine {a | Q a} q)
       -> (~ P -> refine {a | Q' a} q')
       -> refine {a | (P -> Q a) /\
@@ -469,17 +469,17 @@ and gives you the computational hypothesis for the second *)
     - unfold refine; intros; computes_to_inv;
       econstructor; intuition; eapply H4; eauto.
   Qed.
-  
+
   Lemma refine_pick_decides' {A}
         (P : Prop)
         (Q Q' : Ensemble A)
-  : refine {a | (P -> Q a) /\
-                (~ P -> Q' a)}
-           (b <- {b | decides b P};
-            If b Then
-              {a | Q a}
-            Else
-              {a | Q' a}).
+    : refine {a | (P -> Q a) /\
+                  (~ P -> Q' a)}
+             (b <- {b | decides b P};
+              If b Then
+                 {a | Q a}
+                 Else
+                 {a | Q' a}).
   Proof.
     eapply refine_pick_decides_branches; reflexivity.
   Qed.
@@ -492,13 +492,13 @@ and gives you the computational hypothesis for the second *)
   Qed.
 
   Lemma refineEquiv_decides_eqb (b b1 b2 : bool)
-  : decides b (b1 = b2) <-> b = If b2 Then b1 Else negb b1.
+    : decides b (b1 = b2) <-> b = If b2 Then b1 Else negb b1.
   Proof.
     destruct_head bool; simpl; intuition.
   Qed.
 
   Lemma refine_If_Then_Else_Bind {A B}
-  : forall i (t e : Comp A) (b : A -> Comp B),
+    : forall i (t e : Comp A) (b : A -> Comp B),
       refine (a <- If i Then t Else e; b a)
              (If i Then (a <- t;
                          b a)
@@ -509,10 +509,10 @@ and gives you the computational hypothesis for the second *)
   Qed.
 
   Lemma refine_If_Opt_Then_Else_Bind {A B C}
-  : forall (i : option A)
-           (t : A -> Comp B)
-           (e : Comp B)
-           (c : B -> Comp C),
+    : forall (i : option A)
+             (t : A -> Comp B)
+             (e : Comp B)
+             (c : B -> Comp C),
       refine (b <- If_Opt_Then_Else i t e; c b)
              (If_Opt_Then_Else i (fun a' =>
                                     b <- t a';
@@ -569,7 +569,7 @@ and gives you the computational hypothesis for the second *)
   Qed.
 
   Lemma Bind_refine_If_Then_Else {A B}
-  : forall i (t e : A -> Comp B) (ca : Comp A),
+    : forall i (t e : A -> Comp B) (ca : Comp A),
       refine (a <- ca;
               If i Then t a Else e a)
              (If i Then (a <- ca;
@@ -581,7 +581,7 @@ and gives you the computational hypothesis for the second *)
   Qed.
 
   Lemma Bind_refine_If_Opt_Then_Else {A B C}
-  : forall i (t : A -> B -> Comp C) (e : A -> Comp C) (ca : Comp A),
+    : forall i (t : A -> B -> Comp C) (e : A -> Comp C) (ca : Comp A),
       refine (a <- ca;
               Ifopt i as b Then t a b Else e a)
              (Ifopt i as b Then (a <- ca;
@@ -593,7 +593,7 @@ and gives you the computational hypothesis for the second *)
   Qed.
 
   Lemma refineEquiv_swap_bind {A B C} (c1 : Comp A) (c2 : Comp B) (f : A -> B -> Comp C)
-  : refineEquiv (a <- c1; b <- c2; f a b) (b <- c2; a <- c1; f a b).
+    : refineEquiv (a <- c1; b <- c2; f a b) (b <- c2; a <- c1; f a b).
   Proof.
     split; repeat intro;
     computes_to_inv;
@@ -601,7 +601,7 @@ and gives you the computational hypothesis for the second *)
   Qed.
 
   Lemma refine_bind_dedup {A B} (c1 : Comp A) (f : A -> A -> Comp B)
-  : refine (a <- c1; b <- c1; f a b) (a <- c1; f a a).
+    : refine (a <- c1; b <- c1; f a b) (a <- c1; f a a).
   Proof.
     repeat intro;
     computes_to_inv;
@@ -609,18 +609,18 @@ and gives you the computational hypothesis for the second *)
   Qed.
 
   Lemma comp_split_snd {A B} (x : A * B)
-  : refineEquiv (ret (snd x))
-                (ab <- ret x;
-                 ret (snd ab)).
+    : refineEquiv (ret (snd x))
+                  (ab <- ret x;
+                   ret (snd ab)).
   Proof.
     autorewrite with refine_monad; reflexivity.
   Qed.
 
   Lemma refine_skip {A B C} (c : Comp A) (f : A -> Comp B) (dummy : A -> Comp C)
-  : refine (Bind c f)
-           (a <- c;
-            dummy a>>
-                  f a).
+    : refine (Bind c f)
+             (a <- c;
+              dummy a>>
+                    f a).
   Proof.
     repeat first [ intro
                  | computes_to_inv
@@ -630,9 +630,9 @@ and gives you the computational hypothesis for the second *)
   Qed.
 
   Lemma refine_skip2 {A B} (a : Comp A) (dummy : Comp B)
-  : refine a
-           (dummy>>
-                 a).
+    : refine a
+             (dummy>>
+                   a).
   Proof.
     repeat first [ intro
                  | computes_to_inv
@@ -786,21 +786,48 @@ Tactic Notation "refine" "pick" "pair" :=
     let H := fresh in
     intros x H;
       let A := match goal with
-                   |- ?A /\ ?B => constr:(A)
+                 |- ?A /\ ?B => constr:(A)
                end in
       let B := match goal with
-                   |- ?A /\ ?B => constr:(B)
+                 |- ?A /\ ?B => constr:(B)
                end in
       match eval pattern (fst x) in A with
-          ?A' _ =>
-          match eval pattern (snd x) in B with
-              ?B' _ =>
-              match type of H with
-                | ?C _ => unify C (fun x => A' (fst x) /\ B' (snd x));
-                         exact H
-              end
+        ?A' _ =>
+        match eval pattern (snd x) in B with
+          ?B' _ =>
+          match type of H with
+          | ?C _ => unify C (fun x => A' (fst x) /\ B' (snd x));
+              exact H
           end
+        end
       end ]; rewrite refineEquiv_pick_pair.
+
+Lemma refine_under_bind_both_trans {A B}
+  : forall c c' c'' (x y : A -> Comp B),
+    refine c c' ->
+    (forall a, c ↝ a -> refine (x a) (y a))
+    -> refine (a <- c'; y a) c''
+    -> refine (a <- c; x a) c''.
+Proof. intros; etransitivity; eauto using refine_under_bind_both. Qed.
+Unset Ltac Debug.
+Lemma refine_If_Then_Else_trans {A}
+  : forall (c : bool) (x y z : Comp A),
+    refine x y ->
+    forall x0 y0 : Comp A,
+      refine x0 y0
+      -> refine (If c Then y Else y0) z
+      -> refine (If c Then x Else x0) z.
+Proof. intros; etransitivity; eauto using refine_If_Then_Else. Qed.
+Lemma refine_If_Opt_Then_Else_trans {A B}
+  : forall (c : option B) (e e' z: Comp A) (t t' : B -> Comp A),
+    (forall b, refine (t b) (t' b))
+    -> (refine e e')
+    -> refine (Ifopt c as b' Then t' b' Else e') z
+    -> refine (Ifopt c as b' Then t b' Else e) z.
+Proof.
+  intros; etransitivity; eauto using refine_If_Opt_Then_Else.
+Qed.
+
 
 Tactic Notation "refine" "pick" "val" open_constr(v) :=
   let T := type of v in
@@ -810,8 +837,8 @@ Tactic Notation "refine" "pick" "val" open_constr(v) :=
 
 Tactic Notation "refine" "pick" "eq" :=
   match goal with
-    | |- context[Pick (fun x => x = _)] =>
-      setoid_rewrite refineEquiv_pick_eq
-    | |- context[Pick (fun x => _ = x)] =>
-      setoid_rewrite refineEquiv_pick_eq'
+  | |- context[Pick (fun x => x = _)] =>
+    setoid_rewrite refineEquiv_pick_eq
+  | |- context[Pick (fun x => _ = x)] =>
+    setoid_rewrite refineEquiv_pick_eq'
   end.

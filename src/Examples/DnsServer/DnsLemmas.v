@@ -1393,13 +1393,6 @@ Admitted. *)
   forall n0 n1, nth n0 l = tup0 -> nth n0 l = tup1 ->
   tuple_constr tup0 tup1 *)
 
-Lemma tuples_in_relation_filtered_satisfy_constraint :
-  True.
-Proof.
-
-Admitted.
-<<<<<<< HEAD
-
 (* -------------- *)
 (* Unused for now *)
 
@@ -1417,5 +1410,3 @@ Proof.
   intros; destruct i; simpl;
   autosetoid_rewrite with refine_monad; reflexivity.
 Qed.
-=======
->>>>>>> NewUpdateNotation

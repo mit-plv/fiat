@@ -718,9 +718,17 @@ Tactic Notation "finish" "sharpening" constr(delegatees):=
 
 Tactic Notation "finish" "honing" :=
   match goal with
+  | |- ?R _ (?H _ _ _ _ _) =>
+    try subst H; higher_order_reflexivity
+  | |- ?R _ (?H _ _ _ _ ) =>
+      try subst H; higher_order_reflexivity
+    | |- ?R _ (?H _ _ _ ) =>
+      try subst H; higher_order_reflexivity
     | |- ?R _ (?H _ _) =>
       try subst H; higher_order_reflexivity
     | |- ?R _ (?H _ ) =>
+      try subst H; higher_order_reflexivity
+    | |- ?R _ (?H ) =>
       try subst H; higher_order_reflexivity
   end.
 
