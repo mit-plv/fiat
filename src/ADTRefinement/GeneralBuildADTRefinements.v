@@ -718,9 +718,17 @@ Tactic Notation "finish" "sharpening" constr(delegatees):=
 
 Tactic Notation "finish" "honing" :=
   match goal with
+  | |- ?R _ (?H _ _ _ _ _) =>
+    try subst H; higher_order_reflexivity
+  | |- ?R _ (?H _ _ _ _ ) =>
+      try subst H; higher_order_reflexivity
+    | |- ?R _ (?H _ _ _ ) =>
+      try subst H; higher_order_reflexivity
     | |- ?R _ (?H _ _) =>
       try subst H; higher_order_reflexivity
     | |- ?R _ (?H _ ) =>
+      try subst H; higher_order_reflexivity
+    | |- ?R _ (?H ) =>
       try subst H; higher_order_reflexivity
   end.
 
@@ -902,14 +910,19 @@ Ltac Implement_If_Opt_Then_Else :=
 
 Ltac finish_SharpeningADT_WithoutDelegation :=
   eapply FullySharpened_Finish;
-  [ eapply reflexivityT
-  | FullySharpenEachMethod
+  [ FullySharpenEachMethod
       (@Vector.nil ADTSig)
       (@Vector.nil Type)
       (ilist.inil (B := fun nadt => ADT (delegateeSig nadt)));
     try simplify with monad laws; simpl; try refine pick eq; try simplify with monad laws;
     try first [ simpl];
-    repeat setoid_rewrite refine_if_If at 1;
+    (* Guard setoid rewriting with [refine_if_If] to only occur when there's
+    actually an [if] statement in the goal.  This prevents [setoid_rewrite] from
+    uselessly descending into folded definitions. *)
+    repeat match goal with
+             | [ |- context [ if _ then _ else _ ] ] =>
+               setoid_rewrite refine_if_If at 1
+           end;
     repeat first [
              higher_order_reflexivity
            | simplify with monad laws

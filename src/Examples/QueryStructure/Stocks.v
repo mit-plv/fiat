@@ -83,38 +83,12 @@ Definition StocksSpec : ADT StocksSig :=
             Return (N.mul transaction!PRICE transaction!VOLUME))
 }.
 
+
 Definition SharpenedStocks :
   FullySharpened StocksSpec.
 Proof.
 
-  start honing QueryStructure.
-  (* Automatically select indexes + data structure. *)
-  {GenerateIndexesForAll
-     matchEqIndex
-     ltac:(fun attrlist => make_simple_indexes attrlist
-                                               ltac:(LastCombineCase6 BuildEarlyEqualityIndex)
-                                                      ltac:(LastCombineCase5 BuildLastEqualityIndex));
-   match goal with
-           | |- Sharpened _ => idtac (* Do nothing to the next Sharpened ADT goal. *)
-           | |- _ => (* Otherwise implement each method using the indexed data structure *)
-             plan
-               EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
-               EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep
-   end.
-   pose_headings_all.
-     match goal with
-     | |- appcontext[@BuildADT (IndexedQueryStructure ?Schema ?Indexes)] =>
-       FullySharpenQueryStructure Schema Indexes
-     end.
-  (* 1231 Before. *)
-     (* 1600 After.*)
-  } 
-  simpl; pose_string_ids; pose_headings_all;
-  pose_search_term;  pose_SearchUpdateTerms.
-
-  BuildQSIndexedBags' BuildEarlyEqualityBag BuildLastEqualityBag.
-  (* 1700MB *)
-  higher_order_reflexivityT.
+  master_plan EqIndexTactics.
 
   (* Uncomment this to see the mostly sharpened implementation *)
   (* partial_master_plan EqIndexTactics. *)

@@ -70,25 +70,22 @@ Definition FullySharpenedUnderDelegates
 
 Notation Sharpened spec := (@refineADT _ spec _).
 
-Definition MostlySharpened {Sig} spec := {adt : _ & @FullySharpenedUnderDelegates Sig spec adt}.
+Definition MostlySharpened {Sig} spec :=
+  {adt : _ & @FullySharpenedUnderDelegates Sig spec adt}.
 
 Lemma FullySharpened_Start
-: forall {Sig} (spec : ADT Sig) adt,
-    refineADT spec adt
-    -> FullySharpened adt
+: forall {Sig} (spec : ADT Sig) cadt,
+    refineADT spec (LiftcADT cadt)
     -> FullySharpened spec.
 Proof.
-  intros.
-  exists (projT1 X0).
-  abstract (eapply transitivityT; [eauto | apply (projT2 X0)]).
+  intros; exists cadt; eassumption.
 Defined.
 
 Lemma FullySharpened_Finish
-: forall {Sig} (spec : ADT Sig) adt adt'
-         (cadt : cADT Sig),
-    refineADT spec adt'
-    -> (@FullySharpenedUnderDelegates _ adt' adt)
-    -> forall (DelegateReps : Fin.t (Sharpened_DelegateIDs adt) -> Type)
+: forall {Sig} (spec : ADT Sig) adt
+         (cadt : ComputationalADT.cADT Sig),
+        @FullySharpenedUnderDelegates _ spec adt
+        -> forall (DelegateReps : Fin.t (Sharpened_DelegateIDs adt) -> Type)
               (DelegateImpls :
                  forall idx,
                    ComputationalADT.pcADT (Sharpened_DelegateSigs adt idx) (DelegateReps idx))
@@ -99,27 +96,18 @@ Lemma FullySharpened_Finish
          refineADT
            (ComputationalADT.LiftcADT (Sharpened_Implementation adt DelegateReps DelegateImpls))
            (ComputationalADT.LiftcADT cadt)
-         -> FullySharpened spec.
+         -> refineADT spec (ComputationalADT.LiftcADT cadt).
 Proof.
   intros.
-  exists cadt.
-  abstract (eapply transitivityT;
-            [apply X | eapply transitivityT; eauto ]).
-Defined.
+  eapply transitivityT; eauto.
+Qed.
 
 Lemma MostlySharpened_Start
-  : forall {Sig} (spec : ADT Sig) adt adt',
-    refineADT spec adt'
-    -> (@FullySharpenedUnderDelegates _ adt' adt)
+  : forall {Sig} (spec : ADT Sig) adt,
+    (@FullySharpenedUnderDelegates _ spec adt)
     -> MostlySharpened spec.
 Proof.
-  intros.
-  exists adt.
-  econstructor;
-    [intro; eapply refineConstructor_trans;
-     [ eapply X | eapply (X0 _ DelegateImpls ValidImpls) ]
-    | intros; eapply refineMethod_trans;
-      [eapply X | eapply X0] ].
+  intros; exists adt; eassumption.
 Defined.
 
 (* The proof componentn of a single refinement step. *)
@@ -148,8 +136,8 @@ Qed.
 
 Ltac start_sharpening_ADT :=
   match goal with
-    | |- MostlySharpened ?spec => eapply MostlySharpened_Start
-    | |- FullySharpened ?spec => eapply FullySharpened_Start
+  | |- MostlySharpened ?spec => repeat unfold spec; eapply MostlySharpened_Start
+  | |- FullySharpened ?spec => repeat unfold spec; eapply FullySharpened_Start
   end.
 
 Tactic Notation "start" "sharpening" "ADT" := start_sharpening_ADT.

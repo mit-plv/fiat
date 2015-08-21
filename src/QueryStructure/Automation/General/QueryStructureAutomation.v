@@ -68,7 +68,7 @@ Ltac start_honing_QueryStructure :=
         | ?MostlySharpened =>
           eapply MostlySharpened_Start; start_honing_QueryStructure'
         | ?FullySharpened =>
-          eapply FullySharpened_Start; [start_honing_QueryStructure' | | ]
+          eapply FullySharpened_Start; [start_honing_QueryStructure' | ]
       end
   end; pose_string_hyps; pose_heading_hyps.
 

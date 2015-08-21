@@ -588,7 +588,6 @@ Section SharpenedBagImplementation.
                                                   (snd (bdelete r_n (fst ab))), fst (bdelete r_n (fst ab)))).
       reflexivity.
     }
-    eapply reflexivityT.
 
     finish_SharpeningADT_WithoutDelegation.
 

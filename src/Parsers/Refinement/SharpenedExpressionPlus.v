@@ -22,6 +22,7 @@ Typeclasses Opaque If_Then_Else.
   Lemma ComputationalSplitter'
   : FullySharpened (string_spec plus_expr_grammar).
   Proof.
+    start sharpening ADT.
     start honing parser using indexed representation.
 
     hone method "splits".
@@ -32,9 +33,8 @@ Typeclasses Opaque If_Then_Else.
       finish honing parser method.
     }
 
-    Time FullySharpenEachMethodWithoutDelegation.
-    extract delegate-free implementation.
-    simpl; higher_order_reflexivityT.
+    Time finish_SharpeningADT_WithoutDelegation.
+
   Defined.
 
   Lemma ComputationalSplitter
@@ -53,9 +53,11 @@ Require Import Fiat.Parsers.ParserFromParserADT.
 Require Import Fiat.Parsers.ExtrOcamlParsers.
 Import Fiat.Parsers.ExtrOcamlParsers.HideProofs.
 
+(* Ben : Taking too long to run; commenting so I can debug build.
+
 Time Definition paren_expr_parser (str : String.string) : bool
   := Eval simpl in has_parse (parser ComputationalSplitter) str.
 
 Print paren_expr_parser.
 
-Recursive Extraction paren_expr_parser.
+Recursive Extraction paren_expr_parser. *)

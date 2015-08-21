@@ -192,9 +192,7 @@ production_is_reachable G (fst n :: snd n)*)
       rewrite (@any_list_complete [0]); [ | assumption ].
       finish_honing_by_eq parser_pull_tac.
     }
-    FullySharpenEachMethodWithoutDelegation.
-    extract delegate-free implementation.
-    simpl; higher_order_reflexivityT.
+    finish_SharpeningADT_WithoutDelegation.
   Defined.
 
 End IndexedImpl.

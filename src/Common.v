@@ -26,7 +26,7 @@ Tactic Notation "clear" "abstract" constr(cls) :=
   let pf := constr:(_ : cls G) in
   let pf' := (eval cbv beta in pf) in
   repeat match goal with
-           | [ H : _ |- _ ] => clear H; test (abstract (exact pf'))
+         | [ H : _ |- _ ] => clear H; test (abstract (exact pf'))
          end;
     [ abstract (exact pf') ].
 
@@ -35,15 +35,15 @@ Tactic Notation "clear" "abstract" constr(cls) :=
 Ltac atomic x :=
   idtac;
   match x with
-    | _ => is_evar x; fail 1 x "is not atomic (evar)"
-    | ?f _ => fail 1 x "is not atomic (application)"
-    | (fun _ => _) => fail 1 x "is not atomic (fun)"
-    | forall _, _ => fail 1 x "is not atomic (forall)"
-    | let x := _ in _ => fail 1 x "is not atomic (let in)"
-    | match _ with _ => _ end => fail 1 x "is not atomic (match)"
-    | _ => is_fix x; fail 1 x "is not atomic (fix)"
-    | context[?E] => (* catch-all *) (not constr_eq E x); fail 1 x "is not atomic (has subterm" E ")"
-    | _ => idtac
+  | _ => is_evar x; fail 1 x "is not atomic (evar)"
+  | ?f _ => fail 1 x "is not atomic (application)"
+  | (fun _ => _) => fail 1 x "is not atomic (fun)"
+  | forall _, _ => fail 1 x "is not atomic (forall)"
+  | let x := _ in _ => fail 1 x "is not atomic (let in)"
+  | match _ with _ => _ end => fail 1 x "is not atomic (match)"
+  | _ => is_fix x; fail 1 x "is not atomic (fix)"
+  | context[?E] => (* catch-all *) (not constr_eq E x); fail 1 x "is not atomic (has subterm" E ")"
+  | _ => idtac
   end.
 
 (* [pose proof defn], but only if no hypothesis of the same type exists.
@@ -51,15 +51,15 @@ Ltac atomic x :=
 Tactic Notation "unique" "pose" "proof" constr(defn) :=
   let T := type of defn in
   match goal with
-    | [ H : T |- _ ] => fail 1
-    | _ => pose proof defn
+  | [ H : T |- _ ] => fail 1
+  | _ => pose proof defn
   end.
 
 (** [pose defn], but only if that hypothesis doesn't exist *)
 Tactic Notation "unique" "pose" constr(defn) :=
   match goal with
-    | [ H := defn |- _ ] => fail 1
-    | _ => pose defn
+  | [ H := defn |- _ ] => fail 1
+  | _ => pose defn
   end.
 
 (** check's if the given hypothesis has a body, i.e., if [clearbody]
@@ -72,8 +72,8 @@ Tactic Notation "has" "body" hyp(H) :=
 (** find the head of the given expression *)
 Ltac head expr :=
   match expr with
-    | ?f _ => head f
-    | _ => expr
+  | ?f _ => head f
+  | _ => expr
   end.
 
 Ltac head_hnf expr := let expr' := eval hnf in expr in head expr'.
@@ -94,7 +94,7 @@ Tactic Notation "simpl" "rewrite" "<-" open_constr(term) := simpl_rewrite_rev te
 
 Ltac do_with_hyp tac :=
   match goal with
-    | [ H : _ |- _ ] => tac H
+  | [ H : _ |- _ ] => tac H
   end.
 
 Ltac rewrite_hyp' := do_with_hyp ltac:(fun H => rewrite H).
@@ -110,7 +110,7 @@ Ltac eapply_hyp := repeat eapply_hyp'.
 (** solve simple setiod goals that can be solved by [transitivity] *)
 Ltac simpl_transitivity :=
   try solve [ match goal with
-                | [ _ : ?Rel ?a ?b, _ : ?Rel ?b ?c |- ?Rel ?a ?c ] => transitivity b; assumption
+              | [ _ : ?Rel ?a ?b, _ : ?Rel ?b ?c |- ?Rel ?a ?c ] => transitivity b; assumption
               end ].
 
 (** given a [matcher] that succeeds on some hypotheses and fails on
@@ -122,12 +122,12 @@ Ltac simpl_transitivity :=
 Ltac do_one_match_then matcher do_tac tac :=
   idtac;
   match goal with
-    | [ H : ?T |- _ ]
-      => matcher T; do_tac H;
-         try match type of H with
-               | T => clear H
-             end;
-         tac
+  | [ H : ?T |- _ ]
+    => matcher T; do_tac H;
+       try match type of H with
+           | T => clear H
+           end;
+       tac
   end.
 
 Ltac do_all_matches_then matcher do_tac tac :=
@@ -143,25 +143,26 @@ Ltac inversion_all_matches_then matcher tac :=
 Ltac inversion_one_match_then matcher tac :=
   do_one_match_then matcher ltac:(fun H => inversion H; subst) tac.
 
-Ltac destruct_all_matches matcher := destruct_all_matches_then matcher ltac:(simpl in *).
-Ltac destruct_one_match matcher := destruct_one_match_then matcher ltac:(simpl in *).
+Ltac destruct_all_matches matcher :=
+  destruct_all_matches_then matcher ltac:( simpl in * ).
+Ltac destruct_one_match matcher := destruct_one_match_then matcher ltac:( simpl in * ).
 Ltac destruct_all_matches' matcher := destruct_all_matches_then matcher idtac.
 
-Ltac inversion_all_matches matcher := inversion_all_matches_then matcher ltac:(simpl in *).
-Ltac inversion_one_match matcher := inversion_one_match_then matcher ltac:(simpl in *).
+Ltac inversion_all_matches matcher := inversion_all_matches_then matcher ltac:( simpl in * ).
+Ltac inversion_one_match matcher := inversion_one_match_then matcher ltac:( simpl in * ).
 Ltac inversion_all_matches' matcher := inversion_all_matches_then matcher idtac.
 
 (* matches anything whose type has a [T] in it *)
 Ltac destruct_type_matcher T HT :=
   match HT with
-    | context[T] => idtac
+  | context[T] => idtac
   end.
 Ltac destruct_type T := destruct_all_matches ltac:(destruct_type_matcher T).
 Ltac destruct_type' T := destruct_all_matches' ltac:(destruct_type_matcher T).
 
 Ltac destruct_head_matcher T HT :=
   match head HT with
-    | T => idtac
+  | T => idtac
   end.
 Ltac destruct_head T := destruct_all_matches ltac:(destruct_head_matcher T).
 Ltac destruct_one_head T := destruct_one_match ltac:(destruct_head_matcher T).
@@ -174,7 +175,7 @@ Ltac inversion_head' T := inversion_all_matches' ltac:(destruct_head_matcher T).
 
 Ltac head_hnf_matcher T HT :=
   match head_hnf HT with
-    | T => idtac
+  | T => idtac
   end.
 Ltac destruct_head_hnf T := destruct_all_matches ltac:(head_hnf_matcher T).
 Ltac destruct_one_head_hnf T := destruct_one_match ltac:(head_hnf_matcher T).
@@ -186,21 +187,21 @@ Ltac inversion_head_hnf' T := inversion_all_matches' ltac:(head_hnf_matcher T).
 
 Ltac destruct_sig_matcher HT :=
   match eval hnf in HT with
-    | ex _ => idtac
-    | ex2 _ _ => idtac
-    | sig _ => idtac
-    | sig2 _ _ => idtac
-    | sigT _ => idtac
-    | sigT2 _ _ => idtac
-    | and _ _ => idtac
-    | prod _ _ => idtac
+  | ex _ => idtac
+  | ex2 _ _ => idtac
+  | sig _ => idtac
+  | sig2 _ _ => idtac
+  | sigT _ => idtac
+  | sigT2 _ _ => idtac
+  | and _ _ => idtac
+  | prod _ _ => idtac
   end.
 Ltac destruct_sig := destruct_all_matches destruct_sig_matcher.
 Ltac destruct_sig' := destruct_all_matches' destruct_sig_matcher.
 
 Ltac destruct_all_hypotheses := destruct_all_matches ltac:(fun HT =>
-  destruct_sig_matcher HT || destruct_sig_matcher HT
-).
+                                                             destruct_sig_matcher HT || destruct_sig_matcher HT
+                                                          ).
 
 (** if progress can be made by [exists _], but it doesn't matter what
     fills in the [_], assume that something exists, and leave the two
@@ -208,35 +209,35 @@ Ltac destruct_all_hypotheses := destruct_all_matches ltac:(fun HT =>
     all members of the appropriate type prove the goal *)
 Ltac destruct_exists' T := cut T; try (let H := fresh in intro H; exists H).
 Ltac destruct_exists := destruct_head_hnf @sigT;
-  match goal with
-(*    | [ |- @sig ?T _ ] => destruct_exists' T*)
+    match goal with
+    (*    | [ |- @sig ?T _ ] => destruct_exists' T*)
     | [ |- @sigT ?T _ ] => destruct_exists' T
-(*    | [ |- @sig2 ?T _ _ ] => destruct_exists' T*)
+    (*    | [ |- @sig2 ?T _ _ ] => destruct_exists' T*)
     | [ |- @sigT2 ?T _ _ ] => destruct_exists' T
-  end.
+    end.
 
 (** if the goal can be solved by repeated specialization of some
     hypothesis with other [specialized] hypotheses, solve the goal by
     brute force *)
 Ltac specialized_assumption tac := tac;
-  match goal with
+    match goal with
     | [ x : ?T, H : forall _ : ?T, _ |- _ ] => specialize (H x); specialized_assumption tac
     | _ => assumption
-  end.
+    end.
 
 (** for each hypothesis of type [H : forall _ : ?T, _], if there is
     exactly one hypothesis of type [H' : T], do [specialize (H H')]. *)
 Ltac specialize_uniquely :=
   repeat match goal with
-           | [ x : ?T, y : ?T, H : _ |- _ ] => test (specialize (H x)); fail 1
-           | [ x : ?T, H : _ |- _ ] => specialize (H x)
+         | [ x : ?T, y : ?T, H : _ |- _ ] => test (specialize (H x)); fail 1
+         | [ x : ?T, H : _ |- _ ] => specialize (H x)
          end.
 
 (** specialize all hypotheses of type [forall _ : ?T, _] with
     appropriately typed hypotheses *)
 Ltac specialize_all_ways_forall :=
   repeat match goal with
-           | [ x : ?T, H : forall _ : ?T, _ |- _ ] => unique pose proof (H x)
+         | [ x : ?T, H : forall _ : ?T, _ |- _ ] => unique pose proof (H x)
          end.
 
 (** try to specialize all hypotheses with all other hypotheses.  This
@@ -244,75 +245,75 @@ Ltac specialize_all_ways_forall :=
     the type of [H] to Funclass. *)
 Ltac specialize_all_ways :=
   repeat match goal with
-           | [ x : ?T, H : _ |- _ ] => unique pose proof (H x)
+         | [ x : ?T, H : _ |- _ ] => unique pose proof (H x)
          end.
 
 (** try to specialize all non-dependent hypotheses using [tac] *)
 Ltac specialize_by' tac :=
   idtac;
   match goal with
-    | [ H : ?A -> ?B |- _ ] => let H' := fresh in assert (H' : A) by tac; specialize (H H'); clear H'
+  | [ H : ?A -> ?B |- _ ] => let H' := fresh in assert (H' : A) by tac; specialize (H H'); clear H'
   end.
 
 Ltac specialize_by tac := repeat specialize_by' tac.
 
 Ltac apply_in_hyp lem :=
   match goal with
-    | [ H : _ |- _ ] => apply lem in H
+  | [ H : _ |- _ ] => apply lem in H
   end.
 
 Ltac apply_in_hyp_no_match lem :=
   match goal with
-    | [ H : _ |- _ ] => apply lem in H;
+  | [ H : _ |- _ ] => apply lem in H;
       match type of H with
-        | appcontext[match _ with _ => _ end] => fail 1
-        | _ => idtac
+      | appcontext[match _ with _ => _ end] => fail 1
+      | _ => idtac
       end
   end.
 
 Ltac apply_in_hyp_no_cbv_match lem :=
   match goal with
-    | [ H : _ |- _ ]
-      => apply lem in H;
-        cbv beta iota in H;
-        match type of H with
-          | appcontext[match _ with _ => _ end] => fail 1
-          | _ => idtac
-        end
+  | [ H : _ |- _ ]
+    => apply lem in H;
+      cbv beta iota in H;
+      match type of H with
+      | appcontext[match _ with _ => _ end] => fail 1
+      | _ => idtac
+      end
   end.
 
 (* Coq's build in tactics don't work so well with things like [iff]
    so split them up into multiple hypotheses *)
 Ltac split_in_context ident funl funr :=
   repeat match goal with
-           | [ H : context p [ident] |- _ ] =>
-             let H0 := context p[funl] in let H0' := eval simpl in H0 in assert H0' by (apply H);
-               let H1 := context p[funr] in let H1' := eval simpl in H1 in assert H1' by (apply H);
-                 clear H
+         | [ H : context p [ident] |- _ ] =>
+           let H0 := context p[funl] in let H0' := eval simpl in H0 in assert H0' by (apply H);
+                                          let H1 := context p[funr] in let H1' := eval simpl in H1 in assert H1' by (apply H);
+                                                                         clear H
          end.
 
 Ltac split_iff := split_in_context iff (fun a b : Prop => a -> b) (fun a b : Prop => b -> a).
 
 Ltac split_and' :=
   repeat match goal with
-           | [ H : ?a /\ ?b |- _ ] => let H0 := fresh in let H1 := fresh in
-             assert (H0 := fst H); assert (H1 := snd H); clear H
+         | [ H : ?a /\ ?b |- _ ] => let H0 := fresh in let H1 := fresh in
+                                                       assert (H0 := fst H); assert (H1 := snd H); clear H
          end.
 Ltac split_and := split_and'; split_in_context and (fun a b : Type => a) (fun a b : Type => b).
 
 
 Ltac destruct_sum_in_match' :=
   match goal with
-    | [ H : appcontext[match ?E with inl _ => _ | inr _ => _ end] |- _ ]
-      => destruct E
-    | [ |- appcontext[match ?E with inl _ => _ | inr _ => _ end] ]
-      => destruct E
+  | [ H : appcontext[match ?E with inl _ => _ | inr _ => _ end] |- _ ]
+    => destruct E
+  | [ |- appcontext[match ?E with inl _ => _ | inr _ => _ end] ]
+    => destruct E
   end.
 Ltac destruct_sum_in_match := repeat destruct_sum_in_match'.
 
 Ltac destruct_ex :=
   repeat match goal with
-           | [ H : ex _ |- _ ] => destruct H
+         | [ H : ex _ |- _ ] => destruct H
          end.
 
 Ltac setoid_rewrite_hyp' := do_with_hyp ltac:(fun H => setoid_rewrite H).
@@ -324,7 +325,7 @@ Hint Extern 0 => solve [apply reflexivity] : typeclass_instances.
 
 Ltac set_evars :=
   repeat match goal with
-           | [ |- appcontext[?E] ] => is_evar E; let H := fresh in set (H := E)
+         | [ |- appcontext[?E] ] => is_evar E; let H := fresh in set (H := E)
          end.
 
 Instance pointwise_refl A B (eqB : relation B) `{Reflexive _ eqB} : Reflexive (pointwise_relation A eqB).
@@ -359,6 +360,23 @@ Definition If_Then_Else {A}
            (t e : A) :=
   if c then t else e.
 
+Notation "'If' c 'Then' t 'Else' e" :=
+  (If_Then_Else c t e)
+    (at level 70).
+
+Definition If_Opt_Then_Else {A B}
+           (c : option A)
+           (t : A -> B)
+           (e : B) :=
+  match c with
+  | Some a => t a
+  | None => e
+  end.
+
+Notation "'Ifopt' c 'as' c' 'Then' t 'Else' e" :=
+  (If_Opt_Then_Else c (fun c' => t) e)
+    (at level 70).
+
 Ltac find_if_inside :=
   match goal with
   | [ |- context[if ?X then _ else _] ] => destruct X
@@ -369,21 +387,21 @@ Ltac find_if_inside :=
 
 Ltac substs :=
   repeat match goal with
-           | [ H : ?x = ?y |- _ ]
-             => first [ subst x | subst y ]
+         | [ H : ?x = ?y |- _ ]
+           => first [ subst x | subst y ]
          end.
 
 Ltac substss :=
   repeat match goal with
-           | [ H : ?x = _ ,
-                   H0 : ?x = _ |- _ ]
-             => rewrite H in H0
+         | [ H : ?x = _ ,
+                 H0 : ?x = _ |- _ ]
+           => rewrite H in H0
          end.
 
 Ltac injections :=
   repeat match goal with
-           | [ H : _ = _ |- _ ]
-             => injection H; intros; subst; clear H
+         | [ H : _ = _ |- _ ]
+           => injection H; intros; subst; clear H
          end.
 
 
@@ -396,17 +414,17 @@ Ltac inversion_by rule :=
 Class can_transform_sigma A B := do_transform_sigma : A -> B.
 
 Instance can_transform_sigT_base {A} {P : A -> Type}
-: can_transform_sigma (sigT P) (sigT P) | 0
+  : can_transform_sigma (sigT P) (sigT P) | 0
   := fun x => x.
 
 Instance can_transform_sig_base {A} {P : A -> Prop}
-: can_transform_sigma (sig P) (sig P) | 0
+  : can_transform_sigma (sig P) (sig P) | 0
   := fun x => x.
 
 Instance can_transform_sigT {A B B' C'}
          `{forall x : A, can_transform_sigma (B x) (@sigT (B' x) (C' x))}
-: can_transform_sigma (forall x : A, B x)
-                (@sigT (forall x, B' x) (fun b => forall x, C' x (b x))) | 0
+  : can_transform_sigma (forall x : A, B x)
+                        (@sigT (forall x, B' x) (fun b => forall x, C' x (b x))) | 0
   := fun f => existT
                 (fun b => forall x : A, C' x (b x))
                 (fun x => projT1 (do_transform_sigma (f x)))
@@ -414,8 +432,8 @@ Instance can_transform_sigT {A B B' C'}
 
 Instance can_transform_sig {A B B' C'}
          `{forall x : A, can_transform_sigma (B x) (@sig (B' x) (C' x))}
-: can_transform_sigma (forall x : A, B x)
-                (@sig (forall x, B' x) (fun b => forall x, C' x (b x))) | 0
+  : can_transform_sigma (forall x : A, B x)
+                        (@sig (forall x, B' x) (fun b => forall x, C' x (b x))) | 0
   := fun f => exist
                 (fun b => forall x : A, C' x (b x))
                 (fun x => proj1_sig (do_transform_sigma (f x)))
@@ -423,11 +441,11 @@ Instance can_transform_sig {A B B' C'}
 
 Ltac split_sig' :=
   match goal with
-    | [ H : _ |- _ ]
-      => let H' := fresh in
-         pose proof (@do_transform_sigma _ _ _ H) as H';
-           clear H;
-           destruct H'
+  | [ H : _ |- _ ]
+    => let H' := fresh in
+       pose proof (@do_transform_sigma _ _ _ H) as H';
+         clear H;
+         destruct H'
   end.
 
 Ltac split_sig :=
@@ -435,12 +453,12 @@ Ltac split_sig :=
 
 Ltac clearbodies :=
   repeat match goal with
-           | [ H := _ |- _ ] => clearbody H
+         | [ H := _ |- _ ] => clearbody H
          end.
 
 Ltac subst_body :=
   repeat match goal with
-           | [ H := _ |- _ ] => subst H
+         | [ H := _ |- _ ] => subst H
          end.
 
 (** TODO: Maybe we should replace uses of this with [case_eq], which the stdlib defined for us? *)
@@ -515,7 +533,7 @@ Ltac higher_order_1_f_reflexivity :=
     cbv beta;
     solve [apply reflexivity].
 
-  (* This applies reflexivity after refining a method. *)
+(* This applies reflexivity after refining a method. *)
 
 Ltac higher_order_2_reflexivity' :=
   let x := match goal with |- ?R ?x (?f ?a ?b) => constr:(x) end in
@@ -606,36 +624,36 @@ Ltac higher_order_4_f_reflexivity :=
 
 Ltac higher_order_reflexivity :=
   match goal with
-    | |- ?R (?g ?x) (?g' (?f ?a ?b ?c ?d)) =>  higher_order_4_f_reflexivity
-    | |- ?R (?g ?x) (?g' (?f ?a ?b ?c))    =>  higher_order_3_f_reflexivity
-    | |- ?R (?g ?x) (?g' (?f ?a ?b))       =>  higher_order_2_f_reflexivity
-    | |- ?R (?g ?x) (?g' (?f ?a))          =>  higher_order_1_f_reflexivity
+  | |- ?R (?g ?x) (?g' (?f ?a ?b ?c ?d)) =>  higher_order_4_f_reflexivity
+  | |- ?R (?g ?x) (?g' (?f ?a ?b ?c))    =>  higher_order_3_f_reflexivity
+  | |- ?R (?g ?x) (?g' (?f ?a ?b))       =>  higher_order_2_f_reflexivity
+  | |- ?R (?g ?x) (?g' (?f ?a))          =>  higher_order_1_f_reflexivity
 
-    | |- ?R ?x (?f ?a ?b ?c ?d)           =>  higher_order_4_reflexivity
-    | |- ?R ?x (?f ?a ?b ?c)              =>  higher_order_3_reflexivity
-    | |- ?R ?x (?f ?a ?b)                 =>  higher_order_2_reflexivity
-    | |- ?R ?x (?f ?a)                    =>  higher_order_1_reflexivity
+  | |- ?R ?x (?f ?a ?b ?c ?d)           =>  higher_order_4_reflexivity
+  | |- ?R ?x (?f ?a ?b ?c)              =>  higher_order_3_reflexivity
+  | |- ?R ?x (?f ?a ?b)                 =>  higher_order_2_reflexivity
+  | |- ?R ?x (?f ?a)                    =>  higher_order_1_reflexivity
 
-    | |- _                                =>  reflexivity
+  | |- _                                =>  reflexivity
   end.
 
 Ltac pre_higher_order_reflexivity_single_evar :=
   idtac;
   match goal with
-    | [ |- ?L = ?R ] => has_evar R; not has_evar L; symmetry
-    | [ |- ?L = ?R ] => has_evar L; not has_evar R
-    | [ |- ?L = ?R ] => fail 1 "Goal has evars on both sides of the equality" L "=" R
-    | [ |- ?G ] => fail 1 "Goal is not an equality" G
+  | [ |- ?L = ?R ] => has_evar R; not has_evar L; symmetry
+  | [ |- ?L = ?R ] => has_evar L; not has_evar R
+  | [ |- ?L = ?R ] => fail 1 "Goal has evars on both sides of the equality" L "=" R
+  | [ |- ?G ] => fail 1 "Goal is not an equality" G
   end.
 
 Ltac higher_order_reflexivity_single_evar_step :=
   clear;
   match goal with
-    | [ |- ?f ?x = ?R ] => is_var x; revert x
-    | [ |- ?f ?x = ?R ]
-      => not has_evar x;
-        let R' := (eval pattern x in R) in
-        change (f x = R' x)
+  | [ |- ?f ?x = ?R ] => is_var x; revert x
+  | [ |- ?f ?x = ?R ]
+    => not has_evar x;
+      let R' := (eval pattern x in R) in
+      change (f x = R' x)
   end;
   (lazymatch goal with
   | [ |- forall x, ?f x = @?R x ]
@@ -686,7 +704,7 @@ Ltac higher_order_1_f_reflexivityT :=
     cbv beta;
     solve [apply reflexivityT].
 
-  (* This applies reflexivityT after refining a method. *)
+(* This applies reflexivityT after refining a method. *)
 
 Ltac higher_order_2_reflexivityT' :=
   let x := match goal with |- ?R ?x (?f ?a ?b) => constr:(x) end in
@@ -777,51 +795,51 @@ Ltac higher_order_4_f_reflexivityT :=
 
 Ltac higher_order_0_f_reflexivityT :=
   match goal with
-      |- ?R (?g ?a) (?g' ?x) =>
-      unify a x; solve [apply reflexivityT]
+    |- ?R (?g ?a) (?g' ?x) =>
+    unify a x; solve [apply reflexivityT]
   end.
 
 Ltac higher_order_reflexivityT :=
   match goal with
-    | |- ?R (?g ?x) (?g' (?f ?a ?b ?c ?d)) =>  higher_order_4_f_reflexivityT
-    | |- ?R (?g ?x) (?g' (?f ?a ?b ?c))    =>  higher_order_3_f_reflexivityT
-    | |- ?R (?g ?x) (?g' (?f ?a ?b))       =>  higher_order_2_f_reflexivityT
-    | |- ?R (?g ?x) (?g' (?f ?a))          =>  higher_order_1_f_reflexivityT
-    | |- ?R (?g ?a) (?g' ?x)               =>  higher_order_0_f_reflexivityT
+  | |- ?R (?g ?x) (?g' (?f ?a ?b ?c ?d)) =>  higher_order_4_f_reflexivityT
+  | |- ?R (?g ?x) (?g' (?f ?a ?b ?c))    =>  higher_order_3_f_reflexivityT
+  | |- ?R (?g ?x) (?g' (?f ?a ?b))       =>  higher_order_2_f_reflexivityT
+  | |- ?R (?g ?x) (?g' (?f ?a))          =>  higher_order_1_f_reflexivityT
+  | |- ?R (?g ?a) (?g' ?x)               =>  higher_order_0_f_reflexivityT
 
-    | |- ?R ?x (?f ?a ?b ?c ?d)           =>  higher_order_4_reflexivityT
-    | |- ?R ?x (?f ?a ?b ?c)              =>  higher_order_3_reflexivityT
-    | |- ?R ?x (?f ?a ?b)                 =>  higher_order_2_reflexivityT
-    | |- ?R ?x (?f ?a)                    =>  higher_order_1_reflexivityT
+  | |- ?R ?x (?f ?a ?b ?c ?d)           =>  higher_order_4_reflexivityT
+  | |- ?R ?x (?f ?a ?b ?c)              =>  higher_order_3_reflexivityT
+  | |- ?R ?x (?f ?a ?b)                 =>  higher_order_2_reflexivityT
+  | |- ?R ?x (?f ?a)                    =>  higher_order_1_reflexivityT
 
-    | |- _                                =>  reflexivityT
+  | |- _                                =>  reflexivityT
   end.
 
 Global Arguments f_equal {A B} f {x y} _ .
 
 
 Lemma fst_fold_right {A B A'} (f : B -> A -> A) (g : B -> A * A' -> A') a a' ls
-: fst (fold_right (fun b aa' => (f b (fst aa'), g b aa')) (a, a') ls)
-  = fold_right f a ls.
+  : fst (fold_right (fun b aa' => (f b (fst aa'), g b aa')) (a, a') ls)
+    = fold_right f a ls.
 Proof.
   induction ls; simpl; trivial.
   rewrite IHls; reflexivity.
 Qed.
 
 Lemma if_app {A} (ls1 ls1' ls2 : list A) (b : bool)
-: (if b then ls1 else ls1') ++ ls2 = if b then (ls1 ++ ls2) else (ls1' ++ ls2).
+  : (if b then ls1 else ls1') ++ ls2 = if b then (ls1 ++ ls2) else (ls1' ++ ls2).
 Proof.
   destruct b; reflexivity.
 Qed.
 
 Definition pull_if_dep {A B} (P : forall b : bool, A b -> B b) (a : A true) (a' : A false)
            (b : bool)
-: P b (if b as b return A b then a else a') =
-  if b as b return B b then P _ a else P _ a'
+  : P b (if b as b return A b then a else a') =
+    if b as b return B b then P _ a else P _ a'
   := match b with true => eq_refl | false => eq_refl end.
 
 Definition pull_if {A B} (P : A -> B) (a a' : A) (b : bool)
-: P (if b then a else a') = if b then P a else P a'
+  : P (if b then a else a') = if b then P a else P a'
   := pull_if_dep (fun _ => P) a a' b.
 
 (** From jonikelee@gmail.com on coq-club *)
@@ -835,50 +853,50 @@ Ltac simplify_hyp' H :=
 
 Ltac simplify_hyps :=
   repeat match goal with
-           | [ H : ?X -> _ |- _ ] => simplify_hyp' H
-           | [ H : ~?X |- _ ] => simplify_hyp' H
+         | [ H : ?X -> _ |- _ ] => simplify_hyp' H
+         | [ H : ~?X |- _ ] => simplify_hyp' H
          end.
 
 Local Ltac bool_eq_t :=
   destruct_head_hnf bool; simpl;
   repeat (split || intro || destruct_head iff || congruence);
   repeat match goal with
-           | [ H : ?x = ?x -> _ |- _ ] => specialize (H eq_refl)
-           | [ H : ?x <> ?x |- _ ] => specialize (H eq_refl)
-           | [ H : False |- _ ] => destruct H
-           | _ => progress simplify_hyps
-           | [ H : ?x = ?y |- _ ] => solve [ inversion H ]
-           | [ H : false = true -> _ |- _ ] => clear H
+         | [ H : ?x = ?x -> _ |- _ ] => specialize (H eq_refl)
+         | [ H : ?x <> ?x |- _ ] => specialize (H eq_refl)
+         | [ H : False |- _ ] => destruct H
+         | _ => progress simplify_hyps
+         | [ H : ?x = ?y |- _ ] => solve [ inversion H ]
+         | [ H : false = true -> _ |- _ ] => clear H
          end.
 
 Lemma bool_true_iff_beq (b0 b1 b2 b3 : bool)
-: (b0 = b1 <-> b2 = b3) <-> (b0 = (if b1
-                                   then if b3
-                                        then b2
-                                        else negb b2
-                                   else if b3
-                                        then negb b2
-                                        else b2)).
-Proof. bool_eq_t. Qed.
-
-Lemma bool_true_iff_bneq (b0 b1 b2 b3 : bool)
-: (b0 = b1 <-> b2 <> b3) <-> (b0 = (if b1
-                                    then if b3
-                                         then negb b2
-                                         else b2
-                                    else if b3
-                                         then b2
-                                         else negb b2)).
-Proof. bool_eq_t. Qed.
-
-Lemma bool_true_iff_bnneq (b0 b1 b2 b3 : bool)
-: (b0 = b1 <-> ~b2 <> b3) <-> (b0 = (if b1
+  : (b0 = b1 <-> b2 = b3) <-> (b0 = (if b1
                                      then if b3
                                           then b2
                                           else negb b2
                                      else if b3
                                           then negb b2
                                           else b2)).
+Proof. bool_eq_t. Qed.
+
+Lemma bool_true_iff_bneq (b0 b1 b2 b3 : bool)
+  : (b0 = b1 <-> b2 <> b3) <-> (b0 = (if b1
+                                      then if b3
+                                           then negb b2
+                                           else b2
+                                      else if b3
+                                           then b2
+                                           else negb b2)).
+Proof. bool_eq_t. Qed.
+
+Lemma bool_true_iff_bnneq (b0 b1 b2 b3 : bool)
+  : (b0 = b1 <-> ~b2 <> b3) <-> (b0 = (if b1
+                                       then if b3
+                                            then b2
+                                            else negb b2
+                                       else if b3
+                                            then negb b2
+                                            else b2)).
 Proof. bool_eq_t. Qed.
 
 Lemma dn_eqb (x y : bool) : ~~(x = y) -> x = y.
@@ -893,7 +911,7 @@ Proof.
 Qed.
 
 Lemma InA_In {A} R (ls : list A) x `{Reflexive _ R}
-: List.In x ls -> InA R x ls.
+  : List.In x ls -> InA R x ls.
 Proof.
   revert x.
   induction ls; simpl; try tauto.
@@ -901,7 +919,7 @@ Proof.
 Qed.
 
 Lemma InA_In_eq {A} (ls : list A) x
-: InA eq x ls <-> List.In x ls.
+  : InA eq x ls <-> List.In x ls.
 Proof.
   split; [ | eapply InA_In; exact _ ].
   revert x.
@@ -914,7 +932,7 @@ Proof.
 Qed.
 
 Lemma NoDupA_NoDup {A} R (ls : list A) `{Reflexive _ R}
-: NoDupA R ls -> NoDup ls.
+  : NoDupA R ls -> NoDup ls.
 Proof.
   intro H'.
   induction H'; constructor; auto.
@@ -922,28 +940,28 @@ Proof.
 Qed.
 
 Lemma push_if_existT {A} (P : A -> Type) (b : bool) (x y : sigT P)
-: (if b then x else y)
-  = existT P
-           (if b then (projT1 x) else (projT1 y))
-           (if b as b return P (if b then (projT1 x) else (projT1 y))
-            then projT2 x
-            else projT2 y).
+  : (if b then x else y)
+    = existT P
+             (if b then (projT1 x) else (projT1 y))
+             (if b as b return P (if b then (projT1 x) else (projT1 y))
+              then projT2 x
+              else projT2 y).
 Proof.
   destruct b, x, y; reflexivity.
 Defined.
 
 (** TODO: Find a better place for these *)
 Lemma fold_right_projT1 {A B X} (P : A -> Type) (init : A * B) (ls : list X) (f : X -> A -> A) (g : X -> A -> B -> B) pf pf'
-: List.fold_right (fun (x : X) (acc : A * B) =>
-                     (f x (fst acc), g x (fst acc) (snd acc)))
-                  init
-                  ls
-  = let fr := List.fold_right (fun (x : X) (acc : sigT P * B) =>
-                                 (existT P (f x (projT1 (fst acc))) (pf' x acc),
-                                  g x (projT1 (fst acc)) (snd acc)))
-                              (existT P (fst init) pf, snd init)
-                              ls in
-    (projT1 (fst fr), snd fr).
+  : List.fold_right (fun (x : X) (acc : A * B) =>
+                       (f x (fst acc), g x (fst acc) (snd acc)))
+                    init
+                    ls
+    = let fr := List.fold_right (fun (x : X) (acc : sigT P * B) =>
+                                   (existT P (f x (projT1 (fst acc))) (pf' x acc),
+                                    g x (projT1 (fst acc)) (snd acc)))
+                                (existT P (fst init) pf, snd init)
+                                ls in
+      (projT1 (fst fr), snd fr).
 Proof.
   revert init pf.
   induction ls; simpl; intros [? ?]; trivial; simpl.
@@ -954,11 +972,11 @@ Proof.
 Qed.
 
 Lemma fold_right_projT1' {A X} (P : A -> Type) (init : A) (ls : list X) (f : X -> A -> A) pf pf'
-: List.fold_right f init ls
-  = projT1 (List.fold_right (fun (x : X) (acc : sigT P) =>
-                               existT P (f x (projT1 acc)) (pf' x acc))
-                            (existT P init pf)
-                            ls).
+  : List.fold_right f init ls
+    = projT1 (List.fold_right (fun (x : X) (acc : sigT P) =>
+                                 existT P (f x (projT1 acc)) (pf' x acc))
+                              (existT P init pf)
+                              ls).
 Proof.
   revert init pf.
   induction ls; simpl; intros; trivial; simpl.
@@ -978,8 +996,8 @@ Defined.
 Fixpoint combine_sig_helper {T} {P : T -> Prop} (ls : list T) : (forall x, In x ls -> P x) -> list (sig P).
 Proof.
   refine match ls with
-           | nil => fun _ => nil
-           | x::xs => fun H => (exist _ x _)::@combine_sig_helper _ _ xs _
+         | nil => fun _ => nil
+         | x::xs => fun H => (exist _ x _)::@combine_sig_helper _ _ xs _
          end;
   clear combine_sig_helper; simpl in *;
   intros;
@@ -990,30 +1008,30 @@ Defined.
 
 Lemma Forall_forall1_transparent_helper_1 {A P} {x : A} {xs : list A} {l : list A}
       (H : Forall P l) (H' : x::xs = l)
-: P x.
+  : P x.
 Proof.
   subst; inversion H; repeat subst; assumption.
 Defined.
 Lemma Forall_forall1_transparent_helper_2 {A P} {x : A} {xs : list A} {l : list A}
       (H : Forall P l) (H' : x::xs = l)
-: Forall P xs.
+  : Forall P xs.
 Proof.
   subst; inversion H; repeat subst; assumption.
 Defined.
 
 Fixpoint Forall_forall1_transparent {A} (P : A -> Prop) (l : list A) {struct l}
-: Forall P l -> forall x, In x l -> P x
+  : Forall P l -> forall x, In x l -> P x
   := match l as l return Forall P l -> forall x, In x l -> P x with
-       | nil => fun _ _ f => match f : False with end
-       | x::xs => fun H x' H' =>
-                    match H' with
-                      | or_introl H'' => eq_rect x
-                                                 P
-                                                 (Forall_forall1_transparent_helper_1 H eq_refl)
-                                                 _
-                                                 H''
-                      | or_intror H'' => @Forall_forall1_transparent A P xs (Forall_forall1_transparent_helper_2 H eq_refl) _ H''
-                    end
+     | nil => fun _ _ f => match f : False with end
+     | x::xs => fun H x' H' =>
+                  match H' with
+                  | or_introl H'' => eq_rect x
+                                             P
+                                             (Forall_forall1_transparent_helper_1 H eq_refl)
+                                             _
+                                             H''
+                  | or_intror H'' => @Forall_forall1_transparent A P xs (Forall_forall1_transparent_helper_2 H eq_refl) _ H''
+                  end
      end.
 
 Definition combine_sig {T P ls} (H : List.Forall P ls) : list (@sig T P)
@@ -1023,7 +1041,7 @@ Arguments Forall_forall1_transparent_helper_1 : simpl never.
 Arguments Forall_forall1_transparent_helper_2 : simpl never.
 
 Lemma In_combine_sig {T P ls H x} (H' : In x ls)
-: In (exist P x (@Forall_forall1_transparent T P ls H _ H')) (combine_sig H).
+  : In (exist P x (@Forall_forall1_transparent T P ls H _ H')) (combine_sig H).
 Proof.
   unfold combine_sig.
   induction ls; simpl in *; trivial.
@@ -1032,7 +1050,7 @@ Proof.
   right.
   revert H.
   match goal with
-    | [ |- context[@eq_refl ?A ?a] ] => generalize (@eq_refl A a)
+  | [ |- context[@eq_refl ?A ?a] ] => generalize (@eq_refl A a)
   end.
   set (als := a::ls) in *.
   change als with (a::ls) at 1.
@@ -1044,13 +1062,13 @@ Defined.
 
 Fixpoint flatten1 {T} (ls : list (list T)) : list T
   := match ls with
-       | nil => nil
-       | x::xs => (x ++ flatten1 xs)%list
+     | nil => nil
+     | x::xs => (x ++ flatten1 xs)%list
      end.
 
 Lemma flatten1_length_ne_0 {T} (ls : list (list T)) (H0 : Datatypes.length ls <> 0)
       (H1 : Datatypes.length (hd nil ls) <> 0)
-: Datatypes.length (flatten1 ls) <> 0.
+  : Datatypes.length (flatten1 ls) <> 0.
 Proof.
   destruct ls as [| [|] ]; simpl in *; auto.
 Qed.
@@ -1058,7 +1076,7 @@ Qed.
 Local Hint Constructors List.Forall.
 
 Lemma Forall_app {T} P (ls1 ls2 : list T)
-: List.Forall P ls1 /\ List.Forall P ls2 <-> List.Forall P (ls1 ++ ls2).
+  : List.Forall P ls1 /\ List.Forall P ls2 <-> List.Forall P (ls1 ++ ls2).
 Proof.
   split.
   { intros [H1 H2].
@@ -1069,7 +1087,7 @@ Proof.
 Qed.
 
 Lemma Forall_flatten1 {T ls P}
-: List.Forall P (@flatten1 T ls) <-> List.Forall (List.Forall P) ls.
+  : List.Forall P (@flatten1 T ls) <-> List.Forall (List.Forall P) ls.
 Proof.
   induction ls; simpl.
   { repeat first [ esplit | intro | constructor ]. }
@@ -1082,7 +1100,7 @@ Qed.
 
 
 Lemma Forall_map {A B} {f : A -> B} {ls P}
-: List.Forall P (map f ls) <-> List.Forall (P ∘ f) ls.
+  : List.Forall P (map f ls) <-> List.Forall (P ∘ f) ls.
 Proof.
   induction ls; simpl.
   { repeat first [ esplit | intro | constructor ]. }
@@ -1092,36 +1110,36 @@ Proof.
 Qed.
 
 Lemma fold_right_map {A B C} (f : A -> B) g c ls
-: @fold_right C B g
-              c
-              (map f ls)
-  = fold_right (g ∘ f) c ls.
+  : @fold_right C B g
+                c
+                (map f ls)
+    = fold_right (g ∘ f) c ls.
 Proof.
   induction ls; unfold compose; simpl; f_equal; auto.
 Qed.
 
 Lemma fold_right_orb_true ls
-: fold_right orb true ls = true.
+  : fold_right orb true ls = true.
 Proof.
   induction ls; destruct_head_hnf bool; simpl in *; trivial.
 Qed.
 
 Lemma fold_right_orb b ls
-: fold_right orb b ls = true
-  <-> fold_right or (b = true) (map (fun x => x = true) ls).
+  : fold_right orb b ls = true
+    <-> fold_right or (b = true) (map (fun x => x = true) ls).
 Proof.
   induction ls; simpl; intros; try reflexivity.
   rewrite <- IHls; clear.
   repeat match goal with
-           | _ => assumption
-           | _ => split
-           | _ => intro
-           | _ => progress subst
-           | _ => progress simpl in *
-           | _ => progress destruct_head or
-           | _ => progress destruct_head bool
-           | _ => left; reflexivity
-           | _ => right; assumption
+         | _ => assumption
+         | _ => split
+         | _ => intro
+         | _ => progress subst
+         | _ => progress simpl in *
+         | _ => progress destruct_head or
+         | _ => progress destruct_head bool
+         | _ => left; reflexivity
+         | _ => right; assumption
          end.
 Qed.
 
@@ -1129,63 +1147,63 @@ Local Hint Constructors Exists.
 
 Local Ltac fold_right_orb_map_sig_t :=
   repeat match goal with
-           | _ => split
-           | _ => intro
-           | _ => progress simpl in *
-           | _ => progress subst
-           | _ => progress destruct_head sumbool
-           | _ => progress destruct_head sig
-           | _ => progress destruct_head and
-           | _ => progress destruct_head or
-           | [ H : _ = true |- _ ] => rewrite H
-           | [ H : (_ || _)%bool = true |- _ ] => apply Bool.orb_true_elim in H
-           | [ H : ?a, H' : ?a -> ?b |- _ ] => specialize (H' H)
-           | [ H : ?a, H' : @sig ?a ?P -> ?b |- _ ] => specialize (fun b' => H' (exist P H b'))
-           | [ H' : _ /\ _ -> _ |- _ ] => specialize (fun a b => H' (conj a b))
-           | [ |- (?a || true)%bool = true ] => destruct a; reflexivity
-           | _ => solve [ eauto ]
-           | _ => congruence
+         | _ => split
+         | _ => intro
+         | _ => progress simpl in *
+         | _ => progress subst
+         | _ => progress destruct_head sumbool
+         | _ => progress destruct_head sig
+         | _ => progress destruct_head and
+         | _ => progress destruct_head or
+         | [ H : _ = true |- _ ] => rewrite H
+         | [ H : (_ || _)%bool = true |- _ ] => apply Bool.orb_true_elim in H
+         | [ H : ?a, H' : ?a -> ?b |- _ ] => specialize (H' H)
+         | [ H : ?a, H' : @sig ?a ?P -> ?b |- _ ] => specialize (fun b' => H' (exist P H b'))
+         | [ H' : _ /\ _ -> _ |- _ ] => specialize (fun a b => H' (conj a b))
+         | [ |- (?a || true)%bool = true ] => destruct a; reflexivity
+         | _ => solve [ eauto ]
+         | _ => congruence
          end.
 
 Lemma fold_right_orb_map_sig1 {T} f (ls : list T)
-: fold_right orb false (map f ls) = true
-  -> sig (fun x => In x ls /\ f x = true).
+  : fold_right orb false (map f ls) = true
+    -> sig (fun x => In x ls /\ f x = true).
 Proof.
   induction ls; fold_right_orb_map_sig_t.
 Qed.
 
 Lemma fold_right_orb_map_sig2 {T} f (ls : list T)
-: sig (fun x => In x ls /\ f x = true)
-  -> fold_right orb false (map f ls) = true.
+  : sig (fun x => In x ls /\ f x = true)
+    -> fold_right orb false (map f ls) = true.
 Proof.
   induction ls; fold_right_orb_map_sig_t.
 Qed.
 
 Lemma fold_right_orb_map {T} f (ls : list T)
-: fold_right orb false (map f ls) = true
-  <-> List.Exists (fun x => f x = true) ls.
+  : fold_right orb false (map f ls) = true
+    <-> List.Exists (fun x => f x = true) ls.
 Proof.
   induction ls;
   repeat match goal with
-           | _ => split
-           | _ => intro
-           | _ => progress simpl in *
-           | [ H : Exists _ [] |- _ ] => solve [ inversion H ]
-           | [ H : Exists _ (_::_) |- _ ] => inversion_clear H
-           | _ => progress split_iff
-           | _ => progress destruct_head sumbool
-           | [ H : (_ || _)%bool = true |- _ ] => apply Bool.orb_true_elim in H
-           | [ H : ?a, H' : ?a -> ?b |- _ ] => specialize (H' H)
-           | [ H : _ = true |- _ ] => rewrite H
-           | [ |- (?a || true)%bool = _ ] => destruct a; reflexivity
-           | _ => solve [ eauto ]
-           | _ => congruence
+         | _ => split
+         | _ => intro
+         | _ => progress simpl in *
+         | [ H : Exists _ [] |- _ ] => solve [ inversion H ]
+         | [ H : Exists _ (_::_) |- _ ] => inversion_clear H
+         | _ => progress split_iff
+         | _ => progress destruct_head sumbool
+         | [ H : (_ || _)%bool = true |- _ ] => apply Bool.orb_true_elim in H
+         | [ H : ?a, H' : ?a -> ?b |- _ ] => specialize (H' H)
+         | [ H : _ = true |- _ ] => rewrite H
+         | [ |- (?a || true)%bool = _ ] => destruct a; reflexivity
+         | _ => solve [ eauto ]
+         | _ => congruence
          end.
 Qed.
 
 Lemma fold_right_map_andb_andb {T} x y f g (ls : list T)
-: fold_right andb x (map f ls) = true /\ fold_right andb y (map g ls) = true
-  <-> fold_right andb (andb x y) (map (fun k => andb (f k) (g k)) ls) = true.
+  : fold_right andb x (map f ls) = true /\ fold_right andb y (map g ls) = true
+    <-> fold_right andb (andb x y) (map (fun k => andb (f k) (g k)) ls) = true.
 Proof.
   induction ls; simpl; intros; destruct_head_hnf bool; try tauto;
   rewrite !Bool.andb_true_iff;
@@ -1193,20 +1211,20 @@ Proof.
 Qed.
 
 Lemma fold_right_map_andb_orb {T} x y f g (ls : list T)
-: fold_right andb x (map f ls) = true /\ fold_right orb y (map g ls) = true
-  -> fold_right orb (andb x y) (map (fun k => andb (f k) (g k)) ls) = true.
+  : fold_right andb x (map f ls) = true /\ fold_right orb y (map g ls) = true
+    -> fold_right orb (andb x y) (map (fun k => andb (f k) (g k)) ls) = true.
 Proof.
   induction ls; simpl; intros; destruct_head_hnf bool; try tauto;
   repeat match goal with
-           | [ H : _ |- _ ] => progress rewrite ?Bool.orb_true_iff, ?Bool.andb_true_iff in H
-           | _ => progress rewrite ?Bool.orb_true_iff, ?Bool.andb_true_iff
+         | [ H : _ |- _ ] => progress rewrite ?Bool.orb_true_iff, ?Bool.andb_true_iff in H
+         | _ => progress rewrite ?Bool.orb_true_iff, ?Bool.andb_true_iff
          end;
   try tauto.
 Qed.
 
 Lemma fold_right_map_and_and {T} x y f g (ls : list T)
-: fold_right and x (map f ls) /\ fold_right and y (map g ls)
-  <-> fold_right and (x /\ y) (map (fun k => f k /\ g k) ls).
+  : fold_right and x (map f ls) /\ fold_right and y (map g ls)
+    <-> fold_right and (x /\ y) (map (fun k => f k /\ g k) ls).
 Proof.
   revert x y.
   induction ls; simpl; intros; try reflexivity.
@@ -1215,8 +1233,8 @@ Proof.
 Qed.
 
 Lemma fold_right_map_and_or {T} x y f g (ls : list T)
-: fold_right and x (map f ls) /\ fold_right or y (map g ls)
-  -> fold_right or (x /\ y) (map (fun k => f k /\ g k) ls).
+  : fold_right and x (map f ls) /\ fold_right or y (map g ls)
+    -> fold_right or (x /\ y) (map (fun k => f k /\ g k) ls).
 Proof.
   revert x y.
   induction ls; simpl; intros; try assumption.
@@ -1234,9 +1252,9 @@ Lemma ascii_dec_refl a : Ascii.ascii_dec a a = left eq_refl.
 Proof.
   destruct a as [b0 b1 b2 b3 b4 b5 b6 b7];
   repeat match goal with
-           | _ => reflexivity
-           | [ |- ?a = ?b ] => let a' := (eval hnf in a) in progress change (a' = b)
-           | _ => rewrite bool_dec_refl
+         | _ => reflexivity
+         | [ |- ?a = ?b ] => let a' := (eval hnf in a) in progress change (a' = b)
+         | _ => rewrite bool_dec_refl
          end.
 Qed.
 
@@ -1249,21 +1267,21 @@ Qed.
 Lemma fold_right_andb_map_impl {T} x y f g (ls : list T)
       (H0 : x = true -> y = true)
       (H1 : forall k, f k = true -> g k = true)
-: (fold_right andb x (map f ls) = true -> fold_right andb y (map g ls) = true).
+  : (fold_right andb x (map f ls) = true -> fold_right andb y (map g ls) = true).
 Proof.
   induction ls; simpl; intros; try tauto.
   rewrite IHls; simpl;
   repeat match goal with
-           | [ H : _ = true |- _ ] => apply Bool.andb_true_iff in H
-           | [ |- _ = true ] => apply Bool.andb_true_iff
-           | _ => progress destruct_head and
-           | _ => split
-           | _ => auto
+         | [ H : _ = true |- _ ] => apply Bool.andb_true_iff in H
+         | [ |- _ = true ] => apply Bool.andb_true_iff
+         | _ => progress destruct_head and
+         | _ => split
+         | _ => auto
          end.
 Qed.
 
 Lemma fold_right_andb_map_in {A P} {ls : list A} (H : fold_right andb true (map P ls) = true)
-: forall x, List.In x ls -> P x = true.
+  : forall x, List.In x ls -> P x = true.
 Proof.
   induction ls; simpl; auto.
   simpl in *.
@@ -1275,8 +1293,8 @@ Qed.
 Lemma if_ext {T} (b : bool) (f1 f2 : b = true -> T true) (g1 g2 : b = false -> T false)
       (ext_f : forall H, f1 H = f2 H)
       (ext_g : forall H, g1 H = g2 H)
-: (if b as b' return (b = b' -> T b') then f1 else g1) eq_refl
-  = (if b as b' return (b = b' -> T b') then f2 else g2) eq_refl.
+  : (if b as b' return (b = b' -> T b') then f1 else g1) eq_refl
+    = (if b as b' return (b = b' -> T b') then f2 else g2) eq_refl.
 Proof.
   destruct b; trivial.
 Defined.
@@ -1286,15 +1304,15 @@ Hint Extern 0 (constr_eq_helper ?a ?b) => constr_eq a b; exact I : typeclass_ins
 (** return the first hypothesis with head [h] *)
 Ltac hyp_with_head h
   := match goal with
-       | [ H : ?T |- _ ] => let h' := head T in
-                            let test := constr:(_ : constr_eq_helper h' h) in
-                            constr:H
+     | [ H : ?T |- _ ] => let h' := head T in
+                          let test := constr:(_ : constr_eq_helper h' h) in
+                          constr:H
      end.
 Ltac hyp_with_head_hnf h
   := match goal with
-       | [ H : ?T |- _ ] => let h' := head_hnf T in
-                            let test := constr:(_ : constr_eq_helper h' h) in
-                            constr:H
+     | [ H : ?T |- _ ] => let h' := head_hnf T in
+                          let test := constr:(_ : constr_eq_helper h' h) in
+                          constr:H
      end.
 
 Lemma or_False {A} (H : A \/ False) : A.
@@ -1311,14 +1329,14 @@ Qed.
 
 Lemma path_prod {A B} {x y : A * B}
       (H : x = y)
-: fst x = fst y /\ snd x = snd y.
+  : fst x = fst y /\ snd x = snd y.
 Proof.
   destruct H; split; reflexivity.
 Defined.
 
 Definition path_prod' {A B} {x x' : A} {y y' : B}
            (H : (x, y) = (x', y'))
-: x = x' /\ y = y'
+  : x = x' /\ y = y'
   := path_prod H.
 
 Lemma lt_irrefl' {n m} (H : n = m) : ~n < m.
@@ -1339,16 +1357,16 @@ Qed.
 Ltac instantiate_evar :=
   instantiate;
   match goal with
-    | [ H : appcontext[?E] |- _ ]
-      => is_evar E;
-        match goal with
-          | [ H' : _ |- _ ] => unify E H'
-        end
-    | [ |- appcontext[?E] ]
-      => is_evar E;
-        match goal with
-          | [ H' : _ |- _ ] => unify E H'
-        end
+  | [ H : appcontext[?E] |- _ ]
+    => is_evar E;
+      match goal with
+      | [ H' : _ |- _ ] => unify E H'
+      end
+  | [ |- appcontext[?E] ]
+    => is_evar E;
+      match goal with
+      | [ H' : _ |- _ ] => unify E H'
+      end
   end;
   instantiate.
 
@@ -1357,33 +1375,33 @@ Ltac instantiate_evars :=
 
 Ltac find_eassumption :=
   match goal with
-    | [ H : ?T |- ?T' ] => constr:(H : T')
+  | [ H : ?T |- ?T' ] => constr:(H : T')
   end.
 
 Ltac pre_eassumption := idtac; let x := find_eassumption in idtac.
 
 Definition functor_sum {A A' B B'} (f : A -> A') (g : B -> B') (x : sum A B) : sum A' B' :=
   match x with
-    | inl a => inl (f a)
-    | inr b => inr (g b)
+  | inl a => inl (f a)
+  | inr b => inr (g b)
   end.
 
 Lemma impl_sum_match_match_option {A B ret s s' n r}
       {x : option A}
       (f : match x with
-             | Some x' => s x'
-             | None => n
+           | Some x' => s x'
+           | None => n
            end -> ret)
       (g : s' r -> ret)
-: match
-    match x return A + B with
+  : match
+      match x return A + B with
       | Some x' => inl x'
       | None => inr r
-    end
-  with
+      end
+    with
     | inl x' => s x'
     | inr x' => s' x'
-  end -> ret.
+    end -> ret.
 Proof.
   destruct x; assumption.
 Defined.
@@ -1392,48 +1410,48 @@ Lemma impl_match_option {A ret s n}
       {x : option A}
       (f : forall x', x = Some x' -> s x' -> ret)
       (g : x = None -> n -> ret)
-: match x with
+  : match x with
     | Some x' => s x'
     | None => n
-  end -> ret.
+    end -> ret.
 Proof.
   destruct x; eauto.
 Defined.
 
 Definition option_bind {A} {B} (f : A -> option B) (x : option A)
-: option B
+  : option B
   := match x with
-       | None => None
-       | Some a => f a
+     | None => None
+     | Some a => f a
      end.
 
 Fixpoint ForallT {T} (P : T -> Type) (ls : list T) : Type
   := match ls return Type with
-       | nil => True
-       | x::xs => (P x * ForallT P xs)%type
+     | nil => True
+     | x::xs => (P x * ForallT P xs)%type
      end.
 Fixpoint Forall_tails {T} (P : list T -> Type) (ls : list T) : Type
   := match ls with
-       | nil => P nil
-       | x::xs => (P (x::xs) * Forall_tails P xs)%type
+     | nil => P nil
+     | x::xs => (P (x::xs) * Forall_tails P xs)%type
      end.
 
 Fixpoint ForallT_all {T} {P : T -> Type} (p : forall t, P t) {ls}
-: ForallT P ls
+  : ForallT P ls
   := match ls with
-       | nil => I
-       | x::xs => (p _, @ForallT_all T P p xs)
+     | nil => I
+     | x::xs => (p _, @ForallT_all T P p xs)
      end.
 
 Fixpoint Forall_tails_all {T} {P : list T -> Type} (p : forall t, P t) {ls}
-: Forall_tails P ls
+  : Forall_tails P ls
   := match ls with
-       | nil => p _
-       | x::xs => (p _, @Forall_tails_all T P p xs)
+     | nil => p _
+     | x::xs => (p _, @Forall_tails_all T P p xs)
      end.
 
 Lemma substring_correct3 {s : string} m (H : length s <= m)
-: substring 0 m s = s.
+  : substring 0 m s = s.
 Proof.
   revert m H.
   induction s; simpl.
@@ -1446,19 +1464,19 @@ Proof.
 Qed.
 
 Lemma substring_correct3' {s : string}
-: substring 0 (length s) s = s.
+  : substring 0 (length s) s = s.
 Proof.
   apply substring_correct3; reflexivity.
 Qed.
 
 Lemma substring_correct0 {s : string} {n}
-: substring n 0 s = ""%string.
+  : substring n 0 s = ""%string.
 Proof.
   revert n; induction s; intro n; destruct n; simpl; trivial.
 Qed.
 
 Lemma substring_correct0' {s : string} {n m} (H : length s <= n)
-: substring n m s = ""%string.
+  : substring n m s = ""%string.
 Proof.
   revert n m H; induction s; simpl; intros n m H.
   { destruct n, m; trivial. }
@@ -1470,7 +1488,7 @@ Qed.
 
 Lemma substring_correct4 {s : string} {n m m'}
       (H : length s <= n + m) (H' : length s <= n + m')
-: substring n m s = substring n m' s.
+  : substring n m s = substring n m' s.
 Proof.
   revert n m m' H H'.
   induction s; simpl in *.
@@ -1500,7 +1518,7 @@ Proof.
 Qed.
 
 Lemma substring_concat {x y z} {s : string}
-: (substring x y s ++ substring (x + y) z s)%string = substring x (y + z) s.
+  : (substring x y s ++ substring (x + y) z s)%string = substring x (y + z) s.
 Proof.
   revert x y z.
   induction s; simpl; intros.
@@ -1514,13 +1532,13 @@ Proof.
 Qed.
 
 Lemma substring_concat' {y z} {s : string}
-: (substring 0 y s ++ substring y z s)%string = substring 0 (y + z) s.
+  : (substring 0 y s ++ substring y z s)%string = substring 0 (y + z) s.
 Proof.
   rewrite <- substring_concat; reflexivity.
 Qed.
 
 Lemma substring_concat0 {s1 s2 : string}
-: substring 0 (length s1) (s1 ++ s2) = s1.
+  : substring 0 (length s1) (s1 ++ s2) = s1.
 Proof.
   induction s1; simpl.
   { rewrite substring_correct0; trivial. }
@@ -1528,7 +1546,7 @@ Proof.
 Qed.
 
 Lemma concat_length {s1 s2 : string}
-: length (s1 ++ s2) = length s1 + length s2.
+  : length (s1 ++ s2) = length s1 + length s2.
 Proof.
   induction s1.
   { reflexivity. }
@@ -1537,7 +1555,7 @@ Proof.
 Qed.
 
 Lemma substring_concat_length {s1 s2 : string}
-: substring (length s1) (length s2) (s1 ++ s2) = s2.
+  : substring (length s1) (length s2) (s1 ++ s2) = s2.
 Proof.
   induction s1; simpl.
   { rewrite substring_correct3'; trivial. }
@@ -1548,7 +1566,7 @@ Proof.
 Qed.
 
 Lemma substring_length {s n m}
-: length (substring n m s) = (min (length s) (m + n)) - n.
+  : length (substring n m s) = (min (length s) (m + n)) - n.
 Proof.
   revert n m; induction s; intros.
   { destruct n, m; reflexivity. }
@@ -1561,7 +1579,7 @@ Proof.
 Qed.
 
 Lemma substring_substring {s n m n' m'}
-: substring n m (substring n' m' s) = substring (n + n') (min m (m' - n)) s.
+  : substring n m (substring n' m' s) = substring (n + n') (min m (m' - n)) s.
 Proof.
   revert n m n' m'.
   induction s; intros.
@@ -1581,63 +1599,63 @@ Qed.
 Ltac free_in x y :=
   idtac;
   match y with
-    | appcontext[x] => fail 1 x "appears in" y
-    | _ => idtac
+  | appcontext[x] => fail 1 x "appears in" y
+  | _ => idtac
   end.
 
 Ltac setoid_subst'' R x :=
   atomic x;
   match goal with
-    | [ H : R x ?y |- _ ]
-      => free_in x y;
-        rewrite ?H;
-        repeat setoid_rewrite H;
-        repeat match goal with
-                 | [ H' : appcontext[x] |- _ ] => not constr_eq H' H; rewrite H in H'
-                 | [ H' : appcontext[x] |- _ ] => not constr_eq H' H; setoid_rewrite H in H'
-               end;
-        clear H;
-        clear x
-    | [ H : R ?y x |- _ ]
-      => free_in x y;
-        rewrite <- ?H;
-        repeat setoid_rewrite <- H;
-        repeat match goal with
-                 | [ H' : appcontext[x] |- _ ] => not constr_eq H' H; rewrite <- H in H'
-                 | [ H' : appcontext[x] |- _ ] => not constr_eq H' H; setoid_rewrite <- H in H'
-               end;
-        clear H;
-        clear x
+  | [ H : R x ?y |- _ ]
+    => free_in x y;
+      rewrite ?H;
+      repeat setoid_rewrite H;
+      repeat match goal with
+             | [ H' : appcontext[x] |- _ ] => not constr_eq H' H; rewrite H in H'
+             | [ H' : appcontext[x] |- _ ] => not constr_eq H' H; setoid_rewrite H in H'
+             end;
+      clear H;
+      clear x
+  | [ H : R ?y x |- _ ]
+    => free_in x y;
+      rewrite <- ?H;
+      repeat setoid_rewrite <- H;
+      repeat match goal with
+             | [ H' : appcontext[x] |- _ ] => not constr_eq H' H; rewrite <- H in H'
+             | [ H' : appcontext[x] |- _ ] => not constr_eq H' H; setoid_rewrite <- H in H'
+             end;
+      clear H;
+      clear x
   end.
 
 Ltac setoid_subst' x :=
   atomic x;
   match goal with
-    | [ H : ?R x _ |- _ ] => setoid_subst'' R x
-    | [ H : ?R _ x |- _ ] => setoid_subst'' R x
+  | [ H : ?R x _ |- _ ] => setoid_subst'' R x
+  | [ H : ?R _ x |- _ ] => setoid_subst'' R x
   end.
 
 Ltac setoid_subst_rel' R :=
   idtac;
   match goal with
-    | [ H : R ?x _ |- _ ] => setoid_subst'' R x
-    | [ H : R _ ?x |- _ ] => setoid_subst'' R x
+  | [ H : R ?x _ |- _ ] => setoid_subst'' R x
+  | [ H : R _ ?x |- _ ] => setoid_subst'' R x
   end.
 
 Ltac setoid_subst_rel R := repeat setoid_subst_rel' R.
 
 Ltac setoid_subst_all :=
   repeat match goal with
-           | [ H : ?R ?x ?y |- _ ] => atomic x; setoid_subst'' R x
-           | [ H : ?R ?x ?y |- _ ] => atomic y; setoid_subst'' R y
+         | [ H : ?R ?x ?y |- _ ] => atomic x; setoid_subst'' R x
+         | [ H : ?R ?x ?y |- _ ] => atomic y; setoid_subst'' R y
          end.
 
 Tactic Notation "setoid_subst" ident(x) := setoid_subst' x.
 Tactic Notation "setoid_subst" := setoid_subst_all.
 
 Lemma substring1_get {n str}
-: substring n 1 str
-  = option_rect (fun _ => String.string) (fun a => String.String a ""%string) ""%string (get n str).
+  : substring n 1 str
+    = option_rect (fun _ => String.string) (fun a => String.String a ""%string) ""%string (get n str).
 Proof.
   revert n; induction str; intro n.
   { destruct n; reflexivity. }
@@ -1647,7 +1665,7 @@ Proof.
 Qed.
 
 Lemma substring_min {x x' y y' z str} (H : substring x y str = substring x' y' str)
-: substring x (min y z) str = substring x' (min y' z) str.
+  : substring x (min y z) str = substring x' (min y' z) str.
 Proof.
   pose proof (fun y x => @substring_substring str 0 z x y) as H'; simpl in *.
   setoid_rewrite Nat.sub_0_r in H'.
@@ -1656,11 +1674,11 @@ Proof.
 Qed.
 
 Lemma sub_plus {x y z} (H0 : z <= y) (H1 : y <= x)
-: x - (y - z) = (x - y) + z.
+  : x - (y - z) = (x - y) + z.
 Proof. omega. Qed.
 
 Lemma fold_right_and_iff {A ls}
-: fold_right and A ls <-> (fold_right and True ls /\ A).
+  : fold_right and A ls <-> (fold_right and True ls /\ A).
 Proof.
   induction ls; simpl; tauto.
 Qed.
@@ -1671,17 +1689,63 @@ Definition impl1_1 {A B C} : (B -> A) -> ((A -> C) -> (B -> C)). Proof. auto. De
 Definition impl1_2 {A A' B C C'} : ((A -> C) -> (A' -> C')) -> ((A -> B -> C) -> (A' -> B -> C')). Proof. eauto. Defined.
 
 Lemma if_aggregate {A} (b1 b2 : bool) (x y : A)
-: (if b1 then x else if b2 then x else y) = (if (b1 || b2)%bool then x else y).
+  : (if b1 then x else if b2 then x else y) = (if (b1 || b2)%bool then x else y).
 Proof.
   destruct b1, b2; reflexivity.
 Qed.
 Lemma if_aggregate2 {A} (b1 b2 b3 : bool) (x y z : A) (H : b1 = false -> b2 = true -> b3 = true -> False)
-: (if b1 then x else if b2 then y else if b3 then x else z) = (if (b1 || b3)%bool then x else if b2 then y else z).
+  : (if b1 then x else if b2 then y else if b3 then x else z) = (if (b1 || b3)%bool then x else if b2 then y else z).
 Proof.
   case_eq b1; case_eq b2; case_eq b3; try reflexivity; simpl; intros; exfalso; subst; eauto.
 Qed.
 Lemma if_aggregate3 {A} (b1 b2 b3 b4 : bool) (x y z w : A) (H : b1 = false -> (b2 || b3)%bool = true -> b4 = true -> False)
-: (if b1 then x else if b2 then y else if b3 then z else if b4 then x else w) = (if (b1 || b4)%bool then x else if b2 then y else if b3 then z else w).
+  : (if b1 then x else if b2 then y else if b3 then z else if b4 then x else w) = (if (b1 || b4)%bool then x else if b2 then y else if b3 then z else w).
 Proof.
   case_eq b1; case_eq b2; case_eq b3; case_eq b4; try reflexivity; simpl; intros; exfalso; subst; eauto.
 Qed.
+
+Ltac progress_subgoal top tac cont :=
+  top; (tac; try (cont ()) || (try (cont ()))).
+
+(* ltac is call-by-value, so wrap the cont in a function *)
+(* local definition in a_u_s *)
+Ltac cont_fn top tac'' x :=
+  apply_under_subgoal top tac'' with
+
+  (* mutually recursive with progress_subgoal *)
+  (* calls top on each subgoal generated, which may generate more subgoals *)
+  (* fails when top fails in progress_subgoals *)
+  apply_under_subgoal top tac'' :=
+    progress_subgoal top tac'' ltac:(cont_fn top tac'').
+
+Ltac doAny srewrite_fn drills_fn finish_fn :=
+  let repeat_srewrite_fn := repeat srewrite_fn in
+  try repeat_srewrite_fn;
+    apply_under_subgoal drills_fn ltac:(repeat_srewrite_fn);
+    finish_fn.
+
+Ltac set_refine_evar :=
+  match goal with
+  | |- ?R _ (?H _ _ _ _ _) =>
+    let H' := fresh in set (H' := H) in *
+  | |- ?R _ (?H _ _ _ _ ) =>
+    let H' := fresh in set (H' := H) in *
+  | |- ?R _ (?H _ _ _ ) =>
+    let H' := fresh in set (H' := H) in *
+  | |- ?R _ (?H _ _) =>
+    let H' := fresh in set (H' := H) in *
+  | |- ?R _ (?H _ ) =>
+    let H' := fresh in set (H' := H) in *
+  | |- ?R _ (?H ) =>
+    let H' := fresh in set (H' := H) in *
+  end.
+Ltac subst_refine_evar :=
+  match goal with
+  | |- ?R _ (?H _ _ _ _ _) => subst H
+  | |- ?R _ (?H _ _ _ _ ) => subst H
+  | |- ?R _ (?H _ _ _ ) => subst H
+  | |- ?R _ (?H _ _) => subst H
+  | |- ?R _ (?H _ ) => subst H
+  | |- ?R _ (?H ) => subst H
+  | _ => idtac
+  end.

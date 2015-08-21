@@ -253,7 +253,7 @@ Lemma refine_count_constraint_broken :
            (If (beq_RRecordType n!sTYPE CNAME)
                Then count <- Count
                For (tup in r!sCOLLECTIONS)
-               (Where (n!sNAME = GetAttributeRawBnd tup ``sNAME)
+               (Where (n!sNAME = tup!sNAME)
                       Return tup )%QueryImpl;
     ret (beq_nat count 0) Else ret true).
 Proof.
@@ -345,7 +345,7 @@ Proof.
     apply filter_permutation_morphism; [ reflexivity | assumption ].
 Qed.
 
-(* uses refine_forall_to_exists; refines x2 in AddData 
+(* uses refine_forall_to_exists; refines x2 in AddData
 very similar to refine_count_constraint_broken; comments below are relative to refine_count_constraint_broken *)
 
 (* implement the DNS record constraint check as code that counts the number of occurrences of
@@ -1392,12 +1392,6 @@ Admitted. *)
   return x ~> l) ->
   forall n0 n1, nth n0 l = tup0 -> nth n0 l = tup1 ->
   tuple_constr tup0 tup1 *)
-
-Lemma tuples_in_relation_filtered_satisfy_constraint :
-  True.
-Proof.
-
-Admitted.
 
 (* -------------- *)
 (* Unused for now *)

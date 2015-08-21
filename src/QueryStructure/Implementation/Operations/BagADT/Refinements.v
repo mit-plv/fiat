@@ -123,17 +123,23 @@ Section BagsQueryStructureRefinements.
     computes_to_econstructor.
     unfold IndexedQueryStructure, DelegateToBag_AbsR, GetIndexedRelation.
     unfold GetUnConstrRelation.
-    unfold DropQSConstraints, QSEmptySpec; split.
+    unfold DropQSConstraints, QSEmptySpec.
     intros; simpl; rewrite <- ith_imap2, ith_Bounded_BuildEmptyRelations,
                    i2th_Bounded_Initialize_IndexedQueryStructure; eauto.
-    intros; eexists List.nil;
-    intros; simpl; rewrite <- ith_imap2, ith_Bounded_BuildEmptyRelations.
-    split; simpl; intros.
-    - exists 0; unfold UnConstrFreshIdx; intros; intuition.
-    - eexists List.nil; intuition eauto.
-      + inversion H.
-      + inversion H.
-      + econstructor.
+    intros; eexists List.nil; split;
+    intros; simpl; try rewrite <- ith_imap2, ith_Bounded_BuildEmptyRelations.
+    - split; simpl; intros.
+      + exists 0; unfold UnConstrFreshIdx; intros; intuition.
+      + eexists List.nil; intuition eauto.
+        * inversion H.
+        * inversion H.
+        * econstructor.
+    - split; simpl; intros.
+      + exists 0; unfold UnConstrFreshIdx; intros; intuition.
+      + eexists List.nil; intuition eauto.
+        * inversion H.
+        * inversion H.
+        * econstructor.
   Qed.
 
   Definition UpdateIndexedRelation
@@ -159,6 +165,33 @@ Section BagsQueryStructureRefinements.
     intros; simpl; rewrite i3th_replace_Index_neq; eauto using string_dec.
   Qed.
 
+  Lemma exists_UnConstrFreshIdx
+    : forall r_o (r_n : IndexedQueryStructure qs_schema BagIndexKeys),
+      DelegateToBag_AbsR r_o r_n
+      -> forall idx,
+        exists bnd,
+          UnConstrFreshIdx (GetUnConstrRelation r_o idx) bnd.
+  Proof.
+    unfold DelegateToBag_AbsR; intros.
+    destruct (H idx) as
+        [l [[[bnd fresh_bnd] [l' [l'_eq [l_eqv NoDup_l']]]]
+              [[bnd' fresh_bnd'] [l'' [l''_eq [l''_eqv NoDup_l'']]]]]];
+      eauto.
+  Qed.
+
+  Lemma refine_Pick_UnConstrFreshIdx
+    : forall r_o
+             (r_n : IndexedQueryStructure qs_schema BagIndexKeys),
+      DelegateToBag_AbsR r_o r_n
+      -> forall idx bnd,
+        UnConstrFreshIdx (GetUnConstrRelation r_o idx) bnd
+      -> refine { bnd | UnConstrFreshIdx (GetUnConstrRelation r_o idx) bnd}
+                (ret bnd).
+  Proof.
+    intros; refine pick val bnd; eauto.
+    reflexivity.
+  Qed.
+
   Lemma refine_Query_In_Enumerate
         (ResultT : Type) :
     forall r_o (r_n : IndexedQueryStructure qs_schema BagIndexKeys),
@@ -180,9 +213,26 @@ Section BagsQueryStructureRefinements.
     intros v Comp_v;  computes_to_inv;
     unfold EnsembleIndexedListEquivalence,
     UnIndexedEnsembleListEquivalence in *.
-    intuition; destruct_ex; intuition; subst.
-    computes_to_econstructor; eauto.
-    computes_to_econstructor; rewrite ((proj1 H) idx); eauto.
+    destruct (H idx); intuition; destruct_ex; intuition; subst.
+    unfold EnsembleIndexedListEquivalence,
+    UnIndexedEnsembleListEquivalence in *;
+      intuition; destruct_ex; intuition; subst.
+    computes_to_econstructor.
+    instantiate (1 := map indexedElement x0);
+      computes_to_econstructor; eauto.
+    setoid_rewrite H0 in H8.
+    setoid_rewrite H4.
+    revert H6 H8 H11 H5 H10; clear; intros.
+    apply NoDup_Permutation in H8; eauto using NoDup_IndexedElement.
+    destruct (@permu_exists _ (map indexedElement x0) x4);
+      intuition.
+    simpl in *; unfold GetNRelSchema in *; rewrite <- H5.
+    eapply Permutation_map; eauto.
+    setoid_rewrite <- H1.
+    eexists x; intuition eauto.
+    eapply Permutation_map_aux in H1.
+    symmetry in H1.
+    eapply NoDup_Permutation_rewrite; eauto.
     rewrite map_map.
     repeat setoid_rewrite map_app in Comp_v'';
       repeat setoid_rewrite map_map in Comp_v''; simpl in *;
@@ -826,8 +876,7 @@ Section BagsQueryStructureRefinements.
            ret (snd l))
           (ret v).
   Proof.
-    intros; destruct H as [r_o_eq H]; destruct (H idx) as [l l_eqv].
-    rewrite (r_o_eq idx) in l_eqv.
+    intros; destruct (H idx) as [l [l_eqv l_eqv']].
     Local Transparent CallBagMethod.
     eexists l; unfold CallBagMethod; simpl; simplify with monad laws.
     computes_to_econstructor;  computes_to_inv; subst; eauto.
@@ -844,8 +893,7 @@ Section BagsQueryStructureRefinements.
                 ret (snd l))
                (ret v).
   Proof.
-    intros; destruct H as [r_o_eq H]; destruct (H idx) as [l l_eqv].
-    rewrite (r_o_eq idx) in l_eqv.
+    intros; destruct (H idx) as [l [l_eqv l_eqv'] ].
     eexists (filter _ l); unfold CallBagMethod; simpl; eauto.
     computes_to_econstructor; eauto.
   Qed.
@@ -1019,101 +1067,129 @@ Section BagsQueryStructureRefinements.
     computes_to_constructor;  computes_to_inv.
     unfold CallBagMethod in *; simpl in *;  computes_to_inv; subst.
     simpl.
-    unfold DelegateToBag_AbsR; split; intros.
+    unfold DelegateToBag_AbsR; intros.
     - destruct (fin_eq_dec idx idx0); subst.
-      + unfold GetUnConstrRelation, UpdateUnConstrRelation;
-        rewrite ith_replace2_Index_eq.
-        unfold GetIndexedRelation, UpdateIndexedRelation;
-          rewrite i3th_replace_Index_eq.
-        f_equal; eauto.
-        * eapply H.
-        * apply Extensionality_Ensembles. unfold Same_set, Included, In;
-            intuition; rewrite <- H0 in *;
-            eapply dec_decides_P; eauto.
-      + unfold GetUnConstrRelation, UpdateUnConstrRelation;
-        rewrite ith_replace2_Index_neq by eauto using string_dec.
-        unfold GetIndexedRelation, UpdateIndexedRelation;
-          rewrite i3th_replace_Index_neq by eauto using string_dec.
-        apply H.
-    - destruct H.
-      destruct (fin_eq_dec idx idx0); subst.
-      + rewrite get_update_unconstr_eq.
-        destruct (H2 idx0) as [l [[bnd fresh_bnd] [l' [l'_eq [l_eqv NoDup_l']]]]].
-        exists (filter (fun a => negb (dec a)) l); split.
+      + rewrite get_update_unconstr_eq, get_update_indexed_eq.
+        unfold DelegateToBag_AbsR in H.
+        destruct (H idx0) as
+            [l [[[bnd fresh_bnd] [l' [l'_eq [l_eqv NoDup_l']]]]
+                  [[bnd' fresh_bnd'] [l'' [l''_eq [l''_eqv NoDup_l'']]]]]].
+        exists (filter (fun a => negb (dec a)) l); repeat split.
         * exists bnd; unfold EnsembleDelete, UnConstrFreshIdx; intros.
-          inversion H3; subst; eauto.
+          inversion H2; subst; eauto.
         * unfold UnIndexedEnsembleListEquivalence;
           exists (filter (fun a => negb (dec (indexedElement a))) l'); split; eauto.
           rewrite <- l'_eq; rewrite filter_map; reflexivity.
           intuition.
           apply filter_In; split.
-          eapply l_eqv; inversion H3; eauto.
-          inversion H3; subst; rewrite (proj2 (Decides_false _ _)); eauto.
-          rewrite filter_In in H3; intuition; constructor;
+          eapply l_eqv; inversion H2; eauto.
+          inversion H2; subst; rewrite (proj2 (Decides_false _ _)); eauto.
+          rewrite filter_In in H2; intuition; constructor;
           [ apply l_eqv; eauto
-          | case_eq (dec (indexedElement x)); intros H'; rewrite H' in H5;
+          | case_eq (dec (indexedElement x)); intros H'; rewrite H' in H4;
             try discriminate;
             eapply Decides_false in H'; eauto ].
           eapply NoDup_filter_map with (f := fun a => negb (dec a)); eauto.
-      + rewrite get_update_unconstr_neq; eauto.
+        * exists bnd'; unfold EnsembleDelete, UnConstrFreshIdx; intros.
+          inversion H2; subst; eauto.
+        * unfold UnIndexedEnsembleListEquivalence;
+          exists (filter (fun a => negb (dec (indexedElement a))) l''); split; eauto.
+          rewrite <- l''_eq; rewrite filter_map; reflexivity.
+          intuition.
+          apply filter_In; split.
+          eapply l''_eqv; inversion H2; eauto.
+          inversion H2; subst; rewrite (proj2 (Decides_false _ _)); eauto.
+          unfold Complement, In in *.
+          intro; apply H4.
+          rewrite <- H0.
+          apply dec_decides_P; eauto.
+          rewrite filter_In in H2; intuition; constructor;
+          [ apply l''_eqv; eauto
+          | case_eq (dec (indexedElement x)); intros H'; rewrite H' in H4;
+            try discriminate;
+            eapply Decides_false in H'; eauto ].
+          unfold Complement, In; rewrite <- H0;
+          eapply Decides_false in H'; rewrite H'; congruence.
+          eapply NoDup_filter_map with (f := fun a => negb (dec a)); eauto.
+      + rewrite get_update_unconstr_neq, get_update_indexed_neq; eauto.
+  Qed.
+
+  Lemma refine_Pick_DelegateToBag_AbsR
+    : forall r_o r_n,
+      DelegateToBag_AbsR r_o r_n
+      -> refine {r_n : IndexedQueryStructure qs_schema BagIndexKeys |
+                 DelegateToBag_AbsR r_o r_n}
+                (ret r_n).
+  Proof.
+    intros; refine pick val r_n; eauto; reflexivity.
   Qed.
 
   Lemma refine_BagADT_QSInsert :
     forall r_o (r_n : IndexedQueryStructure qs_schema BagIndexKeys),
       DelegateToBag_AbsR r_o r_n
       -> forall (idx :Fin.t _)
-                t,
-           refine
-             (u <- { freshIdx | UnConstrFreshIdx (GetUnConstrRelation r_o idx) freshIdx };
-              {r_n' |
+                t freshIdx,
+        UnConstrFreshIdx (GetUnConstrRelation r_o idx) freshIdx
+        -> refine
+             {r_n' |
                DelegateToBag_AbsR
                  (UpdateUnConstrRelation r_o idx (
                                            EnsembleInsert
-                                             {| indexedElement := t; elementIndex := u |}
-                                             (GetUnConstrRelation r_o idx))) r_n'})
+                                             {| indexedElement := t; elementIndex := freshIdx |}
+                                             (GetUnConstrRelation r_o idx))) r_n'}
              (l <- (CallBagMethod idx BagInsert r_n t);
               ret (UpdateIndexedRelation r_n idx (fst l))).
   Proof.
-    intros; unfold CallBagMethod, DelegateToBag_AbsR; simpl; destruct H as [H H'].
-    repeat setoid_rewrite (refineEquiv_bind_bind);
-      repeat setoid_rewrite refineEquiv_bind_unit; simpl.
-    rewrite H.
-    apply refine_bind_pick; intros.
-    unfold GetUnConstrRelation, UpdateUnConstrRelation in *;
-      unfold GetIndexedRelation, UpdateIndexedRelation in *;
-      refine pick val _; try reflexivity; try split;
-      intros; destruct (fin_eq_dec idx idx0); subst.
-    - rewrite ith_replace2_Index_eq; rewrite i3th_replace_Index_eq.
-      unfold Add, EnsembleInsert; apply Extensionality_Ensembles; split;
-      unfold Included; intros; unfold In in *; destruct H1.
-      + rewrite H1; apply Union_intror; intuition.
-      + apply Union_introl; unfold In; exact H1.
-      + right; unfold In in H1; exact H1.
-      + left; unfold In in H1; eapply Singleton_ind; eauto; symmetry; exact H1.
-    - rewrite ith_replace2_Index_neq by eauto using string_dec;
-      rewrite i3th_replace_Index_neq by eauto using string_dec; apply H.
-    - rewrite ith_replace2_Index_eq.
-      destruct (H' idx0) as [l [[bnd fresh_bnd] [l' [l'_eq [l_eqv NoDup_l']]]]].
-      exists (List.cons t l); split.
-      + exists (S a); unfold UnConstrFreshIdx in *; intros.
-               unfold EnsembleInsert in H1; destruct H1.
-               * rewrite H1; simpl; omega.
-               * auto with arith.
+    unfold refine; intros.
+    unfold CallBagMethod in *; simpl in *; computes_to_inv; subst.
+    computes_to_econstructor; simpl.
+    unfold DelegateToBag_AbsR in *; intuition; intros.
+    intros; destruct (fin_eq_dec idx idx0); subst.
+    - rewrite get_update_unconstr_eq, get_update_indexed_eq.
+      destruct (H idx0) as
+          [l [[[bnd fresh_bnd] [l' [l'_eq [l_eqv NoDup_l']]]]
+                [[bnd' fresh_bnd'] [l'' [l''_eq [l''_eqv NoDup_l'']]]]]].
+      exists (cons t l); repeat split.
+      + exists (S freshIdx); unfold EnsembleInsert, UnConstrFreshIdx; intros.
+        unfold UnConstrFreshIdx in H0; intuition; subst; simpl; eauto.
       + unfold UnIndexedEnsembleListEquivalence;
-                 exists ({| indexedElement := t; elementIndex := a |} :: l')%list; intuition.
-                 * simpl in *; rewrite l'_eq; trivial.
-                 * simpl; destruct H1;
-                   [ left; symmetry; exact H1 | right; apply l_eqv; rewrite H; apply H1 ].
-                 * unfold EnsembleInsert; destruct H1;
-                   [ rewrite <- H1; left; trivial |
-                     right; rewrite <- H; apply l_eqv in H1; unfold In in H1; exact H1 ].
-                 * simpl; apply NoDup_cons;
-                   [ unfold not; intros;
-                     apply in_map_iff in H1; destruct H1; destruct H1;
-                     apply l_eqv in H2; rewrite <- H in H0; unfold UnConstrFreshIdx in H0;
-                     unfold In in H2; apply H0 in H2; unfold GetNRelSchema in *; omega | exact NoDup_l' ].
-    - rewrite ith_replace2_Index_neq; eauto.
+                 exists ({| indexedElement := t; elementIndex := freshIdx |} :: l')%list; intuition.
+        * simpl in *; rewrite l'_eq; trivial.
+        * simpl; destruct H2;
+          [left; symmetry; exact H2
+           | right; apply l_eqv; eauto].
+        * unfold EnsembleInsert; destruct H2;
+          [rewrite <- H2; left; trivial
+           | right; eapply l_eqv; eauto ].
+        * simpl; apply NoDup_cons; eauto.
+          unfold not; intros;
+          apply in_map_iff in H2; destruct H2; destruct H2;
+            apply l_eqv in H3. unfold UnConstrFreshIdx in H0;
+            unfold In in H2; apply H0 in H3;
+            unfold GetNRelSchema in *; omega.
+      + exists (S v1); unfold Add, UnConstrFreshIdx; intros.
+        inversion H2; subst.
+        unfold UnConstrFreshIdx in H1; intuition; subst; simpl; eauto.
+        inversion H3; subst.
+        simpl; eauto.
+      + unfold UnIndexedEnsembleListEquivalence;
+                 exists ({| indexedElement := t; elementIndex := v1 |} :: l'')%list; intuition.
+        * simpl in *; rewrite l''_eq; trivial.
+        * simpl; destruct H2;
+          [right; apply l''_eqv; eauto |
+           left; inversion H2; reflexivity ].
+        * unfold Add; destruct H2;
+          [ right; subst; econstructor
+          | left; eapply l''_eqv; eauto ].
+        * simpl; apply NoDup_cons; eauto.
+          unfold not; intros;
+          apply in_map_iff in H2; destruct H2; destruct H2;
+            apply l''_eqv in H3; unfold UnConstrFreshIdx in H1;
+            unfold In in H2; apply H1 in H3;
+            unfold GetNRelSchema in *; omega.
+      - rewrite get_update_unconstr_neq, get_update_indexed_neq; eauto.
   Qed.
+
 
 Corollary refine_Join_Comp_Lists_filter_filter_search_term_snd_dep'
           (ResultT : Type) :

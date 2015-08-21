@@ -2,42 +2,56 @@ Require Export Fiat.QueryStructure.Automation.AutoDB
         Fiat.QueryStructure.Automation.IndexSelection
         Fiat.QueryStructure.Automation.QSImplementation.
 
-Ltac master_plan' matchIndex
+  Ltac finish_planning' PickIndex
+     BuildEarlyIndex BuildLastIndex
+     IndexUse createEarlyTerm createLastTerm
+     IndexUse_dep createEarlyTerm_dep createLastTerm_dep
+     BuildEarlyBag BuildLastBag :=
+  (* Automatically select indexes + data structure. *)
+
+    PickIndex ltac:(fun attrlist =>
+                      make_simple_indexes attrlist BuildEarlyIndex BuildLastIndex);
+    match goal with
+    | |- Sharpened _ => idtac (* Do nothing to the next Sharpened ADT goal. *)
+    | |- _ => (* Otherwise implement each method using the indexed data structure *)
+      plan IndexUse createEarlyTerm createLastTerm
+           IndexUse_dep createEarlyTerm_dep createLastTerm_dep
+    end;
+    eapply FullySharpened_Finish;
+    [pose_headings_all;
+      match goal with
+      | |- appcontext[ @BuildADT (IndexedQueryStructure ?Schema ?Indexes) ] =>
+        FullySharpenQueryStructure Schema Indexes
+      end
+    | simpl; pose_string_ids; pose_headings_all;
+      pose_search_term;  pose_SearchUpdateTerms;
+
+      BuildQSIndexedBags' BuildEarlyBag BuildLastBag
+    | cbv zeta; pose_string_ids; pose_headings_all;
+      pose_search_term;  pose_SearchUpdateTerms;
+      simpl Sharpened_Implementation;
+      unfold
+        Update_Build_IndexedQueryStructure_Impl_cRep,
+      Join_Comp_Lists',
+      GetIndexedQueryStructureRelation,
+      GetAttributeRaw; simpl;
+      higher_order_reflexivityT ].
+
+Ltac master_plan'
      BuildEarlyIndex BuildLastIndex
      IndexUse createEarlyTerm createLastTerm
      IndexUse_dep createEarlyTerm_dep createLastTerm_dep
      BuildEarlyBag BuildLastBag :=
   (* Implement constraints as queries. *)
-  start honing QueryStructure;
-  (* Automatically select indexes + data structure. *)
-  [GenerateIndexesForAll
-     matchIndex
-     ltac:(fun attrlist => make_simple_indexes attrlist BuildEarlyIndex BuildLastIndex;
-           match goal with
-           | |- Sharpened _ => idtac (* Do nothing to the next Sharpened ADT goal. *)
-           | |- _ => (* Otherwise implement each method using the indexed data structure *)
-             plan IndexUse createEarlyTerm createLastTerm
-                  IndexUse_dep createEarlyTerm_dep createLastTerm_dep
-           end;
-           pose_headings_all;
-           match goal with
-           | |- appcontext[@BuildADT (IndexedQueryStructure ?Schema ?Indexes)] =>
-             FullySharpenQueryStructure Schema Indexes
-           end
-          )
-  | simpl; pose_string_ids; pose_headings_all;
-    pose_search_term;  pose_SearchUpdateTerms;
-
-    BuildQSIndexedBags' BuildEarlyBag BuildLastBag
-  | cbv zeta; pose_string_ids; pose_headings_all;
-    pose_search_term;  pose_SearchUpdateTerms;
-    simpl Sharpened_Implementation;
-    unfold
-      Update_Build_IndexedQueryStructure_Impl_cRep,
-    Join_Comp_Lists',
-    GetIndexedQueryStructureRelation,
-    GetAttributeRaw; simpl;
-    higher_order_reflexivityT ].
+  start sharpening ADT;
+  start_honing_QueryStructure';
+  finish_planning' ltac:(fun makeIndex =>
+                           GenerateIndexesForAll ltac:(fun attrlist =>
+                                                         let attrlist' := eval compute in (PickIndexes (CountAttributes' attrlist)) in makeIndex attrlist'))
+                   BuildEarlyIndex BuildLastIndex
+                   IndexUse createEarlyTerm createLastTerm
+                   IndexUse_dep createEarlyTerm_dep createLastTerm_dep
+                   BuildEarlyBag BuildLastBag.
 
 (* This planner variant stops after planning queries for Bags, in
    case we want to inspect the results. *)
@@ -47,9 +61,9 @@ Ltac partial_master_plan' matchIndex
      IndexUse_dep createEarlyTerm_dep createLastTerm_dep
      BuildEarlyBag BuildLastBag :=
   (* Implement constraints as queries. *)
-  start honing QueryStructure;
+  start honing QueryStructure.
   (* Automatically select indexes + data structure. *)
-  [GenerateIndexesForAll
+(*  [GenerateIndexesForAll
      matchIndex
      ltac:(fun attrlist => make_simple_indexes attrlist BuildEarlyIndex BuildLastIndex;
            match goal with
@@ -60,44 +74,7 @@ Ltac partial_master_plan' matchIndex
            end;
            pose_headings_all)
   |
-  |  ].
-
-Ltac finish_planning' matchIndex
-     BuildEarlyIndex BuildLastIndex
-     IndexUse createEarlyTerm createLastTerm
-     IndexUse_dep createEarlyTerm_dep createLastTerm_dep
-     BuildEarlyBag BuildLastBag :=
-  (* Automatically select indexes + data structure. *)
-      eapply FullySharpened_Finish;
-    [ eapply reflexivityT
-    | GenerateIndexesForAll
-        matchIndex
-        ltac:(fun attrlist => make_simple_indexes attrlist BuildEarlyIndex BuildLastIndex;
-              match goal with
-              | |- Sharpened _ => idtac (* Do nothing to the next Sharpened ADT goal. *)
-              | |- _ => (* Otherwise implement each method using the indexed data structure *)
-                plan IndexUse createEarlyTerm createLastTerm
-                     IndexUse_dep createEarlyTerm_dep createLastTerm_dep
-              end;
-              pose_headings_all;
-              match goal with
-              | |- appcontext[ @BuildADT (IndexedQueryStructure ?Schema ?Indexes) ] =>
-                FullySharpenQueryStructure Schema Indexes
-              end
-             )
-  | simpl; pose_string_ids; pose_headings_all;
-    pose_search_term;  pose_SearchUpdateTerms;
-
-    BuildQSIndexedBags' BuildEarlyBag BuildLastBag
-  | cbv zeta; pose_string_ids; pose_headings_all;
-    pose_search_term;  pose_SearchUpdateTerms;
-    simpl Sharpened_Implementation;
-    unfold
-      Update_Build_IndexedQueryStructure_Impl_cRep,
-    Join_Comp_Lists',
-    GetIndexedQueryStructureRelation,
-    GetAttributeRaw; simpl;
-    higher_order_reflexivityT ].
+  |  ]. *)
 
    Ltac matchEqIndex qsSchema WhereClause k := fail.
    Ltac EqIndexUse SC F indexed_attrs f k := fail.
@@ -108,7 +85,7 @@ Ltac finish_planning' matchIndex
    Ltac createLastEqualityTerm_dep dom f fds tail fs kind s k := fail.
 
 Ltac EqIndexTactics f :=
-  PackageIndexTactics matchEqIndex
+  PackageIndexTactics
     ltac:(LastCombineCase6 BuildEarlyEqualityIndex)
     ltac:(LastCombineCase5 BuildLastEqualityIndex)
     EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
@@ -118,7 +95,7 @@ Ltac EqIndexTactics f :=
 
 Ltac master_plan IndexTactics := IndexTactics master_plan'.
 Ltac partial_master_plan IndexTactics := IndexTactics partial_master_plan'.
-Ltac finish_planning IndexTactics := IndexTactics finish_planning'.
+Ltac finish_planning IndexTactics PickIndex := IndexTactics ltac:(finish_planning' PickIndex).
 
 Ltac simple_master_plan := master_plan EqIndexTactics.
 Ltac simple_partial_master_plan := partial_master_plan EqIndexTactics.

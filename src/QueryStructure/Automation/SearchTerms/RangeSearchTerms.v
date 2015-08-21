@@ -68,8 +68,8 @@ Ltac BuildEarlyRangeIndex
       | right _ => k_fail heading indices kind index matcher k
       end.
 
-Ltac matchRangeIndex qsSchema WhereClause k k_fail :=
-  match WhereClause with
+Ltac matchRangeIndex qsSchema WhereClause k k_fail := idtac.
+  (*match WhereClause with
   | fun tups => (@?C2 tups) <= (@?C1 tups) <= _ =>
     TermAttributes C1 ltac:(fun Ridx1 attr1 =>
                               TermAttributes C2
@@ -95,7 +95,7 @@ Ltac matchRangeIndex qsSchema WhereClause k k_fail :=
     TermAttributes C1 ltac:(fun Ridx attr =>
                               k (@InsertOccurenceOfAny _ qsSchema Ridx (RangeIndex, attr) (InitOccurences _)))
   | _ => k_fail qsSchema WhereClause k
-  end.
+  end. *)
 
 Ltac RangeIndexUse SC F indexed_attrs f k k_fail :=
   match type of f with

@@ -288,29 +288,28 @@ Ltac LastCombineCase11 x :=
   fun a b c d e f g h i j k => x a b c d e f g h i j k ltac:(fun _ _ _ _ _ _ _ _ _ _ _ => fail).
 
 Ltac PackageIndexTactics
-     matchIndex BuildEarlyIndex BuildLastIndex
+     BuildEarlyIndex BuildLastIndex
      IndexUse createEarlyTerm createLastTerm
      IndexUse_dep createEarlyTerm_dep createLastTerm_dep
      BuildEarlyBag BuildLastBag
      f :=
-  f matchIndex BuildEarlyIndex BuildLastIndex
+  f BuildEarlyIndex BuildLastIndex
     IndexUse createEarlyTerm createLastTerm
     IndexUse_dep createEarlyTerm_dep createLastTerm_dep
     BuildEarlyBag BuildLastBag.
 
 Ltac CombineIndexTactics IndexPackage1 IndexPackage2 f :=
   IndexPackage2
-    ltac:(fun matchIndex2 BuildEarlyIndex2 BuildLastIndex2
+    ltac:(fun BuildEarlyIndex2 BuildLastIndex2
               IndexUse2 createEarlyTerm2 createLastTerm2
               IndexUse_dep2 createEarlyTerm_dep2 createLastTerm_dep2
               BuildEarlyBag2 BuildLastBag2 =>
             IndexPackage1
-              ltac:(fun matchIndex1 BuildEarlyIndex1 BuildLastIndex1
+              ltac:(fun BuildEarlyIndex1 BuildLastIndex1
                         IndexUse1 createEarlyTerm1 createLastTerm1
                         IndexUse_dep1 createEarlyTerm_dep1 createLastTerm_dep1
                     BuildEarlyBag1 BuildLastBag1 =>
-                      f ltac:(CombineCase3 matchIndex1 matchIndex2)
-                        ltac:(CombineCase6 BuildEarlyIndex1 BuildEarlyIndex2)
+                      f ltac:(CombineCase6 BuildEarlyIndex1 BuildEarlyIndex2)
                         ltac:(CombineCase5 BuildLastIndex1 BuildLastIndex2)
                         ltac:(CombineCase5 IndexUse1 IndexUse2)
                         ltac:(CombineCase10 createEarlyTerm1 createEarlyTerm2)

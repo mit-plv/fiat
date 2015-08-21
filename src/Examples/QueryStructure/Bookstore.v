@@ -66,7 +66,6 @@ Definition BookStoreSig : ADTSig :=
 
 (* Now we write what the methods should actually do. *)
 
-Set Printing All.
 Definition BookStoreSpec : ADT BookStoreSig :=
   Eval simpl in
     QueryADTRep BookStoreSchema {
@@ -96,55 +95,14 @@ Definition BookStoreSpec : ADT BookStoreSig :=
                  Return ())
 }.
 
-
 Theorem SharpenedBookStore :
   FullySharpened BookStoreSpec.
 Proof.
 
-Ltac master_plan' matchIndex
-     BuildEarlyIndex BuildLastIndex
-     IndexUse createEarlyTerm createLastTerm
-     IndexUse_dep createEarlyTerm_dep createLastTerm_dep
-     BuildEarlyBag BuildLastBag :=
-  (* Implement constraints as queries. *)
-  start honing QueryStructure;
-  (* Automatically select indexes + data structure. *)
-  [GenerateIndexesForAll
-     matchIndex
-     ltac:(fun attrlist => make_simple_indexes attrlist BuildEarlyIndex BuildLastIndex;
-           match goal with
-           | |- Sharpened _ => idtac (* Do nothing to the next Sharpened ADT goal. *)
-           | |- _ => (* Otherwise implement each method using the indexed data structure *)
-             plan IndexUse createEarlyTerm createLastTerm
-                  IndexUse_dep createEarlyTerm_dep createLastTerm_dep
-           end;
-           pose_headings_all;
-           match goal with
-           | |- appcontext[@BuildADT (IndexedQueryStructure ?Schema ?Indexes)] =>
-             FullySharpenQueryStructure Schema Indexes
-           end
-          )
-  | simpl; pose_string_ids; pose_headings_all;
-    pose_search_term;  pose_SearchUpdateTerms;
-
-    BuildQSIndexedBags' BuildEarlyBag BuildLastBag
-  | cbv zeta; pose_string_ids; pose_headings_all;
-    pose_search_term;  pose_SearchUpdateTerms;
-    simpl Sharpened_Implementation;
-    unfold
-      Update_Build_IndexedQueryStructure_Impl_cRep,
-    Join_Comp_Lists',
-    GetIndexedQueryStructureRelation,
-    GetAttributeRaw; simpl
-  ].
-
-Ltac master_plan IndexTactics := IndexTactics master_plan'.
+  master_plan EqIndexTactics.
 
   (* Uncomment this to see the mostly sharpened implementation *)
   (* partial_master_plan EqIndexTactics. *)
-  master_plan EqIndexTactics.
-  idtac.
-  apply reflexivityT.
 
 Time Defined.
 

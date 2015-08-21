@@ -34,13 +34,13 @@ Ltac BuildEarlyInclusionIndex
      heading indices kind index matcher k k_fail :=
   k_fail heading indices kind index matcher k.
 
-Ltac matchInclusionIndex qsSchema WhereClause k k_fail :=
-  match WhereClause with
+Ltac matchInclusionIndex qsSchema WhereClause k k_fail := idtac.
+(*  match WhereClause with
   | fun tups => IncludedIn _ (@?C1 tups) =>
     TermAttributes C1 ltac:(fun Ridx attr =>
                               k (@InsertOccurenceOfLast _ qsSchema Ridx (InclusionIndex, attr) (InitOccurences _)))
   | _ => k_fail qsSchema WhereClause k
-  end.
+  end. *)
 
 Ltac InclusionIndexUse SC F indexed_attrs f k k_fail :=
   match type of f with
