@@ -916,7 +916,13 @@ Ltac finish_SharpeningADT_WithoutDelegation :=
       (ilist.inil (B := fun nadt => ADT (delegateeSig nadt)));
     try simplify with monad laws; simpl; try refine pick eq; try simplify with monad laws;
     try first [ simpl];
-    repeat setoid_rewrite refine_if_If at 1;
+    (* Guard setoid rewriting with [refine_if_If] to only occur when there's
+    actually an [if] statement in the goal.  This prevents [setoid_rewrite] from
+    uselessly descending into folded definitions. *)
+    repeat match goal with
+             | [ |- context [ if _ then _ else _ ] ] =>
+               setoid_rewrite refine_if_If at 1
+           end;
     repeat first [
              higher_order_reflexivity
            | simplify with monad laws
