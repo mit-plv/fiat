@@ -37,7 +37,8 @@ Require Export Fiat.QueryStructure.Automation.AutoDB
       GetAttributeRaw; simpl;
       higher_order_reflexivityT ].
 
-Ltac master_plan'
+  Ltac master_plan'
+       FindAttributeUses
      BuildEarlyIndex BuildLastIndex
      IndexUse createEarlyTerm createLastTerm
      IndexUse_dep createEarlyTerm_dep createLastTerm_dep
@@ -46,7 +47,7 @@ Ltac master_plan'
   start sharpening ADT;
   start_honing_QueryStructure';
   finish_planning' ltac:(fun makeIndex =>
-                           GenerateIndexesForAll ltac:(fun attrlist =>
+                           GenerateIndexesForAll FindAttributeUses ltac:(fun attrlist =>
                                                          let attrlist' := eval compute in (PickIndexes (CountAttributes' attrlist)) in makeIndex attrlist'))
                    BuildEarlyIndex BuildLastIndex
                    IndexUse createEarlyTerm createLastTerm
@@ -86,6 +87,7 @@ Ltac partial_master_plan' matchIndex
 
 Ltac EqIndexTactics f :=
   PackageIndexTactics
+    EqExpressionAttributeCounter
     ltac:(LastCombineCase6 BuildEarlyEqualityIndex)
     ltac:(LastCombineCase5 BuildLastEqualityIndex)
     EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
