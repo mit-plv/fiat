@@ -56,8 +56,9 @@ Instance ExpressionAttributeCounterIsPrefixL {A }
                                 (@InsertOccurenceOfAny _ _ RidxL ("FindPrefixIndex", BAidxL)
                                                        (InitOccurences _)) | 0 := { }.
 
-Ltac IsPrefixExpressionAttributeCounter :=
-  eapply @ExpressionAttributeCounterIsPrefixL; intros.
+Ltac IsPrefixExpressionAttributeCounter k :=
+  psearch_combine
+    ltac:(eapply @ExpressionAttributeCounterIsPrefixL; intros) k.
 
 Ltac PrefixIndexUse SC F indexed_attrs f k k_fail :=
   match type of f with

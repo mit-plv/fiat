@@ -14,6 +14,21 @@ Require Import
 Local Open Scope string_scope.
 Definition InclusionIndex : string := "InclusionIndex".
 
+Instance ExpressionAttributeCounterIncludedIn {A }
+         {qsSchema : RawQueryStructureSchema}
+         {a}
+         {a' : list A}
+         (RidxL : Fin.t _)
+         (BAidxL : @Attributes (Vector.nth _ RidxL))
+         (ExpCountL : @TermAttributeCounter _ qsSchema a' RidxL BAidxL)
+  : @ExpressionAttributeCounter _ qsSchema (IncludedIn a a')
+                                (@InsertOccurenceOfAny _ _ RidxL (InclusionIndex, BAidxL)
+                                                       (InitOccurences _)) | 0 := { }.
+
+Ltac IncludedInExpressionAttributeCounter k :=
+  psearch_combine
+    ltac:(eapply @ExpressionAttributeCounterIncludedIn; intros) k.
+
 Ltac BuildLastInclusionIndex
      heading indices kind index k k_fail :=
   let is_equality := eval compute in (string_dec kind InclusionIndex) in
@@ -33,14 +48,6 @@ Ltac BuildLastInclusionIndex
 Ltac BuildEarlyInclusionIndex
      heading indices kind index matcher k k_fail :=
   k_fail heading indices kind index matcher k.
-
-Ltac matchInclusionIndex qsSchema WhereClause k k_fail := idtac.
-(*  match WhereClause with
-  | fun tups => IncludedIn _ (@?C1 tups) =>
-    TermAttributes C1 ltac:(fun Ridx attr =>
-                              k (@InsertOccurenceOfLast _ qsSchema Ridx (InclusionIndex, attr) (InitOccurences _)))
-  | _ => k_fail qsSchema WhereClause k
-  end. *)
 
 Ltac InclusionIndexUse SC F indexed_attrs f k k_fail :=
   match type of f with
@@ -162,7 +169,8 @@ Module ZInvertedIndexBag := InvertedIndexBag ZIndexedMap NatIndexedMap.
 
 Ltac InclusionIndexTactics f :=
   PackageIndexTactics
-    matchInclusionIndex BuildEarlyInclusionIndex BuildLastInclusionIndex
+    IncludedInExpressionAttributeCounter
+    BuildEarlyInclusionIndex BuildLastInclusionIndex
     InclusionIndexUse createEarlyInclusionTerm createLastInclusionTerm
     InclusionIndexUse_dep createEarlyInclusionTerm_dep createLastInclusionTerm_dep
     BuildEarlyInclusionIndexBag BuildLastInclusionIndexBag f.

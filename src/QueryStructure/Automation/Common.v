@@ -325,7 +325,7 @@ Ltac CombineIndexTactics IndexPackage1 IndexPackage2 f :=
                         IndexUse_dep1 createEarlyTerm_dep1 createLastTerm_dep1
                     BuildEarlyBag1 BuildLastBag1 =>
                       f
-                        ltac:(psearch_combine FindAttributeUses1 FindAttributeUses2)
+                        ltac:(FindAttributeUses1 FindAttributeUses2)
                         ltac:(CombineCase6 BuildEarlyIndex1 BuildEarlyIndex2)
                         ltac:(CombineCase5 BuildLastIndex1 BuildLastIndex2)
                         ltac:(CombineCase5 IndexUse1 IndexUse2)

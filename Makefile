@@ -65,19 +65,13 @@ EXAMPLES_UNMADE_VO := \
 	src/Examples/CacheADT/CacheRefinements.vo \
 	src/Examples/CacheADT/CacheADT.vo \
 	src/Examples/QueryStructure/FriendFinder.vo \
-	src/Examples/QueryStructure/Photoalbum.vo \
-	src/Examples/QueryStructure/PhotoalbumUnOpt.vo \
 	src/Examples/QueryStructure/Github.vo \
-	src/Examples/QueryStructure/Messages.vo \
-	src/Examples/QueryStructure/MessagesUnOptimized.vo \
-	src/Examples/QueryStructure/Classifier.vo \
-	src/Examples/QueryStructure/ClassifierUnOpt.vo \
-	src/Examples/QueryStructure/CodeLookup.vo \
-	src/Examples/QueryStructure/PhotoalbumUnOptimizedExtraction.vo \
+	src/Examples/QueryStructure/Photoalbum.vo \
 	src/Examples/QueryStructure/PhotoalbumExtraction.vo \
-	src/Examples/QueryStructure/MessagesExtraction.vo \
-	src/Examples/QueryStructure/ClassifierUnOptExtraction.vo \
-	src/Examples/QueryStructure/ClassifierExtraction.vo
+	src/Examples/QueryStructure/PhotoalbumUnOpt.vo \
+	src/Examples/QueryStructure/PhotoalbumUnOptimizedExtraction.vo \
+	src/Examples/QueryStructure/CodeLookup.vo
+
 
 
 WATER_TANK_EXTRACT_VO := src/Examples/Ics/WaterTankExtract.vo
