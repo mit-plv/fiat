@@ -45,6 +45,7 @@ Ltac BuildEarlyFindPrefixIndex
       | right _ => k_fail heading indices kind index k
       end.
 
+
 Instance ExpressionAttributeCounterIsPrefixL {A }
          {qsSchema : RawQueryStructureSchema}
          {a a' : list A}
@@ -54,6 +55,10 @@ Instance ExpressionAttributeCounterIsPrefixL {A }
   : @ExpressionAttributeCounter _ qsSchema (IsPrefix a a')
                                 (@InsertOccurenceOfAny _ _ RidxL ("FindPrefixIndex", BAidxL)
                                                        (InitOccurences _)) | 0 := { }.
+
+Ltac IsPrefixExpressionAttributeCounter k :=
+  psearch_combine
+    ltac:(eapply @ExpressionAttributeCounterIsPrefixL; intros) k.
 
 Ltac PrefixIndexUse SC F indexed_attrs f k k_fail :=
   match type of f with
@@ -210,6 +215,7 @@ Ltac BuildEarlyTrieBag heading AttrList AttrKind AttrIndex subtree k k_fail :=
 
 Ltac PrefixIndexTactics f :=
   PackageIndexTactics
+    IsPrefixExpressionAttributeCounter
     BuildEarlyFindPrefixIndex BuildLastFindPrefixIndex
     PrefixIndexUse createEarlyPrefixTerm createLastPrefixTerm
     PrefixIndexUse_dep createEarlyPrefixTerm_dep createLastPrefixTerm_dep

@@ -100,7 +100,7 @@ Theorem SharpenedBookStore :
 Proof.
 
   master_plan EqIndexTactics.
-
+ 
   (* Uncomment this to see the mostly sharpened implementation *)
   (* partial_master_plan EqIndexTactics. *)
 

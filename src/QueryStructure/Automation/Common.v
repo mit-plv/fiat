@@ -7,6 +7,19 @@ Require Import
         Fiat.QueryStructure.Implementation.DataStructures.BagADT.IndexSearchTerms
         Fiat.QueryStructure.Implementation.DataStructures.BagADT.QueryStructureImplementation.
 
+Ltac psearch_combine x y k := solve [x; k ()] || y k.
+
+Ltac psearch_eapply_combine x y k := solve [eapply x; k ()] || y k.
+
+Ltac psearch_lazy_combine x y k := solve [x (); k ()] || y k.
+
+Ltac psearch n z :=
+  fun _ =>
+    match n with
+    | 0 => fail
+    | S ?n' => z ltac:(psearch n' z)
+    end.
+
 Ltac fold_string_hyps :=
   repeat
     match goal with
@@ -288,28 +301,32 @@ Ltac LastCombineCase11 x :=
   fun a b c d e f g h i j k => x a b c d e f g h i j k ltac:(fun _ _ _ _ _ _ _ _ _ _ _ => fail).
 
 Ltac PackageIndexTactics
+     FindAttributeUses
      BuildEarlyIndex BuildLastIndex
      IndexUse createEarlyTerm createLastTerm
      IndexUse_dep createEarlyTerm_dep createLastTerm_dep
      BuildEarlyBag BuildLastBag
      f :=
-  f BuildEarlyIndex BuildLastIndex
+  f FindAttributeUses
+    BuildEarlyIndex BuildLastIndex
     IndexUse createEarlyTerm createLastTerm
     IndexUse_dep createEarlyTerm_dep createLastTerm_dep
     BuildEarlyBag BuildLastBag.
 
 Ltac CombineIndexTactics IndexPackage1 IndexPackage2 f :=
   IndexPackage2
-    ltac:(fun BuildEarlyIndex2 BuildLastIndex2
+    ltac:(fun FindAttributeUses2 BuildEarlyIndex2 BuildLastIndex2
               IndexUse2 createEarlyTerm2 createLastTerm2
               IndexUse_dep2 createEarlyTerm_dep2 createLastTerm_dep2
               BuildEarlyBag2 BuildLastBag2 =>
             IndexPackage1
-              ltac:(fun BuildEarlyIndex1 BuildLastIndex1
+              ltac:(fun FindAttributeUses1 BuildEarlyIndex1 BuildLastIndex1
                         IndexUse1 createEarlyTerm1 createLastTerm1
                         IndexUse_dep1 createEarlyTerm_dep1 createLastTerm_dep1
                     BuildEarlyBag1 BuildLastBag1 =>
-                      f ltac:(CombineCase6 BuildEarlyIndex1 BuildEarlyIndex2)
+                      f
+                        ltac:(FindAttributeUses1 FindAttributeUses2)
+                        ltac:(CombineCase6 BuildEarlyIndex1 BuildEarlyIndex2)
                         ltac:(CombineCase5 BuildLastIndex1 BuildLastIndex2)
                         ltac:(CombineCase5 IndexUse1 IndexUse2)
                         ltac:(CombineCase10 createEarlyTerm1 createEarlyTerm2)

@@ -18,6 +18,90 @@ Require Import
 (* Every Kind of index is keyed on an inductive type with a single constructor*)
 Definition RangeIndex : string := "RangeIndex".
 
+Instance ExpressionAttributeCounterInRangeYX
+         {qsSchema : RawQueryStructureSchema}
+         {y x z}
+         (RidxX : Fin.t _)
+         (BAidxX : @Attributes (Vector.nth _ RidxX))
+         (ExpCountX : @TermAttributeCounter _ qsSchema x RidxX BAidxX)
+         (RidxY : Fin.t _)
+         (BAidxY : @Attributes (Vector.nth _ RidxY))
+         (ExpCountY : @TermAttributeCounter _ qsSchema y RidxY BAidxY)
+  : @ExpressionAttributeCounter _ qsSchema (y <= x <= z)
+                                (@InsertOccurenceOfAny _ _ RidxX (RangeIndex, BAidxX)
+                                                       (@InsertOccurenceOfAny _ _ RidxY (RangeIndex, BAidxY) (InitOccurences _))) | 0 := { }.
+
+Instance ExpressionAttributeCounterInRangeX
+         {qsSchema : RawQueryStructureSchema}
+         {y x z}
+         (RidxX : Fin.t _)
+         (BAidxX : @Attributes (Vector.nth _ RidxX))
+         (ExpCountX : @TermAttributeCounter _ qsSchema x RidxX BAidxX)
+  : @ExpressionAttributeCounter _ qsSchema (y <= x <= z)
+                                (@InsertOccurenceOfAny _ _ RidxX (RangeIndex, BAidxX)
+                                                       (InitOccurences _)) | 0 := { }.
+
+Instance ExpressionAttributeCounterInRangeXZ
+         {qsSchema : RawQueryStructureSchema}
+         {y x z}
+         (RidxX : Fin.t _)
+         (BAidxX : @Attributes (Vector.nth _ RidxX))
+         (ExpCountX : @TermAttributeCounter _ qsSchema x RidxX BAidxX)
+         (RidxZ : Fin.t _)
+         (BAidxZ : @Attributes (Vector.nth _ RidxZ))
+         (ExpCountZ : @TermAttributeCounter _ qsSchema z RidxZ BAidxZ)
+  : @ExpressionAttributeCounter _ qsSchema (y <= x <= z)
+                                (@InsertOccurenceOfAny _ _ RidxX (RangeIndex, BAidxX)
+                                                       (@InsertOccurenceOfAny _ _ RidxZ (RangeIndex, BAidxZ) (InitOccurences _))) | 0 := { }.
+
+Instance ExpressionAttributeCounterInRangeYX'
+         {qsSchema : RawQueryStructureSchema}
+         {y x}
+         (RidxX : Fin.t _)
+         (BAidxX : @Attributes (Vector.nth _ RidxX))
+         (ExpCountX : @TermAttributeCounter _ qsSchema x RidxX BAidxX)
+         (RidxY : Fin.t _)
+         (BAidxY : @Attributes (Vector.nth _ RidxY))
+         (ExpCountY : @TermAttributeCounter _ qsSchema y RidxY BAidxY)
+  : @ExpressionAttributeCounter _ qsSchema (y <= x)
+                                (@InsertOccurenceOfAny _ _ RidxX (RangeIndex, BAidxX)
+                                                       (@InsertOccurenceOfAny _ _ RidxY (RangeIndex, BAidxY) (InitOccurences _))) | 0 := { }.
+
+Instance ExpressionAttributeCounterInRangeX'
+         {qsSchema : RawQueryStructureSchema}
+         {y x}
+         (RidxX : Fin.t _)
+         (BAidxX : @Attributes (Vector.nth _ RidxX))
+         (ExpCountX : @TermAttributeCounter _ qsSchema x RidxX BAidxX)
+  : @ExpressionAttributeCounter _ qsSchema (y <= x)
+                                (@InsertOccurenceOfAny _ _ RidxX (RangeIndex, BAidxX)
+                                                       (InitOccurences _)) | 0 := { }.
+
+Instance ExpressionAttributeCounterInRangeY
+         {qsSchema : RawQueryStructureSchema}
+         {y x}
+         (RidxY : Fin.t _)
+         (BAidxY : @Attributes (Vector.nth _ RidxY))
+         (ExpCountX : @TermAttributeCounter _ qsSchema y RidxY BAidxY)
+  : @ExpressionAttributeCounter _ qsSchema (y <= x)
+                                (@InsertOccurenceOfAny _ _ RidxY (RangeIndex, BAidxY)
+                                                       (InitOccurences _)) | 0 := { }.
+
+Ltac InRangeExpressionAttributeCounter k :=
+  psearch_combine
+    ltac:(eapply @ExpressionAttributeCounterInRangeYX; intros)
+  ltac:(psearch_combine
+          ltac:(eapply @ExpressionAttributeCounterInRangeXZ; intros)
+  ltac:(psearch_combine
+          ltac:(eapply @ExpressionAttributeCounterInRangeX; intros)
+  ltac:(psearch_combine
+          ltac:(eapply @ExpressionAttributeCounterInRangeYX'; intros)
+  ltac:(psearch_combine
+          ltac:(eapply @ExpressionAttributeCounterInRangeX'; intros)
+  ltac:(psearch_combine
+          ltac:(eapply @ExpressionAttributeCounterInRangeY; intros)
+                 k))))).
+
 Ltac BuildLastRangeIndex
      heading indices kind index k k_fail :=
   let is_equality := eval compute in (string_dec kind RangeIndex) in
@@ -340,7 +424,8 @@ Ltac BuildEarlyRangeTreeBag heading AttrList AttrKind AttrIndex subtree k k_fail
 
 Ltac RangeIndexTactics f :=
   PackageIndexTactics
-    matchRangeIndex BuildEarlyRangeIndex BuildLastRangeIndex
+    InRangeExpressionAttributeCounter
+    BuildEarlyRangeIndex BuildLastRangeIndex
     RangeIndexUse createEarlyRangeTerm createLastRangeTerm
     RangeIndexUse_dep createEarlyRangeTerm_dep createLastRangeTerm_dep
     BuildEarlyRangeTreeBag BuildLastRangeTreeBag f.

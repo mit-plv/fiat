@@ -70,6 +70,94 @@ Definition SharpenedAlbum :
   FullySharpened AlbumSpec.
 Proof.
 
+  start sharpening ADT.
+  start_honing_QueryStructure'.
+  Unset Ltac Debug.
+  GenerateIndexesForAll
+    ltac:((InRangeExpressionAttributeCounter
+             ltac:(IncludedInExpressionAttributeCounter
+             EqExpressionAttributeCounter)))
+           ltac:(fun attrlist =>
+                   let attrlist' := eval compute in (PickIndexes (CountAttributes' attrlist)) in
+                   pose attrlist').
+  pose ({|
+       prim_fst := [
+                    ("EqualityIndex", Fin.FS (Fin.FS Fin.F1));
+                    ("InclusionIndex", Fin.FS Fin.F1)];
+       prim_snd := {|
+                   prim_fst := [("EqualityIndex", Fin.F1);
+                               ("RangeIndex", Fin.FS Fin.F1)];
+                   prim_snd := () |} |}
+    : prim_prod (list (string * Fin.t 3))
+        (prim_prod (list (string * Fin.t 2)) ())).
+
+  let attrlist' := eval unfold p0 in p0 in
+      make_simple_indexes attrlist'
+                          ltac:(CombineCase6 BuildEarlyInclusionIndex
+                                             ltac:(CombineCase6 BuildEarlyRangeIndex
+                           ltac:(LastCombineCase6 BuildEarlyEqualityIndex)))
+                                 ltac:(CombineCase5 BuildLastInclusionIndex
+                                                    ltac:(CombineCase5 BuildLastRangeIndex
+                                  ltac:(CombineCase5  BuildLastRangeIndex ltac:(LastCombineCase5 BuildLastEqualityIndex)))).
+
+
+  Unset Ltac Debug.
+
+
+  Unset Ltac Debug.
+  repeat eapply @ExpressionAttributeCounterConstructorsCons; intros.
+    psearch 200 ltac:(psearch_combine
+            InRangeExpressionAttributeCounter
+            ltac:(psearch_combine
+                    IncludedInExpressionAttributeCounter
+                    EqExpressionAttributeCounter)) ().
+  repeat eapply @ExpressionAttributeCounterMethodsCons; intros.
+  Focus 4.
+  repeat eapply @ExpressionAttributeCounterBind; intros.
+  eapply @ExpressionAttributeCounterFor.
+  eapply @ExpressionAttributeCounterQueryIn; intros.
+  eapply @ExpressionAttributeCounterWhere; intros.
+Instance ExpressionAttributeCounterIncludedIn {A }
+         {qsSchema : RawQueryStructureSchema}
+         {a}
+         {a' : list A}
+         (RidxL : Fin.t _)
+         (BAidxL : @Attributes (Vector.nth _ RidxL))
+         (ExpCountL : @TermAttributeCounter _ qsSchema a' RidxL BAidxL)
+  : @ExpressionAttributeCounter _ qsSchema (IncludedIn a a')
+                                (@InsertOccurenceOfAny _ _ RidxL (InclusionIndex, BAidxL)
+                                                       (InitOccurences _)) | 0 := { }.
+
+  eapply ExpressionAttributeCounterIncludedIn.
+  psearch 200 ltac:(InRangeExpressionAttributeCounter
+            ltac:(
+                    IncludedInExpressionAttributeCounter
+                      EqExpressionAttributeCounter)) ().
+    psearch 200 ltac:(InRangeExpressionAttributeCounter
+            ltac:(
+                    IncludedInExpressionAttributeCounter
+                    EqExpressionAttributeCounter)) ().
+  psearch 200 ltac:(InRangeExpressionAttributeCounter
+            ltac:(
+                    IncludedInExpressionAttributeCounter
+                    EqExpressionAttributeCounter)) ().
+  Focus 5.
+  eapply @ExpressionAttributeCounterWhere; intros.
+  psearch 200 ltac:(InRangeExpressionAttributeCounter
+                      ltac:(IncludedInExpressionAttributeCounter
+                           EqExpressionAttributeCounter)) ().
+psearch 200 ltac:(psearch_combine
+            InRangeExpressionAttributeCounter
+            ltac:(psearch_combine
+                    IncludedInExpressionAttributeCounter
+                    EqExpressionAttributeCounter)) ().
+psearch 200 ltac:(psearch_combine
+            InRangeExpressionAttributeCounter
+            ltac:(psearch_combine
+                    IncludedInExpressionAttributeCounter
+                    EqExpressionAttributeCounter)) ().
+Focus 5.
+
   (* Uncomment this to see the mostly sharpened implementation *)
   (* partial_master_plan ltac:(CombineIndexTactics InclusionIndexTactics
           ltac:(CombineIndexTactics RangeIndexTactics EqIndexTactics)).*)

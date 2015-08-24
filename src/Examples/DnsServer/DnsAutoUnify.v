@@ -70,27 +70,22 @@ Definition DnsSpec : ADT DnsSig :=
             Else ret (buildempty p) (* No matching records! *)
           }}}.
 
+Ltac hone_Dns :=
+  start sharpening ADT;
+
+  hone method "Process"; [ doAnyAll | ]; (* 241 seconds = 4 minutes *)
+  start_honing_QueryStructure';
+  hone method "AddData"; [ doAnyAll | ]; (* 202 seconds = 3.5 minutes *)
+  finish_planning ltac:(CombineIndexTactics PrefixIndexTactics EqIndexTactics)
+                         ltac:(fun makeIndex =>
+                                 GenerateIndexesForOne "Process" ltac:(fun attrlist =>
+                                                                         let attrlist' := eval compute in (PickIndexes (CountAttributes' attrlist)) in makeIndex attrlist')).
+
 Theorem DnsManual :
   FullySharpened DnsSpec.
 Proof.
 
-  start sharpening ADT.
-
-  hone method "Process".
-  { Time doAnyAll. } (* 241 seconds = 4 minutes *)
-
-  start_honing_QueryStructure'.
-
-  hone method "AddData".
-  { Time doAnyAll. } (* 202 seconds = 3.5 minutes *)
-
-  finish_planning ltac:(CombineIndexTactics PrefixIndexTactics EqIndexTactics)
-  ltac:(fun make_index =>
-          make_index ({| prim_fst := [("FindPrefixIndex", Fin.F1)]; prim_snd := () |}
-                                                : @ilist3 RawHeading
-                                  (fun heading : RawHeading => list (prod string (Attributes heading)))
-                                  (numRawQSschemaSchemas (QueryStructureSchemaRaw DnsSchema))
-                                  (Vector.map rawSchemaHeading (qschemaSchemas DnsSchema)))).
+  hone_Dns.
 
 Time Defined.
 

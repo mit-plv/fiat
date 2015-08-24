@@ -324,7 +324,6 @@ Instance ExpressionAttributeCounterEqR {A }
 
 Instance ExpressionAttributeCounterWhere {ResultT}
          {qsSchema : RawQueryStructureSchema}
-         {qs : UnConstrQueryStructure qsSchema}
          (P : Prop)
          (WhereBody : Comp (list ResultT))
          OccCountCond
@@ -547,6 +546,106 @@ Instance ExpressionAttributeCounter_Not
          (P : Prop)
   : @ExpressionAttributeCounter _ qsSchema (~ P) (InitOccurences _) := { }.
 
+(* BFS attribute use counter  *)
+
+Definition ExpressionAttributeCounter_Any {A}
+           {a : A}
+           {qsSchema : RawQueryStructureSchema}
+  : @ExpressionAttributeCounter _ qsSchema a (InitOccurences _) :=
+  Build_ExpressionAttributeCounter qsSchema a (InitOccurences _).
+
+Ltac GetAttributeRawTermCounterTac t :=
+  lazymatch goal with
+    _ => match goal with
+         |- @TermAttributeCounter _ ?qsSchema (@GetAttributeRaw _ ?tup ?BAidx) ?Ridx' ?BAidx' =>
+    match type of tup with
+    | @RawTuple (@GetNRelSchemaHeading _ _ ?Ridx) =>
+      unify Ridx Ridx'; unify BAidx BAidx'; (* have to unify these evars for the lemma to apply*)
+      eapply (@GetAttributeRawTermCounter qsSchema Ridx tup BAidx)
+    end
+  end
+  end.
+
+  Ltac GetAttributeRawTermCounterTacBindex t :=
+    lazymatch goal with
+      _ => match goal with
+    |- @TermAttributeCounter
+         _ ?qsSchema
+         (GetAttribute ?tup {| bindex := _;
+                               indexb := {| ibound := ?BAidx;
+                                            boundi := _ |} |} ) ?Ridx' ?BAidx' =>
+    match type of tup with
+    | @RawTuple (@GetNRelSchemaHeading _ _ ?Ridx) =>
+      unify Ridx Ridx'; unify BAidx BAidx'; (* have to unify these evars for the lemma to apply*)
+      eapply (@GetAttributeRawTermCounter qsSchema Ridx tup BAidx)
+    end
+    end
+  end.
+
+  Ltac EqExpressionAttributeCounter :=
+  psearch_lazy_combine
+    ltac:(GetAttributeRawTermCounterTacBindex)
+  ltac:(psearch_lazy_combine
+          ltac:(GetAttributeRawTermCounterTac)
+  ltac:(psearch_combine
+          ltac:(eapply @ExpressionAttributeCounter_And; intros)
+  ltac:(psearch_combine
+          ltac:(eapply @ExpressionAttributeCounterEqLR; intros)
+  ltac:(psearch_combine
+          ltac:(eapply @ExpressionAttributeCounterEqL; intros)
+  ltac:(psearch_combine
+          ltac:(eapply @ExpressionAttributeCounterEqR; intros)
+  ltac:(psearch_combine
+          ltac:(eapply @ExpressionAttributeCounterWhere; intros)
+  ltac:(psearch_combine
+          ltac:(eapply @ExpressionAttributeCounterQueryIn; intros)
+  ltac:(psearch_combine
+          ltac:(eapply @ExpressionAttributeCounterBind; intros)
+  ltac:(psearch_combine
+          ltac:(eapply @ExpressionAttributeCounterFor; intros)
+  ltac:(psearch_combine
+         ltac:(eapply @ExpressionAttributeCounterCount; intros)
+  ltac:(psearch_combine
+          ltac:(eapply @ExpressionAttributeCounterMaxN; intros)
+  ltac:(psearch_combine
+          ltac:(eapply @ExpressionAttributeCounterMaxZ; intros)
+  ltac:(psearch_combine
+          ltac:(eapply @ExpressionAttributeCounterIfThenElse; intros)
+  ltac:(psearch_combine
+          ltac:(eapply @ExpressionAttributeCounterifthenelse; intros)
+  ltac:(psearch_combine
+          ltac:(eapply @ExpressionAttributeCounterIfOptThenElse; intros)
+  ltac:(psearch_combine
+          ltac:(eapply @ExpressionAttributeCounterConstructorsCons; intros)
+  ltac:(psearch_combine
+          ltac:(eapply @ExpressionAttributeCounterMethodsCons; intros)
+  ltac:(fun _ => eapply @ExpressionAttributeCounter_Any)))))))))))))))))).
+
+  Ltac GenerateIndexesForAll FindAttributeUses k :=
+    match goal with
+      |- context [@BuildADT (UnConstrQueryStructure ?qsSchema) _ _ ?consSigs ?methSigs ?consDefs ?methDefs ] =>
+      makeEvar (OccurencesCountT
+                  (Vector.map rawSchemaHeading (qschemaSchemas qsSchema)))
+               ltac:(fun e => let H := fresh in
+                              assert (@ExpressionAttributeCounter _ qsSchema (@BuildADT _ _ _ consSigs methSigs consDefs methDefs) e) as H by psearch 200 FindAttributeUses ();
+                     clear H;
+                     k e
+                  )
+  end.
+
+  Ltac GenerateIndexesForOne FindAttributeUses idx k :=
+    match goal with
+      |- context [ @BuildADT (UnConstrQueryStructure ?qsSchema) _ _ ?consSigs ?methSigs ?consDefs ?methDefs ] =>
+      let meth := eval simpl in
+      (callMeth (@BuildADT (UnConstrQueryStructure qsSchema) _ _ consSigs methSigs consDefs methDefs) idx) in  makeEvar (OccurencesCountT
+                  (Vector.map rawSchemaHeading (qschemaSchemas qsSchema)))
+               ltac:(fun e => let H := fresh in
+                              assert (forall r d, @ExpressionAttributeCounter _ qsSchema (meth r d) e) as H by psearch 200 FindAttributeUses ();
+                     clear H;
+                     k e
+                  )
+  end.
+
 Ltac make_simple_indexes attrlist BuildEarlyIndex BuildLastIndex:=
   match goal with
   | [ |- Sharpened (@BuildADT (UnConstrQueryStructure ?sch) _ _ _ _ _ _ ) ] =>
@@ -564,30 +663,6 @@ Ltac make_simple_indexes attrlist BuildEarlyIndex BuildLastIndex:=
                          hone representation using (@DelegateToBag_AbsR sch index))
   end.
 
-  Ltac GenerateIndexesForAll k :=
-    match goal with
-      |- context [@BuildADT (UnConstrQueryStructure ?qsSchema) _ _ ?consSigs ?methSigs ?consDefs ?methDefs ] =>
-      makeEvar (OccurencesCountT
-                  (Vector.map rawSchemaHeading (qschemaSchemas qsSchema)))
-               ltac:(fun e => let H := fresh in
-                              assert (@ExpressionAttributeCounter _ qsSchema (@BuildADT _ _ _ consSigs methSigs consDefs methDefs) e) as H by eauto 200 with typeclass_instances;
-                     clear H;
-                     k e
-                  )
-  end.
-
-  Ltac GenerateIndexesForOne idx k :=
-    match goal with
-      |- context [ @BuildADT (UnConstrQueryStructure ?qsSchema) _ _ ?consSigs ?methSigs ?consDefs ?methDefs ] =>
-      let meth := eval simpl in
-      (callMeth (@BuildADT (UnConstrQueryStructure qsSchema) _ _ consSigs methSigs consDefs methDefs) idx) in  makeEvar (OccurencesCountT
-                  (Vector.map rawSchemaHeading (qschemaSchemas qsSchema)))
-               ltac:(fun e => let H := fresh in
-                              assert (forall r d, @ExpressionAttributeCounter _ qsSchema (meth r d) e) as H by eauto 200 with typeclass_instances;
-                     clear H;
-                     k e
-                  )
-  end.
 
 (* Recurse over [fds] to find an attribute matching s *)
 Ltac findMatchingTerm fds kind s k :=
