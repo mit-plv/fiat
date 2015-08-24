@@ -28,7 +28,8 @@ Definition DnsRecSig : ADTSig :=
 
       (* cache methods *)
       Method "InsertResultForDomain" : rep x ToStore -> rep x bool,
-      Method "DeleteResultForDomain" : rep x name -> rep x CacheResult,
+      Method "DeletePendingRequestInfo" : rep x id -> rep x bool,
+      Method "DeleteCachedNameResult" : rep x name -> rep x CacheResult,
                                        (* + update (= delete+insert), checkinvariant,
                                           and packaging a set of rows into a WrapperResponse7 *)
       Method "GetServerForLongestSuffix" : rep x name -> rep x CacheResult,
@@ -100,7 +101,7 @@ Definition Build_CacheFailuresRow tup :=
   Build_Component (Build_Attribute sEXPIRE nat) rExpire,    
   Build_Component (Build_Attribute sMinTTL nat) rMinTTL >.
 
-Definition nonEmpty {A : Type} (l : list A) := negb (beq_nat (List.length l) 0).
+Definition nonempty {A : Type} (l : list A) := negb (beq_nat (List.length l) 0).
 (* from Smtp.v *)
 
 Variable nms : list name.
@@ -120,6 +121,7 @@ Definition list_join {A B : Type} f (l1 : list A) (l2 : list B)
   : list (A * B) := 
 filter f (list_prod l1 l2).
 
+
 (* Set Printing All. *)
 Print FromOutside.
 Definition DnsSpec_Recursive : ADT DnsRecSig :=
@@ -131,7 +133,8 @@ Definition DnsSpec_Recursive : ADT DnsRecSig :=
   let UpdateRequestStage := "UpdateRequestStage" in
   let GetServerForLongestSuffix := "GetServerForLongestSuffix" in
   let InsertResultForDomain := "InsertResultForDomain" in
-  let DeleteResultForDomain := "DeleteResultForDomain" in
+  let DeletePendingRequestInfo := "DeletePendingRequestInfo" in
+  let DeleteCachedNameResult := "DeleteCachedNameResult" in
   let EvictOldest := "EvictOldest" in
   let Process := "Process" in
 
@@ -167,7 +170,7 @@ and associate it with the packet (solve the latter by letting it generate the id
             making c'!sSTAGE = reqStage
             where (c!sID = reqId);
         let (updated, affected) := q in
-        ret (updated, nonEmpty affected),
+        ret (updated, nonempty affected),
 
         (* TODO "delete request" method  *)
 
@@ -178,6 +181,7 @@ and associate it with the packet (solve the latter by letting it generate the id
           | Answer reqName pac => 
 
             (* monad iteration instead. TODO param over table *)
+            (* TODO add rep as a parameter *)
             let fix InsertAll rowFunc tups :=
                 match tups with
                 (* this shouldn't happen since an answer must have at >= 1 answer record *)
@@ -185,7 +189,7 @@ and associate it with the packet (solve the latter by letting it generate the id
                 | ptup :: ptups =>
                   b <- Insert (rowFunc ptup) into r!sCACHE_ANSWERS;
                 InsertAll rowFunc ptups
-                end in 
+                end in
 
             let flattenWithRec p type rec :=
                 let q := questions p in
@@ -197,7 +201,8 @@ and associate it with the packet (solve the latter by letting it generate the id
             (* packet -> tuple with heading? tuple surgery notation -- write down example *)
             (* do a pick TODO ^ v*)
             (* all tuples such that (p fields ... answers fields...); insert tuples *)
-            _ <- Insert (Build_CachePointer reqName CAnswers) into r!sCACHE_POINTERS;
+            res1 <- Insert (Build_CachePointer reqName CAnswers) into r!sCACHE_POINTERS;
+          let (r1, _) := res1 in
           InsertAll Build_CacheAnswersRow (tups pac)
 
           | Failure reqName pac soa =>
@@ -205,8 +210,9 @@ and associate it with the packet (solve the latter by letting it generate the id
             let mkFailTup p soa := 
                 (reqName, sourcehost soa, contact_email soa, 
                  serial soa, refresh soa, retry soa, expire soa, minTTL soa) in
-            _ <- Insert (Build_CachePointer reqName CFailures) into r!sCACHE_POINTERS;
-          Insert (Build_CacheFailuresRow (mkFailTup pac soa)) into r!sCACHE_FAILURES
+            res1 <- Insert (Build_CachePointer reqName CFailures) into r!sCACHE_POINTERS;
+          let (r1, _) := res1 in
+          Insert (Build_CacheFailuresRow (mkFailTup pac soa)) into r1!sCACHE_FAILURES
 
           (* TODO maybe shouldn't be part of the WrapperResponse type / should be in sep fn *)
           | Referral reqId pac => ret (r, false)
@@ -253,26 +259,37 @@ and associate it with the packet (solve the latter by letting it generate the id
           (*   referral_res <- Delete row from r!sCACHE_REFERRALS where row!sREFERRALDOMAIN = domain; *)
           (*   let (r, ref_deleted) := referral_res in *)
           (*   ret (r, Ref ref_deleted) *)
-            
-            update DeleteResultForDomain (r : rep, domain : name) : CacheResult :=
+
+          update DeletePendingRequestInfo (r : rep, reqId : id) : bool :=
+           res1 <- Delete row from r!sREQUESTS where row!sID = reqId;
+           let (r1, rows1) := res1 in
+           res2 <- Delete row from r1!sSLIST_ORDERS where row!sREQID = reqId;
+           let (r2, rows2) := res2 in
+           res3 <- Delete row from r2!sSLIST where row!sREQID = reqId;
+           let (r3, rows3) := res3 in
+           ret (r3, nonempty rows1 || nonempty rows2 || nonempty rows3),
+          
+          (* TODO: given an id, clear the request's SLIST rows and order, and remove from pending reqs *)
+          (* This deletes stuff from the CACHE *)
+            update DeleteCachedNameResult (r : rep, domain : name) : CacheResult :=
           results <- For (pointer in r!sCACHE_POINTERS)
                    Where (pointer!sDOMAIN = domain)
                    Return (pointer!sCACHETABLE);
         match results with
         (* domain to be deleted is not actually in cache *)
         | nil => ret (r, Nope)
-              
         | tbl :: _ =>
-          _ <- Delete row from r!sCACHE_POINTERS where row!sDOMAIN = domain;
+          res <- Delete row from r!sCACHE_POINTERS where row!sDOMAIN = domain;
+          let (r1, _) := res in
           match tbl with
           | CAnswers =>
-            answer_res <- Delete row from r!sCACHE_ANSWERS where row!sDOMAIN = domain;
-            let (r, ans_deleted) := answer_res in
-            ret (r, Ans ans_deleted)
+            answer_res <- Delete row from r1!sCACHE_ANSWERS where row!sDOMAIN = domain;
+            let (r2, ans_deleted) := answer_res in
+            ret (r2, Ans ans_deleted)
           | CFailures =>
-              failure_res <- Delete row from r!sCACHE_FAILURES where row!sDOMAIN = domain;
-            let (r, fail_deleted) := failure_res in
-            ret (r, Fail (listToOption fail_deleted))                
+              failure_res <- Delete row from r1!sCACHE_FAILURES where row!sDOMAIN = domain;
+            let (r2, fail_deleted) := failure_res in
+            ret (r2, Fail (listToOption fail_deleted))                
           end
         end,
 
@@ -360,7 +377,7 @@ and associate it with the packet (solve the latter by letting it generate the id
           (*   (* older <- [[ req in reqs | TTLpast oldThreshold req!sRESULT ]]; *) *)
           (*   b <- Delete req from sCACHE where (List.In req reqs); *)
           (*   let (updated, deleted) := b in *)
-          (*   ret (updated, nonEmpty deleted), *)
+          (*   ret (updated, nonempty deleted), *)
 
           (* ----- MAIN METHOD *)
 
@@ -368,7 +385,12 @@ and associate it with the packet (solve the latter by letting it generate the id
         update Process (r : rep, tup : FromOutside) : ToOutside :=
           let SBELT := @nil ReferralRow in (* TODO, add root *)
           (* TODO inline; this is a stub *)
+          (* TODO this doesn't take/return rep as the actual functions do *)
+          let InsertResultForDomain (toStore : ToStore) : Comp bool := ret false in
           let GetServerForLongestSuffix (reqName : name) : Comp CacheResult := ret Nope in
+          let DeleteCachedNameResult (domain : name) : Comp CacheResult := ret Nope in
+          let DeletePendingRequestInfo (reqId : id) : Comp bool := ret false in
+          (* let DeletePendingRequestInfo (r : rep) (reqId : id) : Comp bool := ret (r, false) in *)
           let isQuestion p := 
               match answers p, authority p, additional p with
               | nil, nil, nil => true
@@ -385,6 +407,11 @@ and associate it with the packet (solve the latter by letting it generate the id
               | _, _, _ => false
               end
           in
+          let GetRequestName (reqId : id) : Comp (option name) := (* pull out *)
+            names <- For (req in r!sREQUESTS)
+                  Where (reqId = req!sID)
+                  Return (req!sQNAME);
+            ret (hd_error names) in
 
           let '(reqId, pac, failure) := tup in
           let reqName := qname (questions pac) in
@@ -428,27 +455,37 @@ and associate it with the packet (solve the latter by letting it generate the id
               (* Figure out if the packet is an answer, failure, or referral *)
               (* doesn't thoroughly check for malformed packets, e.g. contains answer and failure *)
               (* TODO: cache these results (need to get the name first) *)
-              (* TODO: deleteresult should handle both of these (given a name) *)
-              (* remove request from pending *)
-              (* clear the request's SLIST rows and order *)
-              if isAnswer pac then
-                (* Done, forward it on *)
-                ret (r, ClientAnswer reqId pac)
-              else match failure with
-                   (* Failure. Done, forward it on *)
-                   | Some SOA_Record => ret (r, ClientFailure reqId pac SOA_Record)
-                   | None => ret (r, InvalidPacket reqId pac)
-                   end
-              else if isReferral pac then
+              if isReferral pac then
                 (* TODO: unfinished *)
                 (* For each valid referral, pre-pend it to the SLIST, then send question w/ the first *)
                 (* Update request's pending status *)
                 ret (r, ServerQuestion reqId pac)
-                     
+              (* Some variety of done (since not a referral) *)
+              else 
+                nm <- GetRequestName reqId;
+                match nm with
+                | None => ret (r, InvalidId reqId pac)
+                | Some reqName =>
+                  _ <- DeletePendingRequestInfo reqId; (* TODO return the proper rep *)
+                  _ <- DeleteCachedNameResult reqName;
+                if isAnswer pac then
+                  (* Update cache *)
+                  _ <- InsertResultForDomain (Answer reqName pac);
+                  (* Done, forward it on *)
+                  ret (r, ClientAnswer reqId pac)
+                else match failure with
+                     (* Failure. Done, forward it on *)
+                     | Some SOA_Record => 
+                       (* Update cache *)
+                       _ <- InsertResultForDomain (Failure reqName pac SOA_Record);
+                       ret (r, ClientFailure reqId pac SOA_Record)
+                     | None => ret (r, InvalidPacket reqId pac) (* will also result in request del *)
+                     end
+                end
           end
           
         (* wrapper's responsibility to call addrequest first *)
-        (* TODO ignoring sTYPE and sCLASS for now *)
+        (* TODO ignoring sTYPE and sCLASS for now; list the other features i left out *)
         (* TODO update stage? *)
    }.
 

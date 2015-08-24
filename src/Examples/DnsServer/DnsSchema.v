@@ -16,5 +16,5 @@ Definition DnsSchema :=
                    sTTL :: nat,
                    sDATA :: string>
           where (fun t t' => t!sNAME = t'!sNAME -> t!sTYPE <> CNAME) ]
-        (* constraint on every pair of tuples: an ip address cannot have multiple aliases? *)
+        (* constraint on every pair of tuples: an ip address cannot have multiple aliases *)
         enforcing [ ].

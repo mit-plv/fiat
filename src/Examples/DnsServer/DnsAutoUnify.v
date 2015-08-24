@@ -6,7 +6,8 @@ Require Import Coq.Vectors.Vector
         Coq.Bool.Bvector
         Coq.Lists.List.
 
-Require Import Fiat.QueryStructure.Automation.MasterPlan
+Require Import
+        Fiat.QueryStructure.Automation.MasterPlan
         Fiat.QueryStructure.Implementation.DataStructures.BagADT.BagADT
         Fiat.QueryStructure.Automation.IndexSelection
         Fiat.QueryStructure.Specification.SearchTerms.ListPrefix

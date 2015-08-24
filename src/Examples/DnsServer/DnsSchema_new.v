@@ -51,6 +51,7 @@ Inductive ToOutside : Type :=
 | InvalidQuestion : id -> ToOutside
 | InvalidResponse : id -> ToOutside
 | InvalidPacket : id -> packet -> ToOutside
+| InvalidId : id -> packet -> ToOutside
 | ServerQuestion : id -> packet -> ToOutside
 | ClientAnswer : id -> packet -> ToOutside
 | ClientFailure : id -> packet -> SOA -> ToOutside.
@@ -249,11 +250,11 @@ Definition DnsRecSchema :=
   Query Structure Schema
         [ relation sREQUESTS has
                    schema
-                   RequestHeading
+                   RequestHeading;
 
           relation sSLIST_ORDERS has schema
                    < sREQID :: id,
-                     sORDER :: list (id * position) (* is a list of (id, pos) OK? *)
+                     sORDER :: list (id * position) 
                    >;
           relation sSLIST has
                    schema
@@ -261,7 +262,8 @@ Definition DnsRecSchema :=
 
           relation sCACHE_POINTERS has schema
                    < sDOMAIN :: name,
-                     sCACHETABLE :: CacheTable (* would like to have a variant type in the schema *)
+                     sCACHETABLE :: CacheTable 
+                     (* would like to have a variant type in the schema *)
                    > ;
           relation sCACHE_ANSWERS has
                    schema
@@ -271,11 +273,11 @@ Definition DnsRecSchema :=
                    ReferralHeading;
           relation sCACHE_FAILURES has
                    schema
-                   FailureHeading;
-
+                   FailureHeading
         ]
+        enforcing [ ]. 
+
           (* where (fun t t' => True) ] *)
         (* can i have an invariant that just works on one tuple?
          i want to encode that Stage <= length name *)
         (* use an attribute constraint TODO *)
-        enforcing [ ]. 
