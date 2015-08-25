@@ -37,6 +37,13 @@ Definition DnsRecSig : ADTSig :=
       (* things stay in the cache -> deleting ones with TTL 0 preserves (decrement all) *)
       (* or, given the current time, decrement TTL? *)
 
+      (* methods related to referrals and SLIST manipulation *)
+      Method "PacketToReferralRows" : rep x packet -> rep x list ReferralRow,
+      Method "InsertReferralRowsIntoCache" : rep x list ReferralRow -> rep x bool,
+      Method "ReferralRowsToSLIST" : rep x list ReferralRow -> rep x bool,
+      Method "GetFirstReferralAndUpdateSLIST" : rep x id -> rep x option ReferralRow,
+      Method "UpdateCacheReferralsAndSLIST" : rep x (id * packet * list ReferralRow) -> rep x ToOutside,
+                                           
       (* main method *)
       Method "Process" : rep x FromOutside -> rep x ToOutside
                                                   (* needs to add/update requests, not the client *)
@@ -119,11 +126,26 @@ Definition listToOption {A : Type} (l : list A) : option A :=
 
 Definition list_join {A B : Type} f (l1 : list A) (l2 : list B) 
   : list (A * B) := 
-filter f (list_prod l1 l2).
+  filter f (list_prod l1 l2).
 
+Definition toPacket_soa (soa : FailureRow) : SOA :=
+  {| sourcehost := soa!sHOST;
+    contact_email := soa!sEMAIL;
+    serial := soa!sSERIAL;
+    refresh := soa!sREFRESH;
+    retry := soa!sRETRY;
+    expire := soa!sEXPIRE;
+    minTTL := soa!sMinTTL |}.
+
+Definition toPacket_ans (ans : AnswerRow) : answer :=
+  {| aname := ans!sNAME;
+    atype := ans!sTYPE;
+    aclass := ans!sCLASS;
+    ttl := ans!sTTL;
+    rdata := ans!sRDATA |}.
 
 (* Set Printing All. *)
-Print FromOutside.
+
 Definition DnsSpec_Recursive : ADT DnsRecSig :=
   (* TODO move to definitions *)
   let Init := "Init" in
@@ -135,7 +157,11 @@ Definition DnsSpec_Recursive : ADT DnsRecSig :=
   let InsertResultForDomain := "InsertResultForDomain" in
   let DeletePendingRequestInfo := "DeletePendingRequestInfo" in
   let DeleteCachedNameResult := "DeleteCachedNameResult" in
-  let EvictOldest := "EvictOldest" in
+  let PacketToReferralRows :="PacketToReferralRows" in
+  let InsertReferralRowsIntoCache := "InsertReferralRowsIntoCache" in
+  let ReferralRowsToSLIST := "ReferralRowsToSLIST" in 
+  let GetFirstReferralAndUpdateSLIST := "GetFirstReferralAndUpdateSLIST" in 
+  let UpdateCacheReferralsAndSLIST := "UpdateCacheReferralsAndSLIST" in
   let Process := "Process" in
 
   QueryADTRep DnsRecSchema {
@@ -214,51 +240,7 @@ and associate it with the packet (solve the latter by letting it generate the id
           let (r1, _) := res1 in
           Insert (Build_CacheFailuresRow (mkFailTup pac soa)) into r1!sCACHE_FAILURES
 
-          (* TODO maybe shouldn't be part of the WrapperResponse type / should be in sep fn *)
-          | Referral reqId pac => ret (r, false)
           end,
-
-            (* for the pending request reqId, append all referral rows to SLIST *)
-            (* need to generate ids, update order, check match count, TTL, etc *)
-            (* | Question reqId pac => *)
-            (*   (* TODO param on table *) *)
-            (*   let fix InsertAll' rowFunc tups := *)
-            (*   match tups with *)
-            (*   | nil => ret (r, false) *)
-            (*   | ptup :: ptups => *)
-            (*     b <- Insert (rowFunc ptup) into r!sCACHE_REFERRALS; *)
-            (*     InsertAll' rowFunc ptups *)
-            (*   end in *)
-              
-            (*   (* need to do special stuff for linking authority and additional fields *) *)
-            (*   (* for each auth in authority, for each addl in additional, *)
-            (*  if auth's rdata = addl's name, flatten the whole thing into a row and add it *) *)
-            (*   let tupsJoin pac := *)
-            (*       let authRdataMatchesAddlName (tup2 : answer * answer) := *)
-            (*           let (auth, addl) := tup2 in *)
-            (*           beq_name (rdata auth) (aname addl) in *)
-            (*       let auth_addl_join := list_join authRdataMatchesAddlName *)
-            (*                                       (authority pac) (additional pac) in *)
-                  
-            (*       let pairToPacketTup (tup2 : answer * answer) := *)
-            (*           let q := questions pac in *)
-            (*           let (auth, addl) := tup2 in *)
-            (*           ( *)
-            (*            (* id' pac, flags pac, qname q, qtype q, qclass q, *) *)
-            (*            aname auth, atype auth, aclass auth, ttl auth, *)
-            (*            aname addl, atype addl, aclass addl, ttl addl, *)
-            (*            rdata addl) *)
-            (*       in *)
-            (*       map pairToPacketTup auth_addl_join in *)
-              
-            (*   (* _ <- Insert (Build_CachePointer reqName CReferrals) into r!sCACHE_POINTERS; *) *)
-            (*          InsertAll' Build_CacheReferralsRow (tupsJoin pac) *)
-            (* end, *)
-
-            (* | CReferrals => *)
-          (*   referral_res <- Delete row from r!sCACHE_REFERRALS where row!sREFERRALDOMAIN = domain; *)
-          (*   let (r, ref_deleted) := referral_res in *)
-          (*   ret (r, Ref ref_deleted) *)
 
           update DeletePendingRequestInfo (r : rep, reqId : id) : bool :=
            res1 <- Delete row from r!sREQUESTS where row!sID = reqId;
@@ -379,18 +361,96 @@ and associate it with the packet (solve the latter by letting it generate the id
           (*   let (updated, deleted) := b in *)
           (*   ret (updated, nonempty deleted), *)
 
+        (* -------- REFERRAL/SLIST FUNCTIONS *)
+
+                (* Need a method that takes a packet and returns a list of ReferralRows
+
+Need a method that takes a request id, a name, and a list of referrals, 
+filters the referrals for the valid ones,
+caches the referrals with the name, 
+pre-pends the valid ones to the SLIST,
+updates the order,
+and get the first one,
+then puts the first one at the back,
+then returns the first one,
+
+also updates request's pending status
+
+works for the other two above (init SLIST empty + init SLIST empty and give SBELT as SLIST) *)        
+
+        (* for the pending request reqId, append all referral rows to SLIST *)
+        (* need to generate ids, update order, check match count, TTL, etc *)
+        
+     query PacketToReferralRows (r : rep, pac : packet) : list ReferralRow :=
+          (* link authority and additional fields *)
+          (* for each auth in authority, for each addl in additional, *)
+          (*  if auth's rdata = addl's name, flatten the whole thing into a row and add it *)
+          let authRdataMatchesAddlName (tup2 : answer * answer) :=
+              let (auth, addl) := tup2 in
+              beq_name (rdata auth) (aname addl) in
+          let auth_addl_join := list_join authRdataMatchesAddlName
+                                          (authority pac) (additional pac) in
+          
+          let pairToPacketTup (tup2 : answer * answer) :=
+              let q := questions pac in
+              let (auth, addl) := tup2 in
+              (aname auth, atype auth, aclass auth, ttl auth,
+               aname addl, atype addl, aclass addl, ttl addl,
+               rdata addl) in
+          ret (map (fun tup2 => Build_CacheReferralsRow (pairToPacketTup tup2)) auth_addl_join),
+
+     update InsertReferralRowsIntoCache (r : rep, referrals : list ReferralRow) : bool :=
+            (* TODO thread rep through; TODO iterate should be built-in for monad *)
+            let fix InsertAll rows :=
+                match rows with
+                | nil => ret (r, false)
+                | row :: rows' =>
+                  b <- Insert row into r!sCACHE_REFERRALS;
+                InsertAll rows'
+                end in
+            InsertAll referrals,
+
+     update ReferralRowsToSLIST (r : rep, referrals : list ReferralRow) : bool :=
+          ret (r, false),
+
+     update GetFirstReferralAndUpdateSLIST (r : rep, reqId : id) : option ReferralRow :=
+          ret (r, None),
+
+     update UpdateCacheReferralsAndSLIST (r : rep, tup : id * packet * list ReferralRow) : ToOutside :=
+        let '(reqId, pac, rows) := tup in
+        (* Stubs for above methods. TODO thread rep through correctly *)
+        let InsertReferralRowsIntoCache (referrals : list ReferralRow) : Comp bool := ret false in
+        let ReferralRowsToSLIST (referrals : list ReferralRow) : Comp bool := ret false in
+        let GetFirstReferralAndUpdateSLIST (reqId : id) : Comp (option ReferralRow) := ret None in
+
+        _ <- InsertReferralRowsIntoCache rows;
+        _ <- ReferralRowsToSLIST rows;
+        bestReferral <- GetFirstReferralAndUpdateSLIST reqId;
+        match bestReferral with
+        | None => ret (r, NoReferralsLeft reqId pac)
+        | Some bestRef => 
+          (* Send the same question to the server with the IP given in the referral *)
+          ret (r, ServerQuestion reqId bestRef!sSIP pac)
+        end,
+
           (* ----- MAIN METHOD *)
 
           (* TODO need to inline other functions; stubs for now *)
         update Process (r : rep, tup : FromOutside) : ToOutside :=
-          let SBELT := @nil ReferralRow in (* TODO, add root *)
+          let SBELT := @nil ReferralRow in (* TODO, add root ip *)
           (* TODO inline; this is a stub *)
           (* TODO this doesn't take/return rep as the actual functions do *)
+          let AddRequest (tup : packet * id) : Comp bool := ret false in
           let InsertResultForDomain (toStore : ToStore) : Comp bool := ret false in
           let GetServerForLongestSuffix (reqName : name) : Comp CacheResult := ret Nope in
           let DeleteCachedNameResult (domain : name) : Comp CacheResult := ret Nope in
           let DeletePendingRequestInfo (reqId : id) : Comp bool := ret false in
+          (* SLIST/referral stubs *)
+          let PacketToReferralRows (pac : packet) : Comp (list ReferralRow) := ret (@nil ReferralRow) in
+          let UpdateCacheReferralsAndSLIST reqId pac (rows : list ReferralRow) : Comp ToOutside :=
+              ret (InvalidQuestion 0) in
           (* let DeletePendingRequestInfo (r : rep) (reqId : id) : Comp bool := ret (r, false) in *)
+          
           let isQuestion p := 
               match answers p, authority p, additional p with
               | nil, nil, nil => true
@@ -432,20 +492,40 @@ and associate it with the packet (solve the latter by letting it generate the id
               match suffixResults with
                 (* Yes we have seen it *)
                 (* TODO: these are unfinished *)
+                (* TODO: we may need to modify the return packet  *)
                 | Fail failure =>
-                  (* Put the failure in a packet and SOA, and return it *)
-                  ret (r, ClientAnswer reqId pac)
+                  (* Return the exactly one SOA row from cache as a packet *)
+                  match failure with
+                     (* Failure. Done, forward it on *)
+                     | None => ret (r, InternalCacheError reqId pac)
+                     | Some soa => ret (r, ClientFailure reqId pac (toPacket_soa soa))
+                     end                  
                 | Ans answers => 
-                  (* Choose any (?) answer, put it in a packet, and return it *)
-                  ret (r, ClientAnswer reqId pac)
-                | Ref referrals =>
+                  (* filter out Authority and Additional *)
+                  actualAns <- [[ record in answers | record!sPACKET_SECTION = PAnswer ]];
+                  match actualAns with
+                  | nil => ret (r, InternalCacheError reqId pac)
+                  | ans :: ans' =>
+                    (* Arbitrarily choose the first answer, put it in a packet, and return it *)
+                    (* should anything go in authority and additional? *)
+                    let pac' := add_ans (buildempty pac) (toPacket_ans ans) in
+                    ret (r, ClientAnswer reqId pac')
+                  end
+                | Ref referralRows =>
+                  (* Add pending request *)
+                  (* TODO thread rep properly through AddRequest and UpdateCacheReferralsAndSLIST 
+                     (and in Nope) *)
+                  res <- AddRequest (pac, reqId);
                   (* Initialize the SLIST with best referrals, then send a question w/ the first *)
-                  ret (r, ServerQuestion reqId pac)
+                  outsideResult <- UpdateCacheReferralsAndSLIST reqId pac referralRows;
+                  ret (r, outsideResult)
                 (* No we haven't seen it *)
                 | Nope => 
-                  (* Add request to pending *)
+                  (* Add pending request *)
+                  res <- AddRequest (pac, reqId);
                   (* Initialize the SLIST with SBELT, pick one and send a question w/ the first *)
-                  ret (r, ServerQuestion reqId pac)  
+                  outsideResult <- UpdateCacheReferralsAndSLIST reqId pac SBELT;
+                  ret (r, outsideResult)
               end                
           | Some pendingReq' => 
             (* Pending *)
@@ -454,12 +534,11 @@ and associate it with the packet (solve the latter by letting it generate the id
             else
               (* Figure out if the packet is an answer, failure, or referral *)
               (* doesn't thoroughly check for malformed packets, e.g. contains answer and failure *)
-              (* TODO: cache these results (need to get the name first) *)
+              (* TODO: cache these results (need to get the name first)*)
               if isReferral pac then
-                (* TODO: unfinished *)
-                (* For each valid referral, pre-pend it to the SLIST, then send question w/ the first *)
-                (* Update request's pending status *)
-                ret (r, ServerQuestion reqId pac)
+                referralRows <- PacketToReferralRows pac;
+                outsideResult <- UpdateCacheReferralsAndSLIST reqId pac referralRows;
+                ret (r, outsideResult)
               (* Some variety of done (since not a referral) *)
               else 
                 nm <- GetRequestName reqId;
@@ -475,11 +554,11 @@ and associate it with the packet (solve the latter by letting it generate the id
                   ret (r, ClientAnswer reqId pac)
                 else match failure with
                      (* Failure. Done, forward it on *)
-                     | Some SOA_Record => 
+                     | Some soa => 
                        (* Update cache *)
-                       _ <- InsertResultForDomain (Failure reqName pac SOA_Record);
-                       ret (r, ClientFailure reqId pac SOA_Record)
-                     | None => ret (r, InvalidPacket reqId pac) (* will also result in request del *)
+                       _ <- InsertResultForDomain (Failure reqName pac soa);
+                       ret (r, ClientFailure reqId pac soa)
+                     | None => ret (r, MissingSOA reqId pac) (* will also result in request del *)
                      end
                 end
           end

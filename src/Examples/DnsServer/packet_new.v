@@ -206,6 +206,15 @@ Locate replace_order.
        authority := authority p;
        additional := additional p |}.
 
+  (* add a record to a packet's list of answers *)
+  Definition add_ans (p : packet) (t : answer) :=
+    {| id := id p;
+       flags := flags p;
+       questions := questions p;
+       answers := t :: answers p;
+       authority := authority p;
+       additional := additional p |}.
+
   Definition addns (p : packet) (t : DNSRRecord) :=
     {| id := id p;
        flags := flags p;

@@ -51,13 +51,16 @@ Inductive ToOutside : Type :=
 | InvalidQuestion : id -> ToOutside
 | InvalidResponse : id -> ToOutside
 | InvalidPacket : id -> packet -> ToOutside
+| MissingSOA : id -> packet -> ToOutside
+| InternalCacheError : id -> packet -> ToOutside
+| NoReferralsLeft : id -> packet -> ToOutside
 | InvalidId : id -> packet -> ToOutside
-| ServerQuestion : id -> packet -> ToOutside
+| ServerQuestion : id -> name -> packet -> ToOutside (* name = IP of server to send the packet to *)
 | ClientAnswer : id -> packet -> ToOutside
 | ClientFailure : id -> packet -> SOA -> ToOutside.
 
 Inductive ToStore : Type := (* this type might be redundant *)
-| Referral : id -> packet -> ToStore (* only stored for a particular pending request *)
+(* | Referral : id -> packet -> ToStore (* only stored for a particular pending request *) *)
 | Answer : name -> packet -> ToStore
 | Failure : name -> packet -> SOA -> ToStore.
 
