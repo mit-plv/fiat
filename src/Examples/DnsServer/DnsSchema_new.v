@@ -130,6 +130,20 @@ Definition sORDER := "SLIST order". (* using referral IDs *)
 Definition sSLIST := "SLIST".
 Definition sSLIST_ORDERS := "SLIST orders".
 
+Definition sREQID' := "Request ID".
+Definition sREFERRALID' := "Referral ID".
+Definition sREFERRALDOMAIN' := "Referral domain".
+Definition sRTYPE' := "Referral domain type".
+Definition sRCLASS' := "Referral domain class".
+Definition sRTTL' := "Referral domain TTL".
+Definition sSERVERDOMAIN' := "Server domain".
+Definition sSTYPE' := "Server type".
+Definition sSCLASS' := "Server class".
+Definition sSTTL' := "Server TTL".
+Definition sSIP' := "Server IP".
+Definition sMATCHCOUNT' := "# labels matched". 
+Definition sQUERYCOUNT' := "# times queried".
+
 (* The ideal schema would be domain and WrapperResponse, with some way to query the types nested in WrapperResponse. Flattening it here has the same effect. 
 
 One (Domain => WrapperResponse) mapping is flattened into several rows that all have the same packet information, but store one answer (DNSRRecord) each. 
@@ -148,6 +162,7 @@ Invariants: (TODO)
 go to server "a.isi.edu" with IP 1.0.0.1 (and ask it the same question) -- RFC 1034 6.2.6
 we discard the original question "brl.mil" *)
 (* 6.3.1 *)
+(* primes (') because typeclasses fail if fields have the same name *)
 Definition SLIST_ReferralHeading :=
   (* R- = referral domain's, S- = server domain's *)
          <sREQID :: nat,
@@ -249,6 +264,12 @@ Inductive CacheTable :=
 | CAnswers
 | CFailures.
 
+Print position.
+
+Record refPosition :=
+  { refId : id;
+    refPos : nat }.
+
 Definition DnsRecSchema :=
   Query Structure Schema
         [ relation sREQUESTS has
@@ -257,7 +278,7 @@ Definition DnsRecSchema :=
 
           relation sSLIST_ORDERS has schema
                    < sREQID :: id,
-                     sORDER :: list (id * position) 
+                     sORDER :: list refPosition
                    >;
           relation sSLIST has
                    schema
