@@ -27,26 +27,26 @@ Definition DnsRecSig : ADTSig :=
       Method "UpdateRequestStage" : rep x (id * Stage) -> rep x bool,
 
       (* cache methods *)
-      Method "InsertResultForDomain" : rep x ToStore -> rep x bool,
+      Method "InsertResultForDomain" : rep x (time * ToStore) -> rep x bool,
       Method "DeletePendingRequestInfo" : rep x id -> rep x bool,
       Method "DeleteCachedNameResult" : rep x name -> rep x CacheResult,
                                        (* + update (= delete+insert), checkinvariant,
                                           and packaging a set of rows into a WrapperResponse7 *)
-      Method "GetServerForLongestSuffix" : rep x name -> rep x CacheResult,
-      (* Method "EvictOldest" : rep x id -> rep x bool, *)
-      (* things stay in the cache -> deleting ones with TTL 0 preserves (decrement all) *)
-      (* or, given the current time, decrement TTL? *)
+      Method "GetServerForLongestSuffix" : rep x (time * name) -> rep x CacheResult,
 
       (* methods related to referrals and SLIST manipulation *)
-      Method "PacketToReferralRows" : rep x packet -> rep x list ReferralRow,
+      Method "PacketToReferralRows" : rep x (time * packet) -> rep x list ReferralRow,
       Method "InsertReferralRowsIntoCache" : rep x list ReferralRow -> rep x bool,
       Method "SortSLIST" : rep x id -> rep x bool,
       Method "ReferralRowsToSLIST" : rep x (id * name * list ReferralRow) -> rep x bool,
-      Method "GetFirstReferralAndUpdateSLIST" : rep x id -> rep x option SLIST_ReferralRow,
-      Method "UpdateCacheReferralsAndSLIST" : rep x (id * packet * list ReferralRow) -> rep x ToOutside,
+      Method "GetFirstReferralAndUpdateSLIST" : rep x (time * id) -> rep x option SLIST_ReferralRow,
+      Method "UpdateCacheReferralsAndSLIST" : rep x (time * id * packet * list ReferralRow) -> rep x ToOutside,
+
+     (* TTL *)
+      Method "UpdateTTLs" : rep x time -> rep x bool,
                                            
       (* main method *)
-      Method "Process" : rep x FromOutside -> rep x ToOutside
+      Method "Process" : rep x (time * FromOutside) -> rep x ToOutside (* TTL* *)
                                                   (* needs to add/update requests, not the client *)
     }.
 
@@ -75,10 +75,8 @@ Definition Build_CachePointerRow reqName table :=
   < Build_Component (Build_Attribute sDOMAIN name) reqName,
     Build_Component (Build_Attribute sCACHETABLE CacheTable) table >.
 
-Check Build_CachePointerRow.
-
 Definition Build_CacheReferralsRow tup :=
-  let '(referralDomain, rType, rClass, rTTL, serverDomain, sType, sClass, sTTL, sIP) := tup in
+  let '(referralDomain, rType, rClass, rTTL, serverDomain, sType, sClass, sTTL, sIP, timeLastCalculated) := tup in
   < Build_Component (Build_Attribute sREFERRALDOMAIN name) referralDomain,
   Build_Component (Build_Attribute sRTYPE RRecordType) rType,
   Build_Component (Build_Attribute sRCLASS RRecordClass) rClass,
@@ -88,20 +86,22 @@ Definition Build_CacheReferralsRow tup :=
   Build_Component (Build_Attribute sSTYPE RRecordType) sType,
   Build_Component (Build_Attribute sSCLASS RRecordClass) sClass,  
   Build_Component (Build_Attribute sSTTL nat) sTTL,
-  Build_Component (Build_Attribute sSIP name) sIP >.
+  Build_Component (Build_Attribute sSIP name) sIP,
+  Build_Component (Build_Attribute sTIME_LAST_CALCULATED nat) timeLastCalculated >.
 
 Definition Build_CacheAnswersRow tup :=
-  let '(rDomain, rSection, rName, rType, rClass, rTTL, rRdata) := tup in
+  let '(rDomain, rSection, rName, rType, rClass, rTTL, rRdata, timeLastCalculated) := tup in
   < Build_Component (Build_Attribute sDOMAIN name) rDomain,
   Build_Component (Build_Attribute sPACKET_SECTION PacketSection) rSection,
   Build_Component (Build_Attribute sNAME name) rName,
   Build_Component (Build_Attribute sTYPE RRecordType) rType,
   Build_Component (Build_Attribute sCLASS RRecordClass) rClass,
   Build_Component (Build_Attribute sTTL nat) rTTL,
-  Build_Component (Build_Attribute sRDATA name) rRdata >.
+  Build_Component (Build_Attribute sRDATA name) rRdata,
+  Build_Component (Build_Attribute sTIME_LAST_CALCULATED nat) timeLastCalculated >.
 
 Definition Build_CacheFailuresRow tup :=
-  let '(rDomain, rHost, rEmail, rSerial, rRefresh, rRetry, rExpire, rMinTTL) := tup in
+  let '(rDomain, rHost, rEmail, rSerial, rRefresh, rRetry, rExpire, rMinTTL, timeLastCalculated) := tup in
   < Build_Component (Build_Attribute sDOMAIN name) rDomain,
   Build_Component (Build_Attribute sHOST name) rHost,
   Build_Component (Build_Attribute sEMAIL name) rEmail,
@@ -109,7 +109,8 @@ Definition Build_CacheFailuresRow tup :=
   Build_Component (Build_Attribute sREFRESH nat) rRefresh,
   Build_Component (Build_Attribute sRETRY nat) rRetry,
   Build_Component (Build_Attribute sEXPIRE nat) rExpire,    
-  Build_Component (Build_Attribute sMinTTL nat) rMinTTL >.
+  Build_Component (Build_Attribute sMinTTL nat) rMinTTL,
+  Build_Component (Build_Attribute sTIME_LAST_CALCULATED nat) timeLastCalculated >.
 
 Definition ToSLISTRow (refRow : ReferralRow) reqId refId matchCount queryCount :=
   < Build_Component (Build_Attribute sREQID nat) reqId,
@@ -124,6 +125,7 @@ Definition ToSLISTRow (refRow : ReferralRow) reqId refId matchCount queryCount :
   Build_Component (Build_Attribute sSCLASS RRecordClass) refRow!sSCLASS,  
   Build_Component (Build_Attribute sSTTL nat) refRow!sSTTL,
   Build_Component (Build_Attribute sSIP name) refRow!sSIP,
+  Build_Component (Build_Attribute sTIME_LAST_CALCULATED nat) refRow!sTIME_LAST_CALCULATED,
 
   Build_Component (Build_Attribute sMATCHCOUNT nat) matchCount,
   Build_Component (Build_Attribute sQUERYCOUNT nat) queryCount >.
@@ -180,6 +182,18 @@ Definition toPacket_ans (ans : AnswerRow) : answer :=
     ttl := ans!sTTL;
     rdata := ans!sRDATA |}.
 
+Definition timeLeft TTL currTime timeLastCalculated :=
+  TTL - (currTime - timeLastCalculated).
+
+Definition hasTimeLeft_prop TTL currTime timeLastCalculated :=
+  timeLeft TTL currTime timeLastCalculated > 0.
+
+Definition hasTimeLeft_comp TTL currTime timeLastCalculated :=
+  match nat_compare (timeLeft TTL currTime timeLastCalculated) 0 with
+  | Gt => true
+  | _ => false
+  end.
+
 (* Set Printing All. *)
 
 Definition DnsSpec_Recursive : ADT DnsRecSig :=
@@ -199,6 +213,7 @@ Definition DnsSpec_Recursive : ADT DnsRecSig :=
   let GetFirstReferralAndUpdateSLIST := "GetFirstReferralAndUpdateSLIST" in
   let SortSLIST := "SortSLIST" in
   let UpdateCacheReferralsAndSLIST := "UpdateCacheReferralsAndSLIST" in
+  let UpdateTTLs := "UpdateTTLs" in
   let Process := "Process" in
 
   QueryADTRep DnsRecSchema {
@@ -239,8 +254,14 @@ and associate it with the packet (solve the latter by letting it generate the id
 
         (* ----- CACHE *)
         (* assumes that someone has already checked that the domain is not in any of the caches *)
-       update InsertResultForDomain (r : rep, tup : ToStore) : bool :=
-          match tup with
+       update InsertResultForDomain (r : rep, tup : time * ToStore) : bool :=
+          let (timeArrived, toStore) := tup in
+
+          let UpdateTTLs (r : repHint) (t : time) := ret (r, false) in
+          q <- UpdateTTLs r timeArrived;
+          let (r, _) := q in
+
+          match toStore with
           | Answer reqName pac => 
 
             (* monad iteration instead. TODO param over table *)
@@ -257,7 +278,7 @@ and associate it with the packet (solve the latter by letting it generate the id
 
             let flattenWithRec p type rec :=
                 let q := questions p in
-                (reqName, type, aname rec, atype rec, aclass rec, ttl rec, rdata rec) in
+                (reqName, type, aname rec, atype rec, aclass rec, ttl rec, rdata rec, timeArrived) in
             let flattenPacket p type recs := List.map (fun rec => flattenWithRec p type rec) recs in
             let tups p := flattenPacket p PAnswer (answers p)
                                         ++ flattenPacket p PAuthority (authority p)
@@ -273,7 +294,7 @@ and associate it with the packet (solve the latter by letting it generate the id
             (* ignoring authority/answer/additional fields; using only the one SOA *)
             let mkFailTup p soa := 
                 (reqName, sourcehost soa, contact_email soa, 
-                 serial soa, refresh soa, retry soa, expire soa, minTTL soa) in
+                 serial soa, refresh soa, retry soa, expire soa, minTTL soa, timeArrived) in
             res1 <- Insert (Build_CachePointerRow reqName CFailures) into r!sCACHE_POINTERS;
           let (r1, _) := res1 in
           Insert (Build_CacheFailuresRow (mkFailTup pac soa)) into r1!sCACHE_FAILURES
@@ -313,7 +334,13 @@ and associate it with the packet (solve the latter by letting it generate the id
           end
         end,
 
-        query GetServerForLongestSuffix (r : rep, reqName : name) : CacheResult :=
+        query GetServerForLongestSuffix (r : rep, tup : time * name) : CacheResult :=
+          let (currTime, reqName) := tup in
+
+          let UpdateTTLs (r : repHint) (t : time) := ret (r, false) in
+          q <- UpdateTTLs r currTime;
+          let (r, _) := q in
+
           let getLongestSuffixes name :=
               (* TODO: filter by packetsection = answer? are authority and additional useful? *)
             suffixes <- For (ans in r!sCACHE_REFERRALS)
@@ -331,7 +358,9 @@ and associate it with the packet (solve the latter by letting it generate the id
           (* name has nothing cached for it, but we might have referrals for subdomains *)
           longestSuffixes <- getLongestSuffixes reqName;
           match longestSuffixes with
-          | _ :: _ => ret (Ref longestSuffixes)
+          | _ :: _ =>
+            (* TTL* *)
+            ret (Ref longestSuffixes)
           | nil => 
           (* TODO: does prefix/subdomain failure imply domain failure? s.com fails -> c.s.com fails? *)
             ret Nope (* this name has nothing cached for it *)
@@ -352,6 +381,7 @@ and associate it with the packet (solve the latter by letting it generate the id
               nameRes <- For (f in r!sCACHE_FAILURES)
                       Where (f!sDOMAIN = reqName)
                       Return f;
+              (* TTL* *)
               ret (Fail (listToOption nameRes))
           
             (* There may be multiple rows in Answers, containing various answer/authority/addl *)
@@ -364,44 +394,21 @@ and associate it with the packet (solve the latter by letting it generate the id
             (* This returns all of them and leaves it to Process to hierarchize/query them *)
             nameRes <- For (f in r!sCACHE_ANSWERS)
                     Where (f!sDOMAIN = reqName)
-                    Return f;            
+                    Return f;
+            (* TTL* *)
             ret (Ans nameRes)
           end
         end,
           
-          (* TODO use  *)
-        (* after a certain time, evict oldest names from cache,
-           using either "oldest n names" or "all names with ips before threshold t" (here the latter). smaller ids are older, bigger ips are newer. including threshold *)
-          (* update EvictOldest (threshold : nat) : bool := *)
-          (*     (* also have an "update all s" *) *)
-          (*     (* TODO failure s? *) *)
-          (*     (* let increment (time : nat) (req : WrapperResponse) := req in *) *)
-          (*     let removeOlder (threshold : nat) (records : list answer) := *)
-          (*         [[ rec in records | ttl rec > threshold ]] in *)
-          (*     let removeOldRecords (threshold : nat) (req : WrapperResponse) : Comp packet := *)
-          (*         match req with *)
-          (*         | Question _ p *)
-          (*         | Answer p *)
-          (*         | Failure p =>  *)
-          (*           answers' <- removeOlder threshold (answers p); *)
-          (*         authority' <- removeOlder threshold (authority p); *)
-          (*         additional' <- removeOlder threshold (additional p); *)
-          (*           ret (updateRecords p answers' authority' additional') *)
-          (*         end in *)
-          (*     (* this isn't right, what i want to do is REMOVE stuff from ans/au/add that are past the threshold, put that back in the packet, and UPDATE the request with that *) *)
-          (*     (* layers: WrapperRequest Packet(Field) List Answer --> TTL *) *)
-          (*     reqs <- For (req in sCACHE) *)
-          (*          Return (req!sDOMAIN, req!sRESULT); *)
-          (*   results <- flat_map  *)
-          (*           (fun r => Build_CacheRow (fst r) (removeOldRecords threshold (snd r))) reqs; *)
-          (*   (* older <- [[ req in reqs | TTLpast oldThreshold req!sRESULT ]]; *) *)
-          (*   b <- Delete req from sCACHE where (List.In req reqs); *)
-          (*   let (updated, deleted) := b in *)
-          (*   ret (updated, nonempty deleted), *)
-
         (* -------- REFERRAL/SLIST FUNCTIONS *)
       
-     query PacketToReferralRows (r : rep, pac : packet) : list ReferralRow :=
+     query PacketToReferralRows (r : rep, tup : time * packet) : list ReferralRow :=
+          let (timeArrived, pac) := tup in
+
+          let UpdateTTLs (r : repHint) (t : time) := ret (r, false) in
+          q <- UpdateTTLs r timeArrived;
+          let (r, _) := q in
+
           (* link authority and additional fields *)
           (* for each auth in authority, for each addl in additional, *)
           (*  if auth's rdata = addl's name, flatten the whole thing into a row and add it *)
@@ -416,7 +423,7 @@ and associate it with the packet (solve the latter by letting it generate the id
               let (auth, addl) := tup2 in
               (aname auth, atype auth, aclass auth, ttl auth,
                aname addl, atype addl, aclass addl, ttl addl,
-               rdata addl) in
+               rdata addl, timeArrived) in
           ret (map (fun tup2 => Build_CacheReferralsRow (pairToPacketTup tup2)) auth_addl_join),
 
           (* TODO iterate should be built-in for monad *)
@@ -492,6 +499,12 @@ and associate it with the packet (solve the latter by letting it generate the id
                                List.length name' >= List.length name'' };
               ret (List.length longestSharedSuffix) in
 
+          let ToSLISTrow' (r : repHint) (tup : id * ReferralRow) : Comp (repHint * SLIST_ReferralRow) :=
+              let (refId, refRow) := tup in
+              matchCount' <- matchCount refRow!sREFERRALDOMAIN questionName;
+              let queryCount := 0 in (* New referral -- hasn't been queried before *)
+              ret (r, ToSLISTRow refRow reqId refId matchCount' queryCount) in
+          
           let SortSLIST (r : repHint) (reqId : id) : Comp (repHint * bool) :=
               ret (r, false) in (* TODO stub *)
 
@@ -515,12 +528,6 @@ and associate it with the packet (solve the latter by letting it generate the id
                      x <> y /\ upperbound' refIds x /\ upperbound' refIds y 
                      /\ List.length ids = List.length referrals };
 
-          let ToSLISTrow' (r : repHint) (tup : id * ReferralRow) : Comp (repHint * SLIST_ReferralRow) :=
-              let (refId, refRow) := tup in
-              matchCount' <- matchCount refRow!sREFERRALDOMAIN questionName;
-              let queryCount := 0 in (* New referral -- hasn't been queried before *)
-              ret (r, ToSLISTRow refRow reqId refId matchCount' queryCount) in
-
           (* Turn each referral row into an SLIST referral row, then insert all of them *)
           res0 <- iterate r ToSLISTrow' (List.combine newIds referrals);
           let (r0, SLISTrows) := res0 in
@@ -533,7 +540,14 @@ and associate it with the packet (solve the latter by letting it generate the id
       (* get the "best" referral (the one with the lowest position in SLIST),
       update its query count and the request's match count and re-sort SLIST according to this.
       then returns the "best" referral *)
-     update GetFirstReferralAndUpdateSLIST (r : rep, reqId : id) : option SLIST_ReferralRow :=
+
+     update GetFirstReferralAndUpdateSLIST (r : rep, tup : time * id) : option SLIST_ReferralRow :=
+      let (currTime, reqId) := tup in
+
+      let UpdateTTLs (r : repHint) (t : time) := ret (r, false) in
+      q <- UpdateTTLs r currTime;
+      let (r, _) := q in
+
       let SortSLIST (r : repHint) (reqId : id) : Comp (repHint * bool) :=
           ret (r, false) in (* TODO stub *)
 
@@ -562,7 +576,7 @@ and associate it with the packet (solve the latter by letting it generate the id
                 (* Increment queryCount, update match count, and re-sort SLIST according to match ct*)
                 (* For now, this won't change the SLIST order, but if the sorting algo starts to include queryCount, that will change the order *)
                 res <- Update c from r!sSLIST as c'
-                       making c'!sQUERYCOUNT = c'!sQUERYCOUNT + 1
+                       making c'!sQUERYCOUNT = c!sQUERYCOUNT + 1
                        where (c!sREQID = reqId /\ c!sREFERRALID = bestRefId);
               let (r1, _) := res in
               res1 <- Update c from r1!sREQUESTS as c'
@@ -578,12 +592,17 @@ and associate it with the packet (solve the latter by letting it generate the id
             end
           end,
 
-     update UpdateCacheReferralsAndSLIST (r : rep, tup : id * packet * list ReferralRow) : ToOutside :=
-        let '(reqId, pac, rows) := tup in
+     update UpdateCacheReferralsAndSLIST (r : rep, tup : time * id * packet * list ReferralRow) : ToOutside :=
+        let '(currTime, reqId, pac, rows) := tup in
+
+          let UpdateTTLs (r : repHint) (t : time) := ret (r, false) in
+          q <- UpdateTTLs r currTime;
+          let (r, _) := q in
+
         (* Stubs for above methods. *)
         let InsertReferralRowsIntoCache (r : repHint) (referrals : list ReferralRow) := ret (r, false) in
         let ReferralRowsToSLIST (r : repHint) reqId questionName (referrals : list ReferralRow) := ret (r, false) in
-        let GetFirstReferralAndUpdateSLIST (r : repHint) (reqId : id)
+        let GetFirstReferralAndUpdateSLIST (r : repHint) (currTime : time) (reqId : id)
               : Comp (repHint * option SLIST_ReferralRow) := ret (r, None) in
 
         res <- InsertReferralRowsIntoCache r rows;
@@ -598,7 +617,7 @@ and associate it with the packet (solve the latter by letting it generate the id
           res1 <- ReferralRowsToSLIST r1 reqId [""] rows;
         let (r2, _) := res1 in
         
-        res3 <- GetFirstReferralAndUpdateSLIST r2 reqId;
+        res3 <- GetFirstReferralAndUpdateSLIST r2 currTime reqId;
         let (r3, bestReferral) := res3 in
         match bestReferral with
         | None => ret (r3, NoReferralsLeft reqId pac)
@@ -608,11 +627,103 @@ and associate it with the packet (solve the latter by letting it generate the id
         end
         end,
 
+        (* ---------- *)
+     (* decrement the TTLs of everything and store currTime in time_last_calculated
+       (TODO: code could be more efficient if we only updated those in a particular table,
+        but then it would be longer)
+
+     for cache tables: get all the affected request ids first and delete those from cache pointers
+     for SLIST referrals: delete those from SLIST order too
+
+     then delete from the cache anything with TTL 0 (because nats)
+
+     as a recurrence relation:
+     TTL_(n+1) = TTL_n - (time_right_now - time_last_calculated) *)
+        update UpdateTTLs (r : rep, currTime : time) : bool :=
+          q <- Update c from r!sSLIST as c'
+            making (c'!sTIME_LAST_CALCULATED = currTime /\
+                    c'!sSTTL = timeLeft c!sSTTL currTime c!sTIME_LAST_CALCULATED)
+            where True;
+          let (r, _) := q in
+
+          q <- Update c from r!sCACHE_REFERRALS as c'
+            making (c'!sTIME_LAST_CALCULATED = currTime /\
+                    c'!sSTTL = timeLeft c!sSTTL currTime c!sTIME_LAST_CALCULATED)
+            where True;
+          let (r, _) := q in
+
+          q <- Update c from r!sCACHE_ANSWERS as c'
+            making (c'!sTIME_LAST_CALCULATED = currTime /\
+                    c'!sTTL = timeLeft c!sTTL currTime c!sTIME_LAST_CALCULATED)
+            where True;
+          let (r, _) := q in
+
+          q <- Update c from r!sCACHE_FAILURES as c'
+            making (c'!sTIME_LAST_CALCULATED = currTime /\
+                    c'!sMinTTL = timeLeft c!sMinTTL currTime c!sTIME_LAST_CALCULATED)
+            where True;
+          let (r, _) := q in
+
+     (* for cache tables: get all to-be-deleted rows' names and delete those from cache pointers *)
+          tbd_ref_names <- For (c in r!sCACHE_REFERRALS)
+                        Where (c!sSTTL = 0)
+                        Return (c!sREFERRALDOMAIN);
+          tbd_ans_names <- For (c in r!sCACHE_ANSWERS)
+                        Where (c!sTTL = 0)
+                        Return (c!sDOMAIN);
+          tbd_fail_names <- For (c in r!sCACHE_FAILURES)
+                        Where (c!sMinTTL = 0)
+                        Return (c!sDOMAIN);
+          let toBeDeleted := tbd_ref_names ++ tbd_ans_names ++ tbd_fail_names in
+
+          let deleteCachePointer (r : repHint) name :=
+              q <- Delete row from r!sCACHE_POINTERS where row!sDOMAIN = name;
+              let (r, affected) := q in
+              ret (r, nonempty affected) in
+          q <- iterate r deleteCachePointer toBeDeleted;
+          let (r, _) := q in
+          
+     (* for SLIST referrals: get all to-be-deleted rows' req+ref ids and delete those from SLIST order *)
+          tbd_reqId_and_refId <- For (c in r!sSLIST)
+                        Where (c!sSTTL = 0)
+                        Return (c!sREQID, c!sREFERRALID);
+
+          let deleteReqSLISTentry (r : repHint) (tup : id * id) :=
+              let (reqId, refId') := tup in
+              q <- For (c in r!sSLIST_ORDERS)
+                Where (c!sREQID = reqId)
+                Return (c!sORDER);
+              match hd_error q with
+              | None => ret (r, false)
+              | Some order =>
+                (* Delete referral with id refId from the request's SLIST *)
+                let order_ref_deleted := filter (fun tup => beq_nat (refId tup) refId') order in
+                q <- Update c from r!sSLIST_ORDERS as c'
+                     making (c'!sORDER = order_ref_deleted)
+                     where (c!sREQID = reqId);
+                let (r, affected) := q in
+                ret (r, nonempty affected)
+              end in
+          q <- iterate r deleteReqSLISTentry tbd_reqId_and_refId;
+          let (r, _) := q in
+
+          q <- Delete row from r!sSLIST where row!sSTTL = 0;
+          let (r, _) := q in
+          q <- Delete row from r!sCACHE_REFERRALS where row!sSTTL = 0;
+          let (r, _) := q in
+          q <- Delete row from r!sCACHE_ANSWERS where row!sTTL = 0;
+          let (r, _) := q in
+          q <- Delete row from r!sCACHE_FAILURES where row!sMinTTL = 0;
+          let (r, _) := q in
+
+          ret (r, true),
+          
+
           (* ----- MAIN METHOD *)
 
           (* TODO need to inline other functions; stubs for now *)
         (* TODO: rep is not threaded through in Process *)
-        update Process (r : rep, tup : FromOutside) : ToOutside :=
+        update Process (r : rep, tup : time * FromOutside) : ToOutside :=
           let SBELT := @nil ReferralRow in (* TODO, add root ip *)
           (* TODO inline; these are stubs *)
           (* TODO thread rep through (when i have tuple desugaring / better monad) *)
@@ -626,13 +737,13 @@ and associate it with the packet (solve the latter by letting it generate the id
           (* let UpdateCacheReferralsAndSLIST reqId pac (r : repHint) (rows : list ReferralRow) := *)
           (*     ret (r, InvalidQuestion 0) in *)
           let AddRequest (tup : packet * id) := ret false in
-          let InsertResultForDomain (toStore : ToStore) := ret false in
-          let GetServerForLongestSuffix (reqName : name) := ret Nope in
+          let InsertResultForDomain (timeArrived : time) (toStore : ToStore) := ret false in
+          let GetServerForLongestSuffix (currTime : time) (reqName : name) := ret Nope in
           let DeleteCachedNameResult (domain : name) := ret Nope in
           let DeletePendingRequestInfo (reqId : id) := ret false in
           (* SLIST/referral stubs *)
-          let PacketToReferralRows (pac : packet) := ret (@nil ReferralRow) in
-          let UpdateCacheReferralsAndSLIST reqId pac (rows : list ReferralRow) := 
+          let PacketToReferralRows (timeArrived : time) (pac : packet) := ret (@nil ReferralRow) in
+          let UpdateCacheReferralsAndSLIST (currTime : time) reqId pac (rows : list ReferralRow) := 
               ret (InvalidQuestion 0) in
           
           let isQuestion p := 
@@ -657,8 +768,13 @@ and associate it with the packet (solve the latter by letting it generate the id
                   Return (req!sQNAME);
             ret (hd_error names) in
 
-          let '(reqId, pac, failure) := tup in
+          let (timeArrived, fromOutside) := tup in
+          let '(reqId, pac, failure) := fromOutside in
           let reqName := qname (questions pac) in
+
+          let UpdateTTLs (r : repHint) (t : time) := ret (r, false) in
+          q <- UpdateTTLs r timeArrived;
+          let (r, _) := q in
           
           (* Is the request pending? (Are we currently working on it?) *)
           pendingReq <- For (req in r!sREQUESTS)
@@ -672,7 +788,7 @@ and associate it with the packet (solve the latter by letting it generate the id
               ret (r, InvalidResponse reqId)
             else
               (* But have we seen it before? *)
-              suffixResults <- GetServerForLongestSuffix reqName;
+              suffixResults <- GetServerForLongestSuffix timeArrived reqName;
               match suffixResults with
                 (* Yes we have seen it *)
                 (* TODO: these are unfinished *)
@@ -682,7 +798,9 @@ and associate it with the packet (solve the latter by letting it generate the id
                   match failure with
                      (* Failure. Done, forward it on *)
                      | None => ret (r, InternalCacheError reqId pac)
-                     | Some soa => ret (r, ClientFailure reqId pac (toPacket_soa soa))
+                     (* TTL* *)
+                     | Some soa =>
+                       ret (r, ClientFailure reqId pac (toPacket_soa soa))
                      end                  
                 | Ans answers => 
                   (* filter out Authority and Additional *)
@@ -691,8 +809,10 @@ and associate it with the packet (solve the latter by letting it generate the id
                   | nil => ret (r, InternalCacheError reqId pac)
                   | ans :: ans' =>
                     (* Arbitrarily choose the first answer, put it in a packet, and return it *)
+                    (* TODO: could also re-hierarchize all the answer/authority/additional into pac *)
                     (* should anything go in authority and additional? *)
                     let pac' := add_ans (buildempty pac) (toPacket_ans ans) in
+                    (* TTL* *)
                     ret (r, ClientAnswer reqId pac')
                   end
                 | Ref referralRows =>
@@ -701,14 +821,14 @@ and associate it with the packet (solve the latter by letting it generate the id
                      (and in Nope) *)
                   res <- AddRequest (pac, reqId);
                   (* Initialize the SLIST with best referrals, then send a question w/ the first *)
-                  outsideResult <- UpdateCacheReferralsAndSLIST reqId pac referralRows;
+                  outsideResult <- UpdateCacheReferralsAndSLIST reqId timeArrived pac referralRows;
                   ret (r, outsideResult)
                 (* No we haven't seen it *)
                 | Nope => 
                   (* Add pending request *)
                   res <- AddRequest (pac, reqId);
                   (* Initialize the SLIST with SBELT, pick one and send a question w/ the first *)
-                  outsideResult <- UpdateCacheReferralsAndSLIST reqId pac SBELT;
+                  outsideResult <- UpdateCacheReferralsAndSLIST reqId timeArrived pac SBELT;
                   ret (r, outsideResult)
               end                
           | Some pendingReq' => 
@@ -720,8 +840,8 @@ and associate it with the packet (solve the latter by letting it generate the id
               (* doesn't thoroughly check for malformed packets, e.g. contains answer and failure *)
               (* TODO: cache these results (need to get the name first)*)
               if isReferral pac then
-                referralRows <- PacketToReferralRows pac;
-                outsideResult <- UpdateCacheReferralsAndSLIST reqId pac referralRows;
+                referralRows <- PacketToReferralRows timeArrived pac;
+                outsideResult <- UpdateCacheReferralsAndSLIST timeArrived reqId pac referralRows;
                 ret (r, outsideResult)
               (* Some variety of done (since not a referral) *)
               else 
@@ -733,14 +853,15 @@ and associate it with the packet (solve the latter by letting it generate the id
                   _ <- DeleteCachedNameResult reqName;
                 if isAnswer pac then
                   (* Update cache *)
-                  _ <- InsertResultForDomain (Answer reqName pac);
-                  (* Done, forward it on *)
+                  _ <- InsertResultForDomain timeArrived (Answer reqName pac);
+                  (* Done, forward it on *) (* TTL* *)
                   ret (r, ClientAnswer reqId pac)
                 else match failure with
                      (* Failure. Done, forward it on *)
                      | Some soa => 
                        (* Update cache *)
-                       _ <- InsertResultForDomain (Failure reqName pac soa);
+                       _ <- InsertResultForDomain timeArrived (Failure reqName pac soa);
+                      (* TTL* *)
                        ret (r, ClientFailure reqId pac soa)
                      | None => ret (r, MissingSOA reqId pac) (* will also result in request del *)
                      end

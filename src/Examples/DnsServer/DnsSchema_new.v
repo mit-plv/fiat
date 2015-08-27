@@ -30,6 +30,7 @@ id [SLIST order]
 5  [x2, x1, x3,...] *)
 
 Definition Stage := option nat.
+Definition time := nat.
 Definition id : Type := nat.
 Definition position := nat.
 Definition server := name.      (* both IP and server name *)
@@ -130,19 +131,8 @@ Definition sORDER := "SLIST order". (* using referral IDs *)
 Definition sSLIST := "SLIST".
 Definition sSLIST_ORDERS := "SLIST orders".
 
-Definition sREQID' := "Request ID".
-Definition sREFERRALID' := "Referral ID".
-Definition sREFERRALDOMAIN' := "Referral domain".
-Definition sRTYPE' := "Referral domain type".
-Definition sRCLASS' := "Referral domain class".
-Definition sRTTL' := "Referral domain TTL".
-Definition sSERVERDOMAIN' := "Server domain".
-Definition sSTYPE' := "Server type".
-Definition sSCLASS' := "Server class".
-Definition sSTTL' := "Server TTL".
-Definition sSIP' := "Server IP".
-Definition sMATCHCOUNT' := "# labels matched". 
-Definition sQUERYCOUNT' := "# times queried".
+Definition sTIME_LAST_CALCULATED := "Time the TTL was last calculated".
+(* initialized with the time the record arrives *)
 
 (* The ideal schema would be domain and WrapperResponse, with some way to query the types nested in WrapperResponse. Flattening it here has the same effect. 
 
@@ -179,6 +169,7 @@ Definition SLIST_ReferralHeading :=
           sSTTL :: nat,
           sSIP :: name,
           (* IP in RDATA of additional record *)
+          sTIME_LAST_CALCULATED :: nat,
 
           sMATCHCOUNT :: nat, (* needed? *)
           sQUERYCOUNT :: nat
@@ -186,7 +177,7 @@ Definition SLIST_ReferralHeading :=
 
 Definition ReferralHeading :=
   (* R- = referral domain's, S- = server domain's *)
-         <sREFERRALDOMAIN :: name,
+         < sREFERRALDOMAIN :: name,
           sRTYPE :: RRecordType,
           sRCLASS :: RRecordClass,
           sRTTL :: nat,
@@ -195,8 +186,9 @@ Definition ReferralHeading :=
           sSTYPE :: RRecordType,
           sSCLASS :: RRecordClass,
           sSTTL :: nat,
-          sSIP :: name
+          sSIP :: name,
           (* IP in RDATA of additional record *)
+          sTIME_LAST_CALCULATED :: nat
          >%Heading.
 
 (* stores an answer (DNSRRecord) *)
@@ -209,7 +201,8 @@ Definition AnswerHeading :=
           sTYPE :: RRecordType,
           sCLASS :: RRecordClass,
           sTTL :: nat,
-          sRDATA :: name
+          sRDATA :: name,
+          sTIME_LAST_CALCULATED :: nat
          >%Heading.
 
           (* stores an SOA record according to RFC 2308 *)
@@ -222,7 +215,8 @@ Definition FailureHeading :=
            sREFRESH :: nat,
            sRETRY :: nat,
            sEXPIRE :: nat,
-           sMinTTL :: nat
+           sMinTTL :: nat,
+           sTIME_LAST_CALCULATED :: nat
           >%Heading.
 
 (* q*, pid, and flags are packet info *)
