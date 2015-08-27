@@ -40,8 +40,9 @@ Definition DnsRecSig : ADTSig :=
       (* methods related to referrals and SLIST manipulation *)
       Method "PacketToReferralRows" : rep x packet -> rep x list ReferralRow,
       Method "InsertReferralRowsIntoCache" : rep x list ReferralRow -> rep x bool,
+      Method "SortSLIST" : rep x id -> rep x bool,
       Method "ReferralRowsToSLIST" : rep x (id * name * list ReferralRow) -> rep x bool,
-      Method "GetFirstReferralAndUpdateSLIST" : rep x id -> rep x option ReferralRow,
+      Method "GetFirstReferralAndUpdateSLIST" : rep x id -> rep x option SLIST_ReferralRow,
       Method "UpdateCacheReferralsAndSLIST" : rep x (id * packet * list ReferralRow) -> rep x ToOutside,
                                            
       (* main method *)
@@ -177,7 +178,7 @@ Definition toPacket_ans (ans : AnswerRow) : answer :=
     ttl := ans!sTTL;
     rdata := ans!sRDATA |}.
 
-Set Printing All.
+(* Set Printing All. *)
 
 Definition DnsSpec_Recursive : ADT DnsRecSig :=
   (* TODO move to definitions *)
@@ -193,7 +194,8 @@ Definition DnsSpec_Recursive : ADT DnsRecSig :=
   let PacketToReferralRows :="PacketToReferralRows" in
   let InsertReferralRowsIntoCache := "InsertReferralRowsIntoCache" in
   let ReferralRowsToSLIST := "ReferralRowsToSLIST" in 
-  let GetFirstReferralAndUpdateSLIST := "GetFirstReferralAndUpdateSLIST" in 
+  let GetFirstReferralAndUpdateSLIST := "GetFirstReferralAndUpdateSLIST" in
+  let SortSLIST := "SortSLIST" in
   let UpdateCacheReferralsAndSLIST := "UpdateCacheReferralsAndSLIST" in
   let Process := "Process" in
 
@@ -428,13 +430,43 @@ and associate it with the packet (solve the latter by letting it generate the id
             InsertAll r referrals,
             (* ret (r, true), *)
 
+          (* Re-sort all of SLIST by descending match count. Smaller position = higher match count *)
+          (* TODO factor out *)
+          (* TODO more sophisticated sorting algorithm. right now it ignores the query count *)
+     update SortSLIST (r : rep, reqId : id) : bool :=
+          allSLISTrows <- For (ref in r!sSLIST)
+                       Where (ref!sREQID = reqId)
+                       Return ref;
+          let oldRefIds := map (fun ref => ref!sREFERRALID) allSLISTrows in
+          
+          res1 <- Delete row from r!sSLIST_ORDERS where row!sREQID = reqId;
+          let (r2, _) := res1 in
+          let allUnique {A : Type} l := forall (x : A) (y : A), List.In x l /\ List.In y l -> x <> y in
+          (* Get match count of each referral from SLIST and compare *)
+          let matchCountGeq id1 id2 := 
+              let find_row_with id :=
+                  find (fun (row : SLIST_ReferralRow) => beq_nat row!sREFERRALID id) allSLISTrows in
+              let ref1row := find_row_with id1 in
+              let ref2row := find_row_with id2 in
+              match ref1row, ref2row with
+              | Some ref1row', Some ref2row' => ref1row'!sMATCHCOUNT >= ref2row'!sMATCHCOUNT
+              | _, _ => False
+              end in
+          newOrder <- { order : list refPosition | 
+                        let orderIds := map refId order in
+                        let positions := map refPos order in
+                        Permutation orderIds oldRefIds /\ allUnique positions /\
+                        (* TODO: factor out into pairwise predicate *)
+                        (forall (ref1 ref2 : refPosition), List.In ref1 order /\ List.In ref2 order /\
+                                          refPos ref2 > refPos ref1 ->
+                                          matchCountGeq (refId ref1) (refId ref2)) };
+          Insert (ToSLISTOrder reqId newOrder) into r2!sSLIST_ORDERS,
+
       (* filters refs for the valid ones (not already in list + type, class) 
       put referrals in referral table with unique id (per request)
       adds everything to SLIST and re-sorts by match count *)
      update ReferralRowsToSLIST (r : rep, tup : id * name * list ReferralRow) : bool :=
           let '(reqId, questionName, referrals) := tup in
-          (* Calculate match count of referral domain to question domain *)
-          (* e.g. ref domain = g.com, question domain = s.g.com -> count = 2 *)
 
           (* TODO this function occurs multiple times; parametrize over table / monad iter *)
           let fix InsertAll (r : repHint) (ids : list nat) (rows : list SLIST_ReferralRow) 
@@ -447,7 +479,9 @@ and associate it with the packet (solve the latter by letting it generate the id
                 InsertAll r' ids' rows'
               | _, _ => ret (r, false) (* impossible, each row gets an id *)
               end in
-
+          
+          (* Calculate match count of referral domain to question domain *)
+          (* e.g. ref domain = g.com, question domain = s.g.com -> count = 2 *)
           let matchCount refDomain questionName :=
               longestSharedSuffix <-
               { name' : name | IsPrefix name' refDomain /\ IsPrefix name' questionName /\
@@ -456,6 +490,10 @@ and associate it with the packet (solve the latter by letting it generate the id
                                List.length name' >= List.length name'' };
               ret (List.length longestSharedSuffix) in
 
+          let SortSLIST (r : repHint) (reqId : id) : Comp (repHint * bool) :=
+              ret (r, false) in (* TODO stub *)
+
+          (* -------------------------------------- *)
           existingRefs <- For (ref in r!sSLIST)
                        Where True
                        Return ref;
@@ -486,41 +524,57 @@ and associate it with the packet (solve the latter by letting it generate the id
           let (r0, SLISTrows) := res0 in
           res <- InsertAll r0 newIds SLISTrows;
           let (r1, _) := res in
-          allSLISTrows <- For (ref in r!sSLIST)
-                       Where (ref!sREQID = reqId)
-                       Return ref;
 
-          (* Re-sort all of SLIST by descending match count. Smaller position = higher match count *)
-          (* TODO more sophisticated sorting algorithm. right now it ignores the query count *)
-          res1 <- Delete row from r1!sSLIST_ORDERS where row!sREQID = reqId;
-          let (r2, _) := res1 in
-          let allUnique {A : Type} l := forall (x : A) (y : A), List.In x l /\ List.In y l -> x <> y in
-          (* Get match count of each referral from SLIST and compare *)
-          let matchCountGeq id1 id2 := 
-              let find_row_with id :=
-                  find (fun (row : SLIST_ReferralRow) => beq_nat row!sREFERRALID id) allSLISTrows in
-              let ref1row := find_row_with id1 in
-              let ref2row := find_row_with id2 in
-              match ref1row, ref2row with
-              | Some ref1row', Some ref2row' => ref1row'!sMATCHCOUNT >= ref2row'!sMATCHCOUNT
-              | _, _ => False
-              end in
-          newOrder <- { order : list refPosition | 
-                        let orderIds := map refId order in
-                        let positions := map refPos order in
-                        Permutation orderIds (refIds ++ newIds) /\ allUnique positions /\
-                        (* TODO: factor out into pairwise predicate *)
-                        (forall (ref1 ref2 : refPosition), List.In ref1 order /\ List.In ref2 order /\
-                                          refPos ref2 > refPos ref1 ->
-                                          matchCountGeq (refId ref1) (refId ref2)) };
-          Insert (ToSLISTOrder reqId newOrder) into r2!sSLIST_ORDERS,
+          SortSLIST r1 reqId,
+          
 
-      (* get the first one,
-      then puts the first one at the back,
-      then returns the first one,
-      also updates request's pending status (stage + c, c >= 0) *) 
-     update GetFirstReferralAndUpdateSLIST (r : rep, reqId : id) : option ReferralRow :=
-          ret (r, None),
+      (* get the "best" referral (the one with the lowest position in SLIST),
+      update its query count and the request's match count and re-sort SLIST according to this.
+      then returns the "best" referral *)
+     update GetFirstReferralAndUpdateSLIST (r : rep, reqId : id) : option SLIST_ReferralRow :=
+      let SortSLIST (r : repHint) (reqId : id) : Comp (repHint * bool) :=
+          ret (r, false) in (* TODO stub *)
+
+      row <- For (order in r!sSLIST_ORDERS)
+              Where (order!sREQID = reqId)
+              Return order!sORDER;
+          match hd_error row with
+          | None => ret (r, None)
+          | Some order =>
+            match order with
+            | nil => ret (r, None)
+            | _ :: _ =>
+              (* Gets referral with highest match count (according to sorting) *)
+              refWithLowestPosition <- [[ tup in order | forall tup',
+                                            List.In tup' order -> refPos tup <= refPos tup' ]];
+              match refWithLowestPosition with
+              | nil => ret (r, None) (* not possible *)
+              | ref :: _ =>
+                let bestRefId := refId ref in
+                row <- For (ref in r!sSLIST)
+                    Where (ref!sREQID = reqId /\ ref!sREFERRALID = bestRefId)
+                    Return ref;
+              match hd_error row with
+              | None => ret (r, None)
+              | Some bestRef =>
+                (* Increment queryCount, update match count, and re-sort SLIST according to match ct*)
+                (* For now, this won't change the SLIST order, but if the sorting algo starts to include queryCount, that will change the order *)
+                res <- Update c from r!sSLIST as c'
+                       making c'!sQUERYCOUNT = c'!sQUERYCOUNT + 1
+                       where (c!sREQID = reqId /\ c!sREFERRALID = bestRefId);
+              let (r1, _) := res in
+              res1 <- Update c from r1!sREQUESTS as c'
+                      making c'!sSTAGE = Some bestRef!sMATCHCOUNT
+                      where (c!sID = reqId);
+              let (r2, _) := res1 in
+
+              res2 <- SortSLIST r1 reqId;
+              let (r3, _) := res2 in
+              ret (r3, Some bestRef)
+              end
+              end
+            end
+          end,
 
      update UpdateCacheReferralsAndSLIST (r : rep, tup : id * packet * list ReferralRow) : ToOutside :=
         let '(reqId, pac, rows) := tup in
@@ -528,7 +582,7 @@ and associate it with the packet (solve the latter by letting it generate the id
         let InsertReferralRowsIntoCache (r : repHint) (referrals : list ReferralRow) := ret (r, false) in
         let ReferralRowsToSLIST (r : repHint) reqId questionName (referrals : list ReferralRow) := ret (r, false) in
         let GetFirstReferralAndUpdateSLIST (r : repHint) (reqId : id)
-              : Comp (repHint * option ReferralRow) := ret (r, None) in
+              : Comp (repHint * option SLIST_ReferralRow) := ret (r, None) in
 
         res <- InsertReferralRowsIntoCache r rows;
         let (r1, _) := res in
