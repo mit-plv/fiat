@@ -71,9 +71,11 @@ Definition Build_RequestState pac id stage :=
   Build_Component (Build_Attribute sFLAGS (Bvector 16)) (flags pac)
   >.
 
-Definition Build_CachePointer reqName table :=
+Definition Build_CachePointerRow reqName table :=
   < Build_Component (Build_Attribute sDOMAIN name) reqName,
     Build_Component (Build_Attribute sCACHETABLE CacheTable) table >.
+
+Check Build_CachePointerRow.
 
 Definition Build_CacheReferralsRow tup :=
   let '(referralDomain, rType, rClass, rTTL, serverDomain, sType, sClass, sTTL, sIP) := tup in
@@ -263,7 +265,7 @@ and associate it with the packet (solve the latter by letting it generate the id
             (* packet -> tuple with heading? tuple surgery notation -- write down example *)
             (* do a pick TODO ^ v*)
             (* all tuples such that (p fields ... answers fields...); insert tuples *)
-            res1 <- Insert (Build_CachePointer reqName CAnswers) into r!sCACHE_POINTERS;
+            res1 <- Insert (Build_CachePointerRow reqName CAnswers) into r!sCACHE_POINTERS;
           let (r1, _) := res1 in
           InsertAll r Build_CacheAnswersRow (tups pac)
 
@@ -272,7 +274,7 @@ and associate it with the packet (solve the latter by letting it generate the id
             let mkFailTup p soa := 
                 (reqName, sourcehost soa, contact_email soa, 
                  serial soa, refresh soa, retry soa, expire soa, minTTL soa) in
-            res1 <- Insert (Build_CachePointer reqName CFailures) into r!sCACHE_POINTERS;
+            res1 <- Insert (Build_CachePointerRow reqName CFailures) into r!sCACHE_POINTERS;
           let (r1, _) := res1 in
           Insert (Build_CacheFailuresRow (mkFailTup pac soa)) into r1!sCACHE_FAILURES
 
@@ -609,6 +611,7 @@ and associate it with the packet (solve the latter by letting it generate the id
           (* ----- MAIN METHOD *)
 
           (* TODO need to inline other functions; stubs for now *)
+        (* TODO: rep is not threaded through in Process *)
         update Process (r : rep, tup : FromOutside) : ToOutside :=
           let SBELT := @nil ReferralRow in (* TODO, add root ip *)
           (* TODO inline; these are stubs *)

@@ -97,17 +97,12 @@ src/Examples/CacheADT/FMapCacheImplementation.v
 src/Examples/CacheADT/KVEnsembles.v
 src/Examples/CacheADT/LRUCache.v
 src/Examples/CacheADT/TrivialADTCache.v
-src/Examples/DnsServer/Dns.v
-src/Examples/DnsServer/DnsAuto.v
-src/Examples/DnsServer/DnsAutoCombine.v
 src/Examples/DnsServer/DnsAutoUnify.v
 src/Examples/DnsServer/DnsAutomation.v
 src/Examples/DnsServer/DnsLemmas.v
 src/Examples/DnsServer/DnsRec.v
-src/Examples/DnsServer/DnsRecCache.v
 src/Examples/DnsServer/DnsSchema.v
 src/Examples/DnsServer/DnsSchema_new.v
-src/Examples/DnsServer/RewriteTest.v
 src/Examples/DnsServer/packet.v
 src/Examples/DnsServer/packet_new.v
 src/Examples/Ics/Ics.v
