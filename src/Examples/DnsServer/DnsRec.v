@@ -697,7 +697,7 @@ and associate it with the packet (solve the latter by letting it generate the id
               | None => ret (r, false)
               | Some order =>
                 (* Delete referral with id refId from the request's SLIST *)
-                let order_ref_deleted := filter (fun tup => beq_nat (refId tup) refId') order in
+                let order_ref_deleted := filter (fun tup => negb (beq_nat (refId tup) refId')) order in
                 q <- Update c from r!sSLIST_ORDERS as c'
                      making (c'!sORDER = order_ref_deleted)
                      where (c!sREQID = reqId);
