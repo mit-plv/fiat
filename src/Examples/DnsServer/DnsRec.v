@@ -16,11 +16,12 @@ Require Import
 
 Require Import Fiat.Examples.DnsServer.DnsSchema_new.
 
+(* Only Init, MakeId, and Process should be public methods. The rest are private, for internal use. *)
 Definition DnsRecSig : ADTSig :=
   ADTsignature {
       Constructor "Init" : unit -> rep,
 
-      (* request state methods; ignoring other methods like getting class/type *)
+      (* request state methods *)
       Method "MakeId" : rep x name -> rep x id,
       Method "AddRequest" : rep x (packet * id) -> rep x bool,
       Method "GetRequestStage" : rep x id -> rep x option Stage,
@@ -43,7 +44,7 @@ Definition DnsRecSig : ADTSig :=
      (* TTL *)
       Method "UpdateTTLs" : rep x time -> rep x bool,
                                            
-      (* main method *)
+      (* Main method. Talks to an outside "wrapper" in continuation-passing style. Given the time and something from the wrapper, figures out what to do with it and returns a response that may be an error, answer, or request for the wrapper to send a question to another server. *)
       Method "Process" : rep x (time * FromOutside) -> rep x ToOutside
     }.
 
@@ -52,7 +53,8 @@ Check [[x in s | True]].        (* Comp (list nat) -- multiple choice, over exis
 Check { x : nat | True }.   (* Comp nat -- single choice, over type nat *)
 Check { b : bool | decides b True }. (* Comp bool -- check *)
 
-(* Boilerplate *)
+(* Boilerplate to take various fields/attributes and produce a tuple.
+Should be auto-generated in newer versions of Fiat*)
 Definition Build_RequestState pac id stage :=
   let q := questions pac in
   < Build_Component (Build_Attribute sID nat) id,
@@ -168,7 +170,7 @@ Definition upperbound' := upperbound (fun x => x).
 
 Definition nonempty {A : Type} (l : list A) := negb (beq_nat (List.length l) 0).
 
-(* double the monad, double the fun *)
+(* Double the monad, double the fun! *)
 Fixpoint iterate {A B : Type} {R : RepHint} (r : repHint) (f : repHint -> A -> (Comp (repHint * B)))
         (l : list A) : Comp (repHint * list B) :=
     match l with
@@ -187,10 +189,12 @@ Definition listToOption {A : Type} (l : list A) : option A :=
   | x :: _ => Some x
   end.
 
+(* Used to join the authority and additional fields for producing a referral row *)
 Definition list_join {A B : Type} f (l1 : list A) (l2 : list B) 
   : list (A * B) := 
   filter f (list_prod l1 l2).
 
+(* The amount of time a record has left to live (unintentionally dramatic) *)
 Definition timeLeft TTL currTime timeLastCalculated :=
   TTL - (currTime - timeLastCalculated).
 
@@ -209,21 +213,21 @@ Definition DnsSpec_Recursive : ADT DnsRecSig :=
   QueryADTRep DnsRecSchema {
     Def Constructor Init (_ : unit) : rep := empty,
 
-      (* can have (different id, same name) but not (different name, same id) unless multiple questions *)
-      (* wrapper's responsibility to use this id for everything concerning this request 
-and associate it with the packet (solve the latter by letting it generate the id and return in fn) *)
       (* ----- REQUESTS *)
+
+      (* Generate a unique id for a request. Wrapper's responsibility to use this id for everything concerning this request and pass the correct id into functions. Requests can have (different id, same name) but not (same id, different name) since a packet can only contain one question *)
       query MakeId (r : rep, n : name) : id :=
         ids <- For (req in r!sREQUESTS)
             Return (req!sID);
         freshAscendingId <- {idx : nat | upperbound' ids idx };
         ret freshAscendingId,
-      
+
+        (* Uses the pre-generated id *)
       update AddRequest (r : rep, tup : packet * id) : bool := 
         let (pac, freshAscendingId) := tup in
         Insert (Build_RequestState pac freshAscendingId None) into r!sREQUESTS,
 
-        (* boolean for wrapper *)
+        (* Stage is explained in the schema file *)
       query GetRequestStage (r : rep, reqId : id) : option Stage :=
         stages <- For (req in r!sREQUESTS)
             Where (reqId = req!sID)
@@ -240,7 +244,10 @@ and associate it with the packet (solve the latter by letting it generate the id
         ret (updated, nonempty affected),
 
         (* ----- CACHE *)
-        (* assumes that someone has already checked that the domain is not in any of the caches *)
+
+        (* Given a time and either an answer or a failure, convert that to the correct row type
+           and insert the rows in the correct cache table.
+        Assumes that someone has already checked that the domain is not in any of the caches. *)
        update InsertResultForDomain (r : rep, tup : time * ToStore) : bool :=
           let (timeArrived, toStore) := tup in
 
@@ -284,6 +291,7 @@ and associate it with the packet (solve the latter by letting it generate the id
 
           end,
 
+          (* Delete a pending request's entry in the request's table, its SLIST order, and its SLIST *)
           update DeletePendingRequestInfo (r : rep, reqId : id) : bool :=
            res1 <- Delete row from r!sREQUESTS where row!sID = reqId;
            let (r1, rows1) := res1 in
@@ -293,7 +301,8 @@ and associate it with the packet (solve the latter by letting it generate the id
            let (r3, rows3) := res3 in
            ret (r3, nonempty rows1 || nonempty rows2 || nonempty rows3),
           
-          (* This deletes stuff from the CACHE, not the SLIST (TODO may need another fn) *)
+           (* Delete a cached name's entry in the cache pointer table, as well as all relevant
+              cached answers or failures (note, does not delete things from referrals or SLIST). *)
             update DeleteCachedNameResult (r : rep, domain : name) : CacheResult :=
           results <- For (pointer in r!sCACHE_POINTERS)
                    Where (pointer!sDOMAIN = domain)
@@ -316,6 +325,7 @@ and associate it with the packet (solve the latter by letting it generate the id
           end
         end,
 
+        (* For a given name, look in the cache and return the rows that match the longest suffix of the name. Subcase: if there already is a concrete answer/failure/referral for the name, return that. *)
         query GetServerForLongestSuffix (r : rep, tup : time * name) : CacheResult :=
           let (currTime, reqName) := tup in
 
@@ -384,7 +394,8 @@ and associate it with the packet (solve the latter by letting it generate the id
         end,
           
         (* -------- REFERRAL/SLIST FUNCTIONS *)
-      
+
+        (* Does a join on the authority and additional fields of a referral-containing packet to de-hierarchize it into rows. For an example, see RFC 1034, page 47. *)
      query PacketToReferralRows (r : rep, tup : time * packet) : list ReferralRow :=
           let (timeArrived, pac) := tup in
 
@@ -409,7 +420,7 @@ and associate it with the packet (solve the latter by letting it generate the id
                rdata addl, timeArrived) in
           ret (map (fun tup2 => Build_CacheReferralsRow (pairToPacketTup tup2)) auth_addl_join),
 
-          (* TODO iterate should be built-in for monad *)
+          (* Unfortunately, can't parametrize iterate by the table, so here's a specific function *)
      update InsertReferralRowsIntoCache (r : rep, referrals : list ReferralRow) : bool :=
             let fix InsertAll (r' : repHint) rows :=
                 match rows with
@@ -420,16 +431,18 @@ and associate it with the packet (solve the latter by letting it generate the id
                 InsertAll r'' rows'
                 end in
             InsertAll r referrals,
-            (* ret (r, true), *)
 
-          (* Re-sort all of SLIST by descending match count. Smaller position = higher match count *)
-          (* TODO more sophisticated sorting algorithm. right now it ignores the query count *)
+          (* Re-sort a particular request's SLIST by descending match count.
+             Smaller position = higher match count.
+             TODO more sophisticated sorting algorithm. right now it ignores the query count *)
      update SortSLIST (r : rep, reqId : id) : bool :=
+              (* Get the SLIST rows first so we can have predicates on them w/o being stuck in the Comp monad *)
           allSLISTrows <- For (ref in r!sSLIST)
                        Where (ref!sREQID = reqId)
                        Return ref;
-          let oldRefIds := map (fun ref => ref!sREFERRALID) allSLISTrows in
-          
+          let refIds := map (fun ref => ref!sREFERRALID) allSLISTrows in
+
+          (* Delete the order, generate the new sorted order, and insert that *)
           res1 <- Delete row from r!sSLIST_ORDERS where row!sREQID = reqId;
           let (r2, _) := res1 in
           let allUnique {A : Type} l := forall (x : A) (y : A), List.In x l /\ List.In y l -> x <> y in
@@ -443,19 +456,20 @@ and associate it with the packet (solve the latter by letting it generate the id
               | Some ref1row', Some ref2row' => ref1row'!sMATCHCOUNT >= ref2row'!sMATCHCOUNT
               | _, _ => False
               end in
+          (* Permutation of the old order, with unique positions, such that referrals with a greater match count have a smaller position. Positions might not be consecutive *)
           newOrder <- { order : list refPosition | 
                         let orderIds := map refId order in
                         let positions := map refPos order in
-                        Permutation orderIds oldRefIds /\ allUnique positions /\
+                        Permutation orderIds refIds /\ allUnique positions /\
                         (* TODO: factor out into pairwise predicate *)
                         (forall (ref1 ref2 : refPosition), List.In ref1 order /\ List.In ref2 order /\
                                           refPos ref2 > refPos ref1 ->
                                           matchCountGeq (refId ref1) (refId ref2)) };
           Insert (ToSLISTOrder reqId newOrder) into r2!sSLIST_ORDERS,
 
-      (* filters refs for the valid ones (not already in list + type, class) 
-      put referrals in referral table with unique id (per request)
-      adds everything to SLIST and re-sorts by match count *)
+      (* Filters referrals for the valid ones (not already in list + type, class),
+      puts referrals in SLIST table with unique id (per request), and
+      adds everything to the SLIST order and re-sorts that by match count *)
      update ReferralRowsToSLIST (r : rep, tup : id * name * list ReferralRow) : bool :=
           let '(reqId, questionName, referrals) := tup in
 
@@ -481,6 +495,7 @@ and associate it with the packet (solve the latter by letting it generate the id
                                List.length name' >= List.length name'' };
               ret (List.length longestSharedSuffix) in
 
+          (* Augment a referral row with the additional fields in the SLIST referral row (ids, counts) *)
           let ToSLISTrow' (r : repHint) (tup : id * ReferralRow) : Comp (repHint * SLIST_ReferralRow) :=
               let (refId, refRow) := tup in
               matchCount' <- matchCount refRow!sREFERRALDOMAIN questionName;
@@ -519,10 +534,9 @@ and associate it with the packet (solve the latter by letting it generate the id
           SortSLIST r1 reqId,
           
 
-      (* get the "best" referral (the one with the lowest position in SLIST),
-      update its query count and the request's match count and re-sort SLIST according to this.
-      then returns the "best" referral *)
-
+      (* Get the "best" referral (the one with the lowest position in SLIST),
+      add 1 to its query count, update the request's match count, and re-sort SLIST according to this.
+      Then returns that "best" referral *)
      update GetFirstReferralAndUpdateSLIST (r : rep, tup : time * id) : option SLIST_ReferralRow :=
       let (currTime, reqId) := tup in
 
@@ -542,9 +556,10 @@ and associate it with the packet (solve the latter by letting it generate the id
             match order with
             | nil => ret (r, None)
             | _ :: _ =>
-              (* Gets referral with highest match count (according to sorting) *)
+              (* Gets referral with highest match count (according to sorting of req's SLIST order) *)
               refWithLowestPosition <- [[ tup in order | forall tup',
                                             List.In tup' order -> refPos tup <= refPos tup' ]];
+            (* Now that we have the ref id, get the row corresponding to that referral *)
               match refWithLowestPosition with
               | nil => ret (r, None) (* not possible *)
               | ref :: _ =>
@@ -574,6 +589,9 @@ and associate it with the packet (solve the latter by letting it generate the id
             end
           end,
 
+          (* Given a list of *new* referralrows (i.e. came from a packet, or is SBELT),
+             put them in the request's SLIST, and return the current best referral. Calls many
+             helper functions. *)
      update UpdateCacheReferralsAndSLIST (r : rep, tup : time * id * packet * list ReferralRow) : ToOutside :=
         let '(currTime, reqId, pac, rows) := tup in
 
@@ -609,16 +627,17 @@ and associate it with the packet (solve the latter by letting it generate the id
         end
         end,
 
-        (* ---------- *)
+        (* ---------- TTL *)
      (* Decrement the TTLs of everything and store currTime in time_last_calculated,
         delete pointers to any SLIST referrals or cached rows soon to be deleted,
         and delete them (the ones with TTL 0)
        (TODO: code could be more efficient if we only updated those in a particular table,
         but then it would be longer)
 
-     as a recurrence relation:
+     As a recurrence relation:
      TTL_(n+1) = TTL_n - (time_right_now - time_last_calculated) *)
         update UpdateTTLs (r : rep, currTime : time) : bool :=
+          (* Decrement all TTLs and set the time_last_calculated to now *)
           q <- Update c from r!sSLIST as c'
             making (c'!sTIME_LAST_CALCULATED = currTime /\
                     c'!sSTTL = timeLeft c!sSTTL currTime c!sTIME_LAST_CALCULATED)
@@ -643,7 +662,7 @@ and associate it with the packet (solve the latter by letting it generate the id
             where True;
           let (r, _) := q in
 
-     (* for cache tables: get all to-be-deleted rows' names and delete those from cache pointers *)
+     (* For cache tables: get all to-be-deleted rows' names and delete those from cache pointers *)
           tbd_ref_names <- For (c in r!sCACHE_REFERRALS)
                         Where (c!sSTTL = 0)
                         Return (c!sREFERRALDOMAIN);
@@ -662,7 +681,7 @@ and associate it with the packet (solve the latter by letting it generate the id
           q <- iterate r deleteCachePointer toBeDeleted;
           let (r, _) := q in
           
-     (* for SLIST referrals: get all to-be-deleted rows' req+ref ids and delete those from SLIST order *)
+     (* For SLIST referrals: get all to-be-deleted rows' req+ref ids and delete those from SLIST order *)
           tbd_reqId_and_refId <- For (c in r!sSLIST)
                         Where (c!sSTTL = 0)
                         Return (c!sREQID, c!sREFERRALID);
@@ -686,6 +705,7 @@ and associate it with the packet (solve the latter by letting it generate the id
           q <- iterate r deleteReqSLISTentry tbd_reqId_and_refId;
           let (r, _) := q in
 
+          (* Delete all rows from SLIST or cache with no time left to live *)
           q <- Delete row from r!sSLIST where row!sSTTL = 0;
           let (r, _) := q in
           q <- Delete row from r!sCACHE_REFERRALS where row!sSTTL = 0;
@@ -696,13 +716,12 @@ and associate it with the packet (solve the latter by letting it generate the id
           let (r, _) := q in
 
           ret (r, true),
-          
 
           (* ----- MAIN METHOD *)
 
-        (* wrapper's responsibility to call MakeID first and keep that ID *)
+      (* Main method. Talks to an outside "wrapper" in continuation-passing style. Given the time and something from the wrapper, figures out what to do with it and returns a response that may be an error, answer, or request for the wrapper to send a question to another server. *)
           (* TODO need to inline other functions; stubs for now *)
-        (* TODO rep is not threaded through in Process *)
+          (* TODO rep is not threaded through in Process *)
         update Process (r : rep, tup : time * FromOutside) : ToOutside :=
           let SBELT := @nil ReferralRow in (* TODO add root ip *)
           (* let AddRequest (r : repHint) (tup : packet * id) := ret (r, false) in *)
@@ -845,9 +864,18 @@ and associate it with the packet (solve the latter by letting it generate the id
                      end
                 end
           end
-          
-        (* TODO ignoring sTYPE and sCLASS for now; list the other features i left out *)
    }.
+
+(* Features I didn't add:
+
+- Filter rows by record type and class
+- Bounded amount of work (delete a referral in SLIST when queried too many times)
+- Returning all answer/authority/additional instead of just one (re-hierarchizing rows into packet)
+- Proper SBELT IP
+- Dealing with CNAME; requires FueledFix
+- CNAME in answers and having that as the answer for the domain and the aliases (see RFC 1034, 6.2.7)
+- Inverse queries
+- Parallelism *)
 
 (* Set Printing All. *)
 Print DnsSpec_Recursive.
