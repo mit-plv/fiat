@@ -488,145 +488,6 @@ Lemma andb_permute :
   reflexivity.
 Qed.
 
-(*Ltac PrefixSearchTermFinderEqSolve :=
-  intros; unfold PrefixSearchTermMatcher; simpl;
-   apply andb_implication_preserve; find_if_inside; intros;
-   match goal with
-     | H : _ = _ |- _ =>
-       setoid_rewrite H;
-         erewrite prefixBool_reflexive; reflexivity
-     | _ => erewrite prefixBool_reflexive; reflexivity
-     | _ => discriminate
-   end.
-Ltac PrefixSearchTermNormalizer idx :=
-  generalize dependent idx;
-  let a' := fresh in
-  let ha := fresh in
-  match goal with
-    | |- forall a, _ = PrefixSearchTermMatcher ?st (@?h a) =>
-      intros a'; remember (h a') as ha; generalize ha
-  end.
-Ltac PrefixSearchTermFinder' idx :=
-  PrefixSearchTermNormalizer idx;
-  match goal with
-    (* case prefix match *)
-    | |- forall a, prefixBool ?n a!sNAME && @?f a = PrefixSearchTermMatcher ?st a =>
-      instantiate (1 := {| pst_name := n; pst_filter := f |}); reflexivity
-    (* case equality *)
-    | |- forall a, ?[list_eq_dec string_dec ?n a!sNAME] && @?f a =
-                   PrefixSearchTermMatcher ?st a =>
-      instantiate
-        (1 := {| pst_name := n;
-                 pst_filter := fun a => ?[list_eq_dec string_dec n a!sNAME] && f a |});
-        PrefixSearchTermFinderEqSolve
-    | |- forall a, ?[list_eq_dec string_dec a!sNAME ?n] && @?f a =
-                   PrefixSearchTermMatcher ?st a =>
-      instantiate
-        (1 := {| pst_name := n;
-                 pst_filter := fun a => ?[list_eq_dec string_dec a!sNAME n] && f a |});
-        PrefixSearchTermFinderEqSolve
-  end.
-Ltac AdjustAndRec terminal term :=
-  let aterm := fresh in
-  first [
-      (* if we get the exact match, we're done !*)
-      assert (aterm : terminal = term) by reflexivity; clear aterm |
-      match term with
-        | ?left && ?right =>
-          first [
-              (* if the left term is the exact match, also done! *)
-              assert (aterm : left = terminal) by reflexivity; clear aterm |
-              (* if the right term is the exact match, just need to switch! *)
-              assert (aterm : right = terminal) by reflexivity; clear aterm;
-                replace (left && right) with
-                (right && left) by apply andb_comm |
-              (* now try recursively on the left term *)
-              (AdjustAndRec terminal left);
-                match goal with
-                  | |- context [ (terminal && ?rem) && right ] =>
-                    replace ((terminal && rem) && right) with
-                    (terminal && (rem && right)) by apply andb_assoc
-                end |
-              (* and now the righ term *)
-              (AdjustAndRec terminal right);
-                match goal with
-                  | |- context [ left && (terminal && ?rem) ] =>
-                    replace (left && (terminal && rem)) with
-                    (terminal && (left && rem)) by apply andb_permute
-                end ]
-      end ].
-Ltac AdjustAnd terminal ensure_and :=
-  match goal with
-    | |- ?filter = _ => AdjustAndRec terminal filter
-  end;
-  match ensure_and with
-    | true =>
-      match goal with
-        | |- _ && _ = _ => idtac
-        | |- ?x = _ => rewrite <- (andb_true_r x)
-      end
-    | false => idtac
-  end.
-Ltac PrefixSearchTermFinder :=
-  let idx := fresh in
-  intros idx;
-  match goal with
-    | |- context [ prefixBool ?n ?n' ] =>
-      AdjustAnd (prefixBool n n') true; PrefixSearchTermFinder' idx
-    (* ensure_and can be false, but need some more thought *)
-    | |- context [ ?[list_eq_dec string_dec ?n ?n'] ] =>
-      AdjustAnd (?[list_eq_dec string_dec n n']) true; PrefixSearchTermFinder' idx
-    | |- _ => PrefixSearchTermNormalizer idx;
-        match goal with
-          (* catch all case; ignore search term, use only the filter *)
-          (* only when wildcard is idtac, when this tactic gets used *)
-          | |- forall a, @?f a = PrefixSearchTermMatcher ?st a =>
-            instantiate (1 := {| pst_name := nil; pst_filter := f |}); reflexivity
-        end
-  end.
-
-Lemma foo10
-: forall (n : DNSRRecord) (b c d e : bool), exists st, forall (a : DNSRRecord * nat),
-    ?[list_eq_dec string_dec (fst a)!sNAME n!sNAME] =
-    PrefixSearchTermMatcher st (fst a).
-Proof.
-  eexists.
-  PrefixSearchTermFinder.
-Qed.
-Print foo10.
-Lemma foo10' : forall n : DNSRRecord, forall b c d, exists st, forall (a : DNSRRecord * nat),
-    b && ( c && d ) && (?[list_eq_dec string_dec (fst a)!sNAME n!sNAME]) && (?[RRecordType_dec (fst a)!sTYPE CNAME]) =
-    PrefixSearchTermMatcher st (fst a).
-Proof.
-  eexists; PrefixSearchTermFinder.
-Qed.
-Print foo10'.
-Lemma foo13
-: forall n : DNSRRecord, exists st, forall a : DNSRRecord,
-    prefixBool (n!sNAME) (a!sNAME)  =
-    PrefixSearchTermMatcher st a.
-Proof.
-  eexists; PrefixSearchTermFinder.
-Qed.
-Print foo13.
-
-Lemma foo12 :
-  forall l l' : name,
-    ?[IsPrefix_dec l l'] = false ->
-    ?[list_eq_dec string_dec l l'] = false.
-Proof.
-  intros; find_if_inside; subst.
-  [ rewrite <- prefix_reflexive in H | ]; auto.
-Qed.
-
-Lemma foo11 {heading}
-: forall l,
-    map (ilist_hd (As:=cons heading nil ))
-        (Build_single_Tuple_list l) = l.
-Proof.
-  induction l; simpl; congruence.
-Qed. *)
-
     Lemma refine_filtered_list {A}
     : forall (xs : list A)
              (P : Ensemble A)
@@ -677,21 +538,6 @@ Qed. *)
       rewrite <- H1; clear H1 H n.
       apply fold_right_max_is_max; auto.
     Qed.
-
-    (* Lemma find_upperbound_upperbound {A}
-    : forall (f : A -> nat) ns n, List.In n (find_upperbound f ns) <->
-                                    List.In n ns /\ upperbound f ns n.
-    Proof.
-      unfold upperbound, ge; intros; split; intros; try split.
-      - unfold find_upperbound in H; apply filter_List.In in H; tauto.
-      - apply find_upperbound_highest_length; auto.
-      - destruct H; unfold find_upperbound.
-        apply filter_List.In; split; try assumption.
-        apply NPeano.leb_le.
-        pose proof (fold_right_max_is_max f _ _ H).
-        pose proof (fold_right_higher_is_higher f _ H0).
-        auto.
-    Qed. *)
 
     Instance DecideableEnsembleUpperbound {A} (f : A -> nat) ns :
       DecideableEnsemble (upperbound f ns) :=
@@ -1141,14 +987,12 @@ Qed.
 
 (* Main lemma -- TODO generalize *)
 
-(* but Exc = option? broke because I changed the type of sDATA in DNSRRecord? *)
-(* Set Printing All. *)
-
+(* should be generalized *)
 Lemma tuples_in_relation_satisfy_constraint_specific :
   forall (a : list RawTuple) (n : packet) (r_n : QueryStructure DnsSchema),
 (* TODO *)
     For (r in r_n!sCOLLECTIONS)
-        (Where (IsPrefix r!sNAME (qname (questions n)))
+        (Where (IsPrefix r!sNAME (qname (questions n))) (* Where Predicate ... *)
                Return r ) ↝ a ->
   forall (t t' : DNSRRecord) (n0 n' : nat),
     n0 <> n' ->
@@ -1372,28 +1216,6 @@ Qed.
 
 (* -------------------------------------------------------------------------------------- *)
 
-(* TODO: more general lemmas (hard to state w/ implicits; do later) *)
-(*
-  [for?] ((x in R) return x ~> l) ->
-  forall n0 n1, nth n0 l = tup0 -> nth n0 l = tup1 ->
-  tuple_constr tup0 tup1 *)
-
-(*Lemma tuples_in_relation_satisfy_constraint :
-    True.
-Proof.
-
-Admitted. *)
-
-(* general lemma to prove, #2: deal with [where]
-  (since [where] is just filtering/taking a subset, it should
-  preserve the constraint/relation stuff)
-  ([for?] (x in R)
-      [WHERE (P x)]
-  return x ~> l) ->
-  forall n0 n1, nth n0 l = tup0 -> nth n0 l = tup1 ->
-  tuple_constr tup0 tup1 *)
-
-(* -------------- *)
 (* Unused for now *)
 
 Lemma refine_If_Then_Else_same'

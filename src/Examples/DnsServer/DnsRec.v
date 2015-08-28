@@ -448,14 +448,20 @@ Definition DnsSpec_Recursive : ADT DnsRecSig :=
           let allUnique {A : Type} l := forall (x : A) (y : A), List.In x l /\ List.In y l -> x <> y in
           (* Get match count of each referral from SLIST and compare *)
           let matchCountGeq id1 id2 := 
-              let find_row_with id :=
-                  find (fun (row : SLIST_ReferralRow) => beq_nat row!sREFERRALID id) allSLISTrows in
-              let ref1row := find_row_with id1 in
-              let ref2row := find_row_with id2 in
-              match ref1row, ref2row with
-              | Some ref1row', Some ref2row' => ref1row'!sMATCHCOUNT >= ref2row'!sMATCHCOUNT
-              | _, _ => False
-              end in
+              (* let find_row_with id := *)
+              (*     find (fun (row : SLIST_ReferralRow) => beq_nat row!sREFERRALID id) allSLISTrows in *)
+              (* let ref1row := find_row_with id1 in *)
+              (* let ref2row := find_row_with id2 in *)
+              (* match ref1row, ref2row with *)
+              (* | Some ref1row', Some ref2row' => ref1row'!sMATCHCOUNT >= ref2row'!sMATCHCOUNT *)
+              (* | _, _ => False *)
+              exists ls, 
+
+              (For (ref1 in r!sSLIST) (ref2 in r!sSLIST)
+                    Where (ref1!sMATCHCOUNT >= ref2!sMATCHCOUNT)
+                    Return (ref1!sREQID, ref2!sREQID)) ls /\ List.In (id1, id2) ls
+              
+               in
           (* Permutation of the old order, with unique positions, such that referrals with a greater match count have a smaller position. Positions might not be consecutive *)
           newOrder <- { order : list refPosition | 
                         let orderIds := map refId order in
@@ -636,6 +642,7 @@ Definition DnsSpec_Recursive : ADT DnsRecSig :=
 
      As a recurrence relation:
      TTL_(n+1) = TTL_n - (time_right_now - time_last_calculated) *)
+        (* TODO: store the absolute time that the record should be deleted/ignored instead (when it's first added to a table), and calculate the updated TTL again when returning it *)
         update UpdateTTLs (r : rep, currTime : time) : bool :=
           (* Decrement all TTLs and set the time_last_calculated to now *)
           q <- Update c from r!sSLIST as c'
@@ -743,6 +750,7 @@ Definition DnsSpec_Recursive : ADT DnsRecSig :=
           let UpdateCacheReferralsAndSLIST (currTime : time) reqId pac (rows : list ReferralRow) := 
               ret (InvalidQuestion 0) in
           
+          (* Utility functions *)
           let isQuestion p := 
               match answers p, authority p, additional p with
               | nil, nil, nil => true
@@ -772,7 +780,8 @@ Definition DnsSpec_Recursive : ADT DnsRecSig :=
           let UpdateTTLs (r : repHint) (t : time) := ret (r, false) in
           q <- UpdateTTLs r timeArrived;
           let (r, _) := q in
-          
+
+          (* --- FUNCTION START --- *)
           (* Is the request pending? (Are we currently working on it?) *)
           pendingReq <- For (req in r!sREQUESTS)
                    Where (reqId = req!sID)
@@ -788,7 +797,6 @@ Definition DnsSpec_Recursive : ADT DnsRecSig :=
               suffixResults <- GetServerForLongestSuffix timeArrived reqName;
               match suffixResults with
                 (* Yes we have seen it *)
-                (* TODO: these are unfinished *)
                 (* TODO: we may need to modify the return packet  *)
                 | Fail failure =>
                   (* Return the exactly one SOA row from cache as a packet *)
@@ -809,7 +817,6 @@ Definition DnsSpec_Recursive : ADT DnsRecSig :=
                     (* TODO: could also re-hierarchize all the answer/authority/additional into pac *)
                     (* should anything go in authority and additional? *)
                     let pac' := add_ans (buildempty pac) (toPacket_ans ans) in
-                    (* TTL* *)
                     ret (r, ClientAnswer reqId pac')
                   end
                 | Ref referralRows =>
@@ -835,7 +842,6 @@ Definition DnsSpec_Recursive : ADT DnsRecSig :=
             else
               (* Figure out if the packet is an answer, failure, or referral *)
               (* doesn't thoroughly check for malformed packets, e.g. contains answer and failure *)
-              (* TODO: cache these results (need to get the name first)*)
               if isReferral pac then
                 referralRows <- PacketToReferralRows timeArrived pac;
                 outsideResult <- UpdateCacheReferralsAndSLIST timeArrived reqId pac referralRows;
@@ -851,14 +857,13 @@ Definition DnsSpec_Recursive : ADT DnsRecSig :=
                 if isAnswer pac then
                   (* Update cache *)
                   _ <- InsertResultForDomain timeArrived (Answer reqName pac);
-                  (* Done, forward it on *) (* TTL* *)
+                  (* Done, forward it on *)
                   ret (r, ClientAnswer reqId pac)
                 else match failure with
                      (* Failure. Done, forward it on *)
                      | Some soa => 
                        (* Update cache *)
                        _ <- InsertResultForDomain timeArrived (Failure reqName pac soa);
-                      (* TTL* *)
                        ret (r, ClientFailure reqId pac soa)
                      | None => ret (r, MissingSOA reqId pac) (* will also result in request del *)
                      end
@@ -866,8 +871,12 @@ Definition DnsSpec_Recursive : ADT DnsRecSig :=
           end
    }.
 
-(* Features I didn't add:
+(* General TODO
 
+- TODO.txt
+- authoritative server needs to be patched for packet changes
+- fill in stubs
+- pass rep around properly in process
 - Filter rows by record type and class
 - Bounded amount of work (delete a referral in SLIST when queried too many times)
 - Returning all answer/authority/additional instead of just one (re-hierarchizing rows into packet)
@@ -875,7 +884,11 @@ Definition DnsSpec_Recursive : ADT DnsRecSig :=
 - Dealing with CNAME; requires FueledFix
 - CNAME in answers and having that as the answer for the domain and the aliases (see RFC 1034, 6.2.7)
 - Inverse queries
-- Parallelism *)
+- Parallelism (long term research goal)
+variant types for cache pointers
+caching opportunity with SLIST_ORDER (remove table, compute order whenever needed -> generate table)
+- variant types for cache pointers
+- caching opportunity with SLIST_ORDER (remove table, compute order whenever needed -> generate table) *)
 
 (* Set Printing All. *)
 Print DnsSpec_Recursive.

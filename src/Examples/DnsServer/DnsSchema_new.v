@@ -10,8 +10,8 @@ Require Import
 
 RFC 1034: high-level DNS outline
 RFC 1035: implementation details
-RFC 2308: negative caching
-RFC 1536: common implementation errors and fixes *)
+RFC 2308: negative caching -- for more information on failures and SOA records
+RFC 1536: common implementation errors and fixes -- for efficiency/security problems *)
 
 (* What subdomain we're on in a question, e.g. 
 new requests get stage None
@@ -124,10 +124,10 @@ Definition sTIME_LAST_CALCULATED := "Time the TTL was last calculated".
 
 One (Domain => WrapperResponse) mapping is flattened into several rows that all have the same packet information, but store one answer (DNSRRecord) each. 
 
-When removing a (Domain => WrapperResponse):
+When removing a (Domain => ToStore):
 delete rows with the Domain in all cache tables.
 
-When inserting/updating a new (Domain => WrapperResponse):
+When inserting/updating a new (Domain => ToStore):
 after checking that Domain doesn't exist in any of the cache tables (or just performing a delete), flatten it and insert each row. 
 
 Invariants: (TODO)
@@ -267,10 +267,13 @@ Definition DnsRecSchema :=
                    RequestHeading;
           
           (* Described above *)
+          (* caching optimization opportunity!!!! (ACTION ITEM) *)
           relation sSLIST_ORDERS has schema
                    < sREQID :: id,
                      sORDER :: list refPosition
+                            (* id instead + func *)
                    >;
+                   (* reqid, refid, refpos *)
           relation sSLIST has
                    schema
                    SLIST_ReferralHeading;
