@@ -6,28 +6,10 @@ Require Import
         Fiat.QueryStructure.Automation.AutoDB
         Fiat.Examples.DnsServer.packet_new.
 
-(* adding SLIST to schema
-the referral cache table should now be the slist table
-filter by id associated with request
-should it be ordered?
-
-a b c
-b c a
-
-SLIST 
-each referral needs an id (e.g. x1, x2, x3...) (primary key)
-
-bound amount of work
-
-col - # times each referral has been queried
-too many times = delete the row
-
-SLIST needs to be cleared after a request is done
-TTL
-another table that stores ordering information
-
-id [SLIST order]
-5  [x2, x1, x3,...] *)
+(* RFC 1034: outline                                                                      
+RFC 1035: more details                                                                 
+RFC 2308: negative caching                                                             
+RFC 1536: common implementation errors and fixes *)
 
 Definition Stage := option nat.
 Definition time := nat.
@@ -36,17 +18,8 @@ Definition position := nat.
 Definition server := name.      (* both IP and server name *)
 
 (* need this because there's no way to encode failure (no questions) in a packet *)
-(* TODO this type might need to change *)
-(*
-Inductive WrapperResponse : Type :=
-| Invalid : WrapperResponse
-| Question : id -> packet -> WrapperResponse (* id for a specific pending request *)
-| Answer : packet -> WrapperResponse
-| Failure : packet -> SOA -> WrapperResponse.
-*)
-
-Definition FromOutside : Type := (id * packet * option SOA)%type.
 (* need this because packet is missing RCODE field that encodes success/kinds of failure *)
+Definition FromOutside : Type := (id * packet * option SOA)%type.
 
 Inductive ToOutside : Type :=
 | InvalidQuestion : id -> ToOutside
@@ -60,27 +33,24 @@ Inductive ToOutside : Type :=
 | ClientAnswer : id -> packet -> ToOutside
 | ClientFailure : id -> packet -> SOA -> ToOutside.
 
-Inductive ToStore : Type := (* this type might be redundant *)
-(* | Referral : id -> packet -> ToStore (* only stored for a particular pending request *) *)
+Inductive ToStore : Type :=
 | Answer : name -> packet -> ToStore
 | Failure : name -> packet -> SOA -> ToStore.
 
-(* Which section of a packet a certain answer (DNSRRecord) is in. *)
+(* The section of a packet that a certain answer (DNSRRecord) is in. *)
 Inductive PacketSection : Type :=
 | PAnswer : PacketSection
 | PAuthority : PacketSection
 | PAdditional : PacketSection.
 
 Definition sREQUESTS := "Requests".
+(* the # prefix it's on, from front? or back? *)
 Definition sSTAGE := "Stage".
 Definition sID := "ID".
 Definition IP := name.
 Definition sIP := "IP".
 Definition sRESULT := "Result".
 Definition sDOMAIN := "Domain".
-(* the # prefix it's on, from front? or back? *)
-(* Definition sTIME := "Time". *)
-(* everything added gets an unique ID already *)
 
 Definition sCACHE_POINTERS := "Cache pointers to tables".
 Definition sCACHE_REFERRALS := "Cached referrals".
@@ -148,11 +118,11 @@ Invariants: (TODO)
 - All rows for each domain should appear in exactly 1 of the cache relations (question, answer, or failure). We do not store multiple possibilities.
 - All rows for each domain should have the same packet info. *)
 
+(* For referrals: *)
 (* for domain "brl.mil", referral to suffix "mil": 
 go to server "a.isi.edu" with IP 1.0.0.1 (and ask it the same question) -- RFC 1034 6.2.6
 we discard the original question "brl.mil" *)
 (* 6.3.1 *)
-(* primes (') because typeclasses fail if fields have the same name *)
 Definition SLIST_ReferralHeading :=
   (* R- = referral domain's, S- = server domain's *)
          <sREQID :: nat,
@@ -205,7 +175,7 @@ Definition AnswerHeading :=
           sTIME_LAST_CALCULATED :: nat
          >%Heading.
 
-          (* stores an SOA record according to RFC 2308 *)
+          (* stores an SOA (Start of Authority) record according to RFC 2308 *)
           (* the SOA is technically supposed to go in the Authority section but the packet type doesn't include it *)
 Definition FailureHeading :=
           <sDOMAIN :: name,
@@ -241,10 +211,8 @@ Definition RequestRow := @Tuple RequestHeading.
 (* when we query here, we want a result type
 that later gets combined with the actual packet in Process
 Process gets ALL the rows from one table (or none) *)
-
 (* so we can return a list of rows from any table *)
 Inductive CacheResult :=
-(* TODO: hack to make DeleteResultForDomain check *)
 | Nope : CacheResult
 (* Nonempty lists *)
 | Ref : list ReferralRow -> CacheResult
@@ -254,12 +222,22 @@ Inductive CacheResult :=
 Inductive CacheTable :=
 (* we need to cache referrals, but never in relation to a specific name 
 (for that request, it will always end in Answer or Failure) *)
-(* | CReferrals *)
 | CAnswers
 | CFailures.
 
-Print position.
 
+          (* SLIST 
+each referral needs an id (e.g. x1, x2, x3...) (primary key)
+
+bound amount of work
+
+col - # times each referral has been queried
+too many times = delete the row
+
+SLIST needs to be cleared after a request is done
+TTL
+another table that stores ordering information *)
+(* for SLIST *)
 Record refPosition :=
   { refId : id;
     refPos : nat }.
@@ -294,8 +272,8 @@ Definition DnsRecSchema :=
                    FailureHeading
         ]
         enforcing [ ]. 
-
           (* where (fun t t' => True) ] *)
         (* can i have an invariant that just works on one tuple?
          i want to encode that Stage <= length name *)
         (* use an attribute constraint TODO *)
+(* TODO: other invariants are not encoded *)

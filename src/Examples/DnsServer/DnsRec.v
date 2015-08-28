@@ -12,7 +12,7 @@ Require Import Fiat.QueryStructure.Automation.AutoDB
 
 Require Import
         Fiat.Examples.DnsServer.packet_new
-        Fiat.Examples.DnsServer.DnsLemmas. (* might need _new *)
+        Fiat.Examples.DnsServer.DnsLemmas.
 
 Require Import Fiat.Examples.DnsServer.DnsSchema_new.
 
@@ -30,8 +30,6 @@ Definition DnsRecSig : ADTSig :=
       Method "InsertResultForDomain" : rep x (time * ToStore) -> rep x bool,
       Method "DeletePendingRequestInfo" : rep x id -> rep x bool,
       Method "DeleteCachedNameResult" : rep x name -> rep x CacheResult,
-                                       (* + update (= delete+insert), checkinvariant,
-                                          and packaging a set of rows into a WrapperResponse7 *)
       Method "GetServerForLongestSuffix" : rep x (time * name) -> rep x CacheResult,
 
       (* methods related to referrals and SLIST manipulation *)
@@ -46,18 +44,13 @@ Definition DnsRecSig : ADTSig :=
       Method "UpdateTTLs" : rep x time -> rep x bool,
                                            
       (* main method *)
-      Method "Process" : rep x (time * FromOutside) -> rep x ToOutside (* TTL* *)
-                                                  (* needs to add/update requests, not the client *)
+      Method "Process" : rep x (time * FromOutside) -> rep x ToOutside
     }.
 
-Print ADTSig.
-Print ADT.                      (* TODO how does this dep. type work? *)
 Variable s : list nat.
-Check [[x in s | True]].        (* Comp (list nat) -- multiple choice *)
-Check { x : nat | True }.   (* Comp nat -- single choice *)
+Check [[x in s | True]].        (* Comp (list nat) -- multiple choice, over existing var s *)
+Check { x : nat | True }.   (* Comp nat -- single choice, over type nat *)
 Check { b : bool | decides b True }. (* Comp bool -- check *)
-
-Definition upperbound' := upperbound (fun x => x).
 
 (* Boilerplate *)
 Definition Build_RequestState pac id stage :=
@@ -134,38 +127,6 @@ Definition ToSLISTOrder reqId order :=
   < Build_Component (Build_Attribute sREQID nat) reqId,
   Build_Component (Build_Attribute sORDER (list refPosition)) order >.
 
-Definition nonempty {A : Type} (l : list A) := negb (beq_nat (List.length l) 0).
-
-(* double the monad, double the fun *)
-Fixpoint iterate {A B : Type} {R : RepHint} (r : repHint) (f : repHint -> A -> (Comp (repHint * B)))
-        (l : list A) : Comp (repHint * list B) :=
-    match l with
-    | nil => ret (r, nil)
-    | x :: xs =>
-      resHead <- f r x;
-        let (rHead, ansHead) := resHead in
-        resTail <- iterate rHead f xs;
-          let (rEnd, ansEnd) := resTail in
-          ret (rEnd, ansHead :: ansEnd)
-    end.
-
-Variable nms : list name.
-Variable nm : name.
-Check (List.length nm).
-Check upperbound.
-Print upperbound.
-Check (upperbound (@List.length string) nms nm).
-
-Definition listToOption {A : Type} (l : list A) : option A :=
-  match l with
-  | nil => None
-  | x :: _ => Some x
-  end.
-
-Definition list_join {A B : Type} f (l1 : list A) (l2 : list B) 
-  : list (A * B) := 
-  filter f (list_prod l1 l2).
-
 Definition toPacket_soa (soa : FailureRow) : SOA :=
   {| sourcehost := soa!sHOST;
     contact_email := soa!sEMAIL;
@@ -182,6 +143,54 @@ Definition toPacket_ans (ans : AnswerRow) : answer :=
     ttl := ans!sTTL;
     rdata := ans!sRDATA |}.
 
+(* So long strings of Ascii Bool Bool... won't show up in Set Printing All *)
+Definition Init := "Init".
+Definition MakeId := "MakeId".
+Definition AddRequest := "AddRequest".
+Definition GetRequestStage := "GetRequestStage".
+Definition UpdateRequestStage := "UpdateRequestStage".
+Definition GetServerForLongestSuffix := "GetServerForLongestSuffix".
+Definition InsertResultForDomain := "InsertResultForDomain".
+Definition DeletePendingRequestInfo := "DeletePendingRequestInfo".
+Definition DeleteCachedNameResult := "DeleteCachedNameResult".
+Definition PacketToReferralRows :="PacketToReferralRows".
+Definition InsertReferralRowsIntoCache := "InsertReferralRowsIntoCache".
+Definition ReferralRowsToSLIST := "ReferralRowsToSLIST". 
+Definition GetFirstReferralAndUpdateSLIST := "GetFirstReferralAndUpdateSLIST".
+Definition SortSLIST := "SortSLIST".
+Definition UpdateCacheReferralsAndSLIST := "UpdateCacheReferralsAndSLIST".
+Definition UpdateTTLs := "UpdateTTLs".
+Definition Process := "Process".
+
+(* Helper functions *)
+
+Definition upperbound' := upperbound (fun x => x).
+
+Definition nonempty {A : Type} (l : list A) := negb (beq_nat (List.length l) 0).
+
+(* double the monad, double the fun *)
+Fixpoint iterate {A B : Type} {R : RepHint} (r : repHint) (f : repHint -> A -> (Comp (repHint * B)))
+        (l : list A) : Comp (repHint * list B) :=
+    match l with
+    | nil => ret (r, nil)
+    | x :: xs =>
+      resHead <- f r x;
+        let (rHead, ansHead) := resHead in
+        resTail <- iterate rHead f xs;
+          let (rEnd, ansEnd) := resTail in
+          ret (rEnd, ansHead :: ansEnd)
+    end.
+
+Definition listToOption {A : Type} (l : list A) : option A :=
+  match l with
+  | nil => None
+  | x :: _ => Some x
+  end.
+
+Definition list_join {A B : Type} f (l1 : list A) (l2 : list B) 
+  : list (A * B) := 
+  filter f (list_prod l1 l2).
+
 Definition timeLeft TTL currTime timeLastCalculated :=
   TTL - (currTime - timeLastCalculated).
 
@@ -197,30 +206,10 @@ Definition hasTimeLeft_comp TTL currTime timeLastCalculated :=
 (* Set Printing All. *)
 
 Definition DnsSpec_Recursive : ADT DnsRecSig :=
-  (* TODO move to definitions *)
-  let Init := "Init" in
-  let MakeId := "MakeId" in
-  let AddRequest := "AddRequest" in
-  let GetRequestStage := "GetRequestStage" in
-  let UpdateRequestStage := "UpdateRequestStage" in
-  let GetServerForLongestSuffix := "GetServerForLongestSuffix" in
-  let InsertResultForDomain := "InsertResultForDomain" in
-  let DeletePendingRequestInfo := "DeletePendingRequestInfo" in
-  let DeleteCachedNameResult := "DeleteCachedNameResult" in
-  let PacketToReferralRows :="PacketToReferralRows" in
-  let InsertReferralRowsIntoCache := "InsertReferralRowsIntoCache" in
-  let ReferralRowsToSLIST := "ReferralRowsToSLIST" in 
-  let GetFirstReferralAndUpdateSLIST := "GetFirstReferralAndUpdateSLIST" in
-  let SortSLIST := "SortSLIST" in
-  let UpdateCacheReferralsAndSLIST := "UpdateCacheReferralsAndSLIST" in
-  let UpdateTTLs := "UpdateTTLs" in
-  let Process := "Process" in
-
   QueryADTRep DnsRecSchema {
     Def Constructor Init (_ : unit) : rep := empty,
 
-      (* TODO bounded nat / dep type based on name length *)
-      (* TODO can have (different id, same name) but not (different name, same id) unless multiple questions *)
+      (* can have (different id, same name) but not (different name, same id) unless multiple questions *)
       (* wrapper's responsibility to use this id for everything concerning this request 
 and associate it with the packet (solve the latter by letting it generate the id and return in fn) *)
       (* ----- REQUESTS *)
@@ -231,7 +220,7 @@ and associate it with the packet (solve the latter by letting it generate the id
         ret freshAscendingId,
       
       update AddRequest (r : rep, tup : packet * id) : bool := 
-        let (pac, freshAscendingId) := tup in (* TODO inline makeid here *)
+        let (pac, freshAscendingId) := tup in
         Insert (Build_RequestState pac freshAscendingId None) into r!sREQUESTS,
 
         (* boolean for wrapper *)
@@ -250,8 +239,6 @@ and associate it with the packet (solve the latter by letting it generate the id
         let (updated, affected) := q in
         ret (updated, nonempty affected),
 
-        (* TODO "delete request" method  *)
-
         (* ----- CACHE *)
         (* assumes that someone has already checked that the domain is not in any of the caches *)
        update InsertResultForDomain (r : rep, tup : time * ToStore) : bool :=
@@ -265,7 +252,6 @@ and associate it with the packet (solve the latter by letting it generate the id
           | Answer reqName pac => 
 
             (* monad iteration instead. TODO param over table *)
-            (* TODO add rep as a parameter *)
             let fix InsertAll (r' : repHint) rowFunc tups :=
                 match tups with
                 (* this shouldn't happen since an answer must have at >= 1 answer record *)
@@ -283,9 +269,6 @@ and associate it with the packet (solve the latter by letting it generate the id
             let tups p := flattenPacket p PAnswer (answers p)
                                         ++ flattenPacket p PAuthority (authority p)
                                         ++ flattenPacket p PAdditional (additional p) in
-            (* packet -> tuple with heading? tuple surgery notation -- write down example *)
-            (* do a pick TODO ^ v*)
-            (* all tuples such that (p fields ... answers fields...); insert tuples *)
             res1 <- Insert (Build_CachePointerRow reqName CAnswers) into r!sCACHE_POINTERS;
           let (r1, _) := res1 in
           InsertAll r Build_CacheAnswersRow (tups pac)
@@ -310,8 +293,7 @@ and associate it with the packet (solve the latter by letting it generate the id
            let (r3, rows3) := res3 in
            ret (r3, nonempty rows1 || nonempty rows2 || nonempty rows3),
           
-          (* TODO: given an id, clear the request's SLIST rows and order, and remove from pending reqs *)
-          (* This deletes stuff from the CACHE *)
+          (* This deletes stuff from the CACHE, not the SLIST (TODO may need another fn) *)
             update DeleteCachedNameResult (r : rep, domain : name) : CacheResult :=
           results <- For (pointer in r!sCACHE_POINTERS)
                    Where (pointer!sDOMAIN = domain)
@@ -342,7 +324,7 @@ and associate it with the packet (solve the latter by letting it generate the id
           let (r, _) := q in
 
           let getLongestSuffixes name :=
-              (* TODO: filter by packetsection = answer? are authority and additional useful? *)
+              (* TODO: filter by packetsection = answer? are authority/additional useful? *)
             suffixes <- For (ans in r!sCACHE_REFERRALS)
                 Where (IsPrefix ans!sREFERRALDOMAIN name) 
                 Return ans;
@@ -362,7 +344,8 @@ and associate it with the packet (solve the latter by letting it generate the id
             (* TTL* *)
             ret (Ref longestSuffixes)
           | nil => 
-          (* TODO: does prefix/subdomain failure imply domain failure? s.com fails -> c.s.com fails? *)
+          (* assuming prefix/subdomain failure does not imply domain failure.
+             e.g. s.com fails -/-> c.s.com fails *)
             ret Nope (* this name has nothing cached for it *)
           end
           
@@ -440,7 +423,6 @@ and associate it with the packet (solve the latter by letting it generate the id
             (* ret (r, true), *)
 
           (* Re-sort all of SLIST by descending match count. Smaller position = higher match count *)
-          (* TODO factor out *)
           (* TODO more sophisticated sorting algorithm. right now it ignores the query count *)
      update SortSLIST (r : rep, reqId : id) : bool :=
           allSLISTrows <- For (ref in r!sSLIST)
@@ -628,14 +610,11 @@ and associate it with the packet (solve the latter by letting it generate the id
         end,
 
         (* ---------- *)
-     (* decrement the TTLs of everything and store currTime in time_last_calculated
+     (* Decrement the TTLs of everything and store currTime in time_last_calculated,
+        delete pointers to any SLIST referrals or cached rows soon to be deleted,
+        and delete them (the ones with TTL 0)
        (TODO: code could be more efficient if we only updated those in a particular table,
         but then it would be longer)
-
-     for cache tables: get all the affected request ids first and delete those from cache pointers
-     for SLIST referrals: delete those from SLIST order too
-
-     then delete from the cache anything with TTL 0 (because nats)
 
      as a recurrence relation:
      TTL_(n+1) = TTL_n - (time_right_now - time_last_calculated) *)
@@ -721,12 +700,11 @@ and associate it with the packet (solve the latter by letting it generate the id
 
           (* ----- MAIN METHOD *)
 
+        (* wrapper's responsibility to call MakeID first and keep that ID *)
           (* TODO need to inline other functions; stubs for now *)
-        (* TODO: rep is not threaded through in Process *)
+        (* TODO rep is not threaded through in Process *)
         update Process (r : rep, tup : time * FromOutside) : ToOutside :=
-          let SBELT := @nil ReferralRow in (* TODO, add root ip *)
-          (* TODO inline; these are stubs *)
-          (* TODO thread rep through (when i have tuple desugaring / better monad) *)
+          let SBELT := @nil ReferralRow in (* TODO add root ip *)
           (* let AddRequest (r : repHint) (tup : packet * id) := ret (r, false) in *)
           (* let InsertResultForDomain (r : repHint) (toStore : ToStore) := ret (r, false) in *)
           (* let GetServerForLongestSuffix (r : repHint) (reqName : name) := ret (r, Nope) in *)
@@ -762,7 +740,7 @@ and associate it with the packet (solve the latter by letting it generate the id
               | _, _, _ => false
               end
           in
-          let GetRequestName (reqId : id) : Comp (option name) := (* pull out *)
+          let GetRequestName (reqId : id) : Comp (option name) :=
             names <- For (req in r!sREQUESTS)
                   Where (reqId = req!sID)
                   Return (req!sQNAME);
@@ -868,9 +846,7 @@ and associate it with the packet (solve the latter by letting it generate the id
                 end
           end
           
-        (* wrapper's responsibility to call addrequest first *)
         (* TODO ignoring sTYPE and sCLASS for now; list the other features i left out *)
-        (* TODO update stage? *)
    }.
 
 (* Set Printing All. *)
