@@ -6,6 +6,7 @@ General TODO
 - Comp in predicate: relation-building query notation
 - Fiat wishlist (tuples, monads, etc.)
 - authoritative server needs to be patched for packet changes
+  (in progress, honeDns fails)
 - fill in stubs
 - pass rep around properly in process
 - Filter rows by record type and class

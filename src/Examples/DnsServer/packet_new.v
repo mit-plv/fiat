@@ -87,7 +87,6 @@ Section Packet.
   (* ["google", "com"] *)
 
   (* ["192", "0", "0", "1"] *)
-  (* TODO ip vs name? *)
   Record answer :=
     { aname : name;
       atype : RRecordType;
@@ -144,20 +143,6 @@ Definition test_packet :=
 (*      additional := nil |}. *)
 
 Definition id' p := id p.       (* to get around shadowing *)
-
-      (* is question the same as domain? no, sometimes we want to throw out the QUESTION and replace it with the DOMAIN
-e.g. our question could be "scholar.google.com" but our domain could be "google.com" (prefix)
-so 
-- should we cache "google.com" under "scholar.google.com"? yes, as a question
-- should we cache "scholar.google.com" under "google.com"? no
-should packets be generated anew??
-
-for a wrapperresponse:
-Question means that domain should be a strict prefix of name? what about server?
-   for the [full question scholar.google.com] we know the server [192.168.1.1] for prefix [google.com] instead
-   but should this redirect should work for ANY string for which google.com is a strict prefix?
-   yes. so, in conclusion, when we get the result from the cache, we need to replace the question with the real question e.g. images.google.com; we'll already have that other packet info
-Answer means that domain == name *)
 
 Print replace_order.
 Locate replace_order.

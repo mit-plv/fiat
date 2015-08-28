@@ -12,7 +12,7 @@ Require Import Fiat.QueryStructure.Automation.AutoDB
         Fiat.QueryStructure.Automation.QSImplementation.
 
 Require Import Fiat.Examples.DnsServer.DnsSchema
-        Fiat.Examples.DnsServer.packet.
+        Fiat.Examples.DnsServer.packet_new.
 
 Open Scope list.
 
@@ -257,6 +257,10 @@ Lemma refine_count_constraint_broken :
                       Return tup )%QueryImpl;
     ret (beq_nat count 0) Else ret true).
 Proof.
+  (* intros; setoid_rewrite refine_pick_decides at 1. *)
+  (* - Check refine_is_CNAME__forall_to_exists. apply refine_is_CNAME__forall_to_exists. *)
+  (* [ | apply refine_is_CNAME__forall_to_exists | apply refine_not_CNAME__independent ]. *)
+
   intros; setoid_rewrite refine_pick_decides at 1;
   [ | apply refine_is_CNAME__forall_to_exists | apply refine_not_CNAME__independent ].
   (* refine existence check into query. *)

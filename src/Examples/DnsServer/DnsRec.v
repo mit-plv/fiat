@@ -447,7 +447,8 @@ Definition DnsSpec_Recursive : ADT DnsRecSig :=
           let (r2, _) := res1 in
           let allUnique {A : Type} l := forall (x : A) (y : A), List.In x l /\ List.In y l -> x <> y in
           (* Get match count of each referral from SLIST and compare *)
-          let matchCountGeq id1 id2 := 
+          let matchCountGeq id1 id2 :=
+              (* Computational version *)
               (* let find_row_with id := *)
               (*     find (fun (row : SLIST_ReferralRow) => beq_nat row!sREFERRALID id) allSLISTrows in *)
               (* let ref1row := find_row_with id1 in *)
@@ -455,8 +456,9 @@ Definition DnsSpec_Recursive : ADT DnsRecSig :=
               (* match ref1row, ref2row with *)
               (* | Some ref1row', Some ref2row' => ref1row'!sMATCHCOUNT >= ref2row'!sMATCHCOUNT *)
               (* | _, _ => False *)
-              exists ls, 
 
+              (* Prop version *)
+              exists ls, 
               (For (ref1 in r!sSLIST) (ref2 in r!sSLIST)
                     Where (ref1!sMATCHCOUNT >= ref2!sMATCHCOUNT)
                     Return (ref1!sREQID, ref2!sREQID)) ls /\ List.In (id1, id2) ls
@@ -870,25 +872,6 @@ Definition DnsSpec_Recursive : ADT DnsRecSig :=
                 end
           end
    }.
-
-(* General TODO
-
-- TODO.txt
-- authoritative server needs to be patched for packet changes
-- fill in stubs
-- pass rep around properly in process
-- Filter rows by record type and class
-- Bounded amount of work (delete a referral in SLIST when queried too many times)
-- Returning all answer/authority/additional instead of just one (re-hierarchizing rows into packet)
-- Proper SBELT IP
-- Dealing with CNAME; requires FueledFix
-- CNAME in answers and having that as the answer for the domain and the aliases (see RFC 1034, 6.2.7)
-- Inverse queries
-- Parallelism (long term research goal)
-variant types for cache pointers
-caching opportunity with SLIST_ORDER (remove table, compute order whenever needed -> generate table)
-- variant types for cache pointers
-- caching opportunity with SLIST_ORDER (remove table, compute order whenever needed -> generate table) *)
 
 (* Set Printing All. *)
 Print DnsSpec_Recursive.

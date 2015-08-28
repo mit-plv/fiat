@@ -1,5 +1,3 @@
-(*Require HintDbTactics.*)          (* plugin to pass a hint db to a tactic *)
-
 Require Import Coq.Vectors.Vector
         Coq.Strings.Ascii
         Coq.Bool.Bool
@@ -14,10 +12,11 @@ Require Import
         Fiat.QueryStructure.Automation.SearchTerms.FindPrefixSearchTerms
         Fiat.QueryStructure.Automation.QSImplementation.
 
-Require Import Fiat.Examples.DnsServer.packet
-        Fiat.Examples.DnsServer.DnsSchema
+Require Import Fiat.Examples.DnsServer.packet_new (* note use of packet_new, not DnsSchema_new *)
         Fiat.Examples.DnsServer.DnsLemmas
         Fiat.Examples.DnsServer.DnsAutomation.
+
+Require Import Fiat.Examples.DnsServer.DnsSchema.
 
 Definition DnsSig : ADTSig :=
   ADTsignature {
