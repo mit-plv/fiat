@@ -139,6 +139,18 @@ and gives you the computational hypothesis for the second *)
                    (ret x).
   Proof. t_refine. Qed.
 
+  Definition refine_pick_eq
+             A (x : A)
+    : @refine _
+              { y | y = x }%comp
+              (ret x).
+  Proof. apply refineEquiv_pick_eq. Qed.
+
+  Definition refine_pick_eq' A (x : A)
+    : @refine _ { y | x = y }%comp
+              (ret x).
+  Proof. apply refineEquiv_pick_eq'. Qed.
+
   Definition refineEquiv_split_func_ex
     : forall A B (P : A -> Prop) (f : A -> B),
       @refineEquiv _ { b | exists a, P a /\ b = f a}%comp
@@ -837,8 +849,8 @@ Tactic Notation "refine" "pick" "val" open_constr(v) :=
 
 Tactic Notation "refine" "pick" "eq" :=
   match goal with
-  | |- context[Pick (fun x => x = _)] =>
-    setoid_rewrite refineEquiv_pick_eq
-  | |- context[Pick (fun x => _ = x)] =>
-    setoid_rewrite refineEquiv_pick_eq'
+    | |- context[Pick (fun x => x = _)] =>
+      setoid_rewrite refine_pick_eq || setoid_rewrite refineEquiv_pick_eq
+    | |- context[Pick (fun x => _ = x)] =>
+      setoid_rewrite refine_pick_eq' || setoid_rewrite refineEquiv_pick_eq'
   end.
