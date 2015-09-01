@@ -1,7 +1,6 @@
 (** * Definition of Context Free Grammars *)
-Require Import Coq.Strings.String Coq.Lists.List Coq.Program.Program.
+Require Import Coq.Strings.String Coq.Lists.List.
 Require Export Fiat.Parsers.StringLike.Core.
-Require Import Fiat.Common.
 
 Set Implicit Arguments.
 
@@ -57,7 +56,7 @@ Section cfg.
                               -> parse_of_production (drop n str) pats
                               -> parse_of_production str (pat::pats)
     with parse_of_item (str : String) : item -> Type :=
-    | ParseTerminal : forall ch, str ~= [ ch ] -> parse_of_item str (Terminal ch)
+    | ParseTerminal : forall ch, is_true (str ~= [ ch ]) -> parse_of_item str (Terminal ch)
     | ParseNonTerminal : forall nt, parse_of str (Lookup G nt)
                                     -> parse_of_item str (NonTerminal nt).
   End parse.

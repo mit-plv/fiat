@@ -1,14 +1,11 @@
 (** * Definition of the string-like type *)
-Require Import Coq.Program.Basics Coq.Setoids.Setoid Coq.Classes.Morphisms.
-Require Import Coq.Numbers.Natural.Peano.NPeano. (* Coq.Arith.Compare_dec.*)
-Require Import Coq.Arith.Lt. (* Coq.Arith.Compare_dec.*)
+Require Import Coq.Relations.Relation_Definitions (* for [relation] *).
+Require Import Coq.Classes.Morphisms (* for [==>] / [respectful] *).
 
 Local Coercion is_true : bool >-> Sortclass.
 
 Set Implicit Arguments.
 Generalizable All Variables.
-
-Local Open Scope program_scope.
 
 (** Something is string-like if it has a type of characters, and can
     be split. *)
