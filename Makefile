@@ -1,5 +1,5 @@
 COMPATIBILITY_FILE=src/Common/Coq__8_4__8_5__Compat.v
-STDTIME?=time -f "$* (real: %e, user: %U, sys: %S, mem: %M ko)"
+STDTIME?=/usr/bin/time -f "$* (real: %e, user: %U, sys: %S, mem: %M ko)"
 
 .PHONY: fiat fiat-core querystructures parsers parsers-all finitesets dns compiler facade-test ics fiat4monitors examples \
 	install install-fiat install-fiat-core install-querystructures install-parsers install-finitesets install-dns install-compiler install-ics install-fiat4monitors install-examples \
