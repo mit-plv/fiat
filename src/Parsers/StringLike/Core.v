@@ -1,6 +1,7 @@
 (** * Definition of the string-like type *)
 Require Import Coq.Relations.Relation_Definitions (* for [relation] *).
 Require Import Coq.Classes.Morphisms (* for [==>] / [respectful] *).
+Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 
 Local Coercion is_true : bool >-> Sortclass.
 
