@@ -15,6 +15,7 @@
 *.vo
 *~
 .#*
+.coq-version
 .DS_Store
 /_CoqProject
 /ADT-Synthesis-Submitted.tiff
