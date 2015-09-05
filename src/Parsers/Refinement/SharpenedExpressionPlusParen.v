@@ -35,9 +35,7 @@ Section IndexedImpl.
       finish honing parser method.
     }
 
-    FullySharpenEachMethodWithoutDelegation.
-    extract delegate-free implementation.
-    simpl; higher_order_reflexivityT.
+    finish_Sharpening_SplitterADT.
   Defined.
 
   Lemma ComputationalSplitter

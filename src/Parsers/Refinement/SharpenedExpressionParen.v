@@ -30,7 +30,7 @@ Section IndexedImpl.
       finish honing parser method.
     }
 
-    Time finish_SharpeningADT_WithoutDelegation.
+    finish_Sharpening_SplitterADT.
   Defined.
 
   Lemma ComputationalSplitter

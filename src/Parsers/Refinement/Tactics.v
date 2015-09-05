@@ -18,6 +18,7 @@ Require Export Fiat.ADTNotation.BuildADTSig.
 Require Import Fiat.Parsers.ContextFreeGrammarEquality.
 Require Import Fiat.Common.Equality.
 Require Import Fiat.Computation.Refinements.General.
+Require Import Fiat.Parsers.Refinement.FinishingLemma.
 
 Notation hiddenT := (ADTSig.methodType _ _ _).
 Global Open Scope string_scope.
@@ -201,3 +202,6 @@ Tactic Notation "simplify" "parser" "splitter" :=
                | rewrite !if_aggregate3 by solve_prod_beq
                | progress parser_pull_tac
                | progress (simpl @fst; simpl @snd) ].
+
+Ltac finish_Sharpening_SplitterADT
+  := solve [ refine finish_Sharpening_SplitterADT ].
