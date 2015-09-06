@@ -260,7 +260,7 @@ Global Instance GetAttributeRawTermCounter {qsSchema}
          {Ridx : Fin.t _}
          {tup : @RawTuple (Vector.nth _ Ridx)}
          {BAidx : _ }
-  : (TermAttributeCounter qsSchema (@GetAttributeRaw _ tup BAidx) Ridx BAidx) | 0 := {| |}.
+  : (TermAttributeCounter qsSchema (@GetAttributeRaw _ tup BAidx) Ridx BAidx) | 0 := { }.
 
 (*Ltac TermAttributes Term k :=
   match Term with
