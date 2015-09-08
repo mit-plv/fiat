@@ -2848,7 +2848,7 @@ Module TrieBag (X:OrderedType).
          (TBag : Bag BagType TItem SearchTermType UpdateTermType)
          projection
   : Bag Trie TItem ((option (list TKey)) * (SearchTermType)) UpdateTermType :=
-    {|
+    {
 
       bempty            := TrieBag_bempty TBag;
 
@@ -2860,7 +2860,7 @@ Module TrieBag (X:OrderedType).
       binsert    := TrieBag_binsert TBag projection;
       bcount     := TrieBag_bcount TBag;
       bdelete    := TrieBag_bdelete TBag;
-      bupdate    := TrieBag_bupdate TBag |}.
+      bupdate    := TrieBag_bupdate TBag }.
 
   Global Instance TrieBagAsCorrectBag
          {BagType TItem SearchTermType UpdateTermType : Type}
@@ -2872,7 +2872,7 @@ Module TrieBag (X:OrderedType).
   : CorrectBag (TrieBagRepInv TBag RepInv projection)
                (TrieBag_ValidUpdate _ ValidUpdate projection)
                (TrieAsBag TBag projection ) :=
-    {|
+    {
       bempty_RepInv     := Trie_Empty_RepInv CorrectTBag projection;
       binsert_RepInv    := @TrieBag_binsert_Preserves_RepInv _ _ _ _ TBag _ _ _ projection;
       bdelete_RepInv    := @TrieBag_bdelete_Preserves_RepInv _ _ _ _ TBag _ _ _ projection;
@@ -2884,6 +2884,6 @@ Module TrieBag (X:OrderedType).
       bcount_correct    := @TrieBag_BagCountCorrect _ _ _ _ _ _ _ CorrectTBag projection;
       bdelete_correct   := @TrieBag_BagDeleteCorrect _ _ _ _ _ _ _ CorrectTBag projection ;
       bupdate_correct   := @TrieBag_BagUpdateCorrect _ _ _ _ _ _ _ CorrectTBag projection
-    |}.
+    }.
 
 End TrieBag.
