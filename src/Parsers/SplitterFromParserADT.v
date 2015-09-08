@@ -203,7 +203,7 @@ Section parser.
       eapply H; clear H; simpl.
   Local Ltac t meth := t' meth; eassumption.
 
-  Local Program Instance adt_based_StringLikeProperties : @StringLikeProperties _ adt_based_StringLike
+  Local Program Instance adt_based_StringLikeProperties : @StringLikeProperties Ascii.ascii adt_based_StringLike
     := { bool_eq_Equivalence := {| Equivalence_Reflexive := _ |} }.
   Next Obligation. t @singleton_unique. Qed.
   Next Obligation.
