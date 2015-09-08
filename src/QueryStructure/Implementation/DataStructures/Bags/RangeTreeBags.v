@@ -989,13 +989,11 @@ Module RangeTreeBag (X : OrderedType).
                         (RangeTreeBag_btraverse container.(this) keys)).
     Proof.
       intros k v keys container.
-      rewrite !filter_InA.
+      rewrite !filter_InA; try solve [ apply eqke_equiv ].
       - rewrite RangeTreeBag_btraverse_correct, RangeTreeBag_bcollect_correct in *.
         intuition.
-      - apply eqke_equiv.
       - unfold Proper, respectful; intros; apply InRange_Proper.
         unfold eq_key_elt, Raw.Proofs.PX.eqke in *; intuition.
-      - apply eqke_equiv.
       - unfold Proper, respectful; intros; apply InRange_Proper.
         unfold eq_key_elt, Raw.Proofs.PX.eqke in *; intuition.
     Qed.
@@ -1039,9 +1037,8 @@ Module RangeTreeBag (X : OrderedType).
         assert (forall P Q R : Prop, (P -> R) -> P \/ Q -> R \/ Q) as E by tauto; eapply E; clear E.
         eapply @InA_map_forall with
             (eqA := eq_key_elt (elt:=BagType))
-            (ls := (List.filter (fun x : TKey * BagType => Range_InRange keys (fst x)) (RangeTreeBag_btraverse container keys))).
-        { apply eqke_equiv. }
-        { apply eqke_equiv. }
+            (ls := (List.filter (fun x : TKey * BagType => Range_InRange keys (fst x)) (RangeTreeBag_btraverse container keys)));
+          try solve [ apply eqke_equiv ].
         { unfold Proper, respectful, eq_key_elt, Raw.Proofs.PX.eqke; intros; destruct x; destruct y.
           unfold eq_key_elt, Raw.Proofs.PX.eqke in H0; destruct H0; simpl in *; subst.
           destruct (Range_InRange keys k0); tauto. }
@@ -1118,11 +1115,13 @@ Module RangeTreeBag (X : OrderedType).
           pose proof (fun x => proj1 (InA_InRange_bcollect_btraverse (fst x) (snd x) keys container)) as InA_ct.
           eapply @InA_map_forall with
             (eqA := eq_key_elt (elt:=BagType))
-            (ls' := (List.filter (fun x : TKey * BagType => Range_InRange keys (fst x)) (RangeTreeBag_btraverse container keys))) in H.
+            (ls' := (List.filter (fun x : TKey * BagType => Range_InRange keys (fst x)) (RangeTreeBag_btraverse container keys))) in H;
+            try solve [ apply eqke_equiv ].
           pose proof (filter_map (fun x => Range_InRange keys (fst x))
                                  (fun x => (fst x, f (snd x))) (RangeTreeBag_btraverse container keys));
             simpl in H0; fold TKey in *; rewrite <- H0 in H; clear H0.
-          rewrite filter_InA in H.
+          rewrite filter_InA in H;
+            try solve [ apply eqke_equiv ].
           - destruct H as [H_in H_range].
             pose proof (fun k b => proj1 (RangeTreeBag_btraverse_correct container keys k b)) as Htraverse.
             pose proof (RangeTreeBag_btraverse_nodup container keys) as Htraverse_nodup.
@@ -1149,11 +1148,8 @@ Module RangeTreeBag (X : OrderedType).
                   rewrite Raw.Proofs.elements_mapsto in *.
                   apply Raw.Proofs.add_2; auto.
                 }
-          - apply eqke_equiv.
           - unfold Proper, respectful; intros; apply InRange_Proper.
             unfold eq_key_elt, Raw.Proofs.PX.eqke in *; intuition.
-          - apply eqke_equiv.
-          - apply eqke_equiv.
           - unfold Proper, respectful; intros.
             unfold eq_key_elt, Raw.Proofs.PX.eqke in *; intuition; simpl.
             f_equiv. assumption.
@@ -1161,7 +1157,8 @@ Module RangeTreeBag (X : OrderedType).
             destruct a; auto.
         }
         {
-          rewrite map_if_filter_neg, map_id, filter_InA in H.
+          rewrite map_if_filter_neg, map_id, filter_InA in H;
+          try solve [ apply eqke_equiv ].
           - destruct H as [H_in H_range].
             pose proof (fun k b => proj1 (RangeTreeBag_btraverse_correct container keys k b)) as Htraverse.
             remember (RangeTreeBag_btraverse container keys) as ls; clear Heqls.
@@ -1176,7 +1173,6 @@ Module RangeTreeBag (X : OrderedType).
               intro. apply InRange_Proper with (keys := keys) in H.
               rewrite H_range in H. destruct Htraverse_s. rewrite H1 in H. discriminate.
               assumption.
-          - apply eqke_equiv.
           - unfold Proper, respectful; intros; f_equal; apply InRange_Proper.
             unfold eq_key_elt, Raw.Proofs.PX.eqke in *; intuition.
         }
