@@ -835,7 +835,7 @@ Module TrieBag (X:OrderedType).
       rewrite <- !app_assoc; f_equiv; f_equiv.
       symmetry; eauto.
     Qed.
-    
+
     Lemma Trie_enumerate_RepInv
       : forall trie l,
         TrieOK trie l
@@ -858,7 +858,7 @@ Module TrieBag (X:OrderedType).
           induction
             (XMap.elements (elt := Trie)
                            {| XMap.this := m;
-                              XMap.is_bst := H5 |}); simpl; intros; intuition.          
+                              XMap.is_bst := H5 |}); simpl; intros; intuition.
           rewrite fold_right_app in H0; simpl in H0.
           rewrite fold_left_rev_right in H0; simpl in H0.
           unfold uncurry in *.
@@ -2776,7 +2776,7 @@ Module TrieBag (X:OrderedType).
           rewrite <- !app_assoc; f_equiv; eauto.
           rewrite IHl.
           rewrite Permutation_app_swap, <- app_assoc, map_app.
-          f_equiv. 
+          f_equiv.
           rewrite Permutation_app_swap; f_equiv.
           inversion H; eauto.
           intros; eapply H7; econstructor 2; eauto.
