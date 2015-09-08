@@ -789,11 +789,10 @@ Module RangeTreeBag (X : OrderedType).
         eapply RangeTreeBag_btraverse_nodup | ].
 
       intros.
-      rewrite filter_InA.
+      rewrite filter_InA; [ | solve [ apply eqke_equiv ].. | ].
       rewrite RangeTreeBag_btraverse_correct, RangeTreeBag_bcollect_correct.
 
       reflexivity.
-      apply eqke_equiv.
 
       unfold Proper, respectful.
       unfold eq_key_elt, Raw.Proofs.PX.eqke.
