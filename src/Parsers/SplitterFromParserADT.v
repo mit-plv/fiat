@@ -120,7 +120,7 @@ Section parser.
   Definition mlength := Eval simpl in mcall2 "length".
   Definition mtake := Eval simpl in mcall1 "take".
   Definition mdrop := Eval simpl in mcall1 "drop".
-  
+
   Definition premsplits := Eval simpl in (callcADTMethod (projT1 splitter_impl) (fun idx => ibound (indexb idx))
                                                   (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii)) "splits" _ )).
   Definition msplits := Eval simpl in mcall2 "splits".
@@ -161,7 +161,7 @@ Section parser.
              | [ st : { r : cRep (projT1 splitter_impl) | exists orig, AbsR (projT2 splitter_impl) orig r }%type |- exists orig, AbsR (projT2 splitter_impl) orig (fst (cMethods ?impl ?method _ ?arg)) ]
                => refine (@fst_cMethods_ex method arg st)
              | [ |- exists orig, AbsR (projT2 splitter_impl) orig (?f ?arg ?st)  ]
-               => unfold f
+               => unfold f, callcADTMethod
            end;
     destruct_head_hnf' sig;
     destruct_head_hnf' ex;
@@ -192,12 +192,6 @@ Section parser.
          is_char str ch := mis_char ch str;
          get n str := mget n str;
          bool_eq s1 s2 := string_beq (mto_string tt s1) (mto_string tt s2) }.
-  Next Obligation.
-    admit.
-  Qed.
-  Next Obligation.
-    admit.
-  Qed.
 
   Local Ltac t'' H meth :=
     pose proof (meth Ascii.ascii string_stringlike string_stringlike_properties) as H;
