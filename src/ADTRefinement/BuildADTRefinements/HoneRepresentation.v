@@ -53,15 +53,10 @@ Section HoneRepresentation.
     eapply refineADT_Build_ADT_Rep with (AbsR := AbsR); eauto; intros.
     - unfold getConsDef.
       rewrite <- ith_imap.
-      unfold absConsDef, absConstructor, refineConstructor, refine; simpl; intros.
-      computes_to_inv; eauto.
+      apply refine_absConstructor.
     - unfold getMethDef.
       rewrite <- ith_imap.
-      unfold absMethDef, absMethod, refineMethod, refine; simpl; intros.
-      computes_to_inv; eauto.
-      destruct (H0 _ H) as [or' [Comp_or [AbsR_or'' or''_eq] ] ];
-        subst; repeat computes_to_econstructor; eauto.
-      destruct v; simpl in *; subst; econstructor.
+      apply refine_absMethod.
   Qed.
 
   (* [refine_AbsMethod] can be applied when honing methods to
@@ -75,7 +70,7 @@ Section HoneRepresentation.
                  nr' <- { nr' | AbsR (fst or') nr'};
                  ret (nr', snd or'))
                 (refinedMeth nr d))
-      -> refine (absMethod (Cod := Cod) AbsR oldMethod nr d)
+      -> refine (absMethod (cod := Cod) AbsR oldMethod nr d)
                 (H nr d).
   Proof.
     unfold absMethod, refine; intros * H v ComputesTo_v; computes_to_econstructor;

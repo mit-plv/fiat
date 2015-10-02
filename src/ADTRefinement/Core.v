@@ -28,14 +28,26 @@ Section MethodRefinement.
 >>
    *)
 
-  Definition refineConstructor
-             (Dom : Type)
-             (oldConstructor : constructorType oldRep Dom)
-             (newConstructor : constructorType newRep Dom)
-    := forall d,
-         refine (r_o' <- oldConstructor d;
-                 {r_n | r_o' ≃ r_n})
-                (newConstructor d).
+  Fixpoint refineConstructor
+           {dom : list Type}
+    : constructorType oldRep dom
+      -> constructorType newRep dom
+      -> Prop :=
+    match dom return
+          constructorType oldRep dom
+          -> constructorType newRep dom
+          -> Prop
+    with
+    | nil => fun oldConstructor newConstructor =>
+               refine (r_o' <- oldConstructor;
+                       {r_n | r_o' ≃ r_n})
+                      (newConstructor)
+    | cons D dom' =>
+      fun oldConstructor newConstructor =>
+        forall d : D,
+          @refineConstructor dom' (oldConstructor d)
+                             (newConstructor d)
+    end.
 
   (** Refinement of a method : the values of the computation
       produced by applying a new method [newMethod] to any new
@@ -55,15 +67,38 @@ Section MethodRefinement.
                    new method
 >>  *)
 
-  Definition refineMethod
-             (Dom Cod : Type)
-             (oldMethod : methodType oldRep Dom Cod)
-             (newMethod : methodType newRep Dom Cod)
-    := forall r_o r_n d, r_o ≃ r_n ->
-         refine (r_o' <- oldMethod r_o d;
+  Fixpoint refineMethod'
+           {dom : list Type}
+           {cod : Type}
+    : methodType' oldRep cod dom
+      -> methodType' newRep cod dom
+      -> Prop :=
+    match dom return
+          methodType' oldRep cod dom
+          -> methodType' newRep cod dom
+          -> Prop
+    with
+    | nil =>
+      fun oldMethod newMethod =>
+        refine (r_o' <- oldMethod;
                  r_n' <- {r_n | fst r_o' ≃ r_n};
                  ret (r_n', snd r_o'))
-                (newMethod r_n d).
+                newMethod
+    | cons D dom' =>
+      fun oldMethod newMethod =>
+        forall d : D,
+          @refineMethod' dom' cod (oldMethod d)
+                        (newMethod d)
+    end.
+
+  Definition refineMethod
+             {dom : list Type}
+             {cod : Type}
+             (oldMethod : methodType oldRep dom cod)
+             (newMethod : methodType newRep dom cod)
+    := forall r_o r_n,
+      r_o ≃ r_n ->
+      @refineMethod' dom cod (oldMethod r_o) (newMethod r_n).
 
 End MethodRefinement.
 
@@ -87,7 +122,6 @@ Record refineADT {Sig} (A B : ADT Sig) :=
             (Methods B idx) }.
 (** We should always just unfold [refineMethod] and [refineConstructor]
     into [refine], so that we can rewrite with lemmas about [refine]. *)
-Arguments refineMethod / .
-Arguments refineConstructor / .
+
 
 Notation "ro ≃ rn" := (@AbsR _ _ _ _ ro rn) (at level 70).

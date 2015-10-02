@@ -5,7 +5,7 @@ Require Import Coq.Lists.List Coq.Strings.String.
 
 Record consSig :=
   { consID : string;
-    consDom : Type }.
+    consDom : list Type }.
 
 Arguments Build_consSig consID%string consDom%type_scope.
 Bind Scope consSig_scope with consSig.
@@ -13,7 +13,7 @@ Delimit Scope consSig_scope with consSig.
 
 Record methSig :=
   { methID : string ;
-    methDom : Type ;
+    methDom : list Type ;
     methCod : Type
   }.
 
@@ -25,14 +25,14 @@ Delimit Scope methSig_scope with methSig.
 
 Notation "'Method' id : 'rep' 'x' dom '->' 'rep' 'x' cod " :=
   {| methID := id;
-     methDom := dom;
+     methDom := dom%list;
      methCod := cod |}
     (id at level 0, dom at level 59, at level 93)
   : methSig_scope.
 
 Notation "'Constructor' id ':' dom '->' 'rep'" :=
   {| consID := id;
-     consDom := dom |}
+     consDom := dom%list |}
     (id at level 0, dom at level 59, at level 93)
   : consSig_scope.
 

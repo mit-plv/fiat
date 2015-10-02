@@ -22,19 +22,21 @@ Delimit Scope cADT_scope with cADT.
 Record cMethDef {Rep : Type} (Sig : methSig) :=
   { cMethBody :> cMethodType Rep (methDom Sig) (methCod Sig)}.
 
-Notation "'Def' 'Method' id ( r : 'rep' , x : dom ) : cod := bod" :=
-  (Build_cMethDef {| methID := id; methDom := dom; methCod := cod |}
-                  (fun (r : repHint) x => let cod := {| codHint := cod |} in bod%comp))
-    (no associativity, id at level 0, r at level 0, x at level 0, dom at level 0,
+Notation "'Def' 'Method' id ( r : 'rep' ) x1 .. xn : cod := bod" :=
+  (Build_cMethDef {| methID := id; methDom := _; methCod := cod |}
+                 (fun r =>
+                    (fun x1 => .. (fun xn => let cod := {| codHint := cod |} in bod%comp) ..)))
+    (no associativity, id at level 0, r at level 0, x1 closed binder , xn closed binder, dom at level 0,
      cod at level 0, only parsing,
-     at level 94, format "'Def'  'Method'  id  ( r  :  'rep' ,  x  :  dom )  :  cod  := '/' '[  '   bod ']' " ) :
-cMethDefParsing_scope.
+     at level 94,
+     format "'Def'  'Method'  id  (  r  :  'rep'  )  x1  ..  xn  :  cod  :=  '/' '[  '   bod ']' ")
+  : cMethDefParsing_scope.
 
-Notation "'Def' 'Method' id ( r : 'rep' , x : dom ) : cod := bod" :=
-  (Build_cMethDef {| methID := id; methDom := dom; methCod := cod |} (fun r x => bod%comp))
-    (no associativity, id at level 0, r at level 0, x at level 0, dom at level 0,
-     cod at level 0,
-     at level 94, format "'Def'  'Method'  id  ( r  :  'rep' ,  x  :  dom )  :  cod  :=  '/' '[  '   bod ']' " ) :
+Notation "'Def' 'Method' id ( r : 'rep' ) x1 .. xn : cod := bod" :=
+  (Build_cMethDef {| methID := id; methDom := _; methCod := cod |} (fun r => (fun x1 => .. (fun xn =>  bod%comp) ..)))
+    (no associativity, id at level 0, r at level 0, x1 closed binder,
+     xn closed binder, cod at level 0,
+     at level 94, format "'Def'  'Method'  id  (  r  :  'rep'  )  x1  ..  xn  :  cod  :=  '/' '[  '   bod ']' " ) :
 cMethDef_scope.
 
 Delimit Scope cMethDefParsing_scope with cMethDefParsing.
@@ -43,11 +45,11 @@ Delimit Scope cMethDef_scope with cMethDef.
 Record cConsDef {Rep : Type} (Sig : consSig) :=
   { cConsBody :> cConstructorType Rep (consDom Sig) }.
 
-Notation "'Def' 'Constructor' id ( x : dom ) : 'rep' := bod" :=
-  (Build_cConsDef {| consID := id; consDom := dom |} (fun x => bod%comp))
+Notation "'Def' 'Constructor' id x1 .. xn : 'rep' := bod" :=
+  (Build_cConsDef {| consID := id; consDom := _ |} (fun x1 => .. (fun xn =>  bod%comp ) ..))
     (no associativity, at level 94, id at level 0,
-     x at level 0, dom at level 0,
-     format "'Def'  'Constructor'  id  ( x :  dom )  :  'rep'  :=  '/' '[  '   bod ']' " ) :
+     x1 closed binder, xn closed binder,
+     format "'Def'  'Constructor'  id  x1  ..  xn  :  'rep'  :=  '/' '[  '   bod ']' " ) :
 cConsDef_scope.
 
 Delimit Scope cConsDef_scope with cConsDef.
@@ -79,8 +81,8 @@ Definition getcMethDef
   cMethBody (ith methDefs idx).
 
 (* Always simplify method lookup when the index is specified. *)
-Arguments getcConsDef [_] {n} [_] _ idx%string / _ .
-Arguments getcMethDef [_] {n} [_] _ idx%string / _ _ .
+Arguments getcConsDef [_] {n} [_] _ idx%string / .
+Arguments getcMethDef [_] {n} [_] _ idx%string / _ .
 
 (* [BuildcADT] constructs an computational ADT from a single constructor
    definition and a list of method signatures,

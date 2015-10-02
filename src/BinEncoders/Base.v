@@ -1,4 +1,4 @@
-Require Export List.
+Require Export Coq.Lists.List.
 
 Definition Bin := list bool.
 

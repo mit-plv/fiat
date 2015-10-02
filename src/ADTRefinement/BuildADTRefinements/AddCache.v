@@ -22,7 +22,7 @@ Section addCache.
      implementation (computation?) for the methods of an ADT with
      using the old methods. *)
 
-  Definition addCacheToConsDef
+  (*Definition addCacheToConsDef
              (Sig : consSig)
              (oldCons : @consDef rep Sig)
   : @consDef (@cachedRep rep cacheType) Sig :=
@@ -32,7 +32,7 @@ Section addCache.
              (Sig : methSig)
              (oldCons : @methDef rep Sig)
   : @methDef (@cachedRep rep cacheType) Sig :=
-    {| methBody := addCacheToMethod cacheSpec (methBody oldCons) |}.
+    {| methBody := addCacheToMethod cacheSpec (methBody oldCons) |}. *)
 
   (*Lemma refine_addCacheTo_BuildADT
             (consSigs : list consSig)

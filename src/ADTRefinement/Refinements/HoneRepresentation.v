@@ -1,5 +1,7 @@
-Require Import Fiat.Common Fiat.Computation
-        Fiat.ADT.ADTSig Fiat.ADT.Core
+Require Import Fiat.Common
+        Fiat.Computation
+        Fiat.ADT.ADTSig
+        Fiat.ADT.Core
         Fiat.ADTRefinement.Core Fiat.ADTRefinement.SetoidMorphisms
         Fiat.ADTRefinement.GeneralRefinements.
 
@@ -19,49 +21,82 @@ Section HoneRepresentation.
      implementation (computation?) for the methods of an ADT by
      using the old methods. *)
 
+  Fixpoint absMethod'
+             (dom : list Type)
+             (cod : Type)
+    : (oldRep -> methodType' oldRep cod dom)
+      -> newRep -> (methodType' newRep cod dom) :=
+    match dom return
+          (oldRep -> methodType' oldRep cod dom)
+          -> newRep -> (methodType' newRep cod dom)
+    with
+    | nil =>
+      fun oldMethod nr =>
+        {nr' | forall or,
+            or ≃ nr ->
+            exists or',
+              (oldMethod or) ↝ or' /\
+              fst or' ≃ fst nr' /\ snd or' = snd nr'}%comp
+    | cons d dom' =>
+      fun oldMethod nr t =>
+        absMethod' dom' cod (fun or => oldMethod or t) nr
+    end.
+
   Definition absMethod
-        (Dom Cod : Type)
-        (oldMethod : methodType oldRep Dom Cod) nr n
-  : Comp (newRep * Cod) :=
-    {nr' | forall or,
-             or ≃ nr ->
-             exists or',
-               (oldMethod or n) ↝ or' /\
-               fst or' ≃ fst nr' /\ snd or' = snd nr'}%comp.
+             (dom : list Type)
+             (cod : Type)
+             (oldMethod : methodType oldRep dom cod)
+    : methodType newRep dom cod :=
+    absMethod' dom cod oldMethod.
 
   Lemma refine_absMethod
-        (Dom Cod : Type)
-        (oldMethod : methodType oldRep Dom Cod)
+        (dom : list Type)
+        (cod : Type)
+        (oldMethod : methodType oldRep dom cod)
   : @refineMethod oldRep newRep AbsR _ _
                    oldMethod
                    (absMethod oldMethod).
   Proof.
-    unfold refineMethod, absMethod, refine; intros.
-    computes_to_inv.
-    destruct (H0 _ H) as [or' [Comp_or [AbsR_or'' eq_or''] ] ].
-    repeat computes_to_econstructor; eauto.
-    destruct v; simpl in *; subst; econstructor.
+    induction dom.
+    - simpl in *; unfold refineMethod, refineMethod',
+                  absMethod, absMethod', refine; intros; computes_to_inv.
+      destruct (H0 _ H) as [or' [Comp_or [AbsR_or'' eq_or''] ] ].
+      repeat computes_to_econstructor; eauto.
+      destruct v; simpl in *; subst; econstructor.
+    - intro; simpl; intros.
+      eapply (IHdom (fun or => oldMethod or d)); eauto.
   Qed.
 
   Hint Resolve refine_absMethod.
 
   (* A similar approach works for constructors. *)
-  Definition absConstructor
-             (Dom : Type)
-             (oldConstr : constructorType oldRep Dom)
-             n
-  : Comp newRep :=
-    {nr | exists or', oldConstr n ↝ or' /\
-                      or' ≃ nr }%comp.
+  Fixpoint absConstructor
+             {dom : list Type}
+    : constructorType oldRep dom ->
+      constructorType newRep dom :=
+    match dom return
+          constructorType oldRep dom ->
+          constructorType newRep dom
+    with
+    | nil =>
+      fun oldConstr =>
+      {nr | exists or', oldConstr ↝ or' /\
+                        or' ≃ nr }%comp
+    | cons d dom' =>
+      fun oldConstr t =>
+        @absConstructor dom' (oldConstr t)
+    end.
 
   Lemma refine_absConstructor
-        (Dom : Type)
-        (oldConstr : constructorType oldRep Dom)
+        (dom : list Type)
+        (oldConstr : constructorType oldRep dom)
   : @refineConstructor oldRep newRep AbsR _ oldConstr
                     (absConstructor oldConstr).
   Proof.
-    unfold refineConstructor, absConstructor, refine; intros.
-    computes_to_inv; eauto.
+    induction dom; simpl in *.
+    - unfold refineConstructor, absConstructor, refine; intros.
+      computes_to_inv; eauto.
+    - intros; eapply IHdom.
   Qed.
 
   Hint Resolve refine_absConstructor.

@@ -1,6 +1,9 @@
 Require Import Fiat.Common
-        Fiat.ADT.ADTSig Fiat.ADT.Core Fiat.ADT.ADTHide
-        Fiat.ADTRefinement.Core.
+        Fiat.ADT.ADTSig
+        Fiat.ADT.Core
+        Fiat.ADT.ADTHide
+        Fiat.ADTRefinement.Core
+        Fiat.ADTRefinement.SetoidMorphisms.
 
 Lemma RefineHideADT
       extSig'
@@ -18,13 +21,6 @@ Proof.
   destruct_head ADT.
   exists (fun r_o r_n => exists r_n', AbsR' r_o r_n' /\ AbsR r_n' r_n);
     simpl; intros.
-  - destruct_ex; intuition.
-    rewrite_rev_hyp; try eassumption; [].
-    autorewrite with refine_monad; f_equiv.
-  - destruct_ex; intuition.
-    rewrite_rev_hyp; try eassumption; [].
-    autorewrite with refine_monad; f_equiv.
-    unfold pointwise_relation; intros;
-    intros v Comp_v; computes_to_inv; subst; simpl in *;
-    eauto.
+  - eauto using refineConstructor_trans.
+  - eauto using refineMethod_trans. 
 Qed.

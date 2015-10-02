@@ -1,4 +1,5 @@
 -R src Fiat
+-arg -dont-load-proofs
 src/ADT.v
 src/ADTNotation.v
 src/ADTRefinement.v
@@ -30,6 +31,12 @@ src/ADTRefinement/Refinements/DelegateMethods.v
 src/ADTRefinement/Refinements/HoneRepresentation.v
 src/ADTRefinement/Refinements/RefineHideADT.v
 src/ADTRefinement/Refinements/SimplifyRep.v
+src/BinEncoders/Base.v
+src/BinEncoders/Binary.v
+src/BinEncoders/List.v
+src/BinEncoders/Pair.v
+src/BinEncoders/Sum.v
+src/BinEncoders/Unary.v
 src/Common/BoolFacts.v
 src/Common/BoundedLookup.v
 src/Common/DecideableEnsembles.v
@@ -82,6 +89,7 @@ src/Computation/LogicLemmas.v
 src/Computation/Monad.v
 src/Computation/Notations.v
 src/Computation/SetoidMorphisms.v
+src/Computation/State.v
 src/Computation/Refinements/General.v
 src/Computation/Refinements/Iterate_Decide_Comp.v
 src/Computation/Refinements/Tactics.v
@@ -89,6 +97,7 @@ src/ComputationalEnsembles/Core.v
 src/ComputationalEnsembles/Laws.v
 src/ComputationalEnsembles/Morphisms.v
 src/Examples/FacadeTest.v
+src/Examples/SearchTest.v
 src/Examples/CacheADT/CacheADT.v
 src/Examples/CacheADT/CacheRefinements.v
 src/Examples/CacheADT/CacheSig.v
@@ -123,6 +132,7 @@ src/Examples/QueryStructure/Photoalbum.v
 src/Examples/QueryStructure/PhotoalbumExtraction.v
 src/Examples/QueryStructure/PhotoalbumUnOpt.v
 src/Examples/QueryStructure/PhotoalbumUnOptimizedExtraction.v
+src/Examples/QueryStructure/SearchTest.v
 src/Examples/QueryStructure/Stocks.v
 src/Examples/QueryStructure/Weather.v
 src/Examples/Smtp/Smtp.v
@@ -141,6 +151,8 @@ src/Fiat4Monitors/TurretMonitor.v
 src/Fiat4Monitors/TurretMonitorSpec.v
 src/Fiat4Monitors/HealthMonitor/HealthMonitorSpec.v
 src/Fiat4Monitors/HealthMonitor/HealthMonitors.v
+src/Fiat4Monitors/HelloWorld/HelloWorld.v
+src/Fiat4Monitors/HelloWorld/HelloWorldI386.v
 src/Fiat4Monitors/TurretMonitor/FacadeImpl.v
 src/Fiat4Monitors/TurretMonitor/FiatSpec.v
 src/FiatToFacade/BedrockUtilities.v
@@ -274,6 +286,7 @@ src/QueryStructure/Automation/Common.v
 src/QueryStructure/Automation/IndexSelection.v
 src/QueryStructure/Automation/MasterPlan.v
 src/QueryStructure/Automation/QSImplementation.v
+src/QueryStructure/Automation/RangeTreeBags.v
 src/QueryStructure/Automation/Constraints/ForeignKeyAutomation.v
 src/QueryStructure/Automation/Constraints/FunctionalDependencyAutomation.v
 src/QueryStructure/Automation/Constraints/TrivialConstraintAutomation.v
