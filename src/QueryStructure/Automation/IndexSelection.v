@@ -504,8 +504,8 @@ Instance ExpressionAttributeCounterConstructorsCons
          (methDefs : @ilist methSig (@methDef (UnConstrQueryStructure qsSchema)) n' methSigs)
          (con : @consDef _ Dom)
          OccCountC OccCountRest
-         (ExpCountC : forall d,
-             @ExpressionAttributeCounter _ qsSchema (consBody con d) OccCountC)
+         (ExpCountC : 
+             @ExpressionAttributeCounter _ qsSchema (consBody con) OccCountC)
          (ExpCountRest : @ExpressionAttributeCounter _ qsSchema
                                 (BuildADT (Rep := UnConstrQueryStructure qsSchema) consDefs methDefs)
                                 OccCountRest)
@@ -521,8 +521,7 @@ Instance ExpressionAttributeCounterMethodsCons
          (methDefs : @ilist methSig (@methDef (UnConstrQueryStructure qsSchema)) n' methSigs)
          (meth : @methDef (UnConstrQueryStructure qsSchema) mSig)
          OccCountM OccCountRest
-         (ExpCountM : forall r d,
-             @ExpressionAttributeCounter _ qsSchema (methBody meth r d) OccCountM)
+         (ExpCountM : @ExpressionAttributeCounter _ qsSchema (methBody meth) OccCountM)
          (ExpCountRest : @ExpressionAttributeCounter _ qsSchema
                                 (BuildADT (Rep := UnConstrQueryStructure qsSchema) inil methDefs)
                                 OccCountRest)

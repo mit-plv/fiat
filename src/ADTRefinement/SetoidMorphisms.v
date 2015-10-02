@@ -18,7 +18,7 @@ Proof.
   unfold refineMethod, methodType; intro; simpl; intros; subst.
   remember (x r_n); clear.
   induction Dom.
-  - intro; simpl; intros; subst;
+  - destruct Cod; intro; simpl; intros; subst;
     repeat computes_to_econstructor; try destruct v; eauto.
   - intro; simpl; intros; subst; apply IHDom.
 Qed.
@@ -45,7 +45,7 @@ Qed.
 Instance refineConstructor_trans' rep Dom
 : Transitive (@refineConstructor rep rep eq Dom).
 Proof.
-  induction Dom. 
+  induction Dom.
   - intro; intros.
     pose proof (refineConstructor_trans nil eq eq x y z H H0);
       unfold refineConstructor, refine; intros.
@@ -66,11 +66,14 @@ Lemma refineMethod_trans rep rep' rep'' Dom Cod
                          m m''.
 Proof.
   unfold refineMethod, methodType; induction Dom.
-  - intro; simpl; intros; subst; intros v Comp_v.
-    destruct_ex; intuition.
-    eapply H0 in Comp_v; eauto; computes_to_inv; subst.
-    eapply H in Comp_v; eauto; computes_to_inv; subst; eauto.
-    repeat computes_to_econstructor; eauto.
+  - intro; simpl; intros; destruct Cod; subst; intros v Comp_v.
+    + destruct_ex; intuition.
+      eapply H0 in Comp_v; eauto; computes_to_inv; subst.
+      eapply H in Comp_v; eauto; computes_to_inv; subst; eauto.
+      repeat computes_to_econstructor; eauto.
+    + destruct_ex; intuition.
+      eapply H0 in Comp_v; eauto; computes_to_inv; subst.
+      eapply H in Comp_v; eauto; computes_to_inv; subst; eauto.
   - simpl; intros.
     destruct_ex; intuition.
     eapply (IHDom (fun d' => m r_o d)
@@ -84,9 +87,11 @@ Proof.
   unfold refineMethod, methodType; subst; induction Dom.
   - intro; intros.
     pose proof (refineMethod_trans H H0);
-      unfold refineMethod, refineMethod', refine in *; intros; subst.
-    eapply H2 in H3; eauto; computes_to_inv; subst.
-    destruct_ex; intuition; subst; eauto.
+      unfold refineMethod, refineMethod', refine in *; destruct Cod; intros; subst.
+    + eapply H2 in H3; eauto; computes_to_inv; subst.
+      destruct_ex; intuition; subst; eauto.
+    + eapply H2 in H3; eauto; computes_to_inv; subst.
+      destruct_ex; intuition; subst; eauto.
   - intro; simpl; intros; subst.
     eapply (IHDom (fun d' => x r_n d)
                   (fun d' => y r_n d)

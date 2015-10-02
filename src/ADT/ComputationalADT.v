@@ -17,18 +17,23 @@ Fixpoint cConstructorType (rep : Type) (dom : list Type)
     end.
 
 (** Type of a deterministic method. *)
-Fixpoint cMethodType' (rep cod : Type)
-           (dom : list Type) : Type :=
+Fixpoint cMethodType' (rep : Type)         
+         (dom : list Type)
+         (cod : option Type)
+  : Type :=
   match dom with
   | nil =>
-    (prod rep cod) (* Final model and return value *)
+    match cod with
+    | Some cod' =>  (prod rep cod') (* Final model and return value *)
+    | None => rep
+    end
   | cons d dom' =>
-    d -> cMethodType' rep cod dom' (* Method arguments *)
+    d -> cMethodType' rep dom' cod (* Method arguments *)
   end.
 Definition cMethodType (rep : Type)
            (dom : list Type)
-           (cod : Type) : Type :=
-  rep -> cMethodType' rep cod dom.
+           (cod : option Type) : Type :=
+  rep -> cMethodType' rep dom cod.
 
 (** Interface of a ADT implementation *)
 Record pcADT (Sig : ADTSig)
@@ -77,23 +82,29 @@ Fixpoint LiftcConstructor
   end.
 
 Fixpoint LiftcMethod'
-         (rep cod : Type) (dom : list Type)
-  : cMethodType' rep cod dom
-    -> methodType' rep cod dom :=
+         (rep : Type)
+         (dom : list Type)
+         (cod : option Type)
+  : cMethodType' rep dom cod
+    -> methodType' rep dom cod :=
   match dom return
-        cMethodType' rep cod dom
-        -> methodType' rep cod dom
+        cMethodType' rep dom cod
+        -> methodType' rep dom cod
   with
-  | nil => fun cMethod => ret cMethod
+  | nil =>
+    match cod with
+    | Some cod' => fun cMethod => ret cMethod
+    | None => fun cMethod => ret cMethod
+    end
   | cons d dom' => fun cMethod t =>
-                     LiftcMethod' rep cod dom' (cMethod t)
+                     LiftcMethod' rep dom' cod (cMethod t)
   end.
 
 Definition LiftcMethod
-           (rep : Type) (dom : list Type) (cod : Type)
+           (rep : Type) (dom : list Type) (cod : option Type)
            (cMethod : cMethodType rep dom cod)
   : methodType rep dom cod
-  := fun r => LiftcMethod' rep cod dom (cMethod r).
+  := fun r => LiftcMethod' rep dom cod (cMethod r).
 
 Definition LiftcADT (Sig : ADTSig) (A : cADT Sig) : ADT Sig :=
   {| Rep                := cRep A;

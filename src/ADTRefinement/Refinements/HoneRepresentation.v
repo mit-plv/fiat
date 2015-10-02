@@ -23,35 +23,47 @@ Section HoneRepresentation.
 
   Fixpoint absMethod'
              (dom : list Type)
-             (cod : Type)
-    : (oldRep -> methodType' oldRep cod dom)
-      -> newRep -> (methodType' newRep cod dom) :=
+             (cod : option Type)
+    : (oldRep -> methodType' oldRep dom cod)
+      -> newRep -> (methodType' newRep dom cod) :=
     match dom return
-          (oldRep -> methodType' oldRep cod dom)
-          -> newRep -> (methodType' newRep cod dom)
+          (oldRep -> methodType' oldRep dom cod)
+          -> newRep -> (methodType' newRep dom cod)
     with
     | nil =>
-      fun oldMethod nr =>
-        {nr' | forall or,
-            or ≃ nr ->
-            exists or',
-              (oldMethod or) ↝ or' /\
-              fst or' ≃ fst nr' /\ snd or' = snd nr'}%comp
-    | cons d dom' =>
+      match cod return
+          (oldRep -> methodType' oldRep [] cod)
+          -> newRep -> (methodType' newRep [] cod)
+      with
+      | Some cod' =>
+        fun oldMethod nr =>
+          {nr' | forall or,
+              or ≃ nr ->
+              exists or',
+                (oldMethod or) ↝ or' /\
+                fst or' ≃ fst nr' /\ snd or' = snd nr'}%comp
+      | None =>
+        fun oldMethod nr =>
+          {nr' | forall or,
+              or ≃ nr ->
+              exists or',
+                (oldMethod or) ↝ or' /\ or' ≃ nr'}%comp
+      end
+      | cons d dom' =>
       fun oldMethod nr t =>
         absMethod' dom' cod (fun or => oldMethod or t) nr
     end.
 
   Definition absMethod
              (dom : list Type)
-             (cod : Type)
+             (cod : option Type)
              (oldMethod : methodType oldRep dom cod)
     : methodType newRep dom cod :=
     absMethod' dom cod oldMethod.
 
   Lemma refine_absMethod
         (dom : list Type)
-        (cod : Type)
+        (cod : option Type)
         (oldMethod : methodType oldRep dom cod)
   : @refineMethod oldRep newRep AbsR _ _
                    oldMethod
@@ -59,10 +71,13 @@ Section HoneRepresentation.
   Proof.
     induction dom.
     - simpl in *; unfold refineMethod, refineMethod',
-                  absMethod, absMethod', refine; intros; computes_to_inv.
-      destruct (H0 _ H) as [or' [Comp_or [AbsR_or'' eq_or''] ] ].
-      repeat computes_to_econstructor; eauto.
-      destruct v; simpl in *; subst; econstructor.
+                  absMethod, absMethod', refine; intros;
+      destruct cod; intros; computes_to_inv.
+      + destruct (H0 _ H) as [or' [Comp_or [AbsR_or'' eq_or''] ] ].
+        repeat computes_to_econstructor; eauto.
+        destruct v; simpl in *; subst; econstructor.
+      + destruct (H0 _ H) as [or' [Comp_or AbsR_or'' ] ].
+        repeat computes_to_econstructor; eauto.
     - intro; simpl; intros.
       eapply (IHdom (fun or => oldMethod or d)); eauto.
   Qed.

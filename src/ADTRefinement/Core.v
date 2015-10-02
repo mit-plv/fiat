@@ -69,21 +69,33 @@ Section MethodRefinement.
 
   Fixpoint refineMethod'
            {dom : list Type}
-           {cod : Type}
-    : methodType' oldRep cod dom
-      -> methodType' newRep cod dom
+           {cod : option Type}
+    : methodType' oldRep dom cod
+      -> methodType' newRep dom cod
       -> Prop :=
     match dom return
-          methodType' oldRep cod dom
-          -> methodType' newRep cod dom
+          methodType' oldRep dom cod
+          -> methodType' newRep dom cod
           -> Prop
     with
     | nil =>
-      fun oldMethod newMethod =>
-        refine (r_o' <- oldMethod;
-                 r_n' <- {r_n | fst r_o' ≃ r_n};
-                 ret (r_n', snd r_o'))
-                newMethod
+      match cod return
+            methodType' oldRep [] cod
+            -> methodType' newRep [] cod
+            -> Prop
+      with
+      | Some cod' =>
+        fun oldMethod newMethod =>
+          refine (r_o' <- oldMethod;
+                  r_n' <- {r_n | fst r_o' ≃ r_n};
+                  ret (r_n', snd r_o'))
+                 newMethod
+      | _ =>
+        fun oldMethod newMethod =>
+          refine (r_o' <- oldMethod;
+                  {r_n | r_o' ≃ r_n})
+                 newMethod
+      end
     | cons D dom' =>
       fun oldMethod newMethod =>
         forall d : D,
@@ -93,7 +105,7 @@ Section MethodRefinement.
 
   Definition refineMethod
              {dom : list Type}
-             {cod : Type}
+             {cod : option Type}
              (oldMethod : methodType oldRep dom cod)
              (newMethod : methodType newRep dom cod)
     := forall r_o r_n,

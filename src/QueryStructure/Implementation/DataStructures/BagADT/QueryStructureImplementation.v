@@ -180,7 +180,7 @@ Section QueryStructureImplementation.
           ret (i3cons c cs)
     end indices');
     [ ..
-    | exact (CallBagConstructor (ilist3_hd il) BagEmpty tt) ];
+    | exact (CallBagConstructor (ilist3_hd il) BagEmpty) ];
     shelve.
       Grab Existential Variables.
       exact (fun ns index =>
@@ -192,7 +192,7 @@ End QueryStructureImplementation.
 
 Opaque CallBagMethod.
 Arguments CallBagMethod : simpl never.
-Arguments CallBagMethod [_ _] _ _ _ _ _.
+Arguments CallBagMethod [_ _] _ _ _ .
 Opaque CallBagConstructor.
 Arguments CallBagConstructor : simpl never.
 Arguments GetIndexedRelation [_ _ ] _ _ _.

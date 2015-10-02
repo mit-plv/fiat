@@ -11,18 +11,22 @@ Fixpoint constructorType (rep : Type)
   end.
 
 (** Type of a method. *)
-Fixpoint methodType' (rep cod : Type)
-           (dom : list Type) : Type :=
+Fixpoint methodType' (rep : Type)
+         (dom : list Type)
+         (cod : option Type) : Type :=
   match dom with
   | nil =>
-    Comp (rep * cod) (* Final model and return value *)
+    match cod with
+    | Some cod' => Comp (rep * cod') (* Final model and a return value *)
+    | _ => Comp rep
+    end
   | cons d dom' =>
-    d -> methodType' rep cod dom' (* Method arguments *)
+    d -> methodType' rep dom' cod (* Method arguments *)
   end.
 Definition methodType (rep : Type)
            (dom : list Type)
-           (cod : Type) : Type :=
-  rep -> methodType' rep cod dom.
+           (cod : option Type) : Type :=
+  rep -> methodType' rep dom cod.
 
 (* Signatures of ADT operations *)
 Record ADTSig :=
@@ -37,6 +41,6 @@ Record ADTSig :=
     ConstructorDom : ConstructorIndex -> list Type;
 
     (** The representation-independent domain and codomain of methods. *)
-    MethodDomCod : MethodIndex -> (list Type) * Type
+    MethodDomCod : MethodIndex -> (list Type) * (option Type)
 
   }.

@@ -22,7 +22,7 @@ Section DelegateMethods.
   Variable delegateIndex : Type.
 
   (* Codomain of the new methods. *)
-  Variable delegateCod : MethodIndex delegatorSig -> Type.
+  Variable delegateCod : MethodIndex delegatorSig -> option Type.
 
   (* Signature of the ADT being delegated to. *)
   Definition delegateSig :=

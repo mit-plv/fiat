@@ -14,7 +14,7 @@ Delimit Scope consSig_scope with consSig.
 Record methSig :=
   { methID : string ;
     methDom : list Type ;
-    methCod : Type
+    methCod : option Type
   }.
 
 Arguments Build_methSig methID%string methDom%type_scope methCod%type_scope.
@@ -23,17 +23,47 @@ Delimit Scope methSig_scope with methSig.
 
 (* Notation for ADT Methods. *)
 
-Notation "'Method' id : 'rep' 'x' dom '->' 'rep' 'x' cod " :=
+Notation "'Method' id : 'rep' '*' dom1 '*' .. '*' domn '->' 'rep' " :=
   {| methID := id;
-     methDom := dom%list;
-     methCod := cod |}
-    (id at level 0, dom at level 59, at level 93)
+     methDom := cons dom1%type .. (cons domn%type nil) ..;
+     methCod := None |}
+    (id at level 0, dom1 at level 0,
+     domn at level 0, at level 93)
   : methSig_scope.
 
-Notation "'Constructor' id ':' dom '->' 'rep'" :=
+Notation "'Method' id : 'rep' '*' dom1 '*' .. '*' domn '->' 'rep' '*' cod " :=
+  {| methID := id;
+     methDom := cons dom1%type .. (cons domn%type nil) ..;
+     methCod := Some (cod%type : Type) |}
+    (id at level 0, cod at level 0, dom1 at level 0,
+     domn at level 0,  at level 93)
+  : methSig_scope.
+
+Notation "'Method' id : 'rep' '*' 'rep' " :=
+  {| methID := id;
+     methDom := nil;
+     methCod := None |}
+    (id at level 0, at level 93)
+  : methSig_scope.
+
+Notation "'Method' id : 'rep' '->' 'rep' '*' cod " :=
+  {| methID := id;
+     methDom := @nil Type ;
+     methCod := Some (cod%type : Type) |}
+    (id at level 0, cod at level 0, at level 93)
+  : methSig_scope.
+
+
+Notation "'Constructor' id ':' 'rep'" :=
   {| consID := id;
-     consDom := dom%list |}
-    (id at level 0, dom at level 59, at level 93)
+     consDom := @nil Type |}
+    (id at level 0, dom1 at level 0, domn at level 0, at level 93)
+  : consSig_scope.
+
+Notation "'Constructor' id ':' dom1 '*' .. '*' domn '->' 'rep'" :=
+  {| consID := id;
+     consDom := @cons Type dom1%type .. (@cons Type domn%type (@nil Type)) .. |}
+    (id at level 0, dom1 at level 0, domn at level 0, at level 93)
   : consSig_scope.
 
 (* [BuildADTSig] constructs an ADT signature from a list of

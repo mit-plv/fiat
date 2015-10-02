@@ -109,7 +109,7 @@ Class QueryStructureHint :=
     qsHint :> @QueryStructure qsSchemaHint'
   }. *)
 
-Notation "'query' id ( r : 'rep' , x : dom ) : cod := bod" :=
+(*Notation "'query' id ( r : 'rep' , x : dom ) : cod := bod" :=
   (Build_methDef {| methID := id; methDom := dom; methCod := cod |}
                  (fun (r : repHint) x =>
                     let _ := {| codHint := cod |} in
@@ -127,7 +127,7 @@ Notation "'update' id ( r : 'rep' , x : dom ) : cod := bod" :=
     (no associativity, id at level 0, x at level 0, dom at level 0,
      r at level 0, cod at level 0, only parsing,
      at level 94, format "'update'  id  (  r  :  'rep'  ,  x  :  dom )  :  cod  :=  '[  '   bod ']' " ) :
-    queryDef_scope.
+    queryDef_scope. *)
 
 (* Notation for ADTs built from [BuildADT]. *)
 

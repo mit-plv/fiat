@@ -47,7 +47,7 @@ Section BuildADTRefinements.
     rewrite ith_replace_Index_neq; eauto.
   Qed.
 
-  (*Corollary SharpenStep_BuildADT_ReplaceConstructor_eq
+  Corollary SharpenStep_BuildADT_ReplaceConstructor_eq
             (Rep : Type)
             {n n'}
             (consSigs : Vector.t consSig n)
@@ -58,17 +58,15 @@ Section BuildADTRefinements.
             (newDef : consDef (Vector.nth consSigs idx))
             adt''
   :
-    (forall d,
-       refine (consBody (ith consDefs idx) d) (consBody newDef d))
+    (refineConstructor eq (consBody (ith consDefs idx)) (consBody newDef))
     -> refineADT (ADTReplaceConsDef consDefs methDefs idx newDef) adt''
     -> refineADT (BuildADT consDefs methDefs) adt''.
   Proof.
     intros; eapply SharpenStep; try exact X.
     eapply refineADT_BuildADT_ReplaceConstructor with (AbsR := eq);
     simpl; unfold refine; intros; subst; eauto.
-    repeat computes_to_econstructor; try destruct v; eauto.
-    repeat computes_to_econstructor; try destruct v; eauto;
-    eapply H; eauto.
+    - reflexivity.
+    - reflexivity.
   Qed.
 
   Corollary FullySharpenStep_BuildADT_ReplaceConstructor_eq
@@ -82,18 +80,16 @@ Section BuildADTRefinements.
             (newDef : consDef (Vector.nth consSigs idx))
             adt''
   :
-    (forall d,
-       refine (consBody (ith consDefs idx) d) (consBody newDef d))
+    (refineConstructor eq (consBody (ith consDefs idx)) (consBody newDef))
     -> FullySharpenedUnderDelegates (ADTReplaceConsDef consDefs methDefs idx newDef) adt''
     -> FullySharpenedUnderDelegates (BuildADT consDefs methDefs) adt''.
   Proof.
     intros; eapply FullySharpenStep; try exact X.
     eapply refineADT_BuildADT_ReplaceConstructor with (AbsR := eq);
     simpl; unfold refine; intros; subst; eauto.
-    repeat computes_to_econstructor; try destruct v; eauto.
-    repeat computes_to_econstructor; try destruct v; eauto;
-    eapply H; eauto.
-  Qed. *)
+    - reflexivity.
+    - reflexivity.
+  Qed.
 
   (*Corollary SharpenStep_BuildADT_ReplaceConstructor_eq
             (Rep : Type)
@@ -225,7 +221,7 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
     rewrite ith_replace_Index_neq; eauto.
   Qed.
 
-  (*Lemma SharpenStep_BuildADT_ReplaceMethod_eq
+  Corollary SharpenStep_BuildADT_ReplaceMethod_eq
         (Rep : Type)
         {n n'}
         (consSigs : Vector.t consSig n)
@@ -236,20 +232,17 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
         (newDef : methDef (Vector.nth methSigs idx))
         adt''
   :
-    (forall r_n n,
-       refine (methBody (ith methDefs idx) r_n n) (methBody newDef r_n n))
+    (refineMethod eq (methBody (ith methDefs idx)) (methBody newDef))
     -> refineADT (ADTReplaceMethDef consDefs methDefs idx newDef) adt''
     -> refineADT (BuildADT consDefs methDefs) adt''.
   Proof.
     intros; eapply SharpenStep.
     eapply refineADT_BuildADT_ReplaceMethod with (AbsR := eq);
-    simpl; unfold refine; intros; subst; eauto.
-    repeat computes_to_econstructor; try destruct v; eauto.
-    repeat computes_to_econstructor; try destruct v; try eapply H; eauto.
+    simpl; unfold refine; intros; subst; eauto; reflexivity.
     exact X.
   Qed.
 
-    Lemma FullySharpenStep_BuildADT_ReplaceMethod_eq
+  Lemma FullySharpenStep_BuildADT_ReplaceMethod_eq
         (Rep : Type)
         {n n'}
         (consSigs : Vector.t consSig n)
@@ -260,8 +253,7 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
         (newDef : methDef (Vector.nth methSigs idx))
         adt''
   :
-    (forall r_n n,
-       refine (methBody (ith methDefs idx) r_n n) (methBody newDef r_n n))
+    (refineMethod eq (methBody (ith methDefs idx)) (methBody newDef))
     -> FullySharpenedUnderDelegates
       (ADTReplaceMethDef consDefs methDefs idx newDef)
       adt''
@@ -271,11 +263,9 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
   Proof.
     intros; eapply FullySharpenStep.
     eapply refineADT_BuildADT_ReplaceMethod with (AbsR := eq);
-    simpl; unfold refine; intros; subst; eauto.
-    repeat computes_to_econstructor; try destruct v; eauto.
-    repeat computes_to_econstructor; try destruct v; try eapply H; eauto.
+    simpl; unfold refine; intros; subst; eauto; reflexivity.
     exact X.
-  Qed. *)
+  Qed.
 
   (*Corollary SharpenStep_BuildADT_ReplaceMethod_eq
             (Rep : Type)

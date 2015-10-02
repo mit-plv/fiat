@@ -174,6 +174,26 @@ Definition CallBagImplConstructor
            idx cidx :=
   ComputationalADT.pcConstructors (DelegateImpls idx) cidx.
 
+Fixpoint Lift_Constructor1P RepType (dom : list Type)
+  (P : constructorType RepType [] -> Prop)
+  : constructorType RepType dom -> Prop :=
+  match dom with
+  | nil => fun c => P c
+  | d :: dom' => fun c => forall (t : d), Lift_Constructor1P dom' P (c t)
+  end.
+
+Fixpoint Lift_Constructor2P RepType RepType' (dom : list Type)
+         (P : constructorType RepType []
+              -> cConstructorType RepType' []
+              -> Prop)
+  : constructorType RepType dom
+    -> cConstructorType RepType' dom
+    -> Prop :=
+  match dom with
+  | nil => fun c c' => P c c'
+  | d :: dom' => fun c c' => forall (t : d), Lift_Constructor2P dom' P (c t) (c' t)
+  end.
+
 Lemma refine_BagImplConstructor
       {n}
       {schemas : Vector.t RawSchema n}
@@ -185,24 +205,53 @@ Lemma refine_BagImplConstructor
        : forall idx,
           refineADT (Build_IndexedQueryStructure_Impl_Specs Index idx)
                     (ComputationalADT.LiftcADT (existT _ _ (DelegateImpls idx))))
-  :  forall (ridx : Fin.t _) cidx d,
-    exists r_o' ,
-      refine (@CallBagConstructor _ (ith3 Index ridx) cidx d)
-             (ret r_o') /\
-      AbsR (ValidImpls ridx) r_o' (CallBagImplConstructor DelegateReps DelegateImpls cidx d).
+  :  forall (ridx : Fin.t _) cidx,
+    Lift_Constructor2P
+      (ConstructorDom
+         (BagSig RawTuple (BagSearchTermType (ith3 Index ridx))
+                 (BagUpdateTermType (ith3 Index ridx))) cidx)
+      (fun c c' =>
+         exists r_o' ,
+           refine c (ret r_o')
+           /\ AbsR (ValidImpls ridx) r_o' c')
+      (@CallBagConstructor _ (ith3 Index ridx) cidx)
+      (CallBagImplConstructor DelegateReps DelegateImpls cidx).
 Proof.
   intros.
-  pose proof (ADTRefinementPreservesConstructors (ValidImpls ridx) cidx d _ (ReturnComputes _)).
-  computes_to_inv; subst.
-  exists v;
+  generalize (ADTRefinementPreservesConstructors (ValidImpls ridx) cidx).
+  eapply (fun P H => Lookup_Iterate_Dep_Type P H cidx).
+  simpl; split; intuition.
+  unfold refine in *.
+  specialize (H _ (ReturnComputes _));
+    computes_to_inv; subst.
+  eexists;
     unfold CallBagImplConstructor in *; simpl in *.
   split; simpl.
   - intros v' Comp_v;  computes_to_inv; subst.
-    generalize d v' H; clear.
-    eapply (fun P H => Lookup_Iterate_Dep_Type P H cidx).
-    simpl; intuition.
+    unfold CallBagConstructor; simpl; computes_to_econstructor.
   - eapply H'.
 Qed.
+
+Fixpoint Lift_Method2P RepType RepType'
+         (dom : list Type)
+         (cod : option Type)
+         (P : forall cod,
+             methodType' RepType [] (Some cod)
+             -> cMethodType' RepType' [] (Some cod)
+             -> Prop)
+         (P' : methodType' RepType [] None
+              -> cMethodType' RepType' [] None
+              -> Prop)
+  : methodType' RepType dom cod
+    -> cMethodType' RepType' dom cod
+    -> Prop :=
+  match dom with
+  | nil => match cod with
+           | Some cod' => fun c c' => P cod' c c'
+           | None => fun c c' => P' c c'
+           end
+  | d :: dom' => fun c c' => forall (t : d), Lift_Method2P dom' cod P P' (c t) (c' t)
+  end.
 
 Lemma refine_BagImplMethods
       {qs_schema : RawQueryStructureSchema}
@@ -219,34 +268,69 @@ Lemma refine_BagImplMethods
             (r_n : Build_IndexedQueryStructure_Impl_cRep Index DelegateReps)
             ridx,
     Build_IndexedQueryStructure_Impl_AbsR DelegateReps DelegateImpls ValidImpls r_o r_n ->
-    forall midx
-           d,
-    exists r_o',
-      refine (CallBagMethod ridx midx r_o d)
-             (ret (r_o',
-                   (snd (CallBagImplMethod DelegateReps DelegateImpls midx r_n d))))
-      /\ AbsR (ValidImpls ridx) r_o' (fst (CallBagImplMethod DelegateReps DelegateImpls midx r_n d)).
+    forall midx,
+      Lift_Method2P
+         (fst (MethodDomCod
+         (BagSig RawTuple (BagSearchTermType (ith3 Index ridx))
+                 (BagUpdateTermType (ith3 Index ridx))) midx))
+         (snd (MethodDomCod
+         (BagSig RawTuple (BagSearchTermType (ith3 Index ridx))
+                 (BagUpdateTermType (ith3 Index ridx))) midx))
+      (fun cod m m' =>
+         exists r_o',
+           refine m (ret (r_o', snd m'))
+           /\ AbsR (ValidImpls ridx) r_o' (fst m'))
+      (fun m m' =>
+         exists r_o',
+           refine m (ret r_o')
+           /\ AbsR (ValidImpls ridx) r_o' m')
+      (CallBagMethod ridx midx r_o)
+      (CallBagImplMethod DelegateReps DelegateImpls midx r_n)
+       .
 Proof.
   intros.
-  pose proof (ADTRefinementPreservesMethods (ValidImpls ridx) midx
+  generalize (ADTRefinementPreservesMethods (ValidImpls ridx) midx
                                             (GetIndexedRelation r_o ridx)
-                                            (GetIndexedQueryStructureRelation r_n ridx) d (H ridx) _ (ReturnComputes _)).
-  computes_to_inv; subst.
-  exists (fst v);
-    unfold CallBagImplMethod; simpl in *.
-  split; simpl.
-  - pose proof (f_equal snd H0'') as eq_x; simpl in eq_x.
-    assert (refine (CallBagMethod ridx midx r_o d)
-                   (ret (fst v, snd v)));
-      [ | rewrite eq_x in H0'';
-          unfold ComputationalADT.cMethods in eq_x; simpl in *; rewrite <- eq_x].
-    intros v' Comp_v; simpl in *;  computes_to_inv; subst.
-    destruct v; simpl @fst in *; simpl @snd in *.
-    generalize d i m H H0; clear.
-    eapply (fun P H => Lookup_Iterate_Dep_Type P H midx).
-    simpl; intuition.
-    eassumption.
-  - unfold ComputationalADT.cMethods in *; simpl in *; rewrite <- H0''; eapply H0'.
+                                            (GetIndexedQueryStructureRelation r_n ridx)
+                                            (H ridx)).
+  eapply (fun P H => Lookup_Iterate_Dep_Type P H midx);
+    simpl in *; intuition.
+  - specialize (H0 t _ (ReturnComputes _)); computes_to_inv; subst;
+    unfold CallBagImplMethod, CallBagMethod in *; simpl in *.
+    unfold cMethods in H0''; simpl in *; rewrite <- H0''; simpl.
+    eexists; split; eauto.
+    intros v Comp_v; computes_to_inv; subst.
+    repeat computes_to_econstructor; eauto.
+  - specialize (H0 _ (ReturnComputes _)); computes_to_inv; subst;
+    unfold CallBagImplMethod, CallBagMethod in *; simpl in *.
+    unfold cMethods in H0''; simpl in *; rewrite <- H0''; simpl.
+    eexists; split; eauto.
+    intros v Comp_v; computes_to_inv; subst.
+    repeat computes_to_econstructor; eauto.
+  - specialize (H0 t _ (ReturnComputes _)); computes_to_inv; subst;
+    unfold CallBagImplMethod, CallBagMethod in *; simpl in *.
+    unfold cMethods in H0'; simpl in *. 
+    eexists; split; eauto.
+    intros v Comp_v; computes_to_inv; subst.
+    repeat computes_to_econstructor; eauto.
+  - specialize (H0 t _ (ReturnComputes _)); computes_to_inv; subst;
+    unfold CallBagImplMethod, CallBagMethod in *; simpl in *.
+    unfold cMethods in H0''; simpl in *; rewrite <- H0''; simpl.
+    eexists; split; eauto.
+    intros v Comp_v; computes_to_inv; subst.
+    repeat computes_to_econstructor; eauto.
+  - specialize (H0 t _ (ReturnComputes _)); computes_to_inv; subst;
+    unfold CallBagImplMethod, CallBagMethod in *; simpl in *.
+    unfold cMethods in H0''; simpl in *; rewrite <- H0''; simpl.
+    eexists; split; eauto.
+    intros v Comp_v; computes_to_inv; subst.
+    repeat computes_to_econstructor; eauto.
+  - specialize (H0 t t0 _ (ReturnComputes _)); computes_to_inv; subst;
+    unfold CallBagImplMethod, CallBagMethod in *; simpl in *.
+    unfold cMethods in H0''; simpl in *; rewrite <- H0''; simpl.
+    eexists; split; eauto.
+    intros v Comp_v; computes_to_inv; subst.
+    repeat computes_to_econstructor; eauto.
 Qed.
 
 Definition Initialize_IndexedQueryStructureImpls'
@@ -260,7 +344,7 @@ Definition Initialize_IndexedQueryStructureImpls'
   Iterate_Dep_Type_equiv''
     DelegateReps
     (fun idx  =>
-       CallBagImplConstructor DelegateReps DelegateImpls BagEmpty () ).
+       CallBagImplConstructor DelegateReps DelegateImpls BagEmpty ).
 
 Lemma Initialize_IndexedQueryStructureImpls_AbsR
       {qs_schema : RawQueryStructureSchema}
@@ -299,14 +383,14 @@ Proof.
     computes_to_econstructor; eauto.
     computes_to_econstructor.
     intros.
-    pose proof (fun d => @refine_BagImplConstructor
-                           _ _  _ DelegateReps DelegateImpls ValidImpls idx BagEmpty d).
+    pose proof (@refine_BagImplConstructor
+                           _ _  _ DelegateReps DelegateImpls ValidImpls idx BagEmpty).
     revert qschemaSchemas IHqschemaSchemas DelegateReps idx' Index' DelegateImpls ValidImpls
            v0 H H' H0.
     pattern n, idx; apply Fin.caseS; simpl; intros.
-    + destruct (H0 ()) as [r_o' [refines_r_o' AbsR_r_o']].
+    + destruct (H0) as [r_o' [refines_r_o' AbsR_r_o']].
       pose proof (refines_r_o' _ (ReturnComputes _)).
-      unfold CallBagConstructor in H1; simpl in H1;  computes_to_inv; subst.
+      unfold CallBagConstructor in H0; simpl in H0;  computes_to_inv; subst.
       apply AbsR_r_o'.
     + eapply H'.
 Qed.
@@ -1264,23 +1348,58 @@ Ltac remove_spurious_Dep_Type_BoundedIndex_nth_eq := fail.
 
 Lemma Implement_Bound_Bag_Call' A
   : forall qs_schema Index DelegateReps DelegateImpls ValidImpls
-           r_o r_n ridx midx d (k : _ -> Comp A),
+           r_o r_n ridx midx,
     @Build_IndexedQueryStructure_Impl_AbsR
       qs_schema Index DelegateReps DelegateImpls ValidImpls r_o r_n
-    ->
-    forall k',
-      (forall r_n' r_o' c,
-          (AbsR (ValidImpls ridx)) r_o' r_n'
-          -> refine (k (r_o', c)) (k' r_n' c))
-      -> refine (l <- CallBagMethod (BagIndexKeys := Index) ridx midx r_o d;
-                 k l)
-                (k' (fst (CallBagImplMethod DelegateReps DelegateImpls midx r_n d)) (snd (CallBagImplMethod DelegateReps DelegateImpls midx r_n d))).
+    -> Lift_Method2P
+         (fst (MethodDomCod
+         (BagSig RawTuple (BagSearchTermType (ith3 Index ridx))
+                 (BagUpdateTermType (ith3 Index ridx))) midx))
+         (snd (MethodDomCod
+         (BagSig RawTuple (BagSearchTermType (ith3 Index ridx))
+                 (BagUpdateTermType (ith3 Index ridx))) midx))
+         (fun cod m m' =>
+            forall (k : _ -> Comp A) k',
+              (forall r_n' r_o' c,
+                  (AbsR (ValidImpls ridx)) r_o' r_n'
+                  -> refine (k (r_o', c)) (k' r_n' c))
+              -> refine (l <- m;
+                         k l)
+                        (k' (fst m') (snd m')))
+               (fun m m' =>
+            forall (k : _ -> Comp A) k',
+              (forall r_n' r_o',
+                  (AbsR (ValidImpls ridx)) r_o' r_n'
+                  -> refine (k r_o') (k' r_n'))
+              -> refine (l <- m;
+                         k l)
+                        (k' m'))
+               (CallBagMethod (BagIndexKeys := Index) ridx midx r_o)
+               (CallBagImplMethod DelegateReps DelegateImpls midx r_n).
 Proof.
   simpl; intros.
-  destruct (@refine_BagImplMethods qs_schema Index DelegateReps DelegateImpls ValidImpls r_o r_n ridx H midx d) as [r_o' [refines_r_o' AbsR_r_o']].
-  rewrite refines_r_o'; simplify with monad laws.
-  intros; simpl in *.
-  eapply H0; eauto.
+  generalize (@refine_BagImplMethods qs_schema Index DelegateReps DelegateImpls ValidImpls r_o r_n ridx H midx).
+  simpl.
+  eapply (fun P H => Lookup_Iterate_Dep_Type P H midx).
+  simpl in *; intuition.
+  - destruct (H0 t) as [r_o' [refines_r_o' AbsR_r_o']].
+    rewrite refines_r_o'; simplify with monad laws.
+    eapply H1; eauto.
+  - destruct (H0) as [r_o' [refines_r_o' AbsR_r_o']].
+    rewrite refines_r_o'; simplify with monad laws.
+    eapply H1; eauto.
+  - destruct (H0 t) as [r_o' [refines_r_o' AbsR_r_o']].
+    rewrite refines_r_o'; simplify with monad laws.
+    eapply H1; eauto.
+  - destruct (H0 t) as [r_o' [refines_r_o' AbsR_r_o']].
+    rewrite refines_r_o'; simplify with monad laws.
+    eapply H1; eauto.
+  - destruct (H0 t) as [r_o' [refines_r_o' AbsR_r_o']].
+    rewrite refines_r_o'; simplify with monad laws.
+    eapply H1; eauto.
+  - destruct (H0 t t0) as [r_o' [refines_r_o' AbsR_r_o']].
+    rewrite refines_r_o'; simplify with monad laws.
+    eapply H1; eauto.
 Qed.
 
 Ltac Implement_Bound_Bag_Call :=

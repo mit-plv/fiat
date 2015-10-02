@@ -504,7 +504,6 @@ Section SharpenedBagImplementation.
       simpl in *; destruct_EnsembleIndexedListEquivalence.
       refine pick val bnd; eauto; simplify with monad laws.
       simpl; refine pick val (binsert r_n d).
-      simplify with monad laws.
       finish honing.
       split; eauto using binsert_RepInv.
       eapply refine_Add_binsert; simpl; eauto.
@@ -548,29 +547,29 @@ Section SharpenedBagImplementation.
     (* sUpdate *)
     {
       simplify with monad laws; simpl in *; intuition.
-      pose proof (bupdate_correct (CorrectBag:=CorrectBagPlus) r_n a b H2).
+      pose proof (bupdate_correct (CorrectBag:=CorrectBagPlus) r_n d d0 H2).
       etransitivity.
-      apply refine_if with (b:=CheckUpdatePlus b).
+      apply refine_if with (b:=CheckUpdatePlus d0).
       intros; apply CheckUpdatePlusValid in H3; simpl.
       pose proof (H H3); destruct H4.
       rewrite partition_filter_eq in H5; symmetry in H5.
       destruct (permutation_filter _ _ _ H5) as [l [l_eq Perm_l]].
       refine pick val l.
       simplify with monad laws.
-      refine pick val (snd (bupdate r_n a b)).
+      refine pick val (snd (bupdate r_n d d0)).
       simplify with monad laws.
       rewrite l_eq; reflexivity.
       split.
       eapply refine_Update_bupdate; intuition.
       apply bupdate_RepInv; intuition.
       eapply Permutation_EnsembleIndexedListEquivalence; eauto.
-      intros G; pose proof (bdelete_correct (CorrectBag:=CorrectBagPlus) r_n a H2).
+      intros G; pose proof (bdelete_correct (CorrectBag:=CorrectBagPlus) r_n d H2).
       destruct H3. rewrite partition_filter_eq in H4; symmetry in H4.
       destruct (permutation_filter _ _ _ H4) as [l [l_eq Perm_l]].
       refine pick val l.
       simplify with monad laws.
-      refine pick val (let r := bdelete r_n a in
-                       fold_left (fun b i => binsert b i) (map (bupdate_transform b) (fst r)) (snd r)).
+      refine pick val (let r := bdelete r_n d in
+                       fold_left (fun b i => binsert b i) (map (bupdate_transform d0) (fst r)) (snd r)).
       simplify with monad laws; intuition; simpl.
       rewrite l_eq; reflexivity.
       split.
@@ -579,15 +578,7 @@ Section SharpenedBagImplementation.
       apply binsert_RepInv. apply bdelete_RepInv; assumption.
       eapply Permutation_EnsembleIndexedListEquivalence; eauto.
       unfold H0.
-      instantiate (1 := fun r_n ab =>
-                          if CheckUpdatePlus (snd ab)
-                          then ret (snd (bupdate r_n (fst ab) (snd ab)), fst (bupdate r_n (fst ab) (snd ab)))
-                                   else
-                                     ret
-                                       (fold_left (fun (b0 : BagTypePlus) (i : RawTuple) => binsert b0 i)
-                                                  (map (bupdate_transform (snd ab)) (fst (bdelete r_n (fst ab))))
-                                                  (snd (bdelete r_n (fst ab))), fst (bdelete r_n (fst ab)))).
-      reflexivity.
+      finish honing.
     }
 
     finish_SharpeningADT_WithoutDelegation.
