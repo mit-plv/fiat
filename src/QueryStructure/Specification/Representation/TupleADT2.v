@@ -35,7 +35,7 @@ Section TupleADT2.
   Definition InitTuple2 : InitTuple2Dom -> Tuple2 := id.
 
   Definition InitTuple2Def :=
-    let _ := {| repHint := Tuple2 |} in
+    let _ := {| rep := Tuple2 |} in
     Def Constructor1 Tuple2_Init (inits : InitTuple2Dom) : rep :=
       ret (InitTuple2 inits).
 

@@ -138,7 +138,7 @@ All chains must end with tac, not top (because then there'd be no progress made 
 Ltac srewrite_each_all :=
     first [
            (* Process *)
-            setoid_rewrite (@refine_find_upperbound DNSRRecord _ _) |
+            setoid_rewrite (@refine_find_upperbound resourceRecord _ _) |
             setoid_rewrite (@refine_decides_forall_In' _ _ _ _) |
             setoid_rewrite refine_check_one_longest_prefix_s |
             setoid_rewrite refine_if_If |
@@ -204,12 +204,6 @@ Hint Rewrite refine_count_constraint_broken' : refines.
 Create HintDb refines'.
 (* Hint Resolve refine_count_constraint_broken : refines'. *)
 Hint Resolve refine_count_constraint_broken' : refines'.
-
-Lemma hi : True. Admitted.
-Lemma bye : True. Admitted.
-Create HintDb test.
-Hint Resolve hi : test.
-Hint Resolve bye : test.
 
 (*Ltac the_tactic :=
   let k lem := idtac lem ; fail in

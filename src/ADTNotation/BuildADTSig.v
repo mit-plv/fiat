@@ -23,9 +23,10 @@ Delimit Scope methSig_scope with methSig.
 
 (* Notation for ADT Methods. *)
 
+
 Notation "'Method' id : 'rep' '*' dom1 '*' .. '*' domn '->' 'rep' " :=
   {| methID := id;
-     methDom := cons dom1%type .. (cons domn%type nil) ..;
+     methDom := cons dom1%type .. (cons domn%type (@nil Type)) ..;
      methCod := None |}
     (id at level 0, dom1 at level 0,
      domn at level 0, at level 93)
@@ -33,7 +34,7 @@ Notation "'Method' id : 'rep' '*' dom1 '*' .. '*' domn '->' 'rep' " :=
 
 Notation "'Method' id : 'rep' '*' dom1 '*' .. '*' domn '->' 'rep' '*' cod " :=
   {| methID := id;
-     methDom := cons dom1%type .. (cons domn%type nil) ..;
+     methDom := @cons Type dom1%type .. (@cons Type domn%type (@nil Type)) ..;
      methCod := Some (cod%type : Type) |}
     (id at level 0, cod at level 0, dom1 at level 0,
      domn at level 0,  at level 93)
@@ -41,7 +42,7 @@ Notation "'Method' id : 'rep' '*' dom1 '*' .. '*' domn '->' 'rep' '*' cod " :=
 
 Notation "'Method' id : 'rep' '*' 'rep' " :=
   {| methID := id;
-     methDom := nil;
+     methDom := (@nil Type);
      methCod := None |}
     (id at level 0, at level 93)
   : methSig_scope.

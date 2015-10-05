@@ -12,7 +12,7 @@ Require Import Fiat.QueryStructure.Automation.AutoDB
         Fiat.QueryStructure.Automation.QSImplementation.
 
 Require Import Fiat.Examples.DnsServer.DnsSchema
-        Fiat.Examples.DnsServer.packet_new.
+        Fiat.Examples.DnsServer.packet.
 
 Open Scope list.
 
@@ -41,21 +41,19 @@ as the condition on the body is not a proper relation. :p *)
    proper (i.e. reflexive and transitive) relation.
  *)
 
-Print respectful.
-
 Definition pointwise_refine {A R}
   (f g : (A -> Comp R) -> A -> Comp R) :=
   forall (rec rec' : A -> Comp R) (a : A),
     pointwise_relation A (@refine R) rec rec'
     -> refine (f rec a) (g rec' a).
 
-Lemma reflexive_pR {A R : Type} :
+(*Lemma reflexive_pR {A R : Type} :
   forall A R, Reflexive (@pointwise_refine A R).
 Proof.
   unfold Reflexive, pointwise_refine, pointwise_relation.
   intros.
   (* Doesn't work if x is (fun rec a => {r | ~ rec ~> r} :p *)
-Admitted.
+Admitted. *)
 
 Lemma transitive_pR {A R : Type} :
   forall A R, Transitive (@pointwise_refine A R).
@@ -82,7 +80,6 @@ Proof.
     intros.
     generalize (IHi _ _ H _ _ H0 a); eauto.
 Qed.
-
 
 (* TODO: Agree on a notation for our fueled fix function. *)
 Notation "'Repeat' fuel 'initializing' a 'with' arg 'defaulting' rec 'with' base {{ bod }} " :=
@@ -138,8 +135,8 @@ Notation "'unique' b , P ->> s 'otherwise' ->> s'" :=
 Definition is_empty {A} (l : list A) :=
   match l with nil => true | _ => false end.
 
-Definition get_name (r : DNSRRecord) : list string := r!sNAME.
-Definition name_length (r : DNSRRecord) := List.length (get_name r).
+Definition get_name (r : resourceRecord) : list string := r!sNAME.
+Definition name_length (r : resourceRecord) := List.length (get_name r).
 
 Notation "[[ x 'in' xs | P ]]" := (filtered_list xs (fun x => P)) (at level 70) : comp_scope.
 
@@ -172,15 +169,14 @@ Notation "tup '!' idx" := (GetAttributeRaw tup ``idx) : TupleImpl_scope.
 (* if the record's type isn't CNAME, there's no need to check against the other records;
 it's independent of the other records *)
 
-
 Lemma refine_not_CNAME__independent :
-  forall (n : DNSRRecord) (R : @IndexedEnsemble DNSRRecord),
+  forall (n : resourceRecord) (R : @IndexedEnsemble resourceRecord),
     n!sTYPE <> CNAME
     -> refine {b |
                decides b
                        (forall tup' : IndexedTuple,
                           R tup' ->
-                          n!sNAME = (indexedElement tup')!sNAME -> n!sTYPE <> CNAME)}
+                          n!sNAME= (indexedElement tup')!sNAME -> n!sTYPE <> CNAME)}
 
               (ret true).
 Proof.
@@ -191,7 +187,7 @@ Qed.
 (* if the record's type *is* CNAME, then refine the forall check against other records into
 an existential (exists a record with the same name), and return the opposite *)
 Lemma refine_is_CNAME__forall_to_exists :
-  forall (n : DNSRRecord) (R : @IndexedEnsemble DNSRRecord),
+  forall (n : resourceRecord) (R : @IndexedEnsemble resourceRecord),
     n!sTYPE = CNAME
     -> refine {b |
                decides b
@@ -216,7 +212,7 @@ Qed.
 (* very similar to refine_is_CNAME__forall_to_exists;
 they start with the same set, but refine_forall_to_exists refines it with an extra end condition. changes the (forall x, ~P x) check into (exists x, P x) and returns !x, adding the condition in the forall *)
 Lemma refine_forall_to_exists :
-  forall (n : DNSRRecord) (R : @IndexedEnsemble DNSRRecord),
+  forall (n : resourceRecord) (R : @IndexedEnsemble resourceRecord),
     refine {b |
             decides b
                     (forall tup' : IndexedTuple,
@@ -244,7 +240,7 @@ Qed.
 the constraint being broken (refines the boolean x1 in AddData) *)
 
 Lemma refine_count_constraint_broken :
-  forall (n : DNSRRecord) (r : UnConstrQueryStructure DnsSchema),
+  forall (n : resourceRecord) (r : UnConstrQueryStructure DnsSchema),
     refine {b |
             decides b
                     (forall tup' : @IndexedRawTuple (GetHeading DnsSchema sCOLLECTIONS),
@@ -358,7 +354,7 @@ the constraint being broken (refines the boolean x1 in AddData) *)
 
 (*
 Lemma refine_count_constraint_broken :
-  forall (n : DNSRRecord) (r : UnConstrQueryStructure DnsSchema),
+  forall (n : resourceRecord) (r : UnConstrQueryStructure DnsSchema),
     refine {b |
             decides b
                     (forall tup' : @IndexedTuple (GetHeading DnsSchema sCOLLECTIONS),
@@ -414,7 +410,7 @@ Definition bCOLLECTIONS : Fin.t _ :=
                                       (QSschemaNames DnsSchema) sCOLLECTIONS _)).
 
 Lemma refine_count_constraint_broken' :
-  forall (n : DNSRRecord) (r : UnConstrQueryStructure DnsSchema),
+  forall (n : resourceRecord) (r : UnConstrQueryStructure DnsSchema),
     refine {b |
             decides b
                     (forall tup' : @IndexedTuple (GetHeading DnsSchema sCOLLECTIONS),
@@ -574,16 +570,16 @@ Qed.
 
     (* used in refine_check_one_longest_prefix_s and refine_check_one_longest_prefix_CNAME *)
     Lemma all_longest_prefixes_same :
-      forall (ns : list DNSRRecord) (s : list string),
+      forall (ns : list resourceRecord) (s : list string),
         (* the name (list string) of every record in the list is a prefix
            of the given name (list string) *)
         (* e.g. [com.google, com.google.us, com.google.us.scholar] with s = com.google.us.scholar *)
-        (forall (n' : DNSRRecord), List.In n' ns -> IsPrefix (get_name n') s)
+        (forall (n' : resourceRecord), List.In n' ns -> IsPrefix (get_name n') s)
 
         (* for two records, if they both have the longest names in the list of records
            (AND as before, they are prefixes of s)
          then their names must be the same *)
-        -> forall n n' : DNSRRecord, List.In n (find_upperbound name_length ns)
+        -> forall n n' : resourceRecord, List.In n (find_upperbound name_length ns)
                         -> List.In n' (find_upperbound name_length ns)
                         -> get_name n = get_name n'.
     Proof.
@@ -627,10 +623,10 @@ Qed.
     (* Implement the check for an exact match *)
     (* uses all_longest_prefixes_same *)
     Lemma refine_check_one_longest_prefix_s
-    : forall (ns : list DNSRRecord) (s : list string),
+    : forall (ns : list resourceRecord) (s : list string),
         (* the name (list string) of every record in the list is a prefix
            of the given name (list string) *)
-        (forall n' : DNSRRecord, List.In n' ns -> IsPrefix (get_name n') s) ->
+        (forall n' : resourceRecord, List.In n' ns -> IsPrefix (get_name n') s) ->
 
         (* there exists no record such that it is one of the longest prefixes of the name
            AND is not the name itself -- refines to a computation that just checks the first
@@ -639,7 +635,7 @@ Qed.
         refine {b : bool |
                 decides b
                         (~
-                           (exists x : DNSRRecord,
+                           (exists x : resourceRecord,
                               List.In x (find_upperbound name_length ns) /\ s <> (get_name x)))}
 
                (ret match find_upperbound name_length ns with
@@ -653,10 +649,10 @@ Qed.
       unfold If_Then_Else.
       find_if_inside_eqn.
       - unfold not; intros; repeat destruct H; apply H1; clear H1; destruct l;
-        [ inversion H | subst; apply H0 with (n := d) in H ];
+        [ inversion H | subst; apply H0 with (n := r) in H ];
         [ find_if_inside; [ subst; auto | inversion Heqb ] | simpl; left; auto ].
       - unfold not; intros; apply H; clear H; destruct l; try inversion Heqb.
-        exists d; split; [ simpl; left; auto | intros; rewrite <- H in Heqb ].
+        exists r; split; [ simpl; left; auto | intros; rewrite <- H in Heqb ].
         find_if_inside; [ discriminate | unfold not in *; apply n; auto ].
     Qed.
 
@@ -687,8 +683,8 @@ Qed.
 
     (* uses all_longest_prefixes_same; very similar to refine_check_one_longest_prefix_s but with an extra condition/Tuple type *)
     Lemma refine_check_one_longest_prefix_CNAME
-    : forall (ns : list DNSRRecord) (n : RRecordType) (s : list string)
-             (HH : forall (t t' : DNSRRecord) (n n' : nat),
+    : forall (ns : list resourceRecord) (n : RRecordType) (s : list string)
+             (HH : forall (t t' : resourceRecord) (n n' : nat),
                  n <> n'
                  -> nth_error ns n  = Some t
                  -> nth_error ns n' = Some t'
@@ -698,7 +694,7 @@ Qed.
 
         (* as before, the name (list string) of every record in the list is a prefix
            of the given name (list string) *)
-        (forall n' : DNSRRecord, List.In n' ns -> IsPrefix (get_name n') s) ->
+        (forall n' : resourceRecord, List.In n' ns -> IsPrefix (get_name n') s) ->
 
         (* Tuple type instead of record?
         all "records" that contain the longest prefixes and are not CNAME, and n isn't CNAME  *)
@@ -728,15 +724,15 @@ Qed.
       - destruct H as [? [? ?] ]; destruct l; [ inversion H | subst ].
         inversion H; unfold not in *.
         + repeat find_if_inside; subst; auto; exfalso; auto.
-        + assert (d = b).
-          * pose proof (in_eq d l).
+        + assert (r = b).
+          * pose proof (in_eq r l).
             pose proof H; rewrite Heql in H5; pose proof (in_list_preserve_filter _ ns b H5); clear H5.
-            pose proof H4; rewrite Heql in H5; pose proof (in_list_preserve_filter _ ns d H5); clear H5.
-            pose proof (in_list_exists ns b H6); pose proof (in_list_exists ns d H7); destruct_ex; pose proof (H1 d b H4 H).
+            pose proof H4; rewrite Heql in H5; pose proof (in_list_preserve_filter _ ns r H5); clear H5.
+            pose proof (in_list_exists ns b H6); pose proof (in_list_exists ns r H7); destruct_ex; pose proof (H1 r b H4 H).
             destruct (beq_nat x0 x) eqn: eq; [ rewrite beq_nat_true_iff in eq; subst; rewrite H8 in H5; inversion H5; auto | ].
             rewrite beq_nat_false_iff in eq; symmetry in H9.
             (* HH instantiated here *)
-            pose proof (HH b d x0 x eq H5 H8 H9); exfalso; auto.
+            pose proof (HH b r x0 x eq H5 H8 H9); exfalso; auto.
           * repeat find_if_inside; subst; [ exfalso; apply H3 | | exfalso; apply n0 ]; auto.
     Qed.
 
@@ -886,8 +882,6 @@ Proof.
      eapply map_nth_error with (f := indexedElement) in H5; simpl in *; eauto.
 Qed.
 
-Check QueryResultComp.
-
 Lemma In_Where_Intersection heading
   : forall R P (P_dec : DecideableEnsemble P) x,
     computes_to
@@ -993,12 +987,14 @@ Qed.
 
 (* should be generalized *)
 Lemma tuples_in_relation_satisfy_constraint_specific :
-  forall (a : list RawTuple) (n : packet) (r_n : QueryStructure DnsSchema),
+  forall (a : list RawTuple)
+         (n : packet)
+         (r_n : QueryStructure DnsSchema),
 (* TODO *)
     For (r in r_n!sCOLLECTIONS)
-        (Where (IsPrefix r!sNAME (qname (questions n))) (* Where Predicate ... *)
+        (Where (IsPrefix r!sNAME ((n!"questions"!"qname" ))) (* Where Predicate ... *)
                Return r ) ↝ a ->
-  forall (t t' : DNSRRecord) (n0 n' : nat),
+  forall (t t' : resourceRecord) (n0 n' : nat),
     n0 <> n' ->
     nth_error a n0 = Some t -> (* this isn't right? *)
     nth_error a n' = Some t' ->

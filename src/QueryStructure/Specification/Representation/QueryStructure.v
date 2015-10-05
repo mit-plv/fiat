@@ -111,7 +111,7 @@ Class QueryStructureHint :=
 
 (*Notation "'query' id ( r : 'rep' , x : dom ) : cod := bod" :=
   (Build_methDef {| methID := id; methDom := dom; methCod := cod |}
-                 (fun (r : repHint) x =>
+                 (fun (r : rep) x =>
                     let _ := {| codHint := cod |} in
                     queryRes <- bod%QuerySpec;
                   ret (r, queryRes)))%comp
@@ -122,7 +122,7 @@ Class QueryStructureHint :=
 
 Notation "'update' id ( r : 'rep' , x : dom ) : cod := bod" :=
   (Build_methDef {| methID := id; methDom := dom; methCod := cod |}
-                 (fun (r : repHint) x =>
+                 (fun (r : rep) x =>
                     bod%QuerySpec))
     (no associativity, id at level 0, x at level 0, dom at level 0,
      r at level 0, cod at level 0, only parsing,
@@ -132,7 +132,7 @@ Notation "'update' id ( r : 'rep' , x : dom ) : cod := bod" :=
 (* Notation for ADTs built from [BuildADT]. *)
 
 Notation "'QueryADTRep' r { cons1 , meth1 , .. , methn } " :=
-  (let _ := {| repHint := (QueryStructure r) |}
+  (let _ := {| rep := (QueryStructure r) |}
    in @BuildADT (QueryStructure r) _ _ _ _
              (icons cons1%consDef (inil (B := @consDef (QueryStructure r))))
              (icons (B := @methDef (QueryStructure r)) (meth1%queryDef ) .. (icons (B := @methDef (QueryStructure r)) methn%queryDef (inil (B := @methDef (QueryStructure r)))) ..))

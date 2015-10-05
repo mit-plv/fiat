@@ -8,8 +8,15 @@ Reserved Notation "< col1 , .. , coln >"
          (at level 0, col1, coln at level 60,
           format "< '[v  ' col1 ,  .. ,  coln ']' >").
 
-Reserved Notation "tup '!!' attr '<-' v " (no associativity, at level 2,
-                                          format "tup '!!' attr  '<-'  v").
+(*Reserved Notation "tup '!!' attr '<-' v " (no associativity, at level 2,
+                                          format "tup '!!' attr  '<-'  v").*)
+Reserved Notation "tup ○ attrs"
+         (at level 79, no associativity).
+Reserved Notation "x !! attr / f"
+         (at level 80, attr at level 0, no associativity).
+
+Reserved Notation "attr ::= v"
+  (at level 80, no associativity).
 
 Reserved Notation "ro ≃ rn"  (at level 70).
 
@@ -73,3 +80,4 @@ Delimit Scope queryDefParsing_scope with queryDefParsing.
 Delimit Scope queryDef_scope with queryDef.
 Delimit Scope updateDefParsing_scope with updateDefParsing.
 Delimit Scope updateDef_scope with updateDef.
+Delimit Scope Update_scope with Update.
