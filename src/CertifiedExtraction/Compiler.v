@@ -277,92 +277,222 @@ Proof.
          end.
 Qed.
 
-Lemma add_remove_cancel:
-  forall (elt : Type) (k k' : StringMap.key) (v : elt) (m : StringMap.t elt),
-    k = k' -> StringMap.Equal ([k <-- v] :: StringMap.remove k' m) ([k <-- v] :: m).
-Proof.
-  intros.
-  rewrite Equal_mapsto_iff.
-  intros *; map_iff; intuition (subst; tauto).
-Qed.
+Require Import FMaps.
+Module WUtils_fun (E:DecidableType) (Import M:WSfun E).
+  Module Export BasicFacts := WFacts_fun E M.
+  Module Export BasicProperties := WProperties_fun E M.
 
-Lemma remove_add_cancel:
-  forall (elt : Type) (k k' : StringMap.key) (v : elt) (m : StringMap.t elt),
-    k ∉ m ->
-    k = k' ->
-    StringMap.Equal (StringMap.remove k' ([k <-- v] :: m)) m.
-Proof.
-  intros.
-  rewrite Equal_mapsto_iff.
-  intros *; map_iff.
-  destruct (StringMap.E.eq_dec k' k0); subst.
-  intuition subst;
+  Notation "A ∈ B" := (In A B) (at level 10, no associativity) : map_scope.
+  Notation "A ∉ B" := (not (In A B)) (at level 10, no associativity) : map_scope.
+  Notation "[ k <-- v ] :: m" :=
+    (add k v m) (at level 21, right associativity, arguments at next level) : map_scope.
+  Local Open Scope map_scope.
+
+  Lemma MapsTo_In :
+    forall {A: Type} key (val: A) tree,
+      MapsTo key val tree -> In key tree.
+  Proof.
+    intros; eexists; eassumption.
+  Qed.
+
+  Lemma In_MapsTo :
+    forall A m key,
+      In key m ->
+      exists (value: A), MapsTo key value m.
+  Proof.
+    intros A m key H;
+    apply in_find_iff in H.
+    destruct (find key m) as [value | ] eqn:eq_option;
+    try rewrite <- find_mapsto_iff in eq_option;
+    intuition eauto.
+  Qed.
+
+  Lemma add_remove_cancel:
+    forall (elt : Type) (k k' : key) (v : elt) (m : t elt),
+      k = k' -> Equal ([k <-- v] :: remove k' m) ([k <-- v] :: m).
+  Proof.
+    intros.
+    rewrite Equal_mapsto_iff.
+    intros *; map_iff; intuition (subst; tauto).
+  Qed.
+
+  Ltac msubst :=
+    subst;
     repeat match goal with
-           | _ => progress intuition
-           | [ H: StringMap.MapsTo _ _ _ |- _ ] => learn (MapsTo_In H)
+           | [ H: E.eq ?k ?k', H': E.eq ?k' ?k |- _ ] => clear H
+           | [ H: E.eq ?k ?k' |- MapsTo ?k _ _ ] => rewrite H
+           | [ H: E.eq ?k ?k', H': MapsTo ?k _ _ |- _ ] => rewrite H in H'
+           | [ H: E.eq ?k ?k' |- In ?k _ ] => rewrite H
+           | [ H: E.eq ?k ?k', H': not (In ?k _) |- _ ] => rewrite H in H'
+           | [ H: E.eq ?k ?k |- _ ] => clear H
            end.
-  intuition.
-Qed.
 
-Lemma add_redundant_cancel:
-  forall (elt : Type) (k : StringMap.key) (v : elt) (m : StringMap.t elt),
-    StringMap.MapsTo k v m -> StringMap.Equal m ([k <-- v] :: m).
-Proof.
-  intros.
-  rewrite Equal_mapsto_iff.
-  intros *; map_iff;
-  repeat match goal with
-         | _ => congruence
-         | _ => progress subst
-         | [ k: StringMap.key, k': StringMap.key |- _ ] => destruct (StringMap.E.eq_dec k k'); no_duplicates
-         | [ H: StringMap.MapsTo ?k ?v ?m, H': StringMap.MapsTo ?k ?v' ?m |- _ ] => learn (MapsTo_fun H H')
-         | _ => progress intuition
-         end.
-Qed.
+  Ltac map_iff_in H :=
+    repeat match goal with
+           | _ => rewrite add_mapsto_iff in H
+           | _ => rewrite add_in_iff in H
+           | _ => rewrite remove_mapsto_iff in H
+           | _ => rewrite remove_in_iff in H
+           | _ => rewrite empty_mapsto_iff in H
+           | _ => rewrite empty_in_iff in H
+           | _ => rewrite map_mapsto_iff in H
+           | _ => rewrite map_in_iff in H
+           | _ => rewrite mapi_in_iff in H
+           end.
 
+  Lemma remove_add_cancel:
+    forall (elt : Type) (k k' : key) (v : elt) (m : t elt),
+      k ∉ m ->
+      k = k' ->
+      Equal (remove k' ([k <-- v] :: m)) m.
+  Proof.
+    intros.
+    rewrite Equal_mapsto_iff.
+    intros *; map_iff.
+    destruct (E.eq_dec k' k0); msubst;
+    intuition subst;
+      repeat match goal with
+             | _ => progress msubst
+             | _ => progress intuition
+             | [ H: MapsTo _ _ _ |- _ ] => learn (MapsTo_In H)
+             end.
+  Qed.
 
-Ltac map_iff_in H :=
-  repeat match goal with
-         | _ => rewrite add_mapsto_iff in H
-         | _ => rewrite add_in_iff in H
-         | _ => rewrite remove_mapsto_iff in H
-         | _ => rewrite remove_in_iff in H
-         | _ => rewrite empty_mapsto_iff in H
-         | _ => rewrite empty_in_iff in H
-         | _ => rewrite map_mapsto_iff in H
-         | _ => rewrite map_in_iff in H
-         | _ => rewrite mapi_in_iff in H
-         end.
+  Lemma add_redundant_cancel:
+    forall (elt : Type) (k : key) (v : elt) (m : t elt),
+      MapsTo k v m -> Equal m ([k <-- v] :: m).
+  Proof.
+    intros.
+    rewrite Equal_mapsto_iff.
+    intros *; map_iff.
 
-Lemma MapsTo_remove :
-  forall {av} k k' v (m: StringMap.t av),
-    StringMap.MapsTo k v (StringMap.remove k' m) -> StringMap.MapsTo k v m.
-Proof.
-  intros * H; map_iff_in H.
-  intuition eauto using MapsTo_In.
-Qed.
+    match goal with
+    | [ k: key, k': key |- _ ] => destruct (E.eq_dec k k')
+    end;
+    repeat match goal with
+           | _ => congruence
+           | _ => progress msubst
+           | [ H: MapsTo ?k ?v ?m, H': MapsTo ?k ?v' ?m |- _ ] => learn (MapsTo_fun H H')
+           | _ => intuition
+           end.
+  Qed.
 
-Lemma In_remove :
-  forall {av} k k' (m: StringMap.t av),
-    k ∈ (StringMap.remove k' m) -> k ∈ m.
-Proof.
-  intros * H; apply In_MapsTo in H; destruct H; eauto using MapsTo_remove, MapsTo_In.
-Qed.
+  Lemma MapsTo_remove :
+    forall {av} k k' v (m: t av),
+      MapsTo k v (remove k' m) -> MapsTo k v m.
+  Proof.
+    intros * H; map_iff_in H.
+    intuition eauto using MapsTo_In.
+  Qed.
 
-Lemma In_add :
-  forall {av} k k' v (m: StringMap.t av),
-    k = k' ->
-    k ∈ (StringMap.add k' v m).
-Proof.
-  intros; subst; map_iff; tauto.
-Qed.
+  Lemma In_remove :
+    forall {av} k k' (m: t av),
+      k ∈ (remove k' m) -> k ∈ m.
+  Proof.
+    intros * H; apply In_MapsTo in H; destruct H; eauto using MapsTo_remove, MapsTo_In.
+  Qed.
 
-Lemma In_remove_neq: forall {av} k k' m,
-    k ∈ (@StringMap.remove av k' m) ->
-    k <> k'.
-Proof.
-  intros * H; apply In_MapsTo in H; destruct H; map_iff_in H; intuition.
-Qed.
+  Lemma In_add :
+    forall {av} k k' v (m: t av),
+      k = k' ->
+      k ∈ (add k' v m).
+  Proof.
+    intros; subst; map_iff; eauto.
+  Qed.
+
+  Lemma In_remove_neq: forall {av} k k' m,
+      k ∈ (@remove av k' m) ->
+      k <> k'.
+  Proof.
+    intros * H; apply In_MapsTo in H; destruct H; map_iff_in H.
+    intuition. rewrite H0 in *; intuition.
+  Qed.
+
+  Lemma MapsTo_add_eq_inv :
+    forall T {k v v' m},
+      @MapsTo T k v' (add k v m) ->
+      v = v'.
+  Proof.
+    intros *.
+    map_iff; intros.
+    intuition.
+  Qed.
+
+  Lemma MapsTo_NotIn_inv :
+    forall T {k k' v m},
+      not (In k m) ->
+      @MapsTo T k' v m ->
+      k <> k'.
+  Proof.
+    intros * ? maps_to;
+    destruct (E.eq_dec k k'); subst;
+    apply MapsTo_In in maps_to;
+    msubst; congruence.
+  Qed.
+
+  Lemma In_remove_inv:
+    forall {av : Type} {k k' : key} {m : t av},
+      k ∉ m -> k ∉ (@remove av k' m).
+  Proof.
+    intros; red; intros h; apply In_remove in h; congruence.
+  Qed.
+
+  Lemma NotIn_add :
+    forall {elt k k'} {v: elt} {m},
+      k ∉ (add k' v m) -> k ∉ m.
+  Proof.
+    intros.
+    rewrite add_in_iff in H.
+    tauto.
+  Qed.
+
+  Lemma MapsTo_add_remove :
+    forall {elt k} {v: elt} {m},
+      MapsTo k v m ->
+      Equal m (add k v (remove k m)).
+  Proof.
+    intros; rewrite Equal_mapsto_iff;
+    intros k' v'; destruct (E.eq_dec k k'); msubst; map_iff; split; intros;
+    try assert (v = v') by eauto using MapsTo_fun; subst;
+    map_iff; intuition; subst; eauto.
+  Qed.
+
+  Ltac rewrite_in equality target :=
+  (*! TODO is this still needed? !*)
+  let h := fresh in
+  pose proof target as h;
+    setoid_rewrite equality in h;
+    clear dependent target;
+    rename h into target.
+
+  Ltac normalize :=
+    match goal with
+    | [  |- context[find ?k (add ?k ?v ?m)] ] => rewrite (@add_eq_o _ m k k v eq_refl) by reflexivity
+    | [ H: context[find ?k (add ?k ?v ?m)] |- _ ] => rewrite (@add_eq_o _ m k k v eq_refl) in H by reflexivity
+    | [ H: ?k <> ?k' |- context[find ?k (add ?k' _ _)] ] => rewrite add_neq_o by congruence
+    | [ H: ?k <> ?k', H': context[find ?k (add ?k' _ _)] |- _ ] => rewrite add_neq_o in H' by congruence
+
+    | [ H: Equal ?st ?st |- _ ] => clear dependent H
+    | [ H: Equal ?st ?st', H': context[?st] |- _ ] => rewrite_in H H'
+    | [ H: Equal ?st ?st' |- context[?st] ] => rewrite H
+    | [ H: find ?k ?m = Some ?v |- _ ] => apply find_2 in H
+    | [ H: MapsTo ?k ?v ?m |- context[find ?k ?m] ] => rewrite (find_1 H)
+    | [ H: MapsTo ?k ?v ?m, H': context[find ?k ?m] |- _ ] => rewrite_in (find_1 H) H'
+    | [ H: MapsTo ?k ?v ?m, H': MapsTo ?k ?v' ?m |- _ ] => learn (MapsTo_fun H H'); clear dependent H'
+    | [ H: MapsTo ?k ?v (add ?k ?v' ?m) |- _ ] => learn (MapsTo_add_eq_inv H)
+    | [ H: MapsTo ?k ?v (add ?k' ?v' ?m), H': ?k' <> ?k |- _ ] => learn (add_3 H' H)
+
+    | [ H: find _ _ = Some _ |- _ ] => rewrite <- find_mapsto_iff in H
+    | [ H: find _ _ = None |- _ ] => rewrite <- not_find_in_iff in H
+
+    | [ H: ?k ∉ (add _ _ _) |- _ ] => learn (NotIn_add H)
+    | [ H: ?k ∉ ?m, H': MapsTo ?k _ ?m |- _ ] => learn (MapsTo_In H')
+    | [ H: ?k ∉ ?m, H': MapsTo ?k' _ ?m |- _ ] => learn (MapsTo_NotIn_inv H H')
+    | [ H: ?k ∉ ?st |- ?k ∉ (remove ?k' ?st) ] => eapply (In_remove_inv H); solve [eauto]
+    end.
+End WUtils_fun.
+
+Module StringMapUtils := WUtils_fun (StringMap.E) (StringMap).
 
 Ltac cleanup :=
   match goal with
@@ -553,6 +683,8 @@ Lemma WeakEq_Refl:
 Proof.
   unfold WeakEq; t_Morphism; eauto using SameSCAs_Refl, SameADTs_Refl.
 Qed.
+
+Import StringMapUtils.
 
 Ltac t_Same :=
   repeat match goal with
@@ -1012,54 +1144,6 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma MapsTo_add_eq_inv :
-  forall T {k v v' m},
-    @StringMap.MapsTo T k v' (StringMap.add k v m) ->
-    v = v'.
-Proof.
-  intros *.
-  map_iff; intros.
-  intuition congruence.
-Qed.
-
-Lemma MapsTo_NotIn_inv :
-  forall T {k k' v m},
-    k ∉ m ->
-    @StringMap.MapsTo T k' v m ->
-    k <> k'.
-Proof.
-  intros * ? maps_to;
-  destruct (StringMap.E.eq_dec k k'); subst;
-  apply MapsTo_In in maps_to; congruence.
-Qed.
-
-Lemma In_remove_inv:
-  forall {av : Type} {k k' : StringMap.key} {m : StringMap.t av},
-    k ∉ m -> k ∉ (@StringMap.remove av k' m).
-Proof.
-  intros; red; intros h; apply In_remove in h; congruence.
-Qed.
-
-Lemma NotIn_add :
-  forall {elt k k'} {v: elt} {m},
-    k ∉ (StringMap.add k' v m) -> k ∉ m.
-Proof.
-  intros.
-  rewrite add_in_iff in H.
-  tauto.
-Qed.
-
-Lemma MapsTo_add_remove :
-  forall {elt k} {v: elt} {m},
-    StringMap.MapsTo k v m ->
-    StringMap.Equal m (StringMap.add k v (StringMap.remove k m)).
-Proof.
-  intros; rewrite Equal_mapsto_iff.
-  intros k' v'; destruct (StringMap.E.eq_dec k k'); subst; map_iff; split; intros;
-  try assert (v = v') by eauto using MapsTo_fun; subst;
-  map_iff; intuition; subst; eauto.
-Qed.
-
 Ltac facade_cleanup :=
   progress match goal with
   | [  |- eval _ _ = Some _ ] => first [ reflexivity | progress simpl ]
@@ -1086,44 +1170,13 @@ Ltac facade_construction :=
   | [  |- RunsTo _ ?p _ _ ]     => isStmtContructor p; econstructor
   end.
 
-Ltac rewrite_in equality target :=
-  (*! TODO is this still needed? !*)
-  let h := fresh in
-  pose proof target as h;
-    setoid_rewrite equality in h;
-    clear dependent target;
-    rename h into target.
-
 Ltac StringMap_t :=
   match goal with
-  | [  |- context[StringMap.find ?k (StringMap.add ?k ?v ?m)] ] => rewrite (@add_eq_o _ m k k v eq_refl) by reflexivity
-  | [ H: context[StringMap.find ?k (StringMap.add ?k ?v ?m)] |- _ ] => rewrite (@add_eq_o _ m k k v eq_refl) in H by reflexivity
-  | [ H: ?k <> ?k' |- context[StringMap.find ?k (StringMap.add ?k' _ _)] ] => rewrite add_neq_o by congruence
-  | [ H: ?k <> ?k', H': context[StringMap.find ?k (StringMap.add ?k' _ _)] |- _ ] => rewrite add_neq_o in H' by congruence
-
-  | [ H: StringMap.Equal ?st ?st |- _ ] => clear dependent H
-  | [ H: StringMap.Equal ?st ?st', H': context[?st] |- _ ] => rewrite_in H H'
-  | [ H: StringMap.Equal ?st ?st' |- context[?st] ] => rewrite H
-  | [ H: StringMap.find ?k ?m = Some ?v |- _ ] => apply StringMap.find_2 in H
-  | [ H: StringMap.MapsTo ?k ?v ?m |- context[StringMap.find ?k ?m] ] => rewrite (StringMap.find_1 H)
-  | [ H: StringMap.MapsTo ?k ?v ?m, H': context[StringMap.find ?k ?m] |- _ ] => rewrite_in (StringMap.find_1 H) H'
-  | [ H: StringMap.MapsTo ?k ?v ?m, H': StringMap.MapsTo ?k ?v' ?m |- _ ] => learn (MapsTo_fun H H'); clear dependent H'
-  | [ H: StringMap.MapsTo ?k ?v (StringMap.add ?k ?v' ?m) |- _ ] => learn (MapsTo_add_eq_inv H)
-  | [ H: StringMap.MapsTo ?k ?v (StringMap.add ?k' ?v' ?m), H': ?k' <> ?k |- _ ] => learn (StringMap.add_3 H' H)
-
-  | [ H: StringMap.find _ _ = Some _ |- _ ] => rewrite <- find_mapsto_iff in H
-  | [ H: StringMap.find _ _ = None |- _ ] => rewrite <- not_find_in_iff in H
-
+  | _ => progress StringMapUtils.normalize
   | [ H: StringMap.MapsTo ?k (ADT ?v) ?st, H': SameADTs ?st _ |- _ ] => learn (SameADTs_impl H' H)
   | [ H: StringMap.MapsTo ?k (ADT ?v) ?st, H': SameADTs _ ?st |- _ ] => learn (SameADTs_impl' H' H)
   | [ H: StringMap.MapsTo ?k ?v ?m, H': WeakEq ?m ?m' |- _ ] => learn (WeakEq_Mapsto_MapsTo H H') 
-
-  | [ H: ?k ∉ (StringMap.add _ _ _) |- _ ] => learn (NotIn_add H)
-  | [ H: ?k ∉ ?m, H': StringMap.MapsTo ?k _ ?m |- _ ] => learn (MapsTo_In H')
-  | [ H: ?k ∉ ?m, H': StringMap.MapsTo ?k' _ ?m |- _ ] => learn (MapsTo_NotIn_inv H H')
-  | [ H: ?k ∉ ?st |- ?k ∉ (StringMap.remove ?k' ?st) ] => eapply (In_remove_inv H); solve [eauto]
   end.
-
 
 Lemma SameValues_WeakEq :
   forall {av} tenv st1 st2 m,
@@ -1390,7 +1443,6 @@ Lemma not_mapsto_adt_not_MapsTo_ADT :
 Proof.
   not_mapsto_adt_t; red; intros; not_mapsto_adt_t.
 Qed.
-
 
 Lemma ProgOk_Chomp_lemma :
   forall {av} env key prog
