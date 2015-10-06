@@ -324,6 +324,7 @@ Module WUtils_fun (E:DecidableType) (Import M:WSfun E).
            | [ H: E.eq ?k ?k', H': MapsTo ?k _ _ |- _ ] => rewrite H in H'
            | [ H: E.eq ?k ?k' |- In ?k _ ] => rewrite H
            | [ H: E.eq ?k ?k', H': not (In ?k _) |- _ ] => rewrite H in H'
+           | [ H: E.eq ?k ?k', H': (In ?k _ -> False) |- _ ] => rewrite H in H'
            | [ H: E.eq ?k ?k |- _ ] => clear H
            end.
 
@@ -339,6 +340,20 @@ Module WUtils_fun (E:DecidableType) (Import M:WSfun E).
            | _ => rewrite map_in_iff in H
            | _ => rewrite mapi_in_iff in H
            end.
+
+  Lemma remove_notIn_Equal :
+    forall (elt : Type) (k : key) (m : t elt),
+      k ∉ m -> Equal (remove k m) m.
+  Proof.
+    intros.
+    rewrite Equal_mapsto_iff.
+    intros *; map_iff;
+      repeat match goal with
+             | _ => progress msubst
+             | _ => progress intuition
+             | [ H: MapsTo _ _ _ |- _ ] => learn (MapsTo_In H)
+             end.
+  Qed.
 
   Lemma remove_add_cancel:
     forall (elt : Type) (k k' : key) (v : elt) (m : t elt),
@@ -503,6 +518,44 @@ Module WUtils_fun (E:DecidableType) (Import M:WSfun E).
     | [ H: ?k ∉ ?m, H': MapsTo ?k' _ ?m |- _ ] => learn (MapsTo_NotIn_inv H H')
     | [ H: ?k ∉ ?st |- ?k ∉ (remove ?k' ?st) ] => eapply (In_remove_inv H); solve [eauto]
     end.
+
+  Ltac repeat_rec tac :=
+    (progress repeat tac); try (repeat_rec tac).
+
+  Tactic Notation "Repeat" tactic(tac) :=
+    repeat_rec tac.
+
+  Ltac decide_mapsto :=
+    map_iff; intuition congruence.
+
+  Ltac decide_mapsto_maybe_instantiate :=
+    Repeat (idtac;
+             match goal with (* Recursive repeat for things that are only solvable after instantiating properly *)
+             | _ => eassumption
+             | [  |- ?a <> ?b ] => discriminate
+             | [ H: ?a = ?b |- context[?a] ] => rewrite H
+             | [ H: ?k <> ?k' |- MapsTo ?k ?v (add ?k' ?v' ?m) ] => apply add_mapsto_iff
+             | [  |- MapsTo ?k ?v (add ?k' ?v ?m) ] => apply add_1; try reflexivity
+             | [  |- MapsTo ?k ?v (add ?k' ?v' ?m) ] => apply add_2
+             | [  |- find ?k ?m = Some ?v ] => apply find_1
+             end).
+
+  Lemma not_or : forall (A B: Prop), not A /\ not B -> not (A \/ B).
+  Proof.
+    tauto.
+  Qed.
+
+  Ltac decide_not_in :=
+    (* map_iff; intuition congruence. *)
+    repeat match goal with
+           | _                      => assumption
+           | [  |- _ /\ _ ]           => split
+           | [  |- _ <> _ ]           => abstract congruence
+           | [  |- not False ]           => intro; assumption
+           | [  |- not (_ \/ _) ]     => apply not_or
+           | [  |- _ ∉ (empty _) ]   => rewrite empty_in_iff
+           | [  |- _ ∉ (add _ _ _) ] => rewrite add_in_iff
+           end.
 End WUtils_fun.
 
 Module StringMapUtils := WUtils_fun (StringMap.E) (StringMap).
@@ -1022,7 +1075,15 @@ Proof.
   end; simpl; repeat rewrite_equalities; try reflexivity.
 Qed.
 
-Ltac isStmtContructor stmt :=
+Ltac isDeterministicStmtConstructor stmt :=
+  match stmt with
+  | Skip => idtac
+  | Seq _ _ => idtac
+  | Assign _ _ => idtac
+  | _ => fail 1 "This statement has multiple RunsTo and Safe constructors"
+  end.
+
+Ltac isStmtConstructor stmt :=
   match stmt with
   | Skip => idtac
   | Seq _ _ => idtac
@@ -1031,12 +1092,6 @@ Ltac isStmtContructor stmt :=
   | Call _ _ _ => idtac
   | Assign _ _ => idtac
   | _ => fail 1 "No constructor found"
-  end.
-
-Ltac inversion_facade :=
-  match goal with
-  | [ H: RunsTo _ ?p _ _ |- _ ] =>
-    isStmtContructor p; inversion_clear H
   end.
 
 Lemma SameSCAs_refl:
@@ -1168,19 +1223,24 @@ Ltac facade_cleanup :=
   | [ H: ?k ∉ ?m |- context[not_mapsto_adt ?k ?m] ] => rewrite not_in_adts_not_mapsto_adt by assumption
   end.
 
+Ltac unfold_and_subst :=       (* Work around https://coq.inria.fr/bugs/show_bug.cgi?id=3259 *)
+  repeat match goal with
+         | [ H := _ |- _ ] => progress (unfold H in *; clear H)
+         end; subst.
+
 Ltac facade_inversion :=
   (*! TODO Why does inversion_clear just delete RunsTo Skip a b? !*)
   progress match goal with
-  | [ H: Safe _ ?p _ |- _ ]     => isStmtContructor p; inversion H; subst; clear H
-  | [ H: RunsTo _ ?p _ _ |- _ ] => isStmtContructor p; inversion H; subst; clear H
-  | [ H: Some _ = Some _ |- _ ] => inversion H; subst; clear H
-  | [ H: SCA _ _ = SCA _ _ |- _ ] => inversion H; subst; clear H
+  | [ H: Safe _ ?p _ |- _ ]     => isStmtConstructor p; inversion H; unfold_and_subst; clear H
+  | [ H: RunsTo _ ?p _ _ |- _ ] => isStmtConstructor p; inversion H; unfold_and_subst; clear H
+  | [ H: Some _ = Some _ |- _ ] => inversion H; unfold_and_subst; clear H
+  | [ H: SCA _ _ = SCA _ _ |- _ ] => inversion H; unfold_and_subst; clear H
   end.
 
 Ltac facade_construction :=
   progress match goal with
-  | [  |- Safe _ ?p _]          => isStmtContructor p; econstructor
-  | [  |- RunsTo _ ?p _ _ ]     => isStmtContructor p; econstructor
+  | [  |- Safe _ ?p _]          => isDeterministicStmtConstructor p; econstructor
+  | [  |- RunsTo _ ?p _ _ ]     => isDeterministicStmtConstructor p; econstructor
   end.
 
 Ltac StringMap_t :=
@@ -1320,9 +1380,6 @@ Hint Resolve WeakEq_add : SameValues_db.
 
 Inductive Learnt_FromWeakEq {A} (F1 F2: StringMap.t A) :=
 | LearntFromWeakEq: Learnt_FromWeakEq F1 F2.
-
-Ltac decide_mapsto :=
-  map_iff; intuition congruence.
 
 Ltac learn_from_WeakEq_internal HWeakEq fmap1 fmap2 :=
   match fmap1 with
@@ -1565,6 +1622,52 @@ Proof.
   intuition eauto using SameSCAs_pop_SCA, SameADTs_pop_SCA, not_in_adts_not_mapsto_adt.
 Qed.
 
+Lemma SameADTs_pop_SCA':
+  forall (av : Type) (st : StringMap.t (Value av)) 
+    (k : StringMap.key) (v : W) ext,
+    k ∉ ext ->
+    SameADTs ext st ->
+    SameADTs ext ([k <-- SCA av v]::st).
+Proof.
+  unfold SameADTs; split; map_iff; intros;
+  repeat match goal with
+         | [ H: ?k ∉ ?m, H': StringMap.MapsTo ?k' _ ?m |- _ ] => learn (MapsTo_NotIn_inv H H')
+         | [ H: forall _ _ , _ <-> _, H': _ |- _ ] => rewrite_in H H'
+         | [ H: forall _ _ , _ <-> _ |- _ ] => rewrite H
+         | _ => solve [intuition discriminate]
+         end.
+Qed.
+
+Lemma SameSCAs_pop_SCA':
+  forall (av : Type) (st : StringMap.t (Value av)) 
+    (k : StringMap.key) (ext : StringMap.t (Value av)) 
+    (v : W),
+    k ∉ ext ->
+    SameSCAs ext st ->
+    SameSCAs ext ([k <-- SCA av v]::st).
+Proof.
+  unfold SameSCAs; map_iff; intros;
+  repeat match goal with
+         | [ H: ?k ∉ ?m, H': StringMap.MapsTo ?k' _ ?m |- _ ] => learn (MapsTo_NotIn_inv H H')
+         | [ H: forall _ _ , _ <-> _, H': _ |- _ ] => rewrite_in H H'
+         | [ H: forall _ _ , _ <-> _ |- _ ] => rewrite H
+         | _ => solve [intuition discriminate]
+         end.
+  eauto using StringMap.add_2.
+Qed.
+
+Lemma WeakEq_pop_SCA':
+  forall (av : Type) (st : StringMap.t (Value av)) 
+    (k : StringMap.key) (ext : StringMap.t (Value av)) 
+    (v : W),
+    k ∉ ext ->
+    WeakEq ext st ->
+    WeakEq ext ([k <-- SCA av v]::st).
+Proof.
+  unfold WeakEq;
+  intuition eauto using SameSCAs_pop_SCA', SameADTs_pop_SCA'.
+Qed.
+
 Hint Resolve SameADTs_pop_SCA : SameValues_db.
 Hint Resolve SameSCAs_pop_SCA : SameValues_db.
 Hint Resolve WeakEq_pop_SCA : SameValues_db.
@@ -1629,6 +1732,76 @@ Qed.
 
 Hint Resolve not_in_WeakEq_not_mapsto_adt : SameValues_db.
 
+Ltac empty_remove_t :=
+  repeat match goal with
+         | _ => SameValues_Facade_t_step
+         | [ H: StringMap.MapsTo ?k _ (StringMap.empty _) |- _ ] => learn (StringMap.empty_1 H)
+         | [ H: StringMap.MapsTo ?k ?v (StringMap.remove ?k' ?m) |- _ ] => learn (StringMap.remove_3 H)
+         | [ H: forall k v, StringMap.MapsTo _ _ ?m <-> _ |- StringMap.MapsTo _ _ ?m ] => rewrite H
+         end.
+
+Notation "∅" := (StringMap.empty _).
+
+Lemma SameSCAs_empty_remove:
+  forall av (var : string) (initial_state : State av),
+    SameSCAs ∅ initial_state ->
+    SameSCAs ∅ (StringMap.remove var initial_state).
+Proof.
+  unfold SameSCAs; empty_remove_t.
+Qed.
+
+Lemma SameADTs_empty_remove:
+  forall av (var : string) (initial_state : State av),
+    SameADTs ∅ initial_state ->
+    SameADTs ∅ (StringMap.remove var initial_state).
+Proof.
+  unfold SameADTs; empty_remove_t.
+Qed.
+
+Lemma WeakEq_empty_remove:
+  forall av (var : string) (initial_state : State av),
+    WeakEq ∅ initial_state ->
+    WeakEq ∅ (StringMap.remove var initial_state).
+Proof.
+  unfold WeakEq; intuition eauto using SameADTs_empty_remove, SameSCAs_empty_remove.
+Qed.
+
+Lemma SameSCAs_remove_SCA:
+  forall av (var : StringMap.key) (initial_state : State av),
+    var ∉ initial_state ->
+    SameSCAs initial_state (StringMap.remove var initial_state).
+Proof.
+  unfold SameSCAs; intros; rewrite remove_notIn_Equal; eauto.
+Qed.
+
+Lemma SameADTs_remove_SCA:
+  forall av (var : StringMap.key) (initial_state : State av),
+    var ∉ initial_state ->
+    SameADTs initial_state (StringMap.remove var initial_state).
+Proof.
+  unfold SameADTs; intros; rewrite remove_notIn_Equal; eauto using iff_refl.
+Qed.
+
+Lemma WeakEq_remove_SCA:
+  forall av (var : StringMap.key) (initial_state : State av),
+    var ∉ initial_state ->
+    WeakEq initial_state (StringMap.remove var initial_state).
+Proof.
+  unfold WeakEq; intuition (eauto using SameADTs_remove_SCA, SameSCAs_remove_SCA).
+Qed.
+
+Lemma WeakEq_remove_notIn:
+  forall av (k : StringMap.key) (st1 st2 : State av),
+    k ∉ st1 ->
+    WeakEq st1 st2 ->
+    WeakEq st1 (StringMap.remove k st2).
+Proof.
+  intros. rewrite <- (remove_notIn_Equal (k := k)  (m := st1)) by assumption.
+  eauto using WeakEq_remove.
+Qed.
+
+Hint Resolve WeakEq_remove_notIn : SameValues_db.
+
 Lemma CompileConstant:
   forall {av} name env w ext,
     name ∉ ext ->
@@ -1686,23 +1859,6 @@ Proof.
   subst; try congruence;
   SameValues_Facade_t.
 Qed.
-
-Lemma not_or : forall (A B: Prop), not A /\ not B -> not (A \/ B).
-Proof.
-  tauto.
-Qed.
-
-Ltac decide_not_in :=
-  (* map_iff; intuition congruence. *)
-  repeat match goal with
-         | _ => assumption
-         | [  |- _ /\ _ ]                     => split
-         | [  |- _ <> _ ]                     => abstract congruence
-         | [  |- not False ]                     => intro; assumption
-         | [  |- not (_ \/ _) ]               => apply not_or
-         | [  |- _ ∉ (StringMap.empty _) ]   => rewrite empty_in_iff
-         | [  |- _ ∉ (StringMap.add _ _ _) ] => rewrite add_in_iff
-         end.
 
 Lemma CompileBinopB_util2:
   forall {av : Type} (var1 var2 var3 : StringMap.key)
@@ -1838,8 +1994,7 @@ Lemma CompileBinop_full:
     {{ [[name <-- (SCA av (eval_binop (inl op) val1 val2)) as _]]::Nil }} ∪ {{ ext }} // env.
 Proof.
   Time SameValues_Facade_t.
-  apply Cons_PopExt.
-  SameValues_Facade_t.
+  apply Cons_PopExt; [ SameValues_Facade_t | ].
 
   cut (st'0 ≲ Nil ∪ ext);
   repeat match goal with
@@ -1947,7 +2102,7 @@ Section GenSym.
 End GenSym.
 
 Ltac gensym_rec base start :=
-  let name := (eval compute in (base ++ "_" ++ NumberToString start)%string) in
+  let name := (eval compute in (base ++ NumberToString start)%string) in
   lazymatch goal with
   | |- context[name] => gensym_rec base (S start)
   | H : context[name] |- _ => gensym_rec base (S start)
@@ -1970,7 +2125,7 @@ Ltac compile_do_bind k compA compB tl :=
          rewrite (SameValues_Fiat_Bind_TelEq_W k compA compB tl)].
 
 Ltac compile_do_alloc cmp tail :=
-  let name := gensym "var" in
+  let name := gensym "v" in
   debug "Naming nameless head variable";
   apply (ProgOk_Transitivity_Name name).
 
@@ -2029,37 +2184,22 @@ Ltac compile_binop av op lhs rhs ext :=
   | (Some ?vlhs, Some ?vrhs) =>
     apply (CompileBinop (var1 := vlhs) (var2 := vrhs) facade_op)
   | (Some ?vlhs, None) =>
-    let vrhs := gensym "rhs" in
+    let vrhs := gensym "r" in
     apply (CompileBinop_left (var1 := vlhs) (var2 := vrhs) facade_op)
   | (None, Some ?vrhs) =>
-    let vlhs := gensym "lhs" in
+    let vlhs := gensym "l" in
     apply (CompileBinop_right (var1 := vlhs) (var2 := vrhs) facade_op)
   | (None, None) =>
-    let vlhs := gensym "lhs" in
-    let vrhs := gensym "rhs" in
+    let vlhs := gensym "l" in
+    let vrhs := gensym "r" in
     apply (CompileBinop_full (var1 := vlhs) (var2 := vrhs) facade_op)
   end.
-
-Ltac repeat_rec tac :=
-  (progress repeat tac); try (repeat_rec tac).
-
-Tactic Notation "Repeat" tactic(tac) :=
-  repeat_rec tac.
-
-Ltac decide_mapsto_maybe_instantiate :=
-  Repeat (idtac;
-           match goal with (* Recursive repeat for things that are only solvable after instantiating properly *)
-           | [  |- ?a <> ?b ] => discriminate
-           | [ H: ?a = ?b |- context[?a] ] => rewrite H
-           | [ H: ?k <> ?k' |- StringMap.MapsTo ?k ?v (StringMap.add ?k' ?v' ?m) ] => apply add_mapsto_iff
-           | [  |- StringMap.MapsTo ?k ?v (StringMap.add ?k' ?v ?m) ] => apply M.add_1; try reflexivity
-           | [  |- StringMap.MapsTo ?k ?v (StringMap.add ?k' ?v' ?m) ] => apply M.add_2
-           end).
 
 Ltac compile_do_side_conditions :=
   match goal with
   | _ => abstract decide_not_in
-  | [  |- StringMap.MapsTo ?k _ _ ] => solve [decide_mapsto_maybe_instantiate]
+  | [  |- StringMap.find _ _ = Some _ ] => solve [decide_mapsto_maybe_instantiate]
+  | [  |- StringMap.MapsTo _ _ _ ] => solve [decide_mapsto_maybe_instantiate]
   end.
 
 Lemma WrapComp_W_rewrite:
@@ -2167,8 +2307,6 @@ Ltac compile_step :=
   | _ => match_ProgOk compile_ProgOk
   end.
 
-Notation "∅" := (StringMap.empty _).
-
 Example simple :
   forall env,
     sigT (fun prog =>
@@ -2225,43 +2363,8 @@ Example harder_binop :
                              t <- ret (Word.natToWord 32 12);
                              ret (SCA _ (Word.wplus x (Word.wplus z (Word.wminus y t)))))%comp as _]] :: Nil }} ∪ {{ StringMap.empty _ }} // env).
 Proof.
-  econstructor;
-  repeat compile_step.
+  econstructor; repeat compile_step.
 Defined.
-
-Ltac empty_remove_t :=
-  repeat match goal with
-         | _ => SameValues_Facade_t_step
-         | [ H: StringMap.MapsTo ?k _ (StringMap.empty _) |- _ ] => learn (StringMap.empty_1 H)
-         | [ H: StringMap.MapsTo ?k ?v (StringMap.remove ?k' ?m) |- _ ] => learn (StringMap.remove_3 H)
-         | [ H: forall k v, StringMap.MapsTo _ _ ?m <-> _ |- StringMap.MapsTo _ _ ?m ] => rewrite H
-         end.
-
-Lemma SameSCAs_empty_remove:
-  forall av (var : string) (initial_state : State av),
-    SameSCAs ∅ initial_state ->
-    SameSCAs ∅ (StringMap.remove var initial_state).
-Proof.
-  unfold SameSCAs; empty_remove_t.
-Qed.
-
-Lemma SameADTs_empty_remove:
-  forall av (var : string) (initial_state : State av),
-    SameADTs ∅ initial_state ->
-    SameADTs ∅ (StringMap.remove var initial_state).
-Proof.
-  unfold SameADTs; empty_remove_t.
-Qed.
-
-Lemma WeakEq_empty_remove:
-  forall av (var : string) (initial_state : State av),
-    WeakEq ∅ initial_state ->
-    WeakEq ∅ (StringMap.remove var initial_state).
-Proof.
-  unfold WeakEq; intuition eauto using SameADTs_empty_remove, SameSCAs_empty_remove.
-Qed.
-
-Definition Random := { x: W | True }%comp.
 
 Ltac spec_t :=
   repeat match goal with
@@ -2271,7 +2374,27 @@ Ltac spec_t :=
          | [ H: exists t, _ |- _ ] => destruct H
          end; intuition.
 
+Require Import GLabelMap.
+Module GLabelMapUtils := WUtils_fun (GLabelMap.E) (GLabelMap).
+
+Ltac facade_cleanup_call :=
+  match goal with
+  | [ H: Axiomatic ?s = Axiomatic ?s' |- _ ] => inversion H; subst; clear H
+  | [ H: PreCond _ _ _ |- _ ] => progress simpl in H
+  | [ H: PostCond _ _ _ |- _ ] => progress simpl in H
+  | [ H: context[ListFacts4.mapM] |- _ ] => progress simpl in H
+  | [ H: exists w, _ |- _ ] => destruct H
+  | _ => GLabelMapUtils.normalize
+  | _ => progress cbv beta iota delta [add_remove_many] in *
+  | _ => solve [GLabelMapUtils.decide_mapsto_maybe_instantiate]
+  | _ => solve [eauto 3 with call_helpers_db]
+  | _ => solve [eauto 3 with call_preconditions_db]
+  | _ => progress subst
+  end.
+
 Require Import Program List.
+
+Definition Random := { x: W | True }%comp.
 
 Definition FRandom {av} : AxiomaticSpec av.
 Proof.
@@ -2297,38 +2420,28 @@ Hint Immediate FRandom_Precond : call_preconditions_db.
 Hint Immediate Random_caracterization : call_helpers_db.
 Hint Resolve WeakEq_empty_remove : call_helpers_db.
 
-Require Import GLabelMap.
-
-Module GLabelMapUtils := WUtils_fun (GLabelMap.E) (GLabelMap).
+Ltac facade_inversion_plus :=
+  match goal with
+  | [ H: GLabelMap.MapsTo ?fname (@Axiomatic _ ?spec) ?env |- Safe ?env (Call ?retv ?fname ?args) ?st ] =>
+    eapply (@SafeCallAx _ env retv fname args st spec)
+  | [ H: GLabelMap.MapsTo ?fname (@Operational _ ?spec) ?env |- Safe ?env (Call ?retv ?fname ?args) ?st ] =>
+    eapply (@SafeCallOp _ env retv fname args st spec)
+  end.
 
 Lemma CompileCallRandom:
   forall env : GLabelMap.t (FuncSpec ()),
-  forall key var,
+  forall key var ext,
+    var ∉ ext ->
     GLabelMap.MapsTo key (Axiomatic FRandom) env ->
     {{ Nil }}
       Call var key []
-    {{ [[ ` var <~~ WrapComp_W Random as _]]::Nil }} ∪ {{ ∅ }} // env.
+    {{ [[ ` var <~~ WrapComp_W Random as _]]::Nil }} ∪ {{ ext }} // env.
 Proof.
   repeat match goal with
+         | _ => facade_cleanup_call
+         | _ => facade_inversion_plus
          | _ => SameValues_Facade_t_step
-         | [  |- GLabelMap.find ?k ?v = Some _ ] => apply GLabelMap.find_1
-         | _ => solve [eauto with call_preconditions_db]
-         end.
-
-  inversion H1; clear H1;
-  repeat match goal with
-         | [ H := _ |- _ ] => progress (unfold H in *; clear H)
-         | [ H: ?a = ?b, H': context[?a] |- _ ] => rewrite H in H'
-         | [ H: ?a = ?b |- context[?a] ] => rewrite H
-         | [ H: Axiomatic ?s = Axiomatic ?s' |- _ ] => inversion H; subst; clear H
-         | [ H: PreCond _ _ _ |- _ ] => progress simpl in H
-         | [ H: PostCond _ _ _ |- _ ] => progress simpl in H
-         | [ H: context[ListFacts4.mapM] |- _ ] => progress simpl in H
-         | [ H: exists w, _ |- _ ] => destruct H
-         | _ => GLabelMapUtils.normalize
-         | _ => progress cbv beta iota delta [add_remove_many] in *
          | _ => progress (simpl; SameValues_Facade_t)
-         | _ => solve [eauto with call_helpers_db]
          end.
 Qed.
 
@@ -2338,12 +2451,13 @@ Example random_sample :
     sigT (fun prog =>
             {{ @Nil unit }}
               prog
-              {{ [[`"ret" <~~ (x <- Random;
-                               ret (SCA _ (Word.wplus x x)))%comp as _]] :: Nil }} ∪ {{ StringMap.empty _ }} // env).
+              {{ [[`"ret" <~~ ( x <- Random;
+                                y <- Random;
+                                ret (SCA _ (Word.wminus (Word.wplus x x) (Word.wplus y y))))%comp as _]] :: Nil }} ∪ {{ StringMap.empty _ }} // env).
 Proof.
-  econstructor.
-  repeat compile_step.
-  eauto using CompileCallRandom.
+  econstructor; repeat compile_step;
+  apply CompileCallRandom; try compile_step;
+  eassumption.
 Defined.
 
 Definition EnvContainingRandom :=
@@ -2355,15 +2469,120 @@ Proof.
   eauto using GLabelMap.add_1.
 Qed.
 
-Eval simpl in (proj1_sig (simple_binop EmptyEnv)).
-Eval simpl in (proj1_sig (harder_binop EmptyEnv)).
-
-Notation "A ;; B" := (Seq A B) (at level 76, left associativity, format "'[v' A ';;' '/' B ']'") : facade_scope.
-Notation "x := F # G A" := (Call x (F, G) (A)) (at level 76, left associativity, format "x  ':='  F '#' G A") : facade_scope.
-Notation "x <- A" := (Assign x A) (at level 61, left associativity) : facade_scope.
+Notation "A ; B" := (Seq A B) (at level 76, left associativity, format "'[v' A ';' '/' B ']'") : facade_scope.
+Notation "x := F . G A" := (Call x (F, G) (A)) (at level 76, no associativity, format "x  ':='  F '.' G  A") : facade_scope.
+Notation "x := A" := (Assign x A) (at level 61, no associativity) : facade_scope.
 Notation "x + A" := (Binop IL.Plus x A) (at level 50, left associativity) : facade_scope.
-Notation "! x" := (Var x) (at level 20, left associativity, format "'!' x") : facade_scope.
-Notation "'__'" := (Skip) (at level 20, left associativity) : facade_scope.
+Notation "x - A" := (Binop IL.Minus x A) (at level 50, left associativity) : facade_scope.
+Notation ", x" := (Var x) (at level 20, no associativity, format "',' x") : facade_scope.
+Notation "'__'" := (Skip) (at level 20, no associativity) : facade_scope.
 
 Local Open Scope facade_scope.
 Eval simpl in (proj1_sig (random_sample EnvContainingRandom p)).
+
+Definition bool2w b :=
+  match b with
+  | true => (Word.natToWord 32 1)
+  | false => (Word.natToWord 32 0)
+  end.
+
+Definition bool2val {av} b :=
+  SCA av (bool2w b).
+
+Definition isTrueExpr var :=
+  TestE IL.Eq (Const (bool2w true)) (Var var).
+
+Set Implicit Arguments.
+
+Lemma isTrueExpr_is_true:
+  forall {av} (tmp : string) (st' : State av),
+    StringMap.MapsTo tmp (bool2val true) st' -> is_true st' (isTrueExpr tmp).
+Proof.
+  unfold isTrueExpr, bool2val, is_true, is_false, eval_bool; simpl;
+  SameValues_Facade_t.
+Qed.
+
+Lemma isTrueExpr_is_false:
+  forall {av} (tmp : string) (st' : State av),
+    StringMap.MapsTo tmp (bool2val false) st' -> is_false st' (isTrueExpr tmp).
+Proof.
+  unfold isTrueExpr, bool2val, is_true, is_false, eval_bool; simpl;
+  SameValues_Facade_t.
+Qed.
+
+Lemma is_true_isTrueExpr:
+  forall {av} (gallinaTest : bool) (tmp : StringMap.key) (st' : State av),
+    is_true st' (isTrueExpr tmp) ->
+    StringMap.MapsTo tmp (bool2val gallinaTest) st' ->
+    gallinaTest = true.
+Proof.
+  unfold isTrueExpr, bool2val, bool2w, is_true, is_false, eval_bool; simpl;
+  destruct gallinaTest; SameValues_Facade_t.
+Qed.
+
+Lemma is_false_isTrueExpr:
+  forall {av} (gallinaTest : bool) (tmp : StringMap.key) (st' : State av),
+    is_false st' (isTrueExpr tmp) ->
+    StringMap.MapsTo tmp (bool2val gallinaTest) st' ->
+    gallinaTest = false.
+Proof.
+  unfold isTrueExpr, bool2val, bool2w, is_true, is_false, eval_bool; simpl;
+  destruct gallinaTest; SameValues_Facade_t.
+Qed.
+
+Lemma CompileIf :
+  forall {av} k (gallinaTest: bool) gallinaT gallinaF tmp facadeTest facadeT facadeF,
+  forall env (ext: StringMap.t (Value av)),
+    tmp ∉ ext ->
+    {{ Nil }}
+      facadeTest
+    {{ [[tmp <-- (bool2val gallinaTest) as _]]::Nil }} ∪ {{ ext }} // env ->
+    {{ [[tmp <-- (bool2val gallinaTest) as _]]::Nil }}
+      facadeT
+    {{ [[tmp <-- (bool2val gallinaTest) as _]]::[[`k <~~ gallinaT as _]]::Nil }} ∪ {{ ext }} // env ->
+    {{ [[tmp <-- (bool2val gallinaTest) as _]]::Nil }}
+      facadeF
+    {{ [[tmp <-- (bool2val gallinaTest) as _]]::[[`k <~~ gallinaF as _]]::Nil }} ∪ {{ ext }} // env ->
+    {{ Nil }}
+      (Seq facadeTest (If (isTrueExpr tmp) facadeT facadeF))
+    {{ [[`k <~~ if gallinaTest then gallinaT else gallinaF as _]]::Nil }} ∪ {{ ext }} // env.
+Proof.
+  SameValues_Facade_t;
+  repeat match goal with
+         | [ H: StringMap.MapsTo ?k (bool2val ?test) ?st |- Safe _ (If (isTrueExpr ?k) _ _) ?st ] =>
+           match test with
+           | true => apply SafeIfTrue
+           | false => apply SafeIfFalse
+           | _ => destruct test
+           end
+         end;
+  eauto using isTrueExpr_is_false, isTrueExpr_is_true;
+  (* apply Cons_PopExt. SameValues_Facade_t. *)
+
+  lazymatch goal with
+  | [ H: is_true ?st (isTrueExpr ?k), H': StringMap.MapsTo ?k (bool2val ?test) ?st |- _ ] => learn (is_true_isTrueExpr H H')
+  | [ H: is_false ?st (isTrueExpr ?k), H': StringMap.MapsTo ?k (bool2val ?test) ?st |- _ ] => learn (is_false_isTrueExpr H H')
+  end; subst.
+
+
+  
+
+  Lemma SameValues_add_to_ext:
+    forall {av} (k : string) (cmp : Comp (Value av)) val
+      (tmp : StringMap.key) (ext : StringMap.t (Value av))
+      (final_state : State av),
+      tmp ∉ ext ->
+      final_state ≲ [[ ` k <~~ cmp as _]]::Nil ∪ [tmp <-- SCA _ val]::ext ->
+      final_state ≲ [[ ` k <~~ cmp as _]]::Nil ∪ ext.
+  Proof.
+    simpl; intros. SameValues_Fiat_t.
+    eauto using WeakEq_pop_SCA, WeakEq_refl, WeakEq_Trans.
+  Qed.
+
+  eauto using SameValues_add_to_ext.
+  eauto using SameValues_add_to_ext.
+Qed.
+
+Eval simpl in (proj1_sig (simple_binop EmptyEnv)).
+Eval simpl in (proj1_sig (harder_binop EmptyEnv)).
+
