@@ -457,6 +457,16 @@ Module WUtils_fun (E:DecidableType) (Import M:WSfun E).
     map_iff; intuition; subst; eauto.
   Qed.
 
+  Lemma remove_trickle :
+    forall {elt : Type} (k k' : M.key) (v' : elt) (m : M.t elt),
+      k = k' ->
+      Equal (remove k ([k' <-- v']::m)) (remove k m).
+  Proof.
+    intros.
+    rewrite Equal_mapsto_iff; intros; map_iff.
+    intuition (subst; congruence).
+  Qed.
+
   Ltac rewrite_in equality target :=
   (*! TODO is this still needed? !*)
   let h := fresh in
@@ -481,6 +491,9 @@ Module WUtils_fun (E:DecidableType) (Import M:WSfun E).
     | [ H: MapsTo ?k ?v ?m, H': MapsTo ?k ?v' ?m |- _ ] => learn (MapsTo_fun H H'); clear dependent H'
     | [ H: MapsTo ?k ?v (add ?k ?v' ?m) |- _ ] => learn (MapsTo_add_eq_inv H)
     | [ H: MapsTo ?k ?v (add ?k' ?v' ?m), H': ?k' <> ?k |- _ ] => learn (add_3 H' H)
+
+    | [ |- context[remove ?k (add ?k ?v ?m)] ] => rewrite (remove_trickle (k := k) (k' := k) v m eq_refl)
+    | [ H: context[remove ?k (add ?k ?v ?m)] |- _ ] => rewrite_in (remove_trickle (k := k) (k' := k) v m eq_refl) H
 
     | [ H: find _ _ = Some _ |- _ ] => rewrite <- find_mapsto_iff in H
     | [ H: find _ _ = None |- _ ] => rewrite <- not_find_in_iff in H
@@ -1691,17 +1704,6 @@ Ltac decide_not_in :=
          | [  |- _ ∉ (StringMap.add _ _ _) ] => rewrite add_in_iff
          end.
 
-(* Lemma remove_trickle : *)
-(*   forall {elt : Type} (k k' : M.key) (v' : elt) (m : M.t elt), *)
-(*     k = k' -> *)
-(*     StringMap.Equal (StringMap.remove k ([k' <-- v']::m)) *)
-(*                     (StringMap.remove k m). *)
-(* Proof. *)
-(*   intros. *)
-(*   rewrite Equal_mapsto_iff; intros; map_iff. *)
-(*   intuition (subst; congruence). *)
-(* Qed. *)
-
 Lemma CompileBinopB_util2:
   forall {av : Type} (var1 var2 var3 : StringMap.key)
     (val1 val2 val3 : _) (ext : StringMap.t (Value av)),
@@ -1945,7 +1947,7 @@ Section GenSym.
 End GenSym.
 
 Ltac gensym_rec base start :=
-  let name := (eval compute in (base ++ "_" ++ NumberToString start)) in
+  let name := (eval compute in (base ++ "_" ++ NumberToString start)%string) in
   lazymatch goal with
   | |- context[name] => gensym_rec base (S start)
   | H : context[name] |- _ => gensym_rec base (S start)
@@ -2223,9 +2225,137 @@ Example harder_binop :
                              t <- ret (Word.natToWord 32 12);
                              ret (SCA _ (Word.wplus x (Word.wplus z (Word.wminus y t)))))%comp as _]] :: Nil }} ∪ {{ StringMap.empty _ }} // env).
 Proof.
-  intros; econstructor;
+  econstructor;
   repeat compile_step.
 Defined.
 
+Definition Random := { x: W | True }%comp.
+
+Ltac spec_t :=
+  repeat match goal with
+         | _ => red
+         | _ => progress intros
+         | _ => progress subst
+         | [ H: exists t, _ |- _ ] => destruct H
+         end; intuition.
+
+Require Import Program List.
+
+Definition FRandom {av} : AxiomaticSpec av.
+Proof.
+  refine {|
+      PreCond := fun args => args = nil;
+      PostCond := fun args ret => args = nil /\ exists w, ret = SCA av w
+    |}; spec_t.
+Defined.
+
+Lemma FRandom_Precond {av}:
+  PreCond (@FRandom av) [].
+Proof.
+  reflexivity.
+Qed.
+
+Lemma Random_caracterization {av}:
+  forall x : W, WrapComp_W Random ↝ SCA av x.
+Proof.
+  constructor.
+Qed.
+
+Hint Immediate FRandom_Precond : call_preconditions_db.
+Hint Immediate Random_caracterization : call_helpers_db.
+
+Ltac empty_remove_t :=
+  repeat match goal with
+         | _ => SameValues_Facade_t_step
+         | [ H: StringMap.MapsTo ?k _ (StringMap.empty _) |- _ ] => learn (StringMap.empty_1 H)
+         | [ H: StringMap.MapsTo ?k ?v (StringMap.remove ?k' ?m) |- _ ] => learn (StringMap.remove_3 H)
+         | [ H: forall k v, StringMap.MapsTo _ _ ?m <-> _ |- StringMap.MapsTo _ _ ?m ] => rewrite H
+         end.
+
+Lemma SameSCAs_empty_remove:
+  forall av (var : string) (initial_state : State av),
+    SameSCAs ∅ initial_state ->
+    SameSCAs ∅ (StringMap.remove var initial_state).
+Proof.
+  unfold SameSCAs; empty_remove_t.
+Qed.
+
+Lemma SameADTs_empty_remove:
+  forall av (var : string) (initial_state : State av),
+    SameADTs ∅ initial_state ->
+    SameADTs ∅ (StringMap.remove var initial_state).
+Proof.
+  unfold SameADTs; empty_remove_t.
+Qed.
+
+Lemma WeakEq_empty_remove:
+  forall av (var : string) (initial_state : State av),
+    WeakEq ∅ initial_state ->
+    WeakEq ∅ (StringMap.remove var initial_state).
+Proof.
+  unfold WeakEq; intuition eauto using SameADTs_empty_remove, SameSCAs_empty_remove.
+Qed.
+
+Hint Resolve WeakEq_empty_remove : call_helpers_db.
+
+Require Import GLabelMap.
+
+Module GLabelMapUtils := WUtils_fun (GLabelMap.E) (GLabelMap).
+
+Lemma CompileCallRandom:
+  forall env : GLabelMap.t (FuncSpec ()),
+  forall key var,
+    GLabelMap.MapsTo key (Axiomatic FRandom) env ->
+    {{ Nil }}
+      Call var key []
+    {{ [[ ` var <~~ WrapComp_W Random as _]]::Nil }} ∪ {{ ∅ }} // env.
+Proof.
+  repeat match goal with
+         | _ => SameValues_Facade_t_step
+         | [  |- GLabelMap.find ?k ?v = Some _ ] => apply GLabelMap.find_1
+         | _ => solve [eauto with call_preconditions_db]
+         end.
+
+  inversion H1; clear H1;
+  repeat match goal with
+         | [ H := _ |- _ ] => progress (unfold H in *; clear H)
+         | [ H: ?a = ?b, H': context[?a] |- _ ] => rewrite H in H'
+         | [ H: ?a = ?b |- context[?a] ] => rewrite H
+         | [ H: Axiomatic ?s = Axiomatic ?s' |- _ ] => inversion H; subst; clear H
+         | [ H: PreCond _ _ _ |- _ ] => progress simpl in H
+         | [ H: PostCond _ _ _ |- _ ] => progress simpl in H
+         | [ H: context[ListFacts4.mapM] |- _ ] => progress simpl in H
+         | [ H: exists w, _ |- _ ] => destruct H
+         | _ => GLabelMapUtils.normalize
+         | _ => progress cbv beta iota delta [add_remove_many] in *
+         | _ => progress (simpl; SameValues_Facade_t)
+         | _ => solve [eauto with call_helpers_db]
+         end.
+Qed.
+
+Example random_sample :
+  forall env,
+    GLabelMap.MapsTo ("std", "rand") (Axiomatic FRandom) env ->
+    sigT (fun prog =>
+            {{ @Nil unit }}
+              prog
+              {{ [[`"ret" <~~ (x <- Random;
+                                ret (SCA _ (Word.wplus x x)))%comp as _]] :: Nil }} ∪ {{ StringMap.empty _ }} // env).
+Proof.
+  econstructor.
+  repeat compile_step.
+  eauto using CompileCallRandom.
+Defined.
+
+Definition EnvContainingRandom :=
+  GLabelMap.add ("std", "rand") (Axiomatic FRandom) (GLabelMap.empty (FuncSpec unit)).
+
+Lemma p :
+  GLabelMap.MapsTo ("std", "rand") (Axiomatic FRandom) EnvContainingRandom.
+Proof.
+  eauto using GLabelMap.add_1.
+Qed.
+
 Eval simpl in (proj1_sig (simple_binop EmptyEnv)).
 Eval simpl in (proj1_sig (harder_binop EmptyEnv)).
+Eval simpl in (proj1_sig (random_sample EnvContainingRandom p)).
