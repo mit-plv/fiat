@@ -2229,6 +2229,38 @@ Proof.
   repeat compile_step.
 Defined.
 
+Ltac empty_remove_t :=
+  repeat match goal with
+         | _ => SameValues_Facade_t_step
+         | [ H: StringMap.MapsTo ?k _ (StringMap.empty _) |- _ ] => learn (StringMap.empty_1 H)
+         | [ H: StringMap.MapsTo ?k ?v (StringMap.remove ?k' ?m) |- _ ] => learn (StringMap.remove_3 H)
+         | [ H: forall k v, StringMap.MapsTo _ _ ?m <-> _ |- StringMap.MapsTo _ _ ?m ] => rewrite H
+         end.
+
+Lemma SameSCAs_empty_remove:
+  forall av (var : string) (initial_state : State av),
+    SameSCAs ∅ initial_state ->
+    SameSCAs ∅ (StringMap.remove var initial_state).
+Proof.
+  unfold SameSCAs; empty_remove_t.
+Qed.
+
+Lemma SameADTs_empty_remove:
+  forall av (var : string) (initial_state : State av),
+    SameADTs ∅ initial_state ->
+    SameADTs ∅ (StringMap.remove var initial_state).
+Proof.
+  unfold SameADTs; empty_remove_t.
+Qed.
+
+Lemma WeakEq_empty_remove:
+  forall av (var : string) (initial_state : State av),
+    WeakEq ∅ initial_state ->
+    WeakEq ∅ (StringMap.remove var initial_state).
+Proof.
+  unfold WeakEq; intuition eauto using SameADTs_empty_remove, SameSCAs_empty_remove.
+Qed.
+
 Definition Random := { x: W | True }%comp.
 
 Ltac spec_t :=
@@ -2263,39 +2295,6 @@ Qed.
 
 Hint Immediate FRandom_Precond : call_preconditions_db.
 Hint Immediate Random_caracterization : call_helpers_db.
-
-Ltac empty_remove_t :=
-  repeat match goal with
-         | _ => SameValues_Facade_t_step
-         | [ H: StringMap.MapsTo ?k _ (StringMap.empty _) |- _ ] => learn (StringMap.empty_1 H)
-         | [ H: StringMap.MapsTo ?k ?v (StringMap.remove ?k' ?m) |- _ ] => learn (StringMap.remove_3 H)
-         | [ H: forall k v, StringMap.MapsTo _ _ ?m <-> _ |- StringMap.MapsTo _ _ ?m ] => rewrite H
-         end.
-
-Lemma SameSCAs_empty_remove:
-  forall av (var : string) (initial_state : State av),
-    SameSCAs ∅ initial_state ->
-    SameSCAs ∅ (StringMap.remove var initial_state).
-Proof.
-  unfold SameSCAs; empty_remove_t.
-Qed.
-
-Lemma SameADTs_empty_remove:
-  forall av (var : string) (initial_state : State av),
-    SameADTs ∅ initial_state ->
-    SameADTs ∅ (StringMap.remove var initial_state).
-Proof.
-  unfold SameADTs; empty_remove_t.
-Qed.
-
-Lemma WeakEq_empty_remove:
-  forall av (var : string) (initial_state : State av),
-    WeakEq ∅ initial_state ->
-    WeakEq ∅ (StringMap.remove var initial_state).
-Proof.
-  unfold WeakEq; intuition eauto using SameADTs_empty_remove, SameSCAs_empty_remove.
-Qed.
-
 Hint Resolve WeakEq_empty_remove : call_helpers_db.
 
 Require Import GLabelMap.
@@ -2340,7 +2339,7 @@ Example random_sample :
             {{ @Nil unit }}
               prog
               {{ [[`"ret" <~~ (x <- Random;
-                                ret (SCA _ (Word.wplus x x)))%comp as _]] :: Nil }} ∪ {{ StringMap.empty _ }} // env).
+                               ret (SCA _ (Word.wplus x x)))%comp as _]] :: Nil }} ∪ {{ StringMap.empty _ }} // env).
 Proof.
   econstructor.
   repeat compile_step.
@@ -2358,4 +2357,13 @@ Qed.
 
 Eval simpl in (proj1_sig (simple_binop EmptyEnv)).
 Eval simpl in (proj1_sig (harder_binop EmptyEnv)).
+
+Notation "A ;; B" := (Seq A B) (at level 76, left associativity, format "'[v' A ';;' '/' B ']'") : facade_scope.
+Notation "x := F # G A" := (Call x (F, G) (A)) (at level 76, left associativity, format "x  ':='  F '#' G A") : facade_scope.
+Notation "x <- A" := (Assign x A) (at level 61, left associativity) : facade_scope.
+Notation "x + A" := (Binop IL.Plus x A) (at level 50, left associativity) : facade_scope.
+Notation "! x" := (Var x) (at level 20, left associativity, format "'!' x") : facade_scope.
+Notation "'__'" := (Skip) (at level 20, left associativity) : facade_scope.
+
+Local Open Scope facade_scope.
 Eval simpl in (proj1_sig (random_sample EnvContainingRandom p)).
