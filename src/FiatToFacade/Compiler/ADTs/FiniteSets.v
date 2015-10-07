@@ -1,6 +1,6 @@
 Require Import FiatToFacade.Compiler.Prerequisites.
 Require Import Bedrock.Platform.Facade.examples.FiatADTs.
-Require Import GLabelMap List Permutation.
+Require Import GLabelMap Coq.Lists.List Coq.Sorting.Permutation.
 
 Unset Implicit Arguments.
 

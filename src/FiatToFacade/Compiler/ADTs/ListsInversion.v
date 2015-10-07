@@ -1,6 +1,6 @@
 Require Import FiatToFacade.Compiler.Prerequisites.
 Require Import Bedrock.Platform.Facade.examples.FiatADTs.
-Require Import List GLabelMap.
+Require Import Coq.Lists.List GLabelMap.
 
 Unset Implicit Arguments.
 

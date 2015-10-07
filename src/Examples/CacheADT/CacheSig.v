@@ -1,4 +1,4 @@
-Require Import String Omega List FunctionalExtensionality Ensembles
+Require Import Coq.Strings.String Coq.omega.Omega Coq.Lists.List Coq.Logic.FunctionalExtensionality Coq.Sets.Ensembles
         Computation ADT ADTRefinement ADTNotation BuildADTRefinements
         KVEnsembles.
 

@@ -1,6 +1,6 @@
 Require Import CompileDFacade.
 Require Import FiatToFacade.Compiler.
-Require Import List.
+Require Import Coq.Lists.List.
 
 Notation argvar1 := "arg1".
 Notation argvar2 := "arg2".

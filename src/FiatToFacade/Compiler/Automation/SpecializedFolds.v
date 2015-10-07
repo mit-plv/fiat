@@ -1,7 +1,7 @@
 Require Import FiatToFacade.Compiler.
 Require Import FiatToFacade.Compiler.Automation.Vacuum.
 Require Import FiniteSetADTs FiniteSetADTs.FiniteSetADTMethodLaws.
-Require Import List DFacade.
+Require Import Coq.Lists.List DFacade.
 
 Lemma compile_FiniteSetAndFunctionOfList_SCA (FiniteSetImpl : FullySharpened FiniteSetSpec)
       f (x : W) ls
