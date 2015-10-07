@@ -2593,10 +2593,17 @@ Ltac compile_random :=
                        | (Nil, Cons ?s (WrapComp_W Random) (fun _ => Nil)) => apply CompileCallRandom
                        end).
 
+Ltac is_comp c :=
+  match type of c with
+  | @Comp _ => idtac
+  | _ => fail 1
+  end.
+
 Ltac compile_if :=
   match_ProgOk ltac:(fun prog pre post ext =>
                        match constr:(pre, post) with
-                       | (Nil, Cons ?s (if ?a then ret ?b else ret ?c) (fun _ => Nil)) =>
+                       | (Nil, Cons ?s (if ?a then ?b else ?c) (fun _ => Nil)) =>
+                         is_comp b; is_comp c;
                          let test := gensym "test" in
                          apply (CompileIf (tmp := test))
                        end).
