@@ -41,16 +41,7 @@ clean-doc::
 CORE_UNMADE_VO := \
 	src/Common/ilist2.vo \
 	src/Common/i2list.vo \
-	src/Common/ilist2_pair.vo \
-	src/FiniteSetADTs.vo \
-	src/Fiat4Monitors/% \
-	src/QueryStructure/% \
-	src/Parsers/% \
-	src/CertifiedExtraction/% \
-	src/BinEncoders/% \
-	src/FiniteSetADTs/% \
-	src/FiatToFacade/% \
-	src/Examples/%
+	src/Common/ilist2_pair.vo
 
 QUERYSTRUCTURES_UNMADE_VO := \
 	src/QueryStructure/Implementation/DataStructures/Bags/InvertedIndexBags.vo
@@ -88,7 +79,7 @@ EXAMPLES_UNMADE_VO := \
 WATER_TANK_EXTRACT_VO := src/Examples/Ics/WaterTankExtract.vo
 WATER_TANK_EXTRACT_ML := src/Examples/Ics/WaterTank.ml
 
-FIAT_CORE_VO := $(filter-out $(CORE_UNMADE_VO),$(filter src/%.vo,$(VOFILES)))
+FIAT_CORE_VO := $(filter-out $(CORE_UNMADE_VO),$(filter src/Computation.vo src/ADT.vo src/ADTNotation.vo src/ADTRefinement.vo src/Common.vo src/Computation/%.vo src/ADT/%.vo src/ADTNotation/%.vo src/ADTRefinement/%.vo src/Common/%.vo,$(VOFILES)))
 QUERYSTRUCTURES_VO := $(filter-out $(QUERYSTRUCTURES_UNMADE_VO),$(filter src/QueryStructure/%.vo,$(VOFILES)))
 PARSERS_VO := $(filter-out $(PARSERS_UNMADE_VO),$(filter src/Parsers/%.vo,$(VOFILES)))
 PARSERS_ALL_VO := $(filter src/Parsers/%.vo,$(VOFILES))
