@@ -2253,7 +2253,7 @@ Ltac compile_simple_internal cmp ext :=
   match cmp with
   | ret (SCA ?av (?op ?lhs ?rhs)) => compile_binop av op lhs rhs ext
   | ret (SCA _ ?w) => compile_constant w; compile_do_side_conditions
-  | ret (SCA _ ?w) => compile_read w ext; compile_do_side_conditions
+  | ret (SCA ?av ?w) => compile_read (SCA av w) ext; compile_do_side_conditions
   end.
 
 (* Hint Extern 1 => solve [decide_not_in] : compile_simple_db. *)
