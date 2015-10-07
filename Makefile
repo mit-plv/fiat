@@ -78,7 +78,7 @@ EXAMPLES_UNMADE_VO := \
 WATER_TANK_EXTRACT_VO := src/Examples/Ics/WaterTankExtract.vo
 WATER_TANK_EXTRACT_ML := src/Examples/Ics/WaterTank.ml
 
-FIAT_CORE_VO := $(filter-out $(CORE_UNMADE_VO) src/Fiat4Monitors/% src/QueryStructure/% src/Parsers/% src/FiniteSetADTs/% src/FiatToFacade/% src/Examples/% src/FiniteSetADTs.vo,$(filter src/%.vo,$(VOFILES)))
+FIAT_CORE_VO := $(filter-out $(CORE_UNMADE_VO) src/Fiat4Monitors/% src/QueryStructure/% src/Parsers/% src/CertifiedExtraction/% src/BinEncoders/% src/FiniteSetADTs/% src/FiatToFacade/% src/Examples/% src/FiniteSetADTs.vo,$(filter src/%.vo,$(VOFILES)))
 QUERYSTRUCTURES_VO := $(filter src/QueryStructure/%.vo,$(filter-out $(QUERYSTRUCTURES_UNMADE_VO),$(VOFILES)))
 PARSERS_VO := $(filter-out $(PARSERS_UNMADE_VO),$(filter src/Parsers/%.vo,$(VOFILES)))
 PARSERS_ALL_VO := $(filter src/Parsers/%.vo,$(VOFILES))
