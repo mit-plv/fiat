@@ -1,6 +1,6 @@
 Require Import Unary Base.
 
-Section List.
+Section ListBinaryInt.
 
   Variable A : Type.
   Variable A_encode : A -> Bin.
