@@ -41,7 +41,16 @@ clean-doc::
 CORE_UNMADE_VO := \
 	src/Common/ilist2.vo \
 	src/Common/i2list.vo \
-	src/Common/ilist2_pair.vo
+	src/Common/ilist2_pair.vo \
+	src/FiniteSetADTs.vo \
+	src/Fiat4Monitors/% \
+	src/QueryStructure/% \
+	src/Parsers/% \
+	src/CertifiedExtraction/% \
+	src/BinEncoders/% \
+	src/FiniteSetADTs/% \
+	src/FiatToFacade/% \
+	src/Examples/%
 
 QUERYSTRUCTURES_UNMADE_VO := \
 	src/QueryStructure/Implementation/DataStructures/Bags/InvertedIndexBags.vo
@@ -71,15 +80,16 @@ EXAMPLES_UNMADE_VO := \
 	src/Examples/QueryStructure/PhotoalbumExtraction.vo \
 	src/Examples/QueryStructure/PhotoalbumUnOpt.vo \
 	src/Examples/QueryStructure/PhotoalbumUnOptimizedExtraction.vo \
-	src/Examples/QueryStructure/CodeLookup.vo
+	src/Examples/QueryStructure/CodeLookup.vo \
+	src/Examples/Ics/WaterTankExtract.vo
 
 
 
 WATER_TANK_EXTRACT_VO := src/Examples/Ics/WaterTankExtract.vo
 WATER_TANK_EXTRACT_ML := src/Examples/Ics/WaterTank.ml
 
-FIAT_CORE_VO := $(filter-out $(CORE_UNMADE_VO) src/Fiat4Monitors/% src/QueryStructure/% src/Parsers/% src/CertifiedExtraction/% src/BinEncoders/% src/FiniteSetADTs/% src/FiatToFacade/% src/Examples/% src/FiniteSetADTs.vo,$(filter src/%.vo,$(VOFILES)))
-QUERYSTRUCTURES_VO := $(filter src/QueryStructure/%.vo,$(filter-out $(QUERYSTRUCTURES_UNMADE_VO),$(VOFILES)))
+FIAT_CORE_VO := $(filter-out $(CORE_UNMADE_VO),$(filter src/%.vo,$(VOFILES)))
+QUERYSTRUCTURES_VO := $(filter-out $(QUERYSTRUCTURES_UNMADE_VO),$(filter src/QueryStructure/%.vo,$(VOFILES)))
 PARSERS_VO := $(filter-out $(PARSERS_UNMADE_VO),$(filter src/Parsers/%.vo,$(VOFILES)))
 PARSERS_ALL_VO := $(filter src/Parsers/%.vo,$(VOFILES))
 FINITESET_VO := $(filter src/FiniteSetADTs.vo src/FiniteSetADTs/%.vo,$(VOFILES))
@@ -87,8 +97,8 @@ DNS_VO := $(filter src/Examples/DnsServer/%.vo,$(VOFILES))
 COMPILER_VO := $(filter src/FiatToFacade/%.vo,$(VOFILES))
 FACADE_TEST_VO := src/Examples/FacadeTest.vo
 ICS_VO := $(filter-out $(WATER_TANK_EXTRACT_VO),$(filter src/Examples/Ics/%.vo,$(VOFILES)))
-FIAT4MONITORS_VO := $(filter src/Fiat4Monitors/%.vo,$(filter-out $(FIAT4MONITORS_UNMADE_VO), $(VOFILES)))
-EXAMPLES_VO := $(filter-out src/Examples/Ics/WaterTankExtract.vo $(ICS_VO) $(DNS_VO) $(FACADE_TEST_VO) $(EXAMPLES_UNMADE_VO),$(filter src/Examples/%.vo,$(VOFILES)))
+FIAT4MONITORS_VO := $(filter-out $(FIAT4MONITORS_UNMADE_VO), $(filter src/Fiat4Monitors/%.vo,$(VOFILES)))
+EXAMPLES_VO := $(filter-out $(EXAMPLES_UNMADE_VO) $(ICS_VO) $(DNS_VO) $(FACADE_TEST_VO),$(filter src/Examples/%.vo,$(VOFILES)))
 
 FIAT_VO := $(FIAT_CORE_VO) $(QUERYSTRUCTURES_VO) $(PARSERS_VO)
 
