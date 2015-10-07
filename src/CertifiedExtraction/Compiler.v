@@ -1237,11 +1237,42 @@ Ltac facade_inversion :=
   | [ H: SCA _ _ = SCA _ _ |- _ ] => inversion H; unfold_and_subst; clear H
   end.
 
+
+Definition bool2w b :=
+  match b with
+  | true => (Word.natToWord 32 1)
+  | false => (Word.natToWord 32 0)
+  end.
+
+Definition bool2val {av} b :=
+  SCA av (bool2w b).
+
+Definition isTrueExpr var :=
+  TestE IL.Eq (Const (bool2w true)) (Var var).
+
+Require Import GLabelMap.
+Module GLabelMapUtils := WUtils_fun (GLabelMap.E) (GLabelMap).
+
+Ltac facade_construction_if_helper test trueLemma falseLemma :=
+  match test with
+  | true => apply trueLemma
+  | false => apply falseLemma
+  | _ => destruct test
+  end.
+
 Ltac facade_construction :=
   progress match goal with
-  | [  |- Safe _ ?p _]          => isDeterministicStmtConstructor p; econstructor
-  | [  |- RunsTo _ ?p _ _ ]     => isDeterministicStmtConstructor p; econstructor
-  end.
+           | [  |- Safe _ ?p _]          => isDeterministicStmtConstructor p; econstructor
+           | [  |- RunsTo _ ?p _ _ ]     => isDeterministicStmtConstructor p; econstructor
+           | [ H: GLabelMap.MapsTo ?fname (@Axiomatic _ ?spec) ?env |- Safe ?env (Call ?retv ?fname ?args) ?st ] =>
+             eapply (@SafeCallAx _ env retv fname args st spec)
+           | [ H: GLabelMap.MapsTo ?fname (@Operational _ ?spec) ?env |- Safe ?env (Call ?retv ?fname ?args) ?st ] =>
+             eapply (@SafeCallOp _ env retv fname args st spec)
+           | [ H: StringMap.MapsTo ?k (bool2val ?test) ?st |- Safe _ (If (isTrueExpr ?k) _ _) ?st ] =>
+             facade_construction_if_helper test SafeIfTrue SafeIfFalse
+           | [ H: StringMap.MapsTo ?k (bool2val ?test) ?st |- RunsTo _ (If (isTrueExpr ?k) _ _) ?st ] =>
+             facade_construction_if_helper test RunsToIfTrue RunsToIfFalse
+           end.
 
 Ltac StringMap_t :=
   match goal with
@@ -1260,8 +1291,8 @@ Proof.
   induction tenv as [ | ? ? ? IH ]; 
   repeat match goal with
          | _ => t_Morphism_step
-         | _ => solve [eauto using WeakEq_Trans, WeakEq_remove]
          | _ => StringMap_t
+         | _ => solve [eauto using WeakEq_Trans, WeakEq_remove]
          end.
 Qed.
 
@@ -1430,6 +1461,7 @@ Ltac SameValues_Facade_t_step :=
   | [ |- @ProgOk _ _ _ _ _ _ ] => red
 
   | _ => StringMap_t
+  | _ => progress subst
 
   | [ H: TelEq _ ?x _ |- context[?st ≲ ?x ∪ _] ] => rewrite (H st)
   | [ H: TelEq _ ?x _, H': context[?st ≲ ?x ∪ _] |- _ ] => rewrite_in (H st) H'
@@ -1856,7 +1888,6 @@ Proof.
   destruct (StringMap.E.eq_dec y k1);
   destruct (StringMap.E.eq_dec y k2);
   destruct (StringMap.E.eq_dec y k3);
-  subst; try congruence;
   SameValues_Facade_t.
 Qed.
 
@@ -2374,9 +2405,6 @@ Ltac spec_t :=
          | [ H: exists t, _ |- _ ] => destruct H
          end; intuition.
 
-Require Import GLabelMap.
-Module GLabelMapUtils := WUtils_fun (GLabelMap.E) (GLabelMap).
-
 Ltac facade_cleanup_call :=
   match goal with
   | [ H: Axiomatic ?s = Axiomatic ?s' |- _ ] => inversion H; subst; clear H
@@ -2389,7 +2417,6 @@ Ltac facade_cleanup_call :=
   | _ => solve [GLabelMapUtils.decide_mapsto_maybe_instantiate]
   | _ => solve [eauto 3 with call_helpers_db]
   | _ => solve [eauto 3 with call_preconditions_db]
-  | _ => progress subst
   end.
 
 Require Import Program List.
@@ -2419,78 +2446,6 @@ Qed.
 Hint Immediate FRandom_Precond : call_preconditions_db.
 Hint Immediate Random_caracterization : call_helpers_db.
 Hint Resolve WeakEq_empty_remove : call_helpers_db.
-
-Ltac facade_inversion_plus :=
-  match goal with
-  | [ H: GLabelMap.MapsTo ?fname (@Axiomatic _ ?spec) ?env |- Safe ?env (Call ?retv ?fname ?args) ?st ] =>
-    eapply (@SafeCallAx _ env retv fname args st spec)
-  | [ H: GLabelMap.MapsTo ?fname (@Operational _ ?spec) ?env |- Safe ?env (Call ?retv ?fname ?args) ?st ] =>
-    eapply (@SafeCallOp _ env retv fname args st spec)
-  end.
-
-Lemma CompileCallRandom:
-  forall env : GLabelMap.t (FuncSpec ()),
-  forall key var ext,
-    var ∉ ext ->
-    GLabelMap.MapsTo key (Axiomatic FRandom) env ->
-    {{ Nil }}
-      Call var key []
-    {{ [[ ` var <~~ WrapComp_W Random as _]]::Nil }} ∪ {{ ext }} // env.
-Proof.
-  repeat match goal with
-         | _ => facade_cleanup_call
-         | _ => facade_inversion_plus
-         | _ => SameValues_Facade_t_step
-         | _ => progress (simpl; SameValues_Facade_t)
-         end.
-Qed.
-
-Example random_sample :
-  forall env,
-    GLabelMap.MapsTo ("std", "rand") (Axiomatic FRandom) env ->
-    sigT (fun prog =>
-            {{ @Nil unit }}
-              prog
-              {{ [[`"ret" <~~ ( x <- Random;
-                                y <- Random;
-                                ret (SCA _ (Word.wminus (Word.wplus x x) (Word.wplus y y))))%comp as _]] :: Nil }} ∪ {{ StringMap.empty _ }} // env).
-Proof.
-  econstructor; repeat compile_step;
-  apply CompileCallRandom; try compile_step;
-  eassumption.
-Defined.
-
-Definition EnvContainingRandom :=
-  GLabelMap.add ("std", "rand") (Axiomatic FRandom) (GLabelMap.empty (FuncSpec unit)).
-
-Lemma p :
-  GLabelMap.MapsTo ("std", "rand") (Axiomatic FRandom) EnvContainingRandom.
-Proof.
-  eauto using GLabelMap.add_1.
-Qed.
-
-Notation "A ; B" := (Seq A B) (at level 76, left associativity, format "'[v' A ';' '/' B ']'") : facade_scope.
-Notation "x := F . G A" := (Call x (F, G) (A)) (at level 76, no associativity, format "x  ':='  F '.' G  A") : facade_scope.
-Notation "x := A" := (Assign x A) (at level 61, no associativity) : facade_scope.
-Notation "x + A" := (Binop IL.Plus x A) (at level 50, left associativity) : facade_scope.
-Notation "x - A" := (Binop IL.Minus x A) (at level 50, left associativity) : facade_scope.
-Notation ", x" := (Var x) (at level 20, no associativity, format "',' x") : facade_scope.
-Notation "'__'" := (Skip) (at level 20, no associativity) : facade_scope.
-
-Local Open Scope facade_scope.
-Eval simpl in (proj1_sig (random_sample EnvContainingRandom p)).
-
-Definition bool2w b :=
-  match b with
-  | true => (Word.natToWord 32 1)
-  | false => (Word.natToWord 32 0)
-  end.
-
-Definition bool2val {av} b :=
-  SCA av (bool2w b).
-
-Definition isTrueExpr var :=
-  TestE IL.Eq (Const (bool2w true)) (Var var).
 
 Set Implicit Arguments.
 
@@ -2530,9 +2485,72 @@ Proof.
   destruct gallinaTest; SameValues_Facade_t.
 Qed.
 
+Lemma CompileCallRandom:
+  forall env : GLabelMap.t (FuncSpec ()),
+  forall key var ext,
+    var ∉ ext ->
+    GLabelMap.MapsTo key (Axiomatic FRandom) env ->
+    {{ Nil }}
+      Call var key []
+    {{ [[ ` var <~~ WrapComp_W Random as _]]::Nil }} ∪ {{ ext }} // env.
+Proof.
+  repeat match goal with
+         | _ => facade_cleanup_call
+         | _ => SameValues_Facade_t_step
+         | _ => progress simpl
+         end.
+Qed.
+
+Example random_sample :
+  forall env,
+    GLabelMap.MapsTo ("std", "rand") (Axiomatic FRandom) env ->
+    sigT (fun prog =>
+            {{ @Nil unit }}
+              prog
+              {{ [[`"ret" <~~ ( x <- Random;
+                                y <- Random;
+                                ret (SCA _ (Word.wminus (Word.wplus x x) (Word.wplus y y))))%comp as _]] :: Nil }} ∪ {{ StringMap.empty _ }} // env).
+Proof.
+  econstructor; repeat compile_step;
+  apply (CompileCallRandom (key :=  ("std", "rand"))); compile_step.
+Defined.
+
+Definition EnvContainingRandom :=
+  GLabelMap.add ("std", "rand") (Axiomatic FRandom) (GLabelMap.empty (FuncSpec unit)).
+
+Lemma p :
+  GLabelMap.MapsTo ("std", "rand") (Axiomatic FRandom) EnvContainingRandom.
+Proof.
+  eauto using GLabelMap.add_1.
+Qed.
+
+Notation "A ;; B" := (Seq A B) (at level 76, left associativity, format "'[v' A ';;' '/' B ']'") : facade_scope.
+Notation "x := F . G A" := (Call x (F, G) (A)) (at level 76, no associativity, format "x  ':='  F '.' G  A") : facade_scope.
+Notation "x := A" := (Assign x A) (at level 61, no associativity) : facade_scope.
+Notation "x + A" := (Binop IL.Plus x A) (at level 50, left associativity) : facade_scope.
+Notation "x - A" := (Binop IL.Minus x A) (at level 50, left associativity) : facade_scope.
+Notation ", x" := (Var x) (at level 20, no associativity, format "',' x") : facade_scope.
+Notation "'__'" := (Skip) (at level 20, no associativity) : facade_scope.
+
+(* Local Open Scope facade_scope. *)
+Eval simpl in (proj1_sig (random_sample p)).
+
+Lemma SameValues_add_to_ext:
+  forall {av} (k : string) (cmp : Comp (Value av)) val
+    (tmp : StringMap.key) (ext : StringMap.t (Value av))
+    (final_state : State av),
+    tmp ∉ ext ->
+    final_state ≲ [[ ` k <~~ cmp as _]]::Nil ∪ [tmp <-- SCA _ val]::ext ->
+    final_state ≲ [[ ` k <~~ cmp as _]]::Nil ∪ ext.
+Proof.
+  simpl; intros. SameValues_Fiat_t.
+  eauto using WeakEq_pop_SCA, WeakEq_refl, WeakEq_Trans.
+Qed.
+
+Hint Resolve SameValues_add_to_ext : SameValues_db.
+
 Lemma CompileIf :
-  forall {av} k (gallinaTest: bool) gallinaT gallinaF tmp facadeTest facadeT facadeF,
-  forall env (ext: StringMap.t (Value av)),
+  forall {av} k (gallinaTest: bool) gallinaT gallinaF tmp facadeTest facadeT facadeF env (ext: StringMap.t (Value av)),
     tmp ∉ ext ->
     {{ Nil }}
       facadeTest
@@ -2547,41 +2565,62 @@ Lemma CompileIf :
       (Seq facadeTest (If (isTrueExpr tmp) facadeT facadeF))
     {{ [[`k <~~ if gallinaTest then gallinaT else gallinaF as _]]::Nil }} ∪ {{ ext }} // env.
 Proof.
-  SameValues_Facade_t;
   repeat match goal with
-         | [ H: StringMap.MapsTo ?k (bool2val ?test) ?st |- Safe _ (If (isTrueExpr ?k) _ _) ?st ] =>
-           match test with
-           | true => apply SafeIfTrue
-           | false => apply SafeIfFalse
-           | _ => destruct test
-           end
-         end;
-  eauto using isTrueExpr_is_false, isTrueExpr_is_true;
-  (* apply Cons_PopExt. SameValues_Facade_t. *)
-
-  lazymatch goal with
-  | [ H: is_true ?st (isTrueExpr ?k), H': StringMap.MapsTo ?k (bool2val ?test) ?st |- _ ] => learn (is_true_isTrueExpr H H')
-  | [ H: is_false ?st (isTrueExpr ?k), H': StringMap.MapsTo ?k (bool2val ?test) ?st |- _ ] => learn (is_false_isTrueExpr H H')
-  end; subst.
-
-
-  
-
-  Lemma SameValues_add_to_ext:
-    forall {av} (k : string) (cmp : Comp (Value av)) val
-      (tmp : StringMap.key) (ext : StringMap.t (Value av))
-      (final_state : State av),
-      tmp ∉ ext ->
-      final_state ≲ [[ ` k <~~ cmp as _]]::Nil ∪ [tmp <-- SCA _ val]::ext ->
-      final_state ≲ [[ ` k <~~ cmp as _]]::Nil ∪ ext.
-  Proof.
-    simpl; intros. SameValues_Fiat_t.
-    eauto using WeakEq_pop_SCA, WeakEq_refl, WeakEq_Trans.
-  Qed.
-
-  eauto using SameValues_add_to_ext.
-  eauto using SameValues_add_to_ext.
+         | _ => SameValues_Facade_t_step
+         | [ H: is_true ?st (isTrueExpr ?k), H': StringMap.MapsTo ?k (bool2val ?test) ?st |- _ ] => learn (is_true_isTrueExpr H H')
+         | [ H: is_false ?st (isTrueExpr ?k), H': StringMap.MapsTo ?k (bool2val ?test) ?st |- _ ] => learn (is_false_isTrueExpr H H')
+         | _ => solve [eauto using isTrueExpr_is_false, isTrueExpr_is_true]
+         end.
 Qed.
+
+Lemma push_if :
+  forall {A B} (f: A -> B) (x y: A) (b: bool),
+    f (if b then x else y) = (if b then f x else f y).
+Proof.
+  intros; destruct b; reflexivity.
+Qed.
+
+Ltac is_pushable_head_constant f :=
+  let hd := head_constant f in
+  match hd with
+  | Cons => fail 1
+  | _ => idtac
+  end.
+
+Ltac compile_random :=
+  match_ProgOk ltac:(fun prog pre post ext =>
+                       match constr:(pre, post) with
+                       | (Nil, Cons ?s (WrapComp_W Random) (fun _ => Nil)) => apply CompileCallRandom
+                       end).
+
+Ltac compile_if :=
+  match_ProgOk ltac:(fun prog pre post ext =>
+                       match constr:(pre, post) with
+                       | (Nil, Cons ?s (if ?a then ret ?b else ret ?c) (fun _ => Nil)) =>
+                         let test := gensym "test" in
+                         apply (CompileIf (tmp := test))
+                       end).
+
+Example random_test :
+  forall env,
+    GLabelMap.MapsTo ("std", "rand") (Axiomatic FRandom) env ->
+    sigT (fun prog =>
+            {{ @Nil unit }}
+              prog
+            {{ [[`"ret" <~~ ( x <- Random;
+                              y <- Random;
+                              z <- Random;
+                              ret (SCA _ (if Word.weqb x (Word.natToWord 32 0) then y else z)))%comp as _]] :: Nil }} ∪ {{ StringMap.empty _ }} // env).
+Proof.
+  econstructor.
+
+  repeat match goal with
+         | _ => compile_step
+         | _ => compile_random
+         | _ => compile_if
+         | [  |- appcontext[?f (if ?b then ?x else ?y)] ] => is_pushable_head_constant f; rewrite (push_if f x y b)
+         | _ => eassumption
+         end.
 
 Eval simpl in (proj1_sig (simple_binop EmptyEnv)).
 Eval simpl in (proj1_sig (harder_binop EmptyEnv)).
