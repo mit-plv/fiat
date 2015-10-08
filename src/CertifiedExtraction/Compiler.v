@@ -2244,6 +2244,83 @@ Proof.
          end.
 Qed.
 
+Ltac spec_t :=
+  abstract (repeat match goal with
+                   | _ => red
+                   | _ => progress intros
+                   | _ => progress subst
+                   | [ H: exists t, _ |- _ ] => destruct H
+                   end; intuition).
+
+Ltac facade_cleanup_call :=
+  match goal with
+  | _ => progress cbv beta iota delta [add_remove_many] in *
+  | _ => progress cbv beta iota delta [sel] in *
+  | [ H: Axiomatic ?s = Axiomatic ?s' |- _ ] => inversion H; subst; clear H
+  | [ H: PreCond _ _ _ |- _ ] => progress simpl in H
+  | [ H: PostCond _ _ _ |- _ ] => progress simpl in H
+  | [ |- context[ListFacts4.mapM] ] => progress simpl ListFacts4.mapM
+  | [ H: context[ListFacts4.mapM] |- _ ] => progress simpl ListFacts4.mapM in H
+  | [ H: match ?output with | nil => _ | cons _ _ => _ end = _ |- _ ] => let a := fresh in destruct output eqn:a
+  | [ H: exists w, _ |- _ ] => destruct H
+  | [ H: cons _ _ = cons _ _ |- _ ] => inversion H; try subst; clear H
+  | _ => GLabelMapUtils.normalize
+  | _ => solve [GLabelMapUtils.decide_mapsto_maybe_instantiate]
+  | _ => solve [eauto with call_helpers_db]
+  end.
+
+Hint Resolve WeakEq_Refl : call_helpers_db.
+Hint Resolve WeakEq_Trans : call_helpers_db.
+Hint Resolve WeakEq_remove_notIn : call_helpers_db.
+Hint Resolve WeakEq_pop_SCA : call_helpers_db.
+
+Definition FacadeImplementationWW av (fWW: W -> W) : AxiomaticSpec av.
+  refine {|
+      PreCond := fun args => exists x, args = (SCA av x) :: nil;
+      PostCond := fun args ret => exists x, args = (SCA av x, None) :: nil /\ ret = SCA av (fWW x)
+    |}; spec_t.
+Defined.
+
+Lemma CompileCallFacadeImplementationWW:
+  forall {av} {env} fWW,
+  forall fpointer varg (arg: W),
+    GLabelMap.MapsTo fpointer (Axiomatic (FacadeImplementationWW av fWW)) env ->
+    forall vret ext,
+      vret ∉ ext ->
+      StringMap.MapsTo varg (SCA av arg) ext ->
+      {{ Nil }}
+        Call vret fpointer (varg :: nil)
+      {{ [[ vret <-- SCA av (fWW arg) as _]]::Nil }} ∪ {{ ext }} // env.
+Proof.
+  repeat match goal with
+         | _ => SameValues_Facade_t_step
+         | _ => facade_cleanup_call
+         | _ => unfold FacadeImplementationWW; simpl
+         end.
+Qed.
+
+Lemma CompileCallFacadeImplementationWW_full:
+  forall {av} {env} fWW,
+  forall fpointer varg (arg: W),
+    GLabelMap.MapsTo fpointer (Axiomatic (FacadeImplementationWW av fWW)) env ->
+    forall vret ext p,
+      vret ∉ ext ->
+      varg ∉ ext ->
+      vret <> varg ->
+      {{ Nil }}
+        p
+      {{ [[ varg <-- SCA av arg as _]]::Nil }} ∪ {{ ext }} // env ->
+      {{ Nil }}
+        Seq p (Call vret fpointer (varg :: nil))
+      {{ [[ vret <-- SCA av (fWW arg) as _]]::Nil }} ∪ {{ ext }} // env.
+Proof.
+  repeat match goal with
+         | _ => SameValues_Facade_t_step
+         | _ => facade_cleanup_call
+         | _ => unfold FacadeImplementationWW; simpl
+         end.
+Qed.
+
 Lemma CompileDeallocSCA:
   forall {av} (env : Env av) k compSCA tail tail' ext prog,
     AlwaysComputesToSCA compSCA ->
@@ -2443,6 +2520,7 @@ Ltac compile_do_side_conditions :=
   | _ => abstract decide_not_in
   | [  |- StringMap.find _ _ = Some _ ] => solve [decide_mapsto_maybe_instantiate]
   | [  |- StringMap.MapsTo _ _ _ ] => solve [decide_mapsto_maybe_instantiate]
+  | [  |- GLabelMap.MapsTo _ _ _ ] => solve [GLabelMapUtils.decide_mapsto_maybe_instantiate]
   end.
 
 Lemma WrapComp_W_rewrite:
@@ -2472,13 +2550,34 @@ Ltac compile_if t tp fp :=
   let test_var := gensym "test" in
   apply (CompileIf (tmp := test_var)).
 
-Ltac compile_simple_internal cmp ext :=
+Ltac find_function_in_env function env :=
+  match goal with
+  | [ H: GLabelMap.MapsTo ?k function env |- _ ] => constr:(k)
+  | _ => let key := GLabelMapUtils.find_fast function env in
+        match key with
+        | Some ?k => k
+        end
+  end.
+
+Ltac compile_external_call_SCA av env fWW arg ext :=
+  let fpointer := find_function_in_env (Axiomatic (FacadeImplementationWW av fWW)) env in
+  let varg := find_fast arg ext in
+  match varg with
+  | Some ?varg =>
+    apply (CompileCallFacadeImplementationWW (fpointer := fpointer) (varg := varg))
+  | None =>
+    let varg := gensym "arg" in
+    apply (CompileCallFacadeImplementationWW_full (fpointer := fpointer) (varg := varg))
+  end.
+
+Ltac compile_simple_internal env cmp ext :=
   match cmp with
   | ret (SCA ?av (?op ?lhs ?rhs)) => let facade_op := translate_op op in compile_binop av facade_op lhs rhs ext
   | ret (@bool2val ?av (?op ?lhs ?rhs)) => let facade_op := translate_op op in compile_binop av facade_op lhs rhs ext
   | ret (@bool2val ?av (@dec2bool _ _ (?op ?lhs ?rhs))) => let facade_op := translate_op op in compile_binop av facade_op lhs rhs ext
   | ret (SCA _ ?w) => compile_constant w; compile_do_side_conditions
   | ret (SCA ?av ?w) => compile_read (SCA av w) ext; compile_do_side_conditions
+  | ret (SCA ?av (?f ?w)) => compile_external_call_SCA av env f w ext
   | (if ?t then ?tp else ?fp) => compile_if t tp fp
   end.
 
@@ -2492,7 +2591,7 @@ Ltac compile_simple name cmp :=
   autorewrite with compile_simple_db;
   (* Recapture cmp after rewriting *)
   lazymatch goal with
-  | [  |- {{ Nil }} ?prog {{ Cons ?s ?cmp (fun _ => Nil) }} ∪ {{ ?ext }} // _ ] => compile_simple_internal cmp ext
+  | [  |- {{ Nil }} ?prog {{ Cons ?s ?cmp (fun _ => Nil) }} ∪ {{ ?ext }} // ?env ] => compile_simple_internal env cmp ext
   end.
 
 Ltac compile_skip :=
@@ -2525,7 +2624,7 @@ Ltac compile_do_unwrap type wrapper key cmp tail val :=
   cbv beta iota delta [WrappedCons wrapper_head].
 
 (*! FIXME: Why is this first [ ... | fail] thing needed? If it's removed then the lazy match falls through *)
-Ltac compile_ProgOk p pre post ext :=
+Ltac compile_ProgOk p pre post ext env :=
   is_evar p;
   lazymatch constr:(pre, post, ext) with
   | (_,                     (@WrappedCons _ ?T ?wrapper ?k ?cmp ?tl) ?v, _) => first [compile_do_unwrap T wrapper k cmp tl v | fail ]
@@ -2547,10 +2646,9 @@ Ltac compile_ProgOk p pre post ext :=
 
 Ltac match_ProgOk continuation :=
   lazymatch goal with
-  | [  |- {{ ?pre }} ?prog {{ ?post }} ∪ {{ ?ext }} // ?env ] => first [continuation prog pre post ext | fail]
+  | [  |- {{ ?pre }} ?prog {{ ?post }} ∪ {{ ?ext }} // ?env ] => first [continuation prog pre post ext env | fail]
   | _ => fail "Goal does not look like a ProgOk statement"
   end.
-
 
 Lemma push_if :
   forall {A B} (f: A -> B) (x y: A) (b: bool),
@@ -2578,9 +2676,28 @@ Ltac compile_rewrite :=
   | [  |- appcontext[?f (if ?b then ?x else ?y)] ] => is_pushable_head_constant f; setoid_rewrite (push_if f x y b)
   end.
 
+Definition IsFacadeProgramImplementing cmp env prog :=
+  {{ @Nil unit }}
+    prog
+  {{ [[`"ret" <~~ cmp as _]] :: Nil }} ∪ {{ StringMap.empty _ }} // env.
+
+Definition FacadeProgramImplementing cmp env :=
+  sigT (IsFacadeProgramImplementing cmp env).
+
+Notation "'Facade' 'program' 'implementing' cmp 'with' env" :=
+  (FacadeProgramImplementing cmp env) (at level 0).
+
+Ltac start_compiling :=
+  match goal with
+  | [  |- FacadeProgramImplementing _ ?env ] =>
+    let env_hd := head_constant env in
+    unfold FacadeProgramImplementing, IsFacadeProgramImplementing; try unfold env_hd; econstructor
+  end.
+
 Ltac compile_step :=
   idtac;
   match goal with
+  | _ => start_compiling
   | _ => compile_rewrite
   | _ => compile_do_side_conditions
   | _ => match_ProgOk compile_ProgOk
@@ -2645,27 +2762,6 @@ Proof.
   econstructor; repeat compile_step.
 Defined.
 
-Ltac spec_t :=
-  repeat match goal with
-         | _ => red
-         | _ => progress intros
-         | _ => progress subst
-         | [ H: exists t, _ |- _ ] => destruct H
-         end; intuition.
-
-Ltac facade_cleanup_call :=
-  match goal with
-  | [ H: Axiomatic ?s = Axiomatic ?s' |- _ ] => inversion H; subst; clear H
-  | [ H: PreCond _ _ _ |- _ ] => progress simpl in H
-  | [ H: PostCond _ _ _ |- _ ] => progress simpl in H
-  | [ H: context[ListFacts4.mapM] |- _ ] => progress simpl in H
-  | [ H: exists w, _ |- _ ] => destruct H
-  | _ => GLabelMapUtils.normalize
-  | _ => progress cbv beta iota delta [add_remove_many] in *
-  | _ => solve [GLabelMapUtils.decide_mapsto_maybe_instantiate]
-  | _ => solve [eauto 3 with call_helpers_db]
-  | _ => solve [eauto 3 with call_preconditions_db]
-  end.
 
 Require Import Program List.
 
@@ -2679,52 +2775,41 @@ Proof.
     |}; spec_t.
 Defined.
 
-Lemma FRandom_Precond {av}:
-  PreCond (@FRandom av) [].
-Proof.
-  reflexivity.
-Qed.
-
 Lemma Random_caracterization {av}:
   forall x : W, WrapComp_W Random ↝ SCA av x.
 Proof.
   constructor.
 Qed.
 
-Hint Immediate FRandom_Precond : call_preconditions_db.
 Hint Immediate Random_caracterization : call_helpers_db.
-Hint Resolve WeakEq_empty_remove : call_helpers_db.
+(* Hint Resolve WeakEq_empty_remove : call_helpers_db. *)
 
 Set Implicit Arguments.
 
 Lemma CompileCallRandom:
   forall env : GLabelMap.t (FuncSpec ()),
-  forall key,
-    GLabelMap.MapsTo key (Axiomatic FRandom) env ->
+  forall fpointer,
+    GLabelMap.MapsTo fpointer (Axiomatic FRandom) env ->
     forall var ext,
       var ∉ ext ->
       {{ Nil }}
-        Call var key []
+        Call var fpointer []
       {{ [[ ` var <~~ WrapComp_W Random as _]]::Nil }} ∪ {{ ext }} // env.
 Proof.
   repeat match goal with
-         | _ => facade_cleanup_call
          | _ => SameValues_Facade_t_step
-         | _ => progress simpl
+         | _ => facade_cleanup_call
+         | _ => simpl
          end.
 Qed.
 
-Ltac find_function_in_env function :=
-  match goal with
-  | [ H: GLabelMap.MapsTo _ function _ |- _ ] => constr:(H)
-  end.
 
 Ltac compile_random :=
-  match_ProgOk ltac:(fun prog pre post ext =>
+  match_ProgOk ltac:(fun prog pre post ext env =>
                        match constr:(pre, post) with
                        | (Nil, Cons ?s (WrapComp_W Random) (fun _ => Nil)) =>
-                         let h := find_function_in_env (Axiomatic (@FRandom unit)) in
-                         apply (CompileCallRandom h)
+                         let fpointer := find_function_in_env (Axiomatic (@FRandom unit)) env in
+                         apply (CompileCallRandom (fpointer := fpointer))
                        end).
 
 Example random_sample :
@@ -2740,39 +2825,70 @@ Proof.
   econstructor; repeat (compile_step || compile_random).
 Defined.
 
-Definition EnvContainingRandom :=
-  GLabelMap.add ("std", "rand") (Axiomatic FRandom) (GLabelMap.empty (FuncSpec unit)).
+Definition Square x :=
+  @Word.wmult 32 x x.
 
-Lemma p :
-  GLabelMap.MapsTo ("std", "rand") (Axiomatic FRandom) EnvContainingRandom.
+Definition MyEnv {av} :=
+  (GLabelMap.add ("std", "rand") (Axiomatic FRandom))
+    ((GLabelMap.add ("mylib", "square") (Axiomatic (FacadeImplementationWW av Square)))
+       (GLabelMap.empty (FuncSpec av))).
+
+Lemma myenv_random :
+  forall {av}, GLabelMap.MapsTo ("std", "rand") (Axiomatic FRandom) (@MyEnv av).
 Proof.
-  eauto using GLabelMap.add_1.
+  intros; unfold MyEnv; GLabelMapUtils.decide_mapsto.
+Qed.
+
+Lemma myenv_square :
+  forall {av}, GLabelMap.MapsTo ("mylib", "square") (Axiomatic (FacadeImplementationWW av Square)) (@MyEnv av).
+Proof.
+  intros; unfold MyEnv; GLabelMapUtils.decide_mapsto.
 Qed.
 
 Example random_test :
-  forall env key,
-    GLabelMap.MapsTo key (Axiomatic FRandom) env ->
-    sigT (fun prog =>
-            {{ @Nil unit }}
-              prog
-            {{ [[`"ret" <~~ ( x <- Random;
-                              y <- Random;
-                              z <- Random;
-                              ret (SCA _ (if Word.weqb x y then (Word.wplus z z) else z)))%comp as _]] :: Nil }} ∪ {{ StringMap.empty _ }} // env).
+  Facade program implementing ( x <- Random;
+                                y <- Random;
+                                z <- Random;
+                                ret (SCA _ (if IL.weqb x y then
+                                              (Word.wplus z z)
+                                            else
+                                              if IL.wltb x y then
+                                                z
+                                              else
+                                                (Square z)))) with MyEnv.
 Proof.
-  econstructor; repeat (compile_step || compile_random).
+  repeat (compile_step || compile_random).
 Defined.
 
-Notation "A ;; B" := (Seq A B) (at level 76, left associativity, format "'[v' A ';;' '/' B ']'") : facade_scope.
-Notation "x := F . G A" := (Call x (F, G) (A)) (at level 76, no associativity, format "x  ':='  F '.' G  A") : facade_scope.
-Notation "x := A" := (Assign x A) (at level 61, no associativity) : facade_scope.
-Notation "x + A" := (Binop IL.Plus x A) (at level 50, left associativity) : facade_scope.
-Notation "x - A" := (Binop IL.Minus x A) (at level 50, left associativity) : facade_scope.
-Notation ", x" := (Var x) (at level 20, no associativity, format "',' x") : facade_scope.
-Notation "'__'" := (Skip) (at level 20, no associativity) : facade_scope.
+Require Import FacadeNotations.
+Definition extract_facade := proj1_sig.
 
-Local Open Scope facade_scope.
-Eval simpl in (proj1_sig (simple_binop EmptyEnv)).
-Eval simpl in (proj1_sig (harder_binop EmptyEnv)).
-Eval simpl in (proj1_sig (random_sample p)).
-Eval compute in (proj1_sig (random_test p)).
+Eval simpl in (extract_facade (simple_binop EmptyEnv)).
+Eval simpl in (extract_facade (harder_binop EmptyEnv)).
+Eval simpl in (extract_facade (random_sample myenv_random)).
+Eval simpl in (extract_facade random_test).
+
+Definition Cube (x: W) := (Word.wmult x (Word.wmult x x)).
+
+Definition MyEnvV {av} :=
+  (GLabelMap.add ("std", "rand") (Axiomatic FRandom))
+    ((GLabelMap.add ("mylib", "square") (Axiomatic (FacadeImplementationWW av Square)))
+       ((GLabelMap.add ("mylib", "cube") (Axiomatic (FacadeImplementationWW av Cube)))
+          (GLabelMap.empty (FuncSpec av)))).
+
+Example random_test_with_cube :
+  Facade program implementing ( x <- Random;
+                                y <- Random;
+                                z <- Random;
+                                ret (SCA _ (if IL.weqb x y then
+                                              (Word.wplus z z)
+                                            else
+                                              if IL.wltb x y then
+                                                z
+                                              else
+                                                (Cube z)))) with MyEnvV.
+Proof.
+  repeat (compile_step || compile_random).
+Defined.
+
+Eval simpl in (extract_facade random_test_with_cube).
