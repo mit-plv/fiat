@@ -4,7 +4,7 @@ Require Import Coq.Vectors.Vector
 
 Require Import
         Fiat.QueryStructure.Automation.AutoDB
-        Fiat.Examples.DnsServer.packet_new.
+        Fiat.Examples.DnsServer.packet.
 
 (* The schema, packet structure, and spec are based on the following four RFCs:
 
@@ -13,7 +13,7 @@ RFC 1035: implementation details
 RFC 2308: negative caching -- for more information on failures and SOA records
 RFC 1536: common implementation errors and fixes -- for efficiency/security problems *)
 
-(* What subdomain we're on in a question, e.g. 
+(* What subdomain we're on in a question, e.g.
 new requests get stage None
 when working on a referral, the stage is set to the match count b/t the referral and question
 e.g. question = s.g.com, referral = for g.com, stage = match count = 2
@@ -76,11 +76,6 @@ Definition sPACKET_SECTION := "Packet section".
 Definition sSERVER := "Server".
 Definition sPID := "Packet id".
 Definition sFLAGS := "Packet flags".
-Definition sNAME := "Record name".
-Definition sTYPE := "Record type".
-Definition sCLASS := "Record class".
-Definition sTTL := "Record TTL".
-Definition sRDATA := "Record RDATA".
 
 Definition sHOST := "Source host".
 Definition sEMAIL := "Contact email".
@@ -88,7 +83,7 @@ Definition sSERIAL := "Serial number".
 Definition sREFRESH := "Refresh time".
 Definition sRETRY := "Retry time".
 Definition sEXPIRE := "Expire time".
-Definition sMinTTL := "Minimum TTL".
+Definition sMinTTL := "minTTL".
 Definition sPACKET := "Packet".
 
 Definition sREFERRALDOMAIN := "Referral domain".
@@ -108,7 +103,7 @@ Definition sCACHETABLE := "Cache table".
 
 Definition sREQID := "Request ID".
 Definition sREFERRALID := "Referral ID".
-Definition sMATCHCOUNT := "# labels matched". 
+Definition sMATCHCOUNT := "# labels matched".
 Definition sQUERYCOUNT := "# times queried".
 
 Definition sORDER := "SLIST order". (* using referral IDs *)
@@ -116,50 +111,24 @@ Definition sSLIST := "SLIST".
 Definition sSLIST_ORDERS := "SLIST orders".
 
 Definition sTIME_LAST_CALCULATED := "Time the TTL was last calculated".
+Local Open Scope Heading.
 (* initialized with the time the record arrives *)
 
 (* ------------------ Schema headings *)
 
-(* The ideal schema would be domain and WrapperResponse, with some way to query the types nested in WrapperResponse. Flattening it here has the same effect. 
+(* The ideal schema would be domain and WrapperResponse, with some way to query the types nested in WrapperResponse. Flattening it here has the same effect.
 
-One (Domain => WrapperResponse) mapping is flattened into several rows that all have the same packet information, but store one answer (DNSRRecord) each. 
+One (Domain => WrapperResponse) mapping is flattened into several rows that all have the same packet information, but store one answer (DNSRRecord) each.
 
 When removing a (Domain => ToStore):
 delete rows with the Domain in all cache tables.
 
 When inserting/updating a new (Domain => ToStore):
-after checking that Domain doesn't exist in any of the cache tables (or just performing a delete), flatten it and insert each row. 
+after checking that Domain doesn't exist in any of the cache tables (or just performing a delete), flatten it and insert each row.
 
 Invariants: (TODO)
 - All rows for each domain should appear in exactly 1 of the cache relations (question, answer, or failure). We do not store multiple possibilities.
 - All rows for each domain should have the same packet info. *)
-
-(* For referrals: 
- for domain "brl.mil", referral to suffix "mil": 
- go to server "a.isi.edu" with IP 1.0.0.1 (and ask it the same question). 
- We discard the original question "brl.mil." 
- See  RFC 1034 6.2.6, 6.3.1 *)
-Definition SLIST_ReferralHeading :=
-  (* R- = referral domain's, S- = server domain's *)
-         <sREQID :: nat,        (* tuple of (reqid, refid) should be unique for each row *)
-          sREFERRALID :: nat,
-
-          sREFERRALDOMAIN :: name,
-          sRTYPE :: RRecordType,
-          sRCLASS :: RRecordClass,
-          sRTTL :: nat,
-          (* inline RDATA and additional record *)
-          sSERVERDOMAIN :: name,
-          sSTYPE :: RRecordType,
-          sSCLASS :: RRecordClass,
-          sSTTL :: nat,
-          sSIP :: name,
-          (* IP in RDATA of additional record *)
-          sTIME_LAST_CALCULATED :: nat,
-
-          sMATCHCOUNT :: nat,
-          sQUERYCOUNT :: nat
-         >%Heading.
 
 (* Heading for cached referrals. Same as above but without the "live" information (ids, match and query count) and with cache info (TTL and time the TTL was last calculated) *)
 Definition ReferralHeading :=
@@ -176,48 +145,67 @@ Definition ReferralHeading :=
           sSIP :: name,
           (* IP in RDATA of additional record *)
           sTIME_LAST_CALCULATED :: nat
-         >%Heading.
+         >.
+
+(* For referrals:
+ for domain "brl.mil", referral to suffix "mil":
+ go to server "a.isi.edu" with IP 1.0.0.1 (and ask it the same question).
+ We discard the original question "brl.mil."
+ See  RFC 1034 6.2.6, 6.3.1 *)
+
+Definition AppendRawHeading
+           (heading1 heading2 : RawHeading)
+  : RawHeading :=
+  {| AttrList := Vector.append (AttrList heading1) (AttrList heading2) |}.
+
+Definition AppendHeading
+           (heading1 heading2 : Heading)
+  : Heading :=
+  {| HeadingRaw := AppendRawHeading heading1 heading2;
+     HeadingNames := Vector.append (HeadingNames heading1) (HeadingNames heading2) |}.
+
+Notation "heading1 ++ heading2" :=
+  (AppendHeading heading1 heading2) : Heading_scope.
+
+Definition SLIST_ReferralHeading :=
+  (* R- = referral domain's, S- = server domain's *)
+  <sREQID :: nat,        (* tuple of (reqid, refid) should be unique for each row *)
+   sREFERRALID :: nat,
+   sMATCHCOUNT :: nat,
+   sQUERYCOUNT :: nat>
+   ++ ReferralHeading.
 
 (* Stores a cached answer (DNSRRecord). Might have appeared in the answer, authority, or additional section of a packet. *)
-(* sDOMAIN and sNAME may differ in the case of CNAME, where 
+(* sDOMAIN and sNAME may differ in the case of CNAME, where
 sDOMAIN is an alias for sNAME. See RFC 1034, 6.2.7 *)
+
+
 Definition AnswerHeading :=
-         <sDOMAIN :: name,
-          sPACKET_SECTION :: PacketSection,
-          sNAME :: name, 
-          sTYPE :: RRecordType,
-          sCLASS :: RRecordClass,
-          sTTL :: nat,
-          sRDATA :: name,
-          sTIME_LAST_CALCULATED :: nat
-         >%Heading.
+  Eval unfold resourceRecordHeading in
+  < sDOMAIN :: name,
+    sPACKET_SECTION :: PacketSection,
+    sTIME_LAST_CALCULATED :: nat>
+    ++ resourceRecordHeading.
 
 (* Stores an SOA (Start of Authority) record for cached failures, according to RFC 2308. The SOA's TTL is used as the length of time to assume a name failure *)
 (* TODO the SOA is technically supposed to go in the Authority section but the packet type doesn't include it *)
 Definition FailureHeading :=
-          <sDOMAIN :: name,
-           sHOST :: name,
-           sEMAIL :: name,
-           sSERIAL :: nat,
-           sREFRESH :: nat,
-           sRETRY :: nat,
-           sEXPIRE :: nat,
-           sMinTTL :: nat,
-           sTIME_LAST_CALCULATED :: nat
-          >%Heading.
+  <sDOMAIN :: name,
+   sTIME_LAST_CALCULATED :: nat>
+  ++ SOAHeading.
 
-(* Heading for a pending request. 
+(* Heading for a pending request.
    Q*, pid, and flags are packet info. Need to store packet info so we can filter the results we get by record type and class. *)
 Definition RequestHeading :=
          <sID :: id,  (* unique, ascending *)
           sQNAME :: name,
-          sSTAGE :: Stage,      
+          sSTAGE :: Stage,
           sQTYPE :: RRecordType,
           sQCLASS :: RRecordClass,
           sPID :: Bvector 16,
           sFLAGS :: Bvector 16
           (* not storing authority or additional -- needed? *)
-         >%Heading.
+         >.
 
 Definition ReferralRow := @Tuple ReferralHeading.
 Definition SLIST_ReferralRow := @Tuple SLIST_ReferralHeading.
@@ -225,8 +213,8 @@ Definition AnswerRow := @Tuple AnswerHeading.
 Definition FailureRow := @Tuple FailureHeading.
 Definition RequestRow := @Tuple RequestHeading.
 
-(* Type of things that a cache query can return. 
-Process gets ALL the rows that match; we don't do any filtering. 
+(* Type of things that a cache query can return.
+Process gets ALL the rows that match; we don't do any filtering.
 Process deals with re-hierarchizing, choosing the best result, etc. *)
 Inductive CacheResult :=
 | Nope : CacheResult
@@ -238,7 +226,7 @@ Inductive CacheResult :=
 
 (* Type used in the cache pointer table, which maps names that exist in the cache
 somewhere to the table that they're in.
-We need to cache referrals, but never in relation to a specific name, which is why 
+We need to cache referrals, but never in relation to a specific name, which is why
 they're not in this type. (For a particular request with a name, it will always end in Answer or Failure) *)
 Inductive CacheTable :=
 | CAnswers
@@ -251,7 +239,7 @@ SLIST: a structure which describes the name servers and the
                 This structure keeps track of the resolver's current
                 best guess about which name servers hold the desired
                 information; it is updated when arriving information
-                changes the guess. 
+                changes the guess.
 
 Here, an SLIST is a list of current referrals we have, sorted by descending match count (so the first one to be used should have the highest match count). (TODO: should also incorporate query count) We store the referrals in one table and their positions in another table. Each request's SLIST is a list of (refId, position).
 
@@ -265,22 +253,22 @@ Definition DnsRecSchema :=
         [ relation sREQUESTS has
                    schema
                    RequestHeading;
-          
-          (* Described above *)
-          (* caching optimization opportunity!!!! (ACTION ITEM) *)
-          relation sSLIST_ORDERS has schema
-                   < sREQID :: id,
-                     sORDER :: list refPosition
-                            (* id instead + func *)
-                   >;
-                   (* reqid, refid, refpos *)
+
+          (* (* Described above *) *)
+          (* (* caching optimization opportunity!!!! (ACTION ITEM) *) *)
+          (* relation sSLIST_ORDERS has schema *)
+          (*          < sREQID :: id, *)
+          (*            sORDER :: list refPosition *)
+          (*                   (* id instead + func *) *)
+          (*          >; *)
+          (*          (* reqid, refid, refpos *) *)
           relation sSLIST has
                    schema
                    SLIST_ReferralHeading;
 
           relation sCACHE_POINTERS has schema
                    < sDOMAIN :: name,
-                     sCACHETABLE :: CacheTable 
+                     sCACHETABLE :: CacheTable
                      (* would like to have a variant type in the schema *)
                    > ;
           relation sCACHE_ANSWERS has
@@ -293,7 +281,44 @@ Definition DnsRecSchema :=
                    schema
                    FailureHeading
         ]
-        enforcing [ ]. 
+        enforcing [ ].
          (* where (fun t t' => True) ] *)
          (* TODO use an attribute constraint to encode that Stage <= length name *)
          (* TODO other invariants are not encoded *)
+
+(* Wrappers for building various tuples. *)
+Open Scope Tuple.
+Definition Build_RequestState (pac : packet) (id' : id) (stage : Stage) :=
+  < "id" :: id',
+    sQNAME :: pac!"questions"!"qname",
+    sSTAGE :: stage,
+    sQTYPE :: pac!"questions"!"qtype",
+    sQCLASS :: pac!"questions"!"qclass",
+    sPID :: pac!"id",
+    sFLAGS :: pac!"flags">%Tuple.
+
+  Definition Build_CachePointerRow
+             (reqName : name)
+             (table : CacheTable) :=
+    <sDOMAIN :: name, sCACHETABLE :: table >%Tuple.
+
+
+  Definition ToSLISTRow (refRow : ReferralRow)
+             (reqId : nat)
+             (refId : nat)
+             (matchCount : nat)
+             (queryCount : nat)
+    : SLIST_ReferralRow :=
+    < sREQID :: reqId, sREFERRALID :: refId,
+    sMATCHCOUNT :: matchCount, sQUERYCOUNT :: queryCount >
+                               ++ refRow.
+
+  Definition ToSLISTOrder (reqId : nat)
+             (order : list refPosition) :=
+  < sREQID :: reqId, sORDER :: order >.
+
+  Definition toPacket_soa (soa : FailureRow) : SOA :=
+    prim_snd (prim_snd soa).
+
+  Definition toPacket_ans (ans : AnswerRow) : resourceRecord :=
+    prim_snd (prim_snd (prim_snd ans)).

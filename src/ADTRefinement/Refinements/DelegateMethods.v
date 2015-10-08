@@ -22,7 +22,7 @@ Section DelegateMethods.
   Variable delegateIndex : Type.
 
   (* Codomain of the new methods. *)
-  Variable delegateCod : MethodIndex delegatorSig -> Type.
+  Variable delegateCod : MethodIndex delegatorSig -> option Type.
 
   (* Signature of the ADT being delegated to. *)
   Definition delegateSig :=
@@ -38,7 +38,7 @@ Section DelegateMethods.
 
   Local Open Scope comp.
 
-  Definition ADTwDelegatedMethods : ADT delegatorSig :=
+  (*Definition ADTwDelegatedMethods : ADT delegatorSig :=
     {| Rep := Rep delegatorADT * Rep delegateADT;
        Constructors idx x :=
          (r1 <- Constructors delegatorADT idx x;
@@ -61,6 +61,6 @@ Section DelegateMethods.
     - f_equiv; unfold pointwise_relation, refine; intros.
       computes_to_inv; subst.
       repeat computes_to_econstructor; eauto.
-  Qed.
+  Qed. *)
 
 End DelegateMethods.

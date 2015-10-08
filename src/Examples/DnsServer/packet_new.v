@@ -1,8 +1,9 @@
 Require Import Coq.Vectors.Vector
-        Coq.Strings.Ascii Coq.Bool.Bool
-        Coq.Bool.Bvector Coq.Lists.List.
-
-Require Import Fiat.QueryStructure.Automation.AutoDB.
+        Coq.Strings.Ascii
+        Coq.Bool.Bool
+        Coq.Bool.Bvector
+        Coq.Lists.List
+        Fiat.QueryStructure.Automation.AutoDB.
 
 Section Packet.
 
@@ -79,86 +80,76 @@ Section Packet.
   Global Instance Query_eq_RRecordClass :
     Query_eq RRecordClass := {| A_eq_dec := RRecordClass_dec |}.
 
-  (* do we currently use recordtype and recordclass? *)
-  Record question :=
-    { qname : name;
-      qtype : RRecordType;
-      qclass : RRecordClass }.
-  (* ["google", "com"] *)
+  Open Scope Heading.
 
-  (* ["192", "0", "0", "1"] *)
-  Record answer :=
-    { aname : name;
-      atype : RRecordType;
-      aclass : RRecordClass;
-      ttl : nat;
-      rdata : name }.           (* stores a hostname or an IP *)
-  (* technically this should contain SOA info as well, but I made SOA a separate type *)
+  (* do we currently use recordtype and recordclass? *)
+  Definition question :=
+    @Tuple <
+    "qname" :: name,
+    "qtype" :: RRecordType,
+    "qclass" :: RRecordClass >%Heading.
+  (* ["google", "com"] *)
 
 Definition default_refresh_time := 3600. (* seconds *)
 Definition default_retry_time := 600.
-Definition default_expire_time := 86400. 
+Definition default_expire_time := 86400.
 (* may cause stack overflow / segfault; use hours instead? *)
 Definition default_minimum_TTL := 3600.
 
   (* TODO: authoritative DNS server does not yet store or return this SOA *)
   (* https://support.microsoft.com/en-us/kb/163971 *)
-  Record SOA :=                 (* Start of Authority *)
-    { sourcehost : name;
-      contact_email : name;
-      serial : nat;             (* revision # of zone file; needs to be updates *)
-      refresh : nat;
-      retry : nat;              (* failed zone transfer *)
-      expire : nat;             (* complete a zone transfer *)
-      minTTL : nat }.           (* for negative queries *)
+  Definition SOA :=                 (* Start of Authority *)
+    @Tuple < "sourcehost" :: name,
+      "contact_email" :: name,
+      "serial" :: nat,             (* revision # of zone file; needs to be updates *)
+      "refresh" :: nat,
+      "retry" :: nat,              (* failed zone transfer *)
+      "expire" :: nat,           (* complete a zone transfer *)
+      "minTTL" :: nat >.           (* for negative queries *)
   (* should this be a tuple or a record? *)
 
-  Record packet :=
-    { id : Bvector 16;
-      flags : Bvector 16;
-      questions : question; (* `list question` in case we can have multiple questions? *)
-      answers : list answer;
-      authority : list answer;
-      additional : list answer }.
+  (* DNS Resource Records. *)
+  Definition resourceRecord :=
+    @Tuple <
+    "name" :: name,
+    "ttl" :: nat,
+    "class" :: RRecordClass,
+    "type" :: RRecordType,
+    "rlength" :: nat,
+    "rdata" :: name + SOA>.
+  (* [rdata] stores a hostname, IP, or an SOA, depeneding on the 
+   record type. *)
+
+  Definition packet :=
+    @Tuple < "id" :: Bvector 16,
+      "flags" :: Bvector 16,
+      "questions" :: question, (* `list question` in case we can have multiple questions? *)
+      "answers" :: list resourceRecord,
+      "authority" :: list resourceRecord,
+      "additional" :: list resourceRecord >.
   (* add SOA TODO *)
 
-Definition test_vec := Bvect_true 16.
-Definition test_question :=
-  {| qname := nil;
-     qtype := A;
-     qclass := CH |}.
-Definition test_packet :=
-  {| id := test_vec;
-     flags := test_vec;
-     questions := test_question;
-     answers := nil;
-     authority := nil;
-     additional := nil |}.
-(* Definition test_SOA := *)
-(*   {| id := ; *)
-(*      flags := test_vec; *)
-(*      questions := test_question; *)
-(*      answers := nil; *)
-(*      authority := nil; *)
-(*      additional := nil |}. *)
+Definition test_question : question :=
+  < "qname" :: nil,
+    "qtype" :: A,
+     "qclass" :: CH >%Tuple.
 
-Definition id' p := id p.       (* to get around shadowing *)
-
-Print replace_order.
-Locate replace_order.
+Definition test_packet : packet :=
+  <  "id" :: Bvect_true 16,
+      "flags" :: Bvect_true 16,
+     "questions" :: test_question,
+     "answers" :: nil,
+     "authority" :: nil,
+     "additional" :: nil >%Tuple.
 
   Lemma zero_lt_sixteen : lt 0 16. omega. Qed.
+
   Definition buildempty (p : packet) :=
-    {| id := id p;
-       (* for a particular request, all related packets should have the same id *)
-       flags := replace_order (flags p) zero_lt_sixteen true; 
-       (* 0 = query (changed by client); 1 = response (changed by server) *)
-       (* set QR bit to true, meaning this is a response *)
-       (* do we want an AA (authoritative answer) flag? *)
-       questions := questions p;
-       answers := [ ];
-       authority := [ ];
-       additional := [ ] |}.
+    p ○ [o !! "flags" / replace_order o zero_lt_sixteen true;
+          (* 0 = query (changed by client); 1 = response (changed by server) *)
+          (* set QR bit to true, meaning this is a response *)
+          (* do we want an AA (authoritative answer) flag? *)
+         "answers" ::= [ ]; "authority"  ::= [ ]; "additional" ::= [ ] ].
 
   Definition sCOLLECTIONS := "Collections".
   Definition sNAME := "Name".
@@ -167,62 +158,22 @@ Locate replace_order.
   Definition sTYPE := "Type".
   Definition sDATA := "Data".
 
-  (* DNS Resource Records. *)
-  Definition DNSRRecord :=
-    @Tuple <sNAME :: name,
-            sTYPE :: RRecordType,
-            sCLASS :: RRecordClass,
-            sTTL :: nat,
-            sDATA :: name>%Heading.
+  (* add a resource record to a packet's answers *)
+  Definition add_answer (p : packet) (t : resourceRecord) :=
+    p ○ [o !! "answers" / t :: o].
 
-  Definition toAnswer (t: DNSRRecord) :=
-    {| aname := t!sNAME;
-       atype := t!sTYPE;
-       aclass := t!sCLASS;
-       ttl := t!sTTL;
-       rdata := t!sDATA |}.
-
-  (* add a record to a packet's list of answers *)
-  Definition addan (p : packet) (t : DNSRRecord) :=
-    {| id := id p;
-       flags := flags p;
-       questions := questions p;
-       answers := (toAnswer t) :: answers p;
-       authority := authority p;
-       additional := additional p |}.
-
-  (* add a record to a packet's list of answers *)
-  Definition add_ans (p : packet) (t : answer) :=
-    {| id := id p;
-       flags := flags p;
-       questions := questions p;
-       answers := t :: answers p;
-       authority := authority p;
-       additional := additional p |}.
-
-  Definition addns (p : packet) (t : DNSRRecord) :=
-    {| id := id p;
-       flags := flags p;
-       questions := questions p;
-       answers := answers p;
-       authority := (toAnswer t) :: (authority p);
-       additional := additional p |}.
+  (* add a resource record authority to a packet's authorities 
+   (ns = name server). *)
+  Definition add_ns (p : packet) (t : resourceRecord) :=
+    p ○ [o !! "authority" / t :: o].
 
   (* combine with above? *)
-  Definition addAdditional (p : packet) (t : DNSRRecord) :=
-    {| id := id p;
-       flags := flags p;
-       questions := questions p;
-       answers := answers p;
-       authority := authority p;
-       additional := (toAnswer t) :: additional p |}.
+  Definition add_additional (p : packet) (t : resourceRecord) :=
+    p ○ [o !! "additional" / t :: o].
 
   Definition updateRecords (p : packet) answers' authority' additional' :=
-    {| id := id p;
-       flags := flags p;
-       questions := questions p;
-       answers := answers';
-       authority := authority';
-       additional := additional' |}.
+    p ○ ["answers" ::= answers';
+          "authority" ::= authority';
+          "additional" ::= additional'].
 
 End Packet.

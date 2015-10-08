@@ -51,4 +51,4 @@ Section ListBinaryInt.
     reflexivity.
   Qed.
 
-End ListBinaryInt.
+End List.

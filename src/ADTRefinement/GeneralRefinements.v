@@ -237,7 +237,7 @@ Definition SharpenFully {Sig}
           (Rep spec) (rep DelegateReps) (cAbsR _ _ ValidImpls)
           (ConstructorDom Sig idx)
           (Constructors spec idx)
-         (fun d => ret (cConstructors DelegateReps DelegateImpls idx d)))
+         (LiftcConstructor _ _ (cConstructors DelegateReps DelegateImpls idx)))
     -> (forall
            (DelegateReps : Fin.t DelegateIDs -> Type)
            (DelegateImpls : forall idx,
@@ -251,7 +251,7 @@ Definition SharpenFully {Sig}
             (Rep spec) (rep DelegateReps) (cAbsR _ _ ValidImpls)
             (fst (MethodDomCod Sig idx)) (snd (MethodDomCod Sig idx))
             (Methods spec idx)
-            (fun r_n d => ret (cMethods DelegateReps DelegateImpls idx r_n d)))
+            (LiftcMethod (cMethods DelegateReps DelegateImpls idx)))
     -> FullySharpenedUnderDelegates
          spec
          {| Sharpened_DelegateSigs := DelegateSigs;
@@ -265,7 +265,7 @@ Proof.
                                             pcMethods := _|}))
                       (cAbsR DelegateReps DelegateImpls DelegateImplRefinesSpec)).
   - simpl; intros;
-    eapply (cConstructorsRefinesSpec _ _ DelegateImplRefinesSpec idx d).
+    eapply (cConstructorsRefinesSpec _ _ DelegateImplRefinesSpec idx).
   - simpl; intros.
     eapply (cMethodsRefinesSpec _ _ DelegateImplRefinesSpec); eauto.
 Qed.

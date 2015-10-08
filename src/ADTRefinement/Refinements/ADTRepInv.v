@@ -111,7 +111,7 @@ End RepInv.
 
 (* A more user-friendly version of [refineADT_Build_ADT_Rep]. *)
 
-Lemma refinesADTRepInv Sig
+(*Lemma refinesADTRepInv Sig
       (adt : ADT Sig)
       (repInv : Ensemble (Rep adt))
       Constructors'
@@ -167,4 +167,4 @@ Tactic Notation "hone" "method" constr(mutIdx) "using" constr(mutBody)
                                else
                                  Methods' idx));
           try instantiate (1 := Constructors')
-        | idtac]; cbv beta in *; simpl in *.
+        | idtac]; cbv beta in *; simpl in *. *)

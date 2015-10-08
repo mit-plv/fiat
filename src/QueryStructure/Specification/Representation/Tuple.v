@@ -73,7 +73,7 @@ Definition SetAttribute {heading}
     Domain heading (ibound (indexb attr)) -> @Tuple heading :=
   fun tup attr dom => replace_Index2 _ tup (ibound (indexb attr)) dom.
 
-Notation "tup '!!' attr '<-' v " := (SetAttribute tup (@Build_BoundedIndex _ _ _ attr%string _) v) : Tuple_scope.
+(*Notation "tup '!!' attr '<-' v " := (SetAttribute tup (@Build_BoundedIndex _ _ _ attr%string _) v) : Tuple_scope. *)
 
 Definition AppendTupleRaw
            {heading1 heading2}
@@ -84,22 +84,72 @@ Definition AppendTupleRaw
 
 Notation "tup1 ++ tup2" := (AppendTupleRaw tup1 tup2) : Tuple_scope.
 
+Definition UpdateAttributeRaw
+           {heading}
+           (attr : Attributes heading)
+           (f : Domain heading attr -> Domain heading attr)
+           (tup : @RawTuple heading)
+  : @RawTuple heading := update_Index2 _ tup _ f.
+
+Definition UpdateAttribute
+           {heading}
+           (tup : @Tuple heading)
+           (attr : @BoundedString _ (HeadingNames heading))
+           (f : Domain heading (ibound (indexb attr))
+                -> Domain heading (ibound (indexb attr)))
+  : @Tuple heading := UpdateAttributeRaw _ f tup.
+
+Definition UpdateAttributes
+           {heading}
+           (tup : @Tuple heading)
+           (attrs :
+              list (@sigT (@BoundedString _ (HeadingNames heading))
+                          (fun attr => Domain heading (ibound (indexb attr))
+                                       -> Domain heading (ibound (indexb attr)))))
+  : @Tuple heading := fold_left (fun (tup' : @Tuple heading)
+                                     attr => UpdateAttribute tup' (projT1 attr) (projT2 attr)) attrs tup.
+
+Class HeadingHint := { headingHint : Heading }.
+
+Notation "tup ○ f" :=
+  (let H := _ in
+   let _ := {| headingHint := H |} in
+   @UpdateAttributes H tup f%Update) : Tuple_scope.
+
+Notation "x !! attr / f" :=
+  (@existT (@BoundedString _ (HeadingNames headingHint))
+           (fun attr' => Domain _ (ibound (indexb attr'))
+                        -> Domain _ (ibound (indexb attr')))
+           (@Build_BoundedIndex _ _ _ attr%string _)
+           (fun x => f)) : Update_scope.
+
+Notation "attr ::= v" :=
+  (@existT (@BoundedString _ (HeadingNames headingHint))
+           (fun attr' => Domain _ (ibound (indexb attr'))
+                        -> Domain _ (ibound (indexb attr')))
+           (@Build_BoundedIndex _ _ _ attr%string _)
+           (fun _ => v)) : Update_scope.
+
+(*Notation "'UpdateTuple' tup '!' attrs " :=
+    (UpdateAttribute tup (@Build_BoundedIndex _ _ _ attr%string _) f)
+      (tup at level 0, at level 80, attr at level 0,
+       f at level 0, no associativity) : Tuple_scope.*)
+
 Section TupleNotationExamples.
   Local Open Scope Tuple.
 
   Definition MovieHeading : Heading := <"title" :: string, "year" :: nat>%Heading.
   Definition GwW : Tuple := <"title" :: "Gone With the Wind"%string, "year" :: 1938>.
-  Definition GwW' := Eval simpl in GwW !! "title" <- "Gone With the Wind Part 2"%string.
+  Definition GwW' := Eval simpl in GwW ○ ["title" ::= "Gone With the Wind Part 2"%string].
   Definition DupleMovie : RawTuple := GwW ++ GwW'.
 
+  Definition GwW'' (tup : @Tuple MovieHeading)
+    : @Tuple MovieHeading :=
+    tup ○ [old !! "title" / append old "Gone With the Wind Part 3"%string;
+           "year" ::= 10].
+
 End TupleNotationExamples.
-
-Variable UpdateTuple : forall (n : nat) (attrs: Vector.t Attribute n) (attr: Attribute),
-                         (Component attr -> Component attr) ->
-                         @RawTuple (BuildHeading attrs) -> @Tuple (BuildHeading attrs).
-
-Notation "a |= b" := (@UpdateTuple _ {|attrName := a; attrType := _|}
-                             (fun _ => Build_Component (_::_) b%list)) (at level 80).
+(*
 Notation "a ++= b" := (@UpdateTuple _ {|attrName := a; attrType := string|}
                              (fun o => Build_Component (_::_) (append (value o) b))) (at level 80).
 Notation "a :+= b" := (@UpdateTuple _ {|attrName := a; attrType := list _|}
@@ -107,7 +157,7 @@ Notation "a :+= b" := (@UpdateTuple _ {|attrName := a; attrType := list _|}
 Notation "[ a ; .. ; c ]" := (compose a .. (compose c id) ..) : Update_scope.
 
 Delimit Scope Update_scope with Update.
-
+*)
 
 Definition IndexedRawTuple {heading} := @IndexedElement (@RawTuple heading).
 Definition RawTupleIndex {heading} (I : @IndexedRawTuple heading) : nat :=

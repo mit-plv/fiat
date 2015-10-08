@@ -7,37 +7,54 @@ Require Import Fiat.ADT.ADTSig Fiat.ADT.Core Fiat.ADTRefinement.Core.
 Instance refineConstructor_refl rep Dom
 : Reflexive (@refineConstructor rep rep eq Dom).
 Proof.
-  intro; simpl; intros; subst; computes_to_econstructor; eauto.
+  induction Dom; simpl.
+  - intro; simpl; intros; subst; computes_to_econstructor; eauto.
+  - intro; simpl; intros; subst; apply IHDom.
 Qed.
 
 Instance refineMethod_refl rep Dom Cod
 : Reflexive (@refineMethod rep rep eq Dom Cod).
 Proof.
-  intro; simpl; unfold refine; intros; subst;
-  repeat computes_to_econstructor; try destruct v; eauto.
+  unfold refineMethod, methodType; intro; simpl; intros; subst.
+  remember (x r_n); clear.
+  induction Dom.
+  - destruct Cod; intro; simpl; intros; subst;
+    repeat computes_to_econstructor; try destruct v; eauto.
+  - intro; simpl; intros; subst; apply IHDom.
 Qed.
 
-Lemma refineConstructor_trans rep rep' rep'' Dom
+Lemma refineConstructor_trans
+      rep rep' rep'' Dom
       AbsR AbsR'
   : forall c c' c'',
     @refineConstructor rep rep' AbsR Dom c c'
     -> @refineConstructor rep' rep'' AbsR' Dom c' c''
-    -> refineConstructor (fun r_o r_n => exists r_o', AbsR r_o r_o' /\ AbsR' r_o' r_n)
-                         c c''.
+    -> refineConstructor
+         (fun r_o r_n => exists r_o', AbsR r_o r_o' /\ AbsR' r_o' r_n)
+         c c''.
 Proof.
-  intro; simpl; intros; subst; intros v Comp_v.
-  apply H0 in Comp_v; computes_to_inv; subst.
-  apply H in Comp_v; computes_to_inv; subst; eauto.
+  induction Dom.
+  - intro; simpl; intros; subst; intros v Comp_v.
+    apply H0 in Comp_v; computes_to_inv; subst.
+    apply H in Comp_v; computes_to_inv; subst; eauto.
+  - simpl; intros; eapply IHDom; simpl in *.
+    apply H.
+    eapply H0.
 Qed.
 
-Instance refineConstructor_trans' rep Dom 
+Instance refineConstructor_trans' rep Dom
 : Transitive (@refineConstructor rep rep eq Dom).
 Proof.
-  intro; intros.
-  pose proof (refineConstructor_trans  H H0);
-    unfold refineConstructor, refine; intros.
-  eapply H1 in H2; computes_to_inv; subst.
-  destruct_ex; intuition; subst; eauto.
+  induction Dom.
+  - intro; intros.
+    pose proof (refineConstructor_trans nil eq eq x y z H H0);
+      unfold refineConstructor, refine; intros.
+    eapply H1 in H2; computes_to_inv; subst.
+    destruct_ex; intuition; subst; eauto.
+  - simpl; intro; intros.
+    eapply IHDom.
+    apply H.
+    apply H0.
 Qed.
 
 Lemma refineMethod_trans rep rep' rep'' Dom Cod
@@ -48,21 +65,37 @@ Lemma refineMethod_trans rep rep' rep'' Dom Cod
     -> refineMethod (fun r_o r_n => exists r_o', AbsR r_o r_o' /\ AbsR' r_o' r_n)
                          m m''.
 Proof.
-  intro; simpl; intros; subst; intros v Comp_v.
-  destruct_ex; intuition.
-  eapply H0 in Comp_v; eauto; computes_to_inv; subst.
-  eapply H in Comp_v; eauto; computes_to_inv; subst; eauto.
-  repeat computes_to_econstructor; eauto.
+  unfold refineMethod, methodType; induction Dom.
+  - intro; simpl; intros; destruct Cod; subst; intros v Comp_v.
+    + destruct_ex; intuition.
+      eapply H0 in Comp_v; eauto; computes_to_inv; subst.
+      eapply H in Comp_v; eauto; computes_to_inv; subst; eauto.
+      repeat computes_to_econstructor; eauto.
+    + destruct_ex; intuition.
+      eapply H0 in Comp_v; eauto; computes_to_inv; subst.
+      eapply H in Comp_v; eauto; computes_to_inv; subst; eauto.
+  - simpl; intros.
+    destruct_ex; intuition.
+    eapply (IHDom (fun d' => m r_o d)
+                  (fun d' => m' x d)
+                  (fun d' => m'' r_n d)); eauto.
 Qed.
 
 Instance refineMethod_trans' rep Dom Cod
 : Transitive (@refineMethod rep rep eq Dom Cod).
 Proof.
-  intro; intros.
-  pose proof (refineMethod_trans H H0);
-  unfold refineMethod, refine; intros; subst.
-  eapply H1 in H3; eauto; computes_to_inv; subst.
-  destruct_ex; intuition; subst; eauto.
+  unfold refineMethod, methodType; subst; induction Dom.
+  - intro; intros.
+    pose proof (refineMethod_trans H H0);
+      unfold refineMethod, refineMethod', refine in *; destruct Cod; intros; subst.
+    + eapply H2 in H3; eauto; computes_to_inv; subst.
+      destruct_ex; intuition; subst; eauto.
+    + eapply H2 in H3; eauto; computes_to_inv; subst.
+      destruct_ex; intuition; subst; eauto.
+  - intro; simpl; intros; subst.
+    eapply (IHDom (fun d' => x r_n d)
+                  (fun d' => y r_n d)
+                  (fun d' => z r_n d)) with (r_o := r_n); eauto.
 Qed.
 
 Global Instance refineADT_PreOrder Sig : PreOrderT (refineADT (Sig := Sig)).
@@ -74,19 +107,12 @@ Proof.
       try reflexivity.
   - intros x y z H H'.
     destruct H as [AbsR ? ?].
-    destruct H' as [AbsR' ? ?]; simpl in *.
+    destruct H' as [AbsR' ? ?].
     econstructor 1 with
       (AbsR := fun x z => exists y, AbsR x y /\ AbsR' y z);
       simpl in *; intros.
-    + destruct_ex; intuition; rewrite_rev_hyp; eauto.
-      autorewrite with refine_monad; f_equiv; unfold pointwise_relation;
-      intros; econstructor; computes_to_inv;
-      eauto.
-    + destruct_ex; intuition; rewrite_rev_hyp; eauto.
-      autorewrite with refine_monad; f_equiv; unfold pointwise_relation.
-      intros; rewrite refine_split_ex; autorewrite with refine_monad;
-      f_equiv; unfold pointwise_relation; intros;
-      autorewrite with refine_monad; simpl; f_equiv.
+    + eauto using refineConstructor_trans.
+    + eauto using refineMethod_trans.
 Qed.
 
 (*Add Parametric Relation Sig : (ADT Sig) refineADT

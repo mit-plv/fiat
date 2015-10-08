@@ -58,17 +58,15 @@ Section BuildADTRefinements.
             (newDef : consDef (Vector.nth consSigs idx))
             adt''
   :
-    (forall d,
-       refine (consBody (ith consDefs idx) d) (consBody newDef d))
+    (refineConstructor eq (consBody (ith consDefs idx)) (consBody newDef))
     -> refineADT (ADTReplaceConsDef consDefs methDefs idx newDef) adt''
     -> refineADT (BuildADT consDefs methDefs) adt''.
   Proof.
     intros; eapply SharpenStep; try exact X.
     eapply refineADT_BuildADT_ReplaceConstructor with (AbsR := eq);
     simpl; unfold refine; intros; subst; eauto.
-    repeat computes_to_econstructor; try destruct v; eauto.
-    repeat computes_to_econstructor; try destruct v; eauto;
-    eapply H; eauto.
+    - reflexivity.
+    - reflexivity.
   Qed.
 
   Corollary FullySharpenStep_BuildADT_ReplaceConstructor_eq
@@ -82,17 +80,15 @@ Section BuildADTRefinements.
             (newDef : consDef (Vector.nth consSigs idx))
             adt''
   :
-    (forall d,
-       refine (consBody (ith consDefs idx) d) (consBody newDef d))
+    (refineConstructor eq (consBody (ith consDefs idx)) (consBody newDef))
     -> FullySharpenedUnderDelegates (ADTReplaceConsDef consDefs methDefs idx newDef) adt''
     -> FullySharpenedUnderDelegates (BuildADT consDefs methDefs) adt''.
   Proof.
     intros; eapply FullySharpenStep; try exact X.
     eapply refineADT_BuildADT_ReplaceConstructor with (AbsR := eq);
     simpl; unfold refine; intros; subst; eauto.
-    repeat computes_to_econstructor; try destruct v; eauto.
-    repeat computes_to_econstructor; try destruct v; eauto;
-    eapply H; eauto.
+    - reflexivity.
+    - reflexivity.
   Qed.
 
   (*Corollary SharpenStep_BuildADT_ReplaceConstructor_eq
@@ -225,7 +221,7 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
     rewrite ith_replace_Index_neq; eauto.
   Qed.
 
-  Lemma SharpenStep_BuildADT_ReplaceMethod_eq
+  Corollary SharpenStep_BuildADT_ReplaceMethod_eq
         (Rep : Type)
         {n n'}
         (consSigs : Vector.t consSig n)
@@ -236,20 +232,17 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
         (newDef : methDef (Vector.nth methSigs idx))
         adt''
   :
-    (forall r_n n,
-       refine (methBody (ith methDefs idx) r_n n) (methBody newDef r_n n))
+    (refineMethod eq (methBody (ith methDefs idx)) (methBody newDef))
     -> refineADT (ADTReplaceMethDef consDefs methDefs idx newDef) adt''
     -> refineADT (BuildADT consDefs methDefs) adt''.
   Proof.
     intros; eapply SharpenStep.
     eapply refineADT_BuildADT_ReplaceMethod with (AbsR := eq);
-    simpl; unfold refine; intros; subst; eauto.
-    repeat computes_to_econstructor; try destruct v; eauto.
-    repeat computes_to_econstructor; try destruct v; try eapply H; eauto.
+    simpl; unfold refine; intros; subst; eauto; reflexivity.
     exact X.
   Qed.
 
-    Lemma FullySharpenStep_BuildADT_ReplaceMethod_eq
+  Lemma FullySharpenStep_BuildADT_ReplaceMethod_eq
         (Rep : Type)
         {n n'}
         (consSigs : Vector.t consSig n)
@@ -260,8 +253,7 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
         (newDef : methDef (Vector.nth methSigs idx))
         adt''
   :
-    (forall r_n n,
-       refine (methBody (ith methDefs idx) r_n n) (methBody newDef r_n n))
+    (refineMethod eq (methBody (ith methDefs idx)) (methBody newDef))
     -> FullySharpenedUnderDelegates
       (ADTReplaceMethDef consDefs methDefs idx newDef)
       adt''
@@ -271,9 +263,7 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
   Proof.
     intros; eapply FullySharpenStep.
     eapply refineADT_BuildADT_ReplaceMethod with (AbsR := eq);
-    simpl; unfold refine; intros; subst; eauto.
-    repeat computes_to_econstructor; try destruct v; eauto.
-    repeat computes_to_econstructor; try destruct v; try eapply H; eauto.
+    simpl; unfold refine; intros; subst; eauto; reflexivity.
     exact X.
   Qed.
 
@@ -295,8 +285,7 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
     intros; eapply refineADT_BuildADT_ReplaceMethod_eq; eauto.
   Defined. *)
 
-
-  Lemma refineADT_BuildADT_ReplaceMethod_sigma
+  (*Lemma refineADT_BuildADT_ReplaceMethod_sigma
         (RepT : Type)
         (RepInv : RepT -> Prop)
         {n n'}
@@ -323,7 +312,7 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
     (AbsR := fun r_o r_n => proj1_sig r_o = proj1_sig r_n); eauto;
     simpl in *; intros; subst; eauto.
     computes_to_econstructor; eauto.
-  Qed.
+  Qed. *)
 
   (* Notation-Friendly Lemmas for constructing an easily extractible
      ADT implementation. *)
@@ -358,7 +347,7 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
                                 ComputationalADT.pcADT (DelegateSigs idx) (DelegateReps idx))
   : ComputationalADT.cADT (BuildADTSig consSigs methSigs) :=
     BuildcADT
-      (imap (Build_cConsDef (Rep:=rep DelegateReps))
+      (imap (Build_cConsDef (rep DelegateReps))
             (cConstructors DelegateReps DelegateImpls))
       (imap (Build_cMethDef (Rep:=rep DelegateReps))
             (cMethods DelegateReps DelegateImpls)).
@@ -417,7 +406,7 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
                         (RepT) (rep DelegateReps) (cAbsR _ _ ValidImpls)
                         (consDom (Vector.nth consSigs idx))
                         (getConsDef consDefs idx)
-                        (fun d => ret (ith (cConstructors DelegateReps DelegateImpls) idx d))))
+                        (LiftcConstructor _ _ (ith (cConstructors DelegateReps DelegateImpls) idx))))
              (cMethodsRefinesSpec : forall
                                       (DelegateReps : Fin.t DelegateIDs -> Type)
                                       (DelegateImpls : forall idx,
@@ -434,7 +423,7 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
                                              (methDom (Vector.nth methSigs idx))
                                              (methCod (Vector.nth methSigs idx))
                                              (getMethDef methDefs idx)
-                                             (fun r_n d => ret (ith (cMethods DelegateReps DelegateImpls) idx r_n d))))
+                                             (LiftcMethod (ith (cMethods DelegateReps DelegateImpls) idx))))
   : FullySharpenedUnderDelegates (BuildADT consDefs methDefs)
                                  {|
                                    Sharpened_DelegateSigs := DelegateSigs;
@@ -450,17 +439,15 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
                         (cAbsR DelegateReps DelegateImpls DelegateImplRefinesSpec)).
     - simpl; unfold ComputationalADT.cConstructors; simpl; intros.
       rewrite <- ith_imap; eauto.
-      rewrite (Lookup_Iterate_Dep_Type
-                 _ (cConstructorsRefinesSpec DelegateReps DelegateImpls DelegateImplRefinesSpec) idx d);
-        reflexivity.
+      apply (Lookup_Iterate_Dep_Type
+                 _ (cConstructorsRefinesSpec DelegateReps DelegateImpls DelegateImplRefinesSpec) idx).
         (*as [c [AbsR_c computes_c]].
       unfold refine; intros; inversion_by computes_to_inv; subst.
       econstructor; eauto. *)
     - simpl; unfold ComputationalADT.cMethods; simpl; intros.
       rewrite <- ith_imap.
-      rewrite (Lookup_Iterate_Dep_Type
-                  _ (cMethodsRefinesSpec DelegateReps DelegateImpls DelegateImplRefinesSpec)
-                  idx r_o r_n d H); reflexivity.
+      apply (Lookup_Iterate_Dep_Type
+                  _ (cMethodsRefinesSpec DelegateReps DelegateImpls DelegateImplRefinesSpec)).
         (* as [r_o' [AbsR_r_o' computes_r_o']].
       unfold refine; intros; inversion_by computes_to_inv; subst;
       econstructor; eauto.
@@ -524,7 +511,7 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
                                                   (RepT) (rep DelegateReps) (cAbsR _ _ ValidImpls)
                                                   (consDom (Vector.nth consSigs idx))
                                                   (getConsDef consDefs idx)
-                                                  (fun d => ret (ith (cConstructors DelegateReps DelegateImpls) idx d))))
+                                                  (LiftcConstructor _ _ (ith (cConstructors DelegateReps DelegateImpls) idx))))
              (cMethodsRefinesSpec : forall
                                       (DelegateReps : Fin.t DelegateIDs -> Type)
                                       (DelegateImpls : forall idx,
@@ -541,7 +528,7 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
                                              (methDom (Vector.nth methSigs idx))
                                              (methCod (Vector.nth methSigs idx))
                                              (getMethDef methDefs idx)
-                                             (fun r_n d => ret (ith (cMethods DelegateReps DelegateImpls) idx r_n d))))
+                                             (LiftcMethod (ith (cMethods DelegateReps DelegateImpls) idx ))))
   : FullySharpenedUnderDelegates
       (BuildADT consDefs methDefs)
       {|
@@ -638,7 +625,7 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
                                                   (RepT) (rep DelegateReps) (cAbsR _ _ ValidImpls)
                                                   (consDom (Vector.nth consSigs idx))
                                                   (getConsDef consDefs idx)
-                                                  (fun d => ret (ith (cConstructors DelegateReps DelegateImpls) idx d))))
+                                                  (LiftcConstructor _ _ (ith (cConstructors DelegateReps DelegateImpls) idx))))
              (cMethodsRefinesSpec : forall
                                       (DelegateReps : Fin.t DelegateIDs -> Type)
                                       (DelegateImpls : forall idx,
@@ -655,7 +642,7 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
                                              (methDom (Vector.nth methSigs idx))
                                              (methCod (Vector.nth methSigs idx))
                                              (getMethDef methDefs idx)
-                                             (fun r_n d => ret (ith (cMethods DelegateReps DelegateImpls) idx r_n d))))
+                                             (LiftcMethod (ith (cMethods DelegateReps DelegateImpls) idx))))
   : FullySharpenedUnderDelegates
       (BuildADT consDefs methDefs)
       {|
@@ -786,15 +773,15 @@ Proof.
   destruct cond; eauto.
 Qed.
 
-Lemma ComputesToLiftcADT {Sig}
+(*Lemma ComputesToLiftcADT {Sig}
 : forall (cadt : cADT Sig) idx r_n d,
     Methods (LiftcADT cadt) idx r_n d ↝ cMethods cadt idx r_n d.
 Proof.
   unfold LiftcADT; simpl; intros.
   simpl; constructor.
-Qed.
+Qed. *)
 
-Lemma refineCallMethod {Sig}
+(*Lemma refineCallMethod {Sig}
 : forall (adt : ADT Sig) (cadt : cADT Sig)
          (refineA : refineADT adt (LiftcADT cadt))  idx r_o r_n d,
     refine (r_o' <- Methods adt idx r_o d;
@@ -817,7 +804,7 @@ Proof.
   reflexivity.
   rewrite <- H0''; eauto.
   rewrite <- H0''; eauto.
-Qed.
+Qed. *)
 
 Ltac ilist_of_evar_dep n C D B As k :=
   match n with

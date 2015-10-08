@@ -31,52 +31,53 @@ Section BagADT.
   (* Get rid of Bag. *)
   Definition BagSig :=
     ADTsignature {
-        Constructor sEmpty : unit             -> rep,
-        Method sFind      : rep x SearchTermType -> rep x list ElementType,
-        Method sEnumerate : rep x unit -> rep x list ElementType,
-        Method sInsert    : rep x ElementType -> rep x unit,
-        Method sCount     : rep x SearchTermType  -> rep x nat,
-        Method sDelete    : rep x SearchTermType  -> rep x (list ElementType),
-        Method sUpdate    : rep x (SearchTermType * UpdateTermType) -> rep x (list ElementType)
+        Constructor sEmpty : rep,
+        Method sFind      : rep * SearchTermType -> rep * (list ElementType),
+        Method sEnumerate : rep -> rep * (list ElementType),
+        Method sInsert    : rep * ElementType -> rep,
+        Method sCount     : rep * SearchTermType  -> rep * nat,
+        Method sDelete    : rep * SearchTermType  -> rep * (list ElementType),
+        Method sUpdate    : rep * SearchTermType * UpdateTermType -> rep * (list ElementType)
   }.
 
   Definition BagSpec : ADT BagSig :=
-    ADTRep (IndexedEnsemble) {
-        Def Constructor sEmpty (_ : unit) : rep :=
+    ADTRep (@IndexedEnsemble ElementType) {
+        Def Constructor0 sEmpty : rep :=
           ret (Empty_set _),
 
-        Def Method sFind (r : rep, f : SearchTermType)
-          : list ElementType :=
+          Def Method1 sFind (r : rep) (f : SearchTermType)
+          : rep * (list ElementType) :=
             results <- {l | EnsembleIndexedListEquivalence r l};
             ret (r, filter (MatchSearchTerm f) results),
 
-        Def Method sEnumerate (r : rep, f : unit)
-          : list ElementType :=
+        Def Method0 sEnumerate (r : rep)
+          : rep * (list ElementType) :=
             results <- {l | EnsembleIndexedListEquivalence r l};
             ret (r, results),
 
-        Def Method sInsert (r : rep, element : ElementType) : unit :=
+        Def Method1 sInsert (r : rep) (element : ElementType) : rep :=
           freshIdx <- {freshIdx | UnConstrFreshIdx r freshIdx};
           ret (Add _ r {| elementIndex := freshIdx;
-                          indexedElement := element |}, ()),
+                          indexedElement := element |}),
 
-        Def Method sCount (r : rep, f : SearchTermType) : nat :=
+        Def Method1 sCount (r : rep) (f : SearchTermType) : rep * (nat : Type) :=
           results <- {l | EnsembleIndexedListEquivalence r l};
         ret (r, length (filter (MatchSearchTerm f) results)),
 
-        Def Method sDelete (r : rep, f : SearchTermType)
-        : list ElementType :=
+        Def Method1 sDelete (r : rep) (f : SearchTermType)
+        : rep * (list ElementType) :=
           deleted <- {l | EnsembleIndexedListEquivalence r l};
           ret (EnsembleDelete
                  r
                  (fun tup => MatchSearchTerm f tup = true),
                filter (MatchSearchTerm f) deleted),
 
-        Def Method sUpdate (r : rep, f : SearchTermType * UpdateTermType) : list ElementType :=
+        Def Method2 sUpdate (r : rep) (st : SearchTermType) (ut : UpdateTermType)
+          : rep * (list ElementType) :=
             updated <- {l | EnsembleIndexedListEquivalence r l};
-          ret (IndexedEnsembleUpdate r (fun tup => MatchSearchTerm (fst f) tup = true)
-                                     (fun old new => new = (ApplyUpdateTerm (snd f) old)),
-                 filter (MatchSearchTerm (fst f)) updated)
+          ret (IndexedEnsembleUpdate r (fun tup => MatchSearchTerm st tup = true)
+                                     (fun old new => new = (ApplyUpdateTerm ut old)),
+                 filter (MatchSearchTerm st) updated)
         }.
 
 End BagADT.

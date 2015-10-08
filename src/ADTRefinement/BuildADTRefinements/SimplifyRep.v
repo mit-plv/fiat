@@ -24,7 +24,7 @@ Section SimplifyRep.
   Variable AbsR : oldRep -> newRep -> Prop.
   Notation "ro ≃ rn" := (AbsR ro rn) (at level 70).
 
-  Definition simplifyMethDef
+(*  Definition simplifyMethDef
              (Sig : methSig)
              (oldMeth : @methDef oldRep Sig)
   : @methDef newRep Sig :=
@@ -63,6 +63,6 @@ Section SimplifyRep.
       repeat computes_to_econstructor; try subst; eauto.
     - rewrite <- ith_Bounded_imap.
       rewrite H0; eauto; reflexivity.
-  Qed. *)
+  Qed. *) *)
 
 End SimplifyRep.

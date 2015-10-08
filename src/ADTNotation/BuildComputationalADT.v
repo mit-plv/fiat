@@ -22,20 +22,161 @@ Delimit Scope cADT_scope with cADT.
 Record cMethDef {Rep : Type} (Sig : methSig) :=
   { cMethBody :> cMethodType Rep (methDom Sig) (methCod Sig)}.
 
-Notation "'Def' 'Method' id ( r : 'rep' , x : dom ) : cod := bod" :=
-  (Build_cMethDef {| methID := id; methDom := dom; methCod := cod |}
-                  (fun (r : repHint) x => let cod := {| codHint := cod |} in bod%comp))
-    (no associativity, id at level 0, r at level 0, x at level 0, dom at level 0,
-     cod at level 0, only parsing,
-     at level 94, format "'Def'  'Method'  id  ( r  :  'rep' ,  x  :  dom )  :  cod  := '/' '[  '   bod ']' " ) :
-cMethDefParsing_scope.
+Notation "'Def' 'Method0' id r .. xn : 'rep' '*' cod := bod" :=
+  (Build_cMethDef
+     {| methID := id; methDom := [ ] ; methCod := Some (cod : Type) |}
+     (fun r => .. (fun xn =>
+                     let _ := {| codHint := Some (cod : Type) |} in
+                     (bod%comp : methodType' rep [ ] codHint )) ..))
+    (no associativity, id at level 0, r closed binder , xn closed binder, dom at level 0,
+     only parsing,
+     at level 94,
+     format "'Def'  'Method0'  id  r  ..  xn  :  'rep'  '*'  cod  :=  '/' '[  '   bod ']' ")
+  : cMethDefParsing_scope.
 
-Notation "'Def' 'Method' id ( r : 'rep' , x : dom ) : cod := bod" :=
-  (Build_cMethDef {| methID := id; methDom := dom; methCod := cod |} (fun r x => bod%comp))
-    (no associativity, id at level 0, r at level 0, x at level 0, dom at level 0,
-     cod at level 0,
-     at level 94, format "'Def'  'Method'  id  ( r  :  'rep' ,  x  :  dom )  :  cod  :=  '/' '[  '   bod ']' " ) :
-cMethDef_scope.
+Notation "'Def' 'Method1' id r .. xn : 'rep' '*' cod := bod" :=
+  (Build_cMethDef
+     {| methID := id; methDom := [ _ ] ; methCod := Some (cod : Type) |}
+     (fun r => .. (fun xn =>
+                     let _ := {| codHint := Some (cod : Type) |} in
+                     (bod%comp : methodType' rep [ ] codHint )) ..))
+    (no associativity, id at level 0, r closed binder , xn closed binder, dom at level 0,
+     only parsing,
+     at level 94,
+     format "'Def'  'Method1'  id  r  ..  xn  :  'rep'  '*'  cod  :=  '/' '[  '   bod ']' ")
+  : cMethDefParsing_scope.
+
+Notation "'Def' 'Method2' id r .. xn : 'rep' '*' cod := bod" :=
+  (Build_cMethDef
+     {| methID := id; methDom := [ _; _ ] ; methCod := Some (cod : Type) |}
+     (fun r => .. (fun xn =>
+                     let _ := {| codHint := Some (cod : Type) |} in
+                     (bod%comp : methodType' rep [ ] codHint )) ..))
+    (no associativity, id at level 0, r closed binder , xn closed binder, dom at level 0,
+     only parsing,
+     at level 94,
+     format "'Def'  'Method2'  id  r  ..  xn  :  'rep'  '*'  cod  :=  '/' '[  '   bod ']' ")
+  : cMethDefParsing_scope.
+
+Notation "'Def' 'Method3' id r .. xn : 'rep' '*' cod := bod" :=
+  (Build_cMethDef
+     {| methID := id; methDom := [ _; _; _ ] ; methCod := Some (cod : Type) |}
+     (fun r => .. (fun xn =>
+                     let _ := {| codHint := Some (cod : Type) |} in
+                     (bod%comp : methodType' rep [ ] codHint )) ..))
+    (no associativity, id at level 0, r closed binder , xn closed binder, dom at level 0,
+     only parsing,
+     at level 94,
+     format "'Def'  'Method3'  id  r  ..  xn  :  'rep'  '*'  cod  :=  '/' '[  '   bod ']' ")
+  : cMethDefParsing_scope.
+
+Notation "'Def' 'Method4' id r .. xn : 'rep' '*' cod := bod" :=
+  (Build_cMethDef
+     {| methID := id; methDom := [_; _; _; _ ] ; methCod := Some (cod : Type) |}
+     (fun r => .. (fun xn =>
+                     let _ := {| codHint := Some (cod : Type) |} in
+                     (bod%comp : methodType' rep [ ] codHint )) ..))
+    (no associativity, id at level 0, r closed binder , xn closed binder, dom at level 0,
+     only parsing,
+     at level 94,
+     format "'Def'  'Method4'  id  r  ..  xn  :  'rep'  '*'  cod  :=  '/' '[  '   bod ']' ")
+  : cMethDefParsing_scope.
+
+Notation "'Def' 'Method5' id r .. xn : 'rep' '*' cod := bod" :=
+  (Build_cMethDef
+     {| methID := id; methDom := [_; _; _; _; _ ] ; methCod := Some (cod : Type) |}
+     (fun r => .. (fun xn =>
+                     let _ := {| codHint := Some (cod : Type) |} in
+                     (bod%comp : methodType' rep [ ] codHint )) ..))
+    (no associativity, id at level 0, r closed binder , xn closed binder, dom at level 0,
+     only parsing,
+     at level 94,
+     format "'Def'  'Method5'  id  r  ..  xn  :  'rep'  '*'  cod  :=  '/' '[  '   bod ']' ")
+  : cMethDefParsing_scope.
+
+(* Variant Notations for methods that don't return a value. *)
+
+Notation "'Def' 'Method0' id r .. xn : 'rep' := bod" :=
+  (Build_cMethDef {| methID := id; methDom := [ ] ; methCod := None |} (fun r => .. (fun xn => let _ := {| codHint := None |} in (bod%comp : methodType' rep [ ] codHint )) ..))
+    (no associativity, id at level 0, r closed binder , xn closed binder, dom at level 0,
+     only parsing,
+     at level 94,
+     format "'Def'  'Method0'  id  r  ..  xn  :  'rep' :=  '/' '[  '   bod ']' ")
+  : cMethDefParsing_scope.
+
+Notation "'Def' 'Method1' id r .. xn : 'rep' := bod" :=
+  (Build_cMethDef {| methID := id; methDom := [_ ] ; methCod := None |} (fun r => .. (fun xn => let _ := {| codHint := None |} in (bod%comp : methodType' rep [ ] codHint )) ..))
+    (no associativity, id at level 0, r closed binder , xn closed binder, dom at level 0,
+     only parsing,
+     at level 94,
+     format "'Def'  'Method1'  id  r  ..  xn  :  'rep' :=  '/' '[  '   bod ']' ")
+  : cMethDefParsing_scope.
+
+Notation "'Def' 'Method2' id r .. xn : 'rep' := bod" :=
+  (Build_cMethDef {| methID := id; methDom := [_; _ ] ; methCod := None |} (fun r => .. (fun xn => let _ := {| codHint := None |} in (bod%comp : methodType' rep [ ] codHint )) ..))
+    (no associativity, id at level 0, r closed binder , xn closed binder, dom at level 0,
+     only parsing,
+     at level 94,
+     format "'Def'  'Method2'  id  r  ..  xn  :  'rep' :=  '/' '[  '   bod ']' ")
+  : cMethDefParsing_scope.
+
+Notation "'Def' 'Method3' id r .. xn : 'rep' := bod" :=
+  (Build_cMethDef {| methID := id; methDom := [_; _; _ ] ; methCod := None |} (fun r => .. (fun xn => let _ := {| codHint := None |} in (bod%comp : methodType' rep [ ] codHint )) ..))
+    (no associativity, id at level 0, r closed binder , xn closed binder, dom at level 0,
+     only parsing,
+     at level 94,
+     format "'Def'  'Method3'  id  r  ..  xn  :  'rep' :=  '/' '[  '   bod ']' ")
+  : cMethDefParsing_scope.
+
+Notation "'Def' 'Method4' id r .. xn : 'rep' := bod" :=
+  (Build_cMethDef {| methID := id; methDom := [_; _; _; _] ; methCod := None |} (fun r => .. (fun xn => let _ := {| codHint := None |} in (bod%comp : methodType' rep [ ] codHint )) ..))
+    (no associativity, id at level 0, r closed binder , xn closed binder, dom at level 0,
+     only parsing,
+     at level 94,
+     format "'Def'  'Method4'  id  r  ..  xn  :  'rep' :=  '/' '[  '   bod ']' ")
+  : cMethDefParsing_scope.
+
+Notation "'Def' 'Method5' id r .. xn : 'rep' := bod" :=
+  (Build_cMethDef {| methID := id; methDom := [_; _; _; _; _] ; methCod := None |} (fun r => .. (fun xn => let _ := {| codHint := None |} in (bod%comp : methodType' rep [ ] codHint )) ..))
+    (no associativity, id at level 0, r closed binder , xn closed binder, dom at level 0,
+     only parsing,
+     at level 94,
+     format "'Def'  'Method5'  id  r  ..  xn  :  'rep' :=  '/' '[  '   bod ']' ")
+  : cMethDefParsing_scope.
+(* Again, pretty printing involves fewer rules. *)
+Notation "'Def' 'Method' id ( r : 'rep' ) : 'rep' '*' cod := bod" :=
+  (Build_cMethDef {| methID := id; methDom := [] ; methCod := Some cod |} (fun r => bod%comp ))
+    (no associativity, id at level 0, r at level 0, x1 closed binder , xn closed binder, dom at level 0,
+     cod at level 0, only parsing,
+     at level 94,
+     format "'Def'  'Method'  id  ( r  :  'rep' )  :  'rep'  '*'  cod  :=  '/' '[  '   bod ']' ")
+  : cMethDef_scope.
+
+Notation "'Def' 'Method' id ( r : 'rep' ) x1 .. xn : 'rep' '*' cod := bod" :=
+  (Build_cMethDef {| methID := id; methDom := [_] ; methCod := Some cod |} (fun r =>
+                                                                             (fun x1 => .. (fun xn => (bod%comp )) ..)))
+    (no associativity, id at level 0, r at level 0, x1 closed binder , xn closed binder, dom at level 0,
+     only parsing,
+     at level 94,
+     format "'Def'  'Method'  id  ( r  :  'rep' )  x1  ..  xn  :  'rep'  '*'  cod  :=  '/' '[  '   bod ']' ")
+  : cMethDef_scope.
+
+Notation "'Def' 'Method' id ( r : 'rep' ) : 'rep' := bod" :=
+  (Build_cMethDef {| methID := id; methDom := [] ; methCod := None |} (fun r => bod%comp ))
+    (no associativity, id at level 0, r at level 0, x1 closed binder , xn closed binder, dom at level 0,
+     cod at level 0, only parsing,
+     at level 94,
+     format "'Def'  'Method'  id  ( r  :  'rep' )  :  'rep'  :=  '/' '[  '   bod ']' ")
+  : cMethDef_scope.
+
+Notation "'Def' 'Method' id ( r : 'rep' ) x1 .. xn : 'rep' := bod" :=
+  (Build_cMethDef {| methID := id; methDom := [_] ; methCod := None |} (fun r =>
+                                                                         (fun x1 => .. (fun xn => (bod%comp )) ..)))
+    (no associativity, id at level 0, r at level 0, x1 closed binder , xn closed binder, dom at level 0,
+     only parsing,
+     at level 94,
+     format "'Def'  'Method'  id  ( r  :  'rep' )  x1  ..  xn  :  'rep'  :=  '/' '[  '   bod ']' ")
+  : cMethDef_scope.
 
 Delimit Scope cMethDefParsing_scope with cMethDefParsing.
 Delimit Scope cMethDef_scope with cMethDef.
@@ -43,12 +184,98 @@ Delimit Scope cMethDef_scope with cMethDef.
 Record cConsDef {Rep : Type} (Sig : consSig) :=
   { cConsBody :> cConstructorType Rep (consDom Sig) }.
 
-Notation "'Def' 'Constructor' id ( x : dom ) : 'rep' := bod" :=
-  (Build_cConsDef {| consID := id; consDom := dom |} (fun x => bod%comp))
+(* Notations for parsing Constructors. Including the arity is the simplest way to
+ make typechecking work. *)
+Notation "'Def' 'Constructor0' id : 'rep' := bod" :=
+  (Build_cConsDef _ {| consID := id; consDom := [] |} ((bod%comp : constructorType rep [ ]) ))
     (no associativity, at level 94, id at level 0,
-     x at level 0, dom at level 0,
-     format "'Def'  'Constructor'  id  ( x :  dom )  :  'rep'  :=  '/' '[  '   bod ']' " ) :
-cConsDef_scope.
+     x1 closed binder, xn closed binder,
+     format "'Def'  'Constructor0'  id  :  'rep'  :=  '/' '[  '   bod ']' " ) :
+    cConsDef_scope.
+
+Notation "'Def' 'Constructor1' id x1 .. xn : 'rep' := bod" :=
+  (Build_cConsDef _ {| consID := id; consDom := [_] |} ((fun x1 => .. ((fun xn => (bod%comp : constructorType rep [ ]) )) ..)))
+    (no associativity, at level 94, id at level 0,
+     x1 closed binder, xn closed binder,
+     format "'Def'  'Constructor1'  id  x1  ..  xn  :  'rep'  :=  '/' '[  '   bod ']' " ) :
+    cConsDef_scope.
+
+Notation "'Def' 'Constructor2' id x1 .. xn : 'rep' := bod" :=
+  (Build_cConsDef _ {| consID := id; consDom := [_; _] |} ((fun x1 => .. ((fun xn => (bod%comp : constructorType rep [ ]) )) ..)))
+    (no associativity, at level 94, id at level 0,
+     x1 closed binder, xn closed binder,
+     format "'Def'  'Constructor2'  id  x1  ..  xn  :  'rep'  :=  '/' '[  '   bod ']' " ) :
+    cConsDef_scope.
+
+Notation "'Def' 'Constructor3' id x1 .. xn : 'rep' := bod" :=
+  (Build_cConsDef _ {| consID := id; consDom := [_; _; _] |} ((fun x1 => .. ((fun xn => (bod%comp : constructorType rep [ ]) )) ..)))
+    (no associativity, at level 94, id at level 0,
+     x1 closed binder, xn closed binder,
+     format "'Def'  'Constructor3'  id  x1  ..  xn  :  'rep'  :=  '/' '[  '   bod ']' " ) :
+    cConsDef_scope.
+
+Notation "'Def' 'Constructor4' id x1 .. xn : 'rep' := bod" :=
+  (Build_cConsDef _ {| consID := id; consDom := [_; _; _ ; _] |} ((fun x1 => .. ((fun xn => (bod%comp : constructorType rep [ ]) )) ..)))
+    (no associativity, at level 94, id at level 0,
+     x1 closed binder, xn closed binder,
+     format "'Def'  'Constructor4'  id  x1  ..  xn  :  'rep'  :=  '/' '[  '   bod ']' " ) :
+    cConsDef_scope.
+
+Notation "'Def' 'Constructor5' id x1 .. xn : 'rep' := bod" :=
+  (Build_cConsDef _ {| consID := id; consDom := [_; _; _; _; _] |} ((fun x1 => .. ((fun xn => (bod%comp : constructorType rep [ ]) )) ..)))
+    (no associativity, at level 94, id at level 0,
+     x1 closed binder, xn closed binder,
+     format "'Def'  'Constructor5'  id  x1  ..  xn  :  'rep'  :=  '/' '[  '   bod ']' " ) :
+    cConsDef_scope.
+
+Notation "'Def' 'Constructor6' id x1 .. xn : 'rep' := bod" :=
+  (Build_cConsDef _ {| consID := id; consDom := [_; _; _; _;_; _] |} ((fun x1 => .. ((fun xn => (bod%comp : constructorType rep [ ]) )) ..)))
+    (no associativity, at level 94, id at level 0,
+     x1 closed binder, xn closed binder,
+     format "'Def'  'Constructor6'  id  x1  ..  xn  :  'rep'  :=  '/' '[  '   bod ']' " ) :
+    cConsDef_scope.
+
+Notation "'Def' 'Constructor7' id x1 .. xn : 'rep' := bod" :=
+  (Build_cConsDef _ {| consID := id; consDom := [_; _; _; _; _; _; _] |} ((fun x1 => .. ((fun xn => (bod%comp : constructorType rep [ ]) )) ..)))
+    (no associativity, at level 94, id at level 0,
+     x1 closed binder, xn closed binder,
+     format "'Def'  'Constructor7'  id  x1  ..  xn  :  'rep'  :=  '/' '[  '   bod ']' " ) :
+    cConsDef_scope.
+
+Notation "'Def' 'Constructor8' id x1 .. xn : 'rep' := bod" :=
+  (Build_cConsDef _ {| consID := id; consDom := [_; _; _; _; _; _; _ ; _] |} ((fun x1 => .. ((fun xn => (bod%comp : constructorType rep [ ]) )) ..)))
+    (no associativity, at level 94, id at level 0,
+     x1 closed binder, xn closed binder,
+     format "'Def'  'Constructor8'  id  x1  ..  xn  :  'rep'  :=  '/' '[  '   bod ']' " ) :
+    cConsDef_scope.
+
+Notation "'Def' 'Constructor9' id x1 .. xn : 'rep' := bod" :=
+  (Build_cConsDef _ {| consID := id; consDom := [_; _; _; _; _; _; _; _; _] |} ((fun x1 => .. ((fun xn => (bod%comp : constructorType rep [ ]) )) ..)))
+    (no associativity, at level 94, id at level 0,
+     x1 closed binder, xn closed binder,
+     format "'Def'  'Constructor9'  id  x1  ..  xn  :  'rep'  :=  '/' '[  '   bod ']' " ) :
+    cConsDef_scope.
+
+Notation "'Def' 'Constructor10' id x1 .. xn : 'rep' := bod" :=
+  (Build_cConsDef _ {| consID := id; consDom := [_; _; _; _; _; _; _; _;  _; _] |} ((fun x1 => .. ((fun xn => (bod%comp : constructorType rep [ ]) )) ..)))
+    (no associativity, at level 94, id at level 0,
+     x1 closed binder, xn closed binder,
+     format "'Def'  'Constructor10'  id  x1  ..  xn  :  'rep'  :=  '/' '[  '   bod ']' " ) :
+    cConsDef_scope.
+
+(* Once the type infomation is in hand, two rules can handle pretty printing.  *)
+Notation "'Def' 'Constructor' id x1 .. xn : 'rep' := bod" :=
+  (Build_cConsDef _ {| consID := id; consDom := _ |} ((fun x1 => .. ((fun xn => bod%comp )) ..)))
+    (no associativity, at level 94, id at level 0,
+     x1 closed binder, xn closed binder,
+     format "'Def'  'Constructor'  id  x1  ..  xn  :  'rep'  :=  '/' '[  '   bod ']' " ) :
+    cConsDef_scope.
+
+Notation "'Def' 'Constructor' id : 'rep' := bod" :=
+  (Build_cConsDef _ {| consID := id; consDom := [] |} bod%comp)
+    (no associativity, at level 94, id at level 0,
+     format "'Def'  'Constructor'  id :  'rep'  :=  '/' '[  '   bod ']' " ) :
+    cConsDef_scope.
 
 Delimit Scope cConsDef_scope with cConsDef.
 
@@ -79,8 +306,8 @@ Definition getcMethDef
   cMethBody (ith methDefs idx).
 
 (* Always simplify method lookup when the index is specified. *)
-Arguments getcConsDef [_] {n} [_] _ idx%string / _ .
-Arguments getcMethDef [_] {n} [_] _ idx%string / _ _ .
+Arguments getcConsDef [_] {n} [_] _ idx%string / .
+Arguments getcMethDef [_] {n} [_] _ idx%string / _ .
 
 (* [BuildcADT] constructs an computational ADT from a single constructor
    definition and a list of method signatures,
@@ -118,7 +345,7 @@ Definition callcADTMethod
 (* Notation for ADTs built from [BuildADT]. *)
 
 Notation "'cADTRep' r { cons1 , meth1 , .. , methn } " :=
-  (let _ := {| repHint := r |} in
+  (let _ := {| rep := r |} in
     @BuildcADT r
              _ _
              _ _

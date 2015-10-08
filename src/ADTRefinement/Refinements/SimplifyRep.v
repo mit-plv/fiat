@@ -18,8 +18,9 @@ Section SimplifyRep.
   Variable AbsR : oldRep -> newRep -> Prop.
   Notation "ro ≃ rn" := (AbsR ro rn) (at level 70).
 
-  Definition simplifyMethod
-             (Dom Cod : Type)
+  (*Definition simplifyMethod
+             (Dom : list Type)
+             (Cod : Type)
              (oldMeth : methodType oldRep Dom Cod)
              r_n n : Comp (newRep * Cod) :=
     (r_o' <- (oldMeth (concretize r_n) n);
@@ -56,6 +57,6 @@ Section SimplifyRep.
       computes_to_inv; repeat computes_to_econstructor; try subst; eauto.
     - unfold simplifyMethod; intros.
       eapply H0; eauto.
-  Qed.
+  Qed. *)
 
 End SimplifyRep.

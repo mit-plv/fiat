@@ -29,21 +29,27 @@ Section TupleADT.
   Definition InitTupleDom := @Tuple heading.
 
   Definition InitTupleSig : consSig :=
-      Constructor Tuple_Init : InitTupleDom -> rep.
+    {| consID := Tuple_Init;
+       consDom := Vector.to_list (AttrList (HeadingRaw heading)) |}.
 
-  Definition InitTuple : InitTupleDom -> Tuple := id.
+  (*Fixpoint InitTuple heading' :
+    constructorType (@Tuple heading') (Vector.to_list (AttrList (HeadingRaw heading'))).
+      refine (match heading' return
+                    constructorType (@Tuple heading') (Vector.to_list (AttrList (HeadingRaw heading'))) with
+              |
+              |
 
   Definition InitTupleDef :=
     Def Constructor Tuple_Init (inits : InitTupleDom) : rep :=
-      InitTuple inits.
+      InitTuple inits. *)
 
   (* Getters and Setters for Tuples *)
 
   Definition GetTupleSig id aType :=
-    Method ("Get" ++ id) : rep x unit -> rep x aType.
+    Method ("Get" ++ id) : rep -> rep * aType.
 
   Definition SetTupleSig id aType :=
-    Method ("Set" ++ id) : rep x aType -> rep x unit.
+    Method ("Set" ++ id) : rep * aType -> rep.
 
   Definition TupleSigs'
              {n'}
@@ -68,16 +74,16 @@ Section TupleADT.
              (attr : Fin.t (NumAttr heading)) :
     cMethDef (Rep := @Tuple heading) (GetTupleSig (Vector.nth (HeadingNames heading) attr)
                                                   (Vector.nth (AttrList heading) attr)) :=
-    Def Method _ (msg : rep, g : unit)
-    : Vector.nth (AttrList heading) attr :=
+    Def Method _ (msg : rep) 
+    : rep * (Vector.nth (AttrList heading) attr) :=
       (msg, ith2 msg attr).
 
   Definition SetTupleDef
              (attr : Fin.t (NumAttr heading)) :
     cMethDef (Rep := @Tuple heading) (SetTupleSig (Vector.nth (HeadingNames heading) attr)
                                                   (Vector.nth (AttrList heading) attr)) :=
-    Def Method _ (msg : rep, val : Vector.nth (AttrList heading) attr) : unit :=
-      (replace_Index2 _ msg attr val, tt).
+    Def Method _ (msg : rep) (val : Vector.nth (AttrList heading) attr) : rep :=
+      replace_Index2 _ msg attr val.
 
   Definition TupleDefs'
            {n'}
@@ -119,13 +125,13 @@ Section TupleADT.
       BuildADTSig (Vector.cons _ InitTupleSig _ (Vector.nil _))
                   TupleSigs.
 
-    Definition TupleADT : cADT TupleADTSig :=
-      BuildcADT (icons InitTupleDef inil) TupleDefs.
+    (*Definition TupleADT : cADT TupleADTSig :=
+      BuildcADT (icons InitTupleDef inil) TupleDefs. *)
 
     (* Support for building messages. *)
 
-    Definition ConstructTuple subtopics :=
-      CallConstructor TupleADT Tuple_Init subtopics.
+    (*Definition ConstructTuple subtopics :=
+      CallConstructor TupleADT Tuple_Init subtopics. *)
 
     (* Support for calling message getters. *)
     Lemma BuildGetTupleMethodID_ibound'
@@ -153,10 +159,10 @@ Section TupleADT.
                       boundi := BuildGetTupleMethodID_ibound' _ _ idx |}
       |}.
 
-    Definition CallTupleGetMethod
+    (*Definition CallTupleGetMethod
                (r : Tuple)
                idx
-      := cMethods TupleADT (ibound (indexb (BuildGetTupleMethodID idx))) r.
+      := cMethods TupleADT (ibound (indexb (BuildGetTupleMethodID idx))) r. *)
 
     (* Support for calling message setters. *)
     Lemma BuildSetTupleMethodID_ibound
@@ -184,9 +190,9 @@ Section TupleADT.
                       boundi := BuildSetTupleMethodID_ibound _ _ idx |}
       |}.
 
-    Definition CallTupleSetMethod
+    (*Definition CallTupleSetMethod
                (r : Tuple)
                idx
-      := cMethods TupleADT (ibound (indexb (BuildSetTupleMethodID idx))) r.
+      := cMethods TupleADT (ibound (indexb (BuildSetTupleMethodID idx))) r. *)
 
 End TupleADT.
