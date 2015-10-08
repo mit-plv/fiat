@@ -763,7 +763,7 @@ Ltac t_Same :=
   end.
 
 Lemma SameADTs_add:
-  forall (av : Type) (m1 m2 : StringMap.t (Value av)) 
+  forall (av : Type) (m1 m2 : StringMap.t (Value av))
     (s0 : StringMap.key) (v : Value av),
     SameADTs m2 m1 -> SameADTs ([s0 <-- v]::m2) ([s0 <-- v]::m1).
 Proof.
@@ -771,7 +771,7 @@ Proof.
 Qed.
 
 Lemma SameSCAs_add:
-  forall (av : Type) (m1 m2 : StringMap.t (Value av)) 
+  forall (av : Type) (m1 m2 : StringMap.t (Value av))
     (s0 : string) (v : Value av),
     SameSCAs m2 m1 -> SameSCAs ([s0 <-- v]::m2) ([s0 <-- v]::m1).
 Proof.
@@ -779,7 +779,7 @@ Proof.
 Qed.
 
 Lemma WeakEq_add:
-  forall (av : Type) (m1 m2 : StringMap.t (Value av)) 
+  forall (av : Type) (m1 m2 : StringMap.t (Value av))
     (s0 : string) (v : Value av),
     WeakEq m2 m1 -> WeakEq ([s0 <-- v]::m2) ([s0 <-- v]::m1).
 Proof.
@@ -788,7 +788,7 @@ Proof.
 Qed.
 
 Lemma SameADTs_remove:
-  forall (av : Type) (m1 m2 : StringMap.t (Value av)) 
+  forall (av : Type) (m1 m2 : StringMap.t (Value av))
     (k : StringMap.key),
     SameADTs m2 m1 -> SameADTs (StringMap.remove k m2) (StringMap.remove k m1).
 Proof.
@@ -796,7 +796,7 @@ Proof.
 Qed.
 
 Lemma SameSCAs_remove:
-  forall (av : Type) (m1 m2 : StringMap.t (Value av)) 
+  forall (av : Type) (m1 m2 : StringMap.t (Value av))
     (k : StringMap.key),
     SameSCAs m2 m1 -> SameSCAs (StringMap.remove k m2) (StringMap.remove k m1).
 Proof.
@@ -804,7 +804,7 @@ Proof.
 Qed.
 
 Lemma WeakEq_remove:
-  forall (av : Type) (m1 m2 : StringMap.t (Value av)) 
+  forall (av : Type) (m1 m2 : StringMap.t (Value av))
     (k : StringMap.key),
     WeakEq m2 m1 -> WeakEq (StringMap.remove k m2) (StringMap.remove k m1).
 Proof.
@@ -818,7 +818,7 @@ Lemma SameValues_WeakEq_Ext :
     (state ≲ tenv ∪ m1 ->
      state ≲ tenv ∪ m2).
 Proof.
-  induction tenv as [ | ? ? ? IH ]; 
+  induction tenv as [ | ? ? ? IH ];
   repeat match goal with
          | _ => t_Morphism_step
          | _ => solve [eauto using WeakEq_Trans]
@@ -1279,7 +1279,7 @@ Ltac StringMap_t :=
   | _ => progress StringMapUtils.normalize
   | [ H: StringMap.MapsTo ?k (ADT ?v) ?st, H': SameADTs ?st _ |- _ ] => learn (SameADTs_impl H' H)
   | [ H: StringMap.MapsTo ?k (ADT ?v) ?st, H': SameADTs _ ?st |- _ ] => learn (SameADTs_impl' H' H)
-  | [ H: StringMap.MapsTo ?k ?v ?m, H': WeakEq ?m ?m' |- _ ] => learn (WeakEq_Mapsto_MapsTo H H') 
+  | [ H: StringMap.MapsTo ?k ?v ?m, H': WeakEq ?m ?m' |- _ ] => learn (WeakEq_Mapsto_MapsTo H H')
   end.
 
 Lemma SameValues_WeakEq :
@@ -1288,7 +1288,7 @@ Lemma SameValues_WeakEq :
     (st1 ≲ tenv ∪ m ->
      st2 ≲ tenv ∪ m).
 Proof.
-  induction tenv as [ | ? ? ? IH ]; 
+  induction tenv as [ | ? ? ? IH ];
   repeat match goal with
          | _ => t_Morphism_step
          | _ => StringMap_t
@@ -1395,7 +1395,7 @@ Proof.
            rewrite find_mapsto_iff in H; rewrite H
          end.
   t.
-  
+
   eauto using SameValues_PopExt.
 Qed.
 
@@ -1594,7 +1594,7 @@ Proof.
 Qed.
 
 Lemma SameADTs_pop_SCA_util:
-  forall (av : Type) (st : StringMap.t (Value av)) 
+  forall (av : Type) (st : StringMap.t (Value av))
     (k : StringMap.key)
     (v : W),
     not_mapsto_adt k st = true ->
@@ -1610,7 +1610,7 @@ Proof.
 Qed.
 
 Lemma SameADTs_pop_SCA:
-  forall (av : Type) (st : StringMap.t (Value av)) 
+  forall (av : Type) (st : StringMap.t (Value av))
     (k : StringMap.key) (v : W) ext,
     not_mapsto_adt k st = true ->
     SameADTs ext st ->
@@ -1632,8 +1632,8 @@ Proof.
 Qed.
 
 Lemma SameSCAs_pop_SCA:
-  forall (av : Type) (st : StringMap.t (Value av)) 
-    (k : StringMap.key) (ext : StringMap.t (Value av)) 
+  forall (av : Type) (st : StringMap.t (Value av))
+    (k : StringMap.key) (ext : StringMap.t (Value av))
     (v : W),
     k ∉ st ->
     SameSCAs ext st ->
@@ -1643,8 +1643,8 @@ Proof.
 Qed.
 
 Lemma WeakEq_pop_SCA:
-  forall (av : Type) (st : StringMap.t (Value av)) 
-    (k : StringMap.key) (ext : StringMap.t (Value av)) 
+  forall (av : Type) (st : StringMap.t (Value av))
+    (k : StringMap.key) (ext : StringMap.t (Value av))
     (v : W),
     k ∉ st ->
     WeakEq ext st ->
@@ -1655,7 +1655,7 @@ Proof.
 Qed.
 
 Lemma SameADTs_pop_SCA':
-  forall (av : Type) (st : StringMap.t (Value av)) 
+  forall (av : Type) (st : StringMap.t (Value av))
     (k : StringMap.key) (v : W) ext,
     k ∉ ext ->
     SameADTs ext st ->
@@ -1671,8 +1671,8 @@ Proof.
 Qed.
 
 Lemma SameSCAs_pop_SCA':
-  forall (av : Type) (st : StringMap.t (Value av)) 
-    (k : StringMap.key) (ext : StringMap.t (Value av)) 
+  forall (av : Type) (st : StringMap.t (Value av))
+    (k : StringMap.key) (ext : StringMap.t (Value av))
     (v : W),
     k ∉ ext ->
     SameSCAs ext st ->
@@ -1689,8 +1689,8 @@ Proof.
 Qed.
 
 Lemma WeakEq_pop_SCA':
-  forall (av : Type) (st : StringMap.t (Value av)) 
-    (k : StringMap.key) (ext : StringMap.t (Value av)) 
+  forall (av : Type) (st : StringMap.t (Value av))
+    (k : StringMap.key) (ext : StringMap.t (Value av))
     (v : W),
     k ∉ ext ->
     WeakEq ext st ->
@@ -2012,7 +2012,7 @@ Lemma CompileBinopOrTest_left:
     {{ [[name <-- (SCA av (eval_binop op val1 val2)) as _]]::Nil }} ∪ {{ ext }} // env.
 Proof.
   SameValues_Facade_t.
-  
+
   destruct op; SameValues_Facade_t;
   rewrite (add_redundant_cancel H0) in H19; SameValues_Facade_t.
 
@@ -2151,7 +2151,6 @@ Proof.
          | _ => progress simpl
          end.
 Qed.
-
 
 Lemma SameValues_add_to_ext:
   forall {av} (k : string) (cmp : Comp (Value av)) val
