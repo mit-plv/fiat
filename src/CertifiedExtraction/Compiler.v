@@ -1237,6 +1237,15 @@ Ltac facade_inversion :=
   | [ H: SCA _ _ = SCA _ _ |- _ ] => inversion H; unfold_and_subst; clear H
   end.
 
+Definition dec2bool {P Q} (dec: {P} + {Q}) :=
+  if dec then true else false.
+
+Lemma dec2bool_correct {P Q A} :
+  forall (dec: {P} + {Q}) (tp fp: A),
+    (if dec then tp else fp) = if (dec2bool dec) then tp else fp.
+Proof.
+  intros; destruct dec; reflexivity.
+Qed.
 
 Definition bool2w b :=
   match b with
@@ -2403,6 +2412,11 @@ Ltac translate_op gallina_op :=
   | @Word.wminus => constr:(@inl IL.binop IL.test IL.Minus)
   | @Word.wmult => constr:(@inl IL.binop IL.test IL.Times)
   | @Word.weqb => constr:(@inr IL.binop IL.test IL.Eq)
+  | @IL.weqb => constr:(@inr IL.binop IL.test IL.Eq)
+  | @IL.wneb => constr:(@inr IL.binop IL.test IL.Ne)
+  | @IL.wltb => constr:(@inr IL.binop IL.test IL.Lt)
+  | @IL.wleb => constr:(@inr IL.binop IL.test IL.Le)
+  | @Word.wlt_dec => constr:(@inr IL.binop IL.test IL.Lt)
   | _ => fail 1 "Unknown operator" gallina_op
   end.
 
@@ -2462,6 +2476,7 @@ Ltac compile_simple_internal cmp ext :=
   match cmp with
   | ret (SCA ?av (?op ?lhs ?rhs)) => let facade_op := translate_op op in compile_binop av facade_op lhs rhs ext
   | ret (@bool2val ?av (?op ?lhs ?rhs)) => let facade_op := translate_op op in compile_binop av facade_op lhs rhs ext
+  | ret (@bool2val ?av (@dec2bool _ _ (?op ?lhs ?rhs))) => let facade_op := translate_op op in compile_binop av facade_op lhs rhs ext
   | ret (SCA _ ?w) => compile_constant w; compile_do_side_conditions
   | ret (SCA ?av ?w) => compile_read (SCA av w) ext; compile_do_side_conditions
   | (if ?t then ?tp else ?fp) => compile_if t tp fp
@@ -2551,9 +2566,16 @@ Ltac is_pushable_head_constant f :=
   | _ => idtac
   end.
 
+Ltac is_dec term :=
+  match type of term with
+  | {?p} + {?q}  => idtac
+  end.
+
 Ltac compile_rewrite :=
   match goal with
-  | [  |- appcontext[?f (if ?b then ?x else ?y)] ] => is_pushable_head_constant f; rewrite (push_if f x y b)
+  (*! FIXME Why is setoid needed here? !*)
+  | [  |- appcontext[if ?b then ?x else ?y] ] => is_dec b; setoid_rewrite (dec2bool_correct b x y)
+  | [  |- appcontext[?f (if ?b then ?x else ?y)] ] => is_pushable_head_constant f; setoid_rewrite (push_if f x y b)
   end.
 
 Ltac compile_step :=
