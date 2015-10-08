@@ -556,6 +556,13 @@ Module WUtils_fun (E:DecidableType) (Import M:WSfun E).
            | [  |- _ ∉ (empty _) ]   => rewrite empty_in_iff
            | [  |- _ ∉ (add _ _ _) ] => rewrite add_in_iff
            end.
+
+  Ltac find_fast value fmap :=
+    match fmap with
+    | add ?k value _ => constr:(Some k)
+    | add ?k _ ?tail => find_fast value tail
+    | _ => constr:(@None string)
+    end.
 End WUtils_fun.
 
 Module StringMapUtils := WUtils_fun (StringMap.E) (StringMap).
@@ -2381,20 +2388,13 @@ Ltac compile_do_chomp key :=
   | @None _   => apply ProgOk_Chomp_None
   end; intros; computes_to_inv.
 
-Ltac find_in_fmap value fmap :=
-  match fmap with
-  | StringMap.add ?k value _ => constr:(Some k)
-  | StringMap.add ?k _ ?tail => find_in_fmap value tail
-  | _ => constr:(@None string)
-  end.
-
 Ltac compile_constant value :=
   debug "-> constant value";
   apply CompileConstant.
 
 Ltac compile_read value ext :=
   debug "-> read from the environment";
-  let location := find_in_fmap value ext in
+  let location := find_fast value ext in
   match location with
   | Some ?k => apply (CompileRead (var := k))
   end.
@@ -2421,8 +2421,8 @@ Ltac translate_op gallina_op :=
   end.
 
 Ltac compile_binop av facade_op lhs rhs ext :=
-  let vlhs := find_in_fmap (SCA unit lhs) ext in
-  let vrhs := find_in_fmap (SCA unit rhs) ext in
+  let vlhs := find_fast (SCA unit lhs) ext in
+  let vrhs := find_fast (SCA unit rhs) ext in
   lazymatch constr:(vlhs, vrhs) with
   | (Some ?vlhs, Some ?vrhs) =>
     apply (CompileBinopOrTest (var1 := vlhs) (var2 := vrhs) facade_op)
