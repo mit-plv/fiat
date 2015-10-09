@@ -2902,3 +2902,149 @@ Proof.
 Defined.
 
 Eval simpl in (extract_facade random_test_with_cube).
+
+(* Weak version: should talk about injecting in and projecting out of the main type *)
+Definition FacadeImplementationOfMutation av (fAA: W -> av -> av) : AxiomaticSpec av.
+  refine {|
+      PreCond := fun args => exists w x, args = (SCA _ w) :: (ADT x) :: nil;
+      PostCond := fun args ret => exists w x, args = (SCA _ w, None) :: (ADT x, Some (fAA w x)) :: nil /\ ret = SCA _ (Word.natToWord 32 0)
+    |}; spec_t.
+Defined.
+
+Definition FacadeImplementationOfConstructor av (fAA: av) : AxiomaticSpec av.
+  refine {|
+      PreCond := fun args => args = nil;
+      PostCond := fun args ret => args = nil /\ ret = (ADT fAA)
+    |}; spec_t.
+Defined.
+
+Definition FacadeImplementationOfDestructor av (fAA: av) : AxiomaticSpec av.
+  refine {|
+      PreCond := fun args => exists x, args = (ADT x) :: nil;
+      PostCond := fun args ret => exists x, args = (ADT x, None) :: nil /\ ret = SCA _ (Word.natToWord 32 0)
+    |}; spec_t.
+Defined.
+
+Hint Resolve WeakEq_pop_SCA' : call_helpers_db.
+
+Lemma CompileCallFacadeImplementationOfMutation:
+  forall {av} {env} fADT,
+  forall fpointer varg vtmp (SCAarg: W) ADTarg,
+    GLabelMap.MapsTo fpointer (Axiomatic (FacadeImplementationOfMutation fADT)) env ->
+    forall vret ext pSCA pADT,
+      vret <> varg ->
+      vtmp <> varg ->
+      vtmp <> vret ->
+      vret ∉ ext ->
+      vtmp ∉ ext ->
+      varg ∉ ext ->
+      {{ @Nil av }}
+        pSCA
+      {{ [[ varg <-- SCA _ SCAarg as _]] :: Nil }} ∪ {{ ext }} // env ->
+      {{ [[ varg <-- SCA _ SCAarg as _]] :: Nil }}
+        pADT
+      {{ [[ varg <-- SCA _ SCAarg as _]] :: [[ vret <-- ADT ADTarg as _]] :: Nil }} ∪ {{ ext }} // env ->
+      {{ Nil }}
+        Seq pSCA (Seq pADT (Call vtmp fpointer (varg :: vret :: nil)))
+      {{ [[ vret <-- ADT (fADT SCAarg ADTarg) as _]] :: Nil }} ∪ {{ ext }} // env.
+Proof.
+  repeat match goal with
+         | _ => SameValues_Facade_t_step
+         | _ => facade_cleanup_call
+         end.
+Qed.
+
+Lemma CompileCallFacadeImplementationOfConstructor:
+  forall {av} {env} adt,
+  forall fpointer,
+    GLabelMap.MapsTo fpointer (Axiomatic (FacadeImplementationOfConstructor adt)) env ->
+    forall vret ext,
+      vret ∉ ext ->
+      {{ Nil }}
+        (Call vret fpointer nil)
+      {{ [[ vret <-- @ADT av adt as _]] :: Nil }} ∪ {{ ext }} // env.
+Proof.
+  repeat match goal with
+         | _ => SameValues_Facade_t_step
+         | _ => facade_cleanup_call
+         end.
+Qed.
+
+Definition MyEnvW :=
+  (GLabelMap.add ("std", "rand") (Axiomatic FRandom))
+    ((GLabelMap.add ("std", "nil") (Axiomatic (FacadeImplementationOfConstructor nil)))
+       ((GLabelMap.add ("std", "cons") (Axiomatic (FacadeImplementationOfMutation cons)))
+          (GLabelMap.empty (FuncSpec (list W))))).
+
+Example random_test_with_adt :
+  Facade program implementing ( x <- Random;
+                                ret (ADT (if IL.weqb x 0 then
+                                            (Word.natToWord 32 1 : W) :: nil
+                                          else
+                                            x :: nil))) with MyEnvW.
+Proof.
+  repeat (compile_step || compile_random).
+  apply (CompileCallFacadeImplementationOfMutation (varg := "arg") (vtmp := "tmp")); try repeat compile_step.
+  apply CompileCallFacadeImplementationOfConstructor; repeat compile_step.
+  apply (CompileCallFacadeImplementationOfMutation (varg := "arg") (vtmp := "tmp")); try repeat compile_step.
+  apply CompileCallFacadeImplementationOfConstructor; repeat compile_step.
+Defined.
+
+Eval simpl in (proj1_sig random_test_with_adt).
+
+Lemma CompileCallFacadeImplementationOfMutation:
+  forall {av} {env} fADT,
+  forall fpointer varg vtmp (SCAarg: W) ADTarg,
+    GLabelMap.MapsTo fpointer (Axiomatic (FacadeImplementationOfMutation fADT)) env ->
+    forall vret ext pADT,
+      vret <> varg ->
+      vtmp <> varg ->
+      vtmp <> vret ->
+      vret ∉ ext ->
+      vtmp ∉ ext ->
+      StringMap.MapsTo varg (SCA av SCAarg) ext ->
+      {{ Nil }}
+        pADT
+      {{ [[ vret <-- ADT ADTarg as _]] :: Nil }} ∪ {{ ext }} // env ->
+      {{ Nil }}
+        Seq pADT (Call vtmp fpointer (varg :: vret :: nil))
+      {{ [[ vret <-- ADT (fADT SCAarg ADTarg) as _]] :: Nil }} ∪ {{ ext }} // env.
+Proof.
+  repeat match goal with
+         | _ => SameValues_Facade_t_step
+         | _ => facade_cleanup_call
+         | _ => unfold FacadeImplementationWW; simpl
+         end.
+
+  - assert (StringMap.MapsTo varg (SCA av SCAarg) st') by admit.
+    SameValues_Facade_t.
+
+  - assert (StringMap.MapsTo varg (SCA av SCAarg) st') by admit.
+    SameValues_Facade_t.
+    simpl combine in H12.
+    destruct output; [ discriminate | ].
+    destruct output; [ discriminate | ].
+    inversion H12; try subst.
+    cbv beta iota delta [wrap_output StringMapFacts.option_map map] in *.
+    rewrite add_4 by congruence.
+    rewrite add_eq_o by congruence.
+
+  repeat match goal with
+         | _ => SameValues_Facade_t_step
+         | _ => facade_cleanup_call
+         | _ => unfold FacadeImplementationWW; simpl
+         end.
+
+  rewrite remove_add_comm by congruence.
+  rewrite remove_trickle by congruence.
+
+  repeat match goal with
+         | _ => SameValues_Facade_t_step
+         | _ => facade_cleanup_call
+         | _ => unfold FacadeImplementationWW; simpl
+         end.
+  destruct ret.
+  apply WeakEq_pop_SCA; [ | admit ].
+  admit.
+Qed.
+
